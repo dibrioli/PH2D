@@ -89,6 +89,27 @@ impl FootprintDeform {
         1.0 / self.inv_minor
     }
 
+    /// ⭐⭐⭐ **O CONTORNO do dab** — o ponto da fronteira da pegada no parâmetro `t ∈ [0, 1)`, em
+    /// unidades de RAIO.
+    ///
+    /// ⛔⛔ **Ele existe para o anel do cursor não reconstruir a elipse por fora** (item 1 da fila do
+    /// esqueleto, 2026-09-14). O anel desenhava `(cos θ, m·sin θ)` rodado pelo rotor vivo — a mesma
+    /// conta, escrita noutra crate — e por isso continuava a mostrar a forma de REPOUSO quando a
+    /// pegada passou a carregar a deformação da arte. *Uma lei escrita em dois sítios ainda não é
+    /// uma lei.*
+    ///
+    /// ⭐ **E a amarra é demonstrável, não prometida:** por construção `falloff_t` deste ponto é
+    /// exactamente `1` — a fronteira da pegada É a curva de nível que o amostrador usa. Há gate.
+    #[must_use]
+    pub fn outline_at(self, t: f32) -> [f32; 2] {
+        let (sen, cos) = (t * std::f32::consts::TAU).sin_cos();
+        let menor = sen * self.minor_fraction();
+        [
+            cos * self.cos - menor * self.sin,
+            cos * self.sin + menor * self.cos,
+        ]
+    }
+
     /// The deformed radial distance `length(apply([u, v]))` — the falloff index for an elliptical dab.
     /// At identity this is the plain `sqrt(u² + v²)`. Rotation alone preserves it (a circle is
     /// rotation-invariant); only the flatten makes it elliptical.
@@ -96,5 +117,54 @@ impl FootprintDeform {
     pub fn falloff_t(self, u: f32, v: f32) -> f32 {
         let d = self.apply([u, v]);
         (d[0] * d[0] + d[1] * d[1]).sqrt()
+    }
+}
+
+#[cfg(test)]
+mod outline_tests {
+    use super::*;
+
+    /// ⭐⭐⭐ **O CONTORNO É A CURVA DE NÍVEL DO AMOSTRADOR** — `falloff_t` da fronteira é `1`.
+    ///
+    /// ⛔ É esta a amarra que impede o anel do cursor de desenhar uma elipse que a tinta não pinta:
+    /// o anel percorre [`FootprintDeform::outline_at`] e o motor lê [`FootprintDeform::falloff_t`],
+    /// e as duas só podem discordar se esta asserção cair.
+    ///
+    /// ⚠️ O corpus varre achatamento **e** ângulo: com `flatten = 0` a elipse é um círculo e
+    /// qualquer contorno passa — *um corpus redondo não mede a forma*.
+    #[test]
+    fn the_outline_is_the_sampler_level_set() {
+        let mut casos = 0;
+        for flatten in [0.0_f32, 0.2, 0.5, DAB_FLATTEN_MAX] {
+            for angle in [0_u16, 17, 90, 233] {
+                let fp = FootprintDeform::new(flatten, angle);
+                for k in 0..64 {
+                    let p = fp.outline_at(k as f32 / 64.0);
+                    let t = fp.falloff_t(p[0], p[1]);
+                    casos += 1;
+                    assert!(
+                        (t - 1.0).abs() < 1e-5,
+                        "com flatten {flatten} e ângulo {angle}°, o contorno em {k}/64 tem \
+                         falloff {t} — ele não é a fronteira que o amostrador usa"
+                    );
+                }
+            }
+        }
+        assert_eq!(casos, 4 * 4 * 64, "o corpus mudou de tamanho");
+    }
+
+    /// ⭐ **E a rotação do dab MOVE o contorno** — a metade anti-vácuo: sem ela a asserção de cima
+    /// passa sobre um contorno que ignorasse o ângulo (num círculo tudo é fronteira).
+    #[test]
+    fn the_outline_turns_with_the_dab() {
+        let reto = FootprintDeform::new(0.5, 0);
+        let torto = FootprintDeform::new(0.5, 90);
+        let a = reto.outline_at(0.0);
+        let b = torto.outline_at(0.0);
+        let d = (a[0] - b[0]).hypot(a[1] - b[1]);
+        assert!(
+            d > 0.5,
+            "o contorno não roda com o ângulo do dab (desvio {d}): ele está a ignorar a orientação"
+        );
     }
 }

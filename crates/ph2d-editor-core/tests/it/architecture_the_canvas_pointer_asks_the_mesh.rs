@@ -156,3 +156,54 @@ fn both_canvas_entries_ask_the_mesh_through_one_door() {
         f.display()
     );
 }
+
+/// ⭐⭐⭐ **O ANEL DO CURSOR PERCORRE A PEGADA DO MOTOR — não a remonta.**
+///
+/// ⛔⛔ **Medido em 2026-09-14:** o anel lia o achatamento e o rotor do instantâneo **autorado** e
+/// montava a elipse `(cos θ, m·sin θ)` à mão, noutra crate. Quando a pegada passou a carregar a
+/// deformação da arte (a wave do report com foto), o anel ficou a desenhar a forma — e o TAMANHO —
+/// de **repouso** por cima de uma arte dobrada. *A mesma lei escrita duas vezes diverge no dia em
+/// que uma delas aprende alguma coisa.*
+///
+/// ⇒ a porta é o `PainterTool::cursor_dab` (o `stroke_spec`, que já aplica a deformação, mais o
+/// rotor vivo), e o contorno é o `FootprintDeform::outline_at`, que tem gate a provar que o
+/// `falloff_t` dele é `1` — a curva de nível que o amostrador usa.
+#[test]
+fn the_cursor_ring_walks_the_engine_footprint() {
+    let f = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("crates/<x>/ tem dois pais")
+        .join("crates/ph2d-app-painter/src/painter_bridge_brush_ring.rs");
+    let src: String = std::fs::read_to_string(&f)
+        .expect("o anel do cursor do Painter")
+        .lines()
+        .map(|l| l.split_once("//").map_or(l, |(antes, _)| antes))
+        .collect::<Vec<_>>()
+        .join("\n");
+    // Controlo positivo: é ESTE o sítio que desenha o anel.
+    assert!(
+        src.contains("BRUSH_RING_SEGS"),
+        "{} deixou de desenhar o anel — este gate perdeu o sujeito",
+        f.display()
+    );
+    assert!(
+        src.contains("painter.cursor_dab()"),
+        "{} não pergunta ao motor que pegada o dab vai ter: sem isso ele volta a desenhar a forma \
+         de repouso sobre uma arte dobrada.",
+        f.display()
+    );
+    assert!(
+        src.contains("fp.outline_at(t as f32)"),
+        "{} pede a pegada e DEITA FORA o contorno dela — remontar a elipse aqui é escrever a lei \
+         uma segunda vez, que é o defeito que esta porta cura.",
+        f.display()
+    );
+    // ⚠️ E o TAMANHO também sai da porta: a deformação escala o raio, não só a forma.
+    assert!(
+        !src.contains("bs.size_px"),
+        "{} volta a tirar o raio do instantâneo AUTORADO (`bs.size_px`): sobre uma arte comprimida \
+         o anel mostra o tamanho de repouso enquanto a tinta pinta outro.",
+        f.display()
+    );
+}

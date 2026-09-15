@@ -6,7 +6,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
-use ph2d_tool_painter::{DAB_FLATTEN_MAX, PainterTool};
+use ph2d_tool_painter::PainterTool;
 use ph2d_vector::VectorScene;
 
 /// Segments in the brush-cursor ellipse outline — enough that a flattened ellipse reads smooth.
@@ -73,10 +73,14 @@ pub(super) fn draw_brush_ring(
                 // Deform uses its OWN (round) brush footprint — the deform radius, no flatten/rotation — so
                 // the ring shows the deform size, not the paint brush's (Enio 2026-07-04).
                 let deform = painter.is_deform_mode();
-                let footprint_px = if deform {
-                    bs.deform_size_px
-                } else {
-                    bs.size_px
+                // ⭐⭐ **E o RAIO vem da mesma porta**: a deformação da arte não muda só a FORMA do
+                // dab — ela muda o TAMANHO dele (o `radius_scale` do `warped_dab`, que o motor já
+                // aplica ao emitir). Lido de `bs.size_px`, o anel mostrava o raio de REPOUSO sobre
+                // uma arte comprimida.
+                let pegada = (!deform).then(|| painter.cursor_dab());
+                let footprint_px = match pegada {
+                    Some((raio, _)) => raio,
+                    None => bs.deform_size_px,
                 };
                 // Image-space major radius, floored so the ring stays visible at tiny zoom (the old
                 // screen-space `.max(1px)`).
@@ -91,21 +95,39 @@ pub(super) fn draw_brush_ring(
                 // real time, exactly like the tip it represents (Enio 2026-07-19). The rotor comes from
                 // the engine's own heading — the ring never re-derives a direction of its own, so it
                 // cannot point somewhere the paint does not. Deform is a plain, unrotated disc.
-                let m = if deform {
-                    1.0
-                } else {
-                    1.0 - f64::from(bs.dab_flatten.clamp(0.0, DAB_FLATTEN_MAX))
-                };
-                let rotor = if deform { [1.0, 0.0] } else { bs.dab_rotor };
-                let (cos_a, sin_a) = (f64::from(rotor[0]), f64::from(rotor[1]));
+                // ⭐⭐⭐ **A PEGADA VEM DO MOTOR, não é remontada aqui** (item 1 da fila do
+                // esqueleto, 2026-09-14). Até hoje este anel lia o achatamento e o rotor do
+                // instantâneo **autorado** e montava a elipse à mão — a mesma lei, escrita noutra
+                // crate. Quando a pegada passou a carregar a deformação da arte, ele ficou a
+                // desenhar a forma de REPOUSO por cima de uma arte dobrada.
+                //
+                // ⚠️ O **Deform** continua a ser um disco liso, e isso é do verbo: ele tem a sua
+                // própria pegada (redonda, sem achatamento nem rotação) e é isso que o anel promete.
+                let pegada = pegada.map(|(_, fp)| fp);
                 use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
                 use std::f64::consts::TAU;
                 let mut path = BezPath::new();
                 for i in 0..BRUSH_RING_SEGS {
-                    let (s, co) = (f64::from(i) * TAU / f64::from(BRUSH_RING_SEGS)).sin_cos();
-                    // Ellipse boundary `(cosθ, m·sinθ)` rotated by +angle, scaled to image px …
-                    let ix = (co * cos_a - m * s * sin_a) * r;
-                    let iy = (co * sin_a + m * s * cos_a) * r;
+                    let t = f64::from(i) / f64::from(BRUSH_RING_SEGS);
+                    // ⭐ **O contorno é o do amostrador** (`FootprintDeform::outline_at`, com gate a
+                    // provar que o `falloff_t` dele é `1`): o anel percorre a MESMA curva de nível
+                    // que o motor lê para saber onde o dab acaba.
+                    let [ux, uy] = pegada.map_or_else(
+                        || {
+                            let (s, co) = (t * TAU).sin_cos();
+                            [co, s]
+                        },
+                        |fp| {
+                            #[expect(
+                                clippy::cast_possible_truncation,
+                                reason = "o contorno é uma fracção da volta; a pegada é f32"
+                            )]
+                            let p = fp.outline_at(t as f32);
+                            [f64::from(p[0]), f64::from(p[1])]
+                        },
+                    );
+                    let ix = ux * r;
+                    let iy = uy * r;
                     // … then the affine's linear 2×2 (cols `[c0,c1]`,`[c2,c3]`) maps image→screen.
                     let p = Point::new(
                         f64::from(cx) + c[0] * ix + c[2] * iy,

@@ -54,7 +54,7 @@ impl PainterTool {
     /// must win; the hover value only fills the gap before pen-down and during the warm-up (where the
     /// engine's heading is still `[0, 0]` and the opening dabs are being held anyway), which is what keeps
     /// the ring from snapping to the resting Angle the moment you press.
-    fn live_heading(&self) -> [f32; 2] {
+    pub(super) fn live_heading(&self) -> [f32; 2] {
         match self
             .paint
             .stroke

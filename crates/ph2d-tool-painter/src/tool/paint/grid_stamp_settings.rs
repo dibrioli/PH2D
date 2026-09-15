@@ -171,6 +171,26 @@ impl PainterTool {
         brush
     }
 
+    /// ⭐⭐⭐ **A PEGADA DO DAB COMO O MOTOR A VAI EMITIR** — o raio em píxeis de imagem e a
+    /// [`ph2d_painter_brush::FootprintDeform`] já com a deformação da arte e a orientação viva.
+    ///
+    /// ⛔⛔ **Ela existe porque o ANEL DO CURSOR reconstruía a elipse por fora** (item 1 da fila do
+    /// esqueleto, 2026-09-14): ele lia o achatamento e o rotor do instantâneo **autorado** e
+    /// montava `(cos θ, m·sin θ)` à mão, noutra crate. Quando a pegada passou a carregar a
+    /// deformação da arte (a wave anterior), o anel ficou a mostrar a forma de REPOUSO por cima de
+    /// uma arte dobrada — *a mesma lei escrita duas vezes diverge no dia em que uma delas aprende
+    /// alguma coisa.*
+    ///
+    /// ⚠️ **A composição é a do motor, chamada e não copiada:** o [`Self::stroke_spec`] (que já
+    /// aplica a deformação) mais o `follow_rotor` sobre o rumo VIVO — as mesmas duas funções que o
+    /// `BrushSpec::dab_rotor` compõe, menos o salto aleatório por dab, que é ruído e não forma.
+    #[must_use]
+    pub fn cursor_dab(&self) -> (f32, ph2d_painter_brush::FootprintDeform) {
+        let spec = self.stroke_spec();
+        let rotor = spec.follow_rotor(self.live_heading());
+        (spec.radius_px, spec.dab_footprint(rotor))
+    }
+
     /// ⭐⭐⭐ **O RAIO QUE O DAB VAI OCUPAR na imagem, ANTES da deformação** — o que a porta de canvas
     /// precisa para perguntar à malha *«que deformação fazes sobre um disco deste tamanho?»*
     /// ([`ph2d_render::mesh_uv`]).

@@ -97,6 +97,47 @@ opt-level = 2
 [profile.dev.package.rustfft]
 opt-level = 2
 
+# ⭐⭐⭐ **O MESMO NEGÓCIO PARA A CADEIA DE QUADS** (2026-09-15) — e aqui ele não foi escolhido por
+# analogia: ele foi **MEDIDO contra um gate VERMELHO**.
+#
+# Desde 2026-09-10 todo teste deste repo tem tecto de tempo (60 s avisa, **180 s mata**). Corrida a
+# suíte inteira, **onze** testes eram MORTOS pelo tecto, e **seis** continuavam a sê-lo sozinhos a
+# `load 17` — logo não é a família de flakes de carga do `CLAUDE.md` §5.0, é o perfil de build. As
+# quatro crates são as mesmas do botão `Quad Retopology`, e o trabalho delas é aritmética de ponto
+# flutuante em varreduras de malha, que é exactamente o caso que as duas notas acima já registaram.
+#
+# Medido nesta máquina (`cargo nextest run -p ph2d-gridmap -p ph2d-quadchain -p ph2d-quadextract
+# -p ph2d-quadfill`, `load 18-21`):
+#
+#   | perfil | suíte | pior teste | mortos pelo tecto |
+#   |---|---|---|---|
+#   | `dev` (opt-0) | `181,9 s` | **morto a 180 s** | **6 de 196** |
+#   | só as 4 que estouravam | `108,6 s` | `108,2 s` | 0 |
+#   | **as 8 da cadeia** | **`71,4 s`** | **`71,3 s`** | **0** |
+#
+# ⚠️ **As outras quatro (`quantize`, `trace`, `crossfield`, `remesh-iso`) entram porque o TRABALHO
+# mora nelas** — as que estouravam só o chamavam. Elas compram `108 → 71 s` no pior teste, que é a
+# diferença entre passar com `72 s` de folga contra o tecto e passar com `72 s` de dívida.
+#
+# ⛔ **Isto não é uma optimização do produto**: o `--release` já era rápido, e o que estava partido
+# era só a corrida de testes em `dev`. O `cargo check -p` do laço interno não é tocado.
+[profile.dev.package.ph2d-gridmap]
+opt-level = 2
+[profile.dev.package.ph2d-quadchain]
+opt-level = 2
+[profile.dev.package.ph2d-quadextract]
+opt-level = 2
+[profile.dev.package.ph2d-quadfill]
+opt-level = 2
+[profile.dev.package.ph2d-quantize]
+opt-level = 2
+[profile.dev.package.ph2d-trace]
+opt-level = 2
+[profile.dev.package.ph2d-crossfield]
+opt-level = 2
+[profile.dev.package.ph2d-remesh-iso]
+opt-level = 2
+
 # ⭐⭐⭐ **O MESMO NEGÓCIO PARA O CAMPO IMPLÍCITO** (W147) — e aqui ele foi MEDIDO, não herdado.
 #
 # O modelador SDF avalia um campo **ponto a ponto** em varreduras de `78³`, e os censos dele são o

@@ -137,6 +137,10 @@ impl PainterTool {
         if matches!(self.paint.paint_mode, PaintMode::Clone) {
             spec.symmetry.enabled = false;
         }
+        // ⭐ E o AUTORADO fica guardado: é dele que cada ponto seguinte recompõe a forma do dab
+        // contra a dobra VIVA da arte (ver `Stroke::set_canvas_dab`). ⛔ Sem isto o traço inteiro
+        // usa a dobra do sítio onde começou.
+        self.paint.stroke_authored = Some(self.authored_spec());
         let mut stroke = Stroke::new(spec, self.paint.dynamics, self.paint.seed);
         // Seed the texture RNG from this stroke's seed, decorrelated from the jitter stream so the
         // two don't lock-step (HR-5: deterministic per stroke).
@@ -214,6 +218,17 @@ impl PainterTool {
             }
             _ => ev.pos,
         };
+        // ⭐⭐⭐ **A DOBRA DA ARTE É RELIDA AQUI, e só ela.** A shell reenvia a deformação a cada
+        // evento; sem esta linha o traço inteiro pintava com a dobra do primeiro ponto.
+        if let Some(autorado) = self.paint.stroke_authored {
+            let vivo = self.compose_canvas_warp(autorado);
+            stroke.set_canvas_dab(
+                vivo.radius_px,
+                vivo.dab_flatten,
+                vivo.dab_angle_deg,
+                vivo.dab_curve,
+            );
+        }
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.extend(
             StrokePoint {

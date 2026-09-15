@@ -210,6 +210,45 @@ const MAX_AIRBRUSH_DABS_PER_TICK: u32 = 8;
 pub(crate) const MAX_DABS_PER_WALK: usize = 1_048_576;
 
 impl Stroke {
+    /// ⭐⭐⭐ **A FORMA DO DAB É RELIDA ENQUANTO A MÃO ANDA** — e só ela.
+    ///
+    /// ⛔⛔ **Um traço captura o `BrushSpec` no pen-down, e isso é DESENHO** (o artista mexer num
+    /// slider a meio não pode mudar o traço já começado). Mas quatro daqueles campos **não são do
+    /// artista**: eles são DERIVADOS da deformação da arte debaixo do dab
+    /// ([`crate::canvas_warp::warped_dab`]), e essa muda de sítio para sítio.
+    ///
+    /// ⚠️ **Congelá-los no primeiro ponto faz o traço inteiro usar a dobra do SÍTIO ONDE COMEÇOU** —
+    /// e é isso, não o dab, que o dono via como *«pinta com diâmetro menor onde é mais estreito»*
+    /// (6.ª e 7.ª fotos, 2026-09-14). A marca estava certa no ponto de partida e errada em todo o
+    /// resto do caminho; toda a maquinaria por-dab estava correcta e nunca era relida.
+    ///
+    /// ⚠️ **A cerca é o que ela NÃO deixa passar:** só estes quatro campos. O resto do spec continua
+    /// congelado no pen-down, que é a lei que o `Stroke::new` tem escrita.
+    ///
+    /// ⏳ **E o que sobra está nomeado:** o chamador amostra a malha no ponto do EVENTO, e o percurso
+    /// emite dabs ENTRE eventos. Num traço rápido um evento cobre muitos dabs, e todos usam a dobra
+    /// do fim do segmento. O exacto seria a malha por DAB — o que põe a malha dentro do motor de
+    /// pincel, e é outra obra.
+    /// O raio do dab que este traço está a emitir — o instrumento com que um gate vê se a dobra da
+    /// arte está a ser relida ao longo do caminho.
+    #[must_use]
+    pub fn radius_px(&self) -> f32 {
+        self.spec.radius_px
+    }
+
+    pub fn set_canvas_dab(
+        &mut self,
+        radius_px: f32,
+        flatten: f32,
+        angle_deg: u16,
+        curve: crate::FootprintCurve,
+    ) {
+        self.spec.radius_px = radius_px;
+        self.spec.dab_flatten = flatten;
+        self.spec.dab_angle_deg = angle_deg;
+        self.spec.dab_curve = curve;
+    }
+
     /// Create a stroke for `spec`/`dynamics`. `seed` seeds the jitter RNG (use a per-stroke
     /// counter; never a global/thread RNG — keeps replays reproducible, HR-5).
     #[must_use]

@@ -287,6 +287,15 @@ pub(crate) struct PaintState {
     /// um mapa linear não acompanha uma curva, e o que sobrava era `20 %` de oval no pincel grande
     /// (4.ª foto do dono: *«quase bom»*).
     pub(super) canvas_warp: ph2d_painter_brush::canvas_warp::CanvasWarp,
+    /// ⭐⭐⭐ **O spec AUTORADO congelado no pen-down** — de que o traço em curso recompõe a forma do
+    /// dab a cada ponto, contra a deformação VIVA da arte.
+    ///
+    /// ⛔ Um traço congela o `BrushSpec` no pen-down por desenho (mexer num slider a meio não muda
+    /// o traço já começado), e quatro daqueles campos **não são do artista**: eles são derivados da
+    /// dobra da arte, que muda de sítio para sítio. Congelá-los fazia o traço inteiro usar a dobra
+    /// do SÍTIO ONDE COMEÇOU — o que o dono viu como *«pinta com diâmetro menor onde é mais
+    /// estreito»*. Ver [`ph2d_painter_brush::Stroke::set_canvas_dab`].
+    pub(super) stroke_authored: Option<ph2d_painter_brush::BrushSpec>,
     /// **Offset** slider track (`0..1`, `0.5` = none) — perpendicular path offset for the shape editors.
     pub(super) shape_offset_norm: f32,
     /// **Accumulated** offset (px) from prior Apply & Keep; EFFECTIVE = base + slider (a single offset of the pristine base).

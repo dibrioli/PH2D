@@ -164,6 +164,7 @@ impl Default for PaintState {
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
             // Identidade: sem deformação o `stroke_spec` devolve o spec do artista AO BIT.
             canvas_warp: ph2d_painter_brush::canvas_warp::CanvasWarp::rest(),
+            stroke_authored: None,
             shape_offset_norm: 0.5, // centred → 0px offset (default byte-identical)
             shape_offset_base_px: 0.0,
             offset_trim: false, // self-intersection trimming off by default

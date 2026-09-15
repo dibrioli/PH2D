@@ -31,12 +31,31 @@ impl PainterTool {
     /// ⛔ **Sem deformação a conta é o NO-OP ao bit** — toda pincelada deste app é a de sempre.
     #[must_use]
     pub(crate) fn stroke_spec(&self) -> ph2d_painter_brush::BrushSpec {
+        self.compose_canvas_warp(self.authored_spec())
+    }
+
+    /// O spec do artista, **sem** a deformação da arte — o que um traço congela no pen-down.
+    #[must_use]
+    pub(crate) fn authored_spec(&self) -> ph2d_painter_brush::BrushSpec {
         let brush = self.paint.brush;
-        let mut brush = if brush.stroke_method == ph2d_painter_brush::StrokeMethod::GridStamp {
+        if brush.stroke_method == ph2d_painter_brush::StrokeMethod::GridStamp {
             brush.as_grid_stamp(self.shape_silhouette_active())
         } else {
             brush
-        };
+        }
+    }
+
+    /// ⭐⭐⭐ **A deformação VIVA composta num spec autorado** — a porta que o traço em curso volta a
+    /// chamar a cada ponto ([`ph2d_painter_brush::Stroke::set_canvas_dab`]).
+    ///
+    /// ⛔ Ela recebe o autorado em vez de o ler de `self.paint.brush` **de propósito**: a meio de um
+    /// traço o artista pode ter mexido num slider, e o spec de um traço em curso é o do pen-down.
+    /// *O que viaja aqui é a dobra da ARTE, nunca a intenção do artista.*
+    #[must_use]
+    pub(crate) fn compose_canvas_warp(
+        &self,
+        mut brush: ph2d_painter_brush::BrushSpec,
+    ) -> ph2d_painter_brush::BrushSpec {
         let w = ph2d_painter_brush::canvas_warp::warped_dab(
             self.paint.canvas_warp,
             brush.dab_flatten,
@@ -304,7 +323,59 @@ mod tests {
         );
     }
 
-    /// Sonda: o TAMANHO que a porta entrega, varrendo a compressão da arte.    /// Sonda: o TAMANHO que a porta entrega, varrendo a compressão da arte.
+    /// ⭐⭐⭐ **A DOBRA DA ARTE É RELIDA ENQUANTO A MÃO ANDA** — o report da 7.ª foto do dono
+    /// (*«sem melhorias»*, 2026-09-14), que era o defeito por baixo dos outros dois.
+    ///
+    /// ⛔⛔ Um traço captura o `BrushSpec` no pen-down, e isso é DESENHO. Mas quatro daqueles campos
+    /// **não são do artista** — eles são derivados da deformação da arte, que muda de sítio para
+    /// sítio. Congelá-los faz o traço inteiro pintar com a dobra do **sítio onde começou**: a marca
+    /// está certa no primeiro ponto e errada em todo o resto do caminho. *Toda a maquinaria por-dab
+    /// estava correcta e nunca era relida* — e nenhum gate desta linha a exercitava ao longo de um
+    /// CAMINHO, só num ponto.
+    ///
+    /// ⚠️ A metade ANTI-VÁCUO é a segunda asserção: sem ela, um traço que ignorasse a deformação
+    /// INTEIRA passaria (os dois raios seriam o autorado).
+    #[test]
+    fn the_fold_is_re_read_while_the_hand_travels() {
+        use ph2d_editor_core::tool::{CanvasPaintTool as _, PointerPhase, RasterEditTool as _};
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; 512 * 512 * 4], 512, 512);
+        t.set_brush_size_px(20.0);
+        let ponto = |p: [f32; 2], phase| ph2d_editor_core::tool::CanvasPointer {
+            pos: p,
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        // O traço NASCE sobre arte em repouso…
+        t.set_canvas_warp(ph2d_painter_brush::canvas_warp::CanvasWarp::rest());
+        t.on_canvas_pointer(ponto([100.0, 256.0], PointerPhase::Down));
+        let no_inicio = t.paint.stroke.as_ref().map(ph2d_painter_brush::Stroke::radius_px);
+        // …e entra numa zona comprimida a meio do caminho.
+        t.set_canvas_warp(ph2d_painter_brush::canvas_warp::CanvasWarp::linear([
+            [0.25, 0.0],
+            [0.0, 1.0],
+        ]));
+        t.on_canvas_pointer(ponto([300.0, 256.0], PointerPhase::Move));
+        let a_meio = t.paint.stroke.as_ref().map(ph2d_painter_brush::Stroke::radius_px);
+        let (ini, meio) = (
+            no_inicio.expect("o traço abriu"),
+            a_meio.expect("o traço continua aberto"),
+        );
+        assert!(
+            (meio - ini * 4.0).abs() < ini * 0.05,
+            "o traço entrou numa zona comprimida 4× e o dab ficou com raio {meio} (era {ini}) — a \
+             dobra da arte não está a ser relida, e o traço inteiro pinta com a do primeiro ponto"
+        );
+        // ⛔ O CONTROLO: em repouso o raio tem de ser o autorado — senão isto mediria uma porta que
+        // inflasse o dab por outra razão qualquer.
+        assert!(
+            (ini - 20.0).abs() < 1e-3,
+            "sobre arte em repouso o dab nasceu com raio {ini} e o artista pediu 20"
+        );
+    }
+
+    /// Sonda: o TAMANHO que a porta entrega, varrendo a compressão da arte.    /// Sonda: o TAMANHO que a porta entrega, varrendo a compressão da arte.    /// Sonda: o TAMANHO que a porta entrega, varrendo a compressão da arte.
     #[test]
     #[ignore = "sonda: o diametro entregue contra a compressao"]
     fn probe_o_diametro_contra_a_compressao() {

@@ -267,5 +267,16 @@ viaja é a dobra da ARTE, nunca a intenção do artista a meio do gesto.
   que já está na lista.
 - ⏳ **F8 — Bendy Bones**, na fila por começar.
 - ⏳ **F4 — *«undo tem poucos passos»***, que não reproduz.
-- ⏸️ **Ligar o `Smooth` de fábrica** — decisão do dono, com o custo medido (`1/10` de um quadro,
-  `1 543` peças), surfaceada duas vezes e ainda sem resposta.
+- ✅ **Ligar o `Smooth` de fábrica** — FEITO (§9-bis). A linha acima esteve `⏸️` neste mesmo doc
+  depois de a decisão já ter sido tomada: *uma lista de abertos escreve-se no fim da wave, e esta
+  envelheceu dentro dela.*
+- ⏳ **E o CENSO do que ainda acha que a arte é PLANA** (varrido em 2026-09-15, quem resolve o
+  ponteiro pelo afim do quad de repouso sem perguntar à malha):
+  | onde | o que sai errado |
+  |---|---|
+  | o **conta-gotas** (`forwarding.rs`) | apanha a cor do texel errado |
+  | a ferramenta de **curva/forma** do Painter (`painter_curve_input.rs`) | os pontos de controlo caem deslocados |
+  | o **removedor de fundo** (`bgremoval_preview_gpu.rs`) | a amostra e a pré-visualização idem |
+  | as **guias** (grelha · contornos de selecção · curva · linha · selos · humidade) | desenhadas planas por cima da arte dobrada |
+  ⭐ Os três primeiros são o MESMO defeito que o pincel tinha e a porta já existe
+  ([`ph2d_render::mesh_uv`]); as guias são outra natureza (precisam de ser **subdivididas**).

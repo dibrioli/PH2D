@@ -133,4 +133,42 @@ mutacao "B2 e a cena de smoke acusa-o" "$RO" \
   'missing.sort_unstable_by_key(|e| e.to_bits());' \
   ph2d-app-components --lib o_boneco_desenha_por_cima
 
+DR=crates/ph2d-topdown/src/direction.rs
+TD=crates/ph2d-physics-ecs/src/bridge/topdown.rs
+
+echo "── C) a ULTIMA SETA manda em 4 direccoes ─────────────────────────────────"
+
+# ⛔ **A lei apagada**: volta o arredondamento, que resolvia o empate pelo QUADRANTE.
+mutacao "C1 a dominancia deixa de reescrever o indice do encaixe" "$DR" \
+  'let indice = indice_dominante(bruto, mode, dominante)
+        .unwrap_or_else(|| libm::roundf(ang / passo_rad));' \
+  'let indice = libm::roundf(ang / passo_rad);' \
+  ph2d-topdown --lib dominance_tests
+
+# ⚠️ A TRANSIÇÃO e' a coisa toda: sem o «e estava parado antes», quem manda passa a ser o
+# ultimo eixo da ordem de leitura, e a seta nova nunca rouba o comando.
+mutacao "C2 a transicao vira «esta' vivo»" "$DR" \
+  'let chegou = [vivo[0] && !self.vivo[0], vivo[1] && !self.vivo[1]];' \
+  'let chegou = [vivo[0], vivo[1]];' \
+  ph2d-topdown --lib dominance_tests
+
+# ⚠️ A cerca que a torna correcta fora do teclado: sem o empate exacto, um manipulo
+# obedece a' ORDEM em vez da componente maior.
+mutacao "C3 a cerca da diagonal exacta evapora" "$DR" \
+  'if ax <= VIVO || ay <= VIVO || (ax - ay).abs() > EMPATE {' \
+  'if ax <= VIVO || ay <= VIVO {' \
+  ph2d-topdown --lib dominance_tests
+
+# ⚠️ Soltar tudo tem de ESQUECER — senao o gesto seguinte herda o comando velho.
+mutacao "C4 soltar tudo deixa de esquecer" "$DR" \
+  '(false, false) => DominantAxis::None,' \
+  '(false, false) => self.eixo,' \
+  ph2d-topdown --lib dominance_tests
+
+# ⛔⛔ E a PONTE tem de CARREGAR a memoria entre tiques — a metade que a lei nao alcanca.
+mutacao "C5 a ponte cria a memoria FRESCA a cada tique" "$TD" \
+  'let dir = ph2d_topdown::world_direction(bruto, &law, &mut st.dominance);' \
+  'let dir = ph2d_topdown::world_direction(bruto, &law, &mut Default::default());' \
+  ph2d-app-physics --lib a_ultima_seta_manda
+
 echo "── $N mutações ──────────────────────────────────────────────────────────"

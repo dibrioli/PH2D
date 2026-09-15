@@ -94,7 +94,13 @@ fn e_a_mesma_seta_leva_os_dois_a_sitios_diferentes() {
         if n.as_str().starts_with("Hero (") || n.as_str().starts_with("Control (") {
             dirs.push((
                 n.as_str().to_string(),
-                ph2d_topdown::world_direction([1.0, 0.0], &c.law()),
+                ph2d_topdown::world_direction(
+                    [1.0, 0.0],
+                    &c.law(),
+                    // ⚠️ Memória FRESCA: o que este gate mede é o viewpoint, e uma
+                    // dominância herdada trocaria o eixo sob a medição.
+                    &mut ph2d_topdown::direction::Dominance::default(),
+                ),
             ));
         }
     }
@@ -179,5 +185,45 @@ fn o_boneco_desenha_por_cima_do_chao() {
                 chao
             );
         }
+    }
+}
+
+/// ⭐⭐ **A cena `=2` é o sítio onde a ÚLTIMA SETA se testa — e o sujeito é o CONTROLO.**
+///
+/// ⚠️ *Um passo de smoke que aponta para uma coisa tem de provar que a coisa está na cena* (a lei
+/// que esta linha já pagou num painel). A instrução manda segurar a `→` e carregar na `↑` **no
+/// quadrado cinzento**, então o gate exige que ele exista, que esteja em **4 direcções** — que é o
+/// único modo em que a regra vale — e que a cena `=1` **não** esteja, porque ali a diagonal é a
+/// resposta certa.
+#[test]
+fn a_regra_da_ultima_seta_tem_sujeito_na_cena_dois_e_nao_na_um() {
+    let sim = monta(2);
+    let mut q = sim.world().try_query::<(&Name, &TopDownPlayer)>().unwrap();
+    let mut achou = false;
+    for (n, c) in q.iter(sim.world()) {
+        if n.as_str() != "Control (Top-Down)" {
+            continue;
+        }
+        achou = true;
+        assert_eq!(
+            c.law().direction,
+            DirectionMode::FourWay,
+            "o sujeito do passo tem de estar em 4 direccoes — e' o unico modo em que a regra vale"
+        );
+    }
+    assert!(
+        achou,
+        "falta o CONTROLO, que e' o sujeito do passo do smoke"
+    );
+
+    let sim = monta(1);
+    let mut q = sim.world().try_query::<&TopDownPlayer>().unwrap();
+    for c in q.iter(sim.world()) {
+        assert_ne!(
+            c.law().direction,
+            DirectionMode::FourWay,
+            "⛔ a cena =1 e' a do DESLIZE e vive das diagonais — po-la em 4 direccoes apagaria \
+             metade dos rumos do passo que o dono ja' aprovou"
+        );
     }
 }

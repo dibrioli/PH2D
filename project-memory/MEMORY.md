@@ -128,6 +128,7 @@
 - ⛔⛔⛔ [Gate calibrado na largura de OMISSÃO é cego à que o artista TEM — media `inspector-w = 304` (0 rótulos cortados) e o dono tinha `dock_w_right = 220,9` no `~/.ph2d/layout.txt` (16 cortados); a cura é medir a ESCADA, com um degrau vindo do estado REAL](feedback_a_gate_calibrated_at_the_default_width_is_blind_to_the_width_the_artist_has.md)
 - ⛔ [viés em NDC não é constante no mundo: 3e-3 = 30 % da distância do olho](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md)
 - ⛔ [Barra calibrada SEM o lado aprovado mede os nossos defeitos; o PISO do censo decide o que a régua vê (4× «nenhuma melhoria»)](feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects.md)
+- ⛔⛔ [Empate resolvido por `round` é artefacto do QUADRANTE, não decisão — passa em todo gate até o dono o encontrar](feedback_a_tie_broken_by_rounding_is_a_quadrant_artefact_not_a_law.md)
 - ⛔⛔⛔ [24 provas VERDES sobre um componente que não andava — todas entravam pelo canal INTERNO, que fica ABAIXO da metade partida do gesto](feedback_the_inner_channel_fixture_is_below_the_break.md)
 - ⛔⛔ [Varredura que «congela a ordem que a árvore mostra» tem de LER a porta dela — uma cópia da chave inverteu a pilha de z de toda a app por 3 semanas](feedback_a_sweep_that_freezes_an_order_must_read_the_same_key_the_tree_reads.md)
 - ⛔⛔ [ÓRFÃO e DUPLICADO sao a MESMA auditoria, os dois MUDOS — gate `architecture_no_orphan_source_file` desde 12/09, que achou 8 testes e uma sonda de 583 L fora do build](feedback_the_orphan_and_the_double_declaration_are_one_audit.md)

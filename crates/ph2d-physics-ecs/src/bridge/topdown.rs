@@ -40,8 +40,15 @@ struct TopDownMove {
     handle: RigidBodyHandle,
     /// O deslocamento que o plano inteiro conseguiu.
     moved: [f32; 2],
-    /// A velocidade depois das rampas — o que fica na memória do controlador.
-    velocity: [f32; 2],
+    /// **A memória inteira depois deste tique** — a velocidade das rampas e quem
+    /// mandava.
+    ///
+    /// ⚠️ **O struct inteiro e não só a velocidade:** desde a ordem do dono de
+    /// 2026-09-15 (*«no 4 dir a última seta manda»*) a memória tem duas metades, e
+    /// carregar só uma faria a dominância nascer de novo a cada tique — o boneco
+    /// nunca trocaria de eixo. *Levar o TIPO é o que impede a próxima metade de
+    /// ser esquecida.*
+    state: TopDownState,
     /// O ângulo novo, se este modo roda.
     facing: Option<f32>,
 }
@@ -83,22 +90,23 @@ impl PhysicsBridge {
             let law = cfg.law();
             let entrada = self.player_input.get(&entity).copied().unwrap_or_default();
             let bruto = [entrada.drive, entrada.drive_y];
-            let dir = ph2d_topdown::world_direction(bruto, &law);
 
-            let antes = self
-                .topdown_state
-                .get(&entity)
-                .copied()
-                .unwrap_or_default()
-                .velocity;
+            // ⚠️ **A memória é lida INTEIRA e avança AQUI**, uma vez por tique e por
+            // corpo: o `world_direction` observa a transição das setas para saber
+            // qual chegou por último (ordem do dono, 2026-09-15). Observá-la duas
+            // vezes come a transição, e a seta nova deixa de roubar o comando.
+            let mut st: TopDownState = self.topdown_state.get(&entity).copied().unwrap_or_default();
+            let dir = ph2d_topdown::world_direction(bruto, &law, &mut st.dominance);
+
             let v = intent::advance(
-                antes,
+                st.velocity,
                 dir,
                 law.speed,
                 law.acceleration,
                 law.deceleration,
                 dt,
             );
+            st.velocity = v;
 
             let params = CharacterParams {
                 // Ver o cabeçalho: numa vista de cima não há chão.
@@ -161,7 +169,7 @@ impl PhysicsBridge {
                 entity,
                 handle,
                 moved: andado,
-                velocity: v,
+                state: st,
                 facing,
             });
         }
@@ -186,12 +194,7 @@ impl PhysicsBridge {
             // a INTENÇÃO com rampa — matá-la contra a parede faria o corpo perder
             // a embalagem que o deslize acabou de preservar, que é a lei desta
             // wave ao contrário.
-            self.topdown_state.insert(
-                m.entity,
-                TopDownState {
-                    velocity: m.velocity,
-                },
-            );
+            self.topdown_state.insert(m.entity, m.state);
         }
     }
 }

@@ -15,6 +15,110 @@
 
 use crate::{Vec2, len, normalize};
 
+/// **Abaixo disto um eixo não está em baixo.** O mesmo epsilon do corte de comprimento desta porta.
+const VIVO: f32 = 1.0e-6;
+/// **Acima disto a intenção não está na diagonal EXACTA** — e aí manda a componente maior.
+const EMPATE: f32 = 1.0e-6;
+
+/// **Que eixo mandou por ÚLTIMO.**
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DominantAxis {
+    /// Ninguém — nada em baixo, ou um modo que não lê isto.
+    #[default]
+    None,
+    /// O horizontal.
+    X,
+    /// O vertical.
+    Y,
+}
+
+/// **A MEMÓRIA da última seta a chegar** (ordem do dono, 2026-09-15: *«no 4 dir, mesmo com duas
+/// setas pressionadas, a última a ser pressionada sempre é dominante»*).
+///
+/// # ⚠️ Por que a lei precisa de MEMÓRIA, e por que ela mora aqui
+///
+/// A intenção que chega a esta porta é um **vector**: `(1, 1)` não diz qual das duas setas desceu
+/// primeiro. A única forma de saber é observar a **TRANSIÇÃO** — que eixo passou de parado a vivo
+/// neste tique —, e isso obriga a lembrar o tique anterior.
+///
+/// ⚠️ Ela viaja dentro do [`crate::TopDownState`], que é o que o anel de checkpoints guarda: um
+/// scrub devolve o mundo **e** quem mandava, e o replay reproduz a corrida. ⛔ Uma memória fora
+/// dali seria o defeito que o `ControllerMemory` desta mesma wave existe para impedir.
+///
+/// ⚠️ **E ela não é opcional na assinatura da porta**: o [`quantize`] recebe o eixo dominante, e o
+/// [`crate::world_direction`] recebe a memória. *Esquecê-la é erro de compilação* — que é a única
+/// forma de uma lei escrita em duas metades não envelhecer numa delas.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Dominance {
+    eixo: DominantAxis,
+    vivo: [bool; 2],
+}
+
+impl Dominance {
+    /// **Observa a intenção crua DESTE tique e devolve quem manda.**
+    ///
+    /// ⚠️ Chamada **uma vez por tique e por corpo** — chamá-la duas vezes com a mesma intenção
+    /// come a transição, e a seta nova deixa de roubar o comando.
+    pub fn observe(&mut self, raw: Vec2) -> DominantAxis {
+        let vivo = [raw[0].abs() > VIVO, raw[1].abs() > VIVO];
+        // ⭐ A transição, que é a coisa toda: *acabou de chegar* é `vivo agora && parado antes`.
+        let chegou = [vivo[0] && !self.vivo[0], vivo[1] && !self.vivo[1]];
+        self.vivo = vivo;
+        self.eixo = match (vivo[0], vivo[1]) {
+            // ⚠️ Soltar tudo **esquece**: senão a primeira seta do gesto seguinte herdaria um
+            // comando velho, e o artista veria o boneco arrancar para o lado errado.
+            (false, false) => DominantAxis::None,
+            (true, false) => DominantAxis::X,
+            (false, true) => DominantAxis::Y,
+            (true, true) => match (chegou[0], chegou[1]) {
+                (true, false) => DominantAxis::X,
+                (false, true) => DominantAxis::Y,
+                // ⚠️ **As duas no MESMO tique — ou nenhuma:** fica quem já mandava, e sem ninguém
+                // a resposta é **declarada** (o horizontal). ⛔ Não há «última» aqui, e o que
+                // importa é ser determinístico e igual nos quatro quadrantes — que é exactamente o
+                // que o arredondamento de antes não era.
+                _ => match self.eixo {
+                    DominantAxis::None => DominantAxis::X,
+                    ja_mandava => ja_mandava,
+                },
+            },
+        };
+        self.eixo
+    }
+
+    /// Quem manda agora, sem observar nada.
+    #[must_use]
+    pub const fn axis(self) -> DominantAxis {
+        self.eixo
+    }
+}
+
+/// **O ÍNDICE do encaixe que a dominância impõe** — `None` quando ela não tem nada a dizer.
+///
+/// ⚠️⚠️ **Ela só fala na diagonal EXACTA, e essa cerca é o que a torna correcta fora do teclado.**
+/// Com componentes diferentes ganha a maior — que é o que o encaixe já fazia —, senão rodar um
+/// manípulo faria o corpo andar para o lado errado a meio da volta: o eixo que cruzasse o limiar
+/// por último mandaria mesmo com o manípulo a apontar o outro.
+///
+/// ⚠️ **E o índice é o que o ARREDONDAMENTO produz para cada seta SOZINHA** (`→` `0` · `↑` `1` ·
+/// `←` `2` · `↓` `−1`), para que a saída seja byte-idêntica à da seta sem companhia. ⛔ Devolver um
+/// `[0, 1]` exacto criaria duas aritméticas para o mesmo rumo: `libm::cosf(π/2)` é `−4,4e-8`, não
+/// zero.
+fn indice_dominante(bruto: Vec2, mode: DirectionMode, dominante: DominantAxis) -> Option<f32> {
+    if !matches!(mode, DirectionMode::FourWay) {
+        return None;
+    }
+    let (ax, ay) = (bruto[0].abs(), bruto[1].abs());
+    if ax <= VIVO || ay <= VIVO || (ax - ay).abs() > EMPATE {
+        return None;
+    }
+    match dominante {
+        DominantAxis::None => None,
+        DominantAxis::X => Some(if bruto[0] >= 0.0 { 0.0 } else { 2.0 }),
+        DominantAxis::Y => Some(if bruto[1] >= 0.0 { 1.0 } else { -1.0 }),
+    }
+}
+
 /// **Em que direcções o corpo aceita andar.**
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DirectionMode {
@@ -75,7 +179,7 @@ impl DirectionMode {
 /// O comprimento sobrevive (cortado a `1`) para que um manípulo a meio curso ande
 /// a meia velocidade; só a **direcção** é encaixada.
 #[must_use]
-pub fn quantize(raw: Vec2, mode: DirectionMode) -> Vec2 {
+pub fn quantize(raw: Vec2, mode: DirectionMode, dominante: DominantAxis) -> Vec2 {
     let bruto = match mode {
         DirectionMode::AxisX => [raw[0], 0.0],
         DirectionMode::AxisY => [0.0, raw[1]],
@@ -104,7 +208,11 @@ pub fn quantize(raw: Vec2, mode: DirectionMode) -> Vec2 {
     // operacionais, e ali 1 ulp é um bug.
     let ang = libm::atan2f(dir[1], dir[0]);
     let passo_rad = passo.to_radians();
-    let encaixado = libm::roundf(ang / passo_rad) * passo_rad;
+    // ⭐⭐⭐ **A ÚLTIMA SETA MANDA** (ordem do dono, 2026-09-15) — e ela entra REESCREVENDO o índice
+    // do encaixe, não devolvendo um vector à parte: ver [`indice_dominante`].
+    let indice =
+        indice_dominante(bruto, mode, dominante).unwrap_or_else(|| libm::roundf(ang / passo_rad));
+    let encaixado = indice * passo_rad;
     [
         libm::cosf(encaixado) * comprimento,
         libm::sinf(encaixado) * comprimento,

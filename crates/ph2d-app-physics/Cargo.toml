@@ -59,6 +59,15 @@ ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
 serde = { version = "1", features = ["rc"] }
 
+# ⭐ **Só os GATES precisam do vocabulário da lei de vista de cima.**
+#
+# O produto desta crate nunca nomeia um `DirectionMode`: ele entrega o dedo e a ponte traduz. Quem
+# precisa de o nomear é o gate da DOMINÂNCIA (ordem do dono, 2026-09-15), que tem de montar uma
+# fixtura em **4 direcções** — e escrever o valor de fio `2` à mão aqui seria um literal a envelhecer
+# no dia em que alguém reordenasse o enum.
+[dev-dependencies]
+ph2d-topdown = { path = "../ph2d-topdown" }
+
 [features]
 # ⚠️⚠️ **Um `#[cfg(test)]` é INVISÍVEL do outro lado da fronteira de crate**
 # (HOWTO §2.5): daqui a shell é um consumidor, e `cfg(test)` é falso nesta crate

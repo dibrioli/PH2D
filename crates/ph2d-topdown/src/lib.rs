@@ -158,15 +158,25 @@ impl Default for TopDownLaw {
 /// ⚠️ Ela existe para que a ORDEM (quantizar → reprojectar) tenha **um** sítio.
 /// Duas chamadas soltas na ponte seriam duas respostas à mesma pergunta, e a
 /// que envelhece é a que o artista vê.
+///
+/// ⚠️⚠️ **A MEMÓRIA entra na ASSINATURA, e isso é a decisão** (ordem do dono, 2026-09-15: em 4
+/// direcções a última seta manda). Uma função-irmã *«sem memória»* seria a segunda porta pela qual
+/// a lei se perderia — exactamente o defeito que a entrega do dedo pagou no mesmo dia. ⇒ quem
+/// chama tem de ter onde guardar a dominância, e o sítio é o [`TopDownState`], que já viaja no anel
+/// de checkpoints.
 #[must_use]
-pub fn world_direction(raw: Vec2, law: &TopDownLaw) -> Vec2 {
-    let quantizado = direction::quantize(raw, law.direction);
+pub fn world_direction(raw: Vec2, law: &TopDownLaw, dominancia: &mut direction::Dominance) -> Vec2 {
+    let quantizado = direction::quantize(raw, law.direction, dominancia.observe(raw));
     viewpoint::reproject(quantizado, law.viewpoint, law.viewpoint_angle_deg)
 }
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "dominance_tests.rs"]
+mod dominance_tests;
 
 /// **A MEMÓRIA de um mover de vista de cima entre tiques** — a velocidade que as
 /// rampas acumulam.
@@ -184,4 +194,9 @@ mod tests;
 pub struct TopDownState {
     /// A velocidade de agora, m/s.
     pub velocity: Vec2,
+    /// ⭐ **Quem mandou por último**, e só o 4-direcções a lê
+    /// ([`direction::Dominance`]). ⚠️ Ela tem de viver AQUI e não num mapa ao
+    /// lado: é este struct que entra no anel de checkpoints, e é isso que faz um
+    /// scrub devolver o mundo **e** o comando do mesmo tique.
+    pub dominance: direction::Dominance,
 }

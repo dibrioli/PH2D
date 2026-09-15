@@ -159,3 +159,105 @@ fn e_o_eixo_vertical_viaja_na_mesma_entrega() {
         fim.y
     );
 }
+
+/// Uma cena de **4 direcções** — o modo em que a ordem das setas manda.
+fn cena_quatro_direccoes() -> SimWorld {
+    let mut sim = SimWorld::new();
+    let mut cfg = TopDownPlayer {
+        speed: VELOCIDADE,
+        acceleration: 0.0,
+        deceleration: 0.0,
+        ..TopDownPlayer::default()
+    };
+    cfg.direction_mode =
+        ph2d_topdown::direction::to_wire(ph2d_topdown::direction::DirectionMode::FourWay);
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Kinematic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.35 },
+            ..Collider::default()
+        },
+        cfg,
+        Transform::from_translation(Vec2::new(0.0, 0.0)),
+    ));
+    sim
+}
+
+/// ⭐⭐⭐ **A ÚLTIMA SETA MANDA, e a memória SOBREVIVE entre tiques** (ordem do dono, 2026-09-15).
+///
+/// # ⛔⛔ O que só ESTE gate pode reprovar
+///
+/// Os gates da lei ([`ph2d_topdown`]) provam que, **dada** a memória, a última seta ganha. O que
+/// eles não alcançam é a ponte **carregar** essa memória de um tique para o seguinte: se ela
+/// nascesse fresca a cada tique, as duas setas pareceriam chegar sempre ao mesmo tempo e o corpo
+/// ficaria preso no eixo declarado para sempre — com a suíte da lei inteira verde.
+///
+/// ⚠️ **A sequência é o discriminador, e ela foi escolhida por isso:** segurar as duas desde o
+/// princípio dá a MESMA resposta com e sem memória. Só *«uma primeiro, a outra depois»* separa os
+/// dois programas.
+#[test]
+fn a_ultima_seta_manda_e_a_memoria_atravessa_os_tiques() {
+    let mut sim = cena_quatro_direccoes();
+    let mut bridge = PhysicsBridge::new();
+    let mut doc = TimelineDoc::new();
+    let mut playhead = Playhead::new(DT);
+    let mut tape = InputTape::new();
+    let mut drive = ph2d_preview_drive::PreviewDrive::default();
+    playhead.play();
+
+    let direita = PlayerInput {
+        drive: 1.0,
+        ..PlayerInput::default()
+    };
+    let ambas = PlayerInput {
+        drive: 1.0,
+        drive_y: 1.0,
+        ..PlayerInput::default()
+    };
+    let mut passo = |sim: &mut SimWorld, entrada: PlayerInput, tiques: u64| {
+        for _ in 0..tiques {
+            playhead.advance();
+            dispatch(
+                &mut bridge,
+                sim,
+                &playhead,
+                DT,
+                &mut doc,
+                true,
+                entrada,
+                &mut tape,
+                &mut drive,
+            );
+        }
+    };
+
+    passo(&mut sim, direita, 15);
+    let meio = pos(&sim);
+    assert!(
+        meio.x > 0.9,
+        "so' com a `→` ele tem de andar em x: {meio:?}"
+    );
+
+    passo(&mut sim, ambas, 15);
+    let fim = pos(&sim);
+    let andou_x = fim.x - meio.x;
+    let andou_y = fim.y - meio.y;
+    assert!(
+        andou_y > 0.9,
+        "a `↑` chegou DEPOIS e tem de mandar: ele andou {andou_y:.4} em y.\n\
+         ⚠️ Se isto e' ~0 e o x cresceu, a ponte esta' a criar a memoria FRESCA a cada tique — \
+         as duas setas parecem chegar juntas e a dominancia cai no eixo declarado para sempre."
+    );
+    assert!(
+        andou_x.abs() < 1.0e-3,
+        "e o `→` tem de CALAR-SE enquanto a `↑` manda: ele andou {andou_x:.6} em x"
+    );
+}
+
+/// A pose do (único) corpo da cena.
+fn pos(sim: &SimWorld) -> Vec2 {
+    let mut q = sim.world().try_query::<&Transform>().expect("query");
+    q.iter(sim.world()).next().expect("o corpo").translation
+}

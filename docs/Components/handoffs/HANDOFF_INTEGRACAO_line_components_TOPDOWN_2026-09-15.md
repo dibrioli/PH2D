@@ -269,3 +269,105 @@ enquanto o boneco não andava. *Uma agulha que nomeia a CHAMADA é cega ao corpo
    mas a lição é que **uma agulha textual não substitui uma medição do efeito**.
 3. ⏳ **Os outros consumidores do `player_input`** (a `fase_game_camera`) não foram auditados contra
    esta mesma forma — *a pergunta «quem é um player?» pode ter uma TERCEIRA resposta algures*.
+
+---
+
+## §11 — A ORDEM DO DONO depois do smoke aprovado: *«No 4 dir, mesmo com duas setas pressionadas, a última a ser pressionada sempre é dominante»*
+
+### 11.1 ⛔⛔ O que havia antes não era uma lei — era um `round` a meio caminho
+
+Com as duas setas em baixo a intenção crua é **exactamente diagonal**, e o quantizador resolvia o
+empate por `libm::roundf(ang / 90°)`, que parte empates **para longe do zero**. O resultado é função
+do **QUADRANTE**:
+
+| setas | ângulo | `ang/90°` | `roundf` | saía |
+|---|---|---|---|---|
+| `→` + `↑` | `+45°` | `+0,5` | `+1` | **cima** |
+| `→` + `↓` | `−45°` | `−0,5` | `−1` | **baixo** |
+| `←` + `↑` | `+135°` | `+1,5` | `+2` | **esquerda** |
+| `←` + `↓` | `−135°` | `−1,5` | `−2` | **esquerda** |
+
+*Duas davam vertical, duas horizontal, e nada disso foi escolhido por ninguém.* ⇒ o pedido do dono
+não é só comportamento novo: é **substituir um artefacto de arredondamento por uma lei**.
+
+### 11.2 ⚠️ O ORÁCULO não tem isto, e a ausência foi MEDIDA (§0.9)
+
+A triagem do §1.1 já parava no **Godot** (MIT, o único instalado; GDevelop não está nesta máquina).
+A API dele foi **despejada e varrida** (`godot --headless --doctool`): o `Input` oferece `get_axis`,
+`get_vector` e `get_joy_axis` — **nenhuma porta que carregue ORDEM de pressão** —, e zero acertos
+para *last pressed* / *most recent* / *priority*. Um utilizador do Godot escreve esta lei à mão com
+`is_action_just_pressed`, que é **exactamente a transição** que a nossa memória observa.
+
+⇒ *a lei é NOSSA e declarada*, como a metade da isometria. ⛔ Nunca apresentada como paridade.
+
+### 11.3 O desenho, e as duas cercas que o tornam correcto
+
+⭐⭐ **A dominância só decide na diagonal EXACTA.** Com componentes diferentes ganha a **maior** — que
+é o que o encaixe já fazia. ⇒ a saída em 4 direcções é **byte-idêntica à de antes em tudo menos no
+empate**, que é precisamente o caso que o dono nomeou.
+
+⚠️⚠️ **Sem essa cerca a lei estaria errada fora do teclado:** rodar um manípulo faz cada eixo cruzar
+o limiar por sua vez, e *«o último a cruzar manda»* poria o corpo a andar para o lado errado a meio
+da volta, com o manípulo a apontar o outro. Gate:
+`mas_um_manipulo_fora_da_diagonal_obedece_a_componente_maior`.
+
+⭐⭐⭐ **E a dominância reescreve o ÍNDICE do encaixe, não devolve um vector à parte.** ⛔ Devolver um
+`[0.0, 1.0]` exacto criaria **duas aritméticas para o mesmo rumo**: `libm::cosf(π/2)` é `−4,4e-8`,
+não zero, e a mesma direcção teria dois valores conforme a seta estivesse sozinha ou acompanhada. Os
+índices são os que o arredondamento produz para cada seta sozinha (`→` `0` · `↑` `1` · `←` `2` ·
+`↓` `−1`), e há gate a exigir igualdade **ao bit**.
+
+⚠️ **Duas setas no MESMO tique** não têm «última»: a resposta é **declarada** (o horizontal), e o que
+importa é ser determinística e **igual nos quatro quadrantes** — que é exactamente o que o
+arredondamento não era.
+
+### 11.4 ⚠️ A memória entra na ASSINATURA, e isso é a decisão
+
+A intenção que chega à porta é um **vector**: `(1, 1)` não diz qual seta desceu primeiro. A única
+forma de saber é observar a **transição**, e isso obriga a lembrar o tique anterior.
+
+- `direction::Dominance` vive dentro do `TopDownState`, que é o que o **anel de checkpoints** guarda
+  ⇒ um scrub devolve o mundo **e** quem mandava, e o replay reproduz a corrida.
+- `world_direction(raw, law, &mut Dominance)` e `quantize(raw, mode, DominantAxis)` — **esquecer é
+  erro de compilação**. ⛔ Uma função-irmã *«sem memória»* seria a segunda porta pela qual a lei se
+  perde, que é o defeito que a entrega do dedo pagou no §10 **no mesmo dia**.
+- O `TopDownMove` da ponte passou a levar o **`TopDownState` inteiro** em vez de só a velocidade:
+  *levar o TIPO é o que impede a próxima metade de ser esquecida* (o mesmo argumento do
+  `ControllerMemory`).
+
+### 11.5 Os gates, e o que só cada um alcança
+
+| gate | onde | o que só ele reprova |
+|---|---|---|
+| `em_quatro_direccoes_a_ultima_seta_manda` (+ 7) | `ph2d-topdown/src/dominance_tests.rs` | a lei, nos **quatro** quadrantes — ⚠️ dois deles o arredondamento acertava por acaso |
+| `o_cardeal_da_dominancia_e_o_mesmo_que_a_seta_sozinha_da` | idem | as **duas aritméticas** para o mesmo rumo |
+| `mas_um_manipulo_fora_da_diagonal_obedece_a_componente_maior` | idem | a lei a estragar o manípulo |
+| `os_outros_modos_nao_mudam_uma_virgula` | idem | a lei a fugir para o 8-direcções |
+| **`a_ultima_seta_manda_e_a_memoria_atravessa_os_tiques`** | `ph2d-app-physics/src/topdown_finger_tests.rs` | ⭐ a **ponte** a não carregar a memória — com a suíte da lei inteira verde |
+| `a_regra_da_ultima_seta_tem_sujeito_na_cena_dois_e_nao_na_um` | `ph2d-app-components/src/topdown_smoke_tests.rs` | o passo do smoke a apontar para um boneco que não está em 4 direcções |
+
+⚠️⚠️ **A sequência do gate da ponte é o discriminador, e foi escolhida por isso:** segurar as duas
+**desde o princípio** dá a MESMA resposta com e sem memória (ambas «chegam juntas» ⇒ horizontal). Só
+*«uma primeiro, a outra depois»* separa os dois programas. *Uma fixtura que segura tudo desde o tique
+zero não testa memória nenhuma.*
+
+### 11.6 Os contadores, e o que a linha teve de acrescentar
+
+⛔ **NENHUM contador partilhado se mexe:** `PROJECT_SCHEMA`, os três registos e os contratos
+congelados ficam iguais. A lei não tem knob novo — *«sempre»*, disse o dono —, logo o componente, o
+ficheiro e o painel não mudam uma linha.
+
+⚠️ **Uma dev-dependency nova:** `ph2d-app-physics` passa a ver a `ph2d-topdown` **nos testes**. O
+produto dela nunca nomeia um `DirectionMode` (ele entrega o dedo e a ponte traduz); quem precisa é o
+gate, para montar a fixtura em 4 direcções — e escrever o valor de fio `2` à mão seria um literal a
+envelhecer no dia em que alguém reordenasse o enum.
+
+### 11.7 O que fica ABERTO
+
+1. **O empate do mesmo tique é uma DECLARAÇÃO** (horizontal), não uma medição — não há oráculo, e a
+   janela é de um tique (`16,7 ms`). Se o dono quiser outra, é uma linha.
+2. ⏳ **A dominância não tem leitura no painel.** Um artista que queira saber por que o boneco trocou
+   de eixo não tem onde o ver; o `PH2D_TOPDOWN_LOG=1` também não a imprime.
+3. ⏳ **Ela é por-ENTIDADE e o dedo é um só.** Com dois movers na cena os dois partilham a mesma
+   sequência de setas, logo trocam de eixo juntos — correcto hoje (há um teclado), e a fonte é o que
+   muda quando houver um segundo jogador.

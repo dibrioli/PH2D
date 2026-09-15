@@ -25,6 +25,17 @@
 //! *Top-Down*. Carregue na mesma seta e compare — se os dois forem para o mesmo sítio, o menu de
 //! viewpoint não está a chegar ao movimento.
 //!
+//! ⭐⭐⭐ **E é aqui que a ÚLTIMA SETA MANDA se vê** (ordem do dono, 2026-09-15): os dois estão em
+//! **4 direcções**. Segure a `→` e, sem a largar, carregue na `↑` — o quadrado **cinzento** tem de
+//! deixar de ir para a direita e passar a subir. Largue a `↑` e ele volta à direita.
+//!
+//! ⚠️ **O cinzento é o sujeito deste passo, e não o amarelo**: o amarelo está em isometria, logo o
+//! «para cima» dele é a diagonal do tabuleiro, e a troca de eixo lê-se pior.
+//!
+//! ⛔ **Na cena `=1` esta regra NÃO vale, e isso é o desenho:** ali o modo é *8 direcções*, onde a
+//! diagonal é uma resposta legítima — apagá-la seria tirar metade dos rumos ao modo cuja razão de
+//! existir são eles.
+//!
 //! ⚠️ Se a linha `[topdown-smoke]` não aparecer, **PARE**: a cena não montou.
 
 use ph2d_core::Vec2;
@@ -184,7 +195,9 @@ pub fn montar(world: &mut World, nivel: u32) -> u32 {
             cena_dois(world);
             println!(
                 "[topdown-smoke] =2 a isometria: a seta `→` anda para NORDESTE na linha do \
-                 tabuleiro, e o quadrado cinzento (o controlo, sem isometria) vai para a direita"
+                 tabuleiro, e o quadrado cinzento (o controlo, sem isometria) vai para a direita. \
+                 E com a `→` SEGURADA, carregar na `↑` faz o cinzento trocar de eixo — a ultima \
+                 seta manda"
             );
             2
         }

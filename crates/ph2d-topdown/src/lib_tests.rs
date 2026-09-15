@@ -22,13 +22,21 @@ fn perto(a: Vec2, b: Vec2, o_que: &str) {
 fn a_diagonal_nao_e_mais_rapida_que_o_eixo() {
     // Duas teclas dão `(1,1)`, de comprimento √2 — o defeito de principiante mais
     // antigo do género. O comprimento é CORTADO a 1, nunca esticado.
-    let d = direction::quantize([1.0, 1.0], DirectionMode::EightWay);
+    let d = direction::quantize(
+        [1.0, 1.0],
+        DirectionMode::EightWay,
+        direction::DominantAxis::None,
+    );
     assert!(
         (len(d) - 1.0).abs() < EPS,
         "a diagonal anda {:.4} e o eixo anda 1,0 — 41 % mais depressa",
         len(d)
     );
-    let eixo = direction::quantize([1.0, 0.0], DirectionMode::EightWay);
+    let eixo = direction::quantize(
+        [1.0, 0.0],
+        DirectionMode::EightWay,
+        direction::DominantAxis::None,
+    );
     assert!((len(eixo) - 1.0).abs() < EPS);
 }
 
@@ -36,7 +44,11 @@ fn a_diagonal_nao_e_mais_rapida_que_o_eixo() {
 fn um_manipulo_a_meio_curso_anda_a_meia_velocidade() {
     // ⚠️ Só a DIRECÇÃO encaixa; o comprimento sobrevive. Sem isto, um analógico
     // vira um interruptor.
-    let d = direction::quantize([0.5, 0.0], DirectionMode::EightWay);
+    let d = direction::quantize(
+        [0.5, 0.0],
+        DirectionMode::EightWay,
+        direction::DominantAxis::None,
+    );
     assert!((len(d) - 0.5).abs() < EPS, "comprimento {:.4}", len(d));
 }
 
@@ -50,6 +62,7 @@ fn quatro_direccoes_encaixa_no_rumo_mais_perto() {
         direction::quantize(
             [vinte_e_tres.cos(), vinte_e_tres.sin()],
             DirectionMode::FourWay,
+            direction::DominantAxis::None,
         ),
         [1.0, 0.0],
         "23° encaixa em 0°",
@@ -59,6 +72,7 @@ fn quatro_direccoes_encaixa_no_rumo_mais_perto() {
         direction::quantize(
             [sessenta_e_sete.cos(), sessenta_e_sete.sin()],
             DirectionMode::FourWay,
+            direction::DominantAxis::None,
         ),
         [0.0, 1.0],
         "67° encaixa em 90°",
@@ -69,16 +83,28 @@ fn quatro_direccoes_encaixa_no_rumo_mais_perto() {
 fn um_eixo_apaga_a_outra_componente_e_nao_encaixa_no_rumo_mais_perto() {
     // ⚠️ A distinção é medida: uma intenção a 80° daria `→` num ENCAIXE de 180°
     // e `↑` num APAGAMENTO de `x`. Os dois modos de eixo apagam.
-    let d = direction::quantize([0.17, 0.98], DirectionMode::AxisX);
+    let d = direction::quantize(
+        [0.17, 0.98],
+        DirectionMode::AxisX,
+        direction::DominantAxis::None,
+    );
     perto(d, [0.17, 0.0], "AxisX apaga o y");
-    let d = direction::quantize([0.98, 0.17], DirectionMode::AxisY);
+    let d = direction::quantize(
+        [0.98, 0.17],
+        DirectionMode::AxisY,
+        direction::DominantAxis::None,
+    );
     perto(d, [0.0, 0.17], "AxisY apaga o x");
 }
 
 #[test]
 fn sem_intencao_nao_ha_direccao() {
     for m in DirectionMode::ALL {
-        perto(direction::quantize([0.0, 0.0], m), [0.0, 0.0], m.label());
+        perto(
+            direction::quantize([0.0, 0.0], m, direction::DominantAxis::None),
+            [0.0, 0.0],
+            m.label(),
+        );
     }
 }
 
@@ -161,7 +187,7 @@ fn a_quantizacao_corre_no_espaco_da_intencao_e_nao_no_do_ecra() {
         ..TopDownLaw::default()
     };
     // Uma intenção quase-direita: encaixa em `→`, que no tabuleiro é nordeste.
-    let d = world_direction([0.95, 0.31], &law);
+    let d = world_direction([0.95, 0.31], &law, &mut direction::Dominance::default());
     assert!(
         d[0] > 0.0 && d[1] > 0.0,
         "com a ordem certa isto e' nordeste; com a ordem trocada seria (1,0). Deu {d:?}"
@@ -173,7 +199,7 @@ fn a_quantizacao_corre_no_espaco_da_intencao_e_nao_no_do_ecra() {
     );
     // ⛔ O controlo: NENHUMA das quatro saídas pode ser um eixo do ecrã.
     for intent in [[1.0_f32, 0.0], [0.0, 1.0], [-1.0, 0.0], [0.0, -1.0]] {
-        let d = world_direction(intent, &law);
+        let d = world_direction(intent, &law, &mut direction::Dominance::default());
         assert!(
             d[0].abs() > 1.0e-3 && d[1].abs() > 1.0e-3,
             "a saida {d:?} e' um eixo do ECRA — a quantizacao correu depois da reprojeccao"
@@ -189,7 +215,11 @@ fn o_neutro_atravessa_a_porta_sem_tocar_no_vector() {
         ..TopDownLaw::default()
     };
     let v = [0.31_f32, -0.42];
-    assert_eq!(world_direction(v, &law), v, "Free + TopDown = identidade");
+    assert_eq!(
+        world_direction(v, &law, &mut direction::Dominance::default()),
+        v,
+        "Free + TopDown = identidade"
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -248,7 +278,7 @@ fn a_rotacao_le_a_direccao_de_mundo() {
         rotation_speed_deg: 0.0,
         ..TopDownLaw::default()
     };
-    let d = world_direction([1.0, 0.0], &law);
+    let d = world_direction([1.0, 0.0], &law, &mut direction::Dominance::default());
     let ang = rotation::rotate_toward(0.0, d, law.rotation, law.rotation_speed_deg, 1.0 / 60.0);
     assert!(
         ang > 0.1,

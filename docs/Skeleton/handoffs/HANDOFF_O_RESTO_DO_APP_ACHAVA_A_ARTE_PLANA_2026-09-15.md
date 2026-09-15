@@ -586,3 +586,102 @@ que já não estoura tem de sair da lista.
 ⚠️⚠️ **E o gate apanhou um erro meu na 1.ª redacção:** a agulha era `CanvasMap::new(` e leu **`7`**
 onde havia `8` — o `painter_bridge_gizmo.rs` **recebe** o mapa por parâmetro em vez de o construir.
 *Uma agulha que nomeia o CONSTRUTOR mede quem monta, e a lei é sobre quem CONSULTA.*
+
+---
+
+## §13 — ⛔⛔⛔ «A MALHA DEFORMA A CURVA»: HÁ **DOIS** PRECIPÍCIOS, E O SEGUNDO MORA LOGO DENTRO DO PRIMEIRO
+
+3.º report do dono sobre a mesma cena, com três setas — a primeira na **borda de cima** do canvas.
+O mapa estava **perfeito**: `0,00 %` órfã, `0,00 %` do avesso, **`0` triângulos invertidos** de `780`.
+E a arte saía com quinas na mesma.
+
+### O mecanismo
+
+O peso de um osso é o *bump* `(1 − x²)²` com `x = d/raio`, e os pesos são **NORMALIZADOS**. Junto
+da borda do suporte todos os pesos tendem a zero, e **a razão entre números que tendem a zero varia
+depressa** ⇒ a curvatura do campo explode. O mapa continua contínuo e injectivo; a malha, que pinta
+**um afim por triângulo**, é que deixa de o conseguir seguir.
+
+⇒ **dois precipícios:**
+
+| | onde | o que se vê | régua que o apanha |
+|---|---|---|---|
+| 1.º — **órfão** | FORA do raio de todo osso | a arte **RASGA** | `fold::measure().orphan` |
+| 2.º — **normalização** | **logo DENTRO** da borda do raio | a arte **FACETA** | `poly2d::deviation` |
+
+⚠️⚠️ **E o `FOLGA_16 = 15/16` do §11 desviou-se do primeiro e estacionou no segundo:** eu escolhi a
+altura para a arte usar `93,75 %` do alcance — o máximo que a folga permitia — que é exactamente
+onde a normalização é mais dura. *Uma folga calculada contra UM precipício encosta ao outro.*
+
+### A medição (512×320, dobra `25°`, grelha de fábrica, **`780` triângulos em todas as linhas**)
+
+| `strength` | meia-altura / raio | órfã | invertida | **desvio da faceta** | `det_min` |
+|---:|---:|---:|---:|---:|---:|
+| `1,0` — a redacção reprovada | `0,938` | `0,00 %` | `0,00 %` | **`14,24 px`** | `0,2518` |
+| `1,5` | `0,625` | `0,00 %` | `0,00 %` | `1,89 px` | `0,5846` |
+| **`2,0`** — esta cena | **`0,469`** | `0,00 %` | `0,00 %` | **`0,92 px`** | `0,7475` |
+| `3,0` | `0,312` | `0,00 %` | `0,00 %` | `0,59 px` | `0,8279` |
+
+⭐ **`15×` melhor sem um triângulo a mais.** A cura é a `strength` **DERIVADA da arte**
+(`forca_do_osso()`), não um literal ao lado dos outros: *a arte é o sujeito e o rig serve-a*.
+
+⛔ **Isto não é armar a cena por baixo da mesa.** A `strength` é propriedade AUTORADA do osso, no
+painel, e significa *«até onde este osso alcança»* — um rig cuja arte vive a `94 %` do alcance é um
+rig mal autorado. ⏳ **Que o app não guie o artista para longe dessa borda é ITEM ABERTO** (ele podia
+derivar um alcance de omissão da arte presa, ou avisar); o número está aqui.
+
+### ⭐⭐⭐ E a medição expôs DOIS defeitos do PRODUTO, com a foto do dono como prova
+
+**(a) O `Smooth` está estruturalmente DESLIGADO em quase toda arte real — e o doc dele afirmava o
+contrário.** O `k` do `refine_posed` é **GLOBAL** e o tecto é `max_split = ⌊√(orçamento / peças)⌋`.
+Com `SKIN_FRAME_PIECES = 1 543`, **toda malha acima de `385` triângulos só admite `k = 1`** ⇒ o
+`Smooth` é o `Fast` ao bit. A nota do orçamento dizia *«dentro dele o `Smooth` refina só o que a
+dobra pedir»* — **falso**, e está corrigida com a aritmética dentro.
+
+Nesta cena: `780` peças, a régua pede `k = 6` (`28 080` peças, `18×` o orçamento). ⭐ **O adaptativo
+— `k` por TRIÂNGULO — custa `3 034`, `9×` menos que o global**, e numa cena bem autorada cai para
+**`1 059`, dentro do orçamento**. ⏳ Não está construído (a armadilha é a aresta pendente entre
+vizinhos de `k` diferente, que é o que fechou a *quadtree* na 2.ª mídia). ⚠️ O `PH2D_BONE_LOG=1`
+passa a **dizer quando o refinamento está desligado por esta aritmética** — antes *«não precisou»* e
+*«não pôde»* imprimiam a mesma linha.
+
+**(b) A graduação da grelha está ANTI-CORRELACIONADA com o erro.** Ela grada cada eixo pela
+proximidade à ARTICULAÇÃO, que é um **ponto sobre o eixo dos ossos**. Medido, os cortes em `y` que
+ela produziu nesta cena (eixo dos ossos em `y = 160`):
+
+```
+0(26) 26(26) 52(26) 78(26) 104(26) 130(22) 152(8) 160(10) 170(14) 184(20) 204(26) …
+```
+
+⇒ células de **8–14 px em cima do eixo**, onde o desvio é `1,66 px`, e de **26 px nas bordas**, onde
+ele é `14,24 px`. *A graduação põe os triângulos onde o erro não está.* Medido pelo par
+(triângulos, pior desvio), ela é **pior que não graduar**:
+
+| grelha | triângulos | pior desvio | px por 1000 tri |
+|---|---:|---:|---:|
+| de fábrica (`f10 c26 r40`) | `952` | **`14,24 px`** | `15,0` |
+| **uniforme 20** (sem graduação) | `918` | **`11,96 px`** | `13,0` |
+| raio = raio do OSSO (`170`) | `1 920` | `8,45 px` | `4,4` |
+| uniforme 10 | `3 328` | `6,80 px` | `2,0` |
+
+⚠️ **E a convergência é `O(h)`, não `O(h²)`** (`26 → 13` dá `1,72×`, não `4×`) — *o que confirma que
+não é erro de discretização de um campo liso: é a curvatura da normalização*. ⇒ densidade sozinha
+nunca lá chega, e a cura de fundo é a graduação passar a seguir **o gradiente do peso e o braço de
+alavanca**, não a distância ao ponto da junta. ⏳ Wave própria, com o olho do dono — mexer na
+graduação muda toda arte já presa.
+
+### Os gates
+
+| gate | o que afirma |
+|---|---|
+| `a_arte_nao_sai_facetada` | o desvio da malha ao campo `≤ 1,5 px` de ecrã (a cena dá `0,92`) |
+| `nenhum_pedaco_da_arte_fica_fora_do_alcance_dos_ossos` | `orphan == 0` e `inverted == 0` |
+| `as_duas_redaccoes_reprovadas_continuam_a_ser_acusadas` | o CONTROLO dos dois: o quadrado lê `> 30 %` de órfãs **e** a tira na borda lê `> 10 px` de faceta **com o mapa limpo** (`0/0`) — *é essa cláusula que guarda a lição: um mapa perfeito pode facetar* |
+| `a_arte_vive_longe_da_borda_do_alcance` | a derivação aterra na fracção MEDIDA |
+
+⚠️⚠️ **E a 1.ª redacção dos gates tinha uma mutação SOBREVIVENTE:** pôr `strength = 1.0` na `build`
+deixava os seis verdes, porque o arnês **montava a corrente ele próprio e escrevia a força ele
+próprio** — ele media uma *reconstrução* da cena. ⇒ a criação passou a ter uma porta única
+(`corrente()`), por onde o produto **e** os gates passam; com ela a mesma mutação mata o gate da
+faceta com o número na mensagem (`14,24 px`). *A lei escrita em dois sítios prova-se num e ship-a no
+outro.*

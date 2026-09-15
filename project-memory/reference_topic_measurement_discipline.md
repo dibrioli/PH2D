@@ -84,6 +84,7 @@ uma continua a ser um ficheiro próprio; o que mudou foi o endereço.
 
 ## Vindas do índice em 2026-09-01 (2.ª passagem)
 
+- ⛔⛔⛔ [Folga calculada contra UM precipício encosta no OUTRO — a arte a `93,75 %` do alcance faceta `14,24 px` com o mapa PERFEITO (`0 %` órfã, `0 %` invertida, `0` de `780` triângulos virados); a `47 %` dá `0,92 px` com a mesma malha. ⭐ O sinal: convergência `O(h)` e não `O(h²)`](feedback_a_clearance_computed_against_one_cliff_leans_on_the_other.md)
 - ⛔⛔ [Régua com N COLUNAS responde a N perguntas — citei a `inverted` (`0,00 %`) sobre uma foto que a `orphan` acusava a `33,85 %`; a coluna certa era a ANTI-VACUIDADE da própria régua](feedback_a_ruler_with_n_columns_answers_n_questions_and_i_cited_the_wrong_one.md)
 - [Coluna sem rótulo lê-se ao contrário](feedback_an_unlabelled_probe_column_gets_read_backwards.md) · [que número a resposta CONTRÁRIA imprimiria?](feedback_ask_what_number_the_opposite_answer_would_print.md)
 - [Régua normalizada pelo que a cura ZERA lê a cura ao contrário (619 050%)](feedback_a_ruler_normalised_by_what_the_cure_zeroes_measures_it_backwards.md) · [antes→depois com DUAS réguas inventa um efeito](feedback_comparing_two_measurements_with_different_denominators_invents_an_effect.md)

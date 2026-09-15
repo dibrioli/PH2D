@@ -263,3 +263,263 @@ fn probe_de_onde_vem_a_sombra_da_esfera() {
         );
     }
 }
+
+/// ⭐⭐⭐ **SOMAR AS FATIAS É A SEQUÊNCIA INTEIRA** — e é este gate que autoriza o quadro assente a
+/// refinar em passagens em vez de pagar `32` raios de uma vez.
+///
+/// ⚠️ **Ao BIT**, e não «perto»: as duas rotas somam os mesmos `f32` pela mesma ordem por pixel
+/// (cada fatia acrescenta os seus raios no mesmo lugar do acumulador). Uma barra de tolerância aqui
+/// esconderia exactamente o defeito que ele mede — uma fatia que estratifica em si própria em vez
+/// de no total.
+#[test]
+fn somar_as_fatias_da_a_sequencia_inteira() {
+    let doc = cruz();
+    let (reg, cam, g, _) = cena(&doc, 96, 54);
+    const TOTAL: u32 = 8;
+
+    let inteira = crate::occlusion(&doc, &reg, &cam, &g, TOTAL);
+
+    // Oito passagens de um raio, como o quadro assente as vai correr.
+    let mut acc = vec![0.0f32; g.hit.len()];
+    for k in 0..TOTAL {
+        let fatia = crate::occlusion_slice(&doc, &reg, &cam, &g, k, 1, TOTAL);
+        for (a, f) in acc.iter_mut().zip(&fatia) {
+            *a += f;
+        }
+    }
+
+    let peca = (0..g.hit.len()).filter(|i| g.hit[*i]).count();
+    assert!(peca > 500, "a fixtura não desenhou peça: {peca} px");
+    #[allow(clippy::cast_precision_loss)]
+    let inv = 1.0 / TOTAL as f32;
+    for i in 0..g.hit.len() {
+        if !g.hit[i] {
+            continue;
+        }
+        assert_eq!(
+            acc[i] * inv,
+            inteira[i],
+            "o pixel {i} diverge entre acumular e pagar tudo de uma vez — a fatia está a \
+             estratificar em SI PRÓPRIA em vez de no total"
+        );
+    }
+}
+
+/// ⭐⭐ **Uma peça CONVEXA quase não se oclui, e uma peça de partes cruzadas oclui-se.**
+///
+/// ⚠️ **Não é `== 0` como o gate da sombra**, e a diferença é a lei: a oclusão mede quanto do
+/// HEMISFÉRIO está tapado, e numa esfera a própria curvatura tapa uma parte — é isso que faz uma
+/// esfera ter sombreado de contacto nenhum mas ambiente ligeiramente menor que `1`. *A barra sai da
+/// medição da esfera, e o que o gate afirma é a ORDEM entre as duas peças.*
+#[test]
+fn a_oclusao_distingue_uma_esfera_de_uma_cruz() {
+    // ⚠️⚠️ **A RÉGUA É A CAUDA, e a 1.ª redacção usou a MÉDIA.** Numa cruz de cilindros a fenda é
+    // `~5 %` dos pixels visíveis: uma oclusão de `94 %` no fundo dela move a média de `1,000` para
+    // `0,965`, e o gate lia isso como *«o passe devolve a mesma coisa para tudo»*. *Uma média sobre
+    // a peça é o «extremo global» pelo lado de dentro.*
+    let cauda = |doc: &ph2d_field::FieldDoc| -> (f32, f64) {
+        let (reg, cam, g, _) = cena(doc, 160, 90);
+        let oc = crate::occlusion(doc, &reg, &cam, &g, 16);
+        let peca: Vec<usize> = (0..g.hit.len()).filter(|i| g.hit[*i]).collect();
+        assert!(peca.len() > 1_000, "fixtura vazia");
+        let min = peca.iter().fold(1.0f32, |m, i| m.min(oc[*i]));
+        let escuros = peca.iter().filter(|i| oc[**i] < 0.8).count();
+        (min, 100.0 * escuros as f64 / peca.len() as f64)
+    };
+    let (esf_min, esf_pct) = cauda(&esfera());
+    let (cruz_min, cruz_pct) = cauda(&cruz());
+
+    assert!(
+        cruz_min < 0.35,
+        "a fenda de tres cilindros cruzados tem de ficar FUNDA: o pixel mais ocluido le \
+         {cruz_min:.3} (medido `0,062`)"
+    );
+    assert!(
+        cruz_pct > 3.0,
+        "so {cruz_pct:.1} % da cruz esta abaixo de 0,8 — a fenda tem de ser uma POPULACAO, nao um \
+         pixel solto (medido `5,8 %`)"
+    );
+    // ⭐ O controlo, e é ele que apanha um estimador que oclui por CURVATURA: uma esfera é convexa,
+    // logo **nenhum** raio dela pode bater na própria esfera.
+    assert_eq!(
+        esf_min, 1.0,
+        "uma esfera e convexa e o pixel mais ocluido dela le {esf_min:.3} — o passe esta a ler a \
+         curvatura da propria superficie como oclusor (ver a nota do `hardness` em `shadow.rs`)"
+    );
+    assert_eq!(esf_pct, 0.0, "e nenhum pixel dela pode estar abaixo de 0,8");
+}
+
+/// ⭐⭐⭐ **A OCLUSÃO ESCURECE O AMBIENTE E NÃO TOCA NA LÂMPADA.**
+///
+/// ⚠️ É o que separa oclusão de sujidade: um pixel numa fenda continua a receber a luz direta que
+/// o alcança, e é isso que impede a peça de ficar acinzentada.
+#[test]
+fn a_oclusao_escurece_o_ceu_e_deixa_a_lampada() {
+    use crate::{Lighting, PointLamp, Shadows, Surfaces, shade_render};
+
+    let doc = cruz();
+    let (reg, cam, g, luz) = cena(&doc, 96, 54);
+    let oc = crate::occlusion(&doc, &reg, &cam, &g, 8);
+    let tapado = (0..g.hit.len())
+        .find(|i| g.hit[*i] && oc[*i] < 0.6)
+        .expect("nenhum pixel ocluído na fixtura");
+
+    let so = [ph2d_material::OpenPbr::default().prepare()];
+    let surfaces = Surfaces {
+        all: &so,
+        owners: None,
+    };
+    let lamps: [crate::Lamp; 0] = [];
+    // ⚠️ **A lâmpada é FRACA de propósito.** Com `40` o pixel SATURAVA (`765` de `765`) e a
+    // oclusão não tinha onde se ver — *um gate cuja fixtura satura mede o TECTO DO BYTE, não o
+    // produto*, e ele lia «não escureceu nada» sobre um passe que funcionava.
+    let points = [PointLamp {
+        world: luz,
+        radiance_at_one: [0.6, 0.6, 0.6],
+    }];
+    let pinta = |sh: Option<&Shadows>| {
+        let rgba = shade_render(
+            &g,
+            &cam,
+            &surfaces,
+            &Lighting {
+                lamps: &lamps,
+                points: &points,
+                sky: &CeuUniforme(0.35),
+                shadows: sh,
+            },
+            ph2d_view_transform::Look::default(),
+            [0, 0, 0, 0],
+        );
+        u32::from(rgba[tapado * 4])
+            + u32::from(rgba[tapado * 4 + 1])
+            + u32::from(rgba[tapado * 4 + 2])
+    };
+    let mut com = Shadows::default();
+    com.set_ambient(oc.clone());
+
+    let claro = pinta(None);
+    let escuro = pinta(Some(&com));
+    assert!(
+        escuro < claro,
+        "a oclusão não escureceu nada: {claro} -> {escuro}"
+    );
+
+    // ⭐ O CONTROLO: sem céu nenhum, a oclusão não pode mudar um único byte — o que sobra é a
+    // lâmpada, e ela não é dela. *Sem esta metade o gate acima passaria por a oclusão escurecer
+    // o pixel INTEIRO, que é o defeito.*
+    let sem_ceu = |sh: Option<&Shadows>| {
+        shade_render(
+            &g,
+            &cam,
+            &surfaces,
+            &Lighting {
+                lamps: &lamps,
+                points: &points,
+                sky: &CeuUniforme(0.0),
+                shadows: sh,
+            },
+            ph2d_view_transform::Look::default(),
+            [0, 0, 0, 0],
+        )
+    };
+    assert_eq!(
+        sem_ceu(None),
+        sem_ceu(Some(&com)),
+        "com o céu apagado a oclusão mudou pixels — ela está a multiplicar o RESULTADO em vez do \
+         ambiente, e isso apaga a luz direta de dentro de uma fenda"
+    );
+}
+
+/// ⭐⭐⭐ **O REFINAMENTO: `32` passagens, uma por vez, e a última é a sequência inteira.**
+#[test]
+fn o_refinamento_entrega_32_passagens_e_acaba_na_sequencia_inteira() {
+    let doc = cruz();
+    let (reg, cam, g, _) = cena(&doc, 96, 54);
+
+    let mut sh = crate::Shadows::default();
+    let mut vistos = Vec::new();
+    let mut ultimo = Vec::new();
+    let correu = crate::refine_occlusion(&doc, &reg, &cam, &g, &mut sh, |sh, k| {
+        vistos.push(k);
+        ultimo = (0..g.hit.len()).map(|i| sh.ambient_at(i)).collect();
+        true
+    });
+
+    assert_eq!(correu, crate::OCCLUSION_PASSES);
+    assert_eq!(
+        vistos,
+        (1..=crate::OCCLUSION_PASSES).collect::<Vec<_>>(),
+        "as passagens têm de chegar em ordem e sem buracos — quem as conta é quem publica"
+    );
+
+    // ⭐ **E a última é EXACTAMENTE o que pagar tudo de uma vez daria** — é isto que torna o
+    // refinamento uma forma de pagar, e não um resultado diferente.
+    let inteira = crate::occlusion(&doc, &reg, &cam, &g, crate::OCCLUSION_PASSES);
+    for i in 0..g.hit.len() {
+        if g.hit[i] {
+            assert_eq!(
+                ultimo[i], inteira[i],
+                "o pixel {i} diverge no fim do refinamento"
+            );
+        }
+    }
+}
+
+/// ⚠️ **Em tempo de COMPILAÇÃO**: sem passagens por correr o gate abaixo não afirma nada — e um
+/// `assert!` sobre dois `const` é uma asserção de valor constante, que o clippy recusa com razão.
+const _: () = assert!(crate::OCCLUSION_PASSES > 3);
+
+/// ⭐⭐⭐ **PARAR quando a mão volta a mexer** — sem isto o refinamento queima um núcleo por uma
+/// imagem que já não se vê.
+#[test]
+fn o_refinamento_para_quando_lhe_dizem_para_parar() {
+    let doc = cruz();
+    let (reg, cam, g, _) = cena(&doc, 96, 54);
+
+    let mut sh = crate::Shadows::default();
+    let mut n = 0;
+    let correu = crate::refine_occlusion(&doc, &reg, &cam, &g, &mut sh, |_, k| {
+        n += 1;
+        k < 3
+    });
+    assert_eq!(correu, 3, "ele continuou depois de lhe dizerem para parar");
+    assert_eq!(n, 3, "e publicou passagens a mais");
+}
+
+/// ⭐⭐ **A imagem abre CLARA e vai escurecendo onde há oclusão** — nunca o contrário.
+///
+/// ⚠️ A média é sobre as passagens **já corridas**, e não sobre o total. Dividir pelo total faria a
+/// peça abrir preta e clarear, que é o oposto do que uma acumulação deve parecer — e é o defeito
+/// mais fácil de escrever aqui.
+#[test]
+fn o_refinamento_nunca_abre_a_peca_preta() {
+    let doc = cruz();
+    let (reg, cam, g, _) = cena(&doc, 96, 54);
+    let peca: Vec<usize> = (0..g.hit.len()).filter(|i| g.hit[*i]).collect();
+
+    let mut sh = crate::Shadows::default();
+    let mut medias = Vec::new();
+    crate::refine_occlusion(&doc, &reg, &cam, &g, &mut sh, |sh, _| {
+        let m: f64 = peca
+            .iter()
+            .map(|i| f64::from(sh.ambient_at(*i)))
+            .sum::<f64>()
+            / peca.len() as f64;
+        medias.push(m);
+        true
+    });
+    assert!(
+        medias[0] > 0.8,
+        "a 1.ª passagem abriu a peça a {:.3} de céu — ela está a dividir pelo TOTAL em vez das \
+         passagens corridas, e a peça abre preta",
+        medias[0]
+    );
+    let fim = *medias.last().expect("passagens");
+    assert!(
+        (fim - medias[0]).abs() < 0.2,
+        "o céu médio saltou de {:.3} para {fim:.3} ao longo do refinamento — ele deve AFINAR, \
+         não mudar de nível",
+        medias[0]
+    );
+}

@@ -535,6 +535,18 @@ pub struct Ready {
     pub(super) hits: usize,
     pub(super) edges: usize,
     pub(super) millis: f64,
+    /// ⭐⭐⭐ **Qual PASSAGEM do refinamento** — `0` é o traçado, `1..` são passagens de oclusão
+    /// sobre o **mesmo** G-buffer (`docs/Render3d/05` §30).
+    ///
+    /// ⚠️⚠️ **É ela que impede a oclusão de envenenar o laço do divisor.** O `measured` é a
+    /// entrada da [`crate::preview`], que escolhe a resolução do quadro de MOVIMENTO a partir do
+    /// que um TRAÇADO custou. Uma passagem de oclusão custa outra coisa e sobre outro trabalho —
+    /// deixá-la escrever ali faria o laço engrossar o preview por causa de um custo que o quadro
+    /// de movimento nem paga. *Duas grandezas com a mesma unidade não são a mesma medição.*
+    pub(super) passagem: u32,
+    /// Ainda vêm mais quadros por este canal? É o que mantém o [`InFlight`] vivo — e portanto
+    /// cancelável — enquanto o refinamento corre.
+    pub(super) mais: bool,
 }
 
 pub(super) struct MatcapTexels {

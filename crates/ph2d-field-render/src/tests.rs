@@ -6744,3 +6744,327 @@ fn measure_how_much_gi_fits_in_a_frame() {
         }
     }
 }
+
+/// ⭐⭐⭐ **QUANTAS PASSAGENS ATÉ A OCLUSÃO ASSENTAR** — o número que a `W-AO` não pode escolher.
+///
+/// A §29 mediu o PREÇO de `N` raios. Esta mede o **RUÍDO**: a média da imagem converge de imediato
+/// (há gate), e o que precisa de passagens é o **pixel**. A régua é o desvio contra uma referência
+/// de `64` raios, em unidades do que um byte consegue mostrar (`1/255`) — ⛔ não um limiar escolhido.
+#[test]
+#[ignore = "sonda"]
+fn measure_how_many_passes_the_occlusion_needs() {
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    let cyl = |rot: [f32; 4]| {
+        ph2d_field_eval::leaf(
+            Primitive::Cylinder {
+                radius: 0.22,
+                half_height: 0.78,
+                round: 0.05,
+                chamfer: 0.0,
+            },
+            Xform {
+                rotation: rot,
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let doc = ph2d_field::FieldDoc::new(
+        vec![
+            cyl([0.0, 0.0, 0.0, 1.0]),
+            cyl([s, 0.0, 0.0, s]),
+            cyl([0.0, 0.0, s, s]),
+            ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Exact { radius: 0.12 }),
+                    children: vec![NodeId(0), NodeId(1), NodeId(2)],
+                },
+                mods: Vec::new(),
+                verb: None,
+            },
+        ],
+        NodeId(3),
+    )
+    .expect("a peça");
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    let (w, h) = (320_u32, 180_u32);
+    let g = trace(&doc, &reg, &cam, w, h);
+
+    let referencia = crate::shadow::occlusion(&doc, &reg, &cam, &g, 64);
+    let peca: Vec<usize> = (0..g.hit.len()).filter(|i| g.hit[*i]).collect();
+
+    // ⭐⭐⭐ **A RÉGUA É O BYTE DO PIXEL, e não o valor do canal.** A oclusão multiplica só o termo
+    // do AMBIENTE, que é uma FRACÇÃO do pixel — medir o erro no canal mede-o onde ele não aterra.
+    // *Campo que varia + consumidor com tamanho: mede-se ao tamanho do consumidor.*
+    let pinta = |oc: &[f32]| -> Vec<u8> {
+        let mut sh = crate::Shadows::default();
+        sh.set_ambient(oc.to_vec());
+        let so = [ph2d_material::OpenPbr::default().prepare()];
+        let lamps: [crate::Lamp; 0] = [];
+        crate::shade_render(
+            &g,
+            &cam,
+            &crate::Surfaces {
+                all: &so,
+                owners: None,
+            },
+            &crate::Lighting {
+                lamps: &lamps,
+                points: &[],
+                sky: &CeuDaSonda(0.6),
+                shadows: Some(&sh),
+            },
+            ph2d_view_transform::Look::default(),
+            [0, 0, 0, 0],
+        )
+    };
+    let alvo = pinta(&referencia);
+
+    println!(
+        "carga: {}",
+        std::fs::read_to_string("/proc/loadavg").unwrap().trim()
+    );
+    println!("  passagens · canal RMS · PIXEL RMS (bytes) · pior pixel (bytes) · veredito");
+    for n in [1_u32, 2, 4, 8, 16, 32] {
+        let acc = crate::shadow::occlusion(&doc, &reg, &cam, &g, n);
+        let mut canal = 0.0f64;
+        for &i in &peca {
+            let d = f64::from(acc[i] - referencia[i]);
+            canal += d * d;
+        }
+        let canal = (canal / peca.len() as f64).sqrt();
+
+        let img = pinta(&acc);
+        let (mut soma, mut pior) = (0.0f64, 0u32);
+        for &i in &peca {
+            for c in 0..3 {
+                let d = i32::from(img[i * 4 + c]) - i32::from(alvo[i * 4 + c]);
+                soma += f64::from(d * d);
+                pior = pior.max(d.unsigned_abs());
+            }
+        }
+        let rms = (soma / (peca.len() * 3) as f64).sqrt();
+        println!(
+            "  {n:9} · {canal:9.5} · {rms:17.2} · {pior:18} · {}",
+            if rms <= 1.0 {
+                "⭐ dentro de UM byte"
+            } else if rms <= 2.0 {
+                "dois bytes"
+            } else {
+                "visível"
+            }
+        );
+    }
+}
+
+/// Um céu uniforme para a sonda — ver o gate irmão em `tests/shadow_gates.rs`.
+struct CeuDaSonda(f32);
+
+impl ph2d_material::Environment for CeuDaSonda {
+    fn radiance(&self, _dir: [f32; 3], _alpha: f32) -> [f32; 3] {
+        [self.0; 3]
+    }
+    fn irradiance(&self, _n: [f32; 3]) -> [f32; 3] {
+        [self.0; 3]
+    }
+}
+
+/// ⭐⭐⭐ **O ALCANCE DA OCLUSÃO — o número que eu tinha ESCOLHIDO.**
+///
+/// Eu escrevi `OCCLUSION_REACH = 0,35` a olho. O gate da esfera/cruz apanhou a consequência: com
+/// ele a cruz lia `0,985` de céu — *`1,5 %` de oclusão numa peça de três cilindros que se
+/// atravessam*. §0.0: **meça antes de limitar**.
+#[test]
+#[ignore = "sonda"]
+fn measure_the_occlusion_reach() {
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    let cyl = |rot: [f32; 4]| {
+        ph2d_field_eval::leaf(
+            Primitive::Cylinder {
+                radius: 0.22,
+                half_height: 0.78,
+                round: 0.05,
+                chamfer: 0.0,
+            },
+            Xform {
+                rotation: rot,
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let cruz = ph2d_field::FieldDoc::new(
+        vec![
+            cyl([0.0, 0.0, 0.0, 1.0]),
+            cyl([s, 0.0, 0.0, s]),
+            cyl([0.0, 0.0, s, s]),
+            ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Exact { radius: 0.12 }),
+                    children: vec![NodeId(0), NodeId(1), NodeId(2)],
+                },
+                mods: Vec::new(),
+                verb: None,
+            },
+        ],
+        NodeId(3),
+    )
+    .expect("a cruz");
+    let esfera = ph2d_field::FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Sphere { radius: 0.8 },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("a esfera");
+    let reg = Registry::new();
+    let cam = Orbit::default();
+
+    println!(
+        "carga: {}",
+        std::fs::read_to_string("/proc/loadavg").unwrap().trim()
+    );
+    println!(
+        "half_extent = {:.4}, bola da cruz = {:.4}",
+        cam.half_extent,
+        ph2d_field_eval::bounds::bounding_ball(&cruz, &reg).map_or(0.0, |b| b.radius)
+    );
+    println!("  alcance · céu médio CRUZ · céu médio ESFERA · separação · ms (1 raio, 640×360)");
+    for f in [0.15_f32, 0.35, 0.6, 1.0, 1.6, 2.5] {
+        let medio = |doc: &ph2d_field::FieldDoc| {
+            let g = trace(doc, &reg, &cam, 160, 90);
+            let oc = crate::shadow::occlusion_with_reach(doc, &reg, &cam, &g, 16, f);
+            let peca: Vec<usize> = (0..g.hit.len()).filter(|i| g.hit[*i]).collect();
+            peca.iter().map(|i| f64::from(oc[*i])).sum::<f64>() / peca.len().max(1) as f64
+        };
+        let c = medio(&cruz);
+        let e = medio(&esfera);
+        // ⚠️⚠️ **A MÉDIA SOBRE A PEÇA É O «EXTREMO GLOBAL» outra vez.** Numa cruz de cilindros a
+        // fenda é uma fracção pequena dos pixels visíveis: uma oclusão profunda em `5 %` da peça
+        // mal move a média. *O que o olho lê é o CONTRASTE, e o que o mede é a cauda.*
+        let g = trace(&cruz, &reg, &cam, 160, 90);
+        let oc = crate::shadow::occlusion_with_reach(&cruz, &reg, &cam, &g, 16, f);
+        let mut v: Vec<f32> = (0..g.hit.len())
+            .filter(|i| g.hit[*i])
+            .map(|i| oc[i])
+            .collect();
+        v.sort_by(f32::total_cmp);
+        let p = |q: f64| v[((v.len() - 1) as f64 * q) as usize];
+        println!(
+            "           cauda da cruz: mín {:.3} · p05 {:.3} · p25 {:.3} · mediana {:.3} · abaixo de 0,8: {:.1} %",
+            v[0],
+            p(0.05),
+            p(0.25),
+            p(0.50),
+            100.0 * v.iter().filter(|x| **x < 0.8).count() as f64 / v.len() as f64,
+        );
+        // O relógio de UMA passagem, que é o que o quadro assente paga de cada vez.
+        let g = trace(&cruz, &reg, &cam, 640, 360);
+        let t = std::time::Instant::now();
+        let v = crate::shadow::occlusion_slice_with_reach(&cruz, &reg, &cam, &g, 0, 1, 32, f);
+        std::hint::black_box(v.len());
+        let ms = t.elapsed().as_secs_f64() * 1e3;
+        println!("  {f:7.2} · {c:15.3} · {e:17.3} · {:9.3} · {ms:6.2}", e - c);
+    }
+}
+
+/// ⭐⭐⭐ **QUANTO TEMPO ATÉ A IMAGEM ASSENTAR** — o relógio que o artista sente, com a pintura
+/// dentro (é ela que ele vê, não a marcha).
+#[test]
+#[ignore = "sonda"]
+fn measure_the_settle_clock() {
+    use std::time::Instant;
+
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    let cyl = |rot: [f32; 4]| {
+        ph2d_field_eval::leaf(
+            Primitive::Cylinder {
+                radius: 0.22,
+                half_height: 0.78,
+                round: 0.05,
+                chamfer: 0.0,
+            },
+            Xform {
+                rotation: rot,
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let doc = ph2d_field::FieldDoc::new(
+        vec![
+            cyl([0.0, 0.0, 0.0, 1.0]),
+            cyl([s, 0.0, 0.0, s]),
+            cyl([0.0, 0.0, s, s]),
+            ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Exact { radius: 0.12 }),
+                    children: vec![NodeId(0), NodeId(1), NodeId(2)],
+                },
+                mods: Vec::new(),
+                verb: None,
+            },
+        ],
+        NodeId(3),
+    )
+    .expect("a peça");
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    println!(
+        "carga: {}",
+        std::fs::read_to_string("/proc/loadavg").unwrap().trim()
+    );
+    println!("  px   ·  traçado · 1.ª passagem · média/passagem · ATÉ ASSENTAR (32)");
+
+    for (w, h) in [(640_u32, 360_u32), (1920, 1080)] {
+        let t = Instant::now();
+        let g = trace(&doc, &reg, &cam, w, h);
+        let tracado = t.elapsed().as_secs_f64() * 1e3;
+
+        let so = [ph2d_material::OpenPbr::default().prepare()];
+        let surfaces = crate::Surfaces {
+            all: &so,
+            owners: None,
+        };
+        let lamps: [crate::Lamp; 0] = [];
+        let mut sh = crate::Shadows::default();
+        let mut primeira = 0.0;
+        let mut marcos = Vec::new();
+        let t = Instant::now();
+        crate::refine_occlusion(&doc, &reg, &cam, &g, &mut sh, |sh, k| {
+            // A PINTURA entra: é ela que o artista vê.
+            let rgba = crate::shade_render(
+                &g,
+                &cam,
+                &surfaces,
+                &crate::Lighting {
+                    lamps: &lamps,
+                    points: &[],
+                    sky: &CeuDaSonda(0.6),
+                    shadows: Some(sh),
+                },
+                ph2d_view_transform::Look::default(),
+                [0, 0, 0, 0],
+            );
+            std::hint::black_box(rgba.len());
+            let ate_aqui = t.elapsed().as_secs_f64() * 1e3;
+            if k == 1 {
+                primeira = ate_aqui;
+            }
+            if matches!(k, 4 | 8 | 16) {
+                marcos.push((k, ate_aqui));
+            }
+            true
+        });
+        let total = t.elapsed().as_secs_f64() * 1e3;
+        println!(
+            "{w:5} · {tracado:7.2} ms · {primeira:9.2} ms · {:11.2} ms · {total:9.0} ms",
+            total / f64::from(crate::OCCLUSION_PASSES),
+        );
+        for (k, ms) in marcos {
+            println!("           ... {k:2} passagens em {ms:8.0} ms");
+        }
+    }
+}

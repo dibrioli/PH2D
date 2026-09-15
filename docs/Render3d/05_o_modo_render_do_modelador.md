@@ -2602,3 +2602,115 @@ e o custo, que é o que a sonda existe para medir, subiu `20 %` ao ser medido em
 - **Zero bounces de COR.** Isto é visibilidade (oclusão), não transporte de luz: a radiância que
   volta pelo raio não foi sombreada. *O preço de uma segunda quicada não está aqui.*
 - **Nada na GPU.** Todos os números são da CPU, como o resto do traçado deste módulo.
+
+---
+
+## §30 — ⭐⭐⭐ A PEÇA GANHA PROFUNDIDADE: a oclusão refina com a mão parada (2026-09-14)
+
+A §29 mediu que a luz indirecta por força bruta **não cabe** e nomeou duas rotas. Esta secção
+constrói a segunda: **o quadro assente deixa de fazer um traçado e parar — ele continua a refinar**,
+e o que ele refina é a **oclusão traçada contra o campo verdadeiro**.
+
+### §30.1 — O que o artista vê
+
+Enquanto a mão mexe, nada muda: o quadro de movimento é **byte-idêntico** ao de ontem. Quando ela
+pára, a imagem fica nítida (como já ficava) e depois vai **ganhando profundidade** — as fendas entre
+as partes escurecem, e a peça deixa de parecer recortada. Medido (`load 2,98`):
+
+| px | traçado | 1.ª passagem | 8 passagens | 16 | **assentar (32)** |
+|---|---:|---:|---:|---:|---:|
+| `640×360` | `5,30 ms` | `9,55 ms` | `78 ms` | `161 ms` | **`385 ms`** |
+| `1920×1080` | `28,13 ms` | `87 ms` | `686 ms` | `1 428 ms` | **`3 474 ms`** |
+
+⚠️ **A imagem é utilizável desde a 1.ª passagem** e visivelmente assente por volta da 16.ª; o resto
+é o último byte. O trabalho corre **noutra thread** e é **largado** assim que a mão volta a mexer.
+
+### §30.2 — ⭐⭐ Onde ela entra na conta, e porquê ali
+
+**A oclusão é a SOMBRA DO CÉU.** Ela vive no mesmo canal que as lâmpadas
+([`ph2d_field_render::Shadows`]) porque é a mesma pergunta — *«quanto desta fonte chega a este
+pixel?»* — e multiplica **só o termo do ambiente**:
+
+- ⛔ **não toca nas lâmpadas** (elas têm sombra a sério, §27) — uma fenda continua a receber a luz
+  directa que a alcança, e é isso que impede a peça de ficar acinzentada;
+- ⛔ **não toca na emissão** — uma superfície que é ela própria uma luz não se apaga por ter vizinho.
+
+⚠️⚠️ **Aproximação declarada:** o `indirect` devolve o difuso **e** o especular do ambiente numa
+chamada só, e a oclusão exacta do especular não é a do difuso. Escalar os dois pelo mesmo número
+escurece reflexos a mais numa superfície polida. Separá-los é mexer na fronteira do `ph2d-material`.
+
+### §30.3 — ⛔⛔⛔ TRÊS coisas que eu escrevi erradas, e cada uma foi apanhada por uma régua diferente
+
+**(a) O `hardness` — eu usei o estimador de PENUMBRA para responder a uma pergunta BINÁRIA.**
+Escrevi `hardness = 1` a raciocinar *«`k = 1` é a fracção de céu que o vizinho deixa passar»*. O
+gate da esfera apanhou-o: ela leu **`0,698` de céu contra `0,757` da cruz** — *um corpo CONVEXO a
+ocluir-se mais que três cilindros cruzados*. É o mecanismo da §27.5(b): numa saída rasante
+`d ≈ t²/2R`, logo `k·d/t` desce abaixo de `1` **sem haver oclusor nenhum**. Num raio de sombra isso
+é penumbra e é desejável; aqui a pergunta é *«bate em alguma coisa?»*, que é sim ou não. Com
+`INFINITY` a esfera lê **`1,000` exacto**.
+
+**(b) O alcance — eu ESCOLHI `0,35` e o §0.0 manda medir.** Varrido, a resposta **satura em `1,0`**.
+⚠️ E a coluna que o mostra é a **cauda**, nunca a média: numa cruz a fenda é `~5 %` dos pixels
+visíveis, logo uma oclusão de `94 %` no fundo dela move a média da peça de `1,000` para `0,965`.
+*Ler `0,965` é ler «quase nada»; ler `mín 0,062 · p05 0,750 · 5,8 % abaixo de 0,8` é ler o que o
+olho vê.* É o «extremo global» deste repositório, pelo lado de dentro — e o **gate media a média**.
+
+**(c) A API não sabia acumular, e eu só dei por isso ao tentar.** O 1.º desenho era
+`(desde, quantos)`; ele ancora a estratificação na **fatia**, logo somar fatias dá uma distribuição
+diferente da sequência inteira. São **três** números — `(primeiro, quantos, total)` — e o `total`
+fixa as elevações que a sequência inteira vai cobrir. O gate que autoriza tudo o resto é
+`somar_as_fatias_da_a_sequencia_inteira`, **ao bit**.
+
+### §30.4 — ⛔⛔ E o PRATO GIRATÓRIO ia congelar
+
+O prato só avança quando **não há trabalho em voo**. Um refinamento dura `3,5 s` a `1920×1080` ⇒
+com ele em voo o prato passaria a dar **um passo a cada `3,6 s`**, e o artista leria isso como o app
+travado. ⇒ *um prato a girar é MOVIMENTO*, e o refinamento é do assente
+([`preview::refines_occlusion`]): tocar no canvas pára o prato, e é exactamente aí que ele começa.
+
+### §30.5 — ⚠️ A fila passou a ser LIMITADA, e a razão é aritmética
+
+Um trabalho manda `32` quadros em vez de um. Sem tecto, a fila guarda `32 × 8,3 MB = 265 MB` a
+`1920×1080` sempre que ninguém a esvazie. ⇒ `sync_channel(2)` + `try_send`, e **perder uma passagem
+intermédia é inofensivo**: cada quadro traz a média acumulada, não um incremento, logo o seguinte
+mostra mais. *É a contrapressão que uma sequência idempotente autoriza.* E o dreno **esvazia até ao
+mais novo** — colher um por frame faria a imagem andar atrás da acumulação.
+
+### §30.6 — ⭐ A lei saiu da thread para uma PORTA, e foi por causa do gate
+
+O laço vivia dentro do `std::thread::spawn` do `smoke_draw`, onde nenhum teste lhe chega: a
+acumulação, a ordem das passagens e a paragem por cancelamento ficavam **inalcançáveis**. Hoje é
+[`ph2d_field_render::refine_occlusion`], e a thread só pinta, manda e diz se vale a pena continuar.
+
+| gate | o que ele prende |
+|---|---|
+| `somar_as_fatias_da_a_sequencia_inteira` | ⭐ a acumulação, **ao bit** |
+| `a_oclusao_distingue_uma_esfera_de_uma_cruz` | a cauda, e a esfera a `1,000` exacto |
+| `a_oclusao_escurece_o_ceu_e_deixa_a_lampada` | com o céu apagado ela não mexe um byte |
+| `o_refinamento_entrega_32_passagens_e_acaba_na_sequencia_inteira` | ordem, contagem e o fim |
+| `o_refinamento_para_quando_lhe_dizem_para_parar` | o cancelamento |
+| `o_refinamento_nunca_abre_a_peca_preta` | a média é das passagens CORRIDAS, não do total |
+| `um_prato_a_girar_nao_refina_a_oclusao` | §30.4 |
+
+⚠️ **E uma fixtura mediu o TECTO DO BYTE:** o gate do céu escolhia um pixel com a lâmpada a `40`, e
+ele **saturava** (`765` de `765`) — o gate lia *«não escureceu nada»* sobre um passe que funcionava.
+
+### §30.7 — ⛔⛔ E os 8 vermelhos do `tests/it` têm diagnóstico: contadores GLOBAIS
+
+O `ph2d-field-render --test it` reprova `7`–`8` gates de orçamento (fitas, ladrilhos, amostras) —
+**e passa `24/24` com `--test-threads=1`, a `load 75`**. Eles leem estáticos de processo
+(`TAPE_HITS`, `SPECIALISED`, `TILE_COSTS`) e envenenam-se uns aos outros dentro do mesmo binário.
+
+⚠️ **O conjunto MUDA entre corridas** — três corridas, três conjuntos — que é a assinatura que esta
+casa já conhece; e **a causa aqui não é a carga, é o fan-out DENTRO do binário**. Pré-existente:
+verificado numa worktree em `HEAD` limpo, os mesmos gates. *Dívida nomeada, não desta wave.*
+
+### §30.8 — ⏳ O que fica aberto
+
+- **A oclusão do ESPECULAR** é a do difuso (§30.2), e não devia ser.
+- **Zero bounces de COR**: isto é visibilidade, não transporte — a luz que volta pelo raio não é
+  sombreada. *A cor sangrada de uma parede vermelha continua por construir.*
+- **Uma peça só, e uma câmera só**, nos números: o custo por raio segue a §27 — ele paga a rastejar
+  à saída da superfície, logo uma peça com mais arestas paga mais.
+- **O prato giratório nunca refina** (§30.4). Numa cena de demonstração que ninguém toca, a oclusão
+  não aparece — e isso é a lei, não um esquecimento.

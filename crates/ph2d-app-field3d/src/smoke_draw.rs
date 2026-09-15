@@ -260,20 +260,40 @@ fn viewport_pass(
 ) {
     // Colhe o traçado que ficou pronto, se ficou.
     if let Some(job) = &smoke.vps[i].inflight {
-        match job.rx.try_recv() {
-            Ok(r) => {
-                if !smoke.announced {
-                    smoke.announced = true;
-                    // ⚠️ Uma linha, uma vez. É ela que separa "o smoke subiu" de "o smoke
-                    // DESENHOU": o boot já imprime acima, e um boot sem quadro é exatamente o
-                    // modo de falha em que a janela fica vazia e ninguém sabe de quem é a culpa.
-                    // Zero pixels aqui = a peça está fora do quadro ou o campo saiu vazio.
-                    println!(
-                        "[field-smoke] primeiro quadro desenhado — {}x{}, {} pixels de peça, \
-                             {} de borda re-amostrada, {:.1} ms",
-                        r.width, r.height, r.hits, r.edges, r.millis
-                    );
+        // ⚠️ **Esvazia até ao MAIS NOVO.** Com o refinamento a mandar `32` quadros, colher um por
+        // frame faria a imagem andar atrás da acumulação — e cada quadro do refinamento já contém
+        // os anteriores. *Mostrar o mais velho de uma fila idempotente é escolher a versão pior.*
+        let mut colhido = None;
+        loop {
+            match job.rx.try_recv() {
+                Ok(r) => colhido = Some(r),
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => {
+                    if colhido.is_none() {
+                        smoke.vps[i].inflight = None;
+                    }
+                    break;
                 }
+            }
+        }
+        if let Some(r) = colhido {
+            if !smoke.announced {
+                smoke.announced = true;
+                // ⚠️ Uma linha, uma vez. É ela que separa "o smoke subiu" de "o smoke
+                // DESENHOU": o boot já imprime acima, e um boot sem quadro é exatamente o
+                // modo de falha em que a janela fica vazia e ninguém sabe de quem é a culpa.
+                // Zero pixels aqui = a peça está fora do quadro ou o campo saiu vazio.
+                println!(
+                    "[field-smoke] primeiro quadro desenhado — {}x{}, {} pixels de peça, \
+                             {} de borda re-amostrada, {:.1} ms",
+                    r.width, r.height, r.hits, r.edges, r.millis
+                );
+            }
+            // ⭐⭐⭐ **SÓ A PASSAGEM `0` MEDE** — ver [`Ready::passagem`]. As passagens de
+            // oclusão trabalham sobre o G-buffer que já existe e custam outra coisa; deixá-las
+            // escrever aqui faria o laço do divisor engrossar o quadro de movimento por causa
+            // de um trabalho que ele não paga.
+            if r.passagem == 0 {
                 smoke.vps[i].last_trace_ms = r.millis as f32;
                 // ⭐ **A medição que fecha o laço** (W24): o tempo **com** os pixels a que foi
                 // medido. O pedido seguinte sai daqui, e é por isso que este módulo não precisa
@@ -282,31 +302,35 @@ fn viewport_pass(
                     pixels: u64::from(r.width) * u64::from(r.height),
                     millis: r.millis as f32,
                 });
-                if trace_log() {
-                    println!(
-                        "[field-smoke] traçado {}x{} em {:.1} ms ({} px de peça)",
-                        r.width, r.height, r.millis, r.hits
-                    );
-                }
-                // ⭐⭐⭐ **O handle nasce AQUI — uma vez por TRAÇADO, não uma vez por quadro.**
-                // É a linha inteira da cura do atlas persistente: o id da imagem passa a mudar
-                // quando os **pixels** mudam, que é a única altura em que ele devia mudar.
-                // ⚠️ `premultiplied` porque é o que o `shade` produz — o mesmo tipo de alfa que a
-                // porta crua declarava. Entrar pelo `from_rgba` faria o Vello pré-multiplicar
-                // **outra vez**, e a borda da peça escureceria.
-                // ⚠️ `None` é inalcançável (o `shade` devolve `w*h*4` por construção) e ainda
-                // assim não se desembrulha: um `expect` aqui derrubaria a janela por um traçado
-                // malformado, e a resposta certa a *«a imagem não presta»* é a de sempre — a
-                // anterior fica, esticada.
-                smoke.vps[i].frame = ph2d_vector::StableImage::from_rgba_premultiplied(
-                    Arc::new(r.rgba),
-                    r.width,
-                    r.height,
+            }
+            if trace_log() {
+                println!(
+                    "[field-smoke] traçado {}x{} em {:.1} ms ({} px de peça)",
+                    r.width, r.height, r.millis, r.hits
                 );
+            }
+            // ⭐⭐⭐ **O handle nasce AQUI — uma vez por TRAÇADO, não uma vez por quadro.**
+            // É a linha inteira da cura do atlas persistente: o id da imagem passa a mudar
+            // quando os **pixels** mudam, que é a única altura em que ele devia mudar.
+            // ⚠️ `premultiplied` porque é o que o `shade` produz — o mesmo tipo de alfa que a
+            // porta crua declarava. Entrar pelo `from_rgba` faria o Vello pré-multiplicar
+            // **outra vez**, e a borda da peça escureceria.
+            // ⚠️ `None` é inalcançável (o `shade` devolve `w*h*4` por construção) e ainda
+            // assim não se desembrulha: um `expect` aqui derrubaria a janela por um traçado
+            // malformado, e a resposta certa a *«a imagem não presta»* é a de sempre — a
+            // anterior fica, esticada.
+            smoke.vps[i].frame = ph2d_vector::StableImage::from_rgba_premultiplied(
+                Arc::new(r.rgba),
+                r.width,
+                r.height,
+            );
+            // ⭐⭐⭐ **O TRABALHO CONTINUA ENQUANTO HOUVER `mais`** — e é isso que o mantém
+            // CANCELÁVEL. Largar o [`InFlight`] aqui deixaria a thread viva com a bandeira de
+            // cancelamento fora do alcance de quem a devia armar: a mão voltaria a mexer e o
+            // refinamento continuaria a queimar um núcleo por uma imagem que já não se vê.
+            if !r.mais {
                 smoke.vps[i].inflight = None;
             }
-            Err(TryRecvError::Empty) => {}
-            Err(TryRecvError::Disconnected) => smoke.vps[i].inflight = None,
         }
     }
 
@@ -411,7 +435,14 @@ fn viewport_pass(
         // `≤3/255` no pixel e custa o dobro. Ver `preview::SETTLED_NORMAL_ERR_DEG`.
         let doc = crate::preview::coarse_doc(doc, coarse).unwrap_or_else(|| doc.clone());
         let antialias = !coarse;
-        let (tx, rx) = channel::<Ready>();
+        // ⭐⭐⭐ **LIMITADO, e não ilimitado** (`docs/Render3d/05` §30). Desde que um trabalho manda
+        // `32` quadros em vez de um, uma fila sem tecto guarda `32 × 8,3 MB = 265 MB` a
+        // `1920×1080` sempre que ninguém a esvazie (a janela minimizada, por exemplo).
+        //
+        // ⭐ **Dois, e perder uma passagem intermédia é INOFENSIVO** — cada quadro do refinamento
+        // *substitui* o anterior (ele traz a média acumulada, não um incremento), logo a passagem
+        // seguinte mostra mais. *É a contrapressão que uma sequência idempotente autoriza.*
+        let (tx, rx) = sync_channel::<Ready>(2);
         let cam = smoke.vps[i].cam;
         let matcap = Arc::clone(&smoke.matcap);
         let cancel = Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -430,6 +461,9 @@ fn viewport_pass(
         // lidos na thread: o estado do módulo não atravessa a fronteira, e um olhar lido depois
         // podia já não ser o do pedido que este traçado responde.
         let (shading, look) = (smoke.vps[i].shading, smoke.look);
+        // ⭐⭐⭐ **O refinamento da oclusão só corre com o prato PARADO** — ver
+        // [`crate::preview::refines_occlusion`], que é onde a razão está escrita.
+        let refinar = crate::preview::refines_occlusion(antialias, smoke.vps[i].manual);
         // ⭐⭐⭐ **A TABELA DE MATERIAIS atravessa a fronteira como `Arc`** — o que viaja é o
         // ponteiro, como a cache de fitas e o registo de esculturas.
         let materials = smoke.materials.clone();
@@ -513,33 +547,86 @@ fn viewport_pass(
                     //
                     // ⚠️ **O `antialias` É a bandeira** (`= !coarse`, linha 413) — lido aqui, e não
                     // uma segunda pergunta ao mesmo facto.
-                    let sombras = antialias.then(|| {
+                    let mut sombras = antialias.then(|| {
                         let mundos: Vec<[f32; 3]> = lights.iter().map(|l| l.world).collect();
                         ph2d_field_render::shadow_pass(&doc, &reg, &cam, &g, &mundos)
                     });
-                    ph2d_field_render::shade_render(
-                        &g,
+                    let pinta = |sh: Option<&ph2d_field_render::Shadows>| {
+                        ph2d_field_render::shade_render(
+                            &g,
+                            &cam,
+                            &surfaces,
+                            &ph2d_field_render::Lighting {
+                                lamps: &lamps,
+                                points: &lights,
+                                sky: &crate::render_light::StudioSky,
+                                shadows: sh,
+                            },
+                            look,
+                            BACKGROUND,
+                        )
+                    };
+                    // ⭐⭐⭐ **A PASSAGEM `0`: a imagem com a sombra directa, já.**
+                    let _ = tx.try_send(Ready {
+                        rgba: pinta(sombras.as_ref()),
+                        width: tw,
+                        height: th,
+                        hits: g.hits(),
+                        edges: g.edges.len(),
+                        millis: t0.elapsed().as_secs_f64() * 1000.0,
+                        passagem: 0,
+                        mais: refinar,
+                    });
+                    if !refinar {
+                        return;
+                    }
+                    // ⭐⭐⭐ **E DEPOIS A OCLUSÃO REFINA, uma passagem de cada vez**
+                    // (`docs/Render3d/05` §30). O G-buffer já está pago e não se re-traça: cada
+                    // passagem é **um raio por pixel** mais uma pintura, e a imagem vai assentando
+                    // com a mão parada — o idioma de toda viewport de render.
+                    //
+                    // ⛔ Medido (§29.2): os `32` raios de uma só vez custam `1,35 s` a `1920×1080`.
+                    // Repartidos, cada passagem custa o que um quadro tolera e o artista vê a
+                    // peça a ganhar profundidade em vez de esperar por ela.
+                    // ⚠️ A LEI vive na porta ([`ph2d_field_render::refine_occlusion`]); aqui
+                    // fica só o que é da thread: pintar, mandar, e dizer se vale a pena continuar.
+                    let mut sh = sombras.take().unwrap_or_default();
+                    ph2d_field_render::refine_occlusion(
+                        &doc,
+                        &reg,
                         &cam,
-                        &surfaces,
-                        &ph2d_field_render::Lighting {
-                            lamps: &lamps,
-                            points: &lights,
-                            sky: &crate::render_light::StudioSky,
-                            shadows: sombras.as_ref(),
+                        &g,
+                        &mut sh,
+                        |sh, passagem| {
+                            let ultima = passagem == ph2d_field_render::OCCLUSION_PASSES;
+                            let _ = tx.try_send(Ready {
+                                rgba: pinta(Some(sh)),
+                                width: tw,
+                                height: th,
+                                hits: g.hits(),
+                                edges: g.edges.len(),
+                                millis: t0.elapsed().as_secs_f64() * 1000.0,
+                                passagem,
+                                mais: !ultima,
+                            });
+                            // ⚠️ **A mão voltou a mexer**: parar aqui é o que impede o refinamento
+                            // de queimar um núcleo por uma imagem que já não se vê.
+                            !flag.load(std::sync::atomic::Ordering::Relaxed)
                         },
-                        look,
-                        BACKGROUND,
-                    )
+                    );
+                    return;
                 }
             };
             // O receptor pode ter sumido (janela fechada): descartar é a resposta certa.
-            let _ = tx.send(Ready {
+            let _ = tx.try_send(Ready {
                 rgba,
                 width: tw,
                 height: th,
                 hits: g.hits(),
                 edges: g.edges.len(),
                 millis: t0.elapsed().as_secs_f64() * 1000.0,
+                passagem: 0,
+                mais: false,
             });
         });
         smoke.vps[i].inflight = Some(crate::smoke::InFlight {

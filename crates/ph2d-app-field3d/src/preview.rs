@@ -315,3 +315,27 @@ pub const MOVING_NORMAL_ERR_DEG: f32 = 1.0;
 /// arquivo, que é onde ele não é desperdício — ver o gate
 /// `the_export_never_goes_through_the_preview_coarsening`.
 pub const SETTLED_NORMAL_ERR_DEG: f32 = 0.5;
+
+/// ⭐⭐⭐ **Este quadro assente vai REFINAR a oclusão?** (`docs/Render3d/05` §30)
+///
+/// Duas condições, e a segunda quase me escapou:
+///
+/// 1. **o quadro é o ASSENTE** (`antialias`, a bandeira da W73) — a mesma que já governa o contorno
+///    fino e a sombra directa;
+/// 2. **o prato está PARADO** (`manual`).
+///
+/// # ⛔⛔ Porque a segunda não é opcional
+///
+/// O prato só avança quando **não há trabalho em voo** (`smoke_draw`) — é isso que impede a peça de
+/// dar vinte voltas depois de a janela ter estado minimizada. Um refinamento dura **`3,5 s`** a
+/// `1920×1080` (medido, `measure_the_settle_clock`), logo com ele em voo o prato passaria a avançar
+/// **um passo a cada `3,6 s`**: a auto-demonstração que existe para provar que a peça é 3D ficaria
+/// congelada, e o artista leria isso como o app a travar.
+///
+/// ⇒ *um prato a girar é MOVIMENTO*, e o refinamento é do assente — a lei do módulo aplicada ao pé
+/// da letra. Tocar no canvas pára o prato (a lei do [`crate::smoke::Viewport::manual`]) e o
+/// refinamento passa a correr, que é exactamente quando o artista está a olhar para a peça.
+#[must_use]
+pub fn refines_occlusion(antialias: bool, plate_parked: bool) -> bool {
+    antialias && plate_parked
+}

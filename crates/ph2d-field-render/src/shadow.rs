@@ -71,6 +71,14 @@ use ph2d_field_eval::hybrid::Registry;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Shadows {
     per_lamp: Vec<Vec<f32>>,
+    /// ⭐⭐⭐ **O CÉU É UMA FONTE COMO AS OUTRAS, e a oclusão é a sombra DELE.**
+    ///
+    /// Quanto do ambiente chega a cada pixel — ver [`occlusion_passes`]. Vazio = chega inteiro.
+    ///
+    /// ⚠️ Ela mora aqui e não num campo novo do [`crate::Lighting`] porque é a MESMA pergunta que
+    /// as lâmpadas respondem: *«quanto desta fonte chega a este pixel?»*. Um segundo canal ao lado
+    /// faria o pintor perguntar duas vezes a mesma coisa, e é assim que dois canais divergem.
+    ambient: Vec<f32>,
     pixels: usize,
 }
 
@@ -84,6 +92,21 @@ impl Shadows {
             .and_then(|v| v.get(i))
             .copied()
             .unwrap_or(1.0)
+    }
+
+    /// Quanto do CÉU chega ao pixel `i`. ⚠️ **Fora de alcance devolve `1,0`**, pela mesma lei do
+    /// [`Shadows::at`]: uma oclusão que não foi calculada é ausência de oclusão, nunca escuridão.
+    #[must_use]
+    pub fn ambient_at(&self, i: usize) -> f32 {
+        self.ambient.get(i).copied().unwrap_or(1.0)
+    }
+
+    /// Põe a oclusão do céu neste canal — a saída de [`occlusion_passes`].
+    pub fn set_ambient(&mut self, ambient: Vec<f32>) {
+        if self.pixels == 0 {
+            self.pixels = ambient.len();
+        }
+        self.ambient = ambient;
     }
 
     #[must_use]
@@ -127,6 +150,7 @@ pub fn shadow_pass(
     if lamps_world.is_empty() || pixels == 0 {
         return Shadows {
             per_lamp: Vec::new(),
+            ambient: Vec::new(),
             pixels,
         };
     }
@@ -221,7 +245,11 @@ pub fn shadow_pass(
         })
         .collect();
 
-    Shadows { per_lamp, pixels }
+    Shadows {
+        per_lamp,
+        ambient: Vec::new(),
+        pixels,
+    }
 }
 
 /// Onde o raio pode parar: na lâmpada, ou na saída da bola — o que vier primeiro.
@@ -244,4 +272,288 @@ fn cerca(
         return 0.0;
     }
     (-bb + disc.sqrt()).max(0.0).min(ate_a_luz)
+}
+
+/// ⭐ **O ALCANCE da oclusão**, em unidades do enquadramento — até onde um vizinho ainda escurece.
+///
+/// # ⛔ O número foi MEDIDO depois de eu o ter ESCOLHIDO
+///
+/// A 1.ª redacção dizia `0,35`, a olho. Varrido (`measure_the_occlusion_reach`, três cilindros
+/// cruzados), a resposta **satura** — e o que a mostra é a CAUDA, nunca a média:
+///
+/// | alcance | mín | p05 | abaixo de `0,8` | céu MÉDIO |
+/// |---:|---:|---:|---:|---:|
+/// | `0,15` | `0,688` | `1,000` | `0,3 %` | `0,997` |
+/// | `0,35` | `0,188` | `0,938` | `2,4 %` | `0,985` |
+/// | `0,60` | `0,062` | `0,875` | `4,1 %` | `0,973` |
+/// | **`1,00`** | `0,062` | `0,750` | **`5,8 %`** | `0,965` |
+/// | `1,60` | `0,062` | `0,750` | `5,8 %` | `0,965` |
+/// | `2,50` | `0,062` | `0,750` | `5,8 %` | `0,965` |
+///
+/// ⚠️⚠️ **A coluna da MÉDIA é a que engana, e foi ela que quase me fez dar o passe por partido:**
+/// numa cruz de cilindros a fenda é `~5 %` dos pixels visíveis, logo uma oclusão de `94 %` no fundo
+/// dela move a média da peça de `1,000` para `0,965`. *Ler `0,965` é ler «quase nada»; ler a cauda
+/// é ler o que o olho vê.* É o «extremo global» que este repositório já pagou cinco vezes, do lado
+/// oposto.
+///
+/// ⇒ **`1,0`, que é onde a resposta deixa de mudar.** Acima disso não há mais nada para encontrar —
+/// e a cerca da bola ([`occlusion_slice`] fecha na saída dela) já o bordava de qualquer forma.
+pub const OCCLUSION_REACH: f32 = 1.0;
+
+/// ⭐⭐⭐ **QUANTAS PASSAGENS até a oclusão assentar** — e o recurso que ele nomeia é **a precisão
+/// do byte de saída**.
+///
+/// ⚠️ **A régua é o erro NO PIXEL, e não no canal.** A oclusão multiplica só o termo do ambiente,
+/// que é uma fracção do pixel — medir o erro no canal mede-o onde ele não aterra. Medido contra
+/// uma referência de `64` raios (`measure_how_many_passes_the_occlusion_needs`):
+///
+/// | passagens | erro no canal | **erro no PIXEL** | pior pixel |
+/// |---:|---:|---:|---:|
+/// | `1` | `0,210` | `26,8 bytes` | `165` |
+/// | `4` | `0,056` | `5,99` | `43` |
+/// | `8` | `0,027` | `2,85` | `19` |
+/// | `16` | `0,012` | `1,33` | `9` |
+/// | **`32`** | `0,004` | **`0,63`** | `4` |
+///
+/// ⇒ **`32`, porque é onde o erro médio cai abaixo de UM byte** — abaixo do que a saída consegue
+/// mostrar. ⛔ Não é um número escolhido: é o ponto em que continuar a refinar deixa de mudar a
+/// imagem.
+pub const OCCLUSION_PASSES: u32 = 32;
+
+/// ⭐⭐⭐ **A OCLUSÃO TRAÇADA CONTRA O CAMPO** — quanto do céu chega a cada pixel de peça.
+///
+/// `1,0` = o céu chega inteiro; `0,0` = a peça tapa-se a si própria por completo. Nos pixels que não
+/// são peça devolve `1,0`.
+///
+/// # ⭐ Porque ela é ACUMULÁVEL, e é assim que ela cabe
+///
+/// `passagens` raios por pixel, com a sequência **deslocada por `desde`**: chamar com
+/// `(0, 1)`, `(1, 1)`, `(2, 1)`… e tirar a média dá exactamente o mesmo que `(0, N)` — é isso que
+/// permite ao quadro assente **refinar em passagens** em vez de pagar tudo de uma vez.
+///
+/// ⛔ Medido (`docs/Render3d/05` §29.2): `16` raios por pixel de uma só vez custam **`1,35 s`** a
+/// `1920×1080`. Em `16` passagens de `84 ms` a imagem afina com a mão parada, que é o idioma de
+/// toda viewport de render.
+///
+/// # ⚠️ A direcção é COSSENO-distribuída, e o deslocamento é POR PIXEL
+///
+/// A elevação sai de `(j + salto(pixel)) / N` (rotação de Cranley–Patterson). Sem o salto, `N = 1`
+/// dispararia **um só ângulo** (45°) na imagem inteira — a sonda da §29.4 leu `5,3 %` de oclusão
+/// contra os `17,3 %` verdadeiros, e isso lia-se como uma conclusão sobre AO em vez de um furo da
+/// régua. *Uma estratificação que muda com o N não compara os N.*
+#[must_use]
+pub fn occlusion(doc: &FieldDoc, reg: &Registry, cam: &Orbit, g: &Gbuffer, total: u32) -> Vec<f32> {
+    occlusion_with_reach(doc, reg, cam, g, total, OCCLUSION_REACH)
+}
+
+/// A mesma, com o alcance por parâmetro — a porta que a sonda varre.
+#[must_use]
+pub fn occlusion_with_reach(
+    doc: &FieldDoc,
+    reg: &Registry,
+    cam: &Orbit,
+    g: &Gbuffer,
+    total: u32,
+    reach: f32,
+) -> Vec<f32> {
+    let soma = occlusion_slice_with_reach(doc, reg, cam, g, 0, total, total, reach);
+    if total == 0 {
+        return soma;
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let inv = 1.0 / total as f32;
+    soma.iter()
+        .zip(&g.hit)
+        .map(|(v, hit)| if *hit { v * inv } else { 1.0 })
+        .collect()
+}
+
+/// ⭐⭐⭐ **UMA FATIA da sequência** — a SOMA da visibilidade dos raios `primeiro..primeiro+quantos`
+/// de uma sequência de `total`, sem dividir.
+///
+/// ⚠️ **Os três números são obrigatórios e nenhum é redundante.** `total` fixa a **estratificação**
+/// (que elevações a sequência inteira vai cobrir) e `primeiro`/`quantos` dizem que pedaço dela esta
+/// chamada paga. *Uma API com `(desde, quantos)` só não consegue exprimir «o raio `k` de uma
+/// sequência de 32»* — ela ancoraria a estratificação na FATIA, e somar fatias daria uma
+/// distribuição diferente de a sequência inteira. Foi o 1.º desenho, e ele não acumulava.
+///
+/// ⭐ Somar todas as fatias e dividir por `total` dá **exactamente** o que [`occlusion`] devolve, e
+/// há gate a prová-lo — é isso que autoriza o quadro assente a refinar em passagens.
+///
+/// Devolve `0,0` nos pixels que não são peça (eles não entram em soma nenhuma).
+#[must_use]
+pub fn occlusion_slice(
+    doc: &FieldDoc,
+    reg: &Registry,
+    cam: &Orbit,
+    g: &Gbuffer,
+    primeiro: u32,
+    quantos: u32,
+    total: u32,
+) -> Vec<f32> {
+    occlusion_slice_with_reach(doc, reg, cam, g, primeiro, quantos, total, OCCLUSION_REACH)
+}
+
+/// A mesma, com o alcance por parâmetro — a porta que a sonda varre.
+#[must_use]
+#[allow(clippy::too_many_arguments)] // a peça, a vista, a fatia e o alcance
+pub fn occlusion_slice_with_reach(
+    doc: &FieldDoc,
+    reg: &Registry,
+    cam: &Orbit,
+    g: &Gbuffer,
+    primeiro: u32,
+    quantos: u32,
+    total: u32,
+    reach: f32,
+) -> Vec<f32> {
+    let pixels = g.hit.len();
+    let mut vis = vec![0.0f32; pixels];
+    if pixels == 0 || quantos == 0 || total == 0 {
+        return vis;
+    }
+    let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
+    let (right, up, toward_eye) = cam.basis();
+    let scene = Scene {
+        shape: &shape,
+        cam,
+        basis: (right, up, toward_eye),
+        sharp: Sharpness::for_frame(cam.half_extent, g.width.min(g.height) as usize),
+        clip: None,
+        step: ph2d_field_eval::safe_march_step(doc),
+        shrink: ph2d_field_eval::field_shrink(doc, reg),
+        stencil: Stencil::Tetra4,
+    };
+    let lift = scene.sharp.hit * crate::march::BIAS;
+    let alcance = reach * cam.half_extent;
+
+    let mut quais = Vec::new();
+    let mut origens = Vec::new();
+    let mut dirs = Vec::new();
+    let mut cercas = Vec::new();
+    for i in 0..pixels {
+        if !g.hit[i] {
+            continue;
+        }
+        let p = g.point[i];
+        let nv = g.normal[i];
+        // A normal do G-buffer está em VISTA e o campo vive no MUNDO — a mesma conversão do
+        // [`shadow_pass`], e pela mesma razão.
+        let n = [
+            nv[0] * right[0] + nv[1] * up[0] + nv[2] * toward_eye[0],
+            nv[0] * right[1] + nv[1] * up[1] + nv[2] * toward_eye[1],
+            nv[0] * right[2] + nv[1] * up[2] + nv[2] * toward_eye[2],
+        ];
+        let (t1, t2) = base_do_hemisferio(n);
+        let erguido = [p[0] + n[0] * lift, p[1] + n[1] * lift, p[2] + n[2] * lift];
+        // ⚠️ **O salto é do PIXEL, não do raio** — ver a nota da função.
+        let salto = ((i as u32).wrapping_mul(2_654_435_761) >> 8) as f32 / 16_777_216.0;
+        for j in 0..quantos {
+            // ⚠️ A estratificação é do **TOTAL**, e o índice do raio é `primeiro + j` — ver a nota.
+            let u1 = ((f64::from(primeiro + j) + f64::from(salto)) / f64::from(total)).fract();
+            #[allow(clippy::cast_possible_truncation)]
+            let u1 = u1 as f32;
+            let u2 = ((i as u32).reverse_bits() >> 8) as f32 / 16_777_216.0;
+            let r = u1.sqrt();
+            let phi = std::f32::consts::TAU * u2;
+            let (sp, cp) = phi.sin_cos();
+            let z = (1.0 - u1).max(0.0).sqrt();
+            quais.push(i);
+            origens.push(erguido);
+            dirs.push([
+                t1[0] * r * cp + t2[0] * r * sp + n[0] * z,
+                t1[1] * r * cp + t2[1] * r * sp + n[1] * z,
+                t1[2] * r * cp + t2[2] * r * sp + n[2] * z,
+            ]);
+            cercas.push(alcance);
+        }
+    }
+    // ⛔⛔⛔ **A PERGUNTA DA OCLUSÃO É BINÁRIA, e a 1.ª redacção usou o estimador de PENUMBRA.**
+    //
+    // Escrevi `hardness = 1` a raciocinar *«k = 1 é a fracção de céu que o vizinho deixa passar»*.
+    // Está errado, e o gate da esfera apanhou-o: ela leu **`0,698` de céu contra `0,757` da cruz** —
+    // *um corpo CONVEXO a ocluir-se mais que três cilindros cruzados.*
+    //
+    // O mecanismo é o mesmo da §27.5(b): numa saída RASANTE a tangente afasta-se como `d ≈ t²/2R`,
+    // logo `k·d/t ≈ k·t/2R` desce abaixo de `1` **sem haver oclusor nenhum** — o estimador está a
+    // ler a curvatura da própria superfície. Num raio de SOMBRA isso é penumbra e é desejável (a
+    // lâmpada tem tamanho angular); aqui a pergunta é *«este raio bate em alguma coisa dentro do
+    // alcance?»*, que é **sim ou não**.
+    //
+    // ⇒ `INFINITY` faz o termo mole nunca vincular (`vis.min(∞) = vis`), e o único sítio que
+    // escreve `0` é o acerto de facto. ⚠️ Sem NaN: o braço do acerto sai por `continue` antes, logo
+    // `d ≥ hit > 0` quando a multiplicação corre.
+    let v = march_shadow_to(&scene, &origens, &dirs, &cercas, f32::INFINITY);
+    for (j, &i) in quais.iter().enumerate() {
+        vis[i] += v[j];
+    }
+    vis
+}
+
+/// Dois eixos perpendiculares a `n`, sem trigonometria por amostra.
+fn base_do_hemisferio(n: [f32; 3]) -> ([f32; 3], [f32; 3]) {
+    let a = if n[0].abs() < 0.9 {
+        [1.0, 0.0, 0.0]
+    } else {
+        [0.0, 1.0, 0.0]
+    };
+    let t1 = [
+        a[1] * n[2] - a[2] * n[1],
+        a[2] * n[0] - a[0] * n[2],
+        a[0] * n[1] - a[1] * n[0],
+    ];
+    let l = (t1[0] * t1[0] + t1[1] * t1[1] + t1[2] * t1[2])
+        .sqrt()
+        .max(1e-6);
+    let t1 = [t1[0] / l, t1[1] / l, t1[2] / l];
+    let t2 = [
+        n[1] * t1[2] - n[2] * t1[1],
+        n[2] * t1[0] - n[0] * t1[2],
+        n[0] * t1[1] - n[1] * t1[0],
+    ];
+    (t1, t2)
+}
+
+/// ⭐⭐⭐ **O REFINAMENTO: `OCCLUSION_PASSES` passagens sobre o MESMO G-buffer.**
+///
+/// Cada passagem acrescenta **um raio por pixel**, publica a média acumulada por `entrega`, e pára
+/// assim que ela devolver `false` — que é como a mão a volta a mexer cancela o trabalho.
+///
+/// ⚠️⚠️ **Ela existe como PORTA, e não como laço dentro da thread do traçado, por causa do gate.**
+/// O laço vivia no `std::thread::spawn` do `smoke_draw`, onde nenhum teste lhe chega: a lei da
+/// acumulação, a ordem das passagens e a paragem por cancelamento ficavam todas **inalcançáveis**.
+/// *A costura não-testada é a causa nº 1 da `DIRETIVA_IMPLEMENTACAO` §1, e um laço dentro de uma
+/// thread é a forma mais fácil de a produzir sem dar por isso.*
+///
+/// Devolve quantas passagens correram — `< OCCLUSION_PASSES` quer dizer que foi cancelado.
+pub fn refine_occlusion(
+    doc: &FieldDoc,
+    reg: &Registry,
+    cam: &Orbit,
+    g: &Gbuffer,
+    shadows: &mut Shadows,
+    mut entrega: impl FnMut(&Shadows, u32) -> bool,
+) -> u32 {
+    let pixels = g.hit.len();
+    let mut soma = vec![0.0f32; pixels];
+    for k in 0..OCCLUSION_PASSES {
+        let fatia = occlusion_slice(doc, reg, cam, g, k, 1, OCCLUSION_PASSES);
+        for (a, f) in soma.iter_mut().zip(&fatia) {
+            *a += f;
+        }
+        // ⚠️ **A média é sobre as passagens JÁ CORRIDAS**, e não sobre o total — senão a imagem
+        // abriria preta e iria clareando, que é o contrário do que uma acumulação deve parecer.
+        #[allow(clippy::cast_precision_loss)]
+        let inv = 1.0 / f32::from(u16::try_from(k + 1).unwrap_or(u16::MAX));
+        shadows.set_ambient(
+            soma.iter()
+                .zip(&g.hit)
+                .map(|(v, hit)| if *hit { v * inv } else { 1.0 })
+                .collect(),
+        );
+        if !entrega(shadows, k + 1) {
+            return k + 1;
+        }
+    }
+    OCCLUSION_PASSES
 }

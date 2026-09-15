@@ -542,3 +542,27 @@ fn the_export_never_goes_through_the_preview_coarsening() {
          observável nenhum: {chamadores:?}"
     );
 }
+
+/// ⭐⭐⭐ **UM PRATO A GIRAR É MOVIMENTO: ele não refina.**
+///
+/// ⛔ O prato só avança quando não há trabalho em voo, e um refinamento dura `3,5 s` a `1920×1080`
+/// — sem esta condição a auto-demonstração passaria a dar **um passo a cada `3,6 s`**, e isso
+/// lê-se como o app travado. Ver [`super::refines_occlusion`].
+#[test]
+fn um_prato_a_girar_nao_refina_a_oclusao() {
+    use super::refines_occlusion;
+
+    // O quadro de MOVIMENTO nunca refina, o prato esteja como estiver.
+    assert!(!refines_occlusion(false, true));
+    assert!(!refines_occlusion(false, false));
+
+    // ⭐ E o quadro ASSENTE só refina com o prato parado.
+    assert!(
+        !refines_occlusion(true, false),
+        "com o prato a girar o refinamento congelaria a rotação — ver o doc da porta"
+    );
+    assert!(
+        refines_occlusion(true, true),
+        "com o prato parado e a imagem nítida é exactamente quando o artista está a olhar"
+    );
+}

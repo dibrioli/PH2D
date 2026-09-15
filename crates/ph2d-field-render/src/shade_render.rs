@@ -200,7 +200,18 @@ fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom
         basis,
     } = geom;
     let add = |a: [f32; 3], b: [f32; 3]| [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-    let mut rgb = surface.indirect(n, v, light.sky);
+    // ⭐⭐⭐ **A OCLUSÃO É A SOMBRA DO CÉU** — ela multiplica o que o AMBIENTE entrega, e mais nada.
+    //
+    // ⚠️ **Não toca nas lâmpadas** (elas têm sombra a sério, §27) nem na **emissão** (uma superfície
+    // que é ela própria uma luz não se apaga por ter um vizinho). *Uma oclusão aplicada ao pixel
+    // inteiro é a aparência de sujidade que este passe existe para não ter.*
+    //
+    // ⚠️⚠️ **APROXIMAÇÃO DECLARADA:** o `indirect` devolve o difuso **e** o especular do ambiente
+    // numa chamada só, e a oclusão exacta do especular não é a do difuso (ela depende da rugosidade
+    // e da direcção do lóbulo). Escalar os dois pelo mesmo número escurece reflexos a mais numa
+    // superfície polida. Separá-los é mexer na fronteira do `ph2d-material`, e fica nomeado.
+    let ceu = light.shadows.map_or(1.0, |s| s.ambient_at(geom.i));
+    let mut rgb = surface.indirect(n, v, light.sky).map(|c| c * ceu);
     for lamp in light.lamps {
         rgb = add(rgb, surface.direct(n, v, lamp.to_light, lamp.radiance));
     }

@@ -618,3 +618,96 @@ clippy apanhou-o (`empty line after doc comment`). A prosa mudou-se com o tipo, 
 **Portão:** `nextest-impacted` (BASE `1d43da737`) **14 277/14 277**, exit 0, `load 39,7` ·
 `clippy --workspace --all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · binário de
 smoke reconstruído (exit 0).
+
+---
+
+## 14 — ⭐⭐⭐ *«Alinhar no meio do painel, as labels à direita»* — e isso fechou os 12
+
+Commit `cdf3c0da2` · 24 ficheiros · +471/−294.
+
+### 14.1 — O veredito
+
+Foto dos cartões LEG/WALK/JUMP: *«as caixas numéricas são muito grandes. Maiores que as labels.
+Melhor alinhar no meio do painel e as labels alinhadas todas à direita (no centro do painel)»*.
+
+### 14.2 — A partição ao meio
+
+`LABEL_COL_FRAC` **`0,348 → 0,5`**, com o rótulo a acabar **um vão antes** do meio para o controlo
+começar exactamente nele. Numa linha de card do Inspector (`256 px`): rótulo `120`, controlo `114`.
+
+⚠️ **A fracção é da LINHA, não do utilizável.** A coluna de animação sai do lado do CONTROLO, e
+medir a metade sobre o utilizável poria a fronteira `7 px` à esquerda do meio — *«o meio do painel»
+é o meio do que o artista vê*, não o meio do que sobra depois de uma reserva que ele não conhece.
+
+⚠️⚠️ **E a fracção deixou de ser MEDIDA — a troca é honesta e vale registá-la.** Ela nasceu a
+reproduzir o literal que a casa mais escrevia (`96/276 = 0,348`), que era arqueologia correcta do
+produto de então. ***Uma medição diz o que o produto FAZ; ela nunca disse o que ele DEVIA fazer*** —
+e a segunda pergunta é do dono (`CLAUDE.md` §0.8).
+
+⭐⭐⭐ **E a decisão de aparência dele fechou, de graça, o item que eu lhe tinha devolvido como
+escolha.** A catraca `AINDA_CORTAM` (§12.5) tinha **12** nomes elididos numa coluna de `84,2`; a
+`120` o mais comprido do app (*«Swim Line (weights)»*, `113,9`) **cabe**, e a lista está **VAZIA**.
+
+### 14.3 — O alinhamento à direita
+
+[`widget::paint_property_label`](../../../crates/ph2d-editor-core/src/widget/property_box/row.rs) —
+elidido, **medido no peso em que pinta**, encostado à direita da coluna. Com o controlo a começar no
+meio, um rótulo à esquerda deixa um rio de espaço variável entre o nome e o campo dele: *quanto mais
+curto o nome, mais longe do valor que ele nomeia*.
+
+⚠️ **A assinatura é a do `paint_text_elided`, argumento a argumento** — converter um sítio é trocar
+o nome da função. ***Uma conversão que muda a forma da chamada em 20 sítios é uma que alguém faz
+pela metade.***
+
+| onde | sítios |
+|---|---|
+| Inspector (rows · ordering · visibility · anchor · sprite sheet) | 7 |
+| o `RowCtx` do núcleo | 1 |
+| `panel-vector` | 8 |
+| `panel-flip` | 4 |
+| `panel-model3d` | 2 |
+| `panel-grid-snap` | 1 |
+
+⚠️ **A DECISÃO saiu para uma porta pura** (`property_label_origin`): dentro do pintor ela só é
+observável por quem sabe ler glifos de uma cena, e *uma decisão que só o pintor conhece é uma
+decisão que nenhuma mutação mata*.
+
+⛔ **O que NÃO se converteu, com o motivo:** o valor do `paint_fact` do model3d (não é um rótulo, é o
+conteúdo da coluna do controlo) e o rótulo do *toggle* do grid-snap (a linha dele é
+`nome | interruptor`, outra forma).
+
+### 14.4 — Gates
+
+| gate | o que defende | mutação |
+|---|---|---|
+| `a_property_label_is_flush_against_its_control` | o fim do texto é o fim da coluna · e a metade que **degrada para a esquerda** quando nem a reticência cabe | o rótulo volta a alinhar à esquerda ⇒ ✗ |
+| `a_property_row_never_starves_its_control` | **o controlo começa no meio da linha** | a partição volta a `0,348` ⇒ ✗ |
+
+⚠️⚠️ **A metade *«o rótulo é a MENOR das duas colunas»* FOI SUBSTITUÍDA, não relaxada.** Ela era a
+lei da fracção `0,348` e **reprovaria sobre o desenho certo** (a `120 > 114`, porque a coluna de
+animação sai do lado do controlo). ***Um gate escrito sobre um NÚMERO reprova quando o dono muda o
+número; um escrito sobre a LEI sobrevive.***
+
+⚠️ E a fixtura da segunda metade precisou de uma **coluna mínima**: o `text_elide::fit` devolve
+sempre texto que cabe, salvo quando nem a reticência cabe — *uma fixtura sem o fenómeno mede
+silêncio*.
+
+### 14.5 — ⛔ Um tecto de LOC, curado por CORTE
+
+`property_box/mod.rs` `508/500` ⇒ a geometria da LINHA saiu para `property_box/row.rs`: *a CAIXA é
+um widget — desenha-se, tem estados e um nó de acessibilidade; a LINHA é a repartição de uma faixa,
+e serve painéis que nunca pintam uma caixa.*
+
+⚠️ **O corte partiu DOIS gates, os dois ALTO** (a espécie barata — `CLAUDE.md` §5.0): a isenção do
+censo da coluna nomeava o `mod.rs` (e a `LABEL_COL_FRAC` mudou-se), e o `hr12_widgets_a11y` viu um
+ficheiro de widget novo. O segundo entra no `A11Y_OPT_OUT` com o motivo: *o nó é do CONTROLO, não
+da faixa — um nó aqui poria um alvo focável por baixo de cada linha do app.*
+
+### 14.6 — ⏳ NOMEADO
+
+O rótulo interno do `paint_slider_with_chip_layout_adaptive` continua **à esquerda**: aquela linha é
+`rótulo | trilho | chip`, uma forma diferente da que o dono viu na foto, e mudá-la toca **toda**
+linha de slider do app. ⛔ Decisão dele.
+
+**Portão:** `nextest-impacted` (BASE `1d43da737`) **14 278/14 278**, exit 0 · `clippy --workspace
+--all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · binário de smoke reconstruído.

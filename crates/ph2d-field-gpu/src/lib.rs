@@ -72,17 +72,49 @@ impl FieldPipelines {
         molde: &str,
         field: &ph2d_field_eval::wgsl::TapeWgsl,
     ) -> &wgpu::ComputePipeline {
+        self.entry(device, molde, field, "main")
+    }
+
+    /// ⭐ **O mesmo, nomeando a ENTRADA** — um molde com duas passagens compila **um** módulo e
+    /// dois pipelines. ⚠️ A chave inclui a entrada: dois pipelines do mesmo texto são coisas
+    /// diferentes.
+    pub fn entry(
+        &mut self,
+        device: &wgpu::Device,
+        molde: &str,
+        field: &ph2d_field_eval::wgsl::TapeWgsl,
+        entrada: &str,
+    ) -> &wgpu::ComputePipeline {
+        self.entry_with_layout(device, molde, field, entrada, None)
+    }
+
+    /// ⭐⭐ **O mesmo, com o layout de propósito** — e ele é obrigatório quando o molde tem DUAS
+    /// entradas que usam bindings diferentes.
+    ///
+    /// ⛔⛔ O layout AUTO-DERIVADO só declara os bindings que **aquela entrada usa**: a passagem do
+    /// centro não toca na lista de bordas, logo o layout dela tem `4` entradas e o `BindGroup` de
+    /// `6` é recusado. *Um layout derivado por entrada não é o layout do módulo* — e o erro só
+    /// aparece em tempo de execução, quando o grupo é criado.
+    pub fn entry_with_layout(
+        &mut self,
+        device: &wgpu::Device,
+        molde: &str,
+        field: &ph2d_field_eval::wgsl::TapeWgsl,
+        entrada: &str,
+        layout: Option<&wgpu::PipelineLayout>,
+    ) -> &wgpu::ComputePipeline {
         let src = molde.replace(FIELD_SLOT, &field.source);
-        self.por_texto.entry(src.clone()).or_insert_with(|| {
+        let chave = format!("{entrada}\u{0}{src}");
+        self.por_texto.entry(chave).or_insert_with(|| {
             let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("campo"),
                 source: wgpu::ShaderSource::Wgsl(src.as_str().into()),
             });
             device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("campo"),
-                layout: None,
+                layout,
                 module: &module,
-                entry_point: Some("main"),
+                entry_point: Some(entrada),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 cache: None,
             })

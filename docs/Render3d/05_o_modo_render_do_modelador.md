@@ -3037,3 +3037,70 @@ um vinco. *O extremo e a população respondem a perguntas diferentes, e só uma
 - **A escultura continua de fora** (§33.5): ela é uma grade, não uma expressão.
 - **O dispositivo abre-se a cada chamada** — é a forma de sonda; o produto segura o contexto e o
   cache de pipelines, que já existe.
+
+---
+
+## §35 — ⭐⭐⭐ O QUADRO INTEIRO NO DISPOSITIVO: sombra, oclusão e bordas (2026-09-14)
+
+O §34 pôs a marcha primária. Esta fecha o G-buffer: **sombra directa, oclusão e o anti-serrilhado**
+— e as quatro coisas medem-se contra a CPU na mesma corrida.
+
+### §35.1 — A prova, nas 18 cenas vivas
+
+| | resultado |
+|---|---|
+| pixels que discordam sobre **haver peça** | `0,000 %` em todas |
+| `Δt` (p99) | `1,0`–`1,8e-4` |
+| `Δ` normal / variação da própria peça | `0,00×`–`0,17×` |
+| **`Δ` sombra** (p99) | `0,000`–`0,027` |
+| **`Δ` oclusão** (p99) | `0` ou `0,0625` — **exactamente UM raio de 16** |
+| **bordas: sobreposição das listas** | **`98,9 %`–`99,9 %`** |
+
+⭐⭐ **O amostrador da oclusão é o da CPU AO BIT** — a mesma mistura de Knuth, o mesmo deslocamento
+por pixel, a mesma razão áurea. ⚠️ *Se ele fosse só «equivalente», a paridade teria de descer a uma
+média — que é exactamente a régua que a §31 mostrou ser cega.*
+
+### §35.2 — ⛔⛔ TRÊS coisas que o gate apanhou, e nenhuma era o algoritmo
+
+**(a) A barra da oclusão ficou ABAIXO do quantum da medida.** Escrevi `0,05`; com `16` raios
+binários a menor diferença possível é `1/16 = 0,0625`. O gate acusava a **granularidade**. ⇒ a barra
+passa a ser **dois raios**, derivada da const: um raio a discordar é `f32` numa saída rasante.
+
+**(b) O tecto da lista de bordas ESTOUROU, e o número vinha da grandeza errada.** Pus `6 %` citando
+os *«`0,5`–`1,2 %` de silhueta»* do módulo — mas a borda deste passe é silhueta **mais VINCO**, e
+uma rosca é quase toda vinco. Medido: `8,4 %`. A GPU devolvia exactamente `1 296` bordas — *o
+tecto* — contra `1 745` da CPU, e a sobreposição caía a `72,6 %`. ⇒ `25 %`, três vezes o pior
+medido. *Um tecto derivado da grandeza errada lê-se como generoso.*
+
+**(c) O layout auto-derivado não é o layout do módulo.** As duas passagens usam bindings diferentes,
+logo o layout da primeira declara `4` e o grupo de `6` é recusado — **em tempo de execução**. ⇒
+layout explícito, partilhado.
+
+### §35.3 — ⛔⛔⛔ E o RELÓGIO mediu a coisa errada, com o aviso escrito no próprio doc
+
+A primeira medição do quadro leu **`130 ms` a `640×360`** — *mais lento que a CPU*. A porta que ela
+usava **abre o adaptador, pede o dispositivo e compila o shader a cada chamada**, e o doc dela dizia
+*«é a forma de sonda»*. Eu usei-a como relógio na mesma.
+
+⇒ [`Tracer`], que segura o dispositivo e o cache entre quadros:
+
+| | CPU | **dispositivo** | ganho |
+|---|---:|---:|---:|
+| `640×360` | `13,15 ms` | **`2,53 ms`** | `5,2×` |
+| `1920×1080` | `102,64 ms` | **`24,17 ms`** | `4,2×` |
+
+⭐ **E `11 ms` dos `35` iniciais eram a lista de bordas a ser lida INTEIRA.** O tecto é `25 %` dos
+pixels e a ocupação real é `1`–`8 %`: copiar o tecto era quase metade dos `90 MB` de leitura por
+quadro. ⇒ um segundo `submit` que lê só o que foi escrito. *Um buffer dimensionado para o pior caso
+não se lê no pior caso.*
+
+### §35.4 — ⏳ O que ainda separa os `24 ms` dos `5 ms` do tecto
+
+O tecto do §32 (`5,00 ms`) é **compute puro, sem leitura**. O que sobra aqui:
+
+- **`49 MB` de leitura por quadro** (centro `16 B` + luz `8 B` por pixel). O `t` e a normal cabem em
+  `8 B` com meia-precisão e uma normal octaédrica — **por medir**.
+- **DUAS paragens de sincronização** (a conta, depois as bordas). A segunda pode desaparecer com um
+  `map_async` assíncrono em vez de `poll(Wait)`.
+- ⚠️ **E nada disto está ligado ao produto.** O que falta é a costura: o `Tracer` vive no viewport,
+  o resultado entra como `Gbuffer` + `Shadows`, e a pintura corre onde já corre.

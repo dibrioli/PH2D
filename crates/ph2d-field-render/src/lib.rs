@@ -158,7 +158,7 @@ const ROOK: [(f32, f32); 4] = [
 /// ⚠️ Errar para o lado do EXCESSO é barato e errar para o lado da falta não é: um pixel de borda
 /// marcado a mais custa quatro raios; um pixel de borda **não** marcado é um degrau visível que
 /// nenhum passo posterior recupera. 0,9 ≈ 25°.
-const EDGE_COS: f32 = 0.9;
+pub const EDGE_COS: f32 = 0.9;
 
 /// Um pixel de borda, re-amostrado no padrão [`ROOK`].
 ///

@@ -690,6 +690,16 @@ mod gpu_gbuffer_parity {
     /// prontos seriam `50 MB` por quadro, logo o WGSL reconstrói o `ray_at_plane` — e uma
     /// divergência ali move o ponto de acerto em **unidades de mundo**, que é o que as colunas
     /// medem.
+    /// A lâmpada onde a wave da §25 a põe.
+    fn luz_do_rig(cam: &ph2d_field_render::Orbit) -> [f32; 3] {
+        let (right, up, toward_eye) = cam.basis();
+        let ecra = [-0.5566703_f32, 0.6634139, 0.5];
+        let r = 2.0 * cam.half_extent;
+        [0, 1, 2].map(|i| {
+            cam.target[i] + r * (ecra[0] * right[i] + ecra[1] * up[i] + ecra[2] * toward_eye[i])
+        })
+    }
+
     #[test]
     #[ignore = "precisa de GPU"]
     fn o_gbuffer_do_dispositivo_e_o_da_cpu() {
@@ -703,7 +713,7 @@ mod gpu_gbuffer_parity {
         let screen = Screen::new(W, H, cam.half_extent);
 
         println!("  cena · silhueta ·       Dt ·  Dnormal ·   a variacao da PROPRIA peca · razao");
-        let mut piores = (0usize, 0.0f32, 0.0f32);
+        let mut piores = (0usize, 0.0f32, 0.0f32, 0.0f32, 0.0f32, 1.0f64);
         let mut vistas = 0;
         for n in 0..crate::smoke::scenes::CENAS {
             if crate::smoke::scenes::PODADAS.contains(&n) {
@@ -715,6 +725,8 @@ mod gpu_gbuffer_parity {
                 continue;
             };
             let g = trace(&doc, &reg, &cam, W, H);
+            let bola = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+                .unwrap_or(ph2d_field_eval::bounds::Ball::EMPTY);
             let passo = ph2d_field_eval::safe_march_step(&doc);
             let shrink = ph2d_field_eval::field_shrink(&doc, &reg);
             let setup = ph2d_field_gpu::trace::MarchSetup {
@@ -736,6 +748,12 @@ mod gpu_gbuffer_parity {
                     W.min(H) as usize,
                 )
                 .normal,
+                lamp: luz_do_rig(&cam),
+                ball_center: bola.center,
+                ball_radius: bola.radius,
+                ao_rays: ph2d_field_render::OCCLUSION_PASSES,
+                ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+                edge_cos: ph2d_field_render::EDGE_COS,
                 step: passo,
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 budget: ((ph2d_field_render::MAX_STEPS as f32) * shrink.max(1.0)
@@ -822,6 +840,52 @@ mod gpu_gbuffer_parity {
             piores.0 = piores.0.max(difere);
             piores.1 = piores.1.max(q(&dts, 0.99));
             piores.2 = piores.2.max(razao);
+
+            // ⭐⭐⭐ **AS TRÊS COISAS NOVAS, cada uma com a sua régua.**
+            let sh = ph2d_field_render::shadow_pass(&doc, &reg, &cam, &g, &[luz_do_rig(&cam)]);
+            let ao = ph2d_field_render::occlusion(
+                &doc,
+                &reg,
+                &cam,
+                &g,
+                ph2d_field_render::OCCLUSION_PASSES,
+            );
+            let mut d_sombra: Vec<f32> = Vec::new();
+            let mut d_ceu: Vec<f32> = Vec::new();
+            for (j, ceu) in ao.iter().enumerate() {
+                if !g.hit[j] || !dev.hit(j) {
+                    continue;
+                }
+                d_sombra.push((sh.at(0, j) - dev.shadow[j]).abs());
+                d_ceu.push((ceu - dev.ambient[j]).abs());
+            }
+            d_sombra.sort_by(f32::total_cmp);
+            d_ceu.sort_by(f32::total_cmp);
+
+            // ⚠️ **A BORDA compara-se como CONJUNTO.** Os dois motores decidem por um `cos` sobre
+            // normais em `f32`, logo um pixel de fronteira pode cair de qualquer lado — o que não
+            // pode é a população ser outra. *A régua é a sobreposição, não a igualdade.*
+            let cpu_b: std::collections::BTreeSet<u32> = g.edges.iter().map(|e| e.pixel).collect();
+            let gpu_b: std::collections::BTreeSet<u32> =
+                dev.edges.iter().map(|e| e.pixel).collect();
+            let comuns = cpu_b.intersection(&gpu_b).count();
+            let uniao = cpu_b.union(&gpu_b).count();
+            let sobrep = if uniao == 0 {
+                1.0
+            } else {
+                comuns as f64 / uniao as f64
+            };
+            println!(
+                "         sombra p99 {:7.4} · ceu p99 {:7.4} · bordas CPU {} / GPU {} · sobrepoem {:5.1} %",
+                q(&d_sombra, 0.99),
+                q(&d_ceu, 0.99),
+                cpu_b.len(),
+                gpu_b.len(),
+                100.0 * sobrep
+            );
+            piores.3 = piores.3.max(q(&d_sombra, 0.99));
+            piores.4 = piores.4.max(q(&d_ceu, 0.99));
+            piores.5 = piores.5.min(sobrep);
         }
         assert!(vistas > 10, "só {vistas} cenas foram comparadas");
 
@@ -840,11 +904,121 @@ mod gpu_gbuffer_parity {
             "o Δt do p99 é {:.3e} — a marcha do dispositivo está a parar noutro sítio",
             piores.1
         );
+        // ⭐ **A sombra e a oclusão são AO BIT comparáveis** — os dois motores correm a mesma
+        // sequência de amostragem, logo o que sobra é `f32`. ⛔ Uma sequência só «equivalente»
+        // obrigaria a descer a uma média, que é a régua que a §31 mostrou ser cega.
+        assert!(
+            piores.3 < 0.05,
+            "a sombra dos dois motores difere {:.4} no p99 — com o MESMO amostrador, isso já não \
+             é ruído",
+            piores.3
+        );
+        // ⚠️⚠️ **A barra da oclusão é o QUANTUM da medida, e a primeira redacção ficou ABAIXO
+        // dele.** Com `16` raios binários, a menor diferença possível é `1/16 = 0,0625` — um raio.
+        // Eu escrevi `0,05` e o gate acusou `0,0625` exacto, isto é, *acusou a granularidade*.
+        // ⇒ a barra é **dois** raios: um raio a discordar é `f32` numa saída rasante; dois já não.
+        assert!(
+            piores.4 < 2.0 / ph2d_field_render::OCCLUSION_PASSES as f32,
+            "a oclusão difere {:.4} no p99 — mais de UM raio de {} a discordar já não é `f32`",
+            piores.4,
+            ph2d_field_render::OCCLUSION_PASSES
+        );
+        // ⚠️ A borda é uma decisão de `cos` sobre `f32`: um pixel de fronteira pode cair de
+        // qualquer lado. *O que não pode é a POPULAÇÃO ser outra.*
+        assert!(
+            piores.5 > 0.9,
+            "as listas de borda só se sobrepõem {:.1} % — o critério de aresta divergiu",
+            100.0 * piores.5
+        );
         assert!(
             piores.2 < 1.0,
             "a normal dos dois motores difere {:.2}x mais do que um pixel difere do VIZINHO — \
              isso ja nao e condicionamento: e o estencil ou a base de vista a divergirem",
             piores.2
         );
+    }
+}
+
+#[cfg(test)]
+mod gpu_frame_clock {
+    /// ⭐⭐⭐ **O QUADRO COMPLETO NO DISPOSITIVO** — traçado, normal, sombra, oclusão e bordas, com
+    /// a leitura de volta dentro. É o relógio que o artista vai sentir.
+    #[test]
+    #[ignore = "precisa de GPU"]
+    fn measure_the_device_frame() {
+        use std::time::Instant;
+        let reg = ph2d_field_eval::hybrid::Registry::new();
+        let cam = ph2d_field_render::Orbit::default();
+        let (right, up, fwd) = cam.basis();
+        let doc = crate::smoke::scene(1);
+        let campo = ph2d_field_eval::Field::new(&doc);
+        let fita = campo.tape_wgsl().expect("a fita");
+        let bola = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+            .unwrap_or(ph2d_field_eval::bounds::Ball::EMPTY);
+        let passo = ph2d_field_eval::safe_march_step(&doc);
+        let shrink = ph2d_field_eval::field_shrink(&doc, &reg);
+        let ecra = [-0.5566703_f32, 0.6634139, 0.5];
+        let r = 2.0 * cam.half_extent;
+        let luz = [0, 1, 2]
+            .map(|i| cam.target[i] + r * (ecra[0] * right[i] + ecra[1] * up[i] + ecra[2] * fwd[i]));
+
+        println!(
+            "carga: {}",
+            std::fs::read_to_string("/proc/loadavg").unwrap().trim()
+        );
+        println!("  px        · DISPOSITIVO · a CPU faz · ganho");
+        for (w, h) in [(640_u32, 360_u32), (1920, 1080)] {
+            let screen = ph2d_field_render::Screen::new(w, h, cam.half_extent);
+            let sharp = ph2d_field_render::Sharpness::for_frame(cam.half_extent, w.min(h) as usize);
+            let setup = ph2d_field_gpu::trace::MarchSetup {
+                half_extent: cam.half_extent,
+                half_px: screen.half(),
+                target: cam.target,
+                right,
+                up,
+                fwd,
+                ortho_start: ph2d_field_render::ORTHO_START,
+                eye_distance: cam.eye_distance().unwrap_or(0.0),
+                hit_eps: sharp.hit,
+                normal_eps: sharp.normal,
+                step: passo,
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                budget: ((ph2d_field_render::MAX_STEPS as f32) * shrink.max(1.0)
+                    / passo.clamp(f32::EPSILON, 1.0))
+                .ceil() as u32,
+                t_max: ph2d_field_render::T_MAX,
+                lamp: luz,
+                ball_center: bola.center,
+                ball_radius: bola.radius,
+                ao_rays: ph2d_field_render::OCCLUSION_PASSES,
+                ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+                edge_cos: ph2d_field_render::EDGE_COS,
+            };
+            // ⛔⛔ **O TRAÇADOR VIVE ENTRE QUADROS, e a 1.ª redacção desta sonda usava a porta que
+            // abre o dispositivo a cada chamada** — ela leu `130 ms` a `640×360`, *mais lento que a
+            // CPU*, medindo a abertura e a compilação em vez do quadro. O doc daquela porta já
+            // dizia «é a forma de sonda», e eu usei-a como relógio na mesma.
+            let Some(mut tr) = ph2d_field_gpu::trace::Tracer::new() else {
+                println!("sem GPU");
+                return;
+            };
+            // A 1.ª corrida COMPILA o shader (§33); fica de fora.
+            let _ = tr.frame(&fita, setup, w, h);
+            let mut v: Vec<f64> = (0..5)
+                .map(|_| {
+                    let t = Instant::now();
+                    let g = tr.frame(&fita, setup, w, h);
+                    std::hint::black_box(g.edges.len());
+                    t.elapsed().as_secs_f64() * 1e3
+                })
+                .collect();
+            v.sort_by(f64::total_cmp);
+            let cpu = if w == 640 { 13.15 } else { 102.64 };
+            println!(
+                "{w:5}x{h:<4} · {:8.2} ms · {cpu:6.2} ms · {:5.1}x",
+                v[0],
+                cpu / v[0]
+            );
+        }
     }
 }

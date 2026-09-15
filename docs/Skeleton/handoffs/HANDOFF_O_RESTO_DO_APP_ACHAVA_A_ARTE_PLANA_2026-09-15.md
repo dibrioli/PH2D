@@ -743,3 +743,71 @@ tinha posto todos os ossos a influenciar a tela inteira e **piorado** a forma. M
 centro — *a configuração de hoje é o óptimo entre as nove medidas, e não um ponto de partida*.
 ⚠️ E as cenas «osso longo face à arte», que eu esperava serem melhores por usarem a força de fábrica,
 são **piores nas três colunas**.
+
+---
+
+## §15 — ⭐⭐⭐ ORDEM DO DONO: PINTAR ACHATA A ARTE (e o item 4 fica DORMENTE)
+
+*«Deixe como está por enquanto e Inative a possibilidade de pintar sobre malha deformada por ossos.
+SE o usuário entrar no modo Painter em imagem deformada por ossos a imagem deixa a deformação para
+ser pintada. Ao sair do modo painter, ela retorna a deformação.»* (2026-09-15)
+
+### ⭐⭐ Por que isto custou UM PARÂMETRO e não uma wave
+
+**Toda a app deriva de *«esta sprite tem malha posada?»***:
+
+| quem pergunta | sem malha |
+|---|---|
+| `canvas_map::CanvasMap` (grelha, guias, gizmos, contornos) | degenera no afim do quad, **ao bit** |
+| `ph2d_render::mesh_uv` (o dedo: conta-gotas, dab, alças) | `MeshUv::Quad` |
+| o passe de sprites | desenha o quad |
+
+⇒ **não atribuir a malha suspende as três metades de uma vez**, e nenhum consumidor precisa de saber
+o que é um Painter. *Uma cerca em cada um seria a mesma lei em três sítios.*
+
+⭐ **E o regresso é por CONSTRUÇÃO:** o `attach_skin_meshes` corre a cada quadro, logo deixar de
+suspender devolve a deformação sozinho. ⛔ **Não há estado a repor** — não há como ficar preso
+achatado depois de um crash, de um undo ou de trocar de selecção a meio.
+
+⚠️ **A tinta sobrevive intacta:** a malha vive nos bytes opacos da `SkinBind` (traçada no bind) e
+pintar escreve na TEXTURA. O que for pintado achatado dobra quando a pele volta.
+
+### ⏳ A CONSEQUÊNCIA, nomeada e devolvida ao dono
+
+**O chrome do Painter que passou a seguir a arte dobrada (§9 e §12 — grelha, selos, gizmos, os
+contornos das formas) deixa de ter sujeito enquanto se pinta**, porque durante a pintura não há
+dobra nenhuma. ⛔ Ele **não foi apagado e não custa nada** (sem malha o `CanvasMap` é o afim, ao
+bit): fica **DORMENTE**, e volta a valer no dia em que pintar sobre a dobra for permitido.
+
+⇒ o roteiro da cena mudou: ela passou a demonstrar o **ciclo** (dobrado → achata ao pegar no pincel
+→ pinta → dobra outra vez, com a tinta a dobrar junto). *Um roteiro que continuasse a mandar
+procurar a curva debaixo do pincel seria uma cena a ensinar o contrário do que acontece.*
+
+### Os gates
+
+| gate | onde | o que afirma |
+|---|---|---|
+| `a_sprite_suspensa_nao_recebe_malha_e_a_vizinha_recebe` | `ph2d-skeleton-live` | a suspensa fica sem malha, **a vizinha continua deformada** (senão é um interruptor geral com nome de excepção) e **o regresso** acontece ao deixar de suspender |
+| `o_latch_fala_uma_vez_por_entrada_e_volta_a_armar` | `ph2d-app-painter` | o aviso fala à entrada, **cala-se** enquanto se pinta e **volta a armar** ao sair |
+| `sem_o_painter_na_mao_nada_e_suspenso` | `ph2d-app-painter` | o controlo: a cura está presa ao MODO |
+| `painting_flattens_the_art_and_the_frame_passes_it_through` | `ph2d-editor-core` | a costura: a resposta da porta **chega** ao produtor da malha |
+
+### ⚠️ O que as catracas cobraram, e como foi pago
+
+⛔ **`the_shell_only_shrinks` reprovou DUAS vezes** (`+25` e depois `+15` linhas). Pago **movendo**,
+nunca subindo o número:
+
+| o que saiu da shell | para onde | porquê |
+|---|---|---|
+| a decisão + o aviso | `ph2d_app_painter::skin_suspend::achata_e_avisa` | é vocabulário do Painter |
+| a escolha `Fast`/`Smooth` | `ph2d_app_vec::pele_suave` | o knob é da família do vector |
+| a escala de ecrã da cena | `ph2d_app_motion::field_gizmo::scene_px_per_world` | a JANELA já vivia lá, e duas contas divergiriam no primeiro split |
+| o gate da costura | `ph2d-editor-core/tests/it/` (junto dos irmãos) | **um gate na árvore da shell paga o tecto dela como qualquer ficheiro** |
+
+⛔ E o `skin_image_tests.rs` estourou o teto por ficheiro (`734` de `700`): partido por **assunto**
+(`skin_suspend_tests.rs`, filho para herdar as fixturas do arnês).
+
+⚠️⚠️ **E o meu próprio gate ficou VERMELHO no `cargo fmt`**: a 1.ª agulha casava a lista de
+argumentos (`"px_por_metro, achatada,"`) e a formatação partiu-a sem uma linha de comportamento
+mudar. Hoje ela mede a **propriedade** (a pergunta precede o produtor, e a resposta entra na
+chamada). *É a 2.ª vez nesta jornada que uma agulha mede o layout em vez da lei.*

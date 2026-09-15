@@ -19,13 +19,8 @@ impl crate::App {
         ppm: f32,
         default_filter: ph2d_ecs::FilterMode,
     ) {
-        // A escolha do artista para a pele de imagem, lida antes do empréstimo do `gfx`.
-        let pele_suave = match self.vec.draw_config.skin_deform {
-            ph2d_tool_vector::SkinDeform::Fast => None,
-            ph2d_tool_vector::SkinDeform::Smooth => {
-                Some(crate::skeleton_skin_image::refine_options())
-            }
-        };
+        // A escolha do artista, lida antes do empréstimo do `gfx`.
+        let pele_suave = ph2d_app_vec::pele_suave(self.vec.draw_config.skin_deform);
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -35,6 +30,8 @@ impl crate::App {
             sim,
             present,
             camera,
+            tools,
+            toasts,
             prop_state,
             worklist,
             sort_scratch,
@@ -70,14 +67,27 @@ impl crate::App {
         // ⚠️ **O `ppm` é o MESMO do extract:** a régua da imagem e o quad resolvem a mesma âncora.
         // ⚠️ E a escala da câmera é a da CENA (`scene_camera_window`, a porta que o split do Motion
         // pede a todo mapeamento mundo↔ecrã), que é onde a tolerância do `Smooth` é medida.
-        let janela = hero_screen.as_ref().map_or(surface.size(), |h| {
-            ph2d_app_motion::field_gizmo::scene_camera_window(h.view.center_split, surface.size())
-        });
-        let px_por_metro = camera
-            .world_to_screen_affine(janela)
-            .determinant()
-            .abs()
-            .sqrt();
-        crate::skeleton_skin_image::attach_skin_meshes(sim, present, ppm, pele_suave, px_por_metro);
+        let px_por_metro = ph2d_app_motion::field_gizmo::scene_px_per_world(
+            camera,
+            hero_screen.as_ref().map(|h| h.view.center_split),
+            surface.size(),
+        );
+        // ⭐⭐⭐ **PINTAR ACHATA A ARTE** (ordem do dono, 2026-09-15): a sprite que o Painter edita
+        // não recebe malha, e o desenho, o ponteiro e o chrome voltam ao quad de uma vez. Sair
+        // devolve a deformação no quadro seguinte — ver [`ph2d_app_painter::skin_suspend`].
+        let achatada = ph2d_app_painter::skin_suspend::achata_e_avisa(
+            tools,
+            hero_screen.as_ref().and_then(|h| h.gizmo.selection),
+            |e| ph2d_skeleton_live::skin_image::is_skinned_image(sim.world(), e),
+            toasts,
+        );
+        crate::skeleton_skin_image::attach_skin_meshes(
+            sim,
+            present,
+            ppm,
+            pele_suave,
+            px_por_metro,
+            achatada,
+        );
     }
 }

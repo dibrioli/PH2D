@@ -65,6 +65,23 @@
 //! máscara já escreveu: *uma cena que arma estado por baixo da mesa salta exactamente a costura que
 //! ela devia provar, e esconde um default mau.*
 //!
+//! # ⭐⭐⭐ O QUE ELA DEMONSTRA MUDOU EM 2026-09-15, POR ORDEM DO DONO
+//!
+//! *«Inative a possibilidade de pintar sobre malha deformada por ossos. SE o usuário entrar no modo
+//! Painter em imagem deformada por ossos a imagem deixa a deformação para ser pintada. Ao sair do
+//! modo painter, ela retorna a deformação.»*
+//!
+//! ⇒ a cena passou a demonstrar o **ciclo** (dobrado → achata ao pegar no pincel → pinta → dobra
+//! outra vez ao largá-lo, com a tinta a dobrar junto), e **não** mais as guias a seguir a curva.
+//!
+//! ⚠️⚠️ **E a consequência está NOMEADA e é do dono decidir:** o chrome do Painter que passou a
+//! seguir a arte dobrada (a grelha, os selos, os gizmos, os contornos das formas — item 4) **deixa
+//! de ter sujeito enquanto se pinta**, porque durante a pintura não há dobra nenhuma. ⛔ Ele não foi
+//! apagado e não custa nada: sem malha o [`ph2d_app_painter::canvas_map::CanvasMap`] degenera no
+//! afim do quad, **ao bit**. Fica **dormente** — e volta a valer no dia em que pintar sobre a dobra
+//! for permitido. *Um roteiro de smoke que continuasse a mandar procurar a curva debaixo do pincel
+//! seria uma cena a ensinar o contrário do que acontece.*
+//!
 //! ⚠️ **Se a linha `[bone-paint-smoke]` não aparecer, PARE:** a cena não montou.
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -320,11 +337,10 @@ pub fn build(
     println!(
         "[bone-paint-smoke] canvas '{label}' ({LARGURA_PX}x{ALTURA_PX}, branco) PRESO a {OSSOS} ossos \
          e dobrado {DOBRA_GRAUS}° por junta. NADA mais esta' armado.\n\
-         [bone-paint-smoke] 1) pegue a ferramenta Painter  2) escolha uma forma (Rectangle/Ellipse) e \
-         arraste uma sobre o canvas: o CONTORNO e a CAIXA dela tem de seguir a curva, e a caixa tem de \
-         FECHAR pela curva (os quatro lados, nao tres)  3) ligue a grelha (Grid): as linhas dela tem de \
-         acompanhar a dobra em vez de a atravessarem a direito  4) o que estiver desenhado tem de poder \
-         ser AGARRADO onde ele aparece, nao na reta entre as pontas."
+         [bone-paint-smoke] 1) veja o canvas DOBRADO  2) pegue a ferramenta Painter: ele tem de \
+         ENDIREITAR-SE para ser pintado, e um aviso diz porque  3) pinte qualquer coisa (uma forma, \
+         um traco)  4) pegue noutra ferramenta (Select): o canvas tem de VOLTAR a dobrar-se, e o que \
+         voce pintou tem de dobrar com ele."
     );
     Some(bits)
 }

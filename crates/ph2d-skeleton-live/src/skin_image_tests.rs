@@ -295,7 +295,7 @@ fn at_rest_each_pixel_of_a_bound_image_is_read_where_the_quad_reads_it() {
         let mut present = PresentWorld::new();
         let p = present.world_mut().spawn((SimRef(e), inst)).id();
         assert_eq!(
-            attach_skin_meshes(&sim, &mut present, PPM, None, PX_POR_METRO),
+            attach_skin_meshes(&sim, &mut present, PPM, None, PX_POR_METRO, None),
             1,
             "{nome}: a instancia da imagem presa nao recebeu malha"
         );
@@ -384,7 +384,7 @@ fn only_the_base_instance_of_the_sprites_own_quad_gets_the_mesh() {
     let patch_c = present.world_mut().spawn((SimRef(c), patch)).id();
 
     assert_eq!(
-        attach_skin_meshes(&sim, &mut present, PPM, None, PX_POR_METRO),
+        attach_skin_meshes(&sim, &mut present, PPM, None, PX_POR_METRO, None),
         1,
         "so' a imagem com o quad dela emitido podia receber malha"
     );
@@ -454,7 +454,7 @@ fn the_smooth_pieces_of_all_skinned_images_share_one_frame_budget() {
             present.world_mut().entity_mut(p).remove::<SpriteMesh>();
         }
         assert_eq!(
-            attach_skin_meshes(&sim, &mut present, PPM, modo, PX_POR_METRO),
+            attach_skin_meshes(&sim, &mut present, PPM, modo, PX_POR_METRO, None),
             2,
             "as duas imagens presas tinham de receber malha"
         );
@@ -610,7 +610,7 @@ fn measure_the_cpu_cost_of_a_skinned_frame() {
             for _ in 0..RONDAS {
                 present.world_mut().entity_mut(p).remove::<SpriteMesh>();
                 let t = Instant::now();
-                attach_skin_meshes(&sim, &mut present, PPM, modo, PX_POR_METRO);
+                attach_skin_meshes(&sim, &mut present, PPM, modo, PX_POR_METRO, None);
                 ms.push(t.elapsed().as_secs_f64() * 1e3);
             }
             ms
@@ -664,3 +664,9 @@ fn posed_local(sim: &SimWorld, e: Entity, mesh: &Mesh2d) -> Option<Vec<[f64; 2]>
 /// herdar as fixturas deste arnês (uma cópia delas divergiria no primeiro ajuste).
 #[path = "skin_at_time_tests.rs"]
 mod at_time;
+
+/// A SUSPENSÃO da pele (pintar achata a arte) — filho por assunto, e aqui dentro para herdar as
+/// fixturas deste arnês (uma cópia delas divergiria no primeiro ajuste). Saiu para ficheiro próprio
+/// em 2026-09-15, pelo teto de LOC por ficheiro.
+#[path = "skin_suspend_tests.rs"]
+mod suspensao;

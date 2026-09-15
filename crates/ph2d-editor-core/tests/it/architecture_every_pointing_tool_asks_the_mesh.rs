@@ -507,3 +507,47 @@ fn the_shape_overlays_ask_the_door_for_the_whole_outline() {
         "{DEFORM}: a caixa do gizmo de Deform deixou de fechar pela arte."
     );
 }
+
+/// ⭐⭐⭐ **PINTAR ACHATA A ARTE, e o quadro CONSULTA a porta em vez de a citar.**
+///
+/// Ordem do dono, 2026-09-15: *«inative a possibilidade de pintar sobre malha deformada por ossos;
+/// ao entrar no Painter a imagem deixa a deformação, e ao sair ela retorna»*.
+///
+/// ⚠️ Que a suspensão FUNCIONE está medido na folha
+/// (`ph2d-skeleton-live::skin_suspend_tests`); o que só o quadro pode dizer é que a resposta da
+/// porta CHEGA ao produtor da malha — *chamá-la e deitar fora o que ela devolve compila, passa a
+/// folha, e o dono continua a pintar sobre arte dobrada*.
+///
+/// ⛔ **Ele mora AQUI e não na `shells/desktop/tests/`** pela catraca `the_shell_only_shrinks`: um
+/// gate na árvore da shell paga o tecto dela como qualquer outro ficheiro, e este lê um ficheiro do
+/// repo por caminho — que é exactamente o que o [`fonte`] deste módulo já faz para os irmãos.
+#[test]
+fn painting_flattens_the_art_and_the_frame_passes_it_through() {
+    const FASE: &str = "shells/desktop/src/render_loop/fase_sim_extract.rs";
+    let src = fonte(FASE);
+    let pergunta = src
+        .find("skin_suspend::achata_e_avisa(")
+        .unwrap_or_else(|| panic!("{FASE} deixou de perguntar QUEM o Painter esta' a achatar"));
+    let produtor = src
+        .find("skeleton_skin_image::attach_skin_meshes(")
+        .unwrap_or_else(|| panic!("{FASE} deixou de por malha nenhuma"));
+    assert!(
+        pergunta < produtor,
+        "{FASE} pergunta DEPOIS de por a malha: a suspensao chega um quadro atrasada"
+    );
+    // ⚠️⚠️ **A agulha nomeia a LEI, nunca a FORMATAÇÃO.** A 1.ª redacção casava a lista de
+    // argumentos (`"px_por_metro, achatada,"`) e ficou VERMELHA no `cargo fmt` do mesmo dia, sem
+    // uma linha de comportamento mudar. A propriedade é: dentro da chamada, a resposta entra.
+    let chamada = &src[produtor..];
+    let fim = chamada.find(");").unwrap_or(chamada.len());
+    assert!(
+        chamada[..fim].contains("achatada"),
+        "{FASE} pergunta e NAO passa a resposta ao `attach_skin_meshes`: a arte continua deformada \
+         por baixo do pincel"
+    );
+    // ⚠️ E a porta MUDA (`sprite_achatada`) achataria em silencio: o report seguinte seria «a arte saltou».
+    assert!(
+        !src.contains("skin_suspend::sprite_achatada("),
+        "{FASE} chama a porta MUDA: a arte endireita-se sem uma palavra"
+    );
+}

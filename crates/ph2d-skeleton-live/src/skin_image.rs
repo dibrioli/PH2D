@@ -406,6 +406,18 @@ fn f32_de(q: [f64; 2]) -> [f32; 2] {
 /// (o `size` e a âncora resolvida dela); fora disso a sprite desenha-se sem deformar e o aviso diz
 /// porquê.
 ///
+/// ⭐⭐⭐ **`suspensa` é a sprite que NÃO recebe malha neste quadro** — hoje, aquela que o Painter
+/// está a editar (ordem do dono, 2026-09-15: *«se o usuário entrar no modo Painter em imagem
+/// deformada por ossos a imagem deixa a deformação para ser pintada; ao sair, ela retorna»*).
+///
+/// ⚠️ **Esta folha não sabe o que é um Painter, e é assim que tem de ser:** quem decide é quem
+/// chama ([`ph2d_app_painter::skin_suspend::sprite_achatada`]), e o parâmetro diz **o quê**, nunca
+/// **porquê**. ⭐ O filtro é o PRIMEIRO da cadeia, logo a malha suspensa nem chega a ser
+/// descodificada — a suspensão é mais barata que a deformação, não mais cara.
+///
+/// ⛔ **O regresso é por construção:** isto corre a cada quadro, então deixar de suspender devolve
+/// a deformação sozinho. *Não há estado a repor, logo não há como ficar preso achatado.*
+///
 /// ⭐⭐ **`Smooth`** (`smooth = Some`): a tolerância é em pixels de ECRÃ, e a escala `local → ecrã` é
 /// a base de mundo que a instância leva para a GPU (`basis`) vezes `px_per_world`, a da câmera — a
 /// que a GPU aplica, e não uma segunda conta a partir do `Transform`. O orçamento é do QUADRO,
@@ -416,11 +428,12 @@ pub fn attach_skin_meshes(
     pixels_per_meter: f32,
     smooth: Option<RefineOptions>,
     px_per_world: f64,
+    suspensa: Option<u64>,
 ) -> usize {
     let presas: Vec<(Entity, Mesh2d)> = sim
         .world()
         .iter_entities()
-        .filter(|er| is_skinned_image(sim.world(), er.id()))
+        .filter(|er| is_skinned_image(sim.world(), er.id()) && Some(er.id().to_bits()) != suspensa)
         .filter_map(|er| Some((er.id(), mesh_of(sim, er.id())?)))
         .collect();
     if presas.is_empty() {

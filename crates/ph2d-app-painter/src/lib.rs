@@ -116,6 +116,9 @@ mod painter_preview_pipeline_tests;
 mod painter_preview_undo_tests;
 /// A ponte do carimbo de pigmento para o dispositivo (doc 33 §S3) — a metade do lado do shell.
 pub mod painter_stamp_device;
+/// ⭐⭐⭐ Pintar ACHATA a arte: a pele fica suspensa enquanto o Painter edita a textura
+/// (ordem do dono, 2026-09-15).
+pub mod skin_suspend;
 pub mod substrate_smoke;
 pub mod taper_smoke;
 pub mod wetpaint_smoke;

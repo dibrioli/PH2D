@@ -423,3 +423,30 @@ pub fn apply_field_drag(
 #[cfg(test)]
 #[path = "field_gizmo_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **PIXELS DE ECRÃ POR METRO DE MUNDO, na área da CENA** — a escala que toda tolerância
+/// medida em pixels precisa.
+///
+/// ⛔ **Ela vive aqui porque a JANELA vive aqui** ([`scene_camera_window`]): o split do Motion tira
+/// à cena parte do ecrã, e uma escala derivada da janela inteira estaria errada exactamente nos
+/// quadros em que o Motion está aberto. *Duas contas para a mesma grandeza divergem no primeiro
+/// split.*
+///
+/// ⚠️ **Saiu da `shells/desktop` em 2026-09-15**, pela catraca `the_shell_only_shrinks`: ela é
+/// composição, e isto é aritmética de câmera — o único consumidor de hoje é a tolerância do
+/// `Smooth` da pele de imagem.
+#[must_use]
+pub fn scene_px_per_world(
+    camera: &Camera2d,
+    center_split: Option<CenterSplit>,
+    janela: WindowSize,
+) -> f64 {
+    // ⚠️ **Sem ecrã Hero não há split**, e a área é a janela inteira — a mesma degradação que o
+    // chamador fazia à mão antes de isto sair da shell.
+    let area = center_split.map_or(janela, |s| scene_camera_window(s, janela));
+    camera
+        .world_to_screen_affine(area)
+        .determinant()
+        .abs()
+        .sqrt()
+}

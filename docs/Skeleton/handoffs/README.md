@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**6 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **6** são handoffs (registro **morto**).
+**7 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **7** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -20,6 +20,7 @@
 | 2026-09-13 |   | [HANDOFF_INTEGRACAO_line_Vector_A_PELE_NO_PASSE_DE_SPRITES_2026-09-13.md](HANDOFF_INTEGRACAO_line_Vector_A_PELE_NO_PASSE_DE_SPRITES_2026-09-13.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/Vector` · A PELE DE IMAGEM ENTRA NO PASSE DE SPRITES |
 | 2026-09-13 |   | [HANDOFF_INTEGRACAO_line_Vector_O_ATLAS_E_O_QUADRO_2026-09-13.md](HANDOFF_INTEGRACAO_line_Vector_O_ATLAS_E_O_QUADRO_2026-09-13.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/Vector` · O `SMOOTH` ERA O ATLAS, A PORTA DO VELLO, E O ORÇAMENTO POR QUADRO |
 | 2026-09-14 |   | [HANDOFF_A_CURVATURA_DEBAIXO_DO_DAB_2026-09-14.md](HANDOFF_A_CURVATURA_DEBAIXO_DO_DAB_2026-09-14.md) | ⚠️ handoff (morto) | A CURVATURA DEBAIXO DO DAB — o *«quase bom»* tinha número, e não era inevitável |
+| 2026-09-15 |   | [HANDOFF_O_OSSO_QUE_DOBRA_2026-09-15.md](HANDOFF_O_OSSO_QUE_DOBRA_2026-09-15.md) | ⚠️ handoff (morto) | O OSSO QUE DOBRA — os *bendy bones*, da lei ao painel (`line/Vector`, 2026-09-15) |
 | 2026-09-15 |   | [HANDOFF_O_RESTO_DO_APP_ACHAVA_A_ARTE_PLANA_2026-09-15.md](HANDOFF_O_RESTO_DO_APP_ACHAVA_A_ARTE_PLANA_2026-09-15.md) | ⚠️ handoff (morto) | O RESTO DO APP AINDA ACHAVA QUE A ARTE É PLANA — o censo, e as três ferramentas curadas |
 
 ---

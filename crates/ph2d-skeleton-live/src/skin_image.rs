@@ -191,8 +191,25 @@ const CUSTO_POR_PECA_NS: usize = 1_080;
 /// | recolher + costurar a tira + enviar + DESENHAR (GPU esperada) | `0,039` |
 /// | **`Smooth`: o quadro inteiro, por peça ENTREGUE** | **`1,08`** |
 ///
-/// ⇒ `16,667 ms ÷ 10 ÷ 1,08 µs` = **`1 543` peças**. ⚠️ **Este é o tecto; quem decide o refinamento
-/// é a TOLERÂNCIA** — dentro dele o `Smooth` refina só o que a dobra pedir.
+/// ⇒ `16,667 ms ÷ 10 ÷ 1,08 µs` = **`1 543` peças**.
+///
+/// ⛔⛔⛔ **E ESTA NOTA AFIRMAVA UMA COISA FALSA ATÉ 2026-09-15:** *«este é o tecto; quem decide o
+/// refinamento é a TOLERÂNCIA — dentro dele o `Smooth` refina só o que a dobra pedir»*. Ele **não**
+/// refina só o que a dobra pede: o `k` do [`ph2d_poly2d::refine_posed`] é **GLOBAL** (cada triângulo
+/// é partido `k × k`), e o tecto dele é `max_split = ⌊√(orçamento / peças)⌋`. ⇒ **uma malha base
+/// acima de `orçamento / 4` peças só admite `k = 1`, e o `Smooth` fica byte-idêntico ao `Fast`, com
+/// a tolerância a não decidir nada.**
+///
+/// ⚠️ Com `1 543` de orçamento isso é toda malha acima de **`385`** triângulos — que é quase toda
+/// arte real. Medido na cena do osso (`PH2D_VEC_BONE_PAINT_SMOKE`, 2026-09-15): `780` peças ⇒
+/// `k = 1` ⇒ desvio de **`14,24 px`** de ecrã contra uma tolerância que promete `0,5`.
+///
+/// ⭐ **O caminho está medido e é o ADAPTATIVO:** com `k` por triângulo (só onde o desvio pede) a
+/// mesma cena custa `3 034` peças contra as `28 080` do `k = 6` global — **`9×` mais barato** —, e
+/// numa cena bem autorada cai para `1 059`, **dentro** deste orçamento. Ele não está construído; o
+/// mecanismo, os números e a armadilha (as arestas pendentes) estão no handoff §13 de 2026-09-15.
+/// ⚠️ **O `PH2D_BONE_LOG=1` diz agora quando o refinamento está desligado por esta aritmética** —
+/// antes «não precisou» e «não pôde» imprimiam a mesma linha.
 pub const SKIN_FRAME_PIECES: usize = QUADRO_60FPS_US * 1_000 / FATIA_DA_PELE / CUSTO_POR_PECA_NS;
 
 /// ⛔⛔ **A OUTRA PONTA DO TECTO, verificada na COMPILAÇÃO.** Um tecto apertado de mais deixa de
@@ -466,12 +483,28 @@ pub fn attach_skin_meshes(
         // ⚠️ **O diagnóstico da família** (`PH2D_BONE_LOG=1`): sem ele um report de *«partiu»* não
         // distingue *quantas peças* de *que dobra* — e foi a CONTAGEM que se revelou a grandeza que
         // importa.
-        if let (Some(o), true) = (smooth, std::env::var_os("PH2D_BONE_LOG").is_some()) {
+        if let (Some(o), true) = (refine, std::env::var_os("PH2D_BONE_LOG").is_some()) {
             eprintln!(
                 "[bone] pele suave: {antes} -> {} pecas (k={k}, de um orcamento de quadro {})",
                 malha.tris.len(),
                 o.max_pieces
             );
+            // ⭐⭐⭐ **A LINHA QUE FALTAVA: «k=1» tem DUAS causas e elas são opostas.**
+            //
+            // ⛔⛔ Ou a dobra não pediu refinamento nenhum (tudo bem), ou o ORÇAMENTO o proibiu —
+            // e nesse caso o `Smooth` é o `Fast` **ao bit**, com o painel a dizer que está ligado.
+            // Medido 2026-09-15 na cena do osso: `780` peças com orçamento `1 543` ⇒
+            // `780 × 2² = 3 120 > 1 543` ⇒ `max_split = 1`, e a tolerância nunca decide nada.
+            // *Um diagnóstico que imprime o mesmo número para «não precisou» e para «não pôde»
+            // cala exactamente a pergunta que o report do dono fazia.*
+            if ph2d_poly2d::max_split(antes, o) == 1 {
+                eprintln!(
+                    "[bone]   ⚠ o REFINAMENTO esta' DESLIGADO POR ARITMETICA: {antes} x 2² = {} > \
+                     {} -- aqui o Smooth E' o Fast, e a tolerancia nao decide nada",
+                    antes * 4,
+                    o.max_pieces
+                );
+            }
         }
         present.world_mut().entity_mut(p).insert(malha);
         feitas += 1;

@@ -66,6 +66,7 @@ fn measure_what_a_glow_paints_and_what_the_call_costs() {
         lamps: &lamps,
         points: &[],
         sky: &StudioSky,
+        shadows: None,
     };
     let olhar = crate::shading::OPENING_LOOK;
 

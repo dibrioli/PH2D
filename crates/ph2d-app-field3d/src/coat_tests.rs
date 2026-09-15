@@ -68,6 +68,7 @@ fn measure_which_of_the_coat_numbers_move_the_picture() {
         lamps: &lamps,
         points: &[],
         sky: &StudioSky,
+        shadows: None,
     };
     let olhar = crate::shading::OPENING_LOOK;
     // ⚠️ **A BASE É FOSCA** (`specular_roughness 0,6`): é sobre uma superfície baça que um verniz

@@ -64,6 +64,7 @@ fn every_part_pixel_is_the_material_law_under_the_look() {
         lamps: &lamps,
         points: &[],
         sky: &sky,
+        shadows: None,
     };
     for look in [
         Look::default(),

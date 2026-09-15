@@ -182,6 +182,7 @@ fn measure_what_the_render_mode_costs_and_paints() {
         lamps: &lamps,
         points: &[],
         sky: &StudioSky,
+        shadows: None,
     };
     let t = Instant::now();
     let render_px = shade_render(&g, &cam, &surface, &light, Look::default(), BG);
@@ -427,6 +428,7 @@ fn measure_what_material_per_object_costs_the_shading() {
             lamps: &lamps,
             points: &[],
             sky: &StudioSky,
+            shadows: None,
         };
         // ⚠️ A mediana de 5, com um aquecimento antes — e o MÍNIMO ao lado, porque esta máquina não
         // desce de `load ~7` (a nota do `project-memory`).
@@ -522,6 +524,7 @@ fn measure_how_much_of_the_material_this_sky_lets_through() {
             lamps,
             points: &[],
             sky,
+            shadows: None,
         };
         shade_render(&g, &cam, &surface, &light, crate::shading::OPENING_LOOK, BG)
     };

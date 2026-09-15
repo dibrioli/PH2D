@@ -37,6 +37,7 @@ fn measure_what_the_last_five_openpbr_inputs_would_buy() {
         lamps: &lamps,
         points: &[],
         sky: &StudioSky,
+        shadows: None,
     };
     let olhar = crate::shading::OPENING_LOOK;
     let pinta = |m: ph2d_material::OpenPbr| {

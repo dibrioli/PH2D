@@ -107,6 +107,7 @@ mod march;
 mod probe_doors;
 mod shade;
 mod shade_render;
+mod shadow;
 mod tape_cache;
 mod tiles;
 use edges::resample_edges;
@@ -125,6 +126,7 @@ pub use shade::{shade, shade_with};
 pub use shade_render::{
     Lamp, Lighting, POINT_LAMP_MIN_DISTANCE, PointLamp, Surfaces, shade_render,
 };
+pub use shadow::{HARDNESS, Shadows, shadow_pass};
 pub use tape_cache::{
     EVICT_NS, GET_NS, Growth, INFLATE, PAD_OF_REACH, TAPE_DROPPED, TAPE_EVICTIONS, TAPE_HITS,
     TapeCache,

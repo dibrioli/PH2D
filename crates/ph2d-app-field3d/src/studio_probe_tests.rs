@@ -52,6 +52,7 @@ fn measure_which_softbox_the_rulers_choose() {
                 lamps: &lamps,
                 points: &[],
                 sky,
+                shadows: None,
             };
             shade_render(&g, &cam, &surface, &light, look, BG)
         };
@@ -119,6 +120,7 @@ fn measure_which_softbox_the_rulers_choose() {
             lamps: &lamps,
             points: &[],
             sky,
+            shadows: None,
         };
         let look = Look {
             exposure_stops: stops,
@@ -338,6 +340,7 @@ fn measure_what_the_box_costs_per_frame() {
             lamps: &lamps,
             points: &[],
             sky,
+            shadows: None,
         };
         let _ = shade_render(&g, &cam, &surface, &light, Look::default(), BG);
         let mut v: Vec<f64> = (0..7)

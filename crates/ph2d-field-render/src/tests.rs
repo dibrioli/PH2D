@@ -6,6 +6,7 @@ use ph2d_field_eval::hybrid::Registry;
 
 mod hull_cache_probe;
 mod shade_render_gates;
+mod shadow_gates;
 
 fn sphere(radius: f32) -> FieldDoc {
     FieldDoc::new(
@@ -6284,6 +6285,290 @@ fn the_point_of_the_gbuffer_is_on_the_surface_and_comes_back_to_its_pixel() {
         );
         println!(
             "{nome:9}: {acertos} px · pior |campo| {pior_campo:e} · pior volta {pior_volta:.3} px"
+        );
+    }
+}
+
+/// ⏱️⏱️ **SONDA — QUANTO CABE DE SOMBRA NUM QUADRO** (a `W4` do
+/// [plano](../../../docs/Render3d/03_o_plano.md)).
+///
+/// # ⚠️ O plano manda MEDIR primeiro, e este é esse passo
+///
+/// A `W5` escreve, por extenso: *«a wave começa por medir quanto de GI cabe, e o resultado pode ser
+/// “cozida e não em tempo real” — que é uma resposta legítima»*. A `W4` tem o mesmo risco por uma
+/// razão nomeada: a marcha do quadro é `80 %` dele, e uma sombra é **outra marcha por pixel** que
+/// **não** herda a especialização por ladrilho (aquela árvore é do frustum da câmera; estes raios
+/// apontam à luz).
+///
+/// ⇒ o que esta sonda imprime é o preço do caminho **ingénuo**, que é o que existe hoje.
+///
+/// ⚠️ **Mínimo de `5` corridas com o `/proc/loadavg` ao lado** (`CLAUDE.md` §5.0), e ela corre-se em
+/// `--release`.
+#[test]
+#[ignore = "sonda de medição: imprime uma tabela, não afirma nada"]
+fn measure_how_much_shadow_fits_in_a_frame() {
+    use std::time::Instant;
+
+    fn mediana(v: &[f32]) -> f32 {
+        let mut v = v.to_vec();
+        v.sort_by(f32::total_cmp);
+        v.get(v.len() / 2).copied().unwrap_or(0.0)
+    }
+
+    // Uma peça com partes que se tapam umas às outras — três cilindros cruzados, como a cena `=1`
+    // do smoke. ⚠️ Uma esfera sozinha é CONVEXA e não se auto-sombreia: medir nela responderia
+    // «barato» sobre um caso em que não há nada a fazer.
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    let cyl = |rot: [f32; 4]| {
+        ph2d_field_eval::leaf(
+            Primitive::Cylinder {
+                radius: 0.22,
+                half_height: 0.78,
+                round: 0.05,
+                chamfer: 0.0,
+            },
+            Xform {
+                rotation: rot,
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let doc = ph2d_field::FieldDoc::new(
+        vec![
+            cyl([0.0, 0.0, 0.0, 1.0]),
+            cyl([s, 0.0, 0.0, s]),
+            cyl([0.0, 0.0, s, s]),
+            ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Exact { radius: 0.12 }),
+                    children: vec![NodeId(0), NodeId(1), NodeId(2)],
+                },
+                mods: Vec::new(),
+                verb: None,
+            },
+        ],
+        NodeId(3),
+    )
+    .expect("a peça");
+    let reg = Registry::new();
+    let cam = Orbit::default();
+
+    println!(
+        "carga: {}",
+        std::fs::read_to_string("/proc/loadavg").unwrap().trim()
+    );
+    println!(
+        "  px   · pixels de peça ·   traçado · sombra TODA · só de FRENTE · do quadro · população · tapados"
+    );
+    // ⚠️ Os dois tamanhos que o PRODUTO usa: `640×360` é `1920×1080` no piso do divisor (D=3, o
+    // quadro em MOVIMENTO) e `1920×1080` é o quadro ASSENTE, que a `preview::next_trace` pede
+    // inteiro assim que a mão pára. Os outros dois são a escada.
+    for (w, h) in [(320_u32, 180_u32), (640, 360), (1280, 720), (1920, 1080)] {
+        let med = |f: &dyn Fn() -> f64| -> f64 {
+            let mut v: Vec<f64> = (0..5).map(|_| f()).collect();
+            v.sort_by(f64::total_cmp);
+            v[0]
+        };
+        let g = trace(&doc, &reg, &cam, w, h);
+        let tracado = med(&|| {
+            let t = Instant::now();
+            let g = trace(&doc, &reg, &cam, w, h);
+            std::hint::black_box(g.hits());
+            t.elapsed().as_secs_f64() * 1e3
+        });
+
+        // A luz onde a wave da §25 a põe: a direcção da lâmpada do rig, a `2 × half_extent`.
+        let (right, up, toward_eye) = cam.basis();
+        let ecra = [-0.5566703_f32, 0.6634139, 0.5];
+        let r = 2.0 * cam.half_extent;
+        let luz = [0, 1, 2].map(|i| {
+            cam.target[i] + r * (ecra[0] * right[i] + ecra[1] * up[i] + ecra[2] * toward_eye[i])
+        });
+
+        // ⭐⭐⭐ **SÓ QUEM VÊ A LUZ precisa de raio de sombra.** Uma superfície de COSTAS para ela já
+        // está escura pelo `N·L` do material, e o raio dela acerta na própria peça no primeiro passo
+        // — *contá-la como «tapada» é verdade e é inútil*. ⇒ a sonda mede as duas populações.
+        let de_frente = |i: usize| -> bool {
+            let n = g.normal[i];
+            let p = g.point[i];
+            let d = [luz[0] - p[0], luz[1] - p[1], luz[2] - p[2]];
+            let l = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt().max(1e-6);
+            // A normal está em espaço de VISTA; a luz, em mundo. A base converte.
+            let nm = [
+                n[0] * right[0] + n[1] * up[0] + n[2] * toward_eye[0],
+                n[0] * right[1] + n[1] * up[1] + n[2] * toward_eye[1],
+                n[0] * right[2] + n[1] * up[2] + n[2] * toward_eye[2],
+            ];
+            (nm[0] * d[0] + nm[1] * d[1] + nm[2] * d[2]) / l > 0.0
+        };
+        let todos: Vec<usize> = (0..g.hit.len()).filter(|i| g.hit[*i]).collect();
+        let frente: Vec<usize> = todos.iter().copied().filter(|i| de_frente(*i)).collect();
+        let pontos: Vec<[f32; 3]> = todos.iter().map(|i| g.point[*i]).collect();
+        let pontos_frente: Vec<[f32; 3]> = frente.iter().map(|i| g.point[*i]).collect();
+        let dirs: Vec<[f32; 3]> = pontos
+            .iter()
+            .map(|p| {
+                let d = [luz[0] - p[0], luz[1] - p[1], luz[2] - p[2]];
+                let n = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt().max(1e-6);
+                [d[0] / n, d[1] / n, d[2] / n]
+            })
+            .collect();
+
+        let shape = ph2d_field_eval::hybrid::Hybrid::new(&doc, &reg);
+        let scene = crate::march::Scene {
+            shape: &shape,
+            cam: &cam,
+            basis: cam.basis(),
+            sharp: Sharpness::for_frame(cam.half_extent, (w.min(h)) as usize),
+            clip: None,
+            step: ph2d_field_eval::safe_march_step(&doc),
+            shrink: ph2d_field_eval::field_shrink(&doc, &reg),
+            stencil: Stencil::Tetra4,
+        };
+        let sombra = med(&|| {
+            let t = Instant::now();
+            let v = crate::march::march_shadow(&scene, &pontos, &dirs, r * 2.0, 8.0);
+            std::hint::black_box(v.len());
+            t.elapsed().as_secs_f64() * 1e3
+        });
+        let dirs_frente: Vec<[f32; 3]> = pontos_frente
+            .iter()
+            .map(|p| {
+                let d = [luz[0] - p[0], luz[1] - p[1], luz[2] - p[2]];
+                let n = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt().max(1e-6);
+                [d[0] / n, d[1] / n, d[2] / n]
+            })
+            .collect();
+        // ⭐⭐⭐ **A CERCA DO RAIO: nada ALÉM da lâmpada pode tapar.** O `t_max` da 1.ª medição era
+        // `2 × r` — o DOBRO da distância a que a lâmpada está —, e a marcha que escapa da peça paga
+        // o dobro do caminho a perguntar a um campo vazio. A cerca honesta é **a distância à luz**,
+        // por raio; e a bola que contém a peça corta ainda mais cedo, porque um raio que SAIU dela
+        // nunca mais lá volta.
+        let ate_a_luz: Vec<f32> = pontos_frente
+            .iter()
+            .map(|p| {
+                let d = [luz[0] - p[0], luz[1] - p[1], luz[2] - p[2]];
+                (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
+            })
+            .collect();
+        let bola = ph2d_field_eval::bounds::bounding_ball(&doc, &reg).expect("a bola da peça");
+        // Saída da bola: a raiz maior de |o + t·d − c|² = R², com |d| = 1.
+        let ate_a_bola: Vec<f32> = pontos_frente
+            .iter()
+            .zip(&dirs_frente)
+            .zip(&ate_a_luz)
+            .map(|((p, d), luz_t)| {
+                let oc = [
+                    p[0] - bola.center[0],
+                    p[1] - bola.center[1],
+                    p[2] - bola.center[2],
+                ];
+                let b = oc[0] * d[0] + oc[1] * d[1] + oc[2] * d[2];
+                let c = oc[0] * oc[0] + oc[1] * oc[1] + oc[2] * oc[2] - bola.radius * bola.radius;
+                let disc = b * b - c;
+                let saida = if disc <= 0.0 { 0.0 } else { -b + disc.sqrt() };
+                saida.max(0.0).min(*luz_t)
+            })
+            .collect();
+        println!(
+            "         cercas: 2r = {:.3} · até a luz p50 {:.3} · até a bola p50 {:.3} (raio da bola {:.3})",
+            r * 2.0,
+            mediana(&ate_a_luz),
+            mediana(&ate_a_bola),
+            bola.radius,
+        );
+
+        let sombra_frente = med(&|| {
+            let t = Instant::now();
+            let v = crate::march::march_shadow(&scene, &pontos_frente, &dirs_frente, r * 2.0, 8.0);
+            std::hint::black_box(v.len());
+            t.elapsed().as_secs_f64() * 1e3
+        });
+        let sombra_luz = med(&|| {
+            let t = Instant::now();
+            let v = crate::march::march_shadow_to(
+                &scene,
+                &pontos_frente,
+                &dirs_frente,
+                &ate_a_luz,
+                8.0,
+            );
+            std::hint::black_box(v.len());
+            t.elapsed().as_secs_f64() * 1e3
+        });
+        let sombra_bola = med(&|| {
+            let t = Instant::now();
+            let v = crate::march::march_shadow_to(
+                &scene,
+                &pontos_frente,
+                &dirs_frente,
+                &ate_a_bola,
+                8.0,
+            );
+            std::hint::black_box(v.len());
+            t.elapsed().as_secs_f64() * 1e3
+        });
+        let vis = crate::march::march_shadow(&scene, &pontos, &dirs, r * 2.0, 8.0);
+        let tapados = vis.iter().filter(|v| **v < 0.5).count();
+        let vf = crate::march::march_shadow(&scene, &pontos_frente, &dirs_frente, r * 2.0, 8.0);
+        let tapados_f = vf.iter().filter(|v| **v < 0.5).count();
+        // ⭐⭐⭐ **A CONTAGEM DE AMOSTRAS, que é o que o relógio de facto mede** — e a varredura do
+        // VIÉS DE PARTIDA. Um raio de sombra nasce SOBRE a superfície, onde `d ≈ 0`, e a lei
+        // `t += d·passo` fá-lo **rastejar** para se despegar: o preço está aí, não na viagem.
+        if w == 640 {
+            let amostras_do_tracado = g.hits() as f64 * 8.7; // a média medida do traçado
+            println!("         viés · amostras · por raio · relógio · tapados");
+            for bias in [4.0_f32, 16.0, 64.0, 256.0] {
+                let (v, amostras) = crate::march::march_shadow_counted(
+                    &scene,
+                    &pontos_frente,
+                    &dirs_frente,
+                    &ate_a_bola,
+                    8.0,
+                    bias,
+                );
+                let ms = med(&|| {
+                    let t = Instant::now();
+                    let r = crate::march::march_shadow_counted(
+                        &scene,
+                        &pontos_frente,
+                        &dirs_frente,
+                        &ate_a_bola,
+                        8.0,
+                        bias,
+                    );
+                    std::hint::black_box(r.1);
+                    t.elapsed().as_secs_f64() * 1e3
+                });
+                println!(
+                    "      {bias:6.0} · {amostras:8} · {:8.1} · {ms:6.2} ms · {:5.1} %                      (o traçado gasta ~{amostras_do_tracado:.0})",
+                    amostras as f64 / pontos_frente.len() as f64,
+                    100.0 * v.iter().filter(|x| **x < 0.5).count() as f64
+                        / pontos_frente.len() as f64,
+                );
+            }
+        }
+
+        // ⚠️ As três cercas têm de dar a MESMA imagem: um raio só tapa entre o ponto e a lâmpada.
+        let v_luz =
+            crate::march::march_shadow_to(&scene, &pontos_frente, &dirs_frente, &ate_a_luz, 8.0);
+        let v_bola =
+            crate::march::march_shadow_to(&scene, &pontos_frente, &dirs_frente, &ate_a_bola, 8.0);
+        let discordam = v_luz
+            .iter()
+            .zip(&v_bola)
+            .filter(|(a, b)| (*a - *b).abs() > 1e-4)
+            .count();
+        println!(
+            "{w:5} · {:14} · {tracado:6.2} ms · {sombra:6.2} ms · {sombra_frente:6.2} ms · \
+             até a luz {sombra_luz:6.2} ms · até a bola {sombra_bola:6.2} ms · \
+             {:6.1} % · de frente {:5.1} % · tapados {:.1} % / {:.1} % · discordam {discordam}",
+            pontos.len(),
+            100.0 * sombra_bola / 16.7,
+            100.0 * pontos_frente.len() as f64 / pontos.len() as f64,
+            100.0 * tapados as f64 / pontos.len() as f64,
+            100.0 * tapados_f as f64 / pontos_frente.len().max(1) as f64,
         );
     }
 }

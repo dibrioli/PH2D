@@ -75,6 +75,13 @@ pub struct Lighting<'a> {
     /// ⭐ Ancoradas no MUNDO — os objectos da cena. `&[]` é o caminho de sempre, ao bit.
     pub points: &'a [PointLamp],
     pub sky: &'a (dyn Environment + Sync),
+    /// ⭐⭐⭐ **Quanto de cada [`PointLamp`] CHEGA a cada pixel** — ver [`crate::Shadows`].
+    ///
+    /// ⚠️ **`None` é o caminho de sempre, ao bit**: sem o passe, toda lâmpada chega inteira a todo
+    /// lado, que é exactamente o que o produto fazia até 2026-09-14. ⛔ As luzes de ECRÃ
+    /// ([`Lighting::lamps`]) NÃO têm sombra e não é omissão: elas estão ancoradas no ecrã, logo
+    /// giram com a câmera — uma sombra que gira com o olhar não pousa nada, ensina o contrário.
+    pub shadows: Option<&'a crate::Shadows>,
 }
 
 /// A base de VISTA — o que converte uma direcção de MUNDO no referencial em que o G-buffer guarda a
@@ -185,14 +192,20 @@ pub(crate) fn view_direction(cam: &Orbit, screen: &Screen, x: usize, y: usize) -
 
 /// A luz que a superfície devolve pela direcção `v`, já com o olhar — em linear de ECRÃ.
 fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom) -> [f32; 3] {
-    let PixelGeom { p, n, v, basis } = geom;
+    let PixelGeom {
+        i: _,
+        p,
+        n,
+        v,
+        basis,
+    } = geom;
     let add = |a: [f32; 3], b: [f32; 3]| [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
     let mut rgb = surface.indirect(n, v, light.sky);
     for lamp in light.lamps {
         rgb = add(rgb, surface.direct(n, v, lamp.to_light, lamp.radiance));
     }
     // ⭐⭐⭐ **AS LUZES-OBJECTO** — a direcção e a distância saem do PONTO deste pixel.
-    for lamp in light.points {
+    for (l, lamp) in light.points.iter().enumerate() {
         let d = [
             lamp.world[0] - p[0],
             lamp.world[1] - p[1],
@@ -214,7 +227,14 @@ fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom
             let inv = cru.sqrt().recip();
             basis.world_to_view([d[0] * inv, d[1] * inv, d[2] * inv])
         };
-        let chega = lamp.radiance_at_one.map(|c| c / cru.max(piso));
+        // ⭐⭐⭐ **E a sombra entra AQUI, na radiância que chega** — não no `N·L` e não no resultado.
+        //
+        // ⚠️ **É o sítio certo por uma razão física:** a visibilidade multiplica a LUZ INCIDENTE, e
+        // o material decide sozinho o que fazer com ela. Pô-la no fim escureceria também o
+        // especular do céu e a emissão — *uma peça tapada por outra continua a reflectir o
+        // ambiente, e continua a brilhar se for ela própria uma luz.*
+        let visivel = light.shadows.map_or(1.0, |s| s.at(l, geom.i));
+        let chega = lamp.radiance_at_one.map(|c| c * visivel / cru.max(piso));
         rgb = add(rgb, surface.direct(n, v, to_light, chega));
     }
     look.apply(add(rgb, surface.emission(n, v)))
@@ -265,6 +285,7 @@ pub fn shade_render(
                 let c = mixed_radiance(
                     surfaces,
                     PixelGeom {
+                        i,
                         p: g.point[i],
                         n: g.normal[i],
                         v,
@@ -304,6 +325,7 @@ pub fn shade_render(
                 let rgb = mixed_radiance(
                     surfaces,
                     PixelGeom {
+                        i,
                         p: g.point[i],
                         n: e.normal[k],
                         v,
@@ -379,6 +401,9 @@ const BOUNDARY_PIXELS: f32 = 2.0;
 /// sempre juntas são uma coisa só.*
 #[derive(Clone, Copy)]
 struct PixelGeom {
+    /// **Qual pixel** — a chave do canal de sombra. ⚠️ Uma borda usa o do CENTRO dela, que é a
+    /// mesma aproximação que a direcção de vista e o material já fazem ali.
+    i: usize,
     /// Onde a superfície está, no MUNDO.
     p: [f32; 3],
     /// A normal, em espaço de VISTA.

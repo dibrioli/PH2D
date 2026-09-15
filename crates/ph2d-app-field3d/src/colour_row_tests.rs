@@ -588,6 +588,7 @@ fn colour_boundary_step(blend: ph2d_field::Blend, cores: [[f32; 3]; 2]) -> i32 {
             lamps: &crate::render_light::lamps(&ph2d_light::LightRig::default()),
             points: &[],
             sky: &crate::render_light::StudioSky,
+            shadows: None,
         },
         crate::shading::OPENING_LOOK,
         [0, 0, 0, 0],

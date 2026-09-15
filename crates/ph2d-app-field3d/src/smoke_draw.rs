@@ -487,6 +487,36 @@ fn viewport_pass(
                             }
                         }
                     };
+                    // ⭐⭐⭐ **A SOMBRA VIAJA NA BANDEIRA QUE JÁ EXISTE** (`coarse`, W73).
+                    //
+                    // O módulo tem desde a W73 uma lei escrita — *grosso a mexer, nítido ao
+                    // assentar* — com dois passageiros (o contorno engrossado e o anti-serrilhado
+                    // desligado) e uma nota a avisar que *«uma segunda pergunta para o mesmo facto
+                    // podia divergir dela»*. A sombra é o **terceiro**, e não uma pergunta nova.
+                    //
+                    // ⭐ **Porque é ela e não um knob** (medido 2026-09-14, `load 2,53`, três
+                    // cilindros cruzados — a tabela inteira em [`ph2d_field_render::shadow`]):
+                    // um raio de sombra custa `29,3` amostras contra `8,7` de um raio de câmera, e o
+                    // passe pesa `1,74×` o traçado a `640×360` e `1,97×` a `1920×1080`.
+                    //
+                    // | | traçado | + sombra |
+                    // |---|---:|---:|
+                    // | movimento (`640×360`, piso D=3) | `3,51 ms` | `9,60 ms` de `16,7` |
+                    // | assente (`1920×1080`) | `28,61 ms` | `84,84 ms` |
+                    //
+                    // ⇒ pendurá-la no quadro de movimento **cabia** nesta peça e comia metade da
+                    // folga que o laço do divisor tem para as pesadas — e o
+                    // [`crate::preview`] declara por escrito que uma peça que não caiba no piso
+                    // *«fica presa nele e a imagem fica lenta»*. Pendurada no quadro que assenta, o
+                    // de movimento fica **byte-idêntico** ao de hoje e o preço corre onde já
+                    // corriam `28,6 ms`, **noutra thread**, com a janela na mesma a 60 Hz.
+                    //
+                    // ⚠️ **O `antialias` É a bandeira** (`= !coarse`, linha 413) — lido aqui, e não
+                    // uma segunda pergunta ao mesmo facto.
+                    let sombras = antialias.then(|| {
+                        let mundos: Vec<[f32; 3]> = lights.iter().map(|l| l.world).collect();
+                        ph2d_field_render::shadow_pass(&doc, &reg, &cam, &g, &mundos)
+                    });
                     ph2d_field_render::shade_render(
                         &g,
                         &cam,
@@ -495,6 +525,7 @@ fn viewport_pass(
                             lamps: &lamps,
                             points: &lights,
                             sky: &crate::render_light::StudioSky,
+                            shadows: sombras.as_ref(),
                         },
                         look,
                         BACKGROUND,

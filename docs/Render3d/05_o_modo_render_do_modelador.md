@@ -2304,3 +2304,151 @@ olho na recolha tirava a luz apagada também do canvas.
 - **A marca não tem realce de PASSAGEM** (hover): ela acende com a selecção e mais nada.
 - **Duas luzes exactamente sobrepostas no ecrã** ficam por desempatar — a regra é a distância no ecrã,
   e ali qualquer regra é arbitrária. *A do ecrã é a única que o artista consegue prever.*
+
+---
+
+## §27 — ⭐⭐⭐ A PEÇA FAZ SOMBRA EM SI PRÓPRIA (W4, 2026-09-14)
+
+O plano manda esta wave **começar por medir** (`03_o_plano.md` §W5: *«a wave começa por medir quanto
+de GI cabe, e o resultado pode ser «cozida e não em tempo real» — que é uma resposta legítima»*).
+Começou. Esta secção é o número, o que ele fechou, e o que ele deixou por decidir.
+
+### §27.1 — ⛔ A régua da W4 pede um CHÃO, e a cena não tem nenhum
+
+A W4 chama-se *«Sombras que POUSAM o objecto»* e a régua dela é **«um objecto a `0`, `1` e `10 cm`
+do chão tem de dar três sombras diferentes»**. Auditado o produto: **não existe chão**. O *prato* é a
+câmera a girar em torno do Y do mundo (`smoke_draw.rs`, `turn_world`), e o estúdio da §24 é um
+**ambiente** — o `Studio::irradiance` escurece a direcção de baixo e não põe geometria nenhuma lá.
+
+⇒ *a régua da wave não é corrível sem uma decisão de produto que não é da linha*: **o modelador passa
+a ter um chão visível?** A pergunta vai ao dono no relatório, com o preço já medido ao lado.
+
+⭐ O que **não** depende dessa decisão é a outra metade, e é ela que esta secção entrega: **a peça
+tapa-se a si própria**. Numa peça de três cilindros cruzados isso é a diferença entre ler *três
+cilindros* e ler *uma mancha*.
+
+### §27.2 — ⭐ O preço, medido (`load 2,53`, mínimo de 5 corridas)
+
+| px | pixels de peça | traçado | sombra | razão | do quadro |
+|---|---:|---:|---:|---:|---:|
+| `320×180` | `15 196` | `1,42 ms` | `1,51 ms` | `1,06×` | `9,1 %` |
+| **`640×360`** — o quadro de MOVIMENTO (piso `D=3`) | `60 770` | `3,51 ms` | **`6,09 ms`** | `1,74×` | `36,4 %` |
+| `1280×720` | `243 101` | `12,67 ms` | `24,67 ms` | `1,95×` | `147,7 %` |
+| **`1920×1080`** — o quadro ASSENTE | `546 982` | `28,61 ms` | **`56,23 ms`** | `1,97×` | `336,7 %` |
+
+**A unidade que explica a tabela: um raio de sombra custa `29,3` amostras de campo contra as `8,7`
+de um raio de câmera — `3,4×`.** Com `44,7 %` dos pixels de peça a ver a luz, `0,447 × 3,4 = 1,52`,
+e a razão medida é `1,74`. *O modelo fecha.*
+
+### §27.3 — ⛔⛔ As alavancas óbvias foram medidas, e NENHUMA é barata
+
+| alavanca | o que corta | relógio | veredito |
+|---|---|---:|---|
+| só os pixels que **vêem** a luz (`N·L > 0`) | `−55,3 %` da população | **`−6 %`** | fica, e **não é ela que paga** |
+| cerca na **lâmpada** em vez de `2r` | mediana `3,200 → 1,291` | `−5 %` | fica: é a cerca honesta |
+| cerca na **bola** da peça | mediana `→ 0,678` | `−10 %` | fica — ⚠️ **por outra razão**, §27.5 |
+| viés de partida `4 → 256` | `29,3 → 13,5` amostras/raio | `−54 %` | ⛔ **RECUSADA** |
+
+⭐⭐⭐ **O achado é a primeira linha, e ela inverte a intuição:** cortar **`55 %` dos raios** corta
+**`6 %` do relógio**. *Os raios de costas para a luz acertam na própria peça ao primeiro passo — são
+os BARATOS.* O caro é o raio que viaja; e apertar-lhe a cerca **`4,7×`** compra `11 %`, o que diz
+que ele também não paga na viagem. **Ele paga a RASTEJAR à saída da superfície**, onde `d ≈ 0` e a
+lei `t += d·passo` mal o move.
+
+⛔ **O viés é recusado com número:** ele compra `54 %` de relógio **apagando sombra a sério** — os
+pixels tapados caem de `27,3 %` para `20,0 %`. *Um viés maior não torna a sombra mais barata; torna-a
+menos sombra.*
+
+### §27.4 — ⭐⭐⭐ Ela viaja na bandeira que JÁ EXISTE, e o quadro de movimento fica BYTE-IDÊNTICO
+
+O módulo tem desde a W73 uma lei escrita, com dois passageiros e um aviso: *grosso a mexer, nítido ao
+assentar* — o contorno engrossado e o anti-serrilhado desligado saem da **mesma** bandeira (`coarse`),
+e a nota diz que *«uma segunda pergunta para o mesmo facto podia divergir dela»*. **A sombra é o
+terceiro passageiro.**
+
+| | traçado | + sombra |
+|---|---:|---:|
+| movimento (`640×360`, piso `D=3`) | `3,51 ms` | `9,60 ms` de `16,7` |
+| assente (`1920×1080`) | `28,61 ms` | `84,84 ms` |
+
+⚠️ **Ela CABIA no quadro de movimento** — e fica fora dele mesmo assim. A razão é o piso: a
+`preview.rs` declara por escrito que uma peça que não caiba a `D=3` *«fica presa no piso e a imagem
+fica lenta»*, e dobrar o custo do quadro de movimento come metade da folga que o laço do divisor tem
+para as peças pesadas. Pendurada no quadro que assenta, o de movimento fica **byte-idêntico** e os
+`56 ms` correm **noutra thread**, onde já corriam `28,6` — a janela continua a `60 Hz`.
+
+### §27.5 — ⛔⛔ Duas coisas que eu escrevi ERRADAS e a medição corrigiu
+
+**(a) A acne de sombra, apanhada pelo gate da ESFERA.** A primeira versão partia o raio em `p` e
+andava `hit·BIAS` **na direcção da luz**. Numa saída RASANTE (`N·L ≈ 0`) o raio viaja quase tangente
+e, ao fim daquele troço, ainda está a menos de `hit` da superfície de onde saiu ⇒ o campo responde
+*«acertaste»* sobre a peça em que o raio já estava. Medido: **`10,5 %` dos pixels de uma esfera**
+vinham sombreados, e a sonda separa a espécie — **acerto DURO `3 009`, penumbra MOLE `0`**.
+
+⇒ a cura é **erguer o ponto pela NORMAL** antes de partir, e não aumentar o viés (que já estava
+recusado por apagar sombra). Um viés ao longo do raio teria de crescer com `1/(N·L)` e na rasante
+diverge; erguer `ε` pela normal resolve-o **em qualquer ângulo com um `ε` só**. Depois da cura a
+esfera lê **`0` — exactamente zero**, e é essa a barra do gate: não é um número escolhido, é o que a
+geometria de um corpo convexo exige.
+
+**(b) A cerca da bola não é uma poupança — é o DOMÍNIO da pergunta.** Eu documentei-a como
+optimização; a prova de mutação desmentiu-me: apagá-la põe **`1 554` dos `28 640` pixels da esfera**
+a vir sombreados. O mecanismo é o estimador de penumbra `vis = min(k·d/t)`: numa saída rasante de um
+convexo, `d ≈ t²/2R`, logo `k·d/t ≈ k·t/2R` é **menor que `1`** enquanto `t < 2R/k` — *ele está a
+ler a superfície de onde o raio saiu e a chamar-lhe oclusor*. Fora da bola não existe geometria, logo
+nada que se leia ali é informação sobre oclusão.
+
+⛔ **Uma cerca que corrige um artefacto e se documenta como poupança é a mais perigosa que há: o
+primeiro que a apertar por relógio apaga a correcção sem saber que ela existia.**
+
+⚠️ E as duas cercas dão a **mesma imagem** na peça de cilindros cruzados (`discordam 0`) — *é
+precisamente por isso que só uma fixtura CONVEXA as separa*.
+
+### §27.6 — Onde a sombra entra na conta, e porquê ali
+
+Ela multiplica a **radiância que CHEGA** da lâmpada, dentro do `chega` — não o `N·L` e não o
+resultado. *Uma peça tapada por outra continua a reflectir o ambiente, e continua a brilhar se for
+ela própria uma luz.*
+
+⚠️ **A primeira redacção do gate deixou a mutação oposta SOBREVIVER.** Ele escolhia um pixel com
+`vis < 0,05` e afirmava *«não ficou preto»* — mas `0,03 × (céu + lâmpada)` ainda é maior que zero.
+Só um pixel **inteiramente** tapado (`vis == 0,0`) separa as duas contas: ali uma delas dá preto.
+
+⚠️ **E um pixel de costas para a luz recebe `1,0`, não `0,0`.** As duas pintam o mesmo hoje (o
+`N·L ≤ 0` já anula a lâmpada), mas o canal diz *«quanto CHEGA»* e a resposta verdadeira é *«nada a
+tapa»*. *Escrever `0` seria uma mentira que por acaso não se nota* — até alguém ler o canal para
+outra coisa.
+
+### §27.7 — Os gates, e as mutações
+
+| gate | o que ele prende |
+|---|---|
+| `uma_peca_que_se_tapa_a_si_propria_tem_pixels_tapados` | a sombra existe — `10,4 %` da peça, com piso de população |
+| `uma_esfera_nao_se_tapa_a_si_propria` | ⭐⭐⭐ **`== 0`** — apanha a acne **e** a cerca da bola |
+| `um_pixel_tapado_continua_a_reflectir_o_ceu` | a sombra multiplica a luz que chega, e não o resultado |
+| `sem_o_passe_a_imagem_e_byte_identica` | `shadows: None` e um passe VAZIO pintam os mesmos bytes |
+| `probe_de_onde_vem_a_sombra_da_esfera` | (sonda) separa acerto DURO de penumbra MOLE |
+
+| mutação | resultado |
+|---|---|
+| o raio parte do ponto, sem se erguer pela normal | 🔴 |
+| a visibilidade multiplica o RESULTADO | 🔴 *(depois de o gate ser apertado — sobreviveu à 1.ª redacção)* |
+| a cerca da bola desaparece | 🔴 *(e foi assim que a §27.5(b) se descobriu)* |
+| a sombra nunca chega ao pintor | 🔴 |
+| o filtro `N·L` deixa passar todos os pixels | 🔴 |
+
+⚠️ **O denominador mordeu:** a primeira redacção do gate copiou o `27,3 %` da sonda do relógio, que
+divide pela população que **vê** a luz (`44,8 %` da peça). Os mesmos `1 777` pixels leem `11,7 %`
+com a peça no denominador. *Uma fracção sem o denominador escrito ao lado dela não é um número.*
+
+### §27.8 — ⏳ O que fica aberto
+
+- ⭐⭐⭐ **O CHÃO é decisão do dono** (§27.1) — sem ele a régua da W4 não tem sujeito, e o objecto
+  continua a flutuar mesmo com a auto-sombra a funcionar.
+- **As luzes ancoradas no ECRÃ não fazem sombra**, e é deliberado: elas giram com a câmera, e uma
+  sombra que gira com o olhar não pousa nada — ensinaria o contrário do que a wave existe para dizer.
+- **A `HARDNESS = 8` não foi varrida.** Ela é a constante da lei de penumbra (um `k` maior endurece),
+  não um teto de recurso — mas o número é do idioma, não de uma medição nossa.
+- **A borda anti-serrilhada usa a sombra do CENTRO do pixel** nas quatro amostras — a mesma
+  aproximação que a direcção de vista e o material já fazem ali.
+- **O passe é `O(lâmpadas × pixels)`** e não há cache: duas luzes custam o dobro.

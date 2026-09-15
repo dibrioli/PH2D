@@ -338,6 +338,7 @@ fn the_modeller_opens_in_a_view_the_softbox_does_not_blow_out() {
                 lamps: &lamps,
                 points: &[],
                 sky,
+                shadows: None,
             };
             shade_render(&g, &cam, &surface, &light, look, BG)
                 .as_chunks::<4>()

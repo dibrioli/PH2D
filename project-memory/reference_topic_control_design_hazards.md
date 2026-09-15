@@ -22,3 +22,19 @@ as últimas linhas desapareciam em silêncio. Cada entrada continua a ser um fic
 - [bool onde havia ID apaga a próxima](feedback_publishing_a_bool_where_the_source_had_an_id_throws_away_the_next_feature.md) · [não-idempotente: autoria ≠ depósito](feedback_a_nonidempotent_target_excludes_nothing_split_authoring_from_deposit.md)
 - [[feedback_when_the_composition_already_expresses_the_geometry_ask_who_owns_the_numbers]] — «a composição já exprime isto?» tem duas metades: a GEOMETRIA e a AUTORIA. Se o dono dos números os reescreve por quadro, a linha de painel nasce MORTA — e é isso que decide se a forma nova existe
 - [[feedback_a_palette_derived_from_a_registry_offers_the_implementations_vocabulary]] — ⛔ paleta «tudo o que está registado» oferece TIPOS onde o artista escolhe INTENÇÕES (30 de 32 na física, 27 deles rows que a secção já anexa); a régua é *anexar isto sozinho muda alguma coisa?*, e o que a produziu foi o **helper por-família cujo caminho de menor esforço era uma das respostas**
+- ⛔⛔⛔ **Duas ordens do dono podem CONTRARIAR-SE, e a spec tem de escolher com a medição à vista.**
+  Medido 2026-09-15 (`line/UIUX`): *«Label acima do campo numérico! Muito ruim!»* põe o nome ao lado e
+  entrega ao controlo **metade** da linha; *«não permita que a caixa seja redimensionada para menor
+  que isso»* põe um piso de `72 px` por caixa. Numa row de `X`/`Y` à largura de omissão a coluna do
+  controlo mede `128` e dois campos ao piso pedem `148` — **as duas não cabem**. ⇒ a saída não é
+  encolher a coluna do nome (a granularidade dela é a SECÇÃO; por-linha devolve a coluna
+  esfarrapada), é o **controlo REFLUIR**: o que não cabe ao piso desce, dentro da coluna do controlo.
+  ⚠️ **E o app já lá tinha chegado, à mão, numa row só** — o comentário de um `Rect2Editor` dizia por
+  escrito *«the Inspector column is too narrow for four number inputs in one row»* enquanto as outras
+  dezoito rows não a conheciam. *Uma lei escrita num sítio é uma nota; só uma PORTA é uma lei.*
+- ⛔⛔ **Um rótulo que descreve DUAS caixas («A / B») só funciona enquanto elas estiverem lado a
+  lado.** Medido 2026-09-15: três rows da §Animation empacotavam duas propriedades num nome
+  (`Frame ms / Repeat (0 = forever)`); com o nome POR CIMA o mapeamento era esquerda→direita, e ao
+  pôr o nome AO LADO com as caixas a refluírem **desaparece** — um nome que descreve duas caixas
+  EMPILHADAS não diz qual é qual. ⇒ *mudar a disposição de uma linha FORÇA o corte de uma linha que
+  fazia duas perguntas*, e isso é ganho, não custo.

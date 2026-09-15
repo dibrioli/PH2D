@@ -18,6 +18,14 @@ forma amanhã entra aqui e não volta a partir o cartão»*.
 **A 4.ª ocorrência aconteceu QUINZE LINHAS abaixo dessa porta, no mesmo ficheiro, com o vizinho já
 a chamá-la.**
 
+**Quinto caso medido (`line/UIUX`, 2026-09-14) — o report foi *«caixas de input numérico sem cor de
+fundo»*.** A porta existia (`visuals::Chrome::field_fill`, *«o fundo de um campo»*) e tinha **um**
+chamador, o `text_input`. Os dois pintores irmãos — `number_input` e `text_area` — escolhiam por
+token (`ColorToken::Bg1`), e um quarto, o chip do slider, por outro (`Bg3`/`Bg2`). *«Que cor tem um
+campo?»* tinha **quatro** respostas. ⛔ E o `Bg1` é, por construção, o token do CARTÃO por baixo
+⇒ `0/255` nos oito temas, sem moldura de repouso nos modernos: a caixa não existia. O censo que a
+fechou é textual e mínimo — *o `fill_token` tem UM leitor, a porta* —, com prova de mutação.
+
 **Why:** escrever a porta resolve os chamadores que existem naquele dia. Ela não tem forma de
 alcançar o código que se escreve depois — e a forma errada continua a compilar, porque ela é uma
 das duas respostas válidas. ⇒ *uma porta que o vizinho não chama ainda não é uma porta — é uma

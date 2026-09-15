@@ -20,6 +20,15 @@ Porquê: cada gate comparava dois documentos (o N-ário contra o aninhado, o ant
 a maioria das fixturas tinha `Union(Sharp)` como operação do pai. A mutação reescrevia os **dois
 lados** para a mesma coisa, e a igualdade continuava a valer.
 
+**Segundo caso medido (`line/UIUX`, 2026-09-14) — a forma MAIS pura, e eu escrevi-a de propósito.**
+Ao partir a porta da linha de propriedade em duas (`property_row_columns` passou a **chamar**
+`property_label_col_w`), escrevi um gate a afirmar que as duas nunca divergem, em 108 células. A
+mutação que apaga o tecto da coluna (`.min(usable − gap − control_min)`) **sobreviveu**: as duas
+respostas mudam juntas porque **uma é a outra**. *Quando A delega em B, «A concorda com B» não é uma
+asserção — é a definição.* O substituto mede a lei contra um oráculo de fora (*o controlo nunca fica
+abaixo do piso nomeado quando cabe*) e duas mutações morrem nele.
+⚠️ O sinal que devia ter-me parado: **o gate não tinha um único número absoluto lá dentro**.
+
 **Why:** uma igualdade entre duas coisas produzidas pelo mesmo código defeituoso é uma tautologia com
 cara de medição. Ela prova *consistência*, que é uma propriedade mais fraca do que *correcção* — e a
 diferença só aparece quando alguém tenta matá-la.

@@ -188,3 +188,20 @@ metadata:
   mede:** escrevi *«row de dois campos»* e a medição desmentiu — a porta `field_row` pinta uma row de
   UM campo e também não levava sufixo. *O que separa não é a forma da row, é a PORTA ter por onde a
   coisa entrar.*
+- ⛔⛔⛔ **Um censo que ENUMERA as portas pelo nome acusa, a cada wave, exactamente quem fez a coisa
+  certa.** Medido 2026-09-15 (`line/UIUX`, terceira ocorrência do MESMO gate): o
+  `every_form_row_reserves_the_animation_column` listava `form_row_columns`; quando a linha de
+  propriedade nasceu ele acusou quem a adoptou e a lista passou a duas; quando três secções passaram
+  a chamar uma porta de 2.ª ordem (`rows::property_label_row`, que chama a de base por dentro) ele
+  acusou as três. ⇒ **a lista deriva-se do produto**: é porta toda `fn` do ficheiro de rows cujo
+  corpo alcança uma de base — **por PONTO FIXO**, porque há portas a DOIS saltos (uma `num_row` que
+  delega na `num_row_unit` não nomeia porta de base nenhuma). ⭐ E o modo de falha fica **alto** de
+  propósito: um parse morto encolhe a lista para as de base e o gate passa a acusar quem usa o
+  ficheiro — vermelho em voz alta, nunca verde a medir nada. ⚠️ Mesmo assim leva controlo com **piso
+  de população** e nomes esperados, senão «derivar» e «devolver tudo» leem-se igual.
+- ⛔⛔ **Uma PROVA DE MUTAÇÃO que não casa imprime `test result: ok`, e isso lê-se como «o gate não
+  apanha».** Medido 2026-09-15: a agulha da mutação tinha o escape errado depois de um `cargo fmt`
+  ter reindentado a linha, casou **zero** vezes, e a corrida saiu verde sobre o código INTACTO —
+  eu ia arquivar o gate como fraco. **Quem o apanhou foi o `assert` de contagem no script.** ⇒ *toda
+  mutação escrita à mão assere quantas vezes a agulha casou, ANTES de correr o teste* (irmã da lição
+  «um filtro que casa ZERO imprime SOBREVIVEU»).

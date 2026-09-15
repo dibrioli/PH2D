@@ -235,7 +235,7 @@ impl RowCtx<'_> {
     /// A célula de rótulo das duas linhas rotuladas — uma porta, para as duas nunca desalinharem.
     fn label_cell(&mut self, label: &str, y: f32) {
         // ⚠️ **ELIDIDO:** a coluna é uma fracção da linha, e a coluna docada estreita-se.
-        crate::paint::paint_text_elided(
+        crate::widget::paint_property_label(
             self.text_system,
             self.scene,
             label,

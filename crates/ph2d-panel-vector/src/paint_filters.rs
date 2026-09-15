@@ -460,7 +460,7 @@ impl BodyCtx<'_> {
     fn filter_blend_row(&mut self, row: usize, fx: &fst::FilterRowView, y: f32) -> f32 {
         let gap = Spacing::Xs.px();
         let id = ids::filter_blend_id(row);
-        paint_text(
+        ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
             "Blend",

@@ -11,7 +11,7 @@
 
 use crate::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -237,7 +237,7 @@ impl BodyCtx<'_> {
         // É a cor do balde (`fill_color`): colorir usa a MESMA paleta em toda a tool.
         if snap.draw_filled || snap.mode == FlipMode::Edit {
             let swatch_w = SwatchSize::Md.px();
-            paint_text(
+            ph2d_editor_core::widget::paint_property_label(
                 self.text_system,
                 self.scene,
                 "Fill",
@@ -260,7 +260,7 @@ impl BodyCtx<'_> {
             y += self.row_h + self.row_gap;
         }
         let swatch_w = SwatchSize::Md.px();
-        paint_text(
+        ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
             "Stroke",
@@ -295,7 +295,7 @@ impl BodyCtx<'_> {
 
         // A cor do BALDE — própria, não a do traço (colorir usa outra paleta).
         let swatch_w = SwatchSize::Md.px();
-        paint_text(
+        ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
             "Color",

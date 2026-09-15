@@ -98,7 +98,7 @@ pub(crate) fn paint_mount_row(
     // comentário dizia *«igual à da §7»*: uma cópia a prometer que acompanharia outra.
     let font = TypeToken::Sm.px();
     let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
-    ph2d_editor_core::paint::paint_text_elided(
+    ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
         tr("panel.inspector.anchors.rides_parent_anchor"),

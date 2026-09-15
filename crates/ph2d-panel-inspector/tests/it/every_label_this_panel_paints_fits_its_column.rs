@@ -29,30 +29,17 @@
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Spacing, TypeToken};
 
-/// ⏳ **Os que ainda não cabem — e só ENCOLHE.**
+/// ⭐⭐⭐ **VAZIO — e foi a decisão de APARÊNCIA do dono que o esvaziou.**
 ///
-/// ⚠️ **Nenhum destes é uma unidade: são NOMES compridos**, e é por isso que eles sobrevivem à
-/// wave que tirou a unidade do rótulo. A largura medida está ao lado de cada um, contra uma coluna
-/// de `84,2 px` (a linha de um card do Inspector à largura de omissão).
+/// Esta lista nasceu com **12** entradas, cada uma um nome comprido que era elidido numa coluna de
+/// `84,2 px`, e eu devolvi-lhe a escolha: encurtar os nomes, ou dar ao rótulo uma fatia maior da
+/// linha. Ele escolheu a segunda por outra razão — *«as caixas numéricas são muito grandes. Maiores
+/// que as labels»* — e a coluna passou a `120 px`, onde o mais comprido do app
+/// (*«Swim Line (weights)»*, `113,9`) **cabe**.
 ///
-/// ⛔ **Duas saídas, e as duas são decisão do DONO** — ficam nomeadas em vez de eu escolher:
-/// encurtar os nomes (*«Corner Look-ahead»* → *«Corner Ahead»*), ou dar ao rótulo uma fatia maior
-/// da linha (a fracção da porta é `0,348`; `0,47` faria caber todos, e mudaria **todos** os
-/// painéis do app).
-const AINDA_CORTAM: &[&str] = &[
-    "Foot Ray Spread",     // 92,7
-    "Air Acceleration",    // 90,3
-    "Air Jump Height",     // 90,9
-    "Takeoff Gravity",     // 86,2
-    "Corner Look-ahead",   // 109,8
-    "Lift Momentum",       // 89,3
-    "Weight on Ground",    // 105,2
-    "Push on Ground",      // 92,7
-    "Push on Bodies",      // 87,9
-    "Wall Ray Spread",     // 91,5
-    "Dash Cooldown",       // 89,4
-    "Swim Line (weights)", // 113,9 — ⚠️ o `(weights)` NÃO é uma unidade, é um qualificador
-];
+/// ⚠️ ***Uma decisão de aparência do dono resolveu, de graça, o item que eu lhe tinha devolvido como
+/// escolha.*** ⛔ E a lista fica aqui, vazia: qualquer rótulo novo que não caiba reprova o gate.
+const AINDA_CORTAM: &[&str] = &[];
 
 /// A largura real de uma linha de card do Inspector, à largura de omissão do painel.
 fn largura_de_uma_linha() -> f32 {

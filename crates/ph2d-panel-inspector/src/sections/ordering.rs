@@ -95,7 +95,7 @@ fn number_row(
     // ⛔ Uma largura fixa está errada por construção — a coluna docada é arrastável.
     let h = ROW_H_PX;
     let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
-    ph2d_editor_core::paint::paint_text_elided(
+    ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
         label,
@@ -142,7 +142,7 @@ fn layer_row(
     // ⭐ Irmã da row acima: a coluna do rótulo sai da porta, não de um literal.
     let h = ROW_H_PX;
     let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
-    ph2d_editor_core::paint::paint_text_elided(
+    ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
         tr("panel.inspector.ordering.sorting_layer"),

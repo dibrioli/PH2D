@@ -27,7 +27,7 @@ use crate::paint_sections::{BodyCtx, label_col_w};
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{
@@ -164,7 +164,7 @@ impl BodyCtx<'_> {
     /// linha de CATEGORIA (rótulo na coluna de rótulos, chip ocupando o resto).
     fn marker_row(&mut self, snap: &VectorStyleSnapshot, slot: usize, y: f32) -> f32 {
         let gap = Spacing::Xs.px();
-        paint_text(
+        ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
             tr(slot_i18n_key(slot)),

@@ -76,7 +76,7 @@ pub(crate) fn paint_sprite_sheet_section(
                       row_y: f32,
                       label: &str,
                       id: NodeId| {
-        paint_text(
+        ph2d_editor_core::widget::paint_property_label(
             text_system,
             scene,
             label,

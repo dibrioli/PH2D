@@ -36,7 +36,7 @@ pub(super) fn seg_row(
     // sempre no mesmo `x`; o lado direito pode crescer.*
     let row = ph2d_editor_core::widget::property_row_columns(x, w, y, ROW_H_PX);
     let label_font = TypeToken::Sm.px();
-    ph2d_editor_core::paint::paint_text_elided(
+    ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
         label,
@@ -241,7 +241,7 @@ pub(super) fn num_row_unit(
     let label_font = TypeToken::Sm.px();
     // ⚠️ **ELIDIDO, nunca transbordado:** a coluna do rótulo é uma FRACÇÃO da linha (a coluna
     // docada é arrastável), logo um rótulo comprido numa coluna estreita passaria por cima do campo.
-    ph2d_editor_core::paint::paint_text_elided(
+    ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
         label,

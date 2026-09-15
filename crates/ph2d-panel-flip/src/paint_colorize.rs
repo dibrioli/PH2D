@@ -3,7 +3,7 @@
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::ColorToken;
@@ -24,7 +24,7 @@ impl BodyCtx<'_> {
 
         // A cor do PRÓXIMO rabisco — paleta própria (o picker OKLCH é compartilhado).
         let swatch_w = SwatchSize::Md.px();
-        paint_text(
+        ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
             "Color",

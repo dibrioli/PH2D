@@ -34,7 +34,7 @@ fn number_row(
     let h = ROW_H_PX;
     let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
     let label_font = TypeToken::Sm.px();
-    ph2d_editor_core::paint::paint_text_elided(
+    ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
         label,

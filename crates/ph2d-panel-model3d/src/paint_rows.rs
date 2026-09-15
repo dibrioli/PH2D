@@ -184,7 +184,7 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
     let font = TypeToken::Sm.px();
     let dim = resolve(ColorToken::Text2, theme);
     let baseline = y + (ROW_H_PX - font) * 0.5;
-    paint_text_block(
+    ph2d_editor_core::widget::paint_property_label(
         ctx.text_system,
         ctx.scene,
         tr(row.key),
@@ -235,7 +235,7 @@ fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32
     let theme = ctx.host.theme();
     let dim = resolve(ColorToken::Text2, theme);
     let baseline = y + (ROW_H_PX - font) * 0.5;
-    paint_text_block(
+    ph2d_editor_core::widget::paint_property_label(
         ctx.text_system,
         ctx.scene,
         tr(row.key),

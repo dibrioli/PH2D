@@ -122,7 +122,7 @@ impl BodyCtx<'_> {
         y: f32,
     ) -> f32 {
         let swatch_w = SwatchSize::Md.px();
-        paint_text(
+        ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
             label,

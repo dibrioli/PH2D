@@ -145,7 +145,7 @@ impl BodyCtx<'_> {
     /// reconhecer o controle.
     fn contour_to_swatch(&mut self, y: f32) -> f32 {
         let swatch_w = SwatchSize::Md.px();
-        paint_text(
+        ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
             "To",

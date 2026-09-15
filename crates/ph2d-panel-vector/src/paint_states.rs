@@ -262,7 +262,7 @@ impl BodyCtx<'_> {
         verbs: bool,
         y: f32,
     ) -> f32 {
-        use ph2d_editor_core::paint::{paint_text, resolve};
+        use ph2d_editor_core::paint::resolve;
         use ph2d_tokens::{ColorToken, TypeToken};
 
         let text = if live {
@@ -272,7 +272,7 @@ impl BodyCtx<'_> {
         } else {
             ColorToken::Text2
         };
-        paint_text(
+        ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
             label,

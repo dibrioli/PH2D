@@ -289,7 +289,7 @@ impl BodyCtx<'_> {
         y: f32,
     ) -> f32 {
         let gap = Spacing::Xs.px();
-        paint_text(
+        ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
             label,

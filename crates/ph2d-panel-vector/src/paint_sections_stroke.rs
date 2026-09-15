@@ -124,7 +124,7 @@ impl BodyCtx<'_> {
 
         let swatch_w = SwatchSize::Md.px();
         // Stroke colour swatch.
-        paint_text(
+        ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
             tr("panel.vector.section.stroke"),

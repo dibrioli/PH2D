@@ -124,7 +124,7 @@ pub(crate) fn paint_number_row_value(
     theme: Theme,
     hit_index: &mut HitIndex,
 ) -> f32 {
-    paint_text(
+    ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
         label,

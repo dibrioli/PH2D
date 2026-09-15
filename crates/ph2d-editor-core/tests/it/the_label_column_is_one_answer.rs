@@ -111,7 +111,12 @@ fn hand_written_label_columns(root: &Path) -> Vec<String> {
             .to_string_lossy()
             .replace('\\', "/");
         // ⛔ **A própria porta não é um sítio de pintura** — ela é onde a resposta VIVE.
-        if rel.ends_with("widget/property_box/mod.rs") {
+        // ⚠️ **São DOIS ficheiros desde 2026-09-14**: o tecto de 500 LOC do widget forçou a
+        //    geometria da LINHA para o irmão `row.rs`, e a `LABEL_COL_FRAC` foi com ela. *Mover
+        //    código parte gates, e este falhou ALTO — que é a espécie barata* (`CLAUDE.md` §5.0).
+        if rel.ends_with("widget/property_box/mod.rs")
+            || rel.ends_with("widget/property_box/row.rs")
+        {
             continue;
         }
         for (n, line) in src.lines().enumerate() {
@@ -220,13 +225,19 @@ fn a_property_row_never_starves_its_control() {
             apertadas += 1;
         }
         if w >= 200.0 {
-            // ⚠️ E numa linha larga o rótulo é a MENOR das duas colunas — senão a fracção deixou
-            // de ser uma fracção.
+            // ⭐⭐ **O CONTROLO COMEÇA NO MEIO DA LINHA** — ordem do dono, 2026-09-14: *«Melhor
+            // alinhar no meio do painel»*.
+            //
+            // ⛔⛔ **Esta metade dizia antes «o rótulo é a MENOR das duas colunas»**, e era a lei da
+            // fracção `0,348`. Com a partição ao meio o rótulo mede `120` contra `114` do controlo
+            // (a coluna de animação sai do lado dele), logo a asserção antiga reprovaria sobre o
+            // desenho CERTO. *Um gate escrito sobre um número é um gate que reprova quando o dono
+            // muda o número; um escrito sobre a LEI sobrevive.*
             assert!(
-                r.label.w < r.control.w,
-                "w={w}: rotulo {} >= controlo {}",
-                r.label.w,
-                r.control.w
+                (r.control.x - (0.0 + w * 0.5)).abs() < 0.01,
+                "w={w}: o controlo comeca em {} e o meio da linha e' {}",
+                r.control.x,
+                w * 0.5
             );
             largas += 1;
         }
@@ -237,5 +248,63 @@ fn a_property_row_never_starves_its_control() {
     assert!(
         apertadas >= 100 && largas >= 100,
         "varredura magra: {apertadas} / {largas}"
+    );
+}
+
+/// ⭐⭐⭐ **O RÓTULO ENCOSTA AO CONTROLO — ele é alinhado à DIREITA da coluna dele.**
+///
+/// ⛔⛔ **Ordem do dono, 2026-09-14:** *«as labels alinhadas todas à direita (no centro do
+/// painel)»*. Com o controlo a começar no meio da linha, um rótulo alinhado à esquerda deixa um rio
+/// de espaço variável entre o nome e o campo dele — e *quanto mais curto o nome, mais longe do valor
+/// que ele nomeia*.
+///
+/// ⚠️ **A régua é a PORTA da decisão** ([`ph2d_editor_core::widget::property_label_origin`]), e não
+/// a cena: uma decisão que só o pintor conhece é uma decisão que nenhuma mutação mata.
+#[test]
+fn a_property_label_is_flush_against_its_control() {
+    use ph2d_editor_core::widget::{property_label_col_w, property_label_origin};
+    use ph2d_text::TextSystem;
+
+    let mut ts = TextSystem::new();
+    let fonte = ph2d_tokens::TypeToken::Sm.px();
+    let x = 17.0_f32;
+    let col = property_label_col_w(x, 256.0);
+    let mut encostados = 0;
+    let mut degradados = 0;
+    for texto in [
+        "X",
+        "Speed",
+        "Float Height",
+        "Corner Look-ahead",
+        "Swim Line (weights)",
+    ] {
+        let (cabe, origem) = property_label_origin(&mut ts, texto, x, fonte, col);
+        let largura = ts.prefix_width(&cabe, fonte);
+        // ⭐ ENCOSTADO À DIREITA: o fim do texto é o fim da coluna, e é isso que o põe ao lado do
+        //   controlo.
+        assert!(
+            ((origem + largura) - (x + col)).abs() < 0.51,
+            "{texto:?}: acaba em {} e a coluna acaba em {}",
+            origem + largura,
+            x + col
+        );
+        assert!(origem >= x - 0.01, "{texto:?}: a origem recuou para fora");
+        encostados += 1;
+    }
+    // ⚠️ **A metade que DEGRADA, e ela precisa de uma coluna em que nem a reticência cabe** — é o
+    // único caso em que o [`ph2d_editor_core::text_elide::fit`] devolve texto mais largo que o
+    // orçamento. *Uma fixtura sem o fenómeno mede silêncio.*
+    for col_minima in [0.5_f32, 2.0, 4.0] {
+        let (_, origem) = property_label_origin(&mut ts, "Corner Look-ahead", x, fonte, col_minima);
+        assert!(
+            (origem - x).abs() < 0.51,
+            "coluna de {col_minima}: o rotulo que nao cabe recuou para {origem} em vez de encostar \
+             ao principio da coluna ({x})"
+        );
+        degradados += 1;
+    }
+    assert!(
+        encostados >= 5 && degradados >= 3,
+        "varredura magra: {encostados} encostados / {degradados} degradados"
     );
 }

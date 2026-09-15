@@ -33,6 +33,14 @@ use std::path::{Path, PathBuf};
 //    `#[cfg(test)]`, porque já está dentro de um). *A enumeração apodrece; a lei não.*
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
+    // ⚠️ **A GEOMETRIA de uma linha não tem semântica própria** (2026-09-14): o `row.rs` reparte
+    //    uma faixa entre um nome e um controlo e pinta o rótulo — quem tem nome, papel e foco é o
+    //    CONTROLO, registado por quem o desenha. Um nó aqui poria um alvo focável por baixo de
+    //    cada linha do app, a duplicar o controlo dela.
+    (
+        "property_box/row.rs",
+        "geometria de linha + rotulo: o no' e' do controlo, nao da faixa",
+    ),
     // ⚠️ **A listra de uma lista não tem semântica própria, e a ausência é a decisão**
     //    (2026-09-06): ela é o TOM que a lista pinta ATRÁS das suas linhas, para que duas linhas
     //    encostadas se leiam como duas. Não regista alvo nenhum e não é focável — quem tem nome,

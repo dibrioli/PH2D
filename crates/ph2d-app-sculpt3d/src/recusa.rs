@@ -48,8 +48,17 @@ pub(crate) struct Entradas<'a> {
     pub tem_referencia: bool,
     /// A peça que se vai esculpir.
     pub mesh: &'a Mesh,
-    /// Quantas **outras** peças há na cena.
+    /// Quantas **outras** peças há na cena **que o pincel pode ver** — ver
+    /// [`super::Sculpt3dScene::alvos_visiveis`].
     pub outras_pecas: usize,
+    /// ⭐⭐ **Quantas há que ele NÃO pode ver** (o olho fechado na Hierarquia, ou
+    /// o isolamento).
+    ///
+    /// ⚠️ **Ela existe para a recusa poder dizer a CURA e não só o facto.**
+    /// *«Não há outra peça»* e *«a outra peça está escondida»* levam o artista a
+    /// gestos opostos — um vai criar geometria, o outro vai abrir um olho —, e
+    /// as duas leem-se exactamente igual num contador só.
+    pub outras_escondidas: usize,
 }
 
 /// **A peça tem bordo aberto?**
@@ -96,6 +105,17 @@ impl Entradas<'_> {
             ));
         }
         if self.brush.precisa_das_pecas_da_cena() && self.outras_pecas == 0 {
+            // ⭐ A CURA, e não só o facto: o artista que ouve *«nao ha' outra
+            // peca»* vai criar geometria; quem ouve *«esta' escondida»* vai
+            // abrir um olho. As duas leem-se igual num contador só.
+            if self.outras_escondidas > 0 {
+                return Some(format!(
+                    "{nome} precisa de OUTRA peca A' VISTA -- a{} que ha' esta' \
+                     escondida (abra o olho dela na Hierarquia, ou saia do \
+                     isolamento)",
+                    if self.outras_escondidas == 1 { "" } else { "s" }
+                ));
+            }
             return Some(format!(
                 "{nome} precisa de OUTRA peca na cena -- ele empurra o barro \
                  ate' encostar nela, e aqui so' ha' uma"
@@ -118,7 +138,13 @@ impl Sculpt3dScene {
             // uma delas ganhasse uma cerca.
             tem_referencia: self.superficie_de_referencia().is_some(),
             mesh: o.stack.mesh(),
-            outras_pecas: self.objects.len().saturating_sub(1),
+            // ⚠️⚠️ **A MESMA porta que enche a lista** — ver
+            // [`super::Sculpt3dScene::alvos_visiveis`]. Contar `objects.len() −
+            // 1` aqui e filtrar lá faria um traço cujo único alvo está
+            // ESCONDIDO mover zero vértices **e ficar calado**, que é
+            // precisamente o defeito que este módulo existe para não ter.
+            outras_pecas: self.alvos_visiveis().count(),
+            outras_escondidas: self.objects.len().saturating_sub(1) - self.alvos_visiveis().count(),
         };
         if let Some(motivo) = entradas.recusa() {
             eprintln!("[sculpt3d] {motivo}");

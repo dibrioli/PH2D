@@ -152,6 +152,35 @@ pub(crate) fn world_map(sim: &mut SimWorld) -> SculptEntityMap {
     map
 }
 
+/// ⭐⭐⭐ **QUEM ESTÁ COM O OLHO FECHADO NA HIERARQUIA** — o espelho que a
+/// [`Sculpt3dScene::escondidas`] guarda, **lido do mundo** como o [`world_map`]
+/// ao lado.
+///
+/// ⚠️ **`Option<&Visibility>` e não `&Visibility`**, e é a invariante HR-5 da
+/// casa: *ausência do componente = visível*. Uma peça acabada de nascer não o
+/// tem, e um query obrigatório deixaria o espelho vazio — lendo-se como *«nada
+/// está escondido»*, que é o valor conservador e por isso invisível.
+///
+/// ⚠️ **PER-ENTIDADE, e o limite é declarado:** o `Visibility` desta casa **não
+/// propaga para descendentes** (está escrito no próprio componente), logo uma
+/// peça dentro de um grupo escondido continua a contar como alvo. Curá-lo é
+/// andar os ascendentes, que é o que a [`ph2d_entity_visibility`] faz para
+/// outro meio — e essa crate não é dependência desta. *Dívida nomeada, e o
+/// valor de hoje é o que a invariante da casa diz.*
+#[must_use]
+pub(crate) fn escondidas_do_mundo(sim: &mut SimWorld) -> BTreeSet<ObjectId> {
+    let mut fechadas = BTreeSet::new();
+    let mut q = sim
+        .world_mut()
+        .query::<(&Sculpt3dPieceRef, Option<&ph2d_ecs::Visibility>)>();
+    for (piece, vis) in q.iter(sim.world()) {
+        if vis.is_some_and(|v| v.hidden) {
+            fechadas.insert(ObjectId(piece.0));
+        }
+    }
+    fechadas
+}
+
 /// O próximo `RootOrder` livre (o maior em uso + 1) — idêntico ao do Flip e do vetor, porque a
 /// árvore é **uma** e a ordem de raiz é partilhada entre os meios.
 fn next_root_order(sim: &mut SimWorld) -> u32 {
@@ -228,6 +257,17 @@ pub fn entities_sync(
         e.insert(Sculpt3dPieceRef(nova.0));
     }
     sync(sim, scene, &mut shell.rows, nome_novo);
+    // ⭐⭐⭐ **E O OLHO DA HIERARQUIA CHEGA À CENA** — a espec §6.1 diz que um
+    // alvo ESCONDIDO não conta, e antes disto o pen-down não tinha como saber.
+    //
+    // ⚠️ **Aqui e não numa porta do `AppHost`:** este é o único sítio da família
+    // que segura o mundo e a cena ao mesmo tempo, e ele já corre uma vez por
+    // quadro **antes** de a Hierarquia ser desenhada. Uma sétima porta no host
+    // reprovaria o censo por licença que a Fase B pagou.
+    //
+    // ⚠️ **DEPOIS do `sync`**, que é quem faz nascer e morrer peças: lido antes,
+    // o espelho descreveria uma lista que o próprio quadro acabou de mudar.
+    scene.escondidas = escondidas_do_mundo(sim);
     // ⭐⭐⭐ **ESCOLHER A LINHA PÕE A MÃO NA PEÇA** — a outra metade de *«as funções na
     // hierarquia para o mesh»*.
     //

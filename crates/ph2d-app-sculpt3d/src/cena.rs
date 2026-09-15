@@ -54,6 +54,27 @@ pub struct Sculpt3dScene {
     /// re-escondesse peças gastaria um passo de undo sem devolver trabalho
     /// nenhum.
     pub(crate) isolated: Option<ObjectId>,
+    /// ⭐⭐⭐ **AS PEÇAS QUE O OLHO DA HIERARQUIA FECHOU** — o espelho do
+    /// `ph2d_ecs::Visibility`, reconstruído do mundo a cada quadro pelo
+    /// [`crate::entities::entities_sync`].
+    ///
+    /// ⚠️⚠️ **Isto NÃO contradiz a nota do [`Self::isolated`] ao lado, e a
+    /// diferença é qual estado é AUTORÁVEL.** Aquela recusa um `hidden: bool`
+    /// por peça porque com bandeiras existiria *«duas escondidas e uma à vista
+    /// sem ninguém ter isolado»* — um estado que **nenhum gesto de isolamento
+    /// pode produzir**. Aqui é o contrário: o olho da Hierarquia é por-linha por
+    /// construção, logo esse estado **é exactamente o que o artista autora**, e
+    /// um id só não o sabe guardar.
+    ///
+    /// ⚠️ **CONJUNTO de ids e não um campo no [`super::objects::SceneObject`]**,
+    /// pela mesma razão que o `SculptRowsSeen` já é: isto é um **espelho** do
+    /// mundo e não estado desta cena, e um campo na peça convidaria alguém a
+    /// escrevê-lo aqui — passando a haver duas respostas a *«esta peça
+    /// aparece?»*, que divergem no primeiro `Ctrl+Z`.
+    ///
+    /// ⚠️ **Estado de VISTA**, como o isolamento: não entra na história nem no
+    /// documento (o `Visibility` já viaja no projecto, do lado do ECS).
+    pub(crate) escondidas: std::collections::BTreeSet<ObjectId>,
     /// **O ARM da topologia dinâmica** — ver [`dyntopo`], que é onde as três
     /// consequências de ligar estão escritas.
     ///

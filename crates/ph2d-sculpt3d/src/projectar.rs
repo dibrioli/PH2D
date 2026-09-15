@@ -195,7 +195,7 @@ pub(crate) fn folga_simetrica(d: f32, folga: f32) -> f32 {
 /// ⭐⭐⭐ **O que as separou foi o CABEÇALHO, não a aritmética:**
 /// `projectar_base` e `projectar_invertido` têm cabeçalhos
 /// **idênticos** campo a campo (o `sentido` é `ADD` nos dois — a
-/// inversão veio pelo GESTO), e o `o_que_ela_fixa` da base diz
+/// inversão veio pelo GESTO), e a linha de descrição da base diz
 /// *«contra um plano ABAIXO»* enquanto o da invertida diz *«o
 /// MESMO, invertido»*. ⇒ **a cena é a mesma, com o plano abaixo.**
 ///

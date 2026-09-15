@@ -34,6 +34,7 @@ impl Sculpt3dScene {
             active: 0,
             next_id: 1,
             isolated: None,
+            escondidas: std::collections::BTreeSet::new(),
             dyntopo: dyntopo::Dyntopo::default(),
             dyn_before: None,
             dyn_births: Vec::new(),

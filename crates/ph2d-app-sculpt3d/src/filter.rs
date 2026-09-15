@@ -180,15 +180,19 @@ impl Sculpt3dScene {
             // ⚠️ **A pose de cada peça entra na cópia**: a lei recebe posições em
             // espaço de MUNDO, e o `Multires::mesh` está em espaço local.
             self.stroke.pecas_da_cena.clear();
+            // ⚠️ **A MESMA porta do pen-down do traço** — ver
+            // [`Sculpt3dScene::alvos_visiveis`]. Este laço e o de lá eram
+            // cópias letra a letra, e a cláusula do «escondido» teria entrado
+            // só num deles.
             if self.tecido.props.collisions {
-                let activo = self.active;
-                for (i, o) in self.objects.iter().enumerate() {
-                    if i != activo {
-                        self.stroke
-                            .pecas_da_cena
-                            .push((o.stack.mesh().clone(), o.pose));
-                    }
-                }
+                let alvos: Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> = self
+                    .alvos_visiveis()
+                    .map(|i| {
+                        let o = &self.objects[i];
+                        (o.stack.mesh().clone(), o.pose)
+                    })
+                    .collect();
+                self.stroke.pecas_da_cena = alvos;
             }
             self.stroke
                 .cloth_filter_begin(&mesh, self.tecido.props, kind, ponto);

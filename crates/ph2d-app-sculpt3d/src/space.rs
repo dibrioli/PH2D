@@ -11,6 +11,26 @@ use super::{
     SceneObject, Sculpt3dScene,
 };
 
+/// ⭐⭐⭐ **A LEI DE «ESTA PEÇA APARECE?», pura** — as duas metades do
+/// [`Sculpt3dScene::visible_pieces`], sem cena e sem device.
+///
+/// ⛔⛔ **Ela é uma função livre de propósito, e a razão é um gate:** a cena
+/// pede um `wgpu::Device` para nascer, logo um teste sobre ela nasceria
+/// `#[ignore]` e **o CI nunca o correria** — a mesma lição que a
+/// [`crate::recusa`] pagou. *Quando um gate precisa de um device para medir
+/// uma decisão que não tem pixel nenhum, a lei está no sítio errado.*
+///
+/// ⚠️ **O `isolada` que entra é a que EXISTE**, já resolvida pelo
+/// [`Sculpt3dScene::isolated_index`]: uma isolada que morreu não isola, e essa
+/// cláusula não cabe aqui porque ela é sobre a LISTA e não sobre a peça.
+pub(crate) fn aparece(
+    id: ObjectId,
+    isolada: Option<ObjectId>,
+    escondidas: &std::collections::BTreeSet<ObjectId>,
+) -> bool {
+    isolada.is_none_or(|k| k == id) && !escondidas.contains(&id)
+}
+
 impl Sculpt3dScene {
     /// Acrescenta um objeto à cena. Devolve o índice dele.
     ///
@@ -55,9 +75,42 @@ impl Sculpt3dScene {
     /// da regra em qualquer uma delas seria a que diverge — um pick que alcança
     /// o que não se vê é esculpir às cegas, e uma caixa que inclui o invisível
     /// enquadra a câmera em volta do nada.
+    /// ⭐⭐ **E desde 2026-09-15 ela tem DUAS metades:** o isolamento, e o OLHO da
+    /// Hierarquia ([`Sculpt3dScene::escondidas`]). As duas escondem, e escondem
+    /// pelas mesmas razões — *um pick que alcança o que não se vê é esculpir às
+    /// cegas* —, logo elas pertencem à mesma porta.
     pub(super) fn visible_pieces(&self) -> impl Iterator<Item = usize> + '_ {
-        let only = self.isolated_index();
-        (0..self.objects.len()).filter(move |&i| only.is_none_or(|k| k == i))
+        // ⚠️ **O id da isolada resolve-se ANTES do laço, e pela porta** — ver
+        // [`Self::isolated_index`]: uma isolada que já morreu **não isola**, e
+        // passar o `self.isolated` cru para a lei pura perderia essa cláusula.
+        let so = self.isolated_index().map(|k| self.objects[k].id);
+        (0..self.objects.len()).filter(move |&i| aparece(self.objects[i].id, so, &self.escondidas))
+    }
+
+    /// ⭐⭐⭐ **AS OUTRAS PEÇAS QUE UM PINCEL PODE VER** — a porta única de *contra
+    /// que é que este gesto mede*, com **três** consumidores: o pen-down do
+    /// traço, o pen-down do filtro de tecido e a recusa em voz alta.
+    ///
+    /// ⛔⛔ **Ela nasceu porque o laço estava escrito DUAS vezes**, letra a
+    /// letra, em dois pen-downs — e a espec §6.1 acrescentou-lhe uma cláusula
+    /// (*«todo objecto que não é o activo, É malha, e NÃO está escondido»*) que
+    /// um dos dois teria herdado e o outro não. *Duas cópias de um filtro são
+    /// duas respostas à mesma pergunta, e a que diverge é a que ninguém
+    /// relê.*
+    ///
+    /// ⚠️ **E a terceira consumidora é a que torna a cura honesta:** sem ela, um
+    /// traço cujo único alvo está escondido moveria zero vértices **e ficaria
+    /// calado** — exactamente o defeito que o [`crate::recusa`] existe para não
+    /// ter. *Filtrar a lista sem filtrar a contagem troca um pincel inerte por
+    /// um pincel inerte e mudo.*
+    ///
+    /// ⚠️ **Devolve ÍNDICES e não malhas**, e é essa a razão de ela não devolver
+    /// já os pares `(Mesh, Pose)`: a recusa só precisa de os **contar**, e uma
+    /// porta que clonasse as malhas para responder «quantas?» faria o pen-down
+    /// pagar uma cópia da cena inteira por um `usize`.
+    pub(super) fn alvos_visiveis(&self) -> impl Iterator<Item = usize> + '_ {
+        let activo = self.active;
+        self.visible_pieces().filter(move |&i| i != activo)
     }
 
     /// A caixa dos objetos **À VISTA**, em mundo.

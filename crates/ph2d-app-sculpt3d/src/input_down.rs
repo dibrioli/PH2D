@@ -282,16 +282,19 @@ pub fn pointer_down(
             // consumidores (a colisão do tecido e a PROJECÇÃO) têm predicados
             // diferentes, e um `if` de duas pernas escrito aqui faria o
             // terceiro herdar a perna errada em silêncio.
+            // ⚠️ **E o «OUTRAS» sai da porta e não de um `i != activo` aqui** —
+            // ver [`super::Sculpt3dScene::alvos_visiveis`]: a espec §6.1 conta
+            // as que **não estão escondidas**, e este laço estava escrito duas
+            // vezes na crate.
             if scene.brush.precisa_das_pecas_da_cena() {
-                let activo = scene.active;
-                for (i, o) in scene.objects.iter().enumerate() {
-                    if i != activo {
-                        scene
-                            .stroke
-                            .pecas_da_cena
-                            .push((o.stack.mesh().clone(), o.pose));
-                    }
-                }
+                let alvos: Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> = scene
+                    .alvos_visiveis()
+                    .map(|i| {
+                        let o = &scene.objects[i];
+                        (o.stack.mesh().clone(), o.pose)
+                    })
+                    .collect();
+                scene.stroke.pecas_da_cena = alvos;
             }
             // ⚠️ **E a pose do ACTIVO com elas, no mesmo instante** — ela é a
             // régua em que os candidatos da projecção competem

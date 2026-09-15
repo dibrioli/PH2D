@@ -199,6 +199,12 @@ mod scenes_announce_census_tests;
 #[path = "censo_dos_knobs_tests.rs"]
 mod censo_dos_knobs_tests;
 
+/// ⭐⭐⭐ **O OLHO DA HIERARQUIA CHEGA AO PINCEL?** — os gates da regra *«um alvo
+/// ESCONDIDO não conta»* (`SPEC_unblocked_brushes.md` §6.1).
+#[cfg(test)]
+#[path = "visibilidade_tests.rs"]
+mod visibilidade_tests;
+
 /// O QUE A CENA DIZ ao artista — ver o módulo.
 #[path = "announce.rs"]
 mod announce_mod;

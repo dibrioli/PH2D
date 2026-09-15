@@ -25,6 +25,7 @@ fn entradas<'a>(mesh: &'a Mesh, brush: &'a Brush, outras_pecas: usize) -> Entrad
         tem_referencia: false,
         mesh,
         outras_pecas,
+        outras_escondidas: 0,
     }
 }
 
@@ -202,4 +203,47 @@ fn um_verbo_comum_nao_e_recusado() {
             verb.label()
         );
     }
+}
+
+/// ⭐⭐⭐ **E A RECUSA DIZ A CURA: *«está escondida»* não é *«não há»*.**
+///
+/// ⚠️ **As duas levam o artista a gestos OPOSTOS** — uma manda criar geometria,
+/// a outra manda abrir um olho na Hierarquia —, e num contador só elas leem-se
+/// exactamente igual. *Uma recusa que nomeia o facto certo e a cura errada é
+/// mais cara que nenhuma: o artista faz o trabalho e o pincel continua inerte.*
+#[test]
+fn a_recusa_separa_a_peca_que_falta_da_peca_escondida() {
+    let b = Brush {
+        verb: Verb::SceneProject,
+        ..Brush::default()
+    };
+    let m = bola();
+    // (1) Cena de uma peça só: não HÁ outra.
+    let motivo = entradas(&m, &b, 0).recusa().unwrap_or_default();
+    assert!(
+        motivo.contains("OUTRA peca na cena"),
+        "sem outra peça a recusa tem de falar de a criar, e foi `{motivo}`"
+    );
+    // (2) A outra existe e está escondida: a cura é o olho.
+    let escondida = Entradas {
+        outras_escondidas: 1,
+        ..entradas(&m, &b, 0)
+    };
+    let motivo = escondida.recusa().unwrap_or_default();
+    assert!(
+        motivo.contains("escondida") && motivo.contains("Hierarquia"),
+        "com o único alvo escondido a recusa tem de nomear o olho, e foi \
+         `{motivo}`"
+    );
+    // (3) ⭐ E o CONTROLO: com uma à vista ele cala-se, escondidas ou não.
+    let com = Entradas {
+        outras_escondidas: 3,
+        ..entradas(&m, &b, 1)
+    };
+    assert_eq!(
+        com.recusa(),
+        None,
+        "com uma peça À VISTA ele tem o que precisa — as escondidas não o \
+         impedem de nada"
+    );
 }

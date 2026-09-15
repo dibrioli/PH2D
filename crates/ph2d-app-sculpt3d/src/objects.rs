@@ -57,7 +57,7 @@ pub(crate) enum Extracted {
 /// para 2 passa a nomear outra peça — em silêncio, com os índices ainda
 /// válidos. É a mesma lição que a timeline pagou no `wire_id` e a física no
 /// `stable_name_id`: **posição é endereço de alocação, não identidade**.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub(crate) struct ObjectId(pub(super) u32);
 
 pub(crate) struct SceneObject {

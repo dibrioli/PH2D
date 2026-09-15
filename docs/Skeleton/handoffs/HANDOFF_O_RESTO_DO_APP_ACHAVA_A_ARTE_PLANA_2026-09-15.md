@@ -294,3 +294,64 @@ desta wave, e fica **nomeado** em vez de suposto benigno.
   é UM só sítio, e dos quatro consumidores só o desenho e o dedo precisam da curva**) · **F4 — *«undo tem poucos passos»*** (não
   reproduz) · a malha amostrada no EVENTO e não por dab · os traços de FORMA com uma dobra só · o
   `apply_jitter` com o raio inflado.
+
+---
+
+## §9 — O ITEM 4 (as guias chatas) foi MEDIDO, e ele parte-se em DUAS espécies
+
+⭐⭐⭐ **O censo é a tabela dos consumidores do afim `imagem-px → ecrã`**, e ele parte a lista do dono
+em duas metades cuja cura **não é a mesma**:
+
+| espécie | quem | o que ela desenha | a cura |
+|---|---|---|---|
+| **A — GEOMETRIA** | a **grelha** · os **selos de operação** · o **gizmo de selecção** | linhas e contornos, ponto a ponto | a porta `CanvasMap`, mais **SUBDIVISÃO** |
+| **B — IMAGEM** | a **selecção** (formigas + hachura) · a **humidade** | um blit de RGBA do tamanho do canvas, por UM afim | ⛔ a porta **não serve** — é preciso o passe de sprites |
+
+### A espécie A está FECHADA (2026-09-15)
+
+O `CanvasMap` ganhou [`segment`] e [`polyline`], e as três peças passaram por elas. A lei do número
+de pedaços **não é nova** — é a do `ph2d_poly2d::refine` (`√(d/tol)` com **uma** conferência), e a
+tolerância é o mesmo `0,5 px` daquele ficheiro.
+
+⭐⭐ **O achado é que a lei do desvio se AUTO-LIMITA:** ela pediu `15`–`35` pedaços por linha em todas
+as malhas medidas, e o tecto nunca mordeu. Quem cresce com a malha grossa é o número de pedaços;
+quem cresce com a malha fina é o preço de cada um — *os dois puxam em sentidos opostos*.
+
+| malha | pedaços | ms (40 linhas) | % de um quadro |
+|---:|---:|---:|---:|
+| 32 tris | 1 400 | 0,136 | 0,8 % |
+| 128 tris | 1 040 | 0,321 | 1,9 % |
+| 512 tris | 720 | 1,035 | 6,2 % |
+| 1 152 tris | 600 | 2,070 | 12,4 % |
+
+⏳ E a tabela nomeia a obra seguinte: o custo é **`pedaços × triângulos`** porque a travessia é uma
+varredura LINEAR — um índice de UV na `DrawnMesh` tornaria cada pedaço `O(1)` e a tabela ficaria
+plana. Não foi construído porque nenhum número dela o exige ainda.
+
+### A espécie B está ABERTA, e a rota dela já está DECIDIDA por uma recusa medida
+
+As duas chamam `draw_image_rgba_transformed(&rgba, w, h, afim, …)`: **uma imagem por um afim**. Há
+exactamente dois caminhos para a pôr sobre uma malha, e **um deles já foi medido e recusado nesta
+mesma jornada**:
+
+1. ⛔ **Um `push_clip` + afim por triângulo (Vello).** RECUSADO com números — arte translúcida, `216`
+   peças: `10 580 px` fora da barra de 8 de alfa (pior `20`); `3 456` peças: `41 732`. E a contagem
+   de recortes do Vello degrada **em silêncio**, que é o *«Smooth bugado quebrando a forma»* que este
+   módulo já pagou.
+2. ⭐ **O passe de SPRITES, com a malha** — a rota que o tinte da Remoção de fundo já usa
+   (`drawn_instance_of` → copiar a instância → trocar a textura → `LiftedInstances::push(inst, malha)`).
+   São ~20 linhas de rota **mais** o ciclo de vida de uma textura de GPU por overlay.
+
+⇒ **a obra é a 2, e o que ela custa não é a rota: é a TEXTURA.** Cada overlay precisa de subir o
+RGBA quando ele muda e de a largar quando some — o que o `bgremoval_preview_gpu` faz em `upload_tint`
+/ `release_preview_texture`, e que a família do Painter ainda não tem.
+
+⚠️ **E ela muda o Z relativo:** hoje as duas vivem na camada de chrome (Vello) e passariam a viver no
+passe do mundo. Medido no papel: elas já são desenhadas **antes** das alças, logo a ordem relativa
+que o artista vê não muda — mas isso é uma leitura de código e **não um smoke**, e é a primeira coisa
+que a próxima janela tem de confirmar com o dono a olhar.
+
+⚠️ **E a espécie B não é igualmente urgente nas duas peças:** as **formigas** traçam uma FRONTEIRA (um
+erro ali lê-se na hora, como o conta-gotas se lia); o **véu de humidade** é um campo borrado
+desenhado em `ImageQuality::Low`, onde o mesmo erro é quase invisível. *Se a rota tiver de ser paga
+uma vez, ela paga-se pela selecção.*

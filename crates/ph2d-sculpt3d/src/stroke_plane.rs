@@ -178,15 +178,48 @@ impl SculptStroke {
         // `accumulate` herdado do [`Verb::Draw`] (que é `true`) a condição abaixo
         // devolve `live` sempre, e as duas rotas saíam **byte-idênticas** — o
         // ramo do `pre` era inalcançável no teste inteiro.
-        let live = !matches!(
-            brush.verb,
-            Verb::ClayStrips | Verb::ClayThumb | Verb::MultiplaneScrape
-        ) || brush.accumulate;
+        // ⭐⭐⭐ **E o [`Verb::SceneProject`] entra SEM a cláusula do
+        // `Accumulate`, com o oráculo a decidir.** Ele lê a normal deste plano
+        // como a **DIRECÇÃO DO RAIO** (`ProjectMode::Plane`, espec §6.2), e
+        // isso torna-o a única ferramenta em que a normal viva não desvia o
+        // barro — **transporta-o de lado**.
+        //
+        // ⚠️⚠️ **Medido no corpus:** a fixtura `projectar_normal_plano_area` é
+        // **byte-idêntica** à `projectar_base` no oráculo (`max |Δ| = 0,0` nos
+        // `1 681` vértices) — ou seja, com a peça a ser o plano `z = 0` visto de
+        // frente, a direcção do plano e a da vista coincidem **e continuam a
+        // coincidir ao longo dos seis dabs**, com o barro já a afundar. Com a
+        // leitura VIVA a nossa saída desviava `1,281e-1`, e esse desvio era
+        // **inteiramente LATERAL** (`dx`/`dy` nossos `1,281e-1` contra `0,000e0`
+        // dele): *a normal média inclinava sobre a trincheira que o próprio
+        // traço abria, e o raio seguinte partia de lado.*
+        //
+        // ⛔ **A cláusula do `Accumulate` não vale aqui porque aquele
+        // interruptor deixou de lhe ser oferecido** ([`Verb::accumulates`], a
+        // wave em que o `from_live` deste verbo passou a ser incondicional pela
+        // espec §6.5): mantê-la seria uma cerca que um `Brush` carregado de um
+        // ficheiro antigo podia abrir, e nada no painel a poderia fechar.
+        //
+        // ⭐ É a mesma família do [`Verb::Inflate`], que congela a normal pela
+        // razão gémea (*«a normal viva sobe junto com a tinta, e um traço parado
+        // passaria a empurrar numa direcção que gira sozinha»*) — e aqui o preço
+        // é maior, porque o `d` deste verbo é uma distância da CENA e não uma
+        // fracção do raio.
+        let live = match brush.verb {
+            Verb::SceneProject => false,
+            Verb::ClayStrips | Verb::ClayThumb | Verb::MultiplaneScrape => brush.accumulate,
+            _ => true,
+        };
+        // ⚠️ **A fotografia do pen-down GANHA do `base_nrm` quando existe** — ver
+        // [`crate::SculptStroke::nrm0_do_pen_down`]: o `base_nrm` é o PRIMEIRO
+        // TOQUE, e para quem lê esta normal como DIRECÇÃO isso não basta.
         let nrm_of = |v: u32| {
             if live {
                 mesh.normals()[v as usize]
-            } else {
+            } else if self.nrm0_do_pen_down.is_empty() {
                 self.base_nrm[self.slot[v as usize] as usize]
+            } else {
+                self.nrm0_do_pen_down[v as usize]
             }
         };
         let pos_of = |v: u32| {

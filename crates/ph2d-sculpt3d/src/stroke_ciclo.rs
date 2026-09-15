@@ -85,6 +85,9 @@ impl SculptStroke {
         self.touched.clear();
         self.base_pos.clear();
         self.base_nrm.clear();
+        // ⚠️ **E a fotografia das normais** — ela é do GESTO, e herdá-la faria o
+        // raio do traço novo apontar como a superfície estava no anterior.
+        self.nrm0_do_pen_down.clear();
         self.base_mask.clear();
         self.accum.clear();
         self.target.clear();

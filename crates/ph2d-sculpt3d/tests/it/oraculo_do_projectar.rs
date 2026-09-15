@@ -555,13 +555,27 @@ const BARRA: f32 = 2e-6;
 /// dentro da barra (o melhor é `1,250e-1` a `h = +0,625`) — *se nenhum valor do
 /// parâmetro livre encaixa, o que está errado é a lei, não a cena.*
 ///
-/// **As `2` que ficam**, cada uma com a sua pergunta:
+/// ⭐⭐⭐ **E DEPOIS `14 → 15`: a DIRECÇÃO DO RAIO não pode derivar com a
+/// trincheira que o próprio traço abre.** O `…_normal_plano_area` desviava
+/// `1,281e-1` e o desvio era **inteiramente LATERAL** (o nosso `dx`/`dy` lia
+/// `1,281e-1` contra `0,000e0` do oráculo) — no corpus aquela fixtura é
+/// **byte-idêntica** à `…_base` (`max abs(Δ) = 0,0` nos `1 681` vértices), ou
+/// seja a direcção do plano e a da vista coincidem e **continuam a coincidir**
+/// com o barro já a afundar.
+///
+/// ⚠️ **A cura tem DUAS metades, e sem a segunda ela pára a meio:** ajustar o
+/// plano sobre a superfície congelada (a lista por verbo que o
+/// [`ph2d_sculpt3d::Verb::ClayStrips`] já usava) leva o desvio a `1,036e-2`, e
+/// o que sobra é que o `base_nrm` é o **PRIMEIRO TOQUE** e não o pen-down — um
+/// vértice que entra na pegada ao 3.º dab é fotografado já inclinado. Com a
+/// fotografia das normais no primeiro dab: **`1,639e-7`**, o número da `…_base`.
+///
+/// **A `1` que fica:**
 ///
 /// | fixtura | desvio | o que ela isola |
 /// |---|---|---|
-/// | `…_dureza05` | `2,367e-2` | o remapeamento de dureza sobre um traço |
-/// | `…_normal_plano_area` | `1,281e-1` | a direcção do raio pela normal da ÁREA |
-const VERDE_N: usize = 14;
+/// | `…_dureza05` | `2,367e-2` | ⚠️ **`3` vértices de `301`** (`2,4e-2`, `1,2e-2`, `1,6e-3`); os outros `298` batem a `≤ 5,0e-5`. Os três estão na BORDA da pegada, que com o `from_live` se **move** enquanto o barro afunda — o dab em que um vértice sai da esfera é decidido ao último bit, e a dureza `0,5` desloca o ponto onde isso acontece. *É a mesma família da banda de empate do raio, um dab mais tarde* |
+const VERDE_N: usize = 15;
 
 /// ⭐⭐⭐ **O CORPUS INTEIRO DO QUE É RECONSTRUTÍVEL** — `16` das `24`, cada uma
 /// com a cena medida da própria saída.
@@ -735,5 +749,55 @@ fn diag_varre_a_altura() {
             }
         }
         eprintln!("  MELHOR: h {:+.4} com desvio {:.3e}", melhor.1, melhor.0);
+    }
+}
+
+/// **SONDA** — o perfil do desvio de uma fixtura, por distância ao cursor.
+#[test]
+#[ignore]
+fn diag_o_perfil_do_desvio() {
+    for (nome, alturas, inv) in CENAS {
+        if !matches!(nome, "projectar_dureza05" | "projectar_normal_plano_area") {
+            continue;
+        }
+        let f = Fix::ler(nome);
+        let entrada = grelha(false);
+        let mut b = pincel(&f);
+        if inv {
+            b.invert = true;
+        }
+        let alvos: Vec<(Mesh, Pose)> = alturas.iter().map(|&h| alvo(h)).collect();
+        let nosso = correr_com(&f, &b, alvos, false);
+        let raio = f.num("raio_objeto");
+        eprintln!("--- {nome} (dureza {} raio {raio}) ---", f.num("dureza"));
+        let mut lateral = 0.0f32;
+        let mut linhas: Vec<(f32, f32, f32)> = Vec::new();
+        for ((n, o), r) in nosso.positions().iter().zip(&f.s).zip(&f.r) {
+            lateral = lateral
+                .max((n[0] - r[0]).abs())
+                .max((n[1] - r[1]).abs());
+            let perto =
+                f.c.iter()
+                    .map(|c| {
+                        let d = [r[0] - c[0], r[1] - c[1], r[2] - c[2]];
+                        (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
+                    })
+                    .fold(f32::INFINITY, f32::min);
+            if (n[2] - r[2]).abs() > 1e-9 || (o[2] - r[2]).abs() > 1e-9 {
+                linhas.push((perto / raio, n[2] - r[2], o[2] - r[2]));
+            }
+        }
+        let lateral_deles =
+            f.s.iter()
+                .zip(&f.r)
+                .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+                .fold(0.0f32, f32::max);
+        eprintln!("  lateral: nosso {lateral:.3e} · oraculo {lateral_deles:.3e}");
+        linhas.sort_by(|a, b| (b.1 - b.2).abs().total_cmp(&(a.1 - a.2).abs()));
+        eprintln!("  OS 10 PIORES");
+        eprintln!("  {:>7} {:>11} {:>11} {:>11}", "t", "nosso", "oraculo", "delta");
+        for &(t, n, o) in linhas.iter().take(10) {
+            eprintln!("  {t:7.3} {n:11.6} {o:11.6} {:11.6}", n - o);
+        }
     }
 }

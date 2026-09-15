@@ -114,6 +114,28 @@ pub struct SculptStroke {
     pub reference: Vec<[f32; 3]>,
     base_pos: Vec<[f32; 3]>,
     base_nrm: Vec<[f32; 3]>,
+    /// ⭐⭐⭐ **AS NORMAIS DA MALHA INTEIRA NO PEN-DOWN** — vazia para todo verbo
+    /// menos o [`crate::Verb::SceneProject`] em [`crate::ProjectMode::Plane`].
+    ///
+    /// ⛔⛔ **Ela existe porque o [`Self::base_nrm`] NÃO é o pen-down: ele é o
+    /// PRIMEIRO TOQUE.** A captura é preguiçosa (um vértice entra no `base_*`
+    /// quando o primeiro dab o alcança), e um vértice que só entra no 3.º dab é
+    /// fotografado com a normal que ele tem **nessa altura** — já inclinada
+    /// pelos vizinhos que os dois dabs anteriores afundaram. Para vinte e tal
+    /// verbos isso é invisível; aqui a normal **É a direcção do raio**, e um
+    /// grau de inclinação vira transporte lateral de barro.
+    ///
+    /// ⚠️ **MEDIDO no corpus do oráculo** (`projectar_normal_plano_area`, seis
+    /// dabs): com o `base_nrm` o desvio é `1,036e-2` e é **inteiramente
+    /// lateral**; com esta fotografia ele cai para a ordem do `f32`. *A
+    /// diferença entre «congelado no pen-down» e «congelado no primeiro toque»
+    /// é de `5 000×` a barra desta bancada.*
+    ///
+    /// ⚠️ **Preenchida no PRIMEIRO dab e não no [`Self::begin`]**, e a razão é a
+    /// assinatura: o `begin` não recebe o pincel, logo pagaria um `O(V)` a
+    /// TODOS os verbos para servir um. No primeiro dab a malha ainda é a do
+    /// pen-down por construção — nada foi escrito.
+    nrm0_do_pen_down: Vec<[f32; 3]>,
     base_mask: Vec<f32>,
     /// **A saída por-índice do map do dab** — ver [`super::stroke_map`]. ⚠️
     /// Campo e não local: alocar `count` entradas por dab devolveria ao

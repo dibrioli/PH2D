@@ -98,6 +98,21 @@ impl SculptStroke {
             self.capture(mesh, v);
         }
 
+        // ⭐⭐⭐ **A FOTOGRAFIA DAS NORMAIS, e ela é de UM verbo e UM modo** — ver
+        // [`Self::nrm0_do_pen_down`]. No primeiro dab a malha ainda é a do
+        // pen-down por construção (nada foi escrito), e é por isso que ela pode
+        // nascer aqui em vez de no `begin`, que não recebe o pincel.
+        //
+        // ⚠️ **A cerca é `SceneProject` + `Plane`**, e não o verbo sozinho: só
+        // ali a normal do plano é lida como a **direcção do raio**. No modo
+        // `View` a direcção é o olho, e pagar um `O(V)` por traço para nada
+        // seria o fallback a definir o produto ao contrário.
+        if brush.verb == Verb::SceneProject
+            && brush.project_mode == crate::ProjectMode::Plane
+            && self.nrm0_do_pen_down.is_empty()
+        {
+            self.nrm0_do_pen_down.extend_from_slice(mesh.normals());
+        }
         let plane = self.fit_plane(mesh, brush, dab);
         // ⚠️ **A guarda é o VERBO, e não um `Option` preguiçoso computado
         // sempre:** esta é a segunda varredura da pegada de um dab, e os outros

@@ -328,3 +328,71 @@ fn a_inversao_nega_a_translacao_e_nao_vira_o_raio() {
          afasta-o dele (para baixo) — excursão [{lo_b:.4}, {hi_b:.4}]"
     );
 }
+
+/// ⭐⭐⭐ **A DIRECÇÃO DO RAIO NÃO DERIVA COM A TRINCHEIRA QUE O TRAÇO ABRE.**
+///
+/// No modo [`crate::ProjectMode::Plane`] a direcção é o oposto da normal da
+/// ÁREA sob o dab — e se essa normal for lida da superfície VIVA, ela inclina
+/// sobre o vale que os dabs anteriores cavaram: o raio parte de lado e o barro
+/// é **transportado**, não empurrado.
+///
+/// ⛔⛔ **É o defeito que o corpus mediu:** a fixtura `projectar_normal_plano_area`
+/// desviava `1,281e-1` do oráculo e o desvio era **inteiramente lateral** — no
+/// oráculo aquela fixtura é **byte-idêntica** à `projectar_base` (`max abs(Δ) =
+/// 0,0` nos `1 681` vértices), ou seja a direcção não se mexe ao longo dos seis
+/// dabs.
+///
+/// ⚠️ **A cura tem DUAS metades e a segunda quase passou despercebida:**
+/// ajustar o plano sobre a superfície congelada baixou o desvio para `1,036e-2`
+/// e não a zero, porque o `base_nrm` é o **PRIMEIRO TOQUE** e não o pen-down —
+/// um vértice que entra na pegada no 3.º dab é fotografado já inclinado.
+/// ⇒ [`crate::SculptStroke::nrm0_do_pen_down`], e o desvio fecha em `1,639e-7`.
+///
+/// ⚠️ **A régua é o DESLOCAMENTO LATERAL e não a posição**, porque é ele que
+/// nomeia o mecanismo: um desvio vertical seria força a mais, e este é o barro
+/// a andar para o lado.
+#[test]
+fn a_direccao_do_raio_nao_deriva_com_a_trincheira() {
+    let b = crate::Brush {
+        verb: crate::Verb::SceneProject,
+        mode: crate::RefMode::B,
+        radius: 0.35,
+        strength: 1.0,
+        falloff: crate::Falloff::Smooth,
+        project_mode: crate::ProjectMode::Plane,
+        ..crate::Brush::default()
+    };
+    let mut mesh = tampo();
+    let repouso = mesh.positions().to_vec();
+    let mut s = crate::SculptStroke::default();
+    s.begin(&mesh);
+    s.pecas_da_cena = vec![(plano(-0.5), Pose::IDENTITY)];
+    s.pose_activa = Pose::IDENTITY;
+    // Seis dabs ao longo de `x`, que é o percurso que cava a trincheira.
+    for k in 0..6 {
+        let x = -0.3 + 0.12 * f32::from(u8::try_from(k).expect("cabe"));
+        s.dab(
+            &mut mesh,
+            &b,
+            &crate::Dab::at([x, 0.0, 0.0], b.radius, PARA_BAIXO),
+            crate::Symmetry::default(),
+        );
+    }
+    let (mut lateral, mut fundo) = (0.0f32, 0.0f32);
+    for (a, r) in mesh.positions().iter().zip(&repouso) {
+        lateral = lateral.max((a[0] - r[0]).abs()).max((a[1] - r[1]).abs());
+        fundo = fundo.max((a[2] - r[2]).abs());
+    }
+    // O controlo positivo: a cena tem de conter o fenómeno.
+    assert!(
+        fundo > 0.4,
+        "a trincheira não foi cavada (fundo {fundo:.4}) — sem ela este gate mede \
+         o nada"
+    );
+    assert!(
+        lateral < 1e-6,
+        "o raio derivou: o barro andou {lateral:.3e} de LADO ao longo do traço. \
+         A normal do plano está a ser lida da superfície viva (ou do primeiro \
+         toque), e ela inclina sobre o vale que o próprio traço abre"
+    );
+}

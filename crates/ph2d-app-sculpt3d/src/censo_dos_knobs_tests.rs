@@ -48,7 +48,21 @@ use ph2d_panel_sculpt3d::state_modes::UiLevel;
 use ph2d_sculpt3d::{Amount, Brush, Dab, Falloff, Grip, SculptStroke, Symmetry, Verb};
 
 /// A peça do censo — fina o bastante para um dab tocar centenas de vértices.
-fn peca() -> Mesh {
+///
+/// ⚠️ **Nem todo verbo pode ser medido nesta**, e a pergunta é feita à PORTA do
+/// motor: um verbo que [`Verb::precisa_de_bordo_aberto`] não move um único
+/// vértice numa peça fechada, porque a região dele **começa na borda**.
+fn peca_de(verb: Verb) -> Mesh {
+    if verb.precisa_de_bordo_aberto() {
+        // ⭐⭐ **A TIGELA vem pela porta do PRODUTO** (a mesma da cena `=42`), e
+        // não construída aqui — ⛔ a 1.ª tentativa montou-a com `from_parts`
+        // sobre as posições originais e ficou com **721 vértices ÓRFÃOS**: a
+        // busca da âncora aterrava num vértice sem arestas e a lei recusava o
+        // traço inteiro (`2,98e-8`, ruído de `f32`). *É o mesmo defeito de
+        // fixtura que aquela cena já pagou, reproduzido por eu ter reconstruído
+        // o que já tinha porta.*
+        return crate::scenes::boundary::tigela();
+    }
     ph2d_mesh::shapes::uv_sphere(24, 32, 1.0)
 }
 
@@ -56,27 +70,54 @@ const PONTA: [f32; 3] = [0.0, 0.0, 1.0];
 const OLHO: [f32; 3] = [0.0, 0.0, -1.0];
 const RAIO: f32 = 0.5;
 
-/// ⭐⭐ **O GESTO QUE ESTE GRIP SABE RECEBER.**
+/// **ONDE O TRAÇO COMEÇA** — o ápice da peça deste verbo.
+///
+/// ⚠️ Para quem precisa de bordo é a **BEIRA** (o vértice mais alto da tigela é
+/// da boca dela), e para os outros é o pólo. *Um cursor longe do sujeito do
+/// verbo mede um gesto que não acontece.*
+fn onde(verb: Verb, mesh: &Mesh) -> [f32; 3] {
+    if verb.precisa_de_bordo_aberto() {
+        return mesh
+            .positions()
+            .iter()
+            .copied()
+            .max_by(|a, b| a[1].total_cmp(&b[1]))
+            .unwrap_or(PONTA);
+    }
+    PONTA
+}
+
+/// ⭐⭐ **O GESTO QUE ESTE GRIP SABE RECEBER**, no `k`-ésimo passo do traço.
 ///
 /// ⛔ Sem isto metade da tabela leria `0,000` em toda a linha — não porque os
 /// knobs estejam mortos, mas porque **o verbo não recebeu gesto nenhum**.
-fn gesto(verb: Verb, raio: f32) -> Dab {
+fn gesto(verb: Verb, raio: f32, centro: [f32; 3], k: usize) -> Dab {
+    let t = k as f32 + 1.0;
     match verb.grip() {
-        Grip::Hold => Dab::pulling(PONTA, raio, OLHO, [0.25, 0.0, 0.0]),
-        Grip::Hook => Dab::hooking(PONTA, raio, OLHO, [0.25, 0.0, 0.0]),
-        Grip::Turn(Amount::Angle) => Dab::turning(PONTA, raio, OLHO, 0.6),
-        Grip::Turn(Amount::Fraction) => Dab::scaling(PONTA, raio, OLHO, 0.3),
-        _ => Dab::at(PONTA, raio, OLHO),
+        Grip::Hold => Dab::pulling(centro, raio, OLHO, [0.12 * t, 0.0, 0.0]),
+        Grip::Hook => Dab::hooking(centro, raio, OLHO, [0.12 * t, 0.0, 0.0]),
+        Grip::Turn(Amount::Angle) => Dab::turning(centro, raio, OLHO, 0.3 * t),
+        Grip::Turn(Amount::Fraction) => Dab::scaling(centro, raio, OLHO, 0.15 * t),
+        _ => Dab::at(centro, raio, OLHO),
     }
 }
 
 /// A superfície de referência da multiresolução, sintética — ver o gémeo em
 /// `verb_tests.rs`: **sem ela os dois verbos de deslocamento são inertes por
 /// lei**, e o censo leria a ausência de entrada como um knob morto.
+///
+/// ⚠️⚠️ **Ela tem RELEVO, e a 1.ª redacção não tinha.** Uma referência
+/// uniformemente encolhida é lisa, e o [`Verb::SmearMultires`] **transporta
+/// relevo** — sobre uma superfície sem nenhum ele mede o que sobra do
+/// arredondamento. Medido: `4,53e-3` liso contra `7,53e-3` com relevo. *Uma
+/// fixtura que não contém o fenómeno não afirma nada sobre ele.*
 fn referencia(mesh: &Mesh) -> Vec<[f32; 3]> {
     mesh.positions()
         .iter()
-        .map(|p| [p[0] * 0.8, p[1] * 0.8, p[2] * 0.8])
+        .map(|p| {
+            let k = 0.8 * (1.0 + 0.08 * (p[0] * 9.0).sin() * (p[1] * 9.0).cos());
+            [p[0] * k, p[1] * k, p[2] * k]
+        })
         .collect()
 }
 
@@ -89,7 +130,24 @@ fn alvo() -> Vec<(Mesh, ph2d_mesh::Pose)> {
     )]
 }
 
-/// **UM GESTO PELO CAMINHO DO MOTOR**, com tudo o que o pen-down fotografaria.
+/// **QUANTOS DABS O TRAÇO TEM.**
+///
+/// ⭐⭐⭐ **DOIS, e a diferença entre um e dois é QUATRO verbos.** Um carimbo
+/// isolado não tem **caminho**: o [`Dab::path`] sai da diferença entre centros
+/// de dabs consecutivos, e quatro leis lêem-no — o polegar e o raspador de
+/// planos derivam dele o eixo de inclinação, o esfregão a direcção de
+/// transporte, e o pano o passo do solver. Com **um** dab os quatro liam
+/// `0,000e0` em toda a linha e o censo declarava-os *«não medidos»*.
+///
+/// Medido ao acordá-los: `Clay Thumb` `4,12e-3` · `Multiplane Scrape`
+/// `7,92e-3` · `Smear Displacement` `7,53e-3` · `Cloth` `2,34e-2`.
+///
+/// ⚠️ **Não são três nem dez:** dois é o mínimo que produz um caminho, e cada
+/// dab a mais é ruído de composição a entrar numa régua que compara **duas
+/// posições de um knob** — *o censo mede o knob, não o traço*.
+const DABS_DO_TRACO: usize = 2;
+
+/// **UM TRAÇO PELO CAMINHO DO MOTOR**, com tudo o que o pen-down fotografaria.
 ///
 /// ⚠️⚠️ **O raio do dab É o `Brush::radius`, e isso é a LEI do produto, não uma
 /// conveniência do arnês** — [`o_raio_do_dab_sai_do_pincel`] prende-a. A 1.ª
@@ -99,7 +157,7 @@ fn alvo() -> Vec<(Mesh, ph2d_mesh::Pose)> {
 /// a `0,000e0` e o censo acusava-o de morto. *Dois números onde o produto tem
 /// um é a forma mais barata de uma régua mentir.*
 fn corre(b: &Brush) -> Mesh {
-    let mut mesh = peca();
+    let mut mesh = peca_de(b.verb);
     let mut s = SculptStroke::default();
     s.begin(&mesh);
     if b.verb.precisa_de_referencia() {
@@ -109,7 +167,15 @@ fn corre(b: &Brush) -> Mesh {
         s.pecas_da_cena = alvo();
         s.pose_activa = ph2d_mesh::Pose::IDENTITY;
     }
-    s.dab(&mut mesh, b, &gesto(b.verb, b.radius), Symmetry::default());
+    let centro = onde(b.verb, &mesh);
+    for k in 0..DABS_DO_TRACO {
+        // ⚠️ Os centros ANDAM — é a diferença entre eles que vira o
+        // [`Dab::path`], e é o `path` que acorda os quatro verbos de caminho.
+        let passo = 0.12 * k as f32;
+        let mut d = gesto(b.verb, b.radius, centro, k);
+        d.center = [centro[0] + passo, centro[1], centro[2]];
+        s.dab(&mut mesh, b, &d, Symmetry::default());
+    }
     mesh
 }
 
@@ -237,7 +303,7 @@ fn acorda_neste_arnes(verb: Verb) -> bool {
         auto_smooth: 0.0,
         ..pincel(verb)
     };
-    desvio(&peca(), &corre(&x)) > 0.0
+    desvio(&peca_de(verb), &corre(&x)) > 0.0
 }
 
 /// O retrato do painel com este verbo na mão — o que ele PINTARIA.
@@ -396,6 +462,17 @@ fn o_raio_do_dab_sai_do_pincel() {
 /// - `Pose × auto_smooth` era **dívida real e foi CONSTRUÍDA**: a espec do
 ///   pincel prescreve a lei (§15 e item 18 — *«ela segue os pesos, não o
 ///   raio»*), e hoje ela corre em `ph2d_sculpt3d::stroke_pose::alisa_a_pose`.
+///
+/// ⚠️⚠️ **E na MESMA jornada o arnês acordou cinco verbos e as `25` células
+/// novas acusaram DOIS mortos — os dois curados por ESCONDER, não por ligar:**
+/// `Cloth × auto_smooth` e `Boundary × auto_smooth` liam `0,000e0` porque os
+/// dois desviam antes do laço por-vértice onde o passe corre. ⛔ Nenhuma das
+/// duas especs prescreve auto-suavização para aquele pincel, e *inventar uma lei
+/// para um pincel de clean-room sem referência é o que a parede existe para
+/// impedir* ⇒ o painel deixa de a pintar
+/// ([`ph2d_sculpt3d::Verb::o_auto_smooth_chega`], com as duas saídas nomeadas lá
+/// dentro). *Um censo que mede mais encontra mais, e é por isso que acordar um
+/// verbo vale mais do que curar um knob.*
 const MORTOS_CONHECIDOS: &[(Verb, &str, &str)] = &[
     (
         Verb::Mask,
@@ -476,36 +553,22 @@ fn o_censo_nomeia_os_verbos_que_este_arnes_nao_acorda() {
     /// Cada entrada diz **porque** o arnês não o acorda — e é isso que separa
     /// uma dívida de uma isenção.
     const ADORMECIDOS: &[(Verb, &str)] = &[
-        // O efeito inteiro dele é sobre a TOPOLOGIA, e o passe de topologia não
-        // corre dentro do `dab`. *Não é um verbo inerte — é um verbo cuja lei
-        // não vive aqui.*
+        // ⭐⭐⭐ **ELE É O ÚNICO QUE SOBRA, e a catraca desceu de SEIS para um
+        // em 2026-09-15.** Os cinco que saíram não foram reclassificados —
+        // **acordaram**, e a causa foi uma só: o arnês entregava um CARIMBO e
+        // quatro daquelas leis precisam de um TRAÇO (o [`Dab::path`] sai da
+        // diferença entre centros consecutivos), e o quinto precisava de uma
+        // peça com **bordo aberto**, pela porta do produto.
+        //
+        // ⛔ **Este não acorda por LEI, e não por dívida:** o efeito inteiro
+        // dele é sobre a TOPOLOGIA, e o passe de topologia não corre dentro do
+        // `dab`. *Não é um verbo inerte — é um verbo cuja lei não vive aqui.*
+        //
+        // ⏳ **A saída está nomeada:** o arnês teria de correr o
+        // `refine_for_dab` (o passe que o `Density` arma) e comparar a
+        // CONTAGEM de vértices em vez das posições — uma segunda régua, com
+        // outra grandeza, e por isso um trabalho próprio e não uma linha aqui.
         (Verb::Density, "a lei é o passe de topologia, fora do `dab`"),
-        // Os três resolvem a PRÓPRIA região e precisam de estado que o pen-down
-        // do produto monta (a sessão da pose, as fases A–E do contorno, o solver
-        // do pano).
-        (
-            Verb::Boundary,
-            "resolve a própria região: pede as fases do pen-down",
-        ),
-        (
-            Verb::Cloth,
-            "desvia antes do `dab_core`: pede o solver do traço",
-        ),
-        // ⚠️ Os três seguintes são DÍVIDA REAL do arnês, não lei: eles têm lei
-        // por-vértice e deviam mexer-se. Quem os acordar mede quatro knobs de
-        // uma vez.
-        (
-            Verb::ClayThumb,
-            "⏳ dívida do arnês: pede a direcção do traço anterior",
-        ),
-        (
-            Verb::MultiplaneScrape,
-            "⏳ dívida do arnês: pede o plano ajustado",
-        ),
-        (
-            Verb::SmearMultires,
-            "⏳ dívida do arnês: a referência sintética é lisa, e ele transporta RELEVO",
-        ),
     ];
     let medidos: Vec<&'static str> = Verb::ALL
         .iter()

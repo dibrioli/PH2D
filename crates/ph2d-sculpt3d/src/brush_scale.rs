@@ -241,6 +241,12 @@ impl Brush {
         if !self.auto_smooth.is_finite()
             || self.auto_smooth <= 0.0
             || matches!(self.verb, crate::Verb::Smooth | crate::Verb::Mask)
+            // ⛔⛔ **E os que o passe NÃO ALCANÇA** — ver
+            // [`crate::Verb::o_auto_smooth_chega`], onde mora a razão de cada
+            // um e as duas saídas nomeadas. *Um controlo que o artista arrasta
+            // e o barro não sente é pior que um ausente*, e o censo dos knobs
+            // mede-o (`0,000e0` entre as duas pontas da faixa).
+            || !self.verb.o_auto_smooth_chega()
         {
             return None;
         }

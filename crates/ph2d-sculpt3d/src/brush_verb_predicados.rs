@@ -294,6 +294,68 @@ impl Verb {
     /// seja mau: não há de onde tirar um deslocamento. *O irmão-filtro do alvo
     /// estoirou publicamente por não verificar isto*, e é por isso que o gate
     /// desta fronteira é a **recusa** e não o resultado.
+    /// **O PASSE DE AUTO-SUAVIZAÇÃO CHEGA AO BARRO DESTE VERBO?**
+    ///
+    /// O *Auto Smooth* corre como um **segundo `dab_core`** sobre a mesma
+    /// pegada, logo **todo verbo que resolve a própria região o salta por
+    /// construção** ([`Self::resolve_a_propria_regiao`]) — e o painel pintava-o
+    /// na mesma. *O artista arrasta e o barro não sente nada*, que é a espécie
+    /// que o dono reporta como «não vejo efeito».
+    ///
+    /// ⚠️⚠️ **Os três que desviam não têm a MESMA resposta, e é por isso que
+    /// isto não se deriva daquela porta:**
+    /// - [`Self::Pose`] responde **`true`** — ele tem passe PRÓPRIO
+    ///   (`stroke_pose::alisa_a_pose`), escrito porque a espec dele o prescreve
+    ///   (§15 e item 18: *«ela segue os PESOS, não o raio»*);
+    /// - [`Self::Cloth`] e [`Self::Boundary`] respondem **`false`**, e é
+    ///   **MEDIDO**: o censo dos knobs lê `0,000e0` entre as duas pontas da
+    ///   faixa nos dois.
+    ///
+    /// ⛔⛔ **E o `false` deles é uma DIVERGÊNCIA DECLARADA, não uma dívida a
+    /// pagar às cegas:** nenhuma das duas especs prescreve auto-suavização para
+    /// aquele pincel, e *inventar uma lei para um pincel de clean-room sem
+    /// referência é exactamente o que a parede existe para impedir*. ⭐ O
+    /// contorno tem **`Modo::Suavizar`**, um alisamento **da referência**, entre
+    /// os seis dele — oferecer o genérico por cima seria a segunda resposta à
+    /// mesma pergunta.
+    ///
+    /// ⏳ **As duas saídas ficam NOMEADAS:** uma janela **E** pode medir se o
+    /// alvo o oferece com aqueles pincéis na mão, ou o dono pode ordenar que ele
+    /// seja construído **seguindo os pesos da região de cada um** — o `alisa_a_pose`
+    /// já mostra a forma.
+    ///
+    /// ⚠️ **Os dois `false` da referência ficam onde estavam** — o
+    /// [`crate::Brush::auto_smooth_brush`] continua a peneirar [`Self::Smooth`]
+    /// e [`Self::Mask`], e por outra razão: *alisar um alisamento é o mesmo
+    /// verbo duas vezes*, e um passe que mexesse na posição durante um gesto de
+    /// máscara moveria o barro num gesto cuja razão de existir é não movê-lo.
+    #[must_use]
+    pub fn o_auto_smooth_chega(self) -> bool {
+        !matches!(self, Self::Cloth | Self::Boundary)
+    }
+
+    /// **ESTE VERBO PRECISA DE UM BORDO ABERTO?**
+    ///
+    /// ⛔ **Numa peça FECHADA ele não move um único vértice**, e não porque o
+    /// resultado seja mau: a região dele **começa na borda** e cresce para
+    /// dentro — sem borda não há de onde começar. É a mesma espécie de fronteira
+    /// que a [`Self::precisa_de_referencia`] nomeia um degrau acima: *o dado de
+    /// entrada NÃO EXISTE.*
+    ///
+    /// ⚠️ **A cena `=42` abre numa TIGELA por causa disto**, e o doc dela
+    /// escreve-o: numa esfera ela mostraria uma ferramenta que parece partida.
+    ///
+    /// ⏳ **Consumidor NOMEADO e por construir: a recusa em voz alta.** Hoje
+    /// quem aponta este pincel a uma peça fechada não recebe queixa nenhuma — o
+    /// [`crate::Verb::Density`] já tem a dele (`queixa_do_passe`), e *um pincel
+    /// mudo sobre a própria inércia é o que o dono reporta como «não
+    /// funciona»*. O consumidor de hoje é o **arnês dos censos**, que sem esta
+    /// porta media um verbo inerte e lia os cinco knobs dele como mortos.
+    #[must_use]
+    pub fn precisa_de_bordo_aberto(self) -> bool {
+        matches!(self, Self::Boundary)
+    }
+
     #[must_use]
     pub fn precisa_de_referencia(self) -> bool {
         matches!(self, Self::EraseMultires | Self::SmearMultires)

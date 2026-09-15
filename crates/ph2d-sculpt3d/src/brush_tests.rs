@@ -463,9 +463,26 @@ fn the_auto_smooth_is_off_by_default_like_the_reference() {
     );
 }
 
-/// As DUAS exclusões do motor de escultura da referência, e elas são por VERBO.
+/// **QUEM RECUSA O SEGUNDO PASSE, E POR QUE RAZÃO** — e são **duas** razões,
+/// não uma.
+///
+/// ⚠️⚠️ **Este gate chamava-se *«os DOIS verbos que a referência salta»* e a
+/// premissa dele MORREU em 2026-09-15**, quando o censo dos knobs mediu mais
+/// dois a recusar por outro motivo. *Uma premissa que morre é o gate a fazer o
+/// trabalho dele* — a redacção anterior fica aqui como contraste, e o nome
+/// mudou com ela.
+///
+/// | verbo | razão | fonte |
+/// |---|---|---|
+/// | `Smooth`, `Mask` | **exclusão da REFERÊNCIA** — alisar um alisamento é o mesmo verbo duas vezes, e um passe que mexesse na posição durante um gesto de máscara moveria o barro num gesto cuja razão de existir é não movê-lo | o motor de escultura do alvo |
+/// | `Cloth`, `Boundary` | **o passe NÃO ALCANÇA** — os dois desviam antes do laço por-vértice onde ele corre | ⭐ **MEDIDO** pelo censo dos knobs (`0,000e0` entre as pontas da faixa) |
+///
+/// ⭐ **E o [`Verb::Pose`] tem de responder `true`**, apesar de também desviar:
+/// ele tem passe **próprio** (`stroke_pose::alisa_a_pose`). *Sem esta metade, um
+/// gate que derivasse a resposta da [`Verb::resolve_a_propria_regiao`] passaria
+/// e apagaria um controlo vivo.*
 #[test]
-fn the_second_pass_skips_the_two_verbs_the_reference_skips() {
+fn the_second_pass_is_refused_for_two_different_reasons() {
     for verb in Verb::ALL {
         let b = Brush {
             verb,
@@ -473,7 +490,10 @@ fn the_second_pass_skips_the_two_verbs_the_reference_skips() {
             ..Brush::default()
         };
         let got = b.auto_smooth_brush().is_some();
-        let want = !matches!(verb, Verb::Smooth | Verb::Mask);
+        let want = !matches!(
+            verb,
+            Verb::Smooth | Verb::Mask | Verb::Cloth | Verb::Boundary
+        );
         assert_eq!(
             got,
             want,
@@ -482,6 +502,20 @@ fn the_second_pass_skips_the_two_verbs_the_reference_skips() {
             if want { "receber" } else { "recusar" }
         );
     }
+    // ⭐ **O controlo que separa as DUAS razões:** o `Pose` desvia do laço como
+    // o `Cloth` e o `Boundary` e **recebe** o passe, porque tem o dele. Uma
+    // resposta derivada do desvio apagaria-o.
+    assert!(
+        Brush {
+            verb: Verb::Pose,
+            auto_smooth: 0.5,
+            ..Brush::default()
+        }
+        .auto_smooth_brush()
+        .is_some(),
+        "a pose desvia do laço por-vértice E tem passe próprio — recusar-lhe a \
+         porta apagaria um controlo VIVO, que é o defeito oposto"
+    );
 }
 
 /// O passe carrega o MESMO pincel — só o verbo e a força mudam —, e ele **não

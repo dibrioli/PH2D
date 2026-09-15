@@ -124,13 +124,18 @@ pub(crate) fn announce() {
          [sculpt3d]        -> O barro desce e fica RENTE a' mesa: onde voce passou, a\n\
          [sculpt3d]           calota fica CHATA, ao nivel dela.\n\
          [sculpt3d]    (2) Segure Ctrl e arraste na calota outra vez.\n\
-         [sculpt3d]        -> Nada acontece, e e' o certo: o Ctrl vira o raio para o lado\n\
-         [sculpt3d]           de la', e para cima nao ha' nada. Este pincel nunca empurra\n\
-         [sculpt3d]           para o infinito -- sem alvo, o barro fica quieto.\n\
-         [sculpt3d]    (3) AINDA com Ctrl, ligue `Search Both Ways` no painel e arraste.\n\
+         [sculpt3d]        -> Agora o barro SOBE em vez de descer: o Ctrl inverte o\n\
+         [sculpt3d]           movimento, e a calota AFASTA-SE da mesa em vez de encostar\n\
+         [sculpt3d]           nela. Solte o Ctrl a seguir.\n\
+         [sculpt3d]    (3) Rode a camera ate' ver a peca POR BAIXO da mesa e arraste na\n\
+         [sculpt3d]        calota.\n\
+         [sculpt3d]        -> Nada acontece, e e' o certo: o raio passou a apontar para\n\
+         [sculpt3d]           longe da mesa, e este pincel nunca empurra para o infinito\n\
+         [sculpt3d]           -- sem alvo, o barro fica quieto.\n\
+         [sculpt3d]        Agora ligue `Search Both Ways` no painel e arraste outra vez.\n\
          [sculpt3d]        -> Volta a funcionar: ele passa a procurar tambem PARA TRAS e\n\
-         [sculpt3d]           encontra a mesa outra vez.\n\
-         [sculpt3d]    (4) Solte o Ctrl e desligue `Search Both Ways`.\n\
+         [sculpt3d]           encontra a mesa.\n\
+         [sculpt3d]    (4) Desligue `Search Both Ways` e volte a ver a peca por cima.\n\
          [sculpt3d]    (5) Baixe o `Strength` para metade: o efeito fica um QUARTO do\n\
          [sculpt3d]        caminho, nao metade. E' de proposito, em toda esta familia.\n\
          [sculpt3d]    (6) SUBA o `Gap` para 0,20 e passe outra vez.\n\
@@ -150,8 +155,9 @@ pub(crate) fn announce() {
          [sculpt3d]\n\
          [sculpt3d]    DEU ERRADO SE: no (1) a calota RASGAR (riscos escuros a atravessar\n\
          [sculpt3d]    a peca), inchar, encolher ou o barro atravessar a mesa; se no (2)\n\
-         [sculpt3d]    alguma coisa se mexer; se no (3) nao acontecer nada; ou se o app\n\
-         [sculpt3d]    fechar sozinho."
+         [sculpt3d]    o barro DESCER outra vez em vez de subir; se no (3) alguma coisa se\n\
+         [sculpt3d]    mexer antes de ligar `Search Both Ways`, ou nada se mexer depois;\n\
+         [sculpt3d]    ou se o app fechar sozinho."
     );
 }
 

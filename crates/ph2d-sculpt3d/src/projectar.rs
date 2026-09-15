@@ -177,19 +177,54 @@ pub(crate) fn folga_simetrica(d: f32, folga: f32) -> f32 {
 /// a mesma forma do apagador sem referência: quando o dado de
 /// entrada não existe, **a lei não inventa** — aqui ela não projecta
 /// para o infinito.
-/// ⭐⭐⭐ **INVERTER VIRA O RAIO, e não o sinal do deslocamento** —
-/// e isto é um achado do CORPUS, não uma leitura da espec.
+/// ⭐⭐⭐ **INVERTER NEGA A TRANSLAÇÃO — o raio NÃO vira** (espec
+/// §1.2: *«o sinal entra no factor, logo a translação nega»*).
 ///
-/// ⚠️⚠️ Escrito como sinal no fim, a fixtura `projectar_invertido`
-/// media **`0` vértices movidos contra `301`**: o alvo dela está
-/// ACIMA e os dois sentidos estão DESLIGADOS, logo o raio para
-/// baixo não acerta em nada e a negação chegava tarde — não há o
-/// que negar. Com o raio virado, ele encontra o alvo de cima
-/// exactamente como o gesto normal encontra o de baixo.
+/// ⛔⛔⛔ **A redacção anterior dizia o CONTRÁRIO, e ela e a cena
+/// que a sustentava estavam erradas JUNTAS — cada uma a confirmar
+/// a outra.** A bancada tinha reconstruído o alvo de
+/// `projectar_invertido` **ACIMA** (a `+0,5`), porque leu a altura
+/// do *deslocamento máximo* da própria fixtura, que é para cima; e
+/// com o alvo em cima e os dois sentidos desligados, o sinal
+/// escrito no fim media **`0` vértices movidos contra `301`** —
+/// não há o que negar. Virar o raio «curava» isso e a fixtura
+/// ficava a `1,415e-1`. ⚠️ *Duas suposições erradas que encaixam
+/// uma na outra dão um produto que corre e uma bancada que se diz
+/// medida.*
 ///
-/// ⭐ *É a leitura que faz sentido do lado do artista:* `Ctrl`
-/// aqui não quer dizer «afasta», quer dizer **«procura do outro
-/// lado»**.
+/// ⭐⭐⭐ **O que as separou foi o CABEÇALHO, não a aritmética:**
+/// `projectar_base` e `projectar_invertido` têm cabeçalhos
+/// **idênticos** campo a campo (o `sentido` é `ADD` nos dois — a
+/// inversão veio pelo GESTO), e o `o_que_ela_fixa` da base diz
+/// *«contra um plano ABAIXO»* enquanto o da invertida diz *«o
+/// MESMO, invertido»*. ⇒ **a cena é a mesma, com o plano abaixo.**
+///
+/// ⭐⭐ **E o número que a espec §6.6 publica é a PROVA de que a
+/// lei é esta:** ela mede `max abs(d + d′) = 1,415e-1` entre a base
+/// e a invertida *no alvo*, e a nossa saída desviava do oráculo
+/// **exactamente nesse número** — porque virar o raio produz o
+/// espelho EXACTO da base (medido: `projectar_base` contra
+/// `projectar_acima_bidir` dá `0,000000e0`), e o processo do alvo
+/// não é espelho. *Ler o próprio desvio no número que a espec
+/// publica para a assimetria é o diagnóstico inteiro.*
+///
+/// ⭐ **O mecanismo, e é ele que explica porque não explode:** a
+/// negação empurra o vértice para LONGE do alvo, logo o dab
+/// seguinte mede uma distância MAIOR — mas o peso cai, porque a
+/// pegada é uma esfera em torno de um centro PARADO e o vértice
+/// sai dela. O vértice do centro do primeiro dab anda o vão
+/// inteiro (`w = 1`) e no dab seguinte já está a `0,5` de um raio
+/// de `0,35`: **fora da pegada**, com a excursão travada em
+/// exactamente `0,5`. Foi esse `0,500000` cravado no corpus que
+/// refutou a hipótese de que a excursão crescia sem fim.
+///
+/// ⚠️ **Um dab nega exactamente; um TRAÇO não** (§6.6) — e o
+/// corpus mostra-o por posição: os vértices que só um dab alcança
+/// leem razão `1,00` contra o espelho, e os do meio do traço leem
+/// até `1,37`.
+///
+/// ⇒ do lado do artista, `Ctrl` aqui quer dizer **«afasta do que
+/// está ao lado»**, e não «procura do outro lado».
 ///
 /// ⚠️ **Ela vive AQUI e não no `match` dos alvos por uma razão de TECTO e de
 /// ASSUNTO:** o `stroke_target.rs` responde *para onde cada verbo aponta* com
@@ -205,8 +240,7 @@ pub(crate) fn alvo_do_vertice(
     w: f32,
     sign: f32,
 ) -> [f32; 3] {
-    let base = brush.project_mode.direccao(dab.eye, n_area);
-    let direccao = [base[0] * sign, base[1] * sign, base[2] * sign];
+    let direccao = brush.project_mode.direccao(dab.eye, n_area);
     distancia(
         live,
         direccao,
@@ -216,7 +250,7 @@ pub(crate) fn alvo_do_vertice(
         brush.project_min_distance,
     )
     .map_or(live, |d| {
-        let f = d * w;
+        let f = d * w * sign;
         [
             live[0] + direccao[0] * f,
             live[1] + direccao[1] * f,

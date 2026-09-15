@@ -505,8 +505,8 @@ const CENAS: [(&str, &[f32], bool); 16] = [
     // não aparece no cabeçalho — o `README` da pasta diz-no à letra. O par dele
     // (`…_subtrair`) traz a MESMA inversão como PROPRIEDADE, e os dois medem
     // `0,0` de diferença entre si.
-    ("projectar_invertido", &[0.5], true),
-    ("projectar_subtrair", &[0.5], false),
+    ("projectar_invertido", &[-0.5], true),
+    ("projectar_subtrair", &[-0.5], false),
     ("projectar_dois_abaixo", &[-0.3, -0.9], false),
     ("projectar_dois_lados_bidir", &[0.3, -0.5], false),
 ];
@@ -519,8 +519,8 @@ const BARRA: f32 = 2e-6;
 
 /// Quantas fixturas do corpus reconstrutível caem dentro da [`BARRA`] hoje.
 ///
-/// ⛔⛔ **CATRACA: este número só SOBE**, e ele subiu de `3` para **`12`** em
-/// 2026-09-15.
+/// ⛔⛔ **CATRACA: este número só SOBE**, e ele subiu de `3` para `12` e depois
+/// para **`14`** em 2026-09-15.
 ///
 /// ⭐⭐⭐ **E a subida não foi afinação: era UMA COLUNA da tabela de grips.** A
 /// redacção anterior lia a partição *«um dab bate ao sétimo decimal, seis dabs
@@ -533,14 +533,35 @@ const BARRA: f32 = 2e-6;
 /// ⚠️ *Uma partição limpa diz ONDE procurar e não O QUE procurar* — a leitura
 /// «é a composição» era a primeira hipótese compatível com ela, e a errada.
 ///
-/// **As `4` que ficam**, cada uma com a sua pergunta:
+/// ⭐⭐⭐ **E DEPOIS `12 → 14`, com a MESMA forma de defeito uma camada acima:**
+/// o par `…_invertido` / `…_subtrair` desviava `1,415e-1`, que é **exactamente**
+/// o número que a espec §6.6 publica para `max abs(d + d′)` entre a base e a
+/// invertida. *Ler o próprio desvio no número que a espec dá para a assimetria
+/// do alvo é o diagnóstico inteiro* — significava que a NOSSA saída era o
+/// espelho exacto da base, e a dele não.
+///
+/// ⛔⛔ **A causa eram DUAS suposições erradas que encaixavam uma na outra:** a
+/// cena destas duas tinha sido reconstruída com o alvo **ACIMA** (lido do
+/// deslocamento máximo, que é para cima) e a lei fazia a inversão **virar o
+/// raio** — e cada uma «provava» a outra, porque com o alvo em cima a negação
+/// no fim mede `0` vértices movidos. O que as separou foi o **cabeçalho**: a
+/// base e a invertida são idênticas campo a campo (`sentido: ADD` nas duas) e a
+/// base diz *«contra um plano ABAIXO»*. ⇒ alvo a `−0,5` nas duas, e a inversão
+/// **nega a translação** (espec §1.2: *«o sinal entra no factor»*). Medido:
+/// `1,415e-1 → 2,384e-7`.
+///
+/// ⚠️ **A varredura da ALTURA foi o que fechou a porta antes da cura:** com a
+/// lei do raio virado, **nenhuma** altura de `−1,0` a `+1,0` põe a fixtura
+/// dentro da barra (o melhor é `1,250e-1` a `h = +0,625`) — *se nenhum valor do
+/// parâmetro livre encaixa, o que está errado é a lei, não a cena.*
+///
+/// **As `2` que ficam**, cada uma com a sua pergunta:
 ///
 /// | fixtura | desvio | o que ela isola |
 /// |---|---|---|
 /// | `…_dureza05` | `2,367e-2` | o remapeamento de dureza sobre um traço |
 /// | `…_normal_plano_area` | `1,281e-1` | a direcção do raio pela normal da ÁREA |
-/// | `…_invertido` · `…_subtrair` | `1,415e-1` | ⭐ **o número que a espec §6.6 dá para `max abs(d + d′)` entre a base e a invertida** — a nossa inversão parece ser a negação EXACTA sobre o traço, e a da referência não é (ela re-mede). *Duas fixturas a ler o mesmo número que a espec prevê é um diagnóstico, não uma coincidência.* |
-const VERDE_N: usize = 12;
+const VERDE_N: usize = 14;
 
 /// ⭐⭐⭐ **O CORPUS INTEIRO DO QUE É RECONSTRUTÍVEL** — `16` das `24`, cada uma
 /// com a cena medida da própria saída.
@@ -657,4 +678,62 @@ fn o_alvo_perdedor_e_inobservavel() {
         );
     }
     let _ = entrada;
+}
+
+/// **SONDA** — o desvio de cada uma das `16`, impresso sem reprovar.
+#[test]
+#[ignore]
+fn diag_o_placar() {
+    let entrada = grelha(false);
+    for (nome, alturas, invertido_pelo_gesto) in CENAS {
+        let f = Fix::ler(nome);
+        let alvos: Vec<(Mesh, Pose)> = alturas.iter().map(|&h| alvo(h)).collect();
+        let mut b = pincel(&f);
+        if invertido_pelo_gesto {
+            b.invert = true;
+        }
+        let nosso = correr_com(&f, &b, alvos, false);
+        let v = comparar(&nosso, &entrada, &f);
+        eprintln!(
+            "{nome:<38} desvio {:.3e} · {} contra {} movidos · {} discordam ({} banda)",
+            v.desvio, v.nossos, v.deles, v.discordam, v.empates
+        );
+    }
+}
+
+/// **SONDA** — varre a ALTURA do alvo para uma fixtura, com o pincel dela.
+#[test]
+#[ignore]
+fn diag_varre_a_altura() {
+    for nome in ["projectar_invertido", "projectar_normal_plano_area"] {
+        let f = Fix::ler(nome);
+        let entrada = grelha(false);
+        let mut b = pincel(&f);
+        if nome == "projectar_invertido" {
+            b.invert = true;
+        }
+        eprintln!("--- {nome} ---");
+        let mut melhor = (f32::INFINITY, 0.0f32);
+        for k in -40..=40i32 {
+            let h = f32::from(i16::try_from(k).expect("cabe")) * 0.025;
+            if h.abs() < 0.05 {
+                continue;
+            }
+            let nosso = correr_com(&f, &b, vec![alvo(h)], false);
+            let v = comparar(&nosso, &entrada, &f);
+            if v.nossos == 0 {
+                continue;
+            }
+            if v.desvio < melhor.0 && v.discordam <= v.empates {
+                melhor = (v.desvio, h);
+            }
+            if k % 4 == 0 {
+                eprintln!(
+                    "  h {h:+.3}: desvio {:.3e} · {} contra {} · {} discordam",
+                    v.desvio, v.nossos, v.deles, v.discordam
+                );
+            }
+        }
+        eprintln!("  MELHOR: h {:+.4} com desvio {:.3e}", melhor.1, melhor.0);
+    }
 }

@@ -204,3 +204,127 @@ fn a_translacao_do_alvo_atravessa_e_a_direccao_nao_a_apanha() {
         "a origem do raio não é tratada como PONTO: {d}"
     );
 }
+
+/// Um tampo fino no plano `z = 0` — a peça que o gesto esculpe.
+///
+/// ⚠️ **Grelha e não esfera:** aqui a pergunta é *para que lado o barro vai*, e
+/// num plano chato a resposta lê-se no sinal de um `z` sem nenhuma geometria a
+/// misturar-se com ela.
+fn tampo() -> Mesh {
+    const N: usize = 21;
+    let f = |k: usize| -1.0 + (k as f32) * (2.0 / (N as f32 - 1.0));
+    let mut pos = Vec::with_capacity(N * N);
+    for j in 0..N {
+        for i in 0..N {
+            pos.push([f(i), f(j), 0.0]);
+        }
+    }
+    let mut faces = Vec::with_capacity((N - 1) * (N - 1) * 2);
+    for j in 0..N - 1 {
+        for i in 0..N - 1 {
+            let idx = |a: usize, b: usize| u32::try_from(b * N + a).expect("cabe");
+            let (a, b, c, d) = (idx(i, j), idx(i + 1, j), idx(i + 1, j + 1), idx(i, j + 1));
+            faces.push(Face::tri(a, b, c));
+            faces.push(Face::tri(a, c, d));
+        }
+    }
+    Mesh::from_parts(pos, faces).expect("o tampo do gate")
+}
+
+/// ⭐⭐⭐ **INVERTER NEGA A TRANSLAÇÃO — ele NÃO vira o raio**, e é a TERCEIRA
+/// metade deste gate que separa as duas leis.
+///
+/// ⛔⛔⛔ **As duas primeiras metades sozinhas são satisfeitas pelas DUAS leis**,
+/// e foi exactamente por isso que a errada shipou: com o alvo abaixo, negar a
+/// translação e virar o raio produzem o mesmo sinal no primeiro dab. O que as
+/// separa é o caso em que **não há nada do outro lado**:
+///
+/// | lei | alvo ABAIXO, `Ctrl` | alvo ACIMA, `Ctrl`, sem os dois sentidos |
+/// |---|---|---|
+/// | virar o raio | sobe | **sobe** (o raio virado encontra-o) |
+/// | **negar a translação** (a nossa) | sobe | **nada se move** (o raio para baixo não acerta) |
+///
+/// ⇒ a terceira metade é a única que reprova a lei que esta linha shipou até
+/// 2026-09-15, e o corpus do oráculo concorda com ela (`1,415e-1 → 2,384e-7`
+/// nas duas fixturas invertidas).
+///
+/// ⚠️ **E ela é a lei que o roteiro da `=45` ensina** (passos 2 e 3): *«o Ctrl
+/// inverte o movimento»*, e *«rode a câmara para ver por baixo e nada
+/// acontece»*. Uma cena que ensinasse o contrário seria pior que cena nenhuma
+/// (`CLAUDE.md` §5.0).
+#[test]
+fn a_inversao_nega_a_translacao_e_nao_vira_o_raio() {
+    let corre = |invert: bool, altura: f32, bidir: bool| -> Vec<[f32; 3]> {
+        let b = crate::Brush {
+            verb: crate::Verb::SceneProject,
+            mode: crate::RefMode::B,
+            radius: 0.35,
+            strength: 1.0,
+            falloff: crate::Falloff::Smooth,
+            invert,
+            project_bidirectional: bidir,
+            ..crate::Brush::default()
+        };
+        let mut mesh = tampo();
+        let mut s = crate::SculptStroke::default();
+        s.begin(&mesh);
+        s.pecas_da_cena = vec![(plano(altura), Pose::IDENTITY)];
+        s.pose_activa = Pose::IDENTITY;
+        s.dab(
+            &mut mesh,
+            &b,
+            &crate::Dab::at(ORIGEM, b.radius, PARA_BAIXO),
+            crate::Symmetry::default(),
+        );
+        mesh.positions().to_vec()
+    };
+    let repouso = tampo().positions().to_vec();
+    let excursao = |saida: &[[f32; 3]]| -> (f32, f32) {
+        saida
+            .iter()
+            .zip(&repouso)
+            .map(|(a, b)| a[2] - b[2])
+            .fold((0.0f32, 0.0f32), |(lo, hi), d| (lo.min(d), hi.max(d)))
+    };
+
+    // (1) Sem inversão, com o alvo ABAIXO: o barro desce e encosta nele.
+    let (lo, hi) = excursao(&corre(false, -0.5, false));
+    assert!(
+        lo < -0.4 && hi <= 0.0,
+        "sem Ctrl o barro tinha de DESCER até ao alvo — excursão [{lo:.4}, {hi:.4}]"
+    );
+
+    // (2) Com inversão: o mesmo módulo, para o lado contrário.
+    let (lo_i, hi_i) = excursao(&corre(true, -0.5, false));
+    assert!(
+        hi_i > 0.4 && lo_i >= 0.0,
+        "com Ctrl o barro tinha de SUBIR (afastar-se do alvo) — excursão \
+         [{lo_i:.4}, {hi_i:.4}]"
+    );
+    assert!(
+        (hi_i + lo).abs() < 1e-6,
+        "num dab a inversão nega EXACTAMENTE (espec §6.6): {hi_i:.6} contra \
+         {:.6}",
+        -lo
+    );
+
+    // (3) ⭐ O DISCRIMINADOR: com o alvo do outro lado e sem os dois sentidos,
+    // a inversão não pode encontrá-lo — porque ela não mexe no raio.
+    let (lo_x, hi_x) = excursao(&corre(true, 0.5, false));
+    assert!(
+        lo_x == 0.0 && hi_x == 0.0,
+        "com Ctrl e o alvo ACIMA, o raio para baixo não acerta em nada e o \
+         barro tem de ficar QUIETO — excursão [{lo_x:.4}, {hi_x:.4}]. Uma \
+         excursão aqui quer dizer que a inversão voltou a virar o raio, que é \
+         a lei que o oráculo refuta"
+    );
+
+    // (4) E o controlo do (3): é o `Search Both Ways` que alcança o outro lado,
+    // nunca o Ctrl.
+    let (lo_b, hi_b) = excursao(&corre(true, 0.5, true));
+    assert!(
+        lo_b < -0.4,
+        "com os dois sentidos ligados ele encontra o alvo de cima e a inversão \
+         afasta-o dele (para baixo) — excursão [{lo_b:.4}, {hi_b:.4}]"
+    );
+}

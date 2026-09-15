@@ -251,6 +251,13 @@ impl Screen {
         self.h
     }
 
+    /// O `half` deste enquadramento — `min(w, h) / 2`. ⚠️ `pub` para o traçador de GPU o poder
+    /// usar em vez de o re-derivar: *a mesma pergunta, a mesma resposta.*
+    #[must_use]
+    pub fn half(self) -> f32 {
+        self.half
+    }
+
     /// Pixel → plano da câmera, em unidades de **mundo**.
     #[must_use]
     pub fn plane_at(self, x: f32, y: f32) -> (f32, f32) {

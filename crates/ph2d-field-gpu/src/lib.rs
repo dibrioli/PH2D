@@ -29,6 +29,7 @@
 use std::collections::BTreeMap;
 
 pub mod parity;
+pub mod trace;
 
 /// O molde do shader: a fita do documento, mais o que o chamador quiser à volta.
 ///

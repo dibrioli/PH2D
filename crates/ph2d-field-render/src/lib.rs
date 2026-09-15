@@ -41,8 +41,8 @@ use rayon::prelude::*;
 /// ⚠️ Ver [`Sharpness`]: o valor efetivo desce com o zoom.
 const HIT_EPS: f32 = 2.0e-4;
 /// Quanto um raio anda antes de desistir.
-const T_MAX: f32 = 8.0;
-const MAX_STEPS: usize = 400;
+pub const T_MAX: f32 = 8.0;
+pub const MAX_STEPS: usize = 400;
 /// Passo da diferença central que devolve a normal — **o teto**, pelo mesmo motivo.
 const NORMAL_EPS: f32 = 1.0e-4;
 /// O piso dos dois, e ele nomeia o recurso de que é: a **precisão da representação**.
@@ -86,13 +86,16 @@ pub const NORMAL_STENCIL_WIDTH: usize = NORMAL_STENCIL.offsets().len();
 /// o pixel mede 0,0033 e o teto de 2·10⁻⁴ continua a mandar. A adaptação só morde a partir de ~4×
 /// de aproximação, que é exatamente onde o problema começava.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Sharpness {
-    hit: f32,
-    normal: f32,
+pub struct Sharpness {
+    pub hit: f32,
+    pub normal: f32,
 }
 
 impl Sharpness {
-    fn for_frame(half_extent: f32, side_px: usize) -> Self {
+    /// ⚠️ `pub` desde 2026-09-14: o traçador de GPU precisa das MESMAS tolerâncias, e derivá-las
+    /// lá seria a segunda resposta à pergunta *«a que distância o raio acertou?»*.
+    #[must_use]
+    pub fn for_frame(half_extent: f32, side_px: usize) -> Self {
         let pixel = 2.0 * half_extent / (side_px.max(1) as f32);
         Self {
             hit: HIT_EPS.min(pixel * 0.25).max(PRECISION_FLOOR),

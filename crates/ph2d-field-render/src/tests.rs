@@ -7111,3 +7111,115 @@ fn measure_the_settle_clock() {
         }
     }
 }
+
+/// ⭐⭐⭐ **O QUADRO, REPARTIDO** — marcha, normal, sombra e PINTURA, cada um com o seu relógio.
+///
+/// A §32 mostrou que a marcha cabe em `5 ms` no dispositivo. A pergunta que decide o desenho da
+/// segunda metade é a outra: **se a marcha for para lá e a pintura ficar aqui, quanto sobra?**
+#[test]
+#[ignore = "sonda"]
+fn measure_where_the_settled_frame_spends_its_time() {
+    use std::time::Instant;
+
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    let cyl = |rot: [f32; 4]| {
+        ph2d_field_eval::leaf(
+            Primitive::Cylinder {
+                radius: 0.22,
+                half_height: 0.78,
+                round: 0.05,
+                chamfer: 0.0,
+            },
+            Xform {
+                rotation: rot,
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let doc = ph2d_field::FieldDoc::new(
+        vec![
+            cyl([0.0, 0.0, 0.0, 1.0]),
+            cyl([s, 0.0, 0.0, s]),
+            cyl([0.0, 0.0, s, s]),
+            ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Exact { radius: 0.12 }),
+                    children: vec![NodeId(0), NodeId(1), NodeId(2)],
+                },
+                mods: Vec::new(),
+                verb: None,
+            },
+        ],
+        NodeId(3),
+    )
+    .expect("a peça");
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    println!(
+        "carga: {}",
+        std::fs::read_to_string("/proc/loadavg").unwrap().trim()
+    );
+    println!("  px        ·  TRAÇADO · SOMBRA directa ·  PINTURA · quadro assente");
+
+    for (w, h) in [(640_u32, 360_u32), (1920, 1080)] {
+        let med = |f: &dyn Fn() -> f64| -> f64 {
+            let mut v: Vec<f64> = (0..3).map(|_| f()).collect();
+            v.sort_by(f64::total_cmp);
+            v[0]
+        };
+        let g = trace(&doc, &reg, &cam, w, h);
+        let tracado = med(&|| {
+            let t = Instant::now();
+            std::hint::black_box(trace(&doc, &reg, &cam, w, h).hits());
+            t.elapsed().as_secs_f64() * 1e3
+        });
+        let (right, up, toward_eye) = cam.basis();
+        let ecra = [-0.5566703_f32, 0.6634139, 0.5];
+        let r = 2.0 * cam.half_extent;
+        let luz = [0, 1, 2].map(|i| {
+            cam.target[i] + r * (ecra[0] * right[i] + ecra[1] * up[i] + ecra[2] * toward_eye[i])
+        });
+        let sombra = med(&|| {
+            let t = Instant::now();
+            std::hint::black_box(crate::shadow::shadow_pass(&doc, &reg, &cam, &g, &[luz]).lamps());
+            t.elapsed().as_secs_f64() * 1e3
+        });
+        let sh = crate::shadow::shadow_pass(&doc, &reg, &cam, &g, &[luz]);
+        let so = [ph2d_material::OpenPbr::default().prepare()];
+        let lamps: [crate::Lamp; 0] = [];
+        let pontos = [crate::PointLamp {
+            world: luz,
+            radiance_at_one: [2.0; 3],
+        }];
+        let pintura = med(&|| {
+            let t = Instant::now();
+            let rgba = crate::shade_render(
+                &g,
+                &cam,
+                &crate::Surfaces {
+                    all: &so,
+                    owners: None,
+                },
+                &crate::Lighting {
+                    lamps: &lamps,
+                    points: &pontos,
+                    sky: &CeuDaSonda(0.6),
+                    shadows: Some(&sh),
+                },
+                ph2d_view_transform::Look::default(),
+                [0, 0, 0, 0],
+            );
+            std::hint::black_box(rgba.len());
+            t.elapsed().as_secs_f64() * 1e3
+        });
+        println!(
+            "{w:5}×{h:<4} · {tracado:7.2} ms · {sombra:14.2} ms · {pintura:7.2} ms · {:9.2} ms",
+            tracado + sombra + pintura
+        );
+        println!(
+            "            ⇒ se a MARCHA (traçado + sombra) for para a GPU, sobram {:.2} ms de PINTURA",
+            pintura
+        );
+    }
+}

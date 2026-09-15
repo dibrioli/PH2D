@@ -2974,3 +2974,66 @@ onde o outro responde um número é uma lei diferente, e a subtração esconde-o
 - **A `f32` é a divergência declarada**, e ela é maior do que parece num sítio: a marcha acumula
   erro ao longo de centenas de passos. O gate mede o **campo**, não a marcha.
 - **Nenhum pipeline é ainda partilhado com o produto** — o cache existe e ninguém o liga.
+
+---
+
+## §34 — ⭐⭐⭐ A MARCHA NO DISPOSITIVO: o G-buffer da GPU é o da CPU (2026-09-14)
+
+O §33 pôs o **campo** no dispositivo. Esta põe a **marcha** — e a decisão que a governa saiu de um
+número que eu tinha errado por quatro vezes.
+
+### §34.1 — ⭐⭐ O quadro assente, repartido — e a PINTURA fica
+
+| `1920×1080` | CPU | vai? |
+|---|---:|---|
+| traçado | `30,04 ms` | ⇒ **vai** |
+| sombra directa | `61,73 ms` | ⇒ **vai** |
+| **pintura** | **`10,87 ms`** | ⇒ **FICA** |
+| total | `102,64 ms` | |
+
+⭐⭐⭐ **Eu supunha que a pintura custava `~45 ms`** e, com esse palpite, teria escrito o material em
+WGSL — uma **segunda implementação do OpenPBR**, com tudo o que este repositório já pagou por duas
+respostas à mesma pergunta. Medida, ela custa `10,87 ms` e **cabe**. *A lei do material continua a
+viver num sítio só, e foi a medição que a salvou.*
+
+⇒ com a marcha no dispositivo, o quadro assente passa de `102,6 ms` para **`~18 ms`** — e traz a
+oclusão junto, que hoje está desligada.
+
+### §34.2 — ⚠️ A câmera é a ÚNICA coisa escrita duas vezes, e é deliberado
+
+O `march.rs` avisa por escrito contra *«duas respostas para «que raio sai daqui?»»*. Mandar os raios
+prontos seriam **`50 MB` por quadro**, logo o WGSL reconstrói o `ray_at_plane`. ⇒ ela nasce **com o
+gate em cima**: uma divergência de câmera move o ponto de acerto em unidades de mundo e vira a
+silhueta inteira — exactamente o que a primeira coluna mede.
+
+### §34.3 — A prova, nas 18 cenas vivas (`192×108`)
+
+| | resultado |
+|---|---|
+| pixels que discordam sobre **haver peça** | **`0,000 %` em todas** |
+| `Δt` (p99) | `1,0`–`1,8e-4` — `f32` puro |
+| `Δ` da normal contra **a variação da própria peça** | `0,00×`–**`0,17×`** |
+
+⭐⭐⭐ **A régua da normal é a variação entre pixels VIZINHOS da CPU, e não um ângulo escolhido.**
+Duas cenas — a **rosca** e as **curvas** — dão `p99` de `12,84°` e `9,90°` contra `≤ 0,50°` das
+outras catorze, **e o campo concorda a `1e-7` nas três**. A diferença não é a lei, é o
+**condicionamento**: numa ranhura de passo fino a normal roda dezenas de graus de um pixel para o
+seguinte, logo um deslocamento de `1e-7` no ponto move-a muito. Medido, o vizinho da rosca varia
+`75,92°` — *os dois motores concordam `6×` melhor do que um pixel concorda com o do lado*.
+
+⛔ **Uma barra em graus absolutos ou isentava a rosca ou acusava as outras quinze.** É a mesma
+família da §31, do lado oposto: ali a média escondia a cauda; aqui o extremo escondia a população.
+
+⚠️ E a redacção anterior do gate usava o **máximo** — `94,1°` na rosca, um punhado de pixels sobre
+um vinco. *O extremo e a população respondem a perguntas diferentes, e só uma delas é sobre a lei.*
+
+### §34.4 — ⏳ O que falta para isto ser o quadro
+
+- **A oclusão e a sombra ainda não estão no shader** — o que está é a marcha primária, a normal e o
+  `t`. A sonda `field_march_ceiling` já mostrou o preço delas quando lá estiverem.
+- ⛔ **O ANTI-SERRILHADO não atravessa.** O G-buffer da CPU traz `edges` com quatro amostras por
+  pixel de borda, e o do dispositivo não — ligar isto ao produto hoje **perderia a suavização da
+  silhueta**, que é uma regressão visível. *É por isso que nada disto está ligado.*
+- **A escultura continua de fora** (§33.5): ela é uma grade, não uma expressão.
+- **O dispositivo abre-se a cada chamada** — é a forma de sonda; o produto segura o contexto e o
+  cache de pipelines, que já existe.

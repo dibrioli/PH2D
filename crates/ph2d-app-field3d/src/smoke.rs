@@ -681,3 +681,170 @@ mod gpu_parity {
         );
     }
 }
+
+#[cfg(test)]
+mod gpu_gbuffer_parity {
+    /// ⭐⭐⭐ **O G-BUFFER DO DISPOSITIVO É O DA CPU** — a silhueta, a profundidade e a normal.
+    ///
+    /// ⚠️ **É este gate que vigia a única coisa escrita DUAS vezes**: a câmera. Mandar os raios
+    /// prontos seriam `50 MB` por quadro, logo o WGSL reconstrói o `ray_at_plane` — e uma
+    /// divergência ali move o ponto de acerto em **unidades de mundo**, que é o que as colunas
+    /// medem.
+    #[test]
+    #[ignore = "precisa de GPU"]
+    fn o_gbuffer_do_dispositivo_e_o_da_cpu() {
+        use ph2d_field_render::{Orbit, Screen, trace};
+        const W: u32 = 192;
+        const H: u32 = 108;
+
+        let reg = ph2d_field_eval::hybrid::Registry::new();
+        let cam = Orbit::default();
+        let (right, up, fwd) = cam.basis();
+        let screen = Screen::new(W, H, cam.half_extent);
+
+        println!("  cena · silhueta ·       Dt ·  Dnormal ·   a variacao da PROPRIA peca · razao");
+        let mut piores = (0usize, 0.0f32, 0.0f32);
+        let mut vistas = 0;
+        for n in 0..crate::smoke::scenes::CENAS {
+            if crate::smoke::scenes::PODADAS.contains(&n) {
+                continue;
+            }
+            let doc = crate::smoke::scene(n);
+            let campo = ph2d_field_eval::Field::new(&doc);
+            let Some(fita) = campo.tape_wgsl() else {
+                continue;
+            };
+            let g = trace(&doc, &reg, &cam, W, H);
+            let passo = ph2d_field_eval::safe_march_step(&doc);
+            let shrink = ph2d_field_eval::field_shrink(&doc, &reg);
+            let setup = ph2d_field_gpu::trace::MarchSetup {
+                half_extent: cam.half_extent,
+                half_px: screen.half(),
+                target: cam.target,
+                right,
+                up,
+                fwd,
+                ortho_start: ph2d_field_render::ORTHO_START,
+                eye_distance: cam.eye_distance().unwrap_or(0.0),
+                hit_eps: ph2d_field_render::Sharpness::for_frame(
+                    cam.half_extent,
+                    W.min(H) as usize,
+                )
+                .hit,
+                normal_eps: ph2d_field_render::Sharpness::for_frame(
+                    cam.half_extent,
+                    W.min(H) as usize,
+                )
+                .normal,
+                step: passo,
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                budget: ((ph2d_field_render::MAX_STEPS as f32) * shrink.max(1.0)
+                    / passo.clamp(f32::EPSILON, 1.0))
+                .ceil() as u32,
+                t_max: ph2d_field_render::T_MAX,
+            };
+            let Some(dev) = ph2d_field_gpu::trace::march(&fita, setup, W, H) else {
+                println!("sem GPU — saltada");
+                return;
+            };
+            vistas += 1;
+
+            // ⚠️ **A silhueta compara-se por CONTAGEM de pixels em desacordo, não por igualdade**:
+            // na borda um raio decide por um `epsilon`, e os dois motores são `f32` com ordens de
+            // soma diferentes. O que não pode é a peça mudar de tamanho.
+            let mut difere = 0usize;
+            let mut dts: Vec<f32> = Vec::new();
+            let mut angs: Vec<f32> = Vec::new();
+            for i in 0..g.hit.len() {
+                if g.hit[i] != dev.hit(i) {
+                    difere += 1;
+                    continue;
+                }
+                if !g.hit[i] {
+                    continue;
+                }
+                // O `t` da CPU não é guardado; o ponto é. A distância entre os dois pontos É o Δt.
+                let (sx, sy) = ((i % W as usize) as f32 + 0.5, (i / W as usize) as f32 + 0.5);
+                let (u, v) = screen.plane_at(sx, sy);
+                let (o, d) = cam.ray_at_plane(u, v);
+                let p = g.point[i];
+                let t_cpu = (p[0] - o[0]) * d[0] + (p[1] - o[1]) * d[1] + (p[2] - o[2]) * d[2];
+                dts.push((t_cpu - dev.t[i]).abs());
+                let (a, b) = (g.normal[i], dev.normal[i]);
+                let dot = (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]).clamp(-1.0, 1.0);
+                angs.push(dot.acos().to_degrees());
+            }
+            // ⚠️⚠️ **O EXTREMO E A POPULAÇÃO respondem a perguntas DIFERENTES, e aqui a que
+            // interessa é a segunda.** Num VINCO a derivada não existe (o módulo já o tem escrito),
+            // logo um pixel que caia exactamente lá dá normais muito diferentes a partir de uma
+            // diferença de campo de `1e-7` — e as formas por fórmula (rosca, polígono, triângulo)
+            // são feitas de vincos. *Um opcode traduzido ao contrário move MILHARES de pixels; um
+            // vinco move um punhado.* ⇒ a barra é o `p99`, e o máximo fica na tabela para se ver.
+            dts.sort_by(f32::total_cmp);
+            angs.sort_by(f32::total_cmp);
+            let q = |v: &[f32], f: f64| -> f32 {
+                if v.is_empty() {
+                    0.0
+                } else {
+                    v[((v.len() - 1) as f64 * f) as usize]
+                }
+            };
+            // ⭐⭐⭐ **A RÉGUA DA NORMAL É A VARIAÇÃO DA PRÓPRIA PEÇA, e não um ângulo escolhido.**
+            //
+            // ⚠️ Duas cenas — a ROSCA e as CURVAS — dão `p99` de `12,8°` e `9,9°` contra `≤ 0,5°`
+            // das outras catorze, e o campo concorda a `1e-7` nas três. A diferença não é a lei:
+            // é o **CONDICIONAMENTO**. Numa ranhura de passo fino a normal roda dezenas de graus
+            // de um pixel para o vizinho, logo um deslocamento de `1e-7` no ponto move-a muito.
+            //
+            // ⇒ a barra é a **variação entre pixels VIZINHOS da CPU**: os dois motores têm de
+            // concordar tanto quanto a geometria permite a um pixel concordar com o do lado. *Uma
+            // barra em graus absolutos ou isentava a rosca ou acusava as outras quinze.*
+            let mut vizinhos: Vec<f32> = Vec::new();
+            for y in 0..H as usize {
+                for x in 0..W as usize - 1 {
+                    let (a_i, b_i) = (y * W as usize + x, y * W as usize + x + 1);
+                    if !g.hit[a_i] || !g.hit[b_i] {
+                        continue;
+                    }
+                    let (a, b) = (g.normal[a_i], g.normal[b_i]);
+                    let d = (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]).clamp(-1.0, 1.0);
+                    vizinhos.push(d.acos().to_degrees());
+                }
+            }
+            vizinhos.sort_by(f32::total_cmp);
+            let pct = 100.0 * difere as f64 / g.hit.len() as f64;
+            let (ang99, viz99) = (q(&angs, 0.99), q(&vizinhos, 0.99));
+            let razao = ang99 / viz99.max(1e-6);
+            println!(
+                "  {n:4} · {pct:7.3} % · p99 {:8.2e} · p99 {ang99:6.2}° · o VIZINHO varia {viz99:6.2}° · {razao:5.2}x",
+                q(&dts, 0.99)
+            );
+            piores.0 = piores.0.max(difere);
+            piores.1 = piores.1.max(q(&dts, 0.99));
+            piores.2 = piores.2.max(razao);
+        }
+        assert!(vistas > 10, "só {vistas} cenas foram comparadas");
+
+        let pct = 100.0 * piores.0 as f64 / (W * H) as f64;
+        // ⚠️ **As três barras são do MESMO tipo: erro de representação, não de lei.** Uma câmera
+        // divergente move o ponto de acerto em unidades de MUNDO e vira a silhueta inteira; um
+        // estêncil trocado põe a normal a dezenas de graus. *As barras estão onde o vale medido
+        // está, não onde o defeito seria confortável.*
+        assert!(
+            pct < 1.0,
+            "{pct:.3} % dos pixels discordam sobre haver peça — na borda um `epsilon` decide, mas \
+             1 % é a peça a mudar de TAMANHO, e isso é a câmera escrita duas vezes a divergir"
+        );
+        assert!(
+            piores.1 < 1e-3,
+            "o Δt do p99 é {:.3e} — a marcha do dispositivo está a parar noutro sítio",
+            piores.1
+        );
+        assert!(
+            piores.2 < 1.0,
+            "a normal dos dois motores difere {:.2}x mais do que um pixel difere do VIZINHO — \
+             isso ja nao e condicionamento: e o estencil ou a base de vista a divergirem",
+            piores.2
+        );
+    }
+}

@@ -243,6 +243,34 @@ pub(crate) fn uv_under(mesh: &SpriteMesh, p: [f32; 2]) -> Option<[f32; 2]> {
     })
 }
 
+/// ⭐⭐⭐ **O PONTO LOCAL onde a malha posada desenha o texel de UV de repouso `uv`** — o gémeo de
+/// [`uv_under`], na direcção contrária.
+///
+/// ⛔⛔ **Ele nasceu porque quem desenha POR CIMA da arte não sabia onde a arte está** (2026-09-15):
+/// a [`crate::mesh_uv`] curou quem APONTA, e as alças do editor de curva do Painter continuavam a
+/// ser pintadas pelo afim do quad de REPOUSO — logo o artista clicava num sítio e a marca aparecia
+/// noutro, *ou* via o ponto de controlo longe da tinta que ele próprio acabara de pousar. ⚠️ **Uma
+/// lei escrita só na direcção de quem aponta ainda não é uma lei:** um controlo que se desenha por
+/// um mapa e se agarra por outro é um controlo morto sob o dedo.
+///
+/// ⭐ **Aqui NÃO há ambiguidade de dobra, e é por construção:** a malha de repouso é uma PARTIÇÃO
+/// da imagem (dois triângulos não partilham texel), então um `uv` cai em UM triângulo. É a pergunta
+/// inversa — *que texel está debaixo deste ponto?* — que tem de escolher o desenhado por último.
+///
+/// `None` fora da malha: o chamador fica com a lei do quad, que é o que a [`crate::MeshUv`] já faz
+/// do outro lado.
+#[must_use]
+pub(crate) fn local_at_uv(mesh: &SpriteMesh, uv: [f32; 2]) -> Option<[f32; 2]> {
+    mesh.triangles().find_map(|t| {
+        let w = barycentric(uv, uv_corners(mesh, t))?;
+        let c = corners(mesh, t);
+        Some([
+            w[0] * c[0][0] + w[1] * c[1][0] + w[2] * c[2][0],
+            w[0] * c[0][1] + w[1] * c[1][1] + w[2] * c[2][1],
+        ])
+    })
+}
+
 /// ⭐⭐ **INSTÂNCIAS COPIADAS DA CENA, cada uma com a malha que tinha** — o que o vidro do prefab e o
 /// emissivo re-desenham em isolamento ([`crate::SpriteRenderer::render_lifted_instances`]).
 ///

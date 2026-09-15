@@ -496,6 +496,70 @@ pub fn scene_sprites_bbox_world(present: &mut World) -> Option<WorldBbox> {
     all
 }
 
+/// ⭐⭐⭐ **A ARTE COMO ELA É DESENHADA, para quem desenha POR CIMA dela** — o gémeo da
+/// [`mesh_uv`], na direcção que faltava.
+///
+/// ⛔⛔ **A [`mesh_uv`] curou quem APONTA e deixou quem PINTA CHROME a mapear pelo quad de
+/// repouso** (medido 2026-09-15): o editor de curva do Painter resolve o clique pela malha desde a
+/// wave anterior e continuava a desenhar os pontos de controlo pelo afim do quad — *o artista
+/// clicava num sítio e o ponto aparecia noutro*. ⚠️ **Um controlo desenhado por um mapa e agarrado
+/// por outro é um controlo morto sob o dedo**, que é a espécie do §5.0 que nenhuma sonda vê.
+///
+/// ⚠️ **Ela é READ-ONLY de propósito** (`&World`, não `&mut`): quem desenha o quadro já tem o mundo
+/// de apresentação emprestado, e um `query::<…>()` por chamada **aloca** as tabelas de arquétipo
+/// dele (a nota do [`ph2d_ecs::PresentWorld::sweep`] mediu 107 blocos / 10 quadros por isso). Aqui
+/// atravessa-se o mundo uma vez, guarda-se a malha EMPRESTADA, e cada ponto é uma pergunta sem
+/// alocação nenhuma.
+///
+/// ⚠️ **O custo por ponto é o número de TRIÂNGULOS** (varrimento linear, como a pergunta inversa):
+/// é o preço que a `Smooth` paga, e o consumidor de hoje (o editor de curva) pergunta por dezenas
+/// de pontos enquanto uma curva está a ser editada. Se um consumidor de MILHARES aparecer, a cura é
+/// um índice por UV construído aqui — e não uma segunda cópia desta álgebra.
+pub struct DrawnMesh<'a> {
+    mesh: &'a SpriteMesh,
+    basis: [f32; 4],
+    pos: [f32; 2],
+}
+
+impl DrawnMesh<'_> {
+    /// **UV de repouso → MUNDO**, pelo triângulo POSADO que contém aquele texel. `None` fora da
+    /// malha desenhada — e aí o chamador fica com a lei do quad, exactamente como a
+    /// [`MeshUv::Quad`] do outro lado.
+    #[must_use]
+    pub fn world_at_uv(&self, uv: [f32; 2]) -> Option<[f32; 2]> {
+        let l = crate::sprite_mesh::local_at_uv(self.mesh, uv)?;
+        let (dx, dy) = basis_apply(self.basis, l[0], l[1]);
+        Some([self.pos[0] + dx, self.pos[1] + dy])
+    }
+}
+
+/// A malha POSADA desta sprite da simulação, ou `None` quando ela não é desenhada como malha (e aí
+/// o chamador fica com o afim do quad de repouso, intocado). Ver [`DrawnMesh`].
+#[must_use]
+pub fn drawn_mesh_of(present: &World, sim_entity_bits: u64) -> Option<DrawnMesh<'_>> {
+    for e in present.iter_entities() {
+        let Some(sim_ref) = e.get::<SimRef>() else {
+            continue;
+        };
+        if sim_ref.0.to_bits() != sim_entity_bits {
+            continue;
+        }
+        let (Some(gt), Some(ri)) = (e.get::<GlobalTransform>(), e.get::<RenderInstance>()) else {
+            return None;
+        };
+        // ⚠️ A MESMA pergunta que o passe de sprites faz (`drawn_mesh`): uma malha que este mapa
+        // lesse e o desenho recusasse punha o chrome sobre uma dobra que não está no ecrã.
+        let mesh = crate::sprite_mesh::drawn_mesh(e.get::<SpriteMesh>(), ri.size)?;
+        let pos = gt.translation();
+        return Some(DrawnMesh {
+            mesh,
+            basis: ri.basis,
+            pos: [pos.x, pos.y],
+        });
+    }
+    None
+}
+
 #[cfg(test)]
 #[path = "picking_tests.rs"]
 mod tests;

@@ -130,9 +130,9 @@ pub use layer_compositor::{
 };
 pub use motion_fx::{BloomParams, DirtMask, MotionFx, dirt_scale_offset};
 pub use picking::{
-    MeshUv, WorldBbox, mesh_uv, pick_sprite_at_world, pick_sprites_at_world,
-    pick_sprites_in_world_rect, scene_sprites_bbox_world, selection_bbox_world, sprite_world_to_uv,
-    sprite_world_to_uv_unclamped,
+    DrawnMesh, MeshUv, WorldBbox, drawn_mesh_of, mesh_uv, pick_sprite_at_world,
+    pick_sprites_at_world, pick_sprites_in_world_rect, scene_sprites_bbox_world,
+    selection_bbox_world, sprite_world_to_uv, sprite_world_to_uv_unclamped,
 };
 pub use pipeline::SpritePipeline;
 pub use premul::{

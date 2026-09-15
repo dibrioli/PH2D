@@ -639,3 +639,58 @@ fn the_published_deformation_makes_the_brush_round_on_screen() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A DIRECÇÃO QUE FALTAVA: onde é que a arte dobrada DESENHA este texel?**
+///
+/// ⛔⛔ Sem ela, quem pinta chrome por cima do canvas mapeia pelo afim do QUAD DE REPOUSO — e desde
+/// que o ponteiro passou a ser resolvido pela malha (2026-09-14), o editor de curva do Painter
+/// ficou a **agarrar num sítio e a desenhar noutro**. ⚠️ *Um controlo desenhado por um mapa e
+/// agarrado por outro é um controlo morto sob o dedo.*
+///
+/// As duas metades: a IDA e a VOLTA fecham (é o mesmo texel), e a resposta **não é a do quad** —
+/// sem a segunda, um mapa que ignorasse a malha passaria a primeira em repouso.
+#[test]
+fn the_drawn_mesh_says_where_a_texel_lands_and_it_is_not_the_rest_quad() {
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let mut present = PresentWorld::new();
+    let e = fresh_sim_entity(&mut sim);
+    let bits = spawn_at(&mut present, e, 0.0, 0.0, [2.0, 2.0]);
+    give_mesh(&mut present, e, posed_arm());
+
+    // IDA: que texel está debaixo deste ponto do mundo?
+    let crate::MeshUv::Use { u, v, .. } =
+        crate::mesh_uv(present.world_mut(), bits, [3.5, 0.5], true, SEM_DAB)
+    else {
+        panic!("o ponto está sobre a arte desenhada");
+    };
+    // VOLTA: onde é que a arte desenha ESSE texel? No sítio de onde se veio.
+    let malha = crate::drawn_mesh_of(present.world(), bits).expect("a sprite desenha-se como malha");
+    let p = malha.world_at_uv([u, v]).expect("o texel é desenhado");
+    assert!(
+        (p[0] - 3.5).abs() < 1e-4 && (p[1] - 0.5).abs() < 1e-4,
+        "a ida e a volta têm de fechar no mesmo ponto, e deram {p:?}"
+    );
+    // ⛔ **O DISCRIMINADOR**: o quad de repouso desta sprite põe aquele texel em `(-0,5, -0,5)`.
+    // Um mapa que ignorasse a malha responderia ali, e a asserção de cima **também passaria** se a
+    // ida a ignorasse igualmente — é este par que separa as duas leis.
+    assert!(
+        (p[0] + 0.5).abs() > 1.0,
+        "a resposta é a da MALHA POSADA, nunca a do quad de repouso ({p:?})"
+    );
+
+    // Fora da malha, em UV: este triângulo cobre METADE da imagem, e o canto oposto não é desenhado.
+    assert_eq!(
+        malha.world_at_uv([0.95, 0.05]),
+        None,
+        "um texel que a arte não desenha não tem sítio no ecrã"
+    );
+
+    // ⛔ O CONTROLO: uma sprite SEM malha não passa por esta porta — o chamador fica com o afim
+    // dele, que é o que mantém a grelha da folha e o *Repeat Image* intocados.
+    let plain = fresh_sim_entity(&mut sim);
+    let pbits = spawn_at(&mut present, plain, 20.0, 0.0, [2.0, 2.0]);
+    assert!(
+        crate::drawn_mesh_of(present.world(), pbits).is_none(),
+        "uma sprite que se desenha como QUAD não tem malha a oferecer"
+    );
+}

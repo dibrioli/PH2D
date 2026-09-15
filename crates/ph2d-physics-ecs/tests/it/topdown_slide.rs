@@ -279,3 +279,120 @@ fn abaixo_do_limiar_nos_andamos_a_projeccao_e_o_oraculo_para() {
         );
     }
 }
+
+/// ⭐⭐ **A CAMADA que o cast consulta é a do CORPO, e não um literal.**
+///
+/// ⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE:** trocar o `layer` da ponte por um `9`
+/// escrito à mão passou por todos os outros — porque a matriz de fábrica é permissiva e **toda
+/// camada vê toda camada**. *Uma fixtura sem filtro de camada não pode medir o filtro de camada.*
+///
+/// A cena separa a camada do corpo (`1`) da da parede (`0`): o mover **tem de atravessar**. Com a
+/// camada errada ele consultaria a máscara de outra e pararia.
+#[test]
+fn a_camada_do_cast_e_a_do_corpo() {
+    use ph2d_physics_ecs::{LayerMatrix, PhysicsSettings};
+    let mut sim = SimWorld::new();
+    parede(&mut sim, "Parede", Vec2::new(0.0, 0.0), (1.0, 20.0));
+    let cfg = TopDownPlayer {
+        speed: VELOCIDADE,
+        direction_mode: 0, // Free — ver a irmã: o encaixe mediria o quantizador
+        ..TopDownPlayer::default()
+    };
+    let quem = sim
+        .world_mut()
+        .spawn((
+            Name::new("Player"),
+            RigidBody {
+                kind: BodyKind::Kinematic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.2 },
+                // ⚠️ A camada do CORPO é `1`.
+                layer: 1,
+                ..Collider::default()
+            },
+            LockRotation,
+            cfg,
+            Transform::from_translation(Vec2::new(-3.0, 0.0)),
+        ))
+        .id();
+    let mut bridge = PhysicsBridge::new();
+    // `1` e `0` separadas ⇒ a parede não existe para este corpo.
+    let mut m = LayerMatrix::all();
+    m.set(1, 0, false);
+    bridge.set_settings(PhysicsSettings {
+        layer_matrix: m.rows(),
+        ..PhysicsSettings::default()
+    });
+    bridge.set_player_input(
+        quem,
+        PlayerInput {
+            drive: 1.0,
+            ..PlayerInput::default()
+        },
+    );
+    for t in 1..=120u64 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let p = pos(&sim, "Player");
+    assert!(
+        p.x > 1.0,
+        "com as camadas separadas ele tinha de atravessar a parede, e parou em {p:?}"
+    );
+}
+
+/// ⭐⭐ **Dois movers na mesma entidade: o de PLATAFORMA ganha.**
+///
+/// ⚠️ **Este gate nasceu de outra mutação sobrevivente:** apagar o guarda do conflito passou,
+/// porque o filtro que eu corri media o COMPONENTE e nenhuma fixtura punha os dois juntos.
+///
+/// O discriminador é a GRAVIDADE: o mover de vista de cima não a tem, o de plataforma cai. Com os
+/// dois a escrever a pose no mesmo tique, o resultado deixa de ser o de nenhum dos dois.
+#[test]
+fn com_dois_movers_o_de_plataforma_ganha() {
+    use ph2d_physics_ecs::{PlatformPlayer, PlayerMode};
+    let mut sim = SimWorld::new();
+    let quem = sim
+        .world_mut()
+        .spawn((
+            Name::new("Player"),
+            RigidBody {
+                kind: BodyKind::Kinematic,
+            },
+            Collider {
+                shape: ColliderShape::Capsule {
+                    half_height: 0.3,
+                    radius: 0.2,
+                },
+                ..Collider::default()
+            },
+            LockRotation,
+            PlatformPlayer::default(),
+            PlayerMode::Kinematic,
+            TopDownPlayer {
+                speed: VELOCIDADE,
+                ..TopDownPlayer::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+        ))
+        .id();
+    let mut bridge = PhysicsBridge::new();
+    bridge.set_player_input(
+        quem,
+        PlayerInput {
+            // ⚠️ Nenhuma intenção horizontal: o que se mede é a QUEDA.
+            drive: 0.0,
+            drive_y: 0.0,
+            ..PlayerInput::default()
+        },
+    );
+    for t in 1..=60u64 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let p = pos(&sim, "Player");
+    assert!(
+        p.y < -0.5,
+        "sem chão, o mover de PLATAFORMA cai — e ele parou em {p:?}, que é o de vista de cima a \
+         escrever a pose por cima dele"
+    );
+}

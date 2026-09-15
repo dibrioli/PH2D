@@ -67,6 +67,16 @@ fn o_instantaneo_acusa_um_corpo_que_nao_serve() {
     let (sim, bits) = cena(BodyKind::Kinematic, false);
     let i = build_topdown_info(sim.world(), bits, 1, true).unwrap();
     assert!(i.body_is_kinematic);
+
+    // ⚠️⚠️ **E o ESTÁTICO, que é o caso que a 1.ª redacção deste gate não continha** — uma mutação
+    // sobreviveu a trocar a pergunta por `!= Dynamic`, e a forma negativa deixa um corpo estático
+    // passar como se estivesse bem. *A pergunta é `== Kinematic`.*
+    let (sim, bits) = cena(BodyKind::Static, false);
+    let i = build_topdown_info(sim.world(), bits, 1, true).unwrap();
+    assert!(
+        !i.body_is_kinematic,
+        "um corpo ESTATICO tambem nao serve — ele nao se move"
+    );
 }
 
 #[test]

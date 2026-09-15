@@ -48,6 +48,12 @@ done < "$VASSOURA"
 hits=0
 patfile() { printf '%s' "$PATTERNS"; }
 
+# **É um gzip?** — pelos dois bytes mágicos, nunca pela extensão: um corpus
+# comprimido com outro nome escaparia a uma régua que olhasse o sufixo.
+is_gzip() {
+  [ "$(head -c 2 -- "$1" 2>/dev/null | od -An -tx1 | tr -d ' \n')" = "1f8b" ]
+}
+
 # ⚠️ NUNCA `comando | report`: hits=1 num subshell de pipeline se perde e o
 # sweep sairia verde com achado impresso (a doença "pipe mascara exit code").
 # Capture SEMPRE em variável e chame report com o texto como argumento.
@@ -85,6 +91,18 @@ else
       if grep -qI . "$f" 2>/dev/null; then
         out="$(grep -HnF -f <(patfile) -- "$f" 2>/dev/null)" || true
         report "conteúdo" "$out"
+      elif is_gzip "$f"; then
+        # ⛔⛔ UM `.gz` É OPACO AO `strings`, e um sweep verde sobre ele NÃO
+        # PROVA NADA SOBRE O CONTEÚDO (achado 2026-09-14, medido: o `strings` de
+        # uma fixtura gzipada devolve lixo comprimido). Este repo guarda os
+        # corpora de oráculo comprimidos — o do tecido, o da pose, os dos
+        # pincéis desbloqueados —, logo a cegueira valia para TODOS eles.
+        #
+        # ⇒ descomprime-se EM MEMÓRIA (nunca para ficheiro: nada do alvo toca o
+        # disco) e varre-se o texto, com o nome do `.gz` no rótulo para o achado
+        # ser endereçável.
+        out="$(gzip -cd -- "$f" 2>/dev/null | grep -nF -f <(patfile))" || true
+        report "conteúdo de $f (descomprimido)" "$out"
       else
         if strings -n 6 -- "$f" 2>/dev/null | grep -qF -f <(patfile); then
           hits=1

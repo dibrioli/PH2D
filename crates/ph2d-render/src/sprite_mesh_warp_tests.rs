@@ -219,3 +219,8 @@ fn samples_off_the_mesh_answer_by_the_facet_they_left() {
         );
     }
 }
+
+/// ⭐ **As SONDAS que mediram o que sobra** — e as duas explicações que elas refutaram. Ver o
+/// cabeçalho de [`probe`].
+#[path = "sprite_mesh_warp_probe.rs"]
+mod probe;

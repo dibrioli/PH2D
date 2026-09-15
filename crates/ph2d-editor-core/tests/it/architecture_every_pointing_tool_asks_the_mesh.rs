@@ -13,8 +13,8 @@
 
 use std::path::Path;
 
-/// O ficheiro da shell, com os comentários retirados (uma agulha não se satisfaz com prosa).
-fn shell_src(rel: &str) -> String {
+/// Um ficheiro do repo, com os comentários retirados (uma agulha não se satisfaz com prosa).
+fn fonte(rel: &str) -> String {
     let f = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(Path::parent)
@@ -32,7 +32,7 @@ fn shell_src(rel: &str) -> String {
 #[test]
 fn the_eyedropper_samples_the_texel_the_art_draws_there() {
     let rel = "shells/desktop/src/forwarding.rs";
-    let src = shell_src(rel);
+    let src = fonte(rel);
     // Controlo positivo: é ESTE o sítio que amostra a composição do Painter.
     assert!(
         src.contains("painter.sample_composite_at_uv(su, sv)"),
@@ -66,7 +66,7 @@ fn the_eyedropper_samples_the_texel_the_art_draws_there() {
 #[test]
 fn the_background_remover_resolves_its_pointer_through_one_door() {
     const PORTA: &str = "shells/desktop/src/input_dispatch/uv_sob_o_ponteiro.rs";
-    let porta = shell_src(PORTA);
+    let porta = fonte(PORTA);
     assert!(
         porta.contains("pub(crate) fn uv_sob_o_ponteiro(")
             && porta.contains("ph2d_render::mesh_uv(")
@@ -89,7 +89,7 @@ fn the_background_remover_resolves_its_pointer_through_one_door() {
         "shells/desktop/src/input_dispatch/eyedropper.rs",
         "shells/desktop/src/input_dispatch/protect_brush.rs",
     ] {
-        let src = shell_src(rel);
+        let src = fonte(rel);
         chamadas += src.matches("uv_sob_o_ponteiro::uv_sob_o_ponteiro(").count();
         // ⛔⛔ **A LEI ANTIGA, proibida pelo NOME.** A caixa era
         // `camera.world_to_screen([tx - sw * 0.5, ty + sh * 0.5], …)`, e ela lia a pose LOCAL — uma
@@ -109,5 +109,71 @@ fn the_background_remover_resolves_its_pointer_through_one_door() {
         chamadas, 3,
         "as entradas de canvas da Remoção de fundo são TRÊS (o conta-gotas, o dab de protecção e o \
          *Add area*) e {chamadas} chamam a porta: uma delas voltou a ter lei própria."
+    );
+}
+
+/// ⭐⭐⭐ **O CHROME DO CANVAS é pintado onde a arte DESENHA — as duas metades do mesmo controlo.**
+///
+/// ⛔⛔ **A wave anterior curou o DEDO e deixou o OLHO** (medido 2026-09-15): o
+/// `deliver_canvas_pointer` resolve o clique pela malha posada desde 14/09 e os editores de CURVA e
+/// de LINHA continuavam a pintar as alças pelo afim do quad de repouso. ⇒ um controlo **desenhado
+/// por um mapa e agarrado por outro** — a espécie de controlo morto que o `CLAUDE.md` §5.0 declara
+/// que nenhuma sonda deste repo apanha. *As duas direcções viajam juntas ou nenhuma viaja.*
+///
+/// ⚠️ Este gate afirma que os desenhadores **consultam** a porta; que a porta **responde certo** é
+/// medido noutro sítio (`ph2d-app-painter/tests/the_canvas_map_lands_on_the_posed_art.rs`) — *citar
+/// uma porta não é consultá-la, e consultá-la não é tê-la certa.*
+#[test]
+fn the_curve_and_line_chrome_is_painted_where_the_art_draws_it() {
+    // A porta.
+    const MAPA: &str = "crates/ph2d-app-painter/src/canvas_map.rs";
+    let mapa = fonte(MAPA);
+    assert!(
+        mapa.contains("pub fn point(&self, p: [f32; 2]) -> Point")
+            && mapa.contains("ph2d_render::drawn_mesh_of(present, sim_entity_bits)"),
+        "{MAPA} deixou de perguntar à malha posada: sem isso o `CanvasMap` é o afim com outro nome."
+    );
+
+    // Os dois editores que autoram pontos em px de IMAGEM e os deixam agarráveis no canvas.
+    for rel in [
+        "crates/ph2d-app-painter/src/painter_bridge_curve_overlay.rs",
+        "crates/ph2d-app-painter/src/painter_bridge_line_overlay.rs",
+    ] {
+        let src = fonte(rel);
+        assert!(
+            src.contains("CanvasMap::new("),
+            "{rel} pinta as alças pelo afim do QUAD DE REPOUSO. Numa arte dobrada elas ficam longe \
+             da tinta — e longe do sítio onde o ponteiro as agarra, que já pergunta à malha."
+        );
+        assert!(
+            src.contains("mapa.point(p)"),
+            "{rel} constrói o mapa e continua a mapear pelo afim: *citar a porta não é consultá-la*."
+        );
+        // ⛔ **A LEI ANTIGA, proibida pelo NOME** — é ela que volta sozinha na primeira alça nova.
+        assert!(
+            !src.contains("affine * Point::new"),
+            "{rel} voltou a mapear um ponto autorado pelo afim do quad."
+        );
+    }
+
+    // ⚠️ E o GIZMO de transformação é o mesmo controlo: se ele ficar no afim, a caixa afasta-se das
+    // alças que ela enquadra (e das alças que o dedo agarra).
+    const GIZMO: &str = "crates/ph2d-app-painter/src/painter_bridge_gizmo.rs";
+    let gizmo = fonte(GIZMO);
+    assert_eq!(
+        gizmo.matches("mapa: &crate::canvas_map::CanvasMap<'_>").count(),
+        2,
+        "{GIZMO} tem DOIS desenhadores do gizmo de transformação (a caixa e a alça do centro) e os \
+         dois têm de receber o MAPA: metade no afim põe a caixa longe do que ela enquadra."
+    );
+
+    // E o DEDO do menu de alça: o botão secundário sobre o mesmo ponto de controlo.
+    const MENU: &str = "shells/desktop/src/input_dispatch/painter_curve_input.rs";
+    let menu = fonte(MENU);
+    assert!(
+        menu.contains("let malha = super::painter_canvas_input::malha_sob_o_cursor(")
+            && menu.contains("ph2d_render::MeshUv::Use { u, v, .. } => [u * iw as f32, v * ih as f32]"),
+        "{MENU} abre o menu da alça pelo afim do quad, enquanto o botão PRIMÁRIO que arrasta a mesma \
+         alça resolve pela malha: as duas metades do mesmo gesto com mapas diferentes."
     );
 }

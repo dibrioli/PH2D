@@ -20,7 +20,7 @@
 //!   -- --ignored --nocapture
 //! ```
 
-use ph2d_ecs::SimWorld;
+use ph2d_ecs::{PresentWorld, SimWorld};
 use ph2d_editor_core::tool::RasterEditTool;
 use ph2d_editor_core::{HeroScreen, NodeId};
 use ph2d_host::WindowSize;
@@ -47,11 +47,15 @@ fn med<T>(n: usize, mut f: impl FnMut() -> T) -> f64 {
 }
 
 /// The fixture: a painter bound to a `size`² canvas, a sprite entity selected in the hero screen.
-fn fixture(size: u32) -> (PainterTool, SimWorld, HeroScreen, Camera2d, WindowSize) {
+fn fixture(size: u32) -> (PainterTool, SimWorld, PresentWorld, HeroScreen, Camera2d, WindowSize) {
     let mut painter = PainterTool::default();
     painter.set_source(vec![255u8; (size * size * 4) as usize], size, size);
     painter.set_brush_size_px(40.0);
 
+    // ⚠️ Um mundo de APRESENTAÇÃO **vazio**, e é o que esta medição quer: sem malha, o
+    // `CanvasMap` degenera no afim do quad — logo os números continuam a ser os do caminho de
+    // sempre, e não os de uma arte dobrada (que seria outra fixtura, com outro assunto).
+    let present = PresentWorld::new();
     let mut sim = SimWorld::new();
     let entity = sim
         .world_mut()
@@ -66,14 +70,14 @@ fn fixture(size: u32) -> (PainterTool, SimWorld, HeroScreen, Camera2d, WindowSiz
 
     let camera = Camera2d::new([0.0, 0.0], 4.0);
     let window = WindowSize::new(1920, 1080);
-    (painter, sim, hero, camera, window)
+    (painter, sim, present, hero, camera, window)
 }
 
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_where_the_bridge_phases_spend_a_frame() {
     for size in [1024u32, 2048, 4096] {
-        let (painter, sim, hero, camera, window) = fixture(size);
+        let (painter, sim, present, hero, camera, window) = fixture(size);
         let mut scene = VectorScene::new();
         let mut text = ph2d_text::TextSystem::without_system_fonts();
         // Cursor over the canvas centre — NOT over a panel, so the brush ring takes its drawing path.
@@ -82,7 +86,17 @@ fn measure_where_the_bridge_phases_spend_a_frame() {
 
         // Warm: first call builds whatever is lazy.
         ph2d_app_painter::painter_bridge_overlays::draw_overlays(
-            &painter, &hero, &sim, &camera, window, &mut scene, &mut text, cursor, &mut perf, true,
+            &painter,
+            &hero,
+            &sim,
+            present.world(),
+            &camera,
+            window,
+            &mut scene,
+            &mut text,
+            cursor,
+            &mut perf,
+            true,
             false,
         );
 
@@ -92,8 +106,18 @@ fn measure_where_the_bridge_phases_spend_a_frame() {
         let whole = med(200, || {
             scene = VectorScene::new();
             ph2d_app_painter::painter_bridge_overlays::draw_overlays(
-                &painter, &hero, &sim, &camera, window, &mut scene, &mut text, cursor, &mut perf,
-                true, false,
+                &painter,
+                &hero,
+                &sim,
+                present.world(),
+                &camera,
+                window,
+                &mut scene,
+                &mut text,
+                cursor,
+                &mut perf,
+                true,
+                false,
             );
         });
         println!("CHROME draw_overlays TOTAL {whole:.4}");

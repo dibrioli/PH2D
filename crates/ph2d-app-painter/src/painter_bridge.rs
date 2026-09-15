@@ -73,6 +73,10 @@ pub fn dispatch(
     hero: &mut HeroScreen,
     tools: &mut ToolRegistry,
     sim: &SimWorld,
+    // ⭐⭐⭐ **O mundo de APRESENTAÇÃO (read-only)** — onde a malha posada de uma arte presa ao
+    // esqueleto vive. O chrome do canvas desenha-se por cima dela, e o ponteiro que agarra as alças
+    // já a consulta desde 2026-09-14: sem isto aqui, as duas metades do mesmo controlo discordam.
+    present: &ph2d_ecs::World,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
@@ -604,6 +608,7 @@ pub fn dispatch(
             painter,
             hero,
             sim,
+            present,
             camera,
             window_size,
             vector_scene,

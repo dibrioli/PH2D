@@ -32,6 +32,10 @@ pub mod line_smoke;
 pub mod mask_smoke;
 pub mod shape_grab;
 
+/// ⭐⭐⭐ **O mapa imagem-px → ecrã que a arte DOBRADA manda** — ver o `//!` do módulo: um controlo
+/// desenhado por um mapa e agarrado por outro é um controlo morto sob o dedo.
+pub mod canvas_map;
+
 // ─────────────────────────────────────────────────────────────────────────
 // **As PONTES DE DESENHO e o carimbo**, vindos de `shells/desktop/src/render_loop/`.
 // ⚠️ Os nomes MANTÊM o prefixo `painter_` de propósito: um rename por nome corrompe a

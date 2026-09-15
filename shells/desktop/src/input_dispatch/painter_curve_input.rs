@@ -66,7 +66,28 @@ impl App {
         );
         let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
         let tol = shape_grab_tol_from_affine(&affine);
-        let img_pt = [img.x as f32, img.y as f32];
+        // ⭐⭐⭐ **A ARTE DOBRADA MANDA NESTE CLIQUE TAMBÉM** (2026-09-15). O afim acima é o do QUAD DE
+        // REPOUSO, e o botão PRIMÁRIO (que arrasta a mesma alça) resolve pela malha desde a wave
+        // anterior: as duas metades do mesmo gesto tinham mapas diferentes, então numa arte dobrada
+        // arrastar o ponto funcionava e o menu dele abria noutro sítio — ou não abria.
+        //
+        // ⚠️ **Pegada `[0, 0]`**: isto APONTA para uma alça, não pousa um disco de tinta. E
+        // `starting = true` porque um clique secundário é sempre o primeiro ponto do gesto dele —
+        // fora da arte desenhada a porta RECUSA, e aqui isso é *«o clique não é meu»*.
+        let malha = super::painter_canvas_input::malha_sob_o_cursor(
+            gfx.present.world_mut(),
+            bits,
+            gfx.camera.screen_to_world((px, py), window_size),
+            true,
+            0.0,
+            iw,
+            ih,
+        );
+        let img_pt = match malha {
+            ph2d_render::MeshUv::Use { u, v, .. } => [u * iw as f32, v * ih as f32],
+            ph2d_render::MeshUv::Refuse => return false,
+            ph2d_render::MeshUv::Quad => [img.x as f32, img.y as f32],
+        };
         // Same menu for BOTH curve owners: the stroke Shape curve and the selection Convert-to-Curve editor
         // (they're never both active). The pick drains to `set_curve_handle_kind` / `set_selection_curve_...`.
         if !painter.curve_select_point_at(img_pt, tol)

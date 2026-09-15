@@ -16,6 +16,9 @@ pub(super) fn draw_curve_overlay(
     painter: &PainterTool,
     hero: &HeroScreen,
     sim: &SimWorld,
+    // ⭐⭐⭐ **O mundo de APRESENTAÇÃO, e é read-only de propósito** — é onde a malha posada vive
+    // (`ph2d_render::SpriteMesh`), e é ela que diz ONDE a arte desenha cada texto autorado.
+    present: &ph2d_ecs::World,
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
@@ -54,8 +57,22 @@ pub(super) fn draw_curve_overlay(
                 camera,
                 window_size,
             );
-            use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
-            let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+            use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Stroke};
+            // ⭐⭐⭐ **A ARTE DOBRADA MANDA NAS ALÇAS** (2026-09-15). O `affine` acima é o do QUAD DE
+            // REPOUSO; o ponteiro que AGARRA estas alças resolve pela malha desde a wave anterior,
+            // e desenhá-las pelo quad deixava-as longe da tinta — *agarradas num sítio, pintadas
+            // noutro*. A porta é a [`crate::canvas_map::CanvasMap`], que degenera no `affine` onde
+            // não há malha (e é ele que carrega a grelha da folha desdobrada).
+            let mapa = crate::canvas_map::CanvasMap::new(
+                present,
+                bits,
+                iw,
+                ih,
+                affine,
+                camera,
+                window_size,
+            );
+            let map = |p: [f32; 2]| mapa.point(p);
             // Curve stroke gizmo = fluorescent GREEN (each stroke shape type gets a distinct accent).
             let pal = crate::painter_bridge_gizmo::palette_accent(
                 hero.theme,
@@ -65,7 +82,7 @@ pub(super) fn draw_curve_overlay(
             // Transform gizmo — the Sprite-gizmo box + handles. Drawn FIRST (under the spine + dots)
             // so the editing geometry stays visually dominant. Corners flip to circles while rotating.
             if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                crate::painter_bridge_gizmo::draw_transform_gizmo(scene, gz, affine, &pal, cursor);
+                crate::painter_bridge_gizmo::draw_transform_gizmo(scene, gz, &mapa, &pal, cursor);
             }
             // Spine guide — the auto-smoothed curve through the control points (themed frame colour).
             if overlay.spine.len() >= 2 {
@@ -119,7 +136,7 @@ pub(super) fn draw_curve_overlay(
                 crate::painter_bridge_gizmo::draw_transform_center(
                     scene,
                     gz,
-                    affine,
+                    &mapa,
                     &pal,
                     painter.active_op_glyph(),
                 );

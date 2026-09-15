@@ -16,6 +16,8 @@ pub(super) fn draw_line_overlay(
     painter: &PainterTool,
     hero: &HeroScreen,
     sim: &SimWorld,
+    // ⭐ O mundo de APRESENTAÇÃO — onde a malha posada vive. Ver [`crate::canvas_map`].
+    present: &ph2d_ecs::World,
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
@@ -46,6 +48,15 @@ pub(super) fn draw_line_overlay(
             use ph2d_vector::{
                 Affine, BezPath, Brush, Circle, Color, Fill, Point, RoundedRect, Stroke,
             };
+            let base_mapa = crate::canvas_map::CanvasMap::new(
+                present,
+                bits,
+                iw,
+                ih,
+                base_affine,
+                camera,
+                window_size,
+            );
             // Line stroke gizmo = fluorescent ORANGE (each stroke shape type gets a distinct accent).
             let pal = crate::painter_bridge_gizmo::palette_accent(
                 hero.theme,
@@ -65,13 +76,16 @@ pub(super) fn draw_line_overlay(
             // handles + centre move) in EACH visible wrapped tile too (`overlay_tile_offsets`), so a Line is
             // grabbable there; the auxiliary VALUE labels (dimensions + fillet/chamfer amounts) stay on centre.
             for (ox, oy) in crate::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih) {
-                let affine = base_affine * Affine::translate((ox, oy));
-                let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+                // ⭐⭐⭐ **A ARTE DOBRADA MANDA NAS ALÇAS DA LINHA também** (2026-09-15) — as
+                // deste editor são agarradas pelo MESMO ponteiro que resolve pela malha. Ver
+                // [`crate::canvas_map`]; o ladrilho do *Repeat Image* é um deslocamento de ECRÃ.
+                let mapa = base_mapa.deslocado(ox, oy);
+                let map = |p: [f32; 2]| mapa.point(p);
                 let is_centre = ox == 0.0 && oy == 0.0;
                 // Transform gizmo (editing phase) — drawn FIRST (under the segments + dots).
                 if let Some(gz) = overlay.transform_gizmo.as_ref() {
                     crate::painter_bridge_gizmo::draw_transform_gizmo(
-                        scene, gz, affine, &pal, cursor,
+                        scene, gz, &mapa, &pal, cursor,
                     );
                 }
                 // A linha COZIDA (themed frame colour, aberta ou fechada) — as quinas Fillet/Chamfer JÁ
@@ -158,7 +172,7 @@ pub(super) fn draw_line_overlay(
                 // drag-the-whole-shape handle stays grabbable on top (highest z-index for the centre square).
                 if let Some(gz) = overlay.transform_gizmo.as_ref() {
                     crate::painter_bridge_gizmo::draw_transform_center(
-                        scene, gz, affine, &pal, op_glyph,
+                        scene, gz, &mapa, &pal, op_glyph,
                     );
                 }
                 // Live **dimensions** (drawing phase) — thin translucent CAD guides, dx/dy legs; centre only.

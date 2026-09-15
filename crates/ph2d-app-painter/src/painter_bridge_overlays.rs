@@ -28,6 +28,10 @@ pub fn draw_overlays(
     painter: &PainterTool,
     hero: &HeroScreen,
     sim: &SimWorld,
+    // ⭐⭐⭐ **O mundo de APRESENTAÇÃO (read-only)** — o chrome do canvas desenha-se POR CIMA da arte,
+    // e desde 2026-09-15 ele tem de saber onde a arte de facto está: a malha posada vive aqui, e o
+    // ponteiro que agarra estas alças já a consulta. Ver [`crate::canvas_map`].
+    present: &ph2d_ecs::World,
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
@@ -73,6 +77,7 @@ pub fn draw_overlays(
         painter,
         hero,
         sim,
+        present,
         camera,
         window_size,
         vector_scene,
@@ -85,6 +90,7 @@ pub fn draw_overlays(
         painter,
         hero,
         sim,
+        present,
         camera,
         window_size,
         vector_scene,

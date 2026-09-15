@@ -15,6 +15,7 @@ impl crate::App {
         let FrameGfx {
             renderer,
             sim,
+            present,
             camera,
             asset_db,
             theme,
@@ -98,6 +99,9 @@ impl crate::App {
             hero,
             tools,
             sim,
+            // ⭐ O mundo de APRESENTAÇÃO: é lá que a malha posada da arte vive, e o chrome do canvas
+            // desenha-se por cima dela (2026-09-15).
+            present.world(),
             renderer,
             asset_db,
             atlas_asset_map,

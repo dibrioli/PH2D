@@ -515,6 +515,7 @@ pub fn scene_sprites_bbox_world(present: &mut World) -> Option<WorldBbox> {
 /// é o preço que a `Smooth` paga, e o consumidor de hoje (o editor de curva) pergunta por dezenas
 /// de pontos enquanto uma curva está a ser editada. Se um consumidor de MILHARES aparecer, a cura é
 /// um índice por UV construído aqui — e não uma segunda cópia desta álgebra.
+#[derive(Clone, Copy)]
 pub struct DrawnMesh<'a> {
     mesh: &'a SpriteMesh,
     basis: [f32; 4],

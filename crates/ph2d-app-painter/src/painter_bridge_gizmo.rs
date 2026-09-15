@@ -210,19 +210,24 @@ pub(super) fn center_glyph_handle(scene: &mut Scene, p: Point, pal: &GizmoPalett
 pub(super) fn draw_transform_gizmo(
     scene: &mut Scene,
     gz: &TransformGizmo,
-    affine: Affine,
+    // ⭐⭐⭐ **O MAPA, nunca o afim** (2026-09-15): sobre arte dobrada as alças têm de ser pintadas
+    // onde a arte as desenha — que é onde o ponteiro as agarra. Ver [`crate::canvas_map`].
+    mapa: &crate::canvas_map::CanvasMap<'_>,
     pal: &GizmoPalette,
     cursor: (f32, f32),
 ) {
-    let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+    let map = |p: [f32; 2]| mapa.point(p);
     let [mn, mx] = gz.bbox;
     let box_pts = [map(mn), map([mx[0], mn[1]]), map(mx), map([mn[0], mx[1]])];
     stroke_box(scene, &box_pts, pal);
     // Corners flip to circles on mouse-OVER the rotate ring (not only mid-drag) — the cue must match the
     // tool's hit-test: the band just OUTSIDE a corner (farther from the centre than it). Image-px tol →
     // screen via the affine's per-pixel scale.
+    // ⚠️ A ESCALA sai do afim do quad, e é de propósito: uma TOLERÂNCIA em px de imagem é uma
+    // grandeza global do gesto, e o hit-test que ela espelha (`shape_grab_tol_from_affine`) lê o
+    // mesmo afim. Derivá-la da malha faria a alça mudar de raio ao passar por uma dobra.
     let scale = {
-        let c = affine.as_coeffs();
+        let c = mapa.affine().as_coeffs();
         (c[0] * c[0] + c[1] * c[1]).sqrt()
     };
     let cur = Point::new(f64::from(cursor.0), f64::from(cursor.1));
@@ -257,11 +262,12 @@ pub(super) fn draw_transform_gizmo(
 pub(super) fn draw_transform_center(
     scene: &mut Scene,
     gz: &TransformGizmo,
-    affine: Affine,
+    // ⭐ O mesmo MAPA do [`draw_transform_gizmo`] — as duas metades do mesmo gizmo.
+    mapa: &crate::canvas_map::CanvasMap<'_>,
     pal: &GizmoPalette,
     op_glyph: Option<&str>,
 ) {
-    let p = affine * Point::new(f64::from(gz.handles[8][0]), f64::from(gz.handles[8][1]));
+    let p = mapa.point(gz.handles[8]);
     match op_glyph {
         Some(glyph) => center_glyph_handle(scene, p, pal, glyph), // doubled centre square + op glyph
         None => square_handle(scene, p, pal),

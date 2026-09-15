@@ -55,6 +55,8 @@ mod cloth_filter_props;
 mod cloth_force_falloff;
 mod cloth_mode;
 mod coat;
+/// ⭐⭐⭐ **PORQUE É QUE A CURVA NÃO CHEGA AO BARRO** — ver [`curva_inerte`].
+mod curva_inerte;
 #[path = "dab_alcance.rs"]
 mod dab_alcance;
 /// **A CURVA DO PINCEL** — o falloff, irmão do [`brush`]. Ver [`falloff`].
@@ -129,6 +131,7 @@ pub use cloth_filter_props::ClothFilterProps;
 pub use cloth_force_falloff::ClothForceFalloff;
 pub use cloth_mode::{ClothArea, ClothMode};
 pub use coat::{COAT_HEAD, coat_step};
+pub use curva_inerte::CurvaInerte;
 pub use falloff::Falloff;
 pub use filter_law::FilterLaw;
 pub use grip::{Amount, Grip, GripLaw};

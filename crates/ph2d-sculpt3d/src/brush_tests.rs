@@ -463,26 +463,32 @@ fn the_auto_smooth_is_off_by_default_like_the_reference() {
     );
 }
 
-/// **QUEM RECUSA O SEGUNDO PASSE, E POR QUE RAZÃO** — e são **duas** razões,
+/// **QUEM RECUSA O SEGUNDO PASSE, E POR QUE RAZÃO** — e são **três** razões,
 /// não uma.
 ///
-/// ⚠️⚠️ **Este gate chamava-se *«os DOIS verbos que a referência salta»* e a
-/// premissa dele MORREU em 2026-09-15**, quando o censo dos knobs mediu mais
-/// dois a recusar por outro motivo. *Uma premissa que morre é o gate a fazer o
-/// trabalho dele* — a redacção anterior fica aqui como contraste, e o nome
-/// mudou com ela.
+/// ⚠️⚠️ **Este gate chamava-se *«os DOIS verbos que a referência salta»*, a
+/// premissa dele MORREU em 2026-09-15 (o censo mediu mais dois a recusar por
+/// outro motivo) e ela MORREU OUTRA VEZ no mesmo dia, com um TERCEIRO motivo.
+/// *Uma premissa que morre duas vezes é o gate a fazer o trabalho dele* — as
+/// redacções anteriores ficam aqui como contraste, e o nome mudou com elas.
 ///
 /// | verbo | razão | fonte |
 /// |---|---|---|
 /// | `Smooth`, `Mask` | **exclusão da REFERÊNCIA** — alisar um alisamento é o mesmo verbo duas vezes, e um passe que mexesse na posição durante um gesto de máscara moveria o barro num gesto cuja razão de existir é não movê-lo | o motor de escultura do alvo |
 /// | `Cloth`, `Boundary` | **o passe NÃO ALCANÇA** — os dois desviam antes do laço por-vértice onde ele corre | ⭐ **MEDIDO** pelo censo dos knobs (`0,000e0` entre as pontas da faixa) |
+/// | `Density` | **não há REGIÃO nenhuma** — ele sai antes de tudo ([`Verb::sem_lei_por_vertice`]) e o efeito dele é sobre a TOPOLOGIA | ⭐ **MEDIDO** pelo mesmo censo |
+///
+/// ⚠️ **A terceira razão não é a segunda com outro nome:** o `Cloth` e o
+/// `Boundary` **têm** região e resolvem-na eles próprios; o `Density` não tem
+/// vértice nenhum para alisar. *Duas leis que dão a mesma resposta hoje e por
+/// razões diferentes separam-se no dia em que uma delas mudar.*
 ///
 /// ⭐ **E o [`Verb::Pose`] tem de responder `true`**, apesar de também desviar:
 /// ele tem passe **próprio** (`stroke_pose::alisa_a_pose`). *Sem esta metade, um
 /// gate que derivasse a resposta da [`Verb::resolve_a_propria_regiao`] passaria
 /// e apagaria um controlo vivo.*
 #[test]
-fn the_second_pass_is_refused_for_two_different_reasons() {
+fn the_second_pass_is_refused_for_three_different_reasons() {
     for verb in Verb::ALL {
         let b = Brush {
             verb,
@@ -492,7 +498,7 @@ fn the_second_pass_is_refused_for_two_different_reasons() {
         let got = b.auto_smooth_brush().is_some();
         let want = !matches!(
             verb,
-            Verb::Smooth | Verb::Mask | Verb::Cloth | Verb::Boundary
+            Verb::Smooth | Verb::Mask | Verb::Cloth | Verb::Boundary | Verb::Density
         );
         assert_eq!(
             got,

@@ -299,17 +299,6 @@ impl Verb {
         matches!(self, Self::Density)
     }
 
-    /// **ESTE VERBO PRECISA DE UMA SUPERFÍCIE DE REFERÊNCIA?**
-    ///
-    /// ⭐ A porta ÚNICA da pergunta, com **três** consumidores em sítios
-    /// diferentes: o **pen-down** da shell (para a fotografar), a **recusa** em
-    /// voz alta quando não há pilha de multiresolução (espec §4.3), e o
-    /// **arnês** dos censos, que sem ela mediria um verbo inerte.
-    ///
-    /// ⛔ **Sem pilha, o dado de entrada NÃO EXISTE** — não é que o resultado
-    /// seja mau: não há de onde tirar um deslocamento. *O irmão-filtro do alvo
-    /// estoirou publicamente por não verificar isto*, e é por isso que o gate
-    /// desta fronteira é a **recusa** e não o resultado.
     /// **O PASSE DE AUTO-SUAVIZAÇÃO CHEGA AO BARRO DESTE VERBO?**
     ///
     /// O *Auto Smooth* corre como um **segundo `dab_core`** sobre a mesma
@@ -345,9 +334,36 @@ impl Verb {
     /// e [`Self::Mask`], e por outra razão: *alisar um alisamento é o mesmo
     /// verbo duas vezes*, e um passe que mexesse na posição durante um gesto de
     /// máscara moveria o barro num gesto cuja razão de existir é não movê-lo.
+    /// ⭐ **E o [`Self::Density`] entra pela TERCEIRA razão**, medida pelo censo
+    /// dos knobs (`0,000e0` entre as duas pontas da faixa): o passe de
+    /// auto-suavização corre **depois** do laço por-vértice, e este verbo sai
+    /// **antes de tudo** ([`Self::sem_lei_por_vertice`]). *Ele não resolve a
+    /// própria região nem tem passe próprio — ele não tem região nenhuma.*
     #[must_use]
     pub fn o_auto_smooth_chega(self) -> bool {
-        !matches!(self, Self::Cloth | Self::Boundary)
+        !matches!(self, Self::Cloth | Self::Boundary | Self::Density)
+    }
+
+    /// ⭐⭐ **O `Strength` CHEGA AO BARRO DESTE VERBO?** — a porta que o painel
+    /// consulta antes de pintar a fileira da força.
+    ///
+    /// ⛔⛔ **Ela nasceu de uma medição e de um report do dono.** O censo dos
+    /// knobs mede o [`Self::Density`] a arrastar a força de `0,1` a `1,0` com
+    /// desvio `0,000e0` no barro: o efeito dele é sobre a TOPOLOGIA, e o
+    /// [`crate::SculptStroke::dab`] sai antes de a cadeia de peso existir. *Um
+    /// controlo que o artista arrasta e o barro não sente é pior que um
+    /// ausente*, e este era o item aberto que o `CLAUDE.md` §5 nomeava
+    /// (*«esconder ou pintar em cinzento»*).
+    ///
+    /// ⭐ **A escolha foi ESCONDER, e ela não é gosto:** o pintor das fileiras
+    /// desta crate já declara por escrito que *«uma row condicional é PULADA,
+    /// não desenhada apagada — um controlo apagado que ainda despacha mente»*.
+    /// A curva é a excepção **porque não pode ser escondida** (cerca de produto
+    /// medida e gateada), e por isso é ela que ganha a razão à vista
+    /// ([`crate::CurvaInerte`]).
+    #[must_use]
+    pub fn a_forca_chega_ao_barro(self) -> bool {
+        !self.sem_lei_por_vertice()
     }
 
     /// **ESTE VERBO PRECISA DE UM BORDO ABERTO?**
@@ -372,6 +388,24 @@ impl Verb {
         matches!(self, Self::Boundary)
     }
 
+    /// **ESTE VERBO PRECISA DE UMA SUPERFÍCIE DE REFERÊNCIA?**
+    ///
+    /// ⭐ A porta ÚNICA da pergunta, com **três** consumidores em sítios
+    /// diferentes: o **pen-down** da shell (para a fotografar), a **recusa** em
+    /// voz alta quando não há pilha de multiresolução (espec §4.3), e o
+    /// **arnês** dos censos, que sem ela mediria um verbo inerte.
+    ///
+    /// ⛔ **Sem pilha, o dado de entrada NÃO EXISTE** — não é que o resultado
+    /// seja mau: não há de onde tirar um deslocamento. *O irmão-filtro do alvo
+    /// estoirou publicamente por não verificar isto*, e é por isso que o gate
+    /// desta fronteira é a **recusa** e não o resultado.
+    ///
+    /// ⚠️⚠️ **Este bloco viveu ONZE LINHAS acima até 2026-09-15, colado ao
+    /// [`Self::o_auto_smooth_chega`]** — sem linha em branco e sem `fn` entre os
+    /// dois, logo o `rustdoc` dava-o ao vizinho e esta porta ficava **sem doc
+    /// nenhum**. *Um doc que muda de dono em silêncio é pior que a ausência
+    /// dele: ele afirma sobre a função errada, e quem o lê aprende a lei de
+    /// outra pergunta.*
     #[must_use]
     pub fn precisa_de_referencia(self) -> bool {
         matches!(self, Self::EraseMultires | Self::SmearMultires)

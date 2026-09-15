@@ -169,7 +169,11 @@ static BRUSH: &[Row] = &[
         decimals: 2,
         get: |u| u.brush.strength,
         set: |u, v| u.brush.strength = v,
-        show: always,
+        // ⭐⭐ **E ela deixou de ser `always` em 2026-09-15** — ver
+        // [`ph2d_sculpt3d::Verb::a_forca_chega_ao_barro`], onde a medição está:
+        // o censo dos knobs lê o `Density` a arrastar a força de `0,1` a `1,0`
+        // com desvio `0,000e0` no barro.
+        show: |u| u.brush.verb.a_forca_chega_ao_barro(),
         level: UiLevel::Basic,
         place: Place::Knobs,
     },

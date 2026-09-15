@@ -20,7 +20,7 @@ use super::brush_fileiras::{
     paint_boundary_rows, paint_cloth_rows, paint_pose_rows, paint_project_rows, paint_smear_rows,
 };
 use super::mask_tools::paint_mask_tools;
-use super::widgets::{command, labelled_seg, toggle};
+use super::widgets::{command, labelled_seg, readout, toggle};
 
 use crate::preview;
 use crate::rows;
@@ -157,8 +157,11 @@ pub(super) fn paint_brush_tail(
     // vizinhas, a mesma aparencia, e regimes de morte diferentes: so' a medicao as separa.*
     //
     // ⚠️ **Quem quiser mexer nisto mexe no GATE primeiro**, e leva um argumento melhor que o do
-    // Blender. A saida que nao viola a cerca e' desenha-la **desactivada** com a razao a' vista,
-    // que e' desenho novo (e um rotulo i18n novo) e nao existe hoje.
+    // Blender. ⭐⭐⭐ **E a saida que nao viola a cerca EXISTE desde 2026-09-15:** ela e' desenhada
+    // com a **razao a' vista** logo abaixo — ver o `readout` a seguir e a
+    // [`ph2d_sculpt3d::CurvaInerte`]. *Os chips ficam VIVOS de proposito:* a curva e' um valor
+    // autorado do pincel, e escolhe-la com este verbo na mao continua a valer para o seguinte;
+    // o que faltava era o app dizer que o barro de AGORA nao a sente.
     let selected = Falloff::ALL
         .iter()
         .position(|&f| f == snap.ui.brush.falloff)
@@ -175,6 +178,36 @@ pub(super) fn paint_brush_tail(
         w,
         y,
     );
+    // ⭐⭐⭐ **A RAZÃO À VISTA** — a metade que faltava à cerca acima.
+    //
+    // ⚠️ **Um `readout` e não um rótulo desactivado**: ele é um FATO e não um
+    // controlo, e por isso não é hit-indexado — uma affordance que ele não pode
+    // honrar seria pior que texto puro. E os doze chips continuam registados,
+    // que é o que mantém o gate da cerca verde.
+    //
+    // ⚠️ **A razão vem do MOTOR** ([`ph2d_sculpt3d::Brush::curva_inerte`]) e o
+    // texto vem da i18n **aqui**: a lei não sabe o vocabulário da interface, e
+    // uma chave dentro do motor mentiria no dia em que o painel a renomeasse.
+    let y = match snap.ui.brush.curva_inerte() {
+        None => y,
+        Some(razao) => readout(
+            ctx,
+            tr(match razao {
+                ph2d_sculpt3d::CurvaInerte::OCanalTemCurvaPropria => {
+                    "panel.sculpt3d.falloff_inert.mask"
+                }
+                ph2d_sculpt3d::CurvaInerte::SemLeiPorVertice => {
+                    "panel.sculpt3d.falloff_inert.density"
+                }
+                ph2d_sculpt3d::CurvaInerte::APoseSoNaTorcaoComSegmentos => {
+                    "panel.sculpt3d.falloff_inert.pose"
+                }
+            }),
+            x,
+            w,
+            y,
+        ),
+    };
     // **O PADRÃO**, logo abaixo do falloff — os dois moldam o MESMO peso: o
     // falloff diz como ele cai do centro à borda, o alpha diz onde ele age
     // dentro disso. A primeira opção é NENHUM, e o deslocamento de um é a mesma

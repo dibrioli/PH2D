@@ -2171,22 +2171,65 @@ fn a_pro_row_is_reachable_in_pro_and_absent_in_basic() {
 /// ⚠️ É a metade da regra que o §2 chama de *amputação*: esconder um knob que
 /// alguém armou é divulgação progressiva; esconder os dois que TODO pincel tem
 /// deixaria o artista sem ferramenta e sem nada na tela explicando por quê.
+///
+/// ⛔⛔⛔ **E a premissa deste gate MORREU em 2026-09-15, medida: nem todo pincel
+/// tem força.** O censo dos knobs lê o `Density` a arrastar o `Strength` de
+/// `0,1` a `1,0` com desvio **`0,000e0`** no barro — o efeito dele é sobre a
+/// TOPOLOGIA, e o dab sai antes de a cadeia de peso existir. *Esconder os dois
+/// que todo pincel tem é amputação; pintar um que o barro não sente é uma
+/// promessa que a ferramenta não cumpre*, e o `Density` tem o `Detail` no lugar.
+///
+/// ⭐⭐ **A excepção é DERIVADA e não uma lista à mão** — ela sai da mesma porta
+/// que o painel consulta ([`ph2d_sculpt3d::Verb::a_forca_chega_ao_barro`]). Uma
+/// lista aqui e um predicado lá seriam duas respostas à mesma pergunta, e a que
+/// o artista vê é a que envelhece.
+///
+/// ⚠️ **As DUAS metades da população estão afirmadas**, senão um predicado que
+/// respondesse `false` sempre (ou `true` sempre) passaria este gate: o raio é
+/// incondicional para os `32`, e a força esconde-se em **pelo menos um** verbo e
+/// aparece na **grande maioria**.
 #[test]
 fn the_basic_level_never_hides_the_two_knobs_every_brush_has() {
+    let (mut com_forca, mut sem_forca) = (0usize, 0usize);
     for v in Verb::ALL {
         let mut ui = Sculpt3dUi::default();
         ui.brush.verb = v;
         ui.ui_level = UiLevel::Basic;
-        for id in [ids::SCULPT3D_RADIUS, ids::SCULPT3D_STRENGTH] {
-            let row = rows::rows().find(|r| r.slider == id).expect("na tabela");
+        let raio = rows::rows()
+            .find(|r| r.slider == ids::SCULPT3D_RADIUS)
+            .expect("na tabela");
+        assert!(
+            raio.visible(&ui),
+            "`{}` sumiu em Basic com o {} em mãos — o raio é de TODOS",
+            raio.label,
+            v.label()
+        );
+        let forca = rows::rows()
+            .find(|r| r.slider == ids::SCULPT3D_STRENGTH)
+            .expect("na tabela");
+        if v.a_forca_chega_ao_barro() {
+            com_forca += 1;
             assert!(
-                row.visible(&ui),
-                "`{}` sumiu em Basic com o {} em mãos",
-                row.label,
+                forca.visible(&ui),
+                "`{}` sumiu em Basic com o {} em mãos, e a lei dele LÊ a força",
+                forca.label,
+                v.label()
+            );
+        } else {
+            sem_forca += 1;
+            assert!(
+                !forca.visible(&ui),
+                "o {} não sente a força (medido `0,000e0` no barro) e o painel \
+                 pinta-a na mesma — a promessa que a ferramenta não cumpre",
                 v.label()
             );
         }
     }
+    assert!(
+        sem_forca >= 1 && com_forca >= Verb::ALL.len() - 3,
+        "a população está torta: {sem_forca} sem força e {com_forca} com ela — \
+         um predicado constante passaria este gate"
+    );
 }
 
 /// **A DUREZA tem uma row, e ela escreve o campo que o kernel lê.**
@@ -2704,4 +2747,45 @@ fn every_filter_law_is_pickable_and_writes_its_own() {
             "{kind:?}: o chip escreveu OUTRA lei -- o artista escolhe uma e recebe outra"
         );
     }
+}
+
+/// ⭐⭐⭐ **A RAZÃO DE A CURVA SER INERTE CHEGA A PIXEL** — e a régua são os
+/// GLIFOS, não a banda reservada.
+///
+/// ⛔⛔ **É o achado §4.2 da auditoria do `source.lsystem` aplicado aqui:** um
+/// gate que prometia medir *«a queixa chega a PIXEL»* media o `y +=`, que não é
+/// a pintura — *apagar o texto inteiro deixava-o verde*. O que conta texto é
+/// `resources.glyphs`: o Vello encaminha texto por `draw_glyphs`, e **nenhum
+/// glifo entra na contagem de caminhos**.
+///
+/// ⚠️ **A fixtura é o MESMO verbo com o MESMO número de fileiras**, e só o
+/// `Segments` muda: com `1` a curva é inerte (medido `0,000e0` no barro em
+/// todas as doze curvas) e com `2` ela chega (`2,755e-1`). *Comparar dois
+/// verbos diferentes mediria as fileiras próprias de cada um, e não a nota.*
+#[test]
+fn a_razao_da_curva_inerte_chega_a_pixel() {
+    let com_segmentos = |segmentos: u32| {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.verb = Verb::Pose;
+        ui.brush.pose.deformacao = ph2d_sculpt3d::PoseDeformacao::Torcer;
+        ui.brush.pose.segmentos = segmentos;
+        ui.ui_level = UiLevel::Pro;
+        let (mut host, mut state) = arrange(ui);
+        host.paint_and_count_geometry::<Sculpt3dPanel>(&mut state, VIEWPORT)
+            .0
+    };
+    let (inerte, viva) = (com_segmentos(1), com_segmentos(2));
+    assert!(
+        inerte > viva,
+        "com UM segmento a curva não faz nada e o painel tem de o dizer: \
+         {inerte} glifos contra {viva} — a nota não chegou a pixel"
+    );
+    // ⭐ E o CONTROLO de que o balde se enche pelo texto certo e não por ruído:
+    // a diferença tem de ter o tamanho de uma frase, não de um dígito.
+    assert!(
+        inerte - viva > 20,
+        "a diferença é de {} glifo(s) — isso é um número a mudar de largura, \
+         não uma frase",
+        inerte - viva
+    );
 }

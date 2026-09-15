@@ -35,6 +35,21 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.surface_only" => "Connected Only",
         "panel.sculpt3d.strength" => "Strength",
         "panel.sculpt3d.falloff" => "Falloff",
+        // ⭐⭐⭐ **A RAZÃO À VISTA** — a fileira da curva é a única que o painel do
+        // sculpt pinta SEMPRE (cerca de produto medida e gateada), e três
+        // pincéis não a leem. Cada linha nomeia o FACTO e, onde há uma, a CURA.
+        // ⚠️ Uma frase só para os três seria mais curta e diria menos: *«não faz
+        // nada»* e *«não faz nada ATÉ subir os segmentos»* levam a gestos
+        // diferentes.
+        "panel.sculpt3d.falloff_inert.mask" => {
+            "Not used by Mask — the mask has its own curve (Mask hardness)"
+        }
+        "panel.sculpt3d.falloff_inert.density" => {
+            "Not used by Density — it changes topology, not vertex positions"
+        }
+        "panel.sculpt3d.falloff_inert.pose" => {
+            "Only used by Twist, and only with Segments above 1"
+        }
         // ⚠️ Os rótulos do alvo, sem tradução: *Deformation* e *Simulation
         // Area* são o que o painel dele diz (espec §8.4), e um artista que vem
         // de lá procura essas duas palavras.

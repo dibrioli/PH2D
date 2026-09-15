@@ -537,6 +537,30 @@ fn o_censo_dos_knobs_mortos_so_desce() {
         "o arnês deixou de acordar a maioria dos verbos — o censo passou a \
          medir quase nada e este gate ficaria verde por vácuo"
     );
+    // ⭐⭐⭐ **E A TERCEIRA METADE, desde 2026-09-15: um knob morto que o painel
+    // PINTA tem de ser EXPLICADO na tela.**
+    //
+    // ⛔⛔ *Nomear um morto num comentário de teste não o cura para o artista* —
+    // ele continua a arrastar o controlo e a não ver nada. Os dois que sobram
+    // são fileiras da CURVA, que o painel pinta **sempre** por cerca de produto
+    // medida e gateada; a saída que não viola a cerca é a razão à vista, e ela
+    // existe desde então ([`ph2d_sculpt3d::Brush::curva_inerte`]).
+    //
+    // ⚠️ **A régua é a PORTA que o painel consulta**, não uma segunda lista: se
+    // a lei e o painel discordarem, quem o artista vê é o painel.
+    for (verb, rotulo, _) in MORTOS_CONHECIDOS {
+        if *rotulo != "panel.sculpt3d.falloff" {
+            continue;
+        }
+        let b = pincel(*verb);
+        assert!(
+            b.curva_inerte().is_some(),
+            "o {} está na lista dos mortos da CURVA e o painel não tem razão \
+             nenhuma a mostrar — o artista arrasta os doze chips e o barro não \
+             se mexe, sem uma palavra na tela",
+            verb.label()
+        );
+    }
 }
 
 /// ⛔⛔ **OS VERBOS QUE ESTE ARNÊS NÃO ACORDA SÃO NOMEADOS, NUNCA SILENCIADOS.**
@@ -641,10 +665,79 @@ fn a_lista_do_censo_cobre_os_knobs_incondicionais() {
         "o painel pinta {faltam:?} com TODO verbo e o censo não os varre — um \
          knob fora do censo é um knob que pode estar morto sem ninguém ver"
     );
+    // ⛔⛔ **O piso de população era `2` e a POPULAÇÃO encolheu para `1` em
+    // 2026-09-15**, sem o censo perder força: o `Strength` deixou de ser
+    // incondicional porque o `Density` não o lê (medido `0,000e0` no barro), e o
+    // que sobra sempre-visível é o RAIO. *Um piso que segurasse o número `2`
+    // enquanto a lista era `{radius}` mediria uma lista que já não existe* — é a
+    // forma que o `CLAUDE.md` §5 nomeia num censo de outra família: **o piso
+    // segurou o NÚMERO enquanto a POPULAÇÃO trocava por baixo dele**.
     assert!(
-        sempre.len() >= 2,
-        "o piso de população: o painel tem de ter pelo menos dois knobs \
-         incondicionais, e achei {sempre:?} — se esta lista esvaziar, o censo \
-         passou a medir NADA e ficaria verde"
+        sempre.contains(&"panel.sculpt3d.radius"),
+        "o RAIO deixou de ser incondicional ({sempre:?}) — se nem ele o for, \
+         esta metade do censo passou a medir o vácuo"
     );
+    // ⭐ **A anti-vácuo mudou de grandeza e não de força:** a população é a dos
+    // knobs que o painel pinta para **quase** todo verbo, e é ela que tem de
+    // estar coberta pelo censo.
+    let quase_sempre: Vec<&'static str> = seccao
+        .rows
+        .iter()
+        .filter(|r| r.place == Place::Knobs)
+        .filter(|r| {
+            Verb::ALL
+                .iter()
+                .filter(|&&v| r.visible(&painel_com(v)))
+                .count()
+                >= Verb::ALL.len() - 2
+        })
+        .map(|r| r.label)
+        .collect();
+    let faltam: Vec<&&str> = quase_sempre
+        .iter()
+        .filter(|l| !KNOBS.iter().any(|k| k.rotulo == **l))
+        .collect();
+    assert!(
+        faltam.is_empty(),
+        "o painel pinta {faltam:?} com quase todo verbo e o censo não os varre"
+    );
+    assert!(
+        quase_sempre.len() >= 2,
+        "o piso de população: o painel tem de ter pelo menos dois knobs que ele \
+         pinta para quase todo verbo, e achei {quase_sempre:?}"
+    );
+}
+
+/// **SONDA** — a curva do pincel chega ao barro em qual das cinco deformações
+/// da pose? E o `Strength`?
+#[test]
+#[ignore]
+fn diag_a_pose_por_deformacao() {
+    for (d, segs) in ph2d_sculpt3d::PoseDeformacao::ALL
+        .into_iter()
+        .flat_map(|d| [1u32, 2, 4, 8].map(move |s| (d, s)))
+    {
+        let mede = |a: fn(&mut Brush), b: fn(&mut Brush)| {
+            let (mut x, mut y) = (pincel(Verb::Pose), pincel(Verb::Pose));
+            x.pose.deformacao = d;
+            y.pose.deformacao = d;
+            x.pose.segmentos = segs;
+            y.pose.segmentos = segs;
+            x.pose.arrasto_x_pixels = 40.0;
+            y.pose.arrasto_x_pixels = 40.0;
+            a(&mut x);
+            b(&mut y);
+            desvio(&corre(&x), &corre(&y))
+        };
+        let curva = mede(
+            |x| x.falloff = Falloff::Constant,
+            |x| x.falloff = Falloff::Sharper,
+        );
+        let forca = mede(|x| x.strength = 0.1, |x| x.strength = 1.0);
+        let dureza = mede(|x| x.hardness = 0.0, |x| x.hardness = 0.95);
+        eprintln!(
+            "{:<17} seg {segs}: curva {curva:.3e} · forca {forca:.3e} · dureza {dureza:.3e}",
+            d.label()
+        );
+    }
 }

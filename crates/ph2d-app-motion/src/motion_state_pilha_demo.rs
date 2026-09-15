@@ -193,3 +193,8 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_state_pilha_demo_tremor.rs"]
 mod tremor;
+
+/// ⭐ E o irmão que mede AS CURAS (doc 109 §8.7–§8.14) — ver o cabeçalho dele.
+#[cfg(test)]
+#[path = "motion_state_pilha_demo_curas.rs"]
+mod curas;

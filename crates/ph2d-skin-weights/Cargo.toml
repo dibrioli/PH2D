@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-skin-weights"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ UMA dependência, e é a malha. Pelo mesmo motivo da `ph2d-poly2d` e da `ph2d-affine`: quem
+# precisa de pesos de pele é o ESQUELETO, que serve vector, raster, Flip e 3D. Um leaf que puxasse
+# a cena de qualquer uma delas fecharia a porta às outras três.
+[dependencies]
+ph2d-poly2d = { path = "../ph2d-poly2d" }
+
+# ⚠️ **SÓ para a BANCADA** — ela compara esta lei com a que estava em produção (o *bump* euclidiano
+# da `ph2d-skeleton`). ⛔ Reimplementar o bump aqui para não pagar a dependência seria a segunda
+# resposta à mesma pergunta, e a comparação mediria a minha cópia dele.
+[dev-dependencies]
+ph2d-skeleton = { path = "../ph2d-skeleton" }
+ph2d-affine = { path = "../ph2d-affine" }
+
+[lints]
+workspace = true

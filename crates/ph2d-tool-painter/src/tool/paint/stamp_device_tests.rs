@@ -444,3 +444,65 @@ fn a_spread_out_batch_stays_on_the_cpu_and_a_stacked_one_does_not() {
         "a fixture não isola a região: os dois lotes têm de custar o MESMO trabalho ({a} x {b})"
     );
 }
+
+/// ⭐⭐⭐ **O QUE A PONTE PUBLICA É A PARTE LINEAR, e a curvatura viaja AO LADO** — e este gate
+/// existe porque a forma errada compila, corre, e só uma screenshot a mostra.
+///
+/// ⛔⛔ **A `apply` deixou de ser linear** (ela carrega a curvatura da arte desde a wave da 4.ª foto
+/// do dono), e a redacção que estava aqui tirava `m0`/`m1` dos **vectores da base**:
+/// `apply([1,0])` e `apply([0,1])`. Com curvatura esses dois vectores trazem os monómios avaliados
+/// nos versores **dentro** deles — a matriz publicada deixa de ser a deformação e o device carimba
+/// uma forma que ninguém autorou, **sem um erro em lado nenhum**.
+///
+/// ⚠️ **O gate irmão da `ph2d-paint-gpu` NÃO apanha isto:** ele reproduz a fórmula do shader a
+/// partir de `linear_rows()` e de `curve_in_input_frame()`, logo mede a LEI — e ficaria verde sobre
+/// uma ponte que publicasse outra coisa. *Um gate que reproduz a publicação não lê quem publica.*
+#[test]
+fn the_bridge_publishes_the_linear_part_and_carries_the_fold_beside_it() {
+    let mut brush = BrushSpec {
+        dab_flatten: 0.45,
+        dab_angle_deg: 37,
+        ..BrushSpec::default()
+    };
+    brush.dab_curve = ph2d_painter_brush::FootprintCurve::from_rows([
+        [0.10, -0.06, 0.04, 0.03, 0.0, -0.02, 0.0],
+        [-0.05, 0.11, 0.0, 0.0, 0.06, 0.0, -0.04],
+    ]);
+    let dab = Dab {
+        center: [10.0, 10.0],
+        radius_px: 8.0,
+        coverage: 1.0,
+        color: [1.0, 0.0, 0.0],
+        rotation: [1.0, 0.0],
+        dir: [1.0, 0.0],
+        arc_len: 0.0,
+        stroke_radius_px: 8.0,
+    };
+    let saiu = device_dabs(std::slice::from_ref(&dab), &brush);
+    let d = &saiu[0];
+    let fp = brush.dab_footprint(brush.dab_rotor(&dab));
+    let linhas = fp.linear_rows();
+    assert_eq!(
+        [d.m0, d.m1],
+        linhas,
+        "a ponte não publicou a parte LINEAR da pegada"
+    );
+    assert_eq!(
+        d.curve,
+        fp.curve_in_input_frame(),
+        "a curvatura não viajou, ou viajou no referencial errado"
+    );
+    // ⛔ O CONTROLO, e é ele que dá sentido ao primeiro `assert_eq`: sobre uma pegada CURVA os
+    // vectores da base NÃO são as linhas da matriz. Sem isto, publicar `apply` na base passaria.
+    let base = [fp.apply([1.0, 0.0]), fp.apply([0.0, 1.0])];
+    let pela_base = [[base[0][0], base[1][0]], [base[0][1], base[1][1]]];
+    let desvio = (0..2)
+        .flat_map(|i| (0..2).map(move |k| (i, k)))
+        .map(|(i, k)| (pela_base[i][k] - linhas[i][k]).abs())
+        .fold(0.0_f32, f32::max);
+    assert!(
+        desvio > 1e-2,
+        "sobre esta pegada os vectores da base coincidem com as linhas (desvio {desvio}) — o \
+         corpus deixou de ter curvatura, e o gate passaria sobre a publicação errada"
+    );
+}

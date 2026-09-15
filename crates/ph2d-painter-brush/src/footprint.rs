@@ -250,6 +250,35 @@ impl FootprintDeform {
         [elipse[0] * s, elipse[1] * s]
     }
 
+    /// ⭐⭐⭐ **As duas LINHAS do mapa LINEAR da pegada** (rodar + achatar), SEM a curvatura.
+    ///
+    /// ⛔⛔ **Ela existe porque `apply` deixou de ser linear, e quem publica uma matriz não pode
+    /// continuar a tirá-la dos vectores da base.** `apply([1,0])` e `apply([0,1])` só determinam
+    /// uma matriz enquanto o mapa for linear — com curvatura eles trazem os monómios avaliados nos
+    /// versores dentro, e o carimbo do device sairia com uma deformação que ninguém autorou.
+    /// *A premissa que era gate virou porta.*
+    #[must_use]
+    pub fn linear_rows(self) -> [[f32; 2]; 2] {
+        [
+            [self.cos, self.sin],
+            [-self.sin * self.inv_minor, self.cos * self.inv_minor],
+        ]
+    }
+
+    /// ⭐ A curvatura re-escrita na coordenada CRUA da pegada (o `p` que o kernel recebe), em vez
+    /// do ponto já rodado em que ela é guardada.
+    ///
+    /// ⚠️ **É para quem não sabe rodar** — o shader do device recebe uma matriz e os monómios, e
+    /// pedir-lhe que reconstrua o referencial da elipse obrigá-lo-ia a inverter o achatamento por
+    /// texel. ⛔ A conversão é a MESMA máquina da composição
+    /// ([`super::canvas_warp_curve::compoe`], com a saída neutra e a entrada rodada ao contrário),
+    /// e não uma segunda escrita da mesma álgebra.
+    #[must_use]
+    pub fn curve_in_input_frame(self) -> [[f32; 7]; 2] {
+        const I: [[f32; 2]; 2] = [[1.0, 0.0], [0.0, 1.0]];
+        super::canvas_warp_curve::compoe(self.curve.rows(), I, I, 1.0, [self.cos, -self.sin]).rows()
+    }
+
     /// ⭐⭐⭐ **A pegada é AMOSTRÁVEL?** — a cerca que impede uma dobra violenta de sair PIOR do que
     /// não corrigir nada.
     ///

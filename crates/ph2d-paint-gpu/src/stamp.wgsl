@@ -20,7 +20,13 @@ struct Dab {
     // a premissa virou teste em vez de comentário.
     m0: vec2<f32>,
     m1: vec2<f32>,
-    _pad: vec2<f32>,
+    _pad: vec4<f32>,
+    // ⭐ Os graus 2 e 3 da pegada, na coordenada CRUA do dab: x², x·y, y², x³ | x²·y, x·y², y³, _.
+    // Zero em toda arte que não está dobrada — e aí o laço toma o atalho.
+    c0a: vec4<f32>,
+    c0b: vec4<f32>,
+    c1a: vec4<f32>,
+    c1b: vec4<f32>,
 };
 
 struct Params {
@@ -128,7 +134,23 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let dy = py - dab.center.y;
         let u = vec2<f32>(dx * inv_r, dy * inv_r);
         // O footprint como mapa linear, avaliado na CPU. Identidade num pincel redondo.
-        let wv = vec2<f32>(dot(dab.m0, u), dot(dab.m1, u));
+        var wv = vec2<f32>(dot(dab.m0, u), dot(dab.m1, u));
+        // ⭐ E a CURVATURA da arte por cima, quando a há. ⛔ O `if` é de CUSTO, não de bits (somar
+        // sete zeros é exacto em IEEE): ele tira 14 multiplicações-e-soma por texel de toda
+        // pincelada sobre arte que não está dobrada, que é a esmagadora maioria delas.
+        let tem_curva = any(dab.c0a != vec4<f32>(0.0)) || any(dab.c0b != vec4<f32>(0.0))
+            || any(dab.c1a != vec4<f32>(0.0)) || any(dab.c1b != vec4<f32>(0.0));
+        if (tem_curva) {
+            let xx = u.x * u.x;
+            let xy = u.x * u.y;
+            let yy = u.y * u.y;
+            let ma = vec4<f32>(xx, xy, yy, xx * u.x);
+            let mb = vec4<f32>(xx * u.y, xy * u.y, yy * u.y, 0.0);
+            wv = wv + vec2<f32>(
+                dot(dab.c0a, ma) + dot(dab.c0b, mb),
+                dot(dab.c1a, ma) + dot(dab.c1b, mb),
+            );
+        }
         let t = sqrt(wv.x * wv.x + wv.y * wv.y);
         let w = profile(t);
         if (w <= 0.0) {

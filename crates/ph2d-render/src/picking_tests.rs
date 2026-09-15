@@ -486,7 +486,7 @@ fn the_canvas_port_answers_the_art_the_quad_and_the_refusal() {
     assert!(matches!(
         crate::mesh_uv(present.world_mut(), bits, [0.0, 0.0], false, SEM_DAB),
         crate::MeshUv::Use { u, v, warp } if (u - 0.5).abs() < 1e-5 && (v - 0.5).abs() < 1e-5
-            && warp == [[1.0, 0.0], [0.0, 1.0]]
+            && warp == crate::MeshWarp::rest()
     ));
 
     // ⛔ O CONTROLO: uma sprite SEM malha devolve `Quad` nos dois casos — a lei do chamador fica
@@ -522,7 +522,7 @@ fn the_canvas_port_reports_the_local_deformation_and_it_is_dimensionless() {
     assert!(
         matches!(
             crate::mesh_uv(present.world_mut(), rb, [3.5, 0.5], true, SEM_DAB),
-            crate::MeshUv::Use { warp, .. } if warp == [[1.0, 0.0], [0.0, 1.0]]
+            crate::MeshUv::Use { warp, .. } if warp == crate::MeshWarp::rest()
         ),
         "uma malha que so' TRANSLADA a arte nao a deforma"
     );
@@ -544,10 +544,10 @@ fn the_canvas_port_reports_the_local_deformation_and_it_is_dimensionless() {
         panic!("o ponto tinha de cair sobre o triangulo");
     };
     assert!(
-        (warp[0][0] - 0.5).abs() < 1e-5
-            && warp[0][1].abs() < 1e-5
-            && warp[1][0].abs() < 1e-5
-            && (warp[1][1] - 1.0).abs() < 1e-5,
+        (warp.linear[0][0] - 0.5).abs() < 1e-5
+            && warp.linear[0][1].abs() < 1e-5
+            && warp.linear[1][0].abs() < 1e-5
+            && (warp.linear[1][1] - 1.0).abs() < 1e-5,
         "o triangulo comprime x a metade: {warp:?}"
     );
 }
@@ -601,7 +601,7 @@ fn the_published_deformation_makes_the_brush_round_on_screen() {
     else {
         panic!("o centroide tinha de cair sobre o triangulo");
     };
-    for (i, linha) in warp.iter().enumerate() {
+    for (i, linha) in warp.linear.iter().enumerate() {
         for (k, got) in linha.iter().enumerate() {
             assert!(
                 (got - sm[i][k]).abs() < 1e-4,
@@ -612,7 +612,14 @@ fn the_published_deformation_makes_the_brush_round_on_screen() {
 
     // …e a lei do PINCEL sobre ela tem de devolver um disco: os dois semi-eixos da elipse pintada,
     // levados ao ecrã por `S`, medem o mesmo `1`.
-    let d = ph2d_painter_brush::canvas_warp::warped_dab(warp, 0.0, 0);
+    let d = ph2d_painter_brush::canvas_warp::warped_dab(
+        ph2d_painter_brush::canvas_warp::CanvasWarp {
+            linear: warp.linear,
+            curve: warp.curve,
+        },
+        0.0,
+        0,
+    );
     let [ec, es] = ph2d_painter_brush::texture::rotate_by_degrees(d.angle_deg);
     let (maior, menor) = (d.radius_scale, d.radius_scale * (1.0 - d.flatten));
     let leva = |v: [f32; 2]| {

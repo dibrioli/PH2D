@@ -41,6 +41,26 @@ pub(crate) fn install(painter: &mut PainterTool, renderer: &SpriteRenderer) {
                 m0: d.m0,
                 m1: d.m1,
                 _pad1: [0.0; 4],
+                c0: [
+                    d.curve[0][0],
+                    d.curve[0][1],
+                    d.curve[0][2],
+                    d.curve[0][3],
+                    d.curve[0][4],
+                    d.curve[0][5],
+                    d.curve[0][6],
+                    0.0,
+                ],
+                c1: [
+                    d.curve[1][0],
+                    d.curve[1][1],
+                    d.curve[1][2],
+                    d.curve[1][3],
+                    d.curve[1][4],
+                    d.curve[1][5],
+                    d.curve[1][6],
+                    0.0,
+                ],
             })
             .collect();
         pass.run(

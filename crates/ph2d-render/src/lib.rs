@@ -76,7 +76,9 @@ pub mod sink_style;
 pub mod sprite;
 mod sprite_collect;
 mod sprite_mesh;
+mod sprite_mesh_fit;
 mod sprite_mesh_warp;
+pub use sprite_mesh_warp::MeshWarp;
 /// Sprite Inspector v2 — W0 frozen (schema v3 baseline). The W1
 /// schema bump v3→v4 + ABI changes live behind this module. See
 /// [`docs/HANDOFF_sprite_inspector_v2.md`](../../../docs/HANDOFF_sprite_inspector_v2.md)

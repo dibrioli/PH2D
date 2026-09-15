@@ -132,7 +132,7 @@ impl PainterTool {
     /// desenha (`ph2d_render::mesh_uv`) e reenvia-a a cada evento, fora de banda como o
     /// [`Self::set_shape_grab_tol_px`]. Identidade = arte sem deformação, e aí tudo o que este
     /// módulo faz é byte a byte o que era.
-    pub fn set_canvas_warp(&mut self, warp: [[f32; 2]; 2]) {
+    pub fn set_canvas_warp(&mut self, warp: ph2d_painter_brush::canvas_warp::CanvasWarp) {
         self.paint.canvas_warp = warp;
     }
 }

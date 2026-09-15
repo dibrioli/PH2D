@@ -337,9 +337,14 @@ pub fn sprite_world_to_uv_unclamped(
 pub enum MeshUv {
     /// A sprite não é desenhada como malha — o chamador fica com a lei dele.
     Quad,
-    /// A UV de repouso a usar, com a **deformação local** ali (`2×2` adimensional, identidade em
-    /// repouso) — o que o pincel precisa para sair redondo no ECRÃ e não na textura.
-    Use { u: f32, v: f32, warp: [[f32; 2]; 2] },
+    /// A UV de repouso a usar, com a **deformação local** ali ([`crate::MeshWarp`]: a `2×2`
+    /// adimensional, identidade em repouso, **mais a curvatura** da dobra) — o que o pincel precisa
+    /// para sair redondo no ECRÃ e não na textura.
+    Use {
+        u: f32,
+        v: f32,
+        warp: crate::MeshWarp,
+    },
     /// Fora da arte desenhada, num gesto que COMEÇA.
     Refuse,
 }
@@ -377,7 +382,7 @@ pub fn mesh_uv(
         Some(false) => MeshUv::Use {
             u,
             v,
-            warp: [[1.0, 0.0], [0.0, 1.0]],
+            warp: crate::MeshWarp::rest(),
         },
     }
 }
@@ -388,7 +393,7 @@ struct UvHit {
     /// `Some(false)` = fora da malha desenhada (respondido pela lei do quad); `None` num quad simples.
     on_mesh: Option<bool>,
     /// A deformação local ali (identidade fora de uma malha ou em repouso).
-    warp: [[f32; 2]; 2],
+    warp: crate::MeshWarp,
 }
 
 /// The UV under `world_pos` on sprite `sim_entity_bits`, and — for a skinned sprite — whether the
@@ -426,7 +431,7 @@ fn uv_query(
         {
             let warp =
                 crate::sprite_mesh_warp::warp_over(m, [local_dx, local_dy], ri.size, footprint_uv)
-                    .unwrap_or([[1.0, 0.0], [0.0, 1.0]]);
+                    .unwrap_or(crate::MeshWarp::rest());
             return Some(UvHit {
                 uv: (uv[0], uv[1]),
                 on_mesh: Some(true),
@@ -441,7 +446,7 @@ fn uv_query(
         return Some(UvHit {
             uv: (u, v),
             on_mesh: malha.map(|_| false),
-            warp: [[1.0, 0.0], [0.0, 1.0]],
+            warp: crate::MeshWarp::rest(),
         });
     }
     None

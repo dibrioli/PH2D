@@ -111,6 +111,7 @@ impl Default for BrushSpec {
             // Nothing reads `Dab::dir` by default (no rake, no chisel), so the stroke need not warm up.
             needs_heading: false,
             dab_flatten: 0.0,
+            dab_curve: crate::FootprintCurve::flat(),
             dab_angle_deg: 0,
             color_jitter_enabled: false,
             color_jitter_hue: 0.0,

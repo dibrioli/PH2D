@@ -16,8 +16,12 @@ impl BrushSpec {
     /// The baked dab flatten + rotate ([`crate::footprint::FootprintDeform`]) — applied to the
     /// footprint of the falloff, the Shape silhouette and the View-mapped Grain so they deform together.
     #[must_use]
+    /// ⭐ **E a CURVATURA da arte entra AQUI, numa porta só** — é isso que faz o falloff, a
+    /// silhueta do Shape, o Grão e as bandas herdarem a dobra sem uma linha em cada um deles.
+    #[must_use]
     pub fn footprint_deform(&self) -> crate::footprint::FootprintDeform {
         crate::footprint::FootprintDeform::new(self.dab_flatten, self.dab_angle_deg)
+            .with_curve(self.dab_curve)
     }
 
     /// Whether **Randomize Color** has any non-zero amount (so enabling it would actually change a

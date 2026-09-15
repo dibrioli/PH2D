@@ -146,7 +146,7 @@ fn probe_o_residuo_contra_a_finura_da_malha() {
 
 /// O ajuste de mínimos quadrados do mapa da malha sobre deslocamentos ARBITRÁRIOS em UV de repouso
 /// — a mesma conta do produto, com a região a medir livre.
-fn ajuste(mesh: &SpriteMesh, centro: [f32; 2], duvs: &[[f32; 2]]) -> Option<[[f32; 2]; 2]> {
+fn ajuste(mesh: &SpriteMesh, centro: [f32; 2], duvs: &[[f32; 2]]) -> Option<crate::MeshWarp> {
     let c0 = ecra(mesh, centro)?;
     let (mut ata, mut atb) = ([[0.0f64; 9]; 9], [[0.0f64; 9]; 2]);
     let mut n = 0;
@@ -169,10 +169,10 @@ fn ajuste(mesh: &SpriteMesh, centro: [f32; 2], duvs: &[[f32; 2]]) -> Option<[[f3
         return None;
     }
     let c = resolve(&ata, &atb, 2);
-    Some([
+    Some(crate::MeshWarp::linear([
         [c[0][0] as f32, c[1][0] as f32],
         [c[0][1] as f32, c[1][1] as f32],
-    ])
+    ]))
 }
 
 /// Os `n` deslocamentos do bordo de uma elipse de semi-eixos `(a, b)` rodada de `ang` graus.
@@ -200,7 +200,14 @@ fn probe_a_regiao_medida_contra_a_regiao_pintada() {
                 let p = ecra(&mesh, centro).map(|s| [s[0], -s[1]]).expect("posado");
                 let facete = warp_over(&mesh, p, SIZE, [0.0, 0.0]).expect("facete");
                 let circulo = warp_over(&mesh, p, SIZE, [raio, raio]).expect("circulo");
-                let d = ph2d_painter_brush::canvas_warp::warped_dab(circulo, 0.0, 0);
+                let d = ph2d_painter_brush::canvas_warp::warped_dab(
+                    ph2d_painter_brush::canvas_warp::CanvasWarp {
+                        linear: circulo.linear,
+                        curve: circulo.curve,
+                    },
+                    0.0,
+                    0,
+                );
                 let (a, b) = (
                     raio * d.radius_scale,
                     raio * d.radius_scale * (1.0 - d.flatten),
@@ -209,7 +216,7 @@ fn probe_a_regiao_medida_contra_a_regiao_pintada() {
                     ajuste(&mesh, centro, &bordo(a, b, d.angle_deg, 16)).unwrap_or(circulo);
                 println!(
                     "  {centro:?} {raio:6}  {:6.3}  {:6.3}   {:6.3}  {:6.3}   ({:.2})",
-                    redondeza(&mesh, centro, raio, [[1.0, 0.0], [0.0, 1.0]]),
+                    redondeza(&mesh, centro, raio, crate::MeshWarp::rest()),
                     redondeza(&mesh, centro, raio, facete),
                     redondeza(&mesh, centro, raio, circulo),
                     redondeza(&mesh, centro, raio, elipse),
@@ -234,7 +241,14 @@ fn probe_o_grau_na_direccao_directa() {
             let centro = [0.531_f32, 0.719_f32];
             let p0 = ecra(&mesh, centro).map(|s| [s[0], -s[1]]).expect("posado");
             let w = warp_over(&mesh, p0, SIZE, [raio, raio]).expect("footprint");
-            let d = ph2d_painter_brush::canvas_warp::warped_dab(w, 0.0, 0);
+            let d = ph2d_painter_brush::canvas_warp::warped_dab(
+                ph2d_painter_brush::canvas_warp::CanvasWarp {
+                    linear: w.linear,
+                    curve: w.curve,
+                },
+                0.0,
+                0,
+            );
             let c0 = ecra(&mesh, centro).expect("centro");
             let rho = raio * d.radius_scale * SIZE[0] * (1.0 - d.flatten * 0.5);
             let ext = f64::from(raio * d.radius_scale);
@@ -305,5 +319,34 @@ fn probe_o_grau_na_direccao_directa() {
             }
             println!("{linha}{}", if fora { "  (tocou fora da arte)" } else { "" });
         }
+    }
+}
+
+/// O RELÓGIO da porta, por evento de ponteiro — ver a tabela no cabeçalho de
+/// [`crate::sprite_mesh_warp`]. ⚠️ Corra-o com a máquina calma e leia o MÍNIMO, não a mediana.
+#[test]
+#[ignore = "sonda: o custo da porta"]
+fn probe_o_custo_da_porta() {
+    println!("\n  triangulos   por ponto    ao tamanho do dab");
+    for n in [8usize, 32, 62] {
+        let mesh = leque(n, 1.8, 1.4);
+        let centro = [0.531_f32, 0.719_f32];
+        let p = ecra(&mesh, centro).map(|s| [s[0], -s[1]]).expect("posado");
+        let mut col = [f64::INFINITY; 2];
+        for (i, fp) in [[0.0_f32, 0.0], [0.09, 0.09]].into_iter().enumerate() {
+            for _ in 0..7 {
+                let t0 = std::time::Instant::now();
+                for _ in 0..200 {
+                    std::hint::black_box(warp_over(&mesh, p, SIZE, fp));
+                }
+                col[i] = col[i].min(t0.elapsed().as_secs_f64() * 1e6 / 200.0);
+            }
+        }
+        println!(
+            "  {:9}   {:6.2} µs   {:6.2} µs",
+            2 * n * n,
+            col[0],
+            col[1]
+        );
     }
 }

@@ -26,9 +26,14 @@ use wgpu::util::DeviceExt as _;
 
 /// Um disco de pigmento, já resolvido pela CPU.
 ///
-/// ⚠️ **`m0`/`m1` são as duas LINHAS do mapa linear do footprint** (o *flatten & rotate*), avaliadas
-/// pelo chamador nos vetores da base — identidade num pincel redondo. Um deform de dab É linear, e
-/// `the_footprint_is_a_linear_map` prova isso contra o `apply` real em vez de o assumir.
+/// ⚠️ **`m0`/`m1` são as duas LINHAS do mapa linear do footprint** (o *flatten & rotate*) —
+/// identidade num pincel redondo.
+///
+/// ⭐⭐⭐ **E `c0`/`c1` são os graus `2` e `3`**, que é a curvatura da arte debaixo do dab: sobre
+/// uma sprite dobrada por um esqueleto, um mapa LINEAR não acompanha a dobra e a marca sai oval
+/// (medido: `20 %` no pincel grande). Zero em toda arte que não está dobrada, e aí o shader toma o
+/// atalho e paga o que pagava. `o_device_avalia_o_mesmo_que_o_apply` prova os dois contra o `apply`
+/// real em vez de os assumir.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GpuDab {
@@ -44,6 +49,14 @@ pub struct GpuDab {
     /// (`bound with size 56 where the shader expects 64`). Os offsets dos campos já coincidiam — o
     /// que falta num layout desalinhado é sempre o fim, e é onde ninguém olha.
     pub _pad1: [f32; 4],
+    /// Eixo `0` da curvatura: `x²`, `x·y`, `y²`, `x³` | `x²·y`, `x·y²`, `y³`, (folga).
+    ///
+    /// ⚠️ **Oito e não sete, e a folga é a mesma lei do `_pad1`:** dois `vec4<f32>` por eixo é o
+    /// que o WGSL alinha, e uma struct de `120` bytes contra os `128` do shader é o `bound with
+    /// size` outra vez.
+    pub c0: [f32; 8],
+    /// Eixo `1` — ver [`Self::c0`].
+    pub c1: [f32; 8],
 }
 
 #[repr(C)]

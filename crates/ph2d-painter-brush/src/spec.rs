@@ -258,6 +258,12 @@ pub struct BrushSpec {
     /// **Dab rotation** in whole degrees (`0..=360`) of the flatten/rotate frame — rotates the
     /// elliptical footprint and, even when round, the pattern sampled within it.
     pub dab_angle_deg: u16,
+    /// ⭐⭐⭐ **A CURVATURA da arte debaixo do dab** — os graus `2` e `3` da pegada
+    /// ([`crate::FootprintCurve`]). ⛔ **NÃO é um knob do artista**: ela é DERIVADA da malha que a
+    /// sprite desenha, e quem a escreve é o [`crate::canvas_warp::warped_dab`], pela mesma porta
+    /// que já compõe o raio, o achatamento e o ângulo. Plana em toda arte que não está dobrada, e
+    /// aí esta struct comporta-se ao bit como antes de ela existir.
+    pub dab_curve: crate::FootprintCurve,
 
     // ── Per-dab randomize (Blender "Color → Randomize" + two PH2D extras; see [`crate::jitter`]) ──
     /// Master switch for **Randomize Color** (the subsection's enable checkbox). When off, every dab

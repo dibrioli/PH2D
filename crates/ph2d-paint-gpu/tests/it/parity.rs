@@ -99,6 +99,8 @@ fn gpu_dabs(spec: &BrushSpec, list: &[([f32; 2], f32)]) -> Vec<GpuDab> {
             m0: [e0[0], e1[0]],
             m1: [e0[1], e1[1]],
             _pad1: [0.0; 4],
+            c0: [0.0; 8],
+            c1: [0.0; 8],
         })
         .collect()
 }
@@ -107,27 +109,73 @@ fn context() -> Option<ph2d_gpu::GpuContext> {
     ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()
 }
 
-/// ⚠️ **A premissa que o `GpuDab` faz sobre o footprint vira TESTE aqui.** O device recebe duas
-/// linhas de matriz porque um deform de dab é LINEAR; se não fosse, o carimbo sairia deformado de
-/// um jeito que só uma screenshot mostraria. Este gate não precisa de GPU.
+/// ⚠️⚠️ **A premissa que o `GpuDab` fazia sobre o footprint DISSOLVEU, e este gate mudou com ela.**
+///
+/// Ele dizia *«um deform de dab É linear»* e provava-o com `apply` nos vectores da base. Desde que
+/// a pegada carrega a **curvatura da arte** ([`ph2d_painter_brush::FootprintCurve`]) isso é falso —
+/// e o perigo era mudo: `apply([1,0])`/`apply([0,1])` continuam a devolver dois vectores, só que
+/// agora com os monómios avaliados nos versores **dentro** deles, e o device carimbava uma
+/// deformação que ninguém autorou.
+///
+/// ⇒ o gate passa a medir o que o device DE FACTO avalia — a fórmula do `stamp.wgsl`, reproduzida
+/// aqui a partir dos mesmos campos do [`GpuDab`] — contra o `apply` real. ⛔ **Ele não precisa de
+/// GPU**, que é o que o mantém a correr em toda a máquina.
 #[test]
-fn the_footprint_is_a_linear_map() {
-    for angle in [0.0_f32, 0.7, 2.9] {
-        let mut s = spec();
-        s.dab_angle_deg = 37;
-        s.dab_flatten = 0.6;
-        let fp = s.dab_footprint([angle.cos(), angle.sin()]);
-        let (e0, e1) = (fp.apply([1.0, 0.0]), fp.apply([0.0, 1.0]));
-        for v in [[0.3_f32, -0.8], [-1.0, 0.25], [0.0, 0.0], [0.61, 0.61]] {
-            let direct = fp.apply(v);
-            let via = [e0[0] * v[0] + e1[0] * v[1], e0[1] * v[0] + e1[1] * v[1]];
-            let err = (direct[0] - via[0]).abs().max((direct[1] - via[1]).abs());
-            assert!(
-                err < 1e-6,
-                "o footprint NÃO é linear em {v:?}: {direct:?} vs {via:?} (erro {err:e})"
-            );
+fn o_device_avalia_o_mesmo_que_o_apply() {
+    use ph2d_painter_brush::{FootprintCurve, FootprintDeform};
+    let curvas = [
+        FootprintCurve::flat(),
+        FootprintCurve::from_rows([[0.21, -0.07, 0.05, 0.03, 0.0, -0.02, 0.0], [0.0; 7]]),
+        FootprintCurve::from_rows([
+            [0.10, -0.06, 0.04, 0.03, 0.0, -0.02, 0.0],
+            [-0.05, 0.11, 0.0, 0.0, 0.06, 0.0, -0.04],
+        ]),
+    ];
+    let mut casos = 0;
+    let mut pior_liso = 0.0_f32;
+    for angle in [0_u16, 37, 211] {
+        for flatten in [0.0_f32, 0.6] {
+            for curva in curvas {
+                let fp = FootprintDeform::new(flatten, angle).with_curve(curva);
+                // Exactamente o que o `device_dabs` publica.
+                let linhas = fp.linear_rows();
+                let c = fp.curve_in_input_frame();
+                for v in [[0.3_f32, -0.8], [-1.0, 0.25], [0.0, 0.0], [0.61, 0.61], [0.9, 0.1]] {
+                    // …e exactamente o que o `stamp.wgsl` faz com eles.
+                    let (x, y) = (v[0], v[1]);
+                    let (xx, xy, yy) = (x * x, x * y, y * y);
+                    let m = [xx, xy, yy, xx * x, xx * y, xy * y, yy * y];
+                    let device = [0usize, 1].map(|e| {
+                        linhas[e][0] * x
+                            + linhas[e][1] * y
+                            + c[e].iter().zip(m.iter()).map(|(a, b)| a * b).sum::<f32>()
+                    });
+                    let real = fp.apply(v);
+                    let err = (device[0] - real[0]).abs().max((device[1] - real[1]).abs());
+                    casos += 1;
+                    assert!(
+                        err < 1e-5,
+                        "o device avaliaria {device:?} onde o `apply` dá {real:?} (erro {err:e}) \
+                         com flatten {flatten}, ângulo {angle}° e curvatura {curva:?}"
+                    );
+                    // ⛔ O CONTROLO: sem os monómios, uma pegada CURVA tem de divergir — senão
+                    // este gate ficaria verde sobre um device que ignora a curvatura.
+                    if !curva.is_flat() && v != [0.0, 0.0] {
+                        let liso = [0usize, 1]
+                            .map(|e| linhas[e][0] * x + linhas[e][1] * y);
+                        pior_liso = pior_liso
+                            .max((liso[0] - real[0]).abs().max((liso[1] - real[1]).abs()));
+                    }
+                }
+            }
         }
     }
+    assert_eq!(casos, 3 * 2 * 3 * 5, "o corpus mudou de tamanho");
+    assert!(
+        pior_liso > 1e-2,
+        "sem os monómios a diferença é {pior_liso} — o corpus deixou de ter curvatura a sério, e \
+         este gate passaria sobre um device que a ignora"
+    );
 }
 
 fn worst_and_count(a: &[u8], b: &[u8]) -> (u8, usize) {

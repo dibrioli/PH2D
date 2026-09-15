@@ -52,6 +52,7 @@ impl PainterTool {
         );
         brush.dab_flatten = w.flatten;
         brush.dab_angle_deg = w.angle_deg;
+        brush.dab_curve = w.curve;
         brush
     }
 
@@ -134,7 +135,7 @@ mod tests {
         t.set_brush_dab_angle(30.0);
         let repouso = t.cursor_dab();
         // Uma arte comprimida ao meio num eixo — o regime da foto.
-        t.set_canvas_warp([[0.5, 0.0], [0.0, 1.0]]);
+        t.set_canvas_warp(ph2d_painter_brush::canvas_warp::CanvasWarp::linear([[0.5, 0.0], [0.0, 1.0]]));
         let dobrada = t.cursor_dab();
         assert!(
             (dobrada.0 - repouso.0).abs() < 1e-6,

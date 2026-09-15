@@ -68,10 +68,20 @@ pub(crate) fn malha_sob_o_cursor(
 ///
 /// ⚠️ **Extraída de propósito:** os dois consumidores (a tinta e o anel do pincel) têm de ler a
 /// MESMA, e um `match` escrito duas vezes diverge no primeiro braço que alguém acrescentar.
-pub(crate) fn warp_da_malha(malha: ph2d_render::MeshUv) -> [[f32; 2]; 2] {
+///
+/// ⭐⭐⭐ **E ela é a ÚNICA conversão entre os dois gémeos** — a `ph2d_render::MeshWarp`, que o
+/// renderer mede da malha, e a `ph2d_painter_brush::canvas_warp::CanvasWarp`, que o motor de
+/// pincel consome. Os dois tipos existem separados porque o motor de pincel é **dev-dependency**
+/// do renderer (os gates dele reconciliam contra a lei canónica em vez de a re-implementar), e uma
+/// aresta de release do renderer para o pincel puxaria o pincel inteiro para o grafo de desenho.
+/// ⛔ A costura é aqui, é uma só, e há gate a mantê-la assim.
+pub(crate) fn warp_da_malha(malha: ph2d_render::MeshUv) -> ph2d_tool_painter::CanvasWarp {
     match malha {
-        ph2d_render::MeshUv::Use { warp, .. } => warp,
-        _ => [[1.0, 0.0], [0.0, 1.0]],
+        ph2d_render::MeshUv::Use { warp, .. } => ph2d_tool_painter::CanvasWarp {
+            linear: warp.linear,
+            curve: warp.curve,
+        },
+        _ => ph2d_tool_painter::CanvasWarp::rest(),
     }
 }
 

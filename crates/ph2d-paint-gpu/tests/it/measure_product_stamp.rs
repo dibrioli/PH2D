@@ -44,6 +44,8 @@ fn bridge(gpu: &ph2d_gpu::GpuContext, ledger: &Ledger) -> DeviceStamp {
                 m0: d.m0,
                 m1: d.m1,
                 _pad1: [0.0; 4],
+                c0: [0.0; 8],
+                c1: [0.0; 8],
             })
             .collect();
         let out = pass.run(

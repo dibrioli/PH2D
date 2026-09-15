@@ -47,34 +47,42 @@ fn ecra(mesh: &SpriteMesh, p: [f32; 2]) -> Option<[f32; 2]> {
 
 /// ⭐⭐⭐ **A RÉGUA É O PRODUTO:** a marca que o pincel pinta com esta deformação, levada ao ecrã
 /// PELA MALHA, é redonda? Devolve `maior/menor` raio do contorno (`1` = disco perfeito).
-fn redondeza(mesh: &SpriteMesh, centro: [f32; 2], raio_uv: f32, w: [[f32; 2]; 2]) -> f32 {
+fn redondeza(mesh: &SpriteMesh, centro: [f32; 2], raio_uv: f32, w: crate::MeshWarp) -> f32 {
     marca(mesh, centro, raio_uv, w, 0.0, 0).0
 }
 
 /// A MARCA que chega ao ecrã, para um dab que o artista autorou com `flatten`/`angle`: o seu
 /// `maior/menor` e a DIRECÇÃO do eixo maior, em graus (`0..180`, no referencial do ecrã).
+///
+/// ⚠️ **Ela percorre o contorno do PRODUTO** ([`ph2d_painter_brush::FootprintDeform::outline_at`]),
+/// e não uma elipse reconstruída aqui: desde que a pegada carrega curvatura, a fronteira do que o
+/// motor pinta já não é uma elipse, e uma régua que a supusesse mediria outra coisa.
 fn marca(
     mesh: &SpriteMesh,
     centro: [f32; 2],
     raio_uv: f32,
-    w: [[f32; 2]; 2],
+    w: crate::MeshWarp,
     flatten: f32,
     angle: u16,
 ) -> (f32, f32) {
-    let d = ph2d_painter_brush::canvas_warp::warped_dab(w, flatten, angle);
-    let [ca, sa] = ph2d_painter_brush::texture::rotate_by_degrees(d.angle_deg);
-    let (a, b) = (
-        raio_uv * d.radius_scale,
-        raio_uv * d.radius_scale * (1.0 - d.flatten),
+    let d = ph2d_painter_brush::canvas_warp::warped_dab(
+        ph2d_painter_brush::canvas_warp::CanvasWarp {
+            linear: w.linear,
+            curve: w.curve,
+        },
+        flatten,
+        angle,
     );
+    let pegada =
+        ph2d_painter_brush::FootprintDeform::new(d.flatten, d.angle_deg).with_curve(d.curve);
     let c0 = ecra(mesh, centro).expect("o centro cai sobre a malha");
     let (mut lo, mut hi) = (f32::INFINITY, 0.0f32);
     let mut eixo = [1.0f32, 0.0];
     for k in 0..360 {
-        let t = (k as f32) * std::f32::consts::TAU / 360.0;
+        let p = pegada.outline_at(k as f32 / 360.0);
         let q = [
-            centro[0] + a * t.cos() * ca - b * t.sin() * sa,
-            centro[1] + a * t.cos() * sa + b * t.sin() * ca,
+            centro[0] + p[0] * raio_uv * d.radius_scale,
+            centro[1] + p[1] * raio_uv * d.radius_scale,
         ];
         let s = ecra(mesh, q).expect("o bordo do dab cai sobre a malha");
         let r = ((s[0] - c0[0]).powi(2) + (s[1] - c0[1]).powi(2)).sqrt();
@@ -125,11 +133,19 @@ fn a_dab_inside_one_facet_gets_the_facet_bit_for_bit() {
 /// ⚠️ **A régua é o PRODUTO** — a marca levada ao ecrã PELA MALHA —, nunca os três números que o
 /// pincel consome. Medido no leque de `1,2 rad` sobre uma malha `8×8`, a redondeza (`1` = disco):
 ///
-/// | ponto | sem correcção | facete | **ao tamanho do dab** |
-/// |---|---|---|---|
-/// | `(0,53 · 0,72)` | `1,75` | `1,23` | **`1,13`** |
-/// | `(0,72 · 0,81)` | `2,14` | `1,27` | **`1,16`** |
-/// | `(0,40 · 0,65)` | `1,53` | `1,30` | **`1,12`** |
+/// | ponto | raio | sem correcção | facete | **ao tamanho do dab** |
+/// |---|---|---|---|---|
+/// | `(0,53 · 0,72)` | `0,060` | `1,863` | `1,163` | **`1,099`** |
+/// | `(0,72 · 0,81)` | `0,060` | `2,147` | `1,216` | **`1,128`** |
+/// | `(0,40 · 0,65)` | `0,060` | `1,602` | `1,303` | **`1,115`** |
+/// | `(0,53 · 0,72)` | `0,125` | `1,750` | `1,231` | **`1,078`** |
+/// | `(0,72 · 0,81)` | `0,125` | `2,138` | `1,267` | **`1,078`** |
+/// | `(0,40 · 0,65)` | `0,125` | `1,529` | `1,299` | **`1,065`** |
+///
+/// ⚠️ **Os números da coluna da direita MUDARAM** quando a porta passou a devolver um polinómio de
+/// grau `3` (eram `1,13` · `1,16` · `1,12` na linha de `0,125`): *o gate mede a lei, e a lei
+/// melhorou por baixo dele.* A barra continua a ser a mesma — ela pergunta se medir ao tamanho do
+/// dab BATE a facete, não por quanto.
 ///
 /// ⚠️ **A margem de `0,02` e o raio PEQUENO são o que pinam a lei, e não decoração:** amostrar a
 /// METADE do raio (a variante natural) deixa a coluna do raio `0,06` em `1,162` contra `1,162` da
@@ -152,7 +168,7 @@ fn a_big_dab_is_rounder_when_the_deformation_is_measured_at_its_size() {
                  (raio {raio}, centro {centro:?})"
             );
             // O chão da wave anterior: continua muito melhor do que não corrigir nada.
-            let crua = redondeza(&mesh, centro, raio, [[1.0, 0.0], [0.0, 1.0]]);
+            let crua = redondeza(&mesh, centro, raio, crate::MeshWarp::rest());
             assert!(
                 ra < crua,
                 "a correcção tem de bater o não-corrigir: {ra} contra {crua} em {centro:?}"
@@ -214,7 +230,7 @@ fn samples_off_the_mesh_answer_by_the_facet_they_left() {
     for r in [0.01_f32, 0.2, 5.0] {
         assert_eq!(
             warp_over(&mesh, [3.2, 0.2], SIZE, [r, r]),
-            Some(facete),
+            Some(crate::MeshWarp::linear(facete)),
             "com raio {r} o unico triangulo continua a ser a resposta"
         );
     }

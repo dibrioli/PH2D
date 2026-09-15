@@ -32,10 +32,16 @@ pub struct DeviceDab {
     pub radius: f32,
     pub coverage: f32,
     pub color: [f32; 3],
-    /// As duas LINHAS do mapa linear do footprint (flatten & rotate), avaliadas nos vetores da base.
-    /// Um deform de dab É linear — a premissa é gate, não comentário.
+    /// As duas LINHAS do mapa linear do footprint (flatten & rotate).
+    ///
+    /// ⚠️⚠️ **Elas vêm de [`ph2d_painter_brush::FootprintDeform::linear_rows`] e NÃO dos vectores
+    /// da base** — desde que a pegada carrega a curvatura da arte, `apply` deixou de ser linear e
+    /// `apply([1,0])`/`apply([0,1])` traziam os monómios avaliados nos versores dentro da matriz.
     pub m0: [f32; 2],
     pub m1: [f32; 2],
+    /// ⭐ Os graus `2` e `3` da pegada, na coordenada CRUA do dab (`x²`, `x·y`, `y²`, `x³`, `x²·y`,
+    /// `x·y²`, `y³`). Zero em toda arte que não está dobrada.
+    pub curve: [[f32; 7]; 2],
 }
 
 /// O lote publicado: a região JÁ EXTRAÍDA (RGBA8 contíguo, `w · h · 4`), a tabela e os discos.
@@ -144,15 +150,15 @@ pub fn device_dabs(dabs: &[Dab], brush: &BrushSpec) -> Vec<DeviceDab> {
     dabs.iter()
         .map(|d| {
             let fp = brush.dab_footprint(brush.dab_rotor(d));
-            let e0 = fp.apply([1.0, 0.0]);
-            let e1 = fp.apply([0.0, 1.0]);
+            let linhas = fp.linear_rows();
             DeviceDab {
                 center: d.center,
                 radius: d.radius_px,
                 coverage: d.coverage,
                 color: d.color,
-                m0: [e0[0], e1[0]],
-                m1: [e0[1], e1[1]],
+                m0: linhas[0],
+                m1: linhas[1],
+                curve: fp.curve_in_input_frame(),
             }
         })
         .collect()

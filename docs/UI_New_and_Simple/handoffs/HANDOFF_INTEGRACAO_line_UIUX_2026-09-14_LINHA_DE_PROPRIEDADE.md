@@ -1613,3 +1613,99 @@ chamador muda de caminho**.
 ⚠️ E o censo de acessibilidade acusou o irmão novo — legítimo: ele entra no `A11Y_OPT_OUT` **com a
 razão**, que é a mesma do `row.rs` um degrau abaixo (*o texto do nome já viaja como `label` do nó do
 CONTROLO; um nó aqui leria o nome duas vezes a quem não vê*).
+
+---
+
+## 25 — ⭐⭐⭐ A PORTA SAI DO INSPECTOR, e o painel do Painter (que era uma CÓPIA declarada dela) usa-a
+
+**Ordem permanente do dono:** *«Se temos o manual precisamos converter o APP todo a ele»*.
+
+### 25.1 — O censo que motivou a mudança de casa
+
+| painel | ficheiros com campo numérico | pela porta |
+|---|---|---|
+| `inspector` | 6 | **15** |
+| `flip-frames` · `grid-snap` · `motion-graph` · `motion-params` · `painter-layers` · `timeline` · `vector` | 10 | **0** |
+
+⇒ **sete painéis pintam campos e nenhum passava pela porta**, porque a porta vivia dentro do
+Inspector (`sections::rows::fields_row`). *Uma porta que vive dentro de um painel é uma porta que o
+painel seguinte copia.*
+
+E o app tinha **22** constantes a nomear uma coluna de rótulo escritas à mão. Só o
+`ph2d-panel-painter-layers` tem **oito**: `96` · `70` · `62` · `60` · `60` · `54` · `44` · `38`.
+
+### 25.2 — ⛔⛔ O `number_field.rs` do Painter DECLARAVA-SE uma cópia do Transform
+
+O cabeçalho dele, verbatim: *«the SAME number box as the Inspector's Transform (the app standard) …
+X/Y pairs (Size, Offset) share one line with red **X** / green **Y** axis tags like the reference»*.
+
+⇒ ele carregava **os dois defeitos que o Transform acabou de largar**: a largura fixa (que a spec §3
+prova errada por construção — o dock é arrastável) e as letras de eixo numa coluna própria (que
+custam `~52 px` de largura de painel antes de duas caixas ficarem lado a lado).
+
+### 25.3 — A mudança
+
+1. **A porta muda-se** para `ph2d_editor_core::widget::{paint_property_fields_row,
+   paint_property_label_row}`. O Inspector passa a **re-exportá-la** com o nome curto: os 23 sítios
+   dele não mudaram de forma.
+2. **O `chip` do Painter parte-se em dois.** Ele fazia três coisas — espelhar o valor vivo, registar
+   a faixa do arrasto e pintar — e a porta pinta **a partir do store** (`&WidgetStore`, não `&mut`).
+   ⇒ `arm_field` (o ESTADO de um campo) e a porta (o DESENHO de uma linha). ⚠️ *O corte não foi
+   inventado para a conversão:* a faixa é o que torna o arrasto proporcional ao intervalo, e isso é
+   um facto do campo mesmo quando ninguém o desenha.
+3. `paint_num_row`, `paint_num_xy` e `half_param` passam pela porta. **Três** das oito colunas
+   escritas à mão morreram (`LABEL_W 70` · `PAIR_LABEL_W 44` · `AXIS_W 16`), mais o `label_tok`.
+
+⭐ **E uma metade de uma fileira emparelhada é uma linha de propriedade dentro da largura dela** — a
+porta trabalha sobre qualquer `[x, w]`. ⚠️ Ali ficam **dois** pontos de animação na mesma fileira, e
+está certo: *«um ponto por LINHA»* fala de uma propriedade com várias componentes, e ali são **duas
+propriedades diferentes**.
+
+### 25.4 — ⛔⛔⛔ TRÊS gates reprovaram, e os três estavam ancorados num DIRECTÓRIO
+
+Mover a porta para fora de `sections/` partiu:
+
+| gate | o que ele lia | cura |
+|---|---|---|
+| `only_one_door_lays_out_a_row_of_fields` | os chamadores em `sections/` — leu **zero** | **mudou-se para o `ph2d-editor-core`**, onde a lei vive, e varre **todas as crates** |
+| `every_form_row_reserves_the_animation_column` | portas = `pub(super) fn` do `rows.rs` | passou a conhecer `pub(super) use … as NOME` |
+| `the_door_census_derives_the_second_order_doors` | idem | idem |
+
+⚠️⚠️ *Um censo ancorado num DIRECTÓRIO escapa a quem muda o código de sítio* — e este repo já tem a
+lição escrita (`feedback_a_gate_that_reads_the_shell_from_another_crate_escapes_the_line_that_moves_the_code`).
+⭐ **O modo de falha foi ALTO nos três** (zero chamadores lidos ⇒ vermelho imediato), o que é o lado
+bom da família: a espécie que fica **verde a medir nada** é a que se leva para o main.
+
+⚠️ E a versão nova do censo de chamadores acusou **a própria lei**: o `row.rs` contém
+`property_fields_layout(` porque é onde ela é DECLARADA. *Uma declaração não é uma chamada.*
+
+### 25.4-bis — ⛔⛔⛔ E a casa da porta foi decidida por TRÊS gates, não por gosto
+
+A 1.ª tentativa pôs o pintor em `src/widget/property_row_paint.rs`. Reprovaram **três** portões de
+arquitectura, e os três diziam a mesma coisa por lados diferentes:
+
+| gate | o que disse |
+|---|---|
+| `the_foundation_modules_form_a_dag` | `widget → interaction: 50 referências, tecto 49` — *a catraca só encolhe* |
+| `architecture_widget_mod_in_sync` | o bloco de `mod` de `widget/` é **gerado**; eu escrevi lá um doc-comment à mão |
+| `architecture_widget_showcase_coverage` | todo ficheiro de `widget/` tem de aparecer na bancada ou ter isenção escrita |
+
+⇒ **ele não é um widget.** Não tem estado, não tem nó de acessibilidade próprio, e a bancada não tem
+o que lhe mostrar: ele **compõe** um widget (`NumberInput`) com o substrato (`WidgetStore`,
+`HitIndex`) sobre a geometria da `widget::property_row_columns`. ⇒ módulo de **TOPO**,
+`ph2d_editor_core::property_row`, e os três gates ficam verdes **sem uma isenção**.
+
+⭐ *Três portões a reprovar o mesmo ficheiro não são três chatices: são a arquitectura a dizer onde
+a coisa mora.* ⛔ A saída fácil — subir o tecto de `49` para `50` — está proibida por escrito
+(`CLAUDE.md` §2: *«quando ela reprovar, MOVA — nunca suba o número»*), e teria escondido a resposta
+certa.
+
+### 25.5 — ⏳ ABERTO, nomeado
+
+- **`painter-layers` ainda tem cinco colunas escritas à mão** (`card.rs 96` · `paint_line 62` ·
+  `paint_brush_rows 60` · `paint_watercolor_paper 60` · `paint_adjust 44`) — são rows de **slider**,
+  não de campo numérico, e a conversão delas é outra pergunta (a spec §2: a caixa única tem o nome
+  DENTRO).
+- **Os outros seis painéis** (`flip-frames` · `grid-snap` · `motion-graph` · `motion-params` ·
+  `timeline` · `vector`) seguem por converter.
+- O censo `no_row_paints_its_name_above_its_control` continua **do Inspector**, por construção.

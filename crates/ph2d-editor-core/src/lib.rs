@@ -63,6 +63,14 @@ pub mod panel;
 /// Long-operation pattern: off-thread work + a bar that can be painted while it runs.
 pub mod progress;
 pub mod project;
+/// ⭐⭐⭐ **A LINHA DE PROPRIEDADE** — a porta que todo painel usa (ver o topo dela).
+///
+/// ⛔ **Módulo de TOPO, e não um widget** (2026-09-15): ele COMPÕE um widget (`NumberInput`) com o
+/// substrato (`WidgetStore`, `HitIndex`) sobre a geometria da `widget::property_row_columns`. Pô-lo
+/// em `widget/` fazia a catraca `widget → interaction` **crescer** (49 → 50), e ela só encolhe — e
+/// dizia que ele é uma primitiva, que ele não é: não tem estado, não tem nó de acessibilidade
+/// próprio, e a bancada de widgets não teria o que lhe mostrar.
+pub mod property_row;
 /// O que a shell PUBLICA por quadro e os pintores lêem — irmão do `paint` pelo tecto de LOC; os
 /// caminhos `paint::set_ui_look` e irmãos continuam a valer (re-export).
 mod published;

@@ -12,16 +12,17 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{NumberInput, TextInputState, paint_number_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::Spacing;
 
-const LABEL_W: f32 = 70.0; // LITERAL-PX-OK: row-label column (fits "Brightness"/"Randomness")
-const PAIR_LABEL_W: f32 = 44.0; // LITERAL-PX-OK: paired-param label column (compact)
-const AXIS_W: f32 = 16.0; // LITERAL-PX-OK: the "X"/"Y" axis-tag column
+/// ⭐⭐ **A linha que estas secções NÃO querem ver quebrar** — o par `X`/`Y` do *Size* / *Offset*.
+///
+/// ⚠️ Ver a spec §6-ter: é ela que diz à porta quanto a coluna do nome pode CEDER, e é da SECÇÃO e
+/// não da linha — senão a coluna sai esfarrapada.
+const SECTION_FIELDS: usize = 2;
 /// Max label length (chars) for a per-pattern param to share its line with the next one.
 const PAIR_MAX_LEN: usize = 7;
 /// NumberInput steps registered via `set_number_range` — the stepper increment + the drag base.
@@ -93,6 +94,29 @@ fn mirror_value(store: &mut WidgetStore, id: NodeId, value: f32, decimals: usize
     }
 }
 
+/// ⭐⭐⭐ **O ESTADO de um campo, sem pintar nada** — espelhar o valor vivo e registar a faixa.
+///
+/// ⛔⛔ **Ela existe porque este painel passou a usar a PORTA do app** (2026-09-15,
+/// [`ph2d_editor_core::widget::paint_property_fields_row`]), e a porta pinta **a partir do store**:
+/// ela recebe `&WidgetStore`, não `&mut`. ⇒ o que era um `chip` que fazia três coisas parte-se em
+/// duas — *o estado de um campo* (aqui) e *o desenho de uma linha* (a porta).
+///
+/// ⚠️ **O corte é honesto e não foi inventado para a conversão:** a faixa
+/// (`WidgetStore::set_number_range`) é o que torna o arrasto PROPORCIONAL ao intervalo, e isso é um
+/// facto do campo que vale mesmo quando ninguém o está a desenhar.
+pub(crate) fn arm_field(
+    store: &mut WidgetStore,
+    id: NodeId,
+    value: f32,
+    min: f32,
+    max: f32,
+    step: f64,
+    decimals: usize,
+) {
+    mirror_value(store, id, value, decimals);
+    store.set_number_range(id, f64::from(min), f64::from(max), step);
+}
+
 /// One number box filling `rect` (the Inspector widget): mirror the live value, register its
 /// `[min, max]` range + `step` (so the drag-scrub is range-proportional + clamped and the stepper uses
 /// `step` — see `WidgetStore::set_number_range`), then paint with steppers + the edit buffer + caret.
@@ -132,29 +156,6 @@ pub(crate) fn chip(
     ctx.host.hit_index_mut().register(id, rect);
 }
 
-/// A left-aligned, vertically-centred label clipped to width `w` (colour `tok`).
-fn label_tok(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    text: &str,
-    x: f32,
-    y: f32,
-    w: f32,
-    tok: ColorToken,
-) {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        text,
-        x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        w,
-        resolve(tok, theme),
-    );
-}
-
 /// Label + ONE number box (Angle / Depth / a solo param). Returns the next `y`.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_num_row(
@@ -171,22 +172,23 @@ pub(crate) fn paint_num_row(
     step: f64,
     decimals: usize,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
-    label_tok(ctx, theme, label_txt, x, y, LABEL_W, ColorToken::Text2);
-    let cx = x + LABEL_W + gap;
-    let cw = (x + content_w - cx).max(0.0);
-    chip(
-        ctx,
+    arm_field(ctx.host.store_mut(), id, value, min, max, step, decimals);
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    ph2d_editor_core::property_row::paint_fields_row(
+        ctx.scene,
+        ctx.text_system,
         theme,
-        Rect::new(cx, y, cw, ROW_H_PX),
-        id,
-        value,
-        min,
-        max,
+        hit_index,
+        store,
+        x,
+        content_w,
+        y,
+        label_txt,
+        &[id],
         step,
-        decimals,
-    );
-    y + ph2d_tokens::row_pitch_px()
+        None,
+        SECTION_FIELDS,
+    )
 }
 
 /// Label + TWO number boxes on one line, with red **X** / green **Y** axis tags (Size / Offset), like the
@@ -208,42 +210,31 @@ pub(crate) fn paint_num_xy(
     step: f64,
     decimals: usize,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
-    let tag_gap = Spacing::Xxs.px();
-    label_tok(ctx, theme, label_txt, x, y, LABEL_W, ColorToken::Text2);
-    let fields_x = x + LABEL_W + gap;
-    let avail = (x + content_w - fields_x).max(0.0);
-    let box_w = ((avail - 2.0 * (AXIS_W + tag_gap) - gap) / 2.0).max(0.0);
-    // X (red) tag + box.
-    label_tok(ctx, theme, "X", fields_x, y, AXIS_W, ColorToken::Danger);
-    let xb = fields_x + AXIS_W + tag_gap;
-    chip(
-        ctx,
+    // ⭐⭐⭐ **O `X`/`Y` viaja no NOME, e as letras coloridas saíram** — a mesma decisão que o
+    // Inspector tomou em 2026-09-15, por ordem do dono (*«Position X/Y Caixa Caixa»*). Medido lá: a
+    // coluna própria da letra custa `~52 px` de largura de painel antes de as duas caixas ficarem
+    // lado a lado, e era isso que partia a disposição.
+    {
+        let store = ctx.host.store_mut();
+        arm_field(store, id_x, vx, min, max, step, decimals);
+        arm_field(store, id_y, vy, min, max, step, decimals);
+    }
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    ph2d_editor_core::property_row::paint_fields_row(
+        ctx.scene,
+        ctx.text_system,
         theme,
-        Rect::new(xb, y, box_w, ROW_H_PX),
-        id_x,
-        vx,
-        min,
-        max,
+        hit_index,
+        store,
+        x,
+        content_w,
+        y,
+        label_txt,
+        &[id_x, id_y],
         step,
-        decimals,
-    );
-    // Y (green) tag + box.
-    let y_tag_x = xb + box_w + gap;
-    label_tok(ctx, theme, "Y", y_tag_x, y, AXIS_W, ColorToken::Success);
-    let yb = y_tag_x + AXIS_W + tag_gap;
-    chip(
-        ctx,
-        theme,
-        Rect::new(yb, y, box_w, ROW_H_PX),
-        id_y,
-        vy,
-        min,
-        max,
-        step,
-        decimals,
-    );
-    y + ph2d_tokens::row_pitch_px()
+        None,
+        SECTION_FIELDS,
+    )
 }
 
 /// Per-pattern params (all `0..1`, step `0.01`): pair two consecutive SHORT-label params on one line
@@ -290,19 +281,27 @@ fn half_param(
     id: NodeId,
     v: f32,
 ) {
-    let gap = Spacing::Xs.px();
-    label_tok(ctx, theme, label_txt, x, y, PAIR_LABEL_W, ColorToken::Text2);
-    let cx = x + PAIR_LABEL_W + gap;
-    let cw = (x + w - cx).max(0.0);
-    chip(
-        ctx,
+    // ⭐⭐ **Uma METADE é uma linha de propriedade dentro da largura dela** — a porta trabalha sobre
+    // qualquer `[x, w]`, e por isso a coluna do nome aqui é a metade da METADE, não uma constante.
+    //
+    // ⚠️ **DOIS pontos de animação nesta fileira, e está certo:** *«um ponto por LINHA, nunca por
+    // campo»* fala de uma propriedade com várias componentes; aqui são **duas propriedades
+    // diferentes** lado a lado, e um ponto só diria que são uma.
+    arm_field(ctx.host.store_mut(), id, v, 0.0, 1.0, FINE_STEP, 2);
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    ph2d_editor_core::property_row::paint_fields_row(
+        ctx.scene,
+        ctx.text_system,
         theme,
-        Rect::new(cx, y, cw, ROW_H_PX),
-        id,
-        v,
-        0.0,
-        1.0,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        label_txt,
+        &[id],
         FINE_STEP,
-        2,
+        None,
+        1,
     );
 }

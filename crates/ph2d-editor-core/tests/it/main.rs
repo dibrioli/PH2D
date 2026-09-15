@@ -83,6 +83,7 @@ mod node_id_collisions;
 mod nothing_inside_a_section_wears_the_section_tone;
 mod number_input_focus_replaces;
 mod number_input_mapped_link;
+mod only_one_door_lays_out_a_row_of_fields;
 mod the_animation_column_has_one_x;
 mod the_app_default_slider_style_is_the_one_the_owner_chose;
 mod the_bar_relocated_every_row_of_the_menus_it_replaced;

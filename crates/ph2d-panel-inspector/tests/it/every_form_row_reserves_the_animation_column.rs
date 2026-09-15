@@ -34,7 +34,17 @@ const ROW_PAINTERS: &[&str] = &[
 ///
 /// ⚠️ A segunda COMPÕE com a primeira — a `widget::property_row_columns` (rótulo à esquerda,
 /// controlo à direita) chama a `form_row_columns` por dentro e devolve o mesmo `dot`.
-const BASE_DOORS: [&str; 2] = ["form_row_columns", "property_row_columns"];
+/// ⚠️⚠️ **São QUATRO desde 2026-09-15, e as duas novas entraram porque a porta MUDOU DE CRATE.** Os
+/// dois pintores do `ph2d-editor-core` (`paint_property_fields_row` · `paint_property_label_row`)
+/// compõem com a `property_row_columns` por dentro e devolvem o mesmo `dot` — *um censo que só
+/// conhece as portas de GEOMETRIA acusa quem passou a usar o PINTOR*, que foi o que ele fez às três
+/// secções quando a implementação saiu do Inspector.
+const BASE_DOORS: [&str; 4] = [
+    "form_row_columns",
+    "property_row_columns",
+    "paint_fields_row",
+    "paint_label_row",
+];
 
 /// ⭐⭐⭐ **As portas DERIVAM-SE do `rows.rs`, nunca se escrevem à mão — e isto é a TERCEIRA
 /// correcção da mesma forma.**
@@ -54,7 +64,7 @@ const BASE_DOORS: [&str; 2] = ["form_row_columns", "property_row_columns"];
 fn doors() -> Vec<String> {
     let mut out: Vec<String> = BASE_DOORS.iter().map(|d| (*d).to_string()).collect();
     let rows = fs::read_to_string(sections_dir().join("rows.rs")).expect("rows.rs legível");
-    let fns: Vec<(String, String)> = rows
+    let mut fns: Vec<(String, String)> = rows
         .split("\npub(super) fn ")
         .skip(1)
         .filter_map(|bloco| {
@@ -62,6 +72,19 @@ fn doors() -> Vec<String> {
             Some((nome.to_string(), corpo.to_string()))
         })
         .collect();
+    // ⭐⭐ **E um `pub(super) use … as NOME;` também é uma porta** — foi assim que o `rows.rs` ficou
+    //    depois de a implementação se mudar para o `ph2d-editor-core`. *Uma régua que só conhece
+    //    `fn` lê zero portas num ficheiro que passou a re-exportar, e acusa toda a gente.*
+    for linha in rows.lines() {
+        let l = linha.trim();
+        let Some(resto) = l.strip_prefix("pub(super) use ") else {
+            continue;
+        };
+        let Some((caminho, alias)) = resto.trim_end_matches(';').split_once(" as ") else {
+            continue;
+        };
+        fns.push((alias.trim().to_string(), caminho.to_string()));
+    }
     // ⚠️ **Ponto FIXO, e não uma passagem só:** a `num_row` não chama porta de base nenhuma — ela
     // delega na `num_row_unit`, que chama. *Uma passagem só deixaria de fora quem está a DOIS
     // saltos*, e a secção que a usasse seria acusada de não reservar a coluna que ela reserva.

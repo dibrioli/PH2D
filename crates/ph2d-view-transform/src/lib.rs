@@ -139,5 +139,7 @@ fn khronos_pbr_neutral(c: [f32; 3]) -> [f32; 3] {
     c.map(|v| (v * scale) * (1.0 - g) + new_peak * g)
 }
 
+pub mod wgsl;
+
 #[cfg(test)]
 mod tests;

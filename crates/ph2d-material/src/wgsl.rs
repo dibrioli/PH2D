@@ -26,9 +26,17 @@ use crate::{Rgb, Surface};
 /// O que substituir esta marca tem de declarar **exactamente**:
 ///
 /// ```wgsl
-/// fn env_radiance(dir: vec3<f32>, alpha: f32) -> vec3<f32>
+/// fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32>
 /// fn env_irradiance(n: vec3<f32>) -> vec3<f32>
 /// ```
+///
+/// ⭐⭐⭐ **O `shrink` é o encolhimento do lóbulo, e ele viaja porque é `f64` na CPU.** O estúdio do
+/// produto calcula-o com um logaritmo e uma diferença quase singular (há um ramo explícito para
+/// `|α² − 1| < 1e-3`), logo a réplica em `f32` divergiria. ⚠️ **Mas ele é função só do `α`, que é
+/// constante por MATERIAL** — há exactamente dois no grafo (o da reflexão principal e o do verniz).
+/// ⇒ ele chega pronto, e quem não o usa ignora-o.
+///
+/// *Uma lei que precisa de `f64` e não varia por pixel não é um bloqueador: é uma constante.*
 pub const ENV_SLOT: &str = "{ENV}";
 
 /// Quantos `f32` o [`pack`] escreve — oito `vec4`.
@@ -40,7 +48,7 @@ pub const PACKED: usize = 32;
 /// por MATERIAL e não por pixel: correr no dispositivo o que já está calculado poria a mesma conta
 /// a correr dois milhões de vezes para dar o mesmo número.
 #[must_use]
-pub fn pack(s: &Surface) -> [f32; PACKED] {
+pub fn pack(s: &Surface, lobe: EnvLobe) -> [f32; PACKED] {
     let m = &s.m;
     let mut o = [0.0f32; PACKED];
     let put = |o: &mut [f32; PACKED], i: usize, c: Rgb| {
@@ -65,7 +73,40 @@ pub fn pack(s: &Surface) -> [f32; PACKED] {
     o[26] = s.coat_alpha;
     o[27] = s.coat_f0;
     o[28] = m.emission_luminance;
+    o[29] = lobe.main;
+    o[30] = lobe.coat;
     o
+}
+
+/// ⭐ **O encolhimento do lóbulo para os DOIS `α` do grafo** — ver [`ENV_SLOT`].
+///
+/// ⚠️ Quem não tem céu direccional (um gate com ambiente analítico) passa [`EnvLobe::IGNORED`], e
+/// a ranhura dele ignora o valor. *Um campo que o consumidor não lê não é um campo errado — é um
+/// campo que aquele céu não tem.*
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EnvLobe {
+    /// `lobe_shrink(clamp(main_alpha, EPS, 1))`.
+    pub main: f32,
+    /// `lobe_shrink(clamp(coat_alpha, EPS, 1))`.
+    pub coat: f32,
+}
+
+impl EnvLobe {
+    /// Para um céu que não o lê.
+    pub const IGNORED: Self = Self {
+        main: 0.0,
+        coat: 0.0,
+    };
+}
+
+/// O `α` que o [`EnvLobe`] tem de resolver — a reflexão principal e o verniz, já cortados como as
+/// closures os cortam.
+#[must_use]
+pub fn alphas(s: &Surface) -> (f32, f32) {
+    (
+        s.main_alpha.clamp(crate::bsdf::EPS, 1.0),
+        s.coat_alpha.clamp(crate::bsdf::EPS, 1.0),
+    )
 }
 
 /// O corpo do sombreador, com a ranhura do ambiente por preencher.
@@ -82,7 +123,7 @@ struct Mat {
     darkening_coatweight: vec4<f32>,   // rgb = modulated_base_darkening, a = coat_weight
     attenuation_coatior: vec4<f32>,    // rgb = coat_attenuation, a = coat_ior
     prepared: vec4<f32>,               // modulated_eta_s, main_alpha, coat_alpha, coat_f0
-    emissive: vec4<f32>,               // emission_luminance, _, _, _
+    emissive: vec4<f32>,               // emission_luminance, shrink_main, shrink_coat, _
 };
 
 const MX_EPS: f32 = 1.0e-8;
@@ -280,14 +321,14 @@ fn mx_oren_nayar_reflection(
 }
 
 // ── as closures INDIRECTAS (`mx_environment_radiance`, método PREFILTER) ──────────────────────
-fn mx_env_mirror(n: vec3<f32>, v: vec3<f32>, alpha: f32, dir_albedo: vec3<f32>) -> vec3<f32> {
+fn mx_env_mirror(n: vec3<f32>, v: vec3<f32>, alpha: f32, shrink: f32, dir_albedo: vec3<f32>) -> vec3<f32> {
     let d = 2.0 * dot(n, v);
     let mirror = d * n - v;
-    return env_radiance(mirror, alpha) * dir_albedo;
+    return env_radiance(mirror, alpha, shrink) * dir_albedo;
 }
 
 fn mx_dielectric_indirect(
-    weight: f32, tint: vec3<f32>, ior: f32, alpha_in: f32, n_in: vec3<f32>, v: vec3<f32>
+    weight: f32, tint: vec3<f32>, ior: f32, alpha_in: f32, shrink: f32, n_in: vec3<f32>, v: vec3<f32>
 ) -> Bsdf {
     if (weight < MX_EPS) { return bsdf_none(); }
     let n = mx_forward_facing(n_in, v);
@@ -298,13 +339,13 @@ fn mx_dielectric_indirect(
     let f0 = mx_ior_to_f0(ior);
     let fg = mx_ggx_dir_albedo(ndv, alpha, vec3<f32>(f0), vec3<f32>(1.0));
     let dir_albedo = fg * comp;
-    let li = mx_env_mirror(n, v, alpha, fg);
+    let li = mx_env_mirror(n, v, alpha, shrink, fg);
     return Bsdf(li * max(tint, vec3<f32>(0.0)) * comp * weight, vec3<f32>(1.0) - dir_albedo * weight);
 }
 
 fn mx_schlick_indirect(
     weight: f32, color0: vec3<f32>, color82: vec3<f32>, color90: vec3<f32>, exponent: f32,
-    alpha_in: f32, n_in: vec3<f32>, v: vec3<f32>
+    alpha_in: f32, shrink: f32, n_in: vec3<f32>, v: vec3<f32>
 ) -> Bsdf {
     if (weight < MX_EPS) { return bsdf_none(); }
     let c0 = max(color0, vec3<f32>(0.0));
@@ -318,7 +359,7 @@ fn mx_schlick_indirect(
     let fg = mx_ggx_dir_albedo(ndv, alpha, c0, c90);
     let dir_albedo = fg * comp;
     let avg = (dir_albedo.x + dir_albedo.y + dir_albedo.z) * (1.0 / 3.0);
-    let li = mx_env_mirror(n, v, alpha, fg);
+    let li = mx_env_mirror(n, v, alpha, shrink, fg);
     return Bsdf(li * comp * weight, vec3<f32>(1.0 - avg * weight));
 }
 
@@ -356,7 +397,7 @@ fn mx_compose(m: Mat, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, direto: bool) ->
                                         vec3<f32>(1.0), 5.0, main_alpha, n, v, l);
     } else {
         metal_c = mx_schlick_indirect(specular_weight, base_color * base_weight, specular_color,
-                                      vec3<f32>(1.0), 5.0, main_alpha, n, v);
+                                      vec3<f32>(1.0), 5.0, main_alpha, m.emissive.y, n, v);
     }
     let metal = bsdf_add(bsdf_none(), metal_c);
     let base_fg = bsdf_mul_float(metal, base_metalness);
@@ -365,7 +406,7 @@ fn mx_compose(m: Mat, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, direto: bool) ->
     if (direto) {
         diel_c = mx_dielectric_reflection(1.0, specular_color, modulated_eta_s, main_alpha, n, v, l);
     } else {
-        diel_c = mx_dielectric_indirect(1.0, specular_color, modulated_eta_s, main_alpha, n, v);
+        diel_c = mx_dielectric_indirect(1.0, specular_color, modulated_eta_s, main_alpha, m.emissive.y, n, v);
     }
     let dielectric_reflection = bsdf_add(bsdf_none(), diel_c);
 
@@ -392,7 +433,7 @@ fn mx_compose(m: Mat, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, direto: bool) ->
     if (direto) {
         coat_c = mx_dielectric_reflection(coat_weight, vec3<f32>(1.0), coat_ior, coat_alpha, n, v, l);
     } else {
-        coat_c = mx_dielectric_indirect(coat_weight, vec3<f32>(1.0), coat_ior, coat_alpha, n, v);
+        coat_c = mx_dielectric_indirect(coat_weight, vec3<f32>(1.0), coat_ior, coat_alpha, m.emissive.z, n, v);
     }
     let coat_layer = bsdf_layer(coat_c, attenuated);
     return bsdf_layer(bsdf_none(), coat_layer).response;

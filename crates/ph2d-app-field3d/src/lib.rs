@@ -90,6 +90,7 @@ pub mod smoke;
 /// `docs/Render3d/03` W3 — o ESTÚDIO: o céu ganha uma FONTE COM FORMA, pré-filtrada em forma
 /// fechada, e a energia total dele não se mexe.
 pub mod studio;
+pub mod studio_wgsl;
 /// ADR-0161 W26 — o NUMERO digitado no meio do gesto do gizmo (o `G X 0,5` do Blender).
 pub mod typed;
 

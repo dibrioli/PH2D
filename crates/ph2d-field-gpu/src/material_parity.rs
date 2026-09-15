@@ -56,7 +56,8 @@ impl ph2d_material::Environment for HarnessSky {
 pub const SKY: &str = r#"
 const HARNESS_BASE: vec3<f32> = vec3<f32>(0.20, 0.24, 0.31);
 const HARNESS_SLOPE: vec3<f32> = vec3<f32>(0.55, 0.47, 0.38);
-fn env_radiance(dir: vec3<f32>, alpha: f32) -> vec3<f32> {
+// ⚠️ O `shrink` chega e este céu ignora-o — ele não é direccional por lóbulo. Ver o `ENV_SLOT`.
+fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
     let k = 1.0 / (1.0 + 4.0 * alpha);
     return HARNESS_BASE + HARNESS_SLOPE * ((0.5 + 0.5 * dir.y) * k);
 }
@@ -108,7 +109,7 @@ pub fn on_device(surface: &ph2d_material::Surface, samples: &[Sample]) -> Option
         cache: None,
     });
 
-    let empacotado = ph2d_material::wgsl::pack(surface);
+    let empacotado = ph2d_material::wgsl::pack(surface, ph2d_material::wgsl::EnvLobe::IGNORED);
     let mut u = Vec::with_capacity(empacotado.len() * 4);
     for f in empacotado {
         u.extend_from_slice(&f.to_le_bytes());

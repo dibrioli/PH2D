@@ -333,6 +333,17 @@ impl BoxPrefilter {
         baixo + (cima - baixo) * fr
     }
 
+    /// As duas tabelas e as duas constantes, para quem as leva ao dispositivo — ver
+    /// [`crate::studio_wgsl`].
+    ///
+    /// ⚠️ **Elas saem daqui e não de uma reconstrução**: a tabela é o produto de uma sequência de
+    /// Hammersley com uma contagem de amostras MEDIDA, e refazê-la do outro lado seria uma segunda
+    /// resposta à mesma pergunta.
+    #[must_use]
+    pub fn tables(&self) -> (&[f32], &[f32], f32, f32) {
+        (&self.spec, &self.diff, self.share, self.amp)
+    }
+
     /// A irradiância normalizada da calote, na normal a `cos ψ` do eixo dela.
     #[must_use]
     pub fn diffuse(&self, cos_psi: f32) -> f32 {

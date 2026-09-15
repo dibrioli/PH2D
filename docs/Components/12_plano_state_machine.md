@@ -167,3 +167,30 @@ esquecido. *A cura de um NOME repete-se; a de uma PORTA não.*
 | **W2** | o **componente** + a ponte no passo fixo + os sinais | a porta abre ao sinal, headless |
 | **W3** | a **secção do Inspector** | as 4 condições do §5 |
 | **W4** | a **cena de smoke** + provas de mutação + handoff | o dono corre e vê |
+
+---
+
+## §7 — ⚠️ As premissas DESTE plano que a implementação derrubou
+
+*(escrito durante a construção, não depois — a §6 acima fica como foi planeada, de propósito)*
+
+1. ⛔ **«W1: a lei pura numa crate-folha `ph2d-statemachine`»** — **REFUTADO.** A família `Logic`
+   inteira (`Timer` #2 · `Lifetime` #12 · `SignalActions` #5) tem a lei **dentro do `ph2d-ecs`**, ao
+   lado do componente. As folhas puras desta casa (`ph2d-topdown`, `ph2d-projectile`) existem porque
+   são **matemática** partilhada com a ponte de física; esta é uma tabela de nomes. ⇒ uma crate nova
+   seria o **primeiro** membro da família fora da casa dela, por zero ganho medido.
+   ⇒ vive em [`ph2d_ecs::state_machine`](../../crates/ph2d-ecs/src/state_machine.rs).
+
+2. ⛔⛔ **«§3.3 — a travessia pára no CONJUNTO DE VISITADOS, portado do oráculo»** — **REFUTADO por
+   um gate vermelho sobre o meu próprio desenho**, e é o achado mais importante da wave.
+   A regra do oráculo é boa **para a máquina dele**, cuja entrada é um **NÍVEL** (um
+   `advance_condition` é um booleano que **fica** verdadeiro). A nossa entrada é um **EVENTO**.
+   Portada à letra, ela dava uma porta que, com **um** toque, ia de `Aberta` a `Fechada` **e logo a
+   `A abrir`** — porque a mesma seta de `botao` era ouvida outra vez pelo estado de chegada.
+   ⭐ A lei que fica é **o sinal ser GASTO por quem o ouve**, e com ela:
+   - a lei observável do oráculo fica **intacta** (uma cadeia resolve-se num tique quando os sinais
+     lá estão; um ciclo nunca pendura);
+   - o **orçamento de profundidade** que o `SignalActions` prescreveu passa a ser um recurso REAL —
+     *quantos sinais soaram neste tique* — e **não** um `MAX_DEPTH` escolhido por alguém.
+   ⇒ *o oráculo ensinou a PERGUNTA e o formato da resposta; a resposta é de quem conhece a natureza
+   da própria entrada.*

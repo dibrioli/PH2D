@@ -327,6 +327,37 @@ quem cresce com a malha fina é o preço de cada um — *os dois puxam em sentid
 varredura LINEAR — um índice de UV na `DrawnMesh` tornaria cada pedaço `O(1)` e a tabela ficaria
 plana. Não foi construído porque nenhum número dela o exige ainda.
 
+### E a espécie A ganhou CENA (ordem do dono: *«monte uma cena»*)
+
+`PH2D_VEC_BONE_PAINT_SMOKE=1` — um canvas do Painter **preso a ossos e dobrado**. Ela existe porque a
+cura estava gateada e **invisível**: nenhuma cena punha o Painter a pintar sobre arte dobrada.
+
+⭐⭐⭐ **E corrê-la achou DOIS defeitos que todos os portões verdes não viam** (DIRETIVA §1: *o verde
+de compilação vale ZERO no audit*):
+
+1. **O bind falhava em silêncio.** A leitura dos pixels foi copiada da cena irmã, que lê
+   `SpritePixels` — e uma sprite que vive numa **célula do atlas** não carrega esse carimbo (ele é do
+   caminho `Individual`, de textura própria). Os bytes vivem no `AssetDb` com o vínculo no
+   `atlas_asset_map`. *Copiar a leitura de uma cena irmã leu o componente errado e devolveu `None`
+   sem um erro* — e só a linha que a cena **imprime** o disse.
+2. **A cena ficava acima do orçamento de peças do quadro.** Um canvas **opaco** é coberto de malha de
+   ponta a ponta, logo o tamanho dele **É** a densidade da pele:
+
+   | lado | peças | orçamento |
+   |---:|---:|---:|
+   | 1024 | 3 690 | 1 543 ⇒ acima |
+   | 640 | 1 620 | 1 543 ⇒ acima |
+   | **512** | **1 144** | dentro |
+
+   ⛔ A alavanca é o TAMANHO, nunca a grelha: baixar o `GridOptions` armaria a cena com números que o
+   produto não usa, e uma cena acima do orçamento ensina ao dono que o app engasga **sobre uma
+   fixtura escolhida por mim**.
+
+⚠️ **E a ORDEM da cena é load-bearing, com gate e prova de mutação:** ela prende **antes** de dobrar.
+O repouso de uma pele é o instante do bind — dobrada primeiro, esta pose seria o repouso, o canvas
+sairia recto, e a cena imprimiria a linha de sucesso sem provar nada. *Um smoke que monta e não
+demonstra é pior que um ausente: ele é acreditado.*
+
 ### A espécie B está ABERTA, e a rota dela já está DECIDIDA por uma recusa medida
 
 As duas chamam `draw_image_rgba_transformed(&rgba, w, h, afim, …)`: **uma imagem por um afim**. Há

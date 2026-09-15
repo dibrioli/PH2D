@@ -278,8 +278,13 @@ fn a_property_label_is_flush_against_its_control() {
         "Corner Look-ahead",
         "Swim Line (weights)",
     ] {
-        let (cabe, origem) = property_label_origin(&mut ts, texto, x, fonte, col);
-        let largura = ts.prefix_width(&cabe, fonte);
+        let (cabe, origem, largura) = property_label_origin(&mut ts, texto, x, fonte, col);
+        // ⚠️ A largura vem da PORTA e é re-medida aqui de propósito: se as duas discordarem, o
+        //    orçamento do pintor (que é a da porta) deixaria de descrever o que é pintado.
+        assert!(
+            (largura - ts.prefix_width(&cabe, fonte)).abs() < f32::EPSILON,
+            "{texto:?}: a porta devolve {largura} e o texto mede outra coisa"
+        );
         // ⭐ ENCOSTADO À DIREITA: o fim do texto é o fim da coluna, e é isso que o põe ao lado do
         //   controlo.
         assert!(
@@ -295,7 +300,8 @@ fn a_property_label_is_flush_against_its_control() {
     // único caso em que o [`ph2d_editor_core::text_elide::fit`] devolve texto mais largo que o
     // orçamento. *Uma fixtura sem o fenómeno mede silêncio.*
     for col_minima in [0.5_f32, 2.0, 4.0] {
-        let (_, origem) = property_label_origin(&mut ts, "Corner Look-ahead", x, fonte, col_minima);
+        let (_, origem, _) =
+            property_label_origin(&mut ts, "Corner Look-ahead", x, fonte, col_minima);
         assert!(
             (origem - x).abs() < 0.51,
             "coluna de {col_minima}: o rotulo que nao cabe recuou para {origem} em vez de encostar \

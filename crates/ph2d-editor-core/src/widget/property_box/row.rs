@@ -243,7 +243,15 @@ pub fn paint_property_label(
     if col_w <= 0.0 {
         return;
     }
-    let (cabe, recuo) = property_label_origin(text_system, text, x, font_size, col_w);
+    let (cabe, recuo, largura) = property_label_origin(text_system, text, x, font_size, col_w);
+    // ⛔⛔ **O orçamento é a largura MEDIDA do que já coube — nunca `x + col_w − recuo`.**
+    // Aquela diferença cancela em `f32` e devolve um valor um ULP abaixo de `largura` em ~8,6 %
+    // das posições de `x`, e o pintor voltava a cortar um rótulo que cabia: era isto que o dono
+    // via como *«3 pontos mesmo com folga»*. Ver o doc da [`property_label_origin`].
+    //
+    // ⚠️ **O `min(col_w)` guarda o caso degenerado** — numa coluna mais estreita que a própria
+    // reticência o `fit` devolve o texto CRU, e ali o orçamento tem de continuar a ser a coluna,
+    // para o pintor recusar em vez de invadir o controlo.
     crate::paint::paint_text_elided(
         text_system,
         scene,
@@ -251,7 +259,7 @@ pub fn paint_property_label(
         recuo,
         y,
         font_size,
-        (x + col_w - recuo).max(0.0),
+        largura.min(col_w),
         color,
     );
 }
@@ -263,7 +271,18 @@ pub fn paint_property_label(
 /// decisão que nenhuma mutação mata*. O mesmo motivo que tirou a escolha do quad desdobrado do fio
 /// do Sprite Inspector.
 ///
-/// Devolve `(texto já elidido, x de origem)`.
+/// Devolve `(texto já elidido, x de origem, **a largura medida desse texto**).
+///
+/// ⛔⛔ **A terceira componente existe por um defeito MEDIDO** (report do dono, 2026-09-14, foto do
+/// cartão JUMP: *«… mesmo com folga»*). O pintor precisa da largura do que coube, e re-derivava-a
+/// por `x + col_w − recuo` — que em `f32` **não devolve `largura`**: `recuo` é ele próprio
+/// `x + (col_w − largura)`, e a soma-e-subtracção cancela com erro. Quando o resultado cai um ULP
+/// abaixo, o pintor conclui que o texto já não cabe e **volta a cortá-lo**, pondo reticências num
+/// rótulo com dezenas de píxeis de folga. Medido: **310 de 3 600** células (nove rótulos × 400
+/// posições de `x`) numa coluna de `140 px` onde o mais largo mede `100,3`.
+///
+/// ⇒ *quem já mediu uma grandeza devolve-a; re-derivá-la por diferença é a segunda conta que
+/// discorda da primeira* — a mesma lei que a [`super::surface_rect`] paga um nível acima.
 #[must_use]
 pub fn property_label_origin(
     text_system: &mut TextSystem,
@@ -271,12 +290,12 @@ pub fn property_label_origin(
     x: f32,
     font_size: f32,
     col_w: f32,
-) -> (String, f32) {
+) -> (String, f32, f32) {
     let cabe = crate::text_elide::fit(text_system, text, font_size, col_w);
     let largura = text_system.prefix_width(&cabe, font_size);
     // ⚠️ **O `max(0)` é o degrau para a ESQUERDA**: um texto maior que a coluna (quando nem a
     // reticência cabe, o `fit` devolve-o cru) encosta ao princípio dela em vez de recuar para fora.
-    (cabe, x + (col_w - largura).max(0.0))
+    (cabe, x + (col_w - largura).max(0.0), largura)
 }
 
 /// ⭐⭐⭐ **A porta de uma linha de propriedade** — ver [`PropertyRow`].

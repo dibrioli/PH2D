@@ -177,54 +177,49 @@ pub(crate) fn folga_simetrica(d: f32, folga: f32) -> f32 {
 /// a mesma forma do apagador sem referência: quando o dado de
 /// entrada não existe, **a lei não inventa** — aqui ela não projecta
 /// para o infinito.
-/// ⭐⭐⭐ **INVERTER NEGA A TRANSLAÇÃO — o raio NÃO vira** (espec
-/// §1.2: *«o sinal entra no factor, logo a translação nega»*).
+/// ⛔⛔⛔ **A INVERSÃO SAIU DO PRODUTO POR ORDEM DO DONO (15/09) — e
+/// isto é a RECUSA REGISTADA, não uma ausência.** Palavras dele
+/// depois do smoke da `=45`: *«não vi utilidade na feature Scene
+/// Project + CTRL. Melhor retirá-la e documentá-la como
+/// indesejada.»*
 ///
-/// ⛔⛔⛔ **A redacção anterior dizia o CONTRÁRIO, e ela e a cena
-/// que a sustentava estavam erradas JUNTAS — cada uma a confirmar
-/// a outra.** A bancada tinha reconstruído o alvo de
-/// `projectar_invertido` **ACIMA** (a `+0,5`), porque leu a altura
-/// do *deslocamento máximo* da própria fixtura, que é para cima; e
-/// com o alvo em cima e os dois sentidos desligados, o sinal
-/// escrito no fim media **`0` vértices movidos contra `301`** —
-/// não há o que negar. Virar o raio «curava» isso e a fixtura
-/// ficava a `1,415e-1`. ⚠️ *Duas suposições erradas que encaixam
-/// uma na outra dão um produto que corre e uma bancada que se diz
-/// medida.*
+/// ⚠️ **Retirar o gesto retira a CAPACIDADE, e isso foi medido antes
+/// de se cortar:** o `Brush::invert` tem **um** escritor no produto
+/// inteiro (`scene.brush.invert = ctrl`, no pen-down) e **nenhum**
+/// controlo de painel o oferece ⇒ o `Ctrl` era a única porta. Com o
+/// verbo fora do [`crate::Verb::honours_invert`] o `sign` do
+/// `stroke_target` fica preso em `+1` para sempre, e um parâmetro que
+/// só pode valer uma coisa é um ÓRFÃO — *a cura de um órfão é
+/// apagar* (`CLAUDE.md` §5.0), e não deixá-lo vivo e inalcançável.
 ///
-/// ⭐⭐⭐ **O que as separou foi o CABEÇALHO, não a aritmética:**
-/// `projectar_base` e `projectar_invertido` têm cabeçalhos
-/// **idênticos** campo a campo (o `sentido` é `ADD` nos dois — a
-/// inversão veio pelo GESTO), e a linha de descrição da base diz
-/// *«contra um plano ABAIXO»* enquanto o da invertida diz *«o
-/// MESMO, invertido»*. ⇒ **a cena é a mesma, com o plano abaixo.**
+/// ⭐⭐ **O que fica registado é a MEDIÇÃO, para ninguém a repetir.** A
+/// lei estava CERTA e provada no dia em que saiu: `inverter` **nega a
+/// translação** e o raio **não vira** (espec §1.2: *«o sinal entra no
+/// factor»*), com as duas fixturas do corpus a fechar a **`2,384e-7`**
+/// contra uma barra de `2e-6`. ⛔ A redacção anterior dizia o
+/// contrário e ela e a cena que a sustentava estavam erradas JUNTAS,
+/// cada uma a confirmar a outra: a bancada tinha reconstruído o alvo
+/// da invertida **ACIMA** (lido do deslocamento máximo, que é para
+/// cima) e, com o alvo em cima e os dois sentidos desligados, a
+/// negação escrita no fim media **`0` vértices movidos contra `301`**.
+/// O que as separou foi o **CABEÇALHO** (a base e a invertida são
+/// idênticas campo a campo, `sentido: ADD` nas duas) e o número que a
+/// espec §6.6 publica para a assimetria, `1,415e-1`, que era
+/// **exactamente** o nosso desvio. *Ler o próprio desvio no número
+/// que a espec dá é o diagnóstico inteiro.*
 ///
-/// ⭐⭐ **E o número que a espec §6.6 publica é a PROVA de que a
-/// lei é esta:** ela mede `max abs(d + d′) = 1,415e-1` entre a base
-/// e a invertida *no alvo*, e a nossa saída desviava do oráculo
-/// **exactamente nesse número** — porque virar o raio produz o
-/// espelho EXACTO da base (medido: `projectar_base` contra
-/// `projectar_acima_bidir` dá `0,000000e0`), e o processo do alvo
-/// não é espelho. *Ler o próprio desvio no número que a espec
-/// publica para a assimetria é o diagnóstico inteiro.*
+/// ⚠️ **E o mecanismo que explicava porque ela não explodia fica
+/// aqui também:** a negação empurra o vértice para LONGE do alvo,
+/// logo o dab seguinte mede uma distância MAIOR — mas o peso cai,
+/// porque a pegada é uma esfera em torno de um centro PARADO e o
+/// vértice sai dela; a excursão travava em exactamente `0,500000`,
+/// cravado no corpus.
 ///
-/// ⭐ **O mecanismo, e é ele que explica porque não explode:** a
-/// negação empurra o vértice para LONGE do alvo, logo o dab
-/// seguinte mede uma distância MAIOR — mas o peso cai, porque a
-/// pegada é uma esfera em torno de um centro PARADO e o vértice
-/// sai dela. O vértice do centro do primeiro dab anda o vão
-/// inteiro (`w = 1`) e no dab seguinte já está a `0,5` de um raio
-/// de `0,35`: **fora da pegada**, com a excursão travada em
-/// exactamente `0,5`. Foi esse `0,500000` cravado no corpus que
-/// refutou a hipótese de que a excursão crescia sem fim.
-///
-/// ⚠️ **Um dab nega exactamente; um TRAÇO não** (§6.6) — e o
-/// corpus mostra-o por posição: os vértices que só um dab alcança
-/// leem razão `1,00` contra o espelho, e os do meio do traço leem
-/// até `1,37`.
-///
-/// ⇒ do lado do artista, `Ctrl` aqui quer dizer **«afasta do que
-/// está ao lado»**, e não «procura do outro lado».
+/// ⛔ **Duas fixturas do oráculo saíram do corpus VIVO com esta
+/// decisão** (`projectar_invertido` e `projectar_subtrair`) — ver a
+/// lista nomeada na banca, que reprova se alguém reintroduzir o
+/// gesto sem as repor. *É uma divergência DECLARADA da referência:
+/// ela tem a capacidade, e nós não a queremos.*
 ///
 /// ⚠️ **Ela vive AQUI e não no `match` dos alvos por uma razão de TECTO e de
 /// ASSUNTO:** o `stroke_target.rs` responde *para onde cada verbo aponta* com
@@ -238,7 +233,6 @@ pub(crate) fn alvo_do_vertice(
     n_area: [f32; 3],
     live: [f32; 3],
     w: f32,
-    sign: f32,
 ) -> [f32; 3] {
     let direccao = brush.project_mode.direccao(dab.eye, n_area);
     distancia(
@@ -250,7 +244,7 @@ pub(crate) fn alvo_do_vertice(
         brush.project_min_distance,
     )
     .map_or(live, |d| {
-        let f = d * w * sign;
+        let f = d * w;
         [
             live[0] + direccao[0] * f,
             live[1] + direccao[1] * f,

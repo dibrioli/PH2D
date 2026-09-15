@@ -488,28 +488,98 @@ fn diag_o_calibrador() {
 /// INOBSERVÁVEL** — ganha o de menor `|d|`, logo a posição do perdedor não entra
 /// na resposta. O gate [`o_alvo_perdedor_e_inobservavel`] mede-o em vez de o
 /// supor.
-const CENAS: [(&str, &[f32], bool); 16] = [
-    ("projectar_base", &[-0.5], false),
-    ("projectar_base_repete", &[-0.5], false),
-    ("projectar_constante_1passo", &[-0.5], false),
-    ("projectar_forca05_constante_1passo", &[-0.5], false),
-    ("projectar_forca05", &[-0.5], false),
-    ("projectar_dureza05", &[-0.5], false),
-    ("projectar_normal_plano_area", &[-0.5], false),
-    ("projectar_mindist01", &[-0.5], false),
-    ("projectar_mindist06", &[-0.5], false),
-    ("projectar_acima_bidir", &[0.5], false),
-    ("projectar_acima_sem_bidir", &[0.5], false),
-    ("projectar_mindist01_acima_bidir", &[0.5], false),
-    // ⚠️ **A inversão deste veio pelo GESTO** (Ctrl durante o traço), e por isso
-    // não aparece no cabeçalho — o `README` da pasta diz-no à letra. O par dele
-    // (`…_subtrair`) traz a MESMA inversão como PROPRIEDADE, e os dois medem
-    // `0,0` de diferença entre si.
-    ("projectar_invertido", &[-0.5], true),
-    ("projectar_subtrair", &[-0.5], false),
-    ("projectar_dois_abaixo", &[-0.3, -0.9], false),
-    ("projectar_dois_lados_bidir", &[0.3, -0.5], false),
+const CENAS: [(&str, &[f32]); 14] = [
+    ("projectar_base", &[-0.5]),
+    ("projectar_base_repete", &[-0.5]),
+    ("projectar_constante_1passo", &[-0.5]),
+    ("projectar_forca05_constante_1passo", &[-0.5]),
+    ("projectar_forca05", &[-0.5]),
+    ("projectar_dureza05", &[-0.5]),
+    ("projectar_normal_plano_area", &[-0.5]),
+    ("projectar_mindist01", &[-0.5]),
+    ("projectar_mindist06", &[-0.5]),
+    ("projectar_acima_bidir", &[0.5]),
+    ("projectar_acima_sem_bidir", &[0.5]),
+    ("projectar_mindist01_acima_bidir", &[0.5]),
+    ("projectar_dois_abaixo", &[-0.3, -0.9]),
+    ("projectar_dois_lados_bidir", &[0.3, -0.5]),
 ];
+
+/// ⛔⛔⛔ **O QUE O ORÁCULO FAZ E NÓS DELIBERADAMENTE NÃO FAZEMOS** —
+/// divergência DECLARADA, por ordem do dono (15/09), depois do smoke da `=45`:
+/// *«não vi utilidade na feature Scene Project + CTRL. Melhor retirá-la e
+/// documentá-la como indesejada.»*
+///
+/// ⚠️ **As duas estavam VERDES quando saíram** (`2,384e-7` cada, contra a
+/// [`BARRA`] de `2e-6`): elas não saíram por não as conseguirmos reproduzir,
+/// saíram porque **o produto deixou de ter a capacidade**. *Uma fixtura que sai
+/// por DECISÃO e uma que sai por DERROTA leem-se igual numa lista — o que as
+/// separa é esta frase e o número ao lado dela.*
+///
+/// ⭐ **Duas portas para a mesma inversão**, e é por isso que são duas fixturas:
+/// numa ela vinha pelo GESTO (`Ctrl` durante o traço, logo **não** aparece no
+/// cabeçalho) e na outra como PROPRIEDADE (`sentido: SUBTRACT`). As duas mediam
+/// `0,0` de diferença entre si — e no produto nenhuma tem porta, porque o único
+/// escritor do `Brush::invert` é o pen-down e o painel não o oferece.
+///
+/// Os ficheiros **ficam na pasta**: são saída de oráculo e voltam a valer no dia
+/// em que a decisão mudar — e quem a mudar tem o gate abaixo a dizer-lho.
+const FORA_POR_DECISAO_DO_DONO: [(&str, &str); 2] = [
+    (
+        "projectar_invertido",
+        "a inversao vinha pelo GESTO (Ctrl durante o traco)",
+    ),
+    (
+        "projectar_subtrair",
+        "a MESMA inversao como PROPRIEDADE (`sentido: SUBTRACT`)",
+    ),
+];
+
+/// ⛔⛔ **GATE — o gesto é INERTE, e as duas fixturas estão fora do corpus vivo.**
+///
+/// ⚠️ **A metade que interessa não é o predicado: é o BARRO.** Perguntar ao
+/// [`Verb::honours_invert`] afirmaria o que a tabela diz de si mesma; o que este
+/// gate afirma é que correr a fixtura com `invert = true` dá **exactamente** o
+/// mesmo bloco de vértices que com `invert = false`. *Um predicado é um resumo
+/// do produto, e um resumo pode estar à frente dele.*
+///
+/// ⚠️ **E a metade da OBSOLESCÊNCIA** (`CLAUDE.md` §5.0: *uma catraca sem
+/// censo de obsolescência vira LICENÇA*): no dia em que a decisão do dono mudar
+/// e o verbo voltar a honrar o gesto, este gate reprova a dizer que as duas
+/// fixturas têm de **voltar** ao [`CENAS`] e o [`VERDE_N`] de subir — em vez de
+/// elas ficarem esquecidas numa lista de exclusão que ninguém relê.
+#[test]
+fn o_ctrl_saiu_do_projectar_e_o_corpus_diz_quais_fixturas_isso_custou() {
+    assert!(
+        !Verb::SceneProject.honours_invert(),
+        "o `Ctrl` voltou a este verbo (ordem do dono de 15/09 revertida?) —          reponha as {} fixturas de `FORA_POR_DECISAO_DO_DONO` no `CENAS` e suba          o `VERDE_N`, que elas mediam `2,384e-7`",
+        FORA_POR_DECISAO_DO_DONO.len()
+    );
+    for (nome, porque) in FORA_POR_DECISAO_DO_DONO {
+        assert!(
+            !CENAS.iter().any(|(n, _)| *n == nome),
+            "{nome} está nos DOIS sítios — ou ela é corpus vivo, ou é divergência              declarada ({porque})"
+        );
+        // ⭐ A prova no BARRO: o gesto não muda um único bit.
+        let f = Fix::ler(nome);
+        let alvos: Vec<(Mesh, Pose)> = [-0.5f32].iter().map(|&h| alvo(h)).collect();
+        let mut b = pincel(&f);
+        b.invert = false;
+        let sem = correr_com(&f, &b, alvos.clone(), false);
+        b.invert = true;
+        let com = correr_com(&f, &b, alvos, false);
+        let d = sem
+            .positions()
+            .iter()
+            .zip(com.positions())
+            .map(|(x, y)| (0..3).map(|k| (x[k] - y[k]).abs()).fold(0.0f32, f32::max))
+            .fold(0.0f32, f32::max);
+        assert!(
+            d == 0.0,
+            "{nome}: com `invert` a saída mudou {d:.3e} — o gesto voltou a ter              efeito neste verbo, e a decisão do dono diz que não tem"
+        );
+    }
+}
 
 /// **A BARRA APERTADA** — o desvio de um dab, onde a lei está sozinha.
 ///
@@ -575,64 +645,80 @@ const BARRA: f32 = 2e-6;
 /// | fixtura | desvio | o que ela isola |
 /// |---|---|---|
 /// | `…_dureza05` | `2,367e-2` | ⚠️ **`3` vértices de `301`** (`2,4e-2`, `1,2e-2`, `1,6e-3`); os outros `298` batem a `≤ 5,0e-5`. Os três estão na BORDA da pegada, que com o `from_live` se **move** enquanto o barro afunda — o dab em que um vértice sai da esfera é decidido ao último bit, e a dureza `0,5` desloca o ponto onde isso acontece. *É a mesma família da banda de empate do raio, um dab mais tarde* |
-const VERDE_N: usize = 15;
+/// ⛔⛔⛔ **E DEPOIS `15 → 13`, e ISTO NÃO É UMA DESCIDA DA CATRACA: é a
+/// POPULAÇÃO a encolher por ordem do dono.** Ele smokou a `=45` e decidiu:
+/// *«não vi utilidade na feature Scene Project + CTRL. Melhor retirá-la e
+/// documentá-la como indesejada.»* ⇒ as duas fixturas que exercitavam a
+/// inversão saíram do [`CENAS`] para o [`FORA_POR_DECISAO_DO_DONO`] **verdes, a
+/// `2,384e-7` cada**.
+///
+/// ⚠️ **A distinção é a coisa toda:** uma catraca que desce porque o produto
+/// regrediu e uma que desce porque duas perguntas deixaram de ser feitas leem-se
+/// **igual no número**. O que as separa é o denominador — `13` de **`14`**
+/// contra `15` de `16` — e o gate
+/// `o_ctrl_saiu_do_projectar_e_o_corpus_diz_quais_fixturas_isso_custou`, que
+/// reprova no dia em que a decisão mudar sem as fixturas voltarem. *Escrever
+/// `13` sem escrever porquê seria a catraca a virar LICENÇA no sentido
+/// contrário: a próxima pessoa afrouxaria o número outra vez e chamaria-lhe
+/// história.*
+const VERDE_N: usize = 13;
 
-/// ⭐⭐⭐ **O CORPUS INTEIRO DO QUE É RECONSTRUTÍVEL** — `16` das `24`, cada uma
+/// ⭐⭐⭐ **O CORPUS INTEIRO DO QUE É RECONSTRUTÍVEL** — `14` das `24`, cada uma
 /// com a cena medida da própria saída.
 ///
 /// # ⭐⭐ O que está PROVADO, e é mais do que um número de paridade
 ///
-/// **As `16` movem EXACTAMENTE o mesmo conjunto de vértices que o oráculo**
+/// **As `14` movem EXACTAMENTE o mesmo conjunto de vértices que o oráculo**
 /// (`301` contra `301`, zero discordâncias fora da banda de empate). Isso não é
 /// um detalhe: é a pegada, a direcção do raio, a regra dos dois sentidos, a
 /// escolha entre dois alvos, a inversão e as três recusas da §6.3 — **todas**
 /// estruturalmente certas. *Um conjunto igual com magnitudes diferentes é um
 /// diagnóstico muito mais preciso do que um número agregado.*
 ///
-/// # ⏳ O que está ABERTO, com a tabela e sem barra afrouxada
+/// ⚠️ **E a `inversão` saiu desta frase em 15/09** — ela continua estruturalmente
+/// certa e **deixou de ser NOSSA**: ver [`FORA_POR_DECISAO_DO_DONO`].
+///
+/// # ⏳ O que está ABERTO: UMA, e ela traz o próprio diagnóstico
 ///
 /// | fixtura | dabs | curva | desvio |
 /// |---|---|---|---|
-/// | `…_constante_1passo` | 1 | *Constant* | **`7,078e-8`** |
-/// | `…_forca05_constante_1passo` | 1 | *Constant* | **`7,078e-8`** |
 /// | `…_acima_sem_bidir` | 6 | *Smooth* | **`0`** (nada se move, dos dois lados) |
-/// | `…_mindist06` | 6 | *Smooth* | `2,766e-3` |
-/// | `…_dois_abaixo` · `…_dois_lados_bidir` | 6 | *Smooth* | `5,871e-2` |
-/// | `…_forca05` | 6 | *Smooth* | `6,557e-2` |
-/// | `…_mindist01` | 6 | *Smooth* | `1,182e-1` |
-/// | `…_invertido` · `…_subtrair` | 6 | *Smooth* | `1,558e-1` |
-/// | `…_base` · `…_base_repete` · `…_acima_bidir` | 6 | *Smooth* | `1,902e-1` |
-/// | `…_dureza05` | 6 | *Smooth* | `2,142e-1` |
-/// | `…_normal_plano_area` | 6 | *Smooth* | `2,509e-1` |
-/// | `…_mindist01_acima_bidir` | 6 | *Smooth* | `2,607e-1` |
+/// | `…_constante_1passo` · `…_forca05_constante_1passo` · `…_forca05` | 1–6 | *Constant*/*Smooth* | `7,078e-8` |
+/// | `…_mindist06` | 6 | *Smooth* | `8,941e-8` |
+/// | `…_dois_abaixo` · `…_dois_lados_bidir` | 6 | *Smooth* | `1,043e-7` |
+/// | `…_mindist01` | 6 | *Smooth* | `1,341e-7` |
+/// | `…_base` · `…_base_repete` · `…_acima_bidir` · `…_normal_plano_area` | 6 | *Smooth* | `1,639e-7` |
+/// | `…_mindist01_acima_bidir` | 6 | *Smooth* | `2,012e-7` |
+/// | **`…_dureza05`** | 6 | *Smooth* | **`2,367e-2`** — a única fora da barra |
 ///
-/// ⭐ **A partição é LIMPA e diz onde procurar:** tudo o que corre em **um** dab
-/// bate ao sétimo decimal; tudo o que corre em **seis** desvia. ⇒ o que falta
-/// não é a lei do raio — é a **composição por dab**, que a espec §8.4 nomeia
-/// como a coisa que um traço inteiro mistura (*«seis aplicações da curva com a
-/// re-medição do §6.6»*).
+/// ⛔⛔ **ESTA TABELA ESTEVE ERRADA E A PROSA DEBAIXO DELA TAMBÉM, até 15/09.**
+/// Ela listava `…_base` a `1,902e-1` e conclía que *«tudo o que corre em UM dab
+/// bate ao sétimo decimal e tudo o que corre em SEIS desvia ⇒ o que falta é a
+/// composição por dab»* — e essa leitura foi **REFUTADA** no mesmo ficheiro, uma
+/// dezena de linhas acima, quando a coluna `GripLaw::from_live` pôs nove
+/// fixturas de seis dabs dentro da barra. ⚠️ *Duas leituras do MESMO corpus a
+/// discordar na MESMA página — e a que envelhece é sempre a tabela, porque ela
+/// é a que ninguém recalcula ao curar.* ⇒ os números acima saem da sonda
+/// `diag_o_placar`, corrida nesta árvore.
 ///
-/// ⛔⛔ **A barra NÃO foi afrouxada para os engolir**, e essa é a decisão: uma
-/// barra de `3e-1` faria este gate ficar verde sobre qualquer coisa. *Uma barra
-/// que aceita o desvio que se tem mede o desvio que se tem.*
+/// ⛔⛔ **A barra NÃO foi afrouxada para engolir a que falta**, e essa é a
+/// decisão: uma barra de `3e-1` faria este gate ficar verde sobre qualquer coisa.
+/// *Uma barra que aceita o desvio que se tem mede o desvio que se tem.*
 #[test]
 fn o_corpus_reconstrutivel_bate_o_oraculo() {
     let entrada = grelha(false);
     let (mut verdes, mut relatorio) = (0usize, Vec::new());
-    for (nome, alturas, invertido_pelo_gesto) in CENAS {
+    for (nome, alturas) in CENAS {
         let f = Fix::ler(nome);
         let alvos: Vec<(Mesh, Pose)> = alturas.iter().map(|&h| alvo(h)).collect();
-        let mut b = pincel(&f);
-        if invertido_pelo_gesto {
-            b.invert = true;
-        }
+        let b = pincel(&f);
         let nosso = correr_com(&f, &b, alvos, false);
         let v = comparar(&nosso, &entrada, &f);
         relatorio.push(format!(
             "{nome}: desvio {:.3e} · {} contra {} movidos · {} discordam ({} na banda)",
             v.desvio, v.nossos, v.deles, v.discordam, v.empates
         ));
-        // ⭐⭐ **A metade ESTRUTURAL, e ela vale para as DEZASSEIS:** o conjunto
+        // ⭐⭐ **A metade ESTRUTURAL, e ela vale para as CATORZE:** o conjunto
         // de vértices que se move tem de ser o mesmo, a menos dos que estão na
         // banda de empate do raio.
         assert!(
@@ -694,18 +780,15 @@ fn o_alvo_perdedor_e_inobservavel() {
     let _ = entrada;
 }
 
-/// **SONDA** — o desvio de cada uma das `16`, impresso sem reprovar.
+/// **SONDA** — o desvio de cada uma das `14`, impresso sem reprovar.
 #[test]
 #[ignore]
 fn diag_o_placar() {
     let entrada = grelha(false);
-    for (nome, alturas, invertido_pelo_gesto) in CENAS {
+    for (nome, alturas) in CENAS {
         let f = Fix::ler(nome);
         let alvos: Vec<(Mesh, Pose)> = alturas.iter().map(|&h| alvo(h)).collect();
-        let mut b = pincel(&f);
-        if invertido_pelo_gesto {
-            b.invert = true;
-        }
+        let b = pincel(&f);
         let nosso = correr_com(&f, &b, alvos, false);
         let v = comparar(&nosso, &entrada, &f);
         eprintln!(
@@ -756,15 +839,12 @@ fn diag_varre_a_altura() {
 #[test]
 #[ignore]
 fn diag_o_perfil_do_desvio() {
-    for (nome, alturas, inv) in CENAS {
+    for (nome, alturas) in CENAS {
         if !matches!(nome, "projectar_dureza05" | "projectar_normal_plano_area") {
             continue;
         }
         let f = Fix::ler(nome);
-        let mut b = pincel(&f);
-        if inv {
-            b.invert = true;
-        }
+        let b = pincel(&f);
         let alvos: Vec<(Mesh, Pose)> = alturas.iter().map(|&h| alvo(h)).collect();
         let nosso = correr_com(&f, &b, alvos, false);
         let raio = f.num("raio_objeto");

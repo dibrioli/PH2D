@@ -130,6 +130,27 @@ impl Verb {
     /// incondicionalmente, `sculpt3d/mod.rs`): o consumidor é o [`Brush::reach`], e o
     /// chip que decide oferecer ou não o controle é da wave que trouxer painel.
     ///
+    /// ⛔⛔⛔ **O [`Verb::SceneProject`] ESTEVE NESTA LISTA E SAIU POR ORDEM DO
+    /// DONO (15/09)**, depois do smoke da cena `=45`: *«não vi utilidade na
+    /// feature Scene Project + CTRL. Melhor retirá-la e documentá-la como
+    /// indesejada.»*
+    ///
+    /// ⚠️ **Tirar o gesto tirou a CAPACIDADE, e isso foi medido antes de se
+    /// cortar:** o `Brush::invert` tem **um** escritor no produto inteiro (o
+    /// pen-down) e **nenhum** controlo de painel o oferece ⇒ o `Ctrl` era a
+    /// única porta. A lei foi **APAGADA** em vez de ficar viva e inalcançável
+    /// (*a cura de um órfão é apagar*), e o parâmetro `sign` do
+    /// [`crate::projectar::alvo_do_vertice`] desapareceu com ela.
+    ///
+    /// ⭐ **O mecanismo, o número (`2,384e-7` nas duas fixturas do oráculo) e o
+    /// diagnóstico que pôs a lei certa no dia em que ela saiu ficam registados
+    /// naquela função** — *o que foi medido e rejeitado não se reconstrói*.
+    ///
+    /// ⛔⛔ **E a redacção que aqui estava afirmava a lei REFUTADA** (*«ele vira
+    /// o RAIO»*): ela sobreviveu à cura da manhã porque **a mesma lei estava
+    /// escrita em DOIS sítios** e só um foi corrigido. *Uma lei escrita em dois
+    /// sítios ainda não é uma lei — e a cópia que ninguém relê é a que envelhece.*
+    ///
     /// ⚠️ **Os dois [`Grip::Turn`] ficam de fora, e a razão é que o gesto já tem
     /// sinal:** varrer para o outro lado torce ao contrário, arrastar para a
     /// esquerda encolhe. Um `Ctrl` ali seria a segunda maneira de dizer a mesma
@@ -178,15 +199,6 @@ impl Verb {
                 // **diferente e MAIOR** com a inversão, que é a assinatura de
                 // uma truncagem sobre um factor negativo.
                 | Self::Boundary
-                // ⭐⭐⭐ **PROJECTAR honra o Ctrl, e ele vira o RAIO — não o
-                // sinal do deslocamento.** Medido no corpus, e é o achado que
-                // essa distinção produziu: a fixtura `projectar_invertido` tem
-                // o alvo ACIMA e os dois sentidos DESLIGADOS, logo escrito como
-                // negação no fim ele movia **`0` vértices contra `301`** — não
-                // há o que negar quando o raio não acertou em nada.
-                // ⭐ *Do lado do artista, `Ctrl` aqui não quer dizer «afasta»:
-                // quer dizer «procura do outro lado».*
-                | Self::SceneProject
         )
     }
 

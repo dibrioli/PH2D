@@ -63,7 +63,15 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 4] = [
+const MEMORIAS: [(&str, &str, &str); 5] = [
+    (
+        "a_inversao_nega_a_translacao_e_nao_vira_o_raio",
+        "crates/ph2d-sculpt3d/src/projectar_tests.rs",
+        "o gate APAGADO em 2026-09-15 porque o SUJEITO dele foi retirado do \
+         produto por ordem do dono (o `Ctrl` do Scene Project) — a nota guarda \
+         a tabela que separava as duas leis candidatas, para quem reabrir a \
+         feature não começar do zero",
+    ),
     (
         "the_factory_brush_is_the_verb_it_declares",
         "crates/ph2d-sculpt3d/src/brush_default.rs",

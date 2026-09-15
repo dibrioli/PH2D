@@ -175,7 +175,7 @@ impl SculptStroke {
             // função pura por-vértice deste `match` — precisa das outras peças
             // da cena e da régua em que elas competem.
             Verb::SceneProject => {
-                crate::projectar::alvo_do_vertice(self, brush, dab, n_area, live, w, sign)
+                crate::projectar::alvo_do_vertice(self, brush, dab, n_area, live, w)
             }
             // `Brush.js:57-91` — `deform = intensidade · raio · 0,1`, e o peso
             // inteiro (curva × intensidade × máscara × alpha) chega no `w`.

@@ -123,11 +123,7 @@ pub(crate) fn announce() {
          [sculpt3d]        sobressai da mesa -- nao na mesa).\n\
          [sculpt3d]        -> O barro desce e fica RENTE a' mesa: onde voce passou, a\n\
          [sculpt3d]           calota fica CHATA, ao nivel dela.\n\
-         [sculpt3d]    (2) Segure Ctrl e arraste na calota outra vez.\n\
-         [sculpt3d]        -> Agora o barro SOBE em vez de descer: o Ctrl inverte o\n\
-         [sculpt3d]           movimento, e a calota AFASTA-SE da mesa em vez de encostar\n\
-         [sculpt3d]           nela. Solte o Ctrl a seguir.\n\
-         [sculpt3d]    (3) Rode a camera ate' ver a peca POR BAIXO da mesa e arraste na\n\
+         [sculpt3d]    (2) Rode a camera ate' ver a peca POR BAIXO da mesa e arraste na\n\
          [sculpt3d]        calota.\n\
          [sculpt3d]        -> Nada acontece, e e' o certo: o raio passou a apontar para\n\
          [sculpt3d]           longe da mesa, e este pincel nunca empurra para o infinito\n\
@@ -135,24 +131,24 @@ pub(crate) fn announce() {
          [sculpt3d]        Agora ligue `Search Both Ways` no painel e arraste outra vez.\n\
          [sculpt3d]        -> Volta a funcionar: ele passa a procurar tambem PARA TRAS e\n\
          [sculpt3d]           encontra a mesa.\n\
-         [sculpt3d]    (4) Desligue `Search Both Ways` e volte a ver a peca por cima.\n\
-         [sculpt3d]    (5) Baixe o `Strength` para metade: o efeito fica um QUARTO do\n\
+         [sculpt3d]    (3) Desligue `Search Both Ways` e volte a ver a peca por cima.\n\
+         [sculpt3d]    (4) Baixe o `Strength` para metade: o efeito fica um QUARTO do\n\
          [sculpt3d]        caminho, nao metade. E' de proposito, em toda esta familia.\n\
-         [sculpt3d]    (6) SUBA o `Gap` para 0,20 e passe outra vez.\n\
+         [sculpt3d]    (5) SUBA o `Gap` para 0,20 e passe outra vez.\n\
          [sculpt3d]        -> O barro passa a parar ANTES da mesa, deixando uma folga.\n\
          [sculpt3d]        ATENCAO -- suba o `Gap` ate' ao MAXIMO e passe:\n\
          [sculpt3d]        -> Agora o barro AFASTA-SE da mesa em vez de se aproximar.\n\
          [sculpt3d]           Isto NAO e' um defeito: e' o comportamento da ferramenta de\n\
          [sculpt3d]           referencia, e esta' aqui para voce decidir se o quer assim.\n\
          [sculpt3d]           Se preferir que ele apenas PARE (nunca inverta), diga.\n\
-         [sculpt3d]    (7) Ponha o `Gap` de volta a zero, troque `Ray Direction` de `View`\n\
+         [sculpt3d]    (6) Ponha o `Gap` de volta a zero, troque `Ray Direction` de `View`\n\
          [sculpt3d]        para `Surface` e passe perto da BORDA da calota.\n\
          [sculpt3d]        -> `View` empurra para dentro do ecra (segue os seus olhos);\n\
          [sculpt3d]           `Surface` empurra para dentro da peca (segue a forma dela).\n\
          [sculpt3d]           Rode a camera e repita: o `View` muda com a camera, o\n\
          [sculpt3d]           `Surface` nao.\n\
-         [sculpt3d]    (8) Ctrl+Z desfaz cada passagem.\n\
-         [sculpt3d]    (9) Na HIERARQUIA (a lista de objectos), carregue no OLHO da linha\n\
+         [sculpt3d]    (7) Ctrl+Z desfaz cada passagem.\n\
+         [sculpt3d]    (8) Na HIERARQUIA (a lista de objectos), carregue no OLHO da linha\n\
          [sculpt3d]        da MESA para a esconder.\n\
          [sculpt3d]        -> A mesa desaparece do ecra, e ao arrastar na calota nada\n\
          [sculpt3d]           acontece -- com uma frase no terminal a dizer que a outra\n\
@@ -163,11 +159,10 @@ pub(crate) fn announce() {
          [sculpt3d]\n\
          [sculpt3d]    DEU ERRADO SE: no (1) a calota RASGAR (riscos escuros a atravessar\n\
          [sculpt3d]    a peca), inchar, encolher ou o barro atravessar a mesa; se no (2)\n\
-         [sculpt3d]    o barro DESCER outra vez em vez de subir; se no (3) alguma coisa se\n\
-         [sculpt3d]    mexer antes de ligar `Search Both Ways`, ou nada se mexer depois;\n\
-         [sculpt3d]    se no (9) a mesa continuar a ver-se depois de fechar o olho, ou o\n\
-         [sculpt3d]    barro continuar a encostar nela como se nada fosse; ou se o app\n\
-         [sculpt3d]    fechar sozinho."
+         [sculpt3d]    alguma coisa se mexer antes de ligar `Search Both Ways`, ou nada se\n\
+         [sculpt3d]    mexer depois; se no (8) a mesa continuar a ver-se depois de fechar\n\
+         [sculpt3d]    o olho, ou o barro continuar a encostar nela como se nada fosse;\n\
+         [sculpt3d]    ou se o app fechar sozinho."
     );
 }
 

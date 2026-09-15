@@ -375,6 +375,14 @@ pub enum EditorAction {
         edit: crate::topdown_edits::TopDownFieldEdit,
     },
 
+    /// Inspector → shell, a secção STATE MACHINE (TOP-20 #15, W3).
+    ///
+    /// ⚠️ **Uma variante para o componente inteiro**, como as irmãs.
+    InspectorStateMachineEdit {
+        entity_bits: u64,
+        edit: crate::statemachine_edits::StateMachineFieldEdit,
+    },
+
     /// Inspector → shell, a secção PROJECTILE MOTION (TOP-20 #14, W3).
     ///
     /// ⚠️ **Uma variante para o componente inteiro**, como as irmãs.

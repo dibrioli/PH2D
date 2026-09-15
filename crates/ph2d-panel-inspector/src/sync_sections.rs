@@ -68,6 +68,9 @@ pub(crate) fn sync_new_sections(
         inspector_state.last_timer_row = Some(row);
         sync_timer_fields(host, &tm, row, entity_changed || row_changed);
     }
+    // ⭐⭐⭐ **O CÉREBRO** (TOP-20 #15) — no irmão, pelo tecto de 600 LOC deste ficheiro e por
+    // responsabilidade: ele é a única secção com DUAS listas independentes, logo com duas arestas.
+    crate::sync_statemachine::sync(host, inspector_state, entity_changed);
     // ⭐⭐⭐ **As DUAS que faltavam** (auditoria de 2026-09-10). ⛔ Sem elas o painel mostrava os
     // valores de PARTIDA do `populate` — nunca os do objecto —, e trocar de objecto deixava os
     // números do anterior no ecrã. ⚠️ Elas não têm LINHA aberta (um objecto tem um som e uma

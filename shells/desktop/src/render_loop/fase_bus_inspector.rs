@@ -220,6 +220,10 @@ impl crate::App {
             EditorAction::InspectorProjectileEdit { entity_bits, edit } => {
                 pd.projectile_edits.push((entity_bits, edit));
             }
+            // ⭐ **A secção STATE MACHINE** (TOP-20 #15), pela mesma razão das irmãs acima.
+            EditorAction::InspectorStateMachineEdit { entity_bits, edit } => {
+                pd.statemachine_edits.push((entity_bits, edit));
+            }
             EditorAction::InspectorTagsEdit { entity_bits, edit } => {
                 pd.tags_edits.push((entity_bits, edit));
             }

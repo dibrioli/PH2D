@@ -135,6 +135,9 @@ pub fn installed_registry() -> Option<&'static registry::Registry> {
 pub mod factory_edits;
 /// ⭐⭐⭐ **O vocabulário do MOVER DE VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
 pub mod projectile_edits;
+/// ⭐⭐⭐ **O vocabulário do CÉREBRO** (TOP-20 #15) — o quinto degrau da migração que tira a
+/// aresta `action_bus → screens` da catraca do DAG. Ver o cabeçalho.
+pub mod statemachine_edits;
 pub mod tags_edits;
 pub mod topdown_edits;
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};

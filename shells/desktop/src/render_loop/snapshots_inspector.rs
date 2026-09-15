@@ -127,6 +127,7 @@ pub(super) fn publish(
         inspector_factory,
         inspector_topdown,
         inspector_projectile,
+        inspector_statemachine,
         inspector_visibility_section,
     } = late(
         hero,
@@ -174,6 +175,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_factory(inspector_factory);
         ph2d_panel_inspector::set_current_inspector_topdown(inspector_topdown);
         ph2d_panel_inspector::set_current_inspector_projectile(inspector_projectile);
+        ph2d_panel_inspector::set_current_inspector_statemachine(inspector_statemachine);
         ph2d_panel_inspector::set_current_inspector_tags(inspector_tags);
         // ⭐ **A ÁRVORE DO PROJECTO** — publicada em TODO quadro, com ou sem selecção: ela não é
         // dado de um objecto, e o segundo consumidor (o alvo de uma *Signal Action*) vive num
@@ -222,6 +224,7 @@ struct LateSections {
     inspector_topdown: Option<ph2d_editor_core::topdown_edits::InspectorTopDownInfo>,
     /// ⭐ A secção PROJECTILE MOTION (TOP-20 #14).
     inspector_projectile: Option<ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
+    inspector_statemachine: Option<ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
     inspector_visibility_section: Option<ph2d_editor_core::InspectorVisibilitySectionInfo>,
 }
 
@@ -330,6 +333,18 @@ fn late(
             acabou,
         )
     });
+    // ⭐⭐⭐ A secção STATE MACHINE (TOP-20 #15) — `None` para quem não tem o componente (ADR-0166).
+    //
+    // ⚠️ Ela lê o VIVO (`StateMachineRuntime`) para dizer *«Now: …»*, e é isso que a torna útil com
+    // o relógio a andar: sem o readout o artista tem de simular a tabela de cabeça.
+    let inspector_statemachine = hero.gizmo.selection.and_then(|b| {
+        crate::render_loop::inspector_statemachine::build_statemachine_info(
+            sim.world(),
+            b,
+            selected_count,
+            clock_playing,
+        )
+    });
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         crate::render_loop::inspector_visibility::build_visibility_section_info(
             sim.world(),
@@ -347,6 +362,7 @@ fn late(
         inspector_factory,
         inspector_topdown,
         inspector_projectile,
+        inspector_statemachine,
         inspector_visibility_section,
     }
 }

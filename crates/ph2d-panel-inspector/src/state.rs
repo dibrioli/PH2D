@@ -22,6 +22,7 @@ use ph2d_editor_core::screens::hero::{
 // ⚠️ **O snapshot do mover de vista de cima vive no módulo de VOCABULÁRIO** (abaixo do
 // `action_bus`), e não no `screens::hero` — ver o cabeçalho do `topdown_edits`.
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
+use ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo;
 use ph2d_editor_core::topdown_edits::InspectorTopDownInfo;
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -84,6 +85,18 @@ pub struct InspectorState {
     pub action_selected: usize,
     /// Irmão do [`Self::last_timer_row`], e pela MESMA razão medida.
     pub last_action_row: Option<usize>,
+    /// STATE MACHINE — qual ESTADO da lista está aberto. **Estado do painel**, como as irmãs.
+    pub sm_state_selected: usize,
+    /// STATE MACHINE — qual TRANSIÇÃO está aberta.
+    ///
+    /// ⚠️ **Duas selecções e não uma**: as duas listas são independentes, e partilhá-las faria
+    /// abrir um estado fechar a seta que o artista estava a editar.
+    pub sm_trans_selected: usize,
+    /// Irmão do [`Self::last_action_row`], e pela MESMA razão medida: a semente do editor corre
+    /// numa ARESTA (entidade ou linha), nunca por quadro.
+    pub last_sm_state_row: Option<usize>,
+    /// Idem, para a lista de transições.
+    pub last_sm_trans_row: Option<usize>,
 }
 
 thread_local! {
@@ -181,6 +194,11 @@ thread_local! {
     /// ⭐⭐⭐ **O snapshot da secção PROJECTILE MOTION** (TOP-20 #14).
     pub(crate) static CURRENT_INSPECTOR_PROJECTILE:
         std::cell::RefCell<Option<InspectorProjectileInfo>> =
+        const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção STATE MACHINE** (TOP-20 #15).
+    pub(crate) static CURRENT_INSPECTOR_STATEMACHINE:
+        std::cell::RefCell<Option<InspectorStateMachineInfo>> =
         const { std::cell::RefCell::new(None) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**

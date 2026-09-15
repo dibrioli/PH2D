@@ -132,6 +132,8 @@ pub(crate) mod inspector_instance;
 mod inspector_projectile;
 mod inspector_properties;
 mod inspector_slice;
+/// ⭐⭐⭐ O instantâneo e o dreno da secção STATE MACHINE (TOP-20 #15) — ver o cabeçalho.
+mod inspector_statemachine;
 /// ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — o snapshot e o commit, que é o único a tocar em DOIS
 /// documentos (o mundo e a árvore de tags).
 mod inspector_tags;

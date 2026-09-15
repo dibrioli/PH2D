@@ -448,6 +448,11 @@ pub(super) struct DrainOut {
     /// ⭐ As edições do PROJÉCTIL (TOP-20 #14).
     pub(super) projectile_edits:
         Vec<(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)>,
+    /// ⭐ As edições do CÉREBRO (TOP-20 #15).
+    pub(super) statemachine_edits: Vec<(
+        u64,
+        ph2d_editor_core::statemachine_edits::StateMachineFieldEdit,
+    )>,
     // ⭐ A secção TAGS (TOP-20 #9) — ver o dreno dela no `fase_inspector_commits`.
     pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     // ⭐⭐⭐ O painel TAGS (TOP-20 #9, W4) — gestos sobre a ÁRVORE, que não é do mundo. Ver o

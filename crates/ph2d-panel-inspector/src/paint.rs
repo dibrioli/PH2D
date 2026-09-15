@@ -77,6 +77,8 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             &mut inspector_state.anim_selected,
             &mut inspector_state.timer_selected,
             &mut inspector_state.action_selected,
+            &mut inspector_state.sm_state_selected,
+            &mut inspector_state.sm_trans_selected,
         );
     }
     state::set_current_display_unit(display_unit, ppm); // keep symmetric with legacy
@@ -128,6 +130,8 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
 /// - `anim_selected` — §11: qual animação está aberta no editor. Mesmo contrato.
 /// - `timer_selected` — TIMERS: qual timer está aberto no editor. Mesmo contrato.
 /// - `action_selected` — SIGNAL ACTIONS: qual acção está aberta. Mesmo contrato.
+/// - `sm_state_selected` / `sm_trans_selected` — STATE MACHINE: **duas** listas independentes, e
+///   partilhá-las faria abrir um estado fechar a seta que o artista estava a editar.
 /// - `editing_value` — qual eixo do cartão de propriedades está a ser **reescrito**; ver
 ///
 /// # A moldura e o fecho
@@ -154,6 +158,8 @@ fn paint_inspector(
     anim_selected: &mut usize,
     timer_selected: &mut usize,
     action_selected: &mut usize,
+    sm_state_selected: &mut usize,
+    sm_trans_selected: &mut usize,
 ) {
     let crate::paint_body::BodyFrame {
         rect,
@@ -306,6 +312,9 @@ fn paint_inspector(
         snaps.factory_info.as_ref(),
         snaps.topdown_info.as_ref(),
         snaps.projectile_info.as_ref(),
+        snaps.statemachine_info.as_ref(),
+        sm_state_selected,
+        sm_trans_selected,
         snaps.tags_info.as_ref(),
         &notes_per_section,
     );

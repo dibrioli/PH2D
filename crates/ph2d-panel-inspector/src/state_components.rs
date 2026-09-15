@@ -17,6 +17,7 @@ use ph2d_editor_core::screens::hero::{
     InspectorActionInfo, InspectorAudioInfo, InspectorCameraInfo, InspectorFactoryInfo,
     InspectorTimerInfo,
 };
+use ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo;
 use ph2d_editor_core::topdown_edits::InspectorTopDownInfo;
 
 pub fn set_current_inspector_timer(info: Option<InspectorTimerInfo>) {
@@ -62,6 +63,15 @@ pub fn set_current_inspector_projectile(info: Option<InspectorProjectileInfo>) {
 
 pub(crate) fn current_inspector_projectile() -> Option<InspectorProjectileInfo> {
     CURRENT_INSPECTOR_PROJECTILE.with(|c| c.borrow().clone())
+}
+
+/// ⭐ O snapshot do CÉREBRO (TOP-20 #15) — a shell escreve-o todo o quadro.
+pub fn set_current_inspector_statemachine(info: Option<InspectorStateMachineInfo>) {
+    CURRENT_INSPECTOR_STATEMACHINE.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_statemachine() -> Option<InspectorStateMachineInfo> {
+    CURRENT_INSPECTOR_STATEMACHINE.with(|c| c.borrow().clone())
 }
 
 pub fn set_current_inspector_camera(info: Option<InspectorCameraInfo>) {

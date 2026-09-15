@@ -21,6 +21,14 @@ mod topdown_commits;
 #[path = "fase_projectile_commits.rs"]
 mod projectile_commits;
 
+/// ⭐⭐⭐ A fase-filha das edições do CÉREBRO (TOP-20 #15) — irmã das de cima.
+#[path = "fase_statemachine_commits.rs"]
+mod statemachine_commits;
+
+/// ⭐⭐⭐ A fase-filha das edições da secção TAGS — irmã das de cima, e pelo mesmo tecto.
+#[path = "fase_tags_commits.rs"]
+mod tags_commits;
+
 /// As edições do Inspector que o dreno do barramento recolheu neste quadro.
 pub(super) struct InspectorIntents {
     pub(super) reimport_entity: Option<u64>,
@@ -43,6 +51,11 @@ pub(super) struct InspectorIntents {
     /// ⭐ As edições do PROJÉCTIL (TOP-20 #14).
     pub(super) projectile_edits:
         Vec<(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)>,
+    /// ⭐ As edições do CÉREBRO (TOP-20 #15).
+    pub(super) statemachine_edits: Vec<(
+        u64,
+        ph2d_editor_core::statemachine_edits::StateMachineFieldEdit,
+    )>,
     pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     pub(super) tag_tree_edits: Vec<ph2d_editor_core::TagTreeEdit>,
     pub(super) inspector_queue_dirty: bool,
@@ -97,6 +110,7 @@ impl crate::App {
             factory_edits,
             topdown_edits,
             projectile_edits,
+            statemachine_edits,
             tags_edits,
             tag_tree_edits,
             mut inspector_queue_dirty,
@@ -218,24 +232,15 @@ impl crate::App {
         // ⭐ O MOVER DE VISTA DE CIMA (TOP-20 #13) — fase-filha, como a fábrica.
         inspector_queue_dirty |= topdown_commits::aplicar(sim, &topdown_edits);
         inspector_queue_dirty |= projectile_commits::aplicar(sim, &projectile_edits);
-        // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — aqui pela razão MAIS forte das três: ela é a única
-        // do Inspector que escreve em DOIS documentos, e o segundo (a árvore) nem sequer está no
-        // mundo. O `inspector_commits` não o recebe — e não devia: ele é o dreno da CENA.
-        //
-        // ⚠️ **Nada invalida a cache do documento das tags aqui, e isso é uma propriedade:** ela
-        // compara a REVISÃO, que toda mutação incrementa. O `invalidate()` é de quem SUBSTITUI a
-        // árvore (o load), não de quem lhe mexe — ver o cabeçalho do `inspector_tags`.
-        for (bits, edit) in &tags_edits {
-            inspector_tags::apply_tags_edit(
-                sim.world(),
-                tags,
-                *bits,
-                edit,
-                editor_queue,
-                component_registry,
-            );
-            inspector_queue_dirty = true;
-        }
+        // ⭐ O CÉREBRO (TOP-20 #15) — fase-filha, como as irmãs.
+        inspector_queue_dirty |= statemachine_commits::aplicar(sim, &statemachine_edits);
+        // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — na fase-filha, pela mesma razão das irmãs acima e
+        // pelo mesmo tecto de LOC (esta função chegou a `202` contra `200` ao ganhar o cérebro).
+        // ⛔ *Partir por RESPONSABILIDADE, nunca subir o número* — e a fronteira já estava escrita
+        // no comentário dela: **ela é a única secção do Inspector que escreve em DOIS documentos**,
+        // e o segundo nem sequer está no mundo.
+        inspector_queue_dirty |=
+            tags_commits::aplicar(sim, tags, &tags_edits, editor_queue, component_registry);
         // ⭐⭐⭐ **O painel TAGS** (TOP-20 #9, W4) — os gestos sobre a ÁRVORE, na fase-filha.
         //
         // ⚠️ **Ela é um ficheiro irmão e não um bloco aqui**, e o tecto de LOC é que o disse: o

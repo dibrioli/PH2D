@@ -35,6 +35,8 @@ mod event_projectile;
 mod event_slice;
 mod event_sprite_geometry;
 mod event_sprite_value;
+/// ⭐ O despacho da secção STATE MACHINE — irmão do `event` por CAP de função.
+mod event_statemachine;
 /// ⭐ O despacho da secção TAGS — irmão do `event` por CAP de função.
 mod event_tags;
 /// ⭐ O despacho da secção TIMERS — irmão do `event` por CAP de função.
@@ -68,6 +70,8 @@ mod populate_instance;
 mod populate_physics;
 mod populate_player;
 mod populate_projectile;
+/// ⭐ O registo dos widgets da secção STATE MACHINE — irmão por CAP de ficheiro.
+mod populate_statemachine;
 /// ⭐ O registo dos widgets da secção TAGS — irmão por CAP de ficheiro.
 mod populate_tags;
 /// ⭐ O registo dos widgets da secção TIMERS — irmão por CAP de ficheiro.
@@ -86,6 +90,8 @@ mod sync_physics;
 mod sync_sections;
 /// Os dois sliders-com-chip da sprite (Opacidade + Emissive) — irmão do `sync`, que estava no tecto.
 mod sync_sprite_value;
+/// ⭐ A semente da secção STATE MACHINE — irmã do `sync_sections` por CAP de ficheiro.
+mod sync_statemachine;
 
 /// The §11 Bake button's label — exported so a gate can hold the claim that
 /// the button shows the range it would cover.
@@ -164,8 +170,8 @@ pub use state::{probe_current_instance, probe_current_properties, texture_slot_p
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{
     set_current_inspector_action, set_current_inspector_audio, set_current_inspector_camera,
-    set_current_inspector_factory, set_current_inspector_projectile, set_current_inspector_timer,
-    set_current_inspector_topdown,
+    set_current_inspector_factory, set_current_inspector_projectile,
+    set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
 };
 
 /// ⭐ **As opções que a caixa de escolha da secção TAGS oferece**, para o gate as poder LER.

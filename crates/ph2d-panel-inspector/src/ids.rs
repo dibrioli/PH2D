@@ -22,10 +22,13 @@ pub use inspector_audio::*;
 mod inspector_camera;
 mod inspector_factory;
 mod inspector_projectile;
+/// ⭐ Os ids da secção STATE MACHINE (TOP-20 #15) — ver o cabeçalho.
+mod inspector_statemachine;
 mod inspector_topdown;
 pub use inspector_camera::*;
 pub use inspector_factory::*;
 pub use inspector_projectile::*;
+pub use inspector_statemachine::*;
 pub use inspector_topdown::*;
 mod inspector_instance;
 pub use inspector_instance::*;

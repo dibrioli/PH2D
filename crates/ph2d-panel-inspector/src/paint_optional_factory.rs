@@ -246,3 +246,248 @@ pub(crate) fn paint_projectile_section(
         &[],
     )
 }
+
+/// **A secção STATE MACHINE** — moldura e tudo (TOP-20 #15, W3).
+///
+/// ⚠️ Ela mora aqui pela mesma razão das irmãs acima: o orquestrador está no tecto de LOC, e as
+/// molduras de secção opcional cabem melhor juntas.
+///
+/// ⚠️ **As duas selecções vêm de fora** — elas são estado do PAINEL, e quem o tem é o
+/// [`crate::InspectorState`]. Lê-las aqui de um `thread_local` seria a segunda porta.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_statemachine_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    info: Option<&ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
+    state_sel: usize,
+    trans_sel: usize,
+) -> f32 {
+    // ⚠️ **A secção só existe se o objecto TIVER o cérebro** — ADR-0166.
+    let Some(info) = info else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_SM_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::statemachine::paint_statemachine_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        info,
+        state_sel,
+        trans_sel,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_SM_SECTION,
+        y_before,
+        new_y,
+        &[],
+    )
+}
+
+/// **A secção TAGS** — moldura e tudo. ⚠️ Sem estado de painel, como a do áudio e a da câmera: não
+/// há «a tag aberta», e o `open` da caixa de escolha vive no store como o de todas as outras.
+///
+/// ⚠️ **Mudou-se para cá em 2026-09-15**, pelo tecto de 600 LOC do irmão e **por
+/// responsabilidade**: este ficheiro é onde as molduras de secção opcional vivem, e aquele é o
+/// orquestrador. ⛔ A cura de um tecto é o CORTE, nunca uma entrada nova no `FILE_OVERAGE_OK`.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_tags_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    tags: Option<&ph2d_editor_core::screens::hero::InspectorTagsInfo>,
+) -> f32 {
+    let Some(tg) = tags else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_TAGS_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::tags::paint_tags_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        tg,
+    );
+    // ⚠️ **Sem slot de NOTA**, e é a mesma decisão das quatro irmãs da família lógica: os slots são
+    // uma lista posicional que as secções partilham, e acrescentar um a meio renumeraria as notas
+    // que os artistas já colaram.
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_TAGS_SECTION,
+        y_before,
+        new_y,
+        &[],
+    )
+}
+
+/// **A secção CAMERA** — moldura e tudo. ⚠️ Sem estado de painel, como a do áudio: um objecto tem
+/// UMA câmera, então não há linha aberta a lembrar.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_camera_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    camera: Option<&ph2d_editor_core::screens::hero::InspectorCameraInfo>,
+) -> f32 {
+    let Some(cam) = camera else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_CAMERA_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::camera::paint_camera_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        cam,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_CAMERA_SECTION,
+        y_before,
+        new_y,
+        &[],
+    )
+}
+
+/// **A secção AUDIO** — moldura e tudo. ⚠️ **A única das cinco sem estado de painel** (ver o doc do
+/// módulo): um objecto tem UMA fonte de som, então não há linha aberta a lembrar.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_audio_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    audio: Option<&ph2d_editor_core::screens::hero::InspectorAudioInfo>,
+) -> f32 {
+    let Some(au) = audio else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_AUDIO_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::audio::paint_audio_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        au,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_AUDIO_SECTION,
+        y_before,
+        new_y,
+        &[],
+    )
+}

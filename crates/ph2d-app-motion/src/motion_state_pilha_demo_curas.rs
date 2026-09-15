@@ -405,31 +405,18 @@ fn realizacao_de_produto(eps: f32, mu: f32, arrasto: f32) -> (f32, f32) {
 #[test]
 #[ignore = "sonda de medicao"]
 fn probe_quantos_contactos_sao_face_a_face() {
-    let mut state = MotionState::new();
-    let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
-    crate::motion_shape_gen::publish(&mut state, 0.0);
-    let sink = sinks[1];
-    let mut ultimo = None;
-    for k in 0..=174_u64 {
-        #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
-        let t = k as f64 / 60.0;
-        let s = state
-            .pump
-            .cook
-            .cook(&state.doc.graph, &state.registry, sink, t)
-            .expect("cozinha")[0]
-            .as_stream()
-            .clone();
-        if k == 174 {
-            ultimo = Some(s);
-        }
-        state
-            .pump
-            .cook
-            .advance_tick(&state.doc.graph, &state.registry, t)
-            .expect("avanca");
+    for sub in [1_u32, 8] {
+        eprintln!("\n=== substeps = {sub} ===");
+        censo_face_a_face(sub);
     }
-    let s = ultimo.expect("o stream final");
+}
+
+/// ⛔⛔⛔ **A 1.ª redacção desta sonda chamava `pump.cook.cook(..)` DIRECTAMENTE, e por isso media
+/// a cena SEM SUB-PASSOS** — a porta errada que invalidou uma tabela inteira (doc 111 §5.8.1). Ela
+/// marcha pelo PUMP agora, e o `substeps` é ARGUMENTO: *a resposta depende dele, e era exactamente
+/// isso que a versão velha não podia dizer.*
+fn censo_face_a_face(sub: u32) {
+    let s = super::salto::stream_final(sub, 0.0, 174).expect("o stream final");
     let cols = ph2d_contact::colisores(&s).expect("a metade da direita declara colisor");
     let p = match s.get("P") {
         Some(Column::Vec2(v)) => v.clone(),

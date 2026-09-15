@@ -518,3 +518,72 @@ O que fica é a régua, as sondas e esta tabela.
 2. **Dois solvers independentes disputam a mesma peça:** o `sim.step` resolve peça×peça e o
    `sim.collide` resolve peça×mundo **a jusante**, sem nenhum saber do outro — uma peça entalada
    entre a parede da taça e as vizinhas é projectada por ambos, alternadamente.
+
+## §5.10 — ⭐⭐⭐ A CAUSA do salto: **uma caixa de face sobre outra é um equilíbrio INSTÁVEL**
+
+### §5.10.1 — O dossiê que a nomeia
+
+`probe_o_dossie_do_salto`, peça `17`, `substeps = 8` — os tiques à volta do salto:
+
+```text
+  tique |    rot | |Δrot| | dist a' taca |    vao min | viz. | desalinho
+    137 |   1.53° |  0.01° |     0.9967   |     0.2232 |   22 |    1.7°   ← FACE-A-FACE, parada
+    150 |   1.71° |  0.01° |     1.0015   |     0.2236 |   22 |    1.9°
+    157 |   1.93° |  0.06° |     1.0003   |     0.2240 |   22 |    2.1°
+    159 |   2.18° |  0.15° |     0.9979   |     0.2245 |   22 |    2.4°
+    161 |   2.73° |  0.33° |     0.9931   |     0.2258 |   22 |    3.1°
+    163 |   4.52° |  1.23° |     0.9814   |     0.2303 |   22 |    5.8°
+    164 |  10.26° |  5.74° |     0.9610   |     0.2459 |   22 |   16.5°
+    165 |  18.43° |  8.17° |     0.9305   |     0.2683 |   12 |   44.6°   ← quina contra face
+    174 |  18.88° |  0.07° |     0.9299   |     0.2671 |   12 |   44.9°   ← e fica la', imovel
+```
+
+**Três factos, e cada um mata uma explicação:**
+
+1. ⛔ **A peça NÃO toca a taça** (`dist 1,00` contra a parede em `1,69`) ⇒ a hipótese dos **dois
+   solvers a disputá-la** (§5.9.5 nº 2) está **REFUTADA** para este evento. O salto é peça×peça.
+2. ⭐ **O apoio é FACE-A-FACE**: desalinho `1,7°` e vão `0,2232` contra o exacto `2 × LADO = 0,2200`.
+   Duas caixas pousadas de face, imóveis durante 20 tiques.
+3. ⭐⭐⭐ **O `|Δrot|` cresce `×1,4` por tique durante 8 tiques** (`0,06 → 0,10 → 0,15 → 0,23 → 0,33
+   → 0,56 → 1,23 → 5,74 → 8,17`) e **pára exactamente nos `45°`**. *Isto não é um empurrão: é
+   realimentação positiva a divergir de um equilíbrio instável, e o `45°` é onde ela encontra um
+   ponto fixo estável.*
+
+⇒ **A hipótese nº 1 do §5.9.5 confirma-se, e com o mecanismo NOMEADO:** a rotação de contacto é uma
+projecção de posição sem nada que a trave, e sobre um apoio de **UM ponto** o equilíbrio de uma face
+sobre outra tem ganho de laço `> 1`. *Um contacto pontual não resiste a binário nenhum* — a caixa
+tomba até a quina encravar.
+
+### §5.10.2 — ⛔⛔⛔ E a cura é a ORDEM DO DONO que EU matei com uma medição errada
+
+> *«atacar o encosto de dois pontos agora»* — o dono, 2026-09-15.
+
+Eu refutei-a no mesmo dia (doc 109 §8.7) com *«`0 %` dos contactos são face-com-face»*. **A refutação
+tem dois defeitos, e qualquer um a invalida:**
+
+| # | o defeito da medição | o que ela lia | o que lê corrigida |
+|---|---|---|---|
+| 1 | chamava `pump.cook.cook(..)` **directamente** ⇒ cena **sem sub-passos** | `0 %` face-a-face, p10 `15,8°` | **`9 %`**, p10 **`6,0°`** |
+| 2 | conta o monte **ASSENTE** ⇒ conta **SOBREVIVENTES** | `0` no fim | **pico `4`** já a `substeps = 1` |
+
+⭐⭐⭐ **O segundo é o que importa, e é uma lei nova para o repo:** *um censo tirado DEPOIS do evento
+mede o resultado do defeito e lê-se como a ausência da precondição dele.* O `0 %` não dizia «esta
+cena não tem apoios de face» — dizia **«esta cena DESTRÓI os apoios de face»**, e quem os destrói é
+exactamente o defeito que o manifesto de dois pontos curaria. *A recusa media a própria consequência
+daquilo que recusava.*
+
+⇒ **a ordem do dono estava certa desde o início**, e a wave que ela pede volta à fila com o
+mecanismo, o dossiê e a régua já construídos.
+
+### §5.10.3 — O que a wave tem de entregar, e a régua que a julga
+
+- **Onde:** [`ph2d-contact`](../../crates/ph2d-contact/) — o contacto entre duas caixas passa a
+  devolver **o TRECHO** (dois pontos) onde as faces se sobrepõem, e não o ponto médio dele.
+- **A cerca:** entre uma **quina e uma face** o contacto é um ponto **por geometria** e nada o
+  desdobra — o manifesto só age onde há trecho, e `45°` continua a ser um ponto só. ⚠️ *Isso não é
+  uma limitação: é o caso que já é estável.*
+- **A régua:** [`probe_os_saltos`] / [`pior_salto`] — o salto de `23,26°` da peça `12` e o de
+  `16,51°` da `17` têm de desaparecer, e as **quatro** réguas do §5.8.2 (tremor · rodopio · altura ·
+  vão) têm de continuar dentro da banda. ⛔ *Uma cura que mate o salto e colapse o monte é a 17.ª
+  recusa desta linha, não a primeira vitória.*
+- ⛔ **A barra do gate nasce COM a cura** (§5.9.5): o lado aprovado ainda não existe.

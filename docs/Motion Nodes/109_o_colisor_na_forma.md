@@ -917,6 +917,37 @@ o desdobra. Medido no monte assente da `=114` (`probe_quantos_contactos_sao_face
 uniforme `0..45°` daria `11 %` abaixo de `5°`, e este dá **zero** — *uma pilha de quadrados soltos
 assenta em quinas, não em faces.* Construí-lo seria curar um caso que esta cena não tem.
 
+> ### ⛔⛔⛔ CORRECÇÃO (2026-09-15, doc 111 §5.10) — **ESTA RECUSA ESTÁ REFUTADA. A ordem do dono
+> estava certa e fui eu que a matei com uma medição errada.**
+>
+> A tabela acima tem **dois** defeitos, e qualquer um deles a invalida:
+>
+> **1. Ela foi medida pela PORTA ERRADA.** A sonda chamava `pump.cook.cook(..)` **directamente**,
+> que coze o grafo uma vez por tique e **salta os sub-passos** — o mesmo furo que invalidou uma
+> tabela inteira no doc 111 §5.8.1. Corrigida para marchar pelo PUMP e com o monte a assentar
+> (`substeps = 8`), ela lê **`9 %` face-com-face e `35 %` abaixo de `15°`**, com a `p10` do
+> desalinho a cair de `15,8°` para `6,0°`: deixou de ser *pior que o acaso* e passou a estar **no**
+> acaso.
+>
+> **2. E o defeito de fundo é mais fundo: o censo conta o monte ASSENTE, isto é, DEPOIS de cada
+> apoio face-a-face já ter tombado.** Ele conta **SOBREVIVENTES**. Medido ao longo do tempo
+> (`probe_os_apoios_face_a_face_no_tempo`):
+>
+> | substeps | pico de apoios face-a-face | média | **no fim** |
+> |---|---|---|---|
+> | 1 | **4** | `0,3` | **0** |
+> | 8 | **8** | `2,4` | `2` |
+>
+> ⇒ **o `0 %` que matou o manifesto não dizia «esta cena não tem o caso»: dizia «esta cena DESTRÓI
+> o caso».** *Um censo tirado depois do evento mede o resultado do defeito e lê-se como a ausência
+> da precondição dele* — e o que o destrói é precisamente o defeito que o manifesto curaria.
+>
+> **E o mecanismo está medido** (doc 111 §5.10): uma caixa pousada **de face** sobre outra é um
+> equilíbrio **INSTÁVEL** neste solver — o desalinho cresce `×1,4` por tique desde `1,7°` até
+> travar nos `45°` (quina contra face), que é a configuração que o solver consegue segurar. *Um
+> contacto de UM ponto não resiste a binário nenhum*, e é exactamente isso que o segundo ponto de
+> apoio existe para dar.
+
 ### §8.8 — ⛔⛔ E o PISO DE RUÍDO, que faltava a tudo o que veio antes
 
 **Um monte de 25 quadrados a cair é CAÓTICO.** Deslocando só o berço por `±0,003` (a lei intocada,

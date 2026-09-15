@@ -9,22 +9,30 @@
 //! esta seção segue desde o W3: um batente num eixo travado é um número que o
 //! solver não lê, e um controle que parece funcionar é pior que um que falta.
 
-use super::rows::{num_row, seg_row};
+use super::rows::{num_row_unit, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorJointInfo;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
-use ph2d_i18n::tr_with;
 
 /// Os três eixos, na ordem em que o array os guarda e a tela os lista.
 ///
 /// ⚠️ **A UNIDADE é do EIXO, não do tipo** — e é a diferença que o `Custom`
 /// introduziu: nos sete presets o grau de liberdade livre é uma propriedade do
 /// tipo, aqui ele é escolhido.
-const AXIS_ROWS: [(TextKey, &str); 3] = [
-    (TextKey::new("panel.inspector.joint.axis_x"), "m"),
-    (TextKey::new("panel.inspector.joint.axis_y"), "m"),
-    (TextKey::new("panel.inspector.joint.rotation"), "deg"),
+const AXIS_ROWS: [(TextKey, ph2d_editor_core::widget::Unit); 3] = [
+    (
+        TextKey::new("panel.inspector.joint.axis_x"),
+        ph2d_editor_core::widget::Unit::Meters,
+    ),
+    (
+        TextKey::new("panel.inspector.joint.axis_y"),
+        ph2d_editor_core::widget::Unit::Meters,
+    ),
+    (
+        TextKey::new("panel.inspector.joint.rotation"),
+        ph2d_editor_core::widget::Unit::Degrees,
+    ),
 ];
 
 /// Free / Limited / Locked.
@@ -78,15 +86,15 @@ pub(super) fn paint_axis_rows(
         if info.axis_mode_tag[i] == MODE_LIMITED {
             for (label, id) in [
                 (
-                    tr_with("panel.inspector.joint.axis_min_unit", &[("unit", &unit)]),
+                    tr("panel.inspector.joint.axis_min_unit"),
                     ids::INSP_JOINT_AXIS_MIN[i],
                 ),
                 (
-                    tr_with("panel.inspector.joint.axis_max_unit", &[("unit", &unit)]),
+                    tr("panel.inspector.joint.axis_max_unit"),
                     ids::INSP_JOINT_AXIS_MAX[i],
                 ),
             ] {
-                yy = num_row(
+                yy = num_row_unit(
                     scene,
                     text_system,
                     theme,
@@ -95,8 +103,10 @@ pub(super) fn paint_axis_rows(
                     x,
                     w,
                     yy,
-                    &label,
+                    label,
                     id,
+                    Some(unit),
+                    None,
                 );
             }
         }
@@ -204,12 +214,21 @@ mod tests {
     /// nomear a outra.
     #[test]
     fn a_customs_motor_rows_are_labelled_by_its_axis() {
-        assert_eq!(motor_units(&info(KIND_CUSTOM, 0)), ("m/s", "m"));
-        assert_eq!(motor_units(&info(KIND_CUSTOM, 1)), ("m/s", "m"));
-        assert_eq!(
-            motor_units(&info(KIND_CUSTOM, AXIS_ROTATION)),
-            ("\u{00b0}/s", "\u{00b0}")
+        // ⚠️ **As unidades deixaram de ser STRINGS de rótulo e passaram a ser [`ph2d_editor_core::widget::Unit`]**
+        //    (2026-09-15, ordem do dono: *«todos na caixa»*) — a asserção mede a mesma lei, no
+        //    vocabulário novo. ⛔ O sufixo pintado muda de `°` para `deg` de propósito: num CAMPO
+        //    mostra-se o que o artista consegue escrever.
+        let linear = (
+            ph2d_editor_core::widget::Unit::MetersPerSecond,
+            ph2d_editor_core::widget::Unit::Meters,
         );
+        let angular = (
+            ph2d_editor_core::widget::Unit::DegreesPerSecond,
+            ph2d_editor_core::widget::Unit::Degrees,
+        );
+        assert_eq!(motor_units(&info(KIND_CUSTOM, 0)), linear);
+        assert_eq!(motor_units(&info(KIND_CUSTOM, 1)), linear);
+        assert_eq!(motor_units(&info(KIND_CUSTOM, AXIS_ROTATION)), angular);
     }
 
     /// **E os presets não mudaram** — o eixo do motor é ignorado fora de um

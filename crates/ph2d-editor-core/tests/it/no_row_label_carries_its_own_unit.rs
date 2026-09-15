@@ -35,59 +35,13 @@ use std::path::PathBuf;
 /// leva-o numa row de um campo **e** poderia levá-lo em N. *O que separa não é a contagem de
 /// campos — é a porta ter, ou não, por onde a unidade entrar.*
 const AINDA_NO_ROTULO: &[(&str, &str)] = &[
-    // ⏳ **A porta `sections::field_row`** (N campos com um passo) ainda não aceita unidade.
-    //    Acrescentá-la serve estas quatro de uma vez, e é a wave seguinte.
-    (
-        "panel.inspector.anchors.position_x_y_px",
-        "porta `field_row` — ainda sem sufixo",
-    ),
-    (
-        "panel.inspector.anchors.rotation_deg",
-        "porta `field_row` — ainda sem sufixo",
-    ),
-    (
-        "panel.inspector.anchors.bounds_x_y_w_h",
-        "porta `field_row` — ainda sem sufixo",
-    ),
-    (
-        "panel.inspector.anchors.center_x_y_w_h",
-        "porta `field_row` — ainda sem sufixo",
-    ),
-    (
-        "panel.inspector.slice.borders_l_t_px",
-        "porta `field_row` — ainda sem sufixo",
-    ),
-    (
-        "panel.inspector.slice.borders_r_b_px",
-        "porta `field_row` — ainda sem sufixo",
-    ),
-    // ⏳ **A porta `transform_row::paint_row`** (um par de chips coloridos com tag `X`/`Y`).
-    //    ⚠️ E aqui o rótulo carrega **a régua activa** (`DisplayUnit`/`DisplayAngle`), logo fechá-la
-    //    é a wave da CONVERSÃO do valor, não a de um sufixo.
-    (
-        "panel.inspector.transform.position_m",
-        "porta `paint_row` + o rotulo diz a REGUA activa (DisplayUnit)",
-    ),
-    (
-        "panel.inspector.transform.position_px",
-        "porta `paint_row` + o rotulo diz a REGUA activa (DisplayUnit)",
-    ),
-    (
-        "panel.inspector.transform.rotation",
-        "porta `paint_row` + o rotulo diz a REGUA activa (DisplayAngle)",
-    ),
-    (
-        "panel.inspector.transform.rotation_rad",
-        "porta `paint_row` + o rotulo diz a REGUA activa (DisplayAngle)",
-    ),
-    (
-        "panel.inspector.transform.skew",
-        "porta `paint_row` + o rotulo diz a REGUA activa (DisplayAngle)",
-    ),
-    (
-        "panel.inspector.transform.skew_rad",
-        "porta `paint_row` + o rotulo diz a REGUA activa (DisplayAngle)",
-    ),
+    // ⭐⭐ **As portas `field_row` e `pair_row` FECHARAM em 2026-09-15** — as seis entradas que aqui
+    //    viviam (âncoras ×4, 9-slice ×2) saíram no mesmo dia em que o dono ordenou *«todos na
+    //    caixa»*. ⛔ Não as reponha: as duas portas levam `Option<Unit>`.
+    // ⭐⭐ **A porta `transform_row::paint_row` FECHOU em 2026-09-15** — as seis entradas do
+    //    Transform saíram no mesmo dia. ⚠️ Ali o rótulo dizia a RÉGUA activa (`Position (m)` ⇄
+    //    `Position (px)`), e hoje quem a diz é o SUFIXO do campo: `12,5 m` diz a mesma coisa **e** o
+    //    número, no sítio onde o artista olha.
     // ⚠️ **A CAIXA ÚNICA não tem sufixo**: ali o rótulo vive DENTRO da caixa, à esquerda, e o valor
     //    à direita — o `NumberInput::suffix` é do campo solto. Ver a spec §2.
     (
@@ -126,6 +80,16 @@ fn unidade_no_fim(texto: &str) -> Option<String> {
     }
     let abre = t.rfind('(')?;
     let dentro = &t[abre + 1..t.len() - 1];
+    // ⛔⛔ **Um MOLDE entre parênteses é uma unidade, e foi ele que escapou.** Report do dono,
+    //    2026-09-15, com foto: `"Speed (°/s)"` continuava no rótulo — e o TEXTO na tabela é
+    //    `"Speed ({unit})"`, que não acaba em sufixo nenhum. ⇒ *um rótulo que CONSTRÓI a unidade em
+    //    tempo de execução é o caso mais certo de todos, e era o único que o detector não via.*
+    // ⚠️ **E é `{unit}`, não «um molde qualquer»** — a 1.ª redacção aceitava todo `{…}` e acusou
+    //    quatro TÍTULOS de secção (`"Timers  ({n})"`), onde o molde é uma CONTAGEM. *O que diz que
+    //    aquilo é uma unidade é o NOME do molde, e ele está escrito ali.*
+    if dentro == "{unit}" {
+        return Some(dentro.to_string());
+    }
     let normal = dentro.replace("\\u{00b0}", "°");
     const SUFIXOS: &[&str] = &[
         "m", "px", "s", "N", "N.m", "m/s", "m/s2", "m/s^2", "%", "deg", "rad", "°", "°/s", "N.s",
@@ -236,6 +200,8 @@ fn the_detector_can_see_a_unit_in_a_label() {
         ("Motor (\\u{00b0}/s)", Some("°/s")),
         ("Init Vel X (m/s)", Some("m/s")),
         ("Grid Size (px)", Some("px")),
+        // ⛔ O MOLDE — o caso que o report de 2026-09-15 expôs.
+        ("Speed ({unit})", Some("{unit}")),
     ] {
         assert_eq!(
             unidade_no_fim(texto).as_deref(),
@@ -243,7 +209,14 @@ fn the_detector_can_see_a_unit_in_a_label() {
             "o detector nao ve a unidade em {texto:?}"
         );
     }
-    for texto in ["Float Height", "Corner Rays", "Weight on Ground", "Damping"] {
+    // ⛔ E uma CONTAGEM num título não é uma unidade — o molde chama-se `{n}`.
+    for texto in [
+        "Float Height",
+        "Corner Rays",
+        "Weight on Ground",
+        "Damping",
+        "Timers  ({n})",
+    ] {
         assert!(
             unidade_no_fim(texto).is_none(),
             "o detector inventa uma unidade em {texto:?}"

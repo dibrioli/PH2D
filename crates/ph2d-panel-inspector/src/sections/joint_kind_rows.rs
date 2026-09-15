@@ -63,15 +63,15 @@ pub(super) fn paint_kind_params(
             let unit = limit_unit(info.kind_tag);
             for (label, id) in [
                 (
-                    tr_with("panel.inspector.joint.min_unit", &[("unit", &unit)]),
+                    tr("panel.inspector.joint.min_unit"),
                     ids::INSP_JOINT_LIMIT_MIN,
                 ),
                 (
-                    tr_with("panel.inspector.joint.max_unit", &[("unit", &unit)]),
+                    tr("panel.inspector.joint.max_unit"),
                     ids::INSP_JOINT_LIMIT_MAX,
                 ),
             ] {
-                yy = num_row(
+                yy = num_row_unit(
                     scene,
                     text_system,
                     theme,
@@ -80,8 +80,10 @@ pub(super) fn paint_kind_params(
                     x,
                     w,
                     yy,
-                    &label,
+                    label,
                     id,
+                    Some(unit),
+                    None,
                 );
             }
         }

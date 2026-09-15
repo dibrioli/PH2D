@@ -51,6 +51,9 @@ fn pair_row(
     label: &str,
     ids_pair: [NodeId; 2],
     step: f64,
+    // ⭐ **A UNIDADE do par** (2026-09-15, ordem do dono: *«todos na caixa»*) — a mesma nos dois
+    //    campos, porque um par `L`/`T` mede a mesma grandeza nos dois.
+    unit: Option<ph2d_editor_core::widget::Unit>,
 ) -> f32 {
     let label_font = TypeToken::Sm.px();
     let label_h = label_font + Spacing::Xs.px();
@@ -75,7 +78,8 @@ fn pair_row(
         let (state, value, buffer, caret, anchor) = read_number_input(store, id);
         let input = NumberInput::new(id, "", value)
             .step(step)
-            .visual((state, store.hover_live(id)));
+            .visual((state, store.hover_live(id)))
+            .suffix(unit.map(ph2d_editor_core::widget::Unit::suffix));
         paint_number_input_with_buffer(
             &input,
             Some(buffer),
@@ -277,6 +281,7 @@ pub(crate) fn paint_slice_section(
         tr("panel.inspector.slice.borders_l_t_px"),
         [ids::INSP_SLICE_BORDER[0], ids::INSP_SLICE_BORDER[1]],
         1.0,
+        Some(ph2d_editor_core::widget::Unit::Px),
     );
     cur_y = pair_row(
         scene,
@@ -290,6 +295,7 @@ pub(crate) fn paint_slice_section(
         tr("panel.inspector.slice.borders_r_b_px"),
         [ids::INSP_SLICE_BORDER[2], ids::INSP_SLICE_BORDER[3]],
         1.0,
+        Some(ph2d_editor_core::widget::Unit::Px),
     );
     cur_y = pair_row(
         scene,
@@ -303,6 +309,7 @@ pub(crate) fn paint_slice_section(
         tr("panel.inspector.slice.size_x_y_m_0"),
         [ids::INSP_SLICE_SIZE[0], ids::INSP_SLICE_SIZE[1]],
         SIZE_STEP,
+        None,
     );
 
     // Fill Center.

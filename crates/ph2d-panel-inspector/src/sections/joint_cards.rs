@@ -9,7 +9,6 @@ use super::rows::{num_row, num_row_unit, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorJointInfo;
 use ph2d_i18n::tr;
-use ph2d_i18n::tr_with;
 
 /// **The Motor card** — offered to every driven kind (`kind_has_motor`).
 ///
@@ -68,21 +67,23 @@ pub(super) fn paint_motor_rows(
         info.motor_mode_tag,
     );
     let (rate_unit, place_unit) = motor_units(info);
-    let (label, id) = if info.motor_mode_tag == MOTOR_MODE_POSITION {
+    // ⭐ **A unidade vai ao CAMPO, e é o MODO que a escolhe** — `Velocity` mede uma taxa,
+    //   `Position` mede um destino. ⛔ Ela vivia dentro do rótulo (`"Speed ({unit})"`), que é o que
+    //   o dono reprovou em 2026-09-15.
+    let (label, id, unidade) = if info.motor_mode_tag == MOTOR_MODE_POSITION {
         (
-            tr_with(
-                "panel.inspector.joint.target_unit",
-                &[("unit", &place_unit)],
-            ),
+            tr("panel.inspector.joint.target_unit"),
             ids::INSP_JOINT_MOTOR_TARGET,
+            place_unit,
         )
     } else {
         (
-            tr_with("panel.inspector.joint.speed_unit", &[("unit", &rate_unit)]),
+            tr("panel.inspector.joint.speed_unit"),
             ids::INSP_JOINT_MOTOR_SPEED,
+            rate_unit,
         )
     };
-    yy = num_row(
+    yy = num_row_unit(
         scene,
         text_system,
         theme,
@@ -91,8 +92,10 @@ pub(super) fn paint_motor_rows(
         x,
         w,
         yy,
-        &label,
+        label,
         id,
+        Some(unidade),
+        None,
     );
     num_row(
         scene,

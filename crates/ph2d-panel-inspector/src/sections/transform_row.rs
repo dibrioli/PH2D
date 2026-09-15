@@ -49,6 +49,13 @@ pub(super) fn paint_row(
     left_color: ColorToken,
     left_step: f64,
     right: Option<(NodeId, &str, ColorToken, f64)>,
+    // ⭐ **A UNIDADE dos dois chips** (2026-09-15, ordem do dono: *«todos na caixa»*) — a mesma nos
+    //    dois, porque um par `X`/`Y` mede a mesma grandeza nos dois.
+    //
+    // ⚠️ **Aqui ela substitui um rótulo que dizia a RÉGUA activa** (`Position (m)` ⇄
+    //    `Position (px)`, pelo `DisplayUnit`): o campo passa a mostrar `12,5 m`, que diz a mesma
+    //    coisa **e** o número, no sítio onde o artista olha.
+    unit: Option<ph2d_editor_core::widget::Unit>,
 ) -> f32 {
     let chips_origin_x = if st.section_narrow {
         st.x
@@ -119,7 +126,8 @@ pub(super) fn paint_row(
     let (state, value, buffer, caret, anchor) = read_number_input(st.store, left_id);
     let input = NumberInput::new(left_id, "", value)
         .step(left_step)
-        .visual((state, st.store.hover_live(left_id)));
+        .visual((state, st.store.hover_live(left_id)))
+        .suffix(unit.map(ph2d_editor_core::widget::Unit::suffix));
     paint_number_input_with_buffer(
         &input,
         Some(buffer),
@@ -148,7 +156,8 @@ pub(super) fn paint_row(
         let (r_state, r_value, r_buffer, r_caret, r_anchor) = read_number_input(st.store, right_id);
         let r_input = NumberInput::new(right_id, "", r_value)
             .step(right_step)
-            .visual((r_state, st.store.hover_live(right_id)));
+            .visual((r_state, st.store.hover_live(right_id)))
+            .suffix(unit.map(ph2d_editor_core::widget::Unit::suffix));
         paint_number_input_with_buffer(
             &r_input,
             Some(r_buffer),

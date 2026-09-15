@@ -1153,3 +1153,88 @@ direita), é uma mudança **visível** em quatro secções, e merece o smoke del
 mecanismo da §19: uma cura aplicada a UMA porta não chega à porta vizinha* — só que aqui o gate que
 o apanharia (`the_label_column_is_never_chosen_at_the_painting_site`) mede a **largura da coluna**, e
 uma row que não TEM coluna não é medida por ele.
+
+---
+
+## 20 — ⛔⛔⛔ *«Speed ficou na Label»* — o censo era cego a um rótulo que CONSTRÓI a unidade
+
+Report do dono (2026-09-15, foto): `Speed (°/s)` ainda com a unidade no nome, **no dia seguinte** ao
+censo da §19 ter fechado verde. E a ordem que veio com ele é **universal**: *«Para manter padrão
+universal melhor todos na caixa»*.
+
+### 20.1 — Por que o censo não o viu
+
+O texto na tabela é **`"Speed ({unit})"`**: o rótulo **constrói** a unidade em tempo de execução
+(`tr_with`, com `motor_units` a decidir `°/s` ou `m/s` conforme o motor seja angular ou linear). O
+detector procurava um **sufixo literal** no fim do texto, e `{unit}` não é nenhum.
+
+⇒ ***o caso mais certo de todos — um rótulo cujo único conteúdo entre parênteses é a palavra
+«unidade» — era o único que o detector não via.***
+
+⚠️ **E alargá-lo a «qualquer `{…}`» acusou QUATRO títulos de secção** (`"Timers  ({n})"`), onde o
+molde é uma **contagem**. A régua que separa é o **NOME do molde**, e ele está escrito ali: só
+`{unit}` conta. *Quando um detector passa a ver demais, a régua que o aperta costuma estar escrita
+dentro do próprio dado.*
+
+### 20.2 — O que a ordem universal fechou
+
+| porta | rows | unidade |
+|---|---|---|
+| `num_row_unit` (junta: motor) | `Speed` · `Target` | do **MODO** (`Velocity` ⇒ taxa · `Position` ⇒ destino) |
+| `num_row_unit` (junta: limites) | `Min` · `Max` (×2, presets e Custom) | do **TIPO** / do **EIXO** |
+| `field_row` | âncoras ×4 | `Px` · `Degrees` |
+| `pair_row` | 9-slice ×2 | `Px` |
+| `transform_row::paint_row` | `Position` · `Rotation` · `Skew` | do **`DisplayUnit`/`DisplayAngle`** |
+
+⭐⭐ **`motor_units` e `limit_unit` deixaram de devolver STRINGS de rótulo e passaram a devolver
+[`Unit`]** — a unidade deixou de ser texto a interpolar e passou a ser vocabulário.
+
+⚠️ **O sufixo muda de forma ao mudar de sítio, e é a lei da casa:** o rótulo mostrava `°`, o campo
+mostra `deg`. *O que se mostra num campo é o que o artista tem de conseguir escrever.*
+
+### 20.3 — E o Transform trocou o que o rótulo dizia, sem perder o que ele dizia
+
+Ali o rótulo carregava a **RÉGUA activa** (`Position (m)` ⇄ `Position (px)` pelo `DisplayUnit`).
+Hoje quem a diz é o sufixo do campo: **`12,5 m` diz a mesma coisa *e* o número, no sítio onde o
+artista olha.**
+
+⛔⛔ **E o gate que defendia a lei antiga reprovou sobre o desenho CERTO** — ele comparava
+`labels_for(Degrees) != labels_for(Radians)`. *Um gate escrito sobre ONDE a lei aparecia é um gate
+que reprova quando ela se muda de sítio.* Reescrito sobre a lei: **a régua chega ao artista** (hoje
+por `angle_unit`, e as duas discordam) **e o rótulo já não a diz** (as duas metades, porque a
+segunda é o que muda).
+
+⚠️ **E eu escrevi no código que as duas chaves `_rad` ficavam «para o dia em que se escreva outra
+palavra para radianos»** — o `every_inspector_key_exists_on_both_sides` desmentiu-o na corrida
+seguinte: *uma chave que ninguém usa é dívida, não um sítio reservado.* Apagadas.
+
+### 20.4 — Duas portas a mais, e uma delas duplica a outra
+
+⏳ **`pair_row` (9-slice) é um quase-gémeo do `field_row` (âncoras)**: as duas empilham o rótulo e
+pintam N campos; a diferença medida é que só o `pair_row` reserva a coluna de animação
+(`form_row_columns`). ⇒ *duas respostas à mesma pergunta*, e uma delas não desenha o ponto de
+animação. **Nomeado, não curado** — fundi-las é wave própria.
+
+### 20.5 — O tecto de LOC apanhou a wave, e a cura foi CORTE
+
+`paint_transform_section` foi a **210** contra o tecto de `200` ao ganhar a unidade em cada row.
+⇒ `paint_scale_and_skew` saiu para uma porta própria, e **a fronteira é por responsabilidade**:
+*nenhuma das duas lê a régua da POSIÇÃO* — a escala é um factor adimensional e o cisalhamento
+partilha a régua do ÂNGULO com a rotação. ⛔ Nenhuma entrada nova no `FN_OVERAGE_OK`.
+
+⚠️ E o `clippy::type_complexity` cobrou o `&dyn Fn(…)` de onze argumentos ⇒ trait `RowPainter`
+nomeado — *um tipo que ninguém consegue ler não diz o que a coisa faz*.
+
+### 20.6 — Provas de mutação
+
+| mutação | gate | veredito |
+|---|---|---|
+| o molde volta ao rótulo (`"Speed ({unit})"`) | `no_row_label_carries_its_own_unit` | **MORTA** |
+| o detector deixa de ver um MOLDE | `the_detector_can_see_a_unit_in_a_label` | **MORTA** |
+
+### 20.7 — O que FICA na tolerância, e porquê
+
+Só a **caixa única** (`painter-layers` *Grid Size* · `tokens` *Scale*) e três falsos positivos do
+regex (`override(s)`, `Dur(s)`, `Time(s)`). ⚠️ **E a caixa única já cumpre a ordem do dono**: ali o
+rótulo vive **DENTRO** da caixa, logo a unidade já está na caixa — o que ele fotografou foi um
+rótulo **FORA** dela a carregá-la.

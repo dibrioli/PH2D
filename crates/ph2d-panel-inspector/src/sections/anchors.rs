@@ -280,7 +280,7 @@ fn anchor_editor(
         tr("panel.inspector.anchors.position_x_y_px"),
         &ids::INSP_ANCHOR_POS,
         PX_STEP,
-        None,
+        Some(ph2d_editor_core::widget::Unit::Px),
     );
     cur_y = field_row(
         scene,
@@ -294,7 +294,7 @@ fn anchor_editor(
         tr("panel.inspector.anchors.rotation_deg"),
         &[ids::INSP_ANCHOR_ROT],
         DEG_STEP,
-        None,
+        Some(ph2d_editor_core::widget::Unit::Degrees),
     );
     cur_y = check_row(
         scene,
@@ -323,7 +323,7 @@ fn anchor_editor(
             tr("panel.inspector.anchors.bounds_x_y_w_h"),
             &ids::INSP_ANCHOR_BOUNDS,
             PX_STEP,
-            None,
+            Some(ph2d_editor_core::widget::Unit::Px),
         );
         cur_y = check_row(
             scene,
@@ -350,7 +350,7 @@ fn anchor_editor(
                 tr("panel.inspector.anchors.center_x_y_w_h"),
                 &ids::INSP_ANCHOR_CENTER,
                 PX_STEP,
-                None,
+                Some(ph2d_editor_core::widget::Unit::Px),
             );
         }
     }

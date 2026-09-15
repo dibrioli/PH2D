@@ -116,7 +116,8 @@ pub(crate) fn paint_transform_section(
                      left_tag: &str,
                      left_color: ColorToken,
                      left_step: f64,
-                     right: Option<(NodeId, &str, ColorToken, f64)>|
+                     right: Option<(NodeId, &str, ColorToken, f64)>,
+                     unidade: Option<ph2d_editor_core::widget::Unit>|
      -> f32 {
         transform_row::paint_row(
             &st,
@@ -130,6 +131,7 @@ pub(crate) fn paint_transform_section(
             left_color,
             left_step,
             right,
+            unidade,
         )
     };
 
@@ -138,14 +140,19 @@ pub(crate) fn paint_transform_section(
     let (rot_label, skew_label) = labels_for(angle);
     let angle_step = step_for(angle);
     let unit = current_display_unit();
-    let (pos_label, pos_step) = match unit {
-        ph2d_editor_core::project::DisplayUnit::Meters => {
-            (tr("panel.inspector.transform.position_m"), 0.01_f64) // LITERAL-PX-OK: passo em metros
-        }
-        ph2d_editor_core::project::DisplayUnit::Pixels => {
-            (tr("panel.inspector.transform.position_px"), 1.0_f64)
-        }
+    let (pos_label, pos_step, pos_unit) = match unit {
+        ph2d_editor_core::project::DisplayUnit::Meters => (
+            tr("panel.inspector.transform.position_m"),
+            0.01_f64, // LITERAL-PX-OK: passo em metros
+            ph2d_editor_core::widget::Unit::Meters,
+        ),
+        ph2d_editor_core::project::DisplayUnit::Pixels => (
+            tr("panel.inspector.transform.position_px"),
+            1.0_f64,
+            ph2d_editor_core::widget::Unit::Px,
+        ),
     };
+    let ang_unit = angle_unit(angle);
     let h_pos = paint_row(
         scene,
         text_system,
@@ -162,6 +169,7 @@ pub(crate) fn paint_transform_section(
             ColorToken::Success,
             pos_step,
         )),
+        Some(pos_unit),
     );
     cur_y += h_pos + row_gap;
     let h_rot = paint_row(
@@ -175,9 +183,120 @@ pub(crate) fn paint_transform_section(
         ColorToken::Text3,
         angle_step,
         None,
+        Some(ang_unit),
     );
     cur_y += h_rot + row_gap;
-    let h_scale = paint_row(
+    // ⭐ **A ESCALA e o CISALHAMENTO saíram para uma porta própria** (tecto de fn do painel,
+    //    2026-09-15): as duas são o par `X`/`Y` de um FACTOR e de um ÂNGULO, e nenhuma delas lê a
+    //    régua da POSIÇÃO. *O corte é por responsabilidade, nunca uma entrada na lista de folgas.*
+    cur_y = paint_scale_and_skew(
+        &paint_row,
+        scene,
+        text_system,
+        hit_index,
+        cur_y,
+        row_gap,
+        skew_label,
+        angle_step,
+        ang_unit,
+    );
+    cur_y += SECTION_BOTTOM_PAD_PX;
+
+    fold.finish(store, scene, hit_index, cur_y)
+}
+
+/// ⭐ **O pintor de uma linha do Transform, com nome.**
+///
+/// ⚠️ Ele existe porque o fecho que o corpo da secção constrói tem **onze** argumentos, e um
+/// `&dyn Fn(...)` escrito à mão na assinatura de quem o recebe é o que o `clippy::type_complexity`
+/// acusa — com razão: *um tipo que ninguém consegue ler não diz o que a coisa faz*.
+trait RowPainter {
+    #[allow(clippy::too_many_arguments)]
+    fn paint(
+        &self,
+        scene: &mut VectorScene,
+        text_system: &mut TextSystem,
+        hit_index: &mut HitIndex,
+        row_y: f32,
+        row_label: &str,
+        left_id: NodeId,
+        left_tag: &str,
+        left_color: ColorToken,
+        left_step: f64,
+        right: Option<(NodeId, &str, ColorToken, f64)>,
+        unit: Option<ph2d_editor_core::widget::Unit>,
+    ) -> f32;
+}
+
+impl<F> RowPainter for F
+where
+    F: Fn(
+        &mut VectorScene,
+        &mut TextSystem,
+        &mut HitIndex,
+        f32,
+        &str,
+        NodeId,
+        &str,
+        ColorToken,
+        f64,
+        Option<(NodeId, &str, ColorToken, f64)>,
+        Option<ph2d_editor_core::widget::Unit>,
+    ) -> f32,
+{
+    #[allow(clippy::too_many_arguments)]
+    fn paint(
+        &self,
+        scene: &mut VectorScene,
+        text_system: &mut TextSystem,
+        hit_index: &mut HitIndex,
+        row_y: f32,
+        row_label: &str,
+        left_id: NodeId,
+        left_tag: &str,
+        left_color: ColorToken,
+        left_step: f64,
+        right: Option<(NodeId, &str, ColorToken, f64)>,
+        unit: Option<ph2d_editor_core::widget::Unit>,
+    ) -> f32 {
+        self(
+            scene,
+            text_system,
+            hit_index,
+            row_y,
+            row_label,
+            left_id,
+            left_tag,
+            left_color,
+            left_step,
+            right,
+            unit,
+        )
+    }
+}
+
+/// ⭐ **As duas últimas linhas do Transform — a ESCALA e o CISALHAMENTO.**
+///
+/// Extraída do corpo de [`paint_transform_section`] pelo tecto de fn do painel (2026-09-15, quando a
+/// unidade entrou em cada row). ⚠️ Elas andam juntas por uma razão e não por arrumação: **nenhuma
+/// das duas lê a régua da POSIÇÃO** — a escala é um factor adimensional e o cisalhamento partilha a
+/// régua do ÂNGULO com a rotação.
+///
+/// Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+fn paint_scale_and_skew(
+    paint_row: &dyn RowPainter,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    hit_index: &mut HitIndex,
+    y: f32,
+    row_gap: f32,
+    skew_label: &str,
+    angle_step: f64,
+    ang_unit: ph2d_editor_core::widget::Unit,
+) -> f32 {
+    let mut cur_y = y;
+    let h_scale = paint_row.paint(
         scene,
         text_system,
         hit_index,
@@ -188,12 +307,12 @@ pub(crate) fn paint_transform_section(
         ColorToken::Danger,
         0.1, // LITERAL-PX-OK: scale NumberInput step
         Some((ids::INSP_TRANSFORM_SCALE_Y, "Y", ColorToken::Success, 0.1)), // LITERAL-PX-OK: scale NumberInput step
+        None,
     );
     cur_y += h_scale + row_gap;
-    // Skew X/Y in degrees (ADR-0025-amendment-1). Authoring range is
-    // clamped to ±~89.4° at the ECS-commit boundary; the slider itself
-    // is unbounded so over-typing snaps back on re-sync.
-    let h_skew = paint_row(
+    // Skew X/Y in degrees (ADR-0025-amendment-1). Authoring range is clamped to ±~89.4° at the
+    // ECS-commit boundary; the slider itself is unbounded so over-typing snaps back on re-sync.
+    let h_skew = paint_row.paint(
         scene,
         text_system,
         hit_index,
@@ -209,10 +328,9 @@ pub(crate) fn paint_transform_section(
             ColorToken::Success,
             angle_step,
         )),
+        Some(ang_unit),
     );
-    cur_y += h_skew + SECTION_BOTTOM_PAD_PX;
-
-    fold.finish(store, scene, hit_index, cur_y)
+    cur_y + h_skew
 }
 
 /// **A largura de um chip, e se a seção inteira empilha** — a geometria que TODA row desta seção
@@ -358,15 +476,25 @@ fn paint_header_and_begin_fold(
 /// gate existe porque a 1.ª entrega trocou o valor e deixou o rótulo a dizer `(°)`.
 #[must_use]
 fn labels_for(angle: ph2d_editor_core::project::DisplayAngle) -> (&'static str, &'static str) {
+    // ⚠️⚠️ **Os dois rótulos deixaram de dizer a RÉGUA** (2026-09-15, ordem do dono: *«todos na
+    //    caixa»*) — ela é hoje o SUFIXO do campo, e por isso os dois braços devolvem o mesmo texto.
+    //    ⛔⛔ **E as duas chaves `_rad` FORAM APAGADAS**: eu escrevera aqui que ficavam *«para o dia
+    //    em que se escreva outra palavra para radianos»*, e o
+    //    `every_inspector_key_exists_on_both_sides` desmentiu-o na corrida seguinte — *uma chave que
+    //    ninguém usa é dívida, não um sítio reservado*. A função fica porque o `angle` ainda decide
+    //    o PASSO (`step_for`).
+    let _ = angle;
+    (
+        tr("panel.inspector.transform.rotation"),
+        tr("panel.inspector.transform.skew"),
+    )
+}
+
+/// ⭐ **A unidade do ÂNGULO activo — a régua que o rótulo deixou de dizer.**
+fn angle_unit(angle: ph2d_editor_core::project::DisplayAngle) -> ph2d_editor_core::widget::Unit {
     match angle {
-        ph2d_editor_core::project::DisplayAngle::Degrees => (
-            tr("panel.inspector.transform.rotation"),
-            tr("panel.inspector.transform.skew"),
-        ),
-        ph2d_editor_core::project::DisplayAngle::Radians => (
-            tr("panel.inspector.transform.rotation_rad"),
-            tr("panel.inspector.transform.skew_rad"),
-        ),
+        ph2d_editor_core::project::DisplayAngle::Degrees => ph2d_editor_core::widget::Unit::Degrees,
+        ph2d_editor_core::project::DisplayAngle::Radians => ph2d_editor_core::widget::Unit::Radians,
     }
 }
 
@@ -382,7 +510,7 @@ fn step_for(angle: ph2d_editor_core::project::DisplayAngle) -> f64 {
 
 #[cfg(test)]
 mod angle_unit_tests {
-    use super::{labels_for, step_for};
+    use super::{angle_unit, labels_for, step_for};
     use ph2d_editor_core::project::DisplayAngle;
 
     /// ⛔⛔ **O ROTULO segue a unidade** — o report do Enio de 2026-08-30, com foto:
@@ -395,20 +523,33 @@ mod angle_unit_tests {
     ///
     /// ⚠️ A regua vive aqui como uma funcao pura para poder ser gateada -- o painter
     /// resolve o par no `paint`, onde um teste nao chega sem uma surface real.
+    /// ⚠️⚠️ **A LEI MUDOU DE SÍTIO em 2026-09-15, e não de conteúdo.** O dono ordenou *«todos na
+    /// caixa»* (foto de `Speed (°/s)`), logo a régua activa deixou de viver no RÓTULO e passa a ser
+    /// o **sufixo do campo**. ⛔ A asserção antiga comparava os dois rótulos e reprovaria sobre o
+    /// desenho CERTO — *um gate escrito sobre ONDE a lei aparecia é um gate que reprova quando ela
+    /// se muda*. O que ele defendia — **a régua chega ao artista, e as duas discordam** — é o que
+    /// fica afirmado, agora sobre a porta que a entrega.
     #[test]
     fn the_row_labels_follow_the_active_angle_unit() {
         assert_eq!(
-            labels_for(DisplayAngle::Degrees),
-            ("Rotation (\u{00b0})", "Skew (\u{00b0})")
+            angle_unit(DisplayAngle::Degrees),
+            ph2d_editor_core::widget::Unit::Degrees
         );
         assert_eq!(
-            labels_for(DisplayAngle::Radians),
-            ("Rotation (rad)", "Skew (rad)")
+            angle_unit(DisplayAngle::Radians),
+            ph2d_editor_core::widget::Unit::Radians
         );
-        // ⛔ O controlo: os dois pares tem de DISCORDAR, senao a funcao e' decorativa.
+        // ⛔ O controlo: as duas tem de DISCORDAR, senao a funcao e' decorativa.
         assert_ne!(
+            angle_unit(DisplayAngle::Degrees),
+            angle_unit(DisplayAngle::Radians)
+        );
+        // ⛔⛔ E a METADE que o report de 2026-08-30 pagou: o rotulo ja' NAO diz a regua, logo ele
+        //    tem de ser o MESMO nos dois — senao ha' duas respostas a' mesma pergunta.
+        assert_eq!(
             labels_for(DisplayAngle::Degrees),
-            labels_for(DisplayAngle::Radians)
+            labels_for(DisplayAngle::Radians),
+            "o rotulo voltou a dizer a regua — ela vive no campo desde 2026-09-15"
         );
     }
 

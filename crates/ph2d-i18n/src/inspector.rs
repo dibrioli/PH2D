@@ -55,13 +55,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "+{left_out} more \u{2014} Revert on the copy puts every piece back"
         }
         "panel.inspector.joint.paste_to" => "Paste to {targets} Joints",
-        "panel.inspector.joint.min_unit" => "Min ({unit})",
-        "panel.inspector.joint.max_unit" => "Max ({unit})",
+        "panel.inspector.joint.min_unit" => "Min",
+        "panel.inspector.joint.max_unit" => "Max",
         "panel.inspector.joint.add_wheel" => "Add Wheel ({n} on this rope)",
-        "panel.inspector.joint.target_unit" => "Target ({unit})",
-        "panel.inspector.joint.speed_unit" => "Speed ({unit})",
-        "panel.inspector.joint.axis_min_unit" => "  Min ({unit})",
-        "panel.inspector.joint.axis_max_unit" => "  Max ({unit})",
+        "panel.inspector.joint.target_unit" => "Target",
+        "panel.inspector.joint.speed_unit" => "Speed",
+        "panel.inspector.joint.axis_min_unit" => "  Min",
+        "panel.inspector.joint.axis_max_unit" => "  Max",
         "panel.inspector.physics.bake_range" => "Bake {start}-{end}s to Timeline",
         "panel.inspector.physics.bake_to" => "Bake {end}s to Timeline",
         "panel.inspector.physics.more_shapes" => "+ {n} more shapes from children",
@@ -127,7 +127,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.anchors.always_show_anchors" => "Always show anchors",
         "panel.inspector.anchors.anchor_name" => "anchor_name\u{2026}",
-        "panel.inspector.anchors.rotation_deg" => "Rotation (deg)",
+        "panel.inspector.anchors.rotation_deg" => "Rotation",
         "panel.inspector.anchors.bounds_makes_it_a_slice" => "Bounds (makes it a Slice)",
         "panel.inspector.anchors.center_makes_it_a_9" => "Center (makes it a 9-slice Region)",
         "panel.inspector.anchors.x_remove_anchor" => "x Remove Anchor",
@@ -489,14 +489,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Multiple selected \u{b7} timer edits apply to the active object only."
         }
         "panel.inspector.timers.no_timers_yet" => "No timers yet.",
-        "panel.inspector.transform.position_m" => "Position (m)",
-        "panel.inspector.transform.position_px" => "Position (px)",
+        "panel.inspector.transform.position_m" => "Position",
+        "panel.inspector.transform.position_px" => "Position",
         "panel.inspector.transform.scale" => "Scale",
         "panel.inspector.transform.transform" => "Transform",
-        "panel.inspector.transform.rotation" => "Rotation (\u{00b0})",
-        "panel.inspector.transform.skew" => "Skew (\u{00b0})",
-        "panel.inspector.transform.rotation_rad" => "Rotation (rad)",
-        "panel.inspector.transform.skew_rad" => "Skew (rad)",
+        "panel.inspector.transform.rotation" => "Rotation",
+        "panel.inspector.transform.skew" => "Skew",
         "panel.inspector.visibility.visibility_layer" => "Visibility Layer",
         "panel.inspector.visibility.clip_children" => "Clip Children",
         "panel.inspector.visibility.disabled" => "Disabled",
@@ -530,9 +528,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.wheel.gear" => "Gear",
         "panel.inspector.wheel.rope" => "Rope",
         "panel.inspector.wheel.no_rope" => "(no rope)",
-        "panel.inspector.anchors.position_x_y_px" => "Position X / Y (px)",
-        "panel.inspector.anchors.bounds_x_y_w_h" => "Bounds X / Y / W / H (px)",
-        "panel.inspector.anchors.center_x_y_w_h" => "Center X / Y / W / H (px)",
+        "panel.inspector.anchors.position_x_y_px" => "Position X / Y",
+        "panel.inspector.anchors.bounds_x_y_w_h" => "Bounds X / Y / W / H",
+        "panel.inspector.anchors.center_x_y_w_h" => "Center X / Y / W / H",
         "panel.inspector.anchors.sockets_anchors" => "Sockets / Anchors",
         "panel.inspector.animation.from_to_cell" => "From / To (cell)",
         "panel.inspector.animation.frame_ms_repeat_0_forever" => "Frame ms / Repeat (0 = forever)",
@@ -548,8 +546,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Corners F fixed (on/off). Edges + centre: S stretch, R repeat, \
                              M mirror, - blank."
         }
-        "panel.inspector.slice.borders_l_t_px" => "Borders L / T (px)",
-        "panel.inspector.slice.borders_r_b_px" => "Borders R / B (px)",
+        "panel.inspector.slice.borders_l_t_px" => "Borders L / T",
+        "panel.inspector.slice.borders_r_b_px" => "Borders R / B",
         "panel.inspector.slice.size_x_y_m_0" => "Size X / Y (m, 0 = sprite)",
         "panel.inspector.wheel.motor_s" => "Motor",
         // ph2d-migrar-texto:end

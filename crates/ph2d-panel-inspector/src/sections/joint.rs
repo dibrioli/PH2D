@@ -208,16 +208,35 @@ pub(crate) const fn kind_has_motor(kind_tag: u8) -> bool {
 /// porta correspondente é `PhysicsJoint::motor_in_metres` (e não a do
 /// `JointKind`), e as duas têm de concordar ou o rótulo mente sobre o número que
 /// o solver lê.
-pub(crate) fn motor_units(info: &InspectorJointInfo) -> (&'static str, &'static str) {
+/// ⭐⭐ **As duas unidades do motor de uma junta — a TAXA e o DESTINO.**
+///
+/// ⛔⛔ **Elas eram duas `&str` que iam para DENTRO do rótulo** (`"Speed ({unit})"`), e o dono
+/// reprovou-o em 2026-09-15 com foto: *«Speed ficou na Label e não na caixa. Para manter padrão
+/// universal melhor todos na caixa»*. ⇒ hoje são [`ph2d_editor_core::widget::Unit`], e quem as recebe passa-as ao CAMPO.
+///
+/// ⚠️ **O sufixo muda de forma ao mudar de sítio, e é a lei da casa:** o rótulo mostrava `°`, o
+/// campo mostra `deg` — *o que se mostra num campo é o que o artista tem de conseguir escrever*.
+pub(crate) fn motor_units(
+    info: &InspectorJointInfo,
+) -> (
+    ph2d_editor_core::widget::Unit,
+    ph2d_editor_core::widget::Unit,
+) {
     let angular = if info.kind_tag == KIND_CUSTOM {
         info.motor_axis_tag == AXIS_ROTATION
     } else {
         info.kind_tag == KIND_PIN || info.kind_tag == KIND_WHEEL
     };
     if angular {
-        ("\u{00b0}/s", "\u{00b0}")
+        (
+            ph2d_editor_core::widget::Unit::DegreesPerSecond,
+            ph2d_editor_core::widget::Unit::Degrees,
+        )
     } else {
-        ("m/s", "m")
+        (
+            ph2d_editor_core::widget::Unit::MetersPerSecond,
+            ph2d_editor_core::widget::Unit::Meters,
+        )
     }
 }
 
@@ -240,11 +259,11 @@ const MOTOR_MODE_POSITION: u8 = 1;
 /// `JointKind::limits_in_metres` rather than a second source of truth: the
 /// shell converts the value, this only names it. A seam gate pins that a slider's
 /// rows say metres, so the two cannot drift apart in silence.
-const fn limit_unit(kind_tag: u8) -> &'static str {
+const fn limit_unit(kind_tag: u8) -> ph2d_editor_core::widget::Unit {
     if kind_tag == KIND_SLIDER || kind_tag == KIND_WHEEL {
-        "m"
+        ph2d_editor_core::widget::Unit::Meters
     } else {
-        "\u{00b0}"
+        ph2d_editor_core::widget::Unit::Degrees
     }
 }
 
@@ -445,14 +464,20 @@ mod kind_chip_tests {
         );
     }
 
-    /// O rótulo do curso diz **metros** para um trilho e **graus** para o resto —
-    /// a segunda metade da porta `JointKind::limits_in_metres` (a primeira
-    /// converte o número; esta o nomeia).
+    /// O curso diz **metros** para um trilho e **graus** para o resto — a segunda metade da porta
+    /// `JointKind::limits_in_metres` (a primeira converte o número; esta o nomeia).
+    ///
+    /// ⚠️ **Desde 2026-09-15 a unidade é um [`ph2d_editor_core::widget::Unit`] e não uma string de rótulo** (ordem do dono:
+    /// *«todos na caixa»*), e ela é pintada DENTRO do campo. ⛔ O sufixo passa de `°` para `deg` de
+    /// propósito: num campo mostra-se o que o artista consegue escrever.
     #[test]
     fn a_rails_range_is_named_in_metres() {
-        assert_eq!(limit_unit(KIND_SLIDER), "m");
+        assert_eq!(
+            limit_unit(KIND_SLIDER),
+            ph2d_editor_core::widget::Unit::Meters
+        );
         for other in [0u8, 1, 2, 3] {
-            assert_eq!(limit_unit(other), "\u{00b0}");
+            assert_eq!(limit_unit(other), ph2d_editor_core::widget::Unit::Degrees);
         }
     }
 }

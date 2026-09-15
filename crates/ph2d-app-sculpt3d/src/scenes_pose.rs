@@ -83,21 +83,24 @@ pub(crate) fn announce() {
          [sculpt3d]    (5) Ctrl+Z. Ponha `Segments` de volta em 1 e desmarque `Pin far end`.\n\
          [sculpt3d]        -> A orelha deixa de rodar no sitio: ela e' ARRASTADA junto com o\n\
          [sculpt3d]           giro. Marcada, a base fica pregada; desmarcada, nao.\n\
-         [sculpt3d]    (6) Marque `Pin far end` outra vez. Troque `Deformation` para\n\
-         [sculpt3d]        `Scale / Translate` e arraste ao longo da orelha.\n\
-         [sculpt3d]        -> A orelha ENGORDA ou ENCOLHE. Com Ctrl carregado, em vez disso\n\
-         [sculpt3d]           ela desliza inteira sem mudar de tamanho.\n\
-         [sculpt3d]    (7) Troque `Deformation` para `Squash / Stretch` e arraste ao longo\n\
-         [sculpt3d]        dela.\n\
+         [sculpt3d]    (6) Marque `Pin far end` outra vez. A fileira `Deformation` fica\n\
+         [sculpt3d]        logo abaixo dos numeros do pincel e tem CINCO botoes:\n\
+         [sculpt3d]        `Rotate` · `Twist` · `Scale` · `Translate` · `Squash / Stretch`.\n\
+         [sculpt3d]        ⚠️ NAO e' preciso Ctrl para nenhum deles -- basta carregar no\n\
+         [sculpt3d]        botao. Escolha `Scale` e arraste AO LONGO da orelha (na direcao\n\
+         [sculpt3d]        em que ela aponta).\n\
+         [sculpt3d]        -> A orelha ENGORDA ou ENCOLHE.\n\
+         [sculpt3d]    (7) Escolha `Translate` e arraste.\n\
+         [sculpt3d]        -> Ela desliza inteira, sem mudar de tamanho nem rodar.\n\
+         [sculpt3d]    (8) Escolha `Squash / Stretch` e arraste AO LONGO dela.\n\
          [sculpt3d]        -> A orelha ESTICA e AFINA junto (ou encolhe e engorda): o volume\n\
          [sculpt3d]           dela mantem-se, como massa a ser puxada.\n\
-         [sculpt3d]    (8) Volte a `Rotate / Twist` e arraste com Ctrl carregado, na\n\
-         [sculpt3d]        horizontal.\n\
+         [sculpt3d]        ⚠️ Estes tres leem o arrasto AO LONGO do osso: arrastar de\n\
+         [sculpt3d]           travessao move pouco, e isso e' a lei, nao um defeito.\n\
+         [sculpt3d]    (9) Escolha `Twist` e arraste na HORIZONTAL.\n\
          [sculpt3d]        -> Agora ela TORCE sobre o proprio eixo, em vez de dobrar.\n\
-         [sculpt3d]           (Ate' 2026-09-15 este passo nao fazia NADA com o valor de\n\
-         [sculpt3d]            fabrica -- a curva de queda chegava ao pincel invertida e a\n\
-         [sculpt3d]            torcao saia sempre zero.)\n\
-         [sculpt3d]    (9) Ctrl+Z. No painel, o `Auto-Smooth` so' aparece com o interruptor\n\
+         [sculpt3d]   (10) Ctrl+Z e volte a `Rotate`. No painel, o `Auto-Smooth` so' aparece\n\
+         [sculpt3d]        com o interruptor\n\
          [sculpt3d]        `Detail` em `Pro` -- ele e' a PRIMEIRA fileira dentro da seccao do\n\
          [sculpt3d]        pincel, logo abaixo do titulo dela, e vem de fabrica em `Basic`.\n\
          [sculpt3d]        Ponha em `Pro`, suba `Auto-Smooth` para o\n\
@@ -112,8 +115,9 @@ pub(crate) fn announce() {
          [sculpt3d]    DEU ERRADO SE: nao aparecer osso nenhum no passo (2); se a orelha\n\
          [sculpt3d]    esticar num bico no passo (3) em vez de dobrar rigida; se ela nao mexer\n\
          [sculpt3d]    NADA; se o corpo da bola se deformar junto com ela; se desmarcar\n\
-         [sculpt3d]    `Pin far end` nao mudar nada; se o Ctrl do passo (8) nao torcer; ou se\n\
-         [sculpt3d]    o `Auto-Smooth` do passo (9) nao mudar a superficie.\n\
+         [sculpt3d]    `Pin far end` nao mudar nada; se algum dos CINCO botoes de\n\
+         [sculpt3d]    `Deformation` nao mudar o gesto ao ser carregado; ou se o\n\
+         [sculpt3d]    `Auto-Smooth` do passo (10) nao mudar a superficie.\n\
          [sculpt3d]\n\
          [sculpt3d]    (Se em vez do osso aparecer so' uma BOLINHA VERMELHA sobre o cursor, e'\n\
          [sculpt3d]     um aviso: ali nao ha' dobradica nenhuma e arrastar nao move nada.\n\
@@ -260,7 +264,7 @@ mod tests {
     ///
     /// ⚠️ *Um passo que manda clicar numa linha de painel **afirma** que ela está
     /// lá*, e o dono aprova o smoke com o passo impossível dentro — ele conclui
-    /// que não achou, não que não existe. Este gate nasceu porque o passo (9)
+    /// que não achou, não que não existe. Este gate nasceu porque o passo do `Auto-Smooth`
     /// quase shipou a mandá-lo subir o `Auto-Smooth` **sem dizer que ele vive no
     /// `Pro`**, e o painel nasce em `Basic`.
     ///
@@ -276,7 +280,7 @@ mod tests {
 
         /// `(rótulo i18n, o nível MÍNIMO em que o roteiro promete achá-la)`.
         /// ⚠️ O `Auto-Smooth` está aqui como `Pro` **de propósito**: é isso que
-        /// obriga o passo (9) a dizer onde fica o interruptor.
+        /// obriga o roteiro a dizer onde fica o interruptor.
         const NOMEADAS: &[(&str, UiLevel)] = &[
             ("panel.sculpt3d.pose_segments", UiLevel::Basic),
             ("panel.sculpt3d.auto_smooth", UiLevel::Pro),

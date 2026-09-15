@@ -4,17 +4,26 @@
 use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;
 
-/// **Qual das TRÊS deformações** — `ph2d_sculpt3d::PoseModo::ALL`.
+/// **Qual das CINCO deformações** — `ph2d_sculpt3d::PoseDeformacao::ALL`.
+///
+/// ⭐⭐ **Eram TRÊS até 2026-09-15**, e a subida é ordem do dono: cada um dos
+/// três modos tinha uma segunda metade atrás do `Ctrl`, e *um gesto que só
+/// existe se o artista adivinhar o modificador é meio gesto*.
 ///
 /// ⚠️ **O tamanho CONTA-SE, não se escolhe:** o censo compara este array com o
-/// `ALL` do motor, logo um modo novo que não passe por aqui nasce inalcançável
-/// e o gate fica vermelho — em vez de o chip sumir em silêncio.
+/// `ALL` do motor, logo uma deformação nova que não passe por aqui nasce
+/// inalcançável e o gate fica vermelho — em vez de o chip sumir em silêncio.
 ///
-/// ⚠️ **A fileira só é desenhada com o verbo Pose na mão.**
-pub const SCULPT3D_POSE_MODE: [NodeId; 3] = [
+/// ⚠️ **A fileira só é desenhada com o verbo Pose na mão** — e foi exactamente
+/// isso que a deixou **morta sob o ponteiro** até 2026-09-15: nenhuma fixtura
+/// de costura armava este pincel. O `populate` regista-a agora, e o censo
+/// derivado (`populate_censo_tests`) impede a oitava ocorrência.
+pub const SCULPT3D_POSE_MODE: [NodeId; 5] = [
     hash_node_id("sculpt3d.pose_mode.0"),
     hash_node_id("sculpt3d.pose_mode.1"),
     hash_node_id("sculpt3d.pose_mode.2"),
+    hash_node_id("sculpt3d.pose_mode.3"),
+    hash_node_id("sculpt3d.pose_mode.4"),
 ];
 
 /// **Quantos SEGMENTOS a cadeia tem.** Com mais de um ela dobra como um braço.

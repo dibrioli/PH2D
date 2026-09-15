@@ -111,6 +111,28 @@ pub fn populate(store: &mut WidgetStore) {
         // `every_smear_control_is_clickable_where_it_is_drawn`.
         &crate::ids::SCULPT3D_SMEAR_MODE[..],
         &crate::ids::SCULPT3D_PROJECT_MODE[..],
+        // ⛔⛔⛔ **E A SÉTIMA OCORRÊNCIA — report do dono (2026-09-15): *«os
+        // outros 2 botões ainda não funcionam»*.** As três fileiras abaixo
+        // (`3 + 6 + 4 = 13` chips) nasceram pintadas, hit-indexadas, **com braço
+        // no `event.rs`** e **mortas sob o ponteiro**. Da mão do artista o
+        // sintoma é o pior possível: clicar em `Scale / Translate` não muda
+        // nada, logo o pincel FICA no modo de omissão e as outras duas
+        // deformações lêem-se como **leis partidas** em vez de um clique
+        // descartado.
+        //
+        // ⚠️ *Um controlo nunca pintado e um morto sob o dedo dão o MESMO
+        // report* — e nenhum gate o via, pela razão que o bloco do tecido acima
+        // já escreve: as fixturas de costura armam **outro** pincel, e com ele
+        // na mão estas fileiras nem chegam a ser desenhadas.
+        //
+        // ⇒ a cura estrutural é o gate irmão
+        // [`crate::populate_censo_tests`], que **deriva** esta lista do despacho
+        // do `event.rs` em vez de a confiar a quem se lembrar. *Sete vezes é
+        // onde uma lista escrita à mão deixa de ser um descuido e passa a ser um
+        // defeito de desenho.*
+        &crate::ids::SCULPT3D_POSE_MODE[..],
+        &crate::ids::SCULPT3D_BOUNDARY_MODE[..],
+        &crate::ids::SCULPT3D_BOUNDARY_FALLOFF[..],
         &crate::ids::SCULPT3D_ALPHA[..],
         &crate::ids::SCULPT3D_ADD[..],
         &crate::ids::SCULPT3D_MASK_OP[..],
@@ -151,32 +173,41 @@ pub fn populate(store: &mut WidgetStore) {
     // Os que NÃO são comandos de um toque: as três opções de simetria (chips de
     // um grupo), os dois toggles que o `event` resolve por outra rota, e o fechar
     // do painel.
+    // ⛔⛔⛔ **OS INTERRUPTORES SAEM DA TABELA QUE OS DESPACHA**, e não de uma
+    // segunda lista escrita aqui — a MESMA lei que o bloco dos comandos logo
+    // acima já aplica, e que esta lista violava havia dezassete entradas.
+    //
+    // ⚠️ **O `Pin far end` da POSE estava de fora** (report do dono, 2026-09-15,
+    // apanhado pelo `every_pose_control_is_clickable_where_it_is_drawn`): ele é
+    // o que separa uma rotação em torno do pivô de um arrasto rígido, logo
+    // metade da espec §5.1 era inexprimível pelo artista — e o `Scale without
+    // rotating` do lado dele idem. *Uma lista à mão ao lado de uma tabela é a
+    // segunda resposta à mesma pergunta, e a que o artista toca é a que
+    // envelhece.*
+    //
+    // ⚠️ **A lei de VISIBILIDADE de cada um fica na tabela e não aqui:** o
+    // registo é incondicional de propósito — registar só os pintados faria o
+    // registo depender de um estado que muda com um clique, que é a armadilha
+    // que os blocos de chips acima nomeiam três vezes.
+    for (id, _, _) in crate::event::toggles::TOGGLES {
+        button(store, id);
+    }
+
+    // Os que NÃO são interruptores de tabela: um comando de fecho e os quatro
+    // rádios que não viram um booleano.
     for id in [
         crate::ids::SCULPT3D_REF_MODE_ALL,
         crate::ids::SCULPT3D_SYM_X,
         crate::ids::SCULPT3D_SYM_Y,
         crate::ids::SCULPT3D_SYM_Z,
-        crate::ids::SCULPT3D_ALPHA_PREVIEW,
-        crate::ids::SCULPT3D_WIREFRAME,
-        crate::ids::SCULPT3D_ACCUMULATE,
-        crate::ids::SCULPT3D_FRONT_FACES,
-        crate::ids::SCULPT3D_SURFACE_ONLY,
-        crate::ids::SCULPT3D_PROJECT_BIDIR,
-        crate::ids::SCULPT3D_SCRAPE_DYNAMIC,
-        crate::ids::SCULPT3D_CLOTH_PIN,
-        crate::ids::SCULPT3D_CLOTH_PERSISTENT,
-        crate::ids::SCULPT3D_CLOTH_COLLISIONS,
-        // ⭐⭐ **OS CONTROLOS DO FILTRO DE TECIDO** (2026-09-08). ⚠️ **Um `const`
-        // pintado e não registado é um controlo MORTO sob o dedo** — o gate
-        // `every_painted_control_is_clickable_where_it_is_drawn` apanhou os
-        // quatro na primeira corrida, e a mensagem dele nomeia o mecanismo: *um
-        // id ausente do store não é focável*.
-        crate::ids::SCULPT3D_CFILTER_COLLISIONS,
-        crate::ids::SCULPT3D_CFILTER_AXIS[0],
-        crate::ids::SCULPT3D_CFILTER_AXIS[1],
-        crate::ids::SCULPT3D_CFILTER_AXIS[2],
         crate::ids::SCULPT3D_CLOSE,
     ] {
         button(store, id);
     }
 }
+
+/// ⛔⛔⛔ **O CENSO que faz a oitava ocorrência ser impossível** — ver o doc do
+/// módulo.
+#[cfg(test)]
+#[path = "populate_censo_tests.rs"]
+mod censo_tests;

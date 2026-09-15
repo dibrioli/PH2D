@@ -13,7 +13,24 @@ use crate::Brush;
 /// Os seis controlos que só o [`crate::Verb::Pose`] lê.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PoseControlos {
-    pub modo: ph2d_pose::Modo,
+    /// **QUAL DOS CINCO GESTOS** — a escolha do artista, por ordem do dono
+    /// (2026-09-15: *«não devem ser ativados com CTRL mas checando o botão no
+    /// painel»*).
+    ///
+    /// ⚠️⚠️ **Ela substituiu o `modo`, que era um de TRÊS, e a diferença é de
+    /// alcance:** no alvo cada modo tem uma segunda metade escondida atrás do
+    /// modificador de inversão, e o artista tem de **descobrir** que ela existe.
+    /// Aqui as cinco estão à vista. ⛔ A LEI não mudou — quem a lê continua a
+    /// receber `(modo, invertido)` pela [`ph2d_pose::Deformacao::modo_e_inversao`],
+    /// que é a inversa exacta e tem gate de ida-e-volta.
+    ///
+    /// ⛔⛔ **E é por isso que o `Brush::invert` deixou de chegar aqui:** com as
+    /// cinco alcançáveis, o `Ctrl` seria a **segunda** maneira de dizer a mesma
+    /// coisa — e uma que **compõe** com a primeira, logo escolher `Twist` no
+    /// painel e carregar `Ctrl` voltaria a `Rotate`. É exactamente o argumento
+    /// que o [`crate::Verb::honours_invert`] já escreve para os dois
+    /// [`crate::Grip::Turn`].
+    pub deformacao: ph2d_pose::Deformacao,
     /// `1..20` — quantos segmentos a cadeia tem. Com mais de um ela dobra como
     /// um braço.
     pub segmentos: u32,
@@ -47,7 +64,10 @@ impl Default for PoseControlos {
     fn default() -> Self {
         let lei = ph2d_pose::Controlos::default();
         PoseControlos {
-            modo: lei.modo,
+            // ⚠️ **CONTADA da lei, nunca escrita à mão:** o neutro dela é o par
+            // `(modo, invertido)` de omissão, e derivá-lo aqui é o que impede as
+            // duas omissões de divergirem.
+            deformacao: lei.deformacao(),
             segmentos: lei.segmentos,
             desvio_da_origem: lei.desvio_da_origem,
             suavizacoes_do_peso: lei.suavizacoes_do_peso,
@@ -71,8 +91,14 @@ impl PoseControlos {
     /// onde `s`, `s²` e `s⁴` coincidem.*
     #[must_use]
     pub fn lei(&self, brush: &Brush) -> ph2d_pose::Controlos {
+        // ⛔⛔ **O par sai da ESCOLHA e não do `Ctrl`** — ver
+        // [`Self::deformacao`]. O `brush.invert` **não é lido por este verbo**, e
+        // há gate (`o_ctrl_nao_troca_a_deformacao_da_pose`): com as cinco à vista
+        // no painel, o modificador seria um segundo caminho que COMPÕE com o
+        // primeiro.
+        let (modo, invertido) = self.deformacao.modo_e_inversao();
         ph2d_pose::Controlos {
-            modo: self.modo,
+            modo,
             segmentos: self.segmentos,
             desvio_da_origem: self.desvio_da_origem,
             suavizacoes_do_peso: self.suavizacoes_do_peso,
@@ -80,8 +106,9 @@ impl PoseControlos {
             trava_rotacao: self.trava_rotacao,
             raio: brush.radius,
             forca: brush.strength,
-            // O modificador de inversão **troca de deformação**, não de sinal.
-            invertido: brush.invert,
+            // ⚠️ **Da ESCOLHA, não do `Ctrl`** — o `brush.invert` não entra aqui
+            // desde 2026-09-15 (ver [`Self::deformacao`]).
+            invertido,
             simetria: [false; 3],
             // ⭐ O *Connected Only* do pincel **é** o «só conectado» da espec:
             // a mesma pergunta (a travessia atravessa peças desligadas?), e o

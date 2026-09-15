@@ -84,6 +84,11 @@ pub use pose_controlos::PoseControlos;
 pub mod boundary_previa;
 pub mod pose_previa;
 pub use boundary_previa::TrechoDaBorda;
+/// ⭐⭐ **Os CINCO gestos do pincel de pose, re-exportados.** O painel escolhe
+/// entre eles directamente desde 2026-09-15, por ordem do dono — ⛔ o
+/// [`PoseModo`] acima continua a ser o que a LEI lê, e a ponte entre os dois é a
+/// [`ph2d_pose::Deformacao::modo_e_inversao`], com gate de ida-e-volta.
+pub use ph2d_pose::Deformacao as PoseDeformacao;
 /// ⭐ **O modo do pincel de pose, re-exportado.** O painel escolhe entre os três
 /// e não precisa de conhecer a crate da lei — a mesma forma com que ele já lê o
 /// `ClothMode`.

@@ -924,6 +924,76 @@ fn every_project_control_is_clickable_where_it_is_drawn() {
     }
 }
 
+/// ⛔⛔⛔ **GATE — com a POSE na mão, as CINCO deformações são pintadas e
+/// respondem ao ponteiro.**
+///
+/// # Ele reproduz um report do dono, à letra
+///
+/// 2026-09-15: *«os outros 2 botões ainda não funcionam»*. Os três chips do
+/// `Deformation` estavam pintados, hit-indexados, **com braço no `event.rs`** e
+/// **mortos sob o ponteiro** — faltava a fileira no `populate`. Da mão do
+/// artista o sintoma é o pior possível: clicar em `Scale / Translate` não muda
+/// nada, o pincel FICA no modo de omissão, e as outras duas deformações leem-se
+/// como **leis partidas** em vez de um clique descartado.
+///
+/// ⚠️⚠️ **É a SÉTIMA vez que esta crate paga isto**, e a razão de nenhum gate o
+/// ver é sempre a mesma: os irmãos armam **outro** pincel, e com ele na mão esta
+/// fileira nem chega a ser desenhada. *Uma fixtura que não contém o fenómeno não
+/// afirma nada sobre ele.* ⇒ a cura ESTRUTURAL é o censo derivado
+/// (`populate_censo_tests`), que compara o despacho com o registo sem armar
+/// pincel nenhum; este gate é a **reprodução**, e vale por medir o gesto real.
+///
+/// ⚠️ **As duas caixas entram com os chips:** `Pin far end` é o que separa uma
+/// rotação em torno do pivô de um arrasto rígido, e sem ela metade do §5.1 é
+/// inexprimível pelo artista.
+#[test]
+fn every_pose_control_is_clickable_where_it_is_drawn() {
+    let mut ui = Sculpt3dUi::default();
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Pose);
+    ui.ui_level = UiLevel::Pro;
+    let (mut host, mut state) = arrange(ui);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+
+    let mut want: Vec<(String, ph2d_a11y::NodeId)> = ph2d_sculpt3d::PoseDeformacao::ALL
+        .into_iter()
+        .enumerate()
+        .map(|(i, d)| {
+            (
+                format!("deformation {}", d.label()),
+                ids::SCULPT3D_POSE_MODE[i],
+            )
+        })
+        .collect();
+    assert_eq!(
+        want.len(),
+        5,
+        "os três modos da espec dão CINCO deformações — a fixtura deixou de \
+         conter o fenómeno"
+    );
+    want.push(("pin far end".to_owned(), ids::SCULPT3D_POSE_ANCHORED));
+    for (name, id) in &want {
+        assert!(
+            painted.iter().any(|(pid, _)| pid == id),
+            "`{name}` ({id:?}) devia estar pintado com a pose na mão"
+        );
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| pid == id)
+            .map(|(_, r)| *r)
+            .expect("pintado logo acima");
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        let events = host.click_at(cx, cy);
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == *id)),
+            "clicar `{name}` no centro pintado não produziu Click — ele está \
+             pintado e morto sob o dedo, que é o report do dono à letra"
+        );
+    }
+}
+
 /// ⛔⛔ **O INTERRUPTOR `Accumulate` NÃO É OFERECIDO A QUEM NÃO O LÊ.**
 ///
 /// ⚠️⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE, e o que ela expôs é

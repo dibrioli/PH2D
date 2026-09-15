@@ -189,7 +189,7 @@ impl Brush {
     /// conclui que já tentou.
     #[must_use]
     pub fn offers_pose_rotation_lock(&self) -> bool {
-        self.offers_pose_controls() && self.pose.modo == crate::PoseModo::EscalarTransladar
+        self.offers_pose_controls() && self.pose.deformacao == crate::PoseDeformacao::Escalar
     }
 
     /// **Este verbo lê o [`Brush::surface_only`]?** — a porta única, pelo mesmo

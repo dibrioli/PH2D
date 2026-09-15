@@ -71,6 +71,22 @@ pub(super) fn paint_brush_tail(
     w: f32,
     y: f32,
 ) -> f32 {
+    // ⭐⭐⭐ **AS FILEIRAS DA POSE VÊM PRIMEIRO, coladas aos knobs dela** — ordem
+    // do dono (2026-09-15: *«que os botões de deformation fiquem na seção
+    // details junto com os outros parâmetros do pincel»*).
+    //
+    // ⚠️ **Elas viviam no FIM desta cauda**, depois da curva, do padrão e das
+    // fileiras do tecido — logo o `Deformation` aparecia a meia dúzia de
+    // fileiras de distância do `Segments`, `Pivot offset` e `Weight smoothing`,
+    // que são os outros três controlos do MESMO pincel. *Um controlo separado
+    // dos irmãos por controlos de outro assunto lê-se como sendo de outro
+    // assunto.*
+    //
+    // ⚠️ **É o TOPO da cauda e não o bloco de knobs**, e a diferença é
+    // estrutural: aquele bloco é percorrido a partir da tabela de `Row`, e uma
+    // fileira de chips não é uma `Row`. Aqui ela fica imediatamente abaixo do
+    // último knob do pincel, que é o mesmo sítio aos olhos de quem lê.
+    let y = paint_pose_rows(ctx, snap, x, w, y);
     // O falloff logo abaixo dos knobs: ele é a FORMA do peso, e a força é
     // quanto dele se aplica.
     //
@@ -360,7 +376,6 @@ fn paint_per_verb_switches(
         y
     };
     let y = paint_cloth_rows(ctx, snap, x, w, y);
-    let y = paint_pose_rows(ctx, snap, x, w, y);
     let y = paint_boundary_rows(ctx, snap, x, w, y);
     let y = paint_smear_rows(ctx, snap, x, w, y);
     let y = paint_project_rows(ctx, snap, x, w, y);

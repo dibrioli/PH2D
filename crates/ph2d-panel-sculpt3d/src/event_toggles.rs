@@ -25,7 +25,7 @@ use crate::state::Sculpt3dUi;
 
 /// **UM INTERRUPTOR**: o id, a pergunta que decide se ele existe agora, e o
 /// campo que ele vira.
-pub(super) type Toggle = (NodeId, fn(&Sculpt3dUi) -> bool, fn(&mut Sculpt3dUi));
+pub(crate) type Toggle = (NodeId, fn(&Sculpt3dUi) -> bool, fn(&mut Sculpt3dUi));
 
 /// `(o id · a lei existe? · o que virar)`.
 ///
@@ -33,7 +33,7 @@ pub(super) type Toggle = (NodeId, fn(&Sculpt3dUi) -> bool, fn(&mut Sculpt3dUi));
 /// `Brush::offers_front_faces`, `ClothArea::offers_pin`), nunca a uma lista de
 /// nomes aqui — o pintor faz a mesma pergunta para decidir se desenha a caixa, e
 /// duas cópias divergiriam num interruptor que aparece e não muda um vértice.
-pub(super) const TOGGLES: [Toggle; 17] = [
+pub(crate) const TOGGLES: [Toggle; 17] = [
     (
         crate::ids::SCULPT3D_ACCUMULATE,
         |u| u.brush.verb.accumulates(),

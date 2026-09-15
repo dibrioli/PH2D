@@ -103,13 +103,80 @@ impl Modo {
 }
 
 /// A deformação efectiva, já resolvido o modificador de inversão.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+///
+/// ⭐⭐⭐ **E desde 2026-09-15 ela é também o que o ARTISTA escolhe**, por ordem
+/// do dono (*«não devem ser ativados com CTRL mas checando o botão no
+/// painel»*). A espec descreve o alvo, onde o modificador **troca de
+/// deformação** e o artista alcança três botões e tem de descobrir que cada um
+/// tem uma segunda metade escondida; aqui as **cinco** estão à vista.
+///
+/// ⚠️ **A LEI não mudou, e é por isso que os `69` traços do oráculo ficam
+/// intactos:** o [`Controlos`] continua a ser `(modo, invertido)` e o
+/// [`Controlos::deformacao`] continua a resolvê-los — o que mudou foi quem
+/// **escolhe**, e a ponte do pincel entra por [`Self::modo_e_inversao`], que é a
+/// inversa exacta (há gate de ida-e-volta).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Deformacao {
+    #[default]
     Rodar,
     Torcer,
     Escalar,
     Transladar,
     Espremer,
+}
+
+impl Deformacao {
+    /// As cinco, **na ordem em que o painel as lista**.
+    ///
+    /// ⚠️ A ordem é a dos pares do alvo (`girar|torcer`, `escalar|transladar`,
+    /// `espremer`) achatada — assim quem vier de lá encontra os vizinhos onde os
+    /// deixou, e quem não vier lê uma lista de cinco gestos.
+    pub const ALL: [Self; 5] = [
+        Self::Rodar,
+        Self::Torcer,
+        Self::Escalar,
+        Self::Transladar,
+        Self::Espremer,
+    ];
+
+    /// O nome que a UI mostra.
+    ///
+    /// ⚠️ **`Squash / Stretch` é UM gesto e a barra é parte do nome** — ao
+    /// contrário das outras quatro, aqui não há duas metades: o modificador de
+    /// inversão **não muda nada** neste modo, e está medido (a fixtura invertida
+    /// é idêntica **ao bit** à normal).
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Rodar => "Rotate",
+            Self::Torcer => "Twist",
+            Self::Escalar => "Scale",
+            Self::Transladar => "Translate",
+            Self::Espremer => "Squash / Stretch",
+        }
+    }
+
+    /// **A INVERSA do [`Controlos::deformacao`]** — o par que a lei lê.
+    ///
+    /// ⚠️ **Ela existe para a lei não ter de mudar.** A alternativa era pôr a
+    /// `Deformacao` dentro de [`Controlos`] e apagar o par — e isso mudaria o
+    /// que as `69` fixturas do oráculo alimentam, que é a única coisa que mede
+    /// esta crate. *Quem escolhe muda; o que a lei lê, não.*
+    #[must_use]
+    pub fn modo_e_inversao(self) -> (Modo, bool) {
+        match self {
+            Self::Rodar => (Modo::GirarTorcer, false),
+            Self::Torcer => (Modo::GirarTorcer, true),
+            Self::Escalar => (Modo::EscalarTransladar, false),
+            Self::Transladar => (Modo::EscalarTransladar, true),
+            // ⚠️ **`false` e não «qualquer um»:** o modificador não muda a saída
+            // aqui, mas escrever `true` faria a ida-e-volta com o
+            // [`Controlos::deformacao`] deixar de ser a identidade **na
+            // representação**, e o gate que a prova é o que impede as duas
+            // tabelas de divergirem no dia de uma sexta deformação.
+            Self::Espremer => (Modo::EspremerEsticar, false),
+        }
+    }
 }
 
 /// A curva de atenuação, avaliada em `[0,1]`.

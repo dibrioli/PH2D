@@ -8,9 +8,13 @@ use ph2d_sculpt3d::{
     TransformKind, Verb,
 };
 
-/// Os seis interruptores, em tabela — ver o doc do módulo.
+/// Os interruptores, em tabela — ver o doc do módulo.
+///
+/// ⚠️ **O doc dizia «os SEIS» e eram DEZASSETE.** *Uma contagem escrita à mão ao
+/// lado de uma tabela envelhece na primeira adição*, e esta envelheceu onze
+/// vezes.
 #[path = "event_toggles.rs"]
-mod toggles;
+pub(crate) mod toggles;
 
 use crate::rows;
 use crate::state::{self, Sculpt3dIntent};
@@ -374,7 +378,7 @@ fn group_chip_ui(
         // ⚠️ **Sem re-armar nada**, pela mesma razão do falloff e dos modos do
         // tecido: escolher COMO a pose deforma é uma escolha sobre o pincel que
         // já está na mão, não a troca dele.
-        ui.brush.pose.modo = ph2d_sculpt3d::PoseModo::ALL[i];
+        ui.brush.pose.deformacao = ph2d_sculpt3d::PoseDeformacao::ALL[i];
     } else if let Some(i) = index_of(&crate::ids::SCULPT3D_BOUNDARY_MODE, id) {
         // ⚠️ **Sem re-armar nada**, pela mesma razão dos irmãos: escolher COMO a
         // borda deforma é uma escolha sobre o pincel que já está na mão.

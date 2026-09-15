@@ -99,10 +99,10 @@ pub(super) fn paint_pose_rows(
     if !snap.ui.brush.offers_pose_controls() {
         return y;
     }
-    let modos = ph2d_sculpt3d::PoseModo::ALL;
+    let modos = ph2d_sculpt3d::PoseDeformacao::ALL;
     let selected = modos
         .iter()
-        .position(|&m| m == snap.ui.brush.pose.modo)
+        .position(|&m| m == snap.ui.brush.pose.deformacao)
         .unwrap_or(0);
     let labels: Vec<&str> = modos.iter().map(|m| m.label()).collect();
     let y = labelled_seg(

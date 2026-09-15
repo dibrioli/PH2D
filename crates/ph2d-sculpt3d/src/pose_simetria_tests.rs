@@ -279,11 +279,12 @@ fn a_curva_do_pincel_chega_ao_modo_de_torcao() {
         let mut s = SculptStroke::default();
         s.begin(&malha);
         let b = Brush {
-            // ⚠️ **O modificador de inversão TROCA de deformação** (espec §0):
-            // é ele que põe o `Modo::GirarTorcer` no braço da torção.
-            invert: true,
             falloff,
             pose: crate::PoseControlos {
+                // ⚠️ **Escolhida no PAINEL desde 2026-09-15** — até então a
+                // torção era a metade escondida do `Rotate / Twist`, atrás do
+                // `Ctrl`, e este gate armava-a com `invert: true`.
+                deformacao: ph2d_pose::Deformacao::Torcer,
                 segmentos,
                 arrasto_x_pixels: ARRASTO_PX,
                 ..crate::PoseControlos::default()
@@ -472,4 +473,109 @@ fn a_auto_suavizacao_da_pose_segue_os_pesos_e_nao_o_raio() {
          alisamento — o passe nao esta' a passar pela porta que peneira o \
          nao-finito, e um param mal carregado alisa a forca cheia"
     );
+}
+
+/// ⛔⛔⛔ **O `Ctrl` NÃO TROCA A DEFORMAÇÃO DA POSE** — ordem do dono
+/// (2026-09-15: *«não devem ser ativados com CTRL mas checando o botão no
+/// painel»*).
+///
+/// Com as cinco deformações alcançáveis no painel, o modificador seria a
+/// **segunda** maneira de dizer a mesma coisa — e uma que **compõe** com a
+/// primeira: escolher `Twist` no painel e carregar `Ctrl` devolveria `Rotate`, e
+/// o artista leria isso como *«o botão não funciona»*. É o argumento que o
+/// [`Verb::honours_invert`] já escreve para os dois [`crate::Grip::Turn`],
+/// aplicado aqui.
+///
+/// ⚠️ **A régua é o BARRO e é AO BIT**, sobre as **cinco** — uma barra frouxa
+/// aceitaria o `Ctrl` a mudar alguma coisa de leve, e o que se afirma é que ele
+/// não chega ao verbo de todo.
+///
+/// ⚠️ **O controlo positivo vive no `deformacao`, não aqui:** o gate irmão
+/// `a_deformacao_escolhida_muda_o_gesto` prova que as cinco escolhas dão saídas
+/// diferentes — sem ele, este ficaria verde sobre um pincel que não faz nada.
+#[test]
+fn o_ctrl_nao_troca_a_deformacao_da_pose() {
+    for d in ph2d_pose::Deformacao::ALL {
+        let corre = |invert: bool| {
+            let mut malha = esfera();
+            let mut s = SculptStroke::default();
+            s.begin(&malha);
+            let b = Brush {
+                invert,
+                pose: crate::PoseControlos {
+                    deformacao: d,
+                    // A torção lê pixels de ecrã; sem eles ela é inerte e o
+                    // par de corridas seria idêntico por vácuo.
+                    arrasto_x_pixels: 40.0,
+                    ..crate::PoseControlos::default()
+                },
+                ..pincel()
+            };
+            s.dab(
+                &mut malha,
+                &b,
+                &puxao([0.0, 0.0, 1.0], b.radius, [0.0, 0.0, 0.25]),
+                Symmetry::default(),
+            );
+            malha.positions().to_vec()
+        };
+        assert_eq!(
+            corre(false),
+            corre(true),
+            "com `{d:?}` escolhido no painel, carregar Ctrl mudou o barro — o \
+             modificador voltou a chegar a este verbo, e ele COMPÕE com a \
+             escolha: quem escolher `Twist` e carregar Ctrl volta a `Rotate`"
+        );
+    }
+}
+
+/// ⭐⭐ **A ESCOLHA DO PAINEL MUDA O GESTO** — o controlo positivo do gate acima,
+/// e a prova de que as cinco deformações são cinco leis e não cinco rótulos.
+///
+/// ⚠️ **O arrasto tem componente nos dois eixos de propósito:** a escala e o
+/// espremer lêem a componente **ao longo** da cadeia e a rotação lê a
+/// **transversal** — um arrasto num eixo só deixaria duas das cinco inertes, e o
+/// gate leria isso como duas leis iguais.
+#[test]
+fn a_deformacao_escolhida_muda_o_gesto() {
+    let saidas: Vec<Vec<[f32; 3]>> = ph2d_pose::Deformacao::ALL
+        .into_iter()
+        .map(|d| {
+            let mut malha = esfera();
+            let mut s = SculptStroke::default();
+            s.begin(&malha);
+            let b = Brush {
+                pose: crate::PoseControlos {
+                    deformacao: d,
+                    arrasto_x_pixels: 40.0,
+                    ..crate::PoseControlos::default()
+                },
+                ..pincel()
+            };
+            s.dab(
+                &mut malha,
+                &b,
+                &puxao([0.0, 0.0, 1.0], b.radius, [0.18, 0.0, 0.18]),
+                Symmetry::default(),
+            );
+            malha.positions().to_vec()
+        })
+        .collect();
+    let repouso = esfera().positions().to_vec();
+    for (i, d) in ph2d_pose::Deformacao::ALL.into_iter().enumerate() {
+        assert_ne!(
+            saidas[i], repouso,
+            "`{d:?}` não moveu um único vértice — o botão existe e a lei não"
+        );
+        for (j, outra) in ph2d_pose::Deformacao::ALL
+            .into_iter()
+            .enumerate()
+            .skip(i + 1)
+        {
+            assert_ne!(
+                saidas[i], saidas[j],
+                "`{d:?}` e `{outra:?}` dão o MESMO barro — dois botões, uma lei"
+            );
+        }
+    }
 }

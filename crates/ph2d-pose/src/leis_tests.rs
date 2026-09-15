@@ -334,3 +334,56 @@ fn o_osso_fica_do_lado_da_ancora_com_simetria() {
         );
     }
 }
+
+/// ⛔⛔ **GATE — a `Deformacao` e o par `(modo, invertido)` são a MESMA coisa nos
+/// dois sentidos.**
+///
+/// A lei lê o par; o artista escolhe a deformação. Enquanto forem duas tabelas,
+/// elas divergem no dia da sexta entrada — e a divergência é **muda**: o painel
+/// mostraria um nome e o barro faria outro gesto.
+///
+/// ⚠️ **As duas metades são necessárias, e a segunda é a que morde:** a ida
+/// prova que toda deformação tem par; a VOLTA prova que todo par que a lei sabe
+/// resolver é **alcançável** pelo painel — sem ela, uma deformação podia
+/// desaparecer da lista e o gate ficava verde.
+#[test]
+fn a_deformacao_e_o_par_da_lei_sao_a_mesma_coisa() {
+    use crate::{Controlos, Deformacao, Modo};
+
+    for d in Deformacao::ALL {
+        let (modo, invertido) = d.modo_e_inversao();
+        let ctrl = Controlos {
+            modo,
+            invertido,
+            ..Controlos::default()
+        };
+        assert_eq!(
+            ctrl.deformacao(),
+            d,
+            "a ida-e-volta de {d:?} não fecha: o painel escolheria uma coisa e a \
+             lei faria outra"
+        );
+    }
+    // A VOLTA: todo par que a lei sabe resolver é alcançável pela lista.
+    for modo in Modo::ALL {
+        for invertido in [false, true] {
+            let d = Controlos {
+                modo,
+                invertido,
+                ..Controlos::default()
+            }
+            .deformacao();
+            assert!(
+                Deformacao::ALL.contains(&d),
+                "a lei resolve ({modo:?}, {invertido}) em {d:?} e o painel não \
+                 tem esse botão — ele seria inalcançável"
+            );
+        }
+    }
+    assert_eq!(
+        Deformacao::ALL.len(),
+        5,
+        "o piso de população: os três modos dão CINCO deformações distintas \
+         (o modificador não muda o espremer/esticar, e está medido)"
+    );
+}

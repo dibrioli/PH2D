@@ -286,3 +286,58 @@ fn a_rebuild_of_a_virgin_mesh_carries_no_planes() {
         "a reconstrução materializou planos que ninguém autorou"
     );
 }
+
+/// **SONDA** — o preço da rota por CAMPO, que é a alternativa a uma booleana de
+/// malha exacta quando alguém precisar de CORTAR a peça.
+///
+/// ⚠️ **Ela existe porque a decisão «booleana exacta ou voxel» não se toma por
+/// gosto:** esta casa tem a volta `malha → campo → malha` a shipar no botão de
+/// remesh e **não** tem booleana de malha 3D, logo a rota barata é esta — e o
+/// que ela custa em RELÓGIO e em FIDELIDADE decide se um corte pode ser
+/// interactivo. *Um limite legítimo diz de que recurso ele é* (`CLAUDE.md` §0.0).
+///
+/// ⛔ **E ela publica a consequência que nenhuma tabela de tempo mostra:** o
+/// [`remesh`] **tapa os buracos** antes de voxelizar (*«uma superfície com beira
+/// não tem dentro»* — ver o passo 1), logo esta rota **não sabe devolver uma
+/// peça com beira aberta**. Para um corte isso é uma decisão de produto, não um
+/// detalhe: ou o corte fica sempre tapado, ou esta rota não serve.
+#[test]
+#[ignore]
+fn diag_o_preco_da_volta_por_campo() {
+    let m = shapes::sculpt_sphere(1.0);
+    let raio_de = |malha: &ph2d_mesh::Mesh| -> f32 {
+        malha
+            .positions()
+            .iter()
+            .map(|p| ((p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt() - 1.0).abs())
+            .fold(0.0f32, f32::max)
+    };
+    // ⚠️⚠️ **O CONTROLO, e sem ele esta coluna mede a FIXTURA.** A
+    // [`shapes::sculpt_sphere`] é um CUBO SUBDIVIDIDO escalado — não é uma
+    // esfera —, logo ela já erra o raio sozinha. A 1.ª redação desta sonda
+    // imprimia o erro da saída sem o da entrada e lia-se como *«a volta por
+    // campo erra 3 %»*, quando o número é da peça. *Uma régua sem controlo
+    // positivo do próprio sujeito mede o nada e parece medir tudo.*
+    let controlo = raio_de(&m);
+    eprintln!(
+        "peça de fábrica: {} vértices · {} faces · erro do raio DELA: {controlo:.4}",
+        m.vert_count(),
+        m.face_count()
+    );
+    eprintln!(
+        "res |    células |  vértices |    faces |   relógio | erro do raio (controlo {controlo:.4})"
+    );
+    for res in [32u32, 48, 64, 96, 128, 192] {
+        let t = std::time::Instant::now();
+        let Ok((out, r)) = remesh(&m, res) else {
+            eprintln!("{res:3} | RECUSOU");
+            continue;
+        };
+        let ms = t.elapsed().as_secs_f64() * 1e3;
+        let pior = raio_de(&out);
+        eprintln!(
+            "{res:3} | {:10} | {:9} | {:8} | {ms:7.1}ms | {pior:.4}",
+            r.cells, r.verts.1, r.faces.1
+        );
+    }
+}

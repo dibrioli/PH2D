@@ -952,10 +952,22 @@ fn a_stroke_belongs_to_the_piece_it_started_on() {
          pode trocar de peça no meio de um gesto — nomeie-o aqui e prove que é \
          somente-leitura"
     );
+    // ⚠️⚠️ **O `sculpt_at` deixou de nomear o `pick_active` em 2026-09-14, e a
+    // LEI não se moveu** — foi o endereço textual dela. O projectar passou a
+    // picar contra a **superfície fotografada no pen-down** (o report do dono
+    // *«resultado bem bizarro»*: um dab deste verbo desloca o barro quase dois
+    // raios de pincel, logo a superfície foge de debaixo do cursor e o raio
+    // seguinte acerta no outro lado da peça), e o dab entra por uma porta nova.
+    // ⭐ *É a mesma forma que o `armed_brush_on` já pagou lá em cima: um gate
+    // ancorado num CORPO expira quando o corpo muda de casa.*
+    //
+    // ⇒ a asserção passa a seguir a CORRENTE inteira, e por isso fica mais
+    // forte do que era: o gesto pode entrar pelas duas portas, e a porta nova
+    // tem de **fechar na peça activa**.
     for gesture in ["sculpt_at(&mut self", "take_hold(&mut self"] {
         let body = function_body(&src, gesture);
         assert!(
-            body.contains("self.pick_active(x, y)"),
+            body.contains("self.pick_active(x, y)") || body.contains("self.pick_do_dab(x, y)"),
             "`{gesture}` consulta a peça ATIVA"
         );
         assert!(
@@ -963,6 +975,18 @@ fn a_stroke_belongs_to_the_piece_it_started_on() {
             "`{gesture}` NÃO pode repicar a lista no meio de um gesto"
         );
     }
+    let dab = function_body(&src, "pick_do_dab(&self");
+    assert!(
+        dab.contains("self.pick_active(x, y)") && !dab.contains("self.pick(x, y)"),
+        "o `pick_do_dab` tem de fechar na peça ACTIVA — sem esta linha o elo \
+         novo da corrente podia repicar a lista, e o gesto trocaria de peça a \
+         meio de uma pincelada"
+    );
+    assert!(
+        !dab.contains("self.active ="),
+        "e ele é somente-leitura sobre o activo — `&self` já o proíbe, e esta \
+         linha é o que impede alguém de o tornar `&mut self`"
+    );
 }
 
 /// **OS VERBOS DA LISTA são desfazíveis**, e a peça apagada volta INTEIRA.

@@ -2164,3 +2164,163 @@ pode viver anos numa crate que toda a gente usa.*
 próximo campo obriga um corte por assunto, e o candidato natural é o grupo *o que
 o pen-down fotografa* (`persistent_base` · `pecas_da_cena` · `pose_activa` ·
 `reference`), que pede uma sub-struct e toca ~20 sítios.
+
+---
+
+## §29 — ⛔⛔⛔ O report do dono sobre o **PROJECTAR** (*«resultado bem bizarro. não funciona corretamente»*) — **DUAS** causas, e nenhuma era a lei do raio
+
+A foto: a peça rasgada por **golpes longos e escuros** a atravessar a superfície.
+A `=45` é do §28, tem `1` dia, e o pincel passava os `16` gates de forma fechada
+e as `16` fixturas reconstrutíveis do oráculo.
+
+### §29.1 — A causa (A): **o pick perseguia o barro que o próprio dab mandara embora**
+
+Todo dab desta casa é re-picado da superfície **VIVA** (`sculpt_at` → `pick_active`
+→ `raycast` da malha de agora). Isso é inofensivo enquanto o deslocamento de um dab
+for uma **fracção do raio do pincel** — e é **falso** para este verbo: o `d` da
+[`projectar::distancia`] é uma distância da **CENA** (espec §6.5,
+`direcção · d · peso · força²`) e **nada na lei a compara com o carimbo**.
+
+Medido na `=45` de fábrica (raio do pincel `0,345`, força de fábrica `0,5` ⇒ `f² = 0,25`):
+um dab movia **`0,63`** — quase **dois raios**. ⇒ a superfície **foge de debaixo do
+cursor**, o raio do evento seguinte passa pelo buraco e acerta **no outro lado da peça**:
+
+```text
+dab 0 -> [ 0,59,  0,38,  0,74]   a frente da bola
+dab 1 -> [ 0,00, -0,03, -0,24]   ⛔ o MIOLO — nove pixels depois
+dab 2 -> [ 0,08, -0,02, -0,24]
+dab 3 -> [ 0,41,  0,17,  0,16]   e volta
+```
+
+**Seis dabs = seis crateras em sítios sem relação, e as fronteiras entre elas SÃO os
+golpes da foto.**
+
+⚠️⚠️ **E o corpus do oráculo não pode responder a isto:** as `24` fixturas correm
+sobre um **plano chato visto de frente**, onde a superfície recua **ao longo do
+próprio raio** e o cursor nunca a perde. *Uma paridade medida numa fixtura plana não
+afirma nada sobre uma peça curva.*
+
+⇒ **`Verb::pica_na_superficie_do_pen_down()`** (só o `SceneProject`), a fotografia
+em **`Sculpt3dScene::fotografa_a_superficie_do_pen_down`** e o **`pick_do_dab`** que
+a consome. Medido na geometria do report:
+
+| | vivo | congelado |
+|---|---|---|
+| passo entre dabs consecutivos | `1,2179` (`3,5 R`) | **`0,0554`** (`0,16 R`) |
+| **SALTO entre vizinhos** (o rasgo) | `0,6066` | **`0,0793`** |
+| pior deslocamento | `1,4710` | `1,0026` |
+
+⭐ **É a MESMA família que o polegar pagou no §27** — lá foge a **PEGADA**, aqui foge
+o **PICK**, um degrau acima. E a lei-irmã **já estava escrita** na cadeia de peso: com
+o `Accumulate` desarmado a curva de queda deste verbo já media as distâncias contra o
+`pre` do pen-down ([`GripLaw::from_live`]) — *o alvo já vinha da superfície congelada,
+e só o CENTRO não vinha*.
+
+⛔ **É `false` para todos os outros, e não por omissão:** os verbos de carimbo
+deslocam `raio × 0,1 × intensidade` (uma fracção do raio, por construção), os quatro
+grips de gesto já congelam pegada ou âncora, e o tecido desvia antes do `dab_core`.
+*Congelar o pick de quem não foge seria trocar o cursor por um fantasma sem comprar
+nada — e pagando uma cópia da malha por traço.*
+
+### §29.2 — A causa (B): **a cena `=45` não tinha região utilizável NENHUMA**
+
+A régua nova — [`diag_a_regua_da_cena`], que mede `d/R` na coluna do meio do canvas
+**pelo caminho do produto**, com a câmara de fábrica — lê, com a placa por BAIXO:
+
+```text
+   y px | acerto na peca              |      d | d/R
+    240 | [  0.31,  0.91,  0.33] |  1.963 |  5.70
+    320 | [  0.55,  0.54,  0.68] |  2.462 |  7.14
+    400 | [  0.63,  0.10,  0.80] |  2.707 |  7.85
+    440 | [  0.63, -0.15,  0.79] | (o raio nao acerta na placa)
+```
+
+⇒ **ou o barro viaja seis raios de pincel através da peça, ou não acontece nada.**
+A foto do dono era o **único** resultado possível, e a cena é exactamente a espécie
+que o `CLAUDE.md` §5.0 chama de *pior que uma cena ausente*.
+
+⛔⛔ **E a causa é GEOMÉTRICA, não uma escolha infeliz:** o raio da vista entra pela
+superfície virada ao artista e tem de **ATRAVESSAR a peça** para chegar a um alvo do
+outro lado ⇒ *um alvo externo a uma peça convexa custa sempre, no mínimo, a espessura
+dela* — `2` unidades de bola contra um pincel de `0,345`. **Nenhuma** posição de uma
+placa externa dá um deslocamento comparável ao carimbo.
+
+⇒ a placa passa a **CORTAR** a bola: `ALTURA_DA_PLACA` **`−1,25 → +0,40`**, um número
+**derivado** de três entradas medidas (o ponto da bola mais perto da câmara está em
+`z ≈ 0,775`; o raio do pincel mede `0,345`; o raio da vista desce `0,775` por unidade
+⇒ `0,775 − 0,345 × 0,775 ≈ 0,51`). A bola fica **meio enterrada na mesa** e o que
+sobressai é uma **CALOTA**. Medido depois: **`d/R` de `0,12` a `1,73`** em todo o ecrã.
+
+⚠️ **Três cercas, e o gate afirma as três** (`a_placa_corta_a_bola_e_deixa_uma_calota_a_vista`):
+ela tem de cortar a bola (senão o rasgo), ficar **abaixo de `0,775`** (senão fica entre
+a câmara e a calota e o `aim` do pen-down escolhe a **MESA** como peça activa) e ser
+**mais larga que o raio do corte** (senão fica **dentro** da peça e não há alvo à vista).
+
+⭐ **O roteiro foi reescrito e ENCOLHEU de 9 para 8 passos:** o (2) passa a ser o
+**Ctrl**, que aqui *é* a recusa da §6.3.3 (o raio vira para cima, não há alvo, o barro
+fica quieto), e o (3) liga o `Search Both Ways` para o **mesmo** gesto voltar a
+funcionar. *A lição da recusa e a do Ctrl eram dois passos e são uma.*
+
+### §29.3 — ⭐⭐⭐ O que a cura da CENA provocou no GATE — e é este o achado de método
+
+Com a `=45` corrigida, o **CONTROLO** do gate do traço deixou de reproduzir o defeito
+(passo `0,24` onde lia `1,22`) e ele **reprovou em voz alta**.
+
+⇒ a fixtura do gate passa a ser **`ALTURA_DO_REPORT = −1,25`**, guardada com o porquê
+escrito: *a lei do pick é sobre o **PINCEL** e não sobre esta cena* — nada impede o
+artista de pôr o alvo longe, e é exactamente aí que o cursor persegue o barro.
+
+> **Uma cena corrigida deixa de conter o fenómeno, e um gate cuja fixtura deixou de o
+> conter não afirma nada.**
+
+### §29.4 — O custo, MEDIDO (§0.0)
+
+[`diag_o_preco_da_fotografia`], `--release`, **mínimo de cinco com a mediana ao lado**
+(⚠️ a máquina estava a `load 40`: a mediana é o tecto de uma leitura suja):
+
+| a peça | mínimo | mediana |
+|---|---|---|
+| `98 306` verts (fábrica) | **`0,70 ms`** | `4,51` |
+| `393 218` (`K`) | `2,55` | `4,55` |
+| `1 572 866` (`KK`) | `10,40` | `23,03` |
+
+⭐ **UMA vez por traço, no pen-down** — não por dab —, ao lado da cópia que o
+`pecas_da_cena` já paga no mesmo instante e da que o `dyn_before` paga com a topologia
+dinâmica armada: *o orçamento aqui é o do gesto que começa, não os `8 ms` de um dab*.
+O **octree viaja na cópia** (é campo da `Mesh`), logo o primeiro raio não reconstrói
+árvore nenhuma.
+
+### §29.5 — Gates, sondas e provas
+
+Cinco gates novos e duas sondas:
+
+| gate | o que prende |
+|---|---|
+| `o_traco_do_projectar_fica_numa_superficie_so` | o mecanismo (passo entre dabs) **e** o sintoma (o rasgo), **com o lado sem a cura como controlo** |
+| `so_o_projectar_fotografa_a_superficie_do_pen_down` | a decisão é do **verbo**, com o lado NEGATIVO, e o fecho larga a cópia |
+| `o_pen_down_fotografa_a_superficie` | `include_str!` — o pen-down do produto chama a porta (ele pede um `AppHost` e não é alcançável de um teste) |
+| `a_placa_corta_a_bola_e_deixa_uma_calota_a_vista` | as **três** cercas da geometria, sem GPU |
+| `a_cena_reclama_o_nivel_que_o_roteador_declara` | (já existia) |
+
+**Mutação: 7 de 7 sangram** (o predicado do verbo · o pick a voltar ao vivo · a
+fotografia sem perguntar ao verbo · o pen-down sem a chamar · o fecho sem largar · a
+placa de volta para baixo · a placa dentro da bola).
+
+⚠️⚠️ **E o arnês passa pela PORTA DO PRODUTO:** a 1.ª redacção montava
+`superficie_do_pen_down` **à mão**, e com ela a mutação no predicado do verbo deixava
+o gate **verde**. *Um arnês que monta o estado que devia ser decidido mede outro
+programa* — a quarta vez que este módulo o paga.
+
+⚠️ **Tecto de LOC vermelho por ACUMULAÇÃO** (`history.rs`, `706` contra `700`), curado
+por **CORTE** e nunca por uma entrada no `FILE_OVERAGE_OK`: a **superfície de
+referência da multiresolução** (espec §2) virou assunto próprio em
+`history_referencia.rs` (`706 → 633`). *O corte é de responsabilidade: lá o que um
+gesto guarda para o `Ctrl+Z`, aqui contra que superfície um deslocamento se mede.*
+
+### §29.6 — ⏳ O que fica ABERTO (o §28.7 continua de pé)
+
+| # | item | estado |
+|---|---|---|
+| 1 | os **4** itens do §28.7 (composição por dab · as 6 fixturas · a folga simétrica · o alvo escondido) | ⏳ inalterados |
+| 2 | o `tip_roundness` da vassoura | ⏳ **pré-existente**, dívida da linha dona |
+| 3 | o rasgo residual do traço curado (`0,0793` contra `0,038` de um dab só) | ⏳ **é a composição de seis dabs sobrepostos**, não o pick — a mesma grandeza do item 1 |

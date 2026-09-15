@@ -117,7 +117,7 @@ use edges::resample_edges;
 use march::{Scene, march};
 use tiles::{SLABS, TILE, tiled_trace};
 
-pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Screen};
+pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Rays, Screen};
 pub use march::{
     EXHAUSTED, FORKED, HIST, MARCH_RAYS, NORMAL_SAMPLES, SLAB_SAMPLES, SLABS_COUNTED, STEP_HIST,
     STEP_SAMPLES, Stencil,

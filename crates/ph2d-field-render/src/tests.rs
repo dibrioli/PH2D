@@ -716,6 +716,50 @@ fn a_pixel_survives_the_round_trip() {
     }
 }
 
+/// ⭐⭐⭐ **O PONTO DE ACERTO É O MESMO COM E SEM NORMALIZAR** — as duas metades que a optimização
+/// de 2026-09-15 separou.
+///
+/// ⚠️ **É um gate de SEGUNDA PORTA.** O [`Orbit::ray_at_plane`] declara-se, por escrito, *«a porta
+/// única»* da aritmética do raio, e o [`Rays::point_at`] é uma segunda forma de chegar ao mesmo
+/// ponto por outro caminho algébrico (`o + v·(t/|v|)` em vez de `o + (v/|v|)·t`) — `6,6×` mais
+/// barata. *Duas respostas para a mesma pergunta divergem no dia em que alguém toca numa delas*, e
+/// o que impede isso é este teste.
+///
+/// ⚠️ A barra é **relativa** e não absoluta: a `t = 8` (o [`crate::T_MAX`]) um erro de um `ulp` na
+/// divisão escala com a distância, e uma barra absoluta passaria a medir o `t` em vez da lei.
+///
+/// ⛔ **As DUAS lentes**, e a paralela não é decoração: ali a direcção já é unitária, logo o
+/// caminho rápido não tem divisão nenhuma — um sinal trocado no `ORTHO_START - t` é exactamente o
+/// tipo de coisa que só uma lente exercita.
+#[test]
+fn o_ponto_de_acerto_e_o_mesmo_com_e_sem_normalizar() {
+    for lens in [Lens::Ortho, Lens::Perspective { half_fov: 0.4 }] {
+        let cam = Orbit {
+            rotation: Orbit::from_yaw_pitch(0.7, -0.35).rotation,
+            half_extent: 0.8,
+            target: [0.3, -0.2, 0.15],
+            lens,
+        };
+        let raios = cam.rays();
+        for (u, v) in [(0.0, 0.0), (0.7, -0.5), (-0.61, 0.44), (0.8, 0.8)] {
+            for t in [0.0, 1e-3, 0.5, 3.25, crate::T_MAX] {
+                let (o, d) = raios.at_plane(u, v);
+                let devagar = [0, 1, 2].map(|i| o[i] + d[i] * t);
+                let rapido = raios.point_at(u, v, t);
+                for i in 0..3 {
+                    let folga = 1e-6 * devagar[i].abs().max(1.0);
+                    assert!(
+                        (devagar[i] - rapido[i]).abs() <= folga,
+                        "{lens:?} · uv ({u}, {v}) · t {t}: o eixo {i} lê {} devagar e {} rápido",
+                        devagar[i],
+                        rapido[i]
+                    );
+                }
+            }
+        }
+    }
+}
+
 /// ⭐ **O gizmo e o traçador concordam sobre onde um ponto do mundo cai.**
 ///
 /// ⚠️ É o gate que junta as duas metades que **têm** de ser a mesma conta. O gizmo projeta as alças

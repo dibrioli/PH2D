@@ -348,6 +348,44 @@ impl Tracer {
             height,
         )
     }
+    /// ⭐ **Quanto custa TRAZER `bytes` de volta** — a fase que o `submit` do quadro esconde.
+    ///
+    /// ⚠️ **É diagnóstico, e não o caminho do produto:** o quadro copia e lê no MESMO `submit` que
+    /// despacha o compute, logo um relógio à volta dele mede os dois juntos. Esta porta mede só a
+    /// travessia, sobre o mesmo volume de bytes, e é assim que a sonda `frame_budget` separa as
+    /// fases sem tocar no que shipa.
+    #[must_use]
+    pub fn mede_leitura(&self, bytes: u64, corridas: usize) -> f64 {
+        let bytes = bytes.max(16);
+        let origem = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("origem"),
+            size: bytes,
+            usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
+        let mut melhor = f64::INFINITY;
+        for _ in 0..corridas {
+            let t = std::time::Instant::now();
+            let destino = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("leitura"),
+                size: bytes,
+                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let mut enc = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+            enc.copy_buffer_to_buffer(&origem, 0, &destino, 0, bytes);
+            self.queue.submit([enc.finish()]);
+            destino.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+            self.device.poll(wgpu::PollType::wait_indefinitely()).ok();
+            let dados = destino.slice(..).get_mapped_range();
+            std::hint::black_box(dados[0]);
+            drop(dados);
+            melhor = melhor.min(t.elapsed().as_secs_f64() * 1e3);
+        }
+        melhor
+    }
 }
 
 /// A forma de **SONDA**: abre o dispositivo, corre um quadro e fecha.
@@ -659,13 +697,20 @@ impl DeviceGbuffer {
         let mut hit = Vec::with_capacity(n);
         let mut point = Vec::with_capacity(n);
         let w = self.width as usize;
-        for (i, t) in self.t.iter().enumerate() {
-            hit.push(*t >= 0.0);
+        // ⭐⭐⭐ **O PONTO reconstrói-se SEM normalizar a direcção** — ver
+        // [`ph2d_field_render::Rays::point_at`] para a álgebra e a tabela. Medido a `1920×1080`
+        // neste laço: **`37,87 → 5,75 ms`**, que era a maior fatia do quadro inteiro (`87,58`).
+        let raios = cam.rays();
+        for y in 0..self.height as usize {
             #[allow(clippy::cast_precision_loss)]
-            let (px, py) = ((i % w) as f32 + 0.5, (i / w) as f32 + 0.5);
-            let (u, v) = screen.plane_at(px, py);
-            let (o, d) = cam.ray_at_plane(u, v);
-            point.push([o[0] + d[0] * t, o[1] + d[1] * t, o[2] + d[2] * t]);
+            let py = y as f32 + 0.5;
+            for x in 0..w {
+                let t = self.t[y * w + x];
+                hit.push(t >= 0.0);
+                #[allow(clippy::cast_precision_loss)]
+                let (u, v) = screen.plane_at(x as f32 + 0.5, py);
+                point.push(raios.point_at(u, v, t));
+            }
         }
         let edges = self
             .edges

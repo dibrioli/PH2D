@@ -83,6 +83,95 @@ pub struct Orbit {
     pub lens: Lens,
 }
 
+/// ⭐⭐⭐ **A câmera com a base já resolvida** — ver [`Orbit::rays`] para o preço que ela paga.
+///
+/// ⚠️ Ela é um **retrato**, não uma vista: se a câmera se mexer, este `Rays` é o de antes. É de
+/// propósito — um quadro traça-se com UMA câmera, e é isso que faz o retrato ser barato.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Rays {
+    /// O ponto que fica no centro do quadro.
+    pub target: [f32; 3],
+    /// Os três eixos da câmera no MUNDO.
+    pub right: [f32; 3],
+    /// O eixo vertical.
+    pub up: [f32; 3],
+    /// O eixo que aponta **para o olho**.
+    pub fwd: [f32; 3],
+    /// Onde está o olho, ou `None` na lente paralela.
+    pub eye: Option<[f32; 3]>,
+}
+
+impl Rays {
+    /// ⭐⭐⭐ **O PONTO de acerto a `t`, sem NUNCA normalizar a direcção.**
+    ///
+    /// # A álgebra, e porque ela é a cura
+    ///
+    /// O caminho ingénuo é `o + d·t` com `d = v/|v|`: isso são **três divisões** (uma por
+    /// componente) mais um `sqrt`, por pixel. Mas
+    ///
+    /// ```text
+    /// o + (v/|v|)·t  =  o + v·(t/|v|)
+    /// ```
+    ///
+    /// e o lado direito tem **UMA** divisão. ⚠️ Uma divisão em `f32` tem ~15 ciclos de latência e
+    /// péssimo débito, e três seguidas não emparelham — é isso, e não a trigonometria, que domina
+    /// um laço de dois milhões de pixels.
+    ///
+    /// # ⭐ Medido a `1920×1080` (sonda `ph2d-field-gpu --example frame_budget`)
+    ///
+    /// | laço que reconstrói o ponto | ms |
+    /// |---|---:|
+    /// | `at_plane` + `o + d·t` | `37,87` |
+    /// | o mesmo com recíproco no `plane_at` | `37,60` |
+    /// | **`point_at`** | **`5,75`** |
+    /// | só encher os `24 MB` de saída | `0,61` |
+    ///
+    /// ⇒ **`6,6×`**, e o que sobra está a `9×` do custo da memória. ⛔ **Duas hipóteses caíram
+    /// antes desta**: a base de quaternião (ver [`Orbit::rays`]) e a divisão do
+    /// [`Screen::plane_at`], as duas com ganho **zero**.
+    ///
+    /// ⚠️ **NÃO é bit-a-bit o `o + d·t`** — a ordem das operações muda o último bit. Ele é o mesmo
+    /// ponto à precisão da representação, e há gate a prendê-los (`o_ponto_de_acerto_e_o_mesmo_com
+    /// _e_sem_normalizar`). ⛔ Onde a DIRECÇÃO é o produto — a marcha, que caminha ao longo dela —
+    /// isto não serve: lá o vector unitário é a resposta, não um meio.
+    #[must_use]
+    pub fn point_at(self, u: f32, v: f32, t: f32) -> [f32; 3] {
+        let on_plane = [0, 1, 2].map(|i| self.target[i] + self.right[i] * u + self.up[i] * v);
+        let Some(eye) = self.eye else {
+            // Na paralela a direcção é `-fwd`, que já é unitária: nada a dividir.
+            return [0, 1, 2].map(|i| on_plane[i] + self.fwd[i] * (ORTHO_START - t));
+        };
+        let d = [0, 1, 2].map(|i| on_plane[i] - eye[i]);
+        let len = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+        if len <= 0.0 || !len.is_finite() {
+            return [0, 1, 2].map(|i| eye[i] - self.fwd[i] * t);
+        }
+        let k = t / len;
+        [0, 1, 2].map(|i| eye[i] + d[i] * k)
+    }
+
+    /// O raio que sai de `(u, v)` do plano do alvo, em unidades de mundo.
+    ///
+    /// ⚠️ **A origem fica FORA da peça**, e não sobre o plano do alvo — a mesma lei do
+    /// [`Orbit::ray_at_plane`], que é quem delega aqui.
+    #[must_use]
+    pub fn at_plane(self, u: f32, v: f32) -> ([f32; 3], [f32; 3]) {
+        let on_plane = [0, 1, 2].map(|i| self.target[i] + self.right[i] * u + self.up[i] * v);
+        let Some(eye) = self.eye else {
+            return (
+                [0, 1, 2].map(|i| on_plane[i] + self.fwd[i] * ORTHO_START),
+                [-self.fwd[0], -self.fwd[1], -self.fwd[2]],
+            );
+        };
+        let d = [0, 1, 2].map(|i| on_plane[i] - eye[i]);
+        let len = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+        if len <= 0.0 || !len.is_finite() {
+            return (eye, [-self.fwd[0], -self.fwd[1], -self.fwd[2]]);
+        }
+        (eye, [d[0] / len, d[1] / len, d[2] / len])
+    }
+}
+
 impl Default for Orbit {
     fn default() -> Self {
         // Três-quartos, ligeiramente por cima: o ângulo em que uma aresta viva e um filete se
@@ -340,33 +429,35 @@ impl Orbit {
     /// origem sobre o plano perderia tudo o que está à frente dele — metade da peça, em silêncio.
     #[must_use]
     pub fn ray_at_plane(&self, u: f32, v: f32) -> ([f32; 3], [f32; 3]) {
+        self.rays().at_plane(u, v)
+    }
+
+    /// ⭐⭐⭐ **A CÂMERA RESOLVIDA UMA VEZ** — a porta que um laço por pixel usa.
+    ///
+    /// # ⚠️⚠️ O que ela NÃO comprou, medido (2026-09-15)
+    ///
+    /// Ela nasceu de uma hipótese **REFUTADA**. O [`Self::ray_at_plane`] chama [`Self::basis`], que
+    /// são três rotações de quaternião, e eu li isso como o custo do laço por pixel que reconstrói
+    /// o ponto do dispositivo — `43,71 ms` de um quadro de `87,58` a `1920×1080`. ⛔ **Hoistar a
+    /// base mediu ZERO** (`47,44 → 48,20 ms`, dentro do ruído): uma rotação de quaternião são ~30
+    /// operações **sem divisão**, e o compilador já a tirava do laço.
+    ///
+    /// ⭐ **O que compra o tempo é o [`Rays::point_at`]** — ver o doc dele. Esta porta fica por ser
+    /// onde ele mora, e porque torna explícito o que é constante no quadro; ⛔ **não** por relógio.
+    ///
+    /// ⚠️ **O `ray_at_plane` continua a ser a porta única da aritmética**: ele delega aqui, logo
+    /// não há uma segunda resposta a *«que raio sai daqui?»*.
+    #[must_use]
+    pub fn rays(&self) -> Rays {
         let (right, up, fwd) = self.basis();
-        let on_plane = [
-            self.target[0] + right[0] * u + up[0] * v,
-            self.target[1] + right[1] * u + up[1] * v,
-            self.target[2] + right[2] * u + up[2] * v,
-        ];
-        match self.eye() {
-            None => (
-                [
-                    on_plane[0] + fwd[0] * ORTHO_START,
-                    on_plane[1] + fwd[1] * ORTHO_START,
-                    on_plane[2] + fwd[2] * ORTHO_START,
-                ],
-                [-fwd[0], -fwd[1], -fwd[2]],
-            ),
-            Some(eye) => {
-                let d = [
-                    on_plane[0] - eye[0],
-                    on_plane[1] - eye[1],
-                    on_plane[2] - eye[2],
-                ];
-                let len = dot(d, d).sqrt();
-                if len <= 0.0 || !len.is_finite() {
-                    return (eye, [-fwd[0], -fwd[1], -fwd[2]]);
-                }
-                (eye, [d[0] / len, d[1] / len, d[2] / len])
-            }
+        Rays {
+            target: self.target,
+            right,
+            up,
+            fwd,
+            eye: self
+                .eye_distance()
+                .map(|d| [0, 1, 2].map(|i| self.target[i] + fwd[i] * d)),
         }
     }
 }

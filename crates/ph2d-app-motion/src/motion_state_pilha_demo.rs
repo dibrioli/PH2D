@@ -233,3 +233,11 @@ mod curas;
 #[cfg(test)]
 #[path = "motion_state_pilha_demo_obra.rs"]
 mod obra;
+
+/// ⭐ E o que mede O SALTO depois de assentar (5.º report do dono) — ver o cabeçalho dele.
+///
+/// ⚠️ Irmão próprio e não mais uma secção do [`tremor`]: um salto é um **EXTREMO num intervalo
+/// curto**, e aquele ficheiro mede medianas e somas — *as duas grandezas não partilham uma régua*.
+#[cfg(test)]
+#[path = "motion_state_pilha_demo_salto.rs"]
+mod salto;

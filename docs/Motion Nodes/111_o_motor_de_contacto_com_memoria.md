@@ -426,3 +426,95 @@ portas diferentes.** Enquanto isso durou, nenhuma varredura de `substeps` podia 
 O gate `the_pile_settles_instead_of_buzzing` deixa de ser um vermelho declarado e passa a **VERDE**,
 com prova red-first: com `SUBSTEPS = 1` ele reprova nomeando as **cinco** peças do fundo que o dono
 fotografou.
+
+## §5.9 — ⭐⭐⭐ O 5.º REPORT: o SALTO depois de assentar, e ele é MAIS VELHO que a cura
+
+> *«Melhorou os tremores mas a física ficou imprecisa. Essas 4 caixas apontadas depois de se
+> assentar corretamente uma sobre a outra, dão um salto e ficam nessa angulação irreal»*
+> — o dono, 2026-09-15, com foto e **quatro setas no meio do monte**.
+
+### §5.9.1 — ⛔⛔ A régua nova nasceu ERRADA TRÊS vezes, e cada erro tem nome
+
+A medição está em [`motion_state_pilha_demo_salto.rs`](../../crates/ph2d-app-motion/src/motion_state_pilha_demo_salto.rs).
+⚠️ **Antes de ela ver o defeito, foi preciso corrigi-la três vezes** — e as três correcções são a
+lição, não o preâmbulo:
+
+| # | o que estava errado | o que ela lia | porquê |
+|---|---|---|---|
+| 1 | a **UNIDADE DE TEMPO**: salto = `1` tique | `0,89°`, invisível | *o olho não chama salto a um tique* — chama a tudo o que passa mais depressa do que ele acompanha (~`0,1 s`) |
+| 2 | a **JANELA**: parava em `174` (`2,9 s`, o 1.º ciclo) | nada | o salto cai no assentar da **SEGUNDA** queda, e a margem `JANELA + salto` comia ainda mais cauda |
+| 3 | o **SUJEITO**: `com_substeps` escrevia numa zona só | as células `1/2/4/8` **idênticas** | ver §5.9.2 |
+
+⇒ *a grandeza deste report é um EXTREMO num intervalo curto*, e as quatro réguas que a cena tinha
+são **médias, somas ou fotografias** — cegas a ele por construção, cada uma por um motivo diferente.
+É a **quinta** vez que esta linha paga esta forma exacta.
+
+### §5.9.2 — ⛔⛔⛔ A CURA PARTIU A RÉGUA QUE A MEDIU, e ela lia `max(8, pedido)`
+
+O `substeps` é o **RELÓGIO DO GRAFO**: [`graph_substeps`](../../crates/ph2d-nodegraph/src/cook_substep.rs)
+toma o **MÁXIMO** sobre todo nó que declara o param. A sonda escrevia só na zona da **DIREITA**
+(`.last()`), e a cena tem **duas**. No dia em que a cura assou `SUBSTEPS = 8` no `build()`, a zona da
+**ESQUERDA** passou a fixar um CHÃO de `8`:
+
+```text
+  ANTES da correcção          DEPOIS (todas as zonas)
+  1 | 0.182..0.219  4.57 ms   1 | 3.787..5.691  0.73 ms
+  2 | 0.182..0.219  4.59 ms   2 | 0.670..1.400  1.43 ms
+  4 | 0.182..0.219  4.54 ms   4 | 0.172..0.610  2.57 ms
+  8 | 0.182..0.219  4.54 ms   8 | 0.182..0.219  4.54 ms
+ 16 | 0.087..0.171  9.77 ms  16 | 0.087..0.171  9.78 ms
+```
+
+⚠️⚠️ **Quatro células idênticas leem-se como uma varredura.** É a mesma forma do censo que passa a
+varrer por um prefixo que já não existe: *a cura mudou o SUJEITO da medição, e a medição não soube.*
+⭐ Com a correcção, **a tabela do §5.8.2 reproduz exactamente** — o `8` que shipou foi medido certo.
+
+### §5.9.3 — ⭐⭐⭐ O defeito, medido
+
+`substeps = 8`, peça `12`, tique `157`: quieta a **`0,147 °/tique`**, roda **`23,26°` em 8 tiques**
+deslocando **`0,52` do lado dela**, e fica quieta outra vez a **`0,337°`**. A peça `17` salta
+`16,5°` no **mesmo instante** — *duas peças de uma vez, que é o que as quatro setas mostram.*
+
+O perfil no tempo mostra-o sem ambiguidade (a pilha assente, o salto, a pilha assente):
+
+```text
+  indice |  pior |Δrot| do tique
+     150 |   0.27°   ← parada
+     163 |   7.81°
+     164 |  18.20°   ← o salto
+     171 |   1.08°   ← parada outra vez
+```
+
+### §5.9.4 — ⛔⛔ E os SUB-PASSOS **não o causam** — eles REVELAM-no
+
+Cinco realizações por célula (`probe_o_salto_contra_os_substeps`), perturbando o berço em `±0,003`:
+
+| substeps | pior salto legítimo (5 realizações) | mediana |
+|---|---|---|
+| **1** (o que shipava ontem) | `8,93°` `8,41°` `1,73°` `0,90°` `8,45°` | `8,41°` |
+| 4 | `17,45°` `17,29°` `2,66°` `17,32°` `17,36°` | `17,32°` |
+| **8** (o que shipa) | `7,78°` `3,40°` `16,51°` `3,15°` `3,46°` | `3,46°` |
+| 16 | `2,46°` `30,32°` `1,60°` `21,97°` `20,13°` | `20,13°` |
+
+⭐⭐⭐ **O salto já existia a `substeps = 1`**, e as medianas **NÃO ORDENAM**: o ruído entre
+realizações (`0,90°` a `30,32°`) engole qualquer tendência. ⇒ *a cura do tremor não trouxe este
+defeito; ela tirou o tremor que o CAMUFLAVA.* Antes nada assentava — e **um salto não tem contraste
+contra ruído**.
+
+⚠️ **Consequência de produto: não há motivo para reverter os sub-passos.** As duas queixas são
+defeitos diferentes, e a segunda é mais velha que a primeira cura.
+
+### §5.9.5 — ⛔ Porque NÃO há gate ainda
+
+A barra teria de sair de um **vale medido**, e este corpus não tem nenhum: o pior de toda a
+varredura é `30,32°` e um quadrado tem simetria de `90°`. *Inventar um número aqui é exactamente o
+que o `CLAUDE.md` §0.0 proíbe* — o gate nasce **com a cura**, que é quem define o lado aprovado.
+O que fica é a régua, as sondas e esta tabela.
+
+⏳ **ABERTO — as duas hipóteses com endereço, nenhuma medida ainda:**
+1. **A rotação de contacto é projecção de POSIÇÃO sem velocidade angular** (declarado no cabeçalho
+   de [`contact.rs`](../../crates/ph2d-node-sim-step/src/contact.rs)) — nada a amortece, então uma
+   peça encravada pode acumular correcção até se libertar de repente.
+2. **Dois solvers independentes disputam a mesma peça:** o `sim.step` resolve peça×peça e o
+   `sim.collide` resolve peça×mundo **a jusante**, sem nenhum saber do outro — uma peça entalada
+   entre a parede da taça e as vizinhas é projectada por ambos, alternadamente.

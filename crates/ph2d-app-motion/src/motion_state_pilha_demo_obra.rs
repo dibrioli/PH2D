@@ -290,7 +290,11 @@ fn probe_os_sub_passos() {
 }
 
 /// A cena com `substeps` escrito na zona da DIREITA e o berço deslocado `eps`.
-fn com_substeps(eps: f32, substeps: u32) -> (MotionState, NodeId) {
+///
+/// ⚠️ **`pub(super)` porque o irmão [`super::salto`] a consome** — uma 2.ª cópia desta montagem
+/// seria a 2.ª resposta à pergunta *«que cena estou a medir?»*, e é dela que sai a perturbação do
+/// berço que dá o ruído entre realizações.
+pub(super) fn com_substeps(eps: f32, substeps: u32) -> (MotionState, NodeId) {
     let mut state = MotionState::new();
     let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
     let tipo = |state: &MotionState, t: &str| -> Vec<NodeId> {
@@ -303,7 +307,16 @@ fn com_substeps(eps: f32, substeps: u32) -> (MotionState, NodeId) {
             .map(|n| n.id)
             .collect()
     };
-    if let Some(zona) = tipo(&state, "sim.zone").last().copied() {
+    // ⛔⛔ **AS DUAS zonas, e a lição custou uma tabela inteira.** O relógio do sub-passo é do
+    // GRAFO, não do nó: [`ph2d_nodegraph::cook::graph_substeps`] toma o **MÁXIMO** sobre todo nó
+    // que declara o param. Esta sonda escrevia só na zona da DIREITA (`.last()`) — e no dia em que
+    // a cura assou `SUBSTEPS = 8` no `build()`, a zona da ESQUERDA passou a fixar um CHÃO de `8`:
+    // pedir `1`, `2`, `4` ou `8` devolvia a mesma célula, e só o `16` se mexia.
+    //
+    // ⚠️⚠️ *A régua ficou cega exactamente abaixo do valor que a cura shipou* — ela media
+    // `max(8, pedido)` e lia-se como uma varredura. É a mesma forma do censo que varre por prefixo
+    // e passa a varrer zero: **a cura mudou o sujeito da medição, e a medição não soube**.
+    for zona in tipo(&state, "sim.zone") {
         #[expect(clippy::cast_precision_loss, reason = "uma contagem pequena")]
         let v = substeps as f32;
         state.doc.graph.set_param(zona, "substeps", v);

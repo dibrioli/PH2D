@@ -105,29 +105,69 @@ const LARGURA_PX: u32 = 512;
 /// comprimento — e portanto o ALCANCE — de cada osso.
 const OSSOS: u32 = 3;
 
-/// ⭐⭐⭐ **A altura do canvas é DERIVADA do alcance de um osso — nunca escrita à mão.**
+/// A altura do canvas, em pixels — uma TIRA, porque é numa tira que uma curva se lê.
 ///
-/// ⛔⛔ É esta derivação que impede a banda órfã que reprovou a 1.ª redacção (ver o cabeçalho). O
-/// raio de um osso é `comprimento × strength`, o comprimento é `LARGURA_PX / OSSOS`, e a arte sobe
-/// `ALTURA_PX / 2` acima do eixo ⇒ **a meia-altura tem de ficar ABAIXO do comprimento de um osso**.
-///
-/// ⚠️ **A folga é `15/16`, e ela não é decoração:** a medição põe a ravina exactamente onde a
-/// aritmética a põe (meia-altura `168` limpa, `176` já com `4,12 %` de órfãs sobre um alcance de
-/// `170,67`), e uma fixtura encostada à ravina é uma fixtura que a próxima edição empurra lá para
-/// dentro. ⛔ Escrever `320` como literal ao lado de `512` seriam **dois números independentes**, e
-/// mexer num deles levaria a arte para fora do alcance **em silêncio** — que é o defeito que esta
-/// cena pagou uma vez.
-const ALTURA_PX: u32 = 2 * LARGURA_PX * FOLGA_16 / (OSSOS * 16);
+/// ⚠️ `5/8` da largura é uma escolha de FORMA (a arte tem de ser pintável e a dobra tem de se ver);
+/// o que **não** é escolha é o alcance dos ossos que a carregam — ver [`forca_do_osso`].
+const ALTURA_PX: u32 = LARGURA_PX * 5 / 8;
 
-/// A folga entre a meia-altura da arte e o alcance de um osso, em dezasseis avos. Ver [`ALTURA_PX`].
-const FOLGA_16: u32 = 15;
+/// ⭐⭐⭐ **QUE FRACÇÃO DO ALCANCE DE UM OSSO A ARTE USA — e o número é MEDIDO, não escolhido.**
+///
+/// ⛔⛔⛔ **HÁ DOIS PRECIPÍCIOS, e a 2.ª redacção desta cena caiu no segundo** (report do dono,
+/// 2026-09-15: *«a malha deforma a curva»*, com a seta na borda de cima).
+///
+/// O primeiro é o **ÓRFÃO**: fora do raio de todo osso a pele salta em salto seco para o mais
+/// próximo, e a arte RASGA. A 1.ª redacção caiu nesse, e a cura foi pôr a arte dentro do alcance.
+///
+/// ⚠️⚠️ **O segundo mora LOGO DENTRO do primeiro, e nenhuma régua deste repo o via:** o peso de um
+/// osso é o *bump* `(1 − x²)²` com `x = d/raio`, e os pesos são **NORMALIZADOS**. Junto da borda do
+/// suporte todos os pesos tendem a zero, e a razão entre dois números que tendem a zero varia
+/// depressa ⇒ **a curvatura do campo explode**. O mapa continua contínuo e injectivo (`0,00 %` de
+/// órfãs, `0,00 %` do avesso) e mesmo assim a malha, que pinta **um afim por triângulo**, deixa de
+/// o conseguir seguir: a arte sai FACETADA e uma circunferência desenhada por cima sai com quinas.
+///
+/// ## A medição (512×320, dobra `25°`, a grelha de fábrica, `780` triângulos nas cinco linhas)
+///
+/// | `strength` | meia-altura / raio | órfã | **desvio da faceta** | `det_min` |
+/// |---:|---:|---:|---:|---:|
+/// | `1,0` — a redacção reprovada | `0,938` | `0,00 %` | **`14,24 px`** | `0,2518` |
+/// | `1,5` | `0,625` | `0,00 %` | `1,89 px` | `0,5846` |
+/// | **`2,0`** — esta cena | **`0,469`** | `0,00 %` | **`0,92 px`** | `0,7475` |
+/// | `3,0` | `0,312` | `0,00 %` | `0,59 px` | `0,8279` |
+///
+/// ⭐ **`15×` melhor sem um triângulo a mais** — a mesma arte, a mesma dobra, a mesma malha.
+///
+/// ⚠️ **O `0,47` é o joelho:** abaixo dele a curva achata (`0,92 → 0,59 px` custa `1,5×` de alcance)
+/// e acima dele ela dispara (`0,625` já dá o dobro). ⛔ E não é um tecto de recurso: é o sítio onde
+/// a arte deixa de viver na borda do suporte dos pesos.
+const FRACCAO_DO_ALCANCE: f64 = 0.47;
+
+/// ⭐⭐⭐ **A FORÇA DE CADA OSSO, DERIVADA DA ARTE** — nunca um literal ao lado dos outros.
+///
+/// O raio de um osso é `comprimento × strength` ([`ph2d_skeleton::SkinBone::new`]) e o comprimento
+/// aqui é `LARGURA_PX / OSSOS`. Queremos que a meia-altura da arte seja a [`FRACCAO_DO_ALCANCE`]
+/// desse raio ⇒ `strength = (ALTURA_PX / 2) / (LARGURA_PX / OSSOS) / FRACCAO`.
+///
+/// ⚠️ **É a derivação que corre no sentido certo:** a arte é o sujeito e o rig serve-a. Escrever
+/// `2.0` ao lado de `512` e `320` seriam três números independentes, e mexer em qualquer um levaria
+/// a arte de volta à borda do alcance **em silêncio** — que é exactamente como esta cena foi
+/// reprovada duas vezes.
+///
+/// ⛔ **Isto NÃO é armar a cena por baixo da mesa.** A `strength` é uma propriedade AUTORADA do
+/// osso, no painel do esqueleto, e o que ela significa é *«até onde este osso alcança»*: um rig cuja
+/// arte vive a `94 %` do alcance é um rig mal autorado, e é isso que a 2.ª redacção tinha. ⚠️ Que o
+/// app não guie o artista para longe da borda é um item ABERTO, com o número ao lado (o handoff §13).
+fn forca_do_osso() -> f64 {
+    let raio_base = f64::from(LARGURA_PX) / f64::from(OSSOS);
+    (f64::from(ALTURA_PX) / 2.0) / raio_base / FRACCAO_DO_ALCANCE
+}
 
 /// Quanto cada junta dobra, em graus.
 ///
-/// ⚠️ **Escolhido para a dobra ser VISÍVEL sem inverter a malha**: medido nesta geometria, `25°` por
-/// junta dá `det_min 0,2497` com `0,00 %` da arte do avesso e `0,00 %` órfã (tabela no cabeçalho).
-/// ⛔ **A régua que decide é a da ÓRFÃ, não a da inversão** — foi trocar as duas que reprovou a 1.ª
-/// redacção desta cena.
+/// ⚠️ **Escolhido para a dobra ser VISÍVEL sem maltratar a arte**: medido nesta geometria, `25°` por
+/// junta dá `0,00 %` órfã, `0,00 %` do avesso, `det_min 0,7475` e `0,92 px` de faceta.
+/// ⛔⛔ **São TRÊS réguas e não uma**, e cada redacção desta cena caiu na que eu não tinha corrido:
+/// a inversão (que eu citei), a **órfã** (que reprovou a 1.ª) e a **faceta** (que reprovou a 2.ª).
 const DOBRA_GRAUS: f32 = 25.0;
 
 /// **Os eixos dos ossos, em metros de mundo** — a corrente deitada ao longo da largura do canvas.
@@ -136,6 +176,36 @@ const DOBRA_GRAUS: f32 = 25.0;
 /// (ela precisa do renderer e do atlas), então o que ele reusa é isto: escrever a disposição duas
 /// vezes faria o gate medir uma cena que o dono não vê. *Duas cópias de uma geometria convergem
 /// enquanto ninguém mexe numa delas.*
+/// ⭐⭐⭐ **A CORRENTE, criada e com o ALCANCE já escrito** — a porta ÚNICA que a monta.
+///
+/// ⛔⛔ **Ela existe por uma mutação que SOBREVIVEU** (2026-09-15): os gates montavam a corrente
+/// eles próprios e escreviam a força eles próprios, logo mediam uma **reconstrução** da cena. Pôr
+/// `strength = 1.0` na [`build`] deixava os seis verdes — *a lei escrita em dois sítios prova-se num
+/// sítio e ship-a no outro*. Com esta porta há UM lugar onde a força é escrita, e os gates passam
+/// por ele.
+///
+/// `None` quando um osso não nasce — e aí quem chama PARA, porque uma cena com meia corrente monta
+/// e não demonstra nada.
+fn corrente(sim: &mut SimWorld, pixels_per_meter: f32) -> Option<Vec<Entity>> {
+    let mut pai: Option<Entity> = None;
+    let mut ossos = Vec::new();
+    for (k, (a, b)) in eixos(pixels_per_meter).into_iter().enumerate() {
+        let Some(osso) = ph2d_skeleton_live::bone::create(sim, pai, a, b) else {
+            eprintln!("[bone-paint-smoke] o osso {k} nao nasceu -- PARE");
+            return None;
+        };
+        let ent = Entity::try_from_bits(osso)?;
+        // ⭐ O ALCANCE, derivado da arte — ver [`forca_do_osso`]. Sem isto a arte vive na borda do
+        // suporte dos pesos e sai FACETADA (`14,24 px` contra `0,92`), que foi o 2.º report do dono.
+        if let Some(mut bone) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::Bone>(ent) {
+            bone.strength = forca_do_osso();
+        }
+        ossos.push(ent);
+        pai = Some(ent);
+    }
+    Some(ossos)
+}
+
 fn eixos(pixels_per_meter: f32) -> Vec<([f64; 2], [f64; 2])> {
     let largura = f64::from(LARGURA_PX) / f64::from(pixels_per_meter.max(f32::MIN_POSITIVE));
     let (x0, passo) = (-largura / 2.0, largura / f64::from(OSSOS));
@@ -205,17 +275,9 @@ pub fn build(
     let e = Entity::try_from_bits(bits)?;
 
     // ── Os três ossos, deitados ao longo do canvas ──────────────────────────────────────────────
-    let mut pai: Option<Entity> = None;
-    let mut ossos = Vec::new();
-    for (k, (a, b)) in eixos(pixels_per_meter).into_iter().enumerate() {
-        let Some(osso) = ph2d_skeleton_live::bone::create(sim, pai, a, b) else {
-            eprintln!("[bone-paint-smoke] o osso {k} nao nasceu -- PARE");
-            return Some(bits);
-        };
-        let ent = Entity::try_from_bits(osso)?;
-        ossos.push(ent);
-        pai = Some(ent);
-    }
+    let Some(ossos) = corrente(sim, pixels_per_meter) else {
+        return Some(bits);
+    };
 
     // ── Prender o canvas a eles ─────────────────────────────────────────────────────────────────
     //
@@ -275,23 +337,30 @@ mod tests {
     /// O `pixels_per_meter` de omissão do projecto — o mesmo que a cena recebe.
     const PPM: f32 = 100.0;
 
-    /// ⭐⭐⭐ **A PELE QUE A CENA PRODUZ, medida pela PORTA DO PRODUTO.**
+    /// A escala da câmera do smoke, em pixels de ECRÃ por metro de mundo — medida no ecrã em
+    /// 2026-09-15. É ela que converte as réguas de metros para o que o olho vê.
+    const PX_POR_METRO: f64 = 152.0;
+
+    /// **A CENA MONTADA, pelas portas do PRODUTO** — devolve `(mundo, entidade da arte)`.
     ///
-    /// ⚠️ Ela monta a corrente com a [`super::eixos`] (a mesma que a [`super::build`] usa), prende
-    /// pelo [`ph2d_skeleton_live::skin_live::bind_image`] e resolve pelo `skin_of` — ⛔ **nenhuma
-    /// cinemática escrita aqui**. Uma segunda cadeia de transformações neste ficheiro seria uma
-    /// segunda resposta à mesma pergunta, e mediria uma cena que o dono não vê.
+    /// ⚠️ Ela monta a corrente com a [`super::eixos`] (a mesma que a [`super::build`] usa), escreve
+    /// a força pela [`super::forca_do_osso`], prende pelo `bind_image` e dobra pela [`super::dobra`]
+    /// — ⛔ **nenhuma cinemática escrita aqui**. Uma segunda cadeia de transformações neste ficheiro
+    /// seria uma segunda resposta à mesma pergunta, e mediria uma cena que o dono não vê.
     ///
-    /// A `altura_px` é parâmetro para o gate do CONTROLO poder pedir o quadrado que foi reprovado.
-    fn dobra_da_cena(altura_px: u32) -> ph2d_skeleton::fold::FoldReport {
+    /// `altura_px` e `forca` são parâmetros para os gates de CONTROLO poderem pedir exactamente as
+    /// duas redacções que o dono reprovou.
+    fn cena(altura_px: u32, forca: Option<f64>) -> (SimWorld, Entity) {
         let mut sim = SimWorld::default();
-        let mut pai: Option<Entity> = None;
-        let mut ossos = Vec::new();
-        for (a, b) in super::eixos(PPM) {
-            let osso = ph2d_skeleton_live::bone::create(&mut sim, pai, a, b).expect("osso");
-            let ent = Entity::from_bits(osso);
-            ossos.push(ent);
-            pai = Some(ent);
+        // ⭐⭐ **A PORTA DO PRODUTO**, e é ela que escreve o alcance: um `None` aqui mede a cena tal
+        // como o dono a vê. Ver o doc da [`super::corrente`] — a mutação que a criou.
+        let ossos = super::corrente(&mut sim, PPM).expect("a corrente monta");
+        if let Some(f) = forca {
+            for &ent in &ossos {
+                if let Some(mut bone) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::Bone>(ent) {
+                    bone.strength = f;
+                }
+            }
         }
         // A sprite que a `spawn_rgba` cria: o tamanho em metros é `pixels / ppm`, âncora ao centro.
         let tamanho = [super::LARGURA_PX as f32 / PPM, altura_px as f32 / PPM];
@@ -315,9 +384,40 @@ mod tests {
             "o bind tinha de acontecer: ha' osso, ha' tinta e a pose nao e' singular"
         );
         super::dobra(&mut sim, &ossos);
+        (sim, e)
+    }
+
+    /// A dobra da pele — as quatro colunas da [`ph2d_skeleton::fold`].
+    fn dobra_da_cena(altura_px: u32, forca: Option<f64>) -> ph2d_skeleton::fold::FoldReport {
+        let (sim, e) = cena(altura_px, forca);
         let pele = ph2d_skeleton_live::skin_live::skin_of(&sim, e).expect("a pele resolve");
-        let (mx, my) = (f64::from(tamanho[0]) / 2.0, f64::from(tamanho[1]) / 2.0);
+        let (mx, my) = (
+            f64::from(super::LARGURA_PX) / f64::from(PPM) / 2.0,
+            f64::from(altura_px) / f64::from(PPM) / 2.0,
+        );
         ph2d_skeleton::fold::measure(&pele, [-mx, -my, mx, my], 65)
+    }
+
+    /// ⭐⭐⭐ **O DESVIO DA FACETA, em pixels de ECRÃ** — quanto o afim de cada triângulo erra o campo.
+    ///
+    /// ⚠️ É a régua do PRODUTO (`ph2d_poly2d::deviation`, a mesma que o `Smooth` consulta), sobre a
+    /// malha que a cena de facto guarda e o campo que ela de facto aplica.
+    fn faceta_da_cena(altura_px: u32, forca: Option<f64>) -> f64 {
+        let (sim, e) = cena(altura_px, forca);
+        let malha = ph2d_skeleton_live::skin_image::mesh_of(&sim, e).expect("malha");
+        let (p2l, pele) =
+            ph2d_skeleton_live::skin_image::deform_field(&sim, e, malha.size, PPM).expect("campo");
+        let mut w = pele.scratch();
+        let posadas: Vec<[f64; 2]> = malha
+            .rest
+            .iter()
+            .map(|&q| pele.point(p2l.apply(q), &mut w))
+            .collect();
+        let d = ph2d_poly2d::deviation(&malha, &posadas, &mut |q| {
+            let mut w2 = pele.scratch();
+            pele.point(p2l.apply(q), &mut w2)
+        });
+        d * PX_POR_METRO
     }
 
     /// ⭐⭐⭐ **NENHUM PEDAÇO DA ARTE DESTA CENA ESTÁ FORA DO ALCANCE DOS OSSOS.**
@@ -331,7 +431,7 @@ mod tests {
     /// deixou escrever «bem abaixo do ângulo em que o mapa dobra» sobre uma cena partida.
     #[test]
     fn nenhum_pedaco_da_arte_fica_fora_do_alcance_dos_ossos() {
-        let r = dobra_da_cena(super::ALTURA_PX);
+        let r = dobra_da_cena(super::ALTURA_PX, None);
         // ⚠️ Piso de população: uma caixa fora da pele devolveria zero amostras e um relatório
         // limpo que não mediu nada — a própria régua avisa disso por escrito.
         assert!(
@@ -355,45 +455,72 @@ mod tests {
         );
     }
 
-    /// ⭐⭐⭐ **O CONTROLO: a régua VÊ o defeito que reprovou a 1.ª redacção.**
+    /// ⭐⭐⭐ **A ARTE NÃO SAI FACETADA — e este é o gate do SEGUNDO report do dono.**
     ///
-    /// ⛔⛔ Sem esta metade o gate acima é **vácuo** — uma régua que responde `0,00 %` a tudo
-    /// aprovaria qualquer canvas. Ela pede exactamente o canvas QUADRADO que o dono reprovou e
-    /// exige que a coluna da órfã o acuse.
+    /// ⛔⛔⛔ *«A malha deforma a curva»* (2026-09-15, com a seta na borda de cima). O mapa estava
+    /// **contínuo e injectivo** (`0,00 %` órfã, `0,00 %` do avesso) e mesmo assim a arte saía com
+    /// quinas: junto da borda do suporte dos pesos a curvatura do campo explode, e a malha pinta
+    /// **um afim por triângulo**. *Um mapa pode estar perfeito e a malha que o amostra não o seguir.*
     ///
-    /// ⚠️ E ela é também a prova da aritmética do cabeçalho: com `n` ossos ao longo de `W`, o
-    /// alcance é `W/n` e a arte sobe `W/2` — *o quadrado tem banda órfã por construção*.
+    /// ⚠️ **A barra é `1,5 px` de ecrã**, e o número tem os dois lados medidos: a cena entrega
+    /// `0,92 px` e a redacção reprovada entregava `14,24 px`. ⛔ Ela **não** é a tolerância do
+    /// `Smooth` (`0,5 px`): esse refinamento está estruturalmente desligado nesta densidade (o
+    /// handoff §13 tem a aritmética), e uma barra que o produto não consegue honrar seria um número
+    /// que mente.
     #[test]
-    fn o_canvas_quadrado_que_o_dono_reprovou_e_acusado_por_esta_mesma_regua() {
-        let r = dobra_da_cena(super::LARGURA_PX);
+    fn a_arte_nao_sai_facetada() {
+        let px = faceta_da_cena(super::ALTURA_PX, None);
         assert!(
-            r.orphan > 0.30,
-            "a regua leu so' {:.2}% de orfas no canvas QUADRADO que foi reprovado: ela deixou de \
-             ver o defeito, e o gate irmao passou a nao afirmar nada",
-            r.orphan * 100.0
+            px <= 1.5,
+            "a malha erra o campo em {px:.2} px de ecra: a arte sai com quinas e uma circunferencia \
+             desenhada por cima dela tambem — e' o report «a malha deforma a curva»"
         );
     }
 
-    /// ⭐⭐ **A ALTURA É DERIVADA, e a lei está escrita no tipo: meia-altura < alcance de um osso.**
+    /// ⭐⭐⭐ **OS DOIS CONTROLOS: as duas redacções que o dono reprovou continuam a ser acusadas.**
     ///
-    /// ⚠️ Ela lê a `strength` do **produto** ([`ph2d_skeleton_ecs::Bone::default`]) e não um `1.0`
-    /// escrito aqui: se o default do alcance mudar, é este gate que fica vermelho — e não o smoke do
-    /// dono. ⛔ Uma asserção sobre um literal meu não teria essa propriedade.
+    /// ⛔⛔ Sem eles os dois gates acima são **vácuos** — uma régua que responde «limpo» a tudo
+    /// aprovaria qualquer cena. Cada um pede exactamente a configuração da foto.
     #[test]
-    fn a_meia_altura_cabe_no_alcance_de_um_osso() {
-        let strength = ph2d_skeleton_ecs::Bone::default().strength;
-        let comprimento = f64::from(super::LARGURA_PX) / f64::from(super::OSSOS);
-        let alcance = comprimento * strength;
-        let meia_altura = f64::from(super::ALTURA_PX) / 2.0;
+    fn as_duas_redaccoes_reprovadas_continuam_a_ser_acusadas() {
+        // 1.ª — o canvas QUADRADO com os ossos no alcance de fábrica: a arte RASGA.
+        let quadrado = dobra_da_cena(super::LARGURA_PX, Some(1.0));
         assert!(
-            meia_altura < alcance,
-            "meia-altura {meia_altura} nao cabe no alcance {alcance} — a arte nasce com banda orfa"
+            quadrado.orphan > 0.30,
+            "a regua leu so' {:.2}% de orfas no canvas QUADRADO que foi reprovado: ela deixou de \
+             ver o defeito, e o gate irmao passou a nao afirmar nada",
+            quadrado.orphan * 100.0
         );
-        // ⚠️ E a folga é a MEDIDA, não «alguma»: encostada à ravina, a próxima edição cai lá dentro.
+        // 2.ª — a tira com a arte na BORDA do alcance: o mapa fica limpo e a malha FACETA.
+        let na_borda = dobra_da_cena(super::ALTURA_PX, Some(1.0));
+        assert_eq!(
+            (na_borda.orphan, na_borda.inverted),
+            (0.0, 0.0),
+            "o controlo da faceta deixou de ser o caso SUBTIL: com orfas ou inversao ele passa a \
+             medir o defeito do irmao, e a licao — *um mapa limpo pode facetar* — evapora"
+        );
+        let px = faceta_da_cena(super::ALTURA_PX, Some(1.0));
         assert!(
-            meia_altura / alcance <= 0.95,
-            "a folga ficou em {:.4} do alcance — a fixtura esta' encostada a' ravina",
-            meia_altura / alcance
+            px > 10.0,
+            "a regua da faceta leu so' {px:.2} px na redaccao reprovada: ela deixou de ver o \
+             defeito que o dono fotografou"
+        );
+    }
+
+    /// ⭐⭐ **A FORÇA É DERIVADA, e a derivação aterra onde foi MEDIDA.**
+    ///
+    /// ⚠️ O gate não afirma um literal: ele refaz a conta da [`super::forca_do_osso`] a partir da
+    /// arte e exige que a fracção do alcance seja a que a tabela mediu. Se alguém mexer na largura,
+    /// na altura ou no número de ossos, é **este** gate que fica vermelho — e não o smoke do dono.
+    #[test]
+    fn a_arte_vive_longe_da_borda_do_alcance() {
+        let raio = f64::from(super::LARGURA_PX) / f64::from(super::OSSOS) * super::forca_do_osso();
+        let fraccao = (f64::from(super::ALTURA_PX) / 2.0) / raio;
+        assert!(
+            (fraccao - super::FRACCAO_DO_ALCANCE).abs() < 1e-9,
+            "a arte usa {fraccao:.4} do alcance e a tabela mediu {:.4}: a derivacao deixou de \
+             aterrar onde foi medida",
+            super::FRACCAO_DO_ALCANCE
         );
     }
 

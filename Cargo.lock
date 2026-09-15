@@ -4833,6 +4833,7 @@ dependencies = [
  "ph2d-thumbnail",
  "ph2d-tokens",
  "ph2d-tool-registry",
+ "ph2d-topdown",
  "ph2d-unique-name",
  "ph2d-vec-entities",
  "ph2d-vec-scene",
@@ -5916,6 +5917,7 @@ dependencies = [
  "ph2d-tool-trim-transparency",
  "ph2d-tool-upscale",
  "ph2d-tool-vector",
+ "ph2d-topdown",
  "ph2d-transport",
  "ph2d-ui-codegen",
  "ph2d-ui-state",
@@ -8064,6 +8066,7 @@ dependencies = [
  "ph2d-physics",
  "ph2d-platformer",
  "ph2d-tags",
+ "ph2d-topdown",
  "postcard",
  "serde",
 ]
@@ -8660,6 +8663,13 @@ dependencies = [
  "ph2d-vec-edit",
  "ph2d-vec-scene",
  "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-topdown"
+version = "0.0.0"
+dependencies = [
+ "libm",
 ]
 
 [[package]]

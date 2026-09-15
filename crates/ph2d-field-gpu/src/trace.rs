@@ -22,6 +22,7 @@
 //! `ray_at_plane`. ⇒ ela nasce **com o gate de paridade em cima**: qualquer divergência de câmera
 //! move o ponto de acerto em unidades de mundo, e o gate mede exactamente isso.
 
+use crate::trace_wgsl::molde;
 use ph2d_field_eval::wgsl::TapeWgsl;
 
 /// O que a marcha do dispositivo devolve, por pixel.
@@ -100,194 +101,6 @@ pub struct MarchSetup {
     pub edge_cos: f32,
 }
 
-const MOLDE: &str = r"
-struct Setup {
-    w: u32, h: u32, budget: u32, ao_rays: u32,
-    half_extent: f32, half_px: f32, ortho_start: f32, eye_distance: f32,
-    hit_eps: f32, normal_eps: f32, step: f32, t_max: f32,
-    ball_radius: f32, ao_reach: f32, edge_cos: f32, _p1: f32,
-    alvo: vec3<f32>, right: vec3<f32>, up: vec3<f32>, fwd: vec3<f32>,
-    lamp: vec3<f32>, ball_center: vec3<f32>,
-};
-@group(0) @binding(0) var<uniform> s: Setup;
-@group(0) @binding(1) var<storage, read> k: array<f32>;
-@group(0) @binding(2) var<storage, read_write> centro: array<vec4<f32>>;
-@group(0) @binding(3) var<storage, read_write> luz: array<vec2<f32>>;
-@group(0) @binding(4) var<storage, read_write> conta: atomic<u32>;
-@group(0) @binding(5) var<storage, read_write> borda: array<vec4<f32>>;
-{FIELD}
-
-// ⚠️ **A MESMA lei de marcha da CPU**, e ela é uma função porque as quatro amostras do
-// anti-serrilhado a repetem: uma segunda cópia seria a segunda resposta à mesma pergunta.
-fn raio(px: f32, py: f32) -> vec2<f32> {
-    let u = (px - f32(s.w) * 0.5) / s.half_px * s.half_extent;
-    let v = -(py - f32(s.h) * 0.5) / s.half_px * s.half_extent;
-    return vec2<f32>(u, v);
-}
-struct Raio { o: vec3<f32>, d: vec3<f32> };
-fn ray_at_plane(uv: vec2<f32>) -> Raio {
-    let on_plane = s.alvo + s.right * uv.x + s.up * uv.y;
-    var r: Raio;
-    if (s.eye_distance == 0.0) {
-        r.o = on_plane + s.fwd * s.ortho_start;
-        r.d = -s.fwd;
-    } else {
-        let eye = s.alvo + s.fwd * s.eye_distance;
-        let d = on_plane - eye;
-        let len = length(d);
-        r.o = eye;
-        if (len <= 0.0) { r.d = -s.fwd; } else { r.d = d / len; }
-    }
-    return r;
-}
-// Devolve `vec4(t, normal em VISTA)`, com `t < 0` quando não acerta.
-fn marcha(r: Raio) -> vec4<f32> {
-    var t = 0.0;
-    var acertou = false;
-    for (var n: u32 = 0u; n < s.budget; n = n + 1u) {
-        let d = field(r.o + r.d * t);
-        if (d < s.hit_eps) { acertou = true; break; }
-        t = t + d * s.step;
-        if (t >= s.t_max) { break; }
-    }
-    if (!acertou) { return vec4<f32>(-1.0, 0.0, 0.0, 0.0); }
-    let p = r.o + r.d * t;
-    let e = s.normal_eps;
-    let o0 = vec3<f32>( 1.0, -1.0, -1.0);
-    let o1 = vec3<f32>(-1.0, -1.0,  1.0);
-    let o2 = vec3<f32>(-1.0,  1.0, -1.0);
-    let o3 = vec3<f32>( 1.0,  1.0,  1.0);
-    let world = o0 * field(p + o0 * e) + o1 * field(p + o1 * e)
-              + o2 * field(p + o2 * e) + o3 * field(p + o3 * e);
-    let len = length(world);
-    if (len <= 0.0) { return vec4<f32>(-1.0, 0.0, 0.0, 0.0); }
-    let nrm = world / len;
-    return vec4<f32>(t, dot(nrm, s.right), dot(nrm, s.up), dot(nrm, s.fwd));
-}
-
-// ⭐ **A MARCHA DE VISIBILIDADE** — a da sombra e a da oclusão são a mesma, e diferem só na cerca
-// e na dureza. `INFINITY` para a oclusão (a pergunta é binária); `8` para a sombra (penumbra).
-fn visivel(origem: vec3<f32>, dir: vec3<f32>, t_max: f32, dureza: f32) -> f32 {
-    var vis = 1.0;
-    var t = s.hit_eps * 4.0;
-    for (var n: u32 = 0u; n < s.budget; n = n + 1u) {
-        let d = field(origem + dir * t);
-        if (d < s.hit_eps) { return 0.0; }
-        vis = min(vis, dureza * d / t);
-        t = t + d * s.step;
-        if (t >= t_max) { break; }
-    }
-    return vis;
-}
-
-// ⭐⭐⭐ A direcção `k` do conjunto de cones — o `ph2d_field_render::cone_dir`, linha a linha.
-// Reticulado de Fibonacci esférico em coordenadas de MUNDO: nem o pixel nem a câmera entram.
-fn direccao_do_cone(k: u32, total: u32) -> vec3<f32> {
-    let n = f32(max(total, 1u));
-    let ki = f32(k);
-    let z = 1.0 - (2.0 * ki + 1.0) / n;
-    let r = sqrt(max(1.0 - z * z, 0.0));
-    let phi = 6.283185307 * fract(ki * 0.618034);
-    return vec3<f32>(r * cos(phi), r * sin(phi), z);
-}
-
-// A saída da bola, que é o DOMÍNIO da pergunta — ver `ph2d_field_render::shadow`.
-fn cerca_da_bola(p: vec3<f32>, dir: vec3<f32>, ate: f32) -> f32 {
-    let oc = p - s.ball_center;
-    let b = dot(oc, dir);
-    let c = dot(oc, oc) - s.ball_radius * s.ball_radius;
-    let disc = b * b - c;
-    if (disc <= 0.0) { return 0.0; }
-    return clamp(-b + sqrt(disc), 0.0, ate);
-}
-
-@compute @workgroup_size(8, 8, 1)
-fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
-    if (g.x >= s.w || g.y >= s.h) { return; }
-    let i = g.y * s.w + g.x;
-    let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
-    let c = marcha(r);
-    centro[i] = c;
-    if (c.x < 0.0) { luz[i] = vec2<f32>(1.0, 1.0); return; }
-
-    let p = r.o + r.d * c.x;
-    // A normal volta ao MUNDO — a base é ortonormal, logo a transposta é a inversa.
-    let n = s.right * c.y + s.up * c.z + s.fwd * c.w;
-    let erguido = p + n * (s.hit_eps * 4.0);
-
-    // A SOMBRA: só quem VÊ a luz recebe raio.
-    var sombra = 1.0;
-    let d = s.lamp - p;
-    let dist = length(d);
-    if (dist > 1e-6) {
-        let dir = d / dist;
-        if (dot(n, dir) > 0.0) {
-            sombra = visivel(erguido, dir, cerca_da_bola(erguido, dir, dist), 8.0);
-        }
-    }
-
-    // ⭐⭐⭐ **A OCLUSÃO POR CONES** — `ao_rays` direcções FIXAS de mundo, pesadas pelo cosseno.
-    //
-    // A dureza de cada cone é `1/(n·d)`: é o cone que ROÇA o plano tangente, e é ele que faz um
-    // corpo CONVEXO ler exactamente `1,0`. Ver `ph2d_field_render::cone_dir` para o porquê de o
-    // conjunto ser de MUNDO e não de um referencial tangente.
-    var ceu = 1.0;
-    if (s.ao_rays > 0u) {
-        var soma = 0.0;
-        var peso = 0.0;
-        for (var j: u32 = 0u; j < s.ao_rays; j = j + 1u) {
-            let dd = direccao_do_cone(j, s.ao_rays);
-            let c = dot(n, dd);
-            if (c <= 0.0) { continue; }
-            peso = peso + c;
-            let ate = min(s.ao_reach, cerca_da_bola(erguido, dd, s.ao_reach));
-            soma = soma + c * visivel(erguido, dd, ate, 1.0 / c);
-        }
-        if (peso > 0.0) { ceu = soma / peso; }
-    }
-    luz[i] = vec2<f32>(sombra, ceu);
-}
-
-// ⭐⭐⭐ **A SEGUNDA PASSAGEM: a borda re-amostrada.** Ela precisa dos VIZINHOS, logo não pode
-// viver na primeira — e é por isso que são dois despachos e não um.
-@compute @workgroup_size(8, 8, 1)
-fn bordas(@builtin(global_invocation_id) g: vec3<u32>) {
-    if (g.x >= s.w || g.y >= s.h) { return; }
-    let i = g.y * s.w + g.x;
-    let c = centro[i];
-    // A MESMA regra da CPU: direita e baixo, e os DOIS pixels ficam marcados.
-    var e = false;
-    if (g.x + 1u < s.w) { e = e || difere(i, i + 1u); }
-    if (g.y + 1u < s.h) { e = e || difere(i, i + s.w); }
-    if (g.x > 0u) { e = e || difere(i - 1u, i); }
-    if (g.y > 0u) { e = e || difere(i - s.w, i); }
-    if (!e) { return; }
-
-    let slot = atomicAdd(&conta, 1u);
-    // ⚠️ Um lote cheio **descarta** em vez de escrever fora — a borda perde-se, o quadro não.
-    if (slot * 5u + 4u >= arrayLength(&borda)) { return; }
-    borda[slot * 5u] = vec4<f32>(bitcast<f32>(i), 0.0, 0.0, 0.0);
-    // O padrão 4-rook (RGSS), o mesmo da CPU.
-    let rook = array<vec2<f32>, 4>(
-        vec2<f32>(0.125, 0.625), vec2<f32>(0.375, 0.125),
-        vec2<f32>(0.625, 0.875), vec2<f32>(0.875, 0.375));
-    for (var j = 0u; j < 4u; j = j + 1u) {
-        let o = rook[j];
-        borda[slot * 5u + 1u + j] = marcha(ray_at_plane(raio(f32(g.x) + o.x, f32(g.y) + o.y)));
-    }
-}
-
-fn difere(a: u32, b: u32) -> bool {
-    let ca = centro[a];
-    let cb = centro[b];
-    let ha = ca.x >= 0.0;
-    let hb = cb.x >= 0.0;
-    if (ha != hb) { return true; }
-    if (!ha) { return false; }
-    return dot(ca.yzw, cb.yzw) < s.edge_cos;
-}
-";
-
 /// ⭐⭐⭐ **O TRAÇADOR: o dispositivo, o cache de pipelines e o layout, vivos entre quadros.**
 ///
 /// ⛔⛔ **Ele existe porque a 1.ª sonda mediu a coisa errada.** A [`march`] abre o adaptador, pede
@@ -337,7 +150,10 @@ impl Tracer {
         self.cache.compiled()
     }
 
-    /// ⭐ **Um quadro.** O shader compila-se na primeira estrutura e fica.
+    /// ⭐ **Um quadro, devolvido como G-BUFFER.** O shader compila-se na primeira estrutura e fica.
+    ///
+    /// ⚠️ É a porta da PARIDADE e do caminho que ainda pinta na CPU. Quem quer a imagem chama o
+    /// [`Self::painted_frame`], que não traz o G-buffer de volta.
     pub fn frame(
         &mut self,
         fita: &TapeWgsl,
@@ -345,7 +161,7 @@ impl Tracer {
         width: u32,
         height: u32,
     ) -> DeviceGbuffer {
-        marcha_com(
+        match marcha_com(
             &self.device,
             &self.queue,
             &mut self.cache,
@@ -353,7 +169,39 @@ impl Tracer {
             setup,
             width,
             height,
-        )
+            None,
+        ) {
+            Saida::Gbuffer(g) => g,
+            Saida::Imagem(_) => unreachable!("sem pintor a marcha devolve o G-buffer"),
+        }
+    }
+
+    /// ⭐⭐⭐ **Um quadro, devolvido como IMAGEM** — RGBA8 pré-multiplicado, pronto para a tela.
+    ///
+    /// ⛔⛔ **E é aqui que o barramento encolhe:** a `frame` traz `49,8 MB` a `1920×1080` (o centro
+    /// e a luz de cada pixel) para a CPU os transformar em `8,3` de imagem. Esta traz os `8,3`, e a
+    /// transformação corre onde os dados estão.
+    pub fn painted_frame(
+        &mut self,
+        fita: &TapeWgsl,
+        setup: MarchSetup,
+        pintor: &crate::paint::PaintSetup<'_>,
+        width: u32,
+        height: u32,
+    ) -> Pintado {
+        match marcha_com(
+            &self.device,
+            &self.queue,
+            &mut self.cache,
+            fita,
+            setup,
+            width,
+            height,
+            Some(pintor),
+        ) {
+            Saida::Imagem(p) => p,
+            Saida::Gbuffer(_) => unreachable!("com pintor a marcha devolve a imagem"),
+        }
     }
     /// O dispositivo e a fila — para quem precisa de despachar **outro** passe sobre o MESMO
     /// dispositivo (o arnês de paridade do material, e o passe de sombreamento).
@@ -413,19 +261,31 @@ pub fn march(fita: &TapeWgsl, setup: MarchSetup, width: u32, height: u32) -> Opt
     Some(Tracer::new()?.frame(fita, setup, width, height))
 }
 
-#[allow(clippy::too_many_lines, clippy::too_many_arguments)] // seis bindings e dois despachos
-fn marcha_com(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    cache: &mut crate::FieldPipelines,
-    fita: &TapeWgsl,
-    setup: MarchSetup,
-    width: u32,
-    height: u32,
-) -> DeviceGbuffer {
-    // ⚠️ **O layout é EXPLÍCITO** — ver [`crate::FieldPipelines::entry_with_layout`]: as duas
-    // entradas usam bindings diferentes, e um layout por entrada recusa o grupo de seis.
-    let uniforme = |b: u32| wgpu::BindGroupLayoutEntry {
+/// O que a marcha entrega — o G-buffer, ou a imagem quando o pintor corre.
+///
+/// ⚠️ **As duas nunca voltam juntas, e é isso que ela codifica:** com o pintor a correr o G-buffer
+/// fica no dispositivo, e trazê-lo «ao lado» seria pagar os `49,8 MB` que este passe existe para
+/// não pagar.
+pub(crate) enum Saida {
+    Gbuffer(DeviceGbuffer),
+    Imagem(Pintado),
+}
+
+/// ⭐ **O que o pintor entrega** — a imagem, mais a contagem de bordas que o dispositivo escreveu.
+///
+/// ⚠️ **A contagem vem junto porque ela já voltou**: o número de bordas atravessa o barramento
+/// antes do passe que pinta (é ele que diz quantos workgroups despachar). Derivá-la outra vez da
+/// imagem seria inventar uma segunda resposta para um facto que já está na mão.
+pub struct Pintado {
+    /// RGBA8 pré-multiplicado, pronto para a tela.
+    pub rgba: Vec<u8>,
+    /// Quantos pixels de borda foram re-amostrados — `0` sem anti-serrilhado.
+    pub edges: usize,
+}
+
+/// ⭐ **Uma entrada de layout, uniforme** — partilhada pelo traçado e pelo pintor.
+pub(crate) fn uniforme(b: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
         binding: b,
         visibility: wgpu::ShaderStages::COMPUTE,
         ty: wgpu::BindingType::Buffer {
@@ -434,8 +294,12 @@ fn marcha_com(
             min_binding_size: None,
         },
         count: None,
-    };
-    let armazem = |b: u32, so_leitura: bool| wgpu::BindGroupLayoutEntry {
+    }
+}
+
+/// ⭐ **Uma entrada de layout, armazém** — `so_leitura` distingue `read` de `read_write`.
+pub(crate) fn armazem(b: u32, so_leitura: bool) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
         binding: b,
         visibility: wgpu::ShaderStages::COMPUTE,
         ty: wgpu::BindingType::Buffer {
@@ -446,8 +310,19 @@ fn marcha_com(
             min_binding_size: None,
         },
         count: None,
-    };
-    let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+    }
+}
+
+/// ⭐⭐⭐ **O layout do grupo `0`** — o uniforme, as constantes e os quatro alvos da marcha.
+///
+/// ⛔⛔ **Ele é EXPLÍCITO e tem de ser** (ver [`crate::FieldPipelines::entry_with_layout`]): o
+/// layout auto-derivado só declara os bindings que **aquela entrada** usa, e a passagem do centro
+/// não toca na lista de bordas — o grupo de seis seria recusado em tempo de execução.
+///
+/// ⚠️ **E o pintor lê o MESMO grupo** ([`crate::paint`]): ele precisa do centro, da luz e da lista
+/// de bordas, e uma segunda declaração deles seria a segunda resposta à mesma pergunta.
+pub(crate) fn bgl_marcha(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("campo"),
         entries: &[
             uniforme(0),
@@ -457,7 +332,24 @@ fn marcha_com(
             armazem(4, false),
             armazem(5, false),
         ],
-    });
+    })
+}
+
+// O dispositivo, a fila, o cache, a fita, o pedido, a tela e o pintor — sete coisas
+// independentes, e uma struct só as renomearia. E o corpo é longo porque são seis bindings,
+// dois despachos e duas travessias do barramento.
+#[allow(clippy::too_many_lines, clippy::too_many_arguments)]
+fn marcha_com(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    cache: &mut crate::FieldPipelines,
+    fita: &TapeWgsl,
+    setup: MarchSetup,
+    width: u32,
+    height: u32,
+    pintor: Option<&crate::paint::PaintSetup<'_>>,
+) -> Saida {
+    let bgl = bgl_marcha(device);
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("campo"),
         bind_group_layouts: &[Some(&bgl)],
@@ -465,12 +357,12 @@ fn marcha_com(
     });
 
     let p_centro = cache
-        .entry_with_layout(device, MOLDE, fita, "centro_e_luz", Some(&layout))
+        .entry_with_layout(device, &molde(), fita, "centro_e_luz", Some(&layout))
         .clone();
     // ⚠️ **Compilar é o caro** — o pipeline da borda só nasce quando ela vai de facto correr.
     let p_bordas = setup.antialias.then(|| {
         cache
-            .entry_with_layout(device, MOLDE, fita, "bordas", Some(&layout))
+            .entry_with_layout(device, &molde(), fita, "bordas", Some(&layout))
             .clone()
     });
 
@@ -515,11 +407,20 @@ fn marcha_com(
         contents: &u,
         usage: wgpu::BufferUsages::UNIFORM,
     });
-    let consts = if fita.consts.is_empty() {
-        vec![0.0f32]
-    } else {
-        fita.consts.clone()
-    };
+    // ⭐⭐⭐ **UM vector de constantes para os DOIS passes.** A fita da peça ocupa o princípio; a lei
+    // do dono escreve a seguir, e a origem dela é **exactamente** `fita.consts.len()`.
+    //
+    // ⚠️⚠️ **É por isso que quem a EMITE é este sítio e não o chamador:** a origem que o texto
+    // indexa e a ordem com que os vectores se concatenam são a MESMA decisão, e duas respostas
+    // pintam cada folha com os números da vizinha **sem erro nenhum**.
+    let lei_do_dono = pintor.and_then(|p| p.owners?.to_wgsl(fita.consts.len()));
+    let mut consts = fita.consts.clone();
+    if let Some(l) = &lei_do_dono {
+        consts.extend_from_slice(&l.consts);
+    }
+    if consts.is_empty() {
+        consts.push(0.0);
+    }
     let mut kb_bytes = Vec::with_capacity(consts.len() * 4);
     for c in &consts {
         kb_bytes.extend_from_slice(&c.to_le_bytes());
@@ -624,20 +525,68 @@ fn marcha_com(
         enc.copy_buffer_to_buffer(b, 0, &r, 0, bytes.max(16));
         r
     };
-    let r_centro = ler(&mut enc, &b_centro, n * 16);
-    let r_luz = ler(&mut enc, &b_luz, n * 8);
+    // ⭐⭐⭐ **QUANDO O PINTOR CORRE, O G-BUFFER NÃO ATRAVESSA O BARRAMENTO.** Ele fica no
+    // dispositivo, que é onde o passe seguinte o lê — e o que volta é a IMAGEM.
+    //
+    // Medido a `1920×1080`: o centro e a luz são `49,8 MB` por quadro e a imagem são `8,3`.
+    let pinta = pintor.is_some();
+    let (r_centro, r_luz) = if pinta {
+        (None, None)
+    } else {
+        (
+            Some(ler(&mut enc, &b_centro, n * 16)),
+            Some(ler(&mut enc, &b_luz, n * 8)),
+        )
+    };
     let r_conta = ler(&mut enc, &b_conta, 16);
     queue.submit([enc.finish()]);
 
-    for b in [&r_centro, &r_luz, &r_conta] {
+    for b in r_centro.iter().chain(r_luz.iter()).chain([&r_conta]) {
         b.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     }
     device.poll(wgpu::PollType::wait_indefinitely()).ok();
 
-    let d_centro = r_centro.slice(..).get_mapped_range();
-    let d_luz = r_luz.slice(..).get_mapped_range();
     let d_conta = r_conta.slice(..).get_mapped_range();
     let quantas = u32::from_le_bytes([d_conta[0], d_conta[1], d_conta[2], d_conta[3]]) as u64;
+    if let Some(pintor) = pintor {
+        // ⚠️ **A contagem de bordas tinha de voltar primeiro**, e é isso que este ida-e-volta
+        // compra: quantos workgroups o passe da borda precisa é um número que o dispositivo
+        // escreveu. *O mesmo ida-e-volta que a leitura da lista já custava, sem a lista.*
+        let usadas = if setup.antialias {
+            quantas.min(max_bordas)
+        } else {
+            0
+        };
+        drop(d_conta);
+        #[allow(clippy::cast_possible_truncation)]
+        let edges = usadas as usize;
+        return Saida::Imagem(Pintado {
+            edges,
+            rgba: crate::paint::pinta(
+                device,
+                queue,
+                cache,
+                pintor,
+                lei_do_dono.as_ref(),
+                &crate::paint::Alvos {
+                    bgl: &bgl,
+                    setup: &ub,
+                    k: &kb,
+                    centro: &b_centro,
+                    luz: &b_luz,
+                    conta: &b_conta,
+                    borda: &b_borda,
+                },
+                width,
+                height,
+                usadas,
+            ),
+        });
+    }
+    let d_centro = r_centro.as_ref().expect("sem pintor o centro volta");
+    let d_centro = d_centro.slice(..).get_mapped_range();
+    let d_luz = r_luz.as_ref().expect("sem pintor a luz volta");
+    let d_luz = d_luz.slice(..).get_mapped_range();
 
     // ⛔⛔ **A LISTA DE BORDAS LÊ-SE PELO QUE FOI ESCRITO, e não pelo tecto** — e é a diferença
     // entre `35 ms` e o que a máquina de facto faz. O tecto é `25 %` dos pixels (`41 MB` a
@@ -711,7 +660,7 @@ fn marcha_com(
     drop(d_conta);
     drop(d_borda);
 
-    DeviceGbuffer {
+    Saida::Gbuffer(DeviceGbuffer {
         width,
         height,
         t,
@@ -719,63 +668,5 @@ fn marcha_com(
         shadow,
         ambient,
         edges,
-    }
-}
-
-impl DeviceGbuffer {
-    /// ⭐⭐⭐ **O G-buffer do dispositivo no vocabulário da CPU** — para a pintura correr onde já
-    /// corre, sem saber que a marcha mudou de sítio.
-    ///
-    /// ⚠️ **O `point` RECONSTRÓI-SE do `t`**, e é por isso que ele não atravessa o barramento: são
-    /// mais `12 B` por pixel (`25 MB` a `1920×1080`) para uma conta que a CPU faz em microssegundos.
-    /// *O que se lê de volta é o que não se pode derivar.*
-    #[must_use]
-    pub fn to_cpu(
-        &self,
-        cam: &ph2d_field_render::Orbit,
-        screen: ph2d_field_render::Screen,
-    ) -> (ph2d_field_render::Gbuffer, ph2d_field_render::Shadows) {
-        let n = self.t.len();
-        let mut hit = Vec::with_capacity(n);
-        let mut point = Vec::with_capacity(n);
-        let w = self.width as usize;
-        // ⭐⭐⭐ **O PONTO reconstrói-se SEM normalizar a direcção** — ver
-        // [`ph2d_field_render::Rays::point_at`] para a álgebra e a tabela. Medido a `1920×1080`
-        // neste laço: **`37,87 → 5,75 ms`**, que era a maior fatia do quadro inteiro (`87,58`).
-        let raios = cam.rays();
-        for y in 0..self.height as usize {
-            #[allow(clippy::cast_precision_loss)]
-            let py = y as f32 + 0.5;
-            for x in 0..w {
-                let t = self.t[y * w + x];
-                hit.push(t >= 0.0);
-                #[allow(clippy::cast_precision_loss)]
-                let (u, v) = screen.plane_at(x as f32 + 0.5, py);
-                point.push(raios.point_at(u, v, t));
-            }
-        }
-        let edges = self
-            .edges
-            .iter()
-            .map(|e| ph2d_field_render::EdgePixel {
-                pixel: e.pixel,
-                hit: e.hit,
-                normal: e.normal,
-            })
-            .collect();
-        let g = ph2d_field_render::Gbuffer {
-            width: self.width,
-            height: self.height,
-            hit,
-            normal: self.normal.clone(),
-            point,
-            edges,
-        };
-        let mut sh = ph2d_field_render::Shadows::default();
-        sh.set_lamp(0, self.shadow.clone());
-        // ⚠️ **A suavização é aplicada AQUI**, como o refinamento da CPU a aplica no publicar — ela
-        // faz parte do que a oclusão entrega, e não do que ela calcula.
-        sh.set_ambient(ph2d_field_render::blur_occlusion(&g, &self.ambient));
-        (g, sh)
-    }
+    })
 }

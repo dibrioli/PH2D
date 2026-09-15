@@ -3369,3 +3369,126 @@ ele, `0 == 0` passaria com o passe inteiro partido).
   é wave com espec própria.
 - ⏳ **O `to_cpu` curado ainda lê `17,5 ms` onde o laço isolado lê `5,7`** — os `~12 ms` de
   diferença não foram atribuídos.
+
+---
+
+## §39 — ⭐⭐⭐ O PINTOR VAI PARA O DISPOSITIVO: a quarta lei era a do DONO (2026-09-15)
+
+O §38.5 deixou o item aberto com o nome certo: *«o caminho de um render de tempo real é sombrear no
+dispositivo e devolver a imagem»*. Esta secção fecha-o.
+
+### §39.1 — ⚠️ O achado que mudou o preço: `owners: None` é o caso de UMA folha
+
+A wave foi orçada supondo que o material atravessava sozinho. Ao ler o `materials.rs`:
+
+```rust
+/// De quem é cada ponto. `None` numa peça de uma folha só — ver [`Table::surfaces_for`].
+pub owners: Option<ph2d_field_eval::owners::Owners>,
+```
+
+⇒ **toda peça real é multi-material**, e a sua cruz de cilindros tem quatro folhas. O `{FIELD}` do
+§33 leva **uma** fita — a da peça inteira, que é a união de tudo — e o sombreamento não pergunta
+*«onde está a superfície?»*: pergunta ***«de quem é este ponto?»***. Essa resposta precisa de **uma
+fita por folha**, da bola de cada uma, e do mesmo desempate que a CPU corre.
+
+⛔ **E a recusa do *id-buffer* continua de pé:** ela arrastaria um segundo canal por cada passo da
+marcha. Aqui o dono resolve-se **uma vez por ponto**, no passe que pinta, como na CPU.
+
+### §39.2 — ⛔⛔ Porque a reescrita de TEXTO não serve, e a cura é uma linha
+
+A forma óbvia de ter `N` fitas é gerar `N` vezes com o emissor que já existe e **reescrever o
+texto** (`fn field` → `fn folha_3`, `k[7]` → `k[62]`). Ela falha de duas maneiras **mudas**:
+
+| | modo de falha |
+|---|---|
+| o nome | `field` aparece dentro de **todo identificador que o contenha** |
+| a origem | uma expressão regular sobre `k[i]` não distingue `k[7]` de `k[70]` sem varrer da direita para a esquerda |
+
+⇒ `PointTape::to_wgsl_named(nome, const_base)`: o nome e a origem entram **onde o texto é escrito**,
+que é o único sítio que sabe o que cada coisa é. *Uma reescrita de texto é uma segunda análise do
+que o gerador já sabia.*
+
+⚠️ **E quem escolhe o `const_base` é quem CONCATENA os vectores** — o `marcha_com`, num sítio só. A
+origem que o texto indexa e a ordem da concatenação são a **mesma decisão**, e duas respostas pintam
+cada folha com os números da vizinha **sem erro nenhum**.
+
+### §39.3 — A paridade, lei a lei
+
+| lei | barra | medido |
+|---|---:|---:|
+| material (OpenPBR completo, §33-bis) | `1e-4` relativo | `1,05e-6` |
+| céu do estúdio | `1e-4` relativo | `2,42e-7` |
+| olhar (exposição + vista) | `1e-4` relativo | `7,80e-6` |
+| **dono** (`a`, `b`, `t`) | `2e-3` em `t`, `100 %` nos índices | **`2,41e-6`** · **`0` trocas** em `1 041` |
+| **a IMAGEM inteira** | `≤1` nível em `99,5 %`, pior `2` | **`100,000 %`** · pior **`1`** |
+
+⚠️ **O gate da imagem ISOLA o sombreamento:** os dois lados correm sobre a **MESMA marcha do
+dispositivo** — o mesmo `t`, a mesma normal, a mesma sombra, a mesma oclusão. O que sobra entre eles
+é só o pintor. Um gate que traçasse cada lado no seu motor mediria as duas coisas somadas.
+
+⚠️ **E a lei do dono precisou de arnês PRÓPRIO porque a imagem é cega a ela:** numa peça de duas
+folhas da mesma cor o dono errado pinta exactamente o mesmo pixel. *Um zero de «igual» e um de
+«nenhum dos dois olhou» são o mesmo byte* — a mesma armadilha que a `supports` tapa um nível acima.
+
+### §39.4 — ⚠️ Uma mutação SOBREVIVEU, e ela nomeou o corpus
+
+Trocar `cru > piso` por `cru > 0` no piso da luz-objecto passou os gates: na cena de medição a
+lâmpada está a duas meias-extensões da peça e **nenhum pixel chega a `0,05` dela**. *Um corpus no
+ponto NEUTRO de um knob não testa esse knob.*
+
+⇒ gate próprio (`a_lampada_encostada_a_peca_concorda_nos_dois_motores`) com a lâmpada **sobre a
+superfície**, e um piso de população que conta quantos pixels estão de facto abaixo do piso (`18`).
+Com ele, a mesma mutação lê **`166` níveis** de divergência.
+
+### §39.5 — ⚠️ E o portão de LOC estava VERMELHO havia waves
+
+Seis ficheiros acima do tecto de `700`, e os seis são crescimento **desta linha** — nenhum estava
+acima no merge-base. Curados por **corte por responsabilidade**, nunca por isenção:
+
+| ficheiro | antes | depois | a fronteira |
+|---|---:|---:|---|
+| `app-field3d/smoke.rs` | `1 161` | `618` | o roteador das cenas ≠ os gates que as medem |
+| `field-render/shadow.rs` | `766` | `290` | *«esta LÂMPADA vê?»* ≠ *«quanto do HEMISFÉRIO vê?»* |
+| `app-field3d/smoke_draw.rs` | `759` | `520` | quem ARMA o pedido ≠ quem o RESPONDE, fora da thread |
+| `app-field3d/scene_edit_tests.rs` | `736` | `384` | ⚠️ por TETO e não por assunto — e dizê-lo é mais honesto |
+| `app-field3d/scene_panel.rs` | `735` | `509` | os NÚMEROS do escolhido ≠ os CHIPS |
+| `field-gpu/trace.rs` | `781` | `654` | o texto do shader ≠ quem o despacha |
+
+⚠️ **E o `#[allow(clippy::…)]` do `marcha_com` colou-se ao VIZINHO** durante o corte — a mesma forma
+do `#[cfg]` órfão que a memória do repo já regista, uma família de atributos ao lado. A isenção
+mudou-se em silêncio para uma função de doze linhas.
+
+### §39.5-bis — O relógio, e porque UMA das colunas não se pode ler
+
+⚠️⚠️ **A máquina esteve entre `load 24` e `load 63` a jornada inteira** (outras linhas a compilar), e
+nenhuma leitura de relógio deste repositório vale nada acima de `~5`. ⇒ a tabela traz o **mínimo de
+7 corridas** com a carga ao lado, e as duas colunas **não** se leem da mesma maneira:
+
+| `1920×1080`, a mesma peça | `load 58` |
+|---|---:|
+| marcha + G-buffer de volta (`49,8 MB`) | `108,2 ms` |
+| … mais o pintor na CPU | `136,2 ms` |
+| **marcha + PINTOR no dispositivo** (`8,3 MB`) | **`4,37 ms`** |
+
+⭐⭐⭐ **A coluna do dispositivo é INSENSÍVEL à carga e a da CPU não é** — e isso não é uma desculpa,
+é a medição: `4,37`, `4,76`, `5,16`, `5,22`, `5,29 ms` em cinco corridas entre `load 24` e `load 63`
+(`±10 %`), contra `136`, `156`, `170`, `222 ms` do outro lado (`±63 %`) sobre a MESMA árvore. *Uma
+régua cujo valor depende de quem mais está a usar a máquina está a medir a máquina, não o código.*
+
+⇒ o que se pode afirmar com a máquina neste estado é o **piso** do ganho, e ele já é o que interessa:
+o quadro assente do modelador passou a caber num quadro de `60 Hz` com folga, e o barramento por
+quadro caiu de `49,8` para `8,3 MB` — esse número é exacto e não tem relógio nenhum dentro.
+
+⏳ **O número da CPU tem de ser re-medido com a máquina calma** antes de entrar em qualquer tabela
+comparativa. O da placa não.
+
+### §39.6 — ⏳ O que fica
+
+- ⏳ **Uma lâmpada só.** O shader tem um canal de sombra; com duas, a segunda ficaria sem sombra em
+  silêncio, e é por isso que o chamador **cai na CPU** em vez de a ignorar.
+- ⏳ **O refinamento de CPU mantém o caminho antigo.** Com `PH2D_FIELD_CPU_OCCLUSION` ligado o quadro
+  precisa do G-buffer para refinar sobre ele — é a única razão que sobra para o trazer de volta.
+- ⏳ **Uma peça com ESCULTURA continua na CPU** (`ph2d_field_gpu::supports`).
+- ⚠️ **O `hits` do caminho pintado conta PIXELS COM TINTA**, e não acertos de centro: o G-buffer
+  ficou no dispositivo. É número de diagnóstico, e dizê-lo é mais honesto do que trazer `49,8 MB`
+  para o calcular.

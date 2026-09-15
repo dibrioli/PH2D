@@ -22,11 +22,10 @@ ph2d-field-eval = { path = "../ph2d-field-eval" }
 # ele a REFERÊNCIA de CPU contra a qual esta se mede.
 ph2d-field-render = { path = "../ph2d-field-render" }
 ph2d-material = { path = "../ph2d-material" }
+# ⭐ O pintor aplica o OLHAR no dispositivo, e a lei dele vive aqui — ver `paint.rs`.
+ph2d-view-transform = { path = "../ph2d-view-transform" }
+# ⭐ A curva sRGB da descida a 8 bits: o fundo da borda entra na media em LINEAR.
+ph2d-color = { path = "../ph2d-color" }
 wgpu = { version = "29.0.4", features = ["wgsl"] }
 pollster = "0.4.0"
 
-# ⚠️ **Só para a SONDA `ao_grain`** — ela mede o grão da oclusão nos BYTES que o dono vê, e é lá
-# (depois da curva sRGB) que um erro linear de `2 %` dentro de um furo escuro vira uma dezena de
-# níveis. Uma régua que pára no valor linear mede outra coisa.
-[dev-dependencies]
-ph2d-view-transform = { path = "../ph2d-view-transform" }

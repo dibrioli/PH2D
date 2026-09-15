@@ -80,9 +80,7 @@ impl Owners {
         // `i` só se sabe depois de o filtro correr.
         s.push_str("fn dono_campo(i: u32, p: vec3<f32>) -> f32 {\n  switch i {\n");
         for i in 0..n {
-            s.push_str(&format!(
-                "    case {i}u: {{ return dono_folha_{i}(p); }}\n"
-            ));
+            s.push_str(&format!("    case {i}u: {{ return dono_folha_{i}(p); }}\n"));
         }
         s.push_str("    default: { return 0.0; }\n  }\n}\n");
         s.push_str(&format!(

@@ -81,6 +81,99 @@ pub fn march(
     h: u32,
     antialias: bool,
 ) -> Option<(ph2d_field_render::Gbuffer, ph2d_field_render::Shadows)> {
+    let (fita, setup) = pedido(doc, reg, cam, *lamps.first()?, w, h, antialias)?;
+    let screen = ph2d_field_render::Screen::new(w, h, cam.half_extent);
+    let dev = tracer.lock().ok()?.frame(&fita, setup, w, h);
+    Some(dev.to_cpu(cam, screen))
+}
+
+/// ⭐⭐⭐ **A IMAGEM, pintada no dispositivo** — o quadro inteiro sem o G-buffer atravessar o
+/// barramento. `None` pelas mesmas razões do [`march`].
+///
+/// ⚠️ **As luzes chegam como [`ph2d_field_render::PointLamp`]** e não como posições: o pintor
+/// precisa da radiância, e derivá-la noutro sítio seria a segunda resposta à mesma pergunta.
+/// ⛔ **UMA lâmpada por enquanto** — o shader tem um canal de sombra. Com duas, a segunda ficaria
+/// sem sombra **em silêncio**.
+#[must_use]
+// A peça, o registo, a vista, as luzes, os materiais, o olhar, o fundo, a tela e a bandeira.
+#[allow(clippy::too_many_arguments)]
+pub fn paint(
+    tracer: &SharedTracer,
+    doc: &ph2d_field::FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &ph2d_field_render::Orbit,
+    points: &[ph2d_field_render::PointLamp],
+    surfaces: &ph2d_field_render::Surfaces<'_>,
+    look: ph2d_view_transform::Look,
+    background: [u8; 4],
+    w: u32,
+    h: u32,
+    antialias: bool,
+) -> Option<ph2d_field_gpu::trace::Pintado> {
+    let lampada = points.first()?;
+    let (fita, setup) = pedido(doc, reg, cam, lampada.world, w, h, antialias)?;
+    let materiais = packed(surfaces.all);
+    let tabelas = crate::studio_wgsl::tables();
+    let pintor = ph2d_field_gpu::paint::PaintSetup {
+        owners: surfaces.owners,
+        materials: &materiais,
+        env_source: crate::studio_wgsl::SOURCE,
+        env_consts: &crate::studio_wgsl::constants(),
+        env_tables: &tabelas,
+        lamp_radiance: lampada.radiance_at_one,
+        stops: look.exposure_stops,
+        view: ph2d_view_transform::wgsl::view_code(look.view),
+        background,
+        // ⚠️ **A largura da fronteira de cor sai do [`ph2d_field_render::boundary_world`]**, que é
+        // quem a deriva — o factor dela foi VARRIDO e mora lá, não aqui.
+        pixel_world: ph2d_field_render::boundary_world(cam.half_extent, w.min(h)),
+    };
+    Some(
+        tracer
+            .lock()
+            .ok()?
+            .painted_frame(&fita, setup, &pintor, w, h),
+    )
+}
+
+/// ⭐ **Os materiais no formato que o dispositivo lê** — o [`ph2d_material::wgsl::pack`] com o
+/// encolhimento do lóbulo que o céu do produto pede.
+///
+/// ⚠️ **O `lobe_shrink` é `f64` e constante por MATERIAL**, logo viaja pronto: correr no
+/// dispositivo o que já está calculado poria a mesma conta a dar o mesmo número dois milhões de
+/// vezes ([`crate::studio_wgsl`]).
+#[must_use]
+pub fn packed(all: &[ph2d_material::Surface]) -> Vec<f32> {
+    let mut v = Vec::with_capacity(all.len() * ph2d_material::wgsl::PACKED);
+    for s in all {
+        let (main, coat) = ph2d_material::wgsl::alphas(s);
+        v.extend_from_slice(&ph2d_material::wgsl::pack(
+            s,
+            ph2d_material::wgsl::EnvLobe {
+                main: crate::render_light::lobe_shrink(main),
+                coat: crate::render_light::lobe_shrink(coat),
+            },
+        ));
+    }
+    v
+}
+
+/// O que a marcha precisa de saber, derivado uma vez — a fita e o pedido.
+///
+/// ⚠️ **Ele é partilhado pelo [`march`] e pelo [`paint`] de propósito:** os dois têm de marchar
+/// exactamente a mesma coisa, senão o gate que compara as duas imagens mede também a geometria.
+fn pedido(
+    doc: &ph2d_field::FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &ph2d_field_render::Orbit,
+    lamp: [f32; 3],
+    w: u32,
+    h: u32,
+    antialias: bool,
+) -> Option<(
+    ph2d_field_eval::wgsl::TapeWgsl,
+    ph2d_field_gpu::trace::MarchSetup,
+)> {
     let campo = ph2d_field_eval::Field::new(doc);
     let fita = campo.tape_wgsl()?;
     let bola = ph2d_field_eval::bounds::bounding_ball(doc, reg)?;
@@ -107,20 +200,21 @@ pub fn march(
             / passo.clamp(f32::EPSILON, 1.0))
         .ceil() as u32,
         t_max: ph2d_field_render::T_MAX,
-        // ⚠️ **UMA lâmpada por enquanto** — o shader tem um canal de sombra. Com duas, a segunda
-        // ficaria sem sombra **em silêncio**, e é por isso que o chamador cai na CPU em vez de a
-        // ignorar.
-        lamp: *lamps.first()?,
+        lamp,
         ball_center: bola.center,
         ball_radius: bola.radius,
         ao_rays: ph2d_field_render::OCCLUSION_PASSES,
         ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
         edge_cos: ph2d_field_render::EDGE_COS,
     };
-    let dev = tracer.lock().ok()?.frame(&fita, setup, w, h);
-    Some(dev.to_cpu(cam, screen))
+    Some((fita, setup))
 }
 
 #[cfg(test)]
 #[path = "gpu_frame_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **O PASSE QUE PINTA, nos dois motores** — irmão por assunto do gate do G-buffer.
+#[cfg(test)]
+#[path = "paint_parity_tests.rs"]
+mod paint_parity_tests;

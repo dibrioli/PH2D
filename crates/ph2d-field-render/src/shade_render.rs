@@ -278,7 +278,8 @@ pub fn shade_render(
     let basis = ViewBasis::of(cam);
     // ⭐ **A largura da transição entre dois materiais, em MUNDO** — a única coisa que o
     // [`Surfaces::mix_of`] não pode adivinhar. Ver [`ph2d_field_eval::owners::Owners::mix_at`].
-    let pixel_world = BOUNDARY_PIXELS * 2.0 * cam.half_extent / w.min(h).max(1) as f32;
+    #[allow(clippy::cast_possible_truncation)]
+    let pixel_world = boundary_world(cam.half_extent, w.min(h) as u32);
     let write = |px: &mut [u8], c: [f32; 4]| {
         px[0] = ph2d_color::srgb::linear_to_srgb_byte(c[0]);
         px[1] = ph2d_color::srgb::linear_to_srgb_byte(c[1]);
@@ -395,6 +396,18 @@ pub fn shade_render(
 /// sub-amostras num pixel de silhueta — mas o [`EdgePixel`] guarda **normais**, não pontos, e a
 /// marcha não conhece donos. Dar-lhos é o *id-buffer*, que esta linha **mediu e recusou**.
 const BOUNDARY_PIXELS: f32 = 2.0;
+
+/// ⭐⭐⭐ **A largura da fronteira entre dois materiais, em MUNDO** — a PORTA do
+/// [`BOUNDARY_PIXELS`].
+///
+/// ⚠️ **Ela existe porque o pintor do dispositivo faz a mesma pergunta** (`ph2d_field_gpu::paint`),
+/// e o factor acima é **medido**: escrito duas vezes, ele diverge no dia em que a varredura for
+/// refeita e só um dos motores for actualizado. *Uma lei escrita em dois sítios ainda não é uma
+/// lei — só uma PORTA é.*
+#[must_use]
+pub fn boundary_world(half_extent: f32, lado_px: u32) -> f32 {
+    BOUNDARY_PIXELS * 2.0 * half_extent / lado_px.max(1) as f32
+}
 
 /// ⭐⭐ **A luz de um ponto, com a fronteira entre dois materiais SUAVIZADA** — ver
 /// [`Surfaces::mix_of`].

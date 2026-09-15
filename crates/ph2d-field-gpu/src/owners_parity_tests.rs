@@ -45,10 +45,7 @@ fn amostras() -> Vec<([f32; 3], f32)> {
     // ⭐ E os pólos, onde a resposta é inequívoca: cada esfera sozinha, mais a folha distante.
     for (cx, raio) in [(-0.15f32, 0.2f32), (0.15, 0.2), (0.9, 0.1)] {
         for d in [[0.0f32, 0.0, 1.0], [0.0, 1.0, 0.0], [-1.0, 0.0, 0.0]] {
-            v.push((
-                [cx + d[0] * raio, d[1] * raio, d[2] * raio],
-                PIXEL,
-            ));
+            v.push(([cx + d[0] * raio, d[1] * raio, d[2] * raio], PIXEL));
         }
     }
     v
@@ -145,7 +142,11 @@ fn a_regua_da_lei_do_dono_acusa_uma_troca() {
     // A mesma cena com as folhas por OUTRA ordem: a resposta certa passa a ser outra, e a régua
     // tem de o dizer.
     let reg = Registry::new();
-    let trocada = Owners::new(&[bola(0.15, 0.2), bola(-0.15, 0.2), bola(0.9, 0.1)], &reg, MARGEM);
+    let trocada = Owners::new(
+        &[bola(0.15, 0.2), bola(-0.15, 0.2), bola(0.9, 0.1)],
+        &reg,
+        MARGEM,
+    );
     let cpu = on_cpu(&trocada, &am);
     let diferentes = am
         .iter()

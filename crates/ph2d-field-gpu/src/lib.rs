@@ -51,9 +51,12 @@ pub fn supports(doc: &FieldDoc) -> bool {
 
 pub mod material_parity;
 pub mod owners_parity;
+pub mod paint;
 pub mod parity;
 pub mod probe;
 pub mod trace;
+mod trace_to_cpu;
+mod trace_wgsl;
 
 /// O molde do shader: a fita do documento, mais o que o chamador quiser à volta.
 ///

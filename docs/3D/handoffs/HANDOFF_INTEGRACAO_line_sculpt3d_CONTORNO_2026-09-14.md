@@ -1552,3 +1552,72 @@ no dia em que o irmão mudar de sítio.
 * ⚠️ **As medições vivem no caminho do produto** (`mede_o_esfregao.rs`, `#[ignore]`), e **em
   `--release`**: o debug lê `~20×` mais lento e daria um tecto de passagens cinco vezes menor — *a
   mesma cura mede-se cinco vezes menor no perfil errado* (a lição da `line/3DModeling` em 10/09).
+
+---
+
+## §25 — ⛔⛔⛔ O **PANIC ao desacoplar a janela maximizada**, e por que ele era ESTRUTURAL
+
+> ```text
+> In a CommandEncoder, label = 'ph2d-mesh view'
+>   In a set_scissor_rect command
+>     Scissor Rect { x: 244, y: 96, w: 1399, h: 926 }
+>     is not contained in the render target (1024, 768, 1)
+> ```
+> — report do dono, 2026-09-14
+
+### §25.1 — Não é um acidente de um quadro
+
+O `size` que o passe recebe é o do quadro de **AGORA** (a superfície acabou de ser reconfigurada
+pelo gestor de janelas) e a `ScreenRect` é a área que o painel **PUBLICOU no quadro ANTERIOR**.
+
+⚠️ **E isso é assim de propósito**, com a razão escrita no `view.rs` desde a wave dos quatro
+viewports: *«o desenho e o pick derivam do mesmo rectângulo, e desenhar num de recurso enquanto o
+pick usa outro é a família inteira de “o lugar onde o rato toca não corresponde ao sítio na
+malha”»*.
+
+⇒ **todo redimensionamento tem um quadro em que as duas discordam.** A discordância era um `panic`,
+e reordenar não a remove — ela é o preço de o desenho e o pick partilharem a fonte.
+
+### §25.2 — A cura é RECORTAR
+
+`ScreenRect::clip_to(size) -> Option<Self>` é a porta. Os **três** passes da crate (cor, SSAO,
+G-buffer) recortam à entrada, e o `set_area` recebe o alvo e recorta também — *ele deixa de poder
+ser chamado errado*.
+
+⭐ **A linha que decide que esta cura é segura é a do REGIME NORMAL:** uma área que já cabe volta
+**ela mesma, ao bit**. Sem ela, esta correcção mudaria toda a imagem que já shipava — e é por isso
+que ela é a primeira asserção do gate sem GPU.
+
+⚠️ **O `set_viewport` é recortado também**, e não só o scissor: o `wgpu` valida os dois. O preço é
+um quadro de transição com a peça ligeiramente achatada — invisível ao lado de um `panic`.
+
+### §25.3 — ⛔⛔ Uma mutação SOBREVIVENTE mostrou que os dois recortes não são redundantes
+
+Matar **só** o da entrada não estoura — e abre um defeito **pior que o `panic`**: com a área
+inteiramente fora do alvo, o `set_area` devolve cedo e **não chega a chamar `set_scissor_rect`** ⇒ o
+passe fica com o scissor por omissão, que é **o alvo inteiro**, e a malha é pintada por cima da
+janela toda.
+
+⇒ *um recorte que desiste em silêncio não recorta nada*, e quem decide é a **entrada**: sem vista, o
+passe não se abre. Gate `uma_vista_inteiramente_fora_do_alvo_nao_pinta_a_janela_toda`.
+
+### §25.4 — ⛔ E o ARNÊS da mutação mentiu duas vezes antes de dizer a verdade
+
+As duas formas que este repo já tem escritas, as duas na mesma corrida:
+
+1. **Um `-- --ignored` sobre um teste que NÃO é `#[ignore]` corre ZERO testes e imprime `ok`** — e
+   lê-se exactamente como *SOBREVIVEU*. (`feedback_a_mutation_proof_needs_a_control_on_its_own_filter`.)
+2. **A redundância dos dois recortes** fazia a mutação de um deles ser **inobservável** — e a cura
+   não foi afrouxar a régua, foi escrever o gate que observa o que só aquele recorte impede.
+
+⇒ o arnês passa a **CONTAR quantos testes de facto correram**, e acusa `zero` como falha própria.
+
+### §25.5 — As provas
+
+* **Mutação 3 de 3**, e a do meio **devolve o `panic` do dono à letra** (`not contained in the
+  render target`).
+* Três gates: a intersecção sem GPU (com a linha do regime normal) · o `panic` do report
+  reproduzido · a vista inteiramente fora.
+* `clippy` **0 avisos** · `nextest-impacted` **15 185: 15 185 passaram**.
+* ⚠️ **A crate é partilhada com o modelador 3D** (`ph2d-app-field3d`) — nenhuma assinatura pública
+  mudou, só o comportamento no regime que antes estourava.

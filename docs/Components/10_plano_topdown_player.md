@@ -181,11 +181,15 @@ velha a delegar**, zero chamadores a mexer, e gate a manter o delegado com um co
 
 | grandeza | delta | porquê |
 |---|---|---|
-| `PROJECT_SCHEMA` | **+1** | um componente registado novo (`TopDownPlayer`) |
-| registo do `ph2d-ecs` | **+1** | idem |
-| espelho `ph2d-render` | **+1** | ⚠️ conta-se o DELTA, nunca o literal |
-| espelho `ph2d-script` | **+1** | idem |
+| `PROJECT_SCHEMA` | **+1** (`130 → 131`) | um componente registado novo (`TopDownPlayer`) |
+| registo da FÍSICA (`register_physics_components`) | **+1** (`33 → 34`) | é lá que ele vive |
+| espelho `ph2d-render` · espelho `ph2d-script` | **0** | ⛔ **a 1.ª redacção disse `+1` e ESTAVA ERRADA** |
+| registo do `ph2d-ecs` | **0** | idem — o componente não é de lá |
 | `VEC_SCENE_SCHEMA` · `FLIP_SCHEMA` · `FIELD_DOC_VERSION` | **0** | não os toca |
+
+⛔⛔ **A correcção vale por si:** os dois espelhos contam `ecs + render` e `ecs + script`, e **não**
+a física. Um componente de física move dois contadores, não quatro — e escrever `+1` nos quatro
+teria deixado dois gates vermelhos na integração com a cura errada ao lado.
 
 ⛔ **Contrato congelado (§6): não encosta.** `Tool` / `RasterEditTool` / `CanvasPaintTool` /
 `PanelEvent` / `NodeOp` / `OpResolver` / `NodeManifest` / `VectorOp` — nenhum aparece no desenho.
@@ -238,6 +242,44 @@ corridas **corrigidas**: as quatro fixturas do §1.5 seriam um corpus que aprova
 ---
 
 ## §6 — As MEDIÇÕES (§0.0 — nenhum número escrito sem a tabela ao lado)
+
+### §6.0 — ⭐⭐⭐ O PRODUTO, depois de construído (a porta que manda)
+
+Fracção do orçamento que o corpo anda num tique, medida pela **ponte inteira** contra a `rapier`:
+
+| ângulo | fracção | razão contra a projecção |
+|---|---|---|
+| 5° · 10° | `0,0872` · `0,1736` | `1,00` — a **divergência declarada** (§6-bis) |
+| 15° | `1,0000` | `3,86` |
+| 20° | `1,0000` | `2,92` |
+| 30° | `1,0000` | `2,00` |
+| **45°** | **`1,0000`** | **`1,414`** |
+| 90° | `1,0000` | `1,00` |
+
+⭐ A coluna da direita é **exactamente `1/sin θ`** — que é a lei do orçamento escrita como número.
+
+**O custo**, medido na mesma porta (mínimo de 5 corridas, `load 1,5`):
+
+| n movers | ms/tique | por mover | % de um quadro |
+|---|---|---|---|
+| 1 | `0,082` | — | `0,5 %` |
+| 100 | `3,54` | `35 µs` | `21 %` |
+| 1 000 | `43,8` | `44 µs` | `263 %` |
+
+⇒ **~45 µs por mover por tique**, e o `max_slides` é a alavanca. ⚠️ Cem movers são `21 %` de um
+quadro: é folga larga para um jogo de vista de cima e é o número que quem puser uma horda tem de ler.
+
+### §6-bis — ⛔ A DIVERGÊNCIA declarada, e a alternativa que foi CONSTRUÍDA e recusada
+
+Abaixo do limiar o oráculo **pára seco** (`0,09 %` do orçamento) e nós andamos a **projecção**
+(`8,72 %` a 5°). A cura óbvia — desligar o deslize da própria biblioteca (`slide: false`) — foi
+construída e medida: o controlador **deixa de reportar contacto de forma fiável** quando o corpo já
+toca, e a mesma varredura devolveu **zeros erráticos a 25°, 30°, 40° e 65°**. Isso é um defeito pior
+do que a divergência que ele curava.
+
+⭐ E o que fica defende-se por si: o knob existe para que um toque quase frontal **não** atire o
+corpo à velocidade cheia, e a projecção faz isso de forma **contínua** — onde o alvo tem um penhasco
+de **`235×`** entre 15° e 16°.
 
 ### §6.1 — O deslize: o oráculo contra nós, por ÂNGULO (um tique, corpo já encostado)
 
@@ -292,6 +334,9 @@ sonda sobre um sucedâneo mede outro programa): o número que manda é o da pont
 | **W2** | o componente registado + a ponte + a cena do dono | `PH2D_TOPDOWN_SMOKE=1` |
 | **W3** | a secção do Inspector (as 4 condições da §4) + as duas acções do Input Map | `=1` outra vez, agora pelo painel |
 | **W4** | provas de mutação, portão de fecho, handoff, uma linha no §5 | — |
+
+⭐ **Todas fecharam.** 24 provas de mutação (10 na W1, 14 nas W2/W3), portão de fecho a
+**14 746 testes verdes** e clippy a zero com `-D warnings` na workspace inteira.
 
 ---
 

@@ -74,6 +74,7 @@
 - [Flakes de carga: o discriminador é o FAN-OUT, não o relógio](reference_flip_fit_cache_ratio_is_a_load_flake.md)
 - [CI corre 26 de 313 membros — «suíte verde» ≠ «CI verde»](project_ci_runs_26_of_313_workspace_members.md)
 - [A suíte em DEBUG parece pendurada por UM teste: `field-eval` custa 55 min sozinho — corra-o à parte](reference_one_field_eval_test_costs_55_minutes_of_the_debug_suite.md)
+- ⛔ [Um `-D warnings` que só corre no `ship.sh` é um portão que a LINHA nunca vê — 4 avisos de uma wave descobertos pela seguinte](feedback_a_deny_warnings_that_only_runs_at_ship_is_a_gate_the_line_never_sees.md)
 - ⛔⛔ [`--bins` NÃO alcança `tests/` — e o gate pode viver na `tests/it/` de OUTRA crate: 7 vermelhos em `ph2d-editor-core` sobre painéis que a linha editou](feedback_a_bins_run_never_reaches_the_gates_that_live_in_tests.md)
 - ⛔ [um `tail` é uma JANELA, não um veredito (0 FAILED sobre 212 suites)](feedback_a_tail_is_a_window_not_a_verdict.md)
 - [TRÊS membros novos da família de flakes de carga (o 3.º passa 3/3 a `load 19` ⇒ o discriminador é o FAN-OUT, não o relógio)](reference_flip_fit_cache_ratio_is_a_load_flake.md)

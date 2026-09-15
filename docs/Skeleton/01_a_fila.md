@@ -1705,9 +1705,16 @@ O gate tem **três** metades e a do meio é a que mata: nada · uma **FORMA** pr
 costura do painel (o da alcançabilidade também morto por mutação).
 
 ⏳ **ABERTO, e nomeado:**
-- **O custo de GPU não foi medido.** O que está medido é a CPU (encoding + deformação); cada
-  triângulo é um `push_clip` do Vello, e o preço de `3 456` camadas por quadro contra `216` só o
-  smoke o diz. É por isso que o `Smooth` **nasce desligado**.
+- ✅ **O custo FOI medido, e esta nota envelheceu duas vezes** (re-conferida contra o código em
+  2026-09-14). Ela dizia *«cada triângulo é um `push_clip` do Vello»* — desde a **F6-i** a pele é uma
+  **malha no passe de sprites** e aquele buffer já não é gasto por ela; e dizia *«não foi medido»* —
+  a tabela do [`SKIN_FRAME_PIECES`](../../crates/ph2d-skeleton-live/src/skin_image.rs) mede-o desde
+  13/09: **`1,08 µs` por peça entregue**, com o envio e o desenho na conta (`0,039 µs`). O orçamento
+  do QUADRO é `1 543` peças (`1/10` de um quadro de 60 fps), com cerca em tempo de compilação nas
+  duas pontas.
+  ⇒ ⏳ **O que fica ABERTO é outra coisa, e é uma DECISÃO DO DONO:** o `Smooth` continua a nascer
+  desligado por uma razão que **já não existe**. *Um default mantido por uma nota obsoleta é uma
+  feature desligada por engano.*
 - ⛔⛔ **O MAPA DOBRA SOBRE SI MESMO em dobras fortes, e isso NÃO é o que esta wave curou.** Medido:
   a `60°` por junta a área no pior ponto é **`−0,129`** (negativa ⇒ inversão) e `0,22 %` da imagem
   está dobrada; a `150°` são **`−1,017`** e `2,52 %`. O `Smooth` desenha o campo com fidelidade —
@@ -2612,10 +2619,12 @@ do quadro · o espelho do FABRIK apagado · o valor do `Chain` trocado na tabela
 RESPONSABILIDADE (`reach_chain_side_tests.rs`) — *para que lado dobra uma corrente de N* não é a
 mesma pergunta que *onde ela chega*. ⛔ Nunca subir o número.
 
-⏳ **ABERTO e NOMEADO:** o `bend` é **capturado** no `Add` com a corrente de `DEFAULT_CHAIN` (dois
-ossos). Se o artista subir o `Chain` depois, o lado guardado descreve a geometria de então — ele
-continua a ser honrado, mas foi lido de uma corrente mais curta. Re-capturar ao mudar o número é
-decisão de produto (é mexer num bit autorado sem o artista pedir).
+✅ **FECHADO na W16b, e esta nota envelheceu no mesmo dia em que foi escrita** (re-conferida contra o
+código em 2026-09-14): ela dizia que re-capturar ao mudar o `Chain` *«é decisão de produto»* — e o
+dono decidiu-a horas depois, pelo nome (*«o lado da dobra é capturado no momento em que carrega Add
+IK e sempre que IK Chain for mudado»*). A porta é a `goal::side_for_chain`, com os dois chamadores.
+⚠️ E o modo **MISTO** é a excepção, também já fechada: ali a re-captura APAGARIA a escolha do
+artista, e o misto não precisa dela.
 
 **W16 — *«IK BEND NÃO ESTÁ CONSISTENTE PARA MAIOR QUE 2. MUDA O ÂNGULO DE LADO»*** (report do dono,
 2026-09-14, depois de a W15 refutar a premissa anterior). ⭐⭐⭐ **Ele tinha razão, e a minha régua é

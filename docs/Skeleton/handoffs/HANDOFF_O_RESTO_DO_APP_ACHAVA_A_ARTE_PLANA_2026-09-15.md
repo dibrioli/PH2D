@@ -170,6 +170,31 @@ cada centro de pixel a UM triângulo).
 
 ---
 
+## §7-bis — O que o PORTÃO DE FECHO apanhou (e nenhum `check` via)
+
+Quatro vermelhos, **todos** crescimento desta wave, e **nenhum** num ficheiro que ela editou por
+assunto:
+
+| gate | o que ele viu | cura |
+|---|---|---|
+| `the_app_does_not_grow_past_its_numbered_ceiling` | `App` a `189` campos contra `187` | ⭐ a Remoção de fundo ganha **CASA** |
+| `shell_files_respect_hr18_loc_cap` | `app_state.rs` `1031` · `main.rs` `1120` | idem (a struct e o inicializador encolhem) |
+| `shell_functions_respect_their_ceiling` | `main.rs::new` `239` · `bgremoval_preview.rs::dispatch` `206` | idem + **o que o quadro DESENHA NO CANVAS** sai para uma porta |
+| `architecture_every_pointing_tool_asks_the_mesh` (**meu**) | a agulha pedia `pub(super) fn tint_instances(` | a agulha nomeia a **LEI** |
+
+⭐⭐ **A catraca dos campos diz a cura por escrito** — *«um campo novo tem DONO: ponha-o no estado da
+família do assunto dele»* — e aqui a família **já existia**: eram **cinco** campos soltos com o mesmo
+prefixo (`bgremoval_*` + `last_bgremoval_pushed_entity`) e nenhuma casa. ⇒
+[`bgremoval_shell::BgremovalShell`], `189 → 185` campos, e os **três** tectos descem com o corte
+(`187 → 185`, `1019 → 997`, `237 → 235`). *Uma catraca que não desce vira licença.*
+
+⚠️⚠️ **E o quarto é meu, e é a QUINTA vez que este repo paga a mesma forma:** a agulha do gate
+nomeava a **VISIBILIDADE**. Cortar o `dispatch` por responsabilidade tornou a função privada — **sem
+uma linha de comportamento mudar** — e o gate ficou vermelho no mesmo dia em que nasceu. *Um `pub`
+não é uma propriedade do produto.*
+
+---
+
 ## §8 — O que fica ABERTO
 
 - ⏳ **As guias que são CAMINHO** — a grelha, os contornos de selecção, os selos de operação, o véu

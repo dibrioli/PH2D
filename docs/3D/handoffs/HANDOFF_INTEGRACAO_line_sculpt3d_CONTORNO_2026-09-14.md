@@ -2324,3 +2324,199 @@ gesto guarda para o `Ctrl+Z`, aqui contra que superfície um deslocamento se med
 | 1 | os **4** itens do §28.7 (composição por dab · as 6 fixturas · a folga simétrica · o alvo escondido) | ⏳ inalterados |
 | 2 | o `tip_roundness` da vassoura | ⏳ **pré-existente**, dívida da linha dona |
 | 3 | o rasgo residual do traço curado (`0,0793` contra `0,038` de um dab só) | ⏳ **é a composição de seis dabs sobrepostos**, não o pick — a mesma grandeza do item 1 |
+
+---
+
+## §30 — ⭐⭐⭐ **O CENSO DOS KNOBS QUE CHEGAM**, e os **quatro** mortos da pose: quatro causas, quatro curas, e nenhuma era a que a lista dizia
+
+> `4d8fd5447` (o censo) · `a6a2492e0` (as quatro curas) · `1d5994dee` (o tecto do painel)
+
+### §30.1 — Porque o instrumento existe
+
+O `CLAUDE.md` §5.0 escreve o buraco sobre si mesmo: *«nenhum instrumento do repo
+pergunta se o VALOR chega a um consumidor»* — o `architecture_panel_wiring_parity`
+mede **focalizabilidade**, os `seam_*` provam que o **clique chega à ferramenta**, e
+o censo das fileiras prova que **todo valor do motor tem chip**. Nenhum deles olha
+para o barro.
+
+E o módulo passou de `24` para **`32` verbos em três dias** com o painel a pintar as
+mesmas quatro fileiras sempre. ⇒ [`censo_dos_knobs_tests.rs`](../../../crates/ph2d-app-sculpt3d/src/censo_dos_knobs_tests.rs):
+para cada `(verbo, knob)`, **o mesmo gesto, duas posições do knob, o barro comparado
+ao bit**, pela porta do produto (`SculptStroke::dab`).
+
+### §30.2 — ⚠️⚠️ A 1.ª corrida acusou **32** mortos e **27 eram da régua**
+
+| ronda | acusados | o que estava errado |
+|---|---|---|
+| 1.ª | **32** | o gesto era um `Dab::at` genérico ⇒ metade dos verbos era **inerte por lei** (um verbo de âncora tem `pull` nulo) |
+| 2.ª | **9 falsos** | *«sempre pintado»* ≠ *«pintado PARA o pincel»* — `cavity`, `ao`, `ssao`, `dyn_detail`, `remesh_res`, `quad_detail`, `quad_adapt` e os dois do extract são argumentos de **BOTÕES** e de **PASSES**, e um dab não os lê por desenho |
+| 3.ª | **5** | o `Verb::Mask` lia-se **inerte** porque a peça por tocar não tem canal — *um lado sem canal é um canal de ZEROS, nunca «não comparável»* |
+| **hoje** | **2** | as quatro curas abaixo |
+
+⇒ o controlo positivo por verbo (`acorda_neste_arnes`) e o piso de população pela
+**secção do pincel filtrada por `Place::Knobs` são o que separa um censo de uma
+lista de acusações.
+
+### §30.3 — ⭐⭐⭐ **`Pose × radius` era A RÉGUA, não o produto**
+
+A fileira do raio escreve em `radius_px` e **não** no `Brush` — daí o arnês carregar
+um raio próprio ao lado do pincel. A cadeia real, porém, junta os dois **antes** do
+dab: o `armed_brush` converte pixels em mundo, escreve `Brush::radius`, e **todo**
+construtor de `Dab` do produto lê esse campo (`input.rs`, `pull.rs` — os dois
+ficheiros por onde todo gesto passa).
+
+⇒ o arnês media um programa em que o raio do pincel **ficava parado**, e o
+`Verb::Pose` — cuja lei lê `brush.radius` e que **não tem dab por-vértice nenhum** —
+aparecia com o raio a `0,000e0`. Com **um** número: **`1,139e-1`**.
+
+⚠️ *Dois números onde o produto tem um é a forma mais barata de uma régua mentir*, e
+é a mesma família do `superficie_do_pen_down` montado à mão (§29). Gate
+`o_raio_do_dab_sai_do_pincel`, por `include_str!` (piso de população `≥ 5`), que
+**deixa de compilar** se um construtor mudar de ficheiro.
+
+### §30.4 — ⛔⛔⛔ **`Pose × falloff` não estava morto — e a medição achou um DEFEITO DE PRODUTO**
+
+A espec §1.2 diz que **só o modo de TORÇÃO** lê a curva. Ao medir o modo onde ela É
+lida, a torção com o **valor de fábrica (UM segmento)** não movia um único vértice:
+
+| segmentos | arrasto | `Constant` | `Sharper` | `Smooth` |
+|---|---|---|---|---|
+| 1 | 40 px | `2,98e-8` | `2,98e-8` | `2,98e-8` |
+| 2 | 40 px | `2,94e-1` | `1,84e-2` | `1,48e-1` |
+
+⭐ **A causa:** as duas casas escrevem a curva com argumentos **OPOSTOS**, e cada uma
+está certa em casa —
+
+* `ph2d_pose::Curva` recebe *quanto FALTA* (`1` no segmento mais perto do cursor) e
+  a lei amostra em `1 − i/n` (§5.2);
+* `Falloff::weight` recebe *quanto já se ANDOU* (`1` na borda do carimbo, onde o peso
+  é zero).
+
+A ponte escrevia `weight(p)` sem a inversão ⇒ o 1.º segmento recebia `weight(1,0)`,
+que é **`0,0` nas doze curvas**. Com `weight(1,0 - p)`: **`1,36e-1`** a um segmento.
+
+⚠️⚠️ **É a MESMA ponte que o pincel de CONTORNO pagou no dia anterior** (§ do
+`stroke_boundary`, que escreve `weight(1.0 - p)` pela mesma razão), e **os `69`
+traços do oráculo não podiam apanhá-la**: a bancada corre a `ph2d-pose`
+**directamente**, com a convenção dela (`ph2d_pose::suave`). *Uma paridade medida a
+montante de uma conversão não afirma nada sobre a conversão.* Quem a apanhou foi um
+censo a medir o **barro** pela porta do produto.
+
+Gate `a_curva_do_pincel_chega_ao_modo_de_torcao`, **três metades**: (1) com um
+segmento a torção move barro; (2) com um segmento as doze curvas dão o **mesmo**
+(todas valem `1` em `curva(1)`); (3) com dois elas divergem e a mais afiada move
+menos.
+
+### §30.5 — ⭐⭐ **`Pose × hardness` era A LENTE DO PAINEL**, e a regra certa já estava escrita para o mesmo controlo
+
+A dureza é um remapeamento da **distância normalizada** (`shaped_distance`), e a
+espec §1.3 escreve que este verbo **não tem nenhuma** (*«sem efeito: não há atenuação
+radial, o vértice é governado pelos PESOS dos segmentos»*).
+
+A fileira **já tinha a porta certa** — `shapes_the_distance`, escrita na caça de
+30/08 — e faltava-lhe **o segundo lado**: ela perguntava ao MODO (o campo elástico) e
+nunca ao VERBO. ⇒ `Verb::a_lei_le_a_distancia_ao_cursor()`, `false` para três:
+
+| verbo | porquê | fonte |
+|---|---|---|
+| `Pose` | não há atenuação radial | espec §1.3, explícito |
+| `Boundary` | os pesos saem do **anel** e do percurso do contorno | `ph2d_boundary::pesos`, que não consulta `shaped_distance` |
+| `Density` | `sem_lei_por_vertice` — não há peso onde uma distância entre | a porta irmã |
+
+⚠️ **O `Cloth` responde `true` apesar de também desviar do `dab_core`** — ele
+**chama** o `shaped_distance` na própria cadeia. *Desviar do laço e não ler a
+distância são duas propriedades, e três verbos mostram que elas não coincidem* — é
+por isso que esta pergunta **não** se deriva da `resolve_a_propria_regiao`.
+
+⚠️⚠️ Isto **não** resolve o `Strength` nem a curva do `Density` (o item aberto com
+decisão do dono por tomar: esconder ou pintar em cinzento).
+
+### §30.6 — ⭐⭐⭐ **`Pose × auto_smooth` era dívida REAL e foi CONSTRUÍDA**
+
+O verbo desvia antes do laço por-vértice onde o passe genérico corre ⇒ o artista
+arrastava e nada acontecia. **A cura não é emprestar o passe genérico**, e a espec
+di-lo com todas as letras (§15, e item 18 da lista de verificação):
+
+> a **auto-suavização** do pincel só age dentro do raio inicial, enquanto a
+> deformação alcança muito mais longe ⇒ o efeito dela «desaparece» longe do cursor
+> — **Não copiar**: se oferecermos auto-suavização aqui, ela segue **os pesos**, não
+> o raio.
+
+⇒ `stroke_pose::alisa_a_pose`: relaxação sobre a `saida` **deste evento**, com peso
+`passada × Cadeia::peso_total(v) × Fatores::de(v)` e o orçamento de passadas da casa
+(`auto_smooth::iteration_strengths`, o mesmo de todo outro verbo — ⛔ nunca um lerp
+com o número do slider).
+
+Medido (esfera de `1 490` vértices, raio `0,35`): **`171`** vértices alisados, que é
+**exactamente** a região que a pose moveu, e o mais distante a **`2,56 ×` o raio do
+pincel**.
+
+Três decisões que a construção impôs:
+
+1. **Buffer DUPLO** — com um só, metade dos vértices lê o valor novo e metade o
+   velho, e a saída passa a depender da **ORDEM** da região (a mesma decisão que o
+   esfregão de deslocamento desta crate já pagou por escrito).
+2. **A máscara entra pela porta que já a possui** (`Fatores::de`, que passou a
+   pública) — *um vértice que a máscara prende não pode ser alisado por baixo dela*,
+   e uma segunda cópia daquela aritmética divergiria no dia do canal seguinte.
+3. **A pergunta *«está armado?»* é a porta única** (`Brush::auto_smooth_brush`), que é
+   a **mesma** que o painel consulta para pintar a fileira — duas cópias divergiriam
+   num knob que aparece e não faz nada, que é o defeito que isto cura.
+
+⚠️ **No ponto neutro o caminho é byte-idêntico** por construção (a porta devolve
+`None` e nem a adjacência é consultada), e **o rebase do §7.2 fica intacto**: a lei
+corre sobre a `saida` do evento e nunca sobre a malha já escrita, logo o resultado
+continua a ser função pura do arrasto TOTAL.
+
+### §30.7 — ⚠️⚠️ A **quinta metade** do gate nasceu de uma mutação SOBREVIVENTE, e a minha premissa sobre ela estava ERRADA
+
+Apagar a consulta à porta deixava as quatro primeiras metades **verdes**, porque no
+ponto neutro o orçamento já devolve uma passada de peso `0`. Eu escrevi a metade nova
+a esperar a malha a virar `NaN` — e **`NaN.min(1,0)` devolve `1,0` em Rust**.
+
+⇒ o que acontece sem a guarda **não é lixo visível**: é um param mal carregado a
+alisar a **FORÇA CHEIA**, calado. A régua certa é *«`auto_smooth = NaN` deixa a peça
+exactamente como `auto_smooth = 0`»*, e essa sangra.
+
+### §30.8 — Provas de mutação e o portão
+
+**9 de 9 sangram**, com controlo do lado que passa:
+
+| # | mutação | metade que sangra |
+|---|---|---|
+| 1 | a ponte da curva volta a `weight(p)` | a torção com o valor de fábrica move `0,0000e0` |
+| 2 | `a_lei_le_a_distancia_ao_cursor` → `true` | o censo acusa `Pose × hardness` como morto NOVO |
+| 3 | apagar a chamada ao alisamento | o controlo positivo |
+| 4 | `peso_total(v)` → `1,0` | o outro lado da peça é alisado |
+| 5 | `fatores.de(v)` → `1,0` | vértices totalmente mascarados são alisados |
+| 6 | saltar a porta do neutro | `NaN` alisa à força cheia |
+| 7–9 | as três do `o_raio_do_dab_sai_do_pincel` (raio que não é do pincel · piso de população · o `include_str!` que não compila) | — |
+
+⚠️ **A metade *«alcança além do raio»* não tem mutação que a mate sozinha, e a razão
+é ESTRUTURAL e vale mais que uma:** a função do alisamento **não recebe o `Dab`**,
+logo um passe preso ao carimbo não é exprimível ali sem mudar a assinatura. *Uma
+propriedade que o compilador impede é mais forte que uma que um gate mede.*
+
+**Portão de fecho:** `15 209` testes, **`15 209` verdes**, zero flakes (`load 13,55`).
+Clippy `--all-targets` limpo nas quatro crates. As **seis** vassouras clean-room
+correm limpas menos o `tip_roundness` **pré-existente** — `14` ocorrências no
+merge-base e `14` no `HEAD`, logo esta linha não acrescentou nenhuma (ela **moveu**
+uma, ao cortar o default do pincel para `brush_default.rs`).
+
+**Dois tectos de LOC** curados por **CORTE por responsabilidade**, nenhum por uma
+entrada no `FILE_OVERAGE_OK`:
+
+| ficheiro | antes | depois | o corte |
+|---|---|---|---|
+| `ph2d-sculpt3d/src/stroke.rs` | `707` | `593` | o **ciclo de vida** do traço (`begin` + as portas da base persistente) → `stroke_ciclo.rs` |
+| `ph2d-panel-sculpt3d/src/rows.rs` | `606` | `565` | as **perguntas de visibilidade** → `rows_show.rs` (o endereço dos chamadores não muda: o pai re-exporta) |
+
+### §30.9 — ⏳ O que fica ABERTO
+
+| # | item | estado |
+|---|---|---|
+| 1 | os **4** do §28.7 e o `tip_roundness` do §29.6 | ⏳ inalterados |
+| 2 | **`Mask × falloff`** e **`Pose × falloff`** — os dois mortos que sobram | ⛔ **divergências declaradas**, as duas na fileira da CURVA, que o painel pinta **sempre** por cerca de produto medida e gateada (`the_basic_level_never_hides_the_curve_that_shapes_the_dab`). A saída que não a viola é desenhá-la **desactivada com a razão à vista** — desenho novo, e um rótulo i18n novo |
+| 3 | os **6** verbos que o arnês não acorda | ⏳ `Density`/`Boundary`/`Cloth` por LEI (a lei deles não vive no `dab`); `ClayThumb`/`MultiplaneScrape`/`SmearMultires` são **dívida do arnês**, cada um com o que lhe falta escrito na catraca |
+| 4 | o `Strength` e a curva do **`Density`** | ⏳ **decisão do dono** por tomar (esconder ou pintar em cinzento) — a porta da cura já existe |
+| 5 | o censo cobre a secção do **pincel**; as outras secções não têm censo equivalente | ⏳ nomeado |

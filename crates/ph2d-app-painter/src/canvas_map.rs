@@ -15,11 +15,13 @@
 //! ⚠️ **O afim FICA, e não é dívida:** ele é a lei de uma sprite que se desenha como QUAD, e carrega
 //! a grelha da folha desdobrada que esta porta não conhece. A malha só responde onde ela existe.
 //!
-//! ⛔ **O que ele NÃO faz: SUBDIVIDIR.** Um ponto atravessa exactamente; um SEGMENTO entre dois
-//! pontos é desenhado recto, e sobre uma dobra o recto certo seria partido nas arestas dos
-//! triângulos. Para a espinha da curva isso é inofensivo **por construção** — ela já chega
-//! achatada em muitos pontos, pela mesma `flatten_spine` que a tinta percorre —, e para a CAIXA do
-//! gizmo de transformação é uma aproximação **declarada**: quatro cantos mapeados, arestas rectas.
+//! ⭐⭐ **E ele SUBDIVIDE desde 2026-09-15** ([`CanvasMap::segment`]). O cabeçalho anterior declarava
+//! isto como limite — *«um ponto atravessa exactamente; um SEGMENTO é desenhado recto»* — e para a
+//! espinha da curva era inofensivo **por construção** (ela já chega achatada em muitos pontos).
+//! ⛔ Para a GRELHA não era: uma linha que atravessa o canvas inteiro é UM segmento, e sobre uma
+//! dobra ela saía recta por cima de arte curva. ⇒ o segmento é agora partido até o desvio caber
+//! na tolerância, e **num quad de repouso ele continua a emitir um ponto só, ao bit**: ali o mapa
+//! é AFIM, e um afim leva recta em recta por definição.
 
 use ph2d_render::Camera2d;
 use ph2d_vector::{Affine, Point};
@@ -88,6 +90,78 @@ impl<'a> CanvasMap<'a> {
         self.afim * Point::new(f64::from(p[0]), f64::from(p[1]))
     }
 
+    /// ⭐⭐⭐ **UM SEGMENTO autorado, no ECRÃ** — emite os pontos DEPOIS de `a`, já mapeados, em
+    /// número bastante para o desvio caber na tolerância.
+    ///
+    /// ⚠️⚠️ **Num quad de repouso ele emite UM ponto, ao bit** — e não por um atalho escrito à mão:
+    /// ali o mapa é um **AFIM**, e um afim leva recta em recta por definição, logo partir seria
+    /// gastar sem mover um pixel. É isso que faz toda a chrome que já existe continuar byte a byte
+    /// igual sobre uma sprite plana.
+    ///
+    /// ⭐⭐ **E o `return` de cima é POUPANÇA, não correcção — medido por mutação:** apagá-lo deixa a
+    /// suíte inteira verde, porque sobre um afim o desvio é `0` e o [`Self::pedacos`] devolve `1`
+    /// pela conta geral. ⇒ *a exactidão do caso plano cai da ÁLGEBRA, e o curto-circuito só evita
+    /// três travessias por segmento.* O gate que a guarda
+    /// (`a_segment_over_a_flat_quad_is_still_one_straight_line`) afirma a PROPRIEDADE e não o
+    /// caminho, que é por isso que ele continua a valer com o atalho apagado.
+    ///
+    /// ⭐ **A tolerância é `0,5 px` de ECRÃ, e o número não é novo:** é o mesmo, e pela mesma razão,
+    /// do refinamento da malha da pele (`ph2d_poly2d::RefineOptions`) — *abaixo de meio pixel o
+    /// anti-aliasing da própria arte é mais largo que o erro*. Aqui ele ganha uma segunda razão do
+    /// mesmo tamanho: a chrome é desenhada com uma caneta de `1,25 px`, então meio pixel de desvio
+    /// mora **dentro da linha que o desenha**.
+    pub fn segment(&self, a: [f32; 2], b: [f32; 2], mut emit: impl FnMut(Point)) {
+        if self.malha.is_none() {
+            emit(self.point(b));
+            return;
+        }
+        let n = self.pedacos(a, b);
+        for k in 1..=n {
+            let t = f64::from(k) / f64::from(n);
+            emit(self.point(interpola(a, b, t)));
+        }
+    }
+
+    /// Em quantos pedaços este segmento tem de ser partido.
+    ///
+    /// ⭐⭐⭐ **A LEI NÃO É NOVA — é a do refinamento da malha da pele** (`ph2d_poly2d::refine`):
+    /// mede-se o desvio uma vez, estima-se `n` por `√(d/tol)` (o desvio de uma corda cai com `h²`),
+    /// e **confere-se UMA vez** sobre o que foi entregue. ⛔ *Um laço até convergir é trabalho por
+    /// quadro sem tecto*, e a nota daquele ficheiro já o diz por escrito.
+    ///
+    /// ⚠️ **E a conferência não é zelo: ela foi exigida por um gate vermelho lá** — a lei `O(h²)`
+    /// descreve a tendência, não o valor, e *um número que se chama tolerância e não é honrado é um
+    /// número que mente ao artista*.
+    ///
+    /// ⛔ O tecto é o [`MAX_PEDACOS`], e o recurso dele é o **relógio do quadro**.
+    fn pedacos(&self, a: [f32; 2], b: [f32; 2]) -> u32 {
+        let n = estima(1, self.desvio(a, b, 1));
+        if n <= 1 {
+            return 1;
+        }
+        let d = self.desvio(a, b, n);
+        if d <= TOLERANCIA_PX || n >= MAX_PEDACOS {
+            return n;
+        }
+        estima(n, d).max(n + 1).min(MAX_PEDACOS)
+    }
+
+    /// O **pior desvio**, em px de ecrã, entre o meio de cada pedaço e a corda dele.
+    fn desvio(&self, a: [f32; 2], b: [f32; 2], n: u32) -> f64 {
+        let mut pior = 0.0_f64;
+        for k in 0..n {
+            let (t0, t1) = (f64::from(k) / f64::from(n), f64::from(k + 1) / f64::from(n));
+            let (p0, p1) = (
+                self.point(interpola(a, b, t0)),
+                self.point(interpola(a, b, t1)),
+            );
+            let meio = self.point(interpola(a, b, f64::midpoint(t0, t1)));
+            let corda = Point::new(f64::midpoint(p0.x, p1.x), f64::midpoint(p0.y, p1.y));
+            pior = pior.max((meio.x - corda.x).hypot(meio.y - corda.y));
+        }
+        pior
+    }
+
     /// O afim do quad de repouso — para quem precisa de uma ESCALA (o raio de uma alça em px de
     /// imagem) ou de desenhar uma IMAGEM, que não é um ponto e não atravessa esta porta.
     #[must_use]
@@ -118,3 +192,64 @@ impl<'a> CanvasMap<'a> {
         self.malha.is_some()
     }
 }
+
+/// Quantos pedaços um desvio de `d` px pede, partindo de `n`: a lei `√(d/tol)` do
+/// `ph2d_poly2d::refine`, saturada no [`MAX_PEDACOS`].
+fn estima(n: u32, d: f64) -> u32 {
+    if d <= TOLERANCIA_PX {
+        return n;
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a razão é finita e positiva, e o `min` é o tecto"
+    )]
+    let k = (f64::from(n) * (d / TOLERANCIA_PX).sqrt()).ceil() as u32;
+    k.clamp(n, MAX_PEDACOS)
+}
+
+/// Um ponto autorado entre `a` e `b`.
+fn interpola(a: [f32; 2], b: [f32; 2], t: f64) -> [f32; 2] {
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "os pontos autorados são f32; a conta faz-se em f64 e volta"
+    )]
+    [
+        f64::from(a[0]).mul_add(1.0 - t, f64::from(b[0]) * t) as f32,
+        f64::from(a[1]).mul_add(1.0 - t, f64::from(b[1]) * t) as f32,
+    ]
+}
+
+/// ⭐ **Meio pixel de ECRÃ** — ver [`CanvasMap::segment`] para as duas razões.
+const TOLERANCIA_PX: f64 = 0.5;
+
+/// ⭐ **O TECTO DE PEDAÇOS de um segmento — e ele é uma REDE, não um orçamento.**
+///
+/// O recurso é o **relógio do quadro**: a chrome do Painter redesenha-se toda a cada quadro, e cada
+/// pedaço custa uma travessia da malha ([`ph2d_render::DrawnMesh::world_at_uv`] varre triângulos).
+///
+/// Medido por `measure_the_price_of_a_subdivided_grid` (`--release`, `load 1,5`), uma grelha de
+/// **40 linhas** que atravessam a dobra:
+///
+/// | malha | pedaços pedidos | ms | % de um quadro de 16,7 ms | µs por pedaço |
+/// |---:|---:|---:|---:|---:|
+/// | 32 tris | 1 400 | 0,136 | 0,8 % | 0,10 |
+/// | 128 tris | 1 040 | 0,321 | 1,9 % | 0,31 |
+/// | 512 tris | 720 | 1,035 | 6,2 % | 1,44 |
+/// | 1 152 tris | 600 | 2,070 | 12,4 % | 3,45 |
+///
+/// ⭐⭐ **O achado é que a LEI DO DESVIO já se auto-limita: ela pediu `15`–`35` pedaços por linha em
+/// todos os casos, e o tecto NUNCA chegou a morder.** Quem cresce quando a malha é grossa é o número
+/// de pedaços; quem cresce quando ela é fina é o preço de cada um — e os dois puxam em sentidos
+/// opostos. ⇒ este número existe para o caso em que a lei **não converge** (um mapa dobrado sobre si
+/// mesmo), e não para apertar o caso normal.
+///
+/// **Onde o `64` vem:** a `3,45 µs` por pedaço (a malha mais fina medida), `40` linhas no tecto
+/// custariam `8,8 ms` — **53 %** de um quadro. É o pior caso possível desta rede, e é ele que impede
+/// o número de ser maior.
+///
+/// ⏳ **E a medição nomeia a obra seguinte:** o custo é `pedaços × triângulos` porque a travessia é
+/// uma varredura LINEAR. Um índice de UV na [`ph2d_render::DrawnMesh`] tornaria cada pedaço `O(1)` e
+/// a tabela acima ficaria plana — é a mesma forma da grelha de aceleração que o resto do app já usa,
+/// e não foi construída aqui porque nenhum número desta tabela a exige ainda.
+const MAX_PEDACOS: u32 = 64;

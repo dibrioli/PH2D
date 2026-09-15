@@ -149,6 +149,7 @@ pub fn draw_overlays(
         painter,
         hero,
         sim,
+        present,
         camera,
         window_size,
         vector_scene,

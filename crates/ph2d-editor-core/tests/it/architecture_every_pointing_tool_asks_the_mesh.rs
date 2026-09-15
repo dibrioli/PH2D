@@ -158,6 +158,36 @@ fn the_curve_and_line_chrome_is_painted_where_the_art_draws_it() {
         );
     }
 
+    // ⭐⭐⭐ **A GRELHA é a peça em que a SUBDIVISÃO decide** (item 4 do dono, 2026-09-15). As alças
+    // da curva já chegavam achatadas em muitos pontos; uma linha da rede atravessa o canvas INTEIRO,
+    // logo ela é UM segmento — e sobre uma dobra saía recta por cima de arte curva.
+    //
+    // ⚠️ **As DUAS metades**: consultar a porta **e** pedir-lhe o SEGMENTO. Mapear os dois extremos
+    // pelo `point` e ligar com um `line_to` passaria a primeira e desenharia exactamente a recta que
+    // esta wave veio tirar.
+    const GRELHA: &str = "crates/ph2d-app-painter/src/painter_bridge_grid.rs";
+    let grelha = fonte(GRELHA);
+    assert!(
+        grelha.contains("CanvasMap::new("),
+        "{GRELHA} desenha a rede pelo afim do QUAD DE REPOUSO."
+    );
+    assert!(
+        grelha.contains("mapa.segment(de, ate, |p| path.line_to(p))"),
+        "{GRELHA} mapeia os extremos e liga-os a direito: sobre uma dobra a linha da rede fica por \
+         cima de arte curva. A porta é o `CanvasMap::segment`."
+    );
+    assert!(
+        !grelha.contains("affine * Point::new"),
+        "{GRELHA} voltou a mapear um ponto autorado pelo afim do quad."
+    );
+    // ⚠️ E a porta tem de SUBDIVIDIR de facto — sem isto ela é o `point` com outro nome.
+    assert!(
+        mapa.contains("fn pedacos(&self, a: [f32; 2], b: [f32; 2]) -> u32")
+            && mapa.contains("if self.malha.is_none() {"),
+        "{MAPA}: o `segment` deixou de derivar quantos pedaços o desvio pede, ou deixou de devolver \
+         UM ponto sobre um quad plano (onde o mapa é afim e partir não move um pixel)."
+    );
+
     // ⚠️ E o GIZMO de transformação é o mesmo controlo: se ele ficar no afim, a caixa afasta-se das
     // alças que ela enquadra (e das alças que o dedo agarra).
     const GIZMO: &str = "crates/ph2d-app-painter/src/painter_bridge_gizmo.rs";

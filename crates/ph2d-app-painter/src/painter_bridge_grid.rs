@@ -81,10 +81,12 @@ fn axis_is_legible(step_px: f32, px_scale: f64) -> bool {
 
 /// Desenha a rede do Grid Stamp sobre a sprite selecionada. No-op fora do método, com a grade
 /// desligada, sem seleção, sem canvas, ou quando a célula ficou pequena demais para se ver.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn draw_grid_overlay(
     painter: &PainterTool,
     hero: &HeroScreen,
     sim: &SimWorld,
+    present: &ph2d_ecs::World,
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
@@ -130,7 +132,12 @@ pub(super) fn draw_grid_overlay(
     }
 
     use ph2d_vector::{Affine, BezPath, Brush, Point};
-    let map = |x: f64, y: f64| affine * Point::new(x, y);
+    // ⭐⭐⭐ **A GRELHA SEGUE A ARTE DOBRADA** — ela é a peça do item 4 em que a subdivisão de facto
+    // decide: uma linha da rede atravessa o canvas INTEIRO, logo ela é UM segmento, e sobre uma
+    // dobra saía recta por cima de arte curva. ⛔ Num quad de repouso o mapa é afim e a saída é
+    // byte-idêntica — uma linha só, os mesmos dois pontos.
+    let mapa =
+        crate::canvas_map::CanvasMap::new(present, bits, iw, ih, affine, camera, window_size);
     let scene = vector_scene.inner_mut();
     // A JANELA, em px de imagem — as quatro quinas da tela levadas de volta pelo inverso do afim, e a
     // caixa delas recortada ao canvas.
@@ -170,13 +177,17 @@ pub(super) fn draw_grid_overlay(
         for k in 0..n {
             let t = f64::from(first) + f64::from(step) * f64::from(k);
             let mut path = BezPath::new();
-            if axis == 0 {
-                path.move_to(map(t, 0.0));
-                path.line_to(map(t, h));
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "os pontos autorados da rede vivem em px de imagem, que são f32"
+            )]
+            let (de, ate) = if axis == 0 {
+                ([t as f32, 0.0], [t as f32, h as f32])
             } else {
-                path.move_to(map(0.0, t));
-                path.line_to(map(w, t));
-            }
+                ([0.0, t as f32], [w as f32, t as f32])
+            };
+            path.move_to(mapa.point(de));
+            mapa.segment(de, ate, |p| path.line_to(p));
             for (color, dash) in &pens {
                 scene.stroke(dash, Affine::IDENTITY, &Brush::Solid(*color), None, &path);
             }

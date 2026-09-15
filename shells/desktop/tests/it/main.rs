@@ -69,6 +69,7 @@ mod no_two_object_smoke_modes_claim_the_same_number;
 mod no_two_sculpt3d_scenes_claim_the_same_level;
 mod no_two_smoke_scenes_claim_the_same_level;
 mod o_quadro_publica_o_que_o_pintor_mediu;
+mod o_rebobinar_repoe_o_estado_vivo;
 mod one_door_authors_an_expression;
 mod one_word_for_the_reusable_thing;
 mod painter_selection_shortcuts;

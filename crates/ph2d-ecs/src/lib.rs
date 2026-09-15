@@ -72,6 +72,8 @@ pub mod name;
 pub mod named_anchor;
 pub mod painted_doc;
 pub mod present;
+/// ⭐⭐⭐ **A reposição do estado VIVO ao rebobinar** — ver o cabeçalho do módulo.
+pub mod rewind_runtime;
 pub mod root_order;
 pub mod sampling;
 pub mod scene;

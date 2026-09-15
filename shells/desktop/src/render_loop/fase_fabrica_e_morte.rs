@@ -147,6 +147,22 @@ impl crate::App {
             if self.signal_readers.logging() && varridas > 0 {
                 eprintln!("[fabrica] rebobinou: {varridas} copia(s) varrida(s)");
             }
+            // ⭐⭐⭐ **E o ESTADO VIVO de toda a gente volta ao tique 0** (TOP-20 #15, W0) — o
+            // relógio de um `Timer`, a conta e a SEMENTE de uma `Factory`, a vida de um
+            // `Lifetime` e o amortecimento de uma `GameCamera`.
+            //
+            // ⛔⛔ **Sem isto, o que o undo não fotografa o undo também não REPÕE:** um timer que
+            // correu continuava corrido, uma fábrica com `Max Total` gasto **recusava-se a
+            // produzir na 2.ª corrida**, e uma fábrica aleatória dava uma corrida DIFERENTE a
+            // cada rebobinar — o report do dono sobre os projécteis (2026-09-15), um nível acima.
+            //
+            // ⚠️ **Aqui, dentro do MESMO invariante**, e não num gancho próprio: o transporte tem
+            // mais de um caminho até ao zero (o botão, o arrasto da régua, o reset do documento),
+            // e um gancho em cada um é a lista que envelhece.
+            let repostos = ph2d_ecs::rewind_runtime::rewind_runtime_state(sim.world_mut());
+            if self.signal_readers.logging() && repostos > 0 {
+                eprintln!("[rebobinar] {repostos} estado(s) vivo(s) reposto(s)");
+            }
         }
 
         // ⚠️ **Os sinais são publicados no fim, e chegam ao consumidor no quadro SEGUINTE** — o

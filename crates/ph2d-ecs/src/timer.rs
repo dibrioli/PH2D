@@ -249,12 +249,24 @@ pub fn reconcile(timers: &Timers, rt: &mut TimerRuntime) -> bool {
     }
     rt.0.resize(timers.0.len(), TimerState::default());
     for (t, s) in timers.0.iter().zip(rt.0.iter_mut()).skip(nascidos) {
-        if t.autostart {
-            s.running = true;
-            s.elapsed_us = 0;
-        }
+        *s = born(t);
     }
     true
+}
+
+/// **O que um slot ACABADO DE NASCER recebe** — a porta, com dois leitores.
+///
+/// ⚠️⚠️ **Ela existe porque REBOBINAR É RENASCER** (`crate::rewind_runtime`), e a resposta tinha de
+/// ser a mesma nos dois sítios. Escrita duas vezes, o dia em que o `autostart` ganhasse um irmão
+/// deixaria um Reset a devolver um timer que a cena nova arma — *e o modo de falha é mudo*.
+///
+/// ⚠️ **Não é o `Default`**: um `autostart` nasce **a correr**, e `TimerState::default()` é parado.
+#[must_use]
+pub fn born(timer: &Timer) -> TimerState {
+    TimerState {
+        elapsed_us: 0,
+        running: timer.autostart,
+    }
 }
 
 /// **ARRANCAR um timer** — ele passa a correr **do princípio**.

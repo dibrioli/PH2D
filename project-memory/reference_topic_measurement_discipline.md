@@ -244,3 +244,26 @@ vizinho mede antes de reaproveitar a régua dele.
   como protecção contra uma regressão de arrasto já reportada — e como o sombreado de contacto só
   existe naquele caminho, ela fazia-o **desaparecer a cada rotação**. O dono reportou-a como defeito
   novo. ⇒ ao escrever uma cerca por MODO, pergunte **o que mais vive só do lado que ela corta**.
+- ⛔⛔⛔ **O JOELHO de uma curva e a TRAVESSIA de duas curvas não são o mesmo ponto — e usar o
+  primeiro por não conseguir medir o segundo SHIPA um tecto errado.** Medido 2026-09-15: com o
+  quadro do modelador na GPU, o custo de um contorno desenhado cai de um degrau discreto (`+36 %`
+  de relógio por `+5 %` de arestas, a assinatura da **ocupação**). Pus o tecto no joelho — `743`
+  valores vivos — porque a comparação com a CPU lia `71` e `482 ms` para o mesmo traçado a
+  `load 91`. Quando a máquina acalmou (`load 2,6`), a travessia real estava em **`395`**: a `743` o
+  dispositivo já era **`0,41×`** a CPU, e a cerca deixava passar peças **duas vezes e meia mais
+  lentas** do que o caminho que ela existe para proteger. ⇒ *quando a medição em falta é a que
+  DECIDE, o número escrito entretanto é provisório e tem de ser marcado como tal.* ⚠️ E o corolário
+  que salvou o número: **«esperar pela calma nunca chega» é verdade como regra e falso como lei** —
+  ali chegou, e o que ela trouxe foi o número que decidia. O que fica escrito é a **sonda**, que
+  imprime o `load` ao lado de cada linha, e não o hábito de desistir da medição.
+- ⛔⛔ **Três hipóteses seguidas podem todas medir uma PROCURAÇÃO, e cada uma parece suficiente.**
+  Mesma jornada, à procura do que torna uma peça lenta no dispositivo: *«é o tamanho da fita»* (uma
+  cena de `766` instruções custa o mesmo que uma de `2 899`), *«são as transcendentais»* (uma com
+  `40` delas custa `13 ms`), *«é o passo da marcha»* (duas com o **mesmo** passo e a **mesma** cerca
+  custam `130` e `17 ms`). A grandeza que decidia era a que se **conta directo** — avaliações do
+  campo por acerto (`410` contra `55`). ⇒ *uma régua feita de procurações explica tudo e não aponta
+  nada*; conte a grandeza, não um sintoma dela.
+- ⚠️ **Uma tabela que SALTA a linha recusada encolhe o denominador em silêncio.** Ao descer um
+  tecto, a cena que passou a cair no outro caminho saiu da tabela por um `continue` e a razão passou
+  de *«14 de 18»* para *«13 de 17»* — que se lê como se a peça tivesse melhorado. ⇒ uma linha
+  recusada **imprime-se**, com o número que a recusou, e conta-se à parte.

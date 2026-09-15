@@ -2881,6 +2881,18 @@ existente** deforma (na direcção de deixar de dobrar), e as três rotas são: 
 (sem schema, mas é por mídia: o `VecPath` e a malha decodificam em sítios diferentes) · guardá-lo
 **por tendão** (exacto, e move o `PROJECT_SCHEMA`).
 
+### F6-l — ⭐⭐⭐ **O *«quase bom»* tinha número: era a CURVATURA dentro do dab, e a malha fina não a alcança** (4.º report, 2026-09-14)
+
+**UMA LINHA:** a marca do pincel sobre arte dobrada fecha em **`1,002`** (era `1,107`), e o que
+sobrava **não era facetagem** — refinar a malha de `32` para `8 192` triângulos deixava-a onde
+estava. A deformação sob o dab passou de uma matriz a um **polinómio de grau 3**, com duas cercas
+medidas que degradam para a elipse de ontem.
+
+⇒ **[HANDOFF_A_CURVATURA_DEBAIXO_DO_DAB_2026-09-14](handoffs/HANDOFF_A_CURVATURA_DEBAIXO_DO_DAB_2026-09-14.md)**
+— as tabelas, as duas cercas, as **seis** leituras que o diff inverte, as **quatro** premissas minhas
+que a medição derrubou (entre elas a que este módulo tinha escrita no cabeçalho) e a régua minha que
+media o espaçamento das amostras em vez da lei.
+
 ### F6-k — ⛔⛔ **A TRIAGEM DA PORTA ABERTA: as duas permissivas estão FECHADAS, e o oráculo que se corre PERDE para a nossa cura** (2026-09-14)
 
 Ordem do dono: antes de trocar a lei dos pesos, correr o oráculo sobre a **nossa** arte. Protocolo

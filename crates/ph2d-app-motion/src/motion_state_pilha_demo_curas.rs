@@ -474,3 +474,147 @@ fn probe_quantos_contactos_sao_face_a_face() {
     );
     eprintln!("\n  ⚠️ num monte com desalinho UNIFORME 0..45 esperar-se-ia 11% e 33%.");
 }
+
+/// **SONDA — a W0: as peças da `=114` são MESMO gelo?**
+///
+/// ⚠️⚠️ O doc 109 §8.5 e o doc 111 §2 afirmam que sim (*«a cena não escreve material nenhum»*). Esta
+/// sonda lê a coluna do stream COZIDO em vez de a supor — *uma ausência afirmada sem olhar a coluna
+/// é um palpite com cara de medição*.
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_as_pecas_sao_gelo -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_as_pecas_sao_gelo() {
+    let mut state = MotionState::new();
+    let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut state, 0.0);
+    let s = state
+        .pump
+        .cook
+        .cook(&state.doc.graph, &state.registry, sinks[1], 1.0)
+        .expect("cozinha")[0]
+        .as_stream()
+        .clone();
+    for col in [
+        ph2d_nodegraph::attr::FRICTION_COLUMN,
+        ph2d_nodegraph::attr::BOUNCE_COLUMN,
+        ph2d_nodegraph::attr::ROLLING_COLUMN,
+    ] {
+        match s.get(col) {
+            Some(Column::Scalar(v)) => eprintln!(
+                "  {col:<10} PRESENTE, {} linhas, valor[0] = {:.3}",
+                v.len(),
+                v.first().copied().unwrap_or(f32::NAN)
+            ),
+            _ => eprintln!("  {col:<10} AUSENTE  ⇒ o par cai no `Material::LISO`"),
+        }
+    }
+    let mats = ph2d_contact::materiais(&s);
+    eprintln!(
+        "\n  `ph2d_contact::materiais` devolve {} ⇒ μ do par = {:.3}",
+        if mats.is_some() { "Some" } else { "None" },
+        mats.as_ref()
+            .and_then(|m| m.first())
+            .map_or(0.0, |m| ph2d_contact::atrito::mu(m.atrito, m.atrito))
+    );
+}
+
+/// O `y` MEDIANO das peças da direita no fim — a régua que separa *«assentou»* de *«congelou»*.
+fn altura_mediana_final() -> f32 {
+    let mut state = MotionState::new();
+    let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut state, 0.0);
+    let mut ys = Vec::new();
+    for k in 0..=174_u64 {
+        #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
+        let t = k as f64 / 60.0;
+        let s = state
+            .pump
+            .cook
+            .cook(&state.doc.graph, &state.registry, sinks[1], t)
+            .expect("cozinha")[0]
+            .as_stream()
+            .clone();
+        if k == 174
+            && let Some(Column::Vec2(p)) = s.get("P")
+        {
+            ys = p.iter().map(|q| q[1]).collect();
+        }
+        state
+            .pump
+            .cook
+            .advance_tick(&state.doc.graph, &state.registry, t)
+            .expect("avanca");
+    }
+    mediana(&ys)
+}
+
+/// **SONDA — W2 do [doc 111]: os CONTACTOS sobrevivem ao tique seguinte?**
+///
+/// ⭐⭐⭐ É o facto que decide se a obra encomendada é sequer APLICÁVEL. O `λ` acumulado (*warm
+/// starting*) precisa de uma chave estável entre tiques: se as feições mudarem todas, **não há o que
+/// aquecer**, e um `λ` guardado numa chave que mudou é **pior que nenhum** — ele aquece o contacto
+/// errado.
+///
+/// A chave medida é o PAR `(id menor, id maior)`, que é o mais grosseiro possível: se nem ela
+/// sobreviver, uma chave com a FEIÇÃO dentro sobrevive ainda menos.
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_os_contactos_sobrevivem -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_os_contactos_sobrevivem() {
+    let mut state = MotionState::new();
+    let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut state, 0.0);
+    let mut anterior: Vec<(usize, usize)> = Vec::new();
+    let (mut vivos, mut novos, mut tiques) = (0_usize, 0_usize, 0_usize);
+    for k in 0..=174_u64 {
+        #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
+        let t = k as f64 / 60.0;
+        let s = state
+            .pump
+            .cook
+            .cook(&state.doc.graph, &state.registry, sinks[1], t)
+            .expect("cozinha")[0]
+            .as_stream()
+            .clone();
+        if t >= 2.0
+            && let (Some(Column::Vec2(p)), Some(cols)) = (s.get("P"), ph2d_contact::colisores(&s))
+        {
+            let mut agora = Vec::new();
+            for i in 0..p.len() {
+                for j in (i + 1)..p.len() {
+                    if let (Some(a), Some(b)) = (cols[i], cols[j])
+                        && ph2d_contact::contato(&a, p[i], &b, p[j], (i + j) % 2 == 0).is_some()
+                    {
+                        agora.push((i, j));
+                    }
+                }
+            }
+            if !anterior.is_empty() {
+                vivos += agora.iter().filter(|c| anterior.contains(c)).count();
+                novos += agora.iter().filter(|c| !anterior.contains(c)).count();
+                tiques += 1;
+            }
+            anterior = agora;
+        }
+        state
+            .pump
+            .cook
+            .advance_tick(&state.doc.graph, &state.registry, t)
+            .expect("avanca");
+    }
+    let total = vivos + novos;
+    eprintln!("\n  sobre {tiques} tiques da janela assente:");
+    eprintln!("  contactos que SOBREVIVEM ao tique anterior: {vivos}");
+    eprintln!("  contactos NOVOS                           : {novos}");
+    eprintln!(
+        "  ⇒ taxa de sobrevivência: {:.1} %",
+        100.0 * vivos as f32 / total.max(1) as f32
+    );
+    eprintln!("\n  ⚠️ abaixo de ~80 % nao ha o que aquecer: doc 111 §5 W2.");
+}

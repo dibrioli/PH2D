@@ -850,9 +850,14 @@ binário a sair pelo impulso normal, em `spin`.
 ⭐⭐⭐ **O termo que eu tirei não era só o zumbido — era a única coisa que SEGURAVA o ângulo da
 peça.** Uma projecção de posição a partir da penetração é um **restaurador**: sempre que a caixa
 saía da pose de repouso, ela era rodada de volta. Mal amortecido, ele zumbe; ausente, **nada** opõe
-o giro que o atrito injecta, e com o `angular_damping` a nascer em `1` (sem arrasto) e as peças a
-serem **gelo entre si** (`Material::LISO`, `μ = 0` — a cena não escreve material) esse giro
-acumula-se sem fim. *Foi por isso que a v3 não curou: tornar o impulso auto-corrector limita o que
+o giro que o atrito injecta, e com o `angular_damping` a nascer em `1` (sem arrasto) esse giro
+acumula-se sem fim.
+
+> ⛔⛔ **CORRECÇÃO (2026-09-15, [doc 111 §2.1](111_o_motor_de_contacto_com_memoria.md)):** este
+> parágrafo dizia *«as peças são gelo entre si — a cena não escreve material»*. **Falso.** Lida do
+> stream COZIDO, a coluna `friction` está **PRESENTE** com `0,500` (o default do Rapier, que o
+> `source.shape` escreve sempre que o `Collide` está ligado). A tabela acima não muda — a frase que
+> estava ao lado dela, sim. *É a terceira ausência que esta caça afirmou sem olhar para a coluna.* *Foi por isso que a v3 não curou: tornar o impulso auto-corrector limita o que
 ele INJECTA e não repõe o que ele deixou de SEGURAR.*
 
 ⚠️ **E um impulso normal é uma restrição de UM LADO SÓ:** ele empurra, nunca puxa. Um contacto de

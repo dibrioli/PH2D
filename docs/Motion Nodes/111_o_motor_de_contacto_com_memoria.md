@@ -35,19 +35,37 @@ gravidade `4`), com as **mesmas duas réguas** do Motion.
 | `0,6` | `0,1223` | **`24,82`** |
 | **o Motion, hoje** | **`3,79 .. 5,69`** | `24,30 .. 28,36` |
 
-**Duas leituras, e a primeira é sobre a CENA e não sobre o motor:**
+**Duas leituras:**
 
-1. ⛔⛔ **Com `μ = 0` nem o oráculo assenta** — ele roda uma peça **`331°`**, quase uma volta
-   inteira. A `=114` não escreve material nenhum nas peças, logo elas são **gelo** entre si
-   (`Material::LISO`), e *uma pilha de quadrados sem atrito não assenta em motor nenhum: é Física.*
-   ⇒ **toda medição desta obra corre com `μ ≥ 0,3`**, e a cena tem de ganhar atrito antes de
-   qualquer veredito sobre o solver.
-2. ⭐⭐⭐ **E com atrito o abismo é de CLASSE:** `0,0030 °/tique` contra os nossos `3,79` — **1 260×**.
-   O giro fica na mesma banda (`24,82` contra `24,30..28,36`), ou seja o oráculo compra o silêncio
-   **sem** pagar em rodopio, que é exactamente o par que as oito tentativas do doc 109 não
-   alcançaram.
+1. ⛔⛔ **Com `μ = 0` nem o oráculo assenta** — ele roda uma peça **`331°`**, quase uma volta inteira.
+   *Uma pilha de quadrados sem atrito não assenta em motor nenhum: é Física*, e é por isso que
+   **toda medição desta obra corre com `μ ≥ 0,3`**.
+2. ⭐⭐⭐ **À MESMA fricção o abismo é de CLASSE:** o oráculo lê `0,1223 °/tique` a `μ = 0,6` e nós
+   lemos `3,79 .. 5,69` a `μ = 0,5` — **≈ 31×** —, e o giro fica na MESMA banda (`24,82` contra
+   `24,30 .. 28,36`). ⇒ *o oráculo compra o silêncio **sem** pagar em rodopio*, que é exactamente o
+   par que as oito tentativas do doc 109 não alcançaram.
 
-⇒ **A barra da obra:** `balanço ≤ 0,15 °/tique` **e** `giro ≤ 28°`, a `μ = 0,6`, na `=114`.
+### §2.1 — ⛔⛔⛔ E a primeira redacção desta secção estava ERRADA sobre a nossa própria cena
+
+Ela dizia: *«a `=114` não escreve material nenhum nas peças, logo elas são gelo»*, e daí tirava uma
+wave inteira (a «W0 — o atrito na cena»). **Medido** (`probe_as_pecas_sao_gelo`, que lê a coluna do
+stream COZIDO em vez de a supor):
+
+```text
+  friction   PRESENTE, 25 linhas, valor[0] = 0.500
+  bounce     PRESENTE, 25 linhas, valor[0] = 0.000
+  ph2d_contact::materiais devolve Some ⇒ μ do par = 0.500
+```
+
+⇒ **as peças já têm `μ = 0,5` — o default do Rapier, que o `source.shape` declara desde o doc 109
+§7 e escreve SEMPRE que o `Collide` está ligado.** A W0 **não existe**, e a comparação honesta é a
+do ponto 2 acima (`31×`, não `1 260×`).
+
+⚠️⚠️ *É a terceira ausência que esta caça afirmou sem olhar para a coluna* — e a lei do repo
+já a tinha escrito duas vezes: **uma ausência afirmada sem olhar a API é um palpite com cara de
+medição**.
+
+⇒ **A barra da obra:** `balanço ≤ 0,15 °/tique` **e** `giro ≤ 28°`, na `=114` como ela shipa.
 
 ---
 
@@ -104,10 +122,10 @@ restrição sustentar a orientação sem a re-excitar — o *warm starting* que 
 
 | # | wave | entrega | porquê nesta ordem |
 |---|---|---|---|
-| **W0** | **o ATRITO na cena** | a `=114` (e o default do `source.shape`) deixam de ser gelo | ⛔ **sem isto nenhum número desta obra significa nada** — o §2 mostra que nem o oráculo assenta a `μ = 0`. É de PRODUTO, não de motor, e é a única wave que pode fechar sozinha. |
-| **W1** | **o REPOUSO**, com CONTADOR | adormecer depois de `N` tiques quietos, com o contador numa COLUNA do estado | é metade do resultado do oráculo e não precisa do cache **por PAR**. ⚠️ **Mas não é sem estado** — ver o §5.1, que já o mediu. |
-| **W2** | a **CHAVE** do contacto | a identidade `(id, id, feição)` medida: quantos contactos sobrevivem ao tique seguinte num monte real | ⚠️ é o número que diz se o *warm starting* é sequer aplicável aqui — se as feições mudarem todos os tiques, não há o que aquecer. |
-| **W3** | o **CACHE** | o `λ` acumulado, na morada que a W2 justificar | só depois de a W2 provar que há chave |
+| ~~**W0**~~ | ~~o ATRITO na cena~~ | — | ✅ **DISSOLVIDA pelo §2.1:** as peças já têm `μ = 0,5`. A wave saiu de uma ausência que nunca foi medida. |
+| ~~**W1**~~ | ~~o REPOUSO~~ | — | ⛔ **REFUTADA no §5.2:** o zumbido IMPEDE o sono. |
+| ~~**W2**~~ | ~~a CHAVE do contacto~~ | **`92,7 %` de sobrevivência** | ✅ **MEDIDA no §5.3: há o que aquecer.** Luz verde para a W3. |
+| **W3** | o **CACHE** | o `λ` acumulado por contacto persistente, na morada a decidir (§4.2) | ⭐ **é a obra**, e a W2 já a autorizou |
 | **W4** | o **DISPOSITIVO** | o mesmo cache do lado do kernel | ⛔ sem ela a lei nova é CPU-only e custa o que vem curar |
 
 ⚠️ **A W1 é a fronteira da encomenda.** Ela é a mais barata das quatro e pode tornar as outras três
@@ -136,8 +154,51 @@ media.
 
 ⇒ **um repouso honesto precisa de um CONTADOR por peça** (*«quieta há `N` tiques»*), acordado pelo
 contacto — o que o oráculo faz. Isso é estado, mas é estado **POR PEÇA**, logo cabe numa COLUNA do
-`state`, ao lado do `age` e do `sim_t`, e **não** precisa do cache por PAR das W2–W4. A W1 encolhe de
-*«sem estado»* para *«uma coluna»*, e continua a ser a mais barata das quatro.
+`state`, ao lado do `age` e do `sim_t`.
+
+### §5.2 — ⛔⛔⛔ E a W1 com CONTADOR também cai: **o zumbido IMPEDE o sono**
+
+O contador foi prototipado e medido (5 realizações por célula, e agora com a **terceira** régua):
+
+| cerca / lado | cerca ° | `N` | balanço pior | giro líquido pior | `y` final |
+|---|---|---|---|---|---|
+| `0` (o que shipa) | — | — | **`3,79 .. 5,69`** | `24,30 .. 28,36` | `−2,56` |
+| `0,02` | `0,5°` | 8 | `4,17 .. 7,86` | `18,37 .. 34,05` | `−2,54` |
+| `0,05` | `1,0°` | 8 | `6,16 .. 9,43` | `9,73 .. 23,58` | `−2,55` |
+| `0,05` | `2,0°` | 15 | `4,67 .. 7,74` | `8,01 .. 20,95` | `−2,54` |
+| `0,10` | `5,0°` | 15 | `5,76 .. 8,44` | **`5,74 .. 8,74`** | `−2,41` |
+| `0,10` | `5,0°` | 30 | `4,11 .. 7,69` | `6,65 .. 22,05` | `−2,48` |
+
+⭐ **O contador cura o defeito do §5.1** — o `y` final é `≈ −2,5` em todas as células, ou seja **a
+pilha cai e assenta**; a queda livre reinicia o contador, como se previa.
+
+⛔⛔ **Mas o balanço NUNCA melhora — nem uma célula fica abaixo da linha de partida.** E a razão
+estava escrita antes de medir: *o zumbido vale `3,79 °/tique`, logo uma peça a zumbir não cabe em
+cerca nenhuma pequena e nunca chega a adormecer.* A `5,0°` a cerca começa a apanhá-la — e aí ela é
+**do tamanho do próprio defeito**, e adormece o que ainda se move.
+
+⭐⭐⭐ **A leitura que fica é sobre o oráculo:** ele lê `0,12` **não porque adormece**, mas porque
+**não zumbe**; o sono é CONSEQUÊNCIA do silêncio, nunca a causa dele. ⇒ *não há atalho: o cache do
+`λ` não é uma das quatro waves, é a obra.*
+
+⚠️ **O contador NÃO é inútil** — ele corta o giro líquido de `24,3 .. 28,4` para `5,7 .. 8,7`. Fica
+como candidato a **acabamento**, depois de o silêncio existir, nunca antes.
+
+### §5.3 — ⭐⭐⭐ A W2 está MEDIDA, e ela AUTORIZA a obra
+
+A pergunta: *o `λ` acumulado precisa de uma chave estável entre tiques — ela existe?* Medido na
+janela assente da `=114` (`probe_os_contactos_sobrevivem`), com a chave mais grosseira possível (o
+PAR de `id`s, sem feição):
+
+| | |
+|---|---|
+| contactos que SOBREVIVEM ao tique anterior | **`1 440`** |
+| contactos NOVOS | `113` |
+| **taxa de sobrevivência** | **`92,7 %`** |
+
+⇒ **há o que aquecer.** ⚠️ A medição é do PAR; uma chave com a FEIÇÃO dentro sobrevive **menos**, e
+esse número é o primeiro passo da W3 — mas a `92,7 %` diz que a família não está fechada à partida,
+que era o risco real.
 
 ---
 
@@ -150,4 +211,6 @@ As oito do [doc 109 §8.14](109_o_colisor_na_forma.md), mais as três deste doc:
 | 9 | **adoptar o `rapier2d` como motor da sim do Motion** | ⛔ tecto medido entre `1 600` e `6 400` peças contra `4,19 M` no dispositivo (§3) |
 | 10 | medir a obra na cena como ela shipa (`μ = 0`) | ⛔ o oráculo roda `331°` ali: *a cena não tem resposta certa para medir contra* (§2) |
 | 11 | o `angular_damping` como cura | ⛔ **inerte**: ele amortece a coluna `spin` e o contacto escreve o `rot` (doc 109 §8.12) |
+| 14 | o **REPOUSO** (a W1) como cura do zumbido | ⛔ o zumbido de `3,79 °/tique` **impede o sono**: nenhuma cerca pequena o apanha, e uma grande adormece o que se move (§5.2) |
+| 13 | a **W0** (dar atrito à cena) | ⛔ **não existe**: as peças já têm `μ = 0,5`, medido na coluna (§2.1) |
 | 12 | o repouso como **cerca SEM ESTADO** | ⛔ congela a pilha no ar, no primeiro tique (§5.1) — e as duas réguas do tremor leem `0,0000` |

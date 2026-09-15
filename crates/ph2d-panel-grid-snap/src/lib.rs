@@ -25,6 +25,7 @@ mod paint;
 mod paint_body_sections;
 mod paint_helpers;
 mod paint_kinds;
+mod paint_kinds_bounded;
 mod paint_rows;
 mod populate;
 pub mod state;

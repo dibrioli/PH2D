@@ -25,6 +25,43 @@ pub(crate) fn read_number_input(
         .unwrap_or((TextInputState::Normal, 0.0, "", 0, None))
 }
 
+/// ⭐⭐⭐ **A COLUNA DE UMA SECÇÃO DESTE PAINEL — medida uma vez, sobre os nomes que ela pinta.**
+///
+/// ⛔⛔ **Report do dono, 2026-09-15, com uma seta na linha *Major every (px)*:** *«a caixa recua
+/// quando na verdade o nome deveria criar as colunas»*. Medido a `220` de painel: aquele nome pede
+/// `92,2 px` e a metade da linha dá `90,0`, logo **só ele** passava da metade e **só a caixa dele**
+/// recuava — `x = 100,2` contra os `98,0` das três irmãs. Ver
+/// [`ph2d_editor_core::property_row::Seccao`].
+///
+/// ⚠️ **Toda linha deste painel tem UM campo**, então o que a secção declara é só o nome mais
+/// largo — mas a declaração continua a ser dela, e não da linha.
+pub(crate) fn seccao(
+    text_system: &mut TextSystem,
+    nomes: &[&str],
+) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(text_system, 1, nomes)
+}
+
+/// Os dois nomes que a [`paint_origin_rows`] pinta — **a mesma expressão que ela usa**.
+///
+/// ⛔ Uma segunda escrita de `"Origin X" + sufixo` seria a segunda resposta à pergunta *«que nome
+/// tem esta linha?»*, e a coluna passaria a ser medida sobre um texto que o painel não pinta.
+pub(crate) fn origin_labels() -> [String; 2] {
+    let suffix = unit_suffix_paren();
+    [format!("Origin X{suffix}"), format!("Origin Y{suffix}")]
+}
+
+/// Os quatro nomes que a [`paint_aabb_rows`] pinta — ver [`origin_labels`].
+pub(crate) fn aabb_labels(label_prefix: &str) -> [String; 4] {
+    let suffix = unit_suffix_paren();
+    [
+        format!("{label_prefix} min X{suffix}"),
+        format!("{label_prefix} min Y{suffix}"),
+        format!("{label_prefix} max X{suffix}"),
+        format!("{label_prefix} max Y{suffix}"),
+    ]
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_number_row(
     label: &str,
@@ -37,6 +74,7 @@ pub(crate) fn paint_number_row(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
     paint_number_row_value(
@@ -54,6 +92,7 @@ pub(crate) fn paint_number_row(
         text_system,
         theme,
         hit_index,
+        sec,
     )
 }
 
@@ -74,6 +113,7 @@ pub(crate) fn paint_number_row_from_state(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let (state, _, buffer, caret, anchor) = read_number_input(store, id);
     // Keep the live buffer for in-progress edits; otherwise display
@@ -99,6 +139,7 @@ pub(crate) fn paint_number_row_from_state(
         text_system,
         theme,
         hit_index,
+        sec,
     )
 }
 
@@ -132,6 +173,7 @@ pub(crate) fn paint_number_row_value(
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     ph2d_editor_core::property_row::paint_field_row_value(
         scene,
@@ -149,7 +191,7 @@ pub(crate) fn paint_number_row_value(
         anchor,
         visual,
         None,
-        1,
+        sec,
     )
     .0
 }
@@ -167,6 +209,7 @@ pub(crate) fn paint_origin_rows(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     state: &GridSnapState,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let origin = state.active_origin();
     let suffix = unit_suffix_paren();
@@ -182,6 +225,7 @@ pub(crate) fn paint_origin_rows(
         theme,
         hit_index,
         store,
+        sec,
     );
     paint_number_row_from_state(
         &format!("Origin Y{suffix}"),
@@ -195,6 +239,7 @@ pub(crate) fn paint_origin_rows(
         theme,
         hit_index,
         store,
+        sec,
     )
 }
 
@@ -218,6 +263,7 @@ pub(crate) fn paint_aabb_rows(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let suffix = unit_suffix_paren();
     let y = paint_number_row_from_state(
@@ -232,6 +278,7 @@ pub(crate) fn paint_aabb_rows(
         theme,
         hit_index,
         store,
+        sec,
     );
     let y = paint_number_row_from_state(
         &format!("{label_prefix} min Y{suffix}"),
@@ -245,6 +292,7 @@ pub(crate) fn paint_aabb_rows(
         theme,
         hit_index,
         store,
+        sec,
     );
     let y = paint_number_row_from_state(
         &format!("{label_prefix} max X{suffix}"),
@@ -258,6 +306,7 @@ pub(crate) fn paint_aabb_rows(
         theme,
         hit_index,
         store,
+        sec,
     );
     paint_number_row_from_state(
         &format!("{label_prefix} max Y{suffix}"),
@@ -271,6 +320,7 @@ pub(crate) fn paint_aabb_rows(
         theme,
         hit_index,
         store,
+        sec,
     )
 }
 
@@ -369,6 +419,8 @@ pub(crate) fn paint_labeled_toggle(
     hit_index.register(id, toggle_rect);
 }
 
-// Re-export `button_state` so `paint_kinds.rs` can use it without
-// reaching across modules; mirrors the legacy `super::*` glob.
-pub(crate) use crate::paint_helpers::button_state;
+// ⛔ **A re-exportação do `button_state` MORREU em 2026-09-15.** Ela existia *«para o
+// `paint_kinds.rs` o usar sem atravessar módulos»*, e o único chamador dele mudou-se para o
+// `paint_kinds_bounded.rs` (corte por responsabilidade), que o importa do dono —
+// `crate::paint_helpers`. *Um atalho que sobrevive ao chamador que o pediu é um segundo caminho
+// para o mesmo símbolo.*

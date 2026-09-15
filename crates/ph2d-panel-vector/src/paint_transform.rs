@@ -46,6 +46,17 @@ impl BodyCtx<'_> {
             return y;
         }
         let comprimento = length_unit();
+        // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez sobre os três nomes** — ver
+        //    [`ph2d_editor_core::property_row::Seccao`] e o report do dono de 2026-09-15.
+        let sec = ph2d_editor_core::property_row::Seccao::medida(
+            self.text_system,
+            2,
+            &[
+                tr("panel.vector.transform.position"),
+                tr("panel.vector.transform.size"),
+                tr("panel.vector.transform.rotation"),
+            ],
+        );
         // ⭐⭐⭐ **O PADRÃO DO INSPECTOR** — um nome para o PAR, duas caixas na mesma linha.
         y = self.fields_row(
             tr("panel.vector.transform.position"),
@@ -55,6 +66,7 @@ impl BodyCtx<'_> {
             ],
             Some(comprimento),
             y,
+            sec,
         );
         y = self.fields_row(
             tr("panel.vector.transform.size"),
@@ -64,6 +76,7 @@ impl BodyCtx<'_> {
             ],
             Some(comprimento),
             y,
+            sec,
         );
         // A rotação é um arrasto RELATIVO (graus por gesto, em torno do centro da caixa) — uma
         // caixa só, e hoje com o nome por extenso e a unidade dentro dela.
@@ -72,6 +85,7 @@ impl BodyCtx<'_> {
             &[crate::ids::VECTOR_TRANSFORM_R],
             Some(ph2d_editor_core::widget::Unit::Degrees),
             y,
+            sec,
         );
         // **Resize Box** (plano UI/UX W3b) — o que a ALÇA do gizmo faz a este objeto: reescrever
         // a caixa, ou escalar a pose (que é herdada pelos filhos — o certo para objeto de game).

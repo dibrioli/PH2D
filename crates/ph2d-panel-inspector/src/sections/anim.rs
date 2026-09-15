@@ -207,6 +207,7 @@ fn player_block(
     }
     cur_y += CHECK_H + ph2d_tokens::control_gap_px();
 
+    let sec = super::anim_rows::seccao_da_animacao(text_system);
     cur_y = super::rows::fields_row(
         scene,
         text_system,
@@ -220,7 +221,7 @@ fn player_block(
         &[ids::INSP_ANIM_SPEED],
         0.1, // LITERAL-PX-OK: passo de scrub em MÚLTIPLOS de velocidade, não em pixels
         None,
-        1,
+        sec,
     );
 
     cur_y = override_rows(
@@ -303,7 +304,7 @@ fn player_block(
                 &[ids::INSP_ANIM_FRAME_MS_THIS],
                 10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
                 Some(ph2d_editor_core::widget::Unit::Milliseconds),
-                1,
+                sec,
             );
         }
     }

@@ -14,6 +14,22 @@ use ph2d_tool_painter::{
     BrushSettings, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
 };
 
+/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
+///
+/// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
+/// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
+fn seccao(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(
+        ctx.text_system,
+        crate::number_field::SECTION_FIELDS,
+        &[
+            tr("panel.painter_layers.stencil.size"),
+            tr("panel.painter_layers.stencil.offset"),
+            tr("panel.painter_layers.stencil.rotation"),
+        ],
+    )
+}
+
 /// Paint the Stencil placement card (title + Size X/Y, Offset X/Y, Rotation number boxes). The card
 /// background is drawn first (height pre-computed from the row count), then the rows on top. Returns
 /// the next `y`.
@@ -67,6 +83,7 @@ pub(crate) fn paint_stencil_card(
     );
     let mut iy = y + pad + title_h;
     // Size X/Y — the rect half-extent as a sprite fraction (default 0.5 = 50 % of the sprite).
+    let sec = seccao(ctx);
     iy = paint_num_xy(
         ctx,
         theme,
@@ -82,6 +99,7 @@ pub(crate) fn paint_stencil_card(
         TEX_SIZE_MAX,
         SIZE_STEP,
         2,
+        sec,
     );
     // Offset X/Y — the rect centre in `−1..1` of the sprite.
     iy = paint_num_xy(
@@ -99,6 +117,7 @@ pub(crate) fn paint_stencil_card(
         TEX_OFFSET_MAX,
         FINE_STEP,
         2,
+        sec,
     );
     // Rotation — whole degrees.
     iy = paint_num_row(
@@ -114,6 +133,7 @@ pub(crate) fn paint_stencil_card(
         f32::from(TEX_ANGLE_MAX_DEG),
         ANGLE_STEP,
         0,
+        sec,
     );
     let _ = iy;
     y + card_h + ph2d_tokens::control_gap_px()

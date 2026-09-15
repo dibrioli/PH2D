@@ -11,6 +11,23 @@ use ph2d_tool_painter::{
     BrushSettings, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
 };
 
+/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
+///
+/// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
+/// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
+pub(crate) fn seccao_do_grao(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(
+        ctx.text_system,
+        crate::number_field::SECTION_FIELDS,
+        &[
+            tr("panel.painter_layers.grain.angle"),
+            tr("panel.painter_layers.grain.offset"),
+            tr("panel.painter_layers.grain.size"),
+            tr("panel.painter_layers.grain.depth"),
+        ],
+    )
+}
+
 /// Paint the tiling rows (and, on the brush, Depth) at `y`, returning the next `y`.
 pub(crate) fn paint_texture_tiling(
     ctx: &mut PaintCtx,
@@ -23,6 +40,7 @@ pub(crate) fn paint_texture_tiling(
 ) -> f32 {
     // ── Offset X/Y + Size X/Y — the TEXTURE tiling (each pair on ONE line). Always shown; under
     //    Stencil they tile the pattern INSIDE the rect (the rect placement is the Stencil card). ──
+    let sec = seccao_do_grao(ctx);
     y = crate::number_field::paint_num_xy(
         ctx,
         theme,
@@ -38,6 +56,7 @@ pub(crate) fn paint_texture_tiling(
         TEX_OFFSET_MAX,
         crate::number_field::FINE_STEP,
         2,
+        sec,
     );
     y = crate::number_field::paint_num_xy(
         ctx,
@@ -54,6 +73,7 @@ pub(crate) fn paint_texture_tiling(
         TEX_SIZE_MAX,
         crate::number_field::SIZE_STEP,
         2,
+        sec,
     );
 
     // ── Depth — how strongly the Grain bites (brush only; a Texture-LAYER is full-cover). ──
@@ -71,6 +91,7 @@ pub(crate) fn paint_texture_tiling(
             1.0,
             crate::number_field::FINE_STEP,
             2,
+            sec,
         );
     }
     y

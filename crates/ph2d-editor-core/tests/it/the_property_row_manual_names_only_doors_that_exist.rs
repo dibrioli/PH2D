@@ -80,10 +80,33 @@ fn declarado(corpo: &str, nome: &str) -> bool {
     .any(|agulha| corpo.contains(agulha.as_str()))
 }
 
+/// O texto da secção **§9** do manual — e só dele.
+///
+/// ⛔⛔ **A 1.ª redacção deste gate procurava a tabela pela FORMA** (quatro colunas, as duas
+/// últimas em crase) e por isso lia qualquer tabela do documento com essa forma. Em 2026-09-15 a
+/// §6 ganhou uma tabela de MEDIÇÃO com quatro colunas (`linha | o nome quer | a coluna | a caixa`)
+/// e o gate acusou `"90,0` (a metade)"` de não ser uma porta do código — *ele estava certo sobre o
+/// texto e errado sobre onde olhar*.
+///
+/// ⇒ *um censo identifica o seu sujeito pelo ENDEREÇO, nunca pela forma* — a mesma lei que o
+/// `CLAUDE.md` §5.0 escreve para os censos que varrem um directório por prefixo. Com o endereço, o
+/// gate fica **mais forte**: uma tabela de medição nova noutra secção deixa de o partir, e uma §9
+/// que mude de número parte-o **alto** (o piso de população).
+fn seccao_nove(md: &str) -> &str {
+    let ini = md
+        .find("\n## §9 ")
+        .expect("o manual perdeu a secção §9 — o gate deixaria de medir a tabela das leis");
+    let resto = &md[ini + 1..];
+    match resto[1..].find("\n## ") {
+        Some(k) => &resto[..k + 2],
+        None => resto,
+    }
+}
+
 /// As células `porta` e `gate` de cada linha da tabela do §9.
 fn pares_do_manual(md: &str) -> Vec<(String, String, String)> {
     let mut out = Vec::new();
-    for linha in md.lines() {
+    for linha in seccao_nove(md).lines() {
         let l = linha.trim();
         if !l.starts_with('|') {
             continue;

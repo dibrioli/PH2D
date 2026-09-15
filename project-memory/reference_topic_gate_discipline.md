@@ -205,3 +205,23 @@ metadata:
   eu ia arquivar o gate como fraco. **Quem o apanhou foi o `assert` de contagem no script.** ⇒ *toda
   mutação escrita à mão assere quantas vezes a agulha casou, ANTES de correr o teste* (irmã da lição
   «um filtro que casa ZERO imprime SOBREVIVEU»).
+
+---
+
+## ⛔⛔ Um censo que identifica o sujeito pela FORMA acusa quem tiver a mesma forma (2026-09-15)
+
+O gate do manual da linha de propriedade procurava a tabela `lei → porta → gate` por **forma**:
+*qualquer* linha de markdown com quatro colunas cujas duas últimas começam em crase. No dia em que a
+§6 do mesmo documento ganhou uma **tabela de medição** com quatro colunas, ele exigiu que
+`` `90,0` (a metade) `` fosse uma porta declarada no código — *certo sobre o texto, errado sobre
+onde olhar*.
+
+⇒ **um censo recorta o sujeito pelo ENDEREÇO** (aqui: o texto entre `## §9 ` e o `## ` seguinte), e
+mantém o **piso de população** para que perder o endereço falhe alto em vez de medir zero. É a mesma
+lei que o `CLAUDE.md` §5.0 escreve para o censo que varre um directório por prefixo de nome — ali
+ele passa a varrer **zero** e fica verde; aqui ele varre a **mais** e acusa um inocente. *As duas
+metades do mesmo erro.*
+
+⭐ Depois do endereço o gate ficou **mais forte**, não mais fraco: uma tabela nova noutra secção
+deixa de o partir, e uma §9 renomeada parte-o em voz alta (prova de mutação feita).
+

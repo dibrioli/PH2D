@@ -170,6 +170,7 @@ pub(crate) fn paint_texture_section(
         }
         // ── Angle (whole degrees) — the TEXTURE rotation. Under Stencil it rotates the pattern WITHIN
         //    the rect (the rect's own rotation is the Stencil card's Rotation). ──
+        let sec = crate::paint_texture_tiling::seccao_do_grao(ctx);
         y = crate::number_field::paint_num_row(
             ctx,
             theme,
@@ -183,6 +184,7 @@ pub(crate) fn paint_texture_section(
             f32::from(TEX_ANGLE_MAX_DEG),
             crate::number_field::ANGLE_STEP,
             0,
+            sec,
         );
     }
 

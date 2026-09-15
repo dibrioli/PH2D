@@ -253,6 +253,13 @@ fn editor(
     // ⚠️ **SEGUNDOS, e o passo é 0,1** — a unidade do artista. O componente guarda microssegundos
     // porque o tique é de passo fixo; a conversão vive nas duas pontas do canal e em mais lado
     // nenhum.
+    // ⚠️ **A secção tem UMA linha de campo** — a declaração é dela na mesma, e não do sítio:
+    //    ver [`ph2d_editor_core::property_row::Seccao`].
+    let sec = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[tr("panel.inspector.timers.duration_seconds")],
+    );
     cur_y = super::rows::fields_row(
         scene,
         text_system,
@@ -266,7 +273,7 @@ fn editor(
         &[ids::INSP_TIMER_DURATION],
         0.1, // LITERAL-PX-OK: passo de scrub em SEGUNDOS, não em pixels
         None,
-        1,
+        sec,
     );
 
     let half = (w - Spacing::Sm.px()) * 0.5;

@@ -204,6 +204,21 @@ fn anchor_editor(
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, name_dot);
     cur_y += ph2d_tokens::row_pitch_px();
 
+    // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez** — ver
+    //    [`ph2d_editor_core::property_row::Seccao`]. ⚠️ As quatro entram, mesmo as duas que só
+    //    aparecem quando a âncora tem caixa: *uma coluna que salta quando uma linha aparece é uma
+    //    coluna por linha com outro nome.*
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        2,
+        &[
+            tr("panel.inspector.anchors.position_x_y_px"),
+            tr("panel.inspector.anchors.rotation_deg"),
+            tr("panel.inspector.anchors.bounds_x_y_w_h"),
+            tr("panel.inspector.anchors.center_x_y_w_h"),
+        ],
+    );
+
     cur_y = super::rows::fields_row(
         scene,
         text_system,
@@ -217,7 +232,7 @@ fn anchor_editor(
         &ids::INSP_ANCHOR_POS,
         PX_STEP,
         Some(ph2d_editor_core::widget::Unit::Px),
-        2,
+        seccao,
     );
     cur_y = super::rows::fields_row(
         scene,
@@ -232,7 +247,7 @@ fn anchor_editor(
         &[ids::INSP_ANCHOR_ROT],
         DEG_STEP,
         Some(ph2d_editor_core::widget::Unit::Degrees),
-        2,
+        seccao,
     );
     cur_y = check_row(
         scene,
@@ -262,7 +277,7 @@ fn anchor_editor(
             &ids::INSP_ANCHOR_BOUNDS,
             PX_STEP,
             Some(ph2d_editor_core::widget::Unit::Px),
-            2,
+            seccao,
         );
         cur_y = check_row(
             scene,
@@ -290,7 +305,7 @@ fn anchor_editor(
                 &ids::INSP_ANCHOR_CENTER,
                 PX_STEP,
                 Some(ph2d_editor_core::widget::Unit::Px),
-                2,
+                seccao,
             );
         }
     }

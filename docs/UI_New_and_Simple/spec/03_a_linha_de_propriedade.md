@@ -123,10 +123,43 @@ só pode ser a metade enquanto `metade ≤ tecto`, o que dá `linha ≥ 2 × (pi
 | `304` (omissão) | `120,00` | `114,00` | 0 |
 | `720` (máximo do dock) | `328,00` | `322,00` | 0 |
 
-⏳ **NÃO CONVERTIDO:** o empréstimo alcança **1** das 59 chamadas da porta. Medido em 2026-09-14, à
-largura que o dono usa, dar a mesma medição às outras secções corta para **cerca de metade** os
-nomes elididos nos painéis de vetor, de escultura e no resto do Inspector; no **mínimo** do dock ele
-compra **zero** (ali a metade e o tecto coincidem e não há folga nenhuma).
+### ⭐⭐⭐ A granularidade DEIXOU DE SER UMA NOTA e passou a ser um TIPO (2026-09-15)
+
+⛔⛔ **Report do dono, com foto do painel da Grelha e uma seta na linha *Major every (px)*:** *«a
+caixa recua quando na verdade o nome deveria criar as colunas»*.
+
+A lei acima estava escrita e **a fiação não a cumpria**: o pintor media o rótulo **DESTA LINHA**.
+Medido a `220` de painel:
+
+| linha | o nome quer | a coluna que ela recebia | a caixa |
+|---|---|---|---|
+| `Cell size (px)` | `70,1` | `90,0` (a metade) | `x = 98,0` · `w = 84,0` |
+| **`Major every (px)`** | **`92,2`** | **`92,2`** | **`x = 100,2` · `w = 81,8`** ⛔ |
+| `Origin X (px)` | `70,7` | `90,0` | `x = 98,0` · `w = 84,0` |
+
+⚠️⚠️ **E o nome entra na conta DUAS vezes** — como o que a coluna pede emprestado (§6) e como o
+**piso da cedência** (§6-ter). Na secção *Transform* do Inspector a `273,3` os dois papéis produziam
+`104,6` para `Position X / Y` e **`56,3`** para `Rotation`: `48 px` de desalinhamento **dentro da
+mesma secção**, a mesma doença num regime mais largo.
+
+⇒ **as duas grandezas da conta passam a viajar juntas, num tipo:**
+
+```rust
+Seccao::medida(text_system, campos, &nomes_da_seccao)
+```
+
+- ela mede o rótulo mais largo **na fonte e no peso em que ele pinta** — a medição é da porta, nunca
+  do painel;
+- a secção declara-a **uma vez** e entrega-a a **todas** as linhas dela — as de campo e as cujo
+  controlo o painel constrói (`paint_label_row`), senão metade da secção mede e a outra metade não;
+- `Seccao::apenas_campos(n)` é o «não sei que nomes vou pintar»: a coluna fica na metade e não há
+  cedência.
+
+⏳ **A excepção que fica, NOMEADA:** a `number_cell` do painel de vetor continua a medir o nome da
+linha. Ela é uma **célula de uma grade de duas**, chamada de ~33 sítios em 39 secções, e metade
+delas escolhe entre meia largura e a linha inteira **por linha** — *declarar ali a secção seria
+declarar uma que não existe*. A conversão pede que as secções daquele painel sejam definidas
+primeiro.
 
 ---
 
@@ -323,6 +356,7 @@ uma das leis muda.*
 | §4 | a reticência nunca fica pendurada num espaço | `corte` | `the_ellipsis_never_hangs_off_a_space` |
 | §5 | o campo nunca é pintado abaixo do que o dono declarou | `NUMBER_INPUT_MIN_W_PX` | `a_field_is_never_narrower_than_its_owner_declared` |
 | §6 | o pintor pede emprestado a folga que o controlo não usa | `property_label_col_w_for` | `the_painter_borrows_the_slack_the_control_does_not_need` |
+| §6 | numa secção, todas as caixas começam no mesmo `x` | `Seccao` | `a_seccao_poe_todas_as_caixas_na_mesma_coluna` |
 | §6 | quantos rótulos elidem, por largura do dock | `property_row_columns_for` | `the_elision_ladder_only_shrinks` |
 | §6-bis | as componentes que não cabem ao piso descem, dentro da coluna do controlo | `property_fields_layout` | `a_row_of_many_fields_never_starves_them` |
 | §6-bis | alargar o painel nunca faz caber menos campos por linha | `property_fields_layout` | `a_wider_panel_never_fits_fewer_fields` |

@@ -290,6 +290,8 @@ impl BodyCtx<'_> {
         ids: &[ph2d_a11y::NodeId],
         unit: Option<ph2d_editor_core::widget::Unit>,
         y: f32,
+        // ⭐⭐ **A coluna é da SECÇÃO** — ver [`ph2d_editor_core::property_row::Seccao`].
+        sec: ph2d_editor_core::property_row::Seccao,
     ) -> f32 {
         ph2d_editor_core::property_row::paint_fields_row(
             self.scene,
@@ -304,7 +306,7 @@ impl BodyCtx<'_> {
             ids,
             1.0, // LITERAL-PX-OK: passo de scrub de um campo do vector
             unit,
-            2,
+            sec,
         )
     }
 
@@ -357,6 +359,16 @@ impl BodyCtx<'_> {
         cw: f32,
         y: f32,
     ) -> Rect {
+        // ⏳⏳ **DÍVIDA NOMEADA: aqui a coluna é a da LINHA, não a da secção.**
+        //
+        // ⛔ Report do dono, 2026-09-15 (*«a caixa recua quando na verdade o nome deveria criar as
+        // colunas»*): a cura é a [`ph2d_editor_core::property_row::Seccao`], e ela pede que a
+        // secção declare os nomes que pinta. ⚠️ **Este painel não tem secções no sentido do
+        // Inspector:** a `number_cell` é uma CÉLULA de uma grade de duas, chamada de ~33 sítios em
+        // 39 secções, e metade delas escolhe entre meia largura e a linha inteira **por linha**
+        // (ver [`Self::lone_number_row`]). *Declarar a secção aqui seria declarar uma que não
+        // existe* — a conversão é uma wave própria, com as secções deste painel definidas primeiro.
+        let sec = ph2d_editor_core::property_row::Seccao::medida(self.text_system, 1, &[label]);
         ph2d_editor_core::property_row::paint_field_row(
             self.scene,
             self.text_system,
@@ -370,7 +382,7 @@ impl BodyCtx<'_> {
             id,
             1.0, // LITERAL-PX-OK: passo de scrub de um campo do vector
             None,
-            1,
+            sec,
         )
         .1
     }

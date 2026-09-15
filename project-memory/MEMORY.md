@@ -38,6 +38,18 @@
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
 - 📚 [Comunicação & decisão: mais 50 lições](reference_topic_communication_and_decision_lessons.md)
 - ⛔ [Tilemap (TOP-20 #17) é do projeto `docs/Tilling`, não da line/components — o dono mandou pular (16/09)](project_tilemap_belongs_to_the_tiling_project.md)
+- ⭐ [**Como um CONTROLO mente** — a família inteira (10 entradas): morto vs ausente · faixa · rótulo · enum serializado](reference_topic_control_design_hazards.md)
+- ⛔⛔ [Nota que declara a granularidade certa para UM dos dois lados da fórmula lê-se como cumprida — junte-os num TIPO](feedback_a_note_that_names_the_right_granularity_for_one_side_reads_as_done.md)
+- ⛔ [Passo que manda clicar numa LINHA de painel afirma que ela está na lista — e o dono aprova o smoke com o passo impossível dentro](feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)
+- ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo mesmo com a ferramenta defeituosa** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — e meio-feito é pior que não começar
+- ⛔ [Restaurar uma mutação com `mv` devolve mtime ANTIGO e o cargo guarda o build DA MUTAÇÃO — `touch` no fim](feedback_a_mutation_restore_by_mv_leaves_cargo_with_the_mutated_build.md)
+- ⭐⭐ [Constante cara DENTRO do construtor de uma árvore corre onde a ÁRVORE é construída — 6 → 3 852 por quadro, com a imagem perfeita](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
+- ⭐⭐ [A CARA de um app é a tabela de tokens, não os widgets — redesenhar 44 pintores com a mesma pele deixa «a mesma cara»; comece pelos 5 números](feedback_the_face_of_an_app_is_its_token_table_not_its_widgets.md)
+- ⛔ [Sonda que arma o módulo por env var mede OUTRO programa que o pill — o cache incremental nunca vigiou as colunas do módulo (5 reports)](feedback_a_probe_that_arms_a_module_by_env_var_measures_another_program_than_the_pill.md)
+- ⛔ [Gesto escrito em DUAS metades aceita a variante nova em SÓ UMA — silêncio absoluto, e a fixtura que chama a porta interna fica verde](feedback_a_gesture_written_in_two_halves_accepts_a_new_variant_in_only_one.md)
+- ⭐ [**Campo IMPLÍCITO (SDF) e réguas de FORMA** — a família inteira (14): união coplanar incha · `max` cru = aresta viva · o semiespaço INFINITO ganha o `min` dentro da peça · o gate no REPRESENTANTE](reference_topic_implicit_field_laws.md)
+- ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO — a variável da varredura é parte da correcção (16,3 % → 0,0000 %)](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
+- 📚 [Comunicação & decisão: mais 50 lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 
 ## Git & colisão multi-agente
 - [Perigos de git/edição (12)](reference_topic_git_hazards.md) · 📚 [mais 4 lições](reference_topic_git_lessons_loose.md)

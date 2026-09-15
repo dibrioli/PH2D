@@ -497,6 +497,15 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-grid-snap/src/paint_body_sections.rs",
         "orquestrador de seccoes: delega nos irmaos `paint_rows`/`paint_helpers`, que nomeiam `paint_toggle(`/`paint_button(`. Passava por subcadeia (`paint_color_swatch_row`) ate' a fileira Color sair",
     ),
+    // ⚠️ **Ele passava por `paint_button(` — que era do reseed da VORONOI, e essa saiu.** O corte de
+    // 2026-09-15 (tecto de 600 LOC, `723`) mudou as duas grelhas LIMITADAS para o
+    // `paint_kinds_bounded.rs`, e com elas o único primitivo que este ficheiro nomeava. ⭐ A
+    // delegação sempre foi transitiva e agora está **medida**: `0` ocorrências de `NodeId`,
+    // `hit_index` e `register(` — ele escolhe o tipo de grelha e chama os irmãos.
+    (
+        "ph2d-panel-grid-snap/src/paint_kinds.rs",
+        "orquestrador dos LADRILHADOS (quadrado, hex, iso, escalonados, tri, chunks): delega nos irmaos `paint_rows`/`paint_helpers`, que nomeiam `paint_toggle(`/`paint_button(`; 0 ocorrencias de NodeId / hit_index / register(",
+    ),
     // ⭐ **O `paint.rs` do Inspector passou a ser ORQUESTRADOR PURO em 2026-08-27** (ADR-0164 / F5):
     // a moldura do corpo — superfície, alças, cabeçalho, clip, cantos — saiu inteira para o
     // `paint_body.rs` quando a seção COMPONENT o empurrou acima do tecto de LOC. ⚠️ Ele deixou de

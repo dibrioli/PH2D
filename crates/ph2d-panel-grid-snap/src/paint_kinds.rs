@@ -3,18 +3,13 @@
 //! Ported verbatim from `ph2d_editor_core::grid_snap::panel::paint_kinds`
 //! during ADR-0029 Phase C.4.
 
-use crate::layout::ROW_H;
 use crate::paint_helpers::{
     NeighborhoodFamily, paint_labeled_segmented_row, paint_neighborhood_button_row,
 };
-use crate::paint_rows::{
-    button_state, paint_aabb_rows, paint_number_row, paint_number_row_from_state, paint_origin_rows,
-};
+use crate::paint_rows::{paint_number_row, paint_number_row_from_state, paint_origin_rows};
 use crate::state::unit_suffix_paren;
 use ph2d_editor_core::grid_snap::{GridKind, GridSnapState};
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
-use ph2d_editor_core::zones::Rect;
 use ph2d_grid::hex::{HexOffset, HexOrientation};
 use ph2d_grid::staggered::StaggerParity;
 use ph2d_text::TextSystem;
@@ -46,12 +41,28 @@ pub(crate) fn paint_kind_config(
             paint_hex_cfg(x, w, y, scene, text_system, theme, hit_index, store, state)
         }
         GridKind::Tri => paint_tri_cfg(x, w, y, scene, text_system, theme, hit_index, store, state),
-        GridKind::Quadtree => {
-            paint_quadtree_cfg(x, w, y, scene, text_system, theme, hit_index, store, state)
-        }
-        GridKind::Voronoi => {
-            paint_voronoi_cfg(x, w, y, scene, text_system, theme, hit_index, store, state)
-        }
+        GridKind::Quadtree => crate::paint_kinds_bounded::paint_quadtree_cfg(
+            x,
+            w,
+            y,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            state,
+        ),
+        GridKind::Voronoi => crate::paint_kinds_bounded::paint_voronoi_cfg(
+            x,
+            w,
+            y,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            state,
+        ),
         GridKind::Chunks => {
             paint_chunks_cfg(x, w, y, scene, text_system, theme, hit_index, store, state)
         }
@@ -70,8 +81,13 @@ pub(crate) fn paint_square_cfg(
     store: &WidgetStore,
     state: &GridSnapState,
 ) -> f32 {
+    // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
+    let cell = format!("Cell size{}", unit_suffix_paren());
+    let major = format!("Major every{}", unit_suffix_paren());
+    let origem = crate::paint_rows::origin_labels();
+    let sec = crate::paint_rows::seccao(text_system, &[&cell, &major, &origem[0], &origem[1]]);
     y = paint_number_row(
-        &format!("Cell size{}", unit_suffix_paren()),
+        &cell,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -81,9 +97,10 @@ pub(crate) fn paint_square_cfg(
         theme,
         hit_index,
         store,
+        sec,
     );
     y = paint_number_row_from_state(
-        &format!("Major every{}", unit_suffix_paren()),
+        &major,
         ph2d_editor_core::grid_snap::ids::GS_CFG_SPACING_MAJOR,
         crate::state::meters_to_display(state.square_cfg.spacing_major),
         x,
@@ -94,8 +111,20 @@ pub(crate) fn paint_square_cfg(
         theme,
         hit_index,
         store,
+        sec,
     );
-    y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
+    y = paint_origin_rows(
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        state,
+        sec,
+    );
     paint_neighborhood_button_row(
         x,
         w,
@@ -122,8 +151,12 @@ pub(crate) fn paint_hex_cfg(
     store: &WidgetStore,
     state: &GridSnapState,
 ) -> f32 {
+    // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
+    let cell = format!("Cell size{}", unit_suffix_paren());
+    let origem = crate::paint_rows::origin_labels();
+    let sec = crate::paint_rows::seccao(text_system, &[&cell, &origem[0], &origem[1]]);
     y = paint_number_row(
-        &format!("Cell size{}", unit_suffix_paren()),
+        &cell,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -133,8 +166,20 @@ pub(crate) fn paint_hex_cfg(
         theme,
         hit_index,
         store,
+        sec,
     );
-    y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
+    y = paint_origin_rows(
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        state,
+        sec,
+    );
     let hex = if state.kind == GridKind::StaggeredHex {
         &state.staggered_hex_cfg.hex
     } else {
@@ -213,9 +258,14 @@ pub(crate) fn paint_iso_cfg(
     store: &WidgetStore,
     state: &GridSnapState,
 ) -> f32 {
+    // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
     let suffix = unit_suffix_paren();
+    let tw = format!("Tile width{suffix}");
+    let th = format!("Tile height{suffix}");
+    let origem = crate::paint_rows::origin_labels();
+    let sec = crate::paint_rows::seccao(text_system, &[&tw, &th, &origem[0], &origem[1]]);
     y = paint_number_row(
-        &format!("Tile width{suffix}"),
+        &tw,
         ph2d_editor_core::grid_snap::ids::GS_CFG_ISO_TILE_W,
         x,
         w,
@@ -225,9 +275,10 @@ pub(crate) fn paint_iso_cfg(
         theme,
         hit_index,
         store,
+        sec,
     );
     y = paint_number_row(
-        &format!("Tile height{suffix}"),
+        &th,
         ph2d_editor_core::grid_snap::ids::GS_CFG_ISO_TILE_H,
         x,
         w,
@@ -237,8 +288,20 @@ pub(crate) fn paint_iso_cfg(
         theme,
         hit_index,
         store,
+        sec,
     );
-    y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
+    y = paint_origin_rows(
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        state,
+        sec,
+    );
     paint_neighborhood_button_row(
         x,
         w,
@@ -265,8 +328,12 @@ pub(crate) fn paint_staggered_sq_cfg(
     store: &WidgetStore,
     state: &GridSnapState,
 ) -> f32 {
+    // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
+    let cell = format!("Cell size{}", unit_suffix_paren());
+    let origem = crate::paint_rows::origin_labels();
+    let sec = crate::paint_rows::seccao(text_system, &[&cell, &origem[0], &origem[1]]);
     y = paint_number_row(
-        &format!("Cell size{}", unit_suffix_paren()),
+        &cell,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -276,8 +343,20 @@ pub(crate) fn paint_staggered_sq_cfg(
         theme,
         hit_index,
         store,
+        sec,
     );
-    y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
+    y = paint_origin_rows(
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        state,
+        sec,
+    );
     let parity_idx = match state.staggered_square_cfg.parity {
         StaggerParity::OddRows => 0,
         StaggerParity::EvenRows => 1,
@@ -330,8 +409,12 @@ pub(crate) fn paint_tri_cfg(
     store: &WidgetStore,
     state: &GridSnapState,
 ) -> f32 {
+    // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
+    let edge = format!("Edge length{}", unit_suffix_paren());
+    let origem = crate::paint_rows::origin_labels();
+    let sec = crate::paint_rows::seccao(text_system, &[&edge, &origem[0], &origem[1]]);
     y = paint_number_row(
-        &format!("Edge length{}", unit_suffix_paren()),
+        &edge,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -341,8 +424,20 @@ pub(crate) fn paint_tri_cfg(
         theme,
         hit_index,
         store,
+        sec,
     );
-    y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
+    y = paint_origin_rows(
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        state,
+        sec,
+    );
     paint_neighborhood_button_row(
         x,
         w,
@@ -358,178 +453,6 @@ pub(crate) fn paint_tri_cfg(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_quadtree_cfg(
-    x: f32,
-    w: f32,
-    mut y: f32,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    state: &GridSnapState,
-) -> f32 {
-    y = paint_number_row(
-        "Max / leaf",
-        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_MAX_PER_LEAF,
-        x,
-        w,
-        y,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    );
-    y = paint_number_row(
-        "Max depth",
-        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_MAX_DEPTH,
-        x,
-        w,
-        y,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    );
-    y = paint_aabb_rows(
-        "QT bounds",
-        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MIN_X,
-        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MIN_Y,
-        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MAX_X,
-        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MAX_Y,
-        state.quadtree_cfg.bounds.min,
-        state.quadtree_cfg.bounds.max,
-        x,
-        w,
-        y,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    );
-    y = paint_number_row_from_state(
-        "Demo points",
-        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_DEMO_POINTS,
-        state.quadtree_cfg.demo_point_count as f64,
-        x,
-        w,
-        y,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    );
-    paint_number_row_from_state(
-        "Demo seed",
-        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_DEMO_SEED,
-        state.quadtree_cfg.demo_rng_seed as f64,
-        x,
-        w,
-        y,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    )
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_voronoi_cfg(
-    x: f32,
-    w: f32,
-    mut y: f32,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    state: &GridSnapState,
-) -> f32 {
-    y = paint_number_row(
-        "Seed count",
-        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_SEED_COUNT,
-        x,
-        w,
-        y,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    );
-    y = paint_number_row(
-        "RNG seed",
-        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RNG_SEED,
-        x,
-        w,
-        y,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    );
-    y = paint_number_row(
-        "Lloyd iters",
-        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_LLOYD_ITERS,
-        x,
-        w,
-        y,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    );
-    y = paint_aabb_rows(
-        "Voronoi bounds",
-        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MIN_X,
-        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MIN_Y,
-        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MAX_X,
-        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MAX_Y,
-        state.voronoi_cfg.bounds.min,
-        state.voronoi_cfg.bounds.max,
-        x,
-        w,
-        y,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    );
-    // Reseed button.
-    let reseed_rect = Rect::new(x, y, w, ROW_H);
-    let btn = Button {
-        id: ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RESEED,
-        label: "Reseed (next RNG)".to_string(),
-        state: button_state(
-            store,
-            ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RESEED,
-        ),
-        kind: ButtonKind::Default,
-        // Neutro: este sítio ainda não adere ao eixo do hover (ver `ph2d_editor_core::motion`).
-        hover_t: 1.0,
-        // Neutro: um botão sozinho arredonda os quatro cantos (a lei do grupo, wave 20).
-        cell: ph2d_editor_core::widget::GroupCell {
-            col: ph2d_editor_core::widget::GroupPos::Only,
-            row: ph2d_editor_core::widget::GroupPos::Only,
-        },
-    };
-    paint_button(&btn, reseed_rect, scene, text_system, theme);
-    hit_index.register(
-        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RESEED,
-        reseed_rect,
-    );
-    y + ph2d_tokens::row_pitch_px()
-}
-
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_chunks_cfg(
     x: f32,
     w: f32,
@@ -541,8 +464,15 @@ pub(crate) fn paint_chunks_cfg(
     store: &WidgetStore,
     state: &GridSnapState,
 ) -> f32 {
+    // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
+    let cell = format!("Cell size{}", unit_suffix_paren());
+    let origem = crate::paint_rows::origin_labels();
+    let sec = crate::paint_rows::seccao(
+        text_system,
+        &[&cell, "Chunk size (cells)", &origem[0], &origem[1]],
+    );
     y = paint_number_row(
-        &format!("Cell size{}", unit_suffix_paren()),
+        &cell,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -552,6 +482,7 @@ pub(crate) fn paint_chunks_cfg(
         theme,
         hit_index,
         store,
+        sec,
     );
     y = paint_number_row(
         "Chunk size (cells)",
@@ -564,8 +495,20 @@ pub(crate) fn paint_chunks_cfg(
         theme,
         hit_index,
         store,
+        sec,
     );
-    y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
+    y = paint_origin_rows(
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        state,
+        sec,
+    );
     paint_neighborhood_button_row(
         x,
         w,

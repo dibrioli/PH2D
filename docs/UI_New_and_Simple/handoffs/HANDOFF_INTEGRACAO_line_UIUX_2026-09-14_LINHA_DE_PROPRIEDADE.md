@@ -1930,3 +1930,97 @@ coisa não.**
 - As cinco colunas de *slider* do `painter-layers` (spec §2: o nome vive DENTRO da barra).
 - **Os quatro painéis que NÃO são formulários** ficam fora **com a razão**, não por cansaço:
   barra de ferramentas · cartões de canvas · caixa única · faixas de timeline.
+
+---
+
+## 30 — ⭐⭐⭐ *«A caixa recua quando na verdade o nome deveria criar as colunas»* — A COLUNA É DA SECÇÃO, NAS DUAS GRANDEZAS
+
+**Report do dono, 2026-09-15**, com foto do painel da Grelha e uma seta na linha *Major every (px)*.
+
+### 30.1 — A medição
+
+Sistema de texto REAL, `Sm`, painel a `220`:
+
+| linha | o nome quer | a coluna que ela recebia | a caixa |
+|---|---|---|---|
+| `Cell size (px)` | `70,1` | `90,0` (a metade) | `x = 98,0` · `w = 84,0` |
+| **`Major every (px)`** | **`92,2`** | **`92,2`** | **`x = 100,2` · `w = 81,8`** ⛔ |
+| `Origin X (px)` | `70,7` | `90,0` | `x = 98,0` · `w = 84,0` |
+| `Origin Y (px)` | `70,4` | `90,0` | `x = 98,0` · `w = 84,0` |
+
+*A linha com o nome mais comprido empurrava a caixa **dela** e mais nenhuma.*
+
+### 30.2 — ⚠️⚠️ A causa era uma ASSIMETRIA que o doc da porta JÁ DENUNCIAVA — na outra metade
+
+A largura da coluna do nome sai de **duas** grandezas, e elas tinham granularidades diferentes:
+
+| grandeza | granularidade | onde estava escrito |
+|---|---|---|
+| `control_need` (o que o controlo precisa) | **SECÇÃO** | `property_label_col_w_for`: *«se cada linha cedesse pelo que ELA precisa, a coluna saía esfarrapada»* |
+| o **nome** | **LINHA** ⛔ | `row_and_layout`, medido a cada chamada |
+
+⛔ **E o nome entra na conta DUAS vezes:** como o que a coluna pede emprestado (spec §6) **e** como o
+piso da cedência (§6-ter, *«nunca abaixo do que o rótulo precisa»*). Medido a `273,3` na secção
+*Transform* do Inspector, os dois papéis produziam `104,6` para `Position X / Y` e **`56,3`** para
+`Rotation` — **`48 px`** de desalinhamento dentro da mesma secção, a mesma doença num regime mais
+largo, e **que ninguém tinha reportado**.
+
+⭐ *Uma nota que declara a granularidade certa para UM dos dois lados da mesma fórmula é uma nota que
+se lê como cumprida.* A cura é um TIPO, não uma nota: `property_row::Seccao`.
+
+### 30.3 — A porta
+
+```rust
+Seccao::medida(text_system, campos, &nomes_da_seccao)   // mede na fonte E no peso em que pinta
+Seccao::apenas_campos(n)                                // «não sei que nomes vou pintar»
+```
+
+- a **medição é da porta** (fonte `Sm`, peso `Medium`) — um painel não tem por que saber disso;
+- a secção declara-a **uma vez** e entrega-a a **todas** as linhas dela, incluindo as cujo controlo
+  o painel constrói (`paint_label_row`) — *uma secção em que metade das linhas mede e a outra metade
+  não é uma secção com duas colunas*;
+- `colunas_da_linha` passa a ser **pública**: as duas famílias de linha caem na mesma derivação.
+
+### 30.4 — Onde a declaração ficou
+
+| painel | quem declara | nota |
+|---|---|---|
+| Inspector | cada secção (10 ficheiros, 23 `fields_row` + 5 `label_row` + as rows de `visibility`) | a §14 já o fazia desde 14/09 — foi o molde |
+| Grelha | cada tipo de grelha; `origin_labels()` / `aabb_labels()` devolvem **as mesmas expressões** que os pintores usam | ⛔ uma segunda escrita de `"Origin X" + sufixo` seria a 2.ª resposta à mesma pergunta |
+| Painter (camadas) | cada bloco; e o `paint_num_params` mede a **própria tabela** — zero listas à mão | |
+| Vector | só o *Transform* | ⏳ ver 30.6 |
+
+### 30.5 — O gate, e as DUAS mutações
+
+`ph2d-panel-grid-snap/tests/it/a_seccao_poe_todas_as_caixas_na_mesma_coluna.rs` — ele **pinta o
+painel** (`paint_hero_screen`) e lê os rectângulos **REGISTADOS**, não a resposta da porta. *Um gate
+que refaz a conta da porta mede a conta, não o produto.*
+
+| mutação | resultado |
+|---|---|
+| `row_and_layout` volta a medir o rótulo DESTA linha | ✗ **morre** — *«a caixa de NodeId(1041) começa em 646,64 … e a de NodeId(1020) em 641,00»* |
+| `ESTREITA_EM = 0` (painel largo) | ✗ **morre** no CONTROLO — sem ele o gate mediria o regime em que as caixas alinham por construção |
+
+### 30.6 — ⏳ ABERTO, nomeado
+
+- **A `number_cell` do painel de vetor** continua a medir o nome da linha: ela é uma **célula de uma
+  grade de duas**, chamada de ~33 sítios em 39 secções, e metade delas escolhe entre meia largura e a
+  linha inteira **por linha**. *Declarar ali a secção seria declarar uma que não existe* — a
+  conversão pede que as secções daquele painel sejam definidas primeiro.
+- Os itens de 29.3 continuam abertos.
+
+### 30.7 — Dois vermelhos do portão, os dois curados por CORTE
+
+1. **`paint_kinds.rs` estourou o tecto de 600 LOC** (`723`) ao ganhar as declarações de secção.
+   Cura: `paint_kinds_bounded.rs` — as duas grelhas que **não são um ladrilhado** (a *quadtree* e a
+   *Voronoi*: elas perguntam uma CAIXA e uma regra de subdivisão, e não têm origem nem vizinhança).
+   `723 → 512 + 232`. ⛔ Zero entradas novas no `FILE_OVERAGE_OK`. ⭐ E o corte matou um atalho que
+   já não servia ninguém: o `pub(crate) use … button_state` do `paint_rows.rs`, que existia *«para o
+   `paint_kinds.rs` o usar sem atravessar módulos»*.
+2. **⛔⛔ O gate do próprio manual acusou uma TABELA DE MEDIÇÃO.** O
+   `the_property_row_manual_names_only_doors_that_exist` procurava a tabela do §9 pela **FORMA**
+   (quatro colunas, as duas últimas em crase) — e a tabela nova da §6 tem essa forma, logo ele
+   exigiu que `"90,0` (a metade)"` fosse uma porta do código. *Um censo identifica o sujeito pelo
+   **ENDEREÇO**, nunca pela forma* (a mesma lei do `CLAUDE.md` §5.0 para os censos por prefixo de
+   directório). Hoje ele recorta a §9 pelo título, com prova de mutação — e ficou **mais forte**:
+   uma tabela nova noutra secção deixa de o partir.

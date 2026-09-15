@@ -13,6 +13,26 @@ use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 use ph2d_i18n::tr;
 
+/// Os nomes que esta secção pinta à esquerda — a fonte da coluna dela.
+const NOMES: [&str; 4] = [
+    "panel.inspector.visibility.clip_children",
+    "panel.inspector.visibility.mask_interaction",
+    "panel.inspector.visibility.mask_alpha_cutoff",
+    "panel.inspector.visibility.enabler_rect",
+];
+/// Quantas componentes tem a linha que esta secção não quer ver quebrar.
+const CAMPOS: usize = 2;
+
+/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, para as TRÊS famílias de linha que ela desenha.**
+///
+/// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
+/// colunas»*. Esta secção pinta um segmentado, um campo e uma linha de quatro componentes; sem uma
+/// declaração comum cada família responderia à pergunta por sua conta — e três respostas à mesma
+/// pergunta são três colunas. Ver [`ph2d_editor_core::property_row::Seccao`].
+fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(text_system, CAMPOS, &NOMES.map(tr))
+}
+
 /// Label-above row with a single NumberInput. Returns the next `y`.
 /// Mirrors §9 Sampling's `uv_pair_row` but for one value (cutoff, a rect
 /// component).
@@ -28,11 +48,14 @@ fn number_row(
     y: f32,
     label: &str,
     id: NodeId,
+    // ⚠️ **A coluna é da SECÇÃO** — ver [`seccao`]. Sem ela esta linha respondia pela metade da
+    //    linha enquanto a vizinha de quatro componentes cedia, e a secção saía esfarrapada.
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     // ⭐ **Rótulo à ESQUERDA, pela porta** (report do dono, 14/09) — esta era a SEGUNDA das duas
     // funções do Inspector que empilhavam o rótulo, gémea da `sections/rows::num_row`.
     let h = ROW_H_PX;
-    let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
+    let row = ph2d_editor_core::property_row::colunas_da_linha(x, w, y, h, sec);
     let label_font = TypeToken::Sm.px();
     ph2d_editor_core::widget::paint_property_label(
         text_system,
@@ -80,11 +103,13 @@ fn segmented_row(
     labels3: [&str; 3],
     // `None` = a seleção diverge; nenhum segmento acende.
     selected: Option<usize>,
+    // ⚠️ **A coluna é da SECÇÃO** — ver [`seccao`].
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let h = ROW_H_PX;
     // ⭐⭐ **O nome à ESQUERDA** (2026-09-15): esta porta é irmã da `rows::seg_row`, que já o fazia,
     //    e a única diferença dela é poder dizer «misto» — não a disposição da linha.
-    let row = super::rows::property_label_row(scene, text_system, theme, x, w, y, h, label);
+    let row = super::rows::property_label_row(scene, text_system, theme, x, w, y, h, label, sec);
     // ⚠️ **`SegmentedAdaptive` e não `Tabs`, para poder dizer «misto».** O `Tabs::selected()`
     // clampa (`idx.min(len-1)`), por isso é **incapaz** de renderizar «nenhum aceso» — e era isso
     // que fazia estas duas rows acenderem o valor da primária como se toda a seleção concordasse,
@@ -130,6 +155,7 @@ pub(crate) fn paint_visibility_section(
     //    anterior à porta. Ver `every_stack_of_rows_asks_the_rhythm`.
     let row_gap = ph2d_tokens::control_gap_px();
     let mut yy = y;
+    let sec = seccao(text_system);
 
     // Visibility Layer — collapsible sub-section using the CANONICAL
     // section header (a divider above + UPPERCASE title + chevron), so it
@@ -197,6 +223,7 @@ pub(crate) fn paint_visibility_section(
             tr("panel.inspector.visibility.clip_plus_draw"),
         ],
         (!info.mixed.clip_mode).then_some(usize::from(info.clip_mode)),
+        sec,
     );
 
     // Mask Interaction — None / VisibleInside / VisibleOutside (0/1/2).
@@ -217,6 +244,7 @@ pub(crate) fn paint_visibility_section(
             tr("panel.inspector.visibility.outside"),
         ],
         (!info.mixed.mask_mode).then_some(usize::from(info.mask_mode)),
+        sec,
     );
 
     // Mask alpha cutoff — only meaningful when the sprite obeys a mask.
@@ -232,6 +260,7 @@ pub(crate) fn paint_visibility_section(
             yy,
             tr("panel.inspector.visibility.mask_alpha_cutoff"),
             ids::INSP_VIS_ALPHA_CUTOFF,
+            sec,
         );
     }
 
@@ -278,6 +307,7 @@ fn paint_enabler_rows(
     let h = ROW_H_PX;
     let row_gap = ph2d_tokens::control_gap_px();
     let mut yy = y;
+    let sec = seccao(text_system);
     // On-Screen Enabler toggle (presence of the component).
     let on_rect = Rect::new(x, yy, w, h);
     hit_index.register(ids::INSP_VIS_ON_SCREEN, on_rect);
@@ -327,7 +357,7 @@ fn paint_enabler_rows(
             ],
             RECT_STEP,
             None,
-            2,
+            sec,
         );
     }
     yy

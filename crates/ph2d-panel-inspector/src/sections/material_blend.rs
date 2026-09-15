@@ -82,6 +82,13 @@ pub(crate) fn paint_material_blend_section(
     // Premult); `SegmentedAdaptive` reflows the wider labels onto extra
     // rows at the Inspector's narrow width. Selecting Mix detaches the
     // optional component (default).
+    // ⚠️ **A secção tem UMA linha** — a declaração é dela na mesma: ver
+    //    [`ph2d_editor_core::property_row::Seccao`].
+    let sec = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[tr("panel.inspector.material.blend_mode")],
+    );
     let blend_row = super::rows::property_label_row(
         scene,
         text_system,
@@ -91,6 +98,7 @@ pub(crate) fn paint_material_blend_section(
         yy,
         h,
         tr("panel.inspector.material.blend_mode"),
+        sec,
     );
     let seg = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_BLEND_SECTION,

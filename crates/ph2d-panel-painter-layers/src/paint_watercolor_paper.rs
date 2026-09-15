@@ -18,6 +18,37 @@ use ph2d_tool_painter::{
     BrushSettings, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TextureKind, TextureMapping, param_specs,
 };
 
+/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
+///
+/// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
+/// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
+fn seccao_do_papel(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(
+        ctx.text_system,
+        crate::number_field::SECTION_FIELDS,
+        &[
+            tr("panel.painter_layers.paper.angle"),
+            tr("panel.painter_layers.paper.offset"),
+            tr("panel.painter_layers.paper.size"),
+            tr("panel.painter_layers.paper.tooth"),
+            tr("panel.painter_layers.paper.relief"),
+            tr("panel.painter_layers.paper.roughness"),
+        ],
+    )
+}
+
+/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
+///
+/// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
+/// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
+fn seccao_dos_extras(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(
+        ctx.text_system,
+        1,
+        &[tr("panel.painter_layers.paper.amount")],
+    )
+}
+
 /// Slider range bounds (parameter domains, not design tokens).
 const TEX_SIZE_MIN: f32 = 0.1; // LITERAL-PX-OK: paper/granulation Size min (mirrors TEX_SIZE_MIN)
 const TEX_SIZE_MAX: f32 = 100.0; // LITERAL-PX-OK: paper/granulation Size max (mirrors TEX_SIZE_MAX)
@@ -60,6 +91,7 @@ fn paint_substrate_rows(
     brush: BrushSettings,
 ) -> f32 {
     let mut y = y;
+    let sec = seccao_do_papel(ctx);
     for (label, id, value) in [
         (
             tr("panel.painter_layers.paper.relief"),
@@ -85,6 +117,7 @@ fn paint_substrate_rows(
             1.0,
             number_field::FINE_STEP,
             2,
+            sec,
         );
     }
     y
@@ -198,6 +231,7 @@ pub(crate) fn paint_paper_section(
             state::set_pending_paper_mapping_dd(Some((r, brush.paper_mapping)));
         }
     }
+    let sec = seccao_do_papel(ctx);
     y = number_field::paint_num_row(
         ctx,
         theme,
@@ -211,6 +245,7 @@ pub(crate) fn paint_paper_section(
         ANGLE_MAX,
         number_field::ANGLE_STEP,
         0,
+        sec,
     );
     // ── Offset + Size ──
     y = number_field::paint_num_xy(
@@ -228,6 +263,7 @@ pub(crate) fn paint_paper_section(
         TEX_OFFSET_MAX,
         number_field::FINE_STEP,
         2,
+        sec,
     );
     y = number_field::paint_num_xy(
         ctx,
@@ -244,6 +280,7 @@ pub(crate) fn paint_paper_section(
         TEX_SIZE_MAX,
         number_field::SIZE_STEP,
         2,
+        sec,
     );
     // ── Tooth (how strongly the paper grain bites the WASH — ex-"Depth"; wash-only, see the header) ──
     if wash {
@@ -260,6 +297,7 @@ pub(crate) fn paint_paper_section(
             1.0,
             number_field::FINE_STEP,
             2,
+            sec,
         );
     }
     // ── Per-pattern params (Contrast / Brightness / kind knobs) ──
@@ -383,6 +421,7 @@ pub(crate) fn paint_grain_watercolor_extras(
         tr("panel.painter_layers.paper.same_as_paper"),
         brush.granulation_use_paper,
     );
+    let sec = seccao_dos_extras(ctx);
     number_field::paint_num_row(
         ctx,
         theme,
@@ -396,6 +435,7 @@ pub(crate) fn paint_grain_watercolor_extras(
         1.0,
         number_field::FINE_STEP,
         2,
+        sec,
     )
 }
 

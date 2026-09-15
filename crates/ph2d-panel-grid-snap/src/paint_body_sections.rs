@@ -103,6 +103,9 @@ pub(crate) fn paint_target_section(
             store,
             state,
         );
+        // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao`.
+        let mag_label = format!("Magnetism radius{}", unit_suffix_paren());
+        let sec = crate::paint_rows::seccao(ctx.text_system, &["Subdivisions", &mag_label]);
         y = paint_number_row_from_state(
             "Subdivisions",
             ph2d_editor_core::grid_snap::ids::GS_CFG_SNAP_SUBDIVISIONS,
@@ -115,8 +118,8 @@ pub(crate) fn paint_target_section(
             theme,
             hit_index,
             store,
+            sec,
         );
-        let mag_label = format!("Magnetism radius{}", unit_suffix_paren());
         y = paint_number_row_from_state(
             &mag_label,
             ph2d_editor_core::grid_snap::ids::GS_CFG_SNAP_MAGNETISM_RADIUS,
@@ -129,6 +132,7 @@ pub(crate) fn paint_target_section(
             theme,
             hit_index,
             store,
+            sec,
         );
     }
     y += row_gap() * 2.0;

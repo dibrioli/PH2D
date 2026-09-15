@@ -229,50 +229,7 @@ fn range_and_timing_rows(
     y: f32,
     row: &ph2d_editor_core::screens::hero::InspectorAnimRow,
 ) -> f32 {
-    // ⚠️ **O passo é em MILISSEGUNDOS ou em CÉLULAS, nunca em pixels** — daí o marcador.
-    const MS_STEP: f64 = 10.0; // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
-    const MS: Option<ph2d_editor_core::widget::Unit> =
-        Some(ph2d_editor_core::widget::Unit::Milliseconds);
-    const ANTES: [(&str, NodeId, f64, Option<ph2d_editor_core::widget::Unit>); 4] = [
-        (
-            "panel.inspector.animation.from_cell",
-            ids::INSP_ANIM_FROM,
-            1.0,
-            None,
-        ),
-        (
-            "panel.inspector.animation.to_cell",
-            ids::INSP_ANIM_TO,
-            1.0,
-            None,
-        ),
-        (
-            "panel.inspector.animation.frame",
-            ids::INSP_ANIM_FRAME_MS,
-            1.0,
-            MS,
-        ),
-        (
-            "panel.inspector.animation.repeat_forever",
-            ids::INSP_ANIM_REPEAT,
-            1.0,
-            None,
-        ),
-    ];
-    const DEPOIS: [(&str, NodeId, f64, Option<ph2d_editor_core::widget::Unit>); 2] = [
-        (
-            "panel.inspector.animation.hold",
-            ids::INSP_ANIM_HOLD_MS,
-            MS_STEP,
-            MS,
-        ),
-        (
-            "panel.inspector.animation.repeat_delay",
-            ids::INSP_ANIM_DELAY_MS,
-            MS_STEP,
-            MS,
-        ),
-    ];
+    let seccao = seccao_da_animacao(text_system);
     let mut cur_y = y;
     for (chave, id, passo, unidade) in ANTES {
         cur_y = super::rows::fields_row(
@@ -288,7 +245,7 @@ fn range_and_timing_rows(
             &[id],
             passo,
             unidade,
-            1,
+            seccao,
         );
     }
     // ⚠️ **Uma animação com ritmo PRÓPRIO por célula (§8.12) tem de o DIZER.** Sem esta linha o
@@ -322,10 +279,80 @@ fn range_and_timing_rows(
             &[id],
             passo,
             unidade,
-            1,
+            seccao,
         );
     }
     cur_y
+}
+
+// ⚠️ **O passo é em MILISSEGUNDOS ou em CÉLULAS, nunca em pixels** — daí o marcador.
+const MS_STEP: f64 = 10.0; // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
+const MS: Option<ph2d_editor_core::widget::Unit> =
+    Some(ph2d_editor_core::widget::Unit::Milliseconds);
+const ANTES: [(&str, NodeId, f64, Option<ph2d_editor_core::widget::Unit>); 4] = [
+    (
+        "panel.inspector.animation.from_cell",
+        ids::INSP_ANIM_FROM,
+        1.0,
+        None,
+    ),
+    (
+        "panel.inspector.animation.to_cell",
+        ids::INSP_ANIM_TO,
+        1.0,
+        None,
+    ),
+    (
+        "panel.inspector.animation.frame",
+        ids::INSP_ANIM_FRAME_MS,
+        1.0,
+        MS,
+    ),
+    (
+        "panel.inspector.animation.repeat_forever",
+        ids::INSP_ANIM_REPEAT,
+        1.0,
+        None,
+    ),
+];
+const DEPOIS: [(&str, NodeId, f64, Option<ph2d_editor_core::widget::Unit>); 2] = [
+    (
+        "panel.inspector.animation.hold",
+        ids::INSP_ANIM_HOLD_MS,
+        MS_STEP,
+        MS,
+    ),
+    (
+        "panel.inspector.animation.repeat_delay",
+        ids::INSP_ANIM_DELAY_MS,
+        MS_STEP,
+        MS,
+    ),
+];
+
+/// ⭐⭐⭐ **A COLUNA DA SECÇÃO ANIMAÇÃO — uma só, para os dois blocos que a desenham.**
+///
+/// ⛔⛔ **Report do dono, 2026-09-15:** *«a caixa recua quando na verdade o nome deveria criar as
+/// colunas»*. Esta secção pinta linhas em **dois** sítios (a velocidade e o quadro vivo em
+/// `anim.rs`, o intervalo e os tempos aqui), e uma medida por sítio seria duas colunas dentro da
+/// mesma secção — a doença que a [`ph2d_editor_core::property_row::Seccao`] existe para fechar.
+///
+/// ⚠️ **Os nomes saem das TABELAS que pintam**, nunca de uma segunda lista: acrescentar uma linha
+/// ali entra aqui de graça, e uma lista à mão envelheceria no primeiro rótulo novo.
+pub(super) fn seccao_da_animacao(
+    text_system: &mut TextSystem,
+) -> ph2d_editor_core::property_row::Seccao {
+    let mut nomes: Vec<&str> = Vec::new();
+    for (chave, ..) in ANTES {
+        nomes.push(tr(chave));
+    }
+    for (chave, ..) in DEPOIS {
+        nomes.push(tr(chave));
+    }
+    // ⚠️ As duas linhas que vivem no `anim.rs` — ver o doc acima.
+    nomes.push(tr("panel.inspector.animation.speed_x"));
+    nomes.push(tr("panel.inspector.animation.this_frame_ms_0_use"));
+    ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes)
 }
 
 /// O editor da animação aberta.

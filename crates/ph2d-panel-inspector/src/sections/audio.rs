@@ -231,7 +231,7 @@ fn source_body(
         );
     }
 
-    for (label, id, step, unit) in [
+    let linhas = [
         (
             tr("panel.inspector.audio.volume_db"),
             ids::INSP_AUDIO_VOLUME,
@@ -274,7 +274,16 @@ fn source_body(
             1.0,
             None,
         ), // LITERAL-PX-OK: uma voz de cada vez
-    ] {
+    ];
+    // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez sobre a TABELA que ela pinta** — ver
+    //    [`ph2d_editor_core::property_row::Seccao`]. ⛔ A tabela deixou de ser um literal dentro
+    //    do `for` porque ela é lida DUAS vezes: para medir o nome mais largo e para pintar.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &linhas.iter().map(|t| t.0).collect::<Vec<_>>(),
+    );
+    for (label, id, step, unit) in linhas {
         cur_y = super::rows::fields_row(
             scene,
             text_system,
@@ -288,7 +297,7 @@ fn source_body(
             &[id],
             step, // LITERAL-PX-OK: passo de scrub na UNIDADE do campo, não em pixels
             unit,
-            1,
+            seccao,
         );
     }
 

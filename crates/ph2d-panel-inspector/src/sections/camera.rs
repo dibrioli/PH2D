@@ -141,7 +141,7 @@ fn camera_body(
     // e um arrasto de décimo em décimo sobre um inteiro é um controlo que mente sobre o que guarda.
     // *O gate do número mágico é que o disse — a primeira redacção partilhava `0,1` entre metros e
     // uma contagem.*
-    for (label, ids3, step, unit) in [
+    let linhas = [
         (
             tr("panel.inspector.camera.height_m"),
             &[ids::INSP_CAMERA_HEIGHT][..],
@@ -160,7 +160,16 @@ fn camera_body(
             1.0,
             None,
         ), // LITERAL-PX-OK: uma prioridade de cada vez
-    ] {
+    ];
+    // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez sobre a TABELA que ela pinta** — ver
+    //    [`ph2d_editor_core::property_row::Seccao`]. ⛔ A tabela deixou de ser um literal dentro do
+    //    `for` porque ela é lida DUAS vezes: para medir o nome mais largo e para pintar.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        2,
+        &linhas.iter().map(|t| t.0).collect::<Vec<_>>(),
+    );
+    for (label, ids3, step, unit) in linhas {
         cur_y = super::rows::fields_row(
             scene,
             text_system,
@@ -174,7 +183,7 @@ fn camera_body(
             ids3,
             step,
             unit,
-            2,
+            seccao,
         );
     }
 
@@ -245,7 +254,7 @@ fn follow_body(
         );
     }
 
-    for (label, ids2, step, unit) in [
+    let linhas = [
         (
             tr("panel.inspector.camera.damping_1_s"),
             [ids::INSP_CAMERA_DAMP_X, ids::INSP_CAMERA_DAMP_Y],
@@ -270,7 +279,16 @@ fn follow_body(
             0.1, // LITERAL-PX-OK: passo em metros
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
-    ] {
+    ];
+    // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez sobre a TABELA que ela pinta** — ver
+    //    [`ph2d_editor_core::property_row::Seccao`]. ⛔ A tabela deixou de ser um literal dentro do
+    //    `for` porque ela é lida DUAS vezes: para medir o nome mais largo e para pintar.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        2,
+        &linhas.iter().map(|t| t.0).collect::<Vec<_>>(),
+    );
+    for (label, ids2, step, unit) in linhas {
         cur_y = super::rows::fields_row(
             scene,
             text_system,
@@ -284,7 +302,7 @@ fn follow_body(
             &ids2,
             step,
             unit,
-            2,
+            seccao,
         );
     }
     cur_y
@@ -316,7 +334,7 @@ fn limits_body(
             ColorToken::Warn,
         );
     }
-    for (label, ids2, unit) in [
+    let linhas = [
         (
             tr("panel.inspector.camera.min_m"),
             [ids::INSP_CAMERA_MIN_X, ids::INSP_CAMERA_MIN_Y],
@@ -327,7 +345,16 @@ fn limits_body(
             [ids::INSP_CAMERA_MAX_X, ids::INSP_CAMERA_MAX_Y],
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
-    ] {
+    ];
+    // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez sobre a TABELA que ela pinta** — ver
+    //    [`ph2d_editor_core::property_row::Seccao`]. ⛔ A tabela deixou de ser um literal dentro do
+    //    `for` porque ela é lida DUAS vezes: para medir o nome mais largo e para pintar.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        2,
+        &linhas.iter().map(|t| t.0).collect::<Vec<_>>(),
+    );
+    for (label, ids2, unit) in linhas {
         cur_y = super::rows::fields_row(
             scene,
             text_system,
@@ -341,7 +368,7 @@ fn limits_body(
             &ids2,
             0.5, // LITERAL-PX-OK: passo em metros
             unit,
-            2,
+            seccao,
         );
     }
     cur_y

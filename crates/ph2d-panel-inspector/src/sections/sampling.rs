@@ -24,6 +24,26 @@ use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segment
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
+/// Os nomes que esta secção pinta à esquerda — a fonte da coluna dela.
+const NOMES: [&str; 4] = [
+    "panel.inspector.sampling.texture_filter",
+    "panel.inspector.sampling.texture_repeat",
+    "panel.inspector.sampling.uv_scale",
+    "panel.inspector.sampling.uv_offset",
+];
+/// Quantas componentes tem a linha que esta secção não quer ver quebrar.
+const CAMPOS: usize = 2;
+
+/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre TODOS os nomes que ela pinta.**
+///
+/// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
+/// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`]. ⚠️ Entram os nomes das linhas de
+/// campo **e** os das linhas cujo controlo é construído à mão: *uma secção em que metade das
+/// linhas mede e a outra metade não é uma secção com duas colunas.*
+fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(text_system, CAMPOS, &NOMES.map(tr))
+}
+
 /// **Um rótulo por TAG de `ph2d_ecs::FilterMode`, indexado pela tag `0..=6` — `None` = a tag não é
 /// oferecida.**
 ///
@@ -146,6 +166,7 @@ pub(crate) fn paint_sampling_section(
         return y + header_h;
     };
     let mut yy = y + header_h;
+    let sec = seccao(text_system);
     let h = ROW_H_PX;
     // ⚠️ **O vão entre dois controlos é a porta `control_gap_px` (3 px)**, e não o
     //    `Spacing::Xs` (4) escrito à mão — ordem do dono, 2026-09-07. Esta secção é
@@ -165,6 +186,7 @@ pub(crate) fn paint_sampling_section(
         yy,
         h,
         tr("panel.inspector.sampling.texture_filter"),
+        sec,
     );
     // ⚠️ **Segmentado ADAPTATIVO, como o Blend Mode da §10** — sete opções não cabem numa fila de
     // `Tabs` num painel estreito, e o adaptativo reflui. A alternativa (manter três abas) foi o que
@@ -208,6 +230,7 @@ pub(crate) fn paint_sampling_section(
         yy,
         h,
         tr("panel.inspector.sampling.texture_repeat"),
+        sec,
     );
     let repeat_seg = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_SAMPLING_SECTION,
@@ -250,7 +273,7 @@ pub(crate) fn paint_sampling_section(
         &[ids::INSP_SAMPLE_UV_SCALE_X, ids::INSP_SAMPLE_UV_SCALE_Y],
         0.1, // LITERAL-PX-OK: passo de scrub em UV, não em pixels
         None,
-        2,
+        sec,
     );
     yy = super::rows::fields_row(
         scene,
@@ -265,7 +288,7 @@ pub(crate) fn paint_sampling_section(
         &[ids::INSP_SAMPLE_UV_OFFSET_X, ids::INSP_SAMPLE_UV_OFFSET_Y],
         0.1, // LITERAL-PX-OK: passo de scrub em UV, não em pixels
         None,
-        2,
+        sec,
     );
 
     // ⛔ **AQUI ficava «Anti-halo: enabled (atlas-level)», e não volta como literal.** O doc de

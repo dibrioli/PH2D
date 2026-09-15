@@ -21,6 +21,26 @@ use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segment
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
+/// Os nomes que esta secção pinta à esquerda — a fonte da coluna dela.
+const NOMES: [&str; 4] = [
+    "panel.inspector.slice.tile_mode",
+    "panel.inspector.slice.borders_l_t_px",
+    "panel.inspector.slice.borders_r_b_px",
+    "panel.inspector.slice.size_x_y_m_0",
+];
+/// Quantas componentes tem a linha que esta secção não quer ver quebrar.
+const CAMPOS: usize = 2;
+
+/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre TODOS os nomes que ela pinta.**
+///
+/// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
+/// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`]. ⚠️ Entram os nomes das linhas de
+/// campo **e** os das linhas cujo controlo é construído à mão (o segmentado): *uma secção em que
+/// metade das linhas mede e a outra metade não é uma secção com duas colunas.*
+fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(text_system, CAMPOS, &NOMES.map(tr))
+}
+
 /// Rótulos do Tile Mode global, tags `0..=1` de `SliceTileMode`.
 pub const TILE_MODE_LABELS: [TextKey; 2] = [
     TextKey::new("panel.inspector.slice.continuous"),
@@ -54,6 +74,7 @@ fn tiled_rows(
     y: f32,
     info: &InspectorSliceInfo,
 ) -> f32 {
+    let sec = seccao(text_system);
     let mut cur_y = y;
 
     // ⭐⭐ **O nome à ESQUERDA, como as caixas numéricas desta mesma secção** (2026-09-15) — deixá-lo
@@ -67,6 +88,7 @@ fn tiled_rows(
         cur_y,
         FIELD_H,
         tr("panel.inspector.slice.tile_mode"),
+        sec,
     );
     let tm = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_SLICE_SECTION,
@@ -209,6 +231,7 @@ pub(crate) fn paint_slice_section(
         return fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX);
     }
 
+    let sec = seccao(text_system);
     // Bordas, em pixels da fonte, na ordem do array: [L, T] e depois [R, B].
     cur_y = super::rows::fields_row(
         scene,
@@ -223,7 +246,7 @@ pub(crate) fn paint_slice_section(
         &[ids::INSP_SLICE_BORDER[0], ids::INSP_SLICE_BORDER[1]],
         1.0,
         Some(ph2d_editor_core::widget::Unit::Px),
-        2,
+        sec,
     );
     cur_y = super::rows::fields_row(
         scene,
@@ -238,7 +261,7 @@ pub(crate) fn paint_slice_section(
         &[ids::INSP_SLICE_BORDER[2], ids::INSP_SLICE_BORDER[3]],
         1.0,
         Some(ph2d_editor_core::widget::Unit::Px),
-        2,
+        sec,
     );
     cur_y = super::rows::fields_row(
         scene,
@@ -253,7 +276,7 @@ pub(crate) fn paint_slice_section(
         &[ids::INSP_SLICE_SIZE[0], ids::INSP_SLICE_SIZE[1]],
         SIZE_STEP,
         Some(ph2d_editor_core::widget::Unit::Meters),
-        2,
+        sec,
     );
 
     // Fill Center.

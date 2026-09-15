@@ -22,7 +22,7 @@ use ph2d_tokens::Spacing;
 ///
 /// ⚠️ Ver a spec §6-ter: é ela que diz à porta quanto a coluna do nome pode CEDER, e é da SECÇÃO e
 /// não da linha — senão a coluna sai esfarrapada.
-const SECTION_FIELDS: usize = 2;
+pub(crate) const SECTION_FIELDS: usize = 2;
 /// Max label length (chars) for a per-pattern param to share its line with the next one.
 const PAIR_MAX_LEN: usize = 7;
 /// NumberInput steps registered via `set_number_range` — the stepper increment + the drag base.
@@ -171,6 +171,9 @@ pub(crate) fn paint_num_row(
     max: f32,
     step: f64,
     decimals: usize,
+    // ⭐⭐ **A coluna é da SECÇÃO** — ver [`ph2d_editor_core::property_row::Seccao`] e o report do
+    //    dono de 2026-09-15 (*«a caixa recua quando na verdade o nome deveria criar as colunas»*).
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     arm_field(ctx.host.store_mut(), id, value, min, max, step, decimals);
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -187,7 +190,7 @@ pub(crate) fn paint_num_row(
         &[id],
         step,
         None,
-        SECTION_FIELDS,
+        sec,
     )
 }
 
@@ -209,6 +212,8 @@ pub(crate) fn paint_num_xy(
     max: f32,
     step: f64,
     decimals: usize,
+    // ⭐⭐ **A coluna é da SECÇÃO** — ver [`paint_num_row`].
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     // ⭐⭐⭐ **O `X`/`Y` viaja no NOME, e as letras coloridas saíram** — a mesma decisão que o
     // Inspector tomou em 2026-09-15, por ordem do dono (*«Position X/Y Caixa Caixa»*). Medido lá: a
@@ -233,7 +238,7 @@ pub(crate) fn paint_num_xy(
         &[id_x, id_y],
         step,
         None,
-        SECTION_FIELDS,
+        sec,
     )
 }
 
@@ -247,6 +252,14 @@ pub(crate) fn paint_num_params(
     mut y: f32,
     params: &[(&str, NodeId, f32)],
 ) -> f32 {
+    // ⭐⭐⭐ **A coluna sai da PRÓPRIA tabela** — esta é a única família do painel que não precisa de
+    //    uma lista de nomes escrita ao lado: ela já recebe os que vai pintar. *Uma lista à mão
+    //    envelheceria no primeiro param novo.*
+    let sec = ph2d_editor_core::property_row::Seccao::medida(
+        ctx.text_system,
+        1,
+        &params.iter().map(|p| p.0).collect::<Vec<_>>(),
+    );
     let font = ph2d_tokens::TypeToken::Sm.px();
     let gap = Spacing::Xs.px();
     let half = ((content_w - gap) * 0.5).max(0.0);
@@ -275,13 +288,13 @@ pub(crate) fn paint_num_params(
         };
         if cabe {
             let (l1, id1, v1) = params[i + 1];
-            half_param(ctx, theme, x, half, y, l0, id0, v0);
-            half_param(ctx, theme, x + half + gap, half, y, l1, id1, v1);
+            half_param(ctx, theme, x, half, y, l0, id0, v0, sec);
+            half_param(ctx, theme, x + half + gap, half, y, l1, id1, v1, sec);
             y += ph2d_tokens::row_pitch_px();
             i += 2;
         } else {
             y = paint_num_row(
-                ctx, theme, x, content_w, y, l0, id0, v0, 0.0, 1.0, FINE_STEP, 2,
+                ctx, theme, x, content_w, y, l0, id0, v0, 0.0, 1.0, FINE_STEP, 2, sec,
             );
             i += 1;
         }
@@ -300,6 +313,7 @@ fn half_param(
     label_txt: &str,
     id: NodeId,
     v: f32,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) {
     // ⭐⭐ **Uma METADE é uma linha de propriedade dentro da largura dela** — a porta trabalha sobre
     // qualquer `[x, w]`, e por isso a coluna do nome aqui é a metade da METADE, não uma constante.
@@ -322,6 +336,6 @@ fn half_param(
         &[id],
         FINE_STEP,
         None,
-        1,
+        sec,
     );
 }

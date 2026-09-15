@@ -39,6 +39,21 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
 use ph2d_tool_painter::ids::painter_taper_handle_id;
 use ph2d_tool_painter::{BrushSettings, MAX_TAPER_DIAMETERS};
 
+/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
+///
+/// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
+/// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
+fn seccao(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(
+        ctx.text_system,
+        1,
+        &[
+            tr("panel.painter_layers.taper.tip"),
+            tr("panel.painter_layers.taper.opacity"),
+        ],
+    )
+}
+
 const CANVAS_H: f32 = 56.0; // LITERAL-PX-OK: the taper widget's height
 const HALF_PX: f32 = 13.0; // LITERAL-PX-OK: half-thickness of the preview stroke at full width
 const HANDLE_R: f32 = 6.0; // LITERAL-PX-OK: draggable handle radius
@@ -149,6 +164,7 @@ pub(crate) fn paint_taper_section(
     y += CANVAS_H + ph2d_tokens::control_gap_px();
 
     // ── The two numeric rows the head taper has ────────────────────────────────────────────────────
+    let sec = seccao(ctx);
     y = crate::number_field::paint_num_row(
         ctx,
         theme,
@@ -162,6 +178,7 @@ pub(crate) fn paint_taper_section(
         1.0,
         crate::number_field::FINE_STEP,
         2,
+        sec,
     );
     crate::number_field::paint_num_row(
         ctx,
@@ -176,6 +193,7 @@ pub(crate) fn paint_taper_section(
         1.0,
         crate::number_field::FINE_STEP,
         2,
+        sec,
     )
 }
 

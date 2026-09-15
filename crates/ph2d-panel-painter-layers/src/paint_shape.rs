@@ -20,6 +20,37 @@ use ph2d_tool_painter::{
 };
 use ph2d_vector::ImageQuality;
 
+/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
+///
+/// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
+/// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
+fn seccao_do_deposito(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(
+        ctx.text_system,
+        1,
+        &[
+            tr("panel.painter_layers.shape.relief"),
+            tr("panel.painter_layers.shape.shine"),
+        ],
+    )
+}
+
+/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
+///
+/// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
+/// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
+fn seccao_da_forma(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(
+        ctx.text_system,
+        crate::number_field::SECTION_FIELDS,
+        &[
+            tr("panel.painter_layers.shape.angle"),
+            tr("panel.painter_layers.shape.offset"),
+            tr("panel.painter_layers.shape.size"),
+        ],
+    )
+}
+
 /// Paint the collapsible **Shape** section starting at `y`, returning the next `y`. A **Texture** picker
 /// (`PAINTER_SHAPE_KIND`) chooses the silhouette source — `None`, any procedural pattern, or `Image` —
 /// the same kinds as the Grain. Above it, the **Falloff** dropdown + its curve preview show for every
@@ -190,6 +221,7 @@ fn paint_shape_deposit_rows(
     if !brush.impasto_applies {
         return y;
     }
+    let sec = seccao_do_deposito(ctx);
     let mut y = crate::number_field::paint_num_row(
         ctx,
         theme,
@@ -203,6 +235,7 @@ fn paint_shape_deposit_rows(
         1.0,
         crate::number_field::FINE_STEP,
         2,
+        sec,
     );
     if brush.shape_relief > 0.0 {
         y = crate::number_field::paint_num_row(
@@ -218,6 +251,7 @@ fn paint_shape_deposit_rows(
             1.0,
             crate::number_field::FINE_STEP,
             2,
+            sec,
         );
     }
     y
@@ -256,6 +290,7 @@ fn paint_shape_transform_controls(
     if let Some(r) = open {
         state::set_pending_brush_shape_follow_dd(Some((r, brush.shape_follow)));
     }
+    let sec = seccao_da_forma(ctx);
     y = crate::number_field::paint_num_row(
         ctx,
         theme,
@@ -269,6 +304,7 @@ fn paint_shape_transform_controls(
         f32::from(TEX_ANGLE_MAX_DEG),
         crate::number_field::ANGLE_STEP,
         0,
+        sec,
     );
     y = crate::number_field::paint_num_xy(
         ctx,
@@ -285,6 +321,7 @@ fn paint_shape_transform_controls(
         TEX_OFFSET_MAX,
         crate::number_field::FINE_STEP,
         2,
+        sec,
     );
     crate::number_field::paint_num_xy(
         ctx,
@@ -301,6 +338,7 @@ fn paint_shape_transform_controls(
         TEX_SIZE_MAX,
         crate::number_field::SIZE_STEP,
         2,
+        sec,
     )
 }
 

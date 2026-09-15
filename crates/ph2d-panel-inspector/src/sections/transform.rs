@@ -62,6 +62,23 @@ pub(crate) fn paint_transform_section(
         ),
     };
     let ang_unit = angle_unit(angle);
+    // ⭐⭐⭐ **A COLUNA É DA SECÇÃO, e é medida UMA vez** — report do dono, 2026-09-15, com a seta
+    //    na linha mais comprida do painel da Grelha: *«a caixa recua quando na verdade o nome
+    //    deveria criar as colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
+    //
+    // ⚠️ **As quatro linhas entram na medida, mesmo as que este quadro não pinta** — a unidade de
+    //    ângulo troca dois destes nomes, e uma coluna que muda com a unidade escolhida saltaria
+    //    debaixo do olho do artista.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        2,
+        &[
+            pos_label,
+            rot_label,
+            tr("panel.inspector.transform.scale"),
+            skew_label,
+        ],
+    );
     cur_y = super::rows::fields_row(
         scene,
         text_system,
@@ -75,7 +92,7 @@ pub(crate) fn paint_transform_section(
         &[ids::INSP_TRANSFORM_POS_X, ids::INSP_TRANSFORM_POS_Y],
         pos_step,
         Some(pos_unit),
-        2,
+        seccao,
     );
     cur_y = super::rows::fields_row(
         scene,
@@ -90,7 +107,7 @@ pub(crate) fn paint_transform_section(
         &[ids::INSP_TRANSFORM_ROT],
         angle_step,
         Some(ang_unit),
-        2,
+        seccao,
     );
     // ⭐ **A ESCALA e o CISALHAMENTO saíram para uma porta própria** (tecto de fn do painel,
     //    2026-09-15): as duas são o par `X`/`Y` de um FACTOR e de um ÂNGULO, e nenhuma delas lê a
@@ -107,6 +124,7 @@ pub(crate) fn paint_transform_section(
         skew_label,
         angle_step,
         ang_unit,
+        seccao,
     );
     cur_y += SECTION_BOTTOM_PAD_PX;
 
@@ -134,6 +152,9 @@ fn paint_scale_and_skew(
     skew_label: &str,
     angle_step: f64,
     ang_unit: ph2d_editor_core::widget::Unit,
+    // ⚠️ **A mesma [`Seccao`] das outras duas linhas** — ela é da SECÇÃO, e medi-la outra vez aqui
+    //    daria duas colunas na mesma moldura.
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     const SCALE_STEP: f64 = 0.1; // LITERAL-PX-OK: passo de scrub de um FACTOR, não de pixels
     let cur_y = super::rows::fields_row(
@@ -149,7 +170,7 @@ fn paint_scale_and_skew(
         &[ids::INSP_TRANSFORM_SCALE_X, ids::INSP_TRANSFORM_SCALE_Y],
         SCALE_STEP,
         None,
-        2,
+        seccao,
     );
     // Skew X/Y in degrees (ADR-0025-amendment-1). Authoring range is clamped to ±~89.4° at the
     // ECS-commit boundary; the slider itself is unbounded so over-typing snaps back on re-sync.
@@ -166,7 +187,7 @@ fn paint_scale_and_skew(
         &[ids::INSP_TRANSFORM_SKEW_X, ids::INSP_TRANSFORM_SKEW_Y],
         angle_step,
         Some(ang_unit),
-        2,
+        seccao,
     )
 }
 

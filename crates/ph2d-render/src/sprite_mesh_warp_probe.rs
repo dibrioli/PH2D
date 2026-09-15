@@ -25,6 +25,22 @@
 //! resíduo **não é facetagem** — refinar a amostragem da deformação não o alcança, e o `Smooth` do
 //! esqueleto (que é exactamente essa alavanca) não é a cura deste defeito.
 //!
+//! ⚠️⚠️ **E a frase acima só vale ATÉ ao grau 3 entrar — depois dele ela INVERTE-SE.** Com a
+//! curvatura, refinar a malha passa a convergir, e as duas coisas juntas é que fecham a marca. As
+//! duas densidades que o produto de facto tem (`Fast` guarda `~200` peças; o `Smooth` tem
+//! orçamento de `1 543`), na dobra forte:
+//!
+//! | peças | pincel pequeno | pincel grande |
+//! |---|---|---|
+//! | `200` (`Fast`) | `1,127 → 1,127` ⛔ | `1,133 → 1,053` |
+//! | `1 568` (`Smooth`) | `1,057 → 1,017` | `1,109 → **1,005**` |
+//!
+//! ⛔⛔ **Com `Fast` e pincel pequeno a cura é INTEIRAMENTE inerte** (a cerca `FACETAS_MIN`
+//! desliga-a, e com razão). Foi por isso que o dono reportou *«sem melhorias»*: eu tinha-lhe dado o
+//! número do `Smooth` com o app no `Fast`. *Um número medido numa densidade que o artista nunca
+//! alcança é um número sobre outro programa* — o mesmo erro que a bancada do quad remesh pagou a
+//! `1/9` da densidade do oráculo.
+//!
 //! ## 2. ⛔ Medir sobre a região REALMENTE PINTADA não compra nada ([`probe_a_regiao_medida_contra_a_regiao_pintada`])
 //!
 //! A hipótese era boa e está morta: o ajuste corre sobre o **círculo de repouso** de raio
@@ -132,7 +148,7 @@ fn probe_o_residuo_contra_a_finura_da_malha() {
     for theta in [1.2_f32, 1.8] {
         println!("\n=== leque theta={theta} ===");
         println!("    n    tri    raio 0.06   raio 0.125");
-        for n in [4usize, 8, 16, 32, 64] {
+        for n in [4usize, 8, 10, 16, 28, 32, 64] {
             let mesh = leque(n, theta, 1.4);
             let col: Vec<f32> = [0.06_f32, 0.125]
                 .iter()

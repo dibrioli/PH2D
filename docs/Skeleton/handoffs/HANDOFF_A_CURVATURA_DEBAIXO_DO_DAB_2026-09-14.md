@@ -150,6 +150,29 @@ amostragens**, que uma dobra forte torna muito não-uniforme. *Uma régua que co
 por vizinho mais próximo mede o espaçamento deles, não a lei.* ⇒ a lei é **pontual**: todo ponto da
 fronteira pintada, visto pela dobra, está **sobre** a elipse autorada.
 
+## §9-bis — ⛔⛔⛔ O 5.º REPORT: *«sem melhorias!»* — e ele estava certo
+
+A cura foi entregue com o app no **`Fast`**, e ela vive no **`Smooth`**. Medido, na dobra forte,
+antes e depois desta wave:
+
+| peças da pele | pincel pequeno | pincel grande |
+|---|---|---|
+| `200` (o que o `Fast` guarda) | `1,127 → 1,127` ⛔ **nada** | `1,133 → 1,053` |
+| `1 568` (o orçamento do `Smooth`) | `1,057 → 1,017` | `1,109 → **1,005**` |
+
+⇒ com `Fast` e um pincel pequeno a cura é **inteiramente inerte** — e não por acidente: a cerca
+`FACETAS_MIN` desliga-a de propósito, porque sem peças que resolvam a dobra sob o dab o que o ajuste
+leria como curvatura seriam as **arestas das facetas** (§5.1).
+
+⚠️⚠️ **É o mesmo erro que a bancada do quad remesh pagou lendo a barra do oráculo a `1/9` da
+densidade dele:** *um número medido numa densidade que o artista nunca alcança é um número sobre
+outro programa*. Eu dei-lhe `1,002` — o número do `Smooth` — sem verificar em que modo ele estava.
+
+⇒ **o `Smooth` passa a ser o de fábrica** (`SkinDeform::default()`), com as DUAS razões medidas ao
+lado dele no código: as *«arestas retas ao dobrar»* de 2026-09-10 (`9,84 px → 0,41 px`) e esta. O
+tecto é o orçamento do quadro (`1 543` peças = `1/10` de um quadro de 60 fps), e o chip *Deform* do
+painel devolve o `Fast` num clique.
+
 ## §10 — O que fica ABERTO
 
 - ⏳ **O chrome que é CAMINHO** (a grelha, os contornos de selecção, a curva e a linha do Painter):

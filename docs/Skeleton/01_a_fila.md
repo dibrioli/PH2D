@@ -2888,6 +2888,12 @@ sobrava **não era facetagem** — refinar a malha de `32` para `8 192` triângu
 estava. A deformação sob o dab passou de uma matriz a um **polinómio de grau 3**, com duas cercas
 medidas que degradam para a elipse de ontem.
 
+⚠️⚠️ **E o 5.º report — *«sem melhorias!»* — estava CERTO:** a cura vive no `Smooth` e o app estava
+no `Fast`, onde ela é **inteiramente inerte** com pincel pequeno (`1,127 → 1,127`). ⇒ o `Smooth` é o
+de fábrica desde 2026-09-14, e a decisão que ficou pendente duas vezes fechou com a **segunda** razão
+medida. *Um número medido numa densidade que o artista nunca alcança é um número sobre outro
+programa.*
+
 ⇒ **[HANDOFF_A_CURVATURA_DEBAIXO_DO_DAB_2026-09-14](handoffs/HANDOFF_A_CURVATURA_DEBAIXO_DO_DAB_2026-09-14.md)**
 — as tabelas, as duas cercas, as **seis** leituras que o diff inverte, as **quatro** premissas minhas
 que a medição derrubou (entre elas a que este módulo tinha escrita no cabeçalho) e a régua minha que

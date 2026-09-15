@@ -53,10 +53,33 @@ impl BoneAction {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum SkinDeform {
     /// Um afim por triângulo da malha guardada. É o que sempre se fez, e é **byte-idêntico**.
-    #[default]
     Fast,
     /// A malha é **refinada no quadro** até o desvio caber numa tolerância de pixels de ecrã.
-    /// ⚠️ Paga triângulos: medido `216 → 3 456` a meio pixel numa dobra de `150°`.
+    /// ⚠️ Paga triângulos: medido `216 → 3 456` a meio pixel numa dobra de `150°`, com o tecto no
+    /// orçamento do QUADRO (`ph2d_skeleton_live::SKIN_FRAME_PIECES` = `1 543` peças = `1/10` de um
+    /// quadro de 60 fps).
+    ///
+    /// ⭐⭐⭐ **É O DE FÁBRICA desde 2026-09-14, e a decisão tem DUAS razões medidas.**
+    ///
+    /// A primeira é a que o criou: *«arestas retas ao dobrar»* (report do dono, 2026-09-10) —
+    /// `9,84 px → 0,41 px` numa dobra de `150°`.
+    ///
+    /// ⛔⛔ **A segunda só apareceu quatro dias depois, e é ela que fecha a questão:** o report
+    /// *«sem melhorias»* sobre o pincel em arte dobrada foi medido e o defeito não estava na cura —
+    /// estava em ela nunca chegar a ligar-se. Redondeza da marca do pincel (`1` = disco), na dobra
+    /// forte, antes e depois da wave da curvatura:
+    ///
+    /// | peças da pele | pincel pequeno | pincel grande |
+    /// |---|---|---|
+    /// | `200` (o que o `Fast` guarda) | `1,127 → 1,127` ⛔ **nada** | `1,133 → 1,053` |
+    /// | `1 568` (o orçamento do `Smooth`) | `1,057 → 1,017` | `1,109 → **1,005**` |
+    ///
+    /// ⇒ **a cura do pincel vive aqui dentro.** Com `Fast` e um pincel pequeno ela é *inteiramente*
+    /// inerte, e não por acaso: sem peças que resolvam a dobra sob o dab, o que o ajuste leria como
+    /// curvatura seriam as ARESTAS das facetas, e a cerca `FACETAS_MIN` desliga-a de propósito.
+    /// *Um número medido numa densidade que o artista nunca alcança é um número sobre outro
+    /// programa* — e eu entreguei-lhe o do `Smooth` com o app no `Fast`.
+    #[default]
     Smooth,
 }
 

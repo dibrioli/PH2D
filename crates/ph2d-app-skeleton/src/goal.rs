@@ -589,6 +589,7 @@ pub fn osso(
             Bone {
                 length: len,
                 strength: 1.0,
+                ..Default::default()
             },
         ))
         .id();

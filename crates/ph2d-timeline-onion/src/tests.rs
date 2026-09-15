@@ -385,6 +385,7 @@ fn a_bone_with_nothing_animated_ghosts_nothing() {
             ph2d_skeleton_ecs::Bone {
                 length: 1.0,
                 strength: 1.0,
+                ..Default::default()
             },
         ))
         .id();

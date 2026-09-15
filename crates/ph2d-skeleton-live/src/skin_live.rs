@@ -174,10 +174,11 @@ fn resolve_with(
         let Some(vb) = sim.world().get::<Bone>(e).copied() else {
             continue;
         };
-        if let Some(sb) = SkinBone::new(Xform(b.rest), vb.length, vb.strength, poses(e), shape_inv)
-        {
-            ossos.push(sb);
-        }
+        // ⭐⭐ **UM osso autorado pode dar N sub-ossos** — é aqui, e só aqui, que um *bendy bone* se
+        // torna a lista de poses rígidas que a [`Skin`] já sabia misturar. ⚠️ Com o osso recto (o
+        // nascimento) ela empurra exactamente o que a `SkinBone::new` empurrava, **ao bit**, então
+        // todo rig já autorado atravessa esta linha sem mudar um bit.
+        SkinBone::bent(Xform(b.rest), vb.spec(), poses(e), shape_inv, &mut ossos);
     }
     Skin::new(ossos)
 }

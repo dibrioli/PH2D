@@ -482,4 +482,25 @@
 /// tem blob de emissor, logo lê-se inteiro por este binário.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — é a **décima nona** vez.
-pub(crate) const PROJECT_SCHEMA: u32 = 135;
+/// # 135 -> 136 — o osso DOBRA: `Bone` ganha `segments` e a curvatura (`line/Vector`)
+///
+/// DOIS campos novos no `ph2d::skeleton::Bone`: `segments: u8` e `curve: Bend` (as duas alças do
+/// *Bendy Bone*). É a F8 da fila do esqueleto.
+///
+/// ⚠️⚠️ **O degrau é obrigatório e a razão é o postcard, não o campo** — a mesma lei dos degraus
+/// `112` e `127`: ele é **posicional**, logo um ficheiro gravado com dois campos seria lido com
+/// quatro **em silêncio**, com os bytes do vizinho a entrarem no `segments`. Com o degrau, o load
+/// **recusa em voz alta**.
+///
+/// ⭐⭐ **O NASCIMENTO É O NEUTRO, e não por promessa:** `segments = 1` **ou** a curvatura recta
+/// fazem a fábrica de sub-ossos colapsar num osso só, sem passar pelos frames, e o resultado é
+/// `assert_eq!`-idêntico ao que a `SkinBone::new` devolvia (gates
+/// `a_straight_bone_is_still_exactly_one_bone` e `a_skin_of_straight_bones_did_not_move_a_single_bit`,
+/// em `ph2d-skeleton`). ⇒ todo rig já autorado deforma-se **ao bit** como antes; o degrau é só
+/// sobre o FORMATO.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima terceira** vez nesta escada, e pela razão de
+/// sempre: os componentes viajam em `ComponentBlob`s, que para ela são opacos.
+pub(crate) const PROJECT_SCHEMA: u32 = 136;

@@ -42,6 +42,10 @@ use serde::{Deserialize, Serialize};
 use ph2d_ecs::SimComponent;
 use ph2d_ecs::StableId;
 use ph2d_ecs::scene::ComponentRegistry;
+/// ⚠️ **Os dois tipos da curvatura vêm da LEI, não são declarados aqui** — o mesmo motivo que já
+/// traz o [`ph2d_skeleton::BendSide`] por esta fronteira: duas definições do mesmo conceito
+/// divergem no primeiro campo que alguém acrescentar a uma delas.
+use ph2d_skeleton::bend::{Bend, BoneSpec};
 
 /// **UM OSSO.** A pose dele é o [`ph2d_ecs::Transform`] da entidade; a hierarquia dela é o
 /// esqueleto.
@@ -61,13 +65,45 @@ pub struct Bone {
     /// rig desenhado dez vezes maior deforma-se igual (gate
     /// `the_same_rig_ten_times_bigger_weighs_exactly_the_same`, em `ph2d-skeleton`).
     pub strength: f64,
+    /// ⭐⭐ **EM QUANTOS SUB-OSSOS ELE DOBRA** — o *Segments* do *Bendy Bone* do Blender.
+    ///
+    /// `1` (o nascimento) ⇒ o osso rígido de sempre, **ao bit**. Saturado em
+    /// [`ph2d_skeleton::bend::MAX_SEGMENTS`], cujo tecto é MEDIDO (a tabela vive no doc da const).
+    pub segments: u8,
+    /// ⭐⭐ **A CURVATURA AUTORADA** — as duas alças, como deslocamento a partir do terço do eixo.
+    ///
+    /// [`Bend::STRAIGHT`] (o nascimento) ⇒ o osso rígido de sempre, **ao bit**, seja qual for
+    /// `segments`. ⚠️ **Ela arqueia o CORPO e não mexe a ponta**: quem manda na ponta é o
+    /// `length` e a rotação, e o filho está pendurado ali — se a curvatura a movesse, a corrente
+    /// abria uma fenda em cada junta ao dobrar.
+    pub curve: Bend,
+}
+
+impl Bone {
+    /// ⭐ **A ÚNICA conversão para a lei pura.** Escrita com os quatro campos **por nome**, então um
+    /// campo novo no [`BoneSpec`] é erro de compilação aqui — que é o ponto de ela existir uma vez
+    /// só. ⛔ Um segundo sítio a montar um `BoneSpec` à mão divergiria deste no primeiro campo novo.
+    #[must_use]
+    pub fn spec(&self) -> BoneSpec {
+        BoneSpec {
+            length: self.length,
+            strength: self.strength,
+            segments: self.segments,
+            curve: self.curve,
+        }
+    }
 }
 
 impl Default for Bone {
     fn default() -> Self {
+        // ⚠️ **O nascimento é o osso de SEMPRE** — `segments = 1` e a curvatura recta fazem a
+        // fábrica de sub-ossos colapsar num osso só, byte-idêntico ao que existia antes de haver
+        // curvatura. É isso que faz todo rig já autorado continuar a deformar-se igual.
         Self {
             length: 1.0,
             strength: 1.0,
+            segments: 1,
+            curve: Bend::STRAIGHT,
         }
     }
 }

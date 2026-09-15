@@ -523,7 +523,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⭐⭐⭐ **133 → 134 — o SCRIPT DO ARTISTA passa a ser GRAVADO** (TOP-20 #16, 2026-09-16):
         // nenhum tipo novo — o `LuauScript` já existia e o registador dele não corria no boot, logo
         // o snapshot o descartava. A tripla não vê este degrau: a **décima oitava** vez.
-        (135, 13, 22),
+        // PROJECT 135→136: o `Bone` ganhou `segments` + `curve` (o *bendy bone*, F8). Dois
+        // campos apendados a um componente ⇒ o postcard, que e' posicional, leria um ficheiro de
+        // dois campos como tendo quatro. ⚠️ **A tripla NAO ve^ este degrau** -- os bytes mudaram
+        // dentro de um `ComponentBlob`, opaco para ela. E' a DECIMA TERCEIRA vez (ver a escada).
+        (136, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

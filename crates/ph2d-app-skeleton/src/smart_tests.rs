@@ -29,6 +29,7 @@ pub(super) fn cena() -> (SimWorld, TimelineDoc, Entity, Entity) {
             ph2d_skeleton_ecs::Bone {
                 length: 10.0,
                 strength: 1.0,
+                ..Default::default()
             },
         ))
         .id();
@@ -344,6 +345,7 @@ fn the_smoke_chain_moves_the_leaf_end_to_end() {
             ph2d_skeleton_ecs::Bone {
                 length: 10.0,
                 strength: 1.0,
+                ..Default::default()
             },
         ))
         .id();
@@ -515,6 +517,7 @@ fn a_control_governed_by_an_anchor_is_found_in_any_order() {
             Bone {
                 length: 10.0,
                 strength: 1.0,
+                ..Default::default()
             },
         ))
         .id();
@@ -527,6 +530,7 @@ fn a_control_governed_by_an_anchor_is_found_in_any_order() {
             Bone {
                 length: 10.0,
                 strength: 1.0,
+                ..Default::default()
             },
             ph2d_ecs::ChildOf(raiz),
         ))

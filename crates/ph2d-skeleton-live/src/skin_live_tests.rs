@@ -39,6 +39,7 @@ fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Ent
             Bone {
                 length: len,
                 strength: 1.0,
+                ..Default::default()
             },
         ))
         .id();
@@ -370,5 +371,93 @@ fn a_skin_survives_the_respawn_that_undo_and_save_do() {
         "{resolvidos} de {} tendoes ainda nomeiam um osso vivo depois do respawn - a pele morreu \
          em silencio, e o sintoma e' 'a forma deixou de seguir o esqueleto depois do Ctrl+Z'",
         peles[0].tendons.len()
+    );
+}
+
+/// ⭐⭐⭐ **UM RIG JÁ AUTORADO NÃO MUDOU UM BIT** — o gate de regressão do *bendy bone*, do lado do
+/// PRODUTOR.
+///
+/// ⚠️ **A referência não é um golden escrito à mão** (isso mediria a minha aritmética): é a mesma
+/// pele construída pela porta ANTIGA, `SkinBone::new`, osso a osso. O que se afirma é que as duas
+/// portas **coincidem**, e é o que autoriza a `resolve_with` a chamar sempre a nova.
+#[test]
+fn a_rig_authored_before_bendy_bones_resolves_to_exactly_the_same_skin() {
+    let (mut sim, scene, map, id, _) = palco();
+    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    let forma = Entity::from_bits(map[&id]);
+    let skin = sim
+        .world()
+        .get::<SkinBind>(forma)
+        .expect("a forma esta' presa")
+        .clone();
+    let index = bone_index(&sim);
+    let pele = resolve(&sim, &skin, forma, &index).expect("a pele resolve");
+
+    let shape_inv = ph2d_vec_entities::transform::xform_of_transform(
+        ph2d_vec_entities::transform::world_transform(&sim, forma),
+    )
+    .inverse()
+    .expect("a forma nao e' singular");
+    let antiga: Vec<SkinBone> = skin
+        .tendons
+        .iter()
+        .filter_map(|b| {
+            let e = *index.get(&b.bone)?;
+            let vb = sim.world().get::<Bone>(e).copied()?;
+            let mundo = ph2d_vec_entities::transform::xform_of_transform(
+                ph2d_vec_entities::transform::world_transform(&sim, e),
+            );
+            SkinBone::new(Xform(b.rest), vb.length, vb.strength, mundo, shape_inv)
+        })
+        .collect();
+    assert_eq!(antiga.len(), 2, "o palco tem dois ossos");
+    assert_eq!(pele.bones(), antiga.as_slice());
+}
+
+/// ⭐⭐⭐ **UM OSSO COM CURVATURA PRODUZ N SUB-OSSOS, E O DESENHO ARQUEIA** — o controlo positivo do
+/// lado do produtor: sem ele, a lei inteira podia estar certa e nunca ser chamada.
+///
+/// ⚠️ **A régua é a ALTURA DO MIOLO do rectângulo**, e não a da ponta: a curvatura arqueia o corpo
+/// e deixa as duas extremidades onde estão (a Bézier acaba na ponta do osso).
+#[test]
+fn authoring_curvature_makes_the_producer_emit_sub_bones_and_bows_the_art() {
+    let (mut sim, mut scene, map, id, ossos) = palco();
+    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    let antes = quadro(&sim, &mut scene, id);
+    let forma = Entity::from_bits(map[&id]);
+    let skin = sim.world().get::<SkinBind>(forma).expect("presa").clone();
+    assert_eq!(
+        resolve(&sim, &skin, forma, &bone_index(&sim))
+            .expect("resolve")
+            .len(),
+        2,
+        "recto ⇒ um sub-osso por osso"
+    );
+
+    // O artista arqueia o osso da RAIZ.
+    {
+        let mut b = sim
+            .world_mut()
+            .get_mut::<Bone>(ossos[0])
+            .expect("o osso existe");
+        b.segments = 8;
+        b.curve = ph2d_skeleton::bend::Bend {
+            inn: [0.0, 8.0],
+            out: [0.0, 8.0],
+        };
+    }
+    assert_eq!(
+        resolve(&sim, &skin, forma, &bone_index(&sim))
+            .expect("resolve")
+            .len(),
+        9,
+        "8 sub-ossos do curvo + 1 do recto"
+    );
+
+    let depois = quadro(&sim, &mut scene, id);
+    let pior = pior_desvio(&antes, &depois);
+    assert!(
+        pior > 1.0,
+        "a curvatura nao chegou ao desenho: pior desvio {pior}"
     );
 }

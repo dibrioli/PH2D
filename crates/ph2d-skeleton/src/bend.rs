@@ -41,7 +41,10 @@ use crate::Xform;
 /// ⚠️ São deslocamentos e não posições absolutas por causa do ponto neutro: `[0, 0]` tem de ser
 /// *«este osso é recto»*, e com posições absolutas o neutro seria `L/3` — um valor que depende do
 /// comprimento e que ninguém acerta ao escrever um `Default`.
-#[derive(Copy, Clone, Debug, PartialEq, Default)]
+/// ⚠️ **Ele atravessa o ficheiro** (é campo do `Bone` do lado do ECS), então deriva `serde` aqui —
+/// a mesma decisão, e pela mesma razão, do [`crate::BendSide`]: declará-lo outra vez do lado do ECS
+/// com uma conversão no meio seria a *segunda porta* que duas definições do mesmo conceito abrem.
+#[derive(Copy, Clone, Debug, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 pub struct Bend {
     /// Deslocamento da alça da RAIZ, a partir de `(L/3, 0)`.
     pub inn: [f64; 2],

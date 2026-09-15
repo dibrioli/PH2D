@@ -372,6 +372,7 @@ mod project_schema;
 mod project_schema_history;
 /// A escada arquivada de `v83` a `v98` — o corte por idade, a 2.ª vez (ver o cabeçalho dela).
 mod project_schema_history_v83;
+mod project_schema_history_v99;
 /// **As settings do PROJETO viajam no arquivo** (doc 88, D3) — a escala do mundo e a
 /// unidade que o artista lê; irmão de `project` pelo teto de LOC.
 mod project_settings;

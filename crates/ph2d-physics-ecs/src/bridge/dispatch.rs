@@ -187,6 +187,10 @@ impl PhysicsBridge {
                     // escrevem a pose antes do `step`, que é o que faz o solver
                     // tratar os corpos como movendo-se.
                     self.drive_topdown(sim);
+                    // E os PROJÉCTEIS (TOP-20 #14), no MESMO tique e logo a seguir: eles escrevem
+                    // a pose antes do `step`, como os dois controladores, que é o que faz o solver
+                    // tratá-los como movendo-se.
+                    self.drive_projectiles(sim);
                     self.world.step();
                     self.steps_taken += 1;
                     // Diff this tick's touching union against the standing set — the

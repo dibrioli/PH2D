@@ -257,6 +257,7 @@ impl PhysicsBridge {
             ControllerMemory {
                 platform: self.player_state.clone(),
                 topdown: self.topdown_state.clone(),
+                projectile: self.projectile_state.clone(),
             },
         );
         // A janela do ring é limitada; a nossa segue a dele pela borda de baixo
@@ -277,6 +278,7 @@ impl PhysicsBridge {
         if let Some(m) = self.state_ring.get(&tick) {
             self.player_state = m.platform.clone();
             self.topdown_state = m.topdown.clone();
+            self.projectile_state = m.projectile.clone();
         }
     }
 
@@ -314,6 +316,9 @@ pub(super) struct ControllerMemory {
     pub(super) platform: BTreeMap<Entity, PlayerState>,
     /// O controlador de VISTA DE CIMA (TOP-20 #13).
     pub(super) topdown: BTreeMap<Entity, ph2d_topdown::TopDownState>,
+    /// O PROJÉCTIL (TOP-20 #14) — e ele é a **prova** de que o tipo funciona: acrescentá-lo
+    /// obrigou a passar por aqui, pelo `record` e pelo `seed`, sem ninguém se lembrar de o fazer.
+    pub(super) projectile: BTreeMap<Entity, ph2d_projectile::ProjectileState>,
 }
 
 /// O tipo da tabela — uma memória por tique âncora.

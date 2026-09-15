@@ -47,6 +47,8 @@ pub mod player_view;
 // veredito é o que a §14 do Inspector lê, e o `pose_owner`/`PoseOwner` seguem
 // `pub(super)` — quem escreve a pose continua a ser uma pergunta interna.
 pub(crate) mod pose_owner;
+/// ⭐⭐⭐ **A ponte do mover de VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dela.
+mod projectile;
 mod readback;
 mod rewind;
 pub mod rope;
@@ -55,8 +57,34 @@ mod settings;
 pub mod signals;
 mod space;
 mod surfaces;
-/// ⭐⭐⭐ **A ponte do mover de VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dela.
 mod topdown;
+
+/// ⭐⭐ **A primeira normal que se OPÕE ao movimento, já com o sinal normalizado** — a PORTA que os
+/// dois movedores de orçamento partilham (o deslize do #13 e o ricochete do #14).
+///
+/// ⚠️ **A lei não pode adivinhar de que lado o `normal1` da `rapier` aponta**, e uma lei que
+/// adivinhasse deslizaria — ou ricochetearia — **para dentro** da parede metade das vezes. ⇒ quem
+/// normaliza o sinal é esta porta, uma vez, para as duas leis.
+///
+/// ⛔ Ela vivia dentro do `topdown.rs` e foi promovida quando o segundo consumidor chegou:
+/// *uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é*.
+pub(super) fn primeira_normal_oposta(
+    hits: &[ph2d_physics::CharacterHit],
+    dir: [f32; 2],
+) -> Option<[f32; 2]> {
+    for h in hits {
+        let n = h.normal;
+        let oposta = if n[0] * dir[0] + n[1] * dir[1] > 0.0 {
+            [-n[0], -n[1]]
+        } else {
+            n
+        };
+        if ph2d_projectile::len(oposta) > 1.0e-6 {
+            return Some(oposta);
+        }
+    }
+    None
+}
 pub mod triggers;
 pub mod views;
 
@@ -458,6 +486,18 @@ pub struct PhysicsBridge {
     /// entra no ring pelo [`tape::ControllerMemory`], que é um TIPO exactamente
     /// para que esta linha não pudesse ser esquecida.
     topdown_state: BTreeMap<Entity, ph2d_topdown::TopDownState>,
+    /// ⭐ **A memória de voo de cada PROJÉCTIL** (TOP-20 #14) — velocidade, metros percorridos e
+    /// saltos gastos.
+    ///
+    /// ⚠️ Ela entra no anel pelo MESMO [`tape::ControllerMemory`], e é por ele ser um **TIPO** que
+    /// acrescentá-la aqui **não compila** sem passar pelo `record` e pelo `seed`. *Era exactamente
+    /// isto que o doc do `player_state` previa por escrito quando havia um controlador só.*
+    projectile_state: BTreeMap<Entity, ph2d_projectile::ProjectileState>,
+    /// ⭐ **Os projécteis cujo voo acabou neste tique** — a ponte ANUNCIA, nunca despacha.
+    ///
+    /// ⚠️ Quem apaga uma entidade é a shell, no sítio onde o `Lifetime` do #12 já o faz: dois
+    /// despachantes de morte seriam duas respostas à pergunta *«quando é que isto sai da cena?»*.
+    projectile_done: Vec<(Entity, ph2d_projectile::Ended)>,
     /// **A plataforma que cada player está ATRAVESSANDO agora** (W12).
     ///
     /// ⚠️ **Uma forma, não um relógio, e não "todas as one-way":** a descida
@@ -594,6 +634,8 @@ impl PhysicsBridge {
             state_ring: BTreeMap::new(),
             player_state: BTreeMap::new(),
             topdown_state: BTreeMap::new(),
+            projectile_state: BTreeMap::new(),
+            projectile_done: Vec::new(),
             player_drop: BTreeMap::new(),
         }
     }

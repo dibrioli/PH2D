@@ -255,7 +255,17 @@ pub(super) fn pose_owner(world: &World, entity: Entity, kind: BodyKind) -> PoseO
     //
     // ⇒ o modo aqui só responde à OUTRA pergunta do enum: **se o mundo o ouve**
     // ([`PoseOwner::transmits`]). Só o `Pure` diz que não.
-    if kind == BodyKind::Kinematic && world.get::<TopDownPlayer>(entity).is_some() {
+    //
+    // ⭐⭐⭐ **E o PROJÉCTIL (TOP-20 #14) pela MESMA razão — e ele foi apanhado por este defeito, a
+    // wave seguinte.** O §4.5 do handoff do #13 escreveu-o por extenso, e mesmo assim os SETE
+    // gates da ponte nova nasceram vermelhos com a bala parada na origem: sem esta linha o
+    // `drive_kinematic` repõe a pose autorada em todo tique, e a bala fica onde nasceu *com todos
+    // os números certos*. ⇒ **quem escreve a própria pose declara-se AQUI**, e a lista é esta.
+    let controlador_cinematico = world.get::<TopDownPlayer>(entity).is_some()
+        || world
+            .get::<crate::components::ProjectileMotion>(entity)
+            .is_some();
+    if kind == BodyKind::Kinematic && controlador_cinematico {
         let mode = if matches!(world.get::<PlayerMode>(entity), Some(PlayerMode::Pure)) {
             PlayerMode::Pure
         } else {

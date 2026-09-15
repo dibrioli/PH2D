@@ -42,6 +42,9 @@ ph2d-platformer = { path = "../ph2d-platformer" }
 # ⭐ A lei do mover de VISTA DE CIMA (TOP-20 #13) — a irmã da de cima, e pelo
 # mesmo desenho: lei pura de um lado, ponte do outro.
 ph2d-topdown = { path = "../ph2d-topdown" }
+
+# ⭐ A lei do PROJÉCTIL (TOP-20 #14) — folha pura, como as duas irmãs de controlador.
+ph2d-projectile = { path = "../ph2d-projectile" }
 # glam Vec2 (re-exported by ph2d-core) for writing rapier poses back
 # into Transform.translation.
 ph2d-core = { path = "../ph2d-core" }

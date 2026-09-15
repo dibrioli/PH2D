@@ -231,6 +231,14 @@ pub const DESCS: &[D] = &[
     ),
     i("ph2d::physics::PlayerMode", "Player Mode"),
     i("ph2d::physics::PlayerSignals", "Player Signals"),
+    // ⭐⭐⭐ **O PROJÉCTIL de arcade** (TOP-20 #14). ⚠️ `RigidBody` é requerido pela mesma razão
+    // dos dois movers irmãos: sem corpo não há o que mover nem em que bater, e a paleta anexa os
+    // dois de uma vez em vez de entregar um componente inerte.
+    pr(
+        "ph2d::physics::ProjectileMotion",
+        "Projectile Motion",
+        &["ph2d::physics::RigidBody"],
+    ),
     // ✅ `rope`/`body` idem — e a roldana é a SEXTA consulta da ponte, a que a refutação não
     // nomeava (F4.1): ela é alcançada pelo nome da corda, então uma referência por remapear
     // faria a roldana da instância disputar a corda do mestre. ⛔ `Intrinsic` pela razão da junta:

@@ -514,7 +514,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // é a décima quinta vez. ⛔ O `TopDownState` — a memória da velocidade — **não é
         // componente**: ela vive na ponte, dentro do anel de checkpoints, porque um campo que muda
         // por tique num componente registado faria o undo ver cada quadro como um passo.
-        (131, 13, 22),
+        (132, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

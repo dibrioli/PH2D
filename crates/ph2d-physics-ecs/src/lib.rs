@@ -74,9 +74,9 @@ pub use components::{
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
     MassOverride, MaterialCombine, NoWallCling, OneWayPlatform, PlatformLift, PlatformPlayer,
-    PlayerMode, PlayerSignals, PulleyWheel, RigidBody, RopeStops, SignalOnHit, SignalOnLeave,
-    SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide, reseat_mounted_axle,
-    reseat_wheel_geometry, rope_joint_of,
+    PlayerMode, PlayerSignals, ProjectileMotion, PulleyWheel, RigidBody, RopeStops, SignalOnHit,
+    SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide,
+    reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -190,6 +190,9 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     // ⭐ TOP-20 #13. ⚠️ Componente registado novo ⇒ o `PROJECT_SCHEMA` sobe e os
     // DOIS espelhos (`ph2d-render`, `ph2d-script`) sobem com ele — conte o DELTA.
     reg.register_default::<TopDownPlayer>("ph2d::physics::TopDownPlayer");
+    // ⭐ O PROJÉCTIL de arcade (TOP-20 #14). ⚠️ Sem o registo, o artista afina uma bala e o
+    // ficheiro guarda um objecto sem voo nenhum.
+    reg.register_default::<ProjectileMotion>("ph2d::physics::ProjectileMotion");
     reg.register_default::<PlayerMode>("ph2d::physics::PlayerMode");
     reg.register_default::<WalkSurface>("ph2d::physics::WalkSurface");
     reg.register_default::<NoWallCling>("ph2d::physics::NoWallCling");
@@ -210,9 +213,12 @@ mod tests {
         // entre linhas, e o git não sabe o que ele significa quando duas escrevem o mesmo valor.
         // ⭐ **+1 outra vez (TOP-20 #13, o `TopDownPlayer`)** ⇒ `33 -> 34`, e o delta contra o
         // `main` desta linha passa a ser **+2**. Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 34);
+        // ⭐ **+1 outra vez (TOP-20 #14, o `ProjectileMotion`)** ⇒ `34 -> 35`, e o delta contra o
+        // `main` passa a **+3**.
+        assert_eq!(reg.len(), 35);
         assert!(reg.get_by_name("ph2d::physics::SignalTagFilter").is_some());
         assert!(reg.get_by_name("ph2d::physics::TopDownPlayer").is_some());
+        assert!(reg.get_by_name("ph2d::physics::ProjectileMotion").is_some());
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());

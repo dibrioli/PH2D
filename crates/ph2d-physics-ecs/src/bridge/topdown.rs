@@ -212,22 +212,6 @@ fn diagnostico() -> bool {
     *LIGADO.get_or_init(|| std::env::var_os("PH2D_TOPDOWN_LOG").is_some())
 }
 
-/// A primeira normal que se OPÕE ao movimento, já com o sinal normalizado.
-fn primeira_normal_oposta(hits: &[CharacterHit], dir: [f32; 2]) -> Option<[f32; 2]> {
-    for h in hits {
-        let n = h.normal;
-        let oposta = if n[0] * dir[0] + n[1] * dir[1] > 0.0 {
-            [-n[0], -n[1]]
-        } else {
-            n
-        };
-        if ph2d_topdown::len(oposta) > 1.0e-6 {
-            return Some(oposta);
-        }
-    }
-    None
-}
-
 #[cfg(test)]
 #[path = "topdown_tests.rs"]
 mod tests;

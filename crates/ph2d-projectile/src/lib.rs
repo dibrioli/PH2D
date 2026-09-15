@@ -111,6 +111,13 @@ pub struct ProjectileState {
     /// Já nasceu? ⚠️ O tique do nascimento é o que converte `initial_speed` + o ângulo do corpo
     /// numa velocidade — e ele só pode acontecer **uma vez**.
     pub launched: bool,
+    /// ⭐⭐ **O voo ACABOU** — e isto tem de ser MEMÓRIA, não uma pergunta feita a cada tique.
+    ///
+    /// ⚠️ O alcance é derivável do estado (`travelled >= range`), mas o **tecto de ricochetes** só
+    /// é observável no tique em que o corpo bate: no tique seguinte ele já não está a bater, e uma
+    /// bala que gastou o último salto voltaria a voar. *Uma condição que só é verdadeira num
+    /// instante tem de ser LEMBRADA.*
+    pub finished: bool,
 }
 
 /// **Por que o voo acabou** — a ponte despacha a morte, a lei só diz o motivo.

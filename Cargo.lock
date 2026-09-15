@@ -8066,6 +8066,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-physics",
  "ph2d-platformer",
+ "ph2d-projectile",
  "ph2d-tags",
  "ph2d-topdown",
  "postcard",

@@ -247,6 +247,8 @@ mod area;
 mod overrides;
 /// O componente do player de plataforma (docs dele).
 mod player;
+/// ⭐ O PROJÉCTIL de arcade (TOP-20 #14) — a lei vive na folha [`ph2d_projectile`].
+mod projectile;
 mod rope;
 mod signal;
 /// A SUPERFÍCIE que o pé encontra (docs dele).
@@ -262,6 +264,7 @@ pub use overrides::{
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,
 };
 pub use player::{PlatformLift, PlatformPlayer, PlayerMode};
+pub use projectile::ProjectileMotion;
 pub use rope::{
     PulleyWheel, RopeStops, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry,
     rope_joint_of,

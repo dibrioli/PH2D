@@ -34,12 +34,20 @@ use std::path::{Path, PathBuf};
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // ⚠️ **A GEOMETRIA de uma linha não tem semântica própria** (2026-09-14): o `row.rs` reparte
-    //    uma faixa entre um nome e um controlo e pinta o rótulo — quem tem nome, papel e foco é o
-    //    CONTROLO, registado por quem o desenha. Um nó aqui poria um alvo focável por baixo de
-    //    cada linha do app, a duplicar o controlo dela.
+    //    uma faixa entre um nome e um controlo — quem tem nome, papel e foco é o CONTROLO,
+    //    registado por quem o desenha. Um nó aqui poria um alvo focável por baixo de cada linha do
+    //    app, a duplicar o controlo dela.
     (
         "property_box/row.rs",
-        "geometria de linha + rotulo: o no' e' do controlo, nao da faixa",
+        "geometria de linha: o no' e' do controlo, nao da faixa",
+    ),
+    // ⚠️ **E o TEXTO do nome também não** (2026-09-15, quando o tecto de LOC partiu o `row.rs` em
+    //    dois): o `label.rs` mede, trunca e pousa o texto do nome. Esse texto **já é** o `label` do
+    //    nó do controlo — o `NumberInput`/`PropertyBox` leva-o no `NodeBuilder::label`. *Um nó
+    //    aqui leria o nome DUAS vezes a quem não vê.*
+    (
+        "property_box/label.rs",
+        "o texto do nome: ele ja' viaja como `label` do no' do CONTROLO",
     ),
     // ⚠️ **A listra de uma lista não tem semântica própria, e a ausência é a decisão**
     //    (2026-09-06): ela é o TOM que a lista pinta ATRÁS das suas linhas, para que duas linhas

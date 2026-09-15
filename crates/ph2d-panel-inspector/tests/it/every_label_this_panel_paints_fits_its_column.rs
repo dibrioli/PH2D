@@ -85,7 +85,9 @@ fn coluna_da_seccao(ts: &mut TextSystem, painel: f32) -> f32 {
         .map(|t| ts.prefix_width(t, fonte))
         .fold(0.0_f32, f32::max);
     let linha = painel - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX - 2.0 * Spacing::Sm.px();
-    ph2d_editor_core::widget::property_label_col_w_for(0.0, linha, Some(mais_largo))
+    // ⚠️ **`None` no `control_need`**: esta régua mede a coluna do RÓTULO da §14, cujas linhas têm
+    //    um campo só — e com um campo não há cedência nenhuma a medir (ver a lei no doc da porta).
+    ph2d_editor_core::widget::property_label_col_w_for(0.0, linha, Some(mais_largo), None)
 }
 
 /// ⭐⭐⭐ **Quantos rótulos elidem, em cada largura da escada.**

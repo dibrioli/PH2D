@@ -217,7 +217,7 @@ fn anchor_editor(
         &ids::INSP_ANCHOR_POS,
         PX_STEP,
         Some(ph2d_editor_core::widget::Unit::Px),
-        None,
+        2,
     );
     cur_y = super::rows::fields_row(
         scene,
@@ -232,7 +232,7 @@ fn anchor_editor(
         &[ids::INSP_ANCHOR_ROT],
         DEG_STEP,
         Some(ph2d_editor_core::widget::Unit::Degrees),
-        None,
+        2,
     );
     cur_y = check_row(
         scene,
@@ -262,7 +262,7 @@ fn anchor_editor(
             &ids::INSP_ANCHOR_BOUNDS,
             PX_STEP,
             Some(ph2d_editor_core::widget::Unit::Px),
-            None,
+            2,
         );
         cur_y = check_row(
             scene,
@@ -290,7 +290,7 @@ fn anchor_editor(
                 &ids::INSP_ANCHOR_CENTER,
                 PX_STEP,
                 Some(ph2d_editor_core::widget::Unit::Px),
-                None,
+                2,
             );
         }
     }

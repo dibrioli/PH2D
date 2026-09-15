@@ -142,11 +142,33 @@ pub(super) fn fields_row(
     field_ids: &[NodeId],
     step: f64,
     unit: Option<ph2d_editor_core::widget::Unit>,
-    desired_label_w: Option<f32>,
+    // ⭐⭐⭐ **Quantos campos tem a linha mais FAMINTA desta secção** (report do dono, 2026-09-15,
+    //    com foto: *«O painel ainda largo com espaço à esquerda e as linhas já se quebram … Isso
+    //    não pode acontecer»*).
+    //
+    // ⚠️⚠️ **É da SECÇÃO e não desta linha, de propósito.** Se cada linha cedesse pelo que ELA
+    //    precisa, a linha de um campo (*Rotation*) não cederia nada e a de dois cederia — e a
+    //    coluna saía esfarrapada, que é o que a ordem *«as labels alinhadas todas à direita»*
+    //    proíbe. ⇒ todas as linhas da secção cedem o MESMO.
+    campos_da_seccao: usize,
 ) -> f32 {
-    let row =
-        ph2d_editor_core::widget::property_row_columns_for(x, w, y, ROW_H_PX, desired_label_w);
     let label_font = TypeToken::Sm.px();
+    let gap = ph2d_tokens::control_gap_px();
+    // ⭐⭐ **O que o rótulo PRECISA — medido, no peso em que pinta.** É ele o piso da cedência: a
+    //    coluna encolhe para o controlo caber, e pára aqui. *Trocar uma linha quebrada por um nome
+    //    cortado não é a cura que o dono pediu.*
+    let quer = text_system.prefix_width(label, label_font);
+    // ⭐⭐ **O que o CONTROLO precisa para não quebrar** — `n` caixas ao piso, com os vãos.
+    let n = campos_da_seccao.max(field_ids.len()).max(1) as f32;
+    let precisa = n * ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX + (n - 1.0) * gap;
+    let row = ph2d_editor_core::widget::property_row_columns_for(
+        x,
+        w,
+        y,
+        ROW_H_PX,
+        Some(quer),
+        Some(precisa),
+    );
     ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
@@ -157,7 +179,6 @@ pub(super) fn fields_row(
         row.label.w,
         resolve(ColorToken::Text2, theme),
     );
-    let gap = ph2d_tokens::control_gap_px();
     let (por_linha, linhas, cw) =
         ph2d_editor_core::widget::property_fields_layout(row.control.w, field_ids.len(), gap, 0.0);
     let passo = ph2d_tokens::row_pitch_px();
@@ -364,8 +385,14 @@ pub(super) fn num_row_unit(
     // ⚠️ **A altura de uma row cai de `label_h + passo` para o PASSO** (~16 px por linha), e é por
     // isso que a [`num_row_h`] encolheu no mesmo commit: a `card_h` deriva dela, e as duas têm de
     // continuar a ser a mesma resposta — senão a moldura do card nasce por cima das caixas.
-    let row =
-        ph2d_editor_core::widget::property_row_columns_for(x, w, y, ROW_H_PX, desired_label_w);
+    let row = ph2d_editor_core::widget::property_row_columns_for(
+        x,
+        w,
+        y,
+        ROW_H_PX,
+        desired_label_w,
+        None,
+    );
     let label_font = TypeToken::Sm.px();
     // ⚠️ **ELIDIDO, nunca transbordado:** a coluna do rótulo é uma FRACÇÃO da linha (a coluna
     // docada é arrastável), logo um rótulo comprido numa coluna estreita passaria por cima do campo.

@@ -327,7 +327,7 @@ fn paint_enabler_rows(
             ],
             RECT_STEP,
             None,
-            None,
+            2,
         );
     }
     yy

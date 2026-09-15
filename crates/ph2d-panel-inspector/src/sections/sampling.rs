@@ -250,7 +250,7 @@ pub(crate) fn paint_sampling_section(
         &[ids::INSP_SAMPLE_UV_SCALE_X, ids::INSP_SAMPLE_UV_SCALE_Y],
         0.1, // LITERAL-PX-OK: passo de scrub em UV, não em pixels
         None,
-        None,
+        2,
     );
     yy = super::rows::fields_row(
         scene,
@@ -265,7 +265,7 @@ pub(crate) fn paint_sampling_section(
         &[ids::INSP_SAMPLE_UV_OFFSET_X, ids::INSP_SAMPLE_UV_OFFSET_Y],
         0.1, // LITERAL-PX-OK: passo de scrub em UV, não em pixels
         None,
-        None,
+        2,
     );
 
     // ⛔ **AQUI ficava «Anti-halo: enabled (atlas-level)», e não volta como literal.** O doc de

@@ -199,6 +199,47 @@ propriedade — e há gate com a lista, com a metade da obsolescência.
 
 ---
 
+## §6-ter — A CEDÊNCIA: a metade encolhe antes de deixar a linha quebrar
+
+⛔⛔ **Report do dono, 2026-09-15, com foto do Transform:** *«O painel ainda largo com espaço à
+esquerda e as linhas já se quebram (caixa y passa para baixo. Isso não pode acontecer. Encontre a
+solução»*.
+
+Na foto, `Position X / Y` mede **`~88 px`** numa coluna de **`~154`** — **`~66 px` de vazio** à
+esquerda do nome — e o `Y` desce porque ao controlo faltavam **`7 px`**. *A coluna do nome estava a
+guardar espaço que não usava enquanto a do lado passava fome.*
+
+⇒ **a metade (§3) deixa de ser um PISO e passa a ser um ALVO**, com três degraus:
+
+1. **empréstimo** (§6): um nome mais largo que a metade passa dela;
+2. **cedência** (esta): a metade encolhe até o controlo ter o que precisa;
+3. **o piso da cedência é o que o NOME precisa** — medido, no peso em que pinta.
+
+⚠️⚠️ **Só se cede quando a cedência RESOLVE.** Se nem com o nome no mínimo o controlo coubesse,
+encolher a coluna troca *uma linha quebrada* por *um nome cortado* — e a linha continua quebrada.
+Aí não se cede nada e a coluna fica onde o dono a pôs.
+
+⚠️ **O `control_need` é da SECÇÃO, não da linha.** Se cada linha cedesse pelo que ELA precisa, a
+linha de um campo (*Rotation*) não cederia e a de dois cederia — e a coluna saía esfarrapada, que é
+o que *«as labels alinhadas todas à direita»* proíbe. ⇒ cada secção declara **a linha que ela não
+quer ver quebrar**, e todas cedem o mesmo.
+
+**Medido** (um par `X`/`Y`, nome de `88 px`):
+
+| painel | coluna do nome | controlo | resultado |
+|---|---|---|---|
+| `220` | `92,0` | `86,0` | empilha (não há folga: `88 + 8 + 147 > 206`) |
+| `273,3` | `118,7` | `112,7` | empilha (idem) |
+| `304` | **`115,0`** (cedeu de `134`) | **`147,0`** | ⭐ **lado a lado** |
+| `343` (a foto) | `153,5` | `147,5` | ⭐ **lado a lado** |
+| `369,7` (o dock dele) | `166,9` | `160,9` | lado a lado |
+| `720` | `342,0` | `336,0` | lado a lado |
+
+⭐ A quebra passa a acontecer **só** onde `nome + vão + controlo > utilizável` — isto é, onde de
+facto não há folga nenhuma.
+
+---
+
 ## §7 — O que a linha leva SEMPRE
 
 | peça | lei |
@@ -258,6 +299,7 @@ propriedade — e há gate com a lista, com a metade da obsolescência.
 | §6-bis | alargar o painel nunca faz caber menos campos por linha | `property_fields_layout` | `a_wider_panel_never_fits_fewer_fields` |
 | §6-bis | a caixa sozinha cobre exactamente o que o par cobre | `property_row_columns` | `the_lone_field_of_a_row_spans_what_the_pair_spans` |
 | §6-bis | dispor N campos numa linha tem UM chamador em todo o painel | `property_fields_layout` | `only_one_door_lays_out_a_row_of_fields` |
+| §6-ter | uma linha nunca quebra enquanto a coluna do nome tem folga | `property_label_col_w_for` | `a_row_never_wraps_while_the_name_column_has_slack` |
 | §6-bis | nenhuma linha do Inspector põe o nome por cima do controlo | `fields_row` | `no_row_paints_its_name_above_its_control` |
 | §7 | toda linha reserva a coluna de animação | `form_row_columns` | `every_form_row_reserves_the_animation_column` |
 | §7 | as portas que reservam a coluna DERIVAM-SE, nunca se enumeram | `property_label_row` | `the_door_census_derives_the_second_order_doors` |

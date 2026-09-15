@@ -223,7 +223,7 @@ pub(crate) fn paint_slice_section(
         &[ids::INSP_SLICE_BORDER[0], ids::INSP_SLICE_BORDER[1]],
         1.0,
         Some(ph2d_editor_core::widget::Unit::Px),
-        None,
+        2,
     );
     cur_y = super::rows::fields_row(
         scene,
@@ -238,7 +238,7 @@ pub(crate) fn paint_slice_section(
         &[ids::INSP_SLICE_BORDER[2], ids::INSP_SLICE_BORDER[3]],
         1.0,
         Some(ph2d_editor_core::widget::Unit::Px),
-        None,
+        2,
     );
     cur_y = super::rows::fields_row(
         scene,
@@ -253,7 +253,7 @@ pub(crate) fn paint_slice_section(
         &[ids::INSP_SLICE_SIZE[0], ids::INSP_SLICE_SIZE[1]],
         SIZE_STEP,
         Some(ph2d_editor_core::widget::Unit::Meters),
-        None,
+        2,
     );
 
     // Fill Center.

@@ -1535,3 +1535,81 @@ reprovou no fecho desta wave, com as **três** assinaturas da família (`CLAUDE.
 ⚠️⚠️ **E ele é IRMÃO DE FICHEIRO do `the_mask_stroke_cost_does_not_follow_the_canvas`, que JÁ está
 na lista.** *Duas razões de relógio na mesma crate, uma na lista e outra não, é exactamente como a
 lista envelhece* — a memória deste repo diz isto por escrito desde 2026-09-12, sobre outro par.
+
+---
+
+## 24 — ⭐⭐⭐ *«O painel ainda largo com espaço à esquerda e as linhas já se quebram»* — A CEDÊNCIA
+
+**Report do dono, 2026-09-15**, com foto do Transform: *«O painel ainda largo com espaço à esquerda
+e as linhas já se quebram (caixa y passa para baixo. Isso não pode acontecer. Encontre a solução»*.
+
+### 24.1 — A medição da foto
+
+`Position X / Y` mede **`~88 px`** numa coluna de **`~154`** — **`~66 px` de vazio** à esquerda do
+nome, porque ele é alinhado à direita. E o `Y` desce porque ao controlo faltavam **`7 px`** para dois
+campos ao piso (`2 × 72 + 3 = 147`).
+
+⇒ *a coluna do nome estava a guardar espaço que não usava enquanto a do lado passava fome.*
+
+### 24.2 — ⛔⛔ A METADE era um PISO, e isso vinha de uma ordem anterior do MESMO dono
+
+A `LABEL_COL_FRAC = 0,5` nasceu em 2026-09-14 de *«Melhor alinhar no meio do painel e as labels
+alinhadas todas à direita»*, e a porta escrevia-a como **piso** (`desired.max(metade)`): a coluna
+podia crescer (o empréstimo da §6) e **nunca encolher**.
+
+⇒ a metade passa a ser um **ALVO**, com três degraus: empréstimo · **cedência** · e o piso da
+cedência é **o que o NOME precisa**, medido no peso em que pinta.
+
+### 24.3 — ⚠️⚠️ E há uma cláusula que a primeira versão não tinha: só se cede quando RESOLVE
+
+Se nem com o nome no mínimo o controlo coubesse, encolher a coluna **troca uma linha quebrada por um
+nome cortado — e a linha continua quebrada**. Medido: numa linha de 4 campos (`precisa 297`) a
+`interior 323` a cedência daria uma coluna de `4 px`. ⇒ `if cede >= quer { … } else { base }`.
+
+### 24.4 — ⚠️ O `control_need` é da SECÇÃO, e é uma decisão de PRODUTO
+
+Se cada linha cedesse pelo que ELA precisa, a linha de um campo (*Rotation*) não cederia e a de dois
+cederia — **coluna esfarrapada**, que é o que *«as labels alinhadas todas à direita»* proíbe.
+
+⇒ cada secção declara **a linha que ela não quer ver quebrar** (`campos_da_seccao`), e todas cedem o
+mesmo. ⛔ **Não é o máximo mecânico:** as Âncoras têm rows de 4 campos (`Bounds`, `Center`) e
+declaram **2** — quatro caixas ao piso pedem `297 + nome`, que é um painel de `~700`; forçar o
+máximo faria a secção inteira deixar de ceder e o `Position X / Y` voltava a quebrar. *Um `max()`
+sobre o código teria dado a resposta errada, e por isso o número é escrito com a razão ao lado.*
+
+| secção | declara | porquê |
+|---|---|---|
+| anchors · camera · slice_nine · sampling · visibility · transform | `2` | o par `X`/`Y` é a linha que não pode quebrar |
+| audio · anim · anim_rows · timers | `1` | todas as linhas têm um campo |
+
+### 24.5 — O resultado, medido
+
+| painel | coluna do nome | controlo | antes | depois |
+|---|---|---|---|---|
+| `304` | `134 → **115**` | `128 → **147**` | empilhava | ⭐ **lado a lado** |
+| `343` (a foto) | `153,5` | `147,5` | empilhava | ⭐ **lado a lado** |
+| `273,3` | `118,7` | `112,7` | empilha | empilha — **e está certo**: `88 + 8 + 147 > 239` |
+
+### 24.6 — Gate e mutações
+
+`a_row_never_wraps_while_the_name_column_has_slack`: para cada largura do dock × três nomes
+plausíveis × `n ∈ 2..4`, **se a linha quebra então nem com o nome no mínimo o controlo caberia**.
+
+| mutação | o que ela dá |
+|---|---|
+| a metade volta a ser piso (`coluna = base`) | *«interior 284, nome 40, n=2: QUEBROU com folga — o nome ocupa 134,00 e bastavam 40,00, o que deixaria 222,00 para um controlo que precisa de 147,00»* ✅ |
+| a cedência perde o piso (`base.min(cede)`) | *«a coluna desceu a 0,00, abaixo do que o nome precisa»* ✅ |
+
+### 24.7 — O tecto de LOC, curado por corte
+
+O `property_box/row.rs` chegou a `519` contra o tecto de `500`. ⛔ Nem um número maior, nem uma
+entrada no `FILE_OVERAGE_OK`: **corte por responsabilidade**. O ficheiro respondia a duas perguntas
+que crescem por motivos diferentes — *como a faixa se reparte* (ordens de disposição do dono) e *o
+que acontece ao TEXTO do nome dentro da coluna* (defeitos de medição de texto). ⇒
+`property_box/label.rs` (`137` L) leva `paint_property_label`, `property_label_origin` e
+`fit_label`; o `row.rs` fica em **`396`**. As re-exportações ficam no `mod.rs`, logo **nenhum
+chamador muda de caminho**.
+
+⚠️ E o censo de acessibilidade acusou o irmão novo — legítimo: ele entra no `A11Y_OPT_OUT` **com a
+razão**, que é a mesma do `row.rs` um degrau abaixo (*o texto do nome já viaja como `label` do nó do
+CONTROLO; um nó aqui leria o nome duas vezes a quem não vê*).

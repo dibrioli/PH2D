@@ -288,7 +288,7 @@ fn range_and_timing_rows(
             &[id],
             passo,
             unidade,
-            None,
+            1,
         );
     }
     // ⚠️ **Uma animação com ritmo PRÓPRIO por célula (§8.12) tem de o DIZER.** Sem esta linha o
@@ -322,7 +322,7 @@ fn range_and_timing_rows(
             &[id],
             passo,
             unidade,
-            None,
+            1,
         );
     }
     cur_y

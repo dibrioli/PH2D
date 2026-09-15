@@ -200,3 +200,70 @@ fn the_lone_field_of_a_row_spans_what_the_pair_spans() {
         }
     }
 }
+
+/// ⭐⭐⭐ **UMA LINHA NUNCA QUEBRA ENQUANTO A COLUNA DO NOME TEM FOLGA.**
+///
+/// ⛔⛔ **Report do dono, 2026-09-15, com foto do Transform:** *«O painel ainda largo com espaço à
+/// esquerda e as linhas já se quebram (caixa y passa para baixo. Isso não pode acontecer. Encontre
+/// a solução»*. Na foto o nome `Position X / Y` media `~88 px` numa coluna de `~154`, com `~66 px`
+/// de vazio à esquerda dele — e o `Y` descia porque ao controlo faltavam **`7 px`**.
+///
+/// ⇒ a metade deixou de ser um piso e passou a ser um **alvo**: a coluna do nome **cede** ao
+/// controlo até ao que o nome de facto precisa.
+///
+/// # A régua
+///
+/// Para cada largura do curso do dock e cada nome plausível, se a linha QUEBRA então tem de ser
+/// verdade que **nem com o nome no mínimo** o controlo caberia. ⛔ Uma quebra com folga à esquerda é
+/// exactamente o que o dono proibiu.
+#[test]
+fn a_row_never_wraps_while_the_name_column_has_slack() {
+    let piso = NUMBER_INPUT_MIN_W_PX;
+    let mut mau = Vec::new();
+    for &interior in INTERIORES {
+        for quer in [40.0_f32, 88.0, 150.0] {
+            for n in 2..=4usize {
+                let precisa = n as f32 * piso + (n as f32 - 1.0) * gap();
+                let row = ph2d_editor_core::widget::property_row_columns_for(
+                    0.0,
+                    interior,
+                    0.0,
+                    22.0,
+                    Some(quer),
+                    Some(precisa),
+                );
+                let (por_linha, _, _) = property_fields_layout(row.control.w, n, gap(), 0.0);
+                if por_linha == n {
+                    continue; // não quebrou — nada a provar
+                }
+                // Quebrou. Só é legítimo se nem com o nome no mínimo o controlo coubesse.
+                let usable = interior - ph2d_editor_core::widget::DECORATOR_W;
+                let vao = ph2d_tokens::Spacing::Md.px();
+                let com_o_nome_no_minimo = usable - vao - quer;
+                if com_o_nome_no_minimo >= precisa {
+                    mau.push(format!(
+                        "interior {interior}, nome {quer}, n={n}: QUEBROU com folga — o nome ocupa \
+                         {:.2} e bastavam {quer:.2}, o que deixaria {com_o_nome_no_minimo:.2} \
+                         para um controlo que precisa de {precisa:.2}",
+                        row.label.w
+                    ));
+                }
+                // ⚠️ E a coluna do nome NUNCA desce abaixo do que o nome precisa — senão a cura
+                //    trocaria uma linha quebrada por um nome cortado.
+                if row.label.w < quer - 0.01 && row.label.w < interior * 0.5 {
+                    mau.push(format!(
+                        "interior {interior}, nome {quer}, n={n}: a coluna desceu a {:.2}, abaixo \
+                         do que o nome precisa",
+                        row.label.w
+                    ));
+                }
+            }
+        }
+    }
+    assert!(
+        mau.is_empty(),
+        "{} celula(s) quebram uma linha com espaco por usar a' esquerda:\n  {}",
+        mau.len(),
+        mau.join("\n  ")
+    );
+}

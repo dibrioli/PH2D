@@ -75,7 +75,7 @@ pub(crate) fn paint_transform_section(
         &[ids::INSP_TRANSFORM_POS_X, ids::INSP_TRANSFORM_POS_Y],
         pos_step,
         Some(pos_unit),
-        None,
+        2,
     );
     cur_y = super::rows::fields_row(
         scene,
@@ -90,7 +90,7 @@ pub(crate) fn paint_transform_section(
         &[ids::INSP_TRANSFORM_ROT],
         angle_step,
         Some(ang_unit),
-        None,
+        2,
     );
     // ⭐ **A ESCALA e o CISALHAMENTO saíram para uma porta própria** (tecto de fn do painel,
     //    2026-09-15): as duas são o par `X`/`Y` de um FACTOR e de um ÂNGULO, e nenhuma delas lê a
@@ -149,7 +149,7 @@ fn paint_scale_and_skew(
         &[ids::INSP_TRANSFORM_SCALE_X, ids::INSP_TRANSFORM_SCALE_Y],
         SCALE_STEP,
         None,
-        None,
+        2,
     );
     // Skew X/Y in degrees (ADR-0025-amendment-1). Authoring range is clamped to ±~89.4° at the
     // ECS-commit boundary; the slider itself is unbounded so over-typing snaps back on re-sync.
@@ -166,7 +166,7 @@ fn paint_scale_and_skew(
         &[ids::INSP_TRANSFORM_SKEW_X, ids::INSP_TRANSFORM_SKEW_Y],
         angle_step,
         Some(ang_unit),
-        None,
+        2,
     )
 }
 

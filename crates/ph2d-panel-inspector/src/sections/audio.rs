@@ -288,7 +288,7 @@ fn source_body(
             &[id],
             step, // LITERAL-PX-OK: passo de scrub na UNIDADE do campo, não em pixels
             unit,
-            None,
+            1,
         );
     }
 

@@ -174,7 +174,7 @@ fn camera_body(
             ids3,
             step,
             unit,
-            None,
+            2,
         );
     }
 
@@ -284,7 +284,7 @@ fn follow_body(
             &ids2,
             step,
             unit,
-            None,
+            2,
         );
     }
     cur_y
@@ -341,7 +341,7 @@ fn limits_body(
             &ids2,
             0.5, // LITERAL-PX-OK: passo em metros
             unit,
-            None,
+            2,
         );
     }
     cur_y

@@ -10,7 +10,6 @@
 use super::{DECORATOR_W, surface_rect};
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
-use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
@@ -171,7 +170,7 @@ const LABEL_COL_FRAC: f32 = 0.5; // LITERAL-PX-OK: nao e' px, e' A METADE da lin
 /// fora dela (duas mutações, as duas mortas).
 #[must_use]
 pub fn property_label_col_w(x: f32, w: f32) -> f32 {
-    property_label_col_w_for(x, w, None)
+    property_label_col_w_for(x, w, None, None)
 }
 
 /// ⭐⭐⭐ **A mesma coluna, mas o rótulo pode PEDIR EMPRESTADO ao controlo o que ele não usa.**
@@ -196,8 +195,37 @@ pub fn property_label_col_w(x: f32, w: f32) -> f32 {
 ///
 /// Medido a `220,9`: as elisões passam de **16 para 3** (`Corner Look-ahead`, `Weight on Ground` e
 /// `Swim Line (weights)` continuam maiores do que a linha aguenta).
+///
+/// # ⭐⭐⭐ A CEDÊNCIA: a metade ENCOLHE antes de deixar a linha quebrar
+///
+/// ⛔⛔ **Report do dono, 2026-09-15, com foto:** *«O painel ainda largo com espaço à esquerda e as
+/// linhas já se quebram (caixa y passa para baixo. Isso não pode acontecer. Encontre a solução»*.
+///
+/// Na foto, `Position X / Y` mede `~88 px` numa coluna de `~154`, com **`~66 px` de vazio à
+/// esquerda do nome** — e o `Y` desce, porque o controlo ficou `7 px` abaixo do que dois campos ao
+/// piso precisam. *A coluna do rótulo estava a guardar espaço que não usava enquanto a do lado
+/// passava fome.*
+///
+/// ⇒ a metade deixa de ser um PISO e passa a ser um **ALVO**:
+///
+/// 1. **empréstimo** (a lei de cima): um rótulo mais largo que a metade pode passar dela;
+/// 2. **cedência** (esta): a metade encolhe até o controlo ter o que precisa — mas **nunca abaixo
+///    do que o rótulo precisa**, senão troca-se uma linha quebrada por um nome cortado;
+/// 3. o tecto absoluto continua a ser o piso do CAMPO.
+///
+/// ⚠️ **`control_need` é da SECÇÃO, não da linha.** Se cada linha cedesse pelo que ELA precisa, a
+/// linha de um campo (*Rotation*) não cederia nada e a de dois cederia — e a coluna saía
+/// esfarrapada, que é o que a ordem *«as labels alinhadas todas à direita»* proíbe.
+///
+/// ⚠️ **`None` = o piso do campo**, que é o comportamento de quem não sabe o que vai pintar: sem
+/// cedência nenhuma.
 #[must_use]
-pub fn property_label_col_w_for(x: f32, w: f32, desired: Option<f32>) -> f32 {
+pub fn property_label_col_w_for(
+    x: f32,
+    w: f32,
+    desired: Option<f32>,
+    control_need: Option<f32>,
+) -> f32 {
     // ⚠️ O vertical entra a zero **e é deitado fora**: o único uso que a [`form_row_columns`] lhe dá
     // é montar o rect do ponto, e aqui só queremos a largura utilizável (que já desconta a coluna
     // de animação, ou não desconta nada na aparência clássica — a guarda mora lá, uma vez).
@@ -229,100 +257,23 @@ pub fn property_label_col_w_for(x: f32, w: f32, desired: Option<f32>) -> f32 {
     // ⭐ O rótulo acaba um VÃO antes do meio da linha, para o controlo começar EXACTAMENTE nele.
     let metade = w * LABEL_COL_FRAC - gap;
     let tecto = (usable_w - gap - control_min).max(0.0);
-    desired.unwrap_or(metade).max(metade).min(tecto).max(0.0)
-}
-
-/// ⭐⭐⭐ **O RÓTULO de uma linha de propriedade — alinhado à DIREITA, encostado ao controlo.**
-///
-/// ⛔⛔ **Ordem do dono, 2026-09-14:** *«as labels alinhadas todas à direita (no centro do
-/// painel)»*. Com o controlo a começar no meio da linha, um rótulo alinhado à esquerda deixa um
-/// rio de espaço variável entre o nome e o campo dele — e *quanto mais curto o nome, mais longe do
-/// valor que ele nomeia*. Encostado à direita, o par nome-valor lê-se como um par.
-///
-/// ⚠️ **Elidido, e MEDIDO no peso em que pinta.** A largura sai do [`crate::text_elide::fit`] e do
-/// `prefix_width`, os dois em `Medium` — *medir num peso e pintar noutro corta curto*, que é um
-/// defeito que esta casa já pagou duas vezes.
-///
-/// ⚠️ **Quando nem assim cabe, degrada para a ESQUERDA:** o `x` recuado nunca passa de `label.x`,
-/// logo um rótulo maior que a coluna encosta ao princípio dela e corta no fim — nunca invade o
-/// vão nem o controlo.
-/// ⚠️ **A assinatura é a do [`crate::paint::paint_text_elided`], argumento a argumento** — `x` é a
-/// borda ESQUERDA da coluna e `y` a linha de base já centrada. É de propósito: converter um sítio
-/// passa a ser trocar o nome da função, e uma conversão que muda a forma da chamada em 30 sítios é
-/// uma conversão que alguém faz pela metade.
-#[allow(clippy::too_many_arguments)]
-pub fn paint_property_label(
-    text_system: &mut TextSystem,
-    scene: &mut VectorScene,
-    text: &str,
-    x: f32,
-    y: f32,
-    font_size: f32,
-    col_w: f32,
-    color: ph2d_vector::Color,
-) {
-    if col_w <= 0.0 {
-        return;
-    }
-    let (cabe, recuo, largura) = property_label_origin(text_system, text, x, font_size, col_w);
-    // ⛔⛔ **O orçamento é a largura MEDIDA do que já coube — nunca `x + col_w − recuo`.**
-    // Aquela diferença cancela em `f32` e devolve um valor um ULP abaixo de `largura` em ~8,6 %
-    // das posições de `x`, e o pintor voltava a cortar um rótulo que cabia: era isto que o dono
-    // via como *«3 pontos mesmo com folga»*. Ver o doc da [`property_label_origin`].
-    //
-    // ⚠️ **O `min(col_w)` guarda o caso degenerado** — numa coluna mais estreita que a própria
-    // reticência o `fit` devolve o texto CRU, e ali o orçamento tem de continuar a ser a coluna,
-    // para o pintor recusar em vez de invadir o controlo.
-    crate::paint::paint_text_elided(
-        text_system,
-        scene,
-        &cabe,
-        recuo,
-        y,
-        font_size,
-        largura.min(col_w),
-        color,
-    );
-}
-
-/// ⭐⭐ **A DECISÃO do alinhamento, sozinha: o texto que cabe e o `x` em que ele começa.**
-///
-/// ⚠️ **Ela é uma porta separada porque a decisão tem de ser GATEÁVEL.** Dentro do pintor ela só é
-/// observável por quem sabe ler glifos de uma cena — e *uma decisão que só o pintor conhece é uma
-/// decisão que nenhuma mutação mata*. O mesmo motivo que tirou a escolha do quad desdobrado do fio
-/// do Sprite Inspector.
-///
-/// Devolve `(texto já elidido, x de origem, **a largura medida desse texto**).
-///
-/// ⛔⛔ **A terceira componente existe por um defeito MEDIDO** (report do dono, 2026-09-14, foto do
-/// cartão JUMP: *«… mesmo com folga»*). O pintor precisa da largura do que coube, e re-derivava-a
-/// por `x + col_w − recuo` — que em `f32` **não devolve `largura`**: `recuo` é ele próprio
-/// `x + (col_w − largura)`, e a soma-e-subtracção cancela com erro. Quando o resultado cai um ULP
-/// abaixo, o pintor conclui que o texto já não cabe e **volta a cortá-lo**, pondo reticências num
-/// rótulo com dezenas de píxeis de folga. Medido: **310 de 3 600** células (nove rótulos × 400
-/// posições de `x`) numa coluna de `140 px` onde o mais largo mede `100,3`.
-///
-/// ⇒ *quem já mediu uma grandeza devolve-a; re-derivá-la por diferença é a segunda conta que
-/// discorda da primeira* — a mesma lei que a [`super::surface_rect`] paga um nível acima.
-#[must_use]
-pub fn property_label_origin(
-    text_system: &mut TextSystem,
-    text: &str,
-    x: f32,
-    font_size: f32,
-    col_w: f32,
-) -> (String, f32, f32) {
-    let cabe = crate::text_elide::fit(text_system, text, font_size, col_w);
-    let largura = text_system.prefix_width(&cabe, font_size);
-    // ⚠️ **O `max(0)` é o degrau para a ESQUERDA**: um texto maior que a coluna (quando nem a
-    // reticência cabe, o `fit` devolve-o cru) encosta ao princípio dela em vez de recuar para fora.
-    (cabe, x + (col_w - largura).max(0.0), largura)
+    // ⭐⭐⭐ **A CEDÊNCIA** — ver o bloco no doc.
+    let quer = desired.unwrap_or(metade);
+    // O que sobraria para o rótulo se o controlo tivesse o que precisa.
+    let cede = (usable_w - gap - control_need.unwrap_or(control_min)).max(0.0);
+    // §6, o empréstimo: um rótulo mais largo que a metade passa dela.
+    let base = quer.max(metade);
+    // ⚠️⚠️ **Só se cede quando a cedência RESOLVE.** Se nem com o rótulo no mínimo o controlo
+    // coubesse (`cede < quer`), encolher a coluna **troca uma linha quebrada por um nome cortado** —
+    // e a linha continua quebrada. Aí não se cede nada e a coluna fica onde o dono a pôs.
+    let coluna = if cede >= quer { base.min(cede) } else { base };
+    coluna.min(tecto).max(0.0)
 }
 
 /// ⭐⭐⭐ **A porta de uma linha de propriedade** — ver [`PropertyRow`].
 #[must_use]
 pub fn property_row_columns(x: f32, w: f32, row_y: f32, row_h: f32) -> PropertyRow {
-    property_row_columns_for(x, w, row_y, row_h, None)
+    property_row_columns_for(x, w, row_y, row_h, None, None)
 }
 
 /// ⭐ **A mesma porta, com o rótulo mais largo que o chamador vai pintar** — ver
@@ -334,10 +285,11 @@ pub fn property_row_columns_for(
     row_y: f32,
     row_h: f32,
     desired_label_w: Option<f32>,
+    control_need: Option<f32>,
 ) -> PropertyRow {
     let (usable_w, dot) = form_row_columns(x, w, row_y, row_h);
     let gap = Spacing::Md.px();
-    let label_w = property_label_col_w_for(x, w, desired_label_w);
+    let label_w = property_label_col_w_for(x, w, desired_label_w, control_need);
     let control_x = x + label_w + gap;
     let control_w = (usable_w - label_w - gap).max(1.0);
     PropertyRow {
@@ -440,40 +392,4 @@ pub(crate) fn paint_decorator(scene: &mut VectorScene, theme: Theme, r: Rect, di
         ColorToken::Text3
     };
     fill_rounded_rect(scene, dot, d * 0.5, resolve(c, theme));
-}
-
-/// Trunca o rótulo para caber, com reticências.
-///
-/// ⚠️ Devolve string VAZIA quando nem duas letras cabem — e isso é uma resposta, não uma falha: a
-/// caixa fica só com o número, que é o degrau seguinte da escada do estreito (pesquisa §6.1).
-///
-/// ⏳ A alternativa é o **esbatimento** (`Scene::push_luminance_mask_layer`, zero consumidores
-/// hoje): em vez de `…`, o rótulo desvanece nos últimos px. É mais bonito e não come letras —
-/// nomeado na pesquisa §7.3, com o custo por medir.
-///
-/// ⚠️ **`pub(crate)` porque a lei tem um SEGUNDO leitor desde 2026-09-03: a caixa de verificação**
-/// (o widget mais usado do app, 81 sítios). *Uma lei de truncagem copiada para o vizinho é a
-/// primeira linha de um formulário em que metade das linhas cede e a outra metade transborda.*
-pub(crate) fn fit_label(
-    text_system: &mut TextSystem,
-    label: &str,
-    size: f32,
-    budget: f32,
-) -> String {
-    if budget <= 0.0 {
-        return String::new();
-    }
-    if text_system.layout(label, size, f32::INFINITY).width() <= budget {
-        return label.to_string();
-    }
-    let ell = "\u{2026}";
-    let mut chars: Vec<char> = label.chars().collect();
-    while !chars.is_empty() {
-        chars.pop();
-        let cand: String = chars.iter().collect::<String>() + ell;
-        if text_system.layout(&cand, size, f32::INFINITY).width() <= budget {
-            return cand;
-        }
-    }
-    String::new()
 }

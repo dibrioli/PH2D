@@ -266,7 +266,7 @@ fn editor(
         &[ids::INSP_TIMER_DURATION],
         0.1, // LITERAL-PX-OK: passo de scrub em SEGUNDOS, não em pixels
         None,
-        None,
+        1,
     );
 
     let half = (w - Spacing::Sm.px()) * 0.5;

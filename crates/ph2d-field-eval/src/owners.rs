@@ -215,6 +215,10 @@ impl Owners {
     }
 }
 
+/// ⭐⭐⭐ **A MESMA lei escrita em WGSL** — ver [`wgsl::OwnersWgsl`].
+#[path = "owners_wgsl.rs"]
+pub mod wgsl;
+
 #[cfg(test)]
 #[path = "owners_tests.rs"]
 mod tests;

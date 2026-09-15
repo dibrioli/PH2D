@@ -49,10 +49,31 @@ impl PointTape {
     /// [`crate::Field::at`] dá com `NaN`).
     #[must_use]
     pub fn to_wgsl(&self) -> Option<TapeWgsl> {
+        self.to_wgsl_named("field", 0)
+    }
+
+    /// ⭐⭐⭐ **A MESMA fita com OUTRO nome e outra origem no vector das constantes.**
+    ///
+    /// # ⛔⛔ Porque ela existe, e porque a alternativa textual é um defeito à espera
+    ///
+    /// A lei do **dono** ([`crate::owners`]) precisa de **uma função por folha** no mesmo módulo, e
+    /// cada folha traz as constantes dela. A forma óbvia — gerar `N` vezes com [`Self::to_wgsl`] e
+    /// depois reescrever o texto (`fn field` → `fn folha_3`, `k[7]` → `k[62]`) — falha de duas
+    /// maneiras **mudas**: o nome `field` aparece dentro de qualquer comentário ou identificador que
+    /// o contenha, e a renumeração por expressão regular sobre `k[i]` não sabe distinguir a
+    /// constante `k[7]` da constante `k[70]` sem reescrever da direita para a esquerda.
+    ///
+    /// ⇒ o nome e a origem entram **onde o texto é escrito**, que é o único sítio que sabe o que
+    /// cada coisa é. *Uma reescrita de texto é uma segunda análise do que o gerador já sabia.*
+    ///
+    /// ⚠️ `const_base` é o índice em que as constantes desta fita começam dentro do vector
+    /// partilhado — quem concatena os vectores é quem escolhe os bases, e os dois têm de concordar.
+    #[must_use]
+    pub fn to_wgsl_named(&self, name: &str, const_base: usize) -> Option<TapeWgsl> {
         let code = self.code()?;
         let mut consts: Vec<f32> = Vec::new();
         let mut s = String::with_capacity(code.len() * 24);
-        s.push_str("fn field(p: vec3<f32>) -> f32 {\n");
+        s.push_str(&format!("fn {name}(p: vec3<f32>) -> f32 {{\n"));
         for (i, instr) in code.iter().enumerate() {
             let rhs = match instr {
                 Instr::X => "p.x".to_string(),
@@ -64,7 +85,7 @@ impl PointTape {
                     #[allow(clippy::cast_possible_truncation)]
                     let v = *c as f32;
                     consts.push(v);
-                    format!("{CONSTS}[{}]", consts.len() - 1)
+                    format!("{CONSTS}[{}]", const_base + consts.len() - 1)
                 }
                 Instr::Unary(op, a) => unary(*op, *a),
                 Instr::Binary(op, a, b) => binary(*op, *a, *b),

@@ -2881,6 +2881,43 @@ existente** deforma (na direcção de deixar de dobrar), e as três rotas são: 
 (sem schema, mas é por mídia: o `VecPath` e a malha decodificam em sítios diferentes) · guardá-lo
 **por tendão** (exacto, e move o `PROJECT_SCHEMA`).
 
+### F6-k — ⛔⛔ **A TRIAGEM DA PORTA ABERTA: as duas permissivas estão FECHADAS, e o oráculo que se corre PERDE para a nossa cura** (2026-09-14)
+
+Ordem do dono: antes de trocar a lei dos pesos, correr o oráculo sobre a **nossa** arte. Protocolo
+[`_ComoInvestigarApps`](../_ComoInvestigarApps/00_o_metodo.md) §3, com a pergunta escrita antes:
+*«o Godot CALCULA os pesos da pele 2D, ou só os APLICA?»*
+
+⛔ **Godot (MIT): não calcula nenhum.** O `Polygon2D` só tem `get/set_bone_weights`, o `Bone2D` só
+auto-calcula comprimento e ângulo, e a única acção do binário é **`Paint Bone Weights`** — o artista
+pinta-os. ⇒ *ele está onde nós estamos, menos o automatismo.* **Não há nada para portar.**
+
+⚠️ **OpenToonz (BSD-3): tem a coisa e não tem porta.** A `libtnzext.so` traz
+`PlasticSkeletonDeformation` sobre uma malha, com `tcg::Vertex<RigidPoint>` — o vocabulário da
+família *rigid/ARAP*. Mas o app **não tem consola**, logo não se corre sobre a nossa arte. O fonte
+continua aberto — isso é **portar**, não **medir**, e é outra wave.
+
+⭐⭐⭐ **E o único que se CORRE — o Blender — PERDE.** Ele calcula pesos automáticos por difusão de
+calor; corrido sobre a **nossa** grelha e o **nosso** esqueleto, com a **nossa** lei de mistura e o
+**mesmo código** nos dois lados:
+
+| dobra | nosso (alcance = osso) | **Blender (calor automático)** | nosso (alcance `2,08 ×` a arte) |
+|---:|---:|---:|---:|
+| `60°` | `0,434 %` | **`0,000 %`** | **`0,000 %`** |
+| `90°` | `0,651 %` | `5,273 %` | **`0,000 %`** |
+| `120°` | `1,107 %` | `9,397 %` | **`0,000 %`** |
+| `150°` | `2,300 %` | `8,876 %` | **`0,000 %`** |
+
+⭐ **A cura que a nossa própria régua deu bate o oráculo em toda a escada.**
+
+⚠️⚠️ **E o PASSO A PASSO diz porquê — a afirmação é sobre O NOSSO MEIO, não sobre o método deles.**
+Os pesos do oráculo saem uma **função escada** nesta fixtura (`1` até à junta, `0` depois): a difusão
+de calor foi desenhada para uma superfície 3D que **envolve** o osso, e aqui a arte é uma folha plana
+com os ossos **dentro do plano dela** — cada osso «vê» só a metade mais perto e a partição sai dura.
+*O método não é mau; ele não é do nosso meio.*
+
+⇒ **Nenhuma das três portas leva a um sítio melhor que o que já medimos.** A corrida, os scripts e a
+saída com proveniência: [`docs/Skeleton/oraculo/`](oraculo/README.md).
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em
@@ -2909,6 +2946,8 @@ existente** deforma (na direcção de deixar de dobrar), e as três rotas são: 
 | **Traçar a linha do `IK Chain` pela POLILINHA das juntas** (F5-d, 2026-09-14) | Numa corrente quase esticada ela cai **exactamente** sobre os corpos dos ossos e lê-se como parte deles; numa dobrada, serpenteia. O que o controlo tem de dizer é uma EXTENSÃO, e uma extensão desenha-se como cota: recta e deslocada. |
 | **DESLOCAR a recta da corrente para o lado livre** (F5-e, veredito do dono) | A folga contra os ossos em toda pose custa as PONTAS: ela deixa de tocar a junta onde o `Chain` pára e o losango do alvo, e um indicador de extensão que não encosta nas pontas não diz qual extensão é. A corda passa por fora do arco sozinha; em pose esticada a folga vem de a linha ser **fina**. |
 | **Deslocar a recta da corrente por uma CONSTANTE** | Não limpa uma corrente que se enrola mais de meia volta: ela tem bojo dos DOIS lados e vem por trás da recta (medido: `18,39 px` de um osso que ocupa `18,75`). O afastamento tem de passar por fora da **excursão** do lado escolhido. |
+| **Portar os pesos do Godot** (F6-k, 2026-09-14) | Não há nada para portar: ele **não os calcula**. Só `get/set_bone_weights` e uma acção de painel — *Paint Bone Weights*. |
+| **Adoptar os pesos automáticos do Blender** (difusão de calor) | Na nossa fixtura eles dobram `5`–`9 %` da arte acima de `60°`, contra `0,65`–`2,3 %` dos nossos e `0 %` do alcance curado. No nosso meio (folha plana, ossos no plano dela) eles degeneram numa **partição dura** — o método é de outro meio. |
 | **Apertar os pesos** para curar a dobra da pele (F6-j, 2026-09-14) | **Piora, e é a resposta intuitiva:** `0,25 ×` do osso dá `0,64 %` de arte invertida contra `0,17 %` do alcance de hoje. O que dobra a arte é o **gradiente** dos pesos — apertá-los torna-o mais íngreme. Quem cura é ALARGAR: a `2,08 ×` a meia-altura da arte são **zero** pontos invertidos até `150°`. |
 | **SUBDIVIDIR o osso (o mecanismo do B-Bone) como cura da dobra** | Com a população de amostras constante ele **piora**: `2,61 % → 4,94 %` a `24` sub-ossos. Com o alcance já certo não cura nada — compra **margem** (`det_min` `0,013 → 0,367`). ⇒ a ordem é o alcance primeiro. ⛔ E a variante «raio encolhe com o sub-osso» lê `0 %` invertido a **`94,5 %` de amostras órfãs**: é a régua a não medir nada. |
 | **Ler os lados do modo MISTO da pose VIVA** | Estável enquanto o alvo está ao alcance (o modo é ponto fixo, e há gate) e **apagado para sempre** no primeiro arrasto que o leve para fora dele: fora do alcance a resposta certa é a RECTA, e uma recta não tem lado nenhum para ler. «Inicial» tem de ser o DOCUMENTO. |

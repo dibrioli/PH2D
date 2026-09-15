@@ -18,7 +18,7 @@
 | 02 |   | [02_pesquisa_a_malha_sobre_a_imagem.md](02_pesquisa_a_malha_sobre_a_imagem.md) | pesquisa | 02 — A malha sobre a imagem: o estado da arte, medido |
 | 03 |   | [03_plano_a_pele_no_passe_de_sprites.md](03_plano_a_pele_no_passe_de_sprites.md) | plano | 03 — PLANO: a imagem presa ao esqueleto é desenhada como MALHA dentro do passe de sprites |
 
-**Subpastas:** [`handoffs/`](handoffs/README.md)
+**Subpastas:** [`handoffs/`](handoffs/README.md) · [`oraculo/`](oraculo/README.md)
 
 ---
 

@@ -81,6 +81,7 @@
 - ⛔ [E o `cargo check` NUNCA avalia um `const { assert!(…) }` de dentro de uma função — verde no laço interno, `E0080` só no build](feedback_cargo_check_never_evaluates_an_inline_const_assert.md)
 - ⛔ [um `tail` é uma JANELA, não um veredito (0 FAILED sobre 212 suites)](feedback_a_tail_is_a_window_not_a_verdict.md)
 - [TRÊS membros novos da família de flakes de carga (o 3.º passa 3/3 a `load 19` ⇒ o discriminador é o FAN-OUT, não o relógio)](reference_flip_fit_cache_ratio_is_a_load_flake.md)
+- ⛔ [`ph2d-field-render --test it`: 7-8 vermelhos são contadores GLOBAIS do próprio binário — `24/24` VERDE com `--test-threads=1` a load 75; pré-existente, confirme antes de culpar o seu diff](project_field_render_it_suite_is_green_single_threaded.md)
 - [Cadência de processo + CI (17)](reference_topic_process_cadence.md)
 - 📚 [Ship / CI / integração: mais 19 lições](reference_topic_ship_ci_integration_lessons.md)
 

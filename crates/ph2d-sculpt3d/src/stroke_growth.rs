@@ -124,6 +124,7 @@ impl SculptStroke {
         }
         self.slot.resize(verts, u32::MAX);
         self.stamp.resize(verts, 0);
+        self.cresce_a_pegada_congelada(births);
         for b in births {
             self.inherit(mesh, b);
         }
@@ -218,6 +219,9 @@ impl SculptStroke {
         if remap.verts == self.slot.len() {
             return;
         }
+        // ⚠️ **ANTES da renumeração dos slots**, e a ordem não é estética: esta
+        // lê `self.slot.len()` para saber qual era o tamanho de antes.
+        self.encolhe_a_pegada_congelada(remap);
         let mut dead_slots: Vec<u32> = Vec::new();
         for &(from, to) in &remap.vert_moves {
             let (from, to) = (from as usize, to as usize);

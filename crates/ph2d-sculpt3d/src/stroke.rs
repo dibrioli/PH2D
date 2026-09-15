@@ -124,32 +124,23 @@ pub struct SculptStroke {
     accum: Vec<f32>,
     target: Vec<[f32; 3]>,
     footprint: Vec<u32>,
-    /// **A PEGADA DO PEN-DOWN**, para os gestos que a CONGELAM.
+    /// **A PEGADA DO PEN-DOWN**, para os gestos que a CONGELAM — ver
+    /// [`pegada::PegadaCongelada`], onde moram a razão de ela existir, o
+    /// porquê de a chave ser o CENTRO e as duas ordens que ela guarda.
     ///
-    /// ⚠️⚠️ **Ela existe porque a pegada normal sai das posições VIVAS, e num
-    /// gesto que desloca o barro `0,38` num pincel de raio `0,35` isso deixa de
-    /// ser inócuo:** os vértices que o próprio gesto levou saem do raio da
-    /// consulta, o conjunto amostrado encolhe, e a normal da área — que é uma
-    /// média sobre ele — **muda com o comprimento do traço**. O efeito é
-    /// invisível num plano (ali toda normal é a mesma) e MEDIDO numa esfera:
-    /// `8,5e-3` de desvio contra o oráculo no traço inteiro, contra `1,5e-4`
-    /// truncado a 8 eventos.
-    ///
-    /// ⚠️ **Só o [`crate::Verb::Thumb`] a lê hoje**, e a cerca é deliberada: o
-    /// [`crate::Verb::Move`] tem a mesma forma e o mesmo defeito **provável**,
-    /// mas é um verbo que já shipa, com corpus próprio por correr — mudá-lo
-    /// aqui seria alterar produto a partir de uma inferência. *A fixture que o
-    /// decide existe* (o oráculo gravou o agarrar), e a pergunta está nomeada.
-    ///
-    /// ⛔⛔ **A CHAVE É O CENTRO, e ela nasceu de um gate que reprovou:** a
-    /// primeira versão guardava UMA pegada por traço, e a simetria corre o
-    /// mesmo traço espelhado — a segunda passagem reusava a pegada da primeira
-    /// e só metade da malha se mexia. O censo
-    /// `every_verb_inherits_symmetry_from_the_one_place_it_is_expanded` apanhou
-    /// no minuto seguinte. ⇒ uma entrada por PASSAGEM, e o centro espelhado é
-    /// a identidade natural dela: constante ao longo do gesto, distinto entre
-    /// passagens, sem ninguém ter de propagar um índice até aqui.
-    pegada_ancorada: Vec<([f32; 3], Vec<u32>)>,
+    /// ⭐⭐⭐ **Ela sobrevive à topologia dinâmica desde 2026-09-14** (ordem do
+    /// dono: *«Thumb se for possível, deveria subdividir»*), e as duas metades
+    /// disso vivem no mesmo sítio.
+    pegada_ancorada: Vec<pegada::PegadaCongelada>,
+    /// **A TRADUÇÃO DE UM COLAPSO**, do tamanho do COLAPSO e nunca da malha —
+    /// ver [`SculptStroke::encolhe_a_pegada_congelada`]. ⚠️ Campo e não local
+    /// pelo mesmo motivo do `par_out`: um vetor do tamanho da peça alocado por
+    /// dab devolveria ao alocador o que o resto do traço economiza.
+    pegada_traducao: Vec<(u32, u32)>,
+    /// **OS ÍNDICES SOBRESCRITOS** por esse mesmo colapso — a outra metade da
+    /// tradução, e ela existe separada porque responde a outra pergunta: *quem
+    /// estava aqui MORREU*.
+    pegada_mortos: Vec<u32>,
     moved: Vec<u32>,
     query: QueryScratch,
     /// Os buffers do passeio pela superfície — ver [`crate::dab_alcance`].
@@ -601,6 +592,12 @@ mod shape;
 #[path = "stroke_growth.rs"]
 mod growth;
 
+/// ⭐⭐ **A PEGADA CONGELADA DO PEN-DOWN** — ver [`pegada`]. Irmão do
+/// [`growth`], e o corte é de ASSUNTO: lá o `pre` de cada vértice a sobreviver à
+/// topologia, aqui o CONJUNTO de vértices do gesto a sobreviver a ela.
+#[path = "stroke_pegada.rs"]
+mod pegada;
+
 /// **O ALVO de cada verbo**, e o plano que quatro deles ajustam. Filho para
 /// alcançar o `pre` congelado; o corte é *a LEI do traço* (aqui) contra *para
 /// onde cada verbo aponta* (lá).
@@ -684,6 +681,10 @@ mod cloth_artefatos_tests;
 #[cfg(test)]
 #[path = "stroke_growth_tests.rs"]
 mod growth_tests;
+
+#[cfg(test)]
+#[path = "stroke_pegada_tests.rs"]
+mod pegada_tests;
 
 #[cfg(test)]
 #[path = "stroke_window_tests.rs"]

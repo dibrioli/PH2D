@@ -53,19 +53,27 @@ impl SculptStroke {
             .then(|| {
                 self.pegada_ancorada
                     .iter()
-                    .position(|(c, _)| *c == dab.center)
+                    .position(|p| p.centro == dab.center)
             })
             .flatten();
         match guardada {
-            Some(i) => self.footprint.clone_from(&self.pegada_ancorada[i].1),
+            Some(i) => self.footprint.clone_from(&self.pegada_ancorada[i].verts),
             None => mesh.verts_in_sphere(dab.center, query_r, &mut self.query, &mut self.footprint),
         }
         if self.footprint.is_empty() {
             return 0;
         }
         if congela && guardada.is_none() {
-            self.pegada_ancorada
-                .push((dab.center, self.footprint.clone()));
+            // ⭐ **O índice nasce aqui, ordenado, e o outro fica na ordem da
+            // consulta** — ver [`super::pegada::PegadaCongelada`], onde está o
+            // porquê de as duas ordens serem load-bearing.
+            let mut ordenada = self.footprint.clone();
+            ordenada.sort_unstable();
+            self.pegada_ancorada.push(super::pegada::PegadaCongelada {
+                centro: dab.center,
+                verts: self.footprint.clone(),
+                ordenada,
+            });
         }
         // ⭐⭐⭐ **A MÁSCARA DE ALCANCE** — quem a superfície não liga sai da
         // pegada, e o PESO de quem fica não muda um bit

@@ -294,23 +294,16 @@ impl Sculpt3dScene {
         // está sob o limiar»*, que é um facto sobre a MALHA — usá-lo para dizer
         // *«o verbo não pediu»* poria duas coisas diferentes no mesmo byte, que
         // é o defeito que este módulo acabou de pagar noutro sítio.
-        let cut = verbo.colapsa_no_dyntopo()
-            && matches!(
-                collapse_in_sphere(
-                    mesh,
-                    centre,
-                    radius,
-                    collapse_target(target),
-                    &mut remap,
-                    &mut region,
-                ),
-                Collapse::Done { .. }
-            );
-        let done = verbo.refina_no_dyntopo()
-            && matches!(
-                refine_in_sphere(mesh, centre, radius, target, &mut births, &mut region),
-                Refine::Done { .. }
-            );
+        let (cut, done) = passe_nos_motores(
+            mesh,
+            verbo,
+            target,
+            centre,
+            radius,
+            &mut remap,
+            &mut births,
+            &mut region,
+        );
         self.dyn_region = region;
         if cut {
             // ⚠️ **Antes do `grow_with`, sempre.** Ele afirma que a malha cresceu
@@ -361,3 +354,75 @@ impl Sculpt3dScene {
 #[cfg(test)]
 #[path = "dyntopo_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **OS DOIS MOTORES, SEM CENA E SEM DEVICE** — o miolo do
+/// [`Sculpt3dScene::refine_for_dab`], com **dois** chamadores.
+///
+/// # Porque ela é uma porta e não um bloco lá dentro
+///
+/// ⛔⛔ **O censo dos knobs declarava o [`ph2d_sculpt3d::Verb::Density`] como
+/// ADORMECIDO**, com a saída escrita na própria catraca: *«o arnês teria de
+/// correr o `refine_for_dab` e comparar a CONTAGEM de vértices em vez das
+/// posições»*. E não podia: a [`Sculpt3dScene`] pede um `wgpu::Device` para
+/// nascer, logo o censo passaria a ser `#[ignore]` e **o CI deixaria de o
+/// correr** — trocando um verbo por cobertura em todos os outros.
+///
+/// ⛔ **E chamar os motores soltos a partir do censo era a alternativa errada:**
+/// o cabeçalho daquele ficheiro declara que *«a régua é o PRODUTO, nunca as
+/// funções soltas»*, e uma segunda cópia da ordem colapso→refino divergiria da
+/// primeira no dia em que o estudo separasse as duas colunas.
+///
+/// ⇒ **uma lei, dois chamadores.** O que fica na cena é o que precisa dela: as
+/// três recusas, o alvo de aresta, a costura com o traço em voo
+/// (`shrink_with`/`grow_with`), a queixa e o `mesh_rebuilt`.
+///
+/// # ⚠️ A ORDEM é load-bearing, e é por isso que ela viaja aqui dentro
+///
+/// **O colapso primeiro.** As duas metades falam com o traço em voo por canais
+/// diferentes — o colapso por uma RENUMERAÇÃO, o refino por uma lista de
+/// NASCIMENTOS —, e o segundo afirma que a malha cresceu exactamente o que ele
+/// partiu. Refinar antes faria a renumeração chegar depois e descrever índices
+/// que já não são os que o `grow_with` instalou. *Uma ordem que vive no corpo de
+/// quem chama é uma ordem que o segundo chamador pode escrever ao contrário.*
+///
+/// # ⚠️ As duas colunas são lidas em SEPARADO, e o `&&` curto-circuita
+///
+/// Um verbo que diga `false` não chega a chamar o motor. Elas são **leis
+/// independentes** que por acaso vivem na mesma porta (um verbo pode querer
+/// relaxar densidade sem criar detalhe), e o estudo pode separá-las.
+///
+/// ⛔ O veredito é **booleano** e não um estado novo nos enums da `ph2d-mesh`:
+/// `Collapse::Enough` é um facto sobre a MALHA (*«nenhuma aresta está sob o
+/// limiar»*), e usá-lo para dizer *«o verbo não pediu»* poria duas coisas
+/// diferentes no mesmo byte.
+///
+/// Devolve `(colapsou, refinou)`.
+pub(crate) fn passe_nos_motores(
+    mesh: &mut ph2d_mesh::Mesh,
+    verbo: ph2d_sculpt3d::Verb,
+    alvo_de_aresta: f32,
+    centre: [f32; 3],
+    radius: f32,
+    remap: &mut ph2d_mesh::Remap,
+    births: &mut Vec<ph2d_mesh::Birth>,
+    region: &mut ph2d_mesh::RegionScratch,
+) -> (bool, bool) {
+    let cut = verbo.colapsa_no_dyntopo()
+        && matches!(
+            collapse_in_sphere(
+                mesh,
+                centre,
+                radius,
+                collapse_target(alvo_de_aresta),
+                remap,
+                region,
+            ),
+            Collapse::Done { .. }
+        );
+    let done = verbo.refina_no_dyntopo()
+        && matches!(
+            refine_in_sphere(mesh, centre, radius, alvo_de_aresta, births, region),
+            Refine::Done { .. }
+        );
+    (cut, done)
+}

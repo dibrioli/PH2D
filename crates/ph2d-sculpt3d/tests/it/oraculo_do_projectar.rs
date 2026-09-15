@@ -773,9 +773,7 @@ fn diag_o_perfil_do_desvio() {
         let mut lateral = 0.0f32;
         let mut linhas: Vec<(f32, f32, f32)> = Vec::new();
         for ((n, o), r) in nosso.positions().iter().zip(&f.s).zip(&f.r) {
-            lateral = lateral
-                .max((n[0] - r[0]).abs())
-                .max((n[1] - r[1]).abs());
+            lateral = lateral.max((n[0] - r[0]).abs()).max((n[1] - r[1]).abs());
             let perto =
                 f.c.iter()
                     .map(|c| {
@@ -795,7 +793,10 @@ fn diag_o_perfil_do_desvio() {
         eprintln!("  lateral: nosso {lateral:.3e} · oraculo {lateral_deles:.3e}");
         linhas.sort_by(|a, b| (b.1 - b.2).abs().total_cmp(&(a.1 - a.2).abs()));
         eprintln!("  OS 10 PIORES");
-        eprintln!("  {:>7} {:>11} {:>11} {:>11}", "t", "nosso", "oraculo", "delta");
+        eprintln!(
+            "  {:>7} {:>11} {:>11} {:>11}",
+            "t", "nosso", "oraculo", "delta"
+        );
         for &(t, n, o) in linhas.iter().take(10) {
             eprintln!("  {t:7.3} {n:11.6} {o:11.6} {:11.6}", n - o);
         }

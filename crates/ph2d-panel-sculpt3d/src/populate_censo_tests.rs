@@ -163,14 +163,7 @@ const TOGGLES_FONTE: &str = include_str!("event_toggles.rs");
 /// esta envelheceu onze vezes.
 #[test]
 fn nenhum_interruptor_da_tabela_e_nomeado_a_mao_no_populate() {
-    let da_tabela: std::collections::BTreeSet<&str> = codigo(TOGGLES_FONTE)
-        .filter_map(|l| l.split_once("crate::ids::"))
-        .filter_map(|(_, r)| {
-            r.split(|c: char| !(c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_'))
-                .next()
-        })
-        .filter(|n| !n.is_empty())
-        .collect();
+    let da_tabela = interruptores();
     assert!(
         da_tabela.len() >= 15,
         "a extracção achou só {} interruptores na tabela — ela deixou de ler o \
@@ -178,13 +171,12 @@ fn nenhum_interruptor_da_tabela_e_nomeado_a_mao_no_populate() {
          vácuo",
         da_tabela.len()
     );
-    let a_mao: Vec<&str> = codigo(POPULATE)
-        .filter(|l| !l.contains("[..]"))
-        .filter_map(|l| l.split_once("crate::ids::"))
-        .filter_map(|(_, r)| {
-            r.split(|c: char| !(c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_'))
-                .next()
-        })
+    // ⚠️ **Um scanner só, dois consumidores.** Esta lista era extraída aqui à
+    // mão e o censo dos ids SOLTOS (abaixo) precisava exactamente da mesma
+    // pergunta — *duas respostas à mesma pergunta divergem na primeira
+    // afinação da regra*, que é literalmente o defeito que este gate persegue.
+    let a_mao: Vec<&str> = nomeados_a_mao_no_populate()
+        .into_iter()
         .filter(|n| da_tabela.contains(n))
         .collect();
     assert!(
@@ -195,3 +187,85 @@ fn nenhum_interruptor_da_tabela_e_nomeado_a_mao_no_populate() {
          nasceu morto sob o dedo)"
     );
 }
+
+/// Todo `ids::NOME` citado nas linhas dadas — **todas** as ocorrências de cada
+/// linha, e não só a primeira.
+///
+/// ⚠️ **Ela difere das duas irmãs de propósito:** [`despachados`] e
+/// [`registados`] param na PRIMEIRA ocorrência da linha, porque a forma que
+/// lêem é uma por linha. Aqui a forma é uma tabela EM LINHA
+/// (`(crate::ids::SCULPT3D_SYM_X, "panel.sculpt3d.sym.x", snap.ui.symmetry.x)`),
+/// e parar na primeira perderia o resto.
+///
+/// ⚠️ Casa `crate::ids::X` e `ids::X` pela mesma agulha (`ids::`), que é
+/// sufixo das duas.
+fn ids_das_linhas(
+    linhas: impl Iterator<Item = &'static str>,
+) -> std::collections::BTreeSet<&'static str> {
+    let mut achados = std::collections::BTreeSet::new();
+    for linha in linhas {
+        let mut resto = linha;
+        while let Some((_, direita)) = resto.split_once("ids::") {
+            let fim = direita
+                .find(|c: char| !(c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_'))
+                .unwrap_or(direita.len());
+            if fim > 1 {
+                achados.insert(&direita[..fim]);
+            }
+            resto = &direita[fim..];
+        }
+    }
+    achados
+}
+
+fn nomes_de_ids(fonte: &'static str) -> std::collections::BTreeSet<&'static str> {
+    ids_das_linhas(codigo(fonte))
+}
+
+/// O corpo de uma tabela `const NOME … = [ … ];`, do cabeçalho ao `];`.
+///
+/// ⛔⛔ **O CORPO, e nunca o ficheiro inteiro.** O `event.rs` também NOMEIA
+/// `SCULPT3D_SYM_X`, `_REF_MODE_ALL` e `_CLOSE` — em braços de `match` escritos
+/// à mão, que é **exactamente a população que este censo existe para contar**.
+/// Lido o ficheiro todo, a cobertura engoliria os cinco soltos e o censo mediria
+/// **zero** com ar de aprovado. *Foi a primeira redacção desta régua, e ela
+/// deu `0` mortos sobre um painel que tinha 13.*
+fn corpo_da_tabela(fonte: &'static str, cabeca: &str) -> &'static str {
+    let inicio = fonte
+        .find(cabeca)
+        .unwrap_or_else(|| panic!("a tabela `{cabeca}` deixou de existir com esse nome"));
+    let resto = &fonte[inicio..];
+    let fim = resto
+        .find("];")
+        .unwrap_or_else(|| panic!("a tabela `{cabeca}` deixou de fechar com `];`"));
+    &resto[..fim]
+}
+
+/// Os ids que a tabela [`crate::event::COMMANDS`] declara.
+fn comandos() -> std::collections::BTreeSet<&'static str> {
+    ids_das_linhas(
+        corpo_da_tabela(EVENT, "const COMMANDS")
+            .lines()
+            .map(str::trim),
+    )
+}
+
+/// Os ids que a tabela [`crate::event::toggles::TOGGLES`] declara.
+fn interruptores() -> std::collections::BTreeSet<&'static str> {
+    ids_das_linhas(
+        corpo_da_tabela(TOGGLES_FONTE, "const TOGGLES")
+            .lines()
+            .map(str::trim),
+    )
+}
+
+/// Os ids que o `populate.rs` nomeia **à mão** — as linhas que não percorrem
+/// uma fileira (`[..]`).
+fn nomeados_a_mao_no_populate() -> std::collections::BTreeSet<&'static str> {
+    ids_das_linhas(codigo(POPULATE).filter(|l| !l.contains("[..]")))
+}
+
+/// ⛔⛔⛔ **O TERCEIRO CENSO — os ids SOLTOS**, que nem as fileiras nem a
+/// `TOGGLES` cobrem, e que NENHUM gate da fundação vê. Ver o cabeçalho dele.
+#[path = "populate_censo_soltos_tests.rs"]
+mod soltos_tests;

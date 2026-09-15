@@ -87,127 +87,9 @@ pub(super) fn paint_brush_tail(
     // fileira de chips não é uma `Row`. Aqui ela fica imediatamente abaixo do
     // último knob do pincel, que é o mesmo sítio aos olhos de quem lê.
     let y = paint_pose_rows(ctx, snap, x, w, y);
-    // O falloff logo abaixo dos knobs: ele é a FORMA do peso, e a força é
-    // quanto dele se aplica.
-    //
-    // ⚠️ **BASIC, e a premissa que ele era `Pro` foi REFUTADA pela referência.**
-    // O argumento antigo era que a curva já vem escolhida a cada troca de
-    // ferramenta (`VerbProfile::falloff`), logo esconder-lhe o acesso seria
-    // divulgação progressiva. A regra do [`UiLevel`] admite isso — *só uma row
-    // cujo valor a ferramenta já traz pode ser `Pro`* —, mas ser ADMISSÍVEL
-    // não é ser certo, e a referência mede o contrário:
-    //
-    // * nos painéis comuns de pintura dele o *Falloff* **não** é desenhado dentro
-    //   das definições avançadas do pincel — ele é painel de primeira classe;
-    // * no cabeçalho de ferramenta ele é um **popover sempre visível**
-    //   (`layout.popover("VIEW3D_PT_tools_brush_falloff")`).
-    //
-    // Ou seja: no Blender a curva é *dobrada*, nunca *ausente* — o artista vê um
-    // cabeçalho que diz que ela existe. O nosso `Pro` a tornava **invisível sem
-    // rastro**, e é a diferença entre dobrar e amputar. Reportado no smoke da
-    // demão: *"funciona corretamente mas não dá a opção de escolher o falloff"*.
-    //
-    // ⚠️ **E o que estava errado era a PREMISSA do Basic, não a lei dele:** o doc
-    // do [`UiLevel::Basic`] diz *"o vocabulário do SculptGL"*, e o SculptGL **não
-    // tem** seletor de curva — a dele é fixa. Herdar aquele vocabulário apagava
-    // um controle que a nossa malha tem **doze** vezes.
-    //
-    // ⚠️ **Segue uma faixa que REFLUI, e não um dropdown**, pelo precedente que o
-    // `tool.rs` já mediu para os vinte verbos: um dropdown esconde onze curvas
-    // atrás de um clique para mostrar uma, e quem escolhe uma curva a escolhe
-    // COMPARANDO. (O Blender troca para dropdown no painel estreito, mas o `seg`
-    // desta casa reflui em vez de transbordar — a razão dele não se aplica.)
-    // ⚠️ **A curva e' pintada SEMPRE, e isso e' uma CERCA — nao um esquecimento.**
-    //
-    // Em 2026-08-30 uma caca aos knobs mortos mediu, e a medicao esta' certa: com o verbo `Mask`
-    // em maos o peso vem de `brush.mask_weight(t)` (que le^ **so'** a `mask_hardness`, nunca o
-    // falloff), e com um campo elastico activo a curva inteira e' `kelvinlet::rim_landing`. Nesses
-    // casos **este selector nao molda nada**.
-    //
-    // ⭐ **E a inercia deixou de ser uma AFIRMACAO e passou a ser MEDIDA**, pela porta do produto:
-    // `ph2d-sculpt3d/tests/it/measure_where_the_curve_knobs_reach.rs` roda o MESMO gesto com duas
-    // curvas e compara o barro (e o canal) **ao bit** nos tres regimes, com o controle positivo do
-    // `Verb::Draw` ao lado. *Um comentario que diz «isto e' inerte» envelhece calado; um gate que o
-    // mede sangra no dia em que deixar de ser verdade.*
-    //
-    // ⛔ **A CURA DE PRIMEIRA ESCOLHA — fazer o consumidor USAR o valor — foi TENTADA nos dois
-    // regimes e MEDIDA a partir, nas duas vezes:**
-    //
-    // | regime | mutacao no produto | gate existente que sangrou | numero |
-    // |---|---|---|---|
-    // | `Verb::Mask` | `mask_weight(t) * falloff.weight(t)` | `the_mask_channel_reproduces_the_reference_kernel` | divergencia **1,201e-1** contra a barra de `1,192e-7` — 10⁶× |
-    // | campo elastico | `rim_landing(t) * falloff.weight(shaped_distance(t))` | `the_stroke_delivers_what_the_kernel_promises` | o traco poe **−6,9e-6** onde o campo manda **−3,8e-4** (55× menos barro) |
-    //
-    // ⇒ No canal, o `Falloff` mediria *uma tool contra a curva de OUTRA* — a mascara tem curva
-    // propria na referencia (`Masking.js:66-69`) e o `Verb::Mask` nasce com a quartica, que a
-    // referencia nao aplica. No campo, o perfil **JA' E'** o falloff, e compor os dois o aplica
-    // duas vezes: o agarre morre. As duas recusas sao de LEI, nao de gosto.
-    //
-    // ⛔ **Escondê-lo mesmo assim foi TENTADO no mesmo dia e REVERTIDO**, porque o gate
-    // `the_basic_level_never_hides_the_curve_that_shapes_the_dab` o apanhou — e o doc dele carrega
-    // a decisao, com referencia: no Blender o painel de queda e' painel de primeira classe e um
-    // popover **sempre visivel**; *«ele e' dobrado, nunca ausente: o artista SEMPRE ve^ que existe
-    // uma curva»*. ⭐ *Uma fileira inerte num estado nao e' o mesmo que uma fileira morta* — e a
-    // diferenca entre as duas e' uma decisao de produto que ja' foi tomada, com argumento.
-    //
-    // ⚠️ **A row da DUREZA ao lado NAO herda esta cerca**, e desde 2026-08-30 ela segue a porta do
-    // motor (`rows::shapes_the_distance`): a dureza e' inerte SO' sob campo elastico — no `Mask`
-    // ela chega, porque o `shaped_distance` roda ANTES da curva do canal — a mesma ordem da
-    // referencia, que aplica a dureza antes de avaliar a curva de queda do pincel. *Duas fileiras
-    // vizinhas, a mesma aparencia, e regimes de morte diferentes: so' a medicao as separa.*
-    //
-    // ⚠️ **Quem quiser mexer nisto mexe no GATE primeiro**, e leva um argumento melhor que o do
-    // Blender. ⭐⭐⭐ **E a saida que nao viola a cerca EXISTE desde 2026-09-15:** ela e' desenhada
-    // com a **razao a' vista** logo abaixo — ver o `readout` a seguir e a
-    // [`ph2d_sculpt3d::CurvaInerte`]. *Os chips ficam VIVOS de proposito:* a curva e' um valor
-    // autorado do pincel, e escolhe-la com este verbo na mao continua a valer para o seguinte;
-    // o que faltava era o app dizer que o barro de AGORA nao a sente.
-    let selected = Falloff::ALL
-        .iter()
-        .position(|&f| f == snap.ui.brush.falloff)
-        .unwrap_or(0);
-    let labels: Vec<&str> = Falloff::ALL.iter().map(|f| f.label()).collect();
-    let y = labelled_seg(
-        ctx,
-        tr("panel.sculpt3d.falloff"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
-        &crate::ids::SCULPT3D_FALLOFF,
-        &labels,
-        selected,
-        x,
-        w,
-        y,
-    );
-    // ⭐⭐⭐ **A RAZÃO À VISTA** — a metade que faltava à cerca acima.
-    //
-    // ⚠️ **Um `readout` e não um rótulo desactivado**: ele é um FATO e não um
-    // controlo, e por isso não é hit-indexado — uma affordance que ele não pode
-    // honrar seria pior que texto puro. E os doze chips continuam registados,
-    // que é o que mantém o gate da cerca verde.
-    //
-    // ⚠️ **A razão vem do MOTOR** ([`ph2d_sculpt3d::Brush::curva_inerte`]) e o
-    // texto vem da i18n **aqui**: a lei não sabe o vocabulário da interface, e
-    // uma chave dentro do motor mentiria no dia em que o painel a renomeasse.
-    let y = match snap.ui.brush.curva_inerte() {
-        None => y,
-        Some(razao) => readout(
-            ctx,
-            tr(match razao {
-                ph2d_sculpt3d::CurvaInerte::OCanalTemCurvaPropria => {
-                    "panel.sculpt3d.falloff_inert.mask"
-                }
-                ph2d_sculpt3d::CurvaInerte::SemLeiPorVertice => {
-                    "panel.sculpt3d.falloff_inert.density"
-                }
-                ph2d_sculpt3d::CurvaInerte::APoseSoNaTorcaoComSegmentos => {
-                    "panel.sculpt3d.falloff_inert.pose"
-                }
-            }),
-            x,
-            w,
-            y,
-        ),
-    };
+    // ⭐ **A CURVA e a razão de ela poder não chegar** — ver [`paint_a_curva`],
+    // que é onde a cerca de produto e a medição que a acompanha vivem.
+    let y = paint_a_curva(ctx, snap, x, w, y);
     // **O PADRÃO**, logo abaixo do falloff — os dois moldam o MESMO peso: o
     // falloff diz como ele cai do centro à borda, o alpha diz onde ele age
     // dentro disso. A primeira opção é NENHUM, e o deslocamento de um é a mesma
@@ -413,4 +295,136 @@ fn paint_per_verb_switches(
     let y = paint_smear_rows(ctx, snap, x, w, y);
     let y = paint_project_rows(ctx, snap, x, w, y);
     paint_mask_tools(ctx, snap, x, w, y)
+}
+
+/// ⭐⭐⭐ **A CURVA DO DAB, e a razão de ela poder não chegar ao barro.**
+///
+/// ⛔ **Cortada do [`paint_brush_tail`] pelo tecto de FUNÇÃO** (`223` contra
+/// `200`), e o corte é por RESPONSABILIDADE: aqui mora uma pergunta só — *que
+/// forma tem o peso, e o verbo em mãos lê-a?* —, com a cerca de produto que a
+/// obriga a ser pintada sempre e a medição que a acompanha. ⛔ *A cura de um
+/// tecto é o corte, nunca uma entrada no `FN_OVERAGE_OK`* (`CLAUDE.md` §5.0).
+fn paint_a_curva(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
+    // O falloff logo abaixo dos knobs: ele é a FORMA do peso, e a força é
+    // quanto dele se aplica.
+    //
+    // ⚠️ **BASIC, e a premissa que ele era `Pro` foi REFUTADA pela referência.**
+    // O argumento antigo era que a curva já vem escolhida a cada troca de
+    // ferramenta (`VerbProfile::falloff`), logo esconder-lhe o acesso seria
+    // divulgação progressiva. A regra do [`UiLevel`] admite isso — *só uma row
+    // cujo valor a ferramenta já traz pode ser `Pro`* —, mas ser ADMISSÍVEL
+    // não é ser certo, e a referência mede o contrário:
+    //
+    // * nos painéis comuns de pintura dele o *Falloff* **não** é desenhado dentro
+    //   das definições avançadas do pincel — ele é painel de primeira classe;
+    // * no cabeçalho de ferramenta ele é um **popover sempre visível**
+    //   (`layout.popover("VIEW3D_PT_tools_brush_falloff")`).
+    //
+    // Ou seja: no Blender a curva é *dobrada*, nunca *ausente* — o artista vê um
+    // cabeçalho que diz que ela existe. O nosso `Pro` a tornava **invisível sem
+    // rastro**, e é a diferença entre dobrar e amputar. Reportado no smoke da
+    // demão: *"funciona corretamente mas não dá a opção de escolher o falloff"*.
+    //
+    // ⚠️ **E o que estava errado era a PREMISSA do Basic, não a lei dele:** o doc
+    // do [`UiLevel::Basic`] diz *"o vocabulário do SculptGL"*, e o SculptGL **não
+    // tem** seletor de curva — a dele é fixa. Herdar aquele vocabulário apagava
+    // um controle que a nossa malha tem **doze** vezes.
+    //
+    // ⚠️ **Segue uma faixa que REFLUI, e não um dropdown**, pelo precedente que o
+    // `tool.rs` já mediu para os vinte verbos: um dropdown esconde onze curvas
+    // atrás de um clique para mostrar uma, e quem escolhe uma curva a escolhe
+    // COMPARANDO. (O Blender troca para dropdown no painel estreito, mas o `seg`
+    // desta casa reflui em vez de transbordar — a razão dele não se aplica.)
+    // ⚠️ **A curva e' pintada SEMPRE, e isso e' uma CERCA — nao um esquecimento.**
+    //
+    // Em 2026-08-30 uma caca aos knobs mortos mediu, e a medicao esta' certa: com o verbo `Mask`
+    // em maos o peso vem de `brush.mask_weight(t)` (que le^ **so'** a `mask_hardness`, nunca o
+    // falloff), e com um campo elastico activo a curva inteira e' `kelvinlet::rim_landing`. Nesses
+    // casos **este selector nao molda nada**.
+    //
+    // ⭐ **E a inercia deixou de ser uma AFIRMACAO e passou a ser MEDIDA**, pela porta do produto:
+    // `ph2d-sculpt3d/tests/it/measure_where_the_curve_knobs_reach.rs` roda o MESMO gesto com duas
+    // curvas e compara o barro (e o canal) **ao bit** nos tres regimes, com o controle positivo do
+    // `Verb::Draw` ao lado. *Um comentario que diz «isto e' inerte» envelhece calado; um gate que o
+    // mede sangra no dia em que deixar de ser verdade.*
+    //
+    // ⛔ **A CURA DE PRIMEIRA ESCOLHA — fazer o consumidor USAR o valor — foi TENTADA nos dois
+    // regimes e MEDIDA a partir, nas duas vezes:**
+    //
+    // | regime | mutacao no produto | gate existente que sangrou | numero |
+    // |---|---|---|---|
+    // | `Verb::Mask` | `mask_weight(t) * falloff.weight(t)` | `the_mask_channel_reproduces_the_reference_kernel` | divergencia **1,201e-1** contra a barra de `1,192e-7` — 10⁶× |
+    // | campo elastico | `rim_landing(t) * falloff.weight(shaped_distance(t))` | `the_stroke_delivers_what_the_kernel_promises` | o traco poe **−6,9e-6** onde o campo manda **−3,8e-4** (55× menos barro) |
+    //
+    // ⇒ No canal, o `Falloff` mediria *uma tool contra a curva de OUTRA* — a mascara tem curva
+    // propria na referencia (`Masking.js:66-69`) e o `Verb::Mask` nasce com a quartica, que a
+    // referencia nao aplica. No campo, o perfil **JA' E'** o falloff, e compor os dois o aplica
+    // duas vezes: o agarre morre. As duas recusas sao de LEI, nao de gosto.
+    //
+    // ⛔ **Escondê-lo mesmo assim foi TENTADO no mesmo dia e REVERTIDO**, porque o gate
+    // `the_basic_level_never_hides_the_curve_that_shapes_the_dab` o apanhou — e o doc dele carrega
+    // a decisao, com referencia: no Blender o painel de queda e' painel de primeira classe e um
+    // popover **sempre visivel**; *«ele e' dobrado, nunca ausente: o artista SEMPRE ve^ que existe
+    // uma curva»*. ⭐ *Uma fileira inerte num estado nao e' o mesmo que uma fileira morta* — e a
+    // diferenca entre as duas e' uma decisao de produto que ja' foi tomada, com argumento.
+    //
+    // ⚠️ **A row da DUREZA ao lado NAO herda esta cerca**, e desde 2026-08-30 ela segue a porta do
+    // motor (`rows::shapes_the_distance`): a dureza e' inerte SO' sob campo elastico — no `Mask`
+    // ela chega, porque o `shaped_distance` roda ANTES da curva do canal — a mesma ordem da
+    // referencia, que aplica a dureza antes de avaliar a curva de queda do pincel. *Duas fileiras
+    // vizinhas, a mesma aparencia, e regimes de morte diferentes: so' a medicao as separa.*
+    //
+    // ⚠️ **Quem quiser mexer nisto mexe no GATE primeiro**, e leva um argumento melhor que o do
+    // Blender. ⭐⭐⭐ **E a saida que nao viola a cerca EXISTE desde 2026-09-15:** ela e' desenhada
+    // com a **razao a' vista** logo abaixo — ver o `readout` a seguir e a
+    // [`ph2d_sculpt3d::CurvaInerte`]. *Os chips ficam VIVOS de proposito:* a curva e' um valor
+    // autorado do pincel, e escolhe-la com este verbo na mao continua a valer para o seguinte;
+    // o que faltava era o app dizer que o barro de AGORA nao a sente.
+    let selected = Falloff::ALL
+        .iter()
+        .position(|&f| f == snap.ui.brush.falloff)
+        .unwrap_or(0);
+    let labels: Vec<&str> = Falloff::ALL.iter().map(|f| f.label()).collect();
+    let y = labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.falloff"),
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_FALLOFF,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    );
+    // ⭐⭐⭐ **A RAZÃO À VISTA** — a metade que faltava à cerca acima.
+    //
+    // ⚠️ **Um `readout` e não um rótulo desactivado**: ele é um FATO e não um
+    // controlo, e por isso não é hit-indexado — uma affordance que ele não pode
+    // honrar seria pior que texto puro. E os doze chips continuam registados,
+    // que é o que mantém o gate da cerca verde.
+    //
+    // ⚠️ **A razão vem do MOTOR** ([`ph2d_sculpt3d::Brush::curva_inerte`]) e o
+    // texto vem da i18n **aqui**: a lei não sabe o vocabulário da interface, e
+    // uma chave dentro do motor mentiria no dia em que o painel a renomeasse.
+    let y = match snap.ui.brush.curva_inerte() {
+        None => y,
+        Some(razao) => readout(
+            ctx,
+            tr(match razao {
+                ph2d_sculpt3d::CurvaInerte::OCanalTemCurvaPropria => {
+                    "panel.sculpt3d.falloff_inert.mask"
+                }
+                ph2d_sculpt3d::CurvaInerte::SemLeiPorVertice => {
+                    "panel.sculpt3d.falloff_inert.density"
+                }
+                ph2d_sculpt3d::CurvaInerte::APoseSoNaTorcaoComSegmentos => {
+                    "panel.sculpt3d.falloff_inert.pose"
+                }
+            }),
+            x,
+            w,
+            y,
+        ),
+    };
+    y
 }

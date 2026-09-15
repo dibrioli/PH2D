@@ -136,7 +136,10 @@ fn mede_o_que_a_composicao_ja_da() {
     }
 
     println!("\n=== B) A MASSA CONTA? O MESMO tiro contra uma caixa LEVE ===");
-    for (nome, densidade) in [("parede estatica", None), ("caixa dinamica leve", Some(0.05))] {
+    for (nome, densidade) in [
+        ("parede estatica", None),
+        ("caixa dinamica leve", Some(0.05)),
+    ] {
         let mut sim = SimWorld::new();
         match densidade {
             None => parede(&mut sim, "Parede", Vec2::new(1.0, 0.0), (1.0, 20.0)),
@@ -166,10 +169,15 @@ fn mede_o_que_a_composicao_ja_da() {
         let poses = corre(&mut sim, &mut bridge, quem, 90);
         let fim = poses[poses.len() - 1];
         let ultima = rapidez(poses[poses.len() - 2], fim);
-        println!("  {nome:22} ⇒ x final {:7.3} · rapidez final {ultima:7.3}", fim.x);
+        println!(
+            "  {nome:22} ⇒ x final {:7.3} · rapidez final {ultima:7.3}",
+            fim.x
+        );
     }
 
     println!("\n=== C) O QUE A CASA NAO TEM (contado, nao lembrado) ===");
-    println!("  alcance percorrido · homing · «a flecha aponta para onde voa» · tecto de ricochetes");
+    println!(
+        "  alcance percorrido · homing · «a flecha aponta para onde voa» · tecto de ricochetes"
+    );
     println!("  ⇒ nenhum destes e' um campo de componente nenhum hoje; ver o §1 do plano.");
 }

@@ -542,3 +542,79 @@ fan-out.
 **Portão:** `nextest-impacted` (BASE `1d43da737`) **14 275/14 275**, exit 0, `load 51,5` ·
 `clippy --workspace --all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · binário de
 smoke reconstruído (exit 0).
+
+---
+
+## 13 — ⭐⭐ *«Melhor junto ao número dentro da caixa»* — o chip sai
+
+Commit `8b88c46f1` · 6 ficheiros · +323/−230.
+
+### 13.1 — O veredito, e a lei que o explica
+
+A §12 entregou a unidade num **chip** com fundo próprio (`Bg2`), encostado à borda direita do
+campo — o desenho que o `NumericInputWithUnit` já tinha. Veredito do dono: *«não ficou legal.
+Melhor junto ao número dentro da caixa»*.
+
+⭐ **E ele tem razão pela lei que a caixa tinha ganho DOIS COMMITS antes:** o §10/§11 fizeram do
+campo uma **superfície afundada**, e um segundo rectângulo com outro fundo lá dentro lê-se como
+*duas* caixas. *O chip era coerente com o campo de ontem — o de fundo transparente com borda — e
+deixou de o ser no dia em que o campo ganhou corpo.*
+
+⚠️ **A lição:** uma wave que muda uma SUPERFÍCIE invalida os desenhos que assentavam nela. O chip
+não mudou; mudou o que está por baixo dele. (É a mesma forma do §11.2: o painel desceu em 05/09 e
+abriu o defeito dos seis pintores.)
+
+### 13.2 — O desenho que fica
+
+[`NumberInput::suffix`](../../../crates/ph2d-editor-core/src/widget/number_input/mod.rs) — a
+unidade é **tinta dentro do mesmo recorte do valor**, colada ao número, em `Text2`.
+
+- ⚠️ **Cor de rótulo e não de valor:** ela diz o que o número SIGNIFICA e não é parte dele. Um
+  `1.20 m` todo na mesma cor lê-se como um campo de texto.
+- ⚠️ **O `x` é MEDIDO, não reservado** (`prefix_width` do valor): um número curto não deixa buraco,
+  e um comprido empurra a unidade para fora do recorte — que é o certo, porque *o valor é o que não
+  pode desaparecer*.
+- ⚠️ **Só em REPOUSO.** A escrever, o campo mostra o que o artista escreveu: o parser aceita o
+  sufixo digitado (`"5m/s"`), logo pintá-lo por cima do buffer faria o texto discordar do que vai
+  ser lido.
+
+⭐⭐ **E a geometria melhorou com a aparência:** o `input_rect` do `NumericInputWithUnit` é agora o
+host INTEIRO, logo *um clique onde a unidade está põe o cursor no número* — antes aqueles 36 px não
+eram de ninguém.
+
+### 13.3 — O gate lê a CENA, e exige as duas metades
+
+`the_unit_is_ink_inside_the_box_and_never_a_second_box`: mais **glifos** (a unidade foi pintada)
+com o **mesmo** número de caminhos (não nasceu um segundo rectângulo).
+
+⚠️ ***Uma das metades sozinha aprova o defeito*** — só glifos aprovaria o chip de volta, só
+caminhos aprovaria uma unidade que não é pintada de todo.
+
+| mutação | veredito |
+|---|---|
+| a unidade ganha fundo próprio (o chip de volta) | ✗ |
+| a unidade deixa de ser pintada | ✗ |
+| a unidade é pintada TAMBÉM a escrever | ✗ (`while_typing_…`) |
+
+⭐ **E os dois gates do chip foram SUBSTITUÍDOS, não apagados.** A partição campo/chip e a contenção
+do chip num host estreito deixaram de ter **sujeito**: *a cura de aparência dissolveu a classe
+inteira daquele defeito*, porque não há um segundo rectângulo para conter. No lugar ficam *«o campo
+é o host inteiro»* e *«a unidade nunca cai à esquerda do número»*.
+
+### 13.4 — ⛔ Dois tectos de LOC, os dois curados por CORTE
+
+| ficheiro | | corte |
+|---|---|---|
+| `panel-inspector/sections/player.rs` | `602/600` | o `PlayerRow` mudou-se para o ficheiro da TABELA |
+| `editor-core/widget/number_input.rs` | `594/500` | virou `number_input/{mod,tests}.rs` |
+
+O segundo é o corte que a `section_cards` já tinha feito: *o que o widget FAZ e o que prova que ele
+o faz crescem por motivos diferentes.*
+
+⚠️ **E apagar o re-export do `PlayerRow` deixou um doc-comment ÓRFÃO** colado ao item seguinte — o
+clippy apanhou-o (`empty line after doc comment`). A prosa mudou-se com o tipo, que é o sítio dela.
+*É a segunda vez que esta linha paga esta forma em duas semanas.*
+
+**Portão:** `nextest-impacted` (BASE `1d43da737`) **14 277/14 277**, exit 0, `load 39,7` ·
+`clippy --workspace --all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · binário de
+smoke reconstruído (exit 0).

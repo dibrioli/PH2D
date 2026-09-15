@@ -227,7 +227,7 @@ pub(super) struct DrainOut {
     // os dois números do osso em foco (`true` = a força, `false` = o comprimento).
     pub(super) pending_bone_bind: bool,
     pub(super) pending_bone_release: Option<crate::skeleton_live::Keep>,
-    pub(super) pending_bone_knob: Option<(bool, f64)>,
+    pub(super) pending_bone_knob: Option<(ph2d_app_skeleton::knobs::BoneKnob, f64)>,
     pub(super) pending_ik_add: bool,
     pub(super) pending_ik_remove: bool,
     // ⭐ O lado da dobra que o artista escolheu neste quadro, se escolheu.

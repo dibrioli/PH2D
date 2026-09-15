@@ -43,6 +43,8 @@ pub mod goal;
 /// ⭐ **A pose AUTORADA de uma corrente** — irmão do [`goal`] pelo tecto de LOC, cortado por
 /// responsabilidade: *quem resolve* e *o que o artista desenhou* são duas perguntas.
 mod goal_authored;
+/// ⭐⭐⭐ O que cada NÚMERO do painel significa para um osso — a tradução e a aplicação.
+pub mod knobs;
 pub mod reveal;
 pub mod smart;
 pub mod state;

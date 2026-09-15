@@ -54,6 +54,29 @@ pub const VECTOR_BONE_LENGTH: NodeId = hash_node_id("vector.bone.length");
 /// desenhado dez vezes maior deforma-se igual.
 pub const VECTOR_BONE_STRENGTH: NodeId = hash_node_id("vector.bone.strength");
 
+/// ⭐⭐⭐ **Segments** — em quantos sub-ossos este osso DOBRA (o *bendy bone*, F8).
+///
+/// `1` é o osso rígido de sempre, e nesse ponto ele é um no-op **ao bit** (gate
+/// `a_straight_bone_is_still_exactly_one_bone`, em `ph2d-skeleton`). O tecto é MEDIDO
+/// (`ph2d_skeleton::bend::MAX_SEGMENTS`) e a tabela do custo vive no doc dele.
+pub const VECTOR_BONE_SEGMENTS: NodeId = hash_node_id("vector.bone.segments");
+
+/// **Curve In Along** — a alça da RAIZ, ao longo do eixo. Ela adianta ou atrasa a dobra (o *ease*
+/// da referência) e **não arqueia** nada sozinha.
+pub const VECTOR_BONE_CURVE_IN_X: NodeId = hash_node_id("vector.bone.curve.in.x");
+
+/// ⭐ **Curve In** — a alça da RAIZ, **atravessada** ao eixo: é esta que arqueia.
+///
+/// ⚠️ Em **comprimentos deste osso**, como o [`VECTOR_BONE_STRENGTH`] e pela mesma razão — o mesmo
+/// rig dez vezes maior tem de dobrar igual.
+pub const VECTOR_BONE_CURVE_IN_Y: NodeId = hash_node_id("vector.bone.curve.in.y");
+
+/// **Curve Out Along** — a alça da PONTA, ao longo do eixo. Ver [`VECTOR_BONE_CURVE_IN_X`].
+pub const VECTOR_BONE_CURVE_OUT_X: NodeId = hash_node_id("vector.bone.curve.out.x");
+
+/// ⭐ **Curve Out** — a alça da PONTA, atravessada ao eixo. Ver [`VECTOR_BONE_CURVE_IN_Y`].
+pub const VECTOR_BONE_CURVE_OUT_Y: NodeId = hash_node_id("vector.bone.curve.out.y");
+
 /// ⭐⭐⭐ **Add IK** — dá a este osso uma ÂNCORA: um alvo que a corrente persegue a cada quadro.
 ///
 /// ⚠️ Só é pintado num osso que ainda **não** tem uma — duas âncoras a puxar a mesma corrente é
@@ -221,9 +244,14 @@ pub const VECTOR_BONE_VERBS: [NodeId; 10] = [
 ///
 /// ⚠️ Ela existe pela mesma razão da [`VECTOR_BONE_VERBS`], e o custo já foi pago: o Z-index
 /// pagou-o uma vez, e o *Add IK* pagou-o outra na família ao lado.
-pub const VECTOR_BONE_FIELDS: [NodeId; 9] = [
+pub const VECTOR_BONE_FIELDS: [NodeId; 14] = [
     VECTOR_BONE_LENGTH,
     VECTOR_BONE_STRENGTH,
+    VECTOR_BONE_SEGMENTS,
+    VECTOR_BONE_CURVE_IN_X,
+    VECTOR_BONE_CURVE_IN_Y,
+    VECTOR_BONE_CURVE_OUT_X,
+    VECTOR_BONE_CURVE_OUT_Y,
     VECTOR_BONE_IK_MIX,
     VECTOR_BONE_IK_SOFTNESS,
     VECTOR_BONE_IK_CHAIN,

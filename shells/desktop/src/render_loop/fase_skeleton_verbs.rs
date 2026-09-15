@@ -7,7 +7,7 @@ use super::*;
 pub(super) struct SkeletonVerbsIntents {
     pub(super) pending_bone_bind: bool,
     pub(super) pending_bone_release: Option<crate::skeleton_live::Keep>,
-    pub(super) pending_bone_knob: Option<(bool, f64)>,
+    pub(super) pending_bone_knob: Option<(ph2d_app_skeleton::knobs::BoneKnob, f64)>,
     pub(super) osso_selecionado: Option<u64>,
     pub(super) selecao_bits: Vec<u64>,
 }
@@ -106,20 +106,13 @@ impl crate::App {
             let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
             crate::skeleton_live::release(sim, vec_scene, &self.vec.entities, &ids, keep);
         }
-        if let Some((forca, v)) = pending_bone_knob
+        if let Some((knob, v)) = pending_bone_knob
             && let Some(bits) = osso_selecionado
             && let Some(mut osso) = sim
                 .world_mut()
                 .get_mut::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(bits))
         {
-            // ⛔ Os dois são pisos, não tetos: um comprimento negativo viraria o osso do avesso
-            // e uma força negativa daria peso negativo. O TETO é o do documento — §0.0: um
-            // limite legítimo diz de que recurso é, e não há recurso nenhum a limitar aqui.
-            if forca {
-                osso.strength = v.max(0.0);
-            } else {
-                osso.length = v.max(0.0);
-            }
+            ph2d_app_skeleton::knobs::apply(&mut osso, knob, v);
         }
         // ⭐⭐⭐ **A ÂNCORA DE IK** — os dois verbos e os três números, aplicados aqui como os do
         // esqueleto: o dreno acima só CAPTURA.

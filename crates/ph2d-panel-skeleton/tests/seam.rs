@@ -47,7 +47,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 /// controlos da seção são oferecidos.
 fn publica_tudo() {
     state::set_current_skinned(true);
-    state::set_current_bone(Some((20.0, 1.0)));
+    state::set_current_bone(Some(ph2d_skeleton::bend::BoneSpec::straight(20.0, 1.0)));
 }
 
 fn limpa() {
@@ -162,6 +162,23 @@ fn every_number_of_the_skeleton_reaches_the_bus() {
 /// PINTADO»*, e essa é exactamente a pergunta que o autor tem de responder.
 fn estado_de(id: ph2d_a11y::NodeId) {
     publica_tudo();
+    // ⚠️ **A CURVATURA tem a MESMA forma de exclusão que a âncora e o limite**: as quatro alças só
+    // existem num osso com mais de um segmento, porque num osso rígido elas são **provadamente
+    // inertes** (gate `one_segment_never_bends_whatever_the_handles_say`, em `ph2d-skeleton`).
+    // ⛔ Pintá-las sempre seria o painel a prometer quatro números que não mudam um pixel.
+    let precisa_de_segmentos = [
+        ids::VECTOR_BONE_CURVE_IN_X,
+        ids::VECTOR_BONE_CURVE_IN_Y,
+        ids::VECTOR_BONE_CURVE_OUT_X,
+        ids::VECTOR_BONE_CURVE_OUT_Y,
+    ]
+    .contains(&id);
+    if precisa_de_segmentos {
+        state::set_current_bone(Some(ph2d_skeleton::bend::BoneSpec {
+            segments: 4,
+            ..ph2d_skeleton::bend::BoneSpec::straight(20.0, 1.0)
+        }));
+    }
     // ⚠️ Os três segmentos do LADO vivem com os números da âncora — eles só têm sujeito quando ela
     // existe. A lista é derivada da tabela dos segmentos, não escrita à mão: é a mesma lição que
     // pôs a população deste ficheiro em `VECTOR_BONE_VERBS`.
@@ -423,7 +440,7 @@ fn the_two_bone_numbers_need_a_bone_in_focus() {
         !pintado(ids::VECTOR_BONE_LENGTH) && !pintado(ids::VECTOR_BONE_STRENGTH),
         "os campos foram pintados sem osso nenhum em foco"
     );
-    state::set_current_bone(Some((20.0, 1.0)));
+    state::set_current_bone(Some(ph2d_skeleton::bend::BoneSpec::straight(20.0, 1.0)));
     assert!(
         pintado(ids::VECTOR_BONE_LENGTH) && pintado(ids::VECTOR_BONE_STRENGTH),
         "os campos sumiram com um osso em foco"
@@ -609,7 +626,7 @@ fn the_number_fields_show_the_document_not_the_value_they_were_born_with() {
     let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
     let mut st = SkeletonPanelState;
     publica_tudo();
-    state::set_current_bone(Some((20.0, 1.5)));
+    state::set_current_bone(Some(ph2d_skeleton::bend::BoneSpec::straight(20.0, 1.5)));
     state::set_current_bone_ik(Some((0.5, 0.25, 4.0, ph2d_skeleton::BendSide::Keep)));
     // Pintar UMA vez: o `painted_rect` corre o painel inteiro e devolve o rect de um id.
     host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_IK_CHAIN)
@@ -629,6 +646,53 @@ fn the_number_fields_show_the_document_not_the_value_they_were_born_with() {
             (v - esperado).abs() < 1e-9,
             "{nome} mostra {v} e o documento diz {esperado} — o painel mente sobre o que o artista \
              tem, e um `Chain = 0` significa «ate' a` raiz»"
+        );
+    }
+    limpa();
+}
+
+/// ⭐⭐⭐ **O PAINEL NÃO MOSTRA UM CONTROLO QUE ESTE OSSO NÃO SABE LER** (F8) — as quatro alças da
+/// curvatura só existem num osso com mais de um segmento.
+///
+/// ⚠️ **A régua é a LEI e não uma varredura:** num osso de um segmento a curvatura é *provadamente*
+/// inerte — o `one_segment_never_bends_whatever_the_handles_say` (em `ph2d-skeleton`) mostra que a
+/// fábrica devolve o osso rígido **ao bit**, seja qual for a alça. ⛔ Pintá-las ali seria o painel a
+/// prometer quatro números que aceitam teclas, gravam no documento e não mudam um pixel — a espécie
+/// de controlo morto que o `CLAUDE.md` §5.0 nomeia, e a lei que o L-System já pagou.
+///
+/// ⚠️ **As DUAS metades são obrigatórias:** sem o «aparece» o gate ficaria verde sobre um painel que
+/// nunca as mostra, e sem o «não aparece» sobre um que as mostra sempre.
+#[test]
+fn the_curvature_is_only_offered_on_a_bone_that_can_read_it() {
+    let alcas = [
+        ids::VECTOR_BONE_CURVE_IN_X,
+        ids::VECTOR_BONE_CURVE_IN_Y,
+        ids::VECTOR_BONE_CURVE_OUT_X,
+        ids::VECTOR_BONE_CURVE_OUT_Y,
+    ];
+    for (segments, esperado) in [(1u8, false), (2, true), (8, true)] {
+        state::set_current_bone(Some(ph2d_skeleton::bend::BoneSpec {
+            segments,
+            ..ph2d_skeleton::bend::BoneSpec::straight(20.0, 1.0)
+        }));
+        for id in alcas {
+            let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+            let mut st = SkeletonPanelState;
+            let pintado = host
+                .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+                .is_some();
+            assert_eq!(
+                pintado, esperado,
+                "com segments = {segments}, {id:?} pintado = {pintado}"
+            );
+        }
+        // E o campo dos SEGMENTOS existe sempre — é ele a porta de entrada da feature.
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        assert!(
+            host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SEGMENTS)
+                .is_some(),
+            "sem o campo Segments a curvatura e' inalcancavel para sempre"
         );
     }
     limpa();

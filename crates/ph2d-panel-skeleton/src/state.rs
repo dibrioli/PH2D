@@ -18,6 +18,11 @@ thread_local! {
     static CURRENT_HAS_BONE: Cell<bool> = const { Cell::new(false) };
     static CURRENT_BONE_LENGTH: Cell<f64> = const { Cell::new(0.0) };
     static CURRENT_BONE_STRENGTH: Cell<f64> = const { Cell::new(1.0) };
+    /// ⭐ Os SEGMENTOS e a CURVATURA do osso em foco (a F8). ⚠️ Eles decidem se as quatro fileiras
+    /// da curvatura são pintadas — ver [`crate::section::campos_do_osso`].
+    static CURRENT_BONE_SEGMENTS: Cell<u8> = const { Cell::new(1) };
+    static CURRENT_BONE_CURVE: Cell<ph2d_skeleton::bend::Bend> =
+        const { Cell::new(ph2d_skeleton::bend::Bend::STRAIGHT) };
 }
 
 /// A seleção tem forma presa a esqueleto (publicado pela shell, todo quadro).
@@ -34,22 +39,32 @@ pub(crate) fn skinned() -> bool {
 // quem decide é a shell, pela porta que todo painel já tem (`panel_visible`) — e um facto publicado
 // que ninguém lê é a espécie de estado morto que o §5.0 nomeia.
 
-/// O osso em foco e os dois números dele. `None` ⇒ a seleção não é um osso.
-pub fn set_current_bone(v: Option<(f64, f64)>) {
+/// O osso em foco, INTEIRO. `None` ⇒ a seleção não é um osso.
+///
+/// ⚠️⚠️ **Ele publica o `BoneSpec` e não os dois números soltos, de propósito:** os quatro campos
+/// viajam sempre juntos, e um publicador por campo deixaria um quadro em que os segmentos são de um
+/// osso e a curvatura do anterior — o defeito que o publicador do *Smart Bone* já nomeia por escrito
+/// duas dúzias de linhas abaixo. ⭐ E um campo novo no `BoneSpec` **não compila** aqui até alguém
+/// dizer o que o painel faz com ele.
+pub fn set_current_bone(v: Option<ph2d_skeleton::bend::BoneSpec>) {
     CURRENT_HAS_BONE.with(|c| c.set(v.is_some()));
-    if let Some((length, strength)) = v {
-        CURRENT_BONE_LENGTH.with(|c| c.set(length));
-        CURRENT_BONE_STRENGTH.with(|c| c.set(strength));
+    if let Some(s) = v {
+        CURRENT_BONE_LENGTH.with(|c| c.set(s.length));
+        CURRENT_BONE_STRENGTH.with(|c| c.set(s.strength));
+        CURRENT_BONE_SEGMENTS.with(|c| c.set(s.segments));
+        CURRENT_BONE_CURVE.with(|c| c.set(s.curve));
     }
 }
 
-pub(crate) fn current_bone() -> Option<(f64, f64)> {
-    CURRENT_HAS_BONE.with(Cell::get).then(|| {
-        (
-            CURRENT_BONE_LENGTH.with(Cell::get),
-            CURRENT_BONE_STRENGTH.with(Cell::get),
-        )
-    })
+pub(crate) fn current_bone() -> Option<ph2d_skeleton::bend::BoneSpec> {
+    CURRENT_HAS_BONE
+        .with(Cell::get)
+        .then(|| ph2d_skeleton::bend::BoneSpec {
+            length: CURRENT_BONE_LENGTH.with(Cell::get),
+            strength: CURRENT_BONE_STRENGTH.with(Cell::get),
+            segments: CURRENT_BONE_SEGMENTS.with(Cell::get),
+            curve: CURRENT_BONE_CURVE.with(Cell::get),
+        })
 }
 
 thread_local! {

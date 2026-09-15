@@ -204,13 +204,11 @@ impl crate::App {
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             let code = v.clamp(0.0, f64::from(u8::MAX)) as u8;
             pd.pending_paint_blend = Some(code);
-        } else if *id == ph2d_editor_core::ids::VECTOR_BONE_LENGTH
-            || *id == ph2d_editor_core::ids::VECTOR_BONE_STRENGTH
-        {
-            // ⭐ Os dois números do OSSO (estudo 42 item 5). Eles vivem num
-            // componente da entidade, então quem escreve é a shell — a mesma
-            // rota dos campos do Transform e do layout.
-            pd.pending_bone_knob = Some((*id == ph2d_editor_core::ids::VECTOR_BONE_STRENGTH, *v));
+        } else if let Some(k) = ph2d_app_skeleton::knobs::of_id(*id) {
+            // ⭐ Os números do OSSO (estudo 42 item 5, mais os cinco da F8). Eles
+            // vivem num componente da entidade, então quem escreve é a shell — a
+            // mesma rota dos campos do Transform e do layout.
+            pd.pending_bone_knob = Some((k, *v));
         } else if *id == ph2d_editor_core::ids::VECTOR_BONE_IK_MIX {
             pd.pending_ik_knob = Some((IkKnob::Mix, *v));
         } else if *id == ph2d_editor_core::ids::VECTOR_BONE_IK_SOFTNESS {

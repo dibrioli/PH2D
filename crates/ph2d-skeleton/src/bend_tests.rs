@@ -595,3 +595,39 @@ fn the_finger_measures_the_body_not_the_chord() {
         "a fixtura nao arqueia o suficiente para separar as duas reguas"
     );
 }
+
+/// ⭐⭐⭐ **O MESMO RIG DEZ VEZES MAIOR DOBRA IGUAL** — a irmã do
+/// `the_same_rig_ten_times_bigger_weighs_exactly_the_same`, e a razão de as alças serem MÚLTIPLOS
+/// do comprimento em vez de distâncias.
+///
+/// ⚠️ **Com unidades absolutas este gate reprova**, e o sintoma seria mudo e caro: escalar um
+/// personagem endireitaria todos os ossos dele — o desenho ficaria certo no tamanho em que foi
+/// autorado e progressivamente recto em qualquer outro.
+#[test]
+fn the_same_rig_ten_times_bigger_bends_exactly_the_same() {
+    let curva = Bend {
+        inn: [0.1, 0.4],
+        out: [-0.2, 0.3],
+    };
+    let pequeno = polyline(BoneSpec {
+        segments: 8,
+        curve: curva,
+        ..BoneSpec::straight(3.0, 1.0)
+    });
+    let grande = polyline(BoneSpec {
+        segments: 8,
+        curve: curva,
+        ..BoneSpec::straight(30.0, 1.0)
+    });
+    for (p, g) in pequeno.iter().zip(grande.iter()) {
+        assert!(
+            (p[0] * 10.0 - g[0]).abs() < 1e-12 && (p[1] * 10.0 - g[1]).abs() < 1e-12,
+            "{p:?} x10 != {g:?}"
+        );
+    }
+    // Controlo: a fixtura arqueia mesmo, senão o gate compara duas rectas.
+    assert!(
+        pequeno[4][1].abs() > 0.5,
+        "a fixtura nao arqueou: {pequeno:?}"
+    );
+}

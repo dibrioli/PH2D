@@ -136,7 +136,7 @@ impl crate::App {
         ph2d_panel_skeleton::set_current_bone(osso_em_foco.and_then(|b| {
             sim.world()
                 .get::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(b))
-                .map(|v| (v.length, v.strength))
+                .map(ph2d_skeleton_ecs::Bone::spec)
         }));
         // ⭐⭐⭐ **A ÂNCORA do osso em foco** — é isto que decide entre *Add IK* e *Remove IK*
         // no painel, e se os três números dela têm sujeito. ⚠️ Pela MESMA porta que publica

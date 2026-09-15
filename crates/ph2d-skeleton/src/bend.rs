@@ -36,11 +36,19 @@
 use crate::Xform;
 
 /// **As duas alças de curvatura de um osso**, em espaço LOCAL dele (o eixo é o `+x`, a origem é a
-/// raiz), como **deslocamento a partir do terço** onde a alça recta mora.
+/// raiz), como **deslocamento a partir do terço** onde a alça recta mora, **em COMPRIMENTOS deste
+/// osso**.
 ///
 /// ⚠️ São deslocamentos e não posições absolutas por causa do ponto neutro: `[0, 0]` tem de ser
 /// *«este osso é recto»*, e com posições absolutas o neutro seria `L/3` — um valor que depende do
 /// comprimento e que ninguém acerta ao escrever um `Default`.
+///
+/// ⚠️⚠️ **E são MÚLTIPLOS, não distâncias — a mesma decisão do [`BoneSpec::strength`], e pela mesma
+/// razão:** assim a lei é adimensional e **o mesmo rig desenhado dez vezes maior dobra igual**. Com
+/// unidades absolutas, escalar um personagem endireitaria todos os ossos dele em silêncio.
+///
+/// `x` corre ao longo do eixo (ele adianta ou atrasa a dobra — o *ease* da referência) e `y`
+/// atravessa-o (é ele que **arqueia**).
 /// ⚠️ **Ele atravessa o ficheiro** (é campo do `Bone` do lado do ECS), então deriva `serde` aqui —
 /// a mesma decisão, e pela mesma razão, do [`crate::BendSide`]: declará-lo outra vez do lado do ECS
 /// com uma conversão no meio seria a *segunda porta* que duas definições do mesmo conceito abrem.
@@ -149,9 +157,11 @@ pub fn segments_of(segments: u8) -> u8 {
 pub fn point_at(length: f64, bend: Bend, t: f64) -> [f64; 2] {
     let s = 1.0 - t;
     let (w_inn, w_out) = (3.0 * s * s * t, 3.0 * s * t * t);
+    // ⚠️ As alças são MÚLTIPLOS do comprimento (ver [`Bend`]), então entram multiplicadas por ele.
+    // No ponto neutro os dois termos são `0.0` e `length * 0.0` continua `0.0` ⇒ a exactidão fica.
     [
-        length * t + (w_inn * bend.inn[0] + w_out * bend.out[0]),
-        w_inn * bend.inn[1] + w_out * bend.out[1],
+        length * t + length * (w_inn * bend.inn[0] + w_out * bend.out[0]),
+        length * (w_inn * bend.inn[1] + w_out * bend.out[1]),
     ]
 }
 

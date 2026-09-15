@@ -387,22 +387,62 @@ fn ik_rows(r: &mut RowCtx, y: f32) -> f32 {
 /// compila** — em vez de nascer a mostrar `0` e ninguém dar por isso.
 ///
 /// `None` = não há osso em foco, e então não se pinta nem se semeia nada.
-pub(crate) fn campos_do_osso() -> Option<[(ph2d_a11y::NodeId, &'static str, f64, f64); 2]> {
-    let (length, strength) = state::current_bone()?;
-    Some([
+pub(crate) fn campos_do_osso() -> Option<Vec<(ph2d_a11y::NodeId, &'static str, f64, f64)>> {
+    let osso = state::current_bone()?;
+    let mut campos = vec![
         (
             ids::VECTOR_BONE_LENGTH,
             tr("panel.vector.bone.length"),
             LENGTH_STEP,
-            length,
+            osso.length,
         ),
         (
             ids::VECTOR_BONE_STRENGTH,
             tr("panel.vector.bone.strength"),
             STRENGTH_STEP,
-            strength,
+            osso.strength,
         ),
-    ])
+        (
+            ids::VECTOR_BONE_SEGMENTS,
+            tr("panel.vector.bone.segments"),
+            SEGMENTS_STEP,
+            f64::from(osso.segments),
+        ),
+    ];
+    // ⭐⭐⭐ **A CURVATURA SÓ É PINTADA NUM OSSO QUE A SABE LER** (F8) — com um segmento só ela é
+    // **provadamente inerte**, e há gate a dizê-lo pelo nome
+    // (`one_segment_never_bends_whatever_the_handles_say`, em `ph2d-skeleton`).
+    //
+    // ⛔ **Mostrá-la sempre seria o painel a MENTIR:** quatro campos que aceitam teclas, gravam no
+    // documento e não mudam um pixel. É a mesma lei que o L-System pagou — *nenhum molde mostra um
+    // knob que a gramática dele não sabe ler* —, aqui com a régua a ser a lei e não uma varredura.
+    if !osso.is_rigid() || ph2d_skeleton::bend::segments_of(osso.segments) > 1 {
+        for (id, chave, valor) in [
+            (
+                ids::VECTOR_BONE_CURVE_IN_Y,
+                "panel.vector.bone.curve.in.y",
+                osso.curve.inn[1],
+            ),
+            (
+                ids::VECTOR_BONE_CURVE_OUT_Y,
+                "panel.vector.bone.curve.out.y",
+                osso.curve.out[1],
+            ),
+            (
+                ids::VECTOR_BONE_CURVE_IN_X,
+                "panel.vector.bone.curve.in.x",
+                osso.curve.inn[0],
+            ),
+            (
+                ids::VECTOR_BONE_CURVE_OUT_X,
+                "panel.vector.bone.curve.out.x",
+                osso.curve.out[0],
+            ),
+        ] {
+            campos.push((id, tr(chave), CURVE_STEP, valor));
+        }
+    }
+    Some(campos)
 }
 
 /// Os três números da ÂNCORA — ver [`campos_do_osso`]. `None` = o osso não tem restrição.
@@ -436,6 +476,13 @@ const LENGTH_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento, 
 /// Passo do campo de força — ela é um **múltiplo do comprimento do osso**, então a escala útil é
 /// a unidade, e o passo é o décimo dela.
 const STRENGTH_STEP: f64 = 0.1; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
+
+/// Passo do campo dos SEGMENTOS — eles são uma CONTAGEM, então o passo é a unidade.
+const SEGMENTS_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
+
+/// Passo das quatro alças de curvatura — elas são **múltiplos do comprimento do osso**, como a
+/// força, então a escala útil é a unidade e o passo é o décimo dela.
+const CURVE_STEP: f64 = 0.1; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
 
 /// Passo dos dois números adimensionais da âncora (`Mix` e `Softness`), que vivem em `0..1`: o
 /// décimo da unidade, como o da força do osso.

@@ -139,6 +139,7 @@ fn main() {
         [0, 1, 2].map(|i| cam.target[i] + raio * (ecra[0] * r[i] + ecra[1] * u[i] + ecra[2] * t[i]))
     };
     let setup = |cones: u32| ph2d_field_gpu::trace::MarchSetup {
+        antialias: true,
         half_extent: cam.half_extent,
         half_px: screen.half(),
         target: cam.target,
@@ -324,11 +325,53 @@ fn main() {
         "  ponta a ponta                         {:7.2}",
         cheio + converter + pintar
     );
+
+    // ⭐⭐⭐ **O QUADRO DE MOVIMENTO**, que desde 2026-09-15 também passa pelo dispositivo: a
+    // resolução de pré-visualização (divisor `3`) e o anti-serrilhado DESLIGADO (a lei da W73).
+    let (mw, mh) = (w / 3, h / 3);
+    let tela_m = Screen::new(mw, mh, cam.half_extent);
+    let nitidez_m = ph2d_field_render::Sharpness::for_frame(cam.half_extent, mw.min(mh) as usize);
+    let mut setup_m = setup(ph2d_field_render::OCCLUSION_PASSES);
+    setup_m.antialias = false;
+    setup_m.half_px = tela_m.half();
+    setup_m.hit_eps = nitidez_m.hit;
+    setup_m.normal_eps = nitidez_m.normal;
+    let _ = tracer.frame(&fita, setup_m, mw, mh);
+    let mov_placa = minimo(5, || {
+        std::hint::black_box(tracer.frame(&fita, setup_m, mw, mh));
+    });
+    let dev_m = tracer.frame(&fita, setup_m, mw, mh);
+    let mov_cpu = minimo(5, || {
+        std::hint::black_box(dev_m.to_cpu(&cam, tela_m));
+    });
+    let (gm, shm) = dev_m.to_cpu(&cam, tela_m);
+    let mov_pintar = minimo(5, || {
+        std::hint::black_box(ph2d_field_render::shade_render(
+            &gm,
+            &cam,
+            &ph2d_field_render::Surfaces {
+                all: &sup,
+                owners: None,
+            },
+            &ph2d_field_render::Lighting {
+                lamps: &[],
+                points: &pontuais,
+                sky: &ceu,
+                shadows: Some(&shm),
+            },
+            ph2d_view_transform::Look::default(),
+            [40, 40, 40, 255],
+        ));
+    });
+    let mov = mov_placa + mov_cpu + mov_pintar;
     println!();
-    println!("  sem oclusão (o que um quadro de MOVIMENTO custaria hoje no dispositivo):");
+    println!("  QUADRO DE MOVIMENTO ({mw}×{mh}, sem anti-serrilhado, COM oclusão)");
+    println!("    placa                               {mov_placa:7.2}");
+    println!("    reconstruir + suavizar              {mov_cpu:7.2}");
+    println!("    pintar                              {mov_pintar:7.2}");
+    println!("    ──────────────────────────────────────────────");
     println!(
-        "    {:7.2} ms  ⇒  {:5.1} quadros por segundo",
-        sem_ao + converter + pintar,
-        1000.0 / (sem_ao + converter + pintar)
+        "    ponta a ponta                       {mov:7.2}   ⇒ {:5.1} quadros por segundo",
+        1000.0 / mov
     );
 }

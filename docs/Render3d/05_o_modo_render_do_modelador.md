@@ -3299,3 +3299,73 @@ divergência duas vezes não a mede melhor — mede o acoplamento e chama-lhe de
   amostragem; hoje não há ruído, e o que ele faz é suavizar as **estrias** do conjunto discreto. A
   premissa que o legitima é a mesma; o que **não** foi re-medido é quanto ele vale contra a lei nova
   — a tabela que está lá é da lei antiga e está marcada como história.
+
+## §38 — ⛔⛔⛔ «O AO APAGA AO ROTACIONAR» e «performance aquém de tempo real» ERAM O MESMO (report do dono, 2026-09-15)
+
+> *«smoke OK. Boa qualidade. Mas com performance bem aquém que Unreal e outros renders de tempo real.
+> E apagar o AO ao rotacionar a tela»*
+
+### §38.1 — A cerca que eu pus era a causa
+
+A §36 ligou o dispositivo sob **três** condições, e a segunda era *«só o quadro ASSENTE»* — escrita
+como cerca contra a regressão do §32 (o gesto lento). ⛔ **O sombreado de contacto só existe no
+caminho do dispositivo.** ⇒ enquanto essa cerca existiu, ele **desaparecia a cada gesto** e voltava
+ao largar. Não é um defeito de oclusão: é a cerca a fazer exactamente o que diz.
+
+⚠️ *Uma cerca que protege um gesto pode ser o que apaga uma feature nesse gesto, e as duas frases
+leem-se igual num doc.*
+
+### §38.2 — ⛔⛔ A medição desmentiu o que este doc dizia sobre o custo
+
+A sonda nova (`cargo run --release -p ph2d-field-gpu --example frame_budget`) separa as fases por
+**diferenças** — o compute e a cópia de leitura vivem no mesmo `submit`, logo um relógio à volta
+dele mede os dois juntos — e mede a leitura **à parte**, no mesmo volume de bytes.
+
+O item aberto da §36 dizia que o tecto eram os **`49 MB` de leitura por quadro**. Medido: **`1,86 ms`**,
+`4 %` do quadro. O tecto era o `DeviceGbuffer::to_cpu` — **`47,44 ms` de `87,58`**, mais do que a
+placa (`24,65`) e o pintor (`13,31`) somados.
+
+⇒ *um item aberto que nomeia um recurso sem o ter medido manda optimizar a coisa errada.*
+
+### §38.3 — ⛔⛔ E duas hipóteses minhas caíram, as duas medidas a ZERO
+
+| hipótese | medição | veredito |
+|---|---|---|
+| a base de **quaternião** por pixel (`ray_at_plane` chama `basis()`) | `47,44 → 48,20 ms` | ⛔ zero — são ~30 operações **sem divisão**, e o compilador já a tirava do laço |
+| a **divisão inteira** `i % w` / `i / w` por valor de *runtime*, duas por pixel | `→ 47,96 ms` | ⛔ zero |
+| **a normalização**: `o + (v/\|v\|)·t` são **três** divisões `f32` | `37,87 → 5,75 ms` | ⭐ **`6,6×`** |
+
+A cura é algébrica: `o + (v/|v|)·t = o + v·(t/|v|)`, que tem **uma** divisão. Uma divisão em `f32`
+tem ~15 ciclos de latência e péssimo débito, e três seguidas não emparelham. Encher os mesmos
+`24 MB` de saída custa `0,61 ms` ⇒ o laço curado está a `9×` do custo da memória.
+
+⚠️ Isso é uma **segunda porta** para a mesma pergunta (o `ray_at_plane` declara-se *«a porta
+única»*), e ela **não é bit-a-bit** — daí o gate `o_ponto_de_acerto_e_o_mesmo_com_e_sem_normalizar`,
+nas duas lentes, com barra **relativa** (a `t = T_MAX` um `ulp` escala com a distância).
+
+### §38.4 — ⭐⭐⭐ O quadro de movimento passa a ser do dispositivo
+
+A cerca sai; o que a substitui **não é uma cerca**, é a lei da W73 a viajar com o pedido: o
+`antialias` chega ao `MarchSetup` e o dispositivo **salta o segundo despacho** (a borda
+re-amostrada) quando ele é falso — a mesma lei que a CPU já seguia. *Duas metades de uma lei, uma em
+cada motor, é a forma como ela morre num deles.* Gate:
+`sem_anti_serrilhado_o_dispositivo_nao_reamostra_borda_nenhuma`, com o **controlo primeiro** (sem
+ele, `0 == 0` passaria com o passe inteiro partido).
+
+| | antes | agora |
+|---|---:|---:|
+| quadro **assente** `1920×1080` | `87,6 ms` | **`60,9 ms`** |
+| quadro de **MOVIMENTO** `640×360` | `~27 ms` na CPU, **sem oclusão** | **`5,0 ms`** no dispositivo, **com** oclusão |
+
+⇒ `200` quadros por segundo a rodar, com o sombreado de contacto que antes desaparecia.
+
+### §38.5 — ⏳ O que fica
+
+- **`60,9 ms` do quadro assente ainda não é o tecto.** A repartição é: placa `25,1` (oclusão `11,1` ·
+  leitura `1,9` · marcha+sombra+bordas `13,5`) · reconstruir+suavizar `21,9` · pintar `14,1`.
+- ⏳ **A CPU ainda faz `36 ms` de trabalho por quadro assente** sobre dados que a placa já tem. O
+  caminho de um render de tempo real é **sombrear no dispositivo** e devolver a imagem (`8,3 MB` em
+  vez de `49,8`), e não devolver o G-buffer inteiro. Isso apaga o `to_cpu` e o pintor de uma vez;
+  é wave com espec própria.
+- ⏳ **O `to_cpu` curado ainda lê `17,5 ms` onde o laço isolado lê `5,7`** — os `~12 ms` de
+  diferença não foram atribuídos.

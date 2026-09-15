@@ -61,17 +61,16 @@ pub fn enabled() -> bool {
 
 /// ⭐⭐⭐ **Este quadro vai para o dispositivo?** — as três condições da nota do módulo.
 #[must_use]
-pub fn takes_the_frame(
-    tracer: Option<&SharedTracer>,
-    assente: bool,
-    doc: &ph2d_field::FieldDoc,
-) -> bool {
-    tracer.is_some() && assente && ph2d_field_gpu::supports(doc)
+pub fn takes_the_frame(tracer: Option<&SharedTracer>, doc: &ph2d_field::FieldDoc) -> bool {
+    tracer.is_some() && ph2d_field_gpu::supports(doc)
 }
 
 /// O G-buffer e a luz, marchados no dispositivo. `None` quando alguma coisa faltar — e o chamador
 /// cai na CPU, que é o caminho de sempre.
 #[must_use]
+// A peça, o registo, a vista, as luzes, a tela e a bandeira — oito coisas que um quadro precisa,
+// e nenhuma delas pertence a outra. Agrupá-las numa struct só as renomearia.
+#[allow(clippy::too_many_arguments)]
 pub fn march(
     tracer: &SharedTracer,
     doc: &ph2d_field::FieldDoc,
@@ -80,6 +79,7 @@ pub fn march(
     lamps: &[[f32; 3]],
     w: u32,
     h: u32,
+    antialias: bool,
 ) -> Option<(ph2d_field_render::Gbuffer, ph2d_field_render::Shadows)> {
     let campo = ph2d_field_eval::Field::new(doc);
     let fita = campo.tape_wgsl()?;
@@ -100,6 +100,7 @@ pub fn march(
         eye_distance: cam.eye_distance().unwrap_or(0.0),
         hit_eps: sharp.hit,
         normal_eps: sharp.normal,
+        antialias,
         step: passo,
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         budget: ((ph2d_field_render::MAX_STEPS as f32) * shrink.max(1.0)

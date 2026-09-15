@@ -90,6 +90,13 @@ pub struct MarchSetup {
     /// O alcance da oclusão em unidades de mundo.
     pub ao_reach: f32,
     /// O cosseno abaixo do qual duas normais vizinhas são ARESTA — o `EDGE_COS` da CPU.
+    /// ⭐⭐⭐ **A bandeira da W73 — *grosso a mexer, nítido ao assentar*.**
+    ///
+    /// `false` **salta o segundo despacho inteiro** (a borda re-amostrada) e devolve a lista de
+    /// bordas vazia, que é exactamente o que o [`ph2d_field_render::trace_cancellable`] faz na CPU
+    /// com o mesmo `antialias`. ⛔ Sem isto, mandar o quadro de MOVIMENTO ao dispositivo punha-o a
+    /// pagar um passe que a lei do módulo manda não pagar — *dois motores, uma lei*.
+    pub antialias: bool,
     pub edge_cos: f32,
 }
 
@@ -450,9 +457,12 @@ fn marcha_com(
     let p_centro = cache
         .entry_with_layout(device, MOLDE, fita, "centro_e_luz", Some(&layout))
         .clone();
-    let p_bordas = cache
-        .entry_with_layout(device, MOLDE, fita, "bordas", Some(&layout))
-        .clone();
+    // ⚠️ **Compilar é o caro** — o pipeline da borda só nasce quando ela vai de facto correr.
+    let p_bordas = setup.antialias.then(|| {
+        cache
+            .entry_with_layout(device, MOLDE, fita, "bordas", Some(&layout))
+            .clone()
+    });
 
     // O uniforme, campo a campo — a mesma ordem da `struct Setup`. ⚠️ Um `vec3` alinha a 16 B.
     let mut u: Vec<u8> = Vec::with_capacity(160);
@@ -574,12 +584,17 @@ fn marcha_com(
         })
     };
     let bg_centro = bind(&p_centro);
-    let bg_bordas = bind(&p_bordas);
+    let bg_bordas = p_bordas.as_ref().map(&bind);
 
     let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     // ⚠️ **DOIS despachos, e a ordem é a lei**: a borda pergunta pelos VIZINHOS, logo o centro tem
     // de estar escrito para toda a imagem antes de ela correr.
-    for (p, bg) in [(&p_centro, &bg_centro), (&p_bordas, &bg_bordas)] {
+    let despachos: Vec<(&wgpu::ComputePipeline, &wgpu::BindGroup)> =
+        match (p_bordas.as_ref(), bg_bordas.as_ref()) {
+            (Some(p), Some(bg)) => vec![(&p_centro, &bg_centro), (p, bg)],
+            _ => vec![(&p_centro, &bg_centro)],
+        };
+    for (p, bg) in despachos {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
             timestamp_writes: None,
@@ -619,13 +634,29 @@ fn marcha_com(
     // `1920×1080`) e a ocupação real é `1`–`8 %`: copiar o tecto inteiro a cada quadro era
     // **quase metade** dos `90 MB` de leitura. ⇒ um segundo `submit`, que custa um ida-e-volta e
     // poupa dezenas de megabytes. *Um buffer dimensionado para o pior caso não se lê no pior caso.*
-    let usadas = quantas.min(max_bordas);
-    let mut enc2 = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    let r_borda = ler(&mut enc2, &b_borda, usadas * 5 * 16);
-    queue.submit([enc2.finish()]);
-    r_borda.slice(..).map_async(wgpu::MapMode::Read, |_| {});
-    device.poll(wgpu::PollType::wait_indefinitely()).ok();
-    let d_borda = r_borda.slice(..).get_mapped_range();
+    // ⚠️ **Sem anti-serrilhado não há segunda travessia nenhuma** — nem o `submit`, nem o
+    // `poll`, que é um ida-e-volta completo ao dispositivo por quadro.
+    let usadas = if setup.antialias {
+        quantas.min(max_bordas)
+    } else {
+        0
+    };
+    let r_borda = {
+        let mut enc2 =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let r = ler(&mut enc2, &b_borda, usadas * 5 * 16);
+        if usadas > 0 {
+            queue.submit([enc2.finish()]);
+            r.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+            device.poll(wgpu::PollType::wait_indefinitely()).ok();
+        }
+        r
+    };
+    let d_borda = if usadas > 0 {
+        Some(r_borda.slice(..).get_mapped_range())
+    } else {
+        None
+    };
 
     let f4 = |q: &[u8; 16], o: usize| f32::from_le_bytes([q[o], q[o + 1], q[o + 2], q[o + 3]]);
     let mut t = Vec::with_capacity(d_centro.len() / 16);
@@ -640,7 +671,8 @@ fn marcha_com(
         shadow.push(f32::from_le_bytes([q[0], q[1], q[2], q[3]]));
         ambient.push(f32::from_le_bytes([q[4], q[5], q[6], q[7]]));
     }
-    let quads = d_borda.as_chunks::<16>().0;
+    let vazio: [u8; 0] = [];
+    let quads = d_borda.as_deref().unwrap_or(&vazio).as_chunks::<16>().0;
     #[allow(clippy::cast_possible_truncation)]
     let usadas = usadas as usize;
     let mut edges = Vec::with_capacity(usadas);

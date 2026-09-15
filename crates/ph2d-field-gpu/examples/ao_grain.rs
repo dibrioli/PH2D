@@ -158,6 +158,7 @@ fn main() {
     let shrink = ph2d_field_eval::field_shrink(&doc, &reg);
     let nitidez = ph2d_field_render::Sharpness::for_frame(cam.half_extent, W.min(H) as usize);
     let setup = |raios: u32| ph2d_field_gpu::trace::MarchSetup {
+        antialias: true,
         half_extent: cam.half_extent,
         half_px: screen.half(),
         target: cam.target,

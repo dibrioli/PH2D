@@ -476,9 +476,12 @@ fn viewport_pass(
         // de materiais e a cache de fitas, e pela mesma razão: abri-lo por quadro custa mais do que
         // a CPU inteira (`130 ms` contra `13`, §35).
         //
-        // ⚠️ **Só o quadro ASSENTE, e só uma peça SEM ESCULTURA** — ver
-        // [`crate::gpu_frame::takes_the_frame`]. O de movimento fica byte-idêntico, que é a cerca
-        // que impede a regressão do §32 de voltar por outra porta.
+        // ⚠️⚠️ **O quadro de MOVIMENTO TAMBÉM passa por aqui desde 2026-09-15** — a cerca do
+        // *«só o assente»* saiu, e ela era a causa directa do report do dono: *«e apagar o AO ao
+        // rotacionar a tela»*. O sombreado de contacto só existe no caminho do dispositivo, logo
+        // enquanto a cerca existiu ele **desaparecia** a cada gesto e voltava ao largar.
+        // ⭐ E a lei da W73 sobrevive: o `antialias` viaja com o pedido e o dispositivo **salta o
+        // segundo despacho** quando ele é falso — *grosso a mexer, nítido ao assentar*.
         let gpu = crate::gpu_frame::shared();
         std::thread::spawn(move || {
             let t0 = std::time::Instant::now();
@@ -488,10 +491,11 @@ fn viewport_pass(
             let mundos: Vec<[f32; 3]> = lights.iter().map(|l| l.world).collect();
             let pelo_dispositivo = matches!(shading, crate::shading::Shading::Render)
                 && !mundos.is_empty()
-                && crate::gpu_frame::takes_the_frame(gpu, antialias, &doc);
+                && crate::gpu_frame::takes_the_frame(gpu, &doc);
             let do_gpu = if pelo_dispositivo {
-                gpu.as_ref()
-                    .and_then(|t| crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, tw, th))
+                gpu.as_ref().and_then(|t| {
+                    crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, tw, th, antialias)
+                })
             } else {
                 None
             };

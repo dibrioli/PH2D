@@ -683,6 +683,50 @@ mod gpu_parity {
 }
 
 #[cfg(test)]
+mod gpu_coarse_law {
+    /// ⭐⭐⭐ **O DISPOSITIVO OBEDECE À BANDEIRA DA W73** — *grosso a mexer, nítido ao assentar*.
+    ///
+    /// # ⛔⛔ Porque este gate nasce com o quadro de MOVIMENTO
+    ///
+    /// Até 2026-09-15 o dispositivo só tomava o quadro **assente**, e essa cerca era a causa do
+    /// report do dono (*«apagar o AO ao rotacionar a tela»*): o sombreado de contacto só existe
+    /// neste caminho. Tirar a cerca sem mais **punha o quadro de movimento a pagar o segundo
+    /// despacho** — a borda re-amostrada —, que é exactamente o que a lei manda não pagar e o que
+    /// a CPU já saltava com o mesmo `antialias`.
+    ///
+    /// ⚠️ *Duas metades de uma lei, uma em cada motor, é a forma como ela morre num deles.*
+    #[test]
+    #[ignore = "precisa de GPU"]
+    fn sem_anti_serrilhado_o_dispositivo_nao_reamostra_borda_nenhuma() {
+        let doc = crate::smoke::scene(1);
+        let reg = ph2d_field_eval::hybrid::Registry::new();
+        let cam = ph2d_field_render::Orbit::default();
+        let luz = [super::gpu_gbuffer_parity::luz_do_rig(&cam)];
+        let Some(t) = crate::gpu_frame::shared() else {
+            println!("sem adaptador — saltado");
+            return;
+        };
+
+        let bordas = |antialias: bool| {
+            crate::gpu_frame::march(t, &doc, &reg, &cam, &luz, 192, 108, antialias)
+                .map(|(g, _)| g.edges.len())
+        };
+        let nitido = bordas(true).expect("o dispositivo tem de marchar a peça limpa");
+        let grosso = bordas(false).expect("o dispositivo tem de marchar a peça limpa");
+
+        // ⭐ O controlo vem PRIMEIRO: sem ele, `0 == 0` passaria com o passe inteiro partido.
+        assert!(
+            nitido > 50,
+            "com anti-serrilhado o dispositivo devolveu só {nitido} bordas — a fixtura não tem              contorno, e o gate abaixo não estaria a afirmar nada"
+        );
+        assert_eq!(
+            grosso, 0,
+            "sem anti-serrilhado o dispositivo ainda re-amostrou {grosso} bordas — o quadro de              MOVIMENTO está a pagar o segundo despacho"
+        );
+    }
+}
+
+#[cfg(test)]
 mod gpu_gbuffer_parity {
     /// ⭐⭐⭐ **O G-BUFFER DO DISPOSITIVO É O DA CPU** — a silhueta, a profundidade e a normal.
     ///
@@ -691,7 +735,7 @@ mod gpu_gbuffer_parity {
     /// divergência ali move o ponto de acerto em **unidades de mundo**, que é o que as colunas
     /// medem.
     /// A lâmpada onde a wave da §25 a põe.
-    fn luz_do_rig(cam: &ph2d_field_render::Orbit) -> [f32; 3] {
+    pub(super) fn luz_do_rig(cam: &ph2d_field_render::Orbit) -> [f32; 3] {
         let (right, up, toward_eye) = cam.basis();
         let ecra = [-0.5566703_f32, 0.6634139, 0.5];
         let r = 2.0 * cam.half_extent;
@@ -754,6 +798,7 @@ mod gpu_gbuffer_parity {
                 ball_radius: bola.radius,
                 ao_rays: ph2d_field_render::OCCLUSION_PASSES,
                 ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+                antialias: true,
                 edge_cos: ph2d_field_render::EDGE_COS,
                 step: passo,
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -1041,6 +1086,7 @@ mod gpu_frame_clock {
                 ball_radius: bola.radius,
                 ao_rays: ph2d_field_render::OCCLUSION_PASSES,
                 ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+                antialias: true,
                 edge_cos: ph2d_field_render::EDGE_COS,
             };
             // ⛔⛔ **O TRAÇADOR VIVE ENTRE QUADROS, e a 1.ª redacção desta sonda usava a porta que

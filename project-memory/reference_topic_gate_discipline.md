@@ -167,3 +167,13 @@ metadata:
   lição já paga duas vezes neste repo). ⚠️ E ele precisa de **controlo**: um contador de glifos que
   nunca vê uma reticência passaria também sobre um pintor que não pinta nada — o gate irmão exige
   que a contagem **mude** com a coluna a 60 %.
+- ⭐⭐ **Um DOC pode ser gateado, e a mutação que importa é o PARSER a partir-se.** Medido 2026-09-14
+  (`line/UIUX`): a spec da linha de propriedade fecha com uma tabela `lei → porta → gate`, e um teste
+  extrai as duas últimas colunas e exige que cada nome exista no código — assim um `rename` reprova
+  em vez de deixar o doc a prometer o que o app já não faz (*um doc que enuncia a lei que o código
+  não implementa lê-se como AUDITADO*). ⚠️ **Das três mutações, a que ensina é a terceira:** partir
+  UMA linha da tabela para o parser deixar de a achar — *um parser partido devolve «zero fantasmas»
+  sobre uma tabela inteira por verificar* ⇒ **piso de população no próprio gate**, mais um controlo
+  que exige que o detector recuse um nome inventado **e** aceite um real (senão ele aceita tudo ou
+  recusa tudo). ⛔ E a lista de formas em que um nome nasce tem de incluir `as NOME`: uma porta
+  re-exportada (`MIN_W_PX as NUMBER_INPUT_MIN_W_PX`) era acusada de não existir.

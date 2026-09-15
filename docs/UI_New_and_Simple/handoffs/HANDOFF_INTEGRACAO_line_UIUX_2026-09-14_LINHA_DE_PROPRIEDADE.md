@@ -1000,3 +1000,66 @@ não o produto*. É a terceira vez que esta linha paga esta forma em dois dias.
   largura dele**: a `220` o rótulo fora deixaria `72 px` para trilho **e** número juntos, que é
   exactamente o cromo que a caixa única nasceu para matar em 2026-09-02. *Fica escrito, com o
   número, para o manual.*
+
+---
+
+## 18 — ⭐⭐⭐ O MANUAL existe, e é VERIFICADO por um teste
+
+Passo 4 do plano que o dono aprovou, e a resposta à frase que abriu este arco: *«falta para nós um
+modelo pronto e bem estabelecido com todas as regras para todos os widgets»*.
+
+[`docs/UI_New_and_Simple/spec/03_a_linha_de_propriedade.md`](../spec/03_a_linha_de_propriedade.md) —
+dez secções: as **duas formas** e a regra que escolhe · a coluna ao meio · o rótulo à direita ·
+o piso do controlo · o empréstimo · o que a linha leva sempre (coluna de animação · unidade ·
+superfície · valor) · o que **não** está decidido · a tabela `lei → porta → gate` · e o molde de
+conversão.
+
+### 18.1 — A tabela do §9 é lida por um gate
+
+[`the_property_row_manual_names_only_doors_that_exist`](../../../crates/ph2d-editor-core/tests/it/the_property_row_manual_names_only_doors_that_exist.rs)
+extrai as células `porta` e `gate` das 13 linhas e exige que **cada nome exista no código**.
+
+⛔⛔ **Porquê:** *um doc que enuncia a lei que o código não implementa lê-se como AUDITADO* — quem o
+lê deixa de conferir. Este teste não prova que a lei está implementada (isso é do gate NOMEADO); ele
+prova **o elo**, e um `rename` ou uma remoção reprovam aqui em vez de apodrecer.
+
+⚠️ **Três provas de mutação, todas MORTAS:** uma porta inexistente · um gate inexistente · e a
+**tabela a encolher** (partir uma linha para o parser deixar de a achar) — esta última é a que
+importa, porque *um parser partido devolve «zero fantasmas» sobre uma tabela inteira por verificar*.
+Mais o controlo `the_ruler_can_see_a_door_that_does_not_exist`, que exige que o detector recuse um
+nome inventado **e** aceite um real (senão ele aceita tudo, ou recusa tudo).
+
+⚠️ **O `as NAME` está na lista de formas de propósito:** a `NUMBER_INPUT_MIN_W_PX` é uma
+re-exportação (`MIN_W_PX as NUMBER_INPUT_MIN_W_PX`), e a 1.ª redacção do detector acusava-a de não
+existir.
+
+### 18.2 — O que o manual DECIDE, e que estava só na cabeça de quem converteu
+
+- **Há DUAS formas de linha e a regra é uma pergunta sobre o VALOR** (*tem fracção para mostrar?*).
+  ⛔ E elas **não são convertíveis** na largura que o artista usa — com o rótulo fora, o mínimo do
+  dock deixaria `72 px` para trilho **e** número juntos, que é o cromo que a caixa única matou em
+  2026-09-02. *Quem uniformizar as duas tem de trazer a medição que desfaz esta.*
+- **A granularidade do empréstimo é a SECÇÃO** — nunca a linha (coluna esfarrapada) nem o painel (a
+  secção de nomes curtos herda o nome mais comprido do painel inteiro).
+
+### 18.3 — ⏳ A dívida que o manual NOMEIA, com o número
+
+O empréstimo alcança **1** das **59** chamadas da porta: o `num_row_unit` da §14. As outras 58
+passam por [`ph2d_editor_core::panel::label_col_w`] (13 painéis) ou pela porta sem `desired`.
+
+Medido em 2026-09-14 (textos das tabelas de i18n, coluna `Sm`; ⚠️ a extracção sobre-conta, porque
+apanha títulos e dicas além dos rótulos de linha — o que vale é a razão):
+
+| tabela | painel `220` | painel `273,3` |
+|---|---|---|
+| `vector` | `33 → 33` | `14 → 5` |
+| `model3d` | `27 → 27` | `3 → 1` |
+| `inspector` | `115 → 115` | `53 → 25` |
+| `sculpt3d` | `39 → 39` | `11 → 4` |
+
+⭐⭐ **A leitura é a que importa e é contra-intuitiva: no MÍNIMO do dock o empréstimo compra ZERO.**
+Ali a metade e o tecto coincidem (`78` e `78`) — não há folga nenhuma para pedir. O ganho vive nas
+larguras intermédias, que é exactamente onde o dono está (`273,3`).
+
+⇒ a onda seguinte é dar às secções dos outros painéis a medição do rótulo mais largo. ⚠️ Ela é
+**mecânica** onde a secção tem tabela e **trabalho** onde as rows são construídas à mão.

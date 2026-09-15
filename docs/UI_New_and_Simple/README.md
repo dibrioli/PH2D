@@ -37,6 +37,7 @@ E três defeitos concretos, com foto:
 | ⛔ **O que o Enio já DECIDIU** (não re-litigar) | [`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md) |
 | ⭐ **A spec — o modelo de áreas** (rascunho 1) | [`spec/01_modelo_de_areas.md`](spec/01_modelo_de_areas.md) |
 | ⭐⭐ **O que falta para COMEÇAR, e em que ordem** | [`spec/02_o_que_falta_para_comecar.md`](spec/02_o_que_falta_para_comecar.md) |
+| ⭐⭐⭐ **A LINHA DE PROPRIEDADE — o «modelo pronto» que o dono pediu** (as duas formas, a coluna, o rótulo, o piso, o empréstimo, e a tabela `lei → porta → gate` **verificada por teste**) | [`spec/03_a_linha_de_propriedade.md`](spec/03_a_linha_de_propriedade.md) |
 | **Quanto de UI nós temos, medido** (tokens, ids, painéis, LOC) | [`medicoes/01_o_estado_medido.md`](medicoes/01_o_estado_medido.md) |
 | **Quanto do canvas o chrome tapa** — a foto 1 em número | [`medicoes/02_a_area_tapada.md`](medicoes/02_a_area_tapada.md) |
 | **Quantas cores precisamos mesmo** | [`medicoes/03_o_censo_de_cor.md`](medicoes/03_o_censo_de_cor.md) |

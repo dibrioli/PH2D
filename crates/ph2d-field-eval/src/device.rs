@@ -67,10 +67,21 @@ impl DeviceField {
     /// falta não é «uma folha a menos», é a peça **com um buraco** onde havia matéria.
     #[must_use]
     pub fn new(doc: &FieldDoc, reg: &Registry) -> Option<Self> {
+        Self::new_com(doc, reg, true)
+    }
+
+    /// ⭐⭐⭐ **A MESMA compilação, com o escalonamento da fita como PARÂMETRO** —
+    /// ver [`crate::tape_schedule`].
+    ///
+    /// ⚠️ **Só a sonda passa `false`.** Ela existe para que o que o escalonador compra se possa
+    /// voltar a medir nos dois sentidos, na mesma corrida e na mesma máquina: *um número que
+    /// ninguém consegue voltar a medir é um palpite com data.*
+    #[must_use]
+    pub fn new_com(doc: &FieldDoc, reg: &Registry, escalonar: bool) -> Option<Self> {
         let (tree, sculpts, vars) = arvore(doc, reg)?;
         let mut ctx = fidget::context::Context::new();
         let raiz = ctx.import(&tree);
-        let tape = crate::point_tape::PointTape::build_with_vars(&ctx, raiz, &vars);
+        let tape = crate::point_tape::PointTape::build_com(&ctx, raiz, &vars, escalonar);
         Some(Self { tape, sculpts })
     }
 
@@ -93,6 +104,19 @@ impl DeviceField {
     #[must_use]
     pub fn tape_wgsl(&self) -> Option<crate::wgsl::TapeWgsl> {
         self.tape.to_wgsl()
+    }
+
+    /// ⚠️ Só para o diagnóstico — ver [`crate::point_tape::PointTape::peak_kinds`].
+    #[cfg(test)]
+    pub(crate) fn peak_kinds(&self) -> Vec<(String, usize)> {
+        self.tape.peak_kinds()
+    }
+
+    /// ⚠️ Só para o gate que prende as duas metades de [`crate::point_tape::Instr::ocupa_registo`]:
+    /// quantos passos da fita ocupam um registo.
+    #[cfg(test)]
+    pub(crate) fn probe_ocupam_registo(&self) -> usize {
+        self.tape.ocupam_registo()
     }
 }
 

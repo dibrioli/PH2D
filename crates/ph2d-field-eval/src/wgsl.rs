@@ -18,14 +18,24 @@
 //! ⇒ elas saem num **vector** (`k[i]`), e a chave do pipeline é o **texto**, que não muda. *Um
 //! arrasto de slider reescreve um buffer e não recompila nada.*
 //!
-//! # ⛔ A rota que a medição REJEITOU
+//! # ⛔ A rota que a medição REJEITOU — e ⚠️ **a PREMISSA dela caiu em 2026-09-15**
 //!
-//! Interpretar a fita no dispositivo daria o catálogo de graça **e** zero compilação. Não cabe: a
-//! pior cena real tem **`464` valores vivos ao mesmo tempo** (`Field::tape_shape`), isto é
-//! `1 856 B` por thread e `116 KB` por workgroup de 64 — acima da memória partilhada de qualquer
-//! GPU. Gerando código, quem aloca registos é o compilador, que é quem sabe.
+//! Interpretar a fita no dispositivo daria o catálogo de graça **e** zero compilação. A recusa
+//! original dizia: *«não cabe — a pior cena real tem **`464`** valores vivos ao mesmo tempo, isto é
+//! `1 856 B` por thread e `116 KB` por workgroup de 64, acima da memória partilhada de qualquer
+//! GPU»*.
 //!
-//! Tabela e mecanismo: `docs/Render3d/05` §33.
+//! ⚠️⚠️ **Esse `464` era uma propriedade da ORDEM da fita, não do grafo.** Com o
+//! [`crate::tape_schedule`] a pior cena real mede **`89`** — `356 B` por thread e **`22 KB`** por
+//! workgroup de 64, que **cabe**. ⇒ §0.0: *quem move o número que tornava algo inalcançável tem de
+//! reconferir a nota.*
+//!
+//! ⛔ **A recusa FICA, e o motivo que sobra é outro:** gerando código, quem aloca registos é o
+//! compilador da placa — um interpretador paga descodificação por amostra e perde a fusão de
+//! operações que o `naga` faz. *O que mudou é que a rota deixou de ser impossível e passou a ser
+//! uma medição por fazer* — e ela não se abre sem um número, que hoje não existe.
+//!
+//! Tabela e mecanismo: `docs/Render3d/05` §33 e §43.
 
 use crate::point_tape::{Instr, PointTape};
 use fidget::context::{BinaryOpcode, UnaryOpcode};
@@ -78,75 +88,95 @@ impl PointTape {
         let mut consts: Vec<f32> = Vec::new();
         let mut s = String::with_capacity(code.len() * 24);
         s.push_str(&format!("fn {name}(p: vec3<f32>) -> f32 {{\n"));
+        // ⭐⭐⭐ **Como cada slot se LÊ.** Uma folha lê-se onde é usada (`p.x`, `k[7]`); tudo o mais
+        // ganha um `let` e lê-se pelo nome dele — ver [`Instr::ocupa_registo`].
+        //
+        // ⛔ **`escultura_k(p)` NÃO é uma folha para este efeito**, embora o seja para a fita:
+        // reescrevê-la em cada uso repetiria uma consulta de oito amostras a uma grade.
+        let mut como: Vec<String> = Vec::with_capacity(code.len());
         for (i, instr) in code.iter().enumerate() {
             let rhs = match instr {
-                Instr::X => "p.x".to_string(),
-                Instr::Y => "p.y".to_string(),
-                Instr::Z => "p.z".to_string(),
+                Instr::X => {
+                    como.push("p.x".to_string());
+                    continue;
+                }
+                Instr::Y => {
+                    como.push("p.y".to_string());
+                    continue;
+                }
+                Instr::Z => {
+                    como.push("p.z".to_string());
+                    continue;
+                }
                 Instr::Const(c) => {
                     // ⚠️ **`f64` → `f32` acontece AQUI, e é a divergência declarada nº 1**: a fita
                     // da CPU é `f64` e o dispositivo é `f32`. O gate da paridade mede-a.
                     #[allow(clippy::cast_possible_truncation)]
                     let v = *c as f32;
                     consts.push(v);
-                    format!("{CONSTS}[{}]", const_base + consts.len() - 1)
+                    como.push(format!("{CONSTS}[{}]", const_base + consts.len() - 1));
+                    continue;
                 }
                 // ⭐⭐⭐ **A ESCULTURA: uma folha que não é uma expressão.** A fita traz o índice, e
                 // quem escreve o corpo de `escultura_k` é o [`crate::device`] — aqui só se chama.
                 Instr::Var(k) => format!("{ESCULTURA}{k}(p)"),
-                Instr::Unary(op, a) => unary(*op, *a),
-                Instr::Binary(op, a, b) => binary(*op, *a, *b),
+                Instr::Unary(op, a) => unary(*op, &como[*a as usize]),
+                Instr::Binary(op, a, b) => binary(*op, &como[*a as usize], &como[*b as usize]),
             };
             s.push_str(&format!("  let v{i} = {rhs};\n"));
+            como.push(format!("v{i}"));
         }
-        s.push_str(&format!("  return v{};\n}}\n", self.root()));
+        s.push_str(&format!("  return {};\n}}\n", como[self.root() as usize]));
         Some(TapeWgsl { source: s, consts })
     }
 }
 
-fn unary(op: UnaryOpcode, a: u32) -> String {
+/// ⚠️ **`a` já vem ESCRITO** (`v12`, `p.x` ou `k[7]`) e é sempre ATÓMICO — uma expressão composta
+/// ganha sempre um `let`, logo nenhuma destas formas precisa de parênteses à volta do operando.
+fn unary(op: UnaryOpcode, a: &str) -> String {
     match op {
-        UnaryOpcode::Neg => format!("-v{a}"),
-        UnaryOpcode::Abs => format!("abs(v{a})"),
-        UnaryOpcode::Recip => format!("1.0 / v{a}"),
-        UnaryOpcode::Sqrt => format!("sqrt(v{a})"),
-        UnaryOpcode::Square => format!("v{a} * v{a}"),
-        UnaryOpcode::Floor => format!("floor(v{a})"),
-        UnaryOpcode::Ceil => format!("ceil(v{a})"),
-        UnaryOpcode::Round => format!("round(v{a})"),
-        UnaryOpcode::Sin => format!("sin(v{a})"),
-        UnaryOpcode::Cos => format!("cos(v{a})"),
-        UnaryOpcode::Tan => format!("tan(v{a})"),
-        UnaryOpcode::Asin => format!("asin(v{a})"),
-        UnaryOpcode::Acos => format!("acos(v{a})"),
-        UnaryOpcode::Atan => format!("atan(v{a})"),
-        UnaryOpcode::Exp => format!("exp(v{a})"),
-        UnaryOpcode::Ln => format!("log(v{a})"),
+        UnaryOpcode::Neg => format!("-{a}"),
+        UnaryOpcode::Abs => format!("abs({a})"),
+        UnaryOpcode::Recip => format!("1.0 / {a}"),
+        UnaryOpcode::Sqrt => format!("sqrt({a})"),
+        UnaryOpcode::Square => format!("{a} * {a}"),
+        UnaryOpcode::Floor => format!("floor({a})"),
+        UnaryOpcode::Ceil => format!("ceil({a})"),
+        UnaryOpcode::Round => format!("round({a})"),
+        UnaryOpcode::Sin => format!("sin({a})"),
+        UnaryOpcode::Cos => format!("cos({a})"),
+        UnaryOpcode::Tan => format!("tan({a})"),
+        UnaryOpcode::Asin => format!("asin({a})"),
+        UnaryOpcode::Acos => format!("acos({a})"),
+        UnaryOpcode::Atan => format!("atan({a})"),
+        UnaryOpcode::Exp => format!("exp({a})"),
+        UnaryOpcode::Ln => format!("log({a})"),
         // ⚠️ `(a == 0).into()` — `1.0` quando é zero, `0.0` caso contrário.
-        UnaryOpcode::Not => format!("select(0.0, 1.0, v{a} == 0.0)"),
+        UnaryOpcode::Not => format!("select(0.0, 1.0, {a} == 0.0)"),
     }
 }
 
-fn binary(op: BinaryOpcode, a: u32, b: u32) -> String {
+/// ⚠️ Ver [`unary`]: os dois operandos vêm escritos e são atómicos.
+fn binary(op: BinaryOpcode, a: &str, b: &str) -> String {
     match op {
-        BinaryOpcode::Add => format!("v{a} + v{b}"),
-        BinaryOpcode::Sub => format!("v{a} - v{b}"),
-        BinaryOpcode::Mul => format!("v{a} * v{b}"),
-        BinaryOpcode::Div => format!("v{a} / v{b}"),
+        BinaryOpcode::Add => format!("{a} + {b}"),
+        BinaryOpcode::Sub => format!("{a} - {b}"),
+        BinaryOpcode::Mul => format!("{a} * {b}"),
+        BinaryOpcode::Div => format!("{a} / {b}"),
         // ⚠️ **`atan2(a, b)`, e a ORDEM é a da `fidget`** (`a.atan2(b)`). Trocá-la espelha a peça
         // em torno da diagonal, e nenhuma régua de silhueta o diria de imediato.
-        BinaryOpcode::Atan => format!("atan2(v{a}, v{b})"),
-        BinaryOpcode::Min => format!("min(v{a}, v{b})"),
-        BinaryOpcode::Max => format!("max(v{a}, v{b})"),
+        BinaryOpcode::Atan => format!("atan2({a}, {b})"),
+        BinaryOpcode::Min => format!("min({a}, {b})"),
+        BinaryOpcode::Max => format!("max({a}, {b})"),
         // ⚠️ `partial_cmp` → `-1 / 0 / 1`, e **NaN** quando não são comparáveis.
         BinaryOpcode::Compare => format!(
-            "select(select(select(0.0, 1.0, v{a} > v{b}), -1.0, v{a} < v{b}), \
-             bitcast<f32>(0x7fc00000u), v{a} != v{a} || v{b} != v{b})"
+            "select(select(select(0.0, 1.0, {a} > {b}), -1.0, {a} < {b}), \
+             bitcast<f32>(0x7fc00000u), {a} != {a} || {b} != {b})"
         ),
         // ⚠️ **`rem_euclid`, não `%`**: o resto da WGSL leva o sinal do dividendo e o da `fidget`
         // é sempre não-negativo. *Uma repetição com o sinal trocado espelha metade da peça.*
-        BinaryOpcode::Mod => format!("(v{a} - v{b} * floor(v{a} / v{b}))"),
-        BinaryOpcode::And => format!("select(v{b}, v{a}, v{a} == 0.0)"),
-        BinaryOpcode::Or => format!("select(v{b}, v{a}, v{a} != 0.0)"),
+        BinaryOpcode::Mod => format!("({a} - {b} * floor({a} / {b}))"),
+        BinaryOpcode::And => format!("select({b}, {a}, {a} == 0.0)"),
+        BinaryOpcode::Or => format!("select({b}, {a}, {a} != 0.0)"),
     }
 }

@@ -302,6 +302,24 @@ impl Field {
         Self::from_tree(&compile(doc))
     }
 
+    /// ⭐⭐⭐ **O MESMO campo, com o escalonamento da fita como PARÂMETRO** —
+    /// ver [`tape_schedule`]. ⚠️ Só a sonda passa `false`; o produto é sempre escalonado.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn new_com(doc: &FieldDoc, escalonar: bool) -> Self {
+        let tree = compile(doc);
+        let mut ctx = fidget::context::Context::new();
+        let root = ctx.import(&tree);
+        Self {
+            tape: point_tape::PointTape::build_com(
+                &ctx,
+                root,
+                &std::collections::BTreeMap::new(),
+                escalonar,
+            ),
+        }
+    }
+
     #[must_use]
     pub fn from_tree(tree: &Tree) -> Self {
         let mut ctx = fidget::context::Context::new();
@@ -377,6 +395,13 @@ pub fn leaf(p: Primitive, xform: Xform) -> Node {
 
 mod affine;
 pub mod point_tape;
+/// ⭐⭐⭐ A ordem da fita — ver [`tape_schedule`].
+///
+/// ⚠️ **O módulo é `pub` e os itens dele não são**, e isso é deliberado: a `schedule` recebe
+/// `Instr`, que é interno, mas a **lei** dele é citada por nome em cinco sítios de duas outras
+/// crates (o tecto do dispositivo, o pintor, as sondas). *Uma lei que outros têm de citar precisa
+/// de endereço* — e sem o módulo público esses `[`…`]` não resolvem.
+pub mod tape_schedule;
 pub mod wgsl;
 use affine::Affine;
 /// ⭐⭐ **O contador de fitas de PONTO** — ver [`point_tape::POINT_TAPES`]. Público porque o

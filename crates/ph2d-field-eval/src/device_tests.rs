@@ -126,10 +126,16 @@ fn a_escultura_entra_na_fita_como_uma_chamada() {
     );
     // ⭐ **O CONTROLO: a união e o filete continuam lá.** Sem ele, uma fita que fosse SÓ a chamada
     // à escultura passaria a primeira asserção — e a peça sairia sem a caixa.
+    //
+    // ⛔⛔ **A 1.ª redacção contava LINHAS do shader, e isso era uma procuração que se moveu
+    // sozinha:** quando o emissor deixou de dar um `let` a cada constante (elas são escritas onde
+    // são usadas), a mesma peça passou de `41` para `38` linhas e este gate reprovou **com a
+    // álgebra inteira lá dentro**. ⇒ o piso é sobre o que a peça CALCULA (`guardados`), que é uma
+    // propriedade da peça, e não sobre como o gerador a escreve.
+    let guardados = campo.tape_shape().expect("a forma").guardados;
     assert!(
-        fita.source.matches("min(").count() >= 1 && fita.source.lines().count() > 40,
-        "a fita encolheu para {} linhas — a álgebra da peça não está lá",
-        fita.source.lines().count()
+        fita.source.matches("min(").count() >= 1 && guardados > 30,
+        "a fita calcula só {guardados} valores — a álgebra da peça não está lá"
     );
 }
 

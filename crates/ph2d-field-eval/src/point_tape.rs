@@ -71,6 +71,22 @@ pub(crate) enum Instr {
     Binary(BinaryOpcode, u32, u32),
 }
 
+impl Instr {
+    /// ⭐⭐⭐ **Este passo ocupa um REGISTO, ou é uma referência que se reescreve onde é usada?**
+    ///
+    /// `p.x` é uma componente de um parâmetro e `k[7]` é uma leitura de buffer: as duas custam a
+    /// mesma instrução no sítio do uso que custariam num `let`, logo **não há valor para guardar**.
+    /// O [`crate::wgsl`] escreve-as **inline** exactamente por isso, e o [`TapeShape::vivos`] e o
+    /// [`crate::tape_schedule`] contam o mesmo — *uma régua que conta o que o código emitido não
+    /// guarda mede outro programa*.
+    ///
+    /// ⚠️ **A escultura FICA de fora da isenção**, e não por simetria: `escultura_k(p)` é uma
+    /// consulta a uma grade com oito amostras, e reescrevê-la em cada uso **duplica o trabalho**.
+    pub(crate) const fn ocupa_registo(self) -> bool {
+        matches!(self, Self::Var(_) | Self::Unary(..) | Self::Binary(..))
+    }
+}
+
 /// O grafo achatado em ordem topológica, com o scratch fora do caminho quente.
 ///
 /// ⚠️ **Um documento cuja raiz é inalcançável ou que pede uma variável que não seja `X`/`Y`/`Z` não
@@ -121,6 +137,21 @@ impl PointTape {
         ctx: &Context,
         root: Node,
         vars: &BTreeMap<fidget::var::Var, u32>,
+    ) -> Self {
+        Self::build_com(ctx, root, vars, true)
+    }
+
+    /// ⭐⭐⭐ **A MESMA fita, com o escalonamento como PARÂMETRO** — ver [`crate::tape_schedule`].
+    ///
+    /// ⚠️ **`escalonar` é um parâmetro da porta e não uma bandeira global**, pelo mesmo motivo que o
+    /// `tecto` do pintor: a sonda que mede o que ele compra tem de o poder atravessar nos dois
+    /// sentidos, na mesma corrida. *Uma bandeira global é uma corrida escrita à mão — e um número
+    /// que ninguém consegue voltar a medir é um palpite com data.*
+    pub(crate) fn build_com(
+        ctx: &Context,
+        root: Node,
+        vars: &BTreeMap<fidget::var::Var, u32>,
+        escalonar: bool,
     ) -> Self {
         POINT_TAPES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let mut slot: BTreeMap<Node, u32> = BTreeMap::new();
@@ -178,6 +209,14 @@ impl PointTape {
         // (é o fundo da pilha, e tudo acima dela é descendente dela) — mas *«acontece de ser a
         // última»* é uma invariante que a próxima pessoa a mexer na travessia parte sem aviso.
         let raiz = slot[&root];
+        // ⭐⭐⭐ **A ordem da DFS acima é a da `fidget`, e ela põe os N segmentos de uma cadeia de
+        // `min` VIVOS ao mesmo tempo** — ver [`crate::tape_schedule`], que a troca por uma ordem
+        // topológica com a pressão mínima. A permutação não toca em valor nenhum.
+        let (code, raiz) = if escalonar {
+            crate::tape_schedule::schedule(&code, raiz)
+        } else {
+            (code, raiz)
+        };
         Self {
             code: Some(code),
             raiz,
@@ -406,6 +445,12 @@ const _: () = {
 pub struct TapeShape {
     pub ops: usize,
     pub vivos: usize,
+    /// ⭐⭐⭐ **Quantos valores o shader de facto GUARDA** — ver `Instr::ocupa_registo`.
+    ///
+    /// ⚠️ **Não é o `ops`**: uma constante está na fita e **não** é executada no dispositivo (ela é
+    /// escrita onde é usada), logo `ops` conta trabalho que ninguém faz. É este o número de linhas
+    /// do WGSL, e é ele que o custo por amostra segue.
+    pub guardados: usize,
 }
 
 impl PointTape {
@@ -435,20 +480,93 @@ impl PointTape {
             }
         }
         ultimo[self.raiz as usize] = code.len();
+        // ⚠️ **Quantos morrem em cada passo, contados uma vez** — a redacção anterior varria
+        // `ultimo[0..=i]` DENTRO do laço, o que é `O(fita²)`: numa fita de `8 124` instruções (um
+        // contorno de 256 arestas) são 33 milhões de comparações para responder a uma contagem.
+        // *A sonda que compara duas ORDENS da mesma fita chama isto uma vez por ordem.*
+        let mut morrem: Vec<u32> = vec![0; code.len()];
+        for (j, u) in ultimo.iter().enumerate() {
+            // ⚠️ **Só quem ocupa um registo entra na conta** — ver [`Instr::ocupa_registo`].
+            if j != self.raiz as usize && code[j].ocupa_registo() {
+                morrem[*u] += 1;
+            }
+        }
         // Uma varredura para a frente: nasce um, morrem os que já ninguém lê.
         let (mut vivos, mut pico) = (0usize, 0usize);
-        for (i, _) in code.iter().enumerate() {
-            vivos += 1;
-            pico = pico.max(vivos);
-            for (j, u) in ultimo.iter().enumerate().take(i + 1) {
-                if *u == i && j != self.raiz as usize {
-                    vivos -= 1;
-                }
+        for (i, m) in morrem.iter().enumerate() {
+            if code[i].ocupa_registo() {
+                vivos += 1;
+                pico = pico.max(vivos);
             }
+            vivos -= *m as usize;
         }
         Some(TapeShape {
             ops: code.len(),
             vivos: pico,
+            guardados: code.iter().filter(|i| i.ocupa_registo()).count(),
         })
+    }
+
+    /// ⚠️ Só para o gate: quantos passos da fita ocupam um registo — ver [`Instr::ocupa_registo`].
+    #[cfg(test)]
+    pub(crate) fn ocupam_registo(&self) -> usize {
+        self.code
+            .as_ref()
+            .map_or(0, |c| c.iter().filter(|i| i.ocupa_registo()).count())
+    }
+
+    /// ⚠️ **Só para o diagnóstico**: que ESPÉCIE de instrução está viva no instante de pico.
+    /// Uma contagem alta não diz de onde vem a pressão, e a cura de cada espécie é diferente.
+    #[cfg(test)]
+    pub(crate) fn peak_kinds(&self) -> Vec<(String, usize)> {
+        let Some(code) = self.code.as_ref() else {
+            return Vec::new();
+        };
+        let mut ultimo = vec![0usize; code.len()];
+        for (i, instr) in code.iter().enumerate() {
+            match instr {
+                Instr::Unary(_, a) => ultimo[*a as usize] = i,
+                Instr::Binary(_, a, b) => {
+                    ultimo[*a as usize] = i;
+                    ultimo[*b as usize] = i;
+                }
+                _ => {}
+            }
+        }
+        ultimo[self.raiz as usize] = code.len();
+        let (mut vivos, mut pico, mut quando) = (0usize, 0usize, 0usize);
+        for i in 0..code.len() {
+            vivos += usize::from(code[i].ocupa_registo());
+            if vivos > pico {
+                pico = vivos;
+                quando = i;
+            }
+            vivos -= ultimo
+                .iter()
+                .enumerate()
+                .filter(|(j, u)| **u == i && *j != self.raiz as usize && code[*j].ocupa_registo())
+                .count();
+        }
+        let mut conta: std::collections::BTreeMap<String, usize> =
+            std::collections::BTreeMap::new();
+        for (j, u) in ultimo.iter().enumerate() {
+            // ⚠️ Só o que ocupa registo — ver [`Instr::ocupa_registo`]. A 1.ª redacção listava
+            // as constantes e dizia «1 208 vivos» sobre uma fita cujo pico REAL era 48.
+            if j <= quando && *u > quando && code[j].ocupa_registo() {
+                let nome = match code[j] {
+                    Instr::X => "X".to_string(),
+                    Instr::Y => "Y".to_string(),
+                    Instr::Z => "Z".to_string(),
+                    Instr::Var(_) => "Var".to_string(),
+                    Instr::Const(_) => "Const".to_string(),
+                    Instr::Unary(op, _) => format!("{op:?}"),
+                    Instr::Binary(op, _, _) => format!("{op:?}"),
+                };
+                *conta.entry(nome).or_default() += 1;
+            }
+        }
+        let mut v: Vec<(String, usize)> = conta.into_iter().collect();
+        v.sort_by_key(|e| std::cmp::Reverse(e.1));
+        v
     }
 }

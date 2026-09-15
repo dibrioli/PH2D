@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**120 arquivos** · **12** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**121 arquivos** · **12** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -124,6 +124,7 @@
 | 108 |   | [108_ciclo_5_simulacao.md](108_ciclo_5_simulacao.md) | — | 108 — CICLO 5: SIMULAÇÃO — deixar a física decidir |
 | 109 |   | [109_o_colisor_na_forma.md](109_o_colisor_na_forma.md) | — | 109 — O COLISOR NA FORMA: as peças colidem SOZINHAS |
 | 110 |   | [110_ciclo_6_valor_e_pulso.md](110_ciclo_6_valor_e_pulso.md) | — | 110 — CICLO 6: VALOR & PULSO, o cérebro |
+| 111 |   | [111_o_motor_de_contacto_com_memoria.md](111_o_motor_de_contacto_com_memoria.md) | — | 111 — O MOTOR DE CONTACTO COM MEMÓRIA (a espec da obra encomendada) |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

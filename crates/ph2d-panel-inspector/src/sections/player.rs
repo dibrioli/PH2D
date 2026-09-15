@@ -24,18 +24,6 @@ use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
 
-/// Uma row: **rótulo · id · a dica de hover**.
-///
-/// ⚠️ A dica entra na MESMA tupla e não numa segunda tabela, e a razão é a que
-/// este módulo já paga em toda lista: uma row nova nasce com dica, ou não nasce.
-/// Uma tabela paralela de tooltips é a que fica incompleta em silêncio — o
-/// controle continua pintado e o artista continua sem saber o que ele faz.
-/// ⚠️ **A FORMA de uma row mudou-se para o ficheiro da TABELA em 2026-09-14** — o corte é por
-/// responsabilidade, forçado pelo tecto de 600 LOC do painel: *o pai responde «como a secção se
-/// desenha» e o filho «o que ela oferece»*, e a forma de uma linha é do segundo. ⛔ Subir o tecto
-/// seria a cura errada (`CLAUDE.md` §2).
-pub(crate) use table::PlayerRow;
-
 /// A tabela dos cards da §14 — irmã por RESPONSABILIDADE (ver o topo dela).
 ///
 /// ⚠️ **Este doc dizia «os nove cards» e a tabela tem doze** desde que `LEDGE`/`GLIDE`/`FALL`

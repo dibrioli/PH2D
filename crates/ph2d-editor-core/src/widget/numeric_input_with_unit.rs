@@ -9,11 +9,10 @@
 
 use super::number_input::{NumberInput, paint_number_input_with_buffer};
 use super::text_input::TextInputState;
-use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::Node;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
 /// Physical unit displayed (and parsed) by [`NumericInputWithUnit`].
@@ -125,33 +124,22 @@ impl NumericInputWithUnit {
         self
     }
 
-    /// Width reserved on the right edge for the unit chip.
-    fn chip_w(&self) -> f32 {
-        // Two suffixes are wide enough to need extra room (`deg`/`rad`);
-        // the rest fit in the base chip. Keep a single canonical width
-        // so adjacent fields align.
-        Spacing::Xl3.px() // LITERAL-PX-OK: unit chip column width (canonical, aligns adjacent fields)
-    }
-
-    /// Rect occupied by the editable number field (host minus the chip).
+    /// **O campo editável — o host INTEIRO.**
+    ///
+    /// ⛔⛔ **Era o host menos uma coluna de `Spacing::Xl3` para o chip da unidade, e o chip SAIU**
+    /// (ordem do dono, 2026-09-14: *«não ficou legal. Melhor junto ao número dentro da caixa»*).
+    /// A unidade é hoje um sufixo pintado **colado ao número**, dentro do mesmo recorte
+    /// ([`NumberInput::suffix`]).
+    ///
+    /// ⭐ **E a geometria melhorou com a aparência:** o rect que os chamadores registam no
+    /// `HitIndex` passa a ser a linha toda, logo *um clique onde a unidade está põe o cursor no
+    /// número* — antes aqueles 36 px não eram de ninguém.
+    ///
+    /// ⚠️ A antiga `unit_rect` **morreu com o chip**: não há segundo rectângulo para devolver. Ela
+    /// carregava uma aparadura contra derrame num host estreito — *um cuidado que deixou de ter
+    /// sujeito, e não uma protecção que se perdeu*.
     pub fn input_rect(&self, host: Rect) -> Rect {
-        let chip = self.chip_w() + Spacing::Xs.px();
-        Rect::new(host.x, host.y, (host.w - chip).max(0.0), host.h)
-    }
-
-    /// Rect occupied by the unit chip.
-    ///
-    /// ⚠️ **A largura do chip é um número FIXO (`Spacing::Xl3`) e o host é VARIÁVEL**, então ela é
-    /// aparada pelo que o host tem. Sem isso, medido, um host mais estreito que 32 px punha a
-    /// borda esquerda do chip **fora** dele — até 32 px de derrame em `host.w = 0` —, e o derrame
-    /// é para a ESQUERDA, exactamente onde o campo numérico é desenhado.
-    ///
-    /// ⚠️ **Isto é LATENTE hoje e o fato fica escrito:** o único consumidor deste widget é o
-    /// showcase, onde o host é generoso. O que a aparadura compra é o próximo chamador nascer com
-    /// geometria correta em vez de descobrir isto num painel apertado.
-    pub fn unit_rect(&self, host: Rect) -> Rect {
-        let chip = self.chip_w().min(host.w.max(0.0));
-        Rect::new(host.x + host.w - chip, host.y, chip, host.h)
+        host
     }
 
     /// Build the a11y node. Signature mirrors the widget template
@@ -170,6 +158,11 @@ impl NumericInputWithUnit {
     }
 }
 
+/// ⭐⭐ **O campo com a unidade colada ao número** — ver [`NumberInput::suffix`].
+///
+/// ⛔ Ele deixou de pintar um chip próprio em 2026-09-14: o corpo inteiro é o campo, e a unidade é
+/// um sufixo dentro dele. *Com o campo afundado, um segundo rectângulo com fundo próprio lê-se
+/// como duas caixas.*
 #[allow(clippy::too_many_arguments)]
 pub fn paint_numeric_input_with_unit(
     widget: &NumericInputWithUnit,
@@ -181,40 +174,15 @@ pub fn paint_numeric_input_with_unit(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let field = widget.input_rect(host);
     paint_number_input_with_buffer(
-        &widget.input,
+        &widget.input.clone().suffix(Some(widget.unit.suffix())),
         buffer,
         caret,
         selection_anchor,
-        field,
+        widget.input_rect(host),
         scene,
         text_system,
         theme,
-    );
-    let chip = widget.unit_rect(host);
-    let disabled = widget.input.state == TextInputState::Disabled;
-    fill_rounded_rect(
-        scene,
-        chip,
-        crate::paint::frame_radius(theme, Radius::Sm.px()),
-        resolve(ColorToken::Bg2, theme),
-    );
-    let font = TypeToken::Sm.px();
-    let color = if disabled {
-        ColorToken::TextDisabled
-    } else {
-        ColorToken::Text2
-    };
-    paint_text(
-        text_system,
-        scene,
-        widget.unit.suffix(),
-        chip.x + Spacing::Xs.px(),
-        chip.y + (chip.h - font) * 0.5,
-        font,
-        chip.w - Spacing::Xs.px() * 2.0,
-        resolve(color, theme),
     );
 }
 
@@ -264,15 +232,26 @@ mod tests {
         assert_eq!(w.input.state, TextInputState::Disabled);
     }
 
+    /// ⛔⛔ **Este gate media a PARTIÇÃO entre o campo e o chip, e o chip SAIU** (ordem do dono,
+    /// 2026-09-14). A propriedade que ele defendia — *«os dois rectângulos não se sobrepõem»* —
+    /// deixou de ter sujeito: há um rectângulo só.
+    ///
+    /// ⚠️ **O que fica no lugar é a propriedade NOVA, e ela é mais forte:** o campo é o host
+    /// inteiro, logo *não há um pedaço da linha que não seja clicável*. Era isso que os 36 px do
+    /// chip eram.
     #[test]
-    fn input_and_chip_partition_host_without_overlap() {
+    fn the_field_is_the_whole_host_so_no_strip_of_the_row_is_dead() {
         let widget =
             NumericInputWithUnit::new(NumberInput::new(NodeId(1), "Rotation", 90.0), Unit::Degrees);
-        let host = Rect::new(0.0, 0.0, 200.0, 28.0);
-        let field = widget.input_rect(host);
-        let chip = widget.unit_rect(host);
-        assert!(field.x + field.w <= chip.x + 0.01);
-        assert!(chip.x + chip.w <= host.x + host.w + 0.01);
+        for host in [
+            Rect::new(0.0, 0.0, 200.0, 28.0),
+            Rect::new(17.0, 5.0, 40.0, 22.0),
+            // ⚠️ O host degenerado que a aparadura do chip antigo existia para sobreviver.
+            Rect::new(0.0, 0.0, 0.0, 0.0),
+        ] {
+            let field = widget.input_rect(host);
+            assert_eq!(field, host, "o campo deixou de ser o host inteiro");
+        }
     }
 
     fn smoke(unit: Unit, state: TextInputState, theme: Theme) {
@@ -311,31 +290,29 @@ mod tests {
         smoke(Unit::Degrees, TextInputState::Disabled, Theme::Sunstone);
     }
 
-    /// **O chip de unidade nunca começa fora do host.**
+    /// ⛔⛔ **Este gate media a CONTENÇÃO do chip, e o chip SAIU** (2026-09-14). Ele defendia um
+    /// slot de largura FIXA dentro de um host VARIÁVEL — medido na altura, um host de `0 px` punha
+    /// a borda esquerda do chip **32 px fora**, sobre o campo numérico.
     ///
-    /// ⚠️ Um slot de largura FIXA (`Spacing::Xl3`) dentro de um host VARIÁVEL: medido antes da
-    /// aparadura, um host de 24 px punha a borda esquerda do chip 8 px fora, e um de 0 px punha-a
-    /// 32 px fora — para a ESQUERDA, sobre o campo numérico. O oráculo é a CONTENÇÃO (as duas
-    /// bordas dentro do host), não a fórmula: ele continua honesto se a largura do chip mudar.
+    /// ⭐ **A cura de aparência dissolveu a classe inteira do defeito**, e é por isso que o
+    /// substituto não é uma contenção mais apertada: *não há um segundo rectângulo para conter*. A
+    /// unidade é texto dentro do recorte do valor, e quem a apara é o mesmo `push_clip` que já
+    /// aparava o número.
+    ///
+    /// ⚠️ O que fica medido é a propriedade que SOBROU: o sufixo nunca é pintado à esquerda do
+    /// número, em host nenhum.
     #[test]
-    fn the_unit_chip_never_starts_outside_the_host() {
-        let w = NumericInputWithUnit::new(
-            NumberInput::new(ph2d_a11y::NodeId(1), "X", 0.0),
-            Unit::Degrees,
-        );
+    fn the_unit_never_lands_left_of_the_number() {
         for hw in [200.0_f32, 40.0, 32.0, 24.0, 10.0, 0.0] {
             let host = Rect::new(100.0, 50.0, hw, 24.0);
-            let u = w.unit_rect(host);
-            assert!(
-                u.x >= host.x - 1e-3,
-                "host.w={hw}: o chip comeca em {} , a esquerda do host ({})",
-                u.x,
-                host.x
+            let w = NumericInputWithUnit::new(
+                NumberInput::new(ph2d_a11y::NodeId(1), "X", 0.0),
+                Unit::Degrees,
             );
+            let field = w.input_rect(host);
             assert!(
-                u.x + u.w <= host.x + host.w + 1e-3,
-                "host.w={hw}: o chip termina em {}, depois do fim do host",
-                u.x + u.w
+                field.x >= host.x - 1e-3 && field.x + field.w <= host.x + host.w + 1e-3,
+                "host.w={hw}: o campo saiu do host"
             );
         }
     }

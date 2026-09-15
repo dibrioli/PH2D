@@ -254,31 +254,21 @@ pub(super) fn num_row_unit(
     hit_index.register(id, row.control);
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
     let input = NumberInput::new(id, "", value).visual((state, store.hover_live(id)));
-    match unit {
-        // ⚠️ **O rect REGISTADO é a linha inteira e o campo editável é mais estreito** — é o
-        // widget que reparte (`input_rect`/`unit_rect`), e o chip da unidade não é clicável. *Um
-        // clique na unidade ainda põe o cursor no número*, que é o que um artista espera.
-        Some(u) => ph2d_editor_core::widget::paint_numeric_input_with_unit(
-            &ph2d_editor_core::widget::NumericInputWithUnit::new(input, u),
-            Some(buffer),
-            caret,
-            anchor,
-            row.control,
-            scene,
-            text_system,
-            theme,
-        ),
-        None => paint_number_input_with_buffer(
-            &input,
-            Some(buffer),
-            caret,
-            anchor,
-            row.control,
-            scene,
-            text_system,
-            theme,
-        ),
-    }
+    // ⭐⭐ **A unidade é um SUFIXO colado ao número, dentro da caixa** — ordem do dono,
+    //    2026-09-14: *«não ficou legal. Melhor junto ao número dentro da caixa»*. A 1.ª entrega
+    //    punha-a num chip com fundo próprio encostado à direita, e com o campo já afundado isso
+    //    lia-se como **duas** caixas.
+    // ⚠️ O campo é a linha inteira nos dois casos, logo o rect registado e o pintado são o MESMO.
+    paint_number_input_with_buffer(
+        &input.suffix(unit.map(ph2d_editor_core::widget::Unit::suffix)),
+        Some(buffer),
+        caret,
+        anchor,
+        row.control,
+        scene,
+        text_system,
+        theme,
+    );
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
     y + ph2d_tokens::row_pitch_px()
 }

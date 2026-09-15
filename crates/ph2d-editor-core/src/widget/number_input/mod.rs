@@ -26,6 +26,21 @@ pub struct NumberInput {
     pub state: TextInputState,
     /// Quanto do hover está presente; ver [`super::TextInput::hover_t`].
     pub hover_t: f32,
+    /// ⭐⭐⭐ **A UNIDADE, colada ao número, DENTRO da caixa.**
+    ///
+    /// ⛔⛔ **Ordem do dono, 2026-09-14:** a 1.ª entrega punha a unidade num CHIP com fundo
+    /// próprio, encostado à borda direita do campo (`NumericInputWithUnit`) — *«não ficou legal.
+    /// Melhor junto ao número dentro da caixa»*. E ele tem razão pela mesma lei que a caixa acabara
+    /// de ganhar: **o campo passou a ser uma superfície afundada**, e um segundo rectângulo com
+    /// outro fundo lá dentro lê-se como *duas* caixas.
+    ///
+    /// ⚠️ **Ela é pintada SÓ EM REPOUSO.** A escrever, o que está no campo é o que o artista
+    /// escreveu — e o parser aceita o sufixo digitado (`"5m/s"`), então mostrá-lo durante a edição
+    /// faria o texto discordar do que vai ser lido.
+    ///
+    /// ⚠️ **Cor de rótulo, não de valor** (`Text2`): ela diz o que o número SIGNIFICA e não é parte
+    /// dele. Um `1.20 m` todo na mesma cor lê-se como um só campo de texto.
+    pub suffix: Option<&'static str>,
 }
 
 impl NumberInput {
@@ -39,7 +54,15 @@ impl NumberInput {
             max: None,
             state: TextInputState::Normal,
             hover_t: crate::motion::SETTLED,
+            suffix: None,
         }
+    }
+
+    /// **A unidade colada ao número** — ver [`NumberInput::suffix`].
+    #[must_use]
+    pub fn suffix(mut self, suffix: Option<&'static str>) -> Self {
+        self.suffix = suffix;
+        self
     }
 
     pub fn step(mut self, step: f64) -> Self {
@@ -296,6 +319,41 @@ pub fn paint_number_input_with_buffer(
         inner_w,
         resolve(label_color, theme),
     );
+    // ⭐⭐ **A UNIDADE, colada ao número** — ver [`NumberInput::suffix`]. Ela entra aqui, DENTRO do
+    //    mesmo recorte do valor, e não num chip à direita: com o campo afundado, um segundo
+    //    rectângulo com fundo próprio lê-se como duas caixas (ordem do dono, 2026-09-14).
+    //
+    // ⚠️ **O `x` dela é medido, não reservado:** ela segue o fim do número, logo um valor curto
+    //    não deixa um buraco e um valor comprido empurra-a para fora do recorte — que é o
+    //    comportamento certo, porque o VALOR é o que não pode desaparecer.
+    if let Some(suffix) = input
+        .suffix
+        .filter(|_| input.state != TextInputState::Focused)
+    {
+        let gap = Spacing::Xs.px();
+        let num_w = text_system.prefix_width(value_text, font_size);
+        let suffix_x = inner_x + num_w + gap;
+        let suffix_w = (inner_x + inner_w - suffix_x).max(0.0);
+        if suffix_w > 0.0 {
+            paint_text(
+                text_system,
+                scene,
+                suffix,
+                suffix_x,
+                inner_y,
+                font_size,
+                suffix_w,
+                resolve(
+                    if input.state == TextInputState::Disabled {
+                        ColorToken::TextDisabled
+                    } else {
+                        ColorToken::Text2
+                    },
+                    theme,
+                ),
+            );
+        }
+    }
 
     if input.state == TextInputState::Focused && buffer.is_some() {
         let caret_clamped = caret.min(value_text.len());
@@ -351,117 +409,4 @@ pub fn format_number(v: f64) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// **An unbounded value reads as the infinity glyph, not a saturated integer or "inf"**
-    /// (Enio, 2026-07-28: the timeline's Dur box shows ∞ for a `0` = infinite composition,
-    /// and the box formats the value it is handed). Finite values are untouched. (Mutation:
-    /// drop the `is_infinite` branch ⇒ `f64::INFINITY as i64` saturates to `i64::MAX`, so the
-    /// box would read "9223372036854775807", RED.)
-    #[test]
-    fn an_infinite_value_reads_as_the_infinity_glyph() {
-        assert_eq!(format_number(f64::INFINITY), "\u{221E}");
-        assert_eq!(format_number(f64::NEG_INFINITY), "\u{221E}");
-        // Finite values are byte-identical to before (the branch is inert off the infinite path).
-        assert_eq!(format_number(4.0), "4");
-        assert_eq!(format_number(2.5), "2.500");
-        assert_eq!(format_number(0.0), "0");
-    }
-
-    #[test]
-    fn defaults_match_spec() {
-        let n = NumberInput::new(NodeId(1), "Width", 10.0);
-        assert_eq!(n.value, 10.0);
-        assert_eq!(n.step, 1.0);
-        assert_eq!(n.min, None);
-        assert_eq!(n.max, None);
-    }
-
-    #[test]
-    fn min_max_clamp_initial_value() {
-        let n = NumberInput::new(NodeId(1), "x", -5.0).min(0.0);
-        assert_eq!(n.value, 0.0);
-        let n = NumberInput::new(NodeId(1), "x", 100.0).max(50.0);
-        assert_eq!(n.value, 50.0);
-    }
-
-    #[test]
-    fn increment_respects_max() {
-        let mut n = NumberInput::new(NodeId(1), "x", 9.5).step(1.0).max(10.0);
-        n.increment();
-        assert_eq!(n.value, 10.0);
-        n.increment();
-        assert_eq!(n.value, 10.0);
-    }
-
-    #[test]
-    fn decrement_respects_min() {
-        let mut n = NumberInput::new(NodeId(1), "x", 0.5).step(1.0).min(0.0);
-        n.decrement();
-        assert_eq!(n.value, 0.0);
-        n.decrement();
-        assert_eq!(n.value, 0.0);
-    }
-
-    #[test]
-    fn a11y_role_is_number_input_with_value() {
-        let n = NumberInput::new(NodeId(1), "x", 7.0).min(0.0).max(10.0);
-        let node = n.build_a11y(0.0, 0.0, 100.0, 32.0);
-        assert_eq!(node.role(), Role::NumberInput);
-        assert_eq!(node.numeric_value(), Some(7.0));
-        assert_eq!(node.min_numeric_value(), Some(0.0));
-        assert_eq!(node.max_numeric_value(), Some(10.0));
-    }
-
-    #[test]
-    fn stepper_rects_split_vertically() {
-        let n = NumberInput::new(NodeId(1), "x", 0.0);
-        let host = Rect::new(0.0, 0.0, 100.0, 32.0);
-        let up = n.up_rect(host);
-        let down = n.down_rect(host);
-        assert!(up.y < down.y);
-        assert!((up.h - down.h).abs() < 0.01);
-    }
-
-    fn smoke(n: NumberInput, theme: Theme) {
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::without_system_fonts();
-        paint_number_input(
-            &n,
-            Rect::new(0.0, 0.0, 120.0, 32.0),
-            &mut scene,
-            &mut text,
-            theme,
-        );
-    }
-
-    #[test]
-    fn paint_smoke_default() {
-        smoke(NumberInput::new(NodeId(1), "x", 42.0), Theme::Forge);
-    }
-
-    #[test]
-    fn paint_smoke_focused() {
-        smoke(
-            NumberInput::new(NodeId(1), "x", 1.5).state(TextInputState::Focused),
-            Theme::Sunstone,
-        );
-    }
-
-    #[test]
-    fn paint_smoke_disabled() {
-        smoke(
-            NumberInput::new(NodeId(1), "x", 0.0).state(TextInputState::Disabled),
-            Theme::Blueprint,
-        );
-    }
-
-    #[test]
-    fn paint_smoke_error() {
-        smoke(
-            NumberInput::new(NodeId(1), "x", 99.0).state(TextInputState::Error),
-            Theme::Workshop,
-        );
-    }
-}
+mod tests;

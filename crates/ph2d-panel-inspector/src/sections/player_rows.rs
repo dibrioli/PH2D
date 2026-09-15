@@ -16,6 +16,11 @@ use ph2d_editor_core::widget::Unit;
 
 /// ⭐⭐ **Uma row da §14: rótulo · id · dica · UNIDADE.**
 ///
+/// ⚠️ A dica entra na MESMA tupla e não numa segunda tabela, e a razão é a que este módulo já paga
+/// em toda lista: uma row nova nasce com dica, ou não nasce. Uma tabela paralela de tooltips é a
+/// que fica incompleta em silêncio — o controlo continua pintado e o artista continua sem saber o
+/// que ele faz. ⭐ **A unidade entrou pela mesma porta, em 2026-09-14, e pela mesma razão.**
+///
 /// ⛔⛔ **A unidade entrou aqui em 2026-09-14, e ela SAIU do rótulo.** Medido com o sistema de
 /// texto real, à largura de omissão do Inspector: **20 de 39** rótulos do painel eram CORTADOS, e
 /// sem a unidade **fica 1**. Um `"Float Height (m)"` mede `92,1 px` numa coluna de `91,2`.

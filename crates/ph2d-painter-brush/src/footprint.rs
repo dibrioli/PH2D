@@ -416,7 +416,11 @@ mod outline_tests {
                 }
             }
         }
-        assert_eq!(casos, 4 * 4 * CURVAS.len() * 64, "o corpus mudou de tamanho");
+        assert_eq!(
+            casos,
+            4 * 4 * CURVAS.len() * 64,
+            "o corpus mudou de tamanho"
+        );
     }
 
     /// O corpus de curvaturas: a plana (o caminho de sempre) e três dobras reais — uma quadrática
@@ -453,7 +457,11 @@ mod outline_tests {
                         com.apply(p),
                         "a pegada plana divergiu da de sempre em {p:?}"
                     );
-                    assert_eq!(nu.outline_at(t), com.outline_at(t), "o contorno divergiu em {t}");
+                    assert_eq!(
+                        nu.outline_at(t),
+                        com.outline_at(t),
+                        "o contorno divergiu em {t}"
+                    );
                 }
             }
         }
@@ -556,10 +564,7 @@ mod extent_tests {
                     // CONTENÇÃO: nenhum ponto com `falloff_t <= 1` pode cair fora da caixa.
                     for i in 0..=120 {
                         for j in 0..=120 {
-                            let p = [
-                                -2.0 + 4.0 * i as f32 / 120.0,
-                                -2.0 + 4.0 * j as f32 / 120.0,
-                            ];
+                            let p = [-2.0 + 4.0 * i as f32 / 120.0, -2.0 + 4.0 * j as f32 / 120.0];
                             if fp.falloff_t(p[0], p[1]) <= 1.0 {
                                 assert!(
                                     p[0].abs() <= ex + 1e-3 && p[1].abs() <= ey + 1e-3,

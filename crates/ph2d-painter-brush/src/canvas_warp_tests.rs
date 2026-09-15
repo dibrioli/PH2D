@@ -342,7 +342,8 @@ fn the_stroke_density_is_the_paths_never_the_arts_fold() {
             [0.0, 1.0],
         );
         assert_eq!(
-            com, sem,
+            com,
+            sem,
             "com a arte comprimida {}× o caminho recebeu {com} dabs contra {sem} — a densidade do \
              traço está a seguir a deformação da arte",
             1.0 / k
@@ -383,8 +384,13 @@ fn a_flattened_nib_steps_finer_along_its_thin_axis() {
 #[ignore = "sonda: o espacamento contra a compressao"]
 fn probe_o_espacamento_contra_a_compressao() {
     use crate::{BrushSpec, Dab, Stroke, StrokePoint};
-    let ponto = |x: f32, y: f32| StrokePoint { pos: [x, y], pressure: 1.0 };
-    println!("\n  compressao   raio emitido   passo   dabs em 400 px de TEXTURA   dabs por 400 px de ECRA");
+    let ponto = |x: f32, y: f32| StrokePoint {
+        pos: [x, y],
+        pressure: 1.0,
+    };
+    println!(
+        "\n  compressao   raio emitido   passo   dabs em 400 px de TEXTURA   dabs por 400 px de ECRA"
+    );
     for k in [1.0_f32, 0.5, 0.25, 0.125] {
         let base = BrushSpec {
             radius_px: 24.0,

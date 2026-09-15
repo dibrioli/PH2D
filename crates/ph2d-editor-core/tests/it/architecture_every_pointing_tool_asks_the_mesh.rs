@@ -68,7 +68,7 @@ fn the_background_remover_resolves_its_pointer_through_one_door() {
     const PORTA: &str = "shells/desktop/src/input_dispatch/uv_sob_o_ponteiro.rs";
     let porta = fonte(PORTA);
     assert!(
-        porta.contains("pub(crate) fn uv_sob_o_ponteiro(")
+        porta.contains("fn uv_sob_o_ponteiro(")
             && porta.contains("ph2d_render::mesh_uv(")
             && porta.contains("ph2d_sprite_screen::sprite_image_to_screen_affine("),
         "{PORTA} deixou de ser a porta única: ela tem de responder pelos DOIS desenhos — a malha \
@@ -129,7 +129,7 @@ fn the_curve_and_line_chrome_is_painted_where_the_art_draws_it() {
     const MAPA: &str = "crates/ph2d-app-painter/src/canvas_map.rs";
     let mapa = fonte(MAPA);
     assert!(
-        mapa.contains("pub fn point(&self, p: [f32; 2]) -> Point")
+        mapa.contains("fn point(&self, p: [f32; 2]) -> Point")
             && mapa.contains("ph2d_render::drawn_mesh_of(present, sim_entity_bits)"),
         "{MAPA} deixou de perguntar à malha posada: sem isso o `CanvasMap` é o afim com outro nome."
     );
@@ -204,8 +204,12 @@ fn the_protection_tint_rides_the_sprite_pass_with_the_art_mesh() {
         "{GPU} voltou a desenhar a tinta da máscara pelo Vello com o afim do quad de repouso: numa \
          arte dobrada ela e a prévia que ela anota aparecem em sítios diferentes."
     );
+    // ⚠️⚠️ **A agulha nomeia a LEI, nunca a VISIBILIDADE.** A 1.ª redacção deste gate pedia
+    // `pub(super) fn tint_instances(` e ficou VERMELHA no mesmo dia, quando a função passou a
+    // privada ao cortar o `dispatch` por responsabilidade — sem uma linha de comportamento mudar.
+    // *É a quinta vez que este repo paga a mesma forma: um `pub` não é uma propriedade do produto.*
     assert!(
-        src.contains("pub(super) fn tint_instances(")
+        src.contains("fn tint_instances(")
             && src.contains("ph2d_render::drawn_instance_of(present, gpu.entity_bits)")
             && src.contains("out.push(inst, malha)"),
         "{GPU} deixou de emitir a tinta como instância do passe de sprites COM a malha da arte."

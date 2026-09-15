@@ -78,11 +78,11 @@ pub use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop, ValueRamp, 
 // A lei de "que métodos de traço este pincel oferece" — o painel a pergunta para PINTAR o dropdown e
 // o tool ao trocar de meio, e re-exportá-la aqui é o que evita uma aresta direta do painel para o
 // motor só por causa dela.
-pub use ph2d_painter_brush::stroke_method::{MethodOffer, offered_methods};
 /// ⭐ A deformação da arte sob o dab — o TIPO DE ENTRADA de
 /// [`tool::PainterTool::set_canvas_warp`], logo parte da superfície desta crate. ⛔ Sem a
 /// re-exportação a shell teria de depender do motor de pincel só para nomear um argumento.
 pub use ph2d_painter_brush::canvas_warp::CanvasWarp;
+pub use ph2d_painter_brush::stroke_method::{MethodOffer, offered_methods};
 pub use ph2d_painter_brush::{
     BrushBlend,
     DAB_FLATTEN_MAX,

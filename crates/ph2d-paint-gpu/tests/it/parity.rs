@@ -140,7 +140,13 @@ fn o_device_avalia_o_mesmo_que_o_apply() {
                 // Exactamente o que o `device_dabs` publica.
                 let linhas = fp.linear_rows();
                 let c = fp.curve_in_input_frame();
-                for v in [[0.3_f32, -0.8], [-1.0, 0.25], [0.0, 0.0], [0.61, 0.61], [0.9, 0.1]] {
+                for v in [
+                    [0.3_f32, -0.8],
+                    [-1.0, 0.25],
+                    [0.0, 0.0],
+                    [0.61, 0.61],
+                    [0.9, 0.1],
+                ] {
                     // …e exactamente o que o `stamp.wgsl` faz com eles.
                     let (x, y) = (v[0], v[1]);
                     let (xx, xy, yy) = (x * x, x * y, y * y);
@@ -161,10 +167,9 @@ fn o_device_avalia_o_mesmo_que_o_apply() {
                     // ⛔ O CONTROLO: sem os monómios, uma pegada CURVA tem de divergir — senão
                     // este gate ficaria verde sobre um device que ignora a curvatura.
                     if !curva.is_flat() && v != [0.0, 0.0] {
-                        let liso = [0usize, 1]
-                            .map(|e| linhas[e][0] * x + linhas[e][1] * y);
-                        pior_liso = pior_liso
-                            .max((liso[0] - real[0]).abs().max((liso[1] - real[1]).abs()));
+                        let liso = [0usize, 1].map(|e| linhas[e][0] * x + linhas[e][1] * y);
+                        pior_liso =
+                            pior_liso.max((liso[0] - real[0]).abs().max((liso[1] - real[1]).abs()));
                     }
                 }
             }

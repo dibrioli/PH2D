@@ -457,7 +457,10 @@ mod tests {
             "sem deformacao o spec do traco e' o do artista, AO BIT"
         );
         // A arte comprimida a metade em `x`.
-        t.set_canvas_warp(ph2d_painter_brush::canvas_warp::CanvasWarp::linear([[0.5, 0.0], [0.0, 1.0]]));
+        t.set_canvas_warp(ph2d_painter_brush::canvas_warp::CanvasWarp::linear([
+            [0.5, 0.0],
+            [0.0, 1.0],
+        ]));
         let dobrado = t.stroke_spec();
         assert!(
             (dobrado.radius_px - autorado.radius_px * 2.0).abs() < 1e-3,

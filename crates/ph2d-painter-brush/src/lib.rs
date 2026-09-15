@@ -156,7 +156,6 @@ pub use falloff_curve::{
     eval_falloff_curve,
 };
 pub use footprint::{DAB_FLATTEN_MAX, FootprintCurve, FootprintDeform};
-pub use spec::MAX_BRUSH_RADIUS_PX;
 pub use height::{DepthSource, DrawTo};
 pub use jitter::shift_colors_like;
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};
@@ -164,6 +163,7 @@ pub use ramp_alpha::RampAlphaMode;
 pub use sampler::MAX_INPUT_SAMPLES;
 pub use smear::smear_dab;
 pub use smear_field::{MapWindow, SmearOut, accumulate_dab_smear};
+pub use spec::MAX_BRUSH_RADIUS_PX;
 pub use spec::{AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec};
 pub use stamp::{StampMask, blit_canvas_cached, blit_stamp, dab_write_bounds, render_stamp_mask};
 pub use stamp_color::{

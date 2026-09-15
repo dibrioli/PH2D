@@ -169,7 +169,10 @@ mod tests {
         t.set_brush_dab_angle(30.0);
         let repouso = t.cursor_dab();
         // Uma arte comprimida ao meio num eixo — o regime da foto.
-        t.set_canvas_warp(ph2d_painter_brush::canvas_warp::CanvasWarp::linear([[0.5, 0.0], [0.0, 1.0]]));
+        t.set_canvas_warp(ph2d_painter_brush::canvas_warp::CanvasWarp::linear([
+            [0.5, 0.0],
+            [0.0, 1.0],
+        ]));
         let dobrada = t.cursor_dab();
         assert!(
             (dobrada.0 - repouso.0).abs() < 1e-6,
@@ -291,10 +294,8 @@ mod tests {
             for k in [1.0_f32, 0.5, 0.25, 0.125, 0.0625] {
                 let mut t = PainterTool::default();
                 t.set_brush_size_px(raio);
-                let warp = ph2d_painter_brush::canvas_warp::CanvasWarp::linear([
-                    [k, 0.0],
-                    [0.0, 1.0],
-                ]);
+                let warp =
+                    ph2d_painter_brush::canvas_warp::CanvasWarp::linear([[k, 0.0], [0.0, 1.0]]);
                 t.set_canvas_warp(warp);
                 let pedido =
                     raio * ph2d_painter_brush::canvas_warp::warped_dab(warp, 0.0, 0).radius_scale;
@@ -350,14 +351,22 @@ mod tests {
         // O traço NASCE sobre arte em repouso…
         t.set_canvas_warp(ph2d_painter_brush::canvas_warp::CanvasWarp::rest());
         t.on_canvas_pointer(ponto([100.0, 256.0], PointerPhase::Down));
-        let no_inicio = t.paint.stroke.as_ref().map(ph2d_painter_brush::Stroke::radius_px);
+        let no_inicio = t
+            .paint
+            .stroke
+            .as_ref()
+            .map(ph2d_painter_brush::Stroke::radius_px);
         // …e entra numa zona comprimida a meio do caminho.
         t.set_canvas_warp(ph2d_painter_brush::canvas_warp::CanvasWarp::linear([
             [0.25, 0.0],
             [0.0, 1.0],
         ]));
         t.on_canvas_pointer(ponto([300.0, 256.0], PointerPhase::Move));
-        let a_meio = t.paint.stroke.as_ref().map(ph2d_painter_brush::Stroke::radius_px);
+        let a_meio = t
+            .paint
+            .stroke
+            .as_ref()
+            .map(ph2d_painter_brush::Stroke::radius_px);
         let (ini, meio) = (
             no_inicio.expect("o traço abriu"),
             a_meio.expect("o traço continua aberto"),
@@ -406,5 +415,4 @@ mod tests {
             }
         }
     }
-
 }

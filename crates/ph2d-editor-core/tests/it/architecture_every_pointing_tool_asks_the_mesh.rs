@@ -188,6 +188,40 @@ fn the_curve_and_line_chrome_is_painted_where_the_art_draws_it() {
          UM ponto sobre um quad plano (onde o mapa é afim e partir não move um pixel)."
     );
 
+    // ⭐⭐ **OS CONTORNOS: os selos de operação e o gizmo de selecção.** Os dois desenham a FIGURA
+    // de uma forma já pousada, e o contorno do selo é o MESMO que o clique alcança
+    // (`stroke_outline`) — pelo quad de repouso, *o que se vê* e *o que se clica* ficam em sítios
+    // diferentes sobre arte dobrada.
+    //
+    // ⚠️ **A CAIXA tem de fechar pela porta também** (`polyline(.., true)`): quem a desenha chama
+    // `close_path`, que liga o último canto ao primeiro **a direito** — sem isso três arestas seguem
+    // a arte e a quarta corta por cima dela, e as três primeiras convencem o olho.
+    for (rel, fechadas) in [
+        (
+            "crates/ph2d-app-painter/src/painter_bridge_op_badges.rs",
+            "mapa.polyline(&b.outline, b.closed)",
+        ),
+        (
+            "crates/ph2d-app-painter/src/painter_bridge_selection_gizmos.rs",
+            "mapa.polyline(&g.box_corners, true)",
+        ),
+    ] {
+        let src = fonte(rel);
+        assert!(
+            src.contains("CanvasMap::new("),
+            "{rel} desenha a figura pelo afim do QUAD DE REPOUSO."
+        );
+        assert!(
+            src.contains(fechadas),
+            "{rel} deixou de pedir a POLILINHA à porta: mapear canto a canto e ligar a direito \
+             desenha exactamente as rectas que esta wave veio tirar."
+        );
+        assert!(
+            !src.contains("affine * Point::new"),
+            "{rel} voltou a mapear um ponto autorado pelo afim do quad."
+        );
+    }
+
     // ⚠️ E o GIZMO de transformação é o mesmo controlo: se ele ficar no afim, a caixa afasta-se das
     // alças que ela enquadra (e das alças que o dedo agarra).
     const GIZMO: &str = "crates/ph2d-app-painter/src/painter_bridge_gizmo.rs";

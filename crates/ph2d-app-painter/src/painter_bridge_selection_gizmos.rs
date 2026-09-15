@@ -11,10 +11,12 @@ use ph2d_render::{Camera2d, Sprite};
 use ph2d_tool_painter::PainterTool;
 use ph2d_vector::{Point, VectorScene};
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn draw_selection_gizmos(
     painter: &PainterTool,
     hero: &HeroScreen,
     sim: &SimWorld,
+    present: &ph2d_ecs::World,
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
@@ -54,7 +56,12 @@ pub(super) fn draw_selection_gizmos(
         camera,
         window_size,
     );
-    let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+    // ⭐⭐⭐ **O gizmo é pintado onde a arte DESENHA** (item 4 do dono) — e a metade que o torna
+    // obrigatório é a do DEDO: estas alças são agarradas pelo `deliver_canvas_pointer`, que resolve
+    // pela malha desde 2026-09-14. *As duas direcções viajam juntas ou nenhuma viaja.*
+    let mapa =
+        crate::canvas_map::CanvasMap::new(present, bits, iw, ih, affine, camera, window_size);
+    let map = |p: [f32; 2]| mapa.point(p);
     // Image-px → screen per-pixel scale (for the rotate-ring hover distances).
     let scale = {
         let c = affine.as_coeffs();
@@ -71,13 +78,13 @@ pub(super) fn draw_selection_gizmos(
         );
         // Thin shape outline (ellipse / polygon / freehand spine) — always drawn.
         if g.outline.len() >= 2 {
-            let pts: Vec<Point> = g.outline.iter().map(|&p| map(p)).collect();
+            let pts = mapa.polyline(&g.outline, false);
             crate::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
         }
         // Oriented transform box (closed) — drawn for EVERY editable shape, including a converted curve
         // (Enio 2026-07-04: convert/simplify curves also carry the global move/rotate/scale gizmo). Drawn
         // FIRST so a converted curve's control points sit ON TOP of the box.
-        let box_pts: Vec<Point> = g.box_corners.iter().map(|&p| map(p)).collect();
+        let box_pts = mapa.polyline(&g.box_corners, true);
         crate::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);
         // 8 scale squares — each reads as a CIRCLE when the cursor is in its rotate ring (band just outside).
         let center_sp = map(g.center);

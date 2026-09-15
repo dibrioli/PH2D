@@ -17,10 +17,12 @@ use ph2d_render::Camera2d;
 use ph2d_tool_painter::PainterTool;
 use ph2d_vector::VectorScene;
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn draw_op_badges(
     painter: &PainterTool,
     hero: &HeroScreen,
     sim: &SimWorld,
+    present: &ph2d_ecs::World,
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
@@ -55,7 +57,7 @@ pub(super) fn draw_op_badges(
         camera,
         window_size,
     );
-    use ph2d_vector::{Affine, Point};
+    use ph2d_vector::Affine;
     // Parked shapes have no live gizmo, so they get their OUTLINE (so they read as still-selectable)
     // + the SAME doubled centre square + op glyph the active gizmo draws (`center_glyph_handle`).
     // Mesmo acento do gizmo ativo: toda figura na tela lê como igualmente presente, e o que distingue a
@@ -68,18 +70,33 @@ pub(super) fn draw_op_badges(
     // Edit-in-tile (Enio 2026-07-11): draw every parked shape's badge in each visible wrapped tile too, so a
     // multi-shape set is selectable/re-editable from any tile — matching the active editor's tiled overlay.
     for (ox, oy) in crate::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih) {
-        let affine = base_affine * Affine::translate((ox, oy));
-        let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+        // ⭐⭐⭐ **O CONTORNO DE UMA FORMA ESTACIONADA SEGUE A ARTE DOBRADA** (item 4 do dono) — e
+        // ele é o mesmo contorno que o CLIQUE alcança (`stroke_outline`), logo desenhá-lo pelo quad
+        // de repouso poria *«o que se vê»* e *«o que se clica»* em sítios diferentes.
+        let mapa = crate::canvas_map::CanvasMap::new(
+            present,
+            bits,
+            iw,
+            ih,
+            base_affine * Affine::translate((ox, oy)),
+            camera,
+            window_size,
+        );
         for b in &badges {
             if b.outline.len() >= 2 {
-                let pts: Vec<Point> = b.outline.iter().map(|&p| map(p)).collect();
+                let pts = mapa.polyline(&b.outline, b.closed);
                 if b.closed {
                     crate::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
                 } else {
                     crate::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
                 }
             }
-            crate::painter_bridge_gizmo::center_glyph_handle(scene, map(b.center), &pal, b.glyph);
+            crate::painter_bridge_gizmo::center_glyph_handle(
+                scene,
+                mapa.point(b.center),
+                &pal,
+                b.glyph,
+            );
         }
     }
 }

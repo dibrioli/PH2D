@@ -335,3 +335,68 @@ fn measure_the_price_of_a_subdivided_grid() {
         );
     }
 }
+
+/// ⭐⭐⭐ **UMA CAIXA FECHADA FECHA PELA ARTE, E NÃO POR UMA RECTA** — o troço que volta ao primeiro
+/// canto atravessa a dobra como os outros três.
+///
+/// ⛔ **O defeito que ele apanha convence o olho:** quem desenha a caixa chama `close_path`, que liga
+/// o último ponto ao primeiro **a direito**. Com três arestas a seguir a arte e uma a cortar por
+/// cima dela, a figura lê-se *«quase certa»* — que é o pior sítio para um defeito estar.
+///
+/// ⚠️ E o primeiro ponto **não** é repetido no fim: um vértice duplicado num `close_path` é uma
+/// aresta de comprimento zero, e um traço com junta redonda desenha um ponto ali.
+#[test]
+fn a_closed_box_closes_along_the_art_and_does_not_double_its_first_corner() {
+    let mut sim = SimWorld::new();
+    let mut present = PresentWorld::new();
+    let (alvo, bits) = sprite_de_2m(&mut present, &mut sim);
+    arte_dobrada(&mut present, alvo);
+    let camera = Camera2d::new([0.0, 0.0], 8.0);
+    let window = ph2d_host::WindowSize::new(800, 800);
+    let mapa = CanvasMap::new(
+        present.world(),
+        bits,
+        100,
+        100,
+        Affine::scale(1.0),
+        &camera,
+        window,
+    );
+    // ⚠️ **Os cantos estão na ordem que põe a aresta de FECHO a atravessar a dobra.** A 1.ª redacção
+    // deste gate fechava por uma aresta de `u` constante — o eixo que nesta fixtura NÃO dobra — e
+    // leu `46` contra `46`: *uma régua que fecha pelo eixo recto não mede o fecho.* (É o mesmo
+    // engano que a sonda do relógio, ao lado, pagou no mesmo dia.)
+    let cantos = [[0.0f32, 20.0], [0.0, 80.0], [100.0, 80.0], [100.0, 20.0]];
+    let aberta = mapa.polyline(&cantos, false);
+    let fechada = mapa.polyline(&cantos, true);
+    // ⚠️⚠️ **Os troços INTERIORES também se partem**, e esta asserção nasceu de uma MUTAÇÃO
+    // SOBREVIVENTE: trocar o `segment` por um `point` dentro do laço da polilinha deixava a suíte
+    // verde, porque o resto deste gate só media a aresta de FECHO — *uma régua que mede a última
+    // aresta não afirma nada sobre as outras três*.
+    assert!(
+        aberta.len() > cantos.len(),
+        "a polilinha aberta não partiu troço nenhum: {} pontos para {} cantos",
+        aberta.len(),
+        cantos.len()
+    );
+    assert!(
+        fechada.len() > aberta.len(),
+        "a caixa fechada não ganhou o troço de volta: {} contra {}",
+        fechada.len(),
+        aberta.len()
+    );
+    let primeiro = mapa.point(cantos[0]);
+    assert_ne!(
+        *fechada.last().expect("tem pontos"),
+        primeiro,
+        "o primeiro canto foi repetido no fim — o `close_path` faria uma aresta de comprimento zero"
+    );
+    // E o troço de volta atravessa a arte: o meio dele está longe da recta entre os dois cantos.
+    let ultimo = mapa.point(cantos[3]);
+    let meio_recto = Point::new((ultimo.x + primeiro.x) / 2.0, (ultimo.y + primeiro.y) / 2.0);
+    let meio_da_arte = mapa.point([50.0, 20.0]);
+    assert!(
+        (meio_da_arte.x - meio_recto.x).hypot(meio_da_arte.y - meio_recto.y) > 10.0,
+        "a fixtura não dobra na aresta de fecho — este gate mediria uma recta contra outra recta"
+    );
+}

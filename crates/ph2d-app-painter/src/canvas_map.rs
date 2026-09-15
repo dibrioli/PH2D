@@ -162,6 +162,38 @@ impl<'a> CanvasMap<'a> {
         pior
     }
 
+    /// ⭐⭐ **UMA POLILINHA autorada, no ECRÃ** — todos os pontos já mapeados, com cada troço
+    /// subdividido pelo [`Self::segment`].
+    ///
+    /// `fechada` acrescenta o troço que volta ao primeiro ponto — ⚠️ **e ele é obrigatório para uma
+    /// caixa**: quem a desenha chama `close_path`, que liga o último ao primeiro **a direito**, e
+    /// sobre uma dobra essa aresta sairia recta enquanto as outras três seguem a arte. *Meia lei
+    /// aplicada é pior que nenhuma, porque as três primeiras convencem o olho.*
+    ///
+    /// ⚠️ Num quad de repouso ela devolve exactamente os mesmos pontos que um `map` ponto a ponto
+    /// sempre devolveu, sem um a mais — ver o [`Self::segment`].
+    #[must_use]
+    pub fn polyline(&self, pts: &[[f32; 2]], fechada: bool) -> Vec<Point> {
+        let Some((&primeiro, resto)) = pts.split_first() else {
+            return Vec::new();
+        };
+        let mut out = vec![self.point(primeiro)];
+        let mut anterior = primeiro;
+        for &p in resto {
+            self.segment(anterior, p, |q| out.push(q));
+            anterior = p;
+        }
+        if fechada && resto.len() >= 2 {
+            // ⛔ O troço de fecho é emitido **menos o último ponto**: ele é o primeiro, e repeti-lo
+            // punha um vértice duplicado no `close_path`.
+            let mut volta = Vec::new();
+            self.segment(anterior, primeiro, |q| volta.push(q));
+            volta.pop();
+            out.extend(volta);
+        }
+        out
+    }
+
     /// O afim do quad de repouso — para quem precisa de uma ESCALA (o raio de uma alça em px de
     /// imagem) ou de desenhar uma IMAGEM, que não é um ponto e não atravessa esta porta.
     #[must_use]

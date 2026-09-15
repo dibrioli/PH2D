@@ -110,3 +110,34 @@ pub fn quantize(raw: Vec2, mode: DirectionMode) -> Vec2 {
         libm::sinf(encaixado) * comprimento,
     ]
 }
+
+/// **O valor de FIO** deste modo — o byte que o ficheiro guarda.
+///
+/// ⚠️⚠️ **Os números são EXPLÍCITOS e não a ordem da declaração**: o postcard é
+/// posicional, e um dia em que alguém reordene as variantes por gosto trocaria o
+/// modo de toda cena já gravada, **em silêncio**. Quem acrescenta um modo dá-lhe
+/// o número seguinte e nunca mexe nos que já existem.
+#[must_use]
+pub const fn to_wire(m: DirectionMode) -> u8 {
+    match m {
+        DirectionMode::Free => 0,
+        DirectionMode::EightWay => 1,
+        DirectionMode::FourWay => 2,
+        DirectionMode::AxisX => 3,
+        DirectionMode::AxisY => 4,
+    }
+}
+
+/// O inverso. ⚠️ Um byte desconhecido cai no **default**, nunca em pânico: um
+/// ficheiro de uma versão mais nova tem de abrir com o modo mais parecido, e o
+/// degrau de schema é quem recusa em voz alta quando é caso disso.
+#[must_use]
+pub const fn from_wire(v: u8) -> DirectionMode {
+    match v {
+        0 => DirectionMode::Free,
+        2 => DirectionMode::FourWay,
+        3 => DirectionMode::AxisX,
+        4 => DirectionMode::AxisY,
+        _ => DirectionMode::EightWay,
+    }
+}

@@ -31,7 +31,7 @@
 use ph2d_ecs::{Entity, World};
 use ph2d_platformer::Support;
 
-use crate::components::{BodyKind, PlatformPlayer, PlayerMode};
+use crate::components::{BodyKind, PlatformPlayer, PlayerMode, TopDownPlayer};
 
 /// As três respostas, e elas se excluem.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -242,6 +242,26 @@ pub(super) fn pose_owner(world: &World, entity: Entity, kind: BodyKind) -> PoseO
         if mode.drives_itself() {
             return PoseOwner::Player(mode);
         }
+    }
+    // ⭐⭐⭐ **E o mover de VISTA DE CIMA** (TOP-20 #13).
+    //
+    // ⚠️⚠️ **Ao contrário do irmão acima, o `PlayerMode` NÃO decide se ele se
+    // conduz**, e a diferença é do domínio: um mover de vista de cima é um
+    // controlador **por construção** — não há mola, não há chão, não há cápsula
+    // flutuante, logo `PlayerMode::Dynamic` (o default daquele enum) não
+    // descreve nada que exista aqui. Exigi-lo faria o componente nascer inerte, e
+    // o sintoma seria *«pus o componente e o objecto não anda»* com todos os
+    // números certos — que é a forma mais cara deste defeito.
+    //
+    // ⇒ o modo aqui só responde à OUTRA pergunta do enum: **se o mundo o ouve**
+    // ([`PoseOwner::transmits`]). Só o `Pure` diz que não.
+    if kind == BodyKind::Kinematic && world.get::<TopDownPlayer>(entity).is_some() {
+        let mode = if matches!(world.get::<PlayerMode>(entity), Some(PlayerMode::Pure)) {
+            PlayerMode::Pure
+        } else {
+            PlayerMode::Kinematic
+        };
+        return PoseOwner::Player(mode);
     }
     PoseOwner::Scene
 }

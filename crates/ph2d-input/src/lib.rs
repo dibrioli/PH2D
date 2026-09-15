@@ -38,7 +38,8 @@ pub use state::InputState;
 
 pub use action::{ActionId, Binding, InputAction};
 pub use map::{
-    InputMap, PLAYER_DASH, PLAYER_DOWN, PLAYER_GRAB, PLAYER_JUMP, PLAYER_MOVE_LEFT,
+    InputMap, PLAYER_DASH, PLAYER_DOWN, PLAYER_GRAB, PLAYER_JUMP, PLAYER_MOVE_DOWN,
+    PLAYER_MOVE_LEFT, PLAYER_MOVE_UP,
     PLAYER_MOVE_RIGHT,
 };
 pub use resolve::{ActionState, Input, Sample};

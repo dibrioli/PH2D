@@ -48,6 +48,10 @@ pub fn tape(ticks: u64) -> InputTape {
             k,
             PlayerInput {
                 drive: if k < 90 { 1.0 } else { 0.0 },
+                // ⚠️ **A fita deste harness não empurra para cima** — ela é do
+                // controlador de PLATAFORMA, que não lê este eixo. Pô-lo a zero é
+                // o que mantém o hash igual ao de antes do TOP-20 #13.
+                drive_y: 0.0,
                 jump: (40..48).contains(&k),
                 // ⚠️ **A fita não segura o baixo, e é deliberado** (W12): a
                 // descida através de uma plataforma jump-through é uma

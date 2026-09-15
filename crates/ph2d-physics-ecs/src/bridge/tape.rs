@@ -49,6 +49,7 @@ use std::collections::BTreeMap;
 
 use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
+use crate::components::TopDownPlayer;
 use ph2d_platformer::{PlayerInput, PlayerState};
 
 use crate::components::PlatformPlayer;
@@ -233,6 +234,7 @@ impl InputTape {
                 .frames
                 .iter()
                 .map(|&(drive, bits)| PlayerInput {
+                    drive_y: 0.0,
                     drive,
                     jump: bits & BIT_JUMP != 0,
                     down: bits & BIT_DOWN != 0,
@@ -252,7 +254,14 @@ impl PhysicsBridge {
     /// momentos diferentes é como o seed devolveria um mundo com a memória de
     /// outro tick.
     pub(super) fn record_player_states(&mut self, tick: u64) {
-        self.state_ring.insert(tick, self.player_state.clone());
+        // ⚠️ **Os DOIS assuntos, e é o tipo que o obriga** — ver [`ControllerMemory`].
+        self.state_ring.insert(
+            tick,
+            ControllerMemory {
+                platform: self.player_state.clone(),
+                topdown: self.topdown_state.clone(),
+            },
+        );
         // A janela do ring é limitada; a nossa segue a dele pela borda de baixo
         // para não crescer sem teto num run longo.
         while self.state_ring.len() > STATE_RING_CAP {
@@ -268,8 +277,9 @@ impl PhysicsBridge {
     /// ⚠️ `None` (o âncora não está na janela) deixa o estado como está, e é o
     /// certo: quem chama nesse caso é um `rebuild_from_rest`, que já o limpou.
     pub(super) fn seed_player_states(&mut self, tick: u64) {
-        if let Some(states) = self.state_ring.get(&tick) {
-            self.player_state = states.clone();
+        if let Some(m) = self.state_ring.get(&tick) {
+            self.player_state = m.platform.clone();
+            self.topdown_state = m.topdown.clone();
         }
     }
 
@@ -288,8 +298,29 @@ impl PhysicsBridge {
 /// arredondamento do orçamento do ring que ele acompanha.
 const STATE_RING_CAP: usize = 256;
 
-/// O tipo da tabela — um mapa por tique âncora, cada um com um estado por player.
-pub(super) type PlayerStateRing = BTreeMap<u64, BTreeMap<Entity, PlayerState>>;
+/// **A MEMÓRIA DOS CONTROLADORES num tique âncora — todos os assuntos, num tipo só.**
+///
+/// ⚠️⚠️ **É um STRUCT e não um mapa, e essa é a cura de um defeito MUDO que o doc
+/// do `PhysicsBridge::player_state` já nomeava por escrito:** *«um segundo mapa
+/// teria de ser acrescentado àquele ring à mão — e esquecê-lo é um scrub que
+/// devolve o mundo de um tique e a memória do controlador de outro, sem erro e
+/// sem aviso»*. Quando o TOP-20 #13 trouxe o segundo controlador, o aviso deixou
+/// de ser hipotético.
+///
+/// ⇒ com um struct de campos nomeados, o terceiro controlador **não compila** sem
+/// passar pelo [`PhysicsBridge::record_player_states`] e pelo
+/// [`PhysicsBridge::seed_player_states`]. *Esquecer passa a ser erro de
+/// compilação, que é a única forma de uma regra desta família não envelhecer.*
+#[derive(Clone, Default)]
+pub(super) struct ControllerMemory {
+    /// O controlador de PLATAFORMA (a cápsula flutuante).
+    pub(super) platform: BTreeMap<Entity, PlayerState>,
+    /// O controlador de VISTA DE CIMA (TOP-20 #13).
+    pub(super) topdown: BTreeMap<Entity, ph2d_topdown::TopDownState>,
+}
+
+/// O tipo da tabela — uma memória por tique âncora.
+pub(super) type PlayerStateRing = BTreeMap<u64, ControllerMemory>;
 
 impl PhysicsBridge {
     /// Pergunta à fita o que o dedo fez NESTE tick e instala a resposta.
@@ -321,7 +352,19 @@ impl PhysicsBridge {
             .bodies
             .keys()
             .copied()
-            .filter(|&e| world.get::<PlatformPlayer>(e).is_some())
+            .filter(|&e| {
+                world.get::<PlatformPlayer>(e).is_some()
+                    // ⭐ **E os movers de vista de cima que LEEM o teclado.**
+                    // ⚠️ `default_controls = false` deixa a entidade de fora
+                    // desta lista, e é isso que a torna um MOTOR PURO: quem a
+                    // dirige passa a ser quem chamar o
+                    // [`PhysicsBridge::set_player_input`] — o canal que já
+                    // existe e já tem chamadores. ⛔ Um segundo canal só para
+                    // isto seria uma porta sem consumidor.
+                    || world
+                        .get::<TopDownPlayer>(e)
+                        .is_some_and(|c| c.default_controls)
+            })
             .collect();
         for e in players {
             self.player_input.insert(e, input);

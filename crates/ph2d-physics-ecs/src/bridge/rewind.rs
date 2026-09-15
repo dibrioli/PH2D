@@ -164,6 +164,7 @@ impl PhysicsBridge {
         // argumento que o `drive_players` já escreve sobre o push incondicional
         // do estado.
         self.player_state.clear();
+        self.topdown_state.clear();
         // ⚠️ **As POLIAS saem do mundo velho ANTES de ele morrer** (W-Weston), e isso
         // é uma correção de bug, não arrumação. A tabela de polias vive DENTRO do
         // `PhysicsWorld`, então `PhysicsWorld::new()` a apagava — e o laço de replay

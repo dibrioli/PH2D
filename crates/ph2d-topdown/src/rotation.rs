@@ -106,3 +106,25 @@ fn arco_curto(mut a: f32) -> f32 {
     }
     a
 }
+
+/// **O valor de FIO** — ver o irmão em [`crate::direction::to_wire`].
+#[must_use]
+pub const fn to_wire(m: RotationMode) -> u8 {
+    match m {
+        RotationMode::None => 0,
+        RotationMode::ToMovement => 1,
+        RotationMode::Snap90 => 2,
+        RotationMode::Snap45 => 3,
+    }
+}
+
+/// O inverso; desconhecido cai no default.
+#[must_use]
+pub const fn from_wire(v: u8) -> RotationMode {
+    match v {
+        1 => RotationMode::ToMovement,
+        2 => RotationMode::Snap90,
+        3 => RotationMode::Snap45,
+        _ => RotationMode::None,
+    }
+}

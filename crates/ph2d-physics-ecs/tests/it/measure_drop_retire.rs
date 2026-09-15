@@ -157,6 +157,7 @@ fn y_of(sim: &SimWorld) -> f32 {
 
 fn down_jump() -> PlayerInput {
     PlayerInput {
+        drive_y: 0.0,
         drive: 0.0,
         jump: true,
         down: true,
@@ -167,6 +168,7 @@ fn down_jump() -> PlayerInput {
 
 fn jump_only() -> PlayerInput {
     PlayerInput {
+        drive_y: 0.0,
         drive: 0.0,
         jump: true,
         down: false,
@@ -601,6 +603,7 @@ fn measure_whether_a_live_drop_really_dissolves_the_whole_scene() {
         r.bridge.set_player_input(
             r.player,
             PlayerInput {
+                drive_y: 0.0,
                 drive: 1.0,
                 jump: false,
                 down: false,
@@ -637,6 +640,7 @@ fn measure_whether_a_live_drop_really_dissolves_the_whole_scene() {
     r.bridge.set_player_input(
         r.player,
         PlayerInput {
+            drive_y: 0.0,
             drive: 1.0,
             jump: false,
             down: false,

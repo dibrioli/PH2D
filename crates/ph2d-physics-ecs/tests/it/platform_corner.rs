@@ -109,6 +109,7 @@ fn jump(r: &mut Rig) -> (f32, f32, f32) {
     r.bridge.set_player_input(
         r.player,
         PlayerInput {
+            drive_y: 0.0,
             drive: 0.0,
             jump: true,
             down: false,

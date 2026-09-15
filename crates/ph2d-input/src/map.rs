@@ -20,6 +20,17 @@ pub const PLAYER_DOWN: &str = "down";
 pub const PLAYER_DASH: &str = "dash";
 /// Ver [`PLAYER_MOVE_LEFT`].
 pub const PLAYER_GRAB: &str = "grab";
+/// **Andar para CIMA** (TOP-20 #13) — ver [`PLAYER_MOVE_LEFT`].
+///
+/// ⚠️⚠️ **Ela existe porque `jump` NÃO é «para cima»:** num mover de vista de cima
+/// não há salto, e um componente cujo «norte» se chamasse *Jump* no painel de
+/// Input Map seria um controlo que mente sobre o que faz. O doc desta lista já
+/// autorizava: *«Trocá-los parte todo projecto salvo; acrescentar é livre.»*
+pub const PLAYER_MOVE_UP: &str = "move_up";
+/// **Andar para BAIXO** — o par de [`PLAYER_MOVE_UP`]. ⚠️ Distinto de
+/// [`PLAYER_DOWN`], que no mover de plataforma significa *agachar / descer por uma
+/// plataforma*.
+pub const PLAYER_MOVE_DOWN: &str = "move_down";
 
 /// **O INPUT MAP**: as acções que este projecto conhece.
 ///
@@ -69,6 +80,17 @@ impl InputMap {
             (PLAYER_DOWN, [DOWN, 0x53].as_slice()),
             (PLAYER_DASH, [0x51].as_slice()),
             (PLAYER_GRAB, [0x52].as_slice()),
+            // ⭐ **As SETAS, e não o WASD** (TOP-20 #13): o `W` desta shell abre o
+            // painel de mundo, e um default que briga com um atalho que já existe
+            // é uma armadilha que só o artista descobre. O WASD fica a dois
+            // cliques no painel de Input Map — decisão do dono, com o número ao lado.
+            //
+            // ⚠️ **Elas PARTILHAM tecla com `jump` e `down`, e isso é medido e
+            // deliberado:** as duas leis nunca correm na mesma cena (um objecto tem
+            // um mover, não dois — o Inspector acusa o conflito), e uma acção que
+            // ninguém lê é silenciosa.
+            (PLAYER_MOVE_UP, [UP, 0x57].as_slice()),
+            (PLAYER_MOVE_DOWN, [DOWN, 0x53].as_slice()),
         ] {
             let id = m.create(name);
             let a = m.get_mut(id).expect("acabou de nascer");

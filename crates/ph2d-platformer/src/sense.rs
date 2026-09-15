@@ -239,6 +239,19 @@ impl GroundSample {
 pub struct PlayerInput {
     /// O eixo de caminhada em `[-1, 1]`. Positivo é a direita.
     pub drive: f32,
+    /// **O eixo VERTICAL da intenção**, em `[-1, 1]`. Positivo é para cima.
+    ///
+    /// ⚠️⚠️ **Esta crate NÃO o lê, e isso é a inércia da wave que o trouxe** (o
+    /// TOP-20 #13): quem o lê é o mover de vista de cima (`ph2d-topdown`), que
+    /// precisa de uma intenção 2D. Ele vive AQUI, e não num segundo canal, porque
+    /// é o mesmo FACTO — *«para onde o jogador está a empurrar»* — e é esta
+    /// struct que a [`crate::PlayerInput`] grava na fita determinística. Um
+    /// segundo canal ficaria **de fora do replay**, e um jogo de vista de cima
+    /// deixaria de ser reproduzível sem que nada o dissesse.
+    ///
+    /// ⛔ Um gate desta crate prova que a lei de plataforma é **byte-idêntica**
+    /// com ele em qualquer valor.
+    pub drive_y: f32,
     /// O botão de pulo está PRESSIONADO agora.
     ///
     /// ⚠️ O estado, não a borda. A borda é derivada pela lei

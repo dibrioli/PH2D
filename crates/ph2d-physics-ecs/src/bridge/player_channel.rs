@@ -131,6 +131,7 @@ impl PhysicsBridge {
         // nunca pulou — o personagem cairia através do mundo sem nada na tela a
         // dizer por quê.
         self.player_state.clear();
+        self.topdown_state.clear();
         // ⚠️ E a DESCIDA (W12), pela razão mais forte das três: ela guarda um
         // `ColliderHandle`, e handles são reciclados junto com os corpos — uma
         // descida sobrevivente apontaria para uma forma que hoje é outra coisa,

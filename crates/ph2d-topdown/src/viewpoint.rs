@@ -122,3 +122,26 @@ pub fn reproject(intent: Vec2, view: Viewpoint, custom_deg: f32) -> Vec2 {
     };
     [unit[0] * comprimento, unit[1] * comprimento]
 }
+
+/// **O valor de FIO** — ver o irmão em [`crate::direction::to_wire`] para o
+/// motivo de os números serem explícitos.
+#[must_use]
+pub const fn to_wire(v: Viewpoint) -> u8 {
+    match v {
+        Viewpoint::TopDown => 0,
+        Viewpoint::Isometric2to1 => 1,
+        Viewpoint::Isometric30 => 2,
+        Viewpoint::Custom => 3,
+    }
+}
+
+/// O inverso; desconhecido cai no default.
+#[must_use]
+pub const fn from_wire(v: u8) -> Viewpoint {
+    match v {
+        1 => Viewpoint::Isometric2to1,
+        2 => Viewpoint::Isometric30,
+        3 => Viewpoint::Custom,
+        _ => Viewpoint::TopDown,
+    }
+}

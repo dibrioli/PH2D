@@ -62,6 +62,7 @@ pub fn pose(sim: &SimWorld) -> (f32, f32) {
 /// Empurrar contra a parede.
 pub fn into_wall() -> PlayerInput {
     PlayerInput {
+        drive_y: 0.0,
         drive: 1.0,
         jump: false,
         down: false,

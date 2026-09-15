@@ -32,8 +32,8 @@
 //!   modo de falha disso é **metade do controlo morta em silêncio**.
 
 use ph2d_input::{
-    ActionState, Input, PLAYER_DASH, PLAYER_DOWN, PLAYER_GRAB, PLAYER_JUMP, PLAYER_MOVE_LEFT,
-    PLAYER_MOVE_RIGHT,
+    ActionState, Input, PLAYER_DASH, PLAYER_DOWN, PLAYER_GRAB, PLAYER_JUMP, PLAYER_MOVE_DOWN,
+    PLAYER_MOVE_LEFT, PLAYER_MOVE_RIGHT, PLAYER_MOVE_UP,
 };
 
 /// **Resolve o mapa e devolve o dedo do jogador deste quadro.**
@@ -71,6 +71,10 @@ pub fn resolve_player_input(
     let input = Input::new(&hero.input_map, actions);
     ph2d_physics_ecs::PlayerInput {
         drive: input.axis(PLAYER_MOVE_LEFT, PLAYER_MOVE_RIGHT),
+        // ⭐ **O eixo VERTICAL** (TOP-20 #13) — o mover de vista de cima precisa de
+        // uma intenção 2D, e ela viaja na MESMA struct que a fita determinística
+        // grava. ⚠️ O controlador de plataforma não o lê, e há gate a prová-lo.
+        drive_y: input.axis(PLAYER_MOVE_DOWN, PLAYER_MOVE_UP),
         jump: input.pressed(PLAYER_JUMP),
         down: input.pressed(PLAYER_DOWN),
         dash: input.pressed(PLAYER_DASH),

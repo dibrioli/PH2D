@@ -554,4 +554,27 @@
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — é a **décima quarta** vez: os componentes viajam em
 /// `ComponentBlob`s, que para ela são opacos.
-pub(crate) const PROJECT_SCHEMA: u32 = 130;
+/// # 130 -> 131 — o MOVER DE VISTA DE CIMA (TOP-20 #13, `line/components`)
+///
+/// UM componente registado novo: `ph2d::physics::TopDownPlayer`. Mesmo mecanismo dos degraus
+/// `123`, `125`, `126`, `127` e `130` — um `ComponentBlob` de `type_id` desconhecido **recusa o
+/// load inteiro**, e o degrau transforma isso em *«este ficheiro é de outra versão»* em vez de
+/// *«type id desconhecido»* a meio da travessia.
+///
+/// ⚠️⚠️ **E o doc do `PlatformPlayer` diz o CONTRÁRIO disto, por escrito** (*«Componente NOVO ⇒
+/// blob-key própria ⇒ `PROJECT_SCHEMA` NÃO bumpa»*, o precedente do `PhysicsJoint`/W3). Ele é
+/// anterior aos cinco degraus acima, que estabeleceram a regra de hoje. *Uma nota que descreve a
+/// casa de outra época lê-se exactamente como uma que descreve a de agora* — foi corrigida no
+/// mesmo commit que escreveu este degrau.
+///
+/// ⛔⛔ **O `TopDownState` NÃO é componente, e a ausência é a decisão:** ele é a velocidade que as
+/// rampas acumulam, muda por tique, e um campo assim dentro de um componente registado faria o
+/// `canonicalize` do undo ver **cada quadro como um passo** (a lei do módulo de física, medida na
+/// auditoria da §11 do Sprite). Ele vive na ponte, dentro do `ControllerMemory` que entra no anel
+/// de checkpoints — é isso que o faz sobreviver a um scrub.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v130 não
+/// tem o componente, logo lê-se inteiro por este binário. O degrau existe para o sentido contrário.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima quinta** vez.
+pub(crate) const PROJECT_SCHEMA: u32 = 131;

@@ -377,6 +377,7 @@ fn on_static_ground_the_reaction_changes_nothing_at_all() {
             bridge.set_player_input(
                 player,
                 PlayerInput {
+                    drive_y: 0.0,
                     drive: 1.0,
                     jump: t > 60,
                     down: false,

@@ -590,6 +590,7 @@ fn measure_how_fast_the_player_climbs() {
             bridge.set_player_input(
                 player,
                 ph2d_platformer::PlayerInput {
+                    drive_y: 0.0,
                     drive: 1.0,
                     jump: false,
                     down: false,

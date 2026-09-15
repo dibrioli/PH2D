@@ -182,6 +182,11 @@ impl PhysicsBridge {
                     // TICK, como tudo aqui — uma perna que agisse por FRAME
                     // seguraria o personagem mais alto em máquina rápida.
                     self.drive_players(sim);
+                    // E os movers de VISTA DE CIMA (TOP-20 #13), no MESMO tique e
+                    // logo a seguir: os dois leem a mesma entrada e os dois
+                    // escrevem a pose antes do `step`, que é o que faz o solver
+                    // tratar os corpos como movendo-se.
+                    self.drive_topdown(sim);
                     self.world.step();
                     self.steps_taken += 1;
                     // Diff this tick's touching union against the standing set — the

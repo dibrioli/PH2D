@@ -81,6 +81,7 @@ fn jump_and_watch(
     bridge.set_player_input(
         player,
         PlayerInput {
+            drive_y: 0.0,
             drive: 0.0,
             jump: true,
             down: false,
@@ -157,6 +158,7 @@ fn measure_what_the_probe_costs() {
         bridge.set_player_input(
             player,
             PlayerInput {
+                drive_y: 0.0,
                 drive: 0.0,
                 jump: true,
                 down: false,

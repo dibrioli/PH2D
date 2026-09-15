@@ -159,6 +159,7 @@ fn press(r: &mut Rig, input: PlayerInput, hold: u64, then: u64, from: u64) -> u6
 
 fn down_jump() -> PlayerInput {
     PlayerInput {
+        drive_y: 0.0,
         drive: 0.0,
         jump: true,
         down: true,
@@ -169,6 +170,7 @@ fn down_jump() -> PlayerInput {
 
 fn jump_only() -> PlayerInput {
     PlayerInput {
+        drive_y: 0.0,
         drive: 0.0,
         jump: true,
         down: false,

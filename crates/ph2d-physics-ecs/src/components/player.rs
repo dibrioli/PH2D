@@ -41,10 +41,19 @@ pub use lift::PlatformLift;
 /// dois). A row do Inspector será oferecida para Dynamic apenas, e a ponte
 /// recusa em silêncio o resto.
 ///
-/// ⚠️ **Componente NOVO ⇒ blob-key própria ⇒ `PROJECT_SCHEMA` NÃO bumpa** (o
-/// precedente do `PhysicsJoint`/W3): um arquivo antigo simplesmente não o tem, e
-/// o load o deixa ausente. O que bumpa é apendar campo a um componente que já
-/// existe, porque o postcard é posicional.
+/// ⛔⛔ **ESTA NOTA ESTAVA ERRADA e foi corrigida em 2026-09-15** (TOP-20 #13). Ela dizia:
+/// *«Componente NOVO ⇒ blob-key própria ⇒ `PROJECT_SCHEMA` NÃO bumpa»*, com o precedente do
+/// `PhysicsJoint`/W3 ao lado. **Hoje um componente registado novo SOBE o schema**, e a razão está
+/// escrita na escada (degraus `123`, `125`, `126`, `127`, `130` e `131`): um `ComponentBlob` de
+/// `type_id` desconhecido **recusa o load inteiro**, e o degrau é o que transforma isso em *«este
+/// ficheiro é de outra versão»* em vez de *«type id desconhecido»* a meio da travessia.
+///
+/// ⚠️ A nota descrevia a casa de outra época, e *uma nota assim lê-se exactamente como uma que
+/// descreve a de agora* — quem a seguisse landava um componente novo sem degrau, e o sintoma
+/// seria um projecto do dono a abrir com uma mensagem que não diz nada.
+///
+/// O que continua verdade: apendar um campo a um componente que já existe **também** bumpa,
+/// porque o postcard é posicional.
 #[derive(Component, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PlatformPlayer {
     /// A que altura o personagem paira, medida do CENTRO do corpo para baixo.

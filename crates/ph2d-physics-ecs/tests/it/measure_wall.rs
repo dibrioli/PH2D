@@ -100,6 +100,7 @@ fn measure_the_wall_jump_lockout() {
         r.bridge.set_player_input(
             r.player,
             PlayerInput {
+                drive_y: 0.0,
                 drive: 1.0,
                 jump: true,
                 down: false,

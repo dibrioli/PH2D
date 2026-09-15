@@ -70,6 +70,7 @@ pub use components::{
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
     MassOverride, MaterialCombine, NoWallCling, OneWayPlatform, PlatformLift, PlatformPlayer,
+    TopDownPlayer,
     PlayerMode, PlayerSignals, PulleyWheel, RigidBody, RopeStops, SignalOnHit, SignalOnLeave,
     SignalTagFilter, WalkSurface, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry,
     rope_joint_of,
@@ -183,6 +184,9 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register_default::<RopeStops>("ph2d::physics::RopeStops");
     reg.register_default::<JointWorldAnchor>("ph2d::physics::JointWorldAnchor");
     reg.register_default::<PlatformPlayer>("ph2d::physics::PlatformPlayer");
+    // ⭐ TOP-20 #13. ⚠️ Componente registado novo ⇒ o `PROJECT_SCHEMA` sobe e os
+    // DOIS espelhos (`ph2d-render`, `ph2d-script`) sobem com ele — conte o DELTA.
+    reg.register_default::<TopDownPlayer>("ph2d::physics::TopDownPlayer");
     reg.register_default::<PlayerMode>("ph2d::physics::PlayerMode");
     reg.register_default::<WalkSurface>("ph2d::physics::WalkSurface");
     reg.register_default::<NoWallCling>("ph2d::physics::NoWallCling");
@@ -201,8 +205,11 @@ mod tests {
         register_physics_components(&mut reg);
         // ⚠️ **O DELTA é +1 contra o `main` (32)**, nunca um literal escolhido: este número soma
         // entre linhas, e o git não sabe o que ele significa quando duas escrevem o mesmo valor.
-        assert_eq!(reg.len(), 33);
+        // ⭐ **+1 outra vez (TOP-20 #13, o `TopDownPlayer`)** ⇒ `33 -> 34`, e o delta contra o
+        // `main` desta linha passa a ser **+2**. Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 34);
         assert!(reg.get_by_name("ph2d::physics::SignalTagFilter").is_some());
+        assert!(reg.get_by_name("ph2d::physics::TopDownPlayer").is_some());
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());

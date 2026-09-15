@@ -111,6 +111,7 @@ fn ride_and_jump(r: &mut Rig) -> f32 {
     r.bridge.set_player_input(
         r.player,
         PlayerInput {
+            drive_y: 0.0,
             drive: 0.0,
             jump: true,
             down: false,
@@ -224,6 +225,7 @@ fn measure_how_long_a_default_jump_lasts() {
     r.bridge.set_player_input(
         r.player,
         PlayerInput {
+            drive_y: 0.0,
             drive: 0.0,
             jump: true,
             down: false,

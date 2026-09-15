@@ -163,3 +163,21 @@ pub fn world_direction(raw: Vec2, law: &TopDownLaw) -> Vec2 {
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+/// **A MEMÓRIA de um mover de vista de cima entre tiques** — a velocidade que as
+/// rampas acumulam.
+///
+/// ⚠️ **Ela não é componente, e não é opcional que não seja:** um campo que muda
+/// por tique dentro de um componente registado faria o undo desta casa ver **cada
+/// quadro como um passo** (a lei do módulo de física, e a auditoria da §11 do
+/// Sprite mediu-a). Ela vive na ponte, dentro do `ControllerMemory` que entra no
+/// anel de checkpoints — é isso que a faz sobreviver a um scrub.
+///
+/// ⚠️ **Só a velocidade.** O ângulo com que o corpo olha é escrito no `Transform`,
+/// que é onde a pose de um corpo cinemático já vive — guardá-lo aqui também seria
+/// a segunda resposta à mesma pergunta.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct TopDownState {
+    /// A velocidade de agora, m/s.
+    pub velocity: Vec2,
+}

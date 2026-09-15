@@ -166,6 +166,7 @@ fn down_and_jump_drops_through_a_one_way_platform() {
     press(
         &mut dropping,
         PlayerInput {
+            drive_y: 0.0,
             drive: 0.0,
             jump: true,
             down: true,
@@ -184,6 +185,7 @@ fn down_and_jump_drops_through_a_one_way_platform() {
     press(
         &mut jumping,
         PlayerInput {
+            drive_y: 0.0,
             drive: 0.0,
             jump: true,
             down: false,
@@ -221,6 +223,7 @@ fn holding_down_alone_does_not_drop() {
     press(
         &mut r,
         PlayerInput {
+            drive_y: 0.0,
             drive: 0.0,
             jump: false,
             down: true,
@@ -254,6 +257,7 @@ fn the_same_gesture_on_solid_ground_is_still_a_jump() {
     r.bridge.set_player_input(
         r.player,
         PlayerInput {
+            drive_y: 0.0,
             drive: 0.0,
             jump: true,
             down: true,
@@ -293,6 +297,7 @@ fn the_platform_is_solid_again_once_he_is_through() {
     let t = press(
         &mut r,
         PlayerInput {
+            drive_y: 0.0,
             drive: 0.0,
             jump: true,
             down: true,
@@ -313,6 +318,7 @@ fn the_platform_is_solid_again_once_he_is_through() {
     press(
         &mut r,
         PlayerInput {
+            drive_y: 0.0,
             drive: 0.0,
             jump: true,
             down: false,

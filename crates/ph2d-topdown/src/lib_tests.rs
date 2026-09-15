@@ -281,3 +281,47 @@ fn so_quem_roda_le_a_velocidade_de_viragem() {
         assert!(m.reads_speed(), "{}", m.label());
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// O FIO
+
+#[test]
+fn o_fio_de_cada_enum_e_uma_ida_e_volta_exacta() {
+    for m in DirectionMode::ALL {
+        assert_eq!(direction::from_wire(direction::to_wire(m)), m, "{}", m.label());
+    }
+    for v in Viewpoint::ALL {
+        assert_eq!(viewpoint::from_wire(viewpoint::to_wire(v)), v, "{}", v.label());
+    }
+    for r in RotationMode::ALL {
+        assert_eq!(rotation::from_wire(rotation::to_wire(r)), r, "{}", r.label());
+    }
+}
+
+#[test]
+fn os_numeros_do_fio_sao_LITERAIS_e_nao_a_ordem_da_declaracao() {
+    // ⛔ Este gate existe para reprovar no dia em que alguém reordenar as
+    // variantes: o postcard é posicional, e uma reordenação trocaria o modo de
+    // toda cena já gravada, em silêncio. Os números aqui são escritos à mão de
+    // propósito — é a tabela do FORMATO, não um espelho do código.
+    assert_eq!(direction::to_wire(DirectionMode::Free), 0);
+    assert_eq!(direction::to_wire(DirectionMode::EightWay), 1);
+    assert_eq!(direction::to_wire(DirectionMode::FourWay), 2);
+    assert_eq!(direction::to_wire(DirectionMode::AxisX), 3);
+    assert_eq!(direction::to_wire(DirectionMode::AxisY), 4);
+    assert_eq!(viewpoint::to_wire(Viewpoint::TopDown), 0);
+    assert_eq!(viewpoint::to_wire(Viewpoint::Isometric2to1), 1);
+    assert_eq!(viewpoint::to_wire(Viewpoint::Isometric30), 2);
+    assert_eq!(viewpoint::to_wire(Viewpoint::Custom), 3);
+    assert_eq!(rotation::to_wire(RotationMode::None), 0);
+    assert_eq!(rotation::to_wire(RotationMode::ToMovement), 1);
+    assert_eq!(rotation::to_wire(RotationMode::Snap90), 2);
+    assert_eq!(rotation::to_wire(RotationMode::Snap45), 3);
+}
+
+#[test]
+fn um_byte_desconhecido_cai_no_default_e_nao_em_panico() {
+    assert_eq!(direction::from_wire(200), DirectionMode::default());
+    assert_eq!(viewpoint::from_wire(200), Viewpoint::default());
+    assert_eq!(rotation::from_wire(200), RotationMode::default());
+}

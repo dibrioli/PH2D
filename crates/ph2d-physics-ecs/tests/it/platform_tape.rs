@@ -21,6 +21,10 @@ fn scripted(ticks: u64) -> InputTape {
             t,
             PlayerInput {
                 drive: if t < 90 { 1.0 } else { 0.0 },
+                // ⚠️ **A fita deste harness não empurra para cima** — ela é do
+                // controlador de PLATAFORMA, que não lê este eixo. Pô-lo a zero é
+                // o que mantém o hash igual ao de antes do TOP-20 #13.
+                drive_y: 0.0,
                 jump: (40..48).contains(&t),
                 down: false,
                 dash: false,
@@ -106,6 +110,7 @@ fn without_a_tape_the_world_is_byte_identical() {
             bridge.set_player_input(
                 player,
                 PlayerInput {
+                    drive_y: 0.0,
                     drive: 1.0,
                     jump: false,
                     down: false,
@@ -147,6 +152,7 @@ fn the_tape_overrides_what_the_caller_is_holding() {
     bridge.set_player_input(
         player,
         PlayerInput {
+            drive_y: 0.0,
             drive: 1.0,
             jump: false,
             down: false,
@@ -160,6 +166,7 @@ fn the_tape_overrides_what_the_caller_is_holding() {
         tape.record(
             t,
             PlayerInput {
+                drive_y: 0.0,
                 drive: -1.0,
                 jump: false,
                 down: false,
@@ -186,6 +193,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
     tape.record(
         10,
         PlayerInput {
+            drive_y: 0.0,
             drive: 0.5,
             jump: true,
             down: false,
@@ -201,6 +209,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
     assert_eq!(
         tape.input(10),
         Some(PlayerInput {
+            drive_y: 0.0,
             drive: 0.5,
             jump: true,
             down: false,
@@ -215,6 +224,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
     tape.record(
         13,
         PlayerInput {
+            drive_y: 0.0,
             drive: -1.0,
             jump: false,
             down: false,
@@ -233,6 +243,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
     tape.record(
         10,
         PlayerInput {
+            drive_y: 0.0,
             drive: -0.25,
             jump: false,
             down: false,

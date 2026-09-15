@@ -124,6 +124,7 @@ fn a_wall_jump_goes_up_and_away() {
     r.bridge.set_player_input(
         r.player,
         PlayerInput {
+            drive_y: 0.0,
             drive: 1.0,
             jump: true,
             down: false,
@@ -171,6 +172,7 @@ fn without_the_capability_the_same_press_does_nothing() {
     let mut t = run(
         &mut r,
         PlayerInput {
+            drive_y: 0.0,
             drive: 1.0,
             jump: true,
             down: false,

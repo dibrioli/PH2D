@@ -253,6 +253,14 @@ pub const DESCS: &[D] = &[
     i("ph2d::physics::SignalOnHit", "Signal on Hit"),
     i("ph2d::physics::SignalOnLeave", "Signal on Leave"),
     p("ph2d::physics::SignalTagFilter", "Signal Tag Filter"),
+    // ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13). ⚠️ `RigidBody` é requerido pela
+    // mesma razão do irmão `PlatformPlayer`: sem corpo não há o que mover, e a paleta
+    // anexa os dois de uma vez em vez de entregar um componente inerte.
+    pr(
+        "ph2d::physics::TopDownPlayer",
+        "Top-Down Player",
+        &["ph2d::physics::RigidBody"],
+    ),
     i("ph2d::physics::WalkSurface", "Walk Surface"),
     i("ph2d::physics::WestonAxle", "Weston Axle"),
 ];

@@ -509,7 +509,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ao lado NÃO se mexem, e é a décima quarta vez. ⛔ O `Spawned` — o quarto tipo da wave —
         // **não é registado**, e é por isso que o degrau vale `+1`: ele marca o que uma corrida
         // pôs na cena, e o `world_to_snapshot` poda essas subárvores.
-        (130, 13, 22),
+        // ⚠️ **`131` desde 2026-09-15** — o MOVER DE VISTA DE CIMA (TOP-20 #13): UM componente
+        // registado novo (`ph2d::physics::TopDownPlayer`). Os dois números ao lado NÃO se mexem, e
+        // é a décima quinta vez. ⛔ O `TopDownState` — a memória da velocidade — **não é
+        // componente**: ela vive na ponte, dentro do anel de checkpoints, porque um campo que muda
+        // por tique num componente registado faria o undo ver cada quadro como um passo.
+        (131, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

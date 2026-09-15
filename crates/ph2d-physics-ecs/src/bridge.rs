@@ -55,6 +55,8 @@ mod settings;
 pub mod signals;
 mod space;
 mod surfaces;
+/// ⭐⭐⭐ **A ponte do mover de VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dela.
+mod topdown;
 pub mod triggers;
 pub mod views;
 
@@ -448,6 +450,14 @@ pub struct PhysicsBridge {
     /// tick faria o `canonicalize` do undo ver cada frame como um passo. A W7 o
     /// torna DERIVADO da fita, e aí ele deixa de ser guardado.
     player_state: BTreeMap<Entity, ph2d_platformer::PlayerState>,
+    /// **A memória do controlador de VISTA DE CIMA** (TOP-20 #13) — a velocidade
+    /// que as rampas acumulam.
+    ///
+    /// ⚠️ Aqui e não no componente pela lei do módulo (a mesma do irmão acima): um
+    /// campo que muda por tique faria o undo ver cada quadro como um passo. E ele
+    /// entra no ring pelo [`tape::ControllerMemory`], que é um TIPO exactamente
+    /// para que esta linha não pudesse ser esquecida.
+    topdown_state: BTreeMap<Entity, ph2d_topdown::TopDownState>,
     /// **A plataforma que cada player está ATRAVESSANDO agora** (W12).
     ///
     /// ⚠️ **Uma forma, não um relógio, e não "todas as one-way":** a descida
@@ -583,6 +593,7 @@ impl PhysicsBridge {
             player_launch: BTreeMap::new(),
             state_ring: BTreeMap::new(),
             player_state: BTreeMap::new(),
+            topdown_state: BTreeMap::new(),
             player_drop: BTreeMap::new(),
         }
     }

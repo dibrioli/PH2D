@@ -16,6 +16,7 @@ fn a_recorded_run() -> ph2d_physics_ecs::InputTape {
         t.record(
             k,
             ph2d_physics_ecs::PlayerInput {
+                drive_y: 0.0,
                 drive: (k as f32 - 45.0) / 45.0,
                 jump: k % 2 == 0,
                 down: k % 3 == 0,

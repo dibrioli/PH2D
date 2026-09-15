@@ -18,6 +18,7 @@ fn scripted() -> InputTape {
         t.record(
             k,
             PlayerInput {
+                drive_y: 0.0,
                 // Um eixo que varre negativo, zero e positivo.
                 drive: (k as f32 - 50.0) / 50.0,
                 // Os três botões em períodos DIFERENTES, senão dois bits trocados
@@ -100,6 +101,7 @@ fn an_unknown_button_bit_is_ignored_rather_than_misread() {
     assert_eq!(
         got,
         PlayerInput {
+            drive_y: 0.0,
             drive: 0.5,
             jump: true,
             down: false,

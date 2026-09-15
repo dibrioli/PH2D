@@ -37,64 +37,6 @@ const FIELD_H: f32 = 24.0; // LITERAL-PX-OK: altura de campo do Inspector
 /// um token de espaçamento não teria significado num campo em metros.
 const SIZE_STEP: f64 = 0.1; // LITERAL-PX-OK: passo de scrub em metros
 
-/// Uma linha «rótulo em cima, dois NumberInput lado a lado». Devolve o `y` seguinte.
-#[allow(clippy::too_many_arguments)]
-fn pair_row(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    label: &str,
-    ids_pair: [NodeId; 2],
-    step: f64,
-    // ⭐ **A UNIDADE do par** (2026-09-15, ordem do dono: *«todos na caixa»*) — a mesma nos dois
-    //    campos, porque um par `L`/`T` mede a mesma grandeza nos dois.
-    unit: Option<ph2d_editor_core::widget::Unit>,
-) -> f32 {
-    let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    paint_text(
-        text_system,
-        scene,
-        label,
-        x,
-        y + (label_h - label_font) * 0.5,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let row_y = y + label_h;
-    let gap = Spacing::Xs.px();
-    // ⚠️ **Um ponto para a LINHA**, não um por campo: o par é uma propriedade com duas componentes.
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, FIELD_H);
-    let cw = ((control_w - gap) * 0.5).max(0.0);
-    for (i, id) in ids_pair.into_iter().enumerate() {
-        let rect = Rect::new(x + (cw + gap) * i as f32, row_y, cw, FIELD_H);
-        hit_index.register(id, rect);
-        let (state, value, buffer, caret, anchor) = read_number_input(store, id);
-        let input = NumberInput::new(id, "", value)
-            .step(step)
-            .visual((state, store.hover_live(id)))
-            .suffix(unit.map(ph2d_editor_core::widget::Unit::suffix));
-        paint_number_input_with_buffer(
-            &input,
-            Some(buffer),
-            caret,
-            anchor,
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    row_y + FIELD_H + Spacing::Sm.px()
-}
-
 /// As duas linhas que só existem em `Tiled`: o Tile Mode global e, dentro de `Adaptive`, o
 /// limiar de ladrilho. Devolve o `y` seguinte.
 ///
@@ -112,22 +54,20 @@ fn tiled_rows(
     y: f32,
     info: &InspectorSliceInfo,
 ) -> f32 {
-    let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    let label_color = resolve(ColorToken::Text2, theme);
     let mut cur_y = y;
 
-    paint_text(
-        text_system,
+    // ⭐⭐ **O nome à ESQUERDA, como as caixas numéricas desta mesma secção** (2026-09-15) — deixá-lo
+    //    por cima aqui e ao lado três linhas abaixo **é** a queixa do dono, dentro de uma secção só.
+    let tm_row = super::rows::property_label_row(
         scene,
-        tr("panel.inspector.slice.tile_mode"),
+        text_system,
+        theme,
         x,
-        cur_y + (label_h - label_font) * 0.5,
-        label_font,
         w,
-        label_color,
+        cur_y,
+        FIELD_H,
+        tr("panel.inspector.slice.tile_mode"),
     );
-    cur_y += label_h;
     let tm = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_SLICE_SECTION,
         tr("panel.inspector.slice.tile_mode"),
@@ -142,17 +82,18 @@ fn tiled_rows(
     } else {
         usize::from(info.tile_mode_tag).min(TILE_MODE_LABELS.len() - 1)
     });
-    let (tm_w, tm_dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, FIELD_H);
     cur_y += paint_segmented_adaptive(
         &tm,
-        Rect::new(x, cur_y, tm_w, FIELD_H),
+        tm_row.control,
         scene,
         text_system,
         theme,
         store,
         hit_index,
-    ) + Spacing::Sm.px();
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, tm_dot);
+    )
+    .max(FIELD_H)
+        + Spacing::Sm.px();
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, tm_row.dot);
     // ⚠️ **A emenda rente ao canto tem NOME aqui** (smoke do Enio, 2026-08-22). Ela não é um
     // defeito de textura: é o último ladrilho cortado a meio, e o utilizador não tem como
     // adivinhar que o remédio se chama «Whole». Uma linha diz onde ele está.
@@ -269,7 +210,7 @@ pub(crate) fn paint_slice_section(
     }
 
     // Bordas, em pixels da fonte, na ordem do array: [L, T] e depois [R, B].
-    cur_y = pair_row(
+    cur_y = super::rows::fields_row(
         scene,
         text_system,
         theme,
@@ -279,11 +220,12 @@ pub(crate) fn paint_slice_section(
         w,
         cur_y,
         tr("panel.inspector.slice.borders_l_t_px"),
-        [ids::INSP_SLICE_BORDER[0], ids::INSP_SLICE_BORDER[1]],
+        &[ids::INSP_SLICE_BORDER[0], ids::INSP_SLICE_BORDER[1]],
         1.0,
         Some(ph2d_editor_core::widget::Unit::Px),
+        None,
     );
-    cur_y = pair_row(
+    cur_y = super::rows::fields_row(
         scene,
         text_system,
         theme,
@@ -293,11 +235,12 @@ pub(crate) fn paint_slice_section(
         w,
         cur_y,
         tr("panel.inspector.slice.borders_r_b_px"),
-        [ids::INSP_SLICE_BORDER[2], ids::INSP_SLICE_BORDER[3]],
+        &[ids::INSP_SLICE_BORDER[2], ids::INSP_SLICE_BORDER[3]],
         1.0,
         Some(ph2d_editor_core::widget::Unit::Px),
+        None,
     );
-    cur_y = pair_row(
+    cur_y = super::rows::fields_row(
         scene,
         text_system,
         theme,
@@ -307,8 +250,9 @@ pub(crate) fn paint_slice_section(
         w,
         cur_y,
         tr("panel.inspector.slice.size_x_y_m_0"),
-        [ids::INSP_SLICE_SIZE[0], ids::INSP_SLICE_SIZE[1]],
+        &[ids::INSP_SLICE_SIZE[0], ids::INSP_SLICE_SIZE[1]],
         SIZE_STEP,
+        Some(ph2d_editor_core::widget::Unit::Meters),
         None,
     );
 

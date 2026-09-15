@@ -77,24 +77,21 @@ pub(crate) fn paint_material_blend_section(
     //    anterior à porta. Ver `every_stack_of_rows_asks_the_rhythm`.
     let row_gap = ph2d_tokens::control_gap_px();
     let label_font = TypeToken::Sm.px();
-    let label_color = resolve(ColorToken::Text2, theme);
-    let label_h = label_font + Spacing::Xs.px();
 
     // Blend Mode — 6-way segmented (Mix/Add/Subtract/Multiply/Screen/
     // Premult); `SegmentedAdaptive` reflows the wider labels onto extra
     // rows at the Inspector's narrow width. Selecting Mix detaches the
     // optional component (default).
-    paint_text(
-        text_system,
+    let blend_row = super::rows::property_label_row(
         scene,
-        tr("panel.inspector.material.blend_mode"),
+        text_system,
+        theme,
         x,
-        yy + (label_h - label_font) * 0.5,
-        label_font,
         w,
-        label_color,
+        yy,
+        h,
+        tr("panel.inspector.material.blend_mode"),
     );
-    yy += label_h;
     let seg = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_BLEND_SECTION,
         tr("panel.inspector.material.blend_mode"),
@@ -113,18 +110,17 @@ pub(crate) fn paint_material_blend_section(
     } else {
         usize::from(info.blend_tag).min(BLEND_LABELS.len() - 1)
     });
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, yy, h);
     let seg_h = paint_segmented_adaptive(
         &seg,
-        Rect::new(x, yy, control_w, h),
+        blend_row.control,
         scene,
         text_system,
         theme,
         store,
         hit_index,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    yy += seg_h + row_gap;
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, blend_row.dot);
+    yy += seg_h.max(h) + row_gap;
 
     // Material slot — read-only placeholder. The renderer is
     // fixed-function (no material / shader runtime yet, spec §3.10);

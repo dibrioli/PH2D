@@ -127,8 +127,8 @@ pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
 pub use property_box::{
     DECORATOR_W, FORM_ROWS_SHOW_DECORATOR, PropertyBox, PropertyBoxState, PropertyRow,
     form_row_columns, paint_decorator_dot, paint_property_box, paint_property_label,
-    property_label_col_w, property_label_col_w_for, property_label_origin, property_row_columns,
-    property_row_columns_for, surface_rect,
+    property_fields_layout, property_label_col_w, property_label_col_w_for, property_label_origin,
+    property_row_columns, property_row_columns_for, surface_rect,
 };
 pub use radial_menu::{
     MAX_SECTORS as RADIAL_MAX_SECTORS, RadialItem, RadialOpen, dead_zone_px as radial_dead_zone_px,

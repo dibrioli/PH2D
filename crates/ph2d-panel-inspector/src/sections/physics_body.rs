@@ -296,7 +296,7 @@ fn paint_dynamics_rows(
         (
             tr("panel.inspector.physics.init_spin_deg_s"),
             ids::INSP_PHYS_ANGVEL,
-            None,
+            Some(ph2d_editor_core::widget::Unit::DegreesPerSecond),
         ),
         // Dominance (collision priority): a higher value bulldozes lower ones.
         // Dynamic-only like the rest — a non-dynamic body is already at the max.

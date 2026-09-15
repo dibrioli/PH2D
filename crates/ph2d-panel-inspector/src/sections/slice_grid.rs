@@ -76,6 +76,17 @@ pub(super) fn region_grid(
     y: f32,
     info: &InspectorSliceInfo,
 ) -> f32 {
+    // ⛔⛔ **ESTA linha FICA com o nome POR CIMA, e é a ÚNICA do Inspector — com a medição ao lado.**
+    //
+    // A conversão de 2026-09-15 pôs o nome à esquerda em **todas** as outras; esta foi tentada e
+    // **revertida**, porque o controlo dela não é a grelha: é a grelha **mais os dois atalhos**,
+    // que vivem à direita dela e à altura dela de propósito (*«é o sítio em que eles se leem como
+    // “faz isto às nove”»*, escrito mais abaixo). O par pede `3 × 26 + 2 × 4` da grelha `+ 6` de vão
+    // `+ ~50` de botão = **`~144 px`**, e a coluna do controlo mede `0,5 × interior − 14` — ela só
+    // chega a `144` com o painel acima de **`336 px`**. ⛔ O dock do dono está em `273,3`.
+    //
+    // ⇒ §0.0: *o limite diz de que recurso é* — é a LARGURA, e a alternativa (empilhar os atalhos
+    // por baixo da grelha) desfaz a leitura que o comentário deles defende por escrito.
     let label_font = TypeToken::Sm.px();
     let label_h = label_font + Spacing::Xs.px();
     paint_text(

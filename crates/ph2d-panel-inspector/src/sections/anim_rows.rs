@@ -202,6 +202,132 @@ fn ph2d_ecs_dir_label(tag: u8) -> &'static str {
     }
 }
 
+/// **O INTERVALO e o RITMO de uma animação** — seis linhas guiadas por tabela.
+///
+/// ⚠️ **Sai do [`editor`] por TETO de função** (200), estourado em 2026-09-15 ao partir as três
+/// rows de DUAS propriedades em seis de uma. ⛔ *A cura de um teto é o corte por responsabilidade,
+/// nunca um número maior* (`CLAUDE.md` §5.0) — e o corte é honesto: o que sai é *«que células e a
+/// que ritmo»*, contra *«que animação e como toca»* que fica no pai.
+///
+/// ⭐⭐ **Eram TRÊS linhas com DUAS propriedades cada** (`From / To (cell)` ·
+/// `Frame ms / Repeat (0 = forever)` · `Hold ms / Repeat delay ms`). Com o rótulo POR CIMA os dois
+/// campos ficavam lado a lado e o «A / B» mapeava da esquerda para a direita; com o nome AO LADO e
+/// a coluna do controlo a refluí-los, **esse mapeamento desaparece** — um nome que descreve duas
+/// caixas empilhadas não diz qual é qual. *A conversão forçou o corte que já devia existir.*
+///
+/// ⚠️ **E o `ms` saiu dos rótulos para dentro das caixas** (ordem do dono, 2026-09-15:
+/// *«para manter padrão universal melhor todos na caixa»*).
+#[allow(clippy::too_many_arguments)]
+fn range_and_timing_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    row: &ph2d_editor_core::screens::hero::InspectorAnimRow,
+) -> f32 {
+    // ⚠️ **O passo é em MILISSEGUNDOS ou em CÉLULAS, nunca em pixels** — daí o marcador.
+    const MS_STEP: f64 = 10.0; // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
+    const MS: Option<ph2d_editor_core::widget::Unit> =
+        Some(ph2d_editor_core::widget::Unit::Milliseconds);
+    const ANTES: [(&str, NodeId, f64, Option<ph2d_editor_core::widget::Unit>); 4] = [
+        (
+            "panel.inspector.animation.from_cell",
+            ids::INSP_ANIM_FROM,
+            1.0,
+            None,
+        ),
+        (
+            "panel.inspector.animation.to_cell",
+            ids::INSP_ANIM_TO,
+            1.0,
+            None,
+        ),
+        (
+            "panel.inspector.animation.frame",
+            ids::INSP_ANIM_FRAME_MS,
+            1.0,
+            MS,
+        ),
+        (
+            "panel.inspector.animation.repeat_forever",
+            ids::INSP_ANIM_REPEAT,
+            1.0,
+            None,
+        ),
+    ];
+    const DEPOIS: [(&str, NodeId, f64, Option<ph2d_editor_core::widget::Unit>); 2] = [
+        (
+            "panel.inspector.animation.hold",
+            ids::INSP_ANIM_HOLD_MS,
+            MS_STEP,
+            MS,
+        ),
+        (
+            "panel.inspector.animation.repeat_delay",
+            ids::INSP_ANIM_DELAY_MS,
+            MS_STEP,
+            MS,
+        ),
+    ];
+    let mut cur_y = y;
+    for (chave, id, passo, unidade) in ANTES {
+        cur_y = super::rows::fields_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            tr(chave),
+            &[id],
+            passo,
+            unidade,
+            None,
+        );
+    }
+    // ⚠️ **Uma animação com ritmo PRÓPRIO por célula (§8.12) tem de o DIZER.** Sem esta linha o
+    // campo `Frame` acima mente sobre ela — mostra a duração mais comum e nada explica por que a
+    // animação não anda naquele ritmo. O Inspector não a edita (a §8.8 põe essa edição no editor de
+    // timeline futuro); ele diz que ela existe, que é a diferença entre um dado e um mistério.
+    if row.has_per_frame_timing() {
+        paint_text(
+            text_system,
+            scene,
+            tr("panel.inspector.animation.this_animation_has_per_frame"),
+            x,
+            cur_y,
+            TypeToken::Sm.px(),
+            w,
+            resolve(ColorToken::Warn, theme),
+        );
+        cur_y += TypeToken::Sm.px() + ph2d_tokens::control_gap_px();
+    }
+    for (chave, id, passo, unidade) in DEPOIS {
+        cur_y = super::rows::fields_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            tr(chave),
+            &[id],
+            passo,
+            unidade,
+            None,
+        );
+    }
+    cur_y
+}
+
 /// O editor da animação aberta.
 #[allow(clippy::too_many_arguments)]
 fn editor(
@@ -230,7 +356,7 @@ fn editor(
             .placeholder(tr("panel.inspector.animation.animation_name")),
     );
 
-    cur_y = super::anchors::field_row(
+    cur_y = range_and_timing_rows(
         scene,
         text_system,
         theme,
@@ -239,55 +365,7 @@ fn editor(
         x,
         w,
         cur_y,
-        tr("panel.inspector.animation.from_to_cell"),
-        &[ids::INSP_ANIM_FROM, ids::INSP_ANIM_TO],
-        1.0,
-        None,
-    );
-    cur_y = super::anchors::field_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        tr("panel.inspector.animation.frame_ms_repeat_0_forever"),
-        &[ids::INSP_ANIM_FRAME_MS, ids::INSP_ANIM_REPEAT],
-        1.0,
-        None,
-    );
-    // ⚠️ **Uma animação com ritmo PRÓPRIO por célula (§8.12) tem de o DIZER.** Sem esta linha o
-    // campo `Frame ms` acima mente sobre ela — mostra a duração mais comum e nada explica por que
-    // a animação não anda naquele ritmo. O Inspector não a edita (a §8.8 põe essa edição no editor
-    // de timeline futuro); ele diz que ela existe, que é a diferença entre um dado e um mistério.
-    if row.has_per_frame_timing() {
-        paint_text(
-            text_system,
-            scene,
-            tr("panel.inspector.animation.this_animation_has_per_frame"),
-            x,
-            cur_y,
-            TypeToken::Sm.px(),
-            w,
-            resolve(ColorToken::Warn, theme),
-        );
-        cur_y += TypeToken::Sm.px() + ph2d_tokens::control_gap_px();
-    }
-    cur_y = super::anchors::field_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        tr("panel.inspector.animation.hold_ms_repeat_delay_ms"),
-        &[ids::INSP_ANIM_HOLD_MS, ids::INSP_ANIM_DELAY_MS],
-        10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
-        None,
+        row,
     );
 
     // A direção, como quatro botões. ⚠️ A seleção vem do SNAPSHOT, e não do store.

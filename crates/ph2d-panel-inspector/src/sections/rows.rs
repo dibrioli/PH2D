@@ -69,6 +69,126 @@ pub(super) fn seg_row(
     y + seg_h.max(ROW_H_PX) + ph2d_tokens::control_gap_px()
 }
 
+/// ⭐⭐⭐ **O NOME de uma linha, pintado à esquerda — e devolve ONDE o controlo vai.**
+///
+/// ⛔⛔ **Ela existe para as linhas cujo controlo o chamador CONSTRÓI** — um segmentado com «nenhum
+/// aceso», uma grelha 3×3, quatro amostras de cor. A [`seg_row`] serve quem pode descrever o
+/// controlo por `(ids, rótulos, escolhido)`; **estas oito não podem**, e antes da conversão eram
+/// as oito que ainda empilhavam o nome por cima.
+///
+/// ⚠️ **O chamador pinta o ponto** (`paint_decorator_dot(scene, theme, row.dot)`) — ele não pode
+/// ser pintado aqui porque a altura do controlo só se sabe depois de o desenhar, e há controlos
+/// que refluem.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn property_label_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    h: f32,
+    label: &str,
+) -> ph2d_editor_core::widget::PropertyRow {
+    let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
+    let label_font = TypeToken::Sm.px();
+    ph2d_editor_core::widget::paint_property_label(
+        text_system,
+        scene,
+        label,
+        row.label.x,
+        row.label.y + (row.label.h - label_font) * 0.5,
+        label_font,
+        row.label.w,
+        resolve(ColorToken::Text2, theme),
+    );
+    row
+}
+
+/// ⭐⭐⭐ **A LINHA DE VÁRIAS COMPONENTES — o nome à ESQUERDA, as caixas na coluna do controlo.**
+///
+/// ⛔⛔ **Ela nasce do report do dono de 2026-09-14** (*«Label acima do campo numérico! Muito
+/// ruim!»*) aplicado à família que a wave daquele dia **não alcançou**: as rows de N campos.
+/// Medido em 2026-09-15, o Inspector tinha **TRÊS respostas** à mesma pergunta, todas a empilhar o
+/// rótulo por cima:
+///
+/// | porta | onde vivia | campos | ponto de animação | sítios |
+/// |---|---|---|---|---|
+/// | `anchors::field_row` | §12 Sockets | N | ⛔ **nenhum** | 14 |
+/// | `slice_nine::pair_row` | §9 9-slice | 2 | ✅ | 3 |
+/// | `sampling::uv_pair_row` | §Sampling | 2 | ⛔ **nenhum** | 2 |
+///
+/// ⚠️ **As três divergiam em coisas que o artista VÊ** — a altura da caixa (`24` contra `22`) e a
+/// existência do ponto da coluna de animação. *Três respostas à mesma pergunta divergem em silêncio,
+/// e duas delas diziam que aquela propriedade não é animável.*
+///
+/// ⭐ **O reflúxo é a lei da [`ph2d_editor_core::widget::property_fields_layout`]** — o que não cabe
+/// ao piso do campo desce para a linha seguinte, dentro da coluna do controlo. A altura devolvida é
+/// a que as caixas de facto ocuparam, nunca uma linha fixa.
+///
+/// ⚠️ **UM ponto por LINHA, nunca por campo:** um par `X`/`Y` é *uma* propriedade com duas
+/// componentes, e dois pontos diriam que são duas.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn fields_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: &str,
+    field_ids: &[NodeId],
+    step: f64,
+    unit: Option<ph2d_editor_core::widget::Unit>,
+    desired_label_w: Option<f32>,
+) -> f32 {
+    let row =
+        ph2d_editor_core::widget::property_row_columns_for(x, w, y, ROW_H_PX, desired_label_w);
+    let label_font = TypeToken::Sm.px();
+    ph2d_editor_core::widget::paint_property_label(
+        text_system,
+        scene,
+        label,
+        row.label.x,
+        row.label.y + (row.label.h - label_font) * 0.5,
+        label_font,
+        row.label.w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let gap = ph2d_tokens::control_gap_px();
+    let (por_linha, linhas, cw) =
+        ph2d_editor_core::widget::property_fields_layout(row.control.w, field_ids.len(), gap);
+    let passo = ph2d_tokens::row_pitch_px();
+    for (i, &id) in field_ids.iter().enumerate() {
+        let rect = Rect::new(
+            row.control.x + (cw + gap) * (i % por_linha) as f32,
+            row.control.y + passo * (i / por_linha) as f32,
+            cw,
+            ROW_H_PX,
+        );
+        hit_index.register(id, rect);
+        let (state, value, buffer, caret, anchor) = read_number_input(store, id);
+        let input = NumberInput::new(id, "", value)
+            .step(step)
+            .visual((state, store.hover_live(id)))
+            .suffix(unit.map(ph2d_editor_core::widget::Unit::suffix));
+        paint_number_input_with_buffer(
+            &input,
+            Some(buffer),
+            caret,
+            anchor,
+            rect,
+            scene,
+            text_system,
+            theme,
+        );
+    }
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
+    y + passo * linhas as f32
+}
+
 /// A altura que uma [`num_row`] consome — **uma linha**.
 ///
 /// ⚠️ Existe porque o **card** (`card_frame`) precisa saber quanto medir ANTES

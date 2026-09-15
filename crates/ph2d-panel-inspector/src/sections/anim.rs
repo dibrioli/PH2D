@@ -91,6 +91,66 @@ fn segmented_row(
     row_y + ph2d_tokens::row_pitch_px()
 }
 
+/// **As duas SUBSTITUIÇÕES do tocador** — a direcção e o laço que esta reprodução impõe por cima
+/// do que a animação declara.
+///
+/// ⚠️ **Sai do [`player_block`] por TETO de função** (200), estourado em 2026-09-15. ⛔ *A cura de
+/// um teto é o corte por responsabilidade* — e as duas pertencem uma à outra: são a mesma pergunta
+/// (*«o que o TOCADOR manda, contra o que a animação diz»*) feita a dois canais, e as duas nascem
+/// em `Inherit`.
+#[allow(clippy::too_many_arguments)]
+fn override_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorAnimInfo,
+) -> f32 {
+    let mut cur_y = segmented_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        tr("panel.inspector.animation.direction_override"),
+        &ids::INSP_ANIM_DIR_OVERRIDE,
+        &[
+            tr("panel.inspector.animation.inherit"),
+            tr("panel.inspector.animation.fwd"),
+            tr("panel.inspector.animation.rev"),
+            "PP",
+            tr("panel.inspector.animation.pp_rev"),
+        ],
+        usize::from(info.direction_override_tag),
+    );
+    cur_y = segmented_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.animation.loop_override"),
+        &ids::INSP_ANIM_LOOP_OVERRIDE,
+        &[
+            tr("panel.inspector.animation.inherit"),
+            tr("panel.inspector.animation.on"),
+            tr("panel.inspector.animation.off"),
+        ],
+        usize::from(info.loop_override_tag),
+    );
+    cur_y
+}
+
 /// O bloco do TOCADOR. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 fn player_block(
@@ -147,7 +207,7 @@ fn player_block(
     }
     cur_y += CHECK_H + ph2d_tokens::control_gap_px();
 
-    cur_y = super::anchors::field_row(
+    cur_y = super::rows::fields_row(
         scene,
         text_system,
         theme,
@@ -160,9 +220,10 @@ fn player_block(
         &[ids::INSP_ANIM_SPEED],
         0.1, // LITERAL-PX-OK: passo de scrub em MÚLTIPLOS de velocidade, não em pixels
         None,
+        None,
     );
 
-    cur_y = segmented_row(
+    cur_y = override_rows(
         scene,
         text_system,
         theme,
@@ -171,34 +232,7 @@ fn player_block(
         x,
         w,
         cur_y,
-        tr("panel.inspector.animation.direction_override"),
-        &ids::INSP_ANIM_DIR_OVERRIDE,
-        &[
-            tr("panel.inspector.animation.inherit"),
-            tr("panel.inspector.animation.fwd"),
-            tr("panel.inspector.animation.rev"),
-            "PP",
-            tr("panel.inspector.animation.pp_rev"),
-        ],
-        usize::from(info.direction_override_tag),
-    );
-    cur_y = segmented_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        tr("panel.inspector.animation.loop_override"),
-        &ids::INSP_ANIM_LOOP_OVERRIDE,
-        &[
-            tr("panel.inspector.animation.inherit"),
-            tr("panel.inspector.animation.on"),
-            tr("panel.inspector.animation.off"),
-        ],
-        usize::from(info.loop_override_tag),
+        info,
     );
 
     // **O frame, e onde ele está dentro da animação — e a barra ARRASTA** (Enio, 2026-08-23).
@@ -256,7 +290,7 @@ fn player_block(
         // ⚠️ E ele só existe quando há célula a que se referir: o `this_frame_index` devolve `None`
         // se o frame no ecrã caiu fora do intervalo da animação a tocar.
         if info.this_frame_index().is_some() {
-            cur_y = super::anchors::field_row(
+            cur_y = super::rows::fields_row(
                 scene,
                 text_system,
                 theme,
@@ -268,6 +302,7 @@ fn player_block(
                 tr("panel.inspector.animation.this_frame_ms_0_use"),
                 &[ids::INSP_ANIM_FRAME_MS_THIS],
                 10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
+                Some(ph2d_editor_core::widget::Unit::Milliseconds),
                 None,
             );
         }

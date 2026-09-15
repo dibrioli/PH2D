@@ -91,8 +91,16 @@ fn unidade_no_fim(texto: &str) -> Option<String> {
         return Some(dentro.to_string());
     }
     let normal = dentro.replace("\\u{00b0}", "°");
+    // ⛔⛔ **QUATRO formas CEGAS, achadas em 2026-09-15 — e a mais cara era a mais óbvia.**
+    //    O censo dizia-se fechado e deixou passar `"Init Spin (deg/s)"` **ao lado** do irmão
+    //    `"Init Vel X"`, já curado: a lista tinha `°/s` e **não** `deg/s`, que é a forma que o
+    //    `Unit::suffix` de facto emite. As outras três: `1/s` (o *Damping* da câmera, que é uma
+    //    TAXA), `ms` (o relógio de uma animação de sprite) e `seconds` **por extenso** (o
+    //    *Duration* de um temporizador). *Uma dívida grande esconde os erros do instrumento; foi
+    //    ao ela encolher que os quatro ficaram à vista.*
     const SUFIXOS: &[&str] = &[
-        "m", "px", "s", "N", "N.m", "m/s", "m/s2", "m/s^2", "%", "deg", "rad", "°", "°/s", "N.s",
+        "m", "px", "s", "ms", "1/s", "N", "N.m", "m/s", "m/s2", "m/s^2", "%", "deg", "deg/s",
+        "rad", "°", "°/s", "N.s", "seconds",
     ];
     SUFIXOS
         .iter()
@@ -200,6 +208,12 @@ fn the_detector_can_see_a_unit_in_a_label() {
         ("Motor (\\u{00b0}/s)", Some("°/s")),
         ("Init Vel X (m/s)", Some("m/s")),
         ("Grid Size (px)", Some("px")),
+        // ⛔ Os quatro buracos de 2026-09-15.
+        ("Init Spin (deg/s)", Some("deg/s")),
+        ("Damping (1/s)", Some("1/s")),
+        ("Frame ms (0 = use)", None),
+        ("Hold (ms)", Some("ms")),
+        ("Duration (seconds)", Some("seconds")),
         // ⛔ O MOLDE — o caso que o report de 2026-09-15 expôs.
         ("Speed ({unit})", Some("{unit}")),
     ] {

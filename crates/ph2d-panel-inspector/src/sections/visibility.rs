@@ -82,21 +82,9 @@ fn segmented_row(
     selected: Option<usize>,
 ) -> f32 {
     let h = ROW_H_PX;
-    let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    paint_text(
-        text_system,
-        scene,
-        label,
-        x,
-        y + (label_h - label_font) * 0.5,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let row_y = y + label_h;
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, h);
-    let rect = Rect::new(x, row_y, control_w, h);
+    // ⭐⭐ **O nome à ESQUERDA** (2026-09-15): esta porta é irmã da `rows::seg_row`, que já o fazia,
+    //    e a única diferença dela é poder dizer «misto» — não a disposição da linha.
+    let row = super::rows::property_label_row(scene, text_system, theme, x, w, y, h, label);
     // ⚠️ **`SegmentedAdaptive` e não `Tabs`, para poder dizer «misto».** O `Tabs::selected()`
     // clampa (`idx.min(len-1)`), por isso é **incapaz** de renderizar «nenhum aceso» — e era isso
     // que fazia estas duas rows acenderem o valor da primária como se toda a seleção concordasse,
@@ -111,9 +99,17 @@ fn segmented_row(
             .collect(),
     )
     .selected(selected.unwrap_or(usize::MAX));
-    let seg_h = paint_segmented_adaptive(&seg, rect, scene, text_system, theme, store, hit_index);
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    row_y + seg_h + Spacing::Sm.px()
+    let seg_h = paint_segmented_adaptive(
+        &seg,
+        row.control,
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
+    y + seg_h.max(h) + ph2d_tokens::control_gap_px()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -281,9 +277,6 @@ fn paint_enabler_rows(
 ) -> f32 {
     let h = ROW_H_PX;
     let row_gap = ph2d_tokens::control_gap_px();
-    let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    let label_color = resolve(ColorToken::Text2, theme);
     let mut yy = y;
     // On-Screen Enabler toggle (presence of the component).
     let on_rect = Rect::new(x, yy, w, h);
@@ -304,64 +297,38 @@ fn paint_enabler_rows(
     // Enabler Rect — canonical Rect2Editor (X/Y/W/H in one row), only
     // when the enabler is on.
     if info.on_screen {
-        paint_text(
-            text_system,
-            scene,
-            tr("panel.inspector.visibility.enabler_rect"),
-            x,
-            yy + (label_h - label_font) * 0.5,
-            label_font,
-            w,
-            label_color,
-        );
-        yy += label_h;
-        let (sx, vx, bx, cx, ax) = read_number_input(store, ids::INSP_VIS_RECT_X);
-        let (sy, vy, by, cy, ay) = read_number_input(store, ids::INSP_VIS_RECT_Y);
-        let (sw, vw, bw, cw, aw) = read_number_input(store, ids::INSP_VIS_RECT_W);
-        let (sh, vh, bh, ch, ah) = read_number_input(store, ids::INSP_VIS_RECT_H);
-        const RECT_STEP: f64 = 0.1; // LITERAL-PX-OK: enabler-rect editor nudge step
-        let editor = Rect2Editor::new(
-            core_ids::INSP_LIVE_VISIBILITY_SECTION,
-            tr("panel.inspector.visibility.enabler_rect"),
-            NumberInput::new(ids::INSP_VIS_RECT_X, "", vx)
-                .step(RECT_STEP)
-                .visual((sx, store.hover_live(ids::INSP_VIS_RECT_X))),
-            NumberInput::new(ids::INSP_VIS_RECT_Y, "", vy)
-                .step(RECT_STEP)
-                .visual((sy, store.hover_live(ids::INSP_VIS_RECT_Y))),
-            NumberInput::new(ids::INSP_VIS_RECT_W, "", vw)
-                .step(RECT_STEP)
-                .visual((sw, store.hover_live(ids::INSP_VIS_RECT_W))),
-            NumberInput::new(ids::INSP_VIS_RECT_H, "", vh)
-                .step(RECT_STEP)
-                .visual((sh, store.hover_live(ids::INSP_VIS_RECT_H))),
-        )
-        // 2×2 grid: the Inspector column is too narrow for four number
-        // inputs in one row (each would fall below NumberInput's usable
-        // minimum width).
-        .layout(Rect2Layout::Grid2x2);
-        let editor_h = Rect2Editor::preferred_height(Rect2Layout::Grid2x2, h);
-        let host = Rect::new(x, yy, w, editor_h);
-        let field_rects = editor.field_rects(host);
-        for (fr, id) in field_rects.iter().zip([
-            ids::INSP_VIS_RECT_X,
-            ids::INSP_VIS_RECT_Y,
-            ids::INSP_VIS_RECT_W,
-            ids::INSP_VIS_RECT_H,
-        ]) {
-            hit_index.register(id, *fr);
-        }
-        paint_rect2_editor_with_state(
-            &editor,
-            [Some(bx), Some(by), Some(bw), Some(bh)],
-            [cx, cy, cw, ch],
-            [ax, ay, aw, ah],
-            host,
+        // ⭐⭐⭐ **O nome à ESQUERDA e as quatro componentes na coluna do controlo** (2026-09-15).
+        //
+        // ⚠️⚠️ **O comentário que aqui estava já tinha chegado à LEI desta wave, para uma row só:**
+        //    *«2×2 grid: the Inspector column is too narrow for four number inputs in one row (each
+        //    would fall below NumberInput's usable minimum width)»*. Era verdade e estava escrita à
+        //    mão num sítio — e as outras dezanove rows de N campos não a conheciam. Hoje quem a diz
+        //    é a [`ph2d_editor_core::widget::property_fields_layout`], e ela reflui sozinha.
+        //
+        // ⛔ **O [`Rect2Editor`] sai daqui e fica sem consumidor de produto** (resta-lhe a bancada
+        //    de widgets). *Um retângulo não é uma família de controlo à parte: são quatro números
+        //    de uma propriedade*, que é exactamente o que a porta nova desenha.
+        const RECT_STEP: f64 = 0.1; // LITERAL-PX-OK: passo de nudge do rect do enabler
+        yy = super::rows::fields_row(
             scene,
             text_system,
             theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            tr("panel.inspector.visibility.enabler_rect"),
+            &[
+                ids::INSP_VIS_RECT_X,
+                ids::INSP_VIS_RECT_Y,
+                ids::INSP_VIS_RECT_W,
+                ids::INSP_VIS_RECT_H,
+            ],
+            RECT_STEP,
+            None,
+            None,
         );
-        yy += editor_h + row_gap;
     }
     yy
 }

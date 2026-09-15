@@ -1238,3 +1238,123 @@ Só a **caixa única** (`painter-layers` *Grid Size* · `tokens` *Scale*) e trê
 regex (`override(s)`, `Dur(s)`, `Time(s)`). ⚠️ **E a caixa única já cumpre a ordem do dono**: ali o
 rótulo vive **DENTRO** da caixa, logo a unidade já está na caixa — o que ele fotografou foi um
 rótulo **FORA** dela a carregá-la.
+
+---
+
+## 21 — ⭐⭐⭐ O NOME SAI DE CIMA DO CONTROLO EM TODO O INSPECTOR — 11 sítios, 3 portas viram 1
+
+**Report do dono, 2026-09-14, com foto:** *«Label acima do campo numérico! Muito ruim!»*. A wave
+daquele dia (§14) curou as rows de **UM** campo e **não alcançou** as outras. Em 2026-09-15 ele
+mandou seguir sobre exactamente essa lista.
+
+### 21.1 — O censo, medido antes de tocar em código
+
+| família | sítios | onde |
+|---|---|---|
+| rows de N campos numéricos | **3 portas / 19 chamadas** | `anchors::field_row` (14) · `slice_nine::pair_row` (3) · `sampling::uv_pair_row` (2) |
+| segmentado com «nenhum aceso» | 4 | `sampling` ×2 · `material_blend` · `slice_nine` |
+| rectângulo X/Y/W/H | 1 | `visibility` (`Rect2Editor`) |
+| grelha 3×3 + atalhos | 1 | `slice_grid` ⏳ **fica** |
+| 4 amostras + prévia do gradiente | 1 | `color_tint` ⏳ **fica** |
+
+⚠️⚠️ **As TRÊS portas de N campos divergiam em coisas que o artista VÊ:** a altura da caixa (`24`
+contra `22`) e a **existência do ponto da coluna de animação** — duas delas nunca o pintavam. *Três
+respostas à mesma pergunta divergem em silêncio, e duas delas diziam que aquela propriedade não é
+animável.* Hoje são **uma**: `sections/rows::fields_row`.
+
+### 21.2 — ⭐⭐⭐ As duas ordens do dono CONTRARIAM-SE numa row de N campos
+
+- *«Label acima do campo numérico! Muito ruim!»* (14/09) põe o nome ao lado ⇒ o controlo fica com
+  **metade** da linha.
+- *«não permita que a caixa seja redimencionada para menor que isso»* (2026-05-24) ⇒ piso de `72 px`
+  por caixa.
+
+À largura de omissão do Inspector a coluna do controlo mede `128 px`; **dois** campos ao piso pedem
+`148`. ⇒ **o que não cabe DESCE**, dentro da coluna do controlo
+([`property_fields_layout`](../../../crates/ph2d-editor-core/src/widget/property_box/row.rs)) — a
+mesma lei que a `seg_row` já praticava para um segmentado (*«o controlo reflui e a coluna do rótulo
+não»*), e o que o Blender faz com um vector num painel estreito.
+
+⛔ **A saída NÃO é encolher a coluna do rótulo nesta linha:** a granularidade dela é a SECÇÃO
+(spec §6), e uma coluna por linha devolve a coluna esfarrapada que aquela § recusa.
+
+⚠️⚠️ **E o app já tinha chegado a esta lei, à mão, numa row só.** O comentário do `Rect2Editor` da
+§Visibility dizia por escrito: *«2×2 grid: the Inspector column is too narrow for four number inputs
+in one row (each would fall below NumberInput's usable minimum width)»*. Era verdade, estava certa, e
+**as outras dezoito rows não a conheciam**. *Uma lei escrita num sítio é uma nota; só uma PORTA é uma
+lei.* ⛔ O `Rect2Editor` fica **sem consumidor de produto** (resta-lhe a bancada de widgets) — um
+rectângulo não é uma família de controlo à parte: são quatro números de uma propriedade.
+
+### 21.3 — ⛔⛔ As DUAS que ficam, e a medição que as mantém
+
+A grelha 3×3 do 9-slice e as quatro amostras de canto do *Color/Tint*. Nos dois o controlo **não é o
+bloco** — é o bloco **mais um companheiro à direita dele** (os dois atalhos *Tile all*/*Stretch all* ·
+a prévia do gradiente), e o par mede `~144 px`. A coluna do controlo vale `0,5 × interior − 14`, logo
+só lá chega acima de um painel de **`336`**; ⛔ o dock do dono está em `273,3`.
+
+⇒ §0.0: *o limite diz de que recurso é* — é a LARGURA. A alternativa (empilhar os atalhos por baixo
+da grelha) desfaz a leitura que o comentário deles defende por escrito (*«é o sítio em que eles se
+leem como “faz isto às nove”»*). **Uma tentativa foi feita e REVERTIDA** no mesmo commit: com o `x`
+mudado para `row.control.x`, os atalhos saíam `~142 px` fora do painel.
+
+### 21.4 — ⭐⭐ As três linhas da Animação eram DUAS propriedades cada, e a conversão forçou o corte
+
+`From / To (cell)` · `Frame ms / Repeat (0 = forever)` · `Hold ms / Repeat delay ms`.
+
+Com o rótulo POR CIMA os dois campos ficavam lado a lado e o «A / B» mapeava da esquerda para a
+direita. **Com o nome ao lado e a coluna do controlo a refluí-los esse mapeamento desaparece** — um
+nome que descreve duas caixas EMPILHADAS não diz qual é qual. ⇒ seis linhas, cada uma com o seu nome,
+guiadas por tabela (`anim_rows::range_and_timing_rows`).
+
+⭐ E o `ms` saiu dos rótulos para dentro das caixas, que é a ordem universal do dono de 15/09.
+
+### 21.5 — ⛔⛔ O detector de unidade-no-rótulo tinha QUATRO formas cegas
+
+O gate `no_row_label_carries_its_own_unit` declarava-se fechado e deixou passar `"Init Spin (deg/s)"`
+**ao lado** do irmão `"Init Vel X"`, já curado — a lista dele tinha `°/s` e **não** `deg/s`, que é a
+forma que o `Unit::suffix` de facto emite. As outras três: `1/s` (o *Damping* da câmera, que é uma
+TAXA, não um tempo), `ms` e `seconds` **por extenso**.
+
+⇒ vocabulário novo: `Unit::Milliseconds` (`ms`) e `Unit::PerSecond` (`1/s`), os dois **antes** de
+`Seconds` no `Unit::ALL` pela lei de sempre (`"16ms"` termina em `"s"`). *Uma dívida grande esconde os
+erros do instrumento no meio do trabalho legítimo; foi ao ela encolher que os quatro ficaram à vista.*
+
+### 21.6 — ⛔⛔⛔ O censo da coluna de animação acusou quem fez a coisa CERTA, pela TERCEIRA vez
+
+O `every_form_row_reserves_the_animation_column` enumera as portas **por nome**. A lista foi de uma
+(`form_row_columns`), passou a duas quando a linha de propriedade nasceu (14/09, e o gate acusou quem
+a adoptou), e em 15/09 acusou **três** secções por elas passarem a chamar `rows::property_label_row`.
+
+⇒ as portas passam a **DERIVAR-SE do `rows.rs`**: é porta toda `fn` cujo corpo alcança uma das duas de
+base, **por ponto fixo** (a `num_row` está a DOIS saltos — ela delega na `num_row_unit`). ⛔ Sem
+`--write` e sem lista. O modo de falha é **alto** de propósito: um parse morto encolhe a lista para as
+duas de base e o gate passa a acusar quem usa o `rows.rs`.
+
+### 21.7 — Gates, com as mutações
+
+| gate | onde | mutação que o mata |
+|---|---|---|
+| `a_row_of_many_fields_never_starves_them` | `ph2d-editor-core` | `por_linha = n` ⇒ `41,50 px` de caixa contra o piso de `72` ✅ |
+| `a_wider_panel_never_fits_fewer_fields` | idem | a monotonia, que a metade de cima não mede |
+| `no_row_paints_its_name_above_its_control` | `ph2d-panel-inspector` | repor `y += label_h` no `fields_row` ⇒ acusa `rows.rs` ✅ |
+| `the_door_census_derives_the_second_order_doors` | idem | varrer `pub(crate) fn` ⇒ `1` porta lida, e as 3 secções acusadas ✅ |
+| `the_property_row_manual_names_only_doors_that_exist` | `ph2d-editor-core` | um nome inventado na tabela do manual ✅ |
+
+⚠️⚠️ **E uma prova de mutação MENTIU antes de dizer a verdade:** a 1.ª redacção da mutação 3 tinha a
+agulha com o escape errado, casou **zero** vezes, e a corrida imprimiu `test result: ok` — que eu
+quase li como *«o gate não apanha»*. **O `assert` de contagem é que o apanhou.** *Um filtro que casa
+zero imprime aprovado.*
+
+### 21.8 — Tetos de LOC: dois estourados, dois cortes
+
+`anim_rows::editor` (215) e `anim::player_block` (202) — os dois **por acumulação desta wave**.
+Curados por **corte por responsabilidade** (`range_and_timing_rows` · `override_rows`), zero entradas
+novas no `FN_OVERAGE_OK`.
+
+### 21.9 — ⏳ ABERTO, nomeado
+
+- **O empréstimo (spec §6) alcança 1 das 59 chamadas** — inalterado por esta wave.
+- **`Rect2Editor` sem consumidor de produto** — é um widget com bancada, não um órfão; a decisão de o
+  apagar é de quem escrever a próxima row de rectângulo.
+- **As outras 18 crates de painel** ainda têm o idioma «nome por cima» (`grid-snap`, `motion-params`,
+  `physics`) — este censo é do Inspector, por construção.

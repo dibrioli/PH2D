@@ -130,6 +130,47 @@ compra **zero** (ali a metade e o tecto coincidem e não há folga nenhuma).
 
 ---
 
+## §6-bis — A linha de VÁRIAS COMPONENTES: o controlo REFLUI, a coluna do rótulo não
+
+⛔⛔ **Duas ordens do dono contrariam-se numa row de N campos, e a spec tem de escolher:** o §3 põe o
+nome ao lado (*«Label acima do campo numérico! Muito ruim!»*, 2026-09-14), o que entrega ao controlo
+**metade** da linha; o §5 põe um piso de `72 px` em cada caixa (*«não permita que a caixa seja
+redimencionada para menor que isso»*, 2026-05-24). À largura de omissão do Inspector a coluna do
+controlo mede `128 px` e **dois** campos ao piso pedem `148`.
+
+⭐ **A saída NÃO é encolher a coluna do rótulo para esta linha** — a granularidade dela é a SECÇÃO
+(§6), e uma coluna por linha devolve a coluna esfarrapada que o §6 recusa.
+
+⇒ **as componentes que não cabem ao piso DESCEM, dentro da coluna do controlo** — é a lei que a
+`seg_row` já praticava para um segmentado (*«o controlo reflui e a coluna do rótulo não»*), e é como
+o Blender desenha um vector num painel estreito.
+
+| interior | coluna do controlo | 2 campos | 4 campos |
+|---|---|---|---|
+| `200` (mínimo do dock) | `86,0` | 1×2 linhas | 1×4 linhas |
+| `253,3` (o dock do dono) | `112,7` | 1×2 linhas | 1×4 linhas |
+| `284` (omissão) | `128,0` | 1×2 linhas | 1×4 linhas |
+| `380` | `176,0` | **2×1** | 2×2 linhas |
+| `700` (máximo do dock) | `336,0` | **2×1** | **4×1** |
+
+⚠️ **A largura é a MESMA em todas as linhas** — a última fica curta em vez de esticar o campo que
+sobra; um `Bounds` de quatro componentes acabaria com o `H` ao dobro da largura do `X`.
+
+⚠️ **Quando nem UM campo cabe ao piso, o campo recebe a coluna inteira.** Ali o recurso que falta é
+o painel, e encolher mais só apagaria o número.
+
+⭐⭐ **UM ponto de animação por LINHA, nunca por campo** — um par `X`/`Y` é *uma* propriedade com duas
+componentes, e dois pontos diriam que são duas.
+
+⛔ **DUAS excepções, e as duas com a mesma medição:** a grelha 3×3 do 9-slice e as quatro amostras de
+canto do *Color/Tint* ficam com o nome POR CIMA, porque o controlo delas não é o bloco — é o bloco
+**mais um companheiro à direita dele** (os dois atalhos · a prévia do gradiente), e o par mede
+`~144 px`. A coluna do controlo vale `0,5 × interior − 14`, logo só lá chega acima de um painel de
+**`336`**; o dock do dono está em `273,3`. Elas são **blocos com legenda**, não linhas de
+propriedade — e há gate com a lista, com a metade da obsolescência.
+
+---
+
 ## §7 — O que a linha leva SEMPRE
 
 | peça | lei |
@@ -185,7 +226,11 @@ compra **zero** (ali a metade e o tecto coincidem e não há folga nenhuma).
 | §5 | o campo nunca é pintado abaixo do que o dono declarou | `NUMBER_INPUT_MIN_W_PX` | `a_field_is_never_narrower_than_its_owner_declared` |
 | §6 | o pintor pede emprestado a folga que o controlo não usa | `property_label_col_w_for` | `the_painter_borrows_the_slack_the_control_does_not_need` |
 | §6 | quantos rótulos elidem, por largura do dock | `property_row_columns_for` | `the_elision_ladder_only_shrinks` |
+| §6-bis | as componentes que não cabem ao piso descem, dentro da coluna do controlo | `property_fields_layout` | `a_row_of_many_fields_never_starves_them` |
+| §6-bis | alargar o painel nunca faz caber menos campos por linha | `property_fields_layout` | `a_wider_panel_never_fits_fewer_fields` |
+| §6-bis | nenhuma linha do Inspector põe o nome por cima do controlo | `fields_row` | `no_row_paints_its_name_above_its_control` |
 | §7 | toda linha reserva a coluna de animação | `form_row_columns` | `every_form_row_reserves_the_animation_column` |
+| §7 | as portas que reservam a coluna DERIVAM-SE, nunca se enumeram | `property_label_row` | `the_door_census_derives_the_second_order_doors` |
 | §7 | o preenchimento do campo sai do tema | `body_fill` | `every_field_painter_asks_the_theme_for_its_fill` |
 | §7 | um campo nunca tem a cor daquilo em que assenta | `SURFACE_STEP` | `a_field_is_never_the_colour_of_what_it_sits_on` |
 | §7 | um sufixo mais longo nunca é ensombrado por um mais curto | `Unit` | `a_longer_suffix_is_never_shadowed_by_a_shorter_one` |
@@ -205,6 +250,12 @@ compra **zero** (ali a metade e o tecto coincidem e não há folga nenhuma).
 3. `hit_index.register(id, row.control);` e pinte o controlo em `row.control`.
 4. `paint_decorator_dot(scene, theme, row.dot);`
 5. Se o campo tem unidade física, `input.suffix(Some(unit.suffix()))` — ⛔ **não** a ponha no rótulo.
+6. **Se a linha tem N campos, não faça nada disto:** chame `rows::fields_row(…, &[ids], passo,
+   unidade, None)` — ela é a porta, e o reflúxo do §6-bis vem de dentro. ⛔ Uma aritmética de
+   `(w − gap × (n−1)) / n` escrita no sítio de pintura é a quarta resposta à mesma pergunta (havia
+   **três** em 2026-09-15, divergentes na altura da caixa e na existência do ponto de animação).
+7. **Se o controlo é construído à mão** (um segmentado com «nenhum aceso», uma grelha), chame
+   `rows::property_label_row(…)`, pinte em `row.control` e termine com o ponto.
 
 ⛔ **O que NÃO fazer:** escrever a largura da coluna no sítio de pintura (há censo com catraca) ·
 pôr a unidade no rótulo · pintar o rótulo com `paint_text` (perde a elisão e o alinhamento) · dar ao

@@ -69,6 +69,22 @@ pub enum Unit {
     /// `m/s` de `s`. ⚠️ E é `deg/s` e não `°/s` **pela razão de sempre**: o que se mostra é o que se
     /// tem de conseguir escrever.
     DegreesPerSecond,
+    /// ⭐ **Milissegundos** — o relógio de uma animação de sprite (*Frame*, *Hold*, *Repeat delay*,
+    /// *This frame*), medidos em 2026-09-15.
+    ///
+    /// ⛔ **Ela não é [`Unit::Seconds`] com outra escala: é a unidade em que o VALOR é guardado.**
+    /// O componente conta milissegundos, e mostrar `0,016 s` onde o artista escreve `16` seria a
+    /// conversão que a dívida do `DisplayUnit` ainda não pagou — outra pergunta.
+    ///
+    /// ⚠️ **O sufixo acaba em `s`** ⇒ antes de [`Unit::Seconds`] em [`Unit::ALL`], pela mesma lei
+    /// que separa `m/s` de `s`. *Sem isso `"16ms"` lê-se `(16, Seconds)`: o número certo, a unidade
+    /// errada, sem erro nenhum.*
+    Milliseconds,
+    /// ⭐ **Por segundo** — o amortecimento de uma câmera de jogo (*Damping*), que é uma TAXA e não
+    /// um tempo.
+    ///
+    /// ⚠️ **O sufixo acaba em `s`** ⇒ antes de [`Unit::Seconds`], pela mesma lei.
+    PerSecond,
 }
 
 impl Unit {
@@ -86,6 +102,8 @@ impl Unit {
             Unit::Newtons => "N",
             Unit::NewtonMetres => "N.m",
             Unit::DegreesPerSecond => "deg/s",
+            Unit::Milliseconds => "ms",
+            Unit::PerSecond => "1/s",
         }
     }
 
@@ -93,7 +111,7 @@ impl Unit {
     ///
     /// ⚠️ Pública para que o gate possa medir a ORDEM em vez de a repetir — uma cópia da lista no
     /// teste provaria que a cópia está ordenada, não que o parser está.
-    pub const ALL: [Unit; 11] = [
+    pub const ALL: [Unit; 13] = [
         // ⚠️ `deg/s` acaba em `s` ⇒ antes de `Seconds`. (E `deg` **não** é o fim de `deg/s`, logo
         //    `Degrees` pode ficar onde está.)
         Unit::DegreesPerSecond,
@@ -105,6 +123,9 @@ impl Unit {
         // ⚠️ `N.m` acaba em `m` ⇒ antes de `Meters`.
         Unit::NewtonMetres,
         Unit::Meters,
+        // ⚠️ `ms` e `1/s` acabam em `s` ⇒ antes de `Seconds`, pela mesma lei que põe `m/s` lá.
+        Unit::Milliseconds,
+        Unit::PerSecond,
         Unit::Seconds,
         Unit::Newtons,
         Unit::Percent,

@@ -21,7 +21,6 @@ use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
 
-const FIELD_H: f32 = 24.0; // LITERAL-PX-OK: altura de campo do Inspector
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
 // ⭐ **A linha de uma LISTA e a linha do app** (wave 17): o `22.0` a mao coincidia com o
 // token, e uma coincidencia nao segue quem mexe no token.
@@ -33,69 +32,6 @@ const KIND_COL_FRAC: f32 = 0.62; // LITERAL-PX-OK: fração de largura, não um 
 const PX_STEP: f64 = 1.0; // LITERAL-PX-OK: passo em pixels da FONTE, não um token de desenho
 /// Passo de scrub da rotação, em graus.
 const DEG_STEP: f64 = 1.0; // LITERAL-PX-OK: passo em graus
-
-/// Uma linha «rótulo em cima, N NumberInput lado a lado». Devolve o `y` seguinte.
-///
-/// ⚠️ **`pub(super)` para a §11 a reusar** — duas cópias de um layout de linha divergem no dia em
-/// que uma delas ganha um espaçamento novo, e o painel passa a ter duas gramáticas.
-#[allow(clippy::too_many_arguments)]
-pub(super) fn field_row(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    label: &str,
-    field_ids: &[NodeId],
-    step: f64,
-    // ⭐⭐ **A UNIDADE do campo, 2026-09-15** — a mesma para TODOS os campos da row, porque uma row
-    //    de `X`/`Y` mede a mesma grandeza nos dois. ⛔ Pô-la só no primeiro diria que o outro tem
-    //    outra.
-    //
-    // ⚠️ **Ela entra AQUI e não no rótulo** (spec §7): medido em 2026-09-14, com a unidade no texto
-    //    **20 de 39** rótulos do Inspector eram cortados à largura de omissão; sem ela, **1**.
-    unit: Option<ph2d_editor_core::widget::Unit>,
-) -> f32 {
-    let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    paint_text(
-        text_system,
-        scene,
-        label,
-        x,
-        y + (label_h - label_font) * 0.5,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let row_y = y + label_h;
-    let gap = Spacing::Xs.px();
-    let n = field_ids.len().max(1) as f32;
-    let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
-    for (i, &id) in field_ids.iter().enumerate() {
-        let rect = Rect::new(x + (cw + gap) * i as f32, row_y, cw, FIELD_H);
-        hit_index.register(id, rect);
-        let (state, value, buffer, caret, anchor) = read_number_input(store, id);
-        let input = NumberInput::new(id, "", value)
-            .step(step)
-            .visual((state, store.hover_live(id)))
-            .suffix(unit.map(ph2d_editor_core::widget::Unit::suffix));
-        paint_number_input_with_buffer(
-            &input,
-            Some(buffer),
-            caret,
-            anchor,
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    row_y + FIELD_H + Spacing::Sm.px()
-}
 
 /// Uma checkbox simples. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
@@ -268,7 +204,7 @@ fn anchor_editor(
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, name_dot);
     cur_y += ph2d_tokens::row_pitch_px();
 
-    cur_y = field_row(
+    cur_y = super::rows::fields_row(
         scene,
         text_system,
         theme,
@@ -281,8 +217,9 @@ fn anchor_editor(
         &ids::INSP_ANCHOR_POS,
         PX_STEP,
         Some(ph2d_editor_core::widget::Unit::Px),
+        None,
     );
-    cur_y = field_row(
+    cur_y = super::rows::fields_row(
         scene,
         text_system,
         theme,
@@ -295,6 +232,7 @@ fn anchor_editor(
         &[ids::INSP_ANCHOR_ROT],
         DEG_STEP,
         Some(ph2d_editor_core::widget::Unit::Degrees),
+        None,
     );
     cur_y = check_row(
         scene,
@@ -311,7 +249,7 @@ fn anchor_editor(
     // ⚠️ Os campos da área só existem quando ela existe. Pintá-los sobre um Socket seria
     // oferecer quatro números que não vão a lado nenhum.
     if row.bounds.is_some() {
-        cur_y = field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -324,6 +262,7 @@ fn anchor_editor(
             &ids::INSP_ANCHOR_BOUNDS,
             PX_STEP,
             Some(ph2d_editor_core::widget::Unit::Px),
+            None,
         );
         cur_y = check_row(
             scene,
@@ -338,7 +277,7 @@ fn anchor_editor(
             ids::INSP_ANCHOR_CENTER_ON,
         );
         if row.center.is_some() {
-            cur_y = field_row(
+            cur_y = super::rows::fields_row(
                 scene,
                 text_system,
                 theme,
@@ -351,6 +290,7 @@ fn anchor_editor(
                 &ids::INSP_ANCHOR_CENTER,
                 PX_STEP,
                 Some(ph2d_editor_core::widget::Unit::Px),
+                None,
             );
         }
     }

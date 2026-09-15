@@ -295,6 +295,13 @@ fn paint_per_corner_tab(
     // Explanatory label — these four swatches are the per-corner (vertex)
     // tint; the renderer bilinearly interpolates them across the quad, so
     // distinct corners make a gradient (anatomia §3.6).
+    // ⛔⛔ **A SEGUNDA (e última) linha do Inspector com o nome POR CIMA, pela MESMA medição da
+    //    grelha 3×3 do 9-slice** (2026-09-15): o controlo não são as quatro amostras — são as
+    //    amostras **mais a pré-visualização do gradiente**, que vive à direita delas e é o que
+    //    torna o par legível. `2 × 32 + 4` de amostras `+ 8` de vão `+ 68` de prévia = **`~144 px`**,
+    //    e a coluna do controlo (`0,5 × interior − 14`) só lá chega acima de um painel de `336`.
+    //
+    // ⇒ As duas são BLOCOS com legenda, não linhas de propriedade — e é por isso que ficam.
     let label_font = TypeToken::Sm.px();
     let label_h = label_font + Spacing::Xs.px();
     paint_text(

@@ -161,7 +161,7 @@ fn camera_body(
             None,
         ), // LITERAL-PX-OK: uma prioridade de cada vez
     ] {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -174,6 +174,7 @@ fn camera_body(
             ids3,
             step,
             unit,
+            None,
         );
     }
 
@@ -249,7 +250,7 @@ fn follow_body(
             tr("panel.inspector.camera.damping_1_s"),
             [ids::INSP_CAMERA_DAMP_X, ids::INSP_CAMERA_DAMP_Y],
             0.5, // LITERAL-PX-OK: passo em 1/s
-            None,
+            Some(ph2d_editor_core::widget::Unit::PerSecond),
         ),
         (
             tr("panel.inspector.camera.dead_zone"),
@@ -270,7 +271,7 @@ fn follow_body(
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
     ] {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -283,6 +284,7 @@ fn follow_body(
             &ids2,
             step,
             unit,
+            None,
         );
     }
     cur_y
@@ -326,7 +328,7 @@ fn limits_body(
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
     ] {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -339,6 +341,7 @@ fn limits_body(
             &ids2,
             0.5, // LITERAL-PX-OK: passo em metros
             unit,
+            None,
         );
     }
     cur_y

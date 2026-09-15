@@ -145,7 +145,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.animation.loop_override" => "Loop override",
         "panel.inspector.animation.on" => "On",
         "panel.inspector.animation.off" => "Off",
-        "panel.inspector.animation.this_frame_ms_0_use" => "This frame ms (0 = use Frame ms)",
+        "panel.inspector.animation.this_frame_ms_0_use" => "This frame (0 = use Frame)",
         "panel.inspector.animation.this_sprite_has_no_animation" => {
             "This sprite has no animation with that name, or the grid shrank under it."
         }
@@ -471,7 +471,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.timers.plus_add_timer" => "+ Add Timer",
         "panel.inspector.timers.x_remove_timer" => "x Remove Timer",
         "panel.inspector.timers.timer_name" => "timer_name\u{2026}",
-        "panel.inspector.timers.duration_seconds" => "Duration (seconds)",
+        "panel.inspector.timers.duration_seconds" => "Duration",
         "panel.inspector.timers.repeat" => "Repeat",
         "panel.inspector.timers.autostart" => "Autostart",
         "panel.inspector.timers.signal_name_empty_mute" => "signal_name (empty = mute)",
@@ -532,14 +532,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anchors.bounds_x_y_w_h" => "Bounds X / Y / W / H",
         "panel.inspector.anchors.center_x_y_w_h" => "Center X / Y / W / H",
         "panel.inspector.anchors.sockets_anchors" => "Sockets / Anchors",
-        "panel.inspector.animation.from_to_cell" => "From / To (cell)",
-        "panel.inspector.animation.frame_ms_repeat_0_forever" => "Frame ms / Repeat (0 = forever)",
-        "panel.inspector.animation.hold_ms_repeat_delay_ms" => "Hold ms / Repeat delay ms",
-        "panel.inspector.camera.damping_1_s" => "Damping (1/s)",
+        "panel.inspector.animation.from_cell" => "From (cell)",
+        "panel.inspector.animation.to_cell" => "To (cell)",
+        "panel.inspector.animation.frame" => "Frame",
+        "panel.inspector.animation.repeat_forever" => "Repeat (0 = forever)",
+        "panel.inspector.animation.hold" => "Hold",
+        "panel.inspector.animation.repeat_delay" => "Repeat delay",
+        "panel.inspector.camera.damping_1_s" => "Damping",
         "panel.inspector.joint.swap_a_b" => "Swap A / B",
         "panel.inspector.physics.init_vel_x_m_s" => "Init Vel X",
         "panel.inspector.physics.init_vel_y_m_s" => "Init Vel Y",
-        "panel.inspector.physics.init_spin_deg_s" => "Init Spin (deg/s)",
+        "panel.inspector.physics.init_spin_deg_s" => "Init Spin",
         "panel.inspector.physics.belt_m_s" => "Belt",
         "panel.inspector.render_source.reimport_at_current_px_m" => "Reimport at current px/m",
         "panel.inspector.slice.corners_f_fixed_on_off" => {
@@ -548,7 +551,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.slice.borders_l_t_px" => "Borders L / T",
         "panel.inspector.slice.borders_r_b_px" => "Borders R / B",
-        "panel.inspector.slice.size_x_y_m_0" => "Size X / Y (m, 0 = sprite)",
+        "panel.inspector.slice.size_x_y_m_0" => "Size X / Y (0 = sprite)",
         "panel.inspector.wheel.motor_s" => "Motor",
         // ph2d-migrar-texto:end
         _ => return None,

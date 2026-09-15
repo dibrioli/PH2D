@@ -253,7 +253,7 @@ fn editor(
     // ⚠️ **SEGUNDOS, e o passo é 0,1** — a unidade do artista. O componente guarda microssegundos
     // porque o tique é de passo fixo; a conversão vive nas duas pontas do canal e em mais lado
     // nenhum.
-    cur_y = super::anchors::field_row(
+    cur_y = super::rows::fields_row(
         scene,
         text_system,
         theme,
@@ -265,6 +265,7 @@ fn editor(
         tr("panel.inspector.timers.duration_seconds"),
         &[ids::INSP_TIMER_DURATION],
         0.1, // LITERAL-PX-OK: passo de scrub em SEGUNDOS, não em pixels
+        None,
         None,
     );
 

@@ -347,6 +347,49 @@ pub fn property_row_columns_for(
     }
 }
 
+/// ⭐⭐⭐ **QUANTOS CAMPOS CABEM LADO A LADO NA COLUNA DO CONTROLO — e o que não cabe DESCE.**
+///
+/// ⛔⛔ **Ela nasce de duas ordens do dono que se CONTRARIAM numa linha de várias componentes:**
+/// *«Label acima do campo numérico! Muito ruim!»* (2026-09-14) põe o nome ao lado, o que entrega
+/// ao controlo **metade** da linha; e *«não permita que a caixa seja redimencionada para menor que
+/// isso»* (2026-05-24) põe um piso de [`super::super::NUMBER_INPUT_MIN_W_PX`] em cada caixa. Numa
+/// row de `X`/`Y` à largura de omissão do Inspector as duas não cabem ao mesmo tempo: a coluna do
+/// controlo mede `128 px` e dois campos ao piso pedem `148`.
+///
+/// ⚠️ **A saída NÃO é encolher a coluna do rótulo para esta linha.** A granularidade da coluna é a
+/// **SECÇÃO** — foi isso que o dono pediu (*«as labels alinhadas todas à direita»*), e uma coluna
+/// por linha devolve a coluna irregular que a wave anterior recusou.
+///
+/// ⭐ **A saída é a que a [`super::seg_row`] irmã já pratica há um dia:** *o controlo REFLUI e a
+/// coluna do rótulo não.* As componentes que não cabem ao piso descem para a linha seguinte,
+/// **dentro da coluna do controlo** — que é exactamente como o Blender desenha um vector num painel
+/// estreito.
+///
+/// Devolve `(campos por linha, número de linhas, largura de cada campo)`. ⚠️ **A largura é a mesma
+/// em todas as linhas** — a última fica curta em vez de esticar o campo que sobra, senão um `Bounds`
+/// de quatro componentes acabaria com o `H` ao dobro da largura do `X`.
+///
+/// ⚠️ **Quando nem UM campo cabe ao piso, devolve-se a coluna inteira mesmo assim**: aí o recurso
+/// que falta é o painel, e encolher mais só apagaria o número. É a mesma resposta que a
+/// [`property_label_col_w_for`] dá ao seu próprio tecto.
+#[must_use]
+pub fn property_fields_layout(control_w: f32, n: usize, gap: f32) -> (usize, usize, f32) {
+    let n = n.max(1);
+    let piso = super::super::NUMBER_INPUT_MIN_W_PX;
+    let mut por_linha = 1usize;
+    while por_linha < n {
+        let k = (por_linha + 1) as f32;
+        if k * piso + (k - 1.0) * gap <= control_w {
+            por_linha += 1;
+        } else {
+            break;
+        }
+    }
+    let linhas = n.div_ceil(por_linha);
+    let largura = ((control_w - gap * (por_linha as f32 - 1.0)) / por_linha as f32).max(1.0);
+    (por_linha, linhas, largura)
+}
+
 /// ⭐ **A porta da coluna de animação para quem NÃO usa a caixa única.**
 ///
 /// ⚠️ Ela existe porque o app tem **três** famílias de linha de formulário, e só duas passam por

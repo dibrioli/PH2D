@@ -30,14 +30,54 @@ const ROW_PAINTERS: &[&str] = &[
     "paint_text_input_with_buffer",
 ];
 
-/// As portas: quem chama uma delas reserva a coluna e sabe onde pôr o ponto.
+/// As portas de BASE: as duas do `ph2d-editor-core` que de facto reservam a coluna.
 ///
-/// ⚠️ **São DUAS desde 2026-09-14, e a segunda COMPÕE com a primeira** — a
-/// `widget::property_row_columns` (a linha de propriedade: rótulo à esquerda, controlo à direita)
-/// chama a `form_row_columns` por dentro e devolve o mesmo `dot`. ⛔ *Uma régua que procura só o
-/// nome da porta antiga acusa quem passou a usar a nova*, que foi exactamente o que ela fez ao
-/// `sections/rows.rs` no commit da conversão.
-const DOORS: [&str; 2] = ["form_row_columns", "property_row_columns"];
+/// ⚠️ A segunda COMPÕE com a primeira — a `widget::property_row_columns` (rótulo à esquerda,
+/// controlo à direita) chama a `form_row_columns` por dentro e devolve o mesmo `dot`.
+const BASE_DOORS: [&str; 2] = ["form_row_columns", "property_row_columns"];
+
+/// ⭐⭐⭐ **As portas DERIVAM-SE do `rows.rs`, nunca se escrevem à mão — e isto é a TERCEIRA
+/// correcção da mesma forma.**
+///
+/// ⛔⛔ Esta lista já foi de UM nome (`form_row_columns`), depois de dois (a linha de propriedade
+/// nasceu em 2026-09-14 e o gate acusou quem a adoptou), e em 2026-09-15 acusou **três** secções
+/// — `material_blend`, `sampling`, `slice_nine` — pelo mesmo motivo: elas passaram a chamar
+/// `rows::property_label_row`, que chama `property_row_columns` por dentro. *Uma régua que
+/// enumera portas à mão acusa, a cada wave, exactamente quem fez a coisa certa.*
+///
+/// ⇒ Uma porta de 2.ª ordem é **toda `fn` de `sections/rows.rs` cujo corpo chama uma de base**, e
+/// quem a chama reserva a coluna por composição. ⛔ Sem `--write` e sem lista: o produto é a fonte.
+///
+/// ⚠️ **O modo de falha é ALTO, de propósito:** se o parse partir, a lista encolhe para as duas de
+/// base e o gate passa a acusar as secções que usam `rows.rs` — vermelho em voz alta, nunca verde
+/// a medir nada.
+fn doors() -> Vec<String> {
+    let mut out: Vec<String> = BASE_DOORS.iter().map(|d| (*d).to_string()).collect();
+    let rows = fs::read_to_string(sections_dir().join("rows.rs")).expect("rows.rs legível");
+    let fns: Vec<(String, String)> = rows
+        .split("\npub(super) fn ")
+        .skip(1)
+        .filter_map(|bloco| {
+            let (nome, corpo) = bloco.split_once('(')?;
+            Some((nome.to_string(), corpo.to_string()))
+        })
+        .collect();
+    // ⚠️ **Ponto FIXO, e não uma passagem só:** a `num_row` não chama porta de base nenhuma — ela
+    // delega na `num_row_unit`, que chama. *Uma passagem só deixaria de fora quem está a DOIS
+    // saltos*, e a secção que a usasse seria acusada de não reservar a coluna que ela reserva.
+    loop {
+        let antes = out.len();
+        for (nome, corpo) in &fns {
+            if !out.iter().any(|d| d == nome) && out.iter().any(|d| corpo.contains(d.as_str())) {
+                out.push(nome.clone());
+            }
+        }
+        if out.len() == antes {
+            break;
+        }
+    }
+    out
+}
 
 /// ⏳ **Dívida MEDIDA, e só encolhe.** Cada ficheiro aqui pinta pelo menos um controlo de
 /// formulário e ainda não reserva a coluna — ou seja, as linhas dele aparecem ao artista **sem o
@@ -93,6 +133,7 @@ fn sections_dir() -> PathBuf {
 
 /// Os ficheiros que pintam um controlo de formulário, e se já reservam a coluna.
 fn census() -> Vec<(String, bool)> {
+    let portas = doors();
     let mut out = Vec::new();
     for entry in fs::read_dir(sections_dir()).expect("sections/ existe") {
         let path = entry.expect("entrada legível").path();
@@ -117,7 +158,7 @@ fn census() -> Vec<(String, bool)> {
             .and_then(|n| n.to_str())
             .expect("nome utf-8")
             .to_string();
-        out.push((name, DOORS.iter().any(|d| painting.contains(d))));
+        out.push((name, portas.iter().any(|d| painting.contains(d.as_str()))));
     }
     out.sort();
     out
@@ -168,4 +209,31 @@ fn the_debt_list_has_no_stale_entries() {
         ghosts.is_empty(),
         "entradas sobre ficheiros que ja' nao pintam linha nenhuma (ou nao existem): {ghosts:?}"
     );
+}
+
+/// ⭐⭐ **O CONTROLO da derivação** — sem ele, um `doors()` que devolvesse só as duas de base
+/// deixaria o gate a acusar quem faz a coisa certa, e um que devolvesse *tudo* deixaria o gate a
+/// aprovar quem não reserva coluna nenhuma.
+///
+/// ⚠️ **Piso MEDIDO, não escolhido:** em 2026-09-15 o `rows.rs` tem **cinco** portas de 2.ª ordem
+/// (`seg_row` · `num_row_unit` · `num_row` — esta a dois saltos — · `property_label_row` ·
+/// `fields_row`). O piso fica em `4` para tolerar um corte honesto e ainda apanhar um parse morto.
+#[test]
+fn the_door_census_derives_the_second_order_doors() {
+    let portas = doors();
+    let derivadas: Vec<&String> = portas
+        .iter()
+        .filter(|d| !BASE_DOORS.contains(&d.as_str()))
+        .collect();
+    assert!(
+        derivadas.len() >= 4,
+        "a derivacao leu {} porta(s) de 2.a ordem no rows.rs — o parse dela morreu: {derivadas:?}",
+        derivadas.len()
+    );
+    for esperada in ["num_row", "fields_row", "property_label_row"] {
+        assert!(
+            portas.iter().any(|d| d == esperada),
+            "a derivacao nao achou a porta `{esperada}`: {portas:?}"
+        );
+    }
 }

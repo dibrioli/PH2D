@@ -17,6 +17,7 @@ mod inspector_regression;
 mod inspector_regression_anchors;
 mod inspector_regression_sections;
 mod inspector_regression_slice;
+mod no_row_paints_its_name_above_its_control;
 mod seam;
 mod seam_anim;
 mod seam_apply_ladder;

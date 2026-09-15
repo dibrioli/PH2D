@@ -29,7 +29,8 @@ pub use paint::paint_property_box;
 mod row;
 pub use row::{
     FORM_ROWS_SHOW_DECORATOR, PropertyRow, form_row_columns, paint_decorator_dot,
-    paint_property_label, property_label_col_w, property_label_origin, property_row_columns,
+    paint_property_label, property_label_col_w, property_label_col_w_for, property_label_origin,
+    property_row_columns, property_row_columns_for,
 };
 // ⚠️ Os três internos que o pintor da caixa e a checkbox consomem — re-exportados no MESMO
 //    caminho de antes, para o corte não mudar um chamador.

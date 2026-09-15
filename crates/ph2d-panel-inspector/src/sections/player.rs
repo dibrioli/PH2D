@@ -444,6 +444,25 @@ fn paint_cards(
         (push_is_live || id != ids::INSP_PLAYER_REACT_PUSH)
             && (spring_is_live || !SPRING_ONLY.contains(&id))
     };
+    // ⭐⭐⭐ **A coluna do rótulo é a da SECÇÃO INTEIRA, medida uma vez.**
+    //
+    // ⛔⛔ Report do dono, 2026-09-14: *«3 pontos (…) sendo usados antes de ficar estreito»*. A
+    // causa medida: o dock dele está a `220,9 px` (o `~/.ph2d/layout.txt`; a omissão é `304`), e a
+    // metade da linha dá `78,4` — **16 dos 52** rótulos elidiam, enquanto o campo ao lado mostrava
+    // `2` ou `65` com espaço de sobra.
+    //
+    // ⚠️ **Medida sobre TODOS os cards, não por card:** *«as labels alinhadas todas à direita»* é
+    // uma coluna só para a secção; uma por card daria doze colunas.
+    let coluna = {
+        let font = TypeToken::Sm.px();
+        let mut mais_largo = 0.0_f32;
+        for (_, _, rows) in PLAYER_CARDS {
+            for (label, _, _, _) in rows {
+                mais_largo = mais_largo.max(text_system.prefix_width(label.tr(), font));
+            }
+        }
+        Some(mais_largo)
+    };
     for (title, card_id, rows) in PLAYER_CARDS {
         // ⚠️ **O card da 3ª lei some no modo que não a tem** (W-KinPure) — não é
         // arrumação, é a lei do knob-morto: sob o *puro sangue* NENHUM dos três
@@ -479,6 +498,7 @@ fn paint_cards(
                 label.tr(),
                 *id,
                 *unit,
+                coluna,
             );
         }
         // ⚠️ O `ry` é DESCARTADO de propósito: quem manda no fluxo é a moldura

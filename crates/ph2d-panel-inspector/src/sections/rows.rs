@@ -196,6 +196,7 @@ pub(super) fn num_row(
         label,
         id,
         None,
+        None,
     )
 }
 
@@ -228,6 +229,12 @@ pub(super) fn num_row_unit(
     label: &str,
     id: NodeId,
     unit: Option<ph2d_editor_core::widget::Unit>,
+    // ⭐⭐ **O rótulo mais largo que a SECÇÃO vai pintar** — ver
+    //    [`ph2d_editor_core::widget::property_label_col_w_for`]. `None` = a metade da linha.
+    //
+    // ⚠️ **É da SECÇÃO e não desta linha, de propósito:** uma coluna por linha seria uma coluna
+    //    diferente por linha, e o que o dono pediu foi *«as labels alinhadas todas à direita»*.
+    desired_label_w: Option<f32>,
 ) -> f32 {
     // ⭐⭐⭐ **O rótulo fica à ESQUERDA, pela porta** — report do dono, 2026-09-14, com foto da
     // secção LEG do Platform Player: *«Label acima do campo numérico! Muito ruim!»*. Até aqui esta
@@ -237,7 +244,8 @@ pub(super) fn num_row_unit(
     // ⚠️ **A altura de uma row cai de `label_h + passo` para o PASSO** (~16 px por linha), e é por
     // isso que a [`num_row_h`] encolheu no mesmo commit: a `card_h` deriva dela, e as duas têm de
     // continuar a ser a mesma resposta — senão a moldura do card nasce por cima das caixas.
-    let row = ph2d_editor_core::widget::property_row_columns(x, w, y, ROW_H_PX);
+    let row =
+        ph2d_editor_core::widget::property_row_columns_for(x, w, y, ROW_H_PX, desired_label_w);
     let label_font = TypeToken::Sm.px();
     // ⚠️ **ELIDIDO, nunca transbordado:** a coluna do rótulo é uma FRACÇÃO da linha (a coluna
     // docada é arrastável), logo um rótulo comprido numa coluna estreita passaria por cima do campo.

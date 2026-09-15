@@ -171,6 +171,33 @@ const LABEL_COL_FRAC: f32 = 0.5; // LITERAL-PX-OK: nao e' px, e' A METADE da lin
 /// fora dela (duas mutações, as duas mortas).
 #[must_use]
 pub fn property_label_col_w(x: f32, w: f32) -> f32 {
+    property_label_col_w_for(x, w, None)
+}
+
+/// ⭐⭐⭐ **A mesma coluna, mas o rótulo pode PEDIR EMPRESTADO ao controlo o que ele não usa.**
+///
+/// ⛔⛔ **Report do dono, 2026-09-14:** *«3 pontos (…) sendo usados antes de ficar estreito»* — com
+/// a foto de um painel em que os campos mostravam `2`, `65` e `0.100 s` com espaço de sobra
+/// enquanto os nomes ao lado truncavam.
+///
+/// ⚠️⚠️ **E a medição desmontou a minha suposição: o painel dele NÃO está na largura de omissão.**
+/// O `~/.ph2d/layout.txt` diz `dock_w_right = 220,9` (o default é `304`), o que dá uma coluna de
+/// **`78,4`** e **16 dos 52** rótulos da §14 elididos. *O meu gate media a largura de OMISSÃO —
+/// onde cortam zero — e por isso estava verde sobre o que ele via.*
+///
+/// ⇒ `desired` é o rótulo mais largo que o chamador vai pintar, e a coluna passa a ser
+/// `clamp(desired, metade, o que o controlo pode ceder)`:
+///
+/// - **o piso é a METADE** — a ordem do dono sobre o alinhamento continua a valer, e numa coluna
+///   larga nada muda (a `304` a metade já chega a todos);
+/// - **o tecto é o CONTROLO** — ele nunca desce do piso nomeado (o *stepper* mais um dígito), que é
+///   o recurso;
+/// - **`None` = a metade**, que é o comportamento de quem não sabe o que vai pintar.
+///
+/// Medido a `220,9`: as elisões passam de **16 para 3** (`Corner Look-ahead`, `Weight on Ground` e
+/// `Swim Line (weights)` continuam maiores do que a linha aguenta).
+#[must_use]
+pub fn property_label_col_w_for(x: f32, w: f32, desired: Option<f32>) -> f32 {
     // ⚠️ O vertical entra a zero **e é deitado fora**: o único uso que a [`form_row_columns`] lhe dá
     // é montar o rect do ponto, e aqui só queremos a largura utilizável (que já desconta a coluna
     // de animação, ou não desconta nada na aparência clássica — a guarda mora lá, uma vez).
@@ -179,9 +206,9 @@ pub fn property_label_col_w(x: f32, w: f32) -> f32 {
     // ⛔ O piso do CONTROLO é o recurso — ver o doc de [`PropertyRow`].
     let control_min = ph2d_tokens::ICON_BTN_SIZE_PX + Spacing::Lg.px();
     // ⭐ O rótulo acaba um VÃO antes do meio da linha, para o controlo começar EXACTAMENTE nele.
-    (w * LABEL_COL_FRAC - gap)
-        .min((usable_w - gap - control_min).max(0.0))
-        .max(0.0)
+    let metade = w * LABEL_COL_FRAC - gap;
+    let tecto = (usable_w - gap - control_min).max(0.0);
+    desired.unwrap_or(metade).max(metade).min(tecto).max(0.0)
 }
 
 /// ⭐⭐⭐ **O RÓTULO de uma linha de propriedade — alinhado à DIREITA, encostado ao controlo.**
@@ -255,9 +282,22 @@ pub fn property_label_origin(
 /// ⭐⭐⭐ **A porta de uma linha de propriedade** — ver [`PropertyRow`].
 #[must_use]
 pub fn property_row_columns(x: f32, w: f32, row_y: f32, row_h: f32) -> PropertyRow {
+    property_row_columns_for(x, w, row_y, row_h, None)
+}
+
+/// ⭐ **A mesma porta, com o rótulo mais largo que o chamador vai pintar** — ver
+/// [`property_label_col_w_for`].
+#[must_use]
+pub fn property_row_columns_for(
+    x: f32,
+    w: f32,
+    row_y: f32,
+    row_h: f32,
+    desired_label_w: Option<f32>,
+) -> PropertyRow {
     let (usable_w, dot) = form_row_columns(x, w, row_y, row_h);
     let gap = Spacing::Md.px();
-    let label_w = property_label_col_w(x, w);
+    let label_w = property_label_col_w_for(x, w, desired_label_w);
     let control_x = x + label_w + gap;
     let control_w = (usable_w - label_w - gap).max(1.0);
     PropertyRow {

@@ -29,6 +29,27 @@
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Spacing, TypeToken};
 
+/// ⏳ **QUANTOS RÓTULOS ELIDEM, POR LARGURA DE PAINEL — e só ENCOLHE.**
+///
+/// ⛔⛔⛔ **A 1.ª redacção deste gate media UMA largura: a de OMISSÃO — e o dono não a usa.**
+/// Ele reportou *«3 pontos (…) sendo usados antes de ficar estreito»* com o gate **verde**. A causa
+/// estava no `~/.ph2d/layout.txt`: `dock_w_right = 220,9`, contra os `304` do token. A `304` não
+/// elide nenhum; a `220,9` elidiam **16 de 52**.
+///
+/// ⇒ ***um gate calibrado na largura de OMISSÃO é cego à largura que o artista de facto tem***, e
+/// a cura não é medir melhor um ponto: é medir a ESCADA.
+///
+/// ⚠️ **A largura `220,9` não é inventada — é lida do ficheiro de arrumação do dono.** As outras
+/// três cercam-na: uma abaixo (o pior caso plausível), uma acima, e a de omissão.
+const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
+    (200.0, 13),
+    // ⭐ A largura REAL do dock do dono quando ele reportou (workspace `drawing_2d`).
+    (220.9, 3),
+    (245.0, 0),
+    // A largura de OMISSÃO (`inspector-w`), onde a coluna é exactamente a METADE que ele pediu.
+    (304.0, 0),
+];
+
 /// ⭐⭐⭐ **VAZIO — e foi a decisão de APARÊNCIA do dono que o esvaziou.**
 ///
 /// Esta lista nasceu com **12** entradas, cada uma um nome comprido que era elidido numa coluna de
@@ -46,6 +67,43 @@ fn largura_de_uma_linha() -> f32 {
     let painel = ph2d_tokens::INSPECTOR_W_PX - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX;
     // O `card_frame` recua `Spacing::Sm` de cada lado antes de pintar as rows.
     painel - 2.0 * Spacing::Sm.px()
+}
+
+/// A coluna que a §14 de facto usa a uma dada largura de painel — **a da SECÇÃO**, medida sobre o
+/// rótulo mais largo dela, como o pintor faz.
+fn coluna_da_seccao(ts: &mut TextSystem, painel: f32) -> f32 {
+    let fonte = TypeToken::Sm.px();
+    let mais_largo = ph2d_panel_inspector::player_row_labels()
+        .iter()
+        .map(|t| ts.prefix_width(t, fonte))
+        .fold(0.0_f32, f32::max);
+    let linha = painel - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX - 2.0 * Spacing::Sm.px();
+    ph2d_editor_core::widget::property_label_col_w_for(0.0, linha, Some(mais_largo))
+}
+
+/// ⭐⭐⭐ **Quantos rótulos elidem, em cada largura da escada.**
+#[test]
+fn the_elision_ladder_only_shrinks() {
+    let rotulos = ph2d_panel_inspector::player_row_labels();
+    assert!(rotulos.len() >= 40, "a tabela encolheu: {}", rotulos.len());
+    let fonte = TypeToken::Sm.px();
+    let mut ts = TextSystem::new();
+    for (painel, tecto) in ELIDEM_POR_LARGURA {
+        let col = coluna_da_seccao(&mut ts, *painel);
+        let n = rotulos
+            .iter()
+            .filter(|t| ts.prefix_width(t, fonte) > col)
+            .count();
+        assert!(
+            n <= *tecto,
+            "painel {painel}: {n} rotulos elidem e o tecto e' {tecto} — subiu"
+        );
+        // ⚠️ **A metade de OBSOLESCÊNCIA** (`CLAUDE.md` §5.0): se melhorou, o número desce AQUI.
+        assert!(
+            n == *tecto,
+            "painel {painel}: elidem {n} e a tabela ainda diz {tecto} — aperte o numero"
+        );
+    }
 }
 
 #[test]
@@ -98,5 +156,72 @@ fn the_elision_tolerance_still_describes_something() {
     assert!(
         mortas.is_empty(),
         "entrada(s) STALE na tolerancia — o rotulo sumiu ou ja' cabe:\n  {mortas:?}"
+    );
+}
+
+/// ⭐⭐⭐ **O PINTOR pede emprestado — e isto mede-o no PRODUTO, não na porta.**
+///
+/// ⛔⛔ **A 1.ª redacção do gate da escada calculava a coluna ELA PRÓPRIA** (chamando a porta com o
+/// rótulo mais largo) e por isso **sobreviveu** à mutação que apaga o pedido no pintor: ela provava
+/// a porta, não a fiação. *Um gate que refaz a conta do produto mede a conta, não o produto.*
+///
+/// ⇒ aqui a régua é o **rect que o painel REGISTOU** para um campo da §14: a largura dele diz onde
+/// a coluna do rótulo acabou.
+#[test]
+fn the_painter_borrows_the_slack_the_control_does_not_need() {
+    use ph2d_editor_core::screens::layout::HeroLayout;
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_player};
+    use ph2d_ui_testkit::MockPanelHost;
+
+    /// A largura do controlo se a coluna do rótulo fosse SÓ a metade da linha.
+    fn controlo_a_meio(painel: f32) -> f32 {
+        let linha = painel - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX - 2.0 * Spacing::Sm.px();
+        let gap = Spacing::Md.px();
+        let util = linha - ph2d_editor_core::widget::DECORATOR_W;
+        util - (linha * 0.5 - gap) - gap
+    }
+
+    let campo = |painel_w: f32| -> f32 {
+        let viewport = Rect {
+            x: 0.0,
+            y: 0.0,
+            w: 2400.0,
+            h: 8000.0,
+        };
+        let mut layout = HeroLayout::for_viewport(viewport);
+        layout.inspector = Rect {
+            x: viewport.w - painel_w,
+            y: 0.0,
+            w: painel_w,
+            h: 8000.0,
+        };
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_player(Some(crate::seam_player::player()));
+        let rects = host.paint_with_layout::<InspectorPanel>(&mut state, layout, viewport);
+        set_current_inspector_player(None);
+        rects
+            .iter()
+            .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_FLOAT)
+            .map(|(_, r)| r.w)
+            .expect("o campo Float Height nao foi pintado")
+    };
+
+    // ⭐ NA LARGURA DO DONO (`dock_w_right = 220,9`): o controlo cede espaço ao rótulo.
+    let estreito = campo(220.9);
+    let meio_estreito = controlo_a_meio(220.9);
+    assert!(
+        estreito < meio_estreito - 1.0,
+        "a 220,9 o campo mede {estreito:.1} e a metade daria {meio_estreito:.1} — \
+         o rotulo NAO pediu emprestado"
+    );
+    // ⭐ NA LARGURA DE OMISSÃO: a metade já chega a todos, e o desenho do dono fica intacto.
+    let largo = campo(304.0);
+    let meio_largo = controlo_a_meio(304.0);
+    assert!(
+        (largo - meio_largo).abs() < 1.0,
+        "a 304 o campo mede {largo:.1} e devia ser a metade ({meio_largo:.1}) — \
+         o emprestimo mexeu onde nao devia"
     );
 }

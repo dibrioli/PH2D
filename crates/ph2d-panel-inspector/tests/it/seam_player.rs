@@ -33,7 +33,7 @@ const VIEWPORT: Rect = Rect {
 
 /// Um corpo Dynamic que **já é** um player — o estado em que o artista está
 /// quando afina um.
-fn player() -> InspectorPlayerInfo {
+pub(crate) fn player() -> InspectorPlayerInfo {
     InspectorPlayerInfo {
         entity_bits: ENTITY,
         has_player: true,

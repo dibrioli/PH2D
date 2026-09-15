@@ -73,14 +73,28 @@ pub(crate) fn elide(
     let (mut lo, mut hi) = (0usize, bounds.len());
     while lo + 1 < hi {
         let mid = lo + (hi - lo) / 2;
-        let candidate = format!("{}{ELLIPSIS}", &text[..bounds[mid]]);
+        let candidate = corte(text, bounds[mid]);
         if text_system.prefix_width_weighted(&candidate, font_size, weight) <= max_width {
             lo = mid;
         } else {
             hi = mid;
         }
     }
-    Some(format!("{}{ELLIPSIS}", &text[..bounds[lo]]))
+    Some(corte(text, bounds[lo]))
+}
+
+/// ⭐⭐ **O prefixo com as reticências, SEM o espaço que ficou pendurado.**
+///
+/// ⛔⛔ **Report do dono, 2026-09-14, com foto:** *«quando fica estreito as palavras com 3 pontos
+/// não se alinham perfeitamente à direita»*. Medido: cortar *«Air Jump Height»* a `62 px` dava
+/// **`"Air Jump …"`** — o corte caiu logo a seguir a um espaço, e o espaço ficou. Com o rótulo
+/// alinhado à direita, esse espaço abre um **buraco entre o texto e os pontos** que as linhas
+/// vizinhas não têm: as reticências acabam todas no mesmo `x`, mas uma delas parece recuada.
+///
+/// ⚠️ **É o mesmo defeito de sempre — a largura de AVANÇO e a TINTA não são a mesma grandeza** —,
+/// só que aqui a diferença é um caractere inteiro em vez de um *side bearing*.
+fn corte(text: &str, ate: usize) -> String {
+    format!("{}{ELLIPSIS}", text[..ate].trim_end())
 }
 
 /// ⭐⭐ **O texto que cabe em `max_width`** — ele próprio quando cabe, `<prefixo>…` quando não.
@@ -281,5 +295,44 @@ mod title_width_tests {
             "o semi-negrito tem de ser mais largo que o normal em ALGUM caso — senao este \
              modulo esta' a defender-se de um defeito que nao existe"
         );
+    }
+
+    /// ⭐⭐ **AS RETICÊNCIAS NUNCA FICAM PENDURADAS NUM ESPAÇO.**
+    ///
+    /// ⛔⛔ **Report do dono, 2026-09-14, com foto:** *«quando fica estreito as palavras com 3
+    /// pontos não se alinham perfeitamente à direita»*. Medido: *«Air Jump Height»* a `62 px` saía
+    /// **`"Air Jump …"`** — o corte caiu logo a seguir a um espaço. Com o rótulo alinhado à
+    /// direita, esse espaço abre um buraco entre o texto e os pontos que as vizinhas não têm.
+    ///
+    /// ⚠️ **A varredura é sobre uma FAIXA de larguras**, não sobre uma: o corte cai depois de um
+    /// espaço só em certas larguras, e uma fixtura de largura única mede silêncio. Ela conta os
+    /// casos em que a elisão de facto aconteceu, e exige que tenham acontecido.
+    #[test]
+    fn the_ellipsis_never_hangs_off_a_space() {
+        let mut ts = TextSystem::new();
+        let f = 12.0_f32;
+        let mut elididos = 0;
+        for col in (40..=110).step_by(2).map(|n| n as f32) {
+            for t in [
+                "Air Jump Height",
+                "Takeoff Gravity",
+                "Corner Look-ahead",
+                "Weight on Ground",
+                "Swim Line (weights)",
+                "Lift Momentum",
+            ] {
+                let cabe = fit(&mut ts, t, f, col);
+                if cabe == t {
+                    continue;
+                }
+                elididos += 1;
+                assert!(
+                    !cabe.ends_with(&format!(" {ELLIPSIS}")),
+                    "col={col}: {t:?} saiu {cabe:?} — as reticencias ficaram penduradas num espaco"
+                );
+            }
+        }
+        // ⚠️ Piso de população: uma varredura em que nada elide passa trivialmente.
+        assert!(elididos >= 100, "so' {elididos} elisoes na varredura");
     }
 }

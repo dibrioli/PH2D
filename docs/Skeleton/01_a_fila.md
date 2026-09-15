@@ -2881,6 +2881,32 @@ existente** deforma (na direcção de deixar de dobrar), e as três rotas são: 
 (sem schema, mas é por mídia: o `VecPath` e a malha decodificam em sítios diferentes) · guardá-lo
 **por tendão** (exacto, e move o `PROJECT_SCHEMA`).
 
+### F6-m — ⭐⭐⭐ **O resto do app ainda achava que a arte é PLANA** (censo + as três ferramentas, 2026-09-15)
+
+**UMA LINHA:** a wave anterior curou **o pincel**; o censo do dia seguinte achou o **conta-gotas**, o
+editor de **curva/linha** e as **três** entradas da Remoção de fundo a resolver o ponteiro pelo afim
+do quad de repouso — e as três entradas do removedor faziam algo **pior que o afim**: uma caixa
+alinhada aos eixos, tirada da pose LOCAL, cega à rotação, ao pai e à malha.
+
+⛔⛔ **A lei que esta wave pagou:** *um controlo DESENHADO por um mapa e AGARRADO por outro é um
+controlo morto sob o dedo* — e curar só a metade do ponteiro **fabricava** três deles, porque antes
+as duas metades concordavam **por acidente**. ⇒ cada cura tem um PAR: a porta inversa (quem aponta) e
+a directa (quem desenha), que passou a existir (`ph2d_render::drawn_mesh_of` / `drawn_instance_of`).
+
+⛔ **E a TINTA da máscara saiu do Vello para o passe de sprites**, porque o caminho por um recorte
+por triângulo está **medido e refutado**: numa arte translúcida ele deixa `10 580` px de costura
+(`41 732` a `3 456` peças) e a cura barata — dilatar os recortes — **piora** exactamente o caso
+translúcido (`55 978`, pior desvio `124`); acima disso os buffers do Vello são FIXOS e degradam em
+**silêncio**, que foi o *«Smooth bugado»* deste módulo.
+
+⚠️ **E uma afirmação minha ao dono estava meia errada:** a *prévia* da Remoção de fundo já seguia a
+dobra (ela viaja no `PreviewOverride`, que só troca a textura da MESMA instância); o que estava plano
+era a **tinta** que a anota.
+
+⇒ **[HANDOFF_O_RESTO_DO_APP_ACHAVA_A_ARTE_PLANA_2026-09-15](handoffs/HANDOFF_O_RESTO_DO_APP_ACHAVA_A_ARTE_PLANA_2026-09-15.md)**
+— a tabela das três portas, as seis leituras que o diff inverte, as três premissas minhas que a
+medição derrubou e a recusa medida com os números.
+
 ### F6-l — ⭐⭐⭐ **O *«quase bom»* tinha número: era a CURVATURA dentro do dab, e a malha fina não a alcança** (4.º report, 2026-09-14)
 
 **UMA LINHA:** a marca do pincel sobre arte dobrada fecha em **`1,002`** (era `1,107`), e o que

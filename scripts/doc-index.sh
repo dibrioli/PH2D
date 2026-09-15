@@ -272,6 +272,23 @@ DIRS = [
             "foi construído fica em [`handoffs/`](handoffs/README.md)."
         ),
     ),
+    # ⚠️ **Esta entrada nasceu porque o README dela estava escrito À MÃO e já mentia** (2026-09-15):
+    # ele anunciava «3 handoffs» com CINCO na pasta — o defeito exacto que o próprio texto dele
+    # avisava («um índice escrito à mão envelhece no dia em que alguém esquece uma linha»), e que a
+    # lei do `CLAUDE.md` §5.0 manda curar GERANDO, nunca corrigindo o número.
+    dict(
+        dir="docs/Skeleton/handoffs",
+        titulo="`Skeleton / handoffs` — o registro por jornada",
+        ordem="data",
+        o_que_e=(
+            "O registro de **como** o módulo do esqueleto foi construído — um arquivo por jornada "
+            "de linha. O **pensamento** (os planos, a fila, as recusas medidas) fica um nível "
+            "acima, em [`../README.md`](../README.md).\n>\n"
+            "> ⚠️ Cada handoff descreve o mundo **no dia em que foi escrito** e não é atualizado "
+            "depois. O estado vivo é o `CLAUDE.md` §5 — use-os para responder *«porque é que isto "
+            "ficou assim?»*, nunca para decidir a próxima acção."
+        ),
+    ),
     dict(
         dir="docs/Skeleton",
         titulo="`Skeleton` — índice do módulo",

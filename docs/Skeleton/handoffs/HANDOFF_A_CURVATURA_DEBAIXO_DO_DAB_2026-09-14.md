@@ -270,13 +270,18 @@ viaja é a dobra da ARTE, nunca a intenção do artista a meio do gesto.
 - ✅ **Ligar o `Smooth` de fábrica** — FEITO (§9-bis). A linha acima esteve `⏸️` neste mesmo doc
   depois de a decisão já ter sido tomada: *uma lista de abertos escreve-se no fim da wave, e esta
   envelheceu dentro dela.*
-- ⏳ **E o CENSO do que ainda acha que a arte é PLANA** (varrido em 2026-09-15, quem resolve o
-  ponteiro pelo afim do quad de repouso sem perguntar à malha):
-  | onde | o que sai errado |
-  |---|---|
-  | o **conta-gotas** (`forwarding.rs`) | apanha a cor do texel errado |
-  | a ferramenta de **curva/forma** do Painter (`painter_curve_input.rs`) | os pontos de controlo caem deslocados |
-  | o **removedor de fundo** (`bgremoval_preview_gpu.rs`) | a amostra e a pré-visualização idem |
-  | as **guias** (grelha · contornos de selecção · curva · linha · selos · humidade) | desenhadas planas por cima da arte dobrada |
-  ⭐ Os três primeiros são o MESMO defeito que o pincel tinha e a porta já existe
-  ([`ph2d_render::mesh_uv`]); as guias são outra natureza (precisam de ser **subdivididas**).
+- ✅ **O CENSO do que ainda acha que a arte é PLANA** (varrido em 2026-09-15) — **os três primeiros
+  FECHARAM no mesmo dia**, ver
+  [`HANDOFF_O_RESTO_DO_APP_ACHAVA_A_ARTE_PLANA_2026-09-15`](HANDOFF_O_RESTO_DO_APP_ACHAVA_A_ARTE_PLANA_2026-09-15.md):
+  | onde | o que saía errado | estado |
+  |---|---|---|
+  | o **conta-gotas** (`forwarding.rs`) | apanhava a cor do texel errado | ✅ |
+  | a **curva / a linha** do Painter | as alças eram desenhadas longe da tinta, e agarradas noutro sítio | ✅ (as duas metades) |
+  | o **removedor de fundo** (3 entradas + a tinta da máscara) | uma caixa alinhada aos eixos, cega à rotação, ao pai e à malha | ✅ |
+  | as **guias** (grelha · contornos de selecção · selos · humidade · o gizmo de deformação) | desenhadas planas por cima da arte dobrada | ⏳ |
+  ⚠️ **E esta tabela dizia *«a amostra e a pré-visualização»* do removedor, e metade estava errada:**
+  a prévia dele já seguia a dobra (ela viaja no `PreviewOverride`, que troca a textura da MESMA
+  instância) — o que estava plano era a **tinta** que a anota. *Uma célula escrita a partir do nome
+  do ficheiro, e não do caminho do pixel.*
+  ⭐ Para as guias que sobram a porta DIRECTA já existe (`ph2d_render::drawn_mesh_of`), e o que falta
+  nelas é **subdivisão**: um ponto atravessa a malha exacto, um segmento recto sobre uma dobra não.

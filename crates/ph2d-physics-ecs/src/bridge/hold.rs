@@ -160,6 +160,9 @@ impl PhysicsBridge {
         // E o que o player estava a fazer — a terceira metade da mesma frase
         // (`bridge::player_out::discard_player_history`).
         self.discard_player_history();
+        // ⭐ E as mortes de projéctil anunciadas: com o solver desarmado nada voou, logo um anúncio
+        // de pé descreve uma corrida que acabou — e quem o lê APAGA entidades da cena.
+        self.discard_projectile_deaths();
         // ⚠️ **Os sensores do player NÃO são a mesma frase** (`W-Probes2`), e a
         // `W-Probes` errou ao tratá-los como o terceiro canal de leitura: um
         // contato descreve um EVENTO que aconteceu e some com a corrida que o

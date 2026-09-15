@@ -324,3 +324,111 @@ fn a_memoria_do_voo_atravessa_os_tiques() {
         p.y
     );
 }
+
+/// ⭐⭐⭐ **Uma morte num tique do MEIO de uma moldura sobrevive até quem a lê.**
+///
+/// # ⛔⛔ O canal é do DISPATCH, e o código limpava-o por TIQUE
+///
+/// Uma moldura pode dever vários tiques (o relógio anda mais depressa que o ecrã, ou o artista
+/// arrasta a régua). Com a limpeza dentro do `drive_projectiles` — uma chamada por **passo** — a
+/// morte do tique `8` era apagada pelo tique `9`, e a shell, que lê o canal **uma vez por
+/// moldura**, nunca a via: ⇒ **uma bala transitória ficava na cena para sempre**, com a lei, o
+/// alcance e os 17 gates da wave todos certos.
+///
+/// ⚠️ É o irmão exacto do `accumulate_joint_breaks`, cujo doc já escreve a mesma frase sobre o
+/// mesmo laço (*«o wrapper limpa a própria lista a cada `step`, então uma rotura num tique inicial
+/// já desapareceu no último»*) — *a lei estava escrita ao lado, para o vizinho.*
+///
+/// **Mutação que deve sangrar:** devolver o `self.projectile_done.clear();` ao topo do
+/// `drive_projectiles`.
+#[test]
+fn uma_morte_no_meio_da_moldura_chega_a_quem_a_le() {
+    let (mut sim, mut bridge, quem) = cena(
+        ProjectileLaw {
+            initial_speed: 8.0,
+            // 1 m a 8 m/s ⇒ o voo acaba ao tique 8 (`0,1333 s`), bem dentro da moldura de 60.
+            range: 1.0,
+            ..ProjectileLaw::default()
+        },
+        0,
+        Vec2::new(0.0, 0.0),
+        0.0,
+    );
+    // ⚠️ **UM dispatch que deve 60 tiques** — e é este o sujeito: com `corre()`, um tique por
+    // moldura, o defeito é invisível porque a leitura acontece no tique em que a morte ocorre.
+    bridge.dispatch(&mut sim, true, 60);
+
+    let mortos: Vec<Entity> = bridge.projectile_done().iter().map(|(e, _)| *e).collect();
+    assert!(
+        mortos.contains(&quem),
+        "a bala morreu ao tique ~8 de uma moldura de 60 e o anúncio nao chegou ao fim dela: \
+         {mortos:?} — quem lê o canal apaga a copia da cena, e ela ficaria la' para sempre"
+    );
+    // E o controlo: ela de facto parou dentro do alcance, senao o gate mede outra coisa.
+    let p = pos(&sim, quem);
+    assert!(
+        (p.x - 1.0).abs() < 0.15,
+        "o alcance e' 1 m e ela parou em {p:?}"
+    );
+}
+
+/// ⭐⭐ **A etiqueta «o voo acabou» é um FACTO, não um acontecimento.**
+///
+/// # ⚠️⚠️ Um evento lido como estado acerta pelo tempo que ninguém o apagar
+///
+/// O Inspector pinta *«The flight is over — rewind to launch it again»*, e lia o **canal de
+/// morte**, que é de UM dispatch. ⇒ a etiqueta dependia de o relógio estar a andar: **parado** ela
+/// ficava (nada limpava o canal) e **a andar** sumia no quadro seguinte — e depois de a limpeza do
+/// canal passar a ser por dispatch (a cura da morte no meio da moldura), sumiria nos dois.
+///
+/// Este gate mede a diferença nos DOIS sentidos, e é a segunda metade que o torna honesto: sem
+/// ela, um `projectiles_finished` que devolvesse toda a gente passaria.
+///
+/// **Mutação que deve sangrar:** `self.projectile_state.iter().map(|(&e, _)| e)` (sem o filtro) ⇒
+/// a 2.ª asserção; devolver o canal do evento ⇒ a 1.ª.
+#[test]
+fn o_voo_acabado_le_se_igual_com_o_relogio_parado_ou_a_andar() {
+    let (mut sim, mut bridge, quem) = cena(
+        ProjectileLaw {
+            initial_speed: 8.0,
+            range: 1.0,
+            ..ProjectileLaw::default()
+        },
+        0,
+        Vec2::new(0.0, 0.0),
+        0.0,
+    );
+    let acabados = |b: &PhysicsBridge| -> Vec<Entity> { b.projectiles_finished().collect() };
+
+    corre(&mut sim, &mut bridge, 60);
+    assert!(
+        acabados(&bridge).contains(&quem),
+        "ao tique 60 o voo de 1 m ja' acabou"
+    );
+
+    // ⚠️ **O relógio ANDA e a morte já é velha** — o canal do evento está vazio (ninguém morreu
+    // neste dispatch) e o facto continua a ser verdade.
+    bridge.dispatch(&mut sim, true, 90);
+    assert!(
+        bridge.projectile_done().is_empty(),
+        "o canal do EVENTO nao anuncia uma morte velha: {:?}",
+        bridge.projectile_done()
+    );
+    assert!(
+        acabados(&bridge).contains(&quem),
+        "com o relogio a andar a etiqueta desapareceu — era o evento a ser lido como estado"
+    );
+
+    // E PARADO, que era o único sítio onde a leitura antiga acertava.
+    bridge.dispatch(&mut sim, false, 90);
+    assert!(acabados(&bridge).contains(&quem), "parado tambem");
+
+    // ⭐ E rebobinar apaga-a — o voo vai recomeçar, e a etiqueta que dizia o contrário mandaria o
+    // artista rebobinar outra vez.
+    bridge.dispatch(&mut sim, false, 0);
+    assert!(
+        acabados(&bridge).is_empty(),
+        "depois do Reset nenhum voo acabou: {:?}",
+        acabados(&bridge)
+    );
+}

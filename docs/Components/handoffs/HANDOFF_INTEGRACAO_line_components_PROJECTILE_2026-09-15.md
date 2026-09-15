@@ -149,3 +149,91 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_PRO
    `glaze_layering_costs_a_ratio_not_an_order_of_magnitude` (`ph2d-wet-paint`) — reprovou no fan-out
    de 23 079 e passou **3 de 3** sozinha a `load 142–151`, com **zero** linhas do diff naquela
    crate. É um gate de RAZÃO, a forma canónica da família.
+
+---
+
+## §9 — O REPORT DO DONO sobre o rewind, e as QUATRO metades que ele destapou
+
+> *«o Rewind não está funcionando com os projéteis. Eles tem um comportamento diferente a cada
+> rewind»* — Enio, 2026-09-15, depois do smoke da `=1`/`=2`.
+
+⛔⛔ **Nenhum dos 17 gates da wave o via, e nem podiam: os 17 medem uma corrida que anda para a
+FRENTE.** O rewind é o outro laço, e ele estava a correr outra simulação.
+
+### §9.1 — O vermelho, em números (o gate nasceu assim)
+
+A mesma bala, três corridas separadas por um Reset:
+
+| corrida | primeiros tiques | onde pára |
+|---|---|---|
+| 1.ª | `+0,133 → +2,40` (voa, bate na parede) | `−5,28` depois de ricochetear |
+| 2.ª | `−0,107 → −0,213` (**parte para o lado contrário**) | `−2,03` ao tique **19**, e nunca mais anda |
+| 3.ª | — | não anda de todo |
+
+*É o report à letra, e a 2.ª linha diz a causa: ela arranca com a velocidade com que MORREU.*
+
+### §9.2 — As quatro metades
+
+1. ⛔⛔ **O laço de replay do `rewind_to` dirigia SÓ o `drive_players`.** O `drive_topdown` (#13) e o
+   `drive_projectiles` (#14) foram ligados ao laço da FRENTE e não a este ⇒ um scrub replayava um
+   mundo onde aqueles corpos não se mexem. ⚠️ **É a TERCEIRA vez desta família** — o cabeçalho do
+   `bridge::tape` narra a primeira (W7, também por report) e o `drive_topdown` saiu de fábrica assim
+   sem ninguém dar por isso. ⇒ **a cura é uma PORTA** ([`bridge::controllers`], `drive_controllers`)
+   chamada pelos **dois** laços, com censo (`controllers_one_door.rs`) a proibir que um controlador
+   seja dirigido fora dela: *um quarto controlador chega aos dois laços por construção.*
+2. ⛔⛔ **O `rebuild_from_rest` limpava `player_state` e `topdown_state` e NÃO `projectile_state`.**
+   Reconstruir do repouso É o tique 0, e no tique 0 nenhuma bala nasceu. ⚠️ **E esta não é inerte um
+   único dia, ao contrário da irmã do salto**, cujo próprio comentário mede que o `airborne` se
+   re-deriva sozinho: o `launched` é o que converte `initial_speed` + o ângulo do corpo numa
+   velocidade, **uma vez só**, e nada a jusante o re-deriva. `finished` ⇒ nunca mais voa ·
+   `travelled` ⇒ morre mais cedo a cada corrida · `bounces_used` ⇒ deixa de ricochetear.
+3. ⛔ **O canal de morte era limpo por TIQUE, dentro do `drive_projectiles`.** Numa moldura que deve
+   3 tiques, uma morte no primeiro era apagada pelo segundo ⇒ **uma bala transitória nunca saía da
+   cena**. ⚠️ O doc daquele canal já dizia *«é do DISPATCH, não do quadro»* — a frase certa ao lado
+   do código errado —, e o irmão exacto (`accumulate_joint_breaks`) escreve a mesma lei sobre o
+   mesmo laço. Hoje a limpeza é uma porta nomeada (`discard_projectile_deaths`) com **dois**
+   chamadores: o dispatch e o `hold`.
+4. ⛔⛔ **E o Inspector lia um EVENTO para pintar um ESTADO.** A etiqueta *«The flight is over»* saía
+   do canal de morte, logo dependia de o relógio estar a andar: **parada** ficava de pé porque nada
+   a limpava, **a andar** sumia no quadro seguinte. ⚠️ Era pré-existente e a cura (3) tornava-a
+   visível nos dois casos ⇒ a ponte ganha `projectiles_finished()` (o facto) ao lado de
+   `projectile_done()` (o acontecimento), e o readout da shell passou a ler o primeiro.
+   *Um evento lido como estado acerta pelo tempo que ninguém o apagar.*
+
+### §9.3 — A lei que fica
+
+⭐⭐⭐ **Esta ponte anda o relógio por DOIS laços escritos à mão, e toda lei por-tique tem de entrar
+nos dois.** A tabela do cabeçalho do `controllers_one_door.rs` tem as três ocorrências com a forma
+como cada uma foi descoberta — duas por report do dono. *Uma lei escrita em dois sítios ainda não é
+uma lei; só uma PORTA é* — e é a segunda vez em dois dias que esta linha paga exactamente esta
+frase (a primeira foi o `reads_the_keyboard`, §10 do handoff do #13).
+
+### §9.4 — Prova
+
+`docs/Components/ferramentas/mutacao_rewind_2026-09-15.sh` — **7 mutações, todas a sangrar**.
+⚠️⚠️ **A 1.ª redacção do script imprimiu «SOBREVIVEU» nas sete sobre um produto CORRECTO:** ela
+filtrava com `--exact` sobre um nome parcial, o `cargo test` casou **zero** testes e saiu **verde**.
+⇒ o arnês ganhou **controlo sobre o próprio filtro** (conta os `running N tests` e reprova em `N =
+0`), que é a memória `feedback_a_mutation_proof_needs_a_control_on_its_own_filter` a morder outra
+vez. *Uma prova de mutação sem controlo do filtro mede o filtro.*
+
+Gates novos: `rewind_controllers.rs` (3, comportamento) · `controllers_one_door.rs` (3, censo) ·
+`projectile_tests.rs` (2: a morte no meio da moldura, e a etiqueta que não depende do relógio).
+
+### §9.5 — ABERTO, nomeado
+
+- **O `hold` limpa o canal de morte e o `rewind_to` não precisa** (o replay passa pela porta, que o
+  limpa no dispatch) — a redundância está dita, não suposta.
+- **`projectile_state` guarda entradas de entidades que já não existem** até ao próximo
+  `rebuild_from_rest`. Não tem consumidor errado hoje (o Inspector só pergunta por quem tem o
+  componente), e a varredura custaria o mundo por tique.
+- ⚠️ **Uma SEGUNDA flake de carga para promover, com nome:**
+  `the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas`
+  (`ph2d-tool-painter`, `tool::paint::mask::mask_gate_tests`) — reprovou no fan-out de 14 843, passou
+  na corrida seguinte da mesma suíte e **3 de 3** sozinha a `load 41–53`, com **zero** linhas do diff
+  naquela crate. É um gate de RAZÃO (custo do traço contra a pegada), a forma canónica; e ⚠️ **é
+  IRMÃ DE FICHEIRO** da `the_mask_stroke_cost_does_not_follow_the_canvas`, que já está na lista do
+  §5.0 — *duas razões no mesmo ficheiro, uma listada e outra não, é exactamente como a lista
+  envelhece* (a nota que a `line/timeline` deixou sobre o `ph2d-timeline`, repetida aqui).
+  ⭐ As outras duas reprovadas daquela corrida (`flip_smooth::…::orcamento` e
+  `the_cost_of_sampling_a_path_is_flat_in_its_anchors`) **já são membros nomeados**.

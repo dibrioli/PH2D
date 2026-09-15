@@ -56,6 +56,35 @@ impl PhysicsBridge {
         &self.projectile_done
     }
 
+    /// **Os projécteis cujo voo ACABOU e que ainda estão na cena** — o ESTADO, não o evento.
+    ///
+    /// ⚠️⚠️ **Não confundir com [`Self::projectile_done`], e a diferença mordeu:** aquele é um
+    /// **acontecimento** (*«morreu NESTE dispatch»*) e serve o dreno, que apaga a cópia uma vez;
+    /// este é um **facto do mundo** (*«o voo acabou»*) e serve o Inspector, que o pinta enquanto
+    /// for verdade. O Inspector lia o canal do evento, e por isso a etiqueta dependia de o
+    /// relógio estar a andar: parado ela ficava (nada limpava o canal), a andar ela sumia no
+    /// quadro seguinte. *Um evento lido como estado acerta pelo tempo que ninguém o apagar.*
+    ///
+    /// ⚠️ Iterador e não `Vec`: quem chama já tem o buffer dele (`PhysicsState::projectile_over`),
+    /// e devolver uma lista nova alocaria uma por quadro.
+    pub fn projectiles_finished(&self) -> impl Iterator<Item = Entity> + '_ {
+        self.projectile_state
+            .iter()
+            .filter(|(_, st)| st.finished)
+            .map(|(&e, _)| e)
+    }
+
+    /// **Esquece as mortes anunciadas** — irmão dos `discard_*` desta ponte.
+    ///
+    /// ⚠️⚠️ **O canal é do DISPATCH, e até 2026-09-15 ele era limpo por TIQUE** — dentro do
+    /// `drive_projectiles`, ou seja uma vez por passo. Numa moldura que deve 3 tiques, uma morte
+    /// no primeiro era apagada pelo segundo, e a bala transitória **nunca saía da cena**: é o
+    /// irmão exacto do `accumulate_joint_breaks`, cujo doc já escreve a mesma frase sobre o mesmo
+    /// laço. E um salto de relógio deixava-o de pé, a descrever uma corrida que acabou.
+    pub(super) fn discard_projectile_deaths(&mut self) {
+        self.projectile_done.clear();
+    }
+
     /// **Um tique dos projécteis.** Ver o cabeçalho do módulo.
     pub(super) fn drive_projectiles(&mut self, sim: &SimWorld) {
         let world = sim.world();
@@ -63,9 +92,9 @@ impl PhysicsBridge {
         if !(dt.is_finite() && dt > 0.0) {
             return;
         }
-        // ⚠️ **O canal é do DISPATCH, não do quadro** — quem o lê fá-lo logo a seguir, e deixá-lo
-        // crescer faria a mesma morte ser anunciada em todo tique até alguém a drenar.
-        self.projectile_done.clear();
+        // ⛔ **A limpeza do canal NÃO mora aqui** — ela é do DISPATCH, e escrevê-la neste laço
+        // fazia uma morte de um tique ser apagada pelo tique seguinte da mesma moldura. Ver
+        // [`Self::discard_projectile_deaths`].
         let mut planos: Vec<ProjectileMove> = Vec::new();
         let mut hits: Vec<CharacterHit> = Vec::new();
 

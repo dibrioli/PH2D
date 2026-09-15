@@ -126,6 +126,11 @@ impl PhysicsBridge {
         // ela é a memória entre tiques, e um dispatch não é uma descontinuidade
         // — quem a limpa são as duas que são.
         self.player_events.clear();
+        // ⭐ E o anúncio de morte dos projécteis (TOP-20 #14), que é **do dispatch** — o doc dele
+        // já o dizia e o código limpava-o por TIQUE: numa moldura que deve 3 tiques, uma morte no
+        // primeiro era apagada pelo segundo e a bala nunca saía da cena. É o irmão exacto do
+        // `accumulate_joint_breaks`, que o laço abaixo documenta pelo mesmo motivo.
+        self.discard_projectile_deaths();
         match target.cmp(&self.last_stepped) {
             // The clock went BACKWARDS — Reset, or a scrub. rapier has no
             // rewind, so replay from the rest state (see `rewind_to`).
@@ -177,20 +182,12 @@ impl PhysicsBridge {
                     // E o DEDO daquele tick (W7). Antes da perna, porque é ela
                     // que o consome.
                     self.take_taped_input(sim, tape, self.last_stepped + i + 1);
-                    // E os PLAYERS (W2): o sensor pergunta ao BVH que o step
-                    // ANTERIOR deixou e a mola escreve o motor deste tick. Por
-                    // TICK, como tudo aqui — uma perna que agisse por FRAME
-                    // seguraria o personagem mais alto em máquina rápida.
-                    self.drive_players(sim);
-                    // E os movers de VISTA DE CIMA (TOP-20 #13), no MESMO tique e
-                    // logo a seguir: os dois leem a mesma entrada e os dois
-                    // escrevem a pose antes do `step`, que é o que faz o solver
-                    // tratar os corpos como movendo-se.
-                    self.drive_topdown(sim);
-                    // E os PROJÉCTEIS (TOP-20 #14), no MESMO tique e logo a seguir: eles escrevem
-                    // a pose antes do `step`, como os dois controladores, que é o que faz o solver
-                    // tratá-los como movendo-se.
-                    self.drive_projectiles(sim);
+                    // E os CONTROLADORES (W2 · TOP-20 #13 · #14), por TICK como tudo aqui — uma
+                    // perna que agisse por FRAME seguraria o personagem mais alto em máquina
+                    // rápida. ⚠️ **Pela porta ÚNICA** (`bridge::controllers`), que é a mesma que o
+                    // laço de replay do `rewind` chama: eram dois laços escritos à mão, e dois dos
+                    // três controladores só tinham sido ensinados a este.
+                    self.drive_controllers(sim);
                     self.world.step();
                     self.steps_taken += 1;
                     // Diff this tick's touching union against the standing set — the

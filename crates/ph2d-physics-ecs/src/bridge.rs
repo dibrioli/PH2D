@@ -16,6 +16,10 @@
 pub mod anchors;
 pub mod bodies;
 pub mod contacts;
+/// ⭐⭐⭐ **A PORTA ÚNICA dos controladores** — os dois laços que andam o relógio chamam-na, e um
+/// controlador novo não pode ser ensinado a meio par. Ver o cabeçalho dela (report do dono sobre o
+/// rewind dos projécteis, 2026-09-15).
+mod controllers;
 mod damping;
 mod diagnostics;
 pub mod fk;

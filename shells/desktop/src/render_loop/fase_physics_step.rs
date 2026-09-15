@@ -48,10 +48,15 @@ impl crate::App {
         );
         // ⭐⭐ **Os projécteis cujo voo ACABOU** (TOP-20 #14) — o readout que o Inspector lê para
         // dizer *«o voo acabou»*. ⚠️ **Reescrito**, nunca acumulado.
+        //
+        // ⚠️⚠️ **O ESTADO, e não o canal de morte** (2026-09-15): aquele é um acontecimento de UM
+        // dispatch, e lê-lo aqui fazia a etiqueta depender de o relógio estar a andar — parada
+        // ficava de pé porque ninguém a limpava, a andar sumia no quadro seguinte. Ver
+        // `PhysicsBridge::projectiles_finished`.
         self.physics.projectile_over.clear();
         self.physics
             .projectile_over
-            .extend(physics.projectile_done().iter().map(|(e, _)| e.to_bits()));
+            .extend(physics.projectiles_finished().map(|e| e.to_bits()));
         // O flash do estouro envelhece uma vez por frame, aqui: ao lado do
         // dispatch da física, que é a fase em que o tempo do mundo anda. Um canal
         // PRÓPRIO, porque uma explosão é um impulso e não deixa estado no mundo

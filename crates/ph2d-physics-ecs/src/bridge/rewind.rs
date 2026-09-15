@@ -104,11 +104,18 @@ impl PhysicsBridge {
             // e o replay correria com os números de outro tick.
             self.drive_joint_params(sim, i == 0);
             self.drive_kinematic(sim, 1.0);
-            // ⚠️ **E os PLAYERS — a correção de bug desta wave.** Este laço
+            // ⚠️ **E os CONTROLADORES — a correção de bug desta wave.** Este laço
             // dirigia as poses da cena e deixava o personagem sem perna e sem
             // caminhada: ele CAÍA pelos ticks replayados, e a trajetória de um
             // scrub discordava da de um play sobre o mesmo tick.
-            self.drive_players(sim);
+            //
+            // ⚠️⚠️ **E o defeito voltou duas vezes, porque a cura era um NOME e não uma PORTA:**
+            // o `drive_topdown` (TOP-20 #13) e o `drive_projectiles` (#14) foram ligados ao laço
+            // da frente e não a este, e um scrub replayava um mundo onde aqueles corpos não se
+            // mexem — report do dono sobre o rewind dos projécteis (2026-09-15). Hoje os dois
+            // laços chamam a MESMA função e um controlador novo chega aos dois por construção
+            // (`bridge::controllers`).
+            self.drive_controllers(sim);
             self.world.step();
             self.steps_taken += 1;
         }
@@ -165,6 +172,17 @@ impl PhysicsBridge {
         // do estado.
         self.player_state.clear();
         self.topdown_state.clear();
+        // ⭐⭐⭐ **E a memória de VOO, que estava a faltar aqui — o report do dono.** Reconstruir do
+        // repouso É o tique 0, e no tique 0 nenhuma bala nasceu. Sem esta linha a memória
+        // atravessava o Reset e **cada corrida era outra**: `finished` ⇒ a bala nunca mais voa,
+        // `travelled` ⇒ morre mais cedo a cada vez, `bounces_used` ⇒ deixa de ricochetear, e
+        // `velocity` ⇒ o arco arranca com a velocidade com que morreu (medido: a 2.ª corrida
+        // partia **para o lado contrário** e parava aos 19 tiques).
+        //
+        // ⚠️ **Ao contrário do estado de pulo acima, esta não é inerte um único dia:** o
+        // `launched` é o que converte `initial_speed` + o ângulo do corpo numa velocidade, **uma
+        // vez só**, e nada a jusante o re-deriva de uma amostra do mundo.
+        self.projectile_state.clear();
         // ⚠️ **As POLIAS saem do mundo velho ANTES de ele morrer** (W-Weston), e isso
         // é uma correção de bug, não arrumação. A tabela de polias vive DENTRO do
         // `PhysicsWorld`, então `PhysicsWorld::new()` a apagava — e o laço de replay

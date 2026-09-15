@@ -240,4 +240,36 @@ mod tests {
         );
     }
 
+    /// Sonda: o TAMANHO que a porta entrega, varrendo a compressão da arte.
+    #[test]
+    #[ignore = "sonda: o diametro entregue contra a compressao"]
+    fn probe_o_diametro_contra_a_compressao() {
+        for raio in [8.0_f32, 32.0, 64.0, 160.0] {
+            println!("\n  raio autorado {raio}");
+            println!("    compressao   radius_scale   raio emitido   PEDIDO   flatten");
+            for k in [1.0_f32, 0.5, 0.25, 0.125, 0.0625, 0.03125] {
+                let mut t = PainterTool::default();
+                t.set_brush_size_px(raio);
+                t.set_canvas_warp(ph2d_painter_brush::canvas_warp::CanvasWarp::linear([
+                    [k, 0.0],
+                    [0.0, 1.0],
+                ]));
+                let d = ph2d_painter_brush::canvas_warp::warped_dab(
+                    ph2d_painter_brush::canvas_warp::CanvasWarp::linear([[k, 0.0], [0.0, 1.0]]),
+                    0.0,
+                    0,
+                );
+                let spec = t.stroke_spec();
+                println!(
+                    "    {:8.4}   {:10.3}   {:10.2}   {:8.2}   {:.4}",
+                    k,
+                    d.radius_scale,
+                    spec.radius_px,
+                    raio * d.radius_scale,
+                    spec.dab_flatten
+                );
+            }
+        }
+    }
+
 }

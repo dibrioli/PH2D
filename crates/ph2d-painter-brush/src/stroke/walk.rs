@@ -23,10 +23,49 @@ impl Stroke {
             self.last_pressure = target.pressure;
             return;
         }
-        let base_step = self.spec.dab_spacing_px();
         let dir = [(to[0] - from[0]) / seg, (to[1] - from[1]) / seg];
+        // ⭐⭐⭐ **O PASSO É A EXTENSÃO DA PEGADA AO LONGO DO CAMINHO, não o eixo MAIOR dela.**
+        //
+        // ⛔⛔ **Report do dono, 6.ª foto (2026-09-14): *«pinta com diâmetro menor onde é mais
+        // estreito»*.** O [`crate::BrushSpec::dab_spacing_px`] é `fracção × 2 × radius_px`, e o
+        // `radius_px` é o semi-eixo **MAIOR** — que sobre arte dobrada carrega a compressão do eixo
+        // do OUTRO lado. Medido, o mesmo caminho de `400 px` de ECRÃ, a andar pelo eixo que a arte
+        // **não** comprime:
+        //
+        // | compressão | dabs emitidos |
+        // |---|---|
+        // | nenhuma | `44` |
+        // | `2×` | `22` |
+        // | `4×` | `11` |
+        // | `8×` | **`5`** |
+        //
+        // Com um pincel macio e cobertura abaixo de `1`, oito vezes menos marcas não constroem a
+        // tinta: o traço sai mais fino e mais fraco **exactamente onde a arte é estreita**.
+        //
+        // ⭐ A extensão da pegada na direcção `d` é `radius_px / |apply(d)|` — a mesma porta que o
+        // amostrador usa —, logo o passo é `dab_spacing_px() / |apply(d)|`. Em repouso `apply` é a
+        // identidade e isto é **byte-idêntico**.
+        //
+        // ⚠️ **E ela corrige também o pincel ACHATADO pelo artista**, que sempre teve o mesmo
+        // defeito: uma pena calígrafica a andar pelo lado fino dava passos do lado GROSSO e deixava
+        // o traço aos bocados. *A lei é uma só, e nunca foi sobre a deformação da arte.*
+        let ao_longo = {
+            let v = self.spec.footprint_deform().apply(dir);
+            v[0].hypot(v[1])
+        };
+        let base_step = if ao_longo.is_finite() && ao_longo > 1e-4 {
+            (self.spec.dab_spacing_px() / ao_longo).max(1.0)
+        } else {
+            self.spec.dab_spacing_px()
+        };
         // Smoothing length for the heading EMA, from the brush diameter (Krita's Fade is brush-relative).
-        let smooth_len = crate::heading::smooth_len(2.0 * self.spec.clamped_radius());
+        //
+        // ⭐ **Pela MESMA razão do passo acima, o diâmetro é o AO LONGO DO CAMINHO.** Esta janela é
+        // uma distância percorrida, e o percurso é alimentado em px de TEXTURA: sobre arte
+        // comprimida o eixo maior inflaria a janela e o rumo ficaria para trás exactamente onde a
+        // arte é estreita. Em repouso `ao_longo` é `1` e isto é byte-idêntico.
+        let smooth_len =
+            crate::heading::smooth_len(2.0 * self.spec.clamped_radius() / ao_longo.max(1e-4));
         let overlap = self.method_overlap();
         // Arc-length at `from` (= current cumulative to `last_pos`); each dab stamps `base_arc + traveled`,
         // and the segment advances the accumulator by its full length so the along-stroke coordinate is

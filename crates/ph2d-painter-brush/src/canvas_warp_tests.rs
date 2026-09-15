@@ -289,3 +289,127 @@ fn the_painted_dab_seen_through_a_fold_is_the_authored_ellipse() {
          as asserções de cima ficariam verdes sobre o produto de ontem"
     );
 }
+
+/// Quantos dabs um caminho de `400 px` recebe, com a pegada que `warp` e `(flatten, angle)` dão.
+fn dabs_no_caminho(warp: CanvasWarp, flatten: f32, angle: u16, dir: [f32; 2]) -> usize {
+    use crate::{BrushSpec, Dab, Stroke, StrokePoint};
+    let base = BrushSpec {
+        radius_px: 24.0,
+        spacing: 0.1,
+        ..BrushSpec::default()
+    };
+    let w = warped_dab(warp, flatten, angle);
+    let spec = BrushSpec {
+        radius_px: base.radius_px * w.radius_scale,
+        dab_flatten: w.flatten,
+        dab_angle_deg: w.angle_deg,
+        dab_curve: w.curve,
+        ..base
+    };
+    let ponto = |x: f32, y: f32| StrokePoint {
+        pos: [x, y],
+        pressure: 1.0,
+    };
+    let mut s = Stroke::new(spec, crate::Dynamics::default(), 7);
+    let mut out: Vec<Dab> = Vec::new();
+    s.begin(ponto(0.0, 0.0), &mut out);
+    s.extend(ponto(dir[0] * 400.0, dir[1] * 400.0), &mut out);
+    out.len()
+}
+
+/// ⭐⭐⭐ **A DENSIDADE DO TRAÇO É DO CAMINHO, NUNCA DA DEFORMAÇÃO DA ARTE** — o report da 6.ª foto
+/// do dono (*«pinta com diâmetro menor onde é mais estreito»*, 2026-09-14).
+///
+/// ⛔⛔ O passo era `fracção × 2 × radius_px`, e o `radius_px` é o semi-eixo **MAIOR** — que sobre
+/// arte dobrada carrega a compressão do eixo do OUTRO lado. O mesmo caminho de `400 px` de ecrã,
+/// a andar pelo eixo que a arte **não** comprime, recebia `44` · `22` · `11` · **`5`** dabs. Com um
+/// pincel macio e cobertura abaixo de `1`, oito vezes menos marcas não constroem a tinta: o traço
+/// sai mais fino **exactamente onde a arte é estreita**.
+///
+/// ⚠️ **É a lei-mãe deste módulo, um nível acima:** *o traço é facto do CAMINHO, nunca de quão fino
+/// o motor amostrou o caminho.* Aqui quem amostrava mal era o próprio motor.
+#[test]
+fn the_stroke_density_is_the_paths_never_the_arts_fold() {
+    let sem = dabs_no_caminho(CanvasWarp::rest(), 0.0, 0, [0.0, 1.0]);
+    assert!(sem > 20, "a fixtura tem de emitir dabs que cheguem: {sem}");
+    for k in [0.5_f32, 0.25, 0.125] {
+        // ⚠️ O traço anda em `y`, o eixo que esta deformação NÃO toca: em ecrã ele percorre
+        // exactamente os mesmos `400 px` em todas as células, logo a contagem tem de ser a mesma.
+        let com = dabs_no_caminho(
+            CanvasWarp::linear([[k, 0.0], [0.0, 1.0]]),
+            0.0,
+            0,
+            [0.0, 1.0],
+        );
+        assert_eq!(
+            com, sem,
+            "com a arte comprimida {}× o caminho recebeu {com} dabs contra {sem} — a densidade do \
+             traço está a seguir a deformação da arte",
+            1.0 / k
+        );
+    }
+}
+
+/// ⭐⭐ **E a MESMA lei vale para o achatamento que o ARTISTA autorou** — que sempre teve o mesmo
+/// defeito e que nenhum gate via, porque *todo o corpus desta crate está no ponto NEUTRO desse
+/// knob*.
+///
+/// Uma pena calígrafica a andar pelo lado FINO dava passos do lado GROSSO e deixava o traço aos
+/// bocados. ⛔ A metade anti-vácuo é a razão entre as duas direcções: sem ela, um passo que
+/// ignorasse a direcção passaria (as duas contagens seriam iguais).
+#[test]
+fn a_flattened_nib_steps_finer_along_its_thin_axis() {
+    const FLATTEN: f32 = 0.8;
+    let grosso = dabs_no_caminho(CanvasWarp::rest(), FLATTEN, 0, [1.0, 0.0]);
+    let fino = dabs_no_caminho(CanvasWarp::rest(), FLATTEN, 0, [0.0, 1.0]);
+    assert!(
+        fino as f32 > grosso as f32 * 3.0,
+        "a andar pelo lado FINO da pena o traço recebeu {fino} dabs e pelo GROSSO {grosso} — o \
+         passo está a ignorar a direcção do caminho, e o lado fino sai aos bocados"
+    );
+    // ⛔ E o lado grosso tem de continuar a ser o de sempre: esta lei não pode adensar o que já
+    // estava certo.
+    let redondo = dabs_no_caminho(CanvasWarp::rest(), 0.0, 0, [1.0, 0.0]);
+    assert_eq!(
+        grosso, redondo,
+        "andar pelo eixo MAIOR de uma pena achatada deixou de dar o passo de sempre"
+    );
+}
+
+/// Sonda: **quantos dabs um caminho recebe**, com e sem compressão da arte — a tabela que achou o
+/// defeito da 6.ª foto. Hoje as quatro linhas dão `44`; antes da cura davam `44` · `22` · `11` ·
+/// `5`.
+#[test]
+#[ignore = "sonda: o espacamento contra a compressao"]
+fn probe_o_espacamento_contra_a_compressao() {
+    use crate::{BrushSpec, Dab, Stroke, StrokePoint};
+    let ponto = |x: f32, y: f32| StrokePoint { pos: [x, y], pressure: 1.0 };
+    println!("\n  compressao   raio emitido   passo   dabs em 400 px de TEXTURA   dabs por 400 px de ECRA");
+    for k in [1.0_f32, 0.5, 0.25, 0.125] {
+        let base = BrushSpec {
+            radius_px: 24.0,
+            spacing: 0.1,
+            ..BrushSpec::default()
+        };
+        let w = warped_dab(CanvasWarp::linear([[k, 0.0], [0.0, 1.0]]), 0.0, 0);
+        let spec = BrushSpec {
+            radius_px: base.radius_px * w.radius_scale,
+            dab_flatten: w.flatten,
+            dab_angle_deg: w.angle_deg,
+            ..base
+        };
+        let mut s = Stroke::new(spec, crate::Dynamics::default(), 7);
+        let mut out: Vec<Dab> = Vec::new();
+        s.begin(ponto(0.0, 0.0), &mut out);
+        // ⚠️ O traço anda ao longo de `y`, que é o eixo NÃO comprimido: em ecrã ele percorre
+        // exactamente os mesmos `400 px` em todas as células.
+        s.extend(ponto(0.0, 400.0), &mut out);
+        println!(
+            "  {k:8.4}   {:10.1}   {:6.2}   {:10}                  {:.0}",
+            spec.radius_px,
+            spec.dab_spacing_px(),
+            out.len(),
+            out.len() as f32
+        );
+    }
+}

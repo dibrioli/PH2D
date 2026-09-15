@@ -370,3 +370,57 @@ fn probe_o_custo_da_porta() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O TAMANHO da marca, que nenhuma régua desta linha media.** A `redondeza` é `maior/menor`
+/// — **invariante à escala** —, logo ela é cega a uma marca certa na forma e errada no diâmetro.
+/// Report do dono, 6.ª foto: *«pinta com diâmetro menor onde é mais estreito»*.
+#[test]
+#[ignore = "sonda: o diametro entregue atraves da malha"]
+fn probe_o_diametro_atraves_da_malha() {
+    for (n, theta) in [(32usize, 1.2f32), (32, 1.8)] {
+        let mesh = leque(n, theta, 1.4);
+        println!("\n=== leque n={n} theta={theta} ===");
+        println!("  centro (u,v)      raio    pedido    entregue   razao");
+        for raio in [0.06_f32, 0.125] {
+            for v in [0.2_f32, 0.35, 0.5, 0.65, 0.8] {
+                let centro = [0.5_f32, v];
+                let Some(p) = ecra(&mesh, centro).map(|s| [s[0], -s[1]]) else {
+                    continue;
+                };
+                let Some(w) = warp_over(&mesh, p, SIZE, [raio, raio]) else {
+                    continue;
+                };
+                let d = ph2d_painter_brush::canvas_warp::warped_dab(
+                    ph2d_painter_brush::canvas_warp::CanvasWarp {
+                        linear: w.linear,
+                        curve: w.curve,
+                    },
+                    0.0,
+                    0,
+                );
+                let pegada = ph2d_painter_brush::FootprintDeform::new(d.flatten, d.angle_deg)
+                    .with_curve(d.curve);
+                let c0 = ecra(&mesh, centro).expect("centro");
+                let (mut lo, mut hi) = (f32::INFINITY, 0.0f32);
+                for k in 0..360 {
+                    let q = pegada.outline_at(k as f32 / 360.0);
+                    let alvo = [
+                        centro[0] + q[0] * raio * d.radius_scale,
+                        centro[1] + q[1] * raio * d.radius_scale,
+                    ];
+                    let Some(s) = ecra(&mesh, alvo) else { continue };
+                    let r = (s[0] - c0[0]).hypot(s[1] - c0[1]);
+                    lo = lo.min(r);
+                    hi = hi.max(r);
+                }
+                // O que o artista pediu: um disco de `raio` em UV, na escala da sprite.
+                let pedido = raio * SIZE[0];
+                let entregue = 0.5 * (lo + hi);
+                println!(
+                    "  (0.50, {v:.2})     {raio:5}  {pedido:7.4}   {entregue:8.4}   {:.3}",
+                    entregue / pedido
+                );
+            }
+        }
+    }
+}

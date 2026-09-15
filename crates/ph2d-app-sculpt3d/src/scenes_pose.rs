@@ -94,11 +94,26 @@ pub(crate) fn announce() {
          [sculpt3d]    (8) Volte a `Rotate / Twist` e arraste com Ctrl carregado, na\n\
          [sculpt3d]        horizontal.\n\
          [sculpt3d]        -> Agora ela TORCE sobre o proprio eixo, em vez de dobrar.\n\
+         [sculpt3d]           (Ate' 2026-09-15 este passo nao fazia NADA com o valor de\n\
+         [sculpt3d]            fabrica -- a curva de queda chegava ao pincel invertida e a\n\
+         [sculpt3d]            torcao saia sempre zero.)\n\
+         [sculpt3d]    (9) Ctrl+Z. No painel, o `Auto-Smooth` so' aparece com o interruptor\n\
+         [sculpt3d]        `Detail` em `Pro` -- ele e' a PRIMEIRA fileira dentro da seccao do\n\
+         [sculpt3d]        pincel, logo abaixo do titulo dela, e vem de fabrica em `Basic`.\n\
+         [sculpt3d]        Ponha em `Pro`, suba `Auto-Smooth` para o\n\
+         [sculpt3d]        maximo e repita o arrasto do passo (3).\n\
+         [sculpt3d]        -> A orelha dobra na mesma, e a superficie sai MAIS LISA: a dobra\n\
+         [sculpt3d]           deixa de mostrar as facetas da malha. Ponha de volta em 0 e\n\
+         [sculpt3d]           repita para comparar.\n\
+         [sculpt3d]           O alisamento acompanha o OSSO, nao o circulo do pincel: ele\n\
+         [sculpt3d]           alcanca a orelha inteira, mesmo a parte que esta' longe do\n\
+         [sculpt3d]           cursor, e nao toca no resto da bola.\n\
          [sculpt3d]\n\
          [sculpt3d]    DEU ERRADO SE: nao aparecer osso nenhum no passo (2); se a orelha\n\
          [sculpt3d]    esticar num bico no passo (3) em vez de dobrar rigida; se ela nao mexer\n\
-         [sculpt3d]    NADA; se o corpo da bola se deformar junto com ela; ou se desmarcar\n\
-         [sculpt3d]    `Pin far end` nao mudar nada.\n\
+         [sculpt3d]    NADA; se o corpo da bola se deformar junto com ela; se desmarcar\n\
+         [sculpt3d]    `Pin far end` nao mudar nada; se o Ctrl do passo (8) nao torcer; ou se\n\
+         [sculpt3d]    o `Auto-Smooth` do passo (9) nao mudar a superficie.\n\
          [sculpt3d]\n\
          [sculpt3d]    (Se em vez do osso aparecer so' uma BOLINHA VERMELHA sobre o cursor, e'\n\
          [sculpt3d]     um aviso: ali nao ha' dobradica nenhuma e arrastar nao move nada.\n\
@@ -238,5 +253,77 @@ mod tests {
             "a pose moveu só {movidos} vértices na ponta da orelha — esta cena \
              mostraria uma ferramenta que parece partida"
         );
+    }
+
+    /// ⛔⛔⛔ **TODA FILEIRA QUE O ROTEIRO NOMEIA TEM DE ESTAR NA LISTA — e no
+    /// NÍVEL que ele diz.**
+    ///
+    /// ⚠️ *Um passo que manda clicar numa linha de painel **afirma** que ela está
+    /// lá*, e o dono aprova o smoke com o passo impossível dentro — ele conclui
+    /// que não achou, não que não existe. Este gate nasceu porque o passo (9)
+    /// quase shipou a mandá-lo subir o `Auto-Smooth` **sem dizer que ele vive no
+    /// `Pro`**, e o painel nasce em `Basic`.
+    ///
+    /// ⚠️ **A régua é a TABELA do painel** (`rows()` + `Row::visible`), nunca uma
+    /// lista escrita aqui: uma segunda cópia da condição divergiria na primeira
+    /// wave que mexesse numa delas, e a que o artista vê é a que envelhece.
+    #[test]
+    fn as_fileiras_que_o_roteiro_nomeia_sao_alcancaveis_com_a_pose_na_mao() {
+        use ph2d_panel_sculpt3d::rows::rows;
+        use ph2d_panel_sculpt3d::slots::VerbSlot;
+        use ph2d_panel_sculpt3d::state::Sculpt3dUi;
+        use ph2d_panel_sculpt3d::state_modes::UiLevel;
+
+        /// `(rótulo i18n, o nível MÍNIMO em que o roteiro promete achá-la)`.
+        /// ⚠️ O `Auto-Smooth` está aqui como `Pro` **de propósito**: é isso que
+        /// obriga o passo (9) a dizer onde fica o interruptor.
+        const NOMEADAS: &[(&str, UiLevel)] = &[
+            ("panel.sculpt3d.pose_segments", UiLevel::Basic),
+            ("panel.sculpt3d.auto_smooth", UiLevel::Pro),
+        ];
+        // ⚠️ **As duas que o roteiro nomeia e que NÃO são `Row`** — a caixa
+        // `Pin far end` e a fileira de chips `Deformation` — vivem noutra
+        // superfície, e por isso são presas pelo **texto do pintor**: se o
+        // ficheiro mudar de sítio isto **deixa de compilar**, em vez de ficar
+        // verde a medir menos (`HOWTO §2.6`). ⛔ Sem esta metade o gate afirmaria
+        // sobre dois dos quatro passos e leria-se como se cobrisse os quatro.
+        const FORA_DA_TABELA: &[&str] =
+            &["panel.sculpt3d.pose_anchored", "panel.sculpt3d.pose_mode"];
+        const PINTOR: &str = include_str!("../../ph2d-panel-sculpt3d/src/paint/brush_fileiras.rs");
+        for chave in FORA_DA_TABELA {
+            assert!(
+                PINTOR.contains(chave),
+                "o roteiro da =41 nomeia `{chave}` e o pintor do painel nao a \
+                 desenha — o dono procura e nao acha"
+            );
+        }
+        let slot = VerbSlot::for_verb(Verb::Pose);
+        let ui = |nivel| Sculpt3dUi {
+            brush: slot.brush.clone(),
+            radius_px: slot.radius_px,
+            ui_level: nivel,
+            ..Sculpt3dUi::default()
+        };
+        for &(rotulo, nivel) in NOMEADAS {
+            let r = rows().find(|r| r.label == rotulo).unwrap_or_else(|| {
+                panic!("o roteiro da =41 nomeia `{rotulo}` e o painel nao tem essa fileira")
+            });
+            assert!(
+                r.visible(&ui(nivel)),
+                "o roteiro manda mexer em `{rotulo}` e ela nao e' pintada com a \
+                 pose na mao no nivel {nivel:?} — o dono procura e nao acha"
+            );
+            // ⭐ **A metade que faz o roteiro ser HONESTO sobre o nivel:** uma
+            // fileira que o roteiro promete no `Pro` tem de estar mesmo
+            // ESCONDIDA no `Basic`, senão a frase que manda trocar o
+            // interruptor é ruído; e uma que ele promete no `Basic` não pode
+            // precisar do `Pro`.
+            assert_eq!(
+                r.visible(&ui(UiLevel::Basic)),
+                nivel == UiLevel::Basic,
+                "o roteiro promete `{rotulo}` a partir de {nivel:?} e o painel \
+                 discorda no `Basic`"
+            );
+        }
     }
 }

@@ -65,10 +65,44 @@ arte é uma folha plana e os ossos vivem **dentro do plano dela**, então cada o
 «vê» só a metade mais próxima e a partição sai dura. ⇒ *o método não é mau — ele
 não é do nosso meio*, e é isso que fecha a porta.
 
+## Passo 5 — ⛔⛔⛔ **A SEGUNDA RÉGUA, e ela derrubou a cura** (`fidelidade.py`)
+
+A régua da dobra conta arte virada do avesso. ⛔ **Ela é cega a uma pele que deixou de deformar** —
+uma pele quase rígida tem dobra zero por não fazer nada, e é o defeito
+[«uma feature pode ser pior que não existir»](../../../project-memory/feature_worse_than_not_existing.md)
+com outra cara. ⇒ a segunda régua pergunta *a arte ainda SEGUE o osso?* (quanto a arte sobre o último
+osso roda, contra o que o artista mandou).
+
+| alcance | dobra a `150°` | a arte segue |
+|---|---:|---:|
+| **o osso (hoje)** | `2,300 %` | **`150,0°` de `150°`** |
+| `1,00 ×` a arte | `3,038 %` | `142,6°` |
+| `1,67 ×` a arte | `0,608 %` | `123,7°` |
+| **`2,08 ×` a arte** (a «cura») | **`0,000 %`** | **`110,3°`** |
+
+⇒ **alargar o alcance mata a dobra cobrando `27 %` da rotação.** Não é uma cura: é uma troca, e a
+régua da dobra sozinha ia fazer-nos entregá-la.
+
+## Passo 6 — e o candidato que ataca a MISTURA não é avaliável AQUI (`cor.py`)
+
+Os **centros de rotação optimizados** (Le & Hodgins, 2016) atacam o colapso **sem** tocar nos pesos,
+logo não custariam fidelidade. Protótipo medido: `8,29 %` de dobra — **pior** que o LBS. ⚠️ **E a
+causa não é o método: é a nossa lei de pesos.**
+
+⭐⭐⭐ **`1 155` dos `2 401` vértices (`48 %`) têm peso exactamente `0` ou `1`.** O bump tem suporte
+FINITO e a arte estende-se para além dele, então metade da arte está **rigidamente presa a um osso
+só**. Um centro de rotação é indefinido aí (não há dois ossos para conciliar), o vértice cai na
+mistura linear, e a **costura entre as duas leis** é a descontinuidade que produz a dobra a mais.
+
+⇒ *não se pode julgar uma mistura melhor por cima de pesos degenerados* — e a degeneração é, ela
+própria, o achado: **metade da nossa arte não mistura nada.**
+
 ## ⛔ Recusas MEDIDAS
 
 | recusa | mecanismo |
 |---|---|
 | **Portar os pesos do Godot** | Não há nada para portar: ele não os calcula. |
 | **Correr o OpenToonz como oráculo** | Não tem porta de consola (medido). O fonte é BSD-3 e continua aberto — mas isso é *portar*, não *medir*. |
+| **Derivar o ALCANCE do osso da espessura da arte** (a rota que o dono aprovou, e que a medição derrubou) | Mata a dobra **cobrando `27 %` da rotação**: a `2,08 ×` a arte são `0 %` de dobra e `110,3°` de `150°` mandados. A régua da dobra sozinha é cega a isto. |
+| **Centros de rotação por cima dos pesos de hoje** | Não é avaliável: `48 %` dos vértices têm peso exactamente `0` ou `1` (o bump tem suporte finito), o centro é indefinido ali, e a costura com a mistura linear dobra mais (`8,29 %`). ⚠️ A recusa é da FIXTURA, não do método. |
 | **Adoptar os pesos automáticos da referência** | Na nossa fixtura eles dobram **`5`–`9 %`** da arte acima de `60°`, contra `0,65`–`2,3 %` dos nossos e `0 %` do alcance curado. A causa está no passo 4: no nosso meio eles degeneram numa partição dura. |

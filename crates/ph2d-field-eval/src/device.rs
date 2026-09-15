@@ -80,6 +80,14 @@ impl DeviceField {
         &self.sculpts
     }
 
+    /// ⭐⭐ **O retrato da fita** — ver [`crate::point_tape::TapeShape`]. O `vivos` é o scratch **por
+    /// thread**, e numa placa ele é o que decide a OCUPAÇÃO: quantas threads cabem num
+    /// multiprocessador ao mesmo tempo.
+    #[must_use]
+    pub fn tape_shape(&self) -> Option<crate::point_tape::TapeShape> {
+        self.tape.shape()
+    }
+
     /// ⭐ **A fita em WGSL.** As chamadas a `escultura_k` ficam por resolver — quem escreve o corpo
     /// delas é quem liga a grade ([`crate::wgsl::ESCULTURA`]).
     #[must_use]

@@ -55,6 +55,11 @@
 //!
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
+/// ⭐⭐⭐ **O divisor depois do dispositivo** — ver [`device_tests`].
+#[cfg(test)]
+#[path = "preview_device_tests.rs"]
+mod device_tests;
+
 use ph2d_field::FieldDoc;
 use ph2d_field_render::Orbit;
 

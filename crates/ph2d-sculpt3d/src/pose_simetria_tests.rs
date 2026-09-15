@@ -245,3 +245,231 @@ fn a_pose_enche_a_janela_do_undo() {
          devolveria a peca pela metade"
     );
 }
+
+/// ⛔⛔⛔ **A CURVA DO PINCEL CHEGA AO MODO DE TORÇÃO — e a INVERSÃO é a ponte.**
+///
+/// A [`ph2d_pose::Curva`] amostra em `1 − i/n` e o argumento dela é *quanto
+/// FALTA* (`1` no segmento mais perto do cursor); o [`crate::Falloff::weight`]
+/// mede *quanto já se ANDOU* (`1` na borda, onde o peso é zero). Ligadas sem a
+/// inversão, o 1.º segmento recebia `weight(1,0)`, que é **zero nas doze
+/// curvas**, e com o valor de fábrica — **um** segmento — o pincel inteiro não
+/// rodava um vértice.
+///
+/// ⚠️ **Nenhuma régua desta casa podia apanhá-lo:** os `69` traços do oráculo
+/// correm a `ph2d-pose` **directamente**, com a convenção dela
+/// ([`ph2d_pose::suave`]), logo *uma paridade medida a montante de uma conversão
+/// não afirma nada sobre a conversão* — a mesma lei que o pincel de contorno
+/// pagou um dia antes, no [`crate::stroke_boundary`].
+///
+/// As três metades, e cada uma mata uma ponte diferente:
+/// 1. **com UM segmento a torção move barro** — mata a inversão em falta;
+/// 2. **com UM segmento as doze curvas dão o MESMO** (todas valem `1` em
+///    `curva(1)`, §5.2) — mata uma inversão a mais, que faria a curva decidir
+///    onde a espec diz que ela não decide;
+/// 3. **com DOIS segmentos elas divergem, e a mais afiada move MENOS** — mata
+///    uma ponte que devolvesse a constante `1`.
+#[test]
+fn a_curva_do_pincel_chega_ao_modo_de_torcao() {
+    /// O arrasto de ecrã que a torção lê, em pixels (§5.2 — é o único número
+    /// deste pincel que vem do ecrã).
+    const ARRASTO_PX: f32 = 40.0;
+
+    let torcer = |falloff: crate::Falloff, segmentos: u32| {
+        let mut malha = esfera();
+        let mut s = SculptStroke::default();
+        s.begin(&malha);
+        let b = Brush {
+            // ⚠️ **O modificador de inversão TROCA de deformação** (espec §0):
+            // é ele que põe o `Modo::GirarTorcer` no braço da torção.
+            invert: true,
+            falloff,
+            pose: crate::PoseControlos {
+                segmentos,
+                arrasto_x_pixels: ARRASTO_PX,
+                ..crate::PoseControlos::default()
+            },
+            ..pincel()
+        };
+        let antes = malha.positions().to_vec();
+        s.dab(
+            &mut malha,
+            &b,
+            &puxao([0.0, 0.0, 1.0], b.radius, [0.0; 3]),
+            Symmetry::default(),
+        );
+        antes
+            .iter()
+            .zip(malha.positions())
+            .map(|(p, q)| (0..3).map(|k| (p[k] - q[k]).abs()).fold(0.0f32, f32::max))
+            .fold(0.0f32, f32::max)
+    };
+
+    // (1) — o valor de FÁBRICA, que é onde o defeito vivia.
+    for f in crate::Falloff::ALL {
+        let d = torcer(f, 1);
+        assert!(
+            d > 1e-2,
+            "com UM segmento (o valor de fabrica) a torcao moveu {d:.4e} com a \
+             curva {f:?} — o 1.o segmento esta' a receber atenuacao ZERO, que e' \
+             a ponte ligada sem a inversao"
+        );
+    }
+    // (2) — ali a curva NÃO decide, e é a espec que o diz.
+    let base = torcer(crate::Falloff::Constant, 1);
+    for f in crate::Falloff::ALL {
+        assert_eq!(
+            torcer(f, 1),
+            base,
+            "com UM segmento a curva {f:?} mudou a saida — a espec amostra em \
+             `1 - i/n`, logo o unico segmento le sempre `curva(1)`, que vale `1` \
+             nas doze"
+        );
+    }
+    // (3) — com mais segmentos ela decide, e na direcção certa.
+    let (constante, afiada) = (
+        torcer(crate::Falloff::Constant, 2),
+        torcer(crate::Falloff::Sharper, 2),
+    );
+    assert!(
+        afiada < constante * 0.9,
+        "com DOIS segmentos a curva afiada moveu {afiada:.4e} contra {constante:.4e} \
+         da constante — a curva nao esta' a chegar ao 2.o segmento"
+    );
+}
+
+/// ⭐⭐⭐ **A AUTO-SUAVIZAÇÃO DESTE PINCEL SEGUE OS PESOS, E NÃO O RAIO.**
+///
+/// A espec manda-o com todas as letras (§15 e item 18 da lista de verificação:
+/// *«**Não copiar**: se oferecermos auto-suavização aqui, ela segue os pesos,
+/// não o raio»*), porque copiar o passe genérico reproduziria um defeito que os
+/// próprios autores do alvo registam em público — ele alisa dentro do raio
+/// inicial enquanto a deformação alcança muito mais longe, e *«o efeito dela
+/// desaparece longe do cursor»*.
+///
+/// ⚠️ **Antes desta wave a fileira era PINTADA e INERTE:** o verbo desvia antes
+/// do laço por-vértice onde o passe genérico corre, logo o artista arrastava o
+/// controlo e o barro não sentia nada (medido pelo censo dos knobs,
+/// `0,000e0` entre as duas pontas da faixa).
+///
+/// As quatro metades, e cada uma mata uma implementação diferente:
+/// 1. **alisa alguma coisa** — o controlo positivo, sem o qual as outras três
+///    são afirmações sobre o vácuo;
+/// 2. **alcança MUITO além do raio do carimbo** — a grandeza que o dono vê;
+/// 3. **não toca o outro lado da peça** — mata um alisamento global, que
+///    alisaria a malha inteira a cada evento de ponteiro;
+/// 4. **a MÁSCARA protege** — mata um passe que ignore o factor do §9, e é ela
+///    que prende a passagem pela porta [`ph2d_pose::Fatores::de`].
+///
+/// ⚠️⚠️ **A metade (2) não tem mutação que a mate SOZINHA, e a razão é
+/// estrutural e vale mais que uma:** a função do alisamento **não recebe o
+/// `Dab`**, logo um passe preso ao carimbo não é exprimível ali sem mudar a
+/// assinatura. *Uma propriedade que o compilador impede é mais forte que uma
+/// que um gate mede* — o número fica na mesma, porque ele é o que separa esta
+/// lei da que a referência ship.
+#[test]
+fn a_auto_suavizacao_da_pose_segue_os_pesos_e_nao_o_raio() {
+    const CENTRO: [f32; 3] = [0.0, 0.0, 1.0];
+    /// O lado OPOSTO da bola: um `z` abaixo disto está fora da região da cadeia
+    /// neste arranjo por **construção geométrica**, não por medição — o cursor
+    /// está no pólo `+z` e a região cresce pela ligação da malha a partir dele.
+    const OUTRO_LADO: f32 = -0.5;
+
+    let corre = |auto_smooth: f32, mascarar: bool| {
+        let mut malha = esfera();
+        if mascarar {
+            // Metade NORTE mascarada: ela é onde a região da cadeia vive, logo
+            // é exactamente onde a máscara tem de ser observável.
+            let z: Vec<f32> = malha.positions().iter().map(|p| p[2]).collect();
+            let m = malha.masks_mut();
+            for (i, &zi) in z.iter().enumerate() {
+                m[i] = if zi > 0.0 { 1.0 } else { 0.0 };
+            }
+        }
+        let mut s = SculptStroke::default();
+        s.begin(&malha);
+        let b = Brush {
+            auto_smooth,
+            ..pincel()
+        };
+        s.dab(
+            &mut malha,
+            &b,
+            &puxao(CENTRO, b.radius, [0.25, 0.0, 0.0]),
+            Symmetry::default(),
+        );
+        malha.positions().to_vec()
+    };
+    let repouso = esfera().positions().to_vec();
+    let sem = corre(0.0, false);
+    let com = corre(1.0, false);
+
+    let alisados: Vec<usize> = (0..sem.len()).filter(|&i| sem[i] != com[i]).collect();
+    // (1) — o controlo positivo.
+    assert!(
+        alisados.len() > 50,
+        "o auto-smooth mexeu em {} vertices — com a fileira PINTADA e o barro \
+         parado, o artista arrasta o controlo e nao acontece nada",
+        alisados.len()
+    );
+    // (2) — o alcance é o da REGIÃO, não o do carimbo.
+    let raio = pincel().radius;
+    let mais_longe = alisados
+        .iter()
+        .map(|&i| {
+            (0..3)
+                .map(|k| (repouso[i][k] - CENTRO[k]).powi(2))
+                .sum::<f32>()
+                .sqrt()
+        })
+        .fold(0.0f32, f32::max);
+    assert!(
+        mais_longe > raio * 1.5,
+        "o vertice alisado mais distante esta' a {mais_longe:.3} de um raio de \
+         {raio:.3} ({:.2}x) — isto e' o passe GENERICO preso ao carimbo, que e' \
+         o defeito que a espec §15 manda nao copiar",
+        mais_longe / raio
+    );
+    // (3) — e ele pára onde a cadeia pára.
+    let fora: Vec<usize> = alisados
+        .iter()
+        .copied()
+        .filter(|&i| repouso[i][2] < OUTRO_LADO)
+        .collect();
+    assert!(
+        fora.is_empty(),
+        "{} vertices do OUTRO LADO da peca foram alisados — o passe esta' a \
+         correr sobre a malha inteira em vez de seguir os pesos da cadeia",
+        fora.len()
+    );
+    // (4) — a máscara protege, e ela entra pela MESMA porta que atenua o
+    // deslocamento (§9). ⚠️ A régua tem de comparar os dois lados COM a máscara
+    // posta: comparar contra a corrida sem máscara mediria a máscara a proteger
+    // do PINCEL, que já tem gate próprio, e não do alisamento.
+    let (sem_mascarado, com_mascarado) = (corre(0.0, true), corre(1.0, true));
+    let alisados_sob_mascara = (0..sem_mascarado.len())
+        .filter(|&i| sem_mascarado[i] != com_mascarado[i])
+        .filter(|&i| repouso[i][2] > 0.0)
+        .count();
+    assert_eq!(
+        alisados_sob_mascara, 0,
+        "{alisados_sob_mascara} vertices TOTALMENTE mascarados foram alisados — \
+         o passe nao esta' a atenuar pelo factor do §9, e um vertice que a \
+         mascara prende nao pode ser alisado por baixo dela"
+    );
+    // (5) — ⛔⛔ **UM `NaN` NÃO ALISA NADA**, e esta metade nasceu de uma mutação
+    // SOBREVIVENTE: apagar a consulta à porta deixava as quatro anteriores
+    // verdes, porque no ponto neutro o orçamento já devolve uma passada de peso
+    // `0`. O que a porta de facto compra é o **peneiro do não-finito**, e a
+    // primeira redacção desta metade tinha a premissa errada — eu esperava a
+    // malha a virar `NaN`, e `NaN.min(1,0)` devolve **`1,0`** em Rust ⇒ o que
+    // acontece sem a guarda é o contrário: um param mal carregado alisa a
+    // **FORÇA CHEIA**, calado. *A saída do defeito não é lixo visível; é a
+    // ferramenta a fazer o máximo onde o artista pediu nada.*
+    let com_nan = corre(f32::NAN, false);
+    assert_eq!(
+        com_nan, sem,
+        "com `auto_smooth = NaN` a peca ficou diferente da corrida SEM \
+         alisamento — o passe nao esta' a passar pela porta que peneira o \
+         nao-finito, e um param mal carregado alisa a forca cheia"
+    );
+}

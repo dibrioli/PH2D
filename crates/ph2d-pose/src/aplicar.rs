@@ -28,7 +28,15 @@ pub struct Fatores<'a> {
 }
 
 impl Fatores<'_> {
-    fn de(&self, v: usize) -> f32 {
+    /// **O factor deste vértice** — a resposta ÚNICA a *«quanto deste
+    /// deslocamento chega»*.
+    ///
+    /// ⚠️ Ela é pública porque tem um **segundo** consumidor fora do §7: a
+    /// auto-suavização do pincel, que tem de atenuar pelo mesmo factor. *Uma
+    /// segunda cópia desta aritmética divergiria no dia em que um canal novo
+    /// entrasse no produto* — e a máscara já entrou depois das auto-máscaras.
+    #[must_use]
+    pub fn de(&self, v: usize) -> f32 {
         if self
             .escondido
             .is_some_and(|e| e.get(v).copied().unwrap_or(false))

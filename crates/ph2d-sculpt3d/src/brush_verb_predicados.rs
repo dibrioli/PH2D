@@ -351,4 +351,40 @@ impl Verb {
     pub fn pica_na_superficie_do_pen_down(self) -> bool {
         matches!(self, Self::SceneProject)
     }
+
+    /// **A LEI DESTE VERBO LÊ A DISTÂNCIA AO CURSOR?** — a porta que decide se
+    /// a fileira da DUREZA tem sujeito.
+    ///
+    /// A dureza é um remapeamento da distância **normalizada**
+    /// ([`crate::Brush::shaped_distance`]) que corre antes de toda curva de
+    /// queda. Onde não há distância a remapear ela é **inerte**, e o painel que
+    /// a pinta entrega ao artista um controlo que ele arrasta sem efeito — a
+    /// espécie que o dono reporta como *«não vejo efeito»*.
+    ///
+    /// ⛔ **Os três `false` são por LEI, cada um com a fonte:**
+    /// - [`Self::Pose`] — a espec dele di-lo com todas as letras (§1.3:
+    ///   *«sem efeito: não há atenuação radial, o vértice é governado pelos
+    ///   PESOS dos segmentos e não pela distância ao cursor»*), e a região dele
+    ///   cresce pela **ligação** da malha, não pelo raio;
+    /// - [`Self::Boundary`] — os pesos dele saem do **anel** e do percurso do
+    ///   contorno ([`ph2d_boundary::pesos`]), e nada naquela cadeia consulta o
+    ///   `shaped_distance`;
+    /// - [`Self::Density`] — ele [`Self::sem_lei_por_vertice`], logo não há peso
+    ///   nenhum onde uma distância pudesse entrar.
+    ///
+    /// ⚠️ **O [`Self::Cloth`] responde `true` apesar de também desviar antes do
+    /// `dab_core`** — ele chama o `shaped_distance` na própria cadeia —, e é por
+    /// isso que esta pergunta **não** se deriva da
+    /// [`Self::resolve_a_propria_regiao`]: *desviar do laço e não ler a
+    /// distância são duas propriedades, e três verbos mostram que elas não
+    /// coincidem.*
+    ///
+    /// ⚠️⚠️ **Isto NÃO resolve o `Strength` nem a curva do [`Self::Density`]**,
+    /// que são o item aberto com decisão do dono por tomar (esconder ou pintar
+    /// em cinzento) — *uma porta que responde a uma pergunta não responde às
+    /// vizinhas só por estarem na mesma fileira.*
+    #[must_use]
+    pub fn a_lei_le_a_distancia_ao_cursor(self) -> bool {
+        !matches!(self, Self::Pose | Self::Boundary | Self::Density)
+    }
 }

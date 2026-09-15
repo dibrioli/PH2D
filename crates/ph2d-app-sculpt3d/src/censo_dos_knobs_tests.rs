@@ -90,8 +90,15 @@ fn alvo() -> Vec<(Mesh, ph2d_mesh::Pose)> {
 }
 
 /// **UM GESTO PELO CAMINHO DO MOTOR**, com tudo o que o pen-down fotografaria.
-fn corre(x: &Ajuste) -> Mesh {
-    let b = &x.brush;
+///
+/// ⚠️⚠️ **O raio do dab É o `Brush::radius`, e isso é a LEI do produto, não uma
+/// conveniência do arnês** — [`o_raio_do_dab_sai_do_pincel`] prende-a. A 1.ª
+/// redacção deste ficheiro carregava um raio **próprio** ao lado do pincel, e o
+/// que ela mediu foi outro programa: o `Verb::Pose` lê `brush.radius` (a lei
+/// dele não tem dab por-vértice nenhum), logo mexer só no raio do dab deixava-o
+/// a `0,000e0` e o censo acusava-o de morto. *Dois números onde o produto tem
+/// um é a forma mais barata de uma régua mentir.*
+fn corre(b: &Brush) -> Mesh {
     let mut mesh = peca();
     let mut s = SculptStroke::default();
     s.begin(&mesh);
@@ -102,7 +109,7 @@ fn corre(x: &Ajuste) -> Mesh {
         s.pecas_da_cena = alvo();
         s.pose_activa = ph2d_mesh::Pose::IDENTITY;
     }
-    s.dab(&mut mesh, b, &gesto(b.verb, x.raio), Symmetry::default());
+    s.dab(&mut mesh, b, &gesto(b.verb, b.radius), Symmetry::default());
     mesh
 }
 
@@ -130,15 +137,17 @@ fn desvio(a: &Mesh, b: &Mesh) -> f32 {
     pos.max(canal)
 }
 
-/// **O QUE UM KNOB MOVE** — o pincel E o raio do dab, porque a fileira do raio
-/// não escreve no `Brush`: ela escreve no `radius_px` da vista, que a câmara
-/// converte no raio do dab. *Um censo que só soubesse mutar o pincel teria de
-/// deixar o raio de fora, e um knob fora do censo é um knob que pode estar
-/// morto sem ninguém ver.*
-#[derive(Clone)]
-struct Ajuste {
-    brush: Brush,
-    raio: f32,
+/// O pincel deste verbo como o painel o entrega, com o raio na régua do censo.
+///
+/// ⚠️ **A fileira do raio não escreve no `Brush` — ela escreve no `radius_px`
+/// da vista**, e quem os une é o [`crate::Sculpt3dScene::armed_brush`], que
+/// converte pixels em mundo e **põe o resultado no `Brush::radius`**. O censo
+/// entra na cadeia depois dessa conversão, que é verbo-cega por construção.
+fn pincel(verb: Verb) -> Brush {
+    Brush {
+        radius: RAIO,
+        ..VerbSlot::for_verb(verb).brush
+    }
 }
 
 /// Um KNOB do painel: o rótulo que ele mostra, as duas posições que o censo
@@ -148,8 +157,21 @@ struct Knob {
     rotulo: &'static str,
     /// As duas posições. ⚠️ Elas são **extremos da faixa do próprio painel**,
     /// nunca números escolhidos: um par apertado lê `0,000` sobre um knob vivo.
-    a: fn(&mut Ajuste),
-    b: fn(&mut Ajuste),
+    a: fn(&mut Brush),
+    b: fn(&mut Brush),
+}
+
+/// **QUANTO BARRO ESTE KNOB MOVE COM ESTE VERBO** — as duas posições, o mesmo
+/// gesto, e o maior desvio entre as duas saídas.
+///
+/// ⚠️ Vive numa porta só porque a sonda e o portão fazem a **mesma** pergunta:
+/// duas cópias divergiriam na primeira wave que mexesse numa delas, e a que o
+/// portão usa é a que decide.
+fn quanto_move(verb: Verb, k: &Knob) -> f32 {
+    let (mut x, mut y) = (pincel(verb), pincel(verb));
+    (k.a)(&mut x);
+    (k.b)(&mut y);
+    desvio(&corre(&x), &corre(&y))
 }
 
 /// ⚠️ **São os knobs que o painel pinta SEM perguntar pelo verbo** — os outros
@@ -159,23 +181,23 @@ struct Knob {
 const KNOBS: &[Knob] = &[
     Knob {
         rotulo: "panel.sculpt3d.radius",
-        a: |x| x.raio = RAIO,
-        b: |x| x.raio = RAIO * 1.6,
+        a: |x| x.radius = RAIO,
+        b: |x| x.radius = RAIO * 1.6,
     },
     Knob {
         rotulo: "panel.sculpt3d.strength",
-        a: |x| x.brush.strength = 0.1,
-        b: |x| x.brush.strength = 1.0,
+        a: |x| x.strength = 0.1,
+        b: |x| x.strength = 1.0,
     },
     Knob {
         rotulo: "panel.sculpt3d.hardness",
-        a: |x| x.brush.hardness = 0.0,
-        b: |x| x.brush.hardness = 0.95,
+        a: |x| x.hardness = 0.0,
+        b: |x| x.hardness = 0.95,
     },
     Knob {
         rotulo: "panel.sculpt3d.auto_smooth",
-        a: |x| x.brush.auto_smooth = 0.0,
-        b: |x| x.brush.auto_smooth = 1.0,
+        a: |x| x.auto_smooth = 0.0,
+        b: |x| x.auto_smooth = 1.0,
     },
     // ⚠️ **A CURVA não é uma fileira de slider — é a fileira de chips** —, e
     // por isso ela não tem `Row`. Ela é pintada por
@@ -184,8 +206,8 @@ const KNOBS: &[Knob] = &[
     // incondicional por excelência.
     Knob {
         rotulo: "panel.sculpt3d.falloff",
-        a: |x| x.brush.falloff = Falloff::Constant,
-        b: |x| x.brush.falloff = Falloff::Sharper,
+        a: |x| x.falloff = Falloff::Constant,
+        b: |x| x.falloff = Falloff::Sharper,
     },
 ];
 
@@ -209,15 +231,11 @@ const KNOBS: &[Knob] = &[
 /// MEDIDA**, e o gate [`o_censo_nomeia_os_verbos_que_este_arnes_nao_acorda`]
 /// obriga-a a ser nomeada em vez de silenciada.
 fn acorda_neste_arnes(verb: Verb) -> bool {
-    let slot = VerbSlot::for_verb(verb);
-    let x = Ajuste {
-        brush: Brush {
-            // ⚠️ O *auto-smooth* é DESARMADO aqui de propósito: ele move barro
-            // sozinho, e com ele ligado todo verbo leria «acorda».
-            auto_smooth: 0.0,
-            ..slot.brush
-        },
-        raio: RAIO,
+    let x = Brush {
+        // ⚠️ O *auto-smooth* é DESARMADO aqui de propósito: ele move barro
+        // sozinho, e com ele ligado todo verbo leria «acorda».
+        auto_smooth: 0.0,
+        ..pincel(verb)
     };
     desvio(&peca(), &corre(&x)) > 0.0
 }
@@ -276,15 +294,7 @@ fn diag_o_censo_dos_knobs() {
         }
         eprint!("{:<18}{}", verb.label(), if vivo { " " } else { "z" });
         for k in KNOBS {
-            let slot = VerbSlot::for_verb(verb);
-            let base = Ajuste {
-                brush: slot.brush,
-                raio: RAIO,
-            };
-            let (mut x, mut y) = (base.clone(), base);
-            (k.a)(&mut x);
-            (k.b)(&mut y);
-            let d = desvio(&corre(&x), &corre(&y));
+            let d = quanto_move(verb, k);
             let p = pintado(&ui, k.rotulo);
             let marca = match (vivo, p, d > 0.0) {
                 // ⛔ O verbo não acorda neste arranjo: a linha inteira é NÃO
@@ -307,6 +317,57 @@ fn diag_o_censo_dos_knobs() {
     );
 }
 
+/// ⛔⛔ **O RAIO DO DAB SAI DO PINCEL — a lei que este censo ADIVINHOU e errou.**
+///
+/// A 1.ª redacção carregava um raio próprio ao lado do `Brush`, porque a fileira
+/// do painel escreve em `radius_px` e não no pincel. A cadeia real, porém, junta
+/// os dois **antes** do dab: o `armed_brush` converte pixels em mundo, escreve
+/// `Brush::radius`, e **todo** construtor de `Dab` do produto lê esse campo. ⇒ o
+/// arnês media um programa em que o raio do pincel ficava parado, e o
+/// `Verb::Pose` — cuja lei lê `brush.radius` e não tem dab por-vértice nenhum —
+/// aparecia com o raio MORTO.
+///
+/// ⚠️ **`include_str!` e não uma lista escrita aqui:** se um construtor mudar de
+/// ficheiro isto **deixa de compilar**, em vez de ficar verde a medir menos
+/// (`HOWTO §2.6`).
+#[test]
+fn o_raio_do_dab_sai_do_pincel() {
+    // Os dois ficheiros por onde TODO gesto de escultura passa: o carimbo
+    // (`sculpt_at`) e os quatro grips de arrasto.
+    const FONTES: &[(&str, &str)] = &[
+        ("input.rs", include_str!("input.rs")),
+        ("pull.rs", include_str!("pull.rs")),
+    ];
+    let mut achados = 0usize;
+    for (nome, src) in FONTES {
+        for linha in src.lines() {
+            let Some(resto) = linha.split_once("Dab::").map(|(_, r)| r) else {
+                continue;
+            };
+            let Some(args) = resto.split_once('(').map(|(_, a)| a) else {
+                continue;
+            };
+            // `Dab::<construtor>(centro, RAIO, ...)` — o raio é o 2.º argumento.
+            let Some(raio) = args.split(',').nth(1).map(str::trim) else {
+                continue;
+            };
+            achados += 1;
+            assert!(
+                raio.ends_with(".radius"),
+                "{nome}: `{linha}` entrega ao dab um raio que não é o do \
+                 pincel — um segundo raio deixa o `Verb::Pose` (que lê \
+                 `brush.radius`) a discordar do carimbo, e o censo dos knobs \
+                 passa a medir outro programa"
+            );
+        }
+    }
+    assert!(
+        achados >= 5,
+        "achei só {achados} construções de dab nestes ficheiros — o piso de \
+         população: se elas mudarem de sítio este gate fica verde a varrer nada"
+    );
+}
+
 /// ⛔⛔⛔ **A CATRACA DOS KNOBS MORTOS — e é ela que faz disto um PORTÃO e não um
 /// relatório.**
 ///
@@ -318,11 +379,23 @@ fn diag_o_censo_dos_knobs() {
 /// * um morto **CURADO** reprova ⇒ a lista só desce, e uma entrada que já não
 ///   descreve nada é a catraca a virar **licença** (§5.0).
 ///
-/// ⚠️ **O motivo é o que separa uma DIVERGÊNCIA de uma DÍVIDA**, e os dois
-/// estão aqui: a curva da máscara é uma recusa **medida** (curá-la parte dois
-/// gates de paridade, com a fonte escrita no
-/// [`ph2d_sculpt3d::Brush::mask_hardness`]); os quatro da pose são **dívida
-/// real** — o artista arrasta e não acontece nada.
+/// ⚠️ **O motivo é o que separa uma DIVERGÊNCIA de uma DÍVIDA**, e as duas
+/// entradas que sobram são **divergências medidas**: as duas são a fileira da
+/// CURVA, que o painel pinta **sempre** por uma cerca de produto escrita e
+/// gateada (ver [`pintado`] e o cabeçalho do `paint/brush.rs`), sobre verbos que
+/// a leem noutro regime ou não a leem de todo.
+///
+/// ⭐⭐⭐ **A lista desceu de `5` para `2` em 2026-09-15, e NENHUMA das três que
+/// saíram saiu por ser reclassificada** — cada uma teve uma causa medida:
+/// - `Pose × radius` era **a régua**: este ficheiro carregava um raio próprio ao
+///   lado do pincel e o produto tem **um** ([`o_raio_do_dab_sai_do_pincel`]);
+/// - `Pose × hardness` era **a lente do painel**, mais larga que a do
+///   consumidor: a fileira já tinha a porta certa (`shapes_the_distance`) e
+///   faltava-lhe o lado do VERBO
+///   ([`ph2d_sculpt3d::Verb::a_lei_le_a_distancia_ao_cursor`]);
+/// - `Pose × auto_smooth` era **dívida real e foi CONSTRUÍDA**: a espec do
+///   pincel prescreve a lei (§15 e item 18 — *«ela segue os pesos, não o
+///   raio»*), e hoje ela corre em `ph2d_sculpt3d::stroke_pose::alisa_a_pose`.
 const MORTOS_CONHECIDOS: &[(Verb, &str, &str)] = &[
     (
         Verb::Mask,
@@ -332,27 +405,15 @@ const MORTOS_CONHECIDOS: &[(Verb, &str, &str)] = &[
     ),
     (
         Verb::Pose,
-        "panel.sculpt3d.radius",
-        "⏳ DÍVIDA: a pista do raio não move a cadeia neste arranjo",
-    ),
-    (
-        Verb::Pose,
-        "panel.sculpt3d.hardness",
-        "esperado: este verbo é o único SEM atenuação radial (espec §13), logo \
-         não há distância para a dureza remapear — ⏳ mas então ele não devia \
-         ser PINTADO",
-    ),
-    (
-        Verb::Pose,
-        "panel.sculpt3d.auto_smooth",
-        "⏳ DÍVIDA: ele resolve a própria região e desvia antes do laço \
-         por-vértice, onde o auto-smooth corre",
-    ),
-    (
-        Verb::Pose,
         "panel.sculpt3d.falloff",
-        "esperado pela mesma razão da dureza, e com o mesmo ⏳: pintado sem ter \
-         quem o leia",
+        "DIVERGÊNCIA declarada, e o knob NÃO está morto: a espec dele (§1.2) diz \
+         que só o modo de TORÇÃO lê a curva, e este censo mede o modo de \
+         OMISSÃO. Onde ela é lida, ela chega — gate \
+         `a_curva_do_pincel_chega_ao_modo_de_torcao`, que foi escrito porque ela \
+         NÃO chegava (a ponte entre as duas convenções não invertia o argumento, \
+         e a torção com o valor de fábrica era inerte). ⚠️ A fileira é pintada \
+         sempre por cerca de produto MEDIDA, e esconder um knob vivo noutro modo \
+         seria o defeito oposto",
     ),
 ];
 
@@ -366,15 +427,7 @@ fn o_censo_dos_knobs_mortos_so_desce() {
         }
         let ui = painel_com(verb);
         for k in KNOBS {
-            let slot = VerbSlot::for_verb(verb);
-            let base = Ajuste {
-                brush: slot.brush,
-                raio: RAIO,
-            };
-            let (mut x, mut y) = (base.clone(), base);
-            (k.a)(&mut x);
-            (k.b)(&mut y);
-            if pintado(&ui, k.rotulo) && desvio(&corre(&x), &corre(&y)) == 0.0 {
+            if pintado(&ui, k.rotulo) && quanto_move(verb, k) == 0.0 {
                 medidos.push((verb, k.rotulo));
             }
         }
@@ -409,7 +462,7 @@ fn o_censo_dos_knobs_mortos_so_desce() {
     );
 }
 
-/// ⛔⛔ **OS VERBOS QUE ESTE ARNÊS NÃO ACORDA SÃO NOMEADOS/// ⛔⛔ **OS VERBOS QUE ESTE ARNÊS NÃO ACORDA SÃO NOMEADOS, NUNCA SILENCIADOS.**
+/// ⛔⛔ **OS VERBOS QUE ESTE ARNÊS NÃO ACORDA SÃO NOMEADOS, NUNCA SILENCIADOS.**
 ///
 /// ⚠️ **É uma CATRACA de dívida com censo de obsolescência nos dois sentidos**
 /// (§5.0): quem ensinar o arnês a acordar um deles **tem de o apagar daqui**, e
@@ -462,7 +515,9 @@ fn o_censo_nomeia_os_verbos_que_este_arnes_nao_acorda() {
         .collect();
     assert!(
         medidos.is_empty(),
-        "verbos INERTES neste arnês e fora da lista: {medidos:?} — enquanto          eles não acordarem, o censo lê os knobs deles como mortos e acusa          controlos vivos"
+        "verbos INERTES neste arnês e fora da lista: {medidos:?} — enquanto \
+         eles não acordarem, o censo lê os knobs deles como mortos e acusa \
+         controlos vivos"
     );
     let obsoletos: Vec<&'static str> = ADORMECIDOS
         .iter()
@@ -471,7 +526,8 @@ fn o_censo_nomeia_os_verbos_que_este_arnes_nao_acorda() {
         .collect();
     assert!(
         obsoletos.is_empty(),
-        "estes JÁ acordam e a catraca não desceu: {obsoletos:?} — apague-os da          lista, senão ela vira licença"
+        "estes JÁ acordam e a catraca não desceu: {obsoletos:?} — apague-os da \
+         lista, senão ela vira licença"
     );
 }
 

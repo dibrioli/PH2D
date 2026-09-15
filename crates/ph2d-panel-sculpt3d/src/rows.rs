@@ -114,7 +114,19 @@ pub(super) fn always(_: &Sculpt3dUi) -> bool {
 /// Blender — *o painel de queda é dobrado, nunca ausente*. Ver o bloco no
 /// `paint/brush.rs`, que traz as duas recusas medidas.
 pub(super) fn shapes_the_distance(u: &Sculpt3dUi) -> bool {
-    u.brush.mode.field(u.brush.verb).is_none()
+    // ⚠️⚠️ **DUAS metades, e a segunda chegou pelo CENSO DOS KNOBS** (2026-09-15).
+    // A primeira pergunta ao MODO (sob um campo elástico a curva inteira é o
+    // perfil do campo, e o dab não lê distância nenhuma); a segunda pergunta ao
+    // VERBO, porque há três cuja LEI não tem distância para remapear —
+    // [`ph2d_sculpt3d::Verb::a_lei_le_a_distancia_ao_cursor`], com a fonte de
+    // cada um lá dentro.
+    //
+    // ⛔ **A lente do painel era mais larga que a do consumidor**, que é a forma
+    // que o `CLAUDE.md` §5.0 nomeia — e, como ali, *a regra certa já estava
+    // escrita no mesmo ficheiro, para o mesmo controlo*: faltava-lhe o segundo
+    // lado. O censo mediu o `Verb::Pose` a arrastar a dureza de `0,00` a `0,95`
+    // com desvio `0,000e0` no barro.
+    u.brush.verb.a_lei_le_a_distancia_ao_cursor() && u.brush.mode.field(u.brush.verb).is_none()
 }
 
 /// O pincel: o que se ajusta antes de encostar no barro.

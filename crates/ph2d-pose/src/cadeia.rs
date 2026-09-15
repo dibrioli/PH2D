@@ -48,6 +48,27 @@ impl Cadeia {
         self.pesos[segmento * self.n_vertices + v]
     }
 
+    /// **QUANTO ESTE VÉRTICE PERTENCE À CADEIA**, em `[0,1]`.
+    ///
+    /// Os pesos por segmento são **diferenças** (§3.3), logo a soma deles
+    /// telescopa para a pertença ao conjunto inteiro — é exactamente o factor
+    /// que multiplica o deslocamento de um vértice que estivesse governado por
+    /// um único mapa. Um vértice fora da região devolve `0`.
+    ///
+    /// ⚠️ **Ela não é lei da espec** — a espec nunca precisa deste número
+    /// porque o §7 soma os mapas segmento a segmento. Ela existe para quem
+    /// queira uma grandeza **por vértice** com que modular outra coisa; o
+    /// primeiro consumidor é a auto-suavização da
+    /// [`ph2d_sculpt3d`](https://docs.rs), que o §15 manda seguir **os pesos e
+    /// não o raio**.
+    #[must_use]
+    pub fn peso_total(&self, v: usize) -> f32 {
+        (0..self.segmentos.len())
+            .map(|i| self.peso(i, v))
+            .sum::<f32>()
+            .clamp(0.0, 1.0)
+    }
+
     /// ⭐⭐ **O OSSO de cada segmento** — o par `(origem, cabeça)` no estado em
     /// que o último evento deixou a cadeia. É o que um indicador desenha, e em
     /// repouso é exactamente `(origem_inicial, cabeça_inicial)`.

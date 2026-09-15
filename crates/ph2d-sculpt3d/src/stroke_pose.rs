@@ -75,24 +75,43 @@ impl crate::SculptStroke {
             arrasto: dab.pull,
             dx_pixels: brush.pose.arrasto_x_pixels,
         };
-        // A curva é a do PINCEL, avaliada pela crate que é dona dela.
-        let curva = |p: f32| brush.falloff.weight(p);
+        // ⛔⛔ **A INVERSÃO É A PONTE, e sem ela o modo de torção é INERTE.**
+        //
+        // As duas casas escrevem a curva do pincel com argumentos **opostos**, e
+        // cada uma está certa em casa: para a [`ph2d_pose::Curva`] o argumento é
+        // *quanto FALTA* (`1` no segmento mais perto do cursor, §5.2, e a lei
+        // dela amostra em `1 − i/n`), e para o [`crate::Falloff::weight`] é
+        // *quanto já se ANDOU* (`1` na borda do carimbo, onde o peso é zero).
+        //
+        // ⚠️ Ligadas sem a inversão, o 1.º segmento recebia `weight(1,0)`, que é
+        // **`0,0` em TODAS as doze curvas** — e com o valor de fábrica (`1`
+        // segmento) o pincel inteiro não rodava um vértice. Medido: `2,98e-8`
+        // (ruído de `f32`) a `1` segmento e `5,96e-8` a `2` e a `4`, com o
+        // arrasto de `40 px` a chegar intacto. Com a inversão: `2,94e-1`
+        // (`Constant`) contra `1,84e-2` (`Sharper`) a `2` segmentos.
+        //
+        // ⛔⛔ **É a MESMA ponte que o pincel de CONTORNO pagou um dia antes**
+        // ([`crate::stroke_boundary`], que escreve `weight(1.0 - p)` pela mesma
+        // razão) — e **o corpus de paridade não pode apanhá-la nas duas**: a
+        // bancada corre a `ph2d-pose` **directamente**, com a convenção dela
+        // (`ph2d_pose::suave`), logo *uma paridade medida a montante de uma
+        // conversão não afirma nada sobre a conversão*. Quem a apanhou foi o
+        // [`censo dos knobs`](ph2d_app_sculpt3d), a medir o barro pela porta do
+        // produto.
+        let curva = |p: f32| brush.falloff.weight(1.0 - p);
         sessao.pose.evento(&ctrl, &evento, &curva);
 
         let mut saida = std::mem::take(&mut self.pose_saida);
-        sessao.pose.posicoes(
-            &ctrl,
-            &sessao.p0,
-            ph2d_pose::Fatores {
-                // §9 — a máscara escala o **deslocamento**; não muda os pesos
-                // nem o pivô. A lei do factor (`1 − máscara`) é a mesma que o
-                // `mask_ops::free_weight` desta crate já aplica aos outros
-                // verbos.
-                mascara: mesh.masks(),
-                ..Default::default()
-            },
-            &mut saida,
-        );
+        let fatores = ph2d_pose::Fatores {
+            // §9 — a máscara escala o **deslocamento**; não muda os pesos
+            // nem o pivô. A lei do factor (`1 − máscara`) é a mesma que o
+            // `mask_ops::free_weight` desta crate já aplica aos outros
+            // verbos.
+            mascara: mesh.masks(),
+            ..Default::default()
+        };
+        sessao.pose.posicoes(&ctrl, &sessao.p0, fatores, &mut saida);
+        self.alisa_a_pose(mesh, brush, &sessao, fatores, &mut saida);
 
         // ⛔⛔ **A ESCRITA É EM TRÊS PASSOS, E O DO MEIO É O UNDO** (report do
         // dono, 2026-09-14: *«undo/redo não funciona para esse pincel»*).
@@ -143,6 +162,91 @@ impl crate::SculptStroke {
         }
         mesh.refresh_region(&self.moved, &mut self.region);
         self.moved.len()
+    }
+
+    /// ⭐⭐⭐ **A AUTO-SUAVIZAÇÃO DESTE PINCEL SEGUE OS PESOS, E NÃO O RAIO.**
+    ///
+    /// # Porque ela existe
+    ///
+    /// O painel oferece o *Auto smooth* com este verbo na mão desde que ele
+    /// nasceu, e ele **desvia antes do laço por-vértice** onde o passe genérico
+    /// corre ([`crate::SculptStroke::dab`] chama-o como um segundo
+    /// [`crate::SculptStroke::dab_core`] sobre a mesma pegada) ⇒ *o artista
+    /// arrastava o controlo e o barro não sentia nada*. Foi o censo dos knobs
+    /// que o mediu (`0,000e0` entre as duas pontas da faixa).
+    ///
+    /// # Porque ela NÃO é o passe genérico emprestado
+    ///
+    /// ⛔ O passe genérico alisa **dentro do raio do carimbo**, e a deformação
+    /// deste verbo alcança muito mais longe — a região dele cresce pela
+    /// **ligação** da malha, não pelo raio. Emprestá-lo reproduziria à letra um
+    /// defeito que os próprios autores do alvo registam em público
+    /// (`#133792`: *«o efeito dela desaparece longe do cursor»*), e a espec
+    /// deste pincel manda o contrário com todas as letras — §15: *«**Não
+    /// copiar**: se oferecermos auto-suavização aqui, ela segue **os pesos**,
+    /// não o raio»*, repetido no item 18 da lista de verificação dela.
+    ///
+    /// ⇒ o peso de cada vértice é o [`ph2d_pose::cadeia::Cadeia::peso_total`]
+    /// — a mesma grandeza que decide **quanto** ele acompanha a cadeia —, vezes
+    /// o factor do §9 pela porta que já o possui ([`ph2d_pose::Fatores::de`]):
+    /// *um vértice mascarado não se mexe, e também não se alisa.*
+    ///
+    /// # O orçamento é o da casa
+    ///
+    /// As passadas vêm de [`crate::auto_smooth::iteration_strengths`], que é a
+    /// mesma lei que todo outro verbo usa — ⛔ **não** um lerp com o número do
+    /// slider, que reproduz a referência só abaixo de `0,24`. E a pergunta *«ele
+    /// está armado?»* é feita à porta única ([`crate::Brush::auto_smooth_brush`]),
+    /// que é a MESMA que o painel consulta para pintar a fileira: duas cópias
+    /// divergiriam num knob que aparece e não faz nada — que é precisamente o
+    /// defeito que isto cura.
+    ///
+    /// # O que ela NÃO muda
+    ///
+    /// ⚠️ **No ponto neutro (`auto_smooth = 0`) o caminho é byte-idêntico**, por
+    /// construção: a porta devolve `None` e nem a adjacência é consultada. É o
+    /// que mantém os `69` traços do oráculo intocados — ⛔ e eles não poderiam
+    /// medir isto de qualquer forma: a bancada corre a `ph2d-pose`
+    /// **directamente**, e esta lei é nossa.
+    ///
+    /// ⚠️ **E ela NÃO quebra o rebase do §7.2:** o resultado continua a ser uma
+    /// função pura de `p0` e do arrasto TOTAL — ela corre sobre a `saida` deste
+    /// evento, nunca sobre a malha já escrita, logo não acumula com a contagem
+    /// de eventos que o ponteiro entregou.
+    fn alisa_a_pose(
+        &mut self,
+        mesh: &Mesh,
+        brush: &Brush,
+        sessao: &PoseSessao,
+        fatores: ph2d_pose::Fatores<'_>,
+        saida: &mut Vec<[f32; 3]>,
+    ) {
+        if brush.auto_smooth_brush().is_none() {
+            return;
+        }
+        let cadeia = sessao.pose.cadeia();
+        let adj = mesh.adjacency();
+        let mut outro = std::mem::take(&mut self.pose_alisado);
+        for passe in crate::auto_smooth::iteration_strengths(brush.auto_smooth).as_slice() {
+            outro.clear();
+            outro.extend_from_slice(saida);
+            for v in 0..saida.len() {
+                let w = passe.weight * cadeia.peso_total(v) * fatores.de(v);
+                if w <= 0.0 {
+                    continue;
+                }
+                let base = saida[v];
+                let media = ph2d_mesh::ring_average(adj, v as u32, base, |nb| saida[nb as usize]);
+                let m = 1.0 - w;
+                outro[v] = [
+                    base[0] * m + media[0] * w,
+                    base[1] * m + media[1] * w,
+                    base[2] * m + media[2] * w,
+                ];
+            }
+            std::mem::swap(saida, &mut outro);
+        }
+        self.pose_alisado = outro;
     }
 
     /// O pen-down: constrói a cadeia inteira, **uma vez** (espec §10).

@@ -371,7 +371,9 @@ fn todo_read_declarado_e_lido(label: &str, src: &str, chave_do_gather: Option<&s
         // (a base). Sem `id` na base não há `id` na saída, logo não há `id` no estado. *A
         // varredura desta sonda é exaustiva sobre 2^n máscaras, e nem toda máscara é um estado
         // que a máquina alcança.*
-        if chave_do_gather.is_some_and(|c| nome.trim() == c || nome.trim().ends_with(&format!("_{c}"))) {
+        if chave_do_gather
+            .is_some_and(|c| nome.trim() == c || nome.trim().ends_with(&format!("_{c}")))
+        {
             continue;
         }
         let leitor = format!("read_{}", nome.trim());

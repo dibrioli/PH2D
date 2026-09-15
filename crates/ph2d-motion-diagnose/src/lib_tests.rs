@@ -68,31 +68,63 @@ fn an_untouched_param_falls_back_to_the_manifest_default_not_to_zero() {
     );
 }
 
-/// **The transient set covers every column any node `Consume`-drops.** `accel`
-/// and `inv_mass` are derived facts — some node drops each — so this gate makes
+/// **The transient set covers every column a node of the SAME KIND `Consume`-drops.**
+/// `accel` and `inv_mass` are derived facts — some node drops each — so this gate makes
 /// it impossible to introduce a new transient column (a new `Consume` binding)
 /// without landing it in [`TRANSIENT_COLUMNS`], where the diagnoser can reason
 /// about a producer of it. `falloff`, the modulation weight that is never
 /// dropped, is the one named directly, so the gate pins it too. FALSIFIED by
 /// removing "accel"/"inv_mass" (a `Consume` column escapes the analysis) or
 /// "falloff" (the modulation column stops being analysed).
+///
+/// ⚠️⚠️ **E há uma SEGUNDA razão legítima para consumir, que este gate não via** (achada
+/// pela família `pulse.*` em 2026-09-14, quando os nove kernels dela aterraram): um
+/// **TRANSDUTOR** — um nó cuja saída é de outro TIPO de corrente — larga por construção
+/// as colunas do tipo que leu. O `pulse.threshold` lê `P`/`rot`/`size` e emite um PULSO;
+/// o `pulse.counter` lê um pulso e emite um VALOR. Nenhuma dessas colunas é transiente, e
+/// pô-las na [`TRANSIENT_COLUMNS`] para calar o gate diria ao diagnosticador que um
+/// produtor de `P` é inerte sem consumidor — que é falso e mudaria o veredito de toda
+/// cena do módulo.
+///
+/// ⇒ a isenção é **DERIVADA do manifesto** (o tipo da porta lida ≠ o tipo da saída), nunca
+/// uma lista escrita à mão: *uma lista aqui envelheceria no dia do décimo nó de pulso.*
 #[test]
 fn the_transient_set_covers_every_consumed_column() {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("register all nodes");
+    let mut transdutores = 0_usize;
     for m in reg.manifests() {
         let Some(k) = reg.gpu_kernel(m.id) else {
             continue;
         };
         for b in k.bindings {
+            if !b.access.consumes() {
+                continue;
+            }
+            // O tipo que este binding LÊ contra o que o nó EMITE. Uma porta fora de alcance
+            // não isenta ninguém: o `map_or(false, …)` deixa a asserção decidir.
+            let lido = m.inputs.get(b.port as usize).map(|p| p.ty);
+            let emitido = m.outputs.first().map(|p| p.ty);
+            if lido.is_some() && emitido.is_some() && lido != emitido {
+                transdutores += 1;
+                continue;
+            }
             assert!(
-                !b.access.consumes() || TRANSIENT_COLUMNS.contains(&b.column),
-                "a `Consume` binding drops `{}`, which is not in TRANSIENT_COLUMNS — \
-                     the diagnoser would never analyse a producer of it",
+                TRANSIENT_COLUMNS.contains(&b.column),
+                "`{:?}` larga `{}` sem mudar de tipo de corrente, e essa coluna nao esta' em \
+                 TRANSIENT_COLUMNS — o diagnosticador nunca analisaria um produtor dela",
+                m.id,
                 b.column
             );
         }
     }
+    // ⚠️ **Piso de população na metade nova** — sem ele, um dia em que o `inputs.get` passasse
+    // a devolver `None` (uma porta renomeada, um manifesto encolhido) isentaria TUDO e o gate
+    // ficaria verde a medir nada, que é a catraca sem censo do `CLAUDE.md` §5.0.
+    assert!(
+        transdutores >= 5,
+        "a familia `pulse.*` tem de continuar a ser vista como transdutora: {transdutores}"
+    );
     assert!(
         TRANSIENT_COLUMNS.contains(&"falloff"),
         "falloff is the modulation weight the diagnoser must reason about"

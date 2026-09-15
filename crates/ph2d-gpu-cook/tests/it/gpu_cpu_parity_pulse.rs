@@ -93,7 +93,13 @@ fn fonte(g: &mut Graph) -> NodeId {
 
 /// Corre as DUAS rotas sobre a mesma cadeia, `VOLTAS` tiques, e compara a `coluna` do `sink` em
 /// cada uma. Devolve as colunas da CPU (para o controlo de não-vacuidade).
-fn paridade(gpu: &GpuContext, reg: &NodeRegistry, rotulo: &str, monta: impl Fn(&mut Graph) -> NodeId, coluna: &str) -> Vec<Vec<f32>> {
+fn paridade(
+    gpu: &GpuContext,
+    reg: &NodeRegistry,
+    rotulo: &str,
+    monta: impl Fn(&mut Graph) -> NodeId,
+    coluna: &str,
+) -> Vec<Vec<f32>> {
     let mut g = Graph::new();
     let sink = monta(&mut g);
     g.validate(reg).expect("a cadeia é bem tipada");
@@ -405,8 +411,16 @@ fn a_value_on_the_knife_edge_is_the_only_place_the_two_routes_can_disagree() {
             "v",
         );
         gc.cook(
-            &gpu, &g, &reg, &reg, &plano, &[],
-            CookClock::at(t), DEFAULT_UV, DEFAULT_SIZE, SinkStyle::PLAIN,
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plano,
+            &[],
+            CookClock::at(t),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+            SinkStyle::PLAIN,
         )
         .expect("gpu cook");
         let dev_pulse = gc.read_column(&gpu, cmp, "pulse").expect("pulse");
@@ -746,7 +760,13 @@ fn parity_pulse_threshold_with_a_debounce() {
     nao_e_vazio("pulse.threshold(debounce)", &com);
 
     // ⚠️ **O CONTROLO que prova que o abrandador ABRANDA** (e, com ele, que o `dt` desce o relógio).
-    let sem = paridade(&gpu, &reg, "pulse.threshold(sem debounce)", monta(0.0), "pulse");
+    let sem = paridade(
+        &gpu,
+        &reg,
+        "pulse.threshold(sem debounce)",
+        monta(0.0),
+        "pulse",
+    );
     let conta = |v: &[Vec<f32>]| v.iter().flatten().filter(|&&x| x > 0.5).count();
     let (a, b) = (conta(&com), conta(&sem));
     assert!(
@@ -754,5 +774,8 @@ fn parity_pulse_threshold_with_a_debounce() {
         "com `debounce` dispararam {a} e sem ele {b} -- o abrandador nao engoliu nada, logo este \
          gate nao testa o relogio que o `dt` faz descer"
     );
-    eprintln!("\n  abrandador: {a} disparos com `debounce`, {b} sem -- engoliu {}\n", b - a);
+    eprintln!(
+        "\n  abrandador: {a} disparos com `debounce`, {b} sem -- engoliu {}\n",
+        b - a
+    );
 }

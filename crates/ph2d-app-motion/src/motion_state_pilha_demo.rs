@@ -188,3 +188,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 #[cfg(test)]
 #[path = "motion_state_pilha_demo_tests.rs"]
 mod tests;
+
+/// ⭐ O irmão que mede o MOVIMENTO da pilha (doc 109 §8) — ver o cabeçalho dele.
+#[cfg(test)]
+#[path = "motion_state_pilha_demo_tremor.rs"]
+mod tremor;

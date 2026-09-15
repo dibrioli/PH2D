@@ -33,7 +33,15 @@ pub(super) fn apply(
         match intent {
             // ⭐ O verbo do gizmo é estado de VISTA: ele não entra no mundo, entra no smoke.
             ph2d_panel_model3d::ModelIntent::SetGizmoMode { slot } => {
-                if let Some(mode) = crate::gizmo::Mode::ALL.get(slot).copied() {
+                // ⛔⛔ **Era `Mode::ALL.get(slot)`, e o painel publica a lista OFERECIDA.** Enquanto
+                // a oferta era `Mode::ALL` inteiro as posições casavam por construção; desde que um
+                // verbo pode não ser oferecido (`docs/Render3d/05` §28) elas só casariam por
+                // ACIDENTE. *Duas listas para a mesma pergunta divergem no dia em que uma delas
+                // encolhe* — e aqui ninguém acusaria: o clique poria o verbo errado, em silêncio.
+                if let Some(mode) = crate::scene::offered_verbs(world, selection)
+                    .get(slot)
+                    .copied()
+                {
                     with_smoke(|s| {
                         s.gizmo_mode = mode;
                         // Trocar de verbo com uma alça agarrada deixaria um arrasto órfão.

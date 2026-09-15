@@ -527,7 +527,20 @@ mod verb;
 #[path = "scene_acts.rs"]
 mod acts;
 pub use acts::link_badges;
-pub use panel::{new_shape_size, op_at, publish_snapshot};
+pub use panel::{new_shape_size, offered_verbs, op_at, publish_snapshot, verb_applies};
+
+/// ⭐ **O DRENO do painel, para um gate lhe poder chegar** — a porta do PRODUTO, não uma cópia.
+///
+/// ⚠️ Ela existe porque uma mutação **sobreviveu**: o gate do `slot` media a lista oferecida e
+/// nunca o braço que a lê, logo repor a indexação em `Mode::ALL` deixava-o verde. *Uma função pura
+/// gateada sem o consumidor prova metade de uma costura.*
+#[cfg(test)]
+pub(crate) fn apply_intents_for_test(
+    world: &mut bevy_ecs::world::World,
+    selection: &[bevy_ecs::entity::Entity],
+) -> (Option<u64>, bool) {
+    intents::apply(world, selection, None)
+}
 pub use verb::verb_at;
 
 /// **Onde uma forma nova entra** — perto do que está selecionado.

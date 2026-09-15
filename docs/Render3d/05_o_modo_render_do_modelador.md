@@ -2209,14 +2209,15 @@ metade que fica tem o mesmo sintoma.*
   do plano nomeia-a), e chega com o resto dos modos de arte.
 - ✅ ~~**Uma luz não se escolhe no CANVAS**~~ — **FECHOU no mesmo dia (§26)**, por report do dono:
   *«a luz não tem seu próprio gizmo»*. Ela tem agora uma marca desenhada e clicável.
-- **Os verbos ROTAÇÃO e ESCALA do gizmo são inertes numa luz.** O verbo é estado de **VISTA** (um por
-  viewport), não do objecto, então restringi-lo por-objecto é um campo novo no `Anchor`.
-- **Duplicar uma luz não faz nada** — o `duplicate` exige um pai, e uma luz é raiz. *Declarado e
-  testado*, não acidental.
+- ✅ ~~**Os verbos ROTAÇÃO e ESCALA do gizmo são inertes numa luz**~~ — **FECHOU (§28)**, e a cura
+  escrita aqui estava ERRADA: ela dizia *«restringi-lo por-objecto é um campo novo no `Anchor`»*, e
+  o que se restringe não é o gesto, é a **OFERTA**.
+- ✅ ~~**Duplicar uma luz não faz nada**~~ — **ela sempre funcionou (§28)**. A nota dizia *«declarado
+  e testado»* e o que estava testado era a porta de MODELAGEM, que uma luz **nunca visita**.
 - **Uma luz não viaja no arquivo com o resto** — ela é uma entidade com componentes registados, logo
   entra no `WorldSnapshot`; o que **não** foi exercitado é um projecto gravado antes desta wave, que
   abre **sem luz nenhuma** e fica aceso só pelo céu.
-- **Uma só luz e um só tipo.** Sem cone, sem área, sem sombra — a `W4` do plano.
+- **Uma só luz e um só tipo.** Sem cone e sem área — ✅ a **sombra** fechou na `W4` (§27).
 
 ---
 
@@ -2452,3 +2453,87 @@ com a peça no denominador. *Uma fracção sem o denominador escrito ao lado del
 - **A borda anti-serrilhada usa a sombra do CENTRO do pixel** nas quatro amostras — a mesma
   aproximação que a direcção de vista e o material já fazem ali.
 - **O passe é `O(lâmpadas × pixels)`** e não há cache: duas luzes custam o dobro.
+
+
+---
+
+## §28 — ⭐⭐ A LUZ COMPORTA-SE COMO UM OBJECTO (2026-09-14)
+
+Três itens do §25.8, auditados contra o **código** antes de lhes tocar — que é a lei que este
+repositório escreve sobre as próprias listas abertas. **Duas das três notas estavam erradas**, e o
+erro das duas tem a mesma forma.
+
+### §28.1 — ⛔⛔ *«Duplicar uma luz não faz nada»* era falso, e a nota dizia-se TESTADA
+
+Ela lia: *«o `duplicate` exige um pai, e uma luz é raiz — **declarado e testado**, não acidental»*.
+O que estava testado era [`ph2d_field_ecs::duplicate`], a porta de **modelagem** — e uma luz **nunca
+a visita**: o `hierarchy_duplicate::duplicate_kind` pergunta por `FieldNode`, uma luz tem
+`FieldLight`, logo ela cai no **braço genérico**, que é a cópia profunda do ADR-0164. Essa leva
+**todo componente registado**, e os dois que fazem a luz (`FieldLight`, `FieldPose`) estão
+registados.
+
+⚠️ *Uma ausência afirmada pela porta ERRADA é um palpite com cara de medição* — e aqui ela veio
+com a palavra «testado» ao lado.
+
+⇒ o gate `duplicar_uma_luz_da_uma_segunda_luz` afirma o **roteamento** e o que a cópia **leva**:
+cair no braço genérico só é a resposta certa enquanto os componentes forem registados, e um
+`register_default` apagado devolveria exactamente o *«sósia que não desenha nada»* que o
+`DuplicateKind` existe para evitar. (Mutação: apagar o registo do `FieldLight` ⇒ 🔴.)
+
+### §28.2 — ⭐⭐⭐ Rodar e escalar uma luz: o que se restringe é a OFERTA, não o gesto
+
+Uma lâmpada de ponto não tem orientação nem tamanho, e com ela escolhida aqueles dois verbos
+desenhavam alças que não moviam número nenhum — *um botão pintado e morto*, que é como o próprio
+`scene_gizmo` já descreve o que ele se recusa a desenhar num nó trancado.
+
+⛔ **A cura que a nota prescrevia era um campo novo no [`crate::gizmo::Anchor`]**, raciocinada a
+partir de *«o verbo é estado de VISTA, um por viewport»*. Está errada: **o gizmo não precisa de
+saber que esta pergunta existe** — se o chip não é oferecido, o verbo nunca fica activo. *Uma cura
+desenhada a partir de onde um valor MORA, em vez de a partir de quem o OFERECE, compra o refactor
+errado.*
+
+⭐ E o molde já estava no mesmo ficheiro, dez linhas abaixo: a fileira do **laço**, que só aparece
+com duas ou mais peças e, ao sumir, **põe o modo de volta** — senão ele ficaria *«armado e
+invisível»*.
+
+⚠️ **A regra é sobre a selecção INTEIRA, não sobre a primária:** com uma luz e uma forma escolhidas
+rodar tem sujeito (a forma), e tirar o verbo ali seria tirar um gesto legítimo por causa de um
+acompanhante. (Mutação que lê só a primária ⇒ 🔴.)
+
+### §28.3 — ⛔⛔ E o filtro ia introduzindo um defeito MUDO: a segunda contagem
+
+O consumidor do clique fazia `Mode::ALL.get(slot)` e o painel publicava `Mode::ALL` inteiro — as
+posições casavam **por construção**. Ao filtrar a oferta isso deixa de ser verdade, e ⚠️ **hoje ele
+ainda acertaria por ACIDENTE**: o `Move` é o primeiro e é o único que sobra numa luz.
+
+*Uma correspondência que só se mantém enquanto o primeiro elemento não muda não é uma lei — é uma
+coincidência à espera de um verbo novo*, e o `ph2d_panel_model3d::area_bar` já proíbe esta forma por
+escrito (*«uma tabela aqui seria uma segunda contagem: acrescentar um verbo lá dentro faria o
+`SCALE` mandar rodar, e nada acusaria»*). ⇒ **uma lista só** (`scene::offered_verbs`), lida pelos
+dois lados.
+
+### §28.4 — ⛔⛔⛔ E o gate desse defeito SOBREVIVEU à mutação, porque media a porta e não o consumidor
+
+A 1.ª redacção do `o_slot_do_verbo_le_a_lista_que_foi_oferecida` afirmava que `offered_verbs(luz)`
+não tem posição `1`. Verdade, e **inútil**: repor `Mode::ALL.get(slot)` no dreno deixava-o **verde**.
+*Um gate que só mede a porta não prova que alguém a usa* — a costura não-testada da
+`DIRETIVA_IMPLEMENTACAO` §1, outra vez.
+
+⇒ ele passa a **empurrar o intent e a correr o dreno do produto**, com o discriminador certo: o
+`slot 1` com uma luz escolhida é um clique que a fileira **nunca pôde pintar**. Com a lista certa
+não acontece nada; com a `Mode::ALL` ele arma o **Rotate**. ⭐ E leva o controlo ao lado — com uma
+**forma** o mesmo `slot 1` *tem* de armar o Rotate, senão o gate passaria por o dreno estar morto.
+
+⚠️ **E ele tem de ARMAR o módulo**: fora do pill o `with_smoke` devolve `None` e todo gancho é
+inerte (W42). A 1.ª corrida leu `None` dos dois lados e teria passado por não medir nada.
+
+### §28.5 — ⏳ O que fica aberto
+
+- **Uma luz continua a não viajar num projecto gravado ANTES desta wave** — ele abre sem lâmpada e
+  a peça fica acesa só pelo céu. A semente só corre quando a cena de demo nasce; o artista tem o
+  `+ Light`, mas nada lhe diz que falta uma.
+- **A marca da luz não tem realce de PASSAGEM** (§26.4), e duas exactamente sobrepostas continuam
+  por desempatar.
+- **Escalar uma luz terá sujeito quando houver luz de ÁREA**, e rodar quando houver **cone** — as
+  duas são `W4` do plano e não estão construídas. *O verbo volta à fileira no dia em que o tipo de
+  luz o justificar, e o `offered_verbs` é o sítio único onde isso se escreve.*

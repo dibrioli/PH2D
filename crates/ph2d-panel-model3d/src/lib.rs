@@ -45,6 +45,7 @@ pub use populate::{CHIP_FAMILY_COUNT, MAX_MODES, MAX_ROWS};
 pub const PANEL_ID: &str = "model3d";
 pub use state::{
     ModeChip, ModelIntent, ModelSnapshot, ParamRow, drain_intents, last_content_h, publish,
+    push_intent_for_test,
 };
 
 use ph2d_a11y::NodeId;

@@ -32,7 +32,15 @@ pub fn publish_snapshot(
     // conhece o enum — acrescentar um verbo lá faz o seletor seguir sem uma linha de mudança.
     let (active, frame, mut subtracts) =
         with_smoke(|s| (s.gizmo_mode, s.gizmo_frame, s.lasso_subtracts)).unwrap_or_default();
-    let modes = crate::gizmo::Mode::ALL
+    // ⭐⭐⭐ **UM VERBO QUE NÃO FAZ NADA NÃO SE OFERECE** (`docs/Render3d/05` §28) — e a forma é a
+    // que a fileira do laço, dez linhas abaixo, já usa: o chip some **e o modo volta atrás**.
+    let oferecidos = offered_verbs(world, selection);
+    let mut active = active;
+    if !oferecidos.contains(&active) {
+        active = crate::gizmo::Mode::Move;
+        with_smoke(|s| s.gizmo_mode = active);
+    }
+    let modes = oferecidos
         .iter()
         .map(|m| ph2d_panel_model3d::ModeChip {
             key: m.key(),
@@ -666,3 +674,62 @@ pub fn ops_for(
 mod material;
 use material::material_for_the_selection;
 pub(crate) use material::material_reach;
+
+/// ⭐⭐⭐ **Que verbos do gizmo têm sujeito nesta selecção** (`docs/Render3d/05` §28).
+///
+/// **Mover** vale sempre: tudo o que o gizmo agarra tem um *onde*. **Rodar** e **escalar** precisam
+/// de uma coisa com ORIENTAÇÃO e TAMANHO, e uma lâmpada de ponto não tem nenhuma das duas — com uma
+/// luz escolhida, aqueles dois verbos eram **inertes**: as alças desenhavam-se e o arrasto não movia
+/// número nenhum.
+///
+/// ⚠️⚠️ **A nota do §25.8 dizia que a cura era um campo novo no [`crate::gizmo::Anchor`], e estava
+/// errada.** Ela raciocinou a partir de *«o verbo é estado de VISTA, um por viewport»* e concluiu
+/// que restringi-lo por-objecto teria de viajar no gizmo. Não tem: **o que se restringe não é o
+/// gesto, é a OFERTA** — se o chip não existe, o verbo nunca fica activo, e o gizmo não precisa de
+/// saber que esta pergunta existe. *Uma cura desenhada a partir de onde um valor MORA, em vez de a
+/// partir de quem o OFERECE, compra o refactor errado.*
+///
+/// ⭐ E o molde é o da fileira do laço, no mesmo ficheiro: o chip some **e o modo volta atrás** —
+/// senão ele ficaria *«armado e invisível»*, que é o modo de falha que esta casa mede desde 30/08.
+///
+/// ⚠️ **A regra é sobre a selecção INTEIRA, não sobre a primária:** com uma luz e uma forma
+/// escolhidas, rodar tem sujeito (a forma) e o gizmo pousa no meio das duas — tirar o verbo ali
+/// seria tirar um gesto legítimo por causa de um acompanhante.
+///
+/// ⛔⛔ **E ela é UMA lista, lida pelos DOIS lados.** O consumidor do clique fazia
+/// `Mode::ALL.get(slot)` e o painel publicava `Mode::ALL` inteiro, logo as posições casavam por
+/// construção. Ao filtrar a oferta isso deixa de ser verdade, e **hoje ele ainda acertaria por
+/// ACIDENTE** — o `Move` é o primeiro, e é o único que sobra. *Uma correspondência que só se
+/// mantém enquanto o primeiro elemento não muda é a «segunda contagem» que o
+/// `ph2d_panel_model3d::area_bar` já proíbe por escrito.* ⇒ os dois lados chamam
+/// [`offered_verbs`], e o `slot` indexa o que foi de facto oferecido.
+#[must_use]
+pub fn offered_verbs(
+    world: &bevy_ecs::world::World,
+    selection: &[bevy_ecs::entity::Entity],
+) -> Vec<crate::gizmo::Mode> {
+    crate::gizmo::Mode::ALL
+        .iter()
+        .copied()
+        .filter(|m| verb_applies(world, selection, *m))
+        .collect()
+}
+
+#[must_use]
+pub fn verb_applies(
+    world: &bevy_ecs::world::World,
+    selection: &[bevy_ecs::entity::Entity],
+    mode: crate::gizmo::Mode,
+) -> bool {
+    if mode == crate::gizmo::Mode::Move {
+        return true;
+    }
+    // ⚠️ **Selecção vazia oferece tudo**, e não é indulgência: sem sujeito não há gizmo nenhum, e
+    // esconder chips com o canvas vazio faria a fileira piscar ao clicar fora.
+    if selection.is_empty() {
+        return true;
+    }
+    selection
+        .iter()
+        .any(|e| world.get::<ph2d_field_ecs::FieldNode>(*e).is_some())
+}

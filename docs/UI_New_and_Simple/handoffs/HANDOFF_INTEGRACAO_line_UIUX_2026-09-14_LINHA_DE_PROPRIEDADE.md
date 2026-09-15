@@ -245,3 +245,92 @@ constante entrou na substituição — e ali a cura foi barata porque o compilad
 **Portão:** `nextest-impacted` (BASE `1d43da737`) **13 883/13 883**, exit 0, `load 49,7` ·
 `clippy --workspace --all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · árvore limpa ·
 binário de smoke reconstruído (exit 0, 79 582 488 bytes).
+
+---
+
+## 10 — ⭐⭐⭐ O report seguinte: *«caixas de input numérico sem cor de fundo»*
+
+Commit `43ac9d0da` · 9 ficheiros · +300/−18.
+
+### 10.1 — A causa não era a paleta: era QUEM a escolhia
+
+O `number_input` e a `text_area` enchiam com `resolve(fill_token(state))` = **`ColorToken::Bg1`**
+— que é **exactamente** o token de um cartão de secção
+([`section_cards::CardDepth::Section`](../../../crates/ph2d-editor-core/src/widget/section_cards/mod.rs)),
+e é sobre cartões que o Inspector põe as linhas dele.
+
+**Medido nos oito temas: `0/255`.** E num tema moderno a moldura de repouso é ZERO — é a lei do
+`LineEdit` do Godot que esta casa adoptou. ⇒ *não havia caixa nenhuma*, só o número pousado no
+cartão.
+
+⚠️⚠️ **E o `text_input` já perguntava ao tema** (`visuals::Chrome::field_fill`). A resposta certa
+existia, tinha **um** chamador, e dois pintores irmãos usavam uma terceira.
+***Uma lei com uma porta e dois consumidores fora dela não é uma lei; é uma coincidência que ainda
+não divergiu.***
+
+⚠️ E há uma **quarta**: o chip numérico ao lado de um slider (`number_chip`) pinta `Bg3` em repouso
+e `Bg2` focado. *«Que cor tem um campo?»* tinha quatro respostas neste app.
+
+### 10.2 — A segunda metade: a cor que o tema dava também estava errada, e por uma premissa
+
+O `Chrome::field_fill` moderno era `dark_1.lerp(BLACK, max(c,0) * 0.5)`, com o comentário
+*«o `LineEdit` do Godot assenta num degrau abaixo do painel»*. A frase está certa **sobre o
+Godot** e errada **sobre nós**: ele põe o campo sobre o PAINEL; aqui as linhas assentam num
+**CARTÃO**, que está um degrau ACIMA do painel (a wave de 05/09 desceu o painel, precisamente para
+o cartão se ler). Resultado medido: `4/255` do painel e `8` do cartão.
+
+⇒ a lei passa a ser **um degrau abaixo da superfície mais funda em que um campo pode assentar**
+— as três são nomeadas (painel · cartão de secção · cartão de subsecção) —, com o degrau a ser o
+[`SURFACE_STEP`](../../../crates/ph2d-tokens/src/derive.rs) que a casa já mediu para separar o
+CHÃO do painel.
+
+⛔ **Isso NÃO é herdar a resposta de outra pergunta.** É a mesma pergunta — *duas superfícies que
+se tocam lêem-se como duas?* — nos mesmos quatro temas. A cerca que o
+`a_card_stands_off_its_panel` planta por escrito é contra herdar os `12/255` do par
+*cartão-contra-painel*, que é um par diferente.
+
+⚠️ **Qual das três é a mais funda MUDA com o tema:** no `Dark` e no `Gray` é o painel, no `Light`
+é a subsecção (ali a escada sobe). *Escrever «abaixo do painel» seria escrever a lei na polaridade
+de um tema* — o defeito que aquele mesmo gate já pagou.
+
+| tema | vs painel | vs cartão | vs subcartão | moldura de repouso |
+|---|---|---|---|---|
+| Dark **antes** | 12 | **0** | 10 | não |
+| Dark **hoje** | 10 | 22 | 32 | não |
+| Gray **antes** | 19 | **0** | 14 | não |
+| Gray **hoje** | 10 | 29 | 43 | não |
+| Light **antes** | 13 | **0** | 11 | não |
+| Light **hoje** | 35 | 22 | 11 | não |
+| Forge/Workshop/Sunstone/Blueprint | — | **0** | — | **sim** |
+| Oled | 0 | 0 | 0 | **sim** (*Draw Extra Borders*) |
+
+⛔ **A família clássica e o OLED ficam byte-idênticos** — ali a moldura existe e é ela que separa.
+
+### 10.3 — Três gates, porque são três defeitos
+
+| gate | crate | o que defende | mutação |
+|---|---|---|---|
+| `a_field_is_never_the_colour_of_what_it_sits_on` | tokens | a COR, contra as três superfícies nomeadas, com piso de população e a cláusula da moldura | repor a derivação de ontem ⇒ ✗ |
+| `the_text_in_a_field_still_reads` | tokens | afundar o fundo não pode comer o texto (WCAG AA 4,5:1) | — |
+| `every_field_painter_asks_the_theme_for_its_fill` | editor-core | o CAMINHO: o `fill_token` tem UM leitor, a porta | o `number_input` volta a escolher por token ⇒ ✗ |
+
+⚠️ **A segunda existe por um ponto cego real:** o `field_fill` é um valor **derivado, não um
+token** — logo o censo de contraste do design system (`contrast_tests`, que varre
+`CONTRAST_PAIRS`) **não o vê**. *Um valor derivado fora da tabela de tokens é invisível às réguas
+da tabela.*
+
+### 10.4 — ⏳ NOMEADO e não tocado
+
+O **chip numérico** ao lado de um slider (`slider_with_chip::number_chip`) é a quarta resposta:
+`Bg3` em repouso — `42/255` do cartão no `Dark`, logo bem visível — e `Bg2` focado, que sobre um
+cartão de subsecção é `0` mas traz o anel de foco de 2 px. **Ele tem fundo**, que era o report;
+unificá-lo com os campos é decisão de APARÊNCIA (chip levantado contra campo afundado), não a cura
+de um defeito. ⛔ Não o converta sem o veredito do dono.
+
+E o **estado DESACTIVADO não tem tinta própria num tema moderno** — a distinção viaja no texto
+(`TextDisabled`). É o que o `text_input` já shipava; fica nomeado na porta em vez de se inventar
+um segundo tom.
+
+**Portão:** `nextest-impacted` (BASE `1d43da737`) **14 269/14 269**, exit 0, `load 36,9` ·
+`clippy --workspace --all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · binário de
+smoke reconstruído (exit 0).

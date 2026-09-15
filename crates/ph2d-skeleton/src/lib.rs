@@ -56,6 +56,16 @@ pub struct SkinBone {
     pub radius: f64,
     /// `M_j` — leva um ponto do repouso para onde ESTE osso o quer agora.
     pub pose: Xform,
+    /// ⭐ **Qual sub-osso de quantos**, para um osso que DOBRA ([`bend`]). `(0, 1)` ⇒ o osso
+    /// inteiro, que é o que um osso recto é — e é o que [`SkinBone::new`] escreve.
+    ///
+    /// ⚠️ **Os sub-ossos de um osso partilham `rest_a`/`rest_b`/`radius`** (o eixo e o alcance são
+    /// do OSSO) e distinguem-se só pela `pose` e por este par: é isso que faz a força total do osso
+    /// não crescer com o número de segmentos (ver [`bend::share`]).
+    ///
+    /// ⚠️ **Eles são CONSECUTIVOS na pele**, e o desempate do órfão conta com isso para achar o
+    /// grupo a partir de um membro — [`SkinBone::bent`] é a única porta que os produz.
+    pub sub: (u8, u8),
 }
 
 impl SkinBone {
@@ -87,7 +97,58 @@ impl SkinBone {
             rest_b,
             radius: (span * strength).max(0.0),
             pose: rest_inv.then(&bone_world).then(&shape_world_inv),
+            sub: (0, 1),
         })
+    }
+
+    /// ⭐⭐⭐ **O MESMO OSSO, PARTIDO POR UMA CURVA** — os `N` sub-ossos de um *bendy bone*,
+    /// empurrados para `out` **em ordem** (o desempate do órfão conta com isso).
+    ///
+    /// ⚠️⚠️ **O PONTO NEUTRO É BYTE-IDÊNTICO, e por dois caminhos que se encontram:** com
+    /// `segments <= 1` **ou** com a curvatura recta esta função empurra exactamente o que a
+    /// [`SkinBone::new`] devolve, sem passar pela fábrica de frames. *Uma recta não precisa de `N`
+    /// ossos para a desenhar* — e colapsá-la é o que separa «o caminho antigo continua igual» de
+    /// «o caminho antigo continua parecido».
+    ///
+    /// ⚠️ A pose de cada sub-osso é `S⁻¹ ∘ B ∘ F_k ∘ rest⁻¹`: o frame entra **do lado do osso**,
+    /// entre o repouso e o mundo, porque ele é um afim do espaço LOCAL do osso. Pô-lo do lado de
+    /// fora dobraria a arte no espaço da forma, e a dobra deixaria de seguir o osso quando ele
+    /// rodasse.
+    pub fn bent(
+        rest: Xform,
+        spec: bend::BoneSpec,
+        bone_world: Xform,
+        shape_world_inv: Xform,
+        out: &mut Vec<Self>,
+    ) {
+        let Some(base) = Self::new(
+            rest,
+            spec.length,
+            spec.strength,
+            bone_world,
+            shape_world_inv,
+        ) else {
+            return;
+        };
+        if spec.is_rigid() {
+            out.push(base);
+            return;
+        }
+        let n = bend::segments_of(spec.segments);
+        // O inverso já existiu dentro da `new` — se ela devolveu algo, este `else` é inalcançável.
+        let Some(rest_inv) = rest.inverse() else {
+            return;
+        };
+        for k in 0..n {
+            out.push(Self {
+                pose: rest_inv
+                    .then(&bend::frame(spec.length, n, spec.curve, k))
+                    .then(&bone_world)
+                    .then(&shape_world_inv),
+                sub: (k, n),
+                ..base
+            });
+        }
     }
 }
 
@@ -145,7 +206,7 @@ impl Skin {
         let mut soma = 0.0;
         let (mut perto, mut perto_d2) = (0usize, f64::INFINITY);
         for (i, b) in self.bones.iter().enumerate() {
-            let d2 = dist2_to_segment(p, b.rest_a, b.rest_b);
+            let (u, d2) = project_to_segment(p, b.rest_a, b.rest_b);
             if d2 < perto_d2 {
                 (perto, perto_d2) = (i, d2);
             }
@@ -162,6 +223,9 @@ impl Skin {
             } else {
                 0.0
             };
+            // ⭐ A QUOTA do sub-osso. Num osso recto ela é `1.0` ao bit, logo `peso * 1.0 == peso` e
+            // este caminho continua byte-idêntico ao que existia antes de os ossos dobrarem.
+            let peso = peso * bend::share(b.sub.0, b.sub.1, u);
             w[i] = peso;
             soma += peso;
         }
@@ -174,8 +238,27 @@ impl Skin {
         // ⛔ **Nada de podar pesos pequenos.** Uma catraca por baixo (`w < 1/256 ⇒ 0`) devolveria
         // exactamente o estalo que o bump C¹ existe para evitar: o osso saltaria de `1/256` para
         // zero no meio do movimento. O suporte já é finito — não há cauda para cortar.
+        let vencedor = &self.bones[perto];
+        let n = usize::from(vencedor.sub.1);
+        if n <= 1 {
+            for (i, v) in w.iter_mut().enumerate() {
+                *v = f64::from(u8::from(i == perto));
+            }
+            return false;
+        }
+        // ⚠️ **Um osso CURVO ganha o desempate inteiro, e reparte-o pelos sub-ossos dele.** Dar o
+        // ponto ao sub-osso mais próximo em vez de ao grupo prenderia um órfão à ponta errada da
+        // curva: eles partilham o eixo de repouso, logo a distância é a MESMA nos `n` e quem
+        // decidisse seria a ordem da lista.
+        let base = perto - usize::from(vencedor.sub.0);
+        let (u, _) = project_to_segment(p, vencedor.rest_a, vencedor.rest_b);
         for (i, v) in w.iter_mut().enumerate() {
-            *v = f64::from(u8::from(i == perto));
+            *v = match i.checked_sub(base) {
+                Some(k) if k < n => {
+                    bend::share(u8::try_from(k).unwrap_or(u8::MAX), vencedor.sub.1, u)
+                }
+                _ => 0.0,
+            };
         }
         false
     }
@@ -215,6 +298,17 @@ impl Skin {
 /// `r²` e a mistura só usa razões).
 #[must_use]
 pub fn dist2_to_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
+    project_to_segment(p, a, b).1
+}
+
+/// ⭐ **A PROJECÇÃO de `p` no segmento `a..b`** — `(fracção do eixo, distância ao quadrado)`.
+///
+/// ⚠️ **Ela existe porque o osso que DOBRA precisa dos dois números**, e o [`dist2_to_segment`]
+/// deitava fora um deles depois de o calcular. *Uma segunda função a recalcular a mesma projecção
+/// divergiria desta no primeiro `clamp` que alguém mexesse* — por isso a antiga passou a ser esta,
+/// com a componente que não usa descartada.
+#[must_use]
+pub fn project_to_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> (f64, f64) {
     let (abx, aby) = (b[0] - a[0], b[1] - a[1]);
     let (apx, apy) = (p[0] - a[0], p[1] - a[1]);
     let len2 = abx * abx + aby * aby;
@@ -226,12 +320,20 @@ pub fn dist2_to_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
         0.0
     };
     let (dx, dy) = (apx - t * abx, apy - t * aby);
-    dx * dx + dy * dy
+    (t, dx * dx + dy * dy)
 }
 
 /// ⭐ **A régua da DOBRA** — quanto da arte a pele vira do avesso. Crate-irmã do [`Skin`] por
 /// responsabilidade: *onde um ponto vai parar* e *o mapa continua a ser injectivo* são duas
 /// perguntas, e a segunda nunca tinha instrumento.
+/// ⭐⭐⭐ **O OSSO QUE DOBRA** — a fábrica de sub-ossos de um *bendy bone*. Crate-irmã da [`Skin`]
+/// por responsabilidade: *que poses existem* e *como elas se misturam* são duas perguntas, e a
+/// segunda não muda uma linha por a primeira passar a dar `N` respostas.
+pub mod bend;
+/// ⭐ Os gates do osso que dobra.
+#[cfg(test)]
+#[path = "bend_tests.rs"]
+mod bend_tests;
 pub mod fold;
 /// ⭐ Os gates e a sonda da régua da dobra.
 #[cfg(test)]

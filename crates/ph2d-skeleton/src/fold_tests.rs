@@ -35,6 +35,7 @@ pub(crate) fn corrente(n: usize, arco: f64, total: f64, raio: f64) -> Skin {
             rest_b: [(i + 1) as f64 * l, 0.0],
             radius: raio,
             pose,
+            sub: (0, 1),
         });
         let (s, c) = fi.sin_cos();
         ox += l * c;

@@ -245,6 +245,39 @@ cor dele viajou para a porta nova.
 
 ---
 
+## §7-quater — E o report FECHOU pela MEDIÇÃO, não por mais uma leitura
+
+O dono voltou com *«ainda não funciona para a arte dobrada pelo osso»*. Li o caminho inteiro **três
+vezes** e concluí, de cada vez, que ele devia funcionar. ⇒ **é aí que se para de raciocinar.**
+
+⛔ **Aquele caminho não é diagnosticável por leitura:** ele atravessa **duas** fontes (a composição
+AUTORADA do Painter e a leitura do ECRÃ) e o ecrã tem **dois** modos (o mundo vem da saída do
+tonemap, ou do **acumulador** num quadro intercalado). As quatro combinações falham de maneira
+diferente e **em silêncio** — e a cena dos ossos cai justamente no modo intercalado (barras
+vectoriais + a imagem presa), que é o único sítio onde a arte dobrada é a **única** coisa a viver na
+camada do mundo. *Um report de «não funciona» sobre uma escolha com quatro combinações mudas custa
+menos a medir do que a ler.*
+
+⇒ `PH2D_PICK_LOG=1`, uma linha por escolha. A corrida do dono:
+
+```
+[pick] (1054, 318) sel=Some(4294967283) painel=false fonte-do-mundo=acumulador
+[pick]   AUTORADA (Painter) = None
+[pick]   DO ECRA            = Some([156, 99, 57, 255])
+[pick]   texel mundo (BGRA) = Some([57, 99, 156, 255])   texel chrome (RGBA) = Some([0, 0, 0, 0])
+```
+
+⭐ **Tudo o que a porta decide, confirmado de uma vez:** a fonte do mundo é o **acumulador** (o modo
+que a §7-ter previu), o chrome ali é `0,0,0,0` (não há nada por cima do canvas), os canais são
+desfeitos correctamente (`B G R = 57, 99, 156` ⇒ `R G B = 156, 99, 57`) e a alfa sai opaca. O
+caminho autorado **não disparou** — a resposta veio do ecrã, que é o que esta wave construiu.
+
+⚠️ **E o log trouxe um vizinho por medir:** a linha `[hero] unhandled event: Click(NodeId(…))` que o
+precede. Um `Click` que ninguém consome é a forma do **controlo morto** do `CLAUDE.md` §5.0 — não é
+desta wave, e fica **nomeado** em vez de suposto benigno.
+
+---
+
 ## §8 — O que fica ABERTO
 
 - ⏳ **As guias que são CAMINHO** — a grelha, os contornos de selecção, os selos de operação, o véu
@@ -254,6 +287,10 @@ cor dele viajou para a porta nova.
   local é outra. Hoje é um círculo no cursor, e a cura pede a `warp` da malha ali.
 - ⏳ **O custo da porta directa é linear nos triângulos** — nomeado no doc dela, com a cura (índice
   por UV) escrita e não construída, porque nenhum consumidor de hoje a alcança.
-- ⏳ Os itens que já estavam abertos: **F8 — Bendy Bones** · **F4 — *«undo tem poucos passos»*** (não
+- ⏳ **O `Click` sem consumidor** que o `PH2D_PICK_LOG` expôs (§7-quater) — a forma do controlo
+  morto, por medir.
+- ⏳ Os itens que já estavam abertos: **F8 — Bendy Bones** (⭐ **o 1.º passo, o ALCANCE, está MEDIDO
+  — ver a célula F8 da [fila](../01_a_fila.md): a lei da pele já é de N ossos e não muda, o produtor
+  é UM só sítio, e dos quatro consumidores só o desenho e o dedo precisam da curva**) · **F4 — *«undo tem poucos passos»*** (não
   reproduz) · a malha amostrada no EVENTO e não por dab · os traços de FORMA com uma dobra só · o
   `apply_jitter` com o raio inflado.

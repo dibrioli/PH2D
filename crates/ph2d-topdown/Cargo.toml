@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-topdown"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# ⚠️ UMA, e pela MESMA razão da irmã `ph2d-platformer` — não é conveniência.
+#
+# Esta crate é a LEI de um controlador de vista de cima: dado (config, a entrada,
+# a velocidade, dt), qual é a velocidade nova, para onde ele olha, e em que
+# DIREcÇÕES pedir deslocamento ao mundo. Ela não conhece o rapier, não conhece o
+# ECS e não conhece a shell — quem traduz é a ponte (`ph2d-physics-ecs`).
+#
+# O `libm` entra pelos transcendentais que a lei de facto usa (`cos`/`sin` da
+# reprojecção de viewpoint e da rotação; `atan2` do «virar para onde ando»). A
+# lei do módulo de física é que **1 ulp de diferença entre dois sistemas
+# operacionais é um bug** — o `cos` do `std` não é pinado cross-OS, o do `libm`
+# é, e o `physics_ecs_c9` corre na matriz de 3 OS. Mesmo pin de `ph2d-ecs`,
+# `ph2d-physics` e `ph2d-platformer`.
+libm = { version = "=0.2.16", default-features = false }
+
+[lints]
+workspace = true

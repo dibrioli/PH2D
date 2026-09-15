@@ -186,12 +186,50 @@ impl PhysicsWorld {
         layer: u8,
         hits: &mut Vec<CharacterHit>,
     ) -> CharacterMove {
+        self.move_character_from(handle, [0.0, 0.0], wanted, params, exclude_collider, layer, hits)
+    }
+
+    /// **O mesmo, a partir de um ponto DESLOCADO** — a porta que um laço de
+    /// deslize precisa (TOP-20 #13, `ph2d-topdown`).
+    ///
+    /// # ⚠️ Por que um `offset` e não uma pose escrita
+    ///
+    /// Um mover de **vista de cima** conserva o ORÇAMENTO: o que não coube numa
+    /// direcção é re-emitido na tangente com o resto intacto, e isso obriga a
+    /// perguntar *«e a partir DAQUI, quanto cabe?»* várias vezes no mesmo tique.
+    /// ⛔ **Escrever a pose entre as perguntas não serve:** sem um `step()` pelo
+    /// meio, o colisor fica com a pose velha e a segunda pergunta mediria o sítio
+    /// errado — e um `step()` por deslize seria simular o mundo quatro vezes por
+    /// quadro.
+    ///
+    /// ⇒ o `offset` desloca a pose **do cast**, sem tocar no mundo. A lei de quem
+    /// desliza vive em [`ph2d-topdown`]; aqui só há a pergunta.
+    ///
+    /// ⚠️ **A porta velha DELEGA nesta** (`offset = [0, 0]`), e há gate a manter o
+    /// corpo dela com uma linha: duas implementações da mesma pergunta divergem no
+    /// dia em que alguém corrigir uma.
+    ///
+    /// [`ph2d-topdown`]: https://github.com/dibrioli/PH2D/blob/main/crates/ph2d-topdown/src/slide.rs
+    #[must_use]
+    pub fn move_character_from(
+        &self,
+        handle: RigidBodyHandle,
+        offset: [f32; 2],
+        wanted: [f32; 2],
+        params: CharacterParams,
+        exclude_collider: Option<ColliderHandle>,
+        layer: u8,
+        hits: &mut Vec<CharacterHit>,
+    ) -> CharacterMove {
         hits.clear();
         let none = CharacterMove {
             translation: [0.0, 0.0],
             grounded: false,
         };
         if !wanted[0].is_finite() || !wanted[1].is_finite() {
+            return none;
+        }
+        if !offset[0].is_finite() || !offset[1].is_finite() {
             return none;
         }
         let Some(body) = self.bodies.get(handle) else {
@@ -237,6 +275,11 @@ impl PhysicsWorld {
                 (SharedShape::new(Compound::new(parts)), *body.position())
             }
         };
+        // ⚠️ O `offset` desloca a pose do CAST, nunca o mundo — ver o doc da porta.
+        let pos = Pose::new(
+            Vector::new(pos.translation.x + offset[0], pos.translation.y + offset[1]),
+            pos.rotation.angle(),
+        );
 
         let up = Vector::new(params.up[0], params.up[1]);
         // ⚠️ **A normalização passou a ser NOSSA.** O campo `up` do controlador

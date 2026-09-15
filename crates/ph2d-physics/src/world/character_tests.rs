@@ -182,3 +182,79 @@ fn the_hit_list_belongs_to_the_call_that_fills_it() {
         "a segunda chamada devolve os contatos DELA, nao os dela mais os de antes"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A PORTA DESLOCADA (`move_character_from`, TOP-20 #13)
+
+/// **A porta velha DELEGA, e o corpo dela tem uma linha.**
+///
+/// ⛔ Duas implementações da mesma pergunta divergem no dia em que alguém corrigir
+/// uma — e o modo de falha é mudo: os dois chamadores continuam a compilar e a
+/// devolver números plausíveis. O censo é textual porque a propriedade É textual
+/// (*«este corpo não tem lógica própria»*), e ele lê o ficheiro do produto.
+#[test]
+fn a_porta_velha_delega_e_nao_tem_corpo() {
+    let fonte = include_str!("character.rs");
+    let i = fonte
+        .find("pub fn move_character(")
+        .expect("a porta velha tem de existir");
+    let corpo = &fonte[i..];
+    let fim = corpo
+        .find("\n    }\n")
+        .expect("o corpo da porta velha tem de fechar");
+    let corpo = &corpo[..fim];
+    let chamadas = corpo.matches("self.move_character_from(").count();
+    assert_eq!(
+        chamadas, 1,
+        "a `move_character` tem de ser UMA chamada a `move_character_from` e mais nada.\n\
+         Corpo lido:\n{corpo}"
+    );
+    // ⚠️ E nada de decisão lá dentro: um `if` no delegado é a segunda lei a nascer.
+    for proibido in ["if ", "match ", "for ", "while "] {
+        assert!(
+            !corpo.contains(proibido),
+            "a porta velha ganhou um `{proibido}` — ela delega, nao decide.\n{corpo}"
+        );
+    }
+}
+
+/// **O `offset` mede o mesmo que MOVER o corpo** — é essa a promessa da porta.
+///
+/// ⚠️ O controlo é o caminho longo: pôr a pose de verdade, correr um `step()` (sem
+/// ele o colisor fica com a pose velha, que é precisamente a razão de a porta
+/// existir) e perguntar de lá.
+#[test]
+fn o_offset_desloca_o_cast_sem_tocar_no_mundo() {
+    const SALTO: [f32; 2] = [0.0, -2.0];
+    let pedido = [0.0, -1.0];
+    let mut hits = Vec::new();
+
+    // (a) de longe, com o offset a levar o cast até ao pé do chão.
+    let (w, me) = scene([0.0, 3.0]);
+    let a = w.move_character_from(me, SALTO, pedido, params(), None, 0, &mut hits);
+
+    // (b) o CONTROLO: mover o corpo de verdade e perguntar de lá.
+    let (mut w2, me2) = scene([0.0, 3.0]);
+    w2.set_body_pose(me2, 0.0 + SALTO[0], 3.0 + SALTO[1], 0.0, true);
+    w2.step();
+    let b = w2.move_character(me2, pedido, params(), None, 0, &mut hits);
+
+    assert!(
+        (a.translation[0] - b.translation[0]).abs() < 1.0e-4
+            && (a.translation[1] - b.translation[1]).abs() < 1.0e-4,
+        "o offset mediu {:?} e mover o corpo mediu {:?}",
+        a.translation,
+        b.translation
+    );
+}
+
+/// Um `offset` degenerado devolve zero, como todo o resto desta porta.
+#[test]
+fn um_offset_degenerado_nao_move_nada() {
+    let (w, me) = scene([0.0, 3.0]);
+    let mut hits = Vec::new();
+    for mau in [[f32::NAN, 0.0], [0.0, f32::INFINITY]] {
+        let m = w.move_character_from(me, mau, [0.0, -1.0], params(), None, 0, &mut hits);
+        assert_eq!(m.translation, [0.0, 0.0], "offset {mau:?}");
+    }
+}

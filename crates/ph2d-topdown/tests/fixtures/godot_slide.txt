@@ -1,0 +1,54 @@
+# CORPUS DO ORACULO — Godot 4.7.2 (MIT), CharacterBody2D motion_mode=FLOATING + move_and_slide
+# Colhido por: godot --headless --script docs/Components/ferramentas/godot_topdown_probe.gd
+# Data: 2026-09-15 · plano: docs/Components/10_plano_topdown_player.md
+#
+# Condicoes, em unidades do ORACULO (pixels):
+#   corpo   = circulo de raio 16 px, JA encostado a uma parede vertical (face em x=-100)
+#   passo   = dt 1/60 s   velocidade 240 px/s   ⇒ ORCAMENTO = 4.0000 px por tique
+#   knob    = wall_min_slide_angle = 15 graus (o de fabrica), max_slides = 4
+#   safe_margin = 0.08 px  ⇒ ha' des-penetracao de ~0.067 px em toda linha
+#
+# ⚠️ O angulo e' medido a partir da normal INTERIOR: 0 = de cabeca contra a parede,
+#    90 = rasante. A 1.a redaccao da sonda usava a normal de FORA e mediu o lado LIVRE.
+#
+# VARREDURA  ang_graus  desloc_total_px
+VARREDURA 0 0.003654
+VARREDURA 5 0.006694
+VARREDURA 10 0.011788
+VARREDURA 15 0.017179
+VARREDURA 20 3.999388
+VARREDURA 25 3.998999
+VARREDURA 30 4.000504
+VARREDURA 35 4.000180
+VARREDURA 40 4.000566
+VARREDURA 45 4.000358
+VARREDURA 50 4.000483
+VARREDURA 55 4.000587
+VARREDURA 60 4.000507
+VARREDURA 65 4.000547
+VARREDURA 70 4.000567
+VARREDURA 75 4.000539
+VARREDURA 80 4.000554
+VARREDURA 85 4.000574
+VARREDURA 90 4.000547
+#
+# LIMIAR: o mesmo, ao grau, com o CONTROLO ao lado (o knob posto a ZERO).
+# ⚠️ E' o controlo que separa «o knob manda» de «a geometria manda»: com ele a 0
+#    o penhasco DESAPARECE, e por isso o penhasco e' do knob.
+# LIMIAR  ang_graus  desloc_com_knob_15  desloc_com_knob_0
+LIMIAR 10 0.011788 3.999638
+LIMIAR 11 0.012858 3.999539
+LIMIAR 12 0.013930 3.999619
+LIMIAR 13 0.015010 3.999569
+LIMIAR 14 0.016092 3.999608
+LIMIAR 15 0.017179 3.999626
+LIMIAR 16 3.999432 3.999432
+LIMIAR 17 3.999434 3.999434
+LIMIAR 18 3.999395 3.999395
+LIMIAR 19 3.999348 3.999348
+LIMIAR 20 3.999388 3.999388
+LIMIAR 21 3.999100 3.999100
+LIMIAR 22 3.999165 3.999165
+LIMIAR 23 3.999039 3.999039
+LIMIAR 24 3.999006 3.999006
+LIMIAR 25 3.998999 3.998999

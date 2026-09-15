@@ -38,7 +38,7 @@ fn the_canvas_pointer_asks_the_mesh_before_the_quad_affine() {
     // que SOBREVIVEU: um `let malha = MeshUv::Quad;` ao lado de um `let _ = mesh_uv(..)` deixava as
     // outras duas asserções verdes sobre o defeito inteiro. *Citar uma porta não é consultá-la.*
     assert!(
-        src.contains("let malha = ph2d_render::mesh_uv("),
+        src.contains("let malha = malha_sob_o_cursor("),
         "{} mapeia o ponteiro SÓ pelo afim do quad de repouso. Numa arte presa ao esqueleto e \
          dobrada isso põe cada pincelada deslocada pela deformação — a lei da malha é a \
          `ph2d_render::mesh_uv`, e `MeshUv::Quad` deixa o caminho de sempre intocado.",
@@ -55,7 +55,7 @@ fn the_canvas_pointer_asks_the_mesh_before_the_quad_affine() {
     assert!(
         // ⚠️ **`match malha`, e não `set_canvas_warp(`**: pela mesma mutação sobrevivente de cima —
         // *citar a porta não é consultá-la*, e aqui o que se exige é que o argumento SAIA da resposta.
-        src.contains("painter.set_canvas_warp(match malha {"),
+        src.contains("painter.set_canvas_warp(warp_da_malha(malha));"),
         "{} resolve a UV pela malha e não entrega a DEFORMAÇÃO ao pincel: o dab continua redondo na \
          textura, e no ecrã ele sai esticado pelo tanto que a arte está dobrada.",
         f.display()
@@ -65,7 +65,8 @@ fn the_canvas_pointer_asks_the_mesh_before_the_quad_affine() {
     // inteiro a deformação de um pedaço dele, e com um pincel grande sobre uma malha grossa isso
     // chega a deixar a marca MENOS redonda do que não corrigir nada (`1,38` contra `1,19`, medido).
     assert!(
-        src.contains("let raio_px = painter.dab_footprint_px();"),
+        src.contains("let raio_px = painter.dab_footprint_px();")
+            && src.contains("let footprint_uv = [raio_px / iw as f32, raio_px / ih as f32];"),
         "{} não pergunta ao pincel que tamanho o dab vai ter: sem isso a porta da malha só sabe \
          responder por um PONTO.",
         f.display()
@@ -94,6 +95,64 @@ fn the_canvas_pointer_asks_the_mesh_before_the_quad_affine() {
         src.contains("let footprint_uv = [raio_px / iw as f32, raio_px / ih as f32];"),
         "{} nomeia o footprint do dab e não o DERIVA do raio do pincel — um `[0, 0]` ali é \
          literalmente *«não vou pintar»*, e a porta volta a responder por um ponto.",
+        f.display()
+    );
+}
+
+/// ⭐⭐⭐ **AS DUAS ENTRADAS DE CANVAS PERGUNTAM À MALHA — a pincelada E o passeio.**
+///
+/// ⛔⛔ **Medido em 2026-09-14: o `deliver_canvas_hover` NÃO perguntava.** A wave anterior curou a
+/// pincelada e deixou o passeio a mapear o cursor pelo afim do quad de **REPOUSO**, sem deformação
+/// nenhuma. ⇒ numa arte dobrada, enquanto o artista apenas passeia o rato, a caneta da selecção
+/// mirava no sítio errado, a orientação do traço era calculada noutro espaço, e a deformação que o
+/// anel do pincel lê ficava **presa no que a última pincelada deixou**.
+///
+/// ⚠️ **Uma lei escrita numa das duas entradas ainda não é uma lei** — e é por isso que este gate
+/// exige a PORTA (`malha_sob_o_cursor`) e os **dois** chamadores, e não duas cópias que concordam
+/// hoje.
+#[test]
+fn both_canvas_entries_ask_the_mesh_through_one_door() {
+    let f = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("crates/<x>/ tem dois pais")
+        .join("shells/desktop/src/input_dispatch/painter_canvas_input.rs");
+    let src: String = std::fs::read_to_string(&f)
+        .expect("a porta de canvas do Painter")
+        .lines()
+        .map(|l| l.split_once("//").map_or(l, |(antes, _)| antes))
+        .collect::<Vec<_>>()
+        .join("\n");
+    // A porta existe, e é ela que compõe a pegada — não os chamadores.
+    assert!(
+        src.contains("pub(crate) fn malha_sob_o_cursor(")
+            && src.contains("ph2d_render::mesh_uv(present, bits, world, starting, footprint_uv)"),
+        "{} deixou de ter a porta única da malha: sem ela a lei volta a ser duas cópias.",
+        f.display()
+    );
+    // Controlo positivo: as duas entradas existem.
+    for entrada in ["fn deliver_canvas_pointer(", "fn deliver_canvas_hover("] {
+        assert!(
+            src.contains(entrada),
+            "{} deixou de ter `{entrada}` — este gate perdeu um sujeito",
+            f.display()
+        );
+    }
+    // ⚠️ **Duas chamadas, não uma**: a pincelada e o passeio. Uma só deixa metade do app a mapear
+    // pelo quad de repouso, que é exactamente o defeito medido.
+    let chamadas = src.matches("malha_sob_o_cursor(").count();
+    assert!(
+        chamadas >= 3,
+        "{} chama a porta da malha {} vez(es) (a definição + os dois chamadores = 3): uma das \
+         entradas de canvas voltou a mapear o cursor pelo quad de REPOUSO.",
+        f.display(),
+        chamadas
+    );
+    // E o passeio tem de USAR a resposta, não só pedi-la — a mutação que este gate mata é o
+    // `let _ = malha_sob_o_cursor(..)` ao lado do afim de sempre.
+    assert!(
+        src.contains("ph2d_render::MeshUv::Use { u, v, .. } => (u * iw as f32, v * ih as f32)"),
+        "{} pergunta à malha no passeio e DEITA FORA a posição que ela devolve.",
         f.display()
     );
 }

@@ -39,6 +39,42 @@ use crate::App;
 /// byte a byte igual no `painter_curve_input.rs`.
 pub(crate) use ph2d_app_painter::shape_grab::shape_grab_tol_from_affine;
 
+/// ⭐⭐⭐ **A MALHA SOB O CURSOR — a porta ÚNICA das duas entradas de canvas do Painter.**
+///
+/// ⛔⛔ **Ela nasceu porque a lei estava numa entrada só** (2026-09-14): o `deliver_canvas_pointer`
+/// perguntava à malha desde a wave anterior e o `deliver_canvas_hover` **não** — ele mapeava o
+/// cursor pelo afim do quad de REPOUSO e não punha deformação nenhuma. ⇒ numa arte dobrada, enquanto
+/// o artista apenas passeia o rato, o app calculava a posição errada e o anel do pincel desenhava a
+/// forma de repouso. *Uma lei escrita numa das duas entradas ainda não é uma lei.*
+///
+/// ⭐ **O TAMANHO DO DAB entra na pergunta** (3.º report do dono, 2026-09-14): uma malha é afim POR
+/// TRIÂNGULO, e perguntar num PONTO dá ao dab inteiro a deformação de um pedaço dele — com um pincel
+/// grande sobre uma malha grossa isso chega a deixar a marca MENOS redonda do que não corrigir nada
+/// (`1,38` contra `1,19`, medido). ⚠️ O raio é o do dab **ANTES** da composição, senão é um laço.
+pub(crate) fn malha_sob_o_cursor(
+    present: &mut ph2d_ecs::World,
+    bits: u64,
+    world: [f32; 2],
+    starting: bool,
+    raio_px: f32,
+    iw: u32,
+    ih: u32,
+) -> ph2d_render::MeshUv {
+    let footprint_uv = [raio_px / iw as f32, raio_px / ih as f32];
+    ph2d_render::mesh_uv(present, bits, world, starting, footprint_uv)
+}
+
+/// A deformação local que a resposta da malha carrega — identidade fora dela.
+///
+/// ⚠️ **Extraída de propósito:** os dois consumidores (a tinta e o anel do pincel) têm de ler a
+/// MESMA, e um `match` escrito duas vezes diverge no primeiro braço que alguém acrescentar.
+pub(crate) fn warp_da_malha(malha: ph2d_render::MeshUv) -> [[f32; 2]; 2] {
+    match malha {
+        ph2d_render::MeshUv::Use { warp, .. } => warp,
+        _ => [[1.0, 0.0], [0.0, 1.0]],
+    }
+}
+
 thread_local! {
     /// `true` between a consumed painter Down and the matching Up — so CursorMoved
     /// keeps feeding the open stroke and the Up arm knows to close it.
@@ -206,17 +242,23 @@ impl App {
         let sprite_grid = gfx.sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
         let window_size = gfx.surface.size();
         let camera = gfx.camera;
-        let Some(painter) = gfx
+        let Some((iw, ih, raio_px)) = gfx
             .tools
             .active_mut()
             .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+            .map(|p| {
+                let (w, h) = p.canvas_size();
+                (w, h, p.dab_footprint_px())
+            })
         else {
             return;
         };
-        let (iw, ih) = painter.canvas_size();
         if iw == 0 || ih == 0 {
             return;
         }
+        // ⚠️ O empréstimo do Painter **larga-se aqui**: a pergunta à malha precisa do mundo de
+        // PRESENTE, que vive no mesmo `gfx`.
+        let world = camera.screen_to_world((px, py), window_size);
         let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
             iw,
             ih,
@@ -227,7 +269,27 @@ impl App {
             window_size,
         );
         let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
-        painter.on_canvas_hover([img.x as f32, img.y as f32]);
+        // ⭐⭐⭐ **O PASSEIO PERGUNTA À MALHA, como a pincelada já perguntava** (2026-09-14). Sem
+        // isto, numa arte dobrada o app resolvia a posição do cursor pelo quad de REPOUSO e deixava
+        // a deformação na identidade — e o anel do pincel, que a lê, desenhava a forma de repouso
+        // por cima da arte dobrada. ⚠️ `starting = false`: passear nunca ABRE um traço, logo aqui
+        // nunca há o que recusar.
+        let malha =
+            malha_sob_o_cursor(gfx.present.world_mut(), bits, world, false, raio_px, iw, ih);
+        let Some(painter) = gfx
+            .tools
+            .active_mut()
+            .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+        else {
+            return;
+        };
+        painter.set_canvas_warp(warp_da_malha(malha));
+        let (hx, hy) = match malha {
+            // A UV de repouso ALI — a mesma resposta que a pincelada usa.
+            ph2d_render::MeshUv::Use { u, v, .. } => (u * iw as f32, v * ih as f32),
+            _ => (img.x as f32, img.y as f32),
+        };
+        painter.on_canvas_hover([hx, hy]);
     }
 
     /// Deliver the buffered (coalesced) painter Move, if any, as one [`PointerPhase::Move`]. Called once
@@ -326,20 +388,15 @@ impl App {
         if iw == 0 || ih == 0 {
             return false;
         }
-        // ⭐⭐⭐ **A deformação pergunta-se AO TAMANHO DO DAB, nunca num ponto** (3.º report do dono,
-        // 2026-09-14: *«quase bom … talvez artefato inevitável»*). Uma malha é afim POR TRIÂNGULO:
-        // um dab que cabe num recebe a resposta exacta dele, e um que se estende por vários recebe o
-        // melhor afim sobre o que ele cobre — sem isso a correcção da wave anterior chega a deixar
-        // um pincel grande MENOS redondo do que não corrigir nada. A lei e a medição vivem na
-        // `ph2d_render::sprite_mesh_warp`; o raio é o do dab ANTES da composição, senão é um laço.
         let raio_px = painter.dab_footprint_px();
-        let footprint_uv = [raio_px / iw as f32, raio_px / ih as f32];
-        let malha = ph2d_render::mesh_uv(
+        let malha = malha_sob_o_cursor(
             gfx.present.world_mut(),
             bits,
             world,
             phase == PointerPhase::Down,
-            footprint_uv,
+            raio_px,
+            iw,
+            ih,
         );
         if malha == ph2d_render::MeshUv::Refuse {
             // Um traço não NASCE sobre o quad de repouso de uma arte que se desenha dobrada.
@@ -361,10 +418,7 @@ impl App {
         let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
         // ⭐⭐⭐ **E a FORMA do dab também é da malha** — redondo na TEXTURA sai uma lasca no ecrã
         // onde a arte comprime. A lei vive na `ph2d_painter_brush::canvas_warp`.
-        painter.set_canvas_warp(match malha {
-            ph2d_render::MeshUv::Use { warp, .. } => warp,
-            _ => [[1.0, 0.0], [0.0, 1.0]],
-        });
+        painter.set_canvas_warp(warp_da_malha(malha));
         let (u, v) = match malha {
             ph2d_render::MeshUv::Use { u: mu, v: mv, .. } => (mu, mv), // a UV de repouso ALI
             _ => (

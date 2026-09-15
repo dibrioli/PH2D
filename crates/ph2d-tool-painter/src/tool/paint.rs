@@ -153,6 +153,10 @@ mod blur_route;
 mod canvas_pointer;
 mod composite;
 /// **Grid Stamp** — os controles do método (célula, deslocamento, Show Grid) e a régua norm↔px.
+/// ⭐ **O dab que o motor vai emitir** — irmão do [`grid_stamp_settings`] pelo tecto de LOC,
+/// cortado por responsabilidade: *a grelha do carimbo* e *que forma a próxima marca terá* são duas
+/// perguntas.
+mod dab_spec;
 mod grid_stamp_settings;
 pub use grid_stamp_settings::GridAxis;
 /// **Accumulate** — a sonda que MEDE a lei que shipa, para o estudo comparativo com o Blender.

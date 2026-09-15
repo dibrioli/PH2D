@@ -32,16 +32,25 @@ fn the_brush_ring_wears_the_live_dab_rotor() {
         .map(|l| l.split("//").next().unwrap_or(""))
         .collect::<Vec<_>>()
         .join("\n");
+    // ⛔⛔ **A PREMISSA DESTE GATE DISSOLVEU em 2026-09-14, e ele ficou MAIS FORTE.** Ele exigia
+    // `bs.dab_rotor` no fonte do anel — a orientação viva, sim, mas **remontada ali**: o anel lia o
+    // rotor e o achatamento e construía a elipse à mão, noutra crate. Quando a pegada passou a
+    // carregar a deformação da arte, essa cópia ficou a desenhar a forma (e o tamanho) de REPOUSO
+    // sobre uma arte dobrada.
+    //
+    // ⇒ o que se exige agora é mais: o anel **não tem lei de orientação nenhuma**. Ele pede a pegada
+    // ao motor (`PainterTool::cursor_dab`, que compõe o `follow_rotor` sobre o rumo vivo) e percorre
+    // o contorno dela. *Um consumidor sem lei própria não pode divergir do produtor.*
     assert!(
-        code.contains("bs.dab_rotor"),
-        "the ring must draw the LIVE orientation published by the tool (`BrushSettings::dab_rotor`), \
-         so it turns with the stroke under Rake / Flow"
+        code.contains("painter.cursor_dab()"),
+        "the ring must ask the ENGINE for the footprint it will emit (`PainterTool::cursor_dab`),          which composes the live stroke-follow rotor — not rebuild the ellipse from a snapshot"
     );
-    assert!(
-        !code.contains("dab_angle_deg"),
-        "the ring must NOT re-derive its angle from `dab_angle_deg`: that is the RESTING angle, and a \
-         ring pinned to it stays still while the tip it depicts turns with the stroke"
-    );
+    for lei in ["dab_rotor", "dab_angle_deg", "dab_flatten"] {
+        assert!(
+            !code.contains(lei),
+            "the ring re-derives `{lei}` instead of walking the engine's footprint: a second copy              of the dab's orientation law is exactly what left the ring showing the RESTING shape              over deformed art"
+        );
+    }
 }
 
 /// **A hover must reach the painter**, or the ring can only ever aim once you have already committed.

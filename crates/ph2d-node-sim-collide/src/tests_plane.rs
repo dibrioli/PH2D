@@ -60,6 +60,7 @@ fn an_untilted_plane_is_the_floor_that_shipped_before_it() {
                         atrito: 0.35,
                         rolar: 0.0,
                         rolamento: None,
+                        braco_n: 0.0,
                     },
                 );
             }

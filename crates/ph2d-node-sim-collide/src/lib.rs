@@ -473,7 +473,6 @@ fn collide(
     // contacto de facto desliza, e reescrita com o que ele lhe acrescenta.
     let mut spin = scalars(s, SPIN_COL, n);
     let mut mexeu_spin = false;
-    let mut giro = vec![0.0_f32; n];
     // A identidade de cada elemento. ⚠️ Lida uma vez: um `get` por elemento seria a mesma
     // pergunta `n` vezes, e a coluna AUSENTE tem de cair na posição — não em zero, que daria
     // a todos a mesma sorte (a armadilha que o `HAS_id` do kernel evita do outro lado).
@@ -491,17 +490,7 @@ fn collide(
                 || inv_inercia[i] > 0.0
         });
         let toque = match forma {
-            Some(col) => declared::toque(
-                shape,
-                p[i],
-                height,
-                c,
-                radius,
-                plane_n,
-                half,
-                &col,
-                inv_inercia[i],
-            ),
+            Some(col) => declared::toque(shape, p[i], height, c, radius, plane_n, half, &col),
             None => {
                 let r = particle_radius(mode, fixed, scale, size[i], declarados[i]);
                 declared::Toque {
@@ -510,7 +499,6 @@ fn collide(
                 }
             }
         };
-        let girou = toque.giro;
         if let Some((normal, depth)) = toque.empurrao {
             let (mut pi, mut vi) = (p[i], v[i]);
             #[expect(clippy::cast_sign_loss, reason = "uma identidade e' um inteiro >= 0")]
@@ -537,6 +525,7 @@ fn collide(
                 // `invI` faria o botão `Lock Rotation` trocar o modelo de atrito por baixo do
                 // artista — um botão que diz «não rodes» a mudar quanto a peça TRAVA.
                 rolamento: forma.is_some().then_some((toque.braco_t, inv_inercia[i])),
+                braco_n: toque.braco_n,
             };
             let d_spin = resposta::respond(&mut pi, &mut vi, spin[i], normal, depth, &resposta);
             if pi.iter().chain(&vi).all(|x| x.is_finite()) {
@@ -550,10 +539,6 @@ fn collide(
                 // nothing, so reporting a contact there would say the node did something it
                 // did not — the channel describes what happened, not what was attempted.
                 hit[i] = hit[i].max(depth);
-                // ⭐ O que o contacto RODOU (doc 109 §6), onde a resposta de facto aterrou.
-                if girou.is_finite() {
-                    giro[i] += girou;
-                }
             }
         }
     }
@@ -566,15 +551,11 @@ fn collide(
     if mexeu_spin {
         out.set(SPIN_COL, Column::Scalar(spin));
     }
-    // ⚠️ A coluna do ângulo só se escreve se alguém de facto rodou: uma cena com a rotação travada
-    // (ou sem colisor declarado) sai como sempre saiu, sem coluna nova.
-    if giro.iter().any(|g| *g != 0.0) {
-        let mut rot = scalars(s, "rot", n);
-        for (i, r) in rot.iter_mut().enumerate() {
-            *r += giro[i];
-        }
-        out.set("rot", Column::Scalar(rot));
-    }
+    // ⛔⛔ **ESTE NÓ NÃO ESCREVE `rot`, e a ausência é a decisão** (doc 109 §8). Ele escrevia — um
+    // empurrão de ângulo somado ao ângulo da peça —, e essa era a moeda errada: sem memória, nada o
+    // amortecia, e uma peça pousada num obstáculo entrava num ciclo de 2 tiques (`+3,98°/−2,25°`,
+    // 17 trocas de sinal em 18 passos, medido no report do dono de 2026-09-15). O binário da normal
+    // passa a sair em `spin`, como o do atrito sempre saiu, e é o `sim.step` que o integra no ângulo.
     out
 }
 

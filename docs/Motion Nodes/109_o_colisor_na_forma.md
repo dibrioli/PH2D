@@ -792,3 +792,113 @@ uma secção que hoje tem três linhas. *Quando um comportamento muda, o smoke q
 - O gate `every_row_the_sim_tutorial_names_is_on_the_card` passa a correr **sobre as DUAS cenas**,
   e procura os cartões pelo nome que o capítulo manda clicar (`Friction 1: ROLA`), que é o da
   legenda e não `Shape`.
+
+---
+
+## §8 — ⛔⛔⛔ O TREMOR DA PILHA: a rotação viajava na MOEDA ERRADA (4.º report do dono, 2026-09-15)
+
+> *«as shapes que ficam embaixo no centro vibram muito após serem apertadas pelas shapes acima»* —
+> com a foto da `=114` e **três setas apontadas ao fundo do monte**.
+
+### §8.1 — ⛔ Nenhuma régua desta cena o via, e a cegueira é a mesma de sempre
+
+A régua da `=114` é o **vão típico** (§3-bis), e um vão é uma FOTOGRAFIA: *uma pilha a tremer e uma
+pilha parada com o mesmo espaçamento leem-se exactamente iguais nela*. O que o dono fotografou é
+**movimento**, e os quatro gates da cena estavam verdes sobre o defeito.
+
+A régua nova é [`probe_o_que_ainda_treme`](../../crates/ph2d-app-motion/src/motion_state_pilha_demo_tests.rs):
+o deslocamento mediano **por tique**, em fracção do LADO da peça (adimensional ⇒ comparável entre
+densidades), na janela `2,0`–`2,9 s`, quando a pilha já devia estar assente.
+
+### §8.2 — O que a medição partiu, na ordem em que as hipóteses caíram
+
+| # | pergunta | medida | veredito |
+|---|---|---|---|
+| 1 | reproduz? | metade de BAIXO `p50 0,0128` · pior `0,0709`; metade de CIMA `p50 0,0071` | ✅ e as três piores são as do fundo-centro, onde as setas apontam |
+| 2 | é vibração ou deslize? | `deriva = |Σpassos|/Σ|passos|` das duas piores: **`0,007` e `0,030`** | **oscilação pura**, no sítio |
+| 3 | faltam varreduras? | `VARREDURAS 8 → 32`: pior `0,0709 → 0,0792` | ⛔ **REFUTADA** — mais iterações PIORAM |
+| 4 | é a rotação? | `Lock Rotation`: pior `0,0709 → 0,0109` | ✅ **6,5×**, está na metade angular |
+| 5 | quem vibra? | só as que OSCILAM: apoiadas na **taça** `p50 0,0204`/pior `0,0709`; apoiadas em **peças** `p50 0,0079`/pior `0,0128` | **5,5× no pior** — é o contacto com o MUNDO |
+| 6 | o sinal | `rot` da peça 2 alterna **`+3,98° / −2,25°`**, **17 trocas de sinal em 18 passos** | **ciclo de 2 tiques** = sobre-correcção |
+
+⚠️ **A hipótese 3 é a que vale a pena guardar:** um solver que não converge com `4×` as iterações
+não está mal afinado — *ele não está a resolver um ponto fixo*.
+
+### §8.3 — ⭐⭐⭐ A causa: DUAS moedas para a mesma grandeza, e o ficheiro já dizia qual era a certa
+
+O cabeçalho do [`resposta.rs`](../../crates/ph2d-node-sim-collide/src/resposta.rs) declara a lei
+deste nó, por escrito, desde o §7:
+
+> ⚠️ **A rotação daqui é VELOCIDADE ANGULAR (`spin`), não um empurrão de ângulo.** É a moeda deste
+> nó: ele responde em `vel`, não tem `dt` nenhum (é `Effect::Pure`) e, sem um passo, um deslocamento
+> não é derivável de uma velocidade.
+
+A metade do ATRITO obedecia (`d_spin = jt · invI · bt`). A metade da NORMAL, escrita no §6 e três
+secções antes desta lei, **não**: o `declared::toque` repartia a penetração (`k = 1 + invI·braço²`,
+`λ = pen/k`) e devolvia o resto como um **empurrão de ângulo em graus**, somado directamente ao
+`rot`.
+
+⛔⛔ **Um empurrão de ângulo não tem memória, logo nada o amortece** — e a penetração de que ele sai
+é **recriada pela gravidade a cada tique**. O `respond` tem a guarda que impede exactamente isto na
+metade linear, com o nome do fenómeno escrito ao lado dela:
+
+```rust
+if vn >= 0.0 { return 0.0; }
+// Already leaving (or sliding along) the surface: touching it must not change it. Reflecting
+// here is the classic collider jitter — the element buzzes on the ground forever, fed by its
+// own contact test.
+```
+
+⇒ *a metade angular nasceu depois e não herdou a guarda, porque não viajava na mesma moeda.*
+
+⚠️ **E é por isso que só as peças do FUNDO vibram:** uma peça apoiada noutra peça é resolvida pelo
+`sim.step` (8 varreduras, um ponto fixo); uma apoiada na TAÇA é resolvida pelos **dois** solvers, em
+sequência, e nenhum sabe o que o outro fez. O fundo-centro da taça é o único sítio da cena onde
+isso acontece **e** há carga por cima.
+
+### §8.4 — A cura: a penetração volta INTEIRA, e o binário sai em `spin`
+
+Duas linhas de lei:
+
+- `declared::toque` devolve `empurrao: (normal, penetração)` — **inteira**, a lei linear de sempre —
+  e a **alavanca** `braco_n = r × n` em vez de um ângulo;
+- `resposta::respond` converte o impulso normal que já calcula em giro: `Δω = jn · braco_n · invI`,
+  na mesma linha do `Δω = jt · invI · bt` do atrito — e **depois** da guarda do repouso.
+
+O `sim.collide` deixa de escrever a coluna `rot` (o `sim.step` integra o `spin`, como sempre fez com
+o do atrito).
+
+| | ângulo por tique (peças 0 · 2 · 3) | trocas de sinal em 18 | tremor baixo `p50` | pior do fundo | taça vs peças (pior) |
+|---|---|---|---|---|---|
+| antes | `4,16°` · `2,67°` · `2,08°` | `12` · `17` · `17` | `0,0128` | `0,0709` | `0,0709` vs `0,0128` |
+| **depois** | **`0,25°` · `0,23°` · `0,31°`** | `4` · `9` · `14` | `0,0117` | **`0,0174`** | `0,0174` vs `0,0250` |
+
+⭐ **`16×` no ângulo por tique** (que é o que o olho lê como tremor) e **`4,1×` no pior do fundo**; e
+⭐⭐ **a assimetria taça-vs-peças DESAPARECEU** — era `5,5×` e passou a `0,7×`.
+
+### §8.5 — O que a troca CUSTOU, com o número
+
+⚠️ **A metade de CIMA passou a mexer mais** (`p50 0,0071 → 0,0159`), e a leitura é honesta: o giro
+agora **persiste** (é velocidade, e o `angular_damping` nasce em `1`, sem arrasto), então uma peça
+que aterra a girar leva o giro para dentro do monte. Entre peças a cena não escreve material, logo
+elas são **gelo** (`Material::LISO`, `μ = 0`) — e um monte sem atrito não assenta, o que é Física e
+não um defeito. Medido (`probe_o_atrito_entre_pecas`), `μ = 0,6` devolve `p50 0,0107` / pior
+`0,0176`, que é o mesmo sítio.
+
+⛔ **E um gate foi INVERTIDO de propósito.** O `a_tilted_box_turns_on_the_floor…` afirmava *«a
+correcção reparte-se entre empurrar e rodar, logo livre sobe MENOS que travada»* — com o binário em
+`spin` a penetração é devolvida inteira nos dois casos, e a asserção é agora a **igualdade ao bit**.
+O gate mudou de nome (`a_landing_box_gains_spin_and_flat_locked_or_resting_do_not`) e ganhou a
+metade que o report comprou: **uma peça POUSADA não recebe binário nenhum**. `3 de 3` mutações
+mortas, e a terceira repõe a lei antiga e morre nessa asserção.
+
+### §8.6 — ⏳ O RESÍDUO, nomeado e com o número
+
+O que sobra (`p50 0,012`–`0,014`, pior `0,025`) é a **outra** metade da mesma doença, um nível
+abaixo: a rotação do [`ph2d-contact`](../../crates/ph2d-contact/src/lib.rs) — peça × peça — também é
+uma projecção de posição sem velocidade angular, e o doc §6 já a declara assim por escrito. Medido
+apagando-a (mutação): `p50 0,0117 → 0,0060`, pior `0,0174 → 0,0196`.
+
+⛔ **Não foi curada aqui de propósito:** aquela folha é partilhada com o `motion.integrate` (W4) e
+trocar-lhe a moeda é uma wave com espec própria — mas é a **mesma lei** desta secção, e quem a pegar
+começa por aqui.

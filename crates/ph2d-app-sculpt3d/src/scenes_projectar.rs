@@ -152,12 +152,22 @@ pub(crate) fn announce() {
          [sculpt3d]           Rode a camera e repita: o `View` muda com a camera, o\n\
          [sculpt3d]           `Surface` nao.\n\
          [sculpt3d]    (8) Ctrl+Z desfaz cada passagem.\n\
+         [sculpt3d]    (9) Na HIERARQUIA (a lista de objectos), carregue no OLHO da linha\n\
+         [sculpt3d]        da MESA para a esconder.\n\
+         [sculpt3d]        -> A mesa desaparece do ecra, e ao arrastar na calota nada\n\
+         [sculpt3d]           acontece -- com uma frase no terminal a dizer que a outra\n\
+         [sculpt3d]           peca esta' ESCONDIDA e como a trazer de volta. Uma peca que\n\
+         [sculpt3d]           voce nao ve' nao serve de alvo: e' a mesma regra do resto do\n\
+         [sculpt3d]           app, e antes de hoje o olho nao chegava aqui.\n\
+         [sculpt3d]        Abra o olho outra vez e o pincel volta a funcionar.\n\
          [sculpt3d]\n\
          [sculpt3d]    DEU ERRADO SE: no (1) a calota RASGAR (riscos escuros a atravessar\n\
          [sculpt3d]    a peca), inchar, encolher ou o barro atravessar a mesa; se no (2)\n\
          [sculpt3d]    o barro DESCER outra vez em vez de subir; se no (3) alguma coisa se\n\
          [sculpt3d]    mexer antes de ligar `Search Both Ways`, ou nada se mexer depois;\n\
-         [sculpt3d]    ou se o app fechar sozinho."
+         [sculpt3d]    se no (9) a mesa continuar a ver-se depois de fechar o olho, ou o\n\
+         [sculpt3d]    barro continuar a encostar nela como se nada fosse; ou se o app\n\
+         [sculpt3d]    fechar sozinho."
     );
 }
 

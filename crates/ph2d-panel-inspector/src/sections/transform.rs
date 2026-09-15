@@ -38,30 +38,19 @@ pub(crate) fn paint_transform_section(
 
     let col_gap = Spacing::Md.px();
     let tag_box_gap = Spacing::Xxs.px();
-    // ⭐ **A coluna do rótulo sai da porta** (14/09) — era `78 px` escritos aqui, uma das SEIS
-    // respostas do app à mesma pergunta.
+    // ⭐⭐⭐ **A COLUNA sai INTEIRAMENTE da porta desde 2026-09-15** — ordem do dono: *«a mesma
+    // formatação do Position X/Y que fez para Anchor vou querer para todo o Transform»*.
     //
-    // ⚠️ **Só ESTE número muda: a lei adaptativa desta secção fica intacta.** Ela decide entre
-    // *inline* e *empilhado* comparando a largura com o que dois chips precisam
-    // (`widest_inline_needed_w`, mais abaixo), e essa decisão tem feedback do dono de 2026-05-24
-    // por trás. ⇒ com a coluna a vir da porta, a fronteira entre os dois modos desloca-se um pouco
-    // — que é o certo: ela passa a ser calculada com a coluna que a secção de facto desenha.
-    let label_col_w = ph2d_editor_core::widget::property_row_columns(x, w, y, ROW_H_PX)
-        .label
-        .w;
+    // ⛔ O que estava aqui era a coluna do rótulo lida da porta **mais** a lei adaptativa própria
+    // desta secção, que decidia entre *nome ao lado* e *nome por cima*. A nota ao lado dizia que
+    // essa lei *«fica intacta»* — e ela era precisamente o defeito: medido em 15/09, o limiar dela
+    // é `interior ≥ 360` ⇒ **painel ≥ 380**, contra o dock do dono em `273,3`. *A secção estava no
+    // modo «nome por cima» em toda largura que ele usa.*
+    //
+    // ⇒ hoje quem decide é a `widget::property_row_columns`, e o que não cabe **reflui** dentro da
+    // coluna do controlo (`property_fields_layout`), como nas Âncoras.
     let axis_col_w = Spacing::Lg.px();
     let axis_label_font = TypeToken::Base.px();
-    // Tighter than SECTION_LABEL_TO_CONTROL_PX (4 px): in narrow
-    // label-above mode the label sits directly over the chip BORDER,
-    // and the border itself already gives visual breathing room — 4 px
-    // on top of that read as a "chasm" (user feedback 2026-05-24:
-    // "esse espaço entre as labels e as caixas deve ser menor (metade)").
-    // Halved to 2 px for the chip-specific case; buttons (Render
-    // Source's Strategy/Pixel format) keep the full 4 px because the
-    // ghost-button outline is softer than a chip border.
-    let label_above_gap = SECTION_LABEL_TO_CONTROL_PX * 0.5;
-    let chip_min_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
-
     // ⭐⭐⭐ **A COLUNA DE ANIMAÇÃO também nesta família de linhas** (report do Enio, 2026-09-03,
     // com foto: *«várias não receberam pontos»*).
     //
@@ -73,38 +62,22 @@ pub(crate) fn paint_transform_section(
     // quatro linhas da secção de uma vez. ⛔ O cabeçalho fica com a largura inteira: ele não é uma
     // propriedade, e a coluna é dos valores.
     //
-    // ⚠️ Pela **porta** (`widget::form_row_columns`), não por uma subtracção local: há ~20
-    // construtores de linha à mão neste painel, e vinte subtracções são vinte oportunidades de a
-    // coluna ficar com um `x` diferente. O rect do ponto sai da mesma chamada, por linha.
-    let (row_w, _) = ph2d_editor_core::widget::form_row_columns(x, w, y, field_h);
-
-    // Quão largo é um chip, e a seção inteira empilha? — ver [`chip_metrics`].
-    let (section_narrow, two_chip_w) = chip_metrics(
-        row_w,
-        label_col_w,
-        col_gap,
-        axis_col_w,
-        tag_box_gap,
-        chip_min_w,
-    );
+    // ⚠️ Pela **porta**, não por uma subtracção local: há ~20 construtores de linha à mão neste
+    // painel, e vinte subtracções são vinte oportunidades de a coluna ficar com um `x` diferente.
+    // O rect do ponto sai da mesma chamada, por linha.
 
     // ⭐ A geometria da secção, calculada uma vez — ver [`transform_row::RowStyle`].
     let st = transform_row::RowStyle {
         x,
         w,
-        row_w,
         field_h,
         label_font,
         label_color,
         theme,
         store,
-        section_narrow,
-        two_chip_w,
         col_gap,
         axis_col_w,
         tag_box_gap,
-        label_above_gap,
-        label_col_w,
         axis_label_font,
     };
     let paint_row = |scene: &mut VectorScene,
@@ -331,46 +304,6 @@ fn paint_scale_and_skew(
         Some(ang_unit),
     );
     cur_y + h_skew
-}
-
-/// **A largura de um chip, e se a seção inteira empilha** — a geometria que TODA row desta seção
-/// partilha.
-///
-/// Extraída do corpo de [`paint_transform_section`] pelo cap de fn do painel: é um bloco de
-/// aritmética pura que não pinta nada e não olha para o store.
-fn chip_metrics(
-    w: f32,
-    label_col_w: f32,
-    col_gap: f32,
-    axis_col_w: f32,
-    tag_box_gap: f32,
-    chip_min_w: f32,
-) -> (bool, f32) {
-    // Per-SECTION narrow check: if the WIDEST row (2-chip Position) wouldn't
-    // fit inline at MIN_W chips, the ENTIRE section uses stacked layout
-    // (label-above). Keeps Rotation aligned with Position/Scale — user
-    // feedback 2026-05-24: "a caixa única de Rotation deve se alinhar à
-    // caixa de X à esquerda e à direita". Per-row narrow would let Rotation
-    // go inline while Position stacks → misalignment.
-    let widest_chips_n_f = 2.0_f32;
-    let widest_inline_needed_w = label_col_w
-        + col_gap
-        + widest_chips_n_f * (axis_col_w + tag_box_gap + chip_min_w)
-        + (widest_chips_n_f - 1.0) * col_gap;
-    let section_narrow = w < widest_inline_needed_w;
-
-    // Two-chip equal-split width — single source of truth for ALL rows.
-    // Single-chip rows extend their chip to span (X start … Y end) =
-    // 2*two_chip_w + col_gap, so the lone Rotation chip lines up with
-    // X's left edge AND Y's right edge.
-    let chips_avail_w_section = if section_narrow {
-        w
-    } else {
-        w - label_col_w - col_gap
-    };
-    let two_chip_w =
-        ((chips_avail_w_section - 2.0 * (axis_col_w + tag_box_gap) - col_gap) / 2.0).max(0.0); // no MIN_W floor here — never overflow rect
-    (section_narrow, two_chip_w)
 }
 
 /// **O cabeçalho da secção Transform, e a dobra do corpo.**

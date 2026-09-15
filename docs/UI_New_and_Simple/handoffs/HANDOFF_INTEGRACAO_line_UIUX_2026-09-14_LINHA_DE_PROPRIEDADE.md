@@ -1358,3 +1358,88 @@ novas no `FN_OVERAGE_OK`.
   apagar é de quem escrever a próxima row de rectângulo.
 - **As outras 18 crates de painel** ainda têm o idioma «nome por cima» (`grid-snap`, `motion-params`,
   `physics`) — este censo é do Inspector, por construção.
+
+---
+
+## 22 — ⭐⭐⭐ O TRANSFORM INTEIRO PASSA À LINHA DE PROPRIEDADE — e ele tinha uma LEI PRÓPRIA
+
+**Ordem do dono, 2026-09-15**, depois de aprovar o smoke da §21: *«A mesma formatação do Position
+X/Y que vc fez para Anchor vou querer para todo o Transform. Anote e siga»*.
+
+### 22.1 — ⛔⛔⛔ A secção decidia SOZINHA entre «nome ao lado» e «nome por cima», e escolhia SEMPRE por cima
+
+O `transform.rs` tinha uma lei adaptativa própria (`chip_metrics` → `section_narrow`): se a linha
+mais larga (o par `X`/`Y`) não coubesse *inline* com os chips ao mínimo, **a secção inteira**
+empilhava. Medido em 15/09:
+
+```
+widest_inline_needed = label_col_w + col_gap + 2×(axis_col_w + tag_box_gap + chip_min_w) + col_gap
+                     = (0,5×interior − 8) + 8 + 2×(12 + 2 + 72) + 8
+```
+⇒ *inline* só com **interior ≥ 360**, isto é **painel ≥ 380**. ⛔ **O dock do dono está em `273,3`.**
+
+*A secção estava no modo «nome por cima» em TODA largura que ele usa* — é literalmente a foto de 14
+de Setembro, numa secção que o censo da §21 **não via**.
+
+### 22.2 — ⛔⛔ E o censo da §21 era CEGO a ela, por um sufixo
+
+O `no_row_paints_its_name_above_its_control` exigia **fronteira de palavra** em `label_h`, com o doc
+a dizer que `+ label_h_used` era *«um nome de variável de OUTRA lei»*. **Não era:** era o
+`transform_row.rs` a empilhar. ⇒ o prefixo passa a bastar. ⏳ **E o limite que fica está nomeado:** o
+Transform decidia por um **booleano** (`section_narrow`), não pelo idioma — uma secção que empilhe
+por outro caminho e com outro nome continua invisível a uma régua textual, e a régua estrutural (o
+rect REGISTADO) **não é alcançável**: as rows destas secções pedem uma selecção que o
+`MockPanelHost` não produz (medido: `POS_X`/`POS_Y`/`ROT` são `NAO PINTADO` nas cinco larguras).
+
+### 22.3 — ⭐⭐ O `lead`: a letra do eixo é parte da COMPONENTE
+
+As linhas do Transform trazem `X` / `Y` coloridos antes de cada caixa. ⇒ a
+`property_fields_layout` leva um 4.º argumento, o `lead`: **o piso continua a ser o da CAIXA**, a
+célula precisa de `lead + piso`, e a caixa mede `célula − lead`. ⛔ Somar o `lead` ao piso pareceria
+igual e mentiria sobre o recurso (§0.0).
+
+Medido (`lead = 14`): duas componentes só ficam lado a lado acima de um painel de **`~400`**; sem
+decoração seriam **`~352`**. *A letra custa `~56 px` de largura de painel* — nomeado, não escondido.
+
+### 22.4 — ⭐⭐⭐ O alinhamento que o dono pediu em MAIO passa a sair de graça
+
+*«a caixa única de Rotation deve se alinhar à caixa de X à esquerda e à direita»* (2026-05-24). Era
+uma fórmula escrita à mão — `2 × two_chip_w + col_gap + axis_col_w + tag_box_gap` — e o comentário
+dela **registava que ela já tinha estado errada** (faltava-lhe o `axis_col_w + tag_box_gap`, e a
+Rotation acabava aquém da borda direita do `Y`).
+
+Hoje não há fórmula: com `n = 1` a célula **é** a coluna do controlo. Gate
+`the_lone_field_of_a_row_spans_what_the_pair_spans`.
+
+### 22.5 — ⛔⛔⛔ E esse gate SOBREVIVEU à primeira mutação, pelo defeito que este repo já nomeia
+
+A 1.ª redacção comparava `sozinha_dir` com `par_dir` — os **dois** derivados da
+`property_fields_layout`. A mutação que desconta um vão a mais encolhe os dois lados ao mesmo tempo:
+a igualdade continua a valer. *Um gate que compara duas construções é cego a uma mutação partilhada*
+— e a primeira ocorrência estava escrita **no doc da porta ao lado** (`property_label_col_w`).
+
+⇒ o oráculo passa a ser **outra porta**: a borda direita da coluna do controlo
+(`property_row_columns`). *A linha ENCHE a coluna do controlo, nos dois regimes.* Com isso a mesma
+mutação morre (`183,00` contra `186,00`).
+
+### 22.6 — O passo vertical, que quase ficava diferente
+
+O chamador do Transform escreve `cur_y += h + row_gap`; o das Âncoras escreve
+`cur_y = fields_row(…)`. Devolver `passo × linhas` daria ao Transform **um vão a mais por linha** —
+e o dono pediu *a mesma formatação*. ⇒ devolve-se `field_h + (linhas − 1) × passo`, que somado ao
+`row_gap` dá exactamente `passo × linhas`.
+
+### 22.7 — O que encolheu
+
+| coisa | antes | depois |
+|---|---|---|
+| campos do `RowStyle` | 16 | **10** |
+| `chip_metrics` | 33 linhas de aritmética adaptativa | **apagada** |
+| respostas do app a *«como se dispõe uma linha de N campos»* | 2 (a porta + a lei do Transform) | **1** |
+
+### 22.8 — Gates, com as mutações
+
+| gate | mutação que o mata |
+|---|---|
+| `a_row_of_many_fields_never_starves_them` (agora varre `lead ∈ {0, 14}`) | ignorar o `lead` no piso da célula ⇒ caixa a `67,75` contra o piso `72` ✅ |
+| `the_lone_field_of_a_row_spans_what_the_pair_spans` | um vão a mais na largura da célula ⇒ `183,00` contra `186,00` ✅ |

@@ -159,7 +159,7 @@ pub(super) fn fields_row(
     );
     let gap = ph2d_tokens::control_gap_px();
     let (por_linha, linhas, cw) =
-        ph2d_editor_core::widget::property_fields_layout(row.control.w, field_ids.len(), gap);
+        ph2d_editor_core::widget::property_fields_layout(row.control.w, field_ids.len(), gap, 0.0);
     let passo = ph2d_tokens::row_pitch_px();
     for (i, &id) in field_ids.iter().enumerate() {
         let rect = Rect::new(

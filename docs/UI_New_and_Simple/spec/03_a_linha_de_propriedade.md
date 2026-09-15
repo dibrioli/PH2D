@@ -162,6 +162,27 @@ o painel, e encolher mais só apagaria o número.
 ⭐⭐ **UM ponto de animação por LINHA, nunca por campo** — um par `X`/`Y` é *uma* propriedade com duas
 componentes, e dois pontos diriam que são duas.
 
+### O `lead`: quando a componente tem decoração própria
+
+⛔⛔ **Ordem do dono, 2026-09-15:** *«a mesma formatação do Position X/Y que fez para Anchor vou
+querer para todo o Transform»*. As linhas do Transform trazem uma **letra de eixo colorida**
+(`X` / `Y`) antes de cada caixa — e ela é parte da **componente**, não do rótulo da linha.
+
+⇒ a porta leva um `lead`: a largura que a decoração consome antes da caixa. **O piso continua a ser
+o da CAIXA**; a célula precisa de `lead + piso` e a caixa mede `célula − lead`. ⛔ Somar o `lead` ao
+piso pareceria igual e mentiria sobre o recurso — quem tem dono é a caixa (§0.0).
+
+Medido no Transform (`lead = 14` = a coluna da letra `12` + o vão `2`): duas componentes só ficam
+lado a lado acima de um painel de **`~400`**; sem decoração seriam **`~352`**. *A letra custa
+`~56 px` de largura de painel, e isso é o preço de ela existir.*
+
+⭐⭐⭐ **E o alinhamento que o dono pediu em 2026-05-24 — *«a caixa única de Rotation deve se alinhar
+à caixa de X à esquerda e à direita»* — passa a sair de GRAÇA.** Era uma fórmula escrita à mão
+(`2 × two_chip_w + col_gap + axis_col_w + tag_box_gap`), e o comentário dela registava que já
+estivera **errada**. Com `n = 1` a célula **é** a coluna do controlo: ela começa onde o `X` começa e
+acaba onde o `Y` acaba, nos dois regimes. *Uma propriedade obtida por construção não pode ficar
+errada* — e tem gate mesmo assim, porque a refactoração seguinte pode perdê-la em silêncio.
+
 ⛔ **DUAS excepções, e as duas com a mesma medição:** a grelha 3×3 do 9-slice e as quatro amostras de
 canto do *Color/Tint* ficam com o nome POR CIMA, porque o controlo delas não é o bloco — é o bloco
 **mais um companheiro à direita dele** (os dois atalhos · a prévia do gradiente), e o par mede
@@ -228,6 +249,7 @@ propriedade — e há gate com a lista, com a metade da obsolescência.
 | §6 | quantos rótulos elidem, por largura do dock | `property_row_columns_for` | `the_elision_ladder_only_shrinks` |
 | §6-bis | as componentes que não cabem ao piso descem, dentro da coluna do controlo | `property_fields_layout` | `a_row_of_many_fields_never_starves_them` |
 | §6-bis | alargar o painel nunca faz caber menos campos por linha | `property_fields_layout` | `a_wider_panel_never_fits_fewer_fields` |
+| §6-bis | a caixa sozinha cobre exactamente o que o par cobre | `property_row_columns` | `the_lone_field_of_a_row_spans_what_the_pair_spans` |
 | §6-bis | nenhuma linha do Inspector põe o nome por cima do controlo | `fields_row` | `no_row_paints_its_name_above_its_control` |
 | §7 | toda linha reserva a coluna de animação | `form_row_columns` | `every_form_row_reserves_the_animation_column` |
 | §7 | as portas que reservam a coluna DERIVAM-SE, nunca se enumeram | `property_label_row` | `the_door_census_derives_the_second_order_doors` |

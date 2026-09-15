@@ -365,21 +365,39 @@ pub fn property_row_columns_for(
 /// **dentro da coluna do controlo** — que é exactamente como o Blender desenha um vector num painel
 /// estreito.
 ///
-/// Devolve `(campos por linha, número de linhas, largura de cada campo)`. ⚠️ **A largura é a mesma
+/// Devolve `(campos por linha, número de linhas, largura de cada CÉLULA)`. ⚠️ **A largura é a mesma
 /// em todas as linhas** — a última fica curta em vez de esticar o campo que sobra, senão um `Bounds`
 /// de quatro componentes acabaria com o `H` ao dobro da largura do `X`.
 ///
 /// ⚠️ **Quando nem UM campo cabe ao piso, devolve-se a coluna inteira mesmo assim**: aí o recurso
 /// que falta é o painel, e encolher mais só apagaria o número. É a mesma resposta que a
 /// [`property_label_col_w_for`] dá ao seu próprio tecto.
+///
+/// # ⭐⭐ O `lead`: o que a célula gasta ANTES da caixa
+///
+/// ⛔⛔ **Ordem do dono, 2026-09-15:** *«a mesma formatação do Position X/Y que fez para Anchor vou
+/// querer para todo o Transform»*. As linhas do Transform trazem uma **letra de eixo colorida**
+/// (`X` / `Y`) à esquerda de cada caixa, e essa letra é parte da COMPONENTE, não do rótulo da linha.
+///
+/// ⇒ `lead` é a largura que a letra e o vão dela consomem. **O piso continua a ser o da CAIXA** — a
+/// célula precisa de `lead + piso`, e a caixa que o chamador pinta mede `célula − lead`. ⛔ Somar o
+/// `lead` ao piso e passar isso como «piso» pareceria igual e mentiria sobre o recurso: quem tem
+/// dono é a caixa (`CLAUDE.md` §0.0).
+///
+/// Quem não tem decoração nenhuma passa `0,0` — e aí a célula **é** a caixa.
 #[must_use]
-pub fn property_fields_layout(control_w: f32, n: usize, gap: f32) -> (usize, usize, f32) {
+pub fn property_fields_layout(
+    control_w: f32,
+    n: usize,
+    gap: f32,
+    lead: f32,
+) -> (usize, usize, f32) {
     let n = n.max(1);
-    let piso = super::super::NUMBER_INPUT_MIN_W_PX;
+    let celula_min = lead + super::super::NUMBER_INPUT_MIN_W_PX;
     let mut por_linha = 1usize;
     while por_linha < n {
         let k = (por_linha + 1) as f32;
-        if k * piso + (k - 1.0) * gap <= control_w {
+        if k * celula_min + (k - 1.0) * gap <= control_w {
             por_linha += 1;
         } else {
             break;

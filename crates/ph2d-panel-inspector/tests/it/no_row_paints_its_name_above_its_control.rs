@@ -55,21 +55,26 @@ fn sections_dir() -> PathBuf {
 
 /// **O idioma:** avançar o `y` pela altura de um rótulo pintado por cima.
 ///
-/// ⚠️ **A fronteira de palavra é load-bearing.** A 1.ª redacção procurava `"+ label_h"` cru e casava
-/// com `transform_row.rs`, que escreve `+ label_h_used` — um nome de variável de OUTRA lei. *Um
-/// censo por substring acusa o vizinho que só partilha o prefixo.*
+/// ⛔⛔⛔ **A 1.ª redacção EXIGIA fronteira de palavra, e isso cegou-a ao caso maior.** Ela recusava
+/// `+ label_h_used` por ser *«um nome de variável de OUTRA lei»* — e não era: o `transform_row.rs`
+/// escrevia exactamente assim, e **empilhava o nome em toda largura de painel abaixo de `380`**,
+/// que é acima do dock do dono. *O censo passou verde sobre a secção que o dono fotografou.*
+///
+/// ⇒ o prefixo `label_h` **basta**, com ou sem sufixo. ⚠️ O preço é um falso positivo possível num
+/// nome que comece igual e não seja um empilhamento; ele custa uma entrada na tolerância, com a
+/// razão — contra uma secção inteira por converter, que é o que o rigor demais custou.
+///
+/// ⏳ **E o limite que FICA, nomeado:** o Transform decidia por um **booleano** (`section_narrow`) e
+/// não pelo idioma — uma secção que empilhe por outro caminho e com outro nome continua invisível a
+/// uma régua textual. A régua estrutural (medir onde o rect REGISTADO caiu) não é alcançável: as
+/// rows destas secções pedem uma selecção que o `MockPanelHost` não produz.
 fn empilha_o_nome(src: &str) -> bool {
     src.lines().any(|l| {
         let Some(pos) = l.find("label_h") else {
             return false;
         };
         let antes = l[..pos].trim_end();
-        let depois = &l[pos + "label_h".len()..];
-        let segue = depois
-            .chars()
-            .next()
-            .is_none_or(|c| !c.is_alphanumeric() && c != '_');
-        segue && (antes.ends_with('+') || antes.ends_with("+="))
+        antes.ends_with('+') || antes.ends_with("+=")
     })
 }
 
@@ -160,9 +165,13 @@ fn the_detector_can_see_a_stacked_label() {
             "o detector nao ve o empilhamento em {fonte:?}"
         );
     }
-    // ⛔ E NÃO inventa um onde não há — a fronteira de palavra (o `transform_row.rs` é real).
+    // ⭐ **E o sufixo também conta** — foi assim que o `transform_row.rs` escapou.
+    assert!(
+        empilha_o_nome("        + label_h_used"),
+        "o detector nao ve o empilhamento escrito com sufixo — foi este o buraco de 2026-09-15"
+    );
+    // ⛔ E NÃO inventa um onde não há.
     for fonte in [
-        "        + label_h_used",
         "    let row = property_row_columns(x, w, y, ROW_H_PX);",
         "    // o nome POR CIMA ficaria aqui, e nao fica",
         "    let label_h = label_font + Spacing::Xs.px();",

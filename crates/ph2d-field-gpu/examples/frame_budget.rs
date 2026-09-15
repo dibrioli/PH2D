@@ -175,13 +175,19 @@ fn main() {
         return;
     };
     // Um quadro para compilar o shader; ele não entra em medição nenhuma.
-    let _ = tracer.frame(&fita, setup(0), w, h);
+    let _ = tracer.frame(&fita, &[], setup(0), w, h);
 
     let cheio = minimo(5, || {
-        std::hint::black_box(tracer.frame(&fita, setup(ph2d_field_render::OCCLUSION_PASSES), w, h));
+        std::hint::black_box(tracer.frame(
+            &fita,
+            &[],
+            setup(ph2d_field_render::OCCLUSION_PASSES),
+            w,
+            h,
+        ));
     });
     let sem_ao = minimo(5, || {
-        std::hint::black_box(tracer.frame(&fita, setup(0), w, h));
+        std::hint::black_box(tracer.frame(&fita, &[], setup(0), w, h));
     });
 
     // ⭐ A LEITURA, medida à parte: o mesmo volume de bytes que o quadro devolve.
@@ -190,7 +196,7 @@ fn main() {
     let leitura = tracer.mede_leitura(bytes, 5);
 
     // O que a CPU faz depois: reconstruir o ponto, suavizar, e PINTAR.
-    let dev = tracer.frame(&fita, setup(ph2d_field_render::OCCLUSION_PASSES), w, h);
+    let dev = tracer.frame(&fita, &[], setup(ph2d_field_render::OCCLUSION_PASSES), w, h);
     let converter = minimo(5, || {
         std::hint::black_box(dev.to_cpu(&cam, screen));
     });
@@ -342,11 +348,11 @@ fn main() {
     setup_m.half_px = tela_m.half();
     setup_m.hit_eps = nitidez_m.hit;
     setup_m.normal_eps = nitidez_m.normal;
-    let _ = tracer.frame(&fita, setup_m, mw, mh);
+    let _ = tracer.frame(&fita, &[], setup_m, mw, mh);
     let mov_placa = minimo(5, || {
-        std::hint::black_box(tracer.frame(&fita, setup_m, mw, mh));
+        std::hint::black_box(tracer.frame(&fita, &[], setup_m, mw, mh));
     });
-    let dev_m = tracer.frame(&fita, setup_m, mw, mh);
+    let dev_m = tracer.frame(&fita, &[], setup_m, mw, mh);
     let mov_cpu = minimo(5, || {
         std::hint::black_box(dev_m.to_cpu(&cam, tela_m));
     });

@@ -36,6 +36,10 @@ struct Setup {
 @group(0) @binding(3) var<storage, read_write> luz: array<f32>;
 @group(0) @binding(4) var<storage, read_write> conta: atomic<u32>;
 @group(0) @binding(5) var<storage, read_write> borda: array<vec4<f32>>;
+// ⭐⭐⭐ **AS GRADES DAS ESCULTURAS, concatenadas** — o cabeçalho de cada uma vive no `k` e diz onde
+// ela começa aqui. ⚠️ Ela sobe UMA VEZ e fica: `128³` são `8 MB`, e reenviá-la por quadro custaria
+// mais barramento do que a imagem inteira que este passe veio poupar.
+@group(0) @binding(6) var<storage, read> grades: array<f32>;
 
 /// O passo de [`luz`] — o céu mais uma visibilidade por lâmpada.
 fn passo_da_luz() -> u32 { return 1u + s.n_lamps; }
@@ -66,6 +70,7 @@ fn ray_at_plane(uv: vec2<f32>) -> Raio {
 
 /// O que só a marcha tem: a fita da peça, a marcha, a visibilidade e as duas passagens.
 pub(crate) const MARCHA: &str = r"
+{ESCULTURAS}
 {FIELD}
 
 // Devolve `vec4(t, normal em VISTA)`, com `t < 0` quando não acerta.

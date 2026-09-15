@@ -60,9 +60,17 @@ pub struct PaintSetup<'a> {
     pub pixel_world: f32,
 }
 
+/// ⭐⭐⭐ **QUANTOS ARMAZÉNS O PASSE QUE PINTA LIGA** — seis do grupo `0` e três do grupo `1`.
+///
+/// ⚠️ **O piso garantido da `wgpu` é `8`**, e é por isso que este número é público: quem não o
+/// tiver cai na CPU em vez de ver a `wgpu` recusar o layout a meio de um quadro.
+pub const ARMAZENS: u32 = 9;
+
 /// Os buffers do grupo `0`, que a marcha já criou e escreveu.
 pub(crate) struct Alvos<'a> {
     pub bgl: &'a wgpu::BindGroupLayout,
+    /// As grades das esculturas — o pintor lê-as pela mesma lei que a marcha.
+    pub grades: &'a wgpu::Buffer,
     pub setup: &'a wgpu::Buffer,
     pub k: &'a wgpu::Buffer,
     pub centro: &'a wgpu::Buffer,
@@ -421,6 +429,7 @@ pub(crate) fn pinta(
             recurso(alvos.luz, 3),
             recurso(alvos.conta, 4),
             recurso(alvos.borda, 5),
+            recurso(alvos.grades, 6),
         ],
     });
     let bg1 = device.create_bind_group(&wgpu::BindGroupDescriptor {

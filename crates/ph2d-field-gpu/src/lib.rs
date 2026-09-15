@@ -29,24 +29,31 @@
 use ph2d_field::{FieldDoc, NodeKind};
 use std::collections::BTreeMap;
 
-/// ⛔⛔⛔ **ESTE DOCUMENTO PODE IR PARA O DISPOSITIVO?**
+/// ⭐⭐⭐ **ESTE DOCUMENTO PODE IR PARA O DISPOSITIVO?**
 ///
-/// Hoje a resposta é **não** para um só motivo, e ele é grave o suficiente para ter porta própria:
-/// uma **ESCULTURA** ([`NodeKind::Sampled`]) não é uma expressão — é uma **grade** que o registo do
-/// avaliador resolve por nome. O compilador da fita traduz o nó para
-/// `Tree::constant(hybrid::ABSENT)`, isto é, **espaço vazio**.
+/// # ⚠️⚠️ A resposta MUDOU em 2026-09-15, e a redacção antiga fica aqui como aviso
 ///
-/// ⚠️⚠️ **Sem esta porta, ligar a GPU faria a escultura DESAPARECER da peça — em silêncio, e com
-/// o resto dela perfeito.** E o gate da paridade não o veria: ele compara a fita com a fita, e as
-/// duas concordam que ali não há nada. *Foi a cena da ponte a ler `0,000` de desvio que mostrou o
-/// buraco — um zero de «igual» e um de «nenhum dos dois sabe» são o mesmo byte.*
+/// Ela era **`não` para toda peça com ESCULTURA** ([`ph2d_field::NodeKind::Sampled`]), e o motivo
+/// era real: uma escultura não é uma expressão, o compilador da fita traduzia-a para
+/// `Tree::constant(ABSENT)` — **espaço vazio** — e sem esta porta ligar a GPU faria a escultura
+/// **desaparecer da peça, em silêncio e com o resto dela perfeito**.
 ///
-/// ⇒ quem não passa aqui **fica na CPU**, que sabe desenhá-la.
+/// ⛔ E o gate de paridade não o veria: ele compara a fita com a fita, e as duas concordam que ali
+/// não há nada. *Foi a cena da ponte a ler `0,000` de desvio que mostrou o buraco — um zero de
+/// «igual» e um de «nenhum dos dois sabe» são o mesmo byte.*
+///
+/// ⭐ Hoje a escultura **atravessa** ([`crate::sculpt`]): ela entra na árvore como uma variável e o
+/// shader amostra a grade. ⇒ o que sobra desta porta é uma pergunta mais estreita e verdadeira:
+/// ***a folha amostrada sabe entregar a grade?*** Uma que não saiba fica na CPU, que sabe desenhá-la.
+///
+/// ⚠️ **Um nome que o registo não conhece PASSA**, e não é um furo: ele lê como espaço vazio nos
+/// dois motores — é o que o `ABSENT` do [`ph2d_field_eval::hybrid`] significa.
 #[must_use]
-pub fn supports(doc: &FieldDoc) -> bool {
-    !doc.nodes()
-        .iter()
-        .any(|n| matches!(n.kind, NodeKind::Sampled { .. }))
+pub fn supports(doc: &FieldDoc, reg: &ph2d_field_eval::hybrid::Registry) -> bool {
+    doc.nodes().iter().all(|n| match &n.kind {
+        NodeKind::Sampled { key } => reg.get(key).is_none_or(|f| f.grid().is_some()),
+        _ => true,
+    })
 }
 
 pub mod material_parity;
@@ -54,8 +61,12 @@ pub mod owners_parity;
 pub mod paint;
 pub mod parity;
 pub mod probe;
+pub mod sculpt;
 pub mod trace;
+mod trace_grupo;
+mod trace_leitura;
 mod trace_to_cpu;
+mod trace_uniforme;
 mod trace_wgsl;
 
 /// O molde do shader: a fita do documento, mais o que o chamador quiser à volta.
@@ -64,9 +75,31 @@ mod trace_wgsl;
 /// isso que um consumidor (o traçado, a oclusão, a malha) escreve só a **sua** parte.
 pub const FIELD_SLOT: &str = "{FIELD}";
 
-/// Um cache de pipelines **por estrutura**, com as constantes de fora.
+/// Um cache de pipelines **por estrutura**, com as constantes de fora — mais as **grades** das
+/// esculturas, que são grandes e não cabem num buffer por quadro.
 pub struct FieldPipelines {
     por_texto: BTreeMap<String, wgpu::ComputePipeline>,
+    /// ⭐⭐⭐ **A grade que já está na placa**, com a identidade que a produziu e as referências
+    /// FORTES que impedem o alocador de reciclar os endereços dela — ver [`crate::sculpt::identity`].
+    grades: Option<GradesNaPlaca>,
+    /// Quantas vezes uma grade subiu — ver [`FieldPipelines::grades_enviadas`].
+    envios: usize,
+}
+
+/// ⭐⭐⭐ **A grade residente** — ver [`FieldPipelines::grades`].
+struct GradesNaPlaca {
+    /// Os ponteiros das esculturas que produziram este buffer, na ordem delas.
+    chave: Vec<usize>,
+    /// ⛔⛔ **As referências FORTES, e elas não são lastro:** sem elas a escultura podia morrer, o
+    /// alocador devolver o mesmo endereço a outra, e o cache servir a grade errada **sem erro
+    /// nenhum**. *Um cache que compara endereços tem de impedir que eles sejam reciclados.*
+    ///
+    /// ⚠️ **Ninguém a LÊ, e é essa exactamente a função dela** — ela existe para que os endereços
+    /// da [`Self::chave`] não possam ser reciclados enquanto este buffer viver. O `dead_code` diz a
+    /// verdade sobre a leitura e a mentira sobre o propósito.
+    #[allow(dead_code)]
+    vivas: Vec<std::sync::Arc<dyn ph2d_field_eval::hybrid::Sampled>>,
+    buffer: wgpu::Buffer,
 }
 
 impl Default for FieldPipelines {
@@ -80,7 +113,58 @@ impl FieldPipelines {
     pub fn new() -> Self {
         Self {
             por_texto: BTreeMap::new(),
+            grades: None,
+            envios: 0,
         }
+    }
+
+    /// ⭐⭐⭐ **O buffer das grades desta peça**, subido só quando a identidade delas muda.
+    ///
+    /// ⚠️ **Sem escultura devolve um buffer MÍNIMO**, que o layout exige e o shader nunca lê: um
+    /// `BindGroup` recusa uma entrada em falta, e um buffer de zero bytes também.
+    ///
+    /// ⚠️⚠️ **A chave é a IDENTIDADE e não o conteúdo.** Comparar `8 MB` para decidir se se enviam
+    /// `8 MB` é pagar o preço duas vezes — e a escultura só muda quando quem a gerou a substitui,
+    /// que é exactamente o que o ponteiro do `Arc` diz.
+    pub fn grades(
+        &mut self,
+        device: &wgpu::Device,
+        sculpts: &[ph2d_field_eval::device::DeviceSculpt],
+    ) -> &wgpu::Buffer {
+        use wgpu::util::DeviceExt;
+        let chave = crate::sculpt::identity(sculpts);
+        if self.grades.as_ref().is_none_or(|g| g.chave != chave) {
+            let valores = crate::sculpt::grid_values(sculpts).unwrap_or_default();
+            let bytes: Vec<u8> = if valores.is_empty() {
+                vec![0u8; 16]
+            } else {
+                valores.iter().flat_map(|f| f.to_le_bytes()).collect()
+            };
+            self.envios += 1;
+            self.grades = Some(GradesNaPlaca {
+                chave,
+                vivas: sculpts
+                    .iter()
+                    .map(|s| std::sync::Arc::clone(&s.field))
+                    .collect(),
+                buffer: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("grades"),
+                    contents: &bytes,
+                    usage: wgpu::BufferUsages::STORAGE,
+                }),
+            });
+        }
+        &self.grades.as_ref().expect("acabou de se preencher").buffer
+    }
+
+    /// ⭐⭐ **Quantas vezes as grades SUBIRAM à placa** — o número que o gate de *«um arrasto não
+    /// reenvia a escultura»* observa.
+    ///
+    /// ⚠️ **Contagem e não presença:** `is_some()` responde `1` tanto a uma subida como a mil, e é
+    /// exactamente a diferença entre as duas que este número existe para dizer.
+    #[must_use]
+    pub fn grades_enviadas(&self) -> usize {
+        self.envios
     }
 
     /// Quantos pipelines estão compilados — o número que um gate de *«um arrasto não recompila»*

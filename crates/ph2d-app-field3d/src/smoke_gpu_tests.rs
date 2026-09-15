@@ -144,7 +144,6 @@ mod gpu_gbuffer_parity {
         const W: u32 = 192;
         const H: u32 = 108;
 
-        let reg = ph2d_field_eval::hybrid::Registry::new();
         let cam = Orbit::default();
         let (right, up, fwd) = cam.basis();
         let screen = Screen::new(W, H, cam.half_extent);
@@ -158,7 +157,21 @@ mod gpu_gbuffer_parity {
                 continue;
             }
             let doc = crate::smoke::scene(n);
-            let campo = ph2d_field_eval::Field::new(&doc);
+            // ⛔⛔⛔ **O REGISTO LÊ-SE DEPOIS DE A CENA NASCER, e até 2026-09-15 não era assim.**
+            //
+            // Ele era um `Registry::new()` do topo do gate — **vazio** —, e quem enche o registo é
+            // o construtor da cena (`register_sampled`). ⇒ a cena da PONTE era comparada com os
+            // DOIS motores a desenhar espaço vazio, e a linha dela lia `0,000 %` em todas as
+            // colunas. *Um zero de «igual» e um de «nenhum dos dois desenhou nada» são o mesmo
+            // byte* — e o piso de população abaixo é o que os separa.
+            let reg = crate::smoke::sampled_registry();
+            // ⭐⭐⭐ **A peça compila COM A ESCULTURA DENTRO** — ver [`ph2d_field_eval::device`].
+            // ⚠️ Até 2026-09-15 esta linha era o `Field::new`, que traduz uma escultura para espaço
+            // VAZIO: a cena da ponte era comparada com o dispositivo a desenhar uma peça **sem
+            // ela**, e os dois lados concordavam sobre um buraco.
+            let Some(campo) = ph2d_field_eval::device::DeviceField::new(&doc, &reg) else {
+                continue;
+            };
             let Some(fita) = campo.tape_wgsl() else {
                 continue;
             };
@@ -206,11 +219,29 @@ mod gpu_gbuffer_parity {
                 .ceil() as u32,
                 t_max: ph2d_field_render::T_MAX,
             };
-            let Some(dev) = ph2d_field_gpu::trace::march(&fita, setup, W, H) else {
+            let Some(t) = crate::gpu_frame::shared() else {
                 println!("sem GPU — saltada");
                 return;
             };
+            let dev = t
+                .lock()
+                .expect("o traçador")
+                .frame(&fita, campo.sculpts(), setup, W, H);
             vistas += 1;
+
+            // ⭐⭐⭐ **O PISO DE POPULAÇÃO: uma cena que não desenha nada não compara nada.**
+            //
+            // ⚠️ **Sem ele este gate leu `0,000 %` sobre a cena da PONTE durante toda a wave da
+            // GPU**, porque o registo de esculturas estava vazio e os dois motores desenhavam
+            // espaço vazio. *Um gate que não sabe se o sujeito dele existe não afirma nada sobre
+            // ele.* O número é `1 %` da tela — qualquer cena do roteador enche muito mais.
+            let acertos = g.hit.iter().filter(|h| **h).count();
+            assert!(
+                acertos * 100 > (W * H) as usize,
+                "a cena {n} desenhou só {acertos} de {} pixels — ela não tem sujeito, e a linha \
+                 dela leria zero de desvio por não haver nada que possa divergir",
+                W * H
+            );
 
             // ⚠️ **A silhueta compara-se por CONTAGEM de pixels em desacordo, não por igualdade**:
             // na borda um raio decide por um `epsilon`, e os dois motores são `f32` com ordens de
@@ -503,11 +534,11 @@ mod gpu_frame_clock {
                 return;
             };
             // A 1.ª corrida COMPILA o shader (§33); fica de fora.
-            let _ = tr.frame(&fita, setup, w, h);
+            let _ = tr.frame(&fita, &[], setup, w, h);
             let mut v: Vec<f64> = (0..5)
                 .map(|_| {
                     let t = Instant::now();
-                    let g = tr.frame(&fita, setup, w, h);
+                    let g = tr.frame(&fita, &[], setup, w, h);
                     std::hint::black_box(g.edges.len());
                     t.elapsed().as_secs_f64() * 1e3
                 })
@@ -525,42 +556,79 @@ mod gpu_frame_clock {
 
 #[cfg(test)]
 mod gpu_recusa {
-    /// ⛔⛔⛔ **UMA PEÇA COM ESCULTURA NÃO VAI PARA O DISPOSITIVO.**
+    /// ⭐⭐⭐ **UMA PEÇA COM ESCULTURA VAI PARA O DISPOSITIVO** — e até 2026-09-15 ela não ia.
     ///
-    /// ⚠️ **É o gate mais importante desta wave, e ele afirma uma AUSÊNCIA.** Uma escultura compila
-    /// para `Tree::constant(ABSENT)` — espaço vazio —, logo sem esta recusa a GPU desenharia a peça
-    /// **sem ela**, em silêncio e com o resto perfeito.
+    /// # ⚠️⚠️ A redacção anterior deste gate afirmava o CONTRÁRIO, e estava certa na altura
     ///
-    /// ⛔ E o gate da PARIDADE não o veria: ele compara a fita com a fita, e as duas concordam que
-    /// ali não há nada. *Um zero de «igual» e um de «nenhum dos dois sabe» são o mesmo byte.*
+    /// Ela dizia *«uma peça com escultura NÃO vai»*, e era o gate mais importante daquela wave:
+    /// uma escultura compilava para `Tree::constant(ABSENT)` — espaço vazio —, logo sem a recusa a
+    /// GPU desenharia a peça **sem ela**, em silêncio e com o resto perfeito. ⛔ E o gate da
+    /// paridade não o veria: ele compara a fita com a fita, e as duas concordam que ali não há
+    /// nada. *Um zero de «igual» e um de «nenhum dos dois sabe» são o mesmo byte.*
+    ///
+    /// ⭐ Hoje a escultura **atravessa** ([`ph2d_field_gpu::sculpt`]): ela entra na árvore como uma
+    /// variável e o shader amostra a grade. ⇒ o que este gate passa a afirmar é a outra metade da
+    /// mesma lei — que a recusa **encolheu** para a pergunta verdadeira (*a folha sabe entregar a
+    /// grade?*) e não desapareceu.
     #[test]
-    fn uma_peca_com_escultura_fica_na_cpu() {
+    fn uma_peca_com_escultura_vai_para_o_dispositivo() {
         // A cena 6 é a PONTE: uma escultura de 8 192 triângulos virada campo.
         let com = crate::smoke::scene(6);
-        assert!(
-            !ph2d_field_gpu::supports(&com),
-            "a cena da ponte tem uma ESCULTURA e o dispositivo aceitou-a — ela desapareceria"
-        );
         assert!(
             com.nodes()
                 .iter()
                 .any(|n| matches!(n.kind, ph2d_field::NodeKind::Sampled { .. })),
             "a fixtura deixou de ter escultura — este gate passou a não afirmar nada"
         );
+        let reg = crate::smoke::sampled_registry();
+        assert!(
+            ph2d_field_gpu::supports(&com, &reg),
+            "a cena da ponte foi recusada — a grade dela atravessa desde 2026-09-15"
+        );
 
-        // ⭐ O controlo: as OUTRAS cenas vão. Sem ele a recusa podia ser um `false` constante.
+        // ⭐⭐ **O CONTROLO: uma folha amostrada SEM grade continua a ser recusada.** É ele que
+        // impede o `supports` de virar um `true` constante — e a lei que ele prende é a que faz
+        // uma escultura de outra espécie cair na CPU em vez de desaparecer.
+        struct SemGrade;
+        impl ph2d_field_eval::hybrid::Sampled for SemGrade {
+            fn at(&self, _p: [f32; 3]) -> f32 {
+                0.0
+            }
+            fn bounding_radius(&self) -> f32 {
+                1.0
+            }
+            // ⚠️ Sem `grid`: fica o default do trait, que é `None`.
+        }
+        let mut cego = ph2d_field_eval::hybrid::Registry::new();
+        for k in reg.keys() {
+            cego.insert(k.clone(), std::sync::Arc::new(SemGrade));
+        }
+        assert!(
+            !cego.is_empty(),
+            "o registo da cena está vazio — o controlo não tem sujeito"
+        );
+        assert!(
+            !ph2d_field_gpu::supports(&com, &cego),
+            "uma folha amostrada SEM grade foi aceite — ela desapareceria da peça"
+        );
+
+        // ⭐ E as OUTRAS cenas continuam a ir.
         let mut aceites = 0;
         for n in 0..crate::smoke::scenes::CENAS {
-            if n == 6 || crate::smoke::scenes::PODADAS.contains(&n) {
+            if crate::smoke::scenes::PODADAS.contains(&n) {
                 continue;
             }
-            if ph2d_field_gpu::supports(&crate::smoke::scene(n)) {
+            if ph2d_field_gpu::supports(&crate::smoke::scene(n), &reg) {
                 aceites += 1;
             }
         }
         assert!(
             aceites > 10,
-            "só {aceites} cenas foram aceites — a recusa está a reclamar tudo"
+            "só {aceites} cenas foram aceites — a porta está a reclamar tudo"
         );
     }
 }
+
+/// ⭐⭐⭐ **Os gates da ESCULTURA no dispositivo** — ver [`sculpt`].
+#[path = "smoke_gpu_sculpt_tests.rs"]
+mod sculpt;

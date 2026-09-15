@@ -423,6 +423,24 @@ impl ph2d_field_eval::hybrid::Sampled for SampledField {
         SampledField::at(self, p)
     }
 
+    /// ⭐⭐⭐ **A grade, para o dispositivo a interpolar lá.**
+    ///
+    /// ⚠️ **A `box_` NÃO viaja**, e não é omissão: ela é `origin` e `origin + (dims−1)·step`, por
+    /// construção (ver [`SampledField::from_mesh`]). *Mandar um número derivável é criar um segundo
+    /// sítio onde ele pode discordar.*
+    fn grid(&self) -> Option<ph2d_field_eval::hybrid::SampledGrid<'_>> {
+        Some(ph2d_field_eval::hybrid::SampledGrid {
+            dims: [
+                u32::try_from(self.dims[0]).ok()?,
+                u32::try_from(self.dims[1]).ok()?,
+                u32::try_from(self.dims[2]).ok()?,
+            ],
+            origin: self.origin,
+            step: self.step,
+            values: &self.dist,
+        })
+    }
+
     /// ⭐ **A meia-diagonal da caixa da grade** (W33) — quem tem a grade sabe a caixa dela.
     ///
     /// ⚠️ Da **caixa**, não da malha: a grade já cresceu `PAD_CELLS` além dela, e o bordo tem de

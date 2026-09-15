@@ -44,6 +44,10 @@ pub struct TapeWgsl {
 /// O nome que o gerador dá ao vector das constantes. Quem liga o buffer usa-o.
 pub const CONSTS: &str = "k";
 
+/// O prefixo das funções de ESCULTURA — `escultura_0`, `escultura_1`, … Quem as escreve é o
+/// [`crate::device`]; a fita só as **chama**, e as duas metades têm de concordar no nome.
+pub const ESCULTURA: &str = "escultura_";
+
 impl PointTape {
     /// ⭐⭐⭐ **A fita em WGSL.** `None` quando o documento não tem fita (a mesma resposta que o
     /// [`crate::Field::at`] dá com `NaN`).
@@ -87,6 +91,9 @@ impl PointTape {
                     consts.push(v);
                     format!("{CONSTS}[{}]", const_base + consts.len() - 1)
                 }
+                // ⭐⭐⭐ **A ESCULTURA: uma folha que não é uma expressão.** A fita traz o índice, e
+                // quem escreve o corpo de `escultura_k` é o [`crate::device`] — aqui só se chama.
+                Instr::Var(k) => format!("{ESCULTURA}{k}(p)"),
                 Instr::Unary(op, a) => unary(*op, *a),
                 Instr::Binary(op, a, b) => binary(*op, *a, *b),
             };

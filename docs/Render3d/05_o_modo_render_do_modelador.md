@@ -3492,3 +3492,153 @@ comparativa. O da placa não.
 - ⚠️ **O `hits` do caminho pintado conta PIXELS COM TINTA**, e não acertos de centro: o G-buffer
   ficou no dispositivo. É número de diagnóstico, e dizê-lo é mais honesto do que trazer `49,8 MB`
   para o calcular.
+
+---
+
+## §40 — ⭐⭐⭐ VÁRIAS LÂMPADAS, e o tecto que sai da PLACA (ordem do dono, 2026-09-15)
+
+O §39.6 deixou *«uma lâmpada só»* como item aberto, com o mecanismo escrito: o canal de luz era um
+`vec2` por pixel — o céu e **UMA** sombra — e com duas a segunda ficava sem sombra **em silêncio**.
+*Um formato que não tem onde pôr a segunda resposta é um tecto escrito em bytes.*
+
+### §40.1 — O que mudou
+
+- o canal passa a ter passo **`1 + n_lamps`**: o céu no slot `0`, uma visibilidade por lâmpada a
+  seguir; a marcha faz uma sombra por lâmpada e o pintor soma as radiâncias, cada uma com a direcção
+  e a distância do **ponto** daquele pixel;
+- o `DeviceGbuffer::shadow` sai por **bloco de lâmpada** (`l · pixels ..`), que é exactamente a forma
+  que o `Shadows::set_lamp` recebe — *o formato que o consumidor pede é o formato que se escreve*;
+- o literal `8` do `array<vec4, N>` do WGSL passa a **derivar** do `MAX_LAMPS`.
+
+### §40.2 — ⛔⛔ O tecto que eu escrevi estava errado nos DOIS sentidos
+
+Escrevi `MAX_LAMPS = 8` e disse que o recurso era o **relógio**, com a conta *«o passe cresce ~1
+traçado por lâmpada»*. Medido a `1920×1080`, `load 3,0`, mínimo de sete:
+
+| lâmpadas | 1 | 2 | 4 | 8 | 12 |
+|---|---:|---:|---:|---:|---:|
+| quadro | `4,12` | `4,34` | `4,74` | `7,15` | `7,70 ms` |
+
+⇒ `12` lâmpadas custam **`1,8×`** uma, não `12×`: a marcha de sombra só corre nos pixels que acertam
+**e** que vêem aquela luz. *Um tecto derivado de uma estimativa em vez de uma medição erra para o
+lado de dentro.*
+
+⭐⭐⭐ **E o recurso de verdade apareceu quando a varredura passou de `12`: foi a PLACA que o disse.**
+
+```text
+Buffer binding 3 range 141004800 exceeds `max_*_buffer_binding_size` limit 134217728
+```
+
+O canal de luz é `pixels · (1 + n_lamps) · 4 B`, logo o tecto é `limite / (pixels · 4) − 1` — e ele
+**depende da resolução**. ⇒ `lamps_that_fit(limite, w, h)`, com o limite **perguntado à placa**.
+
+### §40.3 — ⚠️ E o «limite da placa» era o piso da especificação
+
+Ao medir o passe da escultura, a `wgpu` recusou outra coisa:
+
+```text
+Too many bindings of type StorageBuffers in Stage COMPUTE, limit is 8, count was 9
+```
+
+⛔⛔ **Eu pedia `wgpu::Limits::default()`, que é o PISO GARANTIDO da especificação** (pensado para a
+Web), e não o que esta placa tem. Trocado por `adapter.limits()`:
+
+| | `Limits::default()` | esta placa |
+|---|---:|---:|
+| maior armazém ligável | `134 217 728 B` | **`2 147 483 644 B`** (`16×`) |
+| armazéns por shader | `8` | o que o passe precisa (`9`) |
+
+⇒ o tecto de lâmpadas a `1920×1080` passou de `15` para `32` (o do uniforme) **sem uma linha de
+algoritmo mudar**, e o passe que pinta com escultura passou a caber. *Nunca deixe o caminho mais
+lento definir o tecto do mais rápido* (`CLAUDE.md` §0.0) — e o «caminho mais lento» aqui era uma
+constante da biblioteca que eu nunca tinha lido.
+
+### §40.4 — ⚠️ E a primeira redacção do controlo reprovou por causa do CORPUS
+
+Passar de `1` para `2` lâmpadas moveu `811` canais, abaixo da barra. A leitura fácil — *«o
+dispositivo ignora a segunda»* — estava **refutada na linha de cima**: a paridade com a CPU lia
+`100 %` com `pior 0`, e a CPU usa as duas. O que estava errado era a **constelação**, que punha a
+segunda **atrás** da peça. Hoje ela é um prefixo de uma lista fixa no hemisfério que o olho vê.
+
+---
+
+## §41 — ⭐⭐⭐ A ESCULTURA ATRAVESSA: a folha que não é uma expressão (ordem do dono, 2026-09-15)
+
+O §39.6 deixou *«uma peça com ESCULTURA continua na CPU»*, e a `supports` dizia porquê: a álgebra da
+`fidget` é **fechada** (`Input` · `Const` · `Binary` · `Unary` · remapeamentos, **sem consulta a
+dados**), logo o compilador traduzia uma escultura para `Tree::constant(ABSENT)` — **espaço vazio**.
+
+### §41.1 — ⭐⭐⭐ A cura: a escultura entra como uma VARIÁVEL
+
+A `fidget` tem variáveis genéricas (`Var::V`), e um remapeamento de eixos **não lhes toca**. ⇒ cada
+escultura vira uma variável, a árvore continua a ser **uma só** — com todos os filetes, chanfros e
+booleanas onde sempre estiveram — e o gerador de WGSL traduz a variável numa **chamada**
+(`escultura_k(p)`), cujo corpo o `ph2d-field-gpu::sculpt` escreve.
+
+⚠️⚠️ **É isto que evita uma TERCEIRA cópia da lei das booleanas.** Ela já existe duas vezes (a árvore
+e o `hybrid_law`, com o `the_numeric_law_is_the_same_law_as_the_tree` a segurá-las); portá-la para
+WGSL seria uma terceira. *Aqui o dispositivo corre a MESMA árvore que a CPU analítica corre — a
+escultura é que é uma folha.*
+
+⚠️ **A pose e a pilha de um `Combine` MISTO continuam a não correr, e isso é PARIDADE.** O `hybrid`
+declara-o por escrito; reproduzir o limite é o que faz as duas imagens baterem.
+
+### §41.2 — A grade, e porque ela tem CACHE
+
+Uma grade de `128³` são `8 MB`. Reenviá-la por quadro custaria **mais barramento do que a imagem
+inteira** que o §39 veio poupar (`8,3 MB`) — isto é, a escultura teria desfeito aquela wave sem mover
+um número que alguém estivesse a olhar. ⇒ ela sobe **uma vez** e fica, com a identidade a ser o
+ponteiro do `Arc`.
+
+⛔⛔ **E o cache guarda referências FORTES.** Sem elas a escultura podia morrer, o alocador devolver o
+mesmo endereço a outra, e o cache servir a grade errada **sem erro nenhum**. *Um cache que compara
+endereços tem de impedir que eles sejam reciclados.*
+
+⚠️ **O custo é invisível na imagem** (os dois caminhos desenham o mesmo pixel), e por isso ele tem
+gate próprio: `um_arrasto_nao_reenvia_a_escultura` lê `[1, 1, 1, 1, 1, 1]` em seis quadros de
+arrasto, e `[1, 2, 3, 4, 5, 6]` com o cache desligado.
+
+### §41.3 — ⛔⛔ O gate do G-buffer comparava a cena da PONTE VAZIA — desde que existe
+
+A linha da cena `6` lia `0,000 %` em **todas** as colunas, incluindo *«a variação da PRÓPRIA peça»*.
+A causa: o registo de esculturas do gate era um `Registry::new()` do topo do ficheiro — **vazio** —, e
+quem o enche é o construtor da cena. ⇒ os dois motores desenhavam espaço vazio e concordavam sobre um
+buraco.
+
+⚠️ *Um zero de «igual» e um de «nenhum dos dois desenhou nada» são o mesmo byte* — a mesma frase que
+a `supports` já tinha escrita, uma wave antes, sobre este mesmo assunto. ⇒ o registo lê-se **depois**
+de a cena nascer, e o gate ganhou um **piso de população** (`1 %` da tela) que teria apanhado isto.
+
+### §41.4 — ⚠️ Duas mutações SOBREVIVERAM, e nomearam o corpus
+
+Apagar a translação/escala da pose (`q = (p − t)/s` → `q = p`) e apagar o `· s` do retorno passaram
+o gate da cena `6`: ali a escultura está na **identidade**. *Um corpus no ponto NEUTRO de um knob não
+testa esse knob* — a terceira vez que esta linha paga a mesma forma.
+
+⇒ gate próprio (`a_escultura_posta_e_a_mesma_nos_dois_motores`) com a MESMA grade posta com
+translação, rotação de `40°` em torno de `(1,1,1)` e três escalas. Com ele, **7 de 7** mutações
+morrem (as duas acima, mais a parede, a trilinear, a ordem da grade e a rotação transposta).
+
+### §41.5 — O que se mede
+
+| cena da PONTE, `1920×1080` | |
+|---|---:|
+| CPU inteira | `515,6 ms` |
+| **dispositivo** | **`15,4 ms`** |
+
+⚠️ `load 14`, mínimo de sete corridas: a coluna da CPU está inflada pela carga e a do dispositivo não
+(ver §39.5-bis). O que se afirma é o **piso** do ganho.
+
+| paridade | |
+|---|---:|
+| silhueta (cena `6`) | `0,000 %` |
+| Δt p99 | `9,94e-5` |
+| Δnormal p99 | `0,24°` (a peça varia `27,90°` entre vizinhos) |
+| a escultura **pintada** | `100,000 %` dos canais a `≤1` nível, pior `0` |
+
+### §41.6 — ⏳ O que fica
+
+- ⏳ **Uma folha amostrada sem grade cai na CPU** — o default do trait é `None`, que é o lado seguro;
+- ⏳ **Uma placa com menos de `9` armazéns por shader** não pinta no dispositivo (recusa em voz alta);
+- ⏳ o `Combine` misto continua a ignorar a pose própria, **nos dois motores** — item do `hybrid`, não
+  desta wave.

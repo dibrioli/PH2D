@@ -229,7 +229,7 @@ fn main() {
     };
 
     // A REFERÊNCIA convergida.
-    let dev_ref = tracer.frame(&fita, setup(REF), W, H);
+    let dev_ref = tracer.frame(&fita, &[], setup(REF), W, H);
     let (g_ref, sh_ref) = dev_ref.to_cpu(&cam, screen);
     let ao_ref: Vec<f32> = (0..g_ref.hit.len()).map(|i| sh_ref.ambient_at(i)).collect();
     let px_ref = pinta(&g_ref, &sh_ref);
@@ -268,7 +268,7 @@ fn main() {
 
     for raios in [16u32, 32, 48, 64, 96, REF] {
         let t0 = std::time::Instant::now();
-        let dev = tracer.frame(&fita, setup(raios), W, H);
+        let dev = tracer.frame(&fita, &[], setup(raios), W, H);
         let ms = t0.elapsed().as_secs_f64() * 1e3;
         let (g, sh) = dev.to_cpu(&cam, screen);
         let ao: Vec<f32> = (0..g_ref.hit.len()).map(|i| sh.ambient_at(i)).collect();
@@ -322,7 +322,7 @@ fn main() {
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(ph2d_field_render::OCCLUSION_PASSES);
-        let dev16 = tracer.frame(&fita, setup(quantos), W, H);
+        let dev16 = tracer.frame(&fita, &[], setup(quantos), W, H);
         let (g16, sh16) = dev16.to_cpu(&cam, screen);
         let escreve = |nome: &str, rgb: &dyn Fn(usize) -> [u8; 3]| {
             let mut buf = format!("P6\n{W} {H}\n255\n").into_bytes();

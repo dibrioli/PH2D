@@ -54,7 +54,7 @@ pub(crate) fn traca(p: &Pedido) {
     let mundos: Vec<[f32; 3]> = p.lights.iter().map(|l| l.world).collect();
     let pelo_dispositivo = matches!(p.shading, crate::shading::Shading::Render)
         && !mundos.is_empty()
-        && crate::gpu_frame::takes_the_frame(p.gpu, &p.doc);
+        && crate::gpu_frame::takes_the_frame(p.gpu, &p.doc, &p.reg);
     // ⭐⭐⭐ **E O DISPOSITIVO TAMBÉM PINTA** (`docs/Render3d/05` §39): com as quatro leis
     // do pintor no dispositivo — o material, o céu, o olhar e o **dono** — o G-buffer
     // deixa de atravessar o barramento e o que volta é a IMAGEM.

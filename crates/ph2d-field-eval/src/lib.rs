@@ -27,6 +27,8 @@ pub(crate) mod bounds_iv;
 pub(crate) mod bounds_lip;
 /// ⭐ O que um MODIFICADOR faz ao bordo — ver [`bounds_mods`].
 pub(crate) mod bounds_mods;
+/// ⭐⭐⭐ **A peça para o DISPOSITIVO, com a escultura dentro** — ver [`device`].
+pub mod device;
 pub mod extract;
 pub mod hybrid;
 pub mod ops;

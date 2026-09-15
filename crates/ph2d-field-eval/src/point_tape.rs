@@ -59,6 +59,13 @@ pub(crate) enum Instr {
     X,
     Y,
     Z,
+    /// ⭐⭐⭐ **UMA FOLHA QUE NÃO É UMA EXPRESSÃO** — a escultura, pelo índice dela.
+    ///
+    /// ⚠️ **Ela não tem avaliador de CPU, e a ausência é a cerca.** A `fidget` não sabe consultar
+    /// dados (a álgebra dela é fechada), e é por isso que o [`crate::hybrid`] existe. Aqui a folha
+    /// entra como uma **variável genérica**, que o gerador de WGSL traduz para uma chamada — e a
+    /// fita que a contém é recusada pelo [`PointTape::eval`] em vez de responder um número.
+    Var(u32),
     Const(f64),
     Unary(UnaryOpcode, u32),
     Binary(BinaryOpcode, u32, u32),
@@ -102,6 +109,19 @@ impl PointTape {
     /// pilha de perfis encadeados é funda; trocar uma recursão por outra herdaria o estouro em vez
     /// de o deixar para trás.
     pub(crate) fn build(ctx: &Context, root: Node) -> Self {
+        Self::build_with_vars(ctx, root, &BTreeMap::new())
+    }
+
+    /// ⭐⭐⭐ **A mesma fita, com as VARIÁVEIS GENÉRICAS traduzidas** — ver [`Instr::Var`].
+    ///
+    /// `vars` diz que índice cada `Var::V` ocupa. ⚠️ Uma variável que não esteja no mapa **mata a
+    /// fita** (o mesmo `None` de sempre): ela seria uma folha sem lei, e responder `0` desenharia
+    /// um plano onde não há nada.
+    pub(crate) fn build_with_vars(
+        ctx: &Context,
+        root: Node,
+        vars: &BTreeMap<fidget::var::Var, u32>,
+    ) -> Self {
         POINT_TAPES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let mut slot: BTreeMap<Node, u32> = BTreeMap::new();
         let mut code: Vec<Instr> = Vec::new();
@@ -134,14 +154,18 @@ impl PointTape {
                 Op::Input(Var::X) => Instr::X,
                 Op::Input(Var::Y) => Instr::Y,
                 Op::Input(Var::Z) => Instr::Z,
-                // `EvalError::MissingVar` — o `eval_xyz` só liga `X`, `Y` e `Z`, e o erro dele
-                // condena a avaliação INTEIRA, não só este nó.
-                Op::Input(Var::V(_)) => {
-                    return Self {
-                        code: None,
-                        raiz: 0,
-                    };
-                }
+                // ⭐ Uma variável genérica é uma FOLHA QUE NÃO É EXPRESSÃO — ver [`Instr::Var`].
+                // ⚠️ Fora do mapa ela continua a matar a fita, que é o que o `eval_xyz` fazia:
+                // `EvalError::MissingVar` condena a avaliação INTEIRA, não só este nó.
+                Op::Input(v @ Var::V(_)) => match vars.get(v) {
+                    Some(i) => Instr::Var(*i),
+                    None => {
+                        return Self {
+                            code: None,
+                            raiz: 0,
+                        };
+                    }
+                },
                 Op::Const(c) => Instr::Const(c.0),
                 Op::Unary(opcode, a) => Instr::Unary(*opcode, slot[a]),
                 Op::Binary(opcode, a, b) => Instr::Binary(*opcode, slot[a], slot[b]),
@@ -180,6 +204,7 @@ impl PointTape {
                     Instr::X => x,
                     Instr::Y => y,
                     Instr::Z => z,
+                    Instr::Var(_) => f64::NAN,
                     Instr::Const(c) => c,
                     Instr::Unary(op, a) => op.eval(v[a as usize]),
                     Instr::Binary(op, a, b) => op.eval(v[a as usize], v[b as usize]),
@@ -215,6 +240,11 @@ impl PointTape {
             for (i, instr) in code.iter().enumerate() {
                 let base = i * N;
                 match *instr {
+                    // ⛔⛔ **Uma fita com [`Instr::Var`] não tem avaliador de CPU** — `NaN` é a mesma resposta
+                    // que uma fita AUSENTE dá. Ela só nasce pelo caminho do dispositivo
+                    // ([`crate::device`]), que não expõe avaliação nenhuma: a cerca é a ausência
+                    // do método, e esta linha é o degenerado seguro se alguém a contornar.
+                    Instr::Var(_) => v[base..base + N].fill(f64::NAN),
                     Instr::X => v[base..base + N]
                         .iter_mut()
                         .zip(pts)
@@ -291,6 +321,8 @@ impl PointTape {
                 for (i, instr) in code.iter().enumerate() {
                     let base = i * L;
                     match *instr {
+                        // ⛔ Ver a nota do `eval_many`: sem avaliador de CPU, `NaN`.
+                        Instr::Var(_) => v[base..base + L].fill(f64::NAN),
                         Instr::X => {
                             for k in 0..L {
                                 v[base + k] = faixa[k][0];

@@ -5,8 +5,9 @@
 //! 1. **há adaptador** — sem GPU o módulo corre como sempre;
 //! 2. **o quadro é o ASSENTE** — o de movimento fica **byte-idêntico** ao de hoje, que é a cerca
 //!    que impede uma regressão no gesto (a lição do §32);
-//! 3. ⛔ **a peça não tem ESCULTURA** ([`ph2d_field_gpu::supports`]) — ela compila para espaço
-//!    vazio na fita, e sem esta condição ela desapareceria em silêncio.
+//! 3. ⭐ **a peça é DESENHÁVEL lá** ([`ph2d_field_gpu::supports`]) — e desde 2026-09-15 uma
+//!    ESCULTURA já é: ela atravessa como grade ([`ph2d_field_gpu::sculpt`]), e o que a porta
+//!    pergunta é se a folha amostrada sabe entregá-la.
 //!
 //! # ⚠️ O traçador VIVE entre quadros
 //!
@@ -61,8 +62,12 @@ pub fn enabled() -> bool {
 
 /// ⭐⭐⭐ **Este quadro vai para o dispositivo?** — as três condições da nota do módulo.
 #[must_use]
-pub fn takes_the_frame(tracer: Option<&SharedTracer>, doc: &ph2d_field::FieldDoc) -> bool {
-    tracer.is_some() && ph2d_field_gpu::supports(doc)
+pub fn takes_the_frame(
+    tracer: Option<&SharedTracer>,
+    doc: &ph2d_field::FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+) -> bool {
+    tracer.is_some() && ph2d_field_gpu::supports(doc, reg)
 }
 
 /// O G-buffer e a luz, marchados no dispositivo. `None` quando alguma coisa faltar — e o chamador
@@ -82,9 +87,12 @@ pub fn march(
     antialias: bool,
 ) -> Option<(ph2d_field_render::Gbuffer, ph2d_field_render::Shadows)> {
     let cabem = lamps_that_fit(tracer, w, h);
-    let (fita, setup) = pedido(doc, reg, cam, lamps, cabem, w, h, antialias)?;
+    let (campo, fita, setup) = pedido(doc, reg, cam, lamps, cabem, w, h, antialias)?;
     let screen = ph2d_field_render::Screen::new(w, h, cam.half_extent);
-    let dev = tracer.lock().ok()?.frame(&fita, setup, w, h);
+    let dev = tracer
+        .lock()
+        .ok()?
+        .frame(&fita, campo.sculpts(), setup, w, h);
     Some(dev.to_cpu(cam, screen))
 }
 
@@ -111,8 +119,17 @@ pub fn paint(
     antialias: bool,
 ) -> Option<ph2d_field_gpu::trace::Pintado> {
     let mundos: Vec<[f32; 3]> = points.iter().map(|l| l.world).collect();
+    // ⛔ **A placa tem de ter armazéns para o passe que pinta** — ver
+    // [`ph2d_field_gpu::paint::ARMAZENS`]. Sem eles o quadro cai na CPU, em vez de a `wgpu` recusar
+    // o layout a meio.
+    if tracer
+        .lock()
+        .is_ok_and(|t| t.storage_slots() < ph2d_field_gpu::paint::ARMAZENS)
+    {
+        return None;
+    }
     let cabem = lamps_that_fit(tracer, w, h);
-    let (fita, setup) = pedido(doc, reg, cam, &mundos, cabem, w, h, antialias)?;
+    let (campo, fita, setup) = pedido(doc, reg, cam, &mundos, cabem, w, h, antialias)?;
     // ⚠️ **As duas listas nascem do MESMO `points`**, e é por isso que a ordem não pode divergir:
     // a posição da lâmpada `l` viaja no `MarchSetup` e a radiância dela aqui.
     let mut lamp_radiance = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
@@ -139,7 +156,7 @@ pub fn paint(
         tracer
             .lock()
             .ok()?
-            .painted_frame(&fita, setup, &pintor, w, h),
+            .painted_frame(&fita, campo.sculpts(), setup, &pintor, w, h),
     )
 }
 
@@ -153,6 +170,30 @@ pub fn lamps_that_fit(tracer: &SharedTracer, w: u32, h: u32) -> usize {
     tracer.lock().map_or(0, |t| {
         ph2d_field_gpu::trace::lamps_that_fit(t.binding_limit(), w, h)
     })
+}
+
+/// ⭐ **O maior armazém que esta placa liga** — o número que o tecto das lâmpadas divide.
+#[must_use]
+pub fn binding_limit(tracer: &SharedTracer) -> u64 {
+    tracer.lock().map_or(0, |t| t.binding_limit())
+}
+
+/// ⭐ **A lâmpada do rig, onde a wave da §25 a põe** — partilhada pelos gates deste módulo.
+///
+/// ⚠️ `#[cfg(test)]` porque ela é a fixtura de três gates e não uma porta do produto: quem acende a
+/// cena é a [`crate::lights`], que lê o documento.
+#[cfg(test)]
+#[must_use]
+pub fn tests_lampada(cam: &ph2d_field_render::Orbit) -> ph2d_field_render::PointLamp {
+    let (right, up, toward_eye) = cam.basis();
+    let ecra = [-0.5566703_f32, 0.6634139, 0.5];
+    let r = 2.0 * cam.half_extent;
+    ph2d_field_render::PointLamp {
+        world: [0, 1, 2].map(|i| {
+            cam.target[i] + r * (ecra[0] * right[i] + ecra[1] * up[i] + ecra[2] * toward_eye[i])
+        }),
+        radiance_at_one: [3.0, 3.0, 3.0],
+    }
 }
 
 /// ⭐ **Os materiais no formato que o dispositivo lê** — o [`ph2d_material::wgsl::pack`] com o
@@ -194,6 +235,7 @@ fn pedido(
     h: u32,
     antialias: bool,
 ) -> Option<(
+    ph2d_field_eval::device::DeviceField,
     ph2d_field_eval::wgsl::TapeWgsl,
     ph2d_field_gpu::trace::MarchSetup,
 )> {
@@ -210,7 +252,9 @@ fn pedido(
     for (dst, src) in lamps.iter_mut().zip(mundos) {
         *dst = *src;
     }
-    let campo = ph2d_field_eval::Field::new(doc);
+    // ⭐⭐⭐ **A PEÇA COM A ESCULTURA DENTRO** — ver [`ph2d_field_eval::device`]. `None` quando
+    // alguma escultura não souber entregar a grade, e aí o chamador fica na CPU.
+    let campo = ph2d_field_eval::device::DeviceField::new(doc, reg)?;
     let fita = campo.tape_wgsl()?;
     let bola = ph2d_field_eval::bounds::bounding_ball(doc, reg)?;
     let (right, up, fwd) = cam.basis();
@@ -245,7 +289,7 @@ fn pedido(
         ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
         edge_cos: ph2d_field_render::EDGE_COS,
     };
-    Some((fita, setup))
+    Some((campo, fita, setup))
 }
 
 #[cfg(test)]

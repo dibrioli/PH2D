@@ -22,6 +22,8 @@
 //! `ray_at_plane`. ⇒ ela nasce **com o gate de paridade em cima**: qualquer divergência de câmera
 //! move o ponto de acerto em unidades de mundo, e o gate mede exactamente isso.
 
+use crate::trace_leitura::lida;
+use crate::trace_uniforme::uniforme_do_pedido;
 use crate::trace_wgsl::molde;
 use ph2d_field_eval::wgsl::TapeWgsl;
 
@@ -184,10 +186,19 @@ impl Tracer {
             force_fallback_adapter: false,
         }))
         .ok()?;
+        // ⭐⭐⭐ **OS LIMITES SÃO OS DA PLACA, e não os mínimos da `wgpu`.**
+        //
+        // ⛔⛔ O `Limits::default()` é o **piso garantido** da especificação (pensado para a Web), e
+        // pedi-lo trava esta máquina no tecto de uma que não é esta. Medido: ele dá
+        // `max_storage_buffers_per_shader_stage = 8`, e o passe que pinta com ESCULTURA precisa de
+        // `9` — a `wgpu` recusou a criar o layout, numa placa que suporta muito mais.
+        //
+        // ⚠️ *Nunca deixe o caminho mais lento definir o tecto do mais rápido* (`CLAUDE.md` §0.0).
+        // Quem tiver uma placa mais fraca é servido pela mesma linha: ela pede o que a placa TEM.
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("marcha do campo"),
             required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::default(),
+            required_limits: adapter.limits(),
             experimental_features: wgpu::ExperimentalFeatures::default(),
             memory_hints: wgpu::MemoryHints::Performance,
             trace: wgpu::Trace::Off,
@@ -214,6 +225,7 @@ impl Tracer {
     pub fn frame(
         &mut self,
         fita: &TapeWgsl,
+        sculpts: &[ph2d_field_eval::device::DeviceSculpt],
         setup: MarchSetup,
         width: u32,
         height: u32,
@@ -223,6 +235,7 @@ impl Tracer {
             &self.queue,
             &mut self.cache,
             fita,
+            sculpts,
             setup,
             width,
             height,
@@ -241,6 +254,7 @@ impl Tracer {
     pub fn painted_frame(
         &mut self,
         fita: &TapeWgsl,
+        sculpts: &[ph2d_field_eval::device::DeviceSculpt],
         setup: MarchSetup,
         pintor: &crate::paint::PaintSetup<'_>,
         width: u32,
@@ -251,6 +265,7 @@ impl Tracer {
             &self.queue,
             &mut self.cache,
             fita,
+            sculpts,
             setup,
             width,
             height,
@@ -278,6 +293,23 @@ impl Tracer {
     #[must_use]
     pub fn binding_limit(&self) -> u64 {
         self.device.limits().max_storage_buffer_binding_size
+    }
+
+    /// ⭐ **Quantos armazéns esta placa deixa um shader ligar de uma vez.**
+    ///
+    /// ⚠️ **O passe que PINTA precisa de `9`** (seis do grupo `0` e três do grupo `1`), e o piso
+    /// garantido da `wgpu` é `8`. Numa placa que fique no piso o quadro cai na CPU — que é a mesma
+    /// lei das lâmpadas e da escultura sem grade: *recusar em voz alta em vez de desenhar metade*.
+    /// Quantas vezes as grades das esculturas subiram à placa — ver
+    /// [`crate::FieldPipelines::grades_enviadas`].
+    #[must_use]
+    pub fn grades_enviadas(&self) -> usize {
+        self.cache.grades_enviadas()
+    }
+
+    #[must_use]
+    pub fn storage_slots(&self) -> u32 {
+        self.device.limits().max_storage_buffers_per_shader_stage
     }
 
     /// ⭐ **Quanto custa TRAZER `bytes` de volta** — a fase que o `submit` do quadro esconde.
@@ -325,7 +357,7 @@ impl Tracer {
 /// ⛔ **Não a use para medir tempo** — ver [`Tracer`].
 #[must_use]
 pub fn march(fita: &TapeWgsl, setup: MarchSetup, width: u32, height: u32) -> Option<DeviceGbuffer> {
-    Some(Tracer::new()?.frame(fita, setup, width, height))
+    Some(Tracer::new()?.frame(fita, &[], setup, width, height))
 }
 
 /// O que a marcha entrega — o G-buffer, ou a imagem quando o pintor corre.
@@ -398,6 +430,7 @@ pub(crate) fn bgl_marcha(device: &wgpu::Device) -> wgpu::BindGroupLayout {
             armazem(3, false),
             armazem(4, false),
             armazem(5, false),
+            armazem(6, true),
         ],
     })
 }
@@ -411,6 +444,7 @@ fn marcha_com(
     queue: &wgpu::Queue,
     cache: &mut crate::FieldPipelines,
     fita: &TapeWgsl,
+    sculpts: &[ph2d_field_eval::device::DeviceSculpt],
     setup: MarchSetup,
     width: u32,
     height: u32,
@@ -423,81 +457,43 @@ fn marcha_com(
         immediate_size: 0,
     });
 
+    // ⭐⭐⭐ **A ORDEM DO `k` É O CONTRATO**, e ela é uma só: a fita da peça, depois os cabeçalhos
+    // das esculturas, depois a lei do dono. Cada emissor recebe a origem dele **desta** aritmética,
+    // e é por isso que ela vive aqui e não em três sítios.
+    let escultura = crate::sculpt::emit(sculpts, fita.consts.len());
+    let molde_com_esculturas = molde().replace(
+        "{ESCULTURAS}",
+        escultura.as_ref().map_or("", |e| e.source.as_str()),
+    );
     let p_centro = cache
-        .entry_with_layout(device, &molde(), fita, "centro_e_luz", Some(&layout))
+        .entry_with_layout(
+            device,
+            &molde_com_esculturas,
+            fita,
+            "centro_e_luz",
+            Some(&layout),
+        )
         .clone();
     // ⚠️ **Compilar é o caro** — o pipeline da borda só nasce quando ela vai de facto correr.
     let p_bordas = setup.antialias.then(|| {
         cache
-            .entry_with_layout(device, &molde(), fita, "bordas", Some(&layout))
+            .entry_with_layout(device, &molde_com_esculturas, fita, "bordas", Some(&layout))
             .clone()
     });
 
-    // O uniforme, campo a campo — a mesma ordem da `struct Setup`. ⚠️ Um `vec3` alinha a 16 B.
-    let mut u: Vec<u8> = Vec::with_capacity(256);
-    for v in [
-        width,
-        height,
-        setup.budget,
-        setup.ao_rays,
-        setup.n_lamps,
-        0,
-        0,
-        0,
-    ] {
-        u.extend_from_slice(&v.to_le_bytes());
-    }
-    for f in [
-        setup.half_extent,
-        setup.half_px,
-        setup.ortho_start,
-        setup.eye_distance,
-        setup.hit_eps,
-        setup.normal_eps,
-        setup.step,
-        setup.t_max,
-        setup.ball_radius,
-        setup.ao_reach,
-        setup.edge_cos,
-        0.0,
-    ] {
-        u.extend_from_slice(&f.to_le_bytes());
-    }
-    for v in [
-        setup.target,
-        setup.right,
-        setup.up,
-        setup.fwd,
-        setup.ball_center,
-    ] {
-        for f in v {
-            u.extend_from_slice(&f.to_le_bytes());
-        }
-        u.extend_from_slice(&0f32.to_le_bytes()); // o padding do `vec3`
-    }
-    // ⚠️ **O array vai INTEIRO**, e não só as válidas: um `array<vec4, 8>` de uniforme tem tamanho
-    // fixo, e escrever menos deixaria a cauda com o lixo do que lá estivesse.
-    for v in setup.lamps {
-        for f in v {
-            u.extend_from_slice(&f.to_le_bytes());
-        }
-        u.extend_from_slice(&0f32.to_le_bytes());
-    }
-
     use wgpu::util::DeviceExt;
-    let ub = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("setup"),
-        contents: &u,
-        usage: wgpu::BufferUsages::UNIFORM,
-    });
+    let ub = uniforme_do_pedido(device, setup, width, height);
     // ⭐⭐⭐ **UM vector de constantes para os DOIS passes.** A fita da peça ocupa o princípio; a lei
     // do dono escreve a seguir, e a origem dela é **exactamente** `fita.consts.len()`.
     //
     // ⚠️⚠️ **É por isso que quem a EMITE é este sítio e não o chamador:** a origem que o texto
     // indexa e a ordem com que os vectores se concatenam são a MESMA decisão, e duas respostas
     // pintam cada folha com os números da vizinha **sem erro nenhum**.
-    let lei_do_dono = pintor.and_then(|p| p.owners?.to_wgsl(fita.consts.len()));
     let mut consts = fita.consts.clone();
+    if let Some(e) = &escultura {
+        consts.extend_from_slice(&e.consts);
+    }
+    let lei_do_dono = pintor.and_then(|p| p.owners?.to_wgsl(consts.len()));
     if let Some(l) = &lei_do_dono {
         consts.extend_from_slice(&l.consts);
     }
@@ -523,6 +519,12 @@ fn marcha_com(
             mapped_at_creation: false,
         })
     };
+    // ⭐⭐⭐ **AS GRADES SOBEM UMA VEZ** — ver [`crate::FieldPipelines::grades`]. Sem escultura é um
+    // buffer mínimo, que o layout exige e o shader nunca lê.
+    //
+    // ⚠️ **Clonado e não emprestado:** um `wgpu::Buffer` é um punho com contagem, e segurar o
+    // empréstimo do cache impediria a compilação do pipeline mais abaixo de lhe tocar.
+    let b_grades = cache.grades(device, sculpts).clone();
     let b_centro = cria("centro", n * 16);
     // ⭐ O passo é `1 + n_lamps`: o céu mais uma visibilidade por lâmpada.
     let passo_luz = u64::from(setup.n_lamps) + 1;
@@ -548,36 +550,9 @@ fn marcha_com(
     });
 
     let bind = |_p: &wgpu::ComputePipeline| {
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: ub.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: kb.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: b_centro.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: b_luz.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: b_conta.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: b_borda.as_entire_binding(),
-                },
-            ],
-        })
+        crate::trace_grupo::grupo_da_marcha(
+            device, &bgl, &ub, &kb, &b_centro, &b_luz, &b_conta, &b_borda, &b_grades,
+        )
     };
     let bg_centro = bind(&p_centro);
     let bg_bordas = p_bordas.as_ref().map(&bind);
@@ -655,6 +630,7 @@ fn marcha_com(
                 lei_do_dono.as_ref(),
                 &crate::paint::Alvos {
                     bgl: &bgl,
+                    grades: &b_grades,
                     setup: &ub,
                     k: &kb,
                     centro: &b_centro,
@@ -702,49 +678,8 @@ fn marcha_com(
         None
     };
 
-    let f4 = |q: &[u8; 16], o: usize| f32::from_le_bytes([q[o], q[o + 1], q[o + 2], q[o + 3]]);
-    let mut t = Vec::with_capacity(d_centro.len() / 16);
-    let mut normal = Vec::with_capacity(t.capacity());
-    for q in d_centro.as_chunks::<16>().0 {
-        t.push(f4(q, 0));
-        normal.push([f4(q, 4), f4(q, 8), f4(q, 12)]);
-    }
-    // ⭐ O passo do `luz` é `1 + n_lamps`: o céu à frente, as lâmpadas a seguir.
-    #[allow(clippy::cast_possible_truncation)]
-    let passo = passo_luz as usize;
-    let cruas = d_luz.as_chunks::<4>().0;
-    let mut ambient = Vec::with_capacity(t.len());
-    let mut shadow = vec![1.0f32; t.len() * (passo - 1)];
-    for (i, bloco) in cruas.chunks_exact(passo).enumerate() {
-        ambient.push(f32::from_le_bytes(bloco[0]));
-        for l in 1..passo {
-            shadow[(l - 1) * t.len() + i] = f32::from_le_bytes(bloco[l]);
-        }
-    }
-    let vazio: [u8; 0] = [];
-    let quads = d_borda.as_deref().unwrap_or(&vazio).as_chunks::<16>().0;
-    #[allow(clippy::cast_possible_truncation)]
-    let usadas = usadas as usize;
-    let mut edges = Vec::with_capacity(usadas);
-    for slot in 0..usadas.min(quads.len() / 5) {
-        let cabeca = &quads[slot * 5];
-        let pixel = u32::from_le_bytes([cabeca[0], cabeca[1], cabeca[2], cabeca[3]]);
-        let mut hit = [false; 4];
-        let mut nrm = [[0.0f32; 3]; 4];
-        for j in 0..4 {
-            let q = &quads[slot * 5 + 1 + j];
-            hit[j] = f4(q, 0) >= 0.0;
-            nrm[j] = [f4(q, 4), f4(q, 8), f4(q, 12)];
-        }
-        edges.push(DeviceEdge {
-            pixel,
-            hit,
-            normal: nrm,
-        });
-    }
-    // ⚠️ **Ordenada por pixel**, como a `Gbuffer::edges` da CPU promete — a ordem da lista aqui é
-    // a de chegada dos workgroups, que é arbitrária.
-    edges.sort_by_key(|e| e.pixel);
+    let (t, normal, shadow, ambient, edges) =
+        lida(&d_centro, &d_luz, passo_luz, usadas, d_borda.as_deref());
 
     drop(d_centro);
     drop(d_luz);

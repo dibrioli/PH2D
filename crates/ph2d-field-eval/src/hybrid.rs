@@ -43,6 +43,22 @@ pub trait Sampled: Send + Sync {
     /// A distância com sinal em `p`, em coordenadas **do campo** (a pose do nó já foi desfeita).
     fn at(&self, p: [f32; 3]) -> f32;
 
+    /// ⭐⭐⭐ **A GRADE CRUA, para quem a quer enviar ao DISPOSITIVO** — `None` quando esta folha
+    /// não é uma grade densa.
+    ///
+    /// # ⚠️ Porque ela é uma segunda porta e não um `at` com outro nome
+    ///
+    /// O [`Self::at`] responde **um ponto**; o dispositivo precisa dos **dados**, porque quem
+    /// interpola lá é o shader. ⇒ a grade viaja uma vez e fica, e a lei de amostragem é escrita
+    /// nas duas linguagens com um gate a segurá-las (a mesma forma do `hybrid_law`).
+    ///
+    /// ⚠️ **O `None` do default é o lado SEGURO**: uma folha amostrada de outra espécie faz a peça
+    /// **cair na CPU**, que sabe desenhá-la. ⛔ O contrário — um default que inventasse uma grade —
+    /// desenharia outra coisa em silêncio.
+    fn grid(&self) -> Option<SampledGrid<'_>> {
+        None
+    }
+
     /// ⭐ **O raio de uma esfera na origem que contém a escultura inteira** (W33).
     ///
     /// ⚠️ **Método exigido, sem `default`**, e é de propósito: um default devolveria um número que
@@ -50,6 +66,22 @@ pub trait Sampled: Send + Sync {
     /// exportação sem uma palavra. Quem tem uma grade sabe a caixa dela; quem não souber tem de
     /// dizê-lo à mão.
     fn bounding_radius(&self) -> f32;
+}
+
+/// ⭐⭐⭐ **A GRADE DE UMA FOLHA AMOSTRADA** — o que atravessa para o dispositivo.
+///
+/// ⚠️ **Emprestada e não copiada:** uma grade de `128³` pesa `8 MB`, e cloná-la para responder a
+/// uma pergunta seria pagar a cópia a cada quadro.
+#[derive(Clone, Copy, Debug)]
+pub struct SampledGrid<'a> {
+    /// Quantas amostras em cada eixo.
+    pub dims: [u32; 3],
+    /// O canto mínimo da caixa que a grade cobre, em coordenadas **do campo**.
+    pub origin: [f32; 3],
+    /// A aresta da célula.
+    pub step: f32,
+    /// Distância com sinal em cada amostra, densa, na ordem `x + y·dx + z·dx·dy`.
+    pub values: &'a [f32],
 }
 
 /// Nome → campo amostrado.

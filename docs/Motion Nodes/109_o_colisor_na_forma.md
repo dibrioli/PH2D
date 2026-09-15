@@ -892,3 +892,68 @@ sítio da lei que shipa).
   `probe_quem_vibra_toca_a_taca` · `probe_o_angulo_tique_a_tique` · `probe_gira_ou_treme` ·
   `probe_o_atrito_entre_pecas`), em
   [`motion_state_pilha_demo_tremor.rs`](../../crates/ph2d-app-motion/src/motion_state_pilha_demo_tremor.rs).
+
+### §8.7 — ⛔⛔⛔ A ORDEM DO DONO era o MANIFESTO DE DOIS PONTOS, e a medição matou-a ANTES da primeira linha
+
+> *«atacar o encosto de dois pontos agora»* (2026-09-15).
+
+**Um segundo ponto de apoio só existe onde há um TRECHO, e um trecho só existe entre duas faces
+quase paralelas.** Entre uma QUINA e uma face o contacto é um ponto **por geometria**, e nenhuma lei
+o desdobra. Medido no monte assente da `=114` (`probe_quantos_contactos_sao_face_a_face`), sobre os
+**28** contactos vivos:
+
+| desalinho dos eixos (módulo 90°) | contactos |
+|---|---|
+| `< 5°` (face com face) | **`0` = 0 %** |
+| `< 15°` | `2` = 7 % |
+| p10 / p50 / p90 | `15,8°` / **`39,6°`** / `44,9°` |
+
+⇒ **o manifesto não tem onde agir nesta cena.** ⚠️ E é PIOR que o acaso: um monte com desalinho
+uniforme `0..45°` daria `11 %` abaixo de `5°`, e este dá **zero** — *uma pilha de quadrados soltos
+assenta em quinas, não em faces.* Construí-lo seria curar um caso que esta cena não tem.
+
+### §8.8 — ⛔⛔ E o PISO DE RUÍDO, que faltava a tudo o que veio antes
+
+**Um monte de 25 quadrados a cair é CAÓTICO.** Deslocando só o berço por `±0,003` (a lei intocada,
+7 realizações — `probe_o_ruido_entre_realizacoes`):
+
+| grandeza | faixa | p50 | amplitude |
+|---|---|---|---|
+| balanço pior (°/tique) | `3,79 .. 5,69` | `4,87` | `1,5×` |
+| giro líquido pior (°/0,9 s) | `24,30 .. 28,36` | `25,97` | `1,2×` |
+
+⚠️⚠️ **Sem este número, toda varredura de constante lê RUÍDO como TENDÊNCIA** — é a armadilha que a
+`line/quadextract` pagou em cinco realizações da mesma escultura. Toda medição desta secção passa a
+correr as 7.
+
+### §8.9 — ⛔⛔⛔ A SUB-RELAXAÇÃO é uma TROCA, e é a MESMA troca: o termo é o restaurador E o zumbido
+
+Multiplicar o empurrão de ângulo por `α` (7 realizações por célula):
+
+| `α` | balanço pior `p50` | giro líquido `p50` |
+|---|---:|---:|
+| **`1,0`** (o que shipa) | `4,87` | **`25,97`** |
+| `0,5` | `1,81` | `35,26` |
+| `0,3` | **`0,85`** | `45,00` |
+| `0,15` | `0,92` | `44,34` |
+| `0,05` | `0,93` | `47,70` |
+
+⭐⭐⭐ **Monótona nas duas colunas, e `α → 0` é exactamente a cura que o dono reprovou** (§8.4):
+*enfraquecer o termo tira o zumbido e solta o giro, porque é o MESMO termo a fazer as duas coisas.*
+⇒ a família «afinar o ganho» está **fechada por medição**; não há `α` que compre as duas.
+
+### §8.10 — ⇒ O que SOBRA tem UM nome, e é estrutural
+
+O que falta a um ganho que oscila não é ganho **menor**, é **amortecimento** — um termo proporcional
+à TAXA a que o ângulo está a mudar. E ele é inexprimível onde está:
+
+⛔⛔ **o `sim.collide` é `Effect::Pure`** (`lib.rs`), logo **não tem memória**: ele não sabe onde a
+peça estava no tique anterior, e sem isso não há taxa que se possa opor. *A metade do atrito
+consegue amortecer porque lê o `spin`, que é uma velocidade que OUTRO nó guarda; a metade da normal
+corrige uma POSIÇÃO, e a posição anterior ninguém lha dá.*
+
+⇒ **a cura é mudar de DONO:** o contacto com o mundo tem de ser resolvido por quem tem estado — o
+`sim.step`, dentro do mesmo laço de varreduras do contacto entre peças. Isso também dissolve a causa
+do §8.2 nº 5 (os dois solvers a disputar a mesma peça, que é por que só o fundo zumbe), e é **uma
+wave com espec própria**: o `sim.step` passaria a precisar da lista de obstáculos, que hoje vive em
+nós a jusante dele.

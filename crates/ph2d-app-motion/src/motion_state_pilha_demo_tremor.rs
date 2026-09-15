@@ -662,3 +662,203 @@ fn giro_liquido(de: f64, ate: f64) -> (Vec<f32>, Vec<f32>) {
     }
     (liquido, total)
 }
+
+/// **SONDA — quantos contactos do monte são FACE-COM-FACE?** (a pergunta que decide se o manifesto
+/// de dois pontos vale para esta cena, doc 109 §8.5.)
+///
+/// ⚠️⚠️ **Um segundo ponto de apoio só existe onde há um TRECHO**, e um trecho só existe entre duas
+/// faces quase paralelas. Entre uma quina e uma face o contacto é um ponto **por geometria**, e
+/// nenhuma lei o pode desdobrar. ⇒ *se o monte assentar às três pancadas, o manifesto não tem onde
+/// agir, e construí-lo seria curar um caso que esta cena não tem.*
+///
+/// A régua é o desalinhamento dos eixos das duas caixas, **módulo 90°** (um quadrado tem essa
+/// simetria): `0°` = faces paralelas, `45°` = quina contra face.
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_quantos_contactos_sao_face_a_face -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_quantos_contactos_sao_face_a_face() {
+    let mut state = MotionState::new();
+    let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut state, 0.0);
+    let sink = sinks[1];
+    let mut ultimo = None;
+    for k in 0..=174_u64 {
+        #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
+        let t = k as f64 / 60.0;
+        let s = state
+            .pump
+            .cook
+            .cook(&state.doc.graph, &state.registry, sink, t)
+            .expect("cozinha")[0]
+            .as_stream()
+            .clone();
+        if k == 174 {
+            ultimo = Some(s);
+        }
+        state
+            .pump
+            .cook
+            .advance_tick(&state.doc.graph, &state.registry, t)
+            .expect("avanca");
+    }
+    let s = ultimo.expect("o stream final");
+    let cols = ph2d_contact::colisores(&s).expect("a metade da direita declara colisor");
+    let p = match s.get("P") {
+        Some(Column::Vec2(v)) => v.clone(),
+        _ => panic!("sem P"),
+    };
+    let rot = match s.get("rot") {
+        Some(Column::Scalar(v)) => v.clone(),
+        _ => vec![0.0; p.len()],
+    };
+    let mut desalinhos = Vec::new();
+    for i in 0..p.len() {
+        for j in (i + 1)..p.len() {
+            let (Some(a), Some(b)) = (cols[i], cols[j]) else {
+                continue;
+            };
+            if ph2d_contact::contato(&a, p[i], &b, p[j], (i + j) % 2 == 0).is_none() {
+                continue;
+            }
+            // O desalinhamento dos eixos, módulo 90°, dobrado para `0..45`.
+            let d = (rot[i] - rot[j]).abs() % 90.0;
+            desalinhos.push(if d > 45.0 { 90.0 - d } else { d });
+        }
+    }
+    desalinhos.sort_by(f32::total_cmp);
+    let n = desalinhos.len();
+    let flush = desalinhos.iter().filter(|d| **d < 5.0).count();
+    let quase = desalinhos.iter().filter(|d| **d < 15.0).count();
+    eprintln!("\n  {n} contactos no monte assente");
+    eprintln!(
+        "  desalinho p10/p50/p90: {:.1}° / {:.1}° / {:.1}°",
+        desalinhos[n / 10],
+        desalinhos[n / 2],
+        desalinhos[n * 9 / 10]
+    );
+    eprintln!(
+        "  face-com-face (< 5°) : {flush} = {:.0}%",
+        100.0 * flush as f32 / n as f32
+    );
+    eprintln!(
+        "  quase        (< 15°) : {quase} = {:.0}%",
+        100.0 * quase as f32 / n as f32
+    );
+    eprintln!("\n  ⚠️ num monte com desalinho UNIFORME 0..45 esperar-se-ia 11% e 33%.");
+}
+
+/// **SONDA — o RUÍDO entre realizações do mesmo monte.**
+///
+/// ⚠️⚠️ **Um monte de 25 quadrados a cair é CAÓTICO:** mudar qualquer constante muda o arranjo
+/// inteiro, e comparar uma realização com outra é comparar **cenas diferentes**, não leis. Esta
+/// sonda mede a dispersão das duas grandezas quando **nada na lei muda** — só o sítio onde as peças
+/// nascem, por um epsilon. *Sem este número, qualquer varredura de constantes lê ruído como
+/// tendência* (a armadilha que a `line/quadextract` pagou em cinco realizações da mesma escultura).
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_o_ruido_entre_realizacoes -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_o_ruido_entre_realizacoes() {
+    eprintln!("\n  desvio do berço | balanço pior (°/tique) | giro líquido pior (°)");
+    eprintln!("  ----------------|------------------------|----------------------");
+    let (mut bs, mut gs) = (Vec::new(), Vec::new());
+    for k in 0..7 {
+        #[expect(clippy::cast_precision_loss, reason = "um indice pequeno")]
+        let eps = (k as f32 - 3.0) * 1e-3;
+        let (b, g) = realizacao(eps);
+        eprintln!("  {eps:>15.4} | {b:>22.4} | {g:>21.2}");
+        bs.push(b);
+        gs.push(g);
+    }
+    let faixa = |v: &[f32]| {
+        let (lo, hi) = (
+            v.iter().copied().fold(f32::MAX, f32::min),
+            v.iter().copied().fold(0.0_f32, f32::max),
+        );
+        (lo, hi, mediana(v))
+    };
+    let (bl, bh, bm) = faixa(&bs);
+    let (gl, gh, gm) = faixa(&gs);
+    eprintln!(
+        "\n  balanço pior : {bl:.3} .. {bh:.3} (p50 {bm:.3}) — amplitude {:.1}×",
+        bh / bl.max(1e-6)
+    );
+    eprintln!(
+        "  giro líquido : {gl:.2} .. {gh:.2} (p50 {gm:.2}) — amplitude {:.1}×",
+        gh / gl.max(1e-6)
+    );
+    eprintln!(
+        "\n  ⚠️ toda varredura de constante tem de bater ESTA amplitude para dizer alguma coisa."
+    );
+}
+
+/// Uma realização do monte com o berço deslocado `eps`: `(balanço pior, giro líquido pior)`.
+fn realizacao(eps: f32) -> (f32, f32) {
+    let mut state = MotionState::new();
+    let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
+    // A grelha de CIMA da metade da direita — a que larga as peças.
+    let altos: Vec<NodeId> = state
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .filter(|n| n.type_name == "motion.transform")
+        .map(|n| n.id)
+        .collect();
+    if let Some(alto) = altos.last() {
+        let x = state
+            .doc
+            .graph
+            .node_param_overrides(*alto)
+            .and_then(|o| o.get("offset_x").copied())
+            .unwrap_or(0.0);
+        state.doc.graph.set_param(*alto, "offset_x", x + eps);
+    }
+    crate::motion_shape_gen::publish(&mut state, 0.0);
+    let sink = sinks[1];
+    let (mut passos, mut anterior) = (Vec::<Vec<f32>>::new(), Vec::<f32>::new());
+    let (mut liquido, mut n) = (Vec::<f32>::new(), 0_usize);
+    for k in 0..=174_u64 {
+        #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
+        let t = k as f64 / 60.0;
+        let s = state
+            .pump
+            .cook
+            .cook(&state.doc.graph, &state.registry, sink, t)
+            .expect("cozinha")[0]
+            .as_stream()
+            .clone();
+        if let Some(Column::Scalar(r)) = s.get("rot") {
+            if liquido.len() != r.len() {
+                liquido = vec![0.0; r.len()];
+                n = r.len();
+            }
+            if t >= 2.0 && anterior.len() == r.len() {
+                passos.push(
+                    r.iter()
+                        .zip(&anterior)
+                        .map(|(a, b)| (a - b).abs())
+                        .collect(),
+                );
+                for i in 0..r.len() {
+                    liquido[i] += r[i] - anterior[i];
+                }
+            }
+            anterior = r.clone();
+        }
+        state
+            .pump
+            .cook
+            .advance_tick(&state.doc.graph, &state.registry, t)
+            .expect("avanca");
+    }
+    let balanco = (0..n)
+        .map(|i| mediana(&passos.iter().map(|l| l[i]).collect::<Vec<_>>()))
+        .fold(0.0_f32, f32::max);
+    (balanco, liquido.iter().fold(0.0_f32, |a, v| a.max(v.abs())))
+}

@@ -10,11 +10,9 @@
 
 use super::paint_sections::{BodyCtx, label_col_w};
 use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
-use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, Checkbox, CheckboxValue, ColorSwatch, NumberInput, SwatchSize,
-    paint_button, paint_checkbox, paint_color_swatch, paint_number_input_with_buffer,
-    paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, Checkbox, CheckboxValue, ColorSwatch, SwatchSize, paint_button,
+    paint_checkbox, paint_color_swatch, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
@@ -249,9 +247,31 @@ impl BodyCtx<'_> {
         idb: ph2d_a11y::NodeId,
         y: f32,
     ) -> f32 {
+        // ⭐⭐⭐ **A fileira de DUAS células PARTE quando o nome deixa de caber** — spec §6-quater,
+        // report do dono de 2026-09-15 sobre a fileira gémea do Painter: *«os nomes somem ao
+        // estreitar o painel. Melhor seria quebrar a linha»*. ⛔ A pergunta vai à PORTA.
         let cw = self.half_cell_w();
-        self.number_cell(la, ida, self.inner_x, cw, y);
-        self.number_cell(lb, idb, self.inner_x + cw + Spacing::Sm.px(), cw, y);
+        if self.par_cabe(la, lb, cw) {
+            self.number_cell(la, ida, self.inner_x, cw, y);
+            self.number_cell(lb, idb, self.inner_x + cw + Spacing::Sm.px(), cw, y);
+            return y + self.row_h + self.row_gap;
+        }
+        let y = self.lone_number_row_full(la, ida, y);
+        self.lone_number_row_full(lb, idb, y)
+    }
+
+    /// **Os dois nomes cabem, cada um na sua metade?** — ver a spec §6-quater.
+    fn par_cabe(&mut self, la: &str, lb: &str, cw: f32) -> bool {
+        let font = TypeToken::Sm.px();
+        let wa = self.text_system.prefix_width(la, font);
+        let wb = self.text_system.prefix_width(lb, font);
+        ph2d_editor_core::property_row::property_row_fits(cw, wa)
+            && ph2d_editor_core::property_row::property_row_fits(cw, wb)
+    }
+
+    /// Um campo numérico sozinho, na LINHA INTEIRA — o degrau a que a fileira de duas cai.
+    fn lone_number_row_full(&mut self, label: &str, id: ph2d_a11y::NodeId, y: f32) -> f32 {
+        self.number_cell(label, id, self.inner_x, self.inner_w, y);
         y + self.row_h + self.row_gap
     }
 
@@ -269,26 +289,33 @@ impl BodyCtx<'_> {
     /// da largura do painel lê como o controlo mais importante da seção, quando é o menor. A
     /// grade já existe (X | Y, W | H); um campo solto senta numa célula dela.
     pub(crate) fn lone_number_row(&mut self, label: &str, id: ph2d_a11y::NodeId, y: f32) -> f32 {
+        // ⚠️ **E ele também cai para a linha inteira quando a metade não chega** — a decisão de
+        // 2026-08-02 era sobre a caixa ser GRANDE demais, e uma metade onde o nome não cabe já não
+        // é um campo pequeno: é um campo sem nome.
         let cw = self.half_cell_w();
-        self.number_cell(label, id, self.inner_x, cw, y);
-        y + self.row_h + self.row_gap
+        let font = TypeToken::Sm.px();
+        let quer = self.text_system.prefix_width(label, font);
+        if ph2d_editor_core::property_row::property_row_fits(cw, quer) {
+            self.number_cell(label, id, self.inner_x, cw, y);
+            return y + self.row_h + self.row_gap;
+        }
+        self.lone_number_row_full(label, id, y)
     }
 
-    /// Um campo numérico rotulado (`<rótulo> [ valor ]`) numa célula; regista o hit.
+    /// Um campo numérico rotulado numa célula — **pela PORTA do app**; devolve o rect do campo.
     ///
-    /// ⚠️ **A calha do rótulo é MEDIDA, com `Spacing::Md` de PISO.** Ela era o piso e mais nada
-    /// — oito pixels, o tamanho de um caractere —, e isso bastou enquanto todo rótulo desta
-    /// função era `X`/`Y`/`W`/`H`. O AUTO LAYOUT trouxe `Gap`, `All`, `Grow` e `Shrink`, e o
-    /// resultado foi o report do Enio: *"label sobreposta"* — o texto recortado em `G` e o
-    /// campo desenhado por cima do resto (`paint_text` recebe a calha como largura máxima).
+    /// ⛔⛔ **A calha do rótulo era MEDIDA POR LINHA, e isso é a coluna ESFARRAPADA que o manual
+    /// proíbe** (spec §6: *«uma coluna por linha põe cada controlo num `x` diferente»*). Ela nasceu
+    /// assim para o `X`/`Y`/`W`/`H` — um caractere — e o AUTO LAYOUT trouxe `Gap`, `All`, `Grow`,
+    /// `Shrink`, cada um a empurrar o campo dele para outro sítio.
     ///
-    /// Medir em vez de escolher uma constante maior é o que mantém `X`/`Y` **onde sempre
-    /// estiveram**: um caractere mede menos que o piso, então a seção Transform não se move.
+    /// ⇒ hoje a coluna é a do app (`property_row`), e com ela vêm as três leis que o dono pediu em
+    /// 14 e 15 de Setembro: o nome **à direita**, a coluna que **cede** ao controlo antes de a linha
+    /// quebrar, e o ponto da coluna de animação.
     ///
     /// ⚠️ **Devolve o retângulo do CAMPO** (W4c.4): quem precisa desenhar por cima dele — a
-    /// rachura de *"um token cobre este número"* — tem de receber a caixa que o painter usou. Uma
-    /// segunda conta da mesma posição divergiria assim que a calha do rótulo, que é MEDIDA,
-    /// mudasse com o texto.
+    /// rachura de *«um token cobre este número»* — tem de receber a caixa que o pintor usou, e ela
+    /// vem da MESMA chamada que a desenhou.
     pub(crate) fn number_cell(
         &mut self,
         label: &str,
@@ -297,39 +324,22 @@ impl BodyCtx<'_> {
         cw: f32,
         y: f32,
     ) -> Rect {
-        let lab_w = self
-            .text_system
-            .prefix_width(label, TypeToken::Sm.px())
-            .max(Spacing::Md.px());
-        paint_text(
-            self.text_system,
-            self.scene,
-            label,
-            cx,
-            y + (self.row_h - TypeToken::Sm.px()) * 0.5,
-            TypeToken::Sm.px(),
-            lab_w,
-            resolve(ColorToken::Text2, self.theme),
-        );
-        let field_x = cx + lab_w + Spacing::Xs.px();
-        let field_w = (cw - lab_w - Spacing::Xs.px()).max(1.0);
-        let rect = Rect::new(field_x, y, field_w, self.row_h);
-        self.hit_index.register(id, rect);
-        let (state, value, buffer, caret, anchor) = read_number_input(self.store, id);
-        let input = NumberInput::new(id, "", value)
-            .step(1.0)
-            .visual((state, self.store.hover_live(id)));
-        paint_number_input_with_buffer(
-            &input,
-            Some(buffer),
-            caret,
-            anchor,
-            rect,
+        ph2d_editor_core::property_row::paint_field_row(
             self.scene,
             self.text_system,
             self.theme,
-        );
-        rect
+            self.hit_index,
+            self.store,
+            cx,
+            cw,
+            y,
+            label,
+            id,
+            1.0, // LITERAL-PX-OK: passo de scrub de um campo do vector
+            None,
+            1,
+        )
+        .1
     }
 
     /// A 2-column row of two half-width action buttons; returns the advanced `y`.

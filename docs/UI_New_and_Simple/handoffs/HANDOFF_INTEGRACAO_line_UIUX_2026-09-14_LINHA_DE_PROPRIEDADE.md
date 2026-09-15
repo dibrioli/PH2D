@@ -1773,3 +1773,59 @@ mensagem do gate é literalmente a foto do dono.
 ⭐ E o segundo teste é o **controlo pelos dois lados**: o predicado diz **sim** a `480` e **não** a
 `240`. Sem ele, um `false` constante deixava a metade de cima verde sobre um painel que nunca
 emparelha.
+
+---
+
+## 27 — ⭐⭐ O PAINEL DO VECTOR — a coluna era MEDIDA POR LINHA, que é a coluna esfarrapada
+
+**Ordem permanente do dono.** Medido: dos seis painéis que faltavam, o do **Vector** é o maior — **95**
+chamadas de linha, contra `0`–`2` dos outros.
+
+### 27.1 — O que ele tinha, e o que já estava certo
+
+| família | chamadas | estado |
+|---|---|---|
+| `slider_row` | **53** | ✅ **já pela porta** — ele usa `panel::label_col_w`, que é a `widget::property_label_col_w`. É a caixa única (spec §2), outra lei |
+| `number_row` · `lone_number_row` · `number_cell` | **20** | ⛔ coluna **medida por linha** |
+| `checkbox_row` · `colour_swatch_row` · `row2` | 22 | outras famílias de controlo |
+
+⇒ a wave é exactamente as **20 linhas numéricas**.
+
+### 27.2 — ⛔⛔ A coluna era MEDIDA POR LINHA
+
+O `number_cell` fazia `prefix_width(label).max(Spacing::Md)` — **uma coluna por linha**, que é
+precisamente o que a spec §6 proíbe (*«uma coluna por linha põe cada controlo num `x` diferente e a
+coluna sai esfarrapada»*).
+
+⚠️ **E o doc dela contava porque:** nasceu para `X`/`Y`/`W`/`H` — um caractere — e o **AUTO LAYOUT**
+trouxe `Gap`, `All`, `Grow`, `Shrink`. O report do dono da altura (*«label sobreposta»*) foi curado
+**medindo por linha**, que resolveu a sobreposição e criou a coluna irregular. *A cura de um defeito
+de largura com uma medição POR LINHA é a coluna esfarrapada, com outro nome.*
+
+### 27.3 — ⭐⭐ A porta ganhou uma entrada que devolve o RECT, com o mesmo corpo
+
+O painel do Vector **desenha por cima do campo**: ele risca a caixa quando o valor está preso a um
+token (*«um token cobre este número»*). ⇒ `property_row::paint_field_row` devolve `(y, Rect)`.
+
+⚠️⚠️ **É a MESMA implementação, não uma segunda conta** — as duas entradas chamam o
+`paint_fields_row_inner`. *Uma segunda derivação de «onde é que o campo ficou» divergiria no dia em
+que a coluna do nome mudasse de lei, e a risca apareceria ao lado do número em vez de sobre ele* —
+o defeito que a `widget::surface_rect` existe para impedir, um nível abaixo.
+
+⛔ E ela **não aloca**: devolve o rect do PRIMEIRO campo por valor (`Option<Rect>`, `Copy`), nunca
+uma lista — há gates de alocação por quadro neste repo.
+
+### 27.4 — E as duas fileiras do Vector partem, como as do Painter
+
+`number_row` (duas células) e `lone_number_row` (uma célula em meia largura, decisão do dono de
+2026-08-02: *«caixas de input numérico grande»*) passam a perguntar `property_row_fits` **antes**.
+Quando não cabe, caem para a **linha inteira**.
+
+⚠️ **A decisão de 2026-08-02 fica intacta onde ela se aplica:** ela era sobre a caixa ser GRANDE
+demais, e *uma metade onde o nome não cabe já não é um campo pequeno — é um campo sem nome.*
+
+### 27.5 — ⏳ ABERTO
+
+- `checkbox_row` · `colour_swatch_row` · `row2` do Vector — outras famílias de controlo.
+- Cinco painéis: **Flip** · **Grelha** · **Motion graph** · **Motion params** · **Timeline**.
+- As cinco colunas de *slider* do `painter-layers` (spec §2: o nome vive DENTRO da barra).

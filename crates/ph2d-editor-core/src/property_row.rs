@@ -78,7 +78,7 @@ pub fn paint_label_row(
 /// quebrar**, e ⛔ não o máximo mecânico: uma secção com uma row de 4 campos que só cabe num painel
 /// de `~700` declara `2`, senão ela deixa de ceder e o par `X`/`Y` volta a quebrar.
 #[allow(clippy::too_many_arguments)]
-pub fn paint_fields_row(
+fn paint_fields_row_inner(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -92,7 +92,7 @@ pub fn paint_fields_row(
     step: f64,
     unit: Option<Unit>,
     campos_da_seccao: usize,
-) -> f32 {
+) -> (f32, Option<Rect>) {
     let label_font = TypeToken::Sm.px();
     let gap = ph2d_tokens::control_gap_px();
     // ⭐⭐ **O que o rótulo PRECISA — medido, no peso em que pinta.** É ele o piso da cedência: a
@@ -116,6 +116,7 @@ pub fn paint_fields_row(
     let (por_linha, linhas, cw) =
         crate::widget::property_fields_layout(row.control.w, field_ids.len(), gap, 0.0);
     let passo = ph2d_tokens::row_pitch_px();
+    let mut primeiro = None;
     for (i, &id) in field_ids.iter().enumerate() {
         let rect = Rect::new(
             row.control.x + (cw + gap) * (i % por_linha) as f32,
@@ -124,6 +125,9 @@ pub fn paint_fields_row(
             ROW_H_PX,
         );
         hit_index.register(id, rect);
+        if i == 0 {
+            primeiro = Some(rect);
+        }
         let (state, value, buffer, caret, anchor) = read_number_input(store, id);
         let input = NumberInput::new(id, "", value)
             .step(step)
@@ -141,7 +145,90 @@ pub fn paint_fields_row(
         );
     }
     crate::widget::paint_decorator_dot(scene, theme, row.dot);
-    y + passo * linhas as f32
+    (y + passo * linhas as f32, primeiro)
+}
+
+/// ⭐⭐⭐ **A LINHA DE VÁRIAS COMPONENTES** — ver [`paint_fields_row_inner`]. Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_fields_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: &str,
+    field_ids: &[NodeId],
+    step: f64,
+    unit: Option<Unit>,
+    campos_da_seccao: usize,
+) -> f32 {
+    paint_fields_row_inner(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        label,
+        field_ids,
+        step,
+        unit,
+        campos_da_seccao,
+    )
+    .0
+}
+
+/// ⭐⭐ **A mesma linha, com UM campo — e devolve ONDE ele ficou.**
+///
+/// ⛔⛔ **Ela existe porque há quem desenhe POR CIMA do campo:** o painel do vector risca a caixa
+/// quando o valor está preso a um token (*«um token cobre este número»*), e para isso precisa do
+/// rectângulo que o pintor de facto usou.
+///
+/// ⚠️⚠️ **É a MESMA implementação, não uma segunda conta** — as duas entradas chamam o
+/// [`paint_fields_row_inner`]. *Uma segunda derivação de «onde é que o campo ficou» divergiria no
+/// dia em que a coluna do nome mudasse de lei, e a risca apareceria ao lado do número em vez de
+/// sobre ele* — que é literalmente o defeito que a `widget::surface_rect` existe para impedir, um
+/// nível abaixo.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_field_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: &str,
+    id: NodeId,
+    step: f64,
+    unit: Option<Unit>,
+    campos_da_seccao: usize,
+) -> (f32, Rect) {
+    let (next_y, rect) = paint_fields_row_inner(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        label,
+        &[id],
+        step,
+        unit,
+        campos_da_seccao,
+    );
+    (
+        next_y,
+        rect.expect("uma linha de UM campo pinta sempre esse campo"),
+    )
 }
 
 /// ⭐⭐⭐ **CABE uma linha de propriedade com este nome dentro de `w`?**

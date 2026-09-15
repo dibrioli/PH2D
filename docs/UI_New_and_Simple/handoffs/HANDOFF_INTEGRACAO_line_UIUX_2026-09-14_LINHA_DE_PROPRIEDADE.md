@@ -711,3 +711,95 @@ linha de slider do app. ⛔ Decisão dele.
 
 **Portão:** `nextest-impacted` (BASE `1d43da737`) **14 278/14 278**, exit 0 · `clippy --workspace
 --all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · binário de smoke reconstruído.
+
+---
+
+## 15 — ⛔⛔⛔ O gate media uma largura que o dono NÃO USA
+
+Commit `7f39c34ba` · 8 ficheiros · +258/−10.
+
+### 15.1 — O achado
+
+Report: *«3 pontos (…) sendo usados antes de ficar estreito»* — **com o
+`every_label_this_panel_paints_fits_its_column` verde**. Fui ao ficheiro de arrumação dele:
+
+```
+~/.ph2d/layout.txt → [drawing_2d] dock_w_right = 220.9
+```
+
+…contra os `304` do token `inspector-w` que o meu gate media.
+
+| painel | coluna do rótulo | rótulos elididos (de 52) |
+|---|---|---|
+| `304` (omissão — **o que o gate media**) | `120,0` | **0** |
+| `220,9` (**o que ele tem**) | `78,4` | **16** |
+
+⇒ ***um gate calibrado na largura de OMISSÃO é cego à largura que o artista de facto tem.*** E a
+cura não é medir melhor um ponto: é medir a **ESCADA** (`ELIDEM_POR_LARGURA`, quatro larguras que
+cercam a dele, com o número medido em cada e a metade de obsolescência ao lado).
+
+⚠️ **A largura `220,9` não é inventada** — é lida do ficheiro do dono, e está escrita no gate com
+essa proveniência. *Um número de fixtura sem proveniência é um palpite com cara de medição.*
+
+### 15.2 — O rótulo pede emprestado ao campo
+
+Na foto dele os campos mostravam `2`, `65`, `0.100 s` com espaço de sobra enquanto o nome ao lado
+truncava. ⇒ [`property_label_col_w_for`](../../../crates/ph2d-editor-core/src/widget/property_box/row.rs):
+a coluna é `clamp(desired, metade, o que o controlo pode ceder)`.
+
+- **piso = a METADE** — a ordem dele sobre o alinhamento continua a valer, e a `304` nada muda;
+- **tecto = o CONTROLO**, que nunca desce do piso nomeado (o *stepper* mais um dígito);
+- `None` = a metade, para quem não sabe o que vai pintar.
+
+⚠️ **O `desired` é da SECÇÃO, não da linha** — uma coluna por linha seria uma coluna diferente por
+linha, e ele pediu *«as labels alinhadas todas à direita»*. A §14 mede o rótulo mais largo dos doze
+cards, uma vez por quadro.
+
+| painel | antes | depois |
+|---|---|---|
+| `200` | 32 | **13** |
+| `220,9` | 16 | **3** |
+| `245` | 7 | **0** |
+| `304` | 0 | 0 (coluna `120` = a metade) |
+
+### 15.3 — As reticências não ficam penduradas num espaço
+
+*«quando fica estreito as palavras com 3 pontos não se alinham perfeitamente à direita»*. Medido:
+*«Air Jump Height»* a `62 px` saía **`"Air Jump …"`** — o corte caiu logo a seguir a um espaço e o
+espaço ficou. Com o rótulo à direita, isso abre um **buraco entre o texto e os pontos** que as
+vizinhas não têm.
+
+⚠️ **É o mesmo defeito de sempre — o AVANÇO e a TINTA não são a mesma grandeza** —, só que aqui a
+diferença é um caractere inteiro em vez de um *side bearing*.
+
+⛔ **O que eu achei primeiro e a medição REFUTOU:** supus uma **dupla elisão** (o pintor a cortar
+outra vez o texto já cortado, por comparação de floats na fronteira). Medido em 16 células: o
+re-corte **nunca** muda a string, e o fim do avanço cai **exactamente** no bordo da coluna nas três
+larguras. *A hipótese era plausível, tinha mecanismo, e estava errada.*
+
+### 15.4 — ⛔ E um gate MEU sobreviveu a uma mutação, outra vez
+
+A 1.ª redacção da escada **calculava a coluna ela própria** (chamando a porta com o rótulo mais
+largo). Apagar o pedido no PINTOR deixava-a **verde**: ela provava a porta, não a fiação.
+***Um gate que refaz a conta do produto mede a conta, não o produto.***
+
+⇒ `the_painter_borrows_the_slack_the_control_does_not_need` lê o **rect que o painel REGISTOU** para
+o campo *Float Height*, pintado com um `HeroLayout` na largura do dono e outro na de omissão.
+
+| gate | mutação | veredito |
+|---|---|---|
+| `the_elision_ladder_only_shrinks` | a coluna volta à metade seca | ✗ |
+| `the_ellipsis_never_hangs_off_a_space` | o espaço volta | ✗ |
+| `the_painter_borrows_the_slack_the_control_does_not_need` | a secção deixa de medir o rótulo mais largo | ✗ |
+
+### 15.5 — ⏳ NOMEADO e não curado
+
+- Os **3** que sobram a `220,9` (`Corner Look-ahead` `109,8` · `Weight on Ground` `105,2` ·
+  `Swim Line (weights)` `113,9`) são maiores do que a linha aguenta com um campo utilizável. ⛔ Ali
+  só encurtar o nome resolve — decisão do dono.
+- A **tinta** de um `…` acaba um *side bearing* antes da de uma letra: as reticências alinham no
+  **avanço** (medido: exacto ao centésimo), e a olho ficam ~2 px recuadas face a um rótulo que não
+  corta. Medi-lo pede métricas de glifo (skrifa), que esta wave não abriu.
+
+**Portão:** `nextest-impacted` (BASE `1d43da737`) **14 281/14 281**, exit 0 · `clippy --workspace
+--all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · binário de smoke reconstruído.

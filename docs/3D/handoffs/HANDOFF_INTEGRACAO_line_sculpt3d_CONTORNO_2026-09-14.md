@@ -2828,3 +2828,86 @@ carimbo e apaga quatro verbos).
 | 2 | o `Density` no censo | ⛔ por **LEI**; a saída é uma régua de **contagem**, não de posição |
 | 3 | a **recusa em voz alta** do contorno numa peça fechada | ⏳ **nomeada na porta nova**, com o `Density` como precedente |
 | 4 | o auto-smooth do `Cloth` e do `Boundary` | ⛔ **divergência declarada**, com as duas saídas escritas |
+
+---
+
+## §33 — ⭐⭐⭐ **O gesto DIZ porque não vai fazer nada** — a porta única das recusas do pen-down
+
+> `8734e57a2`
+
+### §33.1 — A família que os reports do dono desenham
+
+Três dos últimos cinco reports dele são a mesma coisa: *«não vejo efeito com
+density»* · *«os outros 2 botões ainda não funcionam»* · *«resultado bem
+bizarro»*. **Em dois deles o pincel estava CERTO**, e o que faltava era o app
+**dizer porquê**.
+
+⚠️⚠️ *Um pincel que não faz nada e não diz porquê é indistinguível de um pincel
+partido.* O artista tira a conclusão cara: ele conclui que **a ferramenta não
+funciona**, e não que falta a **ENTRADA** dela.
+
+### §33.2 — O censo: duas tinham voz, duas não
+
+| entrada que pode faltar | porta | tinha voz? |
+|---|---|---|
+| a pilha de multiresolução | `precisa_de_referencia` | ✅ (em `history_referencia`) |
+| o passe de topologia não mudou nada | `sem_lei_por_vertice` | ✅ (`dyntopo::queixa_do_passe`) |
+| **um bordo aberto** | `precisa_de_bordo_aberto` | ⛔ **não** |
+| **outra peça na cena** | `precisa_das_pecas_da_cena` | ⛔ **não** |
+
+Nos dois casos mudos o gesto **não move um único vértice** e o app cala-se.
+
+### §33.3 — ⇒ Uma porta, três razões, e a ORDEM importa
+
+`recusa::Entradas::recusa` devolve a razão do pen-down, **da mais ESPECÍFICA para
+a mais geral**: um gesto pode falhar por mais de uma razão e o artista só lê a
+primeira — *dizer «falta uma pilha» a quem também não tem bordo é mandá-lo
+resolver a metade errada*.
+
+⚠️ E a recusa da multiresolução **mudou-se** para cá: enquanto vivia ao lado do
+sítio que a descobre, ela era a resposta de **um** predicado e as dos irmãos não
+existiam. *Uma razão escrita ao lado do sítio que a descobre não é uma família, é
+um caso.*
+
+⛔ **A do passe de topologia FICA onde está, e não é inconsistência:** ela não é
+um facto do **pen-down** — o passe só sabe que não mudou nada **depois** de
+correr. *Uma recusa que se pode prever antes do gesto e uma que só se descobre
+depois dele são duas perguntas.*
+
+### §33.4 — ⭐⭐⭐ O censo DERIVADO é o que faz a próxima existir
+
+A família é a dos predicados `precisa_d*` do motor, extraída **do ficheiro que os
+DECLARA** — um predicado novo daquela família **reprova** o gate até alguém lhe
+dar voz. *É a diferença entre uma lista que alguém tem de se lembrar de estender
+e uma que não fica verde sem a extensão.*
+
+Com piso de população (`≥ 3`), prosa peneirada, e `include_str!` — se um dos
+ficheiros mudar de sítio isto **deixa de compilar**.
+
+### §33.5 — ⚠️ A lei é PURA, e a razão é um gate
+
+A 1.ª redacção pôs a lei num método da cena, e **a cena pede um `wgpu::Device`**
+⇒ o gate dela nasceria `#[ignore]` e **o CI nunca o correria**. *Quando um gate
+precisa de um device para medir uma decisão que não tem pixel nenhum, a lei está
+no sítio errado.* Hoje a lei recebe os **factos** (`Entradas`) e a cena é um
+invólucro de quatro linhas.
+
+⚠️ **E ela devolve o texto em vez de o imprimir:** um `eprintln!` no meio da
+cadeia só se mede por captura de saída, e a metade que interessa — *a razão certa
+para o facto certo* — ficaria fora de qualquer teste.
+
+### §33.6 — As metades NEGATIVAS são metade do valor
+
+Numa tigela o contorno **cala-se**; com duas peças o projectar **cala-se**; com
+pilha os dois de deslocamento **calam-se**; e quatro verbos comuns **nunca** são
+recusados. *Um pincel que se queixa sempre é ruído que o artista aprende a
+ignorar — exactamente quando a queixa passar a ser verdade.*
+
+E o gate do **FIO**, por `include_str!` sobre o `input_down.rs`: *uma porta com a
+lei certa e zero chamadores produz o MESMO app que uma lei ausente.*
+
+### §33.7 — O portão
+
+**`15 225` testes, `15 225` verdes** (`load 29,38`), clippy limpo, tectos de LOC
+verdes. **Mutação 3 de 3**, e a primeira sangra **pelos dois lados** — o censo
+derivado acusa a porta muda *e* o gate da razão acusa o silêncio.

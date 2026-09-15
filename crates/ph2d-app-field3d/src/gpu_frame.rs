@@ -87,7 +87,17 @@ pub fn march(
     antialias: bool,
 ) -> Option<(ph2d_field_render::Gbuffer, ph2d_field_render::Shadows)> {
     let cabem = lamps_that_fit(tracer, w, h);
-    let (campo, fita, setup) = pedido(doc, reg, cam, lamps, cabem, true, w, h, antialias)?;
+    let (campo, fita, setup) = pedido(
+        doc,
+        reg,
+        cam,
+        lamps,
+        cabem,
+        Sonda::default(),
+        w,
+        h,
+        antialias,
+    )?;
     let screen = ph2d_field_render::Screen::new(w, h, cam.half_extent);
     let dev = tracer
         .lock()
@@ -118,20 +128,48 @@ pub fn paint(
     h: u32,
     antialias: bool,
 ) -> Option<ph2d_field_gpu::trace::Pintado> {
-    paint_com_tecto(
-        tracer, doc, reg, cam, points, surfaces, look, background, w, h, antialias, true,
+    paint_com(
+        tracer,
+        doc,
+        reg,
+        cam,
+        points,
+        surfaces,
+        look,
+        background,
+        w,
+        h,
+        antialias,
+        Sonda::default(),
     )
 }
 
-/// ⭐ **O mesmo, com o tecto da ocupação por ARGUMENTO** — a porta que a sonda de calibração usa.
+/// ⭐⭐ **O que a SONDA de calibração pode desligar — e nada disto é um caminho de produto.**
 ///
-/// ⚠️⚠️ **`tecto = false` NÃO é um caminho de produto.** Ele existe para a medição de que o
-/// [`ph2d_field_gpu::MAX_VIVOS`] sai poder **atravessar o degrau** que ela mede — uma cerca que
-/// barrasse a própria sonda tornaria o tecto impossível de re-derivar, e *um número que ninguém
-/// consegue voltar a medir é um palpite com data*.
+/// ⚠️ *Um número que ninguém consegue voltar a medir é um palpite com data* — esta porta existe para
+/// que a comparação entre as duas ordens da fita se possa refazer noutra máquina, na mesma corrida.
+///
+/// ⛔⛔ **Ela tinha um segundo campo, `tecto`, e ele MORREU com o tecto** (2026-09-15): a cerca que
+/// mandava uma fita larga para a CPU saiu quando a medição que a sustentava foi corrigida — ver a
+/// nota no lugar do `MAX_GUARDADOS` na [`ph2d_field_gpu`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Sonda {
+    /// `false` = a fita sai na ordem **CRUA** da travessia — ver
+    /// [`ph2d_field_eval::tape_schedule`].
+    pub escalonar: bool,
+}
+
+impl Default for Sonda {
+    /// O caminho do produto: escalonada.
+    fn default() -> Self {
+        Self { escalonar: true }
+    }
+}
+
+/// ⭐ **O mesmo, com o que a [`Sonda`] desliga por ARGUMENTO** — a porta da calibração.
 #[must_use]
 #[allow(clippy::too_many_arguments)]
-pub fn paint_com_tecto(
+pub fn paint_com(
     tracer: &SharedTracer,
     doc: &ph2d_field::FieldDoc,
     reg: &ph2d_field_eval::hybrid::Registry,
@@ -143,7 +181,7 @@ pub fn paint_com_tecto(
     w: u32,
     h: u32,
     antialias: bool,
-    tecto: bool,
+    sonda: Sonda,
 ) -> Option<ph2d_field_gpu::trace::Pintado> {
     let mundos: Vec<[f32; 3]> = points.iter().map(|l| l.world).collect();
     // ⛔ **A placa tem de ter armazéns para o passe que pinta** — ver
@@ -156,7 +194,7 @@ pub fn paint_com_tecto(
         return None;
     }
     let cabem = lamps_that_fit(tracer, w, h);
-    let (campo, fita, setup) = pedido(doc, reg, cam, &mundos, cabem, tecto, w, h, antialias)?;
+    let (campo, fita, setup) = pedido(doc, reg, cam, &mundos, cabem, sonda, w, h, antialias)?;
     // ⚠️ **As duas listas nascem do MESMO `points`**, e é por isso que a ordem não pode divergir:
     // a posição da lâmpada `l` viaja no `MarchSetup` e a radiância dela aqui.
     let mut lamp_radiance = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
@@ -258,7 +296,7 @@ fn pedido(
     cam: &ph2d_field_render::Orbit,
     mundos: &[[f32; 3]],
     cabem: usize,
-    tecto: bool,
+    sonda: Sonda,
     w: u32,
     h: u32,
     antialias: bool,
@@ -282,20 +320,14 @@ fn pedido(
     }
     // ⭐⭐⭐ **A PEÇA COM A ESCULTURA DENTRO** — ver [`ph2d_field_eval::device`]. `None` quando
     // alguma escultura não souber entregar a grade, e aí o chamador fica na CPU.
-    let campo = ph2d_field_eval::device::DeviceField::new(doc, reg)?;
-    // ⛔⛔ **UMA FITA LARGA DEMAIS FICA NA CPU** — ver [`ph2d_field_gpu::MAX_VIVOS`]. Acima do
-    // degrau da ocupação o dispositivo é **mais lento** que o caminho que ele substituiu, e
-    // desenhar lá seria esta linha a piorar a peça desenhada do artista.
-    //
-    // ⚠️ **O `tecto` é um parâmetro porque a SONDA que o calibra tem de o poder ultrapassar** — ver
-    // [`paint_com_tecto`].
-    if tecto
-        && campo
-            .tape_shape()
-            .is_some_and(|s| s.vivos > ph2d_field_gpu::MAX_VIVOS)
-    {
-        return None;
-    }
+    let campo = ph2d_field_eval::device::DeviceField::new_com(doc, reg, sonda.escalonar)?;
+    // ⛔⛔⛔ **AQUI VIVIA A CERCA DA LARGURA DA FITA, e ela saiu em 2026-09-15.** Ela mandava para a
+    // CPU toda peça acima de um tecto, e os três números que o tecto teve saíram de uma sonda que
+    // pedia aos dois motores trabalhos DIFERENTES. Medida de novo, a placa ganha em toda a faixa
+    // (`1,3×`–`7,8×`, com um empate no penhasco de `192` arestas) e nas 17 cenas do produto
+    // (`2,6×`–`98×`). ⇒ *uma cerca que nunca pode disparar não é uma cerca.* A nota com as tabelas
+    // está no lugar do `MAX_GUARDADOS`, na [`ph2d_field_gpu`], e o que protege a propriedade agora é
+    // o gate `a_placa_ganha_em_toda_a_faixa_medivel`.
     let fita = campo.tape_wgsl()?;
     let bola = ph2d_field_eval::bounds::bounding_ball(doc, reg)?;
     let (right, up, fwd) = cam.basis();

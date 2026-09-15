@@ -49,19 +49,23 @@
 //!
 //! O `vivos` é a pressão de registos **da fita**, e quem aloca registos de verdade é o compilador da
 //! placa: este módulo baixa a grandeza que se **conta**, e que ela mova o **relógio** era uma
-//! afirmação sobre o `naga` e o driver. ⭐ Medida A/B na mesma corrida (`1920×1080`, CPU a `91 %`
+//! afirmação sobre o `naga` e o driver. ⭐ Medida A/B na mesma corrida (`1920×1080`, CPU a `99 %`
 //! ociosa), ela confirma-se:
 //!
 //! | arestas | quadro na ordem CRUA | escalonada | ganho |
 //! |---:|---:|---:|---:|
-//! | `32` | `27,7 ms` | `20,7 ms` | `1,3×` |
-//! | `64` | `132,0` | `38,9` | `3,4×` |
-//! | `128` | `233,6` | `140,0` | `1,7×` |
-//! | `256` | `2 816,8` | `302,5` | **`9,3×`** |
+//! | `32` | `28,9 ms` | `23,7 ms` | `1,2×` |
+//! | `64` | `189,8` | `49,1` | `3,9×` |
+//! | `96` | `520,2` | `87,1` | `6,0×` |
+//! | `128` | `379,1` | `181,0` | `2,1×` |
+//! | `256` | `4 145,0` | `631,0` | **`6,6×`** |
+//! | `384` | `5 851,4` | `1 306,4` | `4,5×` |
 //!
-//! ⚠️ **A travessia com a CPU passou de `72`–`80` arestas para `128`** — e o tecto que a guarda
-//! mudou de eixo (`ph2d_field_gpu::MAX_GUARDADOS`), porque o `vivos` deixou de discriminar: ele lê
-//! `33` e `35` nos dois lados dela. Tabelas: `docs/Render3d/05` §43.
+//! ⭐⭐⭐ **E é ele que APAGA a cerca:** contra o quadro INTEIRO da CPU (traçar + sombra + pintar,
+//! com o traçador optimizado), a fita **crua** atravessa a `96` arestas e cai a `0,29×` a `384` —
+//! a regressão que o `docs/Render3d/05` §42 nomeou. A fita **escalonada** ganha em toda a faixa
+//! (`1,3×`–`7,8×`), logo o tecto que mandava a peça larga para a CPU ficou **sem sujeito** e saiu.
+//! Tabelas e as duas metades da régua que estava partida: `docs/Render3d/05` §43.
 
 use crate::point_tape::Instr;
 
@@ -175,11 +179,8 @@ pub(crate) fn schedule(code: &[Instr], root: u32) -> (Vec<Instr>, u32) {
     let mut novo: Vec<Instr> = Vec::with_capacity(n);
     let mut destino = vec![u32::MAX; n];
 
-    loop {
-        // Tira o melhor: o balde mais barato, e dentro dele o caminho crítico mais longo.
-        let Some((b, (_, cand))) = (0..BALDES).find_map(|b| fila[b].pop().map(|e| (b, e))) else {
-            break;
-        };
+    // Tira o melhor: o balde mais barato, e dentro dele o caminho crítico mais longo.
+    while let Some((b, (_, cand))) = (0..BALDES).find_map(|b| fila[b].pop().map(|e| (b, e))) {
         // ⚠️ **A chave pode ter melhorado desde que ele entrou** — reconfere e desce de balde.
         let agora = balde_de(delta_de(cand, &restam));
         if agora < b {

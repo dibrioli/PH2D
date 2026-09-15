@@ -56,43 +56,42 @@ pub fn supports(doc: &FieldDoc, reg: &ph2d_field_eval::hybrid::Registry) -> bool
     })
 }
 
-/// ⭐⭐⭐ **QUANTOS VALORES VIVOS UMA FITA PODE TER ANTES DE A PLACA DEIXAR DE COMPENSAR.**
-///
-/// # ⚠️ O critério é «a placa ainda GANHA?», e a primeira redacção usou outro
-///
-/// O `vivos` do [`ph2d_field_eval::point_tape::TapeShape`] é o scratch **por thread**, e numa placa
-/// ele decide a **ocupação**. Medido a `1920×1080` com um perfil extrudado de `N` arestas — a
-/// família que o `+ Extrude` do artista produz —, **com a máquina calma** (`load 2,6`):
-///
-/// | arestas | vivos | dispositivo | CPU | razão |
-/// |---:|---:|---:|---:|---:|
-/// | `48` | `239` | `34,5 ms` | `51,5 ms` | `1,49×` |
-/// | `64` | `320` | `45,9 ms` | `55,3 ms` | `1,21×` |
-/// | **`72`** | **`358`** | `55,5 ms` | `57,7 ms` | **`1,04×`** ⬅ o último que a placa ganha |
-/// | `80` | `395` | `64,8 ms` | `60,9 ms` | **`0,94×`** ⬅ a partir daqui a CPU ganha |
-/// | `128` | `623` | `139,4 ms` | `75,5 ms` | `0,54×` |
-/// | `256` | `1 230` | `1 711 ms` | `93,6 ms` | `0,05×` |
-///
-/// ⛔⛔ **A primeira redacção escreveu `743` aqui**, tirado do joelho da curva **do próprio
-/// dispositivo** (onde o custo por aresta dobra) — porque a coluna da CPU não era medível na altura
-/// (`load 80–110`, com outra linha a correr a suíte dela: o mesmo traçado leu `71` e `482 ms`).
-///
-/// ⚠️⚠️ **Os dois números respondem a perguntas diferentes, e só um serve:** *«onde é que a placa
-/// piora?»* é uma propriedade do shader; *«onde é que ela deixa de VALER A PENA?»* é uma comparação,
-/// e é essa que decide o caminho. A `743` o dispositivo já estava a **`0,41×`** da CPU — isto é, a
-/// cerca deixava passar peças **duas vezes e meia mais lentas** do que o caminho que ela protege.
-///
-/// ⭐ *O joelho de uma curva e a travessia de duas curvas não são o mesmo ponto, e eu usei o
-/// primeiro por não conseguir medir o segundo.*
-///
-/// ⚠️ **Este número é do EIXO CERTO e não de qualquer um**: a cena da superfórmula tem `766`
-/// instruções e apenas `34` vivos, e é lenta por outra razão (o minorante do campo). *Um tecto sobre
-/// as instruções mandaria essa peça para a CPU sem curar nada.*
-///
-/// ⏳ **Ele depende das DUAS máquinas** — do ficheiro de registos da placa e da velocidade da CPU —,
-/// logo tem de ser re-derivado noutra. A sonda que o deriva é a
-/// `mede_o_preco_de_uma_aresta_de_perfil`, e ela imprime a carga ao lado de cada linha.
-pub const MAX_VIVOS: usize = 358;
+// ⛔⛔⛔ **AQUI VIVIA UM TECTO, E ELE NÃO TINHA SUJEITO** (removido 2026-09-15).
+//
+// `MAX_VIVOS = 743`, depois `358`, depois `MAX_GUARDADOS = 3 463`: três números, três correcções, e
+// os três saíram da MESMA sonda — que comparava, do lado da placa, o **quadro pintado inteiro** e,
+// do lado da CPU, **só o traçado**, com o traçador e o material a compilar a `opt-0` enquanto o WGSL
+// equivalente ia optimizado pelo driver.
+//
+// ⇒ o caminho de referência lia-se **artificialmente lento na estrutura da medição e artificialmente
+// rápido no conteúdo dela**, e a «travessia» era o saldo desses dois erros.
+//
+// ⭐ Com as duas metades curadas (a sonda mede o quadro inteiro nos dois lados; a
+// `ph2d-field-render` e a `ph2d-material` entraram na lista de `opt-level = 2` do `Cargo.toml` da
+// raiz), a `1920×1080` com a CPU a `95`–`99 %` ociosa, duas rondas:
+//
+// | arestas | guardados | placa | CPU | razão |
+// |---:|---:|---:|---:|---:|
+// | `32` | `879` | `23,7 / 25,4 ms` | `181,4 / 197,8` | `7,65× · 7,80×` |
+// | `64` | `1 741` | `49,1 / 49,9` | `345,2 / 352,2` | `7,03× · 7,06×` |
+// | `96` | `2 602` | `87,1 / 86,5` | `463,6 / 493,6` | `5,32× · 5,71×` |
+// | `128` | `3 462` | `181,0 / 175,3` | `609,7 / 629,6` | `3,37× · 3,59×` |
+// | `192` | `5 189` | `919,2 / 888,1` | `884,1 / 919,3` | `0,96× · 1,04×` ⬅ o penhasco |
+// | `256` | `6 903` | `631,0` | `1 243,9` | `1,97×` |
+// | `384` | `10 351` | `1 306,4` | `1 703,1` | `1,30×` |
+//
+// ⇒ **não há travessia**: o pior ponto é um empate. E nas 17 cenas do produto a placa ganha `2,58×`
+// a `98×`. *Uma cerca que nunca pode disparar não é uma cerca — é um palpite que sobreviveu a três
+// correcções porque ninguém releu o que estava em cada coluna.*
+//
+// ⚠️ **A regressão que ela existia para travar era REAL, e o que estava errado era o ponto:** a fita
+// na ordem CRUA (o código de antes do `ph2d_field_eval::tape_schedule`) atravessa a `96` arestas e
+// cai a **`0,29×`** a 384. É o escalonador que remove o sujeito, não a medição.
+//
+// ⛔ **O que protege isto agora é um GATE e não uma constante** — a
+// `a_placa_ganha_em_toda_a_faixa_medivel` da `ph2d-app-field3d`, que afirma a PROPRIEDADE (a placa
+// nunca perde de forma significativa, e ganha no contorno mais largo) em vez de a codificar num
+// número que só uma máquina mediu.
 
 pub mod material_parity;
 pub mod owners_parity;

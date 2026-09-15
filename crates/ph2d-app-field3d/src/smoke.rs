@@ -581,12 +581,22 @@ mod tape_shape_probe {
     /// ⚠️ O que mata a segunda é o **scratch por thread**: guardar a fita inteira por invocação
     /// seriam quilobytes. Mas a fita é SSA com índices para trás, logo um slot morre assim que o
     /// último leitor passa — o que conta é o **pico de valores vivos**.
+    ///
+    /// ⚠️⚠️ **E esse pico deixou de ser o que era (2026-09-15):** com o
+    /// [`ph2d_field_eval::tape_schedule`] a pior cena real passou de `464` para **`95`** — `380 B`
+    /// por thread e `23 KB` por workgroup de 64, que **cabe**. ⇒ a recusa acima ficou sem a
+    /// premissa que a sustentava, e o que sobra dela é outro argumento (`crate::wgsl`, nota do
+    /// módulo). ⭐ A coluna que hoje decide o caminho é a **`GUARDADOS`**, que é o que o shader de
+    /// facto corre — e a grandeza que um interpretador de GPU teria de guardar por thread.
     #[test]
     #[ignore = "sonda"]
     fn measure_tape_shape_of_the_real_scenes() {
-        println!("  cena · nós ·    ops · VIVOS (o scratch por thread)");
+        println!(
+            "  cena · nós ·    ops · GUARDADOS (o que o shader corre) · VIVOS (o scratch por thread)"
+        );
         let mut pior_ops = 0;
         let mut pior_vivos = 0;
+        let mut pior_guardados = 0;
         for n in 0..crate::smoke::scenes::CENAS {
             if crate::smoke::scenes::PODADAS.contains(&n) {
                 continue;
@@ -599,14 +609,16 @@ mod tape_shape_probe {
             };
             pior_ops = pior_ops.max(f.ops);
             pior_vivos = pior_vivos.max(f.vivos);
+            pior_guardados = pior_guardados.max(f.guardados);
             println!(
-                "  {n:4} · {:3} · {:6} · {:5}",
+                "  {n:4} · {:3} · {:6} · {:9} · {:5}",
                 doc.nodes().len(),
                 f.ops,
+                f.guardados,
                 f.vivos
             );
         }
-        println!("\n  PIOR: {pior_ops} ops · {pior_vivos} vivos");
+        println!("\n  PIOR: {pior_ops} ops · {pior_guardados} guardados · {pior_vivos} vivos");
         println!(
             "  ⇒ scratch de {} bytes por thread (f32) — um workgroup de 64 gasta {} KB",
             pior_vivos * 4,

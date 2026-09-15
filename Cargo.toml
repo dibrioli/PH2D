@@ -184,6 +184,22 @@ opt-level = 2
 [profile.dev.package.fidget-core]
 opt-level = 2
 
+# ⛔⛔⛔ **E O TRAÇADOR E O MATERIAL FALTAVAM, o que tornava toda comparação CPU-contra-PLACA deste
+# módulo inválida** (medido 2026-09-15). A `ph2d-field-render` marcha o campo e pinta cada pixel, e a
+# `ph2d-material` é a lei OpenPBR por amostra — as duas ficavam a `opt-0` enquanto o WGSL equivalente
+# era compilado pelo driver com tudo ligado. ⇒ o quadro de referência lia-se **artificialmente
+# lento**, e a travessia derivada dele (`MAX_VIVOS`, depois `MAX_GUARDADOS`) media o perfil de build.
+#
+# ⚠️ **A nota de 10/09 recusava esta junção** — *«juntar `ph2d-field-render` · `-mesh` · `-profile`
+# parte um teste (`quadro MORNO … pagou 4`), sem mecanismo que o explique»*. ⭐ Esse teste foi
+# **curado em 13/09**: ele contava um memo atrás de estado POR THREAD, e hoje corre numa pool de UMA
+# thread. *Quem move o número que tornava algo inalcançável tem de reconferir a nota* (§0.0) — e as
+# duas crates que entram aqui são as que o quadro de referência corre, não as três da recusa.
+[profile.dev.package.ph2d-field-render]
+opt-level = 2
+[profile.dev.package.ph2d-material]
+opt-level = 2
+
 [profile.release]
 opt-level = 3
 lto = "thin"

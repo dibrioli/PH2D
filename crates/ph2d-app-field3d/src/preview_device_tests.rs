@@ -32,6 +32,15 @@
 //!
 //! ⭐ **As duas alavancas são separadas e não se substituem:** encurtar a fita do perfil não tira um
 //! passo à superfórmula, e apertar o minorante dela não tira uma instrução ao perfil.
+//!
+//! # ⛔⛔ E a coluna `vivos` desta tabela é HISTÓRICA (2026-09-14)
+//!
+//! Ela foi medida antes do [`ph2d_field_eval::tape_schedule`], e os `296`/`464` dela eram uma
+//! propriedade da **ordem de emissão** da fita, não das peças. Hoje as mesmas cenas medem `69` e
+//! `30`, e a pior das 17 mede `89`. ⇒ *a linha «a fita **e** a ocupação» descreve um programa que já
+//! não existe* — a ocupação deixou de ser uma das causas, e o que sobra do perfil é o **tamanho**
+//! da fita. A tabela fica porque é o diagnóstico que separou as causas; `docs/Render3d/05` §43 tem
+//! a que a substituiu.
 
 use super::{Measured, PREVIEW_BUDGET_MS, preview_size};
 
@@ -39,6 +48,64 @@ const LW: u32 = 1920;
 const LH: u32 = 1080;
 /// O menor lado que o laço aceita — o mesmo piso que a shell passa.
 const MIN: u32 = 16;
+/// O fundo que as duas sondas usam.
+const FUNDO: [u8; 4] = [0, 0, 0, 0];
+
+/// Um polígono regular de `n` lados, como contorno — o perfil mais limpo que isola a variável.
+///
+/// ⚠️ **Regular de propósito:** um contorno desenhado à mão mistura o número de arestas com a
+/// forma delas, e a pergunta aqui é só sobre o número.
+fn anel(n: u32) -> ph2d_field::Profile {
+    let pts = (0..n)
+        .map(|i| {
+            #[allow(clippy::cast_precision_loss)]
+            let a = std::f32::consts::TAU * i as f32 / n as f32;
+            // ⚠️ Um raio que ONDULA: um círculo perfeito deixa o compilador dobrar arestas
+            // iguais, e a sonda mediria um polígono que ninguém desenha.
+            let r = 0.35 + 0.06 * (a * 3.0).cos();
+            [r * a.cos(), r * a.sin()]
+        })
+        .collect();
+    ph2d_field::Profile::new(vec![pts], ph2d_field::FillRule::NonZero, 1.0e-4).expect("o anel")
+}
+
+/// ⭐⭐⭐ **O QUADRO INTEIRO NA CPU** — o que o dispositivo de facto SUBSTITUI.
+///
+/// ⛔⛔ **A 1.ª redacção destas sondas media só o `trace` do lado da CPU** e o quadro **PINTADO** do
+/// lado do dispositivo. ⇒ pedia-se à placa o G-buffer **mais** a sombra, o sombreamento e as bordas,
+/// e à CPU só o G-buffer — *a travessia saía cedo demais, e o tecto derivado dela era conservador
+/// pelo motivo errado*.
+///
+/// O quadro de CPU do produto são **três** passos ([`crate::smoke_draw_thread`]): traçar, a sombra
+/// directa, e pintar. É esse que se mede aqui. ⚠️ Do lado do dispositivo a sombra sai da MESMA
+/// marcha, e é por isso que ela não aparece lá como um passo separado.
+fn quadro_na_cpu(
+    doc: &ph2d_field::FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &ph2d_field_render::Orbit,
+    luz: &[ph2d_field_render::PointLamp],
+    surfaces: &ph2d_field_render::Surfaces<'_>,
+    olhar: ph2d_view_transform::Look,
+) -> usize {
+    let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
+    let g = ph2d_field_render::trace(doc, reg, cam, LW, LH);
+    let sh = ph2d_field_render::shadow_pass(doc, reg, cam, &g, &mundos);
+    let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
+    ph2d_field_render::shade_render(
+        &g,
+        cam,
+        surfaces,
+        &ph2d_field_render::Lighting {
+            lamps: &sem_ecra,
+            points: luz,
+            sky: &crate::render_light::StudioSky,
+            shadows: Some(&sh),
+        },
+        olhar,
+        FUNDO,
+    )
+    .len()
+}
 
 /// ⭐⭐⭐ **COM A PLACA, A MAIORIA DAS CENAS PASSA A SER NÍTIDA EM MOVIMENTO** — e a tabela diz quais
 /// não, com a causa de cada uma.
@@ -95,13 +162,10 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
         let Some(_) = crate::gpu_frame::paint(
             t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, LW, LH, false,
         ) else {
-            let vivos = ph2d_field_eval::device::DeviceField::new(&doc, &reg)
+            let guardados = ph2d_field_eval::device::DeviceField::new(&doc, &reg)
                 .and_then(|c| c.tape_shape())
-                .map_or(0, |s| s.vivos);
-            println!(
-                "  {n:>4} ·        na CPU · {vivos:>4} vivos (tecto {})",
-                ph2d_field_gpu::MAX_VIVOS
-            );
+                .map_or(0, |s| s.guardados);
+            println!("  {n:>4} ·        na CPU · {guardados:>5} guardados");
             na_cpu += 1;
             continue;
         };
@@ -211,6 +275,41 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
 /// ⇒ o que esta sonda mede é a **INCLINAÇÃO**: quanto custa cada aresta a mais, na placa. Se ela for
 /// linear e íngreme, a cura vale o que a CPU diz e mais; se ela saturar, o custo é outro e a cura
 /// seria construída contra a grandeza errada.
+/// ⭐⭐ **A FRACÇÃO DE CPU OCIOSA** — a régua da calma que o `loadavg` não é.
+///
+/// ⛔⛔ Medido 2026-09-15: esta máquina fica em `loadavg 5`–`7` com a CPU a **`94 %` ociosa** (o
+/// `loadavg` do Linux conta também quem espera por I/O, e a média decai devagar depois de uma
+/// suíte). ⇒ um limiar sobre ele **recusa uma máquina calma**, que é o modo de falha mais caro de
+/// uma régua de calma: ela lê-se exactamente como *«a máquina nunca acalmou»*.
+///
+/// ⚠️ Ela **imprime-se**, não decide: quem lê a tabela é quem julga se o relógio vale.
+fn cpu_ociosa_pct() -> f32 {
+    let campos = || -> Option<(u64, u64)> {
+        let s = std::fs::read_to_string("/proc/stat").ok()?;
+        let l = s.lines().next()?;
+        let v: Vec<u64> = l
+            .split_whitespace()
+            .skip(1)
+            .filter_map(|x| x.parse().ok())
+            .collect();
+        // `idle` é o 4.º campo e `iowait` o 5.º — os dois contam como «não a trabalhar».
+        Some((
+            v.iter().sum(),
+            v.get(3).copied()? + v.get(4).copied().unwrap_or(0),
+        ))
+    };
+    let Some((t0, i0)) = campos() else {
+        return f32::NAN;
+    };
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    let Some((t1, i1)) = campos() else {
+        return f32::NAN;
+    };
+    #[allow(clippy::cast_precision_loss)]
+    let (dt, di) = ((t1 - t0) as f32, (i1 - i0) as f32);
+    if dt <= 0.0 { f32::NAN } else { di / dt * 100.0 }
+}
+
 #[test]
 #[ignore = "medição — precisa de GPU"]
 fn mede_o_preco_de_uma_aresta_de_perfil() {
@@ -229,32 +328,15 @@ fn mede_o_preco_de_uma_aresta_de_perfil() {
     let olhar = ph2d_view_transform::Look::default();
     const BG: [u8; 4] = [0, 0, 0, 0];
 
-    /// Um polígono regular de `n` lados, como contorno — o perfil mais limpo que isola a variável.
-    ///
-    /// ⚠️ **Regular de propósito:** um contorno desenhado à mão mistura o número de arestas com a
-    /// forma delas, e a pergunta aqui é só sobre o número.
-    fn anel(n: u32) -> ph2d_field::Profile {
-        let pts = (0..n)
-            .map(|i| {
-                #[allow(clippy::cast_precision_loss)]
-                let a = std::f32::consts::TAU * i as f32 / n as f32;
-                // ⚠️ Um raio que ONDULA: um círculo perfeito deixa o compilador dobrar arestas
-                // iguais, e a sonda mediria um polígono que ninguém desenha.
-                let r = 0.35 + 0.06 * (a * 3.0).cos();
-                [r * a.cos(), r * a.sin()]
-            })
-            .collect();
-        ph2d_field::Profile::new(vec![pts], ph2d_field::FillRule::NonZero, 1.0e-4).expect("o anel")
-    }
-
     println!(
-        "\n  arestas · instruções · vivos · quadro a 1920×1080 · load {}",
+        "\n  arestas · guardados · vivos CRU→ESC · quadro CRU→ESC a 1920×1080 · CPU · load {} · ociosa {:.0} %",
         std::fs::read_to_string("/proc/loadavg")
             .unwrap_or_default()
-            .trim()
+            .trim(),
+        cpu_ociosa_pct()
     );
     let mut pontos: Vec<(u32, usize, usize, f32)> = Vec::new();
-    for n in [32u32, 48, 64, 72, 80, 96, 128, 192, 256] {
+    for n in [32u32, 64, 96, 128, 192, 256, 384] {
         let doc = ph2d_field::FieldDoc::new(
             vec![ph2d_field_eval::leaf(
                 ph2d_field::Primitive::Extrude {
@@ -269,30 +351,45 @@ fn mede_o_preco_de_uma_aresta_de_perfil() {
         )
         .expect("a peça extrudada");
 
-        let campo = ph2d_field_eval::device::DeviceField::new(&doc, &reg).expect("a peça");
-        let fita = campo.tape_wgsl().expect("a fita");
-        let instrs = fita.source.lines().count();
-        let vivos = campo.tape_shape().map_or(0, |s| s.vivos);
-
-        // Aquecimento fora da conta: a primeira compila o pipeline.
-        // ⚠️ **Sem o tecto** — ver [`crate::gpu_frame::paint_com_tecto`]: esta é a sonda que o
-        // calibra, e ela tem de atravessar o degrau para o poder ver.
-        let _ = crate::gpu_frame::paint_com_tecto(
-            t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, LW, LH, false, false,
-        );
-        let mut v: Vec<f32> = Vec::new();
-        for _ in 0..5 {
-            let t0 = std::time::Instant::now();
-            let p = crate::gpu_frame::paint_com_tecto(
-                t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, LW, LH, false, false,
+        let retrato = |escalonar: bool| {
+            let campo = ph2d_field_eval::device::DeviceField::new_com(&doc, &reg, escalonar)
+                .expect("a peça");
+            let forma = campo.tape_shape().expect("a forma");
+            (
+                campo.tape_wgsl().expect("a fita").source.lines().count(),
+                forma.vivos,
+                forma.guardados,
             )
-            .expect("o pintor");
-            std::hint::black_box(p.rgba.len());
-            #[allow(clippy::cast_possible_truncation)]
-            v.push(t0.elapsed().as_secs_f32() * 1e3);
-        }
-        v.sort_by(f32::total_cmp);
-        let ms = v[0];
+        };
+        let ((instrs, vivos, guardados), (_, vivos_cru, _)) = (retrato(true), retrato(false));
+
+        // ⭐⭐⭐ **O MESMO QUADRO NAS DUAS ORDENS DA MESMA FITA** — ver
+        // [`ph2d_field_eval::tape_schedule`]. ⚠️ **A/B na MESMA corrida e na mesma máquina**: a
+        // coluna crua é a que diz se o escalonador comprou relógio, e compará-la com um número
+        // escrito noutro dia mediria a carga daquele dia.
+        let mede = |escalonar: bool| {
+            let sonda = crate::gpu_frame::Sonda { escalonar };
+            // Aquecimento fora da conta: a primeira compila o pipeline. ⚠️ **Sem o tecto** — esta
+            // é a sonda que o calibra, e ela tem de atravessar o degrau para o poder ver.
+            let _ = crate::gpu_frame::paint_com(
+                t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, LW, LH, false, sonda,
+            );
+            let mut v: Vec<f32> = Vec::new();
+            for _ in 0..5 {
+                let t0 = std::time::Instant::now();
+                let p = crate::gpu_frame::paint_com(
+                    t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, LW, LH, false, sonda,
+                )
+                .expect("o pintor");
+                std::hint::black_box(p.rgba.len());
+                #[allow(clippy::cast_possible_truncation)]
+                v.push(t0.elapsed().as_secs_f32() * 1e3);
+            }
+            v.sort_by(f32::total_cmp);
+            v[0]
+        };
+        let ms = mede(true);
+        let ms_cru = mede(false);
         // ⛔⛔ **E O MESMO QUADRO NA CPU** — a pergunta que esta sonda tem de responder não é «quanto
         // custa na placa», é **«a placa ficou mais lenta que o caminho que ela substituiu?»**. Uma
         // tabela só com a coluna nova não sabe dizer se a wave foi uma regressão.
@@ -314,15 +411,17 @@ fn mede_o_preco_de_uma_aresta_de_perfil() {
         let mut c: Vec<f32> = Vec::new();
         for _ in 0..3 {
             let t0 = std::time::Instant::now();
-            let g = ph2d_field_render::trace(&doc, &reg, &cam, LW, LH);
-            std::hint::black_box(g.hit.len());
+            // ⚠️ **O QUADRO INTEIRO** — ver [`quadro_na_cpu`]. Medir só o traçado aqui pedia à
+            // placa mais trabalho do que à CPU.
+            std::hint::black_box(quadro_na_cpu(&doc, &reg, &cam, &luz, &surfaces, olhar));
             #[allow(clippy::cast_possible_truncation)]
             c.push(t0.elapsed().as_secs_f32() * 1e3);
         }
         c.sort_by(f32::total_cmp);
         println!(
-            "  {n:>7} · {instrs:>10} · {vivos:>5} · {ms:>8.2} ms · {por_aresta:>6.3} ms/aresta · \
-             CPU {:>8.2} · {:>5.2}×",
+            "  {n:>7} · {guardados:>9} · {vivos_cru:>5} → {vivos:>4} · {ms_cru:>8.2} → {ms:>7.2} ms \
+             ({:>4.1}×) · {por_aresta:>6.3} ms/aresta · CPU {:>8.2} · {:>5.2}×",
+            ms_cru / ms,
             c[0],
             c[0] / ms
         );
@@ -343,19 +442,31 @@ fn mede_o_preco_de_uma_aresta_de_perfil() {
     );
 }
 
-/// ⛔⛔⛔ **UMA FITA LARGA DEMAIS FICA NA CPU** — a cerca que impede esta linha de piorar a peça
-/// desenhada do artista.
+/// ⭐⭐⭐ **A PLACA GANHA EM TODA A FAIXA MEDÍVEL** — a propriedade que substituiu um TECTO.
 ///
-/// # ⚠️ O que ela afirma, e porque o CONTROLO vem primeiro
+/// # ⛔⛔⛔ O que estava aqui antes, e porquê saiu
 ///
-/// Acima do degrau da ocupação ([`ph2d_field_gpu::MAX_VIVOS`]) o dispositivo mede **`0,20×`** a CPU
-/// — cinco vezes pior. ⇒ o quadro cai para a CPU, que é linear em toda a faixa.
+/// Aqui vivia a `uma_fita_larga_demais_fica_na_cpu`: a cerca que mandava para a CPU qualquer peça
+/// acima de um tecto (`MAX_VIVOS = 743`, depois `358`, depois `MAX_GUARDADOS = 3 463`). Os três
+/// números saíram da MESMA sonda, e ela pedia aos dois motores trabalhos **diferentes** — o quadro
+/// pintado inteiro à placa, só o traçado à CPU — com o traçador e o material a compilar a `opt-0`.
 ///
-/// ⛔ **Sem o controlo, um `return None` constante passaria este gate** e o dispositivo deixaria de
-/// desenhar seja o que for — a forma mais cara de um gate verde.
+/// ⭐ Curadas as duas metades, a placa ganha em toda a faixa (`1,3×`–`7,8×`, com um empate no
+/// penhasco de `192` arestas) e nas 17 cenas do produto (`2,6×`–`98×`). ⇒ *uma cerca que nunca pode
+/// disparar não é uma cerca.* Tabelas: a nota no lugar do `MAX_GUARDADOS`, na [`ph2d_field_gpu`].
+///
+/// # ⚠️ O que este gate afirma
+///
+/// A PROPRIEDADE que o tecto tentava codificar num número: **a placa não perde de forma
+/// significativa, e ganha no contorno mais largo que a sonda mede.** ⛔ Ele é deliberadamente
+/// FROUXO no pior ponto (o penhasco lê `0,96×`–`1,04×`, um empate) e exigente no mais largo —
+/// *um gate que exigisse vitória em todo ponto reprovaria sobre produto correto*.
+///
+/// ⚠️ **Ele lê relógios, logo é da família das flakes de carga** (`CLAUDE.md` §5.0): corre com
+/// `#[ignore]`, imprime a carga **e a CPU ociosa**, e quem o lê julga se o número vale.
 #[test]
-#[ignore = "precisa de GPU"]
-fn uma_fita_larga_demais_fica_na_cpu() {
+#[ignore = "precisa de GPU — e lê relógio: leia a ociosidade ao lado"]
+fn a_placa_ganha_em_toda_a_faixa_medivel() {
     let Some(t) = crate::gpu_frame::shared() else {
         println!("sem adaptador — saltado");
         return;
@@ -369,28 +480,21 @@ fn uma_fita_larga_demais_fica_na_cpu() {
         owners: None,
     };
     let olhar = ph2d_view_transform::Look::default();
-    const BG: [u8; 4] = [0, 0, 0, 0];
 
-    // ⚠️ **Os dois lados do degrau saem da MESMA família**, e é isso que faz a comparação valer:
-    // trocar também a forma mediria duas coisas ao mesmo tempo.
-    let peca = |n: u32| {
-        let pts = (0..n)
-            .map(|i| {
-                #[allow(clippy::cast_precision_loss)]
-                let a = std::f32::consts::TAU * i as f32 / n as f32;
-                let r = 0.35 + 0.06 * (a * 3.0).cos();
-                [r * a.cos(), r * a.sin()]
-            })
-            .collect();
-        ph2d_field::FieldDoc::new(
+    println!(
+        "\n  arestas · placa · CPU · razão · load {} · ociosa {:.0} %",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim(),
+        cpu_ociosa_pct()
+    );
+    let mut pior = f32::INFINITY;
+    let mut mais_largo = 0.0f32;
+    for n in [64u32, 128, 192, 256] {
+        let doc = ph2d_field::FieldDoc::new(
             vec![ph2d_field_eval::leaf(
                 ph2d_field::Primitive::Extrude {
-                    profile: ph2d_field::Profile::new(
-                        vec![pts],
-                        ph2d_field::FillRule::NonZero,
-                        1.0e-4,
-                    )
-                    .expect("o anel"),
+                    profile: anel(n),
                     half_height: 0.25,
                     round: 0.0,
                     chamfer: 0.0,
@@ -399,42 +503,137 @@ fn uma_fita_larga_demais_fica_na_cpu() {
             )],
             ph2d_field::NodeId(0),
         )
-        .expect("a peça extrudada")
-    };
-    let vivos = |doc: &ph2d_field::FieldDoc| {
-        ph2d_field_eval::device::DeviceField::new(doc, &reg)
-            .and_then(|c| c.tape_shape())
-            .map_or(0, |s| s.vivos)
-    };
-    let toma = |doc: &ph2d_field::FieldDoc| {
-        crate::gpu_frame::paint(
-            t, doc, &reg, &cam, &luz, &surfaces, olhar, BG, 96, 54, false,
-        )
-        .is_some()
-    };
+        .expect("a peça extrudada");
+        let sonda = crate::gpu_frame::Sonda { escalonar: true };
+        // Aquecimento fora da conta: a primeira compila o pipeline.
+        let _ = crate::gpu_frame::paint_com(
+            t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, LW, LH, false, sonda,
+        );
+        let mut v: Vec<f32> = Vec::new();
+        for _ in 0..3 {
+            let t0 = std::time::Instant::now();
+            let p = crate::gpu_frame::paint_com(
+                t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, LW, LH, false, sonda,
+            )
+            .expect("o pintor");
+            std::hint::black_box(p.rgba.len());
+            #[allow(clippy::cast_possible_truncation)]
+            v.push(t0.elapsed().as_secs_f32() * 1e3);
+        }
+        v.sort_by(f32::total_cmp);
+        let mut c: Vec<f32> = Vec::new();
+        for _ in 0..2 {
+            let t0 = std::time::Instant::now();
+            std::hint::black_box(quadro_na_cpu(&doc, &reg, &cam, &luz, &surfaces, olhar));
+            #[allow(clippy::cast_possible_truncation)]
+            c.push(t0.elapsed().as_secs_f32() * 1e3);
+        }
+        c.sort_by(f32::total_cmp);
+        let razao = c[0] / v[0];
+        println!("  {n:>7} · {:>8.2} · {:>8.2} · {razao:>5.2}×", v[0], c[0]);
+        pior = pior.min(razao);
+        mais_largo = razao;
+    }
+    // ⭐ **O CONTROLO primeiro:** sem ele, um `paint_com` que devolvesse sempre a mesma imagem
+    // vazia em microssegundos passaria com razões enormes.
+    assert!(
+        mais_largo.is_finite() && pior.is_finite(),
+        "a sonda não mediu nada"
+    );
+    assert!(
+        pior > 0.85,
+        "a placa perdeu por mais do que o penhasco medido: pior razão {pior:.2}×"
+    );
+    assert!(
+        mais_largo > 1.2,
+        "no contorno mais largo a placa tem de ganhar com margem: {mais_largo:.2}×"
+    );
+}
 
-    // ⚠️ `64` arestas dá `320` vivos (a placa ganha `1,21×`) e `128` dá `623` (`0,54×`) — a
-    // fixtura cerca o tecto com os dois lados MEDIDOS, e não com dois números quaisquer.
-    let (leve, pesada) = (peca(64), peca(128));
-    let (vl, vp) = (vivos(&leve), vivos(&pesada));
+/// ⭐⭐⭐ **AS PEÇAS REAIS NOS DOIS MOTORES** — a sonda que impede o tecto de ser calibrado numa
+/// família e aplicado a outra.
+///
+/// # ⛔⛔ Por que ela existe
+///
+/// O [`ph2d_field_gpu::MAX_GUARDADOS`] sai de um **polígono extrudado de N arestas**, que é a
+/// família que o `+ Extrude` produz e a única em que se pode varrer uma variável só. ⚠️ Mas quem o
+/// tecto decide são as **cenas do produto**, e essas têm furos, aros arredondados, booleanas e
+/// torno — *um tecto calibrado numa família e aplicado a outra é uma procuração*.
+///
+/// ⇒ esta sonda mede, cena a cena, o quadro nos DOIS motores, e imprime de que lado do tecto cada
+/// uma cai. Uma cena cuja razão seja `> 1` e que o tecto RECUSE é um defeito de calibração —
+/// e uma que ele aceite com razão `< 1` é o defeito que ele existe para impedir.
+#[test]
+#[ignore = "medição — precisa de GPU"]
+fn mede_as_cenas_reais_nos_dois_motores() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let olhar = ph2d_view_transform::Look::default();
+    const BG: [u8; 4] = [0, 0, 0, 0];
     println!(
-        "  leve {vl} vivos · pesada {vp} vivos · tecto {}",
-        ph2d_field_gpu::MAX_VIVOS
+        "\n  cena · guardados · placa · CPU · razão · load {} · ociosa {:.0} %",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim(),
+        cpu_ociosa_pct()
     );
-    // ⭐ **A fixtura tem de estar dos DOIS lados do degrau** — senão o gate compara duas peças do
-    // mesmo lado e passa sem afirmar nada.
-    assert!(
-        vl <= ph2d_field_gpu::MAX_VIVOS && vp > ph2d_field_gpu::MAX_VIVOS,
-        "a fixtura não cerca o tecto: leve {vl}, pesada {vp}, tecto {}",
-        ph2d_field_gpu::MAX_VIVOS
-    );
-    // ⭐ O CONTROLO primeiro.
-    assert!(
-        toma(&leve),
-        "o dispositivo recusou a peça LEVE — a cerca comeu tudo"
-    );
-    assert!(
-        !toma(&pesada),
-        "o dispositivo tomou a peça PESADA — acima do degrau ele mede 0,20× a CPU"
-    );
+    for n in 0..crate::smoke::scenes::CENAS {
+        if crate::smoke::scenes::PODADAS.contains(&n) {
+            continue;
+        }
+        let doc = crate::smoke::scene(n);
+        let reg = crate::smoke::sampled_registry();
+        let cam = ph2d_field_render::Orbit::default();
+        let luz = [crate::gpu_frame::tests_lampada(&cam)];
+        let surfaces = ph2d_field_render::Surfaces {
+            all: &materiais,
+            owners: None,
+        };
+        let Some(guardados) = ph2d_field_eval::device::DeviceField::new(&doc, &reg)
+            .and_then(|c| c.tape_shape())
+            .map(|s| s.guardados)
+        else {
+            continue;
+        };
+        // ⚠️ **SEM o tecto** — esta é a sonda que o calibra.
+        let sonda = crate::gpu_frame::Sonda { escalonar: true };
+        let mede = |f: &dyn Fn()| {
+            let mut v: Vec<f32> = Vec::new();
+            for _ in 0..3 {
+                let t0 = std::time::Instant::now();
+                f();
+                #[allow(clippy::cast_possible_truncation)]
+                v.push(t0.elapsed().as_secs_f32() * 1e3);
+            }
+            v.sort_by(f32::total_cmp);
+            v[0]
+        };
+        let na_placa = || {
+            if let Some(p) = crate::gpu_frame::paint_com(
+                t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, LW, LH, false, sonda,
+            ) {
+                std::hint::black_box(p.rgba.len());
+            }
+        };
+        if crate::gpu_frame::paint_com(
+            t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, LW, LH, false, sonda,
+        )
+        .is_none()
+        {
+            println!("  {n:>4} · {guardados:>9} · (a placa recusa)");
+            continue;
+        }
+        let ms_gpu = mede(&na_placa);
+        let na_cpu = || {
+            std::hint::black_box(quadro_na_cpu(&doc, &reg, &cam, &luz, &surfaces, olhar));
+        };
+        let ms_cpu = mede(&na_cpu);
+        println!(
+            "  {n:>4} · {guardados:>9} · {ms_gpu:>8.2} · {ms_cpu:>8.2} · {:>5.2}×",
+            ms_cpu / ms_gpu
+        );
+    }
 }

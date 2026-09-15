@@ -133,8 +133,9 @@ pub fn installed_registry() -> Option<&'static registry::Registry> {
 /// `screens`. Ver o cabeçalho dele: é o primeiro degrau da cura que a catraca do DAG prescreve.
 /// ⭐ O VOCABULÁRIO da fábrica e do ciclo de vida — abaixo do `action_bus` (catraca do DAG).
 pub mod factory_edits;
-pub mod tags_edits;
 /// ⭐⭐⭐ **O vocabulário do MOVER DE VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
+pub mod projectile_edits;
+pub mod tags_edits;
 pub mod topdown_edits;
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
 pub use gizmo::{

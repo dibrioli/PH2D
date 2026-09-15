@@ -145,6 +145,12 @@ pub enum DeathCause {
     Aged,
     /// Ela saiu do rectângulo da câmera.
     Outside,
+    /// ⭐ **O VOO acabou** (TOP-20 #14) — o alcance esgotou-se, ou o tecto de ricochetes.
+    ///
+    /// ⚠️ **Ela entra por AQUI e não por um despachante próprio:** *«quando é que isto sai da
+    /// cena?»* é uma pergunta só, e uma segunda porta de remoção seria a segunda resposta. O
+    /// produtor é a ponte do projéctil, que **anuncia** e nunca apaga.
+    Spent,
 }
 
 /// **Um facto de morte** — quem, porquê, e o que ele publica.

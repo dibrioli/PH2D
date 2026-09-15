@@ -445,6 +445,9 @@ pub(super) struct DrainOut {
     pub(super) factory_edits: Vec<(u64, ph2d_editor_core::FactoryFieldEdit)>,
     /// ⭐ As edições do MOVER DE VISTA DE CIMA (TOP-20 #13).
     pub(super) topdown_edits: Vec<(u64, ph2d_editor_core::topdown_edits::TopDownFieldEdit)>,
+    /// ⭐ As edições do PROJÉCTIL (TOP-20 #14).
+    pub(super) projectile_edits:
+        Vec<(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)>,
     // ⭐ A secção TAGS (TOP-20 #9) — ver o dreno dela no `fase_inspector_commits`.
     pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     // ⭐⭐⭐ O painel TAGS (TOP-20 #9, W4) — gestos sobre a ÁRVORE, que não é do mundo. Ver o

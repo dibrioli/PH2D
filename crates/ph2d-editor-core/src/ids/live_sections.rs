@@ -30,7 +30,7 @@ use super::*;
 /// ⚠️ `finish_section` lê `store.section_outline_color(<id da seção>)` para TODA seção viva, por
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 24] = [
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 25] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_COLOR),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_COLOR),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_COLOR),
@@ -72,6 +72,8 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 24] = [
     (INSP_LIVE_LIFECYCLE_SECTION, INSP_LIVE_LIFECYCLE_COLOR),
     // ⭐ A 24.ª — TOP-DOWN PLAYER (TOP-20 #13), a primeira da família MOVIMENTO que é opcional.
     (INSP_LIVE_TOPDOWN_SECTION, INSP_LIVE_TOPDOWN_COLOR),
+    // ⭐ A 25.ª — PROJECTILE MOTION (TOP-20 #14), a segunda da família MOVIMENTO.
+    (INSP_LIVE_PROJECTILE_SECTION, INSP_LIVE_PROJECTILE_COLOR),
 ];
 
 /// Só os cabeçalhos — **projeção** de [`LIVE_SECTIONS`], nunca uma segunda lista.

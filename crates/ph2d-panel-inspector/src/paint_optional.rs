@@ -244,6 +244,7 @@ pub(crate) fn paint_optional_sections(
     camera: Option<&ph2d_editor_core::screens::hero::InspectorCameraInfo>,
     factory: Option<&ph2d_editor_core::screens::hero::InspectorFactoryInfo>,
     topdown: Option<&ph2d_editor_core::topdown_edits::InspectorTopDownInfo>,
+    projectile: Option<&ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
     tags: Option<&ph2d_editor_core::screens::hero::InspectorTagsInfo>,
     notes: &[Vec<(usize, NoteData)>],
 ) -> f32 {
@@ -382,6 +383,22 @@ pub(crate) fn paint_optional_sections(
         y,
         header_h,
         topdown,
+    );
+    // ⚠️ **`y = ` outra vez** — ver a nota acima: uma chamada cujo `y` se deita fora empilha a
+    // secção seguinte por cima dela.
+    y = crate::paint_optional_factory::paint_projectile_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        projectile,
     );
     paint_tags_section(
         scene,

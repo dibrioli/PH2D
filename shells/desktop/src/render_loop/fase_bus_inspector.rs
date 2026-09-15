@@ -216,6 +216,10 @@ impl crate::App {
             EditorAction::InspectorTopDownEdit { entity_bits, edit } => {
                 pd.topdown_edits.push((entity_bits, edit));
             }
+            // ⭐ **A secção PROJECTILE MOTION** (TOP-20 #14), pela mesma razão da irmã acima.
+            EditorAction::InspectorProjectileEdit { entity_bits, edit } => {
+                pd.projectile_edits.push((entity_bits, edit));
+            }
             EditorAction::InspectorTagsEdit { entity_bits, edit } => {
                 pd.tags_edits.push((entity_bits, edit));
             }

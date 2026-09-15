@@ -186,3 +186,63 @@ pub(crate) fn paint_topdown_section(
         &[],
     )
 }
+
+/// **A secção PROJECTILE MOTION** — moldura e tudo (TOP-20 #14, W3).
+///
+/// ⚠️ Ela mora neste ficheiro e não no [`super::paint_optional`] pela mesma razão das duas acima:
+/// o orquestrador está no tecto de LOC, e as molduras de secção opcional cabem melhor juntas.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_projectile_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    info: Option<&ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
+) -> f32 {
+    // ⚠️ **A secção só existe se o objecto TIVER o projéctil** — ADR-0166.
+    let Some(info) = info else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_PROJECTILE_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::projectile::paint_projectile_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        info,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_PROJECTILE_SECTION,
+        y_before,
+        new_y,
+        &[],
+    )
+}

@@ -79,6 +79,7 @@ pub(crate) mod physics_rows;
 /// afirma que cobre a tabela INTEIRA, e um oráculo que itera a própria lista
 /// que testa encolhe junto com ela.
 pub(crate) mod player;
+pub(crate) mod projectile;
 pub(crate) mod properties;
 mod render_source;
 /// O par `Format` — irmão do `render_source` pelo cap de LOC.

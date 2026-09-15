@@ -46,6 +46,12 @@ impl crate::App {
             // documento (a folha `ph2d-preview-drive`, Enio 2026-08-23: *«corrigir o CtrlZ para ambas»*).
             &mut self.preview_drive,
         );
+        // ⭐⭐ **Os projécteis cujo voo ACABOU** (TOP-20 #14) — o readout que o Inspector lê para
+        // dizer *«o voo acabou»*. ⚠️ **Reescrito**, nunca acumulado.
+        self.physics.projectile_over.clear();
+        self.physics
+            .projectile_over
+            .extend(physics.projectile_done().iter().map(|(e, _)| e.to_bits()));
         // O flash do estouro envelhece uma vez por frame, aqui: ao lado do
         // dispatch da física, que é a fase em que o tempo do mundo anda. Um canal
         // PRÓPRIO, porque uma explosão é um impulso e não deixa estado no mundo

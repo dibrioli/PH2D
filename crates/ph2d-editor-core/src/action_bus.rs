@@ -375,6 +375,14 @@ pub enum EditorAction {
         edit: crate::topdown_edits::TopDownFieldEdit,
     },
 
+    /// Inspector → shell, a secção PROJECTILE MOTION (TOP-20 #14, W3).
+    ///
+    /// ⚠️ **Uma variante para o componente inteiro**, como as irmãs.
+    InspectorProjectileEdit {
+        entity_bits: u64,
+        edit: crate::projectile_edits::ProjectileFieldEdit,
+    },
+
     /// Inspector → shell channel for a §10 Material & Blend field (Blend
     /// Mode). Optional-component edit like [`Self::InspectorSamplingEdit`]
     /// (§3.10); tag `0` (Mix) detaches the `BlendMode` component.

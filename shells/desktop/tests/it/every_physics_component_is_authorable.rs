@@ -24,7 +24,7 @@ use std::fs;
 /// rows de ZONA (*o que esta ÁREA faz a outros corpos*) do resto (*o que ESTE corpo é*),
 /// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
 /// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
-const WRITERS: [&str; 10] = [
+const WRITERS: [&str; 11] = [
     "../../crates/ph2d-app-physics/src/physics_apply.rs",
     "../../crates/ph2d-app-physics/src/physics_area.rs",
     // ⚠️ **O nono chegou pelo mesmo caminho do quarto** (W-Surface): o cap de
@@ -66,6 +66,8 @@ const WRITERS: [&str; 10] = [
     // deixou de ser «os escritores da família da física» e passou a ser «os escritores, onde quer
     // que morem» — que é o que o nome dela sempre disse.
     "src/render_loop/inspector_topdown.rs",
+    // ⭐ E o PROJÉCTIL (TOP-20 #14), pelo mesmo molde e no mesmo sítio.
+    "src/render_loop/inspector_projectile.rs",
 ];
 
 #[test]

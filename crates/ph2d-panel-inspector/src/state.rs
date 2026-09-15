@@ -21,6 +21,7 @@ use ph2d_editor_core::screens::hero::{
 };
 // ⚠️ **O snapshot do mover de vista de cima vive no módulo de VOCABULÁRIO** (abaixo do
 // `action_bus`), e não no `screens::hero` — ver o cabeçalho do `topdown_edits`.
+use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
 use ph2d_editor_core::topdown_edits::InspectorTopDownInfo;
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -176,6 +177,11 @@ thread_local! {
     /// ⭐⭐⭐ **O snapshot da secção TOP-DOWN PLAYER** (TOP-20 #13).
     pub(crate) static CURRENT_INSPECTOR_TOPDOWN:
         std::cell::RefCell<Option<InspectorTopDownInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção PROJECTILE MOTION** (TOP-20 #14).
+    pub(crate) static CURRENT_INSPECTOR_PROJECTILE:
+        std::cell::RefCell<Option<InspectorProjectileInfo>> =
+        const { std::cell::RefCell::new(None) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**
     ///
@@ -371,6 +377,14 @@ pub fn set_current_inspector_topdown(info: Option<InspectorTopDownInfo>) {
 
 pub(crate) fn current_inspector_topdown() -> Option<InspectorTopDownInfo> {
     CURRENT_INSPECTOR_TOPDOWN.with(|c| c.borrow().clone())
+}
+
+pub fn set_current_inspector_projectile(info: Option<InspectorProjectileInfo>) {
+    CURRENT_INSPECTOR_PROJECTILE.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_projectile() -> Option<InspectorProjectileInfo> {
+    CURRENT_INSPECTOR_PROJECTILE.with(|c| c.borrow().clone())
 }
 
 pub fn set_current_inspector_camera(info: Option<InspectorCameraInfo>) {

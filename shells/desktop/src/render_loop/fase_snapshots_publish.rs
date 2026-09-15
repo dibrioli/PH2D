@@ -30,6 +30,10 @@ impl crate::App {
             joint_anchor_handles,
             joint_anchor_snap,
         } = self.fase_snapshot_readouts(window_size)?;
+        // ⭐ **Copiado ANTES do empréstimo do `gfx`** (TOP-20 #14): o `publish` recebe `&mut` de
+        // metade da `App`, e ler `self.physics` lá dentro emprestaria `self` duas vezes. É o mesmo
+        // molde do `audio_ready` do `components_ctx`.
+        let projectile_over = self.physics.projectile_over.clone();
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
         let FrameGfx {
@@ -172,6 +176,9 @@ impl crate::App {
             component_registry,
             // ⭐ A árvore de tags do projecto — ver o parâmetro na assinatura do `publish`.
             tags,
+            // ⭐ Os projécteis cujo voo acabou (TOP-20 #14) — o readout que a fase da física
+            // deixou. ⚠️ Ele vem do `PhysicsState` e não da ponte: o Inspector não a alcança.
+            &projectile_over,
         );
         // ⭐⭐⭐ **O painel TAGS** (TOP-20 #9, W4) — o instantâneo dele é publicado à parte, e não
         // dentro do `publish` acima, por duas razões que são uma só: ele é de OUTRO painel, e o

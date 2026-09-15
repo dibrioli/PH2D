@@ -52,6 +52,8 @@ pub(crate) struct LiveSnapshots {
     pub factory_info: Option<ph2d_editor_core::screens::hero::InspectorFactoryInfo>,
     /// ⭐ O MOVER DE VISTA DE CIMA (TOP-20 #13).
     pub topdown_info: Option<ph2d_editor_core::topdown_edits::InspectorTopDownInfo>,
+    /// ⭐ O PROJÉCTIL (TOP-20 #14).
+    pub projectile_info: Option<ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -92,6 +94,7 @@ impl LiveSnapshots {
         let camera_info = crate::state::current_inspector_camera();
         let factory_info = crate::state::current_inspector_factory();
         let topdown_info = crate::state::current_inspector_topdown();
+        let projectile_info = crate::state::current_inspector_projectile();
         let tags_info = crate::state::current_inspector_tags();
         let any_section = any_live_section([
             transform_info.is_some(),
@@ -111,6 +114,7 @@ impl LiveSnapshots {
             camera_info.is_some(),
             factory_info.is_some(),
             topdown_info.is_some(),
+            projectile_info.is_some(),
             tags_info.is_some(),
         ]);
         Self {
@@ -128,6 +132,7 @@ impl LiveSnapshots {
             camera_info,
             factory_info,
             topdown_info,
+            projectile_info,
             tags_info,
             blend_info,
             physics_info,

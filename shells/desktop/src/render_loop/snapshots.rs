@@ -170,6 +170,8 @@ pub(super) fn publish(
     // carregam daria só as tags JÁ usadas, e a caixa de escolha deixaria de saber oferecer as
     // outras (nem de existir num projecto ainda sem nenhum objecto marcado).
     tags: &ph2d_tags::TagTree,
+    // ⭐ Ver o parâmetro homónimo do [`inspector::publish`] (TOP-20 #14).
+    projectile_over: &[u64],
 ) {
     #[cfg(feature = "panel-hierarchy")]
     publish_hierarchy(hero, hero_live, hovered, sim, bool_badges);
@@ -243,6 +245,7 @@ pub(super) fn publish(
         component_registry,
         inspector_player,
         tags,
+        projectile_over,
     );
 }
 

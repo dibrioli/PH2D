@@ -63,6 +63,9 @@ pub(crate) fn apply_event(
     if crate::event_topdown::apply_topdown_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    if crate::event_projectile::apply_projectile_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     if crate::event_factory::apply_factory_event(host, ev) {
         return EventOutcome::Consumed;
     }

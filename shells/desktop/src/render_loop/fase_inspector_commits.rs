@@ -17,6 +17,10 @@ mod factory_commits;
 #[path = "fase_topdown_commits.rs"]
 mod topdown_commits;
 
+/// ⭐⭐⭐ A fase-filha das edições do PROJÉCTIL — irmã das de cima, e pela mesma razão.
+#[path = "fase_projectile_commits.rs"]
+mod projectile_commits;
+
 /// As edições do Inspector que o dreno do barramento recolheu neste quadro.
 pub(super) struct InspectorIntents {
     pub(super) reimport_entity: Option<u64>,
@@ -36,6 +40,9 @@ pub(super) struct InspectorIntents {
     pub(super) factory_edits: Vec<(u64, ph2d_editor_core::FactoryFieldEdit)>,
     /// ⭐ As edições do MOVER DE VISTA DE CIMA (TOP-20 #13).
     pub(super) topdown_edits: Vec<(u64, ph2d_editor_core::topdown_edits::TopDownFieldEdit)>,
+    /// ⭐ As edições do PROJÉCTIL (TOP-20 #14).
+    pub(super) projectile_edits:
+        Vec<(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)>,
     pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     pub(super) tag_tree_edits: Vec<ph2d_editor_core::TagTreeEdit>,
     pub(super) inspector_queue_dirty: bool,
@@ -89,6 +96,7 @@ impl crate::App {
             camera_edits,
             factory_edits,
             topdown_edits,
+            projectile_edits,
             tags_edits,
             tag_tree_edits,
             mut inspector_queue_dirty,
@@ -209,6 +217,7 @@ impl crate::App {
         inspector_queue_dirty |= factory_commits::aplicar(sim, tags, &factory_edits);
         // ⭐ O MOVER DE VISTA DE CIMA (TOP-20 #13) — fase-filha, como a fábrica.
         inspector_queue_dirty |= topdown_commits::aplicar(sim, &topdown_edits);
+        inspector_queue_dirty |= projectile_commits::aplicar(sim, &projectile_edits);
         // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — aqui pela razão MAIS forte das três: ela é a única
         // do Inspector que escreve em DOIS documentos, e o segundo (a árvore) nem sequer está no
         // mundo. O `inspector_commits` não o recebe — e não devia: ele é o dreno da CENA.

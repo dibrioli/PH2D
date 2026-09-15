@@ -78,6 +78,7 @@ impl crate::App {
                 camera_edits: take(&mut pd.camera_edits),
                 factory_edits: take(&mut pd.factory_edits),
                 topdown_edits: take(&mut pd.topdown_edits),
+                projectile_edits: take(&mut pd.projectile_edits),
                 tags_edits: take(&mut pd.tags_edits),
                 tag_tree_edits: take(&mut pd.tag_tree_edits),
                 inspector_queue_dirty: take(&mut pd.inspector_queue_dirty),

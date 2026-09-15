@@ -31,6 +31,7 @@ mod event_ordering;
 mod event_physics;
 mod event_player;
 mod event_precision;
+mod event_projectile;
 mod event_slice;
 mod event_sprite_geometry;
 mod event_sprite_value;
@@ -66,6 +67,7 @@ mod populate_factory;
 mod populate_instance;
 mod populate_physics;
 mod populate_player;
+mod populate_projectile;
 /// ⭐ O registo dos widgets da secção TAGS — irmão por CAP de ficheiro.
 mod populate_tags;
 /// ⭐ O registo dos widgets da secção TIMERS — irmão por CAP de ficheiro.
@@ -151,11 +153,12 @@ pub use state::{
     set_current_inspector_anim, set_current_inspector_audio, set_current_inspector_blend,
     set_current_inspector_camera, set_current_inspector_factory, set_current_inspector_instance,
     set_current_inspector_joint, set_current_inspector_name, set_current_inspector_ordering,
-    set_current_inspector_physics, set_current_inspector_player, set_current_inspector_properties,
-    set_current_inspector_sampling, set_current_inspector_slice, set_current_inspector_sprite,
-    set_current_inspector_tags, set_current_inspector_timer, set_current_inspector_topdown,
-    set_current_inspector_transform, set_current_inspector_visibility,
-    set_current_inspector_visibility_section, set_current_inspector_wheel, set_current_tag_tree,
+    set_current_inspector_physics, set_current_inspector_player, set_current_inspector_projectile,
+    set_current_inspector_properties, set_current_inspector_sampling, set_current_inspector_slice,
+    set_current_inspector_sprite, set_current_inspector_tags, set_current_inspector_timer,
+    set_current_inspector_topdown, set_current_inspector_transform,
+    set_current_inspector_visibility, set_current_inspector_visibility_section,
+    set_current_inspector_wheel, set_current_tag_tree,
 };
 pub use state::{probe_current_instance, probe_current_properties, texture_slot_pick};
 

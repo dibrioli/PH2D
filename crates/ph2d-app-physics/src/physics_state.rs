@@ -74,6 +74,18 @@ pub struct PhysicsState {
     /// resposta para algo que a cena já sabe.
     pub player_readout_log: Option<u64>,
 
+    /// ⭐⭐ **Os projécteis cujo voo ACABOU neste quadro** (TOP-20 #14) — um readout, não documento.
+    ///
+    /// ⚠️ **Ele existe porque o painel precisa de dizer *«o voo acabou»***, e sem isso um projéctil
+    /// que fez exactamente o que devia lê-se como partido: está parado no ar com todos os números
+    /// certos no ecrã. O facto vive na PONTE (o `ProjectileState` é memória de tique, não
+    /// componente), e o Inspector não a alcança — então a fase da física deixa-o aqui, ao lado do
+    /// `player_readout_log`, que existe pela mesma razão.
+    ///
+    /// ⚠️ **Reescrito por quadro**, nunca acumulado: uma lista que crescesse faria a mesma morte ser
+    /// anunciada para sempre.
+    pub projectile_over: Vec<u64>,
+
     /// O prólogo da cena de smoke já correu neste processo.
     ///
     /// ⚠️ **Uma vez por processo, não por quadro:** o prólogo só pode montar a

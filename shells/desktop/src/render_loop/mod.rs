@@ -129,6 +129,7 @@ mod inspector_factory;
 /// ⭐ **A seção COMPONENT do Inspector** (ADR-0164 / F5) — o que esta cópia tem de diferente
 /// da receita, e o gesto que limpa as excepções sem alvo.
 pub(crate) mod inspector_instance;
+mod inspector_projectile;
 mod inspector_properties;
 mod inspector_slice;
 /// ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — o snapshot e o commit, que é o único a tocar em DOIS

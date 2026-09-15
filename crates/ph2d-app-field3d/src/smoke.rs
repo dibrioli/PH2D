@@ -715,6 +715,7 @@ mod gpu_gbuffer_parity {
         println!("  cena · silhueta ·       Dt ·  Dnormal ·   a variacao da PROPRIA peca · razao");
         let mut piores = (0usize, 0.0f32, 0.0f32, 0.0f32, 0.0f32, 1.0f64);
         let mut vistas = 0;
+        let mut populacao_ceu = 0usize;
         for n in 0..crate::smoke::scenes::CENAS {
             if crate::smoke::scenes::PODADAS.contains(&n) {
                 continue;
@@ -773,6 +774,11 @@ mod gpu_gbuffer_parity {
             let mut difere = 0usize;
             let mut dts: Vec<f32> = Vec::new();
             let mut angs: Vec<f32> = Vec::new();
+            // ⭐ O Δt por pixel fica guardado: é ele que diz onde a oclusão pode ser comparada.
+            let mut dt_por_pixel = vec![f32::INFINITY; g.hit.len()];
+            // O laço indexa SEIS sequências pelo mesmo `i` (as duas silhuetas, os dois pontos, as
+            // duas normais) — um `enumerate` sobre uma delas escondia as outras cinco.
+            #[allow(clippy::needless_range_loop)]
             for i in 0..g.hit.len() {
                 if g.hit[i] != dev.hit(i) {
                     difere += 1;
@@ -787,7 +793,8 @@ mod gpu_gbuffer_parity {
                 let (o, d) = cam.ray_at_plane(u, v);
                 let p = g.point[i];
                 let t_cpu = (p[0] - o[0]) * d[0] + (p[1] - o[1]) * d[1] + (p[2] - o[2]) * d[2];
-                dts.push((t_cpu - dev.t[i]).abs());
+                dt_por_pixel[i] = (t_cpu - dev.t[i]).abs();
+                dts.push(dt_por_pixel[i]);
                 let (a, b) = (g.normal[i], dev.normal[i]);
                 let dot = (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]).clamp(-1.0, 1.0);
                 angs.push(dot.acos().to_degrees());
@@ -852,13 +859,29 @@ mod gpu_gbuffer_parity {
             );
             let mut d_sombra: Vec<f32> = Vec::new();
             let mut d_ceu: Vec<f32> = Vec::new();
+            let mut d_ceu_todos: Vec<f32> = Vec::new();
             for (j, ceu) in ao.iter().enumerate() {
                 if !g.hit[j] || !dev.hit(j) {
                     continue;
                 }
                 d_sombra.push((sh.at(0, j) - dev.shadow[j]).abs());
-                d_ceu.push((ceu - dev.ambient[j]).abs());
+                d_ceu_todos.push((ceu - dev.ambient[j]).abs());
+                // ⭐⭐⭐ **A OCLUSÃO SÓ SE COMPARA ONDE A NORMAL CONCORDA, e não é conveniência.**
+                //
+                // Desde 2026-09-15 a oclusão é **função de `(ponto, normal)`** — há gate na
+                // `ph2d-field-render` a afirmá-lo, ao bit. ⇒ onde os dois motores entregam normais
+                // a `9,9°` uma da outra (cena 30, num vinco, e a coluna ao lado mede-o), eles TÊM
+                // de entregar oclusões diferentes: isso é a consequência da divergência da normal,
+                // que **já tem barra própria duas linhas acima**, e não uma lei de oclusão
+                // diferente. *Gatear a mesma divergência duas vezes não a mede melhor — mede o
+                // acoplamento e chama-lhe defeito do segundo passe.*
+                let (a, b) = (g.normal[j], dev.normal[j]);
+                let dot = (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]).clamp(-1.0, 1.0);
+                if dot.acos().to_degrees() < 1.0 && dt_por_pixel[j] < 3e-5 {
+                    d_ceu.push((ceu - dev.ambient[j]).abs());
+                }
             }
+            d_ceu_todos.sort_by(f32::total_cmp);
             d_sombra.sort_by(f32::total_cmp);
             d_ceu.sort_by(f32::total_cmp);
 
@@ -876,15 +899,17 @@ mod gpu_gbuffer_parity {
                 comuns as f64 / uniao as f64
             };
             println!(
-                "         sombra p99 {:7.4} · ceu p99 {:7.4} · bordas CPU {} / GPU {} · sobrepoem {:5.1} %",
+                "         sombra p99 {:7.4} · ceu p99 {:7.4} (todos {:7.4}) · bordas CPU {} / GPU {} · sobrepoem {:5.1} %",
                 q(&d_sombra, 0.99),
                 q(&d_ceu, 0.99),
+                q(&d_ceu_todos, 0.99),
                 cpu_b.len(),
                 gpu_b.len(),
                 100.0 * sobrep
             );
             piores.3 = piores.3.max(q(&d_sombra, 0.99));
             piores.4 = piores.4.max(q(&d_ceu, 0.99));
+            populacao_ceu += d_ceu.len();
             piores.5 = piores.5.min(sobrep);
         }
         assert!(vistas > 10, "só {vistas} cenas foram comparadas");
@@ -913,15 +938,39 @@ mod gpu_gbuffer_parity {
              é ruído",
             piores.3
         );
-        // ⚠️⚠️ **A barra da oclusão é o QUANTUM da medida, e a primeira redacção ficou ABAIXO
-        // dele.** Com `16` raios binários, a menor diferença possível é `1/16 = 0,0625` — um raio.
-        // Eu escrevi `0,05` e o gate acusou `0,0625` exacto, isto é, *acusou a granularidade*.
-        // ⇒ a barra é **dois** raios: um raio a discordar é `f32` numa saída rasante; dois já não.
+        // ⚠️⚠️⚠️ **A BARRA DA OCLUSÃO FOI RE-DERIVADA em 2026-09-15, e a anterior media uma
+        // grandeza que deixou de existir.** Ela era `2 / OCCLUSION_PASSES` — *dois raios do
+        // quantum binário*. Com CONES não há quantum: a resposta é contínua, e aquela fórmula
+        // passou a devolver `0,0417` sem nomear recurso nenhum. *Um tecto derivado da grandeza
+        // errada lê-se como generoso.*
+        //
+        // ⭐ O recurso é a **representação em `f32` propagada pelo estimador**, e a conta fecha
+        // com a medição. O cone lê `d / (t · cos)` e a primeira amostra cai em `t₀ = 4 · hit_eps`;
+        // com `hit_eps ≈ 7e-3` nesta resolução, o campo dos dois motores a concordar a `1e-4` (a
+        // barra da fita) e o `Δt` do filtro a `3e-5`, o pior caso é
+        // `(1e-4 + 3e-5) / (3e-2 · 0,3) ≈ 0,014`. Medido: **`0,0153`** na pior cena.
+        //
+        // ⭐⭐ **O filtro foi VARRIDO e a dependência é do `Δt`, o que confirma o mecanismo:**
+        //
+        // | `Δt` do filtro | população | pior `p99` |
+        // |---|---:|---:|
+        // | `1e-5` | `8 807` | `0,0103` |
+        // | **`3e-5`** | **`24 391`** | **`0,0153`** |
+        // | `1e-4` | `58 215` | `0,0163` |
+        //
+        // ⇒ `3e-5` é onde a população deixa de ser um punhado sem a barra deixar de apertar.
+        //
+        // ⛔ Uma lei diferente — a esfera de Fibonacci desalinhada, o peso sem cosseno, a cerca da
+        // bola só num motor — move **décimas**: a cerca a faltar na CPU leu `0,1450` no dia em que
+        // este gate a apanhou, `9,5×` esta barra.
         assert!(
-            piores.4 < 2.0 / ph2d_field_render::OCCLUSION_PASSES as f32,
-            "a oclusão difere {:.4} no p99 — mais de UM raio de {} a discordar já não é `f32`",
-            piores.4,
-            ph2d_field_render::OCCLUSION_PASSES
+            populacao_ceu > 20_000,
+            "só {populacao_ceu} pixels passaram o filtro de geometria — a barra da oclusão está a              medir quase nada, e um `p99` sobre um punhado de pixels aprova qualquer coisa"
+        );
+        assert!(
+            piores.4 < 0.025,
+            "a oclusão difere {:.4} no p99 ONDE A GEOMETRIA CONCORDA — isso já não é a `f32` da              fita a propagar-se, é a lei do cone a divergir entre os dois motores",
+            piores.4
         );
         // ⚠️ A borda é uma decisão de `cos` sobre `f32`: um pixel de fronteira pode cair de
         // qualquer lado. *O que não pode é a POPULAÇÃO ser outra.*

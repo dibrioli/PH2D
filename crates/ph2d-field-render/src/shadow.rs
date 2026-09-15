@@ -314,25 +314,52 @@ fn cerca(
 /// e a cerca da bola ([`occlusion_slice`] fecha na saída dela) já o bordava de qualquer forma.
 pub const OCCLUSION_REACH: f32 = 1.0;
 
-/// ⭐⭐⭐ **QUANTAS PASSAGENS até a oclusão assentar** — e o recurso que ele nomeia é **a precisão
-/// do byte de saída**.
+/// ⭐⭐⭐ **QUANTAS DIRECÇÕES TEM O CONJUNTO DE CONES** — e o recurso que ele nomeia é **o relógio
+/// do quadro assente**.
 ///
-/// ⚠️ **A régua é o erro NO PIXEL, e não no canal.** A oclusão multiplica só o termo do ambiente,
-/// que é uma fracção do pixel — medir o erro no canal mede-o onde ele não aterra. Medido contra
-/// uma referência de `64` raios (`measure_how_many_passes_the_occlusion_needs`):
+/// # ⛔⛔⛔ O que este número deixou de significar em 2026-09-15
 ///
-/// | passagens | erro no canal | **erro no PIXEL** | pior pixel |
-/// |---:|---:|---:|---:|
-/// | `1` | `0,210` | `26,8 bytes` | `165` |
-/// | `4` | `0,056` | `5,99` | `43` |
-/// | `8` | `0,027` | `2,85` | `19` |
-/// | `16` | `0,012` | `1,33` | `9` |
-/// | **`32`** | `0,004` | **`0,63`** | `4` |
+/// Até àquele dia ele eram **passagens de Monte Carlo**: raios binários sorteados por pixel, e o
+/// número saía de *«onde o erro médio cai abaixo de um byte»*. ⚠️ **Essa régua media a MÉDIA de um
+/// estimador com ruído, e o olho não vê médias — vê o vizinho.** O report do dono (foto do interior
+/// de um furo, *«baixíssima qualidade»*) é exactamente o que aquela tabela não media.
 ///
-/// ⇒ **`32`, porque é onde o erro médio cai abaixo de UM byte** — abaixo do que a saída consegue
-/// mostrar. ⛔ Não é um número escolhido: é o ponto em que continuar a refinar deixa de mudar a
-/// imagem.
-pub const OCCLUSION_PASSES: u32 = 16;
+/// Hoje o número é o tamanho de um conjunto **FIXO** de direcções de mundo ([`cone_dir`]), cada uma
+/// traçada como CONE. Não há ruído para promediar: o que `N` compra é **resolução angular**, e o que
+/// ele evita é **banda** — terraços de nível onde a resposta devia variar devagar.
+///
+/// # ⭐ A tabela MEDIDA (`ph2d-field-gpu`, sonda `ao_grain`, `1920×1080`, RTX 5060 Ti)
+///
+/// A peça é a da foto: a cruz de três cilindros com um furo passante. `ms` é o **quadro inteiro** no
+/// dispositivo (marcha + sombra + oclusão + bordas); `Δ ref` é contra o mesmo estimador com `1024`
+/// direcções; `bytes` é o erro **no pixel sombreado**, que é o que ele vê.
+///
+/// | cones | `ms` | `Δ ref` p99 | **bytes p99** | máx |
+/// |---:|---:|---:|---:|---:|
+/// | `16` | `22,0` | `0,0855` | `7` | `9` |
+/// | `32` | `27,9` | `0,0412` | `4` | `5` |
+/// | **`48`** | **`36,5`** | `0,0254` | **`2`** | `4` |
+/// | `64` | `43,9` | `0,0206` | `2` | `3` |
+/// | `96` | `56,0` | `0,0163` | `1` | `3` |
+///
+/// ⇒ **`48`, que é o joelho**: é onde o erro no pixel chega a `2` bytes — abaixo do que um degrau
+/// de gradiente mostra — e onde os terraços somem à vista (`16` e `32` ainda os têm, com a imagem
+/// esticada `2×`). `64` custa mais `7,4 ms` e compra `4 → 3` no máximo; `96` custa mais `19,5 ms`
+/// para tirar um byte do `p99`.
+///
+/// ⚠️ **Só cerca de METADE das direcções corre por pixel** — o conjunto é da esfera inteira e as que
+/// ficam abaixo do horizonte têm peso `0`. É esse o preço de não ter referencial tangente, e a razão
+/// está em [`cone_dir`].
+///
+/// ⛔ **O quadro de MOVIMENTO não paga nada disto:** o dispositivo só toma o quadro **assente**
+/// (`ph2d_app_field3d::gpu_frame::takes_the_frame`) e a oclusão de CPU está desligada por omissão.
+///
+/// ⏳ **A alavanca que fica, medida e NÃO construída:** a oclusão é de baixa frequência (é a mesma
+/// premissa que legitima o [`blur_occlusion`]), logo cabe em **meia resolução** com reconstrução
+/// guiada pela normal — `4×` mais barata, o que poria `96` cones abaixo do preço dos `16` raios de
+/// ontem. Ela traz uma classe de artefacto própria (halo na descontinuidade de profundidade) e é
+/// wave com espec própria.
+pub const OCCLUSION_PASSES: u32 = 48;
 
 /// ⭐ **Quão parecidas duas normais têm de ser para a suavização as misturar** — o cosseno entre
 /// elas.
@@ -347,7 +374,10 @@ pub const OCCLUSION_BLUR_COS: f32 = 0.9;
 /// superfície ela varia devagar por construção. ⇒ uma média `3×3` **guardada pela normal** remove o
 /// ruído de amostragem sem tocar em nada que a resposta verdadeira tenha.
 ///
-/// # ⭐ E ela compra METADE das passagens (medido, referência de `256` raios)
+/// # ⚠️⚠️ A RAZÃO DELA MUDOU em 2026-09-15, e a tabela abaixo é HISTÓRIA
+///
+/// Ela nasceu para apagar **ruído de amostragem**, e a tabela que a justificou media isso (medida
+/// contra uma referência de `256` raios, com a lei de Monte Carlo que shipou até àquele dia):
 ///
 /// | passagens | erro no pixel | **com suavização** |
 /// |---:|---:|---:|
@@ -356,9 +386,15 @@ pub const OCCLUSION_BLUR_COS: f32 = 0.9;
 /// | **`16`** | `2,34` | **`0,89`** |
 /// | `32` | `1,42` | `0,67` |
 ///
-/// ⇒ `16` passagens **com** ela ficam abaixo de um byte, onde `32` **sem** ela ficavam em `1,42`.
-/// *Metade da espera e melhor imagem* — e é por isso que o [`OCCLUSION_PASSES`] desceu de `32`
-/// para `16` no mesmo dia em que ela entrou.
+/// ⛔ **Esse ruído já não existe:** a oclusão é hoje determinística e há dois gates a afirmá-lo
+/// (`a_oclusao_de_um_ponto_nao_depende_do_pixel_em_que_ele_cai` e o irmão da câmera). O que ela
+/// suaviza agora é outra coisa — as **estrias** do conjunto discreto de direcções, que são a
+/// assinatura de `48` cones em vez de infinitos.
+///
+/// ⚠️ **A premissa que a legitima é a MESMA** (*a oclusão é de baixa frequência dentro de uma
+/// superfície*), e é por isso que ela continua; ⏳ o que **não** foi re-medido é **quanto** ela vale
+/// contra a lei nova. *Uma cerca cuja razão mudou e cuja tabela não foi refeita é uma nota a
+/// envelhecer — esta fica NOMEADA como tal, e não em silêncio.*
 #[must_use]
 pub fn blur_occlusion(g: &Gbuffer, oc: &[f32]) -> Vec<f32> {
     let (w, h) = (g.width as usize, g.height as usize);
@@ -403,6 +439,50 @@ pub fn blur_occlusion(g: &Gbuffer, oc: &[f32]) -> Vec<f32> {
     out
 }
 
+/// ⭐⭐⭐ **O QUE UMA FATIA DE CONES ENTREGA** — a soma pesada E o peso que a produziu.
+///
+/// # ⛔⛔ Porque o denominador não é a contagem de cones
+///
+/// O peso de um cone é `n·d`, e duas direcções do conjunto fixo contribuem com pesos **diferentes**
+/// para a mesma normal. Enquanto a oclusão foram raios sorteados no hemisfério, cada amostra valia
+/// o mesmo e a média era `soma / contagem` — a fatia podia devolver um número só.
+///
+/// ⚠️ **Com cones isso passa a MENTIR no meio do refinamento**, e foi o gate
+/// `o_refinamento_nunca_abre_a_peca_preta` que o disse: as primeiras direcções do reticulado caem
+/// perto do pólo `+z`, que para uma face virada a `+z` são as de **maior** cosseno, e a média
+/// parcial sobre a contagem lia **`1,763`** — céu a mais do que existe. *Uma média parcial tem de
+/// dividir pelo peso que já entrou, nunca por quantas vezes se entrou.*
+#[derive(Clone, Debug, Default)]
+pub struct ConeSlice {
+    /// `Σ w·vis`, por pixel.
+    pub sum: Vec<f32>,
+    /// `Σ w`, por pixel — o denominador.
+    pub weight: Vec<f32>,
+}
+
+impl ConeSlice {
+    /// Acumula outra fatia nesta.
+    pub fn add(&mut self, outra: &Self) {
+        for (a, b) in self.sum.iter_mut().zip(&outra.sum) {
+            *a += b;
+        }
+        for (a, b) in self.weight.iter_mut().zip(&outra.weight) {
+            *a += b;
+        }
+    }
+
+    /// A oclusão média. ⚠️ Um pixel de FUNDO — e um sem peso nenhum — lê `1,0`: céu inteiro.
+    #[must_use]
+    pub fn average(&self, hit: &[bool]) -> Vec<f32> {
+        self.sum
+            .iter()
+            .zip(&self.weight)
+            .zip(hit)
+            .map(|((s, w), h)| if *h && *w > 0.0 { s / w } else { 1.0 })
+            .collect()
+    }
+}
+
 /// ⭐⭐⭐ **A OCLUSÃO TRAÇADA CONTRA O CAMPO** — quanto do céu chega a cada pixel de peça.
 ///
 /// `1,0` = o céu chega inteiro; `0,0` = a peça tapa-se a si própria por completo. Nos pixels que não
@@ -439,16 +519,7 @@ pub fn occlusion_with_reach(
     total: u32,
     reach: f32,
 ) -> Vec<f32> {
-    let soma = occlusion_slice_with_reach(doc, reg, cam, g, 0, total, total, reach);
-    if total == 0 {
-        return soma;
-    }
-    #[allow(clippy::cast_precision_loss)]
-    let inv = 1.0 / total as f32;
-    soma.iter()
-        .zip(&g.hit)
-        .map(|(v, hit)| if *hit { v * inv } else { 1.0 })
-        .collect()
+    occlusion_slice_with_reach(doc, reg, cam, g, 0, total, total, reach).average(&g.hit)
 }
 
 /// ⭐⭐⭐ **UMA FATIA da sequência** — a SOMA da visibilidade dos raios `primeiro..primeiro+quantos`
@@ -473,7 +544,7 @@ pub fn occlusion_slice(
     primeiro: u32,
     quantos: u32,
     total: u32,
-) -> Vec<f32> {
+) -> ConeSlice {
     occlusion_slice_with_reach(doc, reg, cam, g, primeiro, quantos, total, OCCLUSION_REACH)
 }
 
@@ -489,11 +560,14 @@ pub fn occlusion_slice_with_reach(
     quantos: u32,
     total: u32,
     reach: f32,
-) -> Vec<f32> {
+) -> ConeSlice {
     let pixels = g.hit.len();
-    let mut vis = vec![0.0f32; pixels];
+    let mut fatia = ConeSlice {
+        sum: vec![0.0f32; pixels],
+        weight: vec![0.0f32; pixels],
+    };
     if pixels == 0 || quantos == 0 || total == 0 {
-        return vis;
+        return fatia;
     }
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let (right, up, toward_eye) = cam.basis();
@@ -509,11 +583,32 @@ pub fn occlusion_slice_with_reach(
     };
     let lift = scene.sharp.hit * crate::march::BIAS;
     let alcance = reach * cam.half_extent;
+    // ⭐⭐⭐ **A CERCA DA BOLA — o DOMÍNIO da pergunta, e o dispositivo já a tinha.**
+    //
+    // ⚠️ Ela viveu só no WGSL desde que o traçado foi para lá, e a paridade não a acusava porque
+    // com raios BINÁRIOS ela quase nunca vincula. Com CONES vincula: o estimador é um mínimo de
+    // `d/(t·cos)` ao longo do raio, logo tudo o que ele lê para lá da peça entra na resposta.
+    // *Uma cerca escrita num motor só é uma LEI diferente nos dois, e a régua que a não vê é a que
+    // corre com o estimador errado.*
+    let bola = ph2d_field_eval::bounds::bounding_ball(doc, reg)
+        .unwrap_or(ph2d_field_eval::bounds::Ball::EMPTY);
+    let ate_sair_da_bola = |o: [f32; 3], d: [f32; 3]| -> f32 {
+        let oc = [0, 1, 2].map(|c| o[c] - bola.center[c]);
+        let b = oc[0] * d[0] + oc[1] * d[1] + oc[2] * d[2];
+        let c = oc[0] * oc[0] + oc[1] * oc[1] + oc[2] * oc[2] - bola.radius * bola.radius;
+        let disc = b * b - c;
+        if disc <= 0.0 {
+            return 0.0;
+        }
+        (-b + disc.sqrt()).clamp(0.0, alcance)
+    };
 
     let mut quais = Vec::new();
     let mut origens = Vec::new();
     let mut dirs = Vec::new();
     let mut cercas = Vec::new();
+    let mut durezas = Vec::new();
+    let mut pesos = Vec::new();
     for i in 0..pixels {
         if !g.hit[i] {
             continue;
@@ -527,118 +622,107 @@ pub fn occlusion_slice_with_reach(
             nv[0] * right[1] + nv[1] * up[1] + nv[2] * toward_eye[1],
             nv[0] * right[2] + nv[1] * up[2] + nv[2] * toward_eye[2],
         ];
-        let (t1, t2) = base_do_hemisferio(n);
+        let cos_de = |k: u32| {
+            let d = cone_dir(k, total);
+            (n[0] * d[0] + n[1] * d[1] + n[2] * d[2]).max(0.0)
+        };
+        // ⭐ O peso acumula-se AQUI, dentro da fatia — ver [`ConeSlice`] para porque ele não pode
+        // ser a contagem de cones.
         let erguido = [p[0] + n[0] * lift, p[1] + n[1] * lift, p[2] + n[2] * lift];
         for j in 0..quantos {
-            let (u1, u2) = sample_uv(i, primeiro + j, total);
-            let r = u1.sqrt();
-            let phi = std::f32::consts::TAU * u2;
-            let (sp, cp) = phi.sin_cos();
-            let z = (1.0 - u1).max(0.0).sqrt();
+            let k = primeiro + j;
+            if k >= total {
+                break;
+            }
+            let c = cos_de(k);
+            if c <= 0.0 {
+                continue;
+            }
             quais.push(i);
             origens.push(erguido);
-            dirs.push([
-                t1[0] * r * cp + t2[0] * r * sp + n[0] * z,
-                t1[1] * r * cp + t2[1] * r * sp + n[1] * z,
-                t1[2] * r * cp + t2[2] * r * sp + n[2] * z,
-            ]);
-            cercas.push(alcance);
+            dirs.push(cone_dir(k, total));
+            cercas.push(ate_sair_da_bola(erguido, cone_dir(k, total)));
+            // ⭐⭐⭐ O CONE QUE ROÇA O PLANO TANGENTE — ver [`crate::march::march_cone_to`].
+            durezas.push(1.0 / c);
+            pesos.push(c);
+            fatia.weight[i] += c;
         }
     }
-    // ⛔⛔⛔ **A PERGUNTA DA OCLUSÃO É BINÁRIA, e a 1.ª redacção usou o estimador de PENUMBRA.**
-    //
-    // Escrevi `hardness = 1` a raciocinar *«k = 1 é a fracção de céu que o vizinho deixa passar»*.
-    // Está errado, e o gate da esfera apanhou-o: ela leu **`0,698` de céu contra `0,757` da cruz** —
-    // *um corpo CONVEXO a ocluir-se mais que três cilindros cruzados.*
-    //
-    // O mecanismo é o mesmo da §27.5(b): numa saída RASANTE a tangente afasta-se como `d ≈ t²/2R`,
-    // logo `k·d/t ≈ k·t/2R` desce abaixo de `1` **sem haver oclusor nenhum** — o estimador está a
-    // ler a curvatura da própria superfície. Num raio de SOMBRA isso é penumbra e é desejável (a
-    // lâmpada tem tamanho angular); aqui a pergunta é *«este raio bate em alguma coisa dentro do
-    // alcance?»*, que é **sim ou não**.
-    //
-    // ⇒ `INFINITY` faz o termo mole nunca vincular (`vis.min(∞) = vis`), e o único sítio que
-    // escreve `0` é o acerto de facto. ⚠️ Sem NaN: o braço do acerto sai por `continue` antes, logo
-    // `d ≥ hit > 0` quando a multiplicação corre.
-    let v = march_shadow_to(&scene, &origens, &dirs, &cercas, f32::INFINITY);
+    let v = crate::march::march_cone_to(&scene, &origens, &dirs, &cercas, &durezas);
     for (j, &i) in quais.iter().enumerate() {
-        vis[i] += v[j];
+        fatia.sum[i] += pesos[j] * v[j];
     }
-    vis
+    fatia
 }
 
-/// ⭐⭐⭐ **As duas coordenadas do raio `k` do pixel `i`** — elevação e azimute.
+// ⛔ **RECUSA MEDIDA (2026-09-15): um PISO no cosseno não compra paridade.** A hipótese era que um
+// cone quase tangente, com dureza `1/(n·d)`, amplificasse a diferença de campo entre os dois
+// motores. Com o piso a `0,05` o `p99` da pior cena ficou **exactamente onde estava** (`0,0201`) ⇒
+// o amplificador não é a dureza. *Uma cerca que não move a medição é ruído no código.*
+
+/// A razão áurea — a sequência aditiva de baixa discrepância que espalha o azimute do reticulado.
+const PHI: f32 = 0.618_034;
+
+/// ⭐⭐⭐ **A direcção `k` do conjunto de cones** — reticulado de Fibonacci esférico sobre a esfera
+/// INTEIRA, em coordenadas de MUNDO.
 ///
-/// # ⛔⛔⛔ O report do dono: *«artefatos de imagem»* (2026-09-14, foto)
+/// # ⛔⛔⛔ Porque ela não depende do pixel, nem da câmera, nem de um referencial tangente
 ///
-/// Listras VERTICAIS finas, a alternar coluna a coluna. **Dois defeitos na mesma linha**, e nenhuma
-/// régua minha os via:
+/// O report do dono de 2026-09-14 (*«baixíssima qualidade»*, foto do interior de um furo) é **ruído
+/// de estimador**: até àquele dia a oclusão eram `OCCLUSION_PASSES` raios BINÁRIOS **sorteados por
+/// pixel**, e um estimador binário de `N` amostras tem desvio-padrão `√(p(1−p)/N)` — a `N = 16` isso
+/// é `12,5 %` da faixa **por pixel**. Medido na peça da foto (`ph2d-field-gpu`, sonda `ao_grain`):
+/// o canal de oclusão sai com uma **textura tecida** visível a olho, e o vizinho de 3×3 não a apaga.
 ///
-/// 1. **O azimute não dependia do RAIO.** Ele saía só do pixel, logo os `32` raios de um ponto
-///    partilhavam o **mesmo `φ`**: cada pixel amostrava um **LEQUE PLANO**, nunca o hemisfério. A
-///    estimativa ficava enviesada por pixel — e o enviesamento era *diferente em cada pixel*.
-/// 2. **O bit `0` de `i` virava o bit MAIS SIGNIFICATIVO de `u2`** (`i.reverse_bits() >> 8` devolve
-///    os bits `23..0` de `i` **ao contrário**). Medido: `i = 1000 → 0,093` e `i = 1001 → 0,593` —
-///    *colunas vizinhas a apontar para lados opostos.* Daí a listra ser de **uma** coluna.
+/// ⚠️⚠️ **E havia um defeito PIOR que a variância: a oclusão dependia do PIXEL.** O sorteio era
+/// semeado no índice do pixel, logo **o mesmo ponto da peça recebia outra oclusão ao rodar a
+/// câmera** — a imagem fervia ao assentar de um ângulo diferente. Um conjunto de direcções de
+/// MUNDO não tem como fazer isso, e há gate a afirmá-lo.
 ///
-/// ⚠️⚠️ **E a sonda da convergência era um ESPELHO:** a referência de `64` raios usava o MESMO
-/// leque, logo ela media o estimador contra ele próprio e via `1/√N` bonito sobre um resultado
-/// enviesado. *Uma régua que partilha a lei do produto não acusa* — a lei está escrita no
-/// `CLAUDE.md` e mordeu na mesma.
+/// ⛔ **Um referencial TANGENTE foi considerado e recusado**: ele dá `N` direcções úteis em vez de
+/// `N/2`, mas toda construção de base a partir de `n` tem uma **descontinuidade** (a do
+/// [`base_do_hemisferio`] salta quando `|n.x|` cruza `0,9`; a de Duff salta em `n.z = 0`). Com
+/// direcções SORTEADAS a descontinuidade é invisível — o sorteio já embaralha o azimute. Com um
+/// conjunto FIXO ela vira uma **costura** desenhada na peça. *Uma base que só era aceitável porque
+/// o ruído a escondia deixa de ser aceitável quando se apaga o ruído.*
 ///
-/// # ⭐ A lei que fica
-///
-/// - **elevação**: estratificada sobre o `total`, com rotação de Cranley–Patterson por pixel — cada
-///   passagem cai numa banda própria, e a banda desloca-se de pixel para pixel;
-/// - **azimute**: sequência aditiva da **razão áurea** a partir de um arranque por pixel — ela é de
-///   baixa discrepância em qualquer corte inicial, que é exactamente o que uma acumulação precisa
-///   (a fatia `0..k` tem de ser boa, não só a sequência inteira).
-///
-/// ⚠️ **O arranque usa uma MISTURA, não `reverse_bits`:** a multiplicação de Knuth leva os bits
-/// baixos de `i` aos altos do produto, logo pixels vizinhos arrancam longe um do outro **sem** o
-/// acoplamento de paridade que produziu a listra.
-pub(crate) fn sample_uv(i: usize, k: u32, total: u32) -> (f32, f32) {
-    #[allow(clippy::cast_possible_truncation)]
-    let px = i as u32;
-    let mistura = |v: u32| -> f32 {
-        let h = v
-            .wrapping_mul(2_654_435_761)
-            .rotate_left(15)
-            .wrapping_mul(2_246_822_519);
-        (h >> 8) as f32 / 16_777_216.0
-    };
-    let salto = mistura(px);
-    #[allow(clippy::cast_possible_truncation)]
-    let u1 = ((f64::from(k) + f64::from(salto)) / f64::from(total.max(1))).fract() as f32;
-    /// O conjugado da razão áurea — a sequência aditiva de menor discrepância que há.
-    const PHI: f32 = 0.618_034;
-    let u2 = (mistura(px ^ 0x9E37_79B9) + k as f32 * PHI).fract();
-    (u1, u2)
+/// ⭐ Com o conjunto de mundo a continuidade sai de graça: uma direcção entra no hemisfério com
+/// peso `n·d → 0`, logo entra **sem degrau**.
+#[must_use]
+pub fn cone_dir(k: u32, total: u32) -> [f32; 3] {
+    #[allow(clippy::cast_precision_loss)]
+    let n = total.max(1) as f32;
+    #[allow(clippy::cast_precision_loss)]
+    let ki = k as f32;
+    let z = 1.0 - (2.0 * ki + 1.0) / n;
+    let r = (1.0 - z * z).max(0.0).sqrt();
+    // ⚠️⚠️ **A FRACÇÃO vem ANTES do seno, e não é cosmética:** a `k = 47` o ângulo cru é `~182 rad`,
+    // e o WGSL só garante precisão de `sin`/`cos` perto da origem — fora dela a redução de argumento
+    // é do driver. *Duas implementações da mesma fórmula deixam de dar a mesma direcção, e a
+    // paridade CPU↔dispositivo mede exactamente isso.*
+    let (sp, cp) = (std::f32::consts::TAU * (ki * PHI).fract()).sin_cos();
+    [r * cp, r * sp, z]
 }
 
-/// Dois eixos perpendiculares a `n`, sem trigonometria por amostra.
-fn base_do_hemisferio(n: [f32; 3]) -> ([f32; 3], [f32; 3]) {
-    let a = if n[0].abs() < 0.9 {
-        [1.0, 0.0, 0.0]
-    } else {
-        [0.0, 1.0, 0.0]
-    };
-    let t1 = [
-        a[1] * n[2] - a[2] * n[1],
-        a[2] * n[0] - a[0] * n[2],
-        a[0] * n[1] - a[1] * n[0],
-    ];
-    let l = (t1[0] * t1[0] + t1[1] * t1[1] + t1[2] * t1[2])
-        .sqrt()
-        .max(1e-6);
-    let t1 = [t1[0] / l, t1[1] / l, t1[2] / l];
-    let t2 = [
-        n[1] * t1[2] - n[2] * t1[1],
-        n[2] * t1[0] - n[0] * t1[2],
-        n[0] * t1[1] - n[1] * t1[0],
-    ];
-    (t1, t2)
-}
+// ⛔⛔⛔ **AQUI VIVIAM O AMOSTRADOR SORTEADO E A BASE TANGENTE — as duas foram APAGADAS em
+// 2026-09-15, com o report do dono na mão** (*«baixíssima qualidade»*, foto do interior de um furo).
+//
+// O que estava aqui era `sample_uv` — estratificação da elevação com rotação de Cranley–Patterson
+// por pixel, azimute pela razão áurea — e `base_do_hemisferio`, que construía um referencial
+// tangente a partir da normal. As duas serviam um estimador de **MONTE CARLO**, e o defeito não
+// estava em nenhuma delas: estava em ser Monte Carlo.
+//
+// ⚠️ **A §31 curou um ENVIESAMENTO daquele amostrador e deixou a VARIÂNCIA de pé.** Depois da cura
+// as listras foram-se e ficou o grão: `√(p(1−p)/N)` a `N = 16` é `12,5 %` da faixa por pixel, e o
+// borrão de 3×3 baixa-o para `~4 %` — que num furo ESCURO, depois da curva sRGB, é a dezena de
+// níveis que ele fotografou. *A cura de um enviesamento não é a cura da variância, e as duas
+// leem-se como «a imagem melhorou».*
+//
+// ⛔ E havia um segundo defeito que nenhuma régua desta crate media: o sorteio era semeado no
+// **índice do pixel**, logo o mesmo ponto da peça mudava de oclusão ao rodar a câmera.
+//
+// ⇒ a lei que ficou é o CONE determinístico ([`cone_dir`]), e estas duas funções não têm consumidor
+// nenhum. *Um amostrador sem estimador que o use é código que ninguém pode acordar.*
 
 /// ⭐⭐⭐ **O REFINAMENTO: `OCCLUSION_PASSES` passagens sobre o MESMO G-buffer.**
 ///
@@ -661,21 +745,16 @@ pub fn refine_occlusion(
     mut entrega: impl FnMut(&Shadows, u32) -> bool,
 ) -> u32 {
     let pixels = g.hit.len();
-    let mut soma = vec![0.0f32; pixels];
+    let mut acc = ConeSlice {
+        sum: vec![0.0f32; pixels],
+        weight: vec![0.0f32; pixels],
+    };
     for k in 0..OCCLUSION_PASSES {
-        let fatia = occlusion_slice(doc, reg, cam, g, k, 1, OCCLUSION_PASSES);
-        for (a, f) in soma.iter_mut().zip(&fatia) {
-            *a += f;
-        }
-        // ⚠️ **A média é sobre as passagens JÁ CORRIDAS**, e não sobre o total — senão a imagem
-        // abriria preta e iria clareando, que é o contrário do que uma acumulação deve parecer.
-        #[allow(clippy::cast_precision_loss)]
-        let inv = 1.0 / f32::from(u16::try_from(k + 1).unwrap_or(u16::MAX));
-        let cru: Vec<f32> = soma
-            .iter()
-            .zip(&g.hit)
-            .map(|(v, hit)| if *hit { v * inv } else { 1.0 })
-            .collect();
+        acc.add(&occlusion_slice(doc, reg, cam, g, k, 1, OCCLUSION_PASSES));
+        // ⚠️ **A média é sobre o PESO já acumulado**, e não sobre o total nem sobre a contagem de
+        // passagens — senão a imagem mudaria de nível a cada passo em vez de afinar. Ver
+        // [`ConeSlice`], que é onde essa lei vive.
+        let cru = acc.average(&g.hit);
         // ⭐ **Suavizada no PUBLICAR, e não no acumulador** — a soma tem de continuar crua, senão
         // cada passagem borraria o que a anterior já borrou e a oclusão espalhar-se-ia.
         shadows.set_ambient(blur_occlusion(g, &cru));

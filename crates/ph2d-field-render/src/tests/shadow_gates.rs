@@ -279,26 +279,24 @@ fn somar_as_fatias_da_a_sequencia_inteira() {
 
     let inteira = crate::occlusion(&doc, &reg, &cam, &g, TOTAL);
 
-    // Oito passagens de um raio, como o quadro assente as vai correr.
-    let mut acc = vec![0.0f32; g.hit.len()];
+    // Oito passagens de um cone, como o quadro assente as vai correr.
+    let mut acc = crate::ConeSlice {
+        sum: vec![0.0f32; g.hit.len()],
+        weight: vec![0.0f32; g.hit.len()],
+    };
     for k in 0..TOTAL {
-        let fatia = crate::occlusion_slice(&doc, &reg, &cam, &g, k, 1, TOTAL);
-        for (a, f) in acc.iter_mut().zip(&fatia) {
-            *a += f;
-        }
+        acc.add(&crate::occlusion_slice(&doc, &reg, &cam, &g, k, 1, TOTAL));
     }
+    let somadas = acc.average(&g.hit);
 
     let peca = (0..g.hit.len()).filter(|i| g.hit[*i]).count();
     assert!(peca > 500, "a fixtura não desenhou peça: {peca} px");
-    #[allow(clippy::cast_precision_loss)]
-    let inv = 1.0 / TOTAL as f32;
     for i in 0..g.hit.len() {
         if !g.hit[i] {
             continue;
         }
         assert_eq!(
-            acc[i] * inv,
-            inteira[i],
+            somadas[i], inteira[i],
             "o pixel {i} diverge entre acumular e pagar tudo de uma vez — a fatia está a \
              estratificar em SI PRÓPRIA em vez de no total"
         );
@@ -609,55 +607,115 @@ fn a_oclusao_nao_faz_listras_entre_colunas_vizinhas() {
     );
 }
 
-/// ⭐⭐⭐ **OS RAIOS DE UM PIXEL COBREM O HEMISFÉRIO, e não um leque plano.**
+/// ⭐⭐⭐ **A OCLUSÃO DE UM PONTO É FUNÇÃO DO PONTO — não do pixel em que ele cai.**
 ///
-/// ⛔ Este é o gate da causa, e o irmão de cima é o da consequência. Ele apanha o defeito **sem
-/// traçar nada**: se o azimute não depender do raio, os `32` de um pixel caem todos no mesmo plano.
+/// ⛔⛔ **É o gate que a lei de Monte Carlo NÃO podia passar, e é por isso que ele nasce agora.** O
+/// amostrador que shipou até 2026-09-15 semeava o sorteio no **índice do pixel** (`sample_uv(i, …)`),
+/// logo o mesmo ponto da peça recebia uma estimativa diferente conforme onde aterrava — e a
+/// consequência que o dono via não era «grão»: era a imagem **mudar** ao reenquadrar.
+///
+/// ⚠️ **A igualdade é EXACTA, ao bit.** Não há epsilon porque não há nada a promediar: a mesma
+/// entrada percorre as mesmas `OCCLUSION_PASSES` direcções pela mesma ordem.
 #[test]
-fn os_raios_de_um_pixel_varrem_o_azimute_inteiro() {
-    const TOTAL: u32 = 32;
-    for pixel in [0usize, 1, 2, 12_345, 60_770] {
-        let uvs: Vec<(f32, f32)> = (0..TOTAL)
-            .map(|k| crate::shadow::sample_uv(pixel, k, TOTAL))
-            .collect();
+fn a_oclusao_de_um_ponto_nao_depende_do_pixel_em_que_ele_cai() {
+    let doc = cruz();
+    let (reg, cam, g, _) = cena(&doc, 96, 54);
 
-        // ⭐ O azimute varre o círculo: com `32` amostras, nenhum oitavo pode ficar vazio.
-        let mut baldes = [0u32; 8];
-        for (_, u2) in &uvs {
-            baldes[((u2 * 8.0) as usize).min(7)] += 1;
-        }
-        assert!(
-            baldes.iter().all(|n| *n > 0),
-            "o pixel {pixel} deixa oitavos do azimute VAZIOS ({baldes:?}) — os raios dele estão \
-             num leque plano, que é o defeito da §31"
-        );
+    // ⭐ O sujeito tem de estar OCLUÍDO — num ponto de céu aberto todo estimador concorda, e o
+    // gate passaria sobre a lei que ele existe para proibir.
+    let cru = crate::occlusion(&doc, &reg, &cam, &g, crate::OCCLUSION_PASSES);
+    let fonte = (0..g.hit.len())
+        .find(|i| g.hit[*i] && cru[*i] < 0.8)
+        .expect("nenhum pixel ocluído na fixtura");
+    assert!(
+        cru[fonte] > 0.0,
+        "o sujeito está totalmente tapado — um `0` seria igual por saturação, não por lei"
+    );
 
-        // ⭐ E a elevação é estratificada: uma amostra por banda, exactamente.
-        let mut bandas = [0u32; TOTAL as usize];
-        for (u1, _) in &uvs {
-            bandas[((u1 * TOTAL as f32) as usize).min(TOTAL as usize - 1)] += 1;
-        }
-        assert!(
-            bandas.iter().all(|n| *n == 1),
-            "o pixel {pixel} não estratifica a elevação ({bandas:?})"
+    // O MESMO ponto e a MESMA normal, repetidos em oito índices diferentes.
+    const N: usize = 8;
+    let repetido = Gbuffer {
+        width: N as u32,
+        height: 1,
+        hit: vec![true; N],
+        normal: vec![g.normal[fonte]; N],
+        point: vec![g.point[fonte]; N],
+        edges: Vec::new(),
+    };
+    let oc = crate::occlusion(&doc, &reg, &cam, &repetido, crate::OCCLUSION_PASSES);
+    for i in 1..N {
+        assert_eq!(
+            oc[i], oc[0],
+            "o índice {i} lê {:.6} e o índice 0 lê {:.6} sobre o MESMO ponto — a oclusão está \
+             semeada no pixel",
+            oc[i], oc[0]
         );
     }
+}
 
-    // ⛔ **E pixels VIZINHOS não podem arrancar em lados opostos** — era o bit 0 do índice a virar
-    // o bit mais significativo do azimute (`1000 → 0,093`, `1001 → 0,593`: meia volta).
-    let arranque = |i: usize| crate::shadow::sample_uv(i, 0, TOTAL).1;
-    let saltos: Vec<f32> = (1000..1016)
-        .map(|i| {
-            let d = (arranque(i) - arranque(i + 1)).abs();
-            d.min(1.0 - d)
-        })
-        .collect();
-    let meia_volta = saltos.iter().filter(|d| **d > 0.4).count();
-    assert!(
-        meia_volta < 8,
-        "{meia_volta} de 16 pares de colunas vizinhas arrancam a meia volta uma da outra \
-         ({saltos:?}) — é a paridade a escolher o azimute"
-    );
+/// ⭐⭐⭐ **E ELA NÃO DEPENDE DA CÂMERA** — rodar a vista não repinta o sombreado de contacto.
+///
+/// ⚠️ **O conjunto de direcções é de MUNDO** ([`crate::cone_dir`]), e é isso que este gate afirma.
+/// Um referencial TANGENTE construído a partir da normal daria o mesmo aqui — o que ele não daria
+/// é continuidade na costura da base, que é a outra metade da razão.
+///
+/// ⚠️ A barra não é o bit: as duas corridas convertem a normal por bases diferentes, logo os `f32`
+/// chegam ao campo por caminhos diferentes. `1e-5` é folga de representação, e um estimador semeado
+/// na vista erraria por **décimas**.
+#[test]
+fn a_oclusao_de_um_ponto_nao_depende_da_camera() {
+    let doc = cruz();
+    let (reg, cam_a, g, _) = cena(&doc, 96, 54);
+    let cru = crate::occlusion(&doc, &reg, &cam_a, &g, crate::OCCLUSION_PASSES);
+    let fonte = (0..g.hit.len())
+        .find(|i| g.hit[*i] && cru[*i] < 0.8)
+        .expect("nenhum pixel ocluído na fixtura");
+
+    // O ponto e a normal em MUNDO — o que a peça de facto tem.
+    let (ra, ua, fa) = cam_a.basis();
+    let nv = g.normal[fonte];
+    let n_mundo = [0, 1, 2].map(|c| nv[0] * ra[c] + nv[1] * ua[c] + nv[2] * fa[c]);
+    let ponto = g.point[fonte];
+
+    // ⚠️ **Só a ROTAÇÃO muda.** O `half_extent` entra na tolerância de acerto e no alcance, logo
+    // mexer nele mediria outra coisa — e essa dependência é da LEI, não do amostrador.
+    let de = |cam: &Orbit| -> f32 {
+        let (r, u, f) = cam.basis();
+        let em_vista = [
+            n_mundo[0] * r[0] + n_mundo[1] * r[1] + n_mundo[2] * r[2],
+            n_mundo[0] * u[0] + n_mundo[1] * u[1] + n_mundo[2] * u[2],
+            n_mundo[0] * f[0] + n_mundo[1] * f[1] + n_mundo[2] * f[2],
+        ];
+        let um = Gbuffer {
+            width: 1,
+            height: 1,
+            hit: vec![true],
+            normal: vec![em_vista],
+            point: vec![ponto],
+            edges: Vec::new(),
+        };
+        crate::occlusion(&doc, &reg, cam, &um, crate::OCCLUSION_PASSES)[0]
+    };
+
+    let a = de(&cam_a);
+    assert!(a < 0.8, "o sujeito deixou de estar ocluído ({a:.4})");
+    for (yaw, pitch) in [
+        (0.72_f32, 0.52_f32),
+        (2.10, -0.30),
+        (-1.40, 0.95),
+        (3.90, 0.10),
+    ] {
+        let cam_b = Orbit {
+            rotation: Orbit::from_yaw_pitch(yaw, pitch).rotation,
+            ..cam_a
+        };
+        let b = de(&cam_b);
+        assert!(
+            (a - b).abs() < 1e-5,
+            "o mesmo ponto lê {a:.6} de uma câmera e {b:.6} de outra ({yaw}, {pitch}) — a oclusão \
+             está ancorada na VISTA e ferve ao reenquadrar"
+        );
+    }
 }
 
 /// ⭐⭐⭐ **A SUAVIZAÇÃO NÃO ATRAVESSA UMA QUINA.**

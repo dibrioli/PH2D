@@ -173,12 +173,15 @@ fn visivel(origem: vec3<f32>, dir: vec3<f32>, t_max: f32, dureza: f32) -> f32 {
     return vis;
 }
 
-// A mistura de Knuth da CPU, ao bit — ver `ph2d_field_render::shadow::sample_uv`.
-fn mistura(v: u32) -> f32 {
-    let a = v * 2654435761u;
-    let r = (a << 15u) | (a >> 17u);
-    let h = r * 2246822519u;
-    return f32(h >> 8u) / 16777216.0;
+// ⭐⭐⭐ A direcção `k` do conjunto de cones — o `ph2d_field_render::cone_dir`, linha a linha.
+// Reticulado de Fibonacci esférico em coordenadas de MUNDO: nem o pixel nem a câmera entram.
+fn direccao_do_cone(k: u32, total: u32) -> vec3<f32> {
+    let n = f32(max(total, 1u));
+    let ki = f32(k);
+    let z = 1.0 - (2.0 * ki + 1.0) / n;
+    let r = sqrt(max(1.0 - z * z, 0.0));
+    let phi = 6.283185307 * fract(ki * 0.618034);
+    return vec3<f32>(r * cos(phi), r * sin(phi), z);
 }
 
 // A saída da bola, que é o DOMÍNIO da pergunta — ver `ph2d_field_render::shadow`.
@@ -216,34 +219,24 @@ fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
         }
     }
 
-    // A OCLUSÃO: `ao_rays` raios no hemisfério, cosseno-distribuídos.
-    var ceu = 0.0;
+    // ⭐⭐⭐ **A OCLUSÃO POR CONES** — `ao_rays` direcções FIXAS de mundo, pesadas pelo cosseno.
+    //
+    // A dureza de cada cone é `1/(n·d)`: é o cone que ROÇA o plano tangente, e é ele que faz um
+    // corpo CONVEXO ler exactamente `1,0`. Ver `ph2d_field_render::cone_dir` para o porquê de o
+    // conjunto ser de MUNDO e não de um referencial tangente.
+    var ceu = 1.0;
     if (s.ao_rays > 0u) {
-        var a = vec3<f32>(1.0, 0.0, 0.0);
-        if (abs(n.x) > 0.9) { a = vec3<f32>(0.0, 1.0, 0.0); }
-        let t1 = normalize(cross(a, n));
-        let t2 = cross(n, t1);
-        // ⭐⭐⭐ **O MESMO amostrador da CPU, AO BIT** — a mesma mistura de Knuth, o mesmo
-        // deslocamento por pixel e a mesma razão áurea (`ph2d_field_eval`… não: `shadow::sample_uv`).
-        //
-        // ⚠️ **Se ele fosse só «equivalente», a paridade da oclusão deixaria de ser mensurável
-        // pixel a pixel** e teria de descer a uma média — que é exactamente a régua que a §31
-        // mostrou ser cega. *Duas sequências diferentes dão a mesma imagem e nenhuma prova.*
-        let salto = mistura(u32(i));
-        let salto2 = mistura(u32(i) ^ 0x9E3779B9u);
+        var soma = 0.0;
+        var peso = 0.0;
         for (var j: u32 = 0u; j < s.ao_rays; j = j + 1u) {
-            let u1 = fract((f32(j) + salto) / f32(s.ao_rays));
-            let u2 = fract(salto2 + f32(j) * 0.618034);
-            let rr = sqrt(u1);
-            let phi = 6.283185307 * u2;
-            let z = sqrt(max(1.0 - u1, 0.0));
-            let dd = t1 * (rr * cos(phi)) + t2 * (rr * sin(phi)) + n * z;
+            let dd = direccao_do_cone(j, s.ao_rays);
+            let c = dot(n, dd);
+            if (c <= 0.0) { continue; }
+            peso = peso + c;
             let ate = min(s.ao_reach, cerca_da_bola(erguido, dd, s.ao_reach));
-            ceu = ceu + visivel(erguido, dd, ate, 3.4e38);
+            soma = soma + c * visivel(erguido, dd, ate, 1.0 / c);
         }
-        ceu = ceu / f32(s.ao_rays);
-    } else {
-        ceu = 1.0;
+        if (peso > 0.0) { ceu = soma / peso; }
     }
     luz[i] = vec2<f32>(sombra, ceu);
 }

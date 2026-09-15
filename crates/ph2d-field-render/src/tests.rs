@@ -7004,7 +7004,7 @@ fn measure_the_occlusion_reach() {
         let g = trace(&cruz, &reg, &cam, 640, 360);
         let t = std::time::Instant::now();
         let v = crate::shadow::occlusion_slice_with_reach(&cruz, &reg, &cam, &g, 0, 1, 32, f);
-        std::hint::black_box(v.len());
+        std::hint::black_box(v.sum.len());
         let ms = t.elapsed().as_secs_f64() * 1e3;
         println!("  {f:7.2} · {c:15.3} · {e:17.3} · {:9.3} · {ms:6.2}", e - c);
     }

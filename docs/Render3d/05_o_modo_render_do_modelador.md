@@ -3172,3 +3172,130 @@ tenha pousado. ⇒ um `OnceLock` de processo.
 - **Os `24 ms` ainda não são os `5 ms` do tecto** (§35.4): `49 MB` de leitura por quadro e duas
   paragens de sincronização.
 - **Uma peça com escultura ou com duas luzes fica na CPU** — declarado, com gate.
+
+## §37 — ⛔⛔⛔ «BAIXÍSSIMA QUALIDADE»: o grão era MONTE CARLO, e a cura é um CONE (report do dono, 2026-09-15)
+
+> *«baixíssima qualidade. a anos luz da unreal»* — foto do interior de um furo passante, com uma seta
+> vermelha a apontar para a parede dele.
+
+### §37.1 — O que a foto mostra, medido
+
+A seta aponta para a **oclusão**. Até este dia ela eram `OCCLUSION_PASSES` **raios binários sorteados
+por pixel**, e um estimador binário de `N` amostras tem desvio-padrão `√(p(1−p)/N)`: a `N = 16` e
+`p = ½` isso é **`12,5 %` da faixa, por pixel**. O borrão `3×3` desce-o a `~4 %`, e num furo ESCURO,
+depois da curva sRGB, `4 %` de erro relativo é a dezena de níveis que a foto tem.
+
+⚠️ **A primeira régua que corri disse que não era isso, e ela é que estava errada.** Medindo o erro
+no BYTE sobre remendos lisos, o `p99` lia `2` níveis — um número que se lê como *«invisível»*. O que
+ele não media era a **estrutura**: despejando o canal de oclusão numa imagem
+(`cargo run --release -p ph2d-field-gpu --example ao_grain`, com `PH2D_AO_DUMP`), ele sai com uma
+**textura tecida** visível a olho. *Um `p99` de amplitude não vê um padrão — o olho vê padrões antes
+de ver amplitudes, e é por isso que a sonda desta wave despeja uma IMAGEM ao lado da tabela.*
+
+### §37.2 — ⛔ A §31 curou um ENVIESAMENTO e deixou a VARIÂNCIA de pé
+
+A wave anterior (§31) apanhou duas coisas na mesma linha — o azimute que não dependia do raio, e o
+bit `0` do pixel a virar o bit mais significativo do azimute — e curou-as. As listras foram-se.
+
+⚠️ **Mas um amostrador sem enviesamento continua a ser um amostrador com ruído**, e as duas coisas
+leem-se igual num report: *«a imagem melhorou»*. A §31 mediu convergência (`1/√N` sobre uma
+referência de 64 raios) e não mediu **o vizinho**, que é o que o olho faz.
+
+### §37.3 — ⛔⛔ E havia um segundo defeito, PIOR, que régua nenhuma media
+
+O sorteio era semeado no **índice do pixel** (`sample_uv(i, …)`). ⇒ o mesmo ponto da peça recebia
+outra estimativa conforme onde aterrava, logo **rodar a câmera repintava o sombreado de contacto**.
+Não é grão: é a imagem a mudar ao reenquadrar.
+
+Os dois gates que nascem com esta wave são exactamente esses, e **nenhum deles podia passar com a lei
+antiga**:
+
+| gate | o que afirma | a mutação que o mata |
+|---|---|---|
+| `a_oclusao_de_um_ponto_nao_depende_do_pixel_em_que_ele_cai` | o mesmo `(ponto, normal)` em oito índices dá o mesmo byte, **ao bit** | semear o conjunto no pixel |
+| `a_oclusao_de_um_ponto_nao_depende_da_camera` | quatro orientações de câmera, o mesmo ponto, `< 1e-5` | ancorar o conjunto na VISTA |
+
+⭐ A segunda mutação é **discriminante**: ela mata só o gate da câmera e deixa o do pixel verde.
+
+### §37.4 — ⭐⭐⭐ A lei que fica: um CONE por direcção fixa de MUNDO
+
+- as direcções são um **reticulado de Fibonacci esférico** sobre a esfera inteira (`cone_dir`),
+  **iguais em todo pixel e em toda câmera**;
+- cada uma é traçada como **cone**, com o estimador `min(d / (t·cos))` que a marcha da sombra já
+  tinha — o que muda é a **dureza**, que passa a ser **por raio**;
+- o peso é `n·d`, e a média é `Σ w·vis / Σ w`.
+
+⭐⭐⭐ **A dureza é `1/(n·d)`, e é ela que faz a lei ser exacta num corpo convexo.** Esse é o cone que
+**roça o plano tangente**: num plano a distância ao longo do raio é `t·(n·d)` por identidade, logo o
+quociente é `1` exacto; numa esfera é maior que `1`. ⇒ `vis` fica exactamente `1,0` e a média fica
+`w/w = 1,0` — **ao bit**, e o gate da esfera (que já existia) afirma-o com `assert_eq!`.
+
+⛔ **A primeira tentativa de cone, na W4, usou `hardness = 1` e foi REJEITADA** porque a esfera lia
+`0,698` contra `0,757` da cruz — um corpo convexo a ocluir-se mais que três cilindros cruzados. *A
+recusa estava certa sobre aquele número e errada sobre a família: o que não servia era a dureza
+CONSTANTE, não o cone.*
+
+⛔ **Um referencial TANGENTE foi considerado e recusado.** Ele daria `N` direcções úteis em vez de
+`N/2`, mas toda base construída a partir de `n` tem uma descontinuidade (a que vivia aqui saltava
+quando `|n.x|` cruzava `0,9`; a de Duff salta em `n.z = 0`). Com direcções SORTEADAS isso é
+invisível — o sorteio já embaralha o azimute. Com um conjunto FIXO vira uma **costura desenhada na
+peça**. *Uma base que só era aceitável porque o ruído a escondia deixa de ser aceitável quando se
+apaga o ruído.*
+
+### §37.5 — ⭐ O que mudou, medido (sonda `ao_grain`, a peça da foto)
+
+**A `960×540`, com as MESMAS 16 amostras dos dois lados** — `grão` é
+`|ao(i) − média dos 8 vizinhos|` sobre remendos lisos:
+
+| | `ms` | grão p50 | p99 | máx |
+|---|---:|---:|---:|---:|
+| raios sorteados (até 2026-09-14) | `8,2` | `0,0043` | `0,0208` | `0,0486` |
+| **cones** | **`6,0`** | **`0,0002`** | `0,0053` | `0,0222` |
+
+⇒ **`21×` no `p50` e mais barato.** ⭐ E o que resta **não é ruído**: é determinístico, e os dois
+gates acima afirmam-no.
+
+O número de direcções e o joelho estão na tabela do `OCCLUSION_PASSES` (`16 → 48`, medida a
+`1920×1080`): o que mais direcções compram deixou de ser variância e passou a ser **resolução
+angular** — o que se evita é **banda**, terraços de nível onde a resposta devia variar devagar.
+
+### §37.6 — ⛔⛔ A paridade apanhou uma LEI escrita só num motor
+
+Com cones, o gate `o_gbuffer_do_dispositivo_e_o_da_cpu` acusou **`0,1450`** de divergência. A causa:
+a **cerca da bola** — o domínio da pergunta, documentado na §27.5 — vivia **só no WGSL**. Com raios
+binários ela quase nunca vincula; com um estimador que é um **mínimo ao longo do raio**, tudo o que
+ele lê para lá da peça entra na resposta. Dando-a à CPU: `0,1450 → 0,0201` na pior cena.
+
+⚠️ *Uma cerca escrita num motor só é uma lei diferente nos dois, e a régua que a não vê é a que corre
+com o estimador errado.*
+
+E a barra daquele gate teve de ser **re-derivada**: ela era `2 / OCCLUSION_PASSES`, *dois raios do
+quantum binário*. Com cones não há quantum — a fórmula passou a devolver `0,0417` sem nomear recurso
+nenhum. Hoje o recurso é a `f32` da fita propagada pelo estimador, com a conta e a varredura do
+filtro escritas no gate.
+
+⭐⭐ **E a oclusão passou a comparar-se só onde a GEOMETRIA concorda** (normal `< 1°`, `Δt < 3e-5`),
+com piso de população. A razão é a lei nova: a oclusão é **função de `(ponto, normal)`** — onde os
+dois motores entregam normais a `9,9°` uma da outra (cena 30, num vinco), eles TÊM de entregar
+oclusões diferentes, e essa divergência **já tem barra própria duas linhas acima**. *Gatear a mesma
+divergência duas vezes não a mede melhor — mede o acoplamento e chama-lhe defeito do segundo passe.*
+
+### §37.7 — ⛔ Duas recusas medidas
+
+| tentativa | medição | veredito |
+|---|---|---|
+| sair do cone quando `vis < 0,02` | `6,0 → 6,4 ms` · `11,6 → 13,4` | ⛔ não compra: o que custa é o cone ABERTO, que viaja até à cerca |
+| piso no cosseno (`0,05`) para cortar a amplificação da dureza | pior `p99` **exactamente** onde estava (`0,0201`) | ⛔ o amplificador não é a dureza — é o `Δt` do ponto de partida |
+
+### §37.8 — ⏳ O que fica aberto, com o preço
+
+- **O quadro assente passa de `22,0` para `36,5 ms` no dispositivo** (`+11 ms` no total de ponta a
+  ponta). ⛔ O quadro de MOVIMENTO não paga nada: o dispositivo só toma o assente.
+- ⏳ **A alavanca medida e não construída:** a oclusão é de baixa frequência — é a mesma premissa que
+  legitima o `blur_occlusion` —, logo cabe em **meia resolução** com reconstrução guiada pela normal.
+  `4×` mais barata, o que poria `96` cones abaixo do preço dos `16` raios de ontem. Traz uma classe
+  de artefacto própria (halo na descontinuidade de profundidade) e é wave com espec própria.
+- ⏳ **O `blur_occlusion` mudou de razão, e o doc dele já o diz.** Ele existia para apagar ruído de
+  amostragem; hoje não há ruído, e o que ele faz é suavizar as **estrias** do conjunto discreto. A
+  premissa que o legitima é a mesma; o que **não** foi re-medido é quanto ele vale contra a lei nova
+  — a tabela que está lá é da lei antiga e está marcada como história.

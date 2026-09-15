@@ -5644,6 +5644,8 @@ dependencies = [
  "ph2d-field",
  "ph2d-field-eval",
  "ph2d-field-render",
+ "ph2d-material",
+ "ph2d-view-transform",
  "pollster",
  "wgpu",
 ]

@@ -551,6 +551,41 @@ pub(crate) fn march_shadow_counted(
     hardness: f32,
     bias: f32,
 ) -> (Vec<f32>, u64) {
+    march_visibility(scene, origins, dirs, t_max, |_| hardness, bias)
+}
+
+/// ⭐⭐⭐ **A MESMA marcha com a dureza POR RAIO** — o que o cone da oclusão precisa.
+///
+/// # Porque a dureza deixou de poder ser um escalar
+///
+/// A [`crate::shadow::occlusion_slice_with_reach`] traça um **CONE por direcção**, e o cone certo
+/// para a oclusão é o que **roça o plano tangente**: meio-ângulo `θ` com `tan θ = n·d`. Isso põe a
+/// dureza a `1/(n·d)` — **um número por raio**, porque cada direcção do conjunto faz um ângulo
+/// diferente com a normal daquele pixel.
+///
+/// ⚠️ **É essa dureza que faz um corpo CONVEXO ler exactamente `1,0`**: num plano a distância ao
+/// longo do raio é `t·(n·d)` por identidade, logo `hardness · d / t = 1` — e numa esfera é
+/// *maior* que `1`. Uma dureza escalar não tem como saber isto, e foi por não a ter que a
+/// primeira tentativa de cone (`hardness = 1`) leu uma **esfera mais ocluída que uma cruz**.
+pub(crate) fn march_cone_to(
+    scene: &Scene<'_>,
+    origins: &[[f32; 3]],
+    dirs: &[[f32; 3]],
+    t_max: &[f32],
+    hardness: &[f32],
+) -> Vec<f32> {
+    debug_assert_eq!(origins.len(), hardness.len());
+    march_visibility(scene, origins, dirs, t_max, |i| hardness[i], BIAS).0
+}
+
+fn march_visibility<H: Fn(usize) -> f32>(
+    scene: &Scene<'_>,
+    origins: &[[f32; 3]],
+    dirs: &[[f32; 3]],
+    t_max: &[f32],
+    hardness: H,
+    bias: f32,
+) -> (Vec<f32>, u64) {
     debug_assert_eq!(origins.len(), t_max.len());
     let mut amostras = 0u64;
 
@@ -595,7 +630,7 @@ pub(crate) fn march_shadow_counted(
                 vis[iu] = 0.0;
                 continue;
             }
-            vis[iu] = vis[iu].min(hardness * d / t[iu]);
+            vis[iu] = vis[iu].min(hardness(iu) * d / t[iu]);
             t[iu] += d * scene.step;
             if t[iu] >= t_max[iu] {
                 continue;

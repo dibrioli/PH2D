@@ -130,9 +130,9 @@ pub use shade_render::{
     Lamp, Lighting, POINT_LAMP_MIN_DISTANCE, PointLamp, Surfaces, shade_render,
 };
 pub use shadow::{
-    HARDNESS, OCCLUSION_BLUR_COS, OCCLUSION_PASSES, OCCLUSION_REACH, Shadows, blur_occlusion,
-    occlusion, occlusion_slice, occlusion_slice_with_reach, occlusion_with_reach, refine_occlusion,
-    shadow_pass,
+    ConeSlice, HARDNESS, OCCLUSION_BLUR_COS, OCCLUSION_PASSES, OCCLUSION_REACH, Shadows,
+    blur_occlusion, cone_dir, occlusion, occlusion_slice, occlusion_slice_with_reach,
+    occlusion_with_reach, refine_occlusion, shadow_pass,
 };
 pub use tape_cache::{
     EVICT_NS, GET_NS, Growth, INFLATE, PAD_OF_REACH, TAPE_DROPPED, TAPE_EVICTIONS, TAPE_HITS,

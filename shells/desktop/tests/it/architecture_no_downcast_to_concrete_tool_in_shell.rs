@@ -133,7 +133,10 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // (`sample_composite_at_uv`) + reads `repeat_image()` to walk the Repeat-Image neighbour tiles —
     // a Painter-specific affordance integrating the eyedropper with the layer system. Same exception
     // class as painter_canvas_input / painter_bridge (ADR-0040 §3). (Coord ship-fix, 2026-06-24.)
-    "src/forwarding.rs",
+    // ⚠️ **MUDOU de ficheiro em 2026-09-15** (era `src/forwarding.rs`): o que o selector de cor
+    // pede à shell — o conta-gotas e o diálogo de paleta — saiu para um irmão pelo tecto de LOC.
+    // A excepção é a MESMA; o endereço dela é que não é uma propriedade do produto.
+    "src/forwarding_picker.rs",
     // Removed in Wave 10 / Etapa 3 audit [C1]: hero_intents/image_edit/*.rs
     // entries were pre-emptive — none of them actually downcast today.
     // The stale-check below ensures the allowlist only contains files

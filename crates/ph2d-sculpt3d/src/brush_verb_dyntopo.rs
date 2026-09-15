@@ -43,6 +43,16 @@ impl Verb {
     /// | a **livre** | **MIT** | ⭐ lê-se e porta-se, com atribuição (§0.9: *a triagem pára na primeira porta ABERTA*) | 13 ferramentas |
     /// | a **medida** | GPL | ⛔ corre-se **sem interface**, por uma janela **E**; a saída é DADO (GPLv2 §0) | **27** tipos, `343` células |
     ///
+    /// ⭐⭐⭐ **E EXISTE UMA TERCEIRA FONTE, QUE GANHA DAS DUAS: O DONO.** Em
+    /// 2026-09-14 ele correu o smoke `=14` e devolveu cinco células —
+    /// *«acho que layer, move/drag deve subdividir. Thumb se for possível,
+    /// deveria subdividir. Twist com dynamic topology fica com resultado muito
+    /// ruim»* —, e ela ganha pelo mesmo princípio que dá o lugar ao oráculo:
+    /// *uma referência responde o que outro programa FAZ; o dono responde o que
+    /// este produto TEM DE fazer.* ⚠️ Cada uma dessas células está **nomeada**
+    /// no gate `o_veredito_do_dono_sobre_cinco_celulas`, e não espalhada por
+    /// braços de `match` que se leem como se fossem medição.
+    ///
     /// # A tabela, e a proveniência de cada célula
     ///
     /// | verbo | mexe? | de onde |
@@ -50,10 +60,11 @@ impl Verb {
     /// | Draw · Clay · Inflate · Flatten · Fill · Scrape · Pinch · Crease · Blob · Clay Strips · Clay Thumb · Multiplane Scrape | ✅ | as duas (onde as duas existem) |
     /// | **Snake Hook** | ✅ | **as duas** — e foi preciso LIGAR a porta ao gesto ancorado |
     /// | **Nudge** | ✅ | a medida (`441 → 2 853`) |
-    /// | **Twist · Local Scale** | ✅ | ⚠️⚠️ **as duas DISCORDAM** — ver o braço delas |
+    /// | **Move · Thumb · Layer** | ✅ | ⭐⭐⭐ **o DONO**, com os olhos no smoke `=14` — contra as duas referências |
+    /// | **Twist · Local Scale** | ⛔ | ⭐⭐⭐ **o DONO** (*«fica com resultado muito ruim»*), e isso **desempata** as duas |
     /// | **Smooth** | ⛔ | **as duas**, e o dono nomeou-o à letra |
-    /// | **Slide Relax · Surface Smooth · Layer** | ⛔ | a medida (`441 → 441` nos dois extremos) |
-    /// | Move · Thumb · Pose · Boundary · Cloth | ⛔ | as duas (onde as duas existem) |
+    /// | **Slide Relax · Surface Smooth** | ⛔ | a medida (`441 → 441` nos dois extremos) |
+    /// | Pose · Boundary · Cloth | ⛔ | as duas (onde as duas existem) |
     /// | **Mask** | ⛔ | ⭐ **domínio**, curado um dia ANTES do estudo — e as duas confirmaram |
     /// | Density | ✅ | ⛔ construção: ele **É** o passe de topologia |
     /// | Erase · Smear Displacement | ⛔ | ⛔ construção: multirresolução exclui dyntopo (espec §5.6) |
@@ -98,28 +109,27 @@ impl Verb {
             // `turn_at`) — e foi preciso ligá-la lá, o que é a metade de
             // FIAÇÃO desta wave.
             Self::SnakeHook => true,
-            // ⚠️⚠️ **TWIST e LOCAL SCALE: AS DUAS REFERÊNCIAS DISCORDAM, e a
-            // divergência é DECLARADA.**
+            // ⭐⭐⭐ **O AGARRAR E O POLEGAR PASSARAM A MEXER — ORDEM DO DONO**
+            // (2026-09-14, depois de ver o `=14` com os olhos):
             //
-            // | referência | diz |
-            // |---|---|
-            // | a **livre** (MIT) | **mexe** — as duas ferramentas chamam a topologia dinâmica |
-            // | a **medida** (corrida sem interface) | ⛔ **não mexe** — `441 → 441` nos dois extremos do slider |
+            // > *«acho que layer, move/drag deve subdividir. Thumb se for
+            // > possível, deveria subdividir.»*
             //
-            // ⭐ **Fica o `true`, e o argumento é GEOMÉTRICO e não de voto:** uma
-            // torção com queda **cisalha** a superfície e uma escala local
-            // **estica-a radialmente** — os dois produzem aresta longa, que é
-            // exactamente a metade do report do dono (*«algumas que deveriam
-            // criar subdivisões não estão criando»*). O irmão deles que as duas
-            // referências **concordam** que mexe — o gancho — é da mesma
-            // família: quem TRANSPORTA matéria estica a malha atrás de si.
+            // ⚠️⚠️ **Isto é uma DIVERGÊNCIA DECLARADA das DUAS referências** — as
+            // duas dizem que o agarrar não mexe —, e o argumento dele ganha
+            // delas pela mesma razão que o §0.9 deste repo dá ao oráculo: a
+            // referência responde *o que outro programa faz*, e o dono responde
+            // *o que este produto tem de fazer*. O argumento que as duas
+            // carregam (*a região viaja como um corpo, e a densidade viaja com o
+            // material*) é verdadeiro no MIOLO do agarrar e falso no **anel**,
+            // onde o barro que anda encontra o barro que ficou — e é ali que a
+            // aresta estica.
             //
-            // ⛔ **A outra leitura é legítima e está registada:** na referência
-            // medida, `ROTATE` e a escala elástica pertencem à família que move
-            // uma região **como um corpo**, onde a densidade viaja com o
-            // material — e ali eles não refinam, como o agarrar. *É decisão de
-            // produto, e o dono tem os dois números.*
-            Self::Twist | Self::LocalScale => true,
+            // ⚠️ **O polegar custou uma peça**, e é o *«se for possível»* dele: é
+            // o único verbo que CONGELA a pegada no pen-down, e um índice
+            // guardado não sobrevive a uma renumeração sozinho. As duas metades
+            // vivem em [`crate::SculptStroke::grow_with`] e na irmã do colapso.
+            Self::Move | Self::Thumb => true,
             // ⭐ **O EMPURRÃO passou a mexer, e a referência medida é clara:**
             // `441 → 2 853` com o alvo fino. Ele é irmão do gancho — transporta
             // matéria ao longo da superfície —, e era dos que *«deveriam criar
@@ -133,13 +143,15 @@ impl Verb {
             //   gesto que só arruma a que já existe.
             // - **Surface Smooth** — é o alisador que preserva forma, e cai com
             //   o `Smooth` pela mesma razão.
-            // - **Layer** — a demão deposita uma altura limitada e satura; ela
-            //   não estica superfície.
-            Self::SlideRelax | Self::SurfaceSmooth | Self::Layer => false,
-            // ⛔ **O AGARRAR não mexe**, e o oráculo livre concorda com o que já
-            // fazíamos: ele desloca uma região inteira **sem a esticar** contra
-            // o resto — o barro viaja junto, e a densidade dele viaja com ele.
-            Self::Move => false,
+            // ⚠️ **A DEMÃO SAIU DESTA LISTA em 14/09, por ordem do dono**
+            //   (*«acho que layer … deve subdividir»*) — a referência medida
+            //   devolvia `441 → 441` para ela, e o veredito do dono ganha da
+            //   referência pelo mesmo motivo escrito no braço do agarrar. Ela
+            //   não tem braço próprio **de propósito**: é de carimbo, logo o
+            //   `_` abaixo já lhe responde `true`, e uma linha que a mutação não
+            //   consegue matar não é lei — é comentário com sintaxe de código.
+            //   Quem a prende é o gate `o_veredito_do_dono_sobre_cinco_celulas`.
+            Self::SlideRelax | Self::SurfaceSmooth => false,
             // ⛔ **OS DOIS DE MULTIRRESOLUÇÃO**, e não é pergunta de oráculo: uma
             // pilha de níveis e uma malha que muda de contagem **não coexistem**
             // (espec §5.6). A porta já os recusa por outro guarda, com a pilha
@@ -157,9 +169,29 @@ impl Verb {
             // que a mutação não consegue matar não é lei — é comentário com
             // sintaxe de código*, e o comentário é mais honesto.
             //
-            // ⚠️ Os ancorados que sobram (`Thumb`, `Nudge`, `Pose`, `Cloth`)
-            // continuam a **não** alcançar a porta, e esse `false` é o estado
-            // actual, não uma resposta.
+            // ⚠️⚠️ **A TORÇÃO E A ESCALA LOCAL CAEM AQUI desde 14/09, e o `false`
+            // delas é agora uma RESPOSTA e não o valor conservador.** Elas
+            // tiveram um braço `true` durante um dia, escrito sobre a referência
+            // livre contra a medida — e o dono desempatou com os olhos:
+            //
+            // > *«Twist com dynamic topology fica com resultado muito ruim.»*
+            //
+            // ⭐ **Isto confirma a referência MEDIDA** (`441 → 441` nos dois
+            // extremos do slider) e derruba o argumento geométrico que eu tinha
+            // escrito ao lado do `true` (*«uma torção cisalha, logo produz
+            // aresta longa»*): ela cisalha, sim, e o que o refino faz com esse
+            // cisalhamento é **estragar a forma**, não acompanhá-la.
+            //
+            // ⚠️ **A LOCAL SCALE seguiu a irmã e o dono NÃO a nomeou.** Elas são
+            // o mesmo `Grip::Turn`, a mesma célula nas duas referências e a
+            // mesma família na medida (*mover uma região como um corpo*) — e
+            // deixá-la sozinha do outro lado seria fabricar uma divergência que
+            // nenhuma das três fontes pede. *A decisão fica NOMEADA em vez de
+            // silenciosa*, no gate `o_veredito_do_dono_sobre_cinco_celulas`.
+            //
+            // ⚠️ Os ancorados que sobram (`Pose`, `Cloth`) continuam a **não**
+            // alcançar a porta, e esse `false` é o estado actual, não uma
+            // resposta.
             _ => !self.anchors(),
         }
     }
@@ -325,8 +357,8 @@ mod dyntopo_tests {
     /// | **Mask** | `false` | ⭐ **raciocínio de domínio**, curado em 14/09 — e o oráculo livre depois CONCORDOU |
     /// | **Smooth** | `false` | ⭐⭐ **oráculo LIVRE** (MIT) — ele não chama a topologia dinâmica, e o dono nomeou-o à letra |
     /// | **Snake Hook** | `true` | ⭐⭐ **oráculo LIVRE** — chama-a |
-    /// | **Twist** | `true` | ⭐⭐ **oráculo LIVRE** — chama-a |
-    /// | **Local Scale** | `true` | ⭐⭐ **oráculo LIVRE** — chama-a |
+    /// | **Move** | `true` | ⭐⭐⭐ **o DONO** — e contra as duas referências |
+    /// | **Thumb** | `true` | ⭐⭐⭐ **o DONO** — e custou a pegada congelada sobreviver ao refino |
     /// | **Erase Displacement** | `false` | ⛔ **construção**: pilha de níveis e malha que muda de contagem não coexistem (espec §5.6) |
     /// | **Smear Displacement** | `false` | ⛔ idem |
     ///
@@ -341,7 +373,7 @@ mod dyntopo_tests {
     fn cada_desvio_do_comportamento_de_hoje_tem_proveniencia() {
         /// `(verbo, refina?, de onde veio)` — as células que se afastam do que
         /// o produto fazia antes do estudo.
-        const DESVIOS: [(&str, bool, &str); 11] = [
+        const DESVIOS: [(&str, bool, &str); 10] = [
             // ⭐⭐ **AS DUAS REFERENCIAS CONCORDAM** — a livre (MIT, lida) e a
             // medida (corrida sem interface pela janela E).
             ("Smooth", false, "as DUAS: nao mexe (medida: 441 -> 441)"),
@@ -349,16 +381,20 @@ mod dyntopo_tests {
             // ⭐ **DOMINIO** — curado um dia antes do estudo, e a referencia
             // livre depois SOBRESCREVEU a lei geral dela para dizer o mesmo.
             ("Mask", false, "dominio; e as DUAS referencias confirmaram"),
-            // ⚠️⚠️ **AS DUAS DISCORDAM** — ver o braco delas na tabela.
+            // ⭐⭐⭐ **O DONO, com os olhos no smoke `=14`** — e contra as DUAS
+            // referencias, que dizem que o agarrar nao mexe. Ver o braco delas.
             (
-                "Twist",
+                "Move / Grab",
                 true,
-                "CONFLITO: livre diz mexe, medida diz nao (441 -> 441)",
+                "o DONO (14/09): «move/drag deve subdividir»",
             ),
+            // ⚠️ **`Thumb`, nao `Clay Thumb`** — sao verbos DIFERENTES, e o
+            // segundo e' de carimbo e ja' mexia. O que o dono pediu e' o
+            // ANCORADO, que e' o unico que congela a pegada.
             (
-                "Local Scale",
+                "Thumb",
                 true,
-                "CONFLITO: livre diz mexe, medida diz nao",
+                "o DONO (14/09): «Thumb se for possivel, deveria subdividir»",
             ),
             // ⭐ **SO' A MEDIDA responde** (nao existem na referencia livre).
             ("Slide Relax", false, "medida: 441 -> 441 nos dois extremos"),
@@ -367,7 +403,6 @@ mod dyntopo_tests {
                 false,
                 "medida: 441 -> 441 nos dois extremos",
             ),
-            ("Layer", false, "medida: 441 -> 441 nos dois extremos"),
             ("Nudge", true, "medida: 441 -> 2 853 com o alvo fino"),
             // ⛔ **CONSTRUCAO** — nao e' pergunta de oraculo nenhum.
             (
@@ -433,12 +468,18 @@ mod dyntopo_tests {
     /// |---|---|---|
     /// | **Snake Hook** | ✅ | as DUAS referências |
     /// | **Nudge** | ✅ | a medida (`441 → 2 853`) |
-    /// | **Twist · Local Scale** | ✅ | ⚠️ **as duas discordam** — ver a tabela |
-    /// | Move · Thumb · Pose · Boundary · Cloth | ⛔ | as duas, onde as duas existem |
+    /// | **Move · Thumb** | ✅ | ⭐⭐⭐ **o DONO**, contra as duas referências |
+    /// | **Twist · Local Scale** | ⛔ | ⭐⭐⭐ **o DONO** desempatou, a favor da medida |
+    /// | Pose · Boundary · Cloth | ⛔ | as duas, onde as duas existem |
+    ///
+    /// ⚠️⚠️ **A CONTAGEM não se mexeu e a POPULAÇÃO trocou por baixo dela** — os
+    /// que mexem continuam a ser **quatro** e são outros dois. *É exactamente
+    /// como um piso segura o número enquanto a lista que ele descreve muda*, e é
+    /// por isso que o corpo deste gate compara a LISTA, nunca o tamanho dela.
     #[test]
     fn os_nove_ancorados_tem_resposta_e_quatro_deles_mexem() {
         /// Os ancorados que MEXEM, com a proveniência no gate irmão.
-        const MEXEM: [&str; 4] = ["Snake Hook", "Twist", "Local Scale", "Nudge"];
+        const MEXEM: [&str; 4] = ["Snake Hook", "Nudge", "Move / Grab", "Thumb"];
         let ancorados: Vec<&str> = Verb::ALL
             .into_iter()
             .filter(|v: &Verb| v.anchors())
@@ -468,6 +509,67 @@ mod dyntopo_tests {
                 deve,
                 "`{}` tem âncora e a tabela medida diz {deve}",
                 v.label()
+            );
+        }
+    }
+
+    /// ⭐⭐⭐ **O VEREDITO DO DONO SOBRE CINCO CÉLULAS, PRESO AQUI** — 2026-09-14,
+    /// depois de ele correr o smoke `=14`:
+    ///
+    /// > *«acho que layer, move/drag deve subdividir. Thumb se for possível,
+    /// > deveria subdividir. Twist com dynamic topology fica com resultado muito
+    /// > ruim.»*
+    ///
+    /// ⚠️⚠️ **ESTE GATE EXISTE PORQUE TRÊS DELAS COINCIDEM COM O VALOR DE
+    /// FÁBRICA, e uma coincidência não é uma decisão.** O `Layer` é de carimbo
+    /// e o `_ => !self.anchors()` já lhe responde `true`; a `Twist` e a `Local
+    /// Scale` têm âncora e ele já lhes responde `false`. ⇒ escrever-lhes um
+    /// braço no `match` seria uma linha que **a mutação não consegue matar** —
+    /// o defeito que a densidade já pagou neste mesmo ficheiro. Mas deixá-las
+    /// sem nada faria a decisão do dono depender de o `anchors()` nunca mudar,
+    /// e **nada liga as duas perguntas**: quem mexer num grip amanhã inverte um
+    /// veredito de produto sem que uma linha do diff o diga.
+    ///
+    /// ⭐ *A decisão vai para onde ela pode ser AFIRMADA — um gate —, e não para
+    /// onde ela por acaso já é verdade.*
+    ///
+    /// ⚠️ **A `Local Scale` é a célula que ele NÃO nomeou**, e está aqui de
+    /// propósito: ela seguiu a irmã (mesmo grip, mesma célula nas duas
+    /// referências, mesma família na medida). Se ele a quiser de volta a
+    /// adensar, é esta linha que muda — *uma herança silenciosa e uma decisão
+    /// leem-se igual numa tabela, e é a lista que as separa.*
+    #[test]
+    fn o_veredito_do_dono_sobre_cinco_celulas() {
+        /// `(verbo, mexe?, o que ele disse)`.
+        const VEREDITO: [(&str, bool, &str); 5] = [
+            ("Layer", true, "«acho que layer … deve subdividir»"),
+            ("Move / Grab", true, "«move/drag deve subdividir»"),
+            ("Thumb", true, "«Thumb se for possivel, deveria subdividir»"),
+            ("Twist", false, "«Twist … fica com resultado muito ruim»"),
+            (
+                "Local Scale",
+                false,
+                "nao nomeado: seguiu a Twist, que e' o mesmo grip e a mesma \
+                 celula nas duas referencias",
+            ),
+        ];
+        for (nome, mexe, disse) in VEREDITO {
+            let v = Verb::ALL
+                .into_iter()
+                .find(|v| v.label() == nome)
+                .unwrap_or_else(|| {
+                    panic!("`{nome}` saiu do catálogo e o veredito ficou para trás")
+                });
+            assert_eq!(
+                v.refina_no_dyntopo(),
+                mexe,
+                "`{nome}` devia responder {mexe} — o dono julgou-o no smoke `=14`: {disse}"
+            );
+            assert_eq!(
+                v.colapsa_no_dyntopo(),
+                mexe,
+                "`{nome}`: as duas colunas separaram-se debaixo de um veredito \
+                 de produto"
             );
         }
     }

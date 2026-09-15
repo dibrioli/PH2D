@@ -118,6 +118,27 @@ impl Sculpt3dScene {
         // medem esta lei.
         brush.pose.arrasto_x_pixels = x - from.0;
         let eye = self.dir_to_local(self.ray_at(x, y).dir());
+        // ⭐⭐⭐ **E QUEM SEGURA TAMBÉM ALCANÇA A PORTA DA TOPOLOGIA** (2026-09-14)
+        // — ordem do dono depois do smoke `=14`: *«acho que layer, move/drag
+        // deve subdividir. Thumb se for possível, deveria subdividir.»*
+        //
+        // ⚠️⚠️ **Este era o TERCEIRO caminho, e faltava.** A wave da manhã ligou
+        // os dois ancorados que PERCORREM (`hook_step`) e o que GIRA
+        // (`turn_at`); o que SEGURA não percorre nem gira — ele regista e o
+        // quadro drena —, logo continuava a ser o único gesto de escultura que
+        // não passava pela porta. *Um fio ligado em dois dos três ramos lê-se
+        // como ligado.*
+        //
+        // ⛔ **Quem decide continua a ser o VERBO**, não este sítio: o `Pose` e
+        // o `Boundary` seguram também e a tabela responde-lhes `false`.
+        //
+        // ⭐ **E a PEGADA CONGELADA do polegar sobrevive** — ver
+        // `SculptStroke::grow_with` e a irmã do colapso. ⚠️ O comentário que
+        // vive nos dois irmãos acima diz que ela *«não entra nisto e não
+        // precisa»*, e isso **deixou de ser verdade nesta linha**: era verdade
+        // enquanto o único verbo que a congela não declarava nenhuma das
+        // colunas.
+        self.refine_for_dab(&brush, center);
         self.stroke.dab(
             self.objects[self.active].stack.mesh_mut(),
             &brush,
@@ -166,9 +187,11 @@ impl Sculpt3dScene {
         //
         // ⭐ **E o estado do traço em voo sobrevive:** o `grow_with` semeia cada
         // vértice novo a partir dos pais e o `shrink_with` aplica a renumeração
-        // do colapso. ⚠️ A pegada CONGELADA não entra nisto e não precisa — ela
-        // é lida só pelo polegar (`congela = matches!(verb, Thumb)`), que não
-        // declara nenhuma das colunas.
+        // do colapso. ⚠️⚠️ **A pegada CONGELADA entra nisto desde 14/09** — ela
+        // é lida só pelo polegar (`congela = matches!(verb, Thumb)`), e este
+        // comentário dizia *«não precisa»* enquanto ele não declarava nenhuma
+        // das colunas; o dono mandou-o declarar, e as duas metades dela vivem
+        // nas mesmas duas portas.
         self.refine_for_dab(&brush, center);
         self.stroke.dab(
             self.objects[self.active].stack.mesh_mut(),
@@ -347,9 +370,11 @@ impl Sculpt3dScene {
         //
         // ⭐ **E o estado do traço em voo sobrevive:** o `grow_with` semeia cada
         // vértice novo a partir dos pais e o `shrink_with` aplica a renumeração
-        // do colapso. ⚠️ A pegada CONGELADA não entra nisto e não precisa — ela
-        // é lida só pelo polegar (`congela = matches!(verb, Thumb)`), que não
-        // declara nenhuma das colunas.
+        // do colapso. ⚠️⚠️ **A pegada CONGELADA entra nisto desde 14/09** — ela
+        // é lida só pelo polegar (`congela = matches!(verb, Thumb)`), e este
+        // comentário dizia *«não precisa»* enquanto ele não declarava nenhuma
+        // das colunas; o dono mandou-o declarar, e as duas metades dela vivem
+        // nas mesmas duas portas.
         self.refine_for_dab(&brush, center);
         self.stroke.dab(
             self.objects[self.active].stack.mesh_mut(),

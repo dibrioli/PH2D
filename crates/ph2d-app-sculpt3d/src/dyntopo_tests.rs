@@ -209,13 +209,27 @@ mod apagador;
 #[path = "esfregao_tests.rs"]
 mod esfregao;
 
-/// **UM TRAÇO ANCORADO** (`Grip::Hook` / `Grip::Turn`), pela sequência do
-/// pen-down que o `input.rs` percorre.
+/// **UM TRAÇO ANCORADO** (`Grip::Hold` / `Grip::Hook` / `Grip::Turn`), pela
+/// sequência do pen-down que o `input.rs` percorre.
 ///
 /// ⚠️ **Ele existe porque o `um_dab` mede o braço do CARIMBO**, e a metade do
 /// report do dono que fala dos que *«deveriam criar subdivisões e não estão»* é
 /// precisamente a dos verbos que **não passam por ali**. *Um arnês que só
 /// percorre um dos dois caminhos é cego a metade da tabela.*
+///
+/// ⛔⛔ **E ELE TINHA O MESMO DEFEITO UM NÍVEL ABAIXO, achado em 14/09:** os
+/// três grips ancorados entravam todos pelo `hook_step`, e **o `Grip::Hold` não
+/// passa por lá no produto** — ali ele REGISTA (`pending_grab`) e quem carimba
+/// é o quadro.
+///
+/// ⚠️⚠️ **E isto está MEDIDO, não argumentado — pelo contrafactual:** com o
+/// arnês de antes **e** o `refine_for_dab` apagado do `grab_at`, este gate fecha
+/// **VERDE**. Ou seja, o caminho que o agarrar e o polegar de facto tomam podia
+/// ter o fio da topologia desligado sem uma linha vermelha em lado nenhum.
+/// ⛔ *Uma mutação só no arnês não sangra, e é exactamente por isso que ela
+/// precisa de ser feita: ela não corrige um defeito, torna um defeito
+/// OBSERVÁVEL.* — este ficheiro já tinha pago a frase duas vezes, pelo pen-down
+/// do desfazer e pelo da superfície de referência.
 fn um_traco_ancorado(s: &mut Sculpt3dScene) {
     assert!(s.aim(CENTRE.0, CENTRE.1), "o raio errou a peça enquadrada");
     s.stroke.begin(s.objects[s.active].stack.mesh());
@@ -231,6 +245,13 @@ fn um_traco_ancorado(s: &mut Sculpt3dScene) {
         let to = [CENTRE.0 + 9.0 * k as f32, CENTRE.1];
         match s.brush.verb.grip() {
             ph2d_sculpt3d::Grip::Turn(kind) => s.turn_at(kind, to[0], to[1]),
+            // ⚠️ **As DUAS linhas do produto**: o evento regista, o quadro
+            // drena. Chamar o `grab_at` direto saltaria o `pending_grab`, que é
+            // metade do braço do `input.rs`.
+            ph2d_sculpt3d::Grip::Hold => {
+                s.pending_grab = Some((to[0], to[1]));
+                s.flush_pending_grab();
+            }
             _ => s.hook_step(prev, to),
         }
         prev = to;
@@ -253,7 +274,19 @@ fn um_traco_ancorado(s: &mut Sculpt3dScene) {
 /// | **Smooth** | não chama a topologia | a contagem **não muda** |
 /// | **Snake Hook** | chama-a | a contagem **muda** |
 /// | `Draw` | chama-a | **controlo positivo** — sem ele o gate ficaria verde sobre um dyntopo inerte |
-/// | `Move` (agarrar) | não chama | **controlo negativo** — sem ele, desligar tudo passaria |
+///
+/// ⭐⭐⭐ **E DEPOIS O DONO CORREU O `=14` E JULGOU CINCO CÉLULAS** (14/09,
+/// *«acho que layer, move/drag deve subdividir. Thumb se for possível, deveria
+/// subdividir. Twist com dynamic topology fica com resultado muito ruim»*) — o
+/// `Layer`, o `Move` e o `Thumb` passaram para o lado que **muda**, e a `Twist`
+/// para o que **não muda**:
+///
+/// | verbo | caminho | e aqui |
+/// |---|---|---|
+/// | `Layer` | carimbo | a contagem **muda** |
+/// | `Move` · `Thumb` | **quem SEGURA** — o fio novo desta wave | a contagem **muda** |
+/// | `Twist` | quem gira | **controlo negativo** com o fio LIGADO — quem recusa é a tabela |
+/// | `Pose` | quem segura | **controlo negativo** do fio novo — sem ele, responder pelo grip passaria |
 ///
 /// ⚠️⚠️ **O `Draw` é obrigatório e não é zelo:** um `assert_eq!` de contagem
 /// fica trivialmente verde num arranjo em que o refino **nunca** dispara (o
@@ -328,28 +361,72 @@ fn o_smooth_deixou_de_subdividir_e_o_gancho_passou_a_subdividir() {
         vertices(&empurrao)
     );
 
-    // ⛔ (5) **A DEMÃO deixou de mexer** — `441 → 441` nos dois extremos do
-    // slider na referência medida. Ela é de CARIMBO, logo o caminho por onde ela
-    // deixou de refinar é o oposto do dos ancorados: aqui a porta é alcançada e
-    // a TABELA é que responde `false`.
+    // ⭐⭐⭐ (5) **A DEMÃO MEXE — ordem do dono** (*«acho que layer … deve
+    // subdividir»*, 14/09). ⚠️ Esta célula esteve nas duas posições no mesmo
+    // dia: ela nasceu de manhã a afirmar `441 → 441` da referência medida, e o
+    // dono viu-a com os olhos à tarde. *Uma referência responde o que outro
+    // programa faz; o dono responde o que este produto tem de fazer.*
     let mut demao = cena_armada(&gpu.device, Verb::Layer);
     let antes = vertices(&demao);
     um_dab(&mut demao);
-    assert_eq!(
-        vertices(&demao),
-        antes,
-        "o `Layer` mudou a contagem — a referência medida devolve 441 -> 441 \
-         nos dois extremos do slider"
+    assert!(
+        vertices(&demao) > antes,
+        "o `Layer` não refinou ({antes} -> {}) — ordem do dono (14/09)",
+        vertices(&demao)
     );
 
-    // ⛔ (6) O CONTROLO NEGATIVO: o agarrar NÃO muda, e o oráculo concorda.
+    // ⭐⭐⭐ (6) **O AGARRAR MEXE — ordem do dono**, e ele é o TERCEIRO caminho:
+    // quem SEGURA não percorre nem gira, logo não passava por nenhuma das duas
+    // portas que a wave da manhã ligou.
     let mut agarrar = cena_armada(&gpu.device, Verb::Move);
     let antes = vertices(&agarrar);
     um_traco_ancorado(&mut agarrar);
+    assert!(
+        vertices(&agarrar) != antes,
+        "o `Move` não mexeu na contagem ({antes} -> {}) — ordem do dono \
+         (*«move/drag deve subdividir»*), e o fio dele é o `grab_at`",
+        vertices(&agarrar)
+    );
+
+    // ⭐⭐⭐ (7) **O POLEGAR MEXE**, e é a célula que custou uma peça: ele é o
+    // único verbo que CONGELA a pegada no pen-down, e um índice guardado não
+    // sobrevive sozinho a um colapso. Ver `SculptStroke::grow_with` e a irmã.
+    let mut polegar = cena_armada(&gpu.device, Verb::Thumb);
+    let antes = vertices(&polegar);
+    um_traco_ancorado(&mut polegar);
+    assert!(
+        vertices(&polegar) != antes,
+        "o `Thumb` não mexeu na contagem ({antes} -> {}) — ordem do dono \
+         (*«Thumb se for possível, deveria subdividir»*)",
+        vertices(&polegar)
+    );
+
+    // ⛔ (8) **O CONTROLO NEGATIVO DO CAMINHO QUE GIRA: a TORÇÃO não muda.**
+    // Veredito do dono no mesmo smoke — *«Twist com dynamic topology fica com
+    // resultado muito ruim»* —, e ele desempata as duas referências a favor da
+    // medida. ⭐ **Ela é o controlo CERTO justamente porque o fio dela está
+    // ligado**: o `turn_at` chama a porta, e quem recusa é a TABELA. *Um
+    // controlo negativo sobre um caminho desligado não afirma nada.*
+    let mut torcao = cena_armada(&gpu.device, Verb::Twist);
+    let antes = vertices(&torcao);
+    um_traco_ancorado(&mut torcao);
     assert_eq!(
-        vertices(&agarrar),
+        vertices(&torcao),
         antes,
-        "o `Move` mudou a contagem — sem este lado, ligar a porta a TODO gesto \
-         ancorado passaria neste gate"
+        "a `Twist` mudou a contagem — o dono julgou-a no `=14` e ela não adensa"
+    );
+
+    // ⛔ (9) **E O CONTROLO NEGATIVO DO CAMINHO QUE SEGURA**, que é o fio novo
+    // desta wave: o `Pose` entra pelo MESMO `grab_at` do agarrar e do polegar, e
+    // a tabela responde-lhe `false`. Sem ele, ligar a porta a todo `Grip::Hold`
+    // passaria nos dois de cima.
+    let mut pose = cena_armada(&gpu.device, Verb::Pose);
+    let antes = vertices(&pose);
+    um_traco_ancorado(&mut pose);
+    assert_eq!(
+        vertices(&pose),
+        antes,
+        "o `Pose` mudou a contagem — ele partilha o fio novo com o `Move` e o \
+         `Thumb`, e sem este lado o fio passaria a responder pelo grip"
     );
 }

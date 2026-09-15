@@ -309,6 +309,11 @@ pub fn pointer_down(
             // ⭐ **E a superfície de REFERÊNCIA**, pela mesma razão e no mesmo
             // sítio: ela é função do nível de baixo, que o traço não toca.
             scene.open_reference_stroke();
+            // ⛔⛔ **E O GESTO DIZ PORQUE NAO VAI FAZER NADA** — a porta única
+            // das recusas previsíveis ([`crate::recusa`]). *Um pincel que não
+            // faz nada e não diz porquê é indistinguível de um pincel partido*,
+            // e o artista tira a conclusão cara.
+            scene.diz_a_recusa_do_pen_down();
             // A âncora do espaçamento nasce no pen-down: o 1º dab é o que
             // está sob o dedo, e o resíduo passa a contar a partir dele.
             scene.stroke_anchor = [pos.0, pos.1];

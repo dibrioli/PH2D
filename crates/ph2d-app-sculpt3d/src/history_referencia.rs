@@ -72,18 +72,15 @@ impl Sculpt3dScene {
             Some(r) => self.stroke.reference = r,
             None => {
                 self.stroke.reference.clear();
-                // ⛔ **A RECUSA EM VOZ ALTA é o produto** (espec §4.3 e §5.6): sem pilha
-                // o dado de entrada não existe, e *o irmão-filtro do alvo
-                // estoirou publicamente por não verificar isto*. Com a
-                // referência vazia a lei devolve o vivo — não move nada —, e
-                // esta linha é o que impede o artista de ler isso como um pincel
-                // partido.
-                eprintln!(
-                    "[sculpt3d] {} precisa de uma pilha de multiresolucao -- \
-                     sem um nivel ABAIXO nao ha' deslocamento nenhum (K subdivide, \
-                     ',' desce)",
-                    self.brush.verb.label()
-                );
+                // ⛔ **A RECUSA EM VOZ ALTA é o produto** (espec §4.3 e §5.6):
+                // sem pilha o dado de entrada não existe, e *o irmão-filtro do
+                // alvo estoirou publicamente por não verificar isto*.
+                //
+                // ⚠️ **Ela mudou-se para a porta única em 2026-09-15**
+                // ([`crate::recusa`]): enquanto vivia aqui, ela era a resposta
+                // de UM predicado e as dos irmãos não existiam — *uma razão
+                // escrita ao lado do sítio que a descobre não é uma família, é
+                // um caso*.
             }
         }
     }

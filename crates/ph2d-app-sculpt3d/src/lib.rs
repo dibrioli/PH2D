@@ -34,6 +34,10 @@ pub mod rulers;
 pub use rulers::*;
 
 mod requests;
+
+/// ⛔⛔⛔ **PORQUE ESTE GESTO NÃO VAI FAZER NADA** — a porta única das recusas
+/// previsíveis do pen-down. Ver o doc do módulo.
+mod recusa;
 pub use requests::FAMILY;
 pub use requests::Sculpt3dRequests;
 

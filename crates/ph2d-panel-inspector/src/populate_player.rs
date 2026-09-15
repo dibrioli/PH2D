@@ -123,7 +123,7 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
     // silêncio. Registrar aqui, num laço sobre a tabela, é o que faz um controle
     // novo nascer explicado.
     for (_, _, rows) in crate::sections::player::PLAYER_CARDS {
-        for (_, id, tip) in rows {
+        for (_, id, tip, _unit) in rows {
             store.set_tooltip(*id, tip.tr());
         }
     }

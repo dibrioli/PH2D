@@ -9,6 +9,7 @@
 mod a_long_popover_scrolls;
 mod action_verb_is_a_dropdown;
 mod every_form_row_reserves_the_animation_column;
+mod every_label_this_panel_paints_fits_its_column;
 mod every_painted_id_is_reachable;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod inspector_regression;

@@ -103,11 +103,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.player.posture" => "Posture",
         "panel.inspector.player.facing" => "Facing",
         "panel.inspector.player.speed" => "Speed",
-        "panel.inspector.player.float_height_m" => "Float Height (m)",
+        "panel.inspector.player.float_height_m" => "Float Height",
         "panel.inspector.player.how_high_the_character_hovers" => {
             "How high the character hovers above the ground."
         }
-        "panel.inspector.player.cling_distance_m" => "Cling Distance (m)",
+        "panel.inspector.player.cling_distance_m" => "Cling Distance",
         "panel.inspector.player.how_far_above_rest_the" => {
             "How far above rest the leg still grips: steps, not jumps."
         }
@@ -147,17 +147,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
          stick. 1 stops as hard as he starts. 0 is ice: he keeps the speed. \
          Airborne is unaffected -- Air Acceleration already answers that."
         }
-        "panel.inspector.player.max_slope_deg" => "Max Slope (deg)",
+        "panel.inspector.player.max_slope_deg" => "Max Slope",
         "panel.inspector.player.steepest_ramp_he_stands_on" => {
             "Steepest ramp he stands on and walks up, in DEGREES."
         }
-        "panel.inspector.player.jump_height_m" => "Jump Height (m)",
+        "panel.inspector.player.jump_height_m" => "Jump Height",
         "panel.inspector.player.how_high_a_full_jump" => "How high a full jump reaches, in metres.",
         "panel.inspector.player.air_jumps" => "Air Jumps",
         "panel.inspector.player.extra_jumps_after_leaving_the" => {
             "Extra jumps after leaving the ground. 0 turns it off; they refill on landing."
         }
-        "panel.inspector.player.air_jump_height_m" => "Air Jump Height (m)",
+        "panel.inspector.player.air_jump_height_m" => "Air Jump Height",
         "panel.inspector.player.how_high_an_air_jump" => {
             "How high an AIR jump reaches, in metres. Same as above is the Celeste feel; \
          lower is Hollow Knight."
@@ -181,15 +181,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.player.gravity_while_rising_with_the" => {
             "Gravity while rising with the button RELEASED."
         }
-        "panel.inspector.player.coyote_time_s" => "Coyote Time (s)",
+        "panel.inspector.player.coyote_time_s" => "Coyote Time",
         "panel.inspector.player.grace_after_leaving_the_ground" => {
             "Grace after leaving the ground. 0 turns it off."
         }
-        "panel.inspector.player.jump_buffer_s" => "Jump Buffer (s)",
+        "panel.inspector.player.jump_buffer_s" => "Jump Buffer",
         "panel.inspector.player.a_press_this_early_still" => {
             "A press this early still fires on landing."
         }
-        "panel.inspector.player.corner_reach_m" => "Corner Reach (m)",
+        "panel.inspector.player.corner_reach_m" => "Corner Reach",
         "panel.inspector.player.slide_sideways_up_to_this" => {
             "Slide sideways up to this to clear a ledge you clipped. In METRES."
         }
@@ -201,7 +201,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.player.how_many_ticks_ahead_the" => {
             "How many TICKS ahead the ceiling profile looks. 0 = no anticipation."
         }
-        "panel.inspector.player.lift_momentum_s" => "Lift Momentum (s)",
+        "panel.inspector.player.lift_momentum_s" => "Lift Momentum",
         "panel.inspector.player.keep_a_moving_platform_s" => {
             "Keep a moving platform's speed for this long after leaving it."
         }
@@ -220,16 +220,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.player.slide_down_a_wall_at" => {
             "Slide DOWN a wall at this speed while pushing into it. 0 = off."
         }
-        "panel.inspector.player.wall_jump_m" => "Wall Jump (m)",
+        "panel.inspector.player.wall_jump_m" => "Wall Jump",
         "panel.inspector.player.how_high_a_jump_off" => "How high a jump off a wall goes. 0 = off.",
         "panel.inspector.player.how_hard_a_wall_jump" => {
             "How hard a wall jump throws you AWAY from the wall."
         }
-        "panel.inspector.player.wall_lockout_s" => "Wall Lockout (s)",
+        "panel.inspector.player.wall_lockout_s" => "Wall Lockout",
         "panel.inspector.player.air_control_stays_quiet_this" => {
             "Air control stays quiet this long after a wall jump."
         }
-        "panel.inspector.player.wall_reach_m" => "Wall Reach (m)",
+        "panel.inspector.player.wall_reach_m" => "Wall Reach",
         "panel.inspector.player.how_far_past_your_own" => {
             "How far past your own width the wall sensor looks."
         }
@@ -241,22 +241,22 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.player.where_the_outer_rays_sit" => {
             "Where the OUTER rays sit, as a fraction of your half-height. 1 = the box edge."
         }
-        "panel.inspector.player.wall_grab_s" => "Wall Grab (s)",
+        "panel.inspector.player.wall_grab_s" => "Wall Grab",
         "panel.inspector.player.hold_r_against_a_wall" => {
             "Hold R against a wall to stick instead of sliding, for this long. 0 = off."
         }
         "panel.inspector.player.how_fast_the_dash_carries" => {
             "How fast the dash carries him. 0 = off."
         }
-        "panel.inspector.player.dash_time_s" => "Dash Time (s)",
+        "panel.inspector.player.dash_time_s" => "Dash Time",
         "panel.inspector.player.how_long_it_lasts_speed" => {
             "How long it lasts. Speed x Time is the DISTANCE it covers."
         }
-        "panel.inspector.player.dash_cooldown_s" => "Dash Cooldown (s)",
+        "panel.inspector.player.dash_cooldown_s" => "Dash Cooldown",
         "panel.inspector.player.recovery_after_it_ends_before" => {
             "Recovery after it ENDS, before he can dash again."
         }
-        "panel.inspector.player.crouch_height_m" => "Crouch Height (m)",
+        "panel.inspector.player.crouch_height_m" => "Crouch Height",
         "panel.inspector.player.how_low_he_floats_while" => {
             "How low he floats while holding DOWN. 0 = off."
         }
@@ -273,19 +273,19 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.player.buoyancy_he_swims_at_and" => {
             "Buoyancy he swims at, and rests at. 1 = the water holds him."
         }
-        "panel.inspector.player.ledge_grab_m" => "Ledge Grab (m)",
+        "panel.inspector.player.ledge_grab_m" => "Ledge Grab",
         "panel.inspector.player.how_far_ahead_the_sensor" => {
             "How far ahead the sensor looks for a lip. 0 = off."
         }
-        "panel.inspector.player.grab_window_m" => "Grab Window (m)",
+        "panel.inspector.player.grab_window_m" => "Grab Window",
         "panel.inspector.player.how_tall_the_catch_window" => {
             "How TALL the catch window is, above and below."
         }
-        "panel.inspector.player.grab_span_m" => "Grab Span (m)",
+        "panel.inspector.player.grab_span_m" => "Grab Span",
         "panel.inspector.player.how_wide_the_sensor_is" => {
             "How wide the sensor is. 0 = a single ray."
         }
-        "panel.inspector.player.grab_offset_y_m" => "Grab Offset Y (m)",
+        "panel.inspector.player.grab_offset_y_m" => "Grab Offset Y",
         "panel.inspector.player.slides_the_sensor_up_or" => {
             "Slides the sensor up or down without resizing it."
         }
@@ -310,19 +310,19 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.player.ledge" => "LEDGE",
         "panel.inspector.player.glide" => "GLIDE",
         "panel.inspector.player.fall" => "FALL",
-        "panel.inspector.player.speed_m_s" => "Speed (m/s)",
-        "panel.inspector.player.takeoff_above_m_s" => "Takeoff Above (m/s)",
-        "panel.inspector.player.peak_window_m_s" => "Peak Window (m/s)",
+        "panel.inspector.player.speed_m_s" => "Speed",
+        "panel.inspector.player.takeoff_above_m_s" => "Takeoff Above",
+        "panel.inspector.player.peak_window_m_s" => "Peak Window",
         "panel.inspector.player.how_wide_that_slow_top" => "How wide that slow top is, in m/s.",
-        "panel.inspector.player.wall_slide_m_s" => "Wall Slide (m/s)",
-        "panel.inspector.player.wall_push_m_s" => "Wall Push (m/s)",
-        "panel.inspector.player.dash_speed_m_s" => "Dash Speed (m/s)",
-        "panel.inspector.player.crouch_speed_m_s" => "Crouch Speed (m/s)",
-        "panel.inspector.player.swim_speed_m_s" => "Swim Speed (m/s)",
-        "panel.inspector.player.swim_accel_m_s2" => "Swim Accel (m/s2)",
-        "panel.inspector.player.ledge_speed_m_s" => "Ledge Speed (m/s)",
-        "panel.inspector.player.glide_fall_m_s" => "Glide Fall (m/s)",
-        "panel.inspector.player.max_fall_m_s" => "Max Fall (m/s)",
+        "panel.inspector.player.wall_slide_m_s" => "Wall Slide",
+        "panel.inspector.player.wall_push_m_s" => "Wall Push",
+        "panel.inspector.player.dash_speed_m_s" => "Dash Speed",
+        "panel.inspector.player.crouch_speed_m_s" => "Crouch Speed",
+        "panel.inspector.player.swim_speed_m_s" => "Swim Speed",
+        "panel.inspector.player.swim_accel_m_s2" => "Swim Accel",
+        "panel.inspector.player.ledge_speed_m_s" => "Ledge Speed",
+        "panel.inspector.player.glide_fall_m_s" => "Glide Fall",
+        "panel.inspector.player.max_fall_m_s" => "Max Fall",
         // ph2d-migrar-texto:end
         _ => return None,
     })

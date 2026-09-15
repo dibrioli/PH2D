@@ -168,6 +168,9 @@ pub(super) fn card_frame(
 
 /// A labelled number box, seeded from the store (which `sync` mirrors from
 /// the snapshot). Returns the next `y`.
+///
+/// ⭐ **Sem unidade** — a forma que a esmagadora maioria das secções usa. Quem tem uma unidade
+/// física chama a [`num_row_unit`], que é esta com o sufixo ao fim do campo.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn num_row(
     scene: &mut VectorScene,
@@ -180,6 +183,51 @@ pub(super) fn num_row(
     y: f32,
     label: &str,
     id: NodeId,
+) -> f32 {
+    num_row_unit(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        label,
+        id,
+        None,
+    )
+}
+
+/// ⭐⭐⭐ **A mesma linha, com a UNIDADE dentro do campo.**
+///
+/// ⛔⛔ **A unidade vivia no RÓTULO, e era o que o cortava.** Medido em 2026-09-14 com o sistema
+/// de texto real, à largura de omissão do Inspector (coluna do rótulo `91,2 px`, fonte `12`):
+/// **20 de 39** rótulos eram elididos, e sem a unidade **fica 1** (*«Non-Spatialized Radius»*, que
+/// é um nome genuinamente longo — outra pergunta). `"Float Height (m)"` mede `92,1 px` numa coluna
+/// de `91,2`: ele perdia o `(m)` **e** o `t` do *Height*.
+///
+/// ⚠️ **A unidade não é decoração: ela é o que o número SIGNIFICA.** Pô-la no rótulo fá-la
+/// competir por espaço com o NOME; pô-la no campo põe-na ao lado do valor, que é onde ela é lida.
+/// É o que o Blender, o Godot e o Illustrator fazem.
+///
+/// ⏳ **Dívida NOMEADA:** quando a unidade é um COMPRIMENTO, o app tem uma definição de projecto
+/// (`DisplayUnit`, metros ⇄ pixels) e esta porta ainda mostra a unidade **fixa** que a tabela
+/// declara. ⛔ Ligar as duas exige converter também o VALOR — mostrar `px` sobre um número em
+/// metros seria trocar um rótulo comprido por um rótulo MENTIROSO. Wave própria.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn num_row_unit(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: &str,
+    id: NodeId,
+    unit: Option<ph2d_editor_core::widget::Unit>,
 ) -> f32 {
     // ⭐⭐⭐ **O rótulo fica à ESQUERDA, pela porta** — report do dono, 2026-09-14, com foto da
     // secção LEG do Platform Player: *«Label acima do campo numérico! Muito ruim!»*. Até aqui esta
@@ -206,16 +254,31 @@ pub(super) fn num_row(
     hit_index.register(id, row.control);
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
     let input = NumberInput::new(id, "", value).visual((state, store.hover_live(id)));
-    paint_number_input_with_buffer(
-        &input,
-        Some(buffer),
-        caret,
-        anchor,
-        row.control,
-        scene,
-        text_system,
-        theme,
-    );
+    match unit {
+        // ⚠️ **O rect REGISTADO é a linha inteira e o campo editável é mais estreito** — é o
+        // widget que reparte (`input_rect`/`unit_rect`), e o chip da unidade não é clicável. *Um
+        // clique na unidade ainda põe o cursor no número*, que é o que um artista espera.
+        Some(u) => ph2d_editor_core::widget::paint_numeric_input_with_unit(
+            &ph2d_editor_core::widget::NumericInputWithUnit::new(input, u),
+            Some(buffer),
+            caret,
+            anchor,
+            row.control,
+            scene,
+            text_system,
+            theme,
+        ),
+        None => paint_number_input_with_buffer(
+            &input,
+            Some(buffer),
+            caret,
+            anchor,
+            row.control,
+            scene,
+            text_system,
+            theme,
+        ),
+    }
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
     y + ph2d_tokens::row_pitch_px()
 }

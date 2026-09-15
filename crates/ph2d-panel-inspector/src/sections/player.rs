@@ -16,7 +16,7 @@
 //! argumento variável). Dobrá-los num laço apagaria a cobertura de paridade dos
 //! botões em silêncio — a cicatriz que a §11 já carrega escrita.
 
-use super::rows::{card_frame, num_row, seg_row};
+use super::rows::{card_frame, num_row_unit, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPlayerInfo;
 use ph2d_editor_core::widget::SectionFold;
@@ -30,7 +30,11 @@ use ph2d_i18n::tr_with;
 /// este módulo já paga em toda lista: uma row nova nasce com dica, ou não nasce.
 /// Uma tabela paralela de tooltips é a que fica incompleta em silêncio — o
 /// controle continua pintado e o artista continua sem saber o que ele faz.
-pub(crate) type PlayerRow = (TextKey, ph2d_a11y::NodeId, TextKey);
+/// ⚠️ **A FORMA de uma row mudou-se para o ficheiro da TABELA em 2026-09-14** — o corte é por
+/// responsabilidade, forçado pelo tecto de 600 LOC do painel: *o pai responde «como a secção se
+/// desenha» e o filho «o que ela oferece»*, e a forma de uma linha é do segundo. ⛔ Subir o tecto
+/// seria a cura errada (`CLAUDE.md` §2).
+pub(crate) use table::PlayerRow;
 
 /// A tabela dos cards da §14 — irmã por RESPONSABILIDADE (ver o topo dela).
 ///
@@ -468,14 +472,14 @@ fn paint_cards(
         if !reaction_is_live && card_id == ids::INSP_PLAYER_CARD_REACT {
             continue;
         }
-        let n = rows.iter().filter(|(_, id, _)| shown(*id)).count();
+        let n = rows.iter().filter(|(_, id, _, _)| shown(*id)).count();
         let (ix, iw, mut ry, next_y) =
             card_frame(scene, text_system, theme, x, w, yy, title.tr(), n);
-        for (label, id, _tip) in rows {
+        for (label, id, _tip, unit) in rows {
             if !shown(*id) {
                 continue;
             }
-            ry = num_row(
+            ry = num_row_unit(
                 scene,
                 text_system,
                 theme,
@@ -486,6 +490,7 @@ fn paint_cards(
                 ry,
                 label.tr(),
                 *id,
+                *unit,
             );
         }
         // ⚠️ O `ry` é DESCARTADO de propósito: quem manda no fluxo é a moldura

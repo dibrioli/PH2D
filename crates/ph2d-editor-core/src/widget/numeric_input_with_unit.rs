@@ -29,6 +29,25 @@ pub enum Unit {
     Radians,
     /// Percent.
     Percent,
+    /// ⭐ **Segundos** — a unidade de oito rótulos da §14 Platform Player (*Coyote Time*, *Jump
+    /// Buffer*, *Dash Cooldown*, …), medidos em 2026-09-14.
+    Seconds,
+    /// ⭐ **Metros por segundo** — a unidade de onze rótulos da mesma secção (*Speed*, *Max Fall*,
+    /// *Dash Speed*, …).
+    ///
+    /// ⚠️⚠️ **O sufixo dela CONTÉM o de [`Unit::Seconds`]**, e é por isso que a ordem do
+    /// [`Unit::parse_suffix`] é load-bearing: `"5m/s"` termina em `"s"`, logo um `Seconds` testado
+    /// primeiro leria a velocidade como um tempo — **sem erro nenhum**, com o número certo e a
+    /// unidade errada.
+    MetersPerSecond,
+    /// ⭐ **Metros por segundo ao quadrado** — a aceleração da braçada (*Swim Accel*), a única
+    /// desta unidade no censo de 2026-09-14.
+    ///
+    /// ⚠️ **O sufixo é ASCII (`m/s2`) e não `m/s²`**, porque o widget usa a MESMA string para
+    /// mostrar e para ler: um expoente que o artista não tem no teclado seria um campo que ele não
+    /// consegue escrever. ⏳ Separar as duas strings é a dívida que o `DisplayAngle::suffix` já
+    /// nomeia (*«o que se escreve e o que se lê não têm de ser a mesma string»*).
+    MetersPerSecondSquared,
 }
 
 impl Unit {
@@ -40,8 +59,26 @@ impl Unit {
             Unit::Degrees => "deg",
             Unit::Radians => "rad",
             Unit::Percent => "%",
+            Unit::Seconds => "s",
+            Unit::MetersPerSecond => "m/s",
+            Unit::MetersPerSecondSquared => "m/s2",
         }
     }
+
+    /// **Todas as unidades, na ordem em que o [`Self::parse_suffix`] as testa.**
+    ///
+    /// ⚠️ Pública para que o gate possa medir a ORDEM em vez de a repetir — uma cópia da lista no
+    /// teste provaria que a cópia está ordenada, não que o parser está.
+    pub const ALL: [Unit; 8] = [
+        Unit::Degrees,
+        Unit::Radians,
+        Unit::MetersPerSecondSquared,
+        Unit::MetersPerSecond,
+        Unit::Px,
+        Unit::Meters,
+        Unit::Seconds,
+        Unit::Percent,
+    ];
 
     /// Longest-match parse of a trailing unit suffix. Returns the unit
     /// whose suffix the (lowercased, trimmed) string ends with, longest
@@ -50,14 +87,11 @@ impl Unit {
         let s = s.trim().to_ascii_lowercase();
         // Order longest-first to avoid a short suffix shadowing a longer
         // one that shares its tail.
-        const ALL: [Unit; 5] = [
-            Unit::Degrees,
-            Unit::Radians,
-            Unit::Meters,
-            Unit::Px,
-            Unit::Percent,
-        ];
-        ALL.into_iter().find(|u| s.ends_with(u.suffix()))
+        // ⚠️⚠️ **A ordem é a LEI, não arrumação:** `"m/s"` termina em `"s"` e `"s"` não termina em
+        // `"m/s"`, logo o mais LONGO tem de ser testado primeiro. Com a ordem trocada, `"5m/s"`
+        // devolve `(5.0, Seconds)` — o número certo e a unidade errada, sem erro nenhum. O gate
+        // `a_longer_suffix_is_never_shadowed_by_a_shorter_one` deriva a ordem de `ALL` e prova-a.
+        Self::ALL.into_iter().find(|u| s.ends_with(u.suffix()))
     }
 }
 

@@ -12,7 +12,24 @@
 //!
 //! Re-exportada pelo pai, então nenhum caminho de chamador muda.
 
-use super::player::PlayerRow;
+use ph2d_editor_core::widget::Unit;
+
+/// ⭐⭐ **Uma row da §14: rótulo · id · dica · UNIDADE.**
+///
+/// ⛔⛔ **A unidade entrou aqui em 2026-09-14, e ela SAIU do rótulo.** Medido com o sistema de
+/// texto real, à largura de omissão do Inspector: **20 de 39** rótulos do painel eram CORTADOS, e
+/// sem a unidade **fica 1**. Um `"Float Height (m)"` mede `92,1 px` numa coluna de `91,2`.
+///
+/// ⚠️ **A chave de i18n MANTÉM o sufixo** (`…float_height_m`): ela é um ENDEREÇO, não o texto.
+/// Renomeá-la mudaria 31 sítios para dizer a mesma coisa — *um `rename` não distingue um endereço
+/// de uma memória*.
+pub(crate) type PlayerRow = (
+    TextKey,
+    ph2d_a11y::NodeId,
+    TextKey,
+    Option<ph2d_editor_core::widget::Unit>,
+);
+
 use ph2d_i18n::TextKey;
 
 /// **A PERNA** — o que faz o personagem pairar em vez de encostar.
@@ -21,16 +38,19 @@ const LEG_ROWS: [PlayerRow; 6] = [
         TextKey::new("panel.inspector.player.float_height_m"),
         crate::ids::INSP_PLAYER_FLOAT,
         TextKey::new("panel.inspector.player.how_high_the_character_hovers"),
+        Some(Unit::Meters),
     ),
     (
         TextKey::new("panel.inspector.player.cling_distance_m"),
         crate::ids::INSP_PLAYER_CLING,
         TextKey::new("panel.inspector.player.how_far_above_rest_the"),
+        Some(Unit::Meters),
     ),
     (
         TextKey::new("panel.inspector.player.leg_stiffness"),
         crate::ids::INSP_PLAYER_STIFFNESS,
         TextKey::new("panel.inspector.player.how_hard_the_leg_pushes"),
+        None,
     ),
     // ⚠️ **A dica nomeia o TERCEIRO eixo, e ele foi medido** (W26): baixar este
     // número devolve o quique do pouso E uma subida lenta em rampa, mas só a
@@ -41,6 +61,7 @@ const LEG_ROWS: [PlayerRow; 6] = [
         TextKey::new("panel.inspector.player.leg_damping"),
         crate::ids::INSP_PLAYER_DAMPING,
         TextKey::new("panel.inspector.player.how_fast_the_bounce_dies"),
+        None,
     ),
     // ⚠️ **Os dois de baixo são o SENSOR, não a mola** — e ficam neste card
     // porque a pergunta que respondem é *onde a perna procura chão*, que é o que
@@ -50,11 +71,13 @@ const LEG_ROWS: [PlayerRow; 6] = [
         TextKey::new("panel.inspector.player.foot_rays"),
         crate::ids::INSP_PLAYER_FOOT_SAMPLES,
         TextKey::new("panel.inspector.player.how_many_rays_the_leg"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.foot_ray_spread"),
         crate::ids::INSP_PLAYER_FOOT_SPREAD,
         TextKey::new("panel.inspector.player.where_the_outer_feet_sit"),
+        None,
     ),
 ];
 
@@ -64,26 +87,31 @@ const WALK_ROWS: [PlayerRow; 5] = [
         TextKey::new("panel.inspector.player.speed_m_s"),
         crate::ids::INSP_PLAYER_SPEED,
         TextKey::new("panel.inspector.player.cruising_speed_measured_relative_to"),
+        Some(Unit::MetersPerSecond),
     ),
     (
         TextKey::new("panel.inspector.player.acceleration"),
         crate::ids::INSP_PLAYER_ACCEL,
         TextKey::new("panel.inspector.player.how_quickly_he_reaches_cruising"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.air_acceleration"),
         crate::ids::INSP_PLAYER_AIR_ACCEL,
         TextKey::new("panel.inspector.player.steering_while_airborne_0_keeps"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.brake"),
         crate::ids::INSP_PLAYER_BRAKE,
         TextKey::new("panel.inspector.player.how_much_of_that_acceleration"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.max_slope_deg"),
         crate::ids::INSP_PLAYER_MAX_SLOPE,
         TextKey::new("panel.inspector.player.steepest_ramp_he_stands_on"),
+        Some(Unit::Degrees),
     ),
 ];
 
@@ -94,6 +122,7 @@ const JUMP_ROWS: [PlayerRow; 9] = [
         TextKey::new("panel.inspector.player.jump_height_m"),
         crate::ids::INSP_PLAYER_JUMP_HEIGHT,
         TextKey::new("panel.inspector.player.how_high_a_full_jump"),
+        Some(Unit::Meters),
     ),
     // ⚠️ **Os dois do ar ficam LOGO ABAIXO do primeiro pulo, e não no fim do
     // card:** a pergunta que eles respondem é *quantos pulos, e de que altura*,
@@ -103,41 +132,49 @@ const JUMP_ROWS: [PlayerRow; 9] = [
         TextKey::new("panel.inspector.player.air_jumps"),
         crate::ids::INSP_PLAYER_AIR_JUMPS,
         TextKey::new("panel.inspector.player.extra_jumps_after_leaving_the"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.air_jump_height_m"),
         crate::ids::INSP_PLAYER_AIR_JUMP_H,
         TextKey::new("panel.inspector.player.how_high_an_air_jump"),
+        Some(Unit::Meters),
     ),
     (
         TextKey::new("panel.inspector.player.takeoff_gravity"),
         crate::ids::INSP_PLAYER_TAKEOFF_G,
         TextKey::new("panel.inspector.player.gravity_while_rising_fast_1"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.takeoff_above_m_s"),
         crate::ids::INSP_PLAYER_TAKEOFF_SPEED,
         TextKey::new("panel.inspector.player.rising_faster_than_this_uses"),
+        Some(Unit::MetersPerSecond),
     ),
     (
         TextKey::new("panel.inspector.player.peak_gravity"),
         crate::ids::INSP_PLAYER_PEAK_G,
         TextKey::new("panel.inspector.player.gravity_near_the_top_below"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.peak_window_m_s"),
         crate::ids::INSP_PLAYER_PEAK_SPEED,
         TextKey::new("panel.inspector.player.how_wide_that_slow_top"),
+        Some(Unit::MetersPerSecond),
     ),
     (
         TextKey::new("panel.inspector.player.fall_gravity"),
         crate::ids::INSP_PLAYER_FALL_G,
         TextKey::new("panel.inspector.player.gravity_while_falling_above_1"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.cut_gravity"),
         crate::ids::INSP_PLAYER_CUT_G,
         TextKey::new("panel.inspector.player.gravity_while_rising_with_the"),
+        None,
     ),
 ];
 
@@ -156,31 +193,37 @@ const FORGIVE_ROWS: [PlayerRow; 6] = [
         TextKey::new("panel.inspector.player.coyote_time_s"),
         crate::ids::INSP_PLAYER_COYOTE,
         TextKey::new("panel.inspector.player.grace_after_leaving_the_ground"),
+        Some(Unit::Seconds),
     ),
     (
         TextKey::new("panel.inspector.player.jump_buffer_s"),
         crate::ids::INSP_PLAYER_BUFFER,
         TextKey::new("panel.inspector.player.a_press_this_early_still"),
+        Some(Unit::Seconds),
     ),
     (
         TextKey::new("panel.inspector.player.corner_reach_m"),
         crate::ids::INSP_PLAYER_CORNER,
         TextKey::new("panel.inspector.player.slide_sideways_up_to_this"),
+        Some(Unit::Meters),
     ),
     (
         TextKey::new("panel.inspector.player.corner_rays"),
         crate::ids::INSP_PLAYER_CORNER_SAMPLES,
         TextKey::new("panel.inspector.player.how_many_rays_scan_the"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.corner_look_ahead"),
         crate::ids::INSP_PLAYER_CORNER_AHEAD,
         TextKey::new("panel.inspector.player.how_many_ticks_ahead_the"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.lift_momentum_s"),
         crate::ids::INSP_PLAYER_LIFT,
         TextKey::new("panel.inspector.player.keep_a_moving_platform_s"),
+        Some(Unit::Seconds),
     ),
 ];
 
@@ -191,16 +234,19 @@ const REACT_ROWS: [PlayerRow; 3] = [
         TextKey::new("panel.inspector.player.weight_on_ground"),
         crate::ids::INSP_PLAYER_REACT_SUPPORT,
         TextKey::new("panel.inspector.player.how_much_of_his_weight"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.push_on_ground"),
         crate::ids::INSP_PLAYER_REACT_MOVEMENT,
         TextKey::new("panel.inspector.player.how_much_of_his_walking"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.push_on_bodies"),
         crate::ids::INSP_PLAYER_REACT_PUSH,
         TextKey::new("panel.inspector.player.how_hard_he_shoves_what"),
+        None,
     ),
 ];
 
@@ -213,41 +259,49 @@ const WALL_ROWS: [PlayerRow; 8] = [
         TextKey::new("panel.inspector.player.wall_slide_m_s"),
         crate::ids::INSP_PLAYER_WALL_SLIDE,
         TextKey::new("panel.inspector.player.slide_down_a_wall_at"),
+        Some(Unit::MetersPerSecond),
     ),
     (
         TextKey::new("panel.inspector.player.wall_jump_m"),
         crate::ids::INSP_PLAYER_WALL_JUMP,
         TextKey::new("panel.inspector.player.how_high_a_jump_off"),
+        Some(Unit::Meters),
     ),
     (
         TextKey::new("panel.inspector.player.wall_push_m_s"),
         crate::ids::INSP_PLAYER_WALL_PUSH,
         TextKey::new("panel.inspector.player.how_hard_a_wall_jump"),
+        Some(Unit::MetersPerSecond),
     ),
     (
         TextKey::new("panel.inspector.player.wall_lockout_s"),
         crate::ids::INSP_PLAYER_WALL_LOCK,
         TextKey::new("panel.inspector.player.air_control_stays_quiet_this"),
+        Some(Unit::Seconds),
     ),
     (
         TextKey::new("panel.inspector.player.wall_reach_m"),
         crate::ids::INSP_PLAYER_WALL_REACH,
         TextKey::new("panel.inspector.player.how_far_past_your_own"),
+        Some(Unit::Meters),
     ),
     (
         TextKey::new("panel.inspector.player.wall_rays"),
         crate::ids::INSP_PLAYER_WALL_SAMPLES,
         TextKey::new("panel.inspector.player.how_many_rays_the_flank"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.wall_ray_spread"),
         crate::ids::INSP_PLAYER_WALL_SPREAD,
         TextKey::new("panel.inspector.player.where_the_outer_rays_sit"),
+        None,
     ),
     (
         TextKey::new("panel.inspector.player.wall_grab_s"),
         crate::ids::INSP_PLAYER_WALL_GRAB,
         TextKey::new("panel.inspector.player.hold_r_against_a_wall"),
+        Some(Unit::Seconds),
     ),
 ];
 
@@ -263,16 +317,19 @@ const DASH_ROWS: [PlayerRow; 3] = [
         TextKey::new("panel.inspector.player.dash_speed_m_s"),
         crate::ids::INSP_PLAYER_DASH_SPEED,
         TextKey::new("panel.inspector.player.how_fast_the_dash_carries"),
+        Some(Unit::MetersPerSecond),
     ),
     (
         TextKey::new("panel.inspector.player.dash_time_s"),
         crate::ids::INSP_PLAYER_DASH_TIME,
         TextKey::new("panel.inspector.player.how_long_it_lasts_speed"),
+        Some(Unit::Seconds),
     ),
     (
         TextKey::new("panel.inspector.player.dash_cooldown_s"),
         crate::ids::INSP_PLAYER_DASH_COOL,
         TextKey::new("panel.inspector.player.recovery_after_it_ends_before"),
+        Some(Unit::Seconds),
     ),
 ];
 
@@ -292,11 +349,13 @@ const CROUCH_ROWS: [PlayerRow; 2] = [
         TextKey::new("panel.inspector.player.crouch_height_m"),
         crate::ids::INSP_PLAYER_CROUCH_HEIGHT,
         TextKey::new("panel.inspector.player.how_low_he_floats_while"),
+        Some(Unit::Meters),
     ),
     (
         TextKey::new("panel.inspector.player.crouch_speed_m_s"),
         crate::ids::INSP_PLAYER_CROUCH_SPEED,
         TextKey::new("panel.inspector.player.how_fast_he_walks_while"),
+        Some(Unit::MetersPerSecond),
     ),
 ];
 
@@ -319,16 +378,19 @@ const SWIM_ROWS: [PlayerRow; 3] = [
         TextKey::new("panel.inspector.player.swim_speed_m_s"),
         crate::ids::INSP_PLAYER_SWIM_SPEED,
         TextKey::new("panel.inspector.player.how_fast_he_swims_in"),
+        Some(Unit::MetersPerSecond),
     ),
     (
         TextKey::new("panel.inspector.player.swim_accel_m_s2"),
         crate::ids::INSP_PLAYER_SWIM_ACCEL,
         TextKey::new("panel.inspector.player.authority_against_the_water_low"),
+        Some(Unit::MetersPerSecondSquared),
     ),
     (
         TextKey::new("panel.inspector.player.swim_line_weights"),
         crate::ids::INSP_PLAYER_SWIM_ENTER,
         TextKey::new("panel.inspector.player.buoyancy_he_swims_at_and"),
+        None,
     ),
 ];
 
@@ -352,26 +414,31 @@ const LEDGE_ROWS: [PlayerRow; 5] = [
         TextKey::new("panel.inspector.player.ledge_grab_m"),
         crate::ids::INSP_PLAYER_LEDGE_GRAB,
         TextKey::new("panel.inspector.player.how_far_ahead_the_sensor"),
+        Some(Unit::Meters),
     ),
     (
         TextKey::new("panel.inspector.player.grab_window_m"),
         crate::ids::INSP_PLAYER_LEDGE_REACH_Y,
         TextKey::new("panel.inspector.player.how_tall_the_catch_window"),
+        Some(Unit::Meters),
     ),
     (
         TextKey::new("panel.inspector.player.grab_span_m"),
         crate::ids::INSP_PLAYER_LEDGE_SPAN,
         TextKey::new("panel.inspector.player.how_wide_the_sensor_is"),
+        Some(Unit::Meters),
     ),
     (
         TextKey::new("panel.inspector.player.grab_offset_y_m"),
         crate::ids::INSP_PLAYER_LEDGE_OFFSET_Y,
         TextKey::new("panel.inspector.player.slides_the_sensor_up_or"),
+        Some(Unit::Meters),
     ),
     (
         TextKey::new("panel.inspector.player.ledge_speed_m_s"),
         crate::ids::INSP_PLAYER_LEDGE_SPEED,
         TextKey::new("panel.inspector.player.how_fast_he_settles_into"),
+        Some(Unit::MetersPerSecond),
     ),
 ];
 
@@ -388,6 +455,7 @@ const GLIDE_ROWS: [PlayerRow; 1] = [(
     TextKey::new("panel.inspector.player.glide_fall_m_s"),
     crate::ids::INSP_PLAYER_GLIDE_FALL,
     TextKey::new("panel.inspector.player.top_descent_speed_while_holding"),
+    Some(Unit::MetersPerSecond),
 )];
 
 /// **O TETO DE QUEDA** (`W-Fall`) — a velocidade TERMINAL do personagem.
@@ -407,6 +475,7 @@ const FALL_ROWS: [PlayerRow; 1] = [(
     TextKey::new("panel.inspector.player.max_fall_m_s"),
     crate::ids::INSP_PLAYER_MAX_FALL,
     TextKey::new("panel.inspector.player.terminal_speed_the_fall_never"),
+    Some(Unit::MetersPerSecond),
 )];
 
 /// **A TABELA da §14** — onze cards, e os números dentro deles.

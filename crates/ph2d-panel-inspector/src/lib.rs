@@ -113,7 +113,7 @@ pub fn player_card_pitch(n_rows: usize) -> f32 {
 pub fn player_card_spans() -> Vec<(&'static str, Vec<ph2d_a11y::NodeId>)> {
     crate::sections::player::PLAYER_CARDS
         .iter()
-        .map(|(title, _, rows)| (title.tr(), rows.iter().map(|(_, id, _)| *id).collect()))
+        .map(|(title, _, rows)| (title.tr(), rows.iter().map(|(_, id, _, _)| *id).collect()))
         .collect()
 }
 
@@ -128,7 +128,7 @@ pub fn player_card_spans() -> Vec<(&'static str, Vec<ph2d_a11y::NodeId>)> {
 pub fn player_row_labels() -> Vec<&'static str> {
     crate::sections::player::PLAYER_CARDS
         .iter()
-        .flat_map(|(_, _, rows)| rows.iter().map(|(label, _, _)| label.tr()))
+        .flat_map(|(_, _, rows)| rows.iter().map(|(label, _, _, _)| label.tr()))
         .collect()
 }
 

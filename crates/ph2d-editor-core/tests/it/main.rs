@@ -19,6 +19,7 @@ mod a_button_row_is_laid_out_by_the_door;
 mod a_column_closes_by_the_gesture_that_resizes_it;
 mod a_label_that_does_not_fit_is_elided_not_wrapped;
 mod a_list_is_not_a_form;
+mod a_longer_suffix_is_never_shadowed_by_a_shorter_one;
 mod a_panel_scrolls_by_dragging_its_body;
 mod a_ring_painted_as_a_fill_is_still_a_frame;
 mod arch_color_space_typed;

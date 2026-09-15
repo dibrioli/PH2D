@@ -144,7 +144,10 @@ fn main() {
     let reg = ph2d_field_eval::hybrid::Registry::new();
     // O enquadramento da foto: perto, com o furo a encher o quadro.
     let cam = Orbit {
-        half_extent: 0.42,
+        half_extent: std::env::var("PH2D_AO_EXT")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0.42),
         ..Orbit::default()
     };
     let (right, up, fwd) = cam.basis();
@@ -197,7 +200,7 @@ fn main() {
     let todos = [superficie];
     let pontuais = [ph2d_field_render::PointLamp {
         world: luz_do_rig(&cam),
-        radiance_at_one: [2.4, 2.3, 2.2],
+        radiance_at_one: [0.85, 0.82, 0.78],
     }];
     let pinta = |g: &ph2d_field_render::Gbuffer, sh: &ph2d_field_render::Shadows| {
         ph2d_field_render::shade_render(

@@ -161,6 +161,54 @@ pub fn fill_ring(
     }
 }
 
+/// ⭐⭐⭐ **A TINTA DE REPOUSO de um controlo com corpo, pela porta do TEMA** — a irmã do
+/// [`stroke_frame`] para o PREENCHIMENTO.
+///
+/// ⛔⛔ **Report do dono, 2026-09-14, com foto da secção *Sprite Sheet*: *«Checkbox invisível»*.**
+/// Na foto a caixa *Centered*, MARCADA, lê-se (é `Accent`); as de *Flip H* e *Flip V*,
+/// desmarcadas, não existem. Medido: uma caixa desmarcada enche com `ColorToken::Bg1`, que é
+/// **exactamente** o token de um cartão de secção, e num tema moderno a moldura de repouso é
+/// ZERO ⇒ `0/255` e sem contorno.
+///
+/// ⚠️⚠️ **E o comentário ao lado do código já DESCREVIA a lei certa** — *«num tema moderno a caixa
+/// é plana (marcada = acento cheio, desmarcada = **um degrau abaixo do painel**)»* — sobre um
+/// código que pintava o cartão. *Um doc que descreve a lei que o código não implementa faz o
+/// defeito parecer auditado.*
+///
+/// ⛔ **Não era um defeito da checkbox: eram CINCO pintores.** O censo do mesmo dia achou
+/// `number_input` · `text_area` · `checkbox` · `combobox` · `dropdown` · `radio_group`, todos a
+/// encher `Bg1` em repouso e todos a pedir a moldura ao tema — que num tema moderno não traça
+/// nada. *Seis respostas à mesma pergunta divergem quando uma superfície se mexe, e uma
+/// superfície mexeu-se em 2026-09-05, quando o painel desceu para o cartão se ler.*
+///
+/// # A escada
+///
+/// - **Clássica** (há moldura de repouso): devolve o token que o pintor sempre usou —
+///   **byte-idêntico**, e ali o corpo lê-se pela borda.
+/// - **Moderna** (sem moldura): `Feel::Rest`/`Disabled` devolvem o
+///   [`ph2d_tokens::visuals::Chrome::field_fill`] (um degrau abaixo da superfície mais funda em
+///   que um controlo assenta); `Hovered`/`Active` devolvem o corpo quente da tabela de estados,
+///   senão um controlo cujo repouso afundou perderia o eixo do hover que tinha.
+///
+/// ⚠️ **Devolve um [`ph2d_tokens::Color`] e não um `Color` do Vello**, de propósito: é o que o
+/// [`crate::motion::hover_axis`] consome, e os pintores desta família interpolam o repouso.
+#[must_use]
+pub fn body_fill(
+    theme: Theme,
+    feel: ph2d_tokens::visuals::Feel,
+    classic: ph2d_tokens::ColorToken,
+) -> ph2d_tokens::Color {
+    use ph2d_tokens::visuals::Feel;
+    let chrome = ph2d_tokens::visuals::Chrome::of(theme);
+    if chrome.field_border.is_visible() {
+        return classic.resolve(theme);
+    }
+    match feel {
+        Feel::Hovered | Feel::Active => ph2d_tokens::visuals::Widgets::of(theme).hovered.bg_fill,
+        _ => chrome.field_fill,
+    }
+}
+
 /// ⭐ **O RAIO de um controlo, pela porta do TEMA** — ver [`ph2d_tokens::visuals::radius`].
 #[must_use]
 pub fn frame_radius(theme: Theme, classic: f32) -> f32 {

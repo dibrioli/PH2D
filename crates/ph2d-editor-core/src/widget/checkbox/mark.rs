@@ -8,6 +8,23 @@
 use super::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue};
 use crate::icons::IconId;
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
+
+/// O repouso e o quente do eixo do hover, no vocabulário da porta da tinta.
+const FEEL_REST: ph2d_tokens::visuals::Feel = ph2d_tokens::visuals::Feel::Rest;
+const FEEL_HOT: ph2d_tokens::visuals::Feel = ph2d_tokens::visuals::Feel::Hovered;
+
+/// **Como uma caixa se sente** — o [`CheckboxState`] no vocabulário das portas do tema.
+/// Uma porta, dois leitores (a tinta do corpo e a moldura), para nunca discordarem.
+fn feel_of_state(state: CheckboxState) -> ph2d_tokens::visuals::Feel {
+    use ph2d_tokens::visuals::Feel;
+    match state {
+        CheckboxState::Disabled => Feel::Disabled,
+        CheckboxState::Focused => Feel::Focused,
+        CheckboxState::Hovered => Feel::Hovered,
+        CheckboxState::Pressed => Feel::Active,
+        CheckboxState::Normal => Feel::Rest,
+    }
+}
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
@@ -147,13 +164,31 @@ pub(crate) fn paint_boolean_mark(
     //    `Focused` fica de fora com o `Disabled` — é estado duro, e o traço dele mede 2 px.
     let soft = matches!(state, CheckboxState::Normal | CheckboxState::Hovered)
         && matches!(value, CheckboxValue::Unchecked);
+    // ⭐⭐⭐ **A tinta do corpo é do TEMA, pela porta** ([`crate::paint::body_fill`]) — report do
+    //    dono, 2026-09-14, com foto: *«Checkbox invisível»*. A caixa DESMARCADA enchia `Bg1`, que é
+    //    a cor do cartão em que ela assenta, e num tema moderno não há moldura de repouso: ela não
+    //    existia. A marcada lia-se porque é `Accent`, e é por isso que o report é sobre metade das
+    //    caixas do painel.
+    // ⚠️ **O eixo do hover SOBREVIVE** porque a porta responde ao `Feel`: afundar só o repouso
+    //    deixaria as duas pontas iguais e o rato deixaria de dizer nada.
     let bg = crate::motion::hover_axis(
         soft,
         hover_t,
-        Some(ColorToken::Bg1.resolve(theme)),
-        Some(ColorToken::Bg2.resolve(theme)),
+        Some(crate::paint::body_fill(theme, FEEL_REST, ColorToken::Bg1)),
+        Some(crate::paint::body_fill(theme, FEEL_HOT, ColorToken::Bg2)),
     )
-    .map_or_else(|| resolve(bg_token, theme), crate::paint::token_to_vello);
+    .map_or_else(
+        || {
+            crate::paint::token_to_vello(if bg_token == ColorToken::Accent {
+                // ⛔ Uma caixa MARCADA é acento cheio em qualquer aparência — ela não é um corpo
+                //    afundado, é a resposta.
+                ColorToken::Accent.resolve(theme)
+            } else {
+                crate::paint::body_fill(theme, feel_of_state(state), bg_token)
+            })
+        },
+        crate::paint::token_to_vello,
+    );
     let border = crate::motion::hover_axis(
         soft,
         hover_t,
@@ -167,16 +202,7 @@ pub(crate) fn paint_boolean_mark(
     fill_rounded_rect(scene, box_rect, radius, bg);
     // ⭐ A moldura pela porta do TEMA: no clássico a de sempre; num tema moderno a caixa é plana
     //    (marcada = acento cheio, desmarcada = um degrau abaixo do painel) e só o foco traça.
-    let feel = {
-        use ph2d_tokens::visuals::Feel;
-        match state {
-            CheckboxState::Disabled => Feel::Disabled,
-            CheckboxState::Focused => Feel::Focused,
-            CheckboxState::Hovered => Feel::Hovered,
-            CheckboxState::Pressed => Feel::Active,
-            CheckboxState::Normal => Feel::Rest,
-        }
-    };
+    let feel = feel_of_state(state);
     crate::paint::stroke_frame(
         scene,
         box_rect,

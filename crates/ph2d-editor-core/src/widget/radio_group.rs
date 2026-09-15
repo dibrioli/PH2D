@@ -157,16 +157,23 @@ pub fn paint_radio_group<T: Clone + PartialEq>(
             (r.w - 2.0).max(0.0),
             (r.h - 2.0).max(0.0),
         );
-        let token = if group.selected.as_ref() == Some(&opt.value) {
-            ColorToken::Accent
+        // ⛔ O SELECCIONADO é acento cheio em qualquer aparência — ele não é um corpo afundado,
+        //    é a resposta. O outro pede a tinta ao tema, senão enche o token do cartão por baixo
+        //    e desaparece num tema moderno (ver [`crate::paint::body_fill`]).
+        let cor = if group.selected.as_ref() == Some(&opt.value) {
+            resolve(ColorToken::Accent, theme)
         } else {
-            ColorToken::Bg1
+            crate::paint::token_to_vello(crate::paint::body_fill(
+                theme,
+                ph2d_tokens::visuals::Feel::Rest,
+                ColorToken::Bg1,
+            ))
         };
         fill_rounded_rect(
             scene,
             inset,
             crate::paint::frame_radius(theme, Radius::Sm.px()),
-            resolve(token, theme),
+            cor,
         );
     }
 }

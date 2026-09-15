@@ -155,12 +155,14 @@ pub(crate) fn fill_token(state: TextInputState) -> ColorToken {
 /// TEXTO (`ColorToken::TextDisabled`, que os três pintores já aplicam). É o comportamento que o
 /// `text_input` já shipava; fica **nomeado** aqui em vez de inventar um segundo tom.
 pub(crate) fn field_fill(state: TextInputState, theme: Theme) -> ph2d_vector::Color {
-    let chrome = ph2d_tokens::visuals::Chrome::of(theme);
-    if chrome.field_border.is_visible() {
-        resolve(fill_token(state), theme)
-    } else {
-        crate::paint::token_to_vello(chrome.field_fill)
-    }
+    // ⚠️ **`Feel::Rest` mesmo sob o rato, e isso é o comportamento de HOJE**: um campo nunca mudou
+    // de tinta no hover (o `fill_token` ignora o `Hovered`) — quem responde ao rato é a borda. Um
+    // `feel_of(state)` aqui ACRESCENTARIA um eixo que os campos não têm.
+    crate::paint::token_to_vello(crate::paint::body_fill(
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        fill_token(state),
+    ))
 }
 
 /// **A cor da borda de um campo, já com o eixo do hover** — a porta ÚNICA dos três pintores da

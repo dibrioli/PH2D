@@ -95,3 +95,106 @@ fn every_field_painter_asks_the_theme_for_its_fill() {
         "a escada classica do preenchimento desapareceu da porta"
     );
 }
+
+/// ⏳ **Dívida MEDIDA, e só ENCOLHE** — quem ainda resolve o token do CARTÃO para pintar um corpo.
+const AINDA_O_CARTAO: &[&str] = &[
+    // ⭐ O cartão É o cartão: aqui o token não é a tinta de um controlo, é a superfície.
+    "crates/ph2d-editor-core/src/widget/section_cards/mod.rs",
+    // ⛔ A escada CLÁSSICA vive dentro da porta — é o valor que ela devolve quando o tema traça
+    //    moldura de repouso, e ali `0/255` lê-se pela borda.
+    "crates/ph2d-editor-core/src/widget/text_input/mod.rs",
+    // ⏳ **NOMEADO, e não é o mesmo caso:** o miolo do menu radial flutua sobre o CANVAS, e o
+    //    `Bg1` responde *também* a «de que cor é o canvas» (o doc do `derive::Roles::panel`
+    //    escreve-o). A porta afunda um degrau abaixo da pilha PAINEL/CARTÃO, que não é a
+    //    superfície debaixo deste. ⛔ Converter às cegas trocaria um defeito por outro — quem lhe
+    //    tocar mede primeiro contra o que está por baixo DELE.
+    "crates/ph2d-editor-core/src/widget/radial_menu.rs",
+];
+
+/// ⭐⭐⭐ **Nenhum pintor de controlo enche com o token da superfície em que o controlo assenta.**
+///
+/// ⛔⛔ **Segundo report do dono no mesmo dia, com foto: *«Checkbox invisível»*.** A caixa
+/// *Centered*, MARCADA, lê-se (é `Accent`); as de *Flip H* e *Flip V*, desmarcadas, não existem —
+/// elas enchiam `ColorToken::Bg1`, que é o token do cartão por baixo, e num tema moderno a moldura
+/// de repouso é ZERO.
+///
+/// ⚠️ **Eram SEIS pintores, não um:** `number_input` · `text_area` · `checkbox` · `combobox` ·
+/// `dropdown` · `radio_group`. *Seis respostas à mesma pergunta divergem no dia em que uma
+/// superfície se mexe — e uma mexeu-se em 2026-09-05, quando o painel desceu para o cartão se ler.*
+#[test]
+fn no_widget_paints_a_control_body_with_the_card_token() {
+    let root = repo_root();
+    let mut ficheiros = Vec::new();
+    walk(
+        &root.join("crates/ph2d-editor-core/src/widget"),
+        &mut ficheiros,
+    );
+    ficheiros.sort();
+    assert!(
+        ficheiros.len() >= 60,
+        "a varredura achou so' {} ficheiros de widget — o caminho mudou?",
+        ficheiros.len()
+    );
+
+    let mut fora = Vec::new();
+    for p in &ficheiros {
+        let Ok(src) = fs::read_to_string(p) else {
+            continue;
+        };
+        let rel = p
+            .strip_prefix(&root)
+            .unwrap_or(p)
+            .to_string_lossy()
+            .replace('\\', "/");
+        for (n, line) in src.lines().enumerate() {
+            let t = line.trim();
+            // ⚠️ **O módulo de teste termina a varredura.** Um gate que afirma a lei CITA o token
+            // dos dois lados, e contá-lo acusaria o próprio gate — o defeito que o
+            // `a_census_gate_that_scans_its_own_tree_counts_itself` já registou.
+            // ⛔ A cerca presume o que o `rustfmt` desta casa faz: o `mod tests` é o FIM do
+            //    ficheiro. Um bloco de teste a meio esconderia o código depois dele.
+            if t.starts_with("#[cfg(test)]") {
+                break;
+            }
+            if t.starts_with("//") {
+                continue;
+            }
+            if !t.contains("resolve(ColorToken::Bg1") && !t.contains("ColorToken::Bg1.resolve") {
+                continue;
+            }
+            if AINDA_O_CARTAO.iter().any(|d| rel.starts_with(d)) {
+                continue;
+            }
+            fora.push(format!("{rel}:{}: {t}", n + 1));
+        }
+    }
+    assert!(
+        fora.is_empty(),
+        "{} pintor(es) enchem um corpo com o token do CARTAO em que ele assenta:\n  {}\n\n\
+         Num tema moderno nao ha moldura de repouso — um corpo da cor do que esta' por baixo dele \
+         NAO EXISTE. A porta e' `crate::paint::body_fill(theme, feel, classico)`.",
+        fora.len(),
+        fora.join("\n  ")
+    );
+}
+
+/// ⚠️ **A metade de OBSOLESCÊNCIA** — `CLAUDE.md` §5.0: uma catraca sem censo não desce, vira
+/// licença.
+#[test]
+fn the_card_token_tolerance_still_describes_something() {
+    let root = repo_root();
+    let mortas: Vec<&&str> = AINDA_O_CARTAO
+        .iter()
+        .filter(|d| {
+            let p = root.join(d);
+            let Ok(src) = fs::read_to_string(&p) else {
+                return true;
+            };
+            !src.contains("ColorToken::Bg1")
+        })
+        .collect();
+    assert!(
+        mortas.is_empty(),
+        "entrada(s) STALE na tolerancia — o ficheiro sumiu ou ja' nao cita o token:\n  {mortas:?}"
+    );
+}

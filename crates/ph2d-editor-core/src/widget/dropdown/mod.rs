@@ -349,7 +349,17 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
     } else {
         ColorToken::Bg1
     };
-    fill_rounded_rect(scene, rect, radius, resolve(fill, theme));
+    // ⭐ A tinta do corpo é do TEMA, pela porta — ver [`crate::paint::body_fill`].
+    fill_rounded_rect(
+        scene,
+        rect,
+        radius,
+        crate::paint::token_to_vello(crate::paint::body_fill(
+            theme,
+            dropdown_feel(dd.state),
+            fill,
+        )),
+    );
     let stroke_w = if dd.state == DropdownState::Focused {
         2.0
     } else {

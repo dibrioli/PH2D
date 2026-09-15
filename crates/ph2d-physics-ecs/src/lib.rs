@@ -22,6 +22,9 @@ pub mod interaction;
 mod joint;
 mod joint_group;
 pub mod joint_tool;
+/// ⭐⭐⭐ **Quem lê o teclado** — a porta ÚNICA que as duas metades da entrega do dedo
+/// partilham (a da shell e a da fita). Ver o cabeçalho do módulo.
+pub mod keyboard_driven;
 pub mod name_refs;
 mod parts;
 /// ⭐ **O REMAP identidade → identidade** (ADR-0164 / F4.2) — o que faz a junta de uma
@@ -43,6 +46,7 @@ pub use bridge::contacts::{
 pub use bridge::joint_break::JointBreakEvent;
 pub use bridge::signals::SignalEvent;
 pub use bridge::triggers::TriggerEvent;
+pub use keyboard_driven::{for_each_keyboard_driven, reads_the_keyboard};
 pub use name_refs::{ResolvedRefs, resolve_body_names};
 pub use ref_remap::{remap_joint_refs, remap_wheel_refs};
 // O par de números que um readout de joint mostra. Re-exportado porque a shell

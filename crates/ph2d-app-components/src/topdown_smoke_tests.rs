@@ -123,3 +123,61 @@ fn um_nivel_desconhecido_cai_na_primeira_cena() {
     let mut sim = SimWorld::new();
     assert_eq!(montar(sim.world_mut(), 99), 1);
 }
+
+/// ⭐⭐⭐ **O BONECO DESENHA POR CIMA DO CHÃO** (report do dono, 2026-09-15: *«para o Hero ser
+/// visível deve ficar abaixo na Hierarchy»*).
+///
+/// ⚠️⚠️ **Nenhum gate desta cena media a ORDEM DE DESENHO**, e a cena montava-se perfeita: os
+/// nomes lá, os números certos, os componentes certos — e um rectângulo cinzento por cima de tudo.
+/// O chão é a primeira raiz criada, e a varredura foundational que numera as raízes
+/// ([`ph2d_ecs::assign_missing_root_order`]) **invertia** a ordem de criação, logo ele recebia o
+/// número mais alto e passava a desenhar à frente.
+///
+/// ⇒ o gate corre a varredura — que é o que o quadro faz — e lê a pilha pela **porta partilhada**
+/// ([`ph2d_ecs::root_key`]), que é a mesma que a lista da Hierarquia e o `propagate_transforms`
+/// leem. *Um gate que lesse a ordem de spawn em vez da porta ficaria verde sobre o defeito.*
+#[test]
+fn o_boneco_desenha_por_cima_do_chao() {
+    for nivel in 1..=CENAS {
+        let mut sim = monta(nivel);
+        // O passe do quadro: é ele que dá número às raízes recém-nascidas.
+        ph2d_ecs::assign_missing_root_order(sim.world_mut());
+
+        let mut por_nome: Vec<(String, (u32, _))> = Vec::new();
+        let mut q = sim
+            .world()
+            .try_query::<(ph2d_ecs::Entity, &Name)>()
+            .expect("query");
+        for (e, n) in q.iter(sim.world()) {
+            por_nome.push((n.as_str().to_string(), ph2d_ecs::root_key(sim.world(), e)));
+        }
+        let chave = |alvo: &str| {
+            por_nome
+                .iter()
+                .find(|(n, _)| n == alvo)
+                .unwrap_or_else(|| panic!("falta `{alvo}` na cena =${nivel}"))
+                .1
+        };
+        let chao = chave("Floor");
+        // ⚠️ Os nomes dos bonecos MUDAM entre as cenas — lidos do que está lá, nunca escritos duas
+        // vezes (a cena 1 tem `Hero`; a 2 tem `Hero (Isometric)` e `Control (Top-Down)`).
+        let bonecos: Vec<String> = por_nome
+            .iter()
+            .map(|(n, _)| n.clone())
+            .filter(|n| n.starts_with("Hero") || n.starts_with("Control"))
+            .collect();
+        assert!(
+            !bonecos.is_empty(),
+            "a cena =${nivel} nao tem boneco nenhum"
+        );
+        for b in &bonecos {
+            assert!(
+                chave(b) > chao,
+                "na cena =${nivel} o `{b}` desenha ATRAS do chao ({:?} contra {:?}) — \
+                 ele fica invisivel, e o dono ve um rectangulo cinzento",
+                chave(b),
+                chao
+            );
+        }
+    }
+}

@@ -47,12 +47,9 @@
 
 use std::collections::BTreeMap;
 
-use crate::components::TopDownPlayer;
 use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
 use ph2d_platformer::{PlayerInput, PlayerState};
-
-use crate::components::PlatformPlayer;
 
 use super::PhysicsBridge;
 
@@ -348,23 +345,16 @@ impl PhysicsBridge {
         let world = sim.world();
         // A MESMA pergunta que o `drive_players` faz, na MESMA ordem
         // determinística do `BTreeMap` de corpos.
+        // ⭐⭐⭐ **Pela PORTA partilhada** ([`crate::reads_the_keyboard`]) desde
+        // 2026-09-15. Esta pergunta estava escrita aqui e outra vez na entrega
+        // da shell (`hand_input_to_players`), e a segunda **não conhecia o mover
+        // de vista de cima** — report do dono: *«nada se move»*. Ver o cabeçalho
+        // do módulo da porta.
         let players: Vec<Entity> = self
             .bodies
             .keys()
             .copied()
-            .filter(|&e| {
-                world.get::<PlatformPlayer>(e).is_some()
-                    // ⭐ **E os movers de vista de cima que LEEM o teclado.**
-                    // ⚠️ `default_controls = false` deixa a entidade de fora
-                    // desta lista, e é isso que a torna um MOTOR PURO: quem a
-                    // dirige passa a ser quem chamar o
-                    // [`PhysicsBridge::set_player_input`] — o canal que já
-                    // existe e já tem chamadores. ⛔ Um segundo canal só para
-                    // isto seria uma porta sem consumidor.
-                    || world
-                        .get::<TopDownPlayer>(e)
-                        .is_some_and(|c| c.default_controls)
-            })
+            .filter(|&e| crate::reads_the_keyboard(world, e))
             .collect();
         for e in players {
             self.player_input.insert(e, input);

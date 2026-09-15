@@ -172,3 +172,100 @@ Diagnóstico: `PH2D_TOPDOWN_LOG=1` imprime cada passo do plano de deslize.
   [`godot_slide.txt`](../../../crates/ph2d-topdown/tests/fixtures/godot_slide.txt);
 - as 24 provas de mutação: [`mutacao_topdown_w1.sh`](../ferramentas/mutacao_topdown_w1.sh) e
   [`mutacao_topdown_w2.sh`](../ferramentas/mutacao_topdown_w2.sh).
+
+---
+
+## §10 — O REPORT DO DONO, no mesmo dia: *«a simulação não funciona. Nada se move. Para o Hero ser visível deve ficar abaixo na Hierarchy»*
+
+> Dois defeitos independentes, os dois com **as 24 provas de mutação desta wave e a suíte inteira
+> verdes por cima**. ⚠️ Nenhum deles está na lei do mover: o `ph2d-topdown` não muda uma linha.
+
+### 10.1 ⛔⛔⛔ «Nada se move» — a pergunta *«quem lê o teclado?»* tinha DUAS respostas
+
+A entrega do dedo ao mundo é escrita em duas metades, que correm em fases diferentes do mesmo tique:
+
+| metade | onde | conhecia o mover novo? |
+|---|---|---|
+| **ENTREGA** — `hand_input_to_players`, e a contagem que ela devolve decide se a fita grava | `ph2d-app-physics/src/bridge/dispatch.rs` | **NÃO** |
+| **REPLAY** — `take_taped_input`, que reinstala o dedo daquele tique | `ph2d-physics-ecs/src/bridge/tape.rs` | sim |
+
+A wave ensinou a metade **2** e não a **1**. Consequência, **medida pela porta do produto**: o corpo
+andou **`0.0000 m` em 30 tiques** com a seta segurada — e, porque a contagem de players dava `0`, a
+fita **nem sequer gravava o tique**, matando o caminho do replay pela mesma razão. *Dois sintomas,
+uma linha.*
+
+⚠️⚠️ **Os 24 gates da wave entravam todos pelo canal INTERNO** (`bridge.set_player_input(...)` à mão,
+ou uma fita falsa), que fica **abaixo** da rotura. É a lei que a casa já tinha escrita —
+*«um gesto escrito em DUAS metades aceita a variante nova em SÓ UMA, e a fixtura que chama a porta
+interna fica verde»* — a morder pela segunda vez.
+
+**Cura:** a pergunta passa a ter **UMA porta**
+([`ph2d_physics_ecs::keyboard_driven`](../../../crates/ph2d-physics-ecs/src/keyboard_driven.rs)) —
+`reads_the_keyboard` (por entidade, para quem itera o mapa de corpos) e `for_each_keyboard_driven`
+(visitante sobre o mundo, para quem varre). ⚠️ **Um visitante e não um `Vec`**: isto corre no caminho
+quente e a casa tem gate a proibir alocação por quadro (HR-3). ⚠️ **Dois passes e não um `Or<…>`**, e
+o segundo SALTA quem já tem `PlatformPlayer` — senão a contagem de players mentiria com os dois
+movers na mesma entidade.
+
+### 10.2 ⛔⛔⛔ «O Hero tem de ficar abaixo na Hierarchy» — a varredura foundational INVERTIA a pilha de z
+
+[`ph2d_ecs::assign_missing_root_order`](../../../crates/ph2d-ecs/src/root_order.rs) congelava a
+ordem das raízes sem número por **`to_bits()`** — e o `to_bits` do bevy é a ordem de criação
+**INVERTIDA**, facto que o repo **já media** no gate
+`to_bits_is_not_creation_order_which_is_why_the_sweep_uses_index` da irmã
+`assign_missing_stable_ids`.
+
+⇒ no primeiro quadro, toda cena cujas raízes nascem sem número via a pilha de z **virar-se ao
+contrário**: o chão (a 1.ª raiz criada) recebia o número mais alto e passava a desenhar **por cima de
+tudo**. Medido: quatro raízes criadas em sequência saem com `RootOrder [3, 2, 1, 0]`, e na cena `=1`
+o Hero lia `(0, EntityIndex(7))` contra `(6, EntityIndex(1))` do chão.
+
+⚠️⚠️ **A redacção estava CERTA no dia em que foi escrita** (a lista desempatava por `to_bits`) e ficou
+**falsa em 2026-08-27**, quando a chave das raízes foi unificada na porta partilhada
+[`crate::root_key`] e os **outros dois** leitores — a lista da Hierarquia e o `propagate_transforms` —
+passaram a `index()`. *Uma lei escrita em três sítios só viaja para os dois que alguém se lembrou de
+mudar*, e o doc do terceiro continuou a prometer *«a tela não muda; ela só para de escorregar»*.
+
+⛔⛔ **E o `root_order.rs` NÃO TINHA UM ÚNICO TESTE PRÓPRIO** — foundational, a correr em todo quadro,
+a decidir a pilha de z do canvas inteiro. É por isso que a inversão sobreviveu três semanas.
+
+**Cura:** a varredura passa a congelar **pela mesma porta que a árvore lê** (`crate::root_key`), e
+não por uma cópia da chave. ⭐ **Alcance medido: a suíte inteira, `23 002` testes, verde** — nenhuma
+cena compensava a inversão (os módulos que atribuem `RootOrder` no spawn — vector, flip, sculpt,
+field3d — eram imunes por construção, e as cenas de smoke de física não têm fundo que se sobreponha).
+
+### 10.3 Os gates novos, e por que cada um estava em falta
+
+| gate | onde | o que afirma |
+|---|---|---|
+| `o_dedo_do_teclado_chega_ao_mover_de_vista_de_cima` (+ 2) | `ph2d-app-physics/src/topdown_finger_tests.rs` | o corpo ANDA pela porta do **produto** (`dispatch`), nos dois eixos, e um motor puro não |
+| `the_sweep_freezes_the_order_the_tree_already_showed` (+ 3) | `ph2d-ecs/src/root_order_tests.rs` | a varredura não mexe na ordem que a árvore mostra, e a congelada é a de CRIAÇÃO |
+| `o_boneco_desenha_por_cima_do_chao` | `ph2d-app-components/src/topdown_smoke_tests.rs` | nas DUAS cenas, lido pela porta partilhada |
+| `the_top_down_smoke_scene_actually_walks` | `shells/desktop/tests/it/the_players_finger_reaches_the_bridge.rs` | a **cena do dono**, com a seta segurada, pelo dispatch real |
+| `um_player_de_plataforma_le_o_teclado` (+ 4) | `ph2d-physics-ecs/src/keyboard_driven_tests.rs` | a porta, com CONTROLO em cada braço |
+
+⚠️ **O quarto tinha de viver na SHELL:** a cena vive na `ph2d-app-components`, o dispatch na
+`ph2d-app-physics`, e **nenhuma depende da outra**. *É isso que «a shell é composição» quer dizer.*
+
+⚠️⚠️ **E os três gates que já existiam naquele ficheiro da shell são TEXTUAIS** — eles afirmam que o
+quadro **chama** o `resolve_player_input` e o **entrega** ao dispatch, e as duas coisas eram verdade
+enquanto o boneco não andava. *Uma agulha que nomeia a CHAMADA é cega ao corpo dela.*
+
+**7 provas de mutação**, todas a sangrar:
+[`mutacao_report_do_dono_2026-09-15.sh`](../ferramentas/mutacao_report_do_dono_2026-09-15.sh).
+
+### 10.4 Os contadores
+
+⛔ **NENHUM se mexe.** `PROJECT_SCHEMA`, os três registos, os contratos congelados: todos iguais ao
+§2. A porta nova é um módulo `pub` **append-only** na `ph2d-physics-ecs`; a cura do `root_order` é
+**uma linha** dentro de uma função que já existia.
+
+### 10.5 O que fica ABERTO
+
+1. **A ordem em que as raízes nascem passou a ser visível**, e isso é produto: quem escrever uma cena
+   nova tem de spawnar o fundo **primeiro**. Antes era o contrário (e ninguém sabia).
+2. O gate `the_players_finger_reaches_the_bridge` tem hoje **três** agulhas textuais e **uma** medição
+   real. As três primeiras continuam a valer (elas medem coisas que um teste sem janela não alcança),
+   mas a lição é que **uma agulha textual não substitui uma medição do efeito**.
+3. ⏳ **Os outros consumidores do `player_input`** (a `fase_game_camera`) não foram auditados contra
+   esta mesma forma — *a pergunta «quem é um player?» pode ter uma TERCEIRA resposta algures*.

@@ -358,6 +358,8 @@ mod joint_world_tests;
 mod measure_player_tape;
 #[cfg(test)]
 mod physics_gesture_surface_tests;
+#[cfg(test)]
+mod topdown_finger_tests;
 
 // ⚠️ **`pub(crate)` e não privado**: a porta `apply` (um edit do §11 aplicado
 // ao ECS) é o caminho do PRODUTO, e várias cenas a usam para provar que afinar

@@ -67,12 +67,30 @@ pub fn assign_missing_root_order(world: &mut World) -> bool {
     if missing.is_empty() {
         return false;
     }
-    // A ordem que a árvore mostra HOJE entre as sem-ordem é a de `to_bits`. Congelá-la
-    // aqui é o que faz a tela não piscar quando os números aparecem.
-    missing.sort_unstable_by_key(|e| e.to_bits());
+    // ⭐⭐⭐ **Congelar a ordem que a árvore mostra HOJE — lendo-a pela PORTA que a árvore usa**
+    // ([`crate::root_key`]). É isso que faz a tela não piscar quando os números aparecem.
+    //
+    // ⛔⛔ **Aqui estava `to_bits()`, e ele INVERTE a ordem de criação no bevy** — medido pelo
+    // gate `to_bits_is_not_creation_order_which_is_why_the_sweep_uses_index` da irmã
+    // [`crate::assign_missing_stable_ids`]. A redacção original estava certa no dia em que foi
+    // escrita (a lista desempatava por `to_bits`) e ficou **falsa em 2026-08-27**, quando a chave
+    // das raízes foi unificada na porta partilhada e os outros dois leitores passaram a `index()`.
+    // *Uma lei escrita em três sítios só viaja para os dois que alguém se lembrou de mudar.*
+    //
+    // Consequência medida: a varredura VIRAVA a pilha de z de toda cena cujas raízes nascem sem
+    // número — o objecto criado primeiro passava a desenhar por cima de todos os outros (report do
+    // dono, 2026-09-15: *«para o Hero ser visível deve ficar abaixo na Hierarchy»*).
+    //
+    // ⚠️ **Pela porta e não por `index()` à mão:** as três leituras têm de se mexer juntas, e uma
+    // cópia da chave aqui seria exactamente a segunda resposta que causou isto.
+    missing.sort_unstable_by_key(|&e| crate::root_key(world, e));
     for (i, e) in missing.into_iter().enumerate() {
         let order = next.saturating_add(u32::try_from(i).unwrap_or(u32::MAX));
         world.entity_mut(e).insert(RootOrder(order));
     }
     true
 }
+
+#[cfg(test)]
+#[path = "root_order_tests.rs"]
+mod tests;

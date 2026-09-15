@@ -12,7 +12,7 @@
 
 use ph2d_core::Playhead;
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_physics_ecs::{InputTape, PhysicsBridge, PlatformPlayer};
+use ph2d_physics_ecs::{InputTape, PhysicsBridge};
 
 /// The fixed tick the playhead currently sits on — `round(time / dt)`, the
 /// same mapping Motion uses (`motion_tick`), so physics and motion step on
@@ -171,14 +171,19 @@ fn hand_input_to_players(
     sim: &mut SimWorld,
     input: ph2d_physics_ecs::PlayerInput,
 ) -> usize {
-    let Some(mut q) = sim.world().try_query::<(Entity, &PlatformPlayer)>() else {
-        return 0;
-    };
+    // ⭐⭐⭐ **Pela PORTA partilhada** ([`ph2d_physics_ecs::for_each_keyboard_driven`]) desde
+    // 2026-09-15 — report do dono: *«nada se move»*.
+    //
+    // ⛔⛔ Aqui estava um `try_query::<(Entity, &PlatformPlayer)>()` escrito à mão, e ele era a
+    // metade da entrega que **não conhecia o mover de vista de cima**. A outra metade (a fita,
+    // `take_taped_input`) conhecia-o — logo o componente estava ligado ao replay e desligado do
+    // teclado, e os dois defeitos somavam-se: sem player contado, `players == 0`, e a fita nem
+    // sequer gravava o tique. Ver o cabeçalho do módulo da porta.
     let mut n = 0;
-    for (entity, _) in q.iter(sim.world()) {
+    ph2d_physics_ecs::for_each_keyboard_driven(sim.world(), |entity| {
         bridge.set_player_input(entity, input);
         n += 1;
-    }
+    });
     n
 }
 

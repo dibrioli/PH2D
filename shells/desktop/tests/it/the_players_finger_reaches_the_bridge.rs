@@ -166,3 +166,94 @@ fn the_files_the_gate_reads_are_the_ones_that_carry_the_wire() {
             .contains("fn hand_input_to_players")
     );
 }
+
+/// ⭐⭐⭐ **(4) E A CENA QUE O DONO CORRE DE FACTO ANDA** — o fio inteiro, sem agulha textual.
+///
+/// # ⛔⛔ Por que este teste existe (report do dono, 2026-09-15: *«nada se move»*)
+///
+/// Os três gates acima são **textuais**, e nenhum deles pode reprovar sobre o defeito que o dono
+/// encontrou: eles afirmam que o quadro **chama** o `resolve_player_input` e que ele **entrega** o
+/// dedo ao dispatch, e as duas coisas eram verdade. O que estava partido vivia **dentro** do
+/// dispatch — a pergunta *«quem são os players?»* varria só o [`PlatformPlayer`], logo o dedo
+/// chegava e não tinha a quem ser entregue.
+///
+/// ⚠️ *Uma agulha que nomeia a CHAMADA é cega ao corpo dela.* ⇒ este gate monta a **cena do smoke**
+/// (a mesma que o dono corre), segura uma seta, e corre a **porta do produto** — e só está verde se
+/// o boneco ANDAR.
+///
+/// ⛔ Ele não pode viver na crate da cena nem na da ponte: a cena vive na `ph2d-app-components` e o
+/// dispatch na `ph2d-app-physics`, e **nenhuma depende da outra**. A shell é quem as vê às duas —
+/// que é exactamente o que «a shell é composição» quer dizer.
+#[test]
+fn the_top_down_smoke_scene_actually_walks() {
+    use ph2d_core::Playhead;
+    use ph2d_ecs::SimWorld;
+
+    const DT: f64 = 1.0 / 60.0;
+    for nivel in 1..=2u32 {
+        let mut sim = SimWorld::new();
+        ph2d_app_components::topdown_smoke::montar(sim.world_mut(), nivel);
+
+        // A pose de partida de cada boneco, por NOME — a cena `=2` tem dois.
+        let antes = poses(&sim);
+        assert!(
+            !antes.is_empty(),
+            "a cena =${nivel} nao tem boneco nenhum para medir"
+        );
+
+        let mut bridge = ph2d_physics_ecs::PhysicsBridge::new();
+        let mut doc = ph2d_timeline::TimelineDoc::new();
+        let mut playhead = Playhead::new(DT);
+        let mut tape = ph2d_physics_ecs::InputTape::new();
+        let mut drive = ph2d_preview_drive::PreviewDrive::default();
+        playhead.play();
+        // ⚠️ **A seta DIREITA segurada**, que é o passo 3 da instrução que o dono recebe.
+        let dedo = ph2d_physics_ecs::PlayerInput {
+            drive: 1.0,
+            ..ph2d_physics_ecs::PlayerInput::default()
+        };
+        for _ in 0..30 {
+            playhead.advance();
+            ph2d_app_physics::bridge::dispatch::dispatch(
+                &mut bridge,
+                &mut sim,
+                &playhead,
+                DT,
+                &mut doc,
+                // ⚠️ Armado — é o que o prólogo da cena faz (`components_scenes::topdown_smoke`).
+                true,
+                dedo,
+                &mut tape,
+                &mut drive,
+            );
+        }
+
+        let depois = poses(&sim);
+        for (nome, p0) in &antes {
+            let p1 = depois.get(nome).expect("o boneco continua na cena");
+            let andou = ((p1.x - p0.x).powi(2) + (p1.y - p0.y).powi(2)).sqrt();
+            assert!(
+                andou > 0.5,
+                "na cena =${nivel} o `{nome}` andou {andou:.4} m em meio segundo com a seta \
+                 SEGURADA — o dedo nao chega ao mover.\n\
+                 ⚠️ Se isto e' ZERO, a pergunta «quem le o teclado?» voltou a ter duas respostas."
+            );
+        }
+    }
+}
+
+/// A pose de cada mover de vista de cima, por nome.
+fn poses(sim: &ph2d_ecs::SimWorld) -> std::collections::BTreeMap<String, ph2d_core::Vec2> {
+    let mut out = std::collections::BTreeMap::new();
+    let Some(mut q) = sim.world().try_query::<(
+        &ph2d_ecs::Name,
+        &ph2d_ecs::Transform,
+        &ph2d_physics_ecs::TopDownPlayer,
+    )>() else {
+        return out;
+    };
+    for (n, t, _) in q.iter(sim.world()) {
+        out.insert(n.as_str().to_string(), t.translation);
+    }
+    out
+}

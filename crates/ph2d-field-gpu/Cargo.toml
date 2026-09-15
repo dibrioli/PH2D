@@ -21,6 +21,7 @@ ph2d-field-eval = { path = "../ph2d-field-eval" }
 # ⛔ A direcção é esta e nunca a contrária: o `ph2d-field-render` recusa o `wgpu` por escrito, e é
 # ele a REFERÊNCIA de CPU contra a qual esta se mede.
 ph2d-field-render = { path = "../ph2d-field-render" }
+ph2d-material = { path = "../ph2d-material" }
 wgpu = { version = "29.0.4", features = ["wgsl"] }
 pollster = "0.4.0"
 
@@ -28,5 +29,4 @@ pollster = "0.4.0"
 # (depois da curva sRGB) que um erro linear de `2 %` dentro de um furo escuro vira uma dezena de
 # níveis. Uma régua que pára no valor linear mede outra coisa.
 [dev-dependencies]
-ph2d-material = { path = "../ph2d-material" }
 ph2d-view-transform = { path = "../ph2d-view-transform" }

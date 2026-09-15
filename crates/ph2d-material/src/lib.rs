@@ -347,5 +347,7 @@ fn diffuse(weight: f32, color: V3, roughness: f32, n: V3, v: V3, c: &Closure<'_>
     }
 }
 
+pub mod wgsl;
+
 #[cfg(test)]
 mod tests;

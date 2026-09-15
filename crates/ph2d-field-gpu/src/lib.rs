@@ -49,6 +49,7 @@ pub fn supports(doc: &FieldDoc) -> bool {
         .any(|n| matches!(n.kind, NodeKind::Sampled { .. }))
 }
 
+pub mod material_parity;
 pub mod parity;
 pub mod trace;
 

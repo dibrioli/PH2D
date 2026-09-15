@@ -355,6 +355,16 @@ impl Tracer {
             height,
         )
     }
+    /// O dispositivo e a fila — para quem precisa de despachar **outro** passe sobre o MESMO
+    /// dispositivo (o arnês de paridade do material, e o passe de sombreamento).
+    ///
+    /// ⚠️ **Abrir um segundo dispositivo custaria mais do que o trabalho** (medido: `130 ms` para
+    /// abrir e compilar, contra `13` da CPU inteira) — e um `Device` não fala com buffers de outro.
+    #[must_use]
+    pub fn parts(&self) -> (&wgpu::Device, &wgpu::Queue) {
+        (&self.device, &self.queue)
+    }
+
     /// ⭐ **Quanto custa TRAZER `bytes` de volta** — a fase que o `submit` do quadro esconde.
     ///
     /// ⚠️ **É diagnóstico, e não o caminho do produto:** o quadro copia e lê no MESMO `submit` que

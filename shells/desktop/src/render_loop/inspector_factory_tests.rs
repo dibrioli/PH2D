@@ -174,7 +174,10 @@ fn the_panel_says_when_the_lifecycle_is_inert() {
     let info = build_factory_info(sim.world_mut(), &tree, e.to_bits(), 1, false).expect("seccao");
     assert!(info.factory.is_none(), "ela nao e' uma fabrica");
     assert!(info.lifecycle.is_some());
-    assert!(!info.is_spawned, "o painel diria que ela nasceu numa corrida");
+    assert!(
+        !info.is_spawned,
+        "o painel diria que ela nasceu numa corrida"
+    );
     assert!(
         !info.has_game_camera,
         "sem GameCamera o fora-do-ecra nao mede nada, e o painel tem de o dizer"

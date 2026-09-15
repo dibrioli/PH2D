@@ -54,12 +54,6 @@ use ph2d_tags::{TagId, TagTree};
 /// ⛔ **É uma CONTAGEM, nunca um orçamento de relógio**: um tecto em milissegundos faria o passo fixo
 /// produzir um número diferente de nascimentos em cada máquina, e o replay (`physics_ecs_c9`, matriz
 /// de 3 OS) divergiria. *Uma lei de simulação não pode perguntar as horas.*
-///
-/// ⚠️⚠️ **A tabela acima é da porta de CÓPIA, e a porta do PRODUTO é outra** —
-/// `ph2d_app_components::instantiate::instantiate_master` faz, por cópia, mais quatro passagens
-/// `O(mundo)` (`unique_name` e as três `assign_*`). A W2 constrói o lote dela e **re-mede**; se ela
-/// não chegar a este número, **é este número que desce**. *Uma sonda que mede um sucedâneo para
-/// sempre mede outro programa.*
 pub const BURST_MAX: u32 = 1_024;
 
 /// **ONDE a cópia nasce.**

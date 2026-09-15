@@ -434,21 +434,31 @@ porque desapareceu a causa, não porque alguém a escondeu atrás de um tecto.
 10 000 e `2,83 ms` numa de 100 000 — **17 % de um quadro de 16,7 ms** —, e o degrau seguinte (4 096)
 custa `10,6 ms`, que é **64 %**. *O número é o do caminho rápido, e a escada está ao lado dele.*
 
+⚠️⚠️ **ESTES NÚMEROS SÃO DA PORTA DE CÓPIA E NÃO DO PRODUTO — leia a §6.3-bis antes de os citar.**
+O tecto continua em `1024`; o preço dele no caminho do artista é **`5,35 ms` (32 % de um quadro)**,
+não os `2,6 ms` desta tabela.
+
 ⚠️ **E o tecto é uma CONTAGEM, nunca um orçamento de relógio** — um tecto em milissegundos faria o
 passo fixo produzir um número diferente de nascimentos em cada máquina, e o replay (`physics_ecs_c9`,
 a matriz de 3 OS) divergiria. *Uma lei de simulação não pode perguntar as horas.*
 
-⚠️⚠️ **E este número é da porta de CÓPIA, não da porta do PRODUTO — a W2 tem de o re-medir.** O
-caminho que o artista percorre é `ph2d_app_components::instantiate::instantiate_master`, e ele faz,
-**por cópia**, mais quatro passagens `O(mundo)` depois da cópia: `unique_name` (varre todos os
-nomes), `assign_missing_root_order`, `assign_missing_sibling_order` e `assign_master_pieces`. ⇒ um
-`burst` de 1 024 por essa porta paga `1 024 ×` cada uma delas, e o `2,6 µs/cópia` da tabela acima
-**não descreve o produto**.
+### §6.3-bis — ⭐⭐⭐ E a porta do PRODUTO, re-medida na W2 (é ELA que o tecto descreve)
 
-*É a armadilha que o doc da sonda irmã das tags já nomeia por escrito — «uma sonda que mede um
-sucedâneo para sempre mede outro programa» — e ela apareceu aqui em menos de um dia.* ⇒ **a W2 constrói
-`instantiate_master_many`** (as três `assign_*` e a nomeação uma vez por lote) e **re-mede**; o
-`BURST_MAX` fica escrito **na porta do produto**, e se ela não chegar lá, é o tecto que desce.
+O caminho que o artista percorre é `ph2d_app_components::instantiate::instantiate_master_many`, que
+paga, **por cópia**, o que a cópia não paga: o clone dos documentos possuídos, o remap de
+referências e o elo por peça — mais, antes do lote existir, o `unique_name` (`O(n² × nomes)`
+sozinho) e as três `assign_*`. Medido (`release`, mínimo de 5, `load 7`, cena de 10 000):
+
+| cópias | em SÉRIE (ms) | µs/cópia | em LOTE (ms) | µs/cópia | ganho |
+|---:|---:|---:|---:|---:|---:|
+| 16 | 7,33 | 458,0 | 0,53 | 33,1 | 13,8× |
+| 64 | 29,67 | 463,5 | 0,77 | 12,1 | 38,3× |
+| 256 | 126,95 | 495,9 | **1,72** | 6,7 | **73,8×** |
+| 1 024 | 646,84 | 631,7 | **5,35** | 5,2 | **120,8×** |
+
+⇒ **`BURST_MAX = 1024` custa `5,35 ms`, que é `32 %` de um quadro** — e não os `16–17 %` que a
+tabela da porta de cópia sugeria. *O tecto fica, e o número ao lado dele passa a ser o do produto.*
+⚠️ **Em série a rajada máxima era inalcançável:** `647 ms` são **39 quadros**.
 
 ⛔ **A varredura NÃO foi apagada** — ela é a rede contra dois objectos com o mesmo id, e esta wave não
 é sobre a identidade. O que mudou é **quantas vezes** ela corre. ⏳ **A cura de fundo fica nomeada:**

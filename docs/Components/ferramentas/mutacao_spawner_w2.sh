@@ -82,6 +82,34 @@ mutacao() { # nome ficheiro velho novo crate alvo filtro
 }
 
 
+mutacao2() { # nome f1 old1 new1 f2 old2 new2 crate alvo filtro
+  local nome=$1 f1=$2 o1=$3 n1=$4 f2=$5 o2=$6 n2=$7 crate=$8 target=$9 filter=${10}
+  N=$((N+1))
+  local ctl mut
+  ctl=$(corre "$crate" "$target" "$filter" "$S/$N-controlo.log")
+  if [ "$ctl" = "ERRO" ] || [ "${ctl%% *}" -lt 1 ] || [ "${ctl##* }" -ne 0 ]; then
+    echo "✗ $nome — CONTROLO inválido ($ctl) · filtro «$filter»"; return
+  fi
+  backup "$f1"; backup "$f2"
+  if ! replace "$f1" "$o1" "$n1" || ! replace "$f2" "$o2" "$n2"; then
+    echo "✗ $nome — âncora não casou"
+    cp "$S/bak/$(echo "$f1" | tr '/' '_')" "$f1" && touch "$f1"
+    cp "$S/bak/$(echo "$f2" | tr '/' '_')" "$f2" && touch "$f2"
+    return
+  fi
+  mut=$(corre "$crate" "$target" "$filter" "$S/$N-mutante.log")
+  cp "$S/bak/$(echo "$f1" | tr '/' '_')" "$f1" && touch "$f1"
+  cp "$S/bak/$(echo "$f2" | tr '/' '_')" "$f2" && touch "$f2"
+  if [ "$mut" = "ERRO" ]; then
+    echo "? $nome — o mutante NÃO COMPILOU (ver $S/$N-mutante.log)"
+  elif [ "${mut##* }" -ge 1 ]; then
+    echo "✓ $nome — SANGROU (controlo $ctl · mutante $mut)"
+  else
+    echo "✗ $nome — SOBREVIVEU (controlo $ctl · mutante $mut)"
+  fi
+}
+
+
 SV=crates/ph2d-ecs/src/scene/save.rs
 SN=crates/ph2d-ecs/src/scene/snapshot.rs
 BR=crates/ph2d-app-components/src/factory_bridge.rs
@@ -118,9 +146,29 @@ mutacao "M3 a poda apanha o DOCUMENTO tambem (o controlo)" "$SV" \
   ph2d-ecs --test=it the_same_objects_enter_the_document_when_nobody_was_born
 
 # ── A PONTE ───────────────────────────────────────────────────────────────────
-mutacao "M4 o dreno da morte nao deduplica" "$BR" \
-  '    let unicos: BTreeSet<Entity> = deaths.iter().map(|d| d.entity).collect();' \
-  '    let unicos: Vec<Entity> = deaths.iter().map(|d| d.entity).collect();' \
+# ⚠️⚠️ **O dreno tem DOIS guardas** (o conjunto que deduplica e o `get_entity(..).is_ok()` que
+# salta quem já saiu), e mutar um só devolve SOBREVIVEU **sobre um produto correcto** — a terceira
+# vez que esta linha paga a forma em dois dias. Os dois ficam: o conjunto dá também a ORDEM, e o
+# `is_ok` cobre a entidade que outro braço do quadro já tirou.
+mutacao2 "M4 o dreno da morte mata duas vezes (os DOIS guardas caem)" \
+  "$BR" '    let unicos: BTreeSet<Entity> = deaths.iter().map(|d| d.entity).collect();' \
+         '    let unicos: Vec<Entity> = deaths.iter().map(|d| d.entity).collect();' \
+  "$BR" '        if sim.world().get_entity(e).is_ok() {
+            sim.world_mut().entity_mut(e).despawn();
+            n += 1;
+        }
+    }
+    n
+}
+
+/// **Varre tudo o que nasceu numa corrida**' \
+         '        sim.world_mut().entity_mut(e).despawn();
+        n += 1;
+    }
+    n
+}
+
+/// **Varre tudo o que nasceu numa corrida**' \
   ph2d-app-components --lib the_death_drain_deduplicates
 
 mutacao "M5 a varredura apanha o que o artista desenhou" "$BR" \
@@ -162,9 +210,12 @@ mutacao "M9 os nomes do lote nao reservam lugar" "$UN" \
   ph2d-unique-name --lib the_batch_door_answers_the_same_as_the_single_one
 
 # ── A ORDEM DO QUADRO ─────────────────────────────────────────────────────────
+# ⚠️ **A agulha põe a morte a drenar TAMBÉM antes da fábrica** — e o gate reprova pela metade que
+# ele declara primeiro: *um marco que aparece duas vezes não tem POSIÇÃO*.
 mutacao "M10 a morte drena ANTES de a fabrica nascer" "$FM" \
-  '        let tiradas = ph2d_app_components::factory_bridge::apply_deaths(sim, &deaths);' \
-  '        let tiradas = { let n = ph2d_app_components::factory_bridge::apply_deaths(sim, &deaths); n };' \
+  '        let a_correr = self.playhead.is_playing();' \
+  '        let _cedo = ph2d_app_components::factory_bridge::apply_deaths(sim, &deaths);
+        let a_correr = self.playhead.is_playing();' \
   ph2d-host-desktop --test=it the_factory_reads_the_signal_before_the_death_drains
 
 mutacao "M11 a fabrica corre com o relogio PARADO" "$FM" \
@@ -190,26 +241,27 @@ mutacao "M13 todo modo le' a caixa da area" "$MD" \
 mutacao "M14 o painel mostra o ID da receita" "$IF" \
   '    world.get::<ph2d_ecs::Name>(e).map(|n| n.0.clone())' \
   '    Some(id.to_string())' \
-  ph2d-host-desktop --lib the_recipe_is_a_name_on_the_panel_and_an_identity_in_the_component
+  ph2d-host-desktop --bins the_recipe_is_a_name_on_the_panel_and_an_identity_in_the_component
 
+# ⚠️ **A agulha é a ESCRITA e não a leitura**, e a razão é medida: a cerca existe nos dois lados
+# (`mestre_por_nome` filtra por `MasterRoot`, e `nome_do_mestre` volta a perguntar), e apagar a da
+# LEITURA sobrevive — com a escrita a recusar, o campo fica a `0` e a leitura sai cedo. A da leitura
+# é o cinto para o caso que a escrita não alcança: um ficheiro gravado antes de alguém desfazer o
+# mestre. *Terceira lei desta wave com dois guardas, e a única em que UM deles é observável.*
 mutacao "M15 um objecto comum passa por receita" "$IF" \
-  '    if world.get::<MasterRoot>(e).is_none() {
-        return None;
-    }' \
-  '    if false {
-        return None;
-    }' \
-  ph2d-host-desktop --lib a_name_that_is_not_a_master_is_not_a_recipe
+  '    let mut q = world.query::<(Entity, &ph2d_ecs::Name, &MasterRoot)>();' \
+  '    let mut q = world.query::<(Entity, &ph2d_ecs::Name, Option<&MasterRoot>)>();' \
+  ph2d-host-desktop --bins a_name_that_is_not_a_master_is_not_a_recipe
 
 mutacao "M16 o contador de vivas soma o MUNDO" "$IF" \
   '            alive: vivos.get(&meu_id).copied().unwrap_or(0),' \
   '            alive: vivos.values().sum::<u32>(),' \
-  ph2d-host-desktop --lib the_snapshot_counts_only_this_factorys_copies
+  ph2d-host-desktop --bins the_snapshot_counts_only_this_factorys_copies
 
 mutacao "M17 a tag do ponto compara CRU" "$IF" \
   '            let id = tree.find(caminho).map_or(0, |t| t.0);' \
   '            let id = tree.tags().find(|t| t.path == *caminho).map_or(0, |t| t.id.0);' \
-  ph2d-host-desktop --lib the_spawn_point_tag_is_resolved_folded
+  ph2d-host-desktop --bins the_spawn_point_tag_is_resolved_folded
 
 # ── AS CENAS ──────────────────────────────────────────────────────────────────
 mutacao "M18 a receita fica por resolver" "$SM" \

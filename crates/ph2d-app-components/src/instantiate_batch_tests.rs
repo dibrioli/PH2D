@@ -174,7 +174,7 @@ fn measure_instantiate_door() {
     println!("| cena | copias | em SERIE (ms) | us/copia | em LOTE (ms) | us/copia | ganho |");
     println!("|---:|---:|---:|---:|---:|---:|---:|");
     for &cena in &[1_000u32, 10_000] {
-        for &k in &[16u32, 64, 256] {
+        for &k in &[16u32, 64, 256, 1_024] {
             let monta = || {
                 let mut sim = SimWorld::new();
                 for i in 0..cena {

@@ -220,3 +220,87 @@ fn mede_o_transporte_por_dab() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A PERGUNTA DO DONO (2026-09-14): *«por que esses dois últimos pincéis
+/// necessitam de um nível de subdivisão? Não seria possível funcionar sem?»***
+///
+/// ⚠️ **A pergunta é sobre a REFERÊNCIA.** Os dois trabalham sobre
+/// *deslocamento*, que é `p − R`; sem `R` a grandeza não existe. Com uma pilha,
+/// `R` é a superfície-limite do nível de baixo — **exacta, estável e AUTORADA**.
+/// Sem pilha, ela teria de ser **DERIVADA da própria malha**, e esta sonda mede
+/// se a derivação expõe deslocamento que chegue.
+///
+/// Duas candidatas:
+///
+/// 1. **o próprio limite da malha** (`limit_point` sem descer de nível) — a
+///    resposta «de graça»;
+/// 2. **uma cópia ALISADA** (`n` passagens), que é o corte por FREQUÊNCIA em vez
+///    de por NÍVEL.
+#[test]
+#[ignore = "medição: a referência derivada, para a pergunta do dono"]
+fn mede_uma_referencia_sem_pilha() {
+    let base = ph2d_mesh::shapes::sculpt_sphere(1.0);
+    // Uma peça ESCULPIDA: bossas finas por cima da forma grande.
+    let esculpida = {
+        let mut pos = base.positions().to_vec();
+        for p in &mut pos {
+            let n = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
+            // 3 bossas largas (a FORMA) + ondulação fina (o DETALHE)
+            let forma = 0.15 * (p[1] / n * 3.0).sin();
+            let detalhe = 0.03 * (p[0] / n * 34.0).sin() * (p[2] / n * 34.0).sin();
+            for c in p.iter_mut() {
+                *c += *c / n * (forma + detalhe);
+            }
+        }
+        ph2d_mesh::Mesh::from_parts(pos, base.faces().to_vec()).expect("a esculpida")
+    };
+    let detalhe_real = 0.03f32;
+
+    let desvio = |r: &[[f32; 3]]| -> (f32, f32) {
+        let mut pior = 0.0f32;
+        let mut soma = 0.0f64;
+        for (p, q) in esculpida.positions().iter().zip(r) {
+            let d = [p[0] - q[0], p[1] - q[1], p[2] - q[2]];
+            let m = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            pior = pior.max(m);
+            soma += f64::from(m);
+        }
+        (pior, (soma / r.len() as f64) as f32)
+    };
+
+    // (1) O LIMITE da própria malha — sem descer de nível.
+    let limite: Vec<[f32; 3]> = (0..esculpida.vert_count())
+        .map(|v| match ph2d_mesh::limit_point(&esculpida, v) {
+            ph2d_mesh::LimitPoint::At(q) => q,
+            ph2d_mesh::LimitPoint::None => esculpida.positions()[v],
+        })
+        .collect();
+    let (pior, medio) = desvio(&limite);
+    println!(
+        "(1) o LIMITE da propria malha:  pior {pior:.5}  medio {medio:.5}   \
+         (o detalhe vale {detalhe_real:.3}) -> recupera {:.1} %",
+        pior / detalhe_real * 100.0
+    );
+
+    // (2) Uma cópia ALISADA — `n` passagens de média do anel.
+    for passagens in [1usize, 4, 16, 64] {
+        let t = Instant::now();
+        let mut liso = esculpida.positions().to_vec();
+        let adj = esculpida.adjacency();
+        let mut scratch = liso.clone();
+        for _ in 0..passagens {
+            for v in 0..liso.len() {
+                scratch[v] =
+                    ph2d_mesh::ring_average(adj, v as u32, liso[v], |nb| liso[nb as usize]);
+            }
+            std::mem::swap(&mut liso, &mut scratch);
+        }
+        let ms = t.elapsed().as_secs_f64() * 1e3;
+        let (pior, medio) = desvio(&liso);
+        println!(
+            "(2) ALISADA {passagens:>3} passagens:   pior {pior:.5}  medio {medio:.5}  \
+             -> recupera {:>5.1} %   [{ms:>7.1} ms]",
+            pior / detalhe_real * 100.0
+        );
+    }
+}

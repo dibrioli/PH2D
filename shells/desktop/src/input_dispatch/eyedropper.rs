@@ -7,7 +7,7 @@
 //! `render_loop::bgremoval_preview`. Extracted from `input_dispatch.rs`
 //! to keep that file under the HR-18 LOC cap.
 
-use crate::{App, Transform};
+use crate::App;
 
 impl App {
     /// If the BgRemoval tool is active AND its eyedropper is armed AND
@@ -50,25 +50,21 @@ impl App {
         let Some(bits) = hero.gizmo.selection else {
             return false;
         };
-        // Sprite on-screen footprint (mirrors bgremoval_preview.rs).
-        let entity = ph2d_ecs::Entity::from_bits(bits);
-        let (Some(tr), Some(sprite)) = (
-            gfx.sim.world().get::<Transform>(entity),
-            gfx.sim.world().get::<ph2d_render::Sprite>(entity),
-        ) else {
-            return false;
-        };
-        let (tx, ty) = (tr.translation.x, tr.translation.y);
-        let (sw, sh) = (sprite.size[0], sprite.size[1]);
+        // ⭐⭐⭐ **A UV de origem vem da PORTA** ([`super::uv_sob_o_ponteiro`], 2026-09-15) — até aqui
+        // era uma caixa alinhada aos eixos tirada da pose LOCAL, cega à rotação, ao pai e à MALHA.
         let window_size = gfx.surface.size();
-        let (x0, y0) = gfx
-            .camera
-            .world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window_size);
-        let (x1, y1) = gfx
-            .camera
-            .world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window_size);
-        let (lo_x, hi_x) = (x0.min(x1), x0.max(x1));
-        let (lo_y, hi_y) = (y0.min(y1), y0.max(y1));
+        let uv = super::uv_sob_o_ponteiro::uv_sob_o_ponteiro(
+            &gfx.sim,
+            gfx.present.world_mut(),
+            &gfx.camera,
+            window_size,
+            bits,
+            px,
+            py,
+        );
+        if matches!(uv, super::uv_sob_o_ponteiro::UvSobOPonteiro::SemSujeito) {
+            return false; // a selecção não é uma sprite desenhada — o clique não é nosso
+        }
         // Now check the tool is actually armed; if so the click is
         // ours (consume it) whether or not it lands on the sprite.
         let Some(tool) = gfx.tools.active_mut() else {
@@ -83,10 +79,11 @@ impl App {
         if !bg.is_eyedropper_armed() {
             return false;
         }
-        // Inside the footprint? Compute UV + sample.
-        if hi_x > lo_x && hi_y > lo_y && px >= lo_x && px <= hi_x && py >= lo_y && py <= hi_y {
-            let u = (px - lo_x) / (hi_x - lo_x);
-            let v = (py - lo_y) / (hi_y - lo_y);
+        // Inside the footprint? Sample.
+        if let super::uv_sob_o_ponteiro::UvSobOPonteiro::Uv(u, v) = uv
+            && (0.0..=1.0).contains(&u)
+            && (0.0..=1.0).contains(&v)
+        {
             if let Some(rgb) = bg.sample_source_at_uv(u, v) {
                 bg.add_extra_color(rgb);
                 // `add_extra_color` already flips `params_dirty=true`,

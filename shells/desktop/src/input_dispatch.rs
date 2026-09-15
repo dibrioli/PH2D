@@ -95,6 +95,9 @@ mod painter_curve_input;
 pub(crate) mod painter_falloff_input;
 mod painter_grid_erase; // os modificadores que o CanvasPointer nao carrega
 pub(crate) mod protect_brush;
+/// ⭐ **A UV de origem debaixo do ponteiro** — a porta única das três entradas de canvas da Remoção
+/// de fundo; ver o `//!` do módulo para as três coisas que a caixa alinhada aos eixos ignorava.
+mod uv_sob_o_ponteiro;
 use despacho_clique_roldana::select_wheel_at;
 pub(crate) use despacho_vetor_alinhar_e_forma::{
     VecAlign, VecDistribute, VecPathShapeOp, VecTransformField, apply_vec_align,

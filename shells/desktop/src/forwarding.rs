@@ -60,6 +60,7 @@ pub fn forward_to_hero(
             let picked = painter_eyedropper_sample(
                 &mut gfx.tools,
                 &gfx.sim,
+                gfx.present.world_mut(),
                 &gfx.camera,
                 gfx.surface.size(),
                 selection,
@@ -253,6 +254,7 @@ fn handle_palette_io(
 fn painter_eyedropper_sample(
     tools: &mut ph2d_editor_core::ToolRegistry,
     sim: &ph2d_ecs::SimWorld,
+    present: &mut ph2d_ecs::World,
     camera: &ph2d_render::Camera2d,
     window: ph2d_host::WindowSize,
     selection: Option<u64>,
@@ -270,7 +272,8 @@ fn painter_eyedropper_sample(
     if !painter_active {
         return None;
     }
-    let entity = ph2d_ecs::Entity::from_bits(selection?);
+    let bits = selection?;
+    let entity = ph2d_ecs::Entity::from_bits(bits);
     // ⚠️ Pose de MUNDO: um sprite filho tem a cadeia do pai por cima, e sem ela o afim mapeia o
     // ponteiro para fora da pegada dele.
     let tr = ph2d_ecs::world_transform(sim.world(), entity)?;
@@ -298,10 +301,33 @@ fn painter_eyedropper_sample(
         window,
     );
     let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
-    let (u, v) = (
-        (img.x / f64::from(iw)) as f32,
-        (img.y / f64::from(ih)) as f32,
+    // ⭐⭐⭐ **A ARTE DOBRADA MANDA NO CONTA-GOTAS TAMBÉM** (2026-09-15). O afim acima é o do QUAD DE
+    // REPOUSO: numa arte presa ao esqueleto e dobrada ele aponta para o texel errado, e o artista
+    // recolhe uma cor que não é a que está debaixo do dedo — *o mesmo defeito que a pincelada tinha,
+    // na ferramenta ao lado*. A lei dos três estados é a [`ph2d_render::mesh_uv`], e `Quad` deixa o
+    // caminho de sempre intocado (é ele que carrega a grelha da folha e o *Repeat Image*).
+    //
+    // ⚠️ **`starting = true` e pegada `[0, 0]`:** um clique é sempre o primeiro ponto de um gesto, e
+    // uma porta que APONTA pergunta por um PONTO — a pegada só tem sentido para quem vai pintar um
+    // disco. ⇒ fora da arte desenhada a porta RECUSA, e aqui isso é `None`, que é exactamente o que
+    // o chamador já faz com um clique fora da sprite: cair na leitura do ecrã.
+    let malha = ph2d_render::mesh_uv(
+        present,
+        bits,
+        camera.screen_to_world((px, py), window),
+        true,
+        [0.0, 0.0],
     );
+    if malha == ph2d_render::MeshUv::Refuse {
+        return None;
+    }
+    let (u, v) = match malha {
+        ph2d_render::MeshUv::Use { u, v, .. } => (u, v), // a UV de repouso do texel desenhado ALI
+        _ => (
+            (img.x / f64::from(iw)) as f32,
+            (img.y / f64::from(ih)) as f32,
+        ),
+    };
     // **Repeat Image**: the preview tiles the sprite 3×3, so the eyedropper works on any of the 8
     // neighbour tiles AND the original — accept the 3×3 UV grid and WRAP the sample back onto the
     // canvas (`rem_euclid`), exactly like the neighbour-paint hit region. Without Repeat, only the

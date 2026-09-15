@@ -20,7 +20,7 @@
 
 use std::cell::Cell;
 
-use crate::{App, Transform};
+use crate::App;
 use ph2d_editor_core::tool::RasterEditTool;
 
 thread_local! {
@@ -150,25 +150,22 @@ impl App {
         let Some(bits) = hero.gizmo.selection else {
             return false;
         };
-        // Sprite on-screen footprint (mirrors bgremoval_preview.rs).
-        let entity = ph2d_ecs::Entity::from_bits(bits);
-        let (Some(tr), Some(sprite)) = (
-            gfx.sim.world().get::<Transform>(entity),
-            gfx.sim.world().get::<ph2d_render::Sprite>(entity),
-        ) else {
-            return false;
-        };
-        let (tx, ty) = (tr.translation.x, tr.translation.y);
-        let (sw, sh) = (sprite.size[0], sprite.size[1]);
+        // ⭐⭐⭐ **A UV de origem vem da PORTA** ([`super::uv_sob_o_ponteiro`], 2026-09-15) — até aqui
+        // era uma caixa alinhada aos eixos tirada da pose LOCAL, cega à rotação, ao pai e à MALHA.
+        // Numa arte presa ao esqueleto e dobrada, a máscara de protecção era pintada no texel errado.
         let window_size = gfx.surface.size();
-        let (x0, y0) = gfx
-            .camera
-            .world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window_size);
-        let (x1, y1) = gfx
-            .camera
-            .world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window_size);
-        let (lo_x, hi_x) = (x0.min(x1), x0.max(x1));
-        let (lo_y, hi_y) = (y0.min(y1), y0.max(y1));
+        let uv = super::uv_sob_o_ponteiro::uv_sob_o_ponteiro(
+            &gfx.sim,
+            gfx.present.world_mut(),
+            &gfx.camera,
+            window_size,
+            bits,
+            px,
+            py,
+        );
+        if matches!(uv, super::uv_sob_o_ponteiro::UvSobOPonteiro::SemSujeito) {
+            return false; // a selecção não é uma sprite desenhada — o clique não é nosso
+        }
         let Some(tool) = gfx.tools.active_mut() else {
             return false;
         };
@@ -181,10 +178,11 @@ impl App {
         if !bg.is_protect_armed() {
             return false;
         }
-        // Inside the footprint? Compute UV + paint/erase.
-        if hi_x > lo_x && hi_y > lo_y && px >= lo_x && px <= hi_x && py >= lo_y && py <= hi_y {
-            let u = (px - lo_x) / (hi_x - lo_x);
-            let v = (py - lo_y) / (hi_y - lo_y);
+        // Inside the footprint? Paint/erase.
+        if let super::uv_sob_o_ponteiro::UvSobOPonteiro::Uv(u, v) = uv
+            && (0.0..=1.0).contains(&u)
+            && (0.0..=1.0).contains(&v)
+        {
             // The brush radius is stored in SOURCE px (the unit the dab
             // expects) and driven by the panel Size slider.
             let radius_px = bg.brush_radius_px();
@@ -248,24 +246,19 @@ impl App {
         let Some(bits) = hero.gizmo.selection else {
             return false;
         };
-        let entity = ph2d_ecs::Entity::from_bits(bits);
-        let (Some(tr), Some(sprite)) = (
-            gfx.sim.world().get::<Transform>(entity),
-            gfx.sim.world().get::<ph2d_render::Sprite>(entity),
-        ) else {
-            return false;
-        };
-        let (tx, ty) = (tr.translation.x, tr.translation.y);
-        let (sw, sh) = (sprite.size[0], sprite.size[1]);
-        let window_size = gfx.surface.size();
-        let (x0, y0) = gfx
-            .camera
-            .world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window_size);
-        let (x1, y1) = gfx
-            .camera
-            .world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window_size);
-        let (lo_x, hi_x) = (x0.min(x1), x0.max(x1));
-        let (lo_y, hi_y) = (y0.min(y1), y0.max(y1));
+        // ⭐ A MESMA porta do dab e do conta-gotas — ver [`super::uv_sob_o_ponteiro`].
+        let uv = super::uv_sob_o_ponteiro::uv_sob_o_ponteiro(
+            &gfx.sim,
+            gfx.present.world_mut(),
+            &gfx.camera,
+            gfx.surface.size(),
+            bits,
+            px,
+            py,
+        );
+        if matches!(uv, super::uv_sob_o_ponteiro::UvSobOPonteiro::SemSujeito) {
+            return false; // a selecção não é uma sprite desenhada — o clique não é nosso
+        }
         let Some(tool) = gfx.tools.active_mut() else {
             return false;
         };
@@ -278,10 +271,11 @@ impl App {
         if !bg.is_add_area_armed() {
             return false;
         }
-        // Inside the footprint? Compute source UV + flood-fill.
-        if hi_x > lo_x && hi_y > lo_y && px >= lo_x && px <= hi_x && py >= lo_y && py <= hi_y {
-            let u = (px - lo_x) / (hi_x - lo_x);
-            let v = (py - lo_y) / (hi_y - lo_y);
+        // Inside the footprint? Flood-fill from that source texel.
+        if let super::uv_sob_o_ponteiro::UvSobOPonteiro::Uv(u, v) = uv
+            && (0.0..=1.0).contains(&u)
+            && (0.0..=1.0).contains(&v)
+        {
             bg.flood_fill_remove_at_uv(u, v);
             // Drain the freshly-regenerated preview RIGHT HERE
             // (Enio 2026-05-27 "o efeito só apareceu depois que

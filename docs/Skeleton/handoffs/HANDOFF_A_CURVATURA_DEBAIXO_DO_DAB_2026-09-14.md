@@ -173,11 +173,68 @@ lado dele no código: as *«arestas retas ao dobrar»* de 2026-09-10 (`9,84 px �
 tecto é o orçamento do quadro (`1 543` peças = `1/10` de um quadro de 60 fps), e o chip *Deform* do
 painel devolve o `Fast` num clique.
 
+## §9-ter — ⭐⭐⭐ O 6.º REPORT: *«mais redondo do que nunca… mas pinta com diâmetro menor onde é mais estreito»*
+
+A forma fechou (`quase perfeito`). O que sobrou eram **dois** defeitos, e **nenhum deles era o
+dab** — eu suspeitei do tamanho da marca e medi: o diâmetro entregue através da malha é **exacto**
+(razão `1,000` em 20 células).
+
+⛔⛔ **O que expôs o buraco foi a RÉGUA:** a `redondeza` é `maior/menor`, **invariante à escala** —
+ela não consegue ver uma marca certa na forma e errada no tamanho, e eu nunca tinha medido o tamanho
+entregue. *A quinta vez que esta linha paga a mesma forma: uma régua que responde a UMA pergunta lida
+como se respondesse a todas.*
+
+### (a) A densidade do traço seguia a dobra da arte
+
+O `dab_spacing_px` é `fracção × 2 × radius_px`, e o `radius_px` é o semi-eixo **MAIOR** — que sobre
+arte dobrada carrega a compressão do eixo do **outro** lado. O mesmo caminho de `400 px` de ecrã, a
+andar pelo eixo que a arte **não** comprime:
+
+| compressão | dabs emitidos |
+|---|---|
+| nenhuma | `44` |
+| `2×` | `22` |
+| `4×` | `11` |
+| `8×` | **`5`** |
+
+Com um pincel macio e cobertura abaixo de `1`, oito vezes menos marcas não constroem a tinta.
+⇒ **o passo é a extensão da pegada AO LONGO DO CAMINHO**: `dab_spacing_px() / |apply(d)|`, a mesma
+porta que o amostrador usa. Depois: `44` nas quatro linhas.
+
+⭐ **E ela corrige também o pincel ACHATADO pelo artista**, que sempre teve o mesmo defeito — uma
+pena calígrafica a andar pelo lado fino dava passos do lado grosso. ⛔ **Nenhum gate via isso porque
+as `419` fixturas têm `dab_flatten = 0`**: *um corpus no ponto neutro de um knob não testa esse knob.*
+
+### (b) O tecto do raio era a faixa do SLIDER
+
+`BRUSH_SIZE_MAX_PX = 512`, cujo próprio doc diz *«the interactive range, **not** the engine's hard
+cap»*. Um raio cortado encolhe a elipse nos **dois** eixos:
+
+| raio autorado | comprime a | pedido | entregue (antes) |
+|---|---|---|---|
+| `160` | `4×` | `640` | `512` ⛔ |
+| `64` | `16×` | `1 024` | `512` ⛔ |
+
+⭐ **A cura que o torna afordável é a CAIXA DO DAB seguir a PEGADA** em vez do círculo: o laço
+percorria um quadrado de lado `2·raio`, e um dab achatado é uma lasca dentro dele (`flatten = 0,75`
+⇒ `4×` os texels, todos de cobertura zero). Sobre arte comprimida o raio e o achatamento crescem
+**juntos**, logo a área é `R²/|det W|` — os texels que a arte tem ali. O custo deixa de crescer com
+o quadrado do raio.
+
+⚠️ A cerca a `32×` fica, e é do **modelo**: ali o `dab_flatten` satura em `DAB_FLATTEN_MAX = 0,95` e
+uma lasca infinitamente fina não é pintável.
+
 ## §10 — O que fica ABERTO
 
 - ⏳ **O chrome que é CAMINHO** (a grelha, os contornos de selecção, a curva e a linha do Painter):
   eles precisam de ser **subdivididos** para seguir a malha — é trabalho de outra natureza, e não foi
   começado.
+- ⏳ **O `apply_jitter` espalha com o raio INFLADO** (mesmo mecanismo do passo). Inerte por omissão
+  — o jitter nasce a zero — e por isso nomeado em vez de curado.
+- ⚠️ **Flake de carga para a lista do §5.0:** `the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas`
+  (`ph2d-tool-painter`) — razão de dois relógios, **verde 5 de 5 sozinha a `load 50`**, vermelha
+  dentro do fan-out de `1 520`. Irmã de ficheiro da `the_mask_stroke_cost_does_not_follow_the_canvas`,
+  que já está na lista.
 - ⏳ **F8 — Bendy Bones**, na fila por começar.
 - ⏳ **F4 — *«undo tem poucos passos»***, que não reproduz.
 - ⏸️ **Ligar o `Smooth` de fábrica** — decisão do dono, com o custo medido (`1/10` de um quadro,

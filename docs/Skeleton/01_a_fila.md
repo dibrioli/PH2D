@@ -2894,6 +2894,12 @@ de fábrica desde 2026-09-14, e a decisão que ficou pendente duas vezes fechou 
 medida. *Um número medido numa densidade que o artista nunca alcança é um número sobre outro
 programa.*
 
+⭐⭐⭐ **E o 6.º report (*«mais redondo do que nunca… mas pinta com diâmetro menor onde é mais
+estreito»*) eram DOIS defeitos, e nenhum era o dab:** a DENSIDADE do traço seguia a dobra (o passo
+saía do eixo MAIOR do dab: `44` → `22` → `11` → `5` dabs no mesmo caminho de ecrã) e o TECTO do raio
+era a faixa do slider. ⛔ **O que escondia os dois era a minha régua:** `maior/menor` é invariante à
+escala e não vê uma marca certa na forma e errada no tamanho.
+
 ⇒ **[HANDOFF_A_CURVATURA_DEBAIXO_DO_DAB_2026-09-14](handoffs/HANDOFF_A_CURVATURA_DEBAIXO_DO_DAB_2026-09-14.md)**
 — as tabelas, as duas cercas, as **seis** leituras que o diff inverte, as **quatro** premissas minhas
 que a medição derrubou (entre elas a que este módulo tinha escrita no cabeçalho) e a régua minha que

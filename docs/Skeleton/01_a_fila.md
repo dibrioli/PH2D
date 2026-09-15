@@ -2821,6 +2821,66 @@ em sentidos opostos* — «não passes por dentro dos ossos» e «não te afaste
 não estava em nenhum dos extremos que eu construí (polilinha · barra deslocada), estava na **corda
 fina**, que é o que as duas frases dele, juntas, descrevem.
 
+### F6-j — ⭐⭐⭐ **A RÉGUA DA DOBRA existe, e ela REFUTOU a cura que eu ia construir** (2026-09-14)
+
+O dono mandou seguir o artefacto que sobra depois do `Smooth`: **a arte dobra sobre si mesma** em
+dobras fortes. ⛔⛔ **O instrumento NÃO EXISTIA** — os números que esta fila citava (`−0,129` a `60°`,
+`−1,017` a `150°`) eram de uma medição avulsa de outra janela. *Uma lei sem instrumento é uma nota
+que envelhece*, e sem ele nenhuma cura pode ser comparada com a doença.
+
+**A grandeza é o determinante do jacobiano** ([`ph2d_skeleton::fold`](../../crates/ph2d-skeleton/src/fold.rs)):
+onde ele passa por zero, a vizinhança é desenhada **do avesso**. ⚠️ **Nenhuma régua deste módulo a
+via** — o desvio em píxeis da silhueta (a régua do `Smooth`) mede a **aproximação** do campo, e o
+campo dobrado é aproximado com fidelidade: *quanto melhor o `Smooth`, mais nítida a dobra.*
+
+#### ⛔⛔ A 1.ª fixtura leu o produto como SÃO
+
+Com arte **fina** (meia-altura `0,15 ×` o arco) a corrente de dois ossos a `150°` não inverte **um
+único ponto**. A dobra vive **longe do eixo**, onde o gradiente dos pesos é grande — uma caixa
+estreita não tem lá pontos. ⇒ **a variável não é a dobra, é o RAIO contra a ESPESSURA DA ARTE.**
+
+#### A tabela, e ela vai ao contrário da intuição
+
+Corrente de 2 ossos, arco `4`, arte de meia-altura `2,4` — `% da arte invertida`:
+
+| alcance | `60°` | `90°` | `120°` | `150°` |
+|---|---:|---:|---:|---:|
+| `0,83 ×` a meia-altura da arte (**o que o produto entrega hoje**) | `0,17 %` | `0,49 %` | `1,22 %` | `2,61 %` |
+| `1,25 ×` | `0` | `0` | `0,51 %` | `2,88 %` |
+| `1,67 ×` | `0` | `0` | `0` | `0,60 %` |
+| **`2,08 ×`** | **`0`** | **`0`** | **`0`** | **`0`** |
+
+⚠️ **E APERTAR os pesos PIORA** (`0,25 ×` do osso ⇒ `0,64 %` de inversão): o que dobra a arte é o
+**gradiente** dos pesos, e apertá-los torna-o mais íngreme. *A resposta intuitiva — «influência mais
+local» — é a errada.*
+
+#### ⛔⛔ E o B-BONE não cura sozinho — mede-se PIOR
+
+Subdividir o osso (o mecanismo que o dono acabou de pedir na F8) com a população de amostras
+constante: `2,61 % → 4,94 %` a `24` sub-ossos. **Com o alcance já certo** ele não cura nada e compra
+**margem**: `det_min` `0,013 → 0,367` (`28 ×` mais folga antes de inverter), com zero inversão em
+toda a escada. ⇒ **a ordem é o ALCANCE primeiro, o B-Bone depois.**
+
+#### ⛔⛔⛔ E a cura que parecia a melhor era a RÉGUA A NÃO MEDIR NADA
+
+Subdividir encolhendo o raio com o osso lê **`0,00 %` invertido** a `24` sub-ossos — com **`94,5 %`
+das amostras fora da conta por serem ÓRFÃS. O ponto órfão é um salto **descontínuo** (fora do raio de
+todo osso a pele salta para o mais próximo), e uma diferença finita que o atravesse devolve um
+determinante enorme e falso: medi **`−57`** num mapa de escala `1`. ⇒ excluí-las é obrigatório, e a
+**fracção excluída sai no relatório** — sem ela, uma «cura» que deixasse a arte inteira órfã
+leria-se **perfeita**.
+
+⚠️ **Quatro gates, três mutações RED** (incluir as órfãs · o determinante sem sinal · o passo da
+diferença em unidades do documento). ⭐ **A terceira sobreviveu aos três primeiros gates** e só morreu
+com o gate da **ESCALA** — a invariância estava afirmada no doc e não tinha quem a medisse.
+
+⏳ **ABERTO — e é DECISÃO DO DONO, porque as três saídas custam coisas diferentes:** o alcance de um
+osso é hoje `força × comprimento do eixo` e **não sabe nada da arte**. Cobri-la muda como **todo rig
+existente** deforma (na direcção de deixar de dobrar), e as três rotas são: derivar o alcance da arte
+**no bind** (uma vez, mas o osso é partilhado por N formas) · derivá-lo **por quadro** no `recook`
+(sem schema, mas é por mídia: o `VecPath` e a malha decodificam em sítios diferentes) · guardá-lo
+**por tendão** (exacto, e move o `PROJECT_SCHEMA`).
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em
@@ -2849,6 +2909,8 @@ fina**, que é o que as duas frases dele, juntas, descrevem.
 | **Traçar a linha do `IK Chain` pela POLILINHA das juntas** (F5-d, 2026-09-14) | Numa corrente quase esticada ela cai **exactamente** sobre os corpos dos ossos e lê-se como parte deles; numa dobrada, serpenteia. O que o controlo tem de dizer é uma EXTENSÃO, e uma extensão desenha-se como cota: recta e deslocada. |
 | **DESLOCAR a recta da corrente para o lado livre** (F5-e, veredito do dono) | A folga contra os ossos em toda pose custa as PONTAS: ela deixa de tocar a junta onde o `Chain` pára e o losango do alvo, e um indicador de extensão que não encosta nas pontas não diz qual extensão é. A corda passa por fora do arco sozinha; em pose esticada a folga vem de a linha ser **fina**. |
 | **Deslocar a recta da corrente por uma CONSTANTE** | Não limpa uma corrente que se enrola mais de meia volta: ela tem bojo dos DOIS lados e vem por trás da recta (medido: `18,39 px` de um osso que ocupa `18,75`). O afastamento tem de passar por fora da **excursão** do lado escolhido. |
+| **Apertar os pesos** para curar a dobra da pele (F6-j, 2026-09-14) | **Piora, e é a resposta intuitiva:** `0,25 ×` do osso dá `0,64 %` de arte invertida contra `0,17 %` do alcance de hoje. O que dobra a arte é o **gradiente** dos pesos — apertá-los torna-o mais íngreme. Quem cura é ALARGAR: a `2,08 ×` a meia-altura da arte são **zero** pontos invertidos até `150°`. |
+| **SUBDIVIDIR o osso (o mecanismo do B-Bone) como cura da dobra** | Com a população de amostras constante ele **piora**: `2,61 % → 4,94 %` a `24` sub-ossos. Com o alcance já certo não cura nada — compra **margem** (`det_min` `0,013 → 0,367`). ⇒ a ordem é o alcance primeiro. ⛔ E a variante «raio encolhe com o sub-osso» lê `0 %` invertido a **`94,5 %` de amostras órfãs**: é a régua a não medir nada. |
 | **Ler os lados do modo MISTO da pose VIVA** | Estável enquanto o alvo está ao alcance (o modo é ponto fixo, e há gate) e **apagado para sempre** no primeiro arrasto que o leve para fora dele: fora do alcance a resposta certa é a RECTA, e uma recta não tem lado nenhum para ler. «Inicial» tem de ser o DOCUMENTO. |
 | **Fazer a malha SEGUIR a silhueta** em vez de a cobrir (F6-b) | Traz de volta as células deformadas da borda, que são o defeito que a wave cura. O recorte fino é do **alfa da própria arte**, de graça e ao sub-pixel — o *Expansion* do *Puppet* do AE. |
 

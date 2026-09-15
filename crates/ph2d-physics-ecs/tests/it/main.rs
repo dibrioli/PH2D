@@ -91,6 +91,7 @@ mod measure_noclip;
 mod measure_part_sensor;
 mod measure_platform_leave;
 mod measure_player_budget;
+mod mede_o_que_a_composicao_ja_da;
 mod measure_player_in_water;
 mod measure_player_probes;
 mod measure_probe_lag;

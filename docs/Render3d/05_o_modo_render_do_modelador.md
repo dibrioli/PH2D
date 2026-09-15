@@ -3690,9 +3690,34 @@ registos**: o `vivos` é o scratch por thread, e ele decide quantos fios cabem n
 mediu-se **`0,20×`** — cinco vezes pior. *Esta linha pôs o quadro na placa e ia deixar a peça
 desenhada do artista ficar mais lenta do que era, no topo da faixa que o slider dele alcança.*
 
-### §42.3 — A cerca, e porque ela é sobre o EIXO CERTO
+### §42.3 — A cerca, e ⛔⛔ o CRITÉRIO que eu usei primeiro estava errado
 
-`ph2d_field_gpu::MAX_VIVOS = 743`: acima dele o quadro fica na CPU, que é linear em toda a faixa.
+`ph2d_field_gpu::MAX_VIVOS = 358`: acima dele o quadro fica na CPU.
+
+⚠️⚠️ **A primeira redacção escreveu `743`**, tirado do joelho da curva **do próprio dispositivo**
+(onde o custo por aresta dobra) — porque a coluna da CPU não era medível na altura. Quando a máquina
+acalmou (`load 2,6`), ela ficou:
+
+| arestas | vivos | dispositivo | CPU | razão |
+|---:|---:|---:|---:|---:|
+| `48` | `239` | `30,2 ms` | `47,0 ms` | `1,56×` |
+| `64` | `320` | `41,0 ms` | `54,2 ms` | `1,32×` |
+| **`72`** | **`358`** | `49,6 ms` | `54,7 ms` | **`1,10×`** ⬅ o último que a placa ganha |
+| `80` | `395` | `57,3 ms` | `57,3 ms` | **`1,00×`** ⬅ a travessia |
+| `128` | `623` | `127,9 ms` | `71,3 ms` | `0,56×` |
+| `256` | `1 230` | `1 226,7 ms` | `92,0 ms` | `0,07×` |
+
+⛔ **A `743` o dispositivo já estava a `0,41×` da CPU** — a cerca deixava passar peças **duas vezes e
+meia mais lentas** do que o caminho que ela existe para proteger.
+
+⭐⭐ *O joelho de uma curva e a TRAVESSIA de duas curvas não são o mesmo ponto, e eu usei o primeiro
+por não conseguir medir o segundo.* ⇒ quando a medição que falta é a que decide, o número que se
+escreve entretanto é **provisório e tem de ser marcado como tal** — este não foi, e shipou.
+
+⭐ **E a coluna da CPU explica a travessia ser tão cedo:** ela é quase PLANA (`47 → 92 ms` para `8×`
+as arestas), porque ali o contorno já é uma **consulta** (`profile_index`: BVH mais grelha de
+enrolamento) e não uma cadeia desenrolada. *A placa não perde por ser lenta — ela perde contra uma
+estrutura de dados que a fita dela não tem.*
 
 ⚠️ **Sobre `vivos` e não sobre instruções**: a cena da superfórmula tem `766` instruções e apenas
 `34` vivos, e é lenta por outra razão. *Um tecto sobre as instruções mandaria essa peça para a CPU
@@ -3702,19 +3727,24 @@ sem curar nada* — e deixaria as `128` arestas, que a placa ainda ganha por `1,
 calibra tem de o poder atravessar: *um número que ninguém consegue voltar a medir é um palpite com
 data.*
 
-### §42.4 — O que a régua do relógio conseguiu e o que não conseguiu
+### §42.4 — O que a régua do relógio conseguiu, e o que só conseguiu depois
 
 ⭐ **A curva do dispositivo repetiu-se a `load 43`, `91` e `111`** — as três corridas dão os mesmos
 números até ao segundo decimal. ⇒ ela é uma propriedade do shader, e a cerca que sai dela é medida.
 
-⛔ **A travessia com a CPU não é** — ali o mesmo traçado leu `71` e `482 ms` na mesma corrida (outra
-linha a correr a suíte dela). *Uma régua que varia `7×` entre corridas do mesmo código não mede
-código*, e é por isso que a coluna da CPU saiu da tabela e o eixo escolhido foi o do próprio
-dispositivo.
+⛔ **A travessia com a CPU não era** — ali o mesmo traçado leu `71` e `482 ms` na mesma corrida
+(outra linha a correr a suíte dela). *Uma régua que varia `7×` entre corridas do mesmo código não
+mede código.*
+
+⭐ **Ela ficou medível quando a outra linha acabou a suíte** (`load 2,6`), e foi ela que corrigiu o
+tecto de `743` para `358` — ver a §42.3. ⚠️ *Esperar pela calma «nunca chega» é verdade como regra e
+falso como lei: aqui chegou, e o que ela trouxe foi o número que decidia.*
 
 ### §42.5 — ⏳ O que fica
 
-- ⏳ **O `MAX_VIVOS` é desta placa** (o ficheiro de registos é dela) e tem de ser re-derivado noutra;
+- ⏳ **O `MAX_VIVOS` depende das DUAS máquinas** — do ficheiro de registos da placa **e** da
+  velocidade da CPU, porque ele é uma travessia e não um joelho. A sonda que o deriva é a
+  `mede_o_preco_de_uma_aresta_de_perfil`, e ela imprime a carga ao lado de cada linha;
 - ⏳ **A cura de fundo é a que a CPU já usa**: o contorno deixa de ser uma cadeia de `min` desenrolada
   e passa a ser uma **consulta** (`profile_index`: BVH mais grelha de enrolamento). ⛔ Na placa ela
   tem um preço que a CPU não paga — uma folha de dados não passa pela pilha de modificadores (o

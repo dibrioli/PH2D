@@ -70,6 +70,7 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
             .trim()
     );
     let mut medidas = 0;
+    let mut na_cpu = 0usize;
     let mut grossas = Vec::new();
     for n in 0..crate::smoke::scenes::CENAS {
         if crate::smoke::scenes::PODADAS.contains(&n) {
@@ -86,9 +87,22 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
         // ⚠️ **`antialias = false`** — é o quadro de MOVIMENTO, e a lei da W73 manda-o saltar a
         // borda re-amostrada. Medir o assente aqui daria um número que este laço nunca vê.
         // ⚠️ **COM o tecto** — esta tabela mede o que o PRODUTO faz, e o produto tem a cerca.
+        //
+        // ⛔⛔ **E uma cena recusada é IMPRESSA, não saltada.** A primeira redacção fazia
+        // `continue` e o denominador do gate encolhia em silêncio: a cena `5` saiu da tabela no dia
+        // em que o tecto desceu, e a linha *«13 de 17»* leu-se como se a peça tivesse melhorado.
+        // *Uma população que muda por baixo de uma razão é a catraca que vira licença.*
         let Some(_) = crate::gpu_frame::paint(
             t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, LW, LH, false,
         ) else {
+            let vivos = ph2d_field_eval::device::DeviceField::new(&doc, &reg)
+                .and_then(|c| c.tape_shape())
+                .map_or(0, |s| s.vivos);
+            println!(
+                "  {n:>4} ·        na CPU · {vivos:>4} vivos (tecto {})",
+                ph2d_field_gpu::MAX_VIVOS
+            );
+            na_cpu += 1;
             continue;
         };
         // A segunda corrida é a que conta: a primeira compila o pipeline e sobe a grade.
@@ -173,7 +187,8 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
     // mais pesada custava `121 ms` na CPU e **toda** cena de tamanho real ia a `D = 3`.
     let nitidas = medidas - grossas.len();
     println!(
-        "  ⇒ {nitidas} de {medidas} cenas correm NÍTIDAS em movimento · orçamento {PREVIEW_BUDGET_MS} ms"
+        "  ⇒ {nitidas} de {medidas} cenas do dispositivo correm NÍTIDAS em movimento · \
+         {na_cpu} ficam na CPU · orçamento {PREVIEW_BUDGET_MS} ms"
     );
     assert!(
         nitidas * 2 > medidas,
@@ -239,7 +254,7 @@ fn mede_o_preco_de_uma_aresta_de_perfil() {
             .trim()
     );
     let mut pontos: Vec<(u32, usize, usize, f32)> = Vec::new();
-    for n in [32u32, 64, 128, 136, 144, 152, 160, 192, 256] {
+    for n in [32u32, 48, 64, 72, 80, 96, 128, 192, 256] {
         let doc = ph2d_field::FieldDoc::new(
             vec![ph2d_field_eval::leaf(
                 ph2d_field::Primitive::Extrude {
@@ -290,8 +305,26 @@ fn mede_o_preco_de_uma_aresta_de_perfil() {
         // quebra, e não uma comparação, que nomeia o recurso.
         #[allow(clippy::cast_precision_loss)]
         let por_aresta = ms / n as f32;
+        // ⭐⭐⭐ **E A TRAVESSIA COM A CPU** — o número que o §42 declarou não-medível.
+        //
+        // ⚠️⚠️ **Ele só vale com a máquina CALMA, e a linha imprime a carga ao lado.** A mesma
+        // medição a `load 91` leu `71` e `482 ms` para o mesmo traçado: *uma régua que varia `7×`
+        // entre corridas do mesmo código não mede código.* ⇒ quem ler esta coluna lê primeiro o
+        // `load` do cabeçalho — senão está a medir quem mais está a usar a máquina.
+        let mut c: Vec<f32> = Vec::new();
+        for _ in 0..3 {
+            let t0 = std::time::Instant::now();
+            let g = ph2d_field_render::trace(&doc, &reg, &cam, LW, LH);
+            std::hint::black_box(g.hit.len());
+            #[allow(clippy::cast_possible_truncation)]
+            c.push(t0.elapsed().as_secs_f32() * 1e3);
+        }
+        c.sort_by(f32::total_cmp);
         println!(
-            "  {n:>7} · {instrs:>10} · {vivos:>5} · {ms:>8.2} ms · {por_aresta:>6.3} ms/aresta"
+            "  {n:>7} · {instrs:>10} · {vivos:>5} · {ms:>8.2} ms · {por_aresta:>6.3} ms/aresta · \
+             CPU {:>8.2} · {:>5.2}×",
+            c[0],
+            c[0] / ms
         );
         pontos.push((n, instrs, vivos, ms));
     }
@@ -380,7 +413,9 @@ fn uma_fita_larga_demais_fica_na_cpu() {
         .is_some()
     };
 
-    let (leve, pesada) = (peca(64), peca(256));
+    // ⚠️ `64` arestas dá `320` vivos (a placa ganha `1,21×`) e `128` dá `623` (`0,54×`) — a
+    // fixtura cerca o tecto com os dois lados MEDIDOS, e não com dois números quaisquer.
+    let (leve, pesada) = (peca(64), peca(128));
     let (vl, vp) = (vivos(&leve), vivos(&pesada));
     println!(
         "  leve {vl} vivos · pesada {vp} vivos · tecto {}",

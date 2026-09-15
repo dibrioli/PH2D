@@ -58,38 +58,41 @@ pub fn supports(doc: &FieldDoc, reg: &ph2d_field_eval::hybrid::Registry) -> bool
 
 /// ⭐⭐⭐ **QUANTOS VALORES VIVOS UMA FITA PODE TER ANTES DE A PLACA DEIXAR DE COMPENSAR.**
 ///
-/// # ⛔⛔ O recurso é o FICHEIRO DE REGISTOS, e foi a curva que o nomeou
+/// # ⚠️ O critério é «a placa ainda GANHA?», e a primeira redacção usou outro
 ///
-/// O `vivos` do [`ph2d_field_eval::point_tape::TapeShape`] é o scratch **por thread**. Numa placa
-/// ele decide a **ocupação**: quantos fios cabem num multiprocessador ao mesmo tempo. Medido a
-/// `1920×1080` com um perfil extrudado de `N` arestas (a família que o `+ Extrude` do artista
-/// produz), o custo **por aresta** — que é plano enquanto a fita cabe nos registos:
+/// O `vivos` do [`ph2d_field_eval::point_tape::TapeShape`] é o scratch **por thread**, e numa placa
+/// ele decide a **ocupação**. Medido a `1920×1080` com um perfil extrudado de `N` arestas — a
+/// família que o `+ Extrude` do artista produz —, **com a máquina calma** (`load 2,6`):
 ///
-/// | arestas | instruções | vivos | quadro | ms/aresta |
+/// | arestas | vivos | dispositivo | CPU | razão |
 /// |---:|---:|---:|---:|---:|
-/// | `32` | `1 043` | `163` | `20,7 ms` | `0,647` |
-/// | `64` | `2 063` | `320` | `43,9 ms` | `0,686` |
-/// | `128` | `4 083` | `623` | `129,5 ms` | `1,012` |
-/// | `144` | `4 589` | `700` | `160,4 ms` | `1,114` |
-/// | **`152`** | `4 846` | **`743`** | `191,0 ms` | **`1,257`** ⬅ o último deste lado |
-/// | `160` | `5 100` | `779` | `273,5 ms` | **`1,709`** ⬅ `+36 %` por `+5 %` de arestas |
-/// | `256` | `8 124` | `1 230` | `1 255,7 ms` | `4,905` |
+/// | `48` | `239` | `34,5 ms` | `51,5 ms` | `1,49×` |
+/// | `64` | `320` | `45,9 ms` | `55,3 ms` | `1,21×` |
+/// | **`72`** | **`358`** | `55,5 ms` | `57,7 ms` | **`1,04×`** ⬅ o último que a placa ganha |
+/// | `80` | `395` | `64,8 ms` | `60,9 ms` | **`0,94×`** ⬅ a partir daqui a CPU ganha |
+/// | `128` | `623` | `139,4 ms` | `75,5 ms` | `0,54×` |
+/// | `256` | `1 230` | `1 711 ms` | `93,6 ms` | `0,05×` |
 ///
-/// ⭐ **O salto é DISCRETO e não gradual** — `+36 %` de custo por `+5 %` de trabalho —, que é a
-/// assinatura de a ocupação cair um degrau, e não de mais aritmética.
+/// ⛔⛔ **A primeira redacção escreveu `743` aqui**, tirado do joelho da curva **do próprio
+/// dispositivo** (onde o custo por aresta dobra) — porque a coluna da CPU não era medível na altura
+/// (`load 80–110`, com outra linha a correr a suíte dela: o mesmo traçado leu `71` e `482 ms`).
 ///
-/// ⛔⛔ **E acima dele o dispositivo é MAIS LENTO que a CPU que ele substituiu:** a `256` arestas
-/// mediu-se `0,20×` — cinco vezes pior. *Esta linha pôs o quadro na placa e teria feito a peça
-/// desenhada do artista ficar mais lenta do que era, no topo da faixa que o slider dele alcança.*
+/// ⚠️⚠️ **Os dois números respondem a perguntas diferentes, e só um serve:** *«onde é que a placa
+/// piora?»* é uma propriedade do shader; *«onde é que ela deixa de VALER A PENA?»* é uma comparação,
+/// e é essa que decide o caminho. A `743` o dispositivo já estava a **`0,41×`** da CPU — isto é, a
+/// cerca deixava passar peças **duas vezes e meia mais lentas** do que o caminho que ela protege.
+///
+/// ⭐ *O joelho de uma curva e a travessia de duas curvas não são o mesmo ponto, e eu usei o
+/// primeiro por não conseguir medir o segundo.*
 ///
 /// ⚠️ **Este número é do EIXO CERTO e não de qualquer um**: a cena da superfórmula tem `766`
 /// instruções e apenas `34` vivos, e é lenta por outra razão (o minorante do campo). *Um tecto sobre
 /// as instruções mandaria essa peça para a CPU sem curar nada.*
 ///
-/// ⏳ **Ele tem de ser re-medido numa máquina calma e noutra placa** — a coluna do relógio foi
-/// tirada a `load 80–110` (outra linha a correr a suíte dela), e o ficheiro de registos é da placa.
-/// O que NÃO depende de nenhuma das duas é a forma da curva, e é ela que escolheu o eixo.
-pub const MAX_VIVOS: usize = 743;
+/// ⏳ **Ele depende das DUAS máquinas** — do ficheiro de registos da placa e da velocidade da CPU —,
+/// logo tem de ser re-derivado noutra. A sonda que o deriva é a
+/// `mede_o_preco_de_uma_aresta_de_perfil`, e ela imprime a carga ao lado de cada linha.
+pub const MAX_VIVOS: usize = 358;
 
 pub mod material_parity;
 pub mod owners_parity;

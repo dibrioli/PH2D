@@ -10,6 +10,7 @@ metadata:
 
 # Ofício de gate (índice de família — detalhe em cada arquivo; irmãos: mutation_proofs · oracle_discipline · fixture_discipline)
 
+- ⛔⛔ **Um gate que se DECLARA «uma família, não um sítio» e é uma LISTA ESCRITA À MÃO não tem população para ter piso** — medido 15/09: ele nomeava 6 ficheiros, o censo derivado varreu 18 e achou mais **5** desenhadores com o mesmo defeito, um deles a forma que o próprio roteiro de smoke mandava arrastar. ⚠️ E a 1.ª agulha do censo novo nomeava o CONSTRUTOR (`X::new(`) e leu `7` de `8`: quem RECEBE a porta por parâmetro não a constrói — *a agulha tem de nomear a CONSULTA*.
 - [[feedback_absence_gate_needs_a_presence_sibling]] — gate de AUSÊNCIA precisa do de PRESENÇA
 - [[feedback_layered_defenses_need_per_layer_gates]] — defesa em camadas = gate POR camada
 - [[feedback_a_threshold_must_live_where_the_domain_is_empty]] — limiar mora onde o domínio é VAZIO

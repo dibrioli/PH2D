@@ -429,3 +429,160 @@ aconteceu.
 a medir a porta de BAIXO (`work_already_done_on_down`) e ninguém exercitava o `unhandled_is_expected`
 com um `Click`, logo alargar a isenção ao TIPO inteiro — ou apagá-la — deixava a suíte verde.
 *Mover uma lei sem mover a régua que a ATRAVESSA deixa um gate a medir a metade de baixo.*
+
+---
+
+## §11 — ⛔⛔⛔ A CENA FOI REPROVADA («ruim», com foto) E A CAUSA ERA A MINHA RÉGUA
+
+O dono correu a cena do §9 e devolveu uma foto com duas setas: o traço preto que ele pintou saía
+**RASGADO** — lascas destacadas do arco, e a própria silhueta branca do canvas com um estilhaço
+triangular fora do sítio.
+
+### O que estava errado
+
+O canvas era **quadrado** (`512²`) com os três ossos deitados ao meio dele. O raio de um osso é o
+**comprimento dele** vezes a `strength` ([`SkinBone::new`]), e um ponto fora do raio de TODO osso é
+**órfão**: ele salta, em salto seco, para o osso mais próximo (o *point binding* do Moho, que o
+`weights_at` documenta). **Um salto seco num mapa contínuo é um rasgo.**
+
+⛔⛔⛔ **E a aritmética proíbe o quadrado — afinar o ângulo nunca ia curar.** Com `n` ossos deitados
+ao longo da largura `W`, cada osso mede `W/n` e portanto alcança `W/n`; a arte sobe `W/2` acima do
+eixo. `W/2 < W/n` só é verdade com **`n < 2`**. ⇒ *um quadrado com uma corrente de três ossos tem
+banda órfã por construção, em qualquer ângulo e em qualquer tamanho.* Medido: **`33,85 %`** da arte.
+
+### ⭐⭐⭐ O achado que vale mais que a cena: EU CITEI A COLUNA ERRADA
+
+O doc-comment do `DOBRA_GRAUS` justificava os `25°` dizendo que estavam *«bem menos do que o ângulo
+em que o mapa começa a dobrar sobre si mesmo (a régua da dobra vive na `ph2d_skeleton::fold`)»*.
+
+**Era verdade, e era irrelevante.** A `fold::measure` devolve **quatro** colunas, e sobre a foto do
+rasgo elas liam:
+
+| coluna | leitura | o que ela mede |
+|---|---:|---|
+| `inverted` | **`0,00 %`** | arte DO AVESSO — o defeito que eu citei |
+| `det_min` | `0,2622` | o pior ponto comprime, não inverte |
+| **`orphan`** | **`33,85 %`** | arte **fora do alcance** — o defeito que estava no ecrã |
+
+⚠️⚠️ **A coluna que gritava é aquela que o doc da própria régua chama de ANTI-VACUIDADE** — ela está
+lá para impedir que uma «cura» que deixe a arte toda órfã se leia perfeita —, e eu li-a como
+escrituração em vez de como diagnóstico. *Uma régua com N colunas responde a N perguntas, e citar a
+errada devolve `0,00 %` sobre o defeito que está na foto.*
+
+⇒ é a mesma família de
+[`feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak`] e de *«uma medição
+sobre o eixo que não dobra mede o caso que não existe»* (§9): **a leitura estava correcta e a
+pergunta não era aquela.**
+
+### A cura, e a cura ÓBVIA que foi medida e é PIOR
+
+A altura do canvas passa a ser **DERIVADA** do alcance de um osso
+(`ALTURA_PX = 2·LARGURA_PX·15 / (OSSOS·16)` ⇒ `512×320`), e não dois literais independentes: mexer
+na largura ou no número de ossos leva a altura atrás, em vez de empurrar a arte para fora do alcance
+**em silêncio**.
+
+| canvas (3 ossos, `strength` do produto, `25°`) | meia-altura | alcance | `det_min` | invertida | **ÓRFÃ** |
+|---|---:|---:|---:|---:|---:|
+| `512×512` — a redacção reprovada | 256 | 170,67 | 0,2622 | 0,00 % | **33,85 %** |
+| `512×384` | 192 | 170,67 | 0,2573 | 0,00 % | **12,31 %** |
+| `512×336` | 168 | 170,67 | 0,2114 | 0,00 % | 0,00 % |
+| **`512×320`** — a cena de hoje | **160** | **170,67** | **0,2497** | **0,00 %** | **0,00 %** |
+| `512×352` | 176 | 170,67 | 0,1241 | 0,00 % | 4,12 % |
+
+⛔⛔ **Alargar o ALCANCE é pior pelo meio, e isso é contra-intuitivo.** No quadrado de `512²`:
+
+| `strength` | `det_min` | invertida | órfã |
+|---:|---:|---:|---:|
+| `1.0` | `0,2622` | 0,00 % | 33,85 % |
+| **`1.5`** | **`−1,2829`** | **0,32 %** | 3,08 % |
+| `2.0` | `0,4750` | 0,00 % | 0,00 % |
+
+*Um alcance que cobre metade da banda órfã mistura um osso que CHEGA com um vizinho que SALTA, e a
+mistura inverte-se — chegar a meio é pior que não chegar.* ⇒ a alavanca da cena é a **FORMA da
+arte**, nunca um knob (a mesma conclusão do `LADO_PX` no §9, por outro mecanismo).
+
+### O gate que não existia
+
+`nenhum_pedaco_da_arte_fica_fora_do_alcance_dos_ossos` monta a corrente pela **mesma** porta que a
+cena (`super::eixos`), prende pelo `bind_image`, resolve pelo `skin_of` e mede pela `fold::measure`
+— ⛔ **sem uma segunda cinemática escrita no ficheiro de teste**, que seria uma segunda resposta à
+mesma pergunta.
+
+⚠️ E ele vem **com o controlo dentro**: `o_canvas_quadrado_que_o_dono_reprovou_e_acusado_por_esta_
+mesma_regua` pede o quadrado e exige `orphan > 30 %`. Sem essa metade, uma régua que respondesse
+`0,00 %` a tudo aprovaria qualquer canvas.
+
+⚠️ O terceiro (`a_meia_altura_cabe_no_alcance_de_um_osso`) lê a `strength` do **produto**
+(`Bone::default()`), não um `1.0` escrito no teste: se o default do alcance mudar, é o gate que fica
+vermelho e não o smoke do dono.
+
+**Prova de mutação:** repor `ALTURA_PX = LARGURA_PX` ⇒ **dois** gates RED, com a mensagem a nomear o
+número (`meia-altura 256 nao cabe no alcance 170,67`).
+
+**Corrida:** `512×320`, **780 peças** de um orçamento de quadro de `1 543` (a redacção anterior
+gastava `1 144`), `orphan 0,00 %`, `inverted 0,00 %`.
+
+---
+
+## §12 — ⛔⛔⛔ A FOTO TINHA DOIS DEFEITOS, E O SEGUNDO É QUE O CENSO DO ITEM 4 ERA UMA LISTA ESCRITA À MÃO
+
+Na mesma foto, além do rasgo, estava o **contorno amarelo da ELIPSE**: um círculo perfeito por cima
+de arte dobrada. ⚠️ **E é exactamente a forma que o passo 2 do meu próprio roteiro de smoke manda
+arrastar** — *«escolha uma forma (Rectangle/Ellipse) e arraste uma sobre o canvas: o CONTORNO e a
+CAIXA dela têm de seguir a curva»*.
+
+### O que falhou
+
+O gate `the_curve_and_line_chrome_is_painted_where_the_art_draws_it` abre com esta frase, escrita
+por mim:
+
+> ⚠️ **Este gate é uma FAMÍLIA, não um sítio** — é essa a forma que a wave anterior não tinha: ela
+> gateou a porta que curou e nenhuma sonda perguntou *«quem MAIS resolve um ponteiro de canvas?»*.
+
+⛔⛔ **E ele era uma LISTA ESCRITA À MÃO de seis ficheiros** (curva · linha · grelha · selos · gizmo
+de selecção · gizmo). *Uma lista escrita à mão não tem população para ter piso* — a armadilha da
+§2.7 do HOWTO um nível acima: lá um censo por prefixo passa a varrer zero e fica verde; aqui ele
+nunca varreu nada, **recitava**.
+
+Varrendo de facto os `painter_bridge*.rs`, eram mais **cinco** desenhadores de geometria a mapear
+pelo afim do quad de repouso:
+
+| desenhador | o que ele pinta | curado |
+|---|---|---|
+| `draw_ellipse_overlay` | o contorno + alças da ELIPSE — **o da foto** | ✅ `polyline(.., true)` |
+| `draw_polygon_overlay` | o N-gono | ✅ `polyline(.., true)` |
+| `draw_stencil_overlay` | a caixa do stencil | ✅ `polyline(.., true)` |
+| `draw_symmetry_overlay` | as guias tracejadas | ✅ `polyline` por segmento |
+| `draw_deform_gizmo` | a caixa do *Deform Transform* | ✅ `polyline(.., true)` |
+
+⚠️ **A guia de simetria não era «mapear dois pontos»:** ela atravessa o canvas inteiro, logo é UM
+segmento, e `move_to(map(a)); line_to(map(b))` consulta o mapa e **desenha a recta na mesma**. E ali
+a consequência é mais dura que estética — *a guia diz ONDE o motor replica os traços, e o motor
+replica em espaço de IMAGEM*: uma guia recta sobre arte dobrada aponta para um sítio onde nada é
+espelhado.
+
+### ⭐ Dois que NÃO são gaps, e a razão de cada um está registada
+
+- **`painter_bridge_brush_ring.rs`** — o anel do pincel é **ancorado no cursor** e usa só a parte
+  LINEAR do afim; a FORMA dele já carrega a curvatura da arte pela pegada do motor
+  (`FootprintDeform::curve`, a wave de 14/09). *Uma cura melhor que este mapa, por outro mecanismo.*
+- **A célula do Grid Stamp** (`draw_grid_cell`, no mesmo ficheiro) fica no quad **de propósito**, e é
+  um item ABERTO com o bloqueador nomeado: a metade do DEDO (`grid_cell_under`) **inverte o afim**,
+  e a porta que inverte pela MALHA (`ph2d_render::mesh_uv`) exige `&mut World` enquanto todo este
+  caminho de chrome tem `&World` — a `DrawnMesh` só oferece `world_at_uv`. ⛔ Curar só o desenho
+  poria um rectângulo bem dobrado à volta da célula **ERRADA**: *meia lei aplicada é pior que
+  nenhuma.*
+- E as duas da **espécie B** (as formigas da selecção, o véu de humidade) continuam abertas com a
+  rota decidida — ver o §9.
+
+### O gate que substitui a lista
+
+`the_canvas_chrome_census_is_derived_and_nobody_maps_an_authored_point_by_the_rest_quad` varre
+**todos** os `painter_bridge*.rs`, proíbe a lei antiga (`affine * Point::new`) pelo nome, e tem **os
+dois pisos**: quantos ficheiros existem (`≥ 16`, são 18) e quantos de facto **consultam** a porta
+(`≥ 8`). Os isentos são uma tabela `(ficheiro, razão)` **com metade de obsolescência** — um isento
+que já não estoura tem de sair da lista.
+
+⚠️⚠️ **E o gate apanhou um erro meu na 1.ª redacção:** a agulha era `CanvasMap::new(` e leu **`7`**
+onde havia `8` — o `painter_bridge_gizmo.rs` **recebe** o mapa por parâmetro em vez de o construir.
+*Uma agulha que nomeia o CONSTRUTOR mede quem monta, e a lei é sobre quem CONSULTA.*

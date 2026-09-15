@@ -130,11 +130,17 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
     let olhar = ph2d_view_transform::Look::default();
     const BG: [u8; 4] = [0, 0, 0, 0];
 
+    // ⚠️⚠️ **ESTE GATE DIVIDE UM RELÓGIO POR UM ORÇAMENTO, logo é da família das flakes de carga**
+    // (`CLAUDE.md` §5.0). Medido 2026-09-15: com a CPU a **`0 %`** ociosa ele lê `2 de 18` e com a
+    // máquina livre lê a mesma cena `0` a `11,5` em vez de `19,0 ms` — *quase todas as cenas caem
+    // logo ACIMA do orçamento, que é a assinatura de um abrandamento uniforme e não de uma
+    // regressão*. ⇒ ele imprime a **ociosidade**, e quem o lê confere-a antes de acusar um diff.
     println!(
-        "\n  cena · quadro de MOVIMENTO a {LW}×{LH} · load {}",
+        "\n  cena · quadro de MOVIMENTO a {LW}×{LH} · load {} · ociosa {:.0} %",
         std::fs::read_to_string("/proc/loadavg")
             .unwrap_or_default()
-            .trim()
+            .trim(),
+        cpu_ociosa_pct()
     );
     let mut medidas = 0;
     let mut na_cpu = 0usize;

@@ -1621,3 +1621,121 @@ As duas formas que este repo já tem escritas, as duas na mesma corrida:
 * `clippy` **0 avisos** · `nextest-impacted` **15 185: 15 185 passaram**.
 * ⚠️ **A crate é partilhada com o modelador 3D** (`ph2d-app-field3d`) — nenhuma assinatura pública
   mudou, só o comportamento no regime que antes estourava.
+
+---
+
+## §26 — ⭐⭐⭐ **QUEM SUBDIVIDE NO DYNAMIC TOPOLOGY** — a tabela inteira, com a proveniência de cada célula
+
+> *«algumas tools que não deveriam fazer a subdivisão de polígonos no modo Dynamic Topology estão
+> fazendo (como smooth) enquanto algumas que deveriam criar subdivisões com Dynamic Topology não
+> estão criando.»* — o dono, 2026-09-14
+
+### §26.1 — ⭐ A triagem parou na primeira porta ABERTA, e metade da tabela saiu no mesmo dia
+
+| fonte | licença | como | o que deu |
+|---|---|---|---|
+| a **livre** | **MIT** | ⭐ lê-se e porta-se, com atribuição (§0.9) | **13** ferramentas, na hora |
+| a **medida** | GPL | ⛔ corre-se **sem interface**, por uma janela **E**; a saída é DADO (GPLv2 §0) | **27** tipos, **343** células |
+
+⚠️ **As duas confirmaram o report nos dois sentidos** — e o `Smooth`, que ele nomeou à letra, é
+`441 → 441` na medida e não tem uma única chamada à topologia dinâmica na livre.
+
+### §26.2 — A tabela
+
+| verbo | mexe? | de onde |
+|---|---|---|
+| Draw · Clay · Inflate · Flatten · Fill · Scrape · Pinch · Crease · Blob · Clay Strips · Clay Thumb · Multiplane Scrape | ✅ | as duas |
+| **Snake Hook** | ✅ | **as duas** — precisou de **fiação** |
+| **Nudge** | ✅ | a medida (`441 → 2 853`) — **fiação** |
+| **Twist · Local Scale** | ✅ | ⚠️⚠️ **as duas DISCORDAM** (§26.4) |
+| **Smooth** | ⛔ | **as duas** |
+| **Slide Relax · Surface Smooth · Layer** | ⛔ | a medida (`441 → 441` nos dois extremos) |
+| Move · Thumb · Pose · Boundary · Cloth | ⛔ | as duas |
+| **Mask** | ⛔ | ⭐ **domínio**, curado um dia ANTES — e as duas confirmaram |
+| Density | ✅ | ⛔ construção: ele **É** o passe |
+| Erase · Smear Displacement | ⛔ | ⛔ construção: multirresolução exclui dyntopo |
+| **Sharpen · Magnify** | ✅ | ⚠️ **nenhum oráculo os responde** — conservador, **com gate a nomeá-los** |
+
+### §26.3 — ⭐⭐ A MÁSCARA: a cura que o oráculo depois confirmou
+
+Ela foi curada em 14/09 por **raciocínio de domínio** — *um gesto que não escreve posição não tem
+porque mudar a topologia* — sem consultar alvo nenhum. A referência livre **sobrescreve a lei geral
+dela** só para esta ferramenta, para dizer o mesmo.
+
+⇒ *uma cura que o oráculo depois confirma é a melhor prova de que o raciocínio que a produziu era do
+DOMÍNIO e não do programa.*
+
+### §26.4 — ⚠️⚠️ As duas células em que as referências DISCORDAM
+
+`Twist` e `Local Scale`: a livre diz que mexem, a medida devolve `441 → 441`.
+
+⭐ **Fica o `true`, e o argumento é GEOMÉTRICO e não de voto:** uma torção com queda **cisalha** a
+superfície e uma escala local **estica-a radialmente** — os dois produzem aresta longa, que é
+exactamente a metade do report. E o irmão em que as duas **concordam** (o gancho) é da mesma
+família: *quem transporta matéria estica a malha atrás de si*.
+
+⛔ **A outra leitura está registada e é legítima:** na referência medida, `ROTATE` e a escala
+elástica pertencem à família que move uma região **como um corpo**, onde a densidade viaja com o
+material — e ali eles não refinam, como o agarrar. **É decisão de produto, e o dono tem os dois
+números.**
+
+### §26.5 — ⛔ Nenhuma das duas separa as duas colunas
+
+Quem refina também colapsa, nas duas referências. ⚠️ **É facto sobre elas e NÃO uma lei** — a
+separação **é exprimível** (a medida tem o modo de refino da cena com três estados) e nós podemos
+querê-la antes delas. É por isso que [`Verb::colapsa_no_dyntopo`] continua a existir separado.
+
+### §26.6 — A fiação, e a armadilha nº 1 do plano que NÃO se aplicou
+
+Os quatro que passaram a mexer têm **âncora**, logo não passam pelo braço do carimbo — a porta foi
+ligada no `hook_step` e no `turn_at`. ⛔ **Quem decide continua a ser o VERBO**; *ligar o fio não é
+responder à pergunta, é deixar a resposta chegar*.
+
+⭐ **A armadilha nº 1 do [plano 22](../22_plano_quem_subdivide_no_dyntopo.md) §5 (a pegada CONGELADA
+que não sabe crescer) não se aplica a estes quatro:** ela é lida **só pelo polegar**
+(`congela = matches!(verb, Thumb)`), e o `grow_with`/`shrink_with` já cobre todo o resto do estado
+por-índice do traço. *Uma armadilha nomeada que a medição dissolve vale tanto como uma que morde.*
+
+### §26.7 — ⛔⛔ Duas coisas que o ARNÊS da mutação apanhou em mim
+
+1. **Um braço `Density => true` que era REDUNDANTE com o fallback** — apagá-lo não mudava um bit.
+   *Uma linha que a mutação não consegue matar não é lei, é comentário com sintaxe de código*; ela
+   saiu e o comentário ficou.
+2. **Uma mutação minha que era um NO-OP** (acrescentar à lista dos `true` um verbo que o fallback já
+   punha em `true`). O controlo do arnês apanhou-a, e ela foi reescrita para o sentido que de facto
+   muda o produto.
+
+### §26.8 — ⛔⛔⛔ E um ACHADO DE INSTRUMENTO que vale para TODAS as fixturas comprimidas do repo
+
+**A vassoura era CEGA ao conteúdo de um `.gz`.** O sweep lê binários por `strings`, e um ficheiro
+gzipado é **opaco** a isso — medido: um canário plantado dentro de um `.gz` passava despercebido.
+
+⇒ *um sweep verde sobre um `.gz` não provava nada sobre o conteúdo dele* — e este repo guarda os
+corpora de oráculo comprimidos: o do **tecido** (86 traços), o da **pose** (69), os dos **pincéis
+desbloqueados** (60) e agora o do **dyntopo** (343 células).
+
+A cura descomprime **em memória** (nada do alvo toca o disco) e varre o texto, com o nome do `.gz`
+no rótulo. ⚠️ **O reconhecimento é pelos dois bytes mágicos, nunca pela extensão** — um corpus
+comprimido com outro nome escaparia a uma régua que olhasse o sufixo.
+
+⭐ **Controlo positivo conferido**, e ele é o que separa esta cura de uma afirmação: com um canário
+plantado o instrumento acusa e sai `exit = 1`. Corrido sobre as **seis** vassouras vivas contra
+todas as fixturas do repo: **limpas** — *elas sempre estiveram, e até hoje o instrumento não o
+conseguia provar*.
+
+### §26.9 — As provas
+
+* **Mutação 10 de 10** (a metade livre) + **10 de 10** (a tabela completa).
+* Gate de produto (GPU) com **seis** células e **dois controlos** dentro: o `Draw` refina (senão o
+  arranjo é inerte) e o `Move` não (senão ligar a porta a todo gesto ancorado passaria).
+* **Três** gates de tabela: proveniência por célula · os nove ancorados · os dois sem oráculo.
+* Tecto de LOC curado por **corte** (`brush_verb_dyntopo.rs`), nunca por isenção.
+* `clippy` 0 · `nextest-impacted` **15 186: 15 186 passaram** · `doc-index` ✓ 19 · seis vassouras
+  limpas (com o instrumento curado) excepto o `tip_roundness` pré-existente.
+
+### §26.10 — O que fica ABERTO
+
+* ⏳ **A decisão do dono sobre `Twist` / `Local Scale`** (§26.4) — as duas referências discordam e
+  ele tem os dois números.
+* ⏳ **`Sharpen` e `Magnify`** — sem oráculo nenhum, nomeados por gate.
+* ⏳ **Separar as duas colunas** — hoje nenhuma referência o faz, e nós podemos querer.

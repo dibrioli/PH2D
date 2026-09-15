@@ -579,3 +579,79 @@ fn a_deformacao_escolhida_muda_o_gesto() {
         }
     }
 }
+
+/// ⛔⛔ **NO `Scale`, O GESTO RODA **E** ESCALA — e a caixa que tira a rotação
+/// funciona.**
+///
+/// Pergunta do dono (2026-09-15): *«Em Scale o osso escalona e rotaciona ao
+/// mesmo tempo. Isso é o esperado?»* — **é**, e é a lei da referência: a espec
+/// §5.4 passo 1 manda **resolver a cadeia primeiro** (o mesmo passo do §5.1) e
+/// só depois aplicar o quociente, *«com a trava desligada o gesto roda e escala;
+/// com ela ligada, escala sem rodar»*. A trava nasce **desligada** (é o valor em
+/// `68` das `69` fixturas do oráculo).
+///
+/// ⚠️⚠️ **O discriminador é a DIRECÇÃO DO OSSO, e a primeira régua que escrevi
+/// era cega:** eu media o deslocamento lateral contra o de profundidade, e leu
+/// `4,36e-1` contra `4,42e-1` — *quase nada* — porque **uma escala em torno de um
+/// pivô também move os vértices de lado**. A grandeza que separa as duas é a
+/// direcção: uma rotação vira o osso, uma escala pura só lhe muda o comprimento.
+///
+/// ⚠️ **E o comprimento do osso é o MESMO nos dois lados** (`0,0687`), de
+/// propósito: o quociente vive no mapa do segmento (`seg.escala`), não no
+/// comprimento dele — *o indicador mostra onde o membro APONTA, não quanto ele
+/// engordou*.
+#[test]
+fn a_trava_de_rotacao_tira_a_rotacao_da_escala() {
+    let direccao_do_osso = |trava_rotacao: bool| {
+        let mut malha = esfera();
+        let mut s = SculptStroke::default();
+        s.begin(&malha);
+        let b = Brush {
+            pose: crate::PoseControlos {
+                deformacao: ph2d_pose::Deformacao::Escalar,
+                trava_rotacao,
+                ..crate::PoseControlos::default()
+            },
+            ..pincel()
+        };
+        s.dab(
+            &mut malha,
+            &b,
+            &puxao([0.0, 0.0, 1.0], b.radius, [0.18, 0.0, 0.18]),
+            Symmetry::default(),
+        );
+        let ctrl = b.pose.lei(&b);
+        let mut ossos = Vec::new();
+        s.pose_sessao()
+            .expect("a sessão da pose vive durante o traço")
+            .ossos(&ctrl, &mut ossos);
+        let [o, c] = ossos[0];
+        let v = [c[0] - o[0], c[1] - o[1], c[2] - o[2]];
+        let comp = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+        assert!(comp > 1e-6, "o osso degenerou e a régua mede ruído");
+        ([v[0] / comp, v[1] / comp, v[2] / comp], comp)
+    };
+    let (solta, comp_solta) = direccao_do_osso(false);
+    let (travada, comp_travada) = direccao_do_osso(true);
+
+    // (1) — com a trava DESLIGADA o osso RODA: ele sai do eixo em que nasceu.
+    assert!(
+        solta[0].abs() > 0.3,
+        "com a trava desligada o osso ficou em {solta:?} — ele devia RODAR, que \
+         é o passo 1 do §5.4, e é o que o dono vê"
+    );
+    // (2) — com a trava LIGADA ele fica no eixo, e é isso que o nome promete.
+    assert!(
+        travada[0].abs() < 1e-3 && travada[1].abs() < 1e-3,
+        "com a trava ligada o osso ficou em {travada:?} — `Scale without \
+         rotating` prometeu tirar a rotação e não tirou"
+    );
+    // (3) — e o COMPRIMENTO não é onde a escala vive: as duas leem igual, o que
+    // impede alguém de ler a metade (2) como «a trava desligou a escala».
+    assert!(
+        (comp_solta - comp_travada).abs() < 1e-6,
+        "o comprimento do osso mudou com a trava ({comp_solta} contra \
+         {comp_travada}) — o quociente vive no mapa do segmento, e se ele \
+         passou a viver aqui as duas metades acima deixaram de medir o que dizem"
+    );
+}

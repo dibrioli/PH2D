@@ -992,6 +992,42 @@ fn every_pose_control_is_clickable_where_it_is_drawn() {
              pintado e morto sob o dedo, que é o report do dono à letra"
         );
     }
+
+    // ⛔⛔ **A SEGUNDA METADE, e ela existe porque a primeira era CEGA:** o
+    // `Scale without rotating` só é pintado com a deformação `Scale` escolhida
+    // (é a única em que ele tem o que travar — espec §5.4), e este gate corria
+    // com o valor de fábrica, que é `Rotate`. *Uma fixtura que não contém o
+    // fenómeno não afirma nada sobre ele*, e foi exactamente essa cegueira que
+    // deixou os treze chips passarem sete vezes.
+    //
+    // ⚠️ Ele é o controlo da pergunta do dono (2026-09-15: *«Em Scale o osso
+    // escalona e rotaciona ao mesmo tempo. Isso é o esperado?»*) — **é**, e esta
+    // caixa é a resposta dele. Se ela nascer morta, a resposta é inalcançável.
+    let mut ui = Sculpt3dUi::default();
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Pose);
+    ui.ui_level = UiLevel::Pro;
+    ui.brush.pose.deformacao = ph2d_sculpt3d::PoseDeformacao::Escalar;
+    let (mut host, mut state) = arrange(ui);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    let id = ids::SCULPT3D_POSE_ROT_LOCK;
+    let rect = painted
+        .iter()
+        .rev()
+        .find(|(pid, _)| *pid == id)
+        .map(|(_, r)| *r)
+        .expect(
+            "`Scale without rotating` devia estar pintado com a deformação \
+             `Scale` escolhida — é a única em que ele tem o que travar",
+        );
+    let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+    let events = host.click_at(cx, cy);
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+        "clicar `Scale without rotating` no centro pintado não produziu Click — \
+         a caixa que responde à pergunta do dono está morta sob o dedo"
+    );
 }
 
 /// ⛔⛔ **O INTERRUPTOR `Accumulate` NÃO É OFERECIDO A QUEM NÃO O LÊ.**

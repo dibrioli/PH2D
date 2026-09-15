@@ -89,7 +89,10 @@ pub(crate) fn announce() {
          [sculpt3d]        ⚠️ NAO e' preciso Ctrl para nenhum deles -- basta carregar no\n\
          [sculpt3d]        botao. Escolha `Scale` e arraste AO LONGO da orelha (na direcao\n\
          [sculpt3d]        em que ela aponta).\n\
-         [sculpt3d]        -> A orelha ENGORDA ou ENCOLHE.\n\
+         [sculpt3d]        -> A orelha ENGORDA ou ENCOLHE **e roda ao mesmo tempo**. Isso e'\n\
+         [sculpt3d]           a lei: neste modo o gesto resolve a articulacao primeiro e so'\n\
+         [sculpt3d]           depois escala. Para escalar SEM rodar, marque a caixa\n\
+         [sculpt3d]           `Scale without rotating`, que aparece so' com `Scale` escolhido.\n\
          [sculpt3d]    (7) Escolha `Translate` e arraste.\n\
          [sculpt3d]        -> Ela desliza inteira, sem mudar de tamanho nem rodar.\n\
          [sculpt3d]    (8) Escolha `Squash / Stretch` e arraste AO LONGO dela.\n\
@@ -115,7 +118,8 @@ pub(crate) fn announce() {
          [sculpt3d]    DEU ERRADO SE: nao aparecer osso nenhum no passo (2); se a orelha\n\
          [sculpt3d]    esticar num bico no passo (3) em vez de dobrar rigida; se ela nao mexer\n\
          [sculpt3d]    NADA; se o corpo da bola se deformar junto com ela; se desmarcar\n\
-         [sculpt3d]    `Pin far end` nao mudar nada; se algum dos CINCO botoes de\n\
+         [sculpt3d]    `Pin far end` nao mudar nada; se `Scale without rotating` nao tirar a\n\
+         [sculpt3d]    rotacao do passo (6); se algum dos CINCO botoes de\n\
          [sculpt3d]    `Deformation` nao mudar o gesto ao ser carregado; ou se o\n\
          [sculpt3d]    `Auto-Smooth` do passo (10) nao mudar a superficie.\n\
          [sculpt3d]\n\

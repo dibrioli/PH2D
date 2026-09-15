@@ -803,3 +803,104 @@ o campo *Float Height*, pintado com um `HeroLayout` na largura do dono e outro n
 
 **Portão:** `nextest-impacted` (BASE `1d43da737`) **14 281/14 281**, exit 0 · `clippy --workspace
 --all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · binário de smoke reconstruído.
+
+---
+
+## 16 — ⛔⛔⛔ *«… mesmo com folga»* — o pintor RE-ELIDIA o que já tinha cortado
+
+**Report do dono (2026-09-14, foto do cartão JUMP):** seis dos nove rótulos com reticências
+enquanto os campos ao lado mostravam `2 m`, `0`, `1`, `0.500` com metade da caixa vazia.
+
+### 16.1 — A primeira leitura da foto é que dá o mecanismo
+
+O conjunto cortado **não ordena pelo comprimento**:
+
+| rótulo | `prefix_width` @ Sm | na foto |
+|---|---|---|
+| `Takeoff Gravity` | `94,97` | **inteiro** |
+| `Air Jump Height` | `100,28` | cortado |
+| `Peak Gravity` | `78,92` | **inteiro** |
+| `Peak Window` | `84,72` | cortado |
+| `Fall Gravity` | `69,56` | **inteiro** |
+| `Air Jumps` | `62,92` | cortado |
+
+⇒ ***quando o defeito não ordena pela grandeza que a lei usa, a causa não é a lei*** — numa coluna
+única é impossível `94,97` caber e `62,92` não. A hipótese «a coluna é estreita demais» fica morta
+**antes** de se abrir um ficheiro.
+
+### 16.2 — A causa: uma largura RE-DERIVADA por diferença em `f32`
+
+O [`paint_property_label`](../../../crates/ph2d-editor-core/src/widget/property_box/row.rs) alinha à
+direita — `recuo = x + (col_w − largura)` — e dava ao pintor o orçamento `x + col_w − recuo`,
+**pretendendo** dizer `largura`. Em `f32` essa soma-e-subtracção cancela com erro; quando o
+resultado cai um ULP abaixo, o `paint_elided_weighted` lê `prefix_width(texto) > max_width` e
+**volta a cortar** um texto que já cabia — acrescentando uma reticência a um rótulo com dezenas de
+píxeis de folga. Como o erro depende de `x` (e o cartão começa em `x` fraccionário), o conjunto
+afectado parece arbitrário.
+
+**Medido** (sonda, coluna `140 px`, o mais largo `100,3`, nove rótulos × 400 posições de `x`):
+
+| | células com reticência indevida |
+|---|---|
+| antes | **310 de 3 600** (8,6 %) |
+| depois | **0 de 3 600** |
+
+⚠️ **O `paint_elided_weighted` já tinha a lei escrita, um nível abaixo:** *«`INFINITY`, not
+`max_width`: it fits, and passing the budget back would let a sub-pixel measurement disagreement
+re-introduce the wrap»*. O defeito era o chamador a fazer exactamente o que aquele comentário
+proíbe.
+
+### 16.3 — A cura: devolver a grandeza, nunca re-derivá-la
+
+`property_label_origin` passa a devolver **`(texto, x, largura)`** — ela já media a largura e
+deitava-a fora. O pintor recebe `largura.min(col_w)`:
+
+- **caminho normal** (`largura ≤ col_w`): o orçamento é o mesmo `f32` que o pintor vai medir ⇒
+  `<=` verdadeiro por construção, sem aritmética pelo meio;
+- **caso degenerado** (coluna mais estreita que a própria reticência, em que o `fit` devolve o texto
+  **cru** por desenho): o `min` repõe `col_w` e o pintor recusa, em vez de invadir o controlo.
+
+⛔ **Isto NÃO é o vizinho da §15** — lá a coluna era estreita a mais (cura: pedir emprestado ao
+controlo); aqui a coluna estava certa e a **tinta** é que discordava dela.
+
+### 16.4 — Por que nenhum dos três gates existentes o via
+
+| gate | o que mede | por que é cego |
+|---|---|---|
+| `every_label_this_panel_paints_fits_its_column` | `prefix_width > coluna` | a **decisão**, e ela estava certa nas 3 600 células |
+| `the_elision_ladder_only_shrinks` | idem, por largura de painel | idem |
+| `a_property_label_is_flush_against_its_control` | a **porta** (`property_label_origin`) | a porta devolve `x` e o defeito nasce **depois** dela |
+
+⇒ ***um gate que mede a DECISÃO é cego ao que a tinta faz com ela.*** O gate novo
+[`a_label_that_fits_is_never_painted_with_dots`](../../../crates/ph2d-editor-core/tests/it/a_label_that_fits_is_never_painted_with_dots.rs)
+lê a **cena emitida**, contada em **glifos** (⛔ `n_paths`/`n_path_segments` dão zero: o Vello
+encaminha texto por `draw_glyphs`). Três metades:
+
+1. `a_label_that_fits_is_never_painted_with_dots` — 9 × 400 células, zero cortes, com asserção de
+   que a fixtura ainda **tem folga** (`> 30 px`) e piso de população;
+2. `a_column_narrower_than_the_ellipsis_paints_nothing` — o caso degenerado, que é quem mata a
+   mutação `largura.min(col_w) → largura`;
+3. `the_glyph_ruler_can_see_an_ellipsis_when_there_is_one` — o **controlo**: com a coluna a 60 % a
+   contagem tem de mudar, senão a régua mede silêncio.
+
+**Provas de mutação** (âncora única, teste NOMEADO, restauro + `touch` + `sha256` igual):
+
+| mutação | veredito |
+|---|---|
+| `largura.min(col_w)` → `(x + col_w - recuo).max(0.0)` | **MORTA** |
+| `largura.min(col_w)` → `largura` | **MORTA** |
+
+### 16.5 — Censo: é um sítio só
+
+Varridos os 30+ chamadores de `paint_text_elided`/`paint_text_title_elided`. A forma perigosa é
+*«o orçamento pretende ser a largura do próprio texto e é obtido por subtracção»*, e só o
+`paint_property_label` a tinha. Os candidatos que subtraem (`container_list`, `strip_paint`,
+`ruler`, `paint_card_params`) passam um orçamento de **LAYOUT** e usam a largura medida só para
+**centrar** — correctos.
+
+### 16.6 — Aberto
+
+- A diferença de **~2 px** entre o fim da tinta da reticência e o fim da caixa dela (side-bearing do
+  glifo `…`) continua sem cura — precisa de métricas de glifo, não de aritmética de coluna.
+- Os **três** nomes que ainda não cabem a `220,9` (`Corner Look-ahead`, `Weight on Ground`,
+  `Swim Line (weights)`) continuam decisão do dono (encurtar ou alargar a coluna).

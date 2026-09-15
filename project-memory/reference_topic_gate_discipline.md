@@ -157,3 +157,13 @@ metadata:
 - ⚠️ **Subir a barra de um portão pode ser uma TROCA MEDIDA e não um afrouxamento** — mas só se a troca estiver escrita AO LADO da barra, com os dois números: aqui a virada por movimento subiu de 11,1° para 15,4° (barra 15 → 18) e comprou 14 dos 16 círculos que deixavam o corpo fora do lugar. *Sem os dois números ao lado, é armengo.*
 - ⛔ **Um controlo que nunca APERTA não segura a barra** (16/09): o «arco de `150°` numa cúbica tem de ser recusado» (erra `22×` a barra) deixou passar uma barra `10×` mais larga; o de `95°` (`1,38×`) mata-a. *O controlo negativo tem de estar logo acima da barra, não longe dela.*
 - ⛔⛔ **Gate verde porque NENHUM teste corre com a env do smoke** (16/09, modelador): «fechar o painel desarma» estava provado no caminho do pill, e o caminho `PH2D_*_SMOKE=<n>` — o de todo passo de smoke — armava sem olhar o painel. `set_var` é `unsafe` e o `cargo test` partilha o processo, então a env nunca entra no corpus. ⇒ ler a env por uma porta com sobreposição POR THREAD só nos testes, e a lei pura com a env como argumento.
+- ⛔⛔ **Um gate que mede a DECISÃO é cego ao que a TINTA faz com ela.** Medido 2026-09-14
+  (`line/UIUX`): três gates defendiam a coluna do rótulo — dois comparavam `prefix_width > coluna`
+  e um media a **porta** da decisão (`property_label_origin`) — e os três estavam **verdes** sobre
+  uma foto do dono com seis rótulos cortados. A decisão estava certa em 3 600 células; quem errava
+  era um **segundo corte dentro do pintor**, que nenhuma das três réguas alcançava. ⇒ quando a
+  queixa é sobre o que se VÊ, pelo menos um gate tem de ler a **cena emitida** — aqui a contagem de
+  **glifos** (⛔ `n_paths`/`n_path_segments` dão zero: o Vello encaminha texto por `draw_glyphs`,
+  lição já paga duas vezes neste repo). ⚠️ E ele precisa de **controlo**: um contador de glifos que
+  nunca vê uma reticência passaria também sobre um pintor que não pinta nada — o gate irmão exige
+  que a contagem **mude** com a coluna a 60 %.

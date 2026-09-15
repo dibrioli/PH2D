@@ -521,36 +521,6 @@ fn probe_as_pecas_sao_gelo() {
     );
 }
 
-/// O `y` MEDIANO das peças da direita no fim — a régua que separa *«assentou»* de *«congelou»*.
-fn altura_mediana_final() -> f32 {
-    let mut state = MotionState::new();
-    let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
-    crate::motion_shape_gen::publish(&mut state, 0.0);
-    let mut ys = Vec::new();
-    for k in 0..=174_u64 {
-        #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
-        let t = k as f64 / 60.0;
-        let s = state
-            .pump
-            .cook
-            .cook(&state.doc.graph, &state.registry, sinks[1], t)
-            .expect("cozinha")[0]
-            .as_stream()
-            .clone();
-        if k == 174
-            && let Some(Column::Vec2(p)) = s.get("P")
-        {
-            ys = p.iter().map(|q| q[1]).collect();
-        }
-        state
-            .pump
-            .cook
-            .advance_tick(&state.doc.graph, &state.registry, t)
-            .expect("avanca");
-    }
-    mediana(&ys)
-}
-
 /// **SONDA — W2 do [doc 111]: os CONTACTOS sobrevivem ao tique seguinte?**
 ///
 /// ⭐⭐⭐ É o facto que decide se a obra encomendada é sequer APLICÁVEL. O `λ` acumulado (*warm
@@ -617,4 +587,117 @@ fn probe_os_contactos_sobrevivem() {
         100.0 * vivos as f32 / total.max(1) as f32
     );
     eprintln!("\n  ⚠️ abaixo de ~80 % nao ha o que aquecer: doc 111 §5 W2.");
+}
+
+/// **SONDA — W3 do [doc 111] §4.2: quantos encostos tem UMA peça?**
+///
+/// ⭐⭐⭐ É a pergunta que decide a **MORADA** do cache. Um `λ` por PAR não é uma coluna — mas se
+/// cada peça tiver no máximo `K` parceiros, o cache é **por ELEMENTO e de largura fixa**, logo *é*
+/// uma coluna: viaja no laço do estado como o `age` e o `sim_t`, e um kernel do dispositivo lê-o
+/// sem substrato novo. ⇒ **a W4 deixa de ser uma wave e passa a ser uma consequência.**
+///
+/// ⚠️ Se a cauda for longa, o cache tem de ser uma tabela lateral, e aí ele **não atravessa a
+/// fronteira do dispositivo** — que é o defeito que a obra vem curar, um nível acima.
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_quantos_encostos_por_peca -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_quantos_encostos_por_peca() {
+    let mut state = MotionState::new();
+    let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut state, 0.0);
+    let mut hist = [0_usize; 16];
+    let (mut amostras, mut pior) = (0_usize, 0_usize);
+    for k in 0..=174_u64 {
+        #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
+        let t = k as f64 / 60.0;
+        let s = state
+            .pump
+            .cook
+            .cook(&state.doc.graph, &state.registry, sinks[1], t)
+            .expect("cozinha")[0]
+            .as_stream()
+            .clone();
+        if t >= 2.0
+            && let (Some(Column::Vec2(p)), Some(cols)) = (s.get("P"), ph2d_contact::colisores(&s))
+        {
+            for i in 0..p.len() {
+                let mut c = 0;
+                for j in 0..p.len() {
+                    if i != j
+                        && let (Some(a), Some(b)) = (cols[i], cols[j])
+                        && ph2d_contact::contato(&a, p[i], &b, p[j], (i + j) % 2 == 0).is_some()
+                    {
+                        c += 1;
+                    }
+                }
+                hist[c.min(15)] += 1;
+                pior = pior.max(c);
+                amostras += 1;
+            }
+        }
+        state
+            .pump
+            .cook
+            .advance_tick(&state.doc.graph, &state.registry, t)
+            .expect("avanca");
+    }
+    eprintln!("\n  encostos | peças-tique | acumulado");
+    let mut acc = 0;
+    for (c, n) in hist.iter().enumerate() {
+        if *n == 0 && c > pior {
+            break;
+        }
+        acc += n;
+        eprintln!(
+            "  {c:>8} | {n:>11} | {:>7.2} %",
+            100.0 * acc as f32 / amostras as f32
+        );
+    }
+    eprintln!("\n  pior caso: {pior} encostos numa peça (sobre {amostras} peças-tique)");
+}
+
+/// **SONDA — W3: a CHAVE existe? A `=114` traz a coluna `id`?**
+///
+/// ⛔⛔ Sem `id` a chave de um contacto tem de ser o ÍNDICE, e um índice **não sobrevive a um
+/// nascimento nem a uma morte** (o `sim.spawn` e o `sim.lifetime` reindexam a corrente). Um `λ`
+/// guardado numa chave que se deslocou aquece o **contacto errado**, que é pior que não aquecer.
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_a_pilha_tem_identidade -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_a_pilha_tem_identidade() {
+    let mut state = MotionState::new();
+    let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut state, 0.0);
+    let s = state
+        .pump
+        .cook
+        .cook(&state.doc.graph, &state.registry, sinks[1], 2.5)
+        .expect("cozinha")[0]
+        .as_stream()
+        .clone();
+    match s.get("id") {
+        Some(Column::Scalar(v)) => {
+            let mut u: Vec<f32> = v.clone();
+            u.sort_by(f32::total_cmp);
+            u.dedup();
+            eprintln!(
+                "  `id` PRESENTE: {} linhas, {} valores distintos, [0]={:.0} [n-1]={:.0}",
+                v.len(),
+                u.len(),
+                v.first().copied().unwrap_or(f32::NAN),
+                v.last().copied().unwrap_or(f32::NAN)
+            );
+        }
+        _ => eprintln!("  `id` AUSENTE ⇒ a chave teria de ser o ÍNDICE"),
+    }
+    eprintln!(
+        "  colunas do stream: {:?}",
+        s.columns().map(|(k, _)| k.as_str()).collect::<Vec<_>>()
+    );
 }

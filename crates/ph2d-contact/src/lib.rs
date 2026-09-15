@@ -94,6 +94,7 @@ use ph2d_nodegraph::attr::{
 pub mod atrito;
 mod par;
 mod trig;
+pub mod warm;
 
 pub use atrito::{Deslize, Material, Pecas, Saida, materiais};
 pub use par::{contato, disco_caixa};

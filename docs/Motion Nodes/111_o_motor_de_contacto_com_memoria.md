@@ -125,8 +125,9 @@ restrição sustentar a orientação sem a re-excitar — o *warm starting* que 
 | ~~**W0**~~ | ~~o ATRITO na cena~~ | — | ✅ **DISSOLVIDA pelo §2.1:** as peças já têm `μ = 0,5`. A wave saiu de uma ausência que nunca foi medida. |
 | ~~**W1**~~ | ~~o REPOUSO~~ | — | ⛔ **REFUTADA no §5.2:** o zumbido IMPEDE o sono. |
 | ~~**W2**~~ | ~~a CHAVE do contacto~~ | **`92,7 %` de sobrevivência** | ✅ **MEDIDA no §5.3: há o que aquecer.** Luz verde para a W3. |
-| **W3** | o **CACHE** | o `λ` acumulado por contacto persistente, na morada a decidir (§4.2) | ⭐ **é a obra**, e a W2 já a autorizou |
-| **W4** | o **DISPOSITIVO** | o mesmo cache do lado do kernel | ⛔ sem ela a lei nova é CPU-only e custa o que vem curar |
+| **W3a** ✅ | a **MEMÓRIA** | [`ph2d_contact::warm`](../../crates/ph2d-contact/src/warm.rs) — o cache, a chave e as cercas, com 9 gates e `3/3` mutações | **FEITA** (§5.4). ⛔ Nada a consome ainda ⇒ o produto é byte-idêntico. |
+| **W3b** | a **LEI** | o `λ` acumulado a entrar no [`separate`](../../crates/ph2d-contact/src/lib.rs), atrás de interruptor | é a obra; a W3a é o chão dela |
+| ~~**W4**~~ | ~~o DISPOSITIVO~~ | — | ⭐ **deixou de ser uma wave** (§5.4): o cache é uma COLUNA de largura fixa, logo atravessa a fronteira como o `age` |
 
 ⚠️ **A W1 é a fronteira da encomenda.** Ela é a mais barata das quatro e pode tornar as outras três
 desnecessárias — *medir se a composição já exprime o item antes de o construir* (`CLAUDE.md` §5.0).
@@ -214,3 +215,45 @@ As oito do [doc 109 §8.14](109_o_colisor_na_forma.md), mais as três deste doc:
 | 14 | o **REPOUSO** (a W1) como cura do zumbido | ⛔ o zumbido de `3,79 °/tique` **impede o sono**: nenhuma cerca pequena o apanha, e uma grande adormece o que se move (§5.2) |
 | 13 | a **W0** (dar atrito à cena) | ⛔ **não existe**: as peças já têm `μ = 0,5`, medido na coluna (§2.1) |
 | 12 | o repouso como **cerca SEM ESTADO** | ⛔ congela a pilha no ar, no primeiro tique (§5.1) — e as duas réguas do tremor leem `0,0000` |
+
+
+### §5.4 — ✅ A W3a FEITA: a memória existe, e a morada dela foi MEDIDA
+
+⭐⭐⭐ **A pergunta do §4.2 (*«onde vive o cache?»*) tinha resposta MEDIDA, e ela muda a fila.** Um `λ`
+por PAR seria uma tabela lateral, e uma tabela lateral não atravessa a fronteira do dispositivo — o
+defeito que a obra vem curar, um nível acima. Medido na `=114`
+(`probe_quantos_encostos_por_peca`), sobre `1 375` peças-tique da janela assente:
+
+| encostos numa peça | peças-tique | acumulado |
+|---:|---:|---:|
+| 0 | 19 | `1,38 %` |
+| 1 | 370 | `28,29 %` |
+| 2 | 475 | `62,84 %` |
+| 3 | 262 | `81,89 %` |
+| 4 | 191 | `95,78 %` |
+| **5** | 58 | **`100,00 %`** |
+
+⇒ o pior caso é **5**, e `K = 6`: a memória é **por ELEMENTO e de largura fixa**, logo **É uma
+coluna** (`K/2 = 3` colunas `Vec4`, `24 B` por elemento). Ela viaja no laço do estado como o `age` e
+o `sim_t`, e um kernel lê-a sem substrato novo — **a W4 deixa de ser uma wave e passa a ser uma
+consequência do desenho.**
+
+⛔⛔ **E a CHAVE trouxe uma cerca que a lei consumidora tem de honrar.** Medido
+(`probe_a_pilha_tem_identidade`): a `=114` **não traz a coluna `id`** — as colunas dela são
+`Count · Index · P · bounce · collider_box · friction · geometry_id · rolling · size`, porque aquela
+cena nasce de uma grelha com carimbo e quem cunha `id` é o `sim.spawn`. ⇒ [`warm::chaves`] cai no
+**índice**, e daí:
+
+> ⛔ **Sem `id`, a memória só é válida enquanto a POPULAÇÃO não muda.** Um nascimento ou uma morte
+> reindexa a corrente, e um `λ` guardado num índice que se deslocou aquece o **contacto errado** —
+> pior que não aquecer.
+
+**O que a W3a entrega, com gate:** o que se guarda volta para o parceiro certo e para mais nenhum ·
+guardar duas vezes ACTUALIZA (senão seis tiques enchiam a memória com um só parceiro) · o
+**transbordo esquece o apoio mais FRACO** (esquecer o forte tiraria a memória de onde ela sustenta a
+pilha) · um `λ` a zero **APAGA** a ranhura · a ida e volta pela corrente é a **identidade**, com uma
+identidade de `2²⁰` dentro dela (⚠️ sem essa fixtura um empacotamento em `u16` passava o gate e
+truncava toda cena com mais de `65 536` peças, **em silêncio**) · colunas ausentes ⇒ **tudo frio**,
+a lei de hoje ao bit.
+
+**`3 de 3` mutações mortas**, e a terceira — o `u16` — só morre por causa da identidade grande.

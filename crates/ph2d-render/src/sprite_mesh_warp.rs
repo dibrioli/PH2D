@@ -292,10 +292,7 @@ pub(crate) fn warp_over(
     // pontas, que é o que a W11b pagou para aprender).
     let mut saida = [[0.0f32; 2]; AMOSTRAS];
     for k in 0..AMOSTRAS {
-        saida[k] = [
-            (posicao[k][0] - p0[0]) / rf,
-            -(posicao[k][1] - p0[1]) / rf,
-        ];
+        saida[k] = [(posicao[k][0] - p0[0]) / rf, -(posicao[k][1] - p0[1]) / rf];
     }
     // ⭐⭐⭐ **A CERCA DAS FACETAS.** Um ajuste de grau `3` sobre uma malha grossa demais não lê a
     // dobra da ARTE: lê as ARESTAS das facetas. O mapa de uma malha é afim por peça, e um cúbico

@@ -89,10 +89,7 @@ pub(crate) fn ajusta(entrada: &[[f32; 2]], saida: &[[f32; 2]]) -> Option<[[f64; 
         out[0][i] = m[i][TERMOS];
         out[1][i] = m[i][TERMOS + 1];
     }
-    out.iter()
-        .flatten()
-        .all(|c| c.is_finite())
-        .then_some(out)
+    out.iter().flatten().all(|c| c.is_finite()).then_some(out)
 }
 
 /// O ajuste de grau `1` sobre as mesmas amostras — a **linha de base que shipa**, e a resposta

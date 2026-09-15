@@ -4,7 +4,6 @@
 
 use crate::app_state::{BgremovalPreview, BgremovalPreviewGpu};
 use ph2d_ecs::SimWorld;
-use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::toast::{Toast, ToastQueue};
 use ph2d_host::WindowSize;
 use ph2d_i18n::tr_with;
@@ -12,7 +11,7 @@ use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
 // ⭐ O afim saiu para uma FOLHA porque quatro assuntos o partilhavam (HOWTO §1.2).
 use ph2d_sprite_screen::sprite_image_to_screen_affine;
 use ph2d_tokens::{ColorToken, StrokeToken, Theme};
-use ph2d_vector::{Affine, Brush, Circle, Color, ImageQuality, Stroke, VectorScene};
+use ph2d_vector::{Affine, Brush, Circle, Color, Stroke, VectorScene};
 use std::sync::Arc;
 
 /// O ciclo de vida da textura de GPU da prévia (Lens F): sobe os pixels premultiplicados quando o
@@ -111,14 +110,111 @@ pub(super) fn upload_preview(
     }
 }
 
-/// A tinta da máscara de protecção e o anel do pincel, por cima da prévia (Vello, dicas de UI).
+/// ⭐⭐⭐ **A TINTA DA MÁSCARA DE PROTECÇÃO, pelo passe de SPRITES** — o ciclo de vida da textura
+/// dela, gémeo do [`upload_preview`].
+///
+/// ⛔⛔ **A alternativa está MEDIDA e REFUTADA** (sonda `skin_pieces_gpu_cost`, corrida 2026-09-15):
+/// desenhá-la por cima da arte dobrada com um recorte do Vello por triângulo deixa **costuras**
+/// (`10 580` px fora da barra numa arte translúcida com `216` peças, `41 732` com `3 456`) e a cura
+/// barata das costuras — dilatar os recortes — **piora** exactamente no caso translúcido, porque a
+/// faixa sobreposta compõe-se duas vezes (`55 978` px, pior desvio `124`). ⛔ E acima disso os
+/// buffers do Vello são de tamanho FIXO: o que os estoura degrada **em silêncio**, que é o
+/// *«Smooth bugado quebrando a forma»* que este mesmo módulo já pagou.
+///
+/// ⭐ No passe de sprites não há costura **por construção**: dois triângulos que partilham uma
+/// aresta são rasterizados pela regra de canto, e cada centro de pixel pertence a UM deles.
+pub(super) fn upload_tint(
+    protect_tint: Option<&(Arc<Vec<u8>>, u32, u32)>,
+    entity_bits: u64,
+    tint_gpu: &mut Option<BgremovalPreviewGpu>,
+    renderer: &mut SpriteRenderer,
+    toasts: &mut ToastQueue,
+) {
+    let Some((rgba, tw, th)) = protect_tint else {
+        release_preview_texture(renderer, tint_gpu);
+        return;
+    };
+    let token = Arc::as_ptr(rgba) as usize;
+    let precisa = match *tint_gpu {
+        None => true,
+        Some(g) => {
+            g.arc_token != token
+                || g.entity_bits != entity_bits
+                || g.width != *tw
+                || g.height != *th
+        }
+    };
+    if !precisa {
+        return;
+    }
+    // ⚠️ **Pré-multiplicada, como a prévia** — o passe de sprites compõe com `src + dst·(1−a)`, e
+    // uma fonte de alfa DIRECTO ali sai clara na borda de cada dab (o mesmo halo que a prévia
+    // pagou em 2026-05-26).
+    let mut bytes = (**rgba).clone();
+    ph2d_render::premultiply_rgba8(&mut bytes);
+    let subida = match *tint_gpu {
+        Some(g) => renderer
+            .replace_individual_pixels(g.texture_id, *tw, *th, &bytes)
+            .map(|()| g.texture_id),
+        None => renderer.acquire_individual(*tw, *th, &bytes),
+    };
+    match subida {
+        Ok(texture_id) => {
+            *tint_gpu = Some(BgremovalPreviewGpu {
+                texture_id,
+                width: *tw,
+                height: *th,
+                arc_token: token,
+                entity_bits,
+            });
+        }
+        Err(e) => {
+            toasts.push(Toast::error(format!(
+                "Bg Removal: upload da tinta da máscara falhou ({e}). \
+                 Tentando novamente no próximo frame."
+            )));
+            release_preview_texture(renderer, tint_gpu);
+        }
+    }
+}
+
+/// ⭐⭐⭐ **A tinta como UMA instância do passe de sprites, com a MALHA da arte por baixo.**
+///
+/// ⚠️ **O `sub_order` é o que a põe POR CIMA**, e é o campo que existe exactamente para isto (o
+/// doc dele: *«a grandeza que faltava não era “mais fundo”, era “mais à frente dentro do mesmo
+/// fundo”»*). ⛔ Empatar em tudo e confiar na ordem de inserção **não** serve: a chave de ordenação
+/// desempata por `texture_id`, e o da ranhura da tinta tanto pode ser maior como menor que o da
+/// arte — a tinta desapareceria POR BAIXO dela, dependendo da ordem em que as ranhuras foram pedidas.
+///
+/// ⚠️ Todos os outros campos são COPIADOS da instância da arte (pose, base, âncora, recorte,
+/// opacidade, tinta de objecto): a tinta é uma dica **daquela** sprite, e um objecto escondido não
+/// mostra a máscara dele.
+pub(super) fn tint_instances(
+    present: &ph2d_ecs::World,
+    tint_gpu: Option<BgremovalPreviewGpu>,
+    out: &mut ph2d_render::LiftedInstances,
+) {
+    out.clear();
+    let Some(gpu) = tint_gpu else { return };
+    let Some((arte, malha)) = ph2d_render::drawn_instance_of(present, gpu.entity_bits) else {
+        return;
+    };
+    let mut inst = *arte;
+    inst.texture_id = gpu.texture_id;
+    // A textura da tinta é individual — o rect INTEIRO, como a prévia.
+    inst.atlas_uv = [0.0, 0.0, 1.0, 1.0];
+    inst.premultiplied = 1.0;
+    inst.uv_xform = ph2d_render::RenderInstance::IDENTITY_UV_XFORM;
+    inst.sub_order = inst.sub_order.saturating_add(1);
+    out.push(inst, malha);
+}
+
+/// O anel do pincel por cima da prévia (Vello, dica de UI).
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_overlays(
     bgremoval_preview: &Option<BgremovalPreview>,
-    protect_tint: Option<(Arc<Vec<u8>>, u32, u32)>,
     brush_ring: Option<(f32, u32)>,
     sim: &SimWorld,
-    hero: &HeroScreen,
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
@@ -139,18 +235,11 @@ pub(super) fn draw_overlays(
         ) {
             // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
             let grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
-            let quality = match hero.project.image_filter {
-                ph2d_editor_core::ImageFilterMode::PixelArt => ImageQuality::Low,
-                ph2d_editor_core::ImageFilterMode::Smooth => ImageQuality::Medium,
-            };
-            // Protection-mask tint — same affine the suppressed
-            // sprite would use, so the tint tracks the live preview
-            // pixel-for-pixel even when the sprite is rotated/scaled.
-            if let Some((tint, tw, th)) = &protect_tint {
-                let tint_to_screen =
-                    sprite_image_to_screen_affine(*tw, *th, tr, sprite, grid, camera, window_size);
-                vector_scene.draw_image_rgba_transformed(tint, *tw, *th, tint_to_screen, quality);
-            }
+            // ⭐⭐⭐ **A TINTA SAIU DO VELLO** (2026-09-15) — ela era desenhada aqui com o afim do
+            // QUAD DE REPOUSO, logo sobre uma arte presa ao esqueleto e DOBRADA ela aparecia num
+            // sítio e a prévia (que já vai pelo passe de sprites, deformada) noutro. Hoje é uma
+            // INSTÂNCIA do passe de sprites com a MESMA malha — ver [`tint_instances`], e a recusa
+            // medida do caminho por recortes do Vello no doc da `ph2d_render::drawn_instance_of`.
             // Brush-size ring at the cursor — the source-px radius
             // mapped to screen via the footprint scale (extracted
             // from the affine's per-axis magnitude).

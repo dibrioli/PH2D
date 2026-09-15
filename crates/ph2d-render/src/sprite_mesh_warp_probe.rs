@@ -159,7 +159,12 @@ fn probe_o_residuo_contra_a_finura_da_malha() {
                     redondeza(&mesh, centro, raio, w)
                 })
                 .collect();
-            println!("  {n:3}  {:5}      {:6.3}       {:6.3}", 2 * n * n, col[0], col[1]);
+            println!(
+                "  {n:3}  {:5}      {:6.3}       {:6.3}",
+                2 * n * n,
+                col[0],
+                col[1]
+            );
         }
     }
 }
@@ -337,7 +342,10 @@ fn probe_o_grau_na_direccao_directa() {
                 }
                 linha.push_str(&format!("   {:7.3} ", hi / lo));
             }
-            println!("{linha}{}", if fora { "  (tocou fora da arte)" } else { "" });
+            println!(
+                "{linha}{}",
+                if fora { "  (tocou fora da arte)" } else { "" }
+            );
         }
     }
 }
@@ -362,12 +370,7 @@ fn probe_o_custo_da_porta() {
                 col[i] = col[i].min(t0.elapsed().as_secs_f64() * 1e6 / 200.0);
             }
         }
-        println!(
-            "  {:9}   {:6.2} µs   {:6.2} µs",
-            2 * n * n,
-            col[0],
-            col[1]
-        );
+        println!("  {:9}   {:6.2} µs   {:6.2} µs", 2 * n * n, col[0], col[1]);
     }
 }
 

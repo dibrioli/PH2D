@@ -37,6 +37,9 @@ impl crate::App {
         // Retirados ANTES do borrow de `self.gfx`; concatenados ao slot `extra` do passe
         // de sprite abaixo. Vazio quando o onion está desligado.
         let onion_ghosts = std::mem::take(&mut self.onion_ghosts);
+        // ⭐⭐⭐ **A TINTA da máscara de protecção da Remoção de fundo** (2026-09-15) — uma instância
+        // com a MALHA da arte, retirada aqui pela mesma razão dos fantasmas. Vazia sem prévia.
+        let bgremoval_tint = std::mem::take(&mut self.bgremoval_tint_extra);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -116,6 +119,7 @@ impl crate::App {
                     motion_active,
                     frosting,
                     &onion_ghosts,
+                    &bgremoval_tint,
                 ) else {
                     return;
                 };
@@ -170,6 +174,8 @@ impl crate::App {
         motion_active: bool,
         frosting: bool,
         onion_ghosts: &ph2d_render::LiftedInstances,
+        // ⭐ A tinta da máscara da Remoção de fundo — o TERCEIRO produtor deste slot.
+        bgremoval_tint: &ph2d_render::LiftedInstances,
     ) -> Option<(super::present_bands::FramePlan, bool)> {
         let gfx = self.gfx.as_mut()?;
         let AppGfx {
@@ -227,32 +233,29 @@ impl crate::App {
         // O slot `extra` do passe carrega TRÊS produtores CPU: os fantasmas do onion (ADR-0142),
         // o stream do Motion e — desde o TOP-20 #18 — as PARTÍCULAS dos objectos.
         //
-        // ⚠️ **Os fantasmas levam MALHA e os outros dois não** (plano `docs/Skeleton/03`, W7), então
-        // o par viaja junto numa `LiftedInstances` — ⛔ um vector paralelo de malhas ao lado de uma
-        // fatia crua é o padrão que o `corner_radius` proíbe por escrito.
+        // ⚠️ **Os fantasmas e a TINTA DA MÁSCARA levam MALHA; o Motion e as partículas não**
+        // (plano `docs/Skeleton/03` W7 + a wave do bgremoval de 15/09), então os quatro viajam
+        // juntos numa `LiftedInstances` — ⛔ um vector paralelo de malhas ao lado de uma fatia crua
+        // é o padrão que o `corner_radius` proíbe por escrito.
         //
         // ⚠️⚠️ **As partículas desenham-se SEMPRE, e é isso que as separa do Motion:** o stream do
         // grafo só existe com a ferramenta MOTION na mão, e um jacto preso a um objecto tem de arder
         // com qualquer ferramenta — senão o componente some quando o artista pega no pincel.
         //
-        // ⚠️ **O caso comum não copia nada:** sem fantasmas, sem Motion e sem partículas o `extra`
-        // é o dos fantasmas, já montado pela fase de overlay.
+        // ⚠️ **O caso comum não copia nada:** com só os fantasmas vivos, o `extra` é a lista deles,
+        // já montada pela fase de overlay. É por isso que o atalho é testado contra os outros TRÊS.
         let particulas: &[ph2d_render::RenderInstance] = &particles.instances;
-        let sprite_extra: ph2d_render::LiftedInstances = if onion_ghosts.is_empty() {
-            let mut e = ph2d_render::LiftedInstances::default();
-            for i in motion_slice {
-                e.push(*i, None);
-            }
-            for i in particulas {
-                e.push(*i, None);
-            }
-            e
-        } else if motion_slice.is_empty() && particulas.is_empty() {
+        let so_fantasmas =
+            motion_slice.is_empty() && bgremoval_tint.is_empty() && particulas.is_empty();
+        let sprite_extra: ph2d_render::LiftedInstances = if so_fantasmas {
             ph2d_render::LiftedInstances::default()
         } else {
             let mut e = ph2d_render::LiftedInstances::default();
             for (i, inst) in onion_ghosts.instances().iter().enumerate() {
                 e.push(*inst, onion_ghosts.mesh_of(i));
+            }
+            for (i, inst) in bgremoval_tint.instances().iter().enumerate() {
+                e.push(*inst, bgremoval_tint.mesh_of(i));
             }
             for i in motion_slice {
                 e.push(*i, None);
@@ -262,12 +265,11 @@ impl crate::App {
             }
             e
         };
-        let extra: &ph2d_render::LiftedInstances =
-            if onion_ghosts.is_empty() || !motion_slice.is_empty() || !particulas.is_empty() {
-                &sprite_extra
-            } else {
-                onion_ghosts
-            };
+        let extra: &ph2d_render::LiftedInstances = if so_fantasmas {
+            onion_ghosts
+        } else {
+            &sprite_extra
+        };
         // ⭐⭐⭐ **AS FAIXAS DE DESENHO** (ADR-0154 Fase 2) — a lei, os cinco passos e o
         // porquê de a ÚLTIMA faixa de sprites não se ter movido vivem no cabeçalho do
         // irmão `present_bands`. Sem intercalação nada disto corre e o quadro é

@@ -47,7 +47,16 @@ fn med<T>(n: usize, mut f: impl FnMut() -> T) -> f64 {
 }
 
 /// The fixture: a painter bound to a `size`² canvas, a sprite entity selected in the hero screen.
-fn fixture(size: u32) -> (PainterTool, SimWorld, PresentWorld, HeroScreen, Camera2d, WindowSize) {
+fn fixture(
+    size: u32,
+) -> (
+    PainterTool,
+    SimWorld,
+    PresentWorld,
+    HeroScreen,
+    Camera2d,
+    WindowSize,
+) {
     let mut painter = PainterTool::default();
     painter.set_source(vec![255u8; (size * size * 4) as usize], size, size);
     painter.set_brush_size_px(40.0);

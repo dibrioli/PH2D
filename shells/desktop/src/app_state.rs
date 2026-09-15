@@ -561,6 +561,18 @@ pub(crate) struct App {
     /// path introduced. `None` when the preview cache is `None` (tool
     /// inactive, no source, or post-Apply).
     pub(crate) bgremoval_preview_gpu: Option<BgremovalPreviewGpu>,
+    /// ⭐⭐⭐ **A ranhura de GPU da TINTA da máscara de protecção** (2026-09-15) — gémea da de cima.
+    ///
+    /// ⛔⛔ Ela nasceu porque a tinta era desenhada pelo **Vello com o afim do quad de repouso**:
+    /// sobre uma arte presa ao esqueleto e dobrada, a prévia (que vai pelo passe de sprites,
+    /// deformada) e a tinta que a anota apareciam em sítios DIFERENTES. O caminho por recortes do
+    /// Vello está medido e refutado (costuras; e os buffers dele degradam em SILÊNCIO) — ver o doc
+    /// da `render_loop::bgremoval_preview_gpu::upload_tint`.
+    pub(crate) bgremoval_tint_gpu: Option<BgremovalPreviewGpu>,
+    /// A tinta da máscara como instância do passe de sprites, com a malha da arte. Vazia sem
+    /// prévia. ⚠️ Vive aqui, e não numa `Vec` local, pela razão dos vizinhos (HR-3): é lixo de
+    /// quadro sobre uma lista quase sempre vazia.
+    pub(crate) bgremoval_tint_extra: ph2d_render::LiftedInstances,
     /// Last entity whose source RGBA was pushed into the active
     /// `PainterTool`. Reset to `None` on tool deactivate so the next
     /// activation re-pushes against the current selection. Same shape

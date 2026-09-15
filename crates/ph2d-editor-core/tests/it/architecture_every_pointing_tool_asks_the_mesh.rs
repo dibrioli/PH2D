@@ -161,7 +161,9 @@ fn the_curve_and_line_chrome_is_painted_where_the_art_draws_it() {
     const GIZMO: &str = "crates/ph2d-app-painter/src/painter_bridge_gizmo.rs";
     let gizmo = fonte(GIZMO);
     assert_eq!(
-        gizmo.matches("mapa: &crate::canvas_map::CanvasMap<'_>").count(),
+        gizmo
+            .matches("mapa: &crate::canvas_map::CanvasMap<'_>")
+            .count(),
         2,
         "{GIZMO} tem DOIS desenhadores do gizmo de transformação (a caixa e a alça do centro) e os \
          dois têm de receber o MAPA: metade no afim põe a caixa longe do que ela enquadra."
@@ -172,8 +174,65 @@ fn the_curve_and_line_chrome_is_painted_where_the_art_draws_it() {
     let menu = fonte(MENU);
     assert!(
         menu.contains("let malha = super::painter_canvas_input::malha_sob_o_cursor(")
-            && menu.contains("ph2d_render::MeshUv::Use { u, v, .. } => [u * iw as f32, v * ih as f32]"),
+            && menu.contains(
+                "ph2d_render::MeshUv::Use { u, v, .. } => [u * iw as f32, v * ih as f32]"
+            ),
         "{MENU} abre o menu da alça pelo afim do quad, enquanto o botão PRIMÁRIO que arrasta a mesma \
          alça resolve pela malha: as duas metades do mesmo gesto com mapas diferentes."
+    );
+}
+
+/// ⭐⭐⭐ **A TINTA DA MÁSCARA segue a arte — ela saiu do Vello para o passe de SPRITES.**
+///
+/// ⛔⛔ **Sem isto o resto desta wave tornava o removedor de fundo PIOR:** curado o ponteiro, a
+/// máscara passa a ser pintada no texel certo — e uma tinta desenhada pelo afim do quad de repouso
+/// mostra-a num sítio onde não está nem o dedo nem a arte. *Meia cura é pior que nenhuma quando as
+/// duas metades concordavam por acidente.*
+///
+/// ⛔ **A alternativa foi MEDIDA e REFUTADA** (`skin_pieces_gpu_cost`, 2026-09-15): um recorte do
+/// Vello por triângulo deixa costuras numa arte translúcida (`10 580` px fora da barra com `216`
+/// peças; `41 732` com `3 456`) e dilatá-los **piora** o caso translúcido (`55 978`, pior `124`);
+/// e acima disso os buffers do Vello são FIXOS e o que os estoura degrada em SILÊNCIO — que foi o
+/// *«Smooth bugado quebrando a forma»* deste mesmo módulo.
+#[test]
+fn the_protection_tint_rides_the_sprite_pass_with_the_art_mesh() {
+    const GPU: &str = "shells/desktop/src/render_loop/bgremoval_preview_gpu.rs";
+    let src = fonte(GPU);
+    // ⛔ A LEI ANTIGA proibida pelo nome: a tinta era um `draw_image_rgba_transformed` com o afim.
+    assert!(
+        !src.contains("draw_image_rgba_transformed"),
+        "{GPU} voltou a desenhar a tinta da máscara pelo Vello com o afim do quad de repouso: numa \
+         arte dobrada ela e a prévia que ela anota aparecem em sítios diferentes."
+    );
+    assert!(
+        src.contains("pub(super) fn tint_instances(")
+            && src.contains("ph2d_render::drawn_instance_of(present, gpu.entity_bits)")
+            && src.contains("out.push(inst, malha)"),
+        "{GPU} deixou de emitir a tinta como instância do passe de sprites COM a malha da arte."
+    );
+    // ⚠️ **O `sub_order` é o que a põe POR CIMA** — a chave de ordenação desempata por
+    // `texture_id`, e o da ranhura da tinta tanto pode ser maior como menor que o da arte.
+    assert!(
+        src.contains("inst.sub_order = inst.sub_order.saturating_add(1);"),
+        "{GPU} emite a tinta sem a pôr à frente da arte no MESMO fundo: dependendo da ordem em que \
+         as ranhuras de textura foram pedidas, ela desaparece POR BAIXO dela."
+    );
+
+    // E o passe tem de a RECEBER — uma instância emitida que ninguém desenha é a metade muda.
+    const PRESENT: &str = "shells/desktop/src/render_loop/present.rs";
+    let present = fonte(PRESENT);
+    assert!(
+        present.contains("bgremoval_tint: &ph2d_render::LiftedInstances")
+            && present.contains("for (i, inst) in bgremoval_tint.instances().iter().enumerate()"),
+        "{PRESENT} não junta a tinta ao slot `extra` do passe de sprites: ela é produzida e nunca \
+         desenhada."
+    );
+    // ⚠️ E o atalho «não copiar nada» tem de contar com ela: se ele só perguntar pelo Motion, um
+    // quadro com fantasmas E tinta deita a tinta fora em silêncio.
+    assert!(
+        present
+            .contains("let so_fantasmas = motion_slice.is_empty() && bgremoval_tint.is_empty();"),
+        "{PRESENT} decide o atalho do slot `extra` sem contar com a tinta — e o atalho DEITA FORA \
+         quem ele não conta."
     );
 }

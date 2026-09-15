@@ -45,7 +45,7 @@ use std::sync::Arc;
 /// A prévia de GPU e os overlays — filho por ASSUNTO, num ficheiro próprio para este caber no tecto.
 #[path = "bgremoval_preview_gpu.rs"]
 mod preview_gpu;
-use preview_gpu::{draw_overlays, upload_preview};
+use preview_gpu::{draw_overlays, tint_instances, upload_preview, upload_tint};
 
 /// Returns `true` iff an Apply committed this frame (the caller then
 /// tears the tool down — deactivate + restore Inspector — so the
@@ -75,6 +75,12 @@ pub(super) fn dispatch(
     last_bgremoval_pushed_entity: &mut Option<u64>,
     bgremoval_preview: &mut Option<BgremovalPreview>,
     bgremoval_preview_gpu: &mut Option<BgremovalPreviewGpu>,
+    // ⭐ O mundo de APRESENTAÇÃO (read-only) + a ranhura e as instâncias da TINTA da máscara: ela
+    // deixou de ser um desenho do Vello e passou a ser uma instância do passe de sprites, com a
+    // malha da arte por baixo.
+    present: &ph2d_ecs::World,
+    bgremoval_tint_gpu: &mut Option<BgremovalPreviewGpu>,
+    bgremoval_tint_extra: &mut ph2d_render::LiftedInstances,
     toasts: &mut ToastQueue,
 ) -> bool {
     let bgremoval_is_active = tools
@@ -259,12 +265,22 @@ pub(super) fn dispatch(
         *bgremoval_preview = None;
     }
 
+    // ⭐⭐⭐ **A TINTA DA MÁSCARA vai pelo passe de SPRITES**, com a malha da arte (2026-09-15) —
+    // ver a recusa medida do caminho do Vello no doc da [`preview_gpu::upload_tint`].
+    // ⚠️ Ela só existe com PRÉVIA, como antes: é a prévia que ela anota.
+    let tint_owner = bgremoval_preview.as_ref().map(|p| p.entity_bits);
+    upload_tint(
+        tint_owner.and(protect_tint.as_ref()),
+        tint_owner.unwrap_or_default(),
+        bgremoval_tint_gpu,
+        renderer,
+        toasts,
+    );
+    tint_instances(present, *bgremoval_tint_gpu, bgremoval_tint_extra);
     draw_overlays(
         bgremoval_preview,
-        protect_tint,
         brush_ring,
         sim,
-        hero,
         camera,
         window_size,
         vector_scene,

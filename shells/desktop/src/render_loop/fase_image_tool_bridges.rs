@@ -23,6 +23,7 @@ impl crate::App {
         let FrameGfx {
             renderer,
             sim,
+            present,
             camera,
             asset_db,
             toasts,
@@ -61,6 +62,9 @@ impl crate::App {
             &mut self.last_bgremoval_pushed_entity,
             &mut self.bgremoval_preview,
             &mut self.bgremoval_preview_gpu,
+            present.world(),
+            &mut self.bgremoval_tint_gpu,
+            &mut self.bgremoval_tint_extra,
             toasts,
         );
         // Color Equalization panel ⟷ tool bridge: drives panel

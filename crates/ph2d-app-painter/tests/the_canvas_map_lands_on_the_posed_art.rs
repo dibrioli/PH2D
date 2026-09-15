@@ -19,9 +19,8 @@ use ph2d_vector::{Affine, Point};
 /// Uma sprite de `2 × 2` na origem, espelhada no mundo de apresentação.
 fn sprite_de_2m(present: &mut PresentWorld, sim: &mut SimWorld) -> (Entity, u64) {
     let e = sim.world_mut().spawn(()).id();
-    let gt = GlobalTransform::from_transform(ph2d_ecs::Transform::from_translation(Vec2::new(
-        0.0, 0.0,
-    )));
+    let gt =
+        GlobalTransform::from_transform(ph2d_ecs::Transform::from_translation(Vec2::new(0.0, 0.0)));
     let ri = RenderInstance {
         world_pos: [0.0, 0.0],
         size: [2.0, 2.0],
@@ -88,7 +87,10 @@ fn a_handle_is_painted_where_the_bent_art_draws_that_texel() {
     // ── Com malha: o mesmo texel é pintado onde a arte o DESENHA.
     braco_posado(&mut present, alvo);
     let mapa = CanvasMap::new(present.world(), bits, iw, ih, afim, &camera, window);
-    assert!(mapa.is_mesh(), "com `SpriteMesh` a porta responde pela malha");
+    assert!(
+        mapa.is_mesh(),
+        "com `SpriteMesh` a porta responde pela malha"
+    );
     // A UV `(0,25 · 0,75)` deste triângulo cai no ponto local `(3,5 · 0,5)` — e o mundo é o local,
     // porque a base é a identidade e o pivô é a origem. No ecrã: `world_to_screen`.
     let esperado = {

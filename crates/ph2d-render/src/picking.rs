@@ -534,6 +534,39 @@ impl DrawnMesh<'_> {
     }
 }
 
+/// ⭐⭐ **A INSTÂNCIA desta sprite e a malha dela, para quem quer desenhar OUTRA COISA no mesmo
+/// sítio** — a tinta da máscara de protecção da Remoção de fundo é a primeira.
+///
+/// ⛔⛔ **Ela nasceu porque a alternativa está MEDIDA e REFUTADA:** desenhar a tinta por cima da
+/// arte dobrada com **um recorte do Vello por triângulo** deixa costuras (`10 580` px fora da barra
+/// numa arte translúcida, e dilatar os recortes **piora** — a faixa sobreposta compõe-se duas
+/// vezes: `55 978` px) e, pior, os buffers do Vello são de tamanho FIXO e o que os estoura **degrada
+/// em silêncio** — que foi exactamente o *«Smooth bugado quebrando a forma»* deste módulo.
+/// ⇒ a tinta entra no passe de SPRITES como uma instância a mais, com a MESMA malha: sem costuras
+/// por construção (a regra de canto do rasterizador dá cada centro de pixel a UM triângulo).
+///
+/// `None` quando a entidade não é uma sprite desenhada. A malha é `None` num quad simples.
+#[must_use]
+pub fn drawn_instance_of(
+    present: &World,
+    sim_entity_bits: u64,
+) -> Option<(&RenderInstance, Option<&SpriteMesh>)> {
+    for e in present.iter_entities() {
+        let Some(sim_ref) = e.get::<SimRef>() else {
+            continue;
+        };
+        if sim_ref.0.to_bits() != sim_entity_bits {
+            continue;
+        }
+        let ri = e.get::<RenderInstance>()?;
+        return Some((
+            ri,
+            crate::sprite_mesh::drawn_mesh(e.get::<SpriteMesh>(), ri.size),
+        ));
+    }
+    None
+}
+
 /// A malha POSADA desta sprite da simulação, ou `None` quando ela não é desenhada como malha (e aí
 /// o chamador fica com o afim do quad de repouso, intocado). Ver [`DrawnMesh`].
 #[must_use]

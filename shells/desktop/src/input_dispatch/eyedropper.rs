@@ -83,21 +83,20 @@ impl App {
         if let super::uv_sob_o_ponteiro::UvSobOPonteiro::Uv(u, v) = uv
             && (0.0..=1.0).contains(&u)
             && (0.0..=1.0).contains(&v)
+            && let Some(rgb) = bg.sample_source_at_uv(u, v)
         {
-            if let Some(rgb) = bg.sample_source_at_uv(u, v) {
-                bg.add_extra_color(rgb);
-                // `add_extra_color` already flips `params_dirty=true`,
-                // so the bridge's `drive_preview_cache` re-runs the
-                // pipeline next frame. We deliberately do NOT drop
-                // `self.bgremoval_preview` here (was: `= None`) — the
-                // segmentation is slow when the user has several picks
-                // (Enio 2026-05-26: was "imagem desaparece" because
-                // ~18 frames rendered with no overlay while the
-                // pipeline rebuilt). Keeping the last good cache lets
-                // the canvas keep painting the previous matte until
-                // the new one is ready, so the user sees a smooth
-                // transition instead of a black flash.
-            }
+            bg.add_extra_color(rgb);
+            // `add_extra_color` already flips `params_dirty=true`,
+            // so the bridge's `drive_preview_cache` re-runs the
+            // pipeline next frame. We deliberately do NOT drop
+            // `self.bgremoval_preview` here (was: `= None`) — the
+            // segmentation is slow when the user has several picks
+            // (Enio 2026-05-26: was "imagem desaparece" because
+            // ~18 frames rendered with no overlay while the
+            // pipeline rebuilt). Keeping the last good cache lets
+            // the canvas keep painting the previous matte until
+            // the new one is ready, so the user sees a smooth
+            // transition instead of a black flash.
         }
         // Consumed regardless of in/out so the click doesn't move or
         // deselect the sprite while the eyedropper is armed.

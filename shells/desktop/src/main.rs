@@ -840,6 +840,8 @@ impl App {
             upscale_preview: None,
             bgremoval_preview: None,
             bgremoval_preview_gpu: None,
+            bgremoval_tint_gpu: None,
+            bgremoval_tint_extra: Default::default(),
             last_painter_pushed_entity: None,
             pending_painter_move: None,
             input_events_this_frame: 0,

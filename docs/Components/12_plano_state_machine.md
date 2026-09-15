@@ -194,3 +194,30 @@ esquecido. *A cura de um NOME repete-se; a de uma PORTA não.*
      *quantos sinais soaram neste tique* — e **não** um `MAX_DEPTH` escolhido por alguém.
    ⇒ *o oráculo ensinou a PERGUNTA e o formato da resposta; a resposta é de quem conhece a natureza
    da própria entrada.*
+
+---
+
+## §8 — O que FICOU, e o que fica ABERTO
+
+### §8.1 — As waves, como foram
+
+| W | o quê | onde |
+|---|---|---|
+| **W0** | **Rebobinar é RENASCER** — uma porta para o estado vivo da família `Logic` | [`ph2d_ecs::rewind_runtime`](../../crates/ph2d-ecs/src/rewind_runtime.rs) |
+| **W1** | a **lei** (estados · setas · arbitragem · consumo) | [`ph2d_ecs::state_machine`](../../crates/ph2d-ecs/src/state_machine.rs) |
+| **W2** | o **componente registado** + a ponte no dreno de sinais | `render_loop::state_machine_tick` |
+| **W3** | a **secção do Inspector** (duas listas, um editor cada) | `sections::statemachine` |
+| **W4** | a **cena de smoke** com o CONTROLO ao lado | `PH2D_STATEMACHINE_SMOKE=1` |
+
+### §8.2 — Aberto, nomeado
+
+1. ⏳ **Estados ANINHADOS / sub-máquinas** — um grafo dentro de um grafo pede um editor próprio, e
+   a tabela do Inspector não o exprime. ⛔ Recusado por desenho, não por falta de tempo.
+2. ⏳ **Um verbo `EmitSignal` no `SignalActions`** continua fora. ⭐ A recusa dele dissolveu **para
+   esta máquina** (que traz o orçamento), e **não** para a tabela: ela não tem conjunto de estados
+   nem consumo, logo um verbo que emitisse ali reabriria a classe dos laços sem rede.
+3. ⏳ **O custo a N máquinas não foi varrido.** O laço é `O(máquinas × setas)` por dreno, com
+   `STATES_MAX = 16` e `TRANSITIONS_MAX = 32`; a cena do smoke tem uma.
+4. ⏳ **A arbitragem é a ordem da tabela e a tabela não se REORDENA no painel** — hoje o artista
+   apaga e reescreve. Um arrasto de linha é o `PanelRowFamily` que a wave das tags trouxe, e ele
+   **existe**; ligá-lo aqui é uma linha de UI, não um mecanismo.

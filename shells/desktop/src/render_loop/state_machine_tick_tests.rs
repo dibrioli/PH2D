@@ -79,10 +79,18 @@ fn um_sinal_move_a_maquina_do_mundo() {
 /// **Mutação que deve sangrar:** apagar o `quem.sort_unstable_by_key`.
 #[test]
 fn duas_maquinas_anunciam_na_ordem_da_identidade() {
-    // ⚠️ Semeadas com a identidade ao CONTRÁRIO da ordem de criação — sem isso a fixtura não
-    // distingue «ordenado» de «a ordem em que calharam».
+    // ⚠️⚠️ **TRÊS e não duas, e a fixtura foi CORRIGIDA por uma mutação que sobreviveu:** com
+    // duas, semeadas ao contrário, `reverse()` devolve **exactamente** a ordem certa — a fixtura
+    // não distinguia *«ordenado»* de *«ao contrário da criação»*, e a mutação que apaga o `sort`
+    // passava. Com três em ordem arbitrária (`5, 1, 9`), ordenar dá `1,5,9` e reverter dá `9,1,5`.
+    //
+    // *Uma fixtura que não separa a lei da sua coincidência não testa a lei.*
     let mut sim = SimWorld::new();
-    for (nome, id, sinal) in [("B", 9_u64, "b_entrou"), ("A", 2, "a_entrou")] {
+    for (nome, id, sinal) in [
+        ("M", 5_u64, "m_entrou"),
+        ("A", 1, "a_entrou"),
+        ("Z", 9, "z_entrou"),
+    ] {
         let mut m = maquina();
         m.states[0].on_enter = sinal.into();
         sim.world_mut().spawn((Name::new(nome), StableId(id), m));
@@ -91,8 +99,8 @@ fn duas_maquinas_anunciam_na_ordem_da_identidade() {
     let nomes: Vec<&str> = anunciados.iter().map(|s| s.name.as_str()).collect();
     assert_eq!(
         nomes,
-        vec!["a_entrou", "b_entrou"],
-        "o `StableId` 2 fala antes do 9, venha ele de onde vier"
+        vec!["a_entrou", "m_entrou", "z_entrou"],
+        "o `StableId` manda, venha a entidade de onde vier"
     );
 }
 

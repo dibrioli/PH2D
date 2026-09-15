@@ -112,6 +112,8 @@ pub mod prefab_stage;
 pub mod projectile_smoke;
 pub mod scene_ctx;
 pub mod signal_action_smoke;
+/// ⭐⭐⭐ O smoke do CÉREBRO AUTORÁVEL (TOP-20 #15) — ver o cabeçalho.
+pub mod statemachine_smoke;
 pub mod tags_doc;
 pub mod tags_smoke;
 pub mod timer_smoke;
@@ -182,6 +184,9 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         // controlo ao lado. ⚠️ O `max_level` é **contado** no `match` do `montar`.
         r("PH2D_TOPDOWN_SMOKE", topdown_smoke::CENAS),
         r("PH2D_PROJECTILE_SMOKE", projectile_smoke::CENAS),
+        // ⭐⭐⭐ O CÉREBRO (TOP-20 #15): `=1` a porta com o CONTROLO ao lado.
+        // ⚠️ O `max_level` é **contado** no `match` do `montar`.
+        r("PH2D_STATEMACHINE_SMOKE", statemachine_smoke::CENAS),
     ],
 };
 

@@ -177,6 +177,8 @@
 - ⛔⛔ [`try_query` com um `Option<&T>` devolve NONE se o MUNDO não conhece o tipo — a porta responde «ninguém» e nada o diz (um sinal por tag não alcançava nada)](feedback_a_try_query_with_an_optional_component_answers_nobody.md)
 - ⛔ [O dono de um id de BARRA DE ROLAGEM é o DESPACHO — declarado no painel, o polegar pinta e nunca se agarra (há um vivo: o painel de ossos)](feedback_the_owner_of_a_scrollbar_id_is_the_dispatch.md)
 - ⛔⛔ [DOIS laços escritos à mão que têm de concordar (avanço e replay) esquecem toda lei nova num deles — 3× na mesma ponte, 2 achadas por report do dono](feedback_two_hand_written_loops_that_must_agree_need_one_door.md)
+- ⛔⛔ [O que o undo NÃO fotografa o undo também não REPÕE — um relógio corrido, uma fábrica esgotada e uma SEMENTE sobreviviam ao Reset](feedback_what_the_undo_does_not_photograph_the_undo_does_not_restore.md)
+- ⛔ [O oráculo ensina a PERGUNTA; a resposta depende da natureza da SUA entrada — um NÍVEL e um EVENTO pedem paragens opostas](feedback_an_oracle_teaches_the_question_the_answer_depends_on_your_input_kind.md)
 - ⛔ [Um EVENTO lido como ESTADO acerta pelo tempo que ninguém o apagar — a etiqueta dependia de o relógio estar a andar](feedback_an_event_read_as_state_is_right_for_as_long_as_nobody_clears_it.md)
 - [Gotchas de código (14)](reference_topic_code_gotchas.md)
 - 📚 [Padrões de código (gotchas silenciosos): mais 6 lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)

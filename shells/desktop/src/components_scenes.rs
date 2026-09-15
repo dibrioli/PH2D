@@ -183,6 +183,37 @@ impl crate::App {
         self.playhead.play();
     }
 
+    /// ⭐⭐⭐ **O CÉREBRO AUTORÁVEL** (TOP-20 #15, W4). Prólogo do quadro, uma vez.
+    ///
+    /// ⚠️ **A cena precisa do relógio A ANDAR**, e por DUAS razões que só juntas se leem: o botão é
+    /// um `Timer`, que corre no **passo fixo**; e a máquina avança no **dreno de sinais**, que só
+    /// tem sinais quando alguém os publica. Com o transporte parado o artista vê uma porta imóvel e
+    /// lê *«não faz nada»* — que é o veredito errado sobre um componente que funciona.
+    ///
+    /// ⛔⛔ *Uma cena de smoke que ensina o CONTRÁRIO do que acontece é pior que uma cena ausente*
+    /// (`CLAUDE.md` §5.0).
+    pub(crate) fn statemachine_smoke(&mut self) {
+        if self.components_smokes.statemachine {
+            return;
+        }
+        let Some(v) = std::env::var_os("PH2D_STATEMACHINE_SMOKE") else {
+            return;
+        };
+        let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let _ = ph2d_app_components::statemachine_smoke::montar(cx.sim.world_mut(), nivel);
+        self.components_smokes.statemachine = true;
+        // ⚠️ A régua abre junto — uma instrução que fala do transporte sobre um ecrã sem ele
+        // devolve *«que régua?»* (a lição da cena 67 da física).
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.panel_visibility.insert("timeline", true);
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+    }
+
     /// ⭐⭐⭐ **O MOVER DE VISTA DE CIMA** (TOP-20 #13, W2). Prólogo do quadro, uma vez.
     ///
     /// ⚠️ **As duas cenas precisam do relógio A ANDAR**, e pela razão do irmão acima: a ponte do

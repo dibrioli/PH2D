@@ -33,6 +33,8 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) factory: bool,
     /// ⭐ O MOVER DE VISTA DE CIMA (TOP-20 #13) — `PH2D_TOPDOWN_SMOKE=1|2`.
     pub(crate) topdown: bool,
+    /// ⭐ O CÉREBRO AUTORÁVEL (TOP-20 #15) — `PH2D_STATEMACHINE_SMOKE`.
+    pub(crate) statemachine: bool,
     /// ⭐ O PROJÉCTIL (TOP-20 #14) — `PH2D_PROJECTILE_SMOKE=1|2`.
     pub(crate) projectile: bool,
     /// O ragdoll instanciado 3× (ADR-0164 F4). `PH2D_INSTANCE_SMOKE=1..7`.

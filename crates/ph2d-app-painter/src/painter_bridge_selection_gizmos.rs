@@ -1,9 +1,14 @@
+//! ⏸️ **DORMENTE enquanto pintar achatar a arte** (ordem do dono, 2026-09-15): debaixo do pincel
+//! não há dobra, logo o mapa deste ficheiro degenera no afim do quad, **ao bit**. Tudo o que o
+//! cabeçalho abaixo afirma sobre seguir a arte dobrada está CERTO e hoje **não acontece** — o
+//! porquê, o custo de o manter vivo e o instrumento que ata esta nota ao achatamento estão no
+//! cabeçalho do [`crate::canvas_map`].
+//!
 //! **Isolated selection gizmos** rendering (ADR-0103 Am.2 v2). Draws EVERY editable selection shape's gizmo
 //! at once, all STANDARDISED to the Sprite transform gizmo: the shape outline (thin) inside an oriented
 //! bounding box with 8 scale squares (corners + edge mids), a centre-move square, and — only for a Polygon —
 //! the sides diamond. A square reads as a **circle** when the cursor is in its rotate ring (the rotate cue).
 //! Each shape gets a DISTINCT fluorescent accent. Reuses the shared [`super::painter_bridge_gizmo`] helpers.
-
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
 use ph2d_host::WindowSize;

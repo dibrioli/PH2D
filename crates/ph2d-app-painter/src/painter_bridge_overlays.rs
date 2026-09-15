@@ -1,9 +1,14 @@
+//! ⏸️ **DORMENTE enquanto pintar achatar a arte** (ordem do dono, 2026-09-15): debaixo do pincel
+//! não há dobra, logo o mapa deste ficheiro degenera no afim do quad, **ao bit**. Tudo o que o
+//! cabeçalho abaixo afirma sobre seguir a arte dobrada está CERTO e hoje **não acontece** — o
+//! porquê, o custo de o manter vivo e o instrumento que ata esta nota ao achatamento estão no
+//! cabeçalho do [`crate::canvas_map`].
+//!
 //! Painter on-canvas editing chrome — the brush cursor ring + the Curve / Circle / Polygon /
 //! Stencil editor overlays — split from `painter_bridge.rs` for the HR-18 file-LOC cap. Pure draw:
 //! reads the active `PainterTool` + selection + camera and writes guide geometry into the overlay
 //! `VectorScene`; it mutates no tool or model state. Called once per frame by `painter_bridge::dispatch`
 //! while the Painter tool is active (inside the same downcast block that owns `painter`).
-
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
 use ph2d_host::WindowSize;

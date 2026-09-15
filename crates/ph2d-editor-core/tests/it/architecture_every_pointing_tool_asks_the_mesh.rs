@@ -28,6 +28,16 @@ fn fonte(rel: &str) -> String {
         .join("\n")
 }
 
+/// O mesmo ficheiro **com os comentários**, para quem mede uma NOTA em vez de uma lei.
+fn texto(rel: &str) -> String {
+    let f = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("crates/<x>/ tem dois pais")
+        .join(rel);
+    std::fs::read_to_string(&f).unwrap_or_else(|e| panic!("{}: {e}", f.display()))
+}
+
 /// ⭐⭐⭐ **O CONTA-GOTAS do Painter lê o texel que a arte DESENHA ali.**
 #[test]
 fn the_eyedropper_samples_the_texel_the_art_draws_there() {
@@ -549,5 +559,79 @@ fn painting_flattens_the_art_and_the_frame_passes_it_through() {
     assert!(
         !src.contains("skin_suspend::sprite_achatada("),
         "{FASE} chama a porta MUDA: a arte endireita-se sem uma palavra"
+    );
+}
+
+/// ⭐⭐⭐ **A PORTA DORMENTE DIZ QUE DORME — e a nota MORRE com o achatamento.**
+///
+/// Decisão do dono, 2026-09-15: perguntado se devia limpar o chrome que segue a arte dobrada, ele
+/// escolheu **deixar e marcar**. ⛔ E uma nota que diga *«dormente»* depois de o código acordar é a
+/// forma mais cara de mentira deste repo — *uma catraca sem censo de obsolescência vira licença*.
+///
+/// ⇒ este gate ata as duas coisas nas **DUAS direcções**:
+/// - enquanto o quadro ACHATAR (`skin_suspend::achata_e_avisa`), a porta e **todos** os
+///   desenhadores que a consomem têm de carregar a marca;
+/// - no dia em que o achatamento sair, **nenhum** pode carregá-la.
+///
+/// ⚠️ **O censo é DERIVADO, nunca uma lista escrita à mão** — é a lição que esta mesma jornada
+/// pagou (o gate irmão declarava-se «uma família» e recitava seis nomes, deixando cinco
+/// desenhadores planos, entre eles a elipse da foto do dono).
+#[test]
+fn the_dormant_door_says_so_and_the_note_dies_with_the_flattening() {
+    const MARCA: &str = "DORMENTE";
+    const PORTA: &str = "crates/ph2d-app-painter/src/canvas_map.rs";
+    let achata = fonte("shells/desktop/src/render_loop/fase_sim_extract.rs")
+        .contains("skin_suspend::achata_e_avisa(");
+
+    assert_eq!(
+        texto(PORTA).contains(MARCA),
+        achata,
+        "{PORTA}: a marca `{MARCA}` e o achatamento do quadro deixaram de concordar. Com \
+         achatamento ela TEM de estar lá (senão o próximo leitor acredita que o chrome segue a \
+         dobra); sem achatamento ela tem de SAIR (senão a nota mente ao contrário)."
+    );
+
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("dois pais")
+        .join("crates/ph2d-app-painter/src");
+    let (mut consumidores, mut marcados, mut faltam) = (0usize, 0usize, Vec::new());
+    for entry in std::fs::read_dir(&dir).expect("a pasta da família do Painter") {
+        let path = entry.expect("entrada legível").path();
+        let nome = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or_default()
+            .to_string();
+        if !nome.starts_with("painter_bridge") || !nome.ends_with(".rs") {
+            continue;
+        }
+        let rel = format!("crates/ph2d-app-painter/src/{nome}");
+        // ⚠️ Quem CONSOME lê-se no código (sem comentários); quem está MARCADO lê-se no texto cru.
+        if !fonte(&rel).contains("CanvasMap") {
+            continue;
+        }
+        consumidores += 1;
+        if texto(&rel).contains(MARCA) {
+            marcados += 1;
+        } else {
+            faltam.push(nome);
+        }
+    }
+    // ⚠️⚠️ **Piso de população:** um censo que passe a varrer zero fica trivialmente verde. Eram
+    // NOVE em 2026-09-15 (curva · linha · grelha · selos · gizmo de selecção · gizmo · overlays ·
+    // formas · gizmo de Deform).
+    assert!(
+        consumidores >= 9,
+        "o censo achou só {consumidores} desenhadores a consultar o `CanvasMap`: ele deixou de ter \
+         sujeito, e um `faltam.is_empty()` sobre uma lista vazia é trivialmente verdadeiro"
+    );
+    assert_eq!(
+        marcados,
+        if achata { consumidores } else { 0 },
+        "os desenhadores sem a marca `{MARCA}`: {faltam:?} (achatamento no quadro: {achata}). \
+         Cada um deles AFIRMA no cabeçalho que segue a arte dobrada, e hoje isso não acontece \
+         debaixo do pincel."
     );
 }

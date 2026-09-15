@@ -1,3 +1,9 @@
+//! ⏸️ **DORMENTE enquanto pintar achatar a arte** (ordem do dono, 2026-09-15): debaixo do pincel
+//! não há dobra, logo o mapa deste ficheiro degenera no afim do quad, **ao bit**. Tudo o que o
+//! cabeçalho abaixo afirma sobre seguir a arte dobrada está CERTO e hoje **não acontece** — o
+//! porquê, o custo de o manter vivo e o instrumento que ata esta nota ao achatamento estão no
+//! cabeçalho do [`crate::canvas_map`].
+//!
 //! Multi-shape **op badges** overlay (Enio 2026-07-04): for every stroke shape currently on canvas, draw
 //! its Operation type-square in the gizmo centre — the `+` (Add) / `−` (Remove) / `○` (Overlay) glyph — and,
 //! for each PARKED (inactive-but-editable) shape, o **CONTORNO** dela, so the user sees it is still a shape
@@ -9,7 +15,6 @@
 //! retângulos, e o hit-test que a acompanhava aceitava o INTERIOR da caixa — *"se clicar dentro de uma
 //! forma já desenhada, não aceita desenhar outra"*. O contorno sai da mesma porta que o clique alcança
 //! (`stroke_outline`), então **o que se vê é o que se clica**.
-
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
 use ph2d_host::WindowSize;

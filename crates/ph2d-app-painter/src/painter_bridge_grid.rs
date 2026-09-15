@@ -1,3 +1,9 @@
+//! ⏸️ **DORMENTE enquanto pintar achatar a arte** (ordem do dono, 2026-09-15): debaixo do pincel
+//! não há dobra, logo o mapa deste ficheiro degenera no afim do quad, **ao bit**. Tudo o que o
+//! cabeçalho abaixo afirma sobre seguir a arte dobrada está CERTO e hoje **não acontece** — o
+//! porquê, o custo de o manter vivo e o instrumento que ata esta nota ao achatamento estão no
+//! cabeçalho do [`crate::canvas_map`].
+//!
 //! **A grade do Grid Stamp na tela.**
 //!
 //! O método carimba no centro da célula de uma rede própria; sem desenhá-la, a regra de encaixe é uma
@@ -15,7 +21,6 @@
 //! numa janela de 1600 px, `MIN_CELL_SCREEN_PX = 3` limita cada eixo a ~533 linhas, e é o zoom que
 //! decide, como em todo DCC. Um teto em contagem faria a grade sumir por um motivo que o artista não
 //! consegue ver (quantas linhas há) em vez de um que ele vê (quão perto elas estão).
-
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
 use ph2d_host::WindowSize;

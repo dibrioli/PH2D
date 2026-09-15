@@ -1,6 +1,28 @@
 //! ⭐⭐⭐ **O MAPA imagem-px → ecrã que a ARTE DOBRADA manda** — a porta de quem desenha CHROME por
 //! cima do canvas do Painter.
 //!
+//! # ⏸️ **DORMENTE desde 2026-09-15 — e a decisão é do dono, não um acidente**
+//!
+//! ⛔⛔ **Enquanto pintar ACHATAR a arte, esta porta não tem sujeito.** Por ordem do dono
+//! (2026-09-15, [`ph2d_app_painter::skin_suspend`]) a sprite que o Painter edita não recebe malha,
+//! e **todo o chrome deste módulo volta ao afim do quad — byte a byte** (é o caminho medido e
+//! gateado por `a_segment_over_a_flat_quad_is_still_one_straight_line`).
+//!
+//! ⚠️⚠️ **Leia o resto deste cabeçalho com isso na mão:** tudo o que ele afirma sobre *«o chrome
+//! segue a arte dobrada»* está CERTO e hoje **não acontece**, porque debaixo do pincel não há
+//! dobra nenhuma. *Um doc que descreve um programa que não corre é a forma mais cara de mentira
+//! deste repo.*
+//!
+//! ⭐ **Por que fica, medido:** sem malha ela é **exactamente** o que restaria se fosse apagada, logo
+//! manter custa `0` em tempo de execução; apagar custaria os gates que PROVAM que o caminho recto é
+//! exacto, e uma semana no dia em que pintar sobre a dobra voltar. ⛔ E ela **não pode ser apagada
+//! por inteiro de qualquer forma**: a maquinaria por baixo (`ph2d_render::mesh_uv`,
+//! `drawn_instance_of`, `ph2d_sprite_screen::uv_sob_o_ponteiro`) serve a **Remoção de fundo**, que
+//! NÃO é achatada — o conta-gotas dela, o pincel de proteção, o *Add area* e a tinta da máscara.
+//!
+//! ⚠️ **A nota tem INSTRUMENTO**: o gate `the_dormant_door_says_so_and_the_note_dies_with_the_flattening`
+//! ata-a ao achatamento nas DUAS direcções — tirar o achatamento sem tirar esta nota reprova.
+//!
 //! ⛔⛔ **O ponteiro foi curado em 2026-09-14 e o chrome não** (medido 2026-09-15): a entrega do
 //! ponteiro passou a resolver o clique pela malha posada, e o editor de curva continuou a pintar os
 //! pontos de controlo pelo afim do **quad de repouso**. ⇒ o artista clicava num sítio e o ponto

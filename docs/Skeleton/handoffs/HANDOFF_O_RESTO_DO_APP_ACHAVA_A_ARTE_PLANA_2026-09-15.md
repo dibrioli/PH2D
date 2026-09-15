@@ -811,3 +811,54 @@ nunca subindo o número:
 argumentos (`"px_por_metro, achatada,"`) e a formatação partiu-a sem uma linha de comportamento
 mudar. Hoje ela mede a **propriedade** (a pergunta precede o produtor, e a resposta entra na
 chamada). *É a 2.ª vez nesta jornada que uma agulha mede o layout em vez da lei.*
+
+---
+
+## §16 — A DECISÃO SOBRE O QUE FAZER AO CHROME DORMENTE: **fica, marcado** (dono, 2026-09-15)
+
+Perguntado se dava para limpar *«aquela implementação de pintar na malha deformada»* sem risco, a
+resposta foi medida antes de ser dada — e a fronteira é nítida.
+
+### O que SAIRIA (só o Painter alcança, e ele nunca mais vê malha)
+
+| peça | linhas |
+|---|---:|
+| `canvas_map.rs` — a porta | `287` |
+| `the_canvas_map_lands_on_the_posed_art.rs` — os gates dela | `402` |
+| as conversões nos 9 desenhadores | `61` linhas tocadas |
+| o ponteiro do Painter + `architecture_the_canvas_pointer_asks_the_mesh.rs` | `~270` |
+| ≈ | **`~1 100`** |
+
+### ⛔ O que NÃO pode sair, e é o que decide a resposta
+
+A maquinaria por baixo serve a **Remoção de fundo**, cujo `ToolId` é `"bgremoval"` — logo ela **NÃO
+é achatada** pela suspensão do §15, que só testa `"painter"`. E ela usa tudo:
+
+| consumidor vivo | o que usa |
+|---|---|
+| conta-gotas · pincel de proteção · *Add area* | `ph2d_sprite_screen::uv_sob_o_ponteiro` → `mesh_uv` |
+| a tinta da máscara sobre arte dobrada | `ph2d_render::drawn_instance_of` + o passe de sprites |
+| a 2.ª mídia inteira | `attach_skin_meshes` |
+
+⭐ **E o anel do pincel dela não conta:** ele é ancorado no cursor e usa só a escala do afim — a
+mesma espécie do anel do Painter. *Nenhuma ferramenta viva desenha geometria que precise do mapa.*
+
+### ⭐ O facto que mudou a conta
+
+**Sem malha, a porta é EXACTAMENTE o que restaria se fosse apagada** — medido e gateado
+(`a_segment_over_a_flat_quad_is_still_one_straight_line`: sobre um afim o desvio é `0` e o `pedacos`
+devolve `1`). ⇒ limpar compra tempo de compilação e menos código para ler; **não compra correção nem
+velocidade**, e custa os gates que provam que o caminho recto é exacto.
+
+### A decisão e o que ela obriga
+
+**Fica, marcado.** A porta leva a declaração inteira no cabeçalho, e cada um dos **9** desenhadores
+leva a marca `⏸️ DORMENTE` no topo — porque cada um deles *afirma por escrito* que segue a arte
+dobrada, e hoje isso não acontece debaixo do pincel.
+
+⛔⛔ **E a marca tem INSTRUMENTO**, senão ela era a próxima mentira:
+`the_dormant_door_says_so_and_the_note_dies_with_the_flattening` ata a nota ao achatamento nas
+**duas** direcções — com achatamento a marca tem de estar lá; **sem** achatamento ela tem de SAIR.
+⚠️ O censo dos 9 é **DERIVADO** (varre a pasta, com piso de população), nunca uma lista escrita à
+mão — é a lição que o §12 desta mesma jornada pagou. **Prova de mutação:** tirar a marca de um
+desenhador acusa-o pelo nome; trocar a porta que achata pela irmã muda reprova a porta.

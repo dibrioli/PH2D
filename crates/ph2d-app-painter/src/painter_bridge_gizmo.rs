@@ -1,9 +1,14 @@
+//! ⏸️ **DORMENTE enquanto pintar achatar a arte** (ordem do dono, 2026-09-15): debaixo do pincel
+//! não há dobra, logo o mapa deste ficheiro degenera no afim do quad, **ao bit**. Tudo o que o
+//! cabeçalho abaixo afirma sobre seguir a arte dobrada está CERTO e hoje **não acontece** — o
+//! porquê, o custo de o manter vivo e o instrumento que ata esta nota ao achatamento estão no
+//! cabeçalho do [`crate::canvas_map`].
+//!
 //! Shared **Sprite-gizmo-style** painting for the Painter's on-canvas transform gizmos (the Curve
 //! whole-curve gizmo + the Stencil rect), so they read EXACTLY like the editor's Sprite transform gizmo
 //! — a theme `Selection` box outline + `Accent` rounded-square handles with a `BorderEmph` outline, the
 //! corners flipping to circles as the rotate cue — only a touch DARKER than the Sprite gizmo (Enio
 //! 2026-06-28). Pure draw; resolves the active theme's tokens (like `vector_selection_bridge`).
-
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_tool_painter::TransformGizmo;
 use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, RoundedRect, Scene, Stroke};

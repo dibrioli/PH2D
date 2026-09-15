@@ -1,3 +1,9 @@
+//! ⏸️ **DORMENTE enquanto pintar achatar a arte** (ordem do dono, 2026-09-15): debaixo do pincel
+//! não há dobra, logo o mapa deste ficheiro degenera no afim do quad, **ao bit**. Tudo o que o
+//! cabeçalho abaixo afirma sobre seguir a arte dobrada está CERTO e hoje **não acontece** — o
+//! porquê, o custo de o manter vivo e o instrumento que ata esta nota ao achatamento estão no
+//! cabeçalho do [`crate::canvas_map`].
+//!
 //! **Os gizmos das FORMAS de traço** — elipse · polígono · stencil —, partidos do
 //! `painter_bridge_overlays` pelo teto de LOC por ficheiro (2026-09-15).
 //!
@@ -12,7 +18,6 @@
 //! ⛔ **E a caixa fecha PELA PORTA** (`polyline(.., true)`): quem a desenha chama `close_path`, que
 //! liga o último canto ao primeiro **a direito** — sem isso três arestas seguem a arte e a quarta
 //! corta por cima dela, e as três primeiras convencem o olho.
-
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
 use ph2d_host::WindowSize;

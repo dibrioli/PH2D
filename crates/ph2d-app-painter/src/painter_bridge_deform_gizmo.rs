@@ -1,9 +1,14 @@
+//! ⏸️ **DORMENTE enquanto pintar achatar a arte** (ordem do dono, 2026-09-15): debaixo do pincel
+//! não há dobra, logo o mapa deste ficheiro degenera no afim do quad, **ao bit**. Tudo o que o
+//! cabeçalho abaixo afirma sobre seguir a arte dobrada está CERTO e hoje **não acontece** — o
+//! porquê, o custo de o manter vivo e o instrumento que ata esta nota ao achatamento estão no
+//! cabeçalho do [`crate::canvas_map`].
+//!
 //! **Deform Transform gizmo** rendering (Deform Wave 2). When the Painter is in Deform mode with the
 //! Transform temperament active, draws the whole-region bounding box: an oriented box with 8 scale squares
 //! (corners + edge mids) + a centre-move square. A square reads as a **circle** when the cursor is in its
 //! rotate ring (the rotate cue), exactly like the Sprite / selection gizmos. Reuses the shared
 //! [`super::painter_bridge_gizmo`] helpers + the sprite→screen affine.
-
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
 use ph2d_host::WindowSize;

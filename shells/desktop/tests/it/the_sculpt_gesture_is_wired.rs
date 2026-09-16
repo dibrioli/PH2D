@@ -937,6 +937,26 @@ fn every_verb_is_reachable_from_the_keyboard() {
         //
         // ⇒ a fila dos pretendentes ao `L` continua em **oito**.
         "SceneProject",
+        // ⭐⭐⭐ **O PINCEL DE PLANO, e ele está fora da fila por uma razão
+        // ARITMÉTICA e não de desenho: NÃO HÁ LETRA LIVRE.**
+        //
+        // ⚠️ **Medido, e é o número que decide:** `25` das `26` letras já são
+        // reclamadas por este módulo (só o `W` sobra, e ele é o painel de mundo
+        // do resto do app). Os dez dígitos estão tomados pelos dez primeiros
+        // verbos, e três deles são exactamente os que este pincel UNIFICA
+        // (`Flatten`, `Fill`, `Scrape`, nos dígitos `5`/`6`/`7`) — tirar-lhes o
+        // dígito quebraria a memória muscular de quem os usa hoje, e dá'-lo ao
+        // novo faria o mesmo atalho mudar de ferramenta debaixo da mão.
+        //
+        // ⛔ **E ele NÃO é da família dos outros oito da fila**, que ficam fora
+        // por serem inertes de fábrica ou de manutenção de malha: este é um
+        // pincel de FORMA, trabalha na configuração de fábrica, e é o que o dono
+        // pediu pelo nome. *O que o mantém sem tecla é só não haver tecla.*
+        //
+        // ⇒ a fila dos pretendentes passa de **oito** para **NOVE**, e a decisão
+        // que a esvazia é de produto: ou uma gramática nova (um modificador, um
+        // segundo toque), ou tirar um dígito a quem hoje o tem.
+        "Plane",
     ];
     let keys = function_body(&sculpt_src(), "key");
     // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**

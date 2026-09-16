@@ -648,3 +648,9 @@ pub enum Field {
 #[cfg(test)]
 #[path = "ref_mode_tests.rs"]
 mod tests;
+
+/// O CENSO de quem cai no slider cru — irmão do [`tests`], cortado por assunto
+/// quando o ficheiro dele passou o tecto de LOC.
+#[cfg(test)]
+#[path = "ref_mode_censo_tests.rs"]
+mod censo_tests;

@@ -40,6 +40,9 @@ pub use topology::TOPOLOGY;
 /// Os cinco números do pincel de TECIDO — ver o doc do módulo.
 #[path = "rows_cloth.rs"]
 mod cloth;
+/// Os três números do PINCEL DE PLANO — ver [`plano`].
+#[path = "rows_plano.rs"]
+mod plano;
 /// Os três números do pincel de POSE — ver [`pose`].
 #[path = "rows_pose.rs"]
 mod pose;
@@ -164,64 +167,10 @@ static BRUSH: &[Row] = &[
         level: UiLevel::Basic,
         place: Place::Knobs,
     },
-    // ⭐⭐⭐ **OS DOIS TECTOS DO PINCEL DE PLANO** — report do dono (2026-09-15):
-    // *«o Trim Brush… que faz o trim esfregando o pincel como massinha»*.
-    //
-    // ⚠️ **Eles são a ferramenta, e não uma afinação dela:** `1/0` apara, `0/1`
-    // enche, `1/1` achata — medido, `151`, `114` e `265 = 151 + 114` vértices.
-    // É por isso que os dois nascem no nível BÁSICO: esconder um deles seria
-    // esconder metade do pincel.
-    //
-    // ⚠️ **`0` apaga aquele lado inteiro**, e com os dois a zero o pincel fica
-    // inerte sem deixar de existir — o *nada* do controlo, alcançável de
-    // propósito.
-    Row {
-        label: "panel.sculpt3d.plano_altura",
-        slider: crate::ids::SCULPT3D_PLANO_ALTURA,
-        chip: crate::ids::SCULPT3D_PLANO_ALTURA_NUM,
-        min: 0.0,
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
-        decimals: 2,
-        get: |u| u.brush.plano_altura,
-        set: |u, v| u.brush.plano_altura = v,
-        show: e_pincel_de_plano,
-        level: UiLevel::Basic,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.plano_profundidade",
-        slider: crate::ids::SCULPT3D_PLANO_PROFUNDIDADE,
-        chip: crate::ids::SCULPT3D_PLANO_PROFUNDIDADE_NUM,
-        min: 0.0,
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
-        decimals: 2,
-        get: |u| u.brush.plano_profundidade,
-        set: |u, v| u.brush.plano_profundidade = v,
-        show: e_pincel_de_plano,
-        level: UiLevel::Basic,
-        place: Place::Knobs,
-    },
-    // ⚠️ **A EXTENSÃO com que o CENTRO do plano é lido**, em fracção do raio. A
-    // faixa `0..2` é facto de INTERFACE do alvo (espec §13), e o `0` **não é um
-    // desligar**: ele cai na fracção da normal, e a queda está provada por um
-    // par de fixturas (`amostragem/*`). ⛔ Nível avançado: ela muda o PLANO que
-    // o pincel ajusta, não o que ele faz com ele.
-    Row {
-        label: "panel.sculpt3d.plano_area",
-        slider: crate::ids::SCULPT3D_PLANO_AREA,
-        chip: crate::ids::SCULPT3D_PLANO_AREA_NUM,
-        min: 0.0,
-        max: 2.0,
-        step: 0.05, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
-        decimals: 2,
-        get: |u| u.brush.area_radius_frac,
-        set: |u, v| u.brush.area_radius_frac = v,
-        show: e_pincel_de_plano,
-        level: UiLevel::Pro,
-        place: Place::Knobs,
-    },
+    // ⚠️ **Os dois primeiros são a FERRAMENTA, não afinação** — ver [`plano`].
+    plano::PLANO_ALTURA,
+    plano::PLANO_PROFUNDIDADE,
+    plano::PLANO_AREA,
     // ⭐⭐ **A FOLGA DA PROJECÇÃO** (espec §6.3.4). ⛔ O rótulo diz «vão» e não
     // «distância mínima», e a escolha é MEDIDA: ela só é mínima no sentido de
     // AVANÇO — o porquê e as duas medições vivem no campo que ela escreve

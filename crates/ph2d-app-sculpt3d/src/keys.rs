@@ -59,11 +59,17 @@ pub fn key(
     // `Delete`), e nada obrigava as duas leituras a concordar. Agora é uma leitura só, e a
     // igualdade é por construção.
     factos: &keys_delete::DeleteFacts,
-    // `App::sculpt3d_keys_live()` — *o barro está na tela?*, a guarda da camada de baixo.
-    keys_live: bool,
+    // `App::sculpt3d_keys_dead_reason()` — POR QUE as teclas da escultura estão mortas, vazia com
+    // elas vivas. ⚠️ A razão e não o `bool`: a shell tinha as duas e o `Ctrl+Z` recusado precisa
+    // da razão para a dizer (report de 2026-09-16, [`keys_delete::queixa_do_desfazer`]).
+    morta: &str,
 ) -> bool {
     use winit::keyboard::KeyCode as K;
     let KeyPress { code, ctrl, shift } = press;
+    let keys_live = morta.is_empty();
+    if let Some(queixa) = keys_delete::queixa_do_desfazer(press, factos.clay_on_screen, morta) {
+        eprintln!("{queixa}");
+    }
     // ⚠️ **UM CAMPO FOCADO É DONO DO TECLADO — e esta é a metade GERAL da cura.**
     //
     // Vale para as DUAS camadas abaixo, e por isso mora aqui em cima: enquanto ela

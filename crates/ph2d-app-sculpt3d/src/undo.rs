@@ -410,6 +410,12 @@ impl Sculpt3dScene {
 #[path = "undo_tests.rs"]
 mod tests;
 
+/// **O traço do pincel de plano desfaz e refaz** — ver [`plano_tests`]. Irmão dos [`tests`],
+/// cortado pelo tecto de LOC e pelo assunto (o report de 2026-09-16).
+#[cfg(test)]
+#[path = "undo_plano_tests.rs"]
+mod plano_tests;
+
 /// **Os gates da cadeia GLOBAL, pelo gesto** — ver [`global_retopo`]. Irmão dos
 /// [`tests`], e o corte foi forçado pela HR-18 mais o assunto: lá o undo de um
 /// traço, aqui o botão do ADR-0162.

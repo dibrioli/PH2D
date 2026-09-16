@@ -352,6 +352,10 @@ pub mod keys_view;
 #[path = "trim_gesto.rs"]
 pub(crate) mod trim_gesto;
 
+/// ⭐ **O roteiro e a leitura da SONDA DO UNDO** (report de 2026-09-16) — o executor vive na shell.
+/// Ver [`sonda_undo`].
+pub mod sonda_undo;
+
 /// A cor do anel do corte em curso.
 pub const TRIM_RING_RGBA: [f32; 4] = [0.98, 0.78, 0.25, 0.95];
 

@@ -89,7 +89,7 @@ const MAX_EXTRACT_SMOOTH: f32 = 8.0; // LITERAL-PX-OK: contagem de passadas MEDI
 /// pelo tecto de LOC e o cabeçalho dele diz porquê.
 #[path = "rows_show.rs"]
 mod show;
-pub(super) use show::{always, e_pincel_de_plano, shapes_the_distance, suaviza_o_traco, tem_raio};
+pub(super) use show::{always, shapes_the_distance, suaviza_o_traco, tem_raio};
 
 /// O pincel: o que se ajusta antes de encostar no barro.
 static BRUSH: &[Row] = &[

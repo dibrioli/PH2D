@@ -83,9 +83,73 @@ pub(super) const fn claim_delete(f: &DeleteFacts) -> DeleteClaim {
     DeleteClaim::Ours
 }
 
+/// ⛔⛔ **O `Ctrl+Z` RECUSADO DIZ PORQUÊ** — a lei do `Delete`, estendida ao desfazer: *uma tecla
+/// que não faz nada e não diz nada é indistinguível de uma tecla que não chegou*.
+///
+/// Report do Enio (2026-09-16, pincel de plano): *«smoke ok. Mas sem undo/redo.»* O
+/// `~/.ph2d/layout.txt` dele reactivava a ferramenta vectorial no arranque, o ponteiro ia para a
+/// escultura e **as teclas morriam todas**. O defeito era mudo do lado que ele via — o esfregão
+/// funcionava — e a causa só apareceu quando uma sonda imprimiu esta razão.
+///
+/// `morta` é a razão que a shell dá para as teclas estarem mortas (vazia com elas vivas). ⚠️ **Só
+/// fala com o barro na tela**: sem ele o `Ctrl+Z` é de outro módulo, e a queixa seria ruído.
+#[must_use]
+pub fn queixa_do_desfazer(
+    press: super::KeyPress,
+    clay_on_screen: bool,
+    morta: &str,
+) -> Option<String> {
+    let desfazer = press.code == winit::keyboard::KeyCode::KeyZ && press.ctrl;
+    (desfazer && clay_on_screen && !morta.is_empty()).then(|| {
+        let tecla = if press.shift {
+            "Ctrl+Shift+Z"
+        } else {
+            "Ctrl+Z"
+        };
+        format!("[sculpt3d] o {tecla} NAO foi para a escultura: {morta}")
+    })
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{DeleteClaim as C, DeleteFacts, claim_delete};
+    use super::{DeleteClaim as C, DeleteFacts, claim_delete, queixa_do_desfazer};
+
+    /// ⭐⭐ **GATE — o `Ctrl+Z` morto com o barro na tela DIZ a razão; o vivo e o alheio calam-se.**
+    ///
+    /// ⚠️ As três metades reprovam por motivos diferentes: a queixa nasce (e nomeia a tecla e a
+    /// razão) · teclas vivas não se queixam · sem barro o desfazer é de outro módulo.
+    #[test]
+    fn o_ctrl_z_recusado_diz_porque() {
+        let z = |shift| super::super::KeyPress {
+            code: winit::keyboard::KeyCode::KeyZ,
+            ctrl: true,
+            shift,
+        };
+        let razao = "a ferramenta Motion/Vector esta' EM MAOS";
+        let q = queixa_do_desfazer(z(true), true, razao)
+            .expect("⛔ o Ctrl+Shift+Z morto voltou a ser MUDO");
+        assert!(q.contains("Ctrl+Shift+Z") && q.contains(razao), "{q}");
+        assert!(queixa_do_desfazer(z(false), true, razao).is_some_and(|q| q.contains("o Ctrl+Z ")));
+        assert_eq!(
+            queixa_do_desfazer(z(false), true, ""),
+            None,
+            "teclas vivas nao se queixam"
+        );
+        assert_eq!(
+            queixa_do_desfazer(z(false), false, razao),
+            None,
+            "sem barro o Ctrl+Z e' alheio"
+        );
+        let sem_ctrl = super::super::KeyPress {
+            ctrl: false,
+            ..z(false)
+        };
+        assert_eq!(
+            queixa_do_desfazer(sem_ctrl, true, razao),
+            None,
+            "o Z nu e' um verbo, nao o desfazer"
+        );
+    }
 
     /// O caso do artista a esculpir: barro na tela, ponteiro no canvas, nada focado.
     const fn esculpindo() -> DeleteFacts {

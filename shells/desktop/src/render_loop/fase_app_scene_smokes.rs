@@ -12,6 +12,8 @@ impl crate::App {
         // arranjo e cada hover voltaria a pagar a booleana.
         self.build_smoke();
         self.field3d_undo_probe();
+        #[cfg(feature = "sculpt3d")]
+        self.sculpt3d_undo_probe();
         self.stack_smoke();
         self.with_motion_scene(ph2d_app_motion::motion_path_smoke::motion_path_smoke);
         self.harmony_smoke();

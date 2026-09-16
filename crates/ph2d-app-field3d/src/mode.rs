@@ -30,6 +30,24 @@
 //! | uma **ferramenta** é pegada no rail, ou o **barro** aparece na tela | o painel MODEL **fecha** |
 //! | o pill **MODEL** é aberto | o **barro** sai da tela (pela porta do próprio módulo de escultura) |
 //! | o pill **MODEL** é aberto | a **ferramenta em mãos** volta à de omissão *(2026-08-31)* |
+//! | a **escultura** toma um gesto do canvas | a **ferramenta em mãos** volta à de omissão *(2026-09-16)* |
+//!
+//! # ⛔⛔ A quarta linha faltava, e o defeito era MUDO de um lado só
+//!
+//! Report do Enio (2026-09-16), sobre o pincel de plano: *«smoke ok. Mas sem undo/redo.»* ⭐ **Não era
+//! do pincel, e não era do undo.** O `~/.ph2d/layout.txt` do dono guardava `active=vector` e o
+//! arranque **reactivava a ferramenta vectorial** no primeiro quadro (medido: `move` no quadro 0,
+//! `vector` no 1). Com o barro na tela, o **ponteiro** ia para a escultura — ele pergunta pelo barro
+//! e não pela ferramenta, por isso esfregar funcionava — e as **teclas** morriam todas, porque elas
+//! perguntam *«uma ferramenta Motion/Vector está em mãos?»*. O `Ctrl+Z` estava entre elas.
+//!
+//! ⚠️ **É a assimetria que o cabeçalho acima já nomeia** (*«o ponteiro já cedia, o teclado não»*),
+//! outra vez, com a mão ao contrário: aqui o ponteiro TOMAVA o canvas e ninguém largava a
+//! ferramenta. ⇒ *um gesto da escultura no canvas é tomar o canvas*, e tomar liberta quem o tinha.
+//!
+//! ⚠️ **A borda é o GESTO e não a entrada no modo**, e a razão é MEDIDA: com a cena de smoke o barro
+//! aparece no quadro 0 e a ferramenta vectorial é reactivada no quadro 1 — uma lei presa à entrada
+//! soltaria a ferramenta **antes** de ela chegar, e as teclas morriam na mesma.
 //!
 //! # ⛔⛔ A terceira linha faltava, e a tabela já se dizia «simétrica»
 //!
@@ -117,6 +135,24 @@ pub fn note_owner(now: Owner) -> bool {
 /// ⚠️ O `clay` viaja de [`Owner`] para [`Owner`] intacto: largar a ferramenta não diz nada sobre
 /// o barro — quem trata dele é a linha de cima da tabela, pela porta do módulo de escultura.
 pub fn model_takes_the_canvas(now: &Owner, neutral: &ToolId) -> bool {
+    larga_para_a_neutra(now, neutral)
+}
+
+/// ⭐⭐ **A ESCULTURA TOMOU O CANVAS: a ferramenta em mãos cede?** — a quarta linha da tabela.
+///
+/// ⚠️ **A MESMA lei do [`model_takes_the_canvas`], com o nome de quem toma**, e o corpo é
+/// partilhado por uma porta: duas cópias do re-baseline divergiriam no dia em que o `Owner`
+/// ganhasse um campo, e a que ficasse para trás seria a que se morde a si própria.
+///
+/// ⚠️ Quem a chama é o gesto da escultura no canvas (o pen-down que a família CONSUMIU), e não a
+/// entrada no modo — ver o cabeçalho, onde a ordem medida está escrita.
+pub fn clay_takes_the_canvas(now: &Owner, neutral: &ToolId) -> bool {
+    larga_para_a_neutra(now, neutral)
+}
+
+/// O corpo das duas: larga a ferramenta em mãos para a neutra **e regista o dono novo**, num acto
+/// só — ver o doc do [`model_takes_the_canvas`] para o ciclo que a separação criaria.
+fn larga_para_a_neutra(now: &Owner, neutral: &ToolId) -> bool {
     if now.tool.as_ref() == Some(neutral) {
         return false;
     }

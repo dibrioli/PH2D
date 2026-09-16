@@ -31,6 +31,10 @@
 //! HOWTO (*«uma fronteira nova põe um elo novo na corrente que nenhum gate mede»*), e é por
 //! isso que ela tem um: `the_host_never_reads_the_borrowed_scene`.
 
+/// O executor da sonda do undo da escultura — aqui porque o `main.rs` está no tecto de LOC.
+#[path = "sculpt3d_undo_probe.rs"]
+mod undo_probe;
+
 use crate::app_state::{App, AppGfx};
 use ph2d_i18n::tr;
 
@@ -76,9 +80,39 @@ impl App {
 
     /// O botão apertou. **Empresta a cena** — ver o cabeçalho.
     pub(crate) fn sculpt3d_pointer_down(&mut self, button: winit::event::MouseButton) -> bool {
-        self.com_a_cena_emprestada(|host, scene| {
+        let tomou = self.com_a_cena_emprestada(|host, scene| {
             ph2d_app_sculpt3d::input_down::pointer_down(host, scene, button)
-        })
+        });
+        if tomou {
+            self.a_escultura_toma_o_canvas();
+        }
+        tomou
+    }
+
+    /// ⭐⭐ **Um gesto da escultura no canvas LARGA a ferramenta em mãos** — a 4.ª linha da tabela
+    /// do dono do canvas ([`ph2d_app_field3d::mode`], com o report de 2026-09-16 e a medição).
+    /// ⚠️ Só com o barro na tela: um aperto sem barro (a costura das vistas) não é escultura.
+    fn a_escultura_toma_o_canvas(&mut self) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let clay = gfx
+            .sculpt3d
+            .as_ref()
+            .is_some_and(ph2d_app_sculpt3d::Sculpt3dScene::clay_on_screen);
+        let Some(neutral) = gfx.tools.default_tool_id() else {
+            return;
+        };
+        let owner = ph2d_app_field3d::mode::Owner {
+            tool: gfx.tools.active().map(ph2d_editor_core::Tool::id),
+            clay,
+        };
+        if clay && ph2d_app_field3d::mode::clay_takes_the_canvas(&owner, &neutral) {
+            gfx.tools.set_active(&neutral);
+            gfx.toasts
+                .push(ph2d_editor_core::Toast::info("Sculpting took the canvas"));
+            self.title_dirty = true;
+        }
     }
 
     /// ⭐⭐ **O EMPRÉSTIMO, num sítio só.**
@@ -127,7 +161,8 @@ impl App {
             vector_has_selection: self.vec.pen.selected_vert().is_some()
                 || !self.vec.pen.selected_paths().is_empty(),
         };
-        let keys_live = self.sculpt3d_keys_live();
+        // ⚠️ A RAZÃO e não o `bool`: com ela a família diz porque recusou o `Ctrl+Z` (16/09).
+        let morta = self.sculpt3d_keys_dead_reason();
         let App {
             gfx, sculpt3d_req, ..
         } = self;
@@ -143,7 +178,7 @@ impl App {
             gfx.hero_screen.as_mut(),
             ph2d_app_sculpt3d::keys::KeyPress { code, ctrl, shift },
             &factos,
-            keys_live,
+            morta,
         )
     }
 

@@ -529,3 +529,59 @@ fn the_sculpt_host_refuses_without_a_scene() {
         );
     }
 }
+
+/// ⭐⭐⭐ **UM GESTO DA ESCULTURA NO CANVAS LARGA A FERRAMENTA EM MÃOS** — o elo de SHELL da 4.ª
+/// linha da tabela do dono do canvas (`ph2d_app_field3d::mode::clay_takes_the_canvas`, que tem os
+/// gates da lei do lado de lá).
+///
+/// Report do Enio (2026-09-16, pincel de plano): *«smoke ok. Mas sem undo/redo.»* O
+/// `~/.ph2d/layout.txt` dele reactivava a ferramenta vectorial no arranque: o ponteiro ia para a
+/// escultura e as teclas morriam todas, o `Ctrl+Z` incluído. Medido na app real pela
+/// [`crate::sonda_undo`].
+///
+/// Três metades, cada uma com a sua mutação: o pen-down chama a soltura **só depois** de a
+/// família tomar o aperto (⛔ antes, um clique que ela recusa largaria a ferramenta que o artista
+/// acabou de pegar) · a soltura passa pela LEI (que re-baseia o dono) e só com o barro na tela ·
+/// o teclado recebe a RAZÃO das teclas mortas, sem a qual o `Ctrl+Z` recusado volta a ser mudo
+/// (a queixa é pura e tem gate em `keys_delete`).
+#[test]
+fn a_sculpt_gesture_releases_the_tool_in_hand() {
+    let host = code_only(SCULPT_HOST);
+
+    let pd = squeeze(fn_body(&host, "sculpt3d_pointer_down").expect("o pen-down da escultura"));
+    let familia = pd
+        .find("input_down::pointer_down")
+        .expect("o pen-down deixou de chamar a porta da familia");
+    let larga = pd
+        .find("self.a_escultura_toma_o_canvas()")
+        .expect("⛔ o pen-down deixou de largar a ferramenta — o report de 16/09 volta");
+    assert!(
+        familia < larga && pd[familia..larga].contains("iftomou{"),
+        "a ferramenta e' largada sem a familia ter TOMADO o aperto"
+    );
+
+    let solta = squeeze(fn_body(&host, "a_escultura_toma_o_canvas").expect("a soltura"));
+    let guarda = solta
+        .find("ifclay&&")
+        .expect("⛔ a soltura deixou de exigir o barro na tela");
+    let lei = solta
+        .find("ph2d_app_field3d::mode::clay_takes_the_canvas(")
+        .expect("⛔ a shell larga a ferramenta sem a lei — o quadro seguinte le a propria mao como «outro tomou o canvas»");
+    assert!(guarda < lei, "o barro deixou de guardar a lei");
+    assert!(
+        solta[lei..].contains("tools.set_active(&neutral)"),
+        "a lei decidiu largar e a shell nao largou"
+    );
+
+    let tecla = squeeze(fn_body(&host, "sculpt3d_key").expect("o teclado da escultura"));
+    let razao = tecla
+        .find("letmorta=self.sculpt3d_keys_dead_reason();")
+        .expect("⛔ a shell deixou de colher a razao das teclas mortas");
+    let chamada = tecla
+        .find("ph2d_app_sculpt3d::keys::key(")
+        .expect("o invólucro deixou de chamar o teclado da familia");
+    assert!(
+        razao < chamada && tecla[chamada..].contains("morta,"),
+        "⛔ a razao nao chega a familia — o Ctrl+Z recusado voltou a ser MUDO"
+    );
+}

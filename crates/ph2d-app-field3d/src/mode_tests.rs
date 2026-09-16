@@ -1,6 +1,8 @@
 //! Os gates de **quem é dono do canvas** (W40).
 
-use super::{Owner, forget_owner, model_takes_the_canvas, note_owner, took_the_canvas};
+use super::{
+    Owner, clay_takes_the_canvas, forget_owner, model_takes_the_canvas, note_owner, took_the_canvas,
+};
 use ph2d_editor_core::ToolId;
 
 fn tool(name: &str) -> Owner {
@@ -374,4 +376,59 @@ fn releasing_the_tool_says_nothing_about_the_clay() {
         }),
         "o re-baseline esqueceu o barro e o quadro seguinte leu-o como se ele acabasse de entrar"
     );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐ **A QUARTA LINHA DA TABELA** — um gesto da ESCULTURA larga a ferramenta em mãos (2026-09-16).
+// Report do Enio: *«smoke ok. Mas sem undo/redo.»*
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// ⭐ **Com a ferramenta vectorial em mãos, um gesto da escultura toma-a** — e é isso que devolve o
+/// teclado (o `Ctrl+Z` incluído) a quem está de facto a trabalhar no canvas.
+#[test]
+fn a_sculpt_gesture_releases_the_tool_that_claims_the_keys() {
+    forget_owner();
+    let now = Owner {
+        tool: Some(ToolId::new("vector")),
+        clay: true,
+    };
+    assert!(
+        clay_takes_the_canvas(&now, &neutral()),
+        "a escultura tomou o canvas com o Vector em mãos e a ferramenta nao cedeu — as teclas da \
+         escultura continuam mortas, que e' o report de 2026-09-16"
+    );
+}
+
+/// ⛔ **E a troca NÃO se lê como «outro tomou o canvas»**, pela mesma razão da terceira linha — e
+/// com o barro na tela, que é a configuração em que esta linha vive.
+#[test]
+fn and_the_sculpt_release_is_never_read_back_as_someone_taking_the_canvas() {
+    forget_owner();
+    let antes = Owner {
+        tool: Some(ToolId::new("vector")),
+        clay: true,
+    };
+    assert!(note_owner(antes.clone()));
+    assert!(clay_takes_the_canvas(&antes, &neutral()));
+    assert!(
+        !note_owner(Owner {
+            tool: Some(neutral()),
+            clay: true,
+        }),
+        "a troca feita PELA escultura foi lida como um terceiro a tomar o canvas"
+    );
+}
+
+/// ⛔ **Com a neutra em mãos, um gesto da escultura não mexe em nada** — senão cada esfregão pagava
+/// um `set_active` e um aviso por uma troca que não acontece.
+#[test]
+fn a_sculpt_gesture_with_an_empty_hand_changes_nothing() {
+    forget_owner();
+    assert!(!clay_takes_the_canvas(
+        &Owner {
+            tool: Some(neutral()),
+            clay: true,
+        },
+        &neutral()
+    ));
 }

@@ -308,7 +308,14 @@ impl Verb {
     /// quando o atributo fica órfão.*
     #[must_use]
     pub fn sem_lei_por_vertice(self) -> bool {
-        matches!(self, Self::Density)
+        // ⚠️ **O BOX TRIM entra por uma razão MAIS FORTE que a da densidade:**
+        // ela tem o caminho do carimbo e só não escreve posição; ele não tem
+        // caminho nenhum — o gesto dele é interceptado antes de haver dab, e o
+        // que muda a peça é uma booleana sobre a malha inteira, no pen-up.
+        // ⇒ ele herda de graça `writes_through_applicator = false`,
+        // `accumulates = false` e `a_forca_chega_ao_barro = false`, que são
+        // exactamente as três respostas certas.
+        matches!(self, Self::Density | Self::BoxTrim)
     }
 
     /// **O PASSE DE AUTO-SUAVIZAÇÃO CHEGA AO BARRO DESTE VERBO?**
@@ -353,7 +360,13 @@ impl Verb {
     /// própria região nem tem passe próprio — ele não tem região nenhuma.*
     #[must_use]
     pub fn o_auto_smooth_chega(self) -> bool {
-        !matches!(self, Self::Cloth | Self::Boundary | Self::Density)
+        // ⚠️ O Box Trim entra pela razão da densidade levada ao extremo: o
+        // passe de auto-suavização corre **depois** do laço por-vértice, e este
+        // verbo não tem laço nenhum.
+        !matches!(
+            self,
+            Self::Cloth | Self::Boundary | Self::Density | Self::BoxTrim
+        )
     }
 
     /// ⭐⭐ **O `Strength` CHEGA AO BARRO DESTE VERBO?** — a porta que o painel
@@ -376,6 +389,25 @@ impl Verb {
     #[must_use]
     pub fn a_forca_chega_ao_barro(self) -> bool {
         !self.sem_lei_por_vertice()
+    }
+
+    /// ⭐⭐ **O RAIO DO PINCEL CHEGA AO BARRO DESTE VERBO?** — a porta que o
+    /// painel consulta antes de pintar a pista do raio.
+    ///
+    /// ⛔ **Só o [`Self::BoxTrim`] responde `false`, e ele é o primeiro verbo
+    /// desta casa sem raio nenhum:** o que delimita o efeito dele é a FORMA que
+    /// a mão desenha, não um círculo à volta do cursor. ⚠️ E o
+    /// [`Self::Density`] responde **`true`** — *ele não move um vértice e o
+    /// raio dele decide ONDE a malha afina*, que é a distinção que uma
+    /// derivação de [`Self::sem_lei_por_vertice`] apagaria.
+    ///
+    /// ⚠️ **Quem o encontrou foi o censo dos knobs mortos**, na primeira corrida
+    /// com o verbo novo: `("Box Trim", "panel.sculpt3d.radius")`. *Um controlo
+    /// que o artista arrasta e não faz nada é a espécie que ele reporta como
+    /// «não vejo efeito».*
+    #[must_use]
+    pub fn o_raio_chega_ao_barro(self) -> bool {
+        !matches!(self, Self::BoxTrim)
     }
 
     /// **ESTE VERBO PRECISA DE UM BORDO ABERTO?**
@@ -509,6 +541,11 @@ impl Verb {
     /// vizinhas só por estarem na mesma fileira.*
     #[must_use]
     pub fn a_lei_le_a_distancia_ao_cursor(self) -> bool {
-        !matches!(self, Self::Pose | Self::Boundary | Self::Density)
+        // ⚠️ E o Box Trim não tem sequer um cursor a que medir distância: o
+        // que ele lê é uma FORMA de ecrã.
+        !matches!(
+            self,
+            Self::Pose | Self::Boundary | Self::Density | Self::BoxTrim
+        )
     }
 }

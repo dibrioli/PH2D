@@ -48,10 +48,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Not used by Density — it changes topology, not vertex positions"
         }
         "panel.sculpt3d.falloff_inert.pose" => "Only used by Twist, and only with Segments above 1",
+        "panel.sculpt3d.falloff_inert.trim" => "Not used: the cut is bounded by the shape you draw",
         // ⚠️ Os rótulos do alvo, sem tradução: *Deformation* e *Simulation
         // Area* são o que o painel dele diz (espec §8.4), e um artista que vem
         // de lá procura essas duas palavras.
         "panel.sculpt3d.smear_mode" => "Deformation",
+        "panel.sculpt3d.trim_forma" => "Shape",
+        "panel.sculpt3d.trim_smooth" => "Smooth Stroke",
         "panel.sculpt3d.project_mode" => "Ray Direction",
         "panel.sculpt3d.project_bidir" => "Search Both Ways",
         "panel.sculpt3d.project_min_dist" => "Gap",

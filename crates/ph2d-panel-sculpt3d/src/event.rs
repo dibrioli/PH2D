@@ -390,6 +390,11 @@ fn group_chip_ui(
         // ONDE o esfregão empurra é uma escolha sobre o pincel que já está na
         // mão, não a troca dele.
         ui.brush.smear_mode = ph2d_sculpt3d::SmearMode::ALL[i];
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_TRIM_FORMA, id) {
+        // ⚠️ **Sem re-armar nada**, pela mesma razão dos irmãos: escolher QUE
+        // FORMA o corte desenha é uma escolha sobre a ferramenta que já está na
+        // mão, não a troca dela.
+        ui.brush.trim_forma = ph2d_sculpt3d::TrimForma::ALL[i];
     } else if let Some(i) = index_of(&crate::ids::SCULPT3D_PROJECT_MODE, id) {
         // ⚠️ **Sem re-armar nada**, pela mesma razão dos irmãos: escolher CONTRA
         // QUE DIRECÇÃO o raio mede é uma escolha sobre o pincel que já está na

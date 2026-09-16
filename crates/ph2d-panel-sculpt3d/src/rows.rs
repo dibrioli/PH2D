@@ -86,7 +86,7 @@ const MAX_EXTRACT_SMOOTH: f32 = 8.0; // LITERAL-PX-OK: contagem de passadas MEDI
 /// pelo tecto de LOC e o cabeçalho dele diz porquê.
 #[path = "rows_show.rs"]
 mod show;
-pub(super) use show::{always, shapes_the_distance};
+pub(super) use show::{always, shapes_the_distance, suaviza_o_traco, tem_raio};
 
 /// O pincel: o que se ajusta antes de encostar no barro.
 static BRUSH: &[Row] = &[
@@ -100,7 +100,9 @@ static BRUSH: &[Row] = &[
         decimals: 0,
         get: |u| u.radius_px,
         set: |u, v| u.radius_px = v,
-        show: always,
+        // ⛔ **O Box Trim não tem raio** — o que delimita o efeito dele é a
+        // FORMA que a mão desenha. Quem o achou foi o censo dos knobs mortos.
+        show: tem_raio,
         level: UiLevel::Basic,
         place: Place::Knobs,
     },
@@ -137,6 +139,28 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.density_detail,
         set: |u, v| u.brush.density_detail = v,
         show: |u| u.brush.offers_density_controls(),
+        level: UiLevel::Basic,
+        place: Place::Knobs,
+    },
+    // ⭐⭐ **A SUAVIZAÇÃO DO TRAÇO DO LAÇO** — ordem do dono (2026-09-15): *«Em
+    // laço um parâmetro para suavizar o traço»*.
+    //
+    // ⚠️ **`0` é o traço CRU, byte-idêntico** — a lei ([`ph2d_trim::suaviza`])
+    // empresta o anel em vez de o copiar, e há gate. ⛔ E ela só é pintada com
+    // o LAÇO na mão: a caixa e o círculo saem de dois pontos, e uma pista que
+    // suavizasse dois pontos era o controlo morto que esta casa varre a cada
+    // wave.
+    Row {
+        label: "panel.sculpt3d.trim_smooth",
+        slider: crate::ids::SCULPT3D_TRIM_SMOOTH,
+        chip: crate::ids::SCULPT3D_TRIM_SMOOTH_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
+        decimals: 2,
+        get: |u| u.brush.trim_suavizacao,
+        set: |u, v| u.brush.trim_suavizacao = v,
+        show: suaviza_o_traco,
         level: UiLevel::Basic,
         place: Place::Knobs,
     },

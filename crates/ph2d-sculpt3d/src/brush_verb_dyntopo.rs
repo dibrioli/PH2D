@@ -192,6 +192,13 @@ impl Verb {
             // ⚠️ Os ancorados que sobram (`Pose`, `Cloth`) continuam a **não**
             // alcançar a porta, e esse `false` é o estado actual, não uma
             // resposta.
+            // ⛔⛔ **O BOX TRIM não mexe na topologia POR DAB — ele não tem
+            // dab.** Ele muda a malha inteira de uma vez, na booleana do
+            // pen-up, e pôr os motores de refino a correr sobre um gesto que
+            // não carimba seria trabalho sobre a peça que o artista não pediu.
+            // ⚠️ E ele cai no default `!anchors()`, que responderia **`true`** —
+            // é por isso que o braço é explícito.
+            Self::BoxTrim => false,
             _ => !self.anchors(),
         }
     }
@@ -224,7 +231,21 @@ impl Verb {
     /// *Quem corre sem o interruptor herda o trabalho que ele fazia.*
     #[must_use]
     pub fn corre_sem_o_interruptor(self) -> bool {
-        self.sem_lei_por_vertice()
+        // ⛔⛔ **ELA DERIVAVA DA `sem_lei_por_vertice`, E A COINCIDÊNCIA
+        // QUEBROU** (2026-09-15, com o Box Trim): enquanto a densidade era o
+        // único verbo sem lei por-vértice, as duas perguntas tinham a mesma
+        // resposta **por acaso**. São perguntas diferentes — *«este verbo tem
+        // lei por-vértice?»* e *«o passe de topologia corre para ele mesmo com
+        // o interruptor desligado?»* —, e o Box Trim responde `true` à primeira
+        // e **`false`** à segunda: ele muda a malha por uma BOOLEANA, não pelos
+        // motores de refino, e a triangulação que este caminho herdaria (ver o
+        // doc acima) é trabalho que a porta do corte já faz sozinha.
+        //
+        // ⚠️ É a mesma armadilha que este módulo já pagou três vezes: *duas
+        // respostas à mesma pergunta divergem no dia do terceiro membro*, e
+        // aqui foi ao contrário — uma resposta a servir duas perguntas, que
+        // diverge no dia do SEGUNDO membro.
+        matches!(self, Self::Density)
     }
 
     /// **Este verbo REFINA a malha em Dynamic Topology?**
@@ -373,9 +394,19 @@ mod dyntopo_tests {
     fn cada_desvio_do_comportamento_de_hoje_tem_proveniencia() {
         /// `(verbo, refina?, de onde veio)` — as células que se afastam do que
         /// o produto fazia antes do estudo.
-        const DESVIOS: [(&str, bool, &str); 10] = [
+        const DESVIOS: [(&str, bool, &str); 11] = [
             // ⭐⭐ **AS DUAS REFERENCIAS CONCORDAM** — a livre (MIT, lida) e a
             // medida (corrida sem interface pela janela E).
+            // ⛔⛔ **NENHUMA referencia responde por este, e a ausencia e' a
+            // resposta: ele nao e' um pincel.** O Box Trim nao carimba barro --
+            // ele intercepta o arrasto e muda a malha inteira numa booleana, no
+            // pen-up. Os motores de refino correm POR DAB, e nao ha' dab.
+            // ⚠️ Ele cai no default `!anchors()`, que responderia `true`.
+            (
+                "Box Trim",
+                false,
+                "dominio: nao ha' dab (o corte e' uma booleana no pen-up)",
+            ),
             ("Smooth", false, "as DUAS: nao mexe (medida: 441 -> 441)"),
             ("Snake Hook", true, "as DUAS: mexe (medida: 441 -> 2 723)"),
             // ⭐ **DOMINIO** — curado um dia antes do estudo, e a referencia

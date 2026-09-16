@@ -573,11 +573,30 @@ pub enum Verb {
     ///
     /// A espec é `docs/3D/cleanroom/SPEC_unblocked_brushes.md` §6.
     SceneProject,
+    /// ⭐⭐⭐ **BOX TRIM — o corte por uma forma desenhada** (ordem do dono,
+    /// 2026-09-15: *«Crie o botão nos tools para box trim»*).
+    ///
+    /// ⚠️⚠️ **Ele NÃO tem lei por-vértice, e não é «mais um pincel sem
+    /// aplicador»:** os outros verbos desta casa carimbam barro, e este
+    /// INTERCEPTA o arrasto inteiro — o que o gesto entrega é uma forma de ecrã,
+    /// e o que muda a peça é uma booleana sobre a malha toda, no LARGAR.
+    ///
+    /// ⭐ **Porque é um VERBO e não um botão ao lado da fileira:** um verbo é
+    /// **exclusivo** com os outros por construção — escolher um pincel desarma o
+    /// corte e escolher o corte larga o pincel, sem uma única regra escrita à
+    /// mão. Um botão separado precisaria dessas duas regras, e elas são
+    /// exactamente o tipo de coisa que apodrece (o módulo já pagou isso com o
+    /// `aim` e a linha da Hierarquia a disputarem a peça activa).
+    ///
+    /// ⚠️ **Ele herda, do [`Self::Density`], o caminho dos verbos sem lei
+    /// por-vértice** — os censos filtram por [`Self::writes_through_applicator`],
+    /// e o dab nunca corre para ele.
+    BoxTrim,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 32] = [
+    pub const ALL: [Self; 33] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -610,46 +629,8 @@ impl Verb {
         Self::EraseMultires,
         Self::SmearMultires,
         Self::SceneProject,
+        Self::BoxTrim,
     ];
-
-    /// O nome que a UI mostra.
-    #[must_use]
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Cloth => "Cloth",
-            Self::Draw => "Draw",
-            Self::Inflate => "Inflate",
-            Self::Smooth => "Smooth",
-            Self::Sharpen => "Sharpen",
-            Self::Flatten => "Flatten",
-            Self::Fill => "Fill",
-            Self::Scrape => "Scrape",
-            Self::Clay => "Clay",
-            Self::Pinch => "Pinch",
-            Self::Magnify => "Magnify",
-            Self::Crease => "Crease",
-            Self::Blob => "Blob",
-            Self::Mask => "Mask",
-            Self::Move => "Move / Grab",
-            Self::SnakeHook => "Snake Hook",
-            Self::Twist => "Twist",
-            Self::LocalScale => "Local Scale",
-            Self::ClayStrips => "Clay Strips",
-            Self::ClayThumb => "Clay Thumb",
-            Self::MultiplaneScrape => "Multiplane Scrape",
-            Self::SlideRelax => "Slide Relax",
-            Self::SurfaceSmooth => "Surface Smooth",
-            Self::Layer => "Layer",
-            Self::Pose => "Pose",
-            Self::Boundary => "Boundary",
-            Self::Density => "Density",
-            Self::EraseMultires => "Erase Displacement",
-            Self::SmearMultires => "Smear Displacement",
-            Self::SceneProject => "Scene Project",
-            Self::Thumb => "Thumb",
-            Self::Nudge => "Nudge",
-        }
-    }
 }
 /// ⭐ **COMO O GESTO É CONDUZIDO** — o [`Grip`] de cada verbo. Ver [`grip_por_verbo`].
 #[path = "brush_verb_grip.rs"]
@@ -673,6 +654,10 @@ mod filter;
 pub use filter::FilterKind;
 
 /// **AS MAGNITUDES** — quanto cada família desloca. Ver [`magnitudes`].
+/// **O nome que a interface mostra** — ver [`brush_verb_label`](self).
+#[path = "brush_verb_label.rs"]
+mod label;
+
 #[path = "brush_magnitudes.rs"]
 mod magnitudes;
 pub use magnitudes::{

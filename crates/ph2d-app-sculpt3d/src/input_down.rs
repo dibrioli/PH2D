@@ -165,7 +165,11 @@ pub fn pointer_down(
             // que o polegar e o projectar desta linha pagaram: uma grandeza
             // relida do vivo deriva enquanto o gesto acontece. E é dele que sai
             // a orientação: sem superfície não há normal (espec §3).
-            if let Some(forma) = scene.trim.armado {
+            // ⭐⭐ **ARMADO é o VERBO na mão** — desde 2026-09-15 o corte é uma
+            // ferramenta como as outras, e a exclusividade com os pincéis sai
+            // daí sem uma regra escrita.
+            if scene.brush.verb == ph2d_sculpt3d::Verb::BoxTrim {
+                let forma = scene.brush.trim_forma;
                 // Mirar antes de começar, pelo motivo dos vizinhos: o corte é
                 // da peça que o artista apontou.
                 scene.aim(pos.0, pos.1);

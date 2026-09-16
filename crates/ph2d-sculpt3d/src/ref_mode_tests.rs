@@ -227,7 +227,15 @@ fn the_census_of_offered_chips() {
     // censo: ele é MEDIDO contra o oráculo** (a meia força o pico cai a um
     // quarto, `oraculo_dos_gestos_tangenciais`). *A lei que este número afirma
     // passou a ter um lado aprovado.*
-    assert_eq!(count(RefMode::B), 26, "B: a lei da força vale para todos");
+    // ⚠️⚠️ **27 desde o BOX TRIM, e ele é o primeiro desta lista que NÃO é um
+    // pincel** — a ferramenta existe na referência restrita (é dela que o nome
+    // vem), logo o `RefMode::B` está certo; mas *«a lei da força vale para
+    // ele»* é uma frase vazia, porque ele não tem força nenhuma
+    // ([`Verb::a_forca_chega_ao_barro`] responde `false`). ⇒ o que este número
+    // conta é **de onde o verbo veio**, e não que ele carimbe barro. *Uma
+    // contagem que junta as duas perguntas mente no dia em que elas se
+    // separam, e hoje foi esse dia.*
+    assert_eq!(count(RefMode::B), 27, "B: a lei da força vale para todos");
     // A literatura chega paper a paper, nas waves W4/W5/W7.
     //
     // ⚠️ **E o Surface Smooth NÃO o move, embora SEJA um paper** (Vollmer,

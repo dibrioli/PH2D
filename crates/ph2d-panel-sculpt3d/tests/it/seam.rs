@@ -2184,10 +2184,18 @@ fn a_pro_row_is_reachable_in_pro_and_absent_in_basic() {
 /// lista aqui e um predicado lá seriam duas respostas à mesma pergunta, e a que
 /// o artista vê é a que envelhece.
 ///
+/// ⛔⛔⛔ **E ELA MORREU OUTRA VEZ em 2026-09-15, no mesmo dia e do outro lado:
+/// nem todo verbo é um PINCEL.** O [`ph2d_sculpt3d::Verb::BoxTrim`] não tem
+/// raio nenhum — o que delimita o efeito dele é a FORMA que a mão desenha —, e
+/// quem o apanhou foi o censo dos knobs mortos na primeira corrida com o verbo
+/// novo (`("Box Trim", "panel.sculpt3d.radius")`). ⇒ as **duas** pistas passam a
+/// ser afirmadas pela porta do motor, e a frase *«o raio é de TODOS»* fica aqui
+/// como contraste. *Uma asserção incondicional é uma premissa à espera do
+/// primeiro membro que não couber nela.*
+///
 /// ⚠️ **As DUAS metades da população estão afirmadas**, senão um predicado que
-/// respondesse `false` sempre (ou `true` sempre) passaria este gate: o raio é
-/// incondicional para os `32`, e a força esconde-se em **pelo menos um** verbo e
-/// aparece na **grande maioria**.
+/// respondesse `false` sempre (ou `true` sempre) passaria este gate: cada pista
+/// esconde-se em **pelo menos um** verbo e aparece na **grande maioria**.
 #[test]
 fn the_basic_level_never_hides_the_two_knobs_every_brush_has() {
     let (mut com_forca, mut sem_forca) = (0usize, 0usize);
@@ -2198,9 +2206,11 @@ fn the_basic_level_never_hides_the_two_knobs_every_brush_has() {
         let raio = rows::rows()
             .find(|r| r.slider == ids::SCULPT3D_RADIUS)
             .expect("na tabela");
-        assert!(
+        assert_eq!(
             raio.visible(&ui),
-            "`{}` sumiu em Basic com o {} em mãos — o raio é de TODOS",
+            v.o_raio_chega_ao_barro(),
+            "`{}` e o {} discordam sobre o raio — a pista é pintada exactamente \
+             onde a lei a lê",
             raio.label,
             v.label()
         );
@@ -2225,10 +2235,16 @@ fn the_basic_level_never_hides_the_two_knobs_every_brush_has() {
             );
         }
     }
+    // ⭐ **E a população do RAIO também**, pela mesma razão: sem esta metade um
+    // `o_raio_chega_ao_barro` constante passaria o `assert_eq!` de cima.
+    let sem_raio = Verb::ALL
+        .into_iter()
+        .filter(|v| !v.o_raio_chega_ao_barro())
+        .count();
     assert!(
-        sem_forca >= 1 && com_forca >= Verb::ALL.len() - 3,
-        "a população está torta: {sem_forca} sem força e {com_forca} com ela — \
-         um predicado constante passaria este gate"
+        sem_forca >= 1 && com_forca >= Verb::ALL.len() - 3 && (1..=3).contains(&sem_raio),
+        "a população está torta: {sem_forca} sem força, {com_forca} com ela e \
+         {sem_raio} sem raio — um predicado constante passaria este gate"
     );
 }
 
@@ -2787,5 +2803,101 @@ fn a_razao_da_curva_inerte_chega_a_pixel() {
         "a diferença é de {} glifo(s) — isso é um número a mudar de largura, \
          não uma frase",
         inerte - viva
+    );
+}
+
+/// ⭐⭐ **GATE — com o BOX TRIM na mão, a fileira das FORMAS é pintada e responde
+/// ao ponteiro, e a pista do traço aparece SÓ no laço.**
+///
+/// ⛔⛔ **Irmão exacto dos gates do esfregão e do projectar, e ele existe porque
+/// aquele defeito aconteceu SETE vezes nesta crate** — a última custou o report
+/// *«os outros 2 botões ainda não funcionam»*. Um controlo nunca pintado e um
+/// morto sob o dedo dão o MESMO report, e só o gesto REAL os separa.
+///
+/// ⚠️ **A segunda metade é a que o dono pediu por escrito** (*«Em laço um
+/// parâmetro para suavizar o traço»*): a pista tem de aparecer com o laço e
+/// **não** com a caixa — suavizar dois pontos é o controlo morto que esta casa
+/// varre a cada wave, e pintá-lo seria uma promessa que a ferramenta não cumpre.
+#[test]
+fn every_trim_control_is_clickable_where_it_is_drawn() {
+    use ph2d_sculpt3d::TrimForma;
+
+    let mut ui = Sculpt3dUi::default();
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::BoxTrim);
+    ui.ui_level = UiLevel::Pro;
+    let (mut host, mut state) = arrange(ui);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+
+    let want: Vec<(String, ph2d_a11y::NodeId)> = TrimForma::ALL
+        .into_iter()
+        .enumerate()
+        .map(|(i, f)| {
+            (
+                format!("trim shape {}", f.label()),
+                ids::SCULPT3D_TRIM_FORMA[i],
+            )
+        })
+        .collect();
+    assert_eq!(
+        want.len(),
+        3,
+        "o dono pediu TRÊS botões (box, circle, laço) — a fixtura deixou de \
+         conter o fenómeno"
+    );
+    for (name, id) in &want {
+        assert!(
+            painted.iter().any(|(pid, _)| pid == id),
+            "`{name}` ({id:?}) devia estar pintado com o Box Trim na mão"
+        );
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| pid == id)
+            .map(|(_, r)| *r)
+            .expect("pintado logo acima");
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        assert!(
+            host.click_at(cx, cy)
+                .iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == *id)),
+            "clicar `{name}` no centro pintado não produziu Click — ele está no \
+             índice de hit e morto sob o dedo"
+        );
+    }
+
+    // ⭐ **A pista do traço segue a FORMA**, e as duas metades são obrigatórias:
+    // sem a negativa, uma pista pintada sempre passaria.
+    let pintada = |forma: TrimForma| {
+        let mut u = Sculpt3dUi::default();
+        ph2d_panel_sculpt3d::state::switch_verb(&mut u, Verb::BoxTrim);
+        u.brush.trim_forma = forma;
+        u.ui_level = UiLevel::Pro;
+        rows::rows()
+            .find(|r| r.slider == ids::SCULPT3D_TRIM_SMOOTH)
+            .expect("na tabela")
+            .visible(&u)
+    };
+    assert!(
+        pintada(TrimForma::Laco),
+        "a pista da suavização sumiu com o LAÇO na mão, que é o único que a lê"
+    );
+    for muda in [TrimForma::Caixa, TrimForma::Circulo] {
+        assert!(
+            !pintada(muda),
+            "a pista da suavização é pintada com o {} na mão — ele guarda DOIS \
+             pontos, e não há traço a suavizar",
+            muda.label()
+        );
+    }
+    // ⛔ E com um PINCEL na mão ela não existe de todo.
+    let mut outro = Sculpt3dUi::default();
+    ph2d_panel_sculpt3d::state::switch_verb(&mut outro, Verb::Draw);
+    outro.ui_level = UiLevel::Pro;
+    assert!(
+        !rows::rows()
+            .find(|r| r.slider == ids::SCULPT3D_TRIM_SMOOTH)
+            .expect("na tabela")
+            .visible(&outro),
+        "a pista da suavização do corte aparece com um PINCEL na mão"
     );
 }

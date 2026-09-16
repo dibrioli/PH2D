@@ -301,6 +301,24 @@ fn o_censo_nomeia_os_verbos_que_este_arnes_nao_acorda() {
     /// Cada entrada diz **porque** o arnês não o acorda — e é isso que separa
     /// uma dívida de uma isenção.
     const ADORMECIDOS: &[(Verb, &str)] = &[
+        // ⛔⛔⛔ **E ELA VOLTOU A UM em 2026-09-15, no mesmo dia**, com o verbo
+        // que a esvaziara ainda fresco. O [`Verb::BoxTrim`] está aqui **por
+        // LEI, e pela razão mais forte de toda a lista**: os outros tinham lei
+        // noutro sítio do mesmo gesto; este **não tem gesto de carimbo
+        // nenhum** — o arrasto dele é interceptado antes de haver dab, e o que
+        // muda a peça é uma booleana sobre a malha inteira, no pen-up.
+        //
+        // ⚠️ **Não há saída prescrita, e isso é a diferença:** a entrada do
+        // `Density` nomeava a dela (*correr o passe e comparar a contagem*) e
+        // foi por ali que ele saiu. Medir este num dab é medir o programa
+        // errado — o arnês teria de desenhar uma forma de ecrã e correr uma
+        // booleana, que é o que a bancada da `ph2d-trim` já faz do lado onde a
+        // lei vive.
+        (
+            Verb::BoxTrim,
+            "por LEI: nao ha' dab -- o gesto e' interceptado e o corte e' uma \
+             booleana no pen-up (a lei tem bancada propria na `ph2d-trim`)",
+        ),
         // ⭐⭐⭐ **ELE É O ÚNICO QUE SOBRA, e a catraca desceu de SEIS para um
         // em 2026-09-15.** Os cinco que saíram não foram reclassificados —
         // **acordaram**, e a causa foi uma só: o arnês entregava um CARIMBO e
@@ -343,14 +361,22 @@ fn o_censo_nomeia_os_verbos_que_este_arnes_nao_acorda() {
         "estes JÁ acordam e a catraca não desceu: {obsoletos:?} — apague-os da \
          lista, senão ela vira licença"
     );
-    // ⭐⭐ **E o piso, que uma catraca VAZIA torna mais forte e não mais fraco:**
-    // com a lista a zero, a afirmação passa a ser *«o arnês acorda os `32`»*, e
-    // ela reprova se algum adormecer.
+    // ⭐⭐ **E o piso, que é a metade que impede um verbo de adormecer calado:**
+    // a afirmação é *«o arnês acorda TODOS menos os que a catraca nomeia»*, e
+    // ela reprova por qualquer um dos lados — um verbo a mais adormecido, ou
+    // uma entrada da catraca que já não descreve nada.
+    //
+    // ⚠️⚠️ **A redacção anterior dizia *«a catraca está VAZIA»* e comparava com
+    // `Verb::ALL.len()`.** Ela nasceu no dia em que a lista chegou a zero e
+    // morreu no dia seguinte, com o `BoxTrim` — *uma asserção escrita sobre o
+    // estado de HOJE reprova sobre produto correcto no dia em que o estado
+    // legítimo muda*. O que fica é a relação, que vale nos dois estados.
     assert_eq!(
         Verb::ALL.iter().filter(|v| acorda_neste_arnes(**v)).count(),
-        Verb::ALL.len(),
-        "a catraca está VAZIA e algum verbo deixou de acordar — com a lista a \
-         zero não há onde o escrever calado, e é este número que o diz"
+        Verb::ALL.len() - ADORMECIDOS.len(),
+        "algum verbo deixou de acordar sem passar pela catraca — e enquanto ele \
+         dormir, os knobs dele ficam POR MEDIR, que é onde o próximo «não vejo \
+         efeito» nasce"
     );
 }
 
@@ -389,7 +415,18 @@ fn a_lista_do_censo_cobre_os_knobs_incondicionais() {
         // propósito. Um dab não os lê **por desenho**, e a `Place` é a porta
         // que o painel já declara — não uma lista escrita aqui.
         .filter(|r| r.place == Place::Knobs)
-        .filter(|r| Verb::ALL.iter().all(|&v| r.visible(&painel_com(v))))
+        // ⛔⛔⛔ **A POPULAÇÃO são os verbos que CARIMBAM, e ela deixou de ser
+        // `Verb::ALL` em 2026-09-15** — com o `Verb::BoxTrim` a lista dos
+        // sempre-visíveis ficou **VAZIA** (ele não tem raio nem força), e esta
+        // metade passou a medir o vácuo. *A pergunta sempre foi «que knob todo
+        // PINCEL pinta?», e a resposta era `Verb::ALL` só enquanto todo verbo
+        // era um pincel.*
+        .filter(|r| {
+            Verb::ALL
+                .iter()
+                .filter(|v| v.writes_through_applicator())
+                .all(|&v| r.visible(&painel_com(v)))
+        })
         .map(|r| r.label)
         .collect();
     let faltam: Vec<&&str> = sempre
@@ -401,13 +438,18 @@ fn a_lista_do_censo_cobre_os_knobs_incondicionais() {
         "o painel pinta {faltam:?} com TODO verbo e o censo não os varre — um \
          knob fora do censo é um knob que pode estar morto sem ninguém ver"
     );
-    // ⛔⛔ **O piso de população era `2` e a POPULAÇÃO encolheu para `1` em
-    // 2026-09-15**, sem o censo perder força: o `Strength` deixou de ser
-    // incondicional porque o `Density` não o lê (medido `0,000e0` no barro), e o
-    // que sobra sempre-visível é o RAIO. *Um piso que segurasse o número `2`
-    // enquanto a lista era `{radius}` mediria uma lista que já não existe* — é a
-    // forma que o `CLAUDE.md` §5 nomeia num censo de outra família: **o piso
-    // segurou o NÚMERO enquanto a POPULAÇÃO trocava por baixo dele**.
+    // ⛔⛔ **O piso de população era `2`, encolheu para `1` em 2026-09-15 e no
+    // MESMO DIA a lista foi a ZERO** — e as duas quedas têm causas diferentes.
+    // A primeira: o `Strength` deixou de ser incondicional porque o `Density`
+    // não o lê (medido `0,000e0` no barro). A segunda: o `BoxTrim` não tem raio
+    // NEM força, e com ele dentro da população nem o raio sobrava.
+    //
+    // ⭐ **A cura não foi baixar o piso outra vez — foi corrigir a POPULAÇÃO**
+    // (ver o filtro acima). *Um piso que segurasse o número enquanto a lista
+    // esvaziava mediria uma lista que já não existe* — é a forma que o
+    // `CLAUDE.md` §5 nomeia: **o piso segura o NÚMERO enquanto a POPULAÇÃO
+    // troca por baixo dele** —, e desta vez o que estava errado era quem entrava
+    // na conta.
     assert!(
         sempre.contains(&"panel.sculpt3d.radius"),
         "o RAIO deixou de ser incondicional ({sempre:?}) — se nem ele o for, \

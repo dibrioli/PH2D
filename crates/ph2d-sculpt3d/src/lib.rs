@@ -67,6 +67,9 @@ mod grip;
 /// ⭐⭐ **PARA ONDE O ESFREGÃO EMPURRA** — ver [`smear_mode`].
 mod smear_mode;
 
+/// ⭐⭐⭐ **A FORMA QUE O BOX TRIM CORTA** — ver [`trim_forma`].
+mod trim_forma;
+
 /// ⭐⭐ **PARA ONDE O RAIO DA PROJECÇÃO APONTA** — ver [`project_mode`].
 mod project_mode;
 
@@ -141,6 +144,7 @@ pub use project_mode::ProjectMode;
 pub use ref_mode::{Field, FrontFace, KernelLaw, LateralPull, PlaneReach, RefMode};
 pub use ref_profiles::VerbProfile;
 pub use smear_mode::SmearMode;
+pub use trim_forma::TrimForma;
 
 /// **SÓ PARA A BANCADA** — a lei do raio, sem o traço à volta. Ver
 /// [`projectar::distancia`].

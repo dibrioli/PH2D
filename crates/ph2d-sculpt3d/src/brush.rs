@@ -308,6 +308,17 @@ pub struct Brush {
     /// [`crate::Verb::SceneProject`] o lê
     /// ([`Brush::offers_project_controls`]). Ver [`crate::ProjectMode`].
     pub project_mode: crate::ProjectMode,
+    /// ⭐⭐⭐ **A FORMA que o [`crate::Verb::BoxTrim`] corta** — ver
+    /// [`crate::TrimForma`]. Ordem do dono (2026-09-15).
+    pub trim_forma: crate::TrimForma,
+    /// ⭐⭐ **Quanto o traço do LAÇO é suavizado**, `0..=1`.
+    ///
+    /// Ordem do dono (2026-09-15): *«Em laço um parâmetro para suavizar o
+    /// traço»*. ⚠️ **`0` é o traço cru, byte-idêntico** — a lei vive em
+    /// `ph2d_trim::suaviza`, e o tecto dela saiu do **mínimo de uma curva
+    /// medida**. ⛔ Só o laço a lê ([`crate::TrimForma::le_o_caminho`]): a caixa
+    /// e o círculo guardam dois pontos, e não há traço a suavizar.
+    pub trim_suavizacao: f32,
     /// **A FOLGA da projecção** — quanto barro fica ANTES de encostar no alvo
     /// (o *minimum distance* da espec §6.3.4), em unidades do objecto.
     ///

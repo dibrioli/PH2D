@@ -105,6 +105,11 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // um seria vestir de referência uma escolha nossa — o que o §4 do plano
         // proíbe por nome (*«um l-mode inventado traria a autoridade que não
         // tem»*). Ele nasce com o material de fábrica do `stroke_cloth`.
+        // ⛔ **O BOX TRIM não tem perfil `s` e nunca terá:** ele não é um
+        // pincel — não tem raio, força nem queda, porque não carimba. O que ele
+        // tem é uma FORMA de ecrã e uma booleana. *Um perfil de referência aqui
+        // descreveria um gesto que esta ferramenta não faz.*
+        Verb::BoxTrim => return None,
         Verb::Cloth => return None,
         // ⛔ **A POSE também não tem perfil `s`, e pela mesma razão:** o
         // SculptGL não tem pincel de pose, logo não há número a LER. Os

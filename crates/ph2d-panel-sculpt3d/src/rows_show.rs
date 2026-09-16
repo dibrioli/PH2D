@@ -20,6 +20,27 @@ pub(crate) fn always(_: &Sculpt3dUi) -> bool {
     true
 }
 
+/// **O RAIO CHEGA AO BARRO COM ESTE PINCEL EM MÃOS?** — a porta da pista do
+/// raio.
+///
+/// ⚠️ **A resposta vem do MOTOR** ([`ph2d_sculpt3d::Verb::o_raio_chega_ao_barro`]),
+/// nunca de um `match` aqui: uma segunda cópia da condição divergiria na
+/// primeira wave que mexesse numa delas, e a que o artista vê é a que envelhece.
+pub(crate) fn tem_raio(u: &Sculpt3dUi) -> bool {
+    u.brush.verb.o_raio_chega_ao_barro()
+}
+
+/// **ESTE PINCEL LÊ O CAMINHO DA MÃO?** — a porta da pista de suavização do
+/// traço, que só o LAÇO do Box Trim usa.
+///
+/// ⛔ **DUAS metades, e nenhuma basta:** o verbo tem de ser o corte (com um
+/// pincel na mão não há traço de ecrã nenhum) **e** a forma tem de ser a que
+/// guarda um caminho — a caixa e o círculo saem de dois pontos, e suavizar dois
+/// pontos é o controlo morto que esta casa varre a cada wave.
+pub(crate) fn suaviza_o_traco(u: &Sculpt3dUi) -> bool {
+    u.brush.verb == ph2d_sculpt3d::Verb::BoxTrim && u.brush.trim_forma.le_o_caminho()
+}
+
 /// **O DAB LÊ A DISTÂNCIA COM ESTE PINCEL EM MÃOS?** — a porta da row de
 /// [`Dureza`](BRUSH), e a MESMA que a largura do campo já segue
 /// (`RefMode::field`).

@@ -430,19 +430,39 @@ pub fn key(
         return true;
     }
     if !shift && !ctrl && code == K::KeyL {
-        use crate::trim_gesto::Forma;
-        scene.trim.armado = match scene.trim.armado {
-            None => Some(Forma::Caixa),
-            Some(Forma::Caixa) => Some(Forma::Laco),
-            Some(Forma::Laco) => None,
-        };
-        match scene.trim.armado {
-            None => eprintln!("[sculpt3d] Box Trim DESARMADO -- o arrasto volta a esculpir"),
-            Some(f) => eprintln!(
-                "[sculpt3d] {} ARMADO -- arraste para desenhar a forma; o barro \
+        use ph2d_sculpt3d::{TrimForma, Verb};
+        // ⭐⭐ **O `L` passou a escolher a FERRAMENTA** (2026-09-15): o corte é
+        // um verbo, logo armá-lo é a mesma coisa que pegar nele. ⚠️ E o ciclo
+        // continua a ter saída — depois da última forma ele **devolve** o
+        // pincel que interrompeu, senão o atalho arma e não desarma.
+        if scene.brush.verb == Verb::BoxTrim {
+            let i = TrimForma::ALL
+                .iter()
+                .position(|&f| f == scene.brush.trim_forma)
+                .unwrap_or(0);
+            if i + 1 < TrimForma::ALL.len() {
+                scene.brush.trim_forma = TrimForma::ALL[i + 1];
+            } else {
+                scene.brush.trim_forma = TrimForma::ALL[0];
+                scene.brush.verb = scene.trim.verbo_anterior.take().unwrap_or_default();
+            }
+        } else {
+            scene.trim.verbo_anterior = Some(scene.brush.verb);
+            scene.brush.verb = Verb::BoxTrim;
+        }
+        if scene.brush.verb == Verb::BoxTrim {
+            eprintln!(
+                "[sculpt3d] {} ARMADO ({}) -- arraste para desenhar a forma; o barro \
                  so' muda quando LARGAR, e o Ctrl+Z devolve a peca inteira",
-                f.label()
-            ),
+                Verb::BoxTrim.label(),
+                scene.brush.trim_forma.label()
+            );
+        } else {
+            eprintln!(
+                "[sculpt3d] {} DESARMADO -- voltou ao {}",
+                Verb::BoxTrim.label(),
+                scene.brush.verb.label()
+            );
         }
         return true;
     }

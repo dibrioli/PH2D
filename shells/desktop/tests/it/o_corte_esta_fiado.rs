@@ -17,9 +17,14 @@ use sculpt_source::{function_body, sculpt_src};
 #[test]
 fn o_pen_down_toma_o_gesto_e_fotografa_o_acerto() {
     let body = function_body(&sculpt_src(), "pointer_down");
+    // ⭐⭐ **A agulha é o VERBO desde 2026-09-15** — o corte passou a ser uma
+    // ferramenta da fileira, logo *«está armado?»* é a mesma pergunta que *«qual
+    // é o pincel na mão?»*. ⛔ O campo `trim.armado` foi **apagado**: mantê-lo
+    // seria a segunda resposta à mesma pergunta, e a exclusividade com os
+    // pincéis deixaria de ser por construção.
     let armado = body
-        .find("scene.trim.armado")
-        .expect("o pen-down pergunta se o corte está armado");
+        .find("Verb::BoxTrim")
+        .expect("o pen-down pergunta se a ferramenta na mão é o corte");
     let comeca = body
         .find("Gesto::comeca")
         .expect("e só então começa o gesto");

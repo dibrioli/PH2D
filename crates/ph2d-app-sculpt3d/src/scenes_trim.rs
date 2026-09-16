@@ -62,9 +62,13 @@ pub(crate) fn announce() {
          [sculpt3d]    e' cortado, de lado a lado. E' a ferramenta de aparar: tirar uma\n\
          [sculpt3d]    fatia, abrir um chanfro, cortar uma ponta fora.\n\
          [sculpt3d]\n\
-         [sculpt3d]    (1) Aperte L. O terminal diz `Box Trim ARMADO`.\n\
-         [sculpt3d]    (2) Arraste por cima da bola.\n\
-         [sculpt3d]        -> Uma CAIXA AMARELA acompanha a mao, e o barro NAO se mexe\n\
+         [sculpt3d]    (1) Abra o painel com a CRASE (`). Na fileira de ferramentas,\n\
+         [sculpt3d]        no FIM, ha' um botao `Box Trim`. Carregue nele.\n\
+         [sculpt3d]        -> Repare que os controlos de pincel (Radius, Strength) SOMEM:\n\
+         [sculpt3d]           esta ferramenta nao tem raio nem forca, e no lugar deles\n\
+         [sculpt3d]           aparece `Shape` com tres botoes -- Box, Circle e Lasso.\n\
+         [sculpt3d]    (2) Com `Box` escolhido, arraste por cima da bola.\n\
+         [sculpt3d]        -> Uma forma AMARELA acompanha a mao, e o barro NAO se mexe\n\
          [sculpt3d]           ainda. Voce esta' a desenhar a lamina, nao a cortar.\n\
          [sculpt3d]    (3) LARGUE.\n\
          [sculpt3d]        -> O que estava dentro da caixa desaparece, e fica uma face\n\
@@ -76,21 +80,27 @@ pub(crate) fn announce() {
          [sculpt3d]           o sombreado a escorrer de um canto ao outro, e' o defeito\n\
          [sculpt3d]           que voce reportou em 15/09 -- e ele voltou.\n\
          [sculpt3d]    (4) Ctrl+Z devolve a bola inteira.\n\
-         [sculpt3d]    (5) Aperte L outra vez: agora e' `Lasso Trim`. Desenhe a mao livre,\n\
-         [sculpt3d]        inclusive uma forma em C, e largue.\n\
-         [sculpt3d]        -> Corta pela forma que voce desenhou, C incluido.\n\
-         [sculpt3d]    (6) Aperte Shift+L: o corte passa a entrar pela FORMA da peca em\n\
-         [sculpt3d]        vez de pelo ecra. Rode a camera e repita para sentir a\n\
-         [sculpt3d]        diferenca -- pelo ecra o corte segue os seus olhos; pela forma\n\
-         [sculpt3d]        ele segue a peca.\n\
-         [sculpt3d]    (7) Aperte L mais uma vez para DESARMAR (o arrasto volta a\n\
-         [sculpt3d]        esculpir).\n\
+         [sculpt3d]    (5) Carregue em `Circle` e arraste a partir do MEIO do sitio que\n\
+         [sculpt3d]        quer tirar: aqui o ponto onde voce comeca e' o CENTRO, e\n\
+         [sculpt3d]        afastar a mao aumenta o raio.\n\
+         [sculpt3d]    (6) Carregue em `Lasso` e desenhe a mao livre, inclusive uma forma\n\
+         [sculpt3d]        em C. Repare que aparece uma pista nova, `Smooth Stroke`,\n\
+         [sculpt3d]        que nao existe nas outras duas.\n\
+         [sculpt3d]        -> Desenhe um laco a tremer com ela em ZERO: a forma amarela\n\
+         [sculpt3d]           copia o tremor todo. Suba-a ate' ao fim e desenhe outra vez:\n\
+         [sculpt3d]           o tremor sai e a forma que voce quis fica. Os CANTOS\n\
+         [sculpt3d]           sobrevivem -- ela nao arredonda o desenho, so' o alisa.\n\
+         [sculpt3d]    (7) A tecla L faz o mesmo sem o painel: pega na ferramenta e, nas\n\
+         [sculpt3d]        vezes seguintes, roda entre Box, Circle e Lasso -- e depois da\n\
+         [sculpt3d]        ultima devolve o pincel que voce tinha. Shift+L faz o corte\n\
+         [sculpt3d]        entrar pela FORMA da peca em vez de pelo ecra.\n\
          [sculpt3d]\n\
          [sculpt3d]    DEU ERRADO SE: a bola INTEIRA desaparecer (em vez de perder so' o\n\
          [sculpt3d]    que voce cercou); se o corte acontecer DURANTE o arrasto; se a\n\
          [sculpt3d]    forma amarela nao aparecer; se a face cortada sair sem malha (veja\n\
-         [sculpt3d]    o passo 3); ou se largar o rato travar o app por mais de um\n\
-         [sculpt3d]    piscar de olhos."
+         [sculpt3d]    o passo 3); se um dos tres botoes de forma nao fizer nada; se a\n\
+         [sculpt3d]    pista `Smooth Stroke` aparecer com Box ou Circle escolhidos; ou se\n\
+         [sculpt3d]    largar o rato travar o app por mais de um piscar de olhos."
     );
 }
 

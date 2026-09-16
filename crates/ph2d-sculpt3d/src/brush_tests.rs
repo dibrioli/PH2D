@@ -477,6 +477,13 @@ fn the_auto_smooth_is_off_by_default_like_the_reference() {
 /// | `Smooth`, `Mask` | **exclusão da REFERÊNCIA** — alisar um alisamento é o mesmo verbo duas vezes, e um passe que mexesse na posição durante um gesto de máscara moveria o barro num gesto cuja razão de existir é não movê-lo | o motor de escultura do alvo |
 /// | `Cloth`, `Boundary` | **o passe NÃO ALCANÇA** — os dois desviam antes do laço por-vértice onde ele corre | ⭐ **MEDIDO** pelo censo dos knobs (`0,000e0` entre as pontas da faixa) |
 /// | `Density` | **não há REGIÃO nenhuma** — ele sai antes de tudo ([`Verb::sem_lei_por_vertice`]) e o efeito dele é sobre a TOPOLOGIA | ⭐ **MEDIDO** pelo mesmo censo |
+/// | `BoxTrim` | **não há GESTO de carimbo nenhum** — ele intercepta o arrasto inteiro e o que muda a peça é uma booleana no pen-up | domínio (2026-09-15) |
+///
+/// ⚠️⚠️ **E a premissa morreu uma TERCEIRA vez, no mesmo dia em que a wave do
+/// corte aterrou** — o `BoxTrim` recusa pela razão da densidade levada ao
+/// extremo: ela tem o caminho do carimbo e só não escreve posição; ele não tem
+/// caminho nenhum. *Três mortes da mesma premissa são três verbos que não
+/// couberam na frase com que ela nasceu.*
 ///
 /// ⚠️ **A terceira razão não é a segunda com outro nome:** o `Cloth` e o
 /// `Boundary` **têm** região e resolvem-na eles próprios; o `Density` não tem
@@ -498,7 +505,12 @@ fn the_second_pass_is_refused_for_three_different_reasons() {
         let got = b.auto_smooth_brush().is_some();
         let want = !matches!(
             verb,
-            Verb::Smooth | Verb::Mask | Verb::Cloth | Verb::Boundary | Verb::Density
+            Verb::Smooth
+                | Verb::Mask
+                | Verb::Cloth
+                | Verb::Boundary
+                | Verb::Density
+                | Verb::BoxTrim
         );
         assert_eq!(
             got,

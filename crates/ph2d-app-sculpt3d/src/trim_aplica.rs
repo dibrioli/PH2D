@@ -64,7 +64,7 @@ impl Sculpt3dScene {
             return Err(TrimRecusa::PilhaMontada);
         }
 
-        let anel = gesto.anel();
+        let anel = gesto.anel(self.brush.trim_suavizacao);
         if anel.len() < 3 {
             return Err(TrimRecusa::Gesto(ph2d_trim::Recusa::GestoDegenerado));
         }

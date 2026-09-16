@@ -45,6 +45,14 @@ pub enum CurvaInerte {
     SemLeiPorVertice,
     /// A pose só lê a curva na **torção**, e só com mais de um segmento.
     APoseSoNaTorcaoComSegmentos,
+    /// O gesto não CARIMBA: ele desenha uma forma de ecrã, e o que muda a peça
+    /// é uma booleana ([`crate::Verb::BoxTrim`]).
+    ///
+    /// ⚠️ **Não é a [`Self::SemLeiPorVertice`] com outro nome**, embora o verbo
+    /// responda `true` às duas: a razão que o artista lê tem de descrever a
+    /// ferramenta que ele tem na mão. *Dizer-lhe «o efeito é sobre a topologia»
+    /// sobre uma ferramenta de CORTE é um rótulo que mente.*
+    OGestoNaoCarimba,
 }
 
 impl crate::Brush {
@@ -57,6 +65,9 @@ impl crate::Brush {
     pub fn curva_inerte(&self) -> Option<CurvaInerte> {
         match self.verb {
             crate::Verb::Mask => Some(CurvaInerte::OCanalTemCurvaPropria),
+            // ⚠️ **ANTES do braço geral**, senão ele responde `SemLeiPorVertice`
+            // e o artista lê uma frase sobre topologia com um corte na mão.
+            crate::Verb::BoxTrim => Some(CurvaInerte::OGestoNaoCarimba),
             v if v.sem_lei_por_vertice() => Some(CurvaInerte::SemLeiPorVertice),
             crate::Verb::Pose
                 if !(self.pose.deformacao == crate::PoseDeformacao::Torcer

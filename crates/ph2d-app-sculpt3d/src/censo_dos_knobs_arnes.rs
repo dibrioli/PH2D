@@ -153,7 +153,14 @@ pub(super) fn corre(b: &Brush) -> Mesh {
     // (`open_dyntopo_stroke`). A peça deste censo é uma esfera UV, que é toda
     // quads — sem isto o passe seria um **no-op silencioso** e o verbo continuava
     // adormecido com o censo a dizer que acordou.
-    let topologia = b.verb.sem_lei_por_vertice();
+    // ⛔⛔ **ELE PERGUNTAVA `sem_lei_por_vertice()`, E A COINCIDÊNCIA QUEBROU**
+    // (2026-09-15, com o `Verb::BoxTrim`): esta linha era uma **cópia** da
+    // derivação que o produto usava, e no dia em que o produto a separou o
+    // arnês continuou a correr o passe de topologia sobre um verbo que não
+    // tem dab nenhum — fazendo-o *«acordar»* com `704` unidades de desvio que
+    // eram trabalho do próprio arnês. *A pergunta é a do produto, e ela tem
+    // uma porta.*
+    let topologia = b.verb.corre_sem_o_interruptor();
     if topologia {
         mesh.triangulate();
     }

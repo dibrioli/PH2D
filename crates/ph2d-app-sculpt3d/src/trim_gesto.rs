@@ -9,39 +9,15 @@
 //! uma lei que precisa de um dispositivo para ser medida nasce `#[ignore]`, e o
 //! CI deixa de a correr.
 
-/// A forma que a mão desenha (espec §3).
+/// ⭐⭐ **A FORMA vive no PINCEL desde 2026-09-15** — ela é um selector do
+/// pincel, como o do esfregão e o do projectar, e o painel oferece-a na secção
+/// deles ([`ph2d_sculpt3d::TrimForma`]).
 ///
-/// ⚠️ **A polilinha é tratada como um LAÇO** no alvo — a diferença está só em
-/// como o utilizador a desenha, não na máquina. ⏳ A **linha** (2 pontos, §4.2)
-/// é a quarta variante e ainda não está aqui: ela é a mesma máquina com um
-/// quadrilátero fabricado, e o modo dela é **forçado** a subtrair.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) enum Forma {
-    /// Dois cantos ⇒ o rectângulo de ecrã.
-    Caixa,
-    /// O caminho desenhado, ponto a ponto.
-    Laco,
-}
-
-impl Forma {
-    /// ⭐ **O NOME QUE O ARTISTA LÊ** — ordem do dono, 2026-09-15:
-    /// *«Coloque como Box Trim»*.
-    ///
-    /// ⚠️ **As variantes ficam no vocabulário do domínio e o RÓTULO vive num
-    /// sítio só.** São duas perguntas diferentes — *o que esta variante é* e
-    /// *como se chama a ferramenta* —, e escrever o nome à mão em cada sítio que
-    /// o imprime é como duas superfícies sobre o mesmo valor divergem.
-    ///
-    /// ⚠️ **São os nomes da referência**, e isso é de propósito: o dono chamou-a
-    /// *Box Trim* antes de eu lhe ter dado nome nenhum, e um artista que venha
-    /// de lá procura por estes.
-    pub(crate) fn label(self) -> &'static str {
-        match self {
-            Self::Caixa => "Box Trim",
-            Self::Laco => "Lasso Trim",
-        }
-    }
-}
+/// ⛔ **O enum local MORREU, e a razão é o painel:** enquanto ele vivia aqui, a
+/// única maneira de o alcançar era uma tecla — e *uma tecla é alcançável mas
+/// não DESCOBRÍVEL*. A tabela de rows do painel lê o `Brush`, logo a forma tinha
+/// de estar lá para ter chip.
+pub(crate) use ph2d_sculpt3d::TrimForma as Forma;
 
 /// A orientação do varrimento que o artista pediu (espec §5).
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -65,17 +41,23 @@ pub(crate) enum Orientacao {
 /// artista consiga ver.
 const PASSO_MINIMO_PX: f32 = 4.0;
 
-/// **O ESTADO DO CORTE na cena** — armado, orientação, e o gesto em curso.
+/// **O ESTADO DO CORTE na cena** — a orientação e o gesto em curso.
 ///
-/// ⚠️ **Um tipo e não três campos soltos na cena**, e a razão está escrita ao
-/// lado do campo `viewports` dela: as três coisas são UMA (*como o corte está
-/// armado*), nascem juntas, morrem juntas e são lidas pelos mesmos módulos.
-/// Espalhadas na struct de ~50 campos seriam indistinguíveis das que descrevem
-/// *o que a peça É*.
+/// ⭐⭐⭐ **O `armado` SAIU daqui em 2026-09-15, e isso é a wave inteira:** o
+/// corte passou a ser um VERBO ([`ph2d_sculpt3d::Verb::BoxTrim`]), logo
+/// *«está armado?»* é a mesma pergunta que *«qual é o pincel na mão?»* — e
+/// escrevê-la duas vezes era a segunda resposta que diverge no dia em que uma
+/// delas mudar. ⭐ De graça vem a **exclusividade**: escolher um pincel desarma
+/// o corte e escolher o corte larga o pincel, sem uma regra escrita à mão.
 #[derive(Default)]
 pub(crate) struct Trim {
-    /// A forma armada — `None` quando o corte não está na mão.
-    pub(crate) armado: Option<Forma>,
+    /// ⭐ **O verbo que a TECLA interrompeu** — e nada mais o lê.
+    ///
+    /// ⚠️ **É estado do ATALHO, não da ferramenta:** quem escolhe o corte no
+    /// painel escolhe outro pincel no painel, e nunca passa por aqui. O `L`,
+    /// esse, é um ciclo que tem de saber a onde voltar — *um atalho que arma e
+    /// não desarma deixa o artista preso à ferramenta que ele espreitou*.
+    pub(crate) verbo_anterior: Option<ph2d_sculpt3d::Verb>,
     /// A orientação que o artista pediu.
     pub(crate) orientacao: Orientacao,
     /// O gesto a decorrer, entre o pen-down e o pen-up.
@@ -107,9 +89,10 @@ impl Gesto {
     /// Um evento de movimento.
     pub(crate) fn move_para(&mut self, p: [f32; 2]) {
         match self.forma {
-            // ⚠️ A caixa guarda só DOIS pontos: os cantos. Guardar o caminho
-            // seria descrever um rectângulo por uma linha que serpenteia.
-            Forma::Caixa => {
+            // ⚠️ A caixa e o círculo guardam só DOIS pontos: os cantos, ou o
+            // centro e o raio. Guardar o caminho seria descrever um rectângulo
+            // por uma linha que serpenteia.
+            Forma::Caixa | Forma::Circulo => {
                 self.pontos.truncate(1);
                 self.pontos.push(p);
             }
@@ -123,11 +106,18 @@ impl Gesto {
         }
     }
 
+    /// Os pontos crus, para o gate da suavização — *a régua do «ao bit»
+    /// precisa do lado de dentro*.
+    #[cfg(test)]
+    pub(crate) fn pontos_para_o_gate(&self) -> Vec<[f32; 2]> {
+        self.pontos.clone()
+    }
+
     /// **O anel de ecrã** que a lei recebe (espec §4).
     ///
     /// ⚠️ Devolve vazio quando o gesto não delimita área — quem chama recusa em
     /// voz alta, e a recusa é do gesto, não do motor.
-    pub(crate) fn anel(&self) -> Vec<[f32; 2]> {
+    pub(crate) fn anel(&self, suavizacao: f32) -> Vec<[f32; 2]> {
         match self.forma {
             Forma::Caixa => {
                 let [a, b] = [self.pontos[0], *self.pontos.last().expect("um")];
@@ -136,11 +126,31 @@ impl Gesto {
                 }
                 vec![[a[0], a[1]], [b[0], a[1]], [b[0], b[1]], [a[0], b[1]]]
             }
+            Forma::Circulo => {
+                let c = self.pontos[0];
+                let b = *self.pontos.last().expect("um");
+                let r = (b[0] - c[0]).hypot(b[1] - c[1]);
+                if r < 1.0 {
+                    return Vec::new();
+                }
+                let n = segmentos_do_circulo(r);
+                (0..n)
+                    .map(|i| {
+                        let t = i as f32 / n as f32 * std::f32::consts::TAU;
+                        [c[0] + r * t.cos(), c[1] + r * t.sin()]
+                    })
+                    .collect()
+            }
             Forma::Laco => {
                 if self.pontos.len() < 3 {
                     return Vec::new();
                 }
-                self.pontos.clone()
+                // ⭐⭐ **A suavização entra AQUI e só aqui** (ordem do dono,
+                // 2026-09-15). ⚠️ Ela é do LAÇO por construção: a caixa e o
+                // círculo saem de dois pontos, e não há traço a suavizar. E
+                // `0` devolve o traço cru ao bit — a lei
+                // [`ph2d_trim::suaviza`] empresta em vez de copiar.
+                ph2d_trim::suaviza::suaviza(&self.pontos, suavizacao).into_owned()
             }
         }
     }
@@ -207,8 +217,8 @@ mod tests;
 /// Devolve o anel fechado em coordenadas de ECRÃ, ou `None` quando ainda não há
 /// forma nenhuma.
 impl Gesto {
-    pub(crate) fn previa(&self) -> Option<Vec<[f32; 2]>> {
-        let anel = self.anel();
+    pub(crate) fn previa(&self, suavizacao: f32) -> Option<Vec<[f32; 2]>> {
+        let anel = self.anel(suavizacao);
         (anel.len() >= 3).then_some(anel)
     }
 }
@@ -220,6 +230,28 @@ impl super::Sculpt3dScene {
     /// que o produto *vai* fazer, e não do que ele *já* guardou, é como um
     /// indicador passa a mostrar outra coisa que não a ferramenta.
     pub fn trim_previa(&self) -> Option<Vec<[f32; 2]>> {
-        self.trim.gesto.as_ref()?.previa()
+        // ⭐ **A prévia é pintada com a MESMA suavização que o corte vai usar** —
+        // senão o artista vê uma forma e a ferramenta corta outra.
+        self.trim.gesto.as_ref()?.previa(self.brush.trim_suavizacao)
     }
 }
+
+/// **Quantos segmentos um círculo de raio `r` px precisa para não se ver
+/// poligonal.**
+///
+/// ⭐ **Derivado do ECRÃ, nunca escolhido:** a flecha de uma corda de `n` lados
+/// num círculo de raio `r` é `r·(1 − cos(π/n)) ≈ r·π²/(2n²)`, e exigir que ela
+/// fique abaixo de [`FLECHA_MAX_PX`] dá `n ≥ π·√(r / (2·flecha))`. ⇒ o polígono
+/// é **indistinguível de um círculo no ecrã em que foi desenhado**, e a
+/// contagem cresce com `√r` em vez de linearmente — um círculo grande não
+/// explode a contagem de pontos que a tampa tem de triangular.
+///
+/// ⚠️ **O piso de `12` é a forma, não a precisão:** abaixo dele um raio pequeno
+/// entregaria um polígono que o artista reconhece como polígono.
+fn segmentos_do_circulo(r: f32) -> usize {
+    let n = std::f32::consts::PI * (r / (2.0 * FLECHA_MAX_PX)).sqrt();
+    (n.ceil() as usize).max(12)
+}
+
+/// Meio-pixel de flecha: metade do que o ecrã consegue mostrar.
+const FLECHA_MAX_PX: f32 = 0.5;

@@ -17,7 +17,9 @@
 
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_sculpt3d::{ClothArea, ClothForceFalloff, ClothMode, ProjectMode, SmearMode, Verb};
+use ph2d_sculpt3d::{
+    ClothArea, ClothForceFalloff, ClothMode, ProjectMode, SmearMode, TrimForma, Verb,
+};
 use ph2d_tokens::Spacing;
 
 use super::widgets::{command, labelled_seg, toggle};
@@ -171,6 +173,43 @@ pub(super) fn paint_smear_rows(
         tr("panel.sculpt3d.smear_mode"),
         crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_SMEAR_MODE,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    ) + Spacing::Sm.px()
+}
+
+/// **A FORMA QUE O BOX TRIM CORTA** — ordem do dono (2026-09-15): *«Nos
+/// parâmetros botões box e circle (novo) e laço»*.
+///
+/// ⚠️ **A segunda superfície dele — a SUAVIZAÇÃO do traço — é um SLIDER e vive
+/// na tabela** (`rows.rs`), como todo knob numérico deste painel; e ela só é
+/// pintada com o LAÇO na mão, porque a caixa e o círculo saem de dois pontos e
+/// não têm traço a suavizar. *Pintá-la aqui à mão seria a segunda resposta a
+/// «como se desenha um número», e o painel guiado por tabela é o único desta
+/// casa sem knob morto* (CLAUDE.md §5.0).
+pub(super) fn paint_trim_rows(
+    ctx: &mut PaintCtx,
+    snap: &Sculpt3dSnapshot,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    if snap.ui.brush.verb != ph2d_sculpt3d::Verb::BoxTrim {
+        return y;
+    }
+    let selected = TrimForma::ALL
+        .iter()
+        .position(|&f| f == snap.ui.brush.trim_forma)
+        .unwrap_or(0);
+    let labels: Vec<&str> = TrimForma::ALL.iter().map(|f| f.label()).collect();
+    labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.trim_forma"),
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_TRIM_FORMA,
         &labels,
         selected,
         x,

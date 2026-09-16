@@ -147,6 +147,10 @@ impl Default for Brush {
             // ⭐ Os três de fábrica do corpus do oráculo: raio de vista,
             // folga `0`, um sentido — a base de `21` das `24` fixturas.
             project_mode: crate::ProjectMode::View,
+            trim_forma: crate::TrimForma::Caixa,
+            // ⚠️ **Nasce em ZERO, e é a lei desta casa para todo knob novo:** o
+            // caminho de omissão fica byte-idêntico ao traço que a mão fez.
+            trim_suavizacao: 0.0,
             project_min_distance: 0.0,
             project_bidirectional: false,
             // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo

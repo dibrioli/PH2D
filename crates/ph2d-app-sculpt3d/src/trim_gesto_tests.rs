@@ -13,7 +13,7 @@ fn a_caixa_guarda_so_os_cantos() {
         let t = k as f32;
         g.move_para([10.0 + t * 2.0, 20.0 + t]);
     }
-    let anel = g.anel();
+    let anel = g.anel(0.0);
     assert_eq!(anel.len(), 4, "a caixa tem quatro cantos");
     assert_eq!(anel[0], [10.0, 20.0]);
     assert_eq!(anel[2], [88.0, 59.0], "o canto oposto é o ÚLTIMO ponto");
@@ -31,7 +31,7 @@ fn o_laco_guarda_o_caminho_com_passo_minimo() {
     for k in 1..=100 {
         g.move_para([k as f32, 0.0]);
     }
-    let anel = g.anel();
+    let anel = g.anel(0.0);
     assert!(
         anel.len() < 30 && anel.len() > 20,
         "100 eventos a 1 px com passo de 4 px tinham de dar ~25 pontos, e deram {}",
@@ -50,14 +50,14 @@ fn um_gesto_sem_area_devolve_anel_vazio() {
     let mut caixa = Gesto::comeca(Forma::Caixa, [5.0, 5.0], None);
     caixa.move_para([5.4, 40.0]);
     assert!(
-        caixa.anel().is_empty(),
+        caixa.anel(0.0).is_empty(),
         "uma caixa de meio pixel de largura"
     );
 
     let mut laco = Gesto::comeca(Forma::Laco, [5.0, 5.0], None);
     laco.move_para([6.0, 5.0]);
     assert!(
-        laco.anel().is_empty(),
+        laco.anel(0.0).is_empty(),
         "um laço com dois pontos não fecha nada"
     );
 }
@@ -146,10 +146,10 @@ fn o_plano_usa_a_normal_da_superficie_ou_a_vista_invertida() {
 #[test]
 fn a_previa_so_existe_quando_ha_forma_e_e_o_mesmo_anel() {
     let mut g = Gesto::comeca(Forma::Caixa, [10.0, 10.0], None);
-    assert!(g.previa().is_none(), "um clique parado não desenha nada");
+    assert!(g.previa(0.0).is_none(), "um clique parado não desenha nada");
     g.move_para([60.0, 40.0]);
-    let previa = g.previa().expect("agora há caixa");
-    assert_eq!(previa, g.anel(), "a prévia É o anel que a lei recebe");
+    let previa = g.previa(0.0).expect("agora há caixa");
+    assert_eq!(previa, g.anel(0.0), "a prévia É o anel que a lei recebe");
     assert_eq!(previa.len(), 4);
 }
 
@@ -161,19 +161,203 @@ fn a_previa_so_existe_quando_ha_forma_e_e_o_mesmo_anel() {
 /// uma delas mudar*.
 #[test]
 fn a_ferramenta_chama_se_box_trim() {
-    use super::Forma;
-    assert_eq!(Forma::Caixa.label(), "Box Trim");
-    assert_eq!(Forma::Laco.label(), "Lasso Trim");
+    use ph2d_sculpt3d::{TrimForma, Verb};
+    // ⚠️ **O nome da FERRAMENTA e o nome da FORMA são duas perguntas**, e por
+    // isso vivem em duas portas: o dono pediu *«o botão nos tools para box
+    // trim»* e *«nos parâmetros botões box e circle e laço»* — a ferramenta é
+    // uma, as formas são três.
+    assert_eq!(Verb::BoxTrim.label(), "Box Trim");
+    assert_eq!(TrimForma::Caixa.label(), "Box");
+    assert_eq!(TrimForma::Circulo.label(), "Circle");
+    assert_eq!(TrimForma::Laco.label(), "Lasso");
 
     let teclado = include_str!("keys.rs");
-    assert!(
-        teclado.contains("f.label()"),
-        "o teclado deixou de ler o rótulo da forma"
-    );
-    for escrito_a_mao in ["\"caixa\"", "\"laco\""] {
+    for porta in ["Verb::BoxTrim.label()", "trim_forma.label()"] {
         assert!(
-            !teclado.contains(escrito_a_mao),
-            "o nome da forma voltou a ser escrito à mão no teclado: {escrito_a_mao}"
+            teclado.contains(porta),
+            "o teclado deixou de ler o rótulo pela porta `{porta}`"
         );
     }
+    for escrito_a_mao in ["\"Box Trim\"", "\"caixa\"", "\"laco\"", "\"Lasso\""] {
+        assert!(
+            !teclado.contains(escrito_a_mao),
+            "o nome voltou a ser escrito à mão no teclado: {escrito_a_mao}"
+        );
+    }
+}
+
+/// ⭐⭐ **O CÍRCULO é um círculo, e a contagem de lados sai do ECRÃ.**
+///
+/// ⚠️ **As três metades são três defeitos diferentes:** um raio errado corta no
+/// sítio errado; um centro errado corta a peça errada; e uma contagem escolhida
+/// à mão entrega um polígono que o artista reconhece como polígono (poucos
+/// lados) ou uma tampa que a triangulação não aguenta (muitos).
+#[test]
+fn o_circulo_e_um_circulo_e_os_lados_saem_do_ecra() {
+    use ph2d_sculpt3d::TrimForma;
+    for raio in [20.0f32, 120.0, 600.0] {
+        let mut g = Gesto::comeca(TrimForma::Circulo, [100.0, 100.0], None);
+        g.move_para([100.0 + raio, 100.0]);
+        let anel = g.anel(0.0);
+        assert!(anel.len() >= 12, "raio {raio}: só {} lados", anel.len());
+        // Todo ponto está no círculo, e o centro é o pen-down.
+        for p in &anel {
+            let r = (p[0] - 100.0).hypot(p[1] - 100.0);
+            assert!(
+                (r - raio).abs() < 1e-2,
+                "raio {raio}: um ponto ficou a {r} do centro"
+            );
+        }
+        // ⭐ **A FLECHA é a régua da contagem** — ela tem de caber no meio
+        // pixel que a lei promete, e um polígono com metade dos lados **não**
+        // cabe (senão a contagem estava inflada).
+        let n = anel.len() as f32;
+        let flecha = raio * (1.0 - (std::f32::consts::PI / n).cos());
+        assert!(
+            flecha <= 0.5,
+            "raio {raio}: a flecha mede {flecha} px com {n} lados"
+        );
+        let metade = raio * (1.0 - (std::f32::consts::PI / (n * 0.5)).cos());
+        assert!(
+            metade > 0.5 || anel.len() == 12,
+            "raio {raio}: metade dos lados ainda caberia ({metade} px) — a \
+             contagem está inflada"
+        );
+    }
+    // Um arrasto de menos de um pixel não delimita área.
+    let mut g = Gesto::comeca(TrimForma::Circulo, [0.0, 0.0], None);
+    g.move_para([0.5, 0.0]);
+    assert!(g.anel(0.0).is_empty());
+}
+
+/// ⛔⛔ **A SUAVIZAÇÃO CHEGA AO ANEL, e SÓ no laço** — a pergunta que o §5.0 do
+/// `CLAUDE.md` diz que nenhum instrumento deste repo faz: *o valor chega a um
+/// consumidor?*
+///
+/// ⚠️ **As três metades:** ela move o anel do laço · ela **não** toca a caixa
+/// nem o círculo (um knob que agisse ali seria uma lei inventada) · e `0` é o
+/// traço cru **ao bit**.
+#[test]
+fn a_suavizacao_chega_ao_anel_e_so_no_laco() {
+    use ph2d_sculpt3d::TrimForma;
+    // Um laço com tremor: um quadrado grosseiro com os pontos a saltar.
+    let mut laco = Gesto::comeca(TrimForma::Laco, [0.0, 0.0], None);
+    for i in 1u8..40 {
+        let i = f32::from(i);
+        let t = i * 12.0;
+        let r = 3.0 * ((i * 2.399_9).sin());
+        laco.move_para([t.cos() * 100.0 + r, t.sin() * 100.0 - r]);
+    }
+    let cru = laco.anel(0.0);
+    let suave = laco.anel(1.0);
+    assert_eq!(cru.len(), suave.len(), "a suavização mudou a contagem");
+    let movido = cru
+        .iter()
+        .zip(&suave)
+        .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]))
+        .fold(0.0f32, f32::max);
+    assert!(
+        movido > 0.5,
+        "a pista não chega ao anel: o ponto que mais andou moveu {movido} px"
+    );
+    // `0` é o traço CRU, ao bit.
+    let bits = |v: &[[f32; 2]]| {
+        v.iter()
+            .map(|p| [p[0].to_bits(), p[1].to_bits()])
+            .collect::<Vec<_>>()
+    };
+    let mut nu = Gesto::comeca(TrimForma::Laco, [0.0, 0.0], None);
+    for i in 1u8..40 {
+        let t = f32::from(i) * 12.0;
+        nu.move_para([t.cos() * 100.0, t.sin() * 100.0]);
+    }
+    assert_eq!(bits(&nu.anel(0.0)), bits(&nu.pontos_para_o_gate()));
+
+    // ⛔ **E ela NÃO toca as formas de dois pontos.**
+    for forma in [TrimForma::Caixa, TrimForma::Circulo] {
+        let mut g = Gesto::comeca(forma, [0.0, 0.0], None);
+        g.move_para([80.0, 60.0]);
+        assert_eq!(
+            bits(&g.anel(0.0)),
+            bits(&g.anel(1.0)),
+            "a suavização mexeu no {} — ele guarda DOIS pontos e não tem traço",
+            forma.label()
+        );
+    }
+}
+
+/// ⛔⛔ **O TECTO DA SUAVIZAÇÃO É DERIVADO DA RESOLUÇÃO DO GESTO — e este é o
+/// único sítio onde as duas constantes se encontram.**
+///
+/// A lei ([`ph2d_trim::suaviza`]) vive numa crate que **não sabe** com que passo
+/// o laço guarda pontos; o gesto ([`super::PASSO_MINIMO_PX`]) vive aqui e não
+/// sabe quantas passagens a lei gasta. ⇒ *a derivação do tecto atravessa a
+/// fronteira, e uma derivação sem gate é uma nota que envelhece.*
+///
+/// ⚠️ **A afirmação tem DUAS metades:** no tecto o canto tem de sobreviver
+/// (deslocar-se menos que o passo com que o traço foi registado — uma diferença
+/// que o anel não consegue representar não é feição perdida), e o tecto tem de
+/// estar **abaixo** do ponto onde isso deixa de valer, senão ele foi escolhido e
+/// não derivado.
+#[test]
+fn o_tecto_da_suavizacao_e_derivado_da_resolucao_do_gesto() {
+    // Um quadrado LIMPO, com o espaçamento do próprio gesto: os cantos são o
+    // que esta lei pode destruir, e sem tremor a régua mede só isso.
+    let lado = 100.0f32;
+    let por_lado = (2.0 * lado / super::PASSO_MINIMO_PX) as usize;
+    let cantos = [[-lado, -lado], [lado, -lado], [lado, lado], [-lado, lado]];
+    let mut anel = Vec::new();
+    for c in 0..4 {
+        let (a, b) = (cantos[c], cantos[(c + 1) % 4]);
+        for i in 0..por_lado {
+            let t = i as f32 / por_lado as f32;
+            anel.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+        }
+    }
+    let perdido = |grau: f32| {
+        let s = ph2d_trim::suaviza::suaviza(&anel, grau);
+        (0..4)
+            .map(|c| {
+                let i = c * por_lado;
+                (s[i][0] - anel[i][0]).hypot(s[i][1] - anel[i][1])
+            })
+            .fold(0.0f32, f32::max)
+    };
+    let no_tecto = perdido(1.0);
+    assert!(
+        no_tecto < super::PASSO_MINIMO_PX,
+        "no tecto o canto desloca-se {no_tecto:.2} px, mais do que o passo com \
+         que o laço guarda pontos ({}) — a lei passou a apagar feição que o \
+         traço ainda representava",
+        super::PASSO_MINIMO_PX
+    );
+    // ⭐⭐ **E a metade que impede um tecto escolhido por baixo:** a TRIPLA
+    // aplicação tem de PASSAR a resolução. Sem ela, um `PARES_MAX = 1` passaria
+    // a primeira metade com folga e a pista do artista não faria nada.
+    //
+    // ⚠️⚠️ **É `4 ×`, e as duas redacções anteriores erraram nisto:** com o
+    // dobro o canto mede `3,59 px` e ainda cabe, e a `3 ×` ele pousa
+    // **exactamente em cima** da régua (`4,00 px`) — uma comparação de `f32` no
+    // fio da navalha, que é o que um gate não pode ser. *O cruzamento está
+    // MEDIDO nos `192` pares* (tabela no doc do
+    // `ph2d_trim::suaviza::PARES_MAX`), e a folga **é** a conservação que o
+    // tecto declara — a medição corre no
+    // espaçamento MÍNIMO, e um arrasto rápido guarda pontos mais afastados, onde
+    // as mesmas passagens alcançam mais longe em pixels.
+    let mut triplo = anel.clone();
+    for _ in 0..4 {
+        triplo = ph2d_trim::suaviza::suaviza(&triplo, 1.0).into_owned();
+    }
+    let com_triplo = (0..4)
+        .map(|c| {
+            let i = c * por_lado;
+            (triplo[i][0] - anel[i][0]).hypot(triplo[i][1] - anel[i][1])
+        })
+        .fold(0.0f32, f32::max);
+    assert!(
+        com_triplo >= super::PASSO_MINIMO_PX,
+        "com QUATRO vezes as passagens o canto ainda se desloca só {com_triplo:.2} \
+         px — o tecto está escolhido muito abaixo do que a régua permite, e a \
+         pista do artista tem menos alcance do que podia"
+    );
 }

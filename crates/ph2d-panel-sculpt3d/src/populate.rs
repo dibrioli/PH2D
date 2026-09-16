@@ -110,6 +110,14 @@ pub fn populate(store: &mut WidgetStore) {
         // o dedo dão o MESMO report* — quem os separa é o gesto REAL do
         // `every_smear_control_is_clickable_where_it_is_drawn`.
         &crate::ids::SCULPT3D_SMEAR_MODE[..],
+        // ⛔⛔ **E a fileira do BOX TRIM, pela MESMA lição — a OITAVA ocorrência
+        // desta família.** Sete vezes um chip nasceu pintado, hit-indexado e
+        // morto sob o ponteiro nesta crate, e a última custou o report *«os
+        // outros 2 botões ainda não funcionam»*. ⭐ Hoje há censo DERIVADO
+        // (`populate_censo_tests`) que compara o despacho com o registo, logo
+        // esquecer esta linha reprova antes de chegar às mãos do dono — mas a
+        // linha continua a ter de ser escrita.
+        &crate::ids::SCULPT3D_TRIM_FORMA[..],
         &crate::ids::SCULPT3D_PROJECT_MODE[..],
         // ⛔⛔⛔ **E A SÉTIMA OCORRÊNCIA — report do dono (2026-09-15): *«os
         // outros 2 botões ainda não funcionam»*.** As três fileiras abaixo

@@ -96,6 +96,7 @@ const ID_CLOTH: &str = include_str!("ids/sculpt3d_cloth.rs");
 const ID_POSE: &str = include_str!("ids/sculpt3d_pose.rs");
 const ID_BOUNDARY: &str = include_str!("ids/sculpt3d_boundary.rs");
 const ID_SMEAR: &str = include_str!("ids/sculpt3d_smear.rs");
+const ID_TRIM: &str = include_str!("ids/sculpt3d_trim.rs");
 const ID_PROJECT: &str = include_str!("ids/sculpt3d_project.rs");
 const ID_BRUSH: &str = include_str!("ids/sculpt3d_brush.rs");
 const ID_SHADING: &str = include_str!("ids/sculpt3d_shading.rs");
@@ -111,6 +112,7 @@ const ID_FONTES: &[(&str, &str)] = &[
     ("sculpt3d_pose", ID_POSE),
     ("sculpt3d_boundary", ID_BOUNDARY),
     ("sculpt3d_smear", ID_SMEAR),
+    ("sculpt3d_trim", ID_TRIM),
     ("sculpt3d_project", ID_PROJECT),
     ("sculpt3d_brush", ID_BRUSH),
     ("sculpt3d_shading", ID_SHADING),

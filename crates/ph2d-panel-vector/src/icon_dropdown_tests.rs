@@ -69,11 +69,11 @@ fn the_chip_reads_the_choice_and_says_drawing_without_one() {
         ..Default::default()
     };
     assert_eq!(chip_label(&st(None)), None, "um tipo sem face ganhou chip");
-    assert_eq!(chip_label(&st(Some(None))).as_deref(), Some(DRAWING));
+    assert_eq!(chip_label(&st(Some(None))).as_deref(), Some(DRAWING.tr()));
     assert_eq!(
         chip_label(&st(Some(Some("trash".into())))).as_deref(),
         Some("trash")
     );
     // A palavra é a MESMA nos dois lugares — é isso que o dono único garante.
-    assert_eq!(row_label(0), DRAWING);
+    assert_eq!(row_label(0), DRAWING.tr());
 }

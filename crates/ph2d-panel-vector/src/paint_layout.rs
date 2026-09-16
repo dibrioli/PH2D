@@ -77,9 +77,9 @@ impl BodyCtx<'_> {
             // pai. Gate: `seam_layout_grid_item`.
             if !it.absolute && !it.parent_is_grid {
                 y = self.number_row(
-                    "Grow",
+                    tr("panel.vector.layout.grow"),
                     crate::ids::VECTOR_LAYOUT_ITEM_GROW,
-                    "Shrink",
+                    tr("panel.vector.layout.shrink"),
                     crate::ids::VECTOR_LAYOUT_ITEM_SHRINK,
                     y,
                 );
@@ -158,7 +158,7 @@ impl BodyCtx<'_> {
         }
         if wrap {
             let cross = self.number_cell(
-                "Cross",
+                tr("panel.vector.layout.cross"),
                 crate::ids::VECTOR_LAYOUT_GAP_CROSS,
                 self.inner_x + cw + Spacing::Sm.px(),
                 cw,
@@ -272,7 +272,11 @@ impl BodyCtx<'_> {
                 y,
             );
         } else {
-            y = self.lone_number_row("All", crate::ids::VECTOR_LAYOUT_PAD_ALL, y);
+            y = self.lone_number_row(
+                tr("panel.vector.layout.all"),
+                crate::ids::VECTOR_LAYOUT_PAD_ALL,
+                y,
+            );
         }
         y
     }

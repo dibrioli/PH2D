@@ -476,7 +476,7 @@ impl BodyCtx<'_> {
         );
         let fill_swatch = ColorSwatch::new(
             ph2d_tool_vector::ids::VECTOR_FILL_SWATCH,
-            "Fill color",
+            tr("panel.vector.paint.fill_color"),
             snap.fill,
         )
         .size(SwatchSize::Md);
@@ -503,7 +503,7 @@ impl BodyCtx<'_> {
             .unwrap_or_else(|| opacity_to_slider(snap.fill[3]));
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent for the opacity chip
         self.slider_row(
-            "Opacity",
+            tr("panel.vector.paint.opacity"),
             ph2d_tool_vector::ids::VECTOR_FILL_OPACITY,
             ph2d_tool_vector::ids::VECTOR_FILL_OPACITY_NUM,
             track,

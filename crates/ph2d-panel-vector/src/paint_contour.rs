@@ -24,6 +24,7 @@ use crate::contour_params::{accel_to_track, d_to_track, steps_to_track};
 /// `join`, `side`, `to`…) que colidiriam com os das outras seções se subissem soltos. A
 /// qualificação (`cst::join()`) diz de que seção o número é.
 use crate::state::contour as cst;
+use ph2d_i18n::tr;
 
 /// Quantos por cento é uma unidade de fração — o fator do readout, não uma medida de desenho.
 const PERCENT: f64 = 100.0; // LITERAL-PX-OK: conversão de unidade (fração -> percentual)
@@ -45,7 +46,11 @@ impl BodyCtx<'_> {
             return y;
         }
         if !cst::present() {
-            return self.action_button(crate::ids::VECTOR_CONTOUR_ADD, "Add Contour", y);
+            return self.action_button(
+                crate::ids::VECTOR_CONTOUR_ADD,
+                tr("panel.vector.contour.add_contour"),
+                y,
+            );
         }
         // Steps — quantos anéis. O controle-assinatura: é ele que distingue este efeito do
         // Offset da seção Expand, que é o caso `steps = 1` sem rampa de cor.
@@ -58,7 +63,7 @@ impl BodyCtx<'_> {
             .slider(crate::ids::VECTOR_CONTOUR_STEPS)
             .map_or_else(|| steps_to_track(cst::steps()), |(_, v)| v);
         y = self.slider_row(
-            "Steps",
+            tr("panel.vector.contour.steps"),
             crate::ids::VECTOR_CONTOUR_STEPS,
             crate::ids::VECTOR_CONTOUR_STEPS_NUM,
             steps_track,
@@ -78,7 +83,7 @@ impl BodyCtx<'_> {
             .slider(crate::ids::VECTOR_CONTOUR_OFFSET)
             .map_or_else(|| d_to_track(cst::d_frac()), |(_, v)| v);
         y = self.slider_row(
-            "Offset",
+            tr("panel.vector.contour.offset"),
             crate::ids::VECTOR_CONTOUR_OFFSET,
             crate::ids::VECTOR_CONTOUR_OFFSET_NUM,
             d_track,
@@ -98,7 +103,7 @@ impl BodyCtx<'_> {
             .slider(crate::ids::VECTOR_CONTOUR_ACCEL)
             .map_or_else(|| accel_to_track(cst::accel()), |(_, v)| v);
         y = self.slider_row(
-            "Accel",
+            tr("panel.vector.contour.accel"),
             crate::ids::VECTOR_CONTOUR_ACCEL,
             crate::ids::VECTOR_CONTOUR_ACCEL_NUM,
             accel_track,
@@ -113,29 +118,61 @@ impl BodyCtx<'_> {
         // que a seção Expand tomou, e pela mesma razão.
         let join = cst::join();
         y = self.segmented3(
-            "Corner",
+            tr("panel.vector.contour.corner"),
             [
-                (ids::VECTOR_CONTOUR_JOIN_MITER, "Miter", join == 0),
-                (ids::VECTOR_CONTOUR_JOIN_ROUND, "Round", join == 1),
-                (ids::VECTOR_CONTOUR_JOIN_BEVEL, "Bevel", join == 2),
+                (
+                    ids::VECTOR_CONTOUR_JOIN_MITER,
+                    tr("panel.vector.contour.miter"),
+                    join == 0,
+                ),
+                (
+                    ids::VECTOR_CONTOUR_JOIN_ROUND,
+                    tr("panel.vector.contour.round"),
+                    join == 1,
+                ),
+                (
+                    ids::VECTOR_CONTOUR_JOIN_BEVEL,
+                    tr("panel.vector.contour.bevel"),
+                    join == 2,
+                ),
             ],
             y,
         );
         let side = cst::side();
         y = self.segmented3(
-            "Side",
+            tr("panel.vector.contour.side"),
             [
-                (ids::VECTOR_CONTOUR_SIDE_OUTER, "Outer", side == 0),
-                (ids::VECTOR_CONTOUR_SIDE_INNER, "Inner", side == 1),
-                (ids::VECTOR_CONTOUR_SIDE_BOTH, "Both", side == 2),
+                (
+                    ids::VECTOR_CONTOUR_SIDE_OUTER,
+                    tr("panel.vector.contour.outer"),
+                    side == 0,
+                ),
+                (
+                    ids::VECTOR_CONTOUR_SIDE_INNER,
+                    tr("panel.vector.contour.inner"),
+                    side == 1,
+                ),
+                (
+                    ids::VECTOR_CONTOUR_SIDE_BOTH,
+                    tr("panel.vector.contour.both"),
+                    side == 2,
+                ),
             ],
             y,
         );
         // As duas saídas, e elas fazem coisas OPOSTAS: uma entrega os anéis como formas de
         // verdade, a outra os apaga. Ficam nesta ordem porque Expand é a que se procura (é o
         // que se faz com um contour pronto) e Remove é a que se lamenta ter clicado.
-        y = self.action_button(crate::ids::VECTOR_CONTOUR_EXPAND, "Expand Contour", y);
-        self.action_button(crate::ids::VECTOR_CONTOUR_REMOVE, "Remove Contour", y)
+        y = self.action_button(
+            crate::ids::VECTOR_CONTOUR_EXPAND,
+            tr("panel.vector.contour.expand_contour"),
+            y,
+        );
+        self.action_button(
+            crate::ids::VECTOR_CONTOUR_REMOVE,
+            tr("panel.vector.contour.remove_contour"),
+            y,
+        )
     }
 
     /// A fileira da cor-alvo: rótulo + swatch que abre o picker OKLCH partilhado.
@@ -148,7 +185,7 @@ impl BodyCtx<'_> {
         ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
-            "To",
+            tr("panel.vector.contour.to"),
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
@@ -163,7 +200,7 @@ impl BodyCtx<'_> {
         );
         let swatch = ColorSwatch::new(
             crate::ids::VECTOR_CONTOUR_TO,
-            "Contour target color",
+            tr("panel.vector.contour.contour_target_color"),
             cst::to(),
         )
         .size(SwatchSize::Md);

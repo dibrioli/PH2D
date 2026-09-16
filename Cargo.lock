@@ -7914,6 +7914,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-label-census",
  "ph2d-symmetry",
  "ph2d-text",
  "ph2d-tokens",

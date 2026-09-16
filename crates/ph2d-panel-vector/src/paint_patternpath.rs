@@ -16,6 +16,7 @@
 //! caminhos → o botão). Fora disso, o cabeçalho nem sobe — é a lei do `Join Selected Bodies`.
 
 use super::*;
+use ph2d_i18n::tr;
 
 impl BodyCtx<'_> {
     /// Seção **PATTERN ON PATH**.
@@ -42,11 +43,15 @@ impl BodyCtx<'_> {
             if state::pp_can_link() {
                 return self.action_button(
                     crate::ids::VECTOR_PATTERNPATH_LINK,
-                    "Pattern on Path",
+                    tr("panel.vector.patternpath.pattern_on_path"),
                     y,
                 );
             }
-            return self.action_button(crate::ids::VECTOR_PATTERNPATH_PICK, "Pick Path", y);
+            return self.action_button(
+                crate::ids::VECTOR_PATTERNPATH_PICK,
+                tr("panel.vector.patternpath.pick_path"),
+                y,
+            );
         }
         // Spacing — o controle-assinatura (quão densas as cópias). Track `0..1` → valor `0.25..4.0`
         // (o mapa vive na fronteira, `event::track_slider_event`, e é o mesmo do Bend bipolar).
@@ -59,7 +64,7 @@ impl BodyCtx<'_> {
             .slider(crate::ids::VECTOR_PATTERNPATH_SPACING)
             .map_or_else(|| spacing_track(state::pp_spacing()), |(_, v)| v);
         y = self.slider_row(
-            "Spacing",
+            tr("panel.vector.patternpath.spacing"),
             crate::ids::VECTOR_PATTERNPATH_SPACING,
             ids::VECTOR_PATTERNPATH_SPACING_NUM,
             sp_track,
@@ -78,7 +83,7 @@ impl BodyCtx<'_> {
             .number_value(ids::VECTOR_PATTERNPATH_START_NUM)
             .unwrap_or_else(state::pp_start);
         y = self.slider_row(
-            "Start",
+            tr("panel.vector.patternpath.start"),
             crate::ids::VECTOR_PATTERNPATH_START,
             ids::VECTOR_PATTERNPATH_START_NUM,
             start_track,
@@ -96,7 +101,7 @@ impl BodyCtx<'_> {
             .number_value(ids::VECTOR_PATTERNPATH_END_NUM)
             .unwrap_or_else(state::pp_end);
         y = self.slider_row(
-            "End",
+            tr("panel.vector.patternpath.end"),
             crate::ids::VECTOR_PATTERNPATH_END,
             ids::VECTOR_PATTERNPATH_END_NUM,
             end_track,
@@ -110,7 +115,7 @@ impl BodyCtx<'_> {
         // Slide. O drain re-centra a janela a partir deste número (a porta é o `render_loop`).
         let slide = (state::pp_start() + state::pp_end()) * 0.5;
         y = self.slider_row(
-            "Slide",
+            tr("panel.vector.patternpath.slide"),
             crate::ids::VECTOR_PATTERNPATH_SLIDE,
             ids::VECTOR_PATTERNPATH_SLIDE_NUM,
             slide as f32,
@@ -129,7 +134,7 @@ impl BodyCtx<'_> {
             .slider(crate::ids::VECTOR_PATTERNPATH_OFFSET)
             .map_or_else(|| offset_track(state::pp_offset()), |(_, v)| v);
         y = self.slider_row(
-            "Offset",
+            tr("panel.vector.patternpath.offset"),
             crate::ids::VECTOR_PATTERNPATH_OFFSET,
             ids::VECTOR_PATTERNPATH_OFFSET_NUM,
             off_track,
@@ -152,7 +157,7 @@ impl BodyCtx<'_> {
                 |(_, v)| v,
             );
         y = self.slider_row(
-            "Rotation",
+            tr("panel.vector.patternpath.rotation"),
             crate::ids::VECTOR_PATTERNPATH_ROTATION,
             ids::VECTOR_PATTERNPATH_ROTATION_NUM,
             rot_track,
@@ -163,11 +168,23 @@ impl BodyCtx<'_> {
         // O lado é um par exclusivo (deste / do outro), não um checkbox — a mesma razão do texto.
         let flip = state::pp_flip();
         let sides: [(ph2d_a11y::NodeId, &str, bool); 2] = [
-            (crate::ids::VECTOR_PATTERNPATH_FLIP_OFF, "This side", !flip),
-            (crate::ids::VECTOR_PATTERNPATH_FLIP, "Other side", flip),
+            (
+                crate::ids::VECTOR_PATTERNPATH_FLIP_OFF,
+                tr("panel.vector.patternpath.this_side"),
+                !flip,
+            ),
+            (
+                crate::ids::VECTOR_PATTERNPATH_FLIP,
+                tr("panel.vector.patternpath.other_side"),
+                flip,
+            ),
         ];
-        y = self.segmented("Side", &sides, y);
-        self.action_button(crate::ids::VECTOR_PATTERNPATH_DETACH, "Detach from Path", y)
+        y = self.segmented(tr("panel.vector.patternpath.side"), &sides, y);
+        self.action_button(
+            crate::ids::VECTOR_PATTERNPATH_DETACH,
+            tr("panel.vector.patternpath.detach_from_path"),
+            y,
+        )
     }
 }
 

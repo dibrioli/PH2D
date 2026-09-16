@@ -13,6 +13,7 @@
 //! resolveu — GSAP/Corel exigem controle manual; o nosso não pede nada ao artista).
 
 use super::*;
+use ph2d_i18n::tr;
 use ph2d_tool_vector::VectorStyleSnapshot;
 use ph2d_tool_vector::params::DrawMode;
 
@@ -43,7 +44,7 @@ impl BodyCtx<'_> {
         y = self.button_grid(y, 1, 1, |_| {
             (
                 ph2d_tool_vector::ids::VECTOR_MODE_PICKBLEND,
-                "Pick Shapes",
+                tr("panel.vector.blend.pick_shapes"),
                 picking,
             )
         });
@@ -53,7 +54,7 @@ impl BodyCtx<'_> {
             .map_or_else(|| blend_steps_to_track(BLEND_STEPS_DEFAULT), |(_, v)| v);
         let steps = blend_steps_from_track(f64::from(track));
         y = self.slider_row(
-            "Steps",
+            tr("panel.vector.blend.steps"),
             crate::ids::VECTOR_BLEND_STEPS,
             ph2d_tool_vector::ids::VECTOR_BLEND_STEPS_NUM,
             track,
@@ -74,10 +75,19 @@ impl BodyCtx<'_> {
         //   o objeto morre) ou *desisto do blend* (os passos somem, as fontes ficam). Nenhuma é um
         //   MODO — cada uma acontece e acabou —, então são `action_button`, não um par segmentado.
         let commands: [(ph2d_a11y::NodeId, &str); 4] = [
-            (crate::ids::VECTOR_BLEND_RUN, "Blend"),
-            (crate::ids::VECTOR_BLEND_RESET_SPINE, "Reset Spine"),
-            (crate::ids::VECTOR_BLEND_EXPAND, "Expand"),
-            (crate::ids::VECTOR_BLEND_RELEASE, "Release"),
+            (crate::ids::VECTOR_BLEND_RUN, tr("panel.vector.blend.blend")),
+            (
+                crate::ids::VECTOR_BLEND_RESET_SPINE,
+                tr("panel.vector.blend.reset_spine"),
+            ),
+            (
+                crate::ids::VECTOR_BLEND_EXPAND,
+                tr("panel.vector.blend.expand"),
+            ),
+            (
+                crate::ids::VECTOR_BLEND_RELEASE,
+                tr("panel.vector.blend.release"),
+            ),
         ];
         for (id, label) in commands {
             y = self.action_button(id, label, y);
@@ -104,13 +114,17 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        let mut y = self.action_button(crate::ids::VECTOR_MORPH_RUN, "Morph", y);
+        let mut y = self.action_button(
+            crate::ids::VECTOR_MORPH_RUN,
+            tr("panel.vector.blend.morph"),
+            y,
+        );
         let t = self
             .store
             .slider(crate::ids::VECTOR_MORPH_T)
             .map_or(MORPH_T_DEFAULT, |(_, v)| v);
         y = self.slider_row(
-            "Morph t",
+            tr("panel.vector.blend.morph_t"),
             crate::ids::VECTOR_MORPH_T,
             ph2d_tool_vector::ids::VECTOR_MORPH_T_NUM,
             t,

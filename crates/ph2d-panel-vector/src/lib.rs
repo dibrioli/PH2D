@@ -128,6 +128,8 @@ pub(crate) fn rotation_from_track(t: f64) -> f64 {
 pub(crate) fn rotation_to_track(deg: f64) -> f32 {
     ((deg / ROTATION_MAX) * 0.5 + 0.5) as f32
 }
+/// A seção ALIGN / DISTRIBUTE (cortada de `paint_arrange`).
+mod paint_align;
 /// A seção CONSTRAINTS — as âncoras (plano UI/UX W3), irmã de `paint_layout`.
 mod paint_anchors;
 mod paint_appearance;
@@ -146,6 +148,8 @@ mod paint_layout;
 /// As pontas do traço (arrowheads) — dois chips na seção Stroke + o popover diferido.
 mod paint_markers;
 mod paint_modes;
+/// A seção PATH (cortada de `paint_arrange`).
+mod paint_path_ops;
 /// A seção PENCIL — irmã de `paint_modes` pelo teto de 600 LOC dos painéis.
 mod paint_pencil;
 mod paint_rows;

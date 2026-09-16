@@ -11,6 +11,7 @@
 //! `current_brush()` devolve `None` para todo traço que não é um — e então o cabeçalho nem aparece.
 
 use super::*;
+use ph2d_i18n::tr;
 
 /// A faixa do **Spacing**: `<1` sobrepõe, `1` encaixa borda-a-borda, `>1` deixa vão.
 pub(crate) const BRUSH_SPACING_MAX: f64 = 4.0; // LITERAL-PX-OK: domínio do documento
@@ -56,16 +57,16 @@ impl BodyCtx<'_> {
         y = self.action_button(
             crate::ids::VECTOR_BRUSH_PICK_SHAPE,
             if b.has_art {
-                crate::art_vocabulary::CHANGE
+                crate::art_vocabulary::CHANGE.tr()
             } else {
-                crate::art_vocabulary::PICK
+                crate::art_vocabulary::PICK.tr()
             },
             y,
         );
 
         for (label, sid, nid, valor, faixa, fmt) in [
             (
-                "Size",
+                tr("panel.vector.brush.size"),
                 ids::VECTOR_BRUSH_SCALE,
                 ids::VECTOR_BRUSH_SCALE_NUM,
                 b.scale,
@@ -73,7 +74,7 @@ impl BodyCtx<'_> {
                 2,
             ),
             (
-                "Spacing",
+                tr("panel.vector.brush.spacing"),
                 ids::VECTOR_BRUSH_SPACING,
                 ids::VECTOR_BRUSH_SPACING_NUM,
                 b.spacing,
@@ -81,7 +82,7 @@ impl BodyCtx<'_> {
                 2,
             ),
             (
-                "Rotation",
+                tr("panel.vector.brush.rotation"),
                 ids::VECTOR_BRUSH_ROTATION,
                 ids::VECTOR_BRUSH_ROTATION_NUM,
                 b.rotation_deg,
@@ -106,7 +107,7 @@ impl BodyCtx<'_> {
             bipolar(b.offset, BRUSH_OFFSET_MAX),
         );
         y = self.slider_row(
-            "Offset",
+            tr("panel.vector.brush.offset"),
             ids::VECTOR_BRUSH_OFFSET,
             ids::VECTOR_BRUSH_OFFSET_NUM,
             track,

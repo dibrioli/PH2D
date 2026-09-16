@@ -20,6 +20,7 @@
 //! a seleção e executa o dissolve). Um botão que não faz nada é pior que um botão que falta.
 
 use super::*;
+use ph2d_i18n::tr;
 
 impl BodyCtx<'_> {
     /// Seção **ENVELOPE** — envolver a seleção numa gaiola, e as duas saídas dela.
@@ -36,7 +37,11 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        y = self.action_button(crate::ids::VECTOR_ENVELOPE_RUN, "Envelope", y);
+        y = self.action_button(
+            crate::ids::VECTOR_ENVELOPE_RUN,
+            tr("panel.vector.envelope.envelope"),
+            y,
+        );
         if state::has_envelope() {
             // QUAL mapa a gaiola aplica (ADR-0129 §4). Não é um knob de intensidade: os dois
             // divergem no miolo (projetivo mantém as retas retas; o Coons de lados retos é
@@ -45,11 +50,23 @@ impl BodyCtx<'_> {
             // terminam.
             let mode = state::envelope_mode();
             y = self.segmented(
-                "Cage",
+                tr("panel.vector.envelope.cage"),
                 &[
-                    (crate::ids::VECTOR_ENVELOPE_PERSPECTIVE, "Persp", mode == 0),
-                    (crate::ids::VECTOR_ENVELOPE_MESH, "Mesh", mode == 1),
-                    (crate::ids::VECTOR_ENVELOPE_PINS, "Pins", mode == 2),
+                    (
+                        crate::ids::VECTOR_ENVELOPE_PERSPECTIVE,
+                        tr("panel.vector.envelope.persp"),
+                        mode == 0,
+                    ),
+                    (
+                        crate::ids::VECTOR_ENVELOPE_MESH,
+                        tr("panel.vector.envelope.mesh"),
+                        mode == 1,
+                    ),
+                    (
+                        crate::ids::VECTOR_ENVELOPE_PINS,
+                        tr("panel.vector.envelope.pins"),
+                        mode == 2,
+                    ),
                 ],
                 y,
             );
@@ -58,7 +75,11 @@ impl BodyCtx<'_> {
                 // gaiola). O que ele tem é uma saída: sem `Clear Pins` um pino mal pregado seria
                 // permanente — apagar UM exige um gesto que compete com "clicar no vazio prega", e
                 // essa disputa é decisão de UX, não encanamento.
-                y = self.action_button(crate::ids::VECTOR_ENVELOPE_CLEAR_PINS, "Clear Pins", y);
+                y = self.action_button(
+                    crate::ids::VECTOR_ENVELOPE_CLEAR_PINS,
+                    tr("panel.vector.envelope.clear_pins"),
+                    y,
+                );
             } else {
                 y = self.envelope_presets(y);
             }
@@ -66,8 +87,14 @@ impl BodyCtx<'_> {
             // canônico, que é quem costura o AccessKit — e nomear o `NodeId` aqui é o idioma que o
             // gate `every_widget_file_wires_a11y` reconhece nos irmãos desta pasta.
             let commands: [(ph2d_a11y::NodeId, &str); 2] = [
-                (crate::ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
-                (crate::ids::VECTOR_ENVELOPE_RELEASE, "Release"),
+                (
+                    crate::ids::VECTOR_ENVELOPE_EXPAND,
+                    tr("panel.vector.envelope.expand"),
+                ),
+                (
+                    crate::ids::VECTOR_ENVELOPE_RELEASE,
+                    tr("panel.vector.envelope.release"),
+                ),
             ];
             for (id, label) in commands {
                 y = self.action_button(id, label, y);
@@ -114,7 +141,7 @@ impl BodyCtx<'_> {
             // do painel: `track = (bend + 1) / 2`.
             let track = ((bend + 1.0) / 2.0) as f32;
             y = self.slider_row(
-                "Bend",
+                tr("panel.vector.envelope.bend"),
                 crate::ids::VECTOR_ENVELOPE_BEND,
                 ph2d_tool_vector::ids::VECTOR_ENVELOPE_BEND_NUM,
                 track,

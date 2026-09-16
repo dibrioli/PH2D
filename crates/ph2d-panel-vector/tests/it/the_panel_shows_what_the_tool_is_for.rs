@@ -338,12 +338,22 @@ fn the_art_pickers_speak_one_word() {
         );
     }
     // A fixtura contém o fenômeno: a porta de facto NÃO diz "Shape".
+    // ⚠️ Desde 2026-09-16 a porta guarda a CHAVE (`TextKey`), e o que se confere é o TEXTO que a
+    //    tabela devolve para ela — que é o que o artista lê.
     let porta = include_str!("../../src/art_vocabulary.rs");
     for label in ["PICK", "CHANGE", "USE"] {
         let i = porta
-            .find(&format!("const {label}: &str = \""))
+            .find(&format!("const {label}: TextKey = TextKey::new(\""))
             .unwrap_or_else(|| panic!("a porta perdeu o rotulo {label}"));
-        let valor = &porta[i..porta[i..].find('\n').unwrap() + i];
+        let resto = &porta[i..];
+        let abre = resto.find("new(\"").expect("a chave abre") + "new(\"".len();
+        let fecha = abre + resto[abre..].find('"').expect("a chave fecha");
+        let chave = &resto[abre..fecha];
+        let valor = ph2d_i18n::tr(chave);
+        assert_ne!(
+            valor, chave,
+            "a chave {chave} do rotulo {label} nao esta na tabela"
+        );
         assert!(
             !valor.contains("Shape"),
             "o rotulo {label} voltou a prometer uma forma sozinha: {valor}"

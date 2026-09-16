@@ -23,6 +23,7 @@ use ph2d_editor_core::widget::{
     scrollbar_is_needed, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{Affine, Brush, Color, Fill};
 
@@ -101,7 +102,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, chip_rect: Rect, theme: Theme) {
         paint_text_centered(
             ctx.text_system,
             ctx.scene,
-            "Loading fonts...",
+            tr("panel.vector.text.loading_fonts"),
             r,
             TypeToken::Base.px(),
             resolve(ColorToken::Text2, theme),

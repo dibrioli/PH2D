@@ -33,6 +33,7 @@ use ph2d_editor_core::widget::{
     Card, Dropdown, DropdownOption, IconButtonStyle, IconGlyph, paint_card, paint_dropdown_chip,
     paint_icon_button,
 };
+use ph2d_i18n::tr;
 
 /// O lado de um botão de ícone do cabeçalho.
 const ICON_PX: f32 = 22.0; // LITERAL-PX-OK: lado do glifo, espelha o do card de Effects
@@ -65,7 +66,7 @@ impl BodyCtx<'_> {
         // saber que ele existe.
         if stack.len() < crate::ids::MAX_FILTER_ROWS {
             for (kind, spec) in fst::kinds().iter().enumerate().take(ids::MAX_FILTER_KINDS) {
-                let label = format!("Add {}", spec.name);
+                let label = ph2d_i18n::tr_with("panel.vector.filter.add", &[("name", &spec.name)]);
                 y = self.action_button(ids::filter_add_id(kind), &label, y);
             }
         }
@@ -152,7 +153,7 @@ impl BodyCtx<'_> {
                     )
                 })
                 .collect();
-            py = self.segmented("Mode", &chips, py);
+            py = self.segmented(tr("panel.vector.filter.mode"), &chips, py);
         }
         if let Some(label) = spec.radius_label {
             py = self.filter_radius_row(row, fx, label, py);
@@ -419,7 +420,7 @@ impl BodyCtx<'_> {
         let (slider, chip) = (ids::filter_opacity_id(row), ids::filter_opacity_num_id(row));
         let track = self.live_track(slider, fx.opacity as f32);
         self.slider_row(
-            "Opacity",
+            tr("panel.vector.filter.opacity"),
             slider,
             chip,
             track,
@@ -463,7 +464,7 @@ impl BodyCtx<'_> {
         ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
-            "Blend",
+            tr("panel.vector.filter.blend"),
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
@@ -507,6 +508,12 @@ impl BodyCtx<'_> {
         label: &str,
         y: f32,
     ) -> f32 {
-        self.colour_swatch_row(id, colour, label, "Filter effect color", y)
+        self.colour_swatch_row(
+            id,
+            colour,
+            label,
+            tr("panel.vector.filter.filter_effect_color"),
+            y,
+        )
     }
 }

@@ -54,7 +54,7 @@ impl BodyCtx<'_> {
             .number_value(ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY_NUM)
             .unwrap_or(PENCIL_FIDELITY_DEFAULT_PX);
         y = self.slider_row(
-            "Fidelity",
+            tr("panel.vector.pencil.fidelity"),
             ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY,
             ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY_NUM,
             fid_track,
@@ -75,7 +75,7 @@ impl BodyCtx<'_> {
                 PENCIL_STABILIZER_DEFAULT * PENCIL_STABILIZER_SLIDER_SCALE,
             ));
         y = self.slider_row(
-            "Stabilizer",
+            tr("panel.vector.pencil.stabilizer"),
             ph2d_tool_vector::ids::VECTOR_PENCIL_STABILIZER,
             ph2d_tool_vector::ids::VECTOR_PENCIL_STABILIZER_NUM,
             stab_track,
@@ -111,6 +111,6 @@ impl BodyCtx<'_> {
                 src == Ws::Pressure,
             ),
         ];
-        self.segmented3("Width", width_opts, y)
+        self.segmented3(tr("panel.vector.pencil.width"), width_opts, y)
     }
 }

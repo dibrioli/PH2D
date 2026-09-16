@@ -10,6 +10,7 @@ mod architecture_sections_read_the_document;
 mod bool_registration_parity;
 mod connector_section;
 mod every_chip_is_linked_to_its_slider;
+mod every_word_this_panel_shows_comes_from_the_string_table;
 mod fill_chip_labels_fit;
 mod marker_rows;
 mod popover_band;

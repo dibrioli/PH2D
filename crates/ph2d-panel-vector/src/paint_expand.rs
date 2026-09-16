@@ -6,6 +6,7 @@
 //! (`ph2d_vec_boolean::expand`).
 
 use super::BodyCtx;
+use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::params;
 
@@ -34,7 +35,7 @@ impl BodyCtx<'_> {
         // sempre que a seleção mudasse de tamanho.
         let pct = params::slider_to_offset_frac(track) * 100.0; // LITERAL-PX-OK: unit conversion (fraction -> percent readout), not a design measure.
         y = self.slider_row(
-            "Offset",
+            tr("panel.vector.expand.offset"),
             crate::ids::VECTOR_EXPAND_OFFSET,
             ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_NUM,
             track,
@@ -47,21 +48,21 @@ impl BodyCtx<'_> {
         // externo). Num caminho sem furo os três dão o mesmo (só há o contorno de fora).
         let side = crate::state::expand_side();
         y = self.segmented3(
-            "Side",
+            tr("panel.vector.expand.side"),
             [
                 (
                     ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER,
-                    "Outer",
+                    tr("panel.vector.expand.outer"),
                     side == 0,
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER,
-                    "Inner",
+                    tr("panel.vector.expand.inner"),
                     side == 1,
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH,
-                    "Both",
+                    tr("panel.vector.expand.both"),
                     side == 2,
                 ),
             ],
@@ -74,21 +75,21 @@ impl BodyCtx<'_> {
         // artista VÊ: a quina do resultado do offset (vocabulário dos Live Corners).
         let join = crate::state::expand_join();
         y = self.segmented3(
-            "Corner",
+            tr("panel.vector.expand.corner"),
             [
                 (
                     ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER,
-                    "Miter",
+                    tr("panel.vector.expand.miter"),
                     join == 0,
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND,
-                    "Round",
+                    tr("panel.vector.expand.round"),
                     join == 1,
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL,
-                    "Bevel",
+                    tr("panel.vector.expand.bevel"),
                     join == 2,
                 ),
             ],
@@ -99,12 +100,12 @@ impl BodyCtx<'_> {
         // Convert to Curves, ou qualquer edição seguinte). O nome do botão é a promessa.
         y = self.action_button(
             ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH,
-            "Apply Offset",
+            tr("panel.vector.expand.apply_offset"),
             y,
         );
         y = self.action_button(
             ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE,
-            "Outline Stroke",
+            tr("panel.vector.expand.outline_stroke"),
             y,
         );
         self.power_stroke_rows(y)
@@ -125,24 +126,24 @@ impl BodyCtx<'_> {
         // vira um nó de AccessKit lá dentro (`slider_row` → `paint_slider_with_chip…`,
         // `action_button` → `paint_button`, que é quem emite). A seção **delega** o a11y aos
         // primitivos canónicos — o gate HR-12 lê esta delegação aqui.
-        const SLIDERS: [(&str, ph2d_a11y::NodeId, ph2d_a11y::NodeId); 4] = [
+        const SLIDERS: [(TextKey, ph2d_a11y::NodeId, ph2d_a11y::NodeId); 4] = [
             (
-                "W Start",
+                TextKey::new("panel.vector.expand.w_start"),
                 crate::ids::VECTOR_EXPAND_W_START,
                 ph2d_tool_vector::ids::VECTOR_EXPAND_W_START_NUM,
             ),
             (
-                "W Mid",
+                TextKey::new("panel.vector.expand.w_mid"),
                 crate::ids::VECTOR_EXPAND_W_MID,
                 ph2d_tool_vector::ids::VECTOR_EXPAND_W_MID_NUM,
             ),
             (
-                "W End",
+                TextKey::new("panel.vector.expand.w_end"),
                 crate::ids::VECTOR_EXPAND_W_END,
                 ph2d_tool_vector::ids::VECTOR_EXPAND_W_END_NUM,
             ),
             (
-                "W Pos",
+                TextKey::new("panel.vector.expand.w_pos"),
                 crate::ids::VECTOR_EXPAND_W_POS,
                 ph2d_tool_vector::ids::VECTOR_EXPAND_W_POS_NUM,
             ),
@@ -166,7 +167,7 @@ impl BodyCtx<'_> {
                 params::slider_to_wprofile(tracks[i])
             };
             y = self.slider_row(
-                label,
+                label.tr(),
                 *slider,
                 *chip,
                 tracks[i],
@@ -181,7 +182,7 @@ impl BodyCtx<'_> {
         // solto prometeria que nada acontece antes de clicá-lo.
         self.action_button(
             ph2d_tool_vector::ids::VECTOR_EXPAND_POWER_STROKE,
-            "Apply Power Stroke",
+            tr("panel.vector.expand.apply_power_stroke"),
             y,
         )
     }
@@ -214,6 +215,6 @@ impl BodyCtx<'_> {
                 )
             })
             .collect();
-        self.segmented("Profile", &opts, y)
+        self.segmented(tr("panel.vector.expand.profile"), &opts, y)
     }
 }

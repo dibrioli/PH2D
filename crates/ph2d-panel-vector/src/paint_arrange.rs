@@ -1,8 +1,8 @@
 //! Subsection painters for the Vector Style panel: **a seção ARRANGE** (o Z-index, os quatro
-//! botões de z-order, Flip e Rotate), os botões de reshape (Smooth / Sharpen / Simplify /
-//! Subdivide), os seletores de Fill-type + Fill-rule e a linha Make/Release Compound. Split from
-//! `paint_sections` to keep that file under the 600-LOC panel cap; it's an `impl BodyCtx` block
-//! over there.
+//! botões de z-order, Flip e Rotate), o SNAP, os seletores de Fill-type + Fill-rule e a linha
+//! Make/Release Compound. Split from `paint_sections` to keep that file under the 600-LOC panel
+//! cap; it's an `impl BodyCtx` block over there. ⚠️ O ALIGN e o PATH (os botões de remodelar)
+//! saíram em 2026-09-16 para `paint_align` e `paint_path_ops`.
 //!
 //! ⚠️ A `arrange_section` mudou-se para cá quando o READOUT do Z-index (Enio, 2026-08-04) levou o
 //! `paint_sections` a 602 — e o corte é por ASSUNTO, não por tamanho: este arquivo já se chamava
@@ -32,7 +32,11 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        y = self.action_button(crate::ids::VECTOR_ARRANGE_DUPLICATE, "Duplicate", y);
+        y = self.action_button(
+            crate::ids::VECTOR_ARRANGE_DUPLICATE,
+            tr("panel.vector.arrange.duplicate"),
+            y,
+        );
         // **O Z-INDEX GLOBAL** (Enio, 2026-08-04: *"o Z index deve ser global e sobrepõe a ordem
         // na hierarquia"*) — maior = mais à frente, a convenção do `CanvasItem.z_index` do Godot.
         // A ordem da Hierarquia só decide entre objetos que EMPATAM neste número.
@@ -49,10 +53,22 @@ impl BodyCtx<'_> {
         }
         // Z-order: 2×2 grid — To Back | To Front · Backward | Forward.
         let zorder = [
-            (ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK, "To Back"),
-            (ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_FRONT, "To Front"),
-            (ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD, "Backward"),
-            (ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD, "Forward"),
+            (
+                ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK,
+                tr("panel.vector.arrange.to_back"),
+            ),
+            (
+                ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_FRONT,
+                tr("panel.vector.arrange.to_front"),
+            ),
+            (
+                ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD,
+                tr("panel.vector.arrange.backward"),
+            ),
+            (
+                ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD,
+                tr("panel.vector.arrange.forward"),
+            ),
         ];
         let z_cols = 2usize;
         let z_gap = Spacing::Sm.px();
@@ -77,8 +93,14 @@ impl BodyCtx<'_> {
             z_w,
             z_gap,
             [
-                (ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H, "Flip H"),
-                (ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_V, "Flip V"),
+                (
+                    ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H,
+                    tr("panel.vector.arrange.flip_h"),
+                ),
+                (
+                    ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_V,
+                    tr("panel.vector.arrange.flip_v"),
+                ),
             ],
             y,
         );
@@ -86,10 +108,13 @@ impl BodyCtx<'_> {
             z_w,
             z_gap,
             [
-                (ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CW, "Rotate CW"),
+                (
+                    ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CW,
+                    tr("panel.vector.arrange.rotate_cw"),
+                ),
                 (
                     ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CCW,
-                    "Rotate CCW",
+                    tr("panel.vector.arrange.rotate_ccw"),
                 ),
             ],
             y,
@@ -144,36 +169,68 @@ impl BodyCtx<'_> {
             return y;
         }
         let y = self.segmented(
-            "Shapes",
+            tr("panel.vector.arrange.shapes"),
             &[
-                (crate::ids::VECTOR_SNAP_OFF, "Off", !on),
-                (ph2d_editor_core::ids::VECTOR_SNAP_ON, "On", on),
+                (
+                    crate::ids::VECTOR_SNAP_OFF,
+                    tr("panel.vector.arrange.off"),
+                    !on,
+                ),
+                (
+                    ph2d_editor_core::ids::VECTOR_SNAP_ON,
+                    tr("panel.vector.arrange.on"),
+                    on,
+                ),
             ],
             y,
         );
         let y = self.segmented(
-            "Path",
+            tr("panel.vector.arrange.path"),
             &[
-                (crate::ids::VECTOR_SNAP_PATH_OFF, "Off", !path),
-                (crate::ids::VECTOR_SNAP_PATH_ON, "On", path),
+                (
+                    crate::ids::VECTOR_SNAP_PATH_OFF,
+                    tr("panel.vector.arrange.off"),
+                    !path,
+                ),
+                (
+                    crate::ids::VECTOR_SNAP_PATH_ON,
+                    tr("panel.vector.arrange.on"),
+                    path,
+                ),
             ],
             y,
         );
         let y = self.segmented(
-            "Cross",
+            tr("panel.vector.arrange.cross"),
             &[
-                (crate::ids::VECTOR_SNAP_CROSS_OFF, "Off", !cross),
-                (crate::ids::VECTOR_SNAP_CROSS_ON, "On", cross),
+                (
+                    crate::ids::VECTOR_SNAP_CROSS_OFF,
+                    tr("panel.vector.arrange.off"),
+                    !cross,
+                ),
+                (
+                    crate::ids::VECTOR_SNAP_CROSS_ON,
+                    tr("panel.vector.arrange.on"),
+                    cross,
+                ),
             ],
             y,
         );
         // As GUIAS (W6.2). Alinhamento como o "Shapes", com um interruptor próprio: desligar
         // o ímã das formas não deve desligar o das linhas que o artista pôs à mão.
         let y = self.segmented(
-            "Guides",
+            tr("panel.vector.arrange.guides"),
             &[
-                (crate::ids::VECTOR_SNAP_GUIDES_OFF, "Off", !guides),
-                (crate::ids::VECTOR_SNAP_GUIDES_ON, "On", guides),
+                (
+                    crate::ids::VECTOR_SNAP_GUIDES_OFF,
+                    tr("panel.vector.arrange.off"),
+                    !guides,
+                ),
+                (
+                    crate::ids::VECTOR_SNAP_GUIDES_ON,
+                    tr("panel.vector.arrange.on"),
+                    guides,
+                ),
             ],
             y,
         );
@@ -181,10 +238,18 @@ impl BodyCtx<'_> {
         // acima: ela decide se as faixas aparecem — e, com elas, se as guias podem ser
         // ARRASTADAS. É o *lock* que o Illustrator esconde num booleano de menu.
         self.segmented(
-            "Rulers",
+            tr("panel.vector.arrange.rulers"),
             &[
-                (crate::ids::VECTOR_RULERS_OFF, "Off", !rulers),
-                (crate::ids::VECTOR_RULERS_ON, "On", rulers),
+                (
+                    crate::ids::VECTOR_RULERS_OFF,
+                    tr("panel.vector.arrange.off"),
+                    !rulers,
+                ),
+                (
+                    crate::ids::VECTOR_RULERS_ON,
+                    tr("panel.vector.arrange.on"),
+                    rulers,
+                ),
             ],
             y,
         )
@@ -200,8 +265,14 @@ impl BodyCtx<'_> {
             w,
             gap,
             [
-                (ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE, "Compound"),
-                (crate::ids::VECTOR_COMPOUND_RELEASE, "Release"),
+                (
+                    ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE,
+                    tr("panel.vector.arrange.compound"),
+                ),
+                (
+                    crate::ids::VECTOR_COMPOUND_RELEASE,
+                    tr("panel.vector.arrange.release"),
+                ),
             ],
             y,
         )
@@ -214,16 +285,16 @@ impl BodyCtx<'_> {
             return y;
         };
         self.segmented(
-            "Fill Rule",
+            tr("panel.vector.arrange.fill_rule"),
             &[
                 (
                     crate::ids::VECTOR_FILL_RULE_NONZERO,
-                    "Non-Zero",
+                    tr("panel.vector.arrange.non_zero"),
                     rule == PathFillRule::NonZero,
                 ),
                 (
                     crate::ids::VECTOR_FILL_RULE_EVENODD,
-                    "Even-Odd",
+                    tr("panel.vector.arrange.even_odd"),
                     rule == PathFillRule::EvenOdd,
                 ),
             ],
@@ -250,27 +321,27 @@ impl BodyCtx<'_> {
         let kinds = [
             (
                 ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID,
-                "Solid",
+                tr("panel.vector.arrange.solid"),
                 FillKind::Solid,
             ),
             (
                 ph2d_tool_vector::ids::VECTOR_FILL_KIND_LINEAR,
-                "Linear",
+                tr("panel.vector.arrange.linear"),
                 FillKind::Linear,
             ),
             (
                 ph2d_tool_vector::ids::VECTOR_FILL_KIND_RADIAL,
-                "Radial",
+                tr("panel.vector.arrange.radial"),
                 FillKind::Radial,
             ),
             (
                 ph2d_tool_vector::ids::VECTOR_FILL_KIND_MULTI,
-                "Multi",
+                tr("panel.vector.arrange.multi"),
                 FillKind::MultiPoint,
             ),
             (
                 ph2d_tool_vector::ids::VECTOR_FILL_KIND_PATTERN,
-                "Pattern",
+                tr("panel.vector.arrange.pattern"),
                 FillKind::Pattern,
             ),
         ];
@@ -316,8 +387,14 @@ impl BodyCtx<'_> {
                 two_col,
                 gap,
                 [
-                    (crate::ids::VECTOR_GRAD_ADD_POINT, "Add Point"),
-                    (crate::ids::VECTOR_GRAD_REMOVE_POINT, "Remove Point"),
+                    (
+                        crate::ids::VECTOR_GRAD_ADD_POINT,
+                        tr("panel.vector.arrange.add_point"),
+                    ),
+                    (
+                        crate::ids::VECTOR_GRAD_REMOVE_POINT,
+                        tr("panel.vector.arrange.remove_point"),
+                    ),
                 ],
                 y,
             );
@@ -330,7 +407,7 @@ impl BodyCtx<'_> {
                     .unwrap_or((inf / MAX_INFLUENCE) as f32);
                 let val = f64::from(track) * MAX_INFLUENCE;
                 y = self.slider_row(
-                    "Influence",
+                    tr("panel.vector.arrange.influence"),
                     crate::ids::VECTOR_GRAD_INFLUENCE,
                     ph2d_tool_vector::ids::VECTOR_GRAD_INFLUENCE_NUM,
                     track,
@@ -348,7 +425,7 @@ impl BodyCtx<'_> {
                     .unwrap_or(jit as f32);
                 let val = f64::from(track);
                 y = self.slider_row(
-                    "Jitter",
+                    tr("panel.vector.arrange.jitter"),
                     crate::ids::VECTOR_GRAD_JITTER,
                     ph2d_tool_vector::ids::VECTOR_GRAD_JITTER_NUM,
                     track,
@@ -365,8 +442,14 @@ impl BodyCtx<'_> {
                 two_col,
                 gap,
                 [
-                    (crate::ids::VECTOR_GRAD_ADD_STOP, "Add Stop"),
-                    (crate::ids::VECTOR_GRAD_REMOVE_STOP, "Remove Stop"),
+                    (
+                        crate::ids::VECTOR_GRAD_ADD_STOP,
+                        tr("panel.vector.arrange.add_stop"),
+                    ),
+                    (
+                        crate::ids::VECTOR_GRAD_REMOVE_STOP,
+                        tr("panel.vector.arrange.remove_stop"),
+                    ),
                 ],
                 y,
             );
@@ -381,7 +464,7 @@ impl BodyCtx<'_> {
                 .unwrap_or((angle / FULL_TURN_DEG) as f32);
             let deg = f64::from(track) * FULL_TURN_DEG;
             y = self.slider_row(
-                "Angle",
+                tr("panel.vector.arrange.angle"),
                 crate::ids::VECTOR_GRAD_ANGLE,
                 ph2d_tool_vector::ids::VECTOR_GRAD_ANGLE_NUM,
                 track,
@@ -389,131 +472,6 @@ impl BodyCtx<'_> {
                 &format!("{}", deg.round() as i64),
                 y,
             );
-        }
-        y
-    }
-    /// "Align" + "Distribute" section — shown only with a multi-path OBJECT
-    /// selection (≥2 for Align, ≥3 for Distribute). Two 3-col rows (X-align then
-    /// Y-align) + a 2-col Distribute row. Buttons drive the shell drain.
-    pub(crate) fn align_section(&mut self, y: f32) -> f32 {
-        let count = state::current_selection_count();
-        if count < 2 {
-            return y;
-        }
-        let (mut y, collapsed) = self.section_header(
-            ph2d_tool_vector::ids::VECTOR_SECTION_ALIGN,
-            tr("panel.vector.section.align"),
-            y,
-        );
-        if collapsed {
-            return y;
-        }
-        let gap = Spacing::Xs.px();
-        let cols = 3usize;
-        let cw = ((self.inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
-        let rows = [
-            [
-                (ph2d_tool_vector::ids::VECTOR_ALIGN_LEFT, "Left"),
-                (ph2d_tool_vector::ids::VECTOR_ALIGN_HCENTER, "Center"),
-                (ph2d_tool_vector::ids::VECTOR_ALIGN_RIGHT, "Right"),
-            ],
-            [
-                (ph2d_tool_vector::ids::VECTOR_ALIGN_TOP, "Top"),
-                (ph2d_tool_vector::ids::VECTOR_ALIGN_VCENTER, "Middle"),
-                (ph2d_tool_vector::ids::VECTOR_ALIGN_BOTTOM, "Bottom"),
-            ],
-        ];
-        for row in rows {
-            for (i, (id, label)) in row.iter().enumerate() {
-                let rx = self.inner_x + i as f32 * (cw + gap);
-                let rect = Rect::new(rx, y, cw, self.row_h);
-                let bstate = self.store.button_visual(*id);
-                let btn = Button::new(*id, *label)
-                    .kind(ButtonKind::Default)
-                    .visual(bstate);
-                paint_button(&btn, rect, self.scene, self.text_system, self.theme);
-                self.hit_index.register(*id, rect);
-            }
-            y += self.row_h + self.row_gap;
-        }
-        // Distribute needs ≥3 paths (two are always the fixed extremes).
-        if count >= 3 {
-            let two_col = ((self.inner_w - gap) / 2.0).max(1.0);
-            y = self.row2(
-                two_col,
-                gap,
-                [
-                    (ph2d_tool_vector::ids::VECTOR_DISTRIBUTE_H, "Dist H"),
-                    (ph2d_tool_vector::ids::VECTOR_DISTRIBUTE_V, "Dist V"),
-                ],
-                y,
-            );
-        }
-        y + self.row_gap
-    }
-
-    /// Seção **PATH** — remodela o path selecionado inteiro. Smooth / Sharpen numa linha
-    /// de 2 colunas; Simplify (menos pontos) / Subdivide (mais pontos) na segunda; o
-    /// toggle Close/Open (rótulo vindo do `closed` publicado); e, quando a seleção tem
-    /// uma forma VIVA (paramétrica / texto), o **Convert to Curves** — que é justamente
-    /// o que PRODUZ um path cru editável, e por isso mora aqui.
-    pub(crate) fn path_section(&mut self, y: f32) -> f32 {
-        let (mut y, collapsed) = self.section_header(
-            ph2d_tool_vector::ids::VECTOR_SECTION_PATH,
-            tr("panel.vector.section.path"),
-            y,
-        );
-        if collapsed {
-            return y;
-        }
-        let gap = Spacing::Xs.px();
-        let w = ((self.inner_w - gap) / 2.0).max(1.0);
-        if state::convertible() {
-            y = self.action_button(crate::ids::VECTOR_CONVERT_TO_CURVES, "Convert to Curves", y);
-        }
-        y = self.row2(
-            w,
-            gap,
-            [
-                (ph2d_tool_vector::ids::VECTOR_PATH_SMOOTH, "Smooth"),
-                (ph2d_tool_vector::ids::VECTOR_PATH_SHARPEN, "Sharpen"),
-            ],
-            y,
-        );
-        y = self.row2(
-            w,
-            gap,
-            [
-                (ph2d_tool_vector::ids::VECTOR_PATH_SIMPLIFY, "Simplify"),
-                (ph2d_tool_vector::ids::VECTOR_PATH_SUBDIVIDE, "Subdivide"),
-            ],
-            y,
-        );
-        // Close/Open toggle — label reflects the current state (default "Close"
-        // when no path is selected / not yet closed).
-        let label = if state::current_path_closed() == Some(true) {
-            "Open Path"
-        } else {
-            "Close Path"
-        };
-        y = self.action_button(crate::ids::VECTOR_PATH_CLOSE, label, y);
-        // **Reverse** (W4) — o sentido do caminho é um fato autorado, e até aqui não havia gesto
-        // nenhum que o mudasse: o `reverse_path` existia com UM chamador interno e nenhum id.
-        y = self.action_button(crate::ids::VECTOR_PATH_REVERSE, "Reverse", y);
-        // **Join** — ⚠️ só com 2+ selecionados. Com um caminho só a resposta é o `Close Path` logo
-        // acima; oferecer o Join ali seria um segundo botão para a mesma pergunta, e ele
-        // devolveria `false` em silêncio (a lei do botão morto).
-        if state::current_selection_count() >= 2 {
-            y = self.action_button(crate::ids::VECTOR_PATH_JOIN, "Join", y);
-        }
-        // ⭐⭐⭐ **Soldar** (plano 39, ideia do Enio) — colado no *Join* porque são o mesmo verbo em
-        // dois sítios: aquele solda **duas pontas**, este solda **os cruzamentos**. Lidos juntos,
-        // ensinam a diferença sem uma linha de ajuda.
-        //
-        // ⚠️ **Sem o piso de 2**, ao contrário do *Join*: um caminho sozinho pode ter
-        // AUTO-cruzamento, e ali soldar tem o que fazer.
-        if state::current_selection_count() >= 1 {
-            y = self.action_button(crate::ids::VECTOR_PATH_WELD, "Weld", y);
         }
         y
     }

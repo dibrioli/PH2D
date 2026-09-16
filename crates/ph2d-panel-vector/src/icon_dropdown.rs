@@ -29,6 +29,7 @@ use ph2d_editor_core::widget::{
     scrollbar_is_needed, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::TextKey;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 /// Lado do quadrado do glifo, como fração da altura da linha — deixa folga para o rótulo ao lado.
@@ -41,7 +42,7 @@ const GLYPH_RATIO: f32 = 0.72; // LITERAL-PX-OK: lado do glifo ÷ altura da linh
 /// editor de texto. (E a chave i18n de 136 glifos seria uma tabela que ninguém manteria.)
 fn row_label(i: usize) -> &'static str {
     match i.checked_sub(1) {
-        None => DRAWING,
+        None => DRAWING.tr(),
         Some(n) => IconId::all()[n].slug(),
     }
 }
@@ -51,13 +52,13 @@ fn row_label(i: usize) -> &'static str {
 /// ⚠️ Ela aparece em DOIS lugares — a primeira linha da lista e o chip fechado — e escrevê-la duas
 /// vezes é como o dia em que um deles fosse traduzido e o outro não: o artista escolheria
 /// *"Drawing"* na lista e o chip passaria a dizer outra coisa.
-pub(crate) const DRAWING: &str = "Drawing";
+pub(crate) const DRAWING: TextKey = TextKey::new("panel.vector.icon.drawing");
 
 /// **O que o chip FECHADO mostra** — `None` quando este tipo não tem face de ícone (sem row).
 pub(crate) fn chip_label(s: &state::WidgetSkinState) -> Option<String> {
     s.icon
         .as_ref()
-        .map(|c| c.clone().unwrap_or_else(|| DRAWING.to_string()))
+        .map(|c| c.clone().unwrap_or_else(|| DRAWING.tr().to_string()))
 }
 
 /// Quantas linhas a lista tem: *Drawing* + o catálogo inteiro.

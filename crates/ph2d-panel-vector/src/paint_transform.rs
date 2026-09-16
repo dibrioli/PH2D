@@ -107,9 +107,9 @@ impl BodyCtx<'_> {
         // ORIGEM da entidade ali (a geometria desloca junto, a forma não se move).
         // ADR-0112: o pivô nasce no centro da forma; este botão o move.
         let label = if state::pivot_edit_armed() {
-            "Click canvas to set center"
+            tr("panel.vector.transform.click_canvas_to_set_center")
         } else {
-            "Set Center"
+            tr("panel.vector.transform.set_center")
         };
         self.action_button(crate::ids::VECTOR_PIVOT_EDIT, label, y)
     }

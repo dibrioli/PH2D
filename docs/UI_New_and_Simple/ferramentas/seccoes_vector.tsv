@@ -1,0 +1,30 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI do painel de Vector, para as chaves `panel.vector.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+# ⚠️ A chave nomeia a secção que o artista VÊ, e reusa os espaços que a tabela já tinha
+# (`paint`, `layout`, `texpat`, `transform`, `pencil`, `stroke`, `arrange`, `fx`, `brush`).
+lib.rs	panel
+art_vocabulary.rs	art
+font_dropdown.rs	text
+icon_dropdown.rs	icon
+paint_arrange.rs	arrange
+paint_align.rs	arrange
+paint_path_ops.rs	arrange
+paint_blend.rs	blend
+paint_brush.rs	brush
+paint_contour.rs	contour
+paint_effects.rs	fx
+paint_envelope.rs	envelope
+paint_expand.rs	expand
+paint_filters	filter
+state_filters.rs	filter
+paint_layout.rs	layout
+paint_patternpath.rs	patternpath
+paint_pencil.rs	pencil
+paint_sections_stroke.rs	stroke
+paint_sections.rs	paint
+paint_stack_rows.rs	appearance
+paint_text_sections.rs	text
+paint_textpath.rs	textpath
+paint_texture_pattern.rs	texpat
+paint_transform.rs	transform
+paint_vertex.rs	vertex

@@ -29,6 +29,7 @@
 use super::*;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::widget::{Card, IconButtonStyle, IconGlyph, paint_card, paint_icon_button};
+use ph2d_i18n::tr;
 
 /// Quantas casas o chip mostra.
 const DECIMALS: usize = 2;
@@ -76,7 +77,7 @@ impl BodyCtx<'_> {
             {
                 y = self.action_button(
                     ph2d_tool_vector::ids::vector_fx_add_id(kind),
-                    &format!("Add {name}"),
+                    &ph2d_i18n::tr_with("panel.vector.fx.add", &[("name", name)]),
                     y,
                 );
             }
@@ -88,7 +89,7 @@ impl BodyCtx<'_> {
         if !stack.is_empty() {
             y = self.action_button_kind(
                 ph2d_tool_vector::ids::VECTOR_FX_APPLY,
-                "Apply Effects",
+                tr("panel.vector.fx.apply_effects"),
                 ButtonKind::Accent,
                 y,
             );
@@ -256,7 +257,15 @@ impl BodyCtx<'_> {
             let on = p.value >= 0.5;
             return self.action_button(
                 ph2d_tool_vector::ids::vector_fx_toggle_id(row, param),
-                &format!("{}: {}", p.name, if on { "On" } else { "Off" }),
+                &format!(
+                    "{}: {}",
+                    p.name,
+                    if on {
+                        tr("panel.vector.fx.on")
+                    } else {
+                        tr("panel.vector.fx.off")
+                    }
+                ),
                 y,
             );
         }

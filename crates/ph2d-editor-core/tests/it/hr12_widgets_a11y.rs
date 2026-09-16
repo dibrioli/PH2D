@@ -791,6 +791,12 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-vector/src/paint_arrange.rs",
         "delegates to row2/action_button (paint_button-backed) in paint_sections",
     ),
+    // ⭐ A seção PATH saiu do `paint_arrange` em 2026-09-16 (tecto de LOC depois da migração dos
+    // rótulos) e leva a mesma delegação: só `row2`/`action_button`, nenhum widget próprio.
+    (
+        "ph2d-panel-vector/src/paint_path_ops.rs",
+        "delegates to row2/action_button (paint_button-backed) in paint_sections",
+    ),
     // A seção FRAME (plano UI/UX W0) — o contêiner. Um `button_grid` (os presets de dispositivo),
     // de `paint_sections`/`paint_rows`.
     // ⚠️ O `segmented` do *Clip content* MUDOU-SE daqui para a seção irmã em 2026-08-21, quando o

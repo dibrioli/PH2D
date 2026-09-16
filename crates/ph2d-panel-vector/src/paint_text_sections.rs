@@ -50,7 +50,7 @@ impl BodyCtx<'_> {
             .number_value(ids::VECTOR_TEXT_SIZE_NUM)
             .unwrap_or(DEFAULT_TEXT_SIZE);
         y = self.slider_row(
-            "Size",
+            tr("panel.vector.text.size"),
             crate::ids::VECTOR_TEXT_SIZE,
             ids::VECTOR_TEXT_SIZE_NUM,
             track,
@@ -86,7 +86,7 @@ impl BodyCtx<'_> {
                 .number_value(ids::VECTOR_TEXT_WEIGHT_NUM)
                 .unwrap_or(DEFAULT_TEXT_WEIGHT);
             y = self.slider_row(
-                "Weight",
+                tr("panel.vector.text.weight"),
                 crate::ids::VECTOR_TEXT_WEIGHT,
                 ids::VECTOR_TEXT_WEIGHT_NUM,
                 wtrack,
@@ -98,7 +98,10 @@ impl BodyCtx<'_> {
         // Read-only string preview (the active session's text, or a hint when empty).
         let text = state::current_text().unwrap_or_default();
         let (shown, color) = if text.trim().is_empty() {
-            ("Click the canvas and type".to_owned(), ColorToken::Text2)
+            (
+                tr("panel.vector.text.click_the_canvas_and_type").to_owned(),
+                ColorToken::Text2,
+            )
         } else {
             (text.replace('\n', " / "), ColorToken::Text1)
         };
@@ -177,7 +180,11 @@ impl BodyCtx<'_> {
             state::set_pending_font_dd(Some(chip));
         }
         y += self.row_h + self.row_gap;
-        self.action_button(crate::ids::VECTOR_TEXT_FONT_IMPORT, "Import Font...", y)
+        self.action_button(
+            crate::ids::VECTOR_TEXT_FONT_IMPORT,
+            tr("panel.vector.text.import_font"),
+            y,
+        )
     }
 
     /// Seção **PARAGRAPH** — alinhamento L / C / R + Line-height + Tracking.
@@ -195,21 +202,21 @@ impl BodyCtx<'_> {
         }
         let align = state::current_text_align().unwrap_or(TextAlign::Left);
         y = self.segmented3(
-            "Align",
+            tr("panel.vector.text.align"),
             [
                 (
                     crate::ids::VECTOR_TEXT_ALIGN_LEFT,
-                    "Left",
+                    tr("panel.vector.text.left"),
                     align == TextAlign::Left,
                 ),
                 (
                     crate::ids::VECTOR_TEXT_ALIGN_CENTER,
-                    "Center",
+                    tr("panel.vector.text.center"),
                     align == TextAlign::Center,
                 ),
                 (
                     crate::ids::VECTOR_TEXT_ALIGN_RIGHT,
-                    "Right",
+                    tr("panel.vector.text.right"),
                     align == TextAlign::Right,
                 ),
             ],
@@ -225,7 +232,7 @@ impl BodyCtx<'_> {
             .number_value(ids::VECTOR_TEXT_LINE_HEIGHT_NUM)
             .unwrap_or(DEFAULT_TEXT_LINE_HEIGHT);
         y = self.slider_row(
-            "Line height",
+            tr("panel.vector.text.line_height"),
             crate::ids::VECTOR_TEXT_LINE_HEIGHT,
             ids::VECTOR_TEXT_LINE_HEIGHT_NUM,
             lh_track,
@@ -243,7 +250,7 @@ impl BodyCtx<'_> {
             .number_value(ids::VECTOR_TEXT_TRACKING_NUM)
             .unwrap_or(DEFAULT_TEXT_TRACKING);
         y = self.slider_row(
-            "Tracking",
+            tr("panel.vector.text.tracking"),
             crate::ids::VECTOR_TEXT_TRACKING,
             ids::VECTOR_TEXT_TRACKING_NUM,
             tr_track,
@@ -276,10 +283,18 @@ impl BodyCtx<'_> {
         }
         let wrap = state::current_text_wrap();
         let mut y = self.segmented(
-            "Width",
+            tr("panel.vector.text.width"),
             &[
-                (crate::ids::VECTOR_TEXT_WRAP_AUTO, "Auto", wrap.is_none()),
-                (crate::ids::VECTOR_TEXT_WRAP_FIXED, "Fixed", wrap.is_some()),
+                (
+                    crate::ids::VECTOR_TEXT_WRAP_AUTO,
+                    tr("panel.vector.text.auto"),
+                    wrap.is_none(),
+                ),
+                (
+                    crate::ids::VECTOR_TEXT_WRAP_FIXED,
+                    tr("panel.vector.text.fixed"),
+                    wrap.is_some(),
+                ),
             ],
             y,
         );
@@ -294,7 +309,7 @@ impl BodyCtx<'_> {
             .number_value(ids::VECTOR_TEXT_WRAP_W_NUM)
             .unwrap_or(w);
         y = self.slider_row(
-            "Wrap width",
+            tr("panel.vector.text.wrap_width"),
             crate::ids::VECTOR_TEXT_WRAP_W,
             ids::VECTOR_TEXT_WRAP_W_NUM,
             track,

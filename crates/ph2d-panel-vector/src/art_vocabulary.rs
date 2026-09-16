@@ -20,15 +20,16 @@
 //!
 //! ⛔ O gate `the_art_pickers_speak_one_word` varre os dois painéis e recusa um literal novo.
 
+use ph2d_i18n::TextKey;
 /// **Escolher a arte pela primeira vez.** O pincel diz isto quando ainda não tem arte, e o rótulo
 /// *é* o estado: um pincel sem arte pinta a cor de recurso, e sem esta diferença o artista não tem
 /// como saber porquê.
-pub(crate) const PICK: &str = "Pick Art...";
+pub(crate) const PICK: TextKey = TextKey::new("panel.vector.art.pick_art");
 
 /// **Trocar a arte que já existe** — o outro braço do mesmo botão.
-pub(crate) const CHANGE: &str = "Change Art...";
+pub(crate) const CHANGE: TextKey = TextKey::new("panel.vector.art.change_art");
 
 /// **A porta do canvas na estampa** (a irmã de *Source…*, que abre o diálogo de ficheiro). ⚠️ O
 /// verbo é outro de propósito: ali existem DUAS portas de arte lado a lado, e *"Use"* separa
 /// *«aponta uma forma que já está na tela»* de *«vai buscar um ficheiro»*.
-pub(crate) const USE: &str = "Use Art...";
+pub(crate) const USE: TextKey = TextKey::new("panel.vector.art.use_art");

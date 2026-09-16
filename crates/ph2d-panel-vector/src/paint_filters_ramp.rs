@@ -20,6 +20,7 @@ use crate::state::filters::RAMP_PREVIEW_N;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect};
+use ph2d_i18n::tr;
 
 /// Altura da barra de preview da rampa.
 pub(crate) const RAMP_BAR_H: f32 = 14.0; // LITERAL-PX-OK: espelha o GRAD_BAR_H do editor do Painter
@@ -169,6 +170,11 @@ impl BodyCtx<'_> {
             .get(selected)
             .copied()
             .unwrap_or([0, 0, 0, 255]);
-        self.filter_color_swatch(ids::filter_stop_color_id(row), colour, "Stop", py)
+        self.filter_color_swatch(
+            ids::filter_stop_color_id(row),
+            colour,
+            tr("panel.vector.filter.stop"),
+            py,
+        )
     }
 }

@@ -22,6 +22,7 @@
 //! removê-lo — o caminho fica, o texto volta a ser texto reto, nada é destruído.
 
 use super::*;
+use ph2d_i18n::tr;
 
 impl BodyCtx<'_> {
     /// Seção **TEXT ON PATH**.
@@ -49,9 +50,17 @@ impl BodyCtx<'_> {
             // ambas valem; o Picker é a porta explícita e mais correta (Enio 2026-07-23).
             let mut y = y;
             if state::can_link() {
-                y = self.action_button(crate::ids::VECTOR_TEXTPATH_LINK, "Text on Path", y);
+                y = self.action_button(
+                    crate::ids::VECTOR_TEXTPATH_LINK,
+                    tr("panel.vector.textpath.text_on_path"),
+                    y,
+                );
             }
-            return self.action_button(crate::ids::VECTOR_TEXTPATH_PICK, "Pick Path", y);
+            return self.action_button(
+                crate::ids::VECTOR_TEXTPATH_PICK,
+                tr("panel.vector.textpath.pick_path"),
+                y,
+            );
         }
         let track = self
             .store
@@ -62,7 +71,7 @@ impl BodyCtx<'_> {
             .number_value(ids::VECTOR_TEXTPATH_OFFSET_NUM)
             .unwrap_or_else(state::offset);
         y = self.slider_row(
-            "Offset",
+            tr("panel.vector.textpath.offset"),
             crate::ids::VECTOR_TEXTPATH_OFFSET,
             ids::VECTOR_TEXTPATH_OFFSET_NUM,
             track,
@@ -84,10 +93,22 @@ impl BodyCtx<'_> {
         // `paint_button`, que são quem wira o AccessKit — nomear o `NodeId` aqui é o que torna
         // essa delegação visível a quem lê o arquivo (e ao scan que a cobra).
         let sides: [(ph2d_a11y::NodeId, &str, bool); 2] = [
-            (crate::ids::VECTOR_TEXTPATH_FLIP_OFF, "This side", !flip),
-            (crate::ids::VECTOR_TEXTPATH_FLIP, "Other side", flip),
+            (
+                crate::ids::VECTOR_TEXTPATH_FLIP_OFF,
+                tr("panel.vector.textpath.this_side"),
+                !flip,
+            ),
+            (
+                crate::ids::VECTOR_TEXTPATH_FLIP,
+                tr("panel.vector.textpath.other_side"),
+                flip,
+            ),
         ];
-        y = self.segmented("Side", &sides, y);
-        self.action_button(crate::ids::VECTOR_TEXTPATH_DETACH, "Detach from Path", y)
+        y = self.segmented(tr("panel.vector.textpath.side"), &sides, y);
+        self.action_button(
+            crate::ids::VECTOR_TEXTPATH_DETACH,
+            tr("panel.vector.textpath.detach_from_path"),
+            y,
+        )
     }
 }

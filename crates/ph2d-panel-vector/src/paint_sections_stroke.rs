@@ -7,6 +7,7 @@
 //! booleana não partilham.
 
 use super::*;
+use ph2d_i18n::tr;
 
 impl BodyCtx<'_> {
     /// Width + Stroke swatch + Stroke opacity + Cap / Join + Dash / Gap.
@@ -53,16 +54,16 @@ impl BodyCtx<'_> {
         // §2.1).
         if let Some(k) = state::stroke_paint_kind() {
             y = self.segmented(
-                "Type",
+                tr("panel.vector.stroke.type"),
                 &[
                     (
                         ph2d_tool_vector::ids::VECTOR_STROKE_KIND_SOLID,
-                        "Solid",
+                        tr("panel.vector.stroke.solid"),
                         k == state::StrokePaintKind::Solid,
                     ),
                     (
                         ph2d_tool_vector::ids::VECTOR_STROKE_KIND_PATTERN,
-                        "Pattern",
+                        tr("panel.vector.stroke.pattern"),
                         k == state::StrokePaintKind::Pattern,
                     ),
                     // ⭐⭐⭐ **A 3.ª tinta** (plano 36, W4) — a arte que PERCORRE a linha.
@@ -72,7 +73,7 @@ impl BodyCtx<'_> {
                     // (`BrushStroke::art: VecPathId`) torna a alternativa inexprimível.
                     (
                         ph2d_tool_vector::ids::VECTOR_STROKE_KIND_BRUSH,
-                        "Brush",
+                        tr("panel.vector.stroke.brush"),
                         k == state::StrokePaintKind::Brush,
                     ),
                 ],
@@ -100,7 +101,7 @@ impl BodyCtx<'_> {
         // widget, para a marca não cair ao lado do campo num painel estreito, onde a row empilha.
         let width_row = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
         y = self.slider_row(
-            "Width",
+            tr("panel.vector.stroke.width"),
             ph2d_tool_vector::ids::VECTOR_WIDTH,
             ph2d_tool_vector::ids::VECTOR_WIDTH_NUM,
             track,
@@ -142,7 +143,7 @@ impl BodyCtx<'_> {
         );
         let stroke_swatch = ColorSwatch::new(
             ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH,
-            "Stroke color",
+            tr("panel.vector.stroke.stroke_color"),
             snap.stroke,
         )
         .size(SwatchSize::Md);
@@ -172,7 +173,7 @@ impl BodyCtx<'_> {
             .unwrap_or_else(|| opacity_to_slider(snap.stroke[3]));
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent for the opacity chip
         y = self.slider_row(
-            "Opacity",
+            tr("panel.vector.stroke.opacity"),
             ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY,
             ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY_NUM,
             track,
@@ -197,42 +198,42 @@ impl BodyCtx<'_> {
         let mut y = y;
         // Cap / Join segmented rows.
         y = self.segmented3(
-            "Cap",
+            tr("panel.vector.stroke.cap"),
             [
                 (
                     ph2d_tool_vector::ids::VECTOR_CAP_BUTT,
-                    "Butt",
+                    tr("panel.vector.stroke.butt"),
                     snap.cap == StrokeCap::Butt,
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_CAP_ROUND,
-                    "Round",
+                    tr("panel.vector.stroke.round"),
                     snap.cap == StrokeCap::Round,
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_CAP_SQUARE,
-                    "Square",
+                    tr("panel.vector.stroke.square"),
                     snap.cap == StrokeCap::Square,
                 ),
             ],
             y,
         );
         y = self.segmented3(
-            "Join",
+            tr("panel.vector.stroke.join"),
             [
                 (
                     ph2d_tool_vector::ids::VECTOR_JOIN_MITER,
-                    "Miter",
+                    tr("panel.vector.stroke.miter"),
                     snap.join == StrokeJoin::Miter,
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_JOIN_ROUND,
-                    "Round",
+                    tr("panel.vector.stroke.round"),
                     snap.join == StrokeJoin::Round,
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_JOIN_BEVEL,
-                    "Bevel",
+                    tr("panel.vector.stroke.bevel"),
                     snap.join == StrokeJoin::Bevel,
                 ),
             ],
@@ -242,21 +243,21 @@ impl BodyCtx<'_> {
         // **ALINHAMENTO** — logo abaixo de Cap/Join porque é a mesma família (*como a caneta
         // se comporta*), e ACIMA do tracejado, que é sobre o PADRÃO e não sobre o lado.
         y = self.segmented3(
-            "Align",
+            tr("panel.vector.stroke.align"),
             [
                 (
                     ph2d_tool_vector::ids::VECTOR_ALIGN_CENTRE,
-                    "Centre",
+                    tr("panel.vector.stroke.centre"),
                     snap.align == StrokeAlign::Centre,
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_ALIGN_INNER,
-                    "Inner",
+                    tr("panel.vector.stroke.inner"),
                     snap.align == StrokeAlign::Inner,
                 ),
                 (
                     ph2d_tool_vector::ids::VECTOR_ALIGN_OUTER,
-                    "Outer",
+                    tr("panel.vector.stroke.outer"),
                     snap.align == StrokeAlign::Outer,
                 ),
             ],
@@ -274,7 +275,7 @@ impl BodyCtx<'_> {
             .number_value(ph2d_tool_vector::ids::VECTOR_DASH_NUM)
             .unwrap_or(snap.dash);
         y = self.slider_row(
-            "Dash",
+            tr("panel.vector.stroke.dash"),
             ph2d_tool_vector::ids::VECTOR_DASH,
             ph2d_tool_vector::ids::VECTOR_DASH_NUM,
             track,
@@ -294,7 +295,7 @@ impl BodyCtx<'_> {
             .number_value(ph2d_tool_vector::ids::VECTOR_GAP_NUM)
             .unwrap_or(snap.gap);
         y = self.slider_row(
-            "Gap",
+            tr("panel.vector.stroke.gap"),
             ph2d_tool_vector::ids::VECTOR_GAP,
             ph2d_tool_vector::ids::VECTOR_GAP_NUM,
             track,

@@ -17,11 +17,22 @@
 //! não se aplica é ruído, e um botão que recusa é pior que um botão que falta.*
 
 use super::*;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// Os quatro reticulados, na ordem em que o artista os pensa: o neutro, os dois tijolos, a colmeia.
-const TILES: [(usize, &str); 4] = [(0, "Grid"), (1, "Brick"), (2, "Column"), (3, "Hex")];
+const TILES: [(usize, TextKey); 4] = [
+    (0, TextKey::new("panel.vector.texpat.grid")),
+    (1, TextKey::new("panel.vector.texpat.brick")),
+    (2, TextKey::new("panel.vector.texpat.column")),
+    (3, TextKey::new("panel.vector.texpat.hex")),
+];
 /// As três leis de repetição.
-const MODES: [(usize, &str); 3] = [(0, "Tile"), (1, "Mirror"), (2, "Clamp")];
+const MODES: [(usize, TextKey); 3] = [
+    (0, TextKey::new("panel.vector.texpat.tile")),
+    (1, TextKey::new("panel.vector.texpat.mirror")),
+    (2, TextKey::new("panel.vector.texpat.clamp")),
+];
 
 /// Os dois sujeitos, e o cabeçalho de cada um. ⚠️ Índice = o `slot` da família de ids.
 const SECOES: [(ph2d_a11y::NodeId, &str); 2] = [
@@ -75,12 +86,16 @@ impl BodyCtx<'_> {
         y = self.missing_art_hint(p.art, y);
         // A ARTE — trocar a imagem sem trocar a lei. ⚠️ O mesmo botão que o chip *Pattern* aciona
         // quando a forma ainda não tem padrão: uma porta, dois gatilhos.
-        y = self.action_button(kid(crate::ids::TexPatKnob::Source), "Source...", y);
+        y = self.action_button(
+            kid(crate::ids::TexPatKnob::Source),
+            tr("panel.vector.texpat.source"),
+            y,
+        );
         // ⭐ **A ARTE pode ser uma FORMA do documento** (W7) — o modelo do Figma. O gesto é o de
         // duas mãos que a casa já tem: aperta, e o clique seguinte no canvas escolhe.
         y = self.action_button(
             kid(crate::ids::TexPatKnob::PickShape),
-            crate::art_vocabulary::USE,
+            crate::art_vocabulary::USE.tr(),
             y,
         );
 
@@ -116,12 +131,12 @@ impl BodyCtx<'_> {
                 .map(|(i, l)| {
                     (
                         kid(crate::ids::TexPatKnob::Tile(*i as u8)),
-                        *l,
+                        l.tr(),
                         usize::from(p.kind) == *i,
                     )
                 })
                 .collect();
-            y = self.segmented("Tile", &tiles, y);
+            y = self.segmented(tr("panel.vector.texpat.tile"), &tiles, y);
         }
 
         // O DESFASAMENTO — só com Brick/Column. ⚠️ Na grade ele não tem sentido, e na COLMEIA ele é
@@ -134,7 +149,7 @@ impl BodyCtx<'_> {
                 denom_track(p.offset_denom),
             );
             y = self.slider_row(
-                "Offset",
+                tr("panel.vector.texpat.offset"),
                 kid(crate::ids::TexPatKnob::Offset),
                 kid(crate::ids::TexPatKnob::OffsetNum),
                 track,
@@ -162,13 +177,13 @@ impl BodyCtx<'_> {
             for (axis, label, sid, nid) in [
                 (
                     0usize,
-                    "Shift X",
+                    tr("panel.vector.texpat.shift_x"),
                     kid(crate::ids::TexPatKnob::ShiftX),
                     kid(crate::ids::TexPatKnob::ShiftXNum),
                 ),
                 (
                     1,
-                    "Shift Y",
+                    tr("panel.vector.texpat.shift_y"),
                     kid(crate::ids::TexPatKnob::ShiftY),
                     kid(crate::ids::TexPatKnob::ShiftYNum),
                 ),
@@ -186,7 +201,7 @@ impl BodyCtx<'_> {
         let angle_track =
             self.live_track(kid(crate::ids::TexPatKnob::Angle), angle_track(p.angle_deg));
         y = self.slider_row(
-            "Angle",
+            tr("panel.vector.texpat.angle"),
             kid(crate::ids::TexPatKnob::Angle),
             kid(crate::ids::TexPatKnob::AngleNum),
             angle_track,
@@ -201,12 +216,12 @@ impl BodyCtx<'_> {
             .map(|(i, l)| {
                 (
                     kid(crate::ids::TexPatKnob::Mode(*i as u8)),
-                    *l,
+                    l.tr(),
                     usize::from(p.mode) == *i,
                 )
             })
             .collect();
-        let y = self.segmented("Repeat", &modes, y);
+        let y = self.segmented(tr("panel.vector.texpat.repeat"), &modes, y);
         self.texpat_seam_hint(p.mode, p.wrap_seam_visible, y)
     }
 
@@ -276,13 +291,13 @@ impl BodyCtx<'_> {
         for (axis, label, sid, nid) in [
             (
                 0usize,
-                "Width",
+                tr("panel.vector.texpat.width"),
                 kid(crate::ids::TexPatKnob::Width),
                 kid(crate::ids::TexPatKnob::WidthNum),
             ),
             (
                 1,
-                "Height",
+                tr("panel.vector.texpat.height"),
                 kid(crate::ids::TexPatKnob::Height),
                 kid(crate::ids::TexPatKnob::HeightNum),
             ),
@@ -314,13 +329,13 @@ impl BodyCtx<'_> {
         for (axis, label, sid, nid) in [
             (
                 0usize,
-                "Gap X",
+                tr("panel.vector.texpat.gap_x"),
                 kid(crate::ids::TexPatKnob::Gap),
                 kid(crate::ids::TexPatKnob::GapNum),
             ),
             (
                 1,
-                "Gap Y",
+                tr("panel.vector.texpat.gap_y"),
                 kid(crate::ids::TexPatKnob::GapY),
                 kid(crate::ids::TexPatKnob::GapYNum),
             ),

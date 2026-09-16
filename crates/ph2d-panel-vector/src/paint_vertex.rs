@@ -6,6 +6,7 @@
 //! nesta seção foi removido junto com a alça de raio do Node — a consolidação que o Enio pediu.
 
 use super::*;
+use ph2d_i18n::tr;
 
 impl BodyCtx<'_> {
     /// Seção **VERTEX** — o tipo do vértice selecionado (Corner / Smooth / Symm) + o Delete Node.
@@ -27,17 +28,17 @@ impl BodyCtx<'_> {
         let verts = [
             (
                 ph2d_tool_vector::ids::VECTOR_VERT_CORNER,
-                "Corner",
+                tr("panel.vector.vertex.corner"),
                 VertexType::Corner,
             ),
             (
                 ph2d_tool_vector::ids::VECTOR_VERT_SMOOTH,
-                "Smooth",
+                tr("panel.vector.vertex.smooth"),
                 VertexType::Smooth,
             ),
             (
                 ph2d_tool_vector::ids::VECTOR_VERT_SYMMETRIC,
-                "Symm",
+                tr("panel.vector.vertex.symm"),
                 VertexType::Symmetric,
             ),
         ];
@@ -83,8 +84,14 @@ impl BodyCtx<'_> {
         // existe — e estes dois são exatamente os que tornam uma forma de 40 nós trabalhável.
         // O `Ctrl+A` (todos os nós) fica na tecla: esse o artista tenta sozinho.
         let sel: [(ph2d_a11y::NodeId, &str); 2] = [
-            (crate::ids::VECTOR_VERT_SEL_SUBPATH, "Select Subpath"),
-            (crate::ids::VECTOR_VERT_SEL_SAME, "Select Same"),
+            (
+                crate::ids::VECTOR_VERT_SEL_SUBPATH,
+                tr("panel.vector.vertex.select_subpath"),
+            ),
+            (
+                crate::ids::VECTOR_VERT_SEL_SAME,
+                tr("panel.vector.vertex.select_same"),
+            ),
         ];
         let gap = Spacing::Xs.px();
         let w = ((self.inner_w - gap) / 2.0).max(1.0);
@@ -101,13 +108,23 @@ impl BodyCtx<'_> {
                 w,
                 gap,
                 [
-                    (crate::ids::VECTOR_VERT_AVERAGE, "Average"),
-                    (crate::ids::VECTOR_VERT_DELETE, "Delete Node"),
+                    (
+                        crate::ids::VECTOR_VERT_AVERAGE,
+                        tr("panel.vector.vertex.average"),
+                    ),
+                    (
+                        crate::ids::VECTOR_VERT_DELETE,
+                        tr("panel.vector.vertex.delete_node"),
+                    ),
                 ],
                 y,
             );
         } else {
-            y = self.action_button(crate::ids::VECTOR_VERT_DELETE, "Delete Node", y);
+            y = self.action_button(
+                crate::ids::VECTOR_VERT_DELETE,
+                tr("panel.vector.vertex.delete_node"),
+                y,
+            );
         }
         y
     }

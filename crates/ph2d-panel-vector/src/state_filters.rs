@@ -18,6 +18,7 @@
 //! estado é um `Vec` de linhas. A ORDEM é dado, não apresentação: `Shadow → Blur` e
 //! `Blur → Shadow` desenham coisas diferentes.
 
+use ph2d_i18n::TextKey;
 use std::cell::{Cell, RefCell};
 
 use crate::ids::MAX_FILTER_ROWS;
@@ -299,9 +300,9 @@ pub(crate) fn blend_name(code: u8) -> &'static str {
         b.borrow()
             .get(code as usize)
             .copied()
-            .unwrap_or(FALLBACK_BLEND_NAME)
+            .unwrap_or_else(|| FALLBACK_BLEND_NAME.tr())
     })
 }
 
 /// O rótulo que o chip mostra antes de a shell publicar a tabela.
-pub(crate) const FALLBACK_BLEND_NAME: &str = "Normal";
+pub(crate) const FALLBACK_BLEND_NAME: TextKey = TextKey::new("panel.vector.filter.normal");

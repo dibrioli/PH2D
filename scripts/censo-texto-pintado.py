@@ -160,6 +160,11 @@ for _ in range(12):
     if not grew: break
 
 LIT=re.compile(r'^\s*"((?:[^"\\]|\\.)*)"\s*$')
+# ⚠️ **Uma CHAVE não é texto** (2026-09-16): desde que as portas do painel Painter passaram a receber
+#    a chave e a traduzir lá dentro (`paint_checkbox_row(…, "panel.painter_layers.brush.accumulate", …)`),
+#    este censo contava **44** chaves como literais pintados. A regra é a mesma da régua da crate
+#    (`ph2d_label_census::lexical::is_language`): tem um ponto e só minúsculas, dígitos, `_` e `.`.
+KEY=re.compile(r'^[a-z0-9_]+(\.[a-z0-9_]+)+$')
 rx=CALL(carriers)
 per=collections.Counter(); rows=[]
 for crate,p,src in FILES:
@@ -168,7 +173,7 @@ for crate,p,src in FILES:
         for idx,_ in carriers[m.group(1)]:
             if idx>=len(parts): continue
             g=LIT.match(parts[idx])
-            if g and any(c.isalpha() for c in g.group(1)):
+            if g and any(c.isalpha() for c in g.group(1)) and not KEY.match(g.group(1)):
                 rows.append((crate,p,src[:m.start()].count("\n")+1,m.group(1),g.group(1)))
                 per[crate]+=1
                 break

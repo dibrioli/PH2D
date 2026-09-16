@@ -80,7 +80,8 @@ impl BodyCtx<'_> {
         let sr = Rect::new(x, y, sw, self.row_h);
         let sid = ids::vector_paint_swatch_id(i);
         paint_color_swatch(
-            &ColorSwatch::new(sid, "Layer color", row.color).size(SwatchSize::Sm),
+            &ColorSwatch::new(sid, tr("panel.vector.appearance.layer_color"), row.color)
+                .size(SwatchSize::Sm),
             sr,
             self.scene,
             self.theme,
@@ -157,9 +158,21 @@ impl BodyCtx<'_> {
             y = self.segmented3(
                 tr("panel.vector.paint.join"),
                 [
-                    (ids::VECTOR_PAINT_JOIN_MITER, "Miter", row.dilate_join == 0),
-                    (ids::VECTOR_PAINT_JOIN_ROUND, "Round", row.dilate_join == 1),
-                    (ids::VECTOR_PAINT_JOIN_BEVEL, "Bevel", row.dilate_join == 2),
+                    (
+                        ids::VECTOR_PAINT_JOIN_MITER,
+                        tr("panel.vector.appearance.miter"),
+                        row.dilate_join == 0,
+                    ),
+                    (
+                        ids::VECTOR_PAINT_JOIN_ROUND,
+                        tr("panel.vector.appearance.round"),
+                        row.dilate_join == 1,
+                    ),
+                    (
+                        ids::VECTOR_PAINT_JOIN_BEVEL,
+                        tr("panel.vector.appearance.bevel"),
+                        row.dilate_join == 2,
+                    ),
                 ],
                 y,
             );

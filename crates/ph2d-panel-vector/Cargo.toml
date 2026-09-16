@@ -75,6 +75,8 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # `paint` encheu. Sintetizar `WidgetEvent::Click` pularia justamente o registro do widget, que é
 # metade do que o gate existe para provar. Dev-dep pelo mesmo motivo acima (sem ciclo em runtime).
 ph2d-host = { path = "../ph2d-host" }
+# A régua lexical do HR-15 — a mesma que o gate por crate do painel Painter corre.
+ph2d-label-census = { path = "../ph2d-label-census" }
 
 [lints]
 workspace = true

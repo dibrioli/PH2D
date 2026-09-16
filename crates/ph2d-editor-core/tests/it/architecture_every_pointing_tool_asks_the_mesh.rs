@@ -428,8 +428,10 @@ fn the_canvas_chrome_census_is_derived_and_nobody_maps_an_authored_point_by_the_
          propósito: a metade do DEDO (`grid_cell_under`) inverte o afim, e a porta que inverte \
          PELA MALHA (`ph2d_render::mesh_uv`) exige `&mut World` enquanto todo este caminho de \
          chrome tem `&World`. Curar só o desenho poria um rectângulo bem dobrado à volta da \
-         célula ERRADA — *meia lei aplicada é pior que nenhuma*. Item ABERTO, com o bloqueador \
-         nomeado: falta um inverso read-only na `DrawnMesh` (hoje ela só tem `world_at_uv`).",
+         célula ERRADA — *meia lei aplicada é pior que nenhuma*. ✅ O item que isto deixava ABERTO \
+         DISSOLVEU em 2026-09-15 por ordem do dono: sob o Painter a sprite pintada é desenhada \
+         ACHATADA (`skin_suspend::sprite_achatada`), logo o quad de repouso É o que está no ecrã \
+         e esta célula cai certa.",
     )];
 
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))

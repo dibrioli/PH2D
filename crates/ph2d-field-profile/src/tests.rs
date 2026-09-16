@@ -396,10 +396,13 @@ fn o_vaso_do_dono_vira_arcos_e_a_figura_fica() {
     let path = vaso_do_dono();
     let p = crate::cook_path_auto(&path).expect("o vaso é um perfil válido");
     let arcos = p.arc_count();
+    // ⚠️ **Doze arcos para dez quinas**: duas viram mais de `90°` — a de fora do lábio (`127°`) e a
+    // do fundo por dentro (`113°`) —, e um filete acima de `90°` sai em duas cúbicas (a lei da casa,
+    // `ph2d_vec_scene::corners::circular_fillet`), cada metade um arco.
     assert_eq!(
         arcos,
-        10,
-        "as dez quinas com raio têm de virar dez ARCOS (deu {arcos}); primitivas: {}",
+        12,
+        "as dez quinas com raio têm de virar DOZE arcos (deu {arcos}); primitivas: {}",
         p.prim_count()
     );
     assert!(
@@ -418,19 +421,193 @@ fn o_vaso_do_dono_vira_arcos_e_a_figura_fica() {
 
 /// ⭐⭐ **AS DUAS VISTAS DESCREVEM A MESMA CURVA** — o gate que impede a decomposição exacta de
 /// derivar da polilinha. Sem ele, um arco no sítio errado passaria por ser barato.
+///
+/// ⚠️ **A barra tem DUAS parcelas** desde que o reconhecedor aceita a precisão do quarto de círculo
+/// (`crate::ERRO_DO_QUARTO`): a polilinha erra até `tol` da cúbica, e o arco até `ERRO_DO_QUARTO·r`
+/// dela. Num nível alto a segunda domina — é exactamente o que a cura concede, e o gate di-lo.
 fn as_duas_vistas_concordam(p: &ph2d_field::Profile) {
     let tol = f64::from(p.tolerance());
     for (c, (poli, arcs)) in p.contours().iter().zip(p.arcs()).enumerate() {
         if arcs.is_empty() {
             continue;
         }
+        let barra = tol * 3.0 + crate::ERRO_DO_QUARTO * maior_raio(arcs);
         let denso = amostra_da_decomposicao(arcs);
         let ida = hausdorff(&denso, poli);
         let volta = hausdorff(poli, &denso);
         assert!(
-            ida <= tol * 3.0 && volta <= tol * 3.0,
-            "contorno {c}: as duas vistas discordam — ida {ida:.6}, volta {volta:.6}, tol {tol:.6}"
+            ida <= barra && volta <= barra,
+            "contorno {c}: as duas vistas discordam — ida {ida:.6}, volta {volta:.6}, barra \
+             {barra:.6} (tol {tol:.6})"
         );
+    }
+}
+
+/// O maior raio entre os arcos de uma decomposição (`0` se não houver arco).
+fn maior_raio(arcs: &[([f32; 2], f32)]) -> f64 {
+    let n = arcs.len();
+    (0..n)
+        .filter(|&i| arcs[i].1 != 0.0)
+        .map(|i| {
+            let (a, bulge) = arcs[i];
+            let (b, _) = arcs[(i + 1) % n];
+            let l = f64::from(b[0] - a[0]).hypot(f64::from(b[1] - a[1]));
+            let s = f64::from(bulge) * l * 0.5;
+            let k = (s * s - (l * 0.5) * (l * 0.5)) / (2.0 * s);
+            (s - k).abs()
+        })
+        .fold(0.0, f64::max)
+}
+
+/// ⭐⭐⭐ **A BARRA DO ARCO É A PRECISÃO DE UM QUARTO DE CÍRCULO — nas duas metades** (2026-09-16).
+///
+/// O quarto canónico (alçapão `(4/3)·tan(π/8)`) amostrado a `100 001` pontos: o erro radial máximo
+/// dele tem de caber na barra (senão um círculo desenhado por qualquer app volta a não ser arco) e
+/// tem de a ENCHER (senão a barra é mais larga do que a razão que a justifica, e aceita curvas que
+/// não são círculos).
+#[test]
+fn o_quarto_canonico_define_a_barra_do_arco() {
+    let k = (4.0 / 3.0) * (std::f64::consts::PI / 8.0).tan();
+    let bez = kurbo::CubicBez::new(
+        kurbo::Point::new(1.0, 0.0),
+        kurbo::Point::new(1.0, k),
+        kurbo::Point::new(k, 1.0),
+        kurbo::Point::new(0.0, 1.0),
+    );
+    let pior = (0..=100_000)
+        .map(|i| {
+            let q = kurbo::ParamCurve::eval(&bez, f64::from(i) / 100_000.0);
+            (q.x.hypot(q.y) - 1.0).abs()
+        })
+        .fold(0.0, f64::max);
+    assert!(
+        pior <= crate::ERRO_DO_QUARTO,
+        "o quarto canónico erra {pior:.6e} e a barra é {:.6e} — um círculo deixa de ser arco",
+        crate::ERRO_DO_QUARTO
+    );
+    assert!(
+        pior >= crate::ERRO_DO_QUARTO * 0.999,
+        "a barra ({:.6e}) é mais larga do que o quarto canónico precisa ({pior:.6e})",
+        crate::ERRO_DO_QUARTO
+    );
+}
+
+/// ⭐⭐⭐ **UM ARCO CONTINUA ARCO EM TODO NÍVEL DE `Resolution`** (2026-09-16).
+///
+/// ⛔⛔ Medido antes da cura (arcos reconhecidos / primitivas):
+///
+/// | nível | vaso do dono | círculo | pílula | quina a `90°` |
+/// |---:|---:|---:|---:|---:|
+/// |  1 | `10/10` · `22` | **`0` · `168`** | `4` · `8` | arco |
+/// |  4 | `8/10` · `71` | `0` · `332` | **`0` · `186`** | arco |
+/// | 64 | `6/10` · **`384`** | `0` · `1 328` | `0` · `730` | **tesselada** |
+///
+/// Um círculo nunca era arco, e subir o botão desfazia os arcos que havia — o artista pedia mais
+/// qualidade e recebia as quinas partidas, até `17×` mais caras.
+///
+/// ⚠️ **Os dois CONTROLOS dizem que a barra não virou licença:** uma elipse **não** é um círculo
+/// (nenhum quarto dela é arco, em nível nenhum), e uma quina de `150°` escrita numa cúbica só erra
+/// `5,97e-3·r` — acima do quarto — e no nível mais alto fica tesselada, como deve.
+#[test]
+fn o_arco_sobrevive_a_todo_nivel_de_resolution() {
+    let niveis = [1, 2, 4, 8, 16, 32, ph2d_field::MAX_PROFILE_RESOLUTION];
+    let casos: [(&str, VecPath, usize, usize); 5] = [
+        ("vaso do dono", vaso_do_dono(), 12, 24),
+        ("círculo", circle(0.5), 4, 4),
+        (
+            "elipse redonda",
+            ph2d_vec_scene::ellipse([0.0, 0.0], 1.0, 1.0),
+            4,
+            4,
+        ),
+        (
+            "pílula",
+            ph2d_vec_scene::rounded_rect([-1.0, -0.3], [1.0, 0.3], 0.3),
+            4,
+            8,
+        ),
+        ("quina a 90°", v_com_filete(90.0, 0.05), 1, 5),
+    ];
+    for nivel in niveis {
+        for (nome, path, arcos, teto) in &casos {
+            let p = crate::cook_path_at(path, nivel).expect("perfil válido");
+            assert_eq!(
+                p.arc_count(),
+                *arcos,
+                "[{nome} · nível {nivel}] {} arcos (esperados {arcos}); primitivas {}",
+                p.arc_count(),
+                p.prim_count()
+            );
+            assert!(
+                p.prim_count() <= *teto,
+                "[{nome} · nível {nivel}] {} primitivas, teto {teto}",
+                p.prim_count()
+            );
+            as_duas_vistas_concordam(&p);
+        }
+        let elipse = ph2d_vec_scene::ellipse([0.0, 0.0], 2.0, 0.5);
+        let p = crate::cook_path_at(&elipse, nivel).expect("perfil válido");
+        assert_eq!(
+            p.arc_count(),
+            0,
+            "[elipse 2×0,5 · nível {nivel}] um quarto de elipse NÃO é um arco de círculo"
+        );
+    }
+    // A quina aguda que a casa ESCREVE sai em duas metades, e as duas são arcos em todo nível…
+    for nivel in niveis {
+        let p = crate::cook_path_at(&v_com_filete(150.0, 0.05), nivel).expect("perfil válido");
+        assert_eq!(
+            p.arc_count(),
+            2,
+            "[quina a 150° · nível {nivel}] uma quina acima de 90° sai em DUAS cúbicas, e cada \
+             uma é um arco"
+        );
+        as_duas_vistas_concordam(&p);
+    }
+    // …e o mesmo arco escrito numa cúbica SÓ (como outro programa o poderia escrever) erra acima do
+    // quarto de círculo: no nível máximo ele fica tesselado. Aceitá-lo seria a barra a servir de
+    // licença. ⚠️ O de `95°` é o que APERTA (erra `1,38×` o quarto): com só o de `150°` (`22×`), uma
+    // barra dez vezes mais larga passou a prova de mutação.
+    for graus in [95.0, 150.0] {
+        let aguda = crate::cook_path_at(
+            &arco_numa_cubica_so(graus),
+            ph2d_field::MAX_PROFILE_RESOLUTION,
+        )
+        .expect("perfil válido");
+        assert_eq!(
+            aguda.arc_count(),
+            0,
+            "um arco de {graus}° numa cúbica só erra acima do quarto de círculo — aceitá-lo no \
+             nível máximo é a barra a servir de licença"
+        );
+    }
+}
+
+/// Um segmento circular (arco + corda) de raio `1` cujo arco varre `graus` numa cúbica SÓ, com o
+/// alçapão canónico `(4/3)·tan(θ/4)` — a forma que um programa que não parte arcos escreveria.
+fn arco_numa_cubica_so(graus: f64) -> VecPath {
+    let th = graus.to_radians();
+    let k = (4.0 / 3.0) * (th * 0.25).tan();
+    let (a, b) = ([1.0, 0.0], [th.cos(), th.sin()]);
+    VecPath {
+        verts: vec![
+            VecVertex {
+                anchor: a,
+                in_handle: a,
+                out_handle: [1.0, k],
+                kind: VertexKind::Corner,
+                corner_radius: 0.0,
+            },
+            VecVertex {
+                anchor: b,
+                in_handle: [b[0] + k * th.sin(), b[1] - k * th.cos()],
+                out_handle: b,
+                kind: VertexKind::Corner,
+                corner_radius: 0.0,
+            },
+        ],
+        closed: true,
+        ..VecPath::default()
     }
 }
 
@@ -470,22 +647,8 @@ fn o_filete_vivo_e_um_arco_em_todo_angulo() {
 /// Uma quina em V com o ângulo dado, cozida: devolve `(raio pedido, raio medido, desvio máximo do
 /// círculo verdadeiro, tolerância de cozimento)`.
 fn filete_medido(graus: f64, r: f64) -> (f64, f64, f64, f64) {
-    let alpha = graus.to_radians();
-    let theta = std::f64::consts::PI - alpha;
-    let half = theta * 0.5;
-    let path = ph2d_vec_scene::VecPath {
-        verts: vec![
-            ph2d_vec_scene::VecVertex::corner([-half.sin(), half.cos()]),
-            ph2d_vec_scene::VecVertex {
-                corner_radius: r,
-                ..ph2d_vec_scene::VecVertex::corner([0.0, 0.0])
-            },
-            ph2d_vec_scene::VecVertex::corner([half.sin(), half.cos()]),
-            ph2d_vec_scene::VecVertex::corner([0.0, 3.0]),
-        ],
-        closed: true,
-        ..ph2d_vec_scene::VecPath::default()
-    };
+    let half = (std::f64::consts::PI - graus.to_radians()) * 0.5;
+    let path = v_com_filete(graus, r);
     let cooked = path.cooked();
     let tol = crate::span_of(&cooked) * crate::TOLERANCE_RATIO;
     let (verts, _) = cooked.contour(0).expect("há contorno");
@@ -520,6 +683,25 @@ fn filete_medido(graus: f64, r: f64) -> (f64, f64, f64, f64) {
     panic!("a {graus}° não saiu filete nenhum do cozimento");
 }
 
+/// Uma quina em V cuja LIGAÇÃO varre `graus` (a abertura do V é `180° − graus`), com raio `r` na
+/// ponta e o topo fechado longe dela.
+fn v_com_filete(graus: f64, r: f64) -> VecPath {
+    let half = (std::f64::consts::PI - graus.to_radians()) * 0.5;
+    VecPath {
+        verts: vec![
+            VecVertex::corner([-half.sin(), half.cos()]),
+            VecVertex {
+                corner_radius: r,
+                ..VecVertex::corner([0.0, 0.0])
+            },
+            VecVertex::corner([half.sin(), half.cos()]),
+            VecVertex::corner([0.0, 3.0]),
+        ],
+        closed: true,
+        ..VecPath::default()
+    }
+}
+
 /// Os `12` pontos da cena `5` do smoke — o vaso oco do dono.
 fn vaso_do_dono() -> ph2d_vec_scene::VecPath {
     const VASO: [([f64; 2], f64); 12] = [
@@ -549,8 +731,15 @@ fn vaso_do_dono() -> ph2d_vec_scene::VecPath {
     }
 }
 
-/// Amostra uma decomposição exacta numa polilinha densa — 32 pontos por arco, muito mais fino que a
-/// tolerância. É régua, nunca produto.
+/// Amostra uma decomposição exacta numa polilinha densa — `AMOSTRAS_POR_ARCO` pontos por arco. É
+/// régua, nunca produto.
+///
+/// ⛔ **A 1.ª versão usava `32`, e isso só era «muito mais fino que a tolerância» para arcos
+/// PEQUENOS.** A flecha da própria régua é `r·(1 − cos(θ/64))`: `~2e-7` nas quinas do vaso
+/// (`r ≤ 0,06`), mas **`1,5e-4`** num quarto de círculo de raio `0,5` — e o gate acusou uma
+/// decomposição correcta por `2,88e-4` contra `2,86e-4`. A `512` a flecha é `r·1,2e-6` num quarto.
+const AMOSTRAS_POR_ARCO: u32 = 512;
+
 fn amostra_da_decomposicao(arcs: &[([f32; 2], f32)]) -> Vec<[f32; 2]> {
     let n = arcs.len();
     let mut out = Vec::new();
@@ -583,8 +772,8 @@ fn amostra_da_decomposicao(arcs: &[([f32; 2], f32)]) -> Vec<[f32; 2]> {
         while theta <= -std::f64::consts::PI {
             theta += 2.0 * std::f64::consts::PI;
         }
-        for t in 1..32 {
-            let ang = a0 + theta * f64::from(t) / 32.0;
+        for t in 1..AMOSTRAS_POR_ARCO {
+            let ang = a0 + theta * f64::from(t) / f64::from(AMOSTRAS_POR_ARCO);
             #[allow(clippy::cast_possible_truncation)]
             out.push([(cx + r * ang.cos()) as f32, (cy + r * ang.sin()) as f32]);
         }
@@ -622,4 +811,27 @@ fn dist_ponto_segmento(p: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f64 {
         0.0
     };
     (px - (ax + ex * t)).hypot(py - (ay + ey * t))
+}
+
+/// ⭐⭐ **A MEIA-LUA DE DOIS PONTOS COZE** (2026-09-16).
+///
+/// ⛔⛔ Um arco e a sua corda — o que a caneta desenha com dois pontos — eram RECUSADOS inteiros
+/// (`BulgeMismatch`) quando o arco era exacto: a decomposição pedia três primitivas, a lei do
+/// polígono emprestada. Medido antes da cura, em todo nível: `Err(Rejected(BulgeMismatch { points:
+/// 2, bulges: 3 }))` a `60°` e a `90°` — e a mesma figura cozia antes de haver decomposição.
+#[test]
+fn a_meia_lua_de_dois_pontos_coze() {
+    for graus in [30.0, 60.0, 90.0] {
+        for nivel in [1, 4, ph2d_field::MAX_PROFILE_RESOLUTION] {
+            let p = crate::cook_path_at(&arco_numa_cubica_so(graus), nivel).unwrap_or_else(|e| {
+                panic!("[{graus}° · nível {nivel}] a meia-lua foi recusada: {e:?}")
+            });
+            assert_eq!(
+                (p.arc_count(), p.prim_count()),
+                (1, 2),
+                "[{graus}° · nível {nivel}] um arco e uma corda"
+            );
+            as_duas_vistas_concordam(&p);
+        }
+    }
 }

@@ -394,7 +394,8 @@ impl Profile {
     ///
     /// # Errors
     /// Ver [`ProfileError`] — mais [`ProfileError::BulgeMismatch`] se uma decomposição tiver menos
-    /// de 3 primitivas ou um número não-finito.
+    /// de 2 primitivas, ou só 2 e nenhuma delas um arco — e [`ProfileError::NonFinite`] se tiver um
+    /// número não-finito.
     pub fn with_arcs(
         contours: Vec<ContourWithArcs>,
         fill: FillRule,
@@ -406,11 +407,16 @@ impl Profile {
                 continue;
             }
             let idx = i as u32;
-            if a.len() < 3 {
+            // ⭐⭐ **DUAS primitivas bastam quando uma é um ARCO** (2026-09-16): um arco e a sua corda
+            // fecham a meia-lua que a caneta desenha com dois pontos, e dois arcos fecham uma lente.
+            // ⛔ A 1.ª versão pedia TRÊS — a lei do polígono, emprestada — e recusava a peça INTEIRA
+            // (`BulgeMismatch`), quando antes da decomposição a mesma meia-lua cozia pela polilinha.
+            // Duas rectas entre os mesmos dois pontos é que não fecham área nenhuma.
+            if a.len() < 2 || (a.len() == 2 && a.iter().all(|(_, b)| *b == 0.0)) {
                 return Err(ProfileError::BulgeMismatch {
                     contour: idx,
                     points: a.len() as u32,
-                    bulges: 3,
+                    bulges: 2,
                 });
             }
             if a.iter()

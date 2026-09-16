@@ -302,9 +302,12 @@ fn decomposicao_exacta(verts: &[VecVertex], tolerance: f64) -> Vec<ph2d_field::A
 /// propósito — ajustar um círculo por mínimos quadrados aceitaria uma curva que passa perto de um
 /// círculo sem ser um, e é a conferência que tem de ser a barra.
 ///
-/// ⚠️ **A barra é a TOLERÂNCIA de cozimento, a mesma com que o achatamento trabalharia** — não um
-/// número novo. *Um arco aceite aqui erra menos do que os segmentos que ele substitui, por
-/// construção: aqueles têm a tolerância como erro de corda, este tem-na como erro máximo.*
+/// ⚠️ **A barra é a MAIOR de duas: a tolerância de cozimento e a precisão com que um círculo se
+/// escreve em cúbicas** ([`ERRO_DO_QUARTO`]`·r`). A 1.ª redacção desta função dizia que era só a
+/// tolerância, *«não um número novo»* — e era exactamente isso que deixava um círculo sem arco
+/// nenhum e desfazia os arcos quando o `Resolution` subia (a tabela está no doc da constante). A
+/// tolerância mede o achatamento de uma curva; um arco não se achata, e a pergunta aqui é outra:
+/// *esta cúbica é um círculo escrito em cúbica?*
 fn bulge_do_cubico(
     p0: [f64; 2],
     p1: [f64; 2],
@@ -340,14 +343,53 @@ fn bulge_do_cubico(
     }
     // A conferência: a cúbica inteira tem de viver no círculo. `0` e `1` estão nele por construção,
     // e `0,5` também (foi ele que o definiu) — por isso as amostras são as de ENTRE.
+    let barra = tol.max(ERRO_DO_QUARTO * r);
     for t in [0.125, 0.25, 0.375, 0.625, 0.75, 0.875] {
         let q = kurbo::ParamCurve::eval(&bez, t);
-        if ((q.x - cx).hypot(q.y - cy) - r).abs() > tol {
+        if ((q.x - cx).hypot(q.y - cy) - r).abs() > barra {
             return None;
         }
     }
     Some(bulge)
 }
+
+/// ⭐⭐⭐ **A PRECISÃO COM QUE UM CÍRCULO SE ESCREVE EM CÚBICAS** — o erro radial máximo do quarto de
+/// círculo canónico (alçapão `(4/3)·tan(π/8)·r = KAPPA·r`), em fracção do raio (2026-09-16).
+///
+/// É o número com que **todo** formato vectorial escreve um círculo — quatro cúbicas de `90°` (o
+/// `ellipse` e o `rounded_rect` desta casa, o SVG, o PostScript) —, e a curva canónica fica **fora**
+/// do círculo, a `0` nas pontas e no meio e a `2,7253e-4·r` no pior ponto. Medido por amostragem
+/// densa (o gate `o_quarto_canonico_define_a_barra_do_arco` segura as duas metades):
+///
+/// | abertura | erro máximo / `r` |
+/// |---:|---:|
+/// |  45° | `4,25e-6` |
+/// |  60° | `2,39e-5` |
+/// |  90° | **`2,7253e-4`** ⬅ esta barra |
+/// | 120° | `1,54e-3` |
+/// | 150° | `5,97e-3` |
+///
+/// ⛔⛔ **Sem ela a barra do reconhecedor era SÓ a tolerância de cozimento, e isso tinha dois efeitos
+/// que nenhum gate via** (medido 2026-09-16):
+///
+/// - **um CÍRCULO nunca era arco**, em nível nenhum: `r/extensão = ½` põe o erro intrínseco em
+///   `1,36e-4` da extensão, acima da tolerância do nível 1 (`1e-4`). Um cilindro saía com `168`
+///   primitivas em vez de `4`, e no modo MODEL com as faixas do Bug #1;
+/// - **subir o `Resolution` DESFAZIA os arcos**: a tolerância divide-se pelo nível e o erro da cúbica
+///   não, logo o vaso do dono ia de `10/10` arcos (`22` primitivas) no nível 1 para `8/10` (`71`) no
+///   nível 4 e `6/10` (`384`) no 64 — o artista pedia mais qualidade e recebia as quinas partidas de
+///   volta, dezassete vezes mais caras.
+///
+/// ⚠️ **O que ela concede, dito com o número:** um arco aceite pode afastar-se da cúbica desenhada até
+/// `2,7253e-4·r`, logo até `1,36e-4` da extensão da peça (`r ≤ extensão/2`) — **cinco vezes abaixo**
+/// do desvio de posição que a W54 mediu como invisível (`0,079 %`), e com a NORMAL exacta, que é o
+/// que a luz lê. É também o quanto a cúbica se afasta do círculo que o artista pediu: *o sólido fica
+/// com o círculo, e a polilinha — a figura — continua a seguir a cúbica*.
+///
+/// ⛔ **Não é um número para subir.** Uma quina acima de `90°` escrita numa cúbica só erra mais do que
+/// isto (tabela acima), e aceitá-la trocaria um círculo por uma curva que não o é; a saída dessas é
+/// partir a cúbica na emissão, não afrouxar a barra.
+const ERRO_DO_QUARTO: f64 = 2.7254e-4;
 
 /// O achatamento de sempre — o caminho INTEIRO de uma vez. Ver o aviso de byte-identidade acima.
 fn flatten_contour_reto(verts: &[VecVertex], tolerance: f64) -> Vec<[f32; 2]> {

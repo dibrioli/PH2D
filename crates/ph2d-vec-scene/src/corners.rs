@@ -8,7 +8,8 @@
 //!
 //! Construção clássica (CAD): em cada quina, recua-se `t = r / tan(θ/2)` ao longo das
 //! duas arestas (θ = ângulo interno) e liga-se os dois pontos por um arco. O vértice
-//! único vira **dois** vértices de quina, com o handle apontando para o vértice
+//! único vira **dois** vértices de quina (e **três**, com um do meio, se a quina virar mais
+//! de `90°` — ver [`circular_fillet`]), com o handle apontando para o vértice
 //! original — a mesma forma do `rounded_rect` (arco de um lado, handle nulo do lado
 //! reto), então as quinas seguem independentes e editáveis à mão depois.
 //!
@@ -62,10 +63,7 @@ pub fn round_closed_corners_smooth(pts: &[[f64; 2]], radii: &[f64], smoothing: f
             continue;
         }
         match rounded_corner(a, v, b, r) {
-            Some((v_in, v_out)) => {
-                verts.push(v_in);
-                verts.push(v_out);
-            }
+            Some(quina) => verts.extend(quina),
             None => verts.push(VecVertex::corner(v)),
         }
     }
@@ -76,10 +74,11 @@ pub fn round_closed_corners_smooth(pts: &[[f64; 2]], radii: &[f64], smoothing: f
     }
 }
 
-/// Os DOIS vértices que substituem a quina `v` (entre `a` e `b`) arredondada com raio
-/// `r`: o que entra no arco e o que sai. `None` quando não há o que arredondar (raio
-/// ~0, aresta degenerada, ou quina colinear) — aí o chamador mantém o vértice cru.
-fn rounded_corner(a: [f64; 2], v: [f64; 2], b: [f64; 2], r: f64) -> Option<(VecVertex, VecVertex)> {
+/// Os vértices que substituem a quina `v` (entre `a` e `b`) arredondada com raio `r`: o que
+/// entra no arco e o que sai — e, numa quina que vira mais de `90°`, o do MEIO do arco
+/// ([`circular_fillet`]). `None` quando não há o que arredondar (raio ~0, aresta degenerada,
+/// ou quina colinear) — aí o chamador mantém o vértice cru.
+fn rounded_corner(a: [f64; 2], v: [f64; 2], b: [f64; 2], r: f64) -> Option<Vec<VecVertex>> {
     if r <= EPS {
         return None;
     }
@@ -100,30 +99,111 @@ fn rounded_corner(a: [f64; 2], v: [f64; 2], b: [f64; 2], r: f64) -> Option<(VecV
     }
     // Raio efetivo depois do clamp (é ele que dita o arco, não o `r` pedido).
     let r_eff = t * half.tan();
-    // Arco que a quina descreve = suplemento do ângulo interno; comprimento de handle
-    // exato de uma cúbica que segue esse arco: (4/3)·tan(α/4)·r (generalização do KAPPA).
+    // Arco que a quina descreve = suplemento do ângulo interno.
     let alpha = std::f64::consts::PI - theta;
-    let h = (4.0 / 3.0) * (alpha * 0.25).tan() * r_eff;
     let p_in = [v[0] + ua[0] * t, v[1] + ua[1] * t];
     let p_out = [v[0] + ub[0] * t, v[1] + ub[1] * t];
     // Handles apontam para a quina ORIGINAL (é o polo do arco); o outro lado fica nulo
     // (aresta reta) — mesma forma do `rounded_rect`, quinas independentes.
-    Some((
-        VecVertex {
-            anchor: p_in,
-            in_handle: p_in,
-            out_handle: [p_in[0] - ua[0] * h, p_in[1] - ua[1] * h],
-            kind: VertexKind::Corner,
+    let f = circular_fillet(p_in, [-ua[0], -ua[1]], p_out, ub, alpha, r_eff);
+    let mut out = vec![VecVertex {
+        anchor: p_in,
+        in_handle: p_in,
+        out_handle: f.out1,
+        kind: VertexKind::Corner,
+        corner_radius: 0.0,
+    }];
+    out.extend(f.mid);
+    out.push(VecVertex {
+        anchor: p_out,
+        in_handle: f.in2,
+        out_handle: p_out,
+        kind: VertexKind::Corner,
+        corner_radius: 0.0,
+    });
+    Some(out)
+}
+
+/// Os alçapões de um filete CIRCULAR — e o vértice do meio quando ele varre mais de `90°`.
+pub(crate) struct Fillet {
+    /// O alçapão de SAÍDA do ponto onde o arco começa.
+    pub out1: [f64; 2],
+    /// O vértice do meio do arco, só quando ele varre mais de `90°`.
+    pub mid: Option<VecVertex>,
+    /// O alçapão de ENTRADA do ponto onde o arco acaba.
+    pub in2: [f64; 2],
+}
+
+/// ⭐⭐ **UM ARCO DE CÍRCULO EM CÚBICAS DE ATÉ `90°` — a lei da casa, aplicada à quina** (2026-09-16).
+///
+/// O [`crate::shapes::arc`] já a escrevia (*«divide o arco em segmentos de ≤90° para o bézier
+/// aproximar bem»*), e o `ellipse` e o `rounded_rect` cumprem-na por construção. **Os dois
+/// arredondadores de quina eram os únicos escritores de arco da casa que a violavam**: uma quina que
+/// vira mais de `90°` (a ponta de uma estrela, o lábio de um vaso, todo triângulo) saía numa cúbica
+/// só. O erro radial intrínseco de uma cúbica cresce com a sexta potência da abertura:
+///
+/// | abertura | erro máximo / `r` |
+/// |---:|---:|
+/// |  60° | `2,39e-5` |
+/// |  90° | `2,73e-4` |
+/// | 127° (a quina de fora do lábio do vaso da cena 5) | `2,16e-3` |
+/// | 150° | `5,97e-3` |
+/// | 170° | `1,29e-2` |
+///
+/// ⇒ o artista pedia o raio `r` numa ponta e a curva desenhada afastava-se `1 %` dele; e o modelador
+/// 3D, que reconhece arcos pela precisão de um quarto de círculo, não reconhecia esta — a quina ficava
+/// partida em segmentos, com as faixas de luz do Bug #1 dos `docs/3DModeling/BUGS_3dmodeling.md`
+/// sempre que o botão `Resolution` subia.
+///
+/// Partida em duas, cada metade varre `α/2 < 90°` e erra no máximo o que um quarto erra. ⚠️ **Até
+/// `90°` a saída é BYTE-IDÊNTICA à de antes** (o mesmo alçapão `(4/3)·tan(α/4)·r`, a mesma conta), e
+/// é isso que deixa o quadrado, o `rounded_rect` e todo polígono de cinco ou mais lados como estavam.
+///
+/// `t_in` é a direcção de MARCHA a chegar a `p_in` (aponta para a quina), `t_out` a de marcha a sair de
+/// `p_out`, `alpha` o ângulo que a marcha vira, e `r` o raio. O vértice do meio fica na bissectriz, a
+/// `r` do centro, com a tangente paralela à corda.
+pub(crate) fn circular_fillet(
+    p_in: [f64; 2],
+    t_in: [f64; 2],
+    p_out: [f64; 2],
+    t_out: [f64; 2],
+    alpha: f64,
+    r: f64,
+) -> Fillet {
+    let quarter = std::f64::consts::FRAC_PI_2;
+    let handles = |sweep: f64| (4.0 / 3.0) * (sweep * 0.25).tan() * r;
+    if alpha <= quarter * (1.0 + 1e-12) {
+        let h = handles(alpha);
+        return Fillet {
+            out1: [p_in[0] + t_in[0] * h, p_in[1] + t_in[1] * h],
+            mid: None,
+            in2: [p_out[0] - t_out[0] * h, p_out[1] - t_out[1] * h],
+        };
+    }
+    let h = handles(alpha * 0.5);
+    let chord = sub(p_out, p_in);
+    let (e, _) = unit(chord).unwrap_or(([t_in[0], t_in[1]], 0.0));
+    // A normal da corda que aponta para a QUINA — é para lá que o arco se afasta da corda.
+    let mut w = [-e[1], e[0]];
+    if dot(w, t_in) < 0.0 {
+        w = [-w[0], -w[1]];
+    }
+    let sagitta = r * (1.0 - (alpha * 0.5).cos());
+    let m = [
+        (p_in[0] + p_out[0]) * 0.5 + w[0] * sagitta,
+        (p_in[1] + p_out[1]) * 0.5 + w[1] * sagitta,
+    ];
+    Fillet {
+        out1: [p_in[0] + t_in[0] * h, p_in[1] + t_in[1] * h],
+        mid: Some(VecVertex {
+            anchor: m,
+            in_handle: [m[0] - e[0] * h, m[1] - e[1] * h],
+            out_handle: [m[0] + e[0] * h, m[1] + e[1] * h],
+            kind: VertexKind::Smooth,
             corner_radius: 0.0,
-        },
-        VecVertex {
-            anchor: p_out,
-            in_handle: [p_out[0] - ub[0] * h, p_out[1] - ub[1] * h],
-            out_handle: p_out,
-            kind: VertexKind::Corner,
-            corner_radius: 0.0,
-        },
-    ))
+        }),
+        in2: [p_out[0] - t_out[0] * h, p_out[1] - t_out[1] * h],
+    }
 }
 
 fn sub(p: [f64; 2], q: [f64; 2]) -> [f64; 2] {
@@ -139,6 +219,10 @@ fn unit(v: [f64; 2]) -> Option<([f64; 2], f64)> {
     let len = v[0].hypot(v[1]);
     (len > EPS).then(|| ([v[0] / len, v[1] / len], len))
 }
+
+#[cfg(test)]
+#[path = "corner_split_tests.rs"]
+mod corner_split_tests;
 
 #[cfg(test)]
 mod tests {

@@ -278,6 +278,70 @@ postos sobre as cordas, nas quatro combinações de sentido × preenchimento.
 ## §18 — ⏳ O que fica
 
 - ⏳ **O `select×555` do vaso** continua por auditar na fita nova;
-- ⏳ **Uma quina acima de `~140°` fica tesselada** (uma cúbica não a representa dentro da tolerância);
+- ~~⏳ **Uma quina acima de `~140°` fica tesselada**~~ — ✅ **curado na Parte IV**, e a nota tinha o
+  limiar errado: a quina fica tesselada acima de `~150°` no nível 1 e acima de **`~90°`** nos
+  outros, porque a barra se dividia pelo nível;
 - ⏳ **A lei do SEGMENTO continua escrita em dois sítios** (`sd_profile_inner` e `sd_profile_in_region`)
   — pré-existente; a do ARCO já não.
+
+---
+
+# Parte IV — O arco que não sobrevivia ao botão (auditoria depois do smoke aprovado)
+
+> O smoke da Parte III foi aprovado no nível de **omissão** do `Resolution`. A pergunta desta parte:
+> *e com o botão noutro sítio?* Registo completo: [`BUGS_3dmodeling.md`](../3DModeling/BUGS_3dmodeling.md) #2.
+
+## §19 — Três mecanismos, medidos
+
+| `(arcos, primitivas)` que chegam ao TRAÇADOR | nível 1 | nível 4 | nível 16 | nível 64 |
+|---|---|---|---|---|
+| vaso, antes, cozedor | `(10, 22)` | `(8, 71)` | `(8, 122)` | `(6, 384)` |
+| vaso, com as curas 1+2, **pela app parado** | `(12, 24)` | `(12, 24)` | **`(0, 329)`** | **`(0, 392)`** |
+| vaso, com as curas 1+2, **pela app a mexer** | `(12, 24)` | **`(0, 168)`** | **`(0, 198)`** | **`(0, 241)`** |
+| círculo `r = 0,5`, antes, cozedor | **`(0, 168)`** | `(0, 332)` | `(0, 664)` | `(0, 1 328)` |
+| **depois das três curas, pela app** — vaso · círculo | `(12, 24)` · `(4, 4)` | igual | igual | igual |
+
+1. **A barra do reconhecedor era a tolerância de achatamento** — e uma cúbica erra `2,7253e-4·r` de
+   um círculo por construção. ⇒ `max(tol, ERRO_DO_QUARTO·r)`.
+2. **Os arredondadores de quina escreviam arcos acima de `90°` numa cúbica** (a casa já tinha a lei
+   dos `90°` escrita no `shapes::arc`). ⇒ `corners::circular_fillet`, duas metades, byte-idêntico até
+   `90°`.
+3. ⛔⛔ **O preview (`coarse_doc`, a mexer e parado) trocava arcos por polilinha** — comparava
+   `segment_count`, e o custo da marcha é o `prim_count`. *Os gates do cozedor estavam certos sobre
+   o cozedor; a app traça o que o preview lhe dá.*
+
+⭐ E um defeito da Parte II: a porta dos arcos pedia **três** primitivas e recusava inteira a
+meia-lua de dois pontos.
+
+## §20 — O que a divisão custa, e onde
+
+Uma quina aguda passa a ter **um vértice a mais** no desenho vectorial (a estrela de 5 pontas: `15 → 20`).
+O 2D fica **mais fiel** ao raio pedido (uma ponta de `150°` errava `5,97e-3·r`, hoje `≤ 2,73e-4·r`), e
+o 3D ganha o arco em todo nível. Portão dos impactados: `15 236` de `15 237`, e o vermelho era essa
+contagem.
+
+## §21 — As réguas que mentiram primeiro
+
+- ⛔ **A imagem do vaso INTEIRO** não vê as facetas de um nível alto (menos de um pixel cada) — verde
+  com as curas desfeitas.
+- ⛔ **A imagem aproximada em PERSPECTIVA** pôs o olho dentro do vaso (`half_extent 0,05` ⇒ olho a
+  `0,11` do eixo, parede a `0,33`) — verde outra vez. Lente **paralela**: `0` picos com a cura,
+  **`10 020` (maior `6,23°`)** sem a divisão.
+- ⛔ **A diferença entre duas imagens** leu `91 770` pixels em duas corridas IGUAIS — `acos` de
+  normais idênticas com `|n| < 1` em `f32`.
+- ⛔ **Um controlo que nunca aperta**: o arco de `150°` numa cúbica (erra `22×` a barra) deixou passar
+  uma barra `10×` mais larga; o de `95°` (`1,38×`) mata-a.
+
+**12 mutações, 12 mortas** (tabela no registo do bug).
+
+## §22 — ⏳ O que fica
+
+- ⏳ **O `select×555` do vaso** por auditar na fita nova;
+- ⏳ **A lei do SEGMENTO em dois sítios** (pré-existente);
+- ⏳ **O reconhecedor amostra seis pontos** e subestima o erro máximo de uma cúbica em `~8 %` (o pico
+  cai entre `t = 0,125` e `0,25`) — a barra efectiva é `~1,08×` a escrita; honesto para a família da
+  casa, nomeado aqui;
+- ⏳ **O `coarsen` deita fora os arcos de um contorno MISTO** (arcos + curvas genéricas): hoje o
+  preview só o aceita se ficar mais barato, e a cura completa é engrossar só a parte tesselada;
+- ⏳ **A suavização de quina** (`smooth_corner`, o *corner smoothing* do Figma) escreve o arco central
+  numa cúbica só, sem a divisão — raro acima de `90°`, não medido.

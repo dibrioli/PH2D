@@ -25,6 +25,11 @@ correção for revertida — provado por mutação. "Não reproduzi mais" não f
 - ⚠️ **Uma grelha nunca cai num conjunto de medida nula** — um ponto EXACTAMENTE numa corda, numa
   aresta, num canto de célula. Os pontos desses casos PÕEM-SE (ver o Bug #1, que escondia dois
   defeitos de empate que nenhuma grelha apanharia).
+- ⛔⛔ **A app traça o que o PREVIEW lhe dá** (`preview::coarse_doc`, a mexer e parado): um gate que
+  chama o cozedor ou o traçador directamente mede outro programa. Os gates do produto passam por
+  ele (Bug #2).
+- ⚠️ **Todo gate e todo smoke corriam no nível `1` do `Resolution`.** Um defeito que só existe com o
+  botão noutro sítio é invisível a um corpus todo no ponto de omissão (Bug #2).
 
 ---
 
@@ -33,6 +38,7 @@ correção for revertida — provado por mutação. "Não reproduzi mais" não f
 | # | data | sintoma | mecanismo | gate |
 |---|---|---|---|---|
 | 1 | 2026-09-16 | *«arestas ainda visíveis»* no ombro do vaso (foto), **depois** da wave que pôs as quinas como arcos | o modo MODEL traça na CPU, e a folha especializada por região lia a **polilinha densa** pelo `ProfileIndex` — a normal ficava constante em cada segmento | `vaso_sem_facetas_tests::o_vaso_nao_tem_facetas_no_traçado_do_modo_model` · `profile_arc_tests::*` |
+| 2 | 2026-09-16 | (auditoria, depois do smoke aprovado do #1) **subir `Resolution` desfazia os arcos**; **um círculo nunca era arco**; **uma meia-lua de dois pontos era recusada** | a barra de «esta cúbica é um arco?» era a tolerância de ACHATAMENTO — mais apertada do que a precisão com que qualquer app escreve um círculo —, os dois arredondadores de quina escreviam arcos acima de `90°` numa cúbica só, **o preview (`coarse_doc`) trocava os arcos por polilinha** comparando segmentos em vez de primitivas, e a porta dos arcos pedia 3 primitivas (a lei do polígono) | `o_arco_sobrevive_a_todo_nivel_de_resolution` · `o_quarto_canonico_define_a_barra_do_arco` · `o_preview_nunca_troca_arcos_por_uma_polilinha_mais_cara` · `subir_o_resolution_nao_parte_o_labio` · `a_meia_lua_de_dois_pontos_coze` · `corner_split_tests::*` · `profile_meia_lua_tests::*` |
 
 ---
 
@@ -109,3 +115,90 @@ uma desigualdade nunca aperta não testa a desigualdade.*
 **Oráculo.** O quadrado redondo tem distância com sinal **analítica** (a do *round box*), e é ela —
 não uma das árvores — que julga os três leitores nos pontos postos sobre as cordas, nas quatro
 combinações de sentido (horário/anti-horário) e preenchimento (`NonZero`/`EvenOdd`).
+
+---
+
+## Bug #2 — o arco que não sobrevivia ao botão (2026-09-16, auditoria depois do smoke aprovado do #1)
+
+**Sintoma (medido, não reportado).** Com o smoke do #1 aprovado no nível de omissão, a auditoria
+perguntou o que acontece quando o artista sobe o `Resolution`. Resposta: **as quinas deixavam de ser
+arcos** — e ninguém o via, porque todo gate e todo smoke corriam no nível `1`.
+
+**TRÊS mecanismos, e nenhum era o que se procurava:**
+
+1. ⛔⛔ **A barra de «esta cúbica é um arco?» era a tolerância de ACHATAMENTO**, e o doc ao lado dela
+   dizia-o com orgulho (*«não um número novo»*). Mas uma cúbica não É um círculo: o quarto canónico
+   erra `2,7253e-4·r` por construção — a precisão com que TODO formato vectorial escreve um círculo.
+   A tolerância divide-se pelo nível e esse erro não:
+
+   | arcos / primitivas | nível 1 | nível 4 | nível 64 |
+   |---|---:|---:|---:|
+   | vaso da cena 5 | `10/10` · `22` | `8/10` · `71` | `6/10` · **`384`** |
+   | **círculo** `r/extensão = ½` | **`0` · `168`** | `0` · `332` | `0` · `1 328` |
+   | pílula | `4` · `8` | **`0` · `186`** | `0` · `730` |
+
+   ⇒ **um círculo nunca foi arco** (o erro intrínseco, `1,36e-4` da extensão, está acima da
+   tolerância do nível 1), e subir o botão desfazia os que havia. Cura: a barra é
+   `max(tol, ERRO_DO_QUARTO·r)` ([`ph2d-field-profile`](../../crates/ph2d-field-profile/src/lib.rs)).
+2. ⛔ **Os dois arredondadores de quina escreviam um arco acima de `90°` numa cúbica SÓ** — os únicos
+   escritores de arco da casa a violar a lei que o `shapes::arc` já tinha escrita (*«segmentos de
+   ≤90° para o bézier aproximar bem»*). Uma ponta de estrela (`144°`) errava `~0,5 %` do raio no
+   próprio 2D, e acima do quarto de círculo não havia barra honesta que a aceitasse como arco.
+   Cura: `ph2d_vec_scene::corners::circular_fillet`, uma porta para os dois — até `90°` **byte a
+   byte** o de sempre; acima, duas metades com um vértice liso no meio. ⚠️ Só quando os dois
+   recuos são iguais (é a condição de existir um círculo tangente nos dois pontos); um blend
+   assimétrico fica numa cúbica.
+3. ⛔⛔ **A APP não traçava o que os gates mediam.** O `coarse_doc` (o preview — a mexer **e**
+   parado desde a W85) trocava o perfil pelo engrossado sempre que a **polilinha** encolhia, e o
+   engrossado não tem arcos. Com as curas 1 e 2 dentro, o vaso no nível 16 ainda ia ao traçador
+   como `(0 arcos, 329 primitivas)` parado e o círculo como `(0, 332)` — **83×** o custo dos seus
+   `4` arcos. Cura: comparar o `prim_count`, que é o custo da marcha.
+
+**E um defeito da wave do arco, achado pela fixtura destes gates:** a porta `Profile::with_arcs`
+pedia **três** primitivas (a lei do polígono, emprestada) e recusava INTEIRA a meia-lua que a caneta
+desenha com dois pontos (`Err(BulgeMismatch)`), que antes da decomposição cozia pela polilinha.
+Duas bastam quando uma é arco; duas rectas continuam recusadas.
+
+**Suspeitar do chamador — duas vezes.** A cura 3 é a lição do Bug #1 um nível acima: os gates do
+cozedor estavam certos sobre o cozedor, e **a app traça o que o preview lhe dá**. ⇒ os gates do
+produto passam pelo `coarse_doc` (`o_preview_nunca_troca_arcos_por_uma_polilinha_mais_cara`,
+`subir_o_resolution_nao_parte_o_labio`).
+
+**O gate da IMAGEM mentiu DUAS vezes antes de medir** (o registo é a lição):
+- a 1.ª redacção olhava o vaso inteiro e ficou **verde com as curas desfeitas** — de longe cada
+  faceta do lábio tem menos de um pixel e a régua dos picos precisa de normal PARADA;
+- a 2.ª aproximou-se em **perspectiva**, e aproximar é trazer o olho: a `half_extent 0,05` punha-o a
+  `0,11` do eixo, **dentro do vaso** (parede a `0,33`), a medir a parede interna do outro lado —
+  verde outra vez. ⇒ lente **paralela**. Com ela: `0` picos com a cura, **`10 020` (maior `6,23°`)**
+  sem a divisão, e a conta previa `~5,6°`.
+- ⚠️ e a sonda que comparava duas imagens leu **`91 770` pixels diferentes entre duas corridas
+  IGUAIS**: `acos` de duas normais idênticas com `|n| < 1` em `f32` dá até `0,04°`. *Uma diferença
+  que é a mesma entre todos os pares é a assinatura da régua.*
+
+**Provas: 12 mutações, 12 mortas** (duas sobreviveram à 1.ª ronda e cada uma pediu um gate):
+
+| mutação | gate que a mata |
+|---|---|
+| N1 a barra volta a ser só a tolerância | `o_arco_sobrevive_a_todo_nivel_de_resolution` |
+| N2 a barra 10× mais larga | o mesmo — ⚠️ **sobreviveu** até ao controlo de `95°` numa cúbica só (erra `1,38×` o quarto); o de `150°` (`22×`) nunca apertava |
+| N3 o filete não parte acima de `90°` | o do cozedor + `corner_split_tests` + `subir_o_resolution_nao_parte_o_labio` |
+| N4 o meio do lado errado | o do cozedor + `corner_split_tests` |
+| N5 parte já a `60°` | `corner_split_tests` + 8 gates antigos da `ph2d-vec-scene` (a identidade até `90°`) |
+| N6 a porta volta a pedir três primitivas | `a_meia_lua_de_dois_pontos_coze` + `profile_meia_lua_tests` |
+| N7 a porta aceita duas rectas | `duas_rectas_nao_fecham_area_e_a_porta_recusa` |
+| N8 o vivo nunca parte | o do cozedor + `corner_split_tests` + a imagem do lábio |
+| N9 o vivo parte blends assimétricos | `um_blend_assimetrico_nao_e_partido` |
+| N10 a flecha do meio pela metade | o do cozedor + `corner_split_tests` |
+| N11 o alçapão das metades é o do arco inteiro | o do cozedor + `corner_split_tests` |
+| N12 o preview volta a comparar a polilinha | `o_preview_nunca_troca_arcos_por_uma_polilinha_mais_cara` + a imagem do lábio — ⚠️ **a imagem sobreviveu** até passar pelo `coarse_doc` |
+
+**Oráculos analíticos.** A meia-lua tem distância com sinal fechada (disco ∩ semiplano) e julga os
+três leitores; com duas primitivas a corda e a recta de volta **cancelam-se** no enrolamento e o
+sinal inteiro sai da meia-lua — o caso em que a correcção trabalha sozinha.
+
+**Raio de alcance medido:** a divisão acima de `90°` muda a geometria de toda quina aguda da casa
+(estrela, triângulo). Portão dos impactados: **`15 236` de `15 237`**, e o vermelho era uma contagem
+escrita à mão (`ph2d-vec-edit`: a estrela de 5 pontas passa de `15` para `20` vértices). Workspace:
+`22 885` de `22 886` — o vermelho é `the_cost_of_sampling_a_path_is_flat_in_its_anchors`, da família
+de flakes de carga (load `52`; `3/3` verde sozinho a load `14–17`, zero linhas de diff na
+`ph2d-timeline`).

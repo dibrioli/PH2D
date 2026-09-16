@@ -517,3 +517,6 @@ fn crossing_term(
 #[cfg(test)]
 #[path = "profile_arc_tests.rs"]
 mod profile_arc_tests;
+#[cfg(test)]
+#[path = "profile_meia_lua_tests.rs"]
+mod profile_meia_lua_tests;

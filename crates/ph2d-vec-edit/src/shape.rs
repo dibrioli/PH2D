@@ -396,10 +396,12 @@ mod tests {
         s[0] = 5.0; // pontas
         s[2] = 0.2; // so as PONTAS arredondam
         s[3] = 0.0;
+        // ⚠️ Cada ponta vira `144°` e um arco acima de `90°` sai em DUAS cúbicas (a lei da casa,
+        // `ph2d_vec_scene::corners::circular_fillet`, 2026-09-16): três vértices por ponta.
         assert_eq!(
             draw(ShapeKind::Star, s, [4.0, 4.0]).paths()[0].verts.len(),
-            15,
-            "5 pontas x2 + 5 vales crus"
+            20,
+            "5 pontas x3 (entrada, meio do arco, saída) + 5 vales crus"
         );
     }
 

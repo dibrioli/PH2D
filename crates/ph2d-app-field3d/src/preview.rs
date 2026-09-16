@@ -275,7 +275,12 @@ pub fn coarse_doc(doc: &FieldDoc, moving: bool) -> Option<FieldDoc> {
             ) = &mut node.kind
             {
                 let thin = ph2d_field::coarsen_to_normal_error(profile, erro);
-                if thin.segment_count() < profile.segment_count() {
+                // ⛔⛔ **O custo da marcha é o `prim_count`, não o `segment_count`** (2026-09-16).
+                // A decimação devolve uma POLILINHA — os arcos da decomposição exacta ficam para trás
+                // —, e a comparação pela polilinha trocava `24` arcos por `168`–`392` segmentos no vaso
+                // da cena 5 (e `4` por `332` num círculo) assim que o `Resolution` subia: mais caro,
+                // e facetado. Um arco já tem a normal exacta; engrossá-lo só vale se ficar MAIS BARATO.
+                if thin.prim_count() < profile.prim_count() {
                     *profile = thin;
                     mexeu = true;
                 }

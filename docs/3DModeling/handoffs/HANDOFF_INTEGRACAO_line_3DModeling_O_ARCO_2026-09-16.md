@@ -62,8 +62,10 @@ mudam, e **a mudança é a cura**.
    um custo a partir do primeiro cita a polilinha, não o que a marcha avalia.
 3. **O reconhecimento é por GEOMETRIA, não por proveniência.** Não há bandeira «isto veio de um
    `corner_radius`», de propósito: um arco desenhado à caneta ou vindo de SVG é o mesmo facto.
-4. **Uma quina acima de `~140°` continua tesselada** e isso é correcto: uma cúbica não representa um
-   arco tão grande dentro da tolerância, logo o reconhecedor recusa-a. ⛔ Não afrouxe a barra dele.
+4. ~~**Uma quina acima de `~140°` continua tesselada** e isso é correcto~~ — ⛔ **ESTA NOTA ESTAVA
+   ERRADA** (ver o §10): a barra dividia-se pelo nível, e acima do nível 1 a quina ficava tesselada
+   a partir de `~90°`, e um CÍRCULO nunca era arco. A cura não foi afrouxar a barra: foi dar-lhe a
+   precisão de um quarto de círculo e partir as quinas acima de `90°` na emissão.
 5. **O `bulge` positivo é «curva para a ESQUERDA de `a→b`»**, que **não** é a convenção do DXF para o
    sentido. O sentido de varrimento **deriva-se dos ângulos** (com `|bulge| < 1` o arco é o menor),
    nunca de uma convenção decorada — a 1.ª régua assumiu-a e leu `0,065` de erro sobre uma
@@ -86,8 +88,7 @@ mudam, e **a mudança é a cura**.
   e visível** (smoke do dono no mesmo dia, *«arestas ainda visíveis»*): o modo MODEL traça na CPU por
   essa especialização. **CURADO** — ver o §9 abaixo;
 - ⏳ **O `select×555`** do vaso por auditar na fita nova;
-- ⏳ **Quina `> ~140°`**: a saída publicada é partir a cúbica em duas na emissão — wave da
-  `ph2d-vec-scene`.
+- ~~⏳ **Quina `> ~140°`**: partir a cúbica em duas na emissão~~ — ✅ **feito** (§10).
 
 ## §8 — O smoke
 
@@ -120,3 +121,43 @@ Registo completo: [`docs/3DModeling/BUGS_3dmodeling.md`](../BUGS_3dmodeling.md) 
 **Gates:** `ph2d-field-eval` `118` (+6) · `ph2d-app-field3d` `395` (+1) · **8 mutações, 8 mortas** (duas
 sobreviveram à 1.ª ronda e pediram o gate do corte) · arquitectura `378` · casca `815` ·
 clippy `-D warnings` limpo.
+
+## §10 — ⛔⛔ ADENDA 2: o arco que não sobrevivia ao botão (auditoria depois do smoke aprovado)
+
+O smoke do §9 foi aprovado no nível de omissão do `Resolution`. Com o botão noutro sítio, **três**
+mecanismos devolviam a polilinha, e um quarto defeito recusava figuras (registo:
+[`BUGS_3dmodeling.md`](../BUGS_3dmodeling.md) #2 · [`docs/Render3d/06`](../../Render3d/06_auditoria_do_vaso.md) Parte IV):
+
+1. **A barra do reconhecedor** passa a `max(tol, ERRO_DO_QUARTO·r)` — `ph2d-field-profile/src/lib.rs`.
+   ⭐ **Um círculo passa a ser `4` arcos** (era `168` segmentos em todo nível).
+2. ⛔⛔ **FOUNDATIONAL DE OUTRA LINHA, outra vez: `ph2d-vec-scene`.** `corners::circular_fillet` é a
+   porta dos dois arredondadores (`corners::rounded_corner` e `corner_live::fillet_handles`): acima de
+   `90°` o filete sai em **duas** cúbicas com um vértice `Smooth` no meio. **Até `90°` a saída é
+   byte-idêntica** (a mesma conta, na mesma ordem). ⚠️ **Muda a contagem de vértices cozidos de toda
+   quina aguda** — a estrela de 5 pontas com as pontas arredondadas passa de `15` a `20` (o gate em
+   `ph2d-vec-edit/src/shape.rs` foi actualizado com a razão). *A `line/Vector` deve saber disto*; o
+   desenho 2D fica mais fiel ao raio pedido.
+3. ⛔⛔ **O preview (`ph2d-app-field3d/src/preview.rs::coarse_doc`) comparava `segment_count`** e
+   trocava os arcos por uma polilinha `7×`–`83×` mais cara nos níveis altos — a mexer e parado.
+   Hoje compara `prim_count`.
+4. **`ph2d-field/src/profile.rs::Profile::with_arcs`** aceita **duas** primitivas quando uma é arco
+   (a meia-lua da caneta) — antes recusava a peça inteira. Duas rectas continuam recusadas.
+
+⚠️ **TRÊS coisas que uma leitura rápida entende ao contrário:**
+1. **Nenhum contador partilhado se mexe.** O `Profile` serializado não mudou (a porta só ficou
+   menos restritiva), e a geometria cozida do vector não é gravada — o `VecPath` guarda a fonte com o
+   `corner_radius`.
+2. **`ERRO_DO_QUARTO = 2,7254e-4` não é folga**: é o erro do quarto canónico medido, e o gate
+   `o_quarto_canonico_define_a_barra_do_arco` segura as duas metades (cabe e ENCHE).
+3. **A cena 5 passou a ser `smoke_scenes::vaso(nível)`** — o mesmo desenho, agora cozinhável noutro
+   nível pelos gates; a cena é o nível de omissão.
+
+**Ficheiros novos:** `ph2d-vec-scene/src/corner_split_tests.rs` · `ph2d-field-eval/src/profile_meia_lua_tests.rs`.
+
+**Gates:** `12` mutações, `12` mortas. Impactados (`BASE=HEAD`): `15 236` / `15 237`, e o vermelho
+era a contagem da estrela. Workspace inteira (`ci-test`): `22 885` / `22 886` — o vermelho é
+`the_cost_of_sampling_a_path_is_flat_in_its_anchors` (família de flakes de carga: load `52`, `3/3`
+verde sozinho a load `14–17`, zero linhas na `ph2d-timeline`). Clippy `-D warnings` limpo nas seis
+crates tocadas.
+
+**Smoke:** o mesmo comando do §8; subir **Resolution** no painel do modelo e olhar o lábio de perto.

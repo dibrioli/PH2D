@@ -17,6 +17,12 @@ use super::*;
 /// do editor vetorial correm aqui) → `Profile`. Nenhum arco é escrito à mão; o arredondamento das
 /// arestas verticais do sólido **é** o *corner widget* do editor de vetores.
 fn drawn_profile(pts: &[([f64; 2], f64)]) -> Profile {
+    drawn_profile_at(pts, ph2d_field::DEFAULT_PROFILE_RESOLUTION)
+}
+
+/// O mesmo, no nível de `Resolution` dado — é por aqui que um gate cozinha a MESMA peça do smoke
+/// com o botão noutro sítio, sem uma segunda cópia do desenho.
+fn drawn_profile_at(pts: &[([f64; 2], f64)], level: u32) -> Profile {
     let path = VecPath {
         verts: pts
             .iter()
@@ -28,7 +34,34 @@ fn drawn_profile(pts: &[([f64; 2], f64)]) -> Profile {
         closed: true,
         ..VecPath::default()
     };
-    ph2d_field_profile::cook_path_auto(&path).expect("os contornos do smoke são perfis válidos")
+    ph2d_field_profile::cook_path_at(&path, level)
+        .expect("os contornos do smoke são perfis válidos")
+}
+
+/// Os `12` pontos do vaso da cena `5` — âncora e raio de quina, como a caneta os deixaria.
+const VASO: [([f64; 2], f64); 12] = [
+    ([0.00, -0.45], 0.0),
+    ([0.26, -0.45], 0.05),
+    ([0.30, -0.34], 0.05),
+    ([0.15, -0.10], 0.06),
+    ([0.33, 0.22], 0.06),
+    ([0.27, 0.44], 0.04),
+    ([0.33, 0.52], 0.02),
+    ([0.27, 0.52], 0.02),
+    ([0.21, 0.44], 0.04),
+    ([0.09, -0.08], 0.05),
+    ([0.19, -0.32], 0.04),
+    ([0.00, -0.32], 0.0),
+];
+
+/// ⭐ **O vaso da cena `5` no nível de `Resolution` dado** — a cena é o nível de omissão.
+pub(crate) fn vaso(level: u32) -> FieldDoc {
+    let profile = drawn_profile_at(&VASO, level);
+    FieldDoc::new(
+        vec![leaf(Primitive::Revolve { profile }, Xform::IDENTITY)],
+        NodeId(0),
+    )
+    .expect("o vaso é um documento válido")
 }
 
 /// **Uma bolha ORGÂNICA** — uma esfera deslocada por uma onda suave, para servir de escultura.
@@ -227,29 +260,13 @@ pub fn scene(n: u32) -> FieldDoc {
         5 => {
             // O torno: o mesmo tipo de contorno, agora GIRADO em torno de Y. A silhueta é a de um
             // vaso oco — parede externa a subir, lábio, parede interna a descer, e o fecho no eixo.
-            let profile = drawn_profile(&[
-                ([0.00, -0.45], 0.0),
-                ([0.26, -0.45], 0.05),
-                ([0.30, -0.34], 0.05),
-                ([0.15, -0.10], 0.06),
-                ([0.33, 0.22], 0.06),
-                ([0.27, 0.44], 0.04),
-                ([0.33, 0.52], 0.02),
-                ([0.27, 0.52], 0.02),
-                ([0.21, 0.44], 0.04),
-                ([0.09, -0.08], 0.05),
-                ([0.19, -0.32], 0.04),
-                ([0.00, -0.32], 0.0),
-            ]);
+            let doc = vaso(ph2d_field::DEFAULT_PROFILE_RESOLUTION);
             println!(
-                "[field-smoke] cena 5 — TORNO: o mesmo contorno desenhado ({} arestas) girado em \
+                "[field-smoke] cena 5 — TORNO: o mesmo contorno desenhado ({} primitivas) girado em \
                  torno de Y — um vaso oco, com a parede a sair do desenho",
-                profile.segment_count()
+                drawn_profile(&VASO).prim_count()
             );
-            FieldDoc::new(
-                vec![leaf(Primitive::Revolve { profile }, Xform::IDENTITY)],
-                NodeId(0),
-            )
+            Ok(doc)
         }
         6 => {
             // ⭐ **A PONTE DA ESCULTURA (plano W5)**: uma malha orgânica entra na booleana do campo

@@ -191,7 +191,15 @@ fn a_corner_between_two_real_curves_rounds_and_leaves_tangent_to_both_sides() {
     ];
     let out = round_authored_corners(&verts, true).expect("o bico é curva-curva");
     assert!(all_finite(&out));
-    assert_eq!(out.len(), 4, "o bico virou dois vértices");
+    // ⚠️ **Três, e não dois** (2026-09-16): os lados curvam para fora, logo as tangentes nos pontos
+    // de recuo abrem mais do que os `90°` do ápice — e um filete que vira mais de `90°` sai em DUAS
+    // cúbicas, com um vértice no meio (`corners::circular_fillet`). Os dois recuos são iguais (a
+    // folha é simétrica), então a ligação é um arco de círculo de verdade.
+    assert_eq!(
+        out.len(),
+        5,
+        "o bico virou três vértices: entrada, meio do arco, saída"
+    );
 
     // (a) A quina afiada SUMIU: nenhum vértice ficou no ápice original.
     assert!(
@@ -199,13 +207,28 @@ fn a_corner_between_two_real_curves_rounds_and_leaves_tangent_to_both_sides() {
         "o ápice afiado devia ter sido recuado"
     );
     // (b) Os dois pontos de recuo caíram ABAIXO do ápice, um de cada lado. (O bico é o
-    // vértice 0, então os dois que o substituem são `out[0]` e `out[1]`.)
-    let (a, b) = (&out[0], &out[1]);
+    // vértice 0, então os que o substituem são `out[0]`, o meio `out[1]` e `out[2]`.)
+    let (a, m, b) = (&out[0], &out[1], &out[2]);
     assert!(
         a.anchor[1] < 10.0 && b.anchor[1] < 10.0,
         "recuaram pra dentro"
     );
     assert!(a.anchor[0] < 0.0 && b.anchor[0] > 0.0, "um de cada lado");
+    // O meio fica no EIXO da folha, entre a corda e o ápice, a sair na direcção da corda.
+    assert!(
+        m.anchor[0].abs() < 1e-9,
+        "o meio do arco está no eixo: {:?}",
+        m.anchor
+    );
+    assert!(
+        m.anchor[1] > a.anchor[1] && m.anchor[1] < 10.0,
+        "o meio do arco fica entre a corda e o ápice: {:?}",
+        m.anchor
+    );
+    assert!(
+        (m.in_handle[1] - m.anchor[1]).abs() < 1e-9 && (m.out_handle[1] - m.anchor[1]).abs() < 1e-9,
+        "no meio a tangente é a da corda (horizontal): {m:?}"
+    );
     // (c) TANGENTE: o handle de saída de `a` e o de entrada de `b` são os do arco, e o
     // arco tem de sair de `a` na direção em que a curva CHEGAVA nele. O handle de entrada
     // de `a` (que veio do pedaço da curva original) e o de saída dele (o arco) têm de ser

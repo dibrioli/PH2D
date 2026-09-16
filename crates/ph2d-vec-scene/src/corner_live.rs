@@ -145,6 +145,7 @@ pub fn round_authored_corners(verts: &[VecVertex], closed: bool) -> Option<Vec<V
             // (chanfro). O recuo, os handles de chegada/saída e o resto são idênticos.
             (Some(_), Some(a), Some(b)) => {
                 let (p_in, p_out) = (a[3], b[0]);
+                let mut mid = None;
                 let (out1, in2) = if verts[i].is_chamfer() {
                     // Chanfro: a reta na forma canônica (⅓, ⅔) — afim em `t`, sem curvatura,
                     // e a mesma forma que o resto do motor usa para um segmento reto.
@@ -154,9 +155,12 @@ pub fn round_authored_corners(verts: &[VecVertex], closed: bool) -> Option<Vec<V
                         [p_out[0] - third[0], p_out[1] - third[1]],
                     )
                 } else {
-                    // Arredondado: o arco de handle `(4/3)·tan(α/4)·r` de sempre.
+                    // Arredondado: o arco de handle `(4/3)·tan(α/4)·r` de sempre — em DUAS
+                    // cúbicas quando a quina vira mais de `90°` (`corners::circular_fillet`).
                     let (t_in, t_out) = (tangent_at_end(a), tangent_at_start(b));
-                    fillet_handles(p_in, t_in, p_out, t_out)
+                    let f = fillet_handles(p_in, t_in, p_out, t_out);
+                    mid = f.mid;
+                    (f.out1, f.in2)
                 };
                 out.push(VecVertex {
                     anchor: p_in,
@@ -165,6 +169,7 @@ pub fn round_authored_corners(verts: &[VecVertex], closed: bool) -> Option<Vec<V
                     kind: VertexKind::Corner,
                     corner_radius: 0.0,
                 });
+                out.extend(mid);
                 out.push(VecVertex {
                     anchor: p_out,
                     in_handle: in2,
@@ -406,7 +411,7 @@ fn fillet_handles(
     t_in: [f64; 2],
     p_out: [f64; 2],
     t_out: [f64; 2],
-) -> ([f64; 2], [f64; 2]) {
+) -> crate::corners::Fillet {
     let alpha = dot(t_in, t_out).clamp(-1.0, 1.0).acos();
     // ⭐⭐⭐ **O ALÇAPÃO DE UM ARCO É PROPORCIONAL AO RAIO, NÃO AO RECUO** (corrigido 2026-09-16).
     //
@@ -456,16 +461,32 @@ fn fillet_handles(
     // À FRENTE dos dois pontos (senão o "arco" apontaria para trás e cruzaria a forma).
     let usable =
         cross.abs() > EPS && s_in.is_finite() && s_out.is_finite() && s_in > 0.0 && s_out > 0.0;
+    // ⭐⭐ **Acima de `90°` um filete CIRCULAR sai em duas cúbicas** — a lei da casa
+    // (`corners::circular_fillet`). Existe um círculo tangente às duas rectas em `p_in` e em `p_out`
+    // **sse os dois recuos até à interseção são iguais** (a corda é a base de um isósceles) — com os
+    // lados rectos ou curvos —, e aí `r = s/tan(α/2)`. ⚠️ Recuos diferentes dão um blend que não é
+    // círculo, e parti-lo não o tornaria um: fica numa cúbica só. ⚠️ Até `90°` o
+    // caminho é o de sempre, **byte a byte** — a conta `k·s` não é reescrita como `(4/3)·tan·(s/meio)`,
+    // que difere dela no último bit.
+    if usable
+        && alpha > std::f64::consts::FRAC_PI_2 * (1.0 + 1e-12)
+        && meio.is_finite()
+        && meio.abs() > EPS
+        && (s_in - s_out).abs() <= 1e-9 * s_in.max(s_out)
+    {
+        return crate::corners::circular_fillet(p_in, t_in, p_out, t_out, alpha, s_in / meio);
+    }
     let (h_in, h_out) = if usable {
         (k * s_in, k * s_out)
     } else {
         let third = hypot(d) / 3.0;
         (third, third)
     };
-    (
-        [p_in[0] + t_in[0] * h_in, p_in[1] + t_in[1] * h_in],
-        [p_out[0] - t_out[0] * h_out, p_out[1] - t_out[1] * h_out],
-    )
+    crate::corners::Fillet {
+        out1: [p_in[0] + t_in[0] * h_in, p_in[1] + t_in[1] * h_in],
+        mid: None,
+        in2: [p_out[0] - t_out[0] * h_out, p_out[1] - t_out[1] * h_out],
+    }
 }
 
 /// A cúbica do segmento `i` (do vértice `i` ao `i + 1`, dando a volta no fechado).

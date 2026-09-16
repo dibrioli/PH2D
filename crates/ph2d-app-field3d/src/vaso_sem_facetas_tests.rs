@@ -129,3 +129,118 @@ fn o_vaso_nao_tem_facetas_no_traçado_do_modo_model() {
         );
     }
 }
+
+/// ⭐⭐ **E O BOTÃO `Resolution` NÃO AS DEVOLVE — de perto, no lábio** (2026-09-16, depois do smoke
+/// aprovado).
+///
+/// Duas causas desfaziam as quinas quando o botão subia (registo: `BUGS_3dmodeling.md` #2): a barra
+/// de «esta cúbica é um arco?» dividia-se pelo nível, e a quina de FORA do lábio vira `127°` e saía
+/// numa cúbica só, que erra acima do que um quarto de círculo erra. Sem a divisão em duas metades,
+/// no nível `4` o lábio volta à polilinha: **`10 020` picos, o maior de `6,23°`** (a conta prevê
+/// `~5,6°` por segmento). Com ela: `0` em todos os níveis.
+///
+/// ⚠️ **Este gate prova a DIVISÃO, não a barra**: as metades do lábio são arcos mesmo com a barra
+/// antiga, e a barra (o círculo, os níveis altos) é provada no `ph2d-field-profile` pela contagem.
+///
+/// ⛔ **A 1.ª redacção olhava o vaso INTEIRO e ficou verde com as duas curas desfeitas** — de longe
+/// cada faceta tem menos de um pixel, e a régua dos picos precisa de normal PARADA em pixels
+/// vizinhos. ⛔ **A 2.ª aproximou-se em PERSPECTIVA e ficou verde outra vez**: aproximar é trazer o
+/// olho, e a `half_extent` `0,05` punha-o DENTRO do vaso, a medir a parede interna do outro lado.
+#[test]
+fn subir_o_resolution_nao_parte_o_labio() {
+    const W: u32 = 960;
+    const H: u32 = 540;
+    let reg = crate::smoke::sampled_registry();
+    // ⚠️ **Lente PARALELA**, apontada à quina de fora do lábio (raio `0,33`, topo `0,52`).
+    let cam = Orbit {
+        target: [0.0, 0.50, 0.3],
+        half_extent: 0.03,
+        lens: ph2d_field_render::Lens::Ortho,
+        ..camara_de_frente()
+    };
+    #[allow(clippy::cast_precision_loss)]
+    let passo = 2.0 * cam.half_extent / H as f32;
+    // ⚠️ Pelo caminho da APP: o traçador recebe o que o `coarse_doc` lhe dá, a mexer e parado.
+    for (nivel, mexer) in [1, 4, 16, ph2d_field::MAX_PROFILE_RESOLUTION]
+        .into_iter()
+        .flat_map(|n| [(n, true), (n, false)])
+    {
+        let doc = crate::smoke::scenes::vaso(nivel);
+        let doc = crate::preview::coarse_doc(&doc, mexer).unwrap_or(doc);
+        let g = ph2d_field_render::trace(&doc, &reg, &cam, W, H);
+        let (picos, med, maior, pares) = facetas(&g, passo);
+        assert!(
+            pares > 20_000,
+            "[nível {nivel} · mexer {mexer}] a régua mediu só {pares} pares — ela não está a ver o \
+             lábio"
+        );
+        assert_eq!(
+            picos, 0,
+            "⛔ [nível {nivel} · mexer {mexer}] {picos} picos de faceta no lábio (maior {maior:.2}°, \
+             passo mediano {med:.3}°) — subir o Resolution desfez os arcos das quinas"
+        );
+    }
+}
+
+/// O perfil da folha de uma peça de uma folha só: `(arcos, primitivas)`.
+fn perfil_da_folha(d: &ph2d_field::FieldDoc) -> (usize, usize) {
+    match &d.nodes()[0].kind {
+        ph2d_field::NodeKind::Leaf(
+            ph2d_field::Primitive::Revolve { profile }
+            | ph2d_field::Primitive::Extrude { profile, .. },
+        ) => (profile.arc_count(), profile.prim_count()),
+        _ => panic!("a peça de teste é uma folha com perfil"),
+    }
+}
+
+/// ⭐⭐⭐ **O PREVIEW NUNCA TROCA ARCOS POR UMA POLILINHA MAIS CARA** (2026-09-16).
+///
+/// ⛔⛔ O `coarse_doc` — que decide o que o modo MODEL traça, a mexer **e** parado (W85) — trocava o
+/// perfil pelo engrossado sempre que a POLILINHA encolhia, e o engrossado não tem arcos. Medido antes
+/// da cura, `(arcos, primitivas)` do que ia para o traçador:
+///
+/// | peça | nível | documento | a mexer | parado |
+/// |---|---:|---|---|---|
+/// | vaso da cena 5 | 1 | `(12, 24)` | o mesmo | o mesmo |
+/// | vaso da cena 5 | 4 | `(12, 24)` | **`(0, 168)`** | o mesmo |
+/// | vaso da cena 5 | 16 | `(12, 24)` | **`(0, 198)`** | **`(0, 329)`** |
+/// | vaso da cena 5 | 64 | `(12, 24)` | **`(0, 241)`** | **`(0, 392)`** |
+/// | círculo `r = 0,5` | 64 | `(4, 4)` | **`(0, 166)`** | **`(0, 332)`** |
+///
+/// ⇒ o smoke no nível de omissão estava certo, e subir o `Resolution` na app trazia de volta o custo
+/// e as facetas que os gates do `ph2d-field-profile` diziam curados — *eles chamavam o cozedor, e a
+/// app traça o que o preview lhe dá*.
+#[test]
+fn o_preview_nunca_troca_arcos_por_uma_polilinha_mais_cara() {
+    for nivel in [1, 4, 16, ph2d_field::MAX_PROFILE_RESOLUTION] {
+        let vaso = crate::smoke::scenes::vaso(nivel);
+        let circulo = {
+            let profile = ph2d_field_profile::cook_path_at(
+                &ph2d_vec_scene::ellipse([1.0, 0.0], 0.5, 0.5),
+                nivel,
+            )
+            .expect("o círculo é um perfil");
+            ph2d_field::FieldDoc::new(
+                vec![ph2d_field::Node {
+                    kind: ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Revolve { profile }),
+                    ..vaso.nodes()[0].clone()
+                }],
+                ph2d_field::NodeId(0),
+            )
+            .expect("o toro é um documento")
+        };
+        for (nome, doc) in [("vaso", &vaso), ("círculo", &circulo)] {
+            let antes = perfil_da_folha(doc);
+            for mexer in [true, false] {
+                let tracado = crate::preview::coarse_doc(doc, mexer).unwrap_or_else(|| doc.clone());
+                let depois = perfil_da_folha(&tracado);
+                assert!(
+                    depois.1 <= antes.1 && depois.0 == antes.0,
+                    "⛔ [{nome} · nível {nivel} · {}] o documento tem {antes:?} (arcos, primitivas) e \
+                     o traçador recebe {depois:?}",
+                    if mexer { "a mexer" } else { "parado" }
+                );
+            }
+        }
+    }
+}

@@ -76,8 +76,24 @@ report() { # $1 = rótulo · $2 = hits já filtrados ("" = limpo)
 # cegueira anterior deste mesmo ficheiro tinha ensinado a não dispensar.
 # ⚠️ Escrita como função, um ramo novo que se esqueça dela é visível por
 # AUSÊNCIA de chamada; escrita duas vezes, ela diverge outra vez em silêncio.
+# ⛔⛔⛔ **E O MARCADOR DE COMENTÁRIO NO INÍCIO DA LINHA SAI, que é a terceira
+# cegueira do mesmo tipo** (medida 2026-09-16, pelo canário da 3.ª passagem do
+# R-pré, que leu **limpo** na forma mais óbvia de todas). Desfazer a quebra de
+# linha junta `…primeira metade` com `# segunda metade`, e o `#` fica **no meio
+# da frase** ⇒ o `grep -F` não casa. *A cura anterior desfazia a quebra e deixava
+# lá a cicatriz dela.*
+#
+# ⚠️⚠️ **E ele morde exactamente onde mais dói: o CABEÇALHO DE PROVENIÊNCIA de
+# uma fixtura é feito de linhas de comentário** — é ali que uma frase do alvo
+# entraria, e era ali que a vassoura não a via. Os corpora deste repo têm
+# centenas desses cabeçalhos.
+#
+# ⚠️ Estritamente mais sensível, e do lado do PALHEIRO só (normalizar a agulha
+# fabricaria colisão com nomes públicos legítimos — a mesma razão pela qual o
+# `_` não entra na lista acima).
 achados_desdobrados() {
-  tr '\n' ' ' | tr -d '*`>' | tr -s ' ' | grep -oF -f <(patfile) 2>/dev/null | sort -u
+  sed -E 's,^[[:space:]]*(#+|//+|--+|;+|%)[[:space:]]?,,' \
+    | tr '\n' ' ' | tr -d '*`>' | tr -s ' ' | grep -oF -f <(patfile) 2>/dev/null | sort -u
 }
 
 if [ "${1:-}" = "--git-history" ]; then

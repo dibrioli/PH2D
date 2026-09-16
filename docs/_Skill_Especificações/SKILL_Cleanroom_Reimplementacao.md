@@ -896,7 +896,10 @@ Execute em ordem:
    cleanroom/SPEC_<alvo>.md com o CABEÇALHO completo (atestados,
    mapa de leitura da literatura, denylist de URLs). Rode
    doc-index.sh se o diretório do módulo for indexado.
-8. SWEEP (§7.1): bash scripts/cleanroom-sweep.sh sobre a espec,
+8. SWEEP (§7.1): bash scripts/cleanroom-sweep-controlo.sh PRIMEIRO
+   (2 s; ele prova que o instrumento não tem canal cego — três
+   cegueiras já foram achadas por acidente, e a 1.ª só depois de
+   um verde publicado). Depois bash scripts/cleanroom-sweep.sh sobre a espec,
    todo artefato destinado à janela-mãe, E o texto do seu report
    final (grave-o em ~/Referencias/<alvo>/draft/, varra, só então
    devolva). Verde é condição de entrega.
@@ -934,12 +937,15 @@ sobrarem imprecisões que a janela curaria ao construir).
      de gate que a página não sustenta.
    ⚠️ ERRATA (não bloqueia) = o Implementador apanha-a ao construir
      porque o número não bate; fica NOMEADA no ledger, com o sítio.
-3. bash scripts/cleanroom-sweep.sh <vassoura> <espec e anexos>, com
-   CONTROLO POSITIVO em cada canal (nome · conteúdo · dobrado sem
-   acentos · dobrado com ênfase · de dentro de um .gz). Discrimine
-   exit 2 (uso errado) de exit 1 (achado). ⛔ Relatório de sweep em
-   ficheiro cita EM CLARO o que acusou: zona contaminada, nunca o
-   scratchpad da sessão.
+3. bash scripts/cleanroom-sweep-controlo.sh  ← PRIMEIRO, e é uma
+   corrida de 2 s: ele planta canários em todos os canais (nome ·
+   texto · binário · dentro de um .gz · dobrado com ênfase ·
+   dobrado entre linhas de COMENTÁRIO · o negativo · o exit 2) e
+   sai 1 se algum ficar cego. ⛔ Um sweep verde com um canal cego
+   não é prova de filtragem. Depois:
+   bash scripts/cleanroom-sweep.sh <vassoura> <espec e anexos>
+   ⛔ Relatório de sweep em ficheiro cita EM CLARO o que acusou:
+   zona contaminada, nunca o scratchpad da sessão.
 4. Parede limpa e zero BLOQUEIA → ateste no cabeçalho ("auditada
    contra §4.2 por R-pré em <data>"), registre o PRÉ no ledger E
    registre lá as erratas.

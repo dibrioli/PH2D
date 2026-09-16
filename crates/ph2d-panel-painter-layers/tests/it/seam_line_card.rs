@@ -522,3 +522,103 @@ fn the_connection_line_checkbox_toggles_under_a_real_click() {
         "o segundo clique não voltou"
     );
 }
+
+/// ⭐ **O ORÁCULO: o número que o artista lê, em cada barra, escrito a partir do CAMPO da
+/// ferramenta** — independente da tabela do painel, de propósito.
+///
+/// ⚠️ É o contrato de leitura que o cartão mostrava ANTES de ter chip (o `readout` de cada linha):
+/// o *Reach* e a *History* em diâmetros, a *Density* em porcentagem, as duas amplitudes do *Rough*
+/// em décimos de diâmetro, as *Passes* em contagem.
+fn na_unidade_do_artista(slider: NodeId, b: ph2d_tool_painter::BrushSettings) -> f32 {
+    use ph2d_tool_painter::ids as i;
+    #[allow(clippy::cast_precision_loss)]
+    match slider {
+        s if s == i::PAINTER_LINE_SKETCHY_REACH => b.sketchy_reach,
+        s if s == i::PAINTER_LINE_SKETCHY_DENSITY => b.sketchy_density * 100.0,
+        s if s == i::PAINTER_LINE_SKETCHY_WIDTH => b.thread_width_px,
+        s if s == i::PAINTER_LINE_SKETCHY_OPACITY => b.thread_opacity,
+        s if s == i::PAINTER_LINE_WIRE_HISTORY => b.wire_history,
+        s if s == i::PAINTER_LINE_RIBBON_WEIGHT => b.ribbon_weight,
+        s if s == i::PAINTER_LINE_RIBBON_FRICTION => b.ribbon_friction,
+        s if s == i::PAINTER_LINE_RIBBON_GRAVITY => b.ribbon_gravity,
+        s if s == i::PAINTER_LINE_RIBBON_RUNGS => b.ribbon_rungs,
+        s if s == i::PAINTER_LINE_ROUGH_AMOUNT => b.rough_amount * 10.0,
+        s if s == i::PAINTER_LINE_ROUGH_BOWING => b.rough_bowing * 10.0,
+        s if s == i::PAINTER_LINE_ROUGH_PASSES => b.rough_passes as f32,
+        // ⚠️ Uma barra nova sem oráculo reprova aqui — é o censo de que a lista acima não envelheceu.
+        _ => panic!("a barra {slider:?} não tem oráculo — escreva a unidade em que o artista a lê"),
+    }
+}
+
+/// ⭐⭐⭐ **O NÚMERO QUE SE DIGITA NUMA BARRA É O NÚMERO QUE A FERRAMENTA GRAVA — em cada barra.**
+///
+/// ⛔⛔ Até 2026-09-16 as barras do cartão Line eram `rótulo | trilho nu | readout`: o número só se
+/// LIA. Com o chip editável, cada barra passa a ter DOIS mapeamentos — o chip projecta o número na
+/// pista, e o setter da ferramenta projecta a pista no valor —, e *um mapeamento errado edita o
+/// valor errado EM SILÊNCIO*: o chip mostraria `2.5` e o pincel gravaria `0.625`.
+///
+/// ⚠️ **A régua é o GESTO inteiro**, do teclado ao pincel: digitar no chip pelos despachantes reais
+/// (`type_into_number`), entregar os eventos ao painel, drenar o barramento para a ferramenta, e ler
+/// de volta o NÚMERO com a mesma escala com que o chip o mostra. ⛔ Comparar a escala da tabela com
+/// ela própria seria vácuo — é a ferramenta que decide.
+///
+/// **Mutações que sangram:** trocar a `escala` de uma barra na tabela (o chip projecta noutra
+/// unidade) · tirar o `link_slider_number_mapped` do `registar` (a edição não chega ao slider) ·
+/// tirar o `e_barra` do encaminhamento (chega ao slider e morre no painel).
+#[test]
+fn o_chip_de_cada_barra_projecta_o_que_a_ferramenta_grava() {
+    use ph2d_panel_painter_layers::line_barras;
+    use ph2d_tool_painter::LineKind;
+    let mut provadas = 0usize;
+    for wire in 0u8..=5 {
+        let kind = LineKind::from_wire(wire);
+        for barra in line_barras::barras_de(kind) {
+            let mut tool = PainterTool::default();
+            tool.set_line_kind(wire);
+            let (mut host, mut st, rects) = painted(&tool);
+            assert!(
+                rect_of(&rects, barra.chip).is_some(),
+                "o número editável da barra `{}` não é pintado",
+                barra.chave
+            );
+            // ⚠️ Um alvo que NÃO é o default, e que não cai num extremo da pista (onde um
+            //    `clamp` esconderia uma escala errada).
+            let alvo: f32 = if barra.inteiro {
+                (barra.escala - 1.0).max(1.0)
+            } else {
+                0.37 * barra.escala
+            };
+            for ev in host.type_into_number(barra.chip, &format!("{alvo}")) {
+                host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+            }
+            for action in host.drained_actions() {
+                if let EditorAction::ToolPanelEvent(pe) = action {
+                    tool.handle_panel_event(pe);
+                }
+            }
+            // ⛔⛔ **A leitura de volta é o ORÁCULO, nunca a escala da tabela** — a 1.ª redacção lia
+            //    `barra.numero(…)`, e a mutação que DOBRAVA a escala **sobreviveu**: o chip projectava
+            //    com ela e o gate lia de volta com ela, e as duas metades concordavam sobre um valor
+            //    errado. *Um gate que compara duas construções é cego a uma mutação partilhada.*
+            let gravado = na_unidade_do_artista(barra.slider, tool.brush_settings());
+            assert!(
+                (gravado - alvo).abs() <= 1e-3 * barra.escala.max(1.0),
+                "barra `{}` (tipo {wire}): digitei {alvo} e o pincel ficou com {gravado}",
+                barra.chave
+            );
+            // E o número que o chip MOSTRA é esse mesmo — a outra metade da escala.
+            let mostrado = barra.numero(tool.brush_settings());
+            assert!(
+                (mostrado - gravado).abs() <= 1e-3 * barra.escala.max(1.0),
+                "barra `{}`: o chip mostra {mostrado} e o pincel tem {gravado}",
+                barra.chave
+            );
+            provadas += 1;
+        }
+    }
+    // Piso de população: 4 do Sketchy + 3 do Wire + 6 do Ribbon + 3 do Rough.
+    assert!(
+        provadas >= 16,
+        "só {provadas} barras provadas — a tabela encolheu ou a varredura partiu-se"
+    );
+}

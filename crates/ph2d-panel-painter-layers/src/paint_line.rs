@@ -9,25 +9,18 @@
 //! `line/anim` aplicou ao menu de fade: *uma tabela por escopo, e um escopo sem parâmetro não pinta
 //! parâmetro*.
 
-use ph2d_editor_core::paint::paint_text;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Checkbox, CheckboxValue, DropdownOption, Slider, paint_checkbox, paint_slider,
+    Checkbox, CheckboxValue, DEFAULT_CHIP_W, DEFAULT_LABEL_W, DropdownOption, paint_checkbox,
+    paint_slider_with_chip_layout_adaptive, slider_with_chip_height,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
-use ph2d_tool_painter::{
-    BrushSettings, LineKind, ROUGH_AMOUNT_MAX_D, ROUGH_PASSES_MAX, SKETCHY_DENSITY_MAX,
-    SKETCHY_REACH_MAX, THREAD_WIDTH_MAX_PX, WIRE_HISTORY_MAX,
-};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken};
+use ph2d_tool_painter::{BrushSettings, LineKind};
 
-/// Coluna do readout "0.35" à direita do slider.
-const READOUT_W: f32 = 34.0; // LITERAL-PX-OK: coluna do readout
-/// Piso da pista do slider nu (chão de chrome num painel estreito).
-const MIN_SLIDER_W: f32 = 24.0; // LITERAL-PX-OK: piso da pista
 /// O nome de cada tipo, para o chip e para as opções do popover.
 fn kind_name(k: LineKind) -> &'static str {
     match k {
@@ -87,8 +80,20 @@ pub(crate) fn paint_line_card(
     // ⚠️ O `Speed` não tem row nenhuma **de propósito**: o Alchemy não oferece controle sobre o
     // arremesso (Enio 2026-08-13, *"em alchemy o slider não é necessário"*), então o produto acerta
     // de fábrica em vez de delegar.
-    let param_rows = rows_of(kind);
-    let card_h = pad + ph2d_tokens::row_pitch_px() + ROW_H_PX + param_rows * (gap + ROW_H_PX) + pad;
+    let iw = content_w - 2.0 * pad;
+    let linhas_do_tipo = altura_das_linhas(kind, iw);
+    // ⚠️ **A altura é a SOMA dos avanços que o pintor dá**, e não uma fórmula ao lado dele: a
+    //    anterior contava cada barra como `vão + ROW_H` enquanto o pintor avançava `row_pitch`, e o
+    //    chip do tipo como `ROW_H` enquanto ele avançava `row_pitch` — duas aritméticas da mesma
+    //    pergunta, que só concordavam enquanto os dois vãos fossem iguais.
+    let card_h = pad
+        + 2.0 * ph2d_tokens::row_pitch_px()
+        + if linhas_do_tipo > 0.0 {
+            gap + linhas_do_tipo
+        } else {
+            0.0
+        }
+        + pad;
     let card = Rect::new(x, y, content_w, card_h);
     // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
     let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
@@ -112,7 +117,6 @@ pub(crate) fn paint_line_card(
     );
 
     let ix = x + pad;
-    let iw = content_w - 2.0 * pad;
     let mut iy = y + pad;
 
     // ⚠️ A coluna do nome é a da secção *Line* (spec §6-quinquies) — as três caixas deste cartão
@@ -152,184 +156,37 @@ pub(crate) fn paint_line_card(
     }
     iy = ny;
 
-    if param_rows > 0.0 {
+    if linhas_do_tipo > 0.0 {
         iy = paint_param_rows(ctx, theme, ix, iw, iy + gap, brush, kind);
     }
     let _ = iy;
     y + card_h + ph2d_tokens::control_gap_px()
 }
 
-/// Quantas rows o TIPO acrescenta — **derivado das tabelas**, para que uma row nova mude a altura do
-/// card sem ninguém lembrar de subir um número (a mesma lei do [`LINE_KINDS`]).
+/// **Quanto as linhas do TIPO ocupam** — a soma dos avanços que o [`paint_param_rows`] dá, para
+/// que uma barra nova mude a altura do cartão sem ninguém lembrar de subir um número.
+///
+/// ⚠️ **Pela MESMA régua do pintor**: a caixa única ocupa `slider_with_chip_height` (que conhece o
+/// modo empilhado da aparência clássica) mais o vão de controlo, e a caixa de marcar ocupa uma linha.
 #[allow(clippy::cast_precision_loss)]
-fn rows_of(kind: LineKind) -> f32 {
-    sliders_of(kind).len() as f32 + f32::from(u8::from(checkbox_of(kind).is_some()))
+pub(crate) fn altura_das_linhas(kind: LineKind, row_w: f32) -> f32 {
+    let barras = crate::line_barras::barras_de(kind).len() as f32;
+    let barra = slider_with_chip_height(ROW_H_PX, row_w) + ph2d_tokens::control_gap_px();
+    let caixa = if checkbox_of(kind).is_some() {
+        ROW_H_PX
+    } else {
+        0.0
+    };
+    barras * barra + caixa
 }
 
-/// Um slider de parâmetro do tipo: `(id, CHAVE do rótulo, valor na pista 0..1, o que o readout mostra)`.
-///
-/// ⚠️ **O segundo campo é a CHAVE da tabela de strings, nunca o texto**: a tabela é `const` e o
-/// `ph2d_i18n::tr` não é `const fn` — quem PINTA traduz ([`paint_param_rows`]). As duas tabelas
-/// deste ficheiro têm o mesmo contrato, para nenhuma row chegar ao ecrã traduzida duas vezes.
-///
-/// ⚠️ **UMA tabela por tipo, DOIS consumidores** — o pintor a percorre e o `populate` registra os
-/// mesmos ids; e é ela que faz a altura do card ser CONTADA em vez de escolhida. Uma row a mais
-/// aqui nasce pintada, medida e com hit registrado.
-type ParamSlider = (
-    ph2d_editor_core::NodeId,
-    &'static str,
-    fn(BrushSettings) -> (f32, f32),
-);
-
-/// A `Line Width` e a `Opacity` são as MESMAS duas rows nos dois tipos, na MESMA posição — porque
-/// são o mesmo fato (a tinta de um fio; ver `set_thread_width_norm`). Trocar de tipo não embaralha
-/// o card, e é isso que torna a troca uma decisão sobre a LEI e não sobre onde os controles foram
-/// parar.
-const THREAD_INK_ROWS: [ParamSlider; 2] = [
-    (
-        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_WIDTH,
-        "panel.painter_layers.line.line_width",
-        |b| (b.thread_width_px / THREAD_WIDTH_MAX_PX, b.thread_width_px),
-    ),
-    (
-        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_OPACITY,
-        "panel.painter_layers.line.opacity",
-        |b| (b.thread_opacity, b.thread_opacity),
-    ),
-];
-
-const SKETCHY_SLIDERS: [ParamSlider; 4] = [
-    (
-        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_REACH,
-        "panel.painter_layers.line.reach",
-        |b| (b.sketchy_reach / SKETCHY_REACH_MAX, b.sketchy_reach),
-    ),
-    (
-        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_DENSITY,
-        "panel.painter_layers.line.density",
-        |b| {
-            const PCT: f32 = 100.0; // LITERAL-PX-OK: a Density é lida em PORCENTAGEM na face do artista
-            (
-                b.sketchy_density / SKETCHY_DENSITY_MAX,
-                b.sketchy_density * PCT,
-            )
-        },
-    ),
-    THREAD_INK_ROWS[0],
-    THREAD_INK_ROWS[1],
-];
-
-const WIRE_SLIDERS: [ParamSlider; 3] = [
-    (
-        ph2d_tool_painter::ids::PAINTER_LINE_WIRE_HISTORY,
-        "panel.painter_layers.line.history",
-        |b| (b.wire_history / WIRE_HISTORY_MAX, b.wire_history),
-    ),
-    THREAD_INK_ROWS[0],
-    THREAD_INK_ROWS[1],
-];
-
-/// A FITA: `Weight` diz QUANTO TEMPO ela atrasa, `Friction` COMO ela assenta e `Gravity` quanto ela
-/// PENDE. Três perguntas independentes — a forma normalizada da mola é o que as torna ortogonais.
-///
-/// ⚠️ **`Size` e `Spacing` do Alchemy NÃO estão aqui**, e é a mesma lei do Spray: eles são o tamanho
-/// e o espaçamento do PINCEL, que já shipam com slider próprio. Gêmeos deles neste card seriam a
-/// segunda porta para a mesma pergunta.
-///
-/// ⚠️ **E a fita É o TERCEIRO consumidor da tinta de FIO**, então ela carrega as
-/// [`THREAD_INK_ROWS`] como o Sketchy e o Wire. Isto não é simetria de tabela: o trilho de fora e
-/// TODA travessa saem pelo `thread_ink` (`thread_width_px` / `thread_opacity`), que é a porta única
-/// do depósito de fios — sem estas duas rows os dois números que decidem como a FAIXA aparece só
-/// eram alcançáveis trocando para outro tipo, mexendo, e voltando. *Um controle que governa o que
-/// se vê e vive noutro modo é um controle que o artista não tem.*
-const RIBBON_SLIDERS: [ParamSlider; 6] = [
-    (
-        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_WEIGHT,
-        "panel.painter_layers.line.weight",
-        |b| (b.ribbon_weight, b.ribbon_weight),
-    ),
-    (
-        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_FRICTION,
-        "panel.painter_layers.line.friction",
-        |b| (b.ribbon_friction, b.ribbon_friction),
-    ),
-    (
-        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_GRAVITY,
-        "panel.painter_layers.line.gravity",
-        |b| (b.ribbon_gravity, b.ribbon_gravity),
-    ),
-    (
-        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_RUNGS,
-        "panel.painter_layers.line.rungs",
-        |b| (b.ribbon_rungs, b.ribbon_rungs),
-    ),
-    THREAD_INK_ROWS[0],
-    THREAD_INK_ROWS[1],
-];
-
-/// Os sliders deste tipo. `None`/`Speed` não têm **de propósito** — o Alchemy não oferece controle
-/// sobre o arremesso (Enio 2026-08-13), e uma row sob eles seria um controle que não faz nada.
-fn sliders_of(kind: LineKind) -> &'static [ParamSlider] {
-    match kind {
-        LineKind::None | LineKind::Speed => &[],
-        LineKind::Sketchy => &SKETCHY_SLIDERS,
-        LineKind::Wire => &WIRE_SLIDERS,
-        LineKind::Ribbon => &RIBBON_SLIDERS,
-        LineKind::Rough => &ROUGH_SLIDERS,
-    }
-}
-
-/// O checkbox de um tipo: `(id, CHAVE do rótulo, o valor)` — o mesmo contrato do [`ParamSlider`].
+/// O checkbox de um tipo: `(id, CHAVE do rótulo, o valor)` — a chave, como a das barras
+/// ([`crate::line_barras::Barra`]), é traduzida por quem PINTA.
 type ParamCheckbox = (
     ph2d_editor_core::NodeId,
     &'static str,
     fn(BrushSettings) -> bool,
 );
-
-/// O `Rough`: `Roughness` é o tremor CURTO, `Bowing` o arqueamento LONGO e `Passes` quantas
-/// caminhadas o traço deixa (`2` = o contorno duplo do Excalidraw).
-///
-/// ⚠️ **As duas amplitudes são DUAS oitavas, não dois estilos** — o `rough.js` tem os dois knobs
-/// porque são escalas diferentes do mesmo desvio, e uma só tornaria o arco inexprimível.
-///
-/// ⚠️ **E não há row de tinta de FIO aqui, ao contrário do Sketchy / Wire / Ribbon:** o `Rough` não
-/// costura nada — ele desenha o TRAÇO outra vez, com os dabs do próprio pincel. Oferecer
-/// `Line Width` sob ele seriam duas rows que não fazem nada.
-const ROUGH_SLIDERS: [ParamSlider; 3] = [
-    (
-        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_AMOUNT,
-        "panel.painter_layers.line.roughness",
-        |b| {
-            (
-                b.rough_amount / ROUGH_AMOUNT_MAX_D,
-                b.rough_amount * ROUGH_READOUT_D,
-            )
-        },
-    ),
-    (
-        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_BOWING,
-        "panel.painter_layers.line.bowing",
-        |b| {
-            (
-                b.rough_bowing / ROUGH_AMOUNT_MAX_D,
-                b.rough_bowing * ROUGH_READOUT_D,
-            )
-        },
-    ),
-    (
-        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_PASSES,
-        "panel.painter_layers.line.passes",
-        |b| {
-            #[allow(clippy::cast_precision_loss)]
-            let n = b.rough_passes as f32;
-            (n / ROUGH_PASSES_MAX as f32, n)
-        },
-    ),
-];
-
-/// O readout das amplitudes é em **décimos de diâmetro**, para a pista `0..1` não mostrar sempre
-/// `0.x` — o número que o artista lê é *"quantos décimos de pincel a linha vagueia"*.
-const ROUGH_READOUT_D: f32 = 10.0; // LITERAL-PX-OK: fator de leitura, não medida de UI
 
 /// O checkbox deste tipo, se houver.
 fn checkbox_of(kind: LineKind) -> Option<ParamCheckbox> {
@@ -361,12 +218,9 @@ fn paint_param_rows(
     brush: BrushSettings,
     kind: LineKind,
 ) -> f32 {
-    let _gap = Spacing::Xs.px();
     let mut iy = y;
-    for (id, label, read) in sliders_of(kind) {
-        let (track, shown) = read(brush);
-        paint_param_row(ctx, theme, x, row_w, iy, label, *id, track, shown);
-        iy += ph2d_tokens::row_pitch_px();
+    for barra in crate::line_barras::barras_de(kind) {
+        iy = paint_barra(ctx, theme, x, row_w, iy, barra, brush);
     }
     if let Some((id, label, read)) = checkbox_of(kind) {
         let seccao =
@@ -386,70 +240,48 @@ fn paint_param_rows(
     iy
 }
 
-/// Uma row de parâmetro do tipo: rótulo · slider nu · readout. O valor vem do snapshot e o ESTADO do
-/// store, como toda row de slider deste painel.
+/// ⭐⭐⭐ **UMA BARRA DO CARTÃO — a CAIXA ÚNICA, com o nome dentro e o número editável.**
 ///
-/// ⛔⛔ **A coluna do rótulo era o literal `LABEL_W = 62,0`, e o doc dele dizia *«cabe "Line Width"
-/// na fonte Base»* — medido em 2026-09-16, `Line Width` mede `66,4 px` e `Roughness` `68,8`.** As
-/// duas saíam cortadas, e a justificação escrita ao lado do número era falsa no dia em que foi
-/// escrita. *Um literal que se justifica por um texto CABER tem de trazer a medição do texto.*
+/// ⛔⛔ Até 2026-09-16 esta linha era `rótulo | trilho nu | readout`: a forma que a spec §2 recusa
+/// para um valor com fracção, e que a ordem do dono de 2026-06-26 já tinha tirado de todo o resto
+/// do pincel (*«todos usam o slider-with-chip canónico»*). O número só se LIA — para pôr `2.5` no
+/// *Reach* era preciso arrastar até lá. E a coluna do nome era o literal `LABEL_W = 62`, com um doc a
+/// jurar que *«Line Width»* cabia (mede `66,4`).
 ///
-/// ⏳ **E esta linha continua a ser a FORMA errada** (spec §2): um valor com fracção pede a **caixa
-/// única**, com o nome DENTRO da barra. A conversão custa **12 chips editáveis** (um por slider do
-/// cartão) com **12 mapeamentos afins distintos** — cada `read` daqui tem a escala dele (`/
-/// ROUGH_AMOUNT_MAX_D`, `* ROUGH_READOUT_D`, …) —, e um mapeamento errado edita o valor errado **em
-/// silêncio**. ⇒ a coluna passa pela porta agora; a caixa única é wave própria, com a ordem do dono
-/// de 2026-06-26 por trás dela.
-#[allow(clippy::too_many_arguments)]
-fn paint_param_row(
+/// ⚠️ **O número que o chip mostra é `pista × escala` da PRÓPRIA tabela** ([`crate::line_barras`]),
+/// e o chip é ligado ao slider pela MESMA escala no `populate` — uma edição volta à ferramenta como o
+/// `ValueChanged` do slider, pelo encaminhamento de sempre.
+fn paint_barra(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
     row_w: f32,
     y: f32,
-    chave: &str,
-    sid: ph2d_editor_core::NodeId,
-    track: f32,
-    shown: f32,
-) {
-    let gap = Spacing::Xs.px();
-    // ⛔⛔ **Era `TypeToken::Base` e a coluna é medida em `Sm`** — *medir num peso e pintar noutro
-    //    corta curto* (spec §4.3, defeito que esta casa já pagou duas vezes). E `Sm` é o que toda
-    //    linha de propriedade do app pinta: este cartão era o único a destoar.
-    let font = TypeToken::Sm.px();
-    let linha = crate::paint_brush_rows::linha_da_chave(ctx, x, row_w, y, chave);
-    let readout_x = linha.control.x + linha.control.w - READOUT_W;
-    let slider_x = linha.control.x;
-    let slider_w = (readout_x - gap - slider_x).max(MIN_SLIDER_W);
-
-    ph2d_editor_core::widget::paint_property_label(
-        ctx.text_system,
-        ctx.scene,
-        tr(chave),
-        linha.label.x,
-        linha.label.y + (linha.label.h - font) * 0.5,
-        font,
-        linha.label.w,
-        resolve(ColorToken::Text1, theme),
+    barra: &crate::line_barras::Barra,
+    brush: BrushSettings,
+) -> f32 {
+    let pista = (barra.pista)(brush).clamp(0.0, 1.0);
+    let numero = barra.numero(brush);
+    // ⚠️ Uma CONTAGEM mostra-se sem casas; o resto deixa o chip formatar como toda caixa do app.
+    let inteiro = barra.inteiro.then(|| format!("{}", numero.round()));
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let usado = paint_slider_with_chip_layout_adaptive(
+        Rect::new(x, y, row_w, ROW_H_PX),
+        tr(barra.chave),
+        pista,
+        f64::from(numero),
+        inteiro.as_deref(),
+        barra.slider,
+        barra.chip,
+        DEFAULT_LABEL_W,
+        DEFAULT_CHIP_W,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
     );
-    // ⚠️ Pela porta do `slider_visual` como os irmãos desta crate — UMA pergunta, o estado
-    // e o `t` juntos. O `.state()` sozinho entrega o extremo DURO: o slider fica pintado,
-    // vivo sob o mouse e **nunca acende**.
-    let mut slider = Slider::new(sid, "")
-        .accent(true)
-        .visual(ctx.host.store().slider_visual(sid));
-    slider.value = track.clamp(0.0, 1.0);
-    let slider_rect = Rect::new(slider_x, y, slider_w, ROW_H_PX);
-    paint_slider(&slider, slider_rect, ctx.scene, theme);
-    ctx.host.hit_index_mut().register(sid, slider_rect);
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        &format!("{shown:.2}"),
-        readout_x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        READOUT_W,
-        resolve(ColorToken::Text2, theme),
-    );
+    y + usado + ph2d_tokens::control_gap_px()
 }

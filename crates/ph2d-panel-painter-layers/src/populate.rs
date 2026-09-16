@@ -88,22 +88,8 @@ fn register_brush_inputs(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
         ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET,
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
-        // Card Line / Sketchy: os quatro sliders do tipo (plano 38 W3).
-        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_REACH,
-        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_DENSITY,
-        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_WIDTH,
-        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_OPACITY,
-        // Card Line / Wire: a janela (plano 38 W4).
-        ph2d_tool_painter::ids::PAINTER_LINE_WIRE_HISTORY,
-        // Card Line / Ribbon: os tres knobs da mola (plano 38 W6).
-        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_WEIGHT,
-        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_FRICTION,
-        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_GRAVITY,
-        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_RUNGS,
-        // Card Line / Rough: as duas amplitudes e a contagem de passadas (plano 38 W6).
-        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_AMOUNT,
-        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_BOWING,
-        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_PASSES,
+        // ⚠️ As barras do card Line NÃO estão aqui: elas saem da tabela do cartão
+        //    (`line_barras::registar`, abaixo), com o chip e a ligação juntos.
         // Per-dab Jitter Scale / Rotate / Spacing (next to the position Jitter).
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SCALE,
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_ROTATE,
@@ -123,6 +109,7 @@ fn register_brush_inputs(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_INPAINT_QUALITY_SLIDER,
         ph2d_tool_painter::ids::PAINTER_INPAINT_SEARCH_SLIDER,
     ];
+    crate::line_barras::registar(store);
     for id in brush_sliders {
         store.register(
             id,

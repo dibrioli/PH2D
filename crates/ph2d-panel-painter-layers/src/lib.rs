@@ -31,6 +31,8 @@ mod card; // the titled row-box shared by the brush panel technique sections
 mod dropdown_popover;
 mod event;
 mod event_brush_forward;
+/// As barras do card Line: a tabela que o pintor, o registo e o encaminhamento leem.
+pub mod line_barras;
 mod number_field;
 mod paint;
 mod paint_adjust;

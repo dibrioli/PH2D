@@ -145,4 +145,39 @@ fn every_brush_slider_chip_is_registered_linked_and_ranged() {
             "slider {slider:?} not linked to its chip {chip:?}"
         );
     }
+    // ⭐ **E as barras do card Line — da TABELA, não desta lista** (2026-09-16). Elas eram as únicas
+    //    barras de pincel sem chip, e a lista acima nunca as conheceu: *uma lista escrita à mão mede
+    //    os sítios de que já se suspeita*.
+    let barras = crate::line_barras::todas();
+    assert!(
+        barras.len() >= 12,
+        "a tabela do card Line tem {} barras distintas — encolheu, ou a varredura partiu-se",
+        barras.len()
+    );
+    for b in barras {
+        assert!(
+            matches!(store.get(b.slider), Some(InteractiveState::Slider { .. })),
+            "a barra {} não tem slider registado",
+            b.chave
+        );
+        assert!(
+            matches!(
+                store.get(b.chip),
+                Some(InteractiveState::NumberInput { .. })
+            ),
+            "a barra {} não tem chip registado",
+            b.chave
+        );
+        assert!(
+            store.number_range(b.chip).is_some(),
+            "o chip da barra {} não tem faixa",
+            b.chave
+        );
+        assert_eq!(
+            store.linked_number(b.slider),
+            Some(b.chip),
+            "a barra {} não liga o slider ao chip dela",
+            b.chave
+        );
+    }
 }

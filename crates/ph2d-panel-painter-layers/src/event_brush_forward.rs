@@ -13,18 +13,8 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER
-        || id == ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_REACH
-        || id == ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_DENSITY
-        || id == ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_WIDTH
-        || id == ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_OPACITY
-        || id == ph2d_tool_painter::ids::PAINTER_LINE_WIRE_HISTORY
-        || id == ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_WEIGHT
-        || id == ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_FRICTION
-        || id == ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_GRAVITY
-        || id == ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_RUNGS
-        || id == ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_AMOUNT
-        || id == ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_BOWING
-        || id == ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_PASSES
+        // As barras do card Line — a MESMA tabela que as pinta e as regista.
+        || crate::line_barras::e_barra(id)
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES

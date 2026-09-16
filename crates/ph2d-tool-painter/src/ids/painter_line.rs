@@ -76,3 +76,40 @@ pub const PAINTER_LINE_ROUGH_BOWING: NodeId = hash_node_id("painter_line.rough_b
 
 /// Card Line / **Rough**: quantas caminhadas o traço deixa (`2` = o contorno duplo do Excalidraw).
 pub const PAINTER_LINE_ROUGH_PASSES: NodeId = hash_node_id("painter_line.rough_passes");
+
+// ── Os NÚMEROS EDITÁVEIS das barras do card Line (2026-09-16) ──────────────────────────────────
+//
+// ⭐ Cada barra do cartão ganha o chip que todo slider de pincel já tinha desde a ordem do dono de
+// 2026-06-26 (*«todos usam o slider-with-chip canónico»*) — e o cartão deixa de ser `rótulo | trilho
+// nu | readout`, a forma que a spec §2 recusa para um valor com fracção. O chip espelha a edição
+// dele como `ValueChanged` do SLIDER (`WidgetStore::link_slider_number_mapped`), logo o
+// encaminhamento para a ferramenta é o mesmo de sempre e nenhum `PanelEvent` novo nasce.
+
+/// Chip de **Reach** (Sketchy).
+pub const PAINTER_LINE_SKETCHY_REACH_CHIP: NodeId = hash_node_id("painter_line.sketchy_reach_chip");
+/// Chip de **Density** (Sketchy), em PORCENTAGEM.
+pub const PAINTER_LINE_SKETCHY_DENSITY_CHIP: NodeId =
+    hash_node_id("painter_line.sketchy_density_chip");
+/// Chip de **Line Width** (a tinta de fio partilhada).
+pub const PAINTER_LINE_SKETCHY_WIDTH_CHIP: NodeId = hash_node_id("painter_line.sketchy_width_chip");
+/// Chip de **Opacity** (a tinta de fio partilhada).
+pub const PAINTER_LINE_SKETCHY_OPACITY_CHIP: NodeId =
+    hash_node_id("painter_line.thread_opacity_chip");
+/// Chip de **History** (Wire).
+pub const PAINTER_LINE_WIRE_HISTORY_CHIP: NodeId = hash_node_id("painter_line.wire_history_chip");
+/// Chip de **Weight** (Ribbon).
+pub const PAINTER_LINE_RIBBON_WEIGHT_CHIP: NodeId = hash_node_id("painter_line.ribbon_weight_chip");
+/// Chip de **Friction** (Ribbon).
+pub const PAINTER_LINE_RIBBON_FRICTION_CHIP: NodeId =
+    hash_node_id("painter_line.ribbon_friction_chip");
+/// Chip de **Gravity** (Ribbon).
+pub const PAINTER_LINE_RIBBON_GRAVITY_CHIP: NodeId =
+    hash_node_id("painter_line.ribbon_gravity_chip");
+/// Chip de **Rungs** (Ribbon).
+pub const PAINTER_LINE_RIBBON_RUNGS_CHIP: NodeId = hash_node_id("painter_line.ribbon_rungs_chip");
+/// Chip de **Roughness** (Rough), em décimos de diâmetro.
+pub const PAINTER_LINE_ROUGH_AMOUNT_CHIP: NodeId = hash_node_id("painter_line.rough_amount_chip");
+/// Chip de **Bowing** (Rough), em décimos de diâmetro.
+pub const PAINTER_LINE_ROUGH_BOWING_CHIP: NodeId = hash_node_id("painter_line.rough_bowing_chip");
+/// Chip de **Passes** (Rough) — um INTEIRO `1..=ROUGH_PASSES_MAX`.
+pub const PAINTER_LINE_ROUGH_PASSES_CHIP: NodeId = hash_node_id("painter_line.rough_passes_chip");

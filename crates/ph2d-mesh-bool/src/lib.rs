@@ -27,6 +27,11 @@
 
 use ph2d_mesh::{Face, Mesh};
 
+/// ⭐⭐⭐ **A LIMPEZA DA COSTURA** — ver [`costura`].
+#[path = "costura.rs"]
+pub mod costura;
+pub use costura::limpa_a_costura;
+
 /// O que o corte faz com o volume da lâmina.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Op {
@@ -104,6 +109,51 @@ pub fn corta(peca: &Mesh, lamina: &Mesh, op: Op) -> Result<Mesh, Recusa> {
         },
     );
     let gl = saida.get_mesh_gl64(-1);
+    if gl.tri_verts.is_empty() {
+        return Err(Recusa::ResultadoVazio);
+    }
+    // ⭐⭐⭐ **A COSTURA é limpa AQUI, dentro da porta** (report do dono,
+    // 2026-09-15: *«melhore a topologia das bordas do corte»*). Ver
+    // [`costura`] — o motor emite vértices duplicados na curva de interseção, e
+    // um triângulo de aspecto `2 573 809` não tem normal utilizável.
+    //
+    // ⚠️ **Ela precisa da PEÇA e é por isso que vive dentro do `corta`:** é da
+    // entrada que sai *qual vértice é antigo* — a cerca que mantém intacta a
+    // propriedade que decide a arquitectura desta linha (*longe do corte, nem
+    // um bit*).
+    Ok(limpa_a_costura(&do_motor(&gl), peca))
+}
+
+/// **O corte SEM a limpeza da costura** — o lado *antes* das réguas dela.
+///
+/// ⛔ **Só existe para os gates**, e é a única maneira honesta de eles serem uma
+/// AFIRMAÇÃO em vez de um número solto: *uma régua sobre a saída curada não diz
+/// que a cura fez alguma coisa.* ⚠️ Ela duplica quatro linhas do [`corta`] de
+/// propósito — chamá-lo e «des-limpar» é impossível, e um parâmetro no caminho
+/// do produto seria um interruptor que alguém pode deixar no sítio errado.
+#[cfg(test)]
+pub(crate) fn corta_cru(peca: &Mesh, lamina: &Mesh, op: Op) -> Result<Mesh, Recusa> {
+    use manifold_rust::manifold::Manifold;
+    use manifold_rust::types::OpType;
+
+    let a = Manifold::from_mesh_gl64(&para_o_motor(peca));
+    if !fechada(&a) {
+        return Err(Recusa::PecaAberta);
+    }
+    let b = Manifold::from_mesh_gl64(&para_o_motor(lamina));
+    if !fechada(&b) {
+        return Err(Recusa::LaminaAberta);
+    }
+    let gl = a
+        .boolean(
+            &b,
+            match op {
+                Op::Subtrair => OpType::Subtract,
+                Op::Juntar => OpType::Add,
+                Op::Intersectar => OpType::Intersect,
+            },
+        )
+        .get_mesh_gl64(-1);
     if gl.tri_verts.is_empty() {
         return Err(Recusa::ResultadoVazio);
     }

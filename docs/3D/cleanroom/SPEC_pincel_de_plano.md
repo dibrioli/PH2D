@@ -111,7 +111,57 @@ Auditoria §4.2 (R-pré): ⚠️ **CORRIDA em 2026-09-16** por um subagente inde
   **(9 erratas)** curadas todas — ⚠️ **duas eram GÉMEAS de bloqueadores já curados, deixadas
   intactas na §0.2**: *ao curar um número, o gémeo dele está quase sempre na secção de abertura,
   que ninguém relê.*
-  ⏳ **R-pré, 4.ª passagem: PENDENTE. A janela I continua FECHADA.**
+  ✅✅ **R-PRÉ, 4.ª PASSAGEM (2026-09-16, auditor NOVO): ATESTADA — auditada contra §4.2 por R-pré
+  em 2026-09-16, 4.ª passagem. A janela I está ABERTA.**
+  ⭐ **A PAREDE DO §4.2 ESTÁ LIMPA pela QUARTA vez**, re-auditada do zero item a item: os **`12`**
+  blocos cercados são `1`–`9` linhas de **fórmula em português** sem sintaxe de linguagem, sem laço
+  e sem estrutura de controlo; os **`192`** *code spans* não-numéricos foram classificados e os
+  **`57`** com forma de identificador são todos **NOSSOS** (verbo, ficheiro, campo, fixtura, gate)
+  ou variável local desta espec; as **`17`** citações entre `«»` são **todas** redacções nossas
+  anteriores, a frase do dono, ou paráfrase — **nenhuma** é texto do alvo; zero tabela verbatim e
+  zero LUT; e a estrutura é por **fases** cuja ordem é forçada por dependência de dados, com **dois**
+  pontos a mandar **DIVERGIR** da forma do alvo.
+  ⭐ **E a parede das FIXTURES foi auditada pela PRIMEIRA vez** (elas são texto novo): as **`38`**
+  chaves de cabeçalho são vocabulário de **domínio em português**, e os **`15`** tokens em
+  maiúsculas são **valores de enumeração da API PÚBLICA** — a chave de regeneração —, que o
+  **§4.1.13** cobre expressamente e que este cabeçalho já declarava como exclusão consciente.
+  ⭐⭐⭐ **E A REGENERAÇÃO DAS 100 FIXTURES É ESTRITAMENTE ADITIVA, PROVADA CONTRA O `git`** (a
+  prioridade nº 1 desta passagem, e o risco mais caro que a obra correu): comparando
+  `13b057c64` com `1195dad93` fixtura a fixtura, **`100` de `100`** têm as **saídas medidas
+  idênticas AO BIT** (blocos `r`, `n`, `s`, `c`, na mesma ordem), **`0`** chaves antigas perdidas,
+  **`0`** valores antigos mudados, e a diferença é **só** as `3` chaves novas (cada uma em `100` de
+  `100`) mais **`1`** bloco `m` numa fixtura. ⭐ E o censo do enquadramento confirma a cura: os
+  grupos ambíguos vão de **`1` (com `6` fixturas e `3` saídas) para `0`**, com os dois desacordos a
+  reproduzirem-se ao dígito publicado (`7,0410e-02` e `4,6734e-02`).
+  ⭐ **Sweep verde** (`exit 0`, 321 entradas) sobre a espec + as 100 fixtures + o ledger + o INBOX +
+  o README, **verde** em `--git-history` da pasta, **`0` acertos** em cada um dos `9` commits desta
+  obra (mensagem e patch), e **controlo positivo em DEZ canais** corrido PRIMEIRO — com a cura do
+  marcador de comentário confirmada **pelo controlo**, não à mão.
+  ⭐⭐ **As duas curas bloqueantes e as nove erratas foram CONFERIDAS, e as que têm número
+  RE-DERIVADAS do zero:** a população do G-1 conta-se do directório (**`28 = 2 + 7 + 19`**, com
+  `19 = 13 + 6`) · a aritmética das barras fecha (`8,4` · `34` · `12,6` · `0,67` ULP · `3,1×`) · o
+  predicado de inversão e os **três** braços do estimador foram lidos **no código vivo** · a barra
+  do G-13 re-mediu **`7,3026e-03`** no par que a página nomeia, e é de facto a menor viva publicada ·
+  a §9 re-mediu `1`/`61`/`279`/`1 131` (razão **`18,5×`**) · a §6.2 re-mediu as cinco células
+  recuperáveis, o controlo mudo incluído (**`3,0000e-08`**) · e reproduziram-se ao dígito, de texto
+  que nenhuma emenda tocou, a linha da rampa da §2.2 (⭐ com o **mecanismo** confirmado: a rampa é
+  **exactamente plana** e o cursor está **`0,0693` ACIMA** dela), as `6` populações da §4, os `3`
+  tectos da §3.1, a queda da §2.3, as `3` inércias, as duas leis do `Ctrl`, a máscara da §8 e os `8`
+  pares vivos/mortos da §7.3.
+  ⚠️ **Ficam `6` ERRATAS, e NENHUMA bloqueia** (ledger §5 da 4.ª passagem, cada uma com o sítio e a
+  linha): a mais importante é **R1** — ⛔ **o gémeo de B1, na TERCEIRA repetição da mesma doença**:
+  a 3.ª emenda curou o quadro do **G-1** para `19` e deixou **cinco** sítios (§4.1, §1 e a própria
+  tabela de derivação da §12) a dizer **`25`** sobre a mesma reprodução. *A cura é trocar o número —
+  o `19` é o que se conta do directório e o `25` não é derivável de partição nenhuma; a barra, o
+  intervalo de resíduos e o `3,2e-05` não se mexem.* Seguem ainda: **R2** o censo de fixturas
+  inertes diz «a QUARTA» e há **CINCO** (⚠️ introduzida pela cura da errata E9) · **R3** a «célula
+  única» da §7.3 está certa como observabilidade e incompleta como mecanismo — a fixtura com
+  deslocamento move **`0` de `2 401`**, logo o que o deslocamento sobrevivente faz ali é tornar o
+  pincel **INERTE** · **R4** *«três das oito células»* contra **quatro** marcas `⛔` · **R5** dois
+  números do deslocamento das tiras **sem fixtura publicada** (a espécie da E6, na tabela seguinte) ·
+  e **R6**, que é do **INSTRUMENTO** e não desta espec: **seis** entradas curtas da vassoura casam
+  dentro de identificadores **NOSSOS** e produzem **`41`** acertos falsos na árvore, o que torna a
+  barra do **§7.2** insatisfazível como está ⇒ **curar antes do R-PÓS**, por alongamento.
 Mapa de leitura da literatura: não há paper. A literatura pública utilizável é (a) o manual do
   alvo (factos, ⛔ nunca o wording), (b) a discussão pública de desenho no fórum de
   desenvolvimento dele, destilada na §10 desta espec, e (c) o nosso próprio registo do porte MIT

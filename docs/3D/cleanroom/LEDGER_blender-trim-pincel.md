@@ -530,6 +530,43 @@ ser da obra da janela.
 os `4` bloqueadores (os `2` restantes são baratos e cabem na mesma emenda), depois **3.ª corrida**
 do R-pré sobre o texto novo.
 
+## 2.ª EMENDA DO E — 2026-09-16 (resposta aos 6 achados da 2.ª passagem do R-pré)
+
+⭐ **Confirmado pelo auditor novo e a não mexer:** as três curas da 1.ª passagem estão de pé (ele
+**re-derivou duas** em vez de as aceitar), a **parede do §4.2 está limpa** re-auditada do zero, e
+o sweep saiu verde com controlo positivo em **sete** canais.
+
+⛔⛔ **A LEI QUE ESTA RODADA PAGOU: três dos quatro bloqueadores tinham a MESMA doença — a 1.ª
+emenda mexeu num sítio e deixou o GÉMEO intacto.** É a lei da casa *«uma lei escrita em dois
+sítios ainda não é uma lei»*, aplicada a um documento em vez de a código: a barra do gate mudou na
+secção dos gates e não na de proveniência; a população do gate mudou no texto e não na tabela que
+a fundamenta; o número do ULP mudou na derivação e não nas linhas que o citavam. ⇒ **ao curar um
+número numa espec, procure o outro leitor dele antes de fechar.**
+
+| # | achado | cura |
+|---|---|---|
+| 1 | a tabela de proveniência publicava a barra **retirada** do gate discriminante como se fosse derivada de vales medidos, enquanto a secção dos gates já fixava a nova | a linha passa a carregar a **barra em vigor** (`1e-3`, com a derivação), e a retirada ganha a forma **«o que SAIU»** da linha de baixo, com o motivo: era **impossível** sobre o corpus publicado |
+| 2 | **BLOQUEADOR de conteúdo**, o mais pesado: a §2.6 atribuía à nossa casa um ramo que os quatro verbos de plano **não têm**. Eles lêem a superfície **viva incondicionalmente** e nunca consultam o interruptor de acumular; quem o consulta são **três outros verbos**, cuja referência é este mesmo alvo. A espec agrupava pelo eixo *«ajusta um plano?»* em vez de *«de que referência veio?»*, e mandava o pincel novo entrar «como os outros de plano» — o braço onde o interruptor fica **INERTE**, defeito que a nossa casa já pagou e curou | §2.6 reescrita com os **dois braços** em tabela, o verbo novo no que **CONSULTA** o interruptor, os quatro verbos de plano nomeados como **CONTRA-EXEMPLO**, e o preço do braço errado com os números que a nossa casa mediu (`1,04×` / `0,99×` / `1,00×` contra `1,74×`) |
+| 3 | a população declarada do gate discriminante não era recuperável da página: **11** anunciadas, **3** nomeadas não-discriminantes, **8** concluídas — mas a tabela tinha **8 colunas das quais 2 eram das nomeadas** ⇒ só **6** na página. As duas em falta eram as que variam a extensão de amostragem da **normal**, e as fixtures delas já existiam | a tabela da §2.2 está **TRANSPOSTA**: uma linha por célula, as **11** à vista, mais a coluna **`min \|errada\|`** e a coluna **`discrimina?`**. O piso (`0,00269`) e a contagem (`8`) passam a ser **lidos da página**, e o gate aponta para as duas colunas |
+| 4 | a barra do gate que afirma que o plano segue o cursor era a **única sem proveniência**: `1` raio, justificada com o defeito público do alvo — que entrega uma **propriedade**, não um número | **medida** sobre as `11` células: `0,0000 … 0,4947` raios, mediana `0,1649`. A barra passa a **`0,75 R + \|deslocamento\| · R`**, com o segundo termo **exacto** (§2.4) e o `0,75` declarado em voz alta como **decisão nossa** (`1,5×` o máximo medido, porque um corpus de um dab efectivo não limita um traço longo) |
+| 5 | o ruído de `f32` aparecia com **dois** valores, e a barra era derivada do menor ⇒ a folga lia-se `40 ULP` quando é `34` na escala do raio e **`8,4`** na maior coordenada das fixtures; e uma secção dizia `3e-8` onde outra publicava `8,0e-08` para as **mesmas** 24 configurações | derivação da §12 vira **tabela** com as duas escalas e o pior resíduo medido; a §1 e o G-1 passam a citar `8,0e-08` e `8,4 ULP` |
+| 6 | o mecanismo de duas células não-discriminantes era **refutado pela linha delas**: dizia que com uma amostra as candidatas *«dão o mesmo ponto»*, e a linha imprimia duas num valor e a terceira noutro | corrigido: as duas de `R_c` **colapsam sobre a própria amostra** e a do alvo fica **entre** a amostra e o cursor ⇒ o vão **COLAPSA para `0,00003`**, três ordens abaixo de qualquer barra usável, e **não desaparece**. A conclusão (excluir a célula) **mantém-se** |
+
+### Depois da 2.ª emenda
+
+- **Filtragem §4.3 re-executada** sobre o texto novo em 2026-09-16: toda frase acrescentada
+  descreve **o que o programa faz**, **o que o nosso código faz** ou **de onde sai um número**;
+  os números novos (`0,4947 R`, `0,1649 R`, `1,1921e-07`, `2,9802e-08`, `8,4 ULP`) são medições
+  datadas desta jornada sobre as fixtures publicadas e sobre o nosso próprio código.
+- **Sweep verde** com o instrumento de hoje, e o **controlo positivo** a continuar a disparar
+  sobre a redacção reprovada.
+- ⚠️ **Higiene aceite nas duas metades:** a vassoura descodifica-se **em memória** e um relatório
+  de sweep — que cita **em claro** os termos que acusaram — nunca é gravado no scratchpad da
+  janela-mãe. Nesta obra nenhum relatório foi gravado em ficheiro; a saída do sweep viveu só no
+  terminal, e o único ficheiro com a vassoura em claro vive dentro de `~/Referencias/`.
+
+⏳ **R-pré, 3.ª passagem: pendente. A janela I continua FECHADA.**
+
 ## Incidentes
 
 ### INC-R1 (2026-09-16) — **HIGIENE DE INSTRUMENTO do próprio R-pré. Sem exposição; registado porque um evento escondido é a acusação pronta**

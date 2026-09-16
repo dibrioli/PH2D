@@ -11,7 +11,7 @@ Patente (§8.1): buscado em 2026-09-15 — pincel de escultura que achata contra
   alisamento, não deste. As três patentes de escultura da era de 2001 estão EXPIRADAS. Arte
   anterior pública desde os anos 1990, e a metade antiga desta família distribui-se hoje sob MIT.
   Veredito: prosseguir.
-Filtragem §4.3: executada em 2026-09-15, RE-EXECUTADA sobre a emenda em 2026-09-16 · Sweep: ✅ VERDE em 2026-09-15 sobre **321** entradas
+Filtragem §4.3: executada em 2026-09-15, RE-EXECUTADA sobre as DUAS emendas em 2026-09-16 · Sweep: ✅ VERDE em 2026-09-15 sobre **321** entradas
   (104 identificadores internos + prosa do alvo em DUAS línguas, com e sem acentos − 16
   identificadores PÚBLICOS da API, que são a chave de regeneração das fixtures e que o
   precedente da casa deixa de fora — §4.1.13).
@@ -53,7 +53,27 @@ Auditoria §4.2 (R-pré): ⚠️ **CORRIDA em 2026-09-16** por um subagente inde
   **piso de população** e barra `1e-3` (`2,7×` abaixo do piso medido das oito que discriminam);
   (3) o quadro da §11 **derivado do directório**. Filtragem §4.3 re-executada sobre o texto novo e
   sweep re-corrido com o controlo positivo.
-  ⏳ **R-pré, 2.ª passagem: PENDENTE. A janela I continua FECHADA.**
+  ⚠️ **R-PRÉ, 2.ª PASSAGEM (2026-09-16, auditor NOVO): NÃO atestou — `6` achados, `4` bloqueiam.**
+  ⭐ **Confirmado e a não mexer:** as três curas da 1.ª passagem estão de pé, e o auditor
+  **re-derivou duas** em vez de as aceitar (leu o nosso estimador vivo; recalculou o piso do gate
+  discriminante). A **parede do §4.2 está limpa**, re-auditada do zero. Sweep verde sobre espec +
+  100 fixtures + anexos + histórico, com controlo positivo em **sete** canais.
+  ⛔ **A doença de TRÊS dos quatro bloqueadores era a mesma: a 1.ª emenda mexeu num sítio e deixou
+  o gémeo intacto** — *uma lei escrita em dois sítios ainda não é uma lei*.
+  ✅ **2.ª EMENDA ENTREGUE em 2026-09-16, os seis curados:** (1) a tabela de proveniência publicava
+  a barra **retirada** do G-5 como se fosse a que vigora ⇒ passa a carregar a **em vigor** e a
+  retirada fica marcada como retirada; (2) a §2.6 atribuía à nossa casa um ramo que os quatro
+  verbos de plano **não têm** — eles lêem o vivo **incondicionalmente** — e mandava o pincel novo
+  para o braço onde o interruptor fica **INERTE** ⇒ reescrita com os dois braços, o verbo novo no
+  que **CONSULTA** o interruptor e os quatro de plano nomeados como **contra-exemplo**; (3) a
+  população do G-5 não era recuperável da página (`8` colunas, duas delas não-discriminantes) ⇒ a
+  tabela da §2.2 está **transposta**, com as **11** células, a coluna do piso e a coluna
+  `discrimina?`; (4) a barra do **G-6** não tinha proveniência ⇒ **medida** (`0,0000 … 0,4947`
+  raios) e a parte que é **decisão nossa** declarada; (5) o ULP de `f32` estava errado ⇒ a barra
+  `1e-6` é `8,4` ULP na maior coordenada e `12×` o pior resíduo, e a §1 passa a citar `8,0e-08`;
+  (6) o mecanismo de duas células não-discriminantes era **refutado pela própria linha delas** ⇒
+  corrigido (o vão **colapsa** três ordens abaixo da barra, não desaparece), conclusão mantida.
+  ⏳ **R-pré, 3.ª passagem: PENDENTE. A janela I continua FECHADA.**
 Mapa de leitura da literatura: não há paper. A literatura pública utilizável é (a) o manual do
   alvo (factos, ⛔ nunca o wording), (b) a discussão pública de desenho no fórum de
   desenvolvimento dele, destilada na §10 desta espec, e (c) o nosso próprio registo do porte MIT
@@ -148,7 +168,8 @@ vértice se desloca.
 
 ⭐⭐⭐ **E a MEDIÇÃO derrubou a premissa óbvia sobre esse quadro: a orientação dele DENTRO do
 plano não alcança o resultado.** A reprodução da §4 usa **só** a normal do plano, o centro do
-plano e o raio — e reproduz a saída do alvo a **`3e-8`** (ruído de `f32`) em **24 de 25**
+plano e o raio — e reproduz a saída do alvo a **`≤ 8,0e-08`** (sub-ULP de `f32` na escala das
+fixtures, §12) em **24 de 25**
 configurações. ⇒ *a direcção do traço só serve para o quadro existir; que direcção ela é não é
 observável na saída deste pincel.* É uma simplificação que podemos adoptar **sem divergir**, e
 está gateada (§12, G-1).
@@ -195,31 +216,42 @@ a média é simples.** Um vértice **no centro** da pegada (peso `1`) contribui 
 vértice **na borda** (peso `0`) contribui com a **própria posição**. É o oposto do que a palavra
 *peso* sugere.
 
-⚠️ **Discriminação MEDIDA, em 11 configurações** (fixtures `lei/*`; a régua é a **altura de cada
-candidata contra o plano que o alvo de facto usou**, recuperado por ajuste como na §4.1; pincel de
-raio `R`, com `R_c` o raio de amostragem do alvo — §2.3):
+⚠️ **Discriminação MEDIDA, nas `11` configurações de `lei/*`** — a régua é a **altura de cada
+candidata contra o plano que o alvo de facto usou**, recuperado por ajuste como na §4.1.
+⭐ **A tabela está TRANSPOSTA de propósito: uma linha por célula, com TODAS as `11` à vista e a
+coluna do piso ao lado**, para que a população do gate G-5 e a barra dele sejam **recuperáveis
+desta página**. (A 1.ª redacção imprimia `8` colunas das quais duas eram não-discriminantes, e
+declarava `8` discriminantes — *o quadro não fechava com o gate que se apoiava nele*.)
 
-| candidata | crista `R 0,4` | rampa | degrau | bossas | `R_c` apertado (`0,25`) | `R_c` = `R` | `R_c` = `2R` | `R 0,6` |
-|---|---|---|---|---|---|---|---|---|
-| **a NOSSA lei real** — média aritmética sobre a pegada **inteira** (`R`) | `+0,03795` | `−0,01603` | `+0,00489` | `0,00000` | `+0,06853` | `−0,01613` | `−0,05012` | `+0,04186` |
-| média aritmética sobre `R_c` | `−0,01392` | `−0,01603` | `−0,00731` | `0,00000` | `−0,00003` | `−0,01613` | `−0,00269` | `−0,01825` |
-| média **ponderada** pelo peso, sobre `R_c` | `−0,02287` | `−0,01603` | `−0,00731` | `0,00000` | `−0,00003` | `−0,04635` | `−0,02928` | `−0,04105` |
-| ⭐ **média das posições PUXADAS para o cursor**, sobre `R_c` | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** |
+| célula | ⭐ alvo (§2.2) | a NOSSA lei real | média sobre `R_c` | ponderada sobre `R_c` | **min \|errada\|** | discrimina? |
+|---|---|---|---|---|---|---|
+| sulco, `R 0,4` | **`0,00000`** | `+0,03795` | `−0,01392` | `−0,02287` | `0,01392` | ✅ |
+| rampa | **`0,00000`** | `−0,01603` | `−0,01603` | `−0,01603` | `0,01603` | ✅ |
+| degrau | **`0,00000`** | `+0,00489` | `−0,00731` | `−0,00731` | `0,00489` | ✅ |
+| bossas | **`0,00000`** | `0,00000` | `0,00000` | `0,00000` | `0,00000` | ⛔ |
+| sulco, `R 0,2` | **`0,00000`** | `+0,01922` | `−0,00003` | `−0,00003` | `0,00003` | ⛔ |
+| sulco, `R 0,6` | **`0,00000`** | `+0,04186` | `−0,01825` | `−0,04105` | `0,01825` | ✅ |
+| `R_c` = `0,25 R` | **`0,00000`** | `+0,06853` | `−0,00003` | `−0,00003` | `0,00003` | ⛔ |
+| `R_c` = `R` | **`0,00000`** | `−0,01613` | `−0,01613` | `−0,04635` | `0,01613` | ✅ |
+| `R_c` = `2 R` | **`0,00000`** | `−0,05012` | `−0,00269` | `−0,02928` | **`0,00269`** | ✅ |
+| `R_n` = `0,25 R` | **`0,00000`** | `+0,03834` | `−0,01374` | `−0,02364` | `0,01374` | ✅ |
+| `R_n` = `R` | **`0,00000`** | `+0,03620` | `−0,01380` | `−0,02092` | `0,01380` | ✅ |
 
-⇒ a última cai **exactamente** no plano que o alvo usou, em **todas** as células, e as três
-outras erram por uma fracção do raio que o produto sente. *Quatro candidatas, uma régua, uma
-sobrevivente.*
+⇒ a candidata do alvo cai **exactamente** no plano dele em **todas as `11`**; as três outras erram
+por uma fracção do raio que o produto sente. *Quatro candidatas, uma régua, uma sobrevivente.*
 
-⚠️⚠️ **E TRÊS células não discriminam nada — por MECANISMO, e a espec tem de o dizer:**
+⭐ **`8` das `11` discriminam** (critério: `min |errada| ≥ 1e-3`), e o **piso delas é `0,00269`** —
+é daí, e só daí, que sai a barra do gate **G-5** (§12).
+
+⚠️⚠️ **E TRÊS células não discriminam — por MECANISMO, e a espec tem de o dizer certo:**
 
 | célula | porque não discrimina |
 |---|---|
 | **bossas** | a superfície é **antissimétrica em torno da linha do traço** ⇒ a altura média de *qualquer* conjunto simétrico de amostras é zero por construção, e as quatro candidatas coincidem em `0,00000`. ⭐ **É o mesmo mecanismo do controlo mudo da §6.2** — uma fixtura simétrica não separa leis que diferem por uma ponderação |
-| **`R_c` apertado** e **`R 0,2`** | o conjunto de amostragem do alvo tem **`1` vértice**: com uma amostra só, puxar-a-para-o-cursor, pesar e não pesar dão **o mesmo ponto** (as duas candidatas de `R_c` lêem `−0,00003`). ⚠️ A nossa lei ainda separa ali (`+0,06853`, `+0,01922`), porque ela amostra `61`–`279` vértices — *a degenerescência é da célula, não das leis* |
+| **`R_c` = `0,25 R`** e **sulco `R 0,2`** | o conjunto de amostragem do alvo tem **`1` vértice**. ⚠️ **As candidatas NÃO passam a dar o mesmo ponto** — as duas de `R_c` colapsam sobre a própria amostra e a do alvo fica **entre** a amostra e o cursor, logo o vão é a distância entre elas, ponderada. O que acontece é que esse vão **COLAPSA para `0,00003`**, três ordens de grandeza abaixo de qualquer barra usável. ⚠️ A nossa lei **ainda separa** ali (`+0,06853`, `+0,01922`), porque amostra `61`–`279` vértices — *a degenerescência é da célula e das duas candidatas de `R_c`, não de todas as leis* |
 
-⇒ **o gate G-5 (§12) DECLARA que corre sobre as `8` que discriminam**, com piso de população, e
-a barra dele sai do vale medido **dessas oito**. ⛔ Uma barra tirada da tabela inteira estaria
-por baixo de `0,00003` e não afirmaria nada.
+⇒ **o gate G-5 (§12) DECLARA que corre sobre as `8`**, com piso de população. ⛔ Uma barra tirada
+da tabela inteira estaria por baixo de `0,00003` e não afirmaria nada.
 
 ### §2.3 — Os DOIS raios, e a queda
 
@@ -277,8 +309,25 @@ perto da silhueta ajustar o plano com vértices do outro lado).
 Com o **acumular** desligado (o valor de fábrica) a amostragem lê as posições e as normais
 **congeladas no pen-down**; ligado, lê as vivas.
 
-⚠️ **A nossa casa já ramifica assim**, e a lista de quem congela está lá, com a medição ao lado.
-⇒ o pincel novo entra nessa lista **como os outros de plano**.
+⚠️⚠️ **A nossa casa ramifica, MAS NÃO PELO EIXO QUE ESTA SECÇÃO PARECE PEDIR — e a 1.ª redacção
+mandava o pincel novo para o braço errado.** O nosso estimador tem **dois** braços, e a linha que
+os separa é *de que REFERÊNCIA aquele verbo veio*, não *se ele ajusta um plano*:
+
+| braço | quem lá está hoje | o que faz |
+|---|---|---|
+| **lê o VIVO, incondicionalmente** | ⛔ **os quatro verbos de plano da casa** (`Flatten`, `Fill`, `Scrape`, `Clay`) | **nunca consulta o interruptor de acumular** |
+| **CONSULTA o interruptor** | os três verbos cuja referência é **este mesmo alvo** (`ClayStrips`, `ClayThumb`, `MultiplaneScrape`) | congela no pen-down com o interruptor desligado |
+
+⇒ **o pincel novo entra no braço que CONSULTA o interruptor**, ao lado dos três, porque a
+referência dele é este alvo. ⛔ **Os quatro verbos de plano são o CONTRA-EXEMPLO, não o modelo** —
+mandá-lo entrar «como os outros de plano» é mandá-lo para o braço que lê o vivo sempre.
+
+⚠️ **E o preço desse braço está MEDIDO na nossa própria casa**, que já o pagou e o curou: com o
+plano congelado, o interruptor de acumular ficava **INERTE** nos quatro verbos de plano
+(`1,04×` no barro, `0,99×` no achatar, `1,00×` no raspar, contra `1,74×` num verbo que o
+consome de verdade) — *o barro subia até ao plano do pen-down e PARAVA, e nenhum valor do
+interruptor mudava isso*. ⇒ pôr o pincel novo no braço errado reabriria um controlo morto que
+esta casa já removeu uma vez.
 
 ### §2.7 — ⛔ O que este pincel IGNORA, e é preciso medir para acreditar
 
@@ -667,21 +716,29 @@ enquadram o traço, uma por linha), blocos `r` (repouso), `n` (normais de repous
 
 ## §12 — Os GATES propostos, cada um com a barra e de onde ela veio
 
-⚠️ **A barra de paridade é DERIVADA, e a derivação é esta:** o oráculo calcula em `f32`; a
-reprodução independente da lei inteira lê `6,7e-09 … 8,0e-08` em 24 de 25 configurações, sobre
-coordenadas de ordem `0,4`. Um ULP de `f32` a `0,4` é `≈ 2,4e-08`. ⇒ a barra é **`1e-6` em
-unidades de objecto**, que é `≈ 40` ULP — folga para a ordem de somatório, e **duas ordens de
-grandeza** abaixo do pior desvio que a espec regista como divergência. ⛔ Não é um epsilon de
-conforto: é `40 ULP` do formato em que o oráculo respondeu.
+⚠️ **A barra de paridade é DERIVADA, e a derivação é esta** (⚠️ corrigida: a 1.ª redacção usava
+um ULP errado e citava a folga em `40`):
+
+| grandeza | valor |
+|---|---|
+| o oráculo calcula em | `f32` |
+| maior coordenada das fixtures (malhas de lado `2,0`) | `1,0` ⇒ `ULP(f32) = 1,1921e-07` |
+| na escala do raio do pincel (`0,4`) | `ULP(f32) = 2,9802e-08` |
+| pior resíduo MEDIDO da reprodução independente, em 24 de 25 configurações | **`8,0e-08`** (mínimo `6,7e-09`) — **`0,67` ULP** na maior coordenada |
+| ⇒ **a barra** | **`1e-6` em unidades de objecto** = **`8,4` ULP** na maior coordenada (`34` na escala do raio), e **`12×`** o pior resíduo medido |
+
+⛔ **Não é um epsilon de conforto:** é uma casa de ULP no formato em que o oráculo respondeu, e
+fica **duas ordens de grandeza** abaixo do único desvio que a espec regista como divergência
+(`3,2e-05`, §4.1).
 
 | # | gate | o que afirma | barra, e de onde |
 |---|---|---|---|
-| **G-1** | `a_lei_do_plano_reproduz_o_oraculo` | a lei das §§2–4 reproduz as **25** fixtures de `lei/` e `lados/` | `max|Δ| ≤ 1e-6` (40 ULP de `f32` a `0,4`) |
+| **G-1** | `a_lei_do_plano_reproduz_o_oraculo` | a lei das §§2–4 reproduz as **25** fixtures de `lei/` e `lados/` | `max|Δ| ≤ 1e-6` (`8,4` ULP de `f32` na maior coordenada das fixtures; `12×` o pior resíduo medido) |
 | **G-2** | `o_primeiro_dab_nao_move_nada` | um traço de **um** dab deixa a malha byte-idêntica | **igualdade exacta** — o alvo mede `0` de `2 401` |
 | **G-3** | `com_a_curva_constante_os_tocados_aterram_no_plano` | força `1` + curva constante ⇒ todos os tocados num plano só | resíduo `≤ 1e-6`; o alvo mede `0,0e+00 … 2,4e-08` |
 | **G-4** | `a_forca_entra_ao_quadrado` | força `0,5` desloca `0,25×` | `|razão − 0,25| ≤ 1e-5`; o alvo mede `0,249999 … 0,250001` |
-| **G-5** | `o_centro_da_area_e_a_media_das_posicoes_puxadas_para_o_cursor` | ⭐ **o gate DISCRIMINANTE, em DUAS metades.** (a) Sobre as **11** células de `lei/*`: a candidata da §2.2 cai no plano do oráculo. (b) Sobre as **8** que discriminam (§2.2, a tabela das que não discriminam e porquê): as **três** outras candidatas — a nossa lei real incluída — têm de **reprovar**. **+ piso de população: menos de `8` células discriminantes reprova o gate**, para que degenerar o corpus em silêncio não o branqueie | (a) `≤ 1e-6` (a barra de aceitação de G-1). (b) `≥ 1e-3`, **derivada do vale medido das oito**: o menor desvio de uma candidata errada ali é **`0,00269`**, logo a barra fica **`2,7×` abaixo do piso** e **`1000×` acima** da de aceitação. ⛔ A barra da 1.ª redacção (`5e-3`) era **impossível** — a própria tabela publica `0,00269` |
-| **G-6** | `o_plano_segue_o_cursor_e_nao_a_origem` | o centro do plano acompanha o cursor ao longo do traço | ⭐ a barra é o **defeito público do alvo** (§10.5): o centro não pode ficar a mais de `1` raio do dab. Um gate cuja barra é a de um defeito real vale mais do que um número escolhido |
+| **G-5** | `o_centro_da_area_e_a_media_das_posicoes_puxadas_para_o_cursor` | ⭐ **o gate DISCRIMINANTE, em DUAS metades.** (a) Sobre as **`11`** células de `lei/*` — **todas impressas na tabela da §2.2**: a candidata da §2.2 cai no plano do oráculo. (b) Sobre as **`8`** que discriminam — **a coluna `discrimina?` daquela mesma tabela diz quais, e a coluna do piso diz porquê**: as **três** outras candidatas, a nossa lei real incluída, têm de **reprovar**. **+ piso de população: menos de `8` células discriminantes reprova o gate**, para que degenerar o corpus em silêncio não o branqueie | (a) `≤ 1e-6` (a barra de aceitação de G-1). (b) `≥ 1e-3`, **derivada do vale medido das oito, que a tabela da §2.2 publica linha a linha**: o menor piso ali é **`0,00269`**, logo a barra fica **`2,69×` abaixo dele** e **`1000×` acima** da de aceitação. ⛔ A barra da 1.ª redacção (`5e-3`) era **impossível** — a mesma tabela publica `0,00269` |
+| **G-6** | `o_plano_segue_o_cursor_e_nao_a_origem` | o centro do plano acompanha o cursor: a distância do cursor ao plano, ao longo da normal, fica limitada | ⚠️ **MEDIDA, e com a parte que é decisão nossa declarada.** Sobre as `11` células de `lei/*` o alvo lê `0,0000 … 0,4947` raios (mediana `0,1649`; o máximo é na célula de menor raio). ⇒ a barra é **`0,75 R + |deslocamento| · R`**: o segundo termo é **exacto** (o deslocamento move o plano por `offset × R`, §2.4, medido a `0,2000`), e o `0,75` é **NOSSO** — `1,5×` o máximo medido, porque um corpus de **um** dab efectivo não limita o que um traço longo faz. ⛔ A 1.ª redacção dizia `1` raio e citava o defeito público do alvo como fonte: aquele defeito entrega uma **propriedade**, não um número |
 | **G-7** | `os_dois_tectos_escolhem_o_lado_e_so_o_lado` | `altura 1/profundidade 0` toca **só** acima; `0/1` **só** abaixo; `1/1` toca a união exacta dos dois | **contagens exactas** (`151` / `114` / `265 = 151+114`) |
 | **G-8** | `altura_zero_e_profundidade_zero_e_um_no_op` | o pincel inerte é alcançável | **igualdade exacta** |
 | **G-9** | `a_inversao_por_troca_e_o_par_trocado` | inverter no modo *trocar* = o par `(profundidade, altura)` não invertido | **igualdade exacta** — o alvo mede `0,000e+00` |
@@ -707,8 +764,10 @@ nossa versão sem este gate é herdar a doença com o desenho.
 | o tecto `20` da memória dos estabilizadores | **facto de comportamento** lido do alvo, confirmado pela saturação medida |
 | faixas `0…1` (altura, profundidade, corte, firmezas) e `0…2` (os dois raios de amostragem) | **facto de interface** do alvo |
 | valores de fábrica (`0,5` nos dois raios; `0` nas duas firmezas; `0` no deslocamento) | **facto de interface** do alvo |
-| a barra `1e-6` dos gates | **derivada**: `≈ 40 ULP` de `f32` na escala das fixtures (§12) |
-| a barra `5e-3` do G-5 e a `1e-4` do G-13 | **derivadas de vales MEDIDOS** que incluem o lado aprovado (§12) |
+| a barra `1e-6` dos gates | **derivada**: `8,4` ULP de `f32` na **maior coordenada** das fixtures (`1,0`) e `34` na escala do raio, e `12×` o pior resíduo medido — a tabela da derivação está na §12 |
+| a barra **`1e-3`** do G-5 e a **`1e-4`** do G-13 | **derivadas de vales MEDIDOS** que incluem o lado aprovado: a do G-5 do piso `0,00269` das oito células discriminantes, que a tabela da §2.2 publica **linha a linha**; a do G-13 da menor mudança medida num knob **vivo** do alvo (`1,1e-02`) |
+| a barra **`0,75 R`** do G-6 | ⚠️ **METADE medida, metade NOSSA, e as duas declaradas** (§12): o termo do deslocamento é exacto (`offset × R`, §2.4); o `0,75` é `1,5×` o máximo medido (`0,4947 R` sobre as `11` células) e a margem é **decisão nossa**, porque um corpus de um dab efectivo não limita um traço longo |
+| ⛔ **o que SAIU:** a barra `5e-3` do G-5 | ⚠️ **retirada por ser IMPOSSÍVEL**: a tabela da §2.2 publica um piso de `0,00269`, logo nenhuma corrida sobre o corpus publicado a satisfaria. A barra **em vigor é `1e-3`** (linha acima). A 1.ª redacção citava-a como *«derivada de um vale medido»* e o vale tinha sido lido sobre uma fracção das células |
 | a lição da §6.2 (a fixtura muda) | **medição**, e ela fica na espec porque uma barra calibrada sem o lado vivo mede outra coisa |
 | as alturas e os ângulos da **nossa** lei (§0.2 B e C, §2.2) | **medição de 2026-09-16**, feita com o estimador que os nossos quatro verbos de plano de facto chamam hoje — peso pela **máscara**, extensão = a **pegada inteira** —, sobre as fixtures publicadas, recuperando o plano do alvo pelo método da §4.1 |
 | ⛔ **o que SAIU:** o número do nosso registo de perf (*«um erro de centro de `5,8 %` do raio move o `Flatten` `0,54×`»*) | ⚠️ **retirado por ser o EPITÁFIO da lei ponderada, não prova de um buraco de hoje.** Aquela medição é de **2026-08-11** e foi a que CAUSOU a remoção da ponderação pelo falloff do nosso estimador. Citá-la em 2026-09-15 para dimensionar o buraco de hoje mede uma lei que já não existe. *O buraco real é maior, e está medido acima com a lei viva.* |

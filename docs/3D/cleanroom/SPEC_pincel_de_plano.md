@@ -257,8 +257,8 @@ vértice se desloca.
 ⭐⭐⭐ **E a MEDIÇÃO derrubou a premissa óbvia sobre esse quadro: a orientação dele DENTRO do
 plano não alcança o resultado.** A reprodução da §4 usa **só** a normal do plano, o centro do
 plano e o raio — e reproduz a saída do alvo a **`≤ 8,0e-08`** (sub-ULP de `f32` na escala das
-fixtures, §12) em **24 de 25**
-configurações. ⇒ *a direcção do traço só serve para o quadro existir; que direcção ela é não é
+fixtures, §12) em **18 de 19**
+configurações de um dab efectivo. ⇒ *a direcção do traço só serve para o quadro existir; que direcção ela é não é
 observável na saída deste pincel.* É uma simplificação que podemos adoptar **sem divergir**, e
 está gateada (§12, G-1).
 
@@ -531,12 +531,20 @@ que ele é a `1,0` (mediana sobre os vértices tocados; `min 0,249999`, `max 0,2
 ### §4.1 — A reprodução END-TO-END
 
 A lei inteira das §§2–4 foi reprogramada a partir do **repouso** e comparada à saída do alvo, em
-**25** configurações (fixtures `lei/*` e `lados/*`), variando superfície, raio, os dois raios de
+**19** configurações (fixtures `lei/*` e `lados/*`), variando superfície, raio, os dois raios de
 amostragem, o deslocamento e os dois tectos:
 
-- **24 de 25:** `max |Δ| ∈ [6,7e-09 … 8,0e-08]`, e a **população tocada bate exactamente** (por
+⚠️ **`19`, e o número CONTA-SE do directório** (`14 + 14 = 28` ficheiros, menos as **`2`** que não
+movem nada e as **`7`** que são traços inteiros de 8 dabs, que uma reprodução de um dab não
+alcança — a partição está escrita no **G-1**). *A 1.ª redacção desta secção dizia `25` sobre a
+mesma reprodução, e o `25` não é derivável de partição nenhuma do corpus* — era o **gémeo** do
+bloqueador B1, deixado para trás quando o quadro do gate foi curado. ⛔ **Terceira repetição da
+mesma doença nesta espec: ao curar um número, o gémeo dele mora na secção que o FUNDA, não na que
+o usa.**
+
+- **18 de 19:** `max |Δ| ∈ [6,7e-09 … 8,0e-08]`, e a **população tocada bate exactamente** (por
   exemplo `265` previstos contra `265` medidos, `151` contra `151`, `114` contra `114`).
-- **1 de 25 — e a causa está NOMEADA** (⚠️ é ela que obriga o **G-1** a nomear a população e a
+- **1 de 19 — e a causa está NOMEADA** (⚠️ é ela que obriga o **G-1** a nomear a população e a
   dar barra própria a esta fixtura — §12): a superfície com curvatura nos **dois** eixos lê
   `3,2e-05` (`1,5e-04` do deslocamento máximo). ⭐ **A divergência é inteiramente da NORMAL** — o
   centro previsto cai a `1,3e-09` do plano medido e o ângulo entre as duas normais é
@@ -699,7 +707,7 @@ justamente onde ele funciona melhor).
 | verbo | o deslocamento faz alguma coisa? | prova |
 |---|---|---|
 | **barro** | ✅ vivo | `+0,2` e `−0,2` mudam a saída `4,4e-02` |
-| **tiras de barro** | ✅ vivo | `3,4e-02` / `1,1e-02` |
+| **tiras de barro** | ✅ vivo | `3,4e-02` / `1,1e-02` — ⚠️ **os dois números NÃO têm fixtura publicada** (a espécie da errata E6, curada na tabela acima): a pasta `corte/` carrega o par do deslocamento para o barro, o polegar e a lâmina em V, **não** para as tiras. *Uma barra derivada daqui não seria verificável por quem lê a página* ⇒ o **G-13** tira a dele do `7,3e-03` das tiras no **corte**, que essa sim está publicada |
 | **polegar de barro** | ⛔ **MORTO** | `+0,2` e `−0,2` dão saída **byte-idêntica** a `0` |
 | **lâmina em V** | ⛔ **MORTO** — ⭐ **excepto numa célula** | ver abaixo |
 
@@ -714,15 +722,35 @@ Medido (fixtures `corte/corte_laminav_*`):
 |---|---|
 | modo fixo | **byte-idêntico** |
 | modo dinâmico | **byte-idêntico** |
-| modo dinâmico **+ invertido** | **`3,2e-02`** ⇒ ele vive |
+| modo dinâmico **+ invertido** | **`3,2e-02`** ⇒ o valor CHEGA |
+
+⚠️⚠️ **E o mecanismo dessa célula não é o que a 1.ª redacção deixava supor.** Ela está certa como
+**observabilidade** — o valor chega ao consumidor e a saída muda — e estava **incompleta como
+mecanismo**: na fixtura com deslocamento o pincel move **`0` de `2 401`** vértices. ⇒ *o que o
+deslocamento sobrevivente ali faz é tornar o pincel **INERTE**, não deslocar o plano pela
+magnitude publicada.* O `3,2e-02` é a distância entre **mover** e **não mover**, não entre dois
+planos. ⛔ Quem portar isto à espera de um plano deslocado porta outra coisa.
+⭐ **A conclusão e a instrução não mudam:** o par chega ao consumidor num caminho de três, e
+**não se porta por simetria**.
 
 ⚠️ **É exactamente a espécie que o `CLAUDE.md §5.0` chama *«o consumidor que PROJECTA o valor
 fora»*: o fio está completo, o valor chega ao solver, e a matemática descarta-o.** Nenhuma sonda
 de *«quem lê este campo?»* o veria — ele **é** lido.
 
 ⇒ **A consequência para nós é directa: NÃO porte o par (corte, deslocamento) para os quatro
-verbos por simetria.** Cada um deles ou lê o knob ou não o lê, e três das oito células medidas
-estão mortas no alvo.
+verbos por simetria.** Cada um deles ou lê o knob ou não o lê.
+
+⚠️ **E a contagem precisa de um DISCRIMINADOR, que a 1.ª redacção não escrevia:** as duas tabelas
+acima levam **`4`** marcas `⛔` sobre `8` células, e elas não são a mesma coisa —
+
+| espécie | quantas | quais |
+|---|---|---|
+| **morto em TODAS as células medidas** | **`3`** | o corte no barro · o corte no polegar · o deslocamento no polegar |
+| **morto em `2` de `3` modos, vivo no terceiro** | **`1`** | o deslocamento na lâmina em V (e o terceiro modo torna o pincel inerte, não desloca o plano) |
+
+⇒ *«três pares mortos» é a contagem da primeira espécie*, e é a que a §0.2(F) e o G-13 citam. A
+quarta marca é a célula única, que é **outra** doença: não é um valor que ninguém lê, é um valor
+que **um** caminho lê.
 
 ---
 
@@ -737,7 +765,7 @@ estão mortas no alvo.
 | **máscara** | entra como factor, antes de tudo; metade mascarada move `327` em vez de `560` |
 | **traço parado** | os dabs seguintes ao primeiro continuam a trabalhar, porque a direcção já existe |
 | **objecto com escala** | o deslocamento do plano é multiplicado pela escala do objecto antes de o aplicar ao centro |
-| **pegada projectada em vez de esférica** | a normal do plano é projectada para fora da direcção da vista e renormalizada. ⛔⛔ **E na fixtura publicada isso move `0` de `2 401` vértices** (`superficies/opcao_pegada_projectada`): com a vista de topo sobre um campo de altura, tirar a componente da vista deixa a normal **no plano do ecrã**, e um plano visto de perfil não tem sob si nada que esteja «acima» ou «abaixo» dele dentro da pegada. ⚠️ **É a QUARTA fixtura inerte do corpus** (com o primeiro dab, os dois tectos a zero e a superfície já plana), e a única cuja inércia **não é a lei a funcionar** — é a fixtura a não ter sujeito. *Publicá-la sem dizer isto convidaria a lê-la como prova de que a opção não faz nada* |
+| **pegada projectada em vez de esférica** | a normal do plano é projectada para fora da direcção da vista e renormalizada. ⛔⛔ **E na fixtura publicada isso move `0` de `2 401` vértices** (`superficies/opcao_pegada_projectada`): com a vista de topo sobre um campo de altura, tirar a componente da vista deixa a normal **no plano do ecrã**, e um plano visto de perfil não tem sob si nada que esteja «acima» ou «abaixo» dele dentro da pegada. ⚠️ **É a QUINTA fixtura inerte do corpus** (com o primeiro dab, os dois tectos a zero, a superfície já plana e a do deslocamento na lâmina em V em modo dinâmico+invertido — §7.3), e a única cuja inércia **não é a lei a funcionar** — é a fixtura a não ter sujeito. ⚠️ *A 1.ª redacção dizia «a QUARTA», e a quinta apareceu quando outra errata foi curada: **um censo escrito como número envelhece na emenda seguinte** — conte-as pela lista que está aqui.* *Publicá-la sem dizer isto convidaria a lê-la como prova de que a opção não faz nada* |
 
 ---
 
@@ -836,7 +864,7 @@ um ULP errado e citava a folga em `40`):
 | o oráculo calcula em | `f32` |
 | maior coordenada das fixtures (malhas de lado `2,0`) | `1,0` ⇒ `ULP(f32) = 1,1921e-07` |
 | na escala do raio do pincel (`0,4`) | `ULP(f32) = 2,9802e-08` |
-| pior resíduo MEDIDO da reprodução independente, em 24 de 25 configurações | **`8,0e-08`** (mínimo `6,7e-09`) — **`0,67` ULP** na maior coordenada |
+| pior resíduo MEDIDO da reprodução independente, em 18 de 19 configurações | **`8,0e-08`** (mínimo `6,7e-09`) — **`0,67` ULP** na maior coordenada |
 | ⇒ **a barra** | **`1e-6` em unidades de objecto** = **`8,4` ULP** na maior coordenada (`34` na escala do raio), e **`12×`** o pior resíduo medido |
 
 ⛔ **Não é um epsilon de conforto:** é uma casa de ULP no formato em que o oráculo respondeu, e

@@ -517,14 +517,35 @@ pub fn tr(key: &str) -> &'static str {
 ///
 /// ⚠️ Um marcador sem valor fica ESCRITO (`{n}`), de propósito — como a chave desconhecida do [`tr`],
 /// o erro tem de se ver na tela.
+///
+/// ⛔ **Uma passagem só sobre o MODELO** (2026-09-16): substituir marcador a marcador deixava um
+/// VALOR com cara de marcador ser reescrito pelo seguinte — um prefab chamado `{follows}`. Os valores
+/// são texto do artista e saem verbatim (gate `a_value_never_becomes_a_marker`).
 pub fn tr_with(key: &str, args: &[(&str, &dyn std::fmt::Display)]) -> String {
-    let mut out = tr(key).to_string();
-    for (name, value) in args {
-        let marker = format!("{{{name}}}");
-        if out.contains(&marker) {
-            out = out.replace(&marker, &value.to_string());
+    let template = tr(key);
+    let mut out = String::with_capacity(template.len());
+    let mut rest = template;
+    while let Some(open) = rest.find('{') {
+        out.push_str(&rest[..open]);
+        let after = &rest[open + 1..];
+        let named = after.find('}').and_then(|close| {
+            let name = &after[..close];
+            args.iter()
+                .find(|(n, _)| *n == name)
+                .map(|(_, v)| (close, *v))
+        });
+        match named {
+            Some((close, value)) => {
+                out.push_str(&value.to_string());
+                rest = &after[close + 1..];
+            }
+            None => {
+                out.push('{');
+                rest = after;
+            }
         }
     }
+    out.push_str(rest);
     out
 }
 

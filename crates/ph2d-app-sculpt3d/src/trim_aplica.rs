@@ -103,6 +103,9 @@ impl Sculpt3dScene {
             self.mesh(),
             ph2d_trim::Profundidade::DaPeca,
             ph2d_trim::Paredes::Fixas,
+            // ⭐⭐⭐ **A densidade da LÂMINA é a densidade da PEÇA** — ver
+            // [`alvo_da_lamina`]. É esta linha que responde ao report do dono.
+            ph2d_trim::Resolucao::Ate(alvo_da_lamina(self.mesh())),
         )
         .map_err(TrimRecusa::Gesto)?;
 
@@ -122,3 +125,40 @@ impl Sculpt3dScene {
         Ok(())
     }
 }
+
+/// ⭐⭐⭐ **A aresta que a peça TEM** — o alvo com que a lâmina é tesselada.
+///
+/// # Porque ela existe (report do dono, 2026-09-15, com foto)
+///
+/// *«o remesh da face que você cortou fica ruim demais»*. A face que um corte
+/// deixa é a **parede do prisma** recortada pela peça, logo ela herda a
+/// tesselação da lâmina — e uma lâmina de duas faces deixava a face cortada com
+/// **dois triângulos**, `1 385 ×` mais grossa que a peça à volta dela (medido
+/// numa peça de `10 000` triângulos). Uma face plana com dois triângulos tem os
+/// cantos a partilhar a normal da esfera ⇒ ela é **sombreada como se fosse
+/// curva**, que é o aspecto derretido da foto, e não há onde esculpir a seguir.
+///
+/// ⭐ **A régua é a que a casa já tem** ([`ph2d_mesh::edge_for_tri_count`], a
+/// mesma do alvo de topologia): o lado de um triângulo equilátero que ladrilha
+/// esta **ÁREA** com esta **CONTAGEM**. ⚠️ E ela é ancorada na área de
+/// propósito — *a densidade não é propriedade da vista nem da caixa*, que é a
+/// lei que este módulo já pagou duas vezes (o `Quad Size` absoluto do botão de
+/// retopologia, e o alvo de topologia que variava `4,9 ×` com o zoom).
+///
+/// ⚠️ **Medida contra a mediana das arestas nas fixturas da casa, ela concorda
+/// a `1,03 ×`–`1,10 ×`** — e custa uma passagem sem alocação nenhuma, contra
+/// uma ordenação de `3 × T` números.
+pub(crate) fn alvo_da_lamina(peca: &ph2d_mesh::Mesh) -> f32 {
+    // ⚠️ **Triângulos, não faces:** um quad conta DOIS, e ler `face_count` daria
+    // um alvo `√2 ×` grosso numa peça que ainda não foi triangulada.
+    let tris: usize = peca
+        .faces()
+        .iter()
+        .map(|f| f.verts().len().saturating_sub(2))
+        .sum();
+    ph2d_mesh::edge_for_tri_count(peca.surface_area(), tris as f32)
+}
+
+#[cfg(test)]
+#[path = "trim_aplica_tests.rs"]
+mod tests;

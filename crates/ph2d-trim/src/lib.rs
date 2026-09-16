@@ -71,6 +71,85 @@ pub enum Paredes {
     Projectadas,
 }
 
+/// ⭐⭐⭐ **Quão fina é a malha do prisma — que é a malha que a FACE CORTADA vai
+/// ter.**
+///
+/// # Porque isto existe (report do dono, 2026-09-15, com foto)
+///
+/// *«o remesh da face que você cortou fica ruim demais»*. Medido: a tampa de um
+/// corte numa peça de `10 000` triângulos saía com **DOIS** triângulos —
+/// `1 385×` menos do que a densidade da própria peça — e os cantos dela herdam
+/// a normal da esfera, logo uma face **plana** era sombreada como se fosse
+/// curva. *Não era a triangulação que estava torta: era a face a não ter malha
+/// nenhuma.*
+///
+/// ⭐ **A cura não é um pós-passe sobre o resultado, é a lâmina:** o que o motor
+/// de booleana devolve na superfície de corte é a tesselação da **PAREDE DO
+/// PRISMA** recortada pela peça. ⇒ *um prisma tesselado dá um corte tesselado*,
+/// e a propriedade que decide a arquitectura — longe do corte, nem um bit — fica
+/// intacta **por construção**, porque nada toca a malha da peça.
+///
+/// # ⚠️ O preço, MEDIDO (release, esfera, `Op::Subtrair`)
+///
+/// | peça | lâmina mínima | lâmina à aresta da peça | tampa |
+/// |---|---|---|---|
+/// | `10 000` T | `15,9 ms` | **`23,5 ms`** | `2` → `2 450` |
+/// | `50 176` T | `85,3 ms` | **`128,7 ms`** | `2` → `12 482` |
+/// | `199 809` T | `413,8 ms` | **`545,0 ms`** | `2` → `49 928` |
+///
+/// ⇒ **o custo é da PEÇA, não da lâmina** (`+32 %` a `+51 %`), e por isso não há
+/// aqui tecto de qualidade nenhum a inventar: a contagem da lâmina é
+/// `perímetro/alvo × profundidade/alvo`, isto é, ela escala com a peça sozinha.
+/// O único tecto que existe ([`TECTO_DE_TRIANGULOS`]) é contra um `alvo`
+/// absurdo vindo de quem chama, e é renormalização — nunca uma recusa.
+#[derive(Clone, Copy, Debug)]
+pub enum Resolucao {
+    /// Duas faces por parede: o prisma mínimo que encerra volume.
+    ///
+    /// ⚠️ É a saída desta lei até 2026-09-15, e fica por ser a **rota de
+    /// bissecção** — e porque os gates de contagem da espec §7.1 falam dela.
+    Minima,
+    /// Nenhuma aresta das **PAREDES** acima deste comprimento, em unidades de
+    /// cena.
+    ///
+    /// ⚠️ **Subdividir não move a superfície um bit:** as paredes são regradas e
+    /// as tampas planas, então os pontos novos saem de interpolação **na própria
+    /// superfície**. Há gate a comparar o volume das duas resoluções.
+    ///
+    /// # ⛔ As TAMPAS: a fronteira sim, o interior não — e porquê
+    ///
+    /// O anel adensado é **obrigatório** na tampa (senão nasce uma junta em T e
+    /// o motor lê a lâmina como **ABERTA**), mas o **interior** dela fica com a
+    /// triangulação grossa mais um leque, logo pode ter aresta bem acima do
+    /// alvo — medido, a diagonal de uma tampa de `1 × 1` com alvo `0,4` mede
+    /// `1,414`.
+    ///
+    /// ⭐ **E isso não toca o produto**, porque no regime que shipa
+    /// ([`Profundidade::DaPeca`]) as tampas ficam **FORA da peça** por
+    /// construção — o enchimento da [`faixa`] afasta-as —, logo elas nunca
+    /// aparecem na superfície cortada. ⚠️ **Dívida NOMEADA para o dia em que a
+    /// [`Profundidade::DoCursor`] chegar à interface:** ali a tampa **é** a face
+    /// do corte, e um bolso sairia com o interior grosso. A cura é triangular a
+    /// tampa com pontos interiores, que é trabalho próprio.
+    Ate(f32),
+}
+
+/// O tecto de triângulos da lâmina — e **de que recurso ele é**: o relógio do
+/// motor de booleana, medido nesta casa.
+///
+/// | triângulos da lâmina | corte numa peça de `10 000` T |
+/// |---|---|
+/// | `14 700` | `20,1 ms` |
+/// | `58 800` | `41,3 ms` |
+/// | `231 852` | `132,4 ms` |
+/// | `927 408` | `523,6 ms` |
+///
+/// ⇒ acima daqui a lâmina passa a ser o custo em vez da peça. ⚠️ **O caminho do
+/// produto nunca lá chega** (o `alvo` vem da peça, logo a lâmina escala com
+/// ela): isto é a rede contra um `alvo` degenerado de quem chama, e ela
+/// **renormaliza o alvo para cima**, nunca recusa o gesto.
+pub const TECTO_DE_TRIANGULOS: usize = 200_000;
+
 /// Porque é que não há prisma.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Recusa {
@@ -128,6 +207,7 @@ pub fn prisma(
     peca: &Mesh,
     profundidade: Profundidade,
     paredes: Paredes,
+    resolucao: Resolucao,
 ) -> Result<Mesh, Recusa> {
     if anel.len() < 3 {
         return Err(Recusa::GestoDegenerado);
@@ -169,35 +249,60 @@ pub fn prisma(
 
     let (frente, tras) = faixa(plano.origem, eixo, peca, profundidade)?;
 
-    let mut pos = Vec::with_capacity(2 * n);
+    // ── OS DOIS ANÉIS, como a espec §7.1 os descreve ───────────────────────
+    let mut frente_anel = Vec::with_capacity(n);
     for r in raios {
-        pos.push(pousa(r, plano.origem, eixo, frente)?);
+        frente_anel.push(pousa(r, plano.origem, eixo, frente)?);
     }
+    let mut tras_anel = Vec::with_capacity(n);
     for (i, r) in raios.iter().enumerate() {
-        pos.push(match paredes {
+        tras_anel.push(match paredes {
             Paredes::Projectadas => pousa(r, plano.origem, eixo, tras)?,
             // ⚠️ O vértice DA FRENTE deslocado pela normal — é isto que torna
             // este modo independente da vista.
             Paredes::Fixas => {
                 let d = tras - frente;
-                let f = pos[i];
+                let f = frente_anel[i];
                 [f[0] + eixo[0] * d, f[1] + eixo[1] * d, f[2] + eixo[2] * d]
             }
         });
     }
 
-    let mut faces = Vec::with_capacity(2 * (n - 2) + 2 * n);
+    // ── A RESOLUÇÃO (ver [`Resolucao`]) ────────────────────────────────────
+    let alvo = alvo_que_cabe(&frente_anel, &tras_anel, resolucao);
+    let (frente_d, tras_d, denso_de) = adensa_o_anel(&frente_anel, &tras_anel, alvo);
+    let filas = filas_em_profundidade(&frente_anel, &tras_anel, alvo);
+    let mm = u32::try_from(frente_d.len()).map_err(|_| Recusa::GestoDegenerado)?;
+
+    // A grelha: uma fila de anel por degrau de profundidade. ⚠️ Os pontos novos
+    // são interpolações **na própria superfície** — a parede é regrada e a tampa
+    // é plana —, então adensar não move a forma.
+    let mut pos = Vec::with_capacity(frente_d.len() * (filas + 1));
+    for r in 0..=filas {
+        let t = r as f32 / filas as f32;
+        for k in 0..frente_d.len() {
+            pos.push(lerp(frente_d[k], tras_d[k], t));
+        }
+    }
+    let ultima = u32::try_from(filas).map_err(|_| Recusa::GestoDegenerado)? * mm;
+
+    let mut faces = Vec::with_capacity(2 * (n - 2) + 2 * frente_d.len() * filas);
     // As duas tampas partilham a MESMA lista de triângulos (espec §7.3), com
     // enrolamento oposto.
-    let nn = u32::try_from(n).map_err(|_| Recusa::GestoDegenerado)?;
     for t in &tris_2d {
-        faces.push(Face::tri(t[0], t[2], t[1]));
-        faces.push(Face::tri(t[0] + nn, t[1] + nn, t[2] + nn));
+        tampa(&mut faces, &mut pos, t, &denso_de, n, 0, false);
+        tampa(&mut faces, &mut pos, t, &denso_de, n, ultima, true);
     }
-    for i in 0..nn {
-        let j = (i + 1) % nn;
-        faces.push(Face::tri(i, j, j + nn));
-        faces.push(Face::tri(i, j + nn, i + nn));
+    for r in 0..filas {
+        let (base, topo) = (
+            u32::try_from(r).map_err(|_| Recusa::GestoDegenerado)? * mm,
+            u32::try_from(r + 1).map_err(|_| Recusa::GestoDegenerado)? * mm,
+        );
+        for k in 0..mm {
+            let l = (k + 1) % mm;
+            faces.push(Face::tri(base + k, base + l, topo + l));
+            faces.push(Face::tri(base + k, topo + l, topo + k));
+        }
     }
 
     let mut m = Mesh::from_parts(pos, faces).map_err(|_| Recusa::GestoDegenerado)?;
@@ -205,6 +310,164 @@ pub fn prisma(
         inverte(&mut m);
     }
     Ok(m)
+}
+
+/// O `alvo` de aresta que **cabe** — ver [`TECTO_DE_TRIANGULOS`].
+///
+/// ⚠️ Ele sobe, nunca desce: renormalizar para cima entrega uma lâmina mais
+/// grossa; recusar entregaria um gesto perdido.
+fn alvo_que_cabe(frente: &[[f32; 3]], tras: &[[f32; 3]], r: Resolucao) -> Option<f32> {
+    let mut a = match r {
+        Resolucao::Minima => return None,
+        Resolucao::Ate(a) if a > 0.0 && a.is_finite() => a,
+        // ⚠️ Um alvo não-positivo ou não-finito **não é uma recusa**: é o pedido
+        // de nada, e a lâmina mínima é exactamente isso.
+        Resolucao::Ate(_) => return None,
+    };
+    for _ in 0..16 {
+        let t = triangulos_previstos(frente, tras, a);
+        if t <= TECTO_DE_TRIANGULOS as f64 {
+            break;
+        }
+        // A contagem é quadrática em `1/a`, logo a raiz é o passo exacto; o piso
+        // de `1,05` é o que garante que o laço termina se a previsão saturar.
+        a *= ((t / TECTO_DE_TRIANGULOS as f64).sqrt() as f32).max(1.05);
+    }
+    Some(a)
+}
+
+fn triangulos_previstos(frente: &[[f32; 3]], tras: &[[f32; 3]], a: f32) -> f64 {
+    let n = frente.len();
+    let m: f64 = (0..n)
+        .map(|i| f64::from(pedacos(frente, tras, i, Some(a)) as u32))
+        .sum();
+    m * f64::from(filas_em_profundidade(frente, tras, Some(a)) as u32) * 2.0
+}
+
+/// Em quantos pedaços o segmento `i → i+1` do anel se parte.
+///
+/// ⚠️ **Mede-se nos DOIS anéis e fica o maior:** em [`Paredes::Projectadas`] a
+/// parede é um trapézio, e medir só a frente deixaria a aresta de trás acima do
+/// alvo.
+fn pedacos(frente: &[[f32; 3]], tras: &[[f32; 3]], i: usize, alvo: Option<f32>) -> usize {
+    let Some(a) = alvo else { return 1 };
+    let j = (i + 1) % frente.len();
+    let d = dist3(frente[i], frente[j]).max(dist3(tras[i], tras[j]));
+    ((d / a).ceil()).clamp(1.0, 1e9) as usize
+}
+
+/// Quantos degraus em profundidade — o mesmo número para todas as paredes, que é
+/// o que impede uma junta em T entre paredes vizinhas.
+fn filas_em_profundidade(frente: &[[f32; 3]], tras: &[[f32; 3]], alvo: Option<f32>) -> usize {
+    let Some(a) = alvo else { return 1 };
+    let d = frente
+        .iter()
+        .zip(tras)
+        .map(|(f, t)| dist3(*f, *t))
+        .fold(0.0f32, f32::max);
+    ((d / a).ceil()).clamp(1.0, 1e9) as usize
+}
+
+/// O anel grosso adensado. Devolve `(frente, trás, onde cada canto GROSSO ficou)`
+/// — a terceira lista tem `n + 1` entradas, e a última é o comprimento, para que
+/// os pontos do último segmento se leiam sem caso especial de dar a volta.
+fn adensa_o_anel(
+    frente: &[[f32; 3]],
+    tras: &[[f32; 3]],
+    alvo: Option<f32>,
+) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
+    let n = frente.len();
+    let mut fd = Vec::with_capacity(n);
+    let mut td = Vec::with_capacity(n);
+    let mut onde = Vec::with_capacity(n + 1);
+    for i in 0..n {
+        let j = (i + 1) % n;
+        onde.push(fd.len() as u32);
+        fd.push(frente[i]);
+        td.push(tras[i]);
+        let k = pedacos(frente, tras, i, alvo);
+        for s in 1..k {
+            let t = s as f32 / k as f32;
+            fd.push(lerp(frente[i], frente[j], t));
+            td.push(lerp(tras[i], tras[j], t));
+        }
+    }
+    onde.push(fd.len() as u32);
+    (fd, td, onde)
+}
+
+/// Uma tampa, a partir de um triângulo do anel GROSSO.
+///
+/// ⛔⛔ **Um ponto que o adensamento pôs numa aresta do anel NÃO é opcional para
+/// a tampa.** Ele pertence às paredes; se a tampa continuasse a ir de canto a
+/// canto, a malha ficava com uma **junta em T** — e o motor lê uma junta em T
+/// como superfície **ABERTA**. Medido nesta casa com a primeira sonda deste
+/// trabalho: seis grelhas sem vértices partilhados devolveram `LaminaAberta`,
+/// e uma lâmina aberta não corta nada.
+///
+/// ⚠️ **O leque parte do CENTRO do laço, e não de um canto:** os pontos de uma
+/// aresta subdividida são colineares com os cantos dela, logo um leque a partir
+/// de um canto emitiria triângulos de área **zero**. O centro de um laço de
+/// fronteira de um triângulo está estritamente dentro dele.
+fn tampa(
+    faces: &mut Vec<Face>,
+    pos: &mut Vec<[f32; 3]>,
+    tri: &[u32; 3],
+    denso_de: &[u32],
+    n: usize,
+    fila: u32,
+    invertida: bool,
+) {
+    let mut laco: Vec<u32> = Vec::with_capacity(3);
+    for e in 0..3 {
+        let u = tri[e] as usize;
+        let v = tri[(e + 1) % 3] as usize;
+        laco.push(fila + denso_de[u]);
+        // ⚠️ Só uma aresta DO ANEL tem pontos; uma diagonal interior da
+        // triangulação não foi tocada pelo adensamento.
+        if v == (u + 1) % n {
+            for x in (denso_de[u] + 1)..denso_de[u + 1] {
+                laco.push(fila + x);
+            }
+        }
+    }
+    let vira = |a: u32, b: u32, c: u32| {
+        if invertida {
+            Face::tri(a, b, c)
+        } else {
+            Face::tri(a, c, b)
+        }
+    };
+    if laco.len() == 3 {
+        faces.push(vira(laco[0], laco[1], laco[2]));
+        return;
+    }
+    let centro = {
+        let mut c = [0.0f32; 3];
+        for &i in &laco {
+            let p = pos[i as usize];
+            c = [c[0] + p[0], c[1] + p[1], c[2] + p[2]];
+        }
+        let k = laco.len() as f32;
+        [c[0] / k, c[1] / k, c[2] / k]
+    };
+    pos.push(centro);
+    let ci = (pos.len() - 1) as u32;
+    for i in 0..laco.len() {
+        faces.push(vira(ci, laco[i], laco[(i + 1) % laco.len()]));
+    }
+}
+
+fn lerp(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
+    [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+    ]
+}
+
+fn dist3(a: [f32; 3], b: [f32; 3]) -> f32 {
+    ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
 }
 
 /// A faixa `(frente, trás)` ao longo do eixo (espec §6).

@@ -8919,6 +8919,7 @@ name = "ph2d-trim"
 version = "0.0.0"
 dependencies = [
  "ph2d-mesh",
+ "ph2d-mesh-bool",
 ]
 
 [[package]]

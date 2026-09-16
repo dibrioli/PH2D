@@ -59,6 +59,7 @@ fn o_prisma_tem_2n_vertices_e_2n_menos_2_mais_2n_faces() {
             &bola,
             Profundidade::DaPeca,
             Paredes::Fixas,
+            Resolucao::Minima,
         )
         .expect("o prisma");
         assert_eq!(p.vert_count(), 2 * n, "n = {n}: vértices");
@@ -84,6 +85,7 @@ fn o_prisma_fecha_e_por_isso_serve_de_lamina() {
                 &bola,
                 Profundidade::DaPeca,
                 paredes,
+                Resolucao::Minima,
             )
             .expect("o prisma");
             assert_eq!(
@@ -120,6 +122,7 @@ fn o_mesmo_c_desenhado_nos_dois_sentidos_da_a_mesma_saida_ao_bit() {
             &bola,
             Profundidade::DaPeca,
             Paredes::Fixas,
+            Resolucao::Minima,
         )
         .expect("o prisma");
         let mut bits: Vec<[u32; 3]> = p
@@ -154,10 +157,18 @@ fn as_paredes_fixas_ignoram_a_vista_e_as_projectadas_nao() {
     let bola = shapes::uv_sphere(12, 16, 1.0);
     let anel = caixa();
     let corre = |raios: &[Ray], paredes| {
-        prisma(&anel, raios, &plano(), &bola, Profundidade::DaPeca, paredes)
-            .expect("o prisma")
-            .positions()
-            .to_vec()
+        prisma(
+            &anel,
+            raios,
+            &plano(),
+            &bola,
+            Profundidade::DaPeca,
+            paredes,
+            Resolucao::Minima,
+        )
+        .expect("o prisma")
+        .positions()
+        .to_vec()
     };
 
     let d = |a: &[[f32; 3]], b: &[[f32; 3]]| {
@@ -204,6 +215,7 @@ fn as_paredes_fixas_ignoram_a_vista_e_as_projectadas_nao() {
         &bola,
         Profundidade::DaPeca,
         Paredes::Fixas,
+        Resolucao::Minima,
     )
     .expect("o prisma");
     let v = p.positions();
@@ -228,6 +240,7 @@ fn as_paredes_fixas_ignoram_a_vista_e_as_projectadas_nao() {
         &bola,
         Profundidade::DaPeca,
         Paredes::Projectadas,
+        Resolucao::Minima,
     )
     .expect("o prisma");
     let w = q.positions();
@@ -258,10 +271,18 @@ fn as_paredes_fixas_ignoram_a_vista_e_as_projectadas_nao() {
     // (4) E a divergência entre os dois modos CRESCE com a força da perspectiva.
     let longe = raios_persp(&anel, 8.0);
     let corre = |raios: &[Ray], paredes| {
-        prisma(&anel, raios, &plano(), &bola, Profundidade::DaPeca, paredes)
-            .expect("o prisma")
-            .positions()
-            .to_vec()
+        prisma(
+            &anel,
+            raios,
+            &plano(),
+            &bola,
+            Profundidade::DaPeca,
+            paredes,
+            Resolucao::Minima,
+        )
+        .expect("o prisma")
+        .positions()
+        .to_vec()
     };
     let (dl, dp) = (
         d(
@@ -291,6 +312,7 @@ fn no_regime_da_peca_o_volume_atravessa_sempre() {
         &bola,
         Profundidade::DaPeca,
         Paredes::Fixas,
+        Resolucao::Minima,
     )
     .expect("o prisma");
     let z = |m: &Mesh| {
@@ -329,6 +351,7 @@ fn o_enchimento_salva_a_peca_achatada_no_eixo() {
         &chata,
         Profundidade::DaPeca,
         Paredes::Fixas,
+        Resolucao::Minima,
     )
     .expect("o prisma tinha de existir — o termo absoluto do enchimento é para isto");
     let esp = p
@@ -362,6 +385,7 @@ fn o_regime_do_cursor_e_uma_fatia_que_pode_nao_atravessar() {
             raio: 0.15,
         },
         Paredes::Fixas,
+        Resolucao::Minima,
     )
     .expect("o prisma");
     let (lo, hi) = p
@@ -401,6 +425,7 @@ fn raio_zero_e_recusado_e_diz_a_cura() {
             raio: 0.0,
         },
         Paredes::Fixas,
+        Resolucao::Minima,
     );
     assert_eq!(r.err(), Some(Recusa::EspessuraNula));
     assert!(Recusa::EspessuraNula.porque().contains("pincel"));
@@ -418,7 +443,8 @@ fn um_gesto_sem_area_e_um_anel_curto_sao_recusados() {
             &plano(),
             &bola,
             Profundidade::DaPeca,
-            Paredes::Fixas
+            Paredes::Fixas,
+            Resolucao::Minima
         )
         .err(),
         Some(Recusa::GestoDegenerado)
@@ -433,7 +459,8 @@ fn um_gesto_sem_area_e_um_anel_curto_sao_recusados() {
             &plano(),
             &bola,
             Profundidade::DaPeca,
-            Paredes::Fixas
+            Paredes::Fixas,
+            Resolucao::Minima
         )
         .err(),
         Some(Recusa::GestoDegenerado)
@@ -448,7 +475,8 @@ fn um_gesto_sem_area_e_um_anel_curto_sao_recusados() {
             &plano(),
             &bola,
             Profundidade::DaPeca,
-            Paredes::Fixas
+            Paredes::Fixas,
+            Resolucao::Minima
         )
         .err(),
         Some(Recusa::RaiosNaoBatem)
@@ -475,6 +503,7 @@ fn o_enchimento_e_proporcional_a_peca() {
             &bola,
             Profundidade::DaPeca,
             Paredes::Fixas,
+            Resolucao::Minima,
         )
         .expect("o prisma");
         let (lo, hi) = p
@@ -519,6 +548,7 @@ fn o_volume_sai_positivo_com_o_eixo_nos_dois_sentidos() {
             &bola,
             Profundidade::DaPeca,
             Paredes::Fixas,
+            Resolucao::Minima,
         )
         .expect("o prisma");
         let v = volume_com_sinal(&p);
@@ -529,3 +559,12 @@ fn o_volume_sai_positivo_com_o_eixo_nos_dois_sentidos() {
         );
     }
 }
+
+/// **A RESOLUÇÃO da malha do prisma** — assunto próprio, ficheiro próprio.
+///
+/// ⚠️ O corte saiu do tecto de LOC deste ficheiro e foi **por
+/// responsabilidade**, nunca por uma entrada de isenção: aqui em cima mede-se a
+/// **FORMA** do volume (contagens, enrolamento, faixa, paredes, tampas), e ali
+/// a **DENSIDADE** da malha que ele entrega.
+#[path = "lib_resolucao_tests.rs"]
+mod resolucao;

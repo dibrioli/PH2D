@@ -15,361 +15,83 @@
 //!
 //! The panel owns the live chain and cannot do any of this — it has no name table —
 //! so it lives shell-side and the bridge pushes the result via `set_fx_chain`.
-//
-// (marcador histórico, sem efeito em crates/ — o tecto é a tabela `FILE_OVERAGE_OK`) pre-existing at 631 LOC on this line (commit a5ec9d7a, "Gate / Expander"
-// added the GATE_TIGHTEN factory preset). It is a factory-preset DATA table — the proper
-// fix is to split the `static` presets into a sibling `data` module. Deferred to the preset
-// owner; not touched by the W7 (ML denoise) work that inherited it. See HANDOFF §closure.
+//!
+//! The factory DATA lives in the sibling [`super::fx_presets_factory`] (split 2026-09-16, the cure
+//! this header had named since the file reached 631 lines).
 
 use ph2d_panel_audio_editor::{FxStage, MAX_FX_PARAMS};
+
+use super::fx_presets_factory::{FACTORY, FStage};
 
 use super::fx_params::{default_norms, params_for, real_to_norm};
 use super::fx_params_table::KINDS;
 
-/// One parameter override in a factory preset, in **real DSP units**, keyed by the
-/// parameter's display label (`"Cutoff"`, `"Ratio"`, …). Unlisted params keep the
-/// effect's neutral default, so a preset only spells out what it actually changes.
-struct Ovr {
-    label: &'static str,
-    value: f32,
-}
-
-const fn ovr(label: &'static str, value: f32) -> Ovr {
-    Ovr { label, value }
-}
-
-/// One stage of a factory preset: an effect (by name) + its overrides.
-struct FStage {
-    effect: &'static str,
-    params: &'static [Ovr],
-}
-
-const fn stage(effect: &'static str, params: &'static [Ovr]) -> FStage {
-    FStage { effect, params }
-}
-
-/// A named factory chain.
-struct Preset {
-    name: &'static str,
-    stages: &'static [FStage],
-}
-
-// The curated set. Each is ≤ MAX_FX_STAGES stages and does something real at these
-// values — `factory_presets_are_audible` proves none resolves to an all-neutral
-// (silent) chain. Effect and label names are checked by `every_factory_stage_resolves`.
-static VOICE_CLEANUP: [FStage; 4] = [
-    stage("High-Pass", &[ovr("Cutoff", 90.0)]),
-    stage("De-Esser", &[ovr("Freq", 6_500.0), ovr("Ratio", 4.0)]),
-    stage("Compress", &[ovr("Threshold", 0.2), ovr("Ratio", 3.0)]),
-    stage("Limiter", &[ovr("Ceiling", -1.0)]),
-];
-static PODCAST: [FStage; 4] = [
-    stage("High-Pass", &[ovr("Cutoff", 80.0)]),
-    stage("Compress", &[ovr("Threshold", 0.15), ovr("Ratio", 4.0)]),
-    stage("High Shelf", &[ovr("Freq", 6_000.0), ovr("Gain", 3.0)]),
-    stage("Limiter", &[ovr("Ceiling", -1.5)]),
-];
-static TELEPHONE: [FStage; 4] = [
-    stage("High-Pass", &[ovr("Cutoff", 400.0)]),
-    stage("Low-Pass", &[ovr("Cutoff", 3_400.0)]),
-    stage("Saturate", &[ovr("Drive", 5.0)]),
-    stage("Bitcrush", &[ovr("Bits", 10.0)]),
-];
-// A squad radio: band-limited harder than a phone, with a honking mid resonance (a
-// cheap comms speaker), squashed flat by its AGC, and grit from the transmitter. No
-// bitcrush — that reads as digital; a radio reads as gritty and compressed.
-static RADIO: [FStage; 5] = [
-    stage("High-Pass", &[ovr("Cutoff", 400.0)]),
-    stage("Low-Pass", &[ovr("Cutoff", 3_000.0)]),
-    stage(
-        "Peak EQ",
-        &[ovr("Freq", 1_800.0), ovr("Q", 2.0), ovr("Gain", 8.0)],
-    ),
-    stage("Compress", &[ovr("Threshold", 0.08), ovr("Ratio", 8.0)]),
-    stage("Saturate", &[ovr("Drive", 7.0)]),
-];
-// Inside a helmet (spacesuit / pilot / diving): a boxy low-mid resonance from the
-// enclosed shell, muffled highs the shell absorbs, and a tight short reverb — the
-// reflection of the tiny cavity is what actually sells "helmet".
-static HELMET: [FStage; 4] = [
-    stage("High-Pass", &[ovr("Cutoff", 120.0)]),
-    stage(
-        "Peak EQ",
-        &[ovr("Freq", 500.0), ovr("Q", 2.5), ovr("Gain", 9.0)],
-    ),
-    stage("Low-Pass", &[ovr("Cutoff", 4_000.0)]),
-    stage(
-        "Reverb",
-        &[
-            ovr("Room", 0.3),
-            ovr("Damp", 0.6),
-            ovr("Mix", 0.28),
-            ovr("Tail", 0.4),
-        ],
-    ),
-];
-static LO_FI: [FStage; 3] = [
-    stage("Bitcrush", &[ovr("Bits", 8.0), ovr("Downsample", 2.0)]),
-    stage("Low-Pass", &[ovr("Cutoff", 6_000.0)]),
-    stage("Widen", &[ovr("Width", 1.3)]),
-];
-static MASTER_BUS: [FStage; 4] = [
-    stage("Low Shelf", &[ovr("Freq", 120.0), ovr("Gain", -1.5)]),
-    stage("Peak EQ", &[ovr("Freq", 3_000.0), ovr("Gain", 2.0)]),
-    stage("Compress", &[ovr("Threshold", 0.4), ovr("Ratio", 2.0)]),
-    stage("Limiter", &[ovr("Ceiling", -1.0)]),
-];
-static WIDE_AND_BRIGHT: [FStage; 3] = [
-    stage("High Shelf", &[ovr("Freq", 8_000.0), ovr("Gain", 3.0)]),
-    stage("Widen", &[ovr("Width", 1.4)]),
-    stage("Limiter", &[ovr("Ceiling", -1.0)]),
-];
-static GATE_TIGHTEN: [FStage; 2] = [
-    stage(
-        "Gate / Expander",
-        &[ovr("Threshold", 0.04), ovr("Ratio", 8.0)],
-    ),
-    stage("Compress", &[ovr("Threshold", 0.3), ovr("Ratio", 3.0)]),
-];
-// Character presets that lean on the newer effects (ring mod, distortion, exciter,
-// trance gate, ping-pong, chorus, vibrato, auto-pan).
-static ROBOT: [FStage; 3] = [
-    stage("Ring Mod", &[ovr("Freq", 200.0), ovr("Mix", 0.7)]),
-    stage("Distortion", &[ovr("Drive", 0.4), ovr("Tone", 0.5)]),
-    stage("Bitcrush", &[ovr("Bits", 8.0)]),
-];
-static MEGAPHONE: [FStage; 4] = [
-    stage("High-Pass", &[ovr("Cutoff", 500.0)]),
-    stage(
-        "Peak EQ",
-        &[ovr("Freq", 1_800.0), ovr("Q", 3.0), ovr("Gain", 8.0)],
-    ),
-    stage("Distortion", &[ovr("Drive", 0.5), ovr("Tone", 0.6)]),
-    stage("Low-Pass", &[ovr("Cutoff", 4_000.0)]),
-];
-static UNDERWATER: [FStage; 3] = [
-    stage("Low-Pass", &[ovr("Cutoff", 1_200.0)]),
-    stage("Chorus", &[ovr("Rate", 0.5), ovr("Mix", 0.6)]),
-    stage(
-        "Reverb",
-        &[ovr("Room", 0.6), ovr("Mix", 0.4), ovr("Tail", 3.0)],
-    ),
-];
-static SCI_FI_COMM: [FStage; 3] = [
-    stage("Ring Mod", &[ovr("Freq", 1_200.0), ovr("Mix", 0.3)]),
-    stage("Trance Gate", &[ovr("Rate", 10.0), ovr("Depth", 0.7)]),
-    stage(
-        "Ping-Pong",
-        &[ovr("Time", 0.18), ovr("Feedback", 0.5), ovr("Mix", 0.4)],
-    ),
-];
-static AIR: [FStage; 2] = [
-    stage("Exciter", &[ovr("Freq", 4_000.0), ovr("Amount", 0.6)]),
-    stage("High Shelf", &[ovr("Freq", 10_000.0), ovr("Gain", 3.0)]),
-];
-static WOBBLE: [FStage; 2] = [
-    stage("Vibrato", &[ovr("Rate", 5.0), ovr("Depth", 4.0)]),
-    stage("Auto-Pan", &[ovr("Rate", 2.0), ovr("Depth", 0.7)]),
-];
-// The voice chain the W4 plan asked for as a preset rather than an effect: the five
-// filters already exist, so "EQ for a voice" is data, not DSP. Roll off the rumble,
-// scoop the boxiness a close mic adds, lift the presence band the consonants live in,
-// and open the air on top.
-static VOICE_EQ: [FStage; 4] = [
-    stage("High-Pass", &[ovr("Cutoff", 80.0)]),
-    stage(
-        "Peak EQ",
-        &[ovr("Freq", 300.0), ovr("Q", 1.2), ovr("Gain", -4.0)],
-    ),
-    stage(
-        "Peak EQ",
-        &[ovr("Freq", 3_000.0), ovr("Q", 1.0), ovr("Gain", 3.0)],
-    ),
-    stage("High Shelf", &[ovr("Freq", 10_000.0), ovr("Gain", 3.0)]),
-];
-// Breath with no body behind it: cut the chest, exaggerate the air the exciter makes,
-// and squash the dynamics flat so every consonant sits right against the ear.
-// The vocoder's two ends, as presets rather than rows -- which is the whole point of `Breath`.
-// "Robot" (above) is the CHEAP robot: ring mod + grit, metallic and inharmonic. This is the other
-// one, the Kraftwerk one: the voice's formants carried by a sawtooth, so the words survive and the
-// pitch is the machine's.
-static VOCODER_ROBOT: [FStage; 2] = [
-    stage(
-        "Vocoder",
-        &[ovr("Carrier", 110.0), ovr("Bands", 20.0), ovr("Mix", 1.0)],
-    ),
-    stage("High Shelf", &[ovr("Freq", 6_000.0), ovr("Gain", 4.0)]),
-];
-// ...and with a NOISE carrier the same engine whispers, because unvoiced excitation through a
-// vocal tract is what whispering physically is. (The EQ-built "Whisper" below is the other
-// approach -- it thins and excites a voice that is still phonating; this one actually unvoices it.)
-static VOCODER_WHISPER: [FStage; 2] = [
-    stage(
-        "Vocoder",
-        &[ovr("Bands", 24.0), ovr("Breath", 1.0), ovr("Mix", 1.0)],
-    ),
-    stage("High-Pass", &[ovr("Cutoff", 200.0)]),
-];
-static WHISPER: [FStage; 4] = [
-    stage("High-Pass", &[ovr("Cutoff", 250.0)]),
-    stage("Exciter", &[ovr("Freq", 4_000.0), ovr("Amount", 0.9)]),
-    stage("Compress", &[ovr("Threshold", 0.05), ovr("Ratio", 8.0)]),
-    stage("High Shelf", &[ovr("Freq", 9_000.0), ovr("Gain", 8.0)]),
-];
-// The other end of the same axis: everything forward and strained. Hard compression
-// brings the whole take to the front, the 2.5 kHz shout band is where a raised voice
-// actually gets loud, and a little grit is the throat giving out.
-static SHOUT: [FStage; 4] = [
-    stage("Compress", &[ovr("Threshold", 0.06), ovr("Ratio", 8.0)]),
-    stage(
-        "Peak EQ",
-        &[ovr("Freq", 2_500.0), ovr("Q", 1.5), ovr("Gain", 7.0)],
-    ),
-    stage("Distortion", &[ovr("Drive", 0.25), ovr("Tone", 0.6)]),
-    stage("Limiter", &[ovr("Ceiling", -1.0)]),
-];
-// The restoration chain — and the one-click demo of the de-clicker: take out the
-// ticks, then the mains buzz under them, then the sibilance the repair leaves standing.
-static RESTORE: [FStage; 4] = [
-    stage("De-Click", &[ovr("Sensitivity", 0.6), ovr("Width", 0.001)]),
-    stage("De-Hum", &[ovr("Freq", 50.0), ovr("Depth", 0.8)]),
-    stage("De-Esser", &[ovr("Freq", 6_500.0), ovr("Ratio", 3.0)]),
-    stage("Limiter", &[ovr("Ceiling", -1.0)]),
-];
-// The formant shifter's demo, and the thing no pitch shifter can fake: the same
-// performance, at the same pitch, out of a much bigger head. Shift the vocal tract
-// down, add the chest the bigger body would have, and glue it.
-static GIANT: [FStage; 3] = [
-    stage("Formant Shift", &[ovr("Shift", -7.0), ovr("Mix", 1.0)]),
-    stage("Low Shelf", &[ovr("Freq", 200.0), ovr("Gain", 4.0)]),
-    stage("Compress", &[ovr("Threshold", 0.2), ovr("Ratio", 3.0)]),
-];
-// The harmonizer's demo: one take, three notes, one room.
-static CHOIR: [FStage; 2] = [
-    stage(
-        "Harmonizer",
-        &[ovr("Voice 1", 4.0), ovr("Voice 2", 7.0), ovr("Mix", 0.6)],
-    ),
-    stage(
-        "Reverb",
-        &[ovr("Room", 0.7), ovr("Mix", 0.3), ovr("Tail", 2.5)],
-    ),
-];
-
-static FACTORY: [Preset; 23] = [
-    Preset {
-        name: "Voice Cleanup",
-        stages: &VOICE_CLEANUP,
-    },
-    Preset {
-        name: "Podcast",
-        stages: &PODCAST,
-    },
-    Preset {
-        name: "Telephone",
-        stages: &TELEPHONE,
-    },
-    Preset {
-        name: "Radio",
-        stages: &RADIO,
-    },
-    Preset {
-        name: "Helmet",
-        stages: &HELMET,
-    },
-    Preset {
-        name: "Lo-Fi",
-        stages: &LO_FI,
-    },
-    Preset {
-        name: "Master Bus",
-        stages: &MASTER_BUS,
-    },
-    Preset {
-        name: "Wide & Bright",
-        stages: &WIDE_AND_BRIGHT,
-    },
-    Preset {
-        name: "Gate + Glue",
-        stages: &GATE_TIGHTEN,
-    },
-    Preset {
-        name: "Robot",
-        stages: &ROBOT,
-    },
-    Preset {
-        name: "Vocoder",
-        stages: &VOCODER_ROBOT,
-    },
-    Preset {
-        name: "Vocoder Whisper",
-        stages: &VOCODER_WHISPER,
-    },
-    Preset {
-        name: "Megaphone",
-        stages: &MEGAPHONE,
-    },
-    Preset {
-        name: "Underwater",
-        stages: &UNDERWATER,
-    },
-    Preset {
-        name: "Sci-Fi Comm",
-        stages: &SCI_FI_COMM,
-    },
-    Preset {
-        name: "Air",
-        stages: &AIR,
-    },
-    Preset {
-        name: "Wobble",
-        stages: &WOBBLE,
-    },
-    Preset {
-        name: "Voice EQ",
-        stages: &VOICE_EQ,
-    },
-    Preset {
-        name: "Whisper",
-        stages: &WHISPER,
-    },
-    Preset {
-        name: "Shout",
-        stages: &SHOUT,
-    },
-    Preset {
-        name: "Restore",
-        stages: &RESTORE,
-    },
-    Preset {
-        name: "Giant",
-        stages: &GIANT,
-    },
-    Preset {
-        name: "Choir",
-        stages: &CHOIR,
-    },
-];
-
 /// The factory preset names, in table order — published to the panel's selector.
 pub fn factory_names() -> Vec<&'static str> {
-    FACTORY.iter().map(|p| p.name).collect()
+    FACTORY.iter().map(|p| p.name.tr()).collect()
 }
 
-/// Look up an effect kind by its display name, honouring legacy aliases so a preset saved before
-/// an effect was renamed still resolves (rather than silently dropping the stage).
+/// Look up an effect kind by its stable id, honouring the names older preset files carry so a
+/// chain saved before an effect was renamed (or before the ids existed) still resolves, rather than
+/// silently dropping the stage.
 fn kind_by_name(name: &str) -> Option<usize> {
     let want = legacy_alias(name).unwrap_or(name);
-    KINDS.iter().position(|k| k.name == want)
+    KINDS.iter().position(|k| k.id == want)
 }
 
-/// Old display names that presets on disk may still carry, mapped to the current name.
-/// "Gate" → "Gate / Expander" (it always did both; the label just started saying so). A dropped
-/// entry here is a user's saved preset silently losing an effect, so it is gated
-/// (`the_legacy_gate_name_still_resolves`).
+/// The names preset files on disk may carry, mapped to the stable id.
+///
+/// ⭐ **Until 2026-09-16 the file stored the ENGLISH DISPLAY NAME** (`v1`): the rack's names moved to
+/// the string table (HR-15), and a translated name can no longer be an identity, so `v2` writes the
+/// `FxKind::id`. Every v1 name stays readable here — as match PATTERNS, which is also why this list
+/// is not "text in the source" to the HR-15 census. "Gate" is older still (it always did both; the
+/// label just started saying so). A dropped entry here is a user's saved preset silently losing an
+/// effect, so it is gated (`the_legacy_gate_name_still_resolves`, `every_v1_name_still_resolves`).
 fn legacy_alias(name: &str) -> Option<&'static str> {
     match name {
-        "Gate" => Some("Gate / Expander"),
+        "Gate" => Some("gate_expander"),
+        "Low-Pass" => Some("low_pass"),
+        "High-Pass" => Some("high_pass"),
+        "Peak EQ" => Some("peak_eq"),
+        "Low Shelf" => Some("low_shelf"),
+        "High Shelf" => Some("high_shelf"),
+        "De-Hum" => Some("de_hum"),
+        "Compress" => Some("compress"),
+        "Multiband" => Some("multiband"),
+        "Gate / Expander" => Some("gate_expander"),
+        "De-Esser" => Some("de_esser"),
+        "De-Plosive" => Some("de_plosive"),
+        "De-Click" => Some("de_click"),
+        "De-Clip" => Some("de_clip"),
+        "Limiter" => Some("limiter"),
+        "Leveler" => Some("leveler"),
+        "Transient" => Some("transient"),
+        "Saturate" => Some("saturate"),
+        "Distortion" => Some("distortion"),
+        "Bitcrush" => Some("bitcrush"),
+        "Widen" => Some("widen"),
+        "Haas" => Some("haas"),
+        "Exciter" => Some("exciter"),
+        "Reverb" => Some("reverb"),
+        "Conv Reverb" => Some("conv_reverb"),
+        "Echo" => Some("echo"),
+        "Ping-Pong" => Some("ping_pong"),
+        "Comb" => Some("comb"),
+        "Chorus" => Some("chorus"),
+        "Flanger" => Some("flanger"),
+        "Vibrato" => Some("vibrato"),
+        "Phaser" => Some("phaser"),
+        "Auto-Wah" => Some("auto_wah"),
+        "Tremolo" => Some("tremolo"),
+        "Auto-Pan" => Some("auto_pan"),
+        "Trance Gate" => Some("trance_gate"),
+        "Doubler" => Some("doubler"),
+        "Ring Mod" => Some("ring_mod"),
+        "Pitch Shift" => Some("pitch_shift"),
+        "Formant Shift" => Some("formant_shift"),
+        "Vocoder" => Some("vocoder"),
+        "Granular" => Some("granular"),
+        "Harmonizer" => Some("harmonizer"),
         _ => None,
     }
 }
@@ -405,16 +127,17 @@ pub fn factory_chain(idx: usize) -> Vec<FxStage> {
 
 /// The header line every user preset file starts with, so `parse_chain` can reject a
 /// file that is plainly not one of ours (and so a future format bump has a hook).
-const HEADER: &str = "# PH2D audio chain v1";
+const HEADER: &str = "# PH2D audio chain v2";
 
 /// Serialize a chain to the user-preset text format — one stage per line,
-/// `Effect Name | on|off | n0 n1 …`, keyed by name so it survives a `KINDS` reorder.
+/// `effect_id | on|off | n0 n1 …`, keyed by the stable id so it survives a `KINDS` reorder and a
+/// translated display name (v1 wrote the English name; [`legacy_alias`] still reads it).
 /// Storing the normals verbatim makes the round-trip exact.
 pub fn serialize_chain(chain: &[FxStage]) -> String {
     let mut out = String::from(HEADER);
     out.push('\n');
     for st in chain {
-        let name = KINDS.get(st.kind).map(|k| k.name).unwrap_or("Unknown");
+        let name = KINDS.get(st.kind).map(|k| k.id).unwrap_or("unknown");
         let n = params_for(st.kind).len().min(MAX_FX_PARAMS);
         let nums: Vec<String> = st.norms[..n].iter().map(|v| format!("{v:.4}")).collect();
         let on = if st.enabled { "on" } else { "off" };
@@ -462,9 +185,11 @@ pub fn parse_chain(text: &str) -> Vec<FxStage> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::fx_param_keys as p;
     use super::*;
     use ph2d_audio::{AudioFormat, SampleData};
     use ph2d_audio_edit::EditClip;
+    use ph2d_i18n::TextKey;
 
     /// Every factory stage must name a real effect and real params — a typo would
     /// silently drop the stage, and the preset would quietly do less than it says.
@@ -474,17 +199,18 @@ mod tests {
             assert!(
                 preset.stages.len() <= ph2d_panel_audio_editor::MAX_FX_STAGES,
                 "{} has more stages than the chain holds",
-                preset.name
+                preset.name.tr()
             );
             for fs in preset.stages {
-                let kind = kind_by_name(fs.effect)
-                    .unwrap_or_else(|| panic!("{}: unknown effect {:?}", preset.name, fs.effect));
+                let kind = kind_by_name(fs.effect).unwrap_or_else(|| {
+                    panic!("{}: unknown effect {:?}", preset.name.tr(), fs.effect)
+                });
                 let specs = params_for(kind);
                 for o in fs.params {
                     assert!(
                         specs.iter().any(|s| s.label == o.label),
                         "{}: {} has no param {:?}",
-                        preset.name,
+                        preset.name.tr(),
                         fs.effect,
                         o.label
                     );
@@ -494,7 +220,7 @@ mod tests {
                 factory_chain(FACTORY.iter().position(|p| p.name == preset.name).unwrap()).len(),
                 preset.stages.len(),
                 "{} dropped a stage",
-                preset.name
+                preset.name.tr()
             );
         }
     }
@@ -533,7 +259,7 @@ mod tests {
                 clip.data().samples(),
                 d.samples(),
                 "{} is a silent no-op",
-                preset.name
+                preset.name.tr()
             );
         }
     }
@@ -543,7 +269,7 @@ mod tests {
     #[test]
     fn user_preset_round_trips_including_disabled_stages() {
         // A hand-built chain: an enabled Peak EQ, a disabled Compress, an Echo.
-        let mk = |name: &str, on: bool, over: &[(&str, f32)]| {
+        let mk = |name: &str, on: bool, over: &[(TextKey, f32)]| {
             let kind = kind_by_name(name).unwrap();
             let specs = params_for(kind);
             let mut norms = default_norms(kind);
@@ -558,9 +284,9 @@ mod tests {
             }
         };
         let chain = vec![
-            mk("Peak EQ", true, &[("Gain", 6.0)]),
-            mk("Compress", false, &[("Ratio", 4.0)]),
-            mk("Echo", true, &[("Mix", 0.5)]),
+            mk("peak_eq", true, &[(p::GAIN, 6.0)]),
+            mk("compress", false, &[(p::RATIO, 4.0)]),
+            mk("echo", true, &[(p::MIX, 0.5)]),
         ];
         let restored = parse_chain(&serialize_chain(&chain));
         assert_eq!(restored.len(), chain.len());
@@ -602,6 +328,43 @@ mod tests {
         assert_eq!(chain[0].kind, kind_by_name("Limiter").unwrap());
         // ...and the number we stored came back (0.10 → the Ceiling slider).
         assert!((chain[0].norms[0] - 0.10).abs() < 1e-3);
+    }
+
+    /// ⭐⭐ **Every name a v1 file could carry still resolves** (2026-09-16). v1 stored the ENGLISH
+    /// DISPLAY NAME; the names moved to the string table, and v2 writes the stable id. A v1 name
+    /// missing from [`legacy_alias`] is a user's saved chain silently losing that stage — so the
+    /// list is checked against the display text itself, all 42.
+    #[test]
+    fn every_v1_name_still_resolves() {
+        for (kind, k) in KINDS.iter().enumerate() {
+            let v1 = k.name.tr();
+            assert_eq!(
+                kind_by_name(v1),
+                Some(kind),
+                "a v1 preset line naming {v1:?} no longer resolves to `{}`",
+                k.id
+            );
+            assert_eq!(
+                kind_by_name(k.id),
+                Some(kind),
+                "the id `{}` does not resolve",
+                k.id
+            );
+        }
+    }
+
+    /// ⭐ **v2 writes the ID, never the display text** — a translated rack must save the same file.
+    #[test]
+    fn a_saved_chain_names_the_effect_by_its_id() {
+        let kind = kind_by_name("conv_reverb").unwrap();
+        let line = serialize_chain(&[FxStage {
+            kind,
+            norms: default_norms(kind),
+            enabled: true,
+        }]);
+        assert!(line.starts_with("# PH2D audio chain v2\n"), "{line}");
+        let first = line.lines().nth(1).unwrap();
+        assert!(first.starts_with("conv_reverb | on |"), "{first}");
     }
 
     /// Malformed input never panics and never invents a stage.

@@ -24,11 +24,17 @@ pub mod fx_params;
 // The rack's parameter specs, split out of `fx_params_table` under the HR-18 shell cap.
 #[cfg(feature = "panel-audio-editor")]
 mod fx_param_specs;
+// The parameter KEYS (one `TextKey` per word), shared by the specs and the factory presets.
+#[cfg(feature = "panel-audio-editor")]
+mod fx_param_keys;
 // The rack's effect table, split out of `fx_params` under the HR-18 shell cap.
 #[cfg(feature = "panel-audio-editor")]
 mod fx_params_table;
 #[cfg(feature = "panel-audio-editor")]
 pub mod fx_presets;
+// The factory preset DATA, split out of `fx_presets` under the file LOC cap.
+#[cfg(feature = "panel-audio-editor")]
+mod fx_presets_factory;
 #[cfg(feature = "panel-audio-editor")]
 use editor::AudioEditorRuntime;
 /// A ESCOLHA DO DISPOSITIVO e a escrita nele — irmão por assunto e pelo teto de 600 LOC.

@@ -34,10 +34,12 @@
 use ph2d_audio::{AudioFormat, SampleData};
 use ph2d_panel_audio_editor::{FxStage, set_fx_chain};
 
+use super::super::fx_param_keys as p;
 use super::super::fx_params::{default_norms, params_for, real_to_norm};
 use super::super::fx_params_table::KINDS;
 use crate::AudioSystem;
 use crate::editor::EditorTransport;
+use ph2d_i18n::TextKey;
 
 const SR: u32 = 48_000;
 /// Long enough for six vowels, so the ear hears them as a phrase and not as a beep.
@@ -143,8 +145,8 @@ impl AudioSystem {
 
         // Build a stage from REAL units by parameter label, exactly as a factory preset does —
         // so this reads like the settings it is, and survives a param being reordered.
-        let staged = |name: &str, overrides: &[(&str, f32)]| -> Option<FxStage> {
-            let kind = KINDS.iter().position(|k| k.name == name)?;
+        let staged = |id: &str, overrides: &[(TextKey, f32)]| -> Option<FxStage> {
+            let kind = KINDS.iter().position(|k| k.id == id)?;
             let specs = params_for(kind);
             let mut norms = default_norms(kind);
             for (label, value) in overrides {
@@ -160,30 +162,30 @@ impl AudioSystem {
 
         let chain: Option<Vec<FxStage>> = (|| {
             let mut robot = staged(
-                "Vocoder",
+                "vocoder",
                 &[
-                    ("Carrier", 110.0),
-                    ("Bands", 20.0),
-                    ("Breath", 0.0),
-                    ("Mix", 1.0),
+                    (p::CARRIER, 110.0),
+                    (p::BANDS, 20.0),
+                    (p::BREATH, 0.0),
+                    (p::MIX, 1.0),
                 ],
             )?;
             let whisper = staged(
-                "Vocoder",
+                "vocoder",
                 &[
-                    ("Carrier", 110.0),
-                    ("Bands", 24.0),
-                    ("Breath", 1.0),
-                    ("Mix", 1.0),
+                    (p::CARRIER, 110.0),
+                    (p::BANDS, 24.0),
+                    (p::BREATH, 1.0),
+                    (p::MIX, 1.0),
                 ],
             )?;
             let cloud = staged(
-                "Granular",
+                "granular",
                 &[
-                    ("Grain", 80.0),
-                    ("Scatter", 0.7),
-                    ("Pitch", 5.0),
-                    ("Mix", 1.0),
+                    (p::GRAIN, 80.0),
+                    (p::SCATTER, 0.7),
+                    (p::PITCH, 5.0),
+                    (p::MIX, 1.0),
                 ],
             )?;
             robot.enabled = true;

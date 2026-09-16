@@ -4778,6 +4778,8 @@ dependencies = [
  "ph2d-audio-spectral",
  "ph2d-ecs",
  "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-label-census",
  "ph2d-panel-audio-editor",
  "ph2d-tokens",
 ]

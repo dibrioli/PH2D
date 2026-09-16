@@ -102,7 +102,7 @@ pub fn smoke_clip() -> SampleData {
 /// The staged rack: **one** audible Plain stage, Compress, with Ratio somewhere in the middle so
 /// there is room to drag it in both directions.
 pub fn smoke_chain() -> Option<Vec<FxStage>> {
-    let kind = KINDS.iter().position(|k| k.name == "Compress")?;
+    let kind = KINDS.iter().position(|k| k.id == "compress")?;
     let mut norms = default_norms(kind);
     norms[0] = 0.35; // Threshold, low enough that the kick is well into it
     norms[1] = 0.55; // Ratio -- the knob to drag

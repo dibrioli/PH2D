@@ -30,6 +30,9 @@ ph2d-audio-opus = { path = "../ph2d-audio-opus" }
 ph2d-audio-spectral = { path = "../ph2d-audio-spectral" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# O texto que o rack do Audio Editor mostra (nomes de efeito, de parâmetro, de preset e as
+# unidades da leitura) — HR-15.
+ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-panel-audio-editor = { path = "../ph2d-panel-audio-editor", optional = true }
 ph2d-tokens = { path = "../ph2d-tokens" }
 
@@ -46,6 +49,10 @@ audio-ml = ["panel-audio-editor", "dep:ph2d-audio-ml"]
 # `render_loop` lê. Dentro da shell ele não precisava de feature; do outro lado de uma crate um
 # `cfg(test)` é falso. O tamanho da feature é o que ATRAVESSA, contado pelo compilador.
 test-support = []
+
+[dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate (`tests/it/`).
+ph2d-label-census = { path = "../ph2d-label-census" }
 
 [lints]
 workspace = true

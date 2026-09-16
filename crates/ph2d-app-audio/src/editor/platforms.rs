@@ -39,10 +39,13 @@ fn price(data: &SampleData, p: &Platform) -> Option<Row> {
     };
     Some((
         p.name.to_string(),
-        format!(
-            "{disk} \u{b7} RAM {} ({:.0}%)",
-            format_bytes(cost.ram_bytes),
-            cost.ram_budget_frac * 100.0
+        ph2d_i18n::tr_with(
+            "audio.editor.platforms.cost",
+            &[
+                ("disk", &disk),
+                ("ram", &format_bytes(cost.ram_bytes)),
+                ("pct", &format!("{:.0}", cost.ram_budget_frac * 100.0)),
+            ],
         ),
         cost.ram_budget_frac,
     ))
@@ -103,7 +106,11 @@ impl super::super::AudioSystem {
         let key = owned.version();
         let rows = self
             .platforms
-            .current(key, "Pricing shipping targets", move || price_all(&owned))
+            .current(
+                key,
+                ph2d_i18n::tr("audio.editor.platforms.pricing"),
+                move || price_all(&owned),
+            )
             .cloned();
         ds::set_platforms(rows.unwrap_or_else(pending_rows));
     }

@@ -91,22 +91,30 @@ impl super::super::AudioSystem {
 
         // The status line teaches the section. Each dimmed button gets a reason.
         let status = if !ss::view() {
-            "Switch to Spectrogram to select a frequency band".to_string()
+            ph2d_i18n::tr("audio.editor.spectral.switch_to_spectrogram").to_string()
         } else if has_band {
             let (lo, hi) = self.spectral.band.unwrap_or((0.0, 0.0));
             let ny = clip.data().format().sample_rate as f32 * 0.5;
-            format!(
-                "Band {:.0}-{:.0} Hz \u{b7} drag in the spectrogram to change",
-                lo.min(hi) * ny,
-                lo.max(hi) * ny
+            ph2d_i18n::tr_with(
+                "audio.editor.spectral.band",
+                &[
+                    ("lo", &format!("{:.0}", lo.min(hi) * ny)),
+                    ("hi", &format!("{:.0}", lo.max(hi) * ny)),
+                ],
             )
         } else {
-            "Drag a box in the spectrogram to select a region".to_string()
+            ph2d_i18n::tr("audio.editor.spectral.drag_a_box").to_string()
         };
         let status = if has_profile {
-            format!("{status}\nNoise profile learned")
+            ph2d_i18n::tr_with(
+                "audio.editor.spectral.profile_learned",
+                &[("status", &status)],
+            )
         } else {
-            format!("{status}\nDenoise needs a noise profile: select silence, then Learn")
+            ph2d_i18n::tr_with(
+                "audio.editor.spectral.profile_needed",
+                &[("status", &status)],
+            )
         };
         ss::set_ready(has_profile, has_band, &status);
     }
@@ -288,14 +296,17 @@ impl super::super::AudioSystem {
         // clip. (The engine may be sounding the very same buffer on the RT thread — it is
         // immutable, and that is exactly why this is safe to hand to a worker.)
         let data = clip.data().clone();
-        let job = ph2d_editor_core::Job::spawn("AI Denoise (Voice)", move |p| {
-            // The bridge from this crate's `Progress` to the DSP crate's `&dyn Fn(f32)`. It is
-            // one line, and it is the whole reason `ph2d-audio-ml` does not depend on the
-            // editor: a DSP crate that must link a UI to report a percentage is a DSP crate
-            // that cannot be used without one.
-            let out = ph2d_audio_ml::denoise_ml_with_progress(&data, amount, &|f| p.set(f));
-            MlDenoise { source: data, out }
-        });
+        let job = ph2d_editor_core::Job::spawn(
+            ph2d_i18n::tr("audio.editor.spectral.ai_denoise"),
+            move |p| {
+                // The bridge from this crate's `Progress` to the DSP crate's `&dyn Fn(f32)`. It is
+                // one line, and it is the whole reason `ph2d-audio-ml` does not depend on the
+                // editor: a DSP crate that must link a UI to report a percentage is a DSP crate
+                // that cannot be used without one.
+                let out = ph2d_audio_ml::denoise_ml_with_progress(&data, amount, &|f| p.set(f));
+                MlDenoise { source: data, out }
+            },
+        );
         self.started_job = Some(job.progress().clone());
         self.ml_job = Some(job);
     }

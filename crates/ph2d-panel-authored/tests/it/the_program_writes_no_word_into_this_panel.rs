@@ -50,7 +50,11 @@ fn outside_the_generated_design_no_word_is_written_in_the_source() {
 fn the_exemptions_still_shelter_what_they_name() {
     let (src, _) = gate::raizes(env!("CARGO_MANIFEST_DIR"));
     let mortas = gate::excecoes_mortas(&src, NOT_LANGUAGE);
-    assert!(mortas.is_empty(), "excepções mortas:\n  {}", mortas.join("\n  "));
+    assert!(
+        mortas.is_empty(),
+        "excepções mortas:\n  {}",
+        mortas.join("\n  ")
+    );
     let desenho = language_literals(&src)
         .into_iter()
         .filter(|l| l.rel.starts_with(GERADO))

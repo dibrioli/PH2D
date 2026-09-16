@@ -213,8 +213,15 @@ impl AudioSystem {
                     .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or(&e.path);
-                let off = if e.enabled { "" } else { "(off) " };
-                format!("{off}{stem}  \u{00d7}{:.1}", e.weight)
+                let key = if e.enabled {
+                    "audio.editor.variation.row"
+                } else {
+                    "audio.editor.variation.row_off"
+                };
+                ph2d_i18n::tr_with(
+                    key,
+                    &[("stem", &stem), ("weight", &format!("{:.1}", e.weight))],
+                )
             })
             .collect()
     }

@@ -57,13 +57,11 @@ impl super::super::AudioSystem {
             Codec::ALL.len(),
             codec.name(),
             codec.is_lossy(),
-            if codec.uses_quality_scalar() {
-                "Quality"
-            } else if codec.is_lossy() {
-                "Bitrate"
+            ph2d_i18n::tr(if codec.is_lossy() && !codec.uses_quality_scalar() {
+                "audio.editor.delivery.bitrate"
             } else {
-                "Quality"
-            },
+                "audio.editor.delivery.quality"
+            }),
         );
 
         let Some(clip) = self.editor_sounding() else {
@@ -88,11 +86,15 @@ impl super::super::AudioSystem {
         let owned = data;
         let sized = self
             .delivery
-            .current(key, "Pricing the export", move || {
-                ph2d_audio_encode::cost(&owned, codec, quality)
-                    .map(|c| (c.disk_bytes, c.disk_exact))
-                    .unwrap_or((0, false))
-            })
+            .current(
+                key,
+                ph2d_i18n::tr("audio.editor.delivery.pricing_export"),
+                move || {
+                    ph2d_audio_encode::cost(&owned, codec, quality)
+                        .map(|c| (c.disk_bytes, c.disk_exact))
+                        .unwrap_or((0, false))
+                },
+            )
             .copied();
 
         // A scaled figure says so, rather than passing an estimate off as a measurement — and a
@@ -111,10 +113,12 @@ impl super::super::AudioSystem {
         } else {
             0.0
         };
-        let ram = format!(
-            "RAM {} \u{b7} {:.0}% of budget",
-            format_bytes(ram_b),
-            ram_budget_frac * 100.0
+        let ram = ph2d_i18n::tr_with(
+            "audio.editor.delivery.ram_of_budget",
+            &[
+                ("ram", &format_bytes(ram_b)),
+                ("pct", &format!("{:.0}", ram_budget_frac * 100.0)),
+            ],
         );
         // Warn only when there is something to lose: a clip with no loop and no markers
         // loses nothing by shipping as Vorbis.

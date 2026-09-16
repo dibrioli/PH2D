@@ -20,6 +20,7 @@
 //! build a Saturate.
 
 use ph2d_audio_edit::{Effect, TailEffect};
+use ph2d_i18n::{TextKey, tr_with};
 
 use super::fx_params_table::KINDS;
 
@@ -28,8 +29,9 @@ pub const MAX_FX_PARAMS: usize = 4;
 
 /// How a normalized 0..1 slider maps onto one real DSP parameter.
 pub struct FxParamSpec {
-    /// Shown left of the slider.
-    pub label: &'static str,
+    /// Shown left of the slider — a KEY (`audio.fx.param.*`), and also the parameter's identity
+    /// inside its effect (factory presets override by it).
+    pub label: TextKey,
     /// Real-unit bounds. `min > 0` is required when `log`.
     pub min: f32,
     pub max: f32,
@@ -39,17 +41,42 @@ pub struct FxParamSpec {
     /// effect is a byte-identical no-op, so selecting it changes nothing until the
     /// user turns a knob.
     pub default: f32,
-    /// Drives the display formatting: `Hz`, `s`, `dB`, `x`, or `""`.
-    pub unit: &'static str,
+    /// Drives the display formatting.
+    pub unit: FxUnit,
     /// Round to a whole number (bit depth, decimation factor).
     pub integral: bool,
+}
+
+/// The unit a parameter's readout is written in. ⚠️ Was a `&'static str` (`"Hz"`, `"s"`…) matched by
+/// value, which put the unit words in the source twice; the readout's text now comes from the
+/// string table (`audio.fx.unit.*`), so a locale can write its own symbol.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FxUnit {
+    /// A bare number (a fraction, a count).
+    None,
+    /// Frequency; shown in kHz from 1 000 up.
+    Hz,
+    /// Already in milliseconds (a modulation depth).
+    Ms,
+    /// Time in seconds; shown in ms below one second.
+    S,
+    /// Signed gain.
+    Db,
+    /// Signed semitones.
+    St,
+    /// A ratio or multiplier.
+    X,
 }
 
 /// One effect the selector can pick: its name, its parameters, and how to build it
 /// from those parameters **in real units**. Keeping the three in one row is what
 /// makes a mis-indexed rack impossible.
 pub struct FxKind {
-    pub name: &'static str,
+    /// ⚠️ **The STABLE identity** — what a user preset file stores (`snake_case`). The display name
+    /// is the key below, and translating it must never change which effect a saved chain names.
+    pub id: &'static str,
+    /// The name the rack's selector paints (`audio.fx.kind.*`).
+    pub name: TextKey,
     pub params: &'static [FxParamSpec],
     /// `v[i]` is parameter `i` already mapped to real units.
     pub build: fn(v: &[f32; MAX_FX_PARAMS]) -> FxCommand,
@@ -69,12 +96,12 @@ pub struct FxKind {
 
 /// Shorthand for a spec (keeps the table in `fx_params_table` readable).
 pub const fn spec(
-    label: &'static str,
+    label: TextKey,
     min: f32,
     max: f32,
     log: bool,
     default: f32,
-    unit: &'static str,
+    unit: FxUnit,
     integral: bool,
 ) -> FxParamSpec {
     FxParamSpec {
@@ -90,7 +117,7 @@ pub const fn spec(
 
 /// Display names, in `KINDS` order — published to the panel each frame.
 pub fn kind_names() -> Vec<&'static str> {
-    KINDS.iter().map(|k| k.name).collect()
+    KINDS.iter().map(|k| k.name.tr()).collect()
 }
 
 /// The parameters of effect `kind` (empty when the index is out of range).
@@ -155,22 +182,25 @@ pub fn all_default_norms() -> Vec<[f32; MAX_FX_PARAMS]> {
 /// of 0.5 ms both read "0" without it, which looks like the slider does nothing over
 /// its lower travel (found by Enio, 2026-07-09).
 fn format_value(s: &FxParamSpec, v: f32) -> String {
+    // The number is formatted HERE (sign and decimals are the value's, not the language's); the
+    // unit around it comes from the table.
+    let with = |key: &str, n: String| tr_with(key, &[("v", &n)]);
     match s.unit {
-        "Hz" if v >= 1_000.0 => format!("{:.1} kHz", v / 1_000.0),
-        "Hz" if v < 1.0 => format!("{v:.2} Hz"),
-        "Hz" => format!("{v:.0} Hz"),
-        "s" if v < 0.001 => format!("{:.1} ms", v * 1_000.0),
-        "s" if v < 1.0 => format!("{:.0} ms", v * 1_000.0),
-        "s" => format!("{v:.2} s"),
+        FxUnit::Hz if v >= 1_000.0 => with("audio.fx.unit.khz", format!("{:.1}", v / 1_000.0)),
+        FxUnit::Hz if v < 1.0 => with("audio.fx.unit.hz", format!("{v:.2}")),
+        FxUnit::Hz => with("audio.fx.unit.hz", format!("{v:.0}")),
+        FxUnit::S if v < 0.001 => with("audio.fx.unit.ms", format!("{:.1}", v * 1_000.0)),
+        FxUnit::S if v < 1.0 => with("audio.fx.unit.ms", format!("{:.0}", v * 1_000.0)),
+        FxUnit::S => with("audio.fx.unit.s", format!("{v:.2}")),
         // Already in milliseconds (a modulation depth), not seconds.
-        "ms" => format!("{v:.1} ms"),
-        "dB" => format!("{v:+.1} dB"),
+        FxUnit::Ms => with("audio.fx.unit.ms", format!("{v:.1}")),
+        FxUnit::Db => with("audio.fx.unit.db", format!("{v:+.1}")),
         // Semitones, signed like dB: "+7.0 st" reads as a shift, "7.00" as a coefficient.
-        "st" => format!("{v:+.1} st"),
-        "x" if s.integral => format!("{v:.0}\u{d7}"),
-        "x" => format!("{v:.2}\u{d7}"),
-        _ if s.integral => format!("{v:.0}"),
-        _ => format!("{v:.2}"),
+        FxUnit::St => with("audio.fx.unit.st", format!("{v:+.1}")),
+        FxUnit::X if s.integral => with("audio.fx.unit.x", format!("{v:.0}")),
+        FxUnit::X => with("audio.fx.unit.x", format!("{v:.2}")),
+        FxUnit::None if s.integral => format!("{v:.0}"),
+        FxUnit::None => format!("{v:.2}"),
     }
 }
 
@@ -180,7 +210,12 @@ pub fn views(kind: usize, norms: &[f32; MAX_FX_PARAMS]) -> Vec<(String, String)>
     params_for(kind)
         .iter()
         .zip(norms)
-        .map(|(s, &n)| (s.label.to_string(), format_value(s, norm_to_real(s, n))))
+        .map(|(s, &n)| {
+            (
+                s.label.tr().to_string(),
+                format_value(s, norm_to_real(s, n)),
+            )
+        })
         .collect()
 }
 

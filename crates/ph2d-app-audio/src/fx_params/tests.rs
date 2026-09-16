@@ -12,31 +12,31 @@ use ph2d_audio_edit::EditClip;
 fn every_kind_has_a_spec_and_builds() {
     for (kind, k) in KINDS.iter().enumerate() {
         let p = k.params;
-        assert!(!p.is_empty(), "{} has no params", k.name);
+        assert!(!p.is_empty(), "{} has no params", k.id);
         assert!(
             p.len() <= MAX_FX_PARAMS,
             "{} exceeds the slider count",
-            k.name
+            k.id
         );
         assert!(
             build(kind, &default_norms(kind)).is_some(),
             "{} does not build",
-            k.name
+            k.id
         );
         // Log params need a positive lower bound or `ln` blows up.
-        assert!(p.iter().all(|s| !s.log || s.min > 0.0), "{}", k.name);
+        assert!(p.iter().all(|s| !s.log || s.min > 0.0), "{}", k.id);
         // ...and a default inside its own bounds, or `real_to_norm` clamps it
         // somewhere that isn't the neutral point.
         assert!(
             p.iter().all(|s| s.default >= s.min && s.default <= s.max),
             "{} has a default outside its range",
-            k.name
+            k.id
         );
-        assert!(!k.arms.is_empty(), "{} has no arming knob", k.name);
+        assert!(!k.arms.is_empty(), "{} has no arming knob", k.id);
         assert!(
             k.arms.iter().all(|&a| a < p.len()),
             "{}'s arming knob is out of range",
-            k.name
+            k.id
         );
     }
     assert!(build(KINDS.len(), &[0.0; MAX_FX_PARAMS]).is_none());
@@ -122,10 +122,10 @@ fn no_slider_reads_a_false_zero() {
                     .unwrap_or(0.0);
                 if num == 0.0 {
                     assert!(
-                        real < 0.05 || (s.unit == "s" && real < 5e-5),
+                        real < 0.05 || (s.unit == FxUnit::S && real < 5e-5),
                         "{} / {}: shows {:?} but the value is {real}",
-                        k.name,
-                        s.label,
+                        k.id,
+                        s.label.tr(),
                         shown
                     );
                 }
@@ -148,8 +148,8 @@ fn defaults_round_trip_to_the_preset_values() {
             assert!(
                 (back - s.default).abs() <= tol,
                 "{} / {}: {back} != {}",
-                k.name,
-                s.label,
+                k.id,
+                s.label.tr(),
                 s.default
             );
         }
@@ -219,7 +219,7 @@ fn every_effect_is_a_no_op_at_its_defaults() {
                 assert!(
                     fx.is_bypass(),
                     "{}: defaults are not the neutral point",
-                    k.name
+                    k.id
                 );
                 clip.render_effect(fx)
             }
@@ -227,7 +227,7 @@ fn every_effect_is_a_no_op_at_its_defaults() {
                 assert!(
                     fx.is_bypass(),
                     "{}: defaults are not the neutral point",
-                    k.name
+                    k.id
                 );
                 clip.render_tail_effect(&fx)
             }
@@ -236,13 +236,13 @@ fn every_effect_is_a_no_op_at_its_defaults() {
             out.frame_count(),
             clip.frame_count(),
             "{} changed the clip length at its defaults",
-            k.name
+            k.id
         );
         assert_eq!(
             out.samples(),
             d.samples(),
             "{} is not a byte-identical no-op at its defaults",
-            k.name
+            k.id
         );
     }
 }
@@ -286,11 +286,11 @@ fn turning_an_arming_knob_wakes_the_effect_up() {
             let clip = EditClip::new(d.clone());
             let out = match build(kind, &norms_with(kind, arm)).expect("builds") {
                 FxCommand::Plain(fx) => {
-                    assert!(!fx.is_bypass(), "{} still reads as neutral", k.name);
+                    assert!(!fx.is_bypass(), "{} still reads as neutral", k.id);
                     clip.render_effect(fx)
                 }
                 FxCommand::Tail(fx) => {
-                    assert!(!fx.is_bypass(), "{} still reads as neutral", k.name);
+                    assert!(!fx.is_bypass(), "{} still reads as neutral", k.id);
                     clip.render_tail_effect(&fx)
                 }
             };
@@ -298,8 +298,8 @@ fn turning_an_arming_knob_wakes_the_effect_up() {
                 out.samples(),
                 d.samples(),
                 "{}: turning {} did nothing",
-                k.name,
-                k.params[arm].label
+                k.id,
+                k.params[arm].label.tr()
             );
         }
     }
@@ -352,7 +352,7 @@ fn the_rack_fingerprint() {
         };
         println!(
             "{:<24} {:>7} frames  {:016x}",
-            k.name,
+            k.id,
             out.frame_count(),
             digest(out.samples())
         );
@@ -373,11 +373,11 @@ fn exactly_one_effect_wants_a_room() {
         .iter()
         .enumerate()
         .filter(|(k, _)| needs_ir(*k))
-        .map(|(_, k)| k.name)
+        .map(|(_, k)| k.id)
         .collect();
     assert_eq!(
         wanting,
-        ["Conv Reverb"],
+        ["conv_reverb"],
         "the Load IR button follows this list, and it is wrong"
     );
 }
@@ -387,7 +387,7 @@ fn exactly_one_effect_wants_a_room() {
 /// This is the rack-level half of what `conv.rs` proves in the DSP.
 #[test]
 fn a_convolution_with_no_room_is_bypassed() {
-    let kind = KINDS.iter().position(|k| k.name == "Conv Reverb").unwrap();
+    let kind = KINDS.iter().position(|k| k.id == "conv_reverb").unwrap();
     super::super::editor::ir::set(Vec::new(), 1, 48_000, "");
     let mut norms = default_norms(kind);
     norms[0] = 1.0; // fully wet
@@ -419,8 +419,8 @@ fn the_other_knobs_do_nothing_while_the_effect_is_neutral() {
                     .expect("builds")
                     .is_bypass(),
                 "{}: moving {} armed the effect — then it belongs in `arms`",
-                k.name,
-                k.params[i].label
+                k.id,
+                k.params[i].label.tr()
             );
         }
     }
@@ -430,12 +430,12 @@ fn the_other_knobs_do_nothing_while_the_effect_is_neutral() {
 fn views_match_the_param_count_and_format_units() {
     let v = views(0, &default_norms(0)); // Low-Pass: Cutoff (Hz), Q
     assert_eq!(v.len(), 2);
-    assert_eq!(v[0].0, "Cutoff");
+    assert_eq!(v[0].0, "Cutoff", "the label reads from the string table");
     assert!(v[0].1.ends_with("kHz"), "got {}", v[0].1);
 
     // The EQ bands read in dB, signed — a "+0.0 dB" that shows as "0.00" reads
     // like a raw coefficient.
-    let peak = KINDS.iter().position(|k| k.name == "Peak EQ").unwrap();
+    let peak = KINDS.iter().position(|k| k.id == "peak_eq").unwrap();
     let v = views(peak, &default_norms(peak));
     assert_eq!(v.len(), 3);
     assert_eq!(v[2].1, "+0.0 dB", "the neutral gain must read as 0 dB");

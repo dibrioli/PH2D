@@ -91,8 +91,8 @@ impl AudioSystem {
 
         // Both stages at the SAME setting: Ratio hard right. Identical by construction, so the
         // A/B compares the two designs and not two sets of numbers.
-        let armed = |name: &str| -> Option<FxStage> {
-            let kind = KINDS.iter().position(|k| k.name == name)?;
+        let armed = |id: &str| -> Option<FxStage> {
+            let kind = KINDS.iter().position(|k| k.id == id)?;
             let mut norms = default_norms(kind);
             norms[1] = 1.0; // Ratio, fully clockwise (20:1) — index 1 in both specs.
             Some(FxStage {
@@ -101,11 +101,11 @@ impl AudioSystem {
                 enabled: false,
             })
         };
-        let Some(mut multiband) = armed("Multiband") else {
+        let Some(mut multiband) = armed("multiband") else {
             println!("audio: multiband smoke: no Multiband in the rack");
             return;
         };
-        let Some(compress) = armed("Compress") else {
+        let Some(compress) = armed("compress") else {
             println!("audio: multiband smoke: no Compress in the rack");
             return;
         };

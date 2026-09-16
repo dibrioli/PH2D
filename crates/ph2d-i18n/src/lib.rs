@@ -31,6 +31,8 @@
 mod asset_browser;
 /// As strings dos dois painéis de áudio (editor + mixer).
 mod audio;
+/// As strings do RACK do Audio Editor (efeitos, parâmetros, presets, unidades).
+mod audio_fx;
 /// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
 mod chrome_menus;
 /// As strings do RESTO da moldura (barra do topo, HUD, diálogos, seletor de cor, cartão de instância).
@@ -503,6 +505,7 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| chrome_menus::tr(k))
             .or_else(|| chrome_rail::tr(k))
             .or_else(|| chrome_panes::tr(k))
+            .or_else(|| audio_fx::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

@@ -2897,6 +2897,25 @@ jornada.
 ⇒ ⛔ **Não reconstrua nenhuma das três rotas.** Quem as ler aqui estaria a pagar de novo um problema
 que a troca de lei dissolveu — que é a forma nº 1 pela qual esta lista custa dinheiro.
 
+### F6-q — ✅ **O anel do pincel da Remoção de fundo mostra onde o pincel PINTA, na arte dobrada** (2026-09-16)
+
+**UMA LINHA:** o anel era um círculo com a escala do **quad de repouso**; o pincel pinta pela
+**malha** (a F6-m pôs-lhe a porta do ponteiro). Medido na cena do smoke, cada ponto do anel devolvido
+à imagem por essa mesma porta: erro do raio **`14,4 %`** na mediana, **`33,2 %`** no p90 e
+**`46,0 %`** no pior (junto de uma junta) — e **`0,0 %`** sem dobra, que é o controlo. ⭐ A lei nova
+é o disco do pincel **na imagem**, levado ao ecrã pela malha desenhada
+([`ph2d_sprite_screen::anel_do_pincel`](../../crates/ph2d-sprite-screen/src/anel_do_pincel.rs)):
+erro `≤ 2,5e-5`. ⚠️ Fora da arte o anel parte-se em ARCOS (o texel existe e não é desenhado), e
+com o ponteiro fora dela não há anel (a porta do ponteiro recusa, e o pincel não pinta).
+
+⚠️ **A nota que o pôs na fila dizia `8,8 %`** (doze pontos, lei de pesos de antes do padrão-ouro).
+⭐ **O código saiu da shell**: o desenho do anel encolheu (`−13` linhas) e a forma vive na folha.
+Gates: 3 na folha (um com o anel de ANTES como controlo, `23,6 %` na fixtura) + 1 de costura no
+censo do ponteiro; **duas mutações, duas RED**. Sonda na cena real:
+`sonda_o_anel_da_remocao_de_fundo`.
+
+---
+
 ### F6-p — ⭐⭐⭐ **O `Smooth` deixou de desenhar os VINCOS dos pesos** (smoke do dono, foto, 2026-09-16)
 
 **UMA LINHA:** *«micro irregularidades»* era o refinamento a seguir **fielmente** um campo com um

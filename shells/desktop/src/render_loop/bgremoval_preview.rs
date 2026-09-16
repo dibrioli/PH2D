@@ -76,7 +76,7 @@ pub(super) fn dispatch(
     // tinta da máscara deixou de ser um desenho do Vello e é hoje uma instância do passe de
     // sprites, com a malha da arte por baixo.
     bgr: &mut crate::bgremoval_shell::BgremovalShell,
-    present: &ph2d_ecs::World,
+    present: &mut ph2d_ecs::World,
     toasts: &mut ToastQueue,
 ) -> bool {
     let bgremoval_is_active = tools
@@ -150,7 +150,7 @@ pub(super) fn dispatch(
     // while the tool is borrowed below, drawn in the on-canvas overlay block).
     let theme = hero.theme;
     let mut protect_tint: Option<(Arc<Vec<u8>>, u32, u32)> = None;
-    let mut brush_ring: Option<(f32, u32)> = None;
+    let mut brush_ring: Option<(f32, (u32, u32))> = None;
     let mut needs_panel_reset = false;
     let mut apply_selection: Vec<u64> = Vec::new();
 
@@ -209,7 +209,7 @@ pub(super) fn dispatch(
         // + source width while the protect brush is armed. The
         // "Add area" selector is a single-click flood-fill — no ring.
         if bgremoval_is_active && bg.is_protect_armed() {
-            brush_ring = Some((bg.brush_radius_px(), bg.source_size().0));
+            brush_ring = Some((bg.brush_radius_px(), bg.source_size()));
         }
     }
 

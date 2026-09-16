@@ -144,3 +144,160 @@ fn sonda_o_pincel_precisa_do_smooth() {
         }
     }
 }
+
+/// ⏱️ **SONDA (`--ignored`) — o ANEL da Remoção de fundo na cena real: o de antes contra a porta.**
+///
+/// Cada ponto do anel volta à imagem pela porta do PONTEIRO (a que o pincel de protecção usa), e o
+/// erro é a distância ao centro, em px de origem, contra o raio.
+#[test]
+#[ignore = "sonda: imprime a tabela, sem barra"]
+fn sonda_o_anel_da_remocao_de_fundo() {
+    for graus in [0.0_f32, super::super::super::super::DOBRA_GRAUS] {
+        println!("-- dobra {graus} graus por junta --");
+        mede_o_anel(graus);
+    }
+}
+
+/// O corpo da [`sonda_o_anel_da_remocao_de_fundo`], com a dobra escolhida — a de `0°` é o CONTROLO:
+/// sem dobra o anel de antes está certo, e a régua tem de o dizer.
+fn mede_o_anel(graus: f32) {
+    use ph2d_ecs::PresentWorld;
+    let (sim, e) = cena_dobrada(
+        super::super::super::super::ALTURA_PX,
+        None,
+        ph2d_poly2d::GridOptions::default(),
+        graus,
+    );
+    let (sm, p2l, pele) = campo_da_cena(&sim, e);
+    let sprite = *sim.world().get::<ph2d_render::Sprite>(e).expect("sprite");
+    let tr = ph2d_ecs::world_transform(sim.world(), e).expect("pose");
+    assert!(
+        tr.rotation == 0.0 && tr.scale.x == 1.0 && tr.scale.y == 1.0,
+        "a sonda supoe a base identidade"
+    );
+    let (size, anchor) = (sprite.size, sprite.resolve_anchor(PPM));
+    let origem = (sm.mesh.size[0], sm.mesh.size[1]);
+    let (m, _) = ph2d_skeleton_live::skin_image::posed_sprite_mesh(
+        sm.mesh.clone(),
+        p2l,
+        &pele,
+        &sm.pesos,
+        anchor,
+        size,
+        None,
+    )
+    .expect("malha posada");
+    let mut present = PresentWorld::new();
+    present.world_mut().spawn((
+        ph2d_ecs::SimRef(e),
+        ph2d_ecs::GlobalTransform::from_transform(tr),
+        ph2d_render::RenderInstance {
+            world_pos: [tr.translation.x, tr.translation.y],
+            size,
+            atlas_uv: [0.0, 0.0, 1.0, 1.0],
+            tint: [1.0; 4],
+            basis: ph2d_render::RenderInstance::IDENTITY_BASIS,
+            texture_id: 0,
+            premultiplied: 0.0,
+            anchor,
+            per_corner_tint: [[1.0; 4]; 4],
+            opacity: 1.0,
+            flip_uv: 0,
+            z_order: 0,
+            sampling: 0,
+            uv_xform: ph2d_render::RenderInstance::IDENTITY_UV_XFORM,
+            clip_group: ph2d_render::RenderInstance::CLIP_GROUP_NONE,
+            clip_meta: 0,
+            sub_order: 0,
+        },
+        m.clone(),
+    ));
+    let janela = ph2d_host::WindowSize {
+        width: 1600,
+        height: 900,
+    };
+    let camera = ph2d_render::Camera2d::new(
+        [tr.translation.x, tr.translation.y],
+        900.0 / PX_POR_METRO as f32,
+    );
+    let bits = e.to_bits();
+    let quad = ph2d_sprite_screen::sprite_image_to_screen_affine(
+        origem.0, origem.1, tr, &sprite, None, &camera, janela,
+    )
+    .as_coeffs();
+    let escala = quad[0].hypot(quad[1]);
+    let volta = |pts: &[[f64; 2]], c: [f32; 2], raio: f32, present: &mut PresentWorld| -> f32 {
+        pts.iter()
+            .filter_map(|p| {
+                match ph2d_sprite_screen::uv_sob_o_ponteiro(
+                    &sim,
+                    present.world_mut(),
+                    &camera,
+                    janela,
+                    bits,
+                    p[0] as f32,
+                    p[1] as f32,
+                ) {
+                    ph2d_sprite_screen::UvSobOPonteiro::Uv(u, v) => Some(
+                        (((u - c[0]) * origem.0 as f32).hypot((v - c[1]) * origem.1 as f32) / raio
+                            - 1.0)
+                            .abs(),
+                    ),
+                    _ => None,
+                }
+            })
+            .fold(0.0_f32, f32::max)
+    };
+    for raio in [8.0_f32, 24.0] {
+        let (mut antes, mut agora, mut n) = (Vec::new(), 0.0_f32, 0usize);
+        for iu in 1..20 {
+            for iv in 1..8 {
+                let c = [iu as f32 / 20.0, iv as f32 / 8.0];
+                let Some(l) = local_de(&m, c) else { continue };
+                let w = [l[0] + tr.translation.x, l[1] + tr.translation.y];
+                let cursor = camera.world_to_screen(w, janela);
+                let Some(arcos) = ph2d_sprite_screen::anel_do_pincel(
+                    &sim,
+                    present.world_mut(),
+                    &camera,
+                    janela,
+                    bits,
+                    cursor,
+                    raio,
+                    origem,
+                ) else {
+                    continue;
+                };
+                if arcos.len() != 1
+                    || arcos[0].len() != ph2d_sprite_screen::LADOS_DO_ANEL as usize + 1
+                {
+                    continue;
+                }
+                let r = f64::from(raio) * escala;
+                let circulo: Vec<[f64; 2]> = (0..64)
+                    .map(|i| {
+                        let a = f64::from(i) / 64.0 * std::f64::consts::TAU;
+                        [
+                            f64::from(cursor.0) + r * a.cos(),
+                            f64::from(cursor.1) + r * a.sin(),
+                        ]
+                    })
+                    .collect();
+                antes.push((volta(&circulo, c, raio, &mut present), c));
+                agora = agora.max(volta(&arcos[0], c, raio, &mut present));
+                n += 1;
+            }
+        }
+        antes.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let q = |f: f32| antes[((antes.len() - 1) as f32 * f) as usize];
+        println!(
+            "raio {raio:>4} px | {n:>3} centros | anel de antes: p50 {:.1} % p90 {:.1} % pior {:.1} % \
+             (em {:?}) | anel novo: {:.2e}",
+            q(0.5).0 * 100.0,
+            q(0.9).0 * 100.0,
+            q(1.0).0 * 100.0,
+            q(1.0).1,
+            agora
+        );
+    }
+}

@@ -60,7 +60,7 @@ impl crate::App {
             window_size,
             vector_scene,
             &mut self.bgremoval,
-            present.world(),
+            present.world_mut(),
             toasts,
         );
         // Color Equalization panel ⟷ tool bridge: drives panel

@@ -125,6 +125,9 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 # ⚠️ Só os GATES a usam (o `widget_icon_tests` encena um redimensionamento de janela) — logo é
 # `dev-`, e não uma dependência do produto.
 ph2d-host = { path = "../ph2d-host" }
+# ⚠️ Só a sonda do anel da Remoção de fundo sobre a arte dobrada a usa (`smoke_bone_paint_pincel_tests`):
+# a cena presa ao esqueleto mora AQUI, e a porta do ponteiro e a do anel moram naquela folha.
+ph2d-sprite-screen = { path = "../ph2d-sprite-screen" }
 
 [features]
 # ⛔ **A feature `panel-vector` MORREU** (auditoria de arquitectura, 12/09): o painel é dependência

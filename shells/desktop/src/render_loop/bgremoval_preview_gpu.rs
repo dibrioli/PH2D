@@ -7,11 +7,9 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor_core::toast::{Toast, ToastQueue};
 use ph2d_host::WindowSize;
 use ph2d_i18n::tr_with;
-use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
-// ⭐ O afim saiu para uma FOLHA porque quatro assuntos o partilhavam (HOWTO §1.2).
-use ph2d_sprite_screen::sprite_image_to_screen_affine;
+use ph2d_render::{Camera2d, SpriteRenderer};
 use ph2d_tokens::{ColorToken, StrokeToken, Theme};
-use ph2d_vector::{Affine, Brush, Circle, Color, Stroke, VectorScene};
+use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke, VectorScene};
 use std::sync::Arc;
 
 /// O ciclo de vida da textura de GPU da prévia (Lens F): sobe os pixels premultiplicados quando o
@@ -111,7 +109,10 @@ pub(super) fn upload_preview(
 }
 
 /// As duas dicas que a ferramenta publicou para o canvas: `(a tinta da máscara, o anel do pincel)`.
-type DicasDoCanvas<'a> = (Option<&'a (Arc<Vec<u8>>, u32, u32)>, Option<(f32, u32)>);
+type DicasDoCanvas<'a> = (
+    Option<&'a (Arc<Vec<u8>>, u32, u32)>,
+    Option<(f32, (u32, u32))>,
+);
 
 /// ⭐⭐⭐ **O QUE ESTE QUADRO DESENHA NO CANVAS** — a tinta da máscara (que vai pelo passe de
 /// SPRITES, com a malha da arte) e o anel do pincel (que é uma dica de UI e fica no Vello).
@@ -123,7 +124,7 @@ pub(super) fn paint_canvas(
     dicas: DicasDoCanvas<'_>,
     bgr: &mut crate::bgremoval_shell::BgremovalShell,
     // `(apresentação, simulação)` — a malha posada vive no primeiro, a pose e a sprite no segundo.
-    mundos: (&ph2d_ecs::World, &SimWorld),
+    mundos: (&mut ph2d_ecs::World, &SimWorld),
     // O enquadramento do ecrã e a cena onde o anel é desenhado.
     ecra: (&Camera2d, WindowSize, &mut VectorScene, Theme),
     renderer: &mut SpriteRenderer,
@@ -143,7 +144,7 @@ pub(super) fn paint_canvas(
     draw_overlays(
         &bgr.preview,
         brush_ring,
-        sim,
+        (present, sim),
         camera,
         window_size,
         vector_scene,
@@ -277,72 +278,56 @@ fn tint_instances(
     out.push(inst, malha);
 }
 
-/// O anel do pincel por cima da prévia (Vello, dica de UI).
-#[allow(clippy::too_many_arguments)]
+/// O anel do pincel por cima da prévia (Vello, dica de UI) — a forma sai da
+/// [`ph2d_sprite_screen::anel_do_pincel`], que o leva ao ecrã pelo mapa que DESENHA a arte.
 fn draw_overlays(
     bgremoval_preview: &Option<BgremovalPreview>,
-    brush_ring: Option<(f32, u32)>,
-    sim: &SimWorld,
+    brush_ring: Option<(f32, (u32, u32))>,
+    mundos: (&mut ph2d_ecs::World, &SimWorld),
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
     theme: Theme,
 ) {
-    // ── Protection-mask tint + brush-size ring (Vello, UI hints) ──────────
-    // The two remaining Vello overlays. They are UI affordances, not
-    // image data — alpha-blended hints on top of the live preview.
-    // They can stay in Vello because they don't need byte-for-byte
-    // parity with anything. Gated on the preview being loaded so they
-    // disappear in sync with the sprite-pipeline live preview.
-    if let Some(preview) = bgremoval_preview {
-        let entity = ph2d_ecs::Entity::from_bits(preview.entity_bits);
-        // ⚠️ Pose de MUNDO — vide o doc do `sprite_image_to_screen_affine`.
-        if let (Some(tr), Some(sprite)) = (
-            ph2d_ecs::world_transform(sim.world(), entity),
-            sim.world().get::<Sprite>(entity),
-        ) {
-            // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
-            let grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
-            // ⭐⭐⭐ **A TINTA SAIU DO VELLO** (2026-09-15) — ela era desenhada aqui com o afim do
-            // QUAD DE REPOUSO, logo sobre uma arte presa ao esqueleto e DOBRADA ela aparecia num
-            // sítio e a prévia (que já vai pelo passe de sprites, deformada) noutro. Hoje é uma
-            // INSTÂNCIA do passe de sprites com a MESMA malha — ver [`tint_instances`], e a recusa
-            // medida do caminho por recortes do Vello no doc da `ph2d_render::drawn_instance_of`.
-            // Brush-size ring at the cursor — the source-px radius
-            // mapped to screen via the footprint scale (extracted
-            // from the affine's per-axis magnitude).
-            if let (Some((r_src, src_w)), Some((cur_x, cur_y))) = (
-                brush_ring,
-                crate::input_dispatch::protect_brush::brush_cursor(),
-            ) && src_w > 0
-            {
-                // `Affine` matrix is [a b c; d e f]; the column vector
-                // `[a, d]` is image-X mapped to screen — its magnitude
-                // is the per-pixel scale on the X axis.
-                let m = sprite_image_to_screen_affine(
-                    preview.width,
-                    preview.height,
-                    tr,
-                    sprite,
-                    grid,
-                    camera,
-                    window_size,
-                )
-                .as_coeffs();
-                let pixel_scale = (m[0] * m[0] + m[1] * m[1]).sqrt() as f32; // |col 0|
-                let src_to_screen = pixel_scale * preview.width as f32 / src_w as f32;
-                let r_screen = r_src * src_to_screen;
-                let accent = ColorToken::Accent.resolve(theme);
-                let color = Color::from_rgba8(accent.r, accent.g, accent.b, 255);
-                vector_scene.inner_mut().stroke(
-                    &Stroke::new(StrokeToken::Default.px() as f64),
-                    Affine::IDENTITY,
-                    &Brush::Solid(color),
-                    None,
-                    &Circle::new((cur_x as f64, cur_y as f64), r_screen as f64),
-                );
+    let (present, sim) = mundos;
+    let (Some(preview), Some((raio, origem)), Some(cursor)) = (
+        bgremoval_preview,
+        brush_ring,
+        crate::input_dispatch::protect_brush::brush_cursor(),
+    ) else {
+        return;
+    };
+    let Some(arcos) = ph2d_sprite_screen::anel_do_pincel(
+        sim,
+        present,
+        camera,
+        window_size,
+        preview.entity_bits,
+        cursor,
+        raio,
+        origem,
+    ) else {
+        return;
+    };
+    let accent = ColorToken::Accent.resolve(theme);
+    let color = Color::from_rgba8(accent.r, accent.g, accent.b, 255);
+    for arco in arcos {
+        let mut path = BezPath::new();
+        for (i, p) in arco.iter().enumerate() {
+            let p = Point::new(p[0], p[1]);
+            if i == 0 {
+                path.move_to(p)
+            } else {
+                path.line_to(p)
             }
         }
+        vector_scene.inner_mut().stroke(
+            &Stroke::new(StrokeToken::Default.px() as f64),
+            Affine::IDENTITY,
+            &Brush::Solid(color),
+            None,
+            &path,
+        );
     }
 }
 

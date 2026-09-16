@@ -5181,6 +5181,7 @@ dependencies = [
  "ph2d-skeleton-demo",
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
+ "ph2d-sprite-screen",
  "ph2d-system-fonts",
  "ph2d-text",
  "ph2d-timeline",

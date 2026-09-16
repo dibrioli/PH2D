@@ -1406,3 +1406,22 @@ tabela, gates e mutações: [Bug #33](../../Vector%20Module/BUGS_vector.md) · f
    e na workspace a feature chega unificada por outra crate. *Uma crate que só passa o lint na
    companhia das outras é a família «a build da workspace esconde a crate que não compila
    sozinha».* A cura provável é o `is_empty` sem `cfg` (um método `pub` não dispara `dead_code`).
+
+---
+
+## §25 — ✅ O ANEL DO PINCEL DA REMOÇÃO DE FUNDO SEGUE A ARTE DOBRADA (2026-09-16)
+
+Fila **F6-q**. O que o integrador precisa de saber:
+
+1. **Porta nova na folha `ph2d-sprite-screen`: `anel_do_pincel`** (+ `LADOS_DO_ANEL`), ao lado da
+   `uv_sob_o_ponteiro`, que é a metade inversa do mesmo par.
+2. ⚠️ **A shell mudou de assinatura num sítio:** o `bgremoval_preview::dispatch` recebe o mundo de
+   apresentação por **`&mut`** (a porta do ponteiro faz uma consulta ECS), e a fase passa
+   `present.world_mut()`. O `brush_ring` leva o tamanho INTEIRO da origem (`(w, h)`), não só a
+   largura. A shell **encolhe** (`−13` linhas).
+3. **Dev-dependência nova:** a `ph2d-app-vec` ganha `ph2d-sprite-screen` só para a sonda da cena
+   real.
+4. **Zero schema, zero contrato, zero registo.**
+5. ⚠️ **Aviso PRÉ-EXISTENTE visto na corrida impactada** (não é desta linha): dois exemplos
+   chamados `probe_cost` (`ph2d-table` e `ph2d-node-source-lsystem`) colidem no `target/ci-test/examples`
+   — o cargo avisa que isso *«pode vir a ser erro»*.

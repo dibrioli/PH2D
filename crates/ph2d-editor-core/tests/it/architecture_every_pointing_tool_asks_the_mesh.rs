@@ -317,6 +317,27 @@ fn the_protection_tint_rides_the_sprite_pass_with_the_art_mesh() {
     );
 }
 
+/// ⭐⭐⭐ **O ANEL DO PINCEL DE PROTECÇÃO sai da porta que o leva pela MALHA** (2026-09-16) — a
+/// metade da COSTURA; a lei e a medição (`46 %` de erro no pior ponto da cena dobrada) moram na
+/// `ph2d_sprite_screen::anel_do_pincel` e nos gates dela.
+///
+/// (Mutação: o anel de volta ao `Circle` com a escala do quad ⇒ RED.)
+#[test]
+fn the_protection_brush_ring_is_drawn_through_the_art_mesh() {
+    const GPU: &str = "shells/desktop/src/render_loop/bgremoval_preview_gpu.rs";
+    let src = fonte(GPU);
+    assert!(
+        src.contains("ph2d_sprite_screen::anel_do_pincel(") && src.contains("for arco in arcos"),
+        "{GPU} deixou de desenhar o anel do pincel pela porta que o leva pela malha da arte."
+    );
+    // ⛔ A LEI ANTIGA proibida pelo nome: um círculo com o raio da escala do quad de repouso.
+    assert!(
+        !src.contains("Circle::new") && !src.contains("pixel_scale"),
+        "{GPU} voltou a desenhar o anel como um círculo com a escala do quad: numa arte dobrada ele \
+         mostra um tamanho e o pincel pinta outro."
+    );
+}
+
 /// ⭐⭐⭐ **O CONTA-GOTAS LÊ O ECRÃ, e o ecrã tem DUAS metades.**
 ///
 /// ⛔⛔⛔ **Report do dono, 2026-09-15: *«não funciona de maneira nenhuma e em nenhum lugar, com a

@@ -1128,3 +1128,96 @@ torna a exclusividade uma propriedade em vez de uma regra.
 * O interior das **tampas** (§44.5), para o dia da `Profundidade::DoCursor`.
 * ⛔ **A ELIPSE** — se o dono a quiser, ela é um gesto próprio e não um modo do
   `Circle`.
+
+---
+
+## §46 — ⭐⭐ As BORDAS do corte, e o círculo que media a coisa errada
+
+> **Report do dono** (2026-09-15, com foto): *«circle ficou com baixa resolução
+> nas próprias linhas do círculo. O algoritmo remesh produz bordas mais corretas
+> que o algoritmo da Box Trim. Tente melhorar a topologia das bordas do corte.»*
+
+Dois defeitos independentes, e a medição separou-os antes de qualquer código.
+
+### §46.1 — ⛔⛔⛔ A costura: vértices DUPLICADOS que o motor emite
+
+Medido na saída **crua** do motor (esfera de `49 612` T, aresta `0,0242`):
+
+| | aspecto p90 | p99 | **MAX** | aresta mínima |
+|---|---|---|---|---|
+| cru | `3,45` | `25,7` | **`2 573 809`** | **`8,74e-9`** |
+
+Uma aresta **`2,8` milhões de vezes** menor que a malha. *Um triângulo de aspecto
+dois milhões não tem normal utilizável, e é isso que a borda mostra.*
+
+⭐ A cura é soldar os coincidentes e colapsar as arestas curtas, **com duas
+cercas que não são zelo**:
+
+1. ⛔ **Uma aresta entre DOIS vértices antigos é da PEÇA.** Sem esta cerca a
+   limpeza varre a malha inteira: medido, **`1 251` de `14 136`** vértices longe
+   do corte deixavam de ser bit-idênticos — ela quebrava sozinha a propriedade
+   que decide a arquitectura desta linha.
+2. ⭐ **Quando um extremo é antigo, o sobrevivente é ELE.**
+
+Com as duas: `MAX` **`2 573 809 → 33`** no caminho do produto, `14 136` de
+`14 136` ao bit, bordo `0`, não-manifold `0`, volume `−2,2e-6` relativo.
+
+**O limiar é o joelho de uma curva medida** (a coluna que decide é o `MAX`,
+porque é o triângulo impossível que estraga a borda): `0,20` da aresta da peça —
+o `MAX` cai `7,5 ×` entre `0,10` e `0,20` e **mais nada** entre `0,20` e `0,35`,
+enquanto o volume paga `8 ×`.
+
+⛔ **RECUSA MEDIDA:** o flip de arestas (`ph2d_mesh::relax_valence`) por cima
+compra `640 → 632` piores-que-`20` e leva o `MAX` de `33` para `26` — pagando
+por mudar a **ligação** da malha **longe do corte**. *Uma cura que muda a peça
+inteira para ganhar oito triângulos não é uma cura.*
+
+⏳ **Nomeado:** os `~632` que sobram **não são arestas curtas** — são cunhas
+finas onde a curva de interseção passa rente a um vértice da peça, e nenhum
+colapso as alcança. Curá-las mexeria na malha da peça.
+
+### §46.2 — ⚠️⚠️ DUAS mutações sobreviveram, e as duas eram a FIXTURA
+
+As duas cercas passaram a suíte inteira ao serem apagadas:
+
+* O gate irmão `longe_do_corte_nenhum_vertice_se_move_um_bit` corre numa
+  `uv_sphere(24,32)`, **cuja aresta mais curta está ACIMA do limiar** ⇒ sem nada
+  para colapsar, apagar a cerca não é observável. ⇒ gate novo na peça que **tem**
+  arestas curtas, com o piso de população a afirmá-lo.
+* ⛔ **E a 1.ª redacção DELE ainda não apanhava a segunda cerca:** ela filtrava
+  *«fora da lâmina»* por `x < 0,4`, e os vértices antigos que a limpeza de facto
+  toca vivem em `x ≈ 0,64` — **fora do cubo pelas paredes de `y`/`z`**. São `14`
+  colapsos de par misto, contados com a mutação na mão. *Um filtro que descreve a
+  fixtura pela metade mede a metade errada da peça.*
+
+⭐ E o `corta_cru` (só para gates) é a única maneira honesta de a régua ser uma
+**afirmação**: *uma barra sobre a saída curada não diz que a cura fez alguma
+coisa*. Controlo medido: `14 331` contra `256` na fixtura dura.
+
+### §46.3 — ⛔⛔ O círculo: uma lei certa sobre o que promete, a prometer a coisa errada
+
+A contagem de lados saía da **FLECHA** — a distância da corda ao arco — exigida
+abaixo de meio pixel: `n ≥ π·√(r/(2·flecha))`. A `r = 250 px` são **`50` lados,
+cada um com `31 px` de RETA no ecrã**. *A flecha é sub-pixel e o olho vê a quebra
+de TANGENTE em cada vértice*, que é o que uma silhueta sombreada mostra.
+
+⭐⭐⭐ **A segunda régua é o `passo_px` — a aresta da peça medida em pixéis — e ela
+é GRÁTIS:** o prisma já subdivide cada segmento do anel até à aresta da peça
+(`Resolucao::Ate`), logo os pontos vão ser criados de qualquer maneira — **só que
+sobre as CORDAS**. Gerá-los sobre o CÍRCULO custa exactamente o mesmo e entrega a
+forma certa.
+
+⚠️ **As duas contam e fica a MAIOR** (numa peça grosseira o `passo_px` é enorme,
+e aí é a flecha que impede o polígono de se ver), e o tecto nomeia o recurso (a
+tampa é triangulada por corte de orelha, `O(n²)`).
+
+⭐ A conversão mundo→ecrã vive na cena (`passo_do_corte_px`), medida à distância
+do **centro da peça**: o acerto pode não existir (o gesto começa fora da peça,
+espec §3), e a escala de um pixel varia tão pouco ao longo de uma peça que
+medi-la no centro é o valor honesto.
+
+### §46.4 — ⏳ ABERTO
+
+* As `~632` cunhas finas da §46.1 — a cura mexeria na malha da peça.
+* A **linha** e a **polilinha** (espec §4.2), os outros **modos**, a **simetria**
+  e o interior das **tampas** continuam como no §45.11.

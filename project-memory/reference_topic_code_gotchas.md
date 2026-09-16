@@ -59,3 +59,9 @@ metadata:
   `[("name", "{follows}"), ("follows", …)]` reescrevia o nome do artista. Um modelo com peças
   lê-se **numa passagem só**; o risco só aparece quando o valor é texto do UTILIZADOR, que foi
   exactamente o que a migração da moldura fez passar por ali (`line/UIUX`, 2026-09-16).
+- ⛔⛔ **Um NOME que também é IDENTIDADE não se traduz no sítio** — o rack do Audio Editor gravava o
+  nome inglês do efeito nos presets do utilizador, e a tradução mudaria o efeito que um ficheiro
+  carrega. Antes de pôr um rótulo na tabela, pergunte *quem mais o LÊ como chave* (formato de
+  ficheiro, procura por nome em cenas de smoke, agrupamentos): separe um `id` estável da chave de
+  texto, e leia os nomes antigos como PADRÕES de `match` (que a régua lexical isenta).
+  (`line/UIUX`, 2026-09-16, formato `v2` com alias `v1`.)

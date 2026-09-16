@@ -2809,3 +2809,66 @@ registo de painéis mudou-se para dentro do `expect` (a régua isenta-o).
 - A tradução de um desenho AUTORADO (Authored UI) é feature, não HR-15 — decisão do dono se um dia
   for pedida.
 - `ph2d-panel-widget-lab` — bancada.
+
+## §40 — ⭐⭐⭐ O TEXTO QUE AS CRATES DE FAMÍLIA E O MOTOR PUBLICAM PARA OS PAINÉIS
+
+Commits `05ffd8458` · `436f734d0` · `9a5a1c69d` (2026-09-16). A forma do §37.3, agora nos três
+painéis onde ela era maior: o painel pinta um nome que mora NOUTRA crate, e a régua por crate do
+painel não o vê.
+
+### 40.1 — O rack do Audio Editor (`ph2d-app-audio`, 403 literais)
+
+- **A identidade saiu do texto, porque o texto ia mudar:** `FxKind` ganhou `id` estável
+  (`low_pass`) ao lado do `name: TextKey`; `FxParamSpec::label` é `TextKey` (uma `const` por palavra
+  em `fx_param_keys.rs`, e os presets de fábrica sobrepõem por ela); `FxUnit` substituiu a string
+  de unidade e a leitura sai de `audio.fx.unit.*` com o número já formatado.
+- ⛔⛔ **O ficheiro de preset do utilizador guardava o NOME INGLÊS** — traduzi-lo mudaria o efeito que
+  um preset gravado carrega. O formato passa a `# PH2D audio chain v2` e grava o `id`; o
+  `legacy_alias` lê os 42 nomes `v1` (e o antigo "Gate") como **padrões de `match`**. Gates
+  `every_v1_name_still_resolves` (mutação provada) e `a_saved_chain_names_the_effect_by_its_id`.
+  ⚠️ Um ficheiro `v2` NÃO é lido por um build anterior a esta linha (salta as linhas).
+- A ponte do editor (entrega, plataformas, variações, espectral, nome do job de denoise) →
+  `audio.editor.*`. Tabela nova `ph2d-i18n/src/audio_fx.rs`; gate novo da crate
+  `every_word_the_audio_editor_shows_comes_from_the_string_table` (o que sobra é consola e o
+  cabeçalho do formato, nomeados).
+- Tecto: `fx_presets.rs` foi a 732 → os dados de fábrica mudaram-se para `fx_presets_factory.rs`, a
+  cura que o cabeçalho dele pedia desde 631.
+
+### 40.2 — O painel de Vector (`nomes_do_motor`, 114 chaves)
+
+Efeitos de caminho (e os parâmetros, incluindo as variantes que um interruptor acorda — o `Roughen`
+do Zig Zag), filtros raster (e os controlos e modos), leis de mistura e presets da gaiola. A
+tradução entra nos **pontos de escrita** (os `set_*` que a shell chama) e na montagem dos chips de
+modo. ⚠️ **Em inglês a tabela diz o mesmo que o motor** — apagar a tradução de um setter não muda um
+pixel; por isso há um segundo gate que lê os pontos de escrita (`every_door_the_names_enter_by_
+translates_them`, mutação provada). ⛔ Sem `debug_assert` no `pintar`: os testes de costura
+publicam tabelas sintéticas, e a cobertura mede-se contra o MOTOR
+(`every_name_the_engine_publishes_has_a_key`, mutação provada). Tabela irmã
+`vector_engine.rs` (o `vector.rs` foi a 712).
+
+### 40.3 — A biblioteca de nós e os fundos do grafo (`ph2d-app-motion`)
+
+Categorias, sub-grupos, título «Add Node», fundos (título, linhas, 8 cores) e o nome por omissão
+de um grupo. O sub-grupo é também a identidade do agrupamento → `TextKey` comparada como chave.
+`EnumRow::labels` é `&'static [&'static str]`: as cores traduzidas são construídas uma vez e ficam
+(documentado).
+
+### 40.4 — Para o integrador
+
+- `ph2d-app-audio` e `ph2d-app-motion` ganharam `ph2d-i18n`; `ph2d-panel-vector` ganhou três
+  dev-dependencies do motor (`ph2d-fx-op`, `ph2d-blend-mode`, `ph2d-warp-style`) para o gate.
+- `ph2d-i18n/src/lib.rs`: mais dois módulos na cadeia (`audio_fx`, `vector_engine`).
+- Uma linha que acrescente um efeito ao rack precisa de `id` + chave + um braço no `legacy_alias`
+  NÃO (só nomes `v1`); um efeito/filtro novo no motor do Vector reprova o gate de cobertura até
+  ganhar braço em `nomes_do_motor`.
+
+### 40.5 — ⏳ ABERTO
+
+- **Os nomes dos NÓS e dos parâmetros do Motion** (134 nós, centenas de rows nos manifestos das
+  crates `ph2d-node-*`) — a maior superfície restante, e pede desenho próprio (chave derivada do
+  `type_name` + chave do param), não braços à mão.
+- **Os toasts e avisos da shell** (`asset_card_verbs`, `fase_recipe_and_asset_verbs`, `project_load`,
+  `input_handlers`, `bgremoval`, os commits do Inspector) — texto de interface de verdade; a
+  migração pelo script aponta para `shells/desktop/src`.
+- As cenas de demonstração (`ph2d-app-physics`, a maior parte de `ph2d-app-motion` e da shell)
+  escrevem NOMES DE OBJECTOS de cena — dado da cena, não vocabulário; triagem antes de migrar.

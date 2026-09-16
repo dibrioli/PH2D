@@ -2054,7 +2054,7 @@ Gate `snapshots_object_gizmo_tests` (duas metades, cada uma com o CONTROLO `obje
 ao lado — sem ele o gate ficava verde sobre uma view que nunca nasce): o primário e as **extras** de
 uma multi-selecção. Mutação (`if false`): **2 de 2 RED**, na asserção certa.
 
-⏳ **NOMEADO e não curado:** o gémeo do Flip — um objecto de OUTRA família continua a publicar caixa
+✅ **FECHADO pela W9, logo abaixo (conferido em 2026-09-16)** — ~~NOMEADO e não curado~~: o gémeo do Flip — um objecto de OUTRA família continua a publicar caixa
 enquanto a ferramenta Flip desenha (o `flip_gizmo_on` gateia só a arte do Flip). Mesmo mecanismo,
 outra ferramenta, e sem report.
 
@@ -2965,7 +2965,7 @@ de antes) e `PH2D_SKIN_WEIGHTS=linear` (a lei dos pesos de antes).
   refinamento não resolve de propósito — com orçamento de sobra ele converge a `26,71°`. Um campo
   C¹ **de verdade** pede a recuperação de gradientes de ordem mais alta (ou um *patch* por
   triângulo); não foi pedido.
-- ⏳⏳ **DECISÃO DO DONO PENDENTE: tirar o `Smooth`?** Depois da cura ele comparou os dois na cena
+- ✅ **DECIDIDO (ver o veredito no fim deste item): tirar o `Smooth`?** Depois da cura ele comparou os dois na cena
   do smoke e viu *«ambos iguais»* — e está certo **para aquela cena**: a `25°` por junta o `Smooth`
   nem refina a zoom `1` (`2 430` peças nos dois). Medido nas dobras FORTES (sonda
   `sonda_a_faceta_do_fast_na_dobra_forte`): o `Fast` erra `0,96`/`1,35`/`1,66`/`1,85 px` a

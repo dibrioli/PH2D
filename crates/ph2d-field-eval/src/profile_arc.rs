@@ -178,6 +178,24 @@ pub(crate) fn meia_lua_caminho_tree(
     termo(dentro_do_circulo_tree(u, v, k) * do_lado, k, non_zero)
 }
 
+/// ⭐ **A distância² a uma RECTA (o segmento `a→a+e`), como árvore** — a porta única da lei do
+/// segmento para as duas árvores (2026-09-16).
+///
+/// ⚠️ **Estava escrita em DOIS sítios** (`sd_profile_inner` e `sd_profile_in_region`), a mesma forma
+/// que deu o Bug #1 dos `docs/3DModeling/BUGS_3dmodeling.md` para o arco. `w = p − a`. A ordem das
+/// operações é a que as duas cópias tinham, byte a byte, então a fita não muda.
+pub(crate) fn dist2_recta_tree(wx: &Tree, wy: &Tree, e: [f64; 2]) -> Tree {
+    let (ex, ey) = (e[0], e[1]);
+    let inv_ee = 1.0 / (ex * ex + ey * ey);
+    let h = ((wx.clone() * Tree::constant(ex) + wy.clone() * Tree::constant(ey))
+        * Tree::constant(inv_ee))
+    .max(0.0)
+    .min(1.0);
+    let qx = wx.clone() - h.clone() * Tree::constant(ex);
+    let qy = wy.clone() - h * Tree::constant(ey);
+    qx.square() + qy.square()
+}
+
 // ─── a mesma lei, em escalar (o índice) ─────────────────────────────────────────────────────────
 
 /// A distância² ao arco, em escalar — a MESMA conta do [`dist2_tree`].

@@ -100,7 +100,6 @@ fn sd_profile_inner(profile: &Profile, u: &Tree, v: &Tree, axis_seam: bool) -> T
             let (ax, ay) = (f64::from(pts[i][0]), f64::from(pts[i][1]));
             let (bx, by) = (f64::from(pts[j][0]), f64::from(pts[j][1]));
             let (ex, ey) = (bx - ax, by - ay);
-            let inv_ee = 1.0 / (ex * ex + ey * ey);
 
             let wx = u.clone() - Tree::constant(ax);
             let wy = v.clone() - Tree::constant(ay);
@@ -108,14 +107,8 @@ fn sd_profile_inner(profile: &Profile, u: &Tree, v: &Tree, axis_seam: bool) -> T
             let fora_do_eixo = !(axis_seam && ax.abs() <= on_axis && bx.abs() <= on_axis);
 
             if bulge == 0.0 {
-                // ── recta: a conta de sempre, intocada ─────────────────────────────────────────
-                let h = ((wx.clone() * Tree::constant(ex) + wy.clone() * Tree::constant(ey))
-                    * Tree::constant(inv_ee))
-                .max(0.0)
-                .min(1.0);
-                let qx = wx.clone() - h.clone() * Tree::constant(ex);
-                let qy = wy.clone() - h * Tree::constant(ey);
-                let seg2 = qx.square() + qy.square();
+                // ── recta: pela porta única (`crate::profile_arc::dist2_recta_tree`) ───────────
+                let seg2 = crate::profile_arc::dist2_recta_tree(&wx, &wy, [ex, ey]);
                 if fora_do_eixo {
                     dist2 = Some(match dist2 {
                         None => seg2,
@@ -367,16 +360,9 @@ pub fn sd_profile_in_region(
             continue;
         }
         let (ex, ey) = (f64::from(b[0]) - ax, f64::from(b[1]) - ay);
-        let inv_ee = 1.0 / (ex * ex + ey * ey);
         let wx = u.clone() - Tree::constant(ax);
         let wy = v.clone() - Tree::constant(ay);
-        let h = ((wx.clone() * Tree::constant(ex) + wy.clone() * Tree::constant(ey))
-            * Tree::constant(inv_ee))
-        .max(0.0)
-        .min(1.0);
-        let qx = wx - h.clone() * Tree::constant(ex);
-        let qy = wy - h * Tree::constant(ey);
-        let seg2 = qx.square() + qy.square();
+        let seg2 = crate::profile_arc::dist2_recta_tree(&wx, &wy, [ex, ey]);
         dist2 = Some(match dist2 {
             None => seg2,
             Some(acc) => acc.min(seg2),

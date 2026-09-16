@@ -337,7 +337,11 @@ contagem.
 ## §22 — ⏳ O que fica
 
 - ✅ **O `select×555` foi auditado (§23)** — e a pergunta mudou;
-- ⏳ **A lei do SEGMENTO em dois sítios** (pré-existente);
+- ✅ **A lei do SEGMENTO numa porta só** (`profile_arc::dist2_recta_tree`, lida pelas duas árvores) —
+  a fita do dispositivo sai **igual ao bit** (impressão do WGSL antes/depois: vaso, polilinha,
+  cantoneira e vaso no nível 16), `76` gates de perfil/arco/região verdes, mutação `H1` morta
+  (`5` gates). ⭐ E a mesma impressão mostrou de passagem que **o vaso no nível 16 dá a MESMA fita
+  que no nível 1** — o botão já não desfaz os arcos;
 - ⏳ **O reconhecedor amostra seis pontos** e subestima o erro máximo de uma cúbica em `~8 %` (o pico
   cai entre `t = 0,125` e `0,25`) — a barra efectiva é `~1,08×` a escrita; honesto para a família da
   casa, nomeado aqui;

@@ -284,7 +284,7 @@ pub(super) fn group(motion: &mut MotionState, views: Vec<u32>) {
         parent: level,
         x,
         y,
-        title: fold::DEFAULT_TITLE.to_string(),
+        title: fold::DEFAULT_TITLE.tr().to_string(),
     });
     for id in nodes {
         motion.doc.members.insert(id, sid);

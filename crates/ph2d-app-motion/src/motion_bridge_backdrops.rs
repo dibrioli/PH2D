@@ -13,6 +13,7 @@
 //! (add / delete / rename / re-tint) push their own.
 
 use super::MotionState;
+use ph2d_i18n::TextKey;
 use ph2d_motion_doc::Backdrop;
 
 /// The next free backdrop id. Ids are never reused within a session (a fresh
@@ -28,9 +29,9 @@ fn next_id(motion: &MotionState) -> u32 {
         .map_or(0, |m| m.saturating_add(1))
 }
 
-/// The default title a new backdrop lands with. English (app UI is English) —
-/// the artist renames it in the params panel.
-const DEFAULT_TITLE: &str = "Group";
+/// The default title a new backdrop lands with — the artist renames it in the params panel. A KEY
+/// (HR-15); once written into the document the title is the artist's data.
+const DEFAULT_TITLE: TextKey = TextKey::new("panel.motion_graph.library.default_group");
 
 /// Add a backdrop over the given graph-space rect (the panel already decided
 /// whether that is the wrapped selection or a default block). One undo step.
@@ -47,7 +48,7 @@ pub(super) fn add(motion: &mut MotionState, x: f32, y: f32, w: f32, h: f32) {
         w,
         h,
         color,
-        title: DEFAULT_TITLE.to_string(),
+        title: DEFAULT_TITLE.tr().to_string(),
     });
     // Decoration has a LEVEL (doc 57): a backdrop added while the artist is inside a
     // group belongs to that group's canvas. Without this it would be born at the root
@@ -123,9 +124,26 @@ pub(super) fn set_color(motion: &mut MotionState, id: u32, color: u8) {
 /// The 8 tint names, in token order (`graph-backdrop-1..8`) — the hue ramp the
 /// tokens actually walk (20°, 60°, 110°, 150°, 200°, 250°, 300°, and a near-grey),
 /// so the label says what the artist will see. App UI is English.
-const COLOR_LABELS: &[&str] = &[
-    "Red", "Amber", "Olive", "Green", "Teal", "Blue", "Violet", "Grey",
+const COLOR_KEYS: [TextKey; 8] = [
+    TextKey::new("panel.motion_graph.backdrop.red"),
+    TextKey::new("panel.motion_graph.backdrop.amber"),
+    TextKey::new("panel.motion_graph.backdrop.olive"),
+    TextKey::new("panel.motion_graph.backdrop.green"),
+    TextKey::new("panel.motion_graph.backdrop.teal"),
+    TextKey::new("panel.motion_graph.backdrop.blue"),
+    TextKey::new("panel.motion_graph.backdrop.violet"),
+    TextKey::new("panel.motion_graph.backdrop.grey"),
 ];
+
+/// The translated colour names, as the `'static` slice an `EnumRow` carries.
+///
+/// ⚠️ **Built once per process and leaked on purpose**: `EnumRow::labels` is `&'static [&'static
+/// str]` (the 134 node crates hand it their own static tables), and the language does not change
+/// under a running app. Eight pointers, once.
+fn color_labels() -> &'static [&'static str] {
+    static LABELS: std::sync::OnceLock<&'static [&'static str]> = std::sync::OnceLock::new();
+    LABELS.get_or_init(|| Box::leak(COLOR_KEYS.map(TextKey::tr).into()))
+}
 
 /// The params-panel rows for the selected BACKDROP, or `None` when the subject is
 /// a node (or nothing). A backdrop has no manifest and no `ParamUiHint`s — it is
@@ -140,14 +158,14 @@ pub(super) fn params_snapshot(
     let b = motion.doc.backdrops.iter().find(|b| b.id == id)?;
     Some(ParamsSnapshot {
         node: b.id,
-        title: "Backdrop".to_string(),
+        title: ph2d_i18n::tr("panel.motion_graph.backdrop.title").to_string(),
         modified: Default::default(),
         sections: Vec::new(),
         folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![
             ParamRow::Text(TextRow {
                 name: "title",
-                label: "Title".to_string(),
+                label: ph2d_i18n::tr("panel.motion_graph.backdrop.title_row").to_string(),
                 value: b.title.clone(),
                 // Um título de backdrop é texto livre: não há nada que possa estar "errado".
                 problem: None,
@@ -156,9 +174,9 @@ pub(super) fn params_snapshot(
             }),
             ParamRow::Enum(EnumRow {
                 name: "color",
-                label: "Color".to_string(),
-                selected: (b.color as usize).min(COLOR_LABELS.len() - 1),
-                labels: COLOR_LABELS,
+                label: ph2d_i18n::tr("panel.motion_graph.backdrop.color_row").to_string(),
+                selected: (b.color as usize).min(COLOR_KEYS.len() - 1),
+                labels: color_labels(),
             }),
         ],
     })

@@ -23,6 +23,8 @@ ph2d-core = { path = "../ph2d-core" }
 ph2d-curve = { path = "../ph2d-curve" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# O texto da biblioteca de nós e dos fundos do grafo (HR-15).
+ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-eval-motion = { path = "../ph2d-eval-motion" }
 ph2d-flip = { path = "../ph2d-flip" }
 ph2d-flip-entities = { path = "../ph2d-flip-entities" }

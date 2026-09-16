@@ -10,6 +10,7 @@
 
 use crate::motion_state::MotionState;
 use ph2d_editor_core::HeroScreen;
+use ph2d_i18n::TextKey;
 
 /// Route LAST frame's palette pick into a graph edit — mapping the picked id back to its canonical
 /// `type_name`, then turning it (WITH the gesture's wire context, drained from `library_open`) into the
@@ -110,14 +111,35 @@ pub(super) fn build_palette_model(
     if !compatible.is_empty() {
         cat.retain(|nc| compatible.contains(&nc.type_name));
     }
-    const ORDER: [(NodeUiCategory, &str); 7] = [
-        (NodeUiCategory::Source, "Source"),
-        (NodeUiCategory::Distribute, "Distribute"),
-        (NodeUiCategory::Transform, "Transform"),
-        (NodeUiCategory::Focus, "Focus"),
-        (NodeUiCategory::Fx, "Fx"),
-        (NodeUiCategory::Output, "Output"),
-        (NodeUiCategory::Utility, "Utility"),
+    const ORDER: [(NodeUiCategory, TextKey); 7] = [
+        (
+            NodeUiCategory::Source,
+            TextKey::new("panel.motion_graph.library.source"),
+        ),
+        (
+            NodeUiCategory::Distribute,
+            TextKey::new("panel.motion_graph.library.distribute"),
+        ),
+        (
+            NodeUiCategory::Transform,
+            TextKey::new("panel.motion_graph.library.transform"),
+        ),
+        (
+            NodeUiCategory::Focus,
+            TextKey::new("panel.motion_graph.library.focus"),
+        ),
+        (
+            NodeUiCategory::Fx,
+            TextKey::new("panel.motion_graph.library.fx"),
+        ),
+        (
+            NodeUiCategory::Output,
+            TextKey::new("panel.motion_graph.library.output"),
+        ),
+        (
+            NodeUiCategory::Utility,
+            TextKey::new("panel.motion_graph.library.utility"),
+        ),
     ];
     let make_item = |nc: &ph2d_panel_motion_graph::NodeChoice| PaletteItem {
         label: nc.display.to_string(),
@@ -148,20 +170,20 @@ pub(super) fn build_palette_model(
                         .map(|nc| make_item(nc))
                         .collect();
                     (!items.is_empty()).then_some(PaletteSub {
-                        title: Some(st.to_string()),
+                        title: Some(st.tr().to_string()),
                         items,
                     })
                 })
                 .collect()
         };
         groups.push(PaletteGroup {
-            title: title.to_string(),
+            title: title.tr().to_string(),
             color: ph2d_panel_motion_graph::cat_token(c),
             subs,
         });
     }
     PaletteModel {
-        title: "Add Node".to_string(),
+        title: ph2d_i18n::tr("panel.motion_graph.library.add_node").to_string(),
         groups,
         // A biblioteca de nós não tem caixa nenhuma — ver `PaletteModel::toggle`.
         toggle: None,
@@ -169,51 +191,51 @@ pub(super) fn build_palette_model(
 }
 
 /// The named sub-clusters for the two overloaded categories (empty = a flat category). Order is the
-/// display order in the palette.
-fn palette_subgroups(c: ph2d_node_registry::NodeUiCategory) -> &'static [&'static str] {
+/// display order in the palette. ⚠️ KEYS (HR-15): the sub-cluster is also the GROUPING identity
+/// (`palette_subgroup_of` returns one of these), so it compares as a key and is translated only
+/// where the title is written.
+fn palette_subgroups(c: ph2d_node_registry::NodeUiCategory) -> &'static [TextKey] {
     use ph2d_node_registry::NodeUiCategory;
     match c {
-        NodeUiCategory::Transform => &[
-            "Basic Transforms",
-            "Deformers",
-            "Forces & Physics",
-            "Rigging",
-            "Behaviors & Timing",
-        ],
-        NodeUiCategory::Utility => &["Values & Math", "Time & Signal", "Data & Adapters"],
+        NodeUiCategory::Transform => &[BASIC, DEFORMERS, FORCES, RIGGING, BEHAVIORS],
+        NodeUiCategory::Utility => &[VALUES, TIME_SIGNAL, DATA],
         _ => &[],
     }
 }
 
+const BASIC: TextKey = TextKey::new("panel.motion_graph.library.basic_transforms");
+const DEFORMERS: TextKey = TextKey::new("panel.motion_graph.library.deformers");
+const FORCES: TextKey = TextKey::new("panel.motion_graph.library.forces_and_physics");
+const RIGGING: TextKey = TextKey::new("panel.motion_graph.library.rigging");
+const BEHAVIORS: TextKey = TextKey::new("panel.motion_graph.library.behaviors_and_timing");
+const VALUES: TextKey = TextKey::new("panel.motion_graph.library.values_and_math");
+const TIME_SIGNAL: TextKey = TextKey::new("panel.motion_graph.library.time_and_signal");
+const DATA: TextKey = TextKey::new("panel.motion_graph.library.data_and_adapters");
+
 /// Which sub-cluster a node belongs to, by display name. The last arm is a CATCH-ALL, so a node added to
 /// the registry later lands in a sensible cluster instead of vanishing from the palette.
-fn palette_subgroup_of(
-    c: ph2d_node_registry::NodeUiCategory,
-    display: &str,
-) -> Option<&'static str> {
+fn palette_subgroup_of(c: ph2d_node_registry::NodeUiCategory, display: &str) -> Option<TextKey> {
     use ph2d_node_registry::NodeUiCategory;
     match c {
         NodeUiCategory::Transform => Some(match display {
-            "Move" | "Rotate" | "Scale" | "Transform" | "Mirror" | "Orbit" | "Look At" => {
-                "Basic Transforms"
-            }
+            "Move" | "Rotate" | "Scale" | "Transform" | "Mirror" | "Orbit" | "Look At" => BASIC,
             "Bend" | "Twist" | "Spherize" | "Four Point Warp" | "Kaleidoscope" | "Spline Wrap" => {
-                "Deformers"
+                DEFORMERS
             }
             "Attractor" | "Vortex" | "Wind" | "Drag" | "Curl Noise" | "Noise" | "Spring"
             | "Integrate" | "Collide" | "Collider" | "Buoyancy" | "Simulation Step"
-            | "Simulation Zone" => "Forces & Physics",
-            "FABRIK" | "FK" | "IK 2-Bone" | "Rubber Hose" | "Skin" => "Rigging",
-            _ => "Behaviors & Timing",
+            | "Simulation Zone" => FORCES,
+            "FABRIK" | "FK" | "IK 2-Bone" | "Rubber Hose" | "Skin" => RIGGING,
+            _ => BEHAVIORS,
         }),
         NodeUiCategory::Utility => Some(match display {
             "Math" | "Unary" | "Compare" | "Gain" | "Mix" | "Normalize" | "Quantize"
             | "Threshold" | "Step" | "Wrap" | "Slope" | "Smooth" | "Median" | "Percentile"
-            | "Reduce" | "Sort" | "Cull" => "Values & Math",
+            | "Reduce" | "Sort" | "Cull" => VALUES,
             "Time" | "Time Remap" | "LFO" | "Beat" | "Counter" | "On Change" | "Sample & Hold" => {
-                "Time & Signal"
+                TIME_SIGNAL
             }
-            _ => "Data & Adapters",
+            _ => DATA,
         }),
         _ => None,
     }

@@ -4904,6 +4904,7 @@ dependencies = [
  "ph2d-gpu",
  "ph2d-gpu-cook",
  "ph2d-host",
+ "ph2d-i18n",
  "ph2d-motion-diagnose",
  "ph2d-motion-doc",
  "ph2d-motion-region",

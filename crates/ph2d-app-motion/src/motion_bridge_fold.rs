@@ -30,7 +30,8 @@ use std::collections::{BTreeMap, BTreeSet};
 /// What the root crumb is called. English (app UI).
 const ROOT_CRUMB: &str = "Root";
 /// What an unnamed group is called on its card. English (app UI).
-pub(super) const DEFAULT_TITLE: &str = "Group";
+pub(super) const DEFAULT_TITLE: ph2d_i18n::TextKey =
+    ph2d_i18n::TextKey::new("panel.motion_graph.library.default_group");
 
 /// The view id of a subgraph card (tagged — the node and subgraph id spaces are
 /// independent, so an untagged id would alias).
@@ -425,7 +426,7 @@ fn card_view(
         id: view_id(sid),
         kind: NodeViewKind::Subgraph,
         display_name: if s.title.is_empty() {
-            DEFAULT_TITLE.to_string()
+            DEFAULT_TITLE.tr().to_string()
         } else {
             s.title.clone()
         },
@@ -490,7 +491,7 @@ fn breadcrumb(motion: &MotionState) -> Vec<Crumb> {
         out.push(Crumb {
             level: Some(id),
             title: if title.is_empty() {
-                DEFAULT_TITLE.to_string()
+                DEFAULT_TITLE.tr().to_string()
             } else {
                 title
             },

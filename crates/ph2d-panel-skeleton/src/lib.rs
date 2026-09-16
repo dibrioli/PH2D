@@ -41,6 +41,8 @@ pub mod ids;
 mod paint;
 mod seam;
 mod section;
+/// ⭐ As linhas do OSSO INTELIGENTE — irmão do `section` pelo tecto de LOC, cortado por assunto.
+mod section_smart;
 pub mod state;
 
 pub use state::{

@@ -139,6 +139,6 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
     }
     // ⭐⭐⭐ O passe DIFERIDO: a lista de acções por cima de tudo.
     if let Some(chip_rect) = state::take_pending_bone_action_dd() {
-        section::paint_action_popover(ctx, chip_rect, theme);
+        crate::section_smart::paint_action_popover(ctx, chip_rect, theme);
     }
 }

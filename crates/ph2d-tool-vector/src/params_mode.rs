@@ -79,6 +79,17 @@ pub enum SkinDeform {
     /// curvatura seriam as ARESTAS das facetas, e a cerca `FACETAS_MIN` desliga-a de propósito.
     /// *Um número medido numa densidade que o artista nunca alcança é um número sobre outro
     /// programa* — e eu entreguei-lhe o do `Smooth` com o app no `Fast`.
+    ///
+    /// ⛔⛔ **A SEGUNDA RAZÃO ENVELHECEU em 2026-09-15** (a malha do bind virou um ORÇAMENTO: a cena
+    /// do smoke guarda `2 430` peças, mais do que as `1 568` da tabela acima). Remedido na cena
+    /// real em 2026-09-16 (`sonda_o_pincel_precisa_do_smooth`, `ph2d-app-vec`): **com `Fast` a cura
+    /// do pincel está ligada** — pior redondeza `1,054`/`1,062`/`1,018`/`1,036` para pincéis de
+    /// `4`/`8`/`16`/`64` px, contra `1,42` sem correcção; o `Smooth` a zoom `8×` só leva os dois
+    /// menores a `1,039`/`1,038`. ⇒ **a razão que fica é a PRIMEIRA:** numa dobra FORTE o `Fast`
+    /// erra `1,35 px` (`90°`) a `1,85 px` (`150°`) a zoom `1` e o `Smooth` `0,50`, com o maior canto
+    /// da silhueta de `17°` para `10°` a `150°` (`sonda_a_faceta_do_fast_na_dobra_forte`). Na dobra
+    /// de `25°` da cena do smoke os dois são **o mesmo desenho** a zoom `1` — e foi lá que o dono os
+    /// comparou (2026-09-16: *«ambos iguais»*).
     #[default]
     Smooth,
 }

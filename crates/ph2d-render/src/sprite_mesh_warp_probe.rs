@@ -41,6 +41,11 @@
 //! alcança é um número sobre outro programa* — o mesmo erro que a bancada do quad remesh pagou a
 //! `1/9` da densidade do oráculo.
 //!
+//! ⛔⛔ **E a linha do `Fast` envelheceu em 2026-09-15:** a malha do bind virou um orçamento e a cena
+//! do smoke guarda hoje `2 430` peças. Remedido NA CENA (2026-09-16,
+//! `ph2d-app-vec::…::sonda_o_pincel_precisa_do_smooth`), o `Fast` já liga a cura: pior redondeza
+//! `1,054` (pincel de `4 px`) a `1,018` (`16 px`), contra `1,42` sem ela.
+//!
 //! ## 2. ⛔ Medir sobre a região REALMENTE PINTADA não compra nada ([`probe_a_regiao_medida_contra_a_regiao_pintada`])
 //!
 //! A hipótese era boa e está morta: o ajuste corre sobre o **círculo de repouso** de raio

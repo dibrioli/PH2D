@@ -2922,6 +2922,15 @@ de antes) e `PH2D_SKIN_WEIGHTS=linear` (a lei dos pesos de antes).
   refinamento não resolve de propósito — com orçamento de sobra ele converge a `26,71°`. Um campo
   C¹ **de verdade** pede a recuperação de gradientes de ordem mais alta (ou um *patch* por
   triângulo); não foi pedido.
+- ⏳⏳ **DECISÃO DO DONO PENDENTE: tirar o `Smooth`?** Depois da cura ele comparou os dois na cena
+  do smoke e viu *«ambos iguais»* — e está certo **para aquela cena**: a `25°` por junta o `Smooth`
+  nem refina a zoom `1` (`2 430` peças nos dois). Medido nas dobras FORTES (sonda
+  `sonda_a_faceta_do_fast_na_dobra_forte`): o `Fast` erra `0,96`/`1,35`/`1,66`/`1,85 px` a
+  `60°`/`90°`/`120°`/`150°` (zoom `1`; `×4` a zoom `4×`) e o `Smooth` `0,50`; o maior canto da
+  silhueta a `150°` vai de `17°` para `10°`. ⭐ **E a outra razão de o `Smooth` ser o de fábrica
+  caiu:** com a malha de bind de hoje o `Fast` já liga a cura do pincel (pior redondeza `1,05`
+  contra `1,42` sem ela; `sonda_o_pincel_precisa_do_smooth`). ⛔ **Nada foi apagado** até ele ver
+  uma dobra forte.
 - **a sonda de custo desta crate deixou de refinar** (a arte dela mede `200 × 100` px de ecrã) e
   não reproduz a tabela do [`skin_budget`](../../crates/ph2d-skeleton-live/src/skin_budget.rs) hoje
   — o preço da lei nova foi medido na cena do smoke, as duas leis intercaladas.

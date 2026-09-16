@@ -496,3 +496,70 @@ fn sonda_o_custo_da_lei_dos_pesos() {
         );
     }
 }
+
+/// ⏱️ **SONDA (`--ignored`) — a faceta do `Fast` numa dobra FORTE, com a malha de bind de hoje.**
+#[test]
+#[ignore = "sonda: imprime a tabela, sem barra"]
+fn sonda_a_faceta_do_fast_na_dobra_forte() {
+    for graus in [25.0_f32, 60.0, 90.0, 120.0, 150.0] {
+        let (sim, e) = cena_dobrada(
+            super::super::super::ALTURA_PX,
+            None,
+            ph2d_poly2d::GridOptions::default(),
+            graus,
+        );
+        let (sm, p2l, pele) = campo_da_cena(&sim, e);
+        let ossos = sm.ossos();
+        let mut ws = pele.scratch();
+        let mut campo =
+            |q: [f64; 2], pesos: &[f64]| ponto_do_produto(&pele, p2l.apply(q), pesos, &mut ws);
+        let fast: Vec<[f64; 2]> = sm
+            .mesh
+            .rest
+            .iter()
+            .enumerate()
+            .map(|(v, &q)| campo(q, sm.pesos_de(v)))
+            .collect();
+        let lei = ph2d_skeleton_live::skin_refine::weight_law(ossos, true);
+        let attrs = ph2d_skeleton_live::skin_refine::weight_attrs(&sm.mesh, &sm.pesos, lei);
+        let faceta = ph2d_skeleton_live::skin_refine::skinned_deviation(
+            &sm.mesh, &fast, &attrs, lei, &mut campo,
+        ) * PX_POR_METRO;
+        let lados = silhueta(&sm.mesh, &fast, 1.0);
+        let pior_canto = lados
+            .iter()
+            .map(|(_, p)| vai_e_volta(p).2)
+            .fold(0.0_f64, f64::max);
+        let mut linha = format!(
+            "{graus:>5} graus | {} pecas | Fast: faceta {faceta:.2} px (z1) {:.2} (z4) | maior canto \
+             da silhueta {pior_canto:.2}",
+            sm.mesh.tris.len(),
+            faceta * 4.0
+        );
+        for zoom in [1.0_f64, 4.0] {
+            let r = ph2d_skeleton_live::skin_refine::refine_skinned(
+                &sm.mesh,
+                &sm.pesos,
+                ossos,
+                &mut campo,
+                opcoes(true, zoom),
+            );
+            let f = ph2d_skeleton_live::skin_refine::skinned_deviation(
+                &r.mesh, &r.posed, &r.attrs, r.law, &mut campo,
+            ) * PX_POR_METRO
+                * zoom;
+            let canto = silhueta(&r.mesh, &r.posed, 1.0)
+                .iter()
+                .map(|(_, p)| vai_e_volta(p).2)
+                .fold(0.0_f64, f64::max);
+            linha += &format!(
+                " || Smooth z{zoom}: {} pecas, faceta {f:.2} px, maior canto {canto:.2}",
+                r.mesh.tris.len()
+            );
+        }
+        println!("{linha}");
+    }
+}
+
+#[path = "smoke_bone_paint_pincel_tests.rs"]
+mod pincel;

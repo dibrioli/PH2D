@@ -15,8 +15,6 @@
 //! por **assunto**: o pai possui o *estado* do smoke (câmera, traçado, arrasto) e este possui os
 //! *pedidos* que saem dele.
 
-use super::*;
-
 /// ⭐ **O pedido de EXPORTAR, tirado uma vez.**
 ///
 /// ⚠️ Ele existe porque a ponte com a cena recebe o **mundo**, e escrever um arquivo é assunto do
@@ -111,9 +109,13 @@ pub fn take_open_panel_request() -> bool {
         PENDING.with(|p| p.set(false));
         return true;
     }
-    // Só pede se o smoke está de facto armado — senão o painel de modelagem abriria em toda sessão
+    // Só pede se a env do smoke pediu uma cena — senão o painel de modelagem abriria em toda sessão
     // do app, ocupando o encaixe da direita para não mostrar nada.
-    if with_smoke(|_| ()).is_none() {
+    //
+    // ⚠️ **Pergunta à ENV, e não ao armado** (2026-09-16): desde que a env deixou de armar sozinha
+    // (ver `scene_for`), quem arma é o painel — e perguntar pelo armado fechava a porta por dentro
+    // outra vez, como a W45 já tinha pago acima: para abrir, era preciso estar aberto.
+    if !smoke_env_asked() {
         return false;
     }
     PENDING.with(|p| p.replace(false))
@@ -421,9 +423,57 @@ thread_local! {
 }
 
 pub(super) fn armed_scene() -> Option<u32> {
-    if let Ok(v) = std::env::var("PH2D_FIELD_SMOKE") {
-        return Some(v.parse().unwrap_or(1));
+    scene_for(
+        smoke_env().as_deref(),
+        PILL_ARMED.with(std::cell::Cell::get),
+    )
+}
+
+/// ⭐⭐⭐ **A LEI DO ARMADO, pura: a env do smoke ESCOLHE a cena; o PAINEL liga e desliga**
+/// (2026-09-16, `docs/3DModeling/BUGS_3dmodeling.md` #3).
+///
+/// ⛔⛔ **A 1.ª forma devolvia a cena sempre que a env existia, sem olhar o painel** — e a W42
+/// (*«desarmar tem de desarmar»*) só curou o caminho do PILL. Com `PH2D_FIELD_SMOKE=<n>`, que é
+/// como TODO smoke dirigido deste módulo abre, pegar no Vector fechava o painel e o módulo
+/// continuava armado: os ganchos de entrada comiam o clique, e o dono, a seguir um passo de
+/// smoke, não conseguia desenhar (*«o Modo model não está permitindo usar o modo Vector»*). É o
+/// report de 22/08, à letra, um caminho ao lado. ⚠️ **E o gate da W42 estava verde**: nenhum
+/// teste corre com a env definida.
+///
+/// Aberto pelo pill sem env, a cena é a `1` (a que mostra os dois arredondamentos de uma vez).
+pub(crate) fn scene_for(env: Option<&str>, painel_aberto: bool) -> Option<u32> {
+    painel_aberto.then(|| env.map_or(1, |v| v.parse().unwrap_or(1)))
+}
+
+/// O valor da env do smoke. ⚠️ **Os gates não a podem escrever** (`set_var` é `unsafe` e o
+/// `cargo test` corre em threads que a leem), então ela lê primeiro uma sobreposição POR THREAD que
+/// só existe nos testes — é o que deixa o caminho do smoke dirigido entrar no corpus.
+fn smoke_env() -> Option<String> {
+    #[cfg(test)]
+    if let Some(v) = ENV_DE_TESTE.with(|c| c.borrow().clone()) {
+        return v;
     }
-    // Aberto pelo pill: a cena 1 é a que mostra os dois arredondamentos de uma vez.
-    PILL_ARMED.with(std::cell::Cell::get).then_some(1)
+    std::env::var("PH2D_FIELD_SMOKE").ok()
+}
+
+/// A env do smoke pediu uma cena? É isso — e não o módulo estar armado — que manda o painel abrir
+/// sozinho no primeiro quadro.
+fn smoke_env_asked() -> bool {
+    smoke_env().is_some()
+}
+
+#[cfg(test)]
+thread_local! {
+    static ENV_DE_TESTE: std::cell::RefCell<Option<Option<String>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Corre `f` como se o app tivesse arrancado com `PH2D_FIELD_SMOKE=<env>` (ou sem ela, com
+/// `None`) — só nesta thread, e desfeito à saída.
+#[cfg(test)]
+pub(crate) fn com_env_do_smoke<R>(env: Option<&str>, f: impl FnOnce() -> R) -> R {
+    ENV_DE_TESTE.with(|c| *c.borrow_mut() = Some(env.map(str::to_string)));
+    let r = f();
+    ENV_DE_TESTE.with(|c| *c.borrow_mut() = None);
+    r
 }

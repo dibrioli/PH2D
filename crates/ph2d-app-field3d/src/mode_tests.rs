@@ -262,6 +262,64 @@ fn disarming_the_module_actually_disarms_it() {
     set_armed_by_panel(false);
 }
 
+/// ⭐⭐⭐ **E DESARMA TAMBÉM NO SMOKE DIRIGIDO** (2026-09-16, `BUGS_3dmodeling.md` #3).
+///
+/// ⛔⛔ O gate acima estava VERDE com o defeito dele vivo noutro caminho: a env
+/// `PH2D_FIELD_SMOKE=<n>` — que é como todo smoke dirigido deste módulo abre — armava o módulo
+/// **sem olhar o painel**, então pegar no Vector fechava o painel e os ganchos continuavam a comer o
+/// clique. Dono, a seguir um passo de smoke: *«o Modo model não está permitindo usar o modo
+/// Vector»*. Nenhum teste corria com a env definida — *um corpus sem o caminho do dono não mede o
+/// caminho do dono.*
+///
+/// ⚠️ **As DUAS metades:** a lei pura ([`crate::smoke::scene_for`]) e o caminho real
+/// (`with_smoke` + o pedido de abertura) com a env sobreposta nesta thread.
+#[test]
+fn the_directed_smoke_disarms_with_the_panel_too() {
+    use crate::smoke::{
+        com_env_do_smoke, forget_open_panel_request, scene_for, set_armed_by_panel,
+        take_open_panel_request, with_smoke,
+    };
+
+    // A lei: a env ESCOLHE a cena, o painel LIGA.
+    assert_eq!(scene_for(Some("5"), true), Some(5));
+    assert_eq!(
+        scene_for(Some("5"), false),
+        None,
+        "com a env do smoke e o painel FECHADO o módulo tem de estar desarmado"
+    );
+    assert_eq!(scene_for(None, true), Some(1));
+    assert_eq!(scene_for(None, false), None);
+    assert_eq!(scene_for(Some("lixo"), true), Some(1));
+
+    com_env_do_smoke(Some("5"), || {
+        // O painel abre sozinho no primeiro quadro, UMA vez — mesmo com o módulo ainda desarmado
+        // (senão a porta volta a estar trancada por dentro).
+        forget_open_panel_request();
+        set_armed_by_panel(false);
+        assert!(
+            take_open_panel_request(),
+            "o smoke dirigido tem de pedir o painel aberto no primeiro quadro"
+        );
+        assert!(
+            !take_open_panel_request(),
+            "e só UMA vez — senão o X do painel não fecha nada"
+        );
+
+        set_armed_by_panel(true);
+        assert!(
+            with_smoke(|_| ()).is_some(),
+            "com o painel aberto a cena do smoke existe"
+        );
+        set_armed_by_panel(false);
+        assert!(
+            with_smoke(|_| ()).is_none(),
+            "⛔ painel FECHADO (outra ferramenta tomou o canvas) e o módulo continua armado — os \
+             ganchos de entrada comem o clique do Vector"
+        );
+    });
+    forget_open_panel_request();
+}
+
 /// ⭐ **REARMAR NÃO REPLANTA O DEMO POR CIMA DA PEÇA DO ARTISTA.**
 ///
 /// ⚠️ **Este gate existe porque uma NOTA o afirmava sem prova**, e a afirmação custou o app: o

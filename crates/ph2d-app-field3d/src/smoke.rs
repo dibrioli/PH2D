@@ -189,6 +189,8 @@ pub use view::forget_isolation_across_documents;
 #[path = "smoke_requests.rs"]
 mod requests;
 use requests::armed_scene;
+#[cfg(test)]
+pub(crate) use requests::{com_env_do_smoke, scene_for};
 // ⚠️ **O ÚNICO auxiliar de gate desta família que atravessa a fronteira da crate.** Um
 // `project_field_tests` da shell repõe as portas de abertura entre gates, e do outro lado da
 // fronteira `cfg(test)` é falso — ver a nota da feature `test-support` no `Cargo.toml`.

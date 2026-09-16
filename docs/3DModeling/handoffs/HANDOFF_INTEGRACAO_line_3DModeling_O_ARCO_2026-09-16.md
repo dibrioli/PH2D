@@ -169,3 +169,15 @@ a polilinha engrossada) — a mesma lei que os `62` já provaram. ⇒ **quem int
 placa livre.
 
 **Smoke:** o mesmo comando do §8; subir **Resolution** no painel do modelo e olhar o lábio de perto.
+
+## §11 — ⛔ ADENDA 3: o smoke dirigido prendia o canvas (report do dono, mesmo dia)
+
+*«o Modo model não está permitindo usar o modo Vector»* — com o app aberto por
+`PH2D_FIELD_SMOKE=5`. A env armava o módulo sem olhar o painel, e a W42 só curou o caminho do pill.
+Cura em `ph2d-app-field3d/src/smoke_requests.rs` (`scene_for`: a env escolhe a cena, o painel liga
+e desliga; a abertura automática pergunta à env). Registo: [`BUGS_3dmodeling.md`](../BUGS_3dmodeling.md) #3.
+Gate `mode_tests::the_directed_smoke_disarms_with_the_panel_too`, 4 mutações, 4 mortas; impactados
+`2 656` / `2 656`.
+
+⚠️ **Uma leitura rápida entende ao contrário:** o `com_env_do_smoke` é `#[cfg(test)]` e sobrepõe a
+env **por thread** — o produto lê sempre a env real.

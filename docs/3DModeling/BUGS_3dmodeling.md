@@ -38,6 +38,7 @@ correção for revertida — provado por mutação. "Não reproduzi mais" não f
 | # | data | sintoma | mecanismo | gate |
 |---|---|---|---|---|
 | 1 | 2026-09-16 | *«arestas ainda visíveis»* no ombro do vaso (foto), **depois** da wave que pôs as quinas como arcos | o modo MODEL traça na CPU, e a folha especializada por região lia a **polilinha densa** pelo `ProfileIndex` — a normal ficava constante em cada segmento | `vaso_sem_facetas_tests::o_vaso_nao_tem_facetas_no_traçado_do_modo_model` · `profile_arc_tests::*` |
+| 3 | 2026-09-16 | *«o Modo model não está permitindo usar o modo Vector. não consigo desenhar o cilindro»* — a seguir um passo de smoke | a env `PH2D_FIELD_SMOKE` armava o módulo **sem olhar o painel**: pegar no Vector fechava o painel e os ganchos de entrada continuavam a comer o clique — o report de 22/08, curado só no caminho do PILL | `mode_tests::the_directed_smoke_disarms_with_the_panel_too` |
 | 2 | 2026-09-16 | (auditoria, depois do smoke aprovado do #1) **subir `Resolution` desfazia os arcos**; **um círculo nunca era arco**; **uma meia-lua de dois pontos era recusada** | a barra de «esta cúbica é um arco?» era a tolerância de ACHATAMENTO — mais apertada do que a precisão com que qualquer app escreve um círculo —, os dois arredondadores de quina escreviam arcos acima de `90°` numa cúbica só, **o preview (`coarse_doc`) trocava os arcos por polilinha** comparando segmentos em vez de primitivas, e a porta dos arcos pedia 3 primitivas (a lei do polígono) | `o_arco_sobrevive_a_todo_nivel_de_resolution` · `o_quarto_canonico_define_a_barra_do_arco` · `o_preview_nunca_troca_arcos_por_uma_polilinha_mais_cara` · `subir_o_resolution_nao_parte_o_labio` · `a_meia_lua_de_dois_pontos_coze` · `corner_split_tests::*` · `profile_meia_lua_tests::*` |
 
 ---
@@ -202,3 +203,46 @@ escrita à mão (`ph2d-vec-edit`: a estrela de 5 pontas passa de `15` para `20` 
 `22 885` de `22 886` — o vermelho é `the_cost_of_sampling_a_path_is_flat_in_its_anchors`, da família
 de flakes de carga (load `52`; `3/3` verde sozinho a load `14–17`, zero linhas de diff na
 `ph2d-timeline`).
+
+---
+
+## Bug #3 — o smoke dirigido prendia o canvas (2026-09-16)
+
+**Sintoma.** Dono, a seguir o passo 3 do smoke do #2 (desenhar um círculo no Vector com o app aberto
+por `PH2D_FIELD_SMOKE=5`): *«o Modo model não está permitindo usar o modo Vector. não consigo
+desenhar o cilindro»*.
+
+**Por que enganava.** É **o mesmo report** de 22/08 (*«ainda não consigo usar outros modos como
+vector»*), curado na W42 com um gate verde — e o gate continua verde. A W42 curou o caminho do
+**pill**; o smoke dirigido é o **outro** caminho de armar, e é por ele que todo passo de smoke
+deste módulo abre o app.
+
+**Mecanismo (lido e provado).** `smoke_requests::armed_scene()` devolvia a cena **sempre que a env
+existia**, e só olhava o painel sem ela. Pegar no Vector fecha o painel (`mode::note_owner`, W40) e
+escreve `set_armed_by_panel(false)`; com a env definida, `with_smoke` continuava a devolver o
+módulo, e os ganchos de entrada da modelagem — que correm antes dos do Vector — comiam o clique.
+
+**O gate que estava VERDE, e porquê.** `disarming_the_module_actually_disarms_it` mede exactamente
+«fechar desarma» — mas **nenhum teste corre com a env definida** (`set_var` é `unsafe` e o
+`cargo test` partilha o processo entre threads). *Um corpus sem o caminho do dono não mede o caminho
+do dono.*
+
+**Cura.** A lei ficou pura — `scene_for(env, painel_aberto)`: a env **escolhe** a cena, o painel
+**liga e desliga**. A abertura automática do smoke passa a perguntar à **env** (se perguntasse pelo
+armado, a porta ficava trancada por dentro — o defeito da W45). A env é lida por `smoke_env()`, com
+uma sobreposição **por thread** só nos testes (`com_env_do_smoke`), que é o que põe o caminho do
+smoke dirigido no corpus.
+
+| mutação | gate que a mata |
+|---|---|
+| D1 a env volta a armar sem o painel | `the_directed_smoke_disarms_with_the_panel_too` (a lei) |
+| D2 o caminho real passa por cima do painel | o mesmo (o caminho real) |
+| D3 a abertura automática volta a perguntar pelo armado | o mesmo |
+| D4 a sobreposição de teste é ignorada (o controlo do próprio gate) | o mesmo |
+
+Impactados (`ph2d-app-field3d` e dependentes, incluída a shell): `2 656` de `2 656`.
+
+⚠️ **E o passo de smoke que o revelou era meu e não tinha sido conduzido** — escrito a partir dos
+nomes no código, com a placa ocupada pelo smoke de outra linha. *Um passo não conduzido é uma
+hipótese sobre o produto; este acertou num defeito, e podia ter só mandado o dono a um sítio que não
+existe.*

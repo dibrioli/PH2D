@@ -997,3 +997,91 @@ e as duas mutações morrem.
   a escada para fora da shell.*
 - ⚠️ **VERMELHO PRÉ-EXISTENTE e não desta linha:** `clippy` acusa `PreviewDrive::len` sem `is_empty`
   na `ph2d-preview-drive` — confirmado numa árvore limpa.
+
+## §18 — ⭐⭐⭐ A RE-MEDIÇÃO DA RECUSA APANHOU UMA REGRESSÃO, E A CAUSA ERA A CONDIÇÃO DE FRONTEIRA
+
+O §0.0 manda: *quem move o número que tornava algo inalcançável tem de reconferir a nota.* A mesa do
+oráculo ([`docs/Skeleton/oraculo/`](../oraculo/README.md), 2026-09-14) **recusou os pesos
+harmónicos** com `11,3 %` de dobra contra `3,1 %` do que shipava — e o padrão-ouro é um vizinho
+deles. Corrido naquela mesa, ele lia **`9,53 %` a `90°`**: dentro da família recusada.
+
+E na cena do **produto**, um penhasco — não uma degradação:
+
+| graus/junta | euclidiana (fábrica) | BBW (antes da cura) |
+|---:|---:|---:|
+| `45` | `0,43 %` | `0,00 %` |
+| `60` | `0,75 %` | `0,29 %` |
+| **`90`** | **`0,89 %`** | ⛔ **`9,80 %`** |
+
+### §18.1 — A causa: eu sobre-restringia, e não era a energia
+
+⭐⭐⭐ Dois ossos de uma corrente **partilham a junta**, então os eixos deles **tocam-se**. Prender o
+eixo inteiro de cada um põe `w = 1` de um lado e `w = 0` do outro **em vértices vizinhos** — e a
+energia nunca chega a ter voto ao longo do eixo, porque o eixo é **todo Dirichlet**.
+
+⇒ [`Options::folga_da_junta`]: **ambíguo ⇒ LIVRE**. Um vértice que tem dois ossos igualmente perto
+não é *«claramente de nenhum»*, e é exactamente ali que a mistura tem de acontecer. ⭐ A regra **não
+precisa de saber o que é uma junta**.
+
+### §18.2 — O `4` sai de um JOELHO, e os dois lados dele têm mecanismo
+
+| folga | presos | arte rígida | **vazamento** | faceta | dobra `90°` |
+|---:|---:|---:|---:|---:|---:|
+| `0` | `49` | `10,1 %` | `0,13 px` | `1,96 px` | `9,44 %` |
+| **`4`** | **`31`** | **`6,8 %`** | **`0,38`** | **`0,30`** | **`6,08 %`** |
+| `8` | `15` | `2,4 %` | ⛔ **`5,24`** | `0,30` | `2,67 %` |
+| `16` | `3` | `13,4 %` | ⛔ `10,93` | `0,20` | `2,74 %` |
+
+⛔ **Acima do joelho o VAZAMENTO dispara `14×`** — alargar a mistura é o que faz um osso alcançar a
+arte do vizinho, que é o defeito que esta lei entrou para curar. *Uma folga grande demais re-compra
+o borrão global pela porta do lado.* E a `16` os pinos colapsam para `3` (um por osso, pela rede da
+2.ª metade) e a **rigidez volta a subir**.
+
+### §18.3 — O resultado na cena do produto
+
+| lei | faceta | esticão | círculo | **vazamento** |
+|---|---:|---:|---:|---:|
+| euclidiana (fábrica) | `6,78 px` | `2,234` | `1,2923` | `0,00 px` |
+| euclidiana `2,0` (shipou 14/09) | `0,40 px` | `1,267` | `1,1491` | ⛔ `26,51 px` |
+| **padrão-ouro** | **`0,42 px`** | **`1,401`** | `1,2894` | ⭐ **`1,08 px`** |
+
+⭐⭐⭐ **Ele passa a EMPATAR com a lei borrada na faceta** (`0,42` contra `0,40`) **sem o vazamento**,
+e a dobra dura melhora em toda a escada: `45°` e `60°` vão a **`0,00 %`** (contra `0,43`/`0,75`) e
+`90°` de `9,80` para `5,65 %`.
+
+### §18.4 — ⛔⛔ TRÊS réguas minhas mentiram antes de uma delas dizer a verdade
+
+1. ⭐⭐⭐ **O perfil do peso amostrava `y = 0`, que é a LINHA PRESA** — eu lia a **condição de
+   fronteira** e chamava-lhe solução, e quase registei *«o padrão-ouro é uma função ESCADA»*. Fora do
+   eixo ele é suave (`0,98 → 0,92 → 0,76 → 0,59 → 0,38 → 0,12` a `y = 0,3`), e quem é a escada é o
+   **bump**: na borda da arte (`y = 2,3`, fora do raio dos dois ossos) ele lê
+   `1,0000 · 1,0000 · 0,0000 · 0,0000`.
+2. **A corrente que eu escrevi para a varredura compunha as poses ao contrário** — empurrava o
+   `mundo` onde vai a matriz de pele `rest⁻¹ ∘ mundo` — e lia `21 %` de dobra a `25°` onde o produto
+   lê `0,00 %`. ⇒ a varredura passou a usar **a porta que já existia**, parametrizada.
+3. **O censo da rigidez usava «ALGUM peso é zero»** — com TRÊS ossos isso acusa `63 %` de uma malha
+   perfeitamente misturada (um vértice `(0,5 · 0,5 · 0,0)` mistura dois ossos). *Um predicado quase
+   sempre verdadeiro não é um censo, é ruído.*
+
+### §18.5 — ⭐⭐⭐ E o controlo da RIGIDEZ explica a tabela do oráculo inteira
+
+| lei | **arte rígida** (um osso leva tudo) | grad. vertical máx | dobra `90°` |
+|---|---:|---:|---:|
+| bump (o que shipava) | ⛔ **`37,6 %`** | `5,000` | `0,74 %` |
+| **padrão-ouro** | **`8,1 %`** | **`1,542`** | `9,53 %` |
+
+⇒ **a régua da dobra é ganha por RIGIDEZ**: arte presa a UM osso não pode inverter-se porque **não se
+deforma**. É a **TERCEIRA** família de réguas desta jornada que uma resposta degenerada ganha por
+construção — as de suavidade, pelo borrão global; esta, pela rigidez.
+
+⚠️ **Isto não desculpa os `5,65 %` a `90°`**, e eles ficam nomeados. Mas explica por que a tabela de
+2026-09-14 lia o que lia, e por que a linha *«pesos harmónicos: `11,3 %`»* nunca foi um veredito
+sobre a lei — era um veredito sobre a mesa.
+
+### §18.6 — ⏳ O QUE ISTO DESTRAVA: os CENTROS DE ROTAÇÃO voltam à mesa
+
+A mesa de 2026-09-14 mediu os **centros de rotação optimizados** (Le & Hodgins, 2016) em `8,8 %` e
+escreveu, ela própria, por que o número não valia: *«não se pode julgar uma mistura melhor por cima
+de pesos degenerados — `48 %` da nossa arte não mistura nada»*. ⭐ **Essa premissa dissolveu-se:** a
+arte rígida passou de `37,6 %` para `6,8 %`. ⇒ o candidato que ataca o colapso a `90°` **sem** tocar
+nos pesos é agora avaliável, e é a obra seguinte. *A recusa não foi revogada — o chão dela mudou.*

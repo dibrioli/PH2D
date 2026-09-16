@@ -4,6 +4,18 @@
 > ⛔ **O Implementador NUNCA abre este arquivo** — ele carrega rastros do alvo de propósito.
 > O canal de I para cá é o `INBOX_blender-trim-pincel.md` (append cego).
 
+> ⛔⛔ **REGRA DE INSTRUMENTO, NO TOPO DE PROPÓSITO — leia-a antes de tocar na vassoura:**
+> **a vassoura descodifica-se em MEMÓRIA, por cano** (`sed -n 'Np' … | base64 -d`, ou o próprio
+> `cleanroom-sweep.sh`, que já a descodifica em memória). ⛔ **Nunca para ficheiro — nem em
+> `/tmp`, nem no scratchpad, nem em `/dev/shm`.** E um **relatório de sweep** cita os termos que
+> acusaram **em claro**: ele é material do alvo e vive em `~/Referencias/<alvo>/`, nunca no
+> scratchpad da janela-mãe.
+>
+> ⚠️ **Esta regra está aqui em cima porque estava no FIM (INC-R1) e a 3.ª passagem do R-pré
+> repetiu o incidente (INC-R2) — ela leu a cura DEPOIS de a corrida começar.** *Inspeccionar a
+> vassoura é das primeiras coisas que um R faz; uma cura escrita no fim de um documento é lida
+> depois de já não servir.*
+
 ⏱️ **Aberto em 2026-09-15, ANTES da primeira leitura de CONTEÚDO do fonte.** Antes desta abertura
 o E fez apenas:
 
@@ -952,6 +964,69 @@ corte da §7.1 (`0,0000e+00` nas quatro) · as duas leis do `Ctrl` (`0,0000e+00`
 ✅ **R-pré, 4.ª passagem: ATESTA.** A parede do §4.2 está limpa, a regeneração é aditiva ao bit, e
 **zero** achados bloqueiam. ⇒ **a janela I está ABERTA.** As `6` erratas seguem com ela, e a **R6**
 tem de estar curada antes do R-PÓS.
+
+## R6 — ALONGAMENTO da vassoura (2026-09-16, pedido pela 4.ª passagem do R-pré)
+
+⭐ **A espec ATESTOU na 4.ª passagem e a janela I abriu.** Esta tarefa é do **instrumento**, não da
+espec: entradas **curtas** da vassoura casavam **dentro de identificadores NOSSOS** e produziam
+acertos falsos na árvore rastreada. ⛔ O problema não é detecção — é **especificidade**: a barra do
+§7.2 (*«zero hits sobre a árvore inteira»*) deixava de ser satisfazível, e *uma entrada que dispara
+sobre uso lícito treina quem corre o sweep a ignorar achados*.
+
+### A cura: ALONGAMENTO, nunca remoção cega
+
+Cada entrada curta foi substituída por formas **mais longas** que uma transcrição carregaria
+igualmente (o nome do campo com o dono, o índice, a chamada com o 1.º argumento, a frase inteira em
+vez do fragmento). ⇒ **a detecção nunca esteve enfraquecida e continua a não estar; o que se
+recuperou foi a especificidade.**
+
+**`11` entradas alongadas, substituídas por `22`** (vassoura **`321` → `332`**). A quatro delas
+formavam um bloco contíguo com forma de truncagem; as outras sete são da mesma família e foram
+curadas no mesmo passo, porque a barra é *zero*, não *«zero entre as seis nomeadas»*:
+
+| classe do choque | com que nosso identificador colidia |
+|---|---|
+| **truncagem de nome de campo** (4) | nomes nossos que **começam pelo mesmo prefixo** — um de área com *custo*, três contadores nossos de coisas que começam por `no…`/`co…` |
+| **nome genérico igual ao nosso** (4) | um centro anterior, um raio ao quadrado, uma amostragem de superfície e uma força — **todos existem na nossa casa com o mesmo nome e outro significado** |
+| **fragmento de prosa** (3) | uma abertura de frase de três palavras que quatro painéis nossos usam em doc-comment, e uma tradução minha que colidia com a **paráfrase atribuída** que o nosso próprio ficheiro já fazia do mesmo facto |
+
+### A contagem, ANTES e DEPOIS (para o R-PÓS não a redescobrir)
+
+Método: `git ls-files -z | xargs -0 bash scripts/cleanroom-sweep.sh <vassoura>`.
+
+| grandeza | antes | depois |
+|---|---|---|
+| ficheiros acusados, árvore inteira | **66** | **30** |
+| linhas de conteúdo acusadas | **105** | **35** |
+| ⭐ **ficheiros acusados em `crates/` (código NOSSO)** | **28** | **`1`** |
+| ⭐ **linhas de conteúdo acusadas em `crates/`** | **57** | **`0`** |
+| termos distintos a acusar | 29 | 19 |
+
+⇒ **os acertos falsos dentro do nosso código foram a ZERO.** Os `29` ficheiros que sobram são
+todos `docs/**` — a dívida de citações **pré-existente** que o `CLAUDE.md` §5 declara **fora do
+censo por construção**, e que esta obra não criou nem tocou.
+
+### ⚠️ E o ÚNICO acerto que sobra em `crates/` NÃO é um falso positivo — é um achado para o R-PÓS
+
+`crates/ph2d-sculpt3d/src/verb_scrape_tests.rs` traz, num **doc-comment de teste**, uma **citação
+verbatim curta da prosa do alvo, em inglês, entre aspas e ATRIBUÍDA** («a referência escreve o
+porquê no próprio comentário — …»). Ele está na árvore desde **antes desta obra** (o ficheiro é
+anterior a 2026-09-09, e migrou de sítio na W2, o que faz o `git log -S` por caminho actual não o
+alcançar).
+
+⛔ **Deliberadamente NÃO alongado.** Alongar a entrada para o calar seria exactamente *afrouxar a
+tolerância* que o cabeçalho do `cleanroom-sweep.sh` proíbe. A pergunta — **citação curta de prosa
+atribuída (direito de citação, §4.1.12) ou comentário do original a re-dizer (§4.2)?** — é do
+**R-PÓS**, e fica aqui com o endereço, sem reproduzir o trecho.
+
+### O instrumento, re-provado
+
+`bash scripts/cleanroom-sweep-controlo.sh docs/3D/cleanroom/VASSOURA_blender-trim-pincel.txt` →
+**os dez canais discriminam com a vassoura alongada**: os oito que têm de acusar acusam (nome de
+ficheiro · texto numa linha · binário · dentro de `.gz` · dobrado com ênfase pelo meio · dobrado
+entre comentários · esse comprimido · **dobrado no `.gz` sem marcador** · marcador de outra
+família), o controlo **negativo** fica limpo, e o uso errado distingue-se do achado (`exit 2`).
+Corre em **0,08 s**. ⇒ *alongar não abriu canal cego nenhum.*
 
 ## Incidentes
 

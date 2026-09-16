@@ -3,22 +3,26 @@
 //!
 //! # ⏸️ **DORMENTE desde 2026-09-15 — e a decisão é do dono, não um acidente**
 //!
-//! ⛔⛔ **Enquanto pintar ACHATAR a arte, esta porta não tem sujeito.** Por ordem do dono
-//! (2026-09-15, [`ph2d_app_painter::skin_suspend`]) a sprite que o Painter edita não recebe malha,
-//! e **todo o chrome deste módulo volta ao afim do quad — byte a byte** (é o caminho medido e
-//! gateado por `a_segment_over_a_flat_quad_is_still_one_straight_line`).
+//! ⛔⛔ **Enquanto a ferramenta ACHATAR a arte, esta porta não tem sujeito.** Por ordem do dono
+//! (2026-09-15, [`crate::skin_suspend`]) a sprite que o Painter edita não recebe malha, e **todo o
+//! chrome deste módulo volta ao afim do quad — byte a byte** (é o caminho medido e gateado por
+//! `a_segment_over_a_flat_quad_is_still_one_straight_line`).
+//!
+//! ⭐⭐ **E desde 2026-09-16 ela ACORDA no Liquify** (regra F6-s: o Liquify *«deverá ser capaz de
+//! fazer ajustes na imagem dobrada»*) — com ele na mão a pele não é suspensa, e o chrome e o ponteiro
+//! voltam a seguir a dobra por esta porta.
 //!
 //! ⚠️⚠️ **Leia o resto deste cabeçalho com isso na mão:** tudo o que ele afirma sobre *«o chrome
-//! segue a arte dobrada»* está CERTO e hoje **não acontece**, porque debaixo do pincel não há
-//! dobra nenhuma. *Um doc que descreve um programa que não corre é a forma mais cara de mentira
-//! deste repo.*
+//! segue a arte dobrada»* está CERTO e hoje **só acontece no Liquify**, porque debaixo de todo o
+//! outro pincel não há dobra nenhuma. *Um doc que descreve um programa que não corre é a forma mais
+//! cara de mentira deste repo.*
 //!
 //! ⭐ **Por que fica, medido:** sem malha ela é **exactamente** o que restaria se fosse apagada, logo
 //! manter custa `0` em tempo de execução; apagar custaria os gates que PROVAM que o caminho recto é
-//! exacto, e uma semana no dia em que pintar sobre a dobra voltar. ⛔ E ela **não pode ser apagada
-//! por inteiro de qualquer forma**: a maquinaria por baixo (`ph2d_render::mesh_uv`,
-//! `drawn_instance_of`, `ph2d_sprite_screen::uv_sob_o_ponteiro`) serve a **Remoção de fundo**, que
-//! NÃO é achatada — o conta-gotas dela, o pincel de proteção, o *Add area* e a tinta da máscara.
+//! exacto. ⛔ E ela **não pode ser apagada por inteiro de qualquer forma**: o **Liquify** trabalha
+//! sobre a dobra. ⚠️ *A razão escrita aqui até 2026-09-16 era a Remoção de fundo, «que NÃO é
+//! achatada» — desde a regra F6-s ela também achata, e a maquinaria dela
+//! (`ph2d_sprite_screen::uv_sob_o_ponteiro`, o anel, a tinta) fica com o ramo da malha sem sujeito.*
 //!
 //! ⚠️ **A nota tem INSTRUMENTO**: o gate `the_dormant_door_says_so_and_the_note_dies_with_the_flattening`
 //! ata-a ao achatamento nas DUAS direcções — tirar o achatamento sem tirar esta nota reprova.

@@ -339,6 +339,67 @@ fn the_protection_brush_ring_is_drawn_through_the_art_mesh() {
     );
 }
 
+/// ⭐⭐⭐ **O ANEL DO LIQUIFY sai pela MALHA DESENHADA** (2026-09-16, regra F6-s: o Liquify é a única
+/// ferramenta de pixels que trabalha sobre a arte dobrada) — a metade da COSTURA; a lei e o gate de
+/// comportamento (cada ponto do anel devolvido pela porta do ponteiro cai no raio do kernel) moram
+/// em `ph2d_app_painter::painter_bridge_brush_ring::anel_do_liquify`.
+///
+/// (Mutação: apagar a chamada no desenho — o anel volta ao disco do quad de repouso ⇒ RED.)
+#[test]
+fn the_liquify_ring_is_drawn_through_the_art_mesh() {
+    const RING: &str = "crates/ph2d-app-painter/src/painter_bridge_brush_ring.rs";
+    const OVERLAYS: &str = "crates/ph2d-app-painter/src/painter_bridge_overlays.rs";
+    let src = fonte(RING);
+    let desenho = src
+        .split_once("pub(super) fn draw_brush_ring(")
+        .and_then(|(_, corpo)| corpo.split_once("\npub(super) fn anel_do_liquify("))
+        .map(|(corpo, _)| corpo)
+        .expect("o desenho do anel mudou de forma — este gate perdeu o sujeito");
+    assert!(
+        desenho.contains(
+            "anel_do_liquify(painter, present, bits, camera, window_size, cursor, piso_px)"
+        ) && desenho.contains("stroke_arcs(vector_scene, &arcos);"),
+        "{RING}: o desenho do anel deixou de perguntar pelo anel do Liquify sobre a malha — sobre \
+         arte dobrada ele volta a mostrar um disco com o tamanho de outra arte."
+    );
+    // E o quadro tem de lhe dar o mundo de apresentação: sem ele não há malha a perguntar.
+    let pai = fonte(OVERLAYS);
+    assert!(
+        pai.contains(
+            "draw_brush_ring(\n        painter,\n        hero,\n        sim,\n        present,"
+        ),
+        "{OVERLAYS} deixou de passar o mundo de apresentação ao anel do pincel."
+    );
+}
+
+/// ⏸️ **As duas portas da Remoção de fundo dizem que o ramo da malha está DORMENTE — enquanto ela
+/// ACHATAR a arte** (regra F6-s, 2026-09-16). A nota nasce e morre com a entrada `"bgremoval"` na
+/// tabela do achatamento: sem ela a nota mentiria ao contrário.
+///
+/// (Mutação: tirar `"bgremoval"` da tabela sem tirar as notas ⇒ RED.)
+#[test]
+fn the_background_remover_notes_its_mesh_branch_is_dormant_while_it_flattens() {
+    const MARCA: &str = "DORMENTE para a Remoção de fundo";
+    const TABELA: &str = "crates/ph2d-app-painter/src/skin_suspend.rs";
+    let tabela = fonte(TABELA);
+    let linha = tabela
+        .lines()
+        .find(|l| l.contains("pub const FERRAMENTAS_QUE_ACHATAM"))
+        .expect("a tabela do achatamento mudou de nome — este gate perdeu o sujeito");
+    let achata = linha.contains("\"bgremoval\"");
+    for porta in [
+        "crates/ph2d-sprite-screen/src/uv_sob_o_ponteiro.rs",
+        "crates/ph2d-sprite-screen/src/anel_do_pincel.rs",
+    ] {
+        assert_eq!(
+            texto(porta).contains(MARCA),
+            achata,
+            "{porta}: a nota `{MARCA}` e a tabela `FERRAMENTAS_QUE_ACHATAM` ({TABELA}) deixaram de \
+             concordar (a Remoção de fundo achata: {achata})."
+        );
+    }
+}
+
 /// ⭐⭐ **A CAIXA DO GIZMO de uma sprite desenhada como malha é a caixa da MALHA** (2026-09-16) — a
 /// metade da COSTURA; a escolha e o gate dela moram na `ph2d_sprite_screen::sheet_lattice::gizmo_box`.
 /// Na cena do smoke do osso a arte dobrada saía `221` px acima da caixa de repouso.
@@ -431,7 +492,10 @@ fn the_canvas_chrome_census_is_derived_and_nobody_maps_an_authored_point_by_the_
          célula ERRADA — *meia lei aplicada é pior que nenhuma*. ✅ O item que isto deixava ABERTO \
          DISSOLVEU em 2026-09-15 por ordem do dono: sob o Painter a sprite pintada é desenhada \
          ACHATADA (`skin_suspend::sprite_achatada`), logo o quad de repouso É o que está no ecrã \
-         e esta célula cai certa.",
+         e esta célula cai certa. ⭐ A exceção dessa regra (F6-s, 2026-09-16) é o LIQUIFY, que \
+         trabalha sobre a dobra — e o anel dele JÁ pergunta à malha (`anel_do_liquify`, gate \
+         `the_liquify_ring_is_drawn_through_the_art_mesh`); o Grid Stamp não o alcança \
+         (`grid_cell_under` recusa o Deform).",
     )];
 
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))

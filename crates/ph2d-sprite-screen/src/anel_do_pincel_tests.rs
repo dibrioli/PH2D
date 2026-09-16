@@ -45,6 +45,17 @@ fn malha_dobrada(cols: u32, rows: u32) -> SpriteMesh {
     m
 }
 
+/// ⚠️ **A pose da sprite: FORA da origem e RODADA.** Com a pose identidade, um mapa que esquecesse
+/// a posição ou a base da instância passaria em todos os gates deste ficheiro (a fixtura alinhada
+/// aos eixos não mede uma base).
+fn pose() -> Transform {
+    let mut t = Transform::IDENTITY;
+    t.translation.x = 1.5;
+    t.translation.y = -0.7;
+    t.rotation = 0.4;
+    t
+}
+
 /// A cena: a sprite na simulação e a instância DESENHADA como a faixa dobrada.
 fn cena() -> (SimWorld, PresentWorld, u64, Camera2d) {
     cena_com(true)
@@ -54,19 +65,21 @@ fn cena() -> (SimWorld, PresentWorld, u64, Camera2d) {
 fn cena_com(dobrada: bool) -> (SimWorld, PresentWorld, u64, Camera2d) {
     let mut sim = SimWorld::default();
     let sprite = Sprite::atlas(0, QUAD, [1.0; 4]);
-    let e = sim.world_mut().spawn((Transform::IDENTITY, sprite)).id();
+    let e = sim.world_mut().spawn((pose(), sprite)).id();
+    let global = GlobalTransform::from_transform(pose());
+    let a = global.affine();
     let mut present = PresentWorld::new();
     let p = present
         .world_mut()
         .spawn((
             SimRef(e),
-            GlobalTransform::from_transform(Transform::IDENTITY),
+            global,
             RenderInstance {
-                world_pos: [0.0, 0.0],
+                world_pos: [a[4], a[5]],
                 size: QUAD,
                 atlas_uv: [0.0, 0.0, 1.0, 1.0],
                 tint: [1.0; 4],
-                basis: RenderInstance::IDENTITY_BASIS,
+                basis: [a[0], a[1], a[2], a[3]],
                 texture_id: 0,
                 premultiplied: 0.0,
                 anchor: sprite.resolve_anchor(100.0),
@@ -88,7 +101,7 @@ fn cena_com(dobrada: bool) -> (SimWorld, PresentWorld, u64, Camera2d) {
             .entity_mut(p)
             .insert(malha_dobrada(32, 16));
     }
-    (sim, present, e.to_bits(), Camera2d::new([0.0, -0.5], 4.0))
+    (sim, present, e.to_bits(), Camera2d::new([1.5, -0.7], 6.0))
 }
 
 /// O pior erro relativo do raio de uma volta, medido pela porta do ponteiro — e quantos pontos
@@ -180,7 +193,7 @@ fn the_ring_lies_where_the_brush_paints_on_bent_art() {
         let quad = crate::sprite_image_to_screen_affine(
             ORIGEM.0,
             ORIGEM.1,
-            Transform::IDENTITY,
+            pose(),
             &sprite,
             None,
             &camera,
@@ -216,7 +229,7 @@ fn without_a_mesh_the_ring_follows_the_quad() {
     let centro = crate::sprite_image_to_screen_affine(
         1,
         1,
-        Transform::IDENTITY,
+        pose(),
         &Sprite::atlas(0, QUAD, [1.0; 4]),
         None,
         &camera,
@@ -288,5 +301,42 @@ fn a_disc_that_leaves_the_art_breaks_into_arcs_and_off_the_art_there_is_none() {
     assert!(
         fora.is_none(),
         "fora da arte o pincel nao pinta, e o anel nao aparece"
+    );
+}
+
+/// ⭐⭐ **A PORTA DE LEITURA DÁ O MESMO ANEL, ponto a ponto** — é a mesma lei, com a UV debaixo do
+/// ponteiro achada pela metade inversa do mapa (`DrawnMesh::uv_at_world`) em vez da porta que precisa
+/// de `&mut World`.
+///
+/// (Mutação: o `uv_at_world` a ignorar a base — o ponto de mundo lido como local ⇒ RED, porque a
+/// fixtura tem o centro FORA da origem.)
+#[test]
+fn the_read_only_ring_is_the_same_ring() {
+    let (sim, mut present, bits, camera) = cena();
+    for centro_uv in [[0.5_f32, 0.12], [0.3, 0.5], [0.7, 0.88], [0.5, 0.02]] {
+        let malha = ph2d_render::drawn_mesh_of(present.world(), bits).expect("malha");
+        let w = malha.world_at_uv(centro_uv).expect("na arte");
+        let cursor = camera.world_to_screen(w, JANELA);
+        let leitura = crate::anel_na_malha(&malha, &camera, JANELA, cursor, 12.0, ORIGEM);
+        let porta = crate::anel_do_pincel(
+            &sim,
+            present.world_mut(),
+            &camera,
+            JANELA,
+            bits,
+            cursor,
+            12.0,
+            ORIGEM,
+        );
+        assert!(
+            leitura.is_some(),
+            "o ponteiro esta' na arte ({centro_uv:?})"
+        );
+        assert_eq!(leitura, porta, "as duas portas discordam em {centro_uv:?}");
+    }
+    let malha = ph2d_render::drawn_mesh_of(present.world(), bits).expect("malha");
+    assert!(
+        crate::anel_na_malha(&malha, &camera, JANELA, (5.0, 5.0), 12.0, ORIGEM).is_none(),
+        "fora da arte nao ha' anel"
     );
 }

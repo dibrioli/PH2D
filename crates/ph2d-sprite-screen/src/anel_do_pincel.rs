@@ -19,6 +19,17 @@
 //! ⚠️ **A nota de 2026-09-15 dizia `8,8 %`**, medida em doze pontos e com a lei de pesos de antes
 //! do padrão-ouro: *um número de uma amostra pequena sobre outro campo não é o número de hoje.*
 //!
+//! # ⏸️ DORMENTE para a Remoção de fundo desde 2026-09-16 — e a lei ficou com outro dono
+//!
+//! No mesmo dia o dono decidiu (regra F6-s) que **editar pixels acontece na imagem plana**: com a
+//! Remoção de fundo na mão a pele é suspensa
+//! (`ph2d_app_painter::skin_suspend::FERRAMENTAS_QUE_ACHATAM`) e a sprite desenha-se como QUAD, logo
+//! o [`anel_do_pincel`] segue sempre o ramo do afim ali. *A tabela acima mede um caminho que o
+//! produto de hoje não corre para esta ferramenta.* ⭐ **A lei não morreu:** o **Liquify** é a
+//! exceção da regra (trabalha sobre a dobra) e desenha o anel dele pela [`anel_na_malha`], que é
+//! esta mesma lei. ⚠️ Tirar a Remoção de fundo da tabela acorda este ramo sem uma linha aqui, e a
+//! nota tem instrumento (`the_background_remover_notes_its_mesh_branch_is_dormant_while_it_flattens`).
+//!
 //! # ⭐ A lei: o disco é da IMAGEM, e vai ao ecrã pelo mapa que DESENHA
 //!
 //! O pincel pinta um disco de `raio` px **de origem** à volta da UV debaixo do ponteiro. O anel é
@@ -59,10 +70,7 @@ pub fn anel_do_pincel(
         return None;
     };
     // Um raio `NaN`, nulo ou negativo não é um disco — não há anel a desenhar.
-    if origem.0 == 0 || origem.1 == 0 || raio.is_nan() || raio <= 0.0 {
-        return None;
-    }
-    let (ru, rv) = (raio / origem.0 as f32, raio / origem.1 as f32);
+    let (ru, rv) = raios(raio, origem)?;
     let entity = ph2d_ecs::Entity::from_bits(bits);
     let tr = ph2d_ecs::world_transform(sim.world(), entity)?;
     let sprite = sim.world().get::<ph2d_render::Sprite>(entity)?;
@@ -71,23 +79,67 @@ pub fn anel_do_pincel(
     let quad = crate::sprite_image_to_screen_affine(1, 1, tr, sprite, grid, camera, window);
     let malha = ph2d_render::drawn_mesh_of(present, bits);
 
-    let pontos: Vec<Option<[f64; 2]>> = (0..LADOS_DO_ANEL)
+    let pontos = volta([u0, v0], ru, rv, |uv| match &malha {
+        Some(m) => m.world_at_uv(uv).map(|w| ecra(camera, window, w)),
+        None => {
+            let p = quad * ph2d_vector::Point::new(f64::from(uv[0]), f64::from(uv[1]));
+            Some([p.x, p.y])
+        }
+    });
+    Some(arcos_de(&pontos))
+}
+
+/// ⭐⭐ **O MESMO anel sobre uma sprite desenhada como MALHA, só com LEITURA** — para o caminho de
+/// chrome, que tem `&World` (o Liquify do Painter, que trabalha sobre a dobra pela regra F6-s).
+///
+/// ⚠️ **A mesma lei da [`anel_do_pincel`]**: o disco é da IMAGEM, à volta da UV debaixo do ponteiro,
+/// e vai ao ecrã pela malha — só a pergunta *«que UV está debaixo do ponteiro?»* é feita pela metade
+/// de leitura do mapa ([`ph2d_render::DrawnMesh::uv_at_world`]). `None` com o ponteiro fora da arte.
+#[must_use]
+pub fn anel_na_malha(
+    malha: &ph2d_render::DrawnMesh<'_>,
+    camera: &ph2d_render::Camera2d,
+    window: ph2d_host::WindowSize,
+    ponteiro: (f32, f32),
+    raio: f32,
+    origem: (u32, u32),
+) -> Option<Vec<Vec<[f64; 2]>>> {
+    let (ru, rv) = raios(raio, origem)?;
+    let uv0 = malha.uv_at_world(camera.screen_to_world(ponteiro, window))?;
+    let pontos = volta(uv0, ru, rv, |uv| {
+        malha.world_at_uv(uv).map(|w| ecra(camera, window, w))
+    });
+    Some(arcos_de(&pontos))
+}
+
+/// O raio do disco na UV, eixo a eixo — `None` num raio que não é um disco ou numa origem vazia.
+fn raios(raio: f32, origem: (u32, u32)) -> Option<(f32, f32)> {
+    // Um raio `NaN`, nulo ou negativo não é um disco — não há anel a desenhar.
+    if origem.0 == 0 || origem.1 == 0 || raio.is_nan() || raio <= 0.0 {
+        return None;
+    }
+    Some((raio / origem.0 as f32, raio / origem.1 as f32))
+}
+
+/// A volta do disco na UV, cada ponto levado ao ecrã por `ao_ecra` (`None` = fora da arte).
+fn volta(
+    centro: [f32; 2],
+    ru: f32,
+    rv: f32,
+    ao_ecra: impl Fn([f32; 2]) -> Option<[f64; 2]>,
+) -> Vec<Option<[f64; 2]>> {
+    (0..LADOS_DO_ANEL)
         .map(|i| {
             let a = i as f32 / LADOS_DO_ANEL as f32 * TAU;
-            let uv = [u0 + ru * a.cos(), v0 + rv * a.sin()];
-            match &malha {
-                Some(m) => m.world_at_uv(uv).map(|w| {
-                    let (x, y) = camera.world_to_screen(w, window);
-                    [f64::from(x), f64::from(y)]
-                }),
-                None => {
-                    let p = quad * ph2d_vector::Point::new(f64::from(uv[0]), f64::from(uv[1]));
-                    Some([p.x, p.y])
-                }
-            }
+            ao_ecra([centro[0] + ru * a.cos(), centro[1] + rv * a.sin()])
         })
-        .collect();
-    Some(arcos_de(&pontos))
+        .collect()
+}
+
+/// Um ponto de mundo em px de ecrã.
+fn ecra(camera: &ph2d_render::Camera2d, window: ph2d_host::WindowSize, w: [f32; 2]) -> [f64; 2] {
+    let (x, y) = camera.world_to_screen(w, window);
+    [f64::from(x), f64::from(y)]
 }
 
 /// Os pontos de uma volta em ARCOS: as corridas de pontos presentes, com a que atravessa o início

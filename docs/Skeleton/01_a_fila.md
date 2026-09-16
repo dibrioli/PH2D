@@ -2926,7 +2926,8 @@ num «o pincel X segue a dobra».
 | ferramenta | achata? | porquê |
 |---|---|---|
 | **Painter** — Paint · Erase · Smear · Blur · Clone · Mask · Inpaint · Fill · Selection · Sculpt · Knife · Wet Paint | ✅ **sim** | pinta, apaga ou mexe em pixels (a ordem de 15/09) |
-| **Painter — Liquify** (o modo `Deform`) | ⛔ **não** | a exceção nomeada: *«deverá ser capaz de fazer ajustes na imagem dobrada»* |
+| **Painter — Transform** (o gizmo que deforma pixels) | ✅ **sim** | deforma pixels — ⚠️ e partilha o `PaintMode::Deform` com o Liquify, por isso a chave da exceção é o id do modo e não o `PaintMode` |
+| **Painter — Liquify** | ⛔ **não** | a exceção nomeada: *«deverá ser capaz de fazer ajustes na imagem dobrada»* |
 | **Background Removal** | ✅ **sim** | remove pixels (a ferramenta nomeada) |
 | filtros (contraste, blur, …) e shaders/efeitos (sombras, …) | ⛔ não | a exceção nomeada: não pintam nem apagam |
 | **Color Equalization** | ⛔ não *(leitura da linha)* | é um filtro de cor |
@@ -2940,6 +2941,38 @@ linha da tabela da porta, nada mais.
 acrescentam margem) mudam ONDE o conteúdo está na textura, e a malha do bind guarda a arte em px da
 textura de ANTES — numa imagem presa, depois do Apply, a pele leria os texels errados. Não é desta
 regra (ela é sobre a DOBRA durante a edição); é do bind, e não foi medido.
+
+#### ✅ IMPLEMENTADA no mesmo dia (2026-09-16)
+
+- **A porta:** `sprite_achatada` lê a TABELA (`FERRAMENTAS_QUE_ACHATAM = ["painter", "bgremoval"]`)
+  e a EXCEÇÃO (`MODOS_SOBRE_A_DOBRA = ["liquify"]`, chave `PainterTool::active_paint_mode_id`).
+  ⚠️ Ela passou a pedir `&mut ToolRegistry`: o contrato `Tool` (congelado, §6) só chega ao Painter
+  concreto pelo `as_any_mut`. O aviso mudou para *«Editing pixels flattens this image…»*.
+- ⭐⭐ **O LIQUIFY sobre a dobra tinha UM consumidor errado: o ANEL.** O kernel (`warp_dab_at`) já
+  trabalhava certo por construção (px de textura, no texel que o ponteiro resolve pela malha, e o
+  arrasto é a diferença de dois pontos resolvidos por ela); o anel era um disco com a escala do quad
+  de repouso. Na fixtura (faixa `4 × 2` m dobrada em arco de `4` m, fora da origem e rodada) o anel
+  de antes errava o raio do kernel em **`13,2 %` / `1,2 %` / `18,0 %`** (aresta que estica · meio ·
+  aresta que encolhe); o de agora em **`≤ 2,6e-6`**. A lei é a do anel da F6-q, pela metade de
+  LEITURA do mapa (`DrawnMesh::uv_at_world`, a mesma álgebra do `mesh_uv` sem `&mut World`) —
+  `ph2d_sprite_screen::anel_na_malha` ← `painter_bridge_brush_ring::anel_do_liquify`.
+- ⏸️ **As notas DORMENTE** do `CanvasMap` e dos 9 desenhadores dizem agora *«só no Liquify»*; e as
+  duas portas da Remoção de fundo (`uv_sob_o_ponteiro`, `anel_do_pincel`) ganharam a delas — o ramo
+  da malha ali não tem sujeito enquanto ela achatar.
+- **Gates (8):** `every_pixel_mode_flattens_and_liquify_works_on_the_bend` · `the_table_is_the_rule`
+  (a porta) · `the_read_only_ring_is_the_same_ring` (a metade de leitura, ponto a ponto) ·
+  `the_liquify_ring_lies_where_the_kernel_deforms_on_bent_art` (cada ponto do anel devolvido pela
+  porta do ponteiro do Painter, com o anel de antes como controlo) ·
+  `only_the_deform_ring_asks_the_mesh_and_only_when_there_is_one` ·
+  `the_liquify_ring_is_drawn_through_the_art_mesh` (costura) ·
+  `the_background_remover_notes_its_mesh_branch_is_dormant_while_it_flattens` (a nota nasce e morre
+  com a entrada na tabela) · e a fixtura dos 4 gates do anel da F6-q passou a estar **fora da origem
+  e rodada** — ⚠️ com a pose identidade a mutação *«o `uv_at_world` ignora a base e a posição»*
+  **sobrevivia**.
+- **Mutações (8, todas RED):** o Transform sem a chave do modo · o Liquify a achatar · a Remoção de
+  fundo fora da tabela (as três na porta) · o `uv_at_world` sem a pose · o anel com o raio do pincel
+  de PINTURA · o anel sem a guarda do Deform · o desenho sem a chamada · a tabela sem `"bgremoval"`
+  com as notas no sítio.
 
 ---
 
@@ -2975,6 +3008,12 @@ com o ponteiro fora dela não há anel (a porta do ponteiro recusa, e o pincel n
 Gates: 3 na folha (um com o anel de ANTES como controlo, `23,6 %` na fixtura) + 1 de costura no
 censo do ponteiro; **duas mutações, duas RED**. Sonda na cena real:
 `sonda_o_anel_da_remocao_de_fundo`.
+
+⏸️ **No MESMO dia a regra F6-s pôs a Remoção de fundo a ACHATAR**, e o ramo da malha deste anel
+ficou sem sujeito para ela (o `8,8 %`/`46 %` descreve um caminho que o produto de hoje não corre
+nesta ferramenta). ⭐ **A lei não morreu:** é ela que desenha o anel do **Liquify**, a exceção da
+regra (F6-s, *implementada*). A fixtura destes gates passou a estar fora da origem e rodada, e o
+controlo lá lê `16,0 %` / `1,3 %` / `23,6 %`.
 
 ---
 

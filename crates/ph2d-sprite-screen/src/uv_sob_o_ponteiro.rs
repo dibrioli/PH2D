@@ -19,6 +19,14 @@
 //!   ⚠️ e é ele, não a lei do quad do renderer, porque **numa folha ele desdobra a grelha** e a
 //!   prévia da Remoção de fundo é a imagem INTEIRA.
 //!
+//! ⏸️ **O ramo da MALHA está DORMENTE para a Remoção de fundo desde 2026-09-16** (regra F6-s do
+//! dono: *editar pixels acontece na imagem plana*). Com ela na mão a pele da sprite é suspensa
+//! (`ph2d_app_painter::skin_suspend::FERRAMENTAS_QUE_ACHATAM`), logo a sprite é desenhada como QUAD
+//! e esta porta responde sempre pelo afim. ⚠️ **Fica, e não é dívida:** a lei continua certa (os
+//! gates dela medem-na sobre uma malha), e tirar a Remoção de fundo daquela tabela acorda-a sem uma
+//! linha aqui. ⚠️ A nota tem instrumento
+//! (`the_background_remover_notes_its_mesh_branch_is_dormant_while_it_flattens`).
+//!
 //! ⚠️ **As dimensões em pixels CANCELAM-SE** e por isso não entram na assinatura: o afim leva
 //! `0..iw` sobre o quad, e a fracção é `img / iw`. Passa-se `1 × 1`, que é a unidade em que a
 //! resposta é dada — *um número inventado aqui seria lido como «a resolução importa»*.

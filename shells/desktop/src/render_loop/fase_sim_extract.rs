@@ -72,9 +72,8 @@ impl crate::App {
             hero_screen.as_ref().map(|h| h.view.center_split),
             surface.size(),
         );
-        // ⭐⭐⭐ **PINTAR ACHATA A ARTE** (ordem do dono, 2026-09-15): a sprite que o Painter edita
-        // não recebe malha, e o desenho, o ponteiro e o chrome voltam ao quad de uma vez. Sair
-        // devolve a deformação no quadro seguinte — ver [`ph2d_app_painter::skin_suspend`].
+        // ⭐⭐⭐ **EDITAR PIXELS ACHATA A ARTE** (regra do dono, F6-s): a sprite que a ferramenta
+        // edita não recebe malha — a tabela e a exceção do Liquify vivem na porta.
         let achatada = ph2d_app_painter::skin_suspend::achata_e_avisa(
             tools,
             hero_screen.as_ref().and_then(|h| h.gizmo.selection),

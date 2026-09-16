@@ -532,6 +532,18 @@ impl DrawnMesh<'_> {
         let (dx, dy) = basis_apply(self.basis, l[0], l[1]);
         Some([self.pos[0] + dx, self.pos[1] + dy])
     }
+
+    /// ⭐ **MUNDO → UV de repouso**, só com LEITURA — a metade inversa do [`Self::world_at_uv`].
+    ///
+    /// ⚠️ **É a MESMA lei do [`mesh_uv`]** (a base invertida e o `uv_under`, com o triângulo
+    /// desenhado por último a ganhar), e existe porque aquela porta precisa de `&mut World` (ela faz
+    /// uma consulta ECS) e todo o caminho de CHROME tem `&World`. `None` fora da malha desenhada.
+    #[must_use]
+    pub fn uv_at_world(&self, world: [f32; 2]) -> Option<[f32; 2]> {
+        let (lx, ly) =
+            world_delta_to_local(self.basis, world[0] - self.pos[0], world[1] - self.pos[1])?;
+        crate::sprite_mesh::uv_under(self.mesh, [lx, ly])
+    }
 }
 
 /// ⭐⭐ **A INSTÂNCIA desta sprite e a malha dela, para quem quer desenhar OUTRA COISA no mesmo

@@ -1441,3 +1441,38 @@ Fila **F6-r**. O que o integrador precisa de saber:
    produto é o `snapshots_gizmo.rs`, que o tira da `ph2d_render::drawn_instance_of`.
 3. **A shell encolhe** (o movimento leva `~350` linhas; o fio ganha duas).
 4. **Zero schema, zero contrato, zero registo.**
+
+---
+
+## §27 — ⭐⭐⭐ REGRA DO DONO: EDITAR PIXELS ACONTECE NA IMAGEM PLANA — e o Liquify trabalha na dobra (2026-09-16)
+
+Fila **F6-s** (a tabela da regra, as leituras que são pergunta ao dono e o que foi medido). O que o
+integrador precisa de saber:
+
+1. ⚠️ **Assinatura mudada numa porta da família:** `ph2d_app_painter::skin_suspend::sprite_achatada`
+   e `achata_e_avisa` recebem **`&mut ToolRegistry`** (o contrato `Tool`, congelado, só chega ao
+   Painter concreto pelo `as_any_mut`). O único chamador de produto é a fase
+   `shells/desktop/src/render_loop/fase_sim_extract.rs`, que já passava o registo mutável — a shell
+   muda **um comentário**, zero linhas líquidas.
+2. **A decisão é uma TABELA** (`FERRAMENTAS_QUE_ACHATAM`, `MODOS_SOBRE_A_DOBRA`): a Remoção de fundo
+   passa a achatar; o Liquify é a exceção (chave = `active_paint_mode_id`, porque o `PaintMode::Deform`
+   cobre também o Transform, que achata).
+3. **Porta nova no `ph2d-render`:** `DrawnMesh::uv_at_world` (mundo → UV, só leitura — a mesma
+   álgebra do `mesh_uv`). **Porta nova na folha `ph2d-sprite-screen`:** `anel_na_malha`. **E no
+   `ph2d-app-painter`:** `painter_bridge_brush_ring::anel_do_liquify`; o `draw_brush_ring` ganhou o
+   parâmetro `present: &World` (um chamador, no `painter_bridge_overlays`).
+4. ⏸️ **Notas DORMENTE com instrumento:** as do `CanvasMap` e dos 9 desenhadores passam a dizer *«só no
+   Liquify»*; as duas portas da Remoção de fundo ganharam a delas, atada à entrada `"bgremoval"` da
+   tabela (`the_background_remover_notes_its_mesh_branch_is_dormant_while_it_flattens`). ⚠️ Um ramo
+   que tire a Remoção de fundo da tabela tem de tirar as duas notas no mesmo commit — o gate reprova.
+5. ⚠️ **O censo do chrome do Painter** (`the_canvas_chrome_census_is_derived_…`) mantém o anel como
+   isento, com o texto actualizado: o anel do Liquify já pergunta à malha, o resto do anel continua
+   no quad (debaixo de todo outro modo a arte está plana).
+6. ⚠️ **Uma correcção de prosa desta própria wave:** a 1.ª redacção do cabeçalho do `skin_suspend.rs`
+   APAGOU as duas secções que explicavam o desenho (*porquê uma porta* e *o regresso é por
+   construção*) — repostas antes do commit, com a tabela a contar também a porta da Remoção de
+   fundo. *Reescrever um cabeçalho por substituição de bloco apaga o que o bloco carregava.*
+7. **Zero schema, zero contrato, zero registo.**
+8. ⚠️ **PRÉ-EXISTENTE, não desta wave:** a fila `docs/Skeleton/01_a_fila.md` está em **~244 KB**,
+   acima do joelho medido (80–110 KB) em que o `Read` deixa de ser o acesso — pede o corte com prova
+   (`scripts/doc-split.py`) numa jornada própria.

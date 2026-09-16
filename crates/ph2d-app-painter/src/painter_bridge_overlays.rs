@@ -1,6 +1,7 @@
-//! ⏸️ **DORMENTE enquanto pintar achatar a arte** (ordem do dono, 2026-09-15): debaixo do pincel
-//! não há dobra, logo o mapa deste ficheiro degenera no afim do quad, **ao bit**. Tudo o que o
-//! cabeçalho abaixo afirma sobre seguir a arte dobrada está CERTO e hoje **não acontece** — o
+//! ⏸️ **DORMENTE enquanto a ferramenta achatar a arte** (ordem do dono, 2026-09-15; regra F6-s):
+//! debaixo do pincel não há dobra — ⚠️ **menos no Liquify**, que trabalha sobre ela —, logo o mapa
+//! deste ficheiro degenera no afim do quad, **ao bit**. Tudo o que o cabeçalho abaixo afirma sobre
+//! seguir a arte dobrada está CERTO e hoje **só acontece no Liquify** — o
 //! porquê, o custo de o manter vivo e o instrumento que ata esta nota ao achatamento estão no
 //! cabeçalho do [`crate::canvas_map`].
 //!
@@ -72,6 +73,7 @@ pub fn draw_overlays(
         painter,
         hero,
         sim,
+        present,
         camera,
         window_size,
         vector_scene,

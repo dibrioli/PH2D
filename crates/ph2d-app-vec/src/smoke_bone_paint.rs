@@ -82,6 +82,13 @@
 //! for permitido. *Um roteiro de smoke que continuasse a mandar procurar a curva debaixo do pincel
 //! seria uma cena a ensinar o contrário do que acontece.*
 //!
+//! # ⭐⭐⭐ E EM 2026-09-16 A ORDEM VIROU REGRA (fila do esqueleto, F6-s)
+//!
+//! *Toda* ferramenta que pinta, apaga ou deforma pixels endireita a imagem (a Remoção de fundo
+//! incluída), **menos o Liquify**, que trabalha sobre a dobra. ⇒ o roteiro passou a ter as TRÊS
+//! metades: o Painter endireita, o Liquify volta a dobrar (e o anel dele segue a dobra — o chrome
+//! dormente acorda ali), a Remoção de fundo endireita outra vez.
+//!
 //! ⚠️ **Se a linha `[bone-paint-smoke]` não aparecer, PARE:** a cena não montou.
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -325,8 +332,10 @@ pub fn build(
          e dobrado {DOBRA_GRAUS}° por junta. NADA mais esta' armado.\n\
          [bone-paint-smoke] 1) veja o canvas DOBRADO  2) pegue a ferramenta Painter: ele tem de \
          ENDIREITAR-SE para ser pintado, e um aviso diz porque  3) pinte qualquer coisa (uma forma, \
-         um traco)  4) pegue noutra ferramenta (Select): o canvas tem de VOLTAR a dobrar-se, e o que \
-         voce pintou tem de dobrar com ele."
+         um traco)  4) no Painter escolha o Liquify: o canvas VOLTA a dobrar-se, o anel do cursor \
+         segue a dobra e empurrar deforma a imagem dobrada  5) pegue a Remocao de fundo (tecla 3): \
+         endireita-se outra vez  6) pegue noutra ferramenta (Select): o canvas tem de VOLTAR a \
+         dobrar-se, e o que voce pintou tem de dobrar com ele."
     );
     Some(bits)
 }

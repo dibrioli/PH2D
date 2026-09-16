@@ -244,3 +244,121 @@ fn o_preview_nunca_troca_arcos_por_uma_polilinha_mais_cara() {
         }
     }
 }
+
+/// Um contorno MISTO: a base com duas quinas arredondadas (dois ARCOS de `90°`) e o topo em `ondas`
+/// cúbicas genéricas (achatadas), à direita do eixo para o torno.
+fn misto(ondas: usize) -> ph2d_vec_scene::VecPath {
+    use ph2d_vec_scene::{VecVertex, VertexKind};
+    let (x0, x1, y0, y1) = (0.5, 1.5, -0.3, 0.3);
+    let mut verts = vec![
+        VecVertex {
+            corner_radius: 0.1,
+            ..VecVertex::corner([x0, y0])
+        },
+        VecVertex {
+            corner_radius: 0.1,
+            ..VecVertex::corner([x1, y0])
+        },
+    ];
+    let w = (x1 - x0) / ondas as f64;
+    for i in 0..=ondas {
+        let x = x1 - w * i as f64;
+        let d = if i % 2 == 0 { 0.12 } else { -0.12 };
+        verts.push(VecVertex {
+            anchor: [x, y1],
+            in_handle: if i == 0 {
+                [x, y1]
+            } else {
+                [x + w * 0.4, y1 - d]
+            },
+            out_handle: if i == ondas {
+                [x, y1]
+            } else {
+                [x - w * 0.4, y1 + d]
+            },
+            kind: VertexKind::Corner,
+            corner_radius: 0.0,
+        });
+    }
+    ph2d_vec_scene::VecPath {
+        verts,
+        closed: true,
+        ..ph2d_vec_scene::VecPath::default()
+    }
+}
+
+/// ⭐⭐⭐ **O PREVIEW ENGROSSA SÓ O QUE ESTÁ TESSELADO** (2026-09-16) — a metade que o gate de cima não
+/// via: um contorno MISTO (arcos + curvas livres).
+///
+/// ⛔⛔ O `coarsen` devolvia sempre uma polilinha sem arcos, e o `coarse_doc` só a aceitava se ficasse
+/// mais barata. Num contorno só de arcos e rectas (o vaso) isso nunca acontece; num misto acontece
+/// assim que o `Resolution` sobe — e quando não acontece, a parte tesselada também não é engrossada.
+/// Medido, `(arcos, primitivas)` do que ia para o traçador, antes → depois da cura:
+///
+/// | ondas | nível | documento | a mexer | parado |
+/// |---:|---:|---|---|---|
+/// |  1 |  1 | `(2, 34)` | `(2, 34)` → `(2, 19)` | `(2, 34)` → `(2, 30)` |
+/// |  1 | 16 | `(2, 121)` | **`(0, 92)`** → `(2, 21)` | `(2, 121)` → `(2, 35)` |
+/// |  1 | 64 | `(2, 237)` | **`(0, 93)`** → `(2, 22)` | **`(0, 182)`** → `(2, 37)` |
+/// |  4 |  4 | `(2, 221)` | `(2, 221)` → `(2, 154)` | `(2, 221)` → `(2, 205)` |
+/// |  4 | 64 | `(2, 857)` | **`(0, 256)`** → `(2, 185)` | **`(0, 471)`** → `(2, 326)` |
+/// | 12 |  4 | `(2, 499)` | **`(0, 462)`** → `(2, 392)` | `(2, 499)` → `(2, 464)` |
+/// | 12 | 64 | `(2, 1 974)` | **`(0, 785)`** → `(2, 716)` | **`(0, 1 315)`** → `(2, 1 172)` |
+///
+/// ⇒ três metades: os arcos ficam, o que vai para o traçador é sempre MAIS barato que o documento
+/// (a parte tesselada engrossa), e os arcos que ficam são os MESMOS — ponta, *bulge* e ponta seguinte.
+#[test]
+fn o_preview_engrossa_so_o_que_esta_tesselado() {
+    let vaso = crate::smoke::scenes::vaso(1);
+    for ondas in [1, 4, 12] {
+        for nivel in [1, 4, 16, ph2d_field::MAX_PROFILE_RESOLUTION] {
+            let profile = ph2d_field_profile::cook_path_at(&misto(ondas), nivel)
+                .expect("o misto é um perfil");
+            let doc = ph2d_field::FieldDoc::new(
+                vec![ph2d_field::Node {
+                    kind: ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Revolve { profile }),
+                    ..vaso.nodes()[0].clone()
+                }],
+                ph2d_field::NodeId(0),
+            )
+            .expect("o misto torneado é um documento");
+            let antes = perfil_da_folha(&doc);
+            assert_eq!(
+                antes.0, 2,
+                "[{ondas} ondas · nível {nivel}] a fixtura tem dois arcos"
+            );
+            for mexer in [true, false] {
+                let quando = if mexer { "a mexer" } else { "parado" };
+                let tracado = crate::preview::coarse_doc(&doc, mexer)
+                    .expect("um contorno misto tem sempre o que engrossar");
+                let depois = perfil_da_folha(&tracado);
+                assert!(
+                    depois.0 == antes.0 && depois.1 < antes.1,
+                    "⛔ [{ondas} ondas · nível {nivel} · {quando}] o documento tem {antes:?}                      (arcos, primitivas) e o traçador recebe {depois:?}"
+                );
+                assert_eq!(
+                    arcos_com_pontas(&tracado),
+                    arcos_com_pontas(&doc),
+                    "[{ondas} ondas · nível {nivel} · {quando}] um arco mudou ao engrossar"
+                );
+            }
+        }
+    }
+}
+
+/// Cada arco da folha como `(ponta, bulge, ponta seguinte)`.
+fn arcos_com_pontas(d: &ph2d_field::FieldDoc) -> Vec<([f32; 2], f32, [f32; 2])> {
+    let ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Revolve { profile }) = &d.nodes()[0].kind
+    else {
+        panic!("a peça de teste é um torno");
+    };
+    profile
+        .arcs()
+        .iter()
+        .flat_map(|a| {
+            (0..a.len())
+                .filter(|&i| a[i].1 != 0.0)
+                .map(|i| (a[i].0, a[i].1, a[(i + 1) % a.len()].0))
+        })
+        .collect()
+}

@@ -277,12 +277,13 @@ postos sobre as cordas, nas quatro combinações de sentido × preenchimento.
 
 ## §18 — ⏳ O que fica
 
-- ⏳ **O `select×555` do vaso** continua por auditar na fita nova;
+- ~~⏳ **O `select×555` do vaso** continua por auditar na fita nova~~ — ✅ auditado no §23 (é o
+  `compare`, três por cada um);
 - ~~⏳ **Uma quina acima de `~140°` fica tesselada**~~ — ✅ **curado na Parte IV**, e a nota tinha o
   limiar errado: a quina fica tesselada acima de `~150°` no nível 1 e acima de **`~90°`** nos
   outros, porque a barra se dividia pelo nível;
-- ⏳ **A lei do SEGMENTO continua escrita em dois sítios** (`sd_profile_inner` e `sd_profile_in_region`)
-  — pré-existente; a do ARCO já não.
+- ~~⏳ **A lei do SEGMENTO continua escrita em dois sítios**~~ — ✅ numa porta só desde a Parte IV
+  (`profile_arc::dist2_recta_tree`, §22).
 
 ---
 
@@ -342,13 +343,19 @@ contagem.
   cantoneira e vaso no nível 16), `76` gates de perfil/arco/região verdes, mutação `H1` morta
   (`5` gates). ⭐ E a mesma impressão mostrou de passagem que **o vaso no nível 16 dá a MESMA fita
   que no nível 1** — o botão já não desfaz os arcos;
-- ⏳ **O reconhecedor amostra seis pontos** e subestima o erro máximo de uma cúbica em `~8 %` (o pico
-  cai entre `t = 0,125` e `0,25`) — a barra efectiva é `~1,08×` a escrita; honesto para a família da
-  casa, nomeado aqui;
-- ⏳ **O `coarsen` deita fora os arcos de um contorno MISTO** (arcos + curvas genéricas): hoje o
-  preview só o aceita se ficar mais barato, e a cura completa é engrossar só a parte tesselada;
-- ⏳ **A suavização de quina** (`smooth_corner`, o *corner smoothing* do Figma) escreve o arco central
-  numa cúbica só, sem a divisão — raro acima de `90°`, não medido.
+- ✅ **O reconhecedor amostrava seis pontos** — e a nota que estava aqui (*«subestima `~8 %`»*) era
+  ela própria uma leitura por amostras: o pico de um arco numa cúbica cai em `t = (3 − √3)/6`, e seis
+  pontos leem-no **`5,35 %`** abaixo em todo ângulo. Hoje é uma grelha de `16` com secção áurea em
+  cada máximo local, e a barra aplicada é a escrita (um arco de `90,03°` é recusado; nenhuma grelha
+  fixa de até `32` o recusava). Preço: `~1,2 µs` por aresta que é arco
+  ([`BUGS_3dmodeling.md`](../3DModeling/BUGS_3dmodeling.md), adenda ao #2);
+- ✅ **O `coarsen` deitava fora os arcos de um contorno MISTO** — e era visível: um contorno com duas
+  quinas e uma onda chegava ao traçador `(0, 93)` em vez de `(2, 237)` no nível 64 a mexer. Hoje a
+  decomposição é decimada só nos troços tesselados, os arcos ficam iguais e a pré-visualização sai
+  `(2, 22)` (Bug #6);
+- ✅ **A suavização de quina** (`smooth_corner`) escrevia o arco curto numa cúbica só. Medido: só o
+  `RoundRect` a alcança no produto (quinas de `90°`, arco `≤ 90°`), logo não era visível; a porta
+  passa agora pela mesma `circular_fillet`, byte a byte igual até `90°`.
 
 ## §23 — O `select` da fita: é o `compare`, três por cada um
 

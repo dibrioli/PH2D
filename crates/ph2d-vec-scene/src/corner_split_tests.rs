@@ -1,9 +1,10 @@
-//! ⭐⭐ **UM FILETE ACIMA DE `90°` É UM CÍRCULO EM DUAS METADES — nos dois escritores** (2026-09-16).
+//! ⭐⭐ **UM FILETE ACIMA DE `90°` É UM CÍRCULO EM DUAS METADES — nos três escritores** (2026-09-16).
 //!
-//! A lei da casa ([`crate::shapes::arc`]): um arco escreve-se em cúbicas de até `90°`. Os dois
-//! arredondadores de quina — o da polilinha ([`crate::corners`]) e o vivo
-//! ([`crate::corner_live`]) — eram os únicos escritores de arco que a violavam, e uma quina aguda saía
-//! numa cúbica só, a errar até `1,29e-2·r` do raio pedido. Este ficheiro prova as três metades:
+//! A lei da casa ([`crate::shapes::arc`]): um arco escreve-se em cúbicas de até `90°`. Os
+//! arredondadores de quina — o da polilinha ([`crate::corners`]), o vivo ([`crate::corner_live`]) e o
+//! arco curto da suavização ([`crate::smooth`]) — eram os únicos escritores de arco que a violavam, e
+//! uma quina aguda saía numa cúbica só, a errar até `1,29e-2·r` do raio pedido. Este ficheiro prova as
+//! três metades (a suavização tem o gate dela no fim):
 //!
 //! 1. acima de `90°` a quina sai em **duas** cúbicas, e cada uma fica na precisão de um quarto de
 //!    círculo (a mesma barra com que o modelador 3D reconhece um arco);
@@ -141,4 +142,53 @@ fn um_blend_assimetrico_nao_e_partido() {
             .all(|c| c.is_finite())),
         "o blend tem de ser finito: {vivo:?}"
     );
+}
+
+/// ⭐⭐ **A QUINA SUAVIZADA TAMBÉM PARTE O ARCO DO MEIO** (2026-09-16) — o terceiro escritor de arco.
+///
+/// A suavização ([`crate::smooth`]) troca o arco de uma quina por `asa + arco curto + asa`, e o arco
+/// curto varre `α·(1 − s)`: numa quina que vira `120°` com `s = 0,05` são `114°` numa cúbica só, a
+/// errar `~3×` o quarto de círculo. Hoje só o `RoundRect` a alcança no produto (quinas de `90°`, logo
+/// um arco de até `90°`), mas a porta é pública e declara-se *«para QUALQUER ângulo»* — e o polígono e
+/// a estrela são a próxima população que a pede.
+///
+/// ⚠️ O centro do arco curto é o do filete puro (a suavização não o move), e as asas não são arcos:
+/// a régua mede só os vértices entre as duas pontas do arco.
+#[test]
+fn a_quina_suavizada_parte_o_arco_do_meio_acima_de_90_graus() {
+    let r = 0.05;
+    for graus in [60.0, 90.0, 120.0, 150.0, 170.0] {
+        for s in [0.05, 0.2, 0.5] {
+            let pts = v_pts(graus);
+            let p = crate::corners::round_closed_corners_smooth(&pts, &[0.0, r, 0.0, 0.0], s);
+            let arco = graus * (1.0 - s);
+            let partes = if arco > 90.0 { 2 } else { 1 };
+            // `[quina 0, P0, A, (meio), A', P0', quina 2, quina 3]`: o arco vai do vértice 2 ao `2 + partes`.
+            assert_eq!(
+                p.verts.len(),
+                7 + partes - 1,
+                "[{graus}° · s {s}] o arco do meio ({arco:.1}°) tem de sair em {partes} cúbica(s)"
+            );
+            let erro = pior_radial(&p.verts, 2, 2 + partes, graus, r);
+            assert!(
+                erro <= QUARTO * r,
+                "[{graus}° · s {s}] o arco do meio ({arco:.1}°) afasta-se {erro:.3e} do círculo \
+                 (barra {:.3e})",
+                QUARTO * r
+            );
+            if partes == 2 {
+                let m = &p.verts[3];
+                let (d_in, d_out) = (
+                    [m.anchor[0] - m.in_handle[0], m.anchor[1] - m.in_handle[1]],
+                    [m.out_handle[0] - m.anchor[0], m.out_handle[1] - m.anchor[1]],
+                );
+                assert!(
+                    m.kind == VertexKind::Smooth
+                        && (d_in[0] * d_out[1] - d_in[1] * d_out[0]).abs() < 1e-12
+                        && d_in[0] * d_out[0] + d_in[1] * d_out[1] > 0.0,
+                    "[{graus}° · s {s}] o meio do arco tem de ser liso e tangente: {m:?}"
+                );
+            }
+        }
+    }
 }

@@ -137,8 +137,9 @@ pub(crate) struct Fillet {
 /// ⭐⭐ **UM ARCO DE CÍRCULO EM CÚBICAS DE ATÉ `90°` — a lei da casa, aplicada à quina** (2026-09-16).
 ///
 /// O [`crate::shapes::arc`] já a escrevia (*«divide o arco em segmentos de ≤90° para o bézier
-/// aproximar bem»*), e o `ellipse` e o `rounded_rect` cumprem-na por construção. **Os dois
-/// arredondadores de quina eram os únicos escritores de arco da casa que a violavam**: uma quina que
+/// aproximar bem»*), e o `ellipse` e o `rounded_rect` cumprem-na por construção. **Os arredondadores
+/// de quina — o da polilinha, o vivo e o arco curto da suavização ([`crate::smooth`]) — eram os únicos
+/// escritores de arco da casa que a violavam**, e os três passam por aqui: uma quina que
 /// vira mais de `90°` (a ponta de uma estrela, o lábio de um vaso, todo triângulo) saía numa cúbica
 /// só. O erro radial intrínseco de uma cúbica cresce com a sexta potência da abertura:
 ///

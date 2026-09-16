@@ -38,6 +38,7 @@ correção for revertida — provado por mutação. "Não reproduzi mais" não f
 | # | data | sintoma | mecanismo | gate |
 |---|---|---|---|---|
 | 1 | 2026-09-16 | *«arestas ainda visíveis»* no ombro do vaso (foto), **depois** da wave que pôs as quinas como arcos | o modo MODEL traça na CPU, e a folha especializada por região lia a **polilinha densa** pelo `ProfileIndex` — a normal ficava constante em cada segmento | `vaso_sem_facetas_tests::o_vaso_nao_tem_facetas_no_traçado_do_modo_model` · `profile_arc_tests::*` |
+| 6 | 2026-09-16 | (auditoria) um contorno **MISTO** — quinas arredondadas + curvas livres — perdia os arcos no quadro do modo MODEL ao subir o `Resolution`, e quando não os perdia não era engrossado | o `coarsen` devolvia sempre uma polilinha sem arcos (o doc dizia *«é o que se quer»*), e o `coarse_doc` só a aceitava quando ficava mais barata — nunca num contorno de arcos e rectas, cedo num misto | `vaso_sem_facetas_tests::o_preview_engrossa_so_o_que_esta_tesselado` · `profile_coarsen_tests::*` (`ph2d-field`) |
 | 5 | 2026-09-16 | (auditoria, depois do smoke aprovado do #4) largar uma forma sobre outra que não está na origem fazia-a **saltar** | o arrasto da Hierarquia conserva a pose de mundo (escreve a local no referencial do novo pai), e a promoção passava os filhos para um grupo de pose identidade sem compor a pose do anfitrião | `tests::a_shape_dropped_onto_a_posed_shape_stays_where_it_was` (`ph2d-field-ecs`) |
 | 4 | 2026-09-16 | *«o modo como vc montou a cena com o vaso como model e não como filho de model, nenhum outro objeto acrescentado aparece na cena»* (foto da Hierarquia: o *Extrude* dentro de «Model») | a paleta pendura a forma nova na RAIZ, e a promoção «só uma operação tem filhos» saltava a raiz com a nota *«um caso que não existe hoje»* — as cenas `2` e `5` nascem com a raiz numa forma | `tests::a_root_shape_that_gets_a_child_becomes_a_group_in_place` (`ph2d-field-ecs`) · `group_tests::a_shape_added_to_a_piece_whose_root_is_a_shape_appears` |
 | 3 | 2026-09-16 | *«o Modo model não está permitindo usar o modo Vector. não consigo desenhar o cilindro»* — a seguir um passo de smoke | a env `PH2D_FIELD_SMOKE` armava o módulo **sem olhar o painel**: pegar no Vector fechava o painel e os ganchos de entrada continuavam a comer o clique — o report de 22/08, curado só no caminho do PILL | `mode_tests::the_directed_smoke_disarms_with_the_panel_too` |
@@ -206,6 +207,25 @@ escrita à mão (`ph2d-vec-edit`: a estrela de 5 pontas passa de `15` para `20` 
 de flakes de carga (load `52`; `3/3` verde sozinho a load `14–17`, zero linhas de diff na
 `ph2d-timeline`).
 
+### Adenda (mesmo dia, auditoria): as duas metades que o #2 deixou nomeadas
+
+- ⛔ **A barra que o reconhecedor APLICAVA era `1,0535×` a escrita.** Ele conferia a cúbica em seis
+  parâmetros, e o pico do erro de um arco numa cúbica cai em `t = (3 − √3)/6 ≈ 0,2113`, entre dois
+  deles — um arco de `90,75°` numa cúbica só passava por círculo. A nota da auditoria dizia `~8 %`, e
+  era também uma leitura por amostras. ⇒ grelha de `16` + secção áurea em cada máximo local
+  (`pico_do_desvio`). ⚠️ **Nenhuma grelha fixa bastava:** `32` amostras ainda leem o arco de `90,03°`
+  (`1,002×` a barra) como `1,000×`. Preço medido: `~1,2 µs` por aresta que é arco. Gate
+  `a_barra_escrita_e_a_barra_que_o_reconhecedor_aplica`; mutações R0 (seis amostras), R1 (grelha de
+  16 sem refinar) e R2 (grelha de 32 sem refinar) mortas.
+- ⛔ **O terceiro escritor de arco — a suavização de quina (`smooth_corner`) — também escrevia o arco
+  curto numa cúbica só.** Ele varre `α·(1 − s)`: uma quina que vira `120°` com `s = 0,05` dá `114°`.
+  Hoje só o `RoundRect` (quinas de `90°`) o alcança no produto, mas a porta é pública e declara-se
+  para qualquer ângulo. ⇒ passa pela mesma `circular_fillet`; **byte a byte igual até `90°`**
+  (impressão de `687` vértices de retângulos, pentágonos, triângulos e setas, antes = depois) e a
+  diferença acima de `90°` é exactamente a divisão (`+6` vértices numa seta com duas quinas de
+  `135°` × três suavizações). Gate `corner_split_tests::a_quina_suavizada_parte_o_arco_do_meio_acima_de_90_graus`;
+  mutação S1 (descartar o vértice do meio) morta.
+
 ---
 
 ## Bug #3 — o smoke dirigido prendia o canvas (2026-09-16)
@@ -327,3 +347,43 @@ tem o problema: ela fica com a pose e os filhos não mudam de pai.
 |---|---|
 | F1 os filhos passam ao grupo sem a pose do anfitrião | `a_shape_dropped_onto_a_posed_shape_stays_where_it_was` |
 | F2 o cozimento volta a descer aos filhos de uma forma (#4) | `the_cooked_arena_holds_only_what_the_root_reaches` |
+
+---
+
+## Bug #6 — o preview deitava fora os arcos de um contorno MISTO (2026-09-16, auditoria)
+
+**Sintoma (medido, não reportado).** Um desenho com quinas arredondadas **e** curvas livres (a
+caneta a fazer uma onda) vira peça com arcos nas quinas — e o quadro do modo MODEL, que traça o
+que o `coarse_doc` lhe dá, recebia-a **sem arcos** assim que o `Resolution` subia (as faixas do
+Bug #1 de volta nas quinas); quando não os perdia, a parte tesselada seguia **inteira**, sem
+engrossar.
+
+| ondas | nível | documento | a mexer, antes → depois | parado, antes → depois |
+|---:|---:|---|---|---|
+|  1 | 16 | `(2, 121)` | **`(0, 92)`** → `(2, 21)` | `(2, 121)` → `(2, 35)` |
+|  1 | 64 | `(2, 237)` | **`(0, 93)`** → `(2, 22)` | **`(0, 182)`** → `(2, 37)` |
+|  4 |  4 | `(2, 221)` | `(2, 221)` → `(2, 154)` | `(2, 221)` → `(2, 205)` |
+| 12 | 64 | `(2, 1 974)` | **`(0, 785)`** → `(2, 716)` | **`(0, 1 315)`** → `(2, 1 172)` |
+
+`(arcos, primitivas)` do que vai para o traçador; tabela inteira no doc do gate.
+
+**Mecanismo.** O `coarsen` decimava a polilinha e devolvia um perfil por `Profile::new` — sem
+decomposição. O doc do módulo dizia *«é o que se quer: a decomposição exacta não sobrevive a uma
+decimação que apaga vértices»*. Ela sobrevive: um arco não se achata, e só os troços TESSELADOS
+(cúbicas genéricas) têm vértices a apagar. A cura do #2 (`prim_count` no `coarse_doc`) tapava o caso
+de arcos e rectas exactas — nunca fica mais barato — e deixava o misto a meio.
+
+**O gate que estava VERDE, e porquê.** `o_preview_nunca_troca_arcos_por_uma_polilinha_mais_cara`
+corre o vaso e o círculo — contornos **sem nada tesselado**. *Uma fixtura só de arcos não mede a
+parte que não é arco.*
+
+**Cura.** `decimate_arcs_by_turn`: a mesma decimação por giro na decomposição, com a cláusula de
+que um vértice onde um arco começa ou acaba fica sempre. Um vértice só sai quando as duas arestas
+que o tocam são rectas, logo o que fica entre dois mantidos é ainda uma recta. A polilinha sai
+**byte a byte** a de sempre (há gate).
+
+| mutação | gate que a mata |
+|---|---|
+| C0 o `coarsen` de antes | `o_preview_engrossa_so_o_que_esta_tesselado` |
+| C1 as pontas de um arco decimáveis por giro | `um_arco_raso_nao_perde_as_pontas` (⚠️ **só** este: nas outras fixturas as pontas viram `90°` e o orçamento mantinha-as de qualquer forma) |
+| C2 a decomposição nunca decimada | `engrossar_guarda_os_arcos_e_so_decima_o_tesselado` · `um_arco_raso_nao_perde_as_pontas` · `o_preview_engrossa_so_o_que_esta_tesselado` |

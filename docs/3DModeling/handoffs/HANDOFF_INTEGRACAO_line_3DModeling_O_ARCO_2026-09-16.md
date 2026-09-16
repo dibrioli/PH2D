@@ -228,3 +228,33 @@ partes, com a razão de cada uma:**
   morta.
 
 Impactados: `2 899` / `2 899`. Clippy limpo.
+
+## §14 — ADENDA 6: as três metades que a auditoria deixou nomeadas (depois do smoke aprovado da §13)
+
+**Smoke do dono da §13: OK.** A seguir, os três ⏳ da Parte IV da auditoria
+([`06_auditoria_do_vaso.md`](../../Render3d/06_auditoria_do_vaso.md) §22), cada um medido antes de
+ser curado. Registo: [`BUGS_3dmodeling.md`](../BUGS_3dmodeling.md) — adenda ao #2 e Bug #6.
+
+| o quê | medido | cura | gate · mutações |
+|---|---|---|---|
+| a barra que o reconhecedor de arcos **aplicava** | `1,0535×` a escrita (seis amostras; o pico cai em `t = (3 − √3)/6`) — a nota dizia `~8 %` | grelha `16` + secção áurea (`pico_do_desvio`, `ph2d-field-profile`); `~1,2 µs` por aresta que é arco | `a_barra_escrita_e_a_barra_que_o_reconhecedor_aplica` · R0/R1/R2 mortas |
+| o **preview** de um contorno MISTO (arcos + curvas livres) | `(2, 237)` → **`(0, 93)`** a mexer no nível 64 — os arcos iam-se | a decomposição é decimada só nos troços tesselados (`decimate_arcs_by_turn`, `ph2d-field`) → `(2, 22)`; a polilinha sai byte a byte a de sempre | `o_preview_engrossa_so_o_que_esta_tesselado` · `profile_coarsen_tests::*` · C0/C1/C2 mortas |
+| o arco curto da **suavização de quina** | escrito numa cúbica só acima de `90°`; **inalcançável hoje** (só o `RoundRect`, quinas de `90°`) | passa pela `circular_fillet` | `a_quina_suavizada_parte_o_arco_do_meio_acima_de_90_graus` · S1 morta |
+
+⚠️ **Uma leitura rápida entende ao contrário:**
+- a mudança no `smooth.rs` é **foundational da `line/Vector`** (a mesma crate do §3) e é **byte a byte
+  igual até `90°`** — medido por uma impressão de `687` vértices (retângulos, pentágonos, triângulos,
+  setas) antes e depois. Acima de `90°` uma quina suavizada ganha **um** vértice liso no meio; nenhum
+  caminho do produto chega lá hoje;
+- o reconhecedor **recusa** agora cúbicas entre `90°` e `~90,78°` que antes passavam por arco. Nenhum
+  escritor da casa as produz (todos partem acima de `90°·(1 + 1e-12)`); uma curva assim vinda da
+  caneta passa a ser tesselada, como a lei diz. **Nenhum contador partilhado se mexe** — o formato
+  do perfil gravado é o mesmo;
+- ⚠️ **a mutação C1 (as pontas de um arco decimáveis) só morre num arco RASO**: nas fixturas de quina
+  as pontas viram `90°` e o orçamento de giro mantinha-as de qualquer forma.
+
+Impactados (`BASE=HEAD`): **`15 249` / `15 249`** (load `16`–`45`). Clippy `-D warnings` e `fmt` limpos
+nas quatro crates tocadas.
+
+⏳ **Continua aberto** o A/B do rebaixamento do `compare` (§23 da auditoria): pede a placa livre, e a
+placa esteve ocupada por outra sessão durante toda esta adenda.

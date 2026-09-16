@@ -583,6 +583,45 @@ fn o_arco_sobrevive_a_todo_nivel_de_resolution() {
     }
 }
 
+/// ⭐⭐ **A BARRA QUE O RECONHECEDOR APLICA É A QUE ESTÁ ESCRITA** (2026-09-16).
+///
+/// ⛔ O reconhecedor conferia a cúbica em SEIS parâmetros (`t = 0,125 … 0,875`), e o pico do erro de
+/// um arco numa cúbica cai em `t = (3 − √3)/6 ≈ 0,2113` — entre duas amostras. Medido: seis amostras
+/// leem o erro `5,35 %` abaixo do verdadeiro, em todo ângulo, logo a barra efectiva era `1,0535×` a
+/// escrita e um arco de `90,75°` numa cúbica só passava por círculo. (A nota da Parte IV da
+/// auditoria dizia `~8 %`; era também uma estimativa por amostras.)
+///
+/// | abertura | erro verdadeiro / barra | 16 amostras | 32 amostras |
+/// |---:|---:|---:|---:|
+/// | `90,00°` | `0,99996` | `0,979` | `0,998` |
+/// | `90,03°` | `1,00197` | `0,981` | `1,000` |
+/// | `90,10°` | `1,00666` | `0,986` | `1,005` |
+/// | `90,75°` | `1,05113` | `1,029` | `1,049` |
+///
+/// ⇒ nenhuma grelha fixa mata o `90,03°`; só o pico REFINADO. Os dois primeiros casos são o lado
+/// aprovado: a barra não pode recusar o quarto canónico.
+#[test]
+fn a_barra_escrita_e_a_barra_que_o_reconhecedor_aplica() {
+    let nivel = ph2d_field::MAX_PROFILE_RESOLUTION;
+    for graus in [89.0, 90.0] {
+        let p = crate::cook_path_at(&arco_numa_cubica_so(graus), nivel).expect("perfil válido");
+        assert_eq!(
+            p.arc_count(),
+            1,
+            "um arco de {graus}° numa cúbica erra dentro do quarto canónico e tem de ser arco"
+        );
+    }
+    for graus in [90.03, 90.1, 90.2, 90.5, 90.75] {
+        let p = crate::cook_path_at(&arco_numa_cubica_so(graus), nivel).expect("perfil válido");
+        assert_eq!(
+            p.arc_count(),
+            0,
+            "um arco de {graus}° numa cúbica erra ACIMA do quarto canónico — o reconhecedor \
+             aceitou-o, logo a barra que ele aplica é mais larga do que a escrita"
+        );
+    }
+}
+
 /// Um segmento circular (arco + corda) de raio `1` cujo arco varre `graus` numa cúbica SÓ, com o
 /// alçapão canónico `(4/3)·tan(θ/4)` — a forma que um programa que não parte arcos escreveria.
 fn arco_numa_cubica_so(graus: f64) -> VecPath {

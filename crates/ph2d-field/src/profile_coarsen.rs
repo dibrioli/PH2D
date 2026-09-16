@@ -5,11 +5,15 @@
 //! *«como se faz um perfil mais barato»* (a decimação por orçamento de giro, para a
 //! pré-visualização). São perguntas diferentes e mudam por motivos diferentes.
 //!
-//! ⚠️ **Toda saída daqui nasce por [`crate::Profile::new`], logo SEM arcos** — e é o que se quer: o
-//! perfil grosso é uma aproximação declarada, e a decomposição exacta não sobrevive a uma decimação
-//! que apaga vértices.
+//! ⭐⭐ **Os ARCOS atravessam a decimação** (2026-09-16). A decomposição exacta de um contorno é
+//! decimada como a polilinha, mas só nos troços TESSELADOS (as cúbicas genéricas achatadas); um arco e
+//! os seus dois extremos ficam como estão. ⛔ A 1.ª redacção deste módulo dizia o contrário — *«toda
+//! saída nasce por `Profile::new`, logo SEM arcos, e é o que se quer»* — e com isso um contorno MISTO
+//! (arcos + curvas livres) perdia os arcos no quadro do modo MODEL assim que o `Resolution` subia, ou
+//! não era engrossado de todo (a tabela está no gate `o_preview_engrossa_so_o_que_esta_tesselado`,
+//! `ph2d-app-field3d`). *Um arco não se achata, logo não há nada a engrossar nele.*
 
-use crate::profile::Profile;
+use crate::profile::{ArcVertex, Profile};
 
 /// ⭐⭐⭐ **O MESMO CONTORNO, MAIS GROSSO — para a pré-visualização.**
 ///
@@ -114,12 +118,29 @@ fn coarsen_with_turn_budget(profile: &Profile, orcamento: f64) -> Profile {
     if thinner.iter().any(|c| c.len() < 3) {
         return profile.clone();
     }
+    // A decomposição exacta, pela mesma régua de giro — só nos troços tesselados.
+    let arcos: Vec<Vec<ArcVertex>> = profile
+        .arcs()
+        .iter()
+        .map(|a| {
+            if a.len() <= 8 {
+                a.clone()
+            } else {
+                decimate_arcs_by_turn(a, orcamento)
+            }
+        })
+        .collect();
     // ⚠️ A tolerância declarada sobe com a decimação: ela é o erro contra a curva de origem, e a
     // polilinha decimada erra mais. Mentir aqui envenenaria quem a usa para escolher uma grade.
     let ficou: usize = thinner.iter().map(Vec::len).sum();
     let passo_medio = (total as f32 / ficou.max(1) as f32).max(1.0);
     let tol = profile.tolerance() * passo_medio;
-    Profile::new(thinner, profile.fill(), tol).unwrap_or_else(|_| profile.clone())
+    Profile::with_arcs(
+        thinner.into_iter().zip(arcos).collect(),
+        profile.fill(),
+        tol,
+    )
+    .unwrap_or_else(|_| profile.clone())
 }
 
 /// A curvatura total de um contorno fechado, em radianos e **sem sinal**.
@@ -181,12 +202,42 @@ fn turn_at(c: &[[f32; 2]], i: usize) -> f64 {
 /// distribui o erro por igual, e um vértice que sozinho gasta o orçamento — uma quina — é mantido
 /// **por construção**, sem uma regra própria a dizê-lo.
 fn decimate_by_turn(c: &[[f32; 2]], orcamento: f64) -> Vec<[f32; 2]> {
-    let mut out = Vec::with_capacity(c.len());
+    decimate_where(c.len(), |i| turn_at(c, i), |_| false, orcamento)
+        .into_iter()
+        .map(|i| c[i])
+        .collect()
+}
+
+/// ⭐⭐ **A decimação por giro na DECOMPOSIÇÃO EXACTA** — a mesma lei do [`decimate_by_turn`], com uma
+/// cláusula: um vértice onde um ARCO começa ou acaba fica sempre.
+///
+/// É isso que a torna correcta sem mais nada: um vértice só sai quando as DUAS arestas que o tocam são
+/// rectas, então o que sobra entre dois mantidos é ainda uma recta (o *bulge* do mantido anterior era
+/// `0`, porque a aresta que saía dele era recta) — e um arco nunca perde uma ponta. O giro de um
+/// vértice apagável é o da polilinha, porque as duas arestas dele são cordas exactas.
+fn decimate_arcs_by_turn(a: &[ArcVertex], orcamento: f64) -> Vec<ArcVertex> {
+    let n = a.len();
+    let pts: Vec<[f32; 2]> = a.iter().map(|v| v.0).collect();
+    let preso = |i: usize| a[i].1 != 0.0 || a[(i + n - 1) % n].1 != 0.0;
+    decimate_where(n, |i| turn_at(&pts, i), preso, orcamento)
+        .into_iter()
+        .map(|i| a[i])
+        .collect()
+}
+
+/// O corpo das duas decimações: os índices mantidos, por ordem.
+fn decimate_where(
+    n: usize,
+    giro: impl Fn(usize) -> f64,
+    preso: impl Fn(usize) -> bool,
+    orcamento: f64,
+) -> Vec<usize> {
+    let mut out = Vec::with_capacity(n);
     let mut acc = 0.0f64;
-    for i in 0..c.len() {
-        let t = turn_at(c, i);
-        if out.is_empty() || acc + t >= orcamento {
-            out.push(c[i]);
+    for i in 0..n {
+        let t = giro(i);
+        if out.is_empty() || preso(i) || acc + t >= orcamento {
+            out.push(i);
             acc = 0.0;
         } else {
             acc += t;
@@ -194,3 +245,7 @@ fn decimate_by_turn(c: &[[f32; 2]], orcamento: f64) -> Vec<[f32; 2]> {
     }
     out
 }
+
+#[cfg(test)]
+#[path = "profile_coarsen_tests.rs"]
+mod profile_coarsen_tests;

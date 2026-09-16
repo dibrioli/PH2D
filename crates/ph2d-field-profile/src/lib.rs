@@ -341,16 +341,77 @@ fn bulge_do_cubico(
     if !r.is_finite() || r <= 0.0 {
         return None;
     }
-    // A conferência: a cúbica inteira tem de viver no círculo. `0` e `1` estão nele por construção,
-    // e `0,5` também (foi ele que o definiu) — por isso as amostras são as de ENTRE.
+    // A conferência: a cúbica inteira tem de viver no círculo, e o que se compara com a barra é o
+    // PICO do erro, não o erro em pontos escolhidos.
     let barra = tol.max(ERRO_DO_QUARTO * r);
-    for t in [0.125, 0.25, 0.375, 0.625, 0.75, 0.875] {
+    let desvio = |t: f64| {
         let q = kurbo::ParamCurve::eval(&bez, t);
-        if ((q.x - cx).hypot(q.y - cy) - r).abs() > barra {
-            return None;
+        ((q.x - cx).hypot(q.y - cy) - r).abs()
+    };
+    (pico_do_desvio(desvio) <= barra).then_some(bulge)
+}
+
+/// ⭐⭐ **O MAIOR valor de `desvio` em `[0, 1]`** — uma grelha de [`GRELHA_DO_PICO`] intervalos, e cada
+/// máximo local dela refinado por secção áurea no par de intervalos que o rodeia.
+///
+/// ⛔ **A grelha fixa sozinha mente sempre para BAIXO.** A versão anterior lia seis parâmetros, e o
+/// pico do erro de um arco numa cúbica cai em `t = (3 − √3)/6 ≈ 0,2113`, entre dois deles: o erro
+/// lido ficava `5,35 %` abaixo do verdadeiro em todo ângulo, e a barra efectiva era essa fracção mais
+/// larga do que a escrita. Nem `32` amostras bastam para recusar um arco de `90,03°` (tabela no gate
+/// `a_barra_escrita_e_a_barra_que_o_reconhecedor_aplica`).
+///
+/// ⚠️ **O que ela ainda supõe, dito:** que dois picos não cabem no mesmo par de intervalos. O desvio
+/// radial é a raiz de um polinómio de grau 6 que se anula em `0`, `½` e `1` por construção, logo tem
+/// no máximo cinco bossas em `[0, 1]`; perder uma exige dois zeros a menos de `1/16` um do outro, e a
+/// bossa entre eles é então pequena. Nenhuma cúbica da casa o faz.
+fn pico_do_desvio(desvio: impl Fn(f64) -> f64) -> f64 {
+    let n = GRELHA_DO_PICO;
+    let passo = 1.0 / n as f64;
+    let valores: Vec<f64> = (0..=n).map(|i| desvio(i as f64 * passo)).collect();
+    let mut pico = valores.iter().copied().fold(0.0, f64::max);
+    for i in 1..n {
+        if valores[i] >= valores[i - 1] && valores[i] >= valores[i + 1] {
+            let (lo, hi) = ((i - 1) as f64 * passo, (i + 1) as f64 * passo);
+            pico = pico.max(seccao_aurea(&desvio, lo, hi));
         }
     }
-    Some(bulge)
+    pico
+}
+
+/// Quantos intervalos a grelha do [`pico_do_desvio`] tem. `16` põe cada bossa de um arco (largura
+/// `~0,5`) em vários pontos, que é o que o refinamento precisa para a encontrar.
+///
+/// ⚠️ **O preço, medido** (mínimo de 200×50 cozimentos no nível 1, as duas versões intercaladas, load
+/// `27`–`38`): o vaso do dono `36,5 → 51,0 µs` e o círculo `10,4 → 15,0 µs` — `~1,2 µs` por aresta
+/// que é arco. O vínculo desenho→peça recoze a cada quadro, logo é `~0,09 %` de um quadro de
+/// `16,7 ms` por peça ligada ao vaso.
+const GRELHA_DO_PICO: usize = 16;
+
+/// O máximo de uma função unimodal em `[lo, hi]`, por secção áurea até `1e-6` de largura (`~24`
+/// avaliações a partir do par de intervalos da grelha). O erro do pico é quadrático na largura: numa
+/// bossa de arco (meia-largura `~0,12`) isso é `~2e-11` relativo, e a folga mais apertada que o usa
+/// — o quarto canónico contra a [`ERRO_DO_QUARTO`] — é `3,7e-5`.
+fn seccao_aurea(f: &impl Fn(f64) -> f64, mut lo: f64, mut hi: f64) -> f64 {
+    const R: f64 = 0.618_033_988_749_894_9; // (√5 − 1)/2
+    let mut x1 = hi - R * (hi - lo);
+    let mut x2 = lo + R * (hi - lo);
+    let (mut f1, mut f2) = (f(x1), f(x2));
+    while hi - lo > 1e-6 {
+        if f1 < f2 {
+            lo = x1;
+            x1 = x2;
+            f1 = f2;
+            x2 = lo + R * (hi - lo);
+            f2 = f(x2);
+        } else {
+            hi = x2;
+            x2 = x1;
+            f2 = f1;
+            x1 = hi - R * (hi - lo);
+            f1 = f(x1);
+        }
+    }
+    f1.max(f2)
 }
 
 /// ⭐⭐⭐ **A PRECISÃO COM QUE UM CÍRCULO SE ESCREVE EM CÚBICAS** — o erro radial máximo do quarto de

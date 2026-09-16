@@ -28,7 +28,9 @@
 //!   reta ──── P0 ─── asa (cúbica) ─── A ══ arco ══ A' ─── asa ─── P0' ──── reta
 //! ```
 //!
-//! - o arco encolhe: de `α` (o suplemento do ângulo interno) para `α·(1 − s)`;
+//! - o arco encolhe: de `α` (o suplemento do ângulo interno) para `α·(1 − s)` — e, acima de `90°`,
+//!   sai em duas cúbicas com um vértice liso no meio ([`crate::corners::circular_fillet`], a lei da
+//!   casa; até `90°` a saída é a de sempre, byte a byte);
 //! - de cada ponta dele corta-se `β = α·s/2`, e o **centro de curvatura não se mexe** (é o que
 //!   mantém o canto reconhecível enquanto o slider anda);
 //! - a asa é uma cúbica cujos DOIS primeiros pontos de controle ficam **sobre a aresta**
@@ -213,13 +215,10 @@ pub(crate) fn smooth_corner(a: P, v: P, b: P, r: f64, s: f64) -> Option<Vec<VecV
     };
     let (p0a, p1a) = wing(ua, qa);
     let (p0b, p1b) = wing(ub, qb);
-    // Comprimento de handle exato de uma cúbica que segue o arco remanescente:
-    // (4/3)·tan(arco/4)·r — a generalização do KAPPA (que é esse valor em 90°).
-    let h = (4.0 / 3.0) * (arc * 0.25).tan() * r_eff;
     // Tangente unitária no ponto de direção radial `d`, no sentido do percurso.
     let tang = |d: P| [-d[1] * sigma, d[0] * sigma];
 
-    let mut out = Vec::with_capacity(4);
+    let mut out = Vec::with_capacity(5);
     // A âncora onde o lado reto acaba: handle nulo do lado da reta, `P1` do lado da asa.
     out.push(VecVertex {
         anchor: p0a,
@@ -240,16 +239,22 @@ pub(crate) fn smooth_corner(a: P, v: P, b: P, r: f64, s: f64) -> Option<Vec<VecV
             corner_radius: 0.0,
         });
     } else {
+        // O arco remanescente pela MESMA porta do filete puro: alçapão `(4/3)·tan(arco/4)·r` (a
+        // generalização do KAPPA) até `90°`, byte-idêntico ao de antes, e acima disso duas metades
+        // com um vértice liso no meio — a lei da casa, que este escritor violava (numa quina que vira
+        // `120°` com `s = 0,05` o arco varre `114°`, e uma cúbica só erra `~3×` o quarto de círculo).
+        let arco = crate::corners::circular_fillet(aa, tang(d_aa), ab, tang(d_ab), arc, r_eff);
         out.push(VecVertex {
             anchor: aa,
             in_handle: qa,
-            out_handle: add(aa, mul(tang(d_aa), h)),
+            out_handle: arco.out1,
             kind: VertexKind::Corner,
             corner_radius: 0.0,
         });
+        out.extend(arco.mid);
         out.push(VecVertex {
             anchor: ab,
-            in_handle: sub(ab, mul(tang(d_ab), h)),
+            in_handle: arco.in2,
             out_handle: qb,
             kind: VertexKind::Corner,
             corner_radius: 0.0,

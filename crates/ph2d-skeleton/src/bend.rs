@@ -165,6 +165,217 @@ pub fn point_at(length: f64, bend: Bend, t: f64) -> [f64; 2] {
     ]
 }
 
+/// Quantas amostras por sub-osso a tabela de comprimento de arco usa, e quantas rondas de
+/// correcção para a CORDA a lei corre — ver [`nodes_com_rondas`].
+///
+/// ⭐ **MEDIDOS, não escolhidos** (`bend_measure_the_table`, `8` sub-ossos, `L = 10`). A coluna que
+/// decide é a terceira: as alças **no eixo e cruzadas** fazem a curva quase parar a meio, que é onde
+/// o mapa `arco → parâmetro` fica mais torto. *Uma varredura só sobre os casos brandos escolhe uma
+/// tabela que o caso duro não aguenta.*
+///
+/// | amostras × rondas | alças `0,2 L` | `0,6 L` | eixo cruzado |
+/// |---|---:|---:|---:|
+/// | **(sem equalizar)** | **`12,63 %`** | **`82,01 %`** | **`1 051,95 %`** |
+/// | `8 × 0` (só o arco) | `0,068 %` | `1,258 %` | `93,65 %` |
+/// | `8 × 1` | `0,000 %` | `0,021 %` | `7,56 %` |
+/// | `8 × 2` | `0,000 %` | `0,000 %` | `0,922 %` |
+/// | `8 × 4` | `0,000 %` | `0,000 %` | `0,022 %` |
+/// | **`8 × 8`** | **`0,000 %`** | **`0,000 %`** | **`0,000 %`** |
+/// | `32 × 8` | `0,000 %` | `0,000 %` | `0,000 %` |
+///
+/// ⛔⛔ **A linha `× 0` é o achado que mudou a lei:** só equalizar o ARCO deixa um piso que **não
+/// desce com a tabela** (`1,22 %` a `0,6 L` de `16` a `32` amostras). *Um número que não se move
+/// quando se afina a discretização não é erro de discretização* — ver [`nodes_com_rondas`].
+///
+/// ⚠️ **O recurso é a tabela em si** (`n × 8` avaliações da cúbica mais `8 × (n+1)`, uma vez por
+/// osso CURVO por resolução): a `n = 32` são ~`550` avaliações de um polinómio, contra as dezenas
+/// de milhares de pontos que a pele percorre. ⛔ Não é o custo por PONTO, que é quem manda no
+/// [`MAX_SEGMENTS`].
+const AMOSTRAS_POR_SUB_OSSO: usize = 8;
+
+/// Ver o doc do [`AMOSTRAS_POR_SUB_OSSO`] — os dois saem da mesma tabela.
+const RONDAS_DA_CORDA: usize = 8;
+
+/// ⭐⭐⭐ **OS `N+1` NÓS DO EIXO, EM PARÂMETRO — escolhidos para as CORDAS ficarem iguais.**
+///
+/// # O defeito que isto cura (limite declarado em 2026-09-15, fechado em 2026-09-16)
+///
+/// Os nós saíam do **parâmetro** (`k/n`), e uma Bézier não percorre comprimento igual em parâmetro
+/// igual: junto das pontas ela anda mais depressa. ⇒ as cordas dos sub-ossos saíam **desiguais**
+/// enquanto a fatia do eixo de repouso que cada um governa é sempre `L/n` — e o esticão axial, que
+/// é `corda / (L/n)`, **variava ao longo do osso**: `13 %` com as alças a `0,2 L` e `82 %` a
+/// `0,6 L` (e `1 052 %` com as alças cruzadas no eixo).
+///
+/// ⭐ Com as cordas iguais o esticão é **o mesmo em todo o osso**, e vale o comprimento da
+/// POLILINHA sobre `L`. ⛔ **Ele não desaparece, e não devia:** um osso que arqueia percorre mais
+/// caminho, e esconder isso seria encolher a arte.
+///
+/// ⛔⛔ **E a cura publicada — equalizar o ARCO — não chega, o que só a varredura disse.** Ela
+/// deixa um piso que **não desce com a tabela** (`1,22 %` a `0,6 L`, igual de `16` a `32`
+/// amostras), porque a corda de um pedaço mais curvo é mais curta que o arco dele: *arcos iguais
+/// dão cordas desiguais*. ⇒ a lei parte da equalização por arco e corrige-a para a corda, em
+/// rondas de Gauss-Seidel — ver o [`AMOSTRAS_POR_SUB_OSSO`].
+///
+/// # ⭐ O ponto neutro continua EXACTO, e não por tolerância
+///
+/// A primeira linha é um `if`: com [`Bend::is_straight`] os nós são `k/n` **ao bit**, sem tabela
+/// nenhuma. *A objecção registada no limite declarado — «um somatório de cordas não devolve `L` ao
+/// bit» — é verdadeira e não morde, porque no neutro o somatório nunca corre.*
+///
+/// ⛔ **E não há bandeira de ambiente aqui.** A lei antiga é exprimível pela porta
+/// ([`frames_com`] com `k/n`), que é o que o gate corre como controlo — uma bandeira global dentro
+/// de uma lei alcança todo chamador, que é a armadilha que o `remesh_with` deste repo já pagou.
+#[must_use]
+pub fn nodes(length: f64, segments: u8, bend: Bend) -> Vec<f64> {
+    nodes_com(length, segments, bend, AMOSTRAS_POR_SUB_OSSO)
+}
+
+/// [`nodes`] com a densidade da tabela escolhida — **a porta da varredura que fixou o
+/// [`AMOSTRAS_POR_SUB_OSSO`]**.
+///
+/// ⚠️ **Ela é `pub` de propósito:** sem ela a tabela do doc daquela constante seria um número
+/// escrito à mão, e o §0.0 do `CLAUDE.md` pede a medição ao lado do limite. *Uma constante cuja
+/// varredura não é exprimível pela porta é uma constante que ninguém volta a medir.*
+#[must_use]
+pub fn nodes_com(length: f64, segments: u8, bend: Bend, amostras: usize) -> Vec<f64> {
+    nodes_com_rondas(length, segments, bend, amostras, RONDAS_DA_CORDA)
+}
+
+/// [`nodes_com`] com as rondas de correcção da corda escolhidas — a outra metade da varredura.
+#[must_use]
+pub fn nodes_com_rondas(
+    length: f64,
+    segments: u8,
+    bend: Bend,
+    amostras: usize,
+    rondas: usize,
+) -> Vec<f64> {
+    let n = segments_of(segments);
+    let uniformes = || (0..=n).map(|k| f64::from(k) / f64::from(n)).collect();
+    if bend.is_straight() {
+        return uniformes();
+    }
+    let m = usize::from(n) * amostras.max(1);
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "m e' a densidade da tabela, dezenas a centenas"
+    )]
+    let m_f = m as f64;
+    let mut acum = Vec::with_capacity(m + 1);
+    acum.push(0.0);
+    let mut anterior = point_at(length, bend, 0.0);
+    for i in 1..=m {
+        #[expect(clippy::cast_precision_loss, reason = "i <= m, a densidade da tabela")]
+        let t = i as f64 / m_f;
+        let p = point_at(length, bend, t);
+        let passo = (p[0] - anterior[0]).hypot(p[1] - anterior[1]);
+        acum.push(acum[i - 1] + passo);
+        anterior = p;
+    }
+    let total = acum[m];
+    // ⚠️ `is_nan` NOMEADO: uma curva degenerada (ou um `NaN` vindo de fora) não tem arco para
+    // repartir, e dividir por ele poria todos os nós no mesmo sítio.
+    if total.is_nan() || total <= 0.0 {
+        return uniformes();
+    }
+    // `t` no ponto de arco `alvo`, lido da tabela por interpolação linear.
+    let t_do_arco = |alvo: f64| -> f64 {
+        let mut j = 0usize;
+        while j + 1 < m && acum[j + 1] < alvo {
+            j += 1;
+        }
+        let (a, b) = (acum[j], acum[j + 1]);
+        let f = if b > a {
+            ((alvo - a) / (b - a)).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        #[expect(clippy::cast_precision_loss, reason = "j < m, a densidade da tabela")]
+        let t = (j as f64 + f) / m_f;
+        t
+    };
+
+    // ⭐ O ponto de partida: os nós equidistantes em ARCO.
+    let mut s: Vec<f64> = (0..=n)
+        .map(|k| total * f64::from(k) / f64::from(n))
+        .collect();
+
+    // ⭐⭐⭐⭐ **E AGORA A CORRECÇÃO PARA A CORDA, que é a grandeza que o esticão de facto usa.**
+    //
+    // ⛔⛔ **Equalizar o ARCO NÃO iguala o esticão, e a varredura da densidade foi quem o disse:** a
+    // dispersão parava num PISO que não descia com a tabela (`0,053 %` a `0,2 L` e **`1,21 %`** a
+    // `0,6 L`, iguais de `16` a `64` amostras). *Um número que não se move quando se afina a
+    // discretização não é erro de discretização.* A causa é geometria: o esticão de um sub-osso é
+    // `corda / (L/n)`, e a corda de um pedaço mais curvo é mais curta que o arco dele — arcos
+    // iguais dão cordas **desiguais**.
+    //
+    // ⇒ algumas rondas de Gauss-Seidel sobre a posição em ARCO de cada nó interior, a empurrá-lo
+    // para onde a CORDA acumulada fica proporcional. O passo é `Δarco ≈ Δcorda` (as duas grandezas
+    // diferem em 2.ª ordem), que é o que torna isto uma contracção e não uma busca.
+    for _ in 0..rondas {
+        let pts: Vec<[f64; 2]> = s
+            .iter()
+            .map(|&si| point_at(length, bend, t_do_arco(si)))
+            .collect();
+        let mut cum = Vec::with_capacity(usize::from(n) + 1);
+        cum.push(0.0);
+        for k in 0..usize::from(n) {
+            let d = (pts[k + 1][0] - pts[k][0]).hypot(pts[k + 1][1] - pts[k][1]);
+            cum.push(cum[k] + d);
+        }
+        let soma = cum[usize::from(n)];
+        if soma.is_nan() || soma <= 0.0 {
+            break;
+        }
+        // ⚠️ **Gauss-Seidel e não Jacobi**: cada nó é corrigido com o vizinho anterior JÁ movido, e
+        // é isso que faz o `clamp` de monotonia ser uma cerca e não uma correcção a posteriori.
+        for k in 1..usize::from(n) {
+            #[expect(clippy::cast_precision_loss, reason = "k <= MAX_SEGMENTS")]
+            let quer = soma * (k as f64) / f64::from(n);
+            // A correcção viaja em unidades de ARCO, com o factor `total/soma` a converter de
+            // corda para arco (≈ 1, e exacto na média).
+            let novo = s[k] + (quer - cum[k]) * (total / soma);
+            // ⚠️ Monótono por construção: dois nós que se cruzam invertem um sub-osso.
+            s[k] = novo.clamp(s[k - 1], total);
+        }
+    }
+
+    let mut out = Vec::with_capacity(usize::from(n) + 1);
+    out.push(0.0);
+    out.extend(s[1..usize::from(n)].iter().map(|&si| t_do_arco(si)));
+    // ⚠️ As duas pontas são POSTAS, nunca procuradas: a Bézier começa na raiz e acaba na ponta por
+    // definição, e um `1.0` obtido de uma divisão seria `0,999…` — a ponta do osso deixaria de
+    // coincidir com o que todo o resto do app lê como ponta.
+    out.push(1.0);
+    out
+}
+
+/// ⭐⭐⭐ **OS FRAMES DE TODOS OS SUB-OSSOS, com os nós já escolhidos** — a porta que a
+/// [`crate::SkinBone::bent`] usa, e o controlo que o gate da equalização corre com `k/n`.
+///
+/// ⚠️ **Ela existe para a tabela de arco ser construída UMA vez por osso** e não uma vez por
+/// sub-osso: chamar o [`frame`] em laço reconstruiria `n` tabelas para dar as mesmas `n` respostas.
+#[must_use]
+pub fn frames_com(spec: BoneSpec, taus: &[f64]) -> Vec<Xform> {
+    let n = segments_of(spec.segments);
+    (0..n)
+        .map(|k| {
+            let i = usize::from(k);
+            let (t0, t1) = (
+                taus.get(i).copied().unwrap_or(0.0),
+                taus.get(i + 1).copied().unwrap_or(1.0),
+            );
+            frame_entre(spec.length, n, spec.curve, k, t0, t1)
+        })
+        .collect()
+}
+
+/// [`frames_com`] com os nós da lei — equalizados por arco ([`nodes`]).
+#[must_use]
+pub fn frames(spec: BoneSpec) -> Vec<Xform> {
+    frames_com(spec, &nodes(spec.length, spec.segments, spec.curve))
+}
+
 /// ⭐⭐⭐ **O FRAME DO SUB-OSSO `k`** — o afim, em espaço LOCAL do osso, que leva o osso recto para
 /// onde a curva o põe.
 ///
@@ -178,20 +389,29 @@ pub fn point_at(length: f64, bend: Bend, t: f64) -> [f64; 2] {
 /// de espessura nas pontas de um arco com as alças a `0,6 L`). Com a escala axial a espessura é
 /// preservada **ao bit** e o que estica é o comprimento, que é o que um osso a dobrar faz.
 ///
-/// ⏳ **LIMITE DECLARADO — o esticão VARIA ao longo do osso**, porque os nós saem do parâmetro e não
-/// do comprimento de arco. Medido com as alças a `0,2 L` e 8 segmentos: `1,129` nas pontas contra
-/// `1,003` no meio (**13 %**); a `0,6 L` a variação vai a **87 %**. A cura publicada é a
-/// **equalização por comprimento de arco** (o `equalize_cubic_bezier` da referência), que torna o
-/// esticão constante — e que custa exactamente a exactidão do ponto neutro deste ficheiro, porque um
-/// somatório de cordas não devolve `L` ao bit. ⇒ fica por medir num smoke, não por escrever.
-#[must_use]
-pub fn frame(length: f64, segments: u8, bend: Bend, k: u8) -> Xform {
-    let n = segments_of(segments);
-    let k = k.min(n - 1);
-    let (t0, t1) = (f64::from(k) / f64::from(n), f64::from(k + 1) / f64::from(n));
-    // ⚠️ `x` sai da MESMA expressão que a componente `x` da curva recta (`length * t`), e é isso que
-    // faz as razões darem `1.0` e `0.0` ao bit no ponto neutro.
-    let (x0, x1) = (length * t0, length * t1);
+/// ✅ **O LIMITE DECLARADO EM 2026-09-15 FECHOU EM 2026-09-16.** Ele dizia: *«o esticão VARIA ao
+/// longo do osso, porque os nós saem do parâmetro e não do comprimento de arco — `13 %` com as
+/// alças a `0,2 L`, `87 %` a `0,6 L`; a cura publicada custa a exactidão do ponto neutro, porque um
+/// somatório de cordas não devolve `L` ao bit»*.
+///
+/// ⚠️⚠️ **A objecção era verdadeira e não mordia:** o somatório nunca corre no neutro, porque a
+/// primeira linha do [`nodes`] é um `if` sobre [`Bend::is_straight`]. *Uma recusa que nomeia um
+/// custo tem de dizer em que CAMINHO ele é pago* — e este era pago num caminho que a lei não toma.
+///
+/// ⚠️ **Os nós chegam de fora** (`t0`, `t1`), porque construir a tabela de arco por sub-osso seria
+/// construí-la `n` vezes para a mesma resposta — ver [`frames_com`].
+fn frame_entre(length: f64, n: u8, bend: Bend, k: u8, t0: f64, t1: f64) -> Xform {
+    // ⚠️⚠️ **O eixo de REPOUSO continua repartido por igual, e isso não é um esquecimento:** a
+    // [`share`] reparte o peso do osso pela fracção `u` do eixo recto em `n` fatias iguais, então
+    // mexer aqui poria a quota de um sub-osso sobre a fatia de outro. *A equalização é da CURVA; o
+    // repouso é o que ele sempre foi.*
+    //
+    // ⚠️⚠️ **E `x` sai de `length * u`, escrito nesta ordem**, que é a MESMA expressão da componente
+    // `x` da curva recta dentro do [`point_at`] — é isso que faz as razões darem `1.0` e `0.0` ao
+    // bit no ponto neutro. *`length * k / n` é o mesmo número em aritmética exacta e outro em
+    // `f64`, e a exactidão do neutro é o que este ficheiro promete.*
+    let (u0, u1) = (f64::from(k) / f64::from(n), f64::from(k + 1) / f64::from(n));
+    let (x0, x1) = (length * u0, length * u1);
     let (c0, c1) = (point_at(length, bend, t0), point_at(length, bend, t1));
     let a = x1 - x0;
     // `(cos·s, sin·s)` = a corda por unidade de eixo: já traz a rotação E o esticão axial juntos.
@@ -208,6 +428,18 @@ pub fn frame(length: f64, segments: u8, bend: Bend, k: u8) -> Xform {
         (1.0, 0.0)
     };
     Xform([cs, ss, -sin, cos, c0[0] - cs * x0, c0[1] - ss * x0])
+}
+
+/// O frame do sub-osso `k` **com os nós da lei** — ver [`frames`] e [`frame_entre`].
+///
+/// ⚠️ Ele reconstrói a tabela de arco por chamada; quem precisa de todos usa o [`frames`].
+#[must_use]
+pub fn frame(length: f64, segments: u8, bend: Bend, k: u8) -> Xform {
+    let n = segments_of(segments);
+    let k = k.min(n - 1);
+    let taus = nodes(length, segments, bend);
+    let i = usize::from(k);
+    frame_entre(length, n, bend, k, taus[i], taus[i + 1])
 }
 
 /// ⭐⭐ **A QUOTA DE UM SUB-OSSO SOBRE O EIXO** — a partição da unidade que reparte o peso **do
@@ -255,9 +487,11 @@ pub fn polyline(spec: BoneSpec) -> Vec<[f64; 2]> {
     if spec.is_rigid() {
         return vec![[0.0, 0.0], [spec.length, 0.0]];
     }
-    let n = segments_of(spec.segments);
-    (0..=n)
-        .map(|k| point_at(spec.length, spec.curve, f64::from(k) / f64::from(n)))
+    // ⭐ **Os MESMOS nós que os frames usam** ([`nodes`]) — a linha que se desenha e a linha que se
+    // deforma têm de ser a mesma, senão o dedo agarra onde o osso não está.
+    nodes(spec.length, spec.segments, spec.curve)
+        .into_iter()
+        .map(|t| point_at(spec.length, spec.curve, t))
         .collect()
 }
 

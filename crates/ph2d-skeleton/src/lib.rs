@@ -162,10 +162,18 @@ impl SkinBone {
         let Some(rest_inv) = rest.inverse() else {
             return;
         };
-        for k in 0..n {
+        // ⚠️ **UMA chamada para os `n` frames**, e não `n` chamadas ao [`bend::frame`]: desde a
+        // equalização por arco (2026-09-16) cada frame precisa da tabela de comprimento, e pedi-la
+        // por sub-osso construiria `n` tabelas para as mesmas `n` respostas.
+        for (k, frame) in bend::frames(spec).into_iter().enumerate() {
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "n <= MAX_SEGMENTS = 32, logo o índice cabe num u8"
+            )]
+            let k = k as u8;
             out.push(Self {
                 pose: rest_inv
-                    .then(&bend::frame(spec.length, n, spec.curve, k))
+                    .then(&frame)
                     .then(&bone_world)
                     .then(&shape_world_inv),
                 sub: (k, n),

@@ -181,13 +181,19 @@ fn browse_nao_escreve_e_um_corpo_dinamico_e_avisado() {
 
 #[test]
 fn browse_escreve_o_que_o_dialogo_devolve_e_cancelar_nao_escreve_nada() {
-    let (mut sim, bits) = cena(LuauScript::default());
+    // ⚠️ **Parte de um caminho NÃO vazio**: com o default (`""`), um cancelamento que escrevesse um
+    // caminho vazio não mudaria nada e passaria por correcto.
+    let (mut sim, bits) = cena(LuauScript::at("/antes.luau"));
     let lote = [(bits, E::Browse)];
     assert!(!super::apply_all(&mut sim, &lote, || None), "cancelado");
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    assert_eq!(
+        sim.world().get::<LuauScript>(e).expect("cfg").source,
+        "/antes.luau"
+    );
     assert!(super::apply_all(&mut sim, &lote, || Some(
         "/a/b.luau".into()
     )));
-    let e = ph2d_ecs::Entity::from_bits(bits);
     assert_eq!(
         sim.world().get::<LuauScript>(e).expect("cfg").source,
         "/a/b.luau"

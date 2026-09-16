@@ -452,3 +452,108 @@ fn an_obstacle_is_still_a_wall_and_returns_the_bounce() {
         assert!(v[1][0].abs() < 1e-6, "o obstaculo nao se mexe: {:?}", v[1]);
     }
 }
+
+/// Um disco de raio `R` já a ROLAR a `1 u/s` sobre um obstáculo fixo, com `Rolling = rolar`, pela
+/// porta do produto — os segundos até parar (`|v| < 0,01`), ou `None` em 30 s.
+///
+/// ⚠️ **As condições são as da tabela do `ROLLING_MAX`** (raio `0,2`, gravidade `4`, `μ = 1`), que
+/// a taça (`sim.collide`) mediu: é a mesma pergunta às duas metades do app.
+///
+/// ⛔⛔ **A prancha tem de ser mais comprida que o caminho, e a 1.ª não era.** Com meia-largura `4`
+/// o disco a `Rolling = 0,02` lia *«não pára em 30 s»* contra os `18,57` da taça — e a série no
+/// tempo mostrou-o a desacelerar **exactamente** ao ritmo da taça (`0,053 u/s²`) até aos `5 s`, e
+/// depois a CAIR PELA PONTA (`y = −1098` aos 28 s). A taça mede contra um plano INFINITO; um
+/// rolamento fraco anda `~9` unidades antes de parar. *Uma fixtura mais curta que o fenómeno lê o
+/// fim dela como um defeito do produto.*
+const PRANCHA: f32 = 40.0;
+
+pub(super) fn disco_ate_parar(rolar: f32, sub: u32) -> Option<f32> {
+    use crate::SPIN;
+    use ph2d_nodegraph::attr::{COLLIDER_COLUMN, FRICTION_COLUMN, ROLLING_COLUMN};
+    const G: f32 = 4.0;
+    const R: f32 = 0.2;
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "uma contagem de sub-passos pequena"
+    )]
+    let dt = DT / sub as f32;
+    let mut p = vec![[0.0_f32, -0.5], [0.0, R]];
+    let mut v = vec![[0.0_f32, 0.0], [1.0, 0.0]];
+    // A rolar para a direita: ponto de contacto parado, `ω = −v/R`.
+    let mut spin = vec![0.0_f32, -(1.0 / R).to_degrees()];
+    for k in 0..(60 * 30 * sub) {
+        let s = Stream::new(2)
+            .with("P", Column::Vec2(p.clone()))
+            .with("vel", Column::Vec2(v.clone()))
+            .with(SPIN, Column::Scalar(spin.clone()))
+            .with("accel", Column::Vec2(vec![[0.0, -G], [0.0, -G]]))
+            .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
+            .with("inv_mass", Column::Scalar(vec![0.0, 1.0]))
+            .with(FRICTION_COLUMN, Column::Scalar(vec![1.0, 1.0]))
+            .with(ROLLING_COLUMN, Column::Scalar(vec![0.0, rolar]))
+            .with(COLLIDER_COLUMN, Column::Scalar(vec![0.0, R]))
+            .with(
+                COLLIDER_BOX_COLUMN,
+                Column::Vec2(vec![[PRANCHA, 0.5], [0.0, 0.0]]),
+            );
+        let out = step(&s, dt, 1.0, 0.0, 0.0, 1.0);
+        p = col(&out, "P");
+        v = col(&out, "vel");
+        if let Some(Column::Scalar(sp)) = out.get(SPIN) {
+            spin = sp.clone();
+        }
+        if v[1][0].abs() < 0.01 {
+            #[expect(clippy::cast_precision_loss, reason = "uma contagem de tiques pequena")]
+            let t = k as f32 * dt;
+            return Some(t);
+        }
+    }
+    None
+}
+
+/// ⭐⭐⭐ **Uma peça a ROLAR sobre outra PÁRA com o `Rolling` do cartão — e pára no tempo da TAÇA.**
+///
+/// ⛔⛔ **Até 2026-09-16 este controlo era MORTO no contacto peça×peça**, e o contrato da coluna
+/// dizia-o por escrito: a rotação era posicional e não havia velocidade angular a travar. O doc
+/// 111 §9 deu-lha; o §10 ligou-lhe o rolamento pela MESMA porta da taça.
+///
+/// ⭐ **A barra é a TAÇA**, que o dono já smokou (tabela do `ROLLING_MAX`): é a mesma pergunta às
+/// duas metades do app, e elas têm de dar a mesma resposta. Medido nesta porta, na faixa em que
+/// quem trava é o rolamento:
+///
+/// ```text
+///   rolamento | 1 passo | 8 sub-passos | a taça
+///        0,02 |   18,58 |        18,56 |  18,57
+///        0,05 |    7,43 |         7,43 |   7,43
+///        0,10 |    3,72 |         3,71 |   3,72
+/// ```
+///
+/// ⇒ o desvio máximo é `0,27 %`, e a folga é `2 %` (`7×`); o lado do defeito é **infinito** (não
+/// pára). ⚠️ **Acima de `0,25` as duas metades separam-se por construção**, e o gate não o mede: ali
+/// quem trava é o Coulomb (teórico `0,25 s`), e a taça lê `0,33` porque o contacto dela não
+/// acontece em todos os tiques, enquanto este lê `0,23–0,25`. ⚠️ E as DUAS contagens de sub-passos,
+/// porque a lei tem de ser linear no passo — é o que o doc 111 §7 exigiu ao atrito.
+#[test]
+fn a_piece_rolling_on_a_piece_stops_as_it_does_on_the_bowl() {
+    /// Folga relativa — `7×` o maior desvio medido (ver acima).
+    const FOLGA: f32 = 0.02;
+    const TACA: [(f32, f32); 3] = [(0.02, 18.57), (0.05, 7.43), (0.10, 3.72)];
+    assert_eq!(
+        disco_ate_parar(0.0, 1),
+        None,
+        "sem rolamento a bola rola para sempre -- e' a lei de antes da coluna"
+    );
+    for (rolar, taca) in TACA {
+        for sub in [1, 8] {
+            let t = disco_ate_parar(rolar, sub).unwrap_or_else(|| {
+                panic!(
+                    "rolamento {rolar} ({sub} sub-passos): a bola nunca parou -- o Rolling morreu"
+                )
+            });
+            assert!(
+                (t - taca).abs() <= FOLGA * taca,
+                "rolamento {rolar} ({sub} sub-passos): parou em {t:.2} s, a taca para em {taca} s"
+            );
+        }
+    }
+}

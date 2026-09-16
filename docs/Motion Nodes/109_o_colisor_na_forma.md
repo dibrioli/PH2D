@@ -697,6 +697,11 @@ volta acima de onde partiu) e não a constante, com o controlo a `1,00` no mesmo
 
 ### §7.10 — O ATRITO DE ROLAMENTO: a bola pára sozinha
 
+> ✅ **ACTUALIZAÇÃO 2026-09-16:** a fronteira que esta secção declara (*«só peça × obstáculo; entre
+> peças não há velocidade angular a travar»*) **fechou** — ver o
+> [doc 111 §10](111_o_motor_de_contacto_com_memoria.md). A lei entre peças é a desta secção, pela
+> mesma porta, e as duas metades do app param um disco no mesmo décimo de segundo.
+
 A ponta que a §7.7 nomeava — *«com `angular_damping = 1` (o default) ela rola para sempre num chão
 infinito. É um param, não uma lei»* — estava certa no diagnóstico e errada no preço: **é uma lei**,
 e a razão é a mesma conta da §7.1.

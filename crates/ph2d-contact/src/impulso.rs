@@ -178,13 +178,17 @@ struct Restricao {
     /// O alvo do ressalto: `e · vrel₀`, já filtrado pelo [`Leis::limiar_salto`].
     restituicao: f32,
     mu: f32,
-    /// O tecto de Coulomb da lei de 2026-09-15 — `μ · max(vrel, pen/dt) / Σw`.
-    tecto_fixo: f32,
+    /// O impulso NORMAL de referência da lei de 2026-09-15 — `max(vrel, pen/dt) / Σw`. É dele que
+    /// sai o tecto de Coulomb e o do rolamento, quando o [`Leis::tecto_por_lambda`] está desligado.
+    normal_fixo: f32,
+    /// ⭐ **O ROLAMENTO de cada lado** `[lo, hi]` — é da PEÇA, nunca do par (ver [`rolamento_um`]).
+    rolar: [f32; 2],
     /// O passo deste par, para converter uma velocidade angular num ângulo.
     passo: f32,
     /// O `λ` acumulado ao longo das varreduras.
     lambda: f32,
     lambda_t: f32,
+    lambda_r: [f32; 2],
 }
 
 /// **O SOLVER DE VELOCIDADE** sobre as posições `p` em que os contactos de facto aconteceram (as de
@@ -337,10 +341,12 @@ fn monta(
                     // a cada varredura fá-lo-ia compor-se `iteracoes` vezes.
                     restituicao: if vn > leis.limiar_salto { e * vn } else { 0.0 },
                     mu,
-                    tecto_fixo: mu * (normal_ref / soma),
+                    normal_fixo: normal_ref / soma,
+                    rolar: [mlo.rolar, mhi.rolar],
                     passo,
                     lambda: 0.0,
                     lambda_t: 0.0,
+                    lambda_r: [0.0, 0.0],
                 });
             }
         }
@@ -410,6 +416,35 @@ fn resolve_um(
             }
         }
     }
+    atrito_um(r, mov, w, pecas, leis);
+    // ⚠️ **O rolamento corre DEPOIS do atrito e lê o `ω` já corrigido por ele** — a mesma ordem da
+    // taça (`sim.collide`): os dois escrevem a mesma grandeza, e lidos do mesmo `ω` este desfaria
+    // parte do giro que aquele acabou de dar. E corre com `μ = 0` também: achatar-se não depende
+    // de esfregar.
+    rolamento_um(r, w, pecas, leis);
+}
+
+/// O impulso NORMAL de referência deste contacto — a porta única dos dois tectos (Coulomb e
+/// rolamento), para as duas leis nunca lerem normais diferentes.
+fn normal(r: &Restricao, leis: Leis) -> f32 {
+    if leis.tecto_por_lambda {
+        r.lambda
+    } else {
+        r.normal_fixo
+    }
+}
+
+/// A metade TANGENCIAL de uma restrição, numa varredura.
+fn atrito_um(
+    r: &mut Restricao,
+    mov: &mut Movimento<'_>,
+    w: &mut [f32],
+    pecas: &Pecas<'_>,
+    leis: Leis,
+) {
+    let (lo, hi) = (r.lo, r.hi);
+    let (peso_lo, peso_hi) = (pecas.pesos[lo], pecas.pesos[hi]);
+    let (inv_lo, inv_hi) = (pecas.inv_inercia[lo], pecas.inv_inercia[hi]);
     // ⭐⭐⭐ **E A METADE TANGENCIAL — o ATRITO ao nível da VELOCIDADE.**
     //
     // ⚠️⚠️ **Sem ela o impulso normal deixa a pilha MAIS solta do que a lei que substituiu**, e a
@@ -438,11 +473,7 @@ fn resolve_um(
         - w[hi] * r.bt[1];
     // ⚠️ O tecto sai do impulso normal SEM o salto: o ressalto devolve energia na normal e não
     // compra aderência nenhuma na tangente.
-    let tecto = if leis.tecto_por_lambda {
-        r.mu * r.lambda
-    } else {
-        r.tecto_fixo
-    };
+    let tecto = r.mu * normal(r, leis);
     let alvo = (r.lambda_t + vt / r.kt).clamp(-tecto, tecto); // CLAMP-OK: tecto >= 0
     let djt = alvo - r.lambda_t;
     if !djt.is_finite() || djt == 0.0 {
@@ -471,6 +502,61 @@ fn resolve_um(
         if glo.is_finite() && ghi.is_finite() {
             mov.giro[lo] += glo;
             mov.giro[hi] += ghi;
+        }
+    }
+}
+
+/// ⭐⭐⭐ **O ROLAMENTO de uma restrição** (doc 111 §10) — o que faz uma peça a rolar **parar
+/// sozinha**, pela MESMA porta e na MESMA forma que a taça ([`atrito::rolamento`]).
+///
+/// ⛔⛔ **Até 2026-09-16 o botão `Rolling` do cartão era MORTO no contacto peça×peça**, e o contrato
+/// da coluna dizia-o por escrito (*«ali não há nada que este número possa travar»*): a rotação era
+/// posicional e não havia velocidade angular a resistir. O doc 111 §9 deu-lha, e a frase passou a
+/// ser falsa no mesmo commit — *quem move o número que tornava algo inalcançável tem de reconferir a
+/// nota* (§0.0).
+///
+/// ⭐⭐ **Cada peça é travada contra o PRÓPRIO giro, com o PRÓPRIO rolamento** — a forma da taça,
+/// termo a termo. ⛔⛔ **A forma do PAR (o `ω` relativo, com a massa angular dos dois) foi
+/// construída, medida e REFUTADA:** ela é a física certa para uma bola a rolar sobre outra, e numa
+/// pilha de CAIXAS é um acoplamento espúrio — uma caixa a tombar ARRASTA a vizinha parada e
+/// desaloja-a. Medido na `=114`, rodopio janela a janela:
+///
+/// ```text
+///   Rolling |  forma do par (120..180 · 480..540)  |  esta (120..180 · 480..540)
+///   --------|--------------------------------------|---------------------------
+///      0    |          2,66  ·  0,51               |      2,66  ·  0,51
+///      0,25 |         40,98  ·  0,49               |      1,19  ·  0,03
+///      0,75 |         28,90  ·  5,31               |      1,22  ·  0,02
+///      1,5  |         32,42  ·  6,34               |      1,15  ·  0,02
+/// ```
+///
+/// ⇒ o botão fazia o **contrário** do nome. Esta forma é sempre dissipativa: ela só tira giro a
+/// quem o tem, e nunca o põe numa peça parada. ⚠️ O preço declarado: uma bola a rolar sobre uma
+/// plataforma que GIRA é travada contra o mundo, não contra a plataforma — um caso que nenhuma cena
+/// do produto tem.
+///
+/// ⚠️ **Sem velocidade angular não corre** — não há giro que persista para travar, e a lei de
+/// 2026-09-15 fica ao bit. Com `Rolling = 0` (o default do cartão) o tecto é zero e ela também não
+/// mexe em nada: a `=114` aprovada não se move.
+fn rolamento_um(r: &mut Restricao, w: &mut [f32], pecas: &Pecas<'_>, leis: Leis) {
+    if !leis.angular {
+        return;
+    }
+    let n = normal(r, leis);
+    for (lado, peca) in [r.lo, r.hi].into_iter().enumerate() {
+        let inv = pecas.inv_inercia[peca];
+        if r.rolar[lado] <= 0.0 || inv <= 0.0 {
+            continue;
+        }
+        // ⚠️ O `clamp` da porta é sobre o momento que a peça TEM: o pior caso é parar o giro
+        // nesta varredura — ⛔ nunca invertê-lo, e é por isso que o `ROLLING_MAX` não tem
+        // divergência a temer.
+        let momento = r.lambda_r[lado] + w[peca] / inv;
+        let alvo = atrito::rolamento(momento, r.rolar[lado], n, r.bt[lado]);
+        let dr = alvo - r.lambda_r[lado];
+        if dr.is_finite() && dr != 0.0 {
+            r.lambda_r[lado] = alvo;
+            w[peca] -= inv * dr;
         }
     }
 }

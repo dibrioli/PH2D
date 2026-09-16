@@ -214,8 +214,37 @@ fn probe_quem_leva_o_safanao() {
 #[test]
 #[ignore = "sonda de medicao"]
 fn probe_a_pilha_chega_a_parar() {
+    imprime_perfil("a lei em vigor, Rolling do cartao", None);
+}
+
+/// ⭐⭐ **SONDA — o `Rolling` do cartão na `=114`**: o que o botão que o doc 111 §10 ressuscitou
+/// faz ao monte, janela a janela. ⚠️ O default do cartão é `0`, e com ele a cena é a que o dono
+/// aprovou **ao bit** — as outras linhas são o que ele vê se mexer no botão.
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_o_rolamento_na_pilha() {
+    for rolar in [0.0_f32, 0.25, 0.75, 1.5] {
+        imprime_perfil(&format!("Rolling = {rolar}"), Some(rolar));
+    }
+}
+
+/// Imprime o [`perfil`] com um título.
+fn imprime_perfil(titulo: &str, rolar: Option<f32>) {
+    eprintln!("\n  {titulo}");
+    eprintln!("  janela (tiques) | rodopio | tremor");
+    for (de, rodopio, tremor) in perfil(rolar, 560) {
+        eprintln!("  {de:>7}..{:<7} | {rodopio:>7.2} | {tremor:>6.3}", de + 60);
+    }
+}
+
+/// ⭐⭐ **O PERFIL DE ASSENTAMENTO** — `(início da janela, rodopio, tremor)` em janelas de `60`
+/// tiques a partir do `120`, até `ate`, com a `duration` da zona alongada para a pilha poder ficar
+/// velha. `rolar` escreve o `Rolling` de todas as formas; `None` deixa o do cartão.
+///
+/// ⚠️ `pub(super)` porque o gate do botão ([`super::tests`]) o consome — uma 2.ª cópia desta
+/// marcha seria a 2.ª resposta à pergunta *«que cena estou a medir?»*.
+pub(super) fn perfil(rolar: Option<f32>, ate: u64) -> Vec<(usize, f32, f32)> {
     use ph2d_nodegraph::attr::Column as C;
-    const ATE: u64 = 560;
     let sub = {
         #[expect(
             clippy::cast_possible_truncation,
@@ -226,23 +255,36 @@ fn probe_a_pilha_chega_a_parar() {
         s
     };
     let (mut state, sink) = super::obra::com_substeps(0.0, sub);
+    let de_tipo = |state: &crate::motion_state::MotionState, t: &str| -> Vec<_> {
+        state
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == t)
+            .map(|n| n.id)
+            .collect()
+    };
     // A zona deixa de reiniciar dentro da janela — ⚠️ as DUAS, que é a lição do `substeps`.
-    let zonas: Vec<_> = state
-        .doc
-        .graph
-        .nodes()
-        .iter()
-        .filter(|n| n.type_name == "sim.zone")
-        .map(|n| n.id)
-        .collect();
+    let zonas = de_tipo(&state, "sim.zone");
     assert!(!zonas.is_empty(), "a cena tem de ter zonas");
     for z in zonas {
         state.doc.graph.set_param(z, "duration", 12.0);
     }
+    if let Some(r) = rolar {
+        let formas = de_tipo(&state, "source.shape");
+        assert!(!formas.is_empty(), "a cena tem de ter formas");
+        for f in formas {
+            state
+                .doc
+                .graph
+                .set_param(f, ph2d_node_motion_shape::param::ROLLING, r);
+        }
+        crate::motion_shape_gen::publish(&mut state, 0.0);
+    }
     let escopos = ph2d_nodegraph::cook::TimeScopes::new();
     let mut rots: Vec<Vec<f32>> = Vec::new();
-    let mut spins: Vec<Vec<f32>> = Vec::new();
-    for k in 0..=ATE {
+    for k in 0..=ate {
         state.pump.mark_dirty();
         state.pump.advance_or_scrub_to_nodes_scoped(
             &state.doc.graph,
@@ -268,18 +310,13 @@ fn probe_a_pilha_chega_a_parar() {
             Some(C::Scalar(v)) => v.clone(),
             _ => Vec::new(),
         });
-        spins.push(match saida.get("spin") {
-            Some(C::Scalar(v)) => v.clone(),
-            _ => Vec::new(),
-        });
     }
     let n = rots.last().map_or(0, Vec::len);
     assert!(
         n >= 20,
         "piso de populacao: a cena tem de entregar peças ({n})"
     );
-    eprintln!("\n  janela (tiques) | rodopio | tremor | spin max | spin p50");
-    eprintln!("  ----------------|---------|--------|----------|---------");
+    let mut fora = Vec::new();
     let mut janela = 120_usize;
     while janela + 60 < rots.len() {
         let (de, ate) = (janela, janela + 60);
@@ -297,17 +334,10 @@ fn probe_a_pilha_chega_a_parar() {
             .map(|i| super::tremor::mediana(&passos[i]))
             .fold(0.0_f32, f32::max);
         let rodopio = liquido.iter().fold(0.0_f32, |a, v| a.max(v.abs()));
-        let fim = &spins[ate - 1];
-        let mut abs: Vec<f32> = fim.iter().map(|x| x.abs()).collect();
-        abs.sort_by(f32::total_cmp);
-        let (p50, max) = if abs.is_empty() {
-            (0.0, 0.0)
-        } else {
-            (abs[abs.len() / 2], abs[abs.len() - 1])
-        };
-        eprintln!("  {de:>7}..{ate:<7} | {rodopio:>7.2} | {tremor:>6.3} | {max:>8.2} | {p50:>8.3}");
+        fora.push((de, rodopio, tremor));
         janela += 60;
     }
+    fora
 }
 
 /// ⭐⭐⭐ **SONDA — O ARRASTO ANGULAR**, o knob que o `sim.step` já tem e que esta cena nunca usou.

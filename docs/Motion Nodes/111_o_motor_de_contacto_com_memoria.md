@@ -1293,14 +1293,127 @@ corte de responsabilidade: os gates AFIRMAM (`contact_tests.rs`, `454`) e as son
 
 ### §9.10 — O que fica ABERTO
 
-- ⏳ **O atrito de ROLAMENTO continua a não alcançar o contacto peça×peça** (`Material::rolar`
-  existe, doc 109 §7.10). Ele deixou de ser a hipótese do §8.3 — a pilha assenta sem ele —, mas
-  continua a ser a lei que faltaria a um disco que rola para sempre num plano.
+- ✅ **O atrito de ROLAMENTO continua a não alcançar o contacto peça×peça** — **FECHADO no §10.**
 - ⏳ **O `warm.rs` continua sem consumidor.** A fatia 2 encomendada pelo dono (a lei que consome a
   memória do `λ`) **não** foi o que curou isto, e o solver de `8` iterações arranca frio a cada
   sub-passo. Ele é o caminho para baixar as iterações, não para curar a rotação.
-- ⏳ O §7.5 fica de pé: um disco não converge para rolamento puro (`v = ω·R`).
+- ✅ O §7.5 fica de pé: um disco não converge para rolamento puro (`v = ω·R`) — **FECHADO pelo
+  próprio §9, e quem o escondia era a SONDA** (ver §10.1).
 - ⏳ `Saida::salto` continua sem leitor de produção.
 - ⚠️ **O `Leis` tem cinco campos e o produto usa UMA combinação.** Eles são as colunas de uma tabela
   medida, não configuração; quem lhes mexer sem re-medir a `=114` está a escolher uma célula ao
   acaso. Se a tabela não voltar a ser precisa, a struct colapsa na lei.
+
+---
+
+## §10 — ✅⭐⭐⭐ O BOTÃO `Rolling` DEIXA DE SER MORTO entre peças (2026-09-16)
+
+Smoke do §9 aprovado pelo dono (*«smoke OK. Siga com o plano»*), e o passo seguinte era o que eu
+lhe tinha nomeado: o atrito de rolamento. ⛔⛔ **Ele não faltava: o botão existia no cartão e era
+MORTO numa pilha**, e o contrato da coluna dizia-o por escrito (`ROLLING_COLUMN`: *«no contacto
+peça × peça … não há nada que este número possa travar»*). Era verdade até ao §9 e deixou de ser no
+mesmo commit — *quem move o número que tornava algo inalcançável tem de reconferir a nota* (§0.0).
+
+### §10.1 — ⭐ Antes de construir: o §7.5 já estava curado, e a sonda escondia-o
+
+A `probe_auditoria_do_rolamento` lia `ω·R = 0,0000` em todo `μ` — *«a bola derrapa para sempre»*.
+Ela carregava o `spin` de volta mas **lia o giro como `Δrot` no último sub-passo**, e nunca
+realimentava o `rot`: media `(spin − spin_anterior)·dt ≈ 0`. Lida no `spin`:
+
+```text
+   μ   |   v    |  ω·R   | rola?
+  0,00 | 1,0000 | 0,0000 | nao   ← gelo: desliza, como deve
+  0,25 | 0,6666 | 0,6667 | SIM   ← o ⅓/⅔ de manual, num passo
+  1,00 | 0,6666 | 0,6667 | SIM
+```
+
+⇒ **o §9 curou o §7.5, e a régua lia o produto de ontem** — a mesma mudança de endereço
+(`rot` → `spin`) que partiu dois gates no §9.9, agora numa sonda e com o comentário dela a afirmar
+*«o contacto NÃO tem velocidade angular»*.
+
+### §10.2 — A lei: a da TAÇA, pela porta da taça
+
+`rolamento_um` corre em cada restrição **depois** do atrito (lê o `ω` já corrigido por ele, a ordem
+da taça) e **mesmo com `μ = 0`** (achatar-se não depende de esfregar). ⭐ **Cada peça é travada
+contra o PRÓPRIO giro, com o PRÓPRIO `Rolling`** — `atrito::rolamento(ω/invI, μr, λn, r·n)`, termo
+a termo o que a `sim.collide` faz. O tecto lê o MESMO normal que o Coulomb (`normal()`, uma porta
+para os dois tectos). Sem velocidade angular não corre (a lei de 15/09 fica ao bit), e com
+`Rolling = 0` — o default do cartão — o tecto é zero: **a `=114` aprovada não se move**.
+
+### §10.3 — ⭐⭐⭐ As duas metades do app dão a MESMA resposta
+
+Um disco `R = 0,2` já a rolar a `1 u/s`, `g = 4`, `μ = 1`, segundos até parar — pelo `sim.step`
+(peça × obstáculo no solver de pares) contra a tabela que a taça mediu (`ROLLING_MAX`):
+
+```text
+  rolamento | 1 passo | 8 sub-passos | a taça
+       0,00 |     inf |          inf |    inf
+       0,02 |   18,58 |        18,56 |  18,57
+       0,05 |    7,43 |         7,43 |   7,43
+       0,10 |    3,72 |         3,71 |   3,72
+       0,25 |    1,48 |         1,48 |   1,50
+       0,50 |    0,73 |         0,74 |   0,78
+       1,00 |    0,37 |         0,37 |   0,43
+       1,50 |    0,23 |         0,25 |   0,33
+       2,00 |    0,23 |         0,25 |   0,33
+       4,00 |    0,23 |         0,25 |   0,33
+```
+
+⭐ Até `0,25` concordam a `≤ 1,5 %` e são **invariantes aos sub-passos**. Acima separam-se por
+construção: ali quem trava é o Coulomb (teórico `v/(μ·g) = 0,25 s`), a taça lê `0,33` porque o
+contacto dela não acontece em todos os tiques, e este lê `0,23–0,25`. ⭐ **E o tecto `1,5` vale
+para este consumidor também** — a coluna satura no mesmo sítio.
+
+⛔ **A 1.ª fixtura mentia:** a `0,02` lia *«não pára em 30 s»*. A série no tempo mostrou o disco a
+desacelerar **exactamente** ao ritmo da taça até aos `5 s` e depois a **cair pela ponta** da prancha
+(meia-largura `4`; `y = −1098` aos 28 s). Um rolamento fraco anda `~9` unidades antes de parar, e a
+taça mede contra um plano infinito. *Uma fixtura mais curta que o fenómeno lê o fim dela como um
+defeito do produto* — a prancha tem hoje meia-largura `40`.
+
+### §10.4 — ⛔⛔⛔ A 1.ª lei fazia o botão AGITAR o monte
+
+A primeira redacção travava o giro **RELATIVO** do par (`ω_lo − ω_hi`, com a massa angular dos dois)
+— a física certa para uma bola a rolar sobre outra, e o que a conservação do momento angular pede.
+**O gate do disco ficou verde com ela**, porque contra um obstáculo (`invI = 0`) as duas formas são
+a mesma conta. Na `=114`, rodopio janela a janela (`probe_o_rolamento_na_pilha`):
+
+```text
+  Rolling | forma do PAR (120..180 · 240..300 · 480..540) | forma de CADA peça (idem)
+  --------|-----------------------------------------------|---------------------------
+     0    |        2,66  ·  0,47  ·  0,51                 |   2,66  ·  0,47  ·  0,51
+     0,25 |       40,98  ·  5,74  ·  0,49                 |   1,19  ·  0,02  ·  0,03
+     0,75 |       28,90  · 22,03  ·  5,31                 |   1,22  ·  0,02  ·  0,02
+     1,5  |       32,42  · 12,95  ·  6,34                 |   1,15  ·  0,05  ·  0,02
+```
+
+⇒ **o botão fazia o contrário do nome.** O mecanismo: numa pilha de CAIXAS o binário que trava a
+caixa que tomba é entregue à vizinha PARADA, que roda e é desalojada — um acoplamento espúrio, porque
+tombar por uma aresta não é rolar. A forma de cada peça é sempre dissipativa: só tira giro a quem o
+tem. ⚠️ Preço declarado: uma bola sobre uma plataforma que GIRA é travada contra o mundo — um caso
+que nenhuma cena do produto tem.
+
+⭐⭐ **E com a forma certa o botão faz o que o nome promete:** a `0,25` o monte fica praticamente
+imóvel (`0,02`) a partir dos `180` tiques, contra `0,5–0,8` sem ele. A `0,25` já compra quase tudo.
+
+⚠️ **E meia lei é pior que nenhuma:** com o rolamento entre peças APAGADO (a prova de mutação), o
+`Rolling = 0,75` lê `1,65` contra `0,47` sem o botão — a taça continua a travar as peças que lhe
+tocam e as outras não.
+
+### §10.5 — Os gates
+
+- `a_piece_rolling_on_a_piece_stops_as_it_does_on_the_bowl` (`sim.step`) — a barra é a TAÇA
+  (`0,02`/`0,05`/`0,10`, folga `2 %`, `7×` o maior desvio), com `1` e `8` sub-passos, e *sem
+  rolamento rola para sempre*. Mutação (apagar a lei): **RED** — *«a bola nunca parou»*.
+- ⭐ `the_rolling_on_the_card_calms_the_pile` (`=114`) — **o gate que a forma do par não teria
+  passado**: a razão do rodopio COM/SEM o botão (janela `240..300`) tem de ficar abaixo de `0,5`, com
+  o vale `0,04` (aprovado) · `47` (forma do par). Mutações: apagar a lei → **RED** (`1,65`/`0,47`);
+  inverter o sinal → **RED** (`26 311`). ⚠️ Piso: sem o botão a pilha tem de girar `> 0,05`, senão
+  uma razão sobre zero não mede nada.
+
+### §10.6 — O que fica ABERTO
+
+- ⏳ **O `warm.rs` continua sem consumidor** (a fatia 2 encomendada). O solver arranca frio a cada
+  sub-passo com `8` iterações; a memória é o caminho para as baixar, e nenhuma régua desta cena a
+  pede hoje.
+- ⏳ `Saida::salto` continua sem leitor de produção.
+- ⚠️ O `Leis` tem cinco campos e o produto usa uma combinação — ver §9.10.

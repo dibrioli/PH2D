@@ -149,9 +149,13 @@ pub const BOUNCE_COLUMN: &str = "bounce";
 /// daria `0` em toda cena que existe — nenhum obstáculo declara rolamento — e o artista veria um
 /// controlo que **não faz nada**, que é exactamente o report que o §7.6 já custou.
 ///
-/// ⚠️ **A fronteira, DECLARADA** (§7.4): ela vive na moeda de VELOCIDADE (peça × obstáculo, o
-/// `sim.collide`). No contacto peça × peça a rotação é posicional e **não tem velocidade angular a
-/// resistir** — ali não há nada que este número possa travar, e isso é o mesmo vão já nomeado.
+/// ✅ **A fronteira que este parágrafo DECLARAVA fechou em 2026-09-16** (doc 111 §10). A redacção
+/// era: *«no contacto peça × peça a rotação é posicional e não tem velocidade angular a resistir —
+/// ali não há nada que este número possa travar»*. Era verdade, e fazia o botão do cartão ser
+/// **morto** numa pilha. O doc 111 §9 deu velocidade angular ao contacto peça × peça, e o §10 ligou
+/// este número lá pela MESMA porta (`ph2d_contact::atrito::rolamento`) e na MESMA forma que a taça:
+/// **cada peça travada contra o próprio giro, com o próprio rolamento**. ⛔ A forma do PAR (o giro
+/// relativo) foi medida e refutada — ela fazia o botão AGITAR o monte em vez de o acalmar.
 pub const ROLLING_COLUMN: &str = "rolling";
 
 /// ⭐⭐⭐ **O TECTO DO SALTO é `1`, o de todo motor — ordem do dono (2026-09-15: *«Limite Bounciness

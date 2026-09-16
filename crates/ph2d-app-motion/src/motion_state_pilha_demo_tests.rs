@@ -327,6 +327,49 @@ fn the_controls_the_announcement_names_do_what_it_says() {
     assert!(circulo_maior > circulo * 1.2, "o raio incha a pilha");
 }
 
+/// ⭐⭐⭐ **O botão `Rolling` do cartão ACALMA o monte** — e não o contrário (doc 111 §10).
+///
+/// ⛔⛔ **Este gate existe porque o gate da PORTA passou com o botão a fazer o CONTRÁRIO do nome.**
+/// A 1.ª lei do rolamento entre peças travava o giro RELATIVO do par, que é a física certa para uma
+/// bola a rolar sobre outra — e o `a_piece_rolling_on_a_piece_stops_as_it_does_on_the_bowl` do
+/// `sim.step` ficou verde com ela, porque um disco sobre um obstáculo não distingue as duas formas.
+/// Na pilha de caixas a forma do par arrastava as vizinhas paradas: com `Rolling = 0,75` o rodopio
+/// ia a `22,03` numa janela onde sem o botão lia `0,47`. *Um controlo só está vivo se o efeito dele
+/// tem o SINAL que o nome promete, e isso só se mede onde o artista o usa.*
+///
+/// ⭐ **A barra sai de um vale medido com os dois lados** (rodopio na janela `240..300`):
+///
+/// ```text
+///   Rolling 0 (o default)     : 0,47
+///   Rolling 0,75, esta lei    : 0,02    (razão 0,04)
+///   Rolling 0,75, forma do par: 22,03   (razão 47)
+/// ```
+///
+/// ⇒ a razão tem de ficar abaixo de **`0,5`** — `12×` acima do lado aprovado e `94×` abaixo do
+/// defeito.
+#[test]
+fn the_rolling_on_the_card_calms_the_pile() {
+    /// Razão máxima entre o rodopio COM e SEM o botão. Ver o vale acima.
+    const BARRA: f32 = 0.5;
+    const ATE: u64 = 300;
+    let janela = |p: &[(usize, f32, f32)]| {
+        p.iter()
+            .find(|(de, _, _)| *de == 240)
+            .map(|(_, r, _)| *r)
+            .expect("a janela 240..300 tem de existir")
+    };
+    let sem = janela(&super::giro_diag::perfil(Some(0.0), ATE));
+    let com = janela(&super::giro_diag::perfil(Some(0.75), ATE));
+    assert!(
+        sem > 0.05,
+        "piso: sem o botao a pilha ainda tem de girar alguma coisa, senao a razao nao mede nada ({sem})"
+    );
+    assert!(
+        com <= sem * BARRA,
+        "com Rolling 0,75 o monte girou {com:.3} contra {sem:.3} sem o botao (barra {BARRA}x) -- doc 111 §10"
+    );
+}
+
 /// ⭐⭐⭐ **AS PEÇAS TOMBAM — e o botão `Lock Rotation` prende-as** (doc 109 §6, report do dono:
 /// *«precisa destravar a rot. e colocar outro botão para travar rotação»*).
 ///

@@ -5,7 +5,7 @@
 //! obstaculo`, `col`, `DT`), que é do irmão — *uma segunda cópia dele seria a segunda resposta à
 //! pergunta «que cena estou a medir?»*.
 
-use super::contact_tests::{DT, col};
+use super::contact_tests::{DT, col, disco_ate_parar};
 use crate::step;
 use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, Column, Stream};
 
@@ -120,10 +120,7 @@ fn probe_auditoria_do_rolamento() {
         let mut p = vec![[0.0_f32, -0.5], [0.0, R]];
         let mut v = vec![[0.0_f32, 0.0], [1.0, 0.0]];
         let mut spin = vec![0.0_f32, 0.0];
-        let mut rot = vec![0.0_f32, 0.0];
-        let mut rot_antes = 0.0_f32;
         for _ in 0..(tiques * 8) {
-            rot_antes = rot[1];
             let s = Stream::new(2)
                 .with("P", Column::Vec2(p.clone()))
                 .with("vel", Column::Vec2(v.clone()))
@@ -143,14 +140,14 @@ fn probe_auditoria_do_rolamento() {
             if let Some(Column::Scalar(sp)) = out.get(SPIN) {
                 spin = sp.clone();
             }
-            // ⚠️ O contacto NAO tem velocidade angular: ele escreve a rotacao em `rot`, em GRAUS
-            // (doc 109 §6). Ler `spin` mede a rotacao AUTORADA, que aqui e' sempre zero.
-            if let Some(Column::Scalar(r)) = out.get("rot") {
-                rot = r.clone();
-            }
         }
-        // A velocidade angular efectiva: quanto `rot` andou no ULTIMO sub-passo, em rad/s.
-        let w = (rot[1] - rot_antes).to_radians() / (DT / 8.0);
+        // ⚠️⚠️ **A velocidade angular lê-se no `spin` desde 2026-09-16** (doc 111 §9). Esta sonda
+        // lia-a como `Δrot` no último sub-passo — que era a única rotação que o contacto dava — e
+        // continuou a fazê-lo depois de o giro passar a ser uma VELOCIDADE: como ela nunca
+        // realimenta o `rot`, lia `(spin − spin_anterior)·dt ≈ 0` e imprimia *«ω·R = 0, a bola
+        // derrapa»* sobre uma bola que já rolava. *Uma régua cujo sujeito muda de unidade muda de
+        // endereço.*
+        let w = spin[1].to_radians();
         (v[1][0], -w * R)
     };
     eprintln!("\n  UM DISCO (R = {R}) largado a 1,0 u/s sobre um chao fixo, g = {G}");
@@ -262,4 +259,36 @@ fn probe_o_atrito_trava_o_giro() {
     eprintln!(
         "\n  ⚠️ se o spin nao descer com μ, o atrito nao ve' a rotacao e a pilha gira para sempre."
     );
+}
+
+/// ⭐⭐⭐ **SONDA — o disco a rolar sobre uma PEÇA pára com o `Rolling`?** E pára no mesmo tempo que
+/// pára na taça — ⚠️ *as duas metades do app passam a responder à MESMA pergunta, e a coluna da
+/// direita é a tabela que a taça mediu (`ROLLING_MAX`)*.
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_o_rolamento_entre_pecas() {
+    // ⚠️ As duas últimas linhas passam do `ROLLING_MAX` de propósito: é aqui que se vê se o tecto
+    // que a taça mediu é também onde ESTE consumidor deixa de responder (§0.0).
+    const TACA: [(f32, &str); 10] = [
+        (0.0, "inf"),
+        (0.02, "18,57"),
+        (0.05, "7,43"),
+        (0.10, "3,72"),
+        (0.25, "1,50"),
+        (0.50, "0,78"),
+        (1.00, "0,43"),
+        (1.50, "0,33"),
+        (2.00, "0,33"),
+        (4.00, "0,33"),
+    ];
+    let fmt = |x: Option<f32>| x.map_or("inf".to_string(), |s| format!("{s:.2}"));
+    eprintln!("\n  rolamento | peca x obstaculo (1 passo) | (8 sub-passos) | a TACA mediu");
+    eprintln!("  ----------|----------------------------|----------------|-------------");
+    for (rolar, taca) in TACA {
+        eprintln!(
+            "  {rolar:>9.2} | {:>26} | {:>14} | {taca:>12}",
+            fmt(disco_ate_parar(rolar, 1)),
+            fmt(disco_ate_parar(rolar, 8)),
+        );
+    }
 }

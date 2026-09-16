@@ -214,6 +214,42 @@ impl crate::App {
         self.playhead.play();
     }
 
+    /// ⭐⭐⭐ **O SCRIPT DO ARTISTA** (TOP-20 #16, W4). Prólogo do quadro, uma vez — o molde do
+    /// cérebro, acima: a cena, a régua aberta, e o relógio a andar (um script só corre a tocar).
+    ///
+    /// ⚠️ **O ficheiro vive em `~/.ph2d/smoke`**, fora do repositório, porque é para o dono o editar.
+    pub(crate) fn script_smoke(&mut self) {
+        if self.components_smokes.script {
+            return;
+        }
+        let Some(v) = std::env::var_os("PH2D_SCRIPT_SMOKE") else {
+            return;
+        };
+        let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let dir = ph2d_app_components::script_smoke::default_dir();
+        let montada = ph2d_app_components::script_smoke::montar(cx.sim.world_mut(), nivel, &dir);
+        self.components_smokes.script = true;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.panel_visibility.insert("timeline", true);
+            match montada {
+                // ⚠️ O `clear()` anda colado ao `selection` (a lei da cena de física).
+                Ok(m) => {
+                    hero.gizmo.selection = Some(m.escolhido);
+                    hero.gizmo.extra_selection.clear();
+                }
+                Err(e) => eprintln!(
+                    "[script-smoke] nao escrevi o script em {}: {e}",
+                    dir.display()
+                ),
+            }
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+    }
+
     /// ⭐⭐⭐ **O MOVER DE VISTA DE CIMA** (TOP-20 #13, W2). Prólogo do quadro, uma vez.
     ///
     /// ⚠️ **As duas cenas precisam do relógio A ANDAR**, e pela razão do irmão acima: a ponte do

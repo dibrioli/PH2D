@@ -115,6 +115,8 @@ pub mod scene_ctx;
 pub mod script_bridge;
 /// ⭐ TOP-20 #16 — a secção SCRIPT do Inspector: o instantâneo e o dreno.
 pub mod script_inspector;
+/// ⭐⭐⭐ O smoke do SCRIPT DO ARTISTA (TOP-20 #16) — ver o cabeçalho.
+pub mod script_smoke;
 pub mod signal_action_smoke;
 /// ⭐⭐⭐ O smoke do CÉREBRO AUTORÁVEL (TOP-20 #15) — ver o cabeçalho.
 pub mod statemachine_smoke;
@@ -191,6 +193,8 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         // ⭐⭐⭐ O CÉREBRO (TOP-20 #15): `=1` a porta com o CONTROLO ao lado.
         // ⚠️ O `max_level` é **contado** no `match` do `montar`.
         r("PH2D_STATEMACHINE_SMOKE", statemachine_smoke::CENAS),
+        // ⭐⭐⭐ O SCRIPT DO ARTISTA (TOP-20 #16): `=1` três bonecos, um ficheiro.
+        r("PH2D_SCRIPT_SMOKE", script_smoke::CENAS),
     ],
 };
 

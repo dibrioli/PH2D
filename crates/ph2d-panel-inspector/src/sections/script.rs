@@ -26,8 +26,20 @@ use ph2d_editor_core::widget::SectionFold;
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
 /// A altura do controlo de uma linha — a do campo de número das irmãs.
 const FIELD_H: f32 = 22.0; // LITERAL-PX-OK: altura do NumberInput, a das secções irmãs
-/// A largura do `Reset`, em múltiplos do passo de espaçamento — o botão diz uma palavra curta.
-const RESET_W_STEPS: f32 = 8.0; // LITERAL-PX-OK: múltiplo do token de espaçamento
+
+/// **A largura de um botão que DIZ o rótulo inteiro** — o texto medido no tamanho do botão e o recuo
+/// dos dois lados.
+///
+/// ⛔ **Nasceu de uma FOTO da cena de smoke**, não de um gate: a 1.ª redacção dava ao `Reset` uma
+/// largura fixa em passos de espaçamento, e no ecrã o botão lia-se `…` — o pintor elide o que não
+/// cabe, e um botão sem palavra é um botão que ninguém sabe para que serve. ⚠️ A medida é a do
+/// `title_elided_width` (o peso mais largo), pela lei escrita ao lado dela: *quem decide se cabe
+/// chama isto, nunca o `prefix_width` cru*.
+fn largura_do_botao(text_system: &mut TextSystem, id: NodeId, rotulo: &str) -> f32 {
+    let b = Button::new(id, rotulo);
+    ph2d_editor_core::text_elide::title_elided_width(text_system, rotulo, b.font_size())
+        + 2.0 * b.padding()
+}
 
 /// Um valor pronto a ler numa linha de órfão.
 fn legivel(v: &InspectorScriptValue) -> String {
@@ -121,10 +133,20 @@ fn linha(
     );
     let row_y = y + label_h;
     let gap = Spacing::Xs.px();
-    let reset_w = Spacing::Xs.px() * RESET_W_STEPS;
+    let reset_w = largura_do_botao(text_system, ids::INSP_SCRIPT_RESET[i], "Reset");
     // ⚠️ **A coluna de animação reserva-se como em toda linha de formulário** (gate
     // `every_form_row_reserves_the_animation_column`): o controlo e o `Reset` cabem em `control_w`.
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, FIELD_H);
+    //
+    // ⚠️ **A CAIXA não leva o ponto daqui**: o `paint_checkbox` reserva e desenha a coluna dele
+    // sozinho (é por isso que o gate não o lista entre os pintores de linha), e a 1.ª redacção
+    // mostrava DOIS pontos na linha de um `boolean` — foi a foto da cena que o disse.
+    let caixa = matches!(p.value, InspectorScriptValue::Bool(_));
+    let (control_w, dot) = if caixa {
+        (w, None)
+    } else {
+        let (cw, d) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, FIELD_H);
+        (cw, Some(d))
+    };
     let ctrl_w = if p.own {
         control_w - reset_w - gap
     } else {
@@ -205,7 +227,9 @@ fn linha(
             "Reset",
         );
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    if let Some(dot) = dot {
+        ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    }
     row_y + FIELD_H + Spacing::Sm.px()
 }
 
@@ -457,7 +481,7 @@ pub(crate) fn paint_script_section(
             x,
             w,
             cur_y,
-            "Values this object keeps that the script no longer offers:",
+            "No longer in the script:",
             ColorToken::Warn,
         );
     }
@@ -470,7 +494,7 @@ pub(crate) fn paint_script_section(
             None => String::from("not in the script"),
             Some(tipo) => format!("the script now wants a {tipo}"),
         };
-        let reset_w = Spacing::Xs.px() * RESET_W_STEPS;
+        let reset_w = largura_do_botao(text_system, id, "Remove");
         let gap = Spacing::Xs.px();
         let texto = format!("{} = {} \u{2014} {porque}", o.name, legivel(&o.value));
         paint_text(

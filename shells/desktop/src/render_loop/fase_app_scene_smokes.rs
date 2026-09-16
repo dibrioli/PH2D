@@ -23,6 +23,7 @@ impl crate::App {
         self.factory_smoke();
         self.topdown_smoke();
         self.statemachine_smoke();
+        self.script_smoke();
         self.projectile_smoke();
         #[cfg(feature = "panel-audio-editor")]
         self.audio_2d_smoke();

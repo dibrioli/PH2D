@@ -188,8 +188,14 @@ alvo — era uma observação sobre a **FORMA** do código dele (a existência d
 
 ## Papel R
 
-R-PRÉ: subagente **independente do E**, corrido em **2026-09-16** (janela
-`9f820704-0d7e-4d96-847e-9cd720cbf178`) · R-PÓS: (pendente)
+R-PRÉ: **três passagens**, cada uma por um subagente **novo e independente do E** (§3.R: *auditar
+a própria filtragem é o que falha, e re-auditar pelo mesmo contexto herda os pontos cegos dele*) —
+1.ª, 2.ª e 3.ª em **2026-09-16**, todas despachadas pela janela
+`9f820704-0d7e-4d96-847e-9cd720cbf178`. **Nenhuma atestou.** · R-PÓS: (pendente)
+
+⚠️ **A parede do §4.2 saiu LIMPA nas três**, por três contextos independentes; o que bloqueou foi
+sempre **exactidão**, e em cada passagem o achado mais pesado estava em texto que a emenda anterior
+**não tinha tocado**.
 
 ### R-PRÉ — veredito: ⚠️ **NÃO atestado.** A parede do §4.2 está LIMPA; ficam **3 achados de EXACTIDÃO**
 
@@ -566,6 +572,164 @@ número numa espec, procure o outro leitor dele antes de fechar.**
   terminal, e o único ficheiro com a vassoura em claro vive dentro de `~/Referencias/`.
 
 ⏳ **R-pré, 3.ª passagem: pendente. A janela I continua FECHADA.**
+
+---
+
+## R-PRÉ — 3.ª PASSAGEM (2026-09-16) — veredito: ⛔ **NÃO atestado.** A parede do §4.2 continua LIMPA; ficam **2 achados que BLOQUEIAM** e **9 erratas**
+
+> Subagente **novo**, contexto independente do E e das duas passagens anteriores. Corrido sob a
+> regra nova desta rodada: **a PAREDE e a EXACTIDÃO separam-se, e só a parede — mais o achado de
+> exactidão que faz nascer produto errado ou gate impossível — bloqueia.**
+
+### 1. As seis curas da 2.ª emenda — CONFERIDAS, e **quatro RE-DERIVADAS do zero**
+
+| cura | como a conferi | veredito |
+|---|---|---|
+| **1 — a §13 passa a carregar a barra em vigor** | li as duas linhas: a `1e-3` com a derivação, e a retirada marcada como **«o que SAIU»** com o motivo | ✅ exacta |
+| **2 — a §2.6 reescrita com os braços** | li o **código vivo** em vez de aceitar a emenda. O `match` põe os quatro verbos de plano no braço que lê o **vivo** e nunca consulta o interruptor; os três cuja referência é este alvo consultam-no. As duas linhas impressas estão certas | ✅ o conteúdo · ⚠️ a **contagem** não (errata E3) |
+| **3 — a tabela da §2.2 transposta** | ⭐⭐ **re-derivei a tabela INTEIRA das fixtures publicadas** — as `11` células, as quatro candidatas, por ajuste do plano aos vértices tocados (o método da §4.1). **Bate a todos os dígitos impressos, célula a célula**, incluindo o piso `0,00269` e as `8` que discriminam. O `#` de amostras confirma o mecanismo das três mudas: `1` vértice nas duas de `R_c`, e as quatro candidatas a coincidir em `0,00000` nas bossas | ✅ **exacta** |
+| **4 — a barra do G-6 medida** | ⭐⭐ **re-derivei-a**: `0,0000 … 0,4947` raios, **mediana `0,1649`**, e o máximo é mesmo na célula de menor raio. A parte que é decisão nossa está declarada | ✅ **exacta** |
+| **5 — o ULP** | refiz a aritmética: `ULP(1,0) = 1,1921e-07` e `ULP(0,4) = 2,9802e-08`; `1e-6` são `8,39` e `33,6` ULP; `8,0e-08` são `0,67` ULP; `1e-6/8,0e-08 = 12,5` | ✅ exacta |
+| **6 — o mecanismo das células de uma amostra** | medido: com `1` vértice as duas candidatas de `R_c` colapsam sobre a amostra e a do alvo fica entre ela e o cursor ⇒ o vão **colapsa** para `0,00003`, não desaparece | ✅ exacta |
+
+⭐ **E re-derivei, ao dígito, muito para além das seis:** a tabela de resíduos e as populações
+tocadas da §4 (`265`/`274`/`271`/`287`/`62`/`632`) · a força ao quadrado (mediana `0,250000`, `min
+0,249999`, `max 0,250001`) · os tectos da §3.1 (`0,0460`/`0,1316`/`0,2278`/`0,2278`) · o
+deslocamento da §2.4 (`±0,08000`, razão `0,2000`, normais a `0,0000°`) · as duas leis do `Ctrl`
+(`0,000e+00` e `7,041e-02`) · a queda da §2.3 (`0,000e+00` e `5,595e-02`) · as três inércias
+(`0,000e+00`) · os quatro pares mortos da §7 e as duas famílias vivas · os desvios angulares da
+§0.2(C) (`0,00°`/`16,9°`/`23,5°`/`31,2°`) · e o `0,00575°` da §4.1.
+
+⛔ **E não parei nelas.** O documento foi varrido inteiro pela pergunta da §4.3.1, por leitura e por
+varredura textual independente — **os dois bloqueadores estão em texto que NENHUMA das duas emendas
+tocou**, que é a forma que esta pasta já previu duas vezes.
+
+### 2. A parede (§4.2) — LIMPA, item a item, re-auditada do zero
+
+| item do §4.2 | resultado desta passagem |
+|---|---|
+| texto de código, trechos, diffs | **nenhum** |
+| nomes internos | **nenhum** — extraí os **139** *code spans* não-numéricos e classifiquei-os um a um: crates/ficheiros/verbos/predicados **nossos**, nomes de **fixtura nossa** em português, nomes de **gate propostos por nós**, variáveis **locais desta espec** (os dois raios, os dois tectos, a altura com sinal, a curva suave) e um facto de interface pública (a tecla modificadora). **Zero** do alvo |
+| comentários do original | **nenhum** |
+| wording de manual verbatim ou quase | **nenhum** — varri por vocabulário de estrutura de código com uma rede de 30 termos; os **5** acertos fora do cabeçalho são usos **nossos** (a palavra «declara» sobre um gate nosso, «assinatura» no sentido de impressão digital, «método» no sentido legal do §4.1.12, «chamam» sobre os nossos verbos, e a nota da §3.3 que manda escrever **sem** caso especial) |
+| tabela verbatim / LUT | **nenhuma** — toda tabela é medição nossa ou inventário de fixtures nossas, e **re-derivei a maior delas do corpus** |
+| organização transcrita | **nenhuma** — a ordem das fases é forçada por dependência de dados |
+| pseudo-código espelhado | **não** — os **12** blocos cercados têm 1 a 10 linhas de **fórmula** em português, sem controlo de fluxo, sem declaração, sem nome do alvo |
+
+⇒ ⭐ **A parede está limpa pela terceira vez, e por três contextos independentes.**
+
+### 3. O sweep, e o CONTROLO POSITIVO em **NOVE** canais
+
+`cleanroom-sweep.sh` sobre a espec + as **100** fixtures + o `README.md` da pasta + o INBOX + este
+ledger ⇒ **✓ limpo, 321 entradas, `exit 0`**; e `--git-history` sobre `docs/3D/cleanroom/` ⇒ **✓
+limpo, `exit 0`**.
+
+⛔ **Canários plantados em `~/Referencias/<alvo>/`** (nunca no repo, nunca no scratchpad — a lição
+do INC-R1 nas duas metades), apagados no fecho:
+
+| canal | acusado? |
+|---|---|
+| NOME de ficheiro | ✅ `exit 1` |
+| conteúdo de texto, numa linha | ✅ `exit 1` |
+| texto com as quebras de linha desfeitas | ✅ `exit 1` |
+| idem, com ênfase | ✅ `exit 1` |
+| dentro de um `.gz`, numa linha | ✅ `exit 1` |
+| ⭐ **dentro de um `.gz`, DOBRADO** | ✅ `exit 1` — **a cura de `fc7014427` está VERIFICADA** |
+| ⭐ dentro de um `.gz`, dobrado **com ênfase** (canal novo) | ✅ `exit 1` |
+| ⭐ **gémeo em TEXTO da mesma forma** (canal novo — o par que prova a simetria dos dois ramos) | ✅ `exit 1` |
+| controlo NEGATIVO já triado (2.ª linha repete o marcador de comentário) | limpo nos dois ramos, como a 2.ª passagem registou |
+
+⚠️ **E o `exit 2` foi discriminado do `exit 1` em TRÊS formas** (sem paths · vassoura inexistente ·
+path inexistente), todas `exit 2`. *A 2.ª passagem perdeu tempo com um laço que os colapsava.*
+
+⛔⛔ **ACHADO DE INSTRUMENTO, e ele quase me fez registar uma regressão que não existe: o meu
+PRIMEIRO canário do canal do `.gz` dobrado leu LIMPO — porque eu o escrevi na forma óbvia, uma
+linha de comentário de fixtura, e a 2.ª metade começava com o marcador `#` repetido.** Essa é
+exactamente a forma que a 2.ª passagem já triou como **isenção simétrica do normalizador** (ele
+apaga três marcadores e não esse). ⇒ *um canário para o canal dobrado que repita o marcador de
+comentário na 2.ª linha não testa a cura — testa a isenção, e devolve verde*. Reconstruído sem o
+marcador, o canal dispara, e o gémeo em texto dispara igual. **Fica escrito para a 4.ª passagem.**
+
+### 4. ⛔⛔ Os DOIS achados que BLOQUEIAM (instruções funcionais de reescrita)
+
+#### B1 — **a barra do G-1 não pode passar sobre a população que o próprio G-1 declara**
+
+O gate exige `max|Δ| ≤ 1e-6` sobre *«as **25** fixtures de `lei/` e `lados/`»*, e a §4.1 publica,
+para essas **mesmas** 25, que **1 delas lê `3,2e-05`** — **`32×` a barra**. O §12 chega a dizê-lo na
+frase da derivação (*«fica duas ordens de grandeza abaixo do único desvio que a espec regista como
+divergência»*), e o quadro do gate não o absorveu. ⇒ **quem construir o G-1 como está escrito
+reprova numa fixtura que a espec já sabe que diverge.**
+
+⚠️ **E a população não é recuperável da página:** as duas pastas carregam **28** ficheiros (`14` +
+`14`, contados), dos quais **2 não movem nada** — e esses dois são justamente as fixtures do **G-2**
+e do **G-8** — e **26** movem. A página nunca diz quais são as 25. É a **terceira** aparição da
+mesma espécie nesta obra (a barra impossível da 1.ª passagem, a população irrecuperável da 2.ª),
+desta vez num gate que nenhuma emenda tocou.
+
+⭐ **A causa da divergência confirmei-a eu:** o ângulo entre a candidata de normal do alvo e o plano
+recuperado da própria saída dele é `0,006°` naquela fixtura e `0,000°` nas outras dez — que é
+exactamente o `0,00575°` que a §4.1 publica, e é a ambiguidade da normal num quadrilátero empenado
+que a espec já explica e que **a nossa malha de triângulos não produz**.
+
+⇒ **Cura funcional:** o G-1 declara a população que a página sustenta — nomeia as duas que não
+movem nada (e diz que são as fixtures do G-2 e do G-8), nomeia a que diverge e diz porquê, e **ou**
+a exclui pelo nome **ou** a carrega com a barra própria dela. E ganha **piso de população**, como o
+G-5 já tem, para que encolher o corpus em silêncio não o branqueie.
+
+#### B2 — **o cabeçalho de proveniência das fixtures não carrega todas as grandezas que enquadram o traço, e a §11 afirma que carrega**
+
+A §11 escreve: *«cabeçalho de proveniência (**todas as grandezas que enquadram o traço**, uma por
+linha)»*. Censo sobre as **100**, agrupando por (as **35** chaves do cabeçalho + o bloco de repouso
++ o bloco dos cursores): existe **um grupo com enquadramento publicado byte-idêntico e TRÊS saídas
+diferentes** —
+
+- quatro fixtures de três famílias diferentes partilham a saída (e uma delas é o controlo de
+  determinismo, `0,000e+00`);
+- a do modo **afastar** difere delas por **`7,041e-02`**;
+- a da **máscara** difere por **`4,673e-02`** (move `327` em vez de `560`).
+
+⇒ **duas grandezas não viajam:** (a) **se o modificador estava carregado** — o cabeçalho até tem a
+chave do sentido do gesto, e ela traz **o mesmo valor** na fixtura invertida e na base; (b) **a
+máscara** — não há chave nenhuma nem bloco que a carregue, logo *que metade foi mascarada* não está
+no ficheiro. A segunda fixtura do modo de inversão sofre do mesmo (o cabeçalho dela declara o par de
+tectos **não trocado** e a saída é a do par trocado).
+
+⚠️ **Porque isto faz nascer produto errado:** a única forma sã de correr 100 fixtures é um leitor
+guiado pelo cabeçalho. Esse leitor reproduz a fixtura do modo afastar **sem inversão** e a da
+máscara **sem máscara**, e devolve desacordos de `7,0e-02` e `4,7e-02` contra uma lei que está
+**certa** — e o Implementador, a quem a §11 garantiu que o cabeçalho é completo, não tem como ver o
+buraco: ele persegue um fantasma e mexe numa lei correcta. O **G-9** é declarado sobre essa família
+e exige **igualdade exacta**.
+
+⇒ **Cura funcional:** o cabeçalho passa a carregar o estado do modificador e a máscara (esta como
+bloco próprio, ao lado dos que já existem) — **ou** a §11 diz, com todas as letras, que o cabeçalho
+**não** é completo, nomeia as **três** fixtures cujo enquadramento vive só na prosa, e diz onde cada
+grandeza em falta está escrita.
+
+### 5. ⚠️ As NOVE erratas (gaveta B — não bloqueiam; a janela I corrige-as enquanto implementa)
+
+| # | sítio | o que está errado, e o que fica de pé |
+|---|---|---|
+| **E1** | **§0.2, linha (G)** | *«o nosso `invert` só troca o sinal»* é falso nas duas direcções para esta família: o predicado que decide quem honra o modificador **não lista** três dos quatro verbos de plano (o modificador nunca lhes chega), e no quarto ele **não é um sinal** — baixa o plano **e** inverte o lado, com as duas metades a viajar no mesmo factor. A conclusão da célula (não sabemos exprimir *trocar os tectos*) **fica**. ⭐ E a correcção **paga**: o nosso código carrega três recusas escritas para *«fazer o invert funcionar no achatar»*, e uma delas morre em *«ele tem UM utensílio com um interruptor e nós temos DOIS verbos com dois chips»* — premissa que **dissolve** para este pincel, que é precisamente um utensílio com um interruptor |
+| **E2** | **§0.2, linha (E)** | *«o nosso `accumulate` decide de que superfície o plano é lido»* é o **gémeo** do bloqueador que a 2.ª emenda curou na §2.6, deixado intacto — para os quatro verbos de plano o interruptor **não** decide isso. A conclusão (o nosso acumular não é um knob de memória) **fica**. *A lei que a própria 2.ª emenda escreveu — «ao curar um número numa espec, procure o outro leitor dele» — não foi aplicada a esta célula* |
+| **E3** | **§2.6** | *«o nosso estimador tem **dois** braços»* — o `match` vivo tem **três**: o terceiro lê a superfície **congelada incondicionalmente** e tem um verbo lá dentro. As duas linhas impressas estão certas e a instrução (o pincel novo entra no braço que consulta o interruptor) não muda |
+| **E4** | **§9, 1.ª linha** | as amostras: `1 131` na fracção `2,0` está **certo**, mas o `61` com que é comparado é a contagem na fracção **de fábrica `0,5`**, não em `0,25` — em `0,25` a contagem é **`1`**, que é exactamente o que a §2.2 publica para essa célula duas secções acima. E as duas contagens estão em razão de **`18,5×`**, não *«`4×` a área»*: o `4×` é a razão das fracções, ou seja dos **raios** |
+| **E5** | **§13 (o tecto `20`) e §12 G-14** | o `20` é facto de comportamento lido do alvo (legítimo), mas *«confirmado pela saturação medida»* **não tem corpus**: o traço mais longo de todo o corpus publicado tem **8 dabs** (`74` fixtures a 8, uma a 6, duas a 4, uma a 3, `21` a 2, uma a 1), e um tecto de 20 é inobservável abaixo de 20. O G-14 conta o nosso próprio anel, logo passa; o que falta é a testemunha do oráculo |
+| **E6** | **§12 G-13 e §13** | a barra sai de *«a menor mudança medida num knob VIVO do alvo foi `1,1e-02`»*, que é o deslocamento no pincel de tiras — e **não existe fixtura publicada** para esse par (a pasta do corte tem `26` ficheiros e nenhum deles). A barra `1e-4` **sobrevive** no que está publicado: a menor mudança viva que reproduzi é `7,3e-03` |
+| **E7** | **§7.3, coluna «prova»** | *«seis valores de limiar (`desligado`, `0,05`, `0,1`, `0,3`, `0,5`, `1,0`)»* para o barro — a pasta publica **cinco** (não há o `0,3`); e *«idem, as seis byte-idênticas»* para o polegar, que publica **duas**. Todas as publicadas são byte-idênticas, logo a conclusão (os dois mortos) **fica** |
+| **E8** | **§6.2, tabela** | ela publica **nove** células; o corpus carrega **seis** — a linha do degrau tem as quatro fixtures, e as linhas da rampa e das bossas só têm o `0` e o `1,0`. As duas metades do G-12 estão inteiramente cobertas, logo o gate não é afectado |
+| **E9** | **§8, última linha** | a linha da pegada projectada dá o **mecanismo** e cala o **resultado medido**: a fixtura publicada move **`0` de `2 401`** vértices. É um **segundo** caminho para o pincel ficar inerte, ao lado dos dois tectos a zero da §3.1, e o único que a §8 não nomeia |
+
+### 6. Higiene
+
+Nenhum relatório de sweep foi gravado no scratchpad da janela-mãe: todos os ficheiros de trabalho
+desta passagem (sondas, saídas do sweep, canários) viveram em `~/Referencias/<alvo>/rpre3/`, e os
+canários foram apagados no fecho. A vassoura foi descodificada **só em memória, por cano**, para
+construir os canários — nunca para ficheiro (a cura do INC-R1, aplicada).
+
+⏳ **R-pré, 3.ª passagem: NÃO ATESTA. A janela I continua FECHADA.** ⇒ 3.ª emenda por subagente-E
+sobre os **2** bloqueadores (as **9** erratas cabem na mesma emenda), depois **4.ª corrida** do
+R-pré.
 
 ## Incidentes
 

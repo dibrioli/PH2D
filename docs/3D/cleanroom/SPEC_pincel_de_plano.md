@@ -73,7 +73,32 @@ Auditoria §4.2 (R-pré): ⚠️ **CORRIDA em 2026-09-16** por um subagente inde
   `1e-6` é `8,4` ULP na maior coordenada e `12×` o pior resíduo, e a §1 passa a citar `8,0e-08`;
   (6) o mecanismo de duas células não-discriminantes era **refutado pela própria linha delas** ⇒
   corrigido (o vão **colapsa** três ordens abaixo da barra, não desaparece), conclusão mantida.
-  ⏳ **R-pré, 3.ª passagem: PENDENTE. A janela I continua FECHADA.**
+  ⛔ **R-PRÉ, 3.ª PASSAGEM (2026-09-16, auditor NOVO): NÃO atestou — `2` achados que BLOQUEIAM e
+  `9` erratas.** ⭐ **A PAREDE DO §4.2 ESTÁ LIMPA**, re-auditada do zero (os `12` blocos cercados são
+  1–10 linhas de fórmula em português, sem controlo de fluxo e sem um único identificador do alvo;
+  os `139` *code spans* não-numéricos foram classificados um a um e são todos NOSSOS, de fixtura
+  nossa, de gate nosso, ou variável local desta espec). Sweep **verde** (`exit 0`, 321 entradas)
+  sobre a espec + as 100 fixtures + os anexos, e **verde** em `--git-history`, com **controlo
+  positivo em nove canais** e o `exit 2` discriminado do `exit 1` em três formas.
+  ⭐⭐ **E as seis curas da 2.ª emenda foram CONFERIDAS, quatro delas RE-DERIVADAS do zero:** a
+  tabela inteira da §2.2 reproduz-se **célula a célula, a todos os dígitos impressos** (as `11`
+  linhas, as quatro candidatas, o piso `0,00269` e as `8` que discriminam) · a barra do **G-6**
+  reproduz-se **exactamente** (`0,0000 … 0,4947` raios, mediana `0,1649`, o máximo na célula de
+  menor raio) · a aritmética do ULP fecha (`8,4` · `34` · `12×` · `0,67`) · e a §2.6 foi lida no
+  código vivo. ⭐ Reproduziram-se ainda, ao dígito: a tabela de resíduos e as populações tocadas da
+  §4, a força ao quadrado (`0,250000`/`0,249999`/`0,250001`), os tectos da §3.1, o deslocamento da
+  §2.4, as duas leis do `Ctrl`, a queda da §2.3, as três inércias, os quatro pares mortos da §7 e
+  os desvios angulares da §0.2(C).
+  ⛔⛔ **OS DOIS BLOQUEADORES, e os dois estão em texto que NENHUMA das duas emendas tocou:**
+  (1) **a barra do G-1 não pode passar sobre a população que o próprio G-1 declara** — ele exige
+  `max|Δ| ≤ 1e-6` sobre *«as 25 fixtures de `lei/` e `lados/`»* e a §4.1 publica, para essas
+  mesmas 25, uma que lê `3,2e-05` (**`32×` a barra**); e a população não é recuperável da página,
+  porque as duas pastas carregam **28** ficheiros, dos quais **2** não movem nada; (2) **o
+  cabeçalho de proveniência das fixtures NÃO carrega todas as grandezas que enquadram o traço**, e
+  a §11 afirma que carrega — **três** fixtures têm o enquadramento publicado igual ao de outra e
+  saída diferente.
+  ⏳ **R-pré, 3.ª passagem: NÃO ATESTA. A janela I continua FECHADA.** ⇒ 3.ª emenda sobre os `2`
+  bloqueadores (as `9` erratas cabem na mesma emenda), depois **4.ª corrida** do R-pré.
 Mapa de leitura da literatura: não há paper. A literatura pública utilizável é (a) o manual do
   alvo (factos, ⛔ nunca o wording), (b) a discussão pública de desenho no fórum de
   desenvolvimento dele, destilada na §10 desta espec, e (c) o nosso próprio registo do porte MIT

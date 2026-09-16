@@ -68,30 +68,37 @@ pub(crate) fn announce() {
          [sculpt3d]\n\
          [sculpt3d]    (1) Abra o painel com a CRASE (`). Na fileira de ferramentas, no FIM,\n\
          [sculpt3d]        ha' um botao `Plane`. Carregue nele.\n\
-         [sculpt3d]        -> Aparecem duas pistas novas: `Height` e `Depth`. Sao ELAS a\n\
-         [sculpt3d]           ferramenta. Ele nasce com Height 1 e Depth 0, ou seja a APARAR.\n\
-         [sculpt3d]    (2) ESFREGUE por cima das bossas, de um lado ao outro, sem largar.\n\
-         [sculpt3d]        -> As cristas sao rebaixadas e os VALES ficam onde estao.\n\
-         [sculpt3d]        -> Continue a esfregar no mesmo sitio: ele PARA sozinho quando\n\
-         [sculpt3d]           aquilo ja' esta' plano. Nao cava um buraco.\n\
-         [sculpt3d]    (3) IMPORTANTE -- carregue e SOLTE sem arrastar, no meio de uma bossa.\n\
+         [sculpt3d]        -> Aparecem pistas novas: `Height`, `Depth` e `Hold Tilt`. Ele nasce\n\
+         [sculpt3d]           com Height 1 e Depth 0 (a APARAR) e Hold Tilt 1.\n\
+         [sculpt3d]    (2) Aumente o `Radius` (a pista, ou a tecla `]` varias vezes) ate' o\n\
+         [sculpt3d]        circulo cobrir tres ou quatro bossas.\n\
+         [sculpt3d]        -> O circulo pode crescer ate' ao tamanho da janela.\n\
+         [sculpt3d]    (3) ESFREGUE por cima das bossas, de um lado ao outro, IDA E VOLTA,\n\
+         [sculpt3d]        quatro a oito vezes, SEM LARGAR o botao.\n\
+         [sculpt3d]        -> As cristas descem ate' perto do fundo dos vales e a faixa fica\n\
+         [sculpt3d]           LISA. Continue: quando ja' esta' plano ele PARA sozinho.\n\
+         [sculpt3d]        -> Largar e voltar a carregar a cada passagem apara PIOR: cada\n\
+         [sculpt3d]           traco novo esquece a inclinacao que o anterior tinha fixado.\n\
+         [sculpt3d]    (4) Carregue e SOLTE sem arrastar, no meio de uma bossa.\n\
          [sculpt3d]        -> NAO acontece nada, e esta' certo: este pincel so' trabalha a\n\
-         [sculpt3d]           ESFREGAR. Carimbar parado nao e' um gesto dele.\n\
-         [sculpt3d]    (4) Ponha `Depth` em 1 e `Height` em 0, e esfregue outra vez.\n\
+         [sculpt3d]           ESFREGAR.\n\
+         [sculpt3d]    (5) Ponha `Hold Tilt` em 0 e esfregue do mesmo jeito noutro sitio.\n\
+         [sculpt3d]        -> A faixa fica ONDULADA e afunda. E' a diferenca que o Hold Tilt\n\
+         [sculpt3d]           faz: ele prende a inclinacao do plano durante o traco. Volte a 1.\n\
+         [sculpt3d]    (6) Ponha `Depth` em 1 e `Height` em 0, e esfregue outra vez.\n\
          [sculpt3d]        -> Agora e' o contrario: ele ENCHE os vales e nao toca nas cristas.\n\
-         [sculpt3d]    (5) Ponha os DOIS em 1 e esfregue.\n\
+         [sculpt3d]    (7) Ponha os DOIS em 1 e esfregue.\n\
          [sculpt3d]        -> Ele ACHATA: corta as cristas e enche os vales ao mesmo tempo.\n\
-         [sculpt3d]        (Sao estas tres coisas que antes eram tres pinceis diferentes.)\n\
-         [sculpt3d]    (6) Ponha os DOIS em 0 e esfregue.\n\
+         [sculpt3d]    (8) Ponha os DOIS em 0 e esfregue.\n\
          [sculpt3d]        -> Nao faz nada, de proposito. E' o `desligado` da ferramenta.\n\
-         [sculpt3d]    (7) Volte a Height 1 / Depth 0 e experimente segurar o CTRL enquanto\n\
-         [sculpt3d]        esfrega: por omissao ele AFASTA do plano (levanta em vez de\n\
-         [sculpt3d]        aparar). No fundo do painel ha' `Ctrl Does`: troque para\n\
-         [sculpt3d]        `Swap Limits` e segure o Ctrl de novo -- agora ele ENCHE enquanto\n\
-         [sculpt3d]        a tecla estiver em baixo. Aparar e encher na mesma mao.\n\
+         [sculpt3d]    (9) Volte a Height 1 / Depth 0 e segure o CTRL enquanto esfrega.\n\
+         [sculpt3d]        -> Ele ENCHE enquanto a tecla estiver em baixo: aparar e encher na\n\
+         [sculpt3d]           mesma mao. No fundo do painel, `Ctrl Does` -> `Push Away` faz o\n\
+         [sculpt3d]           Ctrl AFASTAR do plano (levantar) em vez de encher.\n\
          [sculpt3d]\n\
-         [sculpt3d]    DEU ERRADO SE: esfregar nao muda nada; se ele cavar um buraco em vez\n\
-         [sculpt3d]    de parar quando ja' esta' plano; se `Height 0 / Depth 0` ainda mexer\n\
-         [sculpt3d]    no barro; ou se a superficie aparada sair ondulada em vez de plana.\n"
+         [sculpt3d]    DEU ERRADO SE: oito passagens com o pincel grande nao deixam a faixa\n\
+         [sculpt3d]    lisa; se ele cavar um buraco quando ja' esta' plano; se `Hold Tilt` 0\n\
+         [sculpt3d]    e 1 derem o mesmo resultado; ou se `Height 0 / Depth 0` ainda mexer no\n\
+         [sculpt3d]    barro.\n"
     );
 }

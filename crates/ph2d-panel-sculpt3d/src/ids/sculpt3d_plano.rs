@@ -26,6 +26,19 @@ pub const SCULPT3D_PLANO_AREA: NodeId = hash_node_id("sculpt3d.plano_area");
 /// Chip ligado a [`SCULPT3D_PLANO_AREA`].
 pub const SCULPT3D_PLANO_AREA_NUM: NodeId = hash_node_id("sculpt3d.plano_area_num");
 
+/// ⭐⭐⭐ **A FIRMEZA DA NORMAL** — quanto o plano guarda a inclinação ao longo do traço (a alavanca
+/// do aparar, espec §14.7).
+pub const SCULPT3D_PLANO_FIRMEZA_NORMAL: NodeId = hash_node_id("sculpt3d.plano_firmeza_normal");
+/// Chip ligado a [`SCULPT3D_PLANO_FIRMEZA_NORMAL`].
+pub const SCULPT3D_PLANO_FIRMEZA_NORMAL_NUM: NodeId =
+    hash_node_id("sculpt3d.plano_firmeza_normal_num");
+
+/// **A FIRMEZA DO CENTRO** — quanto o plano guarda a altura ao longo do traço (espec §6.2).
+pub const SCULPT3D_PLANO_FIRMEZA_CENTRO: NodeId = hash_node_id("sculpt3d.plano_firmeza_centro");
+/// Chip ligado a [`SCULPT3D_PLANO_FIRMEZA_CENTRO`].
+pub const SCULPT3D_PLANO_FIRMEZA_CENTRO_NUM: NodeId =
+    hash_node_id("sculpt3d.plano_firmeza_centro_num");
+
 /// **O que o `Ctrl` faz** — `ph2d_sculpt3d::PlanoInversao::ALL`.
 ///
 /// ⚠️ **O tamanho CONTA-SE, não se escolhe:** o censo compara este array com o

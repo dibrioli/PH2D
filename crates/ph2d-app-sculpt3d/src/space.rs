@@ -289,6 +289,9 @@ impl Sculpt3dScene {
         Brush {
             radius: (radius / pose.scale()).max(1e-6),
             alpha_stencil: Some(self.stencil_for(pose)),
+            // ⭐ Todo dab da app vem de um traço ARRASTADO a passos fixos — o pincel de plano
+            // enfraquece cada um para a soma não depender do passo (espec §14.4).
+            traco_arrastado: true,
             ..self.brush.clone()
         }
     }

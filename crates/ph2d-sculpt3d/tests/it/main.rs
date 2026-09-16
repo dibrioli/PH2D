@@ -61,6 +61,7 @@ mod mede_o_tecido_que_estica;
 mod o_produto_corre_a_lei;
 mod oraculo_do_esfregao;
 mod oraculo_do_pincel_de_plano;
+mod oraculo_do_pincel_de_plano_fabrica;
 mod oraculo_do_projectar;
 mod oraculo_dos_gestos_tangenciais;
 mod probe_cloth_front;

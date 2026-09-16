@@ -38,6 +38,8 @@ pub(super) struct PlanoDaPegada {
     pub(super) centro: [f32; 3],
     /// A normal, unitária.
     pub(super) normal: [f32; 3],
+    /// O factor por dab do traço arrastado (§14.4) — calculado UMA vez por dab.
+    pub(super) factor: f32,
 }
 
 impl SculptStroke {
@@ -47,7 +49,7 @@ impl SculptStroke {
     /// ou seja no pincel sem tectos — a única resposta finita quando não há
     /// amostra nenhuma. Devolver um plano `NaN` envenenaria a malha inteira.
     pub(super) fn plano_da_pegada(
-        &self,
+        &mut self,
         mesh: &Mesh,
         brush: &Brush,
         dab: &Dab,
@@ -55,6 +57,19 @@ impl SculptStroke {
         let viva = brush.verb.le_a_superficie_viva(brush.accumulate);
         let normal = self.normal_da_area(mesh, brush, dab, viva)?;
         let centro = self.centro_da_area(mesh, brush, dab, viva)?;
+        // ⭐⭐⭐ **A MEMÓRIA** (espec §6, a alavanca do aparar §14.7) — antes do deslocamento, e
+        // antes do teste «o traço já tem direcção?» (errata Q6): o primeiro dab, o inerte, é o que
+        // a semeia.
+        let passe = self.passe_simetria;
+        if self.plano_memorias.len() <= passe {
+            self.plano_memorias.resize_with(passe + 1, Default::default);
+        }
+        let (centro, normal) = self.plano_memorias[passe].estabilizar(
+            centro,
+            normal,
+            brush.plano_firmeza_normal,
+            brush.plano_firmeza_centro,
+        );
         // ⭐ **O DESLOCAMENTO** (§2.4), medido exactamente: com `+0,2` num pincel
         // de raio `0,4` o plano anda `+0,08000` ao longo da normal — razão
         // `0,2000` do raio, ao dígito impresso.
@@ -70,6 +85,7 @@ impl SculptStroke {
                 centro[2] + normal[2] * lift,
             ],
             normal,
+            factor: brush.factor_do_traco(),
         })
     }
 

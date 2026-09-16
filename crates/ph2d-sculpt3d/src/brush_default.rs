@@ -160,13 +160,18 @@ impl Default for Brush {
             // §13 declara este par como o único que ela não carrega.
             plano_altura: 1.0,
             plano_profundidade: 0.0,
-            // ⚠️ **`0,5`, e é facto de INTERFACE do alvo** (espec §13) — não uma
-            // escolha nossa: as duas fracções de amostragem nascem ali.
-            area_radius_frac: 0.5,
-            // ⚠️ **AFASTAR é o de fábrica** porque é o que a família inteira
-            // desta casa já faz com o `Ctrl`; a outra lei existe para o artista
-            // ter *aparar* e *encher* na mesma mão.
-            plano_inversao: crate::PlanoInversao::Afastar,
+            // ⭐⭐ **O perfil *aparar* do alvo, medido** (espec §14.2): a extensão
+            // do centro `0,6`, o `Ctrl` a trocar os tectos e a firmeza da normal
+            // em `1`. ⚠️ Eram `0,5` · afastar · (sem firmeza), e com eles o
+            // próprio alvo deixa o relevo `1,114×` MAIS rugoso em oito passagens
+            // (§14.7) — o relato do dono reproduzido com os nossos números.
+            // ⛔ A firmeza da normal é a alavanca (`0,029` contra `1,380`).
+            area_radius_frac: 0.6,
+            plano_inversao: crate::PlanoInversao::TrocarTectos,
+            plano_firmeza_normal: 1.0,
+            plano_firmeza_centro: 0.0,
+            // A porta por script é a omissão; só a app diz que o traço foi arrastado.
+            traco_arrastado: false,
             project_min_distance: 0.0,
             project_bidirectional: false,
             // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo

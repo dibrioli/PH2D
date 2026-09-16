@@ -167,7 +167,9 @@ impl SculptStroke {
                 .extend_from_slice(self.region.refreshed());
             return n;
         }
-        for s in signs.iter().take(n) {
+        for (passe, s) in signs.iter().take(n).enumerate() {
+            // A memória do plano é por passe: a cópia espelhada tem normais espelhadas.
+            self.passe_simetria = passe;
             let det = s[0] * s[1] * s[2];
             let mirrored = Dab {
                 center: mirror(dab.center, s),

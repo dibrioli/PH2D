@@ -62,6 +62,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.plano_altura" => "Height",
         "panel.sculpt3d.plano_profundidade" => "Depth",
         "panel.sculpt3d.plano_area" => "Area Radius",
+        "panel.sculpt3d.plano_firmeza_normal" => "Hold Tilt",
+        "panel.sculpt3d.plano_firmeza_centro" => "Hold Height",
         "panel.sculpt3d.plano_inversao" => "Ctrl Does",
         "panel.sculpt3d.project_mode" => "Ray Direction",
         "panel.sculpt3d.project_bidir" => "Search Both Ways",

@@ -42,3 +42,21 @@ fn o_raio_da_cena_chega_a_diagonal_da_vista() {
     s.radius_px = 0.0;
     assert_eq!(s.radius_px(), crate::RADIUS_MIN_PX, "o piso do raio mudou");
 }
+
+/// ⭐ **O pincel que a app ARMA vem de um traço arrastado** — é ele que liga a atenuação do pincel
+/// de plano (espec §14.4). ⛔ Sem isto cada dab de um traço denso valeria `1/0,57 = 1,75×` o que
+/// devia, e a bancada — que liga o interruptor à mão — não o veria.
+#[test]
+#[ignore = "precisa de GPU"]
+fn o_pincel_armado_vem_de_um_traco_arrastado() {
+    let gpu = gpu_or_skip!();
+    let mut s = Sculpt3dScene::new(&gpu.device, ph2d_mesh::shapes::uv_sphere(16, 24, 1.0), 1.0);
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    s.brush.verb = ph2d_sculpt3d::Verb::Plane;
+    let armado = s.armed_brush([0.0, 0.0, 1.0]);
+    assert!(armado.traco_arrastado, "o pincel armado perdeu o arrasto");
+    assert!(
+        (armado.factor_do_traco() - 1.0).abs() > 0.1,
+        "o pincel de plano armado nao atenua"
+    );
+}

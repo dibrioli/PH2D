@@ -347,7 +347,8 @@ pub struct Brush {
     /// exactamente `151 + 114`. *É este par que transforma três verbos num só.*
     pub plano_profundidade: f32,
     /// ⭐⭐ **A EXTENSÃO com que o CENTRO do plano é amostrado**, em fracção do
-    /// raio do pincel (`0..=2`, fábrica `0,5`) — o `R_c` da espec §2.3.
+    /// raio do pincel (`0..=2`, fábrica `0,6` — o perfil *aparar* do alvo, espec §14.2) — o `R_c` da
+    /// espec §2.3.
     ///
     /// ⚠️ **Ela é uma SEGUNDA extensão, e só este pincel a tem:** a normal já
     /// tinha a sua ([`Self::normal_radius_frac`]), e nos irmãos da família o
@@ -361,8 +362,25 @@ pub struct Brush {
     /// tabela da espec §2.2: num sulco, meia pegada e pegada inteira olham para
     /// lados diferentes da curvatura.
     pub area_radius_frac: f32,
-    /// ⭐⭐ **O que o `Ctrl` faz a este pincel** — ver [`crate::PlanoInversao`].
+    /// ⭐⭐ **O que o `Ctrl` faz a este pincel** — ver [`crate::PlanoInversao`]. Fábrica: trocar os
+    /// tectos (o perfil *aparar* do alvo, espec §14.2), que é também a lei exacta das duas.
     pub plano_inversao: crate::PlanoInversao,
+    /// ⭐⭐⭐ **A FIRMEZA DA NORMAL do plano** (`0..=1`) — quanto o plano se LEMBRA da inclinação dos
+    /// dabs anteriores (espec §6.1, [`crate::plano_memoria`]).
+    ///
+    /// ⛔⛔ **É a alavanca do aparar** (§14.7, medido no próprio alvo): com ela a `0` oito passagens
+    /// deixam o relevo `1,380×` MAIS rugoso que em repouso e cavam uma vala de `4,5×` a amplitude;
+    /// com ela a `1` (a fábrica) o mesmo traço leva-o a `0,029`. *O plano desce com o barro que corta,
+    /// mas não roda.*
+    pub plano_firmeza_normal: f32,
+    /// ⭐ **A FIRMEZA DO CENTRO do plano** (`0..=1`, fábrica `0`) — o centro publicado guarda o desvio
+    /// MÉDIO dos centros recentes (espec §6.2). ⚠️ Mudo numa superfície simétrica por construção.
+    pub plano_firmeza_centro: f32,
+    /// ⭐ **O traço veio de um ARRASTO** — a app percorre o caminho a passos fixos e os dabs
+    /// sobrepõem-se, e o pincel de plano enfraquece cada um para a soma não depender do passo (espec
+    /// §14.4, [`crate::atenuacao_do_traco`]). ⚠️ **Só a app o liga** (`armed_brush_on`): a porta por
+    /// script — a bancada, o oráculo por script — dá os dabs um a um, com o factor em `1`.
+    pub traco_arrastado: bool,
     /// **A FOLGA da projecção** — quanto barro fica ANTES de encostar no alvo
     /// (o *minimum distance* da espec §6.3.4), em unidades do objecto.
     ///

@@ -114,6 +114,10 @@ impl SculptStroke {
         // espec §1 mede-o em `0` de `2 401`. *O bit é do TRAÇO, não da sessão.*
         self.plano_teve_direccao = false;
         self.plano = None;
+        // ⭐ E a MEMÓRIA do plano também (espec §14.5: levantar a caneta esquece a normal fixada).
+        for m in &mut self.plano_memorias {
+            m.esquecer();
+        }
         // ⚠️ **O `b` do HC morre com o traço**, e é o que faz dele o *"array
         // zerado no início do traço"* do *Surface Smooth*: dentro de um gesto
         // ele PERSISTE entre dabs (a lei da referência), entre gestos não.

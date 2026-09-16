@@ -73,9 +73,14 @@ mod trim_forma;
 /// ⭐⭐ **PARA ONDE O RAIO DA PROJECÇÃO APONTA** — ver [`project_mode`].
 mod project_mode;
 
+/// O passo e a atenuação do traço arrastado do [`Verb::Plane`] (espec §14.4).
+pub mod atenuacao_do_traco;
 /// ⭐⭐ **DUAS LEIS PARA A MESMA TECLA** — o que o `Ctrl` faz ao pincel de plano;
 /// ver [`plano_inversao`].
 mod plano_inversao;
+/// A memória do plano do [`Verb::Plane`] — os dois estabilizadores (espec §6).
+pub mod plano_memoria;
+pub use atenuacao_do_traco::{ESPACAMENTO_DO_PLANO_PCT, atenuacao_por_espacamento, passo_do_traco};
 
 /// ⭐⭐⭐ **A DISTÂNCIA ATÉ À OUTRA PEÇA** — ver [`projectar`].
 mod projectar;

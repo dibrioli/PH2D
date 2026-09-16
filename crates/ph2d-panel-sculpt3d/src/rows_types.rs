@@ -211,6 +211,31 @@ mod tests {
         );
     }
 
+    /// ⭐ **GATE — a firmeza do CENTRO só existe com a da NORMAL ligada** (espec §6.3), e só no
+    /// pincel de plano; a da normal existe sempre nele.
+    #[test]
+    fn a_firmeza_do_centro_e_gateada_pela_da_normal() {
+        let linha = |id| crate::rows::row_for(id).expect("a linha existe");
+        let centro = linha(crate::ids::SCULPT3D_PLANO_FIRMEZA_CENTRO);
+        let normal = linha(crate::ids::SCULPT3D_PLANO_FIRMEZA_NORMAL);
+        let mut ui = crate::state::Sculpt3dUi {
+            ui_level: crate::state::UiLevel::Pro,
+            ..Default::default()
+        };
+        ui.brush.verb = ph2d_sculpt3d::Verb::Plane;
+        ui.brush.plano_firmeza_normal = 1.0;
+        assert!(centro.visible(&ui) && normal.visible(&ui));
+        ui.brush.plano_firmeza_normal = 0.0;
+        assert!(!centro.visible(&ui), "o centro apareceu sem a normal");
+        assert!(normal.visible(&ui), "a normal sumiu");
+        ui.brush.plano_firmeza_normal = 1.0;
+        ui.brush.verb = ph2d_sculpt3d::Verb::Draw;
+        assert!(
+            !centro.visible(&ui) && !normal.visible(&ui),
+            "as firmezas chegaram a outro pincel"
+        );
+    }
+
     /// ⭐ **GATE — o REGISTO leva a curva de cada pista.** Sem ela o número mostraria o valor
     /// linear enquanto a pista arrasta, e o painel reescrevê-lo-ia no quadro seguinte.
     #[test]

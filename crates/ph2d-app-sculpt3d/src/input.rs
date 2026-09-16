@@ -296,9 +296,9 @@ pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
         Drag::Filter => scene.filter_at(x),
         // ⚠️ **Um evento de ponteiro NÃO é um dab.** O caminho entre a
         // âncora e o cursor é percorrido a passos de
-        // [`ph2d_sculpt3d::min_spacing`], senão um gesto rápido deixa um vão
-        // do tamanho do salto do mouse e um gesto lento carimba dez vezes
-        // mais pelo mesmo caminho.
+        // [`ph2d_sculpt3d::passo_do_traco`] (o do pincel de plano é 7 % do
+        // diâmetro), senão um gesto rápido deixa um vão do tamanho do salto
+        // do mouse e um gesto lento carimba dez vezes mais pelo mesmo caminho.
         //
         // ⚠️ **Cada passo RE-PICA, e um passo que erra a malha PARA o
         // gesto** (`SculptBase.js:161` devolve `pick1 || pick2` e o laço
@@ -328,7 +328,7 @@ pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
             // que arrastar rápido pelo mesmo traçado. Com ele, o número de
             // parcelas é função do comprimento percorrido.
             Grip::Hook => {
-                let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
+                let spacing = ph2d_sculpt3d::passo_do_traco(scene.brush.verb, scene.radius_px());
                 if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
                     let mut prev = scene.stroke_anchor;
                     for step in steps {
@@ -354,7 +354,7 @@ pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
             // CAMINHO*), e aqui ela não é uma escolha de estilo — é o que
             // impede o mesmo gesto de dar dois panos diferentes.
             Grip::Simulate => {
-                let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
+                let spacing = ph2d_sculpt3d::passo_do_traco(scene.brush.verb, scene.radius_px());
                 if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
                     let mut prev = scene.stroke_anchor;
                     // ⚠️ Os modos de FORÇA da lei da referência re-picam o
@@ -381,7 +381,7 @@ pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
             // Esfregar uma máscara é esfregar, e o `walk` é o que impede a
             // taxa de polling de decidir a densidade dela.
             Grip::Stamp | Grip::Paint => {
-                let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
+                let spacing = ph2d_sculpt3d::passo_do_traco(scene.brush.verb, scene.radius_px());
                 if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
                     // Lido ANTES do laço: o `for` consome o iterador, e o
                     // `anchor()` responde onde o walk PARA — que é o fato

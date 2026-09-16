@@ -390,8 +390,8 @@ fn a_pointer_event_is_walked_at_the_brushes_spacing_and_stops_where_the_ray_miss
     // fora do ramo que carimbou*) lia os TRÊS e falhava sobre produto correto.
     let arm = grip_arm(&function_body(&sculpt_src(), "pointer_move"), "Grip::Stamp");
     assert!(
-        arm.contains("ph2d_sculpt3d::walk(") && arm.contains("min_spacing("),
-        "o arrasto tem de percorrer o caminho no espaçamento do pincel"
+        arm.contains("ph2d_sculpt3d::walk(") && arm.contains("passo_do_traco(scene.brush.verb"),
+        "o arrasto tem de percorrer o caminho no passo DO VERBO (o plano: 7 % do diâmetro, 16/09)"
     );
     assert!(
         arm.contains("break"),

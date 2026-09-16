@@ -460,9 +460,10 @@ fn the_channel_curve_is_not_the_geometry_curve() {
 fn the_accumulate_default_is_the_references_tool_by_tool() {
     for verb in Verb::ALL {
         let armed = verb.default_accumulate();
+        // ⭐ E o pincel de plano, cujo perfil *aparar* do alvo nasce a acumular (espec §14.2).
         let expected = matches!(
             verb,
-            Verb::Draw | Verb::Clay | Verb::Flatten | Verb::Fill | Verb::Scrape
+            Verb::Draw | Verb::Clay | Verb::Flatten | Verb::Fill | Verb::Scrape | Verb::Plane
         );
         assert_eq!(armed, expected, "{} nasceu errado", verb.label());
     }

@@ -67,9 +67,10 @@ fn our_numbers_are_ours_and_the_smoked_one_is_named() {
         .collect();
     assert_eq!(
         ours,
-        vec![("Layer", 0.7)],
+        vec![("Layer", 0.7), ("Plane", 0.7)],
         "a lista dos nossos números que NÃO são o genérico — cada entrada precisa \
-         de um humano que a tenha aprovado no produto"
+         de um humano que a tenha aprovado no produto, ou de uma MEDIÇÃO do alvo \
+         (o Plane: o perfil *aparar*, espec §14.2, e o relato do dono de 16/09)"
     );
 }
 
@@ -79,9 +80,11 @@ fn our_numbers_are_ours_and_the_smoked_one_is_named() {
 #[test]
 fn the_accumulate_delegation_changed_nothing() {
     for verb in Verb::ALL {
+        // ⚠️ **Mais o Plane** (2026-09-16): a delegação não o move — ele não tem perfil `S` e o
+        // fallback dele é que é `true`, medido no alvo (espec §14.2, a 2.ª alavanca da §14.7).
         let before = matches!(
             verb,
-            Verb::Draw | Verb::Clay | Verb::Flatten | Verb::Fill | Verb::Scrape
+            Verb::Draw | Verb::Clay | Verb::Flatten | Verb::Fill | Verb::Scrape | Verb::Plane
         );
         assert_eq!(
             verb.default_accumulate(),

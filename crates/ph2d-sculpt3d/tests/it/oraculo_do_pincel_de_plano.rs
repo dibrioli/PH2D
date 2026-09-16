@@ -197,6 +197,8 @@ pub fn pincel(f: &Fixtura) -> ph2d_sculpt3d::Brush {
         plano_profundidade: f.num("profundidade"),
         plano_inversao: inversao,
         invert: f.bool("modificador_carregado"),
+        plano_firmeza_normal: f.num("firmeza_da_normal"),
+        plano_firmeza_centro: f.num("firmeza_do_centro"),
         ..Brush::default()
     }
 }

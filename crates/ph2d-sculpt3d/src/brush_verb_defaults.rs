@@ -57,7 +57,9 @@ impl Verb {
         self.profile(crate::RefMode::S)
             .and_then(|p| p.strength)
             .unwrap_or(match self {
-                Self::Layer => 0.7,
+                // ⭐ O pincel de plano: `0,7` é o perfil *aparar* do alvo, MEDIDO (espec
+                // §14.2) — e a referência `S` não o tem, logo o fallback é a fonte.
+                Self::Layer | Self::Plane => 0.7,
                 _ => 0.5,
             })
     }
@@ -178,7 +180,10 @@ impl Verb {
     pub fn default_accumulate(self) -> bool {
         self.profile(crate::RefMode::S)
             .and_then(|p| p.accumulate)
-            .unwrap_or(false)
+            // ⭐⭐ **O pincel de plano nasce a ACUMULAR** — os perfis de achatar, encher, raspar e
+            // aparar do alvo nascem todos assim (espec §14.2), e é a 2.ª alavanca medida (§14.7:
+            // sem ele o plano não desce e o aparar pára em `0,287`).
+            .unwrap_or(self == Self::Plane)
     }
 }
 
@@ -293,6 +298,8 @@ impl Verb {
     pub const fn default_hardness(self) -> f32 {
         match self {
             Self::Layer => 0.4,
+            // ⭐ O perfil *aparar* do alvo, MEDIDO (espec §14.2) — a 3.ª alavanca (§14.7).
+            Self::Plane => 0.6,
             _ => 0.0,
         }
     }

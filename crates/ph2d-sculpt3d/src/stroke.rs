@@ -266,6 +266,11 @@ pub struct SculptStroke {
     /// ⚠️ **`None` é *este dab não tem plano*** — sem amostra nenhuma na pegada.
     /// O alvo devolve a posição viva, ou seja não move nada.
     plano: Option<plano_da_pegada::PlanoDaPegada>,
+    /// ⭐⭐⭐ **A MEMÓRIA DO PLANO, uma por passe de simetria** — ver [`crate::plano_memoria`]. Nasce
+    /// no primeiro dab do traço (o inerte) e esquece-se com ele.
+    plano_memorias: Vec<crate::plano_memoria::MemoriaDoPlano>,
+    /// Qual passe de simetria está a correr — o índice da [`Self::plano_memorias`].
+    passe_simetria: usize,
     /// ⭐⭐ **O CAMPO DE DESLOCAMENTO DO ESFREGÃO, por SLOT** — ver
     /// [`super::stroke_smear`].
     ///

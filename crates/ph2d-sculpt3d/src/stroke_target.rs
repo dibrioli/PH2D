@@ -289,7 +289,8 @@ impl SculptStroke {
                 let s = brush
                     .plano_inversao
                     .sinal(brush.invert && brush.verb.honours_invert());
-                to_plane(live, p.normal, d * s, w)
+                // ⭐ O factor do traço arrastado (espec §14.4) — `1` pela porta por script.
+                to_plane(live, p.normal, d * s, w * p.factor)
             }
             Verb::Flatten => {
                 let d = signed_distance(live, plane);

@@ -39,7 +39,7 @@ pub use topology::TOPOLOGY;
 /// Os cinco números do pincel de TECIDO — ver o doc do módulo.
 #[path = "rows_cloth.rs"]
 mod cloth;
-/// Os três números do PINCEL DE PLANO — ver [`plano`].
+/// Os cinco números do PINCEL DE PLANO — ver [`plano`].
 #[path = "rows_plano.rs"]
 mod plano;
 /// Os três números do pincel de POSE — ver [`pose`].
@@ -166,9 +166,10 @@ static BRUSH: &[Row] = &[
         level: UiLevel::Basic,
         place: Place::Knobs,
     },
-    // ⚠️ **Os dois primeiros são a FERRAMENTA, não afinação** — ver [`plano`].
     plano::PLANO_ALTURA,
     plano::PLANO_PROFUNDIDADE,
+    plano::PLANO_FIRMEZA_NORMAL,
+    plano::PLANO_FIRMEZA_CENTRO,
     plano::PLANO_AREA,
     // ⭐⭐ **A FOLGA DA PROJECÇÃO** (espec §6.3.4). ⛔ O rótulo diz «vão» e não
     // «distância mínima», e a escolha é MEDIDA: ela só é mínima no sentido de

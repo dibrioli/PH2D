@@ -53,6 +53,14 @@ pub(crate) fn e_pincel_de_plano(u: &Sculpt3dUi) -> bool {
     u.brush.verb == ph2d_sculpt3d::Verb::Plane
 }
 
+/// **A firmeza do CENTRO só aparece com a da NORMAL ligada** — os autores do alvo avisam que
+/// estabilizar o centro sem a normal dá resultados estranhos, e o mecanismo está medido (espec
+/// §6.3: a correcção do centro mede contra a normal JÁ estabilizada). ⇒ o segundo controlo é
+/// gateado pelo primeiro.
+pub(crate) fn mostra_a_firmeza_do_centro(u: &Sculpt3dUi) -> bool {
+    e_pincel_de_plano(u) && u.brush.plano_firmeza_normal > 0.0
+}
+
 /// **O DAB LÊ A DISTÂNCIA COM ESTE PINCEL EM MÃOS?** — a porta da row de
 /// [`Dureza`](BRUSH), e a MESMA que a largura do campo já segue
 /// (`RefMode::field`).

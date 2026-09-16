@@ -471,3 +471,124 @@ fn a_duplicate_carries_every_optional_component_of_a_node() {
         "a cópia de uma peça de METAL VERMELHO saiu com o material de omissão"
     );
 }
+
+/// ⭐⭐⭐ **A RAIZ-FORMA QUE RECEBE UM FILHO VIRA O GRUPO NO MESMO SÍTIO** (2026-09-16,
+/// `docs/3DModeling/BUGS_3dmodeling.md` #4).
+///
+/// ⛔ O `promote_leaf_hosts` saltava a raiz com a nota *«um caso que não existe hoje»* — e as cenas
+/// de smoke `2` e `5` nascem com a raiz numa forma: o dono acrescentou um *Extrude* ao vaso, ele
+/// entrou como filho da raiz-forma, e nunca apareceu no ecrã.
+///
+/// ⚠️ **Mede-se componente a componente**, porque a cura move uma lista escrita à mão: o que é da
+/// PEÇA fica na raiz, o que é da FORMA desce com ela.
+#[test]
+fn a_root_shape_that_gets_a_child_becomes_a_group_in_place() {
+    let mut w = bevy_ecs::world::World::new();
+    let raiz = spawn_doc(&mut w, &doc(0.3), "Model");
+    let pose = FieldPose {
+        xform: Xform::at(1.0, 2.0, 3.0),
+    };
+    let material = FieldMaterial {
+        roughness: 0.77,
+        ..FieldMaterial::default()
+    };
+    let mods = FieldMods {
+        stack: vec![ph2d_field::Unary::Shell { thickness: 0.05 }],
+    };
+    let vinculo = FieldProfileSource { path: 42, level: 3 };
+    let verbo = FieldVerb {
+        op: ph2d_field::Op::Union(Blend::Sharp),
+    };
+    w.entity_mut(raiz)
+        .insert((pose, material, mods.clone(), vinculo, verbo));
+    let filho = add_leaf(
+        &mut w,
+        raiz,
+        Primitive::Sphere { radius: 0.1 },
+        [5.0, 0.0, 0.0],
+    )
+    .expect("a paleta pendura a forma nova na raiz");
+
+    assert_eq!(
+        promote_leaf_hosts(&mut w, raiz),
+        1,
+        "a raiz-forma é promovida"
+    );
+
+    // A raiz é a MESMA entidade, e é agora uma união.
+    assert!(
+        w.get::<FieldObject>(raiz).is_some(),
+        "a raiz continua dona da peça"
+    );
+    assert_eq!(
+        w.get::<ph2d_ecs::Name>(raiz)
+            .map(|n| n.as_str().to_string()),
+        Some("Model".to_string()),
+        "o nome da peça fica"
+    );
+    assert!(
+        matches!(
+            w.get::<FieldNode>(raiz).map(|n| &n.shape),
+            Some(NodeShape::Combine(ph2d_field::Op::Union(_)))
+        ),
+        "a raiz vira a união"
+    );
+    assert_eq!(
+        w.get::<FieldPose>(raiz),
+        Some(&pose),
+        "a pose da PEÇA fica na raiz"
+    );
+    for (nome, fica) in [
+        ("material", w.get::<FieldMaterial>(raiz).is_some()),
+        ("modificadores", w.get::<FieldMods>(raiz).is_some()),
+        ("vínculo", w.get::<FieldProfileSource>(raiz).is_some()),
+        ("verbo", w.get::<FieldVerb>(raiz).is_some()),
+    ] {
+        assert!(
+            !fica,
+            "o {nome} é da FORMA e não pode ficar na raiz — valeria para a peça inteira"
+        );
+    }
+
+    // A forma desceu: primeira filha, pose identidade, com tudo o que é dela.
+    let filhos: Vec<bevy_ecs::entity::Entity> = w
+        .get::<bevy_ecs::hierarchy::Children>(raiz)
+        .map(|c| c.iter().copied().collect())
+        .expect("a raiz tem filhos");
+    assert_eq!(
+        filhos.len(),
+        2,
+        "a forma que desceu e a que foi acrescentada"
+    );
+    assert_eq!(
+        filhos[1], filho,
+        "a forma que desceu é a BASE — a primeira; a acrescentada vem depois"
+    );
+    let forma = filhos[0];
+    assert!(
+        matches!(
+            w.get::<FieldNode>(forma).map(|n| &n.shape),
+            Some(NodeShape::Leaf(Primitive::Sphere { .. }))
+        ),
+        "a geometria desceu"
+    );
+    assert_eq!(w.get::<FieldPose>(forma), Some(&FieldPose::default()));
+    assert_eq!(w.get::<FieldMaterial>(forma), Some(&material));
+    assert_eq!(w.get::<FieldMods>(forma), Some(&mods));
+    assert_eq!(w.get::<FieldProfileSource>(forma), Some(&vinculo));
+    assert_eq!(w.get::<FieldVerb>(forma), Some(&verbo));
+
+    // E a peça cozinha as DUAS formas.
+    let d = cook(&w, raiz).expect("há peça").expect("cozinha");
+    let folhas = d
+        .nodes()
+        .iter()
+        .filter(|n| matches!(n.kind, NodeKind::Leaf(_)))
+        .count();
+    assert_eq!(folhas, 2, "a forma acrescentada entra no documento");
+    assert_eq!(
+        promote_leaf_hosts(&mut w, raiz),
+        0,
+        "e a promoção não se repete"
+    );
+}

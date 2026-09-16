@@ -316,8 +316,19 @@ pub fn promote_leaf_hosts(world: &mut World, root: Entity) -> usize {
     let mut done = 0;
     for host in hosts {
         let Some(parent) = world.get::<ChildOf>(host).map(|c| c.0) else {
-            // Uma folha SEM pai é a raiz da peça, e a raiz é dona do objeto: promovê-la mudaria o
-            // que a Hierarquia mostra como peça. Quem chega aqui é um caso que não existe hoje.
+            // ⛔⛔ **A RAIZ-FORMA EXISTE, e deixá-la passar fazia o que esta função existe para
+            // impedir** (2026-09-16, `docs/3DModeling/BUGS_3dmodeling.md` #4). A nota que estava
+            // aqui dizia *«quem chega aqui é um caso que não existe hoje»* — e as cenas de smoke `2`
+            // e `5` nascem com a raiz numa forma. Dono, com foto: o *Extrude* entrou como filho do
+            // vaso («Model»), a Hierarquia mostrou-o, e *«nenhum outro objeto acrescentado aparece
+            // na cena»* — a paleta pendura a forma nova na RAIZ, e o cozimento nunca olha os filhos
+            // de uma forma.
+            //
+            // ⚠️ **A razão que a nota dava é real, e a cura respeita-a:** a raiz é DONA do objeto
+            // (nome, `FieldObject`, pose da peça, a linha da Hierarquia), então ela não é embrulhada
+            // — ela **vira o grupo no mesmo sítio**, e a forma desce para dentro dela.
+            promote_root_in_place(world, host);
+            done += 1;
             continue;
         };
         let siblings: Vec<Entity> = world
@@ -356,6 +367,59 @@ pub fn promote_leaf_hosts(world: &mut World, root: Entity) -> usize {
         done += 1;
     }
     done
+}
+
+/// ⭐⭐ **A RAIZ-FORMA VIRA O GRUPO NO MESMO SÍTIO** — a metade da lei que faltava (2026-09-16).
+///
+/// A entidade da raiz fica com o que é da **peça**: o nome, o `FieldObject`, o `Transform`, a
+/// ordem, e a **pose** (os filhos que já tinha foram postos em relação a ela). A forma desce para uma
+/// entidade nova, **primeira** dos filhos — a posição de base, como na promoção de um anfitrião
+/// não-raiz —, com pose identidade e com tudo o que é da **forma**: a geometria, os modificadores, o
+/// verbo, o material e o vínculo ao desenho. ⇒ *a peça na tela não muda*, que é a promessa da lei.
+///
+/// ⚠️ **A lista dos componentes da forma está escrita à mão**, e é por isso que o gate
+/// `a_root_shape_that_gets_a_child_becomes_a_group_in_place` a confere componente a componente: um
+/// componente novo da forma que não entre aqui ficaria na raiz, e passaria a valer para a peça
+/// inteira.
+fn promote_root_in_place(world: &mut World, root: Entity) {
+    let kids: Vec<Entity> = world
+        .get::<Children>(root)
+        .map(|c| c.iter().copied().collect())
+        .unwrap_or_default();
+    let mut raiz = world.entity_mut(root);
+    let Some(forma) = raiz.take::<FieldNode>() else {
+        return;
+    };
+    let mods = raiz.take::<crate::FieldMods>();
+    let verb = raiz.take::<crate::FieldVerb>();
+    let material = raiz.take::<crate::FieldMaterial>();
+    let vinculo = raiz.take::<crate::FieldProfileSource>();
+    raiz.insert(FieldNode {
+        shape: NodeShape::Combine(Op::Union(ph2d_field::Blend::Sharp)),
+    });
+    let name = unique_sibling_name(world, root, crate::shape_name(&forma.shape));
+    let leaf = world
+        .spawn((ph2d_ecs::Name::new(name), forma, FieldPose::default()))
+        .id();
+    let mut folha = world.entity_mut(leaf);
+    if let Some(c) = mods {
+        folha.insert(c);
+    }
+    if let Some(c) = verb {
+        folha.insert(c);
+    }
+    if let Some(c) = material {
+        folha.insert(c);
+    }
+    if let Some(c) = vinculo {
+        folha.insert(c);
+    }
+    // A forma à frente dos filhos que a raiz já tinha: a ordem é quem é base numa subtração.
+    world.entity_mut(root).add_child(leaf);
+    for k in kids {
+        world.entity_mut(k).remove::<ChildOf>();
+        world.entity_mut(k).insert(ChildOf(root));
+    }
 }
 
 /// Um nome que nenhum irmão já tem: `Cylinder`, `Cylinder 2`, `Cylinder 3`…

@@ -38,6 +38,7 @@ correção for revertida — provado por mutação. "Não reproduzi mais" não f
 | # | data | sintoma | mecanismo | gate |
 |---|---|---|---|---|
 | 1 | 2026-09-16 | *«arestas ainda visíveis»* no ombro do vaso (foto), **depois** da wave que pôs as quinas como arcos | o modo MODEL traça na CPU, e a folha especializada por região lia a **polilinha densa** pelo `ProfileIndex` — a normal ficava constante em cada segmento | `vaso_sem_facetas_tests::o_vaso_nao_tem_facetas_no_traçado_do_modo_model` · `profile_arc_tests::*` |
+| 4 | 2026-09-16 | *«o modo como vc montou a cena com o vaso como model e não como filho de model, nenhum outro objeto acrescentado aparece na cena»* (foto da Hierarquia: o *Extrude* dentro de «Model») | a paleta pendura a forma nova na RAIZ, e a promoção «só uma operação tem filhos» saltava a raiz com a nota *«um caso que não existe hoje»* — as cenas `2` e `5` nascem com a raiz numa forma | `tests::a_root_shape_that_gets_a_child_becomes_a_group_in_place` (`ph2d-field-ecs`) · `group_tests::a_shape_added_to_a_piece_whose_root_is_a_shape_appears` |
 | 3 | 2026-09-16 | *«o Modo model não está permitindo usar o modo Vector. não consigo desenhar o cilindro»* — a seguir um passo de smoke | a env `PH2D_FIELD_SMOKE` armava o módulo **sem olhar o painel**: pegar no Vector fechava o painel e os ganchos de entrada continuavam a comer o clique — o report de 22/08, curado só no caminho do PILL | `mode_tests::the_directed_smoke_disarms_with_the_panel_too` |
 | 2 | 2026-09-16 | (auditoria, depois do smoke aprovado do #1) **subir `Resolution` desfazia os arcos**; **um círculo nunca era arco**; **uma meia-lua de dois pontos era recusada** | a barra de «esta cúbica é um arco?» era a tolerância de ACHATAMENTO — mais apertada do que a precisão com que qualquer app escreve um círculo —, os dois arredondadores de quina escreviam arcos acima de `90°` numa cúbica só, **o preview (`coarse_doc`) trocava os arcos por polilinha** comparando segmentos em vez de primitivas, e a porta dos arcos pedia 3 primitivas (a lei do polígono) | `o_arco_sobrevive_a_todo_nivel_de_resolution` · `o_quarto_canonico_define_a_barra_do_arco` · `o_preview_nunca_troca_arcos_por_uma_polilinha_mais_cara` · `subir_o_resolution_nao_parte_o_labio` · `a_meia_lua_de_dois_pontos_coze` · `corner_split_tests::*` · `profile_meia_lua_tests::*` |
 
@@ -246,3 +247,55 @@ Impactados (`ph2d-app-field3d` e dependentes, incluída a shell): `2 656` de `2 
 nomes no código, com a placa ocupada pelo smoke de outra linha. *Um passo não conduzido é uma
 hipótese sobre o produto; este acertou num defeito, e podia ter só mandado o dono a um sítio que não
 existe.*
+
+---
+
+## Bug #4 — a forma acrescentada a uma raiz-forma não aparecia (2026-09-16)
+
+**Sintoma.** Dono, logo a seguir à cura do #3, com a foto da Hierarquia: o *Extrude* do cilindro
+aparece como filho de «Model» (o vaso da cena `5`), e *«nenhum outro objeto acrescentado aparece na
+cena»*. Ele leu-o como defeito da montagem da cena.
+
+**Por que enganava.** A cena **é** a reprodução, mas o defeito é do produto: a lei *«só uma
+OPERAÇÃO pode ter filhos»* (W31, `promote_leaf_hosts`) repara uma forma que recebe filhos — **menos
+a raiz**, que ela saltava com uma nota: *«uma folha SEM pai é a raiz da peça… quem chega aqui é um
+caso que não existe hoje»*. Existe: as cenas `2` e `5` nascem com a raiz numa forma (medido por
+censo das `18` cenas vivas), e a paleta pendura toda forma nova **na raiz** quando nada está
+escolhido. O cozimento nunca olha os filhos de uma forma ⇒ a Hierarquia mostra-a, o ecrã não.
+*A nota ao lado do código afirmava o que o código não verificava — e era parte do defeito.*
+
+**O gate que estava VERDE, e porquê.** `a_shape_dropped_onto_a_shape_is_not_lost` mede exactamente
+«uma forma com filhos não some» — mas o corpus dele tem a raiz numa **união**. *Um gate cujo corpus
+não contém o fenómeno não o testa* (a mesma frase do #1).
+
+**Cura.** A razão da nota é real — a raiz é DONA da peça —, e por isso ela não é embrulhada:
+`promote_root_in_place` faz da própria raiz a união (fica com o nome, o `FieldObject`, o
+`Transform`, a ordem e a **pose** da peça) e a forma desce para uma entidade nova, **primeira** dos
+filhos, com pose identidade e com o que é **dela**: a geometria, os modificadores, o verbo, o
+material e o vínculo ao desenho. A peça na tela não muda; a forma acrescentada passa a entrar.
+
+| mutação | gate que a mata |
+|---|---|
+| E1 a raiz-forma volta a ser saltada | os dois (o dos componentes e o da tela, pela paleta, nas cenas `2` e `5`) |
+| E2 o material fica na raiz | `a_root_shape_that_gets_a_child_becomes_a_group_in_place` |
+| E3 os filhos antigos ficam à frente da forma (a base de uma subtração mudaria) | o mesmo |
+| E4 o vínculo ao desenho fica na raiz | o mesmo |
+| E1 (outra vez, depois da correcção dos dois gates da importação) | `a_shape_picked_in_the_palette_is_born_in_the_part` + `a_loaded_sculpture_becomes_a_node_the_evaluator_resolves` |
+
+⛔⛔ **E DOIS gates estavam verdes SOBRE A PEÇA INVISÍVEL, na mesma cena.** Os da costura da
+importação (`a_shape_picked_in_the_palette_is_born_in_the_part`,
+`a_loaded_sculpture_becomes_a_node_the_evaluator_resolves`) nascem da cena `2` — raiz-forma — e
+mediam a **arena** do documento (`doc.nodes()`, e o `sampled_count` do avaliador). O cozimento emite
+também os filhos de uma forma, **soltos**, sem ninguém os referenciar: a escultura e o cone entravam
+na arena e não na árvore. O doc do segundo chamava a isto *«o pior dos três… a peça existe na
+Hierarquia e some da tela»* — e media-o pela metade que não o vê. Hoje os dois contam **formas** na
+árvore e procuram a forma entre os nós que a **raiz alcança**; sem a cura (E1) os dois ficam
+vermelhos.
+
+⏳ **Nomeado e não tocado:** o `cook` continua a emitir nós soltos em silêncio quando uma forma tem
+filhos (depois da promoção isso não acontece no quadro, mas a porta aceita-o). Uma régua que conte a
+arena volta a mentir.
+
+⚠️ **Nomeado e não tocado:** na promoção de um anfitrião **não-raiz**, os filhos dele passam a
+irmãos dentro de um grupo de pose identidade — se o anfitrião tinha pose, eles mudam de sítio no
+mundo. Pré-existente (W31), sem report; a raiz não tem o problema porque fica com a pose.

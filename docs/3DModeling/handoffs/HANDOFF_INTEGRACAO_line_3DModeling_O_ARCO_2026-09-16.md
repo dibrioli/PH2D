@@ -181,3 +181,19 @@ Gate `mode_tests::the_directed_smoke_disarms_with_the_panel_too`, 4 mutações, 
 
 ⚠️ **Uma leitura rápida entende ao contrário:** o `com_env_do_smoke` é `#[cfg(test)]` e sobrepõe a
 env **por thread** — o produto lê sempre a env real.
+
+## §12 — ⛔ ADENDA 4: a forma acrescentada a uma raiz-forma não aparecia (report do dono, mesmo dia)
+
+A paleta pendura a forma nova na raiz, e o `promote_leaf_hosts` (**`ph2d-field-ecs`, foundational do
+módulo**) saltava a raiz com a nota *«um caso que não existe hoje»* — as cenas `2` e `5` nascem com a
+raiz numa forma. Cura: `promote_root_in_place` (a raiz vira a união no mesmo sítio; a forma desce
+como primeira filha com geometria, modificadores, verbo, material e vínculo). Registo:
+[`BUGS_3dmodeling.md`](../BUGS_3dmodeling.md) #4. 4 mutações, 4 mortas.
+
+⚠️ **Uma leitura rápida entende ao contrário:** a cena `5` **não** foi mudada — ela é a reprodução,
+e é o produto que passa a tratar uma raiz-forma. Um projeto gravado com uma raiz-forma e filhos
+abre agora com a peça promovida (a Hierarquia ganha uma linha: a forma dentro de «Model»).
+
+⛔ **E dois gates da costura da importação estavam VERDES sobre a peça invisível** (cena `2`, raiz-forma):
+contavam a arena do documento, onde o cozimento põe os filhos de uma forma soltos. Passaram a contar
+formas e a procurar entre os nós que a raiz alcança (`import_seam_tests.rs`).

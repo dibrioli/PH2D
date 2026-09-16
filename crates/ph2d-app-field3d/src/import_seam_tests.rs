@@ -26,6 +26,43 @@ fn register_a_sculpture(key: &str) -> f32 {
     extent
 }
 
+/// Quantas FORMAS (primitivas e esculturas) a árvore da peça tem — sem os grupos.
+///
+/// ⚠️ **Formas, e não nós** (2026-09-16): as duas fixturas desta costura nascem da cena `2`, cuja raiz
+/// é uma forma, e acrescentar-lhe um filho promove a raiz a grupo (`BUGS_3dmodeling.md` #4) — um nó
+/// de estrutura a mais, que não é o que o artista escolheu.
+fn formas(world: &bevy_ecs::world::World, root: bevy_ecs::entity::Entity) -> usize {
+    ph2d_field_ecs::walk(world, root)
+        .into_iter()
+        .filter(|(e, _)| {
+            matches!(
+                world.get::<ph2d_field_ecs::FieldNode>(*e).map(|n| &n.shape),
+                Some(ph2d_field::NodeShape::Leaf(_) | ph2d_field::NodeShape::Sampled { .. })
+            )
+        })
+        .count()
+}
+
+/// ⭐ Os nós que a raiz do documento ALCANÇA — os que o traçado desenha.
+///
+/// ⛔⛔ **Os dois gates abaixo liam `doc.nodes()`, a arena inteira, e ficaram VERDES com a peça
+/// invisível** (2026-09-16, `BUGS_3dmodeling.md` #4): o cozimento emite também os filhos de uma
+/// forma, soltos, e com a raiz da cena `2` numa forma a escultura e o cone entravam na arena sem
+/// ninguém os referenciar. O `sampled_count` do avaliador também os conta. *O próprio doc deste
+/// ficheiro chamava a isso «o pior dos três» — e media-o pela metade que não o vê.*
+fn alcancaveis(doc: &ph2d_field::FieldDoc) -> Vec<&ph2d_field::NodeKind> {
+    let mut out = Vec::new();
+    let mut pilha = vec![doc.root()];
+    while let Some(id) = pilha.pop() {
+        let kind = &doc.nodes()[id.0 as usize].kind;
+        if let ph2d_field::NodeKind::Combine { children, .. } = kind {
+            pilha.extend(children.iter().copied());
+        }
+        out.push(kind);
+    }
+    out
+}
+
 /// ⭐ **O botão da escultura NÃO cria uma primitiva — ele pede um arquivo.**
 ///
 /// ⚠️ O slot dele vive na mesma lista das quatro formas, e é isso que o faz aparecer sem uma linha
@@ -81,19 +118,28 @@ fn a_shape_picked_in_the_palette_is_born_in_the_part() {
     let mut sim = a_world();
     crate::scene::sync_scene(&mut sim, Some(&scene(2)), 0.0);
     let root = the_root(&mut sim);
-    let antes = ph2d_field_ecs::walk(sim.world(), root).len();
+    let antes = formas(sim.world(), root);
 
     // ⚠️ Pela CHAVE, nunca por uma posição — ver a lição do gate abaixo.
     let slot = crate::shapes::slot_of("panel.model3d.add.cone").expect("o cone");
     crate::smoke::ask_shape(slot);
     crate::scene::sync_scene(&mut sim, None, 0.0);
+    let doc = crate::scene::sync_scene(&mut sim, None, 0.0).expect("a peça cozinha");
 
     let root = the_root(&mut sim);
     let nos = ph2d_field_ecs::walk(sim.world(), root);
     assert_eq!(
-        nos.len(),
+        formas(sim.world(), root),
         antes + 1,
-        "a escolha da paleta tinha de fazer nascer UM nó"
+        "a escolha da paleta tinha de fazer nascer UMA forma"
+    );
+    assert!(
+        alcancaveis(&doc).iter().any(|k| matches!(
+            k,
+            ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Cone { .. })
+        )),
+        "⛔ o cone nasceu no mundo e a raiz do documento não o alcança — está na Hierarquia e não \
+         no ecrã"
     );
     // ⭐ **E é a forma CERTA.** Sem esta metade, um `shape_at` que devolvesse sempre uma caixa
     // passava — e o artista escolheria «Cone» a vida toda para receber caixas.
@@ -160,21 +206,22 @@ fn a_loaded_sculpture_becomes_a_node_the_evaluator_resolves() {
     let mut sim = a_world();
     crate::scene::sync_scene(&mut sim, Some(&scene(2)), 0.0);
     let root = the_root(&mut sim);
-    let before = ph2d_field_ecs::walk(sim.world(), root).len();
+    let before = formas(sim.world(), root);
 
     crate::smoke::ask_spawn_sculpt(key.to_string());
+    crate::scene::sync_scene(&mut sim, None, 0.0);
     let doc = crate::scene::sync_scene(&mut sim, None, 0.0).expect("a peça cozinha");
 
     let root = the_root(&mut sim);
     assert_eq!(
-        ph2d_field_ecs::walk(sim.world(), root).len(),
+        formas(sim.world(), root),
         before + 1,
-        "a escultura tem de virar UM nó"
+        "a escultura tem de virar UMA forma"
     );
-    let sampled: Vec<&str> = doc
-        .nodes()
-        .iter()
-        .filter_map(|n| match &n.kind {
+    // ⚠️ Pelos nós que a raiz ALCANÇA — ver [`alcancaveis`].
+    let sampled: Vec<&str> = alcancaveis(&doc)
+        .into_iter()
+        .filter_map(|k| match k {
             ph2d_field::NodeKind::Sampled { key } => Some(key.as_str()),
             _ => None,
         })

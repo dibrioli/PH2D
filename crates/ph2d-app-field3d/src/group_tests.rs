@@ -287,3 +287,82 @@ fn an_operation_selected_alone_still_swaps_its_op() {
         "…e a operação dela tem de ter TROCADO para união; ficou {op:?}"
     );
 }
+
+/// ⭐⭐⭐ **A FORMA ACRESCENTADA A UMA PEÇA CUJA RAIZ É UMA FORMA APARECE** (2026-09-16,
+/// `docs/3DModeling/BUGS_3dmodeling.md` #4).
+///
+/// Dono, com foto da Hierarquia (o *Extrude* dentro de «Model», o vaso): *«nenhum outro objeto
+/// acrescentado aparece na cena»*. As cenas `2` e `5` nascem com a raiz numa FORMA, a paleta pendura
+/// a forma nova na raiz, e a promoção saltava a raiz. ⚠️ **Pela porta de PRODUÇÃO** — a paleta
+/// (`ask_shape`) e a ponte do quadro —, e medido na TELA: o que era matéria continua a sê-lo, e o
+/// centro da forma nova passa a sê-lo.
+#[test]
+fn a_shape_added_to_a_piece_whose_root_is_a_shape_appears() {
+    for cena in [2, 5] {
+        let mut sim = SimWorld::new();
+        let semente = crate::smoke::scene(cena);
+        assert!(
+            matches!(
+                semente.nodes()[semente.root().0 as usize].kind,
+                NodeKind::Leaf(_)
+            ),
+            "a cena {cena} nasce com a raiz numa forma — é esse o caso"
+        );
+        let antes = crate::scene::sync_scene(&mut sim, Some(&semente), 0.0).expect("cozinha");
+        let root = {
+            let world = sim.world_mut();
+            let mut q = world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
+            q.iter(world).next().map(|(e, _)| e).expect("a peça")
+        };
+        let ja = ph2d_field_ecs::walk(sim.world(), root);
+
+        let slot = crate::shapes::slot_of("panel.model3d.add.sphere").expect("a esfera");
+        crate::smoke::ask_shape(slot);
+        crate::scene::sync_scene(&mut sim, None, 0.0);
+        let depois = crate::scene::sync_scene(&mut sim, None, 0.0).expect("continua a cozinhar");
+
+        assert_eq!(
+            leaves_in_doc(&depois),
+            leaves_in_doc(&antes) + 1,
+            "⛔ [cena {cena}] a forma acrescentada não entrou no documento — aparece na Hierarquia \
+             e não no ecrã"
+        );
+        let nova = ph2d_field_ecs::walk(sim.world(), root)
+            .into_iter()
+            .map(|(e, _)| e)
+            .find(|e| {
+                !ja.iter().any(|(j, _)| j == e)
+                    && matches!(
+                        sim.world()
+                            .get::<ph2d_field_ecs::FieldNode>(*e)
+                            .map(|n| &n.shape),
+                        Some(ph2d_field::NodeShape::Leaf(Primitive::Sphere { .. }))
+                    )
+            })
+            .expect("a esfera nova está na árvore");
+        let centro = ph2d_field_ecs::world_xform(sim.world(), nova).translation;
+        assert!(
+            solid_at(&depois, centro),
+            "⛔ [cena {cena}] o centro da esfera nova ({centro:?}) não é matéria"
+        );
+        // O que era matéria continua a sê-lo: a promoção não pode mexer na peça que já lá estava.
+        let mut vistos = 0;
+        for i in -8..=8 {
+            for j in -8..=8 {
+                #[allow(clippy::cast_precision_loss)]
+                let p = [i as f32 * 0.07, j as f32 * 0.07, 0.013];
+                if solid_at(&antes, p) {
+                    vistos += 1;
+                    assert!(
+                        solid_at(&depois, p),
+                        "⛔ [cena {cena}] a peça original perdeu matéria em {p:?}"
+                    );
+                }
+            }
+        }
+        assert!(
+            vistos > 10,
+            "[cena {cena}] a régua só viu {vistos} pontos da peça"
+        );
+    }
+}

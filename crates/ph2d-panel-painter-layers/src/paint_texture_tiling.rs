@@ -16,16 +16,7 @@ use ph2d_tool_painter::{
 /// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
 /// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
 pub(crate) fn seccao_do_grao(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
-    ph2d_editor_core::property_row::Seccao::medida(
-        ctx.text_system,
-        crate::number_field::SECTION_FIELDS,
-        &[
-            tr("panel.painter_layers.grain.angle"),
-            tr("panel.painter_layers.grain.offset"),
-            tr("panel.painter_layers.grain.size"),
-            tr("panel.painter_layers.grain.depth"),
-        ],
-    )
+    crate::seccoes::seccao_da_chave(ctx.text_system, "panel.painter_layers.grain.angle")
 }
 
 /// Paint the tiling rows (and, on the brush, Depth) at `y`, returning the next `y`.

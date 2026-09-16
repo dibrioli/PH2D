@@ -119,7 +119,7 @@ pub(super) fn paint_jitter_card(
         inner_x,
         inner_w,
         iy,
-        tr("panel.painter_layers.stroke.jitter.unit"),
+        "panel.painter_layers.stroke.jitter.unit",
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
         brush.jitter_unit,
         jitter_unit_name(brush.jitter_unit),

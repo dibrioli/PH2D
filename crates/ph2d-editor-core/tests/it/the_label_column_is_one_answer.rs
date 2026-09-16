@@ -57,6 +57,30 @@ const AINDA_A_MAO: &[&str] = &[
     // linha de propriedade —, e fica aqui por a régua ser textual e não saber distinguir as duas.
     // Quem o converter decide primeiro se a pergunta é a mesma; ⛔ não a force.
     "crates/ph2d-panel-timeline/src/tracks.rs",
+    // ⭐⭐ **Os que entraram em 2026-09-16 entraram porque a RÉGUA melhorou, não porque o código
+    // piorou** — ela passou a ler a grafia `label_w` nos painéis, e estes seis estavam invisíveis
+    // desde sempre. *Uma lista que cresce ao afiar o instrumento é dívida REVELADA, não contraída.*
+    //
+    // ⏳ **Os DOIS da timeline são a mesma pergunta do `tracks.rs`**: a coluna de nome de uma FAIXA
+    // e o cromo do transporte, que não são linhas de propriedade.
+    "crates/ph2d-panel-timeline/src/geom.rs",
+    "crates/ph2d-panel-timeline/src/transport.rs",
+    // ⏳ **O do mixer é a etiqueta de um slot de FX do master** — uma fileira de cromo, não um
+    // formulário; convertê-la é decidir primeiro se aquela fileira é uma linha de propriedade.
+    "crates/ph2d-panel-audio-mixer/src/paint_widgets.rs",
+    // ⏳ **O lab é uma bancada de estudo de widgets**, não um painel de produto: ali o número É o
+    // sujeito da experiência.
+    "crates/ph2d-panel-widget-lab/src/study.rs",
+    // ⏳⏳ **Os do Painter têm censo PRÓPRIO, com o mecanismo de cada um**
+    // (`cada_nome_deste_painel_cabe_na_coluna_da_seccao::nenhuma_coluna_de_rotulo_e_escolhida_no_sitio_de_pintura`,
+    // na crate do painel): três são rows de `rótulo | trilho nu | readout` que a spec §2 manda ser
+    // CAIXA ÚNICA — a conversão delas precisa de um chip editável por slider (ordem do dono de
+    // 2026-06-26), e não de trocar a coluna. ⛔ Quem apagar uma entrada aqui apaga a de lá também.
+    "crates/ph2d-panel-painter-layers/src/card.rs",
+    "crates/ph2d-panel-painter-layers/src/paint_adjust.rs",
+    "crates/ph2d-panel-painter-layers/src/paint_composite.rs",
+    "crates/ph2d-panel-painter-layers/src/paint_line.rs",
+    "crates/ph2d-panel-painter-layers/src/paint_shape_layers.rs",
 ];
 
 fn repo_root() -> PathBuf {
@@ -124,8 +148,27 @@ fn hand_written_label_columns(root: &Path) -> Vec<String> {
             if t.starts_with("//") {
                 continue;
             }
+            // ⚠️ Uma ASSERÇÃO não é um sítio de pintura — e o `<=` de uma comparação abre o
+            //    `split_once('=')` abaixo num número. *A régua lia um teste como produto.*
+            if t.starts_with("assert") || rel.ends_with("_tests.rs") {
+                continue;
+            }
             let baixo = t.to_ascii_lowercase();
-            if !baixo.contains("label_col") {
+            // ⛔⛔ **A régua lia SÓ `label_col`, e a pergunta tinha outra grafia** (medido
+            // 2026-09-16): o painel do Painter escrevia `LABEL_W` (×3), `ADJ_LABEL_W`,
+            // `BLEND_LABEL_W` e `CARD_LABEL_W`, e o censo passou por cima deles enquanto os doze
+            // painéis com a grafia conhecida eram convertidos. *A QUINTA grafia da mesma pergunta*
+            // — a mesma família de defeito que o `every_form_row_reserves_the_animation_column`
+            // pagou quatro vezes, aqui num censo que enumera por NOME em vez de por porta.
+            //
+            // ⚠️⚠️ **E a grafia nova vale só nos PAINÉIS, de propósito.** Uma linha de painel é uma
+            // linha de propriedade por definição (spec §1); dentro de um WIDGET o mesmo nome
+            // designa cromo interno — a coluna `R`/`G`/`B` de um seletor de cor, a etiqueta
+            // fantasma de um arrasto, o `DEFAULT_LABEL_W` que a caixa única IGNORA por escrito.
+            // Alargar a régua a eles devolvia **16 acusações falsas para 5 verdadeiras**, e uma
+            // régua assim é exemptada até deixar de medir.
+            let e_painel = rel.contains("crates/ph2d-panel-");
+            if !(baixo.contains("label_col") || (e_painel && baixo.contains("label_w"))) {
                 continue;
             }
             // ⚠️ A régua é a ATRIBUIÇÃO de um número, não a menção: um sítio que passa a

@@ -19,15 +19,7 @@ use ph2d_tool_painter::{
 /// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
 /// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
 fn seccao(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
-    ph2d_editor_core::property_row::Seccao::medida(
-        ctx.text_system,
-        crate::number_field::SECTION_FIELDS,
-        &[
-            tr("panel.painter_layers.stencil.size"),
-            tr("panel.painter_layers.stencil.offset"),
-            tr("panel.painter_layers.stencil.rotation"),
-        ],
-    )
+    crate::seccoes::seccao_da_chave(ctx.text_system, "panel.painter_layers.stencil.size")
 }
 
 /// Paint the Stencil placement card (title + Size X/Y, Offset X/Y, Rotation number boxes). The card

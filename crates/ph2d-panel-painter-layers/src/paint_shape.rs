@@ -20,35 +20,22 @@ use ph2d_tool_painter::{
 };
 use ph2d_vector::ImageQuality;
 
-/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
+/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, e ela mora em [`crate::seccoes`].**
 ///
 /// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
-/// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
-fn seccao_do_deposito(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
-    ph2d_editor_core::property_row::Seccao::medida(
-        ctx.text_system,
-        1,
-        &[
-            tr("panel.painter_layers.shape.relief"),
-            tr("panel.painter_layers.shape.shine"),
-        ],
-    )
+/// colunas»*. ⛔⛔ E até 2026-09-16 esta lista era a SEGUNDA resposta da mesma secção — as caixas
+/// de marcar e os chips dela não a conheciam. *Duas derivações da mesma coluna são duas colunas.*
+fn seccao_da_forma(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
+    crate::seccoes::seccao_da_chave(ctx.text_system, "panel.painter_layers.shape.angle")
 }
 
-/// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
+/// ⭐⭐ **O DEPÓSITO partilha a coluna da FORMA** — as duas são a secção `shape`.
 ///
-/// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
-/// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
-fn seccao_da_forma(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
-    ph2d_editor_core::property_row::Seccao::medida(
-        ctx.text_system,
-        crate::number_field::SECTION_FIELDS,
-        &[
-            tr("panel.painter_layers.shape.angle"),
-            tr("panel.painter_layers.shape.offset"),
-            tr("panel.painter_layers.shape.size"),
-        ],
-    )
+/// ⚠️ Elas eram duas declarações, uma por cartão, e **nada as ligava**: as caixas de marcar do
+/// mesmo assunto (*Automatic*, *Alpha From Image*, *Use Texture Colors*) não conheciam nenhuma das
+/// duas. Hoje as três perguntam à mesma, e por isso caem no mesmo `x`.
+fn seccao_do_deposito(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
+    crate::seccoes::seccao_da_chave(ctx.text_system, "panel.painter_layers.shape.relief")
 }
 
 /// Paint the collapsible **Shape** section starting at `y`, returning the next `y`. A **Texture** picker
@@ -112,7 +99,7 @@ pub(crate) fn paint_shape_section(
             x,
             content_w,
             y,
-            tr("panel.painter_layers.shape.falloff"),
+            "panel.painter_layers.shape.falloff",
             ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF,
             brush.falloff,
             Falloff::from_u8(brush.falloff).name(),
@@ -145,7 +132,7 @@ pub(crate) fn paint_shape_section(
         x,
         content_w,
         y,
-        tr("panel.painter_layers.shape.texture"),
+        "panel.painter_layers.shape.texture",
         ph2d_tool_painter::ids::PAINTER_SHAPE_KIND,
         brush.shape_kind,
         kind.name(),
@@ -281,7 +268,7 @@ fn paint_shape_transform_controls(
         x,
         content_w,
         y,
-        tr("panel.painter_layers.shape.follow"),
+        "panel.painter_layers.shape.follow",
         ph2d_tool_painter::ids::PAINTER_SHAPE_FOLLOW,
         brush.shape_follow,
         follow_name,

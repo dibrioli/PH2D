@@ -44,14 +44,7 @@ use ph2d_tool_painter::{BrushSettings, MAX_TAPER_DIAMETERS};
 /// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
 /// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
 fn seccao(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
-    ph2d_editor_core::property_row::Seccao::medida(
-        ctx.text_system,
-        1,
-        &[
-            tr("panel.painter_layers.taper.tip"),
-            tr("panel.painter_layers.taper.opacity"),
-        ],
-    )
+    crate::seccoes::seccao_da_chave(ctx.text_system, "panel.painter_layers.taper.tip")
 }
 
 const CANVAS_H: f32 = 56.0; // LITERAL-PX-OK: the taper widget's height

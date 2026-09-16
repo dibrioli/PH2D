@@ -21,13 +21,11 @@ use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, StrokeToken, TypeToken};
 use ph2d_tool_painter::ids::{
     painter_brush_blend_option_id, painter_brush_falloff_option_id, painter_brush_preset_option_id,
 };
 use ph2d_tool_painter::{BrushBlend, BrushSettings, Falloff, MAX_BRUSH_BLEND_MODES, MAX_FALLOFF};
-
-use crate::paint_brush_rows::LABEL_W;
 
 // The pre-publish `FALLBACK_BRUSH` snapshot lives in the sibling `brush_fallback` module (file-LOC cap);
 // re-exported here so `crate::paint_brush::FALLBACK_BRUSH` (tests + the body) stays stable.
@@ -144,7 +142,7 @@ fn paint_top_basics(
                 x,
                 content_w,
                 y,
-                tr("panel.painter_layers.brush.blend"),
+                "panel.painter_layers.brush.blend",
                 ph2d_tool_painter::ids::PAINTER_BRUSH_BLEND,
                 brush.blend,
                 BrushBlend::from_u8(brush.blend).name(),
@@ -410,17 +408,12 @@ fn paint_color_swatch_row(
     brush: BrushSettings,
 ) -> f32 {
     let font = TypeToken::Sm.px();
-    crate::paint_brush_rows::label(
-        ctx,
-        theme,
-        tr("panel.painter_layers.brush.color"),
-        x,
-        y,
-        font,
-    );
-    let sx = x + LABEL_W + Spacing::Sm.px();
-    let sw = (content_w - LABEL_W - Spacing::Sm.px()).max(0.0);
-    let rect = Rect::new(sx, y, sw, ROW_H_PX);
+    // ⚠️ A amostra de cor é uma linha de propriedade como as vizinhas — o nome dela vai à coluna da
+    //    secção (spec §4), e a barra ocupa a coluna do controlo.
+    const CHAVE: &str = "panel.painter_layers.brush.color";
+    let row = crate::paint_brush_rows::linha_da_chave(ctx, x, content_w, y, CHAVE);
+    crate::paint_brush_rows::label(ctx, theme, tr(CHAVE), &row, font);
+    let rect = row.control;
     register_button(ctx.host.store_mut(), core_ids::PAINTER_COLOR_THUMB);
 
     let [r, g, b] = encode_rgb(brush.color);
@@ -475,7 +468,7 @@ fn paint_preset_row(
         x,
         content_w,
         y,
-        tr("panel.painter_layers.brush.preset"),
+        "panel.painter_layers.brush.preset",
         ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
         preset_idx,
         preset_name(preset_idx),

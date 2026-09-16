@@ -131,7 +131,10 @@ pub(crate) fn paint_shape_per_layer_color(
         // ⚠️ A coluna do nome é a da secção *Shape*, como as outras caixas dela — o que esta linha
         // tem de próprio é o `cb_w` (a amostra de cor à direita come o fim da faixa), nunca a
         // coluna: *quem partilha o cartão partilha a coluna* (spec §6).
-        let seccao = crate::seccoes::seccao(ctx.text_system, crate::seccoes::SHAPE);
+        let seccao = crate::seccoes::seccao_da_chave(
+            ctx.text_system,
+            "panel.painter_layers.shape.layer_color",
+        );
         let cb = Checkbox::new(
             check_id,
             tr_with("panel.painter_layers.shape.layer_color", &[("n", &(i + 1))]),

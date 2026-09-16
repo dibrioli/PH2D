@@ -13,32 +13,53 @@ use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, resolve
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownState;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 
-/// A coluna do rótulo de uma row — o número que faz o chip começar todos no mesmo `x`.
+/// ⭐⭐⭐ **AS COLUNAS de uma linha deste painel, derivadas da SECÇÃO a que a chave pertence.**
 ///
-/// ⚠️ Ele mora AQUI e não no `paint_brush.rs` porque é propriedade da ROW, e a row tem sete
-/// consumidores; guardá-lo no card que por acaso a inventou é como nasce a segunda cópia (o
-/// `paint_watercolor_paper.rs` já carrega uma, com o comentário *"mirrors paint_brush::LABEL_W"*).
-pub(crate) const LABEL_W: f32 = 60.0; // LITERAL-PX-OK: coluna do rótulo de uma row de pincel
+/// ⛔⛔ Até 2026-09-16 a coluna do rótulo era o literal `LABEL_W = 60,0`, escrito no sítio de
+/// pintura — o que a spec §3 proíbe por escrito (*«uma largura FIXA está errada por construção: a
+/// coluna docada é arrastável»*). Medido nesse dia, com `60`:
+///
+/// - o rótulo **`Paint Mode`** mede `65,3 px` e saía **cortado em TODA largura de painel**;
+/// - e os rótulos destas linhas ficavam encostados à ESQUERDA enquanto as caixas de marcar do mesmo
+///   cartão já viviam na coluna da secção ⇒ **duas colunas de nome, alternando linha sim linha
+///   não**, que é o defeito que o §6-quinquies da spec existe para matar.
+///
+/// ⚠️ **O censo que devia ter apanhado isto é CEGO à grafia:** o
+/// `the_label_column_is_one_answer` procura `label_col` e este chamava-se `LABEL_W`. *A quinta
+/// grafia da mesma pergunta* (§34.6) — a régua foi alargada no mesmo commit.
+pub(crate) fn linha_da_chave(
+    ctx: &mut PaintCtx,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    chave: &str,
+) -> ph2d_editor_core::widget::PropertyRow {
+    let seccao = crate::seccoes::seccao_da_chave(ctx.text_system, chave);
+    ph2d_editor_core::widget::colunas_da_linha(x, content_w, y, ROW_H_PX, seccao)
+}
 
-/// A left-aligned, vertically-centred row label in a `ROW_H_PX` cell.
+/// O rótulo de uma linha de propriedade: **alinhado à direita da coluna e elidido** (spec §4).
+///
+/// ⛔ `paint_text` perde as duas coisas — era com ele que este painel pintava, e é por isso que o
+/// `Paint Mode` cortava sem reticências e sem ninguém ver.
 pub(crate) fn label(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     text: &str,
-    x: f32,
-    y: f32,
+    row: &ph2d_editor_core::widget::PropertyRow,
     font: f32,
 ) {
-    paint_text(
+    ph2d_editor_core::widget::paint_property_label(
         ctx.text_system,
         ctx.scene,
         text,
-        x,
-        y + (ROW_H_PX - font) * 0.5,
+        row.label.x,
+        row.label.y + (row.label.h - font) * 0.5,
         font,
-        LABEL_W,
+        row.label.w,
         resolve(ColorToken::Text2, theme),
     );
 }
@@ -46,6 +67,10 @@ pub(crate) fn label(
 /// Paint a "label + dropdown chip" row. Returns `(next_y, Some(chip_rect))` when
 /// the chip is open (the caller stashes the rect into the matching pending slot).
 /// `pub(crate)` so the Stroke section reuses it for Method + Jitter Unit.
+///
+/// ⭐ **Ela recebe a CHAVE do rótulo, não o texto** — pela mesma razão que a linha de marcar
+/// ([`crate::paint_brush_top::paint_checkbox_row`]): *quem só tem o texto traduzido não sabe a que
+/// secção pertence*, e a coluna é uma resposta da secção.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_dropdown_row(
     ctx: &mut PaintCtx,
@@ -53,15 +78,14 @@ pub(crate) fn paint_dropdown_row(
     x: f32,
     content_w: f32,
     y: f32,
-    label_txt: &str,
+    chave: &str,
     id: ph2d_a11y::NodeId,
     cur_value: u8,
     cur_label: &str,
 ) -> (f32, Option<Rect>) {
-    let gap = Spacing::Xs.px();
-    label(ctx, theme, label_txt, x, y, TypeToken::Sm.px());
-    let chip_w = (content_w - LABEL_W - gap).max(0.0);
-    let rect = Rect::new(x + LABEL_W + gap, y, chip_w, ROW_H_PX);
+    let row = linha_da_chave(ctx, x, content_w, y, chave);
+    label(ctx, theme, tr(chave), &row, TypeToken::Sm.px());
+    let rect = row.control;
     let open = paint_dropdown_chip(ctx, theme, id, cur_value, cur_label, rect);
     (y + ph2d_tokens::row_pitch_px(), open.then_some(rect))
 }

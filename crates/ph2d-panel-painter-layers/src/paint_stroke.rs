@@ -336,7 +336,7 @@ fn paint_method_row(
         x,
         dd_w,
         y,
-        tr("panel.painter_layers.stroke.method"),
+        "panel.painter_layers.stroke.method",
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
         brush.stroke_method,
         stroke_method_name(brush.stroke_method),

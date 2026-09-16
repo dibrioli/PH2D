@@ -11,9 +11,8 @@ use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::DropdownOption;
-use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, StrokeToken, TypeToken};
 use ph2d_tool_painter::{
     BrushSettings, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TextureKind, TextureMapping, param_specs,
 };
@@ -23,18 +22,7 @@ use ph2d_tool_painter::{
 /// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
 /// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
 fn seccao_do_papel(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
-    ph2d_editor_core::property_row::Seccao::medida(
-        ctx.text_system,
-        crate::number_field::SECTION_FIELDS,
-        &[
-            tr("panel.painter_layers.paper.angle"),
-            tr("panel.painter_layers.paper.offset"),
-            tr("panel.painter_layers.paper.size"),
-            tr("panel.painter_layers.paper.tooth"),
-            tr("panel.painter_layers.paper.relief"),
-            tr("panel.painter_layers.paper.roughness"),
-        ],
-    )
+    crate::seccoes::seccao_da_chave(ctx.text_system, "panel.painter_layers.paper.relief")
 }
 
 /// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
@@ -42,11 +30,7 @@ fn seccao_do_papel(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao
 /// ⛔ Report do dono, 2026-09-15: *«a caixa recua quando na verdade o nome deveria criar as
 /// colunas»*. Ver [`ph2d_editor_core::property_row::Seccao`].
 fn seccao_dos_extras(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
-    ph2d_editor_core::property_row::Seccao::medida(
-        ctx.text_system,
-        1,
-        &[tr("panel.painter_layers.paper.amount")],
-    )
+    seccao_do_papel(ctx)
 }
 
 /// Slider range bounds (parameter domains, not design tokens).
@@ -187,7 +171,7 @@ pub(crate) fn paint_paper_section(
         x,
         content_w,
         y,
-        tr("panel.painter_layers.paper.paper"),
+        "panel.painter_layers.paper.paper",
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_KIND,
         brush.paper_kind,
         kind.name(),
@@ -221,7 +205,7 @@ pub(crate) fn paint_paper_section(
             x,
             content_w,
             y,
-            tr("panel.painter_layers.paper.mapping"),
+            "panel.painter_layers.paper.mapping",
             ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
             brush.paper_mapping,
             mapping.name(),
@@ -358,19 +342,14 @@ fn paint_paper_color_row(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    const LABEL_W: f32 = 60.0; // LITERAL-PX-OK: row label column (mirrors paint_brush::LABEL_W)
     let id = ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB;
-    crate::paint_brush_rows::label(
-        ctx,
-        theme,
-        tr("panel.painter_layers.paper.color"),
-        x,
-        y,
-        TypeToken::Sm.px(),
-    );
-    let sx = x + LABEL_W + Spacing::Sm.px();
-    let sw = (content_w - LABEL_W - Spacing::Sm.px()).max(0.0);
-    let rect = Rect::new(sx, y, sw, ROW_H_PX);
+    // ⚠️ Esta linha carregava a SEGUNDA cópia do literal, com o comentário *«mirrors
+    //    paint_brush::LABEL_W»* escrito ao lado — a segunda resposta à mesma pergunta, declarada.
+    //    Hoje as duas perguntam à porta da secção.
+    const CHAVE: &str = "panel.painter_layers.paper.color";
+    let row = crate::paint_brush_rows::linha_da_chave(ctx, x, content_w, y, CHAVE);
+    crate::paint_brush_rows::label(ctx, theme, tr(CHAVE), &row, TypeToken::Sm.px());
+    let rect = row.control;
     register_button(ctx.host.store_mut(), id);
     let [r, g, b] = encode_rgb3(brush.paper_color);
     let col = ph2d_vector::Color::from_rgba8(r, g, b, 255); // LITERAL-COLOR-OK: paper colour (data)

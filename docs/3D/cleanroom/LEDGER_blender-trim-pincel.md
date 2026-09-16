@@ -385,6 +385,151 @@ superficies 11 · cadeia 8` = **100**. A 1.ª redacção somava `99` e errava a 
 
 ⏳ **R-pré, 2.ª passagem: pendente. A janela I continua FECHADA.**
 
+---
+
+## R-PRÉ — 2.ª PASSAGEM (2026-09-16) — veredito: ⚠️ **NÃO atestado.** A parede do §4.2 continua LIMPA; ficam **6 achados**, `4` que bloqueiam
+
+> Subagente **novo**, contexto independente do E **e** do R-pré da 1.ª passagem (§3.R: *auditar a
+> própria filtragem é o que falha, e re-auditar pelo mesmo contexto herda os pontos cegos dele*).
+
+### 1. As três curas da 1.ª passagem — CONFERIDAS contra as redacções reprovadas (`git show 41cd08eff`)
+
+| cura | conferida como | veredito |
+|---|---|---|
+| **1 — a lei NOSSA re-derivada** | li o código vivo em vez de aceitar a emenda: o estimador dos quatro verbos de plano pesa pelo valor livre da **máscara** (`1 − máscara`, logo pegada sem máscara ⇒ pesos todos `1`) e o divisor é a **soma dos pesos**, que aí é a contagem ⇒ **média aritmética simples**, tal como a emenda diz; a normal é a soma dos vectores dos vértices pesada igual e depois normalizada. A **extensão** é a consulta do dab, e ela devolve **exactamente o raio** para os quatro — os dois factores próprios que existem pertencem mesmo a outros verbos (a faixa e o campo elástico), como a emenda escreve. A data **2026-08-11** é a do commit `88966645d`, que é onde o estimador passou a chamar os kernels portados | ✅ **exacta** |
+| **2 — a barra do gate discriminante** | recalculei o piso sobre **todas** as células publicadas: as `18` leituras das três candidatas erradas nas **6** colunas discriminantes da tabela são todas `≥ 0,00269`, e o piso é mesmo `0,00269` (célula do raio de amostragem a `2R`). A barra `1e-3` fica `2,69×` abaixo dele e `1000×` acima da de aceitação ⇒ **o gate PODE passar**, ao contrário do que a 1.ª redacção publicava | ✅ o **número** está certo · ⛔ a **população declarada** não (achado 3) |
+| **3 — o quadro de fixtures** | derivado outra vez do directório: `lei 14 · lados 14 · inversao 3 · firmeza 12 · inercias 5 · amostragem 7 · corte 26 · superficies 11 · cadeia 8` = **100**, e `find -name '*.gz' \| wc -l` = **100**. Bate família a família | ✅ **exacta** |
+
+⛔ **E não parei nelas** (a lição desta pasta: *uma emenda cura o que o auditor NOMEOU, e um achado
+substancial sobrevive por ninguém lhe apontar o dedo*). O documento foi varrido inteiro pela
+pergunta da §4.3.1, por leitura **e** por varredura textual — e **3 dos 4 bloqueadores abaixo estão
+em texto que a emenda NÃO tocou**, que é exactamente a forma prevista.
+
+### 2. A parede (§4.2) — LIMPA, item a item, re-auditada do zero
+
+| item do §4.2 | resultado desta passagem |
+|---|---|
+| texto de código, trechos, diffs | **nenhum** |
+| nomes internos | **nenhum** — extraí **todos** os *code spans* do documento e classifiquei um a um: são identificadores **nossos** (crate, ficheiro, verbo, predicado), nomes de **fixtura nossa** (em português), nomes de **gate propostos por nós**, variáveis **locais desta espec** (os dois raios, os dois tectos, a altura com sinal, a curva suave), ou factos de interface pública (a tecla modificadora). **Zero** identificadores do alvo |
+| comentários do original | **nenhum** |
+| wording de manual verbatim ou quase | **nenhum**. Varri o documento por vocabulário de estrutura de código (laço · função · variável · ficheiro · sinalizador · chamada · retorno · ramo) e os únicos acertos são usos **nossos** da palavra (método no sentido matemático, assinatura no sentido de impressão digital) |
+| tabela verbatim / LUT | **nenhuma** — toda tabela do documento é medição nossa ou catálogo de fixtures nossas |
+| organização transcrita | **nenhuma** — a espec descreve por fases cuja ordem é **forçada por dependência de dados** |
+| pseudo-código espelhado | **não** — os **11** blocos cercados são 1 a 8 linhas de **fórmula** em português, sem controlo de fluxo, sem declaração e sem nome do alvo; cabem no §4.1.10. ⭐ E num deles a espec apresenta a forma condicional e **manda escrevê-la incondicional**, o oposto de transcrever |
+
+⇒ ⭐ **Os 6 achados são de EXACTIDÃO e PROVENIÊNCIA; nenhum reabre a §4.3 nem obriga a re-filtrar.**
+
+### 3. O sweep, e o CONTROLO POSITIVO em **SETE** canais (dois novos)
+
+`bash scripts/cleanroom-sweep.sh docs/3D/cleanroom/VASSOURA_blender-trim-pincel.txt` sobre a espec
++ as **100** fixtures + o `README.md` da pasta + este ledger + o INBOX ⇒ **✓ limpo, 321 entradas,
+`exit 0`**. E `--git-history` sobre `docs/3D/cleanroom/` ⇒ **✓ limpo**.
+
+⛔ **Canários plantados em `~/Referencias/<alvo>/`** — ⚠️ **não no scratchpad**, que é o que o
+INC-R1 registou; apagados no fecho. Cada um provado a disparar:
+
+| canal | acusado? |
+|---|---|
+| NOME de ficheiro | ✅ `exit 1` |
+| conteúdo de texto, numa linha | ✅ `exit 1` |
+| texto com as quebras de linha desfeitas | ✅ `exit 1` |
+| idem, com ênfase (`**…**` e `` `…` ``) | ✅ `exit 1` |
+| **dentro de um `.gz`**, numa linha | ✅ `exit 1` |
+| ⭐ **dentro de um `.gz`, DOBRADO** (o canal que a 1.ª passagem achou cego) | ✅ `exit 1` — **a cura de `fc7014427` está VERIFICADA** |
+| ⭐ **controlo NEGATIVO da mesma forma em texto** (o par que decide de quem é o resto) | — ver abaixo |
+
+⭐⭐ **E o controlo dos dois lados nomeia o resto com precisão.** Uma frase da vassoura dobrada
+sobre duas linhas em que a segunda **repete um marcador de comentário** passa **limpa** — e passa
+**igual no ramo de texto e no ramo do `.gz`** (`exit 0` nos dois). ⇒ *não é resíduo da cura do
+`.gz`: é uma propriedade simétrica do normalizador*, que apaga três marcadores e não esse. A
+distinção importa porque a 1.ª passagem só podia ver um lado. ⚠️ **E ela não morde este corpus:**
+conferido que **todas** as linhas de comentário das **100** fixtures são `# chave: valor` numa
+linha só — não há comentário dobrado em nenhuma.
+
+⭐ Os identificadores em maiúsculas dos cabeçalhos das fixtures foram recenseados outra vez
+(`45` cadeias distintas): as que têm forma de API são valores de enumeração **públicos** — a chave
+que regenera —, e o resto é vocabulário **nosso** em português. A autorização do §4.1.13 continua
+aplicada correctamente.
+
+### 4. ⚠️ HIGIENE — o INC-R1 tem uma SEGUNDA metade, do lado da SAÍDA (registado, não bloqueia)
+
+O *scratchpad* desta janela guarda artefactos de corridas anteriores **desta linha** (não minhas), e
+**quatro** das oito vassouras da pasta disparam sobre ele. Triado ficheiro a ficheiro:
+
+- **relatórios de sweep gravados em ficheiro** (`novo.out`, `velho.out`) — por construção citam em
+  claro os termos que acusaram;
+- **um censo de identificadores** e **cópias de `SPEC_*`** e de fonte **nosso**;
+- os **registos do portão** (`portao2.txt`, `portao3.txt`), que disparam sobre **nomes de testes
+  NOSSOS** — a classe da entrada larga, não uma fuga.
+
+⇒ **Nenhum fonte do alvo está lá.** Mas a lição do INC-R1 (*o scratchpad é alcançado pela
+janela-mãe*) vale para a **SAÍDA** do instrumento tanto como para a entrada dele: a cura de 2026-09-16
+fechou o lado da vassoura e o lado do relatório ficou aberto. ⇒ **relatório de sweep vai para
+`~/Referencias/<alvo>/`, nunca para o scratchpad.** Não apaguei nada: os registos do portão podem
+ser da obra da janela.
+
+### 5. Os 6 achados (entregues como instruções funcionais de reescrita)
+
+#### ⛔ Bloqueiam
+
+1. **A tabela de proveniência ainda publica a barra RETIRADA do gate discriminante.** A §13
+   declara-se *"a proveniência de **cada** número"* e continua a listar `5e-3` como barra dele,
+   *"derivada de vales MEDIDOS"* — enquanto a §12 a fixa em `1e-3` e diz, na mesma linha, que
+   `5e-3` era **impossível**. A emenda mexeu na §12 e deixou a §13 intacta. *Quem tirar a barra da
+   tabela que existe para dizer de onde vêm os números escreve a barra que o documento refuta.*
+   ⇒ a linha da §13 passa a carregar a barra que a §12 fixa, e a retirada fica **marcada como
+   retirada** — a linha imediatamente abaixo já tem essa forma, escrita pela própria emenda.
+2. **A §2.6 atribui ao nosso código um ramo que os nossos quatro verbos de plano NÃO têm.** Medido
+   no código vivo: a escolha entre ler a superfície congelada e a viva é um `match` de três braços;
+   os quatro verbos que ajustam plano caem no braço que lê a **viva incondicionalmente** e nunca
+   consultam o interruptor. Quem o consulta são **três outros verbos** — e o comentário do nosso
+   próprio ficheiro diz porquê, por escrito: *a regra é da REFERÊNCIA, não do verbo*. A §2.6 agrupa
+   pelo eixo errado (a família «de plano») e manda o pincel novo entrar *"como os outros de plano"*
+   — que é precisamente o braço onde o interruptor **não é lido**. ⚠️ **É load-bearing:** seguido à
+   letra, o pincel novo nasce com esse controlo **inerte**, que é o defeito que o nosso código
+   regista ter pago e curado. ⇒ dizer que ele entra no braço que **consulta** o interruptor, ao lado
+   dos verbos cuja referência é **este** alvo, e nomear os quatro verbos de plano como o
+   **contra-exemplo**, não como o modelo.
+3. **A população declarada do gate discriminante não é recuperável da §2.2, e o piso dele reprova
+   sobre o que está publicado.** A secção anuncia **11** configurações, nomeia **3** como não
+   discriminantes e conclui **8** discriminantes; mas a tabela impressa tem **8 colunas**, das quais
+   **2** são das nomeadas não-discriminantes ⇒ só **6** células discriminantes estão na página. O
+   gate reprova com menos de `8`. *Quem o construir a partir da §2.2 junta 6 e cai no piso do próprio
+   gate* — a mesma forma do achado 2 da 1.ª passagem (uma barra que não pode passar), sobrevivida à
+   cura dela. ⭐ As duas discriminantes que faltam são as que variam a **extensão de amostragem da
+   normal**, e as fixtures delas **existem**. ⇒ publicar as duas colunas, ou declarar o piso com a
+   contagem que a tabela de facto carrega — e, nos dois casos, recalcular o piso com **todas** as
+   discriminantes à vista, porque hoje o `0,00269` só é conferível sobre `6`.
+4. **Uma barra de gate não tem proveniência nenhuma, e a §13 diz que carrega todas.** O gate que
+   afirma que o plano acompanha o cursor limita o afastamento a **um raio do dab** — e a
+   justificação escrita ao lado é *"a barra é o defeito público do alvo"*. Mas aquele defeito
+   público entrega uma **propriedade** (o plano deixou de seguir o cursor), **não um número**; a
+   §13 não lista origem para ele; e é a **única** barra do documento sem uma medição impressa por
+   perto de onde a derivar — todas as outras têm. ⚠️ A frase que a acompanha (*"um gate cuja barra
+   é a de um defeito real vale mais do que um número escolhido"*) afirma exactamente o que não é
+   verdade dela. ⇒ medir a grandeza sobre as fixtures do traço passo a passo, que **já existem**, e
+   escrever o número que a medição der com a tabela ao lado — ou declará-la decisão nossa e dizê-lo.
+
+#### ⚠️ Não bloqueiam (exactidão barata)
+
+5. **O ruído de `f32` na escala das fixtures aparece com DOIS valores em duas secções, e a barra de
+   paridade é derivada do menor.** A §12 escreve um ULP naquela escala como `2,4e-08` e conclui que
+   a barra `1e-6` é `≈ 40 ULP`; na magnitude em causa o ULP é **`2,98e-08`**, o que faz da mesma
+   barra `≈ 34 ULP`. A §1, por sua vez, diz que a reprodução bate a saída do alvo *"a `3e-8`"*
+   enquanto a §4.1 publica, para as **mesmas** 24 configurações, um pior caso medido de `8,0e-08`.
+   A folga da barra sobrevive às duas leituras; o que precisa de cura é o documento imprimir dois
+   números para uma grandeza e a derivação citar o menor.
+6. **O mecanismo escrito para uma das células não-discriminantes é refutado pela própria linha
+   dela.** A §2.2 diz que, com **uma** amostra, as três candidatas *"dão o mesmo ponto"*; a linha ao
+   lado imprime duas delas em `−0,00003` e a terceira em `0,00000`. A conclusão funcional (excluir a
+   célula) está certa; o mecanismo não — com uma amostra a lei que puxa para o cursor continua a
+   diferir pelo peso naquele vértice, e o que torna a célula inútil é o vão **colapsar muito abaixo
+   de qualquer barra usável**, não desaparecer.
+
+⏳ **R-pré, 2.ª passagem: NÃO atesta. A janela I continua FECHADA.** ⇒ emenda por subagente-E sobre
+os `4` bloqueadores (os `2` restantes são baratos e cabem na mesma emenda), depois **3.ª corrida**
+do R-pré sobre o texto novo.
+
 ## Incidentes
 
 ### INC-R1 (2026-09-16) — **HIGIENE DE INSTRUMENTO do próprio R-pré. Sem exposição; registado porque um evento escondido é a acusação pronta**

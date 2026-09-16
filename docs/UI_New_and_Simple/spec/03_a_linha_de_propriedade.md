@@ -548,6 +548,12 @@ ali eles cortam — que é a troca que o dono escolheu em 2026-05-24.
 | §7 | o campo lê de volta a unidade que ele próprio pinta, em qualquer caixa | `parse_suffix` | `every_unit_reads_back_what_it_paints` |
 | §7 | nenhum rótulo do app carrega a unidade no texto | `num_row_unit` | `no_row_label_carries_its_own_unit` |
 | §7 | a unidade é tinta dentro da caixa, nunca uma segunda caixa | `paint_number_input_with_buffer` | `the_unit_is_ink_inside_the_box_and_never_a_second_box` |
+| §3 | um painel inteiro tem UMA coluna por secção, não uma por família de linha | `seccao_da_chave` | `cada_nome_deste_painel_cabe_na_coluna_da_seccao` |
+| §3 | e a coluna cega cortaria mais — o controlo que prova que a declaração não é decoração | `Declaracao` | `e_a_coluna_cega_cortaria_mais` |
+| §3 | declarar a secção nunca deixa o controlo abaixo do piso do dono | `colunas_da_linha` | `e_o_controlo_nunca_fica_abaixo_do_piso_do_dono` |
+| §3 | a declaração de uma secção e o que o painel pinta dizem o mesmo | `TODAS` | `a_declaracao_das_seccoes_e_o_painel_dizem_o_mesmo` |
+| §6-quinquies | toda caixa de marcar de um painel declara a secção dela | `paint_checkbox_row` | `toda_caixa_deste_painel_declara_a_seccao_dela` |
+| §3 | nenhuma coluna de rótulo é escolhida no sítio de pintura, em nenhuma GRAFIA | `linha_da_chave` | `nenhuma_coluna_de_rotulo_e_escolhida_no_sitio_de_pintura` |
 
 ---
 

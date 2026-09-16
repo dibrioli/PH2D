@@ -2435,3 +2435,139 @@ Os **cinco** chamadores da `body_fill` foram lidos um a um, perguntando *em que 
 este assenta?*: `dropdown` · `combobox` · `text_input` (é a própria caixa) · `radio_group` (pinta o
 anel dele e assenta no cartão) — **os quatro no cartão**, nenhum afectado. Só a marca se tinha
 mudado.
+
+---
+
+## §36 — ⛔⛔⛔ O PAINEL DO PAINTER TINHA TRÊS COLUNAS DE NOME NO MESMO CARTÃO
+
+**Ordem em vigor:** «Se temos o manual precisamos converter o APP todo a ele» + *«Siga em loop de
+implementação corrigindo tudo que for possível de todos os painéis»* (dono, 2026-09-16). Sem report
+novo: esta jornada nasce de **medir** o que o §34.7 deixou por varrer.
+
+### 36.1 — O que a medição encontrou
+
+| família de linha | o que ela usava | onde o nome saía |
+|---|---|---|
+| caixa de marcar | o default (*«não sei que nomes vou pintar»*) | na **metade cega** da faixa |
+| rótulo + chip · amostra de cor | o literal `LABEL_W = 60,0` | encostado à **esquerda** |
+| número | um `fn seccao*()` por ficheiro, **seis** deles | na coluna da secção ✅ |
+
+⇒ *duas colunas de nome alternando linha sim linha não* — o defeito que o §6-quinquies existe para
+matar, um nível acima: entre **famílias de linha** em vez de entre linhas.
+
+Medido com o sistema de texto REAL (`Sm`), sobre os rótulos de linha de propriedade do painel:
+
+| painel | coluna cega | secção declarada |
+|---|---|---|
+| `220` (mínimo do dock) | `11` cortados | `7` |
+| `245` | `6` | **`1`** |
+| `273,3` (a largura do dono) | `1` | **`0`** |
+| `304` (omissão) | `0` | `0` |
+
+⚠️ **E a coluna de `60 px` tinha o defeito dela própria, que a escada acima não vê:** o rótulo
+**`Paint Mode`** mede `65,3 px` e saía cortado **em toda largura de painel** — um literal não cresce
+com o dock.
+
+### 36.2 — A porta recebe a CHAVE, não o texto
+
+`paint_checkbox_row` e `paint_dropdown_row` passam a receber a **chave de i18n** e a DERIVAR a
+secção dela (`seccoes::nome_da_seccao`, a regra que a própria tabela de strings declara:
+`<secção>.<nome>`). *Quem só tem o texto traduzido não sabe a que secção pertence*, e a alternativa —
+cada um dos ~45 sítios escolher a sua — é a lista à mão que este repo já viu acusar quatro vezes
+exactamente quem fez a coisa certa (§34.6).
+
+`seccoes::TODAS` é a **única** declaração do painel: 20 secções, 72 chaves, cada uma com o `campos`
+que a linha mais larga dela precisa. Os seis `fn seccao*()` dos ficheiros **delegam**.
+
+### 36.3 — ⚠️ Onde a aritmética é OUTRA, a cura é outra
+
+- **motion-params:** o rótulo de um param vem do *registry*, logo a secção é o **troço entre dois
+  cabeçalhos** (`seccao_das_caixas`), medido uma vez por secção e não uma por linha.
+- **wet-tuning:** as duas caixas são uma secção (o cartão *Experimental*) — e são **os dois nomes
+  mais longos de toda a varredura de caixas do app** (`123,9` e `114,2` contra uma coluna cega de
+  `84,0`/`96,5`/`110,6`): saíam cortados em **todo o curso útil do dock**.
+- ⛔ **vector fica de FORA, e é medido:** ali as linhas de NÚMERO partilham a coluna do nome
+  (`panel::label_col_w`), logo dar secção só às caixas **desalinharia** a secção. A dívida daquele
+  painel está escrita no `number_cell` desde 2026-09-15 (*«este painel não tem secções no sentido do
+  Inspector … a conversão é uma wave própria, com as secções deste painel definidas primeiro»*), e a
+  medição de hoje dimensiona-a: **2** nomes cortados a `220`, **1** a `245`, **0** de `273,3` para
+  cima. ⚠️ E as fileiras de duas células dele **já** perguntam à porta (`property_row_fits`), logo a
+  metade de `13,6 px` que uma régua ingénua mede ali **não é alcançável** — *a régua mediu um
+  programa que o painel evita*.
+
+### 36.4 — O card Line: a justificação escrita ao lado do literal era FALSA
+
+`const LABEL_W: f32 = 62.0` trazia o doc *«cabe "Line Width" na fonte Base»*. Medido:
+
+| rótulo | mede (Base) | coluna |
+|---|---|---|
+| `Line Width` | **`66,4`** | `62` ⛔ |
+| `Roughness` | **`68,8`** | `62` ⛔ |
+
+⇒ as duas saíam cortadas desde que o cartão existe. *Um literal que se justifica por um texto CABER
+tem de trazer a medição do texto.*
+
+⛔⛔ **E a fonte estava errada:** ele pintava em `TypeToken::Base` e a coluna é medida em `Sm` —
+*medir num peso e pintar noutro corta curto* (§4.3). Era o único cartão do painel a destoar.
+
+### 36.5 — A régua que devia ter apanhado isto era CEGA À GRAFIA
+
+O censo da casa (`the_label_column_is_one_answer`) procura `label_col`; este painel escrevia
+`LABEL_W`, `ADJ_LABEL_W`, `BLEND_LABEL_W`, `CARD_LABEL_W`. **A quinta grafia da mesma pergunta**,
+agora num censo que enumera por NOME em vez de por porta.
+
+⚠️ Ela passa a ler `label_w` **só nos painéis**, de propósito: dentro de um WIDGET o mesmo nome
+designa cromo interno (a coluna `R`/`G`/`B` de um seletor, a etiqueta fantasma de um arrasto, o
+`DEFAULT_LABEL_W` que a caixa única **ignora por escrito**) — alargar a régua a eles devolvia
+**16 acusações falsas para 5 verdadeiras**, e *uma régua assim é exemptada até deixar de medir*.
+⚠️ E ela lia um `assert!(… <= …)` de um `_tests.rs` como sítio de pintura.
+
+### 36.6 — ⭐ E o `hr12_widgets_a11y` tinha um SEGUNDO passageiro
+
+A dívida do §33.4 (*«este gate é satisfeito por um `use` em código de TESTE»*) foi paga: a varredura
+passa por `codigo_de_producao`, que remove o que está atrás de `#[cfg(test)]` **por equilíbrio de
+chavetas** — e não «corta no primeiro `#[cfg(test)]`», que apagaria a produção escrita depois dele.
+
+A primeira corrida da cura acusou o **`section_header/fold.rs`**, cujo único `ph2d_a11y` vive dentro
+do `mod tests` dele. *Das duas vezes que esta régua foi conferida, ela tinha um passageiro.*
+
+⚠️⚠️ **E a régua-da-régua apanhou um defeito na primeira corrida dela:** a 1.ª redacção procurava só
+a chaveta, então num `#[cfg(test)] use …;` seguido de `fn p() {}` ela achava a chaveta do `fn` e
+engolia a **produção inteira** — o ficheiro ficava vazio e o gate lia «sem a11y» sobre todo o mundo.
+
+### 36.7 — Os gates, e as mutações que sangram
+
+| gate | mutação |
+|---|---|
+| `cada_nome_deste_painel_cabe_na_coluna_da_seccao` | escada `220/245/273,3/304/720` com metade de obsolescência |
+| `e_a_coluna_cega_cortaria_mais` | o CONTROLO: `11/6/1` contra `7/1/0` |
+| `e_o_controlo_nunca_fica_abaixo_do_piso_do_dono` | a conversão move o controlo ao meio ⇒ ele ENCOLHE; o piso é `72` |
+| `a_declaracao_das_seccoes_e_o_painel_dizem_o_mesmo` | censo de dois lados, piso de 55 chaves |
+| `toda_caixa_deste_painel_declara_a_seccao_dela` | apagar `.seccao(…)` da porta ⇒ **VERMELHO (provado)** |
+| `nenhuma_coluna_de_rotulo_e_escolhida_no_sitio_de_pintura` | censo local COM a metade de obsolescência (apanhou o `paint_line.rs` a sair da lista no minuto em que o literal morreu) |
+| `as_duas_caixas_cabem_na_coluna` + controlo | wet-tuning |
+| `a_coluna_de_um_troco_mede_os_nomes_dele` | motion-params, com o controlo da fronteira |
+| `o_codigo_de_producao_nao_inclui_o_que_esta_atras_de_cfg_test` | a régua-da-régua do `hr12` |
+
+### 36.8 — ⚠️ O que um `assert` de CONTAGEM não prova
+
+O script que reescreveu os ~45 sítios de chamada afirmava `assert total == 31` e **bateu certo** — e
+um dos sítios tinha um `if/else` com **dois** `tr(…)`, dos quais só o primeiro foi reescrito. O
+segundo ramo passava o texto já traduzido, e quem o apanhou foi o `debug_assert` do
+`seccao_da_chave`, numa suíte de costura.
+
+⇒ *Um assert de contagem prova quantas vezes se escreveu, nunca que se escreveu em todo o lado.*
+
+### 36.9 — ⏳ ABERTO
+
+- **A caixa única das três racks do Painter** (Line · Composite · Adjust): a spec §2 manda que um
+  valor com fracção tenha o nome **dentro** da barra. O preço está medido e escrito no
+  `paint_param_row`: **12 chips editáveis com 12 mapeamentos afins distintos** (cada `read` tem a
+  escala dele), e um mapeamento errado edita o valor errado **em silêncio**. A ordem do dono de
+  2026-06-26 (*«todos usam o slider-with-chip canónico»*) está por trás dela.
+- **As secções do painel de VECTOR** — a wave que o `number_cell` encomenda desde 2026-09-15, agora
+  dimensionada (§36.3).
+- **O censo do resto do app está feito e devolveu NEGATIVO:** medidos todos os `panel.*` de todos os
+  painéis contra a coluna cega à largura do dono, o que passa dela são **notas, dicas e rótulos de
+  BOTÃO** — nenhum nome de linha de propriedade. *Os painéis que usam a metade cega uniformemente
+  estão conformes ao §3; declarar a secção só compra alguma coisa onde um nome não cabe.*

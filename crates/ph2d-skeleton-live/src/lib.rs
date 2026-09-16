@@ -28,8 +28,12 @@
 //! [ADR-0169]: ../../../docs/architecture/decisions/0169-the-skeleton-is-its-own-module-and-each-medium-answers-only-what-a-point-is.md
 //! [HOWTO §1.2]: ../../../docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
 
+/// ⭐ A CURVATURA de um osso, viva — irmão do `skin_live` pelo tecto de LOC, cortado por assunto.
+pub mod bend_live;
 pub mod bone;
 pub mod goal;
+/// ⭐ O ORÇAMENTO de peças do quadro — irmão do `skin_image` pelo tecto de LOC, cortado por assunto.
+pub mod skin_budget;
 pub mod skin_image;
 pub mod skin_live;
 pub mod skinned_mesh;

@@ -1221,3 +1221,79 @@ medi-la no centro é o valor honesto.
 * As `~632` cunhas finas da §46.1 — a cura mexeria na malha da peça.
 * A **linha** e a **polilinha** (espec §4.2), os outros **modos**, a **simetria**
   e o interior das **tampas** continuam como no §45.11.
+
+---
+
+## §47 — ⛔⛔⛔ O espigão da borda era a CURA da §46 a criar lixo novo
+
+> **Report do dono** (2026-09-15, com foto): *«Circle ficou bom! Borda melhorou
+> mas não está perfeita»* — um **espigão** a sair da silhueta da peça.
+
+### §47.1 — A causa, e a explicação que a medição derrubou
+
+Com o corte a **SAIR pela beira** da peça a saída traz **`2` pares espelhados**:
+o mesmo triângulo duas vezes, um virado ao contrário. Juntos encerram volume
+**ZERO** — uma aba infinitamente fina, e é isso que o sombreamento desenha como
+uma farpa.
+
+⛔⛔ **A minha 1.ª explicação dizia que o MOTOR os emitia, e o gate escrito para a
+provar REPROVOU NO PRÓPRIO CONTROLO:** a saída **crua** traz `0` almofadas em
+todas as posições varridas. *Fundir dois vértices faz dois triângulos distintos
+passarem a ter o mesmo trio* ⇒ **quem os cria é o colapso da §46.1**. A cura de
+ontem abriu este defeito hoje.
+
+⇒ *uma cura que cria uma segunda espécie de lixo tem de a varrer também*, e é
+por isso que a limpeza ganhou um terceiro passo em vez de o colapso ser
+afrouxado (afrouxá-lo desfaria o ganho medido: `MAX 2 573 809 → 33`).
+
+### §47.2 — ⚠️⚠️ A FIXTURA não continha o fenómeno — a SÉTIMA vez neste módulo
+
+* Com o círculo **CENTRADO**, a borda do corte vive a `|z| = 0,8` e **nunca
+  encontra a silhueta** (que é o equador) ⇒ `0` almofadas. *A minha fixtura era
+  a centrada.*
+* ⛔ E a lâmina **GROSSA** (o cubo de seis faces da `ph2d-mesh-bool`) **não as
+  produz em posição nenhuma** — varridas cinco: `0` em todas. Só o **cilindro
+  tesselado a sair pela beira** o faz.
+
+⇒ a régua vive na `ph2d-trim` (onde a lâmina real é construída) e varre **quatro
+posições do centro**, com o controlo a exigir que **pelo menos uma** produza o
+fenómeno. *Sem esse controlo o gate passa por vácuo, que é exactamente o estado
+em que a régua estava antes do report.*
+
+### §47.3 — ⭐ Descartam-se os DOIS lados, e a distinção é load-bearing
+
+Eles não são «um triângulo a mais»: são um par que não descreve superfície
+nenhuma, e guardar um deixaria uma aba de face única pendurada. É a mesma decisão
+que a linha do quad remesh tomou com a almofada dela (`mirrored_cells`).
+
+⛔⛔ **E uma MUTAÇÃO SOBREVIVENTE escreveu o gate que faltava:** trocar *«pares
+ESPELHADOS»* por *«qualquer trio repetido»* passava a suíte inteira — nenhuma
+fixtura do corte produz um duplicado de **mesmo enrolamento**. ⚠️ A distinção
+decide o que é correcto: dois espelhados encerram volume zero e saem os **dois**;
+dois com o mesmo enrolamento são a **mesma** face escrita duas vezes, e descartar
+ambos **abre um buraco**. ⇒ fixtura sintética (tetraedro com uma face repetida)
+com as duas metades, e *curar o segundo caso é outra lei, que não vive aqui*.
+
+### §47.4 — A feature que atravessa a fronteira
+
+`corta_cru` e `limpa_a_costura_relatando` atravessam a fronteira da crate por uma
+feature **do tamanho exacto do que atravessa** (`test-support`, **dois** itens):
+a régua do caminho real vive na `ph2d-trim`, onde a lâmina real é construída, e
+**sem o lado *antes* ela não afirma que a cura fez alguma coisa**. ⚠️ Nada do
+produto a liga.
+
+### §47.5 — Números e cortes
+
+* Varrido em **4** posições do centro: bordo `0` e não-manifold `0` em todas.
+* Mutação **3 de 3**.
+* **Dois tectos de LOC** curados por **CORTE** — `lib_tests.rs` da `mesh-bool`
+  (`709`) e `lib_resolucao_tests.rs` da `trim` (`1 028`), os dois partidos entre
+  **DENSIDADE** e **COSTURA**. ⛔ Nenhum no `FILE_OVERAGE_OK`.
+* Portão `15 297/15 297`; sweep limpo nas **sete** vassouras.
+
+### §47.6 — ⏳ ABERTO
+
+* As `~640` **cunhas finas** (altura `2,4 %` da aresta) continuam: elas não são
+  arestas curtas nem almofadas, e nenhuma das duas curas as alcança. ⛔ Curá-las
+  mexeria na malha da peça.
+* O resto da fila do §45.11 (linha · polilinha · modos · simetria · tampas).

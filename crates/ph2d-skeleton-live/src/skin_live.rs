@@ -650,7 +650,6 @@ pub fn influence_radius(sim: &SimWorld, bits: u64) -> Option<f64> {
 }
 
 /// **A região de influência de um osso** — `(raio, origem, ponta)` em MUNDO, para o overlay.
-
 pub fn influence_region(sim: &SimWorld, bits: u64) -> Option<(f64, [f64; 2], [f64; 2])> {
     let r = influence_radius(sim, bits)?;
     let (_, a, b) = bone_segments(sim)

@@ -129,14 +129,7 @@ fn cadeia_no_dispositivo(no: &str) -> bool {
 #[test]
 fn the_fx_group_route_only_improves() {
     /// Os que AINDA levam a cadeia para a CPU, cada um com a razão — doc 112 §3.
-    const NA_CPU: &[(&str, &str)] = &[
-        (
-            "motion.slit_scan",
-            "estado por elemento (o historico do slit)",
-        ),
-        ("motion.strobe", "estado por elemento (o envelope do flash)"),
-        ("motion.trail", "estado por elemento (o anel de ecos)"),
-    ];
+    const NA_CPU: &[(&str, &str)] = &[("motion.trail", "estado por elemento (o anel de ecos)")];
     let g = grupo();
     assert!(g.len() >= 10, "piso de populacao: {g:?}");
     for (no, razao) in NA_CPU {

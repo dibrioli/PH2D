@@ -98,6 +98,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod hash;
+mod kernel;
 use hash::rand01;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -416,6 +417,7 @@ impl NodeOp for MotionStrobe {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionStrobe))?;
+    kernel::regista(reg); // o dispositivo (ciclo 7, W1c) — ver o cabeçalho de `kernel`
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
@@ -428,8 +430,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
-    // CPU-only: o strobe lê `falloff` só no `eval` (não há kernel de GPU de onde
-    // uma `ColumnBinding` pudesse ser derivada) — declare (ADR-0155).
+    // O `falloff` declarado à mão (ADR-0155) — o kernel também o lê, e a declaração fica.
     reg.register_couplings(
         MANIFEST.id,
         &[ph2d_node_registry::Coupling::Consumes("falloff")],

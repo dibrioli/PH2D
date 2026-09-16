@@ -329,3 +329,21 @@ fn a_refusal_generates_nothing_at_all() {
         presence_signature(SIM.bindings, |_| true)
     );
 }
+
+/// ⚠️ **A identidade de uma coluna MATRIZ é do tipo dela** (ciclo 7, o anel do `motion.slit_scan`) —
+/// antes deste braço o texto era um `vec4` e o módulo de um kernel com a matriz ausente não
+/// validava. O `every_registered_kernel_validates_across_the_whole_presence_space` compila-o; este
+/// gate diz a regra: cada coluna é a identidade declarada.
+#[test]
+fn a_matrix_identity_is_a_matrix_of_the_declared_columns() {
+    assert_eq!(
+        identity_literal(Dim::Mat4, [1.0, 2.0, 3.0, 4.0]),
+        "mat4x4<f32>(vec4<f32>(1.0, 2.0, 3.0, 4.0), vec4<f32>(1.0, 2.0, 3.0, 4.0), \
+         vec4<f32>(1.0, 2.0, 3.0, 4.0), vec4<f32>(1.0, 2.0, 3.0, 4.0))"
+    );
+    assert_eq!(
+        identity_literal(Dim::Mat2, [0.0, 0.5, 9.0, 9.0]),
+        "mat2x2<f32>(vec2<f32>(0.0, 0.5), vec2<f32>(0.0, 0.5))"
+    );
+    assert!(identity_literal(Dim::Mat3, [0.0; 4]).starts_with("mat3x3<f32>(vec3<f32>("));
+}

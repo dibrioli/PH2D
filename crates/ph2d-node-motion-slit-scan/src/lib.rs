@@ -46,6 +46,7 @@ use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod kernel;
 mod ring;
 use ring::{MAX_LAG, is_slot, past, push};
 
@@ -186,6 +187,7 @@ impl NodeOp for MotionSlitScan {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionSlitScan))?;
+    kernel::regista(reg); // o dispositivo (ciclo 7, W1c) — ver o cabeçalho de `kernel`
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
@@ -196,8 +198,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
-    // diagnoser cannot derive the role from a `ColumnBinding` — declare it (ADR-0155).
+    // O `falloff` declarado à mão (ADR-0155) — o kernel também o lê, e a declaração fica.
     reg.register_couplings(
         MANIFEST.id,
         &[ph2d_node_registry::Coupling::Consumes("falloff")],

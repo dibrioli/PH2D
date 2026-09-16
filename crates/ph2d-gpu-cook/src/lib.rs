@@ -480,6 +480,7 @@ impl GpuCook {
                     (reduce_specs, &reduce_results.buffers),
                     (lut_specs, &lut_buffers),
                     shared,
+                    kernels.derived_uniforms(stage.ty),
                 );
                 self.reduce_results_hold.push(reduce_results);
                 if let Some(gb) = grid_buffers {

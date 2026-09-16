@@ -227,20 +227,91 @@ não para copiar — está escrito no doc-comment dele.
 
 ---
 
+## §4-ter — ✅ W1c (duas de três): o estroboscópio e o slit-scan vão para o dispositivo
+
+```text
+  grid 320² -> scale -> X -> output | antes            | depois
+  ----------------------------------|------------------|------------------------
+  motion.strobe                     | ⛔ CPU, 102 400   | dispositivo, 4 estágios
+  motion.strobe + pulse.beat        | ⛔ CPU, 102 400   | dispositivo, 5 estágios
+  motion.slit_scan                  | ⛔ CPU, 102 400   | dispositivo, 4 estágios
+```
+
+⇒ **9 dos 10 nós do grupo ficam no dispositivo.** Sobra o `motion.trail` (§5, W1d). E o
+estroboscópio é **o consumidor** que o ciclo 6 deixou a apontar para aqui: os nove `pulse.*`
+estavam no dispositivo sem ninguém que os lesse (doc 110 §8.6).
+
+### ⭐⭐ O substrato novo: o UNIFORM DERIVADO (`ph2d_nodegraph::gpu::DerivedUniform`)
+
+O slot de um param declarado passa a levar `derive(params)` em vez do valor cru — canal lateral
+append-only (`KernelResolver::derived_uniforms`, `NodeRegistry::register_derived_uniforms`),
+lido num sítio só (o empacotamento do uniform no `encode.rs`). A lei de contagem, a variante e a
+aplicabilidade continuam a ver o valor cru.
+
+⚠️ **Existe para a lei do kernel ser a MESMA função que a da CPU.** O estroboscópio guarda a
+DURAÇÃO do flash e multiplica o brilho, a cada tique, por `(1/255)^(1/ticks)` — um `libm::powf`.
+Portado como `pow` do WGSL, cada fabricante arredondaria à sua maneira e o erro COMPÕE-SE: ⛔ **a
+mutação que o faz MORRE** (o `pow` desta placa não dá o mesmo `f32`). Com o derivado, **o estado do
+estroboscópio é EXACTO nas duas rotas** — pior `|Δ| = 0` em 48 tiques, nos dois casos. Os clamps de
+documento (`f32::max`, que engole um `NaN`) passam pelo mesmo canal.
+
+⚠️ E o registo ficou no tecto (`lib.rs` a 698): os canais do GPU (as nove `register_*` e o `impl
+KernelResolver`) foram para um módulo irmão, `gpu_channels.rs`, **verbatim** — `lib.rs` 595.
+
+### ⭐ O slit-scan guarda o anel em MATRIZES — só no dispositivo
+
+A CPU guarda a linha de atraso em **32 colunas `vec2`**; portadas tal e qual, o passe ligaria
+**67** buffers de armazenamento (um Metal pára em 31). O dispositivo guarda o MESMO anel em
+**quatro `mat4x4`** por elemento (64 números = 32 posições): **11** ligações, a conta do
+`motion.integrate`. ⚠️ **Só é legítimo porque o estado nunca atravessa a costura** (o planeador
+recua um `pre` que viria da CPU; a descida só lê o sink). ⚠️ E pediu uma correcção no gerador: a
+identidade de uma coluna MATRIZ era um `vec4` (o módulo com o anel ausente não validava) — hoje é
+cada coluna igual à declarada, com gate. ⚠️ **Um anel AUSENTE é a pose VIVA**, não uma constante
+(o `past` da CPU re-semeia), logo o corpo ramifica no `HAS_*`.
+
+### Os gates e as provas
+
+- `gpu_cpu_parity_strobe` (adaptador real): o flash de omissão e o com FORMA (subida 3, platô 2,
+  queda 12, curva, campo, modo a `4,5`, `probability 0,6` — **1 070 pulsos recusados**). Compara as
+  TRÊS colunas do estado (exactas) e o look (`size`/`tint`, pior `2,4e-7`) tique a tique; controlo
+  de não-vazio (pico, queda, subida). **11 de 11 mutações MORTAS** (sem o derivado · o `pow` do
+  WGSL · idade ausente = 0 · pista só nos aceites · hash · curva · campo · modo · `round` do WGSL ·
+  platô/subida · alfa).
+- ⚠️⚠️ **A 1.ª redacção acusou o estroboscópio de uma divergência que era do METRÓNOMO:** a linha 200
+  no tique 9 dava `(0,15 − 0,46)/0,31 = −1` EXACTO — o fio da navalha DECLARADO do `pulse.beat`
+  (`floor` com o `playhead` em `f32`). A fixture passou a números longe dele (`0,3137`/`0,001731`) e
+  o gate **prova-o** em `f64` antes de correr (margem medida `1,49e-5`, contra `~3e-7` de erro).
+- `gpu_cpu_parity_slit_scan`: três `lag` (omissão, fraccionário com campo, acima do anel) e as
+  identidades (`0`, um elemento), comparando `P` **e o anel inteiro** (as faixas do dispositivo
+  decodificadas para as 32 posições da CPU) em 44 tiques. Pior `7,2e-5` — o ε é do
+  `motion.oscillator` a montante. **7 de 7 mutações MORTAS.**
+- A catraca da rota perdeu as duas linhas.
+
+---
+
 ## §5 — A fila do ciclo
 
 1. ✅ **W1a — o brilho passa-tudo** (§4).
 2. ✅ **W1b — os que MULTIPLICAM as linhas** (§4-bis) — os dois no dispositivo, e o
    `MAX_INSTANCES` re-medido lá (`262 144 → 3 145 728`).
-3. ⏳ **W1c — os que têm ESTADO** (`motion.strobe` · `motion.slit_scan` · `motion.trail`). O
-   `motion.strobe` é o consumidor que o ciclo 6 deixou a apontar para aqui (doc 110 §8.6: os nove
-   `pulse.*` estão no dispositivo **sem consumidor**). ⚠️ O `trail` em `Resampled` re-cozinha a
-   própria entrada em N instantes (ADR-0163) e é CPU **por desenho**; o modo `Remembered` não.
-4. ⏳ **W2 — o cartão e o alcance** — o censo do ciclo 6 sobre o grupo; confirmar o §2.3.
-5. ⏳ **W3 — o poder que falta** — as folhas 06 (animadores), 09 (cor) e 11 (fx raster) da
+3. ✅ **W1c — o estroboscópio e o slit-scan** (§4-ter).
+4. ⏳ **W1d — o `motion.trail` (modo `Remembered`)**, e é uma wave de SUBSTRATO, com o preço
+   medido: cada tique o nó é `transformar(filtrar(estado)) ++ materializar(vivo)`. ⛔ Nenhum verbo do
+   sequenciador exprime isso num estágio — o `Compact` filtra UMA porta e o `Concat` junta portas
+   cruas com ZEROS onde falta coluna, e aqui as reservadas têm identidade própria (`size`/`tint`
+   `1`, `uv_rect` o atlas inteiro). E o predicado do filtro faz uma pergunta sobre o estado INTEIRO
+   (*há algum eco na faixa `1..spacing`?* — a porta única do espaçamento), que hoje nenhum predicado
+   pode fazer (o `encode_compact` não lhe passa reduções). Mais: a janela depende da CONTAGEM viva
+   (`MAX_INSTANCES / n`) e a cor é uma MATRIZ de 12 números composta por tique (`colour::compose`,
+   com trigonometria) — dois derivados que o canal de hoje não leva (ele só reescreve slots de
+   params DECLARADOS). ⚠️ O modo `Resampled` re-cozinha a própria entrada em N instantes
+   (ADR-0163) e fica CPU **por desenho** (`applicable`). E o tecto do rasto é para MEDIR no
+   dispositivo quando o kernel existir (doc-comment do `MAX_INSTANCES` dele).
+5. ⏳ **W2 — o cartão e o alcance** — o censo do ciclo 6 sobre o grupo; confirmar o §2.3.
+6. ⏳ **W3 — o poder que falta** — as folhas 06 (animadores), 09 (cor) e 11 (fx raster) da
    conferência; o `slit_scan` de um botão só (§2.4); o P2 aberto da folha 11 (a *dirt texture*).
-6. ⏳ **W4 — a MEDIÇÃO** — residência e relógio do grupo.
-7. ⏳ **W5 — a cena e o TUTORIAL** *«A cor e o rasto»* — o smoke do dono.
+7. ⏳ **W4 — a MEDIÇÃO** — residência e relógio do grupo.
+8. ⏳ **W5 — a cena e o TUTORIAL** *«A cor e o rasto»* — o smoke do dono.
 
 ⚠️ **A ordem W1 → W2 não é preferência: é a lei 1 do protocolo.** Um grupo cujo uso normal leva o
 grafo inteiro para a CPU não fecha um ciclo com «tem mais botões».

@@ -299,6 +299,9 @@ impl GpuCook {
             // nenhuma (a linha acima). Um nó que precise dele no predicado tem de o
             // pedir aqui, de propósito.
             "",
+            // Nem o uniform DERIVADO (ciclo 7), pela mesma razão: nenhum nó de compactação o
+            // declara, e um predicado que precise dele pede-o aqui, de propósito.
+            &[],
         );
         let Some(flags) = pred_out.cols.get(KEEP_FLAG_COL).map(|c| c.buffer.clone()) else {
             // A predicate that does not write the flag is an authoring bug in the

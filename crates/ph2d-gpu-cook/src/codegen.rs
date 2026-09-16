@@ -66,9 +66,26 @@ pub fn wgsl_type(dim: Dim) -> &'static str {
 
 /// A WGSL literal for `identity`'s first `dim`-many lanes. Shared with the
 /// reduce map pass, whose absent-column form folds exactly this constant.
+///
+/// ⚠️ **Uma MATRIZ é um estado só do dispositivo** (ciclo 7 — o anel do `motion.slit_scan`: 32
+/// posições por elemento em quatro `mat4x4`, onde 32 colunas `vec2` pediriam 67 ligações). A
+/// identidade dela é **cada coluna igual à declarada** — a regra uniforme para um `[f32; 4]` —, e
+/// um kernel que precise de outro valor ausente ramifica no `HAS_<col>`. Antes deste braço o texto
+/// era um `vec4` onde o tipo pedia `mat4x4`, e o módulo não validava.
 pub fn identity_literal(dim: Dim, identity: [f32; 4]) -> String {
     let lane = |v: f32| format!("{v:?}");
+    let colunas = |k: usize, lanes: usize| {
+        let col = identity[..lanes]
+            .iter()
+            .map(|&v| lane(v))
+            .collect::<Vec<_>>()
+            .join(", ");
+        vec![format!("vec{lanes}<f32>({col})"); k].join(", ")
+    };
     match dim {
+        Dim::Mat2 => format!("mat2x2<f32>({})", colunas(2, 2)),
+        Dim::Mat3 => format!("mat3x3<f32>({})", colunas(3, 3)),
+        Dim::Mat4 => format!("mat4x4<f32>({})", colunas(4, 4)),
         Dim::Scalar => lane(identity[0]),
         Dim::Vec2 => format!("vec2<f32>({}, {})", lane(identity[0]), lane(identity[1])),
         Dim::Vec3 => format!(

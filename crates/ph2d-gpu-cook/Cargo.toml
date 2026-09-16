@@ -78,6 +78,9 @@ ph2d-node-motion-kaleidoscope = { path = "../ph2d-node-motion-kaleidoscope" }
 # Ciclo 7 (doc 112): os nós de aparência que MULTIPLICAM as linhas, cozidos nos dois caminhos.
 ph2d-node-fx-rgb-split = { path = "../ph2d-node-fx-rgb-split" }
 ph2d-node-fx-drop-shadow = { path = "../ph2d-node-fx-drop-shadow" }
+# Ciclo 7 W1c: o consumidor dos `pulse.*`, com o estado a atravessar o `pre` no dispositivo.
+ph2d-node-motion-strobe = { path = "../ph2d-node-motion-strobe" }
+ph2d-node-motion-slit-scan = { path = "../ph2d-node-motion-slit-scan" }
 # An OBJECT source — a CPU-only boundary that carries `texture_id`. The
 # texture-id parity gate feeds it a manual boundary stream (it can't run
 # headless: its eval reads the host texture store) to prove the device lowering

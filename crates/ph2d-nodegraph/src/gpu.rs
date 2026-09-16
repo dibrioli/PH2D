@@ -366,6 +366,34 @@ pub struct LutSpec {
     pub fill: fn(&str, &mut [f32]),
 }
 
+/// ⭐ **UM UNIFORM DERIVADO NO HOSPEDEIRO** (ciclo 7, doc 112 — o `motion.strobe`): o slot de um
+/// param DECLARADO passa a levar `derive(params)` em vez do valor cru do artista.
+///
+/// ⚠️ **Existe para a lei do kernel ser a MESMA função que a da CPU, e não uma cópia em WGSL.** O
+/// `motion.strobe` guarda a DURAÇÃO do flash (`decay`, em ticks) e a recorrência multiplica o
+/// brilho por `(1/255)^(1/ticks)` — um `powf` da `libm`. Portá-lo como `pow` do WGSL poria uma
+/// função transcendental no dispositivo (HR-5: cada fabricante arredonda à sua maneira) e o erro
+/// COMPÕE-SE a cada tick; derivado aqui, o dispositivo multiplica pelo MESMO `f32` e a recorrência
+/// sai igual ao bit. E serve os clamps que a CPU faz com `f32::max` (que engole um `NaN`) sem a
+/// dança de guardas que um `max` do WGSL — definido pela implementação num `NaN` — pediria.
+///
+/// ⚠️ **O slot é o de um param que o manifesto DECLARA** (o planeador recusa um nome que ele não
+/// declare), e só o UNIFORM muda: a lei de contagem, a variante e a aplicabilidade continuam a ler
+/// o valor cru — são perguntas sobre o que o artista pediu, não sobre o que o corpo multiplica.
+///
+/// Dados puros e `'static`, canal lateral como o [`LutSpec`]: um kernel que não declare nenhum não
+/// muda um byte.
+#[derive(Copy, Clone, Debug)]
+pub struct DerivedUniform {
+    /// O param declarado cujo slot do uniform recebe o valor derivado.
+    pub param: &'static str,
+    /// A derivação, sobre o leitor de params cru do nó (o mesmo `resolve_param` do resto).
+    pub derive: DeriveFn,
+}
+
+/// A assinatura de uma [`DerivedUniform`] — o molde do [`VariantFn`].
+pub type DeriveFn = fn(&dyn Fn(&str) -> f32) -> f32;
+
 /// Resolves a node type id to its registered GPU kernel — the side-channel
 /// mirror of [`crate::cook::OpResolver`], implemented by the node registry.
 /// Kept as a trait so the GPU sequencer is decoupled from the registry crate
@@ -447,6 +475,12 @@ pub trait KernelResolver {
     /// [`Self::reduces`]: "declares no LUT" and "declares an empty list" are one
     /// fact, so one representation means no site handles both.
     fn luts(&self, _ty: NodeTypeId) -> &'static [LutSpec] {
+        &[]
+    }
+
+    /// Os params cujo slot do uniform é DERIVADO no hospedeiro ([`DerivedUniform`]). Vazio por
+    /// omissão, pela mesma razão que [`Self::luts`].
+    fn derived_uniforms(&self, _ty: NodeTypeId) -> &'static [DerivedUniform] {
         &[]
     }
 

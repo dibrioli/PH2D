@@ -157,6 +157,11 @@ pub(super) const INTERNAL: &[&str] = &[
     // entrega. Quem quiser conduzir a célula liga um `value.*` à **porta** `cell` do
     // `motion.sub_uv`, que fala em índices.
     "uv_cell",
+    // ⚠️ **O anel do `motion.slit_scan` NO DISPOSITIVO** (ciclo 7, doc 112 §4-ter) — quatro
+    // `mat4x4` que guardam 32 posições por elemento. É estado da rota do dispositivo e nunca
+    // chega ao stream da CPU que este picker lista; e mesmo que chegasse, uma matriz de faixas
+    // não é um número em que o artista pense. A linha de atraso DELE é o `lag`.
+    "ss_ring0", "ss_ring1", "ss_ring2", "ss_ring3",
 ];
 
 fn keep_extra_columns<'a>(

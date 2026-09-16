@@ -385,3 +385,7 @@ placa com o smoke de outra linha, load `~12`):
   `select(0, 1, x > y)`: **um** `select` e **uma** relação. Exige um *peephole* entre dois `let`.
 ⇒ o A/B tem de medir o **quadro** do vaso (o mínimo de N corridas, com a carga ao lado) antes e
 depois, e só entra com o número. *A contagem de operações não é um perfil* (a lição da W147).
+
+
+⏸️ **ADIADO por ordem do dono (16/09)** junto com as outras três pendências de placa — a lista está no
+[§13.0 do doc 06 do modelador](../3DModeling/06_resultados_cena_e_gizmo.md), que é a lista viva.

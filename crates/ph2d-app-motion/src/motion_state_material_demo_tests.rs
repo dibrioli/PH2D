@@ -433,16 +433,22 @@ fn every_ball_of_the_third_row_starts_inside_its_bowl() {
     }
 }
 
-/// ⭐⭐⭐ **A FAIXA NOVA CHEGA AO PRODUTO** — ordem do dono (2026-09-13: *«quero mais capacidade de
-/// Bounciness — de zero até o dobro do máximo atual»*): no tecto a bola sobe MUITO mais do que no
-/// `1` que era o tecto antigo.
+/// ⭐⭐⭐ **A FAIXA DO SALTO CHEGA AO PRODUTO, DE PONTA A PONTA** — quanto mais salto, mais alto a
+/// bola volta, e o tecto entrega o máximo.
 ///
-/// ⚠️ **A escada tem TRÊS degraus e não dois**: com dois, uma lei que saturasse em `1` passaria o
-/// gate se o degrau de baixo fosse `0`. Os três exigem que o de cima seja estritamente mais alto
-/// que o do meio, que é onde a faixa antiga acabava.
+/// ⚠️ **A escada tem TRÊS degraus e não dois**: com dois, uma lei que saturasse a meio passaria o
+/// gate se o degrau de baixo fosse `0`. Os três exigem que cada um seja estritamente mais alto que
+/// o anterior.
+///
+/// ⚠️⚠️ **Os degraus derivam do [`ph2d_nodegraph::attr::BOUNCE_MAX`], nunca de literais.** A 1.ª
+/// redacção era `[0, 1, BOUNCE_MAX]` — ela media *«o tecto novo passa do antigo»* quando o tecto
+/// era `2`, e no dia em que o dono o reverteu para `1` (2026-09-15) os dois degraus de cima
+/// **colapsaram no mesmo número** e o gate passou a exigir que uma altura fosse maior que ela
+/// própria. *Uma escada escrita com o valor de ontem mede o produto de ontem.*
 #[test]
 fn the_bounce_reaches_the_new_ceiling_in_the_scene() {
-    let alturas: Vec<f32> = [0.0_f32, 1.0, ph2d_nodegraph::attr::BOUNCE_MAX]
+    let tecto = ph2d_nodegraph::attr::BOUNCE_MAX;
+    let alturas: Vec<f32> = [0.0_f32, tecto * 0.75, tecto]
         .into_iter()
         .map(|e| {
             corre(2.0, |state, formas| {
@@ -455,19 +461,23 @@ fn the_bounce_reaches_the_new_ceiling_in_the_scene() {
         })
         .collect();
     eprintln!(
-        "  faixa do salto │ 0 → {:.3} · 1 → {:.3} · {} → {:.3}",
+        "  faixa do salto │ 0 → {:.3} · {:.2} → {:.3} · {tecto} → {:.3}",
         alturas[0],
+        tecto * 0.75,
         alturas[1],
-        ph2d_nodegraph::attr::BOUNCE_MAX,
         alturas[2]
     );
     assert!(
         alturas[0] < alturas[1] && alturas[1] < alturas[2],
         "a altura tem de subir com o salto, monotonamente: {alturas:?}"
     );
+    // ⭐ E a faixa chega ao produto de PONTA A PONTA: o tecto devolve o DOBRO do que o zero dá.
+    // ⚠️ A barra é contra o `0`, e não contra o degrau do meio: numa faixa de `0..1` a resposta
+    // satura perto do topo (medido: `0,9 → 0,572` e `1,0 → 0,510`), e exigir margem ali mediria a
+    // saturação em vez da faixa.
     assert!(
-        alturas[2] > alturas[1] + 0.5,
-        "no tecto novo a bola tem de subir MUITO mais do que no tecto antigo: {alturas:?}"
+        alturas[2] > alturas[0] * 2.0,
+        "o tecto tem de devolver o dobro do que o zero da': {alturas:?}"
     );
 }
 

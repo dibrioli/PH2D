@@ -154,8 +154,19 @@ pub const BOUNCE_COLUMN: &str = "bounce";
 /// resistir** — ali não há nada que este número possa travar, e isso é o mesmo vão já nomeado.
 pub const ROLLING_COLUMN: &str = "rolling";
 
-/// ⭐⭐⭐ **O TECTO DO SALTO, e ele é o DOBRO do de todo motor** — ordem do dono (2026-09-13:
-/// *«quero mais capacidade de Bounciness — de zero até o dobro do máximo atual»*).
+/// ⭐⭐⭐ **O TECTO DO SALTO é `1`, o de todo motor — ordem do dono (2026-09-15: *«Limite Bounciness
+/// para máximo de 1»*), que REVERTE a dele própria de 2026-09-13.**
+///
+/// ⚠️⚠️ **A medição que abriu a faixa para `2` continua VÁLIDA e está abaixo, intacta** — ela
+/// respondia *«o que acontece acima de `1`?»* e a resposta (*sobe cada vez mais, tudo finito, nada
+/// atravessa o chão*) não mudou. ⛔ *O que mudou foi o VEREDITO DE PRODUTO, e ele não precisa de
+/// desmentir a medição para valer:* o dono viu a faixa aberta no app e decidiu que a não quer.
+/// A tabela fica porque, no dia em que alguém a quiser reabrir, ela é o que poupa a medição toda.
+///
+/// ---
+///
+/// **A medição de 2026-09-13**, que shipou o `2` (ordem de então: *«quero mais capacidade de
+/// Bounciness — de zero até o dobro do máximo atual»*).
 ///
 /// ⚠️⚠️ **A frase que segurava o `1` nunca tinha sido MEDIDA neste solver.** Ela vive no
 /// `sim.collide` desde que ele existe — *«uma batida que devolve mais do que levou é uma máquina
@@ -170,7 +181,7 @@ pub const ROLLING_COLUMN: &str = "rolling";
 /// fiável. ⛔ Isso é propriedade do INTEGRADOR e não deste número — a cura que já existe é o
 /// `Speed Limit` do `sim.step`. Numa cena em LAÇO o problema não nasce (a `=115` a `2,00` fica em
 /// pico `3,2`). Tabela inteira: `docs/Motion Nodes/109_o_colisor_na_forma.md` §7.8.
-pub const BOUNCE_MAX: f32 = 2.0;
+pub const BOUNCE_MAX: f32 = 1.0;
 
 /// O tecto do [`FRICTION_COLUMN`]. `1` é a lixa de todo motor, e subi-lo não compra nada: o
 /// impulso tangencial já está limitado por Coulomb ao que a normal aguenta.

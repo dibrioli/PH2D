@@ -821,20 +821,73 @@ fn the_rolling_split_gives_the_spin_twice_the_slide() {
     );
 }
 
-/// ⛔ **UM MATERIAL LISO NÃO MUDA UM BIT** — a lei de antes do §7 sobrevive termo a termo, e é
-/// isso que deixa esta metade nascer sem migração nenhuma.
+/// ⛔ **UM MATERIAL LISO NÃO MUDA UM BIT** — declarar gelo morto é o mesmo que não declarar
+/// material nenhum, e é isso que deixa uma corrente sem as colunas passar intocada.
+///
+/// ⚠️⚠️ **O SUJEITO deste gate mudou em 2026-09-15** (doc 111 §8). Ele comparava *«com material»*
+/// contra *«sem material»* usando DOIS arneses diferentes — e desde que o contacto passou a ter um
+/// impulso de velocidade, o arnês sem material também deixou de lhe dar VELOCIDADE. *Ele comparava
+/// duas tubagens, não dois materiais.* Hoje as duas metades correm as mesmas portas com as mesmas
+/// entradas, e a ÚNICA diferença é o `deslize` estar declarado ou ausente.
 #[test]
 fn an_icy_material_changes_nothing_to_the_bit() {
     let (p0, c, w) = nuvem(200);
+    let n = p0.len();
+    let inv = inercias(&c, &w);
     let antes: Vec<[f32; 2]> = p0.iter().map(|q| [q[0] - 0.03, q[1] + 0.02]).collect();
-    let (mut com, mut sem) = (p0.clone(), p0.clone());
-    let (g_com, salto) = corre_com_atrito(&mut com, &antes, &c, &w, Material::LISO);
-    let g_sem = corre_girando(&mut sem, &c, &w);
-    assert!(salto.iter().all(|s| *s == 0.0), "gelo morto nao salta");
-    for i in 0..p0.len() {
+    let girou = vec![0.0; n];
+    let material = vec![Material::LISO; n];
+    let corre = |deslize: Option<Deslize<'_>>| -> (Vec<[f32; 2]>, Vec<f32>, Vec<f32>) {
+        let mut p = p0.clone();
+        let (mut giro, mut salto) = (vec![0.0; n], vec![0.0; n]);
+        let pecas = Pecas {
+            colisores: &c,
+            pesos: &w,
+            inv_inercia: &inv,
+            deslize,
+        };
+        let antes_do_passo = p.clone();
+        separate(
+            &mut p,
+            &mut Saida {
+                giro: &mut giro,
+                salto: &mut salto,
+            },
+            &pecas,
+            8,
+        );
+        let mut vel: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                [
+                    (p0[i][0] - antes[i][0]) / DT_ARNES,
+                    (p0[i][1] - antes[i][1]) / DT_ARNES,
+                ]
+            })
+            .collect();
+        let mut dspin = vec![0.0; n];
+        impulsos(&antes_do_passo, &mut vel, &mut dspin, &pecas, |_| DT_ARNES);
+        (p, giro, dspin)
+    };
+    let (com, g_com, s_com) = corre(Some(Deslize {
+        antes: &antes,
+        girou_antes: &girou,
+        material: &material,
+    }));
+    let (sem, g_sem, s_sem) = corre(None);
+    for i in 0..n {
         assert_eq!(
-            (com[i][0].to_bits(), com[i][1].to_bits(), g_com[i].to_bits()),
-            (sem[i][0].to_bits(), sem[i][1].to_bits(), g_sem[i].to_bits()),
+            (
+                com[i][0].to_bits(),
+                com[i][1].to_bits(),
+                g_com[i].to_bits(),
+                s_com[i].to_bits()
+            ),
+            (
+                sem[i][0].to_bits(),
+                sem[i][1].to_bits(),
+                g_sem[i].to_bits(),
+                s_sem[i].to_bits()
+            ),
             "peca {i}"
         );
     }
@@ -960,18 +1013,23 @@ fn a_spinning_disc_rubs_against_the_floor_even_standing_still() {
     assert_eq!(parada[1].to_bits(), 0.0_f32.to_bits(), "{}", parada[1]);
 }
 
-/// ⭐⭐⭐ **O SALTO VAI AO DOBRO, E O ATRITO NÃO** — ordem do dono (2026-09-13: *«quero mais
-/// capacidade de Bounciness — de zero até o dobro do máximo atual»*).
+/// ⭐⭐⭐ **O SALTO E O ATRITO PARAM AMBOS EM `1`** — ordem do dono (2026-09-15: *«Limite Bounciness
+/// para máximo de 1»*), que REVERTE a dele própria de 2026-09-13 (*«quero mais capacidade de
+/// Bounciness — de zero até o dobro do máximo atual»*).
 ///
-/// ⚠️ **O atrito é o CONTROLO desta mudança:** sem ele, alargar «o tecto do material» teria
-/// alargado os dois, e o gate ficaria verde sobre uma faixa que ninguém pediu. Um coeficiente de
-/// Coulomb acima de `1` não compra nada — o impulso tangencial já está limitado ao que a normal
-/// aguenta.
+/// ⚠️ **A medição que abriu a faixa para `2` continua válida e está no
+/// [`ph2d_nodegraph::attr::BOUNCE_MAX`], intacta** — ela respondia *«o que acontece acima de 1?»* e
+/// a resposta não mudou. *O que mudou foi o veredito de PRODUTO, e ele não precisa de desmentir a
+/// medição para valer.*
+///
+/// ⚠️ **O atrito continua a ser o CONTROLO:** os dois tectos são agora o mesmo número, e é o gate
+/// que impede que alguém os leia como uma coisa só — eles param em `1` por motivos diferentes
+/// (o salto por decisão do dono, o atrito porque acima de `1` Coulomb não compra nada).
 #[test]
-fn the_bounce_reaches_twice_the_old_ceiling_and_the_friction_does_not() {
+fn the_bounce_and_the_friction_both_stop_at_one() {
     use ph2d_nodegraph::attr::{BOUNCE_MAX, FRICTION_MAX};
-    assert_eq!(BOUNCE_MAX, 2.0, "o dobro do `1` de todo motor");
-    assert_eq!(FRICTION_MAX, 1.0, "e o atrito fica onde estava");
+    assert_eq!(BOUNCE_MAX, 1.0, "o tecto do salto, por ordem do dono");
+    assert_eq!(FRICTION_MAX, 1.0, "e o atrito fica onde sempre esteve");
     let s = Stream::new(3)
         .with(
             ph2d_nodegraph::attr::FRICTION_COLUMN,
@@ -982,13 +1040,17 @@ fn the_bounce_reaches_twice_the_old_ceiling_and_the_friction_does_not() {
             Column::Scalar(vec![2.0, 5.0, -1.0]),
         );
     let m = materiais(&s).expect("declarou");
-    assert_eq!(m[0].salto, 2.0, "o dobro e' autorável");
+    // ⚠️ O `2,0` autorado COAGE agora para `1,0` — era o tecto de ontem e é o dobro do de hoje.
+    assert_eq!(
+        m[0].salto, BOUNCE_MAX,
+        "o que era o tecto de ontem COAGE hoje"
+    );
     assert_eq!(m[1].salto, BOUNCE_MAX, "acima do tecto, COAGE");
     assert_eq!(m[1].atrito, FRICTION_MAX, "e o atrito coage no dele");
     assert_eq!(m[2].salto, 0.0, "um negativo nao e' um pedido");
     assert_eq!(m[2].atrito, 0.0, "nem um infinito");
     // E o PAR: o maior dos dois, coagido pelo mesmo tecto.
-    assert_eq!(super::atrito::salto(2.0, 0.0), 2.0);
+    assert_eq!(super::atrito::salto(0.5, 0.0), 0.5);
     assert_eq!(super::atrito::salto(9.0, 0.0), BOUNCE_MAX);
 }
 

@@ -575,3 +575,99 @@ fn probe_auditoria_do_rolamento() {
         eprintln!("  {mu:>4.2} | {v:>8.4} | {wr:>8.4} | {rola_bem:>15}");
     }
 }
+
+/// SONDA — uma caixa atingida FORA DO CENTRO continua a rodar depois de o contacto acabar?
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_a_caixa_atingida_continua_a_rodar() {
+    use ph2d_nodegraph::attr::FRICTION_COLUMN;
+    const L: f32 = 0.11;
+    // 0 = o projéctil, a vir da esquerda; 1 = o alvo, parado e DESALINHADO em y (o embate e' fora
+    // do centro dele, logo tem de o fazer girar).
+    let mut p = vec![[-0.30_f32, 0.0], [0.0, 1.5 * L]];
+    let mut v = vec![[1.0_f32, 0.0], [0.0, 0.0]];
+    let mut rot = vec![0.0_f32, 0.0];
+    // ⚠️ O `spin` TEM de voltar ao tique seguinte — sem ele a sonda mede um programa em que a
+    // velocidade angular é deitada fora a cada quadro, que é exactamente o defeito a testar.
+    let mut spin = vec![0.0_f32, 0.0];
+    eprintln!("\n  tique |  rot do alvo | Δrot   |  spin do alvo | dist | em contacto?");
+    eprintln!("  ------|--------------|--------|--------------------|-------------");
+    for k in 0..40 {
+        let antes = rot[1];
+        let s = Stream::new(2)
+            .with("P", Column::Vec2(p.clone()))
+            .with("vel", Column::Vec2(v.clone()))
+            .with("rot", Column::Scalar(rot.clone()))
+            .with(crate::SPIN, Column::Scalar(spin.clone()))
+            .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
+            .with(FRICTION_COLUMN, Column::Scalar(vec![1.0, 1.0]))
+            .with(COLLIDER_BOX_COLUMN, Column::Vec2(vec![[L, L], [L, L]]));
+        let out = step(&s, DT, 1.0, 0.0, 0.0, 1.0);
+        p = col(&out, "P");
+        v = col(&out, "vel");
+        if let Some(Column::Scalar(r)) = out.get("rot") {
+            rot = r.clone();
+        }
+        if let Some(Column::Scalar(sp)) = out.get(crate::SPIN) {
+            spin = sp.clone();
+        }
+        let d = (p[1][0] - p[0][0]).hypot(p[1][1] - p[0][1]);
+        let toca = if d < 2.0 * L * 1.45 { "SIM" } else { "-" };
+        if k % 4 == 0 || (rot[1] - antes).abs() > 1e-4 {
+            eprintln!(
+                "  {k:>5} | {:>11.4}° | {:>6.4} | {:>12.4} | {d:>4.2} | {toca:>11}",
+                rot[1],
+                rot[1] - antes,
+                spin[1]
+            );
+        }
+    }
+    eprintln!(
+        "\n  ⚠️ se o Δrot voltar a ZERO assim que elas se separam, a peca NAO TEM velocidade"
+    );
+    eprintln!("     angular: ela roda enquanto toca e para no ar (doc 109 §6).");
+}
+
+/// SONDA — uma caixa a GIRAR pousada num chao fixo: o atrito trava-lhe o giro?
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_o_atrito_trava_o_giro() {
+    use crate::SPIN;
+    use ph2d_nodegraph::attr::FRICTION_COLUMN;
+    const L: f32 = 0.11;
+    for mu in [0.0_f32, 0.5, 1.0] {
+        let mut p = vec![[0.0_f32, -0.5], [0.0, L]];
+        let mut v = vec![[0.0_f32, 0.0], [0.0, 0.0]];
+        let mut rot = vec![0.0_f32, 0.0];
+        let mut spin = vec![0.0_f32, 180.0]; // meia volta por segundo
+        let s0 = spin[1];
+        for _ in 0..(30 * 8) {
+            let s = Stream::new(2)
+                .with("P", Column::Vec2(p.clone()))
+                .with("vel", Column::Vec2(v.clone()))
+                .with("rot", Column::Scalar(rot.clone()))
+                .with(SPIN, Column::Scalar(spin.clone()))
+                .with("accel", Column::Vec2(vec![[0.0, -4.0], [0.0, -4.0]]))
+                .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
+                .with("inv_mass", Column::Scalar(vec![0.0, 1.0]))
+                .with(FRICTION_COLUMN, Column::Scalar(vec![mu, mu]))
+                .with(COLLIDER_BOX_COLUMN, Column::Vec2(vec![[4.0, 0.5], [L, L]]));
+            let out = step(&s, DT / 8.0, 1.0, 0.0, 0.0, 1.0);
+            p = col(&out, "P");
+            v = col(&out, "vel");
+            if let Some(Column::Scalar(r)) = out.get("rot") {
+                rot = r.clone();
+            }
+            if let Some(Column::Scalar(sp)) = out.get(SPIN) {
+                spin = sp.clone();
+            }
+        }
+        eprintln!(
+            "  μ = {mu:>4.2} : spin {s0:>6.1} °/s -> {:>8.2} °/s apos 0,5 s  (deslocou-se {:.3})",
+            spin[1], p[1][0]
+        );
+    }
+    eprintln!(
+        "\n  ⚠️ se o spin nao descer com μ, o atrito nao ve' a rotacao e a pilha gira para sempre."
+    );
+}

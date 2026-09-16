@@ -645,13 +645,15 @@ fn a_resting_sized_particle_does_not_jitter_either() {
     );
 }
 
-/// ⭐⭐⭐ **O `Bounce` DO OBSTÁCULO chega ao MESMO tecto que o da peça** (doc 109 §7.9 — ordem do
-/// dono, 2026-09-13). O corte vivia no `eval` (`clamp(0, 1)`) e o do cartão da forma tinha subido
-/// para `2`: **os dois números encontram-se no mesmo campo** (`Resposta::salto`, por `max`), logo
-/// o artista via o mesmo deslizante parar a meio do curso ou não consoante o lado em que tocasse.
+/// ⭐⭐⭐ **O `Bounce` DO OBSTÁCULO tem o MESMO tecto que o da peça** (doc 109 §7.9). Os dois
+/// números encontram-se no mesmo campo (`Resposta::salto`, por `max`), logo um tecto diferente em
+/// cada lado faria o artista ver o mesmo deslizante parar a meio do curso ou não consoante o lado
+/// em que tocasse.
 ///
-/// ⚠️ A régua é o PRODUTO e não a constante: uma peça largada tem de voltar **acima de onde
-/// partiu**, que é o que passar de `1` quer dizer — e o controlo a `1,00` não passa.
+/// ⚠️⚠️ **O NÚMERO mudou em 2026-09-15 e a PROPRIEDADE não** — ordem do dono (*«Limite Bounciness
+/// para máximo de 1»*), que reverte a dele de 2026-09-13. A régua continua a ser o PRODUTO e não a
+/// constante: *o que se pede acima do tecto tem de dar exactamente o mesmo que o tecto*, dos dois
+/// lados. ⛔ Um gate que só lesse `BOUNCE_MAX` não veria um `clamp` esquecido no `eval`.
 #[test]
 fn the_obstacle_bounce_reaches_the_same_ceiling_as_the_piece() {
     fn pico(rest: f32) -> f32 {
@@ -686,25 +688,39 @@ fn the_obstacle_bounce_reaches_the_same_ceiling_as_the_piece() {
             .expect("wire");
         }
         let mut cook = Cook::new();
+        // ⚠️⚠️ **A altura do RESSALTO, não a altura máxima absoluta.** A peça parte do topo e cai,
+        // logo o máximo absoluto é a PARTIDA — com o tecto do salto em `1` nada sobe acima dela, e
+        // a régua velha saturava em `0` para todo valor. *Uma régua que satura não distingue nada.*
+        // A grandeza é o pico DEPOIS de ela ter chegado ao chão.
         let mut alto = f32::MIN;
+        let mut tocou = false;
         for k in 0..600u64 {
             let t = k as f64 / 60.0;
             let out = cook.cook(&g, &reg, zone, t).expect("cozinha");
             if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
-                alto = alto.max(p.iter().map(|q| q[1]).fold(f32::MIN, f32::max));
+                let y = p.iter().map(|q| q[1]).fold(f32::MIN, f32::max);
+                if y < -1.9 {
+                    tocou = true;
+                }
+                if tocou {
+                    alto = alto.max(y);
+                }
             }
             cook.advance_tick(&g, &reg, t).expect("tique");
         }
-        alto
+        // Medida a partir do CHÃO (`height = −2`), para o número ser a altura do ressalto.
+        alto + 2.0
     }
-    let (um, dois) = (pico(1.0), pico(2.0));
+    let (morto, tecto, alem) = (pico(0.0), pico(1.0), pico(2.0));
+    // ⭐ O controlo: sem salto a peça não volta a subir.
     assert!(
-        um < 0.05,
-        "o controlo: a `1,00` a peça não passa de onde partiu, e leu {um}"
+        morto < tecto * 0.5,
+        "o controlo: a `0,00` a peça não ressalta, e leu {morto} contra {tecto}"
     );
+    // ⭐⭐ E o que importa: pedir ACIMA do tecto dá exactamente o tecto — é isso que prova que os
+    // dois lados coagem no mesmo número.
     assert!(
-        dois > 1.0,
-        "a `2,00` o obstáculo tem de devolver mais do que levou e a peça subir acima da partida \
-         -- leu {dois}, que é o corte de `1` a comer o resto do curso"
+        (alem - tecto).abs() < 1e-3,
+        "acima do tecto o obstáculo tem de dar o MESMO que no tecto: {alem} contra {tecto}"
     );
 }

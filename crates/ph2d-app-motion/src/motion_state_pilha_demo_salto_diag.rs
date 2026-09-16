@@ -370,3 +370,83 @@ fn probe_auditoria_do_atrito_na_cena() {
     }
     eprintln!("\n  ⚠️ se as quatro linhas forem iguais, o botao NAO CHEGA ao motor.");
 }
+
+/// **SONDA — POR QUE É QUE UMAS CAIXAS RODAM E OUTRAS NÃO?** (8.º report do dono, 2026-09-15:
+/// *«enquanto umas caixas rotacionam correctamente com as colisões de umas com as outras, outras
+/// caixas parecem não rotacionar»*.)
+///
+/// ⚠️ As réguas desta cena medem o pior ou o mediano; nenhuma olha **peça a peça**. Esta imprime
+/// uma linha por caixa, com o que poderia explicar a diferença ao lado: quantos contactos ela tem,
+/// onde está, e se a inércia inversa dela é sequer diferente de zero.
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_quem_roda_e_quem_nao -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_quem_roda_e_quem_nao() {
+    let (mut state, sink) = super::obra::com_substeps_arrasto_atrito(0.0, 8, None, None);
+    let serie = marcha(&mut state, sink, 174);
+    let n = serie.last().map_or(0, |(r, _)| r.len());
+    assert!(n >= 20, "piso de populacao: leu {n}");
+    let s = super::salto_diag::stream_final(8, 0.0, 174).expect("o stream final");
+    let cols = ph2d_contact::colisores(&s);
+    // ⚠️ A `inv_inertia` DERIVA-SE da forma quando a coluna está ausente (que é o caso desta cena):
+    // lê-la da corrente devolvia `NaN` e não dizia nada. A porta é a mesma do produto.
+    let pesos: Vec<f32> = match s.get("inv_mass") {
+        Some(Column::Scalar(v)) if v.len() == n => v.clone(),
+        _ => vec![1.0; n],
+    };
+    let inv = cols.as_ref().map_or_else(
+        || vec![f32::NAN; n],
+        |c| ph2d_contact::inv_inercias(&s, c, &pesos),
+    );
+    let (rot0, p0) = (&serie[0].0, &serie[0].1);
+    let (rotf, pf) = serie.last().map(|(r, p)| (r, p)).expect("fim");
+    // Quantos vizinhos cada peça toca no fim.
+    let vizinhos = |i: usize| -> usize {
+        cols.as_ref().map_or(0, |c| {
+            (0..n)
+                .filter(|j| {
+                    *j != i
+                        && match (c[i], c[*j]) {
+                            (Some(a), Some(b)) => ph2d_contact::contato(
+                                &a,
+                                pf[i],
+                                &b,
+                                pf[*j],
+                                (i + *j).is_multiple_of(2),
+                            )
+                            .is_some(),
+                            _ => false,
+                        }
+                })
+                .count()
+        })
+    };
+    let mut linhas: Vec<(f32, usize, f32, f32, usize, f32)> = (0..n)
+        .map(|i| {
+            let girou = (rotf[i] - rot0.get(i).copied().unwrap_or(0.0)).abs();
+            let andou = (pf[i][0] - p0[i][0]).hypot(pf[i][1] - p0[i][1]);
+            (
+                girou,
+                i,
+                pf[i][1],
+                andou,
+                vizinhos(i),
+                inv.get(i).copied().unwrap_or(f32::NAN),
+            )
+        })
+        .collect();
+    linhas.sort_by(|a, b| a.0.total_cmp(&b.0));
+    eprintln!("\n    girou    |peca|    y    | andou | vizinhos | inv_inercia");
+    eprintln!("  ----------|----|---------|-------|----------|------------");
+    for (g, i, y, a, v, ii) in &linhas {
+        eprintln!("  {g:>9.6}° | {i:>2} | {y:>7.3} | {a:>5.3} | {v:>8} | {ii:>11.2}");
+    }
+    let quietas = linhas.iter().filter(|l| l.0 < 1.0).count();
+    eprintln!("\n  {quietas} de {n} rodaram menos de 1° em toda a queda.");
+    eprintln!(
+        "  ⚠️ se a `inv_inercia` for igual em todas, a diferenca NAO e' o botao Lock Rotation."
+    );
+}

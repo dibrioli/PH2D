@@ -1013,3 +1013,82 @@ espec própria.
 
 ⚠️ E o `Saida::salto` deixou de ter leitor no produto (o impulso lê o material directamente) — ele
 continua a ser recolhido, e é **dívida nomeada**, não um descuido.
+
+## §8 — O 8.º REPORT: o tecto do salto, e a ROTAÇÃO QUE NÃO PERSISTE
+
+> *«Está melhor. Limite Bounciness para máximo de 1. Uma coisa estranha: enquanto umas caixas
+> rotacionam correctamente com as colisões de umas com as outras, outras caixas parecem não
+> rotacionar»* — o dono, 2026-09-15.
+
+### §8.1 — ✅ O tecto do salto volta a `1`
+
+Ordem directa, feita: `BOUNCE_MAX` `2,0 → 1,0`, revertendo a ordem dele próprio de 2026-09-13.
+
+⚠️ **A medição que abriu a faixa para `2` fica INTACTA no doc-comment da constante.** Ela respondia
+*«o que acontece acima de `1`?»* e a resposta não mudou — *o que mudou foi o veredito de PRODUTO, e
+ele não precisa de desmentir a medição para valer*. A tabela fica porque, no dia em que alguém a
+quiser reabrir, ela é o que poupa a medição toda.
+
+⛔ **Quatro gates afirmavam o `2` e mudaram de número, nunca de propriedade**, e um deles ensinou
+uma lei: o `the_bounce_reaches_the_new_ceiling_in_the_scene` tinha a escada `[0, 1, BOUNCE_MAX]` —
+ela media *«o tecto novo passa do antigo»* quando o tecto era `2`, e ao reverter **os dois degraus
+de cima colapsaram no mesmo número**, deixando o gate a exigir que uma altura fosse maior que ela
+própria. ⇒ *uma escada escrita com o valor de ontem mede o produto de ontem*; hoje ela DERIVA do
+tecto. ⚠️ E a barra do topo passou a ser contra o `0`: medida, a resposta **satura** perto do
+tecto (`0,9 → 0,572` contra `1,0 → 0,510`), e exigir margem ali mediria a saturação.
+
+### §8.2 — ⭐⭐⭐ «Umas rodam, outras não»: a CAUSA está medida
+
+Uma linha por caixa na `=114` (`probe_quem_roda_e_quem_nao`): **4 de 25 rodam menos de `0,1°`** em
+toda a queda (`0,006` · `0,045` · `0,047` · `0,104`), contra `1,2°`–`4,8°` das outras — e a
+`inv_inercia` é **idêntica** nas 25 (`123,97`), logo ⛔ **não é o `Lock Rotation`**.
+
+A causa é a limitação que o doc 109 §6 declara: **não há velocidade angular.** Medida pela porta do
+produto (`probe_a_caixa_atingida_continua_a_rodar`) — uma caixa atingida FORA DO CENTRO por outra:
+
+```text
+  tique |  rot do alvo | Δrot
+      4 |      0.5341° | 0.5341    ← durante o contacto
+      8 |      0.5341° | 0.0000
+     …  |      0.5341° | 0.0000    ← 35 tiques, nunca mais
+```
+
+⇒ **ela leva um safanão de meio grau e CONGELA.** Quem fica encostado acumula rotação tique após
+tique; quem só é tocado de passagem fica com um tremor e nada mais. *É exactamente o que o olho do
+dono separou.*
+
+### §8.3 — ⛔⛔ A CURA FOI CONSTRUÍDA, MEDIDA E REVERTIDA (a 18.ª recusa medida desta linha)
+
+O impulso passou a escrever **velocidade angular** na coluna `spin` (que o `sim.step` já integra com
+o `angular_damping`), e a massa efectiva do impulso normal ganhou a alavanca (`kn = w + invI·(r×n)²`).
+⭐ **Funcionou no que o report pede:** a caixa atingida passa a girar a `142°/s` e **continua a
+girar** muito depois de se separarem.
+
+⛔ **E parte a pilha.** Medido, `substeps = 8`:
+
+| régua | antes | com velocidade angular |
+|---|---|---|
+| tremor | `0,014 .. 0,024` | **`1,000 .. 3,075`** |
+| rodopio | `0,7 .. 2,4` | **`77,5 .. 153,2`** (barra `29`) |
+
+⚠️ **E não é a duplicação com a rotação posicional:** desligá-la deixa `8,6 .. 79,0`, ainda muito
+acima da barra. ⚠️ Nem é o atrito não ver o giro: medido isolado, uma caixa a `180 °/s` num chão
+fixo trava para `−3 °/s` em `0,5 s`. *O que falha é a pilha, e a causa ainda não está nomeada.*
+
+⇒ **Revertido.** A direcção está certa e medida; ela precisa da wave que faça um monte de peças
+com velocidade angular ASSENTAR, e isso não é mais uma linha.
+
+⭐⭐ **Três achados que ficam da tentativa, e que a próxima janela não tem de pagar:**
+1. **O impulso do par age no CENTRÓIDE do manifesto, nunca num extremo.** Tomar `pontos().first()`
+   dá uma alavanca que a geometria não tem, e duas caixas iguais deixam de partilhar o choque.
+2. **A `vrel` tem de ser lida no PONTO DE CONTACTO** (`+ ω·(r×n)`), senão uma peça a girar não é
+   vista a aproximar-se.
+3. **A sonda tem de devolver o `spin` ao tique seguinte** — sem isso ela mede um programa em que a
+   velocidade angular é deitada fora a cada quadro, que é precisamente o defeito a testar. *A
+   primeira corrida leu `spin = 0,0000` sempre, e a leitura óbvia teria sido «a cura não funciona».*
+
+⏳ **ABERTO:** o mecanismo pelo qual uma pilha com velocidade angular não assenta. As duas
+hipóteses com endereço: o impulso normal a realimentar-se pelo termo `ω·(r×n)` da `vrel` (uma peça
+a girar vê-se a aproximar-se, leva impulso, gira mais), e a ausência de **atrito de rolamento** no
+contacto peça×peça (o `Material::rolar` existe e o doc 109 §7.10 declara que ele **não** alcança
+este lado).

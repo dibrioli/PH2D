@@ -355,6 +355,26 @@ em sequência, **morreu**):
   (*"auditada contra §4.2 por R em <data>"*). Sem esse atestado, a janela não
   implementa. É a única defesa contra o erro de autofiltragem de E — sem ela, I viraria
   tradutor de obra derivada **sem meio de perceber** (nunca viu o original).
+  - ⛔⛔ **O R-pré corre DUAS perguntas, e só UMA delas é o atestado — separe-as, ou a
+    janela fica fechada sobre achados que ela própria curaria ao construir.** Medido na obra
+    `blender-trim-pincel` (16/09): **duas** passagens deram **parede limpa item a item** e
+    **nenhuma** atestou, porque sobravam imprecisões de EXACTIDÃO — cada volta custou uma
+    re-emenda de E mais uma re-auditoria inteira.
+    - **(A) A PAREDE (§4.2)** é o que o atestado do cabeçalho afirma, e bloqueia por
+      natureza. **Limpa ⇒ ATESTE**, mesmo que sobrem imprecisões.
+    - **(B) A EXACTIDÃO** vai para duas gavetas, e o R **diz qual é qual**: ⛔ **BLOQUEIA**
+      só o que faz nascer **produto errado** ou **gate que não pode passar** (uma lei
+      atribuída à nossa casa que a nossa casa não tem · uma barra impossível contra a
+      tabela que a fundamenta · uma população de gate que a página não sustenta) — *esses
+      voltam ao E*; ⚠️ **ERRATA** é o que o Implementador apanha ao construir, porque o
+      número não bate (um valor com dois algarismos diferentes em duas secções · um
+      mecanismo mal explicado ao lado de uma conclusão certa · uma contagem de inventário)
+      — *fica NOMEADA no ledger, com o sítio, e a janela I corrige-a enquanto implementa*.
+    ⚠️ **Os dois achados mais caros das três passagens estavam na gaveta que bloqueia, e
+    nenhum era sobre o alvo — eram sobre NÓS**: uma lei nossa retirada cinco semanas antes
+    e ainda citada como viva, e um agrupamento pelo eixo errado que punha o pincel novo no
+    braço onde um dos controlos é **inerte**. ⇒ *a régua «isto faz nascer produto errado?»
+    é a que paga o R-pré; a régua «este algarismo bate?» paga-se sozinha ao compilar.*
 - **R-PÓS (após paridade verde):** auditoria de paridade (§5) · vassoura + revisão
   estrutural (§7) · varredura de histórico e memória (§7) · incidentes tratados ·
   fechamento do ledger (§6).
@@ -899,15 +919,39 @@ que escreveu a espec (autofiltragem não se audita). Você PODE ler
 os dois lados (o fonte por shell — o deny da linha bloqueia Read);
 NÃO escreve nem dita código de produto. Leia na skill: §3.R · §4.2
 · §7.1.
-1. Audite a espec contra o §4.2: pseudo-código espelhado, wording
-   de manual, nomes internos, tabela verbatim, organização
-   transcrita.
-2. bash scripts/cleanroom-sweep.sh <vassoura> <espec e anexos>
-3. Verde → ateste no cabeçalho da espec ("auditada contra §4.2 por
-   R-pré em <data>") e registre o PRÉ no ledger.
-CONTRATO DE RETORNO: "R-pré: verde, atestado no cabeçalho." OU
-"R-pré: N achados." + cada achado como instrução FUNCIONAL de
-reescrita — ⛔ zero trecho, zero wording, zero nome interno do alvo.
+São DUAS perguntas e só a (A) é o atestado — não as conflacione
+(medido: 2 passagens com a parede LIMPA e nenhuma atestou, por
+sobrarem imprecisões que a janela curaria ao construir).
+1. (A) A PAREDE — audite contra o §4.2: pseudo-código espelhado,
+   wording de manual, nomes internos, tabela verbatim, organização
+   transcrita, LUT no lugar da fórmula. LIMPA ⇒ ATESTE.
+2. (B) A EXACTIDÃO — confira contra o CÓDIGO toda afirmação que a
+   espec faça sobre a NOSSA casa, e re-derive os números em vez de
+   os aceitar. Classifique CADA achado e diga qual é qual:
+   ⛔ BLOQUEIA (volta ao E) = faz nascer produto errado ou gate que
+     não pode passar: lei atribuída à nossa casa que ela não tem ·
+     barra impossível contra a tabela que a fundamenta · população
+     de gate que a página não sustenta.
+   ⚠️ ERRATA (não bloqueia) = o Implementador apanha-a ao construir
+     porque o número não bate; fica NOMEADA no ledger, com o sítio.
+3. bash scripts/cleanroom-sweep.sh <vassoura> <espec e anexos>, com
+   CONTROLO POSITIVO em cada canal (nome · conteúdo · dobrado sem
+   acentos · dobrado com ênfase · de dentro de um .gz). Discrimine
+   exit 2 (uso errado) de exit 1 (achado). ⛔ Relatório de sweep em
+   ficheiro cita EM CLARO o que acusou: zona contaminada, nunca o
+   scratchpad da sessão.
+4. Parede limpa e zero BLOQUEIA → ateste no cabeçalho ("auditada
+   contra §4.2 por R-pré em <data>"), registre o PRÉ no ledger E
+   registre lá as erratas.
+⛔ Uma emenda cura o que o auditor NOMEOU: varra o documento
+INTEIRO pela pergunta da §4.3.1, nunca só os parágrafos citados no
+relatório anterior — nas duas rondas medidas, um achado substancial
+sobreviveu à 1.ª emenda por ninguém lhe ter apontado o dedo.
+CONTRATO DE RETORNO: "R-pré: verde, atestado no cabeçalho." + as
+erratas como instruções funcionais · OU "R-pré: N achados que
+BLOQUEIAM." + cada um como instrução FUNCIONAL de reescrita,
+dizendo QUAL produto errado ou QUAL gate impossível ele produz —
+⛔ zero trecho, zero wording, zero nome interno do alvo.
 ```
 
 ### MISSÃO-R-PÓS (briefing que a janela cola no subagente R-pós)

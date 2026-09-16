@@ -171,7 +171,64 @@ Auditoria §4.2 (R-pré): ⚠️ **CORRIDA em 2026-09-16** por um subagente inde
   na superfície é **maior** no sulco. Vassoura `332 → 434` (o fonte novo lido nesta missão, nas duas
   línguas, com e sem acentos, e três entradas alongadas por colidirem com nomes nossos); controlo
   dos dez canais verde antes do sweep.
-  ⏳ **R-pré sobre a 2.ª missão: PENDENTE.**
+  ✅✅ **R-PRÉ, 5.ª PASSAGEM (2026-09-16, auditor NOVO): ATESTADA — auditada contra §4.2 por R-pré
+  em 2026-09-16, 5.ª passagem. A §14 está ABERTA à janela I.** **Zero** achados bloqueiam; ficam
+  **`9` erratas** (Q1–Q9, ledger §5.ª passagem) e **uma nota de proveniência de ENTRADA**.
+  ⭐ **A PAREDE DO §4.2 ESTÁ LIMPA pela QUINTA vez, varrida pela FORMA sobre o documento INTEIRO**
+  e não só sobre a §14: os **`14`** blocos cercados (dois novos, na §14.4) são fórmula em português,
+  sem sintaxe de linguagem e sem laço — o da atenuação é a soma de sobreposição em forma fechada, que
+  é matemática do método (§4.1.2 e §4.1.11), com notação genérica; os *code spans* novos são gates,
+  fixturas e ficheiros NOSSOS; as citações `«»` novas são a frase do dono; zero prosa do alvo
+  (varrida também sem distinção de caixa); nos cabeçalhos novos as chaves são domínio em português,
+  os tokens em maiúsculas são valores de enumeração da API pública (dois novos) e os cinco nomes de
+  perfil são nomes públicos do catálogo — os dois, chave de regeneração (§4.1.13).
+  ⭐ **Sweep verde** (`434` entradas) sobre a espec, as `155` fixturas, o ledger, o INBOX e o README,
+  e verde em `--git-history` da pasta, com o controlo dos dez canais corrido PRIMEIRO; e **`0`**
+  acertos sem distinção de caixa sobre a espec, o README das fixturas, a tabela de fábrica e os `55`
+  cabeçalhos novos.
+  ⭐⭐ **Os números da §14 foram RE-DERIVADOS das fixturas, não aceites:** a planura inteira (as seis
+  do *aparar*, as três com a caneta levantada, as quatro do *achatar*, a matriz 2×2, os nossos
+  valores, as cinco ablações, as alturas médias e a inclinação `1,24°`/`0,32°`) · o determinismo e a
+  completude · o detector do passo (`6 px` inerte, `7 px` = `13 px` ao bit, amplitudes `1 : 2 : 3`) ·
+  a atenuação pela fórmula (`0,140` · `0,200` · `0,071`) e a razão medida (`0,5627`) · a tabela da
+  §14.8 **ao dígito** (desvios do cursor, contagens, o nosso centro e a nossa normal) e o `0,00057`
+  da advertência do G-5 · o G-19 (`0` e `2,98e-08`). ⭐⭐⭐ **E o G-15 foi REPRODUZIDO pela lei desta
+  página:** com o cursor lançado na superfície e a memória da normal semeada no primeiro dab — o que
+  não move nada —, a saída bate a **`1,9e-08`**; semeada no primeiro dab EFECTIVO, erra `3,0e-03` ⇒
+  a barra `1e-6` é alcançável **e** o gate discrimina o estabilizador. A coluna «nosso» da §14.2 foi
+  lida no código vivo e está certa.
+  ⚠️ **As erratas, em termos de comportamento** (o ledger guarda o sítio e os números de cada uma
+  para o R-PÓS): **Q1** o tecto «nós» da
+  §14.3 é um **instantâneo** de `b1d27f3b4` — era `1/8` da altura do **viewport activo** (não da
+  janela), havia uma pista de `200` px, e o `b5423a9df` já o trocou pela **diagonal da vista** (pista
+  de `5 000` px, sempre presa ao tecto real): leia a linha como estado datado, nunca como lei ·
+  **Q2** o G-20 não nomeia o tamanho da vista, e a
+  metade «digitável ≥ `5 000` px» é inalcançável sob um tecto derivado da vista (`2 203` px a
+  1920×1080) — se o dono o quiser, nasce com a população nomeada · **Q3** o «≈» do espaçamento esconde
+  que a casa usa `0,15 R` para todo verbo e **não tem atenuação**: o G-16 e o G-17 pedem os `7 %`
+  exactos e o factor · **Q4** a célula de `7 px` do G-16 (um salto de exactamente um passo) choca com
+  a fronteira do passo da casa, que recusa esse salto **de propósito** e tem gate a dizê-lo — mudar a
+  fronteira ou nomear a divergência, nunca calar · **Q5** a faixa da régua da planura escolhe-se pela
+  posição de **REPOUSO** (`441`); pela de saída os números mudam (a ablação lê `1,246`) · **Q6** o
+  estabilizador da normal vive **dentro** do cálculo do plano, antes do teste de direcção do traço ·
+  **Q7** a coluna «traço do corpus» da §14.6 muda **duas** coisas (a via por script **e** o cursor
+  fora do relevo) · **Q8** cabeçalhos novos: `25` de `44` com `o_que_ela_fixa` vazio; as arrastadas
+  sem a chave `cursor` (o cursor delas é o raio do rato sobre a superfície **viva**); a de um dab por
+  script diz «ida e volta» com dois pontos num sentido e não diz que o bloco `c` são os pontos
+  **pedidos** em `z = 0` (o dab cai onde a vertical por eles corta a superfície, como na família
+  `cursor_na_superficie/`); as `5` da via por script sem a chave de origem do pincel; `sup_sulco*`
+  corresponde a `lei_crista*`; a célula de `20 px` da §14.4 não tem fixtura · **Q9** a bossas lê `287`
+  na §4 (qualquer mudança) e `268` na §14.8 (limiar `1e-7`) — um gate de contagem nomeia o limiar; a
+  nota «o cursor das `11` está fora do relevo» vale para `10` (bossas está **na** superfície); e a
+  linha do G-1b ainda diz «dívida» com os traços inteiros já reproduzidos.
+  ⚠️ **Nota de ENTRADA (§5 e §1.5.3), não bloqueia:** `14` fixturas `fab_*` foram corridas com o
+  perfil do catálogo do alvo carregado como pincel. Para as `10` do *aparar*, o par `copia_*` (pincel
+  NOSSO com os valores escritos) bate a `8e-09`, abaixo do não-determinismo do próprio arrasto ⇒ a
+  saída é função só dos números publicados, que são factos (§4.1.3); as `4` do *achatar* não têm
+  esse par. ⇒ **os gates ancoram-se nas fixturas cujo cabeçalho declara pincel NOSSO** (`copia_*`,
+  `ablacao_*`, `passo_salto_*`, os `ctl_*` do traço arrastado), e a próxima regeneração (acto de E)
+  troca as `14` por corridas de pincel nosso — e escreve a chave de origem nas `5` da via por script,
+  que não a têm (Q8).
 Mapa de leitura da literatura: não há paper. A literatura pública utilizável é (a) o manual do
   alvo (factos, ⛔ nunca o wording), (b) a discussão pública de desenho no fórum de
   desenvolvimento dele, destilada na §10 desta espec, e (c) o nosso próprio registo do porte MIT

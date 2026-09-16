@@ -1124,7 +1124,135 @@ mínimo que reproduz o número (`0,140` depende da amostragem), e está escrito 
 ainda assim, o parágrafo desta missão mais perto da forma do alvo, e fica **nomeado** para a
 auditoria o ler primeiro.
 
-⏳ **R-pré sobre a 2.ª missão: pendente.**
+✅ **R-pré sobre a 2.ª missão: ATESTADA na 5.ª passagem** (secção seguinte).
+
+## R-PRÉ — 5.ª PASSAGEM (2026-09-16) — veredito: ✅ **ATESTADA.** A parede do §4.2 está LIMPA (5.ª vez, contexto independente, documento INTEIRO varrido pela forma) e **ZERO achados BLOQUEIAM**. Ficam **9 erratas** (Q1–Q9) e **uma nota de proveniência de ENTRADA**
+
+⚠️ **Higiene, escrita PRIMEIRO de propósito (INC-R1, INC-R2):** a vassoura foi descodificada
+**só por cano** (`<(…)`), nunca para disco; nenhum ficheiro foi escrito fora dos dois que este
+registo toca (a espec e este ledger), nem em `/tmp`, nem em `/dev/shm`, nem no *scratchpad* da
+janela-mãe. As re-derivações correram em processos sem ficheiro (programa por `stdin`), a ler as
+fixturas publicadas.
+
+### 1. A parede (§4.2) — LIMPA, item a item, sobre o documento INTEIRO
+
+⚠️ **A varredura foi pela FORMA** (a pergunta da §4.3.1), e sobre **toda** linha nova desde o
+atestado da 4.ª passagem (`915cdd45d..HEAD`: `349` inserções — a abertura, os gémeos na §0.2/§0.3,
+§2.1, §2.2, §4.1, §7.3, §8, §11, §12, §13, e a §14 inteira), não só sobre a §14.
+
+| item do §4.2 | como foi auditado | resultado |
+|---|---|---|
+| texto de código / trechos | os **`14`** blocos cercados extraídos (`2` novos, ambos na §14.4) | ✅ fórmula em português, sem sintaxe de linguagem e sem laço. O da **atenuação** é o ponto mais perto da forma (o E nomeou-o): foi lido **contra o fonte** e é a soma de sobreposição de um núcleo periódico em forma fechada — um máximo sobre uma fase amostrada, uma soma sobre os vizinhos, o inverso — que é a matemática do método e as escolhas de discretização dele (§4.1.2, §4.1.11); a notação é genérica e não há estrutura de controlo transcrita |
+| nomes internos | os *code spans* com forma de identificador, classificados um a um | ✅ os novos são **gates propostos** (`G-15..G-20`), **fixturas** e **ficheiros** nossos; zero nome interno. Um censo de `23` identificadores idiossincráticos do fonte lido nesta missão: **`0`** na espec (também com `_` trocado por espaço), e **`19`** deles cobertos pela vassoura — os `4` de fora não aparecem em lado nenhum da obra; `1` é propriedade de API pública e os outros `3` são internos, a acrescentar na próxima extensão da vassoura (acto de E) |
+| comentários do original | as três frases de comentário que o R viu no fonte desta missão, procuradas também **traduzidas** (termos-chave em português) | ✅ zero |
+| wording de manual / discussão | as citações `«»` novas; varredura de palavras inglesas na §14 | ✅ as `«»` novas são a **frase do dono**; a única palavra inglesa da §14 está **dentro** dessa frase |
+| tabela verbatim / LUT | as tabelas novas, e a `valores_de_fabrica.txt` | ✅ as tabelas da §14 são **medições nossas** (re-derivadas abaixo). A tabela de fábrica são **defaults como factos de comportamento** (§4.1.3), lidos das **propriedades** do alvo a correr (caminho (b) do §4.2) e com a **prova de completude** ao lado (`copia_*`); cinco perfis, não uma LUT afinada |
+| organização transcrita | a estrutura da §14 | ✅ organizada por **pergunta de medição** (valores · raio · passo · planura · matriz · ablação · cursor), nada que siga o arranjo do fonte |
+| pseudo-código espelhado | os dois blocos novos | ✅ nível de paper |
+| **cabeçalhos das fixturas novas** (texto novo) | as chaves e os tokens de valor dos `55` | ✅ chaves = domínio em português (`62` chaves distintas na pasta); tokens em maiúsculas = valores de enumeração da **API pública** (`17` na pasta, **dois** novos: o método de traço por espaço e a unidade de vista) e **cinco nomes públicos de perfil do catálogo** — os dois, chave de regeneração (§4.1.13) |
+
+### 2. O sweep, e o controlo positivo — PRIMEIRO
+
+| corrida | resultado |
+|---|---|
+| `cleanroom-sweep-controlo.sh` (antes de tudo) | ✅ **os dez canais** acusam, o negativo fica limpo, o `exit 2` discrimina-se |
+| `cleanroom-sweep.sh` sobre a espec + a pasta das `155` fixturas | ✅ `exit 0`, `434` entradas |
+| idem sobre este ledger, o INBOX e o README da pasta | ✅ `exit 0` |
+| `--git-history` sobre a espec + a pasta das fixturas, e sobre `docs/3D/cleanroom/` | ✅ `exit 0` |
+| ⭐ **sem distinção de caixa** (em memória, `grep -i`) sobre a espec, o README das fixturas, a tabela de fábrica, os `55` cabeçalhos novos e a mensagem do `b1d27f3b4` | ✅ **`0`** em todos — a cegueira de caixa que o `CLAUDE.md` nomeia como não curada não esconde nada aqui |
+
+### 3. A EXACTIDÃO — re-derivada, não aceite
+
+#### 3.1 Os números da §14, a partir das fixturas publicadas (tudo ✅)
+
+| afirmação | re-derivado |
+|---|---|
+| faixa da planura: `441` vértices, repouso RMS `0,01153`, máximo `0,02032`, altura `+0,0003` | `441` · `0,011529` · `0,020321` · `+0,000321` — ⚠️ **com a faixa escolhida pela posição de REPOUSO** (Q5) |
+| *aparar*, 1·2·3·4·6·8 passagens: `0,418` · `0,226` · `0,139` · `0,092` · `0,048` · `0,029`; altura `−0,0177` | idênticos ao dígito; `−0,0177` |
+| caneta levantada 2·4·8: `0,239` · `0,180` · `0,119`, altura `−0,043` | idênticos; `−0,0434` |
+| *achatar* 1·2·4·8: `0,730` · `0,534` · `0,284` · `0,066`, altura `+0,0001` | idênticos |
+| matriz 2×2: `0,029` · `0,354` · `1,934` · `1,996` | idênticos |
+| os nossos valores 1·2·4·8: `1,010` · `1,027` · `1,061` · `1,114` | idênticos |
+| ablação: `1,380`/`−0,090` · `0,287`/`−0,010` · `0,122`/`−0,015` · `0,096`/`−0,015` · `0,020`/`−0,018`; inclinação `1,24°` contra `0,32°` | `1,380`/`−0,0904` · `0,287`/`−0,0098` · `0,122`/`−0,0146` · `0,096`/`−0,0150` · `0,020`/`−0,0182`; `1,24°`/`0,32°` (plano de mínimos quadrados ortogonal) |
+| «vala de `4,5×` a amplitude» | `0,0904 / 0,02 = 4,5` |
+| determinismo `1,49e-08` · completude `7,45e-09` | `1,5e-08` e `8,0e-09` no texto decimal — os passos de `f32` que a espec cita |
+| detector: `6 px` → `0`, `7`/`13` → `1`, `14` → `2`, `21` → `3`; sem pressão = byte-idêntico | `6 px` move `0`; **`7 px` e `13 px` são idênticos AO BIT**; `7` e `14` diferem, `14` e `21` diferem; amplitudes `3,29e-3 · 6,60e-3 · 9,96e-3` (≈ `1 : 2 : 3`); sem pressão = `0,0` |
+| atenuação: `0,140` · `0,200` · `0,071` e `(1+a)/2` | `0,1400` · `0,2000` · `0,0714` pela fórmula da §14.4 (também em `f32`) — e a força por dab da §14.4 confere com o fonte, nos dois ramos |
+| razão medida `0,563` | `0,5627` (razão das amplitudes máximas) |
+| «o traço toca até `|y| = 0,25`» | o maior `|y|` movido é `0,25` |
+| a tabela da §14.8, toda | ✅ **ao dígito**: desvios do cursor `0,271`·`0,543`·`0,181`·`0,271`×3·`0,271`×2·`0,000`·`0,179`·`0,375`; contagens `265→259`·`62→65`·`632→614`·`262→252`·`274→268`·`276→272`·`265→259`×2·`268→268`·`274→0`·`271→0`; o nosso centro `+11,7`·`+7,5`·`+12,2`·`+14,7`·`+2,6`·`−8,1`·`+11,7`·`+11,6`·`0` %; a nossa normal `8,7`·`4,6`·`12,7`·`8,7`·`8,7`·`8,7`·`11,7`·`3,8`·`31,2°`; e a candidata do alvo cai no plano do alvo (`≤ 8,7e-08`) também com o cursor na superfície |
+| advertência do G-5: `R_c = 0,25 R` lê `0,00057` com o cursor na superfície | `0,00057` (e a célula do sulco de raio `0,2` lê `0,00060`, também abaixo de `1e-3` — mesma advertência) |
+| G-19: rampa `0`, degrau `2,98e-08` | `0,0` e `3,0e-08` |
+| inventário `155` = `14+14+3+12+5+7+26+11+8+44+11`; `65` corridas, `55` publicadas | ✅ do directório |
+
+#### 3.2 ⭐⭐⭐ O G-15 REPRODUZIDO pela lei da página (a barra é alcançável)
+
+A lei das §§2–4 + §6.1 + a dureza + a força por dab da §14.4 (`a = 1` na via por script), escrita a
+partir da **página**, sobre `fabrica_e_traco/passo_script_1dab_na_superficie`:
+
+| variante | `max |Δ|` contra o oráculo |
+|---|---|
+| cursor lançado na superfície; memória da normal **semeada no primeiro dab** (o que não move nada) | ⭐ **`1,88e-08`** |
+| idem, mas a memória semeada no primeiro dab **efectivo** | `2,98e-03` |
+
+⇒ a barra `1e-6` do G-15 é **alcançável** e o gate **discrimina** o estabilizador (o ângulo entre as
+duas normais em jogo é `4,3°`). ⚠️ E é daqui que sai a **Q6**.
+
+#### 3.3 A coluna «nosso» da §14.2, lida no código vivo (✅, com a Q3)
+
+Força `0,5` (o verbo não tem perfil `s` e cai no valor de fábrica genérico) · dureza `0` · curva
+suave · acumular desligado · **nenhum** controlo de firmeza (normal ou centro) · extensões `0,5`/`0,5`
+· tectos `1`/`0` · inversão *afastar* · raio de fábrica `50` px · deslocamento `0` · auto-alisamento
+`0` · só-frente desligado. **Espaçamento:** `0,15 R` para **todo** verbo, **sem** atenuação (Q3).
+**Tecto do raio** em `b1d27f3b4`: `1/8` da altura do **viewport activo** (Q1). E a casa já calcula o
+plano **antes** do teste de direcção do traço, que é onde o estabilizador tem de viver (Q6).
+
+### 4. ⛔ Achados que BLOQUEIAM: **nenhum**
+
+Nenhuma lei atribuída à nossa casa que ela não tenha, nenhuma barra impossível contra a tabela que a
+fundamenta (o G-15 foi reproduzido; o G-16..G-19 têm a população publicada e re-derivada), nenhuma
+população de gate que a página não sustente. O G-20 é **condicionado ao dono** pela própria página, e
+o conflito dele vai como Q2.
+
+### 5. ⚠️ As NOVE erratas (gaveta B — a janela I corrige-as enquanto implementa)
+
+| # | sítio | o que está impreciso | instrução funcional |
+|---|---|---|---|
+| **Q1** | §14.3, linha «tecto», coluna «nós», e a frase «numa janela de 1080 linhas o nosso raio pára em 135 px»; a linha «pista» da coluna «nós» (`—`); este ledger, §2.ª missão («contra o nosso tecto de 1/8 da altura da janela») | em `b1d27f3b4` o tecto era `1/8` da altura do **viewport ACTIVO** (menor que a janela com os painéis, e metade numa vista quádrupla), e o painel tinha uma **pista de `200` px** de raio que volta ao tecto real; ⚠️ e **durante esta passagem** o `b5423a9df` trocou o tecto pela **diagonal da vista** (pista de `5 000` px, presa ao tecto real) | ler a linha como **instantâneo datado** do estado anterior (o `3,7×`/`37×` é um **piso** desse instantâneo), **nunca** como lei da casa; quando o tecto mudar, a linha diz a data, o commit e o recurso (o viewport) |
+| **Q2** | §12, G-20 | a barra não nomeia **em que tamanho de vista** se mede, e a metade «digitável ≥ `5 000` px de raio» é **inalcançável** sob um tecto derivado da diagonal da vista em qualquer vista de diagonal `< 5 000` px (`2 203` px a 1920×1080, `4 406` a 3840×2160); a metade «pista ≥ `500`» é satisfeita por esse tecto em qualquer vista de diagonal `≥ 500` | se o dono quiser o G-20, ele nasce com a **população nomeada** (tamanhos de vista) e contra o **recurso** que o tecto da casa declara; a metade digitável é **decisão do dono** contra um tecto limitado ao ecrã, não um número a copiar |
+| **Q3** | §14.2, linha «espaçamento» (`≈`) | a casa espaça a `0,15 R` para **todo** verbo (uma fracção global) e **não tem atenuação por espaçamento**; o G-16 exige `0,14 R` exactos (com `0,15 R` os saltos de `14` e `21` px dão `1` e `2` dabs efectivos, não `2` e `3`) e o G-17 exige o factor dos `7 %` (`0,570`; a `7,5 %` seria `0,575`) | o verbo de plano precisa de **espaçamento próprio** (`7 %` do diâmetro no perfil *aparar*) **e** do factor de atenuação; a linha deve marcar a atenuação como ⛔ |
+| **Q4** | §12, G-16, célula de `7 px` | a célula é um salto de **exactamente um passo**; o alvo pousa um dab quando o comprimento percorrido **atinge** o passo (`7 px` e `13 px` saem idênticos ao bit), e a fronteira do passo da **casa** recusa um salto igual a um passo — de propósito, com gate a declará-lo deliberado. Com um só salto e a caneta levantada a seguir, a casa deposita `0` dabs onde a fixtura mostra `1` | **mudar a fronteira** (e re-raciocinar o gate da casa que a declara deliberada — a própria nota dele diz que as duas fronteiras dão a mesma lista, menos o passo pendente) **ou** declarar a célula como **divergência nomeada**; nunca a calar |
+| **Q5** | §14.5, «A régua» | a faixa de `441` só existe escolhida pela posição de **REPOUSO**; escolhida pela de saída ela tem `423`–`441` vértices e os números mudam (ablação `1,246` em vez de `1,380`; os nossos valores `0,984`·`0,998`·`1,029`·`1,076` em vez de `1,010`·`1,027`·`1,061`·`1,114`; *achatar* `0,706`·`0,509`·`0,260`·`0,048` em vez de `0,730`·`0,534`·`0,284`·`0,066`) | a régua escolhe os índices no **repouso** e mede-os na **saída**. O G-18 passa nas duas leituras, mas qualquer gate que imprima estes números usa a do repouso |
+| **Q6** | §6.1 × §1 | a página diz as duas coisas mas não a **ordem**: o primeiro dab da passagem, **que não move nada**, calcula o plano **e semeia** a memória da normal; com firmeza `1` toda a passagem usa a normal **desse** dab | o estabilizador vive **dentro** do cálculo do plano, **antes** do teste «o traço já tem direcção?» (a casa já calcula o plano antes desse teste). Medido: `1,9e-08` na ordem certa, `3,0e-03` semeando no primeiro dab efectivo (§3.2) |
+| **Q7** | §14.6, coluna «traço do corpus» | ela muda **duas** coisas ao mesmo tempo — a via por script **sem atenuação** e o **cursor em `z = 0`, fora do relevo** (os cabeçalhos dos `ctl_*_traco_do_corpus_*` dizem-no) —, logo «o TRAÇO decide ATÉ ONDE» está confundido com o efeito da §14.8 | nomear a confusão; nenhum gate usa esta coluna, e a conclusão sobre os **valores** (a linha de baixo, nas duas colunas) fica de pé |
+| **Q8** | cabeçalhos de `fabrica_e_traco/`; §14.4; README das fixturas | `25` de `44` com `o_que_ela_fixa` **vazio**; as arrastadas **sem** a chave `cursor` (o cursor é o raio do rato sobre a superfície **viva** — implícito); `passo_script_1dab_na_superficie` diz «ida e volta» com **dois** pontos num só sentido, e não diz (como a família `cursor_na_superficie/` diz) que o bloco `c` são os pontos **PEDIDOS** em `z = 0` e que o dab cai onde a vertical por eles corta a superfície; as `5` da via por script **sem** a chave `pincel_de_origem`; `sup_sulco*` corresponde a `lei_crista*` (o README diz «homónimas»); a célula de `20 px` da tabela da §14.4 **sem fixtura publicada** (publicadas: `6`, `7`, `13`, `14`, `21` — a espécie da R5) | o I lê o cursor destas fixturas como **raio na superfície** e o bloco `c` como **pedido**; a próxima regeneração (acto de E) completa os cabeçalhos |
+| **Q9** | §4 (tabela de resíduos), §2.2/§11 (nota do cursor), §12 (G-1b) | a bossas lê `287` na §4 (qualquer mudança) e `268` na §14.8 (limiar `1e-7`) — `19` vértices mexem só por ruído de `f32`; as notas «o cursor das `11` está fora do relevo» valem para `10` — a célula de **bossas** tem o cursor **NA** superfície (`0,000 R`, a própria §14.8 o diz); a linha do G-1b ainda diz «dívida», e a abertura da §14 e a bancada da casa já reproduzem os traços inteiros | um gate de contagem **nomeia o limiar**; as duas notas dizem «`10` de `11`»; a linha do G-1b acompanha a implementação |
+
+### 6. ⚠️ Nota de proveniência de ENTRADA (§5 e §1.5.3) — **não bloqueia, com a razão**
+
+**`14`** fixturas foram corridas com o **perfil do catálogo do alvo carregado como pincel**
+(`fab_aparar_*` ×`10`, `fab_achatar_*` ×`4`); as outras `41` da pasta nova declaram pincel **nosso** ou
+são da via por script do harness. A letra do §5 proíbe assets do alvo como **entrada** de fixture,
+porque a saída herdaria a expressão da entrada.
+
+⇒ **A substância da regra está cumprida para as `10` do *aparar*, e está medida:** o par
+`copia_aparar_continuo_4`/`_8` — pincel **NOSSO** com os valores do cabeçalho escritos — bate as
+`fab_*` homónimas a **`8e-09`**, abaixo do não-determinismo do próprio arrasto (`1,5e-08`). A saída é
+função **só** dos números publicados (factos, §4.1.3); o único elemento não-numérico do perfil (a curva
+personalizada) é **inerte** sob a curva suave (confirmado no fonte e pela igualdade do par), e nada
+dele foi publicado. **As `4` do *achatar* não têm par**, e nenhum gate as usa.
+
+**Instruções:** (a) a janela I ancora os gates nas fixturas cujo cabeçalho declara pincel **NOSSO**
+(o número `0,029` do G-18 tem sujeito em `copia_aparar_continuo_8`); (b) a próxima regeneração (acto de
+E) troca as `14` por corridas de pincel nosso, e dá ao *achatar* o seu par de completude.
+
+### 7. O que o R leu do alvo nesta passagem (por shell, na zona)
+
+Para conferir a §14 contra o **comportamento**, e só isso: a atenuação por sobreposição e o sítio onde
+ela é calculada no passo do traço; a força por dab do modo escultura (o caso do plano); a entrada do
+pincel de plano (a ordem entre o cálculo do plano e a saída do primeiro dab); a curva de queda por
+preset; e a definição e o *setter* do tamanho do pincel na API. **Nada** disto foi escrito na espec ou
+neste ledger além dos **factos** já publicados pela §14.
 
 ## Incidentes
 

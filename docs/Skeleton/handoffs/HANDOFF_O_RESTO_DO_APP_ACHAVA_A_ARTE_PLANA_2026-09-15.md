@@ -862,3 +862,138 @@ dobrada, e hoje isso não acontece debaixo do pincel.
 ⚠️ O censo dos 9 é **DERIVADO** (varre a pasta, com piso de população), nunca uma lista escrita à
 mão — é a lição que o §12 desta mesma jornada pagou. **Prova de mutação:** tirar a marca de um
 desenhador acusa-o pelo nome; trocar a porta que achata pela irmã muda reprova a porta.
+
+## §17 — ⭐⭐⭐ O PADRÃO-OURO ESTÁ LIGADO AO PRODUTO (ordem do dono: *«quero o estado da arte»*)
+
+> *«eu não decido conforme o preço. Quero o estado da arte, o padrão ouro. Descubra qual é e
+> implemente.»* — Enio, 2026-09-15
+
+O que é: **Bounded Biharmonic Weights** (Jacobson/Baran/Popović/Sorkine, SIGGRAPH 2011), cujo caso
+de demonstração no próprio artigo é uma personagem 2D. A crate `ph2d-skin-weights` (clean-room do
+paper, commit `4d3a2d414`) era a lei **medida numa bancada**; esta jornada ligou-a.
+
+### §17.1 — A tabela que decidiu tudo, e a coluna que não existia
+
+Medida na cena do smoke (`512×320`, corrente de 3 ossos, `25°` por junta), pelo caminho do
+**produto**, com `2 430` peças nas quatro linhas:
+
+| lei | `strength` | faceta | esticão | círculo | **VAZAMENTO** |
+|---|---:|---:|---:|---:|---:|
+| euclidiana (local) | `1,0` | `6,78 px` | `2,234` | `1,2923` | `0,00 px` |
+| euclidiana (a que shipou em 14/09) | `2,0` | `0,40 px` | `1,267` | `1,1491` | ⛔ **`26,51 px`** |
+| **padrão-ouro** | `1,0` | **`1,27 px`** | `1,492` | `1,2913` | ⭐ **`0,78 px`** |
+| **padrão-ouro** | `2,0` | **`1,27 px`** | `1,492` | `1,2913` | ⭐ **`0,78 px`** |
+
+⛔⛔⛔ **A última coluna não existia quando a `strength = 2,0` shipou, e é ela que inverte o
+veredito.** *Vazamento* é: rodar só a **ponta** da corrente e medir quanto a arte da **raiz** se
+mexe. As outras três medem **suavidade** — e uma mistura larga de mais ganha nas três **por
+construção**, porque fazer toda a arte responder a todos os ossos é suavíssimo. *Foi assim que uma
+linha inteira de trabalho shipou um borrão global a chamar-se rig.*
+
+⭐⭐ **A comparação honesta é a 1.ª linha contra a 3.ª** — as duas leis que não vazam, isto é, as
+duas que são rigs. Ali o padrão-ouro leva a faceta de `6,78` para `1,27 px` (`5,3×`) **sem um
+triângulo a mais**.
+
+⭐⭐⭐ **E as duas últimas linhas são IDÊNTICAS coluna a coluna** ⇒ a `strength` ficou **inerte** para
+uma imagem. A cena voltou ao valor de fábrica e a `FRACCAO_DO_ALCANCE` + `forca_do_osso()`
+**morreram**. Isto fecha o item que estava no topo da fila desde 2026-09-09: *o alcance de um osso
+não sabe nada da arte que carrega* — hoje ele não precisa de saber. Ele diz *«este pedaço é meu»* e
+a energia sobre a arte decide o resto.
+
+### §17.2 — O que se PERDE, dito em voz alta
+
+O círculo desenhado sai de `1,15` para `1,29` de ovalização. ⛔ **Não é uma regressão do motor — é a
+articulação a passar a existir:** uma circunferência por cima de uma junta que dobra `25°` *tem* de
+deformar, e o que a mantinha redonda era o rig não estar de facto a articular.
+
+### §17.3 — As quatro peças da ligação
+
+1. **`ph2d_poly2d::refine_posed_attrs`** — atributos por vértice que viajam na subdivisão. Ela
+   existe porque o padrão-ouro **não é função de uma posição**: um vértice que o `Smooth` inventa
+   tem de **herdar** o peso do triângulo que o gerou. ⛔ Localizar o ponto seria `O(n)` por ponto
+   para chegar à resposta que a proveniência já sabe de graça. Com `stride = 0` é o `refine_posed`
+   **ao bit**.
+2. **`ph2d_skeleton::SkinBone::tendon` + `Skin::point_with`** — a tabela guardada é por osso
+   **autorado**; a pele resolvida tem `N` poses por osso (bendy) e **salta** os apagados. ⛔ Usar a
+   posição na pele faria a arte saltar no instante em que alguém apagasse um osso, com zero gates a
+   acusar. A repartição pelos sub-ossos é a **mesma** `bend::share` de sempre.
+3. **`SkinnedMesh { mesh, pesos }`** nos bytes opacos do `SkinBind::source`. ⚠️ A lei deste repo era
+   *«os pesos não se guardam»* — ela foi escrita para uma lei que é função de um **ponto**. ⭐ E eles
+   não são um vector paralelo: são **o mesmo objecto**, com o comprimento de um função do do outro e
+   uma porta que recusa o par que não fecha.
+4. **`bind_image` resolve · `skinned_mesh_of` lê · `posed_sprite_mesh` usa** — e o onion pela mesma
+   porta. ⚠️ `tendons_and_axes` produz os tendões **e** os eixos num percurso só: duas varreduras e
+   um osso sem `StableId` numa delas poria a coluna `j` a descrever o osso `j+1`, com a soma a `1` e
+   nenhum gate de geometria a acusar.
+
+`PROJECT_SCHEMA` **129 → 130** (conte o DELTA). ⛔ **Limite NOMEADO:** uma forma **vectorial** fica
+na lei euclidiana — o padrão-ouro precisa de uma malha do domínio e uma Bézier não tem uma. *Um rig
+com as duas mídias tem hoje duas leis*, e essa é a obra seguinte.
+
+### §17.4 — ⭐⭐⭐ A malha do bind virou um ORÇAMENTO (`GridOptions::target_tris`)
+
+⛔ Um passo em pixels **não diz de que recurso é**: a contagem é `área / passo²`, então a MESMA
+configuração entregava `180` triângulos numa arte de `256` e `2 586` numa de `1024` (**`14,4×`**) —
+*o quadro paga por o desenho ser grande, não por ele ser difícil* (§0.0). Com a contagem:
+`2 720 / 2 870 / 2 994`. É a mesma cura que o botão `Quad Retopology` pagou em 2026-08-28.
+
+⭐ **O alvo `3 000` sai do TEMPO do quadro:** `0,44 µs` por peça **medido** (`1 152`/`4 608`/`10 368`
+peças, o mínimo de 40 corridas) ⇒ `1,667 ms / 0,44 µs` = `3 788` para uma imagem sozinha.
+
+### §17.5 — ⭐⭐ A GRADUAÇÃO da grelha TROCOU DE SINAL quando a lei mudou
+
+Ela estava registada como **anti-correlacionada com o erro** — e estava, para o *bump* euclidiano:
+fina no eixo do osso, grossa na borda, que é onde o bump normalizado explodia. Com o padrão-ouro os
+pesos variam depressa junto das **restrições**, isto é, junto dos eixos. Medido a contagem
+igualada (`~2 900` peças):
+
+| grelha | peças | faceta |
+|---|---:|---:|
+| **graduada** | `2 430`–`2 958` | **`1,15`–`1,27 px`** |
+| uniforme | `2 880`–`2 940` | `1,94`–`1,96 px` |
+
+⇒ *trocar a lei curou a grelha.* **Um defeito registado dissolveu-se sem ninguém lhe tocar.**
+
+### §17.6 — ⛔ TRÊS defeitos de RÉGUA que esta jornada apanhou em si mesma
+
+1. **O vazamento escolhia a ponta pelo maior `to_bits`**, rodava a **raiz**, e leu `154 px` sobre a
+   lei que não pode vazar. Hoje sai da porta do produto (`chain_ends`).
+2. **A varredura da dobra escrevia `rotation = graus` numa cena JÁ dobrada** e leu `1,426` de
+   esticão **em repouso**. *Repor um ângulo não é repor uma pose* — a pose de repouso de um osso
+   filho é o que a `bone::create` escreveu. O controlo que ficou: uma cena que **nunca** dobra lê
+   `4,97e-16 m` e as três poses saem `[1,0,0,1,0,0]` exactas.
+3. **A inversão comparava sinais de área crus** entre a malha (`y` para baixo) e a pose (`y` para
+   cima) ⇒ `100 %` invertido sobre uma cena perfeita.
+
+⚠️ **E as réguas da cena mediam a lei ERRADA:** elas chamavam `pele.point`, a euclidiana derivada.
+*Um arnês que não usa a lei do produto mede um programa que ninguém corre.*
+
+⛔⛔ **A sonda do custo escrevia uma `Mesh2d` crua no `source`**, que o formato novo recusa — e ela é
+`#[ignore]`, logo ficava **verde a medir zero peles**. *Uma sonda que o CI nunca corre é o sítio
+onde um formato novo se esconde.*
+
+### §17.7 — A prova de mutação que corrigiu a própria fixtura
+
+⛔⛔ O gate da proveniência dos atributos corria a `0,5 px` e o estimador parava em **`k = 3`**, onde
+o **único** nó de miolo de cada triângulo é o `(1,1)` ⇒ `u = v = ⅓`. Trocar `t[1]` por `t[2]` na
+interpolação baricêntrica é, ali, a **identidade algébrica**: a mutação SOBREVIVEU com o gate verde.
+*Uma grelha de `k = 3` não tem um único ponto interior onde as duas coordenadas baricêntricas
+difiram, logo nenhuma fixtura nesse `k` pode distinguir os dois vértices.* A `0,12 px` o `k` sai `6`
+e as duas mutações morrem.
+
+### §17.8 — ⏳ O QUE FICA ABERTO
+
+- ⛔ **A forma VECTORIAL na lei euclidiana** (§17.3). É a obra seguinte, e o mecanismo está escrito:
+  o padrão-ouro precisa de uma malha do domínio.
+- ⏳ **O refinamento do `Smooth` continua estruturalmente inerte** (`max_split = ⌊√(orçamento/peças)⌋`
+  = `1` acima de `orçamento/4` peças). A cura medida é o **adaptativo por triângulo** (`3 034` peças
+  contra `28 080` do `k = 6` global, `9×` mais barato) — §13.
+- ⏳ **A faceta converge `O(h^1,2)`**, entre `O(h)` e `O(h²)`: o padrão-ouro é `C¹` mas não `C²` na
+  fronteira do conjunto activo, que é **o preço das caixas** — e as caixas são o que compra a
+  localidade. ⇒ a malha nunca o segue com a ordem cheia, e mais densidade tem retorno decrescente.
+- ⛔⛔ **DÍVIDA NOMEADA: a escada do `PROJECT_SCHEMA` cresce a cada degrau e o tecto
+  `the_shell_only_shrinks` é fixo.** Este degrau nasceu com `28` linhas, o tecto reprovou por `9`, e
+  a cura foi apertar a prosa sem perder um facto. *O degrau que não puder ser apertado tem de MOVER
+  a escada para fora da shell.*
+- ⚠️ **VERMELHO PRÉ-EXISTENTE e não desta linha:** `clippy` acusa `PreviewDrive::len` sem `is_empty`
+  na `ph2d-preview-drive` — confirmado numa árvore limpa.

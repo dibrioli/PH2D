@@ -2669,3 +2669,79 @@ não é apanhado — só a unicidade por pilha e o smoke o vêem.
   campo (`72`) e a chave ocupa `34` — por isso os dois cortes a `220`.
 - Os nomes dos *presets* do *Look* (`LUT_PRESETS`) são inglês na crate de efeitos; hoje não são
   pintados (o *Look* mostra o índice).
+
+## §38 — ⭐⭐⭐ OS PAINÉIS FALAM PELA TABELA: 20 crates com gate próprio, e a régua corrigida três vezes pelo caminho
+
+Commits `17fcb3cef` · `53d958f76` · `370638614` · `d3cbf3b87` · `c7de3861a` (2026-09-16). Ordem do
+dono: *«se temos o manual precisamos converter o APP todo a ele»* — o HR-15 (zero texto fixo) é o
+§3 do CLAUDE.md, e a régua de registo é a lexical da `ph2d-label-census`.
+
+### 38.1 — O que ficou a zero, e onde mora cada tabela
+
+| painel / crate | tabela nova em `ph2d-i18n/src/` | chaves |
+|---|---|---|
+| Vector (`ph2d-panel-vector`, 24 ficheiros; `paint_arrange.rs` partido → `paint_align.rs` + `paint_path_ops.rs`) | `vector.rs` (+212) | 512 |
+| Audio Editor · Audio Mixer | `audio.rs` | 113 |
+| Grid Settings | `grid_snap.rs` | 65 |
+| Flip · Flip Frames | `flip.rs` | 94 |
+| Color Equalization · BG Removal · Equalize Sizes · Upscale · Padding | `image_tools.rs` | 94 |
+| Motion Graph · Motion Params · Param Editors | `motion_panels.rs` | 54 |
+| Asset Browser | `asset_browser.rs` | 14 |
+| Timeline (buffer do graph) · Tokens | chaves no `lib.rs` | — |
+
+Cada crate tem `tests/it/every_word_this_panel_shows_comes_from_the_string_table.rs` — **20** hoje
+(`ls crates/*/tests/it/every_word*`). ⭐ **O corpo do gate deixou de ser copiado:** a partir deste
+lote ele é `ph2d_label_census::gate` (`intrusos` · `excecoes_mortas` · `chaves`) e cada crate
+declara só prefixo, tabela, piso de população e excepções — *a segunda cópia é a que diverge*.
+As excepções são nomeadas e **provam-se vivas** (uma excepção cujo texto sumiu reprova).
+
+⭐ **Tipagem:** tabelas estáticas passaram a `TextKey` (`TINT_NAMES: [TextKey; 8]`,
+`BACKDROP_ACTIONS: [(TextKey, GraphKey); 2]`) — esquecer o `.tr()` é erro de compilação. Frases com
+número/nome usam `ph2d_i18n::tr_with(key, &[("name", &v)])`, e a do contraste dos Tokens virou
+**uma** chave com cinco marcadores em vez de pedaços colados (a ordem das palavras é da língua).
+
+### 38.2 — A unidade entra na caixa (Grid Settings)
+
+O painel de grelha pintava `px`/`m` como texto ao lado do campo; agora é tinta **dentro** da caixa
+(spec §7: `paint_field_row_value(.., unit: Option<Unit>, sec)`), com `state.length_unit()` como
+fonte. O gate `a_seccao_poe_todas_as_caixas_na_mesma_coluna` foi re-apontado para a grelha
+**Voronoi** (7 campos) — a `Square` deixou de pedir coluna emprestada e o controlo perdia o sujeito.
+
+### 38.3 — ⛔⛔ A régua errou três vezes, e cada erro deixava um painel verde com texto fixo
+
+1. **Um `//` ENTRE os atributos escondia o `#[cfg(test)]`** (`cfg_test.rs`): a `motion-params`
+   escreve `#[cfg(test)]`, quatro linhas de comentário e só depois `#[path = …] mod tests_gradient;`
+   — o laço parava no comentário e lia o ficheiro de teste como PRODUÇÃO. Gate
+   `a_comment_between_the_attributes_does_not_hide_the_cfg_test`, mutação provada.
+2. **O script Python contava uma CHAVE como texto** (`scripts/censo-texto-pintado.py`): `tr("a.b.c")`
+   passou a ser saltado pela forma de chave.
+3. **`"B&W"` não tinha duas letras SEGUIDAS** (`lexical.rs::is_language`): a forma `letra & letra`
+   passou a contar (`&&`, `&`, `1&2` continuam fora, com os dois lados no teste). Medido na árvore
+   inteira: só **dois** sítios mudam de lado — o `B&W` (curado) e o `C&F` da barra lateral do editor.
+
+⚠️ **O script Python e a régua lexical medem grandezas DIFERENTES** e discordam de propósito: o
+Python ainda acusa `\u{25c0}`/`\u{25b6}` (setas), `X/Y/W/H/M/S` (eixos e mute/solo) e **código de
+teste inline** (`#[cfg(test)] mod` dentro do mesmo ficheiro, que ele não desconta). Nenhum desses é
+dívida.
+
+### 38.4 — Para o integrador
+
+- **`ph2d-i18n/src/lib.rs`** ganhou seis módulos na cadeia do `tr` (`vector::tr(k).or_else(…)`) — um
+  conflito ali é **append**, e a ordem da cadeia não importa (prefixos disjuntos).
+- **`hr15_no_hardcoded_ui_strings`** (editor-core) perdeu as entradas do Audio Editor e do Asset
+  Browser — a metade de obsolescência obrigava.
+- Crates novas com `tests/it/main.rs`: `ph2d-panel-flip` (o `tests/seam.rs` foi dobrado para
+  `tests/it/seam.rs`), `ph2d-panel-motion-params`, `ph2d-param-editors`.
+- Mapas de secções (a lista de o que cada painel pinta, por chave): `docs/UI_New_and_Simple/ferramentas/seccoes_*.tsv`.
+
+### 38.5 — ⏳ ABERTO
+
+- **`ph2d-editor-core`** — **695** literais pela régua lexical (menus 164, barra lateral 74, menus da
+  timeline 50, dicas do topo 63, seletor de cor 50, …). Onda seguinte.
+- **`ph2d-panel-authored`** — 21 literais em `src/generated/panel.rs`: a cura é no **gerador**, não
+  no ficheiro gerado.
+- **`ph2d-panel-widget-lab`** — bancada de estudo; fica de fora.
+- **Nomes que vêm do MOTOR** (o `Add {name}` dos efeitos/filtros do Vector, os `LUT_PRESETS`) —
+  não são literais do painel e nenhum gate por crate os vê; a cura é a do §37.3 (o rótulo da crate
+  vira identificador e o painel pinta a chave).
+- `ph2d-app-*` e `shells/` — fora das ondas de painel.

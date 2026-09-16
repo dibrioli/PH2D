@@ -2745,3 +2745,67 @@ dívida.
   não são literais do painel e nenhum gate por crate os vê; a cura é a do §37.3 (o rótulo da crate
   vira identificador e o painel pinta a chave).
 - `ph2d-app-*` e `shells/` — fora das ondas de painel.
+
+## §39 — ⭐⭐⭐ A MOLDURA INTEIRA FALA PELA TABELA: a dívida do HR-15 da `ph2d-editor-core` chega a ZERO
+
+Commits `c7de3861a` · `47530766c` · `9976c0c96` · `ed16ff617` · `a98db5bdd` (2026-09-16).
+
+### 39.1 — O que mudou, com os números
+
+| fatia | literais | tabela nova (`ph2d-i18n/src/`) | tipo que passou a guardar a CHAVE |
+|---|---|---|---|
+| menus (barra, contexto, timeline, paleta, radial) | 227 | `chrome_menus.rs` (182) | `ids::MenuRow = (NodeId, TextKey, Option<[u8;4]>)` · `MENUS` · `LEGACY_PILL_BUTTONS` · `GLOBAL_PALETTE_TITLE` · `MORE_LABEL` |
+| barra de ferramentas (rail + fila horizontal) | 77 | `chrome_rail.rs` (63) | `left_rail::RailTool = (NodeId, TextKey, IconId, TextKey)` — NOME `chrome.rail.*` e SUB-RÓTULO `chrome.rail.sub.*` |
+| o resto (topo, HUD, diálogos, seletor de cor, cartão de instância, grelha, disposições, amostras) | 231 + 40 frases | `chrome_panes.rs` (252) | `LayoutSpec::title`, `REFUSED_LABEL` |
+
+A catraca `DIVIDA` do gate `no_label_of_this_crate_is_written_in_the_painter` ficou **VAZIA** (era
+641 em 13/09). O que sobra na régua lexical da crate (114) é a galeria-bancada `widget/showcase`
+(excepção por directório, de antes). Nasce `NOT_LANGUAGE_TEXT` — excepções **literal a literal**,
+com mecanismo e metade justa: diagnóstico de consola (`diag_down`), nomes de FICHEIRO de cena de
+amostra (`Level_01`…), o hex inicial do seletor, `RGB`/`HSV`/`OKLCH`. A mensagem de pânico do
+registo de painéis mudou-se para dentro do `expect` (a régua isenta-o).
+
+### 39.2 — ⛔ O que partiu pelo caminho, e o que isso ensina
+
+1. **`&[…]` com `TextKey::new` dentro de uma função não é promovido a `'static`** (E0515). O
+   `const { … }` por braço compila e **incha**: o `rustfmt` partiu cada linha e o `menu_rows.rs` foi
+   de 659 a **1234** (tecto 700). Cura por responsabilidade: as 26 tabelas viraram `const` com nome
+   em `screens/hero/menu_tables.rs` (610) e o `match` ficou com uma linha por menu (201) — o
+   desenho dos menus da timeline. Construtores `const` `ids::menu_row`/`menu_row_swatch`.
+2. **Três gates liam os ficheiros como TEXTO**, e cada um falharia de uma forma:
+   - `every_menu_row_reaches_a_handler` deriva a população dos `ids::` do fonte → passou a ler os
+     dois ficheiros; e **EXCLUI `menu_tables.rs` das fontes de despacho** — sem isso toda linha era
+     «achada» na própria tabela e o gate lia verde sobre nada (**mutação provada** nos dois sentidos).
+   - `one_word_for_the_reusable_thing` (shell) procurava rótulos no `menu_rows.rs` → re-apontado
+     para `chrome_menus.rs` (a metade «tem `Prefab`» reprovaria alto — é para isso que existe).
+   - `every_chrome_key_exists_on_both_sides` lia só o `chrome.rs` → lê as quatro tabelas `chrome*`
+     (mutação provada).
+3. **A regra do `&`** (`B&W`, §38.3) acordou a catraca do `left_rail` (71 → 74, o `C&F`) — curada por
+   esta onda, nunca por subir o número.
+4. **`tr_with` substituía em sequência**, e com nomes do ARTISTA a atravessá-lo (prefab aberto,
+   ficheiro largado, peças de uma cópia) um nome `{follows}` era reescrito. Cura: uma passagem só
+   sobre o modelo; gate red-first `ph2d-i18n/tests/it/a_value_never_becomes_a_marker.rs`.
+
+### 39.3 — Para o integrador
+
+- **Consumidores externos que mudaram por tipo** (compilam só com esta linha): testes da
+  `ph2d-panel-timeline`, `-hierarchy`, `-asset-browser`, `-registry-init`; o
+  `ph2d-app-components/src/instance_replace_smoke.rs`; o
+  `shells/desktop/src/render_loop/timeline_presets_menu_tests.rs`. Uma linha que acrescente uma row
+  a um menu com `(id, "Texto", None)` **não compila** depois desta fusão — a cura é
+  `menu_row(id, "chrome.menu.<x>")` em `menu_tables.rs` + o braço em `chrome_menus.rs`.
+- **`ph2d-i18n/src/lib.rs`**: três módulos novos na cadeia (append).
+- `ph2d-panel-authored` ganhou o gate `the_program_writes_no_word_into_this_panel` (o único painel
+  sem tabela, por decisão escrita no `Cargo.toml`: o texto é do desenho do artista).
+
+### 39.4 — ⏳ ABERTO (substitui o 38.5)
+
+- **Os nomes que vêm das crates de FAMÍLIA e que um painel pinta** — a forma do §37.3, agora a
+  maior dívida visível: `ph2d-app-audio` (`fx_presets.rs` 232 · `fx_param_specs.rs` 129 ·
+  `fx_params_table.rs` 42 — os presets e os parâmetros do rack do Audio Editor), e os `Add {name}`
+  dos efeitos do Vector. A régua por crate do painel não os vê porque o literal mora noutra crate.
+- `ph2d-app-*` e `shells/desktop` (≈ 3 200 pela régua lexical) — muito é cena de smoke e texto de
+  diagnóstico; precisa de triagem antes de migrar.
+- A tradução de um desenho AUTORADO (Authored UI) é feature, não HR-15 — decisão do dono se um dia
+  for pedida.
+- `ph2d-panel-widget-lab` — bancada.

@@ -47,3 +47,15 @@ metadata:
 - ⚠️ **«A coluna nem nasce» é a pergunta errada quando a coluna já vinha na ENTRADA** (mesma jornada): o gate do `sim.collide` afirmava que uma caixa de chapa não escreve `rot` — e o nó COPIA as colunas que recebe, então ela estava lá a `0`. A pergunta que mede a lei é *«o valor MUDOU?»*; a da ausência só vale onde o produtor é o único a poder criar a coluna (o `sim.step`, que a cria do nada).
 - ⛔ **Um passeio de grafo do Motion que segue a PRIMEIRA aresta de saída dá a volta a um laço de simulação** (`line/motion-value`, 13/09, doc 109 §5): o `warp_gizmo::sink_of` fazia `edges().find(from == cur)`, e a `sim.zone` tem duas saídas — a primeira é a entrada ATRASADA do laço (`zone → wind`). O passeio girava `zone → wind → step → collide → zone` até ao limite de passos e devolvia `None`, sem erro. ⇒ *quem procura o sink anda em largura e não segue arestas `delayed`* (o `collider_gizmo::sink_of`).
 - ⛔ **`Math.max(...lista)` tem teto de ARGUMENTOS, e um teto em BYTES deixa a lista passar dele** (Pixel Lab W28, 13/09, medido): o Node estoura a pilha a **125 408** argumentos; o Firefox recusou **500 592** (*too many function arguments*) e aceitou 524 288 na mesma página depois — nem determinístico. A fila de desfazer de 64 MB cabe **524 288** passos mínimos (128 bytes), e a abertura da sessão fazia `Math.max(0, ...ids)`. ⇒ *toda redução sobre uma lista cujo tamanho é limitado por bytes (ou por nada) é um laço*; espalhar em argumentos só com contagem pequena PROVADA.
+- ⛔⛔ **Uma tabela `&[…]` dentro de uma FUNÇÃO só é `'static` se tudo nela for promovível — uma
+  chamada `const fn` NÃO é** (E0515). Ao trocar `&str` por `TextKey::new("…")` nos menus
+  (2026-09-16), o `menu_rows()` deixou de compilar; `const { &[…] }` por braço resolve e custa
+  indentação — o `rustfmt` partiu cada linha e o ficheiro foi de 659 a **1234**. ⇒ a forma certa é
+  **um item `const` com nome por tabela** (o desenho que os menus da timeline já tinham), e o
+  `match` fica com uma linha por braço. ⚠️ E todo gate que lia a tabela **como texto** muda de
+  ficheiro com ela — um que exclui «a tabela que pinta» das fontes de despacho, sem a exclusão
+  nova, lê **verde sobre nada** (mutação provada).
+- ⛔ **Substituir marcadores em SEQUÊNCIA deixa um VALOR virar marcador** — `tr_with` com
+  `[("name", "{follows}"), ("follows", …)]` reescrevia o nome do artista. Um modelo com peças
+  lê-se **numa passagem só**; o risco só aparece quando o valor é texto do UTILIZADOR, que foi
+  exactamente o que a migração da moldura fez passar por ali (`line/UIUX`, 2026-09-16).

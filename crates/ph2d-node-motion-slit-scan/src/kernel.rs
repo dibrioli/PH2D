@@ -123,7 +123,7 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
 /// O `lag` do uniform é o `lag_ticks` da CPU — o clamp a `MAX_LAG` e o não-finito como `0`.
 static DERIVADOS: &[DerivedUniform] = &[DerivedUniform {
     param: "lag",
-    derive: |p| lag_ticks(p("lag")),
+    derive: |c| lag_ticks((c.param)("lag")),
 }];
 
 /// **Regista o caminho do dispositivo.**
@@ -151,7 +151,13 @@ mod tests {
     #[test]
     fn the_derived_lag_is_the_cpus() {
         for v in [12.0, -1.0, 99.0, f32::NAN, f32::INFINITY, 3.4] {
-            let d = (DERIVADOS[0].derive)(&|_| v);
+            let param = |_: &str| v;
+            let d = (DERIVADOS[0].derive)(&ph2d_nodegraph::gpu::CountLawCtx {
+                inputs: &[],
+                param: &param,
+                playhead: 0.0,
+                dt: 0.0,
+            });
             assert_eq!(d.to_bits(), lag_ticks(v).to_bits(), "lag {v}");
         }
     }

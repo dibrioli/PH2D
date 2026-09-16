@@ -5843,6 +5843,7 @@ dependencies = [
  "ph2d-node-motion-strobe",
  "ph2d-node-motion-sub-uv",
  "ph2d-node-motion-tint",
+ "ph2d-node-motion-trail",
  "ph2d-node-motion-transform",
  "ph2d-node-motion-twist",
  "ph2d-node-motion-voronoi",

@@ -6230,8 +6230,9 @@ fn a_mixed_length_broadcast_port_refuses_the_cook_to_the_cpu() {
 /// full-length field of plausible zeros while the CPU returned the component.
 #[test]
 fn the_projection_modes_agree_across_the_dev_dependency_fence() {
-    let src = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/stream_op.rs"))
-        .expect("the projection's source is where the second copy lives");
+    // ⚠️ `include_str!` e não uma leitura em runtime: a projecção MUDOU de ficheiro (ciclo 7, o
+    // `stream_op.rs` chegou ao tecto) e a leitura em runtime só reprovava QUANDO o teste corria.
+    let src = include_str!("../../src/stream_op_project.rs");
     for (name, cpu) in [
         ("MODE_LENGTH", ph2d_node_value_attribute::MODE_LENGTH),
         (

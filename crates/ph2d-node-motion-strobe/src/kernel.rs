@@ -229,19 +229,19 @@ pub(crate) static GPU_KERNEL: GpuKernel = GpuKernel {
 static DERIVADOS: &[DerivedUniform] = &[
     DerivedUniform {
         param: "decay",
-        derive: |p| decay_per_tick(p("decay")),
+        derive: |c| decay_per_tick((c.param)("decay")),
     },
     DerivedUniform {
         param: "attack",
-        derive: |p| p("attack").max(0.0),
+        derive: |c| (c.param)("attack").max(0.0),
     },
     DerivedUniform {
         param: "hold",
-        derive: |p| p("hold").max(0.0),
+        derive: |c| (c.param)("hold").max(0.0),
     },
     DerivedUniform {
         param: "probability",
-        derive: |p| p("probability").clamp(0.0, 1.0), // CLAMP-OK: a mesma do `eval`
+        derive: |c| (c.param)("probability").clamp(0.0, 1.0), // CLAMP-OK: a mesma do `eval`
     },
 ];
 
@@ -315,7 +315,13 @@ mod tests {
     fn the_derived_uniforms_are_the_evals_expressions() {
         let deriva = |nome: &str, v: f32| {
             let d = DERIVADOS.iter().find(|d| d.param == nome).unwrap();
-            (d.derive)(&|n| if n == nome { v } else { f32::NAN })
+            let param = |n: &str| if n == nome { v } else { f32::NAN };
+            (d.derive)(&ph2d_nodegraph::gpu::CountLawCtx {
+                inputs: &[],
+                param: &param,
+                playhead: 0.0,
+                dt: 0.0,
+            })
         };
         for ticks in [34.0, 1.0, 0.0, -3.0, f32::NAN, 500.0] {
             assert_eq!(

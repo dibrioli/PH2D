@@ -246,6 +246,149 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
         "the compact predicates must be swept (cull 3 bindings + lifetime 3), got {predicates}"
     );
 
+    // ⭐ **O `Carry` (ciclo 7, o `motion.trail`) tem QUATRO textos que nenhum laço acima monta:**
+    // o predicado COM as reduções dele e o canal partilhado (o sequenciador liga-os, ao contrário
+    // do `Compact`), as próprias reduções do predicado (que não são as `reg.reduces` do nó), o
+    // kernel do caso identidade, e as variantes do corpo escolhidas por uma COMBINAÇÃO de dois
+    // params (giro E modo) — a forma que a varredura de um param só declara que escapa. Para um
+    // `Carry` a varredura é aos PARES.
+    let mut carries = 0usize;
+    for manifest in reg.manifests() {
+        let Some(ph2d_nodegraph::gpu::StreamOp::Carry {
+            predicate,
+            predicate_reduces,
+            identity_kernel,
+            ..
+        }) = reg.stream_op(manifest.id)
+        else {
+            continue;
+        };
+        let port_names: Vec<&str> = manifest.inputs.iter().map(|p| p.name).collect();
+        let shared = reg.wgsl_shared(manifest.id);
+        let mut textos: Vec<(
+            String,
+            &ph2d_nodegraph::gpu::GpuKernel,
+            ph2d_gpu_cook::codegen::ExtraBuffers<'_>,
+        )> = vec![(
+            "predicate".to_string(),
+            predicate,
+            ph2d_gpu_cook::codegen::ExtraBuffers {
+                grid: None,
+                reduces: predicate_reduces,
+                luts: &[],
+            },
+        )];
+        for (si, spec) in predicate_reduces.iter().enumerate() {
+            let earlier: Vec<&_> = predicate_reduces[..si].iter().collect();
+            for present in [true, false] {
+                let src = ph2d_gpu_cook::reduce_stage::map_module(spec, present, &earlier, shared);
+                validate(
+                    &format!(
+                        "{} carry reduce {} present={present}",
+                        manifest.name, spec.name
+                    ),
+                    &src,
+                );
+                carries += 1;
+            }
+        }
+        // Os valores que cada param pode tomar — o mesmo critério da varredura das variantes.
+        let hints = reg.param_ui(manifest.id).unwrap_or(&[]);
+        let valores = |spec: &ph2d_nodegraph::node::ParamSpec| -> Vec<f32> {
+            let hint = hints.iter().find(|h| h.param == spec.name);
+            match hint.map(|h| h.widget) {
+                Some(ph2d_node_registry::ParamWidget::Enum { labels }) => (0..labels.len())
+                    .map(|i| {
+                        #[expect(clippy::cast_precision_loss, reason = "um indice de enum")]
+                        let v = i as f32;
+                        v
+                    })
+                    .collect(),
+                _ => hint.map_or_else(
+                    || vec![spec.default],
+                    |h| vec![h.min, (h.min + h.max) * 0.5, h.max],
+                ),
+            }
+        };
+        let mut vistos: Vec<*const ph2d_nodegraph::gpu::GpuKernel> = Vec::new();
+        let base = reg.gpu_kernel(manifest.id).expect("um Carry tem kernel");
+        for (ia, a) in manifest.params.iter().enumerate() {
+            for b in &manifest.params[ia..] {
+                for va in valores(a) {
+                    for vb in valores(b) {
+                        let resolve = |name: &str| {
+                            if name == a.name {
+                                va
+                            } else if name == b.name {
+                                vb
+                            } else {
+                                manifest
+                                    .params
+                                    .iter()
+                                    .find(|p| p.name == name)
+                                    .map_or(0.0, |p| p.default)
+                            }
+                        };
+                        for (qual, k) in [
+                            ("body", base.resolve(&resolve)),
+                            ("identity", identity_kernel.resolve(&resolve)),
+                        ] {
+                            let ptr = std::ptr::from_ref(k);
+                            if vistos.contains(&ptr) || k.is_passthrough() {
+                                continue;
+                            }
+                            vistos.push(ptr);
+                            textos.push((
+                                format!("{qual} [{} = {va}, {} = {vb}]", a.name, b.name),
+                                k,
+                                ph2d_gpu_cook::codegen::ExtraBuffers {
+                                    grid: reg.grid(manifest.id),
+                                    reduces: reg.reduces(manifest.id),
+                                    luts: reg.luts(manifest.id),
+                                },
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            textos.len() >= 5,
+            "{}: o predicado, as quatro variantes do corpo e o caso identidade — achei {}",
+            manifest.name,
+            textos.len()
+        );
+        for (rotulo, k, extra) in textos {
+            let n = k.bindings.len().min(16);
+            for mask in 0u32..(1 << n) {
+                let src = ph2d_gpu_cook::codegen::kernel_module(
+                    k,
+                    k.bindings,
+                    &port_names,
+                    extra,
+                    shared,
+                    |bb| {
+                        let idx = k
+                            .bindings
+                            .iter()
+                            .position(|x| std::ptr::eq(x, bb))
+                            .expect("binding belongs to the kernel");
+                        mask & (1 << idx) != 0
+                    },
+                );
+                validate(
+                    &format!("{} carry {rotulo} mask {mask:b}", manifest.name),
+                    &src,
+                );
+                carries += 1;
+            }
+        }
+    }
+    assert!(
+        carries >= 40,
+        "o `motion.trail` tem de ser varrido (predicado, redução, corpo, identidade), got {carries}"
+    );
+
     // A reduction's `value` is a WGSL EXPRESSION the node author writes by hand,
     // pasted into a module of its own (`fn reduce_value(v) -> f32`) that the
     // kernel sweep above never builds. Until this loop existed those expressions

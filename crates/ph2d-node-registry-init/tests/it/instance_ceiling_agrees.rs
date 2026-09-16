@@ -1,4 +1,4 @@
-//! **OS TETOS DE INSTÂNCIA SÃO UM NÚMERO POR RECURSO** (CLAUDE.md §0, doc 89 folha 07, doc 112 §4).
+//! **OS TETOS DE INSTÂNCIA SÃO O NÚMERO MEDIDO DE CADA UM** (CLAUDE.md §0, doc 89 folha 07, doc 112 §4).
 //!
 //! `motion.trail`, `fx.drop_shadow` e `fx.rgb_split` limitavam a MESMA grandeza — quantas linhas
 //! um nó pode emitir no caminho de CPU — e por isso carregavam o mesmo teto. Eles são
@@ -18,58 +18,65 @@
 //! `ph2d-gpu-cook/tests/it/gpu_cpu_parity_fx.rs::fx_row_ceiling_probe` (dispositivo) — e a tabela
 //! está no doc-comment de cada const.
 
-/// O teto MEDIDO no caminho de CPU: a linha emitida custa ~10–28 ns nos nós que só correm lá, e
-/// este é o ponto em que **um** nó passa a ocupar cerca de um terço de um quadro de 60 fps.
+/// O teto MEDIDO no caminho de CPU (`measure_lsystem_ceiling.rs`): derivar + interpretar a
+/// ~24 ns por elemento, `38,8 %` de um quadro a `262 145` elementos.
 ///
-/// ⚠️ Este literal é um sítio a mais, e é de propósito: sem ele o gate compararia as consts
+/// ⚠️ Cada literal aqui é um sítio a mais, e é de propósito: sem eles o gate compararia as consts
 /// **umas com as outras** e ficaria verde no dia em que alguém as movesse todas juntas por
 /// engano — um oráculo que usa a coisa sob teste para computar o que espera é sempre verde.
-const MEASURED_CPU_CEILING: usize = 262_144;
+const MEASURED_LSYSTEM_CEILING: usize = 262_144;
 
-/// O teto MEDIDO no DISPOSITIVO (`fx_row_ceiling_probe`): ~1,8 ns por linha, e a cadeia
-/// `grid → oscillator → fx → output` ocupa `5,66–5,89 ms` (`34–35 %` de um quadro) a
-/// `3 145 728` linhas — o MESMO critério de «um terço», no recurso novo.
-const MEASURED_DEVICE_CEILING: usize = 3_145_728;
+/// O teto MEDIDO no DISPOSITIVO para quem REÚNE (`fx_row_ceiling_probe`): ~1,8 ns por linha, e a
+/// cadeia `grid → oscillator → fx → output` ocupa `5,66–5,89 ms` (`34–35 %` de um quadro) a
+/// `3 145 728` linhas — o critério de «um terço», no recurso novo.
+const MEASURED_FX_DEVICE_CEILING: usize = 3_145_728;
 
-/// Os nós que só correm na CPU carregam o teto da CPU; os que têm kernel carregam o do
-/// dispositivo. ⚠️ **As duas metades têm piso** (um grupo esvaziado por engano ficaria verde).
+/// O teto MEDIDO no DISPOSITIVO para o RASTRO (`trail_row_ceiling_probe`): ~2,6 ns por linha (a
+/// compactação e a junção), `5,15–5,46 ms` (`31–33 %`) a `2 097 152` linhas.
+const MEASURED_TRAIL_DEVICE_CEILING: usize = 2_097_152;
+
+/// **Cada tecto é o SEU número medido** — os dois `fx.*` partilham um (a mesma lei de custo),
+/// o rastro e o L-System têm o deles. ⚠️ A tabela tem piso: uma linha apagada por engano
+/// deixava um tecto livre de mover sem medição.
 #[test]
 fn the_instance_ceilings_agree_per_resource() {
-    let device = [
-        ("fx.drop_shadow", ph2d_node_fx_drop_shadow::MAX_INSTANCES),
-        ("fx.rgb_split", ph2d_node_fx_rgb_split::MAX_INSTANCES),
+    let tetos = [
+        (
+            "fx.drop_shadow",
+            ph2d_node_fx_drop_shadow::MAX_INSTANCES,
+            MEASURED_FX_DEVICE_CEILING,
+            "fx_row_ceiling_probe",
+        ),
+        (
+            "fx.rgb_split",
+            ph2d_node_fx_rgb_split::MAX_INSTANCES,
+            MEASURED_FX_DEVICE_CEILING,
+            "fx_row_ceiling_probe",
+        ),
+        (
+            "motion.trail",
+            ph2d_node_motion_trail::MAX_INSTANCES,
+            MEASURED_TRAIL_DEVICE_CEILING,
+            "trail_row_ceiling_probe",
+        ),
+        // ⚠️ **O `source.lsystem` limita MÓDULOS e não linhas** — a tartaruga emite no máximo um
+        // elemento por módulo (mais a raiz: `MAX_MODULES + 1` linhas, UMA de folga). Ele corre só
+        // na CPU e o número é o da varredura dele. Até à W1d do ciclo 7 ele coincidia com o do
+        // rastro e dos `fx.*` (*"duas medições independentes no mesmo sítio"*); os três ganharam
+        // kernel e mediram o deles no dispositivo.
+        (
+            "source.lsystem",
+            ph2d_node_source_lsystem::MAX_MODULES,
+            MEASURED_LSYSTEM_CEILING,
+            "measure_lsystem_ceiling",
+        ),
     ];
-    assert_eq!(device.len(), 2, "piso do grupo do dispositivo");
-    for (name, c) in device {
+    assert_eq!(tetos.len(), 4, "piso da tabela");
+    for (name, c, medido, sonda) in tetos {
         assert_eq!(
-            c, MEASURED_DEVICE_CEILING,
-            "{name} tem kernel e carrega um teto que nao e' o medido no dispositivo: {c} contra \
-             {MEASURED_DEVICE_CEILING}. Mover um exige medir (fx_row_ceiling_probe) e mover o \
-             grupo, com a tabela ao lado."
-        );
-    }
-    let ceilings = [
-        ("motion.trail", ph2d_node_motion_trail::MAX_INSTANCES),
-        // ⚠️ **O `source.lsystem` limita MÓDULOS e não linhas — e é a MESMA grandeza um nível
-        // acima.** A tartaruga emite no máximo um elemento por módulo (mais a raiz), então o
-        // orçamento da cadeia é o que decide quantas linhas este nó entrega ao caminho de CPU.
-        // A varredura dele (`measure_lsystem_ceiling.rs`) chegou a este número por outro
-        // caminho — 38,8 % de um quadro para derivar — e concorda com o *"cerca de um terço"*
-        // que decidiu os outros três. ⭐ *Duas medições independentes no mesmo sítio.*
-        //
-        // ⚠️ Ele emite no máximo `MAX_MODULES + 1` linhas: a raiz que a tartaruga planta antes
-        // do primeiro símbolo não vem da cadeia, logo não é contada pelo orçamento dela. UMA
-        // linha de folga, escrita aqui para o «mesmo número» não ser lido como mais do que é.
-        ("source.lsystem", ph2d_node_source_lsystem::MAX_MODULES),
-    ];
-    assert_eq!(ceilings.len(), 2, "piso do grupo da CPU");
-    for (name, c) in ceilings {
-        assert_eq!(
-            c, MEASURED_CPU_CEILING,
-            "{name} carrega um teto de instancias que ninguem mediu junto com o grupo da CPU: \
-             {c} contra {MEASURED_CPU_CEILING}. Eles limitam a MESMA grandeza (linhas emitidas \
-             no caminho de CPU) — mover um exige medir e mover o grupo, com a tabela ao lado. \
-             (Um no' que ganhou kernel muda de grupo: doc 112 §4.)"
+            c, medido,
+            "{name} carrega um teto de instancias que nao e' o medido: {c} contra {medido}. \
+             Mover um exige medir ({sonda}) e mover o literal daqui, com a tabela ao lado."
         );
     }
 }

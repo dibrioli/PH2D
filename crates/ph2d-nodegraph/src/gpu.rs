@@ -23,7 +23,7 @@ pub use crate::column::{ColumnAccess, ColumnBinding};
 
 pub use crate::algorithm_meta::GpuAlgorithm;
 pub use crate::reduce_meta::{ReduceOp, ReduceSpec};
-pub use crate::stream_op_meta::{KEEP_FLAG_COL, ROWS_COL, StreamOp};
+pub use crate::stream_op_meta::{ConcatFill, KEEP_FLAG_COL, ROWS_COL, StreamOp};
 
 /// Everything a node's **count law** may look at. Dispatch size must be known
 /// host-side, so this is evaluated on the CPU at cook time.
@@ -377,9 +377,15 @@ pub struct LutSpec {
 /// sai igual ao bit. E serve os clamps que a CPU faz com `f32::max` (que engole um `NaN`) sem a
 /// dança de guardas que um `max` do WGSL — definido pela implementação num `NaN` — pediria.
 ///
-/// ⚠️ **O slot é o de um param que o manifesto DECLARA** (o planeador recusa um nome que ele não
-/// declare), e só o UNIFORM muda: a lei de contagem, a variante e a aplicabilidade continuam a ler
-/// o valor cru — são perguntas sobre o que o artista pediu, não sobre o que o corpo multiplica.
+/// ⚠️ **O slot é o de um param que o manifesto DECLARA — ou um NOME NOVO que só a derivação
+/// conhece** (o `motion.trail` leva uma matriz de cor de 9 números composta por tique, e o
+/// manifesto não tem 9 params para lhe emprestar): o planeador aceita os dois. Só o UNIFORM muda
+/// — a lei de contagem, a variante e a aplicabilidade continuam a ler o valor cru, que são
+/// perguntas sobre o que o artista pediu, não sobre o que o corpo multiplica.
+///
+/// ⚠️ **As contagens do contexto são as CRUAS** — as que a CPU vê no `eval` (o `inputs` do
+/// [`CountLawCtx`]), mesmo quando uma [`StreamOp`] mudou as que o corpo corre: o rastro deriva a
+/// janela da contagem VIVA, e a junção já não é ela.
 ///
 /// Dados puros e `'static`, canal lateral como o [`LutSpec`]: um kernel que não declare nenhum não
 /// muda um byte.
@@ -387,12 +393,12 @@ pub struct LutSpec {
 pub struct DerivedUniform {
     /// O param declarado cujo slot do uniform recebe o valor derivado.
     pub param: &'static str,
-    /// A derivação, sobre o leitor de params cru do nó (o mesmo `resolve_param` do resto).
+    /// A derivação, sobre os params crus e as contagens cruas do nó.
     pub derive: DeriveFn,
 }
 
-/// A assinatura de uma [`DerivedUniform`] — o molde do [`VariantFn`].
-pub type DeriveFn = fn(&dyn Fn(&str) -> f32) -> f32;
+/// A assinatura de uma [`DerivedUniform`] — o contexto é o da lei de contagem.
+pub type DeriveFn = fn(&CountLawCtx<'_>) -> f32;
 
 /// Resolves a node type id to its registered GPU kernel — the side-channel
 /// mirror of [`crate::cook::OpResolver`], implemented by the node registry.

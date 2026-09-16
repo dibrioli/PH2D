@@ -347,10 +347,14 @@ fn eligible(
     // own field (`count` → `count_`), so the shadowing this used to refuse cannot
     // happen. `motion.pin_constraint` has a param called `count`, and renaming it
     // was never an option — it is the artist's vocabulary and it is in saved docs.
+    //
+    // ⚠️ **Ou são um uniform DERIVADO que só a derivação conhece** (ciclo 7, `DerivedUniform`: a
+    // matriz de cor do `motion.trail` não tem nove params no manifesto para lhe emprestar).
+    let derivados = kernels.derived_uniforms(inst.type_id());
     if !kernel
         .params
         .iter()
-        .all(|p| manifest.param_default(p).is_some())
+        .all(|p| manifest.param_default(p).is_some() || derivados.iter().any(|d| d.param == *p))
     {
         return false;
     }

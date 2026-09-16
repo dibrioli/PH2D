@@ -31,12 +31,37 @@ use crate::{
     GpuColumn, GpuCook, GpuCookError, GpuStream, codegen, create_pipeline, gather, stream,
 };
 use ph2d_gpu::GpuContext;
-use ph2d_nodegraph::gpu::{GpuKernel, KEEP_FLAG_COL, ROWS_COL, SourceWindow};
+use ph2d_nodegraph::gpu::{
+    ConcatFill, DerivedUniform, GpuKernel, KEEP_FLAG_COL, ROWS_COL, ReduceSpec, SourceWindow,
+};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::NodeManifest;
 use ph2d_nodegraph::port::Dim;
 use std::collections::BTreeMap;
-use std::sync::Arc;
+
+#[path = "stream_op_project.rs"]
+mod project;
+
+/// **O que um predicado de compactação vê além das colunas** — vazio num `Compact` (ver o
+/// porquê em [`GpuCook::encode_compact`]) e cheio num `Carry` (ciclo 7), cujo predicado pergunta
+/// ao estado INTEIRO se há um eco na faixa do espaçamento e deriva a janela da contagem viva.
+pub(crate) struct PredicateExtras<'a> {
+    /// As reduções dobradas antes do predicado, e os buffers delas.
+    pub reduces: (&'static [ReduceSpec], &'a [wgpu::Buffer]),
+    /// O WGSL que o predicado e as reduções veem os dois.
+    pub shared: &'static str,
+    /// Os uniforms derivados, com as contagens CRUAS.
+    pub derived: (&'static [DerivedUniform], &'a [u32]),
+}
+
+impl PredicateExtras<'_> {
+    /// Nada — o predicado de um `Compact`.
+    pub const NONE: PredicateExtras<'static> = PredicateExtras {
+        reduces: (&[], &[]),
+        shared: "",
+        derived: (&[], &[]),
+    };
+}
 
 /// Cache salt for a compaction predicate's pipelines — see
 /// [`GpuCook::encode_kernel_stage`]'s `cache_salt`: the predicate shares the
@@ -83,6 +108,23 @@ pub(crate) struct StreamOpPipes {
     /// device o `atan2` do vendedor. O bit-a-bit nao e a politica deste projeto
     /// (o compositor ja o declara), e o gate de paridade carrega o numero.
     angle: wgpu::ComputePipeline,
+    /// `dst[(first + i)·words + w] = value[w]` — a IDENTIDADE de uma coluna na região de uma
+    /// fonte que não a tem (a junção de um `Carry`, ciclo 7). Uniform próprio: ele leva um
+    /// `vec4`, que o `U` dos outros não tem.
+    fill: wgpu::ComputePipeline,
+}
+
+/// A região que um [`StreamOpPipes::fill`] escreve.
+struct FillRegion<'a> {
+    dst: &'a wgpu::Buffer,
+    /// Quantos elementos.
+    n: u32,
+    /// Palavras `f32` por elemento (a passada da dimensão).
+    words: u32,
+    /// O primeiro elemento da região.
+    first: u32,
+    /// O valor de cada faixa (as faixas acima de 4 — a folga de um `Vec3` — levam `0`).
+    value: [f32; 4],
 }
 
 fn simple_module(bindings: &str, body: &str) -> String {
@@ -147,7 +189,23 @@ impl StreamOpPipes {
              @group(0) @binding(2) var<storage, read_write> dst: array<f32>;",
             "\x20   dst[i] = src[i * u.stride + u.lane];",
         );
+        let fill = format!(
+            "struct F {{ n: u32, words: u32, first: u32, _pad: u32, value: vec4<f32> }}\n\
+             @group(0) @binding(0) var<uniform> u: F;\n\
+             @group(0) @binding(1) var<storage, read_write> dst: array<f32>;\n\
+             @compute @workgroup_size({WG})\n\
+             fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{\n\
+             \x20   let i = gid.x;\n\
+             \x20   if (i >= u.n) {{ return; }}\n\
+             \x20   for (var w = 0u; w < u.words; w = w + 1u) {{\n\
+             \x20       var v = 0.0;\n\
+             \x20       if (w < 4u) {{ v = u.value[w]; }}\n\
+             \x20       dst[(u.first + i) * u.words + w] = v;\n\
+             \x20   }}\n\
+             }}\n"
+        );
         StreamOpPipes {
+            fill: create_pipeline(gpu, &fill, "ph2d-stream-op fill"),
             scan: Scan::new(gpu),
             convert: create_pipeline(gpu, &convert, "ph2d-stream-op convert"),
             rows: create_pipeline(gpu, &rows, "ph2d-stream-op rows"),
@@ -165,6 +223,54 @@ impl StreamOpPipes {
             component: create_pipeline(gpu, &component, "ph2d-stream-op component"),
             angle: create_pipeline(gpu, &angle, "ph2d-stream-op angle"),
         }
+    }
+
+    /// Encode one identity FILL over a region ([`FillRegion`]).
+    fn fill(
+        &self,
+        gpu: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        r: FillRegion<'_>,
+        hold: &mut Vec<wgpu::Buffer>,
+    ) {
+        let uni = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-stream-op fill u"),
+            size: 32,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let mut bytes = [0u8; 32];
+        bytes[0..4].copy_from_slice(&r.n.to_le_bytes());
+        bytes[4..8].copy_from_slice(&r.words.to_le_bytes());
+        bytes[8..12].copy_from_slice(&r.first.to_le_bytes());
+        for (k, v) in r.value.iter().enumerate() {
+            bytes[16 + 4 * k..20 + 4 * k].copy_from_slice(&v.to_le_bytes());
+        }
+        gpu.queue.write_buffer(&uni, 0, &bytes);
+        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-stream-op fill bg"),
+            layout: &self.fill.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uni.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: r.dst.as_entire_binding(),
+                },
+            ],
+        });
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("ph2d-stream-op fill"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.fill);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(r.n.div_ceil(WG), 1, 1);
+        }
+        hold.push(uni);
     }
 
     /// Encode one fixed pass: `{u: (n, stride)} + buffers`, dispatched over `n`.
@@ -240,6 +346,7 @@ impl GpuCook {
         dt: f64,
         inputs: &[GpuStream],
         port: usize,
+        extras: PredicateExtras<'_>,
     ) -> Result<GpuStream, GpuCookError> {
         let src = inputs.get(port).cloned().unwrap_or_default();
         let n = src.count;
@@ -264,8 +371,16 @@ impl GpuCook {
                 count: n,
             });
         }
-        let needed =
-            codegen::storage_bindings(bindings, |b| gather::column_present(None, n, inputs, b));
+        // ⚠️ O orçamento conta as reduções que o predicado lê (um `Carry`), como o do estágio.
+        let needed = codegen::storage_buffers(
+            bindings,
+            |b| gather::column_present(None, n, inputs, b),
+            codegen::ExtraBuffers {
+                grid: None,
+                reduces: extras.reduces.0,
+                luts: &[],
+            },
+        );
         let limit = gpu.device.limits().max_storage_buffers_per_shader_stage;
         if needed > limit {
             return Err(GpuCookError::TooManyBindings(manifest.id, needed, limit));
@@ -288,20 +403,16 @@ impl GpuCook {
             inputs,
             src.clone(),
             None,
-            // A compaction predicate reads no whole-stream reduction: it decides
-            // per element whether the element survives, and a number about the
-            // whole stream would be a number about a stream that is changing.
-            (&[], &[]),
+            // A `Compact` predicate reads no whole-stream reduction: it decides per
+            // element whether the element survives, and a number about the whole stream
+            // would be a number about a stream that is changing (`PredicateExtras::NONE`).
+            // ⚠️ Um `Carry` (ciclo 7) pede-as DE PROPÓSITO, dobradas sobre o estado CRU que
+            // este predicado filtra — e com elas o canal partilhado e os derivados.
+            extras.reduces,
             // Nor a LUT — a predicate samples no authored curve (A1-gpu).
             (&[], &[]),
-            // ⚠️ Nem o canal PARTILHADO: ele existe para uma redução alcançar o que o
-            // kernel do nó declara, e um predicado de compactação não corre redução
-            // nenhuma (a linha acima). Um nó que precise dele no predicado tem de o
-            // pedir aqui, de propósito.
-            "",
-            // Nem o uniform DERIVADO (ciclo 7), pela mesma razão: nenhum nó de compactação o
-            // declara, e um predicado que precise dele pede-o aqui, de propósito.
-            &[],
+            extras.shared,
+            extras.derived,
         );
         let Some(flags) = pred_out.cols.get(KEEP_FLAG_COL).map(|c| c.buffer.clone()) else {
             // A predicate that does not write the flag is an authoring bug in the
@@ -501,12 +612,23 @@ impl GpuCook {
         ports: &[usize],
         inputs: &[GpuStream],
     ) -> GpuStream {
-        // Non-empty inputs in port order — the CPU's snapshot rule.
-        let live: Vec<&GpuStream> = ports
-            .iter()
-            .filter_map(|p| inputs.get(*p))
-            .filter(|s| s.count > 0)
-            .collect();
+        let fontes: Vec<&GpuStream> = ports.iter().filter_map(|p| inputs.get(*p)).collect();
+        self.encode_join(gpu, encoder, &fontes, &[])
+    }
+
+    /// **A junção** — as fontes, pela ordem, ponta a ponta: a união das colunas, a dimensão
+    /// da PRIMEIRA fonte não-vazia que a tem como protótipo, e onde uma fonte não a tem (ou a
+    /// tem noutra dimensão) a IDENTIDADE que as `fills` dão — zeros quando nenhuma a nomeia
+    /// (o `motion.combine`), o `default_for` da CPU num `Carry` (ciclo 7: um `size`/`tint` a
+    /// zero apagava o eco). Fontes vazias saltam-se (a regra de snapshot da CPU).
+    pub(crate) fn encode_join(
+        &mut self,
+        gpu: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        fontes: &[&GpuStream],
+        fills: &[ConcatFill],
+    ) -> GpuStream {
+        let live: Vec<&GpuStream> = fontes.iter().copied().filter(|s| s.count > 0).collect();
         let total64: u64 = live.iter().map(|s| u64::from(s.count)).sum();
         let total = total64.min(u64::from(u32::MAX)) as u32;
         if total == 0 {
@@ -526,9 +648,11 @@ impl GpuCook {
             count: total,
             cols: BTreeMap::new(),
         };
+        let mut hold: Vec<wgpu::Buffer> = Vec::new();
         for (name, dim) in protos {
             let stride = stream::element_stride(dim);
             let dst = self.pool.acquire(gpu, u64::from(total) * stride);
+            let identidade = ConcatFill::of(fills, &name, dim);
             let mut off: u64 = 0;
             for s in &live {
                 let bytes = u64::from(s.count) * stride;
@@ -536,125 +660,30 @@ impl GpuCook {
                     Some(c) if c.dim == dim => {
                         encoder.copy_buffer_to_buffer(&c.buffer, 0, &dst, off, bytes);
                     }
-                    _ => encoder.clear_buffer(&dst, off, Some(bytes)),
+                    _ if identidade == [0.0; 4] => encoder.clear_buffer(&dst, off, Some(bytes)),
+                    _ => {
+                        let pipes = self
+                            .stream_op_pipes
+                            .get_or_insert_with(|| StreamOpPipes::new(gpu));
+                        pipes.fill(
+                            gpu,
+                            encoder,
+                            FillRegion {
+                                dst: &dst,
+                                n: s.count,
+                                words: (stride / 4) as u32,
+                                first: (off / stride) as u32,
+                                value: identidade,
+                            },
+                            &mut hold,
+                        );
+                    }
                 }
                 off += bytes;
             }
             out.cols.insert(name, GpuColumn { buffer: dst, dim });
         }
-        out
-    }
-
-    /// `value.attribute` (ADR-0136): project the column NAMED BY A TEXT PARAM as
-    /// the value field `v`. The CPU ladder, exactly: a scalar column in scalar
-    /// mode is a copy; a vec2 column in length mode is the magnitude kernel;
-    /// anything else — missing, mistyped, wrong dim for the mode — is zeros at
-    /// full length, never an error and never an empty broadcast.
-    #[allow(clippy::too_many_arguments)] // private seam of `cook`
-    pub(crate) fn encode_project(
-        &mut self,
-        gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
-        graph: &Graph,
-        node: NodeId,
-        manifest: &'static NodeManifest,
-        text_param: &str,
-        mode_param: &str,
-        inputs: &[GpuStream],
-    ) -> GpuStream {
-        // `value.attribute`'s own constants. ⚠️ They are DUPLICATED here on purpose and the
-        // duplication is structural, not laziness: the node crate reaches this one only as a
-        // `[dev-dependencies]` (machete-safe — the cook engine must not depend on the nodes it
-        // cooks). What keeps them from drifting is a gate in the parity suite, which CAN see
-        // both: `the_projection_modes_agree_across_the_dev_dependency_fence`.
-        const MODE_LENGTH: i32 = 1;
-        const MODE_COMPONENT_BASE: i32 = 2;
-        const MODE_ANGLE: i32 = -1;
-        let src_stream = inputs.first().cloned().unwrap_or_default();
-        let n = src_stream.count;
-        if n == 0 {
-            return GpuStream::default();
-        }
-        let name = graph
-            .node_text_param_overrides(node)
-            .and_then(|m| m.get(text_param))
-            .map(String::as_str)
-            .unwrap_or("");
-        let mode = resolve_param(graph, node, manifest, mode_param, &self.driven).round() as i32;
-        let dst: Arc<wgpu::Buffer> = self.pool.acquire(gpu, u64::from(n) * 4);
-        let mut hold: Vec<wgpu::Buffer> = Vec::new();
-        match (src_stream.cols.get(name), mode) {
-            (Some(c), m) if c.dim == Dim::Scalar && m != MODE_LENGTH && m != MODE_ANGLE => {
-                encoder.copy_buffer_to_buffer(&c.buffer, 0, &dst, 0, u64::from(n) * 4);
-            }
-            (Some(c), MODE_LENGTH) if c.dim == Dim::Vec2 => {
-                let pipes = self
-                    .stream_op_pipes
-                    .get_or_insert_with(|| StreamOpPipes::new(gpu));
-                pipes.pass(
-                    gpu,
-                    encoder,
-                    &pipes.length,
-                    n,
-                    1,
-                    0,
-                    &[&c.buffer, &dst],
-                    &mut hold,
-                );
-            }
-            // A DIRECAO — o irmao do length, e o unico braco transcendental da escada.
-            (Some(c), MODE_ANGLE) if c.dim == Dim::Vec2 => {
-                let pipes = self
-                    .stream_op_pipes
-                    .get_or_insert_with(|| StreamOpPipes::new(gpu));
-                pipes.pass(
-                    gpu,
-                    encoder,
-                    &pipes.angle,
-                    n,
-                    1,
-                    0,
-                    &[&c.buffer, &dst],
-                    &mut hold,
-                );
-            }
-            // The COMPONENT rung — the CPU's `component()`, lane for lane. The width
-            // rides `stride`, so ONE pipeline serves Vec2/Vec3/Vec4 exactly as one CPU
-            // arm does; a lane the column does not have falls through to the zeros
-            // below, which is the CPU's ordinary miss and not a special case here.
-            (Some(c), m)
-                if m >= MODE_COMPONENT_BASE
-                    && ((m - MODE_COMPONENT_BASE) as u32)
-                        < (stream::element_stride(c.dim) / 4) as u32 =>
-            {
-                let pipes = self
-                    .stream_op_pipes
-                    .get_or_insert_with(|| StreamOpPipes::new(gpu));
-                pipes.pass(
-                    gpu,
-                    encoder,
-                    &pipes.component,
-                    n,
-                    (stream::element_stride(c.dim) / 4) as u32,
-                    (m - MODE_COMPONENT_BASE) as u32,
-                    &[&c.buffer, &dst],
-                    &mut hold,
-                );
-            }
-            _ => encoder.clear_buffer(&dst, 0, Some(u64::from(n) * 4)),
-        }
         self.stream_op_hold.append(&mut hold);
-        let mut out = GpuStream {
-            count: n,
-            cols: BTreeMap::new(),
-        };
-        out.cols.insert(
-            "v".to_string(),
-            GpuColumn {
-                buffer: dst,
-                dim: Dim::Scalar,
-            },
-        );
         out
     }
 }

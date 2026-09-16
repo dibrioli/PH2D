@@ -93,6 +93,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod carry;
+mod kernel;
 mod resample;
 pub use resample::{FORWARD, SOURCE, SOURCE_RESAMPLED, echo_offsets, time_fans};
 use resample::{authored_span, forward_of, step_resampled};
@@ -166,44 +167,37 @@ const MAX_LENGTH: usize = 32;
 /// CLAMPED (fewer generations), never truncated mid-generation — a half-drawn
 /// echo reads as a bug, a shorter tail reads as a setting.
 ///
-/// # O RECURSO É **TEMPO**, e o número é MEDIDO (CLAUDE.md §0)
+/// # O RECURSO É **O TEMPO DO DISPOSITIVO**, e o número é MEDIDO lá (CLAUDE.md §0.0)
 ///
-/// ⚠️ **O valor que shipava era `65_536` e a justificativa era uma CONTAGEM**, não um custo
-/// (*"4096 vivas × 32 ecos já é 131k quads"*) — no módulo cuja `line/gpu-nodes` mediu **4,19 M
-/// partículas em 3,6 ms**. Medido pela porta do produto
-/// (`ph2d-node-registry-init/tests/it/measure_instance_ceiling.rs`, fonte a MEXER-SE), o custo é
-/// **linear na linha emitida** e não tem joelho:
+/// ⚠️ **Três vidas, três números, e só a última é a de agora.** O `65_536` original era uma
+/// CONTAGEM (*"4096 vivas × 32 ecos já é 131k quads"*) e clampava em silêncio o caso que citava.
+/// O `262 144` que o substituiu foi MEDIDO no caminho de CPU (`measure_instance_ceiling.rs`:
+/// ~4–5 ms, um terço de quadro), enquanto este nó só corria lá. Desde a W1d do ciclo 7 (doc 112
+/// §4-quater) o modo `Remembered` corre no dispositivo — um `StreamOp::Carry` (`kernel.rs`) — e o
+/// recurso mudou. Sonda `trail_row_ceiling_probe` (`ph2d-gpu-cook`, `--release`, cauda CHEIA de 32
+/// ecos, o menor de cinco corridas a `load 5,7–21,7`, a mediana de 20 quadros):
 ///
-/// | linhas emitidas | ms/tick | % de um quadro de 60 fps |
-/// |---|---|---|
-/// | 65 536 (o teto antigo) | 1,24–1,83 | 7–11 % |
-/// | 262 144 (este teto) | ~4–5 | ~30 % |
-/// | 1 048 576 | ~21 | **acima de um quadro inteiro** |
+/// | vivos | linhas | disp. ms | CPU ms |
+/// |---|---|---|---|
+/// | 8 100 | 259 200 | 0,85 | 6,81 |
+/// | 32 761 | 1 048 352 | 2,96 | 30,26 |
+/// | **65 536** | **2 097 152** | **5,15** | 65,59 |
+/// | 97 969 | 3 135 008 | 8,24 | 106,88 |
+/// | 196 249 | 6 279 968 | 16,08 | 275,11 |
 ///
-/// ⇒ o teto antigo estava a um **décimo** do que um nó pode gastar, e o novo é onde **um** nó
-/// passa a ocupar cerca de um terço do quadro. Acima dele o próximo degrau de potência de dois
-/// custa dois terços, que é um nó a ser dono do quadro.
+/// ⇒ **~2,6 ns por linha no dispositivo** (a compactação lê 8 bytes de volta e a junção copia as
+/// colunas — o dobro da linha de um `fx.*`, que só reúne), contra ~30 ns na CPU. O tecto é o
+/// ponto em que **um** nó ocupa cerca de um terço de um quadro — o MESMO critério das duas vidas
+/// anteriores — e é medido directamente: `2 097 152` linhas a `5,15–5,46 ms` (`31–33 %`). A CPU
+/// computa a mesma resposta e paga o dela (`~66 ms` no tecto).
 ///
-/// ⚠️ **E a consequência prática é o caso que o comentário antigo citava:** 4096 vivas × 32
-/// ecos = 131 072 linhas, que o teto de `65_536` **CLAMPAVA em silêncio para 16 gerações** — o
-/// artista pedia 32 e recebia metade, sem nada na tela a dizer porquê. Sob este teto o pedido
-/// é HONRADO.
+/// ⚠️ **A memória fica longe:** a descida pede `188 B × linhas` — `376 MiB` no tecto, contra os
+/// `2 047 MiB` da ligação do adaptador desta máquina (acima dela o cozimento RECUSA em voz alta).
 ///
-/// ⚠️ **A memória é o outro recurso e é o folgado:** o stream emitido mede **16 bytes por
-/// linha** de `P` + `size` (mais `tint`/`trail_age` quando existem) — 262 144 linhas são
-/// ~4,2 MB, contra os ~16,8 MB de um milhão.
-///
-/// ⚠️ **Este número é COMPARTILHADO com o `source.lsystem`**, que carrega o mesmo teto pelo
-/// mesmo recurso (linhas emitidas no caminho de CPU) — o gate
-/// `the_instance_ceilings_agree_per_resource` da `ph2d-node-registry-init` recusa que um deles se
-/// mova sozinho. São drop-crates e não podem depender uns dos outros (ADR-0075), então a const é
-/// copiada como o `falloff_at` das behaviours; o que a mantém honesta é o gate.
-///
-/// ⚠️ **Os `fx.drop_shadow`/`fx.rgb_split` partilhavam-no e SAÍRAM do grupo** (2026-09-16, doc 112
-/// §4): ganharam kernel, e o teto deles passou a ser o MEDIDO no dispositivo (`3 145 728`). No dia
-/// em que este nó ganhar o dele (o modo `Remembered`, W1c do mesmo doc), o teto dele é para medir
-/// de novo — e não para copiar.
-pub const MAX_INSTANCES: usize = 262_144;
+/// ⚠️ **Não é o número dos `fx.*`** (`3 145 728`): o custo por linha do rastro é outro, e o gate
+/// `the_instance_ceilings_agree_per_resource` (`ph2d-node-registry-init`) prende cada um ao SEU
+/// literal medido — mover um exige medir de novo, com a tabela ao lado.
+pub const MAX_INSTANCES: usize = 2_097_152;
 
 /// Teto do espaçamento: `length × spacing` é a janela de IDADE que o nó carrega, e um
 /// `f32` vindo de um documento é intocado. 16 ticks entre ecos já é um rastro de flip-book.
@@ -586,6 +580,7 @@ impl NodeOp for MotionTrail {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionTrail))?;
+    kernel::regista(reg); // o dispositivo (ciclo 7, W1d) — ver o cabeçalho de `kernel`
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
@@ -597,8 +592,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
-    // CPU-only: o rastro lê `falloff` só no `eval` (não há kernel de GPU de onde
-    // uma `ColumnBinding` pudesse ser derivada) — declare (ADR-0155).
+    // O `falloff` declarado à mão (ADR-0155) — o predicado do dispositivo também o lê (na porta do
+    // estado, que o diagnóstico não segue), e a declaração fica.
     reg.register_couplings(
         MANIFEST.id,
         &[ph2d_node_registry::Coupling::Consumes("falloff")],

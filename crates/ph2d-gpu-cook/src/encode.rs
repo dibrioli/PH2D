@@ -83,7 +83,7 @@ impl GpuCook {
         shared: &'static str,
         // Os params cujo slot do uniform é derivado no hospedeiro (ciclo 7) — ver
         // [`DerivedUniform`]. Só o UNIFORM os lê: a variante acima continua a ver o valor cru.
-        derived: &'static [DerivedUniform],
+        derived: (&'static [DerivedUniform], &[u32]),
     ) -> GpuStream {
         use codegen::BindingPlan;
 
@@ -140,11 +140,18 @@ impl GpuCook {
         uni[4..8].copy_from_slice(&(playhead as f32).to_le_bytes());
         uni[8..12].copy_from_slice(&(dt as f32).to_le_bytes());
         let raw = |name: &str| resolve_param(graph, node, manifest, name, &self.driven);
+        let (derived, raw_counts) = derived;
+        let ctx = ph2d_nodegraph::gpu::CountLawCtx {
+            inputs: raw_counts,
+            param: &raw,
+            playhead,
+            dt,
+        };
         for (k, name) in kernel.params.iter().enumerate() {
             let v = derived
                 .iter()
                 .find(|d| d.param == *name)
-                .map_or_else(|| raw(name), |d| (d.derive)(&raw));
+                .map_or_else(|| raw(name), |d| (d.derive)(&ctx));
             let at = PARAMS_AT + k * 4;
             uni[at..at + 4].copy_from_slice(&v.to_le_bytes());
         }

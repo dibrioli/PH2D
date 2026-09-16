@@ -289,14 +289,99 @@ cada coluna igual à declarada, com gate. ⚠️ **Um anel AUSENTE é a pose VIV
 
 ---
 
+## §4-quater — ✅ W1d: o rastro vai para o dispositivo — e o grupo inteiro fica lá
+
+```text
+  grid 320² -> scale -> X -> output | antes            | depois
+  ----------------------------------|------------------|------------------------
+  motion.trail                      | ⛔ CPU, 102 400   | dispositivo, 4 estágios
+```
+
+⇒ ⭐⭐⭐ **OS DEZ NÓS DO GRUPO FICAM NO DISPOSITIVO** (eram 4 quando o ciclo abriu). A catraca
+`the_fx_group_route_only_improves` tem a lista `NA_CPU` **vazia** — e as duas metades ficam: um
+nó novo da categoria que nasça sem kernel reprova ali, com o nome.
+
+### ⭐⭐ O substrato novo: `StreamOp::Carry`
+
+Cada tique o rastro é `filtrar(estado) ++ vivo`, e só depois o corpo — e nenhum verbo do
+sequenciador o dizia num estágio. O `Carry` são três passos e um corpo:
+
+1. o **predicado** corre sobre a porta do estado CRU, **com** as reduções dele dobradas antes (a
+   porta única do espaçamento — *há algum eco na faixa `1..s`?* — é uma pergunta sobre o estado
+   INTEIRO) e com os uniforms derivados; o estado é compactado como num `Compact`;
+2. os sobreviventes e a porta viva são **juntados** (`encode_join`, de que o `Concat` do
+   `motion.combine` passou a ser o caso sem identidades) com as `ConcatFill` a dar a identidade de
+   cada coluna que um lado não tem — ⚠️ **o `Concat` enchia de ZEROS**, e um `size`/`tint` a zero
+   apaga o eco; os valores que não são zero escrevem-se por uma passagem de preenchimento NA PLACA
+   (subir o padrão seria `n × 24` bytes por quadro);
+3. o **corpo** corre sobre a junção, e sabe onde acabam os carregados pela contagem viva CRUA.
+4. ⚠️ **O caso de UM eco** é a entrada tal e qual na CPU (com o modo por cima quando há modo): o
+   `Carry` responde-o por uma lei sobre as contagens cruas e corre então um kernel próprio — ⇒ o
+   sequenciador passou a perguntar «é passa-tudo?» à VARIANTE resolvida (um kernel sem variantes
+   responde por si; nada do que existia muda).
+
+⭐ **E o `DerivedUniform` cresceu duas coisas**: o contexto passou a ser o da lei de contagem (as
+contagens CRUAS — a janela do rastro sai da contagem VIVA com o tecto de instâncias), e o slot pode
+ser um NOME NOVO que só a derivação conhece (a matriz de cor do rastro — trigonometria da `libm` —
+viaja como nove números; o manifesto não tem nove params para lhe emprestar; o planeador aceita os
+dois).
+
+⚠️ **Divergência DECLARADA (um tique, uma borda):** quando nada sobrevive, a CPU ainda junta as
+COLUNAS do estado (um `gather` de zero linhas continua a tê-las) e o dispositivo não. Só se vê se a
+montante uma coluna deixar de existir exactamente nesse tique. ⚠️ E um `spin` sub-normal liga a
+variante do `rot` sem que a CPU o materialize (a coluna existe com os valores que tinha).
+
+### Os gates e as provas
+
+- `gpu_cpu_parity_trail` (adaptador real): o rastro de omissão; o ARMADO (espaçamento 3 · cor ·
+  giro · teto de estreia · modo · campo, com cor e giro ANIMADO a montante); as duas variantes do
+  meio (só giro, só modo); e as identidades (um eco, um eco com modo, espaçamento acima do tecto).
+  Compara, tique a tique, **o conjunto de colunas** (nem a mais) e **todas** as colunas da CPU:
+  exacto fora das ondas (o armado a `5,8e-6`, da matriz de cor). **12 de 12 mutações MORTAS**
+  (promoção · campo no predicado · identidade do `size` · partição · matriz de cor · teto · a banda
+  com a cabeça · a janela sem o derivado · identidade nunca · o `fade` cru · a idade da cabeça · o
+  giro também na cabeça).
+- ⚠️⚠️ **Três fixturas mentiam antes de medirem o produto:** a matriz de cor não muda o BRANCO (a
+  mutação que a desligava sobreviveu), uma cabeça sem `rot` a montante lê zero de qualquer maneira,
+  e — a mais subtil — **com o giro PARADO o buffer reciclado de dois quadros antes já tinha o valor
+  certo** nas linhas da cabeça, e a mutação «a cabeça não escreve o `rot`» sobrevivia de forma
+  INTERMITENTE. A cura foi no KERNEL e não na fixture: **toda coluna escrita é escrita uma vez,
+  depois do ramo, para todas as linhas** — a forma de erro deixou de existir.
+- A varredura do WGSL ganhou uma secção para o `Carry` (o predicado com as reduções e o canal
+  partilhado, as próprias reduções, o kernel do caso identidade, e as variantes do corpo **aos
+  PARES** — a de giro-E-modo escapava à varredura de um param só).
+- O `stream_op.rs` chegou ao tecto: a projecção do `value.attribute` foi para um módulo filho,
+  VERBATIM — e o gate que lia o ficheiro em runtime (`the_projection_modes_agree…`) passou a
+  `include_str!` (falha a compilar, se voltar a mudar).
+
+### ⭐⭐ O tecto do rastro, re-medido no dispositivo
+
+`trail_row_ceiling_probe` (`--release`, cauda cheia de 32 ecos, o menor de cinco corridas):
+
+```text
+  vivos   │ linhas     │ disp. ms │ CPU ms
+    8 100 │    259 200 │     0,85 │   6,81
+   32 761 │  1 048 352 │     2,96 │  30,26
+   65 536 │  2 097 152 │     5,15 │  65,59   ← o tecto novo (31–33 % de um quadro)
+   97 969 │  3 135 008 │     8,24 │ 106,88
+  196 249 │  6 279 968 │    16,08 │ 275,11
+```
+
+⇒ **~2,6 ns por linha** (a compactação lê 8 bytes e a junção copia — o dobro de um `fx.*`), e o
+tecto passa de `262 144` a **`2 097 152`**: a cauda de 32 ecos deixa de encurtar a partir de
+`8 193` objectos e passa a encurtar a partir de `65 537`. ⚠️ **Não é o número dos `fx.*`**, e o gate
+dos tectos passou a prender CADA tecto ao SEU literal medido (os dois `fx.*` · o rastro · o
+L-System, que continua só na CPU).
+
+---
+
 ## §5 — A fila do ciclo
 
 1. ✅ **W1a — o brilho passa-tudo** (§4).
 2. ✅ **W1b — os que MULTIPLICAM as linhas** (§4-bis) — os dois no dispositivo, e o
    `MAX_INSTANCES` re-medido lá (`262 144 → 3 145 728`).
 3. ✅ **W1c — o estroboscópio e o slit-scan** (§4-ter).
-4. ⏳ **W1d — o `motion.trail` (modo `Remembered`)**, e é uma wave de SUBSTRATO, com o preço
-   medido: cada tique o nó é `transformar(filtrar(estado)) ++ materializar(vivo)`. ⛔ Nenhum verbo do
+4. ✅ **W1d — o `motion.trail` (modo `Remembered`)** (§4-quater). O preço que estava escrito: cada tique o nó é `transformar(filtrar(estado)) ++ materializar(vivo)`. ⛔ Nenhum verbo do
    sequenciador exprime isso num estágio — o `Compact` filtra UMA porta e o `Concat` junta portas
    cruas com ZEROS onde falta coluna, e aqui as reservadas têm identidade própria (`size`/`tint`
    `1`, `uv_rect` o atlas inteiro). E o predicado do filtro faz uma pergunta sobre o estado INTEIRO

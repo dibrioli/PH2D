@@ -163,9 +163,8 @@ pub const TEXT_PARAMS: &[&str] = &[
 /// flor nascer onde o artista pediu folha — sem erro nenhum.
 pub const LEAF_SYMBOLS: &[u8; 3] = b"JKM";
 
-/// **O tecto da cadeia derivada — MEDIDO**, e ele é o MESMO número que o teto de instância do
-/// caminho de CPU desta casa (gate `the_instance_ceilings_agree_per_resource`; os dois `fx.*` que
-/// o partilhavam ganharam kernel e mediram o deles no dispositivo — doc 112 §4).
+/// **O tecto da cadeia derivada — MEDIDO** (gate `the_instance_ceilings_agree_per_resource`, que o
+/// prende a este literal).
 ///
 /// ## De que recurso ele é
 ///
@@ -192,12 +191,13 @@ pub const LEAF_SYMBOLS: &[u8; 3] = b"JKM";
 ///    tabela: `524 289` deixa 20 % de quadro para o resto do grafo e do desenho, e `262 145`
 ///    deixa 61 %.
 ///
-/// 2. **O que o resto do pipeline foi medido a aguentar.** A casa já mediu este número por
-///    outro caminho — `motion.trail` / `fx.drop_shadow` / `fx.rgb_split` carregam
+/// 2. **O que o resto do pipeline foi medido a aguentar — NO CAMINHO DE CPU.** Quando esta nota
+///    foi escrita, `motion.trail` / `fx.drop_shadow` / `fx.rgb_split` carregavam
 ///    `MAX_INSTANCES = 262 144`, *"o ponto em que **um** nó passa a ocupar cerca de um terço
-///    de um quadro"*. ⭐ **As duas medições concordam sem se conhecerem**: a minha diz 38,8 %,
-///    a deles diz «cerca de um terço». Um L-System que emitisse mais linhas do que isso
-///    entregaria a jusante uma corrente que o resto do caminho de CPU não foi medido a levar.
+///    de um quadro"*, e as duas medições concordavam sem se conhecerem (38,8 % contra «cerca de
+///    um terço»). ⚠️ **Em 2026-09-16 os três ganharam kernel e mediram o deles no DISPOSITIVO**
+///    (`3 145 728` e `2 097 152`, doc 112 §4-bis/§4-quater). Este nó continua só na CPU, e o
+///    recurso 1 continua a responder por ele; quem lhe der um kernel mede de novo.
 ///
 /// ⚠️ **Um elemento a mais do que módulos**: a tartaruga planta a raiz ANTES do primeiro
 /// símbolo, então a contagem emitida é `≤ MAX_MODULES + 1`.

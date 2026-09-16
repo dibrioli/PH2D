@@ -81,6 +81,7 @@ ph2d-node-fx-drop-shadow = { path = "../ph2d-node-fx-drop-shadow" }
 # Ciclo 7 W1c: o consumidor dos `pulse.*`, com o estado a atravessar o `pre` no dispositivo.
 ph2d-node-motion-strobe = { path = "../ph2d-node-motion-strobe" }
 ph2d-node-motion-slit-scan = { path = "../ph2d-node-motion-slit-scan" }
+ph2d-node-motion-trail = { path = "../ph2d-node-motion-trail" }
 # An OBJECT source — a CPU-only boundary that carries `texture_id`. The
 # texture-id parity gate feeds it a manual boundary stream (it can't run
 # headless: its eval reads the host texture store) to prove the device lowering

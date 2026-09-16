@@ -129,7 +129,10 @@ fn cadeia_no_dispositivo(no: &str) -> bool {
 #[test]
 fn the_fx_group_route_only_improves() {
     /// Os que AINDA levam a cadeia para a CPU, cada um com a razão — doc 112 §3.
-    const NA_CPU: &[(&str, &str)] = &[("motion.trail", "estado por elemento (o anel de ecos)")];
+    ///
+    /// ⭐ **Vazia desde a W1d** (2026-09-16): os dez ficam no dispositivo. A lista e as duas metades
+    /// ficam — um nó novo da categoria que nasça sem kernel reprova aqui, com o nome.
+    const NA_CPU: &[(&str, &str)] = &[];
     let g = grupo();
     assert!(g.len() >= 10, "piso de populacao: {g:?}");
     for (no, razao) in NA_CPU {

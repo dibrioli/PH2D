@@ -221,6 +221,9 @@ impl GpuCook {
                 .collect();
             // Port 0 is the base the output rides on (`ColumnBinding::port`).
             let mut base = inputs.first().cloned().unwrap_or_default();
+            // As contagens CRUAS — as que a CPU vê no `eval` —, antes de uma `StreamOp` as mudar:
+            // é o que um uniform derivado lê (ciclo 7, `DerivedUniform`).
+            let raw_counts: Vec<u32> = inputs.iter().map(|s| s.count).collect();
 
             // A `sim.zone` is a conditional passthrough (ADR-0135): forward the
             // INIT port until the loop has state, the STATE port after, stripping
@@ -244,7 +247,7 @@ impl GpuCook {
                 continue;
             }
 
-            let Some(kernel) = kernels.gpu_kernel(stage.ty) else {
+            let Some(mut kernel) = kernels.gpu_kernel(stage.ty) else {
                 // The registry changed under a stale plan; treat as pass-through
                 // rather than dispatch garbage — the next frame replans.
                 streams.insert(stage.node, base);
@@ -315,12 +318,79 @@ impl GpuCook {
                         dt,
                         &inputs,
                         *port,
+                        stream_op::PredicateExtras::NONE,
                     )?;
                     if *port < inputs.len() {
                         inputs[*port] = compacted.clone();
                     }
                     if *port == 0 {
                         base = compacted;
+                    }
+                }
+                Some(ph2d_nodegraph::gpu::StreamOp::Carry {
+                    state_port,
+                    live_port,
+                    predicate,
+                    predicate_reduces,
+                    fills,
+                    identity,
+                    identity_kernel,
+                }) => {
+                    let derived = kernels.derived_uniforms(stage.ty);
+                    let param =
+                        |name: &str| resolve_param(graph, stage.node, manifest, name, &self.driven);
+                    let ctx = ph2d_nodegraph::gpu::CountLawCtx {
+                        inputs: &raw_counts,
+                        param: &param,
+                        playhead,
+                        dt,
+                    };
+                    if identity(&ctx) {
+                        // O caso em que a CPU devolve a entrada viva: o kernel do caso corre sobre
+                        // ela (a base é a porta 0, que TEM de ser a viva).
+                        kernel = identity_kernel;
+                    } else {
+                        // 1. As reduções do predicado, sobre o estado CRU; 2. o filtro; 3. a
+                        // junção. O kernel do nó corre depois, sobre a junção.
+                        let shared = kernels.wgsl_shared(stage.ty);
+                        let pred_red = self.run_reduces(
+                            gpu,
+                            &mut encoder,
+                            predicate_reduces,
+                            &inputs,
+                            graph,
+                            stage.node,
+                            manifest,
+                            shared,
+                        );
+                        let carried = self.encode_compact(
+                            gpu,
+                            &mut encoder,
+                            plan.stages.len() + 1 + stage_idx,
+                            predicate,
+                            graph,
+                            stage.node,
+                            manifest,
+                            playhead,
+                            dt,
+                            &inputs,
+                            *state_port,
+                            stream_op::PredicateExtras {
+                                reduces: (predicate_reduces, &pred_red.buffers),
+                                shared,
+                                derived: (derived, &raw_counts),
+                            },
+                        )?;
+                        self.reduce_results_hold.push(pred_red);
+                        let live = inputs.get(*live_port).cloned().unwrap_or_default();
+                        let joined = self.encode_join(gpu, &mut encoder, &[&carried, &live], fills);
+                        if *state_port < inputs.len() {
+                            inputs[*state_port] = carried;
+                        }
+                        if *live_port < inputs.len() {
+                            inputs[*live_port] = joined.clone();
+                        }
+                        base = joined;
                     }
                 }
                 Some(ph2d_nodegraph::gpu::StreamOp::SourceRows { port }) => {
@@ -332,7 +402,13 @@ impl GpuCook {
                 }
                 None => {}
             }
-            if kernel.is_passthrough() {
+            // ⚠️ A pergunta é feita à VARIANTE que este despacho vai correr: o caso identidade de um
+            // `Carry` (ciclo 7) resolve para um passa-tudo quando não há nada a escrever por cima.
+            // Um kernel sem variantes responde por si, logo nada do que existia muda.
+            if kernel
+                .resolve(&|name| resolve_param(graph, stage.node, manifest, name, &self.driven))
+                .is_passthrough()
+            {
                 streams.insert(stage.node, base);
                 continue;
             }
@@ -480,7 +556,7 @@ impl GpuCook {
                     (reduce_specs, &reduce_results.buffers),
                     (lut_specs, &lut_buffers),
                     shared,
-                    kernels.derived_uniforms(stage.ty),
+                    (kernels.derived_uniforms(stage.ty), &raw_counts),
                 );
                 self.reduce_results_hold.push(reduce_results);
                 if let Some(gb) = grid_buffers {

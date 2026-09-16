@@ -503,9 +503,17 @@ fn the_instance_budget_clamps_generations_not_rows() {
         32,
         "o pedido cabe: nada e clampado"
     );
-    // 32 gerações × 16384 vivas = 524k > o orçamento → 16 mantidas.
-    assert_eq!(generations(32.0, 16_384), MAX_INSTANCES / 16_384);
-    assert_eq!(generations(32.0, 999_999), 1, "never zero rows");
+    // ⚠️ E outra vez com o tecto do DISPOSITIVO (262 144 → 2 097 152, doc 112 §4-quater): a
+    // fixture que continha o clamp (`32 × 16 384 = 524k`) passou a caber, e esta é a que o contém.
+    // 32 gerações × 131 072 vivas = 4,2 M > o orçamento → 16 mantidas.
+    assert_eq!(generations(32.0, 16_384), 32, "524k cabe hoje");
+    assert_eq!(generations(32.0, 131_072), MAX_INSTANCES / 131_072);
+    assert_eq!(
+        MAX_INSTANCES / 131_072,
+        16,
+        "a fixture tem de conter o clamp"
+    );
+    assert_eq!(generations(32.0, 4_000_000), 1, "never zero rows");
 }
 
 /// **UM STREAM POSICIONAL PURO DESBOTA E ENCOLHE** — o defeito de 2026-08-08.

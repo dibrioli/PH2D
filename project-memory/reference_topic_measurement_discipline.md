@@ -196,3 +196,25 @@ vizinho mede antes de reaproveitar a régua dele.
   cena): medir `velocidade × vida` em todas as direcções acusa um jacto estreito de sair pelo lado
   quando ele vai todo para cima, e `sin(180°) ≈ 0` leria uma **esfera** como um fio. A partir dos
   `90°` a fracção é `1`.
+- ⛔⛔ **REPOR UM ÂNGULO NÃO É REPOR UMA POSE.** Uma varredura do ângulo de dobra (15/09, pele de
+  imagem) escrevia `t.rotation = graus` nos ossos de uma cena **já dobrada** e leu **`1,426` de
+  esticão máximo em REPOUSO** — sobre um mapa que em repouso é a identidade por construção. A pose
+  de repouso de um osso FILHO não é «rotação zero»: é o que o construtor lhe escreveu, e escrever
+  zero por cima é **outra pose**. ⭐ O controlo que a desmascarou é o que fica: uma cena que **nunca**
+  dobra lê `4,97e-16 m` de desvio e as três poses saem `[1,0,0,1,0,0]` exactas. ⇒ *uma varredura de
+  parâmetro SOMA a partir do estado de repouso, nunca ESCREVE por cima dele — e a linha `0` da
+  tabela é o controlo que prova que ela o faz.*
+- ⛔⛔ **UMA FIXTURA PODE SER INCAPAZ DE DISTINGUIR A MUTAÇÃO POR ARITMÉTICA, e ela passa verde.**
+  O gate da proveniência dos atributos na subdivisão (15/09) corria a uma tolerância que punha o
+  estimador em **`k = 3`**, e numa grelha baricêntrica de `k = 3` o **único** nó de miolo por
+  triângulo é o `(1,1)` ⇒ `u = v = ⅓`. Trocar `t[1]` por `t[2]` na interpolação é ali a **identidade
+  algébrica**: a mutação SOBREVIVEU com o gate verde e a suíte inteira verde. ⇒ *antes de acreditar
+  numa prova de mutação, pergunte se a fixtura contém um ponto onde os dois lados da troca DIFEREM*
+  — e escreva a condição no gate (`assert!(k >= 4)`), não na tolerância.
+- ⭐⭐ **UM DEFEITO REGISTADO PODE DISSOLVER-SE QUANDO A LEI MUDA, sem ninguém lhe tocar.** A
+  graduação da grelha do bind estava registada como *anti-correlacionada com o erro* — e estava,
+  para o *bump* euclidiano (fina no eixo do osso, grossa na borda, que é onde o bump normalizado
+  explodia). Com os pesos do padrão-ouro os pesos variam depressa junto das **restrições**, isto é,
+  junto dos eixos: medido à contagem igualada, a graduada entrega `1,15`–`1,27 px` de faceta contra
+  `1,94`–`1,96` da uniforme. ⇒ *uma recusa medida responde a UMA pergunta sobre UMA lei; quem troca
+  a lei tem de re-correr as recusas que a citavam* (§0.0 sobre quem move o número).

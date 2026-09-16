@@ -282,7 +282,7 @@ losango seria um alvo morto.
 | F4 | **Limites de ângulo por junta** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
 | F5 | ~~**Pole target**~~ → **O LADO DA DOBRA** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
 | F6 | **A segunda mídia** (raster/Flip) | ✅ **FECHADA para o RASTER** (2026-09-09) — ver F6 abaixo. ⛔ A nota antiga dizia *«bloqueado: precisa de uma malha sobre a imagem, que não existe»*: estava certa sobre o facto e errada sobre o preço — **duas das quatro peças já existiam**, e o doc de uma delas dizia-o por escrito. O **Flip** continua por fazer |
-| **F8** | ✅ **BENDY BONES (B-Bones) — FECHADO em 2026-09-15**, da lei ao painel ([handoff](handoffs/HANDOFF_O_OSSO_QUE_DOBRA_2026-09-15.md)) | Um osso ganha `segments` + duas alças e **arqueia**: ele parte-se em `N` sub-ossos ao longo de uma Bézier, o desenho e o dedo seguem a curva, e o painel oferece os dois controlos. ⭐⭐⭐ **A LEI DA PELE NÃO MUDOU UMA LINHA** — o `Skin` já misturava `N` poses RÍGIDAS por peso, que é exactamente o que um B-Bone é; o que mudou foi **quem produz**, e era **um** sítio (`resolve_with`). ⛔⛔ **E esta célula dizia que o B-Bone «ataca na ORIGEM» a queixa das *«arestas retas ao dobrar»* — REFUTADO** pela recusa medida um bloco abaixo (subdividir com a população de amostras constante **piora**: `2,61 % → 4,94 %` a `24` sub-ossos): *o B-Bone é uma feature de AUTORIA — um rabo em S, um membro flexível —, não a cura da dobra.* ⭐⭐ **O ponto neutro é exacto POR CONSTRUÇÃO** (a fábrica colapsa num osso só quando a curva é recta, e mesmo sem colapsar o frame seria a identidade ao bit) ⇒ todo rig já autorado desenha-se e deforma-se **ao bit** como antes. ⚠️ `PROJECT_SCHEMA` **+1** — conte o DELTA. **Tecto MEDIDO: `MAX_SEGMENTS = 32`** (`17,9 %` de um quadro com um osso curvo sobre 20 000 pontos; a `64` um par come o quadro) — a tabela vive no doc da const. ⏳ **ABERTO:** o esticão VARIA ao longo do osso (`13 %` com as alças a `0,2 L`) porque os nós saem do PARÂMETRO e não do ARCO — a cura publicada é a equalização por comprimento de arco, e ela custa a exactidão do neutro · as alças não têm **gesto de canvas** (hoje só painel) · as **tangentes automáticas dos vizinhos** são lei da HIERARQUIA e não existem. Cena **`PH2D_VEC_BONE_SMOKE=1`**. |
+| **F8** | ✅ **BENDY BONES (B-Bones) — FECHADO em 2026-09-15**, da lei ao painel ([handoff](handoffs/HANDOFF_O_OSSO_QUE_DOBRA_2026-09-15.md)) | Um osso ganha `segments` + duas alças e **arqueia**: ele parte-se em `N` sub-ossos ao longo de uma Bézier, o desenho e o dedo seguem a curva, e o painel oferece os dois controlos. ⭐⭐⭐ **A LEI DA PELE NÃO MUDOU UMA LINHA** — o `Skin` já misturava `N` poses RÍGIDAS por peso, que é exactamente o que um B-Bone é; o que mudou foi **quem produz**, e era **um** sítio (`resolve_with`). ⛔⛔ **E esta célula dizia que o B-Bone «ataca na ORIGEM» a queixa das *«arestas retas ao dobrar»* — REFUTADO** pela recusa medida um bloco abaixo (subdividir com a população de amostras constante **piora**: `2,61 % → 4,94 %` a `24` sub-ossos): *o B-Bone é uma feature de AUTORIA — um rabo em S, um membro flexível —, não a cura da dobra.* ⭐⭐ **O ponto neutro é exacto POR CONSTRUÇÃO** (a fábrica colapsa num osso só quando a curva é recta, e mesmo sem colapsar o frame seria a identidade ao bit) ⇒ todo rig já autorado desenha-se e deforma-se **ao bit** como antes. ⚠️ `PROJECT_SCHEMA` **+1** — conte o DELTA. **Tecto MEDIDO: `MAX_SEGMENTS = 32`** (`17,9 %` de um quadro com um osso curvo sobre 20 000 pontos; a `64` um par come o quadro) — a tabela vive no doc da const. ✅ **OS TRÊS ABERTOS FECHARAM EM 2026-09-16.** **(1)** O esticão deixou de VARIAR ao longo do osso — os nós saem agora da **CORDA** e não do parâmetro (`12,63 % → 0,000 %` com as alças a `0,2 L`; `82,01 % → 0,000 %` a `0,6 L`; `1 051,95 % → 0,000 %` com as alças cruzadas no eixo). ⛔⛔ **E a cura publicada — equalizar o ARCO — NÃO chegava**, o que só a varredura da densidade disse: ela deixa um piso que **não desce com a tabela** (`1,22 %` a `0,6 L`, igual de `16` a `32` amostras), porque *arcos iguais dão cordas desiguais* e a grandeza que o artista vê é a corda. ⚠️ **E a objecção registada na recusa era verdadeira e não mordia** (*«um somatório de cordas não devolve `L` ao bit»*): o somatório **nunca corre** no ponto neutro — *uma recusa que nomeia um custo tem de dizer em que CAMINHO ele é pago*. **(2)** As alças **pegam-se no canvas** (duas alças de Bézier, com as hastes até à raiz e à ponta) — ⛔ e a armadilha foi que no ponto NEUTRO a alça está **em cima do eixo**, logo a competição por proximidade de sempre torná-la-ia inalcançável no único estado em que todo osso nasce: ela é a única que ignora o corpo, e paga um raio apertado cujo recurso é o comprimento que sobra para o verbo de girar. **(3)** As **tangentes dos vizinhos** existem (`Curve Handles: Manual | From Chain`), e o ponto neutro é **exacto** porque elas saem da transformação RELATIVA e não de uma volta pelo mundo. ⚠️ `PROJECT_SCHEMA` **+1** — conte o DELTA. Cena **`PH2D_VEC_BONE_SMOKE=1`**. |
 | F7 | **O painel próprio do módulo** | ✅ **FECHADO** (2026-09-09, por escolha do dono) — ver F3-m abaixo. A nota antiga: ⏸️ **a condição CAIU e a medição era falsa por ~3×** — ela dizia *«adiado até F3–F5 lhe darem conteúdo (hoje são 3 botões e 5 campos)»*, e as três estão ✅ nesta mesma tabela enquanto a secção tem **10 verbos** e **9 campos** (`VECTOR_BONE_VERBS`/`_FIELDS`, comprimento verificado pelo compilador), mais uma fileira segmentada e dois selectores. ⇒ decisão do dono, não mais um adiamento medido |
 
 ---
@@ -1497,11 +1497,15 @@ uma corrida contra o próximo idioma que a desliga): a metade que falta mede-se 
 gates de unidade, e a nota está escrita no cabeçalho do ficheiro. *Um gate de texto responde «isto
 está escrito», nunca «isto corre».*
 
-⏳ **ABERTO, e nomeado:** a malha é só o **contorno** (o *ear-clipping* não põe vértices no miolo),
-logo um membro grosso dobra pela borda — ⭐ **o dono viu isso na primeira olhada e a F6-b curou-o**;
-um **buraco** no meio de uma forma não é traçado, e a malha cobre-o; e o número de triângulos por
-quadro **não foi medido sob cena cheia** — a rota por pipeline de triângulos texturados é a
-optimização, com razão medida, se a de hoje não couber.
+⏳ **ABERTO, e nomeado:** um **buraco** no meio de uma forma não é traçado, e a malha cobre-o; e o
+número de triângulos por quadro **não foi medido sob cena cheia** — a rota por pipeline de triângulos
+texturados é a optimização, com razão medida, se a de hoje não couber.
+
+✅ **CURADO e por isso RETIRADO desta lista (auditoria de 2026-09-16):** *«a malha é só o contorno, e
+um membro grosso dobra pela borda»*. A própria linha acima já dizia *«o dono viu isso na primeira
+olhada e a F6-b curou-o»* — ela ficou aqui com o ⏳ à frente durante cinco dias, e um item marcado
+como aberto ao lado da prova de que fechou é exactamente o que faz alguém reconstruir trabalho pago
+(`CLAUDE.md` §5.0).
 
 
 ### F6-b — ✅ **A MALHA É UMA GRELHA GRADUADA PELAS ARTICULAÇÕES** (report do dono, 2026-09-10)
@@ -2250,8 +2254,14 @@ sobre o defeito inteiro. *Citar uma porta não é consultá-la* ⇒ ele passou a
 ⏳ **ABERTO e NOMEADO:** o **chrome** do Painter continua no quad de repouso (o anel do pincel segue o
 ponteiro e só o TAMANHO dele sai do afim; a curva, a linha, o gizmo de deformação, os gizmos de
 selecção, os crachás e a humidade desenham-se em posições de IMAGEM) — numa arte dobrada eles ficam
-no sítio de repouso. Não piorou com esta wave: antes a tinta estava errada **com** eles. E o
-conta-gotas do *BgRemoval* usa uma caixa alinhada aos eixos que ignora rotação **e** malha.
+no sítio de repouso. Não piorou com esta wave: antes a tinta estava errada **com** eles.
+
+⚠️⚠️ **E esta linha dizia também que *«o conta-gotas do BgRemoval usa uma caixa alinhada aos eixos
+que ignora rotação e malha»* — CURADO na F6-m, que está QUATRO SECÇÕES ABAIXO neste mesmo ficheiro**
+(`ph2d_sprite_screen::uv_sob_o_ponteiro`, com as três entradas da Remoção de fundo a passarem por
+uma porta só). ⛔ Ela sobreviveu à auditoria de 2026-09-16 e foi relatada ao dono como aberta.
+*Uma nota obsoleta ao lado da secção que a fecha é pior que uma nota ausente: a ausente não é
+acreditada.*
 
 ⛔⛔ **E o TECTO DA SHELL ficou em `16` linhas de folga** (`196 974` de `196 990`): as três waves de
 hoje são quase todas GATES, e o tecto é a grandeza que soma entre linhas sem ninguém a contar
@@ -2874,12 +2884,123 @@ leria-se **perfeita**.
 diferença em unidades do documento). ⭐ **A terceira sobreviveu aos três primeiros gates** e só morreu
 com o gate da **ESCALA** — a invariância estava afirmada no doc e não tinha quem a medisse.
 
-⏳ **ABERTO — e é DECISÃO DO DONO, porque as três saídas custam coisas diferentes:** o alcance de um
-osso é hoje `força × comprimento do eixo` e **não sabe nada da arte**. Cobri-la muda como **todo rig
-existente** deforma (na direcção de deixar de dobrar), e as três rotas são: derivar o alcance da arte
-**no bind** (uma vez, mas o osso é partilhado por N formas) · derivá-lo **por quadro** no `recook`
-(sem schema, mas é por mídia: o `VecPath` e a malha decodificam em sítios diferentes) · guardá-lo
-**por tendão** (exacto, e move o `PROJECT_SCHEMA`).
+⛔⛔ **MORTO — a pergunta deixou de existir (auditoria de 2026-09-16).** Esta entrada pedia uma
+DECISÃO DO DONO entre três rotas para *«o alcance de um osso não sabe nada da arte»* (derivá-lo da
+arte no bind · por quadro no `recook` · guardá-lo por tendão, com schema).
+
+⭐⭐⭐ **O padrão-ouro apagou a pergunta inteira.** Desde que os pesos são *Bounded Biharmonic* o
+alcance do osso é **inerte**: a energia é resolvida sobre o domínio da própria arte, logo ela já
+"sabe" o que a arte é — e a bancada mediu as duas linhas do padrão-ouro (com `strength` diferentes)
+a saírem **idênticas coluna a coluna**. O hand-tuning do alcance foi **apagado** do produto na mesma
+jornada.
+
+⇒ ⛔ **Não reconstrua nenhuma das três rotas.** Quem as ler aqui estaria a pagar de novo um problema
+que a troca de lei dissolveu — que é a forma nº 1 pela qual esta lista custa dinheiro.
+
+### F6-o — ⭐⭐⭐ **O OSSO QUE DOBRA FECHOU: o esticão deixou de variar, e as alças pegam-se no canvas** (2026-09-16)
+
+**UMA LINHA:** os três abertos da **F8** fecharam, e dois deles corrigiram uma recusa escrita.
+
+**(1) O esticão VARIAVA ao longo do osso** (`12,63 %` com as alças a `0,2 L`, `82,01 %` a `0,6 L`,
+`1 051,95 %` com as alças cruzadas no eixo) porque os nós saíam do PARÂMETRO. ⛔⛔ **E a cura
+publicada — equalizar o ARCO — NÃO chegava, o que só a varredura da densidade disse:** ela deixa um
+piso que **não desce com a tabela** (`1,22 %` a `0,6 L`, igual de `16` a `32` amostras). *Um número
+que não se move quando se afina a discretização não é erro de discretização.* A causa é geometria:
+o esticão de um sub-osso é `corda / (L/n)`, e a corda de um pedaço mais curvo é mais curta que o
+arco dele ⇒ **arcos iguais dão cordas desiguais**. A lei que fica parte da equalização por arco e
+corrige-a para a **CORDA**, em rondas de Gauss-Seidel: `0,000 %` nos três casos.
+
+⚠️⚠️ **E a objecção registada na recusa era VERDADEIRA e não mordia:** *«um somatório de cordas não
+devolve `L` ao bit»* — ele **nunca corre** no ponto neutro, porque a primeira linha da lei é um `if`
+sobre `Bend::is_straight`. *Uma recusa que nomeia um custo tem de dizer em que CAMINHO ele é pago.*
+
+**(2) As alças ganharam GESTO DE CANVAS** — duas alças de Bézier, com as hastes até à raiz e à
+ponta, porque elas **são** os pontos de controlo da cúbica. ⛔⛔ **E a armadilha quase as matou à
+nascença:** no ponto NEUTRO a alça está **em cima do eixo do osso**, e o corpo é um alvo com outro
+verbo — a competição por proximidade de sempre tornava-a **inalcançável no único estado em que todo
+osso nasce**. *Uma alça que só se agarra depois de já ter sido movida não se agarra nunca.* ⇒ ela é
+a única que ignora o corpo, e paga um raio apertado cujo recurso tem nome: **o comprimento do osso
+que sobra para o verbo de girar** (o meio continua a girar a partir de `48 px` de osso na tela).
+
+**(3) As TANGENTES DOS VIZINHOS existem** — `Curve Handles: Manual | From Chain`, o *Handle Type:
+Auto* do Blender, que esta fila tinha como *«lei da HIERARQUIA e não existe»*. ⭐⭐ **E o ponto neutro
+é EXACTO**, por uma decisão de implementação: as tangentes saem da transformação **RELATIVA** (a pose
+de um filho em relação ao pai **é** o `Transform` dele), nunca de uma volta pelo mundo — *uma volta
+pelo mundo teria deixado `y ≈ 1e-17`, e ligar o modo num rig recto arquearia tudo um bocadinho.*
+
+⛔ **Em `From Chain` não há alça para agarrar e os quatro números do painel somem:** elas são
+derivadas, e arrastar uma seria escrever num valor que o quadro seguinte recalcula. E o `curve`
+autorado fica **intocado** — *um modo que sobrescreve o valor autorado é um modo que não se desliga.*
+
+⚠️ `PROJECT_SCHEMA` **+1** — conte o DELTA. ⚠️ E **duas afirmações de exactidão minhas** foram
+corrigidas pela medição (o par alça⇄curvatura fecha ao bit **no neutro** e a `~4e-17` fora dele; a
+ida-e-volta do GESTO perde mais porque atravessa o inverso da pose do osso): *uma afirmação de
+exactidão tem de nomear o caminho em que ela vale*.
+
+⏳ **ABERTO e nomeado:** um osso com **dois filhos-osso** não tem «o seguinte» — ali a corrente
+ramifica e aquele lado fica recto, que é a leitura honesta de *«não há tangente única»*. A rota
+publicada (o *custom handle* do Blender, que nomeia OUTRO osso como alça) move schema outra vez e
+não foi pedida.
+
+---
+
+### F6-n — ⛔⛔⛔⛔ **O botão `Smooth` era um CONTROLO MORTO, e o orçamento vinha de um custo que o produto nunca pagava** (auditoria de 2026-09-16)
+
+**UMA LINHA:** o par `Fast`/`Smooth` do painel entregava a **MESMA malha, ao bit** — e não por um
+fio cortado, mas por **aritmética**: a lei de refinamento era o `k` GLOBAL, cujo tecto é
+`⌊√(orçamento/peças)⌋`, logo toda malha acima de `orçamento/4` peças só admite `k = 1`. Medido na
+cena do produto: `2 268` peças com orçamento `1 543` ⇒ inerte em TODO zoom.
+
+⛔⛔ **É a terceira espécie de controlo morto do `CLAUDE.md` §5.0, e nenhuma sonda deste repo a
+vê:** o id existe, é pintado, é registado, o clique chega à ferramenta, o valor chega ao consumidor
+— *e o consumidor devolve a entrada*. O censo de registo mede focalizabilidade; os `seam_*` provam
+que a escrita chega ao consumidor. **Nenhum pergunta se a SAÍDA muda.**
+
+⇒ a lei nova parte uma **ARESTA** de cada vez, e os dois donos dela ao mesmo tempo — logo a malha é
+conforme depois de **cada passo**, sem nó pendurado. ⛔⛔ **Isto refuta por construção a frase que o
+cabeçalho do `refine.rs` carregava** (*«um `k` por triângulo abriria nós pendurados»*): ela estava
+certa sobre **uma** construção — a grelha baricêntrica por triângulo — e foi lida como se fosse
+sobre a pergunta inteira. *Antes de dizer que uma pergunta é inexprimível, procure a outra operação
+elementar.*
+
+⚠️⚠️ **E o GANHO é função da ARTE, não uma constante — a primeira medição mediu a pergunta errada.**
+Sobre um campo que curva por igual em todo o lado a lei uniforme está quase óptima (`1,9×`); o ganho
+grande é o caso do PRODUTO, a curvatura na **articulação** (`11,3×` a `0,50 px`, e ali a uniforme
+**nunca chega**: satura o orçamento em `k = 8` e fica em `1,121 px`). *A vantagem dela não é «partir
+menos»; é partir **onde**.*
+
+⚠️⚠️ **E na cena do dono enquadrada inteira o `Fast` já entrega `0,34 px`** — abaixo da promessa de
+meio pixel, e não refinar é a resposta CERTA. A alavanca é o **ZOOM**:
+
+| zoom | `Fast` | `Smooth` uniforme | `Smooth` adaptativo |
+|---:|---:|---:|---:|
+| `1×` | `0,34 px` | `0,34` (`2 268`) | `0,34` (`2 268`) — nem precisa |
+| `2×` | `0,68 px` | `0,68` (`2 268`) | **`0,50`** (`2 364`) |
+| `4×` | `1,37 px` | `1,37` (`2 268`) | **`0,50`** (`3 416`) |
+| `8×` | `2,74 px` | `2,74` (`2 268`) | **`0,54`** (`4 720`) |
+
+⛔⛔ **E O ORÇAMENTO DO QUADRO ESTAVA DERIVADO DE UM CUSTO QUE O PRODUTO NUNCA PAGOU:** o
+`1 080 ns/peça` foi medido em 13/09 sobre um `Smooth` que **refinava**, e desde então o que ele de
+facto pagava era o `Fast` mais o custo de decidir. Remedido com a lei que shipa: `0,340 µs` de CPU +
+`0,013` marginal de GPU ⇒ **`353 ns`**, e o orçamento passa de `1 543` para **`4 721`** peças —
+com o que a malha de bind de `2 268` deixa de disparar o aviso em toda execução. *Um custo medido
+sobre um caminho que não corre é um orçamento que mente nos dois sentidos, e este mentia para baixo.*
+
+⚠️ **A lei nova é `3,9×` mais cara POR PEÇA** (`0,340` contra `0,087`) — é o preço de ela decidir; a
+antiga era barata porque não fazia nada. O livro de contas já foi cortado uma vez: dois mapas e um
+`Vec` por aresta liam `0,52 µs`, e com **um** mapa e os donos num par fixo desceu a `0,34` (`−35 %`).
+
+⚠️⚠️ **E a sonda de custo media ZERO:** a tabela de pesos dela era **uniforme**, e com pesos iguais
+em todo o lado a mistura das poses é a mesma em todo o ponto ⇒ o campo é um **AFIM**, que um
+triângulo reproduz exactamente ⇒ desvio zero e nenhuma das leis refina. *Uma fixtura no ponto neutro
+de um knob não testa esse knob*, e a coluna do `Smooth` mediu *«o custo de decidir não fazer nada»*
+durante três dias.
+
+⏳ **ABERTO e nomeado:** a `ph2d-poly2d` guarda as **duas** leis (`PH2D_SKIN_REFINE=uniforme` volta à
+antiga, para bissecar), e o custo da adaptativa **não foi medido sob cena cheia** — o número de cima
+é de uma imagem presa.
+
+---
 
 ### F6-m — ⭐⭐⭐ **O resto do app ainda achava que a arte é PLANA** (censo + as três ferramentas, 2026-09-15)
 

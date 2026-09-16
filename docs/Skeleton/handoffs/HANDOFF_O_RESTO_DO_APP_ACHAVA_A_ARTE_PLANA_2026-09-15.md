@@ -1207,3 +1207,166 @@ checkpoint que não diz o que foi verificado nele é um marcador, não um ponto 
 
 Os dois a partir de `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector`, com
 `cargo run -p ph2d-host-desktop --profile smoke`.
+
+---
+
+## §21 — ⛔⛔⛔⛔ O BOTÃO `Smooth` ERA UM CONTROLO MORTO (auditoria de 2026-09-16)
+
+**A pergunta que o dono fez:** *«quais próximas etapas de implementação?»* ⇒ auditar a fila **contra
+o código** (§5.0), não recitá-la. O primeiro achado não estava na fila: **o par `Fast`/`Smooth` do
+painel entregava a mesma malha, ao bit.**
+
+### §21.1 — A causa é ARITMÉTICA, e nenhuma sonda deste repo a vê
+
+A lei de refinamento era o `k` **GLOBAL** (cada triângulo partido `k × k`), cujo tecto é
+`max_split = ⌊√(orçamento / peças)⌋`. ⇒ **toda malha acima de `orçamento / 4` peças só admite
+`k = 1`.** Medido:
+
+| cena | peças | orçamento | `max_split` |
+|---|---:|---:|---:|
+| malha de bind (2026-09-15) | `2 430` | `1 543` | **`1`** |
+| a mesma, com o orçamento corrigido | `2 430` | `3 787` | **`1`** |
+| a do smoke do braço | `780` | `1 543` | **`1`** |
+
+⛔ **A segunda linha é a que importa: subir o orçamento NÃO cura.** Para `k = 2` numa malha de
+`2 430` peças ele teria de ser `9 720`, que a `1,08 µs`/peça são `10,5 ms` — dois terços de um quadro.
+
+⛔⛔ **É a TERCEIRA espécie de controlo morto do `CLAUDE.md` §5.0**, e a mais cara de achar: o id
+existe, é pintado, é registado, o clique chega à ferramenta e o valor chega ao consumidor — *e o
+consumidor devolve a entrada*. O `architecture_panel_wiring_parity` mede focalizabilidade; os
+`seam_*` provam que a escrita chega ao consumidor. **Nenhum instrumento deste repo pergunta se a
+SAÍDA muda.**
+
+### §21.2 — A lei nova, e a frase que ela refuta
+
+A operação elementar deixa de ser *«partir um triângulo»* e passa a ser ***«partir uma ARESTA»***:
+os dois donos partem-se no mesmo acto, logo a malha é conforme **depois de cada passo** e um ponto
+no meio de uma aresta que deixou de existir não fica pendurado em nada.
+
+⛔⛔ **Isto refuta por construção a frase que o cabeçalho do `refine.rs` carregava desde 10/09** —
+*«um `k` por triângulo abriria nós pendurados, que é a fenda que a `grid.rs` recusa por escrito»*.
+Ela estava certa sobre **uma** construção (a grelha baricêntrica por triângulo) e foi lida como se
+fosse sobre a pergunta inteira. *Antes de dizer que uma pergunta é inexprimível, procure a outra
+operação elementar.*
+
+Qual aresta: a **mais longa** (Rivara/LEPP), que dá piso aos ângulos. Qual triângulo: o de **pior
+desvio**. ⭐ O desvio de uma aresta é partilhado pelos dois donos e a conta que o mede **produz o
+ponto que a bissecção insere** — medir e partir custam uma avaliação do campo, nunca duas. ⭐⭐ E o
+desvio de um triângulo VIVO é **imutável** (partir qualquer aresta dele mata-o), logo a fila de
+prioridade não precisa de actualizar entradas.
+
+⚠️⚠️ **A ordem das arestas tem de ser TOTAL, e isso é load-bearing:** numa malha de grelha os
+empates de comprimento existem **por construção**, e com empates a cadeia LEPP pode voltar a um
+triângulo já visitado e girar para sempre. A chave é `(comprimento, vértice menor, vértice maior)`.
+
+### §21.3 — ⚠️ Duas premissas minhas caíram na medição
+
+1. **O ganho é função da ARTE, não uma constante.** Sobre um campo que curva por igual em todo o
+   lado a lei uniforme está quase óptima (`1,9×`). O ganho grande é o caso do PRODUTO — a curvatura
+   na articulação: **`11,3×`** a `0,50 px`, e ali a uniforme **nunca chega** (satura em `k = 8` e
+   fica em `1,121 px`). *A vantagem dela não é «partir menos»; é partir **onde**.*
+2. **Na cena do dono enquadrada inteira o `Fast` já entrega `0,34 px`** — abaixo da promessa de meio
+   pixel, e não refinar é a resposta CERTA. A alavanca do produto é o **ZOOM** (a tabela está no
+   gate `o_smooth_deixou_de_ser_um_controlo_morto_na_cena_do_produto`).
+
+### §21.4 — ⛔⛔ E o ORÇAMENTO vinha de um custo que o produto nunca pagou
+
+O `CUSTO_POR_PECA_NS = 1 080` foi medido em 13/09 sobre um `Smooth` que **refinava**; desde então o
+que ele de facto pagava era o `Fast` mais o custo de decidir. Remedido com a lei que shipa
+(`load 5,6`–`6,1`, mínimo de 40/60, **três** corridas entre `0,328` e `0,355`): `0,340 µs` de CPU +
+`0,013` marginal de GPU ⇒ **`353 ns`**, e o orçamento vai de `1 543` para **`4 721`** peças.
+
+*Um custo medido sobre um caminho que não corre é um orçamento que mente nos dois sentidos* — e este
+mentia para BAIXO, o que fazia a malha de bind de `2 268` disparar o `avisa_malhas_acima_do_orcamento`
+em **toda** execução, sobre um aviso correcto e um número errado.
+
+⚠️ **A lei nova é `3,9×` mais cara POR PEÇA** (`0,340` contra `0,087`) — é o preço de ela decidir; a
+antiga era barata porque não fazia nada. O livro de contas já foi cortado uma vez: dois mapas e um
+`Vec` por aresta liam `0,52 µs`, e com **um** mapa e os donos num par fixo desceu a `0,34`.
+
+⚠️⚠️ **E a sonda de custo media ZERO:** a tabela de pesos dela era **uniforme**, e com pesos iguais
+em todo o lado a mistura das poses é a mesma em todo o ponto ⇒ o campo é um **AFIM**, que um
+triângulo reproduz exactamente ⇒ desvio zero e nenhuma das leis refina (`saiu == pecas` nas cinco
+linhas). *Uma fixtura no ponto neutro de um knob não testa esse knob.*
+
+---
+
+## §22 — ⭐⭐⭐ O OSSO QUE DOBRA FECHOU (os três abertos da F8, 2026-09-16)
+
+### §22.1 — O esticão deixou de VARIAR, e a cura publicada não chegava
+
+Medido com `8` sub-ossos: `12,63 %` de dispersão com as alças a `0,2 L`, `82,01 %` a `0,6 L`,
+`1 051,95 %` com as alças cruzadas no eixo.
+
+⛔⛔ **Equalizar o ARCO — a cura que a recusa nomeava — deixa um PISO que não desce com a tabela**
+(`1,22 %` a `0,6 L`, igual de `16` a `32` amostras). *Um número que não se move quando se afina a
+discretização não é erro de discretização.* A causa é geometria: o esticão é `corda / (L/n)`, e a
+corda de um pedaço mais curvo é mais curta que o arco dele ⇒ **arcos iguais dão cordas desiguais**.
+
+⇒ a lei parte da equalização por arco e **corrige-a para a CORDA**, em rondas de Gauss-Seidel sobre
+a posição em arco de cada nó interior. As duas constantes saem da varredura, e a coluna que decide é
+o caso duro:
+
+| amostras × rondas | `0,2 L` | `0,6 L` | eixo cruzado |
+|---|---:|---:|---:|
+| **(sem equalizar)** | **`12,63 %`** | **`82,01 %`** | **`1 051,95 %`** |
+| `8 × 0` (só o arco) | `0,068 %` | `1,258 %` | `93,65 %` |
+| `8 × 2` | `0,000 %` | `0,000 %` | `0,922 %` |
+| **`8 × 8`** | **`0,000 %`** | **`0,000 %`** | **`0,000 %`** |
+
+⚠️⚠️ **A objecção registada na recusa era VERDADEIRA e não mordia:** *«um somatório de cordas não
+devolve `L` ao bit»* — ele **nunca corre** no ponto neutro, porque a primeira linha é um `if` sobre
+`Bend::is_straight`. *Uma recusa que nomeia um custo tem de dizer em que CAMINHO ele é pago.*
+
+### §22.2 — As alças pegam-se no canvas, e a armadilha era o ponto NEUTRO
+
+⛔⛔ No neutro a alça está **em cima do eixo do osso** (ela é o ponto de controlo no terço), e o
+corpo é um alvo com outro verbo: a competição por proximidade que as outras alças usam tornava-a
+**inalcançável no único estado em que todo osso nasce**. *Uma alça que só se agarra depois de já ter
+sido movida não se agarra nunca.*
+
+⇒ ela é a única que ignora o `d_osso`, e em troca paga um raio apertado (`BEND_HIT_PX = 8 px`), cujo
+recurso tem nome: **o comprimento do osso que sobra para o verbo de girar**. As duas ficam nos
+terços, logo o meio do osso continua a girar a partir de `48 px` de osso na tela — e há gate.
+
+### §22.3 — As tangentes dos vizinhos, e por que o neutro é EXACTO
+
+`Curve Handles: Manual | From Chain`. Em `From Chain` as alças saem das tangentes dos ossos
+vizinhos. ⭐⭐ **As tangentes saem da transformação RELATIVA** (a pose de um filho em relação ao pai
+**é** o `Transform` dele), nunca de uma volta pelo mundo: numa corrente recta o pai fica em
+`(−L_pai, 0)` no local deste osso (o inverso de uma translação pura é exacto), as duas tangentes são
+`(1, 0)` **ao bit**, e a conta *«um terço da tangente MENOS um terço do eixo»* dá zero exacto.
+*Uma volta pelo mundo teria deixado `y ≈ 1e-17`, e ligar o modo num rig recto arquearia tudo.*
+
+⛔ **Em `From Chain` não há alça para agarrar** (nem pintada, nem no dedo, nem escrevível) e os
+quatro números do painel **somem** — elas são derivadas, e arrastar uma seria escrever num valor que
+o quadro seguinte recalcula. O `curve` autorado fica **intocado**: *um modo que sobrescreve o valor
+autorado é um modo que não se desliga.*
+
+⚠️ **UMA porta resolve o modo** (`skin_live::effective_spec`), e os **quatro** leitores do
+`Bone::spec()` passam por ela — o corpo que se pinta, a alça que se agarra, a pele que se deforma e
+a malha do bind. *Um controlo DESENHADO por um mapa e DEFORMADO por outro é um controlo morto sob o
+dedo.*
+
+⚠️ `PROJECT_SCHEMA` **131 → 132** (o `Bone` ganhou `handles`) — conte o DELTA. O `#[serde(default)]`
+**não** salva o postcard: ele serve formatos com nomes, e o postcard é posicional.
+
+---
+
+## §23 — ⚠️ TRÊS ENTRADAS DA FILA ESTAVAM OBSOLETAS, e uma delas eu relatei ao dono como aberta
+
+A auditoria de 2026-09-16 varreu a `01_a_fila.md` contra o código e achou **três** entradas que
+mandavam reconstruir trabalho já pago:
+
+1. *«a malha é só o contorno, e um membro grosso dobra pela borda»* — a **própria linha** dizia, a
+   seguir, *«o dono viu isso na primeira olhada e a F6-b curou-o»*, e mesmo assim tinha um ⏳ à
+   frente.
+2. *«o alcance de um osso não sabe nada da arte»*, com **três rotas** e um pedido de decisão do dono
+   — ⛔ **MORTA**: o padrão-ouro apagou a pergunta (o alcance ficou inerte, e o hand-tuning dele foi
+   apagado do produto na mesma jornada).
+3. *«o conta-gotas do BgRemoval usa uma caixa alinhada aos eixos que ignora rotação e malha»* — 
+   **curado pela F6-m, que está quatro secções abaixo NO MESMO FICHEIRO**.
+
+⛔⛔ **E a terceira sobreviveu à minha própria auditoria: eu relatei-a ao dono como aberta.** Li a
+linha, não li a secção que a fecha. *Uma nota obsoleta ao lado da secção que a cura é pior que uma
+nota ausente — a ausente não é acreditada, e esta foi.*

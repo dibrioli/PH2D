@@ -28,12 +28,15 @@ pub use paint::paint_property_box;
 /// ⭐ A geometria de uma LINHA de formulário — irmã por responsabilidade (ver o topo dela).
 mod label;
 mod row;
+/// ⭐ O que a SECÇÃO declara — irmão por responsabilidade (ver o topo dele).
+mod seccao;
 pub use label::{paint_property_label, property_label_origin};
 pub use row::{
     FORM_ROWS_SHOW_DECORATOR, PropertyRow, form_row_columns, paint_decorator_dot,
     property_fields_layout, property_label_col_w, property_label_col_w_for, property_row_columns,
     property_row_columns_for,
 };
+pub use seccao::{Seccao, colunas_da_linha};
 // ⚠️ Os três internos que o pintor da caixa e a checkbox consomem — re-exportados no MESMO
 //    caminho de antes, para o corte não mudar um chamador.
 pub(crate) use label::fit_label;

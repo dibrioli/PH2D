@@ -22,11 +22,14 @@ use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
 /// Os nomes que esta secção pinta à esquerda — a fonte da coluna dela.
-const NOMES: [&str; 4] = [
+const NOMES: [&str; 6] = [
     "panel.inspector.slice.tile_mode",
     "panel.inspector.slice.borders_l_t_px",
     "panel.inspector.slice.borders_r_b_px",
     "panel.inspector.slice.size_x_y_m_0",
+    // ⭐ As linhas de MARCAR partilham a coluna — logo o nome mais largo pode ser o de uma delas.
+    "panel.inspector.slice.enable_9_slice",
+    "panel.inspector.slice.fill_center",
 ];
 /// Quantas componentes tem a linha que esta secção não quer ver quebrar.
 const CAMPOS: usize = 2;
@@ -217,7 +220,8 @@ pub(crate) fn paint_slice_section(
             tr("panel.inspector.slice.enable_9_slice"),
         )
         .visual(store.checkbox_visual(ids::INSP_SLICE_ENABLE))
-        .value(en_value),
+        .value(en_value)
+        .seccao(seccao(text_system)),
         en_rect,
         scene,
         text_system,
@@ -291,7 +295,8 @@ pub(crate) fn paint_slice_section(
             tr("panel.inspector.slice.fill_center"),
         )
         .visual(store.checkbox_visual(ids::INSP_SLICE_FILL_CENTER))
-        .value(fc_value),
+        .value(fc_value)
+        .seccao(sec),
         fc_rect,
         scene,
         text_system,

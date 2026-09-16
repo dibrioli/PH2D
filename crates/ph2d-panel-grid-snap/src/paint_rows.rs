@@ -4,12 +4,11 @@
 //! `ph2d_editor_core::grid_snap::panel::paint_rows` during ADR-0029
 //! Phase C.4.
 
-use crate::layout::LABEL_FONT_SIZE;
 use crate::state::{meters_to_display, unit_suffix_paren};
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::grid_snap::GridSnapState;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::widget::{TextInputState, Toggle, paint_toggle};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -333,6 +332,7 @@ pub(crate) fn paint_show_overlay_row(
     store: &WidgetStore,
     state: &GridSnapState,
 ) {
+    let sec = seccao(text_system, &["Show grid"]);
     paint_labeled_toggle(
         "Show grid",
         ph2d_editor_core::grid_snap::ids::GS_SHOW_OVERLAY,
@@ -343,6 +343,7 @@ pub(crate) fn paint_show_overlay_row(
         theme,
         hit_index,
         store,
+        sec,
     );
 }
 
@@ -388,15 +389,24 @@ pub(crate) fn paint_labeled_toggle(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) {
-    paint_text(
+    // ⭐⭐⭐ **O NOME VAI À COLUNA DO NOME, como o das linhas de número desta mesma secção**
+    // (2026-09-15). ⛔⛔ Ele era pintado encostado à ESQUERDA, num orçamento escrito à mão
+    // (`row.w − 60`), e em [`LABEL_FONT_SIZE`] — que é o corpo `Base`, **um px maior** que o `Sm`
+    // das linhas de número ao lado. *Duas colunas de nome e dois corpos de letra na mesma
+    // secção* — a queixa do dono de 2026-09-14 (*«as labels alinhadas todas à direita»*) a
+    // sobreviver na única linha que não era um campo.
+    let fonte = ph2d_tokens::TypeToken::Sm.px();
+    let colunas = ph2d_editor_core::widget::colunas_da_linha(row.x, row.w, row.y, row.h, sec);
+    ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
         label,
-        row.x,
-        row.y + (row.h - LABEL_FONT_SIZE) * 0.5,
-        LABEL_FONT_SIZE,
-        row.w - 60.0, // LITERAL-PX-OK: reserve for toggle widget + edge inset
+        colunas.label.x,
+        colunas.label.y + (colunas.label.h - fonte) * 0.5,
+        fonte,
+        colunas.label.w,
         resolve(ColorToken::Text1, theme),
     );
 

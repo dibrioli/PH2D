@@ -49,6 +49,14 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "property_box/label.rs",
         "o texto do nome: ele ja' viaja como `label` do no' do CONTROLO",
     ),
+    // ⚠️ **E a DECLARAÇÃO de uma secção ainda menos** (2026-09-15, quando a `Seccao` saiu do
+    //    `property_row` para o lado do `widget` — um ciclo de módulos): o `seccao.rs` mede o nome
+    //    mais largo e reparte a faixa. Ele **não pinta um pixel** e não tem controlo nenhum: é a
+    //    entrada da aritmética que o `row.rs` ao lado já declara sem semântica.
+    (
+        "property_box/seccao.rs",
+        "a declaracao da seccao: aritmetica de colunas, zero pintura e zero controlo",
+    ),
     // ⚠️ **A listra de uma lista não tem semântica própria, e a ausência é a decisão**
     //    (2026-09-06): ela é o TOM que a lista pinta ATRÁS das suas linhas, para que duas linhas
     //    encostadas se leiam como duas. Não regista alvo nenhum e não é focável — quem tem nome,

@@ -236,6 +236,9 @@ pub fn paint_widget_skin_with(
             // ⛔ A pele é o que o ARTISTA desenhou, não uma linha de formulário: uma bolinha de
             // animação aqui não indica nada, e comeria `14 px` da moldura dele.
             c.decorator = false;
+            // ⛔ **E pela mesma razão ela NÃO é uma linha de formulário:** o nome fica onde o
+            // artista o pôs, não na coluna de nome de uma secção que aqui não existe.
+            c.seccao = None;
             if let Some((InteractiveState::Checkbox { state, value }, t)) = live {
                 c = c.visual((*state, t));
                 c.value = *value;

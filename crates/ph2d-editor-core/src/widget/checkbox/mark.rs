@@ -289,11 +289,34 @@ pub fn paint_checkbox(
             TypeToken::Base.px()
         };
         let ly = rect.y + (rect.h - font_size) * 0.5;
-        if redesign {
+        if let (true, Some(sec)) = (redesign, cb.seccao) {
+            // ⭐⭐⭐ **O NOME VAI À COLUNA DO NOME DA SECÇÃO** — report do dono, 2026-09-14
+            // (*«as labels alinhadas todas à direita»*) levado até à linha de MARCAR.
+            //
+            // ⛔⛔ Até 2026-09-15 ele era encostado à esquerda da faixa e corria até à marca. Num
+            // formulário que alterna números e marcas isso dá **duas colunas de nome**, alternando
+            // linha sim linha não — *a mesma doença do rótulo por cima do campo, meia volta
+            // adiante*.
+            //
+            // ⚠️ **A marca NÃO se move**, e isso é uma lei com gate: ela partilha a
+            // [`super::super::property_box::value_column`] com o número, e é isso que dá ao
+            // formulário **uma** margem direita (`the_mark_is_anchored_to_the_right_edge`). ⇒ entre
+            // o nome e a marca fica um vão, e ele é o mesmo em todas as linhas de marcar.
+            let row =
+                crate::widget::property_box::colunas_da_linha(rect.x, rect.w, rect.y, rect.h, sec);
+            crate::widget::property_box::paint_property_label(
+                text_system,
+                scene,
+                &cb.label,
+                row.label.x,
+                ly,
+                font_size,
+                row.label.w,
+                resolve(label_color, theme),
+            );
+        } else if redesign {
+            // ⛔ **Fora do formulário** (a pele de canvas): o nome fica onde o artista o pôs.
             let lx = rect.x + Spacing::Md.px();
-            // O rótulo é o que CEDE — a mesma lei da caixa única, pela mesma função (§6.2).
-            // ⛔ Nunca uma cópia: metade das linhas a truncar e a outra metade a transbordar é
-            // pior que nenhuma das duas.
             let budget = (box_rect.x - lx - Spacing::Md.px()).max(0.0);
             let cut =
                 crate::widget::property_box::fit_label(text_system, &cb.label, font_size, budget);

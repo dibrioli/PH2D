@@ -2024,3 +2024,84 @@ que refaz a conta da porta mede a conta, não o produto.*
    **ENDEREÇO**, nunca pela forma* (a mesma lei do `CLAUDE.md` §5.0 para os censos por prefixo de
    directório). Hoje ele recorta a §9 pelo título, com prova de mutação — e ficou **mais forte**:
    uma tabela nova noutra secção deixa de o partir.
+
+---
+
+## 31 — ⭐⭐⭐ A LINHA DE MARCAR entra no formulário — o widget mais usado do app tinha a coluna de nome dele
+
+### 31.1 — O que estava errado
+
+O `Checkbox` (**81** sítios fora do `ph2d-editor-core`) pintava o nome **encostado à esquerda da
+faixa**, a correr até à marca, num orçamento escrito ali (`box_rect.x − lx − Md`). Numa secção que
+alterna números e marcas isso dá **duas colunas de nome**, alternando linha sim linha não:
+
+```
+.........Position X / Y  [  0,00 ] [  0,00 ] ·     <- o nome acaba no meio, a' direita
+Bounds makes it a slice ..................  [x] ·  <- o nome comeca na margem esquerda
+```
+
+*É a mesma queixa do rótulo por cima do campo, meia volta adiante.*
+
+⚠️ **E o mesmo defeito vivia numa SEGUNDA forma, à mão:** o `paint_labeled_toggle` do painel da
+Grelha (a linha *Show grid*) pintava o nome à esquerda **e em `TypeToken::Base`** — um px maior que
+o `Sm` das linhas de número ao lado. ⭐ O `LABEL_FONT_SIZE` daquele painel **morreu** com a cura: era
+o último leitor. *Um corpo de letra próprio de um painel é a forma mais discreta de ele respirar
+diferente dos vizinhos*, e aquele painel já tinha pago a mesma lição no `row_gap`.
+
+### 31.2 — A cura, e a divergência DELIBERADA
+
+`Checkbox::seccao: Option<Seccao>` — **default `Some(apenas_campos(1))`**: são 27 sítios contra UM
+(a pele de canvas), e *o que erra em silêncio é o caso raro escolher o default do caso comum*.
+
+- `Some(sec)` → o nome vai à coluna do nome, alinhado à direita e elidido, **pela mesma porta** das
+  outras linhas (`colunas_da_linha` + `paint_property_label`);
+- `None` → a **pele de canvas**, onde a moldura é o que o artista desenhou. ⚠️ Campo **próprio**:
+  derivá-lo do `box_px` ou do `decorator` é o erro que o doc do `box_px` já regista e que um gate já
+  apanhou uma vez.
+
+⚠️⚠️ **A MARCA não se move — e isso contraria o §3 de propósito.** Ela fica na coluna do VALOR,
+partilhada com o número, e é isso que dá ao formulário **uma** margem direita
+(`the_form_has_one_right_margin`, verde). *Pô-la no meio alinharia-a com os campos e desalinharia-a
+com a margem direita, que é a lei que o dono já aprovou.*
+
+### 31.3 — O custo, medido antes de converter
+
+26 rótulos booleanos reais, `Sm`, quantos passam da metade da linha: `9` a `220` · `7` a `273,3` ·
+`4` a `304` · **`1`** a `333,1` · **`0`** a `369,7` (as duas últimas são as larguras que o dono
+usa). ⭐ E quase nenhum chega a cortar: os nomes das linhas de marcar **entram na medida da secção**
+(anchors · 9-slice · visibilidade), logo a coluna cresce para os acomodar até ao tecto.
+
+### 31.4 — O gate, e as três réguas que NÃO viam o sujeito
+
+`a_linha_de_marcar_poe_o_nome_na_coluna_do_nome` (editor-core). Ele pinta o **mesmo** rótulo no
+**mesmo** rectângulo com duas SECÇÕES diferentes e conta glifos: com a coluna estreita o nome corta,
+com a larga não.
+
+| régua tentada | porque falhou |
+|---|---|
+| `path_data` / `n_path_segments` | o Vello encaminha texto por `draw_glyphs` — **nenhum glifo entra na contagem de caminhos** |
+| `draw_data` das duas cenas | duas cenas iguais davam bytes diferentes; o **controlo** (`tinta == tinta`) reprovou primeiro — *o instrumento media-se a si mesmo* |
+| **glifos por corrida** | ✅ determinística, e mede o que o artista vê |
+
+⚠️ **E o `TextSystem` tem de ser o REAL:** a 1.ª redacção usou `without_system_fonts`, como o gate da
+margem direita ao lado — mas aquele pinta a caixa **sem rótulo**. Sem fonte não há glifo, logo o
+rótulo não deixa tinta e as duas cenas ficam iguais **por não conterem o sujeito**.
+
+**Mutação:** o rótulo volta ao ramo encostado à esquerda ⇒ `23` glifos dos dois lados, gate ✗.
+
+### 31.5 — Onde a `Seccao` foi parar, e porquê
+
+⛔⛔ **Ela mudou-se do `property_row` para o `widget::property_box`, por um CICLO.** O `property_row`
+já depende do `widget`; pôr a declaração do lado de cá faria o `widget` depender dele, e o
+`architecture_the_foundation_modules_form_a_dag` recusa a aresta. *A declaração de uma linha pertence
+a quem sabe repartir a linha.* O `property_row` re-exporta-a e **nenhum chamador mudou**.
+
+### 31.6 — ⏳ ABERTO
+
+- Os 23 sítios de `Checkbox` que ficam no **default** (`apenas_campos(1)` = a metade): eles alinham
+  com qualquer secção que não peça emprestado. ⚠️ Numa secção que peça, a linha de marcar fica na
+  metade e as de número mais à direita — as três secções onde isso acontecia hoje (`anchors`,
+  `slice_nine`, `visibility`) foram ligadas; as outras pedem que as secções delas sejam declaradas.
+- As caixas de meia largura (câmera, animação) ficam no default **de propósito**: ali a secção é o
+  PAR, não a coluna do painel.
+- O `row2` e as amostras de cor do Vector, e as cinco barras do Painter (spec §2).

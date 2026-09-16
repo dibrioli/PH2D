@@ -14,11 +14,14 @@ use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segment
 use ph2d_i18n::tr;
 
 /// Os nomes que esta secção pinta à esquerda — a fonte da coluna dela.
-const NOMES: [&str; 4] = [
+const NOMES: [&str; 6] = [
     "panel.inspector.visibility.clip_children",
     "panel.inspector.visibility.mask_interaction",
     "panel.inspector.visibility.mask_alpha_cutoff",
     "panel.inspector.visibility.enabler_rect",
+    // ⭐ As linhas de MARCAR partilham a coluna.
+    "panel.inspector.visibility.mask_source_mask2d",
+    "panel.inspector.visibility.on_screen_enabler",
 ];
 /// Quantas componentes tem a linha que esta secção não quer ver quebrar.
 const CAMPOS: usize = 2;
@@ -273,6 +276,7 @@ pub(crate) fn paint_visibility_section(
         tr("panel.inspector.visibility.mask_source_mask2d"),
     )
     .visual(store.checkbox_visual(ids::INSP_VIS_MASK_SOURCE))
+    .seccao(sec)
     .value(if info.mask_source {
         CheckboxValue::Checked
     } else {
@@ -316,6 +320,7 @@ fn paint_enabler_rows(
         tr("panel.inspector.visibility.on_screen_enabler"),
     )
     .visual(store.checkbox_visual(ids::INSP_VIS_ON_SCREEN))
+    .seccao(sec)
     .value(if info.on_screen {
         CheckboxValue::Checked
     } else {

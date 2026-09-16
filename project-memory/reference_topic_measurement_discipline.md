@@ -161,3 +161,24 @@ uma continua a ser um ficheiro próprio; o que mudou foi o endereço.
   acusou quatro TÍTULOS** (`"Timers  ({n})"`), onde o molde é uma contagem: a régua que separa é o
   **NOME do molde**, escrito dentro do próprio dado. *Quando um detector passa a ver demais, aperte-o
   por uma propriedade que o dado já declara, não por uma lista de excepções.*
+
+---
+
+## ⛔⛔ Uma régua de TINTA só vê o que o renderer encaminha por aquele canal (2026-09-15)
+
+Ao provar que o nome de uma linha de marcar tinha mudado de coluna, três réguas foram tentadas e as
+duas primeiras **não continham o sujeito**:
+
+| régua | o que aconteceu |
+|---|---|
+| `path_data` / `n_path_segments` da cena | o Vello encaminha texto por `draw_glyphs` — **nenhum glifo entra na contagem de caminhos**. Verde a medir nada. |
+| `draw_data` das duas cenas | duas cenas **iguais** deram bytes diferentes: cada `TextSystem` novo regista a fonte e numera-a. O **controlo** (`tinta(x) == tinta(x)`) reprovou antes da lei — *o instrumento estava a medir-se a si mesmo*. |
+| contagem de **glifos** (`resources.glyph_runs`) | ✅ determinística, e mede o que o artista vê: *o nome foi cortado ou não*. |
+
+⚠️ **E o sistema de texto tem de ter fonte.** A 1.ª redacção copiou o `TextSystem::without_system_fonts`
+do gate vizinho — mas aquele pinta a caixa **sem rótulo**, logo não mede texto. Sem fonte não há
+glifo, e as duas cenas ficam iguais por não conterem o sujeito.
+
+⭐ A lição de cima: *copiar o arnês do gate ao lado copia também as PREMISSAS dele*. Pergunte o que o
+vizinho mede antes de reaproveitar a régua dele.
+

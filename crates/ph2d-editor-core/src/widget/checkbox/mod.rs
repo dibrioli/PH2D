@@ -57,6 +57,22 @@ pub struct Checkbox {
     /// não pedir nada*. O gate `without_an_override_the_box_is_the_token` apanhou-o na primeira
     /// corrida. *Um parâmetro com dois papéis torna a chamada errada defensável.*
     pub decorator: bool,
+    /// ⭐⭐⭐ **O nome desta linha vive na COLUNA DO NOME da secção — ou não é uma linha de
+    /// formulário de todo.**
+    ///
+    /// ⛔⛔ Até 2026-09-15 o rótulo era pintado **encostado à esquerda da faixa**, a correr até à
+    /// marca. Num formulário que alterna linhas de número com linhas de marcar isso põe **duas
+    /// colunas de nome**: as de número acabam no meio da linha, alinhadas à direita (ordem do dono,
+    /// 2026-09-14: *«as labels alinhadas todas à direita»*), e as de marcar começavam na margem
+    /// esquerda. *É a mesma queixa do rótulo por cima do campo, meia volta adiante.*
+    ///
+    /// - `Some(seccao)` — **é uma linha de formulário**: o nome vai à coluna do nome, alinhado à
+    ///   direita e elidido, pela mesma porta das outras linhas.
+    /// - `None` — **não é**: a pele de canvas, onde a moldura é o que o artista desenhou.
+    ///
+    /// ⚠️ **É um campo PRÓPRIO, e tinha de ser** — derivar isto do `box_px` ou do `decorator` seria
+    /// exactamente o erro que o doc do `box_px` acima regista, e que um gate já apanhou uma vez.
+    pub seccao: Option<crate::widget::Seccao>,
 }
 
 impl Checkbox {
@@ -69,7 +85,24 @@ impl Checkbox {
             value: CheckboxValue::Unchecked,
             box_px: None,
             decorator: crate::widget::property_box::FORM_ROWS_SHOW_DECORATOR,
+            // ⚠️ **O default é «sou uma linha de formulário»** — são 27 sítios contra UM (a pele de
+            //    canvas), e o que erra em silêncio é o caso raro escolher o default do caso comum.
+            seccao: Some(crate::widget::Seccao::apenas_campos(1)),
         }
+    }
+
+    /// ⭐ **A declaração da SECÇÃO a que esta linha pertence** — ver [`Checkbox::seccao`].
+    #[must_use]
+    pub fn seccao(mut self, s: crate::widget::Seccao) -> Self {
+        self.seccao = Some(s);
+        self
+    }
+
+    /// ⛔ **Esta caixa NÃO é uma linha de formulário** — a pele de canvas, e mais ninguém.
+    #[must_use]
+    pub fn fora_do_formulario(mut self) -> Self {
+        self.seccao = None;
+        self
     }
 
     /// **O par visual do store numa chamada** — o irmão exacto do [`super::Button::visual`].

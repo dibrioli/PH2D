@@ -302,6 +302,45 @@ uma das leis muda.*
 
 ---
 
+## §6-quinquies — A LINHA DE MARCAR é uma linha de propriedade, e o nome dela vai à coluna do nome
+
+⛔⛔ **Medido em 2026-09-15:** o widget mais usado do app (**81** sítios fora do `ph2d-editor-core`)
+pintava o nome **encostado à esquerda da faixa**, a correr até à marca, com um orçamento próprio.
+Num formulário que alterna linhas de número com linhas de marcar isso dá **duas colunas de nome**,
+alternando linha sim linha não — *a mesma queixa do rótulo por cima do campo (§6-bis), meia volta
+adiante*.
+
+⇒ a linha de marcar passa pela mesma porta: **nome na coluna do nome, alinhado à direita, elidido,
+na coluna da SECÇÃO** (§6). A [`Seccao`] viaja no próprio widget (`Checkbox::seccao`), e o default é
+«sou uma linha de formulário» — são 27 sítios contra um.
+
+⚠️⚠️ **A MARCA não se move, e é uma divergência DELIBERADA do §3.** Ela fica na **coluna do valor**,
+partilhada com o número, e é isso que dá ao formulário **uma** margem direita — a lei que o
+`the_form_has_one_right_margin` defende desde o redesenho. ⇒ entre o nome e a marca fica um vão, e
+ele é o mesmo em todas as linhas de marcar. *Pôr a marca no meio da linha alinharia-a com os campos
+e desalinharia-a com a margem direita; o dono já decidiu esta.*
+
+⛔ **A pele de canvas é a excepção, com nome:** ali a moldura é o que o **artista** desenhou, não a
+linha de um painel, e o nome fica onde ele o pôs (`Checkbox::fora_do_formulario`). ⚠️ É um campo
+**próprio** — derivá-lo do `box_px` ou do `decorator` seria o erro que o doc do `box_px` já regista
+e que um gate já apanhou uma vez.
+
+**Custo medido** (26 rótulos booleanos reais do app, `Sm`, quantos passam da metade da linha):
+
+| painel | metade | não cabem |
+|---|---|---|
+| `220` (mínimo do dock) | `78,0` | 9 de 26 |
+| `273,3` | `104,6` | 7 de 26 |
+| `304` (omissão) | `120,0` | 4 de 26 |
+| `333,1` | `134,6` | **1** de 26 |
+| `369,7` | `152,9` | **0** de 26 |
+
+⭐ E quase nenhum chega a cortar: os nomes das linhas de marcar **entram na medida da secção**, logo
+a coluna cresce para os acomodar até ao tecto (§6). Na ponta estreita o tecto e a metade coincidem e
+ali eles cortam — que é a troca que o dono escolheu em 2026-05-24.
+
+---
+
 ## §7 — O que a linha leva SEMPRE
 
 | peça | lei |
@@ -357,6 +396,8 @@ uma das leis muda.*
 | §5 | o campo nunca é pintado abaixo do que o dono declarou | `NUMBER_INPUT_MIN_W_PX` | `a_field_is_never_narrower_than_its_owner_declared` |
 | §6 | o pintor pede emprestado a folga que o controlo não usa | `property_label_col_w_for` | `the_painter_borrows_the_slack_the_control_does_not_need` |
 | §6 | numa secção, todas as caixas começam no mesmo `x` | `Seccao` | `a_seccao_poe_todas_as_caixas_na_mesma_coluna` |
+| §6-quinquies | o nome de uma linha de marcar vive na coluna do nome | `Checkbox` | `a_linha_de_marcar_poe_o_nome_na_coluna_do_nome` |
+| §6-quinquies | a pele de canvas não segue a coluna de uma secção | `fora_do_formulario` | `fora_do_formulario_o_nome_fica_onde_o_artista_o_pos` |
 | §6 | quantos rótulos elidem, por largura do dock | `property_row_columns_for` | `the_elision_ladder_only_shrinks` |
 | §6-bis | as componentes que não cabem ao piso descem, dentro da coluna do controlo | `property_fields_layout` | `a_row_of_many_fields_never_starves_them` |
 | §6-bis | alargar o painel nunca faz caber menos campos por linha | `property_fields_layout` | `a_wider_panel_never_fits_fewer_fields` |

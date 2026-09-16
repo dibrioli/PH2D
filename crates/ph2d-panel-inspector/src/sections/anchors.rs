@@ -46,6 +46,10 @@ pub(super) fn check_row(
     y: f32,
     label: &str,
     id: NodeId,
+    // ⭐⭐ **A linha de MARCAR é uma linha de propriedade** (2026-09-15): o nome dela vai à coluna
+    //    do nome da SECÇÃO, como as de número. Sem isto a secção tem duas colunas de nome,
+    //    alternando linha sim linha não.
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let cb_h = 18.0_f32; // LITERAL-PX-OK: altura visual do Checkbox
     let (_, value) = store
@@ -56,7 +60,8 @@ pub(super) fn check_row(
     paint_checkbox(
         &Checkbox::new(id, label)
             .visual(store.checkbox_visual(id))
-            .value(value),
+            .value(value)
+            .seccao(sec),
         rect,
         scene,
         text_system,
@@ -216,6 +221,10 @@ fn anchor_editor(
             tr("panel.inspector.anchors.rotation_deg"),
             tr("panel.inspector.anchors.bounds_x_y_w_h"),
             tr("panel.inspector.anchors.center_x_y_w_h"),
+            // ⭐ **As linhas de MARCAR entram na medida** — elas partilham a coluna, logo o nome
+            //    mais largo da secção pode ser o de uma delas.
+            tr("panel.inspector.anchors.bounds_makes_it_a_slice"),
+            tr("panel.inspector.anchors.center_makes_it_a_9"),
         ],
     );
 
@@ -260,6 +269,7 @@ fn anchor_editor(
         cur_y,
         tr("panel.inspector.anchors.bounds_makes_it_a_slice"),
         ids::INSP_ANCHOR_BOUNDS_ON,
+        seccao,
     );
     // ⚠️ Os campos da área só existem quando ela existe. Pintá-los sobre um Socket seria
     // oferecer quatro números que não vão a lado nenhum.
@@ -290,6 +300,7 @@ fn anchor_editor(
             cur_y,
             tr("panel.inspector.anchors.center_makes_it_a_9"),
             ids::INSP_ANCHOR_CENTER_ON,
+            seccao,
         );
         if row.center.is_some() {
             cur_y = super::rows::fields_row(

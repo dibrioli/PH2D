@@ -23,6 +23,7 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{
     Color as TokenColor, ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken,
 };
@@ -75,9 +76,9 @@ pub(crate) fn paint(
     if snap.cells.is_empty() {
         let font = TypeToken::Sm.px();
         let hint = if snap.has_layer {
-            "No keys yet — draw on the canvas to create the first one."
+            tr("panel.flip_frames.cells.no_keys_yet_draw_on_the_canvas_to_create_the_first_one")
         } else {
-            "No Flip layer — add one in the Flip panel."
+            tr("panel.flip_frames.cells.no_flip_layer_add_one_in_the_flip_panel")
         };
         paint_text(
             ctx.text_system,

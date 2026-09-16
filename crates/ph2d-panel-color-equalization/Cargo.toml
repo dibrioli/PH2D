@@ -33,6 +33,8 @@ ph2d-text                   = { path = "../ph2d-text" }
 # the tool crate. Panel → tool dep direction (allowed; tool depends on
 # editor-core, panel on both — no cycle).
 ph2d-tool-color-equalization = { path = "../ph2d-tool-color-equalization" }
+# A tabela de strings (HR-15) — o painel deixou de escrever texto no fonte em 2026-09-16.
+ph2d-i18n = { path = "../ph2d-i18n" }
 
 [package.metadata.cargo-machete]
 # `ph2d-text` is reserved for the live-preview thumbnail render that
@@ -42,6 +44,8 @@ ph2d-tool-color-equalization = { path = "../ph2d-tool-color-equalization" }
 ignored = ["ph2d-text"]
 
 [dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate.
+ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-host = { path = "../ph2d-host" }
 bumpalo   = "3"
 # Behavioral SEAM test (tests/seam.rs): MockPanelHost drives the real

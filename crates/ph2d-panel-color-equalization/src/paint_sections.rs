@@ -22,6 +22,7 @@ use ph2d_editor_core::widget::{
     paint_slider_with_chip_layout_adaptive, segment_rects,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_tool_color_equalization::ids;
@@ -121,13 +122,13 @@ pub(crate) fn paint_lut_section(
         (
             ids::CEQ_LUT_1_DROPDOWN,
             snapshot.lut_preset_1,
-            "LUT 1",
+            tr("panel.color_eq.adjust.lut_1"),
             1_u8,
         ),
         (
             ids::CEQ_LUT_2_DROPDOWN,
             snapshot.lut_preset_2,
-            "LUT 2",
+            tr("panel.color_eq.adjust.lut_2"),
             2_u8,
         ),
     ];
@@ -200,7 +201,7 @@ pub(crate) fn paint_posterize_quantize_section(
     paint_text(
         text_system,
         scene,
-        "Posterize",
+        tr("panel.color_eq.adjust.posterize"),
         layout.inner_x,
         y_in,
         mini_label_font,
@@ -216,7 +217,7 @@ pub(crate) fn paint_posterize_quantize_section(
     let post_chip_rect = Rect::new(layout.inner_x, chip_y, half, layout.row_h);
     let post_dd = Dropdown::new(
         ids::CEQ_POSTERIZE_DROPDOWN,
-        "Posterize".to_string(),
+        tr("panel.color_eq.adjust.posterize").to_string(),
         posterize_options(),
     )
     .selected(snapshot.posterize_levels)
@@ -238,7 +239,7 @@ pub(crate) fn paint_posterize_quantize_section(
         paint_text(
             text_system,
             scene,
-            "Dither",
+            tr("panel.color_eq.adjust.dither"),
             layout.inner_x + half + gap,
             y_in,
             mini_label_font,
@@ -257,7 +258,11 @@ pub(crate) fn paint_posterize_quantize_section(
         } else {
             store.button_visual(ids::CEQ_POSTERIZE_DITHERING)
         };
-        let dith_label = if dith_active { "Dither: On" } else { "Dither" };
+        let dith_label = if dith_active {
+            tr("panel.color_eq.adjust.dither_on")
+        } else {
+            tr("panel.color_eq.adjust.dither")
+        };
         let dith_button = Button::new(ids::CEQ_POSTERIZE_DITHERING, dith_label)
             .kind(dith_kind)
             .visual(dith_btn_state);
@@ -286,7 +291,7 @@ pub(crate) fn paint_posterize_quantize_section(
         let dither_strength_display = format!("{:.2}", snapshot.posterize_dither_strength);
         let used = paint_slider_with_chip_layout_adaptive(
             Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h),
-            "Dither Strength",
+            tr("panel.color_eq.adjust.dither_strength"),
             dither_strength_track,
             dither_strength_chip,
             Some(&dither_strength_display),
@@ -312,7 +317,7 @@ pub(crate) fn paint_posterize_quantize_section(
         let dither_grain_display = format!("{}", snapshot.posterize_dither_grain);
         let used = paint_slider_with_chip_layout_adaptive(
             Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h),
-            "Dither Grain",
+            tr("panel.color_eq.adjust.dither_grain"),
             dither_grain_track,
             dither_grain_chip,
             Some(&dither_grain_display),
@@ -333,7 +338,7 @@ pub(crate) fn paint_posterize_quantize_section(
     paint_text(
         text_system,
         scene,
-        "Quantize",
+        tr("panel.color_eq.adjust.quantize"),
         layout.inner_x,
         y,
         mini_label_font,
@@ -349,7 +354,7 @@ pub(crate) fn paint_posterize_quantize_section(
     let quant_chip_rect = Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h);
     let quant_dd = Dropdown::new(
         ids::CEQ_QUANTIZE_DROPDOWN,
-        "Quantize".to_string(),
+        tr("panel.color_eq.adjust.quantize").to_string(),
         quantize_options(),
     )
     .selected(snapshot.quantize_colors)
@@ -388,22 +393,27 @@ pub(crate) fn paint_auto_buttons_section(
         (
             ids::CEQ_AUTO_LEVELS,
             snapshot.auto_levels,
-            "Auto Levels",
-            "Auto Levels: On",
+            tr("panel.color_eq.adjust.auto_levels"),
+            tr("panel.color_eq.adjust.auto_levels_on"),
         ),
         (
             ids::CEQ_AUTO_CONTRAST,
             snapshot.auto_contrast,
-            "Auto Contrast",
-            "Auto Contrast: On",
+            tr("panel.color_eq.adjust.auto_contrast"),
+            tr("panel.color_eq.adjust.auto_contrast_on"),
         ),
         (
             ids::CEQ_AUTO_COLORS,
             snapshot.auto_colors,
-            "Auto Colors",
-            "Auto Colors: On",
+            tr("panel.color_eq.adjust.auto_colors"),
+            tr("panel.color_eq.adjust.auto_colors_on"),
         ),
-        (ids::CEQ_AUTO_WB, snapshot.auto_wb, "Auto WB", "Auto WB: On"),
+        (
+            ids::CEQ_AUTO_WB,
+            snapshot.auto_wb,
+            tr("panel.color_eq.adjust.auto_wb"),
+            tr("panel.color_eq.adjust.auto_wb_on"),
+        ),
     ];
     for (i, (id, on, off_label, on_label)) in auto_buttons.iter().enumerate() {
         let col = (i % 2) as f32;
@@ -446,9 +456,12 @@ pub(crate) fn paint_apply_cta_section(
 ) -> f32 {
     let reset_rect = Rect::new(layout.inner_x, y_in, layout.inner_w, layout.row_h);
     let reset_state = store.button_visual(ids::CEQ_RESET);
-    let reset = Button::new(ids::CEQ_RESET, "Reset to Defaults")
-        .kind(ButtonKind::Default)
-        .visual(reset_state);
+    let reset = Button::new(
+        ids::CEQ_RESET,
+        tr("panel.color_eq.adjust.reset_to_defaults"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(reset_state);
     paint_button(&reset, reset_rect, scene, text_system, theme);
     hit_index.register(ids::CEQ_RESET, reset_rect);
     let mut y = y_in + layout.row_h + layout.row_gap;
@@ -459,14 +472,14 @@ pub(crate) fn paint_apply_cta_section(
         2,
     );
     let cancel_state = store.button_visual(ids::CEQ_CANCEL);
-    let cancel = Button::new(ids::CEQ_CANCEL, "Cancel")
+    let cancel = Button::new(ids::CEQ_CANCEL, tr("panel.color_eq.adjust.cancel"))
         .kind(ButtonKind::Default)
         .visual(cancel_state)
         .in_group(seg[0].1);
     paint_button(&cancel, seg[0].0, scene, text_system, theme);
     hit_index.register(ids::CEQ_CANCEL, seg[0].0);
     let apply_state = store.button_visual(ids::CEQ_APPLY);
-    let apply = Button::new(ids::CEQ_APPLY, "Apply")
+    let apply = Button::new(ids::CEQ_APPLY, tr("panel.color_eq.adjust.apply"))
         .kind(ButtonKind::Accent)
         .visual(apply_state)
         .in_group(seg[1].1);
@@ -487,9 +500,9 @@ pub(crate) fn posterize_options() -> Vec<DropdownOption<u32>> {
         .zip(ids::CEQ_POSTERIZE_LEVELS.iter())
         .map(|(id, &level)| {
             let label = if level == 0 {
-                "Off".to_string()
+                tr("panel.color_eq.adjust.off").to_string()
             } else {
-                format!("{level} Levels")
+                ph2d_i18n::tr_with("panel.color_eq.adjust.n_levels", &[("level", &level)])
             };
             DropdownOption::new(*id, level, label)
         })
@@ -504,9 +517,9 @@ pub(crate) fn quantize_options() -> Vec<DropdownOption<u32>> {
         .zip(ids::CEQ_QUANTIZE_COLORS.iter())
         .map(|(id, &colors)| {
             let label = if colors == 0 {
-                "Off".to_string()
+                tr("panel.color_eq.adjust.off").to_string()
             } else {
-                format!("{colors} Colors")
+                ph2d_i18n::tr_with("panel.color_eq.adjust.n_colors", &[("colors", &colors)])
             };
             DropdownOption::new(*id, colors, label)
         })

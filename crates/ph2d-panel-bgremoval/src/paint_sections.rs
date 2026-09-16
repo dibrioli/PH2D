@@ -23,6 +23,7 @@ use ph2d_editor_core::widget::{
     paint_slider_with_chip_layout_adaptive, segment_rects,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Spacing, Theme};
 use ph2d_tool_bgremoval::params::{
@@ -48,19 +49,19 @@ pub(crate) fn paint_slider_rows(
 ) -> f32 {
     for (label, id, chip_id, fallback) in [
         (
-            "Tolerance",
+            tr("panel.bg_removal.mask.tolerance"),
             ph2d_tool_bgremoval::ids::BGR_TOLERANCE,
             ph2d_tool_bgremoval::ids::BGR_TOLERANCE_NUM,
             snapshot.tolerance01,
         ),
         (
-            "Feather",
+            tr("panel.bg_removal.mask.feather"),
             ph2d_tool_bgremoval::ids::BGR_FEATHER,
             ph2d_tool_bgremoval::ids::BGR_FEATHER_NUM,
             snapshot.feather01,
         ),
         (
-            "Refine",
+            tr("panel.bg_removal.mask.refine"),
             ph2d_tool_bgremoval::ids::BGR_REFINE,
             ph2d_tool_bgremoval::ids::BGR_REFINE_NUM,
             snapshot.refine01,
@@ -118,7 +119,7 @@ pub(crate) fn paint_grow_shrink(
     };
     let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(inner_x, y, inner_w, row_h),
-        "Grow",
+        tr("panel.bg_removal.mask.grow"),
         grow_v,
         signed as f64,
         Some(&grow_display),
@@ -166,7 +167,7 @@ pub(crate) fn paint_islands(
     let islands_rect = Rect::new(inner_x, y, inner_w, row_h);
     let islands_btn = Button::new(
         ph2d_tool_bgremoval::ids::BGR_SEPARATE_ISLANDS,
-        "Separate islands",
+        tr("panel.bg_removal.mask.separate_islands"),
     )
     .kind(islands_kind)
     .visual(islands_state);
@@ -185,7 +186,7 @@ pub(crate) fn paint_islands(
         let min_display = format!("{min_count}");
         let used = paint_slider_with_chip_layout_adaptive(
             Rect::new(inner_x, y, inner_w, row_h),
-            "Min px",
+            tr("panel.bg_removal.mask.min_px"),
             min_v,
             min_count as f64,
             Some(&min_display),
@@ -239,9 +240,12 @@ pub(crate) fn paint_eyedropper_swatches(
             ButtonKind::Default
         };
         let add_area_rect = Rect::new(inner_x, y, inner_w, row_h);
-        let add_area = Button::new(ph2d_tool_bgremoval::ids::BGR_ADD_AREA, "Add area")
-            .kind(add_area_kind)
-            .visual(add_area_state);
+        let add_area = Button::new(
+            ph2d_tool_bgremoval::ids::BGR_ADD_AREA,
+            tr("panel.bg_removal.mask.add_area"),
+        )
+        .kind(add_area_kind)
+        .visual(add_area_state);
         paint_button(&add_area, add_area_rect, scene, text_system, theme);
         hit_index.register(ph2d_tool_bgremoval::ids::BGR_ADD_AREA, add_area_rect);
         y += row_h + row_gap;
@@ -253,7 +257,7 @@ pub(crate) fn paint_eyedropper_swatches(
             let clear_rect = Rect::new(inner_x, y, inner_w, row_h);
             let clear = Button::new(
                 ph2d_tool_bgremoval::ids::BGR_ADD_AREA_CLEAR,
-                "Clear added areas",
+                tr("panel.bg_removal.mask.clear_added_areas"),
             )
             .kind(ButtonKind::Default)
             .visual(clear_state);
@@ -275,9 +279,12 @@ pub(crate) fn paint_eyedropper_swatches(
         ButtonKind::Default
     };
     let eyedropper_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let eyedropper = Button::new(ph2d_tool_bgremoval::ids::BGR_EYEDROPPER, "Pick colors")
-        .kind(eyedropper_kind)
-        .visual(eyedropper_state);
+    let eyedropper = Button::new(
+        ph2d_tool_bgremoval::ids::BGR_EYEDROPPER,
+        tr("panel.bg_removal.mask.pick_colors"),
+    )
+    .kind(eyedropper_kind)
+    .visual(eyedropper_state);
     paint_button(&eyedropper, eyedropper_rect, scene, text_system, theme);
     hit_index.register(ph2d_tool_bgremoval::ids::BGR_EYEDROPPER, eyedropper_rect);
     y += row_h + row_gap;
@@ -300,7 +307,7 @@ pub(crate) fn paint_eyedropper_swatches(
             let rgba = [color[0], color[1], color[2], 255];
             let sw = ColorSwatch::new(
                 ph2d_editor_core::ids::BGR_SWATCHES[i],
-                "Extra bg colour",
+                tr("panel.bg_removal.mask.extra_bg_colour"),
                 rgba,
             )
             .size(SwatchSize::Sm);
@@ -348,7 +355,7 @@ pub(crate) fn paint_auto_protect_subject(
     let rect = Rect::new(inner_x, y, inner_w, row_h);
     let btn = Button::new(
         ph2d_tool_bgremoval::ids::BGR_AUTO_PROTECT_SUBJECT,
-        "Detect subject",
+        tr("panel.bg_removal.mask.detect_subject"),
     )
     .kind(btn_kind)
     .visual(btn_state);
@@ -386,9 +393,12 @@ pub(crate) fn paint_protect_brush(
         ButtonKind::Default
     };
     let protect_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let protect = Button::new(ph2d_tool_bgremoval::ids::BGR_PROTECT, "Protect")
-        .kind(protect_kind)
-        .visual(protect_state);
+    let protect = Button::new(
+        ph2d_tool_bgremoval::ids::BGR_PROTECT,
+        tr("panel.bg_removal.mask.protect"),
+    )
+    .kind(protect_kind)
+    .visual(protect_state);
     paint_button(&protect, protect_rect, scene, text_system, theme);
     hit_index.register(ph2d_tool_bgremoval::ids::BGR_PROTECT, protect_rect);
     y += row_h + row_gap;
@@ -400,7 +410,7 @@ pub(crate) fn paint_protect_brush(
             .unwrap_or(snapshot.brush_size01);
         let used = paint_slider_with_chip_layout_adaptive(
             Rect::new(inner_x, y, inner_w, row_h),
-            "Size",
+            tr("panel.bg_removal.mask.size"),
             size_v,
             size_v as f64,
             None,
@@ -469,9 +479,12 @@ pub(crate) fn paint_protect_brush(
             ButtonKind::Default
         };
         let show_rect = Rect::new(inner_x, y, inner_w, row_h);
-        let show = Button::new(ph2d_tool_bgremoval::ids::BGR_SHOW_MASK, "Show mask")
-            .kind(show_kind)
-            .visual(show_state);
+        let show = Button::new(
+            ph2d_tool_bgremoval::ids::BGR_SHOW_MASK,
+            tr("panel.bg_removal.mask.show_mask"),
+        )
+        .kind(show_kind)
+        .visual(show_state);
         paint_button(&show, show_rect, scene, text_system, theme);
         hit_index.register(ph2d_tool_bgremoval::ids::BGR_SHOW_MASK, show_rect);
         y += row_h + row_gap;
@@ -482,7 +495,7 @@ pub(crate) fn paint_protect_brush(
         let clear_state = store.button_visual(ph2d_tool_bgremoval::ids::BGR_PROTECT_CLEAR);
         let clear = Button::new(
             ph2d_tool_bgremoval::ids::BGR_PROTECT_CLEAR,
-            "Clear protection",
+            tr("panel.bg_removal.mask.clear_protection"),
         )
         .kind(ButtonKind::Default)
         .visual(clear_state);
@@ -509,9 +522,12 @@ pub(crate) fn paint_apply_cta(
 ) -> f32 {
     let reset_rect = Rect::new(inner_x, y, inner_w, row_h);
     let reset_state = store.button_visual(ph2d_tool_bgremoval::ids::BGR_RESET);
-    let reset = Button::new(ph2d_tool_bgremoval::ids::BGR_RESET, "Reset to Defaults")
-        .kind(ButtonKind::Default)
-        .visual(reset_state);
+    let reset = Button::new(
+        ph2d_tool_bgremoval::ids::BGR_RESET,
+        tr("panel.bg_removal.mask.reset_to_defaults"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(reset_state);
     paint_button(&reset, reset_rect, scene, text_system, theme);
     hit_index.register(ph2d_tool_bgremoval::ids::BGR_RESET, reset_rect);
     y += row_h + row_gap;
@@ -522,17 +538,23 @@ pub(crate) fn paint_apply_cta(
     //    grupo e o chip segmentado conhecia. Hoje conhece.
     let seg = segment_rects(Rect::new(inner_x, y, inner_w, row_h), 2);
     let cancel_state = store.button_visual(ph2d_tool_bgremoval::ids::BGR_CANCEL);
-    let cancel = Button::new(ph2d_tool_bgremoval::ids::BGR_CANCEL, "Cancel")
-        .kind(ButtonKind::Default)
-        .visual(cancel_state)
-        .in_group(seg[0].1);
+    let cancel = Button::new(
+        ph2d_tool_bgremoval::ids::BGR_CANCEL,
+        tr("panel.bg_removal.mask.cancel"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(cancel_state)
+    .in_group(seg[0].1);
     paint_button(&cancel, seg[0].0, scene, text_system, theme);
     hit_index.register(ph2d_tool_bgremoval::ids::BGR_CANCEL, seg[0].0);
     let apply_state = store.button_visual(ph2d_tool_bgremoval::ids::BGR_APPLY);
-    let apply = Button::new(ph2d_tool_bgremoval::ids::BGR_APPLY, "Apply")
-        .kind(ButtonKind::Accent)
-        .visual(apply_state)
-        .in_group(seg[1].1);
+    let apply = Button::new(
+        ph2d_tool_bgremoval::ids::BGR_APPLY,
+        tr("panel.bg_removal.mask.apply"),
+    )
+    .kind(ButtonKind::Accent)
+    .visual(apply_state)
+    .in_group(seg[1].1);
     paint_button(&apply, seg[1].0, scene, text_system, theme);
     hit_index.register(ph2d_tool_bgremoval::ids::BGR_APPLY, seg[1].0);
     y += row_h;

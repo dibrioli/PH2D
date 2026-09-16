@@ -37,6 +37,7 @@ use ph2d_editor_core::widget::{
     paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_tool_color_equalization::params::ColorEqualizationUiSnapshot;
 
@@ -89,7 +90,7 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     // monitor. Corrija isso.").
     let title_size = paint_panel_title(
         rect,
-        "Color EQ",
+        tr("panel.color_eq.title"),
         ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,
@@ -276,13 +277,13 @@ fn paint_pending_popovers(ctx: &mut PaintCtx) {
                 let (chip_id, label, selected) = if p.slot == 1 {
                     (
                         ph2d_tool_color_equalization::ids::CEQ_LUT_1_DROPDOWN,
-                        "LUT 1",
+                        tr("panel.color_eq.adjust.lut_1"),
                         snapshot_for_popover.lut_preset_1,
                     )
                 } else {
                     (
                         ph2d_tool_color_equalization::ids::CEQ_LUT_2_DROPDOWN,
-                        "LUT 2",
+                        tr("panel.color_eq.adjust.lut_2"),
                         snapshot_for_popover.lut_preset_2,
                     )
                 };
@@ -308,7 +309,7 @@ fn paint_pending_popovers(ctx: &mut PaintCtx) {
             3 => {
                 let dd = Dropdown::new(
                     ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DROPDOWN,
-                    "Posterize".to_string(),
+                    tr("panel.color_eq.adjust.posterize").to_string(),
                     posterize_options(),
                 )
                 .selected(snapshot_for_popover.posterize_levels)
@@ -332,7 +333,7 @@ fn paint_pending_popovers(ctx: &mut PaintCtx) {
             4 => {
                 let dd = Dropdown::new(
                     ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_DROPDOWN,
-                    "Quantize".to_string(),
+                    tr("panel.color_eq.adjust.quantize").to_string(),
                     quantize_options(),
                 )
                 .selected(snapshot_for_popover.quantize_colors)

@@ -6,6 +6,7 @@
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
+use ph2d_i18n::tr;
 use ph2d_tool_flip::{Cap, DOT_SPACING_MAX, FlipMode, FlipStyleSnapshot, StrokeTip};
 
 impl BodyCtx<'_> {
@@ -17,21 +18,21 @@ impl BodyCtx<'_> {
         }
         let is = |t| snap.tip == t;
         y = self.segmented(
-            "Tip",
+            tr("panel.flip.tip.tip"),
             [
                 (
                     ph2d_tool_flip::ids::FLIP_TIP_LINE,
-                    "Line",
+                    tr("panel.flip.tip.line"),
                     is(StrokeTip::Continuous),
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_TIP_DOTS,
-                    "Dots",
+                    tr("panel.flip.tip.dots"),
                     is(StrokeTip::Dots),
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_TIP_SQUARES,
-                    "Squares",
+                    tr("panel.flip.tip.squares"),
                     is(StrokeTip::Squares),
                 ),
             ],
@@ -50,7 +51,7 @@ impl BodyCtx<'_> {
                 .number_value(ids::FLIP_DOT_SPACING_NUM)
                 .unwrap_or(snap.dot_spacing);
             y = self.slider_row(
-                "Spacing",
+                tr("panel.flip.tip.spacing"),
                 ph2d_tool_flip::ids::FLIP_DOT_SPACING,
                 ids::FLIP_DOT_SPACING_NUM,
                 track,
@@ -67,21 +68,21 @@ impl BodyCtx<'_> {
         // fita antes da última conta, então ele não é inerte ali; escondê-lo seria decidir por um
         // artista que talvez queira exatamente isso.
         y = self.segmented(
-            "Cap",
+            tr("panel.flip.tip.cap"),
             [
                 (
                     ph2d_tool_flip::ids::FLIP_CAP_ROUND,
-                    "Round",
+                    tr("panel.flip.tip.round"),
                     snap.cap == Cap::Round,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_CAP_FLAT,
-                    "Flat",
+                    tr("panel.flip.tip.flat"),
                     snap.cap == Cap::Flat,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_CAP_SQUARE,
-                    "Square",
+                    tr("panel.flip.tip.square"),
                     snap.cap == Cap::Square,
                 ),
             ],
@@ -101,12 +102,12 @@ impl BodyCtx<'_> {
             &[
                 (
                     ph2d_tool_flip::ids::FLIP_SELF_OVERLAP,
-                    "Self Overlap",
+                    tr("panel.flip.tip.self_overlap"),
                     snap.self_overlap,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_AIRBRUSH,
-                    "Airbrush",
+                    tr("panel.flip.tip.airbrush"),
                     snap.airbrush,
                 ),
             ],

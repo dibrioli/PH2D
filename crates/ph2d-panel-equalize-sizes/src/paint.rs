@@ -31,6 +31,7 @@ use ph2d_editor_core::widget::{
     scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 use ph2d_tool_equalize_sizes::params::{EqualizeSizesUiSnapshot, TargetMode, UpscaleAlgorithm};
@@ -73,7 +74,7 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
 
     let title_size = paint_panel_title(
         rect,
-        "Equalize Sizes",
+        tr("panel.equalize_sizes.title"),
         ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,
@@ -149,17 +150,17 @@ fn paint_body_sections(
         mode_row,
         &[
             (
-                "Max",
+                tr("panel.equalize_sizes.size.max"),
                 ph2d_tool_equalize_sizes::ids::EQS_MODE_MAX,
                 snapshot.target_mode == TargetMode::MaxOfSelection,
             ),
             (
-                "Fixed",
+                tr("panel.equalize_sizes.size.fixed"),
                 ph2d_tool_equalize_sizes::ids::EQS_MODE_FIXED,
                 snapshot.target_mode == TargetMode::Fixed,
             ),
             (
-                "Grid",
+                tr("panel.equalize_sizes.size.grid"),
                 ph2d_tool_equalize_sizes::ids::EQS_MODE_GRID,
                 snapshot.target_mode == TargetMode::GridUnit,
             ),
@@ -192,7 +193,7 @@ fn paint_body_sections(
     let upscale_on = snapshot.upscale_if_smaller;
     paint_toggle_button(
         Rect::new(inner_x, y, inner_w, row_h),
-        "Upscale if smaller",
+        tr("panel.equalize_sizes.size.upscale_if_smaller"),
         ph2d_tool_equalize_sizes::ids::EQS_UPSCALE_IF_SMALLER,
         upscale_on,
         store,
@@ -209,17 +210,17 @@ fn paint_body_sections(
             alg_row,
             &[
                 (
-                    "Lanczos",
+                    tr("panel.equalize_sizes.size.lanczos"),
                     ph2d_tool_equalize_sizes::ids::EQS_ALG_LANCZOS,
                     snapshot.upscale_algorithm == UpscaleAlgorithm::Lanczos3,
                 ),
                 (
-                    "Nearest",
+                    tr("panel.equalize_sizes.size.nearest"),
                     ph2d_tool_equalize_sizes::ids::EQS_ALG_NEAREST,
                     snapshot.upscale_algorithm == UpscaleAlgorithm::Nearest,
                 ),
                 (
-                    "EPX",
+                    tr("panel.equalize_sizes.size.epx"),
                     ph2d_tool_equalize_sizes::ids::EQS_ALG_EPX,
                     snapshot.upscale_algorithm == UpscaleAlgorithm::Epx,
                 ),
@@ -238,7 +239,7 @@ fn paint_body_sections(
     // ── Section: Rasterize after (accent toggle) ────────────────────
     paint_toggle_button(
         Rect::new(inner_x, y, inner_w, row_h),
-        "Rasterize after",
+        tr("panel.equalize_sizes.size.rasterize_after"),
         ph2d_tool_equalize_sizes::ids::EQS_RASTERIZE_AFTER,
         snapshot.rasterize_after,
         store,
@@ -326,7 +327,10 @@ fn paint_mode_rows(
             // bridge syncs `snapshot.grid_unit` (px) from
             // `GridSnapState::square_cfg.cell_size * pixels_per_meter`
             // each frame, so this label always reflects the live cell.
-            let info_text = format!("Cell: {} px (from Grid Snap)", snapshot.grid_unit);
+            let info_text = ph2d_i18n::tr_with(
+                "panel.equalize_sizes.size.cell_from_grid_snap",
+                &[("cell", &snapshot.grid_unit)],
+            );
             paint_text_centered(
                 text_system,
                 scene,
@@ -355,7 +359,7 @@ fn paint_mode_rows(
             let display = format!("{} px", chip_value.round() as i64);
             let used = paint_slider_with_chip_layout_adaptive(
                 Rect::new(inner_x, y, inner_w, row_h),
-                "Offset",
+                tr("panel.equalize_sizes.size.offset"),
                 track,
                 chip_value,
                 Some(&display),
@@ -375,7 +379,10 @@ fn paint_mode_rows(
                 .grid_unit
                 .saturating_sub(snapshot.grid_offset.min(max_off))
                 .max(1);
-            let final_text = format!("Final size: {final_dim} x {final_dim} px");
+            let final_text = ph2d_i18n::tr_with(
+                "panel.equalize_sizes.size.final_size",
+                &[("size", &final_dim)],
+            );
             paint_text_centered(
                 text_system,
                 scene,
@@ -391,7 +398,7 @@ fn paint_mode_rows(
             // selection out 1-sprite-per-cell sorted by world `(y, x)`.
             paint_toggle_button(
                 Rect::new(inner_x, y, inner_w, row_h),
-                "Arrange on Grid (1 per cell)",
+                tr("panel.equalize_sizes.size.arrange_on_grid"),
                 ph2d_tool_equalize_sizes::ids::EQS_ARRANGE_ON_GRID,
                 snapshot.arrange_on_grid,
                 store,

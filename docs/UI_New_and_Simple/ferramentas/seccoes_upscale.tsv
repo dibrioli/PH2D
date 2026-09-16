@@ -1,0 +1,5 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI do painel Upscale, para as chaves `panel.upscale.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+lib.rs	panel
+paint.rs	scale
+populate.rs	scale

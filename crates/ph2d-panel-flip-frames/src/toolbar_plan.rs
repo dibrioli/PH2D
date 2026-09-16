@@ -20,6 +20,7 @@ use crate::state::FlipStripSnapshot;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{Spacing, TypeToken};
 
 /// Largura de um botão de ícone (quadrado, altura da linha).
@@ -83,27 +84,47 @@ pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
         Item::Icon(ids::FLIP_PREV_DRAWING, IconId::SkipBack),
         Item::Icon(ids::FLIP_PLAY, play_icon),
         Item::Icon(ids::FLIP_NEXT_DRAWING, IconId::SkipForward),
-        Item::Label("FPS"),
+        Item::Label(tr("panel.flip_frames.toolbar.fps")),
         Item::Number(ids::FLIP_FPS_NUM, f64::from(snap.fps)),
         Item::Gap,
         // Ghost Frames: liga/desliga + quantos antes/depois
-        Item::Toggle(ids::FLIP_GHOST, "Ghost", snap.ghost),
+        Item::Toggle(
+            ids::FLIP_GHOST,
+            tr("panel.flip_frames.toolbar.ghost"),
+            snap.ghost,
+        ),
         Item::Number(ids::FLIP_GHOST_BEFORE_NUM, f64::from(snap.ghost_before)),
         Item::Number(ids::FLIP_GHOST_AFTER_NUM, f64::from(snap.ghost_after)),
         // **Pin** (light table, T3.9): fixa a chave ATUAL como referência — ela vira
         // fantasma além dos vizinhos, em qualquer modo e fora do alcance. Mora no grupo
         // do Ghost porque é a mesma pergunta ("o que mais eu vejo enquanto desenho?"),
         // e não uma op de chave: ele não cria, não apaga e não move nada.
-        Item::Toggle(ids::FLIP_KEY_PIN, "Pin", snap.current_pinned),
+        Item::Toggle(
+            ids::FLIP_KEY_PIN,
+            tr("panel.flip_frames.toolbar.pin"),
+            snap.current_pinned,
+        ),
         Item::Gap,
         // Autoria: o que nasce ao desenhar depois do hold
-        Item::Toggle(ids::FLIP_AUTOKEY, "Auto", snap.autokey),
+        Item::Toggle(
+            ids::FLIP_AUTOKEY,
+            tr("panel.flip_frames.toolbar.auto"),
+            snap.autokey,
+        ),
         // **Falloff** (W7 — multiframe): com ele ligado, os quadros vizinhos marcados
         // recebem menos influência do pincel que o quadro ativo. Vive ao lado do Auto
         // porque os dois são política de AUTORIA (o que o gesto faz nos outros quadros),
         // e não parâmetro de pincel.
-        Item::Toggle(ids::FLIP_FALLOFF, "Falloff", snap.falloff),
-        Item::Toggle(ids::FLIP_ADDITIVE, "Add.", snap.additive),
+        Item::Toggle(
+            ids::FLIP_FALLOFF,
+            tr("panel.flip_frames.toolbar.falloff"),
+            snap.falloff,
+        ),
+        Item::Toggle(
+            ids::FLIP_ADDITIVE,
+            tr("panel.flip_frames.toolbar.additive"),
+            snap.additive,
+        ),
         Item::Gap,
         // Ops de chave: + · duplicar · **instanciar** · apagar · exposição · mover ±1
         Item::Icon(ids::FLIP_KEY_ADD, IconId::Plus),
@@ -116,22 +137,34 @@ pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
         // sentido ao lado do Link: um desfaz o que o outro faz.
         Item::Icon(ids::FLIP_KEY_UNLINK, IconId::Unlink),
         Item::Icon(ids::FLIP_KEY_DELETE, IconId::Trash),
-        Item::Label("Hold"),
+        Item::Label(tr("panel.flip_frames.toolbar.hold")),
         Item::Number(ids::FLIP_HOLD_NUM, f64::from(hold)),
         Item::Icon(ids::FLIP_KEY_LEFT, IconId::ChevronLeft),
         Item::Icon(ids::FLIP_KEY_RIGHT, IconId::ChevronRight),
         Item::Gap,
         // Tween: quantos inbetweens + gerar
-        Item::Label("Tween"),
+        Item::Label(tr("panel.flip_frames.toolbar.tween")),
         Item::Number(ids::FLIP_TWEEN_NUM, f64::from(snap.tween_count)),
         // O TEMPO dos inbetweens (o motor sempre soube; a barra é que não oferecia) e
         // o que fazer com os traços que existem em só uma das chaves.
         Item::Ease(snap.tween_ease),
-        Item::Toggle(ids::FLIP_TWEEN_FADE, "Fade", snap.tween_fade),
+        Item::Toggle(
+            ids::FLIP_TWEEN_FADE,
+            tr("panel.flip_frames.toolbar.fade"),
+            snap.tween_fade,
+        ),
         // **Pairs** — abre o overlay de correção de correspondência (a lição CACAni: o
         // matcher erra, o artista corrige). Aceso enquanto a sessão está aberta.
-        Item::Toggle(ids::FLIP_TWEEN_PAIRS, "Pairs", snap.tween_pairs),
-        Item::Toggle(ids::FLIP_TWEEN_ADD, "Add", false),
+        Item::Toggle(
+            ids::FLIP_TWEEN_PAIRS,
+            tr("panel.flip_frames.toolbar.pairs"),
+            snap.tween_pairs,
+        ),
+        Item::Toggle(
+            ids::FLIP_TWEEN_ADD,
+            tr("panel.flip_frames.toolbar.add"),
+            false,
+        ),
         Item::Gap,
         // Ciclo (post behavior da camada ativa)
         Item::Cycle(snap.cycle),

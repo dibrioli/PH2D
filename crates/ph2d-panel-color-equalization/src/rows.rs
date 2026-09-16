@@ -13,6 +13,7 @@
 //! the panel in the same edit.
 
 use ph2d_a11y::NodeId;
+use ph2d_i18n::tr;
 use ph2d_tool_color_equalization::params::{
     ColorEqualizationUiSnapshot, brightness_to_slider, clip_limit_to_slider, contrast_to_slider,
     exposure_to_slider, lut_intensity_to_slider, lut_mix_to_slider, saturation_to_slider,
@@ -49,7 +50,7 @@ pub(crate) fn always(_: &ColorEqualizationUiSnapshot) -> bool {
 pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [SliderRow; 13] {
     [
         SliderRow {
-            label: "Clip",
+            label: tr("panel.color_eq.adjust.clip"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_CLIP_LIMIT,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_CLIP_LIMIT_NUM,
             snap_track: clip_limit_to_slider(snapshot.clip_limit),
@@ -60,7 +61,7 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             show: always,
         },
         SliderRow {
-            label: "Tile Grid",
+            label: tr("panel.color_eq.adjust.tile_grid"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_TILE_GRID,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_TILE_GRID_NUM,
             snap_track: tile_grid_to_slider(snapshot.tile_grid_size),
@@ -74,7 +75,7 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             show: ColorEqualizationUiSnapshot::clahe_stage_runs,
         },
         SliderRow {
-            label: "Exposure",
+            label: tr("panel.color_eq.adjust.exposure"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_EXPOSURE,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_EXPOSURE_NUM,
             snap_track: exposure_to_slider(snapshot.exposure),
@@ -83,7 +84,7 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             show: always,
         },
         SliderRow {
-            label: "Temperature",
+            label: tr("panel.color_eq.adjust.temperature"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_TEMPERATURE,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_TEMPERATURE_NUM,
             snap_track: temperature_to_slider(snapshot.temperature),
@@ -92,7 +93,7 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             show: always,
         },
         SliderRow {
-            label: "Tint",
+            label: tr("panel.color_eq.adjust.tint"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_TINT,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_TINT_NUM,
             snap_track: tint_to_slider(snapshot.tint),
@@ -101,7 +102,7 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             show: always,
         },
         SliderRow {
-            label: "Brightness",
+            label: tr("panel.color_eq.adjust.brightness"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS_NUM,
             snap_track: brightness_to_slider(snapshot.brightness),
@@ -110,7 +111,7 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             show: always,
         },
         SliderRow {
-            label: "Contrast",
+            label: tr("panel.color_eq.adjust.contrast"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_CONTRAST,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_CONTRAST_NUM,
             snap_track: contrast_to_slider(snapshot.contrast),
@@ -119,7 +120,7 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             show: always,
         },
         SliderRow {
-            label: "Vibrance",
+            label: tr("panel.color_eq.adjust.vibrance"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_VIBRANCE,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_VIBRANCE_NUM,
             snap_track: vibrance_to_slider(snapshot.vibrance),
@@ -128,7 +129,7 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             show: always,
         },
         SliderRow {
-            label: "Saturation",
+            label: tr("panel.color_eq.adjust.saturation"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_SATURATION,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_SATURATION_NUM,
             snap_track: saturation_to_slider(snapshot.saturation),
@@ -137,7 +138,7 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             show: always,
         },
         SliderRow {
-            label: "Sharpen",
+            label: tr("panel.color_eq.adjust.sharpen"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_SHARPEN_AMOUNT,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_SHARPEN_AMOUNT_NUM,
             snap_track: sharpen_amount_to_slider(snapshot.sharpen_amount),
@@ -146,7 +147,7 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             show: always,
         },
         SliderRow {
-            label: "Radius",
+            label: tr("panel.color_eq.adjust.radius"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_SHARPEN_RADIUS,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_SHARPEN_RADIUS_NUM,
             snap_track: sharpen_radius_to_slider(snapshot.sharpen_radius),
@@ -155,7 +156,7 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             show: always,
         },
         SliderRow {
-            label: "LUT Intensity",
+            label: tr("panel.color_eq.adjust.lut_intensity"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_LUT_INTENSITY,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_LUT_INTENSITY_NUM,
             snap_track: lut_intensity_to_slider(snapshot.lut_intensity),
@@ -166,7 +167,7 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             show: always,
         },
         SliderRow {
-            label: "LUT Mix",
+            label: tr("panel.color_eq.adjust.lut_mix"),
             slider_id: ph2d_tool_color_equalization::ids::CEQ_LUT_MIX,
             chip_id: ph2d_tool_color_equalization::ids::CEQ_LUT_MIX_NUM,
             snap_track: lut_mix_to_slider(snapshot.lut_mix),

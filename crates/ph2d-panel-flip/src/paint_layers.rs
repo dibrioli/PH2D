@@ -26,6 +26,7 @@ use ph2d_editor_core::widget::{
     scrollbar_track_rect, slider_with_chip_is_stacked,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_painter_effects::{BlendMode, MAX_BLEND_MODES};
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
@@ -130,7 +131,7 @@ pub(crate) fn layers_section(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        "Layers",
+        tr("panel.flip.layers.layers"),
         m.inner_x,
         y,
         label_font,
@@ -146,9 +147,21 @@ pub(crate) fn layers_section(
     let gap = Spacing::Xs.px();
     let needs_active = snap.active.is_some();
     let buttons = [
-        (ph2d_tool_flip::ids::FLIP_LAYER_ADD, "Add", true),
-        (ids::FLIP_LAYER_DUPLICATE, "Duplicate", needs_active),
-        (ids::FLIP_LAYER_DELETE, "Delete", needs_active),
+        (
+            ph2d_tool_flip::ids::FLIP_LAYER_ADD,
+            tr("panel.flip.layers.add"),
+            true,
+        ),
+        (
+            ids::FLIP_LAYER_DUPLICATE,
+            tr("panel.flip.layers.duplicate"),
+            needs_active,
+        ),
+        (
+            ids::FLIP_LAYER_DELETE,
+            tr("panel.flip.layers.delete"),
+            needs_active,
+        ),
     ];
     let cols = buttons.len() as f32;
     let col_w = ((m.inner_w - gap * (cols - 1.0)) / cols).max(1.0);
@@ -374,7 +387,7 @@ fn paint_layer_block(
         theme,
         m,
         row.id,
-        "Opacity",
+        tr("panel.flip.layers.opacity"),
         FlipLayerWidget::Opacity,
         FlipLayerWidget::OpacityNum,
         row.opacity,
@@ -386,7 +399,7 @@ fn paint_layer_block(
         theme,
         m,
         row.id,
-        "Depth",
+        tr("panel.flip.layers.depth"),
         FlipLayerWidget::Depth,
         FlipLayerWidget::DepthNum,
         row.depth,

@@ -14,6 +14,7 @@ use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_tool_flip::{
@@ -50,46 +51,46 @@ impl BodyCtx<'_> {
     /// de seis, e «Sculpt» não cabe. O que muda é as três fileiras passarem a **encostar**.
     pub(crate) fn mode_row(&mut self, snap: &FlipStyleSnapshot, y: f32) -> f32 {
         self.segmented_block(
-            "Mode",
+            tr("panel.flip.tool.mode"),
             &[
                 (
                     ph2d_tool_flip::ids::FLIP_MODE_SELECT,
-                    "Select",
+                    tr("panel.flip.tool.select"),
                     snap.mode == FlipMode::Select,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_MODE_DRAW,
-                    "Draw",
+                    tr("panel.flip.tool.draw"),
                     snap.mode == FlipMode::Draw,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_MODE_ERASE,
-                    "Erase",
+                    tr("panel.flip.tool.erase"),
                     snap.mode == FlipMode::Erase,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_MODE_FILL,
-                    "Fill",
+                    tr("panel.flip.tool.fill"),
                     snap.mode == FlipMode::Fill,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_MODE_RESHAPE,
-                    "Sculpt",
+                    tr("panel.flip.tool.sculpt"),
                     snap.mode == FlipMode::Reshape,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_MODE_EDIT,
-                    "Edit",
+                    tr("panel.flip.tool.edit"),
                     snap.mode == FlipMode::Edit,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_MODE_COLORIZE,
-                    "Colorize",
+                    tr("panel.flip.tool.colorize"),
                     snap.mode == FlipMode::Colorize,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_MODE_TRACE,
-                    "Trace",
+                    tr("panel.flip.tool.trace"),
                     snap.mode == FlipMode::Trace,
                 ),
             ],
@@ -105,7 +106,15 @@ impl BodyCtx<'_> {
         if snap.mode != FlipMode::Trace {
             return y;
         }
-        self.segmented("Trace", [(ids::FLIP_TRACE_RESET, "Reset Shifts", false)], y)
+        self.segmented(
+            tr("panel.flip.tool.trace"),
+            [(
+                ids::FLIP_TRACE_RESET,
+                tr("panel.flip.tool.reset_shifts"),
+                false,
+            )],
+            y,
+        )
     }
 
     /// **Edit section** (W6) — o que se faz com a SELEÇÃO de traços.
@@ -125,32 +134,32 @@ impl BodyCtx<'_> {
         // pedaço entre dois cruzamentos. O shell faz a conversão no documento quando o
         // toggle muda.
         y = self.segmented(
-            "Select",
+            tr("panel.flip.tool.select"),
             [
                 (
                     ph2d_tool_flip::ids::FLIP_EDIT_DOM_STROKE,
-                    "Stroke",
+                    tr("panel.flip.tool.stroke"),
                     snap.edit_domain == EditDomain::Stroke,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_EDIT_DOM_POINT,
-                    "Point",
+                    tr("panel.flip.tool.point"),
                     snap.edit_domain == EditDomain::Point,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_EDIT_DOM_SEGMENT,
-                    "Segment",
+                    tr("panel.flip.tool.segment"),
                     snap.edit_domain == EditDomain::Segment,
                 ),
             ],
             y,
         );
         y = self.segmented(
-            "Selection",
+            tr("panel.flip.tool.selection"),
             [
-                (ids::FLIP_EDIT_SELECT_ALL, "All", false),
-                (ids::FLIP_EDIT_DESELECT, "None", false),
-                (ids::FLIP_EDIT_DELETE, "Delete", false),
+                (ids::FLIP_EDIT_SELECT_ALL, tr("panel.flip.tool.all"), false),
+                (ids::FLIP_EDIT_DESELECT, tr("panel.flip.tool.none"), false),
+                (ids::FLIP_EDIT_DELETE, tr("panel.flip.tool.delete"), false),
             ],
             y,
         );
@@ -168,16 +177,16 @@ impl BodyCtx<'_> {
             return y;
         }
         self.segmented(
-            "Shape",
+            tr("panel.flip.tool.shape"),
             [
                 (
                     ph2d_tool_flip::ids::FLIP_SHAPE_LINE,
-                    "Line",
+                    tr("panel.flip.tool.line"),
                     !snap.draw_filled,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_SHAPE_FILLED,
-                    "Filled",
+                    tr("panel.flip.tool.filled"),
                     snap.draw_filled,
                 ),
             ],
@@ -212,7 +221,7 @@ impl BodyCtx<'_> {
         //    mesma resposta visual.
         let all: Vec<(ph2d_a11y::NodeId, &str, bool)> =
             ids4(0).into_iter().chain(ids4(4)).collect();
-        self.segmented_block("Sculpt Brush", &all, &[4, 4], y)
+        self.segmented_block(tr("panel.flip.tool.sculpt_brush"), &all, &[4, 4], y)
     }
 
     /// Color section — a Stroke colour swatch (opens the shared OKLCH picker).
@@ -224,7 +233,7 @@ impl BodyCtx<'_> {
         if snap.mode != FlipMode::Draw && snap.mode != FlipMode::Edit {
             return y;
         }
-        y = self.section_label("Color", y);
+        y = self.section_label(tr("panel.flip.tool.color"), y);
         // A cor do MIOLO. Ela aparece em dois casos, e por motivos diferentes:
         //
         // - **Draw + Shape: Filled** — o traço nasce carregando o próprio preenchimento;
@@ -240,7 +249,7 @@ impl BodyCtx<'_> {
             ph2d_editor_core::widget::paint_property_label(
                 self.text_system,
                 self.scene,
-                "Fill",
+                tr("panel.flip.tool.fill"),
                 self.inner_x,
                 y + (self.row_h - self.font) * 0.5,
                 self.font,
@@ -253,8 +262,12 @@ impl BodyCtx<'_> {
                 swatch_w,
                 self.row_h,
             );
-            let sw = ColorSwatch::new(ids::FLIP_FILL_SWATCH, "Fill color", snap.fill_color)
-                .size(SwatchSize::Md);
+            let sw = ColorSwatch::new(
+                ids::FLIP_FILL_SWATCH,
+                tr("panel.flip.tool.fill_color"),
+                snap.fill_color,
+            )
+            .size(SwatchSize::Md);
             paint_color_swatch(&sw, rect, self.scene, self.theme);
             self.hit_index.register(ids::FLIP_FILL_SWATCH, rect);
             y += self.row_h + self.row_gap;
@@ -263,7 +276,7 @@ impl BodyCtx<'_> {
         ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
-            "Stroke",
+            tr("panel.flip.tool.stroke"),
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
@@ -276,8 +289,12 @@ impl BodyCtx<'_> {
             swatch_w,
             self.row_h,
         );
-        let swatch = ColorSwatch::new(ids::FLIP_STROKE_SWATCH, "Stroke color", snap.stroke)
-            .size(SwatchSize::Md);
+        let swatch = ColorSwatch::new(
+            ids::FLIP_STROKE_SWATCH,
+            tr("panel.flip.tool.stroke_color"),
+            snap.stroke,
+        )
+        .size(SwatchSize::Md);
         paint_color_swatch(&swatch, swatch_rect, self.scene, self.theme);
         self.hit_index
             .register(ids::FLIP_STROKE_SWATCH, swatch_rect);
@@ -291,14 +308,14 @@ impl BodyCtx<'_> {
         if snap.mode != FlipMode::Fill {
             return y;
         }
-        y = self.section_label("Fill", y);
+        y = self.section_label(tr("panel.flip.tool.fill"), y);
 
         // A cor do BALDE — própria, não a do traço (colorir usa outra paleta).
         let swatch_w = SwatchSize::Md.px();
         ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
-            "Color",
+            tr("panel.flip.tool.color"),
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
@@ -311,29 +328,33 @@ impl BodyCtx<'_> {
             swatch_w,
             self.row_h,
         );
-        let swatch = ColorSwatch::new(ids::FLIP_FILL_SWATCH, "Fill color", snap.fill_color)
-            .size(SwatchSize::Md);
+        let swatch = ColorSwatch::new(
+            ids::FLIP_FILL_SWATCH,
+            tr("panel.flip.tool.fill_color"),
+            snap.fill_color,
+        )
+        .size(SwatchSize::Md);
         paint_color_swatch(&swatch, swatch_rect, self.scene, self.theme);
         self.hit_index.register(ids::FLIP_FILL_SWATCH, swatch_rect);
         y += self.row_h + self.row_gap;
 
         // Paint / Behind / Unpaint — a semântica de balde de ANIMAÇÃO (Toon Boom).
         y = self.segmented(
-            "Bucket",
+            tr("panel.flip.tool.bucket"),
             [
                 (
                     ph2d_tool_flip::ids::FLIP_FILL_PAINT,
-                    "Paint",
+                    tr("panel.flip.tool.paint"),
                     snap.fill_mode == FillMode::Paint,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_FILL_BEHIND,
-                    "Behind",
+                    tr("panel.flip.tool.behind"),
                     snap.fill_mode == FillMode::PaintBehind,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_FILL_UNPAINT,
-                    "Unpaint",
+                    tr("panel.flip.tool.unpaint"),
                     snap.fill_mode == FillMode::Unpaint,
                 ),
             ],
@@ -349,7 +370,7 @@ impl BodyCtx<'_> {
             .unwrap_or((snap.gap / GAP_MAX_WORLD) as f32);
         let gap = f64::from(track) * GAP_MAX_WORLD;
         y = self.slider_row(
-            "Gap",
+            tr("panel.flip.tool.gap"),
             ph2d_tool_flip::ids::FLIP_GAP,
             ids::FLIP_GAP_NUM,
             track,
@@ -368,7 +389,7 @@ impl BodyCtx<'_> {
             .unwrap_or((snap.trap / TRAP_MAX_PX) as f32);
         let trap = f64::from(track) * TRAP_MAX_PX;
         y = self.slider_row(
-            "Trap",
+            tr("panel.flip.tool.trap"),
             ph2d_tool_flip::ids::FLIP_TRAP,
             ids::FLIP_TRAP_NUM,
             track,
@@ -384,7 +405,7 @@ impl BodyCtx<'_> {
             .unwrap_or(((snap.grow - GROW_MIN) / (GROW_MAX - GROW_MIN)) as f32);
         let grow = GROW_MIN + f64::from(track) * (GROW_MAX - GROW_MIN);
         y = self.slider_row(
-            "Grow",
+            tr("panel.flip.tool.grow"),
             ph2d_tool_flip::ids::FLIP_GROW,
             ids::FLIP_GROW_NUM,
             track,
@@ -400,7 +421,7 @@ impl BodyCtx<'_> {
             .unwrap_or(((snap.precision - PRECISION_MIN) / (PRECISION_MAX - PRECISION_MIN)) as f32);
         let prec = PRECISION_MIN + f64::from(track) * (PRECISION_MAX - PRECISION_MIN);
         self.slider_row(
-            "Precision",
+            tr("panel.flip.tool.precision"),
             ph2d_tool_flip::ids::FLIP_PRECISION,
             ids::FLIP_PRECISION_NUM,
             track,
@@ -416,21 +437,21 @@ impl BodyCtx<'_> {
             return y;
         }
         self.segmented(
-            "Erase",
+            tr("panel.flip.tool.erase"),
             [
                 (
                     ph2d_tool_flip::ids::FLIP_ERASE_SOFT,
-                    "Soft",
+                    tr("panel.flip.tool.soft"),
                     snap.erase == EraseMode::Soft,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_ERASE_HARD,
-                    "Hard",
+                    tr("panel.flip.tool.hard"),
                     snap.erase == EraseMode::Hard,
                 ),
                 (
                     ph2d_tool_flip::ids::FLIP_ERASE_STROKE,
-                    "Stroke",
+                    tr("panel.flip.tool.stroke"),
                     snap.erase == EraseMode::Stroke,
                 ),
             ],

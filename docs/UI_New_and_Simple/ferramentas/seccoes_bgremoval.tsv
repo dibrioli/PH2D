@@ -1,0 +1,5 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI do painel Background Removal, para as chaves `panel.bg_removal.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+lib.rs	panel
+paint.rs	panel
+paint_sections.rs	mask

@@ -24,8 +24,12 @@ ph2d-editor-core   = { path = "../ph2d-editor-core" }
 ph2d-tool-upscale  = { path = "../ph2d-tool-upscale" }
 ph2d-a11y          = { path = "../ph2d-a11y" }
 ph2d-tokens        = { path = "../ph2d-tokens" }
+# A tabela de strings (HR-15) — o painel deixou de escrever texto no fonte em 2026-09-16.
+ph2d-i18n = { path = "../ph2d-i18n" }
 
 [dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate.
+ph2d-label-census = { path = "../ph2d-label-census" }
 # Headless panel↔tool seam harness (blindagem Fase 0.1) — real
 # PanelHostInternal backed by a real WidgetStore + ActionBus, so
 # `tests/seam.rs` drives the full populate → apply_event → bus →

@@ -6,6 +6,7 @@ use crate::paint_sections::BodyCtx;
 use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::ColorToken;
 use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot, TRAP_MAX_PX, px_to_slider};
 
@@ -20,14 +21,14 @@ impl BodyCtx<'_> {
         if snap.mode != FlipMode::Colorize {
             return y;
         }
-        y = self.section_label("Colorize", y);
+        y = self.section_label(tr("panel.flip.colorize.colorize"), y);
 
         // A cor do PRÓXIMO rabisco — paleta própria (o picker OKLCH é compartilhado).
         let swatch_w = SwatchSize::Md.px();
         ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
-            "Color",
+            tr("panel.flip.colorize.color"),
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
@@ -42,7 +43,7 @@ impl BodyCtx<'_> {
         );
         let swatch = ColorSwatch::new(
             ids::FLIP_COLORIZE_SWATCH,
-            "Colorize color",
+            tr("panel.flip.colorize.colorize_color"),
             snap.colorize_color,
         )
         .size(SwatchSize::Md);
@@ -66,7 +67,7 @@ impl BodyCtx<'_> {
             .unwrap_or(snap.width_px);
         let px_display = format!("{}", px.round() as i64);
         y = self.slider_row(
-            "Size",
+            tr("panel.flip.colorize.size"),
             ph2d_tool_flip::ids::FLIP_SIZE,
             ids::FLIP_SIZE_NUM,
             track,
@@ -89,7 +90,7 @@ impl BodyCtx<'_> {
             .unwrap_or((snap.trap / TRAP_MAX_PX) as f32);
         let trap = f64::from(track) * TRAP_MAX_PX;
         y = self.slider_row(
-            "Trap",
+            tr("panel.flip.colorize.trap"),
             ph2d_tool_flip::ids::FLIP_TRAP,
             ids::FLIP_TRAP_NUM,
             track,
@@ -105,7 +106,7 @@ impl BodyCtx<'_> {
             .unwrap_or(snap.colorize_bleed as f32);
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fracao 0..1 -> leitura em %
         y = self.slider_row(
-            "Bleed",
+            tr("panel.flip.colorize.bleed"),
             ph2d_tool_flip::ids::FLIP_COLORIZE_BLEED,
             ids::FLIP_COLORIZE_BLEED_NUM,
             track,
@@ -116,10 +117,18 @@ impl BodyCtx<'_> {
 
         // Apply (roda o corte) · Clear (descarta os rabiscos).
         self.segmented(
-            "Scribbles",
+            tr("panel.flip.colorize.scribbles"),
             [
-                (crate::ids::FLIP_COLORIZE_APPLY, "Apply", false),
-                (crate::ids::FLIP_COLORIZE_CLEAR, "Clear", false),
+                (
+                    crate::ids::FLIP_COLORIZE_APPLY,
+                    tr("panel.flip.colorize.apply"),
+                    false,
+                ),
+                (
+                    crate::ids::FLIP_COLORIZE_CLEAR,
+                    tr("panel.flip.colorize.clear"),
+                    false,
+                ),
             ],
             y,
         )

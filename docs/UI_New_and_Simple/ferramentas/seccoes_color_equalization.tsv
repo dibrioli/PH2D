@@ -1,0 +1,6 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI do painel Color Equalization, para as chaves `panel.color_eq.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+lib.rs	panel
+paint.rs	panel
+paint_sections.rs	adjust
+rows.rs	adjust

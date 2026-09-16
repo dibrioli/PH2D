@@ -14,6 +14,7 @@
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
+use ph2d_i18n::tr;
 use ph2d_tool_flip::{EraseMode, FlipMode, FlipStyleSnapshot, px_to_slider};
 
 impl BodyCtx<'_> {
@@ -46,57 +47,16 @@ impl BodyCtx<'_> {
             return y;
         }
         let label = if eraser {
-            "Eraser"
+            tr("panel.flip.brush.eraser")
         } else if sculpt {
-            "Sculpt"
+            tr("panel.flip.brush.sculpt")
         } else if editing {
-            "Stroke" // não é um pincel: são os atributos do que está selecionado
+            tr("panel.flip.brush.stroke") // não é um pincel: são os atributos do que está selecionado
         } else {
-            "Brush"
+            tr("panel.flip.brush.brush")
         };
         y = self.section_label(label, y);
-        // Size (px) — o raio da borracha / do pincel de escultura.
-        //
-        // §4.C: na BORRACHA a linha ganha um toggle de LINK. Ligado (o default) ela usa
-        // o Size do PINCEL — literalmente os ids de sempre, então nada muda pra quem
-        // nunca tocar no toggle; desligado, ela passa a ler/escrever os ids PRÓPRIOS.
-        // O Sculpt segue compartilhando de propósito (a decisão documentada no
-        // `params.rs`): você escolheu linkar pintura↔borracha, não pincel↔escultura.
-        let (size_id, size_num, size_val) = if eraser && !snap.link_size {
-            (
-                ph2d_tool_flip::ids::FLIP_ERASE_SIZE,
-                ids::FLIP_ERASE_SIZE_NUM,
-                snap.erase_px,
-            )
-        } else {
-            (
-                ph2d_tool_flip::ids::FLIP_SIZE,
-                ids::FLIP_SIZE_NUM,
-                snap.width_px,
-            )
-        };
-        let track = self
-            .store
-            .slider(size_id)
-            .map(|(_, v)| v)
-            .unwrap_or_else(|| px_to_slider(size_val));
-        let px = self.store.number_value(size_num).unwrap_or(size_val);
-        let px_display = format!("{}", px.round() as i64);
-        y = if eraser {
-            self.slider_row_linked(
-                "Size",
-                size_id,
-                size_num,
-                track,
-                px,
-                &px_display,
-                ph2d_tool_flip::ids::FLIP_LINK_SIZE,
-                snap.link_size,
-                y,
-            )
-        } else {
-            self.slider_row("Size", size_id, size_num, track, px, &px_display, y)
-        };
+        y = self.brush_size_row(snap, eraser, y);
         // **A Strength é SOFT-only** (Enio 2026-07-17: *"borracha hard não obedece a
         // strength"* — não obedecia mesmo). Hard CORTA o ponto e Stroke apaga o traço
         // inteiro: as duas são binárias, não têm o que dosar, e o `erase_at` sempre
@@ -130,7 +90,7 @@ impl BodyCtx<'_> {
             // "Strength" é o que a opacidade SIGNIFICA para a borracha e o sculpt.
             return if eraser {
                 self.slider_row_linked(
-                    "Strength",
+                    tr("panel.flip.brush.strength"),
                     str_id,
                     str_num,
                     track,
@@ -141,7 +101,15 @@ impl BodyCtx<'_> {
                     y,
                 )
             } else {
-                self.slider_row("Strength", str_id, str_num, track, pct, &pct_display, y)
+                self.slider_row(
+                    tr("panel.flip.brush.strength"),
+                    str_id,
+                    str_num,
+                    track,
+                    pct,
+                    &pct_display,
+                    y,
+                )
             };
         }
         let track = self
@@ -150,7 +118,7 @@ impl BodyCtx<'_> {
             .map(|(_, v)| v)
             .unwrap_or(snap.hardness);
         y = self.slider_row(
-            "Hardness",
+            tr("panel.flip.brush.hardness"),
             ph2d_tool_flip::ids::FLIP_HARDNESS,
             ids::FLIP_HARDNESS_NUM,
             track,
@@ -166,7 +134,7 @@ impl BodyCtx<'_> {
             .unwrap_or(snap.opacity);
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent chip
         y = self.slider_row(
-            "Opacity",
+            tr("panel.flip.brush.opacity"),
             ph2d_tool_flip::ids::FLIP_OPACITY,
             ids::FLIP_OPACITY_NUM,
             track,
@@ -185,7 +153,7 @@ impl BodyCtx<'_> {
             .map(|(_, v)| v)
             .unwrap_or(snap.smoothing);
         y = self.slider_row(
-            "Smoothing",
+            tr("panel.flip.brush.smoothing"),
             ph2d_tool_flip::ids::FLIP_SMOOTHING,
             ids::FLIP_SMOOTHING_NUM,
             track,
@@ -193,6 +161,70 @@ impl BodyCtx<'_> {
             &format!("{track:.2}"),
             y,
         );
+        y = self.pressure_rows(snap, y);
+        // **O *tip* pontilhado** (03 §8) — a linha Tip + o Spacing, no módulo-irmão
+        // `paint_tip.rs` (o teto de LOC deste arquivo). Só no Draw (o método é no-op fora).
+        self.tip_section(snap, y)
+    }
+
+    /// A linha do **Size** — o raio do pincel, da borracha e da escultura. Saiu do [`Self::brush`]
+    /// pelo tecto de 200 linhas por função (2026-09-16), e é uma pergunta só: *que raio, e de quem?*
+    fn brush_size_row(&mut self, snap: &FlipStyleSnapshot, eraser: bool, y: f32) -> f32 {
+        // Size (px) — o raio da borracha / do pincel de escultura.
+        //
+        // §4.C: na BORRACHA a linha ganha um toggle de LINK. Ligado (o default) ela usa
+        // o Size do PINCEL — literalmente os ids de sempre, então nada muda pra quem
+        // nunca tocar no toggle; desligado, ela passa a ler/escrever os ids PRÓPRIOS.
+        // O Sculpt segue compartilhando de propósito (a decisão documentada no
+        // `params.rs`): você escolheu linkar pintura↔borracha, não pincel↔escultura.
+        let (size_id, size_num, size_val) = if eraser && !snap.link_size {
+            (
+                ph2d_tool_flip::ids::FLIP_ERASE_SIZE,
+                ids::FLIP_ERASE_SIZE_NUM,
+                snap.erase_px,
+            )
+        } else {
+            (
+                ph2d_tool_flip::ids::FLIP_SIZE,
+                ids::FLIP_SIZE_NUM,
+                snap.width_px,
+            )
+        };
+        let track = self
+            .store
+            .slider(size_id)
+            .map(|(_, v)| v)
+            .unwrap_or_else(|| px_to_slider(size_val));
+        let px = self.store.number_value(size_num).unwrap_or(size_val);
+        let px_display = format!("{}", px.round() as i64);
+        if eraser {
+            self.slider_row_linked(
+                tr("panel.flip.brush.size"),
+                size_id,
+                size_num,
+                track,
+                px,
+                &px_display,
+                ph2d_tool_flip::ids::FLIP_LINK_SIZE,
+                snap.link_size,
+                y,
+            )
+        } else {
+            self.slider_row(
+                tr("panel.flip.brush.size"),
+                size_id,
+                size_num,
+                track,
+                px,
+                &px_display,
+                y,
+            )
+        }
+    }
+
+    /// As duas linhas da **dinâmica de pressão** (Min Width + Response) — só no Draw. Saíram do
+    /// [`Self::brush`] pelo mesmo corte do [`Self::brush_size_row`].
+    fn pressure_rows(&mut self, snap: &FlipStyleSnapshot, mut y: f32) -> f32 {
         // **Dinâmica de pressão** — a pressão da caneta vira largura (`params::pressure_width_factor`):
         // Min Width (o piso em pressão zero) + Response (curva macia⇔dura). Só no Draw (é a autoria
         // do traço). No mouse a pressão é 1 ⇒ largura cheia; no tablet, a caneta afina/engrossa.
@@ -203,7 +235,7 @@ impl BodyCtx<'_> {
             .unwrap_or(snap.pressure_min_width);
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent chip
         y = self.slider_row(
-            "Min Width",
+            tr("panel.flip.brush.min_width"),
             ph2d_tool_flip::ids::FLIP_PRESSURE_MIN,
             ids::FLIP_PRESSURE_MIN_NUM,
             track,
@@ -218,7 +250,7 @@ impl BodyCtx<'_> {
             .unwrap_or(snap.pressure_response);
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent chip
         y = self.slider_row(
-            "Response",
+            tr("panel.flip.brush.response"),
             ph2d_tool_flip::ids::FLIP_PRESSURE_RESPONSE,
             ids::FLIP_PRESSURE_RESPONSE_NUM,
             track,
@@ -226,8 +258,6 @@ impl BodyCtx<'_> {
             &format!("{}", pct.round() as i64),
             y,
         );
-        // **O *tip* pontilhado** (03 §8) — a linha Tip + o Spacing, no módulo-irmão
-        // `paint_tip.rs` (o teto de LOC deste arquivo). Só no Draw (o método é no-op fora).
-        self.tip_section(snap, y)
+        y
     }
 }

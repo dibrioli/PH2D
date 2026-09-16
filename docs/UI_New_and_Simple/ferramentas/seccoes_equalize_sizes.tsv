@@ -1,0 +1,5 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI do painel Equalize Sizes, para as chaves `panel.equalize_sizes.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+lib.rs	panel
+paint.rs	size
+paint_actions.rs	actions

@@ -96,5 +96,16 @@ fn the_third_algorithm_is_not_labelled_xbr() {
          Scale2x family, not Hyllian xBR, and shipping an approximation under \
          that name is the defect this pass removed"
     );
-    assert!(code.contains("\"EPX\""), "the third segment lost its label");
+    // ⚠️ Desde 2026-09-16 o rótulo vem da tabela de strings: confere-se a CHAVE no fonte e o
+    //    TEXTO que ela dá — que é o que o artista lê.
+    assert!(
+        code.contains("tr(\"panel.upscale.scale.epx\")"),
+        "the third segment lost its label"
+    );
+    let texto = ph2d_i18n::tr("panel.upscale.scale.epx");
+    assert_eq!(texto, "EPX", "the third segment is labelled {texto:?}");
+    assert!(
+        !texto.contains("xBR"),
+        "the string table labels the third segment `xBR` again"
+    );
 }

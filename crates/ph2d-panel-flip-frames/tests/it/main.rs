@@ -7,4 +7,5 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod close_button_seam;
+mod every_word_this_panel_shows_comes_from_the_string_table;
 mod seam;

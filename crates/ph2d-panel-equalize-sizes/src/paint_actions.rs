@@ -17,6 +17,7 @@
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::widget::{Button, ButtonKind, paint_button, segment_rects};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::Theme;
 
 /// **As duas linhas de ação do painel** — `Reset to Defaults` e o par `Cancel / Apply`.
@@ -47,7 +48,7 @@ pub(crate) fn paint_action_rows(
     let reset_state = store.button_visual(ph2d_tool_equalize_sizes::ids::EQS_RESET);
     let reset = Button::new(
         ph2d_tool_equalize_sizes::ids::EQS_RESET,
-        "Reset to Defaults",
+        tr("panel.equalize_sizes.actions.reset_to_defaults"),
     )
     .kind(ButtonKind::Default)
     .visual(reset_state);
@@ -62,17 +63,23 @@ pub(crate) fn paint_action_rows(
     //    grupo e o chip segmentado conhecia. Hoje conhece.
     let seg = segment_rects(Rect::new(inner_x, y, inner_w, row_h), 2);
     let cancel_state = store.button_visual(ph2d_tool_equalize_sizes::ids::EQS_CANCEL);
-    let cancel = Button::new(ph2d_tool_equalize_sizes::ids::EQS_CANCEL, "Cancel")
-        .kind(ButtonKind::Default)
-        .visual(cancel_state)
-        .in_group(seg[0].1);
+    let cancel = Button::new(
+        ph2d_tool_equalize_sizes::ids::EQS_CANCEL,
+        tr("panel.equalize_sizes.actions.cancel"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(cancel_state)
+    .in_group(seg[0].1);
     paint_button(&cancel, seg[0].0, scene, text_system, theme);
     hit_index.register(ph2d_tool_equalize_sizes::ids::EQS_CANCEL, seg[0].0);
     let apply_state = store.button_visual(ph2d_tool_equalize_sizes::ids::EQS_APPLY);
-    let apply = Button::new(ph2d_tool_equalize_sizes::ids::EQS_APPLY, "Apply")
-        .kind(ButtonKind::Accent)
-        .visual(apply_state)
-        .in_group(seg[1].1);
+    let apply = Button::new(
+        ph2d_tool_equalize_sizes::ids::EQS_APPLY,
+        tr("panel.equalize_sizes.actions.apply"),
+    )
+    .kind(ButtonKind::Accent)
+    .visual(apply_state)
+    .in_group(seg[1].1);
     paint_button(&apply, seg[1].0, scene, text_system, theme);
     hit_index.register(ph2d_tool_equalize_sizes::ids::EQS_APPLY, seg[1].0);
     y += row_h;

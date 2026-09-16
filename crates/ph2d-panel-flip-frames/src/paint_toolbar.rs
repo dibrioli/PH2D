@@ -20,14 +20,25 @@ use ph2d_editor_core::widget::{
     paint_dropdown_chip, paint_dropdown_popover, paint_icon_button, paint_number_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::TextKey;
 use ph2d_tokens::{ColorToken, Theme, TypeToken};
 
 /// Os 4 modos de ciclo, na ordem do enum (`CycleMode as u8`).
-const CYCLE_NAMES: [&str; 4] = ["No Cycle", "Hold", "Loop", "Ping-Pong"];
+const CYCLE_NAMES: [TextKey; 4] = [
+    TextKey::new("panel.flip_frames.toolbar.no_cycle"),
+    TextKey::new("panel.flip_frames.toolbar.hold"),
+    TextKey::new("panel.flip_frames.toolbar.loop"),
+    TextKey::new("panel.flip_frames.toolbar.ping_pong"),
+];
 
 /// Os presets de easing do tween, no vocabulário que o resto do app já usa (os mesmos
 /// rótulos do menu de curvas da timeline — o artista não aprende duas linguagens).
-pub(crate) const TWEEN_EASE_NAMES: [&str; 4] = ["Linear", "Ease In", "Ease Out", "Ease In-Out"];
+pub(crate) const TWEEN_EASE_NAMES: [TextKey; 4] = [
+    TextKey::new("panel.flip_frames.toolbar.linear"),
+    TextKey::new("panel.flip_frames.toolbar.ease_in"),
+    TextKey::new("panel.flip_frames.toolbar.ease_out"),
+    TextKey::new("panel.flip_frames.toolbar.ease_in_out"),
+];
 
 /// O chip do ciclo, quando o popover está aberto (pintado por último).
 pub(crate) struct PendingCycle {
@@ -142,7 +153,7 @@ fn label(ctx: &mut PaintCtx, theme: Theme, r: Rect, text: &str) {
 /// As opções de um dos dropdowns da barra — a tabela e os ids de opção viajam JUNTOS,
 /// porque uma lista com os ids do outro chip é um popover que despacha a coisa errada.
 fn options_of(dd: NodeId) -> Vec<DropdownOption<u8>> {
-    let (names, id_of): (&[&str], fn(u8) -> NodeId) = if dd == ids::FLIP_TWEEN_EASE_DD {
+    let (names, id_of): (&[TextKey], fn(u8) -> NodeId) = if dd == ids::FLIP_TWEEN_EASE_DD {
         (&TWEEN_EASE_NAMES, ids::flip_tween_ease_option_id)
     } else {
         (&CYCLE_NAMES, ids::flip_cycle_option_id)
@@ -150,7 +161,7 @@ fn options_of(dd: NodeId) -> Vec<DropdownOption<u8>> {
     names
         .iter()
         .enumerate()
-        .map(|(i, name)| DropdownOption::new(id_of(i as u8), i as u8, *name))
+        .map(|(i, name)| DropdownOption::new(id_of(i as u8), i as u8, name.tr()))
         .collect()
 }
 

@@ -35,8 +35,12 @@ ph2d-vector = { path = "../ph2d-vector" }
 # blend dropdown — the SAME enum stored in `FlipLayer::blend` (mirror of the
 # Painter layers panel depending on the blend enum). Names only; no doc-model dep.
 ph2d-painter-effects = { path = "../ph2d-painter-effects" }
+# A tabela de strings (HR-15) — o painel deixou de escrever texto no fonte em 2026-09-16.
+ph2d-i18n = { path = "../ph2d-i18n" }
 
 [dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate.
+ph2d-label-census = { path = "../ph2d-label-census" }
 # Blindagem Fase 1.2: headless behavioral seam harness (populate → apply_event →
 # bus → handle_panel_event). Dev-dep only — the cycle-prevention gate reads
 # `[dependencies]` only, so this builds no runtime cycle.

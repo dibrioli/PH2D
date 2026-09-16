@@ -37,6 +37,7 @@ use ph2d_editor_core::widget::{
     scrollbar_track_rect, segment_rects,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_tool_padding::params::px_to_slider;
 
@@ -87,7 +88,7 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     // close button (UI canon post-2026-05-24).
     let title_size = paint_panel_title(
         rect,
-        "Padding",
+        tr("panel.padding.title"),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,
@@ -165,25 +166,25 @@ fn paint_body_sections(
     // transparent expand, negative = crop.
     for (label, slider_id, chip_id, snap_px) in [
         (
-            "Top",
+            tr("panel.padding.padding.top"),
             ph2d_tool_padding::ids::PAD_TOP,
             ph2d_tool_padding::ids::PAD_TOP_NUM,
             snapshot.top,
         ),
         (
-            "Right",
+            tr("panel.padding.padding.right"),
             ph2d_tool_padding::ids::PAD_RIGHT,
             ph2d_tool_padding::ids::PAD_RIGHT_NUM,
             snapshot.right,
         ),
         (
-            "Bottom",
+            tr("panel.padding.padding.bottom"),
             ph2d_tool_padding::ids::PAD_BOTTOM,
             ph2d_tool_padding::ids::PAD_BOTTOM_NUM,
             snapshot.bottom,
         ),
         (
-            "Left",
+            tr("panel.padding.padding.left"),
             ph2d_tool_padding::ids::PAD_LEFT,
             ph2d_tool_padding::ids::PAD_LEFT_NUM,
             snapshot.left,
@@ -237,9 +238,9 @@ fn paint_body_sections(
         ButtonKind::Default
     };
     let pivot_label = if pivot_on {
-        "Pivot: Recenter"
+        tr("panel.padding.padding.pivot_recenter")
     } else {
-        "Pivot: Keep"
+        tr("panel.padding.padding.pivot_keep")
     };
     let pivot_rect = Rect::new(inner_x, y, inner_w, row_h);
     let pivot = Button::new(ph2d_tool_padding::ids::PAD_PIVOT_RECENTER, pivot_label)
@@ -254,9 +255,12 @@ fn paint_body_sections(
     // ── Reset (ghost, full width) row ──────────────────────────────
     let reset_rect = Rect::new(inner_x, y, inner_w, row_h);
     let reset_state = store.button_visual(ph2d_tool_padding::ids::PAD_RESET);
-    let reset = Button::new(ph2d_tool_padding::ids::PAD_RESET, "Reset to Defaults")
-        .kind(ButtonKind::Default)
-        .visual(reset_state);
+    let reset = Button::new(
+        ph2d_tool_padding::ids::PAD_RESET,
+        tr("panel.padding.padding.reset_to_defaults"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(reset_state);
     paint_button(&reset, reset_rect, scene, text_system, theme);
     hit_index.register(ph2d_tool_padding::ids::PAD_RESET, reset_rect);
     y += row_h + row_gap;
@@ -268,17 +272,20 @@ fn paint_body_sections(
     //    grupo e o chip segmentado conhecia. Hoje conhece.
     let seg = segment_rects(Rect::new(inner_x, y, inner_w, row_h), 2);
     let cancel_state = store.button_visual(ids::PAD_CANCEL);
-    let cancel = Button::new(ids::PAD_CANCEL, "Cancel")
+    let cancel = Button::new(ids::PAD_CANCEL, tr("panel.padding.padding.cancel"))
         .kind(ButtonKind::Default)
         .visual(cancel_state)
         .in_group(seg[0].1);
     paint_button(&cancel, seg[0].0, scene, text_system, theme);
     hit_index.register(ids::PAD_CANCEL, seg[0].0);
     let apply_state = store.button_visual(ph2d_tool_padding::ids::PAD_APPLY);
-    let apply = Button::new(ph2d_tool_padding::ids::PAD_APPLY, "Apply")
-        .kind(ButtonKind::Accent)
-        .visual(apply_state)
-        .in_group(seg[1].1);
+    let apply = Button::new(
+        ph2d_tool_padding::ids::PAD_APPLY,
+        tr("panel.padding.padding.apply"),
+    )
+    .kind(ButtonKind::Accent)
+    .visual(apply_state)
+    .in_group(seg[1].1);
     paint_button(&apply, seg[1].0, scene, text_system, theme);
     hit_index.register(ph2d_tool_padding::ids::PAD_APPLY, seg[1].0);
     y += row_h;

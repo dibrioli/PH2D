@@ -1,0 +1,9 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI do painel Flip, para as chaves `panel.flip.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+lib.rs	panel
+paint.rs	panel
+paint_brush.rs	brush
+paint_colorize.rs	colorize
+paint_layers.rs	layers
+paint_sections.rs	tool
+paint_tip.rs	tip

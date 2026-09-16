@@ -29,8 +29,12 @@
 
 /// As strings dos dois painéis de áudio (editor + mixer).
 mod audio;
+/// As strings dos dois painéis do Flip (o painel e a tira de quadros).
+mod flip;
 /// As strings do painel Grid Settings.
 mod grid_snap;
+/// As strings dos cinco painéis das ferramentas de imagem.
+mod image_tools;
 mod vector;
 
 /// Look up a string by Fluent-style key. Missing keys round-trip the
@@ -474,6 +478,8 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| inspector_player::tr(k))
             .or_else(|| audio::tr(k))
             .or_else(|| grid_snap::tr(k))
+            .or_else(|| flip::tr(k))
+            .or_else(|| image_tools::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

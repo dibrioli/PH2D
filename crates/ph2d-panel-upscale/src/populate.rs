@@ -16,6 +16,7 @@
 
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
+use ph2d_i18n::tr;
 use ph2d_tool_upscale::params::{
     DEFAULT_SCALE_FACTOR, MIN_SCALE_FACTOR, SCALE_FULL_SCALE, scale_to_slider,
 };
@@ -78,15 +79,15 @@ pub fn populate(store: &mut WidgetStore) {
     // and `\u{00b7}` middot only — see no_tofu_glyphs gate).
     store.set_tooltip(
         ph2d_tool_upscale::tool::ids::UPS_ALGO_LANCZOS3,
-        "Lanczos3 \u{00b7} smooth gradients \u{00b7} photos / illustrations \u{00b7} default",
+        tr("panel.upscale.scale.lanczos3_smooth_gradients_photos_illustrationsult"),
     );
     store.set_tooltip(
         ph2d_tool_upscale::tool::ids::UPS_ALGO_NEAREST,
-        "Nearest \u{00b7} keeps hard pixel edges \u{00b7} pixel art / tile sprites",
+        tr("panel.upscale.scale.nearest_keeps_hard_pixel_edges_pixel_art_tile_sprites"),
     );
     store.set_tooltip(
         ph2d_tool_upscale::tool::ids::UPS_ALGO_EPX,
-        "EPX \u{00b7} edge-directed pixel-art upscale \u{00b7} any whole factor 1x-16x",
+        tr("panel.upscale.scale.epxge_directed_pixel_art_upscale_any_whole_factor_1x_16x"),
     );
 }
 

@@ -33,6 +33,7 @@ use ph2d_editor_core::widget::{
     scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_tool_upscale::params::{
     UpscaleAlgorithm, effective_factor, effective_output_size, scale_to_slider,
@@ -82,7 +83,7 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
     // Canonical panel title — reserve room for the X close button.
     let title_size = paint_panel_title(
         rect,
-        "Upscale",
+        tr("panel.upscale.title"),
         ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,
@@ -156,17 +157,17 @@ fn paint_body_sections(
     // 3 buttons in a row; the active one is the snapshot's algorithm.
     let segs: [(&str, bool, ph2d_a11y::NodeId); 3] = [
         (
-            "Lanczos3",
+            tr("panel.upscale.scale.lanczos3"),
             snapshot.algorithm == UpscaleAlgorithm::Lanczos3,
             ph2d_tool_upscale::tool::ids::UPS_ALGO_LANCZOS3,
         ),
         (
-            "Nearest",
+            tr("panel.upscale.scale.nearest"),
             snapshot.algorithm == UpscaleAlgorithm::Nearest,
             ph2d_tool_upscale::tool::ids::UPS_ALGO_NEAREST,
         ),
         (
-            "EPX",
+            tr("panel.upscale.scale.epx"),
             snapshot.algorithm == UpscaleAlgorithm::Epx,
             ph2d_tool_upscale::tool::ids::UPS_ALGO_EPX,
         ),
@@ -204,7 +205,7 @@ fn paint_body_sections(
     let factor_display = format!("{:.2}×", effective_factor(snapshot.algorithm, track));
     let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(inner_x, y, inner_w, row_h),
-        "Scale",
+        tr("panel.upscale.scale.scale"),
         track,
         track as f64,
         Some(&factor_display),
@@ -228,7 +229,7 @@ fn paint_body_sections(
     // so the three can never disagree; a readout computed here from the
     // raw track would be a second answer to the same question.
     let readout = if snapshot.source_w == 0 || snapshot.source_h == 0 {
-        "Output: select a sprite".to_string()
+        tr("panel.upscale.scale.output_select_a_sprite").to_string()
     } else {
         let (ow, oh) = effective_output_size(
             snapshot.algorithm,
@@ -236,9 +237,14 @@ fn paint_body_sections(
             snapshot.source_w,
             snapshot.source_h,
         );
-        format!(
-            "Output: {ow} \u{00d7} {oh} px  \u{00b7}  from {} \u{00d7} {}",
-            snapshot.source_w, snapshot.source_h
+        ph2d_i18n::tr_with(
+            "panel.upscale.scale.output_size",
+            &[
+                ("ow", &ow),
+                ("oh", &oh),
+                ("iw", &snapshot.source_w),
+                ("ih", &snapshot.source_h),
+            ],
         )
     };
     let readout_font = ph2d_tokens::TypeToken::Xs.px();
@@ -257,9 +263,12 @@ fn paint_body_sections(
     // ── Reset (ghost, full width) row ──────────────────────────────
     let reset_rect = Rect::new(inner_x, y, inner_w, row_h);
     let reset_state = store.button_visual(ph2d_tool_upscale::tool::ids::UPS_RESET);
-    let reset = Button::new(ph2d_tool_upscale::tool::ids::UPS_RESET, "Reset to Defaults")
-        .kind(ButtonKind::Default)
-        .visual(reset_state);
+    let reset = Button::new(
+        ph2d_tool_upscale::tool::ids::UPS_RESET,
+        tr("panel.upscale.scale.reset_to_defaults"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(reset_state);
     paint_button(&reset, reset_rect, scene, text_system, theme);
     hit_index.register(ph2d_tool_upscale::tool::ids::UPS_RESET, reset_rect);
     y += row_h + row_gap;
@@ -268,17 +277,23 @@ fn paint_body_sections(
     // ⭐⭐ `Cancel | Apply` é UM par (wave 20) — ver o irmão no `ph2d-panel-padding`.
     let seg = ph2d_editor_core::widget::segment_rects(Rect::new(inner_x, y, inner_w, row_h), 2);
     let cancel_state = store.button_visual(ph2d_tool_upscale::tool::ids::UPS_CANCEL);
-    let cancel = Button::new(ph2d_tool_upscale::tool::ids::UPS_CANCEL, "Cancel")
-        .kind(ButtonKind::Default)
-        .visual(cancel_state)
-        .in_group(seg[0].1);
+    let cancel = Button::new(
+        ph2d_tool_upscale::tool::ids::UPS_CANCEL,
+        tr("panel.upscale.scale.cancel"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(cancel_state)
+    .in_group(seg[0].1);
     paint_button(&cancel, seg[0].0, scene, text_system, theme);
     hit_index.register(ph2d_tool_upscale::tool::ids::UPS_CANCEL, seg[0].0);
     let apply_state = store.button_visual(ph2d_tool_upscale::tool::ids::UPS_APPLY);
-    let apply = Button::new(ph2d_tool_upscale::tool::ids::UPS_APPLY, "Apply")
-        .kind(ButtonKind::Accent)
-        .visual(apply_state)
-        .in_group(seg[1].1);
+    let apply = Button::new(
+        ph2d_tool_upscale::tool::ids::UPS_APPLY,
+        tr("panel.upscale.scale.apply"),
+    )
+    .kind(ButtonKind::Accent)
+    .visual(apply_state)
+    .in_group(seg[1].1);
     paint_button(&apply, seg[1].0, scene, text_system, theme);
     hit_index.register(ph2d_tool_upscale::tool::ids::UPS_APPLY, seg[1].0);
     y += row_h;

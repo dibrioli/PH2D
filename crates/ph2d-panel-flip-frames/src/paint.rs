@@ -16,6 +16,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_close_button_rect,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
 pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx) {
@@ -63,9 +64,12 @@ pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx) {
 
     // Título: "Frames" + a camada que se está animando (a tira é de UMA camada).
     let title = if snap.has_layer && !snap.layer_name.is_empty() {
-        format!("Frames — {}", snap.layer_name)
+        ph2d_i18n::tr_with(
+            "panel.flip_frames.title_with_layer",
+            &[("layer", &snap.layer_name)],
+        )
     } else {
-        "Frames".to_owned()
+        tr("panel.flip_frames.title").to_owned()
     };
     let title_size = paint_panel_title(
         rect,

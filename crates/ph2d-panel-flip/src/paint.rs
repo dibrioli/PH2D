@@ -23,6 +23,7 @@ use ph2d_editor_core::widget::{
     scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
 pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
@@ -55,7 +56,7 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
 
     let title_size = paint_panel_title(
         rect,
-        "Flip",
+        tr("panel.flip.title"),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

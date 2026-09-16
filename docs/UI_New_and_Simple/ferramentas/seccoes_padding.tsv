@@ -1,0 +1,4 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI do painel Padding, para as chaves `panel.padding.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+lib.rs	panel
+paint.rs	padding

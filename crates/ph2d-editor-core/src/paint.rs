@@ -209,6 +209,63 @@ pub fn body_fill(
     }
 }
 
+/// ⭐⭐⭐ **A tinta de um controlo que assenta num CAMPO — e não num cartão.**
+///
+/// ⛔⛔⛔ **Report do dono, 2026-09-15, com foto:** *«O Checkbox desmarcado é invisível»*. É a
+/// MESMA queixa de 2026-09-14 (*«Checkbox invisível»*, que fez nascer a [`body_fill`]) **um degrau
+/// mais fundo — e quem moveu o degrau foi a wave da véspera.**
+///
+/// A [`body_fill`] responde *«um corpo que assenta num CARTÃO»* e devolve
+/// [`ph2d_tokens::visuals::Chrome::field_fill`] em repouso: um degrau abaixo da superfície mais
+/// funda. Isso resolvia a queixa **enquanto a marca assentava no cartão**. Em 2026-09-15 ela
+/// mudou-se para dentro de uma CAIXA DE CAMPO — cujo fundo é exactamente `field_fill`. Medido:
+///
+/// | tema | a caixa | a marca desmarcada | distância |
+/// |---|---|---|---|
+/// | Dark | `#090909` | `#090909` | **`0`/255** ⛔ |
+/// | Gray | `#121212` | `#121212` | **`0`/255** ⛔ |
+/// | Light | `#DBDBDB` | `#DBDBDB` | **`0`/255** ⛔ |
+/// | Oled | `#000000` | `#000000` | `0`, e ali **a moldura lê-a** (*Draw Extra Borders*) |
+///
+/// ⇒ *o mesmo pixel duas vezes*, e num tema moderno a moldura de repouso de uma marca mede `0`.
+/// **A marcada continuava a ler-se porque é `Accent`** — foi por isso que o report é sobre metade
+/// das caixas, exactamente como no dia anterior.
+///
+/// ⚠️⚠️ **A lição, e ela é do `CLAUDE.md` §0.0:** *quem move a superfície em que uma nota assenta
+/// tem de reconferir a nota.* A cura de 14/09 estava calibrada contra o CARTÃO e ficou escrita como
+/// se fosse absoluta.
+///
+/// # A escada
+///
+/// - **Clássica** (há moldura de repouso): o token que o pintor sempre usou — **byte-idêntico**.
+/// - **Moderna**: a família de estados de um WIDGET
+///   ([`ph2d_tokens::visuals::Widgets`]), que é o vocabulário certo para uma peça interactiva
+///   pousada noutra superfície — e cujo `hovered` a [`body_fill`] já usava na ponta quente. *As
+///   duas pontas do eixo passam a ser a mesma família.*
+///
+/// Medido contra a caixa (barra [`ph2d_tokens::derive::SURFACE_STEP`] = `10`/255):
+/// `inactive` dá **`32`** (Dark) · **`43`** (Gray) · **`11`** (Light); `noninteractive` dá `18` ·
+/// `22` · `26`. ⛔ No OLED tudo satura a zero e quem separa é a moldura, que é a cláusula que o
+/// `a_field_is_never_the_colour_of_what_it_sits_on` já declara por escrito.
+#[must_use]
+pub fn on_field_fill(
+    theme: Theme,
+    feel: ph2d_tokens::visuals::Feel,
+    classic: ph2d_tokens::ColorToken,
+) -> ph2d_tokens::Color {
+    use ph2d_tokens::visuals::Feel;
+    let chrome = ph2d_tokens::visuals::Chrome::of(theme);
+    if chrome.field_border.is_visible() {
+        return classic.resolve(theme);
+    }
+    let w = ph2d_tokens::visuals::Widgets::of(theme);
+    match feel {
+        Feel::Hovered | Feel::Active => w.hovered.bg_fill,
+        Feel::Disabled => w.noninteractive.bg_fill,
+        _ => w.inactive.bg_fill,
+    }
+}
+
 /// ⭐ **O RAIO de um controlo, pela porta do TEMA** — ver [`ph2d_tokens::visuals::radius`].
 #[must_use]
 pub fn frame_radius(theme: Theme, classic: f32) -> f32 {

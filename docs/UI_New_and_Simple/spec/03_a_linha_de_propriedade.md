@@ -414,6 +414,42 @@ tabela acima.
 ⭐ **Custo da cura:** cinco secções do Inspector ficam **uma linha mais altas** (`22 + 3 px` cada) no
 regime estreito, e voltam a emparelhar quando o dono alarga o dock.
 
+### ⛔⛔⛔ E a MARCA DESMARCADA ficou invisível — a mesma queixa, um degrau mais fundo
+
+**Report do dono, 2026-09-15, com foto:** *«O Checkbox desmarcado é invisível»* — a linha *Autoplay*
+mostrava a palavra *On* e mais nada.
+
+Em **14/09** ele tinha reportado *«Checkbox invisível»*: a marca enchia `Bg1`, a cor do **cartão** em
+que assentava, e num tema moderno não há moldura de repouso. A cura foi a porta `body_fill` — *um
+degrau abaixo da superfície mais funda*, que é o `Chrome::field_fill`.
+
+Em **15/09 a marca mudou-se para dentro da CAIXA DE CAMPO** (a secção acima), e o fundo dessa caixa é
+exactamente `field_fill`. Medido:
+
+| tema | a caixa | a marca desmarcada | antes | depois |
+|---|---|---|---|---|
+| Dark | `#090909` | `#292929` | **`0`/255** ⛔ | `32` |
+| Gray | `#121212` | `#3D3D3D` | **`0`/255** ⛔ | `43` |
+| Light | `#DBDBDB` | `#E6E6E6` | **`0`/255** ⛔ | `11` |
+| Oled | `#000000` | — | `0` | `0`, e ali **a moldura lê-a** (*Draw Extra Borders*) |
+
+⇒ *o mesmo pixel duas vezes*. A marcada continuava a ler-se porque é `Accent` — foi por isso que o
+report é sobre **metade** das caixas, exactamente como no dia anterior.
+
+⚠️⚠️ **A lei que isto escreve:** *uma cura de contraste é calibrada contra uma SUPERFÍCIE, e quem
+move a peça para outra superfície tem de reconferir a nota* (`CLAUDE.md` §0.0). A de 14/09 estava
+escrita como se fosse absoluta, e quem moveu o degrau foi a wave da véspera.
+
+⇒ **duas portas, e a superfície escolhe:** `body_fill` para um corpo que assenta num **cartão**;
+`on_field_fill` para um que assenta num **campo** — e esta fala a família de estados de um widget
+(`inactive → hovered`), que é o vocabulário certo para uma peça interactiva pousada noutra
+superfície, e cuja ponta quente a primeira já usava. ⛔ A escolha sai da mesma `caixa` que decidiu a
+geometria, nunca de um segundo `if`.
+
+⚠️ **A barra é a mesma do gate irmão do `ph2d-tokens`** (`SURFACE_STEP` = `10`/255,
+`a_field_is_never_the_colour_of_what_it_sits_on`), com a **mesma** cláusula de moldura — e ali as
+superfícies eram três, porque **até 15/09 nenhum controlo assentava num campo**.
+
 **Custo medido** (26 rótulos booleanos reais do app, `Sm`, quantos passam da metade da linha):
 
 | painel | metade | não cabem |
@@ -501,6 +537,8 @@ ali eles cortam — que é a troca que o dono escolheu em 2026-05-24.
 | §6-quinquies | uma linha de marcar ocupa a linha inteira quando o par não cabe | `paint_check_rows` | `uma_linha_de_marcar_ocupa_a_linha_inteira` |
 | §6-quinquies | a altura de uma linha de marcar é a de toda linha de propriedade | `paint_check_row` | `a_altura_de_uma_linha_de_marcar_e_a_do_app` |
 | §6-quinquies | uma célula de mapa de bits não é uma linha de formulário | `cell_checkbox` | `uma_celula_nao_e_uma_linha_de_formulario` |
+| §6-quinquies | uma marca nunca pinta a cor da caixa em que assenta | `on_field_fill` | `a_marca_nunca_e_a_cor_da_caixa_em_que_assenta` |
+| §6-quinquies | e o pintor da linha de marcar usa essa porta | `paint_boolean_mark` | `e_o_pintor_da_linha_de_marcar_usa_essa_porta` |
 | §6-bis | nenhuma linha do Inspector põe o nome por cima do controlo | `fields_row` | `no_row_paints_its_name_above_its_control` |
 | §7 | toda linha reserva a coluna de animação | `form_row_columns` | `every_form_row_reserves_the_animation_column` |
 | §7 | as portas que reservam a coluna DERIVAM-SE, nunca se enumeram | `property_label_row` | `the_door_census_derives_the_second_order_doors` |

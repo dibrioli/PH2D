@@ -2368,3 +2368,70 @@ isenções «só em teste». *Um controlo que mede a fundação não pertence ao
 - ⚠️ **O resto do app não foi varrido para esta aritmética**: os `Checkbox` do `painter-layers`, do
   `vector`, do `motion-params` e do `wet-tuning` são todos de **linha inteira** (verificado), mas
   nenhum declara `Seccao` — logo o nome deles está na metade cega, não na coluna da secção.
+
+---
+
+## §35 — ⛔⛔⛔ «O Checkbox desmarcado é invisível» — a MESMA queixa de 14/09, um degrau mais fundo
+
+**Report do dono, 2026-09-15, com foto** (a linha *Autoplay* com a palavra *On* e mais nada).
+
+### 35.1 — A medição, e de quem é a culpa
+
+| | 14/09 | 15/09 |
+|---|---|---|
+| a marca assentava em | o **CARTÃO** (`Bg1`) | a **CAIXA DE CAMPO** (`Chrome::field_fill`) |
+| a marca pintava | `Bg1` | `Chrome::field_fill` (o que a `body_fill` devolve em repouso) |
+| distância | `0`/255 | **`0`/255** |
+
+⇒ *o mesmo pixel duas vezes*, nos três temas modernos sem moldura (`Dark` `#090909` · `Gray`
+`#121212` · `Light` `#DBDBDB`). No OLED tudo satura a zero e **a moldura lê-a** (*Draw Extra
+Borders*), que é a cláusula que o gate irmão do `ph2d-tokens` já declara por escrito.
+
+⚠️⚠️ **A cura de 14/09 estava calibrada contra o CARTÃO e ficou escrita como se fosse absoluta** —
+e quem moveu a marca para outra superfície foi a wave da véspera (§32). *Uma cura de contraste é
+calibrada contra uma SUPERFÍCIE; quem move a peça tem de reconferir a nota* (`CLAUDE.md` §0.0).
+
+⭐ **A marcada continuava a ler-se porque é `Accent`** — foi por isso que o report é sobre METADE das
+caixas do painel, exactamente como no dia anterior. *Duas queixas idênticas com a mesma assinatura
+são o mesmo mecanismo em superfícies diferentes.*
+
+### 35.2 — A cura: DUAS portas, e a superfície escolhe
+
+| porta | responde a |
+|---|---|
+| `paint::body_fill` (14/09) | *um corpo que assenta num **cartão*** ⇒ `Chrome::field_fill` em repouso |
+| `paint::on_field_fill` (15/09) | *um corpo que assenta num **campo*** ⇒ a família de estados de um WIDGET (`Widgets::inactive` → `hovered`, `noninteractive` quando parado) |
+
+⭐ **As duas pontas do eixo do hover passam a ser a mesma família** — a `body_fill` já usava
+`Widgets::hovered.bg_fill` na ponta quente e `Chrome::field_fill` na fria: *um eixo entre duas
+famílias, que é exactamente como a ponta fria pôde colidir com a caixa sem ninguém ver.*
+
+Medido contra a caixa (barra `SURFACE_STEP` = `10`/255): `inactive` dá **`32`** (Dark) · **`43`**
+(Gray) · **`11`** (Light); `noninteractive` (parada) dá `18` · `22` · `26`.
+
+⛔ **A escolha sai da mesma `caixa` que decidiu a geometria**, nunca de um segundo `if` — e por isso
+a pele de canvas e a aparência clássica continuam byte-idênticas (`on_field_fill` devolve o token
+clássico onde há moldura de repouso).
+
+⚠️ **O INTERRUPTOR fica curado pelo mesmo commit** — ele pinta a mesma marca
+(`the_switch_paints_the_very_same_mark_as_the_checkbox`).
+
+### 35.3 — Os gates, e as duas mutações
+
+| gate | mutação que sangra |
+|---|---|
+| `a_marca_nunca_e_a_cor_da_caixa_em_que_assenta` | a porta voltar a devolver `chrome.field_fill` em repouso (= o estado do report) |
+| `e_o_pintor_da_linha_de_marcar_usa_essa_porta` | o pintor voltar a chamar a `body_fill` ⇒ **a cura fica desligada e os outros dois ficam VERDES** |
+| `e_a_porta_do_cartao_seria_exactamente_a_cor_da_caixa` | é o **controlo**: prova que a porta antiga seria invisível aqui, logo unificar as duas apagaria a cura sem nada reprovar |
+
+⚠️ **A régua do segundo é a TINTA que o pintor de facto pousou** (`encoding().draw_data`), e não o
+código: numa linha de marcar desmarcada a cena tem de conter a cor da CAIXA **e** a da MARCA, e elas
+têm de ser duas. ⛔ Sem essa metade, uma porta certa que ninguém chama produz exactamente o app do
+report — *uma porta sem chamador e uma lei ausente produzem o mesmo app*.
+
+### 35.4 — A varredura por CONSUMIDOR (a lei que a §34 pagou, aplicada de imediato)
+
+Os **cinco** chamadores da `body_fill` foram lidos um a um, perguntando *em que superfície é que
+este assenta?*: `dropdown` · `combobox` · `text_input` (é a própria caixa) · `radio_group` (pinta o
+anel dele e assenta no cartão) — **os quatro no cartão**, nenhum afectado. Só a marca se tinha
+mudado.

@@ -244,18 +244,35 @@ pub(crate) fn paint_boolean_mark(
     //    `Focused` fica de fora com o `Disabled` — é estado duro, e o traço dele mede 2 px.
     let soft = matches!(state, CheckboxState::Normal | CheckboxState::Hovered)
         && matches!(value, CheckboxValue::Unchecked);
-    // ⭐⭐⭐ **A tinta do corpo é do TEMA, pela porta** ([`crate::paint::body_fill`]) — report do
-    //    dono, 2026-09-14, com foto: *«Checkbox invisível»*. A caixa DESMARCADA enchia `Bg1`, que é
-    //    a cor do cartão em que ela assenta, e num tema moderno não há moldura de repouso: ela não
-    //    existia. A marcada lia-se porque é `Accent`, e é por isso que o report é sobre metade das
-    //    caixas do painel.
+    // ⭐⭐⭐ **A tinta do corpo é do TEMA, pela porta** — report do dono, 2026-09-14, com foto:
+    //    *«Checkbox invisível»*. A caixa DESMARCADA enchia `Bg1`, que é a cor do cartão em que ela
+    //    assenta, e num tema moderno não há moldura de repouso: ela não existia. A marcada lia-se
+    //    porque é `Accent`, e é por isso que o report é sobre metade das caixas do painel.
+    //
+    // ⛔⛔⛔ **E em 2026-09-15 o dono reportou-a OUTRA VEZ** (*«O Checkbox desmarcado é
+    //    invisível»*) — porque a wave da véspera **mudou a superfície debaixo da marca**: ela
+    //    deixou de assentar no cartão e passou a assentar numa CAIXA DE CAMPO, cujo fundo é
+    //    exactamente o que a [`crate::paint::body_fill`] devolve em repouso. *O mesmo pixel duas
+    //    vezes*, `0`/255 nos três temas modernos sem moldura.
+    //
+    // ⇒ **a porta segue a SUPERFÍCIE, e é a mesma `caixa` que decidiu a geometria que a escolhe:**
+    //    dentro de um campo, [`crate::paint::on_field_fill`]; fora dele (a pele de canvas e a
+    //    aparência clássica), a de sempre. ⚠️ *Uma peça que se move de superfície tem de trocar de
+    //    régua de contraste, senão herda a calibração da superfície antiga* (`CLAUDE.md` §0.0).
+    let corpo = |feel, classic| {
+        if caixa.is_some() {
+            crate::paint::on_field_fill(theme, feel, classic)
+        } else {
+            crate::paint::body_fill(theme, feel, classic)
+        }
+    };
     // ⚠️ **O eixo do hover SOBREVIVE** porque a porta responde ao `Feel`: afundar só o repouso
     //    deixaria as duas pontas iguais e o rato deixaria de dizer nada.
     let bg = crate::motion::hover_axis(
         soft,
         hover_t,
-        Some(crate::paint::body_fill(theme, FEEL_REST, ColorToken::Bg1)),
-        Some(crate::paint::body_fill(theme, FEEL_HOT, ColorToken::Bg2)),
+        Some(corpo(FEEL_REST, ColorToken::Bg1)),
+        Some(corpo(FEEL_HOT, ColorToken::Bg2)),
     )
     .map_or_else(
         || {
@@ -264,7 +281,7 @@ pub(crate) fn paint_boolean_mark(
                 //    afundado, é a resposta.
                 ColorToken::Accent.resolve(theme)
             } else {
-                crate::paint::body_fill(theme, feel_of_state(state), bg_token)
+                corpo(feel_of_state(state), bg_token)
             })
         },
         crate::paint::token_to_vello,

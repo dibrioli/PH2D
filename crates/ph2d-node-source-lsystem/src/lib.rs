@@ -163,8 +163,9 @@ pub const TEXT_PARAMS: &[&str] = &[
 /// flor nascer onde o artista pediu folha — sem erro nenhum.
 pub const LEAF_SYMBOLS: &[u8; 3] = b"JKM";
 
-/// **O tecto da cadeia derivada — MEDIDO**, e ele é o MESMO número que os outros três tetos
-/// de instância desta casa (gate `the_three_instance_ceilings_agree`).
+/// **O tecto da cadeia derivada — MEDIDO**, e ele é o MESMO número que o teto de instância do
+/// caminho de CPU desta casa (gate `the_instance_ceilings_agree_per_resource`; os dois `fx.*` que
+/// o partilhavam ganharam kernel e mediram o deles no dispositivo — doc 112 §4).
 ///
 /// ## De que recurso ele é
 ///

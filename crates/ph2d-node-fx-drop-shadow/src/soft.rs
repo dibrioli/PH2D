@@ -46,7 +46,7 @@ use super::trig;
 ///
 /// ⚠️ **O recurso é a CONTAGEM DE INSTÂNCIAS**, e o número está do lado do teto: com
 /// a maciez ligada cada elemento vira `TAPS + 1` linhas, então o `MAX_INSTANCES` de
-/// `262_144` corta em **n ≤ 15 420** (contra `131 072` com a sombra dura). É o mesmo
+/// `3 145 728` corta em **n ≤ 185 042** (contra `1 572 864` com a sombra dura). É o mesmo
 /// portão que já existia, a contar o número certo.
 pub(crate) const TAPS: usize = 16;
 
@@ -54,7 +54,7 @@ pub(crate) const TAPS: usize = 16;
 /// distribuição que enche um disco sem anéis nem eixos preferidos. Ela é o que
 /// impede o artefacto que um anel regular de 16 pontos produziria: uma penumbra com
 /// **raios** visíveis.
-const GOLDEN_TURN: f32 = 0.381_966_02;
+pub(crate) const GOLDEN_TURN: f32 = 0.381_966_02;
 
 /// Os `TAPS` deslocamentos do disco de raio `r`, em unidades de mundo.
 ///

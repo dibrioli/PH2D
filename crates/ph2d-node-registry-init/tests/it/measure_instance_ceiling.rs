@@ -17,6 +17,12 @@
 //! três nós de facto percorrem — **CPU**, porque os três são `LoweringKind::Cpu` — e o número
 //! que ela der é o que vai no lugar do literal.
 //!
+//! ⚠️⚠️ **Desde 2026-09-16 esta sonda só decide o teto do `motion.trail`** (e, por outro caminho,
+//! o do `source.lsystem`). Os dois `fx.*` ganharam kernel (doc 112 §4) e o teto deles é o medido
+//! no DISPOSITIVO (`ph2d-gpu-cook/tests/it/gpu_cpu_parity_fx.rs::fx_row_ceiling_probe`); as
+//! linhas deles aqui continuam a medir o que a CPU paga, que é o custo do fallback — a
+//! referência, nunca quem decide o teto (`CLAUDE.md` §0.0).
+//!
 //! Rodar:
 //! `cargo test -p ph2d-node-registry-init --release --test measure_instance_ceiling -- --ignored --nocapture`
 

@@ -131,11 +131,6 @@ fn the_fx_group_route_only_improves() {
     /// Os que AINDA levam a cadeia para a CPU, cada um com a razão — doc 112 §3.
     const NA_CPU: &[(&str, &str)] = &[
         (
-            "fx.drop_shadow",
-            "multiplica as linhas (x2) — o dispositivo nao tem a lei",
-        ),
-        ("fx.rgb_split", "multiplica as linhas (x3) — idem"),
-        (
             "motion.slit_scan",
             "estado por elemento (o historico do slit)",
         ),

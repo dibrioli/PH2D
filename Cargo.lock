@@ -5807,6 +5807,8 @@ dependencies = [
  "ph2d-node-force-drag",
  "ph2d-node-force-vortex",
  "ph2d-node-force-wind",
+ "ph2d-node-fx-drop-shadow",
+ "ph2d-node-fx-rgb-split",
  "ph2d-node-motion-bend",
  "ph2d-node-motion-bezier-warp",
  "ph2d-node-motion-boids",

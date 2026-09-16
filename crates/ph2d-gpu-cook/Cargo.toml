@@ -75,6 +75,9 @@ ph2d-node-motion-four-point-warp = { path = "../ph2d-node-motion-four-point-warp
 ph2d-node-motion-bezier-warp = { path = "../ph2d-node-motion-bezier-warp" }  # ciclo 3 W5a: a fronteira curva chegou ao device
 # The count-changing deformer (StreamOp SourceRows) that READS its template.
 ph2d-node-motion-kaleidoscope = { path = "../ph2d-node-motion-kaleidoscope" }
+# Ciclo 7 (doc 112): os nós de aparência que MULTIPLICAM as linhas, cozidos nos dois caminhos.
+ph2d-node-fx-rgb-split = { path = "../ph2d-node-fx-rgb-split" }
+ph2d-node-fx-drop-shadow = { path = "../ph2d-node-fx-drop-shadow" }
 # An OBJECT source — a CPU-only boundary that carries `texture_id`. The
 # texture-id parity gate feeds it a manual boundary stream (it can't run
 # headless: its eval reads the host texture store) to prove the device lowering

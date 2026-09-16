@@ -193,11 +193,16 @@ const MAX_LENGTH: usize = 32;
 /// linha** de `P` + `size` (mais `tint`/`trail_age` quando existem) — 262 144 linhas são
 /// ~4,2 MB, contra os ~16,8 MB de um milhão.
 ///
-/// ⚠️ **Este número é COMPARTILHADO com `fx.drop_shadow` e `fx.rgb_split`**, que carregam o
-/// mesmo teto pelo mesmo recurso (linhas emitidas no caminho de CPU) — o gate
-/// `the_three_instance_ceilings_agree` da `ph2d-node-registry-init` recusa que um deles se
-/// mova sozinho. Os três são drop-crates e não podem depender uns dos outros (ADR-0075), então
-/// a const é copiada como o `falloff_at` das behaviours; o que a mantém honesta é o gate.
+/// ⚠️ **Este número é COMPARTILHADO com o `source.lsystem`**, que carrega o mesmo teto pelo
+/// mesmo recurso (linhas emitidas no caminho de CPU) — o gate
+/// `the_instance_ceilings_agree_per_resource` da `ph2d-node-registry-init` recusa que um deles se
+/// mova sozinho. São drop-crates e não podem depender uns dos outros (ADR-0075), então a const é
+/// copiada como o `falloff_at` das behaviours; o que a mantém honesta é o gate.
+///
+/// ⚠️ **Os `fx.drop_shadow`/`fx.rgb_split` partilhavam-no e SAÍRAM do grupo** (2026-09-16, doc 112
+/// §4): ganharam kernel, e o teto deles passou a ser o MEDIDO no dispositivo (`3 145 728`). No dia
+/// em que este nó ganhar o dele (o modo `Remembered`, W1c do mesmo doc), o teto dele é para medir
+/// de novo — e não para copiar.
 pub const MAX_INSTANCES: usize = 262_144;
 
 /// Teto do espaçamento: `length × spacing` é a janela de IDADE que o nó carrega, e um

@@ -54,6 +54,7 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod copies;
 use copies::{falloff_at, positions, tile, tints};
+mod kernel;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -68,19 +69,39 @@ const COPIES: usize = 3;
 /// verbatim) rather than half-drawing: a scene missing a third of its fringes reads
 /// as a bug, an un-aberrated scene reads as "the effect is off".
 ///
-/// ⚠️ **O RECURSO É TEMPO, e o número é MEDIDO** — o mesmo teto do `motion.trail`, pelo mesmo
-/// motivo (linhas emitidas no caminho de CPU) e com a mesma tabela ao lado dele. Medido pela
-/// porta do produto (`ph2d-node-registry-init/tests/it/measure_instance_ceiling.rs`): este nó
-/// custa **~9–13 ns por linha emitida**, então o teto antigo de `65_536` valia ~0,6 ms — um
-/// vigésimo de um quadro de 60 fps —, e este vale ~2,5 ms. ⚠️ **Nenhum dos três nós que
-/// carregavam este literal trazia uma medição**, e a justificativa escrita era uma CONTAGEM
-/// (*"131k quads"*), não um custo.
+/// ⚠️⚠️ **O RECURSO É O TEMPO DO DISPOSITIVO, e o número é MEDIDO lá** (ciclo 7, doc 112 §4 —
+/// `CLAUDE.md` §0.0: *nunca deixe o fallback definir o produto*). O tecto anterior, `262 144`,
+/// foi medido no caminho de CPU (`~10–15 ns` por linha emitida) quando este nó só corria na CPU,
+/// e **desligava o efeito em silêncio a partir de `87 382` objectos**. Com o kernel (`kernel.rs`)
+/// o recurso mudou; a sonda `fx_row_ceiling_probe` (`ph2d-gpu-cook/tests/it/gpu_cpu_parity_fx.rs`,
+/// `--release`, 3 corridas a `load 5,6–8,1`, a mediana de 20 quadros de `grid → oscillator → fx →
+/// output`, o menor dos três):
 ///
-/// ⚠️ **Os três têm de andar juntos** — gate `the_three_instance_ceilings_agree` na
-/// `ph2d-node-registry-init`, a única crate que vê os três. Drop-crates não podem depender umas
-/// das outras (ADR-0075), então a const é copiada como o `falloff_at` das behaviours; o que a
-/// mantém honesta é o gate.
-pub const MAX_INSTANCES: usize = 262_144;
+/// ```text
+///   nó             │ linhas     │ disp. ms │ CPU ms │ memória da descida (188 B × linhas)
+///   fx.rgb_split   │    786 432 │     1,52 │  17,2  │   141 MiB
+///   fx.rgb_split   │  3 145 728 │     5,66 │  71,0  │   564 MiB   ← o tecto
+///   fx.rgb_split   │  6 290 112 │    11,15 │ 146,2  │ 1 127 MiB
+///   fx.drop_shadow │  2 097 152 │     3,79 │  44,3  │   376 MiB
+///   fx.drop_shadow │  4 193 408 │     7,44 │  94,5  │   751 MiB
+///   fx.drop_shadow │  8 388 608 │    15,14 │ 221,6  │ 1 504 MiB
+/// ```
+///
+/// ⇒ **~1,8 ns por linha no dispositivo**, contra `~22–27 ns` na CPU do mesmo binário. O tecto é o
+/// ponto em que a cadeia ocupa **cerca de um terço de um quadro de 60 fps** — o MESMO critério que
+/// decidiu o de CPU —, medido: `3 145 728` linhas a `5,66–5,89 ms` (`34–35 %`). Os limites duros
+/// do dispositivo ficam longe: a ligação de armazenamento do adaptador (`2 047 MiB` ⇒ `11,4 M`
+/// linhas nesta máquina; acima dela o cozimento RECUSA com `BindingTooLarge`), o despacho
+/// (`65 535 × 256`) e o `ID_WRAP` (`2²⁴`).
+///
+/// ⚠️ **A CPU computa a MESMA resposta e paga o dela** (`~71 ms` no tecto): ela é a referência e o
+/// recurso de quem não tem adaptador, nunca quem decide o tecto.
+///
+/// ⚠️ **Os dois `fx.*` andam juntos, e já NÃO andam com o `motion.trail`** — gate
+/// `the_instance_ceilings_agree_per_resource` na `ph2d-node-registry-init`, a única crate que vê
+/// os quatro. Drop-crates não podem depender umas das outras (ADR-0075), então a const é copiada;
+/// o que a mantém honesta é o gate.
+pub const MAX_INSTANCES: usize = 3_145_728;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -323,6 +344,7 @@ impl NodeOp for FxRgbSplit {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(FxRgbSplit))?;
+    kernel::regista(reg); // o dispositivo (ciclo 7, W1b) — ver o cabeçalho de `kernel`
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
@@ -336,8 +358,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);
-    // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
-    // diagnoser cannot derive the role from a `ColumnBinding` — declare it (ADR-0155).
+    // O `falloff` declarado à mão (ADR-0155) — o kernel também o lê, e a declaração fica.
     reg.register_couplings(
         MANIFEST.id,
         &[ph2d_node_registry::Coupling::Consumes("falloff")],
@@ -550,142 +571,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
 ];
 
+/// OS FANTASMAS — os gates do que este nó emite, em arquivo próprio.
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Two elements, one at the origin and one out at `x = 2`, with a size column
-    /// riding along (so the copies must carry it).
-    fn pair(tint: [f32; 4]) -> Stream {
-        Stream::new(2)
-            .with("P", Column::Vec2(vec![[0.0, 0.0], [2.0, 0.0]]))
-            .with("tint", Column::Vec4(vec![tint, tint]))
-            .with("size", Column::Vec2(vec![[0.5, 0.5], [0.5, 0.5]]))
-    }
-
-    fn ps(s: &Stream) -> Vec<[f32; 2]> {
-        match s.get("P").unwrap() {
-            Column::Vec2(v) => v.clone(),
-            _ => panic!("P"),
-        }
-    }
-    fn ts(s: &Stream) -> Vec<[f32; 4]> {
-        match s.get("tint").unwrap() {
-            Column::Vec4(v) => v.clone(),
-            _ => panic!("tint"),
-        }
-    }
-
-    /// The layout: ghosts FIRST (they must draw behind), the element LAST and
-    /// **verbatim**. FALSIFIED by any implementation that moves or recolours the
-    /// element itself — the body of the shape must survive the effect untouched.
-    #[test]
-    fn the_ghosts_sit_behind_and_the_element_survives_verbatim() {
-        let src = pair([1.0, 1.0, 1.0, 1.0]);
-        let out = split(&src, 0.0, 0.1, 0.0, 0.0, 1.0, Lens::CENTRED);
-        assert_eq!(out.count(), 6, "two ghosts + the element, per element");
-
-        let (p, t) = (ps(&out), ts(&out));
-        // Rows 0-1: the R ghost, displaced +x.
-        assert_eq!(p[0], [0.1, 0.0]);
-        assert_eq!(p[1], [2.1, 0.0]);
-        // Rows 2-3: the G+B ghost, displaced −x.
-        assert_eq!(p[2], [-0.1, 0.0]);
-        assert_eq!(p[3], [1.9, 0.0]);
-        // Rows 4-5: the elements themselves, where they always were.
-        assert_eq!(p[4], [0.0, 0.0]);
-        assert_eq!(p[5], [2.0, 0.0]);
-        assert_eq!(t[4], [1.0; 4], "the element keeps its own colour");
-        assert_eq!(t[5], [1.0; 4]);
-
-        // The copies inherit every other column (here: `size`).
-        match out.get("size").unwrap() {
-            Column::Vec2(v) => assert_eq!(v.len(), 6, "size rode along onto the ghosts"),
-            _ => panic!("size"),
-        }
-    }
-
-    /// Channel isolation is a MULTIPLY on the element's own tint — so a coloured
-    /// element throws the fringes its colour actually contains. FALSIFIED by the
-    /// naive "paint one ghost red and the other cyan", which would give a pure-blue
-    /// element a red fringe out of nowhere.
-    #[test]
-    fn the_channels_are_isolated_out_of_the_elements_own_colour() {
-        let out = split(
-            &pair([0.0, 0.2, 0.8, 1.0]),
-            0.0,
-            0.1,
-            0.0,
-            0.0,
-            1.0,
-            Lens::CENTRED,
-        );
-        let t = ts(&out);
-        // A blue-ish element has NO red to throw: its R ghost is black.
-        assert_eq!(
-            t[0],
-            [0.0, 0.0, 0.0, 1.0],
-            "no red in the source, no red ghost"
-        );
-        // …and its G+B ghost carries exactly the green and blue it does have.
-        assert_eq!(t[2], [0.0, 0.2, 0.8, 1.0]);
-        // The two ghosts summed = the source colour (the additive split, recovered).
-        let source = ts(&pair([0.0, 0.2, 0.8, 1.0]))[0];
-        for ((r, gb), src) in t[0].iter().zip(&t[2]).zip(&source).take(3) {
-            assert_eq!(r + gb, *src, "the R and G+B ghosts partition the colour");
-        }
-    }
-
-    /// Radial mode: the fringe is ZERO at the centroid and grows with the distance
-    /// from it (lateral aberration). FALSIFIED by the uniform split, which would
-    /// displace the centre element too.
-    #[test]
-    fn aberration_is_zero_at_the_axis_and_grows_outward() {
-        // Three elements at x = 0, 1, 2 → the centroid is x = 1.
-        let src = Stream::new(3).with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]]));
-        let out = split(&src, 1.0, 0.0, 0.0, 0.5, 1.0, Lens::CENTRED);
-        let p = ps(&out);
-        // The R ghost of the CENTRE element sits exactly on it — no fringe on axis.
-        assert_eq!(p[1], [1.0, 0.0], "zero displacement at the optical axis");
-        // The outer ones smear outward, by strength × their distance from it.
-        assert_eq!(p[0], [-0.5, 0.0], "1 unit out → 0.5 of fringe");
-        assert_eq!(p[2], [2.5, 0.0]);
-        // The G+B ghost mirrors them inward.
-        assert_eq!(p[3], [0.5, 0.0]);
-        assert_eq!(p[5], [1.5, 0.0]);
-    }
-
-    /// `falloff` fades the FRINGES, never the element — so an artist can aberrate a
-    /// region of the layout and leave the rest clean.
-    #[test]
-    fn falloff_fades_the_fringes_and_never_the_element() {
-        let src = pair([1.0, 1.0, 1.0, 1.0]).with("falloff", Column::Scalar(vec![0.0, 1.0]));
-        let t = ts(&split(&src, 0.0, 0.1, 0.0, 0.0, 1.0, Lens::CENTRED));
-        assert_eq!(t[0][3], 0.0, "element 0 is masked out → invisible fringe");
-        assert_eq!(t[1][3], 1.0, "element 1 keeps its fringe");
-        assert_eq!(t[4], [1.0; 4], "the masked element itself is untouched");
-    }
-
-    /// The effect turns ITSELF off rather than half-drawing: no opacity, or over the
-    /// instance budget, forwards the input verbatim (same count, same rows).
-    #[test]
-    fn a_dead_opacity_or_an_over_budget_stream_forwards_the_input() {
-        let src = pair([1.0, 1.0, 1.0, 1.0]);
-        let off = split(&src, 0.0, 0.1, 0.0, 0.0, 0.0, Lens::CENTRED);
-        assert_eq!(off.count(), 2);
-        assert_eq!(ps(&off), ps(&src), "verbatim, not three copies of nothing");
-
-        let huge = Stream::new(MAX_INSTANCES); // 3 × over the ceiling
-        assert_eq!(
-            split(&huge, 0.0, 0.1, 0.0, 0.0, 1.0, Lens::CENTRED).count(),
-            MAX_INSTANCES
-        );
-        assert_eq!(
-            split(&Stream::new(0), 0.0, 0.1, 0.0, 0.0, 1.0, Lens::CENTRED).count(),
-            0
-        );
-    }
-}
+#[path = "ghost_tests.rs"]
+mod tests;
 
 /// A LENTE — assunto próprio, arquivo próprio (o corte do irmão `fx.drop_shadow`).
 #[cfg(test)]

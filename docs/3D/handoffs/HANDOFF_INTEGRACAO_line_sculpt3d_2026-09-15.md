@@ -748,3 +748,177 @@ shiparia **um braço que gesto nenhum atinge**, que é o «dreno de um braço s�
 ⭐ E o que a auditoria **ilibou** é o que dá confiança ao resto: os `292` identificadores internos do
 ficheiro do alvo foram extraídos mecanicamente e varridos contra a espec — **zero fugas** —, e a
 decomposição em fases dela **não** é a do alvo.
+
+---
+
+## §44 — ⭐⭐⭐ O **BOX TRIM**: o report da face cortada tinha uma causa que não era a triangulação
+
+> **Report do dono, com foto** (2026-09-15): *«eu estava me referindo ao trim pincel de
+> escultura e não a esse trim. Isso que vc tentou criar é o Box Trim, mas seu resultado não
+> ficou legal. Tente melhorar. Veja que o remesh da face que vc cortou fica ruim demais.
+> Coloque como Box Trim. Se não conseguir melhorar vamos passar para o pincel trim»* — mais
+> uma segunda foto: **a saída do Box Trim da referência**, *«resultado superior»*.
+
+### §44.1 — A medição veio ANTES de tocar em código, e desmentiu a leitura da foto
+
+A foto mostrava uma mancha escura com estrias a irradiar de um ponto, e a minha 1.ª leitura foi
+*«um leque de triângulos finos»*. A sonda `diag_a_tampa_do_corte` (em `ph2d-mesh-bool`) diz outra
+coisa:
+
+| peça | `T` | aresta p50 | **face cortada** | aresta da face |
+|---|---|---|---|---|
+| `uv_sphere(24,32)` | `768` | `0,1357` | **`2` T** | `1,2000` |
+| `uv_sphere(48,64)` | `3 072` | `0,0661` | **`2` T** | `1,2000` |
+| `sphere_with_triangles(20k)` | `10 000` | `0,0347` | **`2` T** | `1,2000` |
+
+⇒ **`1 385 ×` menos triângulos do que a densidade da peça** na última linha. *Não era a
+triangulação que estava torta: era a face a não ter malha nenhuma.*
+
+⭐⭐ **E a metade que a foto de facto mostra é o SOMBREAMENTO.** A normal de um vértice é a média
+das faces que o tocam; com **dois** triângulos, **todos** os vértices da face são de borda ⇒ cada
+um mistura o plano com a esfera, e **não existe um único ponto da face que seja pintado plano**.
+Uma face plana sombreada como curva é o aspecto derretido do report — e é por isso que a foto da
+referência (onde a mesma face é coarse **e** nítida) parecia outra classe de resultado: o que
+separa as duas não é a contagem, é a **normal**.
+
+### §44.2 — A cura é a LÂMINA, nunca um pós-passe sobre o resultado
+
+O que o motor devolve na superfície de corte é a tesselação da **PAREDE DO PRISMA** recortada pela
+peça. ⇒ *um prisma tesselado dá um corte tesselado*, e ⭐ a propriedade que decide a arquitectura
+desta linha — **longe do corte, nem um bit** — fica intacta **por construção**, porque nada toca a
+malha da peça. (Um pós-passe de refino sobre a saída teria de a percorrer, e é exactamente o que o
+gate `longe_do_corte_nenhum_vertice_se_move_um_bit` existe para proibir.)
+
+`ph2d_trim::Resolucao { Minima, Ate(f32) }`, 7.º argumento da `prisma`. O `Minima` é a saída de
+sempre **ao bit** (os 11 gates da forma ficaram verdes sem uma linha de alteração) e fica como rota
+de bissecção.
+
+**Resultado, de ponta a ponta** (`a_face_que_o_corte_deixa_tem_a_densidade_da_peca`, que corta de
+verdade — a `ph2d-trim` ganhou a `ph2d-mesh-bool` como **dev-dependency**, e só como isso):
+
+| | face cortada | aresta dela | pintada PLANA |
+|---|---|---|---|
+| lâmina mínima | `436` T | `1,5419` | **`0,0 %`** de 144 vértices |
+| **lâmina à densidade da peça** | `11 380` T | **`0,0346`** | **`83,7 %`** de 1 336 |
+| *a peça* | — | `0,0347` | — |
+
+⚠️ **A contagem grossa não é `2` aqui e isso é o motor a trabalhar:** a parede é recortada pela
+esfera, logo a fronteira dela é uma curva com muitos vértices e o motor tapa-a com um leque. ⇒
+*contar triângulos não distingue uma face tesselada de uma face com um leque grande* — é a
+**ARESTA** que decide, e a **fracção pintada plana** é a régua que corresponde ao que o dono vê.
+
+### §44.3 — ⚠️ O PREÇO está medido, e ele diz o contrário do que se temia
+
+`--release`, `Op::Subtrair`, o mesmo anel:
+
+| peça | lâmina mínima | lâmina à aresta da peça | tampa |
+|---|---|---|---|
+| `10 000` T | `15,9 ms` | **`23,5 ms`** | `2 → 2 450` |
+| `50 176` T | `85,3 ms` | **`128,7 ms`** | `2 → 12 482` |
+| `199 809` T | `413,8 ms` | **`545,0 ms`** | `2 → 49 928` |
+
+⇒ **o custo é da PEÇA e não da lâmina** (`+32 %` a `+51 %`), e a contagem da lâmina é
+`perímetro/alvo × profundidade/alvo`, isto é, ela escala com a peça sozinha. ⛔ **Não há tecto de
+qualidade a inventar.** O único tecto (`TECTO_DE_TRIANGULOS = 200 000`) é a rede contra um `alvo`
+degenerado de quem chama, ele **nomeia o recurso** (o relógio do motor: `14 700` T de lâmina custam
+`20,1 ms` e `927 408` custam `523,6`) e **renormaliza o alvo para cima — nunca recusa o gesto**.
+
+### §44.4 — A régua do alvo é a porta que a casa já tinha
+
+`ph2d_mesh::edge_for_tri_count(surface_area, tris)` — a **mesma** do alvo de topologia, ancorada na
+**ÁREA**. ⚠️ E ancorada nela de propósito: *a densidade não é propriedade da vista nem da caixa*, que
+é a lei que este módulo já pagou duas vezes (o `Quad Size` absoluto do botão, e o alvo de topologia
+que variava `4,9 ×` com o zoom). Medida contra a mediana das arestas nas fixturas da casa, concorda
+a **`1,03 ×`–`1,10 ×`** e custa uma passagem sem alocação, contra ordenar `3 × T` números.
+
+⚠️ **Triângulos, não faces** (`verts().len() − 2`): um quad conta dois, e ler `face_count` daria um
+alvo `√2 ×` grosso numa peça ainda não triangulada. Há mutação a prová-lo.
+
+### §44.5 — ⛔⛔ A DÍVIDA das tampas, declarada no doc E afirmada por gate
+
+O anel adensado é **obrigatório** na tampa: um ponto que o adensamento põe numa aresta do anel
+pertence às paredes, e se a tampa continuasse a ir de canto a canto nascia uma **junta em T** — que
+o motor lê como superfície **ABERTA** (medido na 1.ª sonda deste trabalho: seis grelhas sem vértices
+partilhados devolveram `LaminaAberta`, e uma lâmina aberta não corta nada). O **interior** da tampa,
+esse, fica com a triangulação grossa mais um leque: medido, a diagonal de uma tampa de `1 × 1` com
+alvo `0,4` mede `1,414`.
+
+⭐ **Não toca o produto:** com `Profundidade::DaPeca` as tampas ficam **FORA da peça** por construção
+(o enchimento da `faixa` afasta-as), logo nunca aparecem na superfície cortada. ⏳ **Dívida nomeada
+para o dia em que a `DoCursor` chegar à interface** — ali a tampa **é** a face do corte. ⚠️ E o gate
+`nenhuma_aresta_das_paredes_passa_do_alvo` tem a metade que **AFIRMA a dívida**: quem triangular a
+tampa com pontos interiores vê essa metade reprovar, e a dívida sai do doc **no mesmo diff**.
+
+### §44.6 — ⚠️ Uma mutação SOBREVIVENTE escreveu um gate que o doc já prometia
+
+Trocar o centro do leque da tampa por um **canto** passava a suíte inteira. Os pontos de uma aresta
+subdividida são **colineares** com os cantos dela ⇒ um leque a partir de um canto emite triângulos de
+**área ZERO** — que não abrem a malha e não mudam o volume, logo o gate de fecho e o de volume ficam
+os **dois** verdes sobre eles. *Uma face sem área é uma face sem DIRECÇÃO*
+(`ph2d_mesh::face_normal` devolve o vector nulo), e entregá-la a um solucionador exacto é pedir a
+resposta que ninguém mediu. ⇒ `nenhuma_face_do_prisma_tem_area_zero`.
+
+**Prova de mutação: 8 de 8 sangram** (adensamento inerte · filas em `1` · a junta em T · o leque do
+canto · o tecto sem renormalizar · o alvo a contar faces · o corte a voltar ao `Minima` · a lei a
+sair do sítio).
+
+### §44.7 — O NOME, e a cena que a peça certa torna honesta
+
+`Forma::label()` → **`Box Trim`** / **`Lasso Trim`**, num sítio só, com gate nas duas metades (o
+rótulo certo · o teclado a **ler** o rótulo em vez de escrever o nome à mão). ⚠️ São os nomes da
+referência de propósito: o dono chamou-a *Box Trim* antes de eu lhe ter dado nome nenhum, e um
+artista que venha de lá procura por estes.
+
+**Cena `=46`** (`scenes::CENAS` 45 → 46), e a peça com que ela abre é um **número**:
+
+| peça | triângulos | o corte custa |
+|---|---|---|
+| cubo subdividido `3×` | `768` | `1,3 ms` |
+| esfera `20 k` | `19 800` | `23,8 ms` |
+| **esfera `50 k`** (a `=46`) | `49 612` | **`58,4 ms`** |
+| `sculpt_sphere` (o default do módulo) | `196 608` | **`380,6 ms`** |
+
+⇒ no default — **que é onde o dono testou** — ele larga o rato e espera mais de um terço de segundo,
+que é à letra o report que esta família já pagou uma vez (*«meio travado»*, 14/09, com a mesma causa:
+a cena a fabricar a peça pesada). ⚠️ **E o extremo barato também não serve:** com `768` triângulos a
+face cortada sai com uma dúzia deles e o passo (3) do roteiro — *que manda olhar para a malha dela* —
+não teria o que afirmar. O gate afirma as **duas** cercas.
+
+### §44.8 — ⛔ Um achado de SWEEP que não é desta jornada: `NoError`
+
+A `VASSOURA_blender-trim` acusa `NoError` em `crates/ph2d-mesh-bool/src/lib.rs`. **É um falso
+positivo sobre a API pública de uma dependência permissiva:** `NoError` é variante do
+`manifold_rust::types::Error` (Apache-2.0, `types.rs:145`), o motor que esta porta **liga**, e a
+linha acusada é `m.status() == manifold_rust::types::Error::NoError`. ⚠️ **Pré-existente** — `git
+diff HEAD` naquele ficheiro é **vazio** nesta jornada; ele entrou com o commit `d4a4a4a67`.
+
+⇒ **Isenção NOMEADA, nunca silêncio** (a lei que o cabeçalho do próprio sweep escreve: *uma entrada
+que dispara sobre uso lícito treina quem corre o sweep a ignorar achados*). ⛔ **A triagem é do R,
+não da janela I** — ou a entrada da vassoura é mais larga que a regra que implementa, ou ela precisa
+de revisão. As outras **seis** vassouras fecham limpas sobre os caminhos tocados.
+
+### §44.9 — ⚠️ O que uma leitura rápida do diff entende ao contrário
+
+1. **`Resolucao::Minima` não é uma rota morta** — ela é a saída de sempre **ao bit**, é o que os 11
+   gates da forma medem, e é a rota de bissecção.
+2. **O adensamento não muda a FORMA do volume**, e isso tem gate (`adensar_nao_move_a_superficie`,
+   volume e caixa nas duas resoluções, nos dois modos de parede): as paredes são **regradas** e as
+   tampas **planas**, logo todo ponto novo é interpolação *na própria superfície*.
+3. **O `TECTO_DE_TRIANGULOS` não é um tecto de qualidade** — o caminho do produto nunca lá chega.
+4. **A `ph2d-mesh-bool` é `dev-dependency` da `ph2d-trim`, não dependência** — a `ph2d-trim` continua
+   a não cortar, e é essa separação que permite gatear a forma do volume sem o motor.
+5. **`83,7 %` não é uma barra frouxa:** a banda que sobra é o anel de **um triângulo** junto à aresta,
+   que é exactamente o que faz o corte parecer nítido em vez de chanfrado.
+6. **O corte continua a acontecer no LARGAR** e essa decisão não mudou — o que mudou foi quanto ele
+   custa e o que ele deixa.
+
+### §44.10 — ⏳ ABERTO
+
+* O **interior das tampas** (§44.5) — acto de quem ligar a `Profundidade::DoCursor` à interface.
+* A **linha** e a **polilinha** (espec §4.2): das quatro variantes da referência temos duas. A linha
+  é a mesma máquina com um quadrilátero fabricado e o modo **forçado** a subtrair.
+* Os outros **modos** (juntar · intersectar): o `Op` existe na porta e nenhum gesto o alcança.
+* A **simetria** (espec §9): `N` booleanas, uma por passagem.
+* O **chip no painel** — o corte está no teclado, e *uma tecla é alcançável mas não DESCOBRÍVEL*.
+* ⛔ **O veredito do dono sobre a face cortada** é o que decide se esta wave fecha ou se a fila passa
+  ao **pincel** de trim que ele nomeou.

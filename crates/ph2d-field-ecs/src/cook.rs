@@ -91,6 +91,17 @@ fn emit(world: &World, root: Entity, nodes: &mut Vec<Node>) -> Option<NodeId> {
                     continue;
                 }
                 stack.push(Step::Up(e));
+                // ⛔ **Só uma OPERAÇÃO desce aos filhos** (2026-09-16, `BUGS_3dmodeling.md` #4). Uma
+                // forma não os referencia, e descer ali emitia-os SOLTOS na arena — a peça ficava
+                // invisível e quem contasse a arena (dois gates da importação, o `sampled_count` do
+                // avaliador) lia-a como presente. A promoção do quadro repara a árvore antes de
+                // cozer; entre um e outro, *o que a raiz não alcança não entra no documento*.
+                if !matches!(
+                    world.get::<FieldNode>(e).map(|n| &n.shape),
+                    Some(NodeShape::Combine(_))
+                ) {
+                    continue;
+                }
                 // Empilha em ordem inversa para o `pop` visitar na ordem de `Children` — a mesma
                 // ordem que a Hierarquia mostra. Ela é load-bearing na SUBTRAÇÃO: `children[0]`
                 // menos todos os seguintes.

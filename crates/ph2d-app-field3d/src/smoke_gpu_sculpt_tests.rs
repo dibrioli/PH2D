@@ -263,10 +263,16 @@ mod grade_residente {
     fn um_arrasto_nao_reenvia_a_escultura() {
         let doc = crate::smoke::scene(6);
         let reg = crate::smoke::sampled_registry();
-        let Some(t) = crate::gpu_frame::shared() else {
+        // ⛔ **Um traçador PRÓPRIO, e não o partilhado** (2026-09-16). O contador de envios vive no
+        // traçador, e o `gpu_frame::shared()` é o de TODOS os gates de placa desta crate: na bateria
+        // com threads em paralelo os outros sobem grelhas pelo mesmo contador, e este gate leu
+        // `[15, 18, 19, 20, 22, 24]` sobre um produto que, sozinho, lê `[1, 1, 1, 1, 1, 1]` (3 de 3).
+        // *Um contador atrás de estado partilhado conta quem mais o partilha.*
+        let Some(proprio) = ph2d_field_gpu::trace::Tracer::new() else {
             println!("sem adaptador — saltado");
             return;
         };
+        let t = &std::sync::Arc::new(std::sync::Mutex::new(proprio));
         let base = ph2d_field_render::Orbit::default();
         let luz = [crate::gpu_frame::tests_lampada(&base)];
         let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();

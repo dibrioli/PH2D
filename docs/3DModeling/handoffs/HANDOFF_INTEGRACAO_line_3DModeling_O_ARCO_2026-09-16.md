@@ -197,3 +197,34 @@ abre agora com a peça promovida (a Hierarquia ganha uma linha: a forma dentro d
 ⛔ **E dois gates da costura da importação estavam VERDES sobre a peça invisível** (cena `2`, raiz-forma):
 contavam a arena do documento, onde o cozimento põe os filhos de uma forma soltos. Passaram a contar
 formas e a procurar entre os nós que a raiz alcança (`import_seam_tests.rs`).
+
+## §13 — ADENDA 5: smoke das adendas 3 e 4 APROVADO; a bateria de placa; duas curas de auditoria
+
+**Smoke do dono: OK** (o Vector toma o canvas com o smoke dirigido aberto; o cilindro nasce dentro
+de «Model», liso nos níveis altos).
+
+**A bateria de placa (`PH2D_GPU=1 … --ignored`) que ficou devida no §10: `62` de `62`, em três
+partes, com a razão de cada uma:**
+- `59` passaram na bateria (`1 255 s`, load `14`–`52`, com outra linha a correr testes);
+- ⚠️ **dois gates de RELÓGIO reprovaram na bateria e passam sozinhos** (load `12`–`14`, uma thread):
+  `na_faixa_do_produto_a_placa_ganha_com_margem` (bateria `1,76×`, sozinho `3,95×`–`7,25×`) e
+  `com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento` (bateria `3/18` com uma cena a
+  `6 850 ms`; sozinho `13/18`). ⇒ **pedido ao integrador:** promovê-los à família de flakes de
+  recurso do `CLAUDE.md` §5.0 (a linha pede, o integrador escreve). Zero linhas desta adenda na
+  lei que eles medem;
+- ⛔ **um gate de CONTAGEM reprovou por defeito do PRÓPRIO gate, curado:**
+  `um_arrasto_nao_reenvia_a_escultura` lia o contador de envios do traçador **partilhado** por todos
+  os gates de placa da crate — `[15, 18, 19, 20, 22, 24]` na bateria, `[1, 1, 1, 1, 1, 1]` sozinho
+  (3/3). Hoje usa um traçador próprio: verde entre os cinco gates de escultura em paralelo, e a
+  mutação que reenvia a grade em todo quadro (`G1`) lê `[1, 2, 3, 4, 5, 6]` e mata-o.
+
+**Duas curas de auditoria em `ph2d-field-ecs`** (registo: `BUGS_3dmodeling.md` #4 e #5):
+- **#5** — largar na Hierarquia uma forma sobre outra que não está na origem fazia-a **saltar**
+  (`(0,1,0)` → `(−1,1,0)`): a promoção passava os filhos ao grupo sem compor a pose do anfitrião.
+  O gate W31 tinha o anfitrião na origem. Gate
+  `a_shape_dropped_onto_a_posed_shape_stays_where_it_was`, mutação F1 morta.
+- **#4, a metade que ficou nomeada** — o `cook` já não desce aos filhos de uma forma: o documento só
+  tem o que a raiz alcança. Gate `the_cooked_arena_holds_only_what_the_root_reaches`, mutação F2
+  morta.
+
+Impactados: `2 899` / `2 899`. Clippy limpo.

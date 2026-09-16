@@ -592,3 +592,111 @@ fn a_root_shape_that_gets_a_child_becomes_a_group_in_place() {
         "e a promoção não se repete"
     );
 }
+
+/// ⭐⭐ **UMA FORMA LARGADA SOBRE OUTRA FICA ONDE ESTAVA** (2026-09-16,
+/// `docs/3DModeling/BUGS_3dmodeling.md` #5).
+///
+/// ⛔ O arrasto da Hierarquia conserva a pose de MUNDO (escreve a local no referencial do novo pai),
+/// e a promoção do anfitrião passava os filhos para um grupo de pose identidade **sem compor** —
+/// medido antes da cura: largada em `(0, 1, 0)` sobre um anfitrião em `(1, 0, 0)`, a esfera ia para
+/// `(−1, 1, 0)`. ⚠️ **O gate W31 (`a_shape_dropped_onto_a_shape_is_not_lost`) estava verde**: a
+/// fixtura dele tem o anfitrião na ORIGEM, onde compor e não compor dão o mesmo.
+#[test]
+fn a_shape_dropped_onto_a_posed_shape_stays_where_it_was() {
+    let esfera = |x: f32, y: f32| Node {
+        xform: Xform::at(x, y, 0.0),
+        kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
+        mods: Vec::new(),
+        verb: None,
+    };
+    let dois = FieldDoc::new(
+        vec![
+            esfera(1.0, 0.0),
+            esfera(0.0, 1.0),
+            Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Combine {
+                    op: ph2d_field::Op::Union(Blend::Sharp),
+                    children: vec![NodeId(0), NodeId(1)],
+                },
+                mods: Vec::new(),
+                verb: None,
+            },
+        ],
+        NodeId(2),
+    )
+    .expect("duas esferas");
+    let mut w = bevy_ecs::world::World::new();
+    let raiz = spawn_doc(&mut w, &dois, "Model");
+    let filhos: Vec<bevy_ecs::entity::Entity> = w
+        .get::<bevy_ecs::hierarchy::Children>(raiz)
+        .expect("filhos")
+        .iter()
+        .copied()
+        .collect();
+    let (anfitriao, largada) = (filhos[0], filhos[1]);
+    // O que o arrasto da Hierarquia faz: muda o pai e re-escreve a local para a de mundo ficar.
+    w.entity_mut(largada)
+        .insert(bevy_ecs::hierarchy::ChildOf(anfitriao));
+    set_world_xform(&mut w, largada, Xform::at(0.0, 1.0, 0.0));
+    let perto = |a: [f32; 3], b: [f32; 3]| a.iter().zip(b).all(|(x, y)| (x - y).abs() < 1e-5);
+    assert!(
+        perto(world_xform(&w, largada).translation, [0.0, 1.0, 0.0]),
+        "o controlo: o arrasto conserva a posição de mundo"
+    );
+    assert_eq!(promote_leaf_hosts(&mut w, raiz), 1);
+    assert!(
+        perto(world_xform(&w, largada).translation, [0.0, 1.0, 0.0]),
+        "⛔ a promoção mudou a esfera largada de sítio: está em {:?}",
+        world_xform(&w, largada).translation
+    );
+    assert!(
+        perto(world_xform(&w, anfitriao).translation, [1.0, 0.0, 0.0]),
+        "e o anfitrião também fica onde estava"
+    );
+}
+
+/// ⭐ **O DOCUMENTO SÓ TEM O QUE A RAIZ ALCANÇA** (2026-09-16, `BUGS_3dmodeling.md` #4).
+///
+/// ⛔ O cozimento descia também aos filhos de uma FORMA e emitia-os soltos na arena: a peça ficava
+/// invisível e dois gates da importação, que contavam a arena, liam-na presente. Aqui a promoção
+/// **não** corre — é o intervalo entre um gesto e o quadro que a repara.
+#[test]
+fn the_cooked_arena_holds_only_what_the_root_reaches() {
+    let mut w = bevy_ecs::world::World::new();
+    let raiz = spawn_doc(&mut w, &doc(0.3), "Model");
+    let forma = add_leaf(
+        &mut w,
+        raiz,
+        Primitive::Sphere { radius: 0.1 },
+        [1.0, 0.0, 0.0],
+    )
+    .expect("uma forma");
+    // Uma forma pendurada noutra forma, sem a promoção do quadro.
+    let _ = add_leaf(
+        &mut w,
+        raiz,
+        Primitive::Sphere { radius: 0.1 },
+        [2.0, 0.0, 0.0],
+    )
+    .map(|k| {
+        w.entity_mut(k)
+            .insert(bevy_ecs::hierarchy::ChildOf(forma))
+            .id()
+    });
+    let d = cook(&w, raiz).expect("há peça").expect("cozinha");
+    let mut alcancados = vec![false; d.nodes().len()];
+    let mut pilha = vec![d.root()];
+    while let Some(id) = pilha.pop() {
+        alcancados[id.0 as usize] = true;
+        if let NodeKind::Combine { children, .. } = &d.nodes()[id.0 as usize].kind {
+            pilha.extend(children.iter().copied());
+        }
+    }
+    assert!(
+        alcancados.iter().all(|a| *a),
+        "⛔ a arena tem {} nó(s) que a raiz não alcança — invisíveis no ecrã e presentes para quem \
+         contar a arena",
+        alcancados.iter().filter(|a| !**a).count()
+    );
+}

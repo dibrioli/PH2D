@@ -38,6 +38,7 @@ correção for revertida — provado por mutação. "Não reproduzi mais" não f
 | # | data | sintoma | mecanismo | gate |
 |---|---|---|---|---|
 | 1 | 2026-09-16 | *«arestas ainda visíveis»* no ombro do vaso (foto), **depois** da wave que pôs as quinas como arcos | o modo MODEL traça na CPU, e a folha especializada por região lia a **polilinha densa** pelo `ProfileIndex` — a normal ficava constante em cada segmento | `vaso_sem_facetas_tests::o_vaso_nao_tem_facetas_no_traçado_do_modo_model` · `profile_arc_tests::*` |
+| 5 | 2026-09-16 | (auditoria, depois do smoke aprovado do #4) largar uma forma sobre outra que não está na origem fazia-a **saltar** | o arrasto da Hierarquia conserva a pose de mundo (escreve a local no referencial do novo pai), e a promoção passava os filhos para um grupo de pose identidade sem compor a pose do anfitrião | `tests::a_shape_dropped_onto_a_posed_shape_stays_where_it_was` (`ph2d-field-ecs`) |
 | 4 | 2026-09-16 | *«o modo como vc montou a cena com o vaso como model e não como filho de model, nenhum outro objeto acrescentado aparece na cena»* (foto da Hierarquia: o *Extrude* dentro de «Model») | a paleta pendura a forma nova na RAIZ, e a promoção «só uma operação tem filhos» saltava a raiz com a nota *«um caso que não existe hoje»* — as cenas `2` e `5` nascem com a raiz numa forma | `tests::a_root_shape_that_gets_a_child_becomes_a_group_in_place` (`ph2d-field-ecs`) · `group_tests::a_shape_added_to_a_piece_whose_root_is_a_shape_appears` |
 | 3 | 2026-09-16 | *«o Modo model não está permitindo usar o modo Vector. não consigo desenhar o cilindro»* — a seguir um passo de smoke | a env `PH2D_FIELD_SMOKE` armava o módulo **sem olhar o painel**: pegar no Vector fechava o painel e os ganchos de entrada continuavam a comer o clique — o report de 22/08, curado só no caminho do PILL | `mode_tests::the_directed_smoke_disarms_with_the_panel_too` |
 | 2 | 2026-09-16 | (auditoria, depois do smoke aprovado do #1) **subir `Resolution` desfazia os arcos**; **um círculo nunca era arco**; **uma meia-lua de dois pontos era recusada** | a barra de «esta cúbica é um arco?» era a tolerância de ACHATAMENTO — mais apertada do que a precisão com que qualquer app escreve um círculo —, os dois arredondadores de quina escreviam arcos acima de `90°` numa cúbica só, **o preview (`coarse_doc`) trocava os arcos por polilinha** comparando segmentos em vez de primitivas, e a porta dos arcos pedia 3 primitivas (a lei do polígono) | `o_arco_sobrevive_a_todo_nivel_de_resolution` · `o_quarto_canonico_define_a_barra_do_arco` · `o_preview_nunca_troca_arcos_por_uma_polilinha_mais_cara` · `subir_o_resolution_nao_parte_o_labio` · `a_meia_lua_de_dois_pontos_coze` · `corner_split_tests::*` · `profile_meia_lua_tests::*` |
@@ -292,10 +293,37 @@ Hierarquia e some da tela»* — e media-o pela metade que não o vê. Hoje os d
 árvore e procuram a forma entre os nós que a **raiz alcança**; sem a cura (E1) os dois ficam
 vermelhos.
 
-⏳ **Nomeado e não tocado:** o `cook` continua a emitir nós soltos em silêncio quando uma forma tem
-filhos (depois da promoção isso não acontece no quadro, mas a porta aceita-o). Uma régua que conte a
-arena volta a mentir.
+✅ **E o `cook` deixou de emitir nós soltos** (mesmo dia, depois do smoke aprovado): só uma
+OPERAÇÃO desce aos filhos. Gate `the_cooked_arena_holds_only_what_the_root_reaches`; mutação F2
+morta. *O que a raiz não alcança não entra no documento* — uma régua que conte a arena deixa de
+poder mentir por aqui.
 
-⚠️ **Nomeado e não tocado:** na promoção de um anfitrião **não-raiz**, os filhos dele passam a
-irmãos dentro de um grupo de pose identidade — se o anfitrião tinha pose, eles mudam de sítio no
-mundo. Pré-existente (W31), sem report; a raiz não tem o problema porque fica com a pose.
+⚠️ A outra nota desta secção (a promoção de um anfitrião **não-raiz** tirava a pose aos filhos) era
+um defeito visível, e é o Bug #5.
+
+---
+
+## Bug #5 — a forma largada sobre outra saltava (2026-09-16, auditoria)
+
+**Sintoma (medido, não reportado).** Largar na Hierarquia uma forma sobre outra que não está na
+origem — o gesto da W31 (*«se coloco um objeto como filho do outro ele some»*) — faz a largada mudar
+de sítio: uma esfera em `(0, 1, 0)`, largada sobre um anfitrião em `(1, 0, 0)`, aparecia em
+`(−1, 1, 0)`.
+
+**Mecanismo.** Duas metades certas, cada uma sozinha: o arrasto da Hierarquia **conserva a pose de
+mundo** (re-escreve a local no referencial do novo pai, `set_world_xform`), e a promoção do
+anfitrião (`promote_leaf_hosts`) põe os filhos num grupo novo de pose identidade no referencial do
+**avô** — sem compor a pose do anfitrião na deles. A pose do anfitrião evaporava da cadeia.
+
+**O gate que estava VERDE, e porquê.** `a_shape_dropped_onto_a_shape_is_not_lost` (W31) tem o
+anfitrião na **origem**, onde compor e não compor dão o mesmo — e mede se a forma EXISTE, não
+ONDE. *Uma fixtura na identidade de uma transformação não testa a transformação* (a mesma família
+de «um corpus no neutro de um knob»).
+
+**Cura.** Os filhos que mudam para o grupo recebem `pose_do_anfitrião ∘ pose_deles`. A raiz (#4) não
+tem o problema: ela fica com a pose e os filhos não mudam de pai.
+
+| mutação | gate que a mata |
+|---|---|
+| F1 os filhos passam ao grupo sem a pose do anfitrião | `a_shape_dropped_onto_a_posed_shape_stays_where_it_was` |
+| F2 o cozimento volta a descer aos filhos de uma forma (#4) | `the_cooked_arena_holds_only_what_the_root_reaches` |

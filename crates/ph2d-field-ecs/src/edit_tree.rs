@@ -352,7 +352,17 @@ pub fn promote_leaf_hosts(world: &mut World, root: Entity) -> usize {
         // O grupo toma o LUGAR do anfitrião entre os irmãos.
         world.entity_mut(group).insert(ChildOf(parent));
         world.entity_mut(group).add_child(host);
+        // ⛔⛔ **Os filhos mudam de referencial, e a pose deles tem de ir junto** (2026-09-16,
+        // `docs/3DModeling/BUGS_3dmodeling.md` #5). A pose é LOCAL ao pai: debaixo do anfitrião ela
+        // estava escrita no referencial DELE (o arrasto da Hierarquia converte-a assim, para a peça
+        // não saltar), e o grupo novo tem pose identidade no referencial do avô. Movê-los sem compor
+        // tirava-lhes a pose do anfitrião — medido: uma esfera largada em `(0, 1, 0)` sobre um
+        // anfitrião em `(1, 0, 0)` aparecia em `(−1, 1, 0)`.
+        let pose_do_anfitriao = world.get::<FieldPose>(host).copied().unwrap_or_default();
         for k in kids {
+            if let Some(mut p) = world.get_mut::<FieldPose>(k) {
+                p.xform = pose_do_anfitriao.xform.compose(p.xform);
+            }
             world.entity_mut(group).add_child(k);
         }
         // …e a ordem dos irmãos é reposta com o grupo onde o anfitrião estava.

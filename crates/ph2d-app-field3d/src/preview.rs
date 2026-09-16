@@ -63,6 +63,10 @@ mod device_probes;
 #[cfg(test)]
 #[path = "preview_device_tests.rs"]
 mod device_tests;
+/// ⭐⭐⭐ O vaso sem facetas no modo MODEL — ver [`vaso_sem_facetas_tests`].
+#[cfg(test)]
+#[path = "vaso_sem_facetas_tests.rs"]
+mod vaso_sem_facetas_tests;
 
 use ph2d_field::FieldDoc;
 use ph2d_field_render::Orbit;

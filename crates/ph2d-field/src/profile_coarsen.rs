@@ -9,7 +9,7 @@
 //! perfil grosso é uma aproximação declarada, e a decomposição exacta não sobrevive a uma decimação
 //! que apaga vértices.
 
-use crate::profile::{Profile, contour_bounds};
+use crate::profile::Profile;
 
 /// ⭐⭐⭐ **O MESMO CONTORNO, MAIS GROSSO — para a pré-visualização.**
 ///

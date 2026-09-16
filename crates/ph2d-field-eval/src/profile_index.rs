@@ -79,12 +79,35 @@ impl Stack {
 }
 
 /// Uma aresta do contorno, com o que a distância pede pré-calculado.
+///
+/// ⭐⭐⭐ **Desde 2026-09-16 ela pode ser um ARCO** (`arco = Some`): `a`, `b` e `e` passam a ser os da
+/// CORDA, que é o que o enrolamento percorre, e o arco entra pela porta única
+/// ([`crate::profile_arc`]). ⚠️ Todo ponto do arco está a menos da `flecha` da corda — é essa
+/// desigualdade, e só ela, que mantém o corte espacial CONSERVADOR sem que ele conheça o arco.
 #[derive(Clone, Copy, Debug)]
 struct Edge {
     a: [f32; 2],
     b: [f32; 2],
     e: [f32; 2],
     inv_ee: f32,
+    arco: Option<crate::profile_arc::Arco>,
+}
+
+impl Edge {
+    /// Quanto o arco pode sair da corda (`0` numa recta).
+    #[allow(clippy::cast_possible_truncation)]
+    fn flecha(&self) -> f32 {
+        self.arco.map_or(0.0, |k| k.flecha as f32)
+    }
+
+    /// A caixa da PRIMITIVA — a da corda engordada pela flecha.
+    fn caixa(&self) -> ([f32; 2], [f32; 2]) {
+        let f = self.flecha();
+        (
+            [self.a[0].min(self.b[0]) - f, self.a[1].min(self.b[1]) - f],
+            [self.a[0].max(self.b[0]) + f, self.a[1].max(self.b[1]) + f],
+        )
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -111,8 +134,18 @@ pub struct ProfileIndex {
     nodes: Vec<BvhNode>,
     lo: [f32; 2],
     cell: [f32; 2],
-    /// Enrolamento no canto mínimo de cada célula (`GRID × GRID`, em ordem de linha).
+    /// Enrolamento no PONTO DE PARTIDA de cada célula (`GRID × GRID`, em ordem de linha).
     base: Vec<i32>,
+    /// ⭐⭐ **O ponto de partida de cada célula** — um ponto dela que não assenta em aresta nenhuma.
+    ///
+    /// ⛔ **Era o canto mínimo, e isso é o defeito da W56 um nível abaixo** (medido 2026-09-16):
+    /// o `base` sai do raio `+x` e o caminho até ao ponto do semi-aberto, e sobre uma aresta as duas
+    /// regras discordam de que lado o canto está. A polilinha densa quase nunca punha uma aresta num
+    /// canto da grelha; as cordas redondas de uma decomposição com arcos põem, e o sinal saía errado
+    /// numa célula inteira (mascarado em `NonZero`, que lia `−2` onde devia ler `−1`; a paridade
+    /// denunciou-o). A cura é a da árvore por região ([`crate::profile`] — `anchor_in`): partir de um
+    /// ponto LONGE das arestas.
+    start: Vec<[f32; 2]>,
     /// Arestas que atravessam cada célula — `cross[cross_at[c]..cross_at[c + 1]]`.
     cross_at: Vec<u32>,
     cross: Vec<u32>,
@@ -123,16 +156,37 @@ impl ProfileIndex {
     /// Constrói o índice a partir do perfil cozido.
     #[must_use]
     pub fn build(profile: &Profile) -> Self {
-        let mut edges: Vec<Edge> = Vec::with_capacity(profile.segment_count());
-        for contour in profile.contours() {
-            let n = contour.len();
+        let mut edges: Vec<Edge> = Vec::with_capacity(profile.prim_count());
+        for (ci, contour) in profile.contours().iter().enumerate() {
+            // ⭐⭐⭐ **A decomposição exacta, quando existe** — a MESMA que a árvore global lê. A
+            // polilinha densa descreve a mesma curva a menos da tolerância, mas as NORMAIS dela
+            // saltam a cada segmento, e foi isso que o modo MODEL mostrou como faixas.
+            let arcs = profile.arcs().get(ci).filter(|a| !a.is_empty());
+            let pts: Vec<([f32; 2], f32)> = match arcs {
+                Some(a) => a.clone(),
+                None => contour.iter().map(|p| (*p, 0.0)).collect(),
+            };
+            let n = pts.len();
             for i in 0..n {
-                let a = contour[i];
-                let b = contour[(i + 1) % n];
+                let (a, bulge) = pts[i];
+                let b = pts[(i + 1) % n].0;
                 let e = [b[0] - a[0], b[1] - a[1]];
                 // `Profile::new` tirou os pontos repetidos consecutivos ⇒ a aresta tem comprimento.
                 let inv_ee = 1.0 / e[0].mul_add(e[0], e[1] * e[1]);
-                edges.push(Edge { a, b, e, inv_ee });
+                let arco = (bulge != 0.0).then(|| {
+                    crate::profile_arc::arco(
+                        [f64::from(a[0]), f64::from(a[1])],
+                        [f64::from(b[0]), f64::from(b[1])],
+                        f64::from(bulge),
+                    )
+                });
+                edges.push(Edge {
+                    a,
+                    b,
+                    e,
+                    inv_ee,
+                    arco,
+                });
             }
         }
         let (lo, hi) = profile.bounds();
@@ -149,22 +203,25 @@ impl ProfileIndex {
 
         let non_zero = profile.fill() == FillRule::NonZero;
         let mut base = vec![0i32; GRID * GRID];
+        let mut start = vec![[0.0f32; 2]; GRID * GRID];
         let mut cross_at = vec![0u32; GRID * GRID + 1];
         let mut cross: Vec<u32> = Vec::new();
         for gy in 0..GRID {
             for gx in 0..GRID {
                 let c = gy * GRID + gx;
                 let corner = [lo[0] + cell[0] * gx as f32, lo[1] + cell[1] * gy as f32];
-                base[c] = ray_winding(&edges, corner);
                 let (bl, bh) = (corner, [corner[0] + cell[0], corner[1] + cell[1]]);
                 cross_at[c] = cross.len() as u32;
                 for (i, e) in edges.iter().enumerate() {
-                    let elo = [e.a[0].min(e.b[0]), e.a[1].min(e.b[1])];
-                    let ehi = [e.a[0].max(e.b[0]), e.a[1].max(e.b[1])];
+                    let (elo, ehi) = e.caixa();
                     if elo[0] <= bh[0] && ehi[0] >= bl[0] && elo[1] <= bh[1] && ehi[1] >= bl[1] {
                         cross.push(i as u32);
                     }
                 }
+                // Só uma aresta que toca a célula pode passar por um ponto dela.
+                let lista = &cross[cross_at[c] as usize..];
+                start[c] = partida_segura(&edges, lista, bl, bh);
+                base[c] = ray_winding(&edges, start[c]);
             }
         }
         cross_at[GRID * GRID] = cross.len() as u32;
@@ -176,6 +233,7 @@ impl ProfileIndex {
             lo,
             cell,
             base,
+            start,
             cross_at,
             cross,
             non_zero,
@@ -277,7 +335,7 @@ impl ProfileIndex {
             let p = [*u, *v];
             let mut best = f32::INFINITY;
             for i in scratch.iter() {
-                best = best.min(seg_dist2(p, &self.edges[*i as usize]));
+                best = best.min(edge_dist2(p, &self.edges[*i as usize]));
             }
             let d = best.sqrt();
             out.push(if self.inside(p) { -d } else { d });
@@ -296,13 +354,10 @@ impl ProfileIndex {
         ];
         let mut dmax = f32::INFINITY;
         for e in &self.edges {
-            let far = corners
-                .iter()
-                .fold(0.0f32, |acc, c| acc.max(seg_dist2(*c, e)));
-            dmax = dmax.min(far);
+            dmax = dmax.min(longe2(e, &corners));
         }
         for (i, e) in self.edges.iter().enumerate() {
-            if seg_box_dist2(e, lo, hi) <= dmax {
+            if perto2(e, seg_box_dist2(e, lo, hi)) <= dmax {
                 out.push(i as u32);
             }
         }
@@ -322,7 +377,7 @@ impl ProfileIndex {
     pub fn probe_hull_dmax(&self, hull: &[[f32; 2]]) -> f32 {
         let mut dmax = f32::INFINITY;
         for e in &self.edges {
-            dmax = dmax.min(hull.iter().fold(0.0f32, |acc, c| acc.max(seg_dist2(*c, e))));
+            dmax = dmax.min(longe2(e, hull));
         }
         dmax
     }
@@ -367,13 +422,12 @@ impl ProfileIndex {
         for e in &self.edges {
             // ⚠️ O máximo de uma função **convexa** sobre um polígono convexo está num VÉRTICE — é
             // a mesma lei que deixa a versão de caixa olhar só os quatro cantos.
-            let far = hull.iter().fold(0.0f32, |acc, c| acc.max(seg_dist2(*c, e)));
-            dmax = dmax.min(far);
+            dmax = dmax.min(longe2(e, hull));
         }
         self.edges
             .iter()
             .enumerate()
-            .filter(|(_, e)| seg_hull_dist2(e, hull) <= dmax)
+            .filter(|(_, e)| perto2(e, seg_hull_dist2(e, hull)) <= dmax)
             .map(|(i, _)| i as u32)
             .collect()
     }
@@ -414,6 +468,31 @@ impl ProfileIndex {
             }
         }
         v
+    }
+
+    /// ⭐⭐⭐ **Os ARCOS cuja meia-lua pode tocar esta caixa** — o terceiro conjunto da região.
+    ///
+    /// ⚠️ Diferente dos outros dois: o SINAL da região é o enrolamento das CORDAS (que só as cordas
+    /// que atravessam a caixa mudam) mais a meia-lua de cada arco, e a meia-lua de um arco pode
+    /// tocar a caixa sem a corda dele tocar — ela sai da corda até à flecha.
+    #[must_use]
+    pub fn sliver_edges(&self, lo: [f32; 2], hi: [f32; 2]) -> Vec<u32> {
+        let mut v = Vec::new();
+        for (i, e) in self.edges.iter().enumerate() {
+            if e.arco.is_none() {
+                continue;
+            }
+            let (elo, ehi) = e.caixa();
+            if elo[0] <= hi[0] && ehi[0] >= lo[0] && elo[1] <= hi[1] && ehi[1] >= lo[1] {
+                v.push(i as u32);
+            }
+        }
+        v
+    }
+
+    /// O arco da aresta `i`, se ela for um — ver [`crate::profile_arc`].
+    pub(crate) fn arco(&self, i: u32) -> Option<crate::profile_arc::Arco> {
+        self.edges[i as usize].arco
     }
 
     /// Os dois extremos da aresta `i` — o que a baixagem especializada precisa de constantes.
@@ -481,7 +560,7 @@ impl ProfileIndex {
             if n.left == u32::MAX {
                 for k in 0..n.count {
                     let e = self.edges[self.order[(n.first + k) as usize] as usize];
-                    best = best.min(seg_dist2(p, &e));
+                    best = best.min(edge_dist2(p, &e));
                 }
             } else {
                 // O filho mais perto primeiro: é o que faz o `best` apertar cedo e podar o irmão.
@@ -510,71 +589,24 @@ impl ProfileIndex {
             return false;
         }
         let c = gy as usize * GRID + gx as usize;
-        let corner = [
-            self.lo[0] + self.cell[0] * gx,
-            self.lo[1] + self.cell[1] * gy,
-        ];
+        let corner = self.start[c];
         let mut w = self.base[c];
         for k in self.cross_at[c]..self.cross_at[c + 1] {
             let e = self.edges[self.cross[k as usize] as usize];
             w += path_crossing(corner, p, &e);
+            if let Some(arco) = e.arco {
+                // ⚠️ O `orient` é o MESMO que o `path_crossing` usou como `d2`: o empate de um ponto
+                // sobre a corda tem de cair do mesmo lado nas duas metades.
+                w += crate::profile_arc::meia_lua_caminho(
+                    [f64::from(p[0]), f64::from(p[1])],
+                    &arco,
+                    orient(e.a, e.b, p),
+                    self.non_zero,
+                );
+            }
         }
         if self.non_zero { w != 0 } else { w % 2 != 0 }
     }
-}
-
-/// O enrolamento no ponto, pela **mesma** regra do raio `+x` que a árvore usa
-/// ([`crate::profile`]) — é ela que decide o que é dentro, e uma segunda regra aqui daria duas
-/// respostas à mesma pergunta.
-fn ray_winding(edges: &[Edge], p: [f32; 2]) -> i32 {
-    let mut w = 0;
-    for e in edges {
-        let above_a = i32::from(e.a[1] > p[1]);
-        let above_b = i32::from(e.b[1] > p[1]);
-        let dir = above_b - above_a;
-        if dir == 0 {
-            continue;
-        }
-        let cross = e.e[0] * (p[1] - e.a[1]) - e.e[1] * (p[0] - e.a[0]);
-        if (dir as f32) * cross > 0.0 {
-            w += dir;
-        }
-    }
-    w
-}
-
-/// ⭐ **Quantas vezes (com sinal) a aresta atravessa o caminho `c → p`.**
-///
-/// ⚠️ É a mesma grandeza do [`ray_winding`], escrita como **diferença ao longo de um caminho** — e
-/// é isso que a torna pré-computável: `w(p) = w(c) + Σ atravessamentos`. O sinal segue a convenção
-/// do raio: uma aresta que sobe conta `+1` quando o caminho a cruza deixando-a à esquerda.
-fn path_crossing(c: [f32; 2], p: [f32; 2], e: &Edge) -> i32 {
-    // ⭐⭐ **A regra é SEMIABERTA, e não simétrica** — `< 0` de um lado, `>= 0` do outro.
-    //
-    // ⛔ **Defeito medido (W56):** com o teste simétrico (`d1·d2 < 0`), um caminho que passa **por um
-    // vértice** do contorno é contado **zero** vezes — as duas arestas que o partilham vêem produto
-    // nulo e ambas desistem. O enrolamento sai errado por um numa cunha fina à volta daquele vértice,
-    // o sinal inverte-se lá, e a esfera-marcha inventa uma superfície. Um quadro de 240×180 com 168
-    // arestas apanhou-o num pixel — de ~800 mil amostras.
-    //
-    // ⚠️ É a **mesma** disciplina que o raio `+x` do [`ray_winding`] já segue (a variante semi-aberta
-    // do *crossing number*, de Dan Sunday): um vértice pertence a exactamente uma das suas duas
-    // arestas. *Uma regra de fronteira escrita duas vezes tem de ser a mesma nas duas.*
-    let d1 = orient(e.a, e.b, c);
-    let d2 = orient(e.a, e.b, p);
-    let d3 = orient(c, p, e.a);
-    let d4 = orient(c, p, e.b);
-    if (d1 < 0.0) == (d2 < 0.0) || (d3 < 0.0) == (d4 < 0.0) {
-        return 0;
-    }
-    // De que lado a aresta atravessa o caminho: o sinal do produto vetorial das duas direções.
-    let path = [p[0] - c[0], p[1] - c[1]];
-    let s = path[0] * e.e[1] - path[1] * e.e[0];
-    if s > 0.0 { -1 } else { 1 }
-}
-
-fn orient(a: [f32; 2], b: [f32; 2], p: [f32; 2]) -> f32 {
-    (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
 }
 
 /// Constrói o BVH por mediana no eixo mais longo, e devolve o índice do nó criado.
@@ -587,10 +619,10 @@ fn build_bvh(
 ) -> u32 {
     let (mut lo, mut hi) = ([f32::INFINITY; 2], [f32::NEG_INFINITY; 2]);
     for k in first..first + count {
-        let e = &edges[order[k] as usize];
+        let (elo, ehi) = edges[order[k] as usize].caixa();
         for axis in 0..2 {
-            lo[axis] = lo[axis].min(e.a[axis]).min(e.b[axis]);
-            hi[axis] = hi[axis].max(e.a[axis]).max(e.b[axis]);
+            lo[axis] = lo[axis].min(elo[axis]);
+            hi[axis] = hi[axis].max(ehi[axis]);
         }
     }
     let me = nodes.len() as u32;
@@ -621,7 +653,11 @@ fn build_bvh(
 
 #[path = "profile_dist.rs"]
 mod dist;
-use dist::{box_dist2, seg_box_dist2, seg_dist2, seg_hull_dist2};
+use dist::{box_dist2, edge_dist2, longe2, perto2, seg_box_dist2, seg_dist2, seg_hull_dist2};
+
+#[path = "profile_winding.rs"]
+mod winding;
+use winding::{orient, partida_segura, path_crossing, ray_winding};
 
 #[cfg(test)]
 #[path = "profile_index_tests.rs"]

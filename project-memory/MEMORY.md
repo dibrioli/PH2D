@@ -218,3 +218,6 @@
 - 📚 [Arquitetura / norte / perf: mais 14 lições](reference_topic_architecture_north_perf_lessons.md)
 - [fixture (7) — ⛔⛔ uma fixtura de UM ÂNGULO não mede uma lei que depende do ângulo: o gate do filete corria sobre um QUADRADO, e a `90°` o defeito anula-se](reference_topic_fixture_discipline.md)
 - ⛔⛔ [Uma vista NOVA entra ao LADO da que os consumidores já lêem, nunca no lugar dela — 24 leitores tratavam `contours()` como a figura e estavam certos; 2 gates velhos apanharam-no](feedback_a_new_view_cannot_replace_the_one_consumers_read.md)
+- ⛔ [Sonda que arma o módulo por env var mede OUTRO programa que o pill (5 reports) — e a do arco cronometrava a PLACA com o dono no modo MODEL, que traça na CPU (12 196 facetas contra 0)](feedback_a_probe_that_arms_a_module_by_env_var_measures_another_program_than_the_pill.md)
+- ⭐ [**Campo IMPLÍCITO (SDF) e réguas de FORMA** — a família inteira (16): união coplanar incha · `max` cru = aresta viva · o semiespaço INFINITO ganha o `min` dentro da peça · o gate no REPRESENTANTE](reference_topic_implicit_field_laws.md)
+- [Provas de mutação (8) — 3 controles no arnês · ⛔ corpus onde a desigualdade nunca aperta não a testa (2 de 8 sobreviveram)](reference_topic_mutation_proofs.md)

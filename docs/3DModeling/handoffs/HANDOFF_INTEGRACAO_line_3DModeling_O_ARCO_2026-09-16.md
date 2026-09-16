@@ -82,8 +82,9 @@ mudam, e **a mudança é a cura**.
 
 ## §7 — ⏳ ABERTO
 
-- ⏳ **A especialização por REGIÃO não usa arcos** (o `ProfileIndex` nasce da polilinha densa) —
-  ganho por colher, não defeito: é onde o vaso ainda tem `22 ms` de marcha;
+- ~~A especialização por REGIÃO não usa arcos — ganho por colher, não defeito~~ — ⛔⛔ **ERA DEFEITO,
+  e visível** (smoke do dono no mesmo dia, *«arestas ainda visíveis»*): o modo MODEL traça na CPU por
+  essa especialização. **CURADO** — ver o §9 abaixo;
 - ⏳ **O `select×555`** do vaso por auditar na fita nova;
 - ⏳ **Quina `> ~140°`**: a saída publicada é partir a cúbica em duas na emissão — wave da
   `ph2d-vec-scene`.
@@ -94,3 +95,28 @@ mudam, e **a mudança é a cura**.
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling && env PH2D_FIELD_SMOKE=5 cargo run -p ph2d-host-desktop --profile smoke
 ```
 A cena `5` é o vaso torneado. Comparar com `PH2D_FIELD_SMOKE=4` (a cantoneira, o maior ganho).
+
+## §9 — ⛔⛔ ADENDA: as faixas que sobreviveram (smoke do dono, mesmo dia)
+
+O modo **MODEL** traça na **CPU**, e a CPU especializa a árvore por região com um `ProfileIndex`
+construído da **polilinha densa**: a cura acima só tinha chegado à placa (modo RENDER). Medido na cena
+`5`, frente, `1920×1080`: **`12 196` picos de faceta na CPU → `0`**, placa `0` antes e depois.
+Registo completo: [`docs/3DModeling/BUGS_3dmodeling.md`](../BUGS_3dmodeling.md) #1 ·
+[`docs/Render3d/06`](../../Render3d/06_auditoria_do_vaso.md) Parte III.
+
+**Ficheiros a mais:** `ph2d-field-eval/src/profile_arc.rs` (a lei do arco numa porta só) ·
+`profile_winding.rs` (a aritmética do enrolamento, cortada do `profile_index.rs` pelo tecto de LOC:
+`758 → 662`) · `profile_dist.rs` (os limites do corte) · `ph2d-app-field3d/src/vaso_sem_facetas_tests.rs`
+(o gate do produto, CPU-only).
+
+⚠️ **TRÊS coisas que uma leitura rápida entende ao contrário:**
+1. **O `ProfileIndex` passou a indexar a DECOMPOSIÇÃO exacta**, não a polilinha — `edge(i)` devolve a
+   CORDA de um arco, e `arco(i)` diz se é um. O corte espacial continua conservador pela flecha.
+2. **O `inside` do índice parte de um ponto SEGURO por célula** (`start`), não do canto — defeito da
+   W56 que existia para polilinhas também (quase nunca disparava).
+3. **A árvore GLOBAL também mudou** (o empate sobre a corda): a Parte II tinha um defeito de sinal
+   num conjunto de medida nula que nenhuma grelha apanhava.
+
+**Gates:** `ph2d-field-eval` `118` (+6) · `ph2d-app-field3d` `395` (+1) · **8 mutações, 8 mortas** (duas
+sobreviveram à 1.ª ronda e pediram o gate do corte) · arquitectura `378` · casca `815` ·
+clippy `-D warnings` limpo.

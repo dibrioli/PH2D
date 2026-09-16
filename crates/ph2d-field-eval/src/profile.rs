@@ -83,8 +83,7 @@ fn sd_profile_inner(profile: &Profile, u: &Tree, v: &Tree, axis_seam: bool) -> T
         //
         // ⚠️ Sem ela — um perfil sem arco nenhum, ou um vindo de um documento gravado antes desta
         // wave — o caminho é **exactamente** o de sempre, e o `bulge` lê `0` em toda a aresta.
-        let arcs: Option<&Vec<([f32; 2], f32)>> =
-            profile.arcs().get(ci).filter(|a| !a.is_empty());
+        let arcs: Option<&Vec<([f32; 2], f32)>> = profile.arcs().get(ci).filter(|a| !a.is_empty());
         let pts: Vec<[f32; 2]> = match arcs {
             Some(a) => a.iter().map(|(p, _)| *p).collect(),
             None => contour.clone(),
@@ -123,79 +122,38 @@ fn sd_profile_inner(profile: &Profile, u: &Tree, v: &Tree, axis_seam: bool) -> T
                         Some(acc) => acc.min(seg2),
                     });
                 }
-            } else {
-                // ── ARCO ──────────────────────────────────────────────────────────────────────
-                // Centro e raio saem da corda e do bulge, e são CONSTANTES — nada disto corre por
-                // amostra. `s` é a flecha com sinal; `k` a posição do centro sobre a mediatriz.
-                let l = (ex * ex + ey * ey).sqrt();
-                let s = bulge * l * 0.5;
-                let k = (s * s - (l * 0.5) * (l * 0.5)) / (2.0 * s);
-                let (mx, my) = ((ax + bx) * 0.5, (ay + by) * 0.5);
-                let (nx, ny) = (-ey / l, ex / l); // normal ESQUERDA unitária
-                let (cx, cy) = (mx + nx * k, my + ny * k);
-                let r = (s - k).abs();
-                // A direcção que bissecta o arco, e o cosseno do meio-ângulo: é com eles que se
-                // pergunta «o ponto cai DENTRO da cunha do arco?» sem uma única trigonométrica por
-                // amostra. O ponto médio do arco está em `(mx,my) + n̂·s`.
-                let (bx_m, by_m) = (mx + nx * s - cx, my + ny * s - cy);
-                let lm = (bx_m * bx_m + by_m * by_m).sqrt();
-                let (mhx, mhy) = (bx_m / lm, by_m / lm);
-                // `cos(θ/2)`: o cosseno do ângulo entre a bissectriz e o raio de uma das pontas.
-                let cos_meio = ((ax - cx) * mhx + (ay - cy) * mhy) / r;
+            }
 
-                let cwx = u.clone() - Tree::constant(cx);
-                let cwy = v.clone() - Tree::constant(cy);
-                let d2 = cwx.clone().square() + cwy.clone().square();
-                let d = crate::ops::safe_sqrt(d2.clone());
-                // Dentro da cunha: `(p−c)·m̂ ≥ cos(θ/2)·|p−c|`.
-                let proj = cwx.clone() * Tree::constant(mhx) + cwy.clone() * Tree::constant(mhy);
-                let na_cunha = proj
-                    .compare(d.clone() * Tree::constant(cos_meio))
-                    .max(0.0);
-                // Dentro da cunha a distância é radial; fora dela é a da ponta mais próxima.
-                let radial2 = (d.clone() - Tree::constant(r)).square();
-                let pa2 = wx.clone().square() + wy.clone().square();
-                let pb2 = (u.clone() - Tree::constant(bx)).square()
-                    + (v.clone() - Tree::constant(by)).square();
-                let ponta2 = pa2.min(pb2);
-                let arco2 = na_cunha.clone() * radial2
-                    + (Tree::constant(1.0) - na_cunha) * ponta2;
+            // O enrolamento da CORDA — o mesmo para recta e para arco.
+            let dir = above[j].clone() - above[i].clone();
+            let cross = Tree::constant(ex) * wy.clone() - Tree::constant(ey) * wx.clone();
+            if bulge != 0.0 {
+                // ── ARCO: a distância e a meia-lua saem da porta única ────────────────────────
+                // (`crate::profile_arc`). ⚠️ O `cross` e o `dir` passados são OS MESMOS nós do
+                // enrolamento da corda logo abaixo — é essa igualdade bit a bit que torna o empate
+                // de um ponto sobre a corda consistente entre as duas metades.
+                let k = crate::profile_arc::arco([ax, ay], [bx, by], bulge);
                 if fora_do_eixo {
+                    let arco2 = crate::profile_arc::dist2_tree(u, v, [ax, ay], [bx, by], &k);
                     dist2 = Some(match dist2 {
                         None => arco2,
                         Some(acc) => acc.min(arco2),
                     });
                 }
-
-                // ── o SINAL: a corda mais a correcção da MEIA-LUA ─────────────────────────────
-                // O enrolamento da CORDA entra igual ao de uma recta (logo abaixo). O que a corda
-                // não sabe é a meia-lua entre ela e o arco: um ponto ali está do lado errado.
-                //
-                // ⭐ A correcção é exacta e vale `∓1`: o ciclo «arco de a→b, corda de b→a» dá a
-                // volta à meia-lua uma vez, no sentido HORÁRIO quando o arco curva para a esquerda.
-                // ⚠️ Em paridade (`EvenOdd`) o sinal não importa — o que conta é cruzar ou não.
-                let dentro_do_circulo = Tree::constant(r * r).compare(d2).max(0.0);
-                let cross_corda = Tree::constant(ex) * wy.clone() - Tree::constant(ey) * wx.clone();
-                let do_lado_do_arco = if bulge > 0.0 {
-                    cross_corda.clone().compare(0.0).max(0.0)
-                } else {
-                    Tree::constant(0.0).compare(cross_corda.clone()).max(0.0)
-                };
-                let meia_lua = dentro_do_circulo * do_lado_do_arco;
-                let correccao = if non_zero {
-                    meia_lua * Tree::constant(if bulge > 0.0 { -1.0 } else { 1.0 })
-                } else {
-                    meia_lua
-                };
+                let meia = crate::profile_arc::meia_lua_raio_tree(
+                    u,
+                    v,
+                    [ex, ey],
+                    &k,
+                    &cross,
+                    &dir,
+                    non_zero,
+                );
                 crossings = Some(match crossings {
-                    None => correccao,
-                    Some(acc) => acc + correccao,
+                    None => meia,
+                    Some(acc) => acc + meia,
                 });
             }
-
-            // O enrolamento da CORDA — o mesmo para recta e para arco.
-            let dir = above[j].clone() - above[i].clone();
-            let cross = Tree::constant(ex) * wy - Tree::constant(ey) * wx;
             let hit = (dir.clone() * cross).compare(0.0).max(0.0);
             let term = if non_zero { dir * hit } else { hit };
             crossings = Some(match crossings {
@@ -391,6 +349,23 @@ pub fn sd_profile_in_region(
         if axis_seam && ax.abs() <= on_axis && f64::from(b[0]).abs() <= on_axis {
             continue;
         }
+        // ⭐⭐⭐ **O ARCO, quando a primitiva for um** (2026-09-16) — pela mesma porta da árvore
+        // global. Sem isto a região lia a polilinha densa, e o modo MODEL mostrava as facetas dela
+        // como faixas de luz (`12 196` picos na cena `5`, contra `0` na placa).
+        if let Some(k) = index.arco(*i) {
+            let arco2 = crate::profile_arc::dist2_tree(
+                u,
+                v,
+                [ax, ay],
+                [f64::from(b[0]), f64::from(b[1])],
+                &k,
+            );
+            dist2 = Some(match dist2 {
+                None => arco2,
+                Some(acc) => acc.min(arco2),
+            });
+            continue;
+        }
         let (ex, ey) = (f64::from(b[0]) - ax, f64::from(b[1]) - ay);
         let inv_ee = 1.0 / (ex * ex + ey * ey);
         let wx = u.clone() - Tree::constant(ax);
@@ -435,6 +410,16 @@ pub fn sd_profile_in_region(
     for i in crossing {
         w += crossing_term(index, i, u, v, anchor);
     }
+    // ⭐⭐⭐ **A meia-lua de cada arco que toca a região** — o que o enrolamento das CORDAS não sabe.
+    // ⚠️ O `orient` é o MESMO nó que o `d2` do atravessamento (ver [`orient_tree`]): o semi-aberto
+    // dele decide de que lado fica um ponto sobre a corda, e a meia-lua tem de concordar.
+    for i in index.sliver_edges(lo, hi) {
+        if let Some(k) = index.arco(i) {
+            let (a, b) = index.edge(i);
+            let cross = orient_tree(u, v, a, b);
+            w += crate::profile_arc::meia_lua_caminho_tree(u, v, &k, &cross, non_zero);
+        }
+    }
     let inside = if non_zero {
         w.abs().min(1.0)
     } else {
@@ -475,6 +460,15 @@ fn anchor_in(
     .find(|p| index.min_dist2_to(crossing, *p) > bar)
 }
 
+/// `orient(a, b, p)` como árvore — **uma** construção, para que o atravessamento e a meia-lua leiam o
+/// mesmo nó e, com ele, o mesmo empate.
+fn orient_tree(u: &Tree, v: &Tree, a: [f32; 2], b: [f32; 2]) -> Tree {
+    let (ax, ay) = (f64::from(a[0]), f64::from(a[1]));
+    let (ex, ey) = (f64::from(b[0]) - ax, f64::from(b[1]) - ay);
+    (v.clone() - Tree::constant(ay)) * Tree::constant(ex)
+        - (u.clone() - Tree::constant(ax)) * Tree::constant(ey)
+}
+
 /// **Quantas vezes (com sinal) a aresta atravessa o caminho `c → p`**, como árvore.
 ///
 /// ⚠️ **Sem `if`, como o resto do módulo.** Dois segmentos cruzam-se sse cada um separa os extremos
@@ -500,8 +494,7 @@ fn crossing_term(
     // d1 = orient(a, b, c) — CONSTANTE.
     let d1 = ex * (cy - ay) - ey * (cx - ax);
     // d2 = orient(a, b, p) — linear no ponto.
-    let d2 = (v.clone() - Tree::constant(ay)) * Tree::constant(ex)
-        - (u.clone() - Tree::constant(ax)) * Tree::constant(ey);
+    let d2 = orient_tree(u, v, a, b);
     // d3 = orient(c, p, a) e d4 = orient(c, p, b) — bilineares no ponto.
     let px = u.clone() - Tree::constant(cx);
     let py = v.clone() - Tree::constant(cy);

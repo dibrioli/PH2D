@@ -77,3 +77,15 @@ provavam as quinas do vaso como arcos em todo nível do `Resolution`; a app tra�
 `preview::coarse_doc` lhe dá, a mexer E parado, e ele trocava os arcos por uma polilinha `7×`–`83×`
 mais cara sempre que a polilinha encolhia (comparava `segment_count`; o custo é `prim_count`). ⇒ *o
 gate do produto passa pelo mesmo funil que a app — aqui, `coarse_doc(doc, mexer).unwrap_or(doc)`.*
+## ⛔⛔ O mesmo erro, um nível acima: a sonda cronometrava o MOTOR que o dono não usa (2026-09-16)
+A wave do arco mediu o vaso na **placa** (`paint_com`) e declarou-o liso e `2,95×` mais rápido. O dono
+fez o smoke no modo **MODEL** — que traça na **CPU** (`smoke_draw_thread::traca`: a placa só entra com
+`Shading::Render`) — e viu *«arestas ainda visíveis»*. A CPU especializa a árvore por região com um
+índice que ainda lia a polilinha: **`12 196` picos de faceta na CPU contra `0` na placa**, com a cura
+dentro do binário.
+**Why:** o modelador tem dois motores e cada MODO usa um; uma cura pode ser real e medida e não chegar
+ao modo onde o dono está. *Uma sonda que arma o caminho mais cómodo de medir mede o programa errado,
+mesmo sem nenhuma env var.*
+**How to apply:** antes de dizer «curado» num defeito visível, pergunte **que motor desenha o modo em
+que o dono vai olhar** (no modelador: MODEL → CPU, RENDER → placa) e meça esse. A sonda
+`device_probes::mede_as_faixas_do_vaso` mede os dois pela mesma régua.

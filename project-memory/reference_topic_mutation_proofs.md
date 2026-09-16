@@ -30,3 +30,10 @@ metadata:
 - ⛔ **Uma fixtura que parte do valor por OMISSÃO não distingue «recusou» de «escreveu o mesmo»**
   (mesma wave): o gate do índice fora-da-lista começava no `Point` e uma cura falsa que caísse no
   `Point` devolvia `false` na mesma. ⇒ a fixtura parte de um valor que **não** é o do fallback.
+## ⛔ Um corpus onde uma DESIGUALDADE nunca aperta não testa a desigualdade (2026-09-16)
+O corte espacial do índice usa dois limites conservadores com a FLECHA do arco (minorante e
+majorante). Das 8 mutações da cura do arco, **as duas que esqueciam a flecha SOBREVIVERAM** a cinco
+gates verdes — nenhuma região do corpus caía onde a flecha decide o corte. **How to apply:** quando
+uma lei é uma desigualdade conservadora, construa À MÃO a região onde ela aperta (a conta ao lado:
+«cintura» — o arco curva para a caixa e uma recta fecha o `dmax`; «pé» — a corda encosta à caixa e o
+arco foge), e só então a mutação morre.

@@ -70,6 +70,8 @@ pub mod ops_triangle;
 /// ⭐⭐⭐ **De quem é este ponto** — ver [`owners`].
 pub mod owners;
 pub mod profile;
+/// ⭐⭐⭐ A lei do ARCO, numa porta só — ver [`profile_arc`].
+pub(crate) mod profile_arc;
 /// ⭐⭐ O perfil como CONSULTA (W56) — a cura do custo linear nas arestas.
 pub mod profile_index;
 /// ⭐ A pilha de modificadores de um nó — ver [`stack`].

@@ -413,8 +413,7 @@ impl Profile {
                     bulges: 3,
                 });
             }
-            if a
-                .iter()
+            if a.iter()
                 .any(|(p, b)| !p[0].is_finite() || !p[1].is_finite() || !b.is_finite())
             {
                 return Err(ProfileError::NonFinite { contour: idx });
@@ -515,7 +514,7 @@ fn dedup_closed(pts: &[[f32; 2]]) -> Vec<[f32; 2]> {
     out
 }
 
-pub(crate) fn contour_bounds(c: &[[f32; 2]]) -> ([f32; 2], [f32; 2]) {
+fn contour_bounds(c: &[[f32; 2]]) -> ([f32; 2], [f32; 2]) {
     let mut min = [f32::INFINITY; 2];
     let mut max = [f32::NEG_INFINITY; 2];
     for p in c {

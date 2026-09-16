@@ -31,6 +31,9 @@ W5→W34 fechadas**, cada uma smokada por ele · a W2 tem o traçado no shell; o
 classe segue **aberto**. ⭐ **A linha está FECHADA e aguarda ordem de integração** — o handoff é
 [`handoffs/HANDOFF_INTEGRACAO_line_3DModeling_2026-08-22.md`](handoffs/HANDOFF_INTEGRACAO_line_3DModeling_2026-08-22.md)
 (DIRETRIZ §1.5.9), e o registro cronológico de sessão vive em [`handoffs/`](handoffs/README.md).
+⛔ **Os bugs cuja causa ENGANAVA** vivem em [`BUGS_3dmodeling.md`](BUGS_3dmodeling.md) — ⚠️ o
+primeiro é que o modelador tem **dois motores** (MODEL traça na CPU, RENDER na placa): uma cura
+medida num só não chega ao outro. Leia-o antes de dizer «curado» num defeito visível.
 
 ⚠️ **A tabela abaixo pára na W13 de propósito** — as waves **W14→W34** (perspectiva, gizmo em
 números, casca/afastamento, *draft*, a saída para arquivo, o extrator da casa, a ponte com a

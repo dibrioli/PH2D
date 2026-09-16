@@ -98,7 +98,7 @@ ela substitui.
 | «é o custo fixo de montar a fita» | `8,7` de `76,5 ms`, e escala com a fita (o cubo paga `1,9`) |
 | «é a ocupação / os registos» | `vivos = 33` desde o escalonador (§43); o cubo tem `6` e a `4` tem `69` |
 | «o *Resolution* resolve» | já está no nível mais grosseiro (§3) |
-| «a especialização por região já poda isto» | o custo é **linear** nas arestas de `12` a `94`; se a poda mordesse, a curva seria sublinear |
+| ~~«a especialização por região já poda isto»~~ | ⛔ **esta linha mediu o motor errado** (corrigida na Parte III): as sondas cronometram a PLACA, que **nunca** especializa por região — a linearidade não diz nada sobre a especialização. Quem a usa é a CPU (o modo MODEL), e foi lá que as faixas sobreviveram |
 
 ## §6 — ⏳ O que fica
 
@@ -110,8 +110,8 @@ ela substitui.
 - ⏳ **O `select×555` não foi auditado** — são ~`5,9` por aresta, e a hipótese é o teste de winding
   do preenchimento. Se metade dele for redundante com o `min` da distância, é uma segunda alavanca
   **na mesma fita**, e essa não precisa de modelo novo;
-- ⏳ **A especialização por região não está a morder neste caso** e ninguém mediu porquê. A
-  suspeita é a simetria do torno: um ladrilho do ecrã mapeia para uma faixa larga de `(r, y)`.
+- ~~⏳ A especialização por região não está a morder neste caso~~ — ⛔ **premissa errada** (Parte
+  III): a sonda cronometrava a placa, e a placa não especializa. A especialização é da CPU.
 
 ---
 
@@ -202,11 +202,82 @@ vazio e é avaliado pelo caminho de sempre, **ao bit**.
 
 ## §12 — ⏳ O que fica
 
-- ⏳ **A especialização por REGIÃO não usa arcos.** O `ProfileIndex` é construído da polilinha densa,
-  logo o caminho por ladrilho continua a pagar por aresta. Não é defeito de correcção (as duas
-  descrevem a mesma curva a menos da tolerância, e as suítes passam), é **ganho por colher** — e é
-  onde o vaso ainda tem `22 ms` de marcha;
+- ~~⏳ **A especialização por REGIÃO não usa arcos** … não é defeito de correcção … é **ganho por
+  colher**~~ — ⛔⛔ **ESTA NOTA ESTAVA ERRADA, e o smoke do dono desmentiu-a no dia seguinte** (Parte
+  III): era defeito, e **visível**. O modo MODEL traça na CPU pela especialização por região, e a
+  polilinha densa que ela lia tem normais que saltam a cada segmento — *«descrevem a mesma curva a
+  menos da tolerância» é uma frase sobre VALORES, e a luz lê a NORMAL* (a lição da W54, repetida por
+  mim). Curado na Parte III;
 - ⏳ **O `select×555` do vaso** era `~5,9` por aresta e continua por auditar na fita nova;
 - ⏳ **Uma quina acima de `~140°` fica tesselada**, porque uma cúbica não a representa dentro da
   tolerância. A saída publicada é partir a quina em duas cúbicas na emissão — wave da
   `ph2d-vec-scene`, não desta.
+
+---
+
+# PARTE III — as faixas que SOBREVIVERAM à cura (2026-09-16)
+
+> **Smoke do dono, com foto:** *«arestas ainda visíveis»* — faixas horizontais de luz no ombro do
+> vaso, no modo MODEL, com a cura da Parte II dentro do binário.
+> Registo completo do bug: [`docs/3DModeling/BUGS_3dmodeling.md`](../3DModeling/BUGS_3dmodeling.md) #1.
+
+## §13 — O mecanismo: dois motores, e a cura só tinha chegado a um
+
+O modo **RENDER** traça na placa; o modo **MODEL** traça na **CPU**, e a CPU especializa a árvore por
+ladrilho — a folha especializada lia o perfil por um `ProfileIndex` construído da **polilinha densa**.
+A Parte II pôs os arcos só na árvore **global**, logo só a placa ficou lisa.
+
+| motor (cena `5`, frente, `1920×1080`) | picos de faceta | maior pico |
+|---|---:|---:|
+| CPU, antes | **12 196** | **11,42°** |
+| placa, antes | 0 | — |
+| CPU com a especialização desligada (experiência) | 0 | — |
+| **CPU, depois** | **0** | — |
+
+## §14 — A cura: a lei do arco numa porta só
+
+`ph2d_field_eval::profile_arc` — as constantes (`arco`), a distância (árvore e escalar) e a meia-lua
+(para cada um dos dois caminhos do enrolamento) — lida pelos **três** leitores: a árvore global, a
+árvore por região e o `ProfileIndex`, que passa a indexar a **decomposição exacta** quando ela existe.
+
+⭐ **O corte espacial continua CONSERVADOR sem conhecer o arco**: todo ponto do arco está a menos da
+flecha da corda, logo `d(região, arco) ≥ d(região, corda) − flecha` (minorante) e `d(p, arco) ≤ d(p,
+corda) + flecha` (majorante, cujo máximo sobre a região continua num vértice porque a distância à
+corda é convexa).
+
+## §15 — ⛔⛔ Dois defeitos a mais, achados pelos gates novos
+
+1. **O empate sobre a corda, na árvore global — meu, da Parte II.** Um ponto EXACTAMENTE sobre a corda
+   lia o sinal trocado (`+0,0437` a `0,0437` de profundidade dentro da peça). O enrolamento pelo raio
+   põe esse ponto do lado `−dir`; a meia-lua da Parte II usava um teste estrito. ⇒ cada caminho tem a
+   sua regra de empate e a meia-lua copia-a (ver o cabeçalho do `profile_arc`).
+   ⚠️ **O gate da Parte II nunca o viu**: a grelha dele nunca caiu numa corda. *Os pontos PÕEM-SE.*
+2. **O canto de célula sobre uma aresta, no índice — antigo.** A partida do caminho do sinal era um
+   canto da grelha, com o enrolamento tirado do RAIO e o caminho do SEMI-ABERTO; sobre uma aresta
+   discordam. É o defeito da W56 um nível abaixo; as cordas redondas punham arestas nos cantos. Só a
+   **paridade** o denunciou (`NonZero` lia `−2`, que também é «dentro»).
+
+## §16 — As réguas, e as duas que caíram
+
+- ⛔ **O salto MÁXIMO da normal** leu `82–85°` nos dois motores — o eixo e as oclusões. ⇒ picos
+  isolados com continuidade no mundo.
+- ⛔ **O primeiro vermelho do gate por região era pelo motivo errado** (`0,088` de discordância, muito
+  acima da flecha de uma faceta) — o **controlo sem arcos** leu `0`, o que provou o gate são e apontou
+  o defeito #1 acima.
+
+## §17 — As provas
+
+**8 mutações, 8 mortas** (a tabela está no registo do bug). ⚠️ **Duas sobreviveram à 1.ª ronda** —
+esquecer a flecha no minorante ou no majorante do corte —, porque nenhuma região do corpus caía onde
+a flecha decide; o gate `o_corte_por_regiao_guarda_a_primitiva_que_a_flecha_decide` tem as duas
+regiões construídas à mão («cintura» e «pé»), com a conta ao lado.
+
+⭐ **O oráculo é analítico**: a distância com sinal do *round box* julga os três leitores nos pontos
+postos sobre as cordas, nas quatro combinações de sentido × preenchimento.
+
+## §18 — ⏳ O que fica
+
+- ⏳ **O `select×555` do vaso** continua por auditar na fita nova;
+- ⏳ **Uma quina acima de `~140°` fica tesselada** (uma cúbica não a representa dentro da tolerância);
+- ⏳ **A lei do SEGMENTO continua escrita em dois sítios** (`sd_profile_inner` e `sd_profile_in_region`)
+  — pré-existente; a do ARCO já não.

@@ -491,3 +491,50 @@ fn audita_o_arredondamento_do_vaso() {
         );
     }
 }
+
+/// ⭐⭐⭐ **AS FAIXAS DO VASO** (smoke do dono, 2026-09-16: *«arestas ainda visíveis»*, com foto).
+///
+/// A régua é a **assinatura de uma FACETA**: ao descer uma coluna, a normal fica quase parada,
+/// **salta** de uma vez, e volta a ficar parada — *plano, plano, SALTO, plano, plano*. Uma superfície
+/// lisa muda a normal DEVAGAR e por igual; uma curva de raio pequeno muda-a DEPRESSA, mas também
+/// por igual. Só a faceta faz um PICO isolado entre vizinhos calmos.
+///
+/// ⛔ **A 1.ª versão desta régua media o salto MÁXIMO e caiu:** os dois motores leram `82–85°` no
+/// mesmo pixel, que era a coluna do EIXO (o pólo do torno) e as fronteiras de OCLUSÃO (o lábio à
+/// frente da parede interna — dois pixels que acertam superfícies diferentes). ⇒ esta exige
+/// **continuidade no mundo** entre os pixels e conta **picos**, não máximos.
+///
+/// Mede os DOIS motores do produto pela mesma régua, com a câmara na **vista de frente** — a da foto.
+#[test]
+#[ignore = "sonda de auditoria: pede adaptador"]
+fn mede_as_faixas_do_vaso() {
+    // A régua é a do gate — uma só (`vaso_sem_facetas_tests::facetas`).
+    let facetas = |g: &ph2d_field_render::Gbuffer, p: f32| {
+        let (n, med, mx, _) = super::vaso_sem_facetas_tests::facetas(g, p);
+        (n, med, mx)
+    };
+    let doc = crate::smoke::scene(5);
+    let reg = crate::smoke::sampled_registry();
+    let cam = super::vaso_sem_facetas_tests::camara_de_frente();
+    // O tamanho de um pixel no mundo, para a continuidade: a meia-largura da vista sobre meia tela.
+    #[allow(clippy::cast_precision_loss)]
+    let passo = 2.0 * cam.half_extent / LH as f32;
+    println!(
+        "\n  ociosa {:.0} % · vista de FRENTE · motor · picos de faceta · passo mediano · maior pico",
+        cpu_ociosa_pct()
+    );
+    let cpu = ph2d_field_render::trace(&doc, &reg, &cam, LW, LH);
+    let (n, med, mx) = facetas(&cpu, passo);
+    println!("  CPU (traçado)       · {n:>7} · {med:>6.3}° · {mx:>6.2}°");
+    if let Some(t) = crate::gpu_frame::shared() {
+        let luz = [crate::gpu_frame::tests_lampada(&cam).world];
+        if let Some((dev, _)) = crate::gpu_frame::march(t, &doc, &reg, &cam, &luz, LW, LH, false) {
+            let (n, med, mx) = facetas(&dev, passo);
+            println!("  placa (dispositivo) · {n:>7} · {med:>6.3}° · {mx:>6.2}°");
+        } else {
+            println!("  placa: recusou a peça");
+        }
+    } else {
+        println!("  placa: sem adaptador");
+    }
+}

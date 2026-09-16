@@ -237,10 +237,7 @@ fn fill_rule(r: ph2d_vec_scene::FillRule) -> FillRule {
 /// deixou de ser a forma.** Dois gates que já existiam apanharam-no na primeira corrida — a
 /// tolerância do achatamento passou a medir a corda, e um furo mediu `0,2828` em vez de `0,4`.
 /// *Uma vista nova não pode tomar o lugar da que os consumidores já lêem.*
-fn flatten_contour(
-    verts: &[VecVertex],
-    tolerance: f64,
-) -> ph2d_field::ContourWithArcs {
+fn flatten_contour(verts: &[VecVertex], tolerance: f64) -> ph2d_field::ContourWithArcs {
     (
         flatten_contour_reto(verts, tolerance),
         decomposicao_exacta(verts, tolerance),
@@ -308,7 +305,13 @@ fn decomposicao_exacta(verts: &[VecVertex], tolerance: f64) -> Vec<ph2d_field::A
 /// ⚠️ **A barra é a TOLERÂNCIA de cozimento, a mesma com que o achatamento trabalharia** — não um
 /// número novo. *Um arco aceite aqui erra menos do que os segmentos que ele substitui, por
 /// construção: aqueles têm a tolerância como erro de corda, este tem-na como erro máximo.*
-fn bulge_do_cubico(p0: [f64; 2], p1: [f64; 2], p2: [f64; 2], p3: [f64; 2], tol: f64) -> Option<f64> {
+fn bulge_do_cubico(
+    p0: [f64; 2],
+    p1: [f64; 2],
+    p2: [f64; 2],
+    p3: [f64; 2],
+    tol: f64,
+) -> Option<f64> {
     let (dx, dy) = (p3[0] - p0[0], p3[1] - p0[1]);
     let l = dx.hypot(dy);
     if !l.is_finite() || l <= tol {

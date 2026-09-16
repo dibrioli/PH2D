@@ -51,3 +51,20 @@ Vizinhas que ficam no índice por serem gerais: [[feedback_a_gate_that_measures_
 
 - ⛔⛔ **Uma cúbica NÃO é um círculo — erra `2,7253e-4·r` no quarto canónico** (16/09): a barra de «esta cúbica é um arco?» não pode ser a tolerância de achatamento (ela divide-se pelo `Resolution` e o erro da cúbica não) — com ela um CÍRCULO nunca era arco e subir o botão desfazia os arcos. A barra é `max(tol, 2,7254e-4·r)`, e arcos acima de `90°` escrevem-se em duas cúbicas (a lei que o `shapes::arc` da casa já tinha). Ver `docs/3DModeling/BUGS_3dmodeling.md` #2.
 - ⛔ **«Só uma operação tem filhos» valia para todos MENOS a raiz** (16/09): a nota dizia *«raiz-forma é um caso que não existe hoje»* e duas cenas de smoke nascem assim; a paleta pendura na raiz ⇒ a forma nova aparecia na Hierarquia e não no ecrã. A raiz não se embrulha (é dona da peça): vira a união NO MESMO SÍTIO e a forma desce com o que é dela. `BUGS_3dmodeling.md` #4.
+## ⛔⛔ Um sinal escrito em DUAS metades tem de concordar no EMPATE (2026-09-16)
+O sinal de um perfil com arcos é o enrolamento das CORDAS + a correcção da MEIA-LUA. Um ponto
+**exactamente sobre a corda** lia o sinal trocado (`+0,0437` a `0,0437` DENTRO da peça): o raio `+x`
+punha-o do lado `−dir` e a meia-lua usava um teste estrito que o punha do outro. **Why:** cada caminho
+do enrolamento tem uma regra de empate (raio: `−dir`, ou `sinal(eₓ)` numa corda horizontal; caminho
+âncora→ponto: o semi-aberto, `≥ 0`), e a correcção tem de copiar a do caminho que a acompanha —
+lendo **o mesmo nó** `cross` para que a igualdade seja bit a bit. **How to apply:** ao somar dois
+termos cujo empate cai no mesmo conjunto de medida nula, derive a regra de empate do termo que já
+existe e ponha **pontos em cima** desse conjunto no gate (a grelha do gate anterior nunca o viu).
+⚠️ E o mesmo defeito existia no índice a um nível abaixo (o canto da célula sobre uma aresta, raio
+contra caminho) — `NonZero` mascarava-o a `−2`; só a **paridade** o denunciou.
+## ⛔ «Descrevem a mesma curva a menos da tolerância» é uma frase sobre VALORES (2026-09-16)
+Escrevi-a para arquivar a especialização por região sem arcos como «ganho por colher, não defeito», e
+o smoke do dono desmentiu-a no dia seguinte: a polilinha densa está a `~1e-4` do arco e a NORMAL dela
+salta `11,42°` a cada segmento. É a lição da W54 (*a régua da suavidade é a normal*), repetida por mim
+dois meses depois. **How to apply:** antes de arquivar uma diferença como «dentro da tolerância»,
+meça a NORMAL, não o valor.

@@ -566,10 +566,7 @@ fn amostra_da_decomposicao(arcs: &[([f32; 2], f32)]) -> Vec<[f32; 2]> {
         let l = dx.hypot(dy);
         let s = bulge * l * 0.5;
         let k = (s * s - (l * 0.5) * (l * 0.5)) / (2.0 * s);
-        let (mx, my) = (
-            f64::from(a[0] + b[0]) * 0.5,
-            f64::from(a[1] + b[1]) * 0.5,
-        );
+        let (mx, my) = (f64::from(a[0] + b[0]) * 0.5, f64::from(a[1] + b[1]) * 0.5);
         let (nx, ny) = (-dy / l, dx / l);
         let (cx, cy) = (mx + nx * k, my + ny * k);
         let r = (s - k).abs();

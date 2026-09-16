@@ -6,6 +6,20 @@
 
 use super::Edge;
 
+/// ⭐ **A distância² à PRIMITIVA** — a corda numa recta, a porta do arco num arco.
+pub(super) fn edge_dist2(p: [f32; 2], e: &Edge) -> f32 {
+    match e.arco {
+        None => seg_dist2(p, e),
+        #[allow(clippy::cast_possible_truncation)]
+        Some(k) => crate::profile_arc::dist2(
+            [f64::from(p[0]), f64::from(p[1])],
+            [f64::from(e.a[0]), f64::from(e.a[1])],
+            [f64::from(e.b[0]), f64::from(e.b[1])],
+            &k,
+        ) as f32,
+    }
+}
+
 pub(super) fn seg_dist2(p: [f32; 2], e: &Edge) -> f32 {
     let w = [p[0] - e.a[0], p[1] - e.a[1]];
     let h = (w[0].mul_add(e.e[0], w[1] * e.e[1]) * e.inv_ee).clamp(0.0, 1.0);
@@ -104,4 +118,33 @@ pub(super) fn box_dist2(p: [f32; 2], lo: [f32; 2], hi: [f32; 2]) -> f32 {
     let dx = (lo[0] - p[0]).max(0.0).max(p[0] - hi[0]);
     let dy = (lo[1] - p[1]).max(0.0).max(p[1] - hi[1]);
     dx.mul_add(dx, dy * dy)
+}
+
+/// ⭐ **O MAJORANTE da distância de uma região (dada pelos vértices) a uma primitiva.**
+///
+/// A distância à corda é convexa ⇒ o máximo está num vértice. Para um arco, `d(p, arco) ≤ d(p,
+/// corda) + flecha` em todo ponto — logo somar a flecha ao máximo da corda é um majorante honesto,
+/// sem saber onde o arco está. *Um majorante pequeno demais deitaria fora a primitiva mais próxima,
+/// e a esfera-marcha atravessaria a peça.*
+pub(super) fn longe2(e: &Edge, vertices: &[[f32; 2]]) -> f32 {
+    let corda = vertices
+        .iter()
+        .fold(0.0f32, |acc, c| acc.max(seg_dist2(*c, e)));
+    let f = e.flecha();
+    if f == 0.0 {
+        corda
+    } else {
+        (corda.sqrt() + f).powi(2)
+    }
+}
+
+/// ⭐ **O MINORANTE da distância de uma região a uma primitiva**, a partir do da corda: `d(região,
+/// arco) ≥ d(região, corda) − flecha`.
+pub(super) fn perto2(e: &Edge, corda2: f32) -> f32 {
+    let f = e.flecha();
+    if f == 0.0 {
+        corda2
+    } else {
+        (corda2.sqrt() - f).max(0.0).powi(2)
+    }
 }

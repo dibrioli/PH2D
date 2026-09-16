@@ -44,3 +44,30 @@ fn o_cerebro_anuncia_antes_de_a_tabela_de_accoes_ler() {
         "o cerebro e a tabela nao podem partilhar cursor"
     );
 }
+
+/// ⭐⭐⭐ **E os SCRIPTS do artista falam na mesma janela** (TOP-20 #16): um `ph2d.emit` tem de chegar
+/// à tabela de acções no MESMO quadro.
+///
+/// **Mutação que deve sangrar:** mover o bloco dos scripts para depois da tabela.
+#[test]
+fn o_script_emite_antes_de_a_tabela_de_accoes_ler() {
+    let src = crate::frame_text::render_frame();
+    let script = src
+        .find("script_bridge::frame(")
+        .expect("os scripts nao correm no quadro — o componente seria inerte");
+    let tabela = src
+        .find(".read(&mut self.signal_readers.action)")
+        .expect("a tabela de accoes mudou de forma");
+    assert!(
+        script < tabela,
+        "a tabela de accoes le' ANTES de os scripts emitirem: um `ph2d.emit` chegaria um quadro \
+         atrasado"
+    );
+    let leitura = src
+        .find(".read(&mut self.signal_readers.script)")
+        .expect("os scripts nao tem cursor proprio");
+    assert!(
+        leitura < script,
+        "o `on_signal` tem de ouvir os sinais DESTE quadro"
+    );
+}

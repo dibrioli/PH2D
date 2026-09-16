@@ -18,6 +18,7 @@ impl crate::App {
         timer_signals: Vec<timer_tick::TimerSignal>,
         deaths: Vec<ph2d_ecs::Death>,
         camera_rect: Option<([f32; 2], [f32; 2])>,
+        ticks: u32,
     ) {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
@@ -28,6 +29,7 @@ impl crate::App {
             toasts,
             physics,
             tags,
+            script,
             ..
         } = FrameGfx::of(gfx);
 
@@ -136,6 +138,37 @@ impl crate::App {
                         &sig.name,
                         sig.entity.to_bits(),
                     ));
+            }
+        }
+        // ⭐⭐⭐ **OS SCRIPTS DO ARTISTA** (TOP-20 #16) — na janela dos cérebros e pela mesma razão: o
+        // que um script emite chega à tabela de acções NESTE quadro. O corpo mora na
+        // `ph2d_app_components::script_bridge`; aqui fica a ORDEM. ⚠️ O cursor lê em TODO quadro,
+        // mesmo parado (a lei do `ui_signal_reader`), e uma falha imprime UMA linha — a mensagem
+        // fica no Inspector.
+        {
+            let ouvidos: Vec<String> = self
+                .signals
+                .read(&mut self.signal_readers.script)
+                .map(|s| s.name.to_string())
+                .collect();
+            if let Some(host) = script.as_mut() {
+                let nomes: Vec<&str> = ouvidos.iter().map(String::as_str).collect();
+                let f = ph2d_app_components::script_bridge::frame(
+                    host,
+                    sim,
+                    &mut self.preview_drive,
+                    self.playhead.is_playing(),
+                    ticks,
+                    self.fixed_step.fixed_dt(),
+                    &nomes,
+                );
+                for (bits, nome) in f.emitted {
+                    self.signals
+                        .publish(ph2d_runtime::Signal::from_script(&nome, bits));
+                }
+                for (bits, msg) in f.failed {
+                    eprintln!("[script] o objecto {bits} parou: {msg}");
+                }
             }
         }
         // ⭐⭐⭐ **O CONSUMIDOR QUE FAZ ALGUMA COISA** (TOP-20 #5) — a tabela nome → acção.

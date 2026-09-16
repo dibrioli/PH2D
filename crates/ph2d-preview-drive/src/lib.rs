@@ -103,6 +103,17 @@ pub enum Driver {
     /// mesma fronteira que o `Timer` não precisou de declarar (o relógio dele não é registado) e
     /// que esta metade da família precisa.
     SignalVisibility,
+    /// ⭐⭐⭐ **A pose que um SCRIPT do artista escreve durante a corrida** (TOP-20 #16).
+    ///
+    /// ⚠️ **Não é o [`Self::SolverPose`], e a razão é a do [`Self::PrefabStage`]:** a chave do ledger
+    /// é `(entidade, driver)`, e um objecto que seja também um corpo teria duas mãos na mesma
+    /// entrada — o *«outra mão escreveu»* de uma engoliria o autorado da outra.
+    ///
+    /// ⚠️ **E ele é um condutor PERSISTENTE durante a corrida inteira** (a ponte declara-o também nos
+    /// quadros em que o script não escreveu, e com a corrida pausada): um script que PAROU de mexer
+    /// não ACABOU — sem isso a `settle` promovia a pose da corrida a documento, e o rebobinar já não
+    /// tinha para onde voltar.
+    ScriptPose,
 }
 
 /// **O FACTO que um motor escreve** — o recorte exacto do componente que é dele, e nada mais.
@@ -151,6 +162,8 @@ pub enum Driven {
     /// ⚠️ **Um `bool` e não o componente**, pela lei do recorte: a `Visibility` tem UM campo hoje,
     /// e guardar o struct faria um campo novo dela entrar na pré-visualização sem ninguém decidir.
     Visible(bool),
+    /// ⭐ **A pose de um objecto movido por script** — ver [`Driver::ScriptPose`].
+    ScriptPose(Transform),
 }
 
 impl Driven {
@@ -165,6 +178,7 @@ impl Driven {
             Self::JointParams(_) => Driver::JointParams,
             Self::StagePose(_) => Driver::PrefabStage,
             Self::Visible(_) => Driver::SignalVisibility,
+            Self::ScriptPose(_) => Driver::ScriptPose,
         }
     }
 
@@ -204,6 +218,7 @@ impl Driven {
             Driver::SignalVisibility => Some(Self::Visible(
                 sim.world().get::<ph2d_ecs::Visibility>(entity)?.hidden,
             )),
+            Driver::ScriptPose => Some(Self::ScriptPose(*sim.world().get::<Transform>(entity)?)),
         }
     }
 
@@ -281,7 +296,7 @@ impl Driven {
                     *cur = j;
                 }
             }
-            Self::StagePose(pose) => {
+            Self::StagePose(pose) | Self::ScriptPose(pose) => {
                 if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity)
                     && *t != pose
                 {

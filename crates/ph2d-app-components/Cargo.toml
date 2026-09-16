@@ -66,6 +66,10 @@ ph2d-asset-index = { path = "../ph2d-asset-index" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-panel-asset-browser = { path = "../ph2d-panel-asset-browser" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive" }
+# ⭐ **Os scripts do artista** (TOP-20 #16): a ponte (`script_bridge`) e a cena de smoke falam com o
+# `ScriptHost` e anexam o `LuauScript`. ⚠️ A VM (`mlua` + Luau) já é compilada pela shell, logo esta
+# aresta não acrescenta uma unidade à build do binário — só à dos testes desta crate.
+ph2d-script = { path = "../ph2d-script" }
 ph2d-thumbnail = { path = "../ph2d-thumbnail" }
 # ⭐ **A árvore de tags do projecto** (TOP-20 #9): o formato dela dentro do `ProjectState`
 # (`tags_doc`) vive nesta família, e a shell só o chama. O `serde` é o do par de fio (`SavedTag`):

@@ -52,7 +52,13 @@ impl crate::App {
         self.fase_timeline_containers(container, keys_mode);
         self.fase_timeline_drain(container, dragging_entity, keys_mode, selected_now);
         self.fase_physics_step(player_input);
-        self.fase_signal_outbox(anim_signals, timer_signals, deaths, camera_rect);
+        self.fase_signal_outbox(
+            anim_signals,
+            timer_signals,
+            deaths,
+            camera_rect,
+            report.ticks,
+        );
         self.fase_open_recipe();
         self.fase_sim_extract(dt, preview_overrides, sheet_preview, ppm, default_filter);
         Some((report, tool_preview_bits))

@@ -170,6 +170,16 @@ pub enum SignalOrigin {
         /// Quem pensou — a entidade que carrega a máquina.
         source: EntityBits,
     },
+    /// ⭐⭐⭐ **Um SCRIPT do artista emitiu este nome** (`ph2d.emit`, TOP-20 #16).
+    ///
+    /// ⚠️ **É a regra de produto do levantamento, e esta variante é o que a torna possível:** um
+    /// script liga-se ao mundo pelos MESMOS sinais da tabela de acções, nunca por referência directa
+    /// a outro objecto — então o que ele diz tem de entrar no mesmo outbox que o resto da casa.
+    /// ⚠️ Sem contagem: duas chamadas a `ph2d.emit` num gancho são dois factos.
+    Script {
+        /// Quem emitiu — a entidade que carrega o script.
+        source: EntityBits,
+    },
 }
 
 /// Um sinal publicado neste quadro.
@@ -270,6 +280,17 @@ impl Signal {
         Self {
             name: Arc::from(name),
             origin: SignalOrigin::StateMachine {
+                source: EntityBits(source),
+            },
+        }
+    }
+
+    /// **Um script emitiu este nome** ([`SignalOrigin::Script`]).
+    #[must_use]
+    pub fn from_script(name: &str, source: u64) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::Script {
                 source: EntityBits(source),
             },
         }

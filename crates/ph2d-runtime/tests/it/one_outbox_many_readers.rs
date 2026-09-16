@@ -53,6 +53,9 @@ impl Host {
                 SignalOrigin::StateMachine { source } => {
                     format!("{} cerebro {}", sig.name, source.0)
                 }
+                SignalOrigin::Script { source } => {
+                    format!("{} script {}", sig.name, source.0)
+                }
             });
         }
     }

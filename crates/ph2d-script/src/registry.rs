@@ -12,7 +12,10 @@ use crate::component::LuauScript;
 /// [`ComponentRegistry`]. Shell calls this once at boot alongside
 /// `register_ecs_components` and `register_render_components`.
 pub fn register_script_components(reg: &mut ComponentRegistry) {
-    reg.register::<LuauScript>("ph2d::script::LuauScript");
+    // ⚠️ `register_default` desde o TOP-20 #16: a paleta do `+` anexa o PONTO NEUTRO do tipo (um
+    // script sem ficheiro), e sem esta porta o descritor `Authored` prometeria o que não constrói
+    // (gate `every_offered_component_can_be_constructed`, na shell).
+    reg.register_default::<LuauScript>("ph2d::script::LuauScript");
 }
 
 #[cfg(test)]

@@ -49,3 +49,31 @@ fn a_porta_do_rebobinar_e_chamada_pelo_invariante_do_transporte() {
          repor o vivo com o relogio a andar apagaria a corrida a 60 Hz"
     );
 }
+
+/// ⭐ **E os SCRIPTS do artista renascem no MESMO invariante** (TOP-20 #16). A VM não mora no mundo,
+/// então a porta da família `Logic` não os alcança — a irmã dela é a da ponte.
+///
+/// **Mutação que deve sangrar:** apagar a chamada, ou tirá-la de dentro da guarda.
+#[test]
+fn os_scripts_renascem_no_invariante_do_transporte() {
+    let src = fonte("render_loop/fase_fabrica_e_morte.rs");
+    let codigo: String = src
+        .lines()
+        .map(|l| match l.find("//") {
+            Some(i) => &l[..i],
+            None => l,
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let guarda = codigo
+        .find("self.playhead.time() <= 0.0")
+        .expect("o invariante do rebobinar tem de existir neste ficheiro");
+    let chamada = codigo.find("script_bridge::rewind(").expect(
+        "os scripts nao renascem ao rebobinar: o `self` da corrida anterior continuaria, e a pose \
+         que a corrida escreveu nao voltaria a do artista",
+    );
+    assert!(
+        chamada > guarda,
+        "o renascer dos scripts tem de correr DENTRO do invariante do rebobinar"
+    );
+}

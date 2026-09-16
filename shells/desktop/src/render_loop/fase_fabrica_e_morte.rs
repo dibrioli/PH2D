@@ -37,6 +37,7 @@ impl crate::App {
             vec_scene,
             tags,
             physics,
+            script,
             ..
         } = FrameGfx::of(gfx);
         let registry: &ph2d_ecs::scene::ComponentRegistry = component_registry;
@@ -159,7 +160,14 @@ impl crate::App {
             // ⚠️ **Aqui, dentro do MESMO invariante**, e não num gancho próprio: o transporte tem
             // mais de um caminho até ao zero (o botão, o arrasto da régua, o reset do documento),
             // e um gancho em cada um é a lista que envelhece.
-            let repostos = ph2d_ecs::rewind_runtime::rewind_runtime_state(sim.world_mut());
+            let mut repostos = ph2d_ecs::rewind_runtime::rewind_runtime_state(sim.world_mut());
+            // ⭐ **E os SCRIPTS do artista renascem com eles** (TOP-20 #16): a VM não mora no mundo,
+            // então a porta da família `Logic` não os alcança — a irmã dela é a da ponte, que também
+            // devolve a pose que a corrida escreveu.
+            if let Some(host) = script.as_mut() {
+                repostos +=
+                    ph2d_app_components::script_bridge::rewind(host, sim, &mut self.preview_drive);
+            }
             if self.signal_readers.logging() && repostos > 0 {
                 eprintln!("[rebobinar] {repostos} estado(s) vivo(s) reposto(s)");
             }

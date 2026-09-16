@@ -11,8 +11,8 @@
 //!
 //! ⚠️ **`register_field_components` É chamado no boot** (`init.rs:517`) desde a ADR-0161, com
 //! o comentário a dizer porquê: *"sem esta linha o WorldSnapshot descarta o componente EM
-//! SILENCIO, e o sintoma é o objeto sumir ao desfazer"*. É a mesma armadilha que ainda apanha
-//! o `LuauScript` ([`super::script`]).
+//! SILENCIO, e o sintoma é o objeto sumir ao desfazer"*. É a mesma armadilha que apanhou o
+//! `LuauScript` até ao TOP-20 #16 ([`super::script`]).
 
 use crate::{ComponentCategory as C, ComponentDesc as D};
 

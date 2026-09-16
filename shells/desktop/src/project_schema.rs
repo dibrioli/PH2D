@@ -453,4 +453,19 @@
 /// tem o componente, logo lê-se inteiro por este binário.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — é a **décima sétima** vez.
-pub(crate) const PROJECT_SCHEMA: u32 = 133;
+/// # 133 -> 134 — o SCRIPT DO ARTISTA passa a ser GRAVADO (TOP-20 #16, `line/components`)
+///
+/// ⚠️ **Nenhum tipo novo, e o número sobe mesmo assim:** o `ph2d::script::LuauScript` existia desde
+/// o M14 e o registador dele **não era chamado no boot** — o `WorldSnapshot` descartava-o EM
+/// SILÊNCIO. Entrar no `build_component_registry` é o que muda o que o FICHEIRO contém (um blob por
+/// objecto com script), e é isso que o número mede.
+///
+/// ⚠️ **A forma do componente também mudou na mesma wave** (`{ bytecode, lateral_key }` →
+/// `{ source, own }`), e ⛔ **isso não pede migração**: a forma velha **nunca foi gravada**. A
+/// antiga carregava `entity.to_bits()` dentro dos bytes — o veneno do undo que o §5 proíbe.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v133 não
+/// tem blob de script, logo lê-se inteiro por este binário.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima oitava** vez.
+pub(crate) const PROJECT_SCHEMA: u32 = 134;

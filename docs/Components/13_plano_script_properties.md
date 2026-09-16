@@ -239,3 +239,20 @@ número escolhido.
 ## §7 — ⚠️ As premissas DESTE plano que a implementação derrubou
 
 *(escrito durante a construção, não depois — a §6 acima fica como foi planeada, de propósito)*
+
+1. ⛔ **«O Godot guarda o valor próprio como o artista o escreveu»** — a primeira leitura do Q3 era
+   essa, e o oráculo desmentiu-a: um valor **igual ao default** não entra no `.tscn`, logo o objecto
+   **segue** o default seguinte. Daí a divergência D1, que não estava no esboço do plano.
+2. ⛔ **«O `SignalOrigin` e o `Driver` fecham por `match` fora das crates deles»** — medido por grep
+   antes de acrescentar: o `Driver`/`Driven` **não** têm `match` fora do `ph2d-preview-drive`, e o
+   `SignalOrigin` tem **dois** (o log da shell e o teste do `ph2d-runtime`), os dois exaustivos — o
+   compilador apontou-os, como devia.
+3. ⛔ **«A ponte é uma fase-filha própria (`fase_scene_scripts`)»** — o `fase_signal_outbox` segura o
+   `sim` emprestado do princípio ao fim do corpo, e uma chamada `self.fase_*` a meio é um segundo
+   empréstimo de `self`. Uma fase-filha só cabia **depois** da tabela de acções — e aí um
+   `ph2d.emit` chegaria um quadro atrasado. ⇒ o bloco vive **dentro** da fase, na janela dos
+   cérebros, e o corpo continua na `ph2d-app-components` (a shell ganha ~30 linhas, não uma fase).
+4. ⚠️ **O registo das fixturas da família também é um espelho do boot** — o gate
+   `o_registo_das_fixturas_e_o_do_produto` reprovou com os dois nomes lado a lado até o sexto
+   registador entrar em `component_registry_for_tests`. *É o gate a fazer exactamente o que o
+   cabeçalho dele promete.*

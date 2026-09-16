@@ -22,11 +22,10 @@ use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
 
 /// O registo **completo** — os SEIS registradores.
 ///
-/// ⚠️ **Deliberadamente diferente do boot.** O `init.rs` chama cinco
-/// (`register_script_components` fica de fora, e a consequência está escrita no
-/// `catalog/script.rs`: o `LuauScript` não é salvo nem desfeito). O censo mede os tipos que
-/// **existem**, não os que hoje arrancam — senão o dia em que alguém ligar o sexto
-/// registador o catálogo estaria em falta, e o gate teria estado verde até lá.
+/// ⚠️ **Era deliberadamente diferente do boot, e deixou de ser em 2026-09-16** (TOP-20 #16): o
+/// `init.rs` chamava cinco e o `register_script_components` ficava de fora. O censo media os tipos
+/// que **existem**, não os que arrancavam — e foi por isso que, no dia em que o sexto registador
+/// entrou no boot, o catálogo **já** tinha a linha dele e só a casa `Attach` teve de mudar.
 ///
 /// ⚠️⚠️ **Esta lista é a SEGUNDA cópia da do `init.rs`, e ela acabou de se provar útil:** ao
 /// tirar o esqueleto da fundação em 2026-09-06 (`ph2d-skeleton-ecs`, o módulo próprio), o

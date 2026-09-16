@@ -111,6 +111,8 @@ pub mod prefab_stage;
 /// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
 pub mod projectile_smoke;
 pub mod scene_ctx;
+/// ⭐ TOP-20 #16 — a ponte dos scripts do artista (o quadro, o ledger e o rebobinar).
+pub mod script_bridge;
 pub mod signal_action_smoke;
 /// ⭐⭐⭐ O smoke do CÉREBRO AUTORÁVEL (TOP-20 #15) — ver o cabeçalho.
 pub mod statemachine_smoke;

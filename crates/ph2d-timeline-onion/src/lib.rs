@@ -185,7 +185,12 @@ fn ghost_mesh(
         )
     };
     let (p2l, pele) = ph2d_skeleton_live::skin_image::deform_field_with(
-        sim, entity, rest.mesh.size, ppm, index, &poses,
+        sim,
+        entity,
+        rest.mesh.size,
+        ppm,
+        index,
+        &poses,
     )?;
     // ⭐ **O fantasma usa os MESMOS pesos guardados que o quadro vivo** — se ele caísse na lei
     // derivada, o passado desenhado não seria a arte que o animador tem na mão.

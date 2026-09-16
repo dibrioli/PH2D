@@ -391,8 +391,24 @@ pub fn bind(
 fn tendons_for(sim: &SimWorld, ossos: &[Entity], shape_inv: Xform) -> Vec<Tendon> {
     tendons_and_axes(sim, ossos, shape_inv)
         .into_iter()
-        .map(|(t, _)| t)
+        .map(|o| o.tendon)
         .collect()
+}
+
+/// ⭐⭐ **UM OSSO PRESO: o tendão que se guarda MAIS o eixo dele**, no espaço da coisa deformada.
+///
+/// ⚠️ **Os dois viajam juntos porque a coluna `j` da tabela de pesos é o tendão `j`** — separá-los
+/// em duas listas é a forma como um osso sem `StableId` numa delas passa a descrever o osso
+/// seguinte na outra, com a soma dos pesos a `1` e nenhum gate de geometria a acusar.
+// ⚠️ Sem `Copy`: o [`Tendon`] carrega o `rest` e não o é.
+#[derive(Clone, Debug, PartialEq)]
+pub struct OssoPreso {
+    /// O que a [`SkinBind`] guarda.
+    pub tendon: Tendon,
+    /// A raiz do eixo, no espaço da coisa deformada.
+    pub a: [f64; 2],
+    /// A ponta do eixo, no mesmo espaço.
+    pub b: [f64; 2],
 }
 
 /// ⭐⭐⭐ **OS TENDÕES E O EIXO DE CADA UM, no espaço da coisa** — a porta que o padrão-ouro precisa.
@@ -407,23 +423,20 @@ fn tendons_for(sim: &SimWorld, ossos: &[Entity], shape_inv: Xform) -> Vec<Tendon
 /// O eixo sai do próprio `rest` (`S⁻¹ ∘ B`), que é a única coisa que o tendão guarda — logo ele é,
 /// por construção, o eixo que a pele vai usar no quadro.
 #[must_use]
-fn tendons_and_axes(
-    sim: &SimWorld,
-    ossos: &[Entity],
-    shape_inv: Xform,
-) -> Vec<(Tendon, ([f64; 2], [f64; 2]))> {
+fn tendons_and_axes(sim: &SimWorld, ossos: &[Entity], shape_inv: Xform) -> Vec<OssoPreso> {
     ossos
         .iter()
         .filter_map(|&e| {
             let rest = world_of(sim, e).then(&shape_inv);
             let comprimento = sim.world().get::<Bone>(e)?.length;
-            Some((
-                Tendon {
+            Some(OssoPreso {
+                tendon: Tendon {
                     bone: ph2d_ecs::stable_id_of(sim.world(), e)?,
                     rest: rest.0,
                 },
-                (rest.apply([0.0, 0.0]), rest.apply([comprimento, 0.0])),
-            ))
+                a: rest.apply([0.0, 0.0]),
+                b: rest.apply([comprimento, 0.0]),
+            })
         })
         .collect()
 }
@@ -480,7 +493,7 @@ pub fn bind_image(
     let Ok(bytes) = postcard::to_allocvec(&guardada) else {
         return false;
     };
-    let tendoes = pares.into_iter().map(|(t, _)| t).collect();
+    let tendoes = pares.into_iter().map(|o| o.tendon).collect();
     sim.world_mut()
         .entity_mut(e)
         .insert(SkinBind::new(bytes, tendoes));

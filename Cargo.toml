@@ -138,6 +138,24 @@ opt-level = 2
 [profile.dev.package.ph2d-remesh-iso]
 opt-level = 2
 
+# ⭐⭐ **E O MESMO NEGÓCIO PARA OS PESOS DE PELE** (2026-09-15) — a terceira vez que esta lista
+# cresce, e sempre pelo mesmo motivo escrito acima: *aritmética de ponto flutuante em varreduras de
+# malha*.
+#
+# O `ph2d-skin-weights` resolve um problema variacional sobre a malha da arte (gradiente conjugado
+# com conjunto activo, `Q·x = L(M⁻¹(Lx))` por iteração) e a `ph2d-poly2d` é a malha sobre a qual ele
+# corre. ⚠️ **Medido nesta árvore:** a sonda da densidade da cena do osso (cinco malhas, `780` a
+# `11 286` triângulos) demorou **mais de 5 minutos** a `opt-0` — e o tecto de morte de um teste
+# deste repo é `180 s`.
+#
+# ⛔ **Isto não é uma optimização do produto:** o gesto de prender corre no `--profile smoke`
+# (que herda `release`), onde o solver já custa `16 ms` numa malha típica. O que estava partido era
+# a corrida de TESTES em `dev`.
+[profile.dev.package.ph2d-skin-weights]
+opt-level = 2
+[profile.dev.package.ph2d-poly2d]
+opt-level = 2
+
 # ⭐⭐⭐ **O MESMO NEGÓCIO PARA O CAMPO IMPLÍCITO** (W147) — e aqui ele foi MEDIDO, não herdado.
 #
 # O modelador SDF avalia um campo **ponto a ponto** em varreduras de `78³`, e os censos dele são o

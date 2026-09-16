@@ -66,6 +66,30 @@ pub struct GridOptions {
     /// arte**, que já o faz de graça e ao sub-pixel; obrigar a grelha a seguir o contorno traria de
     /// volta as células deformadas da borda — que é exactamente o defeito que esta wave cura.
     pub expand: f64,
+    /// ⭐⭐⭐ **QUANTOS TRIÂNGULOS A MALHA DEVE TER** — o passo passa a ser CONTADO, nunca escolhido.
+    ///
+    /// ⛔⛔ **Um passo em pixels NÃO é um orçamento, e a diferença é toda a arte que não é a do
+    /// smoke:** a contagem de células é `área / passo²`, então a MESMA configuração entrega `~2 900`
+    /// triângulos numa sprite de `512×320` e **`~12 400`** numa de `1024×1024` — `4,2×` o custo do
+    /// quadro por a arte ser maior, que é literalmente *«o caminho mais lento define o tecto do mais
+    /// rápido»* (§0.0). O botão `Quad Retopology` pagou esta mesma lição em 2026-08-28 e a cura foi
+    /// a mesma: **ancorar na ÁREA e contar**.
+    ///
+    /// ⚠️ **O `fine`/`coarse` continuam a mandar na FORMA da graduação** (quantas vezes mais fina a
+    /// malha fica junto de uma articulação); o que este número faz é **escalar os dois** até a
+    /// contagem bater. ⇒ mexer neste valor muda o custo, mexer naqueles muda o desenho.
+    ///
+    /// ⭐ **De onde o `3 000` vem, e de que recurso ele é:** o TEMPO do quadro. Medido em 2026-09-15
+    /// (`measure_the_cpu_cost_of_a_skinned_frame`, o MÍNIMO de 40 corridas), uma peça entregue custa
+    /// **`0,44 µs`** no caminho que de facto corre (`Smooth` com o refinamento inerte) — plano em
+    /// `1 152`, `4 608` e `10 368` peças. A fatia da pele é `1/10` de um quadro de 60 fps ⇒
+    /// `1,667 ms / 0,44 µs` = **`3 788` peças** para UMA imagem sozinha. `3 000` deixa `20 %` de
+    /// folga para a segunda imagem de uma cena e é onde a faceta desta arte cai a **`1,16 px`**,
+    /// abaixo da barra de `1,5` (a tabela está no gate `a_arte_nao_sai_facetada`).
+    ///
+    /// ⚠️ `0` **desliga a contagem** e devolve o passo literal — é o que as fixturas de geometria
+    /// pura usam para pedir uma grelha exacta.
+    pub target_tris: usize,
 }
 
 impl Default for GridOptions {
@@ -79,6 +103,9 @@ impl Default for GridOptions {
             radius: 40.0,
             alpha_threshold: 1,
             expand: 2.0,
+            // ⭐ A CONTAGEM é que é o orçamento; o `fine`/`coarse` acima são a FORMA da graduação e
+            // o ponto de partida da escala. Ver o doc do campo para de que recurso este número é.
+            target_tris: 3_000,
         }
     }
 }
@@ -145,6 +172,42 @@ pub fn axis_samples(min: f64, max: f64, focos: &[f64], opts: GridOptions) -> Vec
 /// `None` quando nenhuma célula tem tinta.
 #[must_use]
 pub fn grid_mesh_of(
+    alpha: &[u8],
+    width: u32,
+    height: u32,
+    focos: &[[f64; 2]],
+    opts: GridOptions,
+) -> Option<Mesh2d> {
+    let bruta = grelha(alpha, width, height, focos, opts)?;
+    if opts.target_tris == 0 {
+        return Some(bruta);
+    }
+    // ⭐⭐⭐ **UMA correcção, e a lei é a da ÁREA:** a contagem de células vai com `1/passo²`, logo
+    // `passo_novo = passo × √(previsto / alvo)`. ⛔ Nunca um laço até bater o número exacto — a
+    // silhueta recorta células, então o alvo não é alcançável por construção e um laço ficaria a
+    // perseguir o último por cento. *É a mesma renormalização que a `SizingGrid` do botão de quads
+    // aprendeu, e pela mesma razão.*
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "contagens de triângulos de uma malha de imagem, muito abaixo do limite exacto do f64"
+    )]
+    let escala = ((bruta.tris.len() as f64) / (opts.target_tris as f64)).sqrt();
+    if !escala.is_finite() || escala <= 0.0 {
+        return Some(bruta);
+    }
+    let escalada = GridOptions {
+        fine: opts.fine * escala,
+        coarse: opts.coarse * escala,
+        // ⚠️ **O raio do adensamento escala TAMBÉM**, e é o que mantém a FORMA da graduação: sem
+        // isso uma malha duas vezes mais fina teria a banda fina a cobrir metade da arte.
+        radius: opts.radius * escala,
+        ..opts
+    };
+    grelha(alpha, width, height, focos, escalada).or(Some(bruta))
+}
+
+/// A grelha com os passos **literais** — sem a contagem. É a lei de sempre.
+fn grelha(
     alpha: &[u8],
     width: u32,
     height: u32,

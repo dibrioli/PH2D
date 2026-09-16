@@ -413,10 +413,7 @@ fn a_rig_authored_before_bendy_bones_resolves_to_exactly_the_same_skin() {
             // o saber (ela constrói um osso sozinho). O que este gate afirma é que as duas portas
             // dão a mesma DEFORMAÇÃO; branquear o campo aqui seria fazer o gate mentir sobre o
             // que compara, e cravá-lo a `0` faria o oráculo descrever um rig de um osso só.
-            #[expect(
-                clippy::cast_possible_truncation,
-                reason = "o palco tem dois ossos"
-            )]
+            #[expect(clippy::cast_possible_truncation, reason = "o palco tem dois ossos")]
             Some(SkinBone {
                 tendon: j as u32,
                 ..SkinBone::new(Xform(b.rest), vb.length, vb.strength, mundo, shape_inv)?

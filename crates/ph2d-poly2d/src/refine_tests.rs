@@ -25,12 +25,28 @@ fn capsula() -> (Vec<u8>, u32, u32) {
     (a, w as u32, h as u32)
 }
 
+/// ⛔⛔ **A fixtura PREGA a densidade (`target_tris: 0`), e não é conforto — é o que a mantém a ser
+/// a mesma pergunta.** Estes gates medem a LEI DO REFINAMENTO (`k`, conformidade, orçamento de
+/// peças) sobre uma malha de `216` triângulos, e todas as barras deles saíram dessa contagem. Desde
+/// que a `GridOptions` passou a ser um ORÇAMENTO (2026-09-15) o `default()` entrega `~3 000`
+/// triângulos, e cinco destes gates reprovaram de uma vez — não por a lei ter mudado, mas por o
+/// **sujeito** ter mudado por baixo deles. *Um gate cujo sujeito muda não afirma nada.*
 fn malha() -> Mesh2d {
     let (a, w, h) = capsula();
     let focos: Vec<[f64; 2]> = (0..=3)
         .map(|k| [f64::from(k) * 320.0 / 3.0, 48.0])
         .collect();
-    grid_mesh_of(&a, w, h, &focos, crate::GridOptions::default()).expect("tinta")
+    grid_mesh_of(
+        &a,
+        w,
+        h,
+        &focos,
+        crate::GridOptions {
+            target_tris: 0,
+            ..crate::GridOptions::default()
+        },
+    )
+    .expect("tinta")
 }
 
 /// ⭐⭐⭐ **UM CAMPO QUE ENGANA O ESTIMADOR** — uma onda cujo período é da ordem da célula.
@@ -463,7 +479,11 @@ fn an_invented_vertex_inherits_the_attribute_of_the_triangle_that_made_it() {
         k >= 4,
         "a fixtura tem de chegar a k>=4 para ter um no' de miolo com u != v (k={k})"
     );
-    assert_eq!(saida.len(), r.rest.len(), "um atributo por vertice refinado");
+    assert_eq!(
+        saida.len(),
+        r.rest.len(),
+        "um atributo por vertice refinado"
+    );
 
     let mut pior = 0.0_f64;
     let mut medidos = 0usize;
@@ -485,7 +505,10 @@ fn an_invented_vertex_inherits_the_attribute_of_the_triangle_that_made_it() {
     );
     // ⚠️ E o chapéu tem de CHEGAR a algum lado: com tudo a zero o gate acima passa por vacuidade.
     let maior = saida.iter().copied().fold(0.0_f64, f64::max);
-    assert!(maior > 0.99, "o chapeu nao sobreviveu a subdivisao ({maior})");
+    assert!(
+        maior > 0.99,
+        "o chapeu nao sobreviveu a subdivisao ({maior})"
+    );
 }
 
 /// ⭐⭐⭐ **LEVAR ATRIBUTOS NÃO MEXE NA GEOMETRIA** — a metade que impede esta wave de tocar no que

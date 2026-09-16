@@ -70,7 +70,7 @@ fn a_straight_bone_is_still_exactly_one_bone() {
             mundo,
             Xform::IDENTITY,
             0,
-        &mut ossos,
+            &mut ossos,
         );
         assert_eq!(ossos.len(), 1, "segments = {segments} numa curva recta");
         assert_eq!(ossos[0], sozinho, "segments = {segments}");
@@ -481,7 +481,7 @@ fn bend_measure_the_ceiling() {
                 rest,
                 Xform::IDENTITY,
                 0,
-        &mut ossos,
+                &mut ossos,
             );
         }
         let pele = Skin::new(ossos).expect("4 ossos");

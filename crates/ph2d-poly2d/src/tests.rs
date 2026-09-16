@@ -637,3 +637,57 @@ fn the_ear_clipping_ceiling_refuses_instead_of_returning_half_a_mesh() {
     // ⚠️ E menos de três pontos **não** é recusa: é um polígono sem área.
     assert_eq!(triangulate(&[[0.0, 0.0], [1.0, 1.0]]), Some(Vec::new()));
 }
+
+/// ⭐⭐⭐ **A MALHA É UM ORÇAMENTO, E NÃO UM PASSO EM PIXELS** — a contagem deixa de seguir a ÁREA.
+///
+/// ⛔⛔ **O defeito que isto fecha é o §0.0 na forma mais cara:** com um passo literal, a contagem
+/// de células é `área / passo²`, logo a **mesma** configuração entrega uma malha `4×` mais cara
+/// numa arte `2×` maior em cada lado — e o quadro paga por o desenho ser grande, não por ele ser
+/// difícil. *Um limite legítimo diz de que recurso ele é, e um passo em pixels não diz de nenhum.*
+///
+/// ⚠️ **A barra é uma FAIXA e não um número exacto**, e é de propósito: a silhueta recorta células,
+/// então uma arte com buracos nunca alcança o alvo. O que se afirma é que as três artes caem na
+/// mesma ordem de grandeza — e que **sem** o orçamento elas não caem.
+///
+/// (Mutação: pôr `target_tris: 0` no `default()` ⇒ RED, com a razão impressa.)
+#[test]
+fn the_mesh_is_a_budget_and_not_a_step_in_pixels() {
+    let conta = |lado: usize, opts: GridOptions| -> usize {
+        let a = capsula(lado, lado);
+        grid_mesh_of(&a, lado as u32, lado as u32, &[], opts).map_or(0, |m| m.tris.len())
+    };
+    let orcada = GridOptions::default();
+    let literal = GridOptions {
+        target_tris: 0,
+        ..GridOptions::default()
+    };
+    let lados = [256usize, 512, 1024];
+    let com: Vec<usize> = lados.iter().map(|&l| conta(l, orcada)).collect();
+    let sem: Vec<usize> = lados.iter().map(|&l| conta(l, literal)).collect();
+    println!("lado    com orcamento    sem orcamento");
+    for (i, l) in lados.iter().enumerate() {
+        println!("{l:<7} {:<16} {}", com[i], sem[i]);
+    }
+    // ⛔ O CONTROLO que torna o de baixo uma afirmação: SEM orçamento a contagem segue a área.
+    let espalha_sem = sem.iter().max().expect("ha' lados") / sem.iter().min().expect("ha' lados");
+    assert!(
+        espalha_sem >= 8,
+        "sem orcamento a contagem so' variou {espalha_sem}x entre uma arte de 256 e uma de 1024 — \
+         a fixtura deixou de produzir o fenomeno, e o gate abaixo nao esta' a afirmar nada"
+    );
+    let espalha_com = com.iter().max().expect("ha' lados") / com.iter().min().expect("ha' lados");
+    assert!(
+        espalha_com <= 2,
+        "COM orcamento a contagem ainda variou {espalha_com}x com a area ({com:?}) — o passo \
+         continua a mandar, e o quadro paga por o desenho ser grande"
+    );
+    // E o alvo é de facto perseguido: nenhuma das três passa muito dele.
+    for (i, n) in com.iter().enumerate() {
+        assert!(
+            *n <= orcada.target_tris * 2,
+            "a arte de {} entregou {n} triangulos contra um alvo de {}",
+            lados[i],
+            orcada.target_tris
+        );
+    }
+}

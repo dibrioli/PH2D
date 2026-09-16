@@ -68,8 +68,10 @@ impl SkinnedMesh {
     /// ⚠️ **DERIVADO**, e é isso que impede uma terceira grandeza de discordar das outras duas.
     #[must_use]
     pub fn ossos(&self) -> usize {
-        let n = self.mesh.rest.len();
-        if n == 0 { 0 } else { self.pesos.len() / n }
+        self.pesos
+            .len()
+            .checked_div(self.mesh.rest.len())
+            .unwrap_or(0)
     }
 
     /// ⛔ **O par fecha?** — `pesos` tem de ser um múltiplo exacto do número de vértices.
@@ -80,7 +82,7 @@ impl SkinnedMesh {
     #[must_use]
     pub fn valida(&self) -> bool {
         let n = self.mesh.rest.len();
-        n > 0 && self.pesos.len() % n == 0
+        n > 0 && self.pesos.len().is_multiple_of(n)
     }
 
     /// Os pesos do vértice `v`. Vazio quando não há tabela — ⛔ nunca uma fatia de outro vértice.

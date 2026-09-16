@@ -5,7 +5,10 @@ use ph2d_poly2d::Mesh2d;
 
 fn malha(verts: usize) -> Mesh2d {
     Mesh2d {
-        #[expect(clippy::cast_precision_loss, reason = "fixtura de meia dúzia de vértices")]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "fixtura de meia dúzia de vértices"
+        )]
         rest: (0..verts).map(|i| [i as f64, 0.0]).collect(),
         tris: vec![[0, 1, 2]],
         size: [10, 10],
@@ -45,7 +48,10 @@ fn uma_tabela_que_nao_fecha_e_recusada() {
         // 11 pesos para 4 vértices — não é múltiplo de nada.
         pesos: vec![0.25; 11],
     };
-    assert!(!s.valida(), "11 nao e' multiplo de 4 e a porta tem de o dizer");
+    assert!(
+        !s.valida(),
+        "11 nao e' multiplo de 4 e a porta tem de o dizer"
+    );
 }
 
 /// ⭐ **SEM PESOS É UM ESTADO LEGAL** — a leitura de *«resolve pela lei derivada»*.

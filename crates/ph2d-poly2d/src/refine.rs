@@ -53,6 +53,12 @@
 
 use crate::Mesh2d;
 
+/// ⭐ **O CAMPO, com os atributos do ponto na mão** — `deform(ponto_de_repouso, atributos)`.
+///
+/// ⚠️ A fatia é **vazia** quando não há atributos, e é essa a forma que faz o caminho sem carga ser
+/// o de sempre: quem não os quer escreve `|q, _| …` e não paga nada.
+pub type DeformAttrs<'a> = dyn FnMut([f64; 2], &[f64]) -> [f64; 2] + 'a;
+
 /// ⭐ **Os números do refinamento.**
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RefineOptions {
@@ -137,7 +143,7 @@ pub fn deviation_attrs(
     posed: &[[f64; 2]],
     attrs: &[f64],
     stride: usize,
-    deform: &mut dyn FnMut([f64; 2], &[f64]) -> [f64; 2],
+    deform: &mut DeformAttrs<'_>,
 ) -> f64 {
     let mut pior = 0.0_f64;
     let mut meio_attrs = vec![0.0; stride];
@@ -156,10 +162,7 @@ pub fn deviation_attrs(
                     attrs.get(j * stride + c).copied().unwrap_or(0.0),
                 );
             }
-            let meio = deform(
-                [(ra[0] + rb[0]) / 2.0, (ra[1] + rb[1]) / 2.0],
-                &meio_attrs,
-            );
+            let meio = deform([(ra[0] + rb[0]) / 2.0, (ra[1] + rb[1]) / 2.0], &meio_attrs);
             let reta = [(pa[0] + pb[0]) / 2.0, (pa[1] + pb[1]) / 2.0];
             pior = pior.max((meio[0] - reta[0]).hypot(meio[1] - reta[1]));
         }
@@ -250,7 +253,7 @@ pub fn refine_posed_attrs(
     mesh: &Mesh2d,
     attrs: &[f64],
     stride: usize,
-    deform: &mut dyn FnMut([f64; 2], &[f64]) -> [f64; 2],
+    deform: &mut DeformAttrs<'_>,
     opts: RefineOptions,
 ) -> (Mesh2d, Vec<[f64; 2]>, Vec<f64>, u32) {
     let posed: Vec<[f64; 2]> = mesh
@@ -308,7 +311,7 @@ fn build(
     mesh: &Mesh2d,
     attrs: &[f64],
     stride: usize,
-    deform: &mut dyn FnMut([f64; 2], &[f64]) -> [f64; 2],
+    deform: &mut DeformAttrs<'_>,
     k: u32,
 ) -> (Mesh2d, Vec<[f64; 2]>, Vec<f64>) {
     let kf = f64::from(k);
@@ -334,7 +337,7 @@ fn build(
                 return v;
             }
             let p = ponto_canonico(chave, [a, b, c], t, mesh, kf, i, j);
-            attrs_canonicos(chave, t, attrs, stride, kf, i, j, &mut scratch);
+            attrs_canonicos(chave, t, attrs, stride, (kf, i, j), &mut scratch);
             #[expect(
                 clippy::cast_possible_truncation,
                 reason = "a malha refinada não passa de 2^32 nós: o orçamento de peças limita-a muito antes"
@@ -376,11 +379,11 @@ fn attrs_canonicos(
     t: &[u32; 3],
     attrs: &[f64],
     stride: usize,
-    kf: f64,
-    i: u32,
-    j: u32,
+    // `(k, i, j)` — a grelha baricêntrica do ponto, como o [`ponto_canonico`] a recebe.
+    grelha: (f64, u32, u32),
     out: &mut [f64],
 ) {
+    let (kf, i, j) = grelha;
     if stride == 0 {
         return;
     }

@@ -185,7 +185,7 @@ pub fn weights_for_mesh(
     sim: &SimWorld,
     e: Entity,
     mesh: &Mesh2d,
-    eixos: &[(ph2d_skeleton_ecs::Tendon, ([f64; 2], [f64; 2]))],
+    eixos: &[crate::skin_live::OssoPreso],
     pixels_per_meter: f32,
 ) -> Vec<f64> {
     if eixos.is_empty() {
@@ -201,9 +201,9 @@ pub fn weights_for_mesh(
     };
     let handles: Vec<ph2d_skin_weights::Handle> = eixos
         .iter()
-        .map(|(_, (a, b))| ph2d_skin_weights::Handle {
-            a: l2p.apply(*a),
-            b: l2p.apply(*b),
+        .map(|o| ph2d_skin_weights::Handle {
+            a: l2p.apply(o.a),
+            b: l2p.apply(o.b),
         })
         .collect();
     let comeco = std::time::Instant::now();
@@ -474,8 +474,7 @@ pub fn posed_sprite_mesh(
             (mesh, posed, 1)
         }
         Some(o) => {
-            let (m, p, _, k) =
-                ph2d_poly2d::refine_posed_attrs(&mesh, pesos, ossos, &mut campo, o);
+            let (m, p, _, k) = ph2d_poly2d::refine_posed_attrs(&mesh, pesos, ossos, &mut campo, o);
             (m, p, k)
         }
     };

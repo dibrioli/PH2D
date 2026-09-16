@@ -508,9 +508,7 @@
 ///
 /// Os bytes opacos do `SkinBind::source` de uma **imagem** deixaram de ser uma
 /// `ph2d_poly2d::Mesh2d` e passaram a ser uma `ph2d_skeleton_live::skinned_mesh::SkinnedMesh`
-/// (`{ mesh, pesos }`). É a ligação do padrão-ouro ao produto: os *Bounded Biharmonic Weights*
-/// são a solução de um problema variacional sobre a arte inteira, logo resolvem-se **uma vez ao
-/// prender** e viajam com a malha.
+/// (`{ mesh, pesos }`): os *Bounded Biharmonic Weights* resolvem-se **uma vez ao prender**.
 ///
 /// ⚠️⚠️ **O degrau é obrigatório e a razão é o postcard, como nos degraus `112`, `127` e `129`:**
 /// ele é **posicional**, e a `SkinnedMesh` é a `Mesh2d` **seguida** do vector de pesos. Um ficheiro
@@ -681,16 +679,11 @@
 /// gravado com a malha só acaba onde a nova espera o comprimento da tabela — e quem lesse os bytes
 /// seguintes leria lixo como pesos. Com o degrau, o load **recusa em voz alta**.
 ///
-/// ⚠️ **Uma FORMA VECTORIAL não muda de formato** — ela continua a guardar um `VecPath`, e continua
-/// a resolver os pesos pela lei euclidiana derivada. ⛔ *Limite NOMEADO, não esquecimento:* o
-/// padrão-ouro precisa de uma malha do domínio, e um caminho de Bézier não tem uma. Enquanto isso
-/// não existir, um rig com as duas mídias tem duas leis — e é o que está aberto na fila.
+/// ⛔ **Uma forma VECTORIAL não muda de formato** — guarda um `VecPath` e fica na lei euclidiana
+/// derivada (o padrão-ouro precisa de uma malha do domínio, e uma Bézier não tem uma). *Limite
+/// NOMEADO:* um rig com as duas mídias tem hoje duas leis.
 ///
-/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 — e aqui com a razão extra
-/// que a wave já mediu: uma malha antiga não tem pesos, e derivá-los no load seria correr o solver
-/// (dezenas de ms por imagem) dentro do caminho de abrir um ficheiro.
-///
-/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima quarta** vez nesta escada, e por uma razão a
-/// mais: estes bytes não estão sequer num componente que a tripla percorra, estão **dentro** do
-/// `source` de um, que é opaco duas vezes.
+/// ⛔ **Sem degrau de migração** (Enio, 26/08) — derivar os pesos no load seria correr o solver
+/// dentro do caminho de abrir um ficheiro. ⚠️ **A tripla NÃO o vê** (14.ª vez): estes bytes estão
+/// DENTRO do `source` de um `ComponentBlob`, opaco duas vezes.
 pub(crate) const PROJECT_SCHEMA: u32 = 137;

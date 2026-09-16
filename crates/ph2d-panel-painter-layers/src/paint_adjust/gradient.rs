@@ -127,21 +127,16 @@ pub(super) fn paint_gradient_map(
 
     // ── Selected stop's RGB sliders ──
     let sliders = ph2d_tool_painter::gradient_stop_color_params(g, selected);
-    let sec = linha::seccao_de(ctx.text_system, &sliders, &[]);
-    for (slot, (label, val01)) in sliders.into_iter().enumerate() {
-        let Some(kind) = slot_kind(slot) else { break };
-        let id = painter_layer_widget_id(layer_id, kind);
-        paint_labeled_slider(
-            ctx,
-            theme,
-            id,
-            label,
-            val01,
-            Rect::new(x, y, w, ROW_H_PX),
-            sec,
-        );
-        y += ph2d_tokens::row_pitch_px();
-    }
+    y = paint_barras(
+        ctx,
+        theme,
+        layer_id,
+        &sliders,
+        &ph2d_tool_painter::gradient_stop_color_numbers(),
+        &adjust_nomes::chave_do_gradiente,
+        0..sliders.len(),
+        (x, w, y),
+    );
 
     // ── Interpolation segment (Linear / Smooth) ──
     paint_segment_rack(ctx, theme, layer_id, params, x, w, y)

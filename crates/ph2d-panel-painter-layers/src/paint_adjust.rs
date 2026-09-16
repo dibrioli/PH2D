@@ -18,6 +18,7 @@
 //! state ([`crate::state::active_curve_channel`]); +/− forward add/remove on the
 //! active channel.
 
+use crate::adjust_nomes;
 use crate::paint::register_button;
 use crate::state;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
@@ -25,9 +26,7 @@ use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_polyline,
 };
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{
-    Slider, SliderOrientation, SliderState, Toggle, paint_slider, paint_toggle,
-};
+use ph2d_editor_core::widget::{SliderOrientation, SliderState, Toggle, paint_toggle};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
@@ -37,15 +36,15 @@ use ph2d_tool_painter::ids::{
     painter_gradient_editor_id, painter_gradient_remove_id, painter_gradient_stop_id,
     painter_layer_widget_id, painter_mixer_tab_id, painter_selcolor_bucket_id,
 };
-use ph2d_tool_painter::{AdjustmentParams, CurvesParams};
+use ph2d_tool_painter::{AdjustmentParams, CurvesParams, SliderNumber};
 
 mod curve;
 mod gradient;
-/// As linhas da pilha (barra e interruptor) pela porta do manual — a coluna do nome é da secção.
+/// As linhas da pilha: a barra é caixa única, o interruptor é linha de propriedade.
 mod linha;
 use curve::paint_curve_editor;
 use gradient::paint_gradient_map;
-use linha::{paint_labeled_slider, paint_toggle_row};
+use linha::{paint_barra, paint_toggle_row};
 
 const ADJ_TOGGLE_W: f32 = 34.0; // LITERAL-PX-OK: toggle-rack switch pill width
 const ADJ_TOGGLE_H: f32 = 18.0; // LITERAL-PX-OK: toggle-rack switch pill height (inset in ROW_H)
@@ -76,6 +75,97 @@ fn slot_kind(slot: usize) -> Option<PainterLayerWidget> {
         7 => PainterLayerWidget::AdjParam7,
         _ => return None,
     })
+}
+
+/// The editable NUMBER twin of [`slot_kind`] — the chip linked to that slot's slider.
+fn chip_slot_kind(slot: usize) -> Option<PainterLayerWidget> {
+    Some(match slot {
+        0 => PainterLayerWidget::AdjChip0,
+        1 => PainterLayerWidget::AdjChip1,
+        2 => PainterLayerWidget::AdjChip2,
+        3 => PainterLayerWidget::AdjChip3,
+        4 => PainterLayerWidget::AdjChip4,
+        5 => PainterLayerWidget::AdjChip5,
+        6 => PainterLayerWidget::AdjChip6,
+        7 => PainterLayerWidget::AdjChip7,
+        _ => return None,
+    })
+}
+
+/// Os ids de uma barra da camada `layer_id`: o slider (que a ferramenta recebe) e o número.
+fn ids_da_barra(layer_id: u64, slot: usize) -> Option<(ph2d_a11y::NodeId, ph2d_a11y::NodeId)> {
+    Some((
+        painter_layer_widget_id(layer_id, slot_kind(slot)?),
+        painter_layer_widget_id(layer_id, chip_slot_kind(slot)?),
+    ))
+}
+
+/// ⭐ **Pinta os `slots` de uma pilha de barras** — o nome pela tabela de strings, o número pela
+/// unidade do slot. Devolve o próximo `y`.
+///
+/// ⚠️ `barras` e `numeros` são as duas metades da crate de efeitos (`*_slider_params` e
+/// `*_slider_numbers`), slot a slot; o gate da pilha exige que tenham o mesmo comprimento.
+#[allow(clippy::too_many_arguments)]
+fn paint_barras(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    layer_id: u64,
+    barras: &[(&'static str, f32)],
+    numeros: &[SliderNumber],
+    nomear: &dyn Fn(&str) -> Option<&'static str>,
+    slots: std::ops::Range<usize>,
+    (x, w, mut y): (f32, f32, f32),
+) -> f32 {
+    debug_assert_eq!(
+        barras.len(),
+        numeros.len(),
+        "a crate de efeitos devolveu nomes e numeros com comprimentos diferentes"
+    );
+    for slot in slots {
+        let (Some(&(fonte, pista)), Some(&numero), Some(ids)) = (
+            barras.get(slot),
+            numeros.get(slot),
+            ids_da_barra(layer_id, slot),
+        ) else {
+            break;
+        };
+        let nome = adjust_nomes::pintar(nomear(fonte), fonte);
+        y = paint_barra(
+            ctx,
+            theme,
+            ids,
+            nome,
+            pista,
+            numero,
+            Rect::new(x, y, w, ROW_H_PX),
+        );
+    }
+    y
+}
+
+/// ⭐ **Pinta os interruptores de uma pilha**, com UMA coluna medida sobre os nomes deles. Devolve
+/// o próximo `y`.
+fn paint_interruptores(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    layer_id: u64,
+    toggles: &[(&'static str, bool)],
+    (x, w, mut y): (f32, f32, f32),
+) -> f32 {
+    let nomes: Vec<&'static str> = toggles
+        .iter()
+        .map(|(f, _)| adjust_nomes::pintar(adjust_nomes::chave_do_interruptor(f), f))
+        .collect();
+    let sec = linha::seccao_de(ctx.text_system, &nomes);
+    for (slot, (&(_, on), nome)) in toggles.iter().zip(&nomes).enumerate() {
+        let Some(kind) = toggle_slot_kind(slot) else {
+            break;
+        };
+        let id = painter_layer_widget_id(layer_id, kind);
+        paint_toggle_row(ctx, theme, id, nome, on, Rect::new(x, y, w, ROW_H_PX), sec);
+        y += ph2d_tokens::row_pitch_px();
+    }
+    y
 }
 
 /// The generic per-slot toggle widget kind (≤2 toggle params per adjustment).
@@ -135,41 +225,32 @@ pub(crate) fn paint_adjustment_params(
         return paint_gradient_map(ctx, theme, layer_id, params, x, w, y);
     }
     let sliders = ph2d_tool_painter::adjustment_slider_params(params);
-    let toggles = ph2d_tool_painter::adjustment_toggle_params(params);
-    // ⭐ UMA coluna para a pilha inteira: as barras e os interruptores partilham-na.
-    let sec = linha::seccao_de(ctx.text_system, &sliders, &toggles);
-    for (slot, (label, val01)) in sliders.into_iter().enumerate() {
-        let Some(kind) = slot_kind(slot) else { break };
-        let id = painter_layer_widget_id(layer_id, kind);
-        paint_labeled_slider(
-            ctx,
-            theme,
-            id,
-            label,
-            val01,
-            Rect::new(x, y, w, ROW_H_PX),
-            sec,
-        );
-        y += ph2d_tokens::row_pitch_px();
-    }
+    y = paint_barras(
+        ctx,
+        theme,
+        layer_id,
+        &sliders,
+        &ph2d_tool_painter::adjustment_slider_numbers(params),
+        &|f| adjust_nomes::chave_da_barra(params, f),
+        0..sliders.len(),
+        (x, w, y),
+    );
     // Segment rack (the adjustment's single 1-of-N param, e.g. Color Balance's
     // tonal range / Gradient Map's interpolation), between the sliders + toggles.
     y = paint_segment_rack(ctx, theme, layer_id, params, x, w, y);
-    // Toggle rack (W4 BATCH-1): the name in the stack's column + a switch at the
+    // Toggle rack (W4 BATCH-1): the name in the toggles' column + a switch at the
     // start of the control column, per boolean param (Photo Filter's Preserve
-    // Luminosity, …) — the same column as the sliders above. The switch is a
-    // button (click) painted with the live param value — the params are the
-    // single source of truth, the tool flips on click (mirror of the mask-invert
-    // affordance). Adding a toggle-bearing kind needs ZERO panel change.
-    for (slot, (label, on)) in toggles.into_iter().enumerate() {
-        let Some(kind) = toggle_slot_kind(slot) else {
-            break;
-        };
-        let id = painter_layer_widget_id(layer_id, kind);
-        paint_toggle_row(ctx, theme, id, label, on, Rect::new(x, y, w, ROW_H_PX), sec);
-        y += ph2d_tokens::row_pitch_px();
-    }
-    y
+    // Luminosity, …). The switch is a button (click) painted with the live param
+    // value — the params are the single source of truth, the tool flips on click
+    // (mirror of the mask-invert affordance). Adding a toggle-bearing kind needs
+    // ZERO panel change.
+    paint_interruptores(
+        ctx,
+        theme,
+        layer_id,
+        &ph2d_tool_painter::adjustment_toggle_params(params),
+        (x, w, y),
+    )
 }
 
 /// Bespoke Channel Mixer editor: a row of output-channel tabs (Red/Green/Blue, or
@@ -247,32 +328,24 @@ fn paint_channel_mixer(
     y += ph2d_tokens::row_pitch_px();
     // ── The active output row's 4 weight sliders (R/G/B source + Constant) ──
     let sliders = ph2d_tool_painter::channel_mixer_slider_params(m, active as usize);
-    let toggles = ph2d_tool_painter::adjustment_toggle_params(params);
-    let sec = linha::seccao_de(ctx.text_system, &sliders, &toggles);
-    for (slot, (label, val01)) in sliders.into_iter().enumerate() {
-        let Some(kind) = slot_kind(slot) else { break };
-        let id = painter_layer_widget_id(layer_id, kind);
-        paint_labeled_slider(
-            ctx,
-            theme,
-            id,
-            label,
-            val01,
-            Rect::new(x, y, w, ROW_H_PX),
-            sec,
-        );
-        y += ph2d_tokens::row_pitch_px();
-    }
+    y = paint_barras(
+        ctx,
+        theme,
+        layer_id,
+        &sliders,
+        &ph2d_tool_painter::channel_mixer_slider_numbers(),
+        &adjust_nomes::chave_do_misturador,
+        0..sliders.len(),
+        (x, w, y),
+    );
     // ── Monochrome switch (the generic toggle rack, rendered inline) ──
-    for (slot, (label, on)) in toggles.into_iter().enumerate() {
-        let Some(kind) = toggle_slot_kind(slot) else {
-            break;
-        };
-        let id = painter_layer_widget_id(layer_id, kind);
-        paint_toggle_row(ctx, theme, id, label, on, Rect::new(x, y, w, ROW_H_PX), sec);
-        y += ph2d_tokens::row_pitch_px();
-    }
-    y
+    paint_interruptores(
+        ctx,
+        theme,
+        layer_id,
+        &ph2d_tool_painter::adjustment_toggle_params(params),
+        (x, w, y),
+    )
 }
 
 /// Bespoke Black & White editor: the 6 per-hue weight sliders, then the Tint
@@ -291,50 +364,40 @@ fn paint_black_and_white(
     mut y: f32,
 ) -> f32 {
     let sliders = ph2d_tool_painter::adjustment_slider_params(params);
-    let toggles = ph2d_tool_painter::adjustment_toggle_params(params);
-    // ⚠️ A secção mede o que ESTE quadro pinta: ligar o tinte acrescenta duas barras, e os nomes
-    //    delas entram na medida (a coluna pode alargar nesse clique — é a mesma pilha).
-    let sec = linha::seccao_de(ctx.text_system, &sliders, &toggles);
+    let numeros = ph2d_tool_painter::adjustment_slider_numbers(params);
+    let nomear = |f: &str| adjust_nomes::chave_da_barra(params, f);
     // The 6 per-hue weight sliders (always present).
-    for (slot, &(label, val01)) in sliders.iter().enumerate().take(6) {
-        let Some(kind) = slot_kind(slot) else { break };
-        let id = painter_layer_widget_id(layer_id, kind);
-        paint_labeled_slider(
-            ctx,
-            theme,
-            id,
-            label,
-            val01,
-            Rect::new(x, y, w, ROW_H_PX),
-            sec,
-        );
-        y += ph2d_tokens::row_pitch_px();
-    }
+    let pesos = 0..sliders.len().min(6);
+    y = paint_barras(
+        ctx,
+        theme,
+        layer_id,
+        &sliders,
+        &numeros,
+        &nomear,
+        pesos,
+        (x, w, y),
+    );
     // The Tint switch.
-    for (slot, (label, on)) in toggles.into_iter().enumerate() {
-        let Some(kind) = toggle_slot_kind(slot) else {
-            break;
-        };
-        let id = painter_layer_widget_id(layer_id, kind);
-        paint_toggle_row(ctx, theme, id, label, on, Rect::new(x, y, w, ROW_H_PX), sec);
-        y += ph2d_tokens::row_pitch_px();
-    }
+    y = paint_interruptores(
+        ctx,
+        theme,
+        layer_id,
+        &ph2d_tool_painter::adjustment_toggle_params(params),
+        (x, w, y),
+    );
     // The tint Hue + amount sliders (slots 6+), present only while a tint is set.
-    for (slot, &(label, val01)) in sliders.iter().enumerate().skip(6) {
-        let Some(kind) = slot_kind(slot) else { break };
-        let id = painter_layer_widget_id(layer_id, kind);
-        paint_labeled_slider(
-            ctx,
-            theme,
-            id,
-            label,
-            val01,
-            Rect::new(x, y, w, ROW_H_PX),
-            sec,
-        );
-        y += ph2d_tokens::row_pitch_px();
-    }
-    y
+    let tinte = sliders.len().min(6)..sliders.len();
+    paint_barras(
+        ctx,
+        theme,
+        layer_id,
+        &sliders,
+        &numeros,
+        &nomear,
+        tinte,
+        (x, w, y),
+    )
 }
 
 /// Render the adjustment's single segmented param (1-of-N, N ≤ 3) as a row of
@@ -382,7 +445,7 @@ fn paint_segment_rack(
         paint_text_centered(
             ctx.text_system,
             ctx.scene,
-            label,
+            adjust_nomes::pintar(adjust_nomes::chave_do_segmento(label), label),
             srect,
             font,
             resolve(fg, theme),
@@ -450,21 +513,16 @@ fn paint_selective_color(
     y += ph2d_tokens::row_pitch_px();
     // ── 4 CMYK sliders for the active group ──
     let sliders = ph2d_tool_painter::selective_color_slider_params(s, active as usize);
-    let sec = linha::seccao_de(ctx.text_system, &sliders, &[]);
-    for (slot, (label, val01)) in sliders.into_iter().enumerate() {
-        let Some(kind) = slot_kind(slot) else { break };
-        let id = painter_layer_widget_id(layer_id, kind);
-        paint_labeled_slider(
-            ctx,
-            theme,
-            id,
-            label,
-            val01,
-            Rect::new(x, y, w, ROW_H_PX),
-            sec,
-        );
-        y += ph2d_tokens::row_pitch_px();
-    }
+    y = paint_barras(
+        ctx,
+        theme,
+        layer_id,
+        &sliders,
+        &ph2d_tool_painter::selective_color_slider_numbers(),
+        &adjust_nomes::chave_da_seletiva,
+        0..sliders.len(),
+        (x, w, y),
+    );
     // ── method segment (Relative / Absolute) ──
     paint_segment_rack(ctx, theme, layer_id, params, x, w, y)
 }

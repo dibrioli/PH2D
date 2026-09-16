@@ -16,8 +16,8 @@ use ph2d_tool_painter::AdjustmentKind;
 use ph2d_tool_painter::ids::painter_adjustment_kind_option_id;
 
 /// All 24 adjustment kinds as `Dropdown` options (value = index into
-/// [`AdjustmentKind::ALL`] = the wire value forwarded to the tool, label =
-/// English `display_name`).
+/// [`AdjustmentKind::ALL`] = the wire value forwarded to the tool, label = the
+/// string table's name for the kind — `adjust_nomes::chave_da_especie`).
 fn kind_options() -> Vec<DropdownOption<usize>> {
     AdjustmentKind::ALL
         .iter()
@@ -26,7 +26,7 @@ fn kind_options() -> Vec<DropdownOption<usize>> {
             DropdownOption::new(
                 painter_adjustment_kind_option_id(i as u8),
                 i,
-                kind.display_name(),
+                ph2d_i18n::tr(crate::adjust_nomes::chave_da_especie(*kind)),
             )
         })
         .collect()

@@ -9,6 +9,7 @@
 //! - [`curves`] / [`levels`] / [`color_balance`] / [`channel_mixer`] /
 //!   [`gradient_map`] / [`selective_color`] — the bespoke adjustment families.
 //! - [`params`] — the generic slider / toggle / segment UI param plumbing.
+//! - [`numbers`] — the number an artist reads on each of those sliders.
 //!
 //! Every family submodule's public + crate-visible symbols are re-exported here
 //! (the glob `pub(crate) use … ::*` below), so the external surface is unchanged:
@@ -23,6 +24,7 @@ mod color_balance;
 mod curves;
 mod gradient_map;
 mod levels;
+mod numbers;
 mod params;
 mod selective_color;
 mod shared;
@@ -39,6 +41,7 @@ pub use color_balance::*;
 pub use curves::*;
 pub use gradient_map::*;
 pub use levels::*;
+pub use numbers::*;
 pub use params::*;
 pub use selective_color::*;
 pub use shared::*;

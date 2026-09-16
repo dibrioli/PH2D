@@ -297,7 +297,7 @@ fn toda_caixa_deste_painel_declara_a_seccao_dela() {
 /// `line_barras`.
 /// ⭐ **E o `paint_adjust.rs` saiu logo a seguir** — o `ADJ_LABEL_W = 44` cortava **17 de 44** nomes
 /// em toda largura; a pilha passou pela porta e tem gate próprio, que pinta o painel
-/// (`cada_nome_da_pilha_de_ajustes_cabe_na_coluna`).
+/// (`a_pilha_de_ajustes_fala_a_tabela_e_mostra_o_numero`), e as barras dela viraram caixa única.
 const COLUNAS_A_MAO: &[(&str, &str)] = &[
     (
         "paint_composite.rs",

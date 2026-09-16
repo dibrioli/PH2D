@@ -64,6 +64,10 @@ pub use ph2d_painter_effects::adjustments::{
     set_adjustment_segment_param, set_adjustment_slider_param, set_adjustment_toggle_param,
     set_channel_mixer_param, set_selective_color_param,
 };
+pub use ph2d_painter_effects::adjustments::{
+    SliderNumber, adjustment_slider_numbers, channel_mixer_slider_numbers,
+    gradient_stop_color_numbers, selective_color_slider_numbers,
+};
 pub use ph2d_painter_effects::{BlendMode, MAX_BLEND_MODES};
 // Re-export the Color Ramp enums so the layers panel's ramp editor can name + enumerate the
 // mode / interpolation options without a direct `ph2d-color` import.

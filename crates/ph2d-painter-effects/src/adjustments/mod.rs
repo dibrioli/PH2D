@@ -637,6 +637,11 @@ pub use compute::{
     set_adjustment_slider_param, set_adjustment_toggle_param, set_channel_mixer_param,
     set_gradient_stop_color_param, set_selective_color_param,
 };
+// The number an artist reads on each slider (the twin of the `*_slider_params` above).
+pub use compute::{
+    SliderNumber, adjustment_slider_numbers, channel_mixer_slider_numbers,
+    gradient_stop_color_numbers, selective_color_slider_numbers,
+};
 // Color Lookup — built-in cinematic looks (per-pixel grade; `.cube` load is a
 // shell follow-up).
 pub use lut::{LUT_PRESET_COUNT, LUT_PRESETS, apply_color_lookup};

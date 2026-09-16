@@ -554,6 +554,12 @@ ali eles cortam — que é a troca que o dono escolheu em 2026-05-24.
 | §3 | a declaração de uma secção e o que o painel pinta dizem o mesmo | `TODAS` | `a_declaracao_das_seccoes_e_o_painel_dizem_o_mesmo` |
 | §6-quinquies | toda caixa de marcar de um painel declara a secção dela | `paint_checkbox_row` | `toda_caixa_deste_painel_declara_a_seccao_dela` |
 | §3 | nenhuma coluna de rótulo é escolhida no sítio de pintura, em nenhuma GRAFIA | `linha_da_chave` | `nenhuma_coluna_de_rotulo_e_escolhida_no_sitio_de_pintura` |
+| §2 | a barra do cartão Line é caixa única, e o número dela grava o que diz | `registar` | `o_chip_de_cada_barra_projecta_o_que_a_ferramenta_grava` |
+| §2 | cada barra de uma camada de ajuste é caixa única, com número editável quando é afim | `paint_barra` | `cada_barra_de_ajuste_e_uma_caixa_unica` |
+| §2 | o número de uma barra de ajuste grava o que diz, lido por um oráculo na unidade do artista | `adjustment_slider_numbers` | `o_numero_de_cada_barra_de_ajuste_escreve_o_que_diz` |
+| §4 | um nome pintado que nasce noutra crate passa pela tabela de strings | `chave_da_barra` | `cada_rotulo_de_ajuste_tem_nome_na_tabela` |
+| §4 | e o pintor pinta o nome da tabela, não o rótulo cru | `pintar` | `o_pintor_pinta_os_nomes_da_tabela` |
+| §6-quinquies | o nome de um interruptor cabe na coluna da secção dele | `seccao_de` | `cada_nome_de_interruptor_cabe_na_coluna` |
 
 ---
 

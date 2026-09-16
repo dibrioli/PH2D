@@ -359,6 +359,18 @@ pub enum PainterLayerWidget {
     AdjSegment0,
     AdjSegment1,
     AdjSegment2,
+    /// (Adjustment rows only) the editable NUMBER of the Nth slider param, linked to its
+    /// [`Self::AdjParam0`]..[`Self::AdjParam7`] twin by the slot's affine unit
+    /// (`adjustments::adjustment_slider_numbers`). A committed number reaches the tool as the
+    /// SLIDER's `ValueChanged` — the chip's own event is not forwarded.
+    AdjChip0,
+    AdjChip1,
+    AdjChip2,
+    AdjChip3,
+    AdjChip4,
+    AdjChip5,
+    AdjChip6,
+    AdjChip7,
 }
 
 impl PainterLayerWidget {
@@ -392,11 +404,19 @@ impl PainterLayerWidget {
             Self::AdjSegment0 => "adj_segment0",
             Self::AdjSegment1 => "adj_segment1",
             Self::AdjSegment2 => "adj_segment2",
+            Self::AdjChip0 => "adj_chip0",
+            Self::AdjChip1 => "adj_chip1",
+            Self::AdjChip2 => "adj_chip2",
+            Self::AdjChip3 => "adj_chip3",
+            Self::AdjChip4 => "adj_chip4",
+            Self::AdjChip5 => "adj_chip5",
+            Self::AdjChip6 => "adj_chip6",
+            Self::AdjChip7 => "adj_chip7",
         }
     }
 
     /// All kinds, in a fixed order — the decoder iterates this.
-    pub const ALL: [PainterLayerWidget; 25] = [
+    pub const ALL: [PainterLayerWidget; 33] = [
         Self::Row,
         Self::Visibility,
         Self::Opacity,
@@ -422,6 +442,14 @@ impl PainterLayerWidget {
         Self::AdjSegment0,
         Self::AdjSegment1,
         Self::AdjSegment2,
+        Self::AdjChip0,
+        Self::AdjChip1,
+        Self::AdjChip2,
+        Self::AdjChip3,
+        Self::AdjChip4,
+        Self::AdjChip5,
+        Self::AdjChip6,
+        Self::AdjChip7,
     ];
 }
 

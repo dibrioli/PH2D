@@ -25,6 +25,8 @@
 #![forbid(unsafe_code)]
 
 mod adjust_menu;
+/// Os nomes que as camadas de ajuste pintam: do rótulo da crate de efeitos para a tabela de strings.
+pub mod adjust_nomes;
 mod blend;
 mod brush_fallback;
 mod card; // the titled row-box shared by the brush panel technique sections

@@ -159,7 +159,7 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
 }
 
 /// Max bloom glow intensity exposed on the slider (the additive-glow multiplier).
-const BLOOM_INTENSITY_MAX: f32 = 2.0;
+pub(super) const BLOOM_INTENSITY_MAX: f32 = 2.0;
 
 /// Built-in Color Lookup preset index → `0..1` slider (quantized on the preset
 /// grid; index 0 = None at the far left).
@@ -185,16 +185,16 @@ fn slider_to_preset(v: f32) -> u64 {
 /// Max blur radius / motion distance exposed on the slider (px). The kernel cap
 /// (`MAX_BLUR_HALF = 256`) is far past any interactive use; 100 px is a generous
 /// editable range with a usable thumb resolution.
-const SPATIAL_PX_MAX: f32 = 100.0;
+pub(super) const SPATIAL_PX_MAX: f32 = 100.0;
 /// Max unsharp-mask amount (the `base + amount·(base−blur)` coefficient).
-const SHARPEN_AMOUNT_MAX: f32 = 2.0;
+pub(super) const SHARPEN_AMOUNT_MAX: f32 = 2.0;
 /// Max sharpen blur radius (px) — sharpening uses a small support.
-const SHARPEN_RADIUS_MAX: f32 = 20.0;
+pub(super) const SHARPEN_RADIUS_MAX: f32 = 20.0;
 /// Half-range of a chromatic-aberration per-channel shift (px at the canvas
 /// corner); the slider is bipolar `−MAX..+MAX` (0.5 = no shift).
-const CHROMA_SHIFT_MAX: f32 = 10.0;
+pub(super) const CHROMA_SHIFT_MAX: f32 = 10.0;
 /// Max halftone cell size (px); the minimum is 1 px (a single-pixel screen).
-const HALFTONE_DOT_MAX: f32 = 32.0;
+pub(super) const HALFTONE_DOT_MAX: f32 = 32.0;
 
 /// Radians angle → `0..1` slider (one full turn).
 #[inline]

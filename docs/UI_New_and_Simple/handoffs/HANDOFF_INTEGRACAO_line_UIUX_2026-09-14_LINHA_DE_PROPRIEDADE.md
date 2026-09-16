@@ -2571,3 +2571,101 @@ segundo ramo passava o texto já traduzido, e quem o apanhou foi o `debug_assert
   painéis contra a coluna cega à largura do dono, o que passa dela são **notas, dicas e rótulos de
   BOTÃO** — nenhum nome de linha de propriedade. *Os painéis que usam a metade cega uniformemente
   estão conformes ao §3; declarar a secção só compra alguma coisa onde um nome não cabe.*
+
+---
+
+## §37 — ⭐⭐⭐ AS BARRAS DO PAINTER GANHAM NÚMERO: o cartão Line e as camadas de AJUSTE viram caixa única
+
+O primeiro item do §36.9 fechou, em três commits (`ada21c4d3` · `9bd537ab5` · o desta secção).
+
+### 37.1 — O cartão Line (`line_barras`)
+
+As 12 barras dos quatro estilos eram `rótulo | trilho nu | readout`. Agora saem de **uma tabela** que
+o pintor, o `populate` e o encaminhamento leem (a mesma pergunta — *que barras há?* — tinha três
+respostas escritas à mão). 12 ids `PAINTER_LINE_*_CHIP` (append-only); o chip liga-se ao slider por
+`link_slider_number_mapped[_integer]` com a escala do setter (`Passes` é contagem, piso `1`).
+
+⚠️ **O gate `o_chip_de_cada_barra_projecta_o_que_a_ferramenta_grava` teve de ganhar um ORÁCULO:** a 1.ª
+redacção lia o valor de volta pela mesma escala da tabela, e a mutação `escala × 2` **sobreviveu** —
+o chip projectava com ela e o gate lia com ela. `na_unidade_do_artista` lê os campos do pincel.
+
+### 37.2 — A pilha das camadas de ajuste: primeiro a coluna, depois a caixa única
+
+1. **A coluna** (`9bd537ab5`): o `ADJ_LABEL_W = 44` pintado em `Base` cortava **17 dos 44** nomes em
+   toda largura — o `Contrast` do próprio comentário (`53,3`) incluído. A pilha passou pela porta
+   (`colunas_da_linha`), com o interruptor no início da coluna do controlo.
+2. **A caixa única** (este commit): a barra passa a `paint_slider_with_chip_layout_adaptive`, com o
+   número **na unidade do artista**. ⚠️ **O mapeamento vive na crate de efeitos, ao lado do setter**
+   (`compute/numbers.rs`: `SliderNumber`, `adjustment_slider_numbers` e as três irmãs) e reusa as
+   constantes de alcance dele (`pub(super)`, não exportadas) — uma segunda cópia no painel seria
+   uma segunda resposta a *«o que esta pista significa?»*.
+
+| unidade | onde |
+|---|---|
+| `-100..100 %` | todo `-1..1` (saturação, brilho, contraste, vibrance, temperatura, balanço, cor selectiva, correcção de cor) |
+| `0..100 %` | toda quantidade `0..1` · a Intensidade do Bloom e a Quantidade do Sharpen em `0..200 %` |
+| `°` | matiz (voltas × 360) e ângulos (radianos) |
+| `px` | raios, distância, desvio cromático (`-10..10`), ponto do meio-tom (`1..32`) |
+| níveis `0..255` (inteiro) | Levels, Threshold, as cores da paragem do gradiente |
+| `-200..300 %` / `-200..200 %` | pesos do preto-e-branco / do misturador |
+| EV `-4..4` · offset · **gama EFECTIVO** `0,1..1,9` | Exposure (o núcleo divide por `1 + correcção`, e `1,00` lê-se «intocado») |
+| contagem | Posterize `2..32`, o *Look* (índice do preset) |
+| ⛔ **só se mostra** | o *Gamma* do Levels — a pista não é afim no valor (`levels_slider_to_gamma`) |
+
+8 ids novos `PainterLayerWidget::AdjChip0..7` (acrescentados no FIM do enum — o `tag` é a identidade
+do hash, e a ordem do `ALL` só o decoder lê). ⚠️ **O chip liga-se a CADA QUADRO** (`ligar_numero`):
+os ids são por camada e as camadas nascem depois do `populate`; a ligação é uma inserção
+idempotente. A edição chega à ferramenta como o `ValueChanged` do slider — os três caminhos
+próprios (misturador · cor selectiva · paragem do gradiente) não mudaram.
+
+### 37.3 — ⛔⛔ Os NOMES vinham de outra crate, e nenhum censo os via
+
+`adjustment_slider_params` e irmãs devolvem rótulos em inglês ABREVIADO (`Shad Amt`, `High Wid`,
+`Preserve Lum.`, `Vib`) — abreviados para caber nos 44 px. O painel pintava-os crus, e o gate
+`every_word_this_panel_shows_comes_from_the_string_table` **não os podia ver: ele lê o `src/` do
+painel, e o literal mora na `ph2d-painter-effects`.** Idem os 24 nomes do menu «+ Adjustment»
+(`display_name`) e as opções dos segmentos.
+
+⇒ `adjust_nomes` (pub): o rótulo da crate vira **identificador** (braço de `match`, que a régua
+lexical isenta por construção) e o que se pinta é a chave. ⚠️ **O `match` é por FAMÍLIA** — `Red` é
+canal no misturador e *desvio* na aberração; `Contrast` é o geral e o de meios-tons; `Tint` é o
+interruptor e a quantidade. 90 chaves novas em `ph2d-i18n/src/painter_layers.rs`, **fora** dos
+marcadores do script de migração.
+
+⚠️ **`Keep Luminosity`, não `Preserve Luminosity`:** medido com a fonte do arnês, o nome do Photoshop
+mede `117,3` e cortava já a `245` (a coluna do interruptor tem `103`); este mede `95,4` e só corta
+no mínimo do dock — a mesma escada do abreviado de antes (`[(220, 2), (245.., 0)]`).
+
+### 37.4 — Os gates e as mutações que sangram
+
+| gate | o que mede | mutação provada |
+|---|---|---|
+| `o_numero_de_cada_barra_de_ajuste_escreve_o_que_diz` | digita nos **65** chips afins das 22 pilhas, drena até à ferramenta, lê o campo por um ORÁCULO escrito à mão | `SIGNED_PERCENT` com a escala pela metade · link apagado |
+| `cada_barra_de_ajuste_e_uma_caixa_unica` | chip existe ⇔ número afim, dentro da caixa | `ligar_numero` sem chip |
+| `cada_rotulo_de_ajuste_tem_nome_na_tabela` | todo rótulo (barras, interruptores, segmentos, 3 saídas do misturador, 9 grupos) tem chave declarada; nomes distintos por pilha; ≥20 expandidos | — |
+| `o_pintor_pinta_os_nomes_da_tabela` | glifos da pilha das Sombras/Luzes − glifos de uma pilha vazia ≥ glifos dos oito nomes INTEIROS | pintar o rótulo cru |
+| `cada_nome_de_interruptor_cabe_na_coluna` | escada com metade de obsolescência | — |
+| `painter_dynamic_ids_dont_collide_with_chrome_or_each_other` (editor-core) | ⭐ passou a derivar de `PainterLayerWidget::ALL` (piso 33) — a lista à mão tinha **7 das 25** espécies | — |
+
+⚠️ **Ponto cego nomeado:** trocar a chave de um rótulo por OUTRA chave válida (`Shad Amt` → `brightness`)
+não é apanhado — só a unicidade por pilha e o smoke o vêem.
+
+### 37.5 — Para o integrador
+
+- **Toca a `ph2d-painter-effects`** (um ficheiro novo, uma linha de visibilidade em seis constantes,
+  um bloco de `pub use`) **e a `ph2d-tool-painter`** (8 variantes no fim do enum + re-exports). Nenhum
+  contrato congelado (§6: a superfície de efeitos é «não-gateada»).
+- **`OpacityChip` é um id ÓRFÃO** (nenhum sítio o pinta nem regista) — medido, não tocado.
+- O gate antigo `cada_nome_da_pilha_de_ajustes_cabe_na_coluna` **morreu** com a coluna das barras
+  (substituído pelo `a_pilha_de_ajustes_fala_a_tabela_e_mostra_o_numero`).
+
+### 37.6 — ⏳ ABERTO
+
+- **O *Composite* do pincel** continua `nome | trilho | readout`, e é linha de LISTA (spec §1) — a
+  caixa única ali é decisão de desenho, não conversão.
+- **As secções do painel de VECTOR** (§36.3) — e o mesmo painel pinta literais em inglês fora da
+  tabela (`Grow`, `Shrink`, `Cross`, `T`/`R`/`B`/`L`, `All`).
+- **Uma porta que saiba o que um INTERRUPTOR precisa:** o `colunas_da_linha` reserva o piso de um
+  campo (`72`) e a chave ocupa `34` — por isso os dois cortes a `220`.
+- Os nomes dos *presets* do *Look* (`LUT_PRESETS`) são inglês na crate de efeitos; hoje não são
+  pintados (o *Look* mostra o índice).

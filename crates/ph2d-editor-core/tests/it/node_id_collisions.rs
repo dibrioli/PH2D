@@ -1204,22 +1204,19 @@ fn the_name_census_reads_a_const_inside_a_function() {
 /// extended to the per-row painter id space.
 #[test]
 fn painter_dynamic_ids_dont_collide_with_chrome_or_each_other() {
-    use ph2d_tool_painter::ids::PainterLayerWidget::{
-        Blend, MoveDown, MoveUp, Opacity, OpacityChip, Row, Visibility,
-    };
-
     let chrome = produto_hashes();
     let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
 
-    let kinds = [
-        Row,
-        Visibility,
-        Opacity,
-        OpacityChip,
-        Blend,
-        MoveUp,
-        MoveDown,
-    ];
+    // ⭐ **Todas as espécies, da tabela do próprio enum** (2026-09-16). A lista era escrita à mão com
+    //    7 das 25 — e as barras, interruptores e segmentos das camadas de ajuste (e os 8 números
+    //    editáveis que nasceram nesse dia) nunca foram medidos. *Uma lista à mão mede os sítios de
+    //    que já se suspeita.*
+    let kinds = ph2d_tool_painter::ids::PainterLayerWidget::ALL;
+    assert!(
+        kinds.len() >= 33,
+        "a tabela das espécies por camada encolheu para {} — a varredura partiu-se",
+        kinds.len()
+    );
     // Dense small ids + sparse/large runtime ids (LayerId is a u64 monotonic).
     let layer_ids = [0u64, 1, 2, 3, 7, 42, 255, 1000, 0x_dead_beef, u64::MAX];
 

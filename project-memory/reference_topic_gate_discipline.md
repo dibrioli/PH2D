@@ -247,3 +247,13 @@ mais o `#[cfg(test)]`).
 natureza acorda todo gate cuja cerca era a forma**. Quem parte um ficheiro pelo tecto de LOC corre
 os censos da crate antes de dar o corte por fechado.
 
+- ⛔⛔ **Um censo POR CRATE é cego ao texto que a crate PINTA mas não ESCREVE** (2026-09-16, `line/UIUX`):
+  o `every_word_this_panel_shows_comes_from_the_string_table` do painel Painter estava a ZERO com o
+  painel a pintar ~90 textos em inglês abreviado (`Shad Amt`, `Preserve Lum.`, os 24 nomes do menu
+  «+ Adjustment») — os literais moravam na `ph2d-painter-effects`, do outro lado da fronteira, e
+  chegavam ao pintor por uma função. **Why:** a régua lê o `src/` de UMA crate; o texto atravessa a
+  fronteira como valor. **How to apply:** quando um painel pinta o retorno de uma função de OUTRA crate
+  (`*_params`, `display_name`), trate esse retorno como IDENTIFICADOR — um `match` que o mapeia para a
+  chave (a régua isenta braços de `match`) — e gateie a tabela nos dois sentidos (todo rótulo tem chave)
+  MAIS o pintor (diferencial de glifos contra uma pilha vazia; a tabela certa com o pintor a ignorá-la
+  deixa o primeiro gate verde). Ver [[feedback_a_panel_can_hold_one_name_column_per_family_of_row]].

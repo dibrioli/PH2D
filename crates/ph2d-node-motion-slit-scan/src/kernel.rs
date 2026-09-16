@@ -40,11 +40,14 @@ let ss_old = array<mat4x4<f32>, 4>(read_state_ss_ring0(i), read_state_ss_ring1(i
 \x20   read_state_ss_ring2(i), read_state_ss_ring3(i));\n\
 // O atraso DESTE elemento — o `delay_of` da CPU. O `lag` do uniform ja' vem por `lag_ticks`.\n\
 var ss_d = 0.0;\n\
-if (params.count >= 2u && params.lag > 0.0) {\n\
+let ss_f_raw = read_in_falloff(i);\n\
+var ss_f = 0.0;\n\
+if (abs(ss_f_raw) <= 3.4028235e38) { ss_f = clamp(ss_f_raw, 0.0, 1.0); }\n\
+if (params.ramp >= 0.5) {\n\
+\x20   // `Delay By = Field`: o campo sozinho (ciclo 7, W3).\n\
+\x20   if (params.lag > 0.0) { ss_d = clamp(params.lag * ss_f, 0.0, 32.0); }\n\
+} else if (params.count >= 2u && params.lag > 0.0) {\n\
 \x20   let ss_rank = f32(i) / f32(params.count - 1u);\n\
-\x20   let ss_f_raw = read_in_falloff(i);\n\
-\x20   var ss_f = 0.0;\n\
-\x20   if (abs(ss_f_raw) <= 3.4028235e38) { ss_f = clamp(ss_f_raw, 0.0, 1.0); }\n\
 \x20   ss_d = clamp(params.lag * ss_rank * ss_f, 0.0, 32.0);\n\
 }\n\
 let ss_lo = u32(ss_d);\n\
@@ -114,7 +117,7 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
         anel(2),
         anel(3),
     ],
-    params: &["lag"],
+    params: &["lag", super::RAMP],
     count_law: None,
     variant_by_param: None,
     applicable: None,

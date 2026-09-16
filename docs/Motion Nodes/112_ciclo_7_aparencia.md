@@ -419,6 +419,31 @@ retrato do cartão é o instrumento, não uma catraca.
 
 ---
 
+## §4-sexies — ✅ W3: o poder que faltava — e ele era UM, com a recusa que o escondia
+
+O placar da conferência está a **zero** nas folhas do grupo (06 · 07 · 09 · 11 — a *dirt texture*
+da folha 11 já tinha fechado com a cena `=107`), e as referências de cada nó foram conferidas lá.
+O §2.4 marcava o `motion.slit_scan` de um botão só como o candidato óbvio, e a nota que o dizia
+*«magro por natureza»* (doc 88 §9.2) foi lida outra vez:
+
+- ⚠️⚠️ **O eixo «por um `motion.sort` a montante» REORDENA o stream para sempre** — a ordem de
+  desenho, o pareamento por índice, o `id` —, que é o efeito colateral que a folha 10 da
+  conferência nomeou depois e curou no `field.index_range` (o posto por atributo, sem reordenar).
+- E o campo **multiplicava** a rampa por índice (`lag · i/(n−1) · falloff`): um atraso só pela
+  POSIÇÃO — o *Time Displacement* do AE, onde o mapa diz o atraso de cada pixel — não se exprimia.
+
+⇒ **`Delay By`** (param apendado e neutro): `Order` = a rampa de sempre, **ao bit** · `Field` =
+`lag · falloff`, o campo sozinho (um elemento só também atrasa). Com
+`field.index_range(Attribute = P.x)` é o slit da esquerda para a direita com a ordem intacta; com
+qualquer `field.*` é um mapa de atraso. Nos dois caminhos: a paridade do dispositivo ganhou o caso
+(pior `7,2e-5`, o ε do oscilador a montante), e as mutações morrem na LEI **e na LEITURA** — a
+primeira prova só apanhava a lei (o gate chamava o `step` direto), e o `eval` que ignorasse o param
+sobrevivia; o gate novo coze pelo grafo com `Delay By = Field`. Emenda escrita no doc 88 §9.2 e uma
+linha nova na folha 04. Os outros três pontos da §9.2 (a direção, a forma, o *Time Resolution*)
+ficam de pé.
+
+---
+
 ## §5 — A fila do ciclo
 
 1. ✅ **W1a — o brilho passa-tudo** (§4).
@@ -437,8 +462,7 @@ retrato do cartão é o instrumento, não uma catraca.
    (ADR-0163) e fica CPU **por desenho** (`applicable`). E o tecto do rasto é para MEDIR no
    dispositivo quando o kernel existir (doc-comment do `MAX_INSTANCES` dele).
 5. ✅ **W2 — o cartão e o alcance** (§4-quinquies).
-6. ⏳ **W3 — o poder que falta** — as folhas 06 (animadores), 09 (cor) e 11 (fx raster) da
-   conferência; o `slit_scan` de um botão só (§2.4); o P2 aberto da folha 11 (a *dirt texture*).
+6. ✅ **W3 — o poder que falta** (§4-sexies).
 7. ⏳ **W4 — a MEDIÇÃO** — residência e relógio do grupo.
 8. ⏳ **W5 — a cena e o TUTORIAL** *«A cor e o rasto»* — o smoke do dono.
 

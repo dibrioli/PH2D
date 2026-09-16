@@ -386,6 +386,14 @@ Cavalry) nomeia três coisas além do deslocamento máximo, e **as três já sã
 instâncias.* ⇒ **1 param é o número certo**, e fica escrito para que a próxima varredura não o
 leia como lacuna.
 
+> ⚠️⚠️ **EMENDA (2026-09-16, ciclo 7 W3 — doc 112 §4-sexies): o primeiro ponto respondia a OUTRA
+> pergunta.** O `motion.sort` a montante dá o eixo **reordenando o stream para sempre** (a ordem
+> de desenho, o pareamento por índice, o `id` — o efeito colateral que a folha 10 da conferência
+> nomeou e curou no `field.index_range`), e o campo **multiplicava** a rampa por índice, então um
+> atraso só pela POSIÇÃO não se exprimia sem tocar na ordem. ⇒ o nó ganhou **`Delay By`**
+> (`Order` · `Field`); os outros três pontos ficam de pé. *Uma recusa medida responde UMA
+> pergunta.*
+
 ### §9.3 — O MAPA cobre 54 dos 118 nós, e o resto foi varrido por PROPRIEDADE
 
 ⚠️ **A tabela acima diz *"o veredito de cada família"* e nomeia SEIS** — TRANSFORM (6 nós) ·

@@ -61,7 +61,7 @@ fn liga(g: &mut Graph, de: NodeId, para: (NodeId, u16), pre: bool) {
 
 /// `grid → oscillator → [falloff] → slit_scan → output`, com o `pre` do slit fechado sobre si.
 /// A fonte MEXE-SE (senão o anel guardaria 32 cópias da mesma pose e o atraso seria invisível).
-fn cadeia(lado: f32, lag: f32, campo: bool) -> (Graph, NodeId, NodeId) {
+fn cadeia(lado: f32, lag: f32, campo: bool, ramp: f32) -> (Graph, NodeId, NodeId) {
     let mut g = Graph::new();
     let grid = g.add_node("motion.grid");
     g.set_param(grid, "rows", lado);
@@ -83,6 +83,7 @@ fn cadeia(lado: f32, lag: f32, campo: bool) -> (Graph, NodeId, NodeId) {
     }
     let ss = g.add_node("motion.slit_scan");
     g.set_param(ss, "lag", lag);
+    g.set_param(ss, "ramp", ramp);
     liga(&mut g, fonte, (ss, 0), false);
     liga(&mut g, ss, (ss, 1), true);
     let out = g.add_node("motion.output");
@@ -213,13 +214,15 @@ fn the_slit_scan_matches_the_cpu_tick_by_tick() {
         return;
     };
     let reg = registry();
-    for (rotulo, lag, campo) in [
-        ("lag de omissão", 12.0, false),
-        ("lag fraccionário com campo", 7.5, true),
-        ("lag acima do anel (preso a 32)", 40.0, false),
+    for (rotulo, lag, campo, ramp) in [
+        ("lag de omissão", 12.0, false, 0.0),
+        ("lag fraccionário com campo", 7.5, true, 0.0),
+        ("lag acima do anel (preso a 32)", 40.0, false, 0.0),
+        // ⭐ `Delay By = Field` (ciclo 7, W3): o campo sozinho decide.
+        ("atraso pelo campo", 9.5, true, 1.0),
     ] {
-        let posicoes = paridade(&gpu, &reg, rotulo, cadeia(LADO, lag, campo));
-        atrasou(rotulo, cadeia(LADO, 0.0, campo), &posicoes);
+        let posicoes = paridade(&gpu, &reg, rotulo, cadeia(LADO, lag, campo, ramp));
+        atrasou(rotulo, cadeia(LADO, 0.0, campo, ramp), &posicoes);
     }
 }
 
@@ -235,6 +238,6 @@ fn the_slit_scan_identities_match_the_cpu() {
     };
     let reg = registry();
     for (rotulo, lado, lag) in [("lag zero", LADO, 0.0), ("um elemento", 1.0, 12.0)] {
-        paridade(&gpu, &reg, rotulo, cadeia(lado, lag, false));
+        paridade(&gpu, &reg, rotulo, cadeia(lado, lag, false, 0.0));
     }
 }

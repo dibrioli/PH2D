@@ -83,9 +83,35 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "lag",
             default: 12.0,
         },
+        // ⚠️ APENDADO e NEUTRO (ciclo 7, W3 — doc 112): `0 = Order`, a rampa de sempre, ao bit.
+        // Ver [`RAMP`].
+        ParamSpec {
+            name: RAMP,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **DE ONDE VEM O ATRASO de cada elemento** (ciclo 7, W3 — doc 112 §4-sexies).
+///
+/// `0 = Order` — a rampa do stream (`lag · i/(n−1)`, atenuada pelo `falloff`), o nó de sempre.
+/// `1 = Field` — **só o campo decide** (`lag · falloff`): o slit ESPACIAL do Time Displacement do
+/// AE, onde o mapa diz o atraso de cada pixel.
+///
+/// ⚠️⚠️ **A recusa que isto desfaz (doc 88 §9.2) respondia com «um `motion.sort` a montante» — e
+/// o `sort` REORDENA o stream para sempre a jusante** (a ordem de desenho, o pareamento por
+/// índice, o `id`), que é o efeito colateral que a folha 10 da conferência nomeou depois e que deu
+/// ao `field.index_range` o posto por atributo SEM reordenar. E o campo MULTIPLICAVA a rampa por
+/// índice, então um atraso só pela POSIÇÃO não se exprimia sem tocar na ordem. Com `Field`, um
+/// `field.index_range(Attribute = P.x)` é o slit da esquerda para a direita com a ordem intacta, e
+/// qualquer `field.*` é um mapa de atraso.
+pub const RAMP: &str = "ramp";
+
+/// `true` quando o atraso vem só do campo.
+fn by_field(ramp: f32) -> bool {
+    ramp >= 0.5
+}
 
 /// The requested lag in ticks, clamped to what the delay line can hold. Non-finite
 /// (a hand-edited document) reads as 0 — the identity — never as a NaN delay.
@@ -116,16 +142,25 @@ fn positions(s: &Stream, n: usize) -> Vec<[f32; 2]> {
 /// Element `i`'s delay, in ticks: its place in the ramp (`0` at the head, the
 /// full `lag` at the tail) attenuated by the falloff field. A single-element
 /// stream has no ramp to walk, so it stays live.
-fn delay_of(i: usize, n: usize, lag: f32, falloff: f32) -> f32 {
-    if n < 2 || lag <= 0.0 {
-        return 0.0;
-    }
-    let rank = i as f32 / (n - 1) as f32;
+///
+/// With `field` ([`RAMP`] = `Field`) the ramp is the field alone — a single element CAN lag,
+/// because nothing is walked.
+fn delay_of(i: usize, n: usize, lag: f32, falloff: f32, field: bool) -> f32 {
     let f = if falloff.is_finite() {
         falloff.clamp(0.0, 1.0)
     } else {
         0.0
     };
+    if field {
+        if lag <= 0.0 {
+            return 0.0;
+        }
+        return (lag * f).clamp(0.0, MAX_LAG as f32);
+    }
+    if n < 2 || lag <= 0.0 {
+        return 0.0;
+    }
+    let rank = i as f32 / (n - 1) as f32;
     (lag * rank * f).clamp(0.0, MAX_LAG as f32)
 }
 
@@ -137,16 +172,16 @@ fn at(k: usize, i: usize, live: &[[f32; 2]], past: &[Vec<[f32; 2]>]) -> [f32; 2]
 
 /// One tick of the scan: sample every element at its own delay, then advance the
 /// delay line. The whole node, as a pure function of (live, state, lag).
-fn step(input: &Stream, state: &Stream, lag: f32) -> Stream {
+fn step(input: &Stream, state: &Stream, lag: f32, field: bool) -> Stream {
     let n = input.count();
     let live = positions(input, n);
-    let field = falloff(input, n);
+    let falloffs = falloff(input, n);
     let past = past(state, &live);
     let lag = lag_ticks(lag);
 
     let scanned: Vec<[f32; 2]> = (0..n)
         .map(|i| {
-            let d = delay_of(i, n, lag, field[i]);
+            let d = delay_of(i, n, lag, falloffs[i], field);
             // Fractional delay: lerp between the two neighbouring ticks of
             // history, so the shear is smooth rather than quantised to ticks.
             let lo = d as usize; // truncation is the floor: d >= 0 and finite
@@ -178,7 +213,8 @@ impl NodeOp for MotionSlitScan {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let lag = ctx.param("lag");
-        let out = step(ctx.input(0), ctx.input(1), lag);
+        let field = by_field(ctx.param(RAMP));
+        let out = step(ctx.input(0), ctx.input(1), lag, field);
         ctx.emit(out);
     }
 }
@@ -208,14 +244,27 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: "lag",
-    label: "Lag",
-    min: 0.0,
-    max: 32.0,
-    step: 0.5,
-    widget: ParamWidget::Slider,
-}];
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "lag",
+        label: "Lag",
+        min: 0.0,
+        max: 32.0,
+        step: 0.5,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: RAMP,
+        label: "Delay By",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            // *Order* = a rampa do stream (o nó de sempre). *Field* = o campo sozinho.
+            labels: &["Order", "Field"],
+        },
+    },
+];
 
 #[cfg(test)]
 mod tests {
@@ -240,7 +289,7 @@ mod tests {
         let mut state = Stream::new(0);
         let mut last = Stream::new(0);
         for t in 0..ticks {
-            last = step(&marching(n, t as f32), &state, lag);
+            last = step(&marching(n, t as f32), &state, lag, false);
             state = last.clone();
         }
         xs(&last)
@@ -273,7 +322,7 @@ mod tests {
     /// node opens on the input instead of snapping out of a garbage past.
     #[test]
     fn the_first_tick_seeds_flat_on_the_live_pose() {
-        let out = step(&marching(4, 7.0), &Stream::new(0), 8.0);
+        let out = step(&marching(4, 7.0), &Stream::new(0), 8.0, false);
         assert_eq!(xs(&out), vec![7.0; 4], "all live at tick 0");
     }
 
@@ -293,13 +342,54 @@ mod tests {
         for t in 0..8 {
             let mut input = marching(3, t as f32);
             input.set("falloff", Column::Scalar(vec![1.0, 1.0, 0.0]));
-            last = step(&input, &state, 2.0);
+            last = step(&input, &state, 2.0, false);
             state = last.clone();
         }
         let t = 7.0;
         // Element 1 is mid-ramp (1 tick back); element 2 would be 2 ticks back but
         // its field is zero, so it is live.
         assert_eq!(xs(&last), vec![t, t - 1.0, t]);
+    }
+
+    /// ⭐ **`Delay By = Field`: o campo SOZINHO decide o atraso** (ciclo 7, W3). Os elementos estão
+    /// numa ordem que NÃO é a do campo (o campo decresce com o índice), e o atraso segue o campo —
+    /// não o posto. E um elemento só atrasa: não há rampa a percorrer.
+    #[test]
+    fn a_field_ramp_delays_by_the_field_alone() {
+        let mut state = Stream::new(0);
+        let mut last = Stream::new(0);
+        for t in 0..10 {
+            let mut input = marching(4, t as f32);
+            input.set("falloff", Column::Scalar(vec![1.0, 0.75, 0.25, 0.0]));
+            last = step(&input, &state, 4.0, true);
+            state = last.clone();
+        }
+        let t = 9.0;
+        // Atrasos 4 · 3 · 1 · 0 — o campo, nunca o `i/(n−1)` (que daria 0 · … · 4).
+        assert_eq!(xs(&last), vec![t - 4.0, t - 3.0, t - 1.0, t]);
+        // A mesma entrada com a rampa de SEMPRE dá outra coisa (a prova de que o param morde).
+        let mut state = Stream::new(0);
+        for t in 0..10 {
+            let mut input = marching(4, t as f32);
+            input.set("falloff", Column::Scalar(vec![1.0, 0.75, 0.25, 0.0]));
+            last = step(&input, &state, 4.0, false);
+            state = last.clone();
+        }
+        assert_eq!(xs(&last), vec![t, t - 1.0, t - 2.0 / 3.0, t]);
+        // Um elemento só, no campo cheio: atrasa o `lag` inteiro.
+        let mut state = Stream::new(0);
+        for t in 0..10 {
+            last = step(&marching(1, t as f32), &state, 3.0, true);
+            state = last.clone();
+        }
+        assert_eq!(xs(&last), vec![t - 3.0]);
+    }
+
+    /// ⚠️ **O default é a rampa de sempre** — o param apendado nasce no `Order`.
+    #[test]
+    fn the_appended_ramp_defaults_to_the_order() {
+        let d = MANIFEST.param_default(RAMP).expect("declarado");
+        assert!(!by_field(d), "o default tem de ser a ordem, ao bit");
     }
 
     /// A changed element count re-seeds the line (an emitter churned / the grid
@@ -309,9 +399,9 @@ mod tests {
     fn a_count_change_reseeds_the_delay_line() {
         let mut state = Stream::new(0);
         for t in 0..6 {
-            state = step(&marching(4, t as f32), &state, 3.0);
+            state = step(&marching(4, t as f32), &state, 3.0, false);
         }
-        let grown = step(&marching(9, 6.0), &state, 3.0);
+        let grown = step(&marching(9, 6.0), &state, 3.0, false);
         assert_eq!(xs(&grown), vec![6.0; 9], "re-seeded flat, no panic");
     }
 
@@ -322,7 +412,7 @@ mod tests {
     fn other_columns_ride_through_live() {
         let mut input = marching(3, 1.0);
         input.set("size", Column::Vec2(vec![[2.0, 2.0]; 3]));
-        let out = step(&input, &Stream::new(0), 4.0);
+        let out = step(&input, &Stream::new(0), 4.0, false);
         match out.get("size").unwrap() {
             Column::Vec2(v) => assert_eq!(v, &vec![[2.0, 2.0]; 3]),
             _ => panic!("size"),
@@ -393,21 +483,34 @@ mod tests {
         })
         .unwrap();
 
-        let mut cook = Cook::new();
-        let dt = 1.0 / 60.0;
-        let mut x = Vec::new();
-        for k in 0..10 {
-            let ph = k as f64 * dt;
-            let out = cook.cook(&g, &Ops, scan, ph).unwrap();
-            x = match out[0].as_stream().get("P").unwrap() {
-                Column::Vec2(v) => v.iter().map(|p| p[0]).collect(),
-                _ => panic!("P"),
-            };
-            cook.advance_tick(&g, &Ops, ph).unwrap();
-        }
+        let corre = |g: &Graph| {
+            let mut cook = Cook::new();
+            let dt = 1.0 / 60.0;
+            let mut x = Vec::new();
+            for k in 0..10 {
+                let ph = k as f64 * dt;
+                let out = cook.cook(g, &Ops, scan, ph).unwrap();
+                x = match out[0].as_stream().get("P").unwrap() {
+                    Column::Vec2(v) => v.iter().map(|p| p[0]).collect::<Vec<f32>>(),
+                    _ => panic!("P"),
+                };
+                cook.advance_tick(g, &Ops, ph).unwrap();
+            }
+            x
+        };
+        let x = corre(&g);
         assert!(
             x[0] > x[1] && x[1] > x[2],
             "the tail lags the head through the cook: {x:?}"
+        );
+        // ⚠️ **E o `Delay By` é LIDO pela porta do produto** (a prova de que o `eval` o lê, e não só
+        // a lei): sem campo, `Field` atrasa TODOS o `lag` inteiro — a cabeça também. Uma mutação
+        // que deixasse o `eval` na ordem sobreviveu ao gate da lei, que chama o `step` direto.
+        g.set_param(scan, RAMP, 1.0);
+        let y = corre(&g);
+        assert!(
+            y[0] == y[1] && y[1] == y[2] && y[0] < x[0],
+            "com Delay By = Field e sem campo, todos atrasam por igual: {y:?} (a ordem dava {x:?})"
         );
     }
 }

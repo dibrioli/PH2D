@@ -11,7 +11,7 @@ Patente (§8.1): buscado em 2026-09-15 — pincel de escultura que achata contra
   alisamento, não deste. As três patentes de escultura da era de 2001 estão EXPIRADAS. Arte
   anterior pública desde os anos 1990, e a metade antiga desta família distribui-se hoje sob MIT.
   Veredito: prosseguir.
-Filtragem §4.3: executada em 2026-09-15, RE-EXECUTADA sobre as DUAS emendas em 2026-09-16 · Sweep: ✅ VERDE em 2026-09-15 sobre **321** entradas
+Filtragem §4.3: executada em 2026-09-15, RE-EXECUTADA sobre as TRÊS emendas em 2026-09-16 · Sweep: ✅ VERDE em 2026-09-15 sobre **321** entradas
   (104 identificadores internos + prosa do alvo em DUAS línguas, com e sem acentos − 16
   identificadores PÚBLICOS da API, que são a chave de regeneração das fixtures e que o
   precedente da casa deixa de fora — §4.1.13).
@@ -97,8 +97,21 @@ Auditoria §4.2 (R-pré): ⚠️ **CORRIDA em 2026-09-16** por um subagente inde
   cabeçalho de proveniência das fixtures NÃO carrega todas as grandezas que enquadram o traço**, e
   a §11 afirma que carrega — **três** fixtures têm o enquadramento publicado igual ao de outra e
   saída diferente.
-  ⏳ **R-pré, 3.ª passagem: NÃO ATESTA. A janela I continua FECHADA.** ⇒ 3.ª emenda sobre os `2`
-  bloqueadores (as `9` erratas cabem na mesma emenda), depois **4.ª corrida** do R-pré.
+  ✅ **3.ª EMENDA ENTREGUE em 2026-09-16 (subagente-E), os 2 bloqueadores e as 9 erratas curados.**
+  **(B1)** o **G-1** passa a **NOMEAR** a população que a página sustenta — `28` ficheiros nas duas
+  pastas, `2` que **não movem nada** (os sujeitos de G-2 e G-8), `7` **traços inteiros** que a
+  reprodução de um dab não alcança, **`19`** de um dab efectivo — dá **barra própria** (`1e-4`) à
+  única que diverge, `lei/lei_bossas`, com a razão escrita (quadriláteros empenados, que a nossa
+  malha de triângulos não produz), e ganha **piso de população**; a dívida dos `7` fica nomeada em
+  **G-1b**. **(B2)** as **100** fixtures foram **REGERADAS** com as três grandezas que faltavam —
+  `modificador_carregado`, `mascara` (+ bloco `m` por vértice) e `direccao_da_vista` —, e a §11
+  publica o quadro do que passou a viajar e quantas fixtures cada chave enquadra (`5` com o
+  modificador, `1` com máscara, todas com a vista). ⇒ **o cabeçalho é completo**, e um leitor
+  guiado por ele reproduz a saída sem consultar a prosa.
+  **(9 erratas)** curadas todas — ⚠️ **duas eram GÉMEAS de bloqueadores já curados, deixadas
+  intactas na §0.2**: *ao curar um número, o gémeo dele está quase sempre na secção de abertura,
+  que ninguém relê.*
+  ⏳ **R-pré, 4.ª passagem: PENDENTE. A janela I continua FECHADA.**
 Mapa de leitura da literatura: não há paper. A literatura pública utilizável é (a) o manual do
   alvo (factos, ⛔ nunca o wording), (b) a discussão pública de desenho no fórum de
   desenvolvimento dele, destilada na §10 desta espec, e (c) o nosso próprio registo do porte MIT
@@ -148,9 +161,9 @@ Quem pedir *«um pincel que apara esfregando»* e receber o nosso `Scrape` não 
 | **B) a lei do CENTRO da área** | a nossa pesa pela **MÁSCARA** e amostra a **pegada inteira** do pincel — numa pegada sem máscara ela é a **média aritmética simples** das posições, sobre o raio `R`. A do alvo pesa por uma curva suave, amostra um raio **próprio** (`R_c`, §2.3) e **não é uma média ponderada de coisa nenhuma**: é a média das posições **puxadas em direcção ao cursor** pelo COMPLEMENTO do peso (§2.2) | ⭐ a altura do **nosso centro real** contra o plano do alvo, num pincel de raio `0,4`: **`+0,03795`** num sulco — **`9,5 %` do raio, e de SINAL OPOSTO** ao que uma leitura ingénua supõe —, **`−0,01603`** numa rampa, **`+0,00489`** num degrau, e até **`+0,06853`** (`17,1 %`) quando o alvo aperta o raio de amostragem dele. ⇒ *o buraco é maior do que qualquer candidata intermédia sugere, e a razão é que a EXTENSÃO também difere, não só o peso* |
 | **C) a ponderação e a EXTENSÃO da NORMAL da área** | a nossa pesa pela **máscara** (sem máscara: soma simples) sobre a **pegada inteira**; a do alvo pesa por uma curva suave da distância, sobre um raio próprio `R_n` | ⭐ o desvio ANGULAR da nossa normal contra a do alvo vai de **`0,00°`** (rampa: superfície plana, toda média concorda — o controlo) a **`16,9°`** num sulco, **`23,5°`** com o raio da normal apertado e **`31,2°`** numa superfície curva nos dois eixos. A candidata do alvo lê `0,0000°` em todas (fixtures `lei/*`) |
 | **D) DOIS raios de amostragem** independentes (um para a normal, outro para o centro), **com queda** | temos **um** raio, e ele é o do pincel — o nosso estimador lê a pegada inteira, e a nossa consulta devolve exactamente o raio do dab nos quatro verbos de plano | provado por um par: com os dois raios iguais as saídas são **byte-idênticas**; com o raio da normal em `1,0` e o do centro a `0` elas divergem `5,6e-2` ⇒ *o zero do segundo cai no primeiro* (fixtures `amostragem/*`) |
-| **E) os dois ESTABILIZADORES** (a normal e o centro do plano, cada um com memória do traço) | não temos nada equivalente; o nosso `accumulate` decide **de que superfície** o plano é lido, não **quanto o plano se lembra** | sobre um degrau, a firmeza da normal muda a saída em `2,8e-2` e a do centro em `2,4e-1` (fixtures `firmeza/*`) |
+| **E) os dois ESTABILIZADORES** (a normal e o centro do plano, cada um com memória do traço) | não temos nada equivalente. ⚠️ **E o nosso `accumulate` não é o parente pobre deles: nos quatro verbos de plano ele nem sequer é consultado** (§2.6) — quem o consulta são outros três verbos, e ali ele decide **de que superfície** o plano é lido, nunca **quanto o plano se lembra** | sobre um degrau, a firmeza da normal muda a saída em `2,8e-2` e a do centro em `2,4e-1` (fixtures `firmeza/*`) |
 | **F) o CORTE por distância ao plano** | não temos knob nenhum que limite o alcance por distância ao plano | vivo em dois dos quatro consumidores do alvo, e **morto em dois** — §7 |
-| **G) o MODO de inversão** | o nosso `invert` só troca o sinal | o alvo oferece **duas** leis para o `Ctrl`, e a segunda é *trocar os papéis dos dois tectos* — que dá exactamente a saída do par trocado, **byte a byte** (fixture `inversao/inversao_troca`) |
+| **G) o MODO de inversão** | ⚠️ **e a 1.ª redacção estava errada sobre NÓS:** o nosso `invert` não «só troca o sinal» — o predicado vivo que decide quem o honra **não lista** `Flatten`, `Fill` nem `Scrape` (nos três o modificador é **inerte**), e no único da família que o lista, `Clay`, ele **baixa o plano E inverte o lado** (o barro invertido é um raspar contra um plano rebaixado, não um barro mais fraco). ⇒ para esta família nós temos **um** comportamento em **um** verbo, não uma lei | o alvo oferece **duas** leis para o `Ctrl` em **todos** os verbos de plano, e a segunda é *trocar os papéis dos dois tectos* — que dá exactamente a saída do par trocado, **byte a byte** (fixture `inversao/inversao_troca`) |
 
 ### §0.3 — A resposta
 
@@ -335,13 +348,14 @@ Com o **acumular** desligado (o valor de fábrica) a amostragem lê as posiçõe
 **congeladas no pen-down**; ligado, lê as vivas.
 
 ⚠️⚠️ **A nossa casa ramifica, MAS NÃO PELO EIXO QUE ESTA SECÇÃO PARECE PEDIR — e a 1.ª redacção
-mandava o pincel novo para o braço errado.** O nosso estimador tem **dois** braços, e a linha que
+mandava o pincel novo para o braço errado.** O nosso estimador tem **TRÊS** braços, e a linha que
 os separa é *de que REFERÊNCIA aquele verbo veio*, não *se ele ajusta um plano*:
 
 | braço | quem lá está hoje | o que faz |
 |---|---|---|
-| **lê o VIVO, incondicionalmente** | ⛔ **os quatro verbos de plano da casa** (`Flatten`, `Fill`, `Scrape`, `Clay`) | **nunca consulta o interruptor de acumular** |
+| **lê o VIVO, incondicionalmente** | ⛔ **os quatro verbos de plano da casa** (`Flatten`, `Fill`, `Scrape`, `Clay`) — e é o braço por omissão | **nunca consulta o interruptor de acumular** |
 | **CONSULTA o interruptor** | os três verbos cuja referência é **este mesmo alvo** (`ClayStrips`, `ClayThumb`, `MultiplaneScrape`) | congela no pen-down com o interruptor desligado |
+| **lê o CONGELADO, incondicionalmente** | um verbo só (o de projecção de cena) | ⚠️ o interruptor **deixou de lhe ser oferecido**, de propósito: mantê-lo seria uma cerca que um pincel carregado de um ficheiro antigo podia abrir |
 
 ⇒ **o pincel novo entra no braço que CONSULTA o interruptor**, ao lado dos três, porque a
 referência dele é este alvo. ⛔ **Os quatro verbos de plano são o CONTRA-EXEMPLO, não o modelo** —
@@ -472,7 +486,8 @@ amostragem, o deslocamento e os dois tectos:
 
 - **24 de 25:** `max |Δ| ∈ [6,7e-09 … 8,0e-08]`, e a **população tocada bate exactamente** (por
   exemplo `265` previstos contra `265` medidos, `151` contra `151`, `114` contra `114`).
-- **1 de 25 — e a causa está NOMEADA:** a superfície com curvatura nos **dois** eixos lê
+- **1 de 25 — e a causa está NOMEADA** (⚠️ é ela que obriga o **G-1** a nomear a população e a
+  dar barra própria a esta fixtura — §12): a superfície com curvatura nos **dois** eixos lê
   `3,2e-05` (`1,5e-04` do deslocamento máximo). ⭐ **A divergência é inteiramente da NORMAL** — o
   centro previsto cai a `1,3e-09` do plano medido e o ângulo entre as duas normais é
   **`0,00575°`**. ⚠️ **E o mecanismo é da MALHA, não do pincel:** as três superfícies exactas têm
@@ -558,11 +573,15 @@ recentes somam ~zero**, então a correcção é ~zero por construção.
 
 Sobre superfícies onde o centro **passeia com o traço**, ele é vivo e forte:
 
-| superfície | firmeza `0,25` | `0,5` | `1,0` |
-|---|---|---|---|
-| **degrau** | `1,7e-01` | `2,4e-01` | `1,9e-01` |
-| **rampa** | `1,7e-02` | `2,2e-02` | `2,5e-02` |
-| bossas simétricas (⚠️ o controlo mudo) | `1,5e-08` | `3,0e-08` | `3,0e-08` |
+| superfície | firmeza `0,25` | `0,5` | `1,0` | com fixtura publicada |
+|---|---|---|---|---|
+| **degrau** | `1,7e-01` | `2,4e-01` | `1,9e-01` | **as três** (`firmeza/firmeza_centro_00`..`_10`) |
+| **rampa** | `1,7e-02` | `2,2e-02` | `2,5e-02` | **só a de `1,0`** (`firmeza_centro_rampa_00` e `_10`) |
+| bossas simétricas (⚠️ o controlo mudo) | `1,5e-08` | `3,0e-08` | `3,0e-08` | **só a de `1,0`** (`firmeza_centro_bossas_00` e `_10`) |
+
+⚠️ **Das `9` células medidas, `5` são recuperáveis do corpus publicado** — as outras `4` vivem só
+nesta tabela. *Um quadro que não diz quais das suas células o leitor pode reproduzir convida a
+construir um gate sobre as que não pode.*
 
 ⇒ **as duas linhas mudas viajam na fixture** (`firmeza/firmeza_centro_bossas_00` e `_10`), com
 este parágrafo, para que o próximo leitor não repita a medição errada.
@@ -620,8 +639,8 @@ justamente onde ele funciona melhor).
 
 | verbo | o painel do alvo MOSTRA o corte? | ele FAZ alguma coisa? | prova |
 |---|---|---|---|
-| **barro** | ✅ sim | ⛔ **MORTO** | seis valores de limiar (`desligado`, `0,05`, `0,1`, `0,3`, `0,5`, `1,0`) dão saídas **byte-idênticas** |
-| **polegar de barro** | ✅ sim | ⛔ **MORTO** | idem, as seis byte-idênticas |
+| **barro** | ✅ sim | ⛔ **MORTO** | **seis** valores de limiar MEDIDOS (`desligado`, `0,05`, `0,1`, `0,3`, `0,5`, `1,0`) dão saídas **byte-idênticas** — ⚠️ **`5` deles têm fixtura publicada** (`corte/corte_barro_*`; o `0,3` ficou de fora) |
+| **polegar de barro** | ✅ sim | ⛔ **MORTO** | idem, as **seis** medidas byte-idênticas — ⚠️ **`2` com fixtura publicada** (`corte/corte_polegar_desligado` e `_01`), mais a do deslocamento |
 | **tiras de barro** | ✅ sim | ✅ vivo (lei B) | `290 … 444` vértices |
 | **lâmina em V** | ⛔ **não** | ✅ vivo (lei A) | `52 … 402` vértices |
 
@@ -668,7 +687,7 @@ estão mortas no alvo.
 | **máscara** | entra como factor, antes de tudo; metade mascarada move `327` em vez de `560` |
 | **traço parado** | os dabs seguintes ao primeiro continuam a trabalhar, porque a direcção já existe |
 | **objecto com escala** | o deslocamento do plano é multiplicado pela escala do objecto antes de o aplicar ao centro |
-| **pegada projectada em vez de esférica** | a normal do plano é projectada para fora da direcção da vista e renormalizada |
+| **pegada projectada em vez de esférica** | a normal do plano é projectada para fora da direcção da vista e renormalizada. ⛔⛔ **E na fixtura publicada isso move `0` de `2 401` vértices** (`superficies/opcao_pegada_projectada`): com a vista de topo sobre um campo de altura, tirar a componente da vista deixa a normal **no plano do ecrã**, e um plano visto de perfil não tem sob si nada que esteja «acima» ou «abaixo» dele dentro da pegada. ⚠️ **É a QUARTA fixtura inerte do corpus** (com o primeiro dab, os dois tectos a zero e a superfície já plana), e a única cuja inércia **não é a lei a funcionar** — é a fixtura a não ter sujeito. *Publicá-la sem dizer isto convidaria a lê-la como prova de que a opção não faz nada* |
 
 ---
 
@@ -676,10 +695,10 @@ estão mortas no alvo.
 
 | fase | custo | onde dói |
 |---|---|---|
-| amostragem da normal e do centro (§2) | `O(vértices na pegada)`, **duas** varreduras com raios diferentes | com a fracção da área em `2,0` a segunda varredura cobre `4×` a área da primeira (medido: `1 131` amostras contra `61` a `0,25`) |
+| amostragem da normal e do centro (§2) | `O(vértices na pegada)`, **duas** varreduras com raios diferentes | ⚠️ **medido, e a 1.ª redacção trocava o rótulo e a grandeza:** a fracção de fábrica é `0,5` e amostra **`61`** vértices; a `2,0` amostra **`1 131`**. O **raio** é `4×` maior e a **contagem** sobe `18,5×`. (A `0,25` a contagem é **`1`** — a célula que a §2.2 declara não-discriminante) |
 | quadro local + distâncias (§3) | `O(vértices na pegada)`, uma passagem | — |
 | translação (§4) | `O(vértices na pegada)` | — |
-| estabilizadores (§6) | `O(comprimento da memória)` por dab, tecto `20` | desprezável |
+| estabilizadores (§6) | `O(comprimento da memória)` por dab, tecto `20` | desprezável. ⏳ **e o tecto NÃO está confirmado por medição nossa** — ver §13 |
 
 ⚠️ **A amostragem é a metade cara**, e ela corre **por dab e por passagem de simetria**. A nossa
 casa já paga isto nos quatro verbos de plano; o pincel novo acrescenta **uma** varredura (o
@@ -734,8 +753,26 @@ família. *Um quadro de inventário escrito à mão é a forma mais barata de um
 | **total** | **100** | |
 
 Cada ficheiro é texto comprimido com **cabeçalho de proveniência** (todas as grandezas que
-enquadram o traço, uma por linha), blocos `r` (repouso), `n` (normais de repouso), `s` (saída) e
-`c` (os pontos do cursor). Malhas de entrada **nossas**; regeneração é acto de **E**.
+enquadram o traço, uma por linha), blocos `r` (repouso), `n` (normais de repouso), `s` (saída),
+`c` (os pontos do cursor) e `m` (a máscara, onde existe). Malhas de entrada **nossas**;
+regeneração é acto de **E**.
+
+⚠️⚠️ **O cabeçalho passou a carregar TRÊS grandezas que a 1.ª versão não levava, e a ausência
+delas não era teórica:** um censo sobre as 100, agrupando pelo enquadramento publicado, achou um
+grupo com enquadramento **byte-idêntico e três saídas diferentes**. Um leitor guiado pelo
+cabeçalho — que é a **única** forma sã de correr 100 fixtures — reproduzia-as sem a inversão e sem
+a máscara e lia desacordos de `7,0e-02` e `4,7e-02` **contra uma lei CERTA**, sem meio de ver o
+buraco.
+
+| chave nova | o que é | onde importa |
+|---|---|---|
+| `modificador_carregado` | se o gesto foi feito com o modificador em baixo (§5). ⛔ **Não é o mesmo que o sentido do pincel**, que a 1.ª versão já publicava e que traz o **mesmo valor** na fixtura invertida e na base | **`5`** fixtures: as `3` de `inversao/` e as `2` de `corte/corte_laminav_din_inv_*` |
+| `mascara` + bloco `m` | a máscara, dita no cabeçalho e **por vértice** no bloco `m` (`1` = travado, `0` = livre), na mesma ordem do bloco `r` | **`1`** fixtura: `superficies/superficie_mascara` (`1 176` vértices travados de `2 401`) |
+| `direccao_da_vista` | a direcção da vista, que a lei consome **duas** vezes — no filtro de faces viradas ao observador e na escolha da metade da pegada (§2.5) | **todas** |
+
+⭐ **Com as três, o quadro fecha: o cabeçalho de cada fixtura enquadra-a por inteiro**, e um leitor
+que o siga reproduz a saída sem consultar esta prosa. ⛔ *Uma fixtura cujo enquadramento vive na
+prosa é uma fixtura que o gate seguinte vai ler ao contrário.*
 
 ---
 
@@ -758,7 +795,8 @@ fica **duas ordens de grandeza** abaixo do único desvio que a espec regista com
 
 | # | gate | o que afirma | barra, e de onde |
 |---|---|---|---|
-| **G-1** | `a_lei_do_plano_reproduz_o_oraculo` | a lei das §§2–4 reproduz as **25** fixtures de `lei/` e `lados/` | `max|Δ| ≤ 1e-6` (`8,4` ULP de `f32` na maior coordenada das fixtures; `12×` o pior resíduo medido) |
+| **G-1** | `a_lei_do_plano_reproduz_o_oraculo` | ⚠️ **a população é NOMEADA, porque a barra não passa sobre todas.** As duas pastas carregam **`28`** ficheiros. Saem **`2`** que **não movem nada** (`lei/lei_primeiro_dab` e `lados/traco_inerte` — são os sujeitos de **G-2** e **G-8**, e não há reprodução a fazer sobre uma malha intocada) e **`7`** que são **traços inteiros de 8 dabs** (`lados/traco_*` menos o inerte), que esta reprodução **não alcança** por reproduzir só o primeiro dab efectivo. ⇒ **`19` fixtures de um dab efectivo**, e destas **`18`** entram na barra comum e **`1` é NOMEADA à parte**: `lei/lei_bossas`. **+ piso de população: menos de `19` reprova** | `max|Δ| ≤ 1e-6` para as **18** (`8,4` ULP de `f32` na maior coordenada; `12×` o pior resíduo medido, que é `7,96e-08`). ⛔ **`lei/lei_bossas` carrega barra PRÓPRIA, `1e-4`** — `3,1×` o desvio medido (`3,2e-05`), e a razão está na §4.1: ali a malha tem **quadriláteros empenados**, onde a normal de um vértice é uma escolha **a montante** desta lei. ⭐ *A nossa malha é de triângulos e não produz a ambiguidade* ⇒ quem implementar sobre triângulos deve ver as 19 na barra comum, e o gate diz isso de si mesmo |
+| **G-1b** | `os_tracos_inteiros_ficam_por_cobrar` | ⏳ **dívida NOMEADA, não um gate:** os **`7`** traços de 8 dabs de `lados/traco_*` estão publicados e **nenhum gate desta espec corre a reprodução sobre eles** — reproduzir uma cadeia de dabs exige encadear o estimador de plano dab a dab, que é obra da implementação | — (o gate nasce com ela) |
 | **G-2** | `o_primeiro_dab_nao_move_nada` | um traço de **um** dab deixa a malha byte-idêntica | **igualdade exacta** — o alvo mede `0` de `2 401` |
 | **G-3** | `com_a_curva_constante_os_tocados_aterram_no_plano` | força `1` + curva constante ⇒ todos os tocados num plano só | resíduo `≤ 1e-6`; o alvo mede `0,0e+00 … 2,4e-08` |
 | **G-4** | `a_forca_entra_ao_quadrado` | força `0,5` desloca `0,25×` | `|razão − 0,25| ≤ 1e-5`; o alvo mede `0,249999 … 0,250001` |
@@ -770,7 +808,7 @@ fica **duas ordens de grandeza** abaixo do único desvio que a espec regista com
 | **G-10** | `o_raio_da_area_a_zero_cai_no_raio_da_normal` | o par que prova a queda da §2.3 | **igualdade exacta** quando as duas fracções coincidem, e **desigualdade ≥ 1e-3** quando não |
 | **G-11** | `uma_superficie_ja_plana_nao_se_mexe` | o auto-limite | **igualdade exacta** |
 | **G-12** | `a_firmeza_do_centro_e_muda_numa_superficie_simetrica_e_viva_num_degrau` | ⭐ o gate das **duas metades**: ele reprova se o knob deixar de ser mudo no controlo **ou** se deixar de ser vivo no degrau | mudo `≤ 1e-6`; vivo `≥ 1e-2`. ⛔ Sem a metade muda, um knob que mexa em tudo passaria |
-| **G-13** | `cada_verbo_le_o_corte_que_o_nosso_painel_lhe_oferece` | ⛔ **o gate contra o knob morto**: para cada verbo do nosso catálogo que mostre o corte ou o deslocamento, varrer o knob **tem** de mudar a saída | mudança `≥ 1e-4`. A barra sai do **lado aprovado** — a menor mudança medida num knob VIVO do alvo foi `1,1e-02`, duas ordens acima |
+| **G-13** | `cada_verbo_le_o_corte_que_o_nosso_painel_lhe_oferece` | ⛔ **o gate contra o knob morto**: para cada verbo do nosso catálogo que mostre o corte ou o deslocamento, varrer o knob **tem** de mudar a saída | mudança `≥ 1e-4`. A barra sai do **lado aprovado, e agora de um número com FIXTURA PUBLICADA**: a menor mudança medida num knob vivo do alvo entre fixtures publicadas é **`7,3e-03`** (`corte/corte_tiras_05` contra `corte/corte_tiras_desligado`) ⇒ a barra fica **`73×` abaixo** dela. ⚠️ A 1.ª redacção citava `1,1e-02`, medido mas **sem fixtura publicada** — *uma barra derivada de um número que a página não carrega não é verificável por quem lê a página* |
 | **G-14** | `a_memoria_da_normal_tem_tecto` | o comprimento da memória satura em `20` dabs | contagem exacta |
 
 ⚠️ **G-13 é o gate que esta espec mais recomenda**, e ele não existe em lado nenhum deste repo
@@ -786,11 +824,11 @@ nossa versão sem este gate é herdar a doença com o desenho.
 |---|---|
 | todas as contagens de vértices, resíduos, razões e `max |Δ|` | **medição**: o oráculo corrido pelo subagente-E em 2026-09-15 sobre malhas nossas, `149` corridas em duas rodadas; as fixtures publicadas são `100` delas |
 | `suave(p) = 3p² − 2p³` | **fórmula**, e a mesma que esta casa já usa na curva `SMOOTH` |
-| o tecto `20` da memória dos estabilizadores | **facto de comportamento** lido do alvo, confirmado pela saturação medida |
+| o tecto `20` da memória dos estabilizadores | ⚠️ **facto de comportamento lido do alvo, e NÃO confirmado por medição nossa** — a 1.ª redacção dizia *«confirmado pela saturação medida»* e o traço mais longo do corpus tem **`8`** dabs, logo **nenhuma fixtura publicada chega sequer ao tecto**. ⏳ Confirmá-lo pede um traço de `> 20` dabs, que não existe no corpus: **dívida nomeada** |
 | faixas `0…1` (altura, profundidade, corte, firmezas) e `0…2` (os dois raios de amostragem) | **facto de interface** do alvo |
 | valores de fábrica (`0,5` nos dois raios; `0` nas duas firmezas; `0` no deslocamento) | **facto de interface** do alvo |
 | a barra `1e-6` dos gates | **derivada**: `8,4` ULP de `f32` na **maior coordenada** das fixtures (`1,0`) e `34` na escala do raio, e `12×` o pior resíduo medido — a tabela da derivação está na §12 |
-| a barra **`1e-3`** do G-5 e a **`1e-4`** do G-13 | **derivadas de vales MEDIDOS** que incluem o lado aprovado: a do G-5 do piso `0,00269` das oito células discriminantes, que a tabela da §2.2 publica **linha a linha**; a do G-13 da menor mudança medida num knob **vivo** do alvo (`1,1e-02`) |
+| a barra **`1e-3`** do G-5 e a **`1e-4`** do G-13 | **derivadas de vales MEDIDOS** que incluem o lado aprovado, e **as duas de números que a página publica**: a do G-5 do piso `0,00269` das oito células discriminantes (tabela da §2.2, linha a linha); a do G-13 da menor mudança medida num knob **vivo** entre fixtures **publicadas**, `7,3e-03` (§12) |
 | a barra **`0,75 R`** do G-6 | ⚠️ **METADE medida, metade NOSSA, e as duas declaradas** (§12): o termo do deslocamento é exacto (`offset × R`, §2.4); o `0,75` é `1,5×` o máximo medido (`0,4947 R` sobre as `11` células) e a margem é **decisão nossa**, porque um corpus de um dab efectivo não limita um traço longo |
 | ⛔ **o que SAIU:** a barra `5e-3` do G-5 | ⚠️ **retirada por ser IMPOSSÍVEL**: a tabela da §2.2 publica um piso de `0,00269`, logo nenhuma corrida sobre o corpus publicado a satisfaria. A barra **em vigor é `1e-3`** (linha acima). A 1.ª redacção citava-a como *«derivada de um vale medido»* e o vale tinha sido lido sobre uma fracção das células |
 | a lição da §6.2 (a fixtura muda) | **medição**, e ela fica na espec porque uma barra calibrada sem o lado vivo mede outra coisa |

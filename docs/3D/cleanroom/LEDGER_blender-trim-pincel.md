@@ -731,6 +731,86 @@ construir os canários — nunca para ficheiro (a cura do INC-R1, aplicada).
 sobre os **2** bloqueadores (as **9** erratas cabem na mesma emenda), depois **4.ª corrida** do
 R-pré.
 
+## 3.ª EMENDA DO E — 2026-09-16 (2 bloqueadores + 9 erratas da 3.ª passagem do R-pré)
+
+⭐ **Confirmado pelo terceiro auditor independente:** a **parede do §4.2 está limpa pela TERCEIRA
+vez**, sweep verde em todos os canais, e as **seis** curas da 2.ª emenda de pé — **quatro**
+re-derivadas do zero em vez de aceites.
+
+⛔⛔ **A LEI, PELA TERCEIRA VEZ: os dois bloqueadores estavam em texto que NENHUMA das duas
+emendas tinha tocado.** *Uma emenda cura o que o auditor nomeou.* E duas das nove erratas eram
+**gémeas de bloqueadores já curados**, deixadas intactas na **§0.2** — a secção de abertura, que
+ninguém relê. ⇒ **a varredura pelo gémeo tem de incluir o resumo, não só a secção técnica.**
+
+### B1 — o gate de paridade não passava sobre a população que ele próprio declarava
+
+Ele exigia `max|Δ| ≤ 1e-6` sobre *«as 25 fixtures»* de `lei/` + `lados/`, e a §4.1 publica, para
+essas mesmas, uma que lê **`3,2e-05` — `32×` a barra**. A §12 até o dizia na frase da derivação e
+**o quadro do gate não o absorveu**.
+
+**Contado do directório**, e agora na página: as duas pastas carregam **`28`** ficheiros.
+
+| grupo | contagem | o que é |
+|---|---|---|
+| não movem nada | **`2`** | `lei/lei_primeiro_dab` e `lados/traco_inerte` — os sujeitos de **G-2** e **G-8** |
+| traços inteiros de 8 dabs | **`7`** | `lados/traco_*` menos o inerte — a reprodução é do **primeiro dab efectivo** e não os alcança |
+| **um dab efectivo** | **`19`** | `13` de `lei/` + `6` de `lados/lados_*` — **a população do G-1** |
+| ⇒ na barra comum | **`18`** | pior resíduo medido `7,96e-08` |
+| ⇒ com barra PRÓPRIA | **`1`** | `lei/lei_bossas`, `1e-4` (`3,1×` o `3,2e-05` medido), com a razão: ali a malha tem **quadriláteros empenados** e a normal de um vértice é escolha **a montante** desta lei. ⭐ *a nossa malha é de triângulos e não produz a ambiguidade* |
+
+**+ piso de população (`19`)**, como o G-5 já tinha, e os `7` traços inteiros ficam como **dívida
+nomeada** num gate próprio que nasce com quem os cobrar (**G-1b**).
+
+### B2 — o cabeçalho das fixtures não era completo, e a §11 dizia que era
+
+Censo sobre as 100 agrupando pelo enquadramento publicado: **um grupo com enquadramento
+byte-idêntico e TRÊS saídas diferentes**. Não viajavam: o **estado do modificador** (a chave do
+sentido do pincel traz o **mesmo** valor na invertida e na base — *são coisas diferentes*) e a
+**máscara**, que não tinha chave nem bloco. ⚠️ O E achou ainda uma **terceira**: a **direcção da
+vista**, que a lei consome **duas** vezes (o filtro de faces viradas ao observador e a escolha da
+metade da pegada, §2.5).
+
+⇒ ⭐ **cura pela via forte: as 100 fixtures foram REGERADAS** (o gerador vive fora da árvore; o
+enquadramento em falta estava nas configurações das corridas, que também vivem lá).
+
+| chave nova | quantas fixtures enquadra |
+|---|---|
+| `modificador_carregado` | **`5`** — as `3` de `inversao/` e as `2` de `corte/corte_laminav_din_inv_*` |
+| `mascara` + bloco `m` por vértice | **`1`** — `superficies/superficie_mascara` (`1 176` travados de `2 401`) |
+| `direccao_da_vista` | **todas as 100** |
+
+⚠️ **Sem isto, o leitor guiado pelo cabeçalho — a única forma sã de correr 100 fixtures —
+reproduzia duas sem inversão e uma sem máscara, e lia desacordos de `7,0e-02` e `4,7e-02` contra
+uma lei CERTA.** *Uma fixtura cujo enquadramento vive na prosa é uma fixtura que o gate seguinte
+vai ler ao contrário.*
+
+### As nove erratas, cada uma com o que ficou escrito
+
+| # | errata | o que passou a dizer |
+|---|---|---|
+| 1 | §0.2(G): *«o nosso `invert` só troca o sinal»* — ⛔ **gémeo de um bloqueador já curado** | o predicado vivo **não lista** três dos quatro verbos de plano (nos três o modificador é **inerte**) e no quarto ele **baixa o plano E inverte o lado** |
+| 2 | §0.2(E): repetia o erro da §2.6 que a 2.ª emenda curou noutro sítio — ⛔ **o outro gémeo** | nos quatro verbos de plano o interruptor de acumular **nem é consultado** |
+| 3 | a §2.6 dizia *«dois braços»* | o `match` vivo tem **três** — o terceiro lê o congelado **incondicionalmente**, e o interruptor deixou de lhe ser oferecido de propósito |
+| 4 | a §9 rotulava `61` amostras como a contagem de `0,25` e chamava **razão de área** a uma razão de raios | a fábrica é `0,5` e amostra `61`; a `2,0` amostra `1 131`; o **raio** é `4×` e a **contagem** `18,5×`; a `0,25` a contagem é **`1`** |
+| 5 | o tecto `20` dizia-se *«confirmado pela saturação medida»* | ⏳ **não está**: o traço mais longo do corpus tem **`8`** dabs — facto lido do alvo, **dívida nomeada** |
+| 6 | a barra do **G-13** vinha de `1,1e-02`, **sem fixtura publicada** | passa a vir de **`7,3e-03`**, medido entre **fixtures publicadas** (`corte/corte_tiras_05` contra `_desligado`) |
+| 7 | a §7.3 prometia **seis** limiares onde a pasta publica cinco e dois | diz agora quantos foram **medidos** e quantos têm **fixtura** |
+| 8 | a §6.2 publicava **nove** células sem dizer quantas o corpus sustenta | **`5` de `9`** são recuperáveis, e a tabela diz **quais** |
+| 9 | a §8 dava o mecanismo da pegada projectada e calava que a fixtura move **`0` de `2 401`** | diz-o, com o mecanismo — e nomeia-a como a **quarta** fixtura inerte do corpus e a **única cuja inércia não é a lei a funcionar** |
+
+### Depois da 3.ª emenda
+
+- **Filtragem §4.3 re-executada** sobre o texto novo em 2026-09-16.
+- **Sweep verde** sobre a espec e as 100 fixtures **regeradas**; controlo positivo re-corrido.
+  ⭐ **Sobre a armadilha do canal «dobrado dentro de um `.gz`» que o R nomeou:** com o instrumento
+  de hoje, os **três** canários disparam — o **dobrado sem o marcador na 2.ª linha** (o que testa
+  o canal), o **simétrico** (o que testava a isenção) e o de texto simples. ⇒ *o buraco que a
+  passagem anterior mediu está fechado neste instrumento.*
+- ⚠️ **Higiene:** nenhum relatório de sweep foi gravado em ficheiro (a saída viveu só no terminal),
+  e a vassoura descodifica-se em memória.
+
+⏳ **R-pré, 4.ª passagem: pendente. A janela I continua FECHADA.**
+
 ## Incidentes
 
 ### INC-R1 (2026-09-16) — **HIGIENE DE INSTRUMENTO do próprio R-pré. Sem exposição; registado porque um evento escondido é a acusação pronta**

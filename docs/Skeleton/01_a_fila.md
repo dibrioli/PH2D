@@ -2931,6 +2931,12 @@ de antes) e `PH2D_SKIN_WEIGHTS=linear` (a lei dos pesos de antes).
   caiu:** com a malha de bind de hoje o `Fast` já liga a cura do pincel (pior redondeza `1,05`
   contra `1,42` sem ela; `sonda_o_pincel_precisa_do_smooth`). ⛔ **Nada foi apagado** até ele ver
   uma dobra forte.
+  ✅ **VEREDITO (dono, 2026-09-16, depois de dobrar forte):** *«não se percebe diferença, mas por
+  enquanto deixe os dois»*. ⇒ **ficam os dois, o `Smooth` continua de fábrica.** ⚠️ Para quem
+  reabrir: a diferença MEDIDA existe (a tabela acima) e o olho do dono não a separou — *uma
+  diferença que a régua vê e o dono não vê é o número que decide se o custo compensa*, e ele está
+  aqui: `+19 %` (`60°`, `2 898` peças) a `+91 %` (`150°`, `4 652`) sobre as `2 430` do `Fast`, a
+  zoom `1`.
 - **a sonda de custo desta crate deixou de refinar** (a arte dela mede `200 × 100` px de ecrã) e
   não reproduz a tabela do [`skin_budget`](../../crates/ph2d-skeleton-live/src/skin_budget.rs) hoje
   — o preço da lei nova foi medido na cena do smoke, as duas leis intercaladas.

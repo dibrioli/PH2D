@@ -17,6 +17,12 @@
 //!
 //! Both are intentional review gates — to fix, either wire a11y or
 //! add an explicit opt-out entry.
+//!
+//! ⭐⭐⭐ **A varredura lê só o código de PRODUÇÃO desde 2026-09-16** ([`codigo_de_producao`]): um
+//! `use ph2d_a11y::NodeId` escrito dentro de um `mod tests` satisfazia este gate, e **dois**
+//! ficheiros passavam assim — o `checkbox/mark.rs` (descoberto por acidente, quando o tecto de LOC
+//! mudou os testes dele de ficheiro) e o `section_header/fold.rs`, que só apareceu quando a cura
+//! entrou. *Um gate que aceita código de teste afirma sobre um programa que o artista não corre.*
 
 use crate::cfg_test_modules;
 use cfg_test_modules::is_declared_under_cfg_test;
@@ -74,6 +80,20 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     (
         "checkbox/mark.rs",
         "a geometria e a tinta da marca: o no' e' construido pelo `Checkbox::build_a11y`, no mod.rs",
+    ),
+    // ⭐⭐⭐ **E a dívida ACIMA foi paga em 2026-09-16 — este gate passou a varrer só o código de
+    //    PRODUÇÃO** ([`codigo_de_producao`]), e a primeira coisa que ele acusou foi um **SEGUNDO**
+    //    ficheiro que passava por acidente: o `section_header/fold.rs`, cujo único `ph2d_a11y`
+    //    vive dentro do `mod tests` dele. *Dois em dois: sempre que esta régua foi conferida, ela
+    //    tinha um passageiro.*
+    //
+    // ⚠️ E a ausência é a decisão, pela mesma razão dos irmãos acima: o `fold.rs` é a TRAJECTÓRIA
+    //    do chevron e o desvanecer da placa — funções puras do `t` da dobra, sem `NodeId` nenhum.
+    //    Quem tem nome, papel e foco é o CABEÇALHO (`SectionHeader::build_a11y`, no `mod.rs` ao
+    //    lado), e é ele que anuncia se a secção está aberta ou fechada.
+    (
+        "section_header/fold.rs",
+        "a trajectoria do chevron e o desvanecer da placa: o no' e' do cabecalho (SectionHeader::build_a11y, no mod.rs)",
     ),
     // ⚠️ **A listra de uma lista não tem semântica própria, e a ausência é a decisão**
     //    (2026-09-06): ela é o TOM que a lista pinta ATRÁS das suas linhas, para que duas linhas
@@ -310,6 +330,82 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     ),
 ];
 
+/// ⭐⭐⭐ **O CÓDIGO DE PRODUÇÃO de um ficheiro — sem o que está atrás de `#[cfg(test)]`.**
+///
+/// ⛔⛔ **Dívida NOMEADA em 2026-09-15 e cobrada aqui:** este gate é satisfeito por um `use
+/// ph2d_a11y::NodeId` escrito dentro de um `mod tests`. Foi assim que o `checkbox/mark.rs` passou
+/// **por acidente** — e só se soube porque o tecto de LOC mudou os testes dele de ficheiro horas
+/// depois, e o gate acordou. *Um gate que aceita código de teste afirma sobre um programa que o
+/// artista não corre.*
+///
+/// ⚠️ **A régua é o EQUILÍBRIO DE CHAVETAS a partir do atributo**, e não «corta no primeiro
+/// `#[cfg(test)]`»: um `#[cfg(test)]` pode gatear um `fn` no meio do ficheiro, com produção depois
+/// dele. Cortar ali apagaria produção e o gate acusaria quem está certo.
+fn codigo_de_producao(src: &str) -> String {
+    let mut out = String::with_capacity(src.len());
+    let mut resto = src;
+    while let Some(i) = resto.find("#[cfg(test)]") {
+        out.push_str(&resto[..i]);
+        // Salta o item gateado: do atributo até fechar a primeira chaveta que ele abre.
+        let depois = &resto[i..];
+        // ⚠️⚠️ **O `;` conta quando vem ANTES da chaveta** — a 1.ª redacção procurava só a chaveta,
+        //    e num `#[cfg(test)] use …;` seguido de `fn p() {}` ela encontrava a chaveta do `fn` e
+        //    engolia a PRODUÇÃO inteira. *Foi a régua-da-régua que o apanhou, na primeira corrida.*
+        let ponto = depois.find(';');
+        let chave = depois.find('{');
+        let Some(abre) = chave.filter(|c| ponto.is_none_or(|p| *c < p)) else {
+            resto = ponto.map_or("", |p| &depois[p + 1..]);
+            continue;
+        };
+        let mut nivel = 0i32;
+        let mut fim = None;
+        for (p, c) in depois.char_indices().skip(abre) {
+            match c {
+                '{' => nivel += 1,
+                '}' => {
+                    nivel -= 1;
+                    if nivel == 0 {
+                        fim = Some(p + 1);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        resto = fim.map_or("", |p| &depois[p..]);
+    }
+    out.push_str(resto);
+    out
+}
+
+/// ⭐ **A régua da régua** — sem ela, `codigo_de_producao` podia devolver a string inteira e todo
+/// este gate continuaria verde a medir o programa errado.
+#[test]
+fn o_codigo_de_producao_nao_inclui_o_que_esta_atras_de_cfg_test() {
+    let src = "use a::b;\n#[cfg(test)]\nmod tests {\n    use ph2d_a11y::NodeId;\n    fn x() { if t { } }\n}\nfn depois() {}\n";
+    let prod = codigo_de_producao(src);
+    assert!(
+        !prod.contains("ph2d_a11y"),
+        "o que está atrás de `#[cfg(test)]` continuou no código de produção:\n{prod}"
+    );
+    // ⚠️ **E o que vem DEPOIS do item gateado fica** — cortar no primeiro `#[cfg(test)]` apagaria
+    //    produção, e o gate acusaria quem está certo.
+    assert!(
+        prod.contains("fn depois"),
+        "a produção a seguir ao teste foi apagada:\n{prod}"
+    );
+    assert!(
+        prod.contains("use a::b"),
+        "a produção antes do teste foi apagada:\n{prod}"
+    );
+    // Um `#[cfg(test)]` sem corpo (um `use` gateado) também sai.
+    let so_use = codigo_de_producao("#[cfg(test)] use ph2d_a11y::NodeId;\nfn p() {}\n");
+    assert!(
+        !so_use.contains("ph2d_a11y") && so_use.contains("fn p"),
+        "{so_use}"
+    );
+}
+
 #[test]
 fn every_widget_file_wires_a11y() {
     let crate_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -330,7 +426,7 @@ fn every_widget_file_wires_a11y() {
         if opt_out.contains(&rel.as_str()) {
             return;
         }
-        let content = fs::read_to_string(abspath).expect("read widget file");
+        let content = codigo_de_producao(&fs::read_to_string(abspath).expect("read widget file"));
         let has_a11y = content.contains("use ph2d_a11y") || content.contains("ph2d_a11y::");
         if !has_a11y {
             violations.push(rel);
@@ -403,7 +499,8 @@ fn every_widget_file_wires_a11y() {
                 if delegate_ok_paths.contains(&key.as_str()) {
                     return;
                 }
-                let content = fs::read_to_string(abspath).expect("read panel file");
+                let content =
+                    codigo_de_producao(&fs::read_to_string(abspath).expect("read panel file"));
                 let has_direct_a11y =
                     content.contains("use ph2d_a11y") || content.contains("ph2d_a11y::");
                 // Canonical widget primitives — calling these wires a11y

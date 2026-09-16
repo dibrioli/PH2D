@@ -101,6 +101,23 @@ impl crate::App {
                     hero.theme,
                     vector_scene,
                 );
+                // ⭐⭐⭐ **AS DUAS ALÇAS DE CURVATURA do osso em foco** — os pontos de controlo da
+                // cúbica que arqueia o corpo dele.
+                //
+                // ⚠️ **A MESMA porta que o dedo usa** (`skin_live::bend_handles`), e é ela que
+                // decide que um osso sem segmentos não tem alça nenhuma: com `segments = 1` a
+                // curvatura é inerte por construção, e pintar a alça ali prometeria um verbo que o
+                // arrasto não executa.
+                //
+                // ⚠️ **Depois do arco e ANTES dos ossos**: as hastes dela ligam-se à junta e à
+                // ponta, que o `draw_bones` pinta por cima — a bolinha da junta fica inteira.
+                ph2d_skeleton_render::draw_bend(
+                    osso_focado.and_then(|b| crate::skeleton_live::bend_handles(sim, b)),
+                    self.skeleton.bone_hover.map(|h| h.part),
+                    cam_affine,
+                    hero.theme,
+                    vector_scene,
+                );
                 // ⚠️ **Que pontas recebem anel é um CORPO e mora na família**
                 // ([`ph2d_app_skeleton::goal::ring_targets`]): aqui decide-se a ORDEM dos passes,
                 // não o que cada um desenha.

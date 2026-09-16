@@ -151,6 +151,7 @@ impl crate::App {
                     pending_ik_add: take(&mut pd.pending_ik_add),
                     pending_ik_remove: take(&mut pd.pending_ik_remove),
                     pending_ik_bend: take(&mut pd.pending_ik_bend),
+                    pending_bone_handles: take(&mut pd.pending_bone_handles),
                     pending_limit_add: take(&mut pd.pending_limit_add),
                     pending_limit_remove: take(&mut pd.pending_limit_remove),
                 },

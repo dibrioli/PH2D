@@ -286,3 +286,7 @@ fn a_wall_never_crosses_its_neighbour_from_either_surface() {
         );
     }
 }
+
+/// ⭐⭐⭐ **Os gates do gizmo da CURVATURA** — irmão por assunto (e pelo tecto de LOC).
+#[path = "bone_bend_gizmo_tests.rs"]
+mod curvatura;

@@ -158,6 +158,7 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
         for (id, label, step, _valor) in campos {
             y = r.labeled_number_field(label, id, step, y);
         }
+        y = handles_row(r, y);
         y = limit_rows(r, y);
         y = smart_rows(r, y);
         y = ik_rows(r, y);
@@ -370,6 +371,44 @@ fn ik_rows(r: &mut RowCtx, y: f32) -> f32 {
     r.segmented(tr("panel.vector.bone.ik.bend"), &lados, y)
 }
 
+/// ⭐⭐⭐⭐ **DE ONDE VÊM AS DUAS ALÇAS DE CURVATURA** — o *Handle Type* do *Bendy Bone*.
+///
+/// ⚠️ **Só é pintada num osso que a sabe LER**, pela mesma régua e pela mesma razão que os quatro
+/// números da curvatura: com um segmento só a curvatura é **provadamente inerte**, e um segmentado
+/// que grava no documento sem mudar um pixel é o painel a mentir.
+///
+/// ⚠️ **Vem DEPOIS dos quatro números e ANTES do limite**, e a ordem diz o que ela é: ela decide
+/// **quem escreve** aqueles quatro — ler *«quanto»* antes de *«quem»* é ler a resposta antes da
+/// pergunta, que é a mesma ordem que o `Chain`/`Bend` da âncora já segue.
+fn handles_row(r: &mut RowCtx, y: f32) -> f32 {
+    let Some(osso) = state::current_bone() else {
+        return y;
+    };
+    if osso.is_rigid() && ph2d_skeleton::bend::segments_of(osso.segments) <= 1 {
+        return y;
+    }
+    // ⚠️ A MESMA lei de alinhamento por índice da fileira do lado da dobra, e o mesmo `assert!` de
+    // `const`: um modo novo na lei sem um id ao lado **não compila**.
+    const _: () = assert!(
+        ids::VECTOR_BONE_HANDLES_IDS.len() == 2,
+        "um modo novo de alca precisa de um id ao lado dele"
+    );
+    let auto = state::current_bone_handles() == Some(1);
+    let modos: [(NodeId, &str, bool); 2] = [
+        (
+            ids::VECTOR_BONE_HANDLES_AUTHORED,
+            tr("panel.vector.bone.handles.authored"),
+            !auto,
+        ),
+        (
+            ids::VECTOR_BONE_HANDLES_AUTO,
+            tr("panel.vector.bone.handles.auto"),
+            auto,
+        ),
+    ];
+    r.segmented(tr("panel.vector.bone.handles"), &modos, y)
+}
+
 /// ⭐⭐⭐ **OS CAMPOS NUMÉRICOS DO OSSO — id, rótulo, passo e O VALOR QUE ELES MOSTRAM.**
 ///
 /// ⛔⛔ **Os cinco campos desta secção nasciam com `0` e nada lá escrevia** (report do dono,
@@ -416,7 +455,12 @@ pub(crate) fn campos_do_osso() -> Option<Vec<(ph2d_a11y::NodeId, &'static str, f
     // ⛔ **Mostrá-la sempre seria o painel a MENTIR:** quatro campos que aceitam teclas, gravam no
     // documento e não mudam um pixel. É a mesma lei que o L-System pagou — *nenhum molde mostra um
     // knob que a gramática dele não sabe ler* —, aqui com a régua a ser a lei e não uma varredura.
-    if !osso.is_rigid() || ph2d_skeleton::bend::segments_of(osso.segments) > 1 {
+    // ⛔⛔ **E em `Auto` eles SOMEM**, porque ali eles não são autorados — são derivados da
+    // corrente a cada quadro. *Quatro caixas que aceitam teclas e cujo valor o quadro seguinte
+    // recalcula são a mesma mentira que este painel já pagou nos quatro números da âncora.*
+    if (!osso.is_rigid() || ph2d_skeleton::bend::segments_of(osso.segments) > 1)
+        && state::current_bone_handles() != Some(1)
+    {
         for (id, chave, valor) in [
             (
                 ids::VECTOR_BONE_CURVE_IN_Y,

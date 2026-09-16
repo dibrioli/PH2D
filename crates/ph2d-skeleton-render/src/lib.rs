@@ -27,6 +27,10 @@ mod goal;
 
 /// ⭐ O ARCO DE LIMITE — irmão do `goal` pelo teto de LOC, cortado por assunto.
 mod limit;
+
+/// ⭐ AS ALÇAS DE CURVATURA — irmão do `limit` pelo teto de LOC, cortado por assunto.
+mod bendy;
+pub use bendy::{BEND_HANDLE_R_PX, BendHandles, draw_bend};
 pub use goal::{Goal, draw_chains, draw_goals, goal_radius_px};
 pub use limit::{LIMIT_HANDLE_R_PX, LimitArc, draw_limit};
 
@@ -122,6 +126,11 @@ pub enum BonePart {
     LimitMin,
     /// ... o extremo **anti-horário**. Ver [`BonePart::LimitMin`].
     LimitMax,
+    /// ⭐⭐⭐ A alça de CURVATURA do lado da RAIZ — o ponto de controlo da cúbica que arqueia o
+    /// osso. Só existe num osso com `segments > 1`, porque com um segmento a curvatura é inerte.
+    BendIn,
+    /// ... o do lado da PONTA. Ver [`BonePart::BendIn`].
+    BendOut,
 }
 
 /// **O que está sob o ponteiro**, para o realce dizer qual VERBO o clique vai executar.

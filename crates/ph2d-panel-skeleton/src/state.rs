@@ -23,6 +23,22 @@ thread_local! {
     static CURRENT_BONE_SEGMENTS: Cell<u8> = const { Cell::new(1) };
     static CURRENT_BONE_CURVE: Cell<ph2d_skeleton::bend::Bend> =
         const { Cell::new(ph2d_skeleton::bend::Bend::STRAIGHT) };
+    /// ⭐ **DE ONDE vêm as alças** — o índice em [`ph2d_skeleton::bend::Handles`]: `0` autorado,
+    /// `1` derivado da corrente.
+    ///
+    /// ⚠️ **Publicado à parte do [`CURRENT_BONE_CURVE`], e não dentro do `BoneSpec`:** o
+    /// `BoneSpec` é o osso EFECTIVO que a lei consome, e o modo é uma propriedade de AUTORIA —
+    /// metê-lo lá poria a lei a decidir quem a escreve.
+    static CURRENT_BONE_HANDLES: Cell<Option<usize>> = const { Cell::new(None) };
+}
+
+/// O modo das alças do osso em foco (publicado pela shell, todo quadro). `None` ⇒ sem osso.
+pub fn set_current_bone_handles(v: Option<usize>) {
+    CURRENT_BONE_HANDLES.with(|c| c.set(v));
+}
+
+pub(crate) fn current_bone_handles() -> Option<usize> {
+    CURRENT_BONE_HANDLES.with(Cell::get)
 }
 
 /// A seleção tem forma presa a esqueleto (publicado pela shell, todo quadro).

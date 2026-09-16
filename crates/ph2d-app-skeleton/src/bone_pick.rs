@@ -16,6 +16,21 @@ use ph2d_ecs::{Entity, SimWorld};
 /// usam, para o dedo do artista ter sempre a mesma tolerância.
 pub const BONE_HIT_PX: f64 = 12.0;
 
+/// ⭐⭐⭐ **O raio de acerto das duas alças de CURVATURA — apertado, e o recurso tem nome.**
+///
+/// ⚠️ Elas são as únicas que ganham ao CORPO do osso, porque no ponto neutro estão em cima dele
+/// (ver o [`hover`]). ⇒ o que este número gasta é **o comprimento do osso que sobra para o verbo de
+/// girar**: as duas bolinhas ficam nos terços, logo elas comem `2 × 2 × este raio` do osso e o
+/// ponto do meio fica a `L/6` de cada uma.
+///
+/// ⇒ o meio do osso continua a girar enquanto `L/6 > 8 px`, isto é **a partir de `48 px` de osso na
+/// tela** — que é o dobro do menor osso que a bolinha da junta ainda desenha separada. O gate
+/// `o_meio_de_um_osso_curvo_ainda_gira` é quem o afirma.
+///
+/// ⚠️ **É `2 ×` o raio DESENHADO** ([`ph2d_skeleton_render::BEND_HANDLE_R_PX`]), que é a folga que
+/// todas as alças deste app dão ao dedo.
+pub const BEND_HIT_PX: f64 = 2.0 * ph2d_skeleton_render::BEND_HANDLE_R_PX;
+
 /// ⭐⭐⭐ **O CORPO de um osso, em MUNDO** — a MESMA polilinha que o overlay pinta
 /// ([`ph2d_skeleton_live::skin_live::bone_polylines`]).
 ///
@@ -228,6 +243,21 @@ pub fn hover(
                 ));
             }
         }
+        // ⭐⭐⭐ **AS DUAS ALÇAS DE CURVATURA, na mesma competição por proximidade.**
+        //
+        // ⚠️ **Elas só entram onde são DESENHADAS** — o [`ph2d_skeleton_live::skin_live::bend_handles`]
+        // devolve `None` num osso sem segmentos, e é a mesma porta que o overlay chama. *Uma alça
+        // agarrável onde nada está pintado é pior que uma alça ausente*, e o contrário — pintada e
+        // não agarrável — foi o report *«não consigo mover os gizmos dos ângulos»* deste módulo.
+        //
+        // ⚠️ **O alvo é a BOLINHA e não a haste**, ao contrário das paredes do limite: a haste da
+        // alça de curvatura nasce na junta e na ponta, que já são alvos com outros verbos, e um
+        // segmento agarrável por cima delas roubaria os dois.
+        if let Some(([inn, out], _)) = ph2d_skeleton_live::skin_live::bend_handles(sim, f) {
+            for (p, q) in [(inn, BonePart::BendIn), (out, BonePart::BendOut)] {
+                perto.push(((p[0] - world[0]).hypot(p[1] - world[1]), q));
+            }
+        }
         // ⚠️ **E o OSSO entra na mesma competição.** As paredes cruzam o osso sempre que ele está
         // perto de uma delas, então sem isto a cura de cima devolveria o defeito anterior ao
         // contrário: a parede roubaria o gesto de girar em toda a faixa. *Ganha o que está mais
@@ -237,7 +267,19 @@ pub fn hover(
         });
         let melhor = perto
             .into_iter()
-            .filter(|&(d, _)| d <= BONE_HIT_PX * px_to_world && d < d_osso)
+            .filter(|&(d, q)| {
+                // ⛔⛔ **A alça de CURVATURA é a única que ignora o `d_osso`, e é obrigatório:** no
+                // ponto NEUTRO ela está **em cima do eixo** (é o ponto de controlo no terço), logo
+                // `d ≈ d_osso ≈ 0` e a comparação estrita tornava-a **inalcançável no único estado
+                // em que todo osso nasce**. *Uma alça que só se agarra depois de já ter sido
+                // movida não se agarra nunca.*
+                //
+                // ⇒ em troca ela paga um raio APERTADO ([`BEND_HIT_PX`]), que é o que deixa o
+                // resto do osso a executar o verbo de girar.
+                let curvatura = matches!(q, BonePart::BendIn | BonePart::BendOut);
+                let raio = if curvatura { BEND_HIT_PX } else { BONE_HIT_PX };
+                d <= raio * px_to_world && (curvatura || d < d_osso)
+            })
             .min_by(|a, b| a.0.total_cmp(&b.0));
         if let Some((_, part)) = melhor {
             return Some(BoneHover { bone: f, part });
@@ -325,7 +367,15 @@ pub fn hover(
 pub fn grabbable_outside_bone_mode(part: ph2d_skeleton_render::BonePart) -> bool {
     use ph2d_skeleton_render::BonePart;
     match part {
-        BonePart::Influence | BonePart::LimitMin | BonePart::LimitMax | BonePart::Tip => true,
+        // ⭐ As duas alças de CURVATURA entram pela mesma razão que a força: **nenhuma outra
+        // ferramenta sabe arquear um osso**, e elas só existem num osso com segmentos — logo não
+        // disputam com nada.
+        BonePart::Influence
+        | BonePart::LimitMin
+        | BonePart::LimitMax
+        | BonePart::Tip
+        | BonePart::BendIn
+        | BonePart::BendOut => true,
         BonePart::Body | BonePart::Joint => false,
     }
 }

@@ -949,3 +949,132 @@ fn bend_measure_the_table() {
         }
     }
 }
+
+/// ⭐⭐⭐ **A ALÇA E A CURVATURA SÃO A MESMA EXPRESSÃO NOS DOIS SENTIDOS** — a ida e a volta fecham,
+/// e **o PONTO NEUTRO fecha AO BIT**.
+///
+/// ⚠️⚠️ **As duas metades não são a mesma afirmação, e a 1.ª redacção deste gate escreveu uma só e
+/// reprovou.** Fora do neutro a volta perde bits por construção: a ida soma o deslocamento ao
+/// TERÇO (`base + L·o`) e a volta subtrai o mesmo terço, e `(base + x) − base ≠ x` em `f64` quando
+/// os dois têm a mesma ordem de grandeza. Medido: `4e-17` sobre um deslocamento de `0,21`.
+///
+/// ⭐ **O neutro, esse, é exacto** — e é ele o que tem de ser: `handles(L, STRAIGHT)` dá `L/3` e
+/// `2L/3` exactos, a volta subtrai o mesmo número e divide, e `0/L` é `0`. *Um osso recto tem de
+/// continuar recto depois de alguém lhe tocar na alça sem a arrastar.*
+///
+/// (Mutação: no `bend_from_handle`, trocar `length / 3.0` por `length * 2.0 / 3.0` ⇒ RED.)
+#[test]
+fn a_alca_e_a_curvatura_sao_a_mesma_expressao_nos_dois_sentidos() {
+    let len = 7.5;
+    // ⭐ O NEUTRO, ao bit — a metade load-bearing.
+    let [n_inn, n_out] = crate::bend::handles(len, Bend::STRAIGHT);
+    assert_eq!(
+        crate::bend::bend_from_handle(len, n_inn, false),
+        Some([0.0, 0.0])
+    );
+    assert_eq!(
+        crate::bend::bend_from_handle(len, n_out, true),
+        Some([0.0, 0.0])
+    );
+    for curva in [
+        Bend::STRAIGHT,
+        Bend {
+            inn: [0.13, -0.37],
+            out: [-0.21, 0.44],
+        },
+        Bend {
+            inn: [-1.5, 2.0],
+            out: [3.25, -0.125],
+        },
+    ] {
+        let [inn, out] = crate::bend::handles(len, curva);
+        for (v, esperado, nome) in [
+            (
+                crate::bend::bend_from_handle(len, inn, false),
+                curva.inn,
+                "raiz",
+            ),
+            (
+                crate::bend::bend_from_handle(len, out, true),
+                curva.out,
+                "ponta",
+            ),
+        ] {
+            let v = v.expect("ha' comprimento");
+            assert!(
+                (v[0] - esperado[0]).abs() < 1e-15 && (v[1] - esperado[1]).abs() < 1e-15,
+                "a alca da {nome} de {curva:?} voltou {v:?}"
+            );
+        }
+    }
+    // ⛔ Um osso de comprimento zero não tem espaço local, e a porta di-lo em vez de dividir por ele.
+    assert_eq!(crate::bend::bend_from_handle(0.0, [1.0, 1.0], false), None);
+    // ⭐ E no ponto NEUTRO as alças estão exactamente nos terços — é dali que o nome vem.
+    assert_eq!(
+        crate::bend::handles(len, Bend::STRAIGHT),
+        [[len / 3.0, 0.0], [len * 2.0 / 3.0, 0.0]]
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// As alças DERIVADAS da corrente — o `Handles::Auto`
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐⭐ **UMA CORRENTE RECTA COM `Auto` FICA RECTA, AO BIT** — o ponto neutro da lei nova.
+///
+/// ⚠️ **Não é «quase recta»:** as duas tangentes de um osso no meio de uma corrente recta são o
+/// próprio eixo, e a conta do [`crate::bend::auto_bend`] é *«um terço da tangente MENOS um terço do
+/// eixo»* — `1/3 − 1/3` é zero **exacto**. ⇒ ligar o *From Chain* num rig recto **não move um
+/// pixel**, e é isso que faz o modo ser seguro de experimentar.
+///
+/// (Mutação: escrever a conta como `(t[0] − 1.0) / 3.0` ⇒ ainda dá zero; escrevê-la como
+/// `t[0] / 3.0 − 0.333…` ⇒ RED.)
+#[test]
+fn uma_corrente_recta_com_alcas_automaticas_fica_recta_ao_bit() {
+    // O eixo, e as duas tangentes que uma corrente recta produz.
+    let b = crate::bend::auto_bend([1.0, 0.0], [1.0, 0.0]);
+    assert_eq!(b, Bend::STRAIGHT);
+    assert!(b.is_straight(), "e o `is_straight` tem de o reconhecer");
+    // ⭐ E daí sai o colapso da fábrica: o osso continua a ser UM osso.
+    assert!(
+        BoneSpec {
+            length: 10.0,
+            strength: 1.0,
+            segments: 16,
+            curve: b,
+        }
+        .is_rigid(),
+        "uma corrente recta com Auto tinha de continuar rigida"
+    );
+}
+
+/// ⭐⭐⭐ **A ALÇA APONTA PARA ONDE O VIZINHO ESTÁ** — a lei do *From Chain*, medida pela geometria.
+///
+/// Com o osso seguinte dobrado para CIMA, a tangente da ponta sobe ⇒ a alça da ponta desce (ela
+/// fica *antes* da ponta), e o corpo arqueia. ⚠️ **A régua é o SINAL e a simetria**, nunca um
+/// número escolhido: uma tangente espelhada tem de dar uma alça espelhada.
+#[test]
+fn a_alca_automatica_aponta_para_onde_o_vizinho_esta() {
+    let s = std::f64::consts::FRAC_1_SQRT_2;
+    let cima = crate::bend::auto_bend([1.0, 0.0], [s, s]);
+    let baixo = crate::bend::auto_bend([1.0, 0.0], [s, -s]);
+    // A alça da RAIZ não se mexe: o vizinho que mudou é o da ponta.
+    assert_eq!(cima.inn, [0.0, 0.0]);
+    assert_eq!(baixo.inn, [0.0, 0.0]);
+    // ⭐ E a da PONTA espelha-se exactamente.
+    assert!(
+        cima.out[1] < 0.0,
+        "a tangente a subir puxa a alca para baixo"
+    );
+    assert!((cima.out[1] + baixo.out[1]).abs() < 1e-15, "sem simetria");
+    assert!(
+        (cima.out[0] - baixo.out[0]).abs() < 1e-15,
+        "o `x` nao devia depender do sinal do `y`"
+    );
+    // ⚠️ E a magnitude é o TERÇO: a alça fica a `1/3` da ponta, na direcção da tangente.
+    let dist = (1.0 / 3.0 - cima.out[0]).hypot(-cima.out[1]);
+    assert!(
+        (dist - 1.0 / 3.0).abs() < 1e-12,
+        "a alca tinha de ficar a um terco da ponta, e ficou a {dist}"
+    );
+}

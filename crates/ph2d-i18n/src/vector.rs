@@ -322,6 +322,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bone.curve.in.y" => "Curve In",
         "panel.vector.bone.curve.out.x" => "Curve Out Along",
         "panel.vector.bone.curve.out.y" => "Curve Out",
+        // ⭐ De ONDE vêm as duas alças de curvatura — o *Handle Type* do *Bendy Bone*.
+        "panel.vector.bone.handles" => "Curve Handles",
+        "panel.vector.bone.handles.authored" => "Manual",
+        "panel.vector.bone.handles.auto" => "From Chain",
         "panel.vector.bone.ik.add" => "Add IK",
         "panel.vector.bone.ik.remove" => "Remove IK",
         "panel.vector.bone.ik.mix" => "IK Mix",

@@ -68,6 +68,17 @@ impl crate::App {
             // `match` de três braços escritos à mão aqui seria a quinta lista
             // escrita à mão desta seção.
             pd.pending_ik_bend = ph2d_skeleton::BendSide::ALL.get(i).copied();
+        } else if let Some(i) = ph2d_editor_core::ids::VECTOR_BONE_HANDLES_IDS
+            .iter()
+            .position(|x| x == id)
+        {
+            // ⭐⭐⭐ **DE ONDE VÊM AS ALÇAS DE CURVATURA** — a posição na tabela É a variante, a
+            // mesma lei da fileira do lado da dobra (e um `match` à mão aqui seria a sexta lista
+            // escrita à mão desta seção).
+            pd.pending_bone_handles = match i {
+                0 => Some(ph2d_skeleton::bend::Handles::Authored),
+                _ => Some(ph2d_skeleton::bend::Handles::Auto),
+            };
         } else if *id == ph2d_editor_core::ids::VECTOR_BONE_EXPAND {
             // Solta e fica com a pose de AGORA (o Expand do envelope).
             pd.pending_bone_release = Some(crate::skeleton_live::Keep::Deformed);

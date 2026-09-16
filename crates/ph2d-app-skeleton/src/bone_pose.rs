@@ -64,6 +64,14 @@ pub fn pose(
         // ⭐⭐⭐ **As duas alças do LIMITE DE ÂNGULO** — arrastá-las escreve a borda do arco.
         BonePart::LimitMin => crate::bone_limit::drag_edge(sim, bone, world, false),
         BonePart::LimitMax => crate::bone_limit::drag_edge(sim, bone, world, true),
+        // ⭐⭐⭐ **As duas alças de CURVATURA** — arrastá-las arqueia o corpo do osso. Como a
+        // força, elas não são uma pose: não tocam no `Transform`, escrevem uma propriedade.
+        BonePart::BendIn => {
+            ph2d_skeleton_live::skin_live::set_bend_handle(sim, bone.to_bits(), world, false)
+        }
+        BonePart::BendOut => {
+            ph2d_skeleton_live::skin_live::set_bend_handle(sim, bone.to_bits(), world, true)
+        }
         BonePart::Body => pose_body(sim, bone, world),
     }
 }

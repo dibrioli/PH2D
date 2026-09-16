@@ -45,7 +45,7 @@ use ph2d_ecs::scene::ComponentRegistry;
 /// ⚠️ **Os dois tipos da curvatura vêm da LEI, não são declarados aqui** — o mesmo motivo que já
 /// traz o [`ph2d_skeleton::BendSide`] por esta fronteira: duas definições do mesmo conceito
 /// divergem no primeiro campo que alguém acrescentar a uma delas.
-use ph2d_skeleton::bend::{Bend, BoneSpec};
+use ph2d_skeleton::bend::{Bend, BoneSpec, Handles};
 
 /// **UM OSSO.** A pose dele é o [`ph2d_ecs::Transform`] da entidade; a hierarquia dela é o
 /// esqueleto.
@@ -77,6 +77,18 @@ pub struct Bone {
     /// `length` e a rotação, e o filho está pendurado ali — se a curvatura a movesse, a corrente
     /// abria uma fenda em cada junta ao dobrar.
     pub curve: Bend,
+    /// ⭐⭐⭐ **DE ONDE VÊM AS DUAS ALÇAS** — o *Handle Type* do *Bendy Bone*.
+    ///
+    /// [`Handles::Authored`] (o nascimento) ⇒ as alças são as que o artista escreveu, e todo rig
+    /// já autorado atravessa esta linha **ao bit**. [`Handles::Auto`] ⇒ elas saem das tangentes
+    /// dos ossos VIZINHOS, e a corrente inteira vira uma curva lisa.
+    ///
+    /// ⚠️ **A resolução do `Auto` mora na `ph2d-skeleton-live`** (só ela conhece a hierarquia), e
+    /// o campo `curve` fica **intocado** — ele continua a ser o que o artista escreveu, e voltar a
+    /// `Authored` devolve exactamente o que lá estava. *Um modo que sobrescreve o valor autorado é
+    /// um modo que não se desliga.*
+    #[serde(default)]
+    pub handles: Handles,
 }
 
 impl Bone {
@@ -104,6 +116,7 @@ impl Default for Bone {
             strength: 1.0,
             segments: 1,
             curve: Bend::STRAIGHT,
+            handles: Handles::Authored,
         }
     }
 }

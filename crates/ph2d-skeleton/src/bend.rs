@@ -29,9 +29,11 @@
 //!
 //! # ⛔ O que este módulo NÃO decide
 //!
-//! De onde vêm as alças. Aqui elas são **autoradas** (dois deslocamentos). Derivá-las dos ossos
-//! vizinhos — o *Handle Type: Auto* do Blender — é uma lei sobre a HIERARQUIA, e a hierarquia não
-//! existe nesta crate de propósito (ver o cabeçalho da [`crate`]).
+//! **Quem são os vizinhos de um osso.** As alças podem ser **autoradas** (dois deslocamentos) ou
+//! **derivadas da corrente** ([`Handles::Auto`], o *Handle Type: Auto* do Blender) — e a LEI da
+//! derivação mora aqui ([`auto_bend`]), mas as TANGENTES chegam já resolvidas: descobrir o osso
+//! anterior e o seguinte é lei da HIERARQUIA, e a hierarquia não existe nesta crate de propósito
+//! (ver o cabeçalho da [`crate`]).
 
 use crate::Xform;
 
@@ -440,6 +442,104 @@ pub fn frame(length: f64, segments: u8, bend: Bend, k: u8) -> Xform {
     let taus = nodes(length, segments, bend);
     let i = usize::from(k);
     frame_entre(length, n, bend, k, taus[i], taus[i + 1])
+}
+
+/// ⭐⭐⭐ **ONDE FICAM AS DUAS ALÇAS DE CURVATURA, em espaço LOCAL do osso** — a porta ÚNICA do
+/// desenho, do dedo e do arrasto.
+///
+/// Elas são, literalmente, **os pontos de controlo da cúbica**: `(L/3 + L·inn, L·inn_y)` e
+/// `(2L/3 + L·out, L·out_y)`. ⭐ É por isso que desenhá-las com um traço até à raiz e até à ponta
+/// dá o desenho de alça de Bézier que todo editor vectorial tem — *o artista já sabe o que aquilo
+/// faz antes de lhe tocar*.
+///
+/// ⚠️ **Ela existe para o gesto de canvas não reconstruir a conta.** Até 2026-09-16 a curvatura só
+/// se editava pelo painel, e escrever a posição da alça no sítio que desenha e outra vez no sítio
+/// que agarra é a receita do *controlo morto sob o dedo* que este módulo já pagou nas paredes do
+/// limite.
+#[must_use]
+pub fn handles(length: f64, bend: Bend) -> [[f64; 2]; 2] {
+    [
+        [
+            length.mul_add(bend.inn[0], length / 3.0),
+            length * bend.inn[1],
+        ],
+        [
+            length.mul_add(bend.out[0], length * 2.0 / 3.0),
+            length * bend.out[1],
+        ],
+    ]
+}
+
+/// ⭐⭐⭐ **DE ONDE VÊM AS ALÇAS** — o *Handle Type* do *Bendy Bone*.
+///
+/// ⚠️ **Ele mora no [`BoneSpec`] e não no [`Bend`]**: a `Bend` são os dois números, e *quem os
+/// escreve* é uma propriedade do OSSO. Pô-lo lá dentro faria o ponto neutro (`Bend::STRAIGHT`)
+/// deixar de ser um valor e passar a ser um par valor+modo.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum Handles {
+    /// **O artista escreve as duas alças** — o nascimento, e o que todo osso sempre foi.
+    #[default]
+    Authored,
+    /// ⭐⭐⭐ **A CORRENTE escreve-as** (o *Auto* do Blender): as tangentes saem dos ossos VIZINHOS,
+    /// e uma cadeia de ossos que dobram vira uma curva lisa sem ninguém afinar oito números.
+    Auto,
+}
+
+/// ⭐⭐⭐ **AS ALÇAS DERIVADAS DAS TANGENTES DOS VIZINHOS** — a lei do [`Handles::Auto`], **pura**.
+///
+/// `t_raiz` e `t_ponta` são as direcções que o corpo tem de seguir na raiz e na ponta, **em espaço
+/// LOCAL deste osso e já normalizadas**. ⛔ De onde elas vêm — quem é o osso anterior, quem é o
+/// seguinte — é lei da HIERARQUIA e **não** mora nesta crate (ver o cabeçalho do módulo): quem as
+/// resolve é a `ph2d-skeleton-live`, e passa-as já convertidas.
+///
+/// # ⭐ O ponto neutro cai de graça, e é isso que torna a lei segura
+///
+/// Numa corrente RECTA as duas tangentes são `(1, 0)` em local, e a conta dá `[0, 0]` nas duas
+/// alças — **ao bit**, porque `1/3 − 1/3` é zero exacto. ⇒ ligar o *Auto* num rig recto não move
+/// nada, e um osso sem vizinhos (a ponta e a raiz de uma corrente) recebe a própria direcção e fica
+/// recto pela mesma conta.
+///
+/// # A magnitude é o TERÇO, e não uma escolha
+///
+/// A alça fica a `L/3` da extremidade dela — exactamente onde a alça **recta** mora. É o que faz a
+/// curva ser a identidade quando as tangentes são as do eixo, e é a magnitude para a qual uma
+/// cúbica reproduz um arco de círculo com o menor erro na gama que um osso usa.
+#[must_use]
+pub fn auto_bend(t_raiz: [f64; 2], t_ponta: [f64; 2]) -> Bend {
+    // ⚠️ Escrito como *«um terço da tangente MENOS um terço do eixo»*, e não como uma fórmula
+    // equivalente: é esta forma que dá `0.0` exacto quando a tangente É o eixo.
+    Bend {
+        inn: [t_raiz[0] / 3.0 - 1.0 / 3.0, t_raiz[1] / 3.0],
+        out: [1.0 / 3.0 - t_ponta[0] / 3.0, -t_ponta[1] / 3.0],
+    }
+}
+
+/// ⭐⭐⭐ **O INVERSO: a `Bend` que põe a alça NESTE ponto local** — o que o arrasto escreve.
+///
+/// `ponta = false` move a alça da raiz, `true` a da ponta.
+///
+/// ⚠️ **Escrito como o inverso do [`handles`] termo a termo**, e não como uma fórmula parecida:
+/// largar a alça exactamente onde ela estava tem de devolver a mesma `Bend`, senão um clique sem
+/// arrasto muda o osso.
+///
+/// ⚠️⚠️ **E ele fecha AO BIT no ponto NEUTRO, e a menos de `~4e-17` fora dele** — a ida soma o
+/// deslocamento ao terço e a volta subtrai o mesmo terço, e `(base + x) − base ≠ x` em `f64`. *A
+/// metade que tem de ser exacta é a do neutro* (um osso recto continua recto), e ela é.
+///
+/// `None` num osso de comprimento zero — ali não há espaço local.
+#[must_use]
+pub fn bend_from_handle(length: f64, ponto: [f64; 2], ponta: bool) -> Option<[f64; 2]> {
+    // ⚠️ O `NaN` é NOMEADO: dividir por ele devolveria uma alça que não é um número, e o osso
+    // desapareceria do ecrã sem nada dizer porquê.
+    if length.is_nan() || length == 0.0 {
+        return None;
+    }
+    let base = if ponta {
+        length * 2.0 / 3.0
+    } else {
+        length / 3.0
+    };
+    Some([(ponto[0] - base) / length, ponto[1] / length])
 }
 
 /// ⭐⭐ **A QUOTA DE UM SUB-OSSO SOBRE O EIXO** — a partição da unidade que reparte o peso **do

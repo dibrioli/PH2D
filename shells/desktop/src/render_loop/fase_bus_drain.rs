@@ -232,6 +232,8 @@ pub(super) struct DrainOut {
     pub(super) pending_ik_remove: bool,
     // ⭐ O lado da dobra que o artista escolheu neste quadro, se escolheu.
     pub(super) pending_ik_bend: Option<ph2d_skeleton::BendSide>,
+    /// ⭐ De onde vêm as duas alças de CURVATURA do osso em foco (F8, 2026-09-16).
+    pub(super) pending_bone_handles: Option<ph2d_skeleton::bend::Handles>,
     pub(super) pending_ik_knob: Option<(IkKnob, f64)>,
     pub(super) pending_limit_add: bool,
     pub(super) pending_limit_remove: bool,

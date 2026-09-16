@@ -138,6 +138,17 @@ impl crate::App {
                 .get::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(b))
                 .map(ph2d_skeleton_ecs::Bone::spec)
         }));
+        // ⭐⭐⭐ **DE ONDE VÊM AS ALÇAS** — publicado à parte do `BoneSpec`, e de propósito: o
+        // `BoneSpec` é o osso EFECTIVO que a lei consome, e o modo é uma propriedade de AUTORIA.
+        //
+        // ⚠️ **O `spec` acima é o AUTORADO** (`Bone::spec`), e não o efectivo: os quatro números
+        // que o painel mostra são os que o artista escreveu, e em `From Chain` eles nem sequer se
+        // pintam. *Mostrar ali o valor derivado faria o painel parecer editável e não ser.*
+        ph2d_panel_skeleton::set_current_bone_handles(osso_em_foco.and_then(|b| {
+            sim.world()
+                .get::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(b))
+                .map(|o| usize::from(o.handles == ph2d_skeleton::bend::Handles::Auto))
+        }));
         // ⭐⭐⭐ **A ÂNCORA do osso em foco** — é isto que decide entre *Add IK* e *Remove IK*
         // no painel, e se os três números dela têm sujeito. ⚠️ Pela MESMA porta que publica
         // os números do osso (`selected_bone`): duas perguntas *"qual osso está aceso?"*

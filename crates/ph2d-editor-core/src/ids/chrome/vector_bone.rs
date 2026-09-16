@@ -127,6 +127,21 @@ pub const VECTOR_BONE_BEND_IDS: [NodeId; 4] = [
     VECTOR_BONE_IK_BEND_MIXED,
 ];
 
+/// ⭐⭐⭐ **Handles: Authored** — as duas alças de curvatura são as que o artista escreveu.
+///
+/// ⚠️ **É o nascimento**, e por isso é o primeiro da tabela: a posição na
+/// [`VECTOR_BONE_HANDLES_IDS`] É a variante do [`ph2d_skeleton::bend::Handles`].
+pub const VECTOR_BONE_HANDLES_AUTHORED: NodeId = hash_node_id("vector.bone.handles.authored");
+
+/// ⭐⭐⭐ **Handles: Auto** — as alças saem das tangentes dos ossos VIZINHOS, e a corrente inteira
+/// vira uma curva lisa.
+pub const VECTOR_BONE_HANDLES_AUTO: NodeId = hash_node_id("vector.bone.handles.auto");
+
+/// Os dois segmentos, **índice-alinhados** com [`ph2d_skeleton::bend::Handles`] — a mesma lei de
+/// alinhamento da [`VECTOR_BONE_BEND_IDS`], e pela mesma razão.
+pub const VECTOR_BONE_HANDLES_IDS: [NodeId; 2] =
+    [VECTOR_BONE_HANDLES_AUTHORED, VECTOR_BONE_HANDLES_AUTO];
+
 /// ⭐⭐⭐ **Add Angle Limit** — dá a esta junta um arco de que ela não sai.
 ///
 /// ⚠️ Só é pintado numa junta que ainda não tem limite — o par dele é o *Remove*, e os dois
@@ -289,5 +304,6 @@ pub fn needs_focused_bone(id: NodeId) -> bool {
     VECTOR_BONE_VERBS.contains(&id)
         || VECTOR_BONE_FIELDS.contains(&id)
         || VECTOR_BONE_BEND_IDS.contains(&id)
+        || VECTOR_BONE_HANDLES_IDS.contains(&id)
         || VECTOR_BONE_SMART_CLIP_IDS.contains(&id)
 }

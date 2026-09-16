@@ -705,4 +705,18 @@
 ///
 /// ⛔ **Sem degrau de migração** (Enio, 26/08). ⚠️ **A tripla NÃO o vê** (15.ª vez): os bytes estão
 /// DENTRO do `source` de um `ComponentBlob`.
+///
+/// # `131 → 132` — ⭐⭐⭐ o osso passou a dizer **DE ONDE VÊM AS ALÇAS** de curvatura
+///
+/// O `Bone` ganhou `handles` ([`ph2d_skeleton::bend::Handles`]): `Authored` (o nascimento, e o que
+/// todo osso sempre foi) ou `Auto`, em que as duas alças saem das tangentes dos ossos **vizinhos** e
+/// a corrente inteira vira uma curva lisa. É o último item aberto da F8.
+///
+/// ⚠️⚠️ **Obrigatório, e a razão é o postcard** — a mesma dos degraus `112`, `127`, `129`, `130` e
+/// `131`: ele é **posicional**, e um campo APENDADO a um componente faz um ficheiro velho ser lido
+/// com um campo a mais, comendo os bytes do vizinho. ⛔ O `#[serde(default)]` no campo **não** o
+/// salva: ele serve formatos com nomes, e o postcard não tem nenhum.
+///
+/// ⛔ **Sem degrau de migração** (a mesma decisão do Enio de 26/08 — não há projectos gravados).
+/// ⚠️ **A tripla NÃO o vê** (16.ª vez): os bytes mudaram dentro de um `ComponentBlob`.
 pub(crate) const PROJECT_SCHEMA: u32 = 137;

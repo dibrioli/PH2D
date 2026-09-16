@@ -53,6 +53,7 @@ fn publica_tudo() {
 fn limpa() {
     state::set_current_skinned(false);
     state::set_current_bone(None);
+    state::set_current_bone_handles(None);
     state::set_current_bone_ik(None);
     state::set_current_bone_smart(None);
     state::set_current_bone_actions(Vec::new());
@@ -107,6 +108,7 @@ fn every_verb_of_the_skeleton_reaches_the_bus() {
     for id in ids::VECTOR_BONE_VERBS
         .into_iter()
         .chain(ids::VECTOR_BONE_BEND_IDS)
+        .chain(ids::VECTOR_BONE_HANDLES_IDS)
     {
         estado_de(id);
         let acoes = clica(id, "um verbo do esqueleto");
@@ -166,13 +168,17 @@ fn estado_de(id: ph2d_a11y::NodeId) {
     // existem num osso com mais de um segmento, porque num osso rígido elas são **provadamente
     // inertes** (gate `one_segment_never_bends_whatever_the_handles_say`, em `ph2d-skeleton`).
     // ⛔ Pintá-las sempre seria o painel a prometer quatro números que não mudam um pixel.
+    //
+    // ⭐ **E a fileira de ONDE vêm as alças tem a MESMA exclusão, pela mesma razão** — ela decide
+    // quem escreve aqueles quatro números, logo não tem sujeito onde eles não existem.
     let precisa_de_segmentos = [
         ids::VECTOR_BONE_CURVE_IN_X,
         ids::VECTOR_BONE_CURVE_IN_Y,
         ids::VECTOR_BONE_CURVE_OUT_X,
         ids::VECTOR_BONE_CURVE_OUT_Y,
     ]
-    .contains(&id);
+    .contains(&id)
+        || ids::VECTOR_BONE_HANDLES_IDS.contains(&id);
     if precisa_de_segmentos {
         state::set_current_bone(Some(ph2d_skeleton::bend::BoneSpec {
             segments: 4,
@@ -695,5 +701,61 @@ fn the_curvature_is_only_offered_on_a_bone_that_can_read_it() {
             "sem o campo Segments a curvatura e' inalcancavel para sempre"
         );
     }
+    limpa();
+}
+
+/// ⭐⭐⭐⭐ **A FILEIRA DE ONDE VÊM AS ALÇAS SÓ É PINTADA ONDE ELA TEM SUJEITO — e em `From Chain`
+/// os quatro números da curvatura SOMEM.**
+///
+/// ⚠️ **São duas metades e nenhuma basta sozinha.** A primeira é a mesma lei dos quatro números:
+/// num osso rígido a curvatura é **provadamente inerte**, logo um segmentado que grava no documento
+/// sem mudar um pixel é o painel a mentir. A segunda é nova e é a que este modo obriga: em
+/// `From Chain` as alças são **derivadas**, e quatro caixas que aceitam teclas cujo valor o quadro
+/// seguinte recalcula são a mesma mentira com outra cara.
+///
+/// (Mutação: tirar o `state::current_bone_handles() != Some(1)` do `campos_do_osso` ⇒ RED.)
+#[test]
+fn a_fileira_das_alcas_so_existe_onde_ela_manda_e_em_auto_os_numeros_somem() {
+    let pintado = |id| {
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+            .is_some()
+    };
+    let curvo = ph2d_skeleton::bend::BoneSpec {
+        segments: 4,
+        ..ph2d_skeleton::bend::BoneSpec::straight(20.0, 1.0)
+    };
+
+    // (a) Num osso RÍGIDO nem a fileira nem os números existem.
+    state::set_current_bone(Some(ph2d_skeleton::bend::BoneSpec::straight(20.0, 1.0)));
+    state::set_current_bone_handles(Some(0));
+    assert!(
+        !pintado(ids::VECTOR_BONE_HANDLES_AUTHORED) && !pintado(ids::VECTOR_BONE_CURVE_IN_Y),
+        "um osso rigido nao devia oferecer curvatura nenhuma"
+    );
+
+    // (b) Num osso com segmentos e em `Manual`, as duas coisas existem.
+    state::set_current_bone(Some(curvo));
+    state::set_current_bone_handles(Some(0));
+    assert!(
+        pintado(ids::VECTOR_BONE_HANDLES_AUTHORED) && pintado(ids::VECTOR_BONE_HANDLES_AUTO),
+        "a fileira sumiu num osso que a sabe ler"
+    );
+    assert!(
+        pintado(ids::VECTOR_BONE_CURVE_IN_Y),
+        "os numeros da curvatura sumiram em Manual"
+    );
+
+    // (c) E em `From Chain` a fileira FICA e os números SOMEM.
+    state::set_current_bone_handles(Some(1));
+    assert!(
+        pintado(ids::VECTOR_BONE_HANDLES_AUTO),
+        "a fileira tem de ficar — e' por ela que se volta ao Manual"
+    );
+    assert!(
+        !pintado(ids::VECTOR_BONE_CURVE_IN_Y) && !pintado(ids::VECTOR_BONE_CURVE_OUT_X),
+        "os numeros da curvatura ficaram pintados em From Chain — eles nao sao autorados la'"
+    );
     limpa();
 }

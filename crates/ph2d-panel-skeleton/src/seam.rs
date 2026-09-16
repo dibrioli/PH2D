@@ -61,6 +61,10 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::VECTOR_BONE_BEND_IDS {
         button(store, id);
     }
+    // ⭐ De onde vêm as alças de curvatura — pela mesma tabela, e pela mesma razão.
+    for id in ids::VECTOR_BONE_HANDLES_IDS {
+        button(store, id);
+    }
     // ⭐ A alternativa do DESENHO da pele (report de 2026-09-10) — pela mesma tabela, e foi um gate
     // de costura que a apanhou pintada e **não registada**: morta sob o dedo, sem nada na tela que
     // o diga.
@@ -91,6 +95,7 @@ fn meu(id: ph2d_a11y::NodeId) -> bool {
     ids::VECTOR_BONE_VERBS.contains(&id)
         || ids::VECTOR_BONE_FIELDS.contains(&id)
         || ids::VECTOR_BONE_BEND_IDS.contains(&id)
+        || ids::VECTOR_BONE_HANDLES_IDS.contains(&id)
         || ids::VECTOR_BONE_SMART_CLIP_IDS.contains(&id)
         || crate::ids::VECTOR_BONE_ACTION_IDS.contains(&id)
         || crate::ids::VECTOR_BONE_DEFORM_IDS.contains(&id)

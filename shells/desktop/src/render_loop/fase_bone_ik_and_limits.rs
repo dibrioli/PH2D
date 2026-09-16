@@ -7,6 +7,7 @@ pub(super) struct BoneIkAndLimitsIntents {
     pub(super) pending_ik_add: bool,
     pub(super) pending_ik_remove: bool,
     pub(super) pending_ik_bend: Option<ph2d_skeleton::BendSide>,
+    pub(super) pending_bone_handles: Option<ph2d_skeleton::bend::Handles>,
     pub(super) pending_limit_add: bool,
     pub(super) pending_limit_remove: bool,
 }
@@ -25,6 +26,7 @@ impl crate::App {
             pending_ik_add,
             pending_ik_remove,
             pending_ik_bend,
+            pending_bone_handles,
             pending_limit_add,
             pending_limit_remove,
         } = intents;
@@ -45,6 +47,16 @@ impl crate::App {
             && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)
         {
             g.bend = lado;
+        }
+        // ⭐⭐⭐⭐ **DE ONDE VÊM AS DUAS ALÇAS DE CURVATURA** (F8, 2026-09-16).
+        //
+        // ⚠️ **Só o MODO muda; o `curve` fica INTOCADO** — voltar a `Manual` devolve exactamente o
+        // que o artista tinha escrito. *Um modo que sobrescreve o valor autorado é um modo que não
+        // se desliga.*
+        if let Some(modo) = pending_bone_handles
+            && let Some(mut b) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::Bone>(osso)
+        {
+            b.handles = modo;
         }
         // ⭐⭐⭐ **O LIMITE DE ÂNGULO** — os dois verbos e os dois extremos.
         if pending_limit_add && !crate::bone_limit::add_limit(sim, osso) {

@@ -203,6 +203,15 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **dois bytes mágicos** e nunca pela extensão. ⭐ *A cura só vale porque tem controlo positivo: com
   um canário plantado ele acusa e sai `exit = 1`* — e sobre as seis vassouras vivas as fixturas
   estavam limpas, só que até aí o instrumento não o conseguia provar.
+  ⛔⛔ **E em 16/09 essa cura foi medida a valer METADE:** o ramo do `.gz` fazia só o `grep` **linha
+  a linha** e não a passagem que desfaz as **quebras de linha e a ênfase**, que o ramo de texto já
+  tinha ⇒ a **mesma** frase era acusada quando cabia numa linha do cabeçalho e passava **LIMPA**
+  partida em duas dentro do comprimido. ⭐ *Uma cura que abre um caminho NOVO herda as cegueiras que
+  o caminho antigo já tinha pago* — e a forma de o impedir é a passagem ser uma **função com dois
+  chamadores** (`achados_desdobrados`), porque um ramo que se esqueça dela fica visível por
+  **AUSÊNCIA de chamada**, enquanto duas cópias divergem outra vez em silêncio. Controlo dos dois
+  lados: o instrumento de ontem lê `exit 0` sobre o canário dobrado dentro de um `.gz` e o de hoje
+  lê `exit 1`, sem falso positivo no corpus sem canário e com as **oito** vassouras vivas verdes.
 - ⛔⛔ **Uma catraca sem censo de obsolescência não desce: ela vira LICENÇA.** Toda lista de dívida
   tolerada deste repo declara-se «só encolhe», e nenhuma encolhe sozinha. Medido 30/08: a lista de
   folgas de LOC por **função** tinha o censo; a de **ficheiros** não tinha, e ao escrevê-lo ele

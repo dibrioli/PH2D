@@ -64,6 +64,22 @@ report() { # $1 = rótulo · $2 = hits já filtrados ("" = limpo)
   fi
 }
 
+# **A passagem DESDOBRADA** — lê texto do stdin e imprime os acertos. O porquê
+# de cada `tr` está escrito por extenso no chamador de texto, abaixo.
+#
+# ⛔⛔ **Ela é uma FUNÇÃO porque tinha DOIS chamadores e só um a corria.** Medido
+# 2026-09-16 pelo R-pré, com controlo dos dois lados: o ramo do `.gz` fazia
+# apenas o `grep` linha a linha, logo a **mesma** frase da vassoura era acusada
+# quando cabia numa linha do cabeçalho e passava **LIMPA** partida em duas
+# dentro do corpus comprimido. ⇒ *a cura de 14/09 abriu o `.gz` ao instrumento e
+# deu-lhe METADE do instrumento* — a metade mais fraca, justamente a que a
+# cegueira anterior deste mesmo ficheiro tinha ensinado a não dispensar.
+# ⚠️ Escrita como função, um ramo novo que se esqueça dela é visível por
+# AUSÊNCIA de chamada; escrita duas vezes, ela diverge outra vez em silêncio.
+achados_desdobrados() {
+  tr '\n' ' ' | tr -d '*`>' | tr -s ' ' | grep -oF -f <(patfile) 2>/dev/null | sort -u
+}
+
 if [ "${1:-}" = "--git-history" ]; then
   shift
   # pathspec opcional; ⚠️ sem argumento, NENHUM `-- .` default: um pathspec
@@ -133,8 +149,7 @@ else
         # ⚠️ E normalizar tambem o lado da AGULHA (apagar `_` das entradas) nao
         # e' a saida: isso FABRICA colisao com nomes publicos legitimos. A
         # normalizacao e' de UM lado so', de proposito.
-        flat="$(tr '\n' ' ' < "$f" 2>/dev/null | tr -d '*`>' | tr -s ' ')"
-        out="$(printf '%s' "$flat" | grep -oF -f <(patfile) 2>/dev/null | sort -u)" || true
+        out="$(achados_desdobrados < "$f" 2>/dev/null)" || true
         if [ -n "$out" ]; then
           out="$(printf '%s' "$out" | sed "s|^|$f (sem quebras de linha): |")"
         fi
@@ -151,6 +166,14 @@ else
         # ser endereçável.
         out="$(gzip -cd -- "$f" 2>/dev/null | grep -nF -f <(patfile))" || true
         report "conteúdo de $f (descomprimido)" "$out"
+        # ⛔⛔ **E AS DUAS PASSAGENS, como no ramo de texto** — ver
+        # [`achados_desdobrados`]: sem esta linha o corpus comprimido é varrido
+        # só linha a linha, e uma frase da vassoura dobrada em duas passa limpa.
+        out="$(gzip -cd -- "$f" 2>/dev/null | achados_desdobrados)" || true
+        if [ -n "$out" ]; then
+          out="$(printf '%s' "$out" | sed "s|^|$f (descomprimido, sem quebras de linha): |")"
+        fi
+        report "conteúdo de $f (descomprimido, quebras desfeitas)" "$out"
       else
         if strings -n 6 -- "$f" 2>/dev/null | grep -qF -f <(patfile); then
           hits=1

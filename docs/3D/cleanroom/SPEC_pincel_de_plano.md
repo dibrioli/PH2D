@@ -25,7 +25,25 @@ Filtragem §4.3: executada em 2026-09-15 · Sweep: ✅ VERDE em 2026-09-15 sobre
   vassoura pode apanhar por construção — é exactamente o que o R-pré existe para ver.
   ⛔ Um sweep verde cujo controlo ninguém correu não é prova de filtragem: é prova de que o
   instrumento não foi apontado a nada.
-Auditoria §4.2 (R-pré): ⏳ PENDENTE — a janela ainda NÃO pode implementar.
+Auditoria §4.2 (R-pré): ⚠️ **CORRIDA em 2026-09-16** por um subagente independente do E, e o
+  veredito é **PARCIAL — ainda NÃO há atestado, e a janela ainda NÃO pode implementar.**
+  ⭐ **A PAREDE DO §4.2 ESTÁ LIMPA**, item a item (zero texto de código · zero nome interno —
+  varridos todos os `snake_case` e todos os *code spans*, e cada identificador do documento é
+  NOSSO, de fixtura nossa, ou variável local desta espec · zero comentário do alvo · zero wording
+  de manual verbatim ou quase · zero tabela verbatim e zero LUT — todas as tabelas são medições
+  nossas · zero organização transcrita: a espec descreve por FASES cuja ordem é forçada por
+  dependência de dados, e em dois pontos manda DIVERGIR da forma do alvo · zero pseudo-código
+  espelhado). ⇒ **a emenda que falta é FACTUAL, não de filtragem.**
+  ⛔ **Ficam 3 achados de EXACTIDÃO**, devolvidos à janela como instruções funcionais: o mais
+  pesado é que a **§0.2(B) e a tabela da §2.2 atribuem à nossa casa uma lei de centro que ela
+  perdeu em 2026-08-11** (hoje a ponderação é a MÁSCARA, e sobre a pegada INTEIRA — a própria
+  célula (C) desta espec já o diz, e as duas leituras saem do mesmo fecho, logo não podem
+  divergir); os outros dois são a barra do **G-5**, derivada de um piso que a tabela da §2.2
+  refuta, e o quadro de fixtures da §11, que soma 99 contra 100. ⚠️ **A conclusão da wave
+  SOBREVIVE aos três** — e no sulco o buraco real é MAIOR do que o publicado.
+  ⇒ próximo passo: emenda por subagente-E, depois **re-corrida** do R-pré.
+  Sweep: **verde** (321 entradas) sobre a espec + as 100 fixtures, com **controlo positivo
+  corrido em cinco canais**, incluindo de DENTRO de um `.gz`.
 Mapa de leitura da literatura: não há paper. A literatura pública utilizável é (a) o manual do
   alvo (factos, ⛔ nunca o wording), (b) a discussão pública de desenho no fórum de
   desenvolvimento dele, destilada na §10 desta espec, e (c) o nosso próprio registo do porte MIT

@@ -188,7 +188,111 @@ alvo — era uma observação sobre a **FORMA** do código dele (a existência d
 
 ## Papel R
 
-R-PRÉ: (pendente) · R-PÓS: (pendente)
+R-PRÉ: subagente **independente do E**, corrido em **2026-09-16** (janela
+`9f820704-0d7e-4d96-847e-9cd720cbf178`) · R-PÓS: (pendente)
+
+### R-PRÉ — veredito: ⚠️ **NÃO atestado.** A parede do §4.2 está LIMPA; ficam **3 achados de EXACTIDÃO**
+
+#### 1. A parede (§4.2) — limpa, item a item
+
+| item do §4.2 | resultado |
+|---|---|
+| texto de código, trechos, diffs | **nenhum** |
+| nomes internos (função, variável, ficheiro, struct) | **nenhum** — varridos todos os `snake_case` e todos os *code spans* do documento: cada identificador é **nosso** (`brush_verb.rs`, `stroke_plane.rs`, `fit_plane`, `front_only`, `RefMode`, `Verb::BoxTrim`, os sete verbos do nosso catálogo), nome de fixtura **nossa**, ou variável local da própria espec |
+| comentários do original | **nenhum** — a prosa do alvo está re-dita; o sweep cobre as duas línguas com e sem acentos e não acusa |
+| wording de manual/doc-comment verbatim ou quase | **nenhum**. O caso mais próximo é a frase de UMA oração que declara a limitação da inversão (§5/§10.4): é um facto funcional com essencialmente uma forma de o dizer, está **atribuído** aos autores e é curto — cabe no direito de citação do §4.1.12, e mesmo assim está re-escrito |
+| tabela verbatim / LUT no lugar da fórmula | **nenhuma** — todas as tabelas do documento são **medições nossas**; a única fórmula fechada (a curva suave) é a que a casa já usa |
+| organização arquivo-a-arquivo / função-a-função transcrita | **nenhuma** — a espec descreve por FASES, e a ordem delas é **forçada por dependência de dados** (sem plano não há quadro local; sem quadro local não há factor; sem factor não há translação), logo não é a «organização arbitrária» que o §4.2 proíbe. ⭐ Em dois pontos ela chega a mandar **divergir** da forma do alvo (o tratamento dos dois casos extremos dos tectos, §3.3) — o oposto de transcrever |
+| pseudo-código espelhado linha a linha | **não**. Os blocos das §§2–4 e §6 são 3–7 linhas de fórmula em vocabulário do domínio, contra dezenas de linhas do alvo com nomes próprios; nenhum nome do alvo sobrevive e a ordem é a da dependência |
+
+⇒ ⭐ **A emenda que os 3 achados pedem é FACTUAL, não de filtragem** — ela não reabre a §4.3
+nem obriga a re-filtrar o documento.
+
+#### 2. O sweep, e o CONTROLO POSITIVO (corrido, cinco canais)
+
+`bash scripts/cleanroom-sweep.sh docs/3D/cleanroom/VASSOURA_blender-trim-pincel.txt
+docs/3D/cleanroom/SPEC_pincel_de_plano.md docs/3D/cleanroom/fixtures/pincel_de_plano/`
+⇒ **✓ limpo, 321 entradas, `exit 0`.**
+
+⛔ **E o instrumento foi APONTADO A ALGUMA COISA antes de o verde contar.** Canários plantados
+**fora da árvore** (scratchpad da sessão, nunca no repo) e apagados a seguir — o sweep foi a
+`exit 1` e **nomeou os cinco**:
+
+| canal | canário | acusado? |
+|---|---|---|
+| NOME de ficheiro | identificador interno no nome | ✅ |
+| conteúdo de texto | identificador interno numa linha | ✅ |
+| passagem com as quebras de linha desfeitas | prosa traduzida **sem acentos**, partida a meio por uma quebra de linha | ✅ |
+| idem, com ênfase | prosa traduzida **com acentos**, partida por `**…**` e `` `…` `` | ✅ |
+| **dentro de um `.gz`** | linha de cabeçalho com prosa do alvo, em inglês **e** em português acentuado | ✅ (o ramo que descomprime em memória foi mesmo exercido, com o rótulo a nomear a fixtura) |
+
+⚠️ **ACHADO DE INSTRUMENTO, medido aqui, com controlo dos dois lados:** o ramo do `.gz` **não
+tem a passagem que desfaz as quebras de linha** que o ramo de texto tem. Medido: a MESMA frase
+da vassoura dentro de um `.gz` é **acusada** quando cabe numa linha do cabeçalho e passa
+**LIMPA** quando está partida em duas linhas. ⇒ As 100 fixtures desta obra estão **cobertas**
+(o formato é `# chave: valor`, uma linha por grandeza, e o caso de uma linha é o que dispara);
+o ponto cego morde no dia em que uma fixtura levar um comentário **dobrado**. Fica registado
+para o dono do script — a cura é a mesma normalização que o ramo de texto já faz.
+
+⭐ **E os identificadores PÚBLICOS do cabeçalho das fixtures foram CONFERIDOS um a um contra a
+declaração de API do alvo:** as **15** cadeias em maiúsculas que aparecem nos 100 cabeçalhos são
+todas identificadores de enumeração **públicos** — incluindo um cujo nome público **difere** do
+nome interno correspondente, e o cabeçalho traz o **público**, que é o que regenera. ⇒ a
+autorização do §4.1.13 escrita no cabeçalho da espec está **aplicada correctamente**.
+
+#### 3. Os 3 achados (entregues à janela como instruções funcionais de reescrita)
+
+1. ⛔⛔ **A espec atribui à NOSSA casa uma lei de centro de plano que ela já não tem — e é a lei
+   de que os dois números que dimensionam o buraco (B) são leitura.** O nosso estimador foi
+   mudado em **2026-08-11**: ele deixou de pesar pelo *falloff* e passou a pesar pela **máscara**
+   (numa pegada sem máscara ⇒ **média aritmética simples**), e amostra a pegada **inteira** do
+   pincel, não uma fracção dela. ⚠️ **O documento contradiz-se sobre isto**: a célula que compara
+   a ponderação da NORMAL já diz que a nossa é a máscara, enquanto a tabela de candidatas rotula
+   a média ponderada pelo *falloff* como «o que nós fazemos» — e as duas leituras saem do **mesmo
+   fecho de leitura**, logo não podem divergir.
+   ⭐ **Medido aqui, sobre as fixtures publicadas** (plano recuperado por ajuste dos vértices
+   tocados, o método que a própria §4.1 usa): a média aritmética reproduz a **primeira** linha da
+   tabela a **todos** os dígitos impressos (`−0,01392` · `−0,01603` · `−0,00731` · `−0,01613` ·
+   `−0,00269`), e o nosso estimador **real** — média simples sobre o raio **inteiro** — lê
+   **`+0,03795`** no sulco (`9,5 %` do raio, e de **sinal oposto** ao número que a espec publica),
+   `−0,01603` na rampa, `+0,00489` no degrau e `0,00000` nas bossas simétricas.
+   ⚠️ E a citação do nosso registo de perf (`5,8 %` do raio ⇒ `0,54×` / `1,74×`) é o **epitáfio**
+   daquela lei: é a medição que **causou** a remoção dela, citada como prova de um buraco de hoje.
+   ⭐⭐ **A conclusão da wave SOBREVIVE e fica mais forte** — a lei do alvo continua a cair
+   exactamente no plano dele e a nossa não, e no sulco o buraco real é **maior**.
+2. ⛔ **A barra do gate DISCRIMINANTE está derivada de um piso que a própria tabela da espec
+   refuta.** Ele exige que as candidatas erradas reprovem por `≥ 5e-3`, citando como menor desvio
+   `0,00731`; a tabela duas secções acima imprime **`0,00269`** para uma candidata errada na
+   configuração de amostragem mais larga, e eu reproduzi `0,00269`. ⇒ com a barra onde está, o
+   gate **não pode passar** na configuração que a espec publica.
+3. ⚠️ **O quadro de fixtures da §11 não fecha:** as famílias listadas somam **99** contra **100**
+   ficheiros em disco, e a família do corte tem **26** contra os `25` impressos.
+
+#### 4. O item herdado — o controlo de **arredondamento da ponta** (triagem pedida a este R-pré)
+
+**Veredito: a VASSOURA é que está larga; a autorização do cabeçalho desta espec NÃO precisa de
+revisão.** Medições:
+
+- O identificador é **simultaneamente** propriedade **pública** da API do alvo (declarada como
+  propriedade de tipo `FLOAT` e lida como tal pelo próprio painel dele) **e** nome de campo
+  interno, escritos igual. É exactamente a classe que o §4.1.13 admite.
+- ⭐ **As duas vassouras da mesma casa aplicam regras opostas ao mesmo caso, e esta é a que
+  segue a regra:** o E desta obra **retirou 16** identificadores públicos da vassoura por serem
+  a chave de regeneração das fixtures (conferido entrada a entrada, e eu reconferi 15 deles nos
+  cabeçalhos); a vassoura `blender-pull` **manteve** um da mesma classe.
+- Ele vive em `VASSOURA_blender-pull.txt` (⛔ não nesta) e acusa **14** linhas de `crates/`, com
+  **14** no merge-base ⇒ **zero** adições desta linha; entrou pela wave da faixa, muito antes.
+- A **isenção nomeada já existe**, com cinco argumentos medidos, no `LEDGER_blender-cloth.md`
+  (secção de 2026-09-13), que regista também que o vermelho é **sabido**.
+
+⇒ **Cura, e ela é do dono daquela vassoura, nunca do nosso produto:** retirar a entrada (ou
+marcá-la como aposentada, com o motivo ao lado). ⛔ Renomear custaria 16 sítios em 3 crates,
+mudaria **dois `NodeId` hasheados da string** e **o que o artista lê na tela**, para não comprar
+parede nenhuma. ⚠️ **E o preço de a deixar está medido no próprio cabeçalho do `cleanroom-sweep.sh`:**
+*uma entrada que dispara sobre uso lícito treina quem corre o sweep a ignorar achados* — hoje um
+vermelho por isenção registada e um vermelho por dívida **leem-se iguais** numa corrida.
+⇒ **Isto NÃO bloqueia esta obra:** nenhuma linha de `crates/` entra no caminho varrido desta
+espec, e o sweep desta vassoura sobre a espec e as 100 fixtures está **verde**.
 
 ## Vassoura (§7.1)
 
@@ -215,4 +319,21 @@ entradas **nossas**, saída do binário do pacote, `gzip` com `mtime = 0` ⇒ re
 
 ## Incidentes
 
-(vazio)
+### INC-R1 (2026-09-16) — **HIGIENE DE INSTRUMENTO do próprio R-pré. Sem exposição; registado porque um evento escondido é a acusação pronta**
+
+- **O que:** para auditar a cobertura da vassoura, o R-pré **descodificou-a para um ficheiro** no
+  *scratchpad* da sessão. ⛔ O §3.E manda que material do alvo viva **só** em `~/Referencias/`, e
+  nomeia o scratchpad entre os sítios proibidos **exactamente porque a janela-mãe o alcança** — e
+  este é o scratchpad da janela-mãe (o UUID é o dela).
+- **Régua do §6.2:** **não é substancial e não é sequer um relance** — nada foi *lido* por quem
+  escreve produto; foi o R a escrever e a apagar um ficheiro derivado, dentro da própria corrida.
+  A vassoura descodificada é uma **lista** de identificadores e de fragmentos de prosa, não um
+  corpo de função.
+- **Janela de risco:** a corrida do R-pré. O ficheiro foi **apagado** no fecho, junto com os
+  canários do controlo positivo (que viveram na mesma pasta e nunca no repo).
+- **Estado depois:** sweep **verde** com as **oito** vassouras da pasta sobre a espec, este ledger
+  e as 100 fixtures; e **verde** em `--git-history` sobre `docs/3D/cleanroom/`.
+- ⭐ **Cura, e ela apaga a classe:** o `cleanroom-sweep.sh` **já descodifica em memória** — não há
+  razão nenhuma para materializar a vassoura. Quem precisar de a inspeccionar por outro motivo
+  descodifica **por cano**, sem passar pelo disco, ou fá-lo dentro de `~/Referencias/<alvo>/`.
+  *O instrumento que evita isto já existia; o que faltou foi usá-lo.*

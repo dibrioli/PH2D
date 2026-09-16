@@ -118,6 +118,10 @@ pub fn populate(store: &mut WidgetStore) {
         // esquecer esta linha reprova antes de chegar às mãos do dono — mas a
         // linha continua a ter de ser escrita.
         &crate::ids::SCULPT3D_TRIM_FORMA[..],
+        // ⛔ **E a fileira do PINCEL DE PLANO, a NONA ocorrência desta família.**
+        // O censo derivado apanha o esquecimento antes do dono, e a linha
+        // continua a ter de ser escrita.
+        &crate::ids::SCULPT3D_PLANO_INVERSAO[..],
         &crate::ids::SCULPT3D_PROJECT_MODE[..],
         // ⛔⛔⛔ **E A SÉTIMA OCORRÊNCIA — report do dono (2026-09-15): *«os
         // outros 2 botões ainda não funcionam»*.** As três fileiras abaixo

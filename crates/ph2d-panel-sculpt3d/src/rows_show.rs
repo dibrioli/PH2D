@@ -41,6 +41,18 @@ pub(crate) fn suaviza_o_traco(u: &Sculpt3dUi) -> bool {
     u.brush.verb == ph2d_sculpt3d::Verb::BoxTrim && u.brush.trim_forma.le_o_caminho()
 }
 
+/// ⭐⭐⭐ **É O PINCEL DE PLANO?** — a porta dos quatro controlos próprios dele
+/// (os dois tectos, a extensão do centro e o que o `Ctrl` faz).
+///
+/// ⚠️ **Compara com o VERBO, e a população de UM é deliberada** — a mesma
+/// decisão do `offers_smear_controls` e do `offers_project_controls`: *«qual é o
+/// tecto de cima»* é uma pergunta sobre **este** pincel e mais nenhum, e um
+/// predicado derivado com um membro só seria uma lista escrita à mão com outro
+/// nome.
+pub(crate) fn e_pincel_de_plano(u: &Sculpt3dUi) -> bool {
+    u.brush.verb == ph2d_sculpt3d::Verb::Plane
+}
+
 /// **O DAB LÊ A DISTÂNCIA COM ESTE PINCEL EM MÃOS?** — a porta da row de
 /// [`Dureza`](BRUSH), e a MESMA que a largura do campo já segue
 /// (`RefMode::field`).

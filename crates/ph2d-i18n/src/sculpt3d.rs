@@ -55,6 +55,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.smear_mode" => "Deformation",
         "panel.sculpt3d.trim_forma" => "Shape",
         "panel.sculpt3d.trim_smooth" => "Smooth Stroke",
+        // ⭐⭐ O PINCEL DE PLANO: os dois tectos, a extensão do centro e o que o
+        // `Ctrl` faz. ⚠️ **«Height»/«Depth» e não «cima»/«baixo»**: o que eles
+        // medem é *quanto* o pincel alcança de cada lado do plano, e é um
+        // COMPRIMENTO — o lado já está dito pela posição das duas pistas.
+        "panel.sculpt3d.plano_altura" => "Height",
+        "panel.sculpt3d.plano_profundidade" => "Depth",
+        "panel.sculpt3d.plano_area" => "Area Radius",
+        "panel.sculpt3d.plano_inversao" => "Ctrl Does",
         "panel.sculpt3d.project_mode" => "Ray Direction",
         "panel.sculpt3d.project_bidir" => "Search Both Ways",
         "panel.sculpt3d.project_min_dist" => "Gap",

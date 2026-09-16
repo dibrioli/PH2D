@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 46;
+pub const CENAS: u32 = 47;
 
 /// **A env do roteador, lida DENTRO da crate.**
 ///
@@ -469,6 +469,11 @@ pub(crate) mod boundary;
 /// onde o artista aprende de que família este pincel é.
 #[path = "scenes_erase.rs"]
 pub(crate) mod erase;
+/// **O PINCEL DE PLANO** (`=47`) — ver [`plano`]. ⚠️ Ela abre num campo de
+/// BOSSAS: numa esfera lisa este pincel pára sozinho, e o dono veria uma
+/// ferramenta que «não faz nada».
+#[path = "scenes_plano.rs"]
+pub(crate) mod plano;
 /// **PROJECTAR NA CENA** (`=45`) — ver [`projectar`]. ⚠️ Ela é a ÚNICA desta
 /// família que abre com **duas peças**, e não por gosto: sem a segunda este
 /// pincel é inerte **por lei** (espec §6.3.3).

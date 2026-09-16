@@ -215,6 +215,13 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
         // que a ferramenta é.*
         return crate::scenes::trim::peca();
     }
+    if crate::scenes::plano::plano_scene() {
+        // ⚠️ **Com BOSSAS, e a razão é a lição da cena** — ver o cabeçalho da
+        // [`crate::scenes::plano`]: numa esfera lisa este pincel pára sozinho
+        // (o auto-limite), e uma cena que abre no caso degenerado ensina o
+        // contrário do que a ferramenta é.
+        return crate::scenes::plano::peca();
+    }
     if crate::scenes::erase::erase_scene() || crate::scenes::smear::smear_scene() {
         return peca_de_multirresolucao();
     }

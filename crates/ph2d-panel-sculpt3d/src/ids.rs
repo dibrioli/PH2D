@@ -25,6 +25,10 @@ pub use sculpt3d_smear::*;
 /// Os ids do BOX TRIM — ver [`sculpt3d_trim`].
 mod sculpt3d_trim;
 pub use sculpt3d_trim::*;
+
+/// Os ids do PINCEL DE PLANO — ver [`sculpt3d_plano`].
+mod sculpt3d_plano;
+pub use sculpt3d_plano::*;
 /// Os ids do pincel de PROJECTAR NA CENA — ver [`sculpt3d_project`].
 mod sculpt3d_project;
 pub use sculpt3d_project::*;

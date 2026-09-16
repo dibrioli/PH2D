@@ -218,6 +218,42 @@ pub(super) fn paint_trim_rows(
     ) + Spacing::Sm.px()
 }
 
+/// ⭐⭐ **O QUE O `Ctrl` FAZ AO PINCEL DE PLANO** — as duas leis da espec §5.
+///
+/// ⚠️ **É um SELECTOR e não um segundo modificador:** o artista escolhe o que a
+/// tecla vai fazer e depois carrega. Com *trocar os tectos* ele tem **aparar e
+/// encher na mesma mão** — que é a razão de existir do controlo.
+pub(super) fn paint_plano_rows(
+    ctx: &mut PaintCtx<'_>,
+    snap: &Sculpt3dSnapshot,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    if snap.ui.brush.verb != ph2d_sculpt3d::Verb::Plane {
+        return y;
+    }
+    let selected = ph2d_sculpt3d::PlanoInversao::ALL
+        .iter()
+        .position(|&m| m == snap.ui.brush.plano_inversao)
+        .unwrap_or(0);
+    let labels: Vec<&str> = ph2d_sculpt3d::PlanoInversao::ALL
+        .iter()
+        .map(|m| m.label())
+        .collect();
+    labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.plano_inversao"),
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_PLANO_INVERSAO,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    ) + Spacing::Sm.px()
+}
+
 /// **AS DUAS SUPERFÍCIES PINTADAS DO PINCEL DE PROJECTAR** — a direcção do raio
 /// (espec §6.2) e procurar também para trás (§6.3.2).
 ///

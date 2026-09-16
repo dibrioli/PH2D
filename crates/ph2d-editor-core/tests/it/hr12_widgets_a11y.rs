@@ -62,12 +62,18 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     //    construído pelo `Checkbox::build_a11y`, no `mod.rs` — *um nó aqui leria a mesma caixa duas
     //    vezes a quem não vê*. É a mesma razão do `property_box/label.rs` acima.
     //
-    // ⛔⛔ **E o irmão `mark.rs` passa por ACIDENTE:** o que casa nele é um `use ph2d_a11y::NodeId`
-    //    dentro do `mod tests`. *Este gate é satisfeito por um `use` em código de teste* — dívida
-    //    NOMEADA, e a cura é ele varrer só o código de produção.
+    // ⛔⛔⛔ **E o irmão `mark.rs` passava por ACIDENTE — PROVADO no mesmo dia.** O que casava nele
+    //    era um `use ph2d_a11y::NodeId` dentro do `mod tests`; quando o tecto de LOC obrigou a
+    //    mudar os testes para o `mark_tests.rs` (horas depois), ele apareceu aqui. *Este gate é
+    //    satisfeito por um `use` em código de TESTE* — dívida nomeada de véspera e cobrada à
+    //    primeira oportunidade; a cura é ele varrer só o código de produção.
     (
         "checkbox/label.rs",
         "o texto do nome de uma linha de marcar: o no' e' construido pelo `Checkbox::build_a11y`, no mod.rs",
+    ),
+    (
+        "checkbox/mark.rs",
+        "a geometria e a tinta da marca: o no' e' construido pelo `Checkbox::build_a11y`, no mod.rs",
     ),
     // ⚠️ **A listra de uma lista não tem semântica própria, e a ausência é a decisão**
     //    (2026-09-06): ela é o TOM que a lista pinta ATRÁS das suas linhas, para que duas linhas

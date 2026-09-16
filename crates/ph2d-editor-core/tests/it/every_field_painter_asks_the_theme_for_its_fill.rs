@@ -146,6 +146,17 @@ fn no_widget_paints_a_control_body_with_the_card_token() {
             .unwrap_or(p)
             .to_string_lossy()
             .replace('\\', "/");
+        // ⛔⛔ **O código de TESTE tem DUAS formas nesta casa, e a cerca só conhecia uma.** O
+        //    `#[cfg(test)]` abaixo apanha o `mod tests` no fim do ficheiro; o repo também usa
+        //    o ficheiro IRMÃO (`number_input/tests.rs`, `text_input/tests.rs`, e desde
+        //    2026-09-15 o `checkbox/mark_tests.rs`, que nasceu do tecto de LOC). Este gate
+        //    ficou vermelho na hora em que um bloco de teste **mudou de forma sem mudar de
+        //    natureza**.
+        // ⇒ *«o que é código de teste» responde-se UMA vez, e cobre as duas formas.*
+        let base = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if base == "tests.rs" || base.ends_with("_tests.rs") {
+            continue;
+        }
         for (n, line) in src.lines().enumerate() {
             let t = line.trim();
             // ⚠️ **O módulo de teste termina a varredura.** Um gate que afirma a lei CITA o token

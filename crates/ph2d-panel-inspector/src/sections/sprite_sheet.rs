@@ -108,7 +108,7 @@ pub(crate) fn paint_sprite_sheet_section(
     // Origin controls (spec §3.4) — Centered toggle (quad center vs
     // texture top-left + offset) + Offset X/Y (intrinsic px). Render via
     // Sprite::resolve_anchor (no atlas-UV change — they move the quad).
-    let cb_h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height
+    let cb_h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
     let (_, ce_value) = store
         .checkbox(ids::INSP_SPRITE_CENTERED)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
@@ -265,7 +265,7 @@ fn paint_flip_rows(
     // flip with the origin controls (after Offset, before the frame
     // grid). Two checkboxes side by side; toggling dispatches an
     // InspectorSpriteEdit and the shader mirrors the sampled UV.
-    let flip_row_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height
+    let flip_row_h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
     let flip_gap = Spacing::Md.px();
     let flip_half = ((w - flip_gap) * 0.5).max(0.0);
     let (_, fx_value) = store

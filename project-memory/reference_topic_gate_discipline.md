@@ -225,3 +225,25 @@ metades do mesmo erro.*
 ⭐ Depois do endereço o gate ficou **mais forte**, não mais fraco: uma tabela nova noutra secção
 deixa de o partir, e uma §9 renomeada parte-o em voz alta (prova de mutação feita).
 
+---
+
+## ⛔⛔ Uma cerca que presume a FORMA do código de teste é cega à outra forma (2026-09-15)
+
+Dois gates do `ph2d-editor-core` definem *«código de teste»* como **`#[cfg(test)]` no fim do
+ficheiro** — e o repo tem **duas** formas: o `mod tests` inline e o ficheiro IRMÃO
+(`number_input/tests.rs`, `text_input/tests.rs`). No dia em que o tecto de LOC obrigou a mudar o
+`mod tests` do `checkbox/mark.rs` para `checkbox/mark_tests.rs`, os dois acordaram:
+
+- o `no_widget_paints_a_control_body_with_the_card_token` passou a **acusar o teste** (ele cita o
+  token dos dois lados, de propósito);
+- o `hr12_widgets_a11y` passou a **acusar o produto** — o `mark.rs` era verde só porque o `mod
+  tests` dele tinha um `use ph2d_a11y::NodeId`. *Ele estava a ser satisfeito por código de teste.*
+
+⭐ **Os dois são a mesma falha com o sinal trocado**, e a cura é uma: *«o que é código de teste»
+responde-se UMA vez e cobre as duas formas* (`base == "tests.rs" || base.ends_with("_tests.rs")`,
+mais o `#[cfg(test)]`).
+
+⚠️ E a segunda metade é a lição mais cara: **um bloco de teste que muda de FORMA sem mudar de
+natureza acorda todo gate cuja cerca era a forma**. Quem parte um ficheiro pelo tecto de LOC corre
+os censos da crate antes de dar o corte por fechado.
+

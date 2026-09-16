@@ -63,7 +63,7 @@ pub(crate) fn paint_visibility_row(
     // making the gap to the separator visibly larger than Transform's
     // (user 2026-05-24: "espaço entre visible e separador fora do
     // padrão"). Now both sections finish at the same visual rhythm.
-    let row_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height (box 16 + label baseline)
+    let row_h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
     let (_, value) = match store.checkbox(ids::INSP_VISIBILITY_CHECK) {
         Some(pair) => pair,
         None => (CheckboxState::Normal, CheckboxValue::Checked),

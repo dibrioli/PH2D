@@ -28,7 +28,7 @@ pub fn paint_checkbox(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let box_rect = paint_boolean_mark(
+    let pintada = paint_boolean_mark(
         rect,
         BooleanMark {
             value: cb.value,
@@ -41,6 +41,42 @@ pub fn paint_checkbox(
         scene,
         theme,
     );
+    let box_rect = pintada.marca;
+
+    // ⭐⭐⭐ **A PALAVRA do valor, à direita da marca e DENTRO da caixa** — ordem do dono,
+    // 2026-09-15, com a foto do inspector do Godot: *«Godot define a checkbox como uma palavra
+    // (On) à direita. Isso me parece bom»*.
+    //
+    // ⚠️ **Ela não muda com o valor, e é assim no alvo:** na foto dele três linhas dizem *On* e só
+    // uma está marcada. A palavra nomeia o que a marca LIGA — como o rótulo de um interruptor de
+    // parede —, e quem diz se está ligado é a marca. ⛔ Eu tinha-a deixado de fora por achar que
+    // ela mentia, e devolvi-lhe a decisão; ele decidiu.
+    //
+    // ⚠️ **Só na linha de FORMULÁRIO**: fora dela não há caixa onde a pôr (a pele de canvas é o que
+    // o artista desenhou), e o interruptor nem por aqui passa.
+    if let Some(caixa) = pintada.caixa {
+        let fonte = TypeToken::Sm.px();
+        let x = box_rect.x + box_rect.w + Spacing::Sm.px();
+        // ⚠️ O orçamento acaba no mesmo recuo em que o VALOR de um campo acaba.
+        let orcamento = (caixa.x + caixa.w - crate::widget::field_pad_x() - x).max(0.0);
+        paint_text(
+            text_system,
+            scene,
+            ph2d_i18n::tr("chrome.checkbox.on"),
+            x,
+            rect.y + (rect.h - fonte) * 0.5,
+            fonte,
+            orcamento,
+            resolve(
+                if cb.state == CheckboxState::Disabled {
+                    ColorToken::TextDisabled
+                } else {
+                    ColorToken::Text1
+                },
+                theme,
+            ),
+        );
+    }
 
     if !cb.label.is_empty() {
         let label_color = if cb.state == CheckboxState::Disabled {

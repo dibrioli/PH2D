@@ -195,3 +195,46 @@ fn a_marca_vive_dentro_de_uma_caixa_que_ocupa_a_coluna_do_controlo() {
         "a caixa nao se moveu quando a coluna da seccao mudou: ela nao e' a coluna do CONTROLO"
     );
 }
+
+/// ⭐⭐⭐ **A PALAVRA DO VALOR VIVE DENTRO DA CAIXA, à direita da marca.**
+///
+/// ⛔⛔ **Ordem do dono, 2026-09-15, com a foto do inspector do Godot:** *«Godot define a checkbox
+/// como uma palavra (On) à direita. Isso me parece bom»*.
+///
+/// ⚠️ **Ela não muda com o valor, e é assim no alvo:** na foto dele três linhas dizem *On* e só uma
+/// está marcada. A palavra nomeia o que a marca LIGA — como o rótulo de um interruptor de parede —,
+/// e quem diz se está ligado é a marca. ⛔ Eu tinha-a deixado de fora por achar que ela mentia, e
+/// devolvi-lhe a decisão; **ele decidiu, e a decisão é dele**.
+///
+/// # A régua
+///
+/// Com o rótulo **VAZIO**, o único texto que a linha pode pousar é a palavra. ⇒ numa linha de
+/// formulário há glifos; fora dela (a pele de canvas) há **zero**.
+///
+/// **Mutação que deve sangrar:** apagar o `paint_text` da palavra — as duas contagens dão `0`.
+#[test]
+fn a_palavra_do_valor_vive_dentro_da_caixa() {
+    redesign();
+    let mut ts = TextSystem::new();
+    let conta = |ts: &mut TextSystem, sec: Option<Seccao>| -> usize {
+        let mut scene = VectorScene::new();
+        // ⚠️ Rótulo VAZIO de propósito: assim o único texto possível é a PALAVRA.
+        let mut cb = Checkbox::new(ID, "")
+            .state(CheckboxState::Normal)
+            .value(CheckboxValue::Unchecked);
+        cb.seccao = sec;
+        paint_checkbox(&cb, FAIXA, &mut scene, ts, Theme::Forge);
+        glifos_da_cena(&scene)
+    };
+    let com = conta(&mut ts, Some(Seccao::apenas_campos(1)));
+    let sem = conta(&mut ts, None);
+    assert!(
+        com > 0,
+        "a linha de formulario nao pousou glifo nenhum com o rotulo vazio: a PALAVRA nao esta' la'"
+    );
+    assert_eq!(
+        sem, 0,
+        "a pele de canvas pousou {sem} glifo(s) com o rotulo vazio — a palavra saiu da linha de \
+         formulario e foi parar onde o artista desenha"
+    );
+}

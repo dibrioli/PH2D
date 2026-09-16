@@ -203,7 +203,7 @@ pub(crate) fn paint_slice_section(
     // Ligá-la sem componente ANEXA-O — e continua inerte, porque as bordas nascem a zero e bordas
     // a zero colapsam no sprite de sempre. Desligá-la GUARDA os valores: uma caixa que perdesse
     // dados ao desmarcar não seria uma caixa.
-    let cb_h = 18.0_f32; // LITERAL-PX-OK: altura visual do Checkbox
+    let cb_h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
     let on = info.present && info.draw_mode_tag == 1;
     let en_value = if info.mixed.enabled {
         CheckboxValue::Indeterminate

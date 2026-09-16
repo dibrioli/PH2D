@@ -28,6 +28,15 @@
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         // ⭐ **As quatro que existiam em DUPLICADO** — a razão de esta tabela existir.
+        // ⭐⭐ **A palavra de uma LINHA DE MARCAR** — ordem do dono, 2026-09-15, com a foto do
+        //    inspector do Godot: *«Godot define a checkbox como uma palavra (On) à direita. Isso me
+        //    parece bom»*.
+        //
+        // ⚠️ **Ela NÃO muda com o valor, e é assim no alvo**: na foto dele três linhas dizem *On* e
+        //    só uma está marcada. A palavra nomeia o que a marca LIGA, como o rótulo de um
+        //    interruptor de parede; quem diz se está ligado é a marca. ⛔ Eu tinha-a deixado de fora
+        //    por isso mesmo e devolvi-lhe a decisão; ele decidiu.
+        "chrome.checkbox.on" => "On",
         "chrome.no_matches" => "No matches",
         "chrome.flyout.shape_options" => "Shape options",
         "chrome.flyout.mask_options" => "Mask options",

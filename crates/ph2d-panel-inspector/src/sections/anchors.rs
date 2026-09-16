@@ -51,7 +51,7 @@ pub(super) fn check_row(
     //    alternando linha sim linha não.
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let cb_h = 18.0_f32; // LITERAL-PX-OK: altura visual do Checkbox
+    let cb_h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
     let (_, value) = store
         .checkbox(id)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));

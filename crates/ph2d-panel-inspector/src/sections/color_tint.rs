@@ -251,7 +251,7 @@ pub(crate) fn paint_color_tint_section(
     cur_y += opacity_h + row_gap;
 
     // Tint Fill silhouette toggle.
-    let cb_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height
+    let cb_h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
     let (_, tf_value) = store
         .checkbox(ids::INSP_SPRITE_TINT_FILL)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));

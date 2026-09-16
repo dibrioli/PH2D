@@ -26,7 +26,7 @@ fn feel_of_state(state: CheckboxState) -> ph2d_tokens::visuals::Feel {
     }
 }
 use crate::zones::Rect;
-use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
 /// ⭐⭐⭐ **O pintor de uma MARCA BOOLEANA — e desde 2026-09-03 há um só no app.**
@@ -67,12 +67,24 @@ pub(crate) struct BooleanMark {
     pub linha: Option<crate::widget::Seccao>,
 }
 
+/// ⭐⭐ **O que o pintor da marca DEVOLVE** — a marca e, quando a linha é de formulário, a CAIXA.
+///
+/// ⚠️ **A caixa vem daqui e não é re-derivada pelo chamador:** quem escreve a palavra do valor ao
+/// lado da marca ([`super::label`]) precisa de saber onde ela acaba, e uma segunda chamada à
+/// `colunas_da_linha` seria a segunda resposta a *«onde é que este campo acaba?»* — o defeito que a
+/// `surface_rect` existe para impedir, um nível abaixo.
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct MarcaPintada {
+    pub marca: Rect,
+    pub caixa: Option<Rect>,
+}
+
 pub(crate) fn paint_boolean_mark(
     rect: Rect,
     m: BooleanMark,
     scene: &mut VectorScene,
     theme: Theme,
-) -> Rect {
+) -> MarcaPintada {
     let BooleanMark {
         value,
         state,
@@ -129,12 +141,29 @@ pub(crate) fn paint_boolean_mark(
         _ => None,
     };
     let box_rect = match (redesign, caixa) {
-        (true, Some(campo)) => Rect::new(
-            campo.x + crate::widget::field_pad_x(),
-            box_y,
-            box_size,
-            box_size,
-        ),
+        (true, Some(campo)) => {
+            // ⛔⛔ **Report do dono, 2026-09-15, com foto:** *«checkbox ficou maior que a caixa e
+            // não foi bem alinhado à esquerda. Godot melhor»*.
+            //
+            // ⚠️ **Duas causas, e a primeira era aritmética:** a marca vale
+            // [`CHECKBOX_BOX_PX`] = `18` e as dez secções do Inspector davam à linha de marcar
+            // **`18` de altura** (o mesmo literal, copiado dez vezes) ⇒ `min(18, 18) = 18`: a
+            // marca ocupava a caixa TODA, e com o traço da moldura por cima lia-se **maior** do
+            // que ela. Hoje a linha mede [`ph2d_tokens::ROW_H_PX`], como toda linha de
+            // propriedade, e a marca é **inset um degrau em cada lado**.
+            //
+            // ⚠️ **E o recuo NÃO é o do texto.** Ele era o [`crate::widget::field_pad_x`] (`12`),
+            // que é onde o VALOR de um campo começa — e o valor precisa de folga para o caret e
+            // para a selecção. *Uma marca não tem caret*: `12` lia-se como «não está à esquerda».
+            let recuo = Spacing::Xs.px();
+            let lado = box_size.min(campo.h - 2.0 * recuo).max(1.0);
+            Rect::new(
+                campo.x + recuo,
+                campo.y + (campo.h - lado) * 0.5,
+                lado,
+                lado,
+            )
+        }
         (true, None) => Rect::new(
             crate::widget::property_box::value_column(rect, box_size, decorator).x,
             box_y,
@@ -295,123 +324,12 @@ pub(crate) fn paint_boolean_mark(
         );
     }
 
-    box_rect
+    MarcaPintada {
+        marca: box_rect,
+        caixa,
+    }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    // ⚠️ O pintor que COMPÕE a marca com o nome vive no irmão desde 2026-09-15 (tecto de LOC) —
-    //    estes testes exercitam-no de propósito: é ele o caminho do produto.
-    use super::super::Checkbox;
-    use super::super::label::paint_checkbox;
-    use crate::zones::Rect;
-    use ph2d_a11y::NodeId;
-    use ph2d_text::TextSystem;
-    use ph2d_tokens::CHECKBOX_BOX_PX as CHROME_CHECKBOX_BOX;
-
-    /// A caixa de partida dos testes de tinta — um sítio só.
-    fn fixture() -> Checkbox {
-        Checkbox::new(NodeId(1), "Snap to grid")
-    }
-
-    fn smoke(c: Checkbox, theme: Theme) {
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::without_system_fonts();
-        paint_checkbox(
-            &c,
-            Rect::new(0.0, 0.0, 200.0, 18.0),
-            &mut scene,
-            &mut text,
-            theme,
-        );
-    }
-
-    #[test]
-    fn half_a_hover_moves_the_unchecked_box_between_the_two_ends() {
-        use super::*;
-        let theme = Theme::Forge;
-        let rest = ColorToken::Bg1.resolve(theme);
-        let hot = ColorToken::Bg2.resolve(theme);
-        let mid = crate::motion::hover_axis(true, 0.5, Some(rest), Some(hot))
-            .expect("o eixo macio mistura");
-        assert_ne!(mid, rest);
-        assert_ne!(mid, hot);
-        // O neutro sai como `None` ⇒ o chamador cai no token DURO.
-        assert!(
-            crate::motion::hover_axis(true, crate::motion::SETTLED, Some(rest), Some(hot))
-                .is_none()
-        );
-        // Estado duro (ou caixa MARCADA) não é uma quantidade: fora do eixo.
-        assert!(crate::motion::hover_axis(false, 0.5, Some(rest), Some(hot)).is_none());
-    }
-
-    /// **Sem override, a caixa é o TOKEN** — a lei de todo painel do app, ao bit
-    /// (BUGS_vector #26).
-    ///
-    /// ⚠️ `box_px: None` não é "um default razoável": é o que faz cada checkbox do app ter
-    /// exactamente o mesmo tamanho, e é a razão de um formulário ler como formulário. Este gate
-    /// existe para que mexer nisso exija mexer nele.
-    #[test]
-    fn without_an_override_the_box_is_the_token() {
-        let c = fixture();
-        assert_eq!(c.box_px, None, "o default deixou de ser o token");
-
-        let tall = Rect::new(0.0, 0.0, 200.0, CHROME_CHECKBOX_BOX * 8.0);
-        let mut a = VectorScene::new();
-        let mut ts = TextSystem::without_system_fonts();
-        paint_checkbox(&c, tall, &mut a, &mut ts, Theme::Forge);
-
-        let mut explicit = c.clone();
-        explicit.box_px = Some(CHROME_CHECKBOX_BOX);
-        let mut b = VectorScene::new();
-        paint_checkbox(&explicit, tall, &mut b, &mut ts, Theme::Forge);
-
-        let (ea, eb) = (a.inner().encoding(), b.inner().encoding());
-        assert_eq!(
-            (ea.n_paths, ea.path_data.clone()),
-            (eb.n_paths, eb.path_data.clone()),
-            "pedir o proprio token divergiu de nao pedir nada — o canal nao e' neutro"
-        );
-    }
-
-    #[test]
-    fn paint_smoke_normal_unchecked() {
-        smoke(fixture(), Theme::Forge);
-    }
-
-    #[test]
-    fn paint_smoke_hovered_checked() {
-        smoke(
-            fixture()
-                .value(CheckboxValue::Checked)
-                .state(CheckboxState::Hovered),
-            Theme::Sunstone,
-        );
-    }
-
-    #[test]
-    fn paint_smoke_pressed_indeterminate() {
-        smoke(
-            fixture()
-                .value(CheckboxValue::Indeterminate)
-                .state(CheckboxState::Pressed),
-            Theme::Blueprint,
-        );
-    }
-
-    #[test]
-    fn paint_smoke_focused_unchecked() {
-        smoke(fixture().state(CheckboxState::Focused), Theme::Workshop);
-    }
-
-    #[test]
-    fn paint_smoke_disabled_checked() {
-        smoke(
-            fixture()
-                .value(CheckboxValue::Checked)
-                .state(CheckboxState::Disabled),
-            Theme::Forge,
-        );
-    }
-}
+#[path = "mark_tests.rs"]
+mod tests;

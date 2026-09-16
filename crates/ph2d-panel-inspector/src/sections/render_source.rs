@@ -481,7 +481,7 @@ fn paint_region_rows(
     // own rect from the asset). Toggle + (when on) X/Y/W/H px inputs +
     // Filter Clip. Renders via the extract `region_subrect` (W2.T2.4).
     if !matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }) {
-        let cb_h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height
+        let cb_h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
         let re_value = store
             .checkbox(ids::INSP_REGION_ENABLED)
             .map_or(CheckboxValue::Unchecked, |(_, v)| v);

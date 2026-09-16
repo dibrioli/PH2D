@@ -63,7 +63,7 @@ fn check_row(
     id: NodeId,
     label: &str,
 ) -> f32 {
-    let h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height (box 16 + label baseline)
+    let h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
     let (_, value) = store
         .checkbox(id)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));

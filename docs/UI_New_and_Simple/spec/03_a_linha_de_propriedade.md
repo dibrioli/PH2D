@@ -327,8 +327,8 @@ dentro do box o checkbox alinhado à esquerda. Vamos adotar essa aparência»*.
 
 - a **caixa** ocupa a coluna do controlo — começa no meio da linha e acaba na margem direita,
   **exactamente como a caixa de um número**;
-- a **marca** encosta à ESQUERDA dentro dela, no mesmo recuo em que um campo põe o primeiro
-  caractere ([`field_pad_x`]);
+- a **marca** encosta à ESQUERDA dentro dela, recuada **um degrau** ([`Spacing::Xs`]) de cada lado;
+- a **palavra do valor** (*On*) fica à direita da marca, dentro da caixa;
 - o alvo do clique é a linha inteira, como sempre.
 
 ⭐⭐ **Com isto a linha de marcar deixa de ser a excepção do §3.** A redacção anterior desta secção
@@ -343,10 +343,30 @@ que eu tinha escrito como permanente.*
 amanhã divergem*, e este pintor já pagou isso ao escrever `Bg1` (a cor de um CARTÃO) e deixar a
 caixa invisível.
 
-⛔ **O que NÃO foi copiado do Godot: a palavra «On» dentro da caixa.** Ela não muda com o valor — a
-linha desligada continua a dizer *On* —, e um rótulo constante ao lado de um indicador que varia é
-exactamente a família de defeitos que o `CLAUDE.md` §5.0 caça. *Decisão do dono se a quiser de
-volta; é uma linha.*
+### ⭐⭐ A PALAVRA do valor, e as duas correcções que o dono pediu a seguir
+
+⛔⛔ **Report do dono, 2026-09-15, com foto:** *«checkbox ficou maior que a caixa e não foi bem
+alinhado à esquerda. Godot melhor. Outra coisa: Godot define a checkbox como uma palavra (On) à
+direita. Isso me parece bom»*.
+
+**(a) A marca enchia a caixa** — e a causa era aritmética em dois sítios:
+
+| | antes | agora |
+|---|---|---|
+| altura da linha | `18`, o **mesmo literal em treze secções** do Inspector | [`ROW_H_PX`] = `22`, a altura de toda linha de propriedade |
+| lado da marca | `min(18, 18) = 18` — a caixa TODA | `min(18, 22 − 2×`[`Spacing::Xs`]`) = 14` |
+| recuo à esquerda | [`field_pad_x`] = `12` | [`Spacing::Xs`] = `4` |
+
+⚠️ **O recuo do TEXTO não serve para a marca:** o valor de um campo precisa de folga para o caret e
+para a selecção; *uma marca não tem caret*, e `12 px` liam-se como «não está à esquerda».
+
+**(b) A palavra ENTRA** (`chrome.checkbox.on`). ⚠️ Ela **não muda com o valor**, e é assim no alvo:
+na foto do dono três linhas dizem *On* e só uma está marcada — a palavra nomeia o que a marca LIGA,
+como o rótulo de um interruptor de parede, e quem diz se está ligado é a marca.
+
+⛔ **Eu tinha-a deixado de fora**, por ela parecer um rótulo constante ao lado de um indicador que
+varia (a família que o `CLAUDE.md` §5.0 caça). Devolvi-lhe a decisão com o motivo; **ele decidiu, e
+a decisão é dele**.
 
 ⚠️ **O INTERRUPTOR segue a mesma lei** (a linha *Show grid* do painel da Grelha): ele era um
 comprimido de `40 × 20` encostado à margem direita, com dois literais próprios — *o único controlo
@@ -431,6 +451,8 @@ ali eles cortam — que é a troca que o dono escolheu em 2026-05-24.
 | §6-quinquies | o nome de uma linha de marcar vive na coluna do nome | `Checkbox` | `a_linha_de_marcar_poe_o_nome_na_coluna_do_nome` |
 | §6-quinquies | a pele de canvas não segue a coluna de uma secção | `fora_do_formulario` | `fora_do_formulario_o_nome_fica_onde_o_artista_o_pos` |
 | §6-quinquies | a marca vive dentro de uma caixa que ocupa a coluna do controlo | `paint_field_surface` | `a_marca_vive_dentro_de_uma_caixa_que_ocupa_a_coluna_do_controlo` |
+| §6-quinquies | a marca nunca toca a caixa, e encosta mais que o texto | `paint_boolean_mark` | `a_marca_nunca_toca_a_caixa_e_encosta_mais_que_o_texto` |
+| §6-quinquies | a palavra do valor vive dentro da caixa | `MarcaPintada` | `a_palavra_do_valor_vive_dentro_da_caixa` |
 | §6-quinquies | o interruptor pinta a MESMA marca que a caixa de verificação | `paint_boolean_mark` | `the_switch_paints_the_very_same_mark_as_the_checkbox` |
 | §6 | quantos rótulos elidem, por largura do dock | `property_row_columns_for` | `the_elision_ladder_only_shrinks` |
 | §6-bis | as componentes que não cabem ao piso descem, dentro da coluna do controlo | `property_fields_layout` | `a_row_of_many_fields_never_starves_them` |

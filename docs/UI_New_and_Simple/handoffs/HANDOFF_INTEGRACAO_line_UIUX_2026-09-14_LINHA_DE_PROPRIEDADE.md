@@ -2178,3 +2178,67 @@ comparar com a caixa ligada mediria a moldura de um campo contra a ausência del
 - Os 23 sítios de `Checkbox` que ficam no default (`apenas_campos(1)`), e as caixas de **meia
   largura** (câmara, animação), de propósito: ali a secção é o PAR.
 - O `row2` e as amostras de cor do Vector; as cinco barras do Painter (spec §2).
+
+---
+
+## 33 — ⭐⭐ *«Checkbox ficou maior que a caixa… Godot melhor»* + A PALAVRA entra
+
+**Report do dono, 2026-09-15**, com foto do nosso ecrã ao lado do Godot: *«checkbox ficou maior que
+a caixa e não foi bem alinhado à esquerda. Godot melhor. Outra coisa: Godot define a checkbox como
+uma palavra (On) à direita. Isso me parece bom»*.
+
+### 33.1 — A marca enchia a caixa, e a causa eram TREZE literais
+
+| | antes | agora |
+|---|---|---|
+| altura da linha de marcar | `18` — **o mesmo literal em treze secções do Inspector**, cada uma com o seu `// LITERAL-PX-OK` | `ph2d_tokens::ROW_H_PX` = `22` |
+| lado da marca | `min(CHECKBOX_BOX_PX, rect.h)` = `min(18, 18)` = **`18`**, a caixa TODA | `min(18, 22 − 2×Spacing::Xs)` = **`14`** |
+| recuo à esquerda | `field_pad_x` = `12` | `Spacing::Xs` = `4` |
+
+⭐ *O defeito que ele viu não estava no widget: estava em treze cópias de «quanto mede uma linha de
+marcar», todas a dizer `18` enquanto a marca também mede `18`.* A linha de marcar é uma linha de
+propriedade — a altura dela é a do app, e as treze isenções de literal desapareceram com a cura.
+
+⚠️ **E o recuo do TEXTO não serve para a marca:** o valor de um campo precisa de folga para o caret
+e para a selecção; *uma marca não tem caret*. `12 px` liam-se como *«não está à esquerda»*.
+
+### 33.2 — A palavra entra, e eu tinha-a recusado
+
+`chrome.checkbox.on` → *On*, à direita da marca, dentro da caixa.
+
+⛔ No §32.4 deixei-a de fora com o motivo escrito (*«ela não muda com o valor; um rótulo constante ao
+lado de um indicador que varia é a família de defeitos do §5.0»*) e **devolvi-lhe a decisão**. Ele
+decidiu. ⚠️ A leitura que fica registada: a palavra **nomeia o que a marca LIGA** — como o rótulo de
+um interruptor de parede —, e quem diz se está ligado é a marca. Na foto dele três linhas dizem *On*
+e só uma está marcada.
+
+⚠️ **A caixa viaja no retorno do pintor** (`MarcaPintada { marca, caixa }`): quem escreve a palavra
+precisa de saber onde o campo acaba, e uma segunda chamada à `colunas_da_linha` seria a segunda
+resposta a *«onde é que este campo acaba?»* — o defeito que a `surface_rect` existe para impedir.
+
+### 33.3 — Os gates e as mutações
+
+| gate | mutação que sangra |
+|---|---|
+| `a_marca_nunca_toca_a_caixa_e_encosta_mais_que_o_texto` | repor `Rect::new(campo.x + field_pad_x(), box_y, box_size, box_size)` ⇒ *«a marca mede 18.0 numa caixa de 22.0 — folga 4.0, e dois degraus pedem 8.0»* |
+| `a_palavra_do_valor_vive_dentro_da_caixa` | apagar o `paint_text` da palavra ⇒ zero glifos com o rótulo vazio |
+
+⚠️ A segunda metade do primeiro gate **compara com OUTRA porta** (`field_pad_x`), logo não é a
+fórmula repetida: ela diz *a marca encosta mais do que o texto*.
+
+### 33.4 — ⛔⛔ E a dívida que eu nomeei na véspera foi cobrada em HORAS
+
+No §32 escrevi que o `hr12_widgets_a11y` era satisfeito por um `use ph2d_a11y::NodeId` dentro do
+`mod tests` do `checkbox/mark.rs` — *«dívida nomeada, e a cura é ele varrer só o código de
+produção»*.
+
+O tecto de 500 LOC obrigou a mudar aqueles testes para o `checkbox/mark_tests.rs` (o molde do
+`number_input/tests.rs`) **no mesmo dia**, e o ficheiro apareceu no gate na corrida seguinte.
+⇒ *uma dívida nomeada não é uma dívida adiada: ela é cobrada na primeira vez que alguém toca no
+sítio.*
+
+### 33.5 — ⏳ ABERTO
+
+- O gate `hr12_widgets_a11y` varrer só código de produção (33.4).
+- As caixas de marcar de **meia largura** (câmara, animação) continuam no default, de propósito.
+- O `row2` e as amostras de cor do Vector; as cinco barras do Painter (spec §2).

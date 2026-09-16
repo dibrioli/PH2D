@@ -258,3 +258,14 @@ nas quatro crates tocadas.
 
 ⏳ **Continua aberto** o A/B do rebaixamento do `compare` (§23 da auditoria): pede a placa livre, e a
 placa esteve ocupada por outra sessão durante toda esta adenda.
+
+⏳ **Dois itens que pedem a placa, nomeados (lidos no código, não corridos):**
+- ⚠️ **Os laços que percorrem as cenas do smoke usam `0..CENAS`** (`smoke_gpu_tests.rs` ×3,
+  `preview_device_tests.rs`, `device_probes.rs`, e a sonda `measure_tape_shape_of_the_real_scenes`):
+  o `0` cai no braço `_` do roteador e desenha a **cena 1 outra vez**, e a cena **`CENAS` (hoje a
+  `32`) nunca é medida**. A cura é `1..=CENAS`, e ela **muda a população** de gates de placa com
+  razão (`com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento`) — por isso não foi aplicada
+  sem a placa para os correr;
+- **uma cena de smoke para o contorno misto** (a cura do Bug #6 só se vê com um desenho que mistura
+  quinas arredondadas e curvas livres, com o `Resolution` alto) fica à espera do mesmo motivo: subir
+  o `CENAS` mexe nesses mesmos laços.

@@ -11,7 +11,7 @@ Patente (§8.1): buscado em 2026-09-15 — pincel de escultura que achata contra
   alisamento, não deste. As três patentes de escultura da era de 2001 estão EXPIRADAS. Arte
   anterior pública desde os anos 1990, e a metade antiga desta família distribui-se hoje sob MIT.
   Veredito: prosseguir.
-Filtragem §4.3: executada em 2026-09-15 · Sweep: ✅ VERDE em 2026-09-15 sobre **321** entradas
+Filtragem §4.3: executada em 2026-09-15, RE-EXECUTADA sobre a emenda em 2026-09-16 · Sweep: ✅ VERDE em 2026-09-15 sobre **321** entradas
   (104 identificadores internos + prosa do alvo em DUAS línguas, com e sem acentos − 16
   identificadores PÚBLICOS da API, que são a chave de regeneração das fixtures e que o
   precedente da casa deixa de fora — §4.1.13).
@@ -44,6 +44,16 @@ Auditoria §4.2 (R-pré): ⚠️ **CORRIDA em 2026-09-16** por um subagente inde
   ⇒ próximo passo: emenda por subagente-E, depois **re-corrida** do R-pré.
   Sweep: **verde** (321 entradas) sobre a espec + as 100 fixtures, com **controlo positivo
   corrido em cinco canais**, incluindo de DENTRO de um `.gz`.
+  ✅ **EMENDA ENTREGUE em 2026-09-16 (subagente-E), os três achados curados** — registo com as
+  medições novas no ledger, §EMENDA DO E: (1) a lei nossa **re-derivada do código vivo e
+  re-medida** (peso = máscara, extensão = a pegada inteira ⇒ o buraco é MAIOR e no sulco tem
+  **sinal oposto**: `+9,5 %` do raio, até `+17,1 %`; e a normal desvia até `31,2°`), com a
+  citação do registo de perf **retirada** por ser o epitáfio daquela lei; (2) a barra do **G-5**
+  recalculada sobre todas as células, com as **três** não-discriminantes nomeadas com o mecanismo,
+  **piso de população** e barra `1e-3` (`2,7×` abaixo do piso medido das oito que discriminam);
+  (3) o quadro da §11 **derivado do directório**. Filtragem §4.3 re-executada sobre o texto novo e
+  sweep re-corrido com o controlo positivo.
+  ⏳ **R-pré, 2.ª passagem: PENDENTE. A janela I continua FECHADA.**
 Mapa de leitura da literatura: não há paper. A literatura pública utilizável é (a) o manual do
   alvo (factos, ⛔ nunca o wording), (b) a discussão pública de desenho no fórum de
   desenvolvimento dele, destilada na §10 desta espec, e (c) o nosso próprio registo do porte MIT
@@ -90,9 +100,9 @@ Quem pedir *«um pincel que apara esfregando»* e receber o nosso `Scrape` não 
 | o que falta | por que a composição não o dá | medição |
 |---|---|---|
 | **A) o par ALTURA/PROFUNDIDADE** | os nossos quatro verbos escolhem o lado por um **booleano** (`d>0`, `d<0`, bilateral) e não têm tecto nenhum de alcance. O alvo escolhe o lado **e** o alcance, e o alcance **reforma a pegada**: ela deixa de ser uma esfera e passa a ser um **elipsóide achatado ao longo da normal do plano** | com o tecto de cima em `0,2` a população tocada acima do plano cai de **151 para 78** vértices, e os que ficam mudam de peso. Nenhuma combinação dos nossos knobs produz isto (fixtures `lados/*`) |
-| **B) a lei do CENTRO da área** | a nossa é a **média ponderada** das posições da pegada; a do alvo **não é uma média ponderada de coisa nenhuma** — é a média das posições **puxadas em direcção ao cursor** pelo COMPLEMENTO do peso (§2.2) | a altura do nosso centro contra o plano do alvo, num pincel de raio `0,4`: **`−0,0229`** (`5,7 %` do raio) num sulco, **`−0,0464`** (`11,6 %`) com o raio de amostragem em `1,0`. ⚠️ O nosso próprio registo de perf já mediu que um erro de centro de **`5,8 %` do raio** move o `Flatten` `0,54×` e o `Clay` `1,74×` |
-| **C) a ponderação da NORMAL da área** | a nossa pesa pela **máscara**; a do alvo pesa por uma curva suave da distância ao cursor | `cos(medida, ponderada) = 1,000000` contra `0,990`–`0,996` para a média simples, em 6 configurações (fixtures `lei/*`) |
-| **D) DOIS raios de amostragem** independentes (um para a normal, outro para o centro), **com queda** | temos **um** raio de pegada, e ele é o do pincel | provado por um par: com os dois raios iguais as saídas são **byte-idênticas**; com o raio da normal em `1,0` e o do centro a `0` elas divergem `5,6e-2` ⇒ *o zero do segundo cai no primeiro* (fixtures `amostragem/*`) |
+| **B) a lei do CENTRO da área** | a nossa pesa pela **MÁSCARA** e amostra a **pegada inteira** do pincel — numa pegada sem máscara ela é a **média aritmética simples** das posições, sobre o raio `R`. A do alvo pesa por uma curva suave, amostra um raio **próprio** (`R_c`, §2.3) e **não é uma média ponderada de coisa nenhuma**: é a média das posições **puxadas em direcção ao cursor** pelo COMPLEMENTO do peso (§2.2) | ⭐ a altura do **nosso centro real** contra o plano do alvo, num pincel de raio `0,4`: **`+0,03795`** num sulco — **`9,5 %` do raio, e de SINAL OPOSTO** ao que uma leitura ingénua supõe —, **`−0,01603`** numa rampa, **`+0,00489`** num degrau, e até **`+0,06853`** (`17,1 %`) quando o alvo aperta o raio de amostragem dele. ⇒ *o buraco é maior do que qualquer candidata intermédia sugere, e a razão é que a EXTENSÃO também difere, não só o peso* |
+| **C) a ponderação e a EXTENSÃO da NORMAL da área** | a nossa pesa pela **máscara** (sem máscara: soma simples) sobre a **pegada inteira**; a do alvo pesa por uma curva suave da distância, sobre um raio próprio `R_n` | ⭐ o desvio ANGULAR da nossa normal contra a do alvo vai de **`0,00°`** (rampa: superfície plana, toda média concorda — o controlo) a **`16,9°`** num sulco, **`23,5°`** com o raio da normal apertado e **`31,2°`** numa superfície curva nos dois eixos. A candidata do alvo lê `0,0000°` em todas (fixtures `lei/*`) |
+| **D) DOIS raios de amostragem** independentes (um para a normal, outro para o centro), **com queda** | temos **um** raio, e ele é o do pincel — o nosso estimador lê a pegada inteira, e a nossa consulta devolve exactamente o raio do dab nos quatro verbos de plano | provado por um par: com os dois raios iguais as saídas são **byte-idênticas**; com o raio da normal em `1,0` e o do centro a `0` elas divergem `5,6e-2` ⇒ *o zero do segundo cai no primeiro* (fixtures `amostragem/*`) |
 | **E) os dois ESTABILIZADORES** (a normal e o centro do plano, cada um com memória do traço) | não temos nada equivalente; o nosso `accumulate` decide **de que superfície** o plano é lido, não **quanto o plano se lembra** | sobre um degrau, a firmeza da normal muda a saída em `2,8e-2` e a do centro em `2,4e-1` (fixtures `firmeza/*`) |
 | **F) o CORTE por distância ao plano** | não temos knob nenhum que limite o alcance por distância ao plano | vivo em dois dos quatro consumidores do alvo, e **morto em dois** — §7 |
 | **G) o MODO de inversão** | o nosso `invert` só troca o sinal | o alvo oferece **duas** leis para o `Ctrl`, e a segunda é *trocar os papéis dos dois tectos* — que dá exactamente a saída do par trocado, **byte a byte** (fixture `inversao/inversao_troca`) |
@@ -102,8 +112,17 @@ Quem pedir *«um pincel que apara esfregando»* e receber o nosso `Scrape` não 
 > **O gesto que o dono descreveu já é nosso; a LEI que o faz sentir-se como massa de modelar
 > não.** O que falta e vale a wave, por ordem de efeito medido, é **(A) o par de tectos por
 > lado** — que é o que transforma quatro verbos num só e é a razão de o alvo os ter fundido —,
-> depois **(B) a lei do centro da área**, que hoje nos põe o plano `5,7 %`–`11,6 %` do raio fora
-> do sítio, numa grandeza que os nossos próprios gates já sabem que o produto sente.
+> depois **(B+C) o plano em si**, que hoje sai do sítio em **duas** grandezas ao mesmo tempo: o
+> centro até **`17,1 %` do raio** e a normal até **`31,2°`**.
+
+⚠️⚠️ **E as duas medições acima foram REFEITAS.** A primeira redacção desta espec atribuía à
+nossa casa uma média **ponderada pelo falloff** e lia o buraco em `5,7 %`–`11,6 %` do raio. Essa
+lei existiu e **foi removida em 2026-08-11**: o nosso estimador passou a pesar pela **máscara** e
+a amostrar a **pegada inteira**. Re-medido com a lei que os nossos quatro verbos de plano de
+facto chamam, o buraco **é maior, e no sulco tem o sinal ao contrário**. ⛔ *Uma espec que mede
+o que a nossa casa fazia há cinco semanas dimensiona o trabalho errado* — e a contradição estava
+dentro do próprio documento, que já dizia «máscara» na linha da normal e «falloff» na do centro,
+saídas do mesmo fecho de leitura.
 
 ⛔ **E há uma coisa que NÃO se copia:** dois dos knobs que este pincel oferece no painel do alvo
 estão **mortos** nos verbos onde ele os mostra (§7.3). Portá-los sem os medir seria importar um
@@ -155,10 +174,11 @@ normal    = normalizar( Σ_v  peso(v) · normal_do_vértice(v) )
 ```
 
 - ⚠️ **É a normal DO VÉRTICE que entra, não a da face.**
-- ⚠️ **A ponderação é a curva suave da distância — não é a máscara, e não é uniforme.** É a
-  diferença (C) da §0.2, e ela foi **discriminada por medição, não escolhida**:
-  `cos(normal medida, candidata ponderada) = 1,000000` contra `0,990`–`0,996` da média simples,
-  nas seis configurações das fixtures `lei/*`.
+- ⚠️ **A ponderação é a curva suave da distância — não é a máscara, e não é uniforme** — e a
+  **extensão** também é própria (`R_n`, §2.3), não a pegada inteira. São as duas metades da
+  diferença (C) da §0.2, e foram **discriminadas por medição, não escolhidas**: a candidata do
+  alvo lê `0,0000°` de desvio angular em **todas** as 11 configurações das fixtures `lei/*`,
+  contra `0,00°`–`31,2°` da nossa lei real e `0,00°`–`7,99°` de uma média simples sobre `R_n`.
 
 ### §2.2 — O centro da área — ⭐ a lei que NENHUMA intuição dá
 
@@ -175,17 +195,31 @@ a média é simples.** Um vértice **no centro** da pegada (peso `1`) contribui 
 vértice **na borda** (peso `0`) contribui com a **própria posição**. É o oposto do que a palavra
 *peso* sugere.
 
-⚠️ **Discriminação MEDIDA, em 9 configurações** (fixtures `lei/*`, coluna «altura do candidato
-contra o plano medido», pincel de raio `0,4`):
+⚠️ **Discriminação MEDIDA, em 11 configurações** (fixtures `lei/*`; a régua é a **altura de cada
+candidata contra o plano que o alvo de facto usou**, recuperado por ajuste como na §4.1; pincel de
+raio `R`, com `R_c` o raio de amostragem do alvo — §2.3):
 
-| candidato | crista | rampa | degrau | raio da área `1,0` | raio da área `2,0` |
-|---|---|---|---|---|---|
-| média aritmética das posições | `−0,01392` | `−0,01603` | `−0,00731` | `−0,01613` | `−0,00269` |
-| média **ponderada** pelo peso (o que NÓS fazemos) | `−0,02287` | `−0,01603` | `−0,00731` | `−0,04635` | `−0,02928` |
-| ⭐ **média das posições PUXADAS para o cursor** | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** |
+| candidata | crista `R 0,4` | rampa | degrau | bossas | `R_c` apertado (`0,25`) | `R_c` = `R` | `R_c` = `2R` | `R 0,6` |
+|---|---|---|---|---|---|---|---|---|
+| **a NOSSA lei real** — média aritmética sobre a pegada **inteira** (`R`) | `+0,03795` | `−0,01603` | `+0,00489` | `0,00000` | `+0,06853` | `−0,01613` | `−0,05012` | `+0,04186` |
+| média aritmética sobre `R_c` | `−0,01392` | `−0,01603` | `−0,00731` | `0,00000` | `−0,00003` | `−0,01613` | `−0,00269` | `−0,01825` |
+| média **ponderada** pelo peso, sobre `R_c` | `−0,02287` | `−0,01603` | `−0,00731` | `0,00000` | `−0,00003` | `−0,04635` | `−0,02928` | `−0,04105` |
+| ⭐ **média das posições PUXADAS para o cursor**, sobre `R_c` | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** |
 
-⇒ o terceiro cai **exactamente** no plano que o alvo usou, e os outros dois erram por uma
-fracção do raio que o produto sente. *Três candidatos, uma régua, um sobrevivente.*
+⇒ a última cai **exactamente** no plano que o alvo usou, em **todas** as células, e as três
+outras erram por uma fracção do raio que o produto sente. *Quatro candidatas, uma régua, uma
+sobrevivente.*
+
+⚠️⚠️ **E TRÊS células não discriminam nada — por MECANISMO, e a espec tem de o dizer:**
+
+| célula | porque não discrimina |
+|---|---|
+| **bossas** | a superfície é **antissimétrica em torno da linha do traço** ⇒ a altura média de *qualquer* conjunto simétrico de amostras é zero por construção, e as quatro candidatas coincidem em `0,00000`. ⭐ **É o mesmo mecanismo do controlo mudo da §6.2** — uma fixtura simétrica não separa leis que diferem por uma ponderação |
+| **`R_c` apertado** e **`R 0,2`** | o conjunto de amostragem do alvo tem **`1` vértice**: com uma amostra só, puxar-a-para-o-cursor, pesar e não pesar dão **o mesmo ponto** (as duas candidatas de `R_c` lêem `−0,00003`). ⚠️ A nossa lei ainda separa ali (`+0,06853`, `+0,01922`), porque ela amostra `61`–`279` vértices — *a degenerescência é da célula, não das leis* |
+
+⇒ **o gate G-5 (§12) DECLARA que corre sobre as `8` que discriminam**, com piso de população, e
+a barra dele sai do vale medido **dessas oito**. ⛔ Uma barra tirada da tabela inteira estaria
+por baixo de `0,00003` e não afirmaria nada.
 
 ### §2.3 — Os DOIS raios, e a queda
 
@@ -203,6 +237,12 @@ R_c = raio × fracção_da_normal    se  fracção_da_área = 0  ⭐ a QUEDA
   vê-se num par.* (fixtures `amostragem/amostragem_area0_normal10` e `_area05_normal10`)
 - Faixa das duas fracções: `0 … 2`, valor de fábrica `0,5` nas duas.
 - ⚠️ A fracção da área aceita ser modulada pela **pressão**; a da normal não.
+- ⚠️ **A nossa casa tem UMA extensão e ela é o raio do dab**: a consulta que alimenta o nosso
+  estimador devolve a esfera de raio `R` nos quatro verbos de plano (os factores próprios que
+  existem são de outros verbos — a faixa e o campo elástico). ⇒ adoptar este pincel traz **duas**
+  extensões novas, e o valor de fábrica delas (`0,5`) significa que o alvo ajusta o plano sobre
+  **metade** do círculo que o artista vê. É isso que explica o sinal invertido da tabela da §2.2:
+  num sulco, meia pegada e pegada inteira olham para lados diferentes da curvatura.
 
 ### §2.4 — O deslocamento do plano
 
@@ -602,17 +642,22 @@ texto não — re-dito aqui em palavras nossas).
 
 `docs/3D/cleanroom/fixtures/pincel_de_plano/` — **100** traços, agrupados por assunto:
 
-| pasta | o que fixa |
-|---|---|
-| `lei/` | a lei exacta num dab efectivo, sobre quatro superfícies, dois raios, os dois raios de amostragem e os dois deslocamentos (14) |
-| `lados/` | altura e profundidade, isolados e em traço inteiro (14) |
-| `inversao/` | as duas leis do `Ctrl` (3) |
-| `firmeza/` | os dois estabilizadores, incluindo **o controlo mudo** da §6.2 (12) |
-| `inercias/` | as três coisas que este pincel ignora, mais o determinismo (5) |
-| `amostragem/` | os dois raios e a queda (7) |
-| `corte/` | o corte e o deslocamento nos quatro consumidores — com os **três** pares mortos (25) |
-| `superficies/` | plana, degrau, rampa, esfera, máscara, e as opções partilhadas (11) |
-| `cadeia/` | o traço passo a passo, e a força ao quadrado (8) |
+⚠️ **As contagens abaixo são DERIVADAS do directório** (`ls <pasta> | grep -c '\.gz$'`), nunca
+escritas à mão — a 1.ª redacção desta secção somava `99` sobre `100` ficheiros, e errava uma
+família. *Um quadro de inventário escrito à mão é a forma mais barata de uma espec mentir.*
+
+| pasta | ficheiros | o que fixa |
+|---|---|---|
+| `lei/` | **14** | a lei exacta num dab efectivo, sobre quatro superfícies, três raios, os dois raios de amostragem e os dois deslocamentos |
+| `lados/` | **14** | altura e profundidade, isoladas e em traço inteiro |
+| `inversao/` | **3** | as duas leis do `Ctrl` |
+| `firmeza/` | **12** | os dois estabilizadores, incluindo **o controlo mudo** da §6.2 |
+| `inercias/` | **5** | as três coisas que este pincel ignora, mais o determinismo |
+| `amostragem/` | **7** | os dois raios e a queda |
+| `corte/` | **26** | o corte e o deslocamento nos quatro consumidores — com os **três** pares mortos |
+| `superficies/` | **11** | plana, degrau, rampa, esfera, máscara, e as opções partilhadas |
+| `cadeia/` | **8** | o traço passo a passo, e a força ao quadrado |
+| **total** | **100** | |
 
 Cada ficheiro é texto comprimido com **cabeçalho de proveniência** (todas as grandezas que
 enquadram o traço, uma por linha), blocos `r` (repouso), `n` (normais de repouso), `s` (saída) e
@@ -635,7 +680,7 @@ conforto: é `40 ULP` do formato em que o oráculo respondeu.
 | **G-2** | `o_primeiro_dab_nao_move_nada` | um traço de **um** dab deixa a malha byte-idêntica | **igualdade exacta** — o alvo mede `0` de `2 401` |
 | **G-3** | `com_a_curva_constante_os_tocados_aterram_no_plano` | força `1` + curva constante ⇒ todos os tocados num plano só | resíduo `≤ 1e-6`; o alvo mede `0,0e+00 … 2,4e-08` |
 | **G-4** | `a_forca_entra_ao_quadrado` | força `0,5` desloca `0,25×` | `|razão − 0,25| ≤ 1e-5`; o alvo mede `0,249999 … 0,250001` |
-| **G-5** | `o_centro_da_area_e_a_media_das_posicoes_puxadas_para_o_cursor` | ⭐ **o gate DISCRIMINANTE**: a lei da §2.2 cai no plano do oráculo e as outras duas candidatas **não** | a candidata certa `≤ 1e-6`; as outras duas têm de **reprovar** por `≥ 5e-3` — a barra vem do **vale medido** entre `0,00000` e `0,00731` (o menor desvio das candidatas erradas em 9 configurações) |
+| **G-5** | `o_centro_da_area_e_a_media_das_posicoes_puxadas_para_o_cursor` | ⭐ **o gate DISCRIMINANTE, em DUAS metades.** (a) Sobre as **11** células de `lei/*`: a candidata da §2.2 cai no plano do oráculo. (b) Sobre as **8** que discriminam (§2.2, a tabela das que não discriminam e porquê): as **três** outras candidatas — a nossa lei real incluída — têm de **reprovar**. **+ piso de população: menos de `8` células discriminantes reprova o gate**, para que degenerar o corpus em silêncio não o branqueie | (a) `≤ 1e-6` (a barra de aceitação de G-1). (b) `≥ 1e-3`, **derivada do vale medido das oito**: o menor desvio de uma candidata errada ali é **`0,00269`**, logo a barra fica **`2,7×` abaixo do piso** e **`1000×` acima** da de aceitação. ⛔ A barra da 1.ª redacção (`5e-3`) era **impossível** — a própria tabela publica `0,00269` |
 | **G-6** | `o_plano_segue_o_cursor_e_nao_a_origem` | o centro do plano acompanha o cursor ao longo do traço | ⭐ a barra é o **defeito público do alvo** (§10.5): o centro não pode ficar a mais de `1` raio do dab. Um gate cuja barra é a de um defeito real vale mais do que um número escolhido |
 | **G-7** | `os_dois_tectos_escolhem_o_lado_e_so_o_lado` | `altura 1/profundidade 0` toca **só** acima; `0/1` **só** abaixo; `1/1` toca a união exacta dos dois | **contagens exactas** (`151` / `114` / `265 = 151+114`) |
 | **G-8** | `altura_zero_e_profundidade_zero_e_um_no_op` | o pincel inerte é alcançável | **igualdade exacta** |
@@ -665,5 +710,7 @@ nossa versão sem este gate é herdar a doença com o desenho.
 | a barra `1e-6` dos gates | **derivada**: `≈ 40 ULP` de `f32` na escala das fixtures (§12) |
 | a barra `5e-3` do G-5 e a `1e-4` do G-13 | **derivadas de vales MEDIDOS** que incluem o lado aprovado (§12) |
 | a lição da §6.2 (a fixtura muda) | **medição**, e ela fica na espec porque uma barra calibrada sem o lado vivo mede outra coisa |
+| as alturas e os ângulos da **nossa** lei (§0.2 B e C, §2.2) | **medição de 2026-09-16**, feita com o estimador que os nossos quatro verbos de plano de facto chamam hoje — peso pela **máscara**, extensão = a **pegada inteira** —, sobre as fixtures publicadas, recuperando o plano do alvo pelo método da §4.1 |
+| ⛔ **o que SAIU:** o número do nosso registo de perf (*«um erro de centro de `5,8 %` do raio move o `Flatten` `0,54×`»*) | ⚠️ **retirado por ser o EPITÁFIO da lei ponderada, não prova de um buraco de hoje.** Aquela medição é de **2026-08-11** e foi a que CAUSOU a remoção da ponderação pelo falloff do nosso estimador. Citá-la em 2026-09-15 para dimensionar o buraco de hoje mede uma lei que já não existe. *O buraco real é maior, e está medido acima com a lei viva.* |
 
 ⛔ **Nenhum número desta espec foi escolhido por conforto.**

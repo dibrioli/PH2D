@@ -317,6 +317,74 @@ o INBOX, a entrada no `README.md` da pasta e as **100** fixtures.
 Fixtures: `docs/3D/cleanroom/fixtures/pincel_de_plano/` (2,5 MB, 100 traços em 9 famílias) —
 entradas **nossas**, saída do binário do pacote, `gzip` com `mtime = 0` ⇒ reprodutível byte a byte.
 
+## EMENDA DO E — 2026-09-16 (resposta aos 3 achados do R-pré)
+
+⭐ **A tese da wave sobrevive e ficou MAIS FORTE: a lei do alvo continua a cair exactamente no
+plano dele, a nossa não, e no sulco o buraco real é MAIOR do que a 1.ª redacção publicava.** O que
+mudou foi **de onde saem os números**.
+
+### Achado 1 — a lei NOSSA que a espec media já não existe
+
+Re-derivada do código vivo (`ph2d-sculpt3d`): o estimador que os quatro verbos de plano chamam
+pesa pela **MÁSCARA** — pegada sem máscara ⇒ **média aritmética simples** — e amostra a **pegada
+inteira** do pincel (a consulta devolve exactamente o raio do dab nesses quatro verbos; os
+factores de consulta próprios que existem são de outros verbos). A ponderação pelo *falloff* foi
+**removida em 2026-08-11**.
+
+**Re-medido sobre as fixtures publicadas** (plano do alvo recuperado por ajuste, o método da §4.1
+da espec), altura do nosso centro contra o plano dele, pincel de raio `0,4` salvo indicação:
+
+| célula | a NOSSA lei real | (a 1.ª redacção publicava) |
+|---|---|---|
+| sulco | **`+0,03795`** (`+9,5 %` do raio) | `−0,0229` — ⛔ **sinal oposto** |
+| rampa | `−0,01603` (`−4,0 %`) | `−0,0160` |
+| degrau | `+0,00489` (`+1,2 %`) | `−0,0073` |
+| bossas | `0,00000` | `0,0000` |
+| raio de amostragem do alvo apertado (`0,25`) | **`+0,06853`** (`+17,1 %`) | — |
+| raio de amostragem do alvo a `2R` | `−0,05012` (`−12,5 %`) | — |
+| sulco, raio `0,6` | `+0,04186` (`+7,0 %`) | — |
+
+⭐ **E a NORMAL tem o mesmo problema, que a 1.ª redacção também subestimava:** o desvio angular da
+nossa normal contra a do alvo vai de **`0,00°`** (rampa — superfície plana, toda média concorda:
+é o controlo) a **`16,9°`** no sulco, **`23,5°`** com o raio da normal apertado e **`31,2°`** na
+superfície curva nos dois eixos. A candidata do alvo lê `0,0000°` nas **11** células.
+
+⛔ **A citação do nosso registo de perf SAIU da espec, nomeada como EPITÁFIO:** aquela medição
+(*«um erro de centro de `5,8 %` do raio move o `Flatten` `0,54×`»*) é de **2026-08-11** e foi a que
+**causou** a remoção da lei ponderada. Usá-la para dimensionar o buraco de hoje mede uma lei que
+já não existe. *Um registo de perf que documenta uma remoção não é prova de um buraco vivo.*
+
+### Achado 2 — a barra do gate discriminante
+
+Recalculada sobre **todas** as células. Três **não discriminam**, e cada uma tem o mecanismo
+nomeado na espec §2.2: duas porque o conjunto de amostragem do alvo tem **`1` vértice** (com uma
+amostra as três leis coincidem) e uma porque a superfície é **antissimétrica em torno da linha do
+traço** (toda altura média é zero por construção — ⭐ *o mesmo mecanismo do controlo mudo do
+estabilizador do centro*). Sobre as **`8`** que discriminam, o piso medido é **`0,00269`** ⇒ a
+barra passa de `5e-3` (impossível: a própria tabela publicava `0,00269`) para **`1e-3`**, que é
+`2,7×` abaixo do piso e `1000×` acima da barra de aceitação. O gate ganha **piso de população**:
+menos de `8` células discriminantes **reprova**.
+
+### Achado 3 — o quadro de fixtures
+
+**Derivado do directório** (`ls <pasta> | grep -c '\.gz$'`), com a regra escrita ao lado:
+`lei 14 · lados 14 · inversao 3 · firmeza 12 · inercias 5 · amostragem 7 · corte 26 ·
+superficies 11 · cadeia 8` = **100**. A 1.ª redacção somava `99` e errava a família do corte.
+
+### Depois da emenda
+
+- **Filtragem §4.3 re-executada** sobre o texto novo em 2026-09-16 (texto novo é texto por
+  auditar, mesmo quando a emenda é factual): toda frase acrescentada descreve **o que o programa
+  faz** ou **o que o nosso código faz**, e todo número novo é medição datada de 2026-09-16 sobre
+  as fixtures publicadas e o nosso próprio código.
+- **Sweep verde** sobre a espec, este ledger, o `README.md` da pasta e as 100 fixtures, com o
+  **controlo positivo** a continuar a disparar sobre a redacção reprovada.
+- ⚠️ **Nota de higiene do INC-R1 aceite pelo E:** nesta obra o único ficheiro com a vassoura em
+  claro viveu em `~/Referencias/blender-trim-pincel/notes/`, **dentro** da zona contaminada;
+  verificado que nada foi escrito no scratchpad nem em `/tmp`.
+
+⏳ **R-pré, 2.ª passagem: pendente. A janela I continua FECHADA.**
+
 ## Incidentes
 
 ### INC-R1 (2026-09-16) — **HIGIENE DE INSTRUMENTO do próprio R-pré. Sem exposição; registado porque um evento escondido é a acusação pronta**

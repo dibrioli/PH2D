@@ -73,6 +73,13 @@ pub struct SkinnedRefine {
     pub report: RefineReport,
 }
 
+#[cfg(test)]
+thread_local! {
+    /// ⏱️ **Quantas vezes o refinamento correu nesta thread** — o instrumento dos gates de CUSTO
+    /// (um relógio aqui seria uma flake; a pergunta *«a lei correu?»* é uma contagem).
+    pub(crate) static REFINAMENTOS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// ⭐⭐⭐ **A MALHA DE UMA IMAGEM PRESA, REFINADA PELO `Smooth`.**
 ///
 /// `pesos[v · ossos + j]` é a tabela guardada no bind (vazia ⇒ `ossos == 0` e a lei derivada), e
@@ -85,6 +92,8 @@ pub fn refine_skinned(
     campo: &mut DeformAttrs<'_>,
     opts: RefineOptions,
 ) -> SkinnedRefine {
+    #[cfg(test)]
+    REFINAMENTOS.with(|c| c.set(c.get() + 1));
     let law = weight_law(ossos, opts.adaptativo);
     let attrs = weight_attrs(mesh, pesos, law);
     let stride = attrs.len().checked_div(mesh.rest.len()).unwrap_or(0);

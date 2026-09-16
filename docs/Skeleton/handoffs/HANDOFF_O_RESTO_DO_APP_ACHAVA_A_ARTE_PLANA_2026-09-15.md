@@ -1503,6 +1503,24 @@ precisa de saber:
    formatação e caminhos; `main.rs` reexporta-os com o mesmo nome, os chamadores `crate::…` não
    mudam). A shell fica em **`−7`** linhas no saldo desta wave.
 5. **O Ctrl+Z geral devolve imagem e ligação no mesmo passo** (a pele é componente registado e sai
-   no mesmo quadro do Apply). ⏳ O desfazer de UM nível das ferramentas de imagem (o que responde
-   quando NÃO há passo geral) repõe a textura e não a pele — nomeado na fila.
+   no mesmo quadro do Apply). O desfazer de UM nível das ferramentas de imagem só responde com a
+   fila geral VAZIA, logo depois de o passo do Apply ter sido desfeito — não há caminho em que ele
+   deixe a imagem sem a pele (conferido no `undo_route::undo_owner`). Smoke do dono aprovado; as
+   ilhas do *Separate Islands* nascem sem ossos por decisão dele.
 6. **Zero schema, zero contrato, zero registo novo.**
+
+---
+
+## §29 — ⭐⭐⭐ O `Smooth` COM A CENA CHEIA: o curto-circuito, o livro das arestas e o orçamento remedido (2026-09-16)
+
+Fila **F6-t**. O que o integrador precisa de saber:
+
+1. ⚠️ **`SKIN_FRAME_PIECES` mudou de `4 721` para `5 144`** (`CUSTO_POR_PECA_NS` `353` → `324`,
+   medido — tabela no `skin_budget.rs`). Um gate de outra linha que tenha o LITERAL do orçamento
+   reprova; os desta linha usam o símbolo.
+2. **`ph2d_poly2d::refine_adaptive`**: o livro das arestas deixou de ser `BTreeMap` (um índice pela
+   ponta menor, `Arestas`). Saída igual ao bit (impressão digital de `48` casos, conferida antes e
+   depois; não ficou gate de impressão — ele reprovaria toda mudança de lei).
+3. **`attach_skin_meshes`**: uma imagem sem espaço no orçamento segue o caminho do `Fast`.
+4. **Instrumento novo, só em teste:** `skin_refine::REFINAMENTOS` (contador por thread).
+5. **Zero schema, zero contrato, zero registo.**

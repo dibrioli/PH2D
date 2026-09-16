@@ -15,9 +15,9 @@ const QUADRO_60FPS_US: usize = 16_667;
 /// outra fatia tem o `PH2D_SKIN_PIECES`.
 const FATIA_DA_PELE: usize = 10;
 
-/// O custo MEDIDO de uma peça ENTREGUE com `Smooth`, em nanossegundos (a tabela do
-/// [`SKIN_FRAME_PIECES`]).
-const CUSTO_POR_PECA_NS: usize = 353;
+/// O custo MEDIDO de uma peça NOVA do `Smooth`, em nanossegundos — o maior dos dois custos do
+/// refinamento, logo um tecto para qualquer mistura (a tabela do [`SKIN_FRAME_PIECES`]).
+const CUSTO_POR_PECA_NS: usize = 324;
 
 /// ⭐⭐⭐ **O ORÇAMENTO DE PEÇAS DA PELE DE IMAGEM, POR QUADRO** — derivado do recurso deste caminho:
 /// o TEMPO do quadro.
@@ -26,51 +26,58 @@ const CUSTO_POR_PECA_NS: usize = 353;
 /// camada do Vello e o tecto saía do buffer fixo de informação por desenho dele (`1 << 18` palavras,
 /// `11` + bins por peça ⇒ metade dele dava `8 738` peças, e passar do buffer deixava o quadro
 /// **em branco**). Desde a W2 do plano 03 a pele é uma malha no passe de sprites: aquele buffer já
-/// não é gasto por ela, e `8 738` peças custariam hoje **`9,4 ms`** — mais de metade de um quadro de
-/// 60 fps. *§0.0: o número de um caminho morto não limita o vivo.*
+/// não é gasto por ela. *§0.0: o número de um caminho morto não limita o vivo.*
 ///
-/// ⭐ **O que UMA peça custa, MEDIDO OUTRA VEZ em 2026-09-16** (a lei do refinamento mudou, logo o
-/// número tinha de ser remedido; `load 5,6`–`6,1`, o MÍNIMO de 40/60 corridas, **três** corridas com
-/// leituras entre `0,328` e `0,355` — as sondas são
-/// `skin_image::tests::custo::measure_the_cpu_cost_of_a_skinned_frame` e a
-/// `ph2d-render::sprite_mesh_gpu::measure_the_frame_cost_of_a_mesh_sprite`):
+/// ⭐⭐⭐ **O custo tem DUAS PARTES, medidas em 2026-09-16 com a malha de bind do PRODUTO** (sonda
+/// `skin_image::tests::custo::measure_the_smooth_under_a_full_scene`; perfil `smoke`, `load 2,7`–`3,2`,
+/// o MÍNIMO de 30, três corridas):
 ///
-/// | o que o quadro faz por peça | µs |
+/// | o que o quadro faz | µs |
 /// |---|---:|
-/// | descodificar a malha guardada (postcard, **por quadro**) | `0,014` |
-/// | `Fast`: descodificar + deformar + montar o `SpriteMesh` | `0,025` |
-/// | recolher + costurar a tira + enviar + DESENHAR (marginal, GPU esperada) | `0,013` |
-/// | `Smooth` **uniforme**: o quadro inteiro, por peça entregue | `0,087` |
-/// | **`Smooth` ADAPTATIVO: o quadro inteiro, por peça ENTREGUE** | **`0,340`** |
+/// | `Fast`: deformar + montar, por peça | `0,024` |
+/// | `Smooth`: AVALIAR uma peça guardada (a lei decide não partir) | `0,156` |
+/// | `Smooth`: cada peça NOVA | `0,311`–`0,324` |
+/// | 1 imagem de `2 430` peças, `60°`, zoom `8×` (o orçamento enche) | `1,09`–`1,13 ms` = `6,6 %` de um quadro |
 ///
-/// ⇒ `16,667 ms ÷ 10 ÷ 0,353 µs` = **`4 721` peças**.
+/// ⇒ o tecto usa o custo da peça NOVA, que limita qualquer mistura por cima:
+/// `16,667 ms ÷ 10 ÷ 0,324 µs` = **`5 144` peças**.
 ///
-/// ⭐ **E a lei de Hermite dos pesos (2026-09-16, [`crate::skin_refine`]) cabe na folga que o `353`
-/// já tinha sobre o `340`** — medida onde ela trabalha (o refinamento da cena do smoke, as duas leis
-/// INTERCALADAS, `load 5,8`–`6,2`, o mínimo de 40 em três corridas; sonda
-/// `sonda_o_custo_da_lei_dos_pesos` da `ph2d-app-vec`): **`−1 %`** a zoom `4×` e **`+2,5`–`+3,8 %`**
-/// a zoom `8×`, onde o orçamento enche. `0,340 × 1,038 = 0,353` ⇒ o tecto não muda.
+/// ⛔⛔⛔ **O número de antes (`353 ns` ⇒ `4 721` peças) vinha de uma sonda que NÃO refinava**: a arte
+/// dela media `200 × 100` px de ecrã, e só a malha de `72` peças chegava a partir (nota aberta até
+/// 2026-09-16). Com o refinamento a trabalhar, o custo real era `0,36 µs` por peça avaliada e
+/// **`~1,0 µs` por peça nova** — o orçamento cheio custava `3,17 ms` (**`19 %`** de um quadro, contra
+/// os `10 %` prometidos).
 ///
-/// ⚠️⚠️ **ABERTO: a sonda do custo desta crate deixou de exercer o refinamento.** A arte dela mede
-/// `200 × 100` px de ecrã, e só a linha de `72` peças chega a partir alguma; as outras quatro
-/// entregam a malha guardada e medem *decidir não partir*. Medido em 2026-09-16 (`load 6`–`10`) ela
-/// lê `0,62`–`0,64 µs` no adaptativo e `0,47` no uniforme — nenhum dos dois reproduz a tabela acima.
-/// *Uma sonda cujo sujeito deixou de fazer a coisa medida mede outra coisa com o mesmo nome.*
+/// ⭐⭐ **A cura foi o LIVRO DAS ARESTAS** (`ph2d_poly2d::refine_adaptive`): era uma árvore ordenada,
+/// percorrida `~9` vezes por triângulo e nunca iterada; um índice pela ponta menor dá as mesmas
+/// respostas (impressão digital de `48` casos do produto, igual ao bit) e corta a avaliação para
+/// `0,156` e a peça nova para `~0,32`.
 ///
-/// ⛔⛔⛔ **E O NÚMERO DE ANTES (`1 080 ns` ⇒ `1 543` peças) ERA DE UM CAMINHO QUE O PRODUTO NUNCA
-/// CORREU.** Ele foi medido em 2026-09-13 sobre um `Smooth` que **refinava**; desde então mediu-se
-/// que a lei uniforme é **inerte** acima de `orçamento / 4` peças, logo o que o produto de facto
-/// pagava era o `Fast` mais o custo de decidir. *Um custo medido sobre um caminho que não corre é
-/// um orçamento que mente nos dois sentidos* — e este mentia para BAIXO, o que fazia a malha de
-/// bind de `2 430` peças disparar o `avisa_malhas_acima_do_orcamento` em toda a execução.
+/// ⭐ **A lei de Hermite dos pesos está DENTRO destes números** (a sonda corre a lei do produto).
 ///
-/// ⚠️⚠️ **A lei nova é `3,9×` mais cara POR PEÇA** (`0,340` contra `0,087`), e isso é o preço de
-/// ela decidir: ela mede o desvio de cada aresta, mantém o livro de donos e escolhe. *O que ela
-/// compra em troca é entregar alguma coisa* — a uniforme era barata porque não fazia nada.
+/// ⚠️ **E com as malhas guardadas ACIMA do orçamento o `Smooth` não avalia nada**
+/// (`attach_skin_meshes`): nenhuma peça pode partir, e a saída é a do `Fast` ao bit. Antes dessa
+/// cura, `8` imagens do smoke custavam `5,9 ms` por quadro para entregar o que o `Fast` entrega em
+/// `0,21 ms`.
 ///
-/// ⭐ **E o livro de contas já foi medido e cortado uma vez:** a 1.ª redacção usava DOIS mapas e um
-/// `Vec` por aresta, e lia `0,52 µs`; com um mapa só e os donos num par fixo desceu a `0,34`
-/// (`−35 %`). Ver `ph2d_poly2d::refine_adaptive`.
+/// # A escada dos números (história — não reconstrua os de cima)
+///
+/// - **13/09 — `1 080 ns` ⇒ `1 543` peças.** Medido sobre um `Smooth` que refinava; depois mediu-se
+///   que a lei UNIFORME é inerte acima de `orçamento / 4` peças, logo o produto pagava o `Fast` mais o
+///   custo de decidir. *Um custo medido sobre um caminho que não corre é um orçamento que mente nos
+///   dois sentidos* — este mentia para BAIXO, e a malha de bind de `2 430` peças disparava o
+///   `avisa_malhas_acima_do_orcamento` em toda a execução.
+/// - **16/09 (manhã) — `353 ns` ⇒ `4 721` peças.** A tabela era, por peça: descodificar a malha
+///   guardada `0,014` · `Fast` `0,025` · recolher + costurar + enviar + desenhar (marginal de GPU,
+///   sonda `ph2d-render::sprite_mesh_gpu::measure_the_frame_cost_of_a_mesh_sprite`) `0,013` ·
+///   `Smooth` uniforme `0,087` · adaptativo `0,340` µs. ⚠️ A sonda que dava o `0,340` já não
+///   refinava (ver acima). A lei de Hermite dos pesos mediu-se então INTERCALADA com a linear
+///   (sonda `sonda_o_custo_da_lei_dos_pesos` da `ph2d-app-vec`): `−1 %` a zoom `4×` e
+///   `+2,5`–`+3,8 %` a zoom `8×`.
+/// - **O livro das arestas foi cortado DUAS vezes:** dois mapas e um `Vec` por aresta (`0,52 µs`) →
+///   um mapa só com os donos num par fixo (`0,34`, `−35 %`) → um índice pela ponta menor (16/09,
+///   F6-t: avaliação `0,156`, peça nova `~0,32`).
+/// - **16/09 (tarde) — `324 ns` ⇒ `5 144` peças** (a tabela acima).
 pub const SKIN_FRAME_PIECES: usize = QUADRO_60FPS_US * 1_000 / FATIA_DA_PELE / CUSTO_POR_PECA_NS;
 
 /// ⛔⛔ **A OUTRA PONTA DO TECTO, verificada na COMPILAÇÃO.** Um tecto apertado de mais deixa de

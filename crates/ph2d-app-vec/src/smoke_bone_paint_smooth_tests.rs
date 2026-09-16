@@ -101,8 +101,9 @@ fn opcoes(adaptativo: bool, zoom: f64) -> ph2d_poly2d::RefineOptions {
 /// não sabe que campo existe: [`silhueta`].
 ///
 /// ⭐⭐⭐ **A leitura é toda a wave numa tabela:** a lei antiga entrega `2 268` peças em todo zoom
-/// (a malha guardada, ao bit), e a nova segura a promessa de meio pixel até `8×`, onde ela para por
-/// ter gasto `4 720` das `4 721` peças do orçamento — *o único sítio onde o tecto fala.*
+/// (a malha guardada, ao bit), e a nova segura a promessa de meio pixel até `8×`, onde ela gasta as
+/// `5 144` peças do orçamento inteiro (eram `4 720` de `4 721` antes da F6-t) — *o único sítio onde
+/// o tecto fala.*
 ///
 /// ⛔ **A coluna do meio ser SEMPRE igual à primeira é o defeito**, e é por isso que ela fica no
 /// gate: sem esse controlo, um `Smooth` que voltasse a ficar inerte passava outra vez.
@@ -191,7 +192,8 @@ fn pecas_entregues(sim: &SimWorld, e: Entity, refine: Option<ph2d_poly2d::Refine
 /// `avisa_malhas_acima_do_orcamento` disparava em **toda** execução, sobre um aviso correcto e um
 /// número errado.
 ///
-/// ⭐ Com o custo remedido (`0,353 µs`) o orçamento é `4 721`, e a malha cabe com folga.
+/// ⭐ Com o custo remedido o orçamento é `5 144` (`0,324 µs` por peça nova, F6-t; era `4 721` com
+/// `0,353`), e a malha cabe com folga.
 #[test]
 fn a_malha_do_bind_cabe_no_orcamento_do_quadro() {
     const ALTURA: u32 = 200;

@@ -559,6 +559,11 @@ pub fn attach_skin_meshes(
                 adaptativo: o.adaptativo,
             }
         });
+        // ⭐⭐ **SEM ESPAÇO NO ORÇAMENTO, O `Fast`** (F6-t, 2026-09-16). Com as malhas guardadas acima
+        // do orçamento do quadro, a parte desta imagem é o que ela já guarda: NADA pode partir, e a
+        // saída da lei é a do `Fast` ao bit — mas a lei avaliava a malha inteira para o descobrir.
+        // Medido: `8` imagens do smoke custavam `5,9 ms` por quadro contra `0,21 ms`.
+        let refine = refine.filter(|o| o.max_pieces > antes);
         let SkinnedMesh { mesh, pesos } = mesh;
         let Some((malha, rel)) =
             posed_sprite_mesh(mesh, p2l, &pele, &pesos, inst.anchor, inst.size, refine)

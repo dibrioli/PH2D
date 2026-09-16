@@ -80,7 +80,7 @@ use crate::attr_law::{AttrLaw, midpoint};
 use crate::refine::fatia;
 use crate::{DeformAttrs, Mesh2d, RefineLaw, RefineOptions, RefineReport};
 use std::cmp::Reverse;
-use std::collections::{BTreeMap, BinaryHeap};
+use std::collections::BinaryHeap;
 
 /// A chave canónica de uma aresta — sempre `(menor, maior)`, para os dois donos concordarem.
 fn chave(u: u32, v: u32) -> (u32, u32) {
@@ -156,6 +156,69 @@ impl Aresta {
     }
 }
 
+/// ⭐⭐⭐ **O LIVRO DAS ARESTAS, indexado pela PONTA MENOR** — sem hash e sem árvore.
+///
+/// ⛔⛔ **Era um `BTreeMap<(u32, u32), Aresta>`, e a sonda de cena cheia disse que ele ERA o custo
+/// da avaliação** (2026-09-16, F6-t): montar a obra de uma malha de `2 430` peças faz `~9` percursos
+/// da árvore por triângulo, e a avaliação sem partir nada custava `0,88 ms` contra `0,06` do `Fast`.
+/// ⭐ O mapa só é PROCURADO (nunca percorrido), logo a ordem dele não decide nada — um índice pela
+/// ponta menor dá as mesmas respostas: a lista de cada vértice tem as poucas arestas que saem dele
+/// para vértices maiores, e procurar nela é uma varredura de `~3` entradas contíguas.
+///
+/// ⚠️ A saída é **a mesma ao bit** (impressão digital de `48` casos do produto, antes e depois), e
+/// ⛔ um `HashMap` não era alternativa: está proibido na workspace (`clippy.toml`, HR-5).
+#[derive(Default)]
+struct Arestas {
+    por_ponta: Vec<Vec<(u32, Aresta)>>,
+}
+
+impl Arestas {
+    fn com_vertices(n: usize) -> Self {
+        Self {
+            por_ponta: Vec::with_capacity(n),
+        }
+    }
+
+    fn get(&self, e: &(u32, u32)) -> Option<&Aresta> {
+        self.por_ponta
+            .get(e.0 as usize)?
+            .iter()
+            .find(|(o, _)| *o == e.1)
+            .map(|(_, a)| a)
+    }
+
+    fn get_mut(&mut self, e: &(u32, u32)) -> Option<&mut Aresta> {
+        self.por_ponta
+            .get_mut(e.0 as usize)?
+            .iter_mut()
+            .find(|(o, _)| *o == e.1)
+            .map(|(_, a)| a)
+    }
+
+    /// A entrada de `e`, criada VAZIA se não existir.
+    fn entrada(&mut self, e: (u32, u32)) -> &mut Aresta {
+        let i = e.0 as usize;
+        if self.por_ponta.len() <= i {
+            self.por_ponta.resize_with(i + 1, Vec::new);
+        }
+        let lista = &mut self.por_ponta[i];
+        let pos = match lista.iter().position(|(o, _)| *o == e.1) {
+            Some(pos) => pos,
+            None => {
+                lista.push((e.1, Aresta::VAZIA));
+                lista.len() - 1
+            }
+        };
+        &mut lista[pos].1
+    }
+
+    fn remove(&mut self, e: &(u32, u32)) -> Option<Aresta> {
+        let lista = self.por_ponta.get_mut(e.0 as usize)?;
+        let pos = lista.iter().position(|(o, _)| *o == e.1)?;
+        Some(lista.swap_remove(pos).1)
+    }
+}
+
 /// Um `f64` ordenável — a fila precisa de `Ord` e o desvio é sempre finito e não-negativo.
 #[derive(Clone, Copy, PartialEq)]
 struct Peso(f64);
@@ -190,8 +253,8 @@ struct Obra {
     tris: Vec<[u32; 3]>,
     vivo: Vec<bool>,
     vivos: usize,
-    /// aresta → donos vivos + o meio dela, calculado uma vez. **Um** mapa, por medição.
-    arestas: BTreeMap<(u32, u32), Aresta>,
+    /// aresta → donos vivos + o meio dela, calculado uma vez. **Um** livro, por medição.
+    arestas: Arestas,
     /// `(desvio, triângulo)`, maior desvio primeiro; empates pelo índice menor (determinismo).
     fila: BinaryHeap<(Peso, Reverse<u32>)>,
 }
@@ -292,8 +355,7 @@ impl Obra {
         let tri = self.tris[t as usize];
         for k in 0..3 {
             self.arestas
-                .entry(chave(tri[k], tri[(k + 1) % 3]))
-                .or_insert(Aresta::VAZIA)
+                .entrada(chave(tri[k], tri[(k + 1) % 3]))
                 .junta(t);
         }
     }
@@ -453,7 +515,7 @@ pub fn refine_posed_adaptive(
         tris: Vec::with_capacity(mesh.tris.len()),
         vivo: Vec::with_capacity(mesh.tris.len()),
         vivos: 0,
-        arestas: BTreeMap::new(),
+        arestas: Arestas::com_vertices(mesh.rest.len()),
         fila: BinaryHeap::with_capacity(mesh.tris.len()),
     };
     let mut scratch: Vec<f64> = Vec::with_capacity(stride);

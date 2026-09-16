@@ -2909,6 +2909,51 @@ jornada.
 ⇒ ⛔ **Não reconstrua nenhuma das três rotas.** Quem as ler aqui estaria a pagar de novo um problema
 que a troca de lei dissolveu — que é a forma nº 1 pela qual esta lista custa dinheiro.
 
+### F6-t — ⭐⭐⭐ **O `Smooth` COM A CENA CHEIA: pagava inerte, e custava o dobro do que o orçamento prometia** (2026-09-16)
+
+**UMA LINHA:** o item aberto *«o custo da adaptativa não foi medido sob cena cheia»* foi medido
+(sonda nova `measure_the_smooth_under_a_full_scene`: `n` imagens do tamanho do smoke, malha de bind do
+produto, `25°`/`60°`, zoom `1`/`4`/`8`), e devolveu **dois defeitos** e uma nota que mentia.
+
+1. ⛔⛔ **Com as malhas guardadas acima do orçamento, o `Smooth` pagava a lei inteira para não
+   partir nada.** O orçamento é do QUADRO e repartido na proporção das peças guardadas; com
+   `2` imagens do smoke (`4 860` > `4 721`) cada uma recebe o que já guarda, a saída é a do `Fast`
+   ao bit — e o quadro custava `28×` o `Fast`: **`8` imagens, `5,9 ms` (`35 %` de um quadro)**
+   contra `0,21 ms`. ⭐ Cura: sem espaço no orçamento a imagem segue o caminho do `Fast`
+   (`attach_skin_meshes`); `8` imagens passam a `0,47 ms` = o `Fast`.
+2. ⛔⛔ **O orçamento prometia `10 %` de um quadro e o refinamento real custava `19 %`.** A sonda
+   que dava o `0,340 µs` por peça **não refinava** (a arte dela media `200 × 100` px de ecrã —
+   nota aberta desde a manhã). Com o refinamento a trabalhar, o custo tem DUAS partes: avaliar uma
+   peça guardada `0,36 µs` e cada peça NOVA `~1,0 µs` ⇒ `60°` a zoom `8×` custava `3,17 ms`.
+   ⭐⭐ **A causa era o livro das arestas da lei adaptativa** — um `BTreeMap` percorrido `~9` vezes
+   por triângulo e **nunca iterado**. Um índice pela ponta menor (`ph2d_poly2d::refine_adaptive`)
+   dá as mesmas respostas: **impressão digital de `48` casos do produto igual ao bit** (`22` saídas
+   distintas), e a avaliação cai para `0,156 µs`, a peça nova para `0,311`–`0,324`.
+3. ⇒ **o orçamento foi remedido:** `324 ns` por peça nova (o maior dos dois custos, logo um tecto
+   para qualquer mistura) ⇒ **`5 144` peças** (era `4 721`). O orçamento cheio custa agora
+   `1,09`–`1,13 ms` = **`6,6 %`** de um quadro (perfil `smoke`, `load 2,7`–`3,2`, mínimo de 30, três
+   corridas). E **duas** imagens do smoke passam a caber (`4 860`).
+
+| cena | antes | depois |
+|---|---:|---:|
+| 1 imagem, `25°`, zoom `1` (avalia, não parte) | `0,90 ms` | `0,39 ms` |
+| 1 imagem, `60°`, zoom `8` (orçamento cheio) | `3,17 ms` | `1,10 ms` |
+| 8 imagens (acima do orçamento) | `5,9 ms` | `0,47 ms` (= `Fast`) |
+
+- **A sonda antiga** (`measure_the_cpu_cost_of_a_skinned_frame`) passou a medir a zoom `8×` e marca
+  `NAO PARTIU` nas linhas em que a lei não trabalhou — *uma sonda cujo sujeito deixou de fazer a
+  coisa medida mede outra coisa com o mesmo nome.*
+- **Gate:** `without_room_in_the_budget_the_smooth_pays_nothing_and_draws_the_fast_mesh` (contador
+  de refinamentos por thread — uma contagem, nunca um relógio — + a saída do `Fast` ao bit + o
+  controlo com espaço, que tem de partir). **Mutações (3, todas RED):** o curto-circuito apagado · o
+  curto-circuito com `>=` · o índice das arestas a procurar pela ponta errada.
+- ⏳ **ABERTO e nomeado:** uma cena com a arte presa **muito acima** do orçamento (um personagem de
+  muitas peças) fica com o `Smooth` igual ao `Fast`, com um aviso único no terminal — agora de
+  graça, mas sem alisar. O caminho que o alisaria em qualquer cena é deformar na GPU (a malha
+  densa assada no bind, deformada no *vertex shader*), e é obra de plano, não de afinação.
+
+---
+
 ### F6-s — ⭐⭐⭐⭐ **REGRA DO DONO: editar PIXELS acontece na imagem PLANA** (ordem de 2026-09-16)
 
 > *«nenhuma ferramente de edição de imagem deve trabalhar com arte dobrada. Aqui o mesmo que fizemos
@@ -3012,11 +3057,15 @@ da textura de ANTES — numa imagem presa, depois do Apply, a pele leria os texe
   Apply sem a guarda da tabela · contar as que não tinham pele · o aviso calado · o Padding fora do
   achatamento · o id do vizinho numa transacção · o Real Size sem soltar · um id inventado na tabela
   · o quadro a passar só a principal.
-- ⏳ **ABERTO e nomeado:** o Separate Islands da Remoção de fundo cria sprites novas a partir das
-  ilhas de uma imagem presa — ele não muda a moldura da original e fica fora da tabela, mas as ilhas
-  nascem **sem** ligação aos ossos, e ninguém mediu se isso é o que o dono espera. E o desfazer de
-  UM nível das ferramentas de imagem (o que o Ctrl+Z usa quando não há passo geral) repõe a textura
-  e **não** a pele.
+- ✅ **O Separate Islands** da Remoção de fundo cria sprites novas a partir das ilhas de uma imagem
+  presa, e elas nascem **sem** ligação aos ossos — **decisão do dono** (2026-09-16): *«nasce sem
+  ossos mesmo»*. A original não muda de moldura e fica fora da tabela.
+- ✅ ~~O desfazer de UM nível das ferramentas de imagem repõe a textura e não a pele~~ — **não é
+  alcançável depois de um Apply**, e a nota anterior não o tinha conferido: o Ctrl+Z só vai a esse
+  desfazer quando a fila GERAL está vazia (`undo_route::undo_owner`, `global_has`), e o próprio Apply
+  (com a soltura, que é um componente registado) põe um passo nela. Quando o desfazer das
+  ferramentas responde, o passo do Apply já foi desfeito — com a pele devolvida.
+- ✅ **Smoke do dono aprovado** (2026-09-16).
 ---
 
 ### F6-r — ✅ **As alças do gizmo de uma imagem presa cercam a arte DOBRADA** (2026-09-16)

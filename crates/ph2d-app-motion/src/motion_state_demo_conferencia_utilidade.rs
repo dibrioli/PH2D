@@ -522,7 +522,7 @@ pub fn operator_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<Node
           o caminho se CRUZA, a cauda passa por cima de si mesma.
           A` esquerda a cauda TAPA o que esta' atras -- no cruzamento fica tudo igual.
           A` direita ela SOMA: o cruzamento ACENDE, mais claro que os dois lados.
-          > clique no no' Trail da direita e troque o `Echo Operator` para `Normal`:
+          > clique no no' Trail da direita e troque o `Echo Blend` para `Normal`:
             o cruzamento apaga e ela fica igual a` da esquerda.
 
   FLASH   Uma ROSETA de 5 bolinhas que se SOBREPOEM, piscando a cada {beat:.1} s.
@@ -530,7 +530,7 @@ pub fn operator_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<Node
           A` esquerda o flash so' TAPA: o meio fica da mesma cor que as pontas.
           A` direita ele SOMA: no pico o MEIO fica visivelmente mais claro que as
           pontas, quase branco.
-          > clique no no' Strobe da direita e troque o `Flash Operator` para `Normal`:
+          > clique no no' Strobe da direita e troque o `Flash Blend` para `Normal`:
             o meio volta a ficar igual as pontas.
           (!) E' por isso que sao 5 sobrepostas e nao uma so': somar so' se ve' onde
               ha' SOBREPOSICAO. Uma bolinha sozinha desenha quase igual nos dois modos.

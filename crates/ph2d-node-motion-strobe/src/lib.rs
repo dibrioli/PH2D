@@ -468,6 +468,9 @@ static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("probability", "Envelope"),
     ParamGroup::new("size_boost", "Look"),
     ParamGroup::new("flash_r", "Look"),
+    // ⚠️ O modo é de como o flash se PARECE: fora de secção ele era pintado no TOPO do cartão,
+    // antes do `Envelope` (ciclo 7, W2).
+    ParamGroup::new(FLASH_BLEND, "Look"),
 ];
 
 /// **O OPERADOR DO FLASH** — irmão do `motion.trail::ECHO_BLEND`, e a célula da folha 07
@@ -566,9 +569,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Slider,
     },
     // ⚠️ `Enum`, nunca slider: uma tag é um NOME (a mesma lei do `Blend` do sink).
+    // ⚠️ «Flash Blend» — a mesma palavra dos três nós que escrevem a coluna `blend` (ver o
+    // `Echo Blend` do `motion.trail`; gate `the_row_blend_speaks_one_word`).
     ParamUiHint {
         param: FLASH_BLEND,
-        label: "Flash Operator",
+        label: "Flash Blend",
         min: 0.0,
         #[expect(clippy::cast_precision_loss, reason = "sete rotulos")]
         max: (FLASH_BLEND_LABELS.len() - 1) as f32,

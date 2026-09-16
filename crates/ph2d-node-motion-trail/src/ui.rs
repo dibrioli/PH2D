@@ -7,7 +7,9 @@
 
 use super::{ECHO_BLEND, ECHO_BLEND_LABELS, FORWARD, MAX_LENGTH, MAX_SPACING, SOURCE};
 
-use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+use ph2d_node_registry::{
+    ParamGate, ParamGroup, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+};
 
 pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -96,9 +98,15 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     // ⚠️ `Enum`, nunca slider: uma tag é um NOME, e não há meio-caminho entre `Add` e
     // `Multiply` — a mesma razão que o `Blend` do `motion.output` já escreve.
+    //
+    // ⚠️ **«Echo Blend», e não o «Echo Operator» do AE** (ciclo 7, W2 — doc 112 §4-quinquies):
+    // os TRÊS nós que escrevem a coluna `blend` (a sombra, o flash e este) fazem a MESMA pergunta
+    // com as MESMAS palavras (`Sink · Normal · Add…`), e o `motion.output` chama-lhe `Blend`. Três
+    // nomes para uma pergunta eram três coisas a aprender; o gate
+    // `the_row_blend_speaks_one_word` prende a forma `<quem> Blend`.
     ParamUiHint {
         param: ECHO_BLEND,
-        label: "Echo Operator",
+        label: "Echo Blend",
         min: 0.0,
         #[expect(clippy::cast_precision_loss, reason = "sete rotulos")]
         max: (ECHO_BLEND_LABELS.len() - 1) as f32,
@@ -173,6 +181,10 @@ pub(super) static PARAM_UNITS: &[ParamUnitDecl] = &[
 /// propósito: um param sem entrada é pintado ANTES de tudo, que é onde os essenciais
 /// devem estar (a lei do `ParamGroup`, e o padrão do Blender).
 pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
+    // ⚠️ O TETO é da rampa da alfa, e a rampa vive em `Decay`: fora de secção ele era pintado
+    // no TOPO (com o Length e o Spacing), longe do `Tail Alpha` com que forma o par — e o
+    // comentário do hint já dizia que a ordem era a leitura (ciclo 7, W2).
+    ParamGroup::new(super::ALPHA_MAX, "Decay"),
     ParamGroup::new("fade", "Decay"),
     ParamGroup::new("shrink", "Decay"),
     ParamGroup::new("spin", "Decay"),
@@ -180,9 +192,17 @@ pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("saturation", "Colour"),
     // O operador é sobre a COR na tela, tanto quanto o matiz e a saturação.
     ParamGroup::new(ECHO_BLEND, "Colour"),
-    // **De onde o eco vem**, e o que só a re-cozedura permite. Ficam juntos
-    // porque o `Forward Steps` é INERTE no modo do ring — pô-lo em `Decay` faria
-    // dele um knob que às vezes não faz nada, num sítio onde nada mais é assim.
+    // **De onde o eco vem**, e o que só a re-cozedura permite.
     ParamGroup::new(SOURCE, "Source"),
     ParamGroup::new(FORWARD, "Source"),
 ];
+
+/// ⚠️ **O `Forward Steps` só existe no `Resampled`** (ciclo 7, W2): um ring não contém o futuro,
+/// então no `Remembered` o knob é INERTE — *um controle que não faz nada não é pintado* (a lei do
+/// `amount_y` do `motion.scale`). A secção sozinha só o punha ao lado da pergunta que o liga.
+pub(super) static PARAM_GATES: &[ParamGate] = &[ParamGate {
+    param: FORWARD,
+    when: SOURCE,
+    // `0 = Remembered` · `1 = Resampled`.
+    values: &[1],
+}];

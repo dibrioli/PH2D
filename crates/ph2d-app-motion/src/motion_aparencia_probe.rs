@@ -266,3 +266,43 @@ fn probe_does_an_fx_chain_stay_on_the_device() {
     mede("motion.strobe + pulse.beat", Some("motion.strobe"), true);
     eprintln!();
 }
+
+/// ⭐ **O MODO POR LINHA fala UMA palavra** (ciclo 7, W2 — doc 112 §4-quinquies).
+///
+/// Três nós escrevem a coluna `blend` (a sombra, o flash, o rastro) e oferecem a MESMA escada
+/// (`Sink · Normal · Add…` — o `Sink` é *«o do Output»*). Chamavam-lhe *Shadow Blend*, *Flash
+/// Operator* e *Echo Operator*: três palavras para uma pergunta, e o `motion.output` chama-lhe
+/// `Blend`. ⚠️ **A sonda do vocabulário não o via** — ela agrupa por chave e por rótulo iguais, e
+/// aqui as duas coisas diferiam; a pergunta é SEMÂNTICA, e o que a torna sintáctica é a primeira
+/// palavra da escada (`Sink` só existe nesta).
+///
+/// ⇒ todo `Enum` cuja escada começa em `Sink` chama-se `<quem> Blend`. Derivado do registry (um
+/// nó novo que escreva a coluna entra sozinho), com piso de população.
+#[test]
+fn the_row_blend_speaks_one_word() {
+    let m = crate::motion_state::MotionState::new();
+    let mut vistos = Vec::new();
+    for man in m.registry.manifests() {
+        for h in m.registry.param_ui(man.id).unwrap_or(&[]) {
+            let ph2d_node_registry::ParamWidget::Enum { labels } = h.widget else {
+                continue;
+            };
+            if labels.first() != Some(&"Sink") {
+                continue;
+            }
+            assert!(
+                h.label.ends_with(" Blend"),
+                "`{}`::{} oferece a escada do modo por linha e chama-lhe «{}» — a palavra da \
+                 casa e' `<quem> Blend` (o `motion.output` diz `Blend`)",
+                man.name,
+                h.param,
+                h.label
+            );
+            vistos.push(man.name);
+        }
+    }
+    assert!(
+        vistos.len() >= 3,
+        "piso: a sombra, o flash e o rastro escrevem a coluna `blend` — achei {vistos:?}"
+    );
+}

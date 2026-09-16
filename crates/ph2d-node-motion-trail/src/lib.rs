@@ -592,6 +592,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     // O `falloff` declarado à mão (ADR-0155) — o predicado do dispositivo também o lê (na porta do
     // estado, que o diagnóstico não segue), e a declaração fica.
     reg.register_couplings(
@@ -602,7 +603,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 }
 
 mod ui;
-use ui::{PARAM_GROUPS, PARAM_HINTS, PARAM_UNITS};
+use ui::{PARAM_GATES, PARAM_GROUPS, PARAM_HINTS, PARAM_UNITS};
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]

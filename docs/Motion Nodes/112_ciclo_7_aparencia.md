@@ -375,6 +375,50 @@ L-System, que continua só na CPU).
 
 ---
 
+## §4-quinquies — ✅ W2: o cartão e o alcance
+
+As três sondas do ciclo 6 sobre o grupo, e o que elas (e uma que elas não fazem) disseram:
+
+1. ✅ **O alcance** (`motion_param_reach`, sobre o catálogo inteiro): **zero** params enterrados. As
+   diferenças `params`/`no cartão` do §2 **são gates de modo** — o `rgb_split` esconde a lente no
+   `Split`, o `tint` a segunda cor fora do `Gradient`, e as cores são UMA linha. §2.3 confirmado.
+2. ⚠️ **O vocabulário por chave** lista três chaves partilhadas com rótulos diferentes (`ramp` ·
+   `saturation` · `source`) — **perguntas diferentes em nós diferentes, sem consumidor partilhado**:
+   a regra do doc 110 §9.7 (declarado, não curado; renomear custaria o valor gravado de todo
+   documento e compraria zero). ⚠️ O §2.2 dizia «zero linhas» — lia só a lista (1).
+3. ⛔⛔ **E a sonda NÃO VIA o defeito real:** três nós escrevem a coluna `blend` com a MESMA escada
+   (`Sink · Normal · Add…`) e chamavam-lhe *Shadow Blend*, *Flash Operator* e *Echo Operator* —
+   chaves diferentes E rótulos diferentes, logo invisível a um agrupamento por um dos dois. ⇒ os
+   três dizem **`<quem> Blend`** (`Shadow Blend` · `Flash Blend` · `Echo Blend`; o `motion.output`
+   diz `Blend`). ⚠️ Só o índice é guardado: nenhum documento se move. ⭐ Gate
+   **`the_row_blend_speaks_one_word`** — a pergunta é semântica, e o que a torna sintáctica é a
+   primeira palavra da escada (`Sink` só existe nesta): todo `Enum` que começa em `Sink` chama-se
+   `<quem> Blend`, derivado do registry, piso `3`, **mutação RED** (o `Flash Operator` de volta).
+   A legenda da cena `=77`, que mandava trocar o `Echo Operator`/`Flash Operator`, acompanha.
+
+### O que o cartão mudou
+
+| nó | antes | depois |
+|---|---|---|
+| `motion.strobe` | o `Flash Operator` pintado **no topo**, antes do `Envelope` (não tinha secção) | `Flash Blend` em **Look**, ao lado do tamanho e da cor do flash |
+| `motion.trail` | o `Tail Alpha Max` no **topo** (sem secção), longe do `Tail Alpha` — e o comentário do hint dizia que a ordem era a leitura | o par junto em **Decay** (teto → ponta) |
+| `motion.trail` | o `Forward Steps` **sempre** visível — e é INERTE no `Remembered` (o próprio código o dizia; a cura tinha sido só a secção) | escondido fora do `Resampled` (`ParamGate`); o alcance continua verde |
+
+```text
+  motion.strobe | Attack · Hold · Decay · Shape · Probability · Size Boost · Flash Blend · Flash
+                > secções: Envelope@0 · Look@5
+  motion.trail  | Length · Spacing · Tail Alpha Max · Tail Alpha · Tail Size · Tail Spin ·
+                  Tail Hue Shift · Tail Saturation · Echo Blend · Source
+                > secções: Decay@2 · Colour@6 · Source@9
+```
+
+⚠️ **O `fx.drop_shadow` fica com o modo no TOPO, e é decisão escrita** (no hint dele: *o modo é a
+pergunta que decide o que as outras significam*). ⚠️ E um param fora de secção **não é
+gateável** como defeito: é assim que os essenciais sobem (o `Length`/`Spacing` do rastro) — o
+retrato do cartão é o instrumento, não uma catraca.
+
+---
+
 ## §5 — A fila do ciclo
 
 1. ✅ **W1a — o brilho passa-tudo** (§4).
@@ -392,7 +436,7 @@ L-System, que continua só na CPU).
    params DECLARADOS). ⚠️ O modo `Resampled` re-cozinha a própria entrada em N instantes
    (ADR-0163) e fica CPU **por desenho** (`applicable`). E o tecto do rasto é para MEDIR no
    dispositivo quando o kernel existir (doc-comment do `MAX_INSTANCES` dele).
-5. ⏳ **W2 — o cartão e o alcance** — o censo do ciclo 6 sobre o grupo; confirmar o §2.3.
+5. ✅ **W2 — o cartão e o alcance** (§4-quinquies).
 6. ⏳ **W3 — o poder que falta** — as folhas 06 (animadores), 09 (cor) e 11 (fx raster) da
    conferência; o `slit_scan` de um botão só (§2.4); o P2 aberto da folha 11 (a *dirt texture*).
 7. ⏳ **W4 — a MEDIÇÃO** — residência e relógio do grupo.

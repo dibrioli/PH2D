@@ -1085,3 +1085,87 @@ escreveu, ela própria, por que o número não valia: *«não se pode julgar uma
 de pesos degenerados — `48 %` da nossa arte não mistura nada»*. ⭐ **Essa premissa dissolveu-se:** a
 arte rígida passou de `37,6 %` para `6,8 %`. ⇒ o candidato que ataca o colapso a `90°` **sem** tocar
 nos pesos é agora avaliável, e é a obra seguinte. *A recusa não foi revogada — o chão dela mudou.*
+
+## §19 — ⭐⭐⭐ A FORMA VECTORIAL ENTRA NO PADRÃO-OURO: as duas mídias voltam a ter UMA lei
+
+O §17 ligou os BBW **só para imagens**, com o limite nomeado: *«o padrão-ouro precisa de uma malha
+do domínio, e uma Bézier não tem uma»*. ⛔ O preço era um rig com **duas leis** — e a dívida era
+minha.
+
+⭐ **Ela tem domínio: o INTERIOR dos contornos fechados.**
+
+```text
+contornos FECHADOS ──▶ achatados em polígonos        (a fronteira, do documento)
+                   ──▶ grelha graduada + orçamento   (ph2d_poly2d::grid_mesh_com)
+                   ──▶ Bounded Biharmonic Weights
+                   ──▶ um peso por PONTO DE CONTROLO (baricêntrico na malha)
+```
+
+### §19.1 — ⭐⭐ UMA grelha, DUAS coberturas
+
+[`grid_mesh_com`] recebe a **cobertura injectada**: uma imagem responde pelo **alfa**, um caminho
+por **estar dentro do contorno**. A graduação pelas articulações, a conformidade, o orçamento em
+triângulos e a renormalização são do **GRID** e não da mídia.
+
+⛔ **A malha do caminho NÃO é guardada nem desenhada** — ela é um **andaime do bind**. O que
+sobrevive é um peso por ponto de controlo, e a forma continua a ser uma Bézier exacta e editável,
+que é a razão de o vector usar LBS e não um envelope.
+
+⛔ **Um caminho ABERTO fica na lei derivada, e isso é uma RESPOSTA.** Uma linha tem área zero.
+*Inventar um domínio para uma linha seria inventar uma arte que o artista não desenhou.*
+
+`PROJECT_SCHEMA` **130 → 131** (conte o DELTA).
+
+### §19.2 — ⛔⛔⛔ Um gate apanhou um defeito REAL do pino, que a lei antiga escondia de graça
+
+`binding_to_the_whole_scene_draws_the_same_as_binding_to_the_right_skeleton` reprovou: **um segundo
+esqueleto a `400` unidades da arte mudava o desenho.** A rede *«todo osso leva pelo menos um
+vértice»* fazia o osso distante roubar o vértice mais próximo e mandar nele com peso `1`.
+
+⭐⭐ **A lei euclidiana estava protegida de graça — o suporte dela é FINITO. O do padrão-ouro é
+global POR DESENHO, e é isso que compra a suavidade.** ⇒ a rede ganhou cerca: um osso cujo vértice
+mais próximo está a mais de `2` arestas médias **não é handle desta arte**.
+
+⚠️ *Toda propriedade que a lei antiga tinha «de graça» tem de ser reconferida quando a lei muda* —
+e esta só apareceu porque o gate existia e media a cena que o artista produz **sem querer** (o
+`Bind` sem semente apanha a cena toda).
+
+### §19.3 — ⛔⛔ E uma mutação SOBREVIVEU aos três primeiros gates
+
+Pôr `usa = false` no [`ph2d_vec_skin::aplica_com`] — o vector a **ignorar** os pesos guardados —
+deixava os **29 verdes**. Eles provavam que a tabela **existe** e que ela **fecha**; nenhum provava
+que ela **chega ao desenho**. *É o terceiro passo que um `grep` não vê: o painel escreve · alguém
+lê · **o leitor DECIDE, ou entrega a quem descarta?***
+
+⇒ `a_tabela_de_pesos_do_caminho_chega_ao_desenho`, com as DUAS metades: o quadro tem de dar o que a
+lei **guardada** dá (`0,000`) **e** diferir do que a **derivada** dá (`10,47`).
+
+⚠️⚠️ **E a fixtura teve de ser refeita DUAS vezes para produzir o fenómeno:**
+
+| fixtura | separação entre as duas leis |
+|---|---:|
+| o `palco` (rectângulo `40 × 10`, pontos de controlo nos CANTOS) | `0,000` |
+| seis vértices, **dois sobre a junta** | `0,064` |
+| **e a arte ALTA (`40 × 30`)**, com a aresta de cima para lá do raio do *bump* | **`10,47`** |
+
+⇒ *a diferença entre as duas leis vive junto da JUNTA e LONGE DO EIXO* — e um rectângulo baixo com
+os vértices nos cantos não tem nenhum dos dois.
+
+### §19.4 — ⛔⛔ O gate da ORDEM dos ossos mudou de PREMISSA, não de veredito
+
+Enquanto os pesos eram DERIVADOS, a lista de tendões era a única coisa ordenada. Com a tabela
+guardada, a coluna `j` **é** o tendão `j` ⇒ reverter os tendões sem reverter as colunas não permuta
+nada: produz **dados incoerentes**, e o gate lia `18,5` a acusar um defeito que não existe. *É o
+mesmo erro que reverter os triângulos de uma malha sem reverter os vértices.* Ele passa a permutar
+**as duas metades**.
+
+### §19.5 — A catraca do shell foi paga MOVENDO, como a dívida do §17.8 mandava
+
+O degrau `131` não cabia por `21` linhas, e apertar a prosa não chegava — *era exactamente o caso
+que o §17.8 nomeou*. ⇒ a faixa `v2`..`v82` da escada (`490` linhas de **prosa pura**) saiu para
+[`docs/archive/project-schema/escada_v2_a_v82.md`](../../archive/project-schema/escada_v2_a_v82.md),
+**verbatim**, com o `sha256` do original no fim. Os degraus **vivos** continuam colados à constante
+— *quem conta o próximo degrau lê a escada, e o que ele precisa de ler é a PONTA.*
+
+⭐ **A dívida ficou paga em vez de renomeada:** a escada tem agora `490` linhas de folga para crescer
+antes de a colisão voltar.

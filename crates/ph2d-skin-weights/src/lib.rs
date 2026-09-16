@@ -75,6 +75,9 @@ mod laplacian;
 
 #[cfg(test)]
 mod bancada;
+/// ⏱️ **A mesa dos CENTROS DE ROTAÇÃO** — o candidato cuja recusa perdeu o chão.
+#[cfg(test)]
+mod bancada_centros;
 /// ⏱️ **A mesa do oráculo** — irmã da [`bancada`] pelo tecto de LOC, cortada por assunto.
 #[cfg(test)]
 mod bancada_oraculo;

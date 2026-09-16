@@ -20,7 +20,7 @@ use ph2d_poly2d::Mesh2d;
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
 /// O arco da fixtura do oráculo: dois ossos de `2` ao longo de `+x`, arte de `4 × 4,8`.
-const ORA_ARCO: f64 = 4.0;
+pub(super) const ORA_ARCO: f64 = 4.0;
 /// A meia-altura da arte do oráculo.
 const ORA_META: f64 = 2.4;
 
@@ -28,7 +28,7 @@ const ORA_META: f64 = 2.4;
 type LeiDePesos<'a> = Box<dyn Fn([f64; 2]) -> Vec<f64> + 'a>;
 
 /// A malha do oráculo: `48 × 48` sobre a caixa `[0, 4] × [−2,4, 2,4]`.
-fn ora_malha(n: usize) -> Mesh2d {
+pub(super) fn ora_malha(n: usize) -> Mesh2d {
     let mut m = Mesh2d {
         rest: Vec::new(),
         tris: Vec::new(),
@@ -53,7 +53,7 @@ fn ora_malha(n: usize) -> Mesh2d {
 }
 
 /// As poses do oráculo: o 2.º osso roda `total`, o 1.º fica.
-fn ora_poses(total: f64) -> Vec<Xform> {
+pub(super) fn ora_poses(total: f64) -> Vec<Xform> {
     let l = ORA_ARCO / 2.0;
     let (mut ox, mut oy, mut fi) = (0.0, 0.0, 0.0);
     let mut out = Vec::new();
@@ -82,7 +82,7 @@ impl ShiftAfim for Xform {
 }
 
 /// Os pesos do *bump* euclidiano do oráculo (raio `r`), num ponto.
-fn ora_bump(p: [f64; 2], r: f64) -> Vec<f64> {
+pub(super) fn ora_bump(p: [f64; 2], r: f64) -> Vec<f64> {
     let l = ORA_ARCO / 2.0;
     let eixos = [([0.0, 0.0], [l, 0.0]), ([l, 0.0], [2.0 * l, 0.0])];
     let (mut w, mut soma, mut perto, mut pd) = (vec![0.0; 2], 0.0, 0usize, f64::INFINITY);
@@ -109,7 +109,7 @@ fn ora_bump(p: [f64; 2], r: f64) -> Vec<f64> {
 /// As DUAS réguas do oráculo: `(dobra %, a arte segue em graus)`.
 fn ora_reguas(m: &Mesh2d, pesos: &dyn Fn([f64; 2]) -> Vec<f64>, total: f64) -> (f64, f64) {
     let poses = ora_poses(total);
-    let pos = |p: [f64; 2]| -> [f64; 2] {
+    ora_reguas_de(m, &|p| {
         let w = pesos(p);
         let mut o = [0.0, 0.0];
         for (k, &wi) in w.iter().enumerate() {
@@ -121,7 +121,15 @@ fn ora_reguas(m: &Mesh2d, pesos: &dyn Fn([f64; 2]) -> Vec<f64>, total: f64) -> (
             o[1] += wi * q[1];
         }
         o
-    };
+    })
+}
+
+/// ⭐ **As DUAS réguas do oráculo sobre um CAMPO qualquer** — `(dobra %, a arte segue em graus)`.
+///
+/// ⚠️ Ela existe porque a mesa dos centros de rotação mede outra LEI DE MISTURA sobre os mesmos
+/// pesos: sem esta porta, ela teria de copiar as duas réguas, e uma cópia diverge no primeiro
+/// ajuste.
+pub(super) fn ora_reguas_de(m: &Mesh2d, pos: &dyn Fn([f64; 2]) -> [f64; 2]) -> (f64, f64) {
     let p: Vec<[f64; 2]> = m.rest.iter().map(|&v| pos(v)).collect();
     // DOBRA: a fracção da área com o sinal invertido contra o repouso.
     let (mut inv, mut tot) = (0.0, 0.0);

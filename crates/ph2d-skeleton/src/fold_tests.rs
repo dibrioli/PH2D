@@ -36,6 +36,12 @@ pub(crate) fn corrente(n: usize, arco: f64, total: f64, raio: f64) -> Skin {
             radius: raio,
             pose,
             sub: (0, 1),
+            // ⚠️ Cada osso desta corrente é um osso AUTORADO, então o tendão é a posição dele.
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "a corrente da fixtura tem uma dúzia de ossos"
+            )]
+            tendon: i as u32,
         });
         let (s, c) = fi.sin_cos();
         ox += l * c;

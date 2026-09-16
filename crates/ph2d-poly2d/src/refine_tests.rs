@@ -376,3 +376,164 @@ fn within_one_build_each_point_is_asked_once() {
         "ha' vertices na malha refinada que nunca foram perguntados ao campo"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Os ATRIBUTOS que viajam na subdivisão — o que o padrão-ouro dos pesos de pele exige.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// O valor baricêntrico EXACTO de `attrs` no ponto `p`, calculado na malha ORIGINAL.
+///
+/// ⚠️ **Ele localiza o ponto por força bruta**, que é precisamente o que o produto NÃO faz (`O(n)`
+/// por ponto) — e é por isso que ele serve de oráculo: *a régua e a lei chegam à mesma resposta por
+/// caminhos diferentes*. A lei usa a proveniência que a subdivisão já conhece; a régua procura.
+fn baricentrico_na_malha(m: &Mesh2d, attrs: &[f64], p: [f64; 2]) -> Option<f64> {
+    let mut melhor: Option<(f64, f64)> = None;
+    for t in &m.tris {
+        let (a, b, c) = (
+            m.rest[t[0] as usize],
+            m.rest[t[1] as usize],
+            m.rest[t[2] as usize],
+        );
+        let den = (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
+        if den.abs() < 1e-12 {
+            continue;
+        }
+        let u = ((p[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (p[1] - a[1])) / den;
+        let v = ((b[0] - a[0]) * (p[1] - a[1]) - (p[0] - a[0]) * (b[1] - a[1])) / den;
+        let fora = (-u).max(-v).max(u + v - 1.0).max(0.0);
+        let val = (1.0 - u - v) * attrs[t[0] as usize]
+            + u * attrs[t[1] as usize]
+            + v * attrs[t[2] as usize];
+        if melhor.is_none_or(|(f, _)| fora < f) {
+            melhor = Some((fora, val));
+        }
+    }
+    melhor.filter(|(f, _)| *f < 1e-9).map(|(_, v)| v)
+}
+
+/// ⭐⭐⭐ **UM VÉRTICE INVENTADO HERDA O ATRIBUTO DO TRIÂNGULO QUE O GEROU** — a lei inteira do
+/// [`crate::refine_posed_attrs`].
+///
+/// ⚠️⚠️ **O atributo desta fixtura NÃO é linear na posição, e é de propósito:** uma função linear é
+/// interpolada igual em QUALQUER triângulo, então ela não distingue *«usou a proveniência certa»*
+/// de *«usou o triângulo ao lado»*. O chapéu de um vértice só é reproduzido por quem interpola nos
+/// vértices certos.
+///
+/// ⛔⛔ **E a tolerância tem de puxar o `k` a `4` ou mais — MEDIDO, por uma mutação que SOBREVIVEU.**
+/// A 1.ª redacção corria a `0,5 px` e o estimador parava em `k = 3`, onde o **único** nó de miolo de
+/// cada triângulo é o `(1,1)` ⇒ `u = v = ⅓`. Trocar `t[1]` por `t[2]` na interpolação baricêntrica
+/// é, ali, a **identidade algébrica** — a mutação passava com o gate verde. *Uma grelha de `k = 3`
+/// não tem um único ponto interior onde as duas coordenadas baricêntricas difiram, logo nenhuma
+/// fixtura nesse `k` pode distinguir os dois vértices.* A `0,12 px` o `k` sai `6`, e os nós `(1,2)`
+/// e `(2,1)` matam-na.
+///
+/// (Mutação: no `No::Miolo` trocar `t[1]` por `t[2]` ⇒ RED; devolver o atributo do canto `t[0]` em
+/// vez de interpolar ⇒ RED.)
+#[test]
+fn an_invented_vertex_inherits_the_attribute_of_the_triangle_that_made_it() {
+    let m = malha();
+    // O chapéu de um vértice do MIOLO da cápsula: `1` nele, `0` em todo o resto.
+    let alvo = m
+        .rest
+        .iter()
+        .enumerate()
+        .min_by(|a, b| {
+            let d = |p: &[f64; 2]| (p[0] - 160.0).hypot(p[1] - 48.0);
+            d(a.1).total_cmp(&d(b.1))
+        })
+        .map(|(i, _)| i)
+        .expect("a malha tem vertices");
+    let attrs: Vec<f64> = (0..m.rest.len())
+        .map(|v| f64::from(u8::from(v == alvo)))
+        .collect();
+
+    let mut base = campo_dobrado(1.8);
+    let (r, _p, saida, k) = crate::refine_posed_attrs(
+        &m,
+        &attrs,
+        1,
+        &mut |q, _| base(q),
+        RefineOptions {
+            tolerance_px: 0.12,
+            max_pieces: m.tris.len() * 36,
+        },
+    );
+    // ⛔ `4`, e não `1`: ver o cabeçalho — a `k = 3` a mutação do miolo é a identidade.
+    assert!(
+        k >= 4,
+        "a fixtura tem de chegar a k>=4 para ter um no' de miolo com u != v (k={k})"
+    );
+    assert_eq!(saida.len(), r.rest.len(), "um atributo por vertice refinado");
+
+    let mut pior = 0.0_f64;
+    let mut medidos = 0usize;
+    for (v, &q) in r.rest.iter().enumerate() {
+        let Some(esperado) = baricentrico_na_malha(&m, &attrs, q) else {
+            continue;
+        };
+        medidos += 1;
+        pior = pior.max((saida[v] - esperado).abs());
+    }
+    assert!(
+        medidos * 2 > r.rest.len(),
+        "o oraculo so' localizou {medidos} de {} vertices",
+        r.rest.len()
+    );
+    assert!(
+        pior < 1e-12,
+        "um vertice inventado recebeu um atributo que nao e' o do triangulo dele (pior {pior:.3e})"
+    );
+    // ⚠️ E o chapéu tem de CHEGAR a algum lado: com tudo a zero o gate acima passa por vacuidade.
+    let maior = saida.iter().copied().fold(0.0_f64, f64::max);
+    assert!(maior > 0.99, "o chapeu nao sobreviveu a subdivisao ({maior})");
+}
+
+/// ⭐⭐⭐ **LEVAR ATRIBUTOS NÃO MEXE NA GEOMETRIA** — a metade que impede esta wave de tocar no que
+/// já shipa.
+///
+/// A malha, as posições e o `k` de [`crate::refine_posed_attrs`] têm de ser os de
+/// [`crate::refine_posed`] **ao bit**, com atributos ou sem eles. *Um atributo é carga, nunca uma
+/// voz na decisão.*
+#[test]
+fn carrying_attributes_does_not_move_a_single_vertex() {
+    let m = malha();
+    let opts = RefineOptions {
+        tolerance_px: 0.5,
+        max_pieces: m.tris.len() * 36,
+    };
+    let mut a = campo_dobrado(1.8);
+    let (m0, p0, k0) = refine_posed(&m, &mut a, opts);
+
+    let attrs: Vec<f64> = (0..m.rest.len() * 3)
+        .map(|i| (i % 7) as f64 / 7.0)
+        .collect();
+    let mut b = campo_dobrado(1.8);
+    let (m1, p1, saida, k1) = crate::refine_posed_attrs(&m, &attrs, 3, &mut |q, _| b(q), opts);
+
+    assert_eq!(k0, k1, "o `k` mudou por levar carga");
+    assert_eq!(m0.rest, m1.rest, "as posicoes de repouso mudaram");
+    assert_eq!(m0.tris, m1.tris, "os triangulos mudaram");
+    assert_eq!(p0, p1, "as posicoes posadas mudaram");
+    assert_eq!(saida.len(), m1.rest.len() * 3, "stride errado na saida");
+}
+
+/// ⛔ **SEM ATRIBUTOS, A PORTA NOVA É A ANTIGA** — `stride = 0` não inventa carga nenhuma.
+#[test]
+fn with_no_attributes_the_new_door_carries_nothing() {
+    let m = malha();
+    let mut campo = campo_dobrado(1.8);
+    let (_, _, saida, _) = crate::refine_posed_attrs(
+        &m,
+        &[],
+        0,
+        &mut |q, a| {
+            assert!(a.is_empty(), "o campo recebeu atributos que ninguem deu");
+            campo(q)
+        },
+        RefineOptions {
+            tolerance_px: 0.5,
+            max_pieces: m.tris.len() * 36,
+        },
+    );
+    assert!(saida.is_empty(), "a saida inventou atributos");
+}

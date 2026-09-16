@@ -28,6 +28,7 @@ fn pele(len: f64, strength: f64, segments: u8, curva: Bend, mundo: Xform) -> Ski
         },
         mundo,
         Xform::IDENTITY,
+        0,
         &mut ossos,
     );
     Skin::new(ossos).expect("o osso existe")
@@ -68,7 +69,8 @@ fn a_straight_bone_is_still_exactly_one_bone() {
             },
             mundo,
             Xform::IDENTITY,
-            &mut ossos,
+            0,
+        &mut ossos,
         );
         assert_eq!(ossos.len(), 1, "segments = {segments} numa curva recta");
         assert_eq!(ossos[0], sozinho, "segments = {segments}");
@@ -104,6 +106,7 @@ fn one_segment_never_bends_whatever_the_handles_say() {
         },
         mundo,
         Xform::IDENTITY,
+        0,
         &mut ossos,
     );
     assert_eq!(ossos, vec![sozinho]);
@@ -297,6 +300,7 @@ fn asking_for_too_many_segments_saturates_instead_of_exploding() {
         },
         Xform::IDENTITY,
         Xform::IDENTITY,
+        0,
         &mut ossos,
     );
     assert_eq!(ossos.len(), usize::from(MAX_SEGMENTS));
@@ -320,6 +324,7 @@ fn the_sub_bones_come_out_in_order_and_contiguous() {
         },
         Xform::IDENTITY,
         Xform::IDENTITY,
+        0,
         &mut ossos,
     );
     SkinBone::bent(
@@ -332,6 +337,7 @@ fn the_sub_bones_come_out_in_order_and_contiguous() {
         },
         Xform::IDENTITY,
         Xform::IDENTITY,
+        0,
         &mut ossos,
     );
     assert_eq!(ossos[0].sub, (0, 1));
@@ -403,6 +409,7 @@ fn a_skin_of_straight_bones_did_not_move_a_single_bit() {
         },
         mundo,
         Xform::IDENTITY,
+        0,
         &mut nova_ossos,
     );
     SkinBone::bent(
@@ -415,6 +422,7 @@ fn a_skin_of_straight_bones_did_not_move_a_single_bit() {
         },
         mundo,
         Xform::IDENTITY,
+        0,
         &mut nova_ossos,
     );
     let nova = Skin::new(nova_ossos).expect("2 ossos");
@@ -472,7 +480,8 @@ fn bend_measure_the_ceiling() {
                 },
                 rest,
                 Xform::IDENTITY,
-                &mut ossos,
+                0,
+        &mut ossos,
             );
         }
         let pele = Skin::new(ossos).expect("4 ossos");

@@ -527,7 +527,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // campos apendados a um componente ⇒ o postcard, que e' posicional, leria um ficheiro de
         // dois campos como tendo quatro. ⚠️ **A tripla NAO ve^ este degrau** -- os bytes mudaram
         // dentro de um `ComponentBlob`, opaco para ela. E' a DECIMA TERCEIRA vez (ver a escada).
-        (136, 13, 22),
+        // PROJECT 136→137: a malha guardada de uma IMAGEM presa passou a levar os pesos do
+        // padrao-ouro dentro (`SkinnedMesh { mesh, pesos }` no lugar de `Mesh2d`). O postcard e'
+        // posicional e a struct nova e' a antiga SEGUIDA do vector ⇒ um ficheiro velho acaba onde
+        // a nova espera o comprimento da tabela. ⚠️ **A tripla NAO ve^ este degrau** -- estes
+        // bytes estao DENTRO do `source` de um `ComponentBlob`, opaco duas vezes. E' a DECIMA
+        // QUARTA vez (ver a escada).
+        (137, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

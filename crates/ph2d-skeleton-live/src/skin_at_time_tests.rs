@@ -18,16 +18,26 @@ const QUARTO: f32 = std::f32::consts::FRAC_PI_2;
 fn posed_local_with(
     sim: &SimWorld,
     e: Entity,
-    mesh: &Mesh2d,
+    sm: &SkinnedMesh,
     poses: &impl Fn(Entity) -> ph2d_skeleton::Xform,
 ) -> Option<Vec<[f64; 2]>> {
     let index = crate::skin_live::bone_index(sim);
-    let (p2l, pele) = deform_field_with(sim, e, mesh.size, PPM, &index, poses)?;
+    let (p2l, pele) = deform_field_with(sim, e, sm.mesh.size, PPM, &index, poses)?;
     let mut w = pele.scratch();
     Some(
-        mesh.rest
+        sm.mesh
+            .rest
             .iter()
-            .map(|&p| pele.point(p2l.apply(p), &mut w))
+            .enumerate()
+            .map(|(v, &p)| {
+                let q = p2l.apply(p);
+                let pesos = sm.pesos_de(v);
+                if pesos.is_empty() {
+                    pele.point(q, &mut w)
+                } else {
+                    pele.point_with(q, pesos, &mut w)
+                }
+            })
             .collect(),
     )
 }
@@ -40,7 +50,7 @@ fn maior_desvio(a: &[[f64; 2]], b: &[[f64; 2]]) -> f64 {
 }
 
 /// Uma imagem presa a UM osso, com a malha guardada — a fixtura das duas metades.
-fn braco() -> (SimWorld, Entity, Entity, Mesh2d) {
+fn braco() -> (SimWorld, Entity, Entity, SkinnedMesh) {
     let mut sim = SimWorld::default();
     let osso = crate::bone::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
     let e = sim
@@ -57,7 +67,7 @@ fn braco() -> (SimWorld, Entity, Entity, Mesh2d) {
         GridOptions::default(),
         Some(raiz),
     ));
-    let malha = mesh_of(&sim, e).expect("malha");
+    let malha = skinned_mesh_of(&sim, e).expect("malha");
     (sim, e, raiz, malha)
 }
 
@@ -159,19 +169,29 @@ fn the_ghost_mesh_bends_the_art_and_keeps_the_rest_uv() {
     let em_t = |x: Entity| if x == raiz { girado } else { vivo(x) };
 
     let (p2l, pele_repouso) =
-        deform_field_with(&sim, e, malha.size, PPM, &index, &vivo).expect("pele");
-    let (_, pele_t) = deform_field_with(&sim, e, malha.size, PPM, &index, &em_t).expect("pele");
+        deform_field_with(&sim, e, malha.mesh.size, PPM, &index, &vivo).expect("pele");
+    let (_, pele_t) =
+        deform_field_with(&sim, e, malha.mesh.size, PPM, &index, &em_t).expect("pele");
     let (a, _) = posed_sprite_mesh(
-        malha.clone(),
+        malha.mesh.clone(),
         p2l,
         &pele_repouso,
+        &malha.pesos,
         inst.anchor,
         inst.size,
         None,
     )
     .expect("malha de repouso");
-    let (b, _) =
-        posed_sprite_mesh(malha, p2l, &pele_t, inst.anchor, inst.size, None).expect("malha em t");
+    let (b, _) = posed_sprite_mesh(
+        malha.mesh,
+        p2l,
+        &pele_t,
+        &malha.pesos,
+        inst.anchor,
+        inst.size,
+        None,
+    )
+    .expect("malha em t");
 
     assert_eq!(
         a.uv, b.uv,

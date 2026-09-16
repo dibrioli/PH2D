@@ -503,4 +503,194 @@
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — é a **décima terceira** vez nesta escada, e pela razão de
 /// sempre: os componentes viajam em `ComponentBlob`s, que para ela são opacos.
-pub(crate) const PROJECT_SCHEMA: u32 = 136;
+///
+/// # 129 -> 130 — a malha de uma imagem presa leva os PESOS dentro (`line/Vector`)
+///
+/// Os bytes opacos do `SkinBind::source` de uma **imagem** deixaram de ser uma
+/// `ph2d_poly2d::Mesh2d` e passaram a ser uma `ph2d_skeleton_live::skinned_mesh::SkinnedMesh`
+/// (`{ mesh, pesos }`). É a ligação do padrão-ouro ao produto: os *Bounded Biharmonic Weights*
+/// são a solução de um problema variacional sobre a arte inteira, logo resolvem-se **uma vez ao
+/// prender** e viajam com a malha.
+///
+/// ⚠️⚠️ **O degrau é obrigatório e a razão é o postcard, como nos degraus `112`, `127` e `129`:**
+/// ele é **posicional**, e a `SkinnedMesh` é a `Mesh2d` **seguida** do vector de pesos. Um ficheiro
+/// gravado com a malha só acaba onde a nova espera o comprimento da tabela — e quem lesse os bytes
+/// seguintes leria lixo como pesos. Com o degrau, o load **recusa em voz alta**.
+///
+/// ⚠️ **Uma FORMA VECTORIAL não muda de formato** — ela continua a guardar um `VecPath`, e continua
+/// a resolver os pesos pela lei euclidiana derivada. ⛔ *Limite NOMEADO, não esquecimento:* o
+/// padrão-ouro precisa de uma malha do domínio, e um caminho de Bézier não tem uma. Enquanto isso
+/// não existir, um rig com as duas mídias tem duas leis — e é o que está aberto na fila.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 — e aqui com a razão extra
+/// que a wave já mediu: uma malha antiga não tem pesos, e derivá-los no load seria correr o solver
+/// (dezenas de ms por imagem) dentro do caminho de abrir um ficheiro.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima quarta** vez nesta escada, e por uma razão a
+/// mais: estes bytes não estão sequer num componente que a tripla percorra, estão **dentro** do
+/// `source` de um, que é opaco duas vezes.
+/// # 136 -> 137 — a FÁBRICA e o CICLO DE VIDA (TOP-20 #11 e #12, `line/components`)
+///
+/// TRÊS componentes registados novos: `ph2d::ecs::Factory`, `ph2d::ecs::Lifetime` e
+/// `ph2d::ecs::DestroyOutside`. Mesmo mecanismo dos degraus `123`, `125`, `126` e `127`: um
+/// `ComponentBlob` de `type_id` desconhecido **recusa o load inteiro**, e o degrau é o que
+/// transforma isso em *«este ficheiro é de outra versão»* em vez de *«type id desconhecido»* no
+/// meio da travessia.
+///
+/// ⛔⛔ **E há um QUARTO componente que NÃO está no registo, de propósito: o `ph2d::ecs::Spawned`.**
+/// Ele marca o que uma fábrica pôs na cena, e a lei da wave é *o que nasce numa corrida não é
+/// documento* — o `world_to_snapshot` **poda** essas subárvores, então um `.ph2dproj` gravado a
+/// meio de uma corrida com mil cópias vivas é byte-a-byte igual ao mesmo projecto parado. ⚠️ É por
+/// isso que este degrau vale `+1` e não `+2`: o número mede o que o FICHEIRO passa a conter.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — e aqui com a razão extra de que
+/// os três são **aditivos**: um v136 não tem nenhum deles, logo lê-se inteiro por este binário. O
+/// degrau existe para o sentido contrário (um v137 com uma fábrica dentro, lido por um binário
+/// anterior), que é o que recusa em voz alta.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima quarta** vez: os componentes viajam em
+/// `ComponentBlob`s, que para ela são opacos.
+/// # 137 -> 131 — o MOVER DE VISTA DE CIMA (TOP-20 #13, `line/components`)
+///
+/// UM componente registado novo: `ph2d::physics::TopDownPlayer`. Mesmo mecanismo dos degraus
+/// `123`, `125`, `126`, `127` e `137` — um `ComponentBlob` de `type_id` desconhecido **recusa o
+/// load inteiro**, e o degrau transforma isso em *«este ficheiro é de outra versão»* em vez de
+/// *«type id desconhecido»* a meio da travessia.
+///
+/// ⚠️⚠️ **E o doc do `PlatformPlayer` diz o CONTRÁRIO disto, por escrito** (*«Componente NOVO ⇒
+/// blob-key própria ⇒ `PROJECT_SCHEMA` NÃO bumpa»*, o precedente do `PhysicsJoint`/W3). Ele é
+/// anterior aos cinco degraus acima, que estabeleceram a regra de hoje. *Uma nota que descreve a
+/// casa de outra época lê-se exactamente como uma que descreve a de agora* — foi corrigida no
+/// mesmo commit que escreveu este degrau.
+///
+/// ⛔⛔ **O `TopDownState` NÃO é componente, e a ausência é a decisão:** ele é a velocidade que as
+/// rampas acumulam, muda por tique, e um campo assim dentro de um componente registado faria o
+/// `canonicalize` do undo ver **cada quadro como um passo** (a lei do módulo de física, medida na
+/// auditoria da §11 do Sprite). Ele vive na ponte, dentro do `ControllerMemory` que entra no anel
+/// de checkpoints — é isso que o faz sobreviver a um scrub.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v137 não
+/// tem o componente, logo lê-se inteiro por este binário. O degrau existe para o sentido contrário.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima quinta** vez.
+/// # 131 -> 132 — o PROJÉCTIL (TOP-20 #14, `line/components`)
+///
+/// UM componente registado novo: `ph2d::physics::ProjectileMotion`. Mesmo mecanismo dos degraus
+/// `123`, `125`, `126`, `127`, `137` e `131`.
+///
+/// ⭐⭐⭐ **E ele só existe porque a composição foi MEDIDA primeiro** (§5.0). A sonda
+/// `ph2d-physics-ecs/tests/it/mede_o_que_a_composicao_ja_da.rs` mostrou que um corpo **dinâmico**
+/// com `restitution = 1` **já ricocheteia exactamente** (razão `1,000` em todos os ângulos) — logo
+/// o ricochete não é a razão de este componente existir. A razão é a linha seguinte da tabela: o
+/// mesmo tiro contra uma **caixa leve** sai a `10,252` em vez de `12,001` e por outro caminho.
+/// *Um projéctil dinâmico é participante da física; uma bala de arcade não tem massa.*
+///
+/// ⛔⛔ **O `ProjectileState` NÃO é componente, pela mesma razão do `TopDownState`:** velocidade,
+/// metros percorridos e saltos gastos mudam por tique, e um campo assim num componente registado
+/// faria o undo ver cada quadro como um passo. Ele viaja no MESMO `ControllerMemory` — e foi ele
+/// que **provou** que aquele tipo funciona: acrescentá-lo não compilou até passar pelo `record` e
+/// pelo `seed`, que é exactamente o que o doc do `player_state` prometia.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v131 não
+/// tem o componente, logo lê-se inteiro por este binário.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima sexta** vez.
+/// # 132 -> 133 — o CÉREBRO AUTORÁVEL (TOP-20 #15, `line/components`)
+///
+/// UM componente registado novo: `ph2d::ecs::StateMachine` — os estados, as setas e o inicial.
+/// Mesmo mecanismo dos degraus `123`, `125`, `126`, `127`, `137`, `131` e `132`.
+///
+/// ⭐⭐⭐ **E ele só existe porque a composição foi MEDIDA primeiro** (§5.0). A sonda
+/// `ph2d-ecs/tests/it/mede_o_que_a_composicao_ja_da_ao_cerebro.rs` respondeu **NÃO** em três
+/// sítios: o mesmo sinal com duas linhas contraditórias dispara **as duas** (nada escolhe uma — *e
+/// escolher uma é o que um estado é*), a `SignalAction` tem **5** campos e **zero** são uma guarda,
+/// e dos **7** verbos com sink **nenhum** emite um sinal. *O que faltava não eram acções: era a
+/// MEMÓRIA de em que estado se está.*
+///
+/// ⛔⛔ **O `StateMachineRuntime` NÃO é componente registado, pela mesma razão do `TimerRuntime`:**
+/// registá-lo faria **cada transição** virar um passo de `Ctrl+Z`. E a cerca é o **TIPO** — ele não
+/// deriva `Serialize`, logo a linha do registo nem compila. Ele é reposto ao rebobinar pela porta
+/// do `ph2d_ecs::rewind_runtime`, escrita na **W0** desta mesma jornada por o defeito existir já
+/// nos três runtimes que havia.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v132 não
+/// tem o componente, logo lê-se inteiro por este binário.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima sétima** vez.
+/// # 133 -> 134 — o SCRIPT DO ARTISTA passa a ser GRAVADO (TOP-20 #16, `line/components`)
+///
+/// ⚠️ **Nenhum tipo novo, e o número sobe mesmo assim:** o `ph2d::script::LuauScript` existia desde
+/// o M14 e o registador dele **não era chamado no boot** — o `WorldSnapshot` descartava-o EM
+/// SILÊNCIO. Entrar no `build_component_registry` é o que muda o que o FICHEIRO contém (um blob por
+/// objecto com script), e é isso que o número mede.
+///
+/// ⚠️ **A forma do componente também mudou na mesma wave** (`{ bytecode, lateral_key }` →
+/// `{ source, own }`), e ⛔ **isso não pede migração**: a forma velha **nunca foi gravada**. A
+/// antiga carregava `entity.to_bits()` dentro dos bytes — o veneno do undo que o §5 proíbe.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v133 não
+/// tem blob de script, logo lê-se inteiro por este binário.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima oitava** vez.
+///
+/// # 134 -> 135 — o EMISSOR DE PARTÍCULAS de um objecto (TOP-20 #18, `line/components`)
+///
+/// O `ph2d::ecs::ParticleEmitter` passa a ser gravado: sem o degrau, um projecto do v134 lido por
+/// este binário e regravado ficaria igual, mas um v135 lido por um binário velho **perderia o
+/// jacto em silêncio** — que é exactamente o que o número existe para impedir.
+///
+/// ⛔ **O que CORRE não está no ficheiro**: as partículas vivas, o relógio local e os segmentos de
+/// emissão são da corrida (a lei do `Spawned`), e a cerca é o TIPO.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v134 não
+/// tem blob de emissor, logo lê-se inteiro por este binário.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima nona** vez.
+/// # 135 -> 136 — o osso DOBRA: `Bone` ganha `segments` e a curvatura (`line/Vector`)
+///
+/// DOIS campos novos no `ph2d::skeleton::Bone`: `segments: u8` e `curve: Bend` (as duas alças do
+/// *Bendy Bone*). É a F8 da fila do esqueleto.
+///
+/// ⚠️⚠️ **O degrau é obrigatório e a razão é o postcard, não o campo** — a mesma lei dos degraus
+/// `112` e `127`: ele é **posicional**, logo um ficheiro gravado com dois campos seria lido com
+/// quatro **em silêncio**, com os bytes do vizinho a entrarem no `segments`. Com o degrau, o load
+/// **recusa em voz alta**.
+///
+/// ⭐⭐ **O NASCIMENTO É O NEUTRO, e não por promessa:** `segments = 1` **ou** a curvatura recta
+/// fazem a fábrica de sub-ossos colapsar num osso só, sem passar pelos frames, e o resultado é
+/// `assert_eq!`-idêntico ao que a `SkinBone::new` devolvia (gates
+/// `a_straight_bone_is_still_exactly_one_bone` e `a_skin_of_straight_bones_did_not_move_a_single_bit`,
+/// em `ph2d-skeleton`). ⇒ todo rig já autorado deforma-se **ao bit** como antes; o degrau é só
+/// sobre o FORMATO.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima terceira** vez nesta escada, e pela razão de
+/// sempre: os componentes viajam em `ComponentBlob`s, que para ela são opacos.
+///
+/// # 136 -> 137 — a malha de uma imagem presa leva os PESOS dentro (`line/Vector`)
+///
+/// Os bytes opacos do `SkinBind::source` de uma **imagem** deixaram de ser uma
+/// `ph2d_poly2d::Mesh2d` e passaram a ser uma `ph2d_skeleton_live::skinned_mesh::SkinnedMesh`
+/// (`{ mesh, pesos }`). É a ligação do padrão-ouro ao produto: os *Bounded Biharmonic Weights*
+/// são a solução de um problema variacional sobre a arte inteira, logo resolvem-se **uma vez ao
+/// prender** e viajam com a malha.
+///
+/// ⚠️⚠️ **O degrau é obrigatório e a razão é o postcard, como nos degraus `112`, `127` e `136`:**
+/// ele é **posicional**, e a `SkinnedMesh` é a `Mesh2d` **seguida** do vector de pesos. Um ficheiro
+/// gravado com a malha só acaba onde a nova espera o comprimento da tabela — e quem lesse os bytes
+/// seguintes leria lixo como pesos. Com o degrau, o load **recusa em voz alta**.
+///
+/// ⚠️ **Uma FORMA VECTORIAL não muda de formato** — ela continua a guardar um `VecPath`, e continua
+/// a resolver os pesos pela lei euclidiana derivada. ⛔ *Limite NOMEADO, não esquecimento:* o
+/// padrão-ouro precisa de uma malha do domínio, e um caminho de Bézier não tem uma. Enquanto isso
+/// não existir, um rig com as duas mídias tem duas leis — e é o que está aberto na fila.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 — e aqui com a razão extra
+/// que a wave já mediu: uma malha antiga não tem pesos, e derivá-los no load seria correr o solver
+/// (dezenas de ms por imagem) dentro do caminho de abrir um ficheiro.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima quarta** vez nesta escada, e por uma razão a
+/// mais: estes bytes não estão sequer num componente que a tripla percorra, estão **dentro** do
+/// `source` de um, que é opaco duas vezes.
+pub(crate) const PROJECT_SCHEMA: u32 = 137;

@@ -66,6 +66,24 @@ pub struct SkinBone {
     /// ⚠️ **Eles são CONSECUTIVOS na pele**, e o desempate do órfão conta com isso para achar o
     /// grupo a partir de um membro — [`SkinBone::bent`] é a única porta que os produz.
     pub sub: (u8, u8),
+    /// ⭐⭐⭐ **DE QUE OSSO AUTORADO este sub-osso é um pedaço** — o índice na lista de tendões que
+    /// o chamador resolveu.
+    ///
+    /// ⚠️⚠️ **Ele existe porque os pesos passaram a poder ser GUARDADOS** ([`Skin::point_with`]).
+    /// Enquanto a lei era derivada de uma distância, a pele não precisava de saber a que osso do
+    /// ARTISTA cada pose correspondia: cada uma calculava o peso dela sozinha. Com os pesos do
+    /// padrão-ouro resolvidos no bind, a tabela é por **osso autorado** e a pele tem `N` poses por
+    /// osso — alguém tem de dizer qual é qual.
+    ///
+    /// ⛔ **É um campo do sub-osso, e não um vector paralelo dentro da [`Skin`]**, pela mesma razão
+    /// que o [`SkinBone::sub`] o é: *«que pedaço de que osso sou eu»* é uma propriedade desta pose,
+    /// e uma lista ao lado pode dessincronizar-se da outra numa edição.
+    ///
+    /// ⚠️ **Um osso saltado NÃO desloca este índice.** A resolução salta tendões cujo osso foi
+    /// apagado; se isto fosse *«a minha posição na pele»* a tabela guardada passaria a apontar para
+    /// o osso errado no instante em que alguém apagasse um osso — e a arte saltava sem nada
+    /// reprovar. ⇒ é o índice do **tendão**, sempre.
+    pub tendon: u32,
 }
 
 impl SkinBone {
@@ -98,6 +116,9 @@ impl SkinBone {
             radius: (span * strength).max(0.0),
             pose: rest_inv.then(&bone_world).then(&shape_world_inv),
             sub: (0, 1),
+            // ⚠️ **`0` é o neutro honesto de um osso SOZINHO**, que é o que esta porta constrói —
+            // quem tem uma lista atribui o índice pela [`SkinBone::bent`], a única porta do produto.
+            tendon: 0,
         })
     }
 
@@ -119,6 +140,7 @@ impl SkinBone {
         spec: bend::BoneSpec,
         bone_world: Xform,
         shape_world_inv: Xform,
+        tendon: u32,
         out: &mut Vec<Self>,
     ) {
         let Some(base) = Self::new(
@@ -130,6 +152,7 @@ impl SkinBone {
         ) else {
             return;
         };
+        let base = Self { tendon, ..base };
         if spec.is_rigid() {
             out.push(base);
             return;
@@ -268,7 +291,70 @@ impl Skin {
     #[must_use]
     pub fn point(&self, p: [f64; 2], w: &mut [f64]) -> [f64; 2] {
         self.weights_at(p, w);
+        self.blend(p, w)
+    }
+
+    /// ⭐⭐⭐ **OS PESOS DE UM OSSO AUTORADO, REPARTIDOS PELOS SUB-OSSOS DELE** — escritos em `w`.
+    ///
+    /// `por_tendao[j]` é a fracção do ponto que pertence ao osso **que o artista desenhou**; esta
+    /// função traduz isso para a pele resolvida, que tem `N` poses por osso quando ele dobra.
+    ///
+    /// ⭐ **A partição é a MESMA lei de sempre** ([`bend::share`]) — um osso recto devolve `1.0` ao
+    /// bit, logo o caminho de um rig sem curvatura é a cópia directa da tabela. *A lei dos pesos
+    /// mudou; a lei de como um osso curvo os reparte não.*
+    ///
+    /// ⚠️ **Um tendão cujo osso foi APAGADO não tem pose nenhuma na pele, e o peso dele some** —
+    /// é por isso que a soma é renormalizada aqui em vez de se confiar na tabela: apagar um osso
+    /// não pode apagar a arte, que é a mesma decisão que o [`Skin::weights_at`] já tomava.
+    ///
+    /// ⛔ Uma tabela curta (ou vazia) devolve tudo a zero, e a renormalização não tem por onde
+    /// pegar ⇒ **o ponto fica onde está**. É a leitura honesta de *«esta malha não traz pesos»*, e
+    /// nunca um salto para a origem.
+    pub fn weights_from(&self, p: [f64; 2], por_tendao: &[f64], w: &mut [f64]) {
+        debug_assert_eq!(w.len(), self.bones.len());
+        let mut soma = 0.0;
+        for (i, b) in self.bones.iter().enumerate() {
+            let quota = if b.sub.1 <= 1 {
+                1.0
+            } else {
+                let (u, _) = project_to_segment(p, b.rest_a, b.rest_b);
+                bend::share(b.sub.0, b.sub.1, u)
+            };
+            let peso = por_tendao.get(b.tendon as usize).copied().unwrap_or(0.0) * quota;
+            w[i] = peso;
+            soma += peso;
+        }
+        if soma > 0.0 {
+            for v in w.iter_mut() {
+                *v /= soma;
+            }
+        }
+    }
+
+    /// ⭐⭐⭐ **[`Skin::point`] COM OS PESOS JÁ SABIDOS** — a porta do padrão-ouro.
+    ///
+    /// ⚠️⚠️ **Ela existe porque os *Bounded Biharmonic Weights* NÃO são função de uma posição.**
+    /// Eles são a solução de um problema variacional sobre a arte inteira, resolvido uma vez ao
+    /// prender; perguntá-los ponto a ponto por quadro seria re-resolver o problema por pixel. ⇒ o
+    /// consumidor traz a tabela, e esta função só a reparte e mistura.
+    ///
+    /// ⛔ **A mistura é a MESMA** ([`Skin::blend`]), e é isso que garante que as duas leis de peso
+    /// entregam geometria pela mesma aritmética — *duas misturas seriam duas artes*.
+    #[must_use]
+    pub fn point_with(&self, p: [f64; 2], por_tendao: &[f64], w: &mut [f64]) -> [f64; 2] {
+        self.weights_from(p, por_tendao, w);
+        self.blend(p, w)
+    }
+
+    /// A mistura `Σ ŵ_j · (M_j · p)` — a única aritmética que move um ponto, seja de onde vierem
+    /// os pesos.
+    ///
+    /// ⚠️ **Com todos os pesos a zero devolve o ponto INTACTO** (e não a origem): é a resposta
+    /// certa a *«nenhum osso reclama este ponto»*, e o que a torna segura é que as duas portas de
+    /// peso renormalizam antes de chegar aqui.
+    fn blend(&self, p: [f64; 2], w: &[f64]) -> [f64; 2] {
         let mut out = [0.0, 0.0];
+        let mut soma = 0.0;
         for (b, &peso) in self.bones.iter().zip(w.iter()) {
             if peso == 0.0 {
                 continue;
@@ -276,8 +362,9 @@ impl Skin {
             let q = b.pose.apply(p);
             out[0] += peso * q[0];
             out[1] += peso * q[1];
+            soma += peso;
         }
-        out
+        if soma == 0.0 { p } else { out }
     }
 
     /// **A PORTA DE UMA MÍDIA** — deforma uma sequência de pontos em lugar, com um rascunho só.

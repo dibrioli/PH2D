@@ -401,13 +401,26 @@ fn a_rig_authored_before_bendy_bones_resolves_to_exactly_the_same_skin() {
     let antiga: Vec<SkinBone> = skin
         .tendons
         .iter()
-        .filter_map(|b| {
+        .enumerate()
+        .filter_map(|(j, b)| {
             let e = *index.get(&b.bone)?;
             let vb = sim.world().get::<Bone>(e).copied()?;
             let mundo = ph2d_vec_entities::transform::xform_of_transform(
                 ph2d_vec_entities::transform::world_transform(&sim, e),
             );
-            SkinBone::new(Xform(b.rest), vb.length, vb.strength, mundo, shape_inv)
+            // ⚠️ **O `tendon` é escriturado pelo ORÁCULO também, e de propósito.** Ele não é
+            // geometria — é *«de que osso autorado esta pose é»*, e a `SkinBone::new` não tem como
+            // o saber (ela constrói um osso sozinho). O que este gate afirma é que as duas portas
+            // dão a mesma DEFORMAÇÃO; branquear o campo aqui seria fazer o gate mentir sobre o
+            // que compara, e cravá-lo a `0` faria o oráculo descrever um rig de um osso só.
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "o palco tem dois ossos"
+            )]
+            Some(SkinBone {
+                tendon: j as u32,
+                ..SkinBone::new(Xform(b.rest), vb.length, vb.strength, mundo, shape_inv)?
+            })
         })
         .collect();
     assert_eq!(antiga.len(), 2, "o palco tem dois ossos");

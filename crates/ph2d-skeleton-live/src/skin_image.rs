@@ -37,6 +37,8 @@ use std::collections::BTreeMap;
 
 use ph2d_ecs::{Entity, PresentWorld, SimRef, SimWorld, With, Without};
 use ph2d_poly2d::{Mesh2d, RefineOptions};
+
+use crate::skinned_mesh::SkinnedMesh;
 use ph2d_render::nine_slice::SlicePatchMirror;
 use ph2d_render::{RenderInstance, Sprite, SpriteMesh};
 use ph2d_skeleton::Xform;
@@ -155,6 +157,93 @@ pub fn joints_in_image(
         .flat_map(|&(_, a, t)| [a, t])
         .map(|p| l2p.apply(mundo.apply(p)))
         .collect()
+}
+
+/// ⭐⭐⭐ **OS PESOS DE PELE DESTA IMAGEM, PELO PADRÃO-OURO** — resolvidos uma vez, ao prender.
+///
+/// `eixos` são as extremidades de cada osso **no espaço da forma**, na MESMA ordem dos tendões
+/// (ver `skin_live::tendons_and_axes` — é uma lista só, de propósito). Devolve a tabela achatada
+/// `pesos[v * ossos + j]`, ou **vazia** quando o solver não tem resposta.
+///
+/// ⚠️⚠️ **A régua `local → pixel` entra AQUI, e a direcção é a que se lê ao contrário:** os eixos
+/// chegam em unidades da forma e a malha vive em **pixels da imagem**, então o que se aplica é a
+/// INVERSA da [`pixel_to_local`]. *Resolver no espaço da forma daria um resultado que depende da
+/// escala da sprite* — a mesma arte importada duas vezes com tamanhos diferentes prenderia
+/// conjuntos de vértices diferentes, e o artista veria dois rigs a partir de um desenho.
+///
+/// ⛔ **Vazia é uma resposta honesta**, e o consumidor sabe lê-la ([`ph2d_skeleton::Skin::point`]
+/// continua a derivar pela lei euclidiana). Ela acontece quando a sprite não tem régua (lado zero)
+/// ou quando a malha não admite laplaciano — nos dois casos *não sei* é melhor que uma tabela
+/// inventada.
+///
+/// ⚠️ **O custo é do gesto de PRENDER e está medido** (bancada da `ph2d-skin-weights`, release):
+/// `720` triângulos ⇒ `16 ms` · `1 584` ⇒ `135 ms` · `2 880` ⇒ `454 ms` · `5 120` ⇒ `1,5 s`. A
+/// malha de uma sprite típica cai na primeira linha; o `PH2D_BONE_LOG=1` imprime o relógio e a
+/// contagem para quem quiser medir a dele.
+#[must_use]
+pub fn weights_for_mesh(
+    sim: &SimWorld,
+    e: Entity,
+    mesh: &Mesh2d,
+    eixos: &[(ph2d_skeleton_ecs::Tendon, ([f64; 2], [f64; 2]))],
+    pixels_per_meter: f32,
+) -> Vec<f64> {
+    if eixos.is_empty() {
+        return Vec::new();
+    }
+    let Some(l2p) = sim
+        .world()
+        .get::<Sprite>(e)
+        .and_then(|s| pixel_to_local(s, mesh.size, pixels_per_meter))
+        .and_then(|p2l| p2l.inverse())
+    else {
+        return Vec::new();
+    };
+    let handles: Vec<ph2d_skin_weights::Handle> = eixos
+        .iter()
+        .map(|(_, (a, b))| ph2d_skin_weights::Handle {
+            a: l2p.apply(*a),
+            b: l2p.apply(*b),
+        })
+        .collect();
+    let comeco = std::time::Instant::now();
+    let Some(w) = ph2d_skin_weights::bounded_biharmonic(
+        mesh,
+        &handles,
+        ph2d_skin_weights::Options::default(),
+    ) else {
+        eprintln!(
+            "[bone] os pesos do padrao-ouro NAO resolveram ({} vertices, {} ossos) — esta imagem \
+             cai na lei derivada",
+            mesh.rest.len(),
+            handles.len()
+        );
+        return Vec::new();
+    };
+    if std::env::var_os("PH2D_BONE_LOG").is_some() {
+        let r = w.report;
+        eprintln!(
+            "[bone] pesos (BBW): {} vertices x {} ossos, {} presos, {} rondas, residuo {:.2e}, \
+             soma_pior {:.2e}, fora_de_banda {:.2e}, convergiu={} — {:?}",
+            r.vertices,
+            r.ossos,
+            r.presos,
+            r.rondas,
+            r.residuo,
+            r.soma_pior,
+            r.fora_de_banda,
+            r.convergiu,
+            comeco.elapsed()
+        );
+    }
+    if !w.report.convergiu {
+        eprintln!(
+            "[bone] ⚠ os pesos do padrao-ouro nao CONVERGIRAM em {} rondas (residuo {:.2e}) — a \
+             solucao e' admissivel e pode nao ser o minimo",
+            w.report.rondas, w.report.residuo
+        );
+    }
+    w.por_vertice.into_iter().flatten().collect()
 }
 
 /// Um quadro de 60 fps, em microssegundos — o RECURSO de que o orçamento da pele é uma fatia.
@@ -339,23 +428,56 @@ pub fn deform_field_with(
 ///
 /// `None` quando um vértice de repouso cai fora do quad da sprite (a UV não existe) — o mesmo
 /// critério de sempre, numa porta só.
+/// ⭐⭐⭐ **E `pesos` é a tabela do PADRÃO-OURO guardada no bind** — vazia ⇒ a lei derivada.
+///
+/// ⚠️⚠️ **Ela viaja pelo REFINAMENTO, e é isso que a torna utilizável no `Smooth`:** um vértice que
+/// a subdivisão inventa não tem peso guardado, e a única resposta certa é o baricêntrico do
+/// triângulo que o gerou ([`ph2d_poly2d::refine_posed_attrs`]). ⛔ Localizar o ponto na malha seria
+/// `O(n)` por ponto para chegar à mesma resposta que a proveniência já sabe de graça.
 #[must_use]
 pub fn posed_sprite_mesh(
     mesh: Mesh2d,
     p2l: Xform,
     pele: &ph2d_skeleton::Skin,
+    pesos: &[f64],
     anchor: [f32; 2],
     size: [f32; 2],
     refine: Option<RefineOptions>,
 ) -> Option<(SpriteMesh, u32)> {
     let mut escrever = pele.scratch();
-    let mut campo = |q: [f64; 2]| pele.point(p2l.apply(q), &mut escrever);
+    // ⭐ **UMA porta por lei, escolhida UMA vez** — e não um `if` por vértice: a tabela ou existe
+    // para esta malha ou não existe, e isso é um facto do bind, não de um ponto.
+    let ossos = if mesh.rest.is_empty() {
+        0
+    } else {
+        pesos.len() / mesh.rest.len()
+    };
+    let mut campo = |q: [f64; 2], w: &[f64]| {
+        let p = p2l.apply(q);
+        if ossos == 0 {
+            pele.point(p, &mut escrever)
+        } else {
+            pele.point_with(p, w, &mut escrever)
+        }
+    };
     let (mesh, posed, k) = match refine {
         None => {
-            let posed: Vec<[f64; 2]> = mesh.rest.iter().map(|&q| campo(q)).collect();
+            let posed: Vec<[f64; 2]> = mesh
+                .rest
+                .iter()
+                .enumerate()
+                .map(|(v, &q)| {
+                    let w = pesos.get(v * ossos..(v + 1) * ossos).unwrap_or(&[]);
+                    campo(q, w)
+                })
+                .collect();
             (mesh, posed, 1)
         }
-        Some(o) => ph2d_poly2d::refine_posed(&mesh, &mut campo, o),
+        Some(o) => {
+            let (m, p, _, k) =
+                ph2d_poly2d::refine_posed_attrs(&mesh, pesos, ossos, &mut campo, o);
+            (m, p, k)
+        }
     };
     // ⭐ A UV de cada vértice é a do QUAD no ponto de REPOUSO dele — ver [`pixel_to_local`].
     let uv = mesh
@@ -430,11 +552,11 @@ pub fn attach_skin_meshes(
     px_per_world: f64,
     suspensa: Option<u64>,
 ) -> usize {
-    let presas: Vec<(Entity, Mesh2d)> = sim
+    let presas: Vec<(Entity, SkinnedMesh)> = sim
         .world()
         .iter_entities()
         .filter(|er| is_skinned_image(sim.world(), er.id()) && Some(er.id().to_bits()) != suspensa)
-        .filter_map(|er| Some((er.id(), mesh_of(sim, er.id())?)))
+        .filter_map(|er| Some((er.id(), skinned_mesh_of(sim, er.id())?)))
         .collect();
     if presas.is_empty() {
         return 0;
@@ -449,11 +571,11 @@ pub fn attach_skin_meshes(
             .map(|(p, r)| (r.0, p))
             .collect()
     };
-    let vivas: Vec<(Entity, Entity, Mesh2d)> = presas
+    let vivas: Vec<(Entity, Entity, SkinnedMesh)> = presas
         .into_iter()
         .filter_map(|(e, m)| Some((e, *instancias.get(&e)?, m)))
         .collect();
-    let guardadas: usize = vivas.iter().map(|(_, _, m)| m.tris.len()).sum();
+    let guardadas: usize = vivas.iter().map(|(_, _, m)| m.mesh.tris.len()).sum();
     if let Some(o) = smooth
         && guardadas > o.max_pieces
     {
@@ -471,10 +593,10 @@ pub fn attach_skin_meshes(
             avisa_quad_que_nao_e_o_da_sprite();
             continue;
         }
-        let Some((p2l, pele)) = deform_field(sim, e, mesh.size, pixels_per_meter) else {
+        let Some((p2l, pele)) = deform_field(sim, e, mesh.mesh.size, pixels_per_meter) else {
             continue;
         };
-        let antes = mesh.tris.len();
+        let antes = mesh.mesh.tris.len();
         // ⚠️⚠️ **A tolerância é em pixels de ECRÃ:** meia unidade local é meio pixel a zoom `1` e
         // **quatro** a zoom `8`. *A suavidade que o olho vê é um facto de espaço de ecrã* — uma
         // tolerância em unidades locais afinaria a malha para o zoom em que o artista não está.
@@ -489,7 +611,9 @@ pub fn attach_skin_meshes(
                 max_pieces: parte_do_orcamento(antes, guardadas, o.max_pieces),
             }
         });
-        let Some((malha, k)) = posed_sprite_mesh(mesh, p2l, &pele, inst.anchor, inst.size, refine)
+        let SkinnedMesh { mesh, pesos } = mesh;
+        let Some((malha, k)) =
+            posed_sprite_mesh(mesh, p2l, &pele, &pesos, inst.anchor, inst.size, refine)
         else {
             continue;
         };
@@ -525,16 +649,29 @@ pub fn attach_skin_meshes(
     feitas
 }
 
-/// A malha guardada nos bytes opacos da pele desta entidade.
+/// ⭐⭐ **A malha GUARDADA desta imagem, com os pesos dentro** — a porta única do que o quadro lê.
 ///
 /// ⚠️ **O `SkinBind::source` é opaco de propósito**, e quem sabe decodificá-lo é quem sabe o que a
-/// coisa É: uma entidade com `Sprite` guarda uma [`Mesh2d`], uma com `VecPathRef` guarda um
+/// coisa É: uma entidade com `Sprite` guarda uma [`SkinnedMesh`], uma com `VecPathRef` guarda um
 /// `VecPath`. ⛔ Um discriminante guardado ao lado seria uma segunda fonte de verdade sobre a
 /// mídia, e ela poderia discordar da entidade.
+///
+/// ⛔ **Uma tabela que não fecha com a malha é RECUSADA** ([`SkinnedMesh::valida`]) — ler uma
+/// tabela deslocada por um vértice entrega pesos plausíveis e arte errada.
+#[must_use]
+pub fn skinned_mesh_of(sim: &SimWorld, e: Entity) -> Option<SkinnedMesh> {
+    let skin = sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e)?;
+    let m: SkinnedMesh = postcard::from_bytes(&skin.source).ok()?;
+    m.valida().then_some(m)
+}
+
+/// A malha guardada, sem os pesos — para quem só pergunta pela geometria.
+///
+/// ⚠️ **Ela é uma DOBRA da [`skinned_mesh_of`], nunca uma segunda descodificação**: dois leitores
+/// dos mesmos bytes divergem no primeiro que alguém mexer.
 #[must_use]
 pub fn mesh_of(sim: &SimWorld, e: Entity) -> Option<Mesh2d> {
-    let skin = sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e)?;
-    postcard::from_bytes(&skin.source).ok()
+    skinned_mesh_of(sim, e).map(|m| m.mesh)
 }
 
 #[cfg(test)]

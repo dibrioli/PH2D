@@ -8363,10 +8363,12 @@ dependencies = [
  "ph2d-render",
  "ph2d-skeleton",
  "ph2d-skeleton-ecs",
+ "ph2d-skin-weights",
  "ph2d-vec-entities",
  "ph2d-vec-scene",
  "ph2d-vec-skin",
  "postcard",
+ "serde",
 ]
 
 [[package]]
@@ -8375,6 +8377,15 @@ version = "0.0.0"
 dependencies = [
  "ph2d-tokens",
  "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-skin-weights"
+version = "0.0.0"
+dependencies = [
+ "ph2d-affine",
+ "ph2d-poly2d",
+ "ph2d-skeleton",
 ]
 
 [[package]]

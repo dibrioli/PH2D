@@ -123,7 +123,24 @@ pub fn deviation(
     posed: &[[f64; 2]],
     deform: &mut dyn FnMut([f64; 2]) -> [f64; 2],
 ) -> f64 {
+    deviation_attrs(mesh, posed, &[], 0, &mut |p, _| deform(p))
+}
+
+/// [`deviation`] com os **atributos por vértice** na mão — ver [`refine_posed_attrs`].
+///
+/// ⚠️ **No meio de uma aresta o atributo é a MÉDIA das pontas**, que é exactamente o que o
+/// refinamento lá vai pôr ([`attrs_canonicos`]). *Medir o desvio com um atributo que a subdivisão
+/// não vai produzir mede outro campo* — e o `k` sairia calibrado para uma malha que ninguém desenha.
+#[must_use]
+pub fn deviation_attrs(
+    mesh: &Mesh2d,
+    posed: &[[f64; 2]],
+    attrs: &[f64],
+    stride: usize,
+    deform: &mut dyn FnMut([f64; 2], &[f64]) -> [f64; 2],
+) -> f64 {
     let mut pior = 0.0_f64;
+    let mut meio_attrs = vec![0.0; stride];
     for t in &mesh.tris {
         for k in 0..3 {
             let (i, j) = (t[k] as usize, t[(k + 1) % 3] as usize);
@@ -133,7 +150,16 @@ pub fn deviation(
             let (Some(&pa), Some(&pb)) = (posed.get(i), posed.get(j)) else {
                 continue;
             };
-            let meio = deform([(ra[0] + rb[0]) / 2.0, (ra[1] + rb[1]) / 2.0]);
+            for (c, v) in meio_attrs.iter_mut().enumerate() {
+                *v = f64::midpoint(
+                    attrs.get(i * stride + c).copied().unwrap_or(0.0),
+                    attrs.get(j * stride + c).copied().unwrap_or(0.0),
+                );
+            }
+            let meio = deform(
+                [(ra[0] + rb[0]) / 2.0, (ra[1] + rb[1]) / 2.0],
+                &meio_attrs,
+            );
             let reta = [(pa[0] + pb[0]) / 2.0, (pa[1] + pb[1]) / 2.0];
             pior = pior.max((meio[0] - reta[0]).hypot(meio[1] - reta[1]));
         }
@@ -194,13 +220,55 @@ pub fn refine_posed(
     deform: &mut dyn FnMut([f64; 2]) -> [f64; 2],
     opts: RefineOptions,
 ) -> (Mesh2d, Vec<[f64; 2]>, u32) {
-    let posed: Vec<[f64; 2]> = mesh.rest.iter().map(|&p| deform(p)).collect();
+    let (m, p, _, k) = refine_posed_attrs(mesh, &[], 0, &mut |q, _| deform(q), opts);
+    (m, p, k)
+}
+
+/// ⭐⭐⭐ **[`refine_posed`] COM ATRIBUTOS POR VÉRTICE A BORDO** — a porta que a pele de imagem usa.
+///
+/// `attrs` é achatado: `attrs[v * stride + c]` é a componente `c` do vértice `v`. Cada vértice NOVO
+/// recebe o atributo **interpolado baricentricamente** dos vértices originais que o geraram, e o
+/// campo passa a ser chamado com ele: `deform(ponto, atributos)`.
+///
+/// ⭐⭐⭐ **Ela existe porque o padrão-ouro dos pesos NÃO é derivável de uma posição.** O *bump*
+/// euclidiano era uma função do ponto, logo bastava dar-lhe o ponto; os *Bounded Biharmonic
+/// Weights* são a solução de um problema **global** sobre a arte, resolvida uma vez ao prender e
+/// **guardada nos vértices**. ⇒ um vértice que a subdivisão inventa não tem peso — ele tem de o
+/// herdar, e a única resposta certa é a do triângulo que o gerou.
+///
+/// ⛔ **A localização do ponto NÃO serve.** Procurar a que triângulo pertence um ponto novo custa
+/// `O(n)` por ponto e devolve a mesma resposta que a proveniência já sabe de graça — *a subdivisão
+/// conhece o triângulo de origem porque foi ela que o partiu*.
+///
+/// ⚠️ **A conformidade dos atributos é a mesma dos pontos, e pela mesma razão:** um ponto de aresta
+/// é nomeado pela [`No::Aresta`] canónica, então os dois triângulos vizinhos interpolam o atributo
+/// **das mesmas duas pontas, na mesma ordem** — mesmos bits, logo nenhuma costura de peso.
+///
+/// Com `stride == 0` é o [`refine_posed`] **ao bit**, e o vector de atributos sai vazio.
+#[must_use]
+pub fn refine_posed_attrs(
+    mesh: &Mesh2d,
+    attrs: &[f64],
+    stride: usize,
+    deform: &mut dyn FnMut([f64; 2], &[f64]) -> [f64; 2],
+    opts: RefineOptions,
+) -> (Mesh2d, Vec<[f64; 2]>, Vec<f64>, u32) {
+    let posed: Vec<[f64; 2]> = mesh
+        .rest
+        .iter()
+        .enumerate()
+        .map(|(v, &p)| deform(p, fatia(attrs, stride, v)))
+        .collect();
     let tecto = max_split(mesh.tris.len(), opts);
-    let k = splits_for(deviation(mesh, &posed, deform), mesh.tris.len(), opts);
+    let k = splits_for(
+        deviation_attrs(mesh, &posed, attrs, stride, deform),
+        mesh.tris.len(),
+        opts,
+    );
     if k <= 1 {
-        return (mesh.clone(), posed, 1);
+        return (mesh.clone(), posed, attrs.to_vec(), 1);
     }
-    let (r, p) = build(mesh, deform, k);
+    let (r, p, a) = build(mesh, attrs, stride, deform, k);
     // ⭐⭐⭐ **O ESTIMADOR CONFERE O QUE ENTREGOU, e corrige UMA vez.**
     //
     // ⚠️⚠️ **Medido, e foi um gate vermelho que o exigiu:** a lei `O(h²)` descreve a tendência, não
@@ -210,9 +278,9 @@ pub fn refine_posed(
     // ⚠️ **UMA correcção, nunca um laço até convergir:** a segunda estimativa parte da medição já
     // feita **na malha refinada** (`k · √(d/tol)`), que é a lei aplicada onde ela vale — e um laço
     // seria trabalho por quadro sem tecto, exactamente o que o orçamento existe para impedir.
-    let d = deviation(&r, &p, deform);
+    let d = deviation_attrs(&r, &p, &a, stride, deform);
     if d <= opts.tolerance_px || k >= tecto {
-        return (r, p, k);
+        return (r, p, a, k);
     }
     #[expect(
         clippy::cast_possible_truncation,
@@ -221,20 +289,34 @@ pub fn refine_posed(
     )]
     let k2 = ((f64::from(k) * (d / opts.tolerance_px.max(f64::MIN_POSITIVE)).sqrt()).ceil() as u32)
         .clamp(k + 1, tecto.max(k + 1));
-    let (r2, p2) = build(mesh, deform, k2);
-    (r2, p2, k2)
+    let (r2, p2, a2) = build(mesh, attrs, stride, deform, k2);
+    (r2, p2, a2, k2)
+}
+
+/// Os atributos do vértice `v`. Vazio quando não há atributos — ⛔ **nunca** um índice fora da
+/// fatia: uma tabela mais curta que a malha é um defeito do chamador, e `&[]` di-lo em vez de
+/// entregar os pesos do vizinho.
+fn fatia(attrs: &[f64], stride: usize, v: usize) -> &[f64] {
+    if stride == 0 {
+        return &[];
+    }
+    attrs.get(v * stride..(v + 1) * stride).unwrap_or(&[])
 }
 
 /// A grelha baricêntrica de `k` partes por aresta, com os pontos das arestas **partilhados**.
 fn build(
     mesh: &Mesh2d,
-    deform: &mut dyn FnMut([f64; 2]) -> [f64; 2],
+    attrs: &[f64],
+    stride: usize,
+    deform: &mut dyn FnMut([f64; 2], &[f64]) -> [f64; 2],
     k: u32,
-) -> (Mesh2d, Vec<[f64; 2]>) {
+) -> (Mesh2d, Vec<[f64; 2]>, Vec<f64>) {
     let kf = f64::from(k);
     let mut indice: std::collections::BTreeMap<No, u32> = std::collections::BTreeMap::new();
     let mut rest: Vec<[f64; 2]> = Vec::new();
     let mut agora: Vec<[f64; 2]> = Vec::new();
+    let mut saida_attrs: Vec<f64> = Vec::new();
+    let mut scratch = vec![0.0; stride];
     let mut tris: Vec<[u32; 3]> = Vec::new();
 
     for (t_idx, t) in mesh.tris.iter().enumerate() {
@@ -252,13 +334,15 @@ fn build(
                 return v;
             }
             let p = ponto_canonico(chave, [a, b, c], t, mesh, kf, i, j);
+            attrs_canonicos(chave, t, attrs, stride, kf, i, j, &mut scratch);
             #[expect(
                 clippy::cast_possible_truncation,
                 reason = "a malha refinada não passa de 2^32 nós: o orçamento de peças limita-a muito antes"
             )]
             let v = rest.len() as u32;
             rest.push(p);
-            agora.push(deform(p));
+            agora.push(deform(p, &scratch));
+            saida_attrs.extend_from_slice(&scratch);
             indice.insert(chave, v);
             v
         };
@@ -280,7 +364,53 @@ fn build(
             size: mesh.size,
         },
         agora,
+        saida_attrs,
     )
+}
+
+/// Os atributos de um ponto da grelha baricêntrica, calculados **da chave** — o gémeo exacto do
+/// [`ponto_canonico`], e escrito ao lado dele de propósito: os dois têm de responder pela MESMA
+/// proveniência, senão um vértice recebe a posição de um sítio e o peso de outro.
+fn attrs_canonicos(
+    chave: No,
+    t: &[u32; 3],
+    attrs: &[f64],
+    stride: usize,
+    kf: f64,
+    i: u32,
+    j: u32,
+    out: &mut [f64],
+) {
+    if stride == 0 {
+        return;
+    }
+    let de = |v: u32, c: usize| -> f64 {
+        attrs
+            .get(v as usize * stride + c)
+            .copied()
+            .unwrap_or_default()
+    };
+    match chave {
+        No::Canto(v) => {
+            for (c, o) in out.iter_mut().enumerate() {
+                *o = de(v, c);
+            }
+        }
+        No::Aresta(u, v, s) => {
+            let f = f64::from(s) / kf;
+            for (c, o) in out.iter_mut().enumerate() {
+                let (pu, pv) = (de(u, c), de(v, c));
+                *o = (pv - pu).mul_add(f, pu);
+            }
+        }
+        No::Miolo(..) => {
+            let (u, v) = (f64::from(i) / kf, f64::from(j) / kf);
+            for (c, o) in out.iter_mut().enumerate() {
+                let a = de(t[0], c);
+                *o = (de(t[2], c) - a).mul_add(v, (de(t[1], c) - a).mul_add(u, a));
+            }
+        }
+    }
 }
 
 /// A chave canónica de um ponto da grelha baricêntrica.

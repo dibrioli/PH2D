@@ -153,7 +153,8 @@ fn ghost_times(
 struct PeleDoQuadro<'a> {
     ppm: f32,
     index: &'a ph2d_skeleton_live::skin_live::BoneIndex,
-    rest: &'a ph2d_poly2d::Mesh2d,
+    /// ⭐ A malha **com os pesos dentro**: o fantasma responde à mesma lei que o quadro vivo.
+    rest: &'a ph2d_skeleton_live::skinned_mesh::SkinnedMesh,
 }
 
 /// ⭐⭐⭐ **A MALHA DO FANTASMA — a arte deformada pelo esqueleto NAQUELE instante.**
@@ -184,12 +185,15 @@ fn ghost_mesh(
         )
     };
     let (p2l, pele) = ph2d_skeleton_live::skin_image::deform_field_with(
-        sim, entity, rest.size, ppm, index, &poses,
+        sim, entity, rest.mesh.size, ppm, index, &poses,
     )?;
+    // ⭐ **O fantasma usa os MESMOS pesos guardados que o quadro vivo** — se ele caísse na lei
+    // derivada, o passado desenhado não seria a arte que o animador tem na mão.
     ph2d_skeleton_live::skin_image::posed_sprite_mesh(
-        rest.clone(),
+        rest.mesh.clone(),
         p2l,
         &pele,
+        &rest.pesos,
         template.anchor,
         template.size,
         None,
@@ -236,7 +240,7 @@ pub fn build_ghosts(
     } in targets
     {
         let rest = Entity::try_from_bits(*entity)
-            .and_then(|e| ph2d_skeleton_live::skin_image::mesh_of(sim, e));
+            .and_then(|e| ph2d_skeleton_live::skin_image::skinned_mesh_of(sim, e));
         for (past, color) in [(true, settings.color_before), (false, settings.color_after)] {
             let times = ghost_times(settings, doc, relogios, live_clip_t, past);
             // O falloff é sobre a contagem DE FATO encontrada (em Keys pode faltar key de

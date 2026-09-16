@@ -32,7 +32,13 @@ ph2d-render = { path = "../ph2d-render" }
 # `ph2d-vector` com o orçamento derivado do buffer dele — a W4 derivou-o do TEMPO do quadro, que esta
 # crate mede sozinha: a malha desenha-se com a textura da própria sprite.)
 ph2d-vec-skin = { path = "../ph2d-vec-skin" }
+# ⭐⭐⭐ **O PADRÃO-OURO dos pesos de pele** (Bounded Biharmonic Weights, SIGGRAPH 2011), resolvido
+# uma vez ao PRENDER. ⚠️ Ele é uma folha que só depende da `ph2d-poly2d` — não há ciclo por aqui.
+ph2d-skin-weights = { path = "../ph2d-skin-weights" }
 postcard = { version = "1", features = ["use-std"] }
+# ⚠️ A malha GUARDADA passou a levar os pesos dentro (`skinned_mesh`), e o `derive` tem de ser
+# desta crate: o `postcard` traz o `serde` mas não o macro.
+serde = { version = "1", features = ["derive"] }
 
 [features]
 # ⚠️ HOWTO §2.5 — do tamanho do que ATRAVESSA a fronteira, e nada mais.

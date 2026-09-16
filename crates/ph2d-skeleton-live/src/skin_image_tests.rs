@@ -167,15 +167,15 @@ fn binding_an_image_to_a_still_skeleton_moves_nothing() {
         ),
         "o bind tinha de acontecer: ha' osso, ha' tinta e a pose nao e' singular"
     );
-    let malha = mesh_of(&sim, e).expect("a malha esta' guardada nos bytes opacos");
+    let malha = skinned_mesh_of(&sim, e).expect("a malha esta' guardada nos bytes opacos");
     let posados = posed_local(&sim, e, &malha).expect("a pele resolve");
     let p2l = pixel_to_local(
         sim.world().get::<Sprite>(e).expect("sprite"),
-        malha.size,
+        malha.mesh.size,
         PPM,
     )
     .expect("regua");
-    for (i, &r) in malha.rest.iter().enumerate() {
+    for (i, &r) in malha.mesh.rest.iter().enumerate() {
         let repouso = p2l.apply(r);
         let agora = posados[i];
         assert!(
@@ -207,7 +207,7 @@ fn turning_the_bone_carries_the_image() {
         GridOptions::default(),
         Some(raiz),
     ));
-    let malha = mesh_of(&sim, e).expect("malha");
+    let malha = skinned_mesh_of(&sim, e).expect("malha");
     let antes = posed_local(&sim, e, &malha).expect("pele");
     // Gira o osso um quarto de volta.
     {
@@ -649,13 +649,27 @@ fn melhor(mut ms: Vec<f64>) -> (f64, f64) {
 /// ⚠️ Vive no ARNÊS: no produto quem pergunta ao campo é o [`attach_skin_meshes`], que pode pedir-lhe
 /// **mais** pontos que os vértices da malha (o `Smooth`). Uma segunda porta no produto que só sabe
 /// perguntar pelos vértices seria a segunda resposta à mesma pergunta.
-fn posed_local(sim: &SimWorld, e: Entity, mesh: &Mesh2d) -> Option<Vec<[f64; 2]>> {
-    let (p2l, pele) = deform_field(sim, e, mesh.size, PPM)?;
+/// ⚠️⚠️ **Ela lê a MALHA GUARDADA INTEIRA (com os pesos), e não só a geometria** — desde que a pele
+/// de imagem passou ao padrão-ouro, medir com `pele.point` mediria a lei **euclidiana** enquanto o
+/// produto desenha com a tabela resolvida no bind. *Um arnês que não usa a lei do produto mede um
+/// programa que ninguém corre.*
+fn posed_local(sim: &SimWorld, e: Entity, sm: &SkinnedMesh) -> Option<Vec<[f64; 2]>> {
+    let (p2l, pele) = deform_field(sim, e, sm.mesh.size, PPM)?;
     let mut w = pele.scratch();
     Some(
-        mesh.rest
+        sm.mesh
+            .rest
             .iter()
-            .map(|&p| pele.point(p2l.apply(p), &mut w))
+            .enumerate()
+            .map(|(v, &p)| {
+                let q = p2l.apply(p);
+                let pesos = sm.pesos_de(v);
+                if pesos.is_empty() {
+                    pele.point(q, &mut w)
+                } else {
+                    pele.point_with(q, pesos, &mut w)
+                }
+            })
             .collect(),
     )
 }

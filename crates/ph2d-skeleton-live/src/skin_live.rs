@@ -201,7 +201,7 @@ fn resolve_with(
 ) -> Option<Skin> {
     let shape_inv = poses(shape).inverse()?;
     let mut ossos = Vec::with_capacity(skin.tendons.len());
-    for b in &skin.tendons {
+    for (j, b) in skin.tendons.iter().enumerate() {
         // Um osso apagado — ou um cuja identidade não está no índice — é SALTADO, e os outros
         // renormalizam-se sozinhos: apagar um osso não pode apagar a forma.
         let Some(&e) = index.get(&b.bone) else {
@@ -214,7 +214,24 @@ fn resolve_with(
         // torna a lista de poses rígidas que a [`Skin`] já sabia misturar. ⚠️ Com o osso recto (o
         // nascimento) ela empurra exactamente o que a `SkinBone::new` empurrava, **ao bit**, então
         // todo rig já autorado atravessa esta linha sem mudar um bit.
-        SkinBone::bent(Xform(b.rest), vb.spec(), poses(e), shape_inv, &mut ossos);
+        //
+        // ⭐⭐⭐ **E o índice do TENDÃO viaja com cada sub-osso** ([`SkinBone::tendon`]): é ele que
+        // faz uma tabela de pesos guardada no bind — que é por osso AUTORADO — reencontrar as poses
+        // certas depois de a resolução saltar os ossos apagados. ⛔ Usar a posição na pele em vez
+        // do índice do tendão faria a arte saltar no instante em que alguém apagasse um osso, e
+        // nenhum gate de geometria veria.
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "o número de tendões de uma pele é o número de ossos do esqueleto"
+        )]
+        SkinBone::bent(
+            Xform(b.rest),
+            vb.spec(),
+            poses(e),
+            shape_inv,
+            j as u32,
+            &mut ossos,
+        );
     }
     Skin::new(ossos)
 }
@@ -372,13 +389,41 @@ pub fn bind(
 /// acompanha o braço vectorial»*.
 #[must_use]
 fn tendons_for(sim: &SimWorld, ossos: &[Entity], shape_inv: Xform) -> Vec<Tendon> {
+    tendons_and_axes(sim, ossos, shape_inv)
+        .into_iter()
+        .map(|(t, _)| t)
+        .collect()
+}
+
+/// ⭐⭐⭐ **OS TENDÕES E O EIXO DE CADA UM, no espaço da coisa** — a porta que o padrão-ouro precisa.
+///
+/// ⚠️⚠️ **Ela existe para os dois NÃO poderem desalinhar-se.** Os pesos guardados são indexados
+/// pela posição na lista de tendões, e o solver precisa do **eixo** de cada osso para saber que
+/// pedaço da arte é de quem. Se as duas listas fossem produzidas por duas varreduras, bastaria um
+/// osso sem `StableId` numa delas para a coluna `j` da tabela passar a descrever o osso `j+1` — e
+/// a arte sairia deformada pelo osso errado, com a soma dos pesos a `1` e nenhum gate de geometria
+/// a acusar. ⇒ **um percurso só, um `filter_map` só, dois valores por elemento.**
+///
+/// O eixo sai do próprio `rest` (`S⁻¹ ∘ B`), que é a única coisa que o tendão guarda — logo ele é,
+/// por construção, o eixo que a pele vai usar no quadro.
+#[must_use]
+fn tendons_and_axes(
+    sim: &SimWorld,
+    ossos: &[Entity],
+    shape_inv: Xform,
+) -> Vec<(Tendon, ([f64; 2], [f64; 2]))> {
     ossos
         .iter()
         .filter_map(|&e| {
-            Some(Tendon {
-                bone: ph2d_ecs::stable_id_of(sim.world(), e)?,
-                rest: world_of(sim, e).then(&shape_inv).0,
-            })
+            let rest = world_of(sim, e).then(&shape_inv);
+            let comprimento = sim.world().get::<Bone>(e)?.length;
+            Some((
+                Tendon {
+                    bone: ph2d_ecs::stable_id_of(sim.world(), e)?,
+                    rest: rest.0,
+                },
+                (rest.apply([0.0, 0.0]), rest.apply([comprimento, 0.0])),
+            ))
         })
         .collect()
 }
@@ -420,13 +465,22 @@ pub fn bind_image(
     else {
         return false;
     };
-    let Ok(bytes) = postcard::to_allocvec(&malha) else {
-        return false;
-    };
     let Some(shape_inv) = world_of(sim, e).inverse() else {
         return false;
     };
-    let tendoes = tendons_for(sim, &ossos, shape_inv);
+    let pares = tendons_and_axes(sim, &ossos, shape_inv);
+    // ⭐⭐⭐ **OS PESOS DO PADRÃO-OURO, RESOLVIDOS AQUI** — uma vez, sobre a arte, ao prender.
+    //
+    // ⚠️ **O espaço é o da MALHA (pixels da imagem)**, e é por isso que os eixos atravessam a
+    // régua `local → pixel`: o solver mede distâncias sobre a própria arte, e no espaço da forma
+    // uma sprite escalada daria um osso que prende mais ou menos vértices conforme o zoom do
+    // artista.
+    let pesos = crate::skin_image::weights_for_mesh(sim, e, &malha, &pares, pixels_per_meter);
+    let guardada = crate::skinned_mesh::SkinnedMesh { mesh: malha, pesos };
+    let Ok(bytes) = postcard::to_allocvec(&guardada) else {
+        return false;
+    };
+    let tendoes = pares.into_iter().map(|(t, _)| t).collect();
     sim.world_mut()
         .entity_mut(e)
         .insert(SkinBind::new(bytes, tendoes));

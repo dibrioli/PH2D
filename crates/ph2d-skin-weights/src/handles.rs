@@ -45,7 +45,11 @@ fn dist2(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
 /// ⚠️ **Em disputa ganha o MAIS PRÓXIMO.** Dois ossos que se encontram numa junta partilham o ponto,
 /// e sem desempate o vértice ficaria do último a ser visto — *a ordem da lista não é uma lei*.
 #[must_use]
-pub(crate) fn pin(mesh: &ph2d_poly2d::Mesh2d, ossos: &[Handle]) -> Vec<Option<usize>> {
+pub(crate) fn pin(
+    mesh: &ph2d_poly2d::Mesh2d,
+    ossos: &[Handle],
+    folga_da_junta: f64,
+) -> Vec<Option<usize>> {
     let n = mesh.rest.len();
     let tol2 = {
         let mut soma = 0.0;
@@ -65,16 +69,33 @@ pub(crate) fn pin(mesh: &ph2d_poly2d::Mesh2d, ossos: &[Handle]) -> Vec<Option<us
         (media * 0.5) * (media * 0.5)
     };
 
+    // ⭐⭐⭐ **A FOLGA DA JUNTA, em unidades da aresta média.** Ver o doc da função.
+    let folga2 = {
+        let media = tol2.sqrt() * 2.0;
+        (media * folga_da_junta) * (media * folga_da_junta)
+    };
+
     let mut dono: Vec<Option<usize>> = vec![None; n];
     let mut melhor = vec![f64::INFINITY; n];
     // 1ª metade — a banda em torno do eixo, com o mais próximo a ganhar.
     for (j, o) in ossos.iter().enumerate() {
         for (v, &p) in mesh.rest.iter().enumerate() {
             let d = dist2(p, o.a, o.b);
-            if d <= tol2 && d < melhor[v] {
-                melhor[v] = d;
-                dono[v] = Some(j);
+            if d > tol2 || d >= melhor[v] {
+                continue;
             }
+            // ⛔⛔ **AMBÍGUO ⇒ LIVRE.** Se algum OUTRO osso está a menos da folga deste vértice, ele
+            // não é «claramente de ninguém» — e prendê-lo ali é o que transforma a solução numa
+            // ESCADA. Ver o doc da função.
+            let ambiguo = ossos
+                .iter()
+                .enumerate()
+                .any(|(k, outro)| k != j && dist2(p, outro.a, outro.b) < folga2);
+            if ambiguo {
+                continue;
+            }
+            melhor[v] = d;
+            dono[v] = Some(j);
         }
     }
     // 2ª metade — todo osso leva pelo menos um.

@@ -242,3 +242,90 @@ fn a_porta_recusa_o_que_nao_tem_resposta() {
         "sem malha"
     );
 }
+
+/// ⭐⭐⭐ **A FOLGA DA JUNTA DÁ VOTO À ENERGIA JUNTO DELA** — sem ela, os pinos de dois ossos
+/// encostam-se e a mistura não tem onde acontecer.
+///
+/// ⚠️ **A régua é o LARGURA DA TRANSIÇÃO ao longo do eixo**: por quantos vértices da linha central o
+/// peso do 1.º osso viaja de `0,9` a `0,1`. Com os pinos encostados ela é `0` — o peso salta de `1`
+/// para `0` entre vizinhos —, e a mistura fica sem domínio.
+///
+/// ⛔ **Não é um gate de suavidade e nem podia ser:** medir o peso sobre a linha do eixo com folga
+/// `0` mede a **condição de fronteira**, não a solução (foi como eu quase concluí que o padrão-ouro
+/// era uma escada). O que este gate afirma é que a linha do eixo **deixa de ser toda Dirichlet**.
+///
+/// (Mutação: `folga_da_junta: 0.0` no `Default` ⇒ RED, com a largura a ler `0`.)
+#[test]
+fn a_folga_da_junta_deixa_a_energia_decidir_junto_da_junta() {
+    // Dois ossos colineares que se tocam — a forma que produz o defeito.
+    let m = grelha_de_teste(40, 24, 400.0, 240.0);
+    let ossos = [
+        Handle {
+            a: [0.0, 120.0],
+            b: [200.0, 120.0],
+        },
+        Handle {
+            a: [200.0, 120.0],
+            b: [400.0, 120.0],
+        },
+    ];
+    let largura = |folga: f64| -> usize {
+        let w = bounded_biharmonic(
+            &m,
+            &ossos,
+            Options {
+                folga_da_junta: folga,
+                ..Options::default()
+            },
+        )
+        .expect("resolve");
+        // Os vértices da linha do eixo, por ordem de `x`, e quantos ficam na transição.
+        let mut linha: Vec<(f64, f64)> = m
+            .rest
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| (p[1] - 120.0).abs() < 1e-9)
+            .map(|(v, p)| (p[0], w.por_vertice[v][0]))
+            .collect();
+        linha.sort_by(|a, b| a.0.total_cmp(&b.0));
+        linha
+            .iter()
+            .filter(|(_, v)| (0.1..=0.9).contains(v))
+            .count()
+    };
+    let encostado = largura(0.0);
+    let com_folga = largura(Options::default().folga_da_junta);
+    assert_eq!(
+        encostado, 0,
+        "com os pinos ENCOSTADOS a transicao ja' tem {encostado} vertices — a fixtura deixou de \
+         produzir o defeito, e o gate abaixo nao esta' a afirmar nada"
+    );
+    assert!(
+        com_folga >= 3,
+        "com a folga de fabrica a transicao no eixo tem {com_folga} vertices: a energia continua \
+         sem ter onde misturar os dois ossos"
+    );
+}
+
+/// Uma grelha regular de teste — `cols × rows` células sobre `larg × alt`.
+fn grelha_de_teste(cols: usize, rows: usize, larg: f64, alt: f64) -> ph2d_poly2d::Mesh2d {
+    let mut m = ph2d_poly2d::Mesh2d {
+        rest: Vec::new(),
+        tris: Vec::new(),
+        size: [larg as u32, alt as u32],
+    };
+    for j in 0..=rows {
+        for i in 0..=cols {
+            m.rest
+                .push([larg * i as f64 / cols as f64, alt * j as f64 / rows as f64]);
+        }
+    }
+    let id = |i: usize, j: usize| (j * (cols + 1) + i) as u32;
+    for j in 0..rows {
+        for i in 0..cols {
+            m.tris.push([id(i, j), id(i + 1, j), id(i + 1, j + 1)]);
+            m.tris.push([id(i, j), id(i + 1, j + 1), id(i, j + 1)]);
+        }
+    }
+    m
+}

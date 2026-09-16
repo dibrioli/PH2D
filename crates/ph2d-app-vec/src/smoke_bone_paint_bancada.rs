@@ -163,6 +163,53 @@ fn sonda_a_cena_nas_duas_leis() {
             );
         }
     }
+    // ⭐⭐⭐ A DOBRA DURA, nas DUAS leis, sobre a cena do PRODUTO — a pergunta que a mesa do
+    // oráculo levantou (lá, com DOIS ossos e a arte `2,4×` mais alta que um osso é longo, o
+    // padrão-ouro vira `9`–`11 %` de arte do avesso a `90°`+).
+    println!("\n-- A DOBRA DURA: quanta arte vira do AVESSO, nas duas leis --");
+    println!("graus/junta   euclidiana(fabrica)   PADRAO-OURO");
+    for graus in [25.0_f32, 45.0, 60.0, 90.0] {
+        let (sim, e) = cena_dobrada(
+            super::ALTURA_PX,
+            None,
+            ph2d_poly2d::GridOptions::default(),
+            graus,
+        );
+        let (sm, p2l, pele) = campo_da_cena(&sim, e);
+        let inv = |usar: bool| -> f64 {
+            let mut w = pele.scratch();
+            let pos: Vec<[f64; 2]> = sm
+                .mesh
+                .rest
+                .iter()
+                .enumerate()
+                .map(|(v, &q)| {
+                    let p = p2l.apply(q);
+                    if usar {
+                        pele.point_with(p, sm.pesos_de(v), &mut w)
+                    } else {
+                        pele.point(p, &mut w)
+                    }
+                })
+                .collect();
+            let rep: Vec<[f64; 2]> = sm.mesh.rest.iter().map(|&q| p2l.apply(q)).collect();
+            let (mut mau, mut tot) = (0.0, 0.0);
+            for t in &sm.mesh.tris {
+                let a = |q: &[[f64; 2]]| {
+                    let (x, y, z) = (q[t[0] as usize], q[t[1] as usize], q[t[2] as usize]);
+                    (y[0] - x[0]) * (z[1] - x[1]) - (y[1] - x[1]) * (z[0] - x[0])
+                };
+                let (s0, s1) = (a(&rep), a(&pos));
+                tot += s0.abs();
+                if s0 * s1 <= 0.0 {
+                    mau += s0.abs();
+                }
+            }
+            100.0 * mau / tot
+        };
+        println!("{graus:<13} {:>17.2}% {:>13.2}%", inv(false), inv(true));
+    }
+
     println!("\n-- BBW: o que a DOBRA compra e o que ela custa (a partir do REPOUSO) --");
     println!("graus  esticao_max  esticao_p99  circulo  faceta_px");
     for graus in [0.0_f32, 6.0, 10.0, 15.0, 25.0, 35.0, 45.0] {

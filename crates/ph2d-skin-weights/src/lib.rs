@@ -75,6 +75,9 @@ mod laplacian;
 
 #[cfg(test)]
 mod bancada;
+/// ⏱️ **A mesa do oráculo** — irmã da [`bancada`] pelo tecto de LOC, cortada por assunto.
+#[cfg(test)]
+mod bancada_oraculo;
 #[cfg(test)]
 mod tests;
 
@@ -96,6 +99,48 @@ pub struct Options {
     pub max_cg: usize,
     /// A barra do resíduo relativo do CG.
     pub tol_cg: f64,
+    /// ⭐⭐⭐ **A FOLGA DA JUNTA** — a que distância de OUTRO osso um vértice deixa de ser prendível,
+    /// em unidades da **aresta média** da malha.
+    ///
+    /// ⛔⛔⛔ **Sem ela os pinos de dois ossos ENCOSTAM-SE na junta.** Dois ossos de uma corrente
+    /// partilham-na, então os eixos deles **tocam-se**: prender o eixo inteiro de cada um põe
+    /// `w = 1` de um lado e `w = 0` do outro **em vértices vizinhos**, e a energia não tem voto ao
+    /// longo do eixo porque o eixo é todo Dirichlet.
+    ///
+    /// ⚠️⚠️ **E eu quase concluí que o padrão-ouro era uma função ESCADA por amostrar `y = 0`, que
+    /// é a própria linha presa** — eu estava a ler a condição de fronteira e a chamar-lhe solução.
+    /// Fora do eixo ele é suave (`0,98 → 0,92 → 0,76 → 0,59 → 0,38 → 0,12` a `y = 0,3`), e quem é a
+    /// escada é o **bump**: na borda da arte (`y = 2,3`, fora do raio dos dois ossos) ele lê
+    /// `1,0000 · 1,0000 · 0,0000 · 0,0000`. *Uma régua que amostra exactamente onde o problema é
+    /// fixo mede o que eu escrevi, não o que a energia resolveu.*
+    ///
+    /// ⭐⭐⭐ **O `4` SAI DE UM JOELHO MEDIDO, e os DOIS lados dele têm mecanismo**
+    /// (`bancada_folga_da_junta`, sobre a geometria da cena: `512 × 320`, três ossos):
+    ///
+    /// | folga | presos | arte rígida | **vazamento** | faceta | dobra a `90°/junta` |
+    /// |---:|---:|---:|---:|---:|---:|
+    /// | `0` | `49` | `10,1 %` | `0,13 px` | `1,96 px` | `9,44 %` |
+    /// | `2` | `39` | `8,5 %` | `0,26` | `0,48` | `7,85 %` |
+    /// | **`4`** | **`31`** | **`6,8 %`** | **`0,38`** | **`0,30`** | **`6,08 %`** |
+    /// | `8` | `15` | `2,4 %` | ⛔ **`5,24`** | `0,30` | `2,67 %` |
+    /// | `16` | `3` | `13,4 %` | ⛔ `10,93` | `0,20` | `2,74 %` |
+    ///
+    /// - **Abaixo do joelho** os pinos encostam-se na junta e a mistura fica estreita: mais faceta
+    ///   (`1,96` contra `0,30 px`, **`6,5×`**) e mais arte do avesso.
+    /// - **Acima dele o VAZAMENTO dispara `14×`** — alargar a mistura é exactamente o que faz um osso
+    ///   alcançar a arte do vizinho, que é o defeito que esta lei entrou para curar. *Uma folga
+    ///   grande demais re-compra o borrão global pela porta do lado.*
+    /// - ⛔ **E a `16` os pinos colapsam para `3`** (um por osso, pela rede da 2.ª metade) e a
+    ///   rigidez **volta a subir**: a solução passa a pender de um vértice por osso.
+    ///
+    /// ⚠️ **É o MESMO defeito que reprovou os pesos harmónicos** naquela mesa (*«as duas condições de
+    /// fronteira tocam-se na junta»*) — e aqui ele não vem da energia, vem de eu sobre-restringir.
+    /// *O padrão-ouro estava certo; a condição de fronteira é que estava errada.*
+    ///
+    /// ⚠️ **Ambíguo ⇒ LIVRE** é a regra, e ela não precisa de saber o que é uma junta: um vértice
+    /// que tem dois ossos igualmente perto não é «claramente de nenhum», e é exactamente ali que a
+    /// mistura tem de acontecer.
+    pub folga_da_junta: f64,
 }
 
 impl Default for Options {
@@ -106,6 +151,8 @@ impl Default for Options {
             max_rondas: 16,
             max_cg: 20_000,
             tol_cg: 1e-10,
+            // ⚠️ MEDIDO: o joelho da varredura `bancada_folga_da_junta` — ver a tabela no doc do campo.
+            folga_da_junta: 4.0,
         }
     }
 }
@@ -161,7 +208,7 @@ pub fn bounded_biharmonic(
     }
     let n = mesh.rest.len();
     let lap = laplacian::build(mesh)?;
-    let presos = handles::pin(mesh, ossos);
+    let presos = handles::pin(mesh, ossos, opts.folga_da_junta);
     let total_presos = presos.iter().filter(|p| p.is_some()).count();
     if total_presos == 0 {
         return None;

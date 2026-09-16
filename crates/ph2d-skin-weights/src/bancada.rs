@@ -52,6 +52,14 @@ fn rot(a: f64) -> Xform {
 ///
 /// `so_o_ultimo` roda **apenas** o último osso — é a fixtura da régua da LOCALIDADE.
 fn corrente_com(forca: f64, so_o_ultimo: bool) -> (Vec<Handle>, Vec<Xform>, Skin) {
+    corrente_dobrada(forca, so_o_ultimo, GRAUS)
+}
+
+/// ⚠️ **A MESMA porta, com o ângulo escolhido** — e ela existe porque a 1.ª redacção da varredura da
+/// folga escreveu uma SEGUNDA corrente e compôs as poses ao contrário (empurrou o `mundo` onde vai a
+/// matriz de pele `rest⁻¹ ∘ mundo`). Ela leu `21 %` de dobra a `25°` onde o produto lê `0,00 %`.
+/// *Uma segunda cadeia de transformações no mesmo ficheiro é uma segunda resposta à mesma pergunta.*
+fn corrente_dobrada(forca: f64, so_o_ultimo: bool, graus: f64) -> (Vec<Handle>, Vec<Xform>, Skin) {
     let passo = LARG / OSSOS as f64;
     let eixo = ALT / 2.0;
     let mut mundo = Xform::IDENTITY;
@@ -64,11 +72,11 @@ fn corrente_com(forca: f64, so_o_ultimo: bool) -> (Vec<Handle>, Vec<Xform>, Skin
         });
         let rest = tr(x0, eixo);
         let dobra = if so_o_ultimo {
-            if k + 1 == OSSOS { GRAUS } else { 0.0 }
+            if k + 1 == OSSOS { graus } else { 0.0 }
         } else if k == 0 {
             0.0
         } else {
-            GRAUS
+            graus
         };
         mundo = if k == 0 {
             tr(0.0, eixo)
@@ -337,7 +345,7 @@ fn bancada_densidade() {
 }
 
 /// Os pesos num ponto qualquer, por coordenadas baricêntricas. `None` fora da malha.
-fn interpola(m: &Mesh2d, por_vertice: &[Vec<f64>], p: [f64; 2]) -> Option<Vec<f64>> {
+pub(super) fn interpola(m: &Mesh2d, por_vertice: &[Vec<f64>], p: [f64; 2]) -> Option<Vec<f64>> {
     for t in &m.tris {
         let (i, j, k) = (t[0] as usize, t[1] as usize, t[2] as usize);
         let (a, b, c) = (m.rest[i], m.rest[j], m.rest[k]);
@@ -360,4 +368,84 @@ fn interpola(m: &Mesh2d, por_vertice: &[Vec<f64>], p: [f64; 2]) -> Option<Vec<f6
         }
     }
     None
+}
+
+/// A fracção da ÁREA virada do avesso, e a fracção da arte que é RÍGIDA.
+fn dobra_e_rigidez(m: &Mesh2d, pesos: &[Vec<f64>], poses: &[Xform]) -> (f64, f64) {
+    let p: Vec<[f64; 2]> = m
+        .rest
+        .iter()
+        .enumerate()
+        .map(|(v, &q)| pos_bbw(q, &pesos[v], poses))
+        .collect();
+    let (mut mau, mut tot) = (0.0, 0.0);
+    for t in &m.tris {
+        let a = |q: &[[f64; 2]]| {
+            let (x, y, z) = (q[t[0] as usize], q[t[1] as usize], q[t[2] as usize]);
+            (y[0] - x[0]) * (z[1] - x[1]) - (y[1] - x[1]) * (z[0] - x[0])
+        };
+        let (s0, s1) = (a(&m.rest), a(&p));
+        tot += s0.abs();
+        if s0 * s1 <= 0.0 {
+            mau += s0.abs();
+        }
+    }
+    // ⛔⛔ **RÍGIDO é «UM osso leva tudo», nunca «algum peso é zero».** A 1.ª redacção usou a
+    // segunda, e com TRÊS ossos ela acusa `63 %` de uma malha perfeitamente misturada: um vértice
+    // com `(0,5 · 0,5 · 0,0)` tem um peso zero e mistura dois ossos. *Um predicado que é quase
+    // sempre verdadeiro não é um censo, é ruído.*
+    let duros = pesos
+        .iter()
+        .filter(|w| w.iter().any(|v| *v >= 1.0 - 1e-9))
+        .count();
+    (100.0 * mau / tot, 100.0 * duros as f64 / pesos.len() as f64)
+}
+
+/// ⏱️⭐⭐⭐ **A FOLGA DA JUNTA, varrida na GEOMETRIA DA CENA** (`--ignored`).
+///
+/// ⛔⛔ **A mesa do oráculo é DOIS ossos com a arte `2,4×` mais alta que um osso é longo; a cena do
+/// produto é TRÊS ossos com a arte mais LARGA que alta.** O joelho de um número que depende de
+/// quantos ossos disputam um vértice tem de sair da segunda, não da primeira.
+#[test]
+#[ignore = "bancada: varre a folga da junta na cena, sem barra"]
+fn bancada_folga_da_junta() {
+    let m = grelha(48, 30);
+    println!(
+        "folga  presos  rigida   VAZAM  faceta      dobra por junta: 25°     45°     60°     90°"
+    );
+    for folga in [0.0_f64, 1.0, 2.0, 4.0, 8.0, 12.0, 16.0, 24.0] {
+        let (handles, _, _) = corrente_dobrada(1.0, false, 25.0);
+        let opts = Options {
+            folga_da_junta: folga,
+            ..Options::default()
+        };
+        let Some(w) = bounded_biharmonic(&m, &handles, opts) else {
+            println!("{folga:<6} — nao resolve");
+            continue;
+        };
+        print!("{folga:<6} {:>6}", w.report.presos);
+        // ⭐⭐⭐ **O VAZAMENTO é a coluna que limita esta varredura.** Alargar a mistura é
+        // exactamente o que faz um osso alcançar a arte do vizinho — o defeito que o padrão-ouro
+        // entrou para curar. *Uma folga grande demais re-compra o borrão global pela porta do lado.*
+        let (_, so_ultimo, _) = corrente_dobrada(1.0, true, GRAUS);
+        let campo_bbw =
+            |p: [f64; 2]| interpola(&m, &w.por_vertice, p).map(|ws| pos_bbw(p, &ws, &so_ultimo));
+        let vaz = vazamento(&campo_bbw);
+        let (_, poses_cena, _) = corrente_dobrada(1.0, false, GRAUS);
+        let r = mede(&m, &|p| {
+            interpola(&m, &w.por_vertice, p).map(|ws| pos_bbw(p, &ws, &poses_cena))
+        });
+        let mut rig = 0.0;
+        let mut linha = String::new();
+        for g in [25.0_f64, 45.0, 60.0, 90.0] {
+            let (_, poses, _) = corrente_dobrada(1.0, false, g);
+            let (d, rr) = dobra_e_rigidez(&m, &w.por_vertice, &poses);
+            rig = rr;
+            linha.push_str(&format!("  {d:>6.2}%"));
+        }
+        println!(
+            "  {rig:>5.1}%  {vaz:>6.2}  {:>6.2}                      {linha}",
+            r.faceta_px
+        );
+    }
 }

@@ -292,6 +292,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.mask.inv" => "Inv",
         "panel.painter_layers.mask.apply" => "Apply",
         "panel.painter_layers.ramp.use_color_ramp" => "Use Color Ramp",
+        "panel.painter_layers.ramp.bw" => "B&W",
         "panel.painter_layers.impasto.level" => "Level",
         "panel.painter_layers.impasto.add" => "Add",
         "panel.painter_layers.sculpt.rake" => "Rake",

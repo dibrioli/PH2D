@@ -220,10 +220,16 @@ pub fn is_language(text: &str) -> bool {
         }
     }
     let u = kept.trim();
-    let has_word = u
-        .as_bytes()
+    // ⛔ **Uma ABREVIATURA ligada por `&` é língua** (medido 2026-09-16): `"B&W"` (preto e branco,
+    //    `P&B` em português) é um botão da pilha de ajustes e não tinha duas letras SEGUIDAS — saía
+    //    como símbolo. Só a forma `letra & letra`: `&&` e `&` sozinho continuam de fora.
+    let bytes = u.as_bytes();
+    let has_word = bytes
         .windows(2)
-        .any(|w| w[0].is_ascii_alphabetic() && w[1].is_ascii_alphabetic());
+        .any(|w| w[0].is_ascii_alphabetic() && w[1].is_ascii_alphabetic())
+        || bytes
+            .windows(3)
+            .any(|w| w[0].is_ascii_alphabetic() && w[1] == b'&' && w[2].is_ascii_alphabetic());
     if !has_word {
         return false;
     }

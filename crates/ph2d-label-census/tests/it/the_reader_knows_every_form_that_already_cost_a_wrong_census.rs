@@ -156,6 +156,12 @@ fn the_language_test_has_both_sides_of_every_border() {
     assert!(is_language("FORGIVENESS"));
     assert!(!is_language("UV"));
     assert!(!is_language("RGBA16"));
+    // a abreviatura ligada por `&` traduz-se (`B&W` → `P&B`); o operador sozinho não
+    assert!(is_language("B&W"));
+    assert!(is_language("C&F"));
+    assert!(!is_language("&&"));
+    assert!(!is_language("&"));
+    assert!(!is_language("1&2"));
     // símbolos sem palavra
     assert!(!is_language("X"));
     assert!(!is_language("%"));

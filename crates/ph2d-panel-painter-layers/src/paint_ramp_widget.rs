@@ -22,6 +22,7 @@ use ph2d_editor_core::widget::{
     paint_color_swatch, paint_number_chip,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
 use ph2d_tool_painter::{
     ColorRamp, RampAlphaMode, RampColorMode, RampInterp, RampStop, linear_to_srgb_byte,
@@ -185,7 +186,7 @@ fn paint_controls(
         ctx,
         theme,
         Rect::new(cx, y, BW_W, ROW_H_PX),
-        "B&W",
+        tr("panel.painter_layers.ramp.bw"),
         ids.bw,
         view.bw || view.bw_locked,
         view.bw_locked,

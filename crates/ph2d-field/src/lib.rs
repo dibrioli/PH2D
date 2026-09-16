@@ -51,6 +51,9 @@ pub mod primitive_kind;
 /// ⭐ Os pisos e tetos de CONTAGEM das primitivas — ver [`primitive_limits`].
 pub mod primitive_limits;
 pub mod profile;
+/// ⭐⭐ **Simplificar** um perfil — ver [`profile_coarsen`]. Saiu do [`profile`] quando o tecto de
+/// LOC disparou (2026-09-16); as duas respondem a perguntas diferentes.
+pub mod profile_coarsen;
 pub mod radius;
 /// ⭐ A caixa por EIXO de cada forma — ver [`radius_extents`].
 pub mod radius_extents;
@@ -98,9 +101,10 @@ pub use primitive_limits::{
     MIN_TRIANGLE_INRADIUS_OVER_SIDE, triangle_inradius,
 };
 pub use profile::{
-    DEFAULT_PROFILE_RESOLUTION, FillRule, MAX_PROFILE_RESOLUTION, Profile, ProfileError, coarsen,
-    coarsen_to_normal_error,
+    ArcVertex, ContourWithArcs, DEFAULT_PROFILE_RESOLUTION, FillRule, MAX_PROFILE_RESOLUTION,
+    Profile, ProfileError,
 };
+pub use profile_coarsen::{coarsen, coarsen_to_normal_error};
 pub use radius::{
     Bound, bounding_radius, chamfer_of, characteristic_size, edge_shrink, fillet_inflates,
     round_of, set_shape_radius,
@@ -285,7 +289,19 @@ use serde::{Deserialize, Serialize};
 ///
 /// ⚠️ **E o número sobe na mesma**, porque é ele que diz *«este documento pode conter uma junta que
 /// uma build de ontem não sabe avaliar»* — que é exactamente a pergunta que esta escada responde.
-pub const FIELD_DOC_VERSION: u32 = 22;
+/// v23: o [`Profile`] ganhou os **arcos** (`bulges`), para uma quina arredondada deixar de ser oito
+/// segmentos rectos e passar a ser **uma** primitiva exacta (auditoria do vaso,
+/// `docs/Render3d/06_auditoria_do_vaso.md`: `68` dos `76 ms` do quadro eram tesselação de quina).
+///
+/// ⛔⛔ **Este degrau é obrigatório e a regra que o obriga é a dos degraus 109/110 do
+/// `project_schema`:** o `postcard` é POSICIONAL, e isto acrescenta um CAMPO a uma struct que já se
+/// grava — não uma variante no fim de um `enum`. Sem o degrau, um `Profile` gravado por uma build de
+/// ontem lê-se **errado em silêncio**, que é precisamente o modo de falha que esta escada existe
+/// para transformar numa recusa em voz alta.
+///
+/// ⭐ **A aparência de um documento velho não muda**: ao ler, os `bulges` ficam vazios, e um
+/// contorno sem bulges é a polilinha de sempre, avaliada pelo mesmo caminho, **ao bit**.
+pub const FIELD_DOC_VERSION: u32 = 23;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

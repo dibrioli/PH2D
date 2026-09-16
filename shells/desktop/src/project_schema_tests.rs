@@ -557,7 +557,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // PROJECT 142→143: o mesmo `FieldMaterial` fechou com as ultimas CINCO entradas do
         // OpenPBR (§22) e os campos foram RE-ORDENADOS para a ordem da nodedef — uma quebra de
         // layout mais severa do que apendar. ⭐ E' o ultimo degrau que o material pede.
-        (143, 13, 22),
+        // ⭐ **PROJECT 131→132** (2026-09-16): o `ph2d_field::Profile` ganhou os `arcs` — a
+        // decomposição exacta em rectas e ARCOS, `FIELD_DOC_VERSION` 22→23. Ele viaja dentro de
+        // uma `Primitive`, que viaja posicionalmente no blob do `FieldNode`: é a regra dos degraus
+        // 109/110 (campo novo numa struct já gravada). ⚠️ O `FIELD_DOC_VERSION` NÃO está nesta
+        // tripla e continua a subir à mão — o instrumento que avisa é o
+        // `the_shape_of_a_saved_profile_is_pinned` da `ph2d-field` (90 → 92 bytes).
+        (144, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -272,7 +272,27 @@ pub enum ProfileError {
     },
     /// A tolerância de cozimento não é um número positivo finito.
     BadTolerance { tolerance: f32 },
+    /// Os *bulges* de um contorno não são nem vazios nem tantos quantos os pontos.
+    ///
+    /// ⚠️ Não há terceira leitura possível: um bulge a menos deixaria a última aresta sem saber se é
+    /// recta ou arco, e adivinhar ali é como um arredondamento desaparece em silêncio.
+    BulgeMismatch {
+        contour: u32,
+        points: u32,
+        bulges: u32,
+    },
 }
+
+/// ⭐ **Um vértice da decomposição exacta**: o ponto, e o *bulge* da aresta que **sai** dele.
+///
+/// `bulge = 0` é uma recta. Ver o campo [`Profile::arcs`] para a convenção e a derivação do centro.
+pub type ArcVertex = ([f32; 2], f32);
+
+/// ⭐ **Um contorno nas DUAS vistas**: a polilinha densa (que é a FIGURA) e a decomposição exacta em
+/// rectas e arcos (que é o que a fita da marcha avalia). Vazia a segunda, não há arcos.
+///
+/// ⚠️ Elas viajam no mesmo par de propósito — é isso que impede que descrevam figuras diferentes.
+pub type ContourWithArcs = (Vec<[f32; 2]>, Vec<ArcVertex>);
 
 /// Uma figura plana fechada, já achatada em polilinhas.
 ///
@@ -283,6 +303,29 @@ pub struct Profile {
     /// ponto **não** se repete no fim. Repeti-lo produziria uma aresta de comprimento zero, e uma
     /// aresta de comprimento zero é uma divisão por zero na distância ponto-segmento.
     contours: Vec<Vec<[f32; 2]>>,
+    /// ⭐⭐⭐ **A DECOMPOSIÇÃO EXACTA, quando ela existe** (2026-09-16) — por contorno, a lista de
+    /// `(vértice, bulge da aresta que SAI dele)`.
+    ///
+    /// O *bulge* é a convenção do DXF: `tan(θ/4)`, com `θ` o ângulo abarcado pelo arco, **com
+    /// sinal** (positivo = o arco curva para a esquerda de `a→b`). `0` é uma recta. Dela e da corda
+    /// saem o raio e o centro, sem guardar nenhum dos dois:
+    ///
+    /// ```text
+    /// s = bulge·|b−a|/2        (a flecha)      k = (s² − (|b−a|/2)²)/(2s)      r = |s − k|
+    /// ```
+    ///
+    /// ⚠️⚠️ **Ela é uma vista ADICIONAL e a [`Profile::contours`] continua a ser a figura.** Esta foi
+    /// a segunda tentativa: a primeira pôs os bulges *paralelos* à polilinha e com isso a polilinha
+    /// deixou de ser a forma — dois gates que já existiam apanharam-no logo (a tolerância do
+    /// achatamento passou a medir a corda, e um furo mediu `0,2828` em vez de `0,4`). *Vinte e
+    /// quatro leitores tratam `contours()` como a figura, e estavam certos.*
+    ///
+    /// ⇒ as duas descrevem a MESMA curva a menos da tolerância, e há gate a prová-lo. Quem quer a
+    /// forma lê `contours()`; quem paga por aresta — a fita da marcha — lê esta.
+    ///
+    /// **VAZIA** quer dizer *«não há arco nenhum; a polilinha já é a decomposição exacta»*, que é o
+    /// caminho de sempre e byte-idêntico.
+    arcs: Vec<Vec<ArcVertex>>,
     fill: FillRule,
     tolerance: f32,
 }
@@ -332,11 +375,84 @@ impl Profile {
             }
             cleaned.push(c);
         }
+        let n = cleaned.len();
         Ok(Self {
             contours: cleaned,
+            arcs: vec![Vec::new(); n],
             fill,
             tolerance,
         })
+    }
+
+    /// ⭐⭐⭐ **A porta que aceita a DECOMPOSIÇÃO EXACTA.** Cada contorno chega como
+    /// `(polilinha, decomposição)` — **no mesmo par**, e é isso que os impede de descrever figuras
+    /// diferentes.
+    ///
+    /// A polilinha é validada e limpa exactamente como em [`Profile::new`] — *o caminho de sempre
+    /// não muda por haver um segundo*. A decomposição vem como está: ela é a fonte, não o derivado.
+    /// Vazia = não há arcos.
+    ///
+    /// # Errors
+    /// Ver [`ProfileError`] — mais [`ProfileError::BulgeMismatch`] se uma decomposição tiver menos
+    /// de 3 primitivas ou um número não-finito.
+    pub fn with_arcs(
+        contours: Vec<ContourWithArcs>,
+        fill: FillRule,
+        tolerance: f32,
+    ) -> Result<Self, ProfileError> {
+        let (polis, arcs): (Vec<_>, Vec<_>) = contours.into_iter().unzip();
+        for (i, a) in arcs.iter().enumerate() {
+            if a.is_empty() {
+                continue;
+            }
+            let idx = i as u32;
+            if a.len() < 3 {
+                return Err(ProfileError::BulgeMismatch {
+                    contour: idx,
+                    points: a.len() as u32,
+                    bulges: 3,
+                });
+            }
+            if a
+                .iter()
+                .any(|(p, b)| !p[0].is_finite() || !p[1].is_finite() || !b.is_finite())
+            {
+                return Err(ProfileError::NonFinite { contour: idx });
+            }
+        }
+        let mut me = Self::new(polis, fill, tolerance)?;
+        // ⚠️ Só depois de `new` aceitar a polilinha: um perfil que ela recusa não passa a existir
+        // por trazer arcos, e o número de contornos que sobrevivem à limpeza é o dela.
+        if arcs.len() == me.contours.len() {
+            me.arcs = arcs;
+        }
+        Ok(me)
+    }
+
+    /// A decomposição exacta por contorno — ver o campo [`Profile::arcs`]. Vazia = sem arcos.
+    #[must_use]
+    pub fn arcs(&self) -> &[Vec<ArcVertex>] {
+        &self.arcs
+    }
+
+    /// ⭐ **Quantas PRIMITIVAS a decomposição exacta tem** — o número que manda no custo da fita,
+    /// e o que esta wave existe para baixar. Sem decomposição, é a contagem de arestas da polilinha.
+    #[must_use]
+    pub fn prim_count(&self) -> usize {
+        self.contours
+            .iter()
+            .zip(&self.arcs)
+            .map(|(c, a)| if a.is_empty() { c.len() } else { a.len() })
+            .sum()
+    }
+
+    /// Quantas primitivas são ARCO.
+    #[must_use]
+    pub fn arc_count(&self) -> usize {
+        self.arcs
+            .iter()
+            .map(|c| c.iter().filter(|(_, b)| *b != 0.0).count())
+            .sum()
     }
 
     #[must_use]
@@ -356,11 +472,12 @@ impl Profile {
         self.tolerance
     }
 
-    /// Quantas arestas o perfil tem ao todo.
+    /// Quantas arestas a POLILINHA tem ao todo.
     ///
-    /// ⚠️ **É o número que manda no custo**: cada aresta vira **~26 nós** na árvore de avaliação
-    /// (medido, `docs/3DModeling/04_resultados_perfis.md` §3), e o traçado avalia a árvore inteira
-    /// por pixel. Quem mexer na tolerância mexe aqui.
+    /// ⚠️ **Desde 2026-09-16 já não é este o número que manda no custo da fita — é o
+    /// [`Profile::prim_count`].** Um contorno com arcos tem a polilinha densa de sempre (é ela a
+    /// figura, e vinte e quatro leitores dependem disso) e uma decomposição exacta muito menor, e é
+    /// a segunda que a marcha avalia. *Quem cita um custo cita o `prim_count`.*
     #[must_use]
     pub fn segment_count(&self) -> usize {
         self.contours.iter().map(Vec::len).sum()
@@ -398,7 +515,7 @@ fn dedup_closed(pts: &[[f32; 2]]) -> Vec<[f32; 2]> {
     out
 }
 
-fn contour_bounds(c: &[[f32; 2]]) -> ([f32; 2], [f32; 2]) {
+pub(crate) fn contour_bounds(c: &[[f32; 2]]) -> ([f32; 2], [f32; 2]) {
     let mut min = [f32::INFINITY; 2];
     let mut max = [f32::NEG_INFINITY; 2];
     for p in c {
@@ -408,188 +525,4 @@ fn contour_bounds(c: &[[f32; 2]]) -> ([f32; 2], [f32; 2]) {
         }
     }
     (min, max)
-}
-
-/// ⭐⭐⭐ **O MESMO CONTORNO, MAIS GROSSO — para a pré-visualização.**
-///
-/// # ⚠️ Por que ela existe
-///
-/// O traçado custa **`0,22 ms` por aresta do contorno**, medido, e esse custo é **cego aos pixels**:
-/// numa imagem 4× menor ele cai `1,3×`. ⇒ a pré-visualização, que baixa a **resolução da tela** para
-/// caber no orçamento de um quadro, **não baixava as arestas** — e subir o `Resolution` custava fps
-/// enquanto a mão mexia (report do Enio, 2026-08-26).
-///
-/// ⭐ Esta é a **mesma lei que o módulo já ship**, aplicada onde faltava: *grosso a mexer, nítido ao
-/// assentar*. O que o artista pediu em detalhe aparece quando ele **pára**, que é quando ele olha.
-///
-/// # ⚠️ Ela DECIMA, não recoze — e a diferença é o que a torna possível
-///
-/// Recozer exigiria a curva de origem, que vive na cena vetorial e **não** no documento. O que há
-/// aqui é a polilinha já achatada, e um contorno achatado por **tolerância** tem os pontos densos
-/// onde a curvatura é alta — então tirar um em cada `k` preserva o carácter da forma em vez de a
-/// achatar por igual.
-///
-/// ⚠️ **Um contorno decimado pode auto-intersectar-se** numa feição fina, e é por isso que o
-/// resultado passa pelo [`Profile::new`]: se ele recusar, volta o original. *Uma pré-visualização
-/// que estraga a peça é pior do que uma lenta.*
-///
-/// ⛔ E ela **nunca sobe**: um `max_edges` maior do que o contorno devolve o próprio contorno, sem
-/// inventar pontos que a curva não tem.
-#[must_use]
-pub fn coarsen(profile: &Profile, max_edges: usize) -> Profile {
-    let total = profile.segment_count();
-    if total <= max_edges || max_edges < 3 {
-        return profile.clone();
-    }
-    // ⚠️ **O orçamento é o mesmo para todos os contornos**: um furo e a borda de fora têm de
-    // encolher JUNTOS, senão o furo escapa da peça que o continha.
-    let giro_total: f64 = profile.contours().iter().map(|c| total_abs_turn(c)).sum();
-    // ⚠️ Um contorno FECHADO gira sempre `2π`, então isto não acontece — mas um `NaN` que viesse de
-    // um ponto degenerado passaria por um `<= 0.0` ingénuo, e o orçamento sairia `NaN`.
-    if !giro_total.is_finite() || giro_total <= 0.0 {
-        return profile.clone();
-    }
-    coarsen_with_turn_budget(profile, giro_total / max_edges as f64)
-}
-
-/// ⭐⭐⭐ **O CONTORNO ENGROSSADO ATÉ AO ERRO QUE SE TOLERA** (W85) — a forma que a
-/// [`coarsen`] devia ter tido desde o início.
-///
-/// # Por que o ERRO, e não a contagem
-///
-/// Depois da W84 a decimação reparte **giro** (ver [`decimate_by_turn`]), e isso torna a contagem de
-/// arestas uma consequência em vez de uma lei: o que o orçamento de giro fixa é o **erro da
-/// normal**, que é metade do ângulo que uma corda substitui. ⇒ *pedir um erro é pedir a coisa que se
-/// vê; pedir uma contagem é pedir um número que só a esperança liga ao que se vê.*
-///
-/// ⭐ **E é adaptativo à FORMA de graça:** um círculo gira `2π` e uma estrela de dez pontas gira
-/// muito mais, então a estrela recebe mais arestas **porque tem mais direcção para gastar** — sem
-/// uma regra própria a dizê-lo.
-///
-/// # ⚠️ De que recurso o número é
-///
-/// Medido (`measure_how_many_contour_edges_are_visible`, a régua é o **pixel sombreado** em níveis
-/// de 8 bits, contra um contorno de `2048`):
-///
-/// | erro de normal p99 | pixel p99 | pixel máx |
-/// |---:|---:|---:|
-/// | `0,266°` | `1` | `1`–`2` |
-/// | `0,529°` | `1` | `2`–`3` |
-/// | `1,056°` | `3` | `4` |
-/// | `2,110°` | `5` | `9`–`10` |
-///
-/// ⚠️ **E ela é INDEPENDENTE do tamanho da imagem** — os mesmos números a `640×360` e a `1600×900`.
-/// ⛔ Isso **refuta** derivar o tecto do tamanho do pixel: o erro que se vê é **angular**, e um
-/// ângulo não encolhe com a resolução da tela.
-#[must_use]
-pub fn coarsen_to_normal_error(profile: &Profile, max_error_rad: f32) -> Profile {
-    // ⚠️ O `is_finite` primeiro: um `NaN` passa por um `<= 0.0` ingénuo e o orçamento sai `NaN`.
-    if !max_error_rad.is_finite() || max_error_rad <= 0.0 {
-        return profile.clone();
-    }
-    // ⚠️ O erro da normal é **metade** do giro que a corda substitui: a corda aponta para o meio do
-    // arco, e as duas pontas dele afastam-se dela por metade do ângulo cada.
-    coarsen_with_turn_budget(profile, f64::from(max_error_rad) * 2.0)
-}
-
-/// O corpo partilhado pelas duas portas acima — *uma lei, dois nomes para a mesma pergunta*.
-fn coarsen_with_turn_budget(profile: &Profile, orcamento: f64) -> Profile {
-    let total = profile.segment_count();
-    if !orcamento.is_finite() || orcamento <= 0.0 {
-        return profile.clone();
-    }
-    let thinner: Vec<Vec<[f32; 2]>> = profile
-        .contours()
-        .iter()
-        .map(|c| {
-            // ⚠️ Um contorno que já é pequeno fica INTEIRO: decimá-lo levá-lo-ia abaixo do triângulo,
-            // e um furo de três lados é melhor do que um furo que desapareceu.
-            if c.len() <= 8 {
-                return c.clone();
-            }
-            decimate_by_turn(c, orcamento)
-        })
-        .collect();
-    if thinner.iter().any(|c| c.len() < 3) {
-        return profile.clone();
-    }
-    // ⚠️ A tolerância declarada sobe com a decimação: ela é o erro contra a curva de origem, e a
-    // polilinha decimada erra mais. Mentir aqui envenenaria quem a usa para escolher uma grade.
-    let ficou: usize = thinner.iter().map(Vec::len).sum();
-    let passo_medio = (total as f32 / ficou.max(1) as f32).max(1.0);
-    let tol = profile.tolerance() * passo_medio;
-    Profile::new(thinner, profile.fill(), tol).unwrap_or_else(|_| profile.clone())
-}
-
-/// A curvatura total de um contorno fechado, em radianos e **sem sinal**.
-///
-/// ⚠️ **Sem sinal de propósito.** O giro *com* sinal de um contorno fechado é `±2π`, sempre — ele não
-/// distingue um círculo de uma estrela. O que a decimação precisa de repartir é **quanta direcção**
-/// a forma tem para gastar, e uma ponta de estrela gasta muito em pouco caminho.
-fn total_abs_turn(c: &[[f32; 2]]) -> f64 {
-    (0..c.len()).map(|i| turn_at(c, i)).sum()
-}
-
-/// O ângulo, em radianos, entre a aresta que **chega** ao vértice `i` e a que **sai** dele.
-fn turn_at(c: &[[f32; 2]], i: usize) -> f64 {
-    let n = c.len();
-    if n < 3 {
-        return 0.0;
-    }
-    let (p, q, r) = (c[(i + n - 1) % n], c[i], c[(i + 1) % n]);
-    let a = [f64::from(q[0] - p[0]), f64::from(q[1] - p[1])];
-    let b = [f64::from(r[0] - q[0]), f64::from(r[1] - q[1])];
-    let cross = a[0] * b[1] - a[1] * b[0];
-    let dot = a[0] * b[0] + a[1] * b[1];
-    // `atan2` do produto vectorial contra o escalar — estável mesmo com arestas muito curtas, que
-    // é onde uma versão por `acos` do normalizado devolve `NaN`.
-    cross.atan2(dot).abs()
-}
-
-/// ⭐⭐⭐ **A decimação por GIRO** — mantém um vértice quando o ângulo acumulado desde o último
-/// mantido chega ao orçamento.
-///
-/// # ⛔ O que ela substitui, e por que a anterior estava errada
-///
-/// A versão até 2026-08-27 tirava **um em cada `k`** vértices, com este raciocínio no doc do
-/// [`coarsen`]: *«um contorno achatado por tolerância tem os pontos densos onde a curvatura é alta —
-/// então tirar um em cada `k` preserva o carácter da forma»*. ⭐ Isso é **verdade para curvatura**,
-/// que é distribuída por muitos vértices.
-///
-/// ⚠️ **Uma QUINA não é curvatura distribuída: é um vértice só, com todo o ângulo dentro.** Um passo
-/// por índice apaga-a com probabilidade `(k−1)/k`, e o que fica no lugar é um bisel — *e se ela
-/// sobrevive depende de o índice dela ser divisível pelo passo, o que é uma lotaria.*
-///
-/// ⛔ **Medido** (`measure_whether_the_preview_decimation_eats_corners`, uma estrela de 5 pontas com
-/// 400 pontos, traçada a `640×360`):
-///
-/// | tecto | passo | pixels que mudam | normal p99 | normal máx |
-/// |---:|---:|---:|---:|---:|
-/// | `336` | `2` | `0` | `0,034°` | `0,048°` |
-/// | **`168`** | **`3`** | **`509` (`0,87 %`)** | **`28,1°`** | **`126,8°`** |
-/// | `84` | `5` | `0` | `0,034°` | `0,048°` |
-///
-/// ⭐ As quinas caem em múltiplos de `40`: com passo `2` e `5` elas sobrevivem, com `3` **três em
-/// cada cinco morrem**. E o `PREVIEW_MAX_EDGES` que ship é justamente `168`.
-///
-/// # ⭐ Por que o GIRO é a grandeza certa
-///
-/// O erro de uma corda que substitui um arco é fixado pelo **ângulo** que o arco varre, não pelo
-/// número de pontos que ele tinha. E o erro que se **vê** é o da **normal**, que é esse mesmo ângulo
-/// (medido: a normal p99 de um círculo decimado é exactamente `∝ 1/n`). ⇒ repartir o giro por igual
-/// distribui o erro por igual, e um vértice que sozinho gasta o orçamento — uma quina — é mantido
-/// **por construção**, sem uma regra própria a dizê-lo.
-fn decimate_by_turn(c: &[[f32; 2]], orcamento: f64) -> Vec<[f32; 2]> {
-    let mut out = Vec::with_capacity(c.len());
-    let mut acc = 0.0f64;
-    for i in 0..c.len() {
-        let t = turn_at(c, i);
-        if out.is_empty() || acc + t >= orcamento {
-            out.push(c[i]);
-            acc = 0.0;
-        } else {
-            acc += t;
-        }
-    }
-    out
 }

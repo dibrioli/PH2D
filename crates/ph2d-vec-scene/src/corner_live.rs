@@ -408,7 +408,39 @@ fn fillet_handles(
     t_out: [f64; 2],
 ) -> ([f64; 2], [f64; 2]) {
     let alpha = dot(t_in, t_out).clamp(-1.0, 1.0).acos();
-    let k = (4.0 / 3.0) * (alpha * 0.25).tan();
+    // ⭐⭐⭐ **O ALÇAPÃO DE UM ARCO É PROPORCIONAL AO RAIO, NÃO AO RECUO** (corrigido 2026-09-16).
+    //
+    // A lei do arco é `h = (4/3)·tan(α/4)·r`. O que está à mão aqui é o `s_in` — a distância de
+    // `p_in` à interseção das tangentes —, e para um filete circular `s_in = r·tan(α/2)`. Logo
+    // `h = (4/3)·tan(α/4)·s_in / tan(α/2)`, e é a divisão que faltava.
+    //
+    // ⛔⛔ **Sem ela o filete só era um arco a `α = 90°`**, onde `tan(α/2) = 1` e o factor
+    // desaparece. Medido (uma quina em V, raio pedido `0,05`, desvio radial máximo contra o
+    // círculo verdadeiro, em múltiplos da tolerância de cozimento):
+    //
+    // |  α   | raio medido | desvio | × tol |
+    // |-----:|------------:|-------:|------:|
+    // |  30° |     0,04875 | 1,2e-3 |   4,2 |
+    // |  70° |     0,04729 | 2,7e-3 |   9,1 |
+    // |  90° |     0,05000 | 1,4e-5 |   0,0 |  ⬅ o único que estava certo
+    // | 130° |  **0,08304**| 3,3e-2 | 110,7 |  ⬅ o artista pede 0,05 e recebe 0,083
+    //
+    // ⚠️⚠️ **E o gate que devia ter apanhado isto corre sobre um QUADRADO**
+    // (`the_fillet_agrees_with_the_crates_canonical_corner_rounding`): quatro cantos a `90°`, que é
+    // exactamente o ângulo onde o defeito é invisível. *Uma fixtura de um ângulo só não mede uma lei
+    // que depende do ângulo* — o gate novo varre a faixa inteira.
+    //
+    // ⚠️ O irmão não-vivo (`crate::corners::rounded_corner`) sempre usou `r` directamente e por isso
+    // sempre esteve certo: os dois caminhos DISCORDAVAM fora de `90°`, e o comentário deste ficheiro
+    // já prometia que eles batiam.
+    let meio = (alpha * 0.5).tan();
+    let k = if meio.is_finite() && meio.abs() > EPS {
+        (4.0 / 3.0) * (alpha * 0.25).tan() / meio
+    } else {
+        // `α → 0`: o limite de `tan(α/4)/tan(α/2)` é `1/2`, logo `k → 2/3` — e aí o alçapão vale um
+        // terço da corda, que é a forma canónica de um segmento recto.
+        2.0 / 3.0
+    };
     // Interseção das retas `p_in + s·t_in` e `p_out − w·t_out`. Resolvendo
     // `s·t_in + w·t_out = d` por Cramer (`a × b` = `a.x·b.y − a.y·b.x`):
     //   s = (d × t_out) / (t_in × t_out)      w = (d × t_in) / (t_out × t_in)

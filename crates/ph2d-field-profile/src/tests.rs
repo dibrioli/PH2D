@@ -382,3 +382,247 @@ fn a_drawing_with_an_inner_contour_becomes_a_piece_with_a_hole() {
         g.at(0.0, 0.0, 0.0)
     );
 }
+
+/// ⭐⭐⭐ **O VASO DO DONO ENCOLHE, E A FIGURA NÃO MUDA** (2026-09-16).
+///
+/// Os mesmos `12` pontos da cena `5` do smoke. Antes desta wave cada quina arredondada virava `~8`
+/// segmentos rectos e o contorno saía com `94` arestas — `68` dos `76 ms` do quadro
+/// (`docs/Render3d/06_auditoria_do_vaso.md`). Agora cada uma é **um arco**.
+///
+/// ⚠️ **A barra da FIGURA é medida contra a polilinha densa, que é a figura**, nos DOIS sentidos.
+/// *Um gate que só contasse arcos aprovaria um arco no sítio errado.*
+#[test]
+fn o_vaso_do_dono_vira_arcos_e_a_figura_fica() {
+    let path = vaso_do_dono();
+    let p = crate::cook_path_auto(&path).expect("o vaso é um perfil válido");
+    let arcos = p.arc_count();
+    assert_eq!(
+        arcos,
+        10,
+        "as dez quinas com raio têm de virar dez ARCOS (deu {arcos}); primitivas: {}",
+        p.prim_count()
+    );
+    assert!(
+        p.prim_count() <= 24,
+        "o vaso tinha 94 arestas tesseladas; com arcos tem de caber em 24 (deu {})",
+        p.prim_count()
+    );
+    // ⚠️ A polilinha densa NÃO encolheu — ela é a figura, e os seus leitores não mudam.
+    assert!(
+        p.segment_count() >= 80,
+        "a polilinha densa é a figura e tem de ficar: deu {}",
+        p.segment_count()
+    );
+    as_duas_vistas_concordam(&p);
+}
+
+/// ⭐⭐ **AS DUAS VISTAS DESCREVEM A MESMA CURVA** — o gate que impede a decomposição exacta de
+/// derivar da polilinha. Sem ele, um arco no sítio errado passaria por ser barato.
+fn as_duas_vistas_concordam(p: &ph2d_field::Profile) {
+    let tol = f64::from(p.tolerance());
+    for (c, (poli, arcs)) in p.contours().iter().zip(p.arcs()).enumerate() {
+        if arcs.is_empty() {
+            continue;
+        }
+        let denso = amostra_da_decomposicao(arcs);
+        let ida = hausdorff(&denso, poli);
+        let volta = hausdorff(poli, &denso);
+        assert!(
+            ida <= tol * 3.0 && volta <= tol * 3.0,
+            "contorno {c}: as duas vistas discordam — ida {ida:.6}, volta {volta:.6}, tol {tol:.6}"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O FILETE VIVO É UM ARCO EM TODO ÂNGULO** — o gate que faltava (2026-09-16).
+///
+/// ⛔⛔ O gate que existia (`the_fillet_agrees_with_the_crates_canonical_corner_rounding`, na
+/// `ph2d-vec-scene`) corre sobre um **QUADRADO**: quatro cantos a `90°`, que é exactamente o único
+/// ângulo em que o defeito era invisível — o alçapão usava `(4/3)·tan(α/4)·s_in` onde a lei do arco
+/// pede `·r`, e `s_in = r·tan(α/2)` vale `r` só a `90°`. Medido antes da cura, raio pedido `0,05`:
+/// a `130°` saía **`0,083`** (`+66 %`, `110×` a tolerância).
+///
+/// *Uma fixtura de um ângulo só não mede uma lei que depende do ângulo.*
+#[test]
+fn o_filete_vivo_e_um_arco_em_todo_angulo() {
+    for graus in [30.0_f64, 50.0, 70.0, 90.0, 110.0, 130.0, 150.0] {
+        let (r_pedido, r_medido, desvio, tol) = filete_medido(graus, 0.05);
+        // O RAIO é a lei, e ela vale em toda a faixa: era aqui que estava o defeito (a `130°` o
+        // artista pedia `0,05` e recebia `0,083`).
+        assert!(
+            (r_medido - r_pedido).abs() <= r_pedido * 0.01,
+            "a {graus}° o raio pedido é {r_pedido} e o medido {r_medido}"
+        );
+        // ⚠️ **A FIDELIDADE tem um tecto que não é meu: UMA cúbica não representa um arco grande.**
+        // Até `130°` ela cabe na tolerância; a `150°` o erro intrínseco da aproximação cúbica passa
+        // um pouco dela (`2,97e-4` contra `2,87e-4`, `1,04×`). Isso é uma propriedade da curva que a
+        // `ph2d-vec-scene` emite, não desta wave — e a consequência prática é benigna: o
+        // reconhecedor de arcos simplesmente **não** aceita uma quina dessas, e ela fica tesselada
+        // como sempre esteve. *A barra diz o que é verdade, e nomeia o sítio onde deixa de ser.*
+        let teto = if graus <= 130.0 { tol } else { tol * 1.5 };
+        assert!(
+            desvio <= teto,
+            "a {graus}° a curva afasta-se {desvio:.3e} do círculo (barra {teto:.3e})"
+        );
+    }
+}
+
+/// Uma quina em V com o ângulo dado, cozida: devolve `(raio pedido, raio medido, desvio máximo do
+/// círculo verdadeiro, tolerância de cozimento)`.
+fn filete_medido(graus: f64, r: f64) -> (f64, f64, f64, f64) {
+    let alpha = graus.to_radians();
+    let theta = std::f64::consts::PI - alpha;
+    let half = theta * 0.5;
+    let path = ph2d_vec_scene::VecPath {
+        verts: vec![
+            ph2d_vec_scene::VecVertex::corner([-half.sin(), half.cos()]),
+            ph2d_vec_scene::VecVertex {
+                corner_radius: r,
+                ..ph2d_vec_scene::VecVertex::corner([0.0, 0.0])
+            },
+            ph2d_vec_scene::VecVertex::corner([half.sin(), half.cos()]),
+            ph2d_vec_scene::VecVertex::corner([0.0, 3.0]),
+        ],
+        closed: true,
+        ..ph2d_vec_scene::VecPath::default()
+    };
+    let cooked = path.cooked();
+    let tol = crate::span_of(&cooked) * crate::TOLERANCE_RATIO;
+    let (verts, _) = cooked.contour(0).expect("há contorno");
+    let n = verts.len();
+    // O centro VERDADEIRO do filete: sobre a bissectriz, a `r/sin(θ/2)` do vértice.
+    let ctr = [0.0, r / half.sin()];
+    for i in 0..n {
+        let a = &verts[i];
+        let b = &verts[(i + 1) % n];
+        if a.out_handle == a.anchor && b.in_handle == b.anchor {
+            continue;
+        }
+        let bez = kurbo::CubicBez::new(
+            kurbo::Point::new(a.anchor[0], a.anchor[1]),
+            kurbo::Point::new(a.out_handle[0], a.out_handle[1]),
+            kurbo::Point::new(b.in_handle[0], b.in_handle[1]),
+            kurbo::Point::new(b.anchor[0], b.anchor[1]),
+        );
+        let mut pior = 0.0f64;
+        let mut medio = 0.0f64;
+        for k in 0..=20 {
+            let t = f64::from(k) / 20.0;
+            let z = kurbo::ParamCurve::eval(&bez, t);
+            let rr = (z.x - ctr[0]).hypot(z.y - ctr[1]);
+            pior = pior.max((rr - r).abs());
+            if k == 10 {
+                medio = rr;
+            }
+        }
+        return (r, medio, pior, tol);
+    }
+    panic!("a {graus}° não saiu filete nenhum do cozimento");
+}
+
+/// Os `12` pontos da cena `5` do smoke — o vaso oco do dono.
+fn vaso_do_dono() -> ph2d_vec_scene::VecPath {
+    const VASO: [([f64; 2], f64); 12] = [
+        ([0.00, -0.45], 0.0),
+        ([0.26, -0.45], 0.05),
+        ([0.30, -0.34], 0.05),
+        ([0.15, -0.10], 0.06),
+        ([0.33, 0.22], 0.06),
+        ([0.27, 0.44], 0.04),
+        ([0.33, 0.52], 0.02),
+        ([0.27, 0.52], 0.02),
+        ([0.21, 0.44], 0.04),
+        ([0.09, -0.08], 0.05),
+        ([0.19, -0.32], 0.04),
+        ([0.00, -0.32], 0.0),
+    ];
+    ph2d_vec_scene::VecPath {
+        verts: VASO
+            .iter()
+            .map(|&(p, r)| ph2d_vec_scene::VecVertex {
+                corner_radius: r,
+                ..ph2d_vec_scene::VecVertex::corner(p)
+            })
+            .collect(),
+        closed: true,
+        ..ph2d_vec_scene::VecPath::default()
+    }
+}
+
+/// Amostra uma decomposição exacta numa polilinha densa — 32 pontos por arco, muito mais fino que a
+/// tolerância. É régua, nunca produto.
+fn amostra_da_decomposicao(arcs: &[([f32; 2], f32)]) -> Vec<[f32; 2]> {
+    let n = arcs.len();
+    let mut out = Vec::new();
+    for i in 0..n {
+        let (a, bulge) = arcs[i];
+        let (b, _) = arcs[(i + 1) % n];
+        out.push(a);
+        let bulge = f64::from(bulge);
+        if bulge == 0.0 {
+            continue;
+        }
+        let (dx, dy) = (f64::from(b[0] - a[0]), f64::from(b[1] - a[1]));
+        let l = dx.hypot(dy);
+        let s = bulge * l * 0.5;
+        let k = (s * s - (l * 0.5) * (l * 0.5)) / (2.0 * s);
+        let (mx, my) = (
+            f64::from(a[0] + b[0]) * 0.5,
+            f64::from(a[1] + b[1]) * 0.5,
+        );
+        let (nx, ny) = (-dy / l, dx / l);
+        let (cx, cy) = (mx + nx * k, my + ny * k);
+        let r = (s - k).abs();
+        // ⚠️ O SENTIDO deriva-se dos ângulos, nunca de uma convenção decorada: com `|bulge| < 1` o
+        // arco é o MENOR, logo a diferença dobrada para `(−π, π]` é exactamente ele. A 1.ª versão
+        // assumiu `θ = 4·atan(bulge)` com sinal, e a régua leu `0,065` de discordância sobre uma
+        // decomposição correcta.
+        let a0 = (f64::from(a[1]) - cy).atan2(f64::from(a[0]) - cx);
+        let a1 = (f64::from(b[1]) - cy).atan2(f64::from(b[0]) - cx);
+        let mut theta = a1 - a0;
+        while theta > std::f64::consts::PI {
+            theta -= 2.0 * std::f64::consts::PI;
+        }
+        while theta <= -std::f64::consts::PI {
+            theta += 2.0 * std::f64::consts::PI;
+        }
+        for t in 1..32 {
+            let ang = a0 + theta * f64::from(t) / 32.0;
+            #[allow(clippy::cast_possible_truncation)]
+            out.push([(cx + r * ang.cos()) as f32, (cy + r * ang.sin()) as f32]);
+        }
+    }
+    out
+}
+
+/// A maior distância de um ponto de `a` à **polilinha** `b` — ponto→SEGMENTO, nunca ponto→vértice.
+///
+/// ⛔⛔ **A 1.ª versão media ponto→vértice e acusou uma decomposição CORRECTA.** Numa polilinha
+/// achatada a `9,7e-5` sobre um arco de raio `0,05` os vértices ficam a `~0,0062` um do outro, logo
+/// um ponto no meio de dois lê `~0,0031` de «erro» — e foi exactamente `0,0028`–`0,0032` que ela
+/// leu, uniformemente, em TODOS os dez arcos. *Um desvio igual em todas as amostras é assinatura da
+/// régua, não do objecto* — e a lição já estava paga neste repo (a régua da ponta, ponto→FACE).
+fn hausdorff(a: &[[f32; 2]], b: &[[f32; 2]]) -> f64 {
+    let n = b.len();
+    a.iter()
+        .map(|p| {
+            (0..n)
+                .map(|i| dist_ponto_segmento(*p, b[i], b[(i + 1) % n]))
+                .fold(f64::INFINITY, f64::min)
+        })
+        .fold(0.0, f64::max)
+}
+
+fn dist_ponto_segmento(p: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f64 {
+    let (px, py) = (f64::from(p[0]), f64::from(p[1]));
+    let (ax, ay) = (f64::from(a[0]), f64::from(a[1]));
+    let (bx, by) = (f64::from(b[0]), f64::from(b[1]));
+    let (ex, ey) = (bx - ax, by - ay);
+    let ee = ex * ex + ey * ey;
+    let t = if ee > 0.0 {
+        (((px - ax) * ex + (py - ay) * ey) / ee).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    (px - (ax + ex * t)).hypot(py - (ay + ey * t))
+}

@@ -29,3 +29,6 @@ ph2d-color = { path = "../ph2d-color" }
 wgpu = { version = "29.0.4", features = ["wgsl"] }
 pollster = "0.4.0"
 
+
+[lints]
+workspace = true

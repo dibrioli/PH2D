@@ -108,7 +108,7 @@ pub fn cook_path(path: &VecPath, tolerance: f64) -> Result<Profile, CookError> {
     // e é ela que tem de virar sólido.
     let path = &*path.cooked();
 
-    let mut contours: Vec<Vec<[f32; 2]>> = Vec::with_capacity(path.contour_count());
+    let mut contours: Vec<ph2d_field::ContourWithArcs> = Vec::with_capacity(path.contour_count());
     for c in 0..path.contour_count() {
         let Some((verts, closed)) = path.contour(c) else {
             continue;
@@ -129,7 +129,8 @@ pub fn cook_path(path: &VecPath, tolerance: f64) -> Result<Profile, CookError> {
     if contours.is_empty() {
         return Err(CookError::Empty);
     }
-    Profile::new(contours, fill_rule(path.fill_rule), tolerance as f32).map_err(CookError::Rejected)
+    Profile::with_arcs(contours, fill_rule(path.fill_rule), tolerance as f32)
+        .map_err(CookError::Rejected)
 }
 
 /// ⭐ **A ESCALA DO DESENHO** — o lado maior da caixa, e é dela que sai toda tolerância relativa.
@@ -217,8 +218,136 @@ fn fill_rule(r: ph2d_vec_scene::FillRule) -> FillRule {
     }
 }
 
-/// Um contorno fechado de vértices cúbicos → polilinha.
-fn flatten_contour(verts: &[VecVertex], tolerance: f64) -> Vec<[f32; 2]> {
+/// ⭐⭐⭐ **UM CONTORNO FECHADO DE VÉRTICES CÚBICOS → AS DUAS VISTAS** (2026-09-16).
+///
+/// A **polilinha densa** é a de sempre, pelo caminho de sempre — ela é a FIGURA, e vinte e quatro
+/// leitores dependem disso. E ao lado dela sai a **decomposição exacta**: a mesma curva escrita em
+/// rectas e ARCOS, que é o que a fita da marcha avalia.
+///
+/// Uma quina arredondada é, geometricamente, um arco de círculo. Achatá-la dava `~8` segmentos
+/// rectos, e cada segmento é `~32` operações na fita — medido, `68` dos `76 ms` do quadro do vaso
+/// (`docs/Render3d/06_auditoria_do_vaso.md`).
+///
+/// ⛔⛔ **O reconhecimento é pela GEOMETRIA, nunca por quem produziu a curva.** Não há bandeira a
+/// dizer «isto veio de um `corner_radius`», e não devia haver: um arco que o artista desenhou com a
+/// caneta, um `rounded_rect`, um arco vindo de SVG — todos são o mesmo facto, e uma bandeira só
+/// apanharia o caso que a escreveu.
+///
+/// ⚠️⚠️ **A 1.ª tentativa desta wave pôs os bulges PARALELOS à polilinha, e com isso a polilinha
+/// deixou de ser a forma.** Dois gates que já existiam apanharam-no na primeira corrida — a
+/// tolerância do achatamento passou a medir a corda, e um furo mediu `0,2828` em vez de `0,4`.
+/// *Uma vista nova não pode tomar o lugar da que os consumidores já lêem.*
+fn flatten_contour(
+    verts: &[VecVertex],
+    tolerance: f64,
+) -> ph2d_field::ContourWithArcs {
+    (
+        flatten_contour_reto(verts, tolerance),
+        decomposicao_exacta(verts, tolerance),
+    )
+}
+
+/// A mesma curva em rectas e ARCOS. **Vazia** quando não há arco nenhum — aí a polilinha já é a
+/// decomposição exacta, e guardar uma cópia dela seria uma segunda resposta à mesma pergunta.
+fn decomposicao_exacta(verts: &[VecVertex], tolerance: f64) -> Vec<ph2d_field::ArcVertex> {
+    let n = verts.len();
+    let arcos: Vec<Option<f64>> = (0..n)
+        .map(|i| {
+            let a = &verts[i];
+            let b = &verts[(i + 1) % n];
+            if a.out_handle == a.anchor && b.in_handle == b.anchor {
+                None // recta exacta
+            } else {
+                bulge_do_cubico(a.anchor, a.out_handle, b.in_handle, b.anchor, tolerance)
+            }
+        })
+        .collect();
+    if arcos.iter().all(Option::is_none) {
+        return Vec::new();
+    }
+    let mut out: Vec<ph2d_field::ArcVertex> = Vec::new();
+    for i in 0..n {
+        let a = &verts[i];
+        let b = &verts[(i + 1) % n];
+        #[allow(clippy::cast_possible_truncation)]
+        let anc = [a.anchor[0] as f32, a.anchor[1] as f32];
+        if let Some(bulge) = arcos[i] {
+            #[allow(clippy::cast_possible_truncation)]
+            out.push((anc, bulge as f32));
+            continue;
+        }
+        if a.out_handle == a.anchor && b.in_handle == b.anchor {
+            out.push((anc, 0.0));
+            continue;
+        }
+        // Cúbica que não é arco: achata-se SÓ ela; o ponto final é o início da aresta seguinte.
+        let mut bez = BezPath::new();
+        bez.move_to(pt(a.anchor));
+        bez.curve_to(pt(a.out_handle), pt(b.in_handle), pt(b.anchor));
+        let mut esta: Vec<[f32; 2]> = Vec::new();
+        kurbo::flatten(bez, tolerance, |el| match el {
+            PathEl::MoveTo(p) | PathEl::LineTo(p) => esta.push([p.x as f32, p.y as f32]),
+            _ => {}
+        });
+        esta.pop();
+        for p in esta {
+            out.push((p, 0.0));
+        }
+    }
+    out
+}
+
+/// ⭐⭐ **A CÚBICA É UM ARCO DE CÍRCULO?** Devolve o *bulge* (DXF: `tan(θ/4)`, positivo = curva para a
+/// esquerda de `a→b`) quando sim, `None` quando não.
+///
+/// A conta não procura o círculo: ela **constrói** o único círculo que passa pelos dois extremos e
+/// pelo meio da cúbica, e depois **confere** que a cúbica inteira vive nele. É por essa ordem de
+/// propósito — ajustar um círculo por mínimos quadrados aceitaria uma curva que passa perto de um
+/// círculo sem ser um, e é a conferência que tem de ser a barra.
+///
+/// ⚠️ **A barra é a TOLERÂNCIA de cozimento, a mesma com que o achatamento trabalharia** — não um
+/// número novo. *Um arco aceite aqui erra menos do que os segmentos que ele substitui, por
+/// construção: aqueles têm a tolerância como erro de corda, este tem-na como erro máximo.*
+fn bulge_do_cubico(p0: [f64; 2], p1: [f64; 2], p2: [f64; 2], p3: [f64; 2], tol: f64) -> Option<f64> {
+    let (dx, dy) = (p3[0] - p0[0], p3[1] - p0[1]);
+    let l = dx.hypot(dy);
+    if !l.is_finite() || l <= tol {
+        return None; // corda degenerada: um laço fechado não é um arco desta família
+    }
+    let bez = kurbo::CubicBez::new(pt(p0), pt(p1), pt(p2), pt(p3));
+    let meio = kurbo::ParamCurve::eval(&bez, 0.5);
+    // Flecha COM SINAL: a distância perpendicular do meio do arco à corda, positiva à esquerda.
+    let s = (dx * (meio.y - p0[1]) - dy * (meio.x - p0[0])) / l;
+    let bulge = 2.0 * s / l;
+    // `|bulge| >= 1` é meia-volta ou mais — uma cúbica não a representa, e a nossa família de
+    // quinas nunca a produz. Abaixo do piso a curva é uma recta disfarçada: deixá-la ao achatador
+    // é mais barato e não muda a figura.
+    if !bulge.is_finite() || bulge.abs() >= 1.0 || bulge.abs() <= 1e-4 {
+        return None;
+    }
+    // O centro: sobre a mediatriz da corda, em `k` a partir do meio dela (ver a derivação no doc do
+    // campo `Profile::bulges`).
+    let k = (s * s - (l * 0.5) * (l * 0.5)) / (2.0 * s);
+    let (mx, my) = ((p0[0] + p3[0]) * 0.5, (p0[1] + p3[1]) * 0.5);
+    let (nx, ny) = (-dy / l, dx / l); // normal ESQUERDA unitária
+    let (cx, cy) = (mx + nx * k, my + ny * k);
+    let r = (s - k).abs();
+    if !r.is_finite() || r <= 0.0 {
+        return None;
+    }
+    // A conferência: a cúbica inteira tem de viver no círculo. `0` e `1` estão nele por construção,
+    // e `0,5` também (foi ele que o definiu) — por isso as amostras são as de ENTRE.
+    for t in [0.125, 0.25, 0.375, 0.625, 0.75, 0.875] {
+        let q = kurbo::ParamCurve::eval(&bez, t);
+        if ((q.x - cx).hypot(q.y - cy) - r).abs() > tol {
+            return None;
+        }
+    }
+    Some(bulge)
+}
+
+/// O achatamento de sempre — o caminho INTEIRO de uma vez. Ver o aviso de byte-identidade acima.
+fn flatten_contour_reto(verts: &[VecVertex], tolerance: f64) -> Vec<[f32; 2]> {
     let mut bez = BezPath::new();
     bez.move_to(pt(verts[0].anchor));
     for i in 0..verts.len() {

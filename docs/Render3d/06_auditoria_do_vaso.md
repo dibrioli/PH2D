@@ -112,3 +112,101 @@ ela substitui.
   **na mesma fita**, e essa não precisa de modelo novo;
 - ⏳ **A especialização por região não está a morder neste caso** e ninguém mediu porquê. A
   suspeita é a simetria do torno: um ladrilho do ecrã mapeia para uma faixa larga de `(r, y)`.
+
+---
+
+# PARTE II — A CURA, implementada (2026-09-16)
+
+> **Ordem do dono:** *«implemente a cura. Não pare até finalizar, pronto para smoke»*.
+> **Resultado medido, `1920×1080`, máquina a `95 %` ociosa, duas rondas concordantes:**
+
+| cena | fita (ops) | antes | depois | ganho |
+|---|---:|---:|---:|---:|
+| **`5` · o VASO** | `2 969` → **`915`** | `77,13 ms` | **`25,6`–`26,2 ms`** | **`2,95×`** |
+| `4` · cantoneira | `2 896` → **`519`** | `112,78 ms` | **`13,2 ms`** | **`8,5×`** |
+| `2` · cubo (sem arcos) | `28` → `28` | `5,69` | `4,3`–`4,8` | *inalterado* |
+
+⭐ **O cubo é o CONTROLO e a fita dele é byte-idêntica** (`28` operações, `21` guardados, os mesmos
+`558` bytes de WGSL): o caminho sem arcos não foi tocado. ⚠️ O relógio dele mexeu-se `~12 %` entre
+corridas — *é essa a dispersão da máquina, e é ela que diz que um ganho de `12 %` não seria
+afirmável e um de `2,95×` é.*
+
+## §8 — O que se construiu
+
+1. **`ph2d_field::Profile` ganhou `arcs`** — por contorno, a lista de `(vértice, bulge)`. O *bulge* é
+   a convenção do DXF (`tan(θ/4)`, com sinal), e dele mais a corda saem o centro e o raio sem
+   guardar nenhum dos dois.
+   ⚠️⚠️ **A `contours()` continua a ser A FIGURA.** A 1.ª tentativa pôs os bulges *paralelos* à
+   polilinha e com isso a polilinha deixou de descrever a forma — **dois gates que já existiam
+   apanharam-no na primeira corrida** (a tolerância do achatamento passou a medir a corda; um furo
+   mediu `0,2828` em vez de `0,4`). *Vinte e quatro leitores tratam `contours()` como a figura, e
+   estavam certos.* ⇒ o arco é uma vista **adicional**, e há gate a atar as duas.
+2. **A cozedura reconhece o arco** (`bulge_do_cubico`) — pela **geometria**, nunca por proveniência:
+   constrói o único círculo pelos dois extremos e pelo meio da cúbica, e depois **confere** que a
+   cúbica inteira vive nele, com a tolerância de cozimento como barra. *Ajustar um círculo por
+   mínimos quadrados aceitaria uma curva que passa perto de um círculo sem ser um.*
+3. **O emissor da fita sabe arcos** — distância por cunha angular (`|‖p−c‖−r|` dentro dela, a ponta
+   mais próxima fora), **sem uma única trigonométrica por amostra**: o centro, o raio, a bissectriz e
+   o `cos(θ/2)` são constantes.
+4. **O SINAL** — a corda entra no enrolamento como uma recta, mais a **correcção da meia-lua**: um
+   ponto dentro do círculo e do lado do arco vale `∓1`. ⭐ **Provado por mutação:** apagar a correcção
+   troca o sinal em **`652`** pontos de uma grelha de `68 121`.
+
+## §9 — ⭐⭐⭐ E a auditoria achou um DEFEITO MAIOR pelo caminho
+
+O reconhecimento falhou nas dez quinas do vaso, e a causa não era o reconhecedor: **as quinas não
+eram arcos**. O `ph2d_vec_scene::corner_live::fillet_handles` emitia
+`h = (4/3)·tan(α/4)·**s_in**` onde a lei do arco pede `·r`, e `s_in = r·tan(α/2)` — ou seja um factor
+`tan(α/2)` a mais, que vale `1` **só a `90°`**.
+
+| α | raio pedido | raio que saía | desvio | × tolerância |
+|---:|---:|---:|---:|---:|
+| `30°` | `0,05` | `0,04875` | `1,2e-3` | `4,2` |
+| `70°` | `0,05` | `0,04729` | `2,7e-3` | `9,1` |
+| **`90°`** | `0,05` | **`0,05000`** | `1,4e-5` | `0,0` ⬅ o único certo |
+| `130°` | `0,05` | **`0,08304`** | `3,3e-2` | `110,7` |
+
+⛔⛔ **O artista pedia `0,05` e recebia `0,083`** — e isto vale para **toda** quina arredondada do
+app fora de `90°`, não só no modelador.
+
+⚠️⚠️ **E o gate que devia tê-lo apanhado corre sobre um QUADRADO**
+(`the_fillet_agrees_with_the_crates_canonical_corner_rounding`): quatro cantos a `90°`, que é
+exactamente o ângulo em que o defeito é invisível. *Uma fixtura de um ângulo só não mede uma lei que
+depende do ângulo* — a mesma família do «uma fixtura alinhada aos eixos não mede uma base».
+
+⭐ Curado (uma divisão), e o gate novo (`o_filete_vivo_e_um_arco_em_todo_angulo`) varre `30°`–`150°`.
+Depois da cura o raio sai **exacto** em toda a faixa. ⚠️ **A fidelidade tem um tecto que não é
+desta wave:** UMA cúbica não representa um arco de `150°` dentro da tolerância (`1,04×` dela), e a
+consequência é benigna — o reconhecedor simplesmente não aceita essa quina e ela fica tesselada.
+
+⭐ **A `ph2d-vec-scene` passou `501/501`** com a cura dentro.
+
+## §10 — ⛔ As duas RÉGUAS que mentiram primeiro
+
+1. **Ponto→VÉRTICE em vez de ponto→SEGMENTO.** A régua que compara as duas vistas acusou uma
+   decomposição **correcta** com `0,0028`–`0,0032` de erro, *uniformemente em todos os dez arcos*.
+   Numa polilinha achatada a `9,7e-5` sobre um arco de raio `0,05` os vértices ficam a `~0,0062` um
+   do outro ⇒ um ponto no meio de dois lê `~0,0031`. **Um desvio igual em todas as amostras é
+   assinatura da régua, não do objecto** — e a lição já estava paga neste repo (a régua da ponta).
+2. **O sentido do arco assumido em vez de derivado.** A 1.ª amostragem usou `θ = 4·atan(bulge)` com
+   o sinal de uma convenção decorada; com `|bulge| < 1` o arco é o MENOR, logo a diferença de ângulos
+   dobrada para `(−π, π]` **é** ele, e não há convenção para decorar.
+
+## §11 — O formato
+
+`FIELD_DOC_VERSION` **22 → 23** e `PROJECT_SCHEMA` **131 → 132**. O `Profile` viaja dentro de uma
+`Primitive`, que viaja **posicionalmente** no blob do `FieldNode`: é a regra dos degraus 109/110
+(campo novo numa struct já gravada), e não a dos `enum` que apendam. ⛔ Sem degrau de migração, pela
+decisão do Enio de 26/08 — um v131 é recusado em voz alta. ⭐ Um documento velho abre com `arcs`
+vazio e é avaliado pelo caminho de sempre, **ao bit**.
+
+## §12 — ⏳ O que fica
+
+- ⏳ **A especialização por REGIÃO não usa arcos.** O `ProfileIndex` é construído da polilinha densa,
+  logo o caminho por ladrilho continua a pagar por aresta. Não é defeito de correcção (as duas
+  descrevem a mesma curva a menos da tolerância, e as suítes passam), é **ganho por colher** — e é
+  onde o vaso ainda tem `22 ms` de marcha;
+- ⏳ **O `select×555` do vaso** era `~5,9` por aresta e continua por auditar na fita nova;
+- ⏳ **Uma quina acima de `~140°` fica tesselada**, porque uma cúbica não a representa dentro da
+  tolerância. A saída publicada é partir a quina em duas cúbicas na emissão — wave da
+  `ph2d-vec-scene`, não desta.

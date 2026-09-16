@@ -628,4 +628,24 @@
 ///
 /// ⭐ **E este e' o ULTIMO degrau que o material pede:** sao as `15` entradas do OpenPBR, e nao ha
 /// mais nenhuma para apender.
-pub(crate) const PROJECT_SCHEMA: u32 = 143;
+/// # `143 → 144` — o PERFIL ganha os ARCOS (`docs/Render3d/06_auditoria_do_vaso.md`)
+///
+/// O `ph2d_field::Profile` ganhou um campo `arcs` — a decomposição exacta em rectas e ARCOS, para
+/// uma quina arredondada deixar de ser oito segmentos rectos na fita que a marcha avalia por pixel.
+/// O `FIELD_DOC_VERSION` subiu **22 -> 23**.
+///
+/// ⚠️ **Sobe por arrasto pelo mesmo caminho do 104:** o `Profile` viaja dentro de uma
+/// `ph2d_field::Primitive` (`Extrude`, `Revolve`, `Polygon`), que viaja **posicionalmente** dentro
+/// do blob do componente `ph2d_field_ecs::FieldNode`, que está no `WorldSnapshot`. É a regra dos
+/// degraus 109/110: **acrescentar um CAMPO a uma struct que já se grava** muda os bytes de valores
+/// gravados, ao contrário de apendar uma variante no fim de um `enum`.
+///
+/// ⭐ **O golden de forma apanhou-o**, que é o instrumento que este ficheiro nomeia para isto:
+/// `the_shape_of_a_saved_profile_is_pinned` foi de `90` para **`92`** bytes (um `Vec` de um `Vec`
+/// vazio = dois bytes).
+///
+/// ⭐ **A aparência de um documento velho não muda**: ao ler, `arcs` fica vazio, e um perfil sem
+/// arcos é avaliado pelo caminho de sempre, **ao bit** (gate `um_perfil_sem_arcos_da_o_campo_de_sempre`).
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v131 é **recusado em voz alta**.
+pub(crate) const PROJECT_SCHEMA: u32 = 144;

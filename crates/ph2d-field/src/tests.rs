@@ -509,7 +509,10 @@ fn the_shape_of_a_saved_profile_is_pinned() {
         // **85 → 86 na v5** (W97): um nó, um byte do `Option::None` do verbo. A mesma conta.
         // ⭐ **86 → 90 na v15**: o `Primitive::Extrude` ganhou o `chamfer`, um `f32` fixo. Um nó,
         // quatro bytes.
-        90,
+        // ⭐ **90 → 92 na v23** (2026-09-16): o `Profile` ganhou os `arcs` — a decomposição exacta
+        // em rectas e ARCOS. Aqui o perfil não tem arco nenhum, logo são **dois** bytes: o `Vec`
+        // externo tem um elemento e o interno é vazio. `PROJECT_SCHEMA` 131 → 132.
+        92,
         "a forma serializada do perfil mudou — suba FIELD_DOC_VERSION e escreva a migração, \
          não re-pine este número"
     );

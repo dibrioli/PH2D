@@ -75,42 +75,125 @@ fn sd_profile_inner(profile: &Profile, u: &Tree, v: &Tree, axis_seam: bool) -> T
     let mut dist2: Option<Tree> = None;
     let mut crossings: Option<Tree> = None;
 
-    for contour in profile.contours() {
-        let n = contour.len();
+    for (ci, contour) in profile.contours().iter().enumerate() {
+        // ⭐⭐⭐ **A DECOMPOSIÇÃO EXACTA, quando existe** (2026-09-16). Ela diz a MESMA curva que a
+        // polilinha, com uma fracção das primitivas: uma quina arredondada é **um arco** em vez de
+        // `~8` segmentos rectos de `~32` operações cada. Medido no vaso do dono: `94` primitivas e
+        // `2 969` operações passam a `22` e `~630` (`docs/Render3d/06_auditoria_do_vaso.md`).
+        //
+        // ⚠️ Sem ela — um perfil sem arco nenhum, ou um vindo de um documento gravado antes desta
+        // wave — o caminho é **exactamente** o de sempre, e o `bulge` lê `0` em toda a aresta.
+        let arcs: Option<&Vec<([f32; 2], f32)>> =
+            profile.arcs().get(ci).filter(|a| !a.is_empty());
+        let pts: Vec<[f32; 2]> = match arcs {
+            Some(a) => a.iter().map(|(p, _)| *p).collect(),
+            None => contour.clone(),
+        };
+        let n = pts.len();
         // Um `compare` por VÉRTICE, partilhado pelas duas arestas que o tocam.
-        let above: Vec<Tree> = contour
+        let above: Vec<Tree> = pts
             .iter()
             .map(|p| Tree::constant(f64::from(p[1])).compare(v.clone()).max(0.0))
             .collect();
 
         for i in 0..n {
             let j = (i + 1) % n;
-            let (ax, ay) = (f64::from(contour[i][0]), f64::from(contour[i][1]));
-            let (bx, by) = (f64::from(contour[j][0]), f64::from(contour[j][1]));
+            let (ax, ay) = (f64::from(pts[i][0]), f64::from(pts[i][1]));
+            let (bx, by) = (f64::from(pts[j][0]), f64::from(pts[j][1]));
             let (ex, ey) = (bx - ax, by - ay);
-            // `Profile::new` removeu os pontos consecutivos repetidos, logo a aresta tem
-            // comprimento — e o recíproco abaixo é uma CONSTANTE, calculada aqui e nunca no ponto.
             let inv_ee = 1.0 / (ex * ex + ey * ey);
 
             let wx = u.clone() - Tree::constant(ax);
             let wy = v.clone() - Tree::constant(ay);
+            let bulge = arcs.map_or(0.0, |a| f64::from(a[i].1));
+            let fora_do_eixo = !(axis_seam && ax.abs() <= on_axis && bx.abs() <= on_axis);
 
-            // A projeção do ponto no segmento, presa a [0, 1] — é o `clamp` que faz a fórmula valer
-            // para o segmento e não para a reta infinita dele.
-            let h = ((wx.clone() * Tree::constant(ex) + wy.clone() * Tree::constant(ey))
-                * Tree::constant(inv_ee))
-            .max(0.0)
-            .min(1.0);
-            let qx = wx.clone() - h.clone() * Tree::constant(ex);
-            let qy = wy.clone() - h * Tree::constant(ey);
-            let seg2 = qx.square() + qy.square();
-            if !(axis_seam && ax.abs() <= on_axis && bx.abs() <= on_axis) {
-                dist2 = Some(match dist2 {
-                    None => seg2,
-                    Some(acc) => acc.min(seg2),
+            if bulge == 0.0 {
+                // ── recta: a conta de sempre, intocada ─────────────────────────────────────────
+                let h = ((wx.clone() * Tree::constant(ex) + wy.clone() * Tree::constant(ey))
+                    * Tree::constant(inv_ee))
+                .max(0.0)
+                .min(1.0);
+                let qx = wx.clone() - h.clone() * Tree::constant(ex);
+                let qy = wy.clone() - h * Tree::constant(ey);
+                let seg2 = qx.square() + qy.square();
+                if fora_do_eixo {
+                    dist2 = Some(match dist2 {
+                        None => seg2,
+                        Some(acc) => acc.min(seg2),
+                    });
+                }
+            } else {
+                // ── ARCO ──────────────────────────────────────────────────────────────────────
+                // Centro e raio saem da corda e do bulge, e são CONSTANTES — nada disto corre por
+                // amostra. `s` é a flecha com sinal; `k` a posição do centro sobre a mediatriz.
+                let l = (ex * ex + ey * ey).sqrt();
+                let s = bulge * l * 0.5;
+                let k = (s * s - (l * 0.5) * (l * 0.5)) / (2.0 * s);
+                let (mx, my) = ((ax + bx) * 0.5, (ay + by) * 0.5);
+                let (nx, ny) = (-ey / l, ex / l); // normal ESQUERDA unitária
+                let (cx, cy) = (mx + nx * k, my + ny * k);
+                let r = (s - k).abs();
+                // A direcção que bissecta o arco, e o cosseno do meio-ângulo: é com eles que se
+                // pergunta «o ponto cai DENTRO da cunha do arco?» sem uma única trigonométrica por
+                // amostra. O ponto médio do arco está em `(mx,my) + n̂·s`.
+                let (bx_m, by_m) = (mx + nx * s - cx, my + ny * s - cy);
+                let lm = (bx_m * bx_m + by_m * by_m).sqrt();
+                let (mhx, mhy) = (bx_m / lm, by_m / lm);
+                // `cos(θ/2)`: o cosseno do ângulo entre a bissectriz e o raio de uma das pontas.
+                let cos_meio = ((ax - cx) * mhx + (ay - cy) * mhy) / r;
+
+                let cwx = u.clone() - Tree::constant(cx);
+                let cwy = v.clone() - Tree::constant(cy);
+                let d2 = cwx.clone().square() + cwy.clone().square();
+                let d = crate::ops::safe_sqrt(d2.clone());
+                // Dentro da cunha: `(p−c)·m̂ ≥ cos(θ/2)·|p−c|`.
+                let proj = cwx.clone() * Tree::constant(mhx) + cwy.clone() * Tree::constant(mhy);
+                let na_cunha = proj
+                    .compare(d.clone() * Tree::constant(cos_meio))
+                    .max(0.0);
+                // Dentro da cunha a distância é radial; fora dela é a da ponta mais próxima.
+                let radial2 = (d.clone() - Tree::constant(r)).square();
+                let pa2 = wx.clone().square() + wy.clone().square();
+                let pb2 = (u.clone() - Tree::constant(bx)).square()
+                    + (v.clone() - Tree::constant(by)).square();
+                let ponta2 = pa2.min(pb2);
+                let arco2 = na_cunha.clone() * radial2
+                    + (Tree::constant(1.0) - na_cunha) * ponta2;
+                if fora_do_eixo {
+                    dist2 = Some(match dist2 {
+                        None => arco2,
+                        Some(acc) => acc.min(arco2),
+                    });
+                }
+
+                // ── o SINAL: a corda mais a correcção da MEIA-LUA ─────────────────────────────
+                // O enrolamento da CORDA entra igual ao de uma recta (logo abaixo). O que a corda
+                // não sabe é a meia-lua entre ela e o arco: um ponto ali está do lado errado.
+                //
+                // ⭐ A correcção é exacta e vale `∓1`: o ciclo «arco de a→b, corda de b→a» dá a
+                // volta à meia-lua uma vez, no sentido HORÁRIO quando o arco curva para a esquerda.
+                // ⚠️ Em paridade (`EvenOdd`) o sinal não importa — o que conta é cruzar ou não.
+                let dentro_do_circulo = Tree::constant(r * r).compare(d2).max(0.0);
+                let cross_corda = Tree::constant(ex) * wy.clone() - Tree::constant(ey) * wx.clone();
+                let do_lado_do_arco = if bulge > 0.0 {
+                    cross_corda.clone().compare(0.0).max(0.0)
+                } else {
+                    Tree::constant(0.0).compare(cross_corda.clone()).max(0.0)
+                };
+                let meia_lua = dentro_do_circulo * do_lado_do_arco;
+                let correccao = if non_zero {
+                    meia_lua * Tree::constant(if bulge > 0.0 { -1.0 } else { 1.0 })
+                } else {
+                    meia_lua
+                };
+                crossings = Some(match crossings {
+                    None => correccao,
+                    Some(acc) => acc + correccao,
                 });
             }
 
+            // O enrolamento da CORDA — o mesmo para recta e para arco.
             let dir = above[j].clone() - above[i].clone();
             let cross = Tree::constant(ex) * wy - Tree::constant(ey) * wx;
             let hit = (dir.clone() * cross).compare(0.0).max(0.0);
@@ -437,3 +520,7 @@ fn crossing_term(
     let side = (px * Tree::constant(ey) - py * Tree::constant(ex)).compare(0.0);
     Tree::constant(0.0) - side * hit_ab * hit_cp
 }
+
+#[cfg(test)]
+#[path = "profile_arc_tests.rs"]
+mod profile_arc_tests;

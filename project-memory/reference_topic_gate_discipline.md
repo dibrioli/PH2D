@@ -260,3 +260,15 @@ os censos da crate antes de dar o corte por fechado.
   deixa o primeiro gate verde). Ver [[feedback_a_panel_can_hold_one_name_column_per_family_of_row]].
 - ⚠️ **Uma fase-filha do quadro que não se chama `fase_*` DESAPARECE do oráculo das leis de ordem** (`frame_text::render_frame` colhe só essas) — e nenhum teste fica vermelho. A lei que a atravessa deixa de ser medida em silêncio (medido 2026-09-14, `line/components`).
 - ⚠️ **Uma fixtura que não contém o fenómeno deixa a lei sem gate:** uma duração de `100 000 µs` não distingue `>=` de `>` num tique de `16 667` (o relógio chega a `100 002` e os dois matam no mesmo tique). ⇒ a fixtura de uma FRONTEIRA cai **exactamente** nela (um múltiplo do tique).
+- ⛔⛔ **UM GATE PODE PROVAR QUE O DADO EXISTE E QUE ELE FECHA, E NÃO PROVAR QUE ELE CHEGA AO
+  CONSUMIDOR.** Medido 2026-09-15: três gates novos afirmavam que a tabela de pesos de pele existia,
+  que ela cobria os ossos certos e que somava `1` por ponto — e a mutação que fazia o desenho
+  **ignorar a tabela inteira** deixava os **29 verdes**. *É o terceiro passo que um `grep` não vê,
+  o mesmo do §5.0 sobre controlos mortos: quem escreve · quem lê · **o leitor DECIDE, ou entrega a
+  quem descarta?*** ⇒ o gate que o mata compara o que o QUADRO desenha com as DUAS leis, e precisa
+  das duas metades: o quadro tem de dar a lei nova **e** diferir da velha.
+  ⚠️⚠️ **E a fixtura teve de ser refeita DUAS vezes para produzir o fenómeno** — o rectângulo do
+  arnês tem os pontos de controlo nos CANTOS, e ali as duas leis concordam (`0,000` de separação);
+  com vértices na junta sobe a `0,064`; com a arte alta sobe a `10,47`. *Um gate cuja fixtura não
+  produz o fenómeno mede outro programa, e passa verde a dizê-lo.*
+

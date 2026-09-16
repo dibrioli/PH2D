@@ -35,6 +35,20 @@ pelo maior `to_bits` em vez de perguntar ao produto (`chain_ends`), rodava a **r
 `154 px` de vazamento **sobre a lei que não pode vazar**. *O controlo que desmascara uma régua nova
 é o caso em que ela tem de ler zero.*
 
+⭐⭐⭐ **E a MESMA jornada apanhou a família DUAS vezes mais, o que é o que a torna uma lei e não um
+caso.** A régua seguinte — *quanta arte vira do avesso ao dobrar* — é ganha pela **RIGIDEZ**: arte
+presa a UM osso só não pode inverter-se porque **não se deforma**. Medido, a lei que ganhava aquela
+coluna deixava **`37,6 %` da arte rigidamente pregada a um osso** contra `8,1 %` do padrão-ouro.
+⇒ *toda régua de «quanto isto se estraga» tem de vir com o censo de «quanto isto sequer se mexe»*,
+senão ela premeia não fazer nada — e a resposta degenerada muda de nome (borrar · enrijecer) sem
+mudar de natureza.
+
+⛔⛔ **E uma quarta, que é de outra espécie e vale por si: eu amostrei a CONDIÇÃO DE FRONTEIRA e
+chamei-lhe solução.** O perfil dos pesos foi lido ao longo da linha onde eles estão **presos**
+(`w = 1` por construção), e eu quase registei *«o padrão-ouro é uma função escada»* sobre um campo
+que fora do eixo lê `0,98 → 0,92 → 0,76 → 0,59 → 0,38 → 0,12`. *Numa solução com restrições, a régua
+tem de amostrar onde o problema é LIVRE — no resto ela devolve o que eu escrevi.*
+
 Ver [[a-bar-calibrated-without-the-approved-side-measures-our-own-defects]] (a barra que mede os
 nossos próprios defeitos) e [[feature-worse-than-not-existing]] (a linha de controlo «não fazer
 nada»). O caso inteiro: `docs/Skeleton/handoffs/HANDOFF_O_RESTO_DO_APP_ACHAVA_A_ARTE_PLANA_2026-09-15.md` §17.

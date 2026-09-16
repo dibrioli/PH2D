@@ -17,7 +17,9 @@ use crate::io::{
     EntityWrite, InputSnapshot, NameSnapshot, ReadSnapshot, SpawnCommand, SpawnQueue, WriteQueue,
 };
 use crate::lateral::{PodValue, StateTable};
+use crate::scene::{Deadline, EmitQueue, SceneReport, SceneScripts, ScriptInfo};
 use mlua::Function;
+use ph2d_ecs::{Entity, World};
 
 /// Public host facade. One per app. Held by the shell; passed
 /// `provide_read` / `tick` / `drain_writes` from the per-frame loop.
@@ -41,6 +43,12 @@ pub struct ScriptHost {
     spawn_queue: SpawnQueue,
     name_snapshot: NameSnapshot,
     state_table: StateTable,
+    /// ⭐ TOP-20 #16 — os sinais que `ph2d.emit` empurra (drenados por gancho).
+    emit_queue: EmitQueue,
+    /// O prazo da chamada em curso, partilhado com a interrupção da VM.
+    deadline: Deadline,
+    /// Os scripts da cena — um módulo por ficheiro, um `self` por objecto.
+    scene: SceneScripts,
 }
 
 impl ScriptHost {
@@ -51,6 +59,8 @@ impl ScriptHost {
         let spawn_queue = SpawnQueue::new();
         let name_snapshot = NameSnapshot::new();
         let state_table = StateTable::new();
+        let emit_queue = EmitQueue::default();
+        let deadline = Deadline::default();
         let runtime = build_runtime(
             &write_queue,
             &read_snapshot,
@@ -58,6 +68,8 @@ impl ScriptHost {
             &spawn_queue,
             &name_snapshot,
             &state_table,
+            &emit_queue,
+            &deadline,
         )?;
         Ok(Self {
             runtime,
@@ -69,6 +81,9 @@ impl ScriptHost {
             spawn_queue,
             name_snapshot,
             state_table,
+            emit_queue,
+            deadline,
+            scene: SceneScripts::default(),
         })
     }
 
@@ -103,7 +118,12 @@ impl ScriptHost {
             &self.spawn_queue,
             &self.name_snapshot,
             &self.state_table,
+            &self.emit_queue,
+            &self.deadline,
         )?;
+        // ⚠️ Os módulos e os `self` da cena são tabelas da VM VELHA — esquecê-los obriga o próximo
+        // `scene_sync` a recarregar do disco, em vez de chamar funções de um estado que morreu.
+        self.scene.clear();
         self.runtime.eval(source)?;
         self.last_source_hash = Some(hash);
         self.reset_count += 1;
@@ -113,7 +133,7 @@ impl ScriptHost {
     /// Inject one ECS field value into the read snapshot. Call once
     /// per (entity, field) before the per-frame `tick` so `ph2d.get`
     /// resolves to current state.
-    pub fn provide_read(&self, entity: u32, field: &str, value: f64) {
+    pub fn provide_read(&self, entity: u64, field: &str, value: f64) {
         self.read_snapshot.set(entity, field, value);
     }
 
@@ -218,6 +238,58 @@ impl ScriptHost {
     pub fn name_snapshot(&self) -> &NameSnapshot {
         &self.name_snapshot
     }
+
+    // ── TOP-20 #16: os scripts da CENA ────────────────────────────────────────────────────────
+
+    /// ⭐ **Uma vez por quadro, a correr ou não** — ver [`SceneScripts::sync`].
+    pub fn scene_sync(&mut self, world: &mut World) {
+        self.scene.sync(self.runtime.lua(), &self.deadline, world);
+    }
+
+    /// ⭐⭐⭐ **Um passo fixo** — ver [`SceneScripts::tick`].
+    pub fn scene_tick(&mut self, world: &mut World, dt: f64) -> SceneReport {
+        self.scene.tick(
+            self.runtime.lua(),
+            &self.deadline,
+            &self.read_snapshot,
+            world,
+            dt,
+        )
+    }
+
+    /// Os sinais deste quadro — ver [`SceneScripts::hear`].
+    pub fn scene_hear(&mut self, world: &mut World, signals: &[&str]) -> SceneReport {
+        self.scene.hear(
+            self.runtime.lua(),
+            &self.deadline,
+            &self.read_snapshot,
+            world,
+            signals,
+        )
+    }
+
+    /// ⭐ **Rebobinar é renascer** — devolve quantos objectos tinham vivo.
+    pub fn scene_rewind(&mut self) -> usize {
+        self.scene.rewind()
+    }
+
+    /// O que se sabe do ficheiro `path` — ver [`SceneScripts::info`].
+    #[must_use]
+    pub fn scene_info(&self, path: &str) -> Option<&ScriptInfo> {
+        self.scene.info(path)
+    }
+
+    /// Porque o objecto parou de correr o script — ver [`SceneScripts::failure`].
+    #[must_use]
+    pub fn scene_failure(&self, entity: Entity) -> Option<&str> {
+        self.scene.failure(entity)
+    }
+
+    /// Os scripts da cena, para leitura (gates e diagnóstico).
+    #[must_use]
+    pub fn scene(&self) -> &SceneScripts {
+        &self.scene
+    }
 }
 
 /// Build a fresh `ScriptRuntime` with the `ph2d.*` Luau bindings
@@ -226,6 +298,7 @@ impl ScriptHost {
 /// globals + the `ph2d` namespace, so the API must be installed
 /// FIRST. Activating sandbox last makes the surface read-only to
 /// user scripts (HR-9).
+#[allow(clippy::too_many_arguments)]
 fn build_runtime(
     write_queue: &WriteQueue,
     read_snapshot: &ReadSnapshot,
@@ -233,6 +306,8 @@ fn build_runtime(
     spawn_queue: &SpawnQueue,
     name_snapshot: &NameSnapshot,
     state_table: &StateTable,
+    emit_queue: &EmitQueue,
+    deadline: &Deadline,
 ) -> mlua::Result<ScriptRuntime> {
     let runtime = ScriptRuntime::new()?;
     wire_ph2d_api(
@@ -244,8 +319,59 @@ fn build_runtime(
         name_snapshot,
         state_table,
     )?;
+    wire_scene_api(&runtime, emit_queue)?;
+    install_deadline(runtime.lua(), deadline);
     runtime.lua().sandbox(true)?;
     Ok(runtime)
+}
+
+/// ⭐ TOP-20 #16 — `ph2d.emit(nome)`: um sinal no MESMO outbox de toda a casa.
+///
+/// ⚠️ **Vazio é erro, não silêncio**: a lei do produtor desta casa é *um produtor sem nome não
+/// fala*, e num script um nome vazio é quase sempre uma variável por preencher — o painel tem de o
+/// dizer, e um erro é a única forma de ele chegar lá.
+fn wire_scene_api(runtime: &ScriptRuntime, emit_queue: &EmitQueue) -> mlua::Result<()> {
+    let lua = runtime.lua();
+    lua.set_app_data(emit_queue.clone());
+    let emit_fn = lua.create_function(|lua, name: String| -> mlua::Result<()> {
+        if name.trim().is_empty() {
+            return Err(mlua::Error::RuntimeError(
+                "ph2d.emit: the signal needs a name".into(),
+            ));
+        }
+        let q = lua.app_data_ref::<EmitQueue>().ok_or_else(|| {
+            mlua::Error::RuntimeError("ph2d.emit: EmitQueue not registered".into())
+        })?;
+        q.0.lock().unwrap_or_else(|p| p.into_inner()).push(name);
+        Ok(())
+    })?;
+    let ph2d: mlua::Table = lua.globals().get("ph2d")?;
+    ph2d.set("emit", emit_fn)?;
+    Ok(())
+}
+
+/// ⭐ **A interrupção que impede um laço sem saída de congelar o app** (§3.8 do plano).
+///
+/// ⚠️ **Lê o relógio uma vez em cada 256 interrupções**: o Luau interrompe em cada volta de laço
+/// e em cada chamada, e um `Instant::now` por volta pagaria o relógio pela cena inteira. 256 voltas
+/// de um laço vazio são microssegundos — o prazo continua a valer ao quadro.
+fn install_deadline(lua: &mlua::Lua, deadline: &Deadline) {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    let limit = deadline.0.clone();
+    let ticks = std::sync::Arc::new(AtomicU32::new(0));
+    lua.set_interrupt(move |_| {
+        let until = limit.load(Ordering::Relaxed);
+        if until == u64::MAX || ticks.fetch_add(1, Ordering::Relaxed) & 0xFF != 0 {
+            return Ok(mlua::VmState::Continue);
+        }
+        if crate::scene::now_nanos() > until {
+            return Err(mlua::Error::RuntimeError(format!(
+                "the script ran for longer than a frame ({} ms) — is there a loop that never ends?",
+                crate::scene::HOOK_BUDGET.as_secs_f64() * 1000.0
+            )));
+        }
+        Ok(mlua::VmState::Continue)
+    });
 }
 
 fn wire_ph2d_api(
@@ -273,7 +399,7 @@ fn wire_ph2d_api(
     lua.set_app_data(state_table.clone());
 
     let set_fn = lua.create_function(
-        |lua, (entity, field, value): (u32, String, f64)| -> mlua::Result<()> {
+        |lua, (entity, field, value): (u64, String, f64)| -> mlua::Result<()> {
             // app_data_ref panic was a known gap (audit MEDIUM): convert
             // missing-data into a script-visible error instead of a Rust
             // panic. This branch is unreachable in normal flow (we just
@@ -295,7 +421,7 @@ fn wire_ph2d_api(
     )?;
 
     let get_fn = lua.create_function(
-        |lua, (entity, field): (u32, String)| -> mlua::Result<Option<f64>> {
+        |lua, (entity, field): (u64, String)| -> mlua::Result<Option<f64>> {
             let s = lua.app_data_ref::<ReadSnapshot>().ok_or_else(|| {
                 mlua::Error::RuntimeError("ph2d.get: ReadSnapshot not registered".into())
             })?;
@@ -460,6 +586,8 @@ fn wire_ph2d_api(
     ph2d.set("state_set", state_set_fn)?;
     ph2d.set("state_keys", state_keys_fn)?;
     ph2d.set("state_clear", state_clear_fn)?;
+    // ⭐ TOP-20 #16 — as declarações de um script (só no topo; ver `crate::module`).
+    ph2d.set("property", crate::module::property_binding(lua)?)?;
 
     Ok(())
 }

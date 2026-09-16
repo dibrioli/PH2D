@@ -26,7 +26,10 @@ pub mod host;
 pub mod io;
 pub mod lateral;
 pub mod messaging;
+pub mod module;
+pub mod props;
 pub mod registry;
+pub mod scene;
 
 pub use component::LuauScript;
 pub use host::ScriptHost;
@@ -35,7 +38,13 @@ pub use io::{
 };
 pub use lateral::{PodValue, StateTable};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
+pub use module::{ModuleError, ScriptModule, load_module};
+pub use props::{
+    DeclError, Origin, Orphan, OrphanWhy, PropDecl, PropHint, Resolution, Resolved, ScriptValue,
+    ScriptValueKind,
+};
 pub use registry::register_script_components;
+pub use scene::{HOOK_BUDGET, SceneReport, SceneScripts, ScriptInfo};
 
 use mlua::thread::ThreadStatus;
 use mlua::{Function, IntoLuaMulti, Lua, Thread, Value};

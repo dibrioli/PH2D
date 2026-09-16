@@ -2,79 +2,62 @@
 //! script behavior to a SimWorld entity (ADR-0025 §"Gameplay script
 //! is a Component, not a class").
 //!
-//! Unity's `MonoBehaviour` model is a class hierarchy that PH2D
-//! deliberately doesn't have. Instead, a `LuauScript` is a
-//! `SimComponent` carrying two opaque references:
+//! # ⭐⭐⭐ A forma de 2026-09-16 (TOP-20 #16) — um CAMINHO e os números que o artista PÔS
 //!
-//! - **`bytecode: AssetId`** — content-addressed identity (HR-6) of
-//!   the compiled Luau bytecode. Multiple entities sharing the same
-//!   `bytecode` value share one compiled program (no per-entity
-//!   bytecode copy).
-//! - **`lateral_key: u64`** — the key in
-//!   [`crate::lateral::StateTable`] where this entity's per-instance
-//!   state lives (`hp`, FSM cursor, dialogue branch, …). Computed
-//!   deterministically from the entity id + bytecode hash at
-//!   attach time, so a hot reload — which preserves entity ids and
-//!   re-uses the same bytecode hash — can find the same row.
+//! Até aqui o componente guardava `bytecode: AssetId` e `lateral_key: u64`, e as duas escolhas
+//! foram **medidas e retiradas** (`docs/Components/13_plano_script_properties.md` §1):
 //!
-//! HR-14 mitigation: [`LuauScript::VERSION`] is the stable schema
-//! marker until the `Saveable` derive lands.
+//! - ⛔⛔ **`lateral_key = entity.to_bits() ^ hash`** punha **bits de alocação dentro dos bytes de um
+//!   componente** — exactamente o que o `CLAUDE.md` §5 proíbe (*o undo respawna tudo com bits
+//!   novos, e bits dentro dos bytes envenenam o próprio undo*). Só não mordeu porque o componente
+//!   **nunca foi gravado**: o registador não era chamado no boot.
+//! - ⛔ **`bytecode: AssetId`** nomeava um asset que **nenhum sítio do app produz** — não há
+//!   compilador de Luau para o índice, nem sítio onde o artista escolha um.
+//!
+//! ⇒ **o mesmo contrato do `AudioSource2D`** (TOP-20 #4): o componente nomeia o FICHEIRO, e a
+//! recarga por hash de conteúdo do `ScriptHost` (HR-16) é o que o torna vivo. As duas consequências
+//! são as do som e estão declaradas lá: mover o ficheiro parte a ligação, e o projecto não embute o
+//! script — a cura das duas é a mesma, pôr o tipo no índice de assets.
+//!
+//! ⚠️ **O `own` guarda só o que o artista PÔS** (a divergência D1 do oráculo): um valor igual ao
+//! default continua próprio quando o default muda. A lei que o lê é a [`crate::props::resolve`].
+//!
+//! ⚠️ **CONFIG, nunca vivo.** A tabela `self` de cada objecto vive na VM
+//! ([`crate::scene::SceneScripts`]) e **rebobinar é renascer** — um contador aqui dentro faria cada
+//! quadro com entrada virar um passo de undo (a lei que o `Timer` pagou).
+
+use std::collections::BTreeMap;
 
 use bevy_ecs::component::Component;
-use ph2d_asset::AssetId;
-use ph2d_ecs::{Entity, SimComponent};
+use ph2d_ecs::SimComponent;
 use serde::{Deserialize, Serialize};
 
-/// A Luau script attachment on a sim entity. The `Component` itself
-/// is small and `Copy` so it lives cheaply in archetype storage; all
-/// the actual state lives behind the two opaque ids.
-#[derive(Component, Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+use crate::props::ScriptValue;
+
+/// **Um script num objecto.**
+#[derive(Component, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct LuauScript {
-    /// Content-addressed handle for the compiled Luau bytecode. The
-    /// host's [`crate::ScriptHost`] resolves this against an
-    /// [`ph2d_asset::AssetDb`] before invoking entity-scoped script
-    /// hooks.
-    pub bytecode: AssetId,
-    /// Key into [`crate::lateral::StateTable`]. Derived via
-    /// [`LuauScript::derive_lateral_key`] so we don't need a global
-    /// counter (deterministic across hot reloads and replay).
-    pub lateral_key: u64,
+    /// O ficheiro `.luau`, como o artista o escolheu. **Vazio = sem script** (a lei do produtor:
+    /// um componente sem nome não corre, em vez de correr um nada).
+    pub source: String,
+    /// Os números que o artista PÔS neste objecto, por nome.
+    ///
+    /// ⚠️ **`BTreeMap`** pela espinha do determinismo (a captura é a unidade do undo e do save); a
+    /// ORDEM do painel vem das declarações do script, nunca daqui.
+    pub own: BTreeMap<String, ScriptValue>,
 }
 
 impl LuauScript {
-    /// Schema version. Bumped (alongside a migration function) when
-    /// the on-disk layout of `LuauScript` changes.
-    pub const VERSION: u32 = 1;
+    /// Schema version. ⚠️ **2** desde o TOP-20 #16 — a forma `{ bytecode, lateral_key }` (v1)
+    /// **nunca foi gravada** (o registador não corria no boot), então não há degrau a migrar dela.
+    pub const VERSION: u32 = 2;
 
-    /// Derive a deterministic `lateral_key` from the sim entity and
-    /// bytecode hash. The construction:
-    ///
-    /// ```text
-    /// lateral_key = entity.to_bits() XOR (bytecode_hash[0..8] as u64-LE)
-    /// ```
-    ///
-    /// Survives:
-    /// - Entity id reuse (different `to_bits()` for the same numeric
-    ///   id at a different generation).
-    /// - Bytecode hot reload with identical source (hash is
-    ///   stable → key unchanged → state survives).
-    /// - Bytecode swap (different source → different hash → fresh
-    ///   key → fresh state without manual clear).
-    pub fn derive_lateral_key(entity: Entity, bytecode: AssetId) -> u64 {
-        let h = bytecode.as_bytes();
-        let mut buf = [0u8; 8];
-        buf.copy_from_slice(&h[..8]);
-        let bytecode_lo = u64::from_le_bytes(buf);
-        entity.to_bits() ^ bytecode_lo
-    }
-
-    /// Convenience constructor that derives the lateral key for the
-    /// caller. Most call sites should prefer this over building the
-    /// struct field-by-field.
-    pub fn new(entity: Entity, bytecode: AssetId) -> Self {
+    /// Um script no ficheiro `source`, sem números próprios.
+    #[must_use]
+    pub fn at(source: impl Into<String>) -> Self {
         Self {
-            bytecode,
-            lateral_key: Self::derive_lateral_key(entity, bytecode),
+            source: source.into(),
+            own: BTreeMap::new(),
         }
     }
 }
@@ -85,45 +68,23 @@ impl SimComponent for LuauScript {}
 mod tests {
     use super::*;
 
-    fn raw_entity(bits: u32) -> Entity {
-        Entity::from_raw_u32(bits).unwrap()
-    }
-
-    fn raw_asset(byte: u8) -> AssetId {
-        AssetId::from_digest([byte; 32])
+    #[test]
+    fn o_componente_viaja_no_fio_e_nao_carrega_bits_de_entidade() {
+        let mut s = LuauScript::at("/tmp/bob.luau");
+        s.own.insert("speed".into(), ScriptValue::Number(9.0));
+        s.own.insert("label".into(), ScriptValue::Text("oi".into()));
+        let bytes = postcard::to_allocvec(&s).expect("serializa");
+        let back: LuauScript = postcard::from_bytes(&bytes).expect("volta");
+        assert_eq!(back, s);
+        // ⛔ A cerca do §1 do plano, escrita como FORMA: dois objectos com o mesmo script e os mesmos
+        // números têm os MESMOS bytes — nada neles depende de quem os carrega.
+        let outro = s.clone();
+        assert_eq!(postcard::to_allocvec(&outro).expect("serializa"), bytes);
     }
 
     #[test]
-    fn derive_is_pure() {
-        let e = raw_entity(7);
-        let a = raw_asset(0x10);
-        let k1 = LuauScript::derive_lateral_key(e, a);
-        let k2 = LuauScript::derive_lateral_key(e, a);
-        assert_eq!(k1, k2);
-    }
-
-    #[test]
-    fn different_entities_get_different_keys() {
-        let a = raw_asset(0x10);
-        let k1 = LuauScript::derive_lateral_key(raw_entity(1), a);
-        let k2 = LuauScript::derive_lateral_key(raw_entity(2), a);
-        assert_ne!(k1, k2);
-    }
-
-    #[test]
-    fn different_bytecode_gets_different_keys() {
-        let e = raw_entity(42);
-        let k1 = LuauScript::derive_lateral_key(e, raw_asset(0x10));
-        let k2 = LuauScript::derive_lateral_key(e, raw_asset(0x20));
-        assert_ne!(k1, k2);
-    }
-
-    #[test]
-    fn new_matches_derive() {
-        let e = raw_entity(99);
-        let a = raw_asset(0xAA);
-        let s = LuauScript::new(e, a);
-        assert_eq!(s.lateral_key, LuauScript::derive_lateral_key(e, a));
-        assert_eq!(s.bytecode, a);
+    fn o_default_e_um_script_vazio() {
+        let s = LuauScript::default();
+        assert!(s.source.is_empty() && s.own.is_empty());
     }
 }

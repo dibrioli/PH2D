@@ -8206,8 +8206,8 @@ dependencies = [
  "bevy_ecs",
  "blake3",
  "mlua",
- "ph2d-asset",
  "ph2d-ecs",
+ "postcard",
  "proptest",
  "serde",
 ]

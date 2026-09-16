@@ -28,7 +28,10 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityWrite {
-    pub entity: u32,
+    /// ⚠️ **`u64` = os bits da entidade** (TOP-20 #16): um `u32` era só o ÍNDICE, e depois de
+    /// um despawn o mesmo índice nomeia outra entidade com outra geração. Os bits valem **só
+    /// dentro do quadro** — nunca se gravam (a lei do `StableId`).
+    pub entity: u64,
     pub field: String,
     pub value: f64,
 }
@@ -126,7 +129,19 @@ impl Default for WriteQueue {
 /// cascade-crashing every subsequent `ph2d.get`.
 #[derive(Clone, Default)]
 pub struct ReadSnapshot {
-    inner: Arc<Mutex<BTreeMap<(u32, String), f64>>>,
+    inner: Arc<Mutex<BTreeMap<(u64, String), f64>>>,
+    /// ⭐ **A pose de cada objecto com script** (TOP-20 #16), sem uma `String` por campo: os cinco
+    /// campos de [`POSE_FIELDS`] são lidos por índice. ⚠️ Consultado ANTES do mapa genérico.
+    poses: Arc<Mutex<BTreeMap<u64, [f64; 5]>>>,
+}
+
+/// **Os campos de pose que um script lê e escreve**, na ordem do `[f64; 5]` da [`ReadSnapshot`].
+pub const POSE_FIELDS: [&str; 5] = ["x", "y", "rotation", "scale_x", "scale_y"];
+
+/// O índice de `field` em [`POSE_FIELDS`] — a porta única do nome ao campo.
+#[must_use]
+pub fn pose_field(field: &str) -> Option<usize> {
+    POSE_FIELDS.iter().position(|f| *f == field)
 }
 
 impl ReadSnapshot {
@@ -134,14 +149,23 @@ impl ReadSnapshot {
         Self::default()
     }
 
-    pub fn set(&self, entity: u32, field: &str, value: f64) {
+    pub fn set(&self, entity: u64, field: &str, value: f64) {
         self.inner
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .insert((entity, field.to_owned()), value);
     }
 
-    pub fn get(&self, entity: u32, field: &str) -> Option<f64> {
+    pub fn get(&self, entity: u64, field: &str) -> Option<f64> {
+        if let Some(i) = pose_field(field)
+            && let Some(p) = self
+                .poses
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .get(&entity)
+        {
+            return Some(p[i]);
+        }
         self.inner
             .lock()
             .unwrap_or_else(|p| p.into_inner())
@@ -149,8 +173,17 @@ impl ReadSnapshot {
             .copied()
     }
 
+    /// A pose de um objecto, nos campos de [`POSE_FIELDS`].
+    pub fn set_pose(&self, entity: u64, pose: [f64; 5]) {
+        self.poses
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .insert(entity, pose);
+    }
+
     pub fn clear(&self) {
         self.inner.lock().unwrap_or_else(|p| p.into_inner()).clear();
+        self.poses.lock().unwrap_or_else(|p| p.into_inner()).clear();
     }
 
     pub fn len(&self) -> usize {
@@ -380,7 +413,7 @@ impl NameSnapshot {
 mod tests {
     use super::*;
 
-    fn ew(e: u32, f: &str, v: f64) -> EntityWrite {
+    fn ew(e: u64, f: &str, v: f64) -> EntityWrite {
         EntityWrite {
             entity: e,
             field: f.into(),

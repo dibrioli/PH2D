@@ -1,0 +1,328 @@
+//! ⭐⭐⭐ **OS NÚMEROS DE UM SCRIPT, POR OBJECTO** — a lei pura do TOP-20 #16 (`ScriptProperties`).
+//!
+//! Um script declara no topo os números que oferece (`ph2d.property("speed", 2)`); cada objecto que
+//! o carrega guarda **só os que o artista PÔS**; e esta função diz, para cada declaração, que valor
+//! o objecto usa e **de onde** ele vem. Plano: `docs/Components/13_plano_script_properties.md`.
+//!
+//! # A lei é a do ORÁCULO, menos três perdas silenciosas
+//!
+//! O Godot 4.7.2 (MIT) foi **corrido** sobre cenas nossas
+//! (`docs/Components/ferramentas/godot_export_probe.gd`, controlo C0 verde). Portado dele:
+//!
+//! - **Q1** um objecto sem valor próprio **segue** o default quando o script muda;
+//! - **Q2** um objecto com valor próprio **guarda-o**;
+//! - **Q6** a faixa é **pista de edição** — o valor gravado fora dela é lido como está;
+//! - **Q7** a ordem é **a da declaração**;
+//! - **Q9** duas instâncias são **independentes**;
+//! - **Q10** com o script **desconhecido** (ficheiro sumido) os valores **ficam**.
+//!
+//! ⛔ **E três divergências DECLARADAS**, cada uma contra uma perda que o alvo comete em silêncio:
+//!
+//! - **D1 (Q3)** — no alvo, *«próprio»* é *«difere do default no instante de gravar»*: um `4`
+//!   escrito à mão igual ao default antigo passa a `7` quando o default muda. ⇒ aqui *próprio* é o
+//!   que o artista **PÔS** (a lei da casa: *o discriminador é quem pôs, nunca um limiar*), e o
+//!   [`forget`] é a única porta que o larga.
+//! - **D2 (Q4b)** — no alvo, um valor cuja propriedade **saiu** do script perde-se na gravação
+//!   seguinte, e **volta ao default** quando a propriedade regressa (renomear e desfazer o nome
+//!   apaga o trabalho). ⇒ aqui ele fica, **nomeado** como órfão ([`OrphanWhy::Missing`]).
+//! - **D3 (Q5b)** — no alvo, `"rapido"` numa propriedade que passou a número lê-se **`0`**. ⇒ aqui
+//!   um valor do tipo errado **não se aplica nem se converte** ([`OrphanWhy::WrongKind`]).
+//!
+//! # ⚠️ «Não sei o que o script declara» NÃO é «o script não declara nada»
+//!
+//! Com o ficheiro sumido ou com um erro de sintaxe, as declarações são **desconhecidas** — e tratar
+//! isso como uma lista vazia faria **todo** valor próprio virar órfão, com um botão *Remove* ao lado
+//! de cada um. É o convite exacto à perda que o D2 existe para impedir (o alvo apaga tudo ao gravar
+//! nesse instante). ⇒ [`resolve`] recebe um `Option`, e com `None` os valores vão para
+//! [`Resolution::kept`], que o painel mostra **sem** verbo de apagar.
+
+use std::collections::BTreeMap;
+
+use serde::{Deserialize, Serialize};
+
+/// **Um valor que um script oferece ao painel.** O Luau tem um tipo numérico só, então o par
+/// int/float do alvo (Q8) não tem onde acontecer aqui.
+///
+/// ⚠️ **A ORDEM das variantes é o fio** (postcard é posicional): acrescentar no fim, nunca no meio.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum ScriptValue {
+    /// Um `number` do Luau.
+    Number(f64),
+    /// Um `boolean`.
+    Bool(bool),
+    /// Uma `string`.
+    Text(String),
+}
+
+/// **De que tipo um valor é** — a pergunta do D3, com uma resposta só.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScriptValueKind {
+    /// Um número.
+    Number,
+    /// Um sim/não.
+    Bool,
+    /// Um texto.
+    Text,
+}
+
+impl ScriptValue {
+    /// O tipo deste valor.
+    #[must_use]
+    pub fn kind(&self) -> ScriptValueKind {
+        match self {
+            Self::Number(_) => ScriptValueKind::Number,
+            Self::Bool(_) => ScriptValueKind::Bool,
+            Self::Text(_) => ScriptValueKind::Text,
+        }
+    }
+}
+
+impl ScriptValueKind {
+    /// O nome que o painel e as mensagens de erro usam — o da **linguagem**, que é o que o
+    /// artista escreveu.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Number => "number",
+            Self::Bool => "boolean",
+            Self::Text => "string",
+        }
+    }
+}
+
+/// **As pistas de edição de um número** (`{ min = 0, max = 10, step = 0.5 }`).
+///
+/// ⚠️ **Pistas, não leis** (Q6): elas mandam no que o painel deixa escrever e arrastar; o valor
+/// gravado fora delas é lido como está. Um script que estreite a faixa não reescreve o documento.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct PropHint {
+    /// O menor valor que o painel aceita.
+    pub min: Option<f64>,
+    /// O maior valor que o painel aceita.
+    pub max: Option<f64>,
+    /// O passo de arrasto.
+    pub step: Option<f64>,
+}
+
+/// **Uma declaração** — `ph2d.property(name, default, hint)` no topo de um script.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PropDecl {
+    /// O nome, que é também a chave em `self`.
+    pub name: String,
+    /// O valor de quem não pôs nenhum — e o TIPO da propriedade.
+    pub default: ScriptValue,
+    /// As pistas de edição (só números as têm).
+    pub hint: PropHint,
+}
+
+/// **De onde vem o valor que o objecto usa.**
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Origin {
+    /// Do script — o objecto não pôs nenhum.
+    Default,
+    /// Do objecto — o artista pôs este (D1: mesmo que seja igual ao default).
+    Own,
+}
+
+/// Uma propriedade resolvida, na ordem da declaração.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Resolved {
+    /// O nome declarado.
+    pub name: String,
+    /// O valor que o objecto usa.
+    pub value: ScriptValue,
+    /// De onde ele veio — a cor da linha e o botão *Revert*.
+    pub origin: Origin,
+    /// As pistas da declaração.
+    pub hint: PropHint,
+}
+
+/// **Porque um valor próprio não tem onde ser aplicado.**
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OrphanWhy {
+    /// O script já não declara este nome (D2).
+    Missing,
+    /// O script declara-o com OUTRO tipo (D3) — o objecto lê o default.
+    WrongKind {
+        /// O tipo que o script declara agora.
+        declared: ScriptValueKind,
+    },
+}
+
+/// Um valor próprio sem onde ser aplicado.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Orphan {
+    /// O nome gravado.
+    pub name: String,
+    /// O valor gravado — intacto.
+    pub value: ScriptValue,
+    /// Porquê.
+    pub why: OrphanWhy,
+}
+
+/// **O que um objecto usa, e o que ficou de fora.**
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Resolution {
+    /// Uma por declaração, na ordem da declaração (Q7).
+    pub values: Vec<Resolved>,
+    /// Os valores próprios sem onde ser aplicados, por ordem de NOME (a do mapa gravado).
+    pub orphans: Vec<Orphan>,
+    /// ⚠️ **Com as declarações DESCONHECIDAS, todo valor próprio vem para aqui** — ver o cabeçalho
+    /// do módulo. Por ordem de nome.
+    pub kept: Vec<(String, ScriptValue)>,
+}
+
+/// ⭐⭐⭐ **A lei.** `decls = None` quer dizer *«não sei o que o script declara»* (ficheiro sumido,
+/// erro de sintaxe) — e é diferente de `Some(&[])`.
+#[must_use]
+pub fn resolve(decls: Option<&[PropDecl]>, own: &BTreeMap<String, ScriptValue>) -> Resolution {
+    let Some(decls) = decls else {
+        return Resolution {
+            kept: own.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
+            ..Resolution::default()
+        };
+    };
+    let mut out = Resolution::default();
+    for d in decls {
+        let (value, origin) = match own.get(&d.name) {
+            Some(v) if v.kind() == d.default.kind() => (v.clone(), Origin::Own),
+            // D3: o do tipo errado não se aplica — o objecto lê o default.
+            _ => (d.default.clone(), Origin::Default),
+        };
+        out.values.push(Resolved {
+            name: d.name.clone(),
+            value,
+            origin,
+            hint: d.hint,
+        });
+    }
+    for (name, value) in own {
+        let why = match decls.iter().find(|d| d.name == *name) {
+            None => OrphanWhy::Missing,
+            Some(d) if d.default.kind() != value.kind() => OrphanWhy::WrongKind {
+                declared: d.default.kind(),
+            },
+            Some(_) => continue,
+        };
+        out.orphans.push(Orphan {
+            name: name.clone(),
+            value: value.clone(),
+            why,
+        });
+    }
+    out
+}
+
+/// **O artista PÔS este valor** (D1: fica próprio mesmo igual ao default).
+pub fn put(own: &mut BTreeMap<String, ScriptValue>, name: &str, value: ScriptValue) {
+    own.insert(name.to_owned(), value);
+}
+
+/// **Larga o valor próprio** — o *Revert* de uma linha e o *Remove* de um órfão são esta porta.
+/// Devolve se havia alguma coisa a largar.
+pub fn forget(own: &mut BTreeMap<String, ScriptValue>, name: &str) -> bool {
+    own.remove(name).is_some()
+}
+
+/// **Porque uma declaração é recusada** — a mensagem que o painel mostra.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DeclError {
+    /// O nome não é um identificador (`[A-Za-z_][A-Za-z0-9_]*`).
+    BadName(String),
+    /// O nome é da casa (`id`).
+    Reserved(String),
+    /// Declarado duas vezes.
+    Twice(String),
+    /// O default não é número finito, sim/não nem texto.
+    BadDefault(String),
+    /// Uma opção que a casa não conhece (`mni` em vez de `min`).
+    UnknownOption {
+        /// A propriedade.
+        name: String,
+        /// A opção desconhecida.
+        option: String,
+    },
+    /// `min`/`max`/`step` num valor que não é número, ou `step <= 0`, ou `min > max`.
+    BadHint(String),
+    /// `ph2d.property` chamada fora do topo do script.
+    NotAtTop(String),
+}
+
+impl std::fmt::Display for DeclError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::BadName(n) => write!(f, "'{n}' is not a valid property name"),
+            Self::Reserved(n) => write!(f, "'{n}' is reserved (self.{n} belongs to the engine)"),
+            Self::Twice(n) => write!(f, "property '{n}' is declared twice"),
+            Self::BadDefault(n) => {
+                write!(
+                    f,
+                    "property '{n}' needs a number, boolean or string default"
+                )
+            }
+            Self::UnknownOption { name, option } => write!(
+                f,
+                "property '{name}': unknown option '{option}' (min, max, step)"
+            ),
+            Self::BadHint(n) => write!(
+                f,
+                "property '{n}': min/max/step need a number default, step > 0 and min <= max"
+            ),
+            Self::NotAtTop(n) => write!(
+                f,
+                "ph2d.property('{n}') must be called at the top of the script, not inside a function"
+            ),
+        }
+    }
+}
+
+/// Os nomes que o `self` já usa — um script não os pode declarar.
+pub const RESERVED_NAMES: &[&str] = &["id"];
+
+/// **Valida uma declaração nova contra as anteriores** — a porta única da recusa.
+///
+/// # Errors
+/// A [`DeclError`] que o painel mostra.
+pub fn check_decl(previous: &[PropDecl], decl: &PropDecl) -> Result<(), DeclError> {
+    let n = &decl.name;
+    let mut chars = n.chars();
+    let first_ok = chars
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_');
+    if !first_ok || !chars.all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return Err(DeclError::BadName(n.clone()));
+    }
+    if RESERVED_NAMES.contains(&n.as_str()) {
+        return Err(DeclError::Reserved(n.clone()));
+    }
+    if previous.iter().any(|p| p.name == *n) {
+        return Err(DeclError::Twice(n.clone()));
+    }
+    if let ScriptValue::Number(v) = decl.default
+        && !v.is_finite()
+    {
+        return Err(DeclError::BadDefault(n.clone()));
+    }
+    let h = decl.hint;
+    let has_hint = h.min.is_some() || h.max.is_some() || h.step.is_some();
+    if has_hint && decl.default.kind() != ScriptValueKind::Number {
+        return Err(DeclError::BadHint(n.clone()));
+    }
+    let finite = |x: Option<f64>| x.is_none_or(f64::is_finite);
+    if !finite(h.min) || !finite(h.max) || !finite(h.step) {
+        return Err(DeclError::BadHint(n.clone()));
+    }
+    if h.step.is_some_and(|s| s <= 0.0) {
+        return Err(DeclError::BadHint(n.clone()));
+    }
+    if let (Some(lo), Some(hi)) = (h.min, h.max)
+        && lo > hi
+    {
+        return Err(DeclError::BadHint(n.clone()));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+#[path = "props_tests.rs"]
+mod tests;

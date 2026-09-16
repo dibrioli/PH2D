@@ -1,42 +1,28 @@
 //! Integration tests for the `LuauScript` Component + its bindings.
 //!
 //! Verifies:
-//! - `LuauScript::derive_lateral_key` is deterministic across entities.
+//! - `LuauScript` is a plain CONFIG component that sits on a sim entity.
 //! - Luau bindings populate `SpawnQueue` correctly.
 //! - `ph2d.state_get`/`set`/`keys` round-trip POD values.
+//!
+//! ⚠️ Os dois gates do `lateral_key` saíram com o campo (TOP-20 #16): eles fixavam a forma
+//! `entity.to_bits() ^ hash`, que punha bits de alocação dentro dos bytes de um componente — ver o
+//! cabeçalho de `ph2d_script::component`.
 
-use ph2d_asset::AssetId;
-use ph2d_ecs::{Entity, SimComponent, SimWorld};
+use ph2d_ecs::{SimComponent, SimWorld};
 use ph2d_script::component::LuauScript;
 use ph2d_script::io::SpawnCommand;
-use ph2d_script::{PodValue, ScriptHost};
-
-#[test]
-fn lateral_key_is_deterministic_per_entity_bytecode_pair() {
-    let e = Entity::from_raw_u32(13).unwrap();
-    let a = AssetId::from_digest([0xAB; 32]);
-    let k1 = LuauScript::derive_lateral_key(e, a);
-    let k2 = LuauScript::derive_lateral_key(e, a);
-    assert_eq!(k1, k2);
-}
-
-#[test]
-fn lateral_key_differs_per_entity() {
-    let a = AssetId::from_digest([0xAB; 32]);
-    let k1 = LuauScript::derive_lateral_key(Entity::from_raw_u32(1).unwrap(), a);
-    let k2 = LuauScript::derive_lateral_key(Entity::from_raw_u32(2).unwrap(), a);
-    assert_ne!(k1, k2);
-}
+use ph2d_script::{PodValue, ScriptHost, ScriptValue};
 
 #[test]
 fn luau_script_attaches_to_sim_entity() {
     let mut sim = SimWorld::new();
-    let bytecode = AssetId::from_bytes(b"-- some script source");
     let entity = sim.world_mut().spawn_empty().id();
-    let script = LuauScript::new(entity, bytecode);
-    sim.world_mut().entity_mut(entity).insert(script);
+    let mut script = LuauScript::at("/scripts/bob.luau");
+    script.own.insert("speed".into(), ScriptValue::Number(3.0));
+    sim.world_mut().entity_mut(entity).insert(script.clone());
 
-    let got = sim.world_mut().get::<LuauScript>(entity).copied();
+    let got = sim.world_mut().get::<LuauScript>(entity).cloned();
     assert_eq!(got, Some(script));
 }
 

@@ -23,10 +23,11 @@ mlua = { version = "0.12", features = ["luau"] }
 # bytes actually changed, not on every save).
 blake3 = "1"
 # M14.2 — LuauScript Component lives in this crate because it ties an
-# ECS entity to a script bytecode asset. ph2d-ecs gives us Component,
-# Entity, SimComponent; ph2d-asset gives us AssetId.
+# ECS entity to a script. ph2d-ecs gives us Component, Entity, SimComponent,
+# and (TOP-20 #16) the `Transform` a scene script moves and the `StableId`
+# that orders the scene scripts. ⚠️ `ph2d-asset` SAIU no mesmo dia: o
+# componente deixou de guardar um `AssetId` de bytecode (ninguém o produzia).
 ph2d-ecs = { path = "../ph2d-ecs" }
-ph2d-asset = { path = "../ph2d-asset" }
 # bevy_ecs as a direct dep is required because `#[derive(Component)]`
 # expands to absolute paths into `bevy_ecs::*`. ph2d-ecs re-exports
 # don't satisfy the macro lookup. Same pattern documented in
@@ -37,6 +38,8 @@ bevy_ecs = "0.19"
 serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
+# O fio dos valores (`props_tests`): a ordem das variantes é o contrato, e só uma serialização a mede.
+postcard = { version = "1", features = ["alloc"] }
 proptest = "1.11.0"
 
 [package.metadata.cargo-machete]

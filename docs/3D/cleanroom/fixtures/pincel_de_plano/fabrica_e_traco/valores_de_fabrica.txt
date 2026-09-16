@@ -1,0 +1,18 @@
+# VALORES DE FABRICA dos cinco perfis do pincel de plano do alvo
+# oraculo: Blender 5.2.1 LTS -- o catalogo essencial carregado pela API normal e as PROPRIEDADES lidas
+#          (o ficheiro de pinceis NAO foi lido como fonte, nem copiado; nada dele entra no repo)
+# chave_de_regeneracao: o nome PUBLICO de cada perfil no catalogo essencial (coluna da esquerda)
+# lido_em: 2026-09-16
+# ⚠ o raio EFECTIVO nao e o diametro proprio: a cena nasce com o diametro UNIFICADO, 100 px, em pixels de ecra
+# cena_diametro_px: 100
+# cena_diametro_unificado: True
+# cena_unidade_do_diametro: VIEW
+# faixa_do_diametro_em_pixels: pista 1 a 1000 · digitavel 1 a 10000 (e um DIAMETRO)
+# faixa_do_diametro_em_cena: pista 0,001 a 1,0 · digitavel sem tecto pratico
+#
+# perfil | forca | forca_segue_pressao | dureza | curva | metodo_do_traco | espacamento_pct_do_diametro | atenuacao_por_espacamento | acumula | raio_da_normal | raio_da_area | raio_da_area_segue_pressao | altura | profundidade | modo_de_inversao | firmeza_da_normal | firmeza_do_centro | deslocamento_do_plano | corte_ligado | auto_alisamento | so_faces_de_frente | forma_da_pegada | referencial_do_plano | raio_segue_pressao | diametro_proprio_px | unidade_do_diametro_proprio
+Trim (aparar (o que o dono nomeou)) | 0.699999988079071 | True | 0.6000000238418579 | SMOOTH | SPACE | 7 | True | True | 0.5 | 0.6000000238418579 | True | 1.0 | 0.0 | SWAP_DEPTH_AND_HEIGHT | 1.0 | 0.0 | 0.0 | False | 0.0 | False | SPHERE | AREA | False | 70 | VIEW
+Flatten/Contrast (achatar / contraste) | 0.5 | True | 0.0 | SMOOTH | SPACE | 10 | True | True | 0.75 | 1.0 | False | 1.0 | 1.0 | INVERT_DISPLACEMENT | 0.0 | 0.0 | 0.0 | False | 0.0 | False | SPHERE | AREA | False | 70 | VIEW
+Fill/Deepen (encher / aprofundar) | 0.699999988079071 | True | 0.0 | SMOOTH | SPACE | 7 | True | True | 1.0 | 1.0 | False | 0.0 | 1.0 | SWAP_DEPTH_AND_HEIGHT | 0.0 | 0.0 | 0.0 | False | 0.0 | False | SPHERE | AREA | False | 70 | VIEW
+Scrape/Fill (raspar / encher) | 0.699999988079071 | True | 0.0 | SMOOTH | SPACE | 7 | True | True | 0.5 | 0.5 | True | 1.0 | 0.0 | SWAP_DEPTH_AND_HEIGHT | 0.0 | 0.0 | 0.0 | False | 0.0 | False | SPHERE | AREA | False | 70 | VIEW
+Plateau (planalto) | 0.6000000238418579 | True | 0.5 | SMOOTH | SPACE | 10 | True | False | 0.30000001192092896 | 1.0 | False | 1.0 | 1.0 | INVERT_DISPLACEMENT | 1.0 | 1.0 | 0.0 | False | 0.0 | False | SPHERE | AREA | False | 70 | VIEW

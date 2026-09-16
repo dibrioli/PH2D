@@ -1028,6 +1028,104 @@ entre comentários · esse comprimido · **dobrado no `.gz` sem marcador** · ma
 família), o controlo **negativo** fica limpo, e o uso errado distingue-se do achado (`exit 2`).
 Corre em **0,08 s**. ⇒ *alongar não abriu canal cego nenhum.*
 
+## 2.ª MISSÃO DO E — «o pincel de fábrica e o traço» (2026-09-16)
+
+**Pedido:** os dois relatos do smoke do dono — *o raio máximo é pouco* e *achata pior que o alvo*.
+**Premissa dada e confirmada:** a lei por dab está fechada; a diferença mora nos valores de fábrica
+e no traço, que o corpus da 1.ª missão fixava à mão.
+
+### Actos sobre o alvo nesta missão (todos privados, §1.1)
+
+| acto | como | o que tocou |
+|---|---|---|
+| ler os valores de fábrica | o binário do pacote **sem janela**, carregando o catálogo essencial pela API normal e lendo **propriedades** | ⚠️ o catálogo é um **asset** do alvo (§1.5.3): foi **carregado no processo do oráculo** e **nada dele foi copiado** — só os **números** das propriedades, como facto de interface (§4.1.3). A curva personalizada embutida em cada perfil foi **amostrada** para verificar que é inerte e **não** foi publicada |
+| arrastar o pincel | janela do alvo num compositor **virtual**, eventos de rato **simulados** | nenhum ficheiro do alvo alterado; sem patch, sem build próprio |
+| ler fonte novo | por shell, dentro da zona | ver a cobertura abaixo |
+
+### Cobertura da travessia desta missão
+
+| área | lido |
+|---|---|
+| o sistema de traço do modo de pintura — o espaçamento, a atenuação por sobreposição, o passo por evento, a execução por script e o passo real | ✅ **integral** nessas funções (as duas vias de espaçamento, a variável por pressão, a atenuação, o laço do espaço, o passo real e a via por script) |
+| a força por dab do modo escultura | ✅ integral na função (todos os casos, o do plano incluído) |
+| a actualização por passo do estado do traço (o cursor, a pressão, o raio inicial) | ✅ integral |
+| o raio e o tamanho do pincel, e a curva de queda por preset | ✅ integral nessas funções |
+| ⚠️ o sistema de eventos da janela e o seu teste próprio de simulação | ⚠️ **parcial, e só para o HARNESS** — lido para descobrir porque nenhum evento simulado pegava (era o ecrã de boas-vindas). **Nada disto entra na espec** além da condição funcional |
+
+### O que se mediu (os números vivem na espec §14)
+
+- Os valores de fábrica dos **cinco** perfis do pincel de plano, e a faixa do raio (é um
+  **diâmetro**: pista `1`–`1 000` px, digitável `1`–`10 000`; de fábrica `100` px, unificado na
+  cena). Contra o nosso tecto de `1/8` da altura da janela.
+- **Completude:** um pincel nosso com os valores lidos reproduz o perfil de fábrica a `7,45e-09`.
+- **Determinismo do arrasto:** `1,49e-08` (não ao bit).
+- **O passo:** `0,14 R`, **exacto** pelo detector de saltos (`6`/`7`/`13`/`14`/`20`/`21` px ⇒
+  `0`/`1`/`1`/`2`/`2`/`3` dabs efectivos). **A pressão do rato:** `1` (tirá-la é byte-idêntico).
+- **A atenuação:** lei `0,570`, medido `0,563`.
+- **A planura** passagem a passagem (1 a 8), contínua e com a caneta levantada; o perfil de achatar;
+  a matriz 2×2 valores × traço; **os nossos valores no motor do alvo**; e a ablação de um valor de
+  cada vez — ⭐ **a firmeza da normal é a alavanca dominante** (`0,029` → `1,380`).
+- ⭐⭐ **Achado de método:** o cursor do corpus da 1.ª missão estava **fora** da superfície (até
+  `0,54 R`). A lei do alvo não muda com isso; o **tamanho** dos efeitos sim — e numa rampa e num
+  degrau, com o cursor na superfície, **nada** se move (as fixturas antigas movem `274` e `271`).
+  O buraco da §2.2 **sobrevive** e no sulco fica **maior** (`+11,7 %`).
+- ⛔ **Uma emulação por script do traço arrastado NÃO bateu** (cursor fora da superfície + atenuação
+  ausente na via por script); com o cursor na superfície o dab único bate a menos da posição
+  sub-píxel. Registado para quem tentar a emulação de novo: *a via por script usa o ponto do cursor
+  que lhe dão*.
+
+### Corridas
+
+`65` novas (`18` + `2` + `9` do arrasto, `8` do traço do corpus, `9` + `1` do detector, `3` dabs por
+script, `2` de emulação, `12` com o cursor na superfície, `1` de ensaio); **`55`** publicadas.
+
+### Vassoura
+
+`332 → 432 → 434` (o último passo é o R-bis abaixo): os identificadores internos do fonte lido nesta missão e as frases dos comentários
+dele, nas duas línguas, com e sem acentos. Os identificadores **públicos** novos (os do simulador de
+eventos, as propriedades de pressão e de atenuação) ficam **fora**, pela regra de §4.1.13.
+Controlo dos **dez** canais **verde antes** do sweep, e um controlo positivo com duas entradas
+**novas** disparou.
+
+### R6-bis — as entradas NOVAS contra o nosso código (antes do commit)
+
+Varrido `crates/`, `shells/` e `scripts/` com a vassoura de `432`: acenderam **20** ficheiros.
+Classificado **cada** acerto até ao identificador que o causa:
+
+| classe | entradas | cura |
+|---|---|---|
+| **falso positivo** — pedaço de um nome NOSSO mais longo (um factor de sobreposição do painter, a marca de «primeiro dab feito», um teste de redimensionar painéis) | `3` | ⭐ **ALONGADAS** pela regra do R6 (o nome com o dono, a expressão da lei) ⇒ vassoura **`432 → 434`** e **zero** acertos destas três |
+| ⛔ **citação REAL pré-existente** — noutra obra | ver abaixo | **NÃO alongadas** |
+
+⛔⛔ **O que sobra são 17 ficheiros, e NENHUM é falso positivo:**
+
+- **16 são do PAINTER** — que é outra obra clean-room sobre o **mesmo** sistema de traço do alvo:
+  **cinco** identificadores internos dele aparecem citados pelo nome em doc-comments de
+  `ph2d-painter-brush` (`falloff.rs`, `lib.rs`, `sampler.rs`, `spec.rs`, `spec/queries.rs`,
+  `stroke.rs`), e **um** deles vive ainda **embutido no nome de uma constante NOSSA** de id de
+  controlo, usada em `ph2d-tool-painter` (`ids/painter.rs`, `tool/trait_impls.rs`,
+  `tool/paint/accumulate_probe.rs`, `tool/paint/accumulate_tests.rs`,
+  `tool/paint/tests/brush_panel.rs`) e em `ph2d-panel-painter-layers` (`event.rs`,
+  `paint_stroke.rs`, `paint_stroke/tests.rs`, `populate.rs`, `tests/it/seam.rs`).
+  ⚠️ É a espécie que o `CLAUDE.md` §5 já declara **não medida** pelo gate de citações: *os nomes
+  de SÍMBOLO internos são §4.2 e o gate não os mede*. **Não é desta obra, e não se cura aqui** —
+  vai ao coordenador com os endereços.
+- **1 é o de sempre** (`ph2d-sculpt3d/src/verb_scrape_tests.rs`), já entregue ao R-PÓS no R6.
+
+⇒ **A barra do §7.2 para ESTA obra continua a ser zero acertos nos ficheiros que ela criou** —
+e é o que o sweep sobre a espec, o ledger, o README e as 155 fixturas mede (verde). A árvore
+inteira não pode ser zero enquanto a dívida do Painter viver lá.
+
+### ⚠️ Para o R-pré desta missão — o ponto mais perto da FORMA
+
+A **§14.4** publica a lei da atenuação como uma soma em forma fechada, com os dois parâmetros de
+discretização (o passo e o número de dabs sobrepostos) e a amostragem da fase em dez pontos. É o
+mínimo que reproduz o número (`0,140` depende da amostragem), e está escrito como matemática; é,
+ainda assim, o parágrafo desta missão mais perto da forma do alvo, e fica **nomeado** para a
+auditoria o ler primeiro.
+
+⏳ **R-pré sobre a 2.ª missão: pendente.**
+
 ## Incidentes
 
 ### INC-R1 (2026-09-16) — **HIGIENE DE INSTRUMENTO do próprio R-pré. Sem exposição; registado porque um evento escondido é a acusação pronta**

@@ -162,6 +162,16 @@ Auditoria §4.2 (R-pré): ⚠️ **CORRIDA em 2026-09-16** por um subagente inde
   e **R6**, que é do **INSTRUMENTO** e não desta espec: **seis** entradas curtas da vassoura casam
   dentro de identificadores **NOSSOS** e produzem **`41`** acertos falsos na árvore, o que torna a
   barra do **§7.2** insatisfazível como está ⇒ **curar antes do R-PÓS**, por alongamento.
+2.ª MISSÃO (2026-09-16, subagente-E): «o pincel de fábrica e o traço» — os dois relatos do smoke do
+  dono (o raio máximo é pouco; achata pior que o alvo). Secção nova **§14**, fixturas novas em
+  `fabrica_e_traco/` (44 + a tabela dos valores de fábrica) e `cursor_na_superficie/` (11), gates
+  **G-15..G-20**, e **os gémeos** dos números que mudaram, na abertura (§0.2 B/C, §0.3), na §2.1, na
+  §2.2 e na §11. ⚠️ **Achado de método que muda o TAMANHO de números antigos:** o cursor das
+  fixturas da 1.ª missão está **fora** da superfície (§14.8); a LEI não muda, e o buraco com o cursor
+  na superfície é **maior** no sulco. Vassoura `332 → 434` (o fonte novo lido nesta missão, nas duas
+  línguas, com e sem acentos, e três entradas alongadas por colidirem com nomes nossos); controlo
+  dos dez canais verde antes do sweep.
+  ⏳ **R-pré sobre a 2.ª missão: PENDENTE.**
 Mapa de leitura da literatura: não há paper. A literatura pública utilizável é (a) o manual do
   alvo (factos, ⛔ nunca o wording), (b) a discussão pública de desenho no fórum de
   desenvolvimento dele, destilada na §10 desta espec, e (c) o nosso próprio registo do porte MIT
@@ -208,8 +218,8 @@ Quem pedir *«um pincel que apara esfregando»* e receber o nosso `Scrape` não 
 | o que falta | por que a composição não o dá | medição |
 |---|---|---|
 | **A) o par ALTURA/PROFUNDIDADE** | os nossos quatro verbos escolhem o lado por um **booleano** (`d>0`, `d<0`, bilateral) e não têm tecto nenhum de alcance. O alvo escolhe o lado **e** o alcance, e o alcance **reforma a pegada**: ela deixa de ser uma esfera e passa a ser um **elipsóide achatado ao longo da normal do plano** | com o tecto de cima em `0,2` a população tocada acima do plano cai de **151 para 78** vértices, e os que ficam mudam de peso. Nenhuma combinação dos nossos knobs produz isto (fixtures `lados/*`) |
-| **B) a lei do CENTRO da área** | a nossa pesa pela **MÁSCARA** e amostra a **pegada inteira** do pincel — numa pegada sem máscara ela é a **média aritmética simples** das posições, sobre o raio `R`. A do alvo pesa por uma curva suave, amostra um raio **próprio** (`R_c`, §2.3) e **não é uma média ponderada de coisa nenhuma**: é a média das posições **puxadas em direcção ao cursor** pelo COMPLEMENTO do peso (§2.2) | ⭐ a altura do **nosso centro real** contra o plano do alvo, num pincel de raio `0,4`: **`+0,03795`** num sulco — **`9,5 %` do raio, e de SINAL OPOSTO** ao que uma leitura ingénua supõe —, **`−0,01603`** numa rampa, **`+0,00489`** num degrau, e até **`+0,06853`** (`17,1 %`) quando o alvo aperta o raio de amostragem dele. ⇒ *o buraco é maior do que qualquer candidata intermédia sugere, e a razão é que a EXTENSÃO também difere, não só o peso* |
-| **C) a ponderação e a EXTENSÃO da NORMAL da área** | a nossa pesa pela **máscara** (sem máscara: soma simples) sobre a **pegada inteira**; a do alvo pesa por uma curva suave da distância, sobre um raio próprio `R_n` | ⭐ o desvio ANGULAR da nossa normal contra a do alvo vai de **`0,00°`** (rampa: superfície plana, toda média concorda — o controlo) a **`16,9°`** num sulco, **`23,5°`** com o raio da normal apertado e **`31,2°`** numa superfície curva nos dois eixos. A candidata do alvo lê `0,0000°` em todas (fixtures `lei/*`) |
+| **B) a lei do CENTRO da área** | a nossa pesa pela **MÁSCARA** e amostra a **pegada inteira** do pincel — numa pegada sem máscara ela é a **média aritmética simples** das posições, sobre o raio `R`. A do alvo pesa por uma curva suave, amostra um raio **próprio** (`R_c`, §2.3) e **não é uma média ponderada de coisa nenhuma**: é a média das posições **puxadas em direcção ao cursor** pelo COMPLEMENTO do peso (§2.2) | ⭐ a altura do **nosso centro real** contra o plano do alvo, num pincel de raio `0,4`: **`+0,03795`** num sulco — **`9,5 %` do raio, e de SINAL OPOSTO** ao que uma leitura ingénua supõe —, **`−0,01603`** numa rampa, **`+0,00489`** num degrau, e até **`+0,06853`** (`17,1 %`) quando o alvo aperta o raio de amostragem dele. ⇒ *o buraco é maior do que qualquer candidata intermédia sugere, e a razão é que a EXTENSÃO também difere, não só o peso*. ⚠️⚠️ **Estes números saem de fixturas com o cursor FORA do relevo** (§14.8). **Com o cursor NA superfície**, como um artista o põe: **`+11,7 %`** do raio no sulco, até **`+14,7 %`**, e **nada** a mexer na rampa e no degrau — ali a superfície já é o plano que o alvo ajusta. *O buraco sobrevive, e no sulco fica maior* |
+| **C) a ponderação e a EXTENSÃO da NORMAL da área** | a nossa pesa pela **máscara** (sem máscara: soma simples) sobre a **pegada inteira**; a do alvo pesa por uma curva suave da distância, sobre um raio próprio `R_n` | ⭐ o desvio ANGULAR da nossa normal contra a do alvo vai de **`0,00°`** (rampa: superfície plana, toda média concorda — o controlo) a **`16,9°`** num sulco, **`23,5°`** com o raio da normal apertado e **`31,2°`** numa superfície curva nos dois eixos. A candidata do alvo lê `0,0000°` em todas (fixtures `lei/*`). ⚠️ **Com o cursor NA superfície** (§14.8) o sulco lê **`3,8°`–`12,7°`** conforme as duas extensões, e a superfície curva nos dois eixos continua a **`31,2°`** |
 | **D) DOIS raios de amostragem** independentes (um para a normal, outro para o centro), **com queda** | temos **um** raio, e ele é o do pincel — o nosso estimador lê a pegada inteira, e a nossa consulta devolve exactamente o raio do dab nos quatro verbos de plano | provado por um par: com os dois raios iguais as saídas são **byte-idênticas**; com o raio da normal em `1,0` e o do centro a `0` elas divergem `5,6e-2` ⇒ *o zero do segundo cai no primeiro* (fixtures `amostragem/*`) |
 | **E) os dois ESTABILIZADORES** (a normal e o centro do plano, cada um com memória do traço) | não temos nada equivalente. ⚠️ **E o nosso `accumulate` não é o parente pobre deles: nos quatro verbos de plano ele nem sequer é consultado** (§2.6) — quem o consulta são outros três verbos, e ali ele decide **de que superfície** o plano é lido, nunca **quanto o plano se lembra** | sobre um degrau, a firmeza da normal muda a saída em `2,8e-2` e a do centro em `2,4e-1` (fixtures `firmeza/*`) |
 | **F) o CORTE por distância ao plano** | não temos knob nenhum que limite o alcance por distância ao plano | vivo em dois dos quatro consumidores do alvo, e **morto em dois** — §7 |
@@ -221,7 +231,15 @@ Quem pedir *«um pincel que apara esfregando»* e receber o nosso `Scrape` não 
 > não.** O que falta e vale a wave, por ordem de efeito medido, é **(A) o par de tectos por
 > lado** — que é o que transforma quatro verbos num só e é a razão de o alvo os ter fundido —,
 > depois **(B+C) o plano em si**, que hoje sai do sítio em **duas** grandezas ao mesmo tempo: o
-> centro até **`17,1 %` do raio** e a normal até **`31,2°`**.
+> centro até **`17,1 %` do raio** e a normal até **`31,2°`** (com o cursor na superfície, como o
+> artista o põe: **`14,7 %`** e **`31,2°`**, §14.8).
+>
+> ⭐⭐⭐ **E a 2.ª missão (§14) achou a TERCEIRA perna, que é a que o dono sente no smoke:** com a
+> lei certa, **os valores de fábrica e o traço** decidem se o pincel achata. O perfil de fábrica
+> que carrega o nome que o dono usou leva um relevo a **`2,9 %`** da rugosidade inicial em 8
+> passagens de um traço arrastado; **os valores de fábrica do nosso verbo, no MESMO motor e com o
+> MESMO traço, deixam-no a `111 %`** — pior do que estava. A alavanca dominante é uma que o nosso
+> verbo **não tem**: a **firmeza da normal** (§14.7).
 
 ⚠️⚠️ **E as duas medições acima foram REFEITAS.** A primeira redacção desta espec atribuía à
 nossa casa uma média **ponderada pelo falloff** e lia o buraco em `5,7 %`–`11,6 %` do raio. Essa
@@ -288,6 +306,8 @@ normal    = normalizar( Σ_v  peso(v) · normal_do_vértice(v) )
   diferença (C) da §0.2, e foram **discriminadas por medição, não escolhidas**: a candidata do
   alvo lê `0,0000°` de desvio angular em **todas** as 11 configurações das fixtures `lei/*`,
   contra `0,00°`–`31,2°` da nossa lei real e `0,00°`–`7,99°` de uma média simples sobre `R_n`.
+  ⚠️ Com o cursor **na** superfície (§14.8) a candidata do alvo continua a ler `0,0000°`, e a
+  nossa lei lê `3,8°`–`31,2°`.
 
 ### §2.2 — O centro da área — ⭐ a lei que NENHUMA intuição dá
 
@@ -306,6 +326,9 @@ vértice **na borda** (peso `0`) contribui com a **própria posição**. É o op
 
 ⚠️ **Discriminação MEDIDA, nas `11` configurações de `lei/*`** — a régua é a **altura de cada
 candidata contra o plano que o alvo de facto usou**, recuperado por ajuste como na §4.1.
+⚠️⚠️ **O cursor destas `11` está nos pontos do bloco `c`, em `z = 0` — FORA do relevo** (§14.8).
+A lei do alvo cai exactamente no plano **com o cursor em qualquer sítio**, e é isso que esta tabela
+prova; o **tamanho** do buraco com o cursor onde o artista o põe está na §14.8.
 ⭐ **A tabela está TRANSPOSTA de propósito: uma linha por célula, com TODAS as `11` à vista e a
 coluna do piso ao lado**, para que a população do gate G-5 e a barra dele sejam **recuperáveis
 desta página**. (A 1.ª redacção imprimia `8` colunas das quais duas eram não-discriminantes, e
@@ -811,7 +834,8 @@ texto não — re-dito aqui em palavras nossas).
 
 ## §11 — As fixtures
 
-`docs/3D/cleanroom/fixtures/pincel_de_plano/` — **100** traços, agrupados por assunto:
+`docs/3D/cleanroom/fixtures/pincel_de_plano/` — **155** traços, agrupados por assunto (mais uma
+tabela de texto com os valores de fábrica, §14.2):
 
 ⚠️ **As contagens abaixo são DERIVADAS do directório** (`ls <pasta> | grep -c '\.gz$'`), nunca
 escritas à mão — a 1.ª redacção desta secção somava `99` sobre `100` ficheiros, e errava uma
@@ -828,7 +852,15 @@ família. *Um quadro de inventário escrito à mão é a forma mais barata de um
 | `corte/` | **26** | o corte e o deslocamento nos quatro consumidores — com os **três** pares mortos |
 | `superficies/` | **11** | plana, degrau, rampa, esfera, máscara, e as opções partilhadas |
 | `cadeia/` | **8** | o traço passo a passo, e a força ao quadrado |
-| **total** | **100** | |
+| ⭐ `fabrica_e_traco/` | **44** | **a 2.ª missão (§14):** o perfil de fábrica num traço ARRASTADO, passagem a passagem · os valores do corpus e os nossos no mesmo traço · a ablação · o traço do corpus · o detector do passo · a prova de que os valores lidos estão completos. **+ `valores_de_fabrica.txt`** (os cinco perfis) |
+| ⭐ `cursor_na_superficie/` | **11** | as `11` células da §2.2 com o cursor **na** superfície, como o artista o põe (§14.8) |
+| **total** | **155** | |
+
+⚠️⚠️ **O cursor das famílias da 1.ª missão está nos pontos do bloco `c`, em `z = 0`, e NÃO na
+superfície** (§14.8): o caminho por script usa o ponto que lhe dão, e o harness deu-o fora do
+relevo. **Não é um defeito das fixturas** — o cabeçalho e o bloco `c` enquadram-nas por inteiro, e
+a lei foi reproduzida sobre elas assim —, mas o **tamanho** de um efeito lido nelas não é o que um
+artista vê. O `cursor_na_superficie/` existe para isso.
 
 Cada ficheiro é texto comprimido com **cabeçalho de proveniência** (todas as grandezas que
 enquadram o traço, uma por linha), blocos `r` (repouso), `n` (normais de repouso), `s` (saída),
@@ -888,6 +920,17 @@ fica **duas ordens de grandeza** abaixo do único desvio que a espec regista com
 | **G-12** | `a_firmeza_do_centro_e_muda_numa_superficie_simetrica_e_viva_num_degrau` | ⭐ o gate das **duas metades**: ele reprova se o knob deixar de ser mudo no controlo **ou** se deixar de ser vivo no degrau | mudo `≤ 1e-6`; vivo `≥ 1e-2`. ⛔ Sem a metade muda, um knob que mexa em tudo passaria |
 | **G-13** | `cada_verbo_le_o_corte_que_o_nosso_painel_lhe_oferece` | ⛔ **o gate contra o knob morto**: para cada verbo do nosso catálogo que mostre o corte ou o deslocamento, varrer o knob **tem** de mudar a saída | mudança `≥ 1e-4`. A barra sai do **lado aprovado, e agora de um número com FIXTURA PUBLICADA**: a menor mudança medida num knob vivo do alvo entre fixtures publicadas é **`7,3e-03`** (`corte/corte_tiras_05` contra `corte/corte_tiras_desligado`) ⇒ a barra fica **`73×` abaixo** dela. ⚠️ A 1.ª redacção citava `1,1e-02`, medido mas **sem fixtura publicada** — *uma barra derivada de um número que a página não carrega não é verificável por quem lê a página* |
 | **G-14** | `a_memoria_da_normal_tem_tecto` | o comprimento da memória satura em `20` dabs | contagem exacta |
+| **G-15** | `um_dab_com_o_cursor_na_superficie_reproduz_o_oraculo` | ⭐ **a 2.ª missão, pela porta exacta:** os valores de fábrica do perfil *aparar*, **um** dab efectivo, cursor **na** superfície — `fabrica_e_traco/passo_script_1dab_na_superficie` | `max|Δ| ≤ 1e-6`, a barra do G-1 (é a mesma lei e a mesma porta por script, só com o cursor posto onde o artista o põe) |
+| **G-16** | `o_passo_do_traco_e_sete_por_cento_do_diametro` | o traço arrastado põe um dab a cada **`0,14 R`** (espaçamento `7 %` do diâmetro), e o primeiro dab do traço não move nada: saltos de `6`, `7`, `13`, `14` e `21` px dão **`0`, `1`, `1`, `2` e `3`** dabs efectivos | **contagens exactas** — o detector (`fabrica_e_traco/passo_salto_*`) não admite folga |
+| **G-17** | `a_atenuacao_do_traco_e_a_da_lei` | cada dab do traço arrastado vale **`(1 + a)/2`** de um dab por script, com `a` o factor de atenuação da lei (§14.4) | a lei dá **`0,570`**; o par medido (`passo_salto_7px` contra `passo_script_1dab_na_superficie`) lê **`0,563`**. Barra: **`|razão − 0,570| ≤ 0,02`** — o resíduo medido é `0,007`, e o **`3×`** de folga é **decisão NOSSA**, dita: a diferença vem da posição sub-píxel do dab, que o detector não controla |
+| **G-18** | `a_firmeza_da_normal_e_a_alavanca_do_aparar` | ⭐⭐ **o gate das DUAS metades que o dono sente:** com os valores de fábrica do *aparar* e um traço de `0,14 R` com atenuação, **8** passagens levam o relevo a `≤ 0,05` da rugosidade inicial; **e** com a firmeza da normal a `0` o mesmo traço deixa-o **`≥ 1,0`** (mais rugoso que em repouso) | **as duas barras saem do vale MEDIDO que inclui o lado aprovado**: o perfil de fábrica lê **`0,029`** e a ablação lê **`1,380`**; `0,05` e `1,0` estão dentro do vale, com folga dos dois lados. ⛔ *Sem a 2.ª metade, um verbo sem firmeza da normal que achatasse por outro caminho passaria* |
+| **G-19** | `um_plano_ja_plano_nao_se_mexe_com_o_cursor_na_superficie` | com o cursor **na** superfície, uma rampa e um degrau não se movem | `max|Δ| ≤ 1e-6` — o alvo lê **`0`** e **`2,98e-08`** (`cursor_na_superficie/sup_rampa`, `sup_degrau`). ⚠️ *As células homónimas de `lei/`, com o cursor fora do relevo, movem `274` e `271` vértices — elas testam a LEI, esta testa o PRODUTO* |
+| **G-20** | `o_tecto_do_raio_nao_e_menor_que_o_do_alvo` | ⏳ **condicionado a decisão do dono** (o relato *«o raio máximo permitido é pouco»*): o tecto do raio do nosso pincel, em píxeis de **raio**, não fica abaixo do do alvo | pista **`≥ 500`** px e digitável **`≥ 5 000`** px de raio — **facto de interface** do alvo (`1 000` e `10 000` px de **diâmetro**, §14.3). ⛔ Não é um número nosso: se o dono o recusar, o gate não nasce |
+
+⚠️ **O G-5 corre sobre as `lei/*` e NÃO deve ser re-apontado para `cursor_na_superficie/*` sem
+recalcular a barra:** com o cursor na superfície o puxão em direcção ao cursor pesa menos, e o
+vão entre as candidatas **estreita** — a célula `R_c = 0,25 R` lê `0,00057` ali, abaixo do `1e-3`
+do G-5. *A barra de um gate é da população em que foi medida.*
 
 ⚠️ **G-13 é o gate que esta espec mais recomenda**, e ele não existe em lado nenhum deste repo
 hoje: nenhum instrumento nosso pergunta se o **valor** de um controlo chega a um consumidor
@@ -908,9 +951,271 @@ nossa versão sem este gate é herdar a doença com o desenho.
 | a barra `1e-6` dos gates | **derivada**: `8,4` ULP de `f32` na **maior coordenada** das fixtures (`1,0`) e `34` na escala do raio, e `12×` o pior resíduo medido — a tabela da derivação está na §12 |
 | a barra **`1e-3`** do G-5 e a **`1e-4`** do G-13 | **derivadas de vales MEDIDOS** que incluem o lado aprovado, e **as duas de números que a página publica**: a do G-5 do piso `0,00269` das oito células discriminantes (tabela da §2.2, linha a linha); a do G-13 da menor mudança medida num knob **vivo** entre fixtures **publicadas**, `7,3e-03` (§12) |
 | a barra **`0,75 R`** do G-6 | ⚠️ **METADE medida, metade NOSSA, e as duas declaradas** (§12): o termo do deslocamento é exacto (`offset × R`, §2.4); o `0,75` é `1,5×` o máximo medido (`0,4947 R` sobre as `11` células) e a margem é **decisão nossa**, porque um corpus de um dab efectivo não limita um traço longo |
+| **2.ª missão (§14):** os valores de fábrica, as faixas do raio, as planuras, o passo, a atenuação medida, a ablação e as alturas com o cursor na superfície | **medição de 2026-09-16**: o oráculo corrido pelo subagente-E — os valores lidos das **propriedades** dos perfis carregados pela API normal (o ficheiro de pincéis **não** foi lido como fonte); o traço **arrastado** por eventos de rato simulados numa janela virtual; `65` corridas novas, das quais `55` publicadas como fixturas |
+| o factor de atenuação `0,140` (e `0,570` por dab) | **fórmula** (§14.4), confirmada por **medição** (`0,563`) |
+| o passo `0,14 R` | **fórmula** (`espaçamento × R / 50`) e **medição exacta** pelo detector de saltos (G-16) |
+| a folga `3×` do G-17 · as barras `0,05`/`1,0` do G-18 · a margem `1,5×` do tecto do G-6 | ⚠️ a do G-17 é **decisão NOSSA**, dita; as do G-18 saem do **vale medido** (`0,029` · `1,380`) |
 | ⛔ **o que SAIU:** a barra `5e-3` do G-5 | ⚠️ **retirada por ser IMPOSSÍVEL**: a tabela da §2.2 publica um piso de `0,00269`, logo nenhuma corrida sobre o corpus publicado a satisfaria. A barra **em vigor é `1e-3`** (linha acima). A 1.ª redacção citava-a como *«derivada de um vale medido»* e o vale tinha sido lido sobre uma fracção das células |
 | a lição da §6.2 (a fixtura muda) | **medição**, e ela fica na espec porque uma barra calibrada sem o lado vivo mede outra coisa |
 | as alturas e os ângulos da **nossa** lei (§0.2 B e C, §2.2) | **medição de 2026-09-16**, feita com o estimador que os nossos quatro verbos de plano de facto chamam hoje — peso pela **máscara**, extensão = a **pegada inteira** —, sobre as fixtures publicadas, recuperando o plano do alvo pelo método da §4.1 |
 | ⛔ **o que SAIU:** o número do nosso registo de perf (*«um erro de centro de `5,8 %` do raio move o `Flatten` `0,54×`»*) | ⚠️ **retirado por ser o EPITÁFIO da lei ponderada, não prova de um buraco de hoje.** Aquela medição é de **2026-08-11** e foi a que CAUSOU a remoção da ponderação pelo falloff do nosso estimador. Citá-la em 2026-09-15 para dimensionar o buraco de hoje mede uma lei que já não existe. *O buraco real é maior, e está medido acima com a lei viva.* |
 
 ⛔ **Nenhum número desta espec foi escolhido por conforto.**
+
+---
+
+## §14 — O PINCEL DE FÁBRICA E O TRAÇO (2.ª missão, 2026-09-16)
+
+> *«O radius máximo permitido é pouco.»* e *«Com resultado inferior ao blender para produzir
+> superfícies planas.»* — o dono, depois do smoke do nosso pincel de plano.
+
+⭐ **A lei por dab já estava fechada** — a implementação reproduz as fixturas de um dab e os traços
+inteiros à barra de paridade. ⇒ *a diferença que o dono vê não está na lei.* Ela está em duas
+coisas que a 1.ª missão fixou à mão e o dono não fixa: **os valores com que o pincel nasce** e **o
+traço que a mão faz**.
+
+### §14.0 — Porque o corpus da 1.ª missão não podia responder
+
+| o corpus da 1.ª missão | o que um artista tem |
+|---|---|
+| cada valor do pincel **escrito à mão** (força `1`, curva constante, os dois tectos em `1`…) | os valores **com que o perfil nasce** (§14.2) |
+| os dabs **dados por script**, um a cada `0,29 R` | um traço **arrastado**, com o espaçamento e a atenuação do alvo (§14.4) |
+| o cursor nos pontos pedidos, em **`z = 0`**, fora do relevo | o cursor **na** superfície (§14.8) |
+
+⚠️ E o caminho por script **não aplica a atenuação por espaçamento** — o factor fica em `1` do
+princípio ao fim do traço, e é por isso que o interruptor dela lia inerte na 1.ª missão.
+
+### §14.1 — Como se mediu (e as três condições que o arrasto exige)
+
+O traço arrastado corre **por eventos de rato simulados** dentro de uma janela do alvo num
+compositor **virtual** — nunca no ecrã do dono. ⚠️ **Três condições, todas mudas se faltarem:**
+
+1. **O ecrã de boas-vindas engole o primeiro gesto.** Sem o fechar, nenhum evento simulado chega a
+   operador nenhum (medido: nem uma tecla de mudança de modo pega).
+2. **O traço pede ao compositor para prender o ponteiro**, e o protocolo nativo recusa o pedido e
+   derruba o processo. ⇒ a janela sobe pelo protocolo X, dentro do mesmo compositor virtual.
+3. **O pincel de fábrica carrega-se pela porta da interface** (a activação do catálogo), e o
+   tamanho que manda **não é o do pincel**: é o da **cena**, unificado (§14.3).
+
+⭐ **Duas provas de que a régua mede o que diz:**
+
+| prova | resultado |
+|---|---|
+| **completude dos valores lidos** — um pincel NOSSO do tipo plano com os valores da §14.2 escritos, no mesmo traço | **`7,45e-09`** do perfil de fábrica, em 4 e em 8 passagens ⇒ *nenhum valor que decida o resultado ficou por ler* |
+| **determinismo** — a mesma entrada duas vezes | **`1,49e-08`** — um passo de `f32`, **não** ao bit. ⚠️ O caminho por script era byte-idêntico; o arrasto não é, e uma barra deste lado não pode ser `0` |
+
+### §14.2 — Os valores de fábrica
+
+O catálogo de fábrica do alvo traz **cinco perfis** deste pincel — e **um deles carrega
+literalmente o nome que o dono usou**. A tabela completa dos cinco está em
+`fixtures/pincel_de_plano/fabrica_e_traco/valores_de_fabrica.txt`; aqui, o do dono contra o
+nosso verbo de plano tal como ele nasce hoje:
+
+| valor | alvo — perfil *aparar* | o nosso verbo de plano, hoje | difere? |
+|---|---|---|---|
+| força | **`0,7`**, a seguir a pressão | `0,5` | ⛔ |
+| dureza | **`0,6`** | `0` | ⛔ |
+| curva | suave (`3t² − 2t³`) | suave | ✅ |
+| **acumular** | **LIGADO** | desligado | ⛔ |
+| **firmeza da normal** | **`1,0`** | **o controlo não existe** | ⛔⛔ |
+| firmeza do centro | `0` | o controlo não existe | — |
+| extensão do centro | `0,6`, a seguir a pressão | `0,5` | ⛔ |
+| extensão da normal | `0,5` | `0,5` | ✅ |
+| tectos | cima `1`, baixo `0` | cima `1`, baixo `0` | ✅ |
+| inversão | **trocar os tectos** | afastar | ⛔ |
+| espaçamento | **`7 %` do diâmetro** (`0,14 R`), com atenuação | `0,15 R` (o piso da casa) | ≈ |
+| raio | **`50` px** (diâmetro `100`, unificado na cena) | `50` px | ✅ |
+| deslocamento · corte · auto-alisamento · faces de frente | `0` · desligado · `0` · desligado | iguais | ✅ |
+
+⚠️ **O que os outros quatro perfis dizem** (a mesma tabela, resumida): o *achatar* nasce
+**bilateral** (tectos `1`/`1`), força `0,5`, espaçamento `10 %`, sem firmezas; o *encher* e o
+*raspar* são os dois lados com trocar-tectos no `Ctrl`; e o *planalto* é o **único que NÃO
+acumula** — e tem as **duas** firmezas em `1` e dureza `0,5`. ⇒ **a firmeza da normal em `1` está
+em dois dos cinco perfis de fábrica**, e em nenhum dos nossos verbos.
+
+⚠️ **A curva personalizada que vem carregada em cada perfil é INERTE** — o preset é o suave, e ela
+só é lida com o preset personalizado. ⛔ Não se copia.
+
+### §14.3 — O raio: a unidade, a faixa e o nosso tecto
+
+| | alvo | nós |
+|---|---|---|
+| unidade de fábrica | **píxeis de ecrã** (há um segundo modo em unidades de cena) | píxeis de ecrã |
+| ⚠️ a grandeza do controlo | **DIÂMETRO** | raio |
+| de fábrica | **`100` px de diâmetro = `50` px de raio**, e é o valor **da cena**, partilhado por todos os pincéis (o próprio de cada pincel, `70`, fica por baixo) | `50` px de raio |
+| pista | **`1`–`1 000` px** de diâmetro (`500` de raio) | — |
+| digitável | **`1`–`10 000` px** de diâmetro (`5 000` de raio) | — |
+| em unidades de cena | pista `0,001`–`1,0`; digitável **sem tecto prático** | — |
+| **tecto** | `500` px de raio na pista | ⛔ **`1/8` da altura da janela** — `90` px a 720 linhas, `135` a 1080, `180` a 1440 |
+
+⇒ **O relato do dono está medido:** numa janela de 1080 linhas o nosso raio pára em `135` px e o
+do alvo vai a `500` pela pista (**`3,7×`**) e a `5 000` digitado (**`37×`**).
+
+⭐ **Medido no arrasto:** com o diâmetro de fábrica (`100` px) a `200` px por unidade, o traço toca
+exactamente até `|y| = 0,25` — **raio `0,25` = `50` px** ⇒ o `100` é mesmo um diâmetro.
+
+### §14.4 — O traço: o passo e a atenuação
+
+**O PASSO** (a distância entre dabs) é
+
+```
+passo = raio_em_px × espaçamento_% / 50        ⇒   7 %  →  0,14 R
+```
+
+⭐ **Medido EXACTAMENTE por um detector** que não supõe nada: carrega-se e dá-se **um** salto de
+rato de `N` px. O primeiro dab do traço não move nada (§1), logo o número de dabs **efectivos** é
+`⌊N / 7⌋`:
+
+| salto | 6 px | 7 px | 13 px | 14 px | 20 px | 21 px |
+|---|---|---|---|---|---|---|
+| dabs efectivos | **0** | **1** | **1** | **2** | **2** | **3** |
+
+⚠️ E **tirar tudo o que segue a pressão** dá saída **byte-idêntica** ⇒ *o rato entrega pressão
+`1`*.
+
+**A ATENUAÇÃO.** Num traço arrastado os dabs sobrepõem-se, e cada um é enfraquecido para que a
+soma não dependa do espaçamento. O factor é **o inverso do máximo, sobre a fase, da soma da curva
+de queda nas posições dos dabs vizinhos**:
+
+```
+a = 1 / max_fase  Σ_j  curva( | fase − 1 + j·h | )      h = espaçamento_% / 50,
+                                                         j = 0 … ⌊100 / espaçamento_%⌋ − 1,
+                                                         só os termos com | … | < 1
+força por dab  =  força² · pressão · (1 + a) / 2        (o caso do pincel de plano, sem inversão)
+```
+
+⚠️ **A fase é amostrada em DEZ pontos** (`0; 0,1; …; 0,9`), não maximizada no contínuo — e é essa
+discretização que dá os valores da tabela abaixo. A curva é a de queda do pincel **sem** a dureza.
+⚠️ **E a atenuação só existe com o interruptor dela ligado e o espaçamento abaixo de `100 %`**; fora
+disso `a = 1`.
+
+| curva | espaçamento | `a` | `(1 + a)/2` |
+|---|---|---|---|
+| **suave** | **`7 %`** (o *aparar*) | **`0,140`** | **`0,570`** |
+| suave | `10 %` (o *achatar*) | `0,200` | `0,600` |
+| constante | `7 %` | `0,071` | `0,536` |
+
+⭐ **Medido:** o **mesmo** dab, pelo arrasto e pela porta por script (que fixa `a = 1`, logo
+`(1 + a)/2 = 1`), com o cursor na superfície — razão das amplitudes **`0,563`** contra os
+**`0,570`** da lei. (O resíduo, `1,3 %`, é a posição sub-píxel do dab, que o detector não fixa.)
+
+⚠️ *Na inversão do modo afastar a força por dab é `0,5 · força² · pressão · a`* — **sem** a média
+`(1 + a)/2`. Registado; nenhuma fixtura deste lado a exercita.
+
+### §14.5 — A PLANURA, passagem a passagem
+
+**A régua:** o resíduo (RMS e máximo) ao **plano de mínimos quadrados** dos vértices da faixa que
+o traço varre por inteiro (`|x| ≤ 0,5`, `|y| ≤ 0,4 R`, **`441`** vértices), dividido pelo do
+repouso. É independente da inclinação do plano.
+
+**A superfície:** um relevo NOSSO de cristas **e** vales (`amplitude 0,02 · cos(kx) · cos(ky)`,
+comprimento de onda `0,5` = `2 R`), grelha de `9 409` vértices. **O traço:** ida e volta sobre a
+mesma linha, de crista a crista, **1 px** de rato por evento, raio `0,25`. RMS de repouso
+**`0,01153`** (máximo `0,02032`).
+
+| passagens | ⭐ perfil *aparar*, UM traço | *aparar*, um traço **por** passagem | perfil *achatar*, um traço |
+|---|---|---|---|
+| 1 | **`0,418`** | — | `0,730` |
+| 2 | **`0,226`** | `0,239` | `0,534` |
+| 3 | **`0,139`** | — | — |
+| 4 | **`0,092`** | `0,180` | `0,284` |
+| 6 | **`0,048`** | — | — |
+| 8 | **`0,029`** | `0,119` | `0,066` |
+
+⭐ **Quantas passagens o perfil de fábrica precisa:** **abaixo de `10 %` em 4**, abaixo de `5 %` em
+6, e **`2,9 %`** em 8 — num único traço de ida e volta.
+
+⚠️ **E ele APARA, não só achata:** a altura média da faixa desce de `+0,0003` para **`−0,0177`**
+em 8 passagens — o plano **desce** à medida que as cristas são cortadas (é o acumular a ler a
+superfície viva), até perto do fundo dos vales (`−0,02`). O *achatar* não desce (`+0,0001`), e é
+mais lento.
+
+⚠️ **Levantar a caneta entre passagens é PIOR, e cava mais:** `11,9 %` contra `2,9 %` em 8, e a
+altura vai a **`−0,043`** — mais do dobro da amplitude do relevo. *Cada traço novo esquece a
+normal que o anterior tinha fixado* (§6.1: a memória nasce no primeiro dab de cada traço).
+
+### §14.6 — Valores contra traço: a matriz 2×2
+
+Rugosidade depois de **8** passagens, em fracção do repouso:
+
+| | traço **arrastado** (`0,14 R`, com atenuação) | traço **do corpus** (`0,29 R` por script, sem atenuação) |
+|---|---|---|
+| **valores de fábrica** (*aparar*) | ⭐ **`0,029`** | `0,354` — estaciona |
+| **valores do corpus** | ⛔ **`1,934`** — PIORA | ⛔ `1,996` — PIORA |
+
+⇒ **Os VALORES decidem SE o pincel achata; o TRAÇO decide ATÉ ONDE.** Com os valores do corpus a
+superfície fica **duas vezes mais rugosa** em qualquer traço — a curva constante e a força `1`
+fazem cada dab encostar tudo ao **seu** plano, e dabs vizinhos com planos diferentes deixam
+degraus (*mecanismo provável, não isolado por medição*). ⚠️ *Os valores do corpus foram escolhidos para a lei ser RECUPERÁVEL (os tocados caem
+exactamente no plano), não para achatar — e nenhum gate da 1.ª missão os deve confundir com um
+pincel que se entrega.*
+
+### §14.7 — A ABLAÇÃO: qual valor é a alavanca
+
+⭐⭐⭐ **Os valores de fábrica do NOSSO verbo de plano, no motor do alvo e com o traço dele, NÃO
+achatam:** `1,010` · `1,027` · `1,061` · **`1,114`** em 1 · 2 · 4 · 8 passagens. ⇒ *o relato do
+dono reproduz-se no próprio alvo, com os nossos números.*
+
+A partir do perfil de fábrica (**`0,029`** em 8 passagens), trocando **um** valor de cada vez pelo
+nosso:
+
+| trocado | rugosidade em 8 | altura média | leitura |
+|---|---|---|---|
+| ⛔⛔ **firmeza da normal `1 → 0`** | **`1,380`** | **`−0,090`** | **a alavanca dominante:** sem ela a superfície acaba **mais rugosa que em repouso** e o pincel **cava uma vala** de `4,5×` a amplitude do relevo. *Mecanismo provável, não isolado:* com o acumular ligado o plano segue a superfície que ele próprio corta, e sem a normal presa a orientação dele acompanha-a — o plano da faixa acaba inclinado **`1,24°`** contra **`0,32°`** do perfil de fábrica |
+| ⛔ **acumular ligado → desligado** | **`0,287`** | `−0,010` | a segunda: sem ele o plano não desce, e o pincel pára de aparar cedo |
+| dureza `0,6 → 0` | `0,122` | `−0,015` | a terceira |
+| força `0,7 → 0,5` | `0,096` | `−0,015` | só mais lento |
+| extensão do centro `0,6·pressão → 0,5` | `0,020` | `−0,018` | ⚠️ **não é alavanca** (ligeiramente melhor) |
+
+⇒ ⭐ **O *aparar* do alvo é a COMBINAÇÃO de acumular ligado com a normal presa:** o plano desce
+com o barro que corta, mas **não roda**. Qualquer das duas sozinha falha, e de maneiras opostas.
+⛔ *Um verbo de plano sem firmeza da normal não chega a este resultado com nenhum valor dos
+outros knobs* — os nossos números são a prova.
+
+### §14.8 — O cursor do corpus estava FORA da superfície
+
+⚠️⚠️ **Achado de método, e ele muda o TAMANHO de números da §0 e da §2:** a porta por script usa
+o ponto do cursor **tal como lhe é dado**, e o harness da 1.ª missão deu-o em `z = 0`. Num relevo,
+isso põe o cursor **fora** da superfície — medido nas `11` células, de **`0`** (bossas, onde a
+linha do traço está em `z = 0`) a **`0,54 R`** (o sulco de raio `0,2`) — e a lei do centro (§2.2)
+**puxa o plano em direcção ao cursor**. Um artista nunca tem o cursor fora da superfície.
+
+⭐ **A lei não muda com isso** — a candidata do alvo cai exactamente no plano **nas duas
+situações**. O que muda é o **tamanho** do que se lê:
+
+(contagens de vértices movidos com o **mesmo** limiar, `1e-7`, dos dois lados)
+
+| célula | cursor fora da superfície, em `R` | a mexer (fora → **na** superfície) | o NOSSO centro, com o cursor **na** superfície | a NOSSA normal |
+|---|---|---|---|---|
+| sulco, `R 0,4` | `0,271` | `265` → `259` | **`+11,7 %`** do raio | `8,7°` |
+| sulco, `R 0,2` | `0,543` | `62` → `65` | `+7,5 %` | `4,6°` |
+| sulco, `R 0,6` | `0,181` | `632` → `614` | `+12,2 %` | `12,7°` |
+| `R_c = 0,25 R` | `0,271` | `262` → `252` | **`+14,7 %`** | `8,7°` |
+| `R_c = R` | `0,271` | `274` → `268` | `+2,6 %` | `8,7°` |
+| `R_c = 2 R` | `0,271` | `276` → `272` | `−8,1 %` | `8,7°` |
+| `R_n = 0,25 R` | `0,271` | `265` → `259` | `+11,7 %` | `11,7°` |
+| `R_n = R` | `0,271` | `265` → `259` | `+11,6 %` | `3,8°` |
+| bossas | **`0,000`** — já estava na superfície | `268` → `268` | `0` (simétrica) | **`31,2°`** |
+| ⛔ **rampa** | `0,179` | **`274` → `0`** | — | — |
+| ⛔ **degrau** | `0,375` | **`271` → `0`** (máximo `2,98e-08`) | — | — |
+
+⇒ **O buraco sobrevive com o cursor onde o artista o põe, e no sulco fica MAIOR** (`+11,7 %`
+contra `+9,5 %`).
+
+⛔⛔ **E as duas últimas linhas são o achado mais importante desta secção:** numa superfície **já
+plana** (uma rampa, os dois patamares de um degrau), com o cursor **na** superfície o pincel **não
+mexe em nada** — o plano ajustado **é** a superfície. As fixturas homónimas da 1.ª missão movem
+**`274`** e **`271`** vértices **só porque o cursor estava fora**. *Elas continuam certas como
+testes da LEI; lidas como o que o PRODUTO faz a um artista, mentem.*
+
+### §14.9 — O que isto pede ao produto (em termos de comportamento)
+
+1. **A firmeza da normal (§6.1) não é opcional para o *aparar*.** Sem ela nenhum valor dos outros
+   knobs leva o relevo abaixo da rugosidade inicial neste traço (§14.7).
+2. **O acumular é a segunda metade do mesmo gesto** — e, no alvo, os perfis de achatar, encher,
+   raspar e aparar nascem **todos** com ele ligado.
+3. **O traço precisa da atenuação por espaçamento** (§14.4): sem ela, cada dab de um traço denso
+   vale `1/0,57 = 1,75×` o que devia.
+4. **O tecto do raio** (§14.3) é o relato literal do dono, e o número do alvo está medido.
+5. **Uma fixtura com o cursor fora da superfície testa a lei; um gate de PRODUTO usa o cursor na
+   superfície** (G-19).

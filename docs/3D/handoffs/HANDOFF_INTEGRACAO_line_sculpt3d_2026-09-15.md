@@ -922,3 +922,209 @@ de revisão. As outras **seis** vassouras fecham limpas sobre os caminhos tocado
 * O **chip no painel** — o corte está no teclado, e *uma tecla é alcançável mas não DESCOBRÍVEL*.
 * ⛔ **O veredito do dono sobre a face cortada** é o que decide se esta wave fecha ou se a fila passa
   ao **pincel** de trim que ele nomeou.
+
+---
+
+## §45 — ⭐⭐⭐ O Box Trim vira **FERRAMENTA**, ganha o **círculo** e a **suavização do traço**
+
+> **Ordem do dono** (2026-09-15, depois de aprovar a wave do §44 com *«Muito
+> Bom»*): *«O laço merece um grau de suavização do traço. Crie o botão nos tools
+> para box trim. Nos parâmetros botões box e circle (novo) e laço. Em laço um
+> parâmetro para suavizar o traço.»*
+
+### §45.1 — ⭐⭐ A decisão que tudo o resto segue: o corte é um **VERBO**
+
+`Verb::BoxTrim` (o **33.º**; conte-o em `Verb::ALL`). ⭐ **A exclusividade com os
+pincéis passa a ser por construção** — escolher um pincel desarma o corte e
+escolher o corte larga o pincel, sem uma única regra escrita à mão. Um botão
+separado ao lado da fileira precisaria dessas duas regras, e elas são exactamente
+o que apodrece.
+
+⇒ o campo `Trim::armado` **foi apagado**: *«está armado?»* passou a ser a mesma
+pergunta que *«qual é o pincel na mão?»*, e mantê-lo seria a segunda resposta que
+diverge no dia em que uma delas mudar.
+
+⚠️ **O `L` continua a existir e mudou de significado:** ele **pega na
+ferramenta** e, das vezes seguintes, roda entre as três formas — e **depois da
+última devolve o verbo que interrompeu** (`Trim::verbo_anterior`, lido só pelo
+atalho). *Um atalho que arma e não desarma deixa o artista preso à ferramenta que
+ele espreitou.*
+
+### §45.2 — ⛔⛔ O que um verbo novo obriga a decidir, e o que quase passou calado
+
+O compilador acusou **3** `match` exaustivos. Os outros predicados têm ramo
+`_ =>`, e **é ali que mora o risco**:
+
+| predicado | Box Trim | porquê |
+|---|---|---|
+| `sem_lei_por_vertice` | **`true`** | herda de graça `writes_through_applicator = false`, `accumulates = false` e `a_forca_chega_ao_barro = false` |
+| `mexe_na_topologia` | **`false`** (braço explícito) | ⚠️ o default `!anchors()` responderia **`true`** |
+| `corre_sem_o_interruptor` | **`false`** | ver §45.3 |
+| `o_auto_smooth_chega` · `a_lei_le_a_distancia_ao_cursor` | `false` | não há laço por-vértice nem cursor a que medir distância |
+| `o_raio_chega_ao_barro` (**novo**) | `false` | ver §45.4 |
+
+### §45.3 — ⛔⛔⛔ Uma resposta a servir DUAS perguntas, e ela divergiu no SEGUNDO membro
+
+`corre_sem_o_interruptor` derivava de `sem_lei_por_vertice`. Enquanto o
+`Density` era o único membro, as duas tinham a mesma resposta **por acaso** — e
+são perguntas diferentes: *«este verbo tem lei por-vértice?»* e *«o passe de
+topologia corre para ele mesmo com o interruptor desligado?»*. O Box Trim
+responde `true` à primeira e **`false`** à segunda.
+
+⚠️⚠️ **É a armadilha que este módulo já pagou três vezes ao contrário** (duas
+respostas à mesma pergunta, que divergem no terceiro membro); aqui foi **uma
+resposta a duas perguntas, a divergir no segundo**.
+
+⛔⛔ **E o ARNÊS do censo guardava uma CÓPIA da derivação** (`let topologia =
+b.verb.sem_lei_por_vertice()`). No dia em que o produto a separou, o arnês
+continuou a correr o passe de topologia sobre um verbo sem dab — fazendo-o
+*«acordar»* com **`704` unidades de desvio que eram trabalho do próprio arnês**.
+*Uma cópia de uma derivação é uma bomba com o relógio do dia em que a original
+mudar.*
+
+### §45.4 — ⭐⭐ O CENSO DOS KNOBS MORTOS apanhou o verbo novo na primeira corrida
+
+`[("Box Trim", "panel.sculpt3d.radius"), ("Box Trim", "panel.sculpt3d.falloff")]`.
+
+* **RAIO** ⇒ porta nova `Verb::o_raio_chega_ao_barro`, e o painel **esconde** a
+  pista. ⚠️ **O `Density` responde `true`** — ele não move um vértice e o raio
+  dele decide **ONDE** a malha afina, que é a distinção que uma derivação de
+  `sem_lei_por_vertice` apagaria.
+* **CURVA** ⇒ não pode ser escondida (cerca de produto medida e gateada), logo
+  leva a razão à vista — e uma razão **própria**, `CurvaInerte::OGestoNaoCarimba`.
+  ⛔ Reusar a do `Density` diria ao artista *«o efeito é sobre a topologia»* com
+  uma ferramenta de **corte** na mão: um rótulo que mente.
+
+⚠️ E o Box Trim entra na catraca dos **ADORMECIDOS** (que tinha ido a zero no dia
+anterior) **por LEI**: medir num dab um verbo que não tem dab é medir o programa
+errado. *Sem saída prescrita, ao contrário da entrada do `Density`* — a lei dele
+tem bancada própria na `ph2d-trim`.
+
+### §45.5 — ⭐⭐⭐ A SUAVIZAÇÃO: uma mutação sobrevivente refutou a minha explicação
+
+A lei é `ph2d_trim::suaviza` — **pares de passagens de Taubin** sobre o anel
+FECHADO, buffer **duplo** (um Gauss-Seidel faria a saída depender de **onde o
+anel começa**, que é propriedade da mão e não da forma).
+
+⛔⛔⛔ **O `MU` era `−0,52` com um doc a afirmar que `μ = −λ` fazia as duas
+passagens cancelarem-se. Uma mutação SOBREVIVENTE mandou medir, e a afirmação era
+FALSA.** A composição de um par tem resposta `H(k) = (1 − λk)(1 − μk)` com
+`k = 1 − cos θ ∈ [0, 2]`; com `μ` **mais** negativo que `−λ` aparece um termo
+linear positivo ⇒ **`H > 1` nas frequências baixas**:
+
+| `μ` | harmónica de ordem 3 | tremor que sobra | a área moveu | canto perdido |
+|---|---|---|---|---|
+| **`−0,50`** | **`−0,2 %`** | `2,3 %` | **`0,006 %`** | `2,45 px` |
+| `−0,52` | **`+0,6 %`** | `4,5 %` | `0,160 %` | `2,01 px` |
+| `−0,55` | **`+1,8 %`** | `9,4 %` | `0,391 %` | `1,29 px` |
+
+⇒ `MU = −LAMBDA`, e o gate novo é
+`a_lei_nunca_amplifica_uma_forma_que_o_artista_desenhou`. *Uma lei de suavização
+pode errar por preservar de menos; nunca por CRIAR.*
+
+### §45.6 — ⚠️⚠️ A FIXTURA corrigiu-se DUAS vezes antes de a lei ser julgada
+
+1. **Não era periódica.** `sin(i · 2,3999)` não fecha em `i = n` ⇒ a fixtura
+   trazia uma **descontinuidade real** no ponto onde o laço fecha, e o gate do
+   anel fechado lia o resíduo dela (`0,1148 px`) como prova de que a lei tratava
+   o anel como aberto. *Uma régua que acusa a lei sobre um defeito da própria
+   fixtura não afirma nada.*
+2. **Não era banda larga.** Com duas harmónicas altas o tremor é aniquilado em
+   `8` pares e a curva do tecto fica plana — *uma entrada fácil demais faz a lei
+   parecer melhor do que ela é*.
+
+⛔ **E a RÉGUA corrigiu-se uma terceira vez:** ela media o desvio radial ao
+círculo verdadeiro, e sobre uma entrada de banda larga lia **`97,8 %` de «tremor
+que sobra» sobre uma lei a funcionar** — porque a maior parte daquele desvio é
+uma harmónica BAIXA, que é **forma**. *Uma régua que chama tremor a uma feição
+acusa o alisador de não destruir o desenho.* O que fica é a **rugosidade local**
+(quanto cada ponto se afasta da média dos vizinhos), que é o que o olho lê.
+
+### §45.7 — O TECTO das passagens, derivado da resolução do GESTO
+
+| pares | tremor que sobra | a área moveu | canto perdido | CONTROLO: laplaciano puro |
+|---|---|---|---|---|
+| `8` | `38,5 %` | `0,04 %` | `1,61 px` | `1,93 %` |
+| `32` | `27,9 %` | `0,02 %` | `2,45 px` | `7,43 %` |
+| **`64`** | **`24,1 %`** | **`0,00 %`** | **`2,98 px`** | `14,29 %` |
+| `128` | `20,6 %` | `0,02 %` | `3,59 px` | `26,54 %` |
+| `192` | `19,1 %` | `0,03 %` | **`4,00 px`** | `37,04 %` |
+
+⇒ a `192` o canto desloca-se **exactamente** o `PASSO_MINIMO_PX` — a distância
+com que o laço guarda pontos —, logo dali para cima a lei apaga feição que o
+traço ainda conseguia representar. `PARES_MAX = 64` deixa o canto em `2,98 px`
+(três quartos dessa resolução), e **a folga é declarada**: a medição corre no
+espaçamento MÍNIMO, e um arrasto rápido guarda pontos mais afastados.
+
+⚠️ **A derivação atravessa a fronteira de duas crates** (a lei não sabe o passo
+do gesto; o gesto não sabe as passagens da lei) ⇒ o gate vive onde as duas
+constantes se encontram, com a metade que impede um tecto escolhido **por
+baixo**. ⚠️ **Ela errou duas vezes antes de assentar:** a `2 ×` o canto ainda
+cabe (`3,59 px`) e a `3 ×` pousa **exactamente em cima** da régua — *uma
+comparação de `f32` no fio da navalha, que é o que um gate não pode ser*.
+
+⛔ **A coluna do CONTROLO justifica a lei inteira:** o laplaciano puro encolhe a
+área `14,29 %` contra `0,00 %`. Num contorno de corte isso é cortar **por
+dentro** da linha que o artista desenhou.
+
+### §45.8 — O CÍRCULO, e porque o gesto dele é centro-para-fora
+
+`TrimForma::Circulo` (a forma vive no `Brush`, ao lado do `SmearMode` e do
+`ProjectMode` — era a condição para ter chip). ⛔ **Ele não vem da referência**
+(caixa, laço, linha, polilinha) — é pedido do dono, e é a mesma máquina.
+
+⚠️ **Centro-para-fora e não canto-a-canto**, ao contrário da caixa: um arrasto
+canto-a-canto dá uma **elipse** sempre que não for quadrado, e um controlo
+chamado *Circle* que entrega elipses é a espécie de rótulo que mente. ⏳ Se o
+dono quiser a elipse, ela é o outro gesto e merece o nome dela.
+
+⭐ **A contagem de lados sai do ECRÃ, nunca escolhida:** a flecha de uma corda de
+`n` lados é `r·(1 − cos(π/n)) ≈ r·π²/(2n²)`, e exigi-la abaixo de meio pixel dá
+`n ≥ π·√(r/(2·flecha))` ⇒ o polígono é **indistinguível de um círculo no ecrã em
+que foi desenhado**, e a contagem cresce com `√r` em vez de linearmente.
+
+### §45.9 — ⚠️ TRÊS censos tiveram a premissa morta, e nenhum foi afrouxado
+
+1. `the_second_pass_is_refused_for_three_different_reasons` — **terceira** morte
+   da mesma premissa, no dia em que a segunda ainda estava fresca.
+2. `the_basic_level_never_hides_the_two_knobs_every_brush_has` — a frase *«o raio
+   é de TODOS»* era uma asserção **incondicional**, e *uma asserção incondicional
+   é uma premissa à espera do primeiro membro que não couber nela*. As duas
+   pistas passam a ser afirmadas pela porta do motor, com a população dos dois
+   lados.
+3. `a_lista_do_censo_cobre_os_knobs_incondicionais` — a lista dos
+   sempre-visíveis ficou **VAZIA**. ⭐ **A cura não foi baixar o piso outra vez:
+   foi corrigir a POPULAÇÃO** (os verbos que CARIMBAM). *A pergunta sempre foi
+   «que knob todo PINCEL pinta?», e a resposta era `Verb::ALL` só enquanto todo
+   verbo era um pincel.*
+
+E o gate da shell `o_pen_down_toma_o_gesto_e_fotografa_o_acerto` trocou a agulha
+`scene.trim.armado` por `Verb::BoxTrim` — o campo foi **apagado**, e é isso que
+torna a exclusividade uma propriedade em vez de uma regra.
+
+### §45.10 — Números, provas e cortes
+
+* **Mutação: 12 de 12 sangram** (o par de Taubin · o anel aberto · o
+  Gauss-Seidel · o tecto das passagens · os lados do círculo · o laço a ignorar a
+  pista · o raio de volta a TODOS · a pista a ignorar a forma · os chips fora do
+  `populate` · o arnês a derivar do predicado errado · e as duas do §44 que
+  continuam vivas).
+* **Dois tectos de LOC** curados por **CORTE** — `brush_verb.rs` (`704`, o nome
+  da UI saiu para `brush_verb_label.rs`) e `stroke_target.rs` (`705`, as três
+  contas de vector saíram para `stroke_target_vetores.rs`). ⛔ Nenhum no
+  `FILE_OVERAGE_OK`.
+* **Sweep clean-room limpo nas SETE vassouras** sobre os caminhos tocados.
+  ⚠️ A isenção nomeada do §44.8 (`NoError`, API pública do motor Apache-2.0)
+  continua de pé e continua a ser triagem do **R**.
+
+### §45.11 — ⏳ ABERTO
+
+* A **linha** e a **polilinha** (espec §4.2) — duas das quatro variantes da
+  referência ainda faltam; a linha é a mesma máquina com um quadrilátero
+  fabricado e o modo **forçado** a subtrair.
+* Os outros **modos** (juntar · intersectar): o `Op` existe na porta e nenhum
+  gesto o alcança.
+* A **simetria** (espec §9): `N` booleanas, uma por passagem.
+* O interior das **tampas** (§44.5), para o dia da `Profundidade::DoCursor`.
+* ⛔ **A ELIPSE** — se o dono a quiser, ela é um gesto próprio e não um modo do
+  `Circle`.

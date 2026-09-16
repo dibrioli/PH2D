@@ -131,6 +131,23 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_STA
 por baixo da faixa de cor**, e não na faixa: a faixa são as três placas que a máquina acende, e elas
 não têm o componente. Ver o §9-bis.
 
+📘 **E há TUTORIAL** (pedido do dono, 15/09):
+[`tutoriais/01_maquina_de_estados.pdf`](../tutoriais/01_maquina_de_estados.pdf), 4 páginas, fonte em
+`tutoriais/src/` e gerado por `bash scripts/tutorial-pdf.sh` — a mesma máquina do módulo Motion.
+
+⚠️⚠️ **Os rótulos que ele cita são GATEADOS** (`o_tutorial_nomeia_rotulos_que_existem`, em
+`ph2d-panel-inspector/tests/it/`): tudo o que o texto marca com `<code class="ui">` tem de existir
+num pintor do Inspector, com **piso de população** (uma marca renomeada faria o censo varrer zero e
+ficar verde) e com a **metade justa** (um rótulo vazio é recusado). ⛔ Ele **não** mede que o rótulo
+chega a pixel — essa lente continua a faltar às 26 secções, e está no §9 item 5.
+
+⚠️ **E a geração do PDF mordeu duas vezes, as duas MUDAS:** um `<div class="note">` fechado com
+`</p>` pôs **o documento inteiro dentro dele** — e como ele é `break-inside:avoid`, a página 1 ficou
+com o título e mais nada; e um `<path>` de SVG sem `fill="none"` é **preenchido a preto** por
+omissão, o que desenhou uma cunha sólida onde devia estar uma seta tracejada. *As duas passam num
+browser aberto e só aparecem no PDF* ⇒ **renderize as páginas e OLHE para elas** (`pdftoppm`), nunca
+só o `✓` do gerador.
+
 ---
 
 ## §9-bis — ⛔⛔⛔ O SMOKE do dono: *«não apareceu no painel a seção state machine»*

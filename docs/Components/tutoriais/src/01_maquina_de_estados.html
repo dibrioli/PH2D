@@ -1,0 +1,295 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · O objeto que se lembra</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+    --red: #d94d48; --yel: #ebc242; --grn: #5cc770; --door: #4c5266;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"\2192 "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"\26A0 "; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:5px 8px; border-bottom:1px solid var(--line);
+           vertical-align:top; }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .two { display:grid; grid-template-columns:262px 1fr; gap:18px; align-items:start;
+         break-inside:avoid; }
+  /* ── esquema da seccao do painel ─────────────────────────────── */
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:9px;
+           overflow:hidden; font-size:11px; }
+  .panel .h { padding:6px 10px; font-weight:600; font-size:11.5px; color:var(--acc);
+              border-bottom:1px solid var(--line); }
+  .panel .body { padding:8px; display:grid; gap:4px; }
+  .panel .now { background:#241f33; border-left:2px solid var(--acc); border-radius:4px;
+                padding:4px 8px; color:var(--acc); }
+  .panel .list { background:#0b0a0e; border:1px solid var(--line); border-radius:5px;
+                 padding:3px; display:grid; gap:2px; }
+  .panel .li { padding:3px 7px; border-radius:3px; color:var(--t2); }
+  .panel .li.sel { background:#2a2438; color:var(--t1); }
+  .panel .btns { display:flex; gap:4px; }
+  .panel .btn { flex:1; background:#22202a; border:1px solid var(--line); border-radius:5px;
+                padding:3px 0; text-align:center; color:var(--t1); font-size:10.5px; }
+  .panel .f { display:flex; justify-content:space-between; background:#0b0a0e;
+              border-radius:4px; padding:3px 7px; }
+  .panel .f .k { color:var(--t2); } .panel .f .v { color:var(--t1); }
+  .panel .ph { color:var(--t3); font-style:italic; }
+  code.ui { color:var(--t1); }
+  .cal { font-size:11.5px; color:var(--t2); }
+  .cal li { margin:4px 0; }
+  .cal b { color:var(--t1); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+
+<h1>O objeto que se lembra
+  <small>PH2D &middot; Componentes &middot; a <b>M&aacute;quina de Estados</b> &mdash; escrever o
+  comportamento de um objeto sem escrever programa</small></h1>
+
+<p>At&eacute; agora, quando um sinal chegava a um objeto, ele fazia <b>sempre a mesma coisa</b>.
+Uma porta que recebe &laquo;abre&raquo; abre; se receber de novo, abre outra vez &mdash; ela n&atilde;o
+sabe que j&aacute; est&aacute; aberta. A m&aacute;quina de estados &eacute; a pe&ccedil;a que d&aacute;
+ao objeto essa mem&oacute;ria: ele passa a saber <b>em que situa&ccedil;&atilde;o est&aacute;</b>, e o
+mesmo sinal passa a fazer coisas diferentes conforme ela.</p>
+
+<div class="note"><b>As figuras deste tutorial s&atilde;o desenhos</b>, n&atilde;o fotografias da
+tela: elas mostram o que est&aacute; escrito na cena e como a se&ccedil;&atilde;o do painel se
+organiza. Os nomes em <code>c&oacute;digo</code> s&atilde;o exatamente os que aparecem na tela.</div>
+
+<h2>1 &middot; Abrir</h2>
+<p>Cole isto inteiro num terminal.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components &amp;&amp; env PH2D_STATEMACHINE_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke</div>
+<p class="out">Abrem <b>duas portas</b> iguais e um quadradinho branco em cima. O quadradinho
+&eacute; o bot&atilde;o: ele se aperta sozinho de dois em dois segundos. A r&eacute;gua de tempo
+abre embaixo j&aacute; tocando &mdash; a cena <b>s&oacute; pensa enquanto o rel&oacute;gio anda</b>.</p>
+<p class="bad">Se n&atilde;o aparecer a linha <code>[statemachine-smoke]</code> no terminal, pare: a
+cena n&atilde;o montou.</p>
+
+<h2>2 &middot; As duas portas, e por que s&atilde;o duas</h2>
+<p>As duas t&ecirc;m <b>exatamente as mesmas instru&ccedil;&otilde;es</b>. A diferen&ccedil;a
+&eacute; que a da esquerda tem c&eacute;rebro e a da direita n&atilde;o.</p>
+
+<table>
+  <tr><th>&nbsp;</th><th>o que tem</th><th>o que faz</th></tr>
+  <tr><td><b>Esquerda</b><br><code>Door</code></td>
+      <td>as instru&ccedil;&otilde;es <b>+ uma m&aacute;quina de estados</b></td>
+      <td>a faixa cicla <b style="color:var(--red)">vermelho</b> &rarr;
+          <b style="color:var(--yel)">amarelo</b> &rarr; <b style="color:var(--grn)">verde</b>,
+          <b>um passo por toque</b></td></tr>
+  <tr><td><b>Direita</b><br><code>Door (no brain)</code></td>
+      <td>s&oacute; as instru&ccedil;&otilde;es</td>
+      <td>fica <b>presa</b>: o mesmo sinal manda mostrar <i>e</i> esconder, e a &uacute;ltima ordem
+          ganha</td></tr>
+</table>
+
+<p>&Eacute; isso que um estado compra: <b>escolher uma coisa de cada vez</b>.</p>
+
+<h2>3 &middot; Achar o c&eacute;rebro</h2>
+<ol class="steps">
+  <li><b>Clique no batente escuro</b> da porta da esquerda &mdash; a parte grande, embaixo da faixa
+      colorida.
+      <div class="out">O painel da direita (o <b>Inspector</b>) passa a mostrar o que esse objeto
+      tem. Desça até a seção <b><code class="ui">State Machine</code></b>.</div>
+      <div class="bad">Se clicar na faixa colorida, voc&ecirc; pega a <i>pe&ccedil;a de cor</i>, que
+      n&atilde;o tem c&eacute;rebro nenhum &mdash; e a se&ccedil;&atilde;o n&atilde;o aparece.</div></li>
+</ol>
+
+<div class="two">
+  <div class="panel">
+    <div class="h">State Machine</div>
+    <div class="body">
+      <div class="now">Now: Opening</div>
+      <div class="list">
+        <div class="li">Closed &nbsp;&rarr;&nbsp; door_closed</div>
+        <div class="li sel">Opening &nbsp;&rarr;&nbsp; door_opening</div>
+        <div class="li">Open &nbsp;&rarr;&nbsp; door_open</div>
+      </div>
+      <div class="btns"><div class="btn">+ Add State</div><div class="btn">x Remove State</div></div>
+      <div class="f"><span class="k">state name</span><span class="v">Opening</span></div>
+      <div class="f"><span class="k">on enter</span><span class="v">door_opening</span></div>
+      <div class="f"><span class="k">on exit</span><span class="ph">vazio</span></div>
+      <div class="list">
+        <div class="li">Closed &nbsp;&mdash;botao&rarr;&nbsp; Opening</div>
+        <div class="li sel">Opening &nbsp;&mdash;botao&rarr;&nbsp; Open</div>
+        <div class="li">Open &nbsp;&mdash;botao&rarr;&nbsp; Closed</div>
+      </div>
+      <div class="btns"><div class="btn">+ Add Transition</div><div class="btn">x Remove Transition</div></div>
+      <div class="f"><span class="k">From state</span><span class="v">1</span></div>
+      <div class="f"><span class="k">on signal</span><span class="v">botao</span></div>
+      <div class="f"><span class="k">To state</span><span class="v">2</span></div>
+      <div class="f"><span class="k">Initial state</span><span class="v">0</span></div>
+    </div>
+  </div>
+  <ul class="cal">
+    <li><b><code class="ui">Now:</code></b> em que situa&ccedil;&atilde;o o objeto est&aacute; <i>agora</i>. Ele anda junto
+        com a cena. Se o rel&oacute;gio estiver parado, no lugar dele aparece um aviso dizendo
+        isso.</li>
+    <li><b>A primeira lista s&atilde;o as situa&ccedil;&otilde;es</b> (os <i>estados</i>). Cada linha
+        diz <code>nome &rarr; o que ele anuncia ao entrar</code>. Clique numa linha para abri-la
+        nos tr&ecirc;s campos logo abaixo.</li>
+    <li><b>A segunda lista s&atilde;o as setas.</b> Cada linha se l&ecirc; como uma frase:
+        <code>Closed &mdash;botao&rarr; Opening</code> &mdash; <i>estando em Closed, ao ouvir
+        &laquo;botao&raquo;, v&aacute; para Opening</i>.</li>
+    <li><b><code class="ui">Initial state</code></b> &eacute; por onde ele come&ccedil;a quando a cena recome&ccedil;a.</li>
+  </ul>
+</div>
+
+<h2>4 &middot; A ideia inteira, em tr&ecirc;s palavras</h2>
+<p>O c&eacute;rebro <b>n&atilde;o faz nada sozinho</b>. Ele s&oacute; decide em que
+situa&ccedil;&atilde;o o objeto est&aacute;, e <b>anuncia um nome</b> ao entrar nela. Quem faz
+alguma coisa com esse nome &eacute; a tabela <b>Signal Actions</b>, logo acima na mesma coluna.</p>
+
+<svg viewBox="0 0 560 150" style="width:100%;margin:8px 0">
+  <g font-family="Inter,system-ui" font-size="12">
+    <rect x="6" y="52" width="104" height="44" rx="8" fill="#17161c" stroke="#2a2830"/>
+    <text x="58" y="70" fill="#a9a3b8" text-anchor="middle" font-size="10">CHEGA UM SINAL</text>
+    <text x="58" y="86" fill="#ece9f2" text-anchor="middle" font-family="monospace">botao</text>
+
+    <path d="M114 74 H160" fill="none" stroke="#c9a6ff" stroke-width="1.5" marker-end="url(#a)"/>
+
+    <rect x="164" y="40" width="150" height="68" rx="8" fill="#17161c" stroke="#c9a6ff"/>
+    <text x="239" y="58" fill="#c9a6ff" text-anchor="middle" font-size="10">A M&Aacute;QUINA DECIDE</text>
+    <text x="239" y="76" fill="#ece9f2" text-anchor="middle">estava em Closed</text>
+    <text x="239" y="94" fill="#ece9f2" text-anchor="middle">passa para Opening</text>
+
+    <path d="M318 74 H364" fill="none" stroke="#c9a6ff" stroke-width="1.5" marker-end="url(#a)"/>
+
+    <rect x="368" y="52" width="112" height="44" rx="8" fill="#17161c" stroke="#2a2830"/>
+    <text x="424" y="70" fill="#a9a3b8" text-anchor="middle" font-size="10">E ANUNCIA</text>
+    <text x="424" y="86" fill="#7ee0b0" text-anchor="middle" font-family="monospace">door_opening</text>
+
+    <path d="M424 100 V126 H239" fill="none" stroke="#6f6a7d" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#b)"/>
+    <text x="330" y="141" fill="#6f6a7d" text-anchor="middle" font-size="10">a tabela Signal Actions escuta esse nome e acende a placa amarela</text>
+  </g>
+  <defs>
+    <marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0 0 L7 3.5 L0 7 z" fill="#c9a6ff"/></marker>
+    <marker id="b" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0 0 L7 3.5 L0 7 z" fill="#6f6a7d"/></marker>
+  </defs>
+</svg>
+
+<div class="note"><b>Um sinal &eacute; GASTO por quem o ouve.</b> No mesmo instante em que o
+bot&atilde;o toca, a porta d&aacute; <b>um</b> passo &mdash; e n&atilde;o a volta inteira. Quem
+chegou em <code>Opening</code> n&atilde;o ouve aquele mesmo toque outra vez.</div>
+
+<h2>5 &middot; Mexer e ver acontecer</h2>
+<p>Com a cena rodando, fa&ccedil;a estes tr&ecirc;s. Cada um mostra uma pe&ccedil;a diferente.</p>
+
+<ol class="steps">
+  <li><b>Mude para onde uma seta vai.</b> Na segunda lista, clique em
+      <code>Open &mdash;botao&rarr; Closed</code> e troque o campo <b><code class="ui">To state</code></b> de
+      <code>0</code> para <code>1</code>.
+      <div class="out">A porta deixa de voltar ao vermelho: ela passa a ficar indo e vindo entre
+      <b style="color:var(--yel)">amarelo</b> e <b style="color:var(--grn)">verde</b>. Voc&ecirc;
+      acabou de reescrever o comportamento dela sem tocar em mais nada.</div></li>
+
+  <li><b>Mude o que uma situa&ccedil;&atilde;o anuncia.</b> Volte o <b><code class="ui">To state</code></b> para
+      <code>0</code>. Agora, na primeira lista, clique em <code>Opening</code> e apague o campo
+      <b><code class="ui">on enter</code></b>.
+      <div class="out">O amarelo nunca mais acende: a porta vai de vermelho direto para verde. A
+      m&aacute;quina <i>continua andando</i> pelos tr&ecirc;s estados &mdash; o que sumiu foi o
+      an&uacute;ncio, e sem an&uacute;ncio ningu&eacute;m acende a placa.</div>
+      <div class="bad">A linha da lista passa a mostrar s&oacute; <code>Opening</code>, sem a
+      setinha: &eacute; assim que voc&ecirc; v&ecirc;, de relance, quem anuncia e quem &eacute;
+      mudo.</div></li>
+
+  <li><b>Mude por onde ele come&ccedil;a.</b> Escreva <code>2</code> em <b><code class="ui">Initial state</code></b> e
+      aperte o bot&atilde;o <b>&#9198;</b> (voltar ao in&iacute;cio) na barra da r&eacute;gua de tempo.
+      <div class="out">A porta recome&ccedil;a <b style="color:var(--grn)">verde</b> em vez de
+      vermelha. <b>Voltar ao in&iacute;cio &eacute; renascer:</b> o objeto esquece tudo o que
+      aprendeu na corrida anterior e come&ccedil;a do zero &mdash; e isso vale tamb&eacute;m para
+      rel&oacute;gios, f&aacute;bricas e c&acirc;meras.</div></li>
+</ol>
+
+<h2>6 &middot; P&ocirc;r um c&eacute;rebro num objeto que n&atilde;o tem</h2>
+<ol class="steps">
+  <li><b>Clique no batente da porta da direita</b> (<code>Door (no brain)</code>) e olhe o
+      Inspector.
+      <div class="out">N&atilde;o existe se&ccedil;&atilde;o <b><code class="ui">State Machine</code></b> nenhuma. O painel
+      mostra <b>o que o objeto tem</b> &mdash; e este n&atilde;o tem.</div></li>
+  <li><b>Clique em <code class="ui">Add Component</code></b>, no alto do Inspector, e escolha
+      <b><code class="ui">State Machine</code></b> na lista que abre.
+      <div class="out">A se&ccedil;&atilde;o aparece, vazia, dizendo <code class="ui">No states yet.</code>
+      A partir daqui ela &eacute; sua.</div></li>
+  <li><b>Escreva a m&aacute;quina</b>, nesta ordem:
+      <div class="out"><code class="ui">+ Add State</code> uma vez por situa&ccedil;&atilde;o &middot; d&ecirc;
+      um <b>nome</b> a cada uma e escreva em <b><code class="ui">on enter</code></b> o nome que ela anuncia &middot;
+      <code class="ui">+ Add Transition</code> uma vez por seta, dizendo <b>de onde</b>, <b>ao ouvir o
+      qu&ecirc;</b> e <b>para onde</b>.</div>
+      <div class="bad">A porta da direita ainda n&atilde;o vai mudar de cor, e isso est&aacute;
+      certo: as instru&ccedil;&otilde;es dela escutam o sinal <code>botao</code> direto. Para ela
+      obedecer ao c&eacute;rebro, os nomes na tabela <b>Signal Actions</b> dela teriam de passar a
+      ser os nomes que os estados anunciam.</div></li>
+</ol>
+
+<div class="note"><b>A receita, curta:</b> uma <b>situa&ccedil;&atilde;o</b> por estado &middot; um
+<b>nome anunciado</b> por situa&ccedil;&atilde;o &middot; uma <b>seta</b> por mudan&ccedil;a
+poss&iacute;vel &middot; e a tabela <b>Signal Actions</b> escutando os nomes anunciados.</div>
+
+<h2>7 &middot; Os avisos, e o que cada um quer dizer</h2>
+<table>
+  <tr><th>o painel diz</th><th>quer dizer</th><th>o que fazer</th></tr>
+  <tr><td><code class="ui">No states yet.</code></td>
+      <td>a m&aacute;quina est&aacute; vazia</td>
+      <td><code class="ui">+ Add State</code></td></tr>
+  <tr><td><code class="ui">Dead end: no transition leaves this state.</code></td>
+      <td>entrando nessa situa&ccedil;&atilde;o o objeto nunca mais sai</td>
+      <td>ou &eacute; de prop&oacute;sito (um fim), ou falta uma seta</td></tr>
+  <tr><td><code class="ui">This transition never fires: it has no signal name.</code></td>
+      <td>a seta existe mas n&atilde;o escuta nada</td>
+      <td>escreva o nome em <b><code class="ui">on signal</code></b></td></tr>
+  <tr><td><code class="ui">The clock is stopped — it only thinks while the scene plays.</code></td>
+      <td>o rel&oacute;gio est&aacute; parado</td>
+      <td>aperte <kbd>Espa&ccedil;o</kbd></td></tr>
+  <tr><td><code class="ui">Multiple selected · edits apply to the active object only.</code></td>
+      <td>voc&ecirc; tem v&aacute;rios objetos escolhidos</td>
+      <td>as edi&ccedil;&otilde;es v&atilde;o s&oacute; para um deles</td></tr>
+</table>
+
+<h2>8 &middot; Como saber que deu errado</h2>
+<ul class="cal">
+  <li><b>A se&ccedil;&atilde;o n&atilde;o aparece:</b> o objeto escolhido n&atilde;o tem
+      c&eacute;rebro. Confira se voc&ecirc; clicou no <b>batente escuro</b> e n&atilde;o na faixa
+      colorida.</li>
+  <li><b>O <code>Now:</code> n&atilde;o muda:</b> o rel&oacute;gio est&aacute; parado
+      (<kbd>Espa&ccedil;o</kbd>), ou nenhuma seta do estado atual escuta o nome que est&aacute;
+      chegando.</li>
+  <li><b>A porta pula duas cores de uma vez:</b> isso <i>n&atilde;o</i> deveria acontecer &mdash;
+      um toque &eacute; um passo. Se acontecer, me avise.</li>
+  <li><b>Apagou um estado e as setas sumiram:</b> &eacute; de prop&oacute;sito. As setas que
+      apontavam para ele saem junto &mdash; uma seta sem destino faria o objeto fazer, calado, uma
+      coisa que ningu&eacute;m escreveu.</li>
+</ul>
+
+<footer>PH2D &middot; Componentes &middot; TOP-20 #15 &middot; cena de teste
+<code>PH2D_STATEMACHINE_SMOKE=1</code></footer>

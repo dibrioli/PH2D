@@ -342,3 +342,49 @@ fn tags_leaves_the_palette_once_the_object_has_it() {
         labels(&m)
     );
 }
+
+/// ⭐⭐⭐ **A linha que o TUTORIAL manda carregar existe** — *«+ Add Component → State Machine»*
+/// (TOP-20 #15; tutorial de 2026-09-15).
+///
+/// ⚠️ **Isto não é o gémeo do `tags_*` por simetria, é por LEI:** um passo escrito que nomeia uma
+/// linha de painel é uma **afirmação de que ela está na lista**, e essa afirmação vive num ficheiro
+/// (o tutorial) e é decidida noutro (o `applies_to` do descritor). O report do dono de 2026-09-15
+/// — *«não apareceu no painel a seção state machine»* — foi exactamente esta classe, um nível
+/// abaixo: um passo impossível escrito de boa-fé.
+///
+/// ⚠️ **`O::ANY` é a decisão que o gate defende:** quem pensa é tantas vezes um objecto VAZIO
+/// («o cérebro da cena») quanto uma sprite, e o tutorial ensina precisamente esse caso.
+///
+/// **Mutação que deve sangrar:** o `applies_to` do descritor do `StateMachine` a deixar de ser
+/// `O::ANY`.
+#[test]
+fn state_machine_e_oferecido_a_todo_objecto() {
+    for kind in ObjectKind::ALL {
+        let m = build(kind, &[], &buildable, false);
+        assert!(
+            labels(&m).iter().any(|l| l == "State Machine"),
+            "a paleta de um objecto {kind:?} nao oferece «State Machine» — o passo do tutorial \
+             que manda clicar nessa linha seria impossivel; ofereceu: {:?}",
+            labels(&m)
+        );
+    }
+}
+
+/// ⚠️ **E ela SAI da lista depois de anexada** — a outra metade, sem a qual uma implementação que
+/// nunca filtrasse nada passaria no gate de cima.
+///
+/// **Mutação que deve sangrar:** o filtro `present` do `is_offerable`.
+#[test]
+fn state_machine_sai_da_paleta_depois_de_anexada() {
+    let m = build(
+        ObjectKind::Image,
+        &["ph2d::ecs::StateMachine"],
+        &buildable,
+        false,
+    );
+    assert!(
+        !labels(&m).iter().any(|l| l == "State Machine"),
+        "«State Machine» continua a ser oferecido a um objecto que ja' o tem; ofereceu: {:?}",
+        labels(&m)
+    );
+}

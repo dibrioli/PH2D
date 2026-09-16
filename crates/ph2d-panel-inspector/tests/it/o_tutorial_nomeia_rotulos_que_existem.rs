@@ -1,0 +1,130 @@
+//! ⭐⭐⭐ **Todo r&oacute;tulo que o TUTORIAL cita existe no painel** (TOP-20 #15, 2026-09-15).
+//!
+//! # Porque este gate existe
+//!
+//! Um passo de tutorial que diz *«carregue em `+ Add State`»* n&atilde;o &eacute; uma
+//! instru&ccedil;&atilde;o: &eacute; uma **afirma&ccedil;&atilde;o de que esse texto est&aacute; na
+//! tela**. Ela &eacute; escrita num ficheiro (o tutorial) e decidida noutro (o pintor da
+//! sec&ccedil;&atilde;o) — logo envelhece sozinha, e **nada reprova**.
+//!
+//! ⚠️ Esta classe j&aacute; custou uma jornada a este repo: quando um selector do Motion deixou de
+//! **ciclar** no clique, os **tr&ecirc;s** tutoriais em PDF continuaram a ensinar o gesto antigo, e
+//! o dono bateria nisso no primeiro que tocasse. O texto de um smoke ou de um tutorial &eacute;
+//! **superf&iacute;cie de produto** (`CLAUDE.md` §0.8) — a &uacute;nica cuja correc&ccedil;&atilde;o
+//! nada media.
+//!
+//! # O que ele mede, e o que NÃO mede
+//!
+//! ⛔ Ele **n&atilde;o** mede que o r&oacute;tulo chega a pixel — isso pede um arn&ecirc;s de
+//! pintura que esta crate n&atilde;o tem, e est&aacute; nomeado como aberto no handoff da wave. Ele
+//! mede a metade que apanha a podrid&atilde;o real: *o texto que o tutorial p&otilde;e entre aspas
+//! ainda existe no pintor*.
+//!
+//! ⚠️ **A unidade &eacute; o `<code class="ui">`, e a marca &eacute; deliberada:** o tutorial cita
+//! tamb&eacute;m nomes da CENA (`Door`, `botao`, `door_opening`), que n&atilde;o s&atilde;o
+//! r&oacute;tulos do painel — varrer todo `<code>` acusaria esses e o gate teria de ganhar uma lista
+//! de excep&ccedil;&otilde;es, que &eacute; a forma como um censo apodrece.
+//!
+//! ⚠️ **`include_str!` e n&atilde;o `read_to_string`:** um caminho que deixe de existir tem de
+//! **falhar a compilar**, e n&atilde;o s&oacute; quando o teste correr (a armadilha do «g&eacute;meo
+//! em runtime», medida na W2).
+
+/// A fonte do tutorial, tal como o gerador de PDF a l&ecirc;.
+const TUTORIAL: &str =
+    include_str!("../../../../docs/Components/tutoriais/src/01_maquina_de_estados.html");
+
+/// Os pintores que produzem os r&oacute;tulos citados — a sec&ccedil;&atilde;o e o cabe&ccedil;alho
+/// do Inspector (de onde vem o bot&atilde;o *Add Component*).
+const PINTORES: [&str; 3] = [
+    include_str!("../../src/sections/statemachine.rs"),
+    include_str!("../../src/paint_head.rs"),
+    include_str!("../../src/sections/anchors.rs"),
+];
+
+/// **Traduz os escapes `\u{XXXX}` do fonte Rust para o caracter real.**
+///
+/// ⚠️ Sem isto o gate comparava `The clock is stopped — it…` (o que o artista l&ecirc;) com
+/// `The clock is stopped \u{2014} it…` (o que est&aacute; escrito no ficheiro) e acusava um
+/// r&oacute;tulo VIVO. *Uma r&eacute;gua que compara a forma escrita com a forma lida mede o
+/// codificador, n&atilde;o o produto.*
+fn desescapa(fonte: &str) -> String {
+    let mut out = String::with_capacity(fonte.len());
+    let mut resto = fonte;
+    while let Some(i) = resto.find("\\u{") {
+        out.push_str(&resto[..i]);
+        let tail = &resto[i + 3..];
+        match tail.find('}') {
+            Some(j) => {
+                match u32::from_str_radix(&tail[..j], 16)
+                    .ok()
+                    .and_then(char::from_u32)
+                {
+                    Some(c) => out.push(c),
+                    None => out.push_str(&resto[i..i + 3 + j + 1]),
+                }
+                resto = &tail[j + 1..];
+            }
+            None => {
+                out.push_str(&resto[i..]);
+                return out;
+            }
+        }
+    }
+    out.push_str(resto);
+    out
+}
+
+/// Os r&oacute;tulos que o tutorial afirma estarem na tela, pela ordem em que aparecem.
+fn rotulos_citados() -> Vec<String> {
+    const ABRE: &str = "<code class=\"ui\">";
+    let mut v = Vec::new();
+    let mut resto = TUTORIAL;
+    while let Some(i) = resto.find(ABRE) {
+        let tail = &resto[i + ABRE.len()..];
+        let j = tail
+            .find("</code>")
+            .expect("um <code class=\"ui\"> sem fecho");
+        v.push(tail[..j].to_string());
+        resto = &tail[j..];
+    }
+    v
+}
+
+/// ⭐⭐⭐ **Cada r&oacute;tulo citado existe num pintor.**
+///
+/// **Muta&ccedil;&atilde;o que deve sangrar:** mudar `"+ Add State"` para `"+ New State"` no
+/// pintor da sec&ccedil;&atilde;o — o tutorial passa a ensinar um bot&atilde;o que n&atilde;o
+/// existe, e hoje isso reprova.
+#[test]
+fn o_tutorial_so_cita_rotulos_que_o_painel_pinta() {
+    let pintores: Vec<String> = PINTORES.iter().map(|s| desescapa(s)).collect();
+    let citados = rotulos_citados();
+    // ⚠️ **PISO DE POPULAÇÃO** — sem ele, uma marca renomeada faz o gate varrer ZERO e ficar
+    // verde a medir nada (a falha MUDA que a W2 mediu ao mover ficheiros).
+    assert!(
+        citados.len() >= 14,
+        "o tutorial deveria citar pelo menos 14 rotulos de tela; achei {} — a marca \
+         `<code class=\"ui\">` mudou de nome?",
+        citados.len()
+    );
+    let orfaos: Vec<&String> = citados
+        .iter()
+        .filter(|r| !pintores.iter().any(|p| p.contains(r.as_str())))
+        .collect();
+    assert!(
+        orfaos.is_empty(),
+        "o tutorial cita rotulos que nenhum pintor do Inspector produz: {orfaos:?}"
+    );
+}
+
+/// ⚠️ **A metade JUSTA** — sem ela, um `contains` sobre uma string vazia passaria sempre, e uma
+/// marca que extraísse `""` deixaria o gate de cima verde sobre um tutorial inteiro podre.
+#[test]
+fn nenhum_rotulo_citado_e_vazio() {
+    for r in rotulos_citados() {
+        assert!(
+            !r.trim().is_empty(),
+            "um <code class=\"ui\"> vazio no tutorial: ele afirma que a tela mostra NADA"
+        );
+    }
+}

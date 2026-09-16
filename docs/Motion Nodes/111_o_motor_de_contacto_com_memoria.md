@@ -804,3 +804,112 @@ re-medida antes de ser oferecida outra vez* — com a física certa, a `8` é o 
 ⇒ *um censo que mede NADA lê-se exactamente como «medi e está perfeito»*, e é a terceira vez nesta
 jornada. As curas: **piso de população** (`assert n >= 20`), janela contada **a partir do fim**, e o
 parâmetro varrido a chegar a **todas** as portas.
+
+## §6 — ⛔⛔⛔ AUDITORIA COMPLETA DO ATRITO (7.º report do dono)
+
+> *«bounciness correto. Mas o atrito ficou estranhamente reduzido mesmo no máximo como se estivesse
+> desligado. Auditoria completa»* — o dono, 2026-09-15.
+
+⚠️ **O produto NÃO foi tocado nesta secção.** Ela é só medição: o diff são sondas e as portas que
+elas precisam.
+
+### §6.1 — Os elos, um a um
+
+| # | elo | veredito | como se mediu |
+|---|---|---|---|
+| 1 | o **Friction** do cartão chega à coluna | ✅ | `probe_auditoria_do_atrito_na_cena`: a curva MOVE-SE (largura `2,21 → 1,08`) |
+| 2 | `μ` do par = `√(μa·μb)` (Box2D) | ✅ | `atrito::mu`, gates da crate |
+| 3 | caixa a deslizar sobre obstáculo fixo | ✅ | trava a `μ·g`: μ=1 percorre `0,1166` contra a teoria `0,125` |
+| 4 | invariância aos SUB-PASSOS (do impulso) | ✅ | `0,1166` (sub 1) contra `0,1240` (sub 8) |
+| 5 | numa TORRE, o peso propaga | ✅ | 1/2/4 andares ⇒ `0,1240` / `0,0467` / `0,0227` |
+| 6 | **monotonia na pilha** | ⛔ | mínimo em `μ ≈ 0,25`; a `μ = 1` desliza `2,2×` MAIS |
+| 7 | **o atrito POSICIONAL trava alguma coisa?** | ⛔⛔ | **NÃO.** `v` fica em `1,0000` a todo `μ` |
+| 8 | um DISCO chega a rolar pelo `sim.step`? | ⛔ | `ω·R ≈ 0` a todo `μ`, antes e depois |
+
+### §6.2 — ⭐⭐⭐ A CAUSA-RAIZ: o tecto de Coulomb posicional é **QUADRÁTICO no passo**
+
+O cabeçalho do [`atrito`](../../crates/ph2d-contact/src/atrito.rs) já o escrevia sem tirar a
+conclusão: *«`λn` numa pilha assente é a penetração que a gravidade fez naquele tique (`~g·dt²`),
+então o atrito por tique é `μ·g·dt²` — pequeno de propósito»*.
+
+⚠️⚠️ **`dt²` não é «pequeno»: é NÃO-INVARIANTE AOS SUB-PASSOS.** Medido, com só o atrito posicional
+ligado, uma caixa a `1,0 u/s`:
+
+```text
+   μ   | sub | v final | travou | percorreu   (sem atrito nenhum: 0,5000)
+  0,5  |  1  | 1,0000  | 0,0000 |  0,4833     ← 3,3 % de efeito
+  0,5  |  8  | 1,0000  | 0,0000 |  0,4979     ← 0,4 % de efeito
+  1,0  |  1  | 1,0000  | 0,0000 |  0,4663
+```
+
+⇒ **ele nunca remove velocidade** (a coluna `v final` é `1,0000` em todas as linhas) e o efeito
+residual de posição **enfraquece `8×`** de `sub = 1` para `sub = 8`. *A cura do tremor desta manhã
+dividiu o atrito por oito, e nenhuma régua desta cena o via.*
+
+⭐⭐ **E a comparação que fecha o caso:** o impulso de velocidade tem tecto `μ·g·dt` — **linear**,
+logo invariante aos sub-passos. É por isso que ele funciona e o outro não.
+
+### §6.3 — ⛔⛔ O que o dono viu: as duas leis DUPLICAM a metade translacional
+
+A/B por mutação, sobre a pilha (5 realizações por célula, deslize mediano por tique em fracção do
+lado · largura do monte):
+
+| μ | **ambos** (o que shipa) | só o POSICIONAL | só o de VELOCIDADE |
+|---|---|---|---|
+| `0,00` | `0,0929` · `2,21` | `0,0929` · `2,21` | `0,0929` · `2,21` |
+| `0,25` | `0,0080` · `1,08` | `0,1084` · `2,23` | **`0,0010` · `0,92`** |
+| `0,50` | `0,0105` · `1,18` | `0,0754` · `2,12` | `0,0043` · `0,98` |
+| `1,00` | `0,0174` · `1,40` | `0,0523` · `2,44` | `0,0046` · `1,07` |
+
+⭐⭐⭐ **Três leituras, e nenhuma era esperada:**
+1. **O posicional sozinho é INERTE na pilha** — a largura fica em `~2,2` a TODO `μ`, exactamente
+   como com atrito zero, e o deslize anda ao acaso sem tendência.
+2. **O de velocidade sozinho é `4–8×` melhor que os dois juntos** (`0,0010` contra `0,0080`).
+3. ⇒ **juntos são PIORES que um deles sozinho.** O posicional empurra a peça de volta pelo deslize
+   que já aconteceu, o de velocidade tira a velocidade que o repetiria — a mesma coisa contada
+   duas vezes, e a correcção de posição passa a **ultrapassar**, o que se lê como mais deslize.
+
+⚠️ **A não-monotonia (`μ = 1` pior que `μ = 0,25`) sobrevive nos dois casos, mais suave com só o de
+velocidade** (`0,0010 → 0,0046` contra `0,0080 → 0,0174`).
+⚠️ E **a LARGURA a crescer com `μ` pode ser física correcta** — um monte com atrito tem ângulo de
+repouso maior e não escorrega para uma pilha compacta. *Não a conto como defeito sem uma régua que
+separe «não escorregou» de «não assentou».*
+
+### §6.4 — ⛔ Porque o posicional NÃO SE REMOVE: ele é a única coisa que roda uma bola
+
+Desligá-lo parte **cinco** gates da crate (`a_disc_that_slides_starts_to_roll_and_ice_does_not` ·
+`the_rolling_split_gives_the_spin_twice_the_slide` · `a_spinning_disc_rubs_against_the_floor…` ·
+`the_bounce_of_the_liveliest_pair…` · `the_piece_against_piece_contact_ignores_rolling_bit_for_bit`),
+e desligar **só a metade translacional** dele ainda parte **dois** — os que afirmam a repartição
+`⅓` translação / `⅔` rotação.
+
+⇒ **as duas leis não são redundantes: são COMPLEMENTARES e sobrepostas.** A posicional é a única que
+produz **ROTAÇÃO** (a alavanca `r·n`); a de velocidade é a única que produz **ADERÊNCIA
+TRANSLACIONAL**. O que duplica é a metade translacional da primeira.
+
+### §6.5 — ⏳ A CURA, nomeada e ainda não construída
+
+**O atrito tem de viver num sítio só, e esse sítio é o da VELOCIDADE** (tecto linear em `dt`, logo
+invariante aos sub-passos) — com a **metade ROTACIONAL trazida para lá**, usando a mesma alavanca
+tangencial (`Contacto::braco_tangente`) e a mesma repartição por massa efectiva que a lei posicional
+já usa. Com isso:
+
+- o atrito passa a ser **monótono** (uma lei só, sem duas a disputar);
+- o disco volta a **rolar** em vez de parar a seco;
+- a lei posicional de atrito **sai inteira**, e com ela o tecto `μ·g·dt²`.
+
+⚠️ **O preço nomeado:** o `impulsos` precisa de escrever em `Saida::giro`, que hoje não recebe — é
+uma porta a mais na assinatura, não uma lei nova.
+⛔ **E os dois gates da repartição `⅓/⅔` mudam de sujeito**, não de barra: eles afirmam a lei sobre
+o `separate`, e ela passa a viver no impulso. *Um gate cujo sujeito se mudou tem de mudar de
+endereço — nunca de exigência.*
+
+### §6.6 — ⚠️ E duas coisas que esta auditoria diz sobre as JORNADAS de hoje
+
+1. ⛔ **A cura do tremor (substeps `1 → 8`) dividiu o atrito por OITO**, e as quatro réguas de então
+   (tremor · rodopio · altura · vão) eram todas cegas a isso. *Um knob que melhora quatro grandezas
+   pode dividir por oito uma quinta que ninguém mede.*
+2. ⛔ **O «atrito» que a cena mostrava antes de hoje era, em grande parte, uma ILUSÃO** produzida
+   pela lei de velocidade antiga (a que matava a velocidade ABSOLUTA). Ela travava tudo,
+   independentemente do `μ` — um amortecedor com nome de atrito. Trocá-la por física correcta tirou
+   o disfarce, e é por isso que o dono só agora vê o atrito verdadeiro, que é fraco.

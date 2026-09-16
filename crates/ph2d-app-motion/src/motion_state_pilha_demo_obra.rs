@@ -309,6 +309,16 @@ pub(super) fn com_substeps_e_arrasto(
     substeps: u32,
     arrasto: Option<f32>,
 ) -> (MotionState, NodeId) {
+    com_substeps_arrasto_atrito(eps, substeps, arrasto, None)
+}
+
+/// Idem, com o **Friction** do cartão da forma escrito — a auditoria do 7.º report do dono.
+pub(super) fn com_substeps_arrasto_atrito(
+    eps: f32,
+    substeps: u32,
+    arrasto: Option<f32>,
+    atrito: Option<f32>,
+) -> (MotionState, NodeId) {
     let mut state = MotionState::new();
     let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
     let tipo = |state: &MotionState, t: &str| -> Vec<NodeId> {
@@ -347,6 +357,14 @@ pub(super) fn com_substeps_e_arrasto(
     if let Some(a) = arrasto {
         for passo in tipo(&state, "sim.step") {
             state.doc.graph.set_param(passo, "damping", a);
+        }
+    }
+    if let Some(f) = atrito {
+        for forma in tipo(&state, "source.shape") {
+            state
+                .doc
+                .graph
+                .set_param(forma, ph2d_node_motion_shape::param::FRICTION, f);
         }
     }
     crate::motion_shape_gen::publish(&mut state, 0.0);

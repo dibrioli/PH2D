@@ -302,3 +302,71 @@ fn probe_o_arrasto_da_cena() {
     }
     eprintln!("\n  ⚠️ barra dos gates: balanço ≤ 1,0 °/tique · giro ≤ 29° · salto ≤ 2,0°");
 }
+
+/// **SONDA — AUDITORIA DO ATRITO NA CENA** (7.º report do dono: *«o atrito ficou estranhamente
+/// reduzido mesmo no máximo como se estivesse desligado»*).
+///
+/// ⚠️ As bancadas do `sim.step` dizem que o atrito peça×peça está CERTO (uma caixa a deslizar trava
+/// a `μ·g`, e numa torre o peso propaga). Esta mede o que o DONO de facto faz: mexer o **Friction**
+/// do cartão e olhar o monte.
+///
+/// A grandeza é o que o atrito de facto governa: **quanto as peças ainda deslizam** na janela
+/// assente, e **quão espalhado** o monte acaba.
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_auditoria_do_atrito_na_cena -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_auditoria_do_atrito_na_cena() {
+    eprintln!("\n  substeps = 8 · o Friction do cartao da forma, de 0 a 1");
+    eprintln!("  atrito |      desliza / tique       |    largura do monte");
+    eprintln!("  -------|----------------------------|---------------------");
+    for f in [0.0_f32, 0.1, 0.25, 0.5, 0.75, 1.0] {
+        // ⚠️ CINCO realizações por célula (doc 109 §8.8) — sem elas esta curva é um sorteio.
+        let (mut ds, mut ls) = (Vec::new(), Vec::new());
+        for eps in [-0.003_f32, -0.0015, 0.0, 0.0015, 0.003] {
+            let (mut state, sink) = super::obra::com_substeps_arrasto_atrito(eps, 8, None, Some(f));
+            let serie = marcha(&mut state, sink, 174);
+            let n = serie.last().map_or(0, |(r, _)| r.len());
+            assert!(n >= 20, "piso de populacao: leu {n}");
+            let janela: Vec<_> = serie.windows(2).collect();
+            assert!(janela.len() >= 54, "piso: {} janelas", janela.len());
+            let assente = &janela[janela.len() - 54..];
+            // Quanto cada peça ainda ESCORREGA por tique (em fracção do lado dela), mediano.
+            let mut desliza = 0.0_f32;
+            let mut giro = 0.0_f32;
+            for i in 0..n {
+                let d: Vec<f32> = assente
+                    .iter()
+                    .map(|w| {
+                        (w[1].1[i][0] - w[0].1[i][0]).hypot(w[1].1[i][1] - w[0].1[i][1])
+                            / super::LADO
+                    })
+                    .collect();
+                desliza = desliza.max(super::tremor::mediana(&d));
+                let liq: f32 = assente.iter().map(|w| w[1].0[i] - w[0].0[i]).sum();
+                giro = giro.max(liq.abs());
+            }
+            let largura = serie.last().map_or(0.0, |(_, p)| {
+                let (lo, hi) = p.iter().fold((f32::MAX, f32::MIN), |(lo, hi), q| {
+                    (lo.min(q[0]), hi.max(q[0]))
+                });
+                hi - lo
+            });
+            let _ = giro;
+            ds.push(desliza);
+            ls.push(largura);
+        }
+        let faixa = |v: &mut Vec<f32>| {
+            v.sort_by(f32::total_cmp);
+            (v[0], v[v.len() / 2], v[v.len() - 1])
+        };
+        let (d0, dm, d1) = faixa(&mut ds);
+        let (l0, lm, l1) = faixa(&mut ls);
+        eprintln!(
+            "  {f:>6.2} | {d0:>6.4}..{d1:<6.4} (p50 {dm:.4}) | {l0:>5.2}..{l1:<5.2} (p50 {lm:.2})"
+        );
+    }
+    eprintln!("\n  ⚠️ se as quatro linhas forem iguais, o botao NAO CHEGA ao motor.");
+}

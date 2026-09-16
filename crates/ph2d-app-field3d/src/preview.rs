@@ -55,6 +55,10 @@
 //!
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
+/// ⭐⭐⭐ As sondas que comparam os dois motores — ver [`device_probes`].
+#[cfg(test)]
+#[path = "device_probes.rs"]
+mod device_probes;
 /// ⭐⭐⭐ **O divisor depois do dispositivo** — ver [`device_tests`].
 #[cfg(test)]
 #[path = "preview_device_tests.rs"]

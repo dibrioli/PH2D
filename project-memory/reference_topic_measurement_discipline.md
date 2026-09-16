@@ -316,3 +316,12 @@ vizinho mede antes de reaproveitar a régua dele.
   (quantos passos de marcha por acerto, quanto a especialização por ladrilho da CPU corta), não só
   da largura da fita. ⇒ *um tecto derivado de um arnês tem de ser conferido contra o corpus que ele
   vai decidir* — e a sonda que o faz escreve-se no mesmo dia, não depois.
+- ⛔⛔⛔ **UMA FRONTEIRA PROVA-SE COM A VIZINHANÇA INTEIRA, NÃO COM OS DOIS VIZINHOS QUE A
+  CONFIRMAM.** Medido 2026-09-15: um tecto de produto foi posto em `13 789` com uma fixtura honesta —
+  dois pontos MEDIDOS, um de cada lado (`512` arestas ganha `1,15×`, `768` perde `0,52×`). O ponto
+  seguinte, `1024`, **ganha `1,30×`**. ⇒ o `768` era um **penhasco isolado** e não uma travessia, e
+  a cerca teria apanhado o mau à custa de excluir um bom. *A grandeza não ordenava os resultados, e
+  dois pontos não conseguem mostrar isso — três conseguem.* ⚠️ E a dispersão dizia-o antes: a MESMA
+  peça de `512` leu `787` e `2 066 ms` (`2,6×`) em corridas do mesmo código. ⇒ **antes de cortar,
+  meça um ponto ALÉM do lado mau** — e se a grandeza não ordenar, a cura não é uma constante, é um
+  laço fechado sobre o que foi de facto entregue.

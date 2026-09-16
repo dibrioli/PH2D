@@ -3694,13 +3694,12 @@ desenhada do artista ficar mais lenta do que era, no topo da faixa que o slider 
 
 `ph2d_field_gpu::MAX_VIVOS = 358`: acima dele o quadro fica na CPU.
 
-> ⛔⛔⛔ **ESTE NÚMERO, ESTE EIXO E A CERCA INTEIRA MORRERAM EM 2026-09-15 — ver a §43.5 e a §43.8.**
-> Duas coisas de uma vez: o `vivos` era uma propriedade da **ordem de emissão** da fita (com o
-> escalonador ele lê `33` e `35` nos dois lados da suposta travessia), e a régua que mediu a
-> travessia **pedia trabalhos diferentes aos dois motores** — o quadro pintado à placa, só o traçado
-> à CPU, com o traçador a `opt-0`. Medido com a régua inteira, **não há travessia**: a placa ganha
-> `1,3×`–`7,8×` e as cenas do produto `2,6×`–`98×`. ⇒ a cerca saiu e no lugar dela ficou um gate
-> sobre a propriedade.
+> ⛔⛔⛔ **ESTE NÚMERO E ESTE EIXO MORRERAM EM 2026-09-15 — ver a §43.5 e a §43.8.** Duas coisas de
+> uma vez: o `vivos` era uma propriedade da **ordem de emissão** da fita (com o escalonador ele lê
+> `33` e `35` nos dois lados da suposta travessia), e a régua que mediu a travessia **pedia
+> trabalhos diferentes aos dois motores** — o quadro pintado à placa, só o traçado à CPU, com o
+> traçador a `opt-0`. Medido com a régua inteira **e estendido ao topo do slider**, não há travessia
+> nenhuma: há **penhascos isolados** que a largura da fita não prevê, e a cerca saiu.
 >
 > ⚠️ **A §42 fica como está de propósito**: ela é o diagnóstico que separou as causas, e a
 > regressão que ela nomeia é REAL — a fita **crua** atravessa mesmo, a `96` arestas, e cai a
@@ -3754,8 +3753,9 @@ falso como lei: aqui chegou, e o que ela trouxe foi o número que decidia.*
 
 ### §42.5 — ⏳ O que fica
 
-- ✅ **O `MAX_VIVOS` SAIU em 2026-09-15, e não foi substituído por outro número** — ver a §43.8. A
-  sonda que o derivava fica, com as duas metades da régua curadas;
+- ✅ **O `MAX_VIVOS` SAIU em 2026-09-15 e não foi substituído** — ver a §43.8: a régua foi consertada
+  em duas metades, e a varredura estendida mostrou que a largura da fita **não ordena** os
+  resultados;
 - ⛔⛔ ~~**A cura de fundo é a que a CPU já usa**: o contorno passa a ser uma consulta … só uma peça
   **sem modificadores no contorno** a poderia usar~~ — **REFUTADO em 2026-09-15 (§43).** Nem a cura
   nem o preço estavam certos: o que segurava a peça desenhada era a **ordem da fita**, e curá-la
@@ -3863,7 +3863,7 @@ a «travessia» era o saldo dos dois erros.
 hoje corre numa pool de UMA thread. Medido agora: `24/24` verde. *§0.0 — quem move o número que
 tornava algo inalcançável tem de reconferir a nota.*
 
-### §43.6 — ⭐⭐⭐ E COM AS DUAS METADES CURADAS, O TECTO FICA SEM SUJEITO
+### §43.6 — ⭐⭐⭐ E COM AS DUAS METADES CURADAS, A TRAVESSIA MOVE-SE SETE VEZES
 
 A `1920×1080`, CPU a `95`–`99 %` ociosa, duas rondas consistentes:
 
@@ -3877,8 +3877,10 @@ A `1920×1080`, CPU a `95`–`99 %` ociosa, duas rondas consistentes:
 | `256` | `6 903` | `4 145,0` | **`631,0`** | `6,6×` | `1 243,9` | **`1,97×`** |
 | `384` | `10 351` | `5 851,4` | **`1 306,4`** | `4,5×` | `1 703,1` | **`1,30×`** |
 
-⭐⭐⭐ **Não há travessia: o pior ponto é um EMPATE.** E nas 17 cenas do produto a placa ganha
-`2,58×` a `98×` — as duas desenhadas a `2,58×` (a cantoneira) e `4,98×` (o torno).
+⭐⭐ **Na faixa em que toda peça REAL vive a placa ganha `3,4×`–`7,7×`** (a pior das 17 cenas mede
+`2 663` guardados), e nas próprias cenas do produto ela ganha `2,58×` a `98×` — as duas desenhadas a
+`2,58×` (a cantoneira) e `4,98×` (o torno). ⚠️ **O `192` é um PENHASCO e não uma travessia**: a `256`
+a placa volta a ganhar, e o mesmo padrão repete-se a `768` e `1024` — §43.8.
 
 ⭐⭐ **E a regressão que a §42 nomeou era REAL — o que estava errado era o PONTO.** Contra o quadro
 inteiro e optimizado, a fita na ordem **CRUA** atravessa a `96` arestas e cai a **`0,29×`** a `384`:
@@ -3922,24 +3924,66 @@ custa a quem o paga?»*.
 CPU a `88 %` ociosa, e as colunas CRUAS reproduzem a corrida de `loadavg 3,24` a menos de `2 %`.
 *A grandeza que decide se um relógio vale é a ociosidade, não a média de carga.*
 
-### §43.8 — ⛔⛔⛔ O TECTO SAIU, E NO LUGAR DELE FICA UMA PROPRIEDADE
+### §43.8 — ⛔⛔⛔ O TECTO MUDOU CINCO VEZES NUM DIA, E A QUINTA FOI APAGÁ-LO
 
-`MAX_VIVOS = 743` → `358` → `MAX_GUARDADOS = 3 463` → **nada**. Uma cerca que, medida com a régua
-inteira, nunca pode disparar **não é uma cerca** — é um palpite que sobreviveu a três correcções
-porque ninguém releu o que estava em cada coluna.
+`MAX_VIVOS = 743` → `358` → `MAX_GUARDADOS = 3 463` → `13 789` → **nada**. ⚠️ *As primeiras não
+foram afinações: a RÉGUA é que foi consertada, e o número seguiu-a.* A última foi outra coisa — foi
+estender a varredura ao **topo do slider do artista**, que nenhuma das anteriores tinha tocado, e
+descobrir que **a grandeza não ordena os resultados**.
 
-⭐ O que fica é o gate `a_placa_ganha_em_toda_a_faixa_medivel`, que afirma a **propriedade** em vez
-de a codificar num número que só uma máquina mediu: *a placa não perde de forma significativa, e
-ganha com margem no contorno mais largo.* ⚠️ Ele é **deliberadamente frouxo no pior ponto** (o
-penhasco lê `0,96×`, um empate, e a barra é `0,85×`) e exigente no topo (`1,2×` contra `1,30×`
-medido) — *um gate que exigisse vitória em todo ponto reprovaria sobre produto correto*.
+`1920×1080`, CPU a `95`–`99 %` ociosa, com os pontos medidos duas vezes onde há dois números:
+
+| arestas | guardados | placa | CPU | razão |
+|---:|---:|---:|---:|---:|
+| `32` | `879` | `23,7 ms` | `181,4` | **`7,65×`** |
+| `64` | `1 741` | `49,1` | `345,2` | **`7,03×`** |
+| `96` | `2 602` | `87,1` | `463,6` | **`5,32×`** |
+| `128` | `3 462` | `181,0` | `609,7` | **`3,37×`** |
+| `192` | `5 189` | `919,2` | `884,1` | `0,96×` ⬅ penhasco |
+| `256` | `6 903` | `631,0` / `1 283,6` | `1 243,9` / `1 150,0` | `1,97×` / `0,90×` |
+| `384` | `10 351` | `1 309,1` | `1 669,1` | `1,28×` |
+| `512` | `13 789` | `2 066,3` / `787,2` | `2 366,8` / `2 334,6` | `1,15×` / **`2,97×`** |
+| `768` | `20 675` | `6 575,7` / `6 429,9` | `3 423,1` / `3 366,1` | `0,52×` / `0,52×` ⬅ penhasco |
+| `1024` | `27 563` | `3 508,7` | `4 546,9` | **`1,30×`** |
+
+⛔⛔ **O `768` perde de forma REPRODUTÍVEL e os dois vizinhos ganham.** Um tecto em `13 789`
+apanharia o `768` **e excluiria o `1024`, que a placa ganha por `1,30×`** — ⇒ *a grandeza não ordena
+os resultados, logo nenhum corte sobre ela é melhor do que outro.* E a dispersão fecha a porta: a
+MESMA peça de `512` leu `787` e `2 066 ms` (**`2,6×`**) em corridas do mesmo código.
+
+⚠️⚠️ **A fixtura do gate do tecto era honesta e a conclusão dela não.** Ela cercava o número com
+dois pontos MEDIDOS (`512` ganha, `768` perde) — e o que faltava era um **terceiro**, do outro lado.
+*Uma fronteira prova-se com a vizinhança inteira, não com os dois vizinhos que a confirmam.*
+
+⭐ **O que fica no lugar é um gate sobre a faixa em que toda peça REAL vive** (a pior das 17 cenas
+mede `2 663` guardados): a `na_faixa_do_produto_a_placa_ganha_com_margem` exige `≥ 2×` entre `64` e
+`128` arestas, e mede `3,4×`–`12,7×` entre `1 %` e `99 %` de CPU ociosa. ⛔ **Acima dessa faixa
+nenhum gate afirma razão nenhuma** — com `2,6×` de dispersão isso seria uma aposta no sorteio.
 
 ⚠️ **E nasce uma segunda sonda, a `mede_as_cenas_reais_nos_dois_motores`**, porque *um tecto
 calibrado numa família e aplicado a outra é uma procuração*: uma peça de `2 663` valores guardados
 ganha `2,58×` onde o polígono de `2 602` ganha `5,32×`. A razão depende da FORMA — quantos passos de
 marcha por acerto, quanto a especialização por ladrilho da CPU corta —, não só da largura da fita.
 
-### §43.9 — ⏳ O que fica
+### §43.9 — ⚠️ E o gate do DIVISOR lê `2 de 18` ou `11 de 18` conforme a máquina
+
+Com a CPU a **`0 %`** ociosa ele diz que só `2` das `18` cenas correm nítidas em movimento; com a
+máquina livre (`91 %`) diz `11` e passa. ⚠️ **A assinatura de que é carga e não regressão:** quase
+todas as cenas caem **logo acima** do orçamento (`17`–`38 ms` contra `16,7`), que é um abrandamento
+uniforme — a mesma cena `0` mede `11,5` e `19,0 ms` nas duas condições. ⇒ ele passa a imprimir a
+**ociosidade**, como a sonda de calibração.
+
+⚠️ **Era `13 de 17` e é `11 de 18`**, e a diferença tem uma parte explicada: a cena `5` (o torno)
+**voltou** para a placa quando o tecto saiu, e ela é pesada (`102 ms`) — o denominador cresceu com
+uma cena que não é nítida. As outras duas estão dentro da banda de `±60 %` que a carga move.
+
+⏳ **E há uma observação por explicar, com os números:** o dispositivo lê-se **mais lento numa
+máquina ociosa** (a cena `4` mede `116 ms` a `0 %` de ociosidade e `151` a `95 %`). A hipótese é a
+gestão de energia da placa a baixar o relógio entre quadros quando nada mais corre. ⭐ Se for isso,
+a medição calma é a **conservadora** para o dispositivo — e é essa que decidiu tirar a cerca, logo o
+erro, a existir, é do lado seguro.
+
+### §43.10 — ⏳ O que fica
 
 - ⛔⛔ **ESTE DOC TEM `236 KB` E O JOELHO DO `CLAUDE.md` §5.0 ESTÁ ENTRE `80` E `110`** — *«acima
   disso o `Read` desaparece e o acesso vira raspagem por shell»*. E a jornada de hoje confirmou-o na
@@ -3960,6 +4004,16 @@ marcha por acerto, quanto a especialização por ladrilho da CPU corta —, não
   viajar no vector `k[]` com índice por ladrilho, e `u`/`v` continuariam a ser expressões que a
   pilha remapeia. ⛔ Isso pede uma instrução nova na fita (`k[índice dinâmico]`), que a álgebra da
   `fidget` não exprime ⇒ é wave de substrato, e **ninguém mediu o que ela compra**;
+- ⏳⏳ **OS PENHASCOS são o defeito que sobra, e a cura NÃO é uma constante.** A `192` e a `768`
+  arestas o dispositivo custa `3×`–`5×` o que custa nos vizinhos, de forma reprodutível, e nenhuma
+  grandeza que esta linha sabe contar os prevê (o `vivos` a `192` lê `35`, menos que a `176`). A
+  hipótese por medir é o **tamanho do shader contra a cache de instruções**. ⭐ E a cura de produto
+  que ela sugere é um **LAÇO FECHADO** — comparar o quadro que o dispositivo entregou com o que a
+  CPU entregou, como o divisor da pré-visualização já faz com o orçamento —, que é o único
+  instrumento que não precisa de prever o penhasco para o evitar. *Ninguém o mediu*;
+- ⏳ **A dispersão do dispositivo em fitas grandes (`2,6×` na mesma peça) não tem mecanismo.** Ela é
+  o que proíbe qualquer cerca ali, e a sonda que a exibe é a `mede_o_preco_de_uma_aresta_de_perfil`,
+  que varre até `1024` arestas e imprime a carga **e a CPU ociosa** ao lado de cada linha;
 - ⏳ **A recusa do interpretador de fita** ficou sem a premissa (`95` vivos ⇒ `23 KB` por workgroup,
   que cabe) e **fica de pé por outro motivo**, esse por medir: um interpretador paga descodificação
   por amostra e perde a fusão de operações que o `naga` faz.

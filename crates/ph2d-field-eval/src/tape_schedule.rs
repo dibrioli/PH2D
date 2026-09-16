@@ -61,11 +61,12 @@
 //! | `256` | `4 145,0` | `631,0` | **`6,6×`** |
 //! | `384` | `5 851,4` | `1 306,4` | `4,5×` |
 //!
-//! ⭐⭐⭐ **E é ele que APAGA a cerca:** contra o quadro INTEIRO da CPU (traçar + sombra + pintar,
-//! com o traçador optimizado), a fita **crua** atravessa a `96` arestas e cai a `0,29×` a `384` —
-//! a regressão que o `docs/Render3d/05` §42 nomeou. A fita **escalonada** ganha em toda a faixa
-//! (`1,3×`–`7,8×`), logo o tecto que mandava a peça larga para a CPU ficou **sem sujeito** e saiu.
-//! Tabelas e as duas metades da régua que estava partida: `docs/Render3d/05` §43.
+//! ⭐⭐⭐ **E é ele que MOVE a cerca sete vezes:** contra o quadro INTEIRO da CPU (traçar + sombra +
+//! pintar, com o traçador optimizado), a fita **crua** atravessa a `96` arestas e cai a `0,29×` a
+//! `384` — a regressão que o `docs/Render3d/05` §42 nomeou. A fita **escalonada** ganha em toda a
+//! faixa em que a peça real vive (`3,4×`–`12,7×`) e só perde em **penhascos isolados** que a
+//! largura da fita não prevê. ⇒ o tecto que mandava a peça larga para a CPU **saiu**. Tabelas e as
+//! duas metades da régua que estava partida: `docs/Render3d/05` §43.
 
 use crate::point_tape::Instr;
 

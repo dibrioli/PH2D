@@ -149,9 +149,9 @@ pub fn paint(
 /// ⚠️ *Um número que ninguém consegue voltar a medir é um palpite com data* — esta porta existe para
 /// que a comparação entre as duas ordens da fita se possa refazer noutra máquina, na mesma corrida.
 ///
-/// ⛔⛔ **Ela tinha um segundo campo, `tecto`, e ele MORREU com o tecto** (2026-09-15): a cerca que
-/// mandava uma fita larga para a CPU saiu quando a medição que a sustentava foi corrigida — ver a
-/// nota no lugar do `MAX_GUARDADOS` na [`ph2d_field_gpu`].
+/// ⛔⛔ **Ela tinha um segundo campo, `tecto`, e ele saiu com o tecto** (2026-09-15): a cerca que
+/// mandava uma fita larga para a CPU foi removida quando a medição mostrou que a grandeza dela
+/// **não ordena os resultados** — ver a nota no lugar do `MAX_GUARDADOS`, na [`ph2d_field_gpu`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Sonda {
     /// `false` = a fita sai na ordem **CRUA** da travessia — ver
@@ -321,13 +321,12 @@ fn pedido(
     // ⭐⭐⭐ **A PEÇA COM A ESCULTURA DENTRO** — ver [`ph2d_field_eval::device`]. `None` quando
     // alguma escultura não souber entregar a grade, e aí o chamador fica na CPU.
     let campo = ph2d_field_eval::device::DeviceField::new_com(doc, reg, sonda.escalonar)?;
-    // ⛔⛔⛔ **AQUI VIVIA A CERCA DA LARGURA DA FITA, e ela saiu em 2026-09-15.** Ela mandava para a
-    // CPU toda peça acima de um tecto, e os três números que o tecto teve saíram de uma sonda que
-    // pedia aos dois motores trabalhos DIFERENTES. Medida de novo, a placa ganha em toda a faixa
-    // (`1,3×`–`7,8×`, com um empate no penhasco de `192` arestas) e nas 17 cenas do produto
-    // (`2,6×`–`98×`). ⇒ *uma cerca que nunca pode disparar não é uma cerca.* A nota com as tabelas
-    // está no lugar do `MAX_GUARDADOS`, na [`ph2d_field_gpu`], e o que protege a propriedade agora é
-    // o gate `a_placa_ganha_em_toda_a_faixa_medivel`.
+    // ⛔⛔⛔ **AQUI VIVIA A CERCA DA LARGURA DA FITA, e ela saiu em 2026-09-15** porque a grandeza
+    // dela não ordena os resultados: o contorno de `768` arestas perde `0,52×` de forma
+    // reprodutível e os dois vizinhos — `512` e `1024` — ganham. *Um corte que apanhasse o mau
+    // excluiria um bom.* A nota com as tabelas está no lugar do `MAX_GUARDADOS`, na
+    // [`ph2d_field_gpu`]; o que protege a faixa do produto é o gate
+    // `na_faixa_do_produto_a_placa_ganha_com_margem`.
     let fita = campo.tape_wgsl()?;
     let bola = ph2d_field_eval::bounds::bounding_ball(doc, reg)?;
     let (right, up, fwd) = cam.basis();

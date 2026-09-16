@@ -56,42 +56,42 @@ pub fn supports(doc: &FieldDoc, reg: &ph2d_field_eval::hybrid::Registry) -> bool
     })
 }
 
-// ⛔⛔⛔ **AQUI VIVIA UM TECTO, E ELE NÃO TINHA SUJEITO** (removido 2026-09-15).
+// ⛔⛔⛔ **AQUI VIVIA UM TECTO, E ELE SAIU PORQUE A GRANDEZA DELE NÃO ORDENA OS RESULTADOS**
+// (2026-09-15). `MAX_VIVOS = 743` → `358` → `MAX_GUARDADOS = 3 463` → `13 789` → **nada**.
 //
-// `MAX_VIVOS = 743`, depois `358`, depois `MAX_GUARDADOS = 3 463`: três números, três correcções, e
-// os três saíram da MESMA sonda — que comparava, do lado da placa, o **quadro pintado inteiro** e,
-// do lado da CPU, **só o traçado**, com o traçador e o material a compilar a `opt-0` enquanto o WGSL
-// equivalente ia optimizado pelo driver.
+// As três primeiras saíram de uma sonda com DOIS defeitos que se somavam: ela media o **quadro
+// pintado inteiro** do lado da placa e **só o traçado** do lado da CPU, com o traçador e o material
+// a compilar a `opt-0` contra um WGSL optimizado pelo driver. ⇒ *o número não foi afinado três
+// vezes; a régua é que estava partida.*
 //
-// ⇒ o caminho de referência lia-se **artificialmente lento na estrutura da medição e artificialmente
-// rápido no conteúdo dela**, e a «travessia» era o saldo desses dois erros.
-//
-// ⭐ Com as duas metades curadas (a sonda mede o quadro inteiro nos dois lados; a
-// `ph2d-field-render` e a `ph2d-material` entraram na lista de `opt-level = 2` do `Cargo.toml` da
-// raiz), a `1920×1080` com a CPU a `95`–`99 %` ociosa, duas rondas:
+// A quarta veio de estender a varredura ao topo do slider do artista — e foi ela que matou a ideia
+// de tecto. Medido a `1920×1080`, CPU a `95`–`99 %` ociosa:
 //
 // | arestas | guardados | placa | CPU | razão |
 // |---:|---:|---:|---:|---:|
-// | `32` | `879` | `23,7 / 25,4 ms` | `181,4 / 197,8` | `7,65× · 7,80×` |
-// | `64` | `1 741` | `49,1 / 49,9` | `345,2 / 352,2` | `7,03× · 7,06×` |
-// | `96` | `2 602` | `87,1 / 86,5` | `463,6 / 493,6` | `5,32× · 5,71×` |
-// | `128` | `3 462` | `181,0 / 175,3` | `609,7 / 629,6` | `3,37× · 3,59×` |
-// | `192` | `5 189` | `919,2 / 888,1` | `884,1 / 919,3` | `0,96× · 1,04×` ⬅ o penhasco |
-// | `256` | `6 903` | `631,0` | `1 243,9` | `1,97×` |
-// | `384` | `10 351` | `1 306,4` | `1 703,1` | `1,30×` |
+// | `32` | `879` | `23,7 ms` | `181,4` | `7,65×` |
+// | `96` | `2 602` | `87,1` | `463,6` | `5,32×` |
+// | `128` | `3 462` | `181,0` | `609,7` | `3,37×` |
+// | `192` | `5 189` | `919,2` | `884,1` | `0,96×` ⬅ penhasco |
+// | `256` | `6 903` | `631,0` / `1 283,6` | `1 243,9` / `1 150,0` | `1,97×` / `0,90×` |
+// | `384` | `10 351` | `1 309,1` | `1 669,1` | `1,28×` |
+// | `512` | `13 789` | `2 066,3` / `787,2` | `2 366,8` / `2 334,6` | `1,15×` / `2,97×` |
+// | `768` | `20 675` | `6 575,7` / `6 429,9` | `3 423,1` / `3 366,1` | `0,52×` / `0,52×` ⬅ penhasco |
+// | `1024` | `27 563` | `3 508,7` | `4 546,9` | `1,30×` |
 //
-// ⇒ **não há travessia**: o pior ponto é um empate. E nas 17 cenas do produto a placa ganha `2,58×`
-// a `98×`. *Uma cerca que nunca pode disparar não é uma cerca — é um palpite que sobreviveu a três
-// correcções porque ninguém releu o que estava em cada coluna.*
+// ⛔⛔ **O `768` perde de forma REPRODUTÍVEL e os dois vizinhos ganham.** Um tecto em `13 789`
+// apanharia o `768` **e excluiria o `1024`, que a placa ganha** — ⇒ *a grandeza não ordena os
+// resultados, logo nenhum corte sobre ela é melhor do que outro.* E a dispersão fecha a porta: a
+// MESMA peça de `512` leu `787` e `2 066 ms` (`2,6×`) em corridas do mesmo código.
 //
-// ⚠️ **A regressão que ela existia para travar era REAL, e o que estava errado era o ponto:** a fita
-// na ordem CRUA (o código de antes do `ph2d_field_eval::tape_schedule`) atravessa a `96` arestas e
-// cai a **`0,29×`** a 384. É o escalonador que remove o sujeito, não a medição.
+// ⭐ O que protege a faixa onde toda peça REAL vive (a pior das 17 cenas mede `2 663` guardados) é
+// o gate `na_faixa_do_produto_a_placa_ganha_com_margem`, que exige `≥ 2×` entre `64` e `128`
+// arestas — medido `3,4×`–`12,7×` entre `1 %` e `99 %` de CPU ociosa. E nas próprias cenas do
+// produto a placa ganha `2,58×`–`98×`.
 //
-// ⛔ **O que protege isto agora é um GATE e não uma constante** — a
-// `a_placa_ganha_em_toda_a_faixa_medivel` da `ph2d-app-field3d`, que afirma a PROPRIEDADE (a placa
-// nunca perde de forma significativa, e ganha no contorno mais largo) em vez de a codificar num
-// número que só uma máquina mediu.
+// ⏳ **A cura dos penhascos não é uma constante: é um LAÇO FECHADO** — comparar o quadro que o
+// dispositivo de facto entregou com o que a CPU entregou, como o divisor da pré-visualização já faz
+// com o orçamento. Está nomeada em `docs/Render3d/05` §43.10 e **ninguém a mediu**.
 
 pub mod material_parity;
 pub mod owners_parity;

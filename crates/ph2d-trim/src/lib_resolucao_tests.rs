@@ -585,83 +585,10 @@ fn diag_a_borda_do_corte() {
     }
 }
 
-/// ⭐⭐⭐ **A COSTURA DO CORTE É UTILIZÁVEL — no caminho do PRODUTO.**
+/// **A COSTURA do corte** — assunto próprio, ficheiro próprio.
 ///
-/// Report do dono (2026-09-15): *«o algoritmo remesh produz bordas mais corretas
-/// que o algoritmo da Box Trim; melhore a topologia das bordas do corte»*.
-///
-/// ⚠️ **Este é o gate do caminho REAL, e por isso vive aqui:** a `ph2d-mesh-bool`
-/// só consegue montar um cubo de seis faces, e ali o mesmo corte mede `256`;
-/// a lâmina que o produto entrega é **tesselada à densidade da peça**, e com ela
-/// o pior triângulo mede **`33`**. *A régua de uma lei mora onde a entrada real
-/// dela é construída.*
-#[test]
-fn a_costura_do_corte_e_utilizavel() {
-    let bola = shapes::sphere_with_triangles(50_000, 1.0);
-    let tris: usize = bola
-        .faces()
-        .iter()
-        .map(|f| f.verts().len().saturating_sub(2))
-        .sum();
-    let alvo = ph2d_mesh::edge_for_tri_count(bola.surface_area(), tris as f32);
-    let n = 200usize;
-    let anel: Vec<[f32; 2]> = (0..n)
-        .map(|i| {
-            let t = i as f32 / n as f32 * std::f32::consts::TAU;
-            [0.6 * t.cos(), 0.6 * t.sin()]
-        })
-        .collect();
-    let lamina = prisma(
-        &anel,
-        &raios_orto(&anel),
-        &plano(),
-        &bola,
-        Profundidade::DaPeca,
-        Paredes::Fixas,
-        Resolucao::Ate(alvo),
-    )
-    .expect("o prisma");
-    let out = ph2d_mesh_bool::corta(&bola, &lamina, ph2d_mesh_bool::Op::Subtrair).expect("o corte");
-
-    let p = out.positions();
-    let mut t3 = Vec::new();
-    for f in out.faces() {
-        f.triangles(&mut t3);
-    }
-    let mut asp: Vec<f32> = t3
-        .iter()
-        .map(|x| {
-            let (a, b, c) = (p[x[0] as usize], p[x[1] as usize], p[x[2] as usize]);
-            let e = |u: [f32; 3], v: [f32; 3]| {
-                ((u[0] - v[0]).powi(2) + (u[1] - v[1]).powi(2) + (u[2] - v[2]).powi(2)).sqrt()
-            };
-            let (l0, l1, l2) = (e(a, b), e(b, c), e(c, a));
-            let s = (l0 + l1 + l2) * 0.5;
-            let area = (s * (s - l0) * (s - l1) * (s - l2)).max(0.0).sqrt();
-            if area > 1e-14 {
-                l0.max(l1).max(l2) * s / (2.0 * area)
-            } else {
-                f32::INFINITY
-            }
-        })
-        .collect();
-    asp.sort_by(f32::total_cmp);
-    let pior = asp.last().copied().unwrap_or(f32::INFINITY);
-    assert!(
-        pior < 60.0,
-        "o pior triângulo do corte mede {pior:.0} de aspecto (medido `33`) —          antes da limpeza da costura ele media `2 573 809`"
-    );
-    // ⚠️ **A mediana é a outra metade:** um `MAX` bom com a mediana podre
-    // significaria que a limpeza trocou um defeito raro por um geral.
-    assert!(
-        asp[asp.len() / 2] < 4.0,
-        "a mediana do aspecto subiu para {:.2}",
-        asp[asp.len() / 2]
-    );
-    assert_eq!(ph2d_mesh::border_edges(&out), 0, "o corte abriu a peça");
-    assert_eq!(
-        ph2d_mesh::non_manifold_edges(&out),
-        0,
-        "o corte deixou aresta com três faces"
-    );
-}
+/// ⚠️ O corte foi por RESPONSABILIDADE e forçado pelo tecto de LOC: aqui mede-se
+/// a **densidade** da lâmina e o que ela entrega; ali, o que a curva de
+/// interseção deixa na borda.
+#[path = "lib_costura_tests.rs"]
+mod costura;

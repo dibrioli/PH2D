@@ -126,13 +126,18 @@ pub fn corta(peca: &Mesh, lamina: &Mesh, op: Op) -> Result<Mesh, Recusa> {
 
 /// **O corte SEM a limpeza da costura** — o lado *antes* das réguas dela.
 ///
-/// ⛔ **Só existe para os gates**, e é a única maneira honesta de eles serem uma
-/// AFIRMAÇÃO em vez de um número solto: *uma régua sobre a saída curada não diz
+/// ⛔ **Só existe para os gates**, e atravessa a fronteira da crate por uma
+/// **feature do tamanho exacto do que atravessa** (`test-support`, UM item) — a
+/// régua do caminho real vive na `ph2d-trim`, que é onde a lâmina real é
+/// construída, e sem isto ela não tem lado *antes*.
+///
+/// ⭐ Ela é a única maneira honesta de os gates serem uma AFIRMAÇÃO em vez de um
+/// número solto: *uma régua sobre a saída curada não diz
 /// que a cura fez alguma coisa.* ⚠️ Ela duplica quatro linhas do [`corta`] de
 /// propósito — chamá-lo e «des-limpar» é impossível, e um parâmetro no caminho
 /// do produto seria um interruptor que alguém pode deixar no sítio errado.
-#[cfg(test)]
-pub(crate) fn corta_cru(peca: &Mesh, lamina: &Mesh, op: Op) -> Result<Mesh, Recusa> {
+#[cfg(any(test, feature = "test-support"))]
+pub fn corta_cru(peca: &Mesh, lamina: &Mesh, op: Op) -> Result<Mesh, Recusa> {
     use manifold_rust::manifold::Manifold;
     use manifold_rust::types::OpType;
 

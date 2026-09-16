@@ -38,5 +38,12 @@ ph2d-mesh = { path = "../ph2d-mesh" }
 # de uma operação de 68 ms compete com o quadro que a desenha.
 manifold-rust = { version = "0.13.1", default-features = false }
 
+[features]
+# ⛔ **Do tamanho EXACTO do que atravessa: UM item** (`corta_cru`). Ela existe
+# porque a régua da costura tem de correr onde a lâmina REAL é construída (a
+# `ph2d-trim`), e um gate sem o lado *antes* não afirma que a cura fez alguma
+# coisa. ⚠️ Nada do produto a liga.
+test-support = []
+
 [lints]
 workspace = true

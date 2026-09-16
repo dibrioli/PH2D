@@ -79,9 +79,25 @@ const FRACCAO_DA_SOLDA: f32 = 1e-3;
 /// vértice é antigo** (a cerca 1) e **qual é a aresta da malha** (o limiar).
 #[must_use]
 pub fn limpa_a_costura(saida: &Mesh, peca: &Mesh) -> Mesh {
+    limpa_relatando(saida, peca).0
+}
+
+/// **O mesmo, dizendo quantas ALMOFADAS descartou** — ver
+/// [`descarta_almofadas`].
+///
+/// ⛔ **Só existe para os gates**, e atravessa a fronteira da crate pela mesma
+/// feature de um item que o [`super::corta_cru`] usa: *o controlo de que a
+/// limpeza faz alguma coisa tem de correr onde a lâmina real é construída.*
+#[cfg(any(test, feature = "test-support"))]
+#[must_use]
+pub fn limpa_a_costura_relatando(saida: &Mesh, peca: &Mesh) -> (Mesh, usize) {
+    limpa_relatando(saida, peca)
+}
+
+fn limpa_relatando(saida: &Mesh, peca: &Mesh) -> (Mesh, usize) {
     let alvo = aresta_da_peca(peca);
     if !(alvo.is_finite() && alvo > 0.0) {
-        return saida.clone();
+        return (saida.clone(), 0);
     }
     let (soldar, curta) = (alvo * FRACCAO_DA_SOLDA, alvo * FRACCAO_DA_ARESTA);
     let antigos: std::collections::BTreeSet<[u32; 3]> = peca.positions().iter().map(bits).collect();
@@ -148,9 +164,15 @@ pub fn limpa_a_costura(saida: &Mesh, peca: &Mesh) -> Mesh {
     }
     t.retain(|x| x[0] != x[1] && x[1] != x[2] && x[2] != x[0]);
 
+    // (3) ALMOFADAS — ver [`descarta_almofadas`].
+    let almofadas = descarta_almofadas(&mut t);
+
     let faces: Vec<Face> = t.iter().map(|x| Face::tri(x[0], x[1], x[2])).collect();
     let (pos, faces, _) = ph2d_mesh::compact_for_faces(&pos, &faces);
-    Mesh::from_parts(pos, faces).unwrap_or_else(|_| saida.clone())
+    (
+        Mesh::from_parts(pos, faces).unwrap_or_else(|_| saida.clone()),
+        almofadas,
+    )
 }
 
 /// A aresta que a peça TEM — a mesma régua que a lâmina usa para se tesselar
@@ -182,4 +204,76 @@ fn raiz(pai: &mut [u32], mut i: u32) -> u32 {
         i = pai[i as usize];
     }
     i
+}
+
+/// ⭐⭐⭐ **DESCARTA AS ALMOFADAS** — o mesmo triângulo emitido DUAS vezes, com o
+/// enrolamento invertido.
+///
+/// # ⛔⛔⛔ O defeito é MEU, e a medição corrigiu a minha 1.ª explicação
+///
+/// Report do dono (2026-09-15, com foto): *«Borda melhorou mas não está
+/// perfeita»* — um **espigão** a sair da silhueta da peça. Medido com o corte a
+/// **SAIR pela beira**: `2` pares **espelhados** — dois triângulos sobre os
+/// mesmos três vértices, um virado ao contrário. Juntos encerram volume
+/// **ZERO**: são uma aba infinitamente fina, e é isso que o sombreamento desenha
+/// como uma farpa.
+///
+/// ⛔⛔ **A minha 1.ª redacção dizia que o MOTOR os emitia, e é FALSO — quem os
+/// cria é o COLAPSO desta mesma limpeza.** O gate escrito para o provar reprovou
+/// no controlo: a saída **crua** traz `0` almofadas em todas as posições
+/// varridas. *Fundir dois vértices faz dois triângulos distintos passarem a ter
+/// o mesmo trio*, e foi a cura da wave anterior que abriu este defeito. ⇒ *uma
+/// cura que cria uma segunda espécie de lixo tem de a varrer também.*
+///
+/// ⚠️⚠️ **E a fixtura CENTRADA não contém o fenómeno:** com o círculo no meio da
+/// peça a borda do corte vive a `|z| = 0,8` e **nunca encontra a silhueta** (que
+/// é o equador) — `0` almofadas. ⛔ A lâmina GROSSA (o cubo de seis faces) também
+/// não as produz em posição nenhuma. *O defeito do dono estava exactamente onde
+/// a régua não olhava*, que é a sétima vez que este módulo escreve esta frase.
+///
+/// ⭐ **Descartam-se os DOIS lados**, e não um: eles não são «um triângulo a
+/// mais», são um par que não descreve superfície nenhuma. Guardar um deixaria
+/// uma aba de face única pendurada na malha. É a mesma decisão que a linha do
+/// quad remesh tomou quando achou a almofada dela (`mirrored_cells`).
+///
+/// ⚠️ **Corre DEPOIS do colapso**, porque o colapso pode criar uma: fundir dois
+/// vértices faz dois triângulos distintos passarem a ter o mesmo trio.
+fn descarta_almofadas(t: &mut Vec<[u32; 3]>) -> usize {
+    let chave = |x: &[u32; 3]| {
+        let mut k = *x;
+        k.sort_unstable();
+        k
+    };
+    let mut por_chave: std::collections::BTreeMap<[u32; 3], Vec<usize>> =
+        std::collections::BTreeMap::new();
+    for (i, x) in t.iter().enumerate() {
+        por_chave.entry(chave(x)).or_default().push(i);
+    }
+    let mesmo_ciclo =
+        |a: &[u32; 3], b: &[u32; 3]| (0..3).any(|r| (0..3).all(|i| a[i] == b[(i + r) % 3]));
+    let mut fora = vec![false; t.len()];
+    let mut pares = 0usize;
+    for lista in por_chave.values().filter(|v| v.len() > 1) {
+        // Empareha o primeiro que ainda está de pé com o primeiro ESPELHO dele.
+        for (pos, &i) in lista.iter().enumerate() {
+            if fora[i] {
+                continue;
+            }
+            if let Some(&j) = lista[pos + 1..]
+                .iter()
+                .find(|&&j| !fora[j] && !mesmo_ciclo(&t[i], &t[j]))
+            {
+                fora[i] = true;
+                fora[j] = true;
+                pares += 1;
+            }
+        }
+    }
+    let mut k = 0usize;
+    t.retain(|_| {
+        let manter = !fora[k];
+        k += 1;
+        manter
+    });
+    pares
 }

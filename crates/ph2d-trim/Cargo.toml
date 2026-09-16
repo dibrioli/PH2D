@@ -30,7 +30,7 @@ ph2d-mesh = { path = "../ph2d-mesh" }
 # FICA. Só o motor de booleana entrega essa face.
 # ⚠️ É `dev-dependency` de propósito — esta crate **não corta**, e a separação é
 # o que permite gatear a forma do volume sem o motor (ver o cabeçalho).
-ph2d-mesh-bool = { path = "../ph2d-mesh-bool" }
+ph2d-mesh-bool = { path = "../ph2d-mesh-bool", features = ["test-support"] }
 
 [lints]
 workspace = true

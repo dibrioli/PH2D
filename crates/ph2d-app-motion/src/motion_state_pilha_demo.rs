@@ -130,23 +130,27 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         //
         // ⭐ **O `8` é o JOELHO da curva** (5 realizações por célula, as CINCO réguas):
         //
+        // ⚠️⚠️ **RE-MEDIDA OUTRA VEZ em 2026-09-15**, depois do IMPULSO DO PAR (doc 111 §5.12) —
+        // é a TERCEIRA versão desta tabela no mesmo dia, e as duas primeiras ficaram erradas
+        // exactamente por o substrato ter mudado debaixo delas.
+        //
         // ```text
         //   substeps | tremor (°/tique) |  rodopio   | altura |   vão  | salto | cozimento
-        //          1 |    2,33 .. 2,84  | 17,4..31,4 | −2,46  | 0,2198 | 1,06° |  0,71 ms
-        //          2 |    2,43 .. 2,59  |  3,9.. 7,7 | −2,43  | 0,2200 |   —   |  1,65 ms
-        //          4 |    0,150.. 0,217 |  6,4.. 6,6 | −2,42  | 0,2202 | 1,29° |  3,18 ms
-        //          8 |    0,060.. 0,168 |  3,0.. 3,1 | −2,42  | 0,2203 | 0,89° |  6,26 ms
-        //         16 |    0,038.. 0,041 |  2,1.. 2,2 | −2,42  | 0,2204 | 1,44° | 12,25 ms
+        //          1 |   42,5 .. 48,0   | 15,5..63,4 | −2,61  | 0,2005 |   —   |  0,99 ms
+        //          2 |    2,06.. 13,9   | 10,0..20,0 | −2,50  | 0,2081 |   —   |  2,07 ms
+        //          4 |    1,01..  3,47  | 17,2..17,6 | −2,46  | 0,2186 |   —   |  3,51 ms
+        //          8 |    0,246.. 0,327 |  2,6.. 2,8 | −2,43  | 0,2206 | 1,27° |  7,05 ms
+        //         16 |    0,091.. 0,236 |  3,2.. 3,5 | −2,42  | 0,2202 |   —   | 14,05 ms
         // ```
         //
         // ⚠️ **O recurso é o QUADRO**, e é ele que escolhe o `8`: o `16` custa o dobro para comprar
         // um tremor que a `8` já tem `35×` abaixo da barra do gate. ⛔ Acima daqui o preço cresce
         // linear e o ganho não.
         //
-        // ⭐⭐ **O `4` é uma opção MEDIDA e viável** (metade do preço, as cinco réguas dentro da
-        // barra) — fica aqui nomeada para quem precisar do quadro de volta, e ⛔ não é o default
-        // porque a `8` é a única célula em que o salto e o rodopio são **reprodutíveis** entre
-        // realizações (`0,86..0,96` contra `1,25..1,82`).
+        // ⛔⛔ **E o `4` DEIXOU de ser uma opção** — ele era viável com o contacto de um ponto
+        // (`1,01..3,47` de tremor hoje, contra `0,150..0,217` antes). *Uma alternativa medida
+        // sobre um substrato que mudou tem de ser re-medida antes de ser oferecida outra vez*, e
+        // esta linha escreveu-a como viável de manhã. Com a física certa, a `8` é o PISO.
         //
         // ⚠️ **E as duas réguas de FORMA ficam intactas** — a pilha não congela (`y = −2,42`, longe
         // da altura de nascimento `−0,35`) nem colapsa: o vão `0,2203` é o face-a-face **exacto**
@@ -253,3 +257,8 @@ mod obra;
 #[cfg(test)]
 #[path = "motion_state_pilha_demo_salto.rs"]
 mod salto;
+
+/// ⭐ E as sondas que nomearam a CAUSA do salto — ver o cabeçalho delas.
+#[cfg(test)]
+#[path = "motion_state_pilha_demo_salto_diag.rs"]
+mod salto_diag;

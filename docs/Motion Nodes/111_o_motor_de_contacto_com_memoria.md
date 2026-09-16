@@ -692,3 +692,115 @@ exigia que ela tombasse. A varredura que o apanhou:
 ⇒ *um gate cuja fixtura encena o defeito passa a defendê-lo*, e a cura é a **fixtura**, nunca a
 barra. Nasceu com eles o irmão que faltava — **`a_box_supported_under_its_centre_does_not_topple`**,
 que é a metade que a cura compra.
+
+## §5.12 — ✅⭐⭐⭐ O 6.º REPORT: o IMPULSO DO PAR (e a pergunta *«é a física do módulo Physics?»*)
+
+> *«Bem melhor. Mas quando aumento bounciness as colisões não são realistas. Quando uma caixa bate
+> na outra, não parecem ter a mesma massa. É como se uma fosse muito mais pesada que a outra? Vc
+> está usando nossa própria física do módulo Physics ou criou outra?»* — o dono, 2026-09-15.
+
+### §5.12.0 — A resposta à pergunta: **são DOIS motores**
+
+| módulo | motor | dependência |
+|---|---|---|
+| **Physics** (`ph2d-physics`) | `rapier2d` 0.35, `enhanced-determinism` | ADR-0131 |
+| **Motion** — `sim.step` / `sim.collide` | [`ph2d-contact`](../../crates/ph2d-contact/), PBD por projecção de posição | **zero** linhas de `rapier` |
+
+*Não há uma linha em comum*, e a `=114` corre o segundo.
+
+### §5.12.1 — ⛔⛔ O defeito, e ele é EXACTAMENTE o que o olho dele leu
+
+A resposta de velocidade era **por PEÇA**, sobre a velocidade **ABSOLUTA** de cada uma, na direcção
+em que a correcção de posição a tinha empurrado. Duas caixas iguais, a primeira a `1,0 u/s` contra
+uma **parada**:
+
+| bounciness | a que bate | a **PARADA** | momento (era `1,00`) |
+|---|---|---|---|
+| `0,00` | `0,0000` | **`0,0000`** | `0,00` |
+| `0,50` | `−0,5000` | **`0,0000`** | `−0,50` |
+| `1,00` | `−1,0000` | **`0,0000`** | **`−1,00`** |
+
+⇒ **a peça atingida NUNCA recebia velocidade nenhuma.** Ela tinha `vn = 0`, o guarda *«só se
+responde a quem se aproxima»* disparava, e o motor não lhe tocava. Não havia troca de momento — ele
+não se perdia, **invertia-se**. *Uma peça parada era, literalmente, uma parede.*
+
+⛔ E a direcção usada era `p − antes`, a correcção **TOTAL** da peça (a soma do que todos os vizinhos
+lhe pediram): numa pilha apertada isso não é a normal de contacto nenhum.
+
+### §5.12.2 — A lei: impulso normal + atrito de Coulomb, ambos por PAR
+
+[`ph2d_contact::impulsos`](../../crates/ph2d-contact/src/impulso.rs), UMA passagem sobre os
+contactos, nas posições em que eles de facto aconteceram:
+
+```text
+  vrel = (v_lo − v_hi) · n                    j = (1 + e) · vrel / (w_lo + w_hi)
+  v_lo −= n · j · w_lo                        v_hi += n · j · w_hi
+  jt   = clamp( vt / Σw ,  ±μ · vrel/Σw )     ← Coulomb, com o tecto no impulso NORMAL
+```
+
+⭐ **As três leis antigas continuam a valer por CONSTRUÇÃO**, não por promessa: quem nasce
+sobreposto e parado não ganha velocidade (`vrel = 0`), só se responde a quem se aproxima
+(`vrel > 0`), e um obstáculo devolve o salto inteiro (`w = 0` ⇒ `v' = −e·v`, exacto).
+
+⭐⭐ **E o `dt` DESAPARECEU da assinatura do `resolve`.** A lei antiga precisava dele para pôr tecto
+(`|Δp|/dt`) a uma velocidade que ela própria inventava; um impulso é limitado pela velocidade
+**relativa que existe**. *Um parâmetro que deixa de ser preciso é a medida de quanto a lei nova sabe
+a mais.*
+
+Depois da cura, a mesma bancada:
+
+| bounciness | a que bate | a parada | momento |
+|---|---|---|---|
+| `0,00` | **`0,5000`** | **`0,5000`** | `1,0000` |
+| `0,50` | `0,2500` | `0,7500` | `1,0000` |
+| `1,00` | **`0,0000`** | **`1,0000`** | `1,0000` |
+
+Sem salto partilham a meias; com salto máximo **trocam**. ⚠️ **A barra do gate não é um número
+escolhido: é a fórmula** (`v' = v(1∓e)/2`).
+
+### §5.12.3 — ⭐⭐⭐ A metade que o impulso normal SOZINHO não tinha: o ATRITO na velocidade
+
+⛔⛔ **Com só o impulso normal, a cena ficou PIOR do que com a lei errada:** o rodopio subiu de
+`3,0..3,1°` para **`24,8..33,6°`**. A razão é que a lei velha, ao matar a velocidade ABSOLUTA, era um
+**sorvedouro de energia** que também comia o deslize — e o atrito desta crate era **só posicional**:
+ele desfaz o deslize já acontecido e não tira a velocidade que o vai repetir no tique seguinte.
+
+⚠️ **E a primeira saída que tentei foi a ERRADA:** varri o `damping` do `sim.step` (que a cena nunca
+usou), e **nenhum valor** passava as três réguas nas cinco realizações — `1,00` dava giro
+`24,8..33,6`, `0,98` dava `19,3..41,2`. *Quando nenhum ponto de um knob resolve, o que falta não é o
+knob.*
+
+Com o **impulso tangencial de Coulomb**, e **sem tocar na cena**:
+
+| damping | balanço | giro | salto |
+|---|---|---|---|
+| **`1,00`** (a cena como está) | `0,256..0,276` | **`2,5..2,7`** | `1,13..1,27°` |
+| `0,97` | `0,234..0,276` | `2,4..2,7` | `1,00..1,15°` |
+
+⭐ As quatro linhas são **iguais** ⇒ **a cena não precisa de arrasto nenhum**, e o rodopio ficou
+**melhor** do que antes de toda esta jornada (`3,0..3,1`).
+
+### §5.12.4 — ⚠️ A tabela dos sub-passos foi re-medida pela TERCEIRA vez no mesmo dia
+
+| substeps | tremor | rodopio | altura | vão | cozimento |
+|---|---|---|---|---|---|
+| 1 | `42,5..48,0` | `15,5..63,4` | `−2,61` | `0,2005` | `0,99 ms` |
+| 4 | `1,01..3,47` | `17,2..17,6` | `−2,46` | `0,2186` | `3,51 ms` |
+| **8** (shipa) | **`0,246..0,327`** | **`2,6..2,8`** | `−2,43` | `0,2206` | `7,05 ms` |
+| 16 | `0,091..0,236` | `3,2..3,5` | `−2,42` | `0,2202` | `14,05 ms` |
+
+⛔⛔ **E o `4` DEIXOU de ser a opção viável que o §5.11 nomeou de manhã** (`1,01..3,47` de tremor
+contra `0,150..0,217` então). *Uma alternativa medida sobre um substrato que mudou tem de ser
+re-medida antes de ser oferecida outra vez* — com a física certa, a `8` é o **piso**.
+
+### §5.12.5 — ⛔ Três sondas minhas nasceram partidas, e as três com a MESMA assinatura
+
+| # | o furo | o que a sonda imprimia |
+|---|---|---|
+| 1 | `n` tirado do **primeiro** tique, onde a pilha ainda não nasceu (`rot` vazio ⇒ `n = 0`) | `0,000` em **todas** as células |
+| 2 | `skip(120)` numa série que **não tem uma entrada por tique** (a `rot` só nasce com o 1.º contacto) ⇒ fatia **vazia** | `0,000` em todas |
+| 3 | o salto corrido **sem** o arrasto que a linha varria | `1,65°` repetido nas cinco |
+
+⇒ *um censo que mede NADA lê-se exactamente como «medi e está perfeito»*, e é a terceira vez nesta
+jornada. As curas: **piso de população** (`assert n >= 20`), janela contada **a partir do fim**, e o
+parâmetro varrido a chegar a **todas** as portas.

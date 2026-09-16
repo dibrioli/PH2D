@@ -416,7 +416,7 @@ fn probe_quantos_contactos_sao_face_a_face() {
 /// marcha pelo PUMP agora, e o `substeps` é ARGUMENTO: *a resposta depende dele, e era exactamente
 /// isso que a versão velha não podia dizer.*
 fn censo_face_a_face(sub: u32) {
-    let s = super::salto::stream_final(sub, 0.0, 174).expect("o stream final");
+    let s = super::salto_diag::stream_final(sub, 0.0, 174).expect("o stream final");
     let cols = ph2d_contact::colisores(&s).expect("a metade da direita declara colisor");
     let p = match s.get("P") {
         Some(Column::Vec2(v)) => v.clone(),

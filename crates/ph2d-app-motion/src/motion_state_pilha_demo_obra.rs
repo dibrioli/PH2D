@@ -295,6 +295,20 @@ fn probe_os_sub_passos() {
 /// seria a 2.ª resposta à pergunta *«que cena estou a medir?»*, e é dela que sai a perturbação do
 /// berço que dá o ruído entre realizações.
 pub(super) fn com_substeps(eps: f32, substeps: u32) -> (MotionState, NodeId) {
+    com_substeps_e_arrasto(eps, substeps, None)
+}
+
+/// Idem, com o `damping` do `sim.step` escrito (⚠️ `1,0` = SEM arrasto, que é o default do nó).
+///
+/// ⭐ Ele existe porque a cena **nunca o usou**: enquanto a resposta de velocidade matava a
+/// velocidade ABSOLUTA de cada peça, o monte assentava por sobre-amortecimento e ninguém reparou
+/// que não havia travão nenhum declarado. Com o impulso do par (doc 111 §5.12) a física ficou
+/// certa e o arrasto passou a ser a pergunta.
+pub(super) fn com_substeps_e_arrasto(
+    eps: f32,
+    substeps: u32,
+    arrasto: Option<f32>,
+) -> (MotionState, NodeId) {
     let mut state = MotionState::new();
     let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
     let tipo = |state: &MotionState, t: &str| -> Vec<NodeId> {
@@ -329,6 +343,11 @@ pub(super) fn com_substeps(eps: f32, substeps: u32) -> (MotionState, NodeId) {
             .and_then(|o| o.get("offset_x").copied())
             .unwrap_or(0.0);
         state.doc.graph.set_param(alto, "offset_x", x + eps);
+    }
+    if let Some(a) = arrasto {
+        for passo in tipo(&state, "sim.step") {
+            state.doc.graph.set_param(passo, "damping", a);
+        }
     }
     crate::motion_shape_gen::publish(&mut state, 0.0);
     (state, sinks[1])

@@ -92,6 +92,8 @@ use ph2d_nodegraph::attr::{
 };
 
 pub mod atrito;
+/// O impulso do par — a velocidade que responde ao contacto. Ver o cabeçalho dele.
+mod impulso;
 mod par;
 mod trig;
 /// A acumulação por peça — ver o cabeçalho dele.
@@ -99,6 +101,7 @@ mod varredura;
 pub mod warm;
 
 pub use atrito::{Deslize, Material, Pecas, Saida, materiais};
+pub use impulso::impulsos;
 pub use par::{Manifesto, contato, disco_caixa, manifesto};
 
 /// Abaixo disto dois centros coincidem e a normal não existe (o `EPS` do `motion.collide`).
@@ -568,7 +571,9 @@ fn aplica(p: &mut [[f32; 2]], saida: &mut Saida<'_>, novas: Vec<Nova>) {
     }
 }
 
-fn ativo(p: [f32; 2], c: Option<&Colisor>) -> bool {
+/// ⚠️ `pub(crate)` porque o [`impulso`] faz a MESMA pergunta — duplicá-la seria a 2.ª resposta a
+/// *«esta peça entra no contacto?»*, e as duas divergiriam no dia em que a condição mudasse.
+pub(crate) fn ativo(p: [f32; 2], c: Option<&Colisor>) -> bool {
     p[0].is_finite() && p[1].is_finite() && c.is_some_and(Colisor::valido)
 }
 

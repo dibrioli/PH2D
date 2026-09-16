@@ -19,17 +19,24 @@
 //! [`super::step`] somar à coluna `rot`. Quem trava é a coluna `inv_inertia` a `0` — o botão
 //! `Lock Rotation` do cartão da forma.
 //!
-//! ## A velocidade: só se CANCELA a aproximação
+//! ## A velocidade: o IMPULSO DO PAR (doc 111 §5.12)
 //!
-//! ⚠️ **Sem isto a pilha RESPIRA:** a velocidade continuaria a empurrar a peça para dentro da
-//! vizinha a cada tique, a posição seria corrigida outra vez, e o monte nunca assentaria (é o `93 %`
-//! do vão que a cena `=114` mede com o `motion.collide`, que só mexe em `P`).
+//! ⚠️ **Sem resposta de velocidade a pilha RESPIRA:** a velocidade continuaria a empurrar a peça
+//! para dentro da vizinha a cada tique, a posição seria corrigida outra vez, e o monte nunca
+//! assentaria (é o `93 %` do vão que a cena `=114` mede com o `motion.collide`, que só mexe em `P`).
 //!
-//! ⚠️ **E só se cancela — nunca se acrescenta.** A correcção `Δp` diz para que lado o contacto
-//! empurrou; a componente da velocidade CONTRA esse lado é tirada, até `|Δp| / dt`, e nada mais.
-//! Duas peças que NASCEM sobrepostas separam-se em posição e **não** ganham velocidade — somar
-//! `Δp / dt` inteiro faria delas uma explosão. É a regra do `sim.collide`: *só se responde a quem se
-//! move PARA DENTRO*.
+//! ⛔⛔ **E a lei que aqui esteve até 2026-09-15 era POR PEÇA, sobre a velocidade ABSOLUTA de cada
+//! uma** — report do dono: *«quando aumento bounciness… é como se uma fosse muito mais pesada que a
+//! outra?»*. Ele leu-o exactamente: a peça PARADA tinha `vn = 0`, o guarda *«só se responde a quem
+//! se aproxima»* disparava, e **ela nunca recebia velocidade nenhuma**. Nunca havia troca de
+//! momento, e quem era atingido comportava-se como uma PAREDE — com o momento a **inverter-se**
+//! (`+1,00` antes do choque, `−1,00` depois, com salto máximo).
+//!
+//! Hoje a resposta é o impulso clássico sobre a velocidade **RELATIVA**, repartido pelas massas,
+//! mais o **atrito de Coulomb** na tangente — ver [`ph2d_contact::impulsos`], que tem as duas
+//! tabelas. ⭐ As três leis de antes continuam a valer **por construção**: quem nasce sobreposto e
+//! parado não ganha velocidade (`vrel = 0`), só se responde a quem se aproxima (`vrel > 0`), e um
+//! obstáculo devolve o salto inteiro (`w = 0`).
 //!
 //! ⛔ **A rotação não tem velocidade angular** — ela é projecção de posição, como o afastamento. Uma
 //! peça roda enquanto toca e não continua a girar no ar (doc 109 §6, nomeado).
@@ -42,11 +49,16 @@ use ph2d_nodegraph::attr::Stream;
 /// mais nenhum knob.
 pub(crate) const VARREDURAS: usize = 8;
 
-/// Separa as peças com colisor, cancela a aproximação delas e devolve **quanto cada uma rodou**, em
-/// graus (vazio quando ninguém declara colisor). `dt(i)` é o passo daquela peça.
+/// Separa as peças com colisor, troca o momento delas pelo IMPULSO do par, e devolve **quanto cada
+/// uma rodou**, em graus (vazio quando ninguém declara colisor).
 ///
 /// `antes_do_passo` é onde cada peça estava **antes de a integração a mover** — é dele que sai o
 /// DESLIZE que o atrito opõe (doc 109 §7), e `girou` é o que o `spin` já rodou neste mesmo passo.
+///
+/// ⭐⭐ **Ele já não recebe o `dt`, e a ausência é o achado:** a lei antiga precisava dele para pôr
+/// tecto (`|Δp| / dt`) a uma velocidade que ela própria inventava a partir da correcção de posição.
+/// Um IMPULSO não precisa de tecto nenhum — ele é limitado pela velocidade RELATIVA que de facto
+/// existe. *Um parâmetro que deixa de ser preciso é a medida de quanto a lei nova sabe a mais.*
 pub(crate) fn resolve(
     state: &Stream,
     p: &mut [[f32; 2]],
@@ -54,7 +66,6 @@ pub(crate) fn resolve(
     pesos: &[f32],
     antes_do_passo: &[[f32; 2]],
     girou: &[f32],
-    dt: impl Fn(usize) -> f32,
 ) -> Vec<f32> {
     let n = p.len();
     let Some(colisores) = ph2d_contact::colisores(state) else {
@@ -70,54 +81,41 @@ pub(crate) fn resolve(
         ph2d_contact::materiais(state).unwrap_or_else(|| vec![ph2d_contact::Material::LISO; n]);
     let (mut giro, mut salto) = (vec![0.0_f32; n], vec![0.0_f32; n]);
     let antes = p.to_vec();
+    let pecas = ph2d_contact::Pecas {
+        colisores: &colisores,
+        pesos,
+        inv_inercia: &inv_inercia,
+        deslize: Some(ph2d_contact::Deslize {
+            antes: antes_do_passo,
+            girou_antes: girou,
+            material: &material,
+        }),
+    };
     ph2d_contact::separate(
         p,
         &mut ph2d_contact::Saida {
             giro: &mut giro,
             salto: &mut salto,
         },
-        &ph2d_contact::Pecas {
-            colisores: &colisores,
-            pesos,
-            inv_inercia: &inv_inercia,
-            deslize: Some(ph2d_contact::Deslize {
-                antes: antes_do_passo,
-                girou_antes: girou,
-                material: &material,
-            }),
-        },
+        &pecas,
         VARREDURAS,
     );
-    for i in 0..n {
-        let d = [p[i][0] - antes[i][0], p[i][1] - antes[i][1]];
-        let len = d[0].hypot(d[1]);
-        let dti = dt(i);
-        if len <= 0.0 || dti <= 0.0 {
-            continue;
-        }
-        let normal = [d[0] / len, d[1] / len];
-        let vn = vel[i][0] * normal[0] + vel[i][1] * normal[1];
-        if vn >= 0.0 {
-            continue;
-        }
-        let tira = (-vn).min(len / dti);
-        // ⭐⭐ **O SALTO** (doc 109 §7): cancelar é `salto = 0`, e é a lei de sempre — o `if` está
-        // aqui para o dizer AO BIT, e não «por um factor que calha ser 1». Acima disso a peça
-        // devolve parte do que trouxe, e o tecto continua a ser o `len / dt`: duas peças que
-        // NASCEM sobrepostas separam-se em posição e não são atiradas.
-        let empurra = if salto[i] > 0.0 {
-            tira * (1.0 + salto[i])
-        } else {
-            tira
-        };
-        let v = [
-            vel[i][0] + normal[0] * empurra,
-            vel[i][1] + normal[1] * empurra,
-        ];
-        if v.iter().all(|x| x.is_finite()) {
-            vel[i] = v;
-        }
-    }
+    // ⭐⭐⭐ **A VELOCIDADE responde pelo IMPULSO DO PAR** — report do dono (2026-09-15): *«quando
+    // aumento bounciness… é como se uma fosse muito mais pesada que a outra?»*. Ver o cabeçalho de
+    // [`ph2d_contact::impulsos`], que tem a tabela do defeito.
+    //
+    // ⚠️⚠️ **A lei que estava aqui era POR PEÇA, sobre a velocidade ABSOLUTA de cada uma**, na
+    // direcção em que a correcção de posição a empurrara: a peça PARADA lia `vn = 0`, o guarda
+    // «só se responde a quem se aproxima» disparava, e **ela nunca recebia velocidade nenhuma**.
+    // Nunca havia troca de momento ⇒ quem era atingido comportava-se como uma PAREDE.
+    //
+    // ⛔ **E ela era medida sobre `p − antes`, que é a correcção TOTAL da peça** — a soma do que
+    // todos os vizinhos lhe pediram. Isso não é a normal de contacto nenhum: numa pilha apertada
+    // aponta para onde a peça calhou de ser espremida.
+    //
+    // ⚠️ O impulso corre sobre `antes` — as posições em que os contactos DE FACTO aconteceram.
+    // Depois da separação as peças já não se sobrepõem, e ali não haveria par nenhum a encontrar.
+    ph2d_contact::impulsos(&antes, vel, &pecas);
     giro
 }
 

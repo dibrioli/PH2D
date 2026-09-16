@@ -67,7 +67,7 @@ use ph2d_nodegraph::graph::NodeId;
 ///
 /// ⇒ *uma janela que nunca atravessa o reinício não pode ver um defeito que só aparece depois
 /// dele*, e as quatro réguas anteriores desta cena partilhavam essa cegueira.
-const ATE: u64 = 430;
+pub(super) const ATE: u64 = 430;
 
 /// ⭐ **O reinício do laço reconhece-se pela ALTURA, não por um relógio.** Quando a zona recomeça,
 /// as peças voltam à altura de nascimento — um salto de `y` para cima muito maior do que qualquer
@@ -91,7 +91,7 @@ const JANELA: usize = 12;
 /// ⚠️ Ele é ARGUMENTO nas portas e este é só o valor que as sondas usam por omissão: a duração de
 /// um salto é precisamente o que não se sabe de antemão, e uma constante escondida escolheria a
 /// resposta. As sondas VARREM-no.
-const SALTO: usize = 8;
+pub(super) const SALTO: usize = 8;
 
 /// **Um salto: onde, quando, quanto, e a prova de que a peça estava parada dos dois lados.**
 #[derive(Clone, Copy)]
@@ -152,7 +152,17 @@ pub(super) fn marcha(
 /// **Todos os saltos da metade da direita**, ordenados do maior para o menor. `salto` é quantos
 /// tiques ele dura (ver [`SALTO`]).
 pub(super) fn saltos(substeps: u32, eps: f32, salto: usize) -> Vec<Salto> {
-    let (mut state, sink) = super::obra::com_substeps(eps, substeps);
+    saltos_com(substeps, eps, salto, None)
+}
+
+/// Idem, com o `damping` do `sim.step` escrito — ver [`super::obra::com_substeps_e_arrasto`].
+pub(super) fn saltos_com(
+    substeps: u32,
+    eps: f32,
+    salto: usize,
+    arrasto: Option<f32>,
+) -> Vec<Salto> {
+    let (mut state, sink) = super::obra::com_substeps_e_arrasto(eps, substeps, arrasto);
     let serie = marcha(&mut state, sink, ATE);
     let n = serie.first().map_or(0, |(r, _)| r.len());
     if serie.len() < JANELA * 2 + salto + 3 || n == 0 {
@@ -229,7 +239,18 @@ pub(super) fn saltos(substeps: u32, eps: f32, salto: usize) -> Vec<Salto> {
 /// uma constante de propósito: a sonda varre-o, e é a varredura que mostra que o achado não
 /// depende dele.
 pub(super) fn pior_salto(substeps: u32, eps: f32, quieto: f32, salto: usize) -> Option<Salto> {
-    saltos(substeps, eps, salto)
+    pior_salto_com(substeps, eps, quieto, salto, None)
+}
+
+/// Idem, com o `damping` do `sim.step` escrito.
+pub(super) fn pior_salto_com(
+    substeps: u32,
+    eps: f32,
+    quieto: f32,
+    salto: usize,
+    arrasto: Option<f32>,
+) -> Option<Salto> {
+    saltos_com(substeps, eps, salto, arrasto)
         .into_iter()
         .find(|s| s.antes <= quieto && s.depois <= quieto)
 }
@@ -346,212 +367,6 @@ fn probe_o_salto_contra_os_substeps() {
         v.sort_by(f32::total_cmp);
         eprintln!("  {sub:>8} | {linha} | {:>6.2}°", v[v.len() / 2]);
     }
-}
-
-/// **SONDA — o DOSSIÊ do pior salto: o que a peça estava a fazer nos tiques à volta.**
-///
-/// ⭐ Ela discrimina as duas hipóteses abertas do doc 111 §5.9.5 **sem tocar no produto**:
-/// - se a peça está **encostada à taça** quando salta ⇒ a suspeita dos DOIS solvers a disputá-la;
-/// - se o **vão às vizinhas encolhe** tique a tique e depois abre de repente ⇒ a suspeita da
-///   correcção que se acumula sem nada a travar.
-///
-/// ⚠️ A taça guarda por DENTRO: uma peça toca a parede quando `|p − centro| > raio − r` (o
-/// `inner` do [`ph2d_node_sim_collide`]). Com o colisor da caixa, `inner ≈ 1,8 − 0,11 = 1,69`.
-///
-/// ```text
-/// cargo test -p ph2d-app-motion --lib probe_o_dossie_do_salto -- --ignored --nocapture
-/// ```
-#[test]
-#[ignore = "sonda de medicao"]
-fn probe_o_dossie_do_salto() {
-    /// O tecto de `|Δrot|` por tique que ainda conta como «a peça tinha assentado».
-    const QUIETO: f32 = 0.2;
-    let (sub, eps) = (8_u32, 0.0_f32);
-    let Some(alvo) = pior_salto(sub, eps, QUIETO, SALTO) else {
-        eprintln!("nenhum salto legitimo — nada a dissecar");
-        return;
-    };
-    let (mut state, sink) = super::obra::com_substeps(eps, sub);
-    let serie = marcha(&mut state, sink, ATE);
-    let n = serie.first().map_or(0, |(r, _)| r.len());
-    let i = alvo.peca;
-    #[expect(clippy::cast_possible_truncation, reason = "um indice de tique")]
-    let t0 = alvo.tique as usize;
-    eprintln!(
-        "\n=== peca {i} · salto de {:.2}° no tique {t0} (substeps {sub}) ===",
-        alvo.grau
-    );
-    eprintln!(
-        "  tique |    rot | |Δrot| | dist a' taca | encostada? |    vao min | viz. | desalinho"
-    );
-    eprintln!(
-        "  ------|--------|-------|--------------|------------|------------|------|----------"
-    );
-    // O centro da taça da DIREITA, e o raio interior que a peça de facto vê.
-    let centro = [VAO, TACA_Y];
-    let inner = TACA_R - LADO;
-    for t in t0.saturating_sub(20)..(t0 + SALTO + 10).min(serie.len()) {
-        let (rot, p) = (&serie[t].0, &serie[t].1);
-        let drot = if t == 0 {
-            0.0
-        } else {
-            (rot[i] - serie[t - 1].0[i]).abs()
-        };
-        let dist = (p[i][0] - centro[0]).hypot(p[i][1] - centro[1]);
-        let vao = (0..n)
-            .filter(|j| *j != i)
-            .map(|j| (p[i][0] - p[j][0]).hypot(p[i][1] - p[j][1]))
-            .fold(f32::INFINITY, f32::min);
-        let marca = if dist > inner { "SIM" } else { "-" };
-        // ⭐ E QUEM e' a vizinha mais proxima, com o desalinho dos eixos modulo 90° — a pergunta
-        // que decide se o apoio e' FACE-COM-FACE (0°) ou QUINA-contra-face (45°).
-        let viz = (0..n)
-            .filter(|j| *j != i)
-            .min_by(|a, b| {
-                let da = (p[i][0] - p[*a][0]).hypot(p[i][1] - p[*a][1]);
-                let db = (p[i][0] - p[*b][0]).hypot(p[i][1] - p[*b][1]);
-                da.total_cmp(&db)
-            })
-            .unwrap_or(i);
-        let d = (rot[i] - rot[viz]).abs() % 90.0;
-        let desalinho = if d > 45.0 { 90.0 - d } else { d };
-        eprintln!(
-            "  {t:>5} | {:>6.2}° | {drot:>5.2}° | {dist:>12.4} | {marca:>10} | {vao:>12.4} | {viz:>4} | {desalinho:>9.1}°",
-            rot[i]
-        );
-    }
-    eprintln!(
-        "  ⚠️ a taca guarda por dentro: encostada = dist > {inner:.4} (raio {TACA_R} − {LADO})"
-    );
-    eprintln!(
-        "  ⚠️ duas caixas encostadas face a face tem vao {:.4}; o tipico da cena e' 0,2390",
-        2.0 * LADO
-    );
-}
-
-/// **O STREAM final de uma marcha pelo PUMP** — para quem precisa das COLUNAS (colisores,
-/// materiais) e não só de `rot`/`P`.
-///
-/// ⛔⛔ Ela existe porque a sonda do manifesto de dois pontos (doc 109 §8.7) chamava
-/// `pump.cook.cook(..)` **directamente** e por isso media a cena **sem sub-passos** — a mesma porta
-/// errada que invalidou uma tabela inteira no §5.8.1 do doc 111. *Uma conclusão medida pela porta
-/// errada não é uma conclusão.*
-pub(super) fn stream_final(
-    substeps: u32,
-    eps: f32,
-    ate: u64,
-) -> Option<ph2d_nodegraph::attr::Stream> {
-    let (mut state, sink) = super::obra::com_substeps(eps, substeps);
-    let escopos = ph2d_nodegraph::cook::TimeScopes::new();
-    let mut fora = None;
-    for k in 0..=ate {
-        state.pump.mark_dirty();
-        state.pump.advance_or_scrub_to_nodes_scoped(
-            &state.doc.graph,
-            &state.registry,
-            &[sink],
-            k,
-            |t| {
-                #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
-                let s = t as f64 / 60.0;
-                s
-            },
-            &escopos,
-        );
-        if let Some((_, saida)) = state
-            .pump
-            .boundary_streams()
-            .iter()
-            .find(|(no, _)| *no == sink)
-        {
-            fora = Some(saida.clone());
-        }
-    }
-    fora
-}
-
-/// **SONDA — quantos apoios FACE-A-FACE existem ao longo do tempo, e não só no fim.**
-///
-/// ⛔⛔⛔ **A suspeita que esta sonda testa é sobre a RÉGUA, não sobre o produto:** o censo do doc
-/// 109 §8.7 conta os contactos do monte **ASSENTE** — isto é, *depois* de cada apoio face-a-face já
-/// ter tombado para os `45°`. Ele conta **SOBREVIVENTES**, e leu `0 %` como *«esta cena não tem o
-/// caso»* quando o que ele podia estar a medir é *«esta cena DESTRÓI o caso»*.
-///
-/// ⚠️ *Um censo tirado depois do evento mede o resultado do defeito e lê-se como a ausência da
-/// precondição dele.* Se a contagem ao longo do tempo for muito maior que a do fim, a recusa que
-/// matou o manifesto de dois pontos estava a medir a própria consequência do que recusava.
-///
-/// ```text
-/// cargo test -p ph2d-app-motion --lib probe_os_apoios_face_a_face_no_tempo -- --ignored --nocapture
-/// ```
-#[test]
-#[ignore = "sonda de medicao"]
-fn probe_os_apoios_face_a_face_no_tempo() {
-    for sub in [1_u32, 8] {
-        let (mut state, sink) = super::obra::com_substeps(0.0, sub);
-        let escopos = ph2d_nodegraph::cook::TimeScopes::new();
-        let (mut pico, mut soma, mut amostras, mut ultimo) = (0_usize, 0_usize, 0_usize, 0_usize);
-        for k in 0..=174_u64 {
-            state.pump.mark_dirty();
-            state.pump.advance_or_scrub_to_nodes_scoped(
-                &state.doc.graph,
-                &state.registry,
-                &[sink],
-                k,
-                |t| {
-                    #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
-                    let s = t as f64 / 60.0;
-                    s
-                },
-                &escopos,
-            );
-            // Só a metade assente interessa: antes de `60` a pilha ainda está a cair.
-            if k < 60 {
-                continue;
-            }
-            let Some((_, s)) = state
-                .pump
-                .boundary_streams()
-                .iter()
-                .find(|(no, _)| *no == sink)
-            else {
-                continue;
-            };
-            let (Some(cols), Some(Column::Vec2(p)), Some(Column::Scalar(rot))) = (
-                ph2d_contact::colisores(s),
-                s.get("P").cloned(),
-                s.get("rot").cloned(),
-            ) else {
-                continue;
-            };
-            let mut flush = 0;
-            for i in 0..p.len() {
-                for j in (i + 1)..p.len() {
-                    let (Some(a), Some(b)) = (cols[i], cols[j]) else {
-                        continue;
-                    };
-                    if ph2d_contact::contato(&a, p[i], &b, p[j], (i + j) % 2 == 0).is_none() {
-                        continue;
-                    }
-                    let d = (rot[i] - rot[j]).abs() % 90.0;
-                    if if d > 45.0 { 90.0 - d } else { d } < 5.0 {
-                        flush += 1;
-                    }
-                }
-            }
-            pico = pico.max(flush);
-            soma += flush;
-            amostras += 1;
-            ultimo = flush;
-        }
-        #[expect(clippy::cast_precision_loss, reason = "contagens pequenas")]
-        let media = soma as f32 / amostras.max(1) as f32;
-        eprintln!(
-            "\n  substeps {sub}: apoios face-a-face — PICO {pico} · media {media:.1} · NO FIM {ultimo}"
-        );
-    }
-    eprintln!("\n  ⚠️ o censo do doc 109 §8.7 le' a coluna «NO FIM». Se o PICO for muito maior,");
-    eprintln!("     ele mede os SOBREVIVENTES de um defeito e le'-se como a ausencia do caso.");
 }
 
 // ---------------------------------------------------------------------------------------------

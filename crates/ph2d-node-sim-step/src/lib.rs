@@ -460,15 +460,7 @@ fn step(
     );
     // ⭐⭐ O CONTACTO ENTRE PEÇAS (doc 109) — depois da integração, só onde há colisor declarado.
     // Ele devolve o quanto cada peça RODOU (doc 109 §6), em graus.
-    let giro = contact::resolve(
-        state,
-        &mut p,
-        &mut vel,
-        &w,
-        &antes_do_passo,
-        &girou_spin,
-        passo,
-    );
+    let giro = contact::resolve(state, &mut p, &mut vel, &w, &antes_do_passo, &girou_spin);
 
     let age: Vec<f32> = (0..n)
         .map(|i| {

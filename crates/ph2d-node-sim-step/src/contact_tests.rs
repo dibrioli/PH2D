@@ -328,3 +328,89 @@ fn the_bounce_of_the_pieces_reaches_the_velocity() {
         v[0]
     );
 }
+
+/// ⭐⭐⭐ **DUAS CAIXAS IGUAIS PARTILHAM O CHOQUE** — report do dono (2026-09-15): *«quando aumento
+/// bounciness as colisões não são realistas. Quando uma caixa bate na outra, não parecem ter a mesma
+/// massa. É como se uma fosse muito mais pesada que a outra?»*
+///
+/// ⚠️⚠️ **A barra NÃO é um número escolhido: é a fórmula.** Com massas iguais, o impulso clássico dá
+/// `v_a' = v(1−e)/2` e `v_b' = v(1+e)/2` — sem salto partilham a meias, com salto máximo **trocam**.
+/// O gate compara com a conta, não com uma tolerância inventada.
+///
+/// ## O defeito que ele apanhou, medido
+///
+/// A lei anterior era **por PEÇA**, sobre a velocidade ABSOLUTA de cada uma: a caixa PARADA lia
+/// `vn = 0` e o guarda *«só se responde a quem se aproxima»* disparava ⇒ ela **nunca** recebia
+/// velocidade. Nunca havia troca de momento, e quem era atingido era uma PAREDE:
+///
+/// ```text
+///   bounciness |  a que bate |  a PARADA |  momento (era 1,00)
+///         0,00 |      0,0000 |    0,0000 |        0,00
+///         0,50 |     −0,5000 |    0,0000 |       −0,50
+///         1,00 |     −1,0000 |    0,0000 |       −1,00     ← o momento INVERTIA-SE
+/// ```
+#[test]
+fn two_equal_boxes_share_the_blow_instead_of_one_being_a_wall() {
+    use ph2d_nodegraph::attr::BOUNCE_COLUMN;
+    /// `f32` sobre uma conta de duas divisões — a folga é de arredondamento, não de lei.
+    const EPS: f32 = 1e-4;
+    for e in [0.0_f32, 0.25, 0.5, 0.75, 1.0] {
+        let s = Stream::new(2)
+            .with("P", Column::Vec2(vec![[-0.20, 0.0], [0.0, 0.0]]))
+            .with("vel", Column::Vec2(vec![[1.0, 0.0], [0.0, 0.0]]))
+            .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
+            .with(BOUNCE_COLUMN, Column::Scalar(vec![e, e]))
+            .with(
+                COLLIDER_BOX_COLUMN,
+                Column::Vec2(vec![[0.11, 0.11], [0.11, 0.11]]),
+            );
+        let v = col(&step(&s, DT, 1.0, 0.0, 0.0, 1.0), "vel");
+        let (bate, parada) = ((1.0 - e) * 0.5, (1.0 + e) * 0.5);
+        assert!(
+            (v[0][0] - bate).abs() < EPS,
+            "com salto {e}, a que bate fica em {} e a conta da' {bate}",
+            v[0][0]
+        );
+        assert!(
+            (v[1][0] - parada).abs() < EPS,
+            "com salto {e}, a PARADA fica em {} e a conta da' {parada} — se ler 0, ela virou parede",
+            v[1][0]
+        );
+        // ⭐ E o MOMENTO conserva-se: é ele que distingue uma troca de uma parede.
+        assert!(
+            (v[0][0] + v[1][0] - 1.0).abs() < EPS,
+            "o momento tem de ficar em 1,0 e ficou em {}",
+            v[0][0] + v[1][0]
+        );
+    }
+}
+
+/// ⭐⭐ **E um OBSTÁCULO continua a ser uma parede** — a metade que o gate acima não mede, e sem ela
+/// «partilhar o choque» podia ter sido escrito de forma a amolecer um pino.
+///
+/// Com `inv_mass = 0` a peça é imóvel por declaração, e a que bate devolve **exactamente** o salto:
+/// `v' = −e·v`. ⚠️ É o mesmo `j = (1+e)·vrel/(w_a + w_b)` com `w_b = 0` — *uma lei, os dois casos*.
+#[test]
+fn an_obstacle_is_still_a_wall_and_returns_the_bounce() {
+    use ph2d_nodegraph::attr::BOUNCE_COLUMN;
+    for e in [0.0_f32, 0.5, 1.0] {
+        let s = Stream::new(2)
+            .with("P", Column::Vec2(vec![[-0.20, 0.0], [0.0, 0.0]]))
+            .with("vel", Column::Vec2(vec![[1.0, 0.0], [0.0, 0.0]]))
+            .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
+            .with("inv_mass", Column::Scalar(vec![1.0, 0.0]))
+            .with(BOUNCE_COLUMN, Column::Scalar(vec![e, e]))
+            .with(
+                COLLIDER_BOX_COLUMN,
+                Column::Vec2(vec![[0.11, 0.11], [0.11, 0.11]]),
+            );
+        let v = col(&step(&s, DT, 1.0, 0.0, 0.0, 1.0), "vel");
+        assert!(
+            (v[0][0] + e).abs() < 1e-4,
+            "contra um obstaculo, com salto {e}, ela devolve {} e a conta da' {}",
+            v[0][0],
+            -e
+        );
+        assert!(v[1][0].abs() < 1e-6, "o obstaculo nao se mexe: {:?}", v[1]);
+    }
+}

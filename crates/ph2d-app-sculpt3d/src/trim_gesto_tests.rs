@@ -13,7 +13,7 @@ fn a_caixa_guarda_so_os_cantos() {
         let t = k as f32;
         g.move_para([10.0 + t * 2.0, 20.0 + t]);
     }
-    let anel = g.anel(0.0);
+    let anel = g.anel(0.0, f32::INFINITY);
     assert_eq!(anel.len(), 4, "a caixa tem quatro cantos");
     assert_eq!(anel[0], [10.0, 20.0]);
     assert_eq!(anel[2], [88.0, 59.0], "o canto oposto é o ÚLTIMO ponto");
@@ -31,7 +31,7 @@ fn o_laco_guarda_o_caminho_com_passo_minimo() {
     for k in 1..=100 {
         g.move_para([k as f32, 0.0]);
     }
-    let anel = g.anel(0.0);
+    let anel = g.anel(0.0, f32::INFINITY);
     assert!(
         anel.len() < 30 && anel.len() > 20,
         "100 eventos a 1 px com passo de 4 px tinham de dar ~25 pontos, e deram {}",
@@ -50,14 +50,14 @@ fn um_gesto_sem_area_devolve_anel_vazio() {
     let mut caixa = Gesto::comeca(Forma::Caixa, [5.0, 5.0], None);
     caixa.move_para([5.4, 40.0]);
     assert!(
-        caixa.anel(0.0).is_empty(),
+        caixa.anel(0.0, f32::INFINITY).is_empty(),
         "uma caixa de meio pixel de largura"
     );
 
     let mut laco = Gesto::comeca(Forma::Laco, [5.0, 5.0], None);
     laco.move_para([6.0, 5.0]);
     assert!(
-        laco.anel(0.0).is_empty(),
+        laco.anel(0.0, f32::INFINITY).is_empty(),
         "um laço com dois pontos não fecha nada"
     );
 }
@@ -146,10 +146,17 @@ fn o_plano_usa_a_normal_da_superficie_ou_a_vista_invertida() {
 #[test]
 fn a_previa_so_existe_quando_ha_forma_e_e_o_mesmo_anel() {
     let mut g = Gesto::comeca(Forma::Caixa, [10.0, 10.0], None);
-    assert!(g.previa(0.0).is_none(), "um clique parado não desenha nada");
+    assert!(
+        g.previa(0.0, f32::INFINITY).is_none(),
+        "um clique parado não desenha nada"
+    );
     g.move_para([60.0, 40.0]);
-    let previa = g.previa(0.0).expect("agora há caixa");
-    assert_eq!(previa, g.anel(0.0), "a prévia É o anel que a lei recebe");
+    let previa = g.previa(0.0, f32::INFINITY).expect("agora há caixa");
+    assert_eq!(
+        previa,
+        g.anel(0.0, f32::INFINITY),
+        "a prévia É o anel que a lei recebe"
+    );
     assert_eq!(previa.len(), 4);
 }
 
@@ -198,7 +205,7 @@ fn o_circulo_e_um_circulo_e_os_lados_saem_do_ecra() {
     for raio in [20.0f32, 120.0, 600.0] {
         let mut g = Gesto::comeca(TrimForma::Circulo, [100.0, 100.0], None);
         g.move_para([100.0 + raio, 100.0]);
-        let anel = g.anel(0.0);
+        let anel = g.anel(0.0, f32::INFINITY);
         assert!(anel.len() >= 12, "raio {raio}: só {} lados", anel.len());
         // Todo ponto está no círculo, e o centro é o pen-down.
         for p in &anel {
@@ -227,7 +234,44 @@ fn o_circulo_e_um_circulo_e_os_lados_saem_do_ecra() {
     // Um arrasto de menos de um pixel não delimita área.
     let mut g = Gesto::comeca(TrimForma::Circulo, [0.0, 0.0], None);
     g.move_para([0.5, 0.0]);
-    assert!(g.anel(0.0).is_empty());
+    assert!(g.anel(0.0, f32::INFINITY).is_empty());
+
+    // ⭐⭐⭐ **A SEGUNDA RÉGUA: o círculo tem a densidade da PEÇA** — report do
+    // dono (2026-09-15): *«circle ficou com baixa resolução nas próprias linhas
+    // do círculo»*. A flecha sozinha é sub-pixel e ainda assim entrega lados de
+    // `31 px` de RETA, que é o que o olho vê numa silhueta sombreada.
+    let raio = 250.0f32;
+    let mut g = Gesto::comeca(TrimForma::Circulo, [0.0, 0.0], None);
+    g.move_para([raio, 0.0]);
+    let so_flecha = g.anel(0.0, f32::INFINITY).len();
+    for passo_px in [16.0f32, 8.0, 4.0] {
+        let anel = g.anel(0.0, passo_px);
+        let corda = 2.0 * raio * (std::f32::consts::PI / anel.len() as f32).sin();
+        assert!(
+            corda <= passo_px * 1.05,
+            "passo {passo_px} px: a corda mede {corda:.2} px — o anel é mais \
+             grosso que a malha que ele vai cortar"
+        );
+        assert!(
+            anel.len() > so_flecha,
+            "passo {passo_px} px: o anel ({}) não é mais fino que o da flecha \
+             sozinha ({so_flecha}) — a segunda régua não chega",
+            anel.len()
+        );
+    }
+    // ⚠️ **E a metade que impede a régua de mandar sozinha:** numa peça
+    // grosseira o `passo_px` é enorme, e é a FLECHA que impede o polígono de se
+    // ver.
+    assert_eq!(
+        g.anel(0.0, 10_000.0).len(),
+        so_flecha,
+        "com a peça grosseira o anel tinha de cair na régua da flecha"
+    );
+    // ⛔ E o TECTO nomeia o recurso (a tampa é `O(n²)`).
+    assert!(
+        g.anel(0.0, 1e-6).len() <= 4_096,
+        "um passo absurdo fez o anel passar o tecto de segmentos"
+    );
 }
 
 /// ⛔⛔ **A SUAVIZAÇÃO CHEGA AO ANEL, e SÓ no laço** — a pergunta que o §5.0 do
@@ -248,8 +292,8 @@ fn a_suavizacao_chega_ao_anel_e_so_no_laco() {
         let r = 3.0 * ((i * 2.399_9).sin());
         laco.move_para([t.cos() * 100.0 + r, t.sin() * 100.0 - r]);
     }
-    let cru = laco.anel(0.0);
-    let suave = laco.anel(1.0);
+    let cru = laco.anel(0.0, f32::INFINITY);
+    let suave = laco.anel(1.0, f32::INFINITY);
     assert_eq!(cru.len(), suave.len(), "a suavização mudou a contagem");
     let movido = cru
         .iter()
@@ -271,15 +315,18 @@ fn a_suavizacao_chega_ao_anel_e_so_no_laco() {
         let t = f32::from(i) * 12.0;
         nu.move_para([t.cos() * 100.0, t.sin() * 100.0]);
     }
-    assert_eq!(bits(&nu.anel(0.0)), bits(&nu.pontos_para_o_gate()));
+    assert_eq!(
+        bits(&nu.anel(0.0, f32::INFINITY)),
+        bits(&nu.pontos_para_o_gate())
+    );
 
     // ⛔ **E ela NÃO toca as formas de dois pontos.**
     for forma in [TrimForma::Caixa, TrimForma::Circulo] {
         let mut g = Gesto::comeca(forma, [0.0, 0.0], None);
         g.move_para([80.0, 60.0]);
         assert_eq!(
-            bits(&g.anel(0.0)),
-            bits(&g.anel(1.0)),
+            bits(&g.anel(0.0, f32::INFINITY)),
+            bits(&g.anel(1.0, f32::INFINITY)),
             "a suavização mexeu no {} — ele guarda DOIS pontos e não tem traço",
             forma.label()
         );

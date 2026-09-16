@@ -117,7 +117,7 @@ impl Gesto {
     ///
     /// ⚠️ Devolve vazio quando o gesto não delimita área — quem chama recusa em
     /// voz alta, e a recusa é do gesto, não do motor.
-    pub(crate) fn anel(&self, suavizacao: f32) -> Vec<[f32; 2]> {
+    pub(crate) fn anel(&self, suavizacao: f32, passo_px: f32) -> Vec<[f32; 2]> {
         match self.forma {
             Forma::Caixa => {
                 let [a, b] = [self.pontos[0], *self.pontos.last().expect("um")];
@@ -133,7 +133,7 @@ impl Gesto {
                 if r < 1.0 {
                     return Vec::new();
                 }
-                let n = segmentos_do_circulo(r);
+                let n = segmentos_do_circulo(r, passo_px);
                 (0..n)
                     .map(|i| {
                         let t = i as f32 / n as f32 * std::f32::consts::TAU;
@@ -217,8 +217,8 @@ mod tests;
 /// Devolve o anel fechado em coordenadas de ECRÃ, ou `None` quando ainda não há
 /// forma nenhuma.
 impl Gesto {
-    pub(crate) fn previa(&self, suavizacao: f32) -> Option<Vec<[f32; 2]>> {
-        let anel = self.anel(suavizacao);
+    pub(crate) fn previa(&self, suavizacao: f32, passo_px: f32) -> Option<Vec<[f32; 2]>> {
+        let anel = self.anel(suavizacao, passo_px);
         (anel.len() >= 3).then_some(anel)
     }
 }
@@ -232,26 +232,107 @@ impl super::Sculpt3dScene {
     pub fn trim_previa(&self) -> Option<Vec<[f32; 2]>> {
         // ⭐ **A prévia é pintada com a MESMA suavização que o corte vai usar** —
         // senão o artista vê uma forma e a ferramenta corta outra.
-        self.trim.gesto.as_ref()?.previa(self.brush.trim_suavizacao)
+        let g = self.trim.gesto.as_ref()?;
+        g.previa(
+            self.brush.trim_suavizacao,
+            self.passo_do_corte_px(g.inicio()),
+        )
     }
 }
 
-/// **Quantos segmentos um círculo de raio `r` px precisa para não se ver
-/// poligonal.**
+/// **Quantos segmentos um círculo de raio `r` px precisa.**
 ///
-/// ⭐ **Derivado do ECRÃ, nunca escolhido:** a flecha de uma corda de `n` lados
-/// num círculo de raio `r` é `r·(1 − cos(π/n)) ≈ r·π²/(2n²)`, e exigir que ela
-/// fique abaixo de [`FLECHA_MAX_PX`] dá `n ≥ π·√(r / (2·flecha))`. ⇒ o polígono
-/// é **indistinguível de um círculo no ecrã em que foi desenhado**, e a
-/// contagem cresce com `√r` em vez de linearmente — um círculo grande não
-/// explode a contagem de pontos que a tampa tem de triangular.
+/// # ⛔⛔ Report do dono (2026-09-15): *«circle ficou com baixa resolução nas
+/// próprias linhas do círculo»*
 ///
-/// ⚠️ **O piso de `12` é a forma, não a precisão:** abaixo dele um raio pequeno
-/// entregaria um polígono que o artista reconhece como polígono.
-fn segmentos_do_circulo(r: f32) -> usize {
-    let n = std::f32::consts::PI * (r / (2.0 * FLECHA_MAX_PX)).sqrt();
-    (n.ceil() as usize).max(12)
+/// A 1.ª lei olhava só para a **FLECHA** — a distância da corda ao arco — e
+/// exigia-a abaixo de meio pixel, o que dá `n ≥ π·√(r/(2·flecha))`. Ela está
+/// certa sobre o que promete e **promete a coisa errada**: a `r = 250 px` são
+/// `50` lados, e cada um mede `31 px` de RETA no ecrã. *A flecha é
+/// sub-pixel e o olho vê a quebra de TANGENTE em cada vértice* — que é o que
+/// uma silhueta sombreada mostra.
+///
+/// ⭐⭐⭐ **A segunda régua é o `passo_px`, e ela é GRÁTIS:** o prisma já subdivide
+/// cada segmento do anel até à aresta da peça (`ph2d_trim::Resolucao::Ate`),
+/// logo os pontos vão ser criados de qualquer maneira — **só que sobre as
+/// CORDAS**. Gerá-los sobre o CÍRCULO custa exactamente o mesmo e entrega a
+/// forma certa. ⇒ *a resolução do círculo é a da peça, como tudo o resto desde a
+/// wave da lâmina tesselada.*
+///
+/// ⚠️ **As duas contam, e fica a MAIOR:** o `passo_px` pode vir enorme numa peça
+/// grosseira, e aí é a flecha que impede o polígono de se ver.
+fn segmentos_do_circulo(r: f32, passo_px: f32) -> usize {
+    let pela_flecha = std::f32::consts::PI * (r / (2.0 * FLECHA_MAX_PX)).sqrt();
+    let pelo_passo = if passo_px.is_finite() && passo_px > 0.0 {
+        std::f32::consts::TAU * r / passo_px
+    } else {
+        0.0
+    };
+    // ⚠️ **O piso de `12` é a forma, não a precisão:** abaixo dele um raio
+    // pequeno entregaria um polígono que o artista reconhece como polígono.
+    // ⛔ E o tecto nomeia o recurso: a tampa é triangulada por corte de orelha,
+    // que é `O(n²)`, e o anel inteiro vira paredes.
+    (pela_flecha.max(pelo_passo).ceil() as usize).clamp(12, TECTO_DE_SEGMENTOS)
 }
+
+/// O tecto de pontos de um anel gerado.
+///
+/// ⚠️ **Ele nomeia o recurso: a tampa é triangulada por CORTE DE ORELHA, que é
+/// `O(n²)`, e cada ponto do anel é uma coluna de paredes.** `4 096` pontos são
+/// `16,8 M` de operações no pior caso da tampa — ainda abaixo de um décimo de
+/// segundo, e numa operação que corre **uma vez por gesto**. ⭐ O caminho do
+/// produto nunca lá chega: o `passo_px` sai da peça, logo a contagem é
+/// `perímetro/aresta`, que é a mesma ordem da própria malha.
+const TECTO_DE_SEGMENTOS: usize = 4_096;
 
 /// Meio-pixel de flecha: metade do que o ecrã consegue mostrar.
 const FLECHA_MAX_PX: f32 = 0.5;
+
+impl Gesto {
+    /// Onde o gesto começou — a régua do [`super::Sculpt3dScene::passo_do_corte_px`].
+    pub(crate) fn inicio(&self) -> [f32; 2] {
+        self.pontos[0]
+    }
+}
+
+impl super::Sculpt3dScene {
+    /// ⭐⭐⭐ **A ARESTA DA PEÇA, medida em PIXEIS do ecrã** — quantos pixéis vale
+    /// o triângulo que a peça tem, visto de onde o artista está.
+    ///
+    /// # Porque ela existe
+    ///
+    /// O gesto é de ECRÃ e a densidade é de MUNDO, e o círculo precisa das duas:
+    /// ele tem de ter tantos lados quantos o prisma vai criar de qualquer
+    /// maneira ao subdividir as cordas. *Sem esta conversão o anel é gerado numa
+    /// unidade e consumido noutra.*
+    ///
+    /// ⚠️ **A distância é a do CENTRO DA PEÇA, e não a do acerto:** o acerto pode
+    /// não existir (o gesto começa fora da peça, espec §3), e a escala de um
+    /// pixel em mundo varia tão pouco ao longo de uma peça que medi-la no centro
+    /// dela é o valor honesto.
+    pub(crate) fn passo_do_corte_px(&self, em: [f32; 2]) -> f32 {
+        let Some(malha) = self.obj().map(|_| self.mesh()) else {
+            return f32::INFINITY;
+        };
+        let alvo = super::trim_aplica::alvo_da_lamina(malha);
+        let b = malha.bounds();
+        let centro = [
+            (b.min[0] + b.max[0]) * 0.5,
+            (b.min[1] + b.max[1]) * 0.5,
+            (b.min[2] + b.max[2]) * 0.5,
+        ];
+        let (r0, r1) = (self.ray_at(em[0], em[1]), self.ray_at(em[0] + 1.0, em[1]));
+        let o = r0.origin();
+        let d =
+            ((centro[0] - o[0]).powi(2) + (centro[1] - o[1]).powi(2) + (centro[2] - o[2]).powi(2))
+                .sqrt();
+        let (p0, p1) = (r0.at(d), r1.at(d));
+        let mundo_por_px =
+            ((p0[0] - p1[0]).powi(2) + (p0[1] - p1[1]).powi(2) + (p0[2] - p1[2]).powi(2)).sqrt();
+        if mundo_por_px > 0.0 {
+            alvo / mundo_por_px
+        } else {
+            f32::INFINITY
+        }
+    }
+}

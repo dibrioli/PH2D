@@ -502,3 +502,166 @@ fn a_face_cortada_e_sombreada_como_plana() {
         fina * 100.0
     );
 }
+
+#[test]
+#[ignore = "sonda: a topologia da BORDA do corte, e o anel do circulo"]
+fn diag_a_borda_do_corte() {
+    let bola = shapes::sphere_with_triangles(50_000, 1.0);
+    let tris: usize = bola
+        .faces()
+        .iter()
+        .map(|f| f.verts().len().saturating_sub(2))
+        .sum();
+    let alvo = ph2d_mesh::edge_for_tri_count(bola.surface_area(), tris as f32);
+    println!("\npeça: T={tris} alvo de aresta={alvo:.4}");
+
+    // Um anel CIRCULAR como o gesto o produz hoje: `n` cordas.
+    for n in [50usize, 100, 200, 400] {
+        let anel: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let t = i as f32 / n as f32 * std::f32::consts::TAU;
+                [0.6 * t.cos(), 0.6 * t.sin()]
+            })
+            .collect();
+        let lamina = prisma(
+            &anel,
+            &raios_orto(&anel),
+            &plano(),
+            &bola,
+            Profundidade::DaPeca,
+            Paredes::Fixas,
+            Resolucao::Ate(alvo),
+        )
+        .expect("o prisma");
+        let out =
+            ph2d_mesh_bool::corta(&bola, &lamina, ph2d_mesh_bool::Op::Subtrair).expect("o corte");
+
+        // A FLECHA do polígono contra o círculo verdadeiro, em unidades de cena.
+        let flecha = 0.6 * (1.0 - (std::f32::consts::PI / n as f32).cos());
+
+        // A borda do corte: as arestas em que uma face da parede encontra uma
+        // face da esfera. A régua é a FORMA dos triângulos que lá vivem.
+        let p = out.positions();
+        let mut t3 = Vec::new();
+        for f in out.faces() {
+            f.triangles(&mut t3);
+        }
+        let na_parede = |i: u32| (p[i as usize][0].hypot(p[i as usize][1]) - 0.6).abs() < 1e-3;
+        let mut asp: Vec<f32> = Vec::new();
+        let mut menor = f32::INFINITY;
+        let mut soltos = 0usize;
+        for t in &t3 {
+            let toca = t.iter().filter(|&&i| na_parede(i)).count();
+            if toca == 0 || toca == 3 {
+                continue; // longe da costura, ou no meio da parede
+            }
+            let (a, b, c) = (p[t[0] as usize], p[t[1] as usize], p[t[2] as usize]);
+            let e = |u: [f32; 3], v: [f32; 3]| {
+                ((u[0] - v[0]).powi(2) + (u[1] - v[1]).powi(2) + (u[2] - v[2]).powi(2)).sqrt()
+            };
+            let (l0, l1, l2) = (e(a, b), e(b, c), e(c, a));
+            let s = (l0 + l1 + l2) * 0.5;
+            let area = (s * (s - l0) * (s - l1) * (s - l2)).max(0.0).sqrt();
+            menor = menor.min(l0.min(l1).min(l2));
+            if area <= 1e-12 {
+                soltos += 1;
+                continue;
+            }
+            asp.push(l0.max(l1).max(l2) * s / (2.0 * area));
+        }
+        asp.sort_by(f32::total_cmp);
+        let q = |f: f64| asp[((asp.len() - 1) as f64 * f) as usize];
+        println!(
+            "anel n={n:4} flecha={flecha:.5} ({:.2} do alvo) | COSTURA T={:5}  \
+             aspecto p50={:.2} p90={:.2} p99={:.2} MAX={:.0}  aresta min={menor:.2e}  \
+             degenerados={soltos}",
+            flecha / alvo,
+            asp.len(),
+            q(0.5),
+            q(0.9),
+            q(0.99),
+            asp.last().copied().unwrap_or(f32::NAN),
+        );
+    }
+}
+
+/// ⭐⭐⭐ **A COSTURA DO CORTE É UTILIZÁVEL — no caminho do PRODUTO.**
+///
+/// Report do dono (2026-09-15): *«o algoritmo remesh produz bordas mais corretas
+/// que o algoritmo da Box Trim; melhore a topologia das bordas do corte»*.
+///
+/// ⚠️ **Este é o gate do caminho REAL, e por isso vive aqui:** a `ph2d-mesh-bool`
+/// só consegue montar um cubo de seis faces, e ali o mesmo corte mede `256`;
+/// a lâmina que o produto entrega é **tesselada à densidade da peça**, e com ela
+/// o pior triângulo mede **`33`**. *A régua de uma lei mora onde a entrada real
+/// dela é construída.*
+#[test]
+fn a_costura_do_corte_e_utilizavel() {
+    let bola = shapes::sphere_with_triangles(50_000, 1.0);
+    let tris: usize = bola
+        .faces()
+        .iter()
+        .map(|f| f.verts().len().saturating_sub(2))
+        .sum();
+    let alvo = ph2d_mesh::edge_for_tri_count(bola.surface_area(), tris as f32);
+    let n = 200usize;
+    let anel: Vec<[f32; 2]> = (0..n)
+        .map(|i| {
+            let t = i as f32 / n as f32 * std::f32::consts::TAU;
+            [0.6 * t.cos(), 0.6 * t.sin()]
+        })
+        .collect();
+    let lamina = prisma(
+        &anel,
+        &raios_orto(&anel),
+        &plano(),
+        &bola,
+        Profundidade::DaPeca,
+        Paredes::Fixas,
+        Resolucao::Ate(alvo),
+    )
+    .expect("o prisma");
+    let out = ph2d_mesh_bool::corta(&bola, &lamina, ph2d_mesh_bool::Op::Subtrair).expect("o corte");
+
+    let p = out.positions();
+    let mut t3 = Vec::new();
+    for f in out.faces() {
+        f.triangles(&mut t3);
+    }
+    let mut asp: Vec<f32> = t3
+        .iter()
+        .map(|x| {
+            let (a, b, c) = (p[x[0] as usize], p[x[1] as usize], p[x[2] as usize]);
+            let e = |u: [f32; 3], v: [f32; 3]| {
+                ((u[0] - v[0]).powi(2) + (u[1] - v[1]).powi(2) + (u[2] - v[2]).powi(2)).sqrt()
+            };
+            let (l0, l1, l2) = (e(a, b), e(b, c), e(c, a));
+            let s = (l0 + l1 + l2) * 0.5;
+            let area = (s * (s - l0) * (s - l1) * (s - l2)).max(0.0).sqrt();
+            if area > 1e-14 {
+                l0.max(l1).max(l2) * s / (2.0 * area)
+            } else {
+                f32::INFINITY
+            }
+        })
+        .collect();
+    asp.sort_by(f32::total_cmp);
+    let pior = asp.last().copied().unwrap_or(f32::INFINITY);
+    assert!(
+        pior < 60.0,
+        "o pior triângulo do corte mede {pior:.0} de aspecto (medido `33`) —          antes da limpeza da costura ele media `2 573 809`"
+    );
+    // ⚠️ **A mediana é a outra metade:** um `MAX` bom com a mediana podre
+    // significaria que a limpeza trocou um defeito raro por um geral.
+    assert!(
+        asp[asp.len() / 2] < 4.0,
+        "a mediana do aspecto subiu para {:.2}",
+        asp[asp.len() / 2]
+    );
+    assert_eq!(ph2d_mesh::border_edges(&out), 0, "o corte abriu a peça");
+    assert_eq!(
+        ph2d_mesh::non_manifold_edges(&out),
+        0,
+        "o corte deixou aresta com três faces"
+    );
+}

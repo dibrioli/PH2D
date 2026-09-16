@@ -14,6 +14,7 @@ use crate::interaction::util::hsv_to_color_value;
 use crate::interaction::{InteractiveState, types::BlenderHitKind};
 use crate::widget::{ChannelMode, InterpolationMode};
 use ph2d_a11y::NodeId;
+use ph2d_i18n::tr;
 use ph2d_tokens::ColorValue;
 
 #[allow(dead_code)]
@@ -122,7 +123,7 @@ impl WidgetStore {
         self.blender_palettes.insert(
             parent,
             vec![super::NamedPalette {
-                name: "Palette".to_string(),
+                name: tr("chrome.interaction.palette").to_string(),
                 swatches,
             }],
         );
@@ -156,7 +157,7 @@ impl WidgetStore {
         let new_idx = self.blender_palettes.get_mut(&parent).map(|set| {
             let n = set.len() + 1;
             set.push(super::NamedPalette {
-                name: format!("Palette {n}"),
+                name: ph2d_i18n::tr_with("chrome.color.palette_n", &[("n", &n)]),
                 swatches: Vec::new(),
             });
             set.len() - 1
@@ -327,7 +328,7 @@ impl WidgetStore {
         const PALETTE_CAP: usize = 27;
         swatches.truncate(PALETTE_CAP);
         let name = if name.trim().is_empty() {
-            "Imported".to_string()
+            tr("chrome.interaction.imported").to_string()
         } else {
             name.trim().to_string()
         };

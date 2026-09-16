@@ -31,6 +31,12 @@
 mod asset_browser;
 /// As strings dos dois painéis de áudio (editor + mixer).
 mod audio;
+/// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
+mod chrome_menus;
+/// As strings do RESTO da moldura (barra do topo, HUD, diálogos, seletor de cor, cartão de instância).
+mod chrome_panes;
+/// As strings da BARRA DE FERRAMENTAS (o rail esquerdo e a fila horizontal).
+mod chrome_rail;
 /// As strings dos dois painéis do Flip (o painel e a tira de quadros).
 mod flip;
 /// As strings do painel Grid Settings.
@@ -39,10 +45,6 @@ mod grid_snap;
 mod image_tools;
 /// As strings dos painéis do Motion (grafo, params) e dos editores ricos partilhados.
 mod motion_panels;
-/// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
-mod chrome_menus;
-/// As strings da BARRA DE FERRAMENTAS (o rail esquerdo e a fila horizontal).
-mod chrome_rail;
 mod vector;
 
 /// Look up a string by Fluent-style key. Missing keys round-trip the
@@ -500,6 +502,7 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| asset_browser::tr(k))
             .or_else(|| chrome_menus::tr(k))
             .or_else(|| chrome_rail::tr(k))
+            .or_else(|| chrome_panes::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

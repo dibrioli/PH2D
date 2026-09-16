@@ -21,6 +21,7 @@
 //! assets, e um painel que arraste outra coisa qualquer amanhã teria de o arrastar também. O que
 //! ele carrega é o **endereço**, na forma mais crua que existe; quem o sabe interpretar é o alvo.
 
+use ph2d_i18n::tr;
 /// A carga de um arrasto em curso.
 ///
 /// ⚠️ **Uma variante por FAMÍLIA de coisa arrastável**, e não uma por painel de origem: o alvo
@@ -41,8 +42,8 @@ impl DragPayload {
     #[must_use]
     pub fn kind_label(self) -> &'static str {
         match self {
-            DragPayload::Prefab { .. } => "Prefab",
-            DragPayload::Image { .. } => "Image",
+            DragPayload::Prefab { .. } => tr("chrome.interaction.prefab"),
+            DragPayload::Image { .. } => tr("chrome.interaction.image"),
         }
     }
 }

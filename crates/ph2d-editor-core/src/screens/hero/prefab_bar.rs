@@ -35,6 +35,7 @@ use crate::ids;
 use crate::interaction::{HitIndex, WidgetEvent};
 use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use crate::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -119,13 +120,13 @@ pub fn cancel_rect(bar: Rect) -> Rect {
 #[must_use]
 pub fn title(view: &PrefabEditView) -> String {
     let follows = match view.copies {
-        0 => "no copies yet".to_string(),
-        1 => "1 copy follows".to_string(),
-        n => format!("{n} copies follow"),
+        0 => tr("chrome.prefab.no_copies_yet").to_string(),
+        1 => tr("chrome.prefab.n1_copy_follows").to_string(),
+        n => ph2d_i18n::tr_with("chrome.prefab.n_copies_follow", &[("n", &n)]),
     };
-    format!(
-        "Editing prefab \u{201c}{}\u{201d} \u{2014} {follows}",
-        view.name
+    ph2d_i18n::tr_with(
+        "chrome.prefab.editing",
+        &[("name", &view.name), ("follows", &follows)],
     )
 }
 

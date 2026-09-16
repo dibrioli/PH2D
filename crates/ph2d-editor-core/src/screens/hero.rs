@@ -47,6 +47,7 @@ pub mod radial;
 /// ⭐ A tabela `id da linha ⇄ tema` do menu de tema (as duas famílias).
 pub mod theme_menu;
 pub use panel_ids::{PANEL_MOTION_GRAPH, PANEL_TIMELINE};
+use ph2d_i18n::tr;
 pub mod left_rail;
 pub mod pre_populate;
 pub mod pre_populate_blender;
@@ -649,7 +650,7 @@ impl HeroScreen {
 
     pub fn build_a11y(&self, viewport: Rect) -> Node {
         NodeBuilder::new(Role::Window)
-            .label("PH2D editor")
+            .label(tr("chrome.hero.ph2d_editor"))
             .bounds(
                 viewport.x as f64,
                 viewport.y as f64,

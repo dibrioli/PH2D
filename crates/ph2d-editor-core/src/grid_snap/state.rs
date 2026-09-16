@@ -22,6 +22,7 @@ use ph2d_grid::square::{SquareGrid, SquareNeighborhood};
 use ph2d_grid::staggered::{StaggerParity, StaggeredHexGrid, StaggeredSquareGrid};
 use ph2d_grid::tri::{TriGrid, TriNeighborhood};
 use ph2d_grid::voronoi::{Triangulation, deterministic_seeds};
+use ph2d_i18n::tr;
 
 /// The active grid kind. Identifier only — the actual `*Cfg`
 /// structs in [`GridSnapState`] hold the parameters; switching
@@ -42,15 +43,15 @@ pub enum GridKind {
 impl GridKind {
     pub fn label(self) -> &'static str {
         match self {
-            GridKind::Square => "Square",
-            GridKind::Hex => "Hex",
-            GridKind::Iso => "Isometric",
-            GridKind::StaggeredSquare => "Staggered Square",
-            GridKind::StaggeredHex => "Staggered Hex",
-            GridKind::Tri => "Triangular",
-            GridKind::Quadtree => "Quadtree",
-            GridKind::Voronoi => "Voronoi",
-            GridKind::Chunks => "Chunked Square",
+            GridKind::Square => tr("chrome.grid_snap.square"),
+            GridKind::Hex => tr("chrome.grid_snap.hex"),
+            GridKind::Iso => tr("chrome.grid_snap.isometric"),
+            GridKind::StaggeredSquare => tr("chrome.grid_snap.staggered_square"),
+            GridKind::StaggeredHex => tr("chrome.grid_snap.staggered_hex"),
+            GridKind::Tri => tr("chrome.grid_snap.triangular"),
+            GridKind::Quadtree => tr("chrome.grid_snap.quadtree"),
+            GridKind::Voronoi => tr("chrome.grid_snap.voronoi"),
+            GridKind::Chunks => tr("chrome.grid_snap.chunked_square"),
         }
     }
 

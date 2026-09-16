@@ -10,6 +10,7 @@ use super::tabs::{TabItem, Tabs, TabsVariant, paint_tabs};
 use crate::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{Color as VelloColor, VectorScene};
@@ -42,13 +43,13 @@ impl ColorPicker {
     pub fn new(id: NodeId, label: impl Into<String>) -> Self {
         let tabs = Tabs::new(
             NodeId(id.0 + 1),
-            "Mode",
+            tr("chrome.color.mode"),
             vec![
-                TabItem::new(NodeId(id.0 + 2), "Disc"),
-                TabItem::new(NodeId(id.0 + 3), "Classic"),
-                TabItem::new(NodeId(id.0 + 4), "Harmony"),
-                TabItem::new(NodeId(id.0 + 5), "Value"),
-                TabItem::new(NodeId(id.0 + 6), "Palettes"),
+                TabItem::new(NodeId(id.0 + 2), tr("chrome.color.disc")),
+                TabItem::new(NodeId(id.0 + 3), tr("chrome.color.classic")),
+                TabItem::new(NodeId(id.0 + 4), tr("chrome.color.harmony")),
+                TabItem::new(NodeId(id.0 + 5), tr("chrome.color.value")),
+                TabItem::new(NodeId(id.0 + 6), tr("chrome.color.palettes")),
             ],
         )
         .selected(1)
@@ -258,11 +259,11 @@ fn paint_placeholder(
         resolve(ColorToken::Bg2, theme),
     );
     let label = match mode {
-        ColorPickerMode::Disc => "Disc — coming soon",
-        ColorPickerMode::Harmony => "Harmony — coming soon",
-        ColorPickerMode::Value => "Value — coming soon",
-        ColorPickerMode::Palettes => "Palettes — coming soon",
-        ColorPickerMode::Classic => "Classic",
+        ColorPickerMode::Disc => tr("chrome.color.soon.disc"),
+        ColorPickerMode::Harmony => tr("chrome.color.soon.harmony"),
+        ColorPickerMode::Value => tr("chrome.color.soon.value"),
+        ColorPickerMode::Palettes => tr("chrome.color.soon.palettes"),
+        ColorPickerMode::Classic => tr("chrome.color.classic"),
     };
     paint_text(
         text_system,

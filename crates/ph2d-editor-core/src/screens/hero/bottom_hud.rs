@@ -18,6 +18,7 @@ use super::HeroLayout;
 use crate::widget::{SegmentTone, StatusBar, StatusSegment, paint_status_bar};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -84,45 +85,58 @@ pub fn paint_bottom_hud(
     // Format `entity_count` with a `K` suffix above 999 so the
     // segment width stays predictable when the scene scales up.
     let sprite_label = if stats.sprite_count >= 1_000 {
-        format!("{:.1}K sprites", stats.sprite_count as f32 / 1_000.0) // LITERAL-PX-OK: 1K divisor (display thousands)
+        ph2d_i18n::tr_with(
+            "chrome.hud.sprites_k",
+            &[("n", &format!("{:.1}", stats.sprite_count as f32 / 1_000.0))], // LITERAL-PX-OK: 1K divisor (display thousands)
+        )
     } else {
-        format!("{} sprites", stats.sprite_count)
+        ph2d_i18n::tr_with("chrome.hud.sprites", &[("n", &stats.sprite_count)])
     };
     let draws_label = if stats.draws <= 1 {
-        format!("1 draw · {} inst", stats.sprite_count)
+        ph2d_i18n::tr_with("chrome.hud.one_draw", &[("n", &stats.sprite_count)])
     } else {
-        format!("{} draws", stats.draws)
+        ph2d_i18n::tr_with("chrome.hud.draws", &[("n", &stats.draws)])
     };
     let bar = StatusBar::new(
         NodeId(300),
-        "Editor statistics",
+        tr("chrome.hud.editor_statistics"),
         vec![
-            StatusSegment::new("EDIT")
+            StatusSegment::new(tr("chrome.hud.edit"))
                 .dot(true)
                 .tone(SegmentTone::Neutral),
-            StatusSegment::new(format!(
-                "{} fps \u{00b7} {:.1} ms \u{00b7} {} raw",
-                stats.fps as u32, stats.frame_ms, stats.raw_fps as u32
+            StatusSegment::new(ph2d_i18n::tr_with(
+                "chrome.hud.fps",
+                &[
+                    ("fps", &(stats.fps as u32)),
+                    ("ms", &format!("{:.1}", stats.frame_ms)),
+                    ("raw", &(stats.raw_fps as u32)),
+                ],
             )),
             // Diagnostics (M14.7+): present/input stall + painter CPU per frame.
-            StatusSegment::new(format!(
-                "{:.1} stall \u{00b7} {:.1} paint ms",
-                stats.present_stall_ms, stats.paint_ms
+            StatusSegment::new(ph2d_i18n::tr_with(
+                "chrome.hud.stall",
+                &[
+                    ("stall", &format!("{:.1}", stats.present_stall_ms)),
+                    ("paint", &format!("{:.1}", stats.paint_ms)),
+                ],
             )),
             // Diagnostics: input rate vs delivered re-stamps (coalescing gauge).
-            StatusSegment::new(format!(
-                "{}\u{2192}{} ev/stamp",
-                stats.input_events, stats.paint_stamps
+            StatusSegment::new(ph2d_i18n::tr_with(
+                "chrome.hud.events",
+                &[("ev", &stats.input_events), ("stamps", &stats.paint_stamps)],
             )),
             StatusSegment::new(draws_label),
             StatusSegment::new(sprite_label).tone(SegmentTone::Accent),
-            StatusSegment::new(format!("{} ent", stats.entity_count)),
+            StatusSegment::new(ph2d_i18n::tr_with(
+                "chrome.hud.entities",
+                &[("n", &stats.entity_count)],
+            )),
             // Physics / memory / network slots stay placeholder until
             // those subsystems land (M14.2 Luau + M10 Rapier are the
             // next major milestones; memory needs a `wgpu::Device`
             // global-memory query that's adapter-specific).
-            StatusSegment::new("\u{2013} bodies"),
-            StatusSegment::new("\u{2013} MB"),
+            StatusSegment::new(tr("chrome.hud.bodies")),
+            StatusSegment::new(tr("chrome.hud.mb")),
             StatusSegment::new("100%"),
             StatusSegment::new("default-scene").tone(SegmentTone::Muted),
         ],

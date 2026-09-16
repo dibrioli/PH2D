@@ -1,6 +1,7 @@
 //! `BlenderColorPicker` data + supporting enums + palettes.
 
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorValue, srgb_to_oklch};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -62,7 +63,7 @@ pub fn default_palette() -> ColorPalette {
     .map(|[r, g, b, a]| ColorValue::from_rgba8(r, g, b, a))
     .collect();
     ColorPalette {
-        name: "Default".into(),
+        name: tr("chrome.color.default").into(),
         swatches,
         editable: true,
     }

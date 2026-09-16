@@ -12,6 +12,7 @@ use crate::icons::IconId;
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -233,13 +234,14 @@ pub fn paint_key_value_list(
             theme,
         );
         scene.pop_layer();
-        let remove = Button::new(entry.remove_id, "Remove").kind(ButtonKind::IconOnly {
-            icon: IconId::Trash,
-        });
+        let remove =
+            Button::new(entry.remove_id, tr("chrome.widget.remove")).kind(ButtonKind::IconOnly {
+                icon: IconId::Trash,
+            });
         paint_button(&remove, remove_rect, scene, text_system, theme);
     }
-    let add =
-        Button::new(list.add_id, "Add parameter").kind(ButtonKind::IconOnly { icon: IconId::Add });
+    let add = Button::new(list.add_id, tr("chrome.widget.add_parameter"))
+        .kind(ButtonKind::IconOnly { icon: IconId::Add });
     paint_button(
         &add,
         list.add_button_rect(host, row_h),

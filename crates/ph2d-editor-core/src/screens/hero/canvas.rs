@@ -140,9 +140,12 @@ pub fn paint_drop_overlay(
         .and_then(|s| s.to_str())
         .unwrap_or("?");
     let caption = if count == 1 {
-        format!("Drop to import: {first_name}")
+        ph2d_i18n::tr_with("chrome.canvas.drop_one", &[("name", &first_name)])
     } else {
-        format!("Drop to import {count} files (first: {first_name})")
+        ph2d_i18n::tr_with(
+            "chrome.canvas.drop_many",
+            &[("count", &count), ("name", &first_name)],
+        )
     };
 
     let card_w = 420.0_f32.min(scrim.w - 32.0).max(220.0); // LITERAL-PX-OK: drop-overlay card width with viewport margin (chrome-specific)

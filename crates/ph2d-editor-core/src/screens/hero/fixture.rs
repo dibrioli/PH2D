@@ -7,6 +7,7 @@
 
 use super::HeroSelection;
 use crate::icons::IconId;
+use ph2d_i18n::tr;
 
 /// Default selection is empty — the working hero starts without any
 /// entity selected. The pilot project wires real scene state and
@@ -26,7 +27,10 @@ pub fn default_selection() -> HeroSelection {
 pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
     use crate::ids;
     vec![
-        (ids::TOPBAR_THEME, TopBarCluster::theme("Forge")),
+        (
+            ids::TOPBAR_THEME,
+            TopBarCluster::theme(tr("chrome.topbar.pill.forge")),
+        ),
         // Level / scene selector — moved to the LEFT side 2026-05-24
         // (user: "o seletor de level deve ser deslocado para esquerda
         // ao lado do seletor de themes") so the engine identity +
@@ -34,11 +38,11 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         (ids::TOPBAR_PROJECT, TopBarCluster::project("Level_01")),
         (
             ids::TOPBAR_SAVE,
-            TopBarCluster::single("Save", IconId::Save),
+            TopBarCluster::single(tr("chrome.topbar.pill.save"), IconId::Save),
         ),
         (
             ids::TOPBAR_OPEN,
-            TopBarCluster::single("Open", IconId::Open),
+            TopBarCluster::single(tr("chrome.topbar.pill.open"), IconId::Open),
         ),
         // Image Tools — toggle entry-point for the image-editing
         // action row (Trim, BG Removal, Equalize, etc.). Placed
@@ -47,7 +51,7 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         // action row land in a follow-up.
         (
             ids::TOPBAR_IMAGE_TOOLS,
-            TopBarCluster::single("IMG", IconId::Image),
+            TopBarCluster::single(tr("chrome.topbar.pill.img"), IconId::Image),
         ),
         // Physics (world) — abre o painel de física, o mesmo bool que a tecla
         // `W`. Fica ao lado do IMG por pedido do Enio; um painel de MUNDO não
@@ -55,13 +59,13 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         // abridor visível que ele tem.
         (
             ids::TOPBAR_PHYSICS,
-            TopBarCluster::single("PHYS", IconId::Physics),
+            TopBarCluster::single(tr("chrome.topbar.pill.phys"), IconId::Physics),
         ),
         // Tokens (mundo) — abre a tabela de cor do design system, o mesmo bool que a tecla `T`.
         // Ao lado do PHYS pelo mesmo motivo dele: um painel de MUNDO não tem chip no rail.
         (
             ids::TOPBAR_TOKENS,
-            TopBarCluster::single("TOK", IconId::Palette),
+            TopBarCluster::single(tr("chrome.topbar.pill.tok"), IconId::Palette),
         ),
         // A UI AUTORADA (W8b.3) — abre o painel que o artista desenhou. Ao lado dos dois de MUNDO
         // porque o problema é o mesmo: sem pill, o único abridor exige a ferramenta Vector em mãos
@@ -75,34 +79,34 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         // fader + live meter + mute). Left group, next to Image Tools.
         (
             ids::TOPBAR_AUDIO_MIXER,
-            TopBarCluster::single("MIX", IconId::Audio),
+            TopBarCluster::single(tr("chrome.topbar.pill.mix"), IconId::Audio),
         ),
         // Audio Editor — toggles the docked editor panel (transport + Load +
         // Export) + its floating waveform overlay. Left group, next to the Mixer.
         (
             ids::TOPBAR_AUDIO_EDITOR,
-            TopBarCluster::single("WAVE", IconId::Audio),
+            TopBarCluster::single(tr("chrome.topbar.pill.wave"), IconId::Audio),
         ),
         // Vector drawing tool — the single `vector_tools` pill (ADR-0108
         // cutover). Click activates it via `vector_toggle::apply` →
         // `EditorAction::ActivateTool { tool_id: "vector" }`.
         (
             ids::TOPBAR_VECTOR,
-            TopBarCluster::single("VECTOR", IconId::Vector),
+            TopBarCluster::single(tr("chrome.topbar.pill.vector"), IconId::Vector),
         ),
         // Motion Nodes tool — the single `motion_tools` pill (Motion Nodes M0).
         // Click activates it via `motion_toggle::apply` →
         // `EditorAction::ActivateTool { tool_id: "motion" }`.
         (
             ids::TOPBAR_MOTION,
-            TopBarCluster::single("MOTION", IconId::MotionNodes),
+            TopBarCluster::single(tr("chrome.topbar.pill.motion"), IconId::MotionNodes),
         ),
         // Flip drawing tool — the single `flip_tools` pill (ADR-0114 W2). Click
         // activates it via `flip_toggle::apply` →
         // `EditorAction::ActivateTool { tool_id: "flip" }`.
         (
             ids::TOPBAR_FLIP,
-            TopBarCluster::single("FLIP", IconId::Flip),
+            TopBarCluster::single(tr("chrome.topbar.pill.flip"), IconId::Flip),
         ),
         // A escultura 3D (ADR-0150) — **entra e sai** do modo. Ao lado dos três de cima porque a
         // espécie é a mesma do ponto de vista do artista: clico, e o canvas passa a ser de outra
@@ -115,13 +119,13 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         // acidente que o comentário do `split` já registra.
         (
             ids::TOPBAR_SCULPT3D,
-            TopBarCluster::single("SCULPT", IconId::Cube),
+            TopBarCluster::single(tr("chrome.topbar.pill.sculpt"), IconId::Cube),
         ),
         // Modelagem 3D por campo implícito (ADR-0161) — o vizinho do SCULPT de propósito: quem
         // procura "3D" tem de encontrar os dois e ver que são módulos diferentes.
         (
             ids::TOPBAR_MODEL3D,
-            TopBarCluster::single("MODEL", IconId::Cube),
+            TopBarCluster::single(tr("chrome.topbar.pill.model"), IconId::Cube),
         ),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
@@ -132,7 +136,7 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         // ground-truth. State on `HeroScreen::widget_gallery_visible`.
         (
             ids::TOPBAR_WIDGET_GALLERY,
-            TopBarCluster::single("WIDGET", IconId::Palette),
+            TopBarCluster::single(tr("chrome.topbar.pill.widget"), IconId::Palette),
         ),
         // Grid Settings — opens the floating Grid Settings panel
         // (grid-snap subsystem: 9 grid kinds + snap policy + overlay
@@ -140,14 +144,14 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         // subsystem, NOT a Tool, NOT in the LeftRail).
         (
             ids::TOPBAR_GRID_SETTINGS,
-            TopBarCluster::single("GRID", IconId::GridSettings),
+            TopBarCluster::single(tr("chrome.topbar.pill.grid"), IconId::GridSettings),
         ),
         // Settings (gear) — moved to the end of the bar per
         // ImageToolsV1 spec. Still opens SettingsMenu context with
         // px/m presets and project-level toggles.
         (
             ids::TOPBAR_SETTINGS,
-            TopBarCluster::single("SETTINGS", IconId::Settings),
+            TopBarCluster::single(tr("chrome.topbar.pill.settings"), IconId::Settings),
         ),
     ]
 }
@@ -238,7 +242,7 @@ pub struct HierarchyEntity {
 /// readable. The pilot replaces this with a live ECS query.
 pub fn hierarchy() -> Vec<HierarchyEntity> {
     vec![HierarchyEntity {
-        name: "Scene Root".into(),
+        name: tr("chrome.hierarchy.scene_root").into(),
         icon: IconId::Folder,
         indent: 0,
         badge: None,

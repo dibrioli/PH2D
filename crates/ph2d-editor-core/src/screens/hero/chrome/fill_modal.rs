@@ -19,6 +19,7 @@ use crate::screens::hero::HeroScreen;
 use crate::tool::PanelEvent;
 use crate::widget::{Button, Slider, paint_button, paint_slider};
 use crate::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -124,7 +125,7 @@ pub fn paint_fill_adjust_modal(
         .map_or(0.5, |(_, v)| v);
     // ⚠️ O par vem da porta ÚNICA, não de um `state` local ao lado de um `hover_t` que o sítio
     // seguinte esquece — `slider_visual` responde às duas metades de uma vez.
-    let mut slider = Slider::new(ids::PAINTER_FILL_MODAL_SLIDER, "Threshold")
+    let mut slider = Slider::new(ids::PAINTER_FILL_MODAL_SLIDER, tr("chrome.fill.threshold"))
         .accent(true)
         .visual(store.slider_visual(ids::PAINTER_FILL_MODAL_SLIDER));
     slider.set_value(sl_val);
@@ -138,13 +139,13 @@ pub fn paint_fill_adjust_modal(
     // ⚠️ **A porta ÚNICA** (`motion::button_visual`): o estado e o `t` numa pergunta só. Ela
     //    substituiu a cópia privada que vivia no fim deste arquivo -- e como estes botões NÃO estão
     //    registados como `Button` no store, é a metade `hot`/`active` da porta que os acende.
-    let cancel = Button::new(ids::PAINTER_FILL_MODAL_CANCEL, "Cancel")
+    let cancel = Button::new(ids::PAINTER_FILL_MODAL_CANCEL, tr("chrome.fill.cancel"))
         .visual(store.button_visual(ids::PAINTER_FILL_MODAL_CANCEL));
     paint_button(&cancel, cancel_rect, scene, text_system, theme);
 
     let done_rect = Rect::new(inner_x + bw + gap, cy, bw, row_h);
     hit_index.register(ids::PAINTER_FILL_MODAL_DONE, done_rect);
-    let done = Button::new(ids::PAINTER_FILL_MODAL_DONE, "Done")
+    let done = Button::new(ids::PAINTER_FILL_MODAL_DONE, tr("chrome.fill.done"))
         .accent()
         .visual(store.button_visual(ids::PAINTER_FILL_MODAL_DONE));
     paint_button(&done, done_rect, scene, text_system, theme);

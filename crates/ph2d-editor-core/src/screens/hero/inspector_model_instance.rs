@@ -20,6 +20,7 @@
 //! resposta a *«como se chama este componente?»*, e ela envelheceria no dia em que o catálogo
 //! mudasse um nome.
 
+use ph2d_i18n::tr;
 /// Snapshot do estado de instância da entidade selecionada.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct InspectorInstanceInfo {
@@ -122,9 +123,9 @@ impl ApplyChoice {
     pub fn label(&self) -> String {
         let name = &self.name;
         if self.innermost {
-            format!("Apply to \u{201c}{name}\u{201d}")
+            ph2d_i18n::tr_with("chrome.inspector.apply_to", &[("name", name)])
         } else {
-            format!("Apply as override in \u{201c}{name}\u{201d}")
+            ph2d_i18n::tr_with("chrome.inspector.apply_as_override_in", &[("name", name)])
         }
     }
 }
@@ -166,7 +167,7 @@ impl OrphanRow {
             return c.clone();
         }
         let p = &self.piece;
-        format!("{c} \u{2014} was on \u{201c}{p}\u{201d}")
+        ph2d_i18n::tr_with("chrome.inspector.was_on", &[("component", c), ("piece", p)])
     }
 }
 
@@ -189,7 +190,7 @@ impl RemovedRow {
     #[must_use]
     pub fn label(&self) -> String {
         let n = &self.name;
-        format!("Put back \u{201c}{n}\u{201d}")
+        ph2d_i18n::tr_with("chrome.inspector.put_back", &[("name", n)])
     }
 }
 
@@ -221,7 +222,7 @@ impl AddedRow {
     #[must_use]
     pub fn label(&self) -> String {
         let (n, m) = (&self.name, &self.master_name);
-        format!("Add \u{201c}{n}\u{201d} to \u{201c}{m}\u{201d}")
+        ph2d_i18n::tr_with("chrome.inspector.add_to", &[("name", n), ("master", m)])
     }
 }
 
@@ -254,12 +255,12 @@ impl InspectorInstanceInfo {
     #[must_use]
     pub fn provenance(&self) -> String {
         let what = if self.is_variant {
-            "Variant"
+            tr("chrome.inspector.variant")
         } else {
-            "Instance"
+            tr("chrome.inspector.instance")
         };
         let name = &self.master_name;
-        format!("{what} of \u{201c}{name}\u{201d}")
+        ph2d_i18n::tr_with("chrome.inspector.of", &[("what", &what), ("name", name)])
     }
 
     /// ⭐⭐ **Os degraus que o cartão de facto PINTA** — e as duas condições são leis, não
@@ -296,11 +297,13 @@ impl InspectorInstanceInfo {
         let mut s = match (self.overridden.len(), self.orphans()) {
             // ⚠️ Numa variante a palavra é a mesma e o sujeito é outro: ela segue a **base**. Dizer
             // «segue o componente» sobre uma receita seria a mesma ambiguidade um nível acima.
-            (0, 0) if self.is_variant => "Follows its base".to_string(),
-            (0, 0) => "Follows the component".to_string(),
-            (0, n) => format!("Follows the component \u{b7} {n} unused"),
-            (k, 0) => format!("{k} override(s) on this piece"),
-            (k, n) => format!("{k} override(s) on this piece \u{b7} {n} unused"),
+            (0, 0) if self.is_variant => tr("chrome.inspector.follows_its_base").to_string(),
+            (0, 0) => tr("chrome.inspector.follows_the_component").to_string(),
+            (0, n) => ph2d_i18n::tr_with("chrome.inspector.follows_unused", &[("n", &n)]),
+            (k, 0) => ph2d_i18n::tr_with("chrome.inspector.overrides", &[("k", &k)]),
+            (k, n) => {
+                ph2d_i18n::tr_with("chrome.inspector.overrides_unused", &[("k", &k), ("n", &n)])
+            }
         };
         // ⭐⭐⭐ **As diferenças de ESTRUTURA entram aqui, e a ausência delas era um defeito meu**
         // (F5.11): a F5.10 ensinou a cópia a **recusar** uma peça e não ensinou este resumo a
@@ -310,10 +313,16 @@ impl InspectorInstanceInfo {
         // `unused` já fazia.
         let (a, r) = (self.added_rows.len(), self.removed_rows.len());
         if a > 0 {
-            s.push_str(&format!(" \u{b7} {a} added"));
+            s.push_str(&ph2d_i18n::tr_with(
+                "chrome.inspector.n_added",
+                &[("n", &a)],
+            ));
         }
         if r > 0 {
-            s.push_str(&format!(" \u{b7} {r} removed"));
+            s.push_str(&ph2d_i18n::tr_with(
+                "chrome.inspector.n_removed",
+                &[("n", &r)],
+            ));
         }
         s
     }

@@ -431,7 +431,8 @@ fn the_menu_offers_group_and_ungroup_by_name() {
             )
         });
         assert_eq!(
-            label.tr(), rotulo,
+            label.tr(),
+            rotulo,
             "a linha mudou de nome - o artista procura a palavra que os outros editores usam"
         );
     }

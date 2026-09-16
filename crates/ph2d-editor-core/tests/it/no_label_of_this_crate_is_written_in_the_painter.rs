@@ -53,6 +53,99 @@ const NOT_LANGUAGE: &[(&str, &str)] = &[(
      estuda».",
 )];
 
+/// ⭐ **As excepções LITERAL A LITERAL** — texto que a régua lê como língua e que não é interface.
+///
+/// ⚠️ Nasceu em 2026-09-16, quando a dívida chegou a zero e sobraram só estes: a `NOT_LANGUAGE`
+/// acima isenta um DIRECTÓRIO (e exige população de bancada), e usá-la para um ficheiro inteiro por
+/// causa de um literal esconderia o próximo rótulo que ali nascesse. Cada linha é conferida viva por
+/// `ph2d_label_census::gate::excecoes_mortas`.
+const NOT_LANGUAGE_TEXT: &[ph2d_label_census::gate::Excecao] = &[
+    (
+        "interaction/dispatch/hierarchy.rs",
+        "LINHA DA HIERARQUIA",
+        "diagnóstico de consola (`diag_down`, só com a variável de ambiente ligada) — sai por \
+         `eprintln!` para quem caça o report, nunca para o ecrã",
+    ),
+    (
+        "interaction/dispatch/hierarchy.rs",
+        "outro widget {id:?}",
+        "o mesmo diagnóstico de consola do `diag_down` — a frase leva um `NodeId` em Debug",
+    ),
+    (
+        "interaction/dispatch/hierarchy.rs",
+        "nada (canvas ou fundo de painel)",
+        "o mesmo diagnóstico de consola do `diag_down`, o terceiro braço do mesmo `match`",
+    ),
+    (
+        "interaction/state/store_core.rs",
+        "Level_01",
+        "o NOME DE FICHEIRO da cena por omissão — um dado do projecto (identificador com `_`), \
+         que o artista renomeia; traduzi-lo mudaria o nome do ficheiro por língua",
+    ),
+    (
+        "screens/hero/fixture.rs",
+        "Level_01",
+        "a cena de amostra da barra do topo — o mesmo nome de ficheiro do `store_core`",
+    ),
+    (
+        "screens/hero/fixture.rs",
+        "Level_02",
+        "a lista de cenas de AMOSTRA (`fixture::scenes`) — nomes de ficheiro de um projecto de \
+         demonstração, não vocabulário do app",
+    ),
+    (
+        "screens/hero/fixture.rs",
+        "Level_03",
+        "a lista de cenas de amostra (`fixture::scenes`) — nome de ficheiro, não vocabulário",
+    ),
+    (
+        "screens/hero/fixture.rs",
+        "Main_Menu",
+        "a lista de cenas de amostra (`fixture::scenes`) — nome de ficheiro, não vocabulário",
+    ),
+    (
+        "screens/hero/fixture.rs",
+        "Title_Screen",
+        "a lista de cenas de amostra (`fixture::scenes`) — nome de ficheiro, não vocabulário",
+    ),
+    (
+        "screens/hero/fixture.rs",
+        "Boss_Arena",
+        "a lista de cenas de amostra (`fixture::scenes`) — nome de ficheiro, não vocabulário",
+    ),
+    (
+        "screens/hero/fixture.rs",
+        "Credits",
+        "a lista de cenas de amostra (`fixture::scenes`) — nome de ficheiro, não vocabulário",
+    ),
+    (
+        "screens/hero/fixture.rs",
+        "Test_Sandbox",
+        "a lista de cenas de amostra (`fixture::scenes`) — nome de ficheiro, não vocabulário",
+    ),
+    (
+        "screens/hero/pre_populate_blender.rs",
+        "#E7E7E7FF",
+        "o VALOR inicial da caixa hexadecimal do seletor — um número de cor, igual em toda língua",
+    ),
+    (
+        "widget/blender_color_picker/segmented.rs",
+        "RGB",
+        "o nome de um MODELO de cor, um símbolo técnico igual em toda língua (a nota da dívida de \
+         2026-09-13 já o pedia aqui)",
+    ),
+    (
+        "widget/blender_color_picker/segmented.rs",
+        "HSV",
+        "o nome de um modelo de cor — símbolo técnico igual em toda língua, como o RGB ao lado",
+    ),
+    (
+        "widget/blender_color_picker/segmented.rs",
+        "OKLCH",
+        "o nome de um espaço de cor perceptual — símbolo técnico igual em toda língua",
+    ),
+];
+
 /// ⛔ **A DÍVIDA, contada pela régua lexical em 2026-09-13** — `(ficheiro relativo a src/, literais)`.
 ///
 /// ⚠️ **Ela SÓ DESCE.** O número é o que a régua mede hoje; um ficheiro que ganhe um literal reprova
@@ -80,46 +173,12 @@ const NOT_LANGUAGE: &[(&str, &str)] = &[(
 /// (`ids::MenuRow`, `left_rail::RailTool`) e o texto sai de `ph2d-i18n/src/chrome_menus.rs` e
 /// `chrome_rail.rs`. ⚠️ O `left_rail` tinha SUBIDO de 71 para 74 nesse dia, e foi a RÉGUA outra
 /// vez: `"C&F"` passou a contar como língua (`B&W` da pilha de ajustes).
-const DIVIDA: &[(&str, usize)] = &[
-    ("floating_panel.rs", 13),
-    ("grid_snap/inspect.rs", 21),
-    ("grid_snap/state.rs", 9),
-    ("interaction/dispatch/hierarchy.rs", 3),
-    ("interaction/drag_payload.rs", 2),
-    ("interaction/state/blender_ops.rs", 3),
-    ("interaction/state/chrome_ops.rs", 1),
-    ("interaction/state/store_core.rs", 1),
-    ("paint.rs", 3),
-    ("panel/registry.rs", 1),
-    ("screens/hero.rs", 1),
-    ("screens/hero/asset_drag_ghost.rs", 1),
-    ("screens/hero/bottom_hud.rs", 12),
-    ("screens/hero/canvas.rs", 2),
-    ("screens/hero/chrome/fill_modal.rs", 3),
-    ("screens/hero/color_picker_demo.rs", 1),
-    ("screens/hero/context_menu_dialogs.rs", 9),
-    ("screens/hero/fixture.rs", 26),
-    ("screens/hero/inspector_model.rs", 1),
-    ("screens/hero/inspector_model_anchor.rs", 3),
-    ("screens/hero/inspector_model_instance.rs", 15),
-    ("screens/hero/pre_populate.rs", 17),
-    ("screens/hero/pre_populate_blender.rs", 2),
-    ("screens/hero/prefab_bar.rs", 4),
-    ("screens/hero/topbar/chip_name.rs", 35),
-    ("screens/hero/topbar/cluster_painter.rs", 6),
-    ("screens/hero/topbar/tooltips.rs", 28),
-    ("screens/task_layout.rs", 6),
-    ("widget/blender_color_picker/harmony.rs", 8),
-    ("widget/blender_color_picker/paint.rs", 24),
-    ("widget/blender_color_picker/palette.rs", 3),
-    ("widget/blender_color_picker/segmented.rs", 4),
-    ("widget/blender_color_picker/state.rs", 1),
-    ("widget/color_picker.rs", 11),
-    ("widget/combobox.rs", 1),
-    ("widget/dropdown/mod.rs", 1),
-    ("widget/key_value_list.rs", 2),
-    ("widget/variant_editor.rs", 9),
-];
+/// ⭐⭐⭐ **A ZERO desde 2026-09-16** — os 38 ficheiros que sobravam (o resto da moldura: barra do
+/// topo, HUD, diálogos, seletor de cor, cartão de instância, inspector da grelha, amostras) passaram
+/// à tabela (`ph2d-i18n/src/chrome_panes.rs`), e o que não é língua mora na `NOT_LANGUAGE_TEXT`, um
+/// literal de cada vez. ⛔ **A lista fica VAZIA e fica aqui:** é a catraca, e a partir de agora
+/// qualquer literal com cara de língua nesta crate reprova — não se volta a escrever uma entrada.
+const DIVIDA: &[(&str, usize)] = &[];
 
 fn src_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")
@@ -137,7 +196,11 @@ fn repo_root() -> PathBuf {
 fn per_file() -> BTreeMap<String, Vec<String>> {
     let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for l in language_literals(&src_root()) {
-        if NOT_LANGUAGE.iter().any(|(p, _)| l.rel.starts_with(p)) {
+        if NOT_LANGUAGE.iter().any(|(p, _)| l.rel.starts_with(p))
+            || NOT_LANGUAGE_TEXT
+                .iter()
+                .any(|(f, t, _)| l.rel == *f && l.text == *t)
+        {
             continue;
         }
         out.entry(l.rel)
@@ -188,6 +251,17 @@ fn every_named_exception_still_shelters_a_real_literal() {
              ficou cega (ela tinha ~95 em 2026-09-13)"
         );
     }
+}
+
+/// ⭐ **E a metade justa das excepções LITERAIS** — cada uma com mecanismo, e cada uma ainda viva.
+#[test]
+fn every_named_literal_exception_still_names_a_real_literal() {
+    let mortas = ph2d_label_census::gate::excecoes_mortas(&src_root(), NOT_LANGUAGE_TEXT);
+    assert!(
+        mortas.is_empty(),
+        "excepções literais sem mecanismo ou sem literal:\n  {}",
+        mortas.join("\n  ")
+    );
 }
 
 /// ⛔⛔ **A METADE QUE IMPEDE A LICENÇA: a dívida desceu — escreva o número novo.**
@@ -244,6 +318,7 @@ fn every_chrome_key_exists_on_both_sides() {
         "crates/ph2d-i18n/src/chrome.rs",
         "crates/ph2d-i18n/src/chrome_menus.rs",
         "crates/ph2d-i18n/src/chrome_rail.rs",
+        "crates/ph2d-i18n/src/chrome_panes.rs",
     ];
     let repo = repo_root();
     let used = keys::keys_used(&repo, PREFIX, TABLES);

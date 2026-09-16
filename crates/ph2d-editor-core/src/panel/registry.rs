@@ -12,12 +12,6 @@ use super::ErasedPanel;
 use ph2d_a11y::NodeId;
 use std::sync::{Mutex, OnceLock};
 
-const REGISTRY_NOT_INSTALLED_MSG: &str = "\
-PANEL_REGISTRY not installed. Host must call \
-`ph2d_panel_registry_init::register_all_panels()` (or build a \
-`PanelRegistry` manually) before the first `HeroScreen::new`. \
-Tests should call `ph2d_editor_core::test_support::ensure_panel_registry()`.";
-
 /// Append-only registry built once at boot.
 pub struct PanelRegistry {
     panels: Vec<ErasedPanel>,
@@ -64,7 +58,14 @@ pub fn install_panel_registry(reg: PanelRegistry) -> bool {
 
 /// Run `f` with the locked registry. Panics if no registry installed.
 pub fn with_registry<R>(f: impl FnOnce(&mut PanelRegistry) -> R) -> R {
-    let mtx = PANEL_REGISTRY.get().expect(REGISTRY_NOT_INSTALLED_MSG);
+    // ⚠️ A mensagem mora DENTRO do `expect` (e não num `const` ao lado): é uma falha para quem
+    // escreve o host, nunca texto de ecrã, e é assim que a régua lexical do HR-15 o reconhece.
+    let mtx = PANEL_REGISTRY.get().expect(
+        "PANEL_REGISTRY not installed. Host must call \
+         `ph2d_panel_registry_init::register_all_panels()` (or build a `PanelRegistry` manually) \
+         before the first `HeroScreen::new`. Tests should call \
+         `ph2d_editor_core::test_support::ensure_panel_registry()`.",
+    );
     let mut guard = mtx.lock().expect("PANEL_REGISTRY mutex poisoned");
     f(&mut guard)
 }

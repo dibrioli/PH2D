@@ -26,6 +26,7 @@
 // direct consumers (Inspector, Grid Snap panel, etc.); paint.rs just
 // no longer references them.
 use crate::zones::{Layout, Rect, Zone};
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Color as TokenColor, ColorToken, Theme};
 use ph2d_vector::{Affine, BezPath, Circle, Color, Fill, Rect as VelloRect, Stroke, VectorScene};
@@ -407,9 +408,9 @@ impl Paint for Layout {
             // render text horizontally for now — vertical text needs
             // vello transform handling that's a follow-up).
             let label = match zone {
-                Zone::TopLeft => Some("EDIT"),
-                Zone::TopRight => Some("CREATE"),
-                Zone::Sidebar => Some("MOD"),
+                Zone::TopLeft => Some(tr("chrome.zone.edit")),
+                Zone::TopRight => Some(tr("chrome.zone.create")),
+                Zone::Sidebar => Some(tr("chrome.zone.mod")),
                 Zone::Center => None,
             };
             if let Some(label) = label {

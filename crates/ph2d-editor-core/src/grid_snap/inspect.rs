@@ -16,6 +16,7 @@ use crate::zones::Rect;
 use ph2d_grid::GridMath;
 use ph2d_grid::Vec2;
 use ph2d_grid::hex::{HexCell, axial_to_cube, axial_to_offset};
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, list_row_gap_px};
 use ph2d_vector::VectorScene;
@@ -71,8 +72,20 @@ pub fn snapshot(state: &GridSnapState) -> InspectSnapshot {
         GridKind::Tri => snapshot_tri(state),
         GridKind::Chunks => snapshot_chunks(state),
         GridKind::Quadtree | GridKind::Voronoi => InspectSnapshot {
-            probe_a_label: format!("World ({:.2}, {:.2})", state.probe_a[0], state.probe_a[1]),
-            probe_b_label: format!("World ({:.2}, {:.2})", state.probe_b[0], state.probe_b[1]),
+            probe_a_label: ph2d_i18n::tr_with(
+                "chrome.grid_snap.coord.world",
+                &[
+                    ("a", &format!("{:.2}", state.probe_a[0])),
+                    ("b", &format!("{:.2}", state.probe_a[1])),
+                ],
+            ),
+            probe_b_label: ph2d_i18n::tr_with(
+                "chrome.grid_snap.coord.world",
+                &[
+                    ("a", &format!("{:.2}", state.probe_b[0])),
+                    ("b", &format!("{:.2}", state.probe_b[1])),
+                ],
+            ),
             probe_a_extra: String::new(),
             distance: u32::MAX,
             line_length: 0,
@@ -92,8 +105,14 @@ fn snapshot_square(state: &GridSnapState) -> InspectSnapshot {
     g.line(a, b, &mut buf);
     let line_len = buf.len() as u32;
     InspectSnapshot {
-        probe_a_label: format!("Square ({}, {})", a.0, a.1),
-        probe_b_label: format!("Square ({}, {})", b.0, b.1),
+        probe_a_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.square",
+            &[("a", &a.0), ("b", &a.1)],
+        ),
+        probe_b_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.square",
+            &[("a", &b.0), ("b", &b.1)],
+        ),
         probe_a_extra: String::new(),
         distance: g.distance(a, b),
         line_length: line_len,
@@ -114,11 +133,23 @@ fn snapshot_hex(state: &GridSnapState) -> InspectSnapshot {
     g.line(a, b, &mut buf);
     let line_len = buf.len() as u32;
     InspectSnapshot {
-        probe_a_label: format!("Hex axial ({}, {})", a.q, a.r),
-        probe_b_label: format!("Hex axial ({}, {})", b.q, b.r),
-        probe_a_extra: format!(
-            "offset ({}, {}) \u{00B7} cube ({}, {}, {})",
-            a_offset.col, a_offset.row, a_cube.x, a_cube.y, a_cube.z
+        probe_a_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.hex_axial",
+            &[("a", &a.q), ("b", &a.r)],
+        ),
+        probe_b_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.hex_axial",
+            &[("a", &b.q), ("b", &b.r)],
+        ),
+        probe_a_extra: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.hex_extra",
+            &[
+                ("col", &a_offset.col),
+                ("row", &a_offset.row),
+                ("x", &a_cube.x),
+                ("y", &a_cube.y),
+                ("z", &a_cube.z),
+            ],
         ),
         distance: g.distance(a, b),
         line_length: line_len,
@@ -136,8 +167,14 @@ fn snapshot_iso(state: &GridSnapState) -> InspectSnapshot {
     let n = buf.len() as u32;
     g.line(a, b, &mut buf);
     InspectSnapshot {
-        probe_a_label: format!("Iso ({}, {})", a.0, a.1),
-        probe_b_label: format!("Iso ({}, {})", b.0, b.1),
+        probe_a_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.iso",
+            &[("a", &a.0), ("b", &a.1)],
+        ),
+        probe_b_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.iso",
+            &[("a", &b.0), ("b", &b.1)],
+        ),
         probe_a_extra: String::new(),
         distance: g.distance(a, b),
         line_length: buf.len() as u32,
@@ -155,8 +192,14 @@ fn snapshot_staggered_square(state: &GridSnapState) -> InspectSnapshot {
     let n = buf.len() as u32;
     g.line(a, b, &mut buf);
     InspectSnapshot {
-        probe_a_label: format!("StagSq ({}, {})", a.0, a.1),
-        probe_b_label: format!("StagSq ({}, {})", b.0, b.1),
+        probe_a_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.stag_sq",
+            &[("a", &a.0), ("b", &a.1)],
+        ),
+        probe_b_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.stag_sq",
+            &[("a", &b.0), ("b", &b.1)],
+        ),
         probe_a_extra: String::new(),
         distance: g.distance(a, b),
         line_length: buf.len() as u32,
@@ -174,8 +217,14 @@ fn snapshot_staggered_hex(state: &GridSnapState) -> InspectSnapshot {
     let n = buf.len() as u32;
     g.line(a, b, &mut buf);
     InspectSnapshot {
-        probe_a_label: format!("Hex offset ({}, {})", a.col, a.row),
-        probe_b_label: format!("Hex offset ({}, {})", b.col, b.row),
+        probe_a_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.hex_offset",
+            &[("a", &a.col), ("b", &a.row)],
+        ),
+        probe_b_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.hex_offset",
+            &[("a", &b.col), ("b", &b.row)],
+        ),
         probe_a_extra: String::new(),
         distance: g.distance(a, b),
         line_length: buf.len() as u32,
@@ -193,13 +242,25 @@ fn snapshot_tri(state: &GridSnapState) -> InspectSnapshot {
     let n = buf.len() as u32;
     g.line(a, b, &mut buf);
     InspectSnapshot {
-        probe_a_label: format!(
-            "Tri (k={}, r={}, {})",
-            a.k,
-            a.r,
-            if a.is_up() { "up" } else { "down" }
+        probe_a_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.tri_facing",
+            &[
+                ("k", &a.k),
+                ("r", &a.r),
+                (
+                    "facing",
+                    &ph2d_i18n::tr(if a.is_up() {
+                        "chrome.grid_snap.coord.up"
+                    } else {
+                        "chrome.grid_snap.coord.down"
+                    }),
+                ),
+            ],
         ),
-        probe_b_label: format!("Tri (k={}, r={})", b.k, b.r),
+        probe_b_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.tri",
+            &[("k", &b.k), ("r", &b.r)],
+        ),
         probe_a_extra: String::new(),
         distance: g.distance(a, b),
         line_length: buf.len() as u32,
@@ -218,8 +279,11 @@ fn snapshot_chunks(state: &GridSnapState) -> InspectSnapshot {
     g.line(a, b, &mut buf);
     let chunk = g.chunk_of(a);
     InspectSnapshot {
-        probe_a_label: format!("Sq ({}, {}) chunk ({}, {})", a.0, a.1, chunk.0, chunk.1),
-        probe_b_label: format!("Sq ({}, {})", b.0, b.1),
+        probe_a_label: ph2d_i18n::tr_with(
+            "chrome.grid_snap.coord.sq_chunk",
+            &[("a", &a.0), ("b", &a.1), ("ca", &chunk.0), ("cb", &chunk.1)],
+        ),
+        probe_b_label: ph2d_i18n::tr_with("chrome.grid_snap.coord.sq", &[("a", &b.0), ("b", &b.1)]),
         probe_a_extra: String::new(),
         distance: g.distance(a, b),
         line_length: buf.len() as u32,
@@ -254,7 +318,7 @@ pub fn paint(
 ) {
     let header = SectionHeader {
         id: crate::NodeId(0),
-        label: "Inspect".to_string(),
+        label: tr("chrome.grid_snap.inspect").to_string(),
         count: None,
         collapsible: None,
         open_t: None,
@@ -284,7 +348,7 @@ pub fn paint(
             snap.probe_b_label.clone(),
         ),
         (
-            "Distance".to_string(),
+            tr("chrome.grid_snap.distance").to_string(),
             if snap.distance == u32::MAX {
                 "n/a".to_string()
             } else {
@@ -292,8 +356,11 @@ pub fn paint(
             },
         ),
         (
-            "Line / Neighbors".to_string(),
-            format!("{} cells / {}", snap.line_length, snap.neighbors),
+            tr("chrome.grid_snap.line_neighbors").to_string(),
+            ph2d_i18n::tr_with(
+                "chrome.grid_snap.cells_neighbors",
+                &[("cells", &snap.line_length), ("neighbors", &snap.neighbors)],
+            ),
         ),
     ];
 

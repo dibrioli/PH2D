@@ -22,6 +22,7 @@ use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use crate::widget::{RadioGroup, RadioOption, RadioOrientation, paint_radio_group_with_labels};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ColorValue, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -71,13 +72,13 @@ impl Harmony {
     #[must_use]
     pub fn label(self) -> &'static str {
         match self {
-            Harmony::None => "Off",
-            Harmony::Complementary => "Comp",
-            Harmony::Analogous => "Anlg",
-            Harmony::Triad => "Triad",
-            Harmony::SplitComplementary => "Split",
-            Harmony::Tetrad => "Tetra",
-            Harmony::Monochromatic => "Mono",
+            Harmony::None => tr("chrome.color.off"),
+            Harmony::Complementary => tr("chrome.color.comp"),
+            Harmony::Analogous => tr("chrome.color.anlg"),
+            Harmony::Triad => tr("chrome.color.triad"),
+            Harmony::SplitComplementary => tr("chrome.color.split"),
+            Harmony::Tetrad => tr("chrome.color.tetra"),
+            Harmony::Monochromatic => tr("chrome.color.mono"),
         }
     }
 
@@ -160,7 +161,7 @@ pub fn paint_harmony_section(
     let sel_rect = Rect::new(rect.x, rect.y, rect.w, HARMONY_SEL_H);
     let group = RadioGroup::new(
         NodeId(0),
-        "Harmony",
+        tr("chrome.color.harmony"),
         Harmony::ALL
             .iter()
             .map(|h| RadioOption::new(NodeId(0), h.key(), h.label()))

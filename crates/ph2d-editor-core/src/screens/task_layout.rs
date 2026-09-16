@@ -43,6 +43,7 @@
 //! bloqueador, e entram no dia em que o bloqueador cair.
 
 use crate::screens::slot::Slot;
+use ph2d_i18n::TextKey;
 
 /// Um layout por tarefa (**D7**).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -88,8 +89,8 @@ pub enum CanvasOwner {
 
 /// O que um layout arruma.
 pub struct LayoutSpec {
-    /// O nome na aba.
-    pub title: &'static str,
+    /// O nome na aba — a CHAVE (`LayoutSpec` sai de uma `const fn`, onde o `tr` não corre).
+    pub title: TextKey,
     /// O que a chave do ficheiro guarda. ⚠️ `snake_case` e não o `Debug`, pela razão do
     /// [`Slot::wire`]: renomear a variante não pode apagar a arrumação gravada de ninguém.
     pub wire: &'static str,
@@ -144,7 +145,7 @@ impl TaskLayout {
             // senão ele fecha e não há quem o reabra. Gate: `a_layout_names_the_inspector_exactly_
             // when_its_canvas_owner_does_not_take_it_over`.
             Self::Drawing2d => LayoutSpec {
-                title: "Draw",
+                title: TextKey::new("chrome.layout.draw"),
                 wire: "drawing_2d",
                 // ⚠️ O `painter_layers` vem COM a ferramenta (`painter_bridge`), e por isso não se
                 // nomeia aqui — ver o cabeçalho.
@@ -153,21 +154,21 @@ impl TaskLayout {
                 canvas: CanvasOwner::Tool("painter"),
             },
             Self::Vector => LayoutSpec {
-                title: "Vector",
+                title: TextKey::new("chrome.layout.vector"),
                 wire: "vector",
                 open: &["hierarchy", "inspector"],
                 slots: &[],
                 canvas: CanvasOwner::Tool("vector"),
             },
             Self::Flip => LayoutSpec {
-                title: "Flip",
+                title: TextKey::new("chrome.layout.flip"),
                 wire: "flip",
                 open: &["hierarchy", "inspector"],
                 slots: &[],
                 canvas: CanvasOwner::Tool("flip"),
             },
             Self::Modeling3d => LayoutSpec {
-                title: "Model",
+                title: TextKey::new("chrome.layout.model"),
                 wire: "modeling_3d",
                 // ⚠️ Abrir o painel **é** entrar no modo (`set_armed_by_panel`) — por isso ele é do
                 // layout, e a ferramenta em mãos é largada pela lei do `field3d_mode`, no shell.
@@ -176,14 +177,14 @@ impl TaskLayout {
                 canvas: CanvasOwner::Model3d,
             },
             Self::Animation => LayoutSpec {
-                title: "Animate",
+                title: TextKey::new("chrome.layout.animate"),
                 wire: "animation",
                 open: &["hierarchy", "inspector", "timeline"],
                 slots: &[],
                 canvas: CanvasOwner::Tool("move"),
             },
             Self::Nodes => LayoutSpec {
-                title: "Nodes",
+                title: TextKey::new("chrome.layout.nodes"),
                 wire: "nodes",
                 // ⚠️ O `motion_graph` é o **centro** (ele parte a área de desenho) e vem com a
                 // ferramenta. A linha do tempo é nomeada porque é do layout, e a ponte do motion

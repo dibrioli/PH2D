@@ -11,6 +11,7 @@ use crate::widget::{
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -80,7 +81,7 @@ pub fn paint_palette_section(
         .get(active)
         .map(|p| p.name.clone())
         .unwrap_or_default();
-    let mut dd = Dropdown::new(ids.palette_dropdown, "Palette", options)
+    let mut dd = Dropdown::new(ids.palette_dropdown, tr("chrome.color.palette"), options)
         .placeholder(active_name)
         .open(open);
     dd.select(active);
@@ -193,8 +194,8 @@ pub fn paint_palettes_with_hits(
         let by = rect.y + rect.h - btn_h;
         let bw = (rect.w - gap) / 2.0;
         for (id, label, bx) in [
-            (import_id, "Import", rect.x),
-            (export_id, "Export", rect.x + bw + gap),
+            (import_id, tr("chrome.color.import"), rect.x),
+            (export_id, tr("chrome.color.export"), rect.x + bw + gap),
         ] {
             if id.0 == 0 {
                 continue;

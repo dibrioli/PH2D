@@ -6,6 +6,7 @@
 use crate::ids;
 use crate::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
 use crate::widget::{ChannelMode, InterpolationMode, TextInputState};
+use ph2d_i18n::tr;
 use ph2d_tokens::ColorValue;
 
 /// Register every BlenderColorPicker sub-control slot. Called once from
@@ -135,7 +136,7 @@ pub(crate) fn populate_blender_picker(store: &mut WidgetStore) {
         ids::BLENDER_PALETTE_NAME,
         InteractiveState::TextInput {
             state: TextInputState::Normal,
-            text: "Palette".to_string(),
+            text: tr("chrome.color.palette").to_string(),
             caret: 7,
             selection_anchor: None,
         },

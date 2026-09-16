@@ -7,6 +7,7 @@ use super::state::{BlenderColorPicker, ChannelMode};
 use crate::widget::{RadioGroup, RadioOption, RadioOrientation, paint_radio_group_with_labels};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -20,7 +21,7 @@ pub fn paint_channel_toggle(
 ) {
     let group = RadioGroup::new(
         NodeId(0),
-        "Channel mode",
+        tr("chrome.color.channel_mode"),
         vec![
             RadioOption::new(NodeId(0), "rgb", "RGB"),
             RadioOption::new(NodeId(0), "hsv", "HSV"),

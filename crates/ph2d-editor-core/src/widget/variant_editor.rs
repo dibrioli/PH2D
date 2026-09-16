@@ -14,6 +14,7 @@ use super::dropdown::{Dropdown, DropdownOption, paint_dropdown_chip};
 use crate::paint::{paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -51,14 +52,14 @@ impl VariantKind {
         VariantKind::Dict,
     ];
 
-    pub const fn label(self) -> &'static str {
+    pub fn label(self) -> &'static str {
         match self {
-            VariantKind::None => "None",
-            VariantKind::Str => "Text",
-            VariantKind::Int => "Integer",
-            VariantKind::Float => "Float",
-            VariantKind::Color => "Color",
-            VariantKind::Dict => "Dictionary",
+            VariantKind::None => tr("chrome.widget.none"),
+            VariantKind::Str => tr("chrome.widget.text"),
+            VariantKind::Int => tr("chrome.widget.integer"),
+            VariantKind::Float => tr("chrome.widget.float"),
+            VariantKind::Color => tr("chrome.widget.color"),
+            VariantKind::Dict => tr("chrome.widget.dictionary"),
         }
     }
 }
@@ -243,7 +244,7 @@ pub fn paint_variant_editor(
         let chip = VariantEditor::kind_chip_rect(host, row, i, row_h);
         let dd = Dropdown::new(
             editor.row_kind_id(i),
-            "Kind",
+            tr("chrome.widget.kind"),
             VariantKind::ALL
                 .iter()
                 .map(|k| DropdownOption::new(editor.row_kind_id(i), *k, k.label()))
@@ -258,13 +259,13 @@ pub fn paint_variant_editor(
         match row.kind {
             VariantKind::Color => {
                 let rgba = parse_color_preview(&row.preview);
-                let sw =
-                    ColorSwatch::new(editor.row_kind_id(i), "Value", rgba).size(SwatchSize::Sm);
+                let sw = ColorSwatch::new(editor.row_kind_id(i), tr("chrome.widget.value"), rgba)
+                    .size(SwatchSize::Sm);
                 paint_color_swatch(&sw, val_rect, scene, theme);
             }
             _ => {
                 let txt = if row.clamped {
-                    format!("{} (max depth)", row.preview)
+                    ph2d_i18n::tr_with("chrome.widget.max_depth", &[("value", &row.preview)])
                 } else {
                     row.preview.clone()
                 };

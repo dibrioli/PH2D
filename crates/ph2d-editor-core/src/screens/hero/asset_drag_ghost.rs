@@ -22,6 +22,7 @@
 use crate::interaction::drag_payload::{DragVerdict, InFlightDrag};
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
+use ph2d_i18n::TextKey;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -36,8 +37,8 @@ const GHOST_OFFSET_PX: f32 = 14.0; // LITERAL-PX-OK: geometria do fantasma, não
 /// O que o fantasma diz quando o sítio debaixo do cursor não sabe receber.
 ///
 /// ⚠️ **Uma PALAVRA, e não só uma cor** — uma diferença que só existe em cor não chega a quem não
-/// distingue vermelho de verde. ⏳ Migra com os irmãos quando o Fluent chegar (HR-15).
-const REFUSED_LABEL: &str = "Won't take this";
+/// distingue vermelho de verde. A CHAVE (HR-15, 2026-09-16) — traduzida onde se pinta.
+const REFUSED_LABEL: TextKey = TextKey::new("chrome.canvas.wont_take_this");
 
 /// Pinta o que vai na mão. No-op se não há arrasto, ou se ele **ainda não armou** (o gesto pode
 /// acabar por ser um clique, e um fantasma que pisca a cada toque é ruído).
@@ -60,7 +61,7 @@ pub(super) fn paint_asset_drag_ghost(
     // chega a quem não distingue vermelho de verde.
     let refused = drag.verdict == DragVerdict::Refuse;
     let label = if refused {
-        REFUSED_LABEL
+        REFUSED_LABEL.tr()
     } else {
         drag.payload.kind_label()
     };

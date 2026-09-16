@@ -1,4 +1,5 @@
 use super::*;
+use ph2d_i18n::tr;
 
 /// **O tecto da intensidade de emissão, do lado da UI** — plano `docs/Sprite_projeto/18` W8.
 ///
@@ -436,7 +437,7 @@ impl InspectorSpriteSource {
         match self {
             // Comprimida no dispositivo; o formato concreto depende do tier resolvido, e o
             // Inspector não o tem em mãos (o `snapshot` também não traz dimensões por isso).
-            Self::CookedTexture => "GPU compressed",
+            Self::CookedTexture => tr("chrome.inspector.gpu_compressed"),
             _ => match precision {
                 Some(p) => p.label(),
                 // Sem precisão medida não se inventa uma: o sprite pode ser procedural, ou o id da

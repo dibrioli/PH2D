@@ -15,6 +15,7 @@ use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
@@ -84,9 +85,24 @@ pub fn paint_blender_color_picker(
     y += TOGGLE_H + row_gap();
 
     let labels = match cp.channel_mode {
-        ChannelMode::Rgb => ["Red", "Green", "Blue", "Alpha"],
-        ChannelMode::Hsv => ["Hue", "Saturation", "Value", "Alpha"],
-        ChannelMode::Oklch => ["Lightness", "Chroma", "Hue", "Alpha"],
+        ChannelMode::Rgb => [
+            tr("chrome.color.red"),
+            tr("chrome.color.green"),
+            tr("chrome.color.blue"),
+            tr("chrome.color.alpha"),
+        ],
+        ChannelMode::Hsv => [
+            tr("chrome.color.hue"),
+            tr("chrome.color.saturation"),
+            tr("chrome.color.value"),
+            tr("chrome.color.alpha"),
+        ],
+        ChannelMode::Oklch => [
+            tr("chrome.color.lightness"),
+            tr("chrome.color.chroma"),
+            tr("chrome.color.hue"),
+            tr("chrome.color.alpha"),
+        ],
     };
     let values = match cp.channel_mode {
         ChannelMode::Rgb => [
@@ -289,9 +305,24 @@ pub fn paint_blender_color_picker_with_store(
     y += TOGGLE_H + row_gap();
 
     let labels = match local.channel_mode {
-        ChannelMode::Rgb => ["Red", "Green", "Blue", "Alpha"],
-        ChannelMode::Hsv => ["Hue", "Saturation", "Value", "Alpha"],
-        ChannelMode::Oklch => ["Lightness", "Chroma", "Hue", "Alpha"],
+        ChannelMode::Rgb => [
+            tr("chrome.color.red"),
+            tr("chrome.color.green"),
+            tr("chrome.color.blue"),
+            tr("chrome.color.alpha"),
+        ],
+        ChannelMode::Hsv => [
+            tr("chrome.color.hue"),
+            tr("chrome.color.saturation"),
+            tr("chrome.color.value"),
+            tr("chrome.color.alpha"),
+        ],
+        ChannelMode::Oklch => [
+            tr("chrome.color.lightness"),
+            tr("chrome.color.chroma"),
+            tr("chrome.color.hue"),
+            tr("chrome.color.alpha"),
+        ],
     };
     let values = match local.channel_mode {
         ChannelMode::Rgb => [

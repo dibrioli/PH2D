@@ -46,7 +46,7 @@ fn every_layout_opens_something_and_never_twice() {
 fn the_tab_titles_are_distinct_and_short() {
     let mut seen = std::collections::BTreeSet::new();
     for l in TaskLayout::ALL {
-        let t = l.spec().title;
+        let t = l.spec().title.tr();
         assert!(seen.insert(t), "dois layouts chamam-se {t:?}");
         assert!(
             !t.is_empty() && t.len() <= 10,

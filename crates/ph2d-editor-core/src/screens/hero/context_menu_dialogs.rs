@@ -12,6 +12,7 @@ use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::widget::{Button, TextInput, paint_button, paint_text_input_with_buffer};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -28,12 +29,12 @@ pub(super) fn paint_palette_rename_dialog(
 ) {
     paint_centered_input_dialog(
         CenteredInputDialog {
-            title: "Rename Palette",
-            hint: "Enter a new name, then Rename (or press Enter).",
+            title: tr("chrome.dialog.rename_palette"),
+            hint: tr("chrome.dialog.enter_a_new_name_then_rename_or_press_enter"),
             input_id: ids::BLENDER_PALETTE_NAME,
-            placeholder: "Palette name\u{2026}",
+            placeholder: tr("chrome.dialog.palette_name"),
             button_id: ids::CTX_MENU_PALETTE_RENAME,
-            button_label: "Rename",
+            button_label: tr("chrome.dialog.rename"),
         },
         scene,
         text_system,
@@ -304,9 +305,21 @@ pub(super) fn paint_new_image_dialog(
     y += row_h + gap;
     let sel_bg = store.new_image_bg();
     let bgs = [
-        (ids::CTX_MENU_NEW_IMAGE_BG_TRANSPARENT, "Transparent", 0u8),
-        (ids::CTX_MENU_NEW_IMAGE_BG_BLACK, "Black", 1u8),
-        (ids::CTX_MENU_NEW_IMAGE_BG_WHITE, "White", 2u8),
+        (
+            ids::CTX_MENU_NEW_IMAGE_BG_TRANSPARENT,
+            tr("chrome.dialog.transparent"),
+            0u8,
+        ),
+        (
+            ids::CTX_MENU_NEW_IMAGE_BG_BLACK,
+            tr("chrome.dialog.black"),
+            1u8,
+        ),
+        (
+            ids::CTX_MENU_NEW_IMAGE_BG_WHITE,
+            tr("chrome.dialog.white"),
+            2u8,
+        ),
     ];
     let m = bgs.len() as f32;
     let bgw = ((inner_w - gap * (m - 1.0)) / m).max(1.0);
@@ -329,7 +342,7 @@ pub(super) fn paint_new_image_dialog(
     // ── Create CTA ──
     let create_rect = Rect::new(inner_x, y, inner_w, row_h);
     hit_index.register(ids::CTX_MENU_NEW_IMAGE_CREATE, create_rect);
-    let btn = Button::new(ids::CTX_MENU_NEW_IMAGE_CREATE, "Create")
+    let btn = Button::new(ids::CTX_MENU_NEW_IMAGE_CREATE, tr("chrome.dialog.create"))
         .accent()
         .visual(store.button_visual(ids::CTX_MENU_NEW_IMAGE_CREATE));
     paint_button(&btn, create_rect, scene, text_system, theme);
@@ -431,8 +444,11 @@ pub(super) fn paint_sheet_size_dialog(
 
     let create_rect = Rect::new(inner_x, y, inner_w, row_h);
     hit_index.register(ids::CTX_MENU_SHEET_SIZE_CREATE, create_rect);
-    let btn = Button::new(ids::CTX_MENU_SHEET_SIZE_CREATE, "Create Sheet")
-        .accent()
-        .visual(store.button_visual(ids::CTX_MENU_SHEET_SIZE_CREATE));
+    let btn = Button::new(
+        ids::CTX_MENU_SHEET_SIZE_CREATE,
+        tr("chrome.dialog.create_sheet"),
+    )
+    .accent()
+    .visual(store.button_visual(ids::CTX_MENU_SHEET_SIZE_CREATE));
     paint_button(&btn, create_rect, scene, text_system, theme);
 }

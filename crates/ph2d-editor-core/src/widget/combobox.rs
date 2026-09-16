@@ -10,6 +10,7 @@ use crate::icons::IconId;
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -266,7 +267,7 @@ pub fn paint_combobox_with_state(
         ColorToken::Text1
     };
     let display = if cb.query.is_empty() {
-        "Search…"
+        tr("chrome.widget.search")
     } else {
         cb.query.as_str()
     };

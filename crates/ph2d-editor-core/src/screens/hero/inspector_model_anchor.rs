@@ -18,6 +18,7 @@
 //!
 //! [ADR-0072]: ../../../../docs/architecture/decisions/0072-named-anchor-unification.md
 
+use ph2d_i18n::tr;
 /// Uma âncora, como o Inspector a lê.
 ///
 /// ⚠️ **`pos` está em pixels da FONTE** e `rot_deg` em graus — as duas unidades que o artista
@@ -55,9 +56,9 @@ impl InspectorAnchorRow {
     /// A palavra que a linha mostra ao lado do nome.
     pub fn kind_label(&self) -> &'static str {
         match self.kind_tag() {
-            2 => "Region",
-            1 => "Slice",
-            _ => "Socket",
+            2 => tr("chrome.inspector.region"),
+            1 => tr("chrome.inspector.slice"),
+            _ => tr("chrome.inspector.socket"),
         }
     }
 }

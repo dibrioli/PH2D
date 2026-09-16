@@ -152,9 +152,7 @@ fn the_time_remap_menu_has_no_extrapolation_cascade() {
     // Remap track does not (its clock is its own, so extrapolation is inert). A row
     // offered but inert would be the dead-item bug the one-table-per-menu shape
     // exists to prevent.
-    let has = |menu: &[ids::MenuRow], id| {
-        menu.iter().any(|(row, _, _)| *row == id)
-    };
+    let has = |menu: &[ids::MenuRow], id| menu.iter().any(|(row, _, _)| *row == id);
     assert!(
         has(&ids::TIMELINE_TRACK_MENU, ids::CTX_MENU_TL_EXTRAP_PRE)
             && has(&ids::TIMELINE_TRACK_MENU, ids::CTX_MENU_TL_EXTRAP_POST),

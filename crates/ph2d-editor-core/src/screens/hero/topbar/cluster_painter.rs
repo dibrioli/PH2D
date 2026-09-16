@@ -9,6 +9,7 @@
 //! `cluster_width` is consulted by the same orchestrator to compute
 //! right-aligned layout. Neither is re-exported beyond `super`.
 use ph2d_a11y::NodeId;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, INLINE_ICON_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
@@ -385,9 +386,9 @@ pub(super) fn paint_top_bar_cluster(
             let col_w = TOPBAR_RAIL_CHIP_W;
             let col_stride = col_w + TOPBAR_INTER_CHIP_GAP;
             let entries = [
-                (id, IconId::Play, "Play"),
-                (ids::TOPBAR_PAUSE, IconId::Pause, "Pause"),
-                (ids::TOPBAR_RESET, IconId::Reset, "Reset"),
+                (id, IconId::Play, tr("chrome.topbar.play")),
+                (ids::TOPBAR_PAUSE, IconId::Pause, tr("chrome.topbar.pause")),
+                (ids::TOPBAR_RESET, IconId::Reset, tr("chrome.topbar.reset")),
             ];
             for (i, (chip_id, icon, label)) in entries.iter().enumerate() {
                 let col = Rect::new(rect.x + col_stride * i as f32, rect.y, col_w, rect.h);
@@ -413,9 +414,21 @@ pub(super) fn paint_top_bar_cluster(
             let col_w = TOPBAR_RAIL_CHIP_W;
             let col_stride = col_w + TOPBAR_INTER_CHIP_GAP;
             let entries = [
-                (ids::TOPBAR_RIGHT_LAYERS, IconId::Layers, "Layers"),
-                (ids::TOPBAR_RIGHT_ASSETS, IconId::Asset, "Assets"),
-                (ids::TOPBAR_RIGHT_SCRIPT, IconId::Script, "Script"),
+                (
+                    ids::TOPBAR_RIGHT_LAYERS,
+                    IconId::Layers,
+                    tr("chrome.topbar.layers"),
+                ),
+                (
+                    ids::TOPBAR_RIGHT_ASSETS,
+                    IconId::Asset,
+                    tr("chrome.topbar.assets"),
+                ),
+                (
+                    ids::TOPBAR_RIGHT_SCRIPT,
+                    IconId::Script,
+                    tr("chrome.topbar.script"),
+                ),
             ];
             for (i, (chip_id, icon, label)) in entries.iter().enumerate() {
                 let col = Rect::new(rect.x + col_stride * i as f32, rect.y, col_w, rect.h);

@@ -5,6 +5,7 @@
 //! tool changes or 4-finger tap fires Zen mode.
 
 use crate::zones::Rect;
+use ph2d_i18n::tr;
 
 /// Stable id identifying which tool this panel belongs to.
 /// Position memory is keyed by this id so reactivating the tool
@@ -250,67 +251,67 @@ impl FloatingPanel {
 ///
 /// Useful in tests and as the M12 demo.
 pub fn selection_demo_panel() -> FloatingPanel {
-    FloatingPanel::new(ToolId::new("selection"), "Selection")
+    FloatingPanel::new(ToolId::new("selection"), tr("chrome.floating.selection"))
         .with_tabs(vec![
             PanelTab {
-                label: "Automatic".into(),
+                label: tr("chrome.floating.automatic").into(),
                 icon: None,
                 active: false,
             },
             PanelTab {
-                label: "Freehand".into(),
+                label: tr("chrome.floating.freehand").into(),
                 icon: None,
                 active: true,
             },
             PanelTab {
-                label: "Rectangle".into(),
+                label: tr("chrome.floating.rectangle").into(),
                 icon: None,
                 active: false,
             },
             PanelTab {
-                label: "Ellipse".into(),
+                label: tr("chrome.floating.ellipse").into(),
                 icon: None,
                 active: false,
             },
         ])
         .with_actions(vec![
             PanelAction {
-                label: "Add".into(),
+                label: tr("chrome.floating.add").into(),
                 icon: Some("+"),
                 enabled: true,
             },
             PanelAction {
-                label: "Remove".into(),
+                label: tr("chrome.floating.remove").into(),
                 icon: Some("−"),
                 enabled: true,
             },
             PanelAction {
-                label: "Invert".into(),
+                label: tr("chrome.floating.invert").into(),
                 icon: None,
                 enabled: true,
             },
             PanelAction {
-                label: "Copy & Paste".into(),
+                label: tr("chrome.floating.copy_and_paste").into(),
                 icon: None,
                 enabled: true,
             },
             PanelAction {
-                label: "Feather".into(),
+                label: tr("chrome.floating.feather").into(),
                 icon: None,
                 enabled: true,
             },
             PanelAction {
-                label: "Save & Load".into(),
+                label: tr("chrome.floating.save_and_load").into(),
                 icon: None,
                 enabled: true,
             },
             PanelAction {
-                label: "Color Fill".into(),
+                label: tr("chrome.floating.color_fill").into(),
                 icon: None,
                 enabled: true,
             },
             PanelAction {
-                label: "Clear".into(),
+                label: tr("chrome.floating.clear").into(),
                 icon: None,
                 enabled: true,
             },

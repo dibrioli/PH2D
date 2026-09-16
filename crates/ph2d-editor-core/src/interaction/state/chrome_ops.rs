@@ -568,7 +568,7 @@ impl WidgetStore {
         }
         list.push(NoteData {
             color_idx,
-            title: format!("Note {}", list.len() + 1),
+            title: ph2d_i18n::tr_with("chrome.interaction.note_n", &[("n", &(list.len() + 1))]),
             body: String::new(),
             before_section,
         });

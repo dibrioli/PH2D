@@ -23,6 +23,7 @@ use crate::widget::{
     HIERARCHY_SCROLLBAR_ID, INSPECTOR_SCROLLBAR_ID, ListItemState, SliderOrientation, SliderState,
     TagState, TextInputState, ToggleState,
 };
+use ph2d_i18n::tr;
 
 /// Register every shared widget slot the editor needs before the
 /// first paint. Called once from `HeroScreen::pre_populate_store`.
@@ -59,7 +60,7 @@ fn populate_samples(store: &mut WidgetStore) {
         ids::INSP_SAMPLE_TEXT,
         InteractiveState::TextInput {
             state: TextInputState::Normal,
-            text: "Player".to_string(),
+            text: tr("chrome.sample.player").to_string(),
             caret: 6,
             selection_anchor: None,
         },
@@ -68,7 +69,7 @@ fn populate_samples(store: &mut WidgetStore) {
         ids::INSP_SAMPLE_TEXTAREA,
         InteractiveState::TextInput {
             state: TextInputState::Normal,
-            text: "Notes about this entity…\nLine two.".to_string(),
+            text: tr("chrome.sample.notes").to_string(),
             caret: 0,
             selection_anchor: None,
         },
@@ -271,21 +272,54 @@ fn populate_samples(store: &mut WidgetStore) {
     }
 
     for (id, text) in [
-        (ids::INSP_SAMPLE_TEXT, "TextInput sample"),
-        (ids::INSP_SAMPLE_TEXTAREA, "TextArea sample"),
-        (ids::INSP_SAMPLE_COMBO, "Combobox sample"),
-        (ids::INSP_SAMPLE_NUMBER, "NumberInput sample"),
-        (ids::INSP_SAMPLE_SLIDER, "Slider × chip composite"),
-        (ids::INSP_SAMPLE_CHECKBOX, "Checkbox sample"),
-        (ids::INSP_SAMPLE_TOGGLE, "Toggle sample"),
-        (ids::INSP_SAMPLE_DROPDOWN, "Dropdown sample"),
-        (ids::INSP_SAMPLE_SWATCH, "ColorSwatch sample"),
-        (ids::INSP_SAMPLE_BTN_PRIMARY, "Primary button"),
-        (ids::INSP_SAMPLE_BTN_SECONDARY, "Secondary button"),
-        (ids::INSP_SAMPLE_BTN_DANGER, "Danger button"),
-        (ids::INSP_SAMPLE_BTN_ICON, "Icon button"),
-        (ids::INSP_SAMPLE_LIST_ITEM, "ListItem sample"),
-        (ids::INSP_SAMPLE_TAG_REMOVE, "Removable Tag"),
+        (ids::INSP_SAMPLE_TEXT, tr("chrome.sample.textinput_sample")),
+        (
+            ids::INSP_SAMPLE_TEXTAREA,
+            tr("chrome.sample.textarea_sample"),
+        ),
+        (ids::INSP_SAMPLE_COMBO, tr("chrome.sample.combobox_sample")),
+        (
+            ids::INSP_SAMPLE_NUMBER,
+            tr("chrome.sample.numberinput_sample"),
+        ),
+        (
+            ids::INSP_SAMPLE_SLIDER,
+            tr("chrome.sample.slider_chip_composite"),
+        ),
+        (
+            ids::INSP_SAMPLE_CHECKBOX,
+            tr("chrome.sample.checkbox_sample"),
+        ),
+        (ids::INSP_SAMPLE_TOGGLE, tr("chrome.sample.toggle_sample")),
+        (
+            ids::INSP_SAMPLE_DROPDOWN,
+            tr("chrome.sample.dropdown_sample"),
+        ),
+        (
+            ids::INSP_SAMPLE_SWATCH,
+            tr("chrome.sample.colorswatch_sample"),
+        ),
+        (
+            ids::INSP_SAMPLE_BTN_PRIMARY,
+            tr("chrome.sample.primary_button"),
+        ),
+        (
+            ids::INSP_SAMPLE_BTN_SECONDARY,
+            tr("chrome.sample.secondary_button"),
+        ),
+        (
+            ids::INSP_SAMPLE_BTN_DANGER,
+            tr("chrome.sample.danger_button"),
+        ),
+        (ids::INSP_SAMPLE_BTN_ICON, tr("chrome.sample.icon_button")),
+        (
+            ids::INSP_SAMPLE_LIST_ITEM,
+            tr("chrome.sample.listitem_sample"),
+        ),
+        (
+            ids::INSP_SAMPLE_TAG_REMOVE,
+            tr("chrome.sample.removable_tag"),
+        ),
     ] {
         store.set_tooltip(id, text);
     }

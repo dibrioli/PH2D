@@ -14,6 +14,7 @@ use crate::ids;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::widget::BlenderColorPicker;
 use crate::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Spacing, Theme};
 use ph2d_vector::VectorScene;
@@ -68,7 +69,7 @@ pub fn paint_blender_picker_demo(
     let Some(rect) = current_picker_rect(layout, store) else {
         return;
     };
-    let cp = BlenderColorPicker::new(ids::INSP_BLENDER_PICKER, "Color");
+    let cp = BlenderColorPicker::new(ids::INSP_BLENDER_PICKER, tr("chrome.color.color"));
     let sub_ids = crate::widget::BlenderSubIds {
         parent: ids::INSP_BLENDER_PICKER,
         wheel: ids::BLENDER_WHEEL,

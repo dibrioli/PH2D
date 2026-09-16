@@ -10,6 +10,7 @@ use crate::icons::IconId;
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -156,7 +157,7 @@ impl<T: Clone + PartialEq> Dropdown<T> {
             label: label.into(),
             options,
             selected: None,
-            placeholder: String::from("Select…"),
+            placeholder: String::from(tr("chrome.widget.select")),
             state: DropdownState::Normal,
             open: false,
             hover_t: crate::motion::SETTLED,

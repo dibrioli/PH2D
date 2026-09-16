@@ -68,7 +68,7 @@ pub fn tab_rects(
     let font = TypeToken::Sm.px();
     let widths: Vec<f32> = TaskLayout::ALL
         .iter()
-        .map(|l| text_system.prefix_width(l.spec().title, font) + tab_pad_x() * 2.0)
+        .map(|l| text_system.prefix_width(l.spec().title.tr(), font) + tab_pad_x() * 2.0)
         .collect();
     let total: f32 = widths.iter().sum();
     let mut x = bar.x + bar.w - total - Spacing::Sm.px();
@@ -146,7 +146,7 @@ pub fn paint(
         paint_text_centered(
             text_system,
             scene,
-            l.spec().title,
+            l.spec().title.tr(),
             r,
             TypeToken::Sm.px(),
             resolve(fg, theme),

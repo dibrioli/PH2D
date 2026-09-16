@@ -437,14 +437,11 @@ pub fn key(
             Some(Forma::Laco) => None,
         };
         match scene.trim.armado {
-            None => eprintln!("[sculpt3d] corte DESARMADO -- o arrasto volta a esculpir"),
+            None => eprintln!("[sculpt3d] Box Trim DESARMADO -- o arrasto volta a esculpir"),
             Some(f) => eprintln!(
-                "[sculpt3d] corte ARMADO ({}) -- arraste para desenhar a forma; o \
-                 barro so' muda quando LARGAR, e o Ctrl+Z devolve a peca inteira",
-                match f {
-                    Forma::Caixa => "caixa",
-                    Forma::Laco => "laco",
-                }
+                "[sculpt3d] {} ARMADO -- arraste para desenhar a forma; o barro \
+                 so' muda quando LARGAR, e o Ctrl+Z devolve a peca inteira",
+                f.label()
             ),
         }
         return true;

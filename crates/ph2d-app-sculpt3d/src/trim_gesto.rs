@@ -23,6 +23,26 @@ pub(crate) enum Forma {
     Laco,
 }
 
+impl Forma {
+    /// ⭐ **O NOME QUE O ARTISTA LÊ** — ordem do dono, 2026-09-15:
+    /// *«Coloque como Box Trim»*.
+    ///
+    /// ⚠️ **As variantes ficam no vocabulário do domínio e o RÓTULO vive num
+    /// sítio só.** São duas perguntas diferentes — *o que esta variante é* e
+    /// *como se chama a ferramenta* —, e escrever o nome à mão em cada sítio que
+    /// o imprime é como duas superfícies sobre o mesmo valor divergem.
+    ///
+    /// ⚠️ **São os nomes da referência**, e isso é de propósito: o dono chamou-a
+    /// *Box Trim* antes de eu lhe ter dado nome nenhum, e um artista que venha
+    /// de lá procura por estes.
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Caixa => "Box Trim",
+            Self::Laco => "Lasso Trim",
+        }
+    }
+}
+
 /// A orientação do varrimento que o artista pediu (espec §5).
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(crate) enum Orientacao {

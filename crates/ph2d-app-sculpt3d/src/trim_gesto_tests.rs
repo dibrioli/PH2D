@@ -152,3 +152,28 @@ fn a_previa_so_existe_quando_ha_forma_e_e_o_mesmo_anel() {
     assert_eq!(previa, g.anel(), "a prévia É o anel que a lei recebe");
     assert_eq!(previa.len(), 4);
 }
+
+/// **A ferramenta chama-se BOX TRIM, e o nome vive num sítio só.**
+///
+/// Ordem do dono (2026-09-15): *«Coloque como Box Trim»*. ⚠️ A metade de baixo
+/// é a que impede a recaída: o teclado tem de LER o rótulo, nunca escrever o
+/// nome à mão — *duas superfícies sobre o mesmo valor divergem no dia em que
+/// uma delas mudar*.
+#[test]
+fn a_ferramenta_chama_se_box_trim() {
+    use super::Forma;
+    assert_eq!(Forma::Caixa.label(), "Box Trim");
+    assert_eq!(Forma::Laco.label(), "Lasso Trim");
+
+    let teclado = include_str!("keys.rs");
+    assert!(
+        teclado.contains("f.label()"),
+        "o teclado deixou de ler o rótulo da forma"
+    );
+    for escrito_a_mao in ["\"caixa\"", "\"laco\""] {
+        assert!(
+            !teclado.contains(escrito_a_mao),
+            "o nome da forma voltou a ser escrito à mão no teclado: {escrito_a_mao}"
+        );
+    }
+}

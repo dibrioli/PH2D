@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 45;
+pub const CENAS: u32 = 46;
 
 /// **A env do roteador, lida DENTRO da crate.**
 ///
@@ -484,6 +484,11 @@ pub(crate) mod smear;
 /// o polegar que espalma e o empurrão que varre.
 #[path = "scenes_tangenciais.rs"]
 pub(crate) mod tangenciais;
+/// **O BOX TRIM** (`=46`) — ver [`trim`]. ⚠️ Ela abre com uma peça **mais leve**
+/// que o resto do módulo, e o número está na tabela do cabeçalho dela: um corte
+/// é `O(peça)` e corre no largar do rato.
+#[path = "scenes_trim.rs"]
+pub(crate) mod trim;
 /// **A CENA DOS QUATRO VIEWPORTS** (`=38`) — irmã da [`cloth_filter`] pela mesma
 /// linha de corte: cada arquivo é a história de uma wave.
 #[path = "scenes_viewports.rs"]

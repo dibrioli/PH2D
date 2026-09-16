@@ -207,6 +207,14 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
         // detalhe nascendo se vê.
         return ph2d_mesh::shapes::uv_sphere(10, 14, 1.0);
     }
+    if crate::scenes::trim::box_trim_scene() {
+        // ⚠️ **MAIS LEVE que o default do módulo, e o número é o argumento** —
+        // ver a tabela do cabeçalho da [`crate::scenes::trim`]: no default o
+        // corte custa `380,6 ms` contra `58,4` aqui, e ele corre no LARGAR do
+        // rato. *Uma cena que faz o gesto parecer travado ensina o contrário do
+        // que a ferramenta é.*
+        return crate::scenes::trim::peca();
+    }
     if crate::scenes::erase::erase_scene() || crate::scenes::smear::smear_scene() {
         return peca_de_multirresolucao();
     }

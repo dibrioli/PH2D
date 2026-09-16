@@ -293,3 +293,17 @@ fn os_valores_viajam_no_fio_e_a_ordem_das_variantes_e_o_contrato() {
         assert_eq!(back, v);
     }
 }
+
+#[test]
+fn um_script_nao_oferece_mais_propriedades_do_que_o_painel_pinta() {
+    let cheias: Vec<PropDecl> = (0..PROPS_MAX).map(|i| num(&format!("p{i}"), 0.0)).collect();
+    assert_eq!(
+        check_decl(&cheias[..PROPS_MAX - 1], &cheias[PROPS_MAX - 1]),
+        Ok(()),
+        "a última que cabe entra"
+    );
+    assert_eq!(
+        check_decl(&cheias, &num("mais", 0.0)),
+        Err(DeclError::TooMany("mais".into()))
+    );
+}

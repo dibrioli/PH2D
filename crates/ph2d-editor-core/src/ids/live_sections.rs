@@ -30,7 +30,7 @@ use super::*;
 /// ⚠️ `finish_section` lê `store.section_outline_color(<id da seção>)` para TODA seção viva, por
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 26] = [
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 27] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_COLOR),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_COLOR),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_COLOR),
@@ -78,6 +78,8 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 26] = [
     // a secção, que é exactamente o que o censo `architecture_every_live_section_is_in_the_table`
     // existe para garantir desde que a fábrica shipou fora desta tabela.
     (INSP_LIVE_SM_SECTION, INSP_LIVE_SM_COLOR),
+    // ⭐ A 27.ª — SCRIPT (TOP-20 #16), no mesmo commit que a secção, pela lei do censo acima.
+    (INSP_LIVE_SCRIPT_SECTION, INSP_LIVE_SCRIPT_COLOR),
 ];
 
 /// Só os cabeçalhos — **projeção** de [`LIVE_SECTIONS`], nunca uma segunda lista.

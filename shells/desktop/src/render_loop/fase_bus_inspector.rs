@@ -224,6 +224,10 @@ impl crate::App {
             EditorAction::InspectorStateMachineEdit { entity_bits, edit } => {
                 pd.statemachine_edits.push((entity_bits, edit));
             }
+            // ⭐ **A secção SCRIPT** (TOP-20 #16), pela mesma razão.
+            EditorAction::InspectorScriptEdit { entity_bits, edit } => {
+                pd.script_edits.push((entity_bits, edit));
+            }
             EditorAction::InspectorTagsEdit { entity_bits, edit } => {
                 pd.tags_edits.push((entity_bits, edit));
             }

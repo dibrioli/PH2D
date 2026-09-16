@@ -246,6 +246,8 @@ pub enum DeclError {
     BadHint(String),
     /// `ph2d.property` chamada fora do topo do script.
     NotAtTop(String),
+    /// Mais declarações do que o painel sabe pintar ([`PROPS_MAX`]).
+    TooMany(String),
 }
 
 impl std::fmt::Display for DeclError {
@@ -268,6 +270,10 @@ impl std::fmt::Display for DeclError {
                 f,
                 "property '{n}': min/max/step need a number default, step > 0 and min <= max"
             ),
+            Self::TooMany(n) => write!(
+                f,
+                "property '{n}': a script can offer at most {PROPS_MAX} properties"
+            ),
             Self::NotAtTop(n) => write!(
                 f,
                 "ph2d.property('{n}') must be called at the top of the script, not inside a function"
@@ -275,6 +281,14 @@ impl std::fmt::Display for DeclError {
         }
     }
 }
+
+/// **Quantas propriedades um script pode oferecer.**
+///
+/// ⚠️ **De que recurso ele é:** das LINHAS que a secção do Inspector sabe pintar — os ids dela são
+/// uma tabela deste tamanho, e *um modelo que aceita o que o painel não mostra produz estado
+/// inalcançável* (a lei do `ANIM_TAGS_MAX`). Os dois números são o MESMO facto, e um gate na shell,
+/// que vê as duas crates, afirma-o.
+pub const PROPS_MAX: usize = 32;
 
 /// Os nomes que o `self` já usa — um script não os pode declarar.
 pub const RESERVED_NAMES: &[&str] = &["id"];
@@ -297,6 +311,9 @@ pub fn check_decl(previous: &[PropDecl], decl: &PropDecl) -> Result<(), DeclErro
     }
     if previous.iter().any(|p| p.name == *n) {
         return Err(DeclError::Twice(n.clone()));
+    }
+    if previous.len() >= PROPS_MAX {
+        return Err(DeclError::TooMany(n.clone()));
     }
     if let ScriptValue::Number(v) = decl.default
         && !v.is_finite()

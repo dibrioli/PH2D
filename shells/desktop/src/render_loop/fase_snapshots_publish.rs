@@ -53,6 +53,7 @@ impl crate::App {
             component_registry,
             tags,
             tags_problem,
+            script,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -201,6 +202,17 @@ impl crate::App {
                 tags_problem.as_ref(),
             ));
         }
+        // ⭐⭐⭐ **A secção SCRIPT** (TOP-20 #16) — publicada à parte porque só ela precisa da VM, que
+        // o `publish` acima não recebe. O corpo mora na `ph2d_app_components::script_inspector`.
+        ph2d_panel_inspector::set_current_inspector_script(hero.gizmo.selection.and_then(|b| {
+            ph2d_app_components::script_inspector::build_info(
+                sim,
+                script.as_ref(),
+                b,
+                hero.gizmo.selected_len(),
+                self.playhead.is_playing(),
+            )
+        }));
         Some(tool_preview_bits)
     }
 }

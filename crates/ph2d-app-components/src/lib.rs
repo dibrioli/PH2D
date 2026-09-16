@@ -113,6 +113,8 @@ pub mod projectile_smoke;
 pub mod scene_ctx;
 /// ⭐ TOP-20 #16 — a ponte dos scripts do artista (o quadro, o ledger e o rebobinar).
 pub mod script_bridge;
+/// ⭐ TOP-20 #16 — a secção SCRIPT do Inspector: o instantâneo e o dreno.
+pub mod script_inspector;
 pub mod signal_action_smoke;
 /// ⭐⭐⭐ O smoke do CÉREBRO AUTORÁVEL (TOP-20 #15) — ver o cabeçalho.
 pub mod statemachine_smoke;

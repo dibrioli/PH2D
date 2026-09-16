@@ -246,6 +246,7 @@ pub(crate) fn paint_optional_sections(
     topdown: Option<&ph2d_editor_core::topdown_edits::InspectorTopDownInfo>,
     projectile: Option<&ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
     statemachine: Option<&ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
+    script: Option<&ph2d_editor_core::script_edits::InspectorScriptInfo>,
     // ⚠️ **Duas selecções e não uma** — as listas de estados e de setas são independentes.
     sm_state_selected: &mut usize,
     sm_trans_selected: &mut usize,
@@ -421,6 +422,20 @@ pub(crate) fn paint_optional_sections(
         statemachine,
         *sm_state_selected,
         *sm_trans_selected,
+    );
+    y = crate::paint_optional_factory::paint_script_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        script,
     );
     crate::paint_optional_factory::paint_tags_section(
         scene,

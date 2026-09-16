@@ -383,6 +383,15 @@ pub enum EditorAction {
         edit: crate::statemachine_edits::StateMachineFieldEdit,
     },
 
+    /// Inspector → shell, a secção SCRIPT (TOP-20 #16, W3).
+    ///
+    /// ⚠️ **Uma variante para o componente inteiro**, como as irmãs — e o `Browse` viaja por aqui
+    /// também, porque é a shell que tem a janela para abrir o diálogo.
+    InspectorScriptEdit {
+        entity_bits: u64,
+        edit: crate::script_edits::ScriptFieldEdit,
+    },
+
     /// Inspector → shell, a secção PROJECTILE MOTION (TOP-20 #14, W3).
     ///
     /// ⚠️ **Uma variante para o componente inteiro**, como as irmãs.

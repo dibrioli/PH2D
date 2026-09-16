@@ -56,6 +56,8 @@ pub(crate) struct LiveSnapshots {
     pub projectile_info: Option<ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
     /// ⭐ O snapshot do CÉREBRO (TOP-20 #15).
     pub statemachine_info: Option<ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
+    /// ⭐ O snapshot do SCRIPT (TOP-20 #16).
+    pub script_info: Option<ph2d_editor_core::script_edits::InspectorScriptInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -98,6 +100,7 @@ impl LiveSnapshots {
         let topdown_info = crate::state_components::current_inspector_topdown();
         let projectile_info = crate::state_components::current_inspector_projectile();
         let statemachine_info = crate::state_components::current_inspector_statemachine();
+        let script_info = crate::state_components::current_inspector_script();
         let tags_info = crate::state::current_inspector_tags();
         let any_section = any_live_section([
             transform_info.is_some(),
@@ -119,6 +122,7 @@ impl LiveSnapshots {
             topdown_info.is_some(),
             projectile_info.is_some(),
             statemachine_info.is_some(),
+            script_info.is_some(),
             tags_info.is_some(),
         ]);
         Self {
@@ -138,6 +142,7 @@ impl LiveSnapshots {
             topdown_info,
             projectile_info,
             statemachine_info,
+            script_info,
             tags_info,
             blend_info,
             physics_info,

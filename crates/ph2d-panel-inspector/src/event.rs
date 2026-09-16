@@ -74,6 +74,10 @@ pub(crate) fn apply_event(
     if crate::event_factory::apply_factory_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    // ⭐ O SCRIPT (TOP-20 #16) — sem estado de painel: as linhas são todas visíveis.
+    if crate::event_script::apply_script_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     if crate::event_camera::apply_camera_event(host, ev) {
         return EventOutcome::Consumed;
     }

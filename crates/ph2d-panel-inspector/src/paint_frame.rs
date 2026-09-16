@@ -343,7 +343,7 @@ pub(crate) fn finish_section(
 /// section has to be remembered here — a fact that is easier to keep true
 /// when it has a name and a signature that changes when you forget.
 #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
-pub(crate) fn any_live_section(flags: [bool; 20]) -> bool {
+pub(crate) fn any_live_section(flags: [bool; 21]) -> bool {
     flags.iter().any(|&b| b)
 }
 

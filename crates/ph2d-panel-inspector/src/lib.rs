@@ -32,6 +32,8 @@ mod event_physics;
 mod event_player;
 mod event_precision;
 mod event_projectile;
+/// ⭐ O despacho da secção SCRIPT — irmão do `event` por CAP de função.
+mod event_script;
 mod event_slice;
 mod event_sprite_geometry;
 mod event_sprite_value;
@@ -70,6 +72,8 @@ mod populate_instance;
 mod populate_physics;
 mod populate_player;
 mod populate_projectile;
+/// ⭐ O registo dos widgets da secção SCRIPT — irmão por CAP de ficheiro.
+mod populate_script;
 /// ⭐ O registo dos widgets da secção STATE MACHINE — irmão por CAP de ficheiro.
 mod populate_statemachine;
 /// ⭐ O registo dos widgets da secção TAGS — irmão por CAP de ficheiro.
@@ -87,6 +91,8 @@ mod state_popovers;
 mod state_tint;
 mod sync;
 mod sync_physics;
+/// ⭐ A semente da secção SCRIPT — irmã do `sync_sections` por CAP de ficheiro.
+mod sync_script;
 mod sync_sections;
 /// Os dois sliders-com-chip da sprite (Opacidade + Emissive) — irmão do `sync`, que estava no tecto.
 mod sync_sprite_value;
@@ -170,7 +176,7 @@ pub use state::{probe_current_instance, probe_current_properties, texture_slot_p
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{
     set_current_inspector_action, set_current_inspector_audio, set_current_inspector_camera,
-    set_current_inspector_factory, set_current_inspector_projectile,
+    set_current_inspector_factory, set_current_inspector_projectile, set_current_inspector_script,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
 };
 

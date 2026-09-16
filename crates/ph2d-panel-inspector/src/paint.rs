@@ -313,6 +313,7 @@ fn paint_inspector(
         snaps.topdown_info.as_ref(),
         snaps.projectile_info.as_ref(),
         snaps.statemachine_info.as_ref(),
+        snaps.script_info.as_ref(),
         sm_state_selected,
         sm_trans_selected,
         snaps.tags_info.as_ref(),

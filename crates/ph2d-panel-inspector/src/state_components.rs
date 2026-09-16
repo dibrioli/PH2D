@@ -17,6 +17,7 @@ use ph2d_editor_core::screens::hero::{
     InspectorActionInfo, InspectorAudioInfo, InspectorCameraInfo, InspectorFactoryInfo,
     InspectorTimerInfo,
 };
+use ph2d_editor_core::script_edits::InspectorScriptInfo;
 use ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo;
 use ph2d_editor_core::topdown_edits::InspectorTopDownInfo;
 
@@ -72,6 +73,15 @@ pub fn set_current_inspector_statemachine(info: Option<InspectorStateMachineInfo
 
 pub(crate) fn current_inspector_statemachine() -> Option<InspectorStateMachineInfo> {
     CURRENT_INSPECTOR_STATEMACHINE.with(|c| c.borrow().clone())
+}
+
+/// ⭐ O snapshot do SCRIPT (TOP-20 #16) — a shell escreve-o todo o quadro.
+pub fn set_current_inspector_script(info: Option<InspectorScriptInfo>) {
+    CURRENT_INSPECTOR_SCRIPT.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_script() -> Option<InspectorScriptInfo> {
+    CURRENT_INSPECTOR_SCRIPT.with(|c| c.borrow().clone())
 }
 
 pub fn set_current_inspector_camera(info: Option<InspectorCameraInfo>) {

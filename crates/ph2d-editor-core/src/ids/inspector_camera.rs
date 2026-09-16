@@ -33,6 +33,8 @@ pub const INSP_LIVE_TOPDOWN_SECTION: NodeId = hash_node_id("insp_live_topdown_se
 pub const INSP_LIVE_PROJECTILE_SECTION: NodeId = hash_node_id("insp_live_projectile_section");
 /// O cabeçalho dobrável da secção STATE MACHINE (TOP-20 #15).
 pub const INSP_LIVE_SM_SECTION: NodeId = hash_node_id("insp_live_sm_section");
+/// O cabeçalho dobrável da secção SCRIPT (TOP-20 #16).
+pub const INSP_LIVE_SCRIPT_SECTION: NodeId = hash_node_id("insp_live_script_section");
 /// A secção LIFECYCLE — o cabeçalho colapsável (TOP-20 #12, W3).
 pub const INSP_LIVE_LIFECYCLE_SECTION: NodeId = hash_node_id("insp_live_lifecycle_section");
 /// ⛔⛔ **Os PONTOS DE COR das três secções novas, e eles nasceram de um DEFEITO MEDIDO.**
@@ -56,5 +58,7 @@ pub const INSP_LIVE_TOPDOWN_COLOR: NodeId = hash_node_id("insp_live_topdown_colo
 pub const INSP_LIVE_PROJECTILE_COLOR: NodeId = hash_node_id("insp_live_projectile_color");
 /// Ver [`INSP_LIVE_FACTORY_COLOR`].
 pub const INSP_LIVE_SM_COLOR: NodeId = hash_node_id("insp_live_sm_color");
+/// Ver [`INSP_LIVE_FACTORY_COLOR`].
+pub const INSP_LIVE_SCRIPT_COLOR: NodeId = hash_node_id("insp_live_script_color");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

@@ -40,8 +40,8 @@ pub use lateral::{PodValue, StateTable};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
 pub use module::{ModuleError, ScriptModule, load_module};
 pub use props::{
-    DeclError, Origin, Orphan, OrphanWhy, PropDecl, PropHint, Resolution, Resolved, ScriptValue,
-    ScriptValueKind,
+    DeclError, Origin, Orphan, OrphanWhy, PROPS_MAX, PropDecl, PropHint, Resolution, Resolved,
+    ScriptValue, ScriptValueKind,
 };
 pub use registry::register_script_components;
 pub use scene::{HOOK_BUDGET, SceneReport, SceneScripts, ScriptInfo};

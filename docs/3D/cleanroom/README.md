@@ -40,6 +40,20 @@ A alternativa é ordenar antes a integração desta pasta para o `main`.
 ⛔ *Um handoff nunca acrescenta conteúdo além dos campos do molde* — o resto vive na espec
 e no ledger.
 
+## ⭐⭐ A obra do PINCEL DE TRAÇO AFIADO (alvo `blender-pincel-afiado`, 2026-09-16)
+
+> *«Próximo pincel: Draw Sharp. Veja no blender com a mesma investigação que fez para Plane»* — o dono.
+
+| arquivo | quem lê |
+|---|---|
+| ⭐⭐ [`SPEC_pincel_afiado.md`](SPEC_pincel_afiado.md) | **todos** — a PERGUNTA ZERO respondida com medição (§0: o pincel de fábrica é o nosso `Draw` modo B com valores próprios + o passo e a atenuação do traço; o resíduo é a lei da normal da área), a recusa de 2026-08-14 **reconferida** (§0.2), a lei de um dab, que estado cada dab lê (o acumular é **inverso** neste pincel), a auto-limitação em forma fechada, o passo e a atenuação, os valores de fábrica, a régua do vinco, a ablação e o artefacto do alvo que **não** se copia. **12 famílias de gates** (G-1..G-12). ⏳ **R-pré POR CORRER** |
+| ⭐ [`fixtures/pincel_afiado/`](fixtures/pincel_afiado/README.md) | **todos** — **80** traços do oráculo sobre malhas NOSSAS, em **5** famílias (contagem derivada do directório): um dab, cadeias dab a dab, o produto arrastado (fábrica, catálogo, densidades, cilindro, triângulos, ablação), o detector do passo e o artefacto da caixa |
+| [`INBOX_blender-pincel-afiado.md`](INBOX_blender-pincel-afiado.md) | o Implementador **escreve** (append cego), nunca lê |
+| ⛔ `LEDGER_blender-pincel-afiado.md` · `VASSOURA_blender-pincel-afiado.txt` | **E e R apenas** — carregam rastros do alvo de propósito |
+
+⛔ **Denylist de caminhos desta obra** (o Passo 0 do BLOCO-I nega `Read` E `Bash` sobre eles):
+`~/Referencias/**` · `/home/enio/Documentos/Recursos/BlenderSculpt/**`.
+
 ## ⭐⭐ A obra do PINCEL DE PLANO (alvo `blender-trim-pincel`, 2026-09-15)
 
 > *«o Trim Brush … que faz o trim esfregando o pincel como massinha, modelando»* — o dono.

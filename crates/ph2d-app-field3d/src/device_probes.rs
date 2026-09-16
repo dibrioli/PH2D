@@ -237,3 +237,257 @@ fn mede_as_cenas_reais_nos_dois_motores() {
         );
     }
 }
+
+/// ⭐⭐ **A AUDITORIA DO VASO** (ordem do dono, 2026-09-15: *«o render do vaso deveria ser mais
+/// rápido»*).
+///
+/// Ela separa as **duas** hipóteses que explicam um quadro caro, e que se leem iguais num número
+/// só: custo **POR PIXEL** (a marcha a avaliar a fita) contra custo **FIXO POR QUADRO** (montar a
+/// fita, escalonar, compilar o shader, ligar buffers). ⚠️ *Um quadro de `95 ms` pode ser `95` de
+/// marcha ou `90` de montagem e `5` de marcha, e a tabela das cenas reais não distingue os dois.*
+///
+/// A régua é uma **varredura de resolução**: o custo por pixel escala com a área, o custo fixo não.
+/// Com dois pontos, `fixo = (c₁·a₂ − c₂·a₁)/(a₂ − a₁)` — e o terceiro ponto é o **controlo** que
+/// diz se o modelo de duas parcelas descreve a curva ou se há um terceiro termo.
+///
+/// ⚠️ O histograma sai do **WGSL emitido**, que é o que a placa de facto corre — não do `Instr`,
+/// que é o que eu *penso* que ela corre.
+#[test]
+#[ignore = "sonda de auditoria: pede adaptador e uma máquina calma"]
+fn audita_o_vaso() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let olhar = ph2d_view_transform::Look::default();
+    const BG: [u8; 4] = [0, 0, 0, 0];
+    println!(
+        "\n  ociosa {:.0} % · load {}",
+        cpu_ociosa_pct(),
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+
+    // O vaso é a `5`; a `4` é o MESMO contorno extrudado (mesma fita, outra marcha) e a `2` é o
+    // cubo — o piso do que um quadro custa quando a fita não é o problema.
+    for cena in [5u32, 4, 2] {
+        let doc = crate::smoke::scene(cena);
+        let reg = crate::smoke::sampled_registry();
+        let cam = ph2d_field_render::Orbit::default();
+        let luz = [crate::gpu_frame::tests_lampada(&cam)];
+        let surfaces = ph2d_field_render::Surfaces {
+            all: &materiais,
+            owners: None,
+        };
+        let sonda = crate::gpu_frame::Sonda { escalonar: true };
+        let Some(dev) = ph2d_field_eval::device::DeviceField::new(&doc, &reg) else {
+            continue;
+        };
+        let Some(forma) = dev.tape_shape() else {
+            continue;
+        };
+        let wgsl = dev.tape_wgsl();
+        let fonte = wgsl.as_ref().map(|w| w.source.as_str()).unwrap_or("");
+        let lets = fonte.matches("let ").count();
+        let mut hist: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
+        for op in [
+            "sqrt(", "min(", "max(", "abs(", "select(", "length(", "clamp(", "cos(", "sin(",
+            "atan2(", "pow(", "exp(", "log(", "floor(", "dot(",
+        ] {
+            let n = fonte.matches(op).count();
+            if n > 0 {
+                hist.insert(op.trim_end_matches('('), n);
+            }
+        }
+        let aritmetica = fonte.matches(" * ").count()
+            + fonte.matches(" + ").count()
+            + fonte.matches(" - ").count()
+            + fonte.matches(" / ").count();
+
+        println!(
+            "\n  ── cena {cena} · fita {} ops · vivos {} · guardados {} · WGSL {} lets, {} B",
+            forma.ops,
+            forma.vivos,
+            forma.guardados,
+            lets,
+            fonte.len()
+        );
+        print!("     transcendentais/chamadas:");
+        for (k, v) in &hist {
+            print!(" {k}×{v}");
+        }
+        println!("  ·  aritmética ×{aritmetica}");
+
+        // ── a varredura de resolução ──────────────────────────────────────────────────────
+        let mede = |w: u32, h: u32| -> f32 {
+            let f = || {
+                if let Some(p) = crate::gpu_frame::paint_com(
+                    t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, w, h, false, sonda,
+                ) {
+                    std::hint::black_box(p.rgba.len());
+                }
+            };
+            f(); // aquece: a 1.ª corrida compila o pipeline
+            let mut v: Vec<f32> = Vec::new();
+            for _ in 0..5 {
+                let t0 = std::time::Instant::now();
+                f();
+                #[allow(clippy::cast_possible_truncation)]
+                v.push(t0.elapsed().as_secs_f32() * 1e3);
+            }
+            v.sort_by(f32::total_cmp);
+            v[0]
+        };
+        let pontos = [(480u32, 270u32), (960, 540), (1920, 1080)];
+        let mut lidos: Vec<(f64, f64)> = Vec::new();
+        println!("     resolução ·   quadro ·  ns/pixel");
+        for (w, h) in pontos {
+            let ms = mede(w, h);
+            let area = f64::from(w) * f64::from(h);
+            lidos.push((area, f64::from(ms)));
+            println!(
+                "     {w:>4}×{h:<4} · {ms:>7.2} ms · {:>8.1}",
+                f64::from(ms) * 1e6 / area
+            );
+        }
+        // fixo e por-pixel a partir dos DOIS extremos; o ponto do meio é o controlo.
+        let (a1, c1) = lidos[0];
+        let (a3, c3) = lidos[2];
+        let fixo = (c1 * a3 - c3 * a1) / (a3 - a1);
+        let por_pixel = (c3 - c1) / (a3 - a1);
+        let (a2, c2) = lidos[1];
+        let previsto = fixo + por_pixel * a2;
+        println!(
+            "     ⇒ FIXO por quadro {fixo:.2} ms · marcha {:.2} ms a 1920×1080 ({:.0} % do quadro)",
+            por_pixel * a3,
+            100.0 * por_pixel * a3 / c3
+        );
+        println!(
+            "       controlo (960×540): previsto {previsto:.2} · lido {c2:.2} · erro {:.1} %",
+            100.0 * (previsto - c2).abs() / c2
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O QUE O ARREDONDAMENTO DAS QUINAS CUSTA NO VASO** (auditoria de 2026-09-15).
+///
+/// A [`audita_o_vaso`] mostrou que `89 %` do quadro é a **marcha**, e que a marcha avalia uma fita
+/// de `2 969` operações porque o contorno de **12 pontos** que o artista desenha vira **94 arestas**.
+/// ⚠️ E o botão *Resolution* dele **não pode ajudar**: `DEFAULT_PROFILE_RESOLUTION = 1` já é o nível
+/// mais grosseiro, e subir o nível só acrescenta arestas.
+///
+/// ⇒ resta perguntar de onde vêm as `94`. O [`ph2d_field::Profile`] é **polilinha pura**
+/// (`Vec<Vec<[f32; 2]>>`): não existe primitiva de ARCO, logo cada raio de quina é **tesselado**.
+/// Esta sonda mede o piso — o MESMO vaso com as quinas **vivas** (raio `0`) — e a escada entre os
+/// dois, variando quantas quinas são arredondadas.
+///
+/// ⚠️ **A forma muda entre as linhas da tabela, de propósito.** Isto não é uma comparação de
+/// qualidade: é o PREÇO de uma capacidade. A pergunta que ela responde é *«quanto do quadro do
+/// artista é tesselação de arco?»*, e a cura que ela precifica (um arco EXACTO na primitiva, que
+/// custa ~uma aresta e é mais preciso que oito) não paga esse preço nenhum.
+#[test]
+#[ignore = "sonda de auditoria: pede adaptador e uma máquina calma"]
+fn audita_o_arredondamento_do_vaso() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    // Os MESMOS 12 pontos da cena 5 (o vaso oco), com os raios autorados.
+    const VASO: [([f64; 2], f64); 12] = [
+        ([0.00, -0.45], 0.0),
+        ([0.26, -0.45], 0.05),
+        ([0.30, -0.34], 0.05),
+        ([0.15, -0.10], 0.06),
+        ([0.33, 0.22], 0.06),
+        ([0.27, 0.44], 0.04),
+        ([0.33, 0.52], 0.02),
+        ([0.27, 0.52], 0.02),
+        ([0.21, 0.44], 0.04),
+        ([0.09, -0.08], 0.05),
+        ([0.19, -0.32], 0.04),
+        ([0.00, -0.32], 0.0),
+    ];
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let olhar = ph2d_view_transform::Look::default();
+    const BG: [u8; 4] = [0, 0, 0, 0];
+    println!(
+        "\n  ociosa {:.0} % · load {}",
+        cpu_ociosa_pct(),
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+    println!("  quinas redondas · arestas · fita(ops) · guardados ·   quadro · ms/aresta");
+
+    // `n` = quantas das 10 quinas com raio ficam redondas; as restantes ficam VIVAS.
+    for n in [0usize, 2, 5, 10] {
+        let mut vistas = 0usize;
+        let verts: Vec<ph2d_vec_scene::VecVertex> = VASO
+            .iter()
+            .map(|&(p, r)| {
+                let manter = if r > 0.0 {
+                    vistas += 1;
+                    vistas <= n
+                } else {
+                    false
+                };
+                ph2d_vec_scene::VecVertex {
+                    corner_radius: if manter { r } else { 0.0 },
+                    ..ph2d_vec_scene::VecVertex::corner(p)
+                }
+            })
+            .collect();
+        let path = ph2d_vec_scene::VecPath {
+            verts,
+            closed: true,
+            ..ph2d_vec_scene::VecPath::default()
+        };
+        let Ok(profile) = ph2d_field_profile::cook_path_auto(&path) else {
+            continue;
+        };
+        let arestas = profile.segment_count();
+        let Ok(doc) = ph2d_field::FieldDoc::new(
+            vec![crate::smoke::scenes::leaf(
+                ph2d_field::Primitive::Revolve { profile },
+                ph2d_field::Xform::IDENTITY,
+            )],
+            ph2d_field::NodeId(0),
+        ) else {
+            continue;
+        };
+        let reg = crate::smoke::sampled_registry();
+        let cam = ph2d_field_render::Orbit::default();
+        let luz = [crate::gpu_frame::tests_lampada(&cam)];
+        let surfaces = ph2d_field_render::Surfaces {
+            all: &materiais,
+            owners: None,
+        };
+        let sonda = crate::gpu_frame::Sonda { escalonar: true };
+        let (ops, guardados) = ph2d_field_eval::device::DeviceField::new(&doc, &reg)
+            .and_then(|d| d.tape_shape())
+            .map_or((0, 0), |s| (s.ops, s.guardados));
+        let f = || {
+            if let Some(p) = crate::gpu_frame::paint_com(
+                t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, LW, LH, false, sonda,
+            ) {
+                std::hint::black_box(p.rgba.len());
+            }
+        };
+        f();
+        let mut v: Vec<f32> = Vec::new();
+        for _ in 0..5 {
+            let t0 = std::time::Instant::now();
+            f();
+            #[allow(clippy::cast_possible_truncation)]
+            v.push(t0.elapsed().as_secs_f32() * 1e3);
+        }
+        v.sort_by(f32::total_cmp);
+        let ms = v[0];
+        println!(
+            "  {n:>15} · {arestas:>7} · {ops:>9} · {guardados:>9} · {ms:>7.2} ms · {:>9.3}",
+            f64::from(ms) / f64::from(u32::try_from(arestas).unwrap_or(1))
+        );
+    }
+}

@@ -15,6 +15,9 @@
 
 use ph2d_mesh::{Face, Mesh, Ray};
 
+#[path = "suaviza.rs"]
+pub mod suaviza;
+
 /// O plano da forma (espec §5): de onde o varrimento parte e para onde aponta.
 ///
 /// ⚠️ **As duas orientações do alvo diferem SÓ na normal** — a direcção da vista

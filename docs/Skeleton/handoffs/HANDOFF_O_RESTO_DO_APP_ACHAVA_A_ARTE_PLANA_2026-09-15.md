@@ -1169,3 +1169,41 @@ que o §17.8 nomeou*. ⇒ a faixa `v2`..`v82` da escada (`490` linhas de **prosa
 
 ⭐ **A dívida ficou paga em vez de renomeada:** a escada tem agora `490` linhas de folga para crescer
 antes de a colisão voltar.
+
+## §20 — ✅ CHECKPOINT: `skeleton-padrao-ouro-checkpoint` (ordem do dono, 2026-09-16)
+
+> *«resultado perfeito, superior a todos os anteriores. Crie um checkpoint nesta implementação»*
+
+**Tag anotada** sobre `88297fbd3` (`119` commits desde o merge-base `1d43da737`):
+
+```
+git show skeleton-padrao-ouro-checkpoint          # a mensagem inteira, com a tabela
+git switch -c <ramo-novo> skeleton-padrao-ouro-checkpoint
+```
+
+⚠️ **Ela é LOCAL** — nada foi enviado, e integrar/shipar continuam a exigir ordem explícita
+(`CLAUDE.md` §0.7). ⭐ A mensagem da tag é **auto-suficiente**: ela carrega os números, os dois
+smokes aprovados e o que fica aberto, para quem a encontrar daqui a meses não precisar deste ficheiro.
+
+### O que este ponto foi CERTIFICADO a ter, antes de ser marcado
+
+| | |
+|---|---|
+| `bash scripts/nextest-impacted.sh` | **15 281 verdes**, 0 vermelhos |
+| `cargo fmt --all --check` | limpo |
+| `cargo clippy --workspace --all-targets` | limpo (⚠️ menos o `PreviewDrive::len`, **pré-existente**) |
+| `PROJECT_SCHEMA` | `131` |
+| árvore | sem ficheiro por commitar |
+
+⛔ **A certificação correu ANTES da tag e sobre o MESMO commit** — `git diff tag HEAD` é vazio. *Um
+checkpoint que não diz o que foi verificado nele é um marcador, não um ponto de retorno.*
+
+### Os dois smokes que o dono aprovou neste ponto
+
+| cena | comando |
+|---|---|
+| a **imagem** presa (o canvas pintado) | `PH2D_VEC_BONE_PAINT_SMOKE=1` |
+| a **forma vectorial** presa | `PH2D_VEC_BONE_SMOKE=1` |
+
+Os dois a partir de `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector`, com
+`cargo run -p ph2d-host-desktop --profile smoke`.

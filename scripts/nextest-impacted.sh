@@ -10,6 +10,17 @@
 #         BASE=<ref> ./scripts/nextest-impacted.sh # vs custom ref
 set -uo pipefail
 
+# ── A PORTA DE RECURSOS ────────────────────────────────────────────────────────
+# Este portão é a coisa mais pesada que uma linha corre, e o guarda de recursos
+# (`.claude/hooks/tecto-de-recursos.sh`) não o vê: ele lê o comando EXTERNO, e o
+# `cargo` daqui nasce lá dentro. Então o portão entra na porta sozinho.
+# ⚠️ O prazo é MAIOR que o default de 30 min de propósito e o número está aqui,
+# não escondido: 5400s. Quem o mudar mede antes (§0.0).
+if [ "${PH2D_NA_PORTA:-0}" != "1" ]; then
+  _porta="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ph2d-run.sh"
+  [ -x "$_porta" ] && exec env PH2D_PRAZO="${PH2D_PRAZO:-5400}" bash "$_porta" bash "${BASH_SOURCE[0]}" "$@"
+fi
+
 # `ci-test` só roda em BATCH (uma ou duas vezes por jornada, sobre a workspace
 # inteira), então compilação incremental não colhe nada ali e paga 11 GB — o
 # número que o CLAUDE.md §2 nomeia, MEDIDO em 2026-08-16. Esta é a única coisa

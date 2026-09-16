@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**4 arquivos** · **3** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
+**5 arquivos** · **4** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
 
 | | Arquivo | Papel | Assunto |
 |---|---|---|---|
@@ -19,6 +19,7 @@
 | ◆ | [BTRFS_METADATA_E_SWAP.md](BTRFS_METADATA_E_SWAP.md) | — | BTRFS na workstation — metadata faminta, swap cheio e checksum corrompido *(2026-08-22)* |
 |   | [HANDOFF_linux_bootstrap.md](HANDOFF_linux_bootstrap.md) | ⚠️ handoff (morto) | bootstrap da máquina Linux (dev rápido) |
 | ◆ | [MULTI_MACHINE_SETUP.md](MULTI_MACHINE_SETUP.md) | — | Multi-máquina — projeto idêntico em Mac · Linux · Windows |
+| ◆ | [TETOS_DE_RECURSO_POR_LINHA.md](TETOS_DE_RECURSO_POR_LINHA.md) | — | Tectos de recurso por linha — o que uma linha pode tomar da máquina |
 
 ---
 

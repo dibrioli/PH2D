@@ -77,6 +77,16 @@ reference/
 # SÃO per-máquina, e é deles que a cerca acima trata.
 !.claude/commands/
 !.claude/commands/*.md
+# ...E o GUARDA DE RECURSOS, pela MESMA razão, um degrau acima: ele não é estado
+# de harness, é a cerca que impede uma linha de tomar a máquina inteira
+# (docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md). ⚠️ Um guarda que vive no `$HOME`
+# de uma máquina **não existe** nas outras worktrees nem nas outras máquinas — e
+# uma cerca que só protege a árvore onde foi escrita não é uma cerca. O
+# `settings.json` do projecto é partilhado por convenção do próprio Claude Code;
+# o `settings.local.json`, esse, é per-máquina e CONTINUA ignorado acima.
+!.claude/settings.json
+!.claude/hooks/
+!.claude/hooks/*.sh
 
 # Wave 10 / slot-env.sh — per-session cargo target dirs (never committed)
 target-slots/

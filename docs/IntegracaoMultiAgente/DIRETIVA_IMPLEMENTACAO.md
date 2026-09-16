@@ -124,6 +124,14 @@ Um controle interativo atravessa o **seam painel↔tool**, no mínimo **7 sites*
       conjunto de aceitação **concreto/congelado** + **kill-criterion ANTES do build**
       ("se perf > X ms @4K após a tentativa 2, a feature não existe nesta forma").
       Bateu na **2ª reconstrução de topologia** → **PARE e prove o modelo** antes da 3ª (regra two-strikes).
+- [ ] **A MÁQUINA FICA LIMPA.** `pgrep -af 'ph2d|cargo|rustc'` e `fuser -v /dev/dri/*` — zero
+      processos seus, zero a segurar a placa. ⚠️ **Matar quem lançou NÃO mata o teste** (ele
+      reparenta-se ao `systemd --user`): dois binários órfãos queimaram `1 h 55 m` a ~6 núcleos, e
+      uma sonda pendurada segurou a GPU **56 minutos** e parou os smokes do dono. E **antes de
+      acusar** um processo de pendurado, leia `utime+stime` de `/proc/<pid>/stat` **duas** vezes —
+      o `ps` mostra a média da **VIDA**, e um binário BLOQUEADO lê-se ali como 95 %.
+      *Todo comando pesado vai por `bash scripts/ph2d-run.sh`, que mata a árvore inteira no prazo:*
+      [`TETOS_DE_RECURSO_POR_LINHA.md`](../DevOps/TETOS_DE_RECURSO_POR_LINHA.md).
 - [ ] **Modo L:** "fechado" = gate batched verde + **handoff de integração escrito** (DIRETRIZ §1.5.9)
       + reportou "linha pronta + handoff" — e **PARE**. *Integrar e pushar não é seu:* a regra é o
       [`CLAUDE.md §0.7`](../../CLAUDE.md), que você já tem carregado; o mecanismo (quem funde, com

@@ -47,7 +47,7 @@ Feche a linha `$1`.
    item 7) — ANTES do passo 6, porque o perfil `smoke` também é incremental.
 6. **Deixe o smoke COMPILADO — último passo, depois do commit final** (DIRETRIZ §1.5.9 item 9).
    Dentro da SUA worktree, o binário do comando exato que você vai entregar:
-   `cargo build -p ph2d-host-desktop --profile smoke` (+ as `--features` de cada smoke que as exija;
+   `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` (+ as `--features` de cada smoke que as exija;
    `--release` só para smoke de PERFORMANCE — o `smoke` reconstrói em 3 s, o `release` em 161 s).
    Rode 2× e cole a 2ª saída no handoff — *Finished* em segundos e **zero** linhas `Compiling`
    é a prova. Nada do seu dia produz esse binário (`check` não gera código; o gate é perfil

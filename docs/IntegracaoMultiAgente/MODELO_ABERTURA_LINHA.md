@@ -130,7 +130,8 @@ G. UI canônica sempre: zero hex, zero f32 literal de UI, tudo por
 I. DEIXE O SMOKE COMPILADO. O ÚLTIMO passo da linha — depois do commit
    final e da limpeza do incremental — é construir, DENTRO da sua
    worktree, o binário do comando que você vai entregar ao Enio:
-   `cargo build -p ph2d-host-desktop --profile smoke` (+ as `--features` de
+   `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile
+   smoke` (+ as `--features` de
    cada smoke que as exija; `--release` só para smoke de PERFORMANCE —
    o `smoke` reconstrói em 3 s, o `release` em 161 s, medido 10/09). Nada do seu dia o produz: `cargo check`
    não gera código e o gate roda no perfil `ci-test`, que é outro
@@ -152,6 +153,32 @@ J. RÉGUA E INSTRUMENTOS. (1) A régua da linha é o MERGE-BASE: todo diff,
    VERSIONADO (`scripts/` ou `docs/<Módulo>/ferramentas/`), nunca numa
    pasta não rastreada da worktree: ela morre com a worktree. Script mais
    novo que a sua worktree: chame-o pelo caminho absoluto do primário.
+K. A MÁQUINA É PARTILHADA — e há um guarda que o obriga. TODO comando
+   pesado (cargo test/build/run/nextest/bench/clippy) vai por
+   `bash scripts/ph2d-run.sh <cmd>`: ele põe o comando numa fatia que é
+   da LINHA — CPU ≤ 50% dos núcleos, RAM ≤ 24G sem swap, prazo 30 min, e
+   mata a ÁRVORE INTEIRA no fim. O laço interno (`cargo check`/`fmt`) NÃO
+   passa por aqui, de propósito. Se você digitar o comando cru, o guarda
+   `.claude/hooks/tecto-de-recursos.sh` recusa e devolve a linha corrigida.
+   K1. TOCA NA PLACA? `PH2D_GPU=1 bash scripts/ph2d-run.sh <cmd>` — gates
+       de GPU, smoke, sondas de device. A placa é de EXCLUSÃO, não de
+       fatia: 50% dela NÃO é exprimível nesta máquina (MIG [N/A], dmem
+       não delegado, compute mode só cobre CUDA) e o defeito real é
+       SEGURAR, não partilhar — em 14/09 uma sonda pendurada ficou com o
+       driver 56 MINUTOS e parou os smokes do dono. Recusa com exit 75 =
+       outra linha está na placa: ESPERE, não force.
+   K2. NADA DE VIGIA DE FUNDO SEM PRAZO. Um `until …; do sleep 45; done`
+       em segundo plano não termina sozinho e o silêncio dele lê-se igual
+       a "ainda a trabalhar". Quando o trabalho é um comando de fundo
+       desta sessão, o próprio arnês avisa ao terminar — vigia só para
+       estado que ele não vê, e sempre com `timeout`.
+   K3. ANTES DE ACUSAR UM PROCESSO DE PENDURADO, MEÇA: leia utime+stime
+       de /proc/<pid>/stat DUAS vezes. O `ps` mostra a média da VIDA do
+       processo — um binário BLOQUEADO a segurar a GPU lê-se ali como 95%.
+   K4. VARRA ANTES DE SAIR: `pgrep -af 'ph2d|cargo|rustc'` e
+       `fuser -v /dev/dri/*` no fecho da linha. Matar quem lançou NÃO
+       mata o teste (ele reparenta-se ao systemd --user).
+   Medições, tectos e como subir um: docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md
 ═══════════════════════════════════════════════════════════════════
 ```
 

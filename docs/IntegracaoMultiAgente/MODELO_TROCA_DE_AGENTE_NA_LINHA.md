@@ -102,15 +102,28 @@ COMO ESTA SESSÃO TERMINA:
    integração em docs/<Módulo>/handoffs/, e o item 7 — reclamar o
    `target/*/incremental` da worktree (25 GB, risco zero, o cargo recria).
    ⚠️ E o item 9, que é o ÚLTIMO passo de todos: deixar o binário do smoke
-   JÁ COMPILADO na sua worktree — `cargo build -p ph2d-host-desktop
-   --profile smoke` (+ features; `--release` só para smoke de PERFORMANCE),
+   JÁ COMPILADO na sua worktree — `bash scripts/ph2d-run.sh cargo build -p
+   ph2d-host-desktop --profile smoke` (+ features; `--release` só para
+   smoke de PERFORMANCE),
    rodado 2× com a 2ª saída colada no handoff
    ("Finished" em segundos, zero "Compiling"). O Enio não espera build:
    nada no seu dia produz esse binário (o `check` não gera código, o gate
    é perfil `ci-test`), e uma edição posterior o invalida em SILÊNCIO.
    Você NÃO integra e NÃO pusha: entrega o handoff e PARA (CLAUDE.md §0.7).
 
-REGRA DE OURO DESTA SESSÃO (além das A–I):
+A MÁQUINA É PARTILHADA (regra K da abertura — vale igual para você):
+⛔ Todo comando pesado vai por `bash scripts/ph2d-run.sh <cmd>`, e com
+   `PH2D_GPU=1` se tocar na placa. Um guarda recusa o comando cru e
+   devolve a linha corrigida. NADA de vigia de fundo sem `timeout`. E
+   antes de acusar um processo de pendurado, leia utime+stime de
+   /proc/<pid>/stat DUAS vezes — o `ps` mostra a média da VIDA, e um
+   binário BLOQUEADO a segurar a GPU lê-se ali como 95%.
+   ⚠️ VOCÊ HERDOU A ÁRVORE DE OUTRO AGENTE: varra o que ele deixou antes
+   de começar — `pgrep -af 'ph2d|cargo|rustc'` e `fuser -v /dev/dri/*`.
+   Matar quem lançou não mata o teste (ele reparenta-se ao systemd).
+   Detalhe: docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md
+
+REGRA DE OURO DESTA SESSÃO (além das A–K):
 ⛔ Na dúvida sobre onde você está, `pwd`. Antes de qualquer commit,
    `git branch --show-current`. Custa um segundo; a alternativa é
    descobrir na integração que o trabalho foi para o main.

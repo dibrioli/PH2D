@@ -230,7 +230,7 @@ handoffs de integração, estado, auditorias — vivem em
 processo, e o gate `the_live_process_folder_holds_no_dated_record` reprova um registo datado nela.
 
 ⚠️ **Antes de reportar "main verde local", deixe o binário do smoke compilado NO PRIMÁRIO** —
-`cargo build -p ph2d-host-desktop --profile smoke` de dentro da raiz (mais as `--features` de cada
+`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` de dentro da raiz (mais as `--features` de cada
 smoke que o Enio vá rodar; `--release` só se o smoke for de PERFORMANCE — §1.5.9 item 9). Depois da fusão é o **main** que ele smoka, e a árvore que ele abre é
 a do primário: as worktrees podem estar todas quentes e ele ainda pagar o build inteiro. Regra,
 armadilhas e a prova (2ª corrida sem `Compiling`): §1.5.9 item 9.
@@ -356,6 +356,21 @@ fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, 
    COMEÇO:** durante a jornada o `incremental/` do `dev` é o que faz o `cargo check -p` voar; o que
    ele não pode é sobreviver à linha que o criou. Tabela e as outras duas regras:
    [`DIRETIVA_FIM_DE_DIA.md`](DIRETIVA_FIM_DE_DIA.md) §2-bis.
+7-bis. ⛔⛔ **LIBERTE A MÁQUINA — e confira, não presuma.** Antes de reportar "linha pronta":
+   ```
+   pgrep -af 'ph2d|cargo|rustc'            # zero processos seus
+   fuser -v /dev/dri/*                     # zero binários seus na placa
+   systemd-cgtop --depth=3 -n1 | grep ph2d # a sua fatia a zero
+   ```
+   ⚠️ **Matar quem lançou NÃO mata o teste** — ele reparenta-se ao `systemd --user` e fica invisível
+   ao cargo e a quem o lançou: dois binários órfãos queimaram **1 h 55 m a ~6 dos 32 núcleos**, e em
+   14/09 uma sonda de GPU pendurada segurou o driver e `2,6 GB` durante **56 minutos**, parando os
+   smokes que o dono corria noutras linhas. ⚠️ **E o `ps` não o desmascara:** ele mostra a média da
+   **VIDA** do processo, então um binário BLOQUEADO lê-se como 95 % de CPU — o discriminador é
+   `utime+stime` de `/proc/<pid>/stat` lido **duas** vezes (parado ⇒ bloqueado).
+   ⭐ Correr tudo por `bash scripts/ph2d-run.sh` torna isto quase sempre desnecessário: o prazo do
+   scope mata a **árvore inteira**, que é a metade que um `timeout` não alcança (medido: `0` órfãos
+   contra `1`). [`TETOS_DE_RECURSO_POR_LINHA.md`](../DevOps/TETOS_DE_RECURSO_POR_LINHA.md).
 8. ⚠️ **A NARRATIVA da jornada vai no HANDOFF; o `CLAUDE.md §5` recebe UMA LINHA.** O §5 é o
    **roteador de estado** (o que o módulo é, o que está **aberto**, como smokar, onde ler) — o
    *mecanismo* de cada wave é exatamente o que este handoff existe para guardar. Ao integrar,
@@ -388,8 +403,8 @@ fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, 
    **Último passo da linha, depois do commit final e do item 7:**
    ```bash
    cd "$(git rev-parse --show-toplevel)"              # a SUA worktree
-   cargo build -p ph2d-host-desktop --profile smoke   # + as --features de cada smoke que as exija
-   cargo build -p ph2d-host-desktop --profile smoke   # 2ª corrida = a PROVA: "Finished" em segundos e
+   bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke   # + as --features de cada smoke que as exija
+   bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke   # 2ª corrida = a PROVA: "Finished" em segundos e
                                                 # ZERO linhas "Compiling". Cole-a no handoff.
    ```
    - **Compile a MESMA linha de comando que você entrega**, byte a byte: pacote, perfil,

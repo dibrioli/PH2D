@@ -106,13 +106,25 @@ Quando as linhas reportarem "pronta + handoff" e **você decidir integrar**:
    Aí babysit o CI (`gh run watch`) até `success` — protocolo em DIRETRIZ §8.
    **Nenhum agente pusha sem sua ordem explícita.**
 
-## Higiene (as 3 que evitam 90% dos problemas)
+## Higiene (as 4 que evitam 90% dos problemas)
 
 1. **Uma janela por linha, sempre aberta na RAIZ** do repo. O agente cria/entra na worktree
    sozinho; todo o trabalho dele acontece dentro de `Worktrees/line-<módulo>/`.
 2. **A janela do "primário" (raiz, em `main`) é só pra setup/integração/ship** — não code em
    `main` direto no Modo L.
 3. **Uma linha por módulo.** Duas linhas no mesmo módulo = colisão de merge garantida.
+4. **Nenhuma linha pode tomar a máquina** (desde 15/09, depois de um teste meu ter estragado os
+   seus smokes). Cada linha corre os comandos pesados dentro de uma fatia com **metade dos núcleos**
+   e um prazo de 30 minutos, e há um guarda que recusa o comando sem tecto. A placa é **uma linha de
+   cada vez**: 50 % dela não existe nesta máquina, e o que estragava o seu smoke era uma sonda a
+   **segurar** a placa, não a partilhá-la.
+   **Se a máquina engasgar mesmo assim**, três comandos dizem quem é o culpado:
+   ```
+   systemd-cgtop --depth=3 -n1 | grep ph2d      # qual LINHA está a comer a CPU
+   fuser -v /dev/dri/*                          # quem está com a placa
+   nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv
+   ```
+   Detalhe e as medições: [`docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md`](../DevOps/TETOS_DE_RECURSO_POR_LINHA.md).
 
 ## Modo L × Modo C (1 linha)
 

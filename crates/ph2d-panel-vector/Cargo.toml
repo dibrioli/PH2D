@@ -77,6 +77,11 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 ph2d-host = { path = "../ph2d-host" }
 # A régua lexical do HR-15 — a mesma que o gate por crate do painel Painter corre.
 ph2d-label-census = { path = "../ph2d-label-census" }
+# As tabelas do MOTOR que este painel pinta — o gate `every_name_the_engine_publishes_has_a_key`
+# varre-as (o `src/` não as alcança: quem as publica é a shell).
+ph2d-fx-op = { path = "../ph2d-fx-op" }
+ph2d-blend-mode = { path = "../ph2d-blend-mode" }
+ph2d-warp-style = { path = "../ph2d-warp-style" }
 
 [lints]
 workspace = true

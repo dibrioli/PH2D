@@ -48,6 +48,8 @@ mod image_tools;
 /// As strings dos painéis do Motion (grafo, params) e dos editores ricos partilhados.
 mod motion_panels;
 mod vector;
+/// As strings que o MOTOR publica para o painel de Vector (efeitos, filtros, misturas).
+mod vector_engine;
 
 /// Look up a string by Fluent-style key. Missing keys round-trip the
 /// key itself so missing entries are visible in the UI (debugging
@@ -506,6 +508,7 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| chrome_rail::tr(k))
             .or_else(|| chrome_panes::tr(k))
             .or_else(|| audio_fx::tr(k))
+            .or_else(|| vector_engine::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

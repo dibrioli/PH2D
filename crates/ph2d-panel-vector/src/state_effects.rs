@@ -80,10 +80,24 @@ thread_local! {
 /// Os três viajam JUNTOS de propósito: em setters separados haveria um frame em que o painel
 /// desenha a pilha de um caminho com os tipos de outro. Mesma razão do
 /// `set_current_envelope_presets`.
+///
+/// ⭐ **Os nomes entram TRADUZIDOS** (HR-15, `nomes_do_motor`): o motor publica o rótulo inglês e a
+/// escrita é o ponto único por onde todo pintor os recebe.
 pub fn set_current_effects(has_target: bool, kinds: &[&'static str], stack: Vec<FxRowView>) {
+    use crate::nomes_do_motor as n;
     HAS_TARGET.with(|c| c.set(has_target));
     CURRENT_KINDS.with(|c| c.borrow_mut().clear());
-    CURRENT_KINDS.with(|c| c.borrow_mut().extend_from_slice(kinds));
+    CURRENT_KINDS.with(|c| c.borrow_mut().extend(kinds.iter().map(|k| n::efeito(k))));
+    let stack = stack
+        .into_iter()
+        .map(|mut row| {
+            row.label = n::efeito(row.label);
+            for p in &mut row.params {
+                p.name = n::parametro(p.name);
+            }
+            row
+        })
+        .collect();
     CURRENT_STACK.with(|c| *c.borrow_mut() = stack);
 }
 

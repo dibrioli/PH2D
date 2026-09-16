@@ -7942,7 +7942,9 @@ version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
  "ph2d-anim",
+ "ph2d-blend-mode",
  "ph2d-editor-core",
+ "ph2d-fx-op",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-label-census",
@@ -7958,6 +7960,7 @@ dependencies = [
  "ph2d-vec-scene",
  "ph2d-vec-text",
  "ph2d-vector",
+ "ph2d-warp-style",
 ]
 
 [[package]]

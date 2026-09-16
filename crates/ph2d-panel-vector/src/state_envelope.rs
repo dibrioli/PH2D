@@ -49,7 +49,8 @@ pub fn set_current_envelope_presets(labels: &[&'static str], active: Option<usiz
     CURRENT_ENVELOPE_PRESETS.with(|c| {
         let mut v = c.borrow_mut();
         v.clear();
-        v.extend_from_slice(labels);
+        // ⭐ Traduzidos na escrita (HR-15) — os presets são os estilos de warp dos efeitos.
+        v.extend(labels.iter().map(|l| crate::nomes_do_motor::efeito(l)));
     });
     CURRENT_ENVELOPE_WARP.with(|c| c.set(active));
     CURRENT_ENVELOPE_BEND.with(|c| c.set(bend));

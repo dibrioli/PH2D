@@ -266,7 +266,31 @@ pub(crate) fn stack() -> Vec<FilterRowView> {
 }
 
 /// Publica a tabela dos tipos, **na ordem dos códigos de `kind`** (é ela que o `paint` indexa).
+///
+/// ⭐ **Os rótulos entram TRADUZIDOS** (HR-15, `nomes_do_motor`) — os MODOS não, porque são uma
+/// fatia `'static` do motor: esses traduzem-se onde os chips são montados (`paint_filters`).
 pub fn set_filter_kinds(kinds: Vec<FilterKindView>) {
+    use crate::nomes_do_motor as n;
+    let kinds = kinds
+        .into_iter()
+        .map(|mut k| {
+            k.name = n::filtro(k.name);
+            k.radius_label = k.radius_label.map(n::controlo);
+            k.color_label = k.color_label.map(n::controlo);
+            k.color_b_label = k.color_b_label.map(n::controlo);
+            k.grow_label = k.grow_label.map(n::controlo);
+            k.offset_labels = k
+                .offset_labels
+                .map(|(a, b)| (n::controlo(a), n::controlo(b)));
+            k.noise_labels = k
+                .noise_labels
+                .map(|(a, b, c)| (n::controlo(a), n::controlo(b), n::controlo(c)));
+            k.adjust_labels = k
+                .adjust_labels
+                .map(|(a, b, c)| (n::controlo(a), n::controlo(b), n::controlo(c)));
+            k
+        })
+        .collect();
     KINDS.with(|k| *k.borrow_mut() = kinds);
 }
 
@@ -286,6 +310,10 @@ pub(crate) fn kind_spec(kind: u8) -> Option<FilterKindView> {
 /// alcança nem o `ph2d-ecs` nem o `ph2d-painter-effects`. Uma tabela escrita à mão aqui derivaria
 /// do enum na primeira lei nova, e o modo de falha é um rótulo que nomeia outra coisa.
 pub fn set_filter_blend_names(names: Vec<&'static str>) {
+    let names = names
+        .into_iter()
+        .map(crate::nomes_do_motor::mistura)
+        .collect();
     BLENDS.with(|b| *b.borrow_mut() = names);
 }
 

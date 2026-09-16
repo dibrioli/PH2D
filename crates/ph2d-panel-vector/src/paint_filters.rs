@@ -148,7 +148,7 @@ impl BodyCtx<'_> {
                 .map(|(m, name)| {
                     (
                         ids::filter_mode_id(row, m),
-                        *name,
+                        crate::nomes_do_motor::modo(name),
                         u8::try_from(m) == Ok(fx.mode),
                     )
                 })

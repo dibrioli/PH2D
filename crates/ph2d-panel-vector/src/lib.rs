@@ -46,6 +46,7 @@ mod font_dropdown;
 /// próprio. Irmão do `font_dropdown` pela mesma razão: um ícone escolhe-se olhando.
 mod icon_dropdown;
 pub mod ids;
+pub mod nomes_do_motor;
 mod paint;
 
 /// **As portas do TEXTURE PATTERN que a shell precisa** (plano 33, W5): o id de cada chip e o

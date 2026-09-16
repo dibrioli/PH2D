@@ -65,3 +65,28 @@ sítio a sítio.
   (`git checkout --`) **não existe** para trabalho não commitado desta sessão — e é precisamente aí
   que o script é mais tentador, porque o ficheiro acabou de ser escrito.
 - ⭐ Cinco sítios cabem em cinco `Edit`. *O script começa a compensar muito depois do que parece.*
+
+---
+
+⛔⛔⛔ **E em 2026-09-16 a rede falhou de uma TERCEIRA maneira: o `assert` de CONTAGEM bateu
+certo e a reescrita ficou pela metade.** Um script reescreveu ~45 sítios de chamada num painel,
+com `assert total == 31` — e **31 era o número certo**. Um dos sítios passava o rótulo por um
+`if/else`:
+
+```rust
+if single { tr("…use_texture_colors") } else { tr("…per_layer_color") },
+```
+
+O laço parava no **primeiro** `tr(…)` da janela e seguia para a chamada seguinte, logo o ramo
+`else` ficou com o texto já traduzido. A contagem batia porque *uma chamada foi reescrita*; o que
+não bateu foi *a chamada ficou toda reescrita*.
+
+⇒ ***Um `assert` de contagem prova quantas VEZES se escreveu, nunca que se escreveu em todo o
+lado.*** Ele mede o script, não o programa.
+
+⭐ **Quem o apanhou foi um `debug_assert` no PRODUTO** — a porta nova recusava uma chave cuja
+secção não estava declarada, e o ramo `else` entregava-lhe um texto em vez de uma chave. *Quando
+um script reescreve uma FRONTEIRA, ponha a fronteira a recusar o que ele possa ter deixado para
+trás: a suíte de costura corre-a, e o script não.*
+
+Ver [[feedback_changing_a_shared_widgets_arithmetic_is_swept_by_consumer_not_by_call_site]].

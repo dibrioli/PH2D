@@ -326,6 +326,15 @@ impl NodeOp for FxGlow {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(FxGlow))?;
+    // ⭐⭐⭐ **O KERNEL é o PASSTHROUGH** (ADR-0126 — ciclo 7, doc 112 §3): o `eval` deste nó é
+    // `input.clone()` e os params são lidos pelo RENDERIZADOR (`from_graph`), nunca pelo cook.
+    //
+    // ⛔⛔ **Sem esta linha ele derrubava a cadeia INTEIRA para a CPU** — medido pela sonda
+    // `probe_does_an_fx_chain_stay_on_the_device`: `grid 320² → scale → glow → output` saía de
+    // `3` estágios no dispositivo para `1`, com a costura no `fx.glow` a subir **102 400**
+    // elementos por quadro, **para lhes não mudar um byte**. E um nó de aparência é, por
+    // natureza, o ÚLTIMO de um grafo: *todo* grafo com brilho corria na CPU.
+    reg.register_gpu_kernel(MANIFEST.id, ph2d_nodegraph::gpu::GpuKernel::PASSTHROUGH);
     reg.register_ui(
         MANIFEST.id,
         NodeUiManifest {

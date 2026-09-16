@@ -110,13 +110,18 @@ inventada. Contagens do registry em 2026-09-05.
 | **4** ✅ ([doc 107](107_ciclo_4_foco_os_campos.md)) | FOCO — quem é afectado (campos) | `motion.falloff` · `field.box` · `field.radial_sweep` · `field.index_range` · `field.remap` · `field.combine` · `field.shape` | «Nem todos ao mesmo tempo» |
 | **5** ✅ ([doc 108](108_ciclo_5_simulacao.md)) | SIMULAÇÃO | `sim.zone` · `sim.spawn` · `sim.step` · `sim.lifetime` · `sim.collide` · `motion.integrate` · as `force.*` | «Deixar a física decidir» |
 | **6** ✅ ([doc 110](110_ciclo_6_valor_e_pulso.md)) | VALOR & PULSO — o cérebro | a família `value.*` e `pulse.*` (**35**) | «Um número que manda em tudo» |
-| 7 | APARÊNCIA (Fx) | `tint` · `color_ramp` · `color_array` · `trail` · `strobe` · `glow` · `drop_shadow` · `rgb_split` · `sub_uv` · `slit_scan` | «A cor e o rasto» |
+| **7** ⏳ ([doc 112](112_ciclo_7_aparencia.md)) | APARÊNCIA (Fx) | `tint` · `color_ramp` · `color_array` · `trail` · `strobe` · `glow` · `drop_shadow` · `rgb_split` · `sub_uv` · `slit_scan` | «A cor e o rasto» |
 | 8 | FONTES & DADOS | `source.shape` · `source.object` · `source.text` · `source.table` · `source.lsystem` · `motion.emitter` | «De onde vêm as coisas» |
 | 9 | RIG & CORPOS MOLES | `rig.*` · `soft_body` · `verlet_rope` · `wave` · `boids` | «Coisas que se seguram» |
 | **10** | ⚡ **O CARIMBO NO DISPOSITIVO** — `source.shape` + `motion.duplicator` | (optimização, não um grupo novo) | «Um milhão de cópias» |
 | **11** | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o módulo inteiro, cena a cena | (varredura) | — |
 | **12** | ⚡ **OS TETOS CONFORTÁVEIS** — quantos objectos o sistema aguenta, com número | (decisão do Enio, com a tabela) | — |
 
+> ⚠️ **Estado em 2026-09-16.** O ciclo **7** ABRIU ([doc 112](112_ciclo_7_aparencia.md)), e o achado que
+> o decide é o do 6 um nível acima: **seis dos dez nós levavam a cadeia inteira para a CPU**, e um nó de
+> aparência é por natureza o ÚLTIMO de um grafo — *todo grafo com brilho, sombra, separação RGB, rasto,
+> estroboscópio ou slit-scan corria na CPU*. O primeiro (o `fx.glow`, um passa-tudo) já saiu.
+>
 > ⚠️ **Estado em 2026-09-15.** O ciclo **6** FECHOU — o dono correu a cena `=117`, leu o
 > [tutorial 06](tutoriais/06_valor_e_pulso.pdf) e aprovou (*«tuto ok»* · *«smoke OK»*). ⇒ o ciclo aberto
 > passa a ser o **7 (APARÊNCIA / Fx)**. ⏳ **Abertos do 6**, todos com o mecanismo no doc 110: a

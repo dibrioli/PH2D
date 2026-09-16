@@ -37,6 +37,9 @@ pub mod motion_leaf_images;
 /// A auditoria do grupo do ciclo 2 (doc 105) — `#[cfg(test)]`, não entra no bin.
 #[cfg(test)]
 pub mod motion_animadores_probe;
+/// A auditoria do grupo do ciclo 7 (APARÊNCIA) — `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+pub mod motion_aparencia_probe;
 pub mod motion_autofix_smoke;
 pub mod motion_autofix_smoke_appropriate;
 pub mod motion_autofix_smoke_dead_branch;

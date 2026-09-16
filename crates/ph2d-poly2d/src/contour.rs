@@ -20,7 +20,9 @@
 /// laço infinito com cara de algoritmo.*
 ///
 /// ⛔ **Só o contorno EXTERIOR de cada ilha.** Um buraco no meio de uma forma não é traçado, e a
-/// consequência é honesta: a malha cobre o buraco. Traçá-lo exige o [`crate::triangulate`] saber
+/// consequência é honesta: a malha cobre o buraco. ⚠️ **A pele do esqueleto já não usa este caminho**
+/// (a grelha de [`crate::grid_mesh_of`] decide célula a célula, e respeita um furo maior que uma
+/// célula — há gate). Traçá-lo exige o [`crate::triangulate`] saber
 /// aceitar anéis interiores, que ele hoje não sabe — as duas metades andam juntas ou nenhuma.
 ///
 /// ⚠️ **Uma ilha de menos de três pixels não devolve anel**: um ponto e um par não têm interior,

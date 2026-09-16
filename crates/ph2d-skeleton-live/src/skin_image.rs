@@ -6,16 +6,22 @@
 //! # As quatro perguntas, e onde cada uma é respondida
 //!
 //! ```text
-//! onde a tinta acaba?      ph2d_poly2d::mesh_of          (uma vez, ao PRENDER)
-//! que peso cada ponto tem? Skeleton::weights_at          (já existia)
-//! onde o ponto vai parar?  Skeleton::deform_points       (já existia)
-//! como se desenha isso?    ph2d_render::SpriteMesh       (ESTE módulo põe-na, por quadro)
+//! onde a tinta acaba?      ph2d_poly2d::grid_mesh_of               (uma vez, ao PRENDER)
+//! que peso cada ponto tem? ph2d_skin_weights::bounded_biharmonic   (uma vez, ao PRENDER — guardado)
+//! onde o ponto vai parar?  ph2d_skeleton::Skin::point_with          (por quadro, com o peso guardado)
+//! como se desenha isso?    ph2d_render::SpriteMesh                 (ESTE módulo põe-na, por quadro)
 //! ```
 //!
-//! ⭐⭐ **A metade difícil já estava feita.** O peso é derivado por distância ao osso e não é
-//! guardado, e a [`ph2d_skeleton_ecs::SkinBind`] já nascera agnóstica de mídia — o doc dela dizia,
-//! por escrito, *«serve um `VecPath` hoje e uma malha raster amanhã sem uma variante nova nem um
-//! schema por mídia»*. ⇒ o que esta mídia acrescenta é a **malha** e o **desenho**, e nada mais.
+//! ⚠️ **Esta tabela envelheceu duas vezes, e a redacção de 2026-09-09 fica como contraste:** a malha
+//! era o CONTORNO triangulado (`ph2d_poly2d::mesh_of`) até a grelha graduada da F6-b (2026-09-10), e
+//! o peso era *«derivado por distância ao osso e não guardado»* até o padrão-ouro (2026-09-15),
+//! que é resolvido uma vez sobre a arte e guardado com a malha
+//! ([`crate::skinned_mesh::SkinnedMesh`]).
+//!
+//! ⭐⭐ **A metade difícil já estava feita no dia em que a mídia nasceu:** a
+//! [`ph2d_skeleton_ecs::SkinBind`] já nascera agnóstica de mídia — o doc dela dizia, por escrito,
+//! *«serve um `VecPath` hoje e uma malha raster amanhã sem uma variante nova nem um schema por
+//! mídia»*.
 //!
 //! # ⭐⭐⭐ A imagem presa é a PRÓPRIA SPRITE, desenhada como MALHA (plano 03, W2, 2026-09-13)
 //!

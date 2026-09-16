@@ -1501,9 +1501,13 @@ uma corrida contra o próximo idioma que a desliga): a metade que falta mede-se 
 gates de unidade, e a nota está escrita no cabeçalho do ficheiro. *Um gate de texto responde «isto
 está escrito», nunca «isto corre».*
 
-⏳ **ABERTO, e nomeado:** um **buraco** no meio de uma forma não é traçado, e a malha cobre-o; e o
-número de triângulos por quadro **não foi medido sob cena cheia** — a rota por pipeline de triângulos
-texturados é a optimização, com razão medida, se a de hoje não couber.
+✅ **FECHADOS os dois (conferido em 2026-09-16).** *«Um **buraco** no meio de uma forma não é traçado,
+e a malha cobre-o»* era verdade para o CONTORNO triangulado, que o produto deixou de usar na F6-b: a
+grelha decide célula a célula, e um furo maior que uma célula fica de fora — hoje com gate
+(`a_hole_in_the_art_is_a_hole_in_the_mesh`, morto por mutação). E *«o número de triângulos por
+quadro não foi medido sob cena cheia»* está medido desde 13/09 (a tabela do `SKIN_FRAME_PIECES`), e a
+rota por triângulos texturados é a de hoje (F6-i). ⚠️ O que fica, e é da GRELHA: duas partes
+separadas por menos de uma célula (mais a folga) ficam ligadas.
 
 ✅ **CURADO e por isso RETIRADO desta lista (auditoria de 2026-09-16):** *«a malha é só o contorno, e
 um membro grosso dobra pela borda»*. A própria linha acima já dizia *«o dono viu isso na primeira

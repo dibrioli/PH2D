@@ -341,3 +341,7 @@ fn grelha(
         size: [width, height],
     })
 }
+
+#[cfg(test)]
+#[path = "grid_hole_tests.rs"]
+mod buracos;

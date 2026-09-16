@@ -258,17 +258,13 @@ fn the_brush_radius_is_screen_pixels_converted_against_the_camera() {
         armed.contains("self.radius_px()"),
         "e do raio já clampado contra a tela, não do campo cru"
     );
-    // O teto é do VIEWPORT: um número fixo de pixels muda de significado com a
-    // resolução (medido: 160 px = 91% do modelo a 720p e 45% a 1440p).
+    // O teto é da VISTA (`viewport()`, derivada dos quadrantes desde 08/09), nunca pixels fixos.
+    // ⛔ Era a ALTURA (`1/8`) e passou à DIAGONAL em 16/09 (*«o radius máximo permitido é
+    // pouco»*): a lei vive na família (`radius_ceiling_px`, com gate), e este afirma o elo.
     let port = function_body(&src, "radius_px(&self)");
-    // ⚠️ **`viewport()` e não `viewport`** desde 2026-09-08: com os quatro
-    // quadrantes o tamanho da vista deixou de ser um campo escrito com o tamanho
-    // da JANELA e passou a ser DERIVADO da área do canvas, da divisão e do
-    // quadrante activo. A lei que este gate afirma não mudou — o teto continua a
-    // ser fracção da altura da VISTA; o que mudou é quem responde por ela.
     assert!(
-        port.contains("self.viewport().1"),
-        "o teto do raio tem de ser fração da ALTURA da vista"
+        port.contains("self.viewport()") && port.contains("radius_ceiling_px(w, h)"),
+        "o teto do raio tem de ser a lei da família sobre a VISTA inteira"
     );
     // E nada mais pode responder "de que tamanho é o pincel": um segundo sítio
     // é como o cursor e a tinta passam a discordar.

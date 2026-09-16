@@ -91,6 +91,7 @@ mod no_row_label_carries_its_own_unit;
 mod no_tofu_glyphs;
 mod node_id_collisions;
 mod nothing_inside_a_section_wears_the_section_tone;
+mod number_input_curved_link;
 mod number_input_focus_replaces;
 mod number_input_mapped_link;
 mod only_one_door_lays_out_a_row_of_fields;

@@ -48,8 +48,8 @@ impl Sculpt3dScene {
                 slots: self.verb_slots.clone(),
                 ui_level: self.ui_level,
                 // ⚠️ **O raio publicado é o CLAMPADO**, e não o `radius_px` cru:
-                // o teto real é 1/8 da altura do viewport, então numa janela
-                // baixa o número que a pista mostraria seria um que o dab não
+                // o teto real é a diagonal da vista, então numa janela pequena
+                // o número que a pista mostraria seria um que o dab não
                 // usa. Publicar o clampado faz a pista *voltar* ao encostar no
                 // teto, que é a verdade — e é a mesma porta que o log da tecla
                 // `[`/`]` imprime, para os dois não discordarem.

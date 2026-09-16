@@ -14,16 +14,15 @@ use ph2d_sculpt3d::Verb;
 
 use crate::state::UiLevel;
 
-/// O teto do raio que o SLIDER oferece, em pixels de tela.
+/// O teto do raio que o SLIDER oferece, em pixels de tela — e a pista é CÚBICA ([`Row::curva`]).
 ///
-/// ⚠️ **Ele não é o teto do produto, e a diferença está medida:** quem aperta é
-/// a ALTURA DO VIEWPORT (`RADIUS_MAX_FRAC_OF_HEIGHT = 1/8` da tela, no shell) —
-/// 180 px a 1440p, 90 px a 720p. Um número fixo aqui seria um segundo teto livre
-/// para divergir daquele, então este é só a extensão da pista: numa janela baixa
-/// o valor **volta** ao encostar no teto real, porque o retrato que o painel
-/// pinta é o número JÁ CLAMPADO que o dab usa. Uma pista que anda além do teto
-/// é honesta; uma que mostra um número que o pincel não usa não é.
-const RADIUS_TRACK_MAX_PX: f32 = 200.0; // LITERAL-PX-OK: extensao da PISTA, nao metrica de design (o teto real e 1/8 da altura do viewport)
+/// ⚠️ **Ele não é o teto do produto:** quem aperta é a DIAGONAL DA VISTA (`radius_ceiling_px`, na
+/// família: 2 203 px a 1920×1080, 2 779 px a 2560×1080), e este tem de a alcançar — `5000` passa a
+/// diagonal de um ecrã 4K (4 406 px) e o digitável do alvo (5 000 px de raio). Numa janela menor o valor
+/// **volta** ao encostar no teto real, porque o retrato que o painel pinta é o número JÁ CLAMPADO
+/// que o dab usa. Uma pista que anda além do teto é honesta; uma que mostra um número que o pincel
+/// não usa não é. ⛔ Era `200`, com o teto em `1/8` da altura, e o dono não chegava à peça (16/09).
+const RADIUS_TRACK_MAX_PX: f32 = 5000.0; // LITERAL-PX-OK: extensao da PISTA, nao metrica de design (o teto real e a diagonal da vista)
 
 #[path = "rows_types.rs"]
 mod types;

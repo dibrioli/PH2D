@@ -8,6 +8,7 @@
 //! muda.
 
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::interaction::{fracao_para_pista, pista_para_fracao};
 
 use crate::state::{Sculpt3dUi, UiLevel};
 
@@ -109,9 +110,25 @@ impl Row {
         ui.ui_level.shows(self.level) && (self.show)(ui)
     }
 
+    /// ⭐ **A CURVA da pista — DERIVADA da faixa, nunca escolhida por linha.**
+    ///
+    /// Uma faixa com piso positivo que atravessa [`ORDENS_PARA_CURVAR`] ordens de grandeza é
+    /// [`PISTA_CURVA`] (cúbica); toda outra é linear, ao bit de sempre. Hoje só o RAIO a atravessa
+    /// (`1..5000` px — a maior razão a seguir é `200`, a massa do tecido), e a razão é o report
+    /// de 2026-09-16: com o tecto na diagonal da vista, uma pista linear punha o pincel de 50 px a
+    /// 1 % da trilha. ⚠️ Derivada e não um campo: um campo por linha seria 58 literais a dizer
+    /// «linear», e uma lista de ids ao lado seria a enumeração que apodrece.
+    pub fn curva(&self) -> f32 {
+        if self.min > 0.0 && self.max >= ORDENS_PARA_CURVAR * self.min {
+            PISTA_CURVA
+        } else {
+            1.0
+        }
+    }
+
     /// Pista (`0..=1`) → o valor que ela significa.
     pub fn value_of(&self, track: f32) -> f32 {
-        self.min + track * (self.max - self.min)
+        self.min + pista_para_fracao(track, self.curva()) * (self.max - self.min)
     }
 
     /// O valor → a pista dele. A inversa de [`Row::value_of`], e as duas têm de
@@ -123,7 +140,8 @@ impl Row {
         if self.max <= self.min {
             return 0.0;
         }
-        ((value - self.min) / (self.max - self.min)).clamp(0.0, 1.0)
+        let fracao = ((value - self.min) / (self.max - self.min)).clamp(0.0, 1.0);
+        fracao_para_pista(fracao, self.curva())
     }
 
     /// O `link_slider_number_mapped` exprime o mesmo mapa como
@@ -138,6 +156,15 @@ impl Row {
     }
 }
 
+/// Quantas vezes o topo de uma faixa tem de valer o piso para a pista deixar de ser linear — três
+/// ordens de grandeza, o ponto em que um pixel de arrasto já não pode valer a mesma quantidade no
+/// fundo e no topo. Ver [`Row::curva`].
+pub const ORDENS_PARA_CURVAR: f32 = 1000.0; // LITERAL-PX-OK: razao adimensional de uma faixa, nao metrica de design
+
+/// O expoente da pista curva: com a faixa do raio (`1..5000` px) o pincel de 50 px fica a ~21 %
+/// da trilha, o tecto antigo (125 px) a ~29 % e uma peça inteira na vista de omissão a ~37 %.
+pub const PISTA_CURVA: f32 = 3.0; // LITERAL-PX-OK: expoente de uma curva de pista, nao metrica de design
+
 /// Um grupo de rows com título. A lista de seções **É** a ordem de pintura.
 pub struct Section {
     /// Id do cabeçalho dobrável.
@@ -146,4 +173,56 @@ pub struct Section {
     pub title: &'static str,
     /// As rows dele.
     pub rows: &'static [Row],
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::rows::rows;
+
+    /// ⭐ **GATE — só o RAIO tem pista curva, e TODA pista vai e volta.**
+    ///
+    /// ⚠️ A curva é derivada da faixa (`Row::curva`), e esta metade é o censo dela: uma linha nova
+    /// cuja faixa cruze três ordens de grandeza passa a curva sem ninguém a escolher, e tem de
+    /// chegar aqui com o nome. A outra metade: uma ida-e-volta que não fecha é um controlo que anda
+    /// sozinho enquanto se segura.
+    #[test]
+    fn so_o_raio_tem_pista_curva_e_toda_pista_vai_e_volta() {
+        let curvas: Vec<&str> = rows()
+            .filter(|r| r.curva() > 1.0)
+            .map(|r| r.label)
+            .collect();
+        assert_eq!(
+            curvas,
+            ["panel.sculpt3d.radius"],
+            "as pistas curvas mudaram"
+        );
+        for r in rows() {
+            for k in 0..=20u8 {
+                let t = f32::from(k) / 20.0;
+                let volta = r.track_of(r.value_of(t));
+                assert!((volta - t).abs() < 1e-4, "{}: {t} -> {volta}", r.label);
+            }
+        }
+        let raio = crate::rows::row_for(crate::ids::SCULPT3D_RADIUS).expect("a pista do raio");
+        let omissao = raio.track_of(crate::state::Sculpt3dUi::default().radius_px);
+        assert!(
+            (0.15..0.3).contains(&omissao),
+            "o pincel de omissao caiu a {omissao} da pista — a curva deixou de o servir"
+        );
+    }
+
+    /// ⭐ **GATE — o REGISTO leva a curva de cada pista.** Sem ela o número mostraria o valor
+    /// linear enquanto a pista arrasta, e o painel reescrevê-lo-ia no quadro seguinte.
+    #[test]
+    fn o_registo_leva_a_curva_de_cada_pista() {
+        let mut store = ph2d_editor_core::interaction::WidgetStore::with_capacity(512);
+        crate::populate::populate(&mut store);
+        for r in rows() {
+            assert!(
+                (store.linked_slider_curve(r.chip) - r.curva()).abs() < f32::EPSILON,
+                "{}: o registo perdeu a curva",
+                r.label
+            );
+        }
+    }
 }

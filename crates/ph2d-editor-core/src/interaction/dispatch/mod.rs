@@ -126,8 +126,13 @@ pub(super) fn apply_chip_value_with_mirror(
     let display_eps = f32::EPSILON * scale.abs().max(1.0);
     let display_drift = ((storage_clamped - storage_raw) * scale).abs();
     let was_clamped = display_drift > display_eps;
+    // ⚠️ A saturação decide-se na fracção LINEAR; só o thumb passa pela curva (`slider_curve`).
+    let thumb = crate::interaction::state::fracao_para_pista(
+        storage_clamped,
+        store.linked_slider_curve(chip_id),
+    );
     if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id) {
-        *value = storage_clamped;
+        *value = thumb;
     }
     if was_clamped {
         // ⚠️ **A faixa registrada do chip é a AUTORIDADE; o slider é uma vista que satura.**

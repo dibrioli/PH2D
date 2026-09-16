@@ -7,8 +7,7 @@
 //! e toda conversão entre os dois espaços mora neste arquivo, num lugar só.
 
 use super::{
-    Brush, Camera3d, Hit, Mesh, ObjectId, Pose, RADIUS_MAX_FRAC_OF_HEIGHT, RADIUS_MIN_PX, Ray,
-    SceneObject, Sculpt3dScene,
+    Brush, Camera3d, Hit, Mesh, ObjectId, Pose, RADIUS_MIN_PX, Ray, SceneObject, Sculpt3dScene,
 };
 
 /// ⭐⭐⭐ **A LEI DE «ESTA PEÇA APARECE?», pura** — as duas metades do
@@ -252,9 +251,9 @@ impl Sculpt3dScene {
     /// o mesmo número em dois lugares — e o segundo fica velho no primeiro
     /// arrasto de janela.
     pub(super) fn radius_px(&self) -> f32 {
-        let ceiling =
-            (RADIUS_MAX_FRAC_OF_HEIGHT * self.viewport().1.max(1) as f32).max(RADIUS_MIN_PX);
-        self.radius_px.clamp(RADIUS_MIN_PX, ceiling)
+        let (w, h) = self.viewport();
+        self.radius_px
+            .clamp(RADIUS_MIN_PX, super::radius_ceiling_px(w, h))
     }
 
     /// O pincel com o raio resolvido, para um ponto em coordenadas **LOCAIS** do
@@ -552,3 +551,8 @@ pub(super) fn stencil_of(
 #[cfg(test)]
 #[path = "space_tests.rs"]
 mod tests;
+
+/// O tecto do raio na cena, com GPU — ver [`raio_tests`].
+#[cfg(test)]
+#[path = "space_raio_tests.rs"]
+mod raio_tests;

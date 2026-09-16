@@ -12,7 +12,7 @@
 //! distinção é a do §0 do `CLAUDE.md`: um limite legítimo diz **de que recurso
 //! ele é** e traz a medição ao lado. Os que TÊM medição a carregam no próprio
 //! doc-comment ([`DEFAULT_RADIUS_PX`], [`RADIUS_MIN_PX`],
-//! [`RADIUS_MAX_FRAC_OF_HEIGHT`]); os outros dizem, em vez de fingir, que quem
+//! [`RADIUS_MAX_FRAC_OF_DIAGONAL`]); os outros dizem, em vez de fingir, que quem
 //! os escolheu foi o olho do Enio.
 //!
 //! ⭐ **A shell re-exporta tudo** (`use ph2d_app_sculpt3d::rulers::*` no `sculpt3d/mod.rs`),
@@ -71,15 +71,36 @@ pub const MASK_OP_PASSES: u32 = 6;
 /// passa a documentar o vizinho.
 pub const RADIUS_MIN_PX: f32 = 1.0;
 
-/// O teto do raio, em fração da ALTURA do viewport.
+/// ⭐⭐ **O tecto do raio é a DIAGONAL da vista** — em fracção dela, e o recurso é o ECRÃ.
 ///
-/// ⚠️ **Fração da tela, e não um número fixo de pixels, porque um teto fixo muda
-/// de SIGNIFICADO com a resolução:** medido, 160 px cobre **91% da altura do
-/// modelo a 1280×720 e 45% a 2560×1440**. `0,125` é a mesma promessa do teto
-/// antigo (*acima de meio modelo o "pincel" é um deformador global, que é outra
-/// ferramenta*) escrita no recurso que de fato aperta — com o enquadramento
-/// padrão o modelo ocupa 49% da altura, então 1/8 de tela é meio modelo.
-pub const RADIUS_MAX_FRAC_OF_HEIGHT: f32 = 0.125;
+/// Com o cursor em qualquer ponto da vista, um anel deste raio contém a vista inteira: acima dele
+/// o pincel só acrescenta geometria que o artista **não vê**, e a borda do que ele toca deixa de
+/// caber no ecrã. ⚠️ **Fracção da tela e não pixels fixos**, porque um tecto fixo muda de
+/// significado com a resolução (medido: 160 px cobriam 91 % da altura do modelo a 1280×720 e 45 %
+/// a 2560×1440).
+///
+/// ⛔⛔ **O tecto antigo era `1/8` da ALTURA, e a razão escrita dele era uma opinião** — *«acima de
+/// meio modelo o pincel é um deformador global, que é outra ferramenta»*. O dono desmentiu-a com o
+/// uso (2026-09-16, pincel de plano): *«O radius máximo permitido é pouco»* e *«o melhor jeito de
+/// ver o efeito é com o pincel bem grande, do tamanho da peça»*. Na vista de omissão a peça ocupa
+/// 49 % da altura, logo `1/8` dava **metade do raio da peça** — nunca a peça.
+///
+/// ⭐ **E o custo não é o recurso que aperta, medido** (`mede_o_raio_do_pincel`, `--release`,
+/// `load 5`): um dab custa ~0,14 µs por vértice tocado e **SATURA na malha** — acima do diâmetro
+/// da peça não há mais vértice nenhum. A peça inteira custa `2,8 ms` na cena `=47` (20 k
+/// vértices), `27 ms` a 200 k e `257 ms` a 1,5 M; e o espaçamento é proporcional ao raio, logo um
+/// pincel oito vezes maior deposita oito vezes menos dabs. ⚠️ O preço de uma malha pesada é o da
+/// MALHA (o filtro de malha inteira paga o mesmo), e a saída dele é o K1 (`docs/3D/03.5`), não um
+/// tecto que esconda a peça do artista.
+pub const RADIUS_MAX_FRAC_OF_DIAGONAL: f32 = 1.0;
+
+/// O tecto do raio para uma vista `w × h` — ver [`RADIUS_MAX_FRAC_OF_DIAGONAL`].
+#[must_use]
+pub fn radius_ceiling_px(w: u32, h: u32) -> f32 {
+    #[allow(clippy::cast_precision_loss)]
+    let diagonal = (w.max(1) as f32).hypot(h.max(1) as f32);
+    (RADIUS_MAX_FRAC_OF_DIAGONAL * diagonal).max(RADIUS_MIN_PX)
+}
 
 /// A zona morta do **Twist**, em pixels de tela.
 ///
@@ -94,3 +115,35 @@ pub const TWIST_DEADZONE_PX: f32 = 30.0;
 /// (`+1` dobra o raio da pegada). Cem pixels dobram; decisão de smoke, como o
 /// [`ORBIT_RAD_PER_PX`].
 pub const SCALE_PER_PX: f32 = 0.01;
+
+#[cfg(test)]
+mod tests {
+    use super::radius_ceiling_px;
+
+    /// ⭐ **GATE — o pincel pode ter o tamanho da PEÇA** (report de 2026-09-16).
+    ///
+    /// Na vista de omissão a peça ocupa 49 % da altura, logo o raio dela é ~¼ da altura; o tecto
+    /// tem de o conter com folga em toda janela, e em nenhuma pode ser a fracção da altura que o
+    /// escondia. ⚠️ A outra metade: o anel do tecto contém a vista inteira a partir de qualquer
+    /// ponto — é esse o recurso que ele diz ser.
+    #[test]
+    fn o_pincel_pode_ter_o_tamanho_da_peca() {
+        for (w, h) in [(1280u32, 720u32), (1920, 1080), (2560, 1080), (1024, 768)] {
+            let tecto = radius_ceiling_px(w, h);
+            #[allow(clippy::cast_precision_loss)]
+            let (wf, hf) = (w as f32, h as f32);
+            assert!(
+                tecto >= 0.49 * hf,
+                "{w}x{h}: tecto {tecto} nao cobre a peca inteira"
+            );
+            assert!(
+                tecto >= wf.hypot(hf) - 0.5,
+                "{w}x{h}: de um canto, o anel do tecto ({tecto}) nao contem a vista"
+            );
+        }
+        assert!(
+            radius_ceiling_px(0, 0) >= super::RADIUS_MIN_PX,
+            "a janela vazia nao tem piso"
+        );
+    }
+}

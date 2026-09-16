@@ -67,8 +67,8 @@ const JUNTA_PX: f64 = 3.0;
 /// O raio do anel da **dobradiça** — maior, porque é a informação principal.
 const PIVO_PX: f64 = 6.0;
 /// Quantos segmentos aproximam um anel de junta. Eles são pequenos (≤ `6 px`),
-/// então `16` já não tem canto visível — ⛔ e não são os `48` do anel do
-/// cursor, que é até `1/8` da altura do ecrã.
+/// então `16` já não tem canto visível — ⛔ e não são os do anel do cursor, que
+/// cresce com o raio até à diagonal da vista.
 const JUNTA_SEGS: usize = 16;
 
 /// O que o quadro desenha: os ossos, as juntas, e o veredito do §11.1.

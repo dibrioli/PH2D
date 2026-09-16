@@ -199,7 +199,32 @@ fn the_ring_is_whole_or_absent() {
         .count();
     assert_eq!(
         pts,
-        super::RING_SEGS + 1,
+        super::ring_segs(f64::from(R_PX)) + 1,
         "um anel aceito tem de trazer TODAS as amostras"
     );
+}
+
+/// ⭐ **GATE — um anel grande continua REDONDO** (o raio pode chegar à diagonal da vista desde
+/// 2026-09-16). A flecha de cada segmento fica abaixo da barra em toda a pista, e o anel pequeno
+/// continua a ser o de sempre (48).
+#[test]
+fn um_anel_grande_continua_redondo() {
+    assert_eq!(
+        super::ring_segs(50.0),
+        super::RING_SEGS_MIN,
+        "o anel de sempre mudou"
+    );
+    for r in [135.0f64, 500.0, 2779.0, 5000.0] {
+        let n = super::ring_segs(r);
+        #[allow(clippy::cast_precision_loss)]
+        let flecha = r * (1.0 - (std::f64::consts::PI / n as f64).cos());
+        assert!(
+            flecha <= super::RING_SAGITTA_PX,
+            "raio {r}: {n} segmentos dao flecha {flecha:.3} px"
+        );
+        assert!(
+            n < super::RING_SEGS_MAX,
+            "raio {r}: o tecto de segmentos ja' morde dentro da pista"
+        );
+    }
 }

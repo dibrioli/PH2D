@@ -73,7 +73,9 @@ pub(super) fn update_drag_value(
         // the pre-mapping path. Non-identity mapping covers chips like
         // Grow ("±1" signed) and Min Px (integer count).
         let (scale, offset) = store.linked_slider_mapping(number_id);
-        let display = (propagated as f32) * scale + offset;
+        let curve = store.linked_slider_curve(number_id);
+        let display =
+            crate::interaction::state::pista_para_fracao(propagated as f32, curve) * scale + offset;
         store.set_number_value(number_id, display as f64);
     }
     changed

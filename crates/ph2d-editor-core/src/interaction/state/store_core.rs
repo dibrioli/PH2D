@@ -181,7 +181,7 @@ impl WidgetStore {
         scale: f32,
         offset: f32,
     ) {
-        self.link_slider_number_mapped_inner(slider, number, scale, offset, false);
+        self.link_slider_number_mapped_inner(slider, number, scale, offset, false, 1.0);
     }
 
     /// Like [`link_slider_number_mapped`] but the chip's typed display
@@ -205,16 +205,17 @@ impl WidgetStore {
         scale: f32,
         offset: f32,
     ) {
-        self.link_slider_number_mapped_inner(slider, number, scale, offset, true);
+        self.link_slider_number_mapped_inner(slider, number, scale, offset, true, 1.0);
     }
 
-    fn link_slider_number_mapped_inner(
+    pub(super) fn link_slider_number_mapped_inner(
         &mut self,
         slider: NodeId,
         number: NodeId,
         scale: f32,
         offset: f32,
         snap_integer: bool,
+        curve: f32,
     ) {
         debug_assert!(
             scale.abs() > f32::EPSILON,
@@ -222,9 +223,10 @@ impl WidgetStore {
         );
         self.slider_to_number.insert(slider, number);
         self.number_to_slider.insert(number, slider);
-        if (scale - 1.0).abs() > f32::EPSILON || offset.abs() > f32::EPSILON {
+        let curved = (curve - 1.0).abs() > f32::EPSILON;
+        if (scale - 1.0).abs() > f32::EPSILON || offset.abs() > f32::EPSILON || curved {
             self.number_to_slider_mapping
-                .insert(number, (scale, offset));
+                .insert(number, (scale, offset, curve));
         } else {
             // Identity — keep the map clean so default-lookup is fast.
             self.number_to_slider_mapping.remove(&number);
@@ -259,8 +261,7 @@ impl WidgetStore {
     pub fn linked_slider_mapping(&self, number: NodeId) -> (f32, f32) {
         self.number_to_slider_mapping
             .get(&number)
-            .copied()
-            .unwrap_or((1.0, 0.0))
+            .map_or((1.0, 0.0), |&(scale, offset, _)| (scale, offset))
     }
 
     /// Register a NumberInput's **(min, max, step)** range — the single source the drag-scrub uses to
@@ -514,7 +515,9 @@ impl WidgetStore {
         }
         if let Some(num) = self.linked_number(id) {
             let (scale, offset) = self.linked_slider_mapping(num);
-            let display = f64::from(v * scale + offset);
+            let curve = self.linked_slider_curve(num);
+            let display =
+                f64::from(super::slider_curve::pista_para_fracao(v, curve) * scale + offset);
             if let Some(InteractiveState::NumberInput { value, .. }) = self.get_mut(num) {
                 *value = display;
             }

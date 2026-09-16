@@ -50,7 +50,14 @@ pub fn populate(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
-        store.link_slider_number_mapped(row.slider, row.chip, row.scale(), row.offset());
+        // A curva da pista viaja com a ligação: o store e o painel projectam pela MESMA lei.
+        store.link_slider_number_curved(
+            row.slider,
+            row.chip,
+            row.scale(),
+            row.offset(),
+            row.curva(),
+        );
         // ⚠️ A faixa é registrada AQUI, e não é opcional: sem ela o chip deriva o
         // passo do arrasto do texto do buffer e percorre ~50 unidades por pixel,
         // então um pixel de arrasto bate no teto e o chip vira um interruptor

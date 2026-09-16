@@ -26,6 +26,7 @@ pub use input_map_ops::capture_if_listening;
 mod kinds;
 /// O PIE MENU (E4) — irmão do `chrome_ops` por assunto e pelo teto de LOC.
 mod radial_ops;
+mod slider_curve;
 pub use kinds::{InteractiveState, NamedPalette};
 
 mod asset_drag_ops;
@@ -34,6 +35,7 @@ mod graph_ops;
 mod number_scrub;
 mod panel_ops;
 mod slot_ops;
+pub use slider_curve::{fracao_para_pista, pista_para_fracao};
 pub use slot_ops::{TAB_DRAG_THRESHOLD_PX, TabDragAnchor};
 mod store_census;
 mod store_core;
@@ -77,7 +79,7 @@ pub struct WidgetStore {
     pub(super) slider_to_number: BTreeMap<NodeId, NodeId>,
     pub(super) number_to_slider: BTreeMap<NodeId, NodeId>,
     /// Affine projection `(scale, offset)` such that
-    /// `chip_display_value = slider_storage * scale + offset`,
+    /// `chip_display_value = slider_storage^curve * scale + offset` (`curve` = 1 salvo `slider_curve`),
     /// keyed by chip id. Default (when missing) = `(1.0, 0.0)` —
     /// identity, matching the legacy `link_slider_number` contract.
     /// Mapped links (`link_slider_number_mapped`) are the canonical
@@ -86,7 +88,7 @@ pub struct WidgetStore {
     /// integer count, ...). Without this map the chip's keyboard
     /// commit silently writes display-space text into the slider as
     /// if it were storage — the 2026-05-27 "type 0.2 see -0.6" bug.
-    pub(super) number_to_slider_mapping: BTreeMap<NodeId, (f32, f32)>,
+    pub(super) number_to_slider_mapping: BTreeMap<NodeId, (f32, f32, f32)>,
     /// Per-NumberInput **(min, max, step)** range, registered by panels via `set_number_range`. The
     /// drag-scrub then maps the cursor displacement PROPORTIONALLY to `[min, max]` (a fixed drag spans
     /// the whole range regardless of magnitude) + clamps to it, and the stepper increments by `step`

@@ -56,9 +56,27 @@ use ph2d_vector::BezPath;
 
 use super::Sculpt3dScene;
 
-/// Quantos segmentos aproximam o anel. 48 porque ele é grande (até 1/8 da altura
-/// da tela) e um polígono grosseiro nesse tamanho lê como polígono.
-const RING_SEGS: usize = 48;
+/// A flecha máxima de um segmento do anel, em pixels — **derivada, não escolhida**: é a que os
+/// 48 segmentos de sempre davam no tecto antigo do raio (1/8 de 1080 linhas, `135 · (1 −
+/// cos(π/48)) ≈ 0,29 px`), o anel que o dono via redondo.
+const RING_SAGITTA_PX: f64 = 0.3;
+/// O piso de segmentos (o anel de sempre) e o tecto: `512` cobre a flecha até um raio de ~16 k px,
+/// acima da pista inteira do raio (5 000 px pedem 287).
+const RING_SEGS_MIN: usize = 48;
+const RING_SEGS_MAX: usize = 512;
+
+/// ⭐ **Quantos segmentos aproximam um anel de `radius_px`** — o suficiente para a flecha não
+/// passar de [`RING_SAGITTA_PX`]. ⚠️ Era `48` fixo, e com o raio a poder chegar à diagonal da vista
+/// (2026-09-16) um anel de 2 779 px mostrava facetas de ~6 px.
+fn ring_segs(radius_px: f64) -> usize {
+    if !radius_px.is_finite() || radius_px <= RING_SAGITTA_PX {
+        return RING_SEGS_MIN;
+    }
+    let meio_angulo = (1.0 - RING_SAGITTA_PX / radius_px).acos();
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let n = (std::f64::consts::PI / meio_angulo).ceil() as usize;
+    n.clamp(RING_SEGS_MIN, RING_SEGS_MAX)
+}
 
 /// O anel **sobre a superfície** — a mão está no barro.
 pub const ON_SURFACE_RGBA: [f32; 4] = [0.98, 0.83, 0.36, 0.95];
@@ -183,9 +201,10 @@ pub(crate) fn ring_on_surface(
         return None;
     }
     let (u, v) = tangent_basis(n);
+    let segs = ring_segs(f64::from(radius_px));
     let mut path = BezPath::new();
-    for i in 0..=RING_SEGS {
-        let a = (i as f32) * std::f32::consts::TAU / (RING_SEGS as f32);
+    for i in 0..=segs {
+        let a = (i as f32) * std::f32::consts::TAU / (segs as f32);
         let (sa, ca) = (a.sin(), a.cos());
         let p = [
             at[0] + r * (ca * u[0] + sa * v[0]),
@@ -253,11 +272,12 @@ fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
 
 /// Um círculo em pixels de tela.
 fn ring(cx: f64, cy: f64, r: f64) -> BezPath {
+    let segs = ring_segs(r);
     let mut path = BezPath::new();
-    for i in 0..=RING_SEGS {
+    for i in 0..=segs {
         // Sem `libm`: este caminho é DESENHO, não o hash de determinismo — o
         // `std` basta e é o que todo o resto do chrome usa.
-        let t = (i as f64) * std::f64::consts::TAU / (RING_SEGS as f64);
+        let t = (i as f64) * std::f64::consts::TAU / (segs as f64);
         let p = (r.mul_add(t.cos(), cx), r.mul_add(t.sin(), cy));
         if i == 0 {
             path.move_to(p);

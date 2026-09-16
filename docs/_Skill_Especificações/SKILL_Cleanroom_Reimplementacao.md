@@ -922,6 +922,15 @@ que escreveu a espec (autofiltragem não se audita). Você PODE ler
 os dois lados (o fonte por shell — o deny da linha bloqueia Read);
 NÃO escreve nem dita código de produto. Leia na skill: §3.R · §4.2
 · §7.1.
+0. ANTES DE TUDO, e é a primeira coisa porque inspeccionar a
+   vassoura é das primeiras coisas que você vai querer fazer: ela
+   descodifica-se EM MEMÓRIA, por cano — NUNCA para ficheiro, nem
+   em /dev/shm, nem no scratchpad (que é da janela-mãe). Pela mesma
+   razão, relatório de sweep gravado em ficheiro cita EM CLARO o
+   que acusou: zona contaminada, nunca o scratchpad.
+   ⚠️ Medido 2x: esta regra vivia no FIM do ledger e as duas
+   corridas leram-na DEPOIS de já terem escrito o ficheiro. Uma
+   cura escrita no fim de um documento não chega a tempo.
 São DUAS perguntas e só a (A) é o atestado — não as conflacione
 (medido: 2 passagens com a parede LIMPA e nenhuma atestou, por
 sobrarem imprecisões que a janela curaria ao construir).

@@ -336,7 +336,7 @@ contagem.
 
 ## §22 — ⏳ O que fica
 
-- ⏳ **O `select×555` do vaso** por auditar na fita nova;
+- ✅ **O `select×555` foi auditado (§23)** — e a pergunta mudou;
 - ⏳ **A lei do SEGMENTO em dois sítios** (pré-existente);
 - ⏳ **O reconhecedor amostra seis pontos** e subestima o erro máximo de uma cúbica em `~8 %` (o pico
   cai entre `t = 0,125` e `0,25`) — a barra efectiva é `~1,08×` a escrita; honesto para a família da
@@ -345,3 +345,32 @@ contagem.
   preview só o aceita se ficar mais barato, e a cura completa é engrossar só a parte tesselada;
 - ⏳ **A suavização de quina** (`smooth_corner`, o *corner smoothing* do Figma) escreve o arco central
   numa cúbica só, sem a divisão — raro acima de `90°`, não medido.
+
+## §23 — O `select` da fita: é o `compare`, três por cada um
+
+Medido pelo WGSL que o dispositivo recebe (`DeviceField::tape_wgsl`, CPU, sem placa), no nível 1:
+
+| peça | `let` | bytes | `select(` | ` > ` | ` != ` | `min(` | `max(` | `sqrt(` |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| **vaso, com arcos** (`24` primitivas) | **`931`** | `35 588` | **`267`** | `89` | `178` | `46` | `118` | `14` |
+| vaso, só a polilinha (`97` arestas) | `2 639` | `99 097` | `585` | `195` | `390` | `196` | `295` | `2` |
+| cantoneira (cena `4`) | `500` | `17 977` | `126` | `42` | `84` | `29` | `77` | `14` |
+| cubo (cena `2`, controlo) | `21` | `558` | `0` | `0` | `0` | `1` | `6` | `1` |
+
+⭐ **`select = 3 × (>)` exactamente, nas três peças** — e é a lei do rebaixamento
+(`ph2d_field_eval::wgsl::binary`): o `compare` da `fidget` (`partial_cmp` → `−1/0/1`, e `NaN` quando
+não comparáveis) vira `select(select(select(0, 1, a > b), −1, a < b), NaN, a != a || b != b)`. ⇒ o
+vaso tem **`89` comparações** (`~3,7` por primitiva: o enrolamento, a cunha do arco, a meia-lua) e
+cada uma custa **8** operações de placa contra `~1,5` de um `let` comum — **`~36 %`** do shader.
+
+⏳ **A alavanca está nomeada e NÃO foi aplicada** — pede uma medição que hoje não se pode fazer (a
+placa com o smoke de outra linha, load `~12`):
+- a guarda de `NaN` (`a != a || b != b` + um `select`) é metade do custo de cada comparação. Tirá-la
+  muda a resposta **só** para entradas `NaN` — e na placa o `min`/`max` com `NaN` já não tem
+  semântica garantida (WGSL), logo a paridade com a CPU nesse caso é hoje nominal. ⚠️ **Mas é uma
+  mudança de semântica escrita de propósito** (o comentário do rebaixamento cita o `NaN`), e os gates
+  de paridade CPU×placa são quem a julga;
+- o padrão dominante nas leis do perfil é `compare(x, y).max(0)` — um degrau `0/1` — que caberia num
+  `select(0, 1, x > y)`: **um** `select` e **uma** relação. Exige um *peephole* entre dois `let`.
+⇒ o A/B tem de medir o **quadro** do vaso (o mínimo de N corridas, com a carga ao lado) antes e
+depois, e só entra com o número. *A contagem de operações não é um perfil* (a lição da W147).

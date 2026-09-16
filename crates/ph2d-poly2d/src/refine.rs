@@ -63,6 +63,7 @@
 //! `k = 1` — e o botão do painel prometia uma coisa que a aritmética proibia. Ver [`RefineLaw`].
 
 use crate::Mesh2d;
+use crate::attr_law::{AttrLaw, midpoint};
 
 /// ⭐ **O CAMPO, com os atributos do ponto na mão** — `deform(ponto_de_repouso, atributos)`.
 ///
@@ -203,17 +204,31 @@ pub fn deviation(
     deviation_attrs(mesh, posed, &[], 0, &mut |p, _| deform(p))
 }
 
-/// [`deviation`] com os **atributos por vértice** na mão — ver [`refine_posed_attrs`].
-///
-/// ⚠️ **No meio de uma aresta o atributo é a MÉDIA das pontas**, que é exactamente o que o
-/// refinamento lá vai pôr ([`attrs_canonicos`]). *Medir o desvio com um atributo que a subdivisão
-/// não vai produzir mede outro campo* — e o `k` sairia calibrado para uma malha que ninguém desenha.
+/// [`deviation`] com os **atributos por vértice** na mão, lidos pela lei LINEAR — ver
+/// [`deviation_with`].
 #[must_use]
 pub fn deviation_attrs(
     mesh: &Mesh2d,
     posed: &[[f64; 2]],
     attrs: &[f64],
     stride: usize,
+    deform: &mut DeformAttrs<'_>,
+) -> f64 {
+    deviation_with(mesh, posed, attrs, stride, AttrLaw::Linear, deform)
+}
+
+/// ⭐ [`deviation`] com os atributos na mão **e a lei que os lê** ([`AttrLaw`]).
+///
+/// ⚠️ **No meio de uma aresta o atributo é o que a LEI lá põe** — a mesma porta
+/// ([`crate::attr_law`]) que o refinamento chama. *Medir o desvio com um atributo que a subdivisão
+/// não vai produzir mede outro campo* — e a malha sairia afinada para um desenho que ninguém faz.
+#[must_use]
+pub fn deviation_with(
+    mesh: &Mesh2d,
+    posed: &[[f64; 2]],
+    attrs: &[f64],
+    stride: usize,
+    law: AttrLaw,
     deform: &mut DeformAttrs<'_>,
 ) -> f64 {
     let mut pior = 0.0_f64;
@@ -227,12 +242,14 @@ pub fn deviation_attrs(
             let (Some(&pa), Some(&pb)) = (posed.get(i), posed.get(j)) else {
                 continue;
             };
-            for (c, v) in meio_attrs.iter_mut().enumerate() {
-                *v = f64::midpoint(
-                    attrs.get(i * stride + c).copied().unwrap_or(0.0),
-                    attrs.get(j * stride + c).copied().unwrap_or(0.0),
-                );
-            }
+            midpoint(
+                law,
+                ra,
+                rb,
+                fatia(attrs, stride, i),
+                fatia(attrs, stride, j),
+                &mut meio_attrs,
+            );
             let meio = deform([(ra[0] + rb[0]) / 2.0, (ra[1] + rb[1]) / 2.0], &meio_attrs);
             let reta = [(pa[0] + pb[0]) / 2.0, (pa[1] + pb[1]) / 2.0];
             pior = pior.max((meio[0] - reta[0]).hypot(meio[1] - reta[1]));
@@ -307,6 +324,8 @@ pub fn refine_posed(
 ///
 /// `attrs` é achatado: `attrs[v * stride + c]` é a componente `c` do vértice `v`; com `stride == 0`
 /// não há atributos e o vector de saída sai vazio.
+///
+/// ⚠️ Os atributos são lidos pela lei LINEAR — a porta com a lei na mão é [`refine_posed_with`].
 #[must_use]
 pub fn refine_posed_attrs(
     mesh: &Mesh2d,
@@ -315,8 +334,29 @@ pub fn refine_posed_attrs(
     deform: &mut DeformAttrs<'_>,
     opts: RefineOptions,
 ) -> (Mesh2d, Vec<[f64; 2]>, Vec<f64>, RefineReport) {
+    refine_posed_with(mesh, attrs, stride, AttrLaw::Linear, deform, opts)
+}
+
+/// ⭐⭐⭐ [`refine_posed_attrs`] **com a lei dos atributos na mão** ([`AttrLaw`]).
+///
+/// ⛔⛔ **A lei UNIFORME lê os atributos em linha recta, qualquer que seja `law`, e é DECLARADO:**
+/// ela é o caminho de ANTES de 2026-09-16, mantido para BISSECAR (`PH2D_SKIN_REFINE=uniforme`), e
+/// uma porta de bissecção tem de reproduzir o produto antigo ao bit — com atributos de Hermite
+/// ela interpola os valores exactamente como interpolava os pesos crus (os gradientes que vêm atrás
+/// também são interpolados, e ninguém os lê). Honrar Hermite no MIOLO de um triângulo pede um patch
+/// cúbico (Zienkiewicz), e a lei que só serve para bissecar não o merece — há gate a prová-lo
+/// (`a_lei_uniforme_e_o_caminho_de_antes_com_qualquer_lei_de_atributos`).
+#[must_use]
+pub fn refine_posed_with(
+    mesh: &Mesh2d,
+    attrs: &[f64],
+    stride: usize,
+    law: AttrLaw,
+    deform: &mut DeformAttrs<'_>,
+    opts: RefineOptions,
+) -> (Mesh2d, Vec<[f64; 2]>, Vec<f64>, RefineReport) {
     if opts.adaptativo {
-        crate::refine_adaptive::refine_posed_adaptive(mesh, attrs, stride, deform, opts)
+        crate::refine_adaptive::refine_posed_adaptive(mesh, attrs, stride, law, deform, opts)
     } else {
         refine_posed_uniform(mesh, attrs, stride, deform, opts)
     }

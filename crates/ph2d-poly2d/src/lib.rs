@@ -41,6 +41,7 @@
 
 #![forbid(unsafe_code)]
 
+mod attr_law;
 mod contour;
 mod grid;
 mod mesh;
@@ -49,12 +50,14 @@ mod refine_adaptive;
 mod simplify;
 mod triangulate;
 
+pub use attr_law::{AttrLaw, hermite_attrs, recover_gradients};
 pub use contour::contour;
 pub use grid::{Cobertura, GridOptions, axis_samples, grid_mesh_com, grid_mesh_of};
 pub use mesh::{Mesh2d, MeshOptions, mesh_of};
 pub use refine::{
-    DeformAttrs, RefineLaw, RefineOptions, RefineReport, deviation, deviation_attrs, max_split,
-    refine_posed, refine_posed_attrs, refine_posed_uniform, splits_for,
+    DeformAttrs, RefineLaw, RefineOptions, RefineReport, deviation, deviation_attrs,
+    deviation_with, max_split, refine_posed, refine_posed_attrs, refine_posed_uniform,
+    refine_posed_with, splits_for,
 };
 pub use refine_adaptive::refine_posed_adaptive;
 pub use simplify::simplify;

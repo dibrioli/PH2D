@@ -6,7 +6,7 @@
 //! primeiro ajuste, e a `malha()` prega a densidade de propósito (ver o doc dela).
 
 use super::*;
-use crate::{RefineLaw, refine_posed_adaptive};
+use crate::{AttrLaw, RefineLaw, refine_posed_adaptive};
 
 /// As opções da lei adaptativa com a tolerância e o orçamento que o caso pede.
 fn adapt(tolerance_px: f64, max_pieces: usize) -> RefineOptions {
@@ -501,7 +501,7 @@ fn the_options_flag_is_what_chooses_the_law() {
     let mut a = campo_dobrado(1.8);
     let (m0, _, r0) = refine_posed(&m, &mut a, opts);
     let mut b = campo_dobrado(1.8);
-    let (m1, _, _, r1) = refine_posed_adaptive(&m, &[], 0, &mut |q, _| b(q), opts);
+    let (m1, _, _, r1) = refine_posed_adaptive(&m, &[], 0, AttrLaw::Linear, &mut |q, _| b(q), opts);
     assert_eq!(m0, m1, "a porta despachou para outra lei");
     assert_eq!(r0, r1);
 

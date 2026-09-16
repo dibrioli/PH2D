@@ -155,7 +155,50 @@ mutação que tira o teto da rota do painel derruba **três** gates.
     o rato e consumiam o gesto. ⇒ *uma família nova responde às perguntas dela num MÓDULO, e ganha
     um `seam_*` com gesto real cujo oráculo é o `EditorAction`, nunca o `WidgetEvent`.*
 
-## Índice dos 32 FECHADOS — o mecanismo de cada um, em uma linha
+## Índice dos 33 FECHADOS — o mecanismo de cada um, em uma linha
+
+### #33 — o `Smooth` desenhava «micro irregularidades»: o refinamento estava CERTO e seguia um campo com vincos ✅ 2026-09-16
+
+**Sintoma** (dono, foto com cinco setas numa aresta diagonal da arte dobrada): *«Smooth parece ter
+resultado discretamente inferior, gerando micro irregularidades»*.
+
+**A hipótese óbvia caiu:** não era a lei de refinamento nova (a adaptativa, fechada no mesmo dia),
+nem o orçamento. Medida a silhueta desenhada — a rotação da tangente que vai para um lado e volta —,
+o `Smooth` lia **`47,00°`** no lado de cima a zoom `8×` contra **`26,60°`** do `Fast`, e o campo
+que ele seguia, amostrado denso, lia **`177,37°`**. ⇒ **o refinamento seguia o campo com
+FIDELIDADE, e o campo era o defeito.**
+
+**O mecanismo:** os pesos de pele (*Bounded Biharmonic*) são guardados **nos vértices** do bind e
+eram lidos em **linha recta** dentro de cada triângulo (P1). Um peso P1 tem o gradiente constante por
+triângulo e **salta** em cada aresta ⇒ a pele deformada tem um VINCO em cada aresta do bind e um ARCO
+no meio de cada triângulo, virados para lados opostos (`24` trocas de sinal da curvatura contra as
+`2` da curva em S real; `36` com orçamento de sobra — *quanto mais o botão trabalhava, pior
+ficava*). ⛔ **O `Fast` era mais liso POR ACIDENTE:** as cordas dele saltam os meandros.
+
+⛔⛔ **E o gate do botão estava VERDE sobre isto, pela razão de sempre:** ele media o desvio da malha
+contra o CAMPO que ela segue — um espelho. *Seguido fielmente, aprovado fielmente.*
+
+**A cura mora na LEI DOS ATRIBUTOS** ([`ph2d_poly2d::AttrLaw`](../../crates/ph2d-poly2d/src/attr_law.rs)):
+cada vértice leva o **gradiente recuperado** de cada peso (média pesada pela área) e o meio de uma
+aresta nasce pela **cúbica de Hermite**, com o gradiente dela a descer ao vértice novo. Exacta num
+campo linear e numa quadrática; ⭐ a **partição da unidade sai exacta sem renormalizar** (`|Σ − 1| ≤
+3,3e-16` depois de `2 724` vértices) — e ⛔ **sem corte em zero**, que poria os vincos de volta.
+Resultado: `26,62°` e `2` trocas a zoom `8×`, `26,71°` e `2` com orçamento `×16`. Custo: `−1 %` a
+`+3,8 %` por peça, dentro da folga que o orçamento já tinha.
+
+⚠️ **Trocar o refinador escondia a causa; trocar a pele mudava a arte no `Fast` também.** E a lei
+**uniforme** fica em linha recta **por declaração** — ela é a porta de bissecção do caminho de antes.
+Bissecção independente: `PH2D_SKIN_WEIGHTS=linear`.
+
+**Gates:** 7 na folha (`attr_law_tests.rs`) + `o_smooth_nao_desenha_os_vincos_dos_pesos`, cuja régua
+**não sabe que campo existe** (olha só a polilinha desenhada) e cujo controlo é a lei de antes a
+reprovar a MESMA barra na mesma corrida. Red-first: `PH2D_SKIN_WEIGHTS=linear` ⇒ RED. **Seis
+mutações, seis RED** (a obra, o despachante e a régua ignorarem a lei; o `(d_a − d_b)/8`; a
+correcção do declive — que só um NETO apanha; a porta do produto em linha recta).
+
+⚠️ **A lei que isto ensina:** *uma régua que mede o erro contra o campo que o produto segue não vê um
+defeito DO CAMPO.* A pergunta que o apanha é a do olho — a forma desenhada — e o lado aprovado dela é
+o que o dono pôs como referência.
 
 ### #32 — *«Add IK não funciona»*: a MESMA rota do #29, na QUARTA vez ✅ 2026-09-07
 
@@ -430,4 +473,5 @@ devolve para poder ser medido.
 | 27 | O traço virava **CANETA ELÍPTICA** sob Scale não-uniforme: no Vello o transform de um `stroke` multiplica a CANETA, não só a geometria. | 2026-08-23 |
 | 29..31 | (ver o índice abaixo) |  |
 | 32 | *«Add IK não funciona»*: dois botões novos na seção e a **allowlist do painel** escrita à mão — a MESMA rota do #29, na 4ª vez, com o aviso *«a lição do bug #29 é literalmente esta linha»* escrito TRÊS linhas acima. ⛔ E o `seam_*` que existe para isto ficou verde: a **população dele** também era uma lista à mão. ⇒ a cura é uma TABELA com três consumidores, nunca uma advertência melhor. | 2026-09-07 |
+| 33 | O `Smooth` desenhava **«micro irregularidades»**: o refinamento seguia com fidelidade um campo com um VINCO por aresta do bind (pesos lidos em linha recta, P1) — e o gate do botão media contra esse mesmo campo. Cura na lei dos ATRIBUTOS (Hermite sobre gradientes recuperados). | 2026-09-16 |
 | 28 | O **Build duplicava**: a sobra de uma forma tocada era `fonte − pintado`, e isso inclui o que está **escondido por baixo** das outras — ela re-criava, com a área EXACTA, as formas que o gesto não tocou. ⚠️ E a régua dos gates comparava geometria **local** com pontos de **mundo**, então ela pinava o defeito em vez de o acusar. | 2026-09-05 |

@@ -44,8 +44,9 @@ pub struct SkinnedMesh {
     ///
     /// ⚠️ **Achatado e não `Vec<Vec<f64>>`**, e o motivo é o quadro: o refinamento do `Smooth`
     /// interpola isto por vértice inventado, e um `Vec` por vértice seria uma alocação por vértice
-    /// **por quadro**. A fatia contígua atravessa a [`ph2d_poly2d::refine_posed_attrs`] sem alocar
-    /// nada além do buffer de saída.
+    /// **por quadro**. A fatia contígua atravessa a [`crate::skin_refine::refine_skinned`] com UMA
+    /// alocação além do buffer de saída — a tabela com os gradientes atrás dos pesos (`3×` esta), que
+    /// a lei de Hermite pede e que se recupera por quadro.
     ///
     /// ⭐ **Vazio é legal e significa *«esta malha não traz pesos»***: a jusante ela cai na lei
     /// derivada, que é o caminho da 1.ª mídia. ⛔ Não é um erro silencioso — é o único estado em

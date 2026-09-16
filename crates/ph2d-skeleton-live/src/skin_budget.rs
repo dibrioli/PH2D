@@ -45,6 +45,18 @@ const CUSTO_POR_PECA_NS: usize = 353;
 ///
 /// ⇒ `16,667 ms ÷ 10 ÷ 0,353 µs` = **`4 721` peças**.
 ///
+/// ⭐ **E a lei de Hermite dos pesos (2026-09-16, [`crate::skin_refine`]) cabe na folga que o `353`
+/// já tinha sobre o `340`** — medida onde ela trabalha (o refinamento da cena do smoke, as duas leis
+/// INTERCALADAS, `load 5,8`–`6,2`, o mínimo de 40 em três corridas; sonda
+/// `sonda_o_custo_da_lei_dos_pesos` da `ph2d-app-vec`): **`−1 %`** a zoom `4×` e **`+2,5`–`+3,8 %`**
+/// a zoom `8×`, onde o orçamento enche. `0,340 × 1,038 = 0,353` ⇒ o tecto não muda.
+///
+/// ⚠️⚠️ **ABERTO: a sonda do custo desta crate deixou de exercer o refinamento.** A arte dela mede
+/// `200 × 100` px de ecrã, e só a linha de `72` peças chega a partir alguma; as outras quatro
+/// entregam a malha guardada e medem *decidir não partir*. Medido em 2026-09-16 (`load 6`–`10`) ela
+/// lê `0,62`–`0,64 µs` no adaptativo e `0,47` no uniforme — nenhum dos dois reproduz a tabela acima.
+/// *Uma sonda cujo sujeito deixou de fazer a coisa medida mede outra coisa com o mesmo nome.*
+///
 /// ⛔⛔⛔ **E O NÚMERO DE ANTES (`1 080 ns` ⇒ `1 543` peças) ERA DE UM CAMINHO QUE O PRODUTO NUNCA
 /// CORREU.** Ele foi medido em 2026-09-13 sobre um `Smooth` que **refinava**; desde então mediu-se
 /// que a lei uniforme é **inerte** acima de `orçamento / 4` peças, logo o que o produto de facto

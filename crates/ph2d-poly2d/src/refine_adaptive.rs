@@ -76,6 +76,7 @@
 //!
 //! As tabelas e as barras: [`crate::refine_tests::adaptativo`].
 
+use crate::attr_law::{AttrLaw, midpoint};
 use crate::refine::fatia;
 use crate::{DeformAttrs, Mesh2d, RefineLaw, RefineOptions, RefineReport};
 use std::cmp::Reverse;
@@ -181,6 +182,8 @@ fn maior(a: (f64, u32, u32), b: (f64, u32, u32)) -> bool {
 /// A obra em curso: a malha a crescer, quem possui cada aresta, e o que já se mediu.
 struct Obra {
     stride: usize,
+    /// Como os atributos do meio de uma aresta nascem — ver [`crate::attr_law`].
+    law: AttrLaw,
     rest: Vec<[f64; 2]>,
     attrs: Vec<f64>,
     posed: Vec<[f64; 2]>,
@@ -194,19 +197,22 @@ struct Obra {
 }
 
 impl Obra {
-    fn attr(&self, v: u32, c: usize) -> f64 {
-        self.attrs
-            .get(v as usize * self.stride + c)
-            .copied()
-            .unwrap_or(0.0)
-    }
-
-    /// Os atributos do meio de `(u,v)` — a MÉDIA das pontas, a mesma expressão que a lei uniforme
-    /// usa ([`crate::refine::deviation_attrs`]), para as duas leis medirem o mesmo campo.
+    /// Os atributos do meio de `(u,v)`, pela lei que o chamador declarou — a MESMA porta que a
+    /// régua do desvio usa ([`crate::attr_law::midpoint`]), para as duas medirem o mesmo campo.
+    ///
+    /// ⛔⛔ **Até 2026-09-16 isto era a MÉDIA das pontas, sempre**, e era o defeito do report
+    /// *«micro irregularidades»*: com pesos P1 o campo tem um vinco em cada aresta, e esta lei
+    /// seguia-o fielmente. Ver o cabeçalho do [`crate::attr_law`].
     fn attrs_do_meio(&self, e: (u32, u32), out: &mut [f64]) {
-        for (c, o) in out.iter_mut().enumerate() {
-            *o = f64::midpoint(self.attr(e.0, c), self.attr(e.1, c));
-        }
+        let fatia_de = |v: u32| fatia(&self.attrs, self.stride, v as usize);
+        midpoint(
+            self.law,
+            self.rest[e.0 as usize],
+            self.rest[e.1 as usize],
+            fatia_de(e.0),
+            fatia_de(e.1),
+            out,
+        );
     }
 
     /// Mede o meio de `(u,v)` se ainda não estiver medido, e devolve-o. ⭐ Esta é a **única**
@@ -428,6 +434,7 @@ pub fn refine_posed_adaptive(
     mesh: &Mesh2d,
     attrs: &[f64],
     stride: usize,
+    law: AttrLaw,
     deform: &mut DeformAttrs<'_>,
     opts: RefineOptions,
 ) -> (Mesh2d, Vec<[f64; 2]>, Vec<f64>, RefineReport) {
@@ -439,6 +446,7 @@ pub fn refine_posed_adaptive(
         .collect();
     let mut o = Obra {
         stride,
+        law,
         rest: mesh.rest.clone(),
         attrs: attrs.to_vec(),
         posed,

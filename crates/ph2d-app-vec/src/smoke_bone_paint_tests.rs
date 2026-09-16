@@ -107,8 +107,9 @@ fn dobra_da_cena(altura_px: u32, forca: Option<f64>) -> ph2d_skeleton::fold::Fol
 
 /// ⭐⭐⭐ **O DESVIO DA FACETA, em pixels de ECRÃ** — quanto o afim de cada triângulo erra o campo.
 ///
-/// ⚠️ É a régua do PRODUTO (`ph2d_poly2d::deviation`, a mesma que o `Smooth` consulta), sobre a
-/// malha que a cena de facto guarda e o campo que ela de facto aplica.
+/// ⚠️ É a régua do PRODUTO ([`ph2d_skeleton_live::skin_refine::skinned_deviation`], a mesma que o
+/// `Smooth` consulta, com a lei dos pesos dele), sobre a malha que a cena de facto guarda e o campo
+/// que ela de facto aplica.
 fn faceta_da_cena(altura_px: u32, forca: Option<f64>) -> f64 {
     faceta_com(altura_px, forca, true)
 }
@@ -123,11 +124,13 @@ fn faceta_com(altura_px: u32, forca: Option<f64>, usar_pesos: bool) -> f64 {
     }
     let posadas = posadas_da_cena(&sm, p2l, &pele);
     let mut w2 = pele.scratch();
-    let d = ph2d_poly2d::deviation_attrs(
+    let lei = ph2d_skeleton_live::skin_refine::weight_law(sm.ossos(), true);
+    let attrs = ph2d_skeleton_live::skin_refine::weight_attrs(&sm.mesh, &sm.pesos, lei);
+    let d = ph2d_skeleton_live::skin_refine::skinned_deviation(
         &sm.mesh,
         &posadas,
-        &sm.pesos,
-        sm.ossos(),
+        &attrs,
+        lei,
         &mut |q, pesos| ponto_do_produto(&pele, p2l.apply(q), pesos, &mut w2),
     );
     d * PX_POR_METRO

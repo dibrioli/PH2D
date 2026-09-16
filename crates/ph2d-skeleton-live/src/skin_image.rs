@@ -329,9 +329,11 @@ pub fn deform_field_with(
 /// ⭐⭐⭐ **E `pesos` é a tabela do PADRÃO-OURO guardada no bind** — vazia ⇒ a lei derivada.
 ///
 /// ⚠️⚠️ **Ela viaja pelo REFINAMENTO, e é isso que a torna utilizável no `Smooth`:** um vértice que
-/// a subdivisão inventa não tem peso guardado, e a única resposta certa é o baricêntrico do
-/// triângulo que o gerou ([`ph2d_poly2d::refine_posed_attrs`]). ⛔ Localizar o ponto na malha seria
-/// `O(n)` por ponto para chegar à mesma resposta que a proveniência já sabe de graça.
+/// a subdivisão inventa não tem peso guardado — ele nasce da aresta que o gerou, pela lei de
+/// [`crate::skin_refine`]. ⛔⛔ **A 1.ª redacção desta nota dizia que a única resposta certa era o
+/// baricêntrico**, e foi essa leitura em linha recta que pôs um vinco em cada aresta do bind (smoke
+/// do dono, 2026-09-16: *«micro irregularidades»*). ⛔ Localizar o ponto na malha seria `O(n)` por
+/// ponto para chegar à mesma resposta que a proveniência já sabe de graça.
 #[must_use]
 pub fn posed_sprite_mesh(
     mesh: Mesh2d,
@@ -384,8 +386,8 @@ pub fn posed_sprite_mesh(
             )
         }
         Some(o) => {
-            let (m, p, _, r) = ph2d_poly2d::refine_posed_attrs(&mesh, pesos, ossos, &mut campo, o);
-            (m, p, r)
+            let r = crate::skin_refine::refine_skinned(&mesh, pesos, ossos, &mut campo, o);
+            (r.mesh, r.posed, r.report)
         }
     };
     // ⭐ A UV de cada vértice é a do QUAD no ponto de REPOUSO dele — ver [`pixel_to_local`].

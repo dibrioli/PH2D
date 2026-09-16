@@ -36,6 +36,7 @@ pub mod goal;
 pub mod skin_budget;
 pub mod skin_image;
 pub mod skin_live;
+pub mod skin_refine;
 pub mod skinned_mesh;
 
 /// ⚠️ **Os auxiliares que ATRAVESSAM a fronteira, e nada mais** (HOWTO §2.5).

@@ -21,9 +21,20 @@ use super::*;
 
 /// O pior desvio da malha que a lei `refine` entrega — em pixels de ECRÃ.
 ///
-/// ⚠️⚠️ **Ela refina com a MESMA porta da `ph2d-poly2d` que o produto chama**, e mede o desvio
-/// **na malha refinada** — ⛔ medir a malha guardada depois de refinar mediria a outra.
-fn faceta_da_malha(sim: &SimWorld, e: Entity, refine: Option<ph2d_poly2d::RefineOptions>) -> f64 {
+/// ⚠️⚠️ **Ela refina e mede pelas MESMAS portas que o produto chama**
+/// ([`ph2d_skeleton_live::skin_refine`]), e mede o desvio **na malha refinada** — ⛔ medir a malha
+/// guardada depois de refinar mediria a outra.
+///
+/// ⚠️ **O `Fast` é medido contra o campo que a lei `adaptativo` SEGUE** — a faceta dele é a
+/// distância entre as cordas e o desenho que aquela lei promete. ⛔ Comparar o `Fast` lido por uma
+/// lei com um refinamento lido pela outra mede a diferença entre as duas RÉGUAS.
+fn faceta_da_malha(
+    sim: &SimWorld,
+    e: Entity,
+    refine: Option<ph2d_poly2d::RefineOptions>,
+    adaptativo: bool,
+) -> f64 {
+    use ph2d_skeleton_live::skin_refine::{refine_skinned, skinned_deviation, weight_attrs};
     let (sm, p2l, pele) = campo_da_cena(sim, e);
     let mut w = pele.scratch();
     let mut campo =
@@ -37,12 +48,12 @@ fn faceta_da_malha(sim: &SimWorld, e: Entity, refine: Option<ph2d_poly2d::Refine
             .enumerate()
             .map(|(v, &q)| campo(q, sm.pesos_de(v)))
             .collect();
-        return ph2d_poly2d::deviation_attrs(&sm.mesh, &posadas, &sm.pesos, ossos, &mut campo)
-            * PX_POR_METRO;
+        let lei = ph2d_skeleton_live::skin_refine::weight_law(ossos, adaptativo);
+        let attrs = weight_attrs(&sm.mesh, &sm.pesos, lei);
+        return skinned_deviation(&sm.mesh, &posadas, &attrs, lei, &mut campo) * PX_POR_METRO;
     };
-    let (m, p, a, _rel) =
-        ph2d_poly2d::refine_posed_attrs(&sm.mesh, &sm.pesos, ossos, &mut campo, o);
-    ph2d_poly2d::deviation_attrs(&m, &p, &a, ossos, &mut campo) * PX_POR_METRO
+    let r = refine_skinned(&sm.mesh, &sm.pesos, ossos, &mut campo, o);
+    skinned_deviation(&r.mesh, &r.posed, &r.attrs, r.law, &mut campo) * PX_POR_METRO
 }
 
 /// As opções do `Smooth` desta cena, com a lei e o ZOOM escolhidos.
@@ -76,9 +87,18 @@ fn opcoes(adaptativo: bool, zoom: f64) -> ph2d_poly2d::RefineOptions {
 /// | zoom | `Fast` | `Smooth` uniforme | `Smooth` adaptativo |
 /// |---:|---:|---:|---:|
 /// | `1×` | `0,34 px` | `0,34` (`2 268`) | `0,34` (`2 268`) — **nem precisa** |
-/// | `2×` | `0,68 px` | `0,68` (`2 268`) | **`0,50`** (`2 364`) |
-/// | `4×` | `1,37 px` | `1,37` (`2 268`) | **`0,50`** (`3 416`) |
-/// | `8×` | `2,74 px` | `2,74` (`2 268`) | **`0,54`** (`4 720`) |
+/// | `2×` | `0,68 px` | `0,68` (`2 268`) | **`0,50`** (`2 344`) |
+/// | `4×` | `1,37 px` | `1,37` (`2 268`) | **`0,50`** (`3 270`) |
+/// | `8×` | `2,73 px` | `2,74` (`2 268`) | **`0,55`** (`4 720`) |
+///
+/// ⚠️ **Cada coluna é lida pela régua da SUA lei** — o `Fast` e o adaptativo contra o campo de
+/// Hermite que o `Smooth` segue, o uniforme contra o campo em linha recta que ele segue (a sua
+/// porta de bissecção). Até 2026-09-16 as três liam o P1, e a tabela era `2 364`/`3 416`/`0,54`.
+///
+/// ⛔⛔ **Este gate estava VERDE sobre o report *«micro irregularidades»*, e a razão é a régua:**
+/// ele mede o desvio contra o CAMPO que a malha segue, e o campo P1 tinha um vinco em cada aresta
+/// do bind — seguido fielmente, aprovado fielmente. *Um espelho não acusa.* A pergunta que o apanha
+/// não sabe que campo existe: [`silhueta`].
 ///
 /// ⭐⭐⭐ **A leitura é toda a wave numa tabela:** a lei antiga entrega `2 268` peças em todo zoom
 /// (a malha guardada, ao bit), e a nova segura a promessa de meio pixel até `8×`, onde ela para por
@@ -98,9 +118,10 @@ fn o_smooth_deixou_de_ser_um_controlo_morto_na_cena_do_produto() {
     // A faceta é medida em pixels de ECRÃ **no zoom em que se olha** — logo ela cresce com ele.
     let mut mordeu = 0usize;
     for zoom in [1.0_f64, 2.0, 4.0, 8.0] {
-        let fast = faceta_da_malha(&sim, e, None) * zoom;
-        let uniforme = faceta_da_malha(&sim, e, Some(opcoes(false, zoom))) * zoom;
-        let adaptativo = faceta_da_malha(&sim, e, Some(opcoes(true, zoom))) * zoom;
+        let fast = faceta_da_malha(&sim, e, None, true) * zoom;
+        let fast_antes = faceta_da_malha(&sim, e, None, false) * zoom;
+        let uniforme = faceta_da_malha(&sim, e, Some(opcoes(false, zoom)), false) * zoom;
+        let adaptativo = faceta_da_malha(&sim, e, Some(opcoes(true, zoom)), true) * zoom;
         let pecas_u = pecas_entregues(&sim, e, Some(opcoes(false, zoom)));
         let pecas_a = pecas_entregues(&sim, e, Some(opcoes(true, zoom)));
         println!(
@@ -114,8 +135,8 @@ fn o_smooth_deixou_de_ser_um_controlo_morto_na_cena_do_produto() {
             "zoom {zoom}x: a premissa do defeito caiu — a lei uniforme passou a refinar aqui"
         );
         assert!(
-            (uniforme - fast).abs() < 1e-9,
-            "zoom {zoom}x: a lei uniforme mexeu na faceta ({fast:.3} -> {uniforme:.3} px)"
+            (uniforme - fast_antes).abs() < 1e-9,
+            "zoom {zoom}x: a lei uniforme mexeu na faceta ({fast_antes:.3} -> {uniforme:.3} px)"
         );
         assert!(
             pecas_a <= orcamento,
@@ -153,11 +174,12 @@ fn pecas_entregues(sim: &SimWorld, e: Entity, refine: Option<ph2d_poly2d::Refine
     let ossos = sm.ossos();
     match refine {
         None => sm.mesh.tris.len(),
-        Some(o) => {
-            let (m, _, _, _) =
-                ph2d_poly2d::refine_posed_attrs(&sm.mesh, &sm.pesos, ossos, &mut campo, o);
-            m.tris.len()
-        }
+        Some(o) => ph2d_skeleton_live::skin_refine::refine_skinned(
+            &sm.mesh, &sm.pesos, ossos, &mut campo, o,
+        )
+        .mesh
+        .tris
+        .len(),
     }
 }
 
@@ -189,3 +211,6 @@ fn a_malha_do_bind_cabe_no_orcamento_do_quadro() {
         orcamento.saturating_sub(guardada)
     );
 }
+
+#[path = "smoke_bone_paint_silhueta_tests.rs"]
+mod silhueta;

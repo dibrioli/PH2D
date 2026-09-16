@@ -2897,6 +2897,37 @@ jornada.
 ⇒ ⛔ **Não reconstrua nenhuma das três rotas.** Quem as ler aqui estaria a pagar de novo um problema
 que a troca de lei dissolveu — que é a forma nº 1 pela qual esta lista custa dinheiro.
 
+### F6-p — ⭐⭐⭐ **O `Smooth` deixou de desenhar os VINCOS dos pesos** (smoke do dono, foto, 2026-09-16)
+
+**UMA LINHA:** *«micro irregularidades»* era o refinamento a seguir **fielmente** um campo com um
+vinco em cada aresta do bind — os pesos eram lidos em linha recta. A cura é a lei dos atributos
+([`AttrLaw::Hermite`](../../crates/ph2d-poly2d/src/attr_law.rs), porta de produto
+[`skin_refine`](../../crates/ph2d-skeleton-live/src/skin_refine.rs)); mecanismo, tabela e gates no
+[Bug #33](../Vector%20Module/BUGS_vector.md).
+
+| lado de cima, zoom `8×` | nós | vai-e-volta | trocas de sinal |
+|---|---:|---:|---:|
+| `Fast` | `46` | `26,60°` | `2` |
+| `Smooth` antes | `66` | `47,00°` | `24` |
+| `Smooth` antes, orçamento `×16` | `74` | `57,95°` | `36` |
+| **`Smooth` agora** | `57` | **`26,62°`** | **`2`** |
+| **`Smooth` agora, orçamento `×16`** | `73` | **`26,71°`** | **`2`** |
+
+⚠️ **Duas portas de bissecção, independentes:** `PH2D_SKIN_REFINE=uniforme` (a lei de refinamento
+de antes) e `PH2D_SKIN_WEIGHTS=linear` (a lei dos pesos de antes).
+
+⏳ **ABERTO e nomeado:**
+- **o campo de Hermite amostrado DENSO ainda vai e volta `39,67°`** no lado de cima (`54` trocas, o
+  maior canto a `0,23°`, `0,137 px` do P1 a zoom `1`): são ondulações abaixo da tolerância, que o
+  refinamento não resolve de propósito — com orçamento de sobra ele converge a `26,71°`. Um campo
+  C¹ **de verdade** pede a recuperação de gradientes de ordem mais alta (ou um *patch* por
+  triângulo); não foi pedido.
+- **a sonda de custo desta crate deixou de refinar** (a arte dela mede `200 × 100` px de ecrã) e
+  não reproduz a tabela do [`skin_budget`](../../crates/ph2d-skeleton-live/src/skin_budget.rs) hoje
+  — o preço da lei nova foi medido na cena do smoke, as duas leis intercaladas.
+
+---
+
 ### F6-o — ⭐⭐⭐ **O OSSO QUE DOBRA FECHOU: o esticão deixou de variar, e as alças pegam-se no canvas** (2026-09-16)
 
 **UMA LINHA:** os três abertos da **F8** fecharam, e dois deles corrigiram uma recusa escrita.

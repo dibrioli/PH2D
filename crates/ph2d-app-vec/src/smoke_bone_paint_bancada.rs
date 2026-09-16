@@ -64,11 +64,17 @@ fn sonda_a_cena_nas_duas_leis() {
             .collect();
         // faceta
         let mut w2 = pele.scratch();
-        let d = ph2d_poly2d::deviation_attrs(
+        let lei = ph2d_skeleton_live::skin_refine::weight_law(ossos, true);
+        let attrs = ph2d_skeleton_live::skin_refine::weight_attrs(
+            &sm.mesh,
+            if ossos == 0 { &[] } else { &sm.pesos },
+            lei,
+        );
+        let d = ph2d_skeleton_live::skin_refine::skinned_deviation(
             &sm.mesh,
             &posadas,
-            if ossos == 0 { &[] } else { &sm.pesos },
-            ossos,
+            &attrs,
+            lei,
             &mut |q, pesos| campo(q, pesos, &mut w2),
         ) * PX_POR_METRO;
         // triangulos invertidos
@@ -239,11 +245,13 @@ fn sonda_a_cena_nas_duas_leis() {
             razoes[razoes.len() * 99 / 100],
         );
         let mut w2 = pele.scratch();
-        let faceta = ph2d_poly2d::deviation_attrs(
+        let lei = ph2d_skeleton_live::skin_refine::weight_law(sm.ossos(), true);
+        let attrs = ph2d_skeleton_live::skin_refine::weight_attrs(&sm.mesh, &sm.pesos, lei);
+        let faceta = ph2d_skeleton_live::skin_refine::skinned_deviation(
             &sm.mesh,
             &posadas,
-            &sm.pesos,
-            sm.ossos(),
+            &attrs,
+            lei,
             &mut |q, pesos| ponto_do_produto(&pele, p2l.apply(q), pesos, &mut w2),
         ) * PX_POR_METRO;
         // ⛔ O CONTROLO: em repouso o mapa E' a identidade, e as quatro colunas dizem-no.

@@ -1370,3 +1370,39 @@ mandavam reconstruir trabalho já pago:
 ⛔⛔ **E a terceira sobreviveu à minha própria auditoria: eu relatei-a ao dono como aberta.** Li a
 linha, não li a secção que a fecha. *Uma nota obsoleta ao lado da secção que a cura é pior que uma
 nota ausente — a ausente não é acreditada, e esta foi.*
+
+---
+
+## §24 — ⭐⭐⭐ O `Smooth` DESENHAVA OS VINCOS DOS PESOS (smoke do dono, foto, 2026-09-16)
+
+*«Smooth parece ter resultado discretamente inferior, gerando micro irregularidades.»* Mecanismo,
+tabela, gates e mutações: [Bug #33](../../Vector%20Module/BUGS_vector.md) · fila **F6-p**.
+
+**O que o integrador precisa de saber:**
+
+1. **Uma folha nova na `ph2d-poly2d`: `attr_law.rs`** (`AttrLaw`, `recover_gradients`,
+   `hermite_attrs`, e o `midpoint` que as três réguas partilham). ⚠️ **As portas antigas mantêm a
+   assinatura e a lei** (`refine_posed_attrs` e `deviation_attrs` = `AttrLaw::Linear`); as novas são
+   `refine_posed_with` e `deviation_with`. A que MUDOU de assinatura é a
+   `refine_posed_adaptive` (ganhou `law`) — ela é `pub`, e o único chamador de fora da folha é o
+   despachante.
+2. **Uma porta de produto nova: `ph2d_skeleton_live::skin_refine`** (`refine_skinned`,
+   `skinned_deviation`, `weight_law`, `weight_attrs`). O `posed_sprite_mesh` chama-a; os gates e a
+   bancada da `ph2d-app-vec` também — ⛔ *uma régua que refina por outra porta mede outro programa.*
+3. **Env nova de bissecção: `PH2D_SKIN_WEIGHTS=linear`**, independente do `PH2D_SKIN_REFINE`.
+4. **Zero schema, zero contrato, zero registo.** O formato guardado não muda: os gradientes
+   recuperam-se por quadro, da malha e dos pesos que já viajavam.
+5. **O orçamento não muda** (`CUSTO_POR_PECA_NS = 353`): a lei custa `−1 %` a `+3,8 %` por peça na
+   cena do smoke, e `0,340 × 1,038 = 0,353`.
+6. ⛔ **O gate `o_smooth_deixou_de_ser_um_controlo_morto_na_cena_do_produto` estava VERDE sobre o
+   defeito** e continua lá: ele mede outra pergunta (o botão refina onde a dobra pede). A tabela dele
+   mudou (`2 364`/`3 416`/`0,54` → `2 344`/`3 270`/`0,55`) porque o `Fast` e o adaptativo passaram a
+   ser lidos pela régua da lei que o `Smooth` segue — e cada coluna agora diz qual régua a lê.
+7. **O ficheiro de gates do `Smooth` partiu-se por responsabilidade:** a silhueta (a régua do olho,
+   as sondas e o gate novo) vive em `smoke_bone_paint_silhueta_tests.rs`, filho do de antes.
+8. ⚠️ **Achado PRÉ-EXISTENTE, não curado (é de outra folha e o CI não o vê):**
+   `cargo clippy -p ph2d-preview-drive -- -D warnings` **reprova sozinho** no merge-base
+   (`len_without_is_empty`): o `is_empty` só existe sob `cfg(any(test, feature = "test-support"))`,
+   e na workspace a feature chega unificada por outra crate. *Uma crate que só passa o lint na
+   companhia das outras é a família «a build da workspace esconde a crate que não compila
+   sozinha».* A cura provável é o `is_empty` sem `cfg` (um método `pub` não dispara `dead_code`).

@@ -58,13 +58,23 @@ fn ensure_typed_registry() {
 /// que é exactamente a foto do dono. O gate afirma esse regime em vez de o supor.
 const ESTREITA_EM: f32 = -92.0;
 
-/// As quatro linhas da secção *Square*, na ordem em que o painel as pinta.
-fn campos_da_seccao() -> [NodeId; 4] {
+/// As sete linhas da secção *Voronoi*, na ordem em que o painel as pinta.
+///
+/// ⚠️ **Até 2026-09-16 a fixtura era a secção *Square***, e o nome que forçava o empréstimo era
+/// `Major every (px)`. Nesse dia a unidade saiu do NOME e foi para DENTRO da caixa (spec §7), os
+/// quatro nomes da *Square* passaram a caber na metade da linha a `220` — e o CONTROLO abaixo acusou
+/// que a fixtura já não continha o fenómeno. A *Voronoi* contém: `Voronoi bounds min X` passa da
+/// metade.
+fn campos_da_seccao() -> [NodeId; 7] {
+    use ph2d_editor_core::grid_snap::ids as g;
     [
-        ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
-        ph2d_editor_core::grid_snap::ids::GS_CFG_SPACING_MAJOR,
-        ph2d_editor_core::grid_snap::ids::GS_CFG_ORIGIN_X,
-        ph2d_editor_core::grid_snap::ids::GS_CFG_ORIGIN_Y,
+        g::GS_CFG_VORONOI_SEED_COUNT,
+        g::GS_CFG_VORONOI_RNG_SEED,
+        g::GS_CFG_VORONOI_LLOYD_ITERS,
+        g::GS_CFG_VORONOI_BOUNDS_MIN_X,
+        g::GS_CFG_VORONOI_BOUNDS_MIN_Y,
+        g::GS_CFG_VORONOI_BOUNDS_MAX_X,
+        g::GS_CFG_VORONOI_BOUNDS_MAX_Y,
     ]
 }
 
@@ -74,6 +84,7 @@ fn a_seccao_poe_todas_as_caixas_na_mesma_coluna() {
     ensure_typed_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.panel_visibility.insert(GridSnapPanel::ID, true);
+    hero.grid.snap_state.kind = ph2d_editor_core::grid_snap::GridKind::Voronoi;
     let viewport = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
@@ -100,7 +111,7 @@ fn a_seccao_poe_todas_as_caixas_na_mesma_coluna() {
         })
         .collect();
 
-    // ⭐ **A LEI**: as quatro caixas partilham a coluna.
+    // ⭐ **A LEI**: as sete caixas partilham a coluna.
     let (primeiro_id, primeira) = caixas[0];
     for (id, r) in &caixas[1..] {
         assert!(

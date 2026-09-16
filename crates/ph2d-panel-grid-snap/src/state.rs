@@ -103,8 +103,14 @@ pub(crate) fn display_to_meters(value: f64) -> f32 {
     current_display_unit().to_meters(value as f32, current_ppm())
 }
 
-/// "(m)" or "(px)" suffix for labels that show a length.
-#[inline]
-pub(crate) fn unit_suffix_paren() -> String {
-    format!(" ({})", current_display_unit().suffix())
+/// ⭐ **A unidade de COMPRIMENTO das caixas deste painel** — pintada DENTRO da caixa (spec §7).
+///
+/// ⛔ Até 2026-09-16 ela era um sufixo no NOME (`"Cell size (m)"`, `unit_suffix_paren`), que é o
+/// que o gate `no_row_label_carries_its_own_unit` proíbe — e que ele não via, porque o sufixo era
+/// montado em tempo de execução e nunca chegava à tabela de strings.
+pub(crate) fn length_unit() -> ph2d_editor_core::widget::Unit {
+    match current_display_unit() {
+        DisplayUnit::Meters => ph2d_editor_core::widget::Unit::Meters,
+        DisplayUnit::Pixels => ph2d_editor_core::widget::Unit::Px,
+    }
 }

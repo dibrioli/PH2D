@@ -21,6 +21,7 @@ use ph2d_editor_core::widget::{
     Slider, SliderOrientation, paint_slider, paint_slider_track, segment_rects,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -51,7 +52,7 @@ pub(crate) fn paint_loop_section(
     let seg = segment_rects(Rect::new(x, y, w, row_h), 2);
     button_in_group(
         seg[0].0,
-        "Set Loop",
+        tr("panel.audio_editor.loop.set_loop"),
         loaded && has_sel,
         AEDIT_LOOP_SET,
         seg[0].1,
@@ -62,7 +63,7 @@ pub(crate) fn paint_loop_section(
     );
     button_in_group(
         seg[1].0,
-        "Clear",
+        tr("panel.audio_editor.loop.clear"),
         has_loop,
         AEDIT_LOOP_CLEAR,
         seg[1].1,
@@ -78,7 +79,7 @@ pub(crate) fn paint_loop_section(
     paint_text_centered(
         text_system,
         scene,
-        "Crossfade",
+        tr("panel.audio_editor.loop.crossfade"),
         Rect::new(x, y, w, label_h),
         TypeToken::Xs.px(),
         resolve(ColorToken::Text2, theme),
@@ -86,8 +87,8 @@ pub(crate) fn paint_loop_section(
     y += label_h + ph2d_tokens::control_gap_px();
     let track = Rect::new(x, y, w, Spacing::Md.px());
     if has_loop {
-        let mut slider =
-            Slider::new(AEDIT_LOOP_XFADE, "Crossfade").orientation(SliderOrientation::Horizontal);
+        let mut slider = Slider::new(AEDIT_LOOP_XFADE, tr("panel.audio_editor.loop.crossfade"))
+            .orientation(SliderOrientation::Horizontal);
         slider.set_value(loop_state::xfade_norm());
         paint_slider(&slider, track, scene, theme);
         hit_index.register(AEDIT_LOOP_XFADE, track);
@@ -118,7 +119,7 @@ pub(crate) fn paint_loop_section(
     // (nothing before it to fade from — that is what the zero-crossing snap is for).
     button(
         Rect::new(x, y, w, row_h),
-        "Crossfade Loop",
+        tr("panel.audio_editor.loop.crossfade_loop"),
         loop_state::can_bake(),
         AEDIT_LOOP_BAKE,
         scene,
@@ -133,7 +134,7 @@ pub(crate) fn paint_loop_section(
 pub(crate) fn loop_readout() -> String {
     match loop_state::loop_span() {
         Some((s, e)) => format!("{s:.2}\u{2013}{e:.2}s"),
-        None => "No loop".to_string(),
+        None => tr("panel.audio_editor.loop.no_loop").to_string(),
     }
 }
 
@@ -169,9 +170,21 @@ pub(crate) fn paint_markers_section(
         Rect::new(x, y, w, row_h),
         &[2, 1],
         &[
-            ("Add Marker", loaded, AEDIT_MARK_ADD),
-            ("Delete", count > 0, AEDIT_MARK_DEL),
-            ("Split at Markers", loaded && count > 0, AEDIT_SPLIT),
+            (
+                tr("panel.audio_editor.loop.add_marker"),
+                loaded,
+                AEDIT_MARK_ADD,
+            ),
+            (
+                tr("panel.audio_editor.loop.delete"),
+                count > 0,
+                AEDIT_MARK_DEL,
+            ),
+            (
+                tr("panel.audio_editor.loop.split_at_markers"),
+                loaded && count > 0,
+                AEDIT_SPLIT,
+            ),
         ],
         scene,
         text_system,
@@ -185,8 +198,8 @@ pub(crate) fn paint_markers_section(
 /// clip carries without being unfolded.
 pub(crate) fn markers_readout() -> String {
     match loop_state::marker_count() {
-        0 => "No markers".to_string(),
-        1 => "1 marker".to_string(),
-        n => format!("{n} markers"),
+        0 => tr("panel.audio_editor.loop.no_markers").to_string(),
+        1 => tr("panel.audio_editor.loop.one_marker").to_string(),
+        n => ph2d_i18n::tr_with("panel.audio_editor.loop.n_markers", &[("n", &n)]),
     }
 }

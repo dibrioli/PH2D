@@ -1,0 +1,12 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI do painel Audio Editor, para as chaves `panel.audio_editor.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+lib.rs	panel
+paint.rs	panel
+paint_sections.rs	transport
+paint_delivery.rs	delivery
+paint_edit.rs	edit
+paint_fx.rs	effects
+paint_loop.rs	loop
+paint_spectral.rs	spectral
+paint_variation.rs	variations
+variation_state.rs	variations

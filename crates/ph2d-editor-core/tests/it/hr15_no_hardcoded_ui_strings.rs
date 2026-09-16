@@ -82,11 +82,8 @@ const BASELINE: &[(&str, usize)] = &[
     // dizia escondidos numa tabela, fora do alcance deste scanner. O painel inteiro fala pela tabela,
     // com gate próprio na crate dele (`every_word_this_panel_shows_comes_from_the_string_table`,
     // régua da `ph2d-label-census`).
-    // The Audio Editor's empty-state TextInput placeholder ("No clip loaded").
-    // Generic English fallback — replaced when Fluent runtime ships.
-    // The clip-name placeholder moved to `paint_sections.rs` when the panel was split
-    // into collapsible sections (2026-07-12); same one string, new file.
-    ("ph2d-panel-audio-editor/src/paint_sections.rs", 1),
+    // ⭐ O placeholder do Audio Editor ("No clip loaded") SAIU daqui em 2026-09-16: o painel
+    //    inteiro passou a falar pela tabela de strings (gate por crate na `ph2d-panel-audio-editor`).
 ];
 
 #[test]

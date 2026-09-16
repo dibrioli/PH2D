@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_seccao_poe_todas_as_caixas_na_mesma_coluna;
+mod every_word_this_panel_shows_comes_from_the_string_table;
 mod grid_snap_apply_event;
 mod grid_snap_paint;
 mod grid_snap_scrub_law;

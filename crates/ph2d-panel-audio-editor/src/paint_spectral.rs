@@ -23,6 +23,7 @@ use crate::{
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -58,7 +59,7 @@ pub(crate) fn paint_spectral_section(
     // everything else: the box Repair needs can only be drawn in the spectrogram.
     toggle(
         Rect::new(x, y, w, row_h),
-        "Spectrogram",
+        tr("panel.audio_editor.spectral.spectrogram"),
         spectral_state::view(),
         loaded,
         AEDIT_SPEC_VIEW,
@@ -73,7 +74,7 @@ pub(crate) fn paint_spectral_section(
     let can_repair = can_edit && spectral_state::has_band();
     button(
         Rect::new(x, y, w, row_h),
-        "Repair Selection",
+        tr("panel.audio_editor.spectral.repair_selection"),
         can_repair,
         AEDIT_SPEC_REPAIR,
         scene,
@@ -87,7 +88,7 @@ pub(crate) fn paint_spectral_section(
     let half = (w - gap) * 0.5;
     button(
         Rect::new(x, y, half, row_h),
-        "Learn Noise",
+        tr("panel.audio_editor.spectral.learn_noise"),
         can_edit && has_sel,
         AEDIT_SPEC_LEARN,
         scene,
@@ -97,7 +98,7 @@ pub(crate) fn paint_spectral_section(
     );
     button(
         Rect::new(x + half + gap, y, half, row_h),
-        "Denoise",
+        tr("panel.audio_editor.spectral.denoise"),
         can_edit && spectral_state::has_profile(),
         AEDIT_SPEC_DENOISE,
         scene,
@@ -121,7 +122,7 @@ pub(crate) fn paint_spectral_section(
     if ml {
         button(
             Rect::new(x, y, w, row_h),
-            "AI Denoise (Voice)",
+            tr("panel.audio_editor.spectral.ai_denoise_voice"),
             can_edit,
             AEDIT_SPEC_DENOISE_ML,
             scene,
@@ -138,7 +139,7 @@ pub(crate) fn paint_spectral_section(
     paint_text(
         text_system,
         scene,
-        "Amount",
+        tr("panel.audio_editor.spectral.amount"),
         x,
         y,
         label_h,
@@ -154,8 +155,8 @@ pub(crate) fn paint_spectral_section(
     );
     y += label_h + ph2d_tokens::control_gap_px();
     let track = Rect::new(x, y, w, Spacing::Md.px());
-    let mut slider =
-        Slider::new(AEDIT_SPEC_AMOUNT, "Amount").orientation(SliderOrientation::Horizontal);
+    let mut slider = Slider::new(AEDIT_SPEC_AMOUNT, tr("panel.audio_editor.spectral.amount"))
+        .orientation(SliderOrientation::Horizontal);
     slider.set_value(spectral_state::amount());
     paint_slider(&slider, track, scene, theme);
     hit_index.register(AEDIT_SPEC_AMOUNT, track);
@@ -166,7 +167,7 @@ pub(crate) fn paint_spectral_section(
     // the reason every control above is dark is the one fact that matters, and the rest of the
     // line ("select silence, then Learn") would be instructions the user cannot act on.
     let status = if busy {
-        "AI Denoise is running \u{b7} see the progress bar at the top".to_string()
+        tr("panel.audio_editor.spectral.ai_denoise_running").to_string()
     } else {
         spectral_state::status()
     };
@@ -193,8 +194,8 @@ pub(crate) fn paint_spectral_section(
 /// The section header's readout: which view is showing, at a glance, without unfolding.
 pub(crate) fn spectral_readout() -> &'static str {
     if spectral_state::view() {
-        "Spectrogram"
+        tr("panel.audio_editor.spectral.spectrogram")
     } else {
-        "Waveform"
+        tr("panel.audio_editor.spectral.waveform")
     }
 }

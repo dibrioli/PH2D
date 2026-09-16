@@ -20,6 +20,7 @@ use crate::{
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken, list_row_gap_px};
 use ph2d_vector::VectorScene;
@@ -81,17 +82,41 @@ pub(crate) fn paint_variation_section(
         Rect::new(x, y, w, row_h),
         &[2, 2, 1, 2],
         &[
-            ("Add\u{2026}", true, AEDIT_VAR_ADD),
-            ("Add Folder\u{2026}", true, AEDIT_VAR_ADD_FOLDER),
+            (tr("panel.audio_editor.variations.add"), true, AEDIT_VAR_ADD),
             (
-                if on { "Enabled" } else { "Disabled" },
+                tr("panel.audio_editor.variations.add_folder"),
+                true,
+                AEDIT_VAR_ADD_FOLDER,
+            ),
+            (
+                if on {
+                    tr("panel.audio_editor.variations.enabled")
+                } else {
+                    tr("panel.audio_editor.variations.disabled")
+                },
                 has_any,
                 AEDIT_VAR_ENABLED,
             ),
-            ("Remove", has_any, AEDIT_VAR_REMOVE),
-            ("Play Variation", has_any, AEDIT_VAR_PLAY),
-            ("Weight \u{00f7}2", has_any, AEDIT_VAR_WEIGHT_DOWN),
-            ("Weight \u{00d7}2", has_any, AEDIT_VAR_WEIGHT_UP),
+            (
+                tr("panel.audio_editor.variations.remove"),
+                has_any,
+                AEDIT_VAR_REMOVE,
+            ),
+            (
+                tr("panel.audio_editor.variations.play_variation"),
+                has_any,
+                AEDIT_VAR_PLAY,
+            ),
+            (
+                tr("panel.audio_editor.variations.weight_half"),
+                has_any,
+                AEDIT_VAR_WEIGHT_DOWN,
+            ),
+            (
+                tr("panel.audio_editor.variations.weight_double"),
+                has_any,
+                AEDIT_VAR_WEIGHT_UP,
+            ),
         ],
         scene,
         text_system,
@@ -105,7 +130,7 @@ pub(crate) fn paint_variation_section(
         y,
         x,
         w,
-        "Pitch jitter",
+        tr("panel.audio_editor.variations.pitch_jitter"),
         AEDIT_VAR_PITCH,
         variation_state::pitch_jitter_norm(),
         scene,
@@ -117,7 +142,7 @@ pub(crate) fn paint_variation_section(
         y,
         x,
         w,
-        "Gain jitter",
+        tr("panel.audio_editor.variations.gain_jitter"),
         AEDIT_VAR_GAIN,
         variation_state::gain_jitter_norm(),
         scene,
@@ -131,8 +156,16 @@ pub(crate) fn paint_variation_section(
         Rect::new(x, y, w, row_h),
         &[2],
         &[
-            ("Save\u{2026}", has_any, AEDIT_VAR_SAVE),
-            ("Load\u{2026}", true, AEDIT_VAR_LOAD),
+            (
+                tr("panel.audio_editor.variations.save"),
+                has_any,
+                AEDIT_VAR_SAVE,
+            ),
+            (
+                tr("panel.audio_editor.variations.load"),
+                true,
+                AEDIT_VAR_LOAD,
+            ),
         ],
         scene,
         text_system,
@@ -160,7 +193,7 @@ fn paint_var_list(
         paint_text_centered(
             text_system,
             scene,
-            "Add clips to build a set",
+            tr("panel.audio_editor.variations.add_clips_to_build_a_set"),
             Rect::new(x, y, w, VAR_ROW_H),
             TypeToken::Xs.px(),
             resolve(ColorToken::Text2, theme),
@@ -259,8 +292,8 @@ fn paint_jitter_slider(
 /// visible without unfolding it.
 pub(crate) fn variation_readout() -> String {
     match variation_state::count() {
-        0 => "No clips".to_string(),
-        1 => "1 clip".to_string(),
-        n => format!("{n} clips"),
+        0 => tr("panel.audio_editor.variations.no_clips").to_string(),
+        1 => tr("panel.audio_editor.variations.one_clip").to_string(),
+        n => ph2d_i18n::tr_with("panel.audio_editor.variations.n_clips", &[("n", &n)]),
     }
 }

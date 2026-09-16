@@ -26,6 +26,7 @@ use crate::{
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, paint_slider_track};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -78,7 +79,11 @@ pub(crate) fn paint_delivery_section(
     let live = loaded && lossy;
     let label = delivery_state::quality_label();
     y = text_row(
-        if label.is_empty() { "Quality" } else { &label },
+        if label.is_empty() {
+            tr("panel.audio_editor.delivery.quality")
+        } else {
+            &label
+        },
         x,
         y,
         w,
@@ -96,8 +101,8 @@ pub(crate) fn paint_delivery_section(
     ) + Spacing::Xs.px();
     let track = Rect::new(x, y, w, Spacing::Md.px());
     if live {
-        let mut slider =
-            Slider::new(AEDIT_OGG_QUALITY, "Quality").orientation(SliderOrientation::Horizontal);
+        let mut slider = Slider::new(AEDIT_OGG_QUALITY, tr("panel.audio_editor.delivery.quality"))
+            .orientation(SliderOrientation::Horizontal);
         slider.set_value(delivery_state::quality_norm());
         paint_slider(&slider, track, scene, theme);
         hit_index.register(AEDIT_OGG_QUALITY, track);
@@ -130,7 +135,7 @@ pub(crate) fn paint_delivery_section(
         if loaded && !ram.is_empty() {
             &ram
         } else {
-            "RAM \u{2014}"
+            tr("panel.audio_editor.delivery.ram")
         },
         x,
         y,
@@ -152,7 +157,7 @@ pub(crate) fn paint_delivery_section(
     // loses them, so the panel says it out loud while the choice can still be changed.
     if loaded && delivery_state::drops_meta() {
         y = text_row(
-            "Drops loop points and markers",
+            tr("panel.audio_editor.delivery.drops_loop_points_and_markers"),
             x,
             y,
             w,
@@ -168,7 +173,7 @@ pub(crate) fn paint_delivery_section(
     // One click writes all three, each conformed to its own platform's format first.
     button(
         Rect::new(x, y, w, row_h),
-        "Export Set",
+        tr("panel.audio_editor.delivery.export_set"),
         loaded,
         AEDIT_EXPORT_SET,
         scene,
@@ -185,7 +190,7 @@ pub(crate) fn paint_delivery_section(
     // It is dim until the clip is actually cut, because with one piece this is just Export.
     button(
         Rect::new(x, y, w, row_h),
-        "Export Pieces",
+        tr("panel.audio_editor.delivery.export_pieces"),
         loaded && crate::tool_state::has_cuts(),
         crate::AEDIT_EXPORT_PIECES,
         scene,

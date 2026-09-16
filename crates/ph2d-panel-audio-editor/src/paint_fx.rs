@@ -32,6 +32,7 @@ use ph2d_editor_core::widget::{
     paint_icon_button, paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -197,9 +198,21 @@ fn paint_head(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -
     // Fileira 1 — o que se faz com ele. Apply carrega o preset de fábrica escolhido (audiciona já);
     // Save / Load são FICHEIROS de preset por diálogo nativo — o browser do SO é o picker deles.
     for (i, (label, on, id)) in [
-        ("Apply", has_presets, AEDIT_PRESET_APPLY),
-        ("Save", loaded, AEDIT_PRESET_SAVE),
-        ("Load", loaded, AEDIT_PRESET_LOAD),
+        (
+            tr("panel.audio_editor.effects.apply"),
+            has_presets,
+            AEDIT_PRESET_APPLY,
+        ),
+        (
+            tr("panel.audio_editor.effects.save"),
+            loaded,
+            AEDIT_PRESET_SAVE,
+        ),
+        (
+            tr("panel.audio_editor.effects.load"),
+            loaded,
+            AEDIT_PRESET_LOAD,
+        ),
     ]
     .into_iter()
     .enumerate()
@@ -309,9 +322,9 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
         button(
             Rect::new(x, y, w, ROW_H),
             if read.is_empty() {
-                "Load IR\u{2026}"
+                tr("panel.audio_editor.effects.load_ir")
             } else {
-                "Change IR\u{2026}"
+                tr("panel.audio_editor.effects.change_ir")
             },
             loaded,
             crate::AEDIT_FX_LOAD_IR,
@@ -327,7 +340,7 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
             ctx.text_system,
             ctx.scene,
             if read.is_empty() {
-                "no room loaded"
+                tr("panel.audio_editor.effects.no_room_loaded")
             } else {
                 &read
             },
@@ -363,7 +376,7 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
     paint_text(
         ctx.text_system,
         ctx.scene,
-        "Chain",
+        tr("panel.audio_editor.effects.chain"),
         x,
         y + (row_h - label_h) * 0.5,
         label_h,
@@ -482,7 +495,7 @@ fn paint_commit_row(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut 
     toggle_in_group(
         block[0][0].0,
         block[0][0].1,
-        "Bypass",
+        tr("panel.audio_editor.effects.bypass"),
         bypassed,
         auditioning,
         AEDIT_FX_BYPASS,
@@ -492,8 +505,16 @@ fn paint_commit_row(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut 
         ctx.hit_index,
     );
     for (i, (label, on, id)) in [
-        ("Apply", loaded && !bypassed, AEDIT_FX_APPLY),
-        ("Cancel", auditioning, AEDIT_FX_CANCEL),
+        (
+            tr("panel.audio_editor.effects.apply"),
+            loaded && !bypassed,
+            AEDIT_FX_APPLY,
+        ),
+        (
+            tr("panel.audio_editor.effects.cancel"),
+            auditioning,
+            AEDIT_FX_CANCEL,
+        ),
     ]
     .into_iter()
     .enumerate()

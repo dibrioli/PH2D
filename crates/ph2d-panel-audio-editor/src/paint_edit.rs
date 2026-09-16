@@ -20,6 +20,7 @@ use crate::{
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::widget::{block_cells, grid_height};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -45,14 +46,24 @@ fn paint_toolbar(
     // Row 1 — the tools. Move needs somewhere to drop a piece, so it stays dim until the clip is
     // actually cut; Scale works on the single uncut piece too (that is "shorten the whole take").
     let tools: [(&str, NodeId, EditTool, bool); 3] = [
-        ("Select", AEDIT_TOOL_SELECT, EditTool::Select, loaded),
         (
-            "Move",
+            tr("panel.audio_editor.edit.select"),
+            AEDIT_TOOL_SELECT,
+            EditTool::Select,
+            loaded,
+        ),
+        (
+            tr("panel.audio_editor.edit.move"),
             AEDIT_TOOL_MOVE,
             EditTool::Move,
             loaded && tool_state::pieces() > 1,
         ),
-        ("Scale", AEDIT_TOOL_SCALE, EditTool::Scale, loaded),
+        (
+            tr("panel.audio_editor.edit.scale"),
+            AEDIT_TOOL_SCALE,
+            EditTool::Scale,
+            loaded,
+        ),
     ];
     // ⭐⭐ **As três fileiras são UM bloco** — encostam na vertical como encostam na horizontal
     //    (a lei do Blender nas duas direcções). O dono, depois de ver só a metade horizontal:
@@ -77,9 +88,13 @@ fn paint_toolbar(
     // Row 2 — the clipboard. Paste is the one op that does NOT need a selection: it needs
     // something to paste. A Paste button lit with an empty clipboard is a button that lies.
     let clip_row: [(&str, NodeId, bool); 3] = [
-        ("Cut", AEDIT_CUT, has_sel),
-        ("Copy", AEDIT_COPY, has_sel),
-        ("Paste", AEDIT_PASTE, snapshot::has_clipboard()),
+        (tr("panel.audio_editor.edit.cut"), AEDIT_CUT, has_sel),
+        (tr("panel.audio_editor.edit.copy"), AEDIT_COPY, has_sel),
+        (
+            tr("panel.audio_editor.edit.paste"),
+            AEDIT_PASTE,
+            snapshot::has_clipboard(),
+        ),
     ];
     let seg = &block[1];
     for (i, (label, id, enabled)) in clip_row.into_iter().enumerate() {
@@ -101,7 +116,7 @@ fn paint_toolbar(
     let seg = &block[2];
     button_in_group(
         seg[0].0,
-        "Split",
+        tr("panel.audio_editor.edit.split"),
         loaded,
         AEDIT_SPLIT_PLAYHEAD,
         seg[0].1,
@@ -112,7 +127,7 @@ fn paint_toolbar(
     );
     button_in_group(
         seg[1].0,
-        "Clear Cuts",
+        tr("panel.audio_editor.edit.clear_cuts"),
         tool_state::has_cuts(),
         AEDIT_CUTS_CLEAR,
         seg[1].1,
@@ -155,18 +170,33 @@ pub(crate) fn paint_edit_section(
 
     // (label, id, enabled) pairs, laid out two-per-row (last row is single).
     let rows: [[(&str, NodeId, bool); 2]; 4] = [
-        [("Undo", AEDIT_UNDO, undo_ok), ("Redo", AEDIT_REDO, redo_ok)],
         [
-            ("Normalize", AEDIT_NORMALIZE, loaded),
-            ("Norm LUFS", AEDIT_NORM_LUFS, loaded),
+            (tr("panel.audio_editor.edit.undo"), AEDIT_UNDO, undo_ok),
+            (tr("panel.audio_editor.edit.redo"), AEDIT_REDO, redo_ok),
         ],
         [
-            ("Reverse", AEDIT_REVERSE, loaded),
-            ("Rm DC", AEDIT_DC, loaded),
+            (
+                tr("panel.audio_editor.edit.normalize"),
+                AEDIT_NORMALIZE,
+                loaded,
+            ),
+            (
+                tr("panel.audio_editor.edit.norm_lufs"),
+                AEDIT_NORM_LUFS,
+                loaded,
+            ),
         ],
         [
-            ("Gain \u{2212}", AEDIT_GAIN_DOWN, loaded),
-            ("Gain +", AEDIT_GAIN_UP, loaded),
+            (tr("panel.audio_editor.edit.reverse"), AEDIT_REVERSE, loaded),
+            (tr("panel.audio_editor.edit.rm_dc"), AEDIT_DC, loaded),
+        ],
+        [
+            (
+                tr("panel.audio_editor.edit.gain_down"),
+                AEDIT_GAIN_DOWN,
+                loaded,
+            ),
+            (tr("panel.audio_editor.edit.gain_up"), AEDIT_GAIN_UP, loaded),
         ],
     ];
     // ⭐⭐ **As CINCO fileiras são um corpo só** — as quatro daqui mais a `Invert | Force Mono`
@@ -192,7 +222,7 @@ pub(crate) fn paint_edit_section(
     let seg = &block[4];
     button_in_group(
         seg[0].0,
-        "Invert",
+        tr("panel.audio_editor.edit.invert"),
         loaded,
         AEDIT_INVERT,
         seg[0].1,
@@ -204,7 +234,7 @@ pub(crate) fn paint_edit_section(
     toggle_in_group(
         seg[1].0,
         seg[1].1,
-        "Force Mono",
+        tr("panel.audio_editor.edit.force_mono"),
         loop_state::mono_on(),
         loaded,
         AEDIT_MONO,
@@ -224,12 +254,24 @@ pub(crate) fn paint_edit_section(
     // operations, so they moved up to the toolbar where the hand reaches for them.
     let range_rows: [[(&str, NodeId, bool); 2]; 2] = [
         [
-            ("Trim", AEDIT_TRIM, has_sel),
-            ("Silence", AEDIT_SILENCE, has_sel),
+            (tr("panel.audio_editor.edit.trim"), AEDIT_TRIM, has_sel),
+            (
+                tr("panel.audio_editor.edit.silence"),
+                AEDIT_SILENCE,
+                has_sel,
+            ),
         ],
         [
-            ("Fade In", AEDIT_FADE_IN, has_sel),
-            ("Fade Out", AEDIT_FADE_OUT, has_sel),
+            (
+                tr("panel.audio_editor.edit.fade_in"),
+                AEDIT_FADE_IN,
+                has_sel,
+            ),
+            (
+                tr("panel.audio_editor.edit.fade_out"),
+                AEDIT_FADE_OUT,
+                has_sel,
+            ),
         ],
     ];
     let block = block_cells(Rect::new(x, y, w, 0.0), &[2, 2], ROW_H);

@@ -36,6 +36,7 @@ use ph2d_editor_core::widget::{
     scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Density, Spacing, StrokeToken};
 
 pub(crate) fn paint(_state: &mut GridSnapPanelState, ctx: &mut PaintCtx) {
@@ -160,7 +161,7 @@ fn paint_body(
     let title_y = rect.y + PANEL_TITLE_BASELINE;
     paint_panel_title(
         rect,
-        "Grid Settings",
+        tr("panel.grid_snap.title"),
         Spacing::Xl3.px(),
         ctx.scene,
         ctx.text_system,

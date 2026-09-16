@@ -17,6 +17,7 @@ use ph2d_editor_core::grid_snap::GridSnapState;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -34,14 +35,14 @@ pub(crate) fn paint_quadtree_cfg(
     state: &GridSnapState,
 ) -> f32 {
     // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
-    let caixa = crate::paint_rows::aabb_labels("QT bounds");
+    let caixa = crate::paint_rows::aabb_labels(tr("panel.grid_snap.bounded.qt_bounds"));
     let sec = crate::paint_rows::seccao(
         text_system,
         &[
-            "Max / leaf",
-            "Max depth",
-            "Demo points",
-            "Demo seed",
+            tr("panel.grid_snap.bounded.max_leaf"),
+            tr("panel.grid_snap.bounded.max_depth"),
+            tr("panel.grid_snap.bounded.demo_points"),
+            tr("panel.grid_snap.bounded.demo_seed"),
             &caixa[0],
             &caixa[1],
             &caixa[2],
@@ -49,7 +50,7 @@ pub(crate) fn paint_quadtree_cfg(
         ],
     );
     y = paint_number_row(
-        "Max / leaf",
+        tr("panel.grid_snap.bounded.max_leaf"),
         ph2d_editor_core::grid_snap::ids::GS_CFG_QT_MAX_PER_LEAF,
         x,
         w,
@@ -60,9 +61,10 @@ pub(crate) fn paint_quadtree_cfg(
         hit_index,
         store,
         sec,
+        None,
     );
     y = paint_number_row(
-        "Max depth",
+        tr("panel.grid_snap.bounded.max_depth"),
         ph2d_editor_core::grid_snap::ids::GS_CFG_QT_MAX_DEPTH,
         x,
         w,
@@ -73,9 +75,10 @@ pub(crate) fn paint_quadtree_cfg(
         hit_index,
         store,
         sec,
+        None,
     );
     y = paint_aabb_rows(
-        "QT bounds",
+        tr("panel.grid_snap.bounded.qt_bounds"),
         ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MIN_X,
         ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MIN_Y,
         ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MAX_X,
@@ -93,7 +96,7 @@ pub(crate) fn paint_quadtree_cfg(
         sec,
     );
     y = paint_number_row_from_state(
-        "Demo points",
+        tr("panel.grid_snap.bounded.demo_points"),
         ph2d_editor_core::grid_snap::ids::GS_CFG_QT_DEMO_POINTS,
         state.quadtree_cfg.demo_point_count as f64,
         x,
@@ -105,9 +108,10 @@ pub(crate) fn paint_quadtree_cfg(
         hit_index,
         store,
         sec,
+        None,
     );
     paint_number_row_from_state(
-        "Demo seed",
+        tr("panel.grid_snap.bounded.demo_seed"),
         ph2d_editor_core::grid_snap::ids::GS_CFG_QT_DEMO_SEED,
         state.quadtree_cfg.demo_rng_seed as f64,
         x,
@@ -119,6 +123,7 @@ pub(crate) fn paint_quadtree_cfg(
         hit_index,
         store,
         sec,
+        None,
     )
 }
 
@@ -135,13 +140,13 @@ pub(crate) fn paint_voronoi_cfg(
     state: &GridSnapState,
 ) -> f32 {
     // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
-    let caixa = crate::paint_rows::aabb_labels("Voronoi bounds");
+    let caixa = crate::paint_rows::aabb_labels(tr("panel.grid_snap.bounded.voronoi_bounds"));
     let sec = crate::paint_rows::seccao(
         text_system,
         &[
-            "Seed count",
-            "RNG seed",
-            "Lloyd iters",
+            tr("panel.grid_snap.bounded.seed_count"),
+            tr("panel.grid_snap.bounded.rng_seed"),
+            tr("panel.grid_snap.bounded.lloyd_iters"),
             &caixa[0],
             &caixa[1],
             &caixa[2],
@@ -149,7 +154,7 @@ pub(crate) fn paint_voronoi_cfg(
         ],
     );
     y = paint_number_row(
-        "Seed count",
+        tr("panel.grid_snap.bounded.seed_count"),
         ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_SEED_COUNT,
         x,
         w,
@@ -160,9 +165,10 @@ pub(crate) fn paint_voronoi_cfg(
         hit_index,
         store,
         sec,
+        None,
     );
     y = paint_number_row(
-        "RNG seed",
+        tr("panel.grid_snap.bounded.rng_seed"),
         ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RNG_SEED,
         x,
         w,
@@ -173,9 +179,10 @@ pub(crate) fn paint_voronoi_cfg(
         hit_index,
         store,
         sec,
+        None,
     );
     y = paint_number_row(
-        "Lloyd iters",
+        tr("panel.grid_snap.bounded.lloyd_iters"),
         ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_LLOYD_ITERS,
         x,
         w,
@@ -186,9 +193,10 @@ pub(crate) fn paint_voronoi_cfg(
         hit_index,
         store,
         sec,
+        None,
     );
     y = paint_aabb_rows(
-        "Voronoi bounds",
+        tr("panel.grid_snap.bounded.voronoi_bounds"),
         ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MIN_X,
         ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MIN_Y,
         ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MAX_X,
@@ -209,7 +217,7 @@ pub(crate) fn paint_voronoi_cfg(
     let reseed_rect = Rect::new(x, y, w, ROW_H);
     let btn = Button {
         id: ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RESEED,
-        label: "Reseed (next RNG)".to_string(),
+        label: tr("panel.grid_snap.bounded.reseed_next_rng").to_string(),
         state: button_state(
             store,
             ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RESEED,

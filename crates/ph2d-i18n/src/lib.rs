@@ -27,6 +27,10 @@
 //! assert_eq!(tr("tool.unknown.key"), "tool.unknown.key"); // missing-key passthrough
 //! ```
 
+/// As strings dos dois painéis de áudio (editor + mixer).
+mod audio;
+/// As strings do painel Grid Settings.
+mod grid_snap;
 mod vector;
 
 /// Look up a string by Fluent-style key. Missing keys round-trip the
@@ -468,6 +472,8 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| painter_layers::tr(k))
             .or_else(|| inspector::tr(k))
             .or_else(|| inspector_player::tr(k))
+            .or_else(|| audio::tr(k))
+            .or_else(|| grid_snap::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

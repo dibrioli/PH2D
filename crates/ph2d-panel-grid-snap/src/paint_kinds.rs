@@ -7,11 +7,12 @@ use crate::paint_helpers::{
     NeighborhoodFamily, paint_labeled_segmented_row, paint_neighborhood_button_row,
 };
 use crate::paint_rows::{paint_number_row, paint_number_row_from_state, paint_origin_rows};
-use crate::state::unit_suffix_paren;
+use crate::state::length_unit;
 use ph2d_editor_core::grid_snap::{GridKind, GridSnapState};
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_grid::hex::{HexOffset, HexOrientation};
 use ph2d_grid::staggered::StaggerParity;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -82,12 +83,12 @@ pub(crate) fn paint_square_cfg(
     state: &GridSnapState,
 ) -> f32 {
     // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
-    let cell = format!("Cell size{}", unit_suffix_paren());
-    let major = format!("Major every{}", unit_suffix_paren());
+    let cell = tr("panel.grid_snap.kinds.cell_size");
+    let major = tr("panel.grid_snap.kinds.major_every");
     let origem = crate::paint_rows::origin_labels();
-    let sec = crate::paint_rows::seccao(text_system, &[&cell, &major, &origem[0], &origem[1]]);
+    let sec = crate::paint_rows::seccao(text_system, &[cell, major, origem[0], origem[1]]);
     y = paint_number_row(
-        &cell,
+        cell,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -98,9 +99,10 @@ pub(crate) fn paint_square_cfg(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     );
     y = paint_number_row_from_state(
-        &major,
+        major,
         ph2d_editor_core::grid_snap::ids::GS_CFG_SPACING_MAJOR,
         crate::state::meters_to_display(state.square_cfg.spacing_major),
         x,
@@ -112,6 +114,7 @@ pub(crate) fn paint_square_cfg(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     );
     y = paint_origin_rows(
         x,
@@ -152,11 +155,11 @@ pub(crate) fn paint_hex_cfg(
     state: &GridSnapState,
 ) -> f32 {
     // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
-    let cell = format!("Cell size{}", unit_suffix_paren());
+    let cell = tr("panel.grid_snap.kinds.cell_size");
     let origem = crate::paint_rows::origin_labels();
-    let sec = crate::paint_rows::seccao(text_system, &[&cell, &origem[0], &origem[1]]);
+    let sec = crate::paint_rows::seccao(text_system, &[cell, origem[0], origem[1]]);
     y = paint_number_row(
-        &cell,
+        cell,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -167,6 +170,7 @@ pub(crate) fn paint_hex_cfg(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     );
     y = paint_origin_rows(
         x,
@@ -190,13 +194,16 @@ pub(crate) fn paint_hex_cfg(
         HexOrientation::Flat => 1,
     };
     y = paint_labeled_segmented_row(
-        "Orientation",
+        tr("panel.grid_snap.kinds.orientation"),
         &[
             (
-                "Pointy",
+                tr("panel.grid_snap.kinds.pointy"),
                 ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_POINTY,
             ),
-            ("Flat", ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_FLAT),
+            (
+                tr("panel.grid_snap.kinds.flat"),
+                ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_FLAT,
+            ),
         ],
         orient_idx,
         x,
@@ -215,22 +222,22 @@ pub(crate) fn paint_hex_cfg(
         HexOffset::EvenQ => 3,
     };
     paint_labeled_segmented_row(
-        "Offset",
+        tr("panel.grid_snap.kinds.offset"),
         &[
             (
-                "OddR",
+                tr("panel.grid_snap.kinds.oddr"),
                 ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_OFFSET_ODDR,
             ),
             (
-                "EvenR",
+                tr("panel.grid_snap.kinds.evenr"),
                 ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_OFFSET_EVENR,
             ),
             (
-                "OddQ",
+                tr("panel.grid_snap.kinds.oddq"),
                 ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_OFFSET_ODDQ,
             ),
             (
-                "EvenQ",
+                tr("panel.grid_snap.kinds.evenq"),
                 ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_OFFSET_EVENQ,
             ),
         ],
@@ -259,13 +266,12 @@ pub(crate) fn paint_iso_cfg(
     state: &GridSnapState,
 ) -> f32 {
     // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
-    let suffix = unit_suffix_paren();
-    let tw = format!("Tile width{suffix}");
-    let th = format!("Tile height{suffix}");
+    let tw = tr("panel.grid_snap.kinds.tile_width");
+    let th = tr("panel.grid_snap.kinds.tile_height");
     let origem = crate::paint_rows::origin_labels();
-    let sec = crate::paint_rows::seccao(text_system, &[&tw, &th, &origem[0], &origem[1]]);
+    let sec = crate::paint_rows::seccao(text_system, &[tw, th, origem[0], origem[1]]);
     y = paint_number_row(
-        &tw,
+        tw,
         ph2d_editor_core::grid_snap::ids::GS_CFG_ISO_TILE_W,
         x,
         w,
@@ -276,9 +282,10 @@ pub(crate) fn paint_iso_cfg(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     );
     y = paint_number_row(
-        &th,
+        th,
         ph2d_editor_core::grid_snap::ids::GS_CFG_ISO_TILE_H,
         x,
         w,
@@ -289,6 +296,7 @@ pub(crate) fn paint_iso_cfg(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     );
     y = paint_origin_rows(
         x,
@@ -329,11 +337,11 @@ pub(crate) fn paint_staggered_sq_cfg(
     state: &GridSnapState,
 ) -> f32 {
     // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
-    let cell = format!("Cell size{}", unit_suffix_paren());
+    let cell = tr("panel.grid_snap.kinds.cell_size");
     let origem = crate::paint_rows::origin_labels();
-    let sec = crate::paint_rows::seccao(text_system, &[&cell, &origem[0], &origem[1]]);
+    let sec = crate::paint_rows::seccao(text_system, &[cell, origem[0], origem[1]]);
     y = paint_number_row(
-        &cell,
+        cell,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -344,6 +352,7 @@ pub(crate) fn paint_staggered_sq_cfg(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     );
     y = paint_origin_rows(
         x,
@@ -362,14 +371,14 @@ pub(crate) fn paint_staggered_sq_cfg(
         StaggerParity::EvenRows => 1,
     };
     y = paint_labeled_segmented_row(
-        "Parity",
+        tr("panel.grid_snap.kinds.parity"),
         &[
             (
-                "Odd rows",
+                tr("panel.grid_snap.kinds.odd_rows"),
                 ph2d_editor_core::grid_snap::ids::GS_CFG_STAGGER_PARITY_ODD,
             ),
             (
-                "Even rows",
+                tr("panel.grid_snap.kinds.even_rows"),
                 ph2d_editor_core::grid_snap::ids::GS_CFG_STAGGER_PARITY_EVEN,
             ),
         ],
@@ -410,11 +419,11 @@ pub(crate) fn paint_tri_cfg(
     state: &GridSnapState,
 ) -> f32 {
     // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
-    let edge = format!("Edge length{}", unit_suffix_paren());
+    let edge = tr("panel.grid_snap.kinds.edge_length");
     let origem = crate::paint_rows::origin_labels();
-    let sec = crate::paint_rows::seccao(text_system, &[&edge, &origem[0], &origem[1]]);
+    let sec = crate::paint_rows::seccao(text_system, &[edge, origem[0], origem[1]]);
     y = paint_number_row(
-        &edge,
+        edge,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -425,6 +434,7 @@ pub(crate) fn paint_tri_cfg(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     );
     y = paint_origin_rows(
         x,
@@ -465,14 +475,19 @@ pub(crate) fn paint_chunks_cfg(
     state: &GridSnapState,
 ) -> f32 {
     // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
-    let cell = format!("Cell size{}", unit_suffix_paren());
+    let cell = tr("panel.grid_snap.kinds.cell_size");
     let origem = crate::paint_rows::origin_labels();
     let sec = crate::paint_rows::seccao(
         text_system,
-        &[&cell, "Chunk size (cells)", &origem[0], &origem[1]],
+        &[
+            cell,
+            tr("panel.grid_snap.kinds.chunk_size_cells"),
+            origem[0],
+            origem[1],
+        ],
     );
     y = paint_number_row(
-        &cell,
+        cell,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -483,9 +498,10 @@ pub(crate) fn paint_chunks_cfg(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     );
     y = paint_number_row(
-        "Chunk size (cells)",
+        tr("panel.grid_snap.kinds.chunk_size_cells"),
         ph2d_editor_core::grid_snap::ids::GS_CFG_CHUNKS_SIZE,
         x,
         w,
@@ -496,6 +512,7 @@ pub(crate) fn paint_chunks_cfg(
         hit_index,
         store,
         sec,
+        None,
     );
     y = paint_origin_rows(
         x,

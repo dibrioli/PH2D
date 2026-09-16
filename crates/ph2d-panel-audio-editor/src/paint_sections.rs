@@ -27,6 +27,7 @@ use ph2d_editor_core::widget::{
     paint_section_header, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -109,7 +110,7 @@ fn paint_sound_sections(
         x,
         w,
         AEDIT_SEC_TRANSPORT,
-        "Transport",
+        tr("panel.audio_editor.transport.transport"),
         None,
         b.fold(AEDIT_SEC_TRANSPORT),
         scene,
@@ -141,7 +142,7 @@ fn paint_sound_sections(
         x,
         w,
         AEDIT_SEC_LOOP,
-        "Loop",
+        tr("panel.audio_editor.transport.loop"),
         Some(&loop_read),
         b.fold(AEDIT_SEC_LOOP),
         scene,
@@ -173,7 +174,7 @@ fn paint_sound_sections(
         x,
         w,
         AEDIT_SEC_EDIT,
-        "Edit",
+        tr("panel.audio_editor.transport.edit"),
         None,
         b.fold(AEDIT_SEC_EDIT),
         scene,
@@ -209,7 +210,7 @@ fn paint_sound_sections(
         x,
         w,
         AEDIT_SEC_SPECTRAL,
-        "Spectral",
+        tr("panel.audio_editor.transport.spectral"),
         Some(crate::paint_spectral::spectral_readout()),
         b.fold(AEDIT_SEC_SPECTRAL),
         scene,
@@ -241,7 +242,7 @@ fn paint_sound_sections(
         x,
         w,
         AEDIT_SEC_FX,
-        "Effects",
+        tr("panel.audio_editor.transport.effects"),
         None,
         b.fold(AEDIT_SEC_FX),
         scene,
@@ -290,7 +291,7 @@ fn paint_asset_sections(
         x,
         w,
         AEDIT_SEC_MARKERS,
-        "Markers",
+        tr("panel.audio_editor.transport.markers"),
         Some(&mark_read),
         b.fold(AEDIT_SEC_MARKERS),
         scene,
@@ -322,7 +323,7 @@ fn paint_asset_sections(
         x,
         w,
         AEDIT_SEC_VARIATIONS,
-        "Variations",
+        tr("panel.audio_editor.transport.variations"),
         Some(&var_read),
         b.fold(AEDIT_SEC_VARIATIONS),
         scene,
@@ -353,7 +354,7 @@ fn paint_asset_sections(
         x,
         w,
         AEDIT_SEC_DELIVERY,
-        "Delivery",
+        tr("panel.audio_editor.transport.delivery"),
         Some(&del_read),
         b.fold(AEDIT_SEC_DELIVERY),
         scene,
@@ -436,7 +437,7 @@ fn paint_transport_section(
     let name_rect = Rect::new(x, y, w, name_h);
     hit_index.register(AEDIT_NAME, name_rect);
     let input = TextInput::new(AEDIT_NAME, "")
-        .placeholder("No clip loaded")
+        .placeholder(tr("panel.audio_editor.transport.no_clip_loaded"))
         .visual((name.state, name.hover_t));
     // Clip to the field: the TextInput lays its text out with word-wrap at the inner
     // width, so a long filename spills onto a 2nd line below the box. A clip to the
@@ -472,7 +473,11 @@ fn paint_transport_section(
     //    (comandar o clipe), logo encostam, e só os quatro cantos do BLOCO arredondam.
     let block = block_cells(Rect::new(x, y, w, 0.0), &[1, 2, 2, 1], ROW_H);
     // Transport: Play/Pause (full width toggle, active while playing).
-    let play_label = if t.playing { "Pause" } else { "Play" };
+    let play_label = if t.playing {
+        tr("panel.audio_editor.transport.pause")
+    } else {
+        tr("panel.audio_editor.transport.play")
+    };
     toggle_in_group(
         block[0][0].0,
         block[0][0].1,
@@ -490,7 +495,7 @@ fn paint_transport_section(
     let seg = &block[1];
     button_in_group(
         seg[0].0,
-        "Stop",
+        tr("panel.audio_editor.transport.stop"),
         t.loaded,
         AEDIT_STOP,
         seg[0].1,
@@ -502,7 +507,7 @@ fn paint_transport_section(
     toggle_in_group(
         seg[1].0,
         seg[1].1,
-        "Loop",
+        tr("panel.audio_editor.transport.loop"),
         t.looping,
         true,
         AEDIT_LOOP,
@@ -516,7 +521,7 @@ fn paint_transport_section(
     let seg = &block[2];
     button_in_group(
         seg[0].0,
-        "Load\u{2026}",
+        tr("panel.audio_editor.transport.load"),
         true,
         AEDIT_LOAD,
         seg[0].1,
@@ -527,7 +532,7 @@ fn paint_transport_section(
     );
     button_in_group(
         seg[1].0,
-        "Export WAV\u{2026}",
+        tr("panel.audio_editor.transport.export_wav"),
         t.loaded,
         AEDIT_EXPORT,
         seg[1].1,
@@ -540,7 +545,7 @@ fn paint_transport_section(
     // Batch LUFS — a FOLDER op (independent of the loaded clip), so always enabled.
     button_in_group(
         block[3][0].0,
-        "Batch LUFS\u{2026}",
+        tr("panel.audio_editor.transport.batch_lufs"),
         true,
         AEDIT_BATCH_LUFS,
         block[3][0].1,

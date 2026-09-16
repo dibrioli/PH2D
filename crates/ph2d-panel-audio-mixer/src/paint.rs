@@ -31,6 +31,7 @@ use ph2d_editor_core::widget::{
     paint_scrollbar, paint_slider, scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -106,7 +107,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
 
     let title_size = paint_panel_title(
         rect,
-        "Audio Mixer",
+        tr("panel.audio_mixer.title"),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,
@@ -161,7 +162,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     // Build the strips: Master first, then each sub-bus in canonical order.
     let mut strips = Vec::with_capacity(1 + SUB_BUS_COUNT);
     strips.push(Strip {
-        label: "Master",
+        label: tr("panel.audio_mixer.strip.master"),
         fader_id: AMIX_FADER,
         pan_id: AMIX_PAN,
         mute_id: AMIX_MASTER_MUTE,
@@ -181,7 +182,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     });
     for i in 0..SUB_BUS_COUNT {
         strips.push(Strip {
-            label: SUB_BUS_LABELS[i],
+            label: SUB_BUS_LABELS[i].tr(),
             fader_id: SUB_FADER[i],
             pan_id: SUB_PAN[i],
             mute_id: SUB_MUTE[i],
@@ -455,7 +456,7 @@ fn paint_strip(
         None => {
             paint_toggle(
                 Rect::new(col_x, y, col_w, MUTE_H),
-                "Mute",
+                tr("panel.audio_mixer.strip.mute"),
                 strip.muted,
                 ColorToken::Danger,
                 strip.mute_id,

@@ -11,6 +11,7 @@
 //! run on the main thread. Kept in its own file (not `snapshot.rs`, which is at the
 //! panel LOC cap, nor `loop_state.rs`) so the section can grow without pressure.
 
+use ph2d_i18n::tr;
 use std::cell::{Cell, RefCell};
 
 thread_local! {
@@ -19,7 +20,7 @@ thread_local! {
     static NAMES: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
     /// Shell → panel: the current strategy's display name (for the `◀ name ▶`
     /// selector readout).
-    static STRATEGY: RefCell<String> = RefCell::new(String::from("Shuffle"));
+    static STRATEGY: RefCell<String> = RefCell::new(String::from(tr("panel.audio_editor.variations.shuffle")));
     /// Panel-owned: the selected row (Remove / Weight act on it). The shell reads it
     /// to resolve the target.
     static SEL: Cell<usize> = const { Cell::new(0) };

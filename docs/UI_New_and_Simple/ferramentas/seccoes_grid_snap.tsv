@@ -1,0 +1,9 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI do painel Grid Settings, para as chaves `panel.grid_snap.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+lib.rs	panel
+paint.rs	panel
+paint_body_sections.rs	sections
+paint_helpers.rs	options
+paint_kinds_bounded.rs	bounded
+paint_kinds.rs	kinds
+paint_rows.rs	rows

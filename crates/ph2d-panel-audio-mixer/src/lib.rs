@@ -21,6 +21,7 @@ mod populate;
 pub mod state;
 
 pub use fader::{FADER_UNITY_POS, fader_db, fader_gain};
+use ph2d_i18n::TextKey;
 pub use state::AudioMixerState;
 
 use ph2d_a11y::NodeId;
@@ -91,7 +92,13 @@ pub const AMIX_SEC_DUCK: NodeId = hash_node_id("audio_mixer_sec_duck");
 /// must match the core. A compile-time assert in the shell guards the count.
 pub const SUB_BUS_COUNT: usize = 4;
 /// Strip labels, index-aligned with [`SUB_BUS_COUNT`].
-pub const SUB_BUS_LABELS: [&str; SUB_BUS_COUNT] = ["Music", "SFX", "UI", "Voice"];
+/// ⚠️ São CHAVES (`TextKey`): a tabela de strings traduz no sítio que pinta — o `tr` não é `const fn`.
+pub const SUB_BUS_LABELS: [TextKey; SUB_BUS_COUNT] = [
+    TextKey::new("panel.audio_mixer.bus.music"),
+    TextKey::new("panel.audio_mixer.bus.sfx"),
+    TextKey::new("panel.audio_mixer.bus.ui"),
+    TextKey::new("panel.audio_mixer.bus.voice"),
+];
 /// Per-sub-bus vertical fader ids (drag → that bus's gain).
 pub const SUB_FADER: [NodeId; SUB_BUS_COUNT] = [
     hash_node_id("audio_mixer_music_fader"),

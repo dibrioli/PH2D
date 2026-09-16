@@ -1,0 +1,5 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI do painel Audio Mixer, para as chaves `panel.audio_mixer.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+lib.rs	bus
+paint.rs	strip
+paint_master.rs	master

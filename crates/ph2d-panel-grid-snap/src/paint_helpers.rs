@@ -15,6 +15,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_grid::snap::SnapTarget;
 use ph2d_grid::square::SquareNeighborhood;
 use ph2d_grid::tri::TriNeighborhood;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
@@ -78,7 +79,11 @@ pub(crate) fn paint_snap_top_toggle(
     let on = state.snap_enabled;
     // Canonical primary CTA: ON → Accent kind; OFF → Default (ghost
     // with the canonical Border outline). Single source of truth.
-    let label = if on { "Snap: ON" } else { "Snap: OFF" };
+    let label = if on {
+        tr("panel.grid_snap.options.snap_on")
+    } else {
+        tr("panel.grid_snap.options.snap_off")
+    };
     let kind = if on {
         ButtonKind::Accent
     } else {
@@ -148,47 +153,47 @@ pub(crate) fn paint_kind_button_grid(
     let entries: [(GridKind, &str, NodeId); 9] = [
         (
             GridKind::Square,
-            "Square",
+            tr("panel.grid_snap.options.square"),
             ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_SQUARE,
         ),
         (
             GridKind::Hex,
-            "Hex",
+            tr("panel.grid_snap.options.hex"),
             ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_HEX,
         ),
         (
             GridKind::Iso,
-            "Iso",
+            tr("panel.grid_snap.options.iso"),
             ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_ISO,
         ),
         (
             GridKind::StaggeredSquare,
-            "Stag Sq",
+            tr("panel.grid_snap.options.stag_sq"),
             ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_STAGGERED_SQ,
         ),
         (
             GridKind::StaggeredHex,
-            "Stag Hex",
+            tr("panel.grid_snap.options.stag_hex"),
             ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_STAGGERED_HEX,
         ),
         (
             GridKind::Tri,
-            "Tri",
+            tr("panel.grid_snap.options.tri"),
             ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_TRI,
         ),
         (
             GridKind::Quadtree,
-            "Quadtree",
+            tr("panel.grid_snap.options.quadtree"),
             ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_QUADTREE,
         ),
         (
             GridKind::Voronoi,
-            "Voronoi",
+            tr("panel.grid_snap.options.voronoi"),
             ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_VORONOI,
         ),
         (
             GridKind::Chunks,
-            "Chunks",
+            tr("panel.grid_snap.options.chunks"),
             ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_CHUNKS,
         ),
     ];
@@ -240,27 +245,27 @@ pub(crate) fn paint_target_button_stack(
     let entries: [(SnapTarget, &str, NodeId); 5] = [
         (
             SnapTarget::Center,
-            "Center",
+            tr("panel.grid_snap.options.center"),
             ph2d_editor_core::grid_snap::ids::GS_SNAP_CENTER,
         ),
         (
             SnapTarget::Intersection,
-            "Intersection",
+            tr("panel.grid_snap.options.intersection"),
             ph2d_editor_core::grid_snap::ids::GS_SNAP_INTERSECTION,
         ),
         (
             SnapTarget::Corner,
-            "Corner",
+            tr("panel.grid_snap.options.corner"),
             ph2d_editor_core::grid_snap::ids::GS_SNAP_TARGET_OPT_CORNER,
         ),
         (
             SnapTarget::CenterAndIntersection,
-            "Center + Intersection",
+            tr("panel.grid_snap.options.center_intersection"),
             ph2d_editor_core::grid_snap::ids::GS_SNAP_TARGET_OPT_CENTER_AND_INTERSECTION,
         ),
         (
             SnapTarget::CenterIntersectionAndCorners,
-            "Center + Intersection + Corners",
+            tr("panel.grid_snap.options.center_intersection_corners"),
             ph2d_editor_core::grid_snap::ids::GS_SNAP_TARGET_OPT_CENTER_INTERSECTION_AND_CORNERS,
         ),
     ];
@@ -311,7 +316,7 @@ pub(crate) fn paint_neighborhood_button_row(
     paint_text(
         text_system,
         scene,
-        "Neighborhood",
+        tr("panel.grid_snap.options.neighborhood"),
         x,
         y,
         label_font,
@@ -327,9 +332,9 @@ pub(crate) fn paint_neighborhood_button_row(
         NeighborhoodFamily::Square => {
             let n = neighborhood_for_active_kind(state);
             (
-                "Von4",
+                tr("panel.grid_snap.options.von4"),
                 ph2d_editor_core::grid_snap::ids::GS_CFG_NEIGHBORHOOD_4,
-                "Moore8",
+                tr("panel.grid_snap.options.moore8"),
                 ph2d_editor_core::grid_snap::ids::GS_CFG_NEIGHBORHOOD_8,
                 if matches!(n, SquareNeighborhood::Moore8) {
                     1
@@ -339,9 +344,9 @@ pub(crate) fn paint_neighborhood_button_row(
             )
         }
         NeighborhoodFamily::Tri => (
-            "Edge3",
+            tr("panel.grid_snap.options.edge3"),
             ph2d_editor_core::grid_snap::ids::GS_CFG_TRI_EDGE3,
-            "Vertex12",
+            tr("panel.grid_snap.options.vertex12"),
             ph2d_editor_core::grid_snap::ids::GS_CFG_TRI_VERTEX12,
             if matches!(state.tri_cfg.neighborhood, TriNeighborhood::Vertex12) {
                 1

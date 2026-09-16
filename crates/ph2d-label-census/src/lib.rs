@@ -43,6 +43,8 @@
 //! sem palavra (`format!("{a}{b}")` com `a` e `b` vindos de outro sítio).
 
 pub mod cfg_test;
+/// O corpo do gate por crate (os painéis migrados a partir de 2026-09-16 chamam-no).
+pub mod gate;
 pub mod keys;
 mod lexical;
 mod source;

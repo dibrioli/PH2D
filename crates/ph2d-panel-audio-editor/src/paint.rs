@@ -24,6 +24,7 @@ use ph2d_editor_core::widget::{
     paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{Color as VelloColor, VectorScene};
@@ -70,7 +71,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
 
     let title_size = paint_panel_title(
         rect,
-        "Audio Editor",
+        tr("panel.audio_editor.title"),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

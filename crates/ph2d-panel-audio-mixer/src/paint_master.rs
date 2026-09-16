@@ -19,6 +19,7 @@ use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
 use ph2d_editor_core::widget::{SectionFold, SectionHeader, paint_section_header};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -146,7 +147,7 @@ fn sub_bus_rows(
     vals: [f32; SUB_BUS_COUNT],
 ) -> f32 {
     for i in 0..SUB_BUS_COUNT {
-        y = slider_row(ctx, y, SUB_BUS_LABELS[i], ids[i], vals[i]);
+        y = slider_row(ctx, y, SUB_BUS_LABELS[i].tr(), ids[i], vals[i]);
     }
     y
 }
@@ -157,7 +158,11 @@ fn paint_play_test(ctx: &mut Ctx, y: f32) -> f32 {
     toggle_row(
         ctx,
         y,
-        if playing { "Stop" } else { "Play Test" },
+        if playing {
+            tr("panel.audio_mixer.master.stop")
+        } else {
+            tr("panel.audio_mixer.master.play_test")
+        },
         playing,
         AMIX_PLAY,
     )
@@ -167,9 +172,12 @@ fn paint_loudness(ctx: &mut Ctx, y: f32) -> f32 {
     // Momentary loudness (LUFS, BS.1770); "-inf" when effectively silent.
     let lufs = snapshot::loudness();
     let text = if lufs <= LUFS_SILENCE_DISPLAY {
-        "-inf LUFS".to_string()
+        tr("panel.audio_mixer.master.inf_lufs").to_string()
     } else {
-        format!("{lufs:.1} LUFS")
+        ph2d_i18n::tr_with(
+            "panel.audio_mixer.master.lufs_value",
+            &[("lufs", &format!("{lufs:.1}"))],
+        )
     };
     paint_text_centered(
         ctx.text_system,
@@ -184,27 +192,74 @@ fn paint_loudness(ctx: &mut Ctx, y: f32) -> f32 {
 
 fn paint_limiter(ctx: &mut Ctx, y: f32) -> f32 {
     // Master output limiter — tames peaks below the clip ceiling.
-    toggle_row(ctx, y, "Limiter", snapshot::limiter(), AMIX_LIMITER) + Spacing::Sm.px()
+    toggle_row(
+        ctx,
+        y,
+        tr("panel.audio_mixer.master.limiter"),
+        snapshot::limiter(),
+        AMIX_LIMITER,
+    ) + Spacing::Sm.px()
 }
 
 fn paint_eq(ctx: &mut Ctx, y: f32) -> f32 {
     let (fold, mut y) = section_header(ctx, y, AMIX_SEC_EQ, "EQ");
     if let Some(fold) = fold {
         let eq = snapshot::eq();
-        y = slider_row(ctx, y, "Low", AMIX_EQ_LOW, eq[0]);
-        y = slider_row(ctx, y, "Mid", AMIX_EQ_MID, eq[1]);
-        y = slider_row(ctx, y, "High", AMIX_EQ_HIGH, eq[2]);
+        y = slider_row(
+            ctx,
+            y,
+            tr("panel.audio_mixer.master.low"),
+            AMIX_EQ_LOW,
+            eq[0],
+        );
+        y = slider_row(
+            ctx,
+            y,
+            tr("panel.audio_mixer.master.mid"),
+            AMIX_EQ_MID,
+            eq[1],
+        );
+        y = slider_row(
+            ctx,
+            y,
+            tr("panel.audio_mixer.master.high"),
+            AMIX_EQ_HIGH,
+            eq[2],
+        );
         y = end_fold(ctx, fold, y);
     }
     y + ph2d_tokens::control_gap_px()
 }
 
 fn paint_reverb(ctx: &mut Ctx, y: f32) -> f32 {
-    let (fold, mut y) = section_header(ctx, y, AMIX_SEC_REVERB, "Reverb");
+    let (fold, mut y) = section_header(
+        ctx,
+        y,
+        AMIX_SEC_REVERB,
+        tr("panel.audio_mixer.master.reverb"),
+    );
     if let Some(fold) = fold {
-        y = toggle_row(ctx, y, "Reverb", snapshot::reverb_on(), AMIX_REVERB);
-        y = slider_row(ctx, y, "Size", AMIX_REVERB_SIZE, snapshot::reverb_size());
-        y = slider_row(ctx, y, "Return", AMIX_REVERB_MIX, snapshot::reverb_mix());
+        y = toggle_row(
+            ctx,
+            y,
+            tr("panel.audio_mixer.master.reverb"),
+            snapshot::reverb_on(),
+            AMIX_REVERB,
+        );
+        y = slider_row(
+            ctx,
+            y,
+            tr("panel.audio_mixer.master.size"),
+            AMIX_REVERB_SIZE,
+            snapshot::reverb_size(),
+        );
+        y = slider_row(
+            ctx,
+            y,
+            tr("panel.audio_mixer.master.return"),
+            AMIX_REVERB_MIX,
+            snapshot::reverb_mix(),
+        );
         y = sub_bus_rows(ctx, y, &SUB_SEND, snapshot::sub_send());
         y = end_fold(ctx, fold, y);
     }
@@ -212,18 +267,37 @@ fn paint_reverb(ctx: &mut Ctx, y: f32) -> f32 {
 }
 
 fn paint_delay(ctx: &mut Ctx, y: f32) -> f32 {
-    let (fold, mut y) = section_header(ctx, y, AMIX_SEC_DELAY, "Delay");
+    let (fold, mut y) =
+        section_header(ctx, y, AMIX_SEC_DELAY, tr("panel.audio_mixer.master.delay"));
     if let Some(fold) = fold {
-        y = toggle_row(ctx, y, "Delay", snapshot::delay_on(), AMIX_DELAY);
-        y = slider_row(ctx, y, "Time", AMIX_DELAY_TIME, snapshot::delay_time());
+        y = toggle_row(
+            ctx,
+            y,
+            tr("panel.audio_mixer.master.delay"),
+            snapshot::delay_on(),
+            AMIX_DELAY,
+        );
         y = slider_row(
             ctx,
             y,
-            "Fbk",
+            tr("panel.audio_mixer.master.time"),
+            AMIX_DELAY_TIME,
+            snapshot::delay_time(),
+        );
+        y = slider_row(
+            ctx,
+            y,
+            tr("panel.audio_mixer.master.fbk"),
             AMIX_DELAY_FEEDBACK,
             snapshot::delay_feedback(),
         );
-        y = slider_row(ctx, y, "Return", AMIX_DELAY_MIX, snapshot::delay_mix());
+        y = slider_row(
+            ctx,
+            y,
+            tr("panel.audio_mixer.master.return"),
+            AMIX_DELAY_MIX,
+            snapshot::delay_mix(),
+        );
         y = sub_bus_rows(ctx, y, &SUB_DELAY_SEND, snapshot::sub_delay_send());
         y = end_fold(ctx, fold, y);
     }
@@ -231,7 +305,7 @@ fn paint_delay(ctx: &mut Ctx, y: f32) -> f32 {
 }
 
 fn paint_comp(ctx: &mut Ctx, y: f32) -> f32 {
-    let (fold, mut y) = section_header(ctx, y, AMIX_SEC_COMP, "Comp");
+    let (fold, mut y) = section_header(ctx, y, AMIX_SEC_COMP, tr("panel.audio_mixer.master.comp"));
     if let Some(fold) = fold {
         y = sub_bus_rows(ctx, y, &SUB_COMP, snapshot::sub_comp());
         y = end_fold(ctx, fold, y);
@@ -240,13 +314,27 @@ fn paint_comp(ctx: &mut Ctx, y: f32) -> f32 {
 }
 
 fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
-    let (fold, mut y) = section_header(ctx, y, AMIX_SEC_DUCK, "Ducking");
+    let (fold, mut y) = section_header(
+        ctx,
+        y,
+        AMIX_SEC_DUCK,
+        tr("panel.audio_mixer.master.ducking"),
+    );
     if let Some(fold) = fold {
-        y = toggle_row(ctx, y, "Ducking", snapshot::ducking(), AMIX_DUCK);
+        y = toggle_row(
+            ctx,
+            y,
+            tr("panel.audio_mixer.master.ducking"),
+            snapshot::ducking(),
+            AMIX_DUCK,
+        );
         // Key selector (a plain button — cycles the sidechain key sub-bus).
-        let key_label = format!(
-            "Key: {}",
-            SUB_BUS_LABELS[snapshot::ducking_key() % SUB_BUS_COUNT]
+        let key_label = ph2d_i18n::tr_with(
+            "panel.audio_mixer.master.key",
+            &[(
+                "bus",
+                &SUB_BUS_LABELS[snapshot::ducking_key() % SUB_BUS_COUNT].tr(),
+            )],
         );
         paint_toggle(
             Rect::new(ctx.x, y, ctx.w, MUTE_H),
@@ -265,7 +353,13 @@ fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
             ctx.hit_index,
         );
         y += MUTE_H + ph2d_tokens::control_gap_px();
-        y = slider_row(ctx, y, "Depth", AMIX_DUCK_DEPTH, snapshot::duck_depth());
+        y = slider_row(
+            ctx,
+            y,
+            tr("panel.audio_mixer.master.depth"),
+            AMIX_DUCK_DEPTH,
+            snapshot::duck_depth(),
+        );
         y = end_fold(ctx, fold, y);
     }
     y + ph2d_tokens::control_gap_px()

@@ -15,10 +15,11 @@ use crate::paint_kinds::paint_kind_config;
 use crate::paint_rows::{
     paint_number_row_from_state, paint_opacity_slider_row, paint_show_overlay_row,
 };
-use crate::state::{meters_to_display, unit_suffix_paren};
+use crate::state::{length_unit, meters_to_display};
 use ph2d_editor_core::grid_snap::GridSnapState;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 
 /// Grid Kind label + 3×3 button grid + per-kind config rows.
 pub(crate) fn paint_grid_kind_section(
@@ -30,7 +31,7 @@ pub(crate) fn paint_grid_kind_section(
 ) -> f32 {
     let theme = ctx.host.theme();
     y = paint_section_label(
-        "Grid Kind",
+        tr("panel.grid_snap.sections.grid_kind"),
         inner_x,
         inner_w,
         y,
@@ -82,7 +83,7 @@ pub(crate) fn paint_target_section(
 ) -> f32 {
     let theme = ctx.host.theme();
     y = paint_section_label(
-        "Target",
+        tr("panel.grid_snap.sections.target"),
         inner_x,
         inner_w,
         y,
@@ -104,10 +105,13 @@ pub(crate) fn paint_target_section(
             state,
         );
         // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao`.
-        let mag_label = format!("Magnetism radius{}", unit_suffix_paren());
-        let sec = crate::paint_rows::seccao(ctx.text_system, &["Subdivisions", &mag_label]);
+        let mag_label = tr("panel.grid_snap.sections.magnetism_radius");
+        let sec = crate::paint_rows::seccao(
+            ctx.text_system,
+            &[tr("panel.grid_snap.sections.subdivisions"), mag_label],
+        );
         y = paint_number_row_from_state(
-            "Subdivisions",
+            tr("panel.grid_snap.sections.subdivisions"),
             ph2d_editor_core::grid_snap::ids::GS_CFG_SNAP_SUBDIVISIONS,
             state.snap_subdivisions as f64,
             inner_x,
@@ -119,9 +123,10 @@ pub(crate) fn paint_target_section(
             hit_index,
             store,
             sec,
+            None,
         );
         y = paint_number_row_from_state(
-            &mag_label,
+            mag_label,
             ph2d_editor_core::grid_snap::ids::GS_CFG_SNAP_MAGNETISM_RADIUS,
             meters_to_display(state.snap_magnetism_radius),
             inner_x,
@@ -133,6 +138,7 @@ pub(crate) fn paint_target_section(
             hit_index,
             store,
             sec,
+            Some(length_unit()),
         );
     }
     y += row_gap() * 2.0;
@@ -150,7 +156,7 @@ pub(crate) fn paint_display_section(
 ) -> f32 {
     let theme = ctx.host.theme();
     y = paint_section_label(
-        "Display",
+        tr("panel.grid_snap.sections.display"),
         inner_x,
         inner_w,
         y,
@@ -213,13 +219,16 @@ pub(crate) fn paint_display_section(
     {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         y = paint_labeled_segmented_row(
-            "Layer",
+            tr("panel.grid_snap.sections.layer"),
             &[
                 (
-                    "In front",
+                    tr("panel.grid_snap.sections.in_front"),
                     ph2d_editor_core::grid_snap::ids::GS_LAYER_IN_FRONT,
                 ),
-                ("Behind", ph2d_editor_core::grid_snap::ids::GS_LAYER_BEHIND),
+                (
+                    tr("panel.grid_snap.sections.behind"),
+                    ph2d_editor_core::grid_snap::ids::GS_LAYER_BEHIND,
+                ),
             ],
             layer_idx,
             inner_x,

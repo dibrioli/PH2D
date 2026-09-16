@@ -4,13 +4,14 @@
 //! `ph2d_editor_core::grid_snap::panel::paint_rows` during ADR-0029
 //! Phase C.4.
 
-use crate::state::{meters_to_display, unit_suffix_paren};
+use crate::state::{length_unit, meters_to_display};
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::grid_snap::GridSnapState;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::widget::{TextInputState, Toggle, paint_toggle};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::VectorScene;
@@ -45,20 +46,22 @@ pub(crate) fn seccao(
 ///
 /// ⛔ Uma segunda escrita de `"Origin X" + sufixo` seria a segunda resposta à pergunta *«que nome
 /// tem esta linha?»*, e a coluna passaria a ser medida sobre um texto que o painel não pinta.
-pub(crate) fn origin_labels() -> [String; 2] {
-    let suffix = unit_suffix_paren();
-    [format!("Origin X{suffix}"), format!("Origin Y{suffix}")]
+pub(crate) fn origin_labels() -> [&'static str; 2] {
+    [
+        tr("panel.grid_snap.rows.origin_x"),
+        tr("panel.grid_snap.rows.origin_y"),
+    ]
 }
 
 /// Os quatro nomes que a [`paint_aabb_rows`] pinta — ver [`origin_labels`].
 pub(crate) fn aabb_labels(label_prefix: &str) -> [String; 4] {
-    let suffix = unit_suffix_paren();
     [
-        format!("{label_prefix} min X{suffix}"),
-        format!("{label_prefix} min Y{suffix}"),
-        format!("{label_prefix} max X{suffix}"),
-        format!("{label_prefix} max Y{suffix}"),
+        "panel.grid_snap.rows.min_x",
+        "panel.grid_snap.rows.min_y",
+        "panel.grid_snap.rows.max_x",
+        "panel.grid_snap.rows.max_y",
     ]
+    .map(|k| ph2d_i18n::tr_with(k, &[("bounds", &label_prefix)]))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -74,6 +77,7 @@ pub(crate) fn paint_number_row(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     sec: ph2d_editor_core::property_row::Seccao,
+    unit: Option<ph2d_editor_core::widget::Unit>,
 ) -> f32 {
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
     paint_number_row_value(
@@ -92,6 +96,7 @@ pub(crate) fn paint_number_row(
         theme,
         hit_index,
         sec,
+        unit,
     )
 }
 
@@ -113,6 +118,7 @@ pub(crate) fn paint_number_row_from_state(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     sec: ph2d_editor_core::property_row::Seccao,
+    unit: Option<ph2d_editor_core::widget::Unit>,
 ) -> f32 {
     let (state, _, buffer, caret, anchor) = read_number_input(store, id);
     // Keep the live buffer for in-progress edits; otherwise display
@@ -139,6 +145,7 @@ pub(crate) fn paint_number_row_from_state(
         theme,
         hit_index,
         sec,
+        unit,
     )
 }
 
@@ -173,6 +180,8 @@ pub(crate) fn paint_number_row_value(
     theme: Theme,
     hit_index: &mut HitIndex,
     sec: ph2d_editor_core::property_row::Seccao,
+    // ⭐ A unidade vai DENTRO da caixa (spec §7) — `None` para contagens e sementes.
+    unit: Option<ph2d_editor_core::widget::Unit>,
 ) -> f32 {
     ph2d_editor_core::property_row::paint_field_row_value(
         scene,
@@ -189,7 +198,7 @@ pub(crate) fn paint_number_row_value(
         caret,
         anchor,
         visual,
-        None,
+        unit,
         sec,
     )
     .0
@@ -211,9 +220,9 @@ pub(crate) fn paint_origin_rows(
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let origin = state.active_origin();
-    let suffix = unit_suffix_paren();
+    let [nome_x, nome_y] = origin_labels();
     let y = paint_number_row_from_state(
-        &format!("Origin X{suffix}"),
+        nome_x,
         ph2d_editor_core::grid_snap::ids::GS_CFG_ORIGIN_X,
         meters_to_display(origin[0]),
         x,
@@ -225,9 +234,10 @@ pub(crate) fn paint_origin_rows(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     );
     paint_number_row_from_state(
-        &format!("Origin Y{suffix}"),
+        nome_y,
         ph2d_editor_core::grid_snap::ids::GS_CFG_ORIGIN_Y,
         meters_to_display(origin[1]),
         x,
@@ -239,6 +249,7 @@ pub(crate) fn paint_origin_rows(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     )
 }
 
@@ -264,9 +275,9 @@ pub(crate) fn paint_aabb_rows(
     store: &WidgetStore,
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let suffix = unit_suffix_paren();
+    let [min_x, min_y, max_x, max_y] = aabb_labels(label_prefix);
     let y = paint_number_row_from_state(
-        &format!("{label_prefix} min X{suffix}"),
+        &min_x,
         min_x_id,
         meters_to_display(min[0]),
         x,
@@ -278,9 +289,10 @@ pub(crate) fn paint_aabb_rows(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     );
     let y = paint_number_row_from_state(
-        &format!("{label_prefix} min Y{suffix}"),
+        &min_y,
         min_y_id,
         meters_to_display(min[1]),
         x,
@@ -292,9 +304,10 @@ pub(crate) fn paint_aabb_rows(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     );
     let y = paint_number_row_from_state(
-        &format!("{label_prefix} max X{suffix}"),
+        &max_x,
         max_x_id,
         meters_to_display(max[0]),
         x,
@@ -306,9 +319,10 @@ pub(crate) fn paint_aabb_rows(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     );
     paint_number_row_from_state(
-        &format!("{label_prefix} max Y{suffix}"),
+        &max_y,
         max_y_id,
         meters_to_display(max[1]),
         x,
@@ -320,6 +334,7 @@ pub(crate) fn paint_aabb_rows(
         hit_index,
         store,
         sec,
+        Some(length_unit()),
     )
 }
 
@@ -332,9 +347,9 @@ pub(crate) fn paint_show_overlay_row(
     store: &WidgetStore,
     state: &GridSnapState,
 ) {
-    let sec = seccao(text_system, &["Show grid"]);
+    let sec = seccao(text_system, &[tr("panel.grid_snap.rows.show_grid")]);
     paint_labeled_toggle(
-        "Show grid",
+        tr("panel.grid_snap.rows.show_grid"),
         ph2d_editor_core::grid_snap::ids::GS_SHOW_OVERLAY,
         state.show_overlay,
         row,
@@ -366,7 +381,7 @@ pub(crate) fn paint_opacity_slider_row(
         .unwrap_or(state.opacity);
     ph2d_editor_core::widget::paint_slider_with_chip(
         row,
-        "Opacity",
+        tr("panel.grid_snap.rows.opacity"),
         value,
         ph2d_editor_core::grid_snap::ids::GS_OPACITY_SLIDER,
         ph2d_editor_core::NodeId(0),

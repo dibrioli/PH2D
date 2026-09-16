@@ -575,7 +575,7 @@ pinta, o gate de escrita conta `1`, e nada se move.* ⭐ A porta certa já exist
 inteira (`clip_end_seconds`: o override, senão a extensão das CHAVES, e o clip só-de-expressão). *A
 grandeza crua e a pergunta têm nomes parecidos e respostas diferentes.*
 
-⏳ **DÍVIDA NOMEADA:** o painel mostra os dois ângulos e **não diz qual acção está ligada** — falta a
+✅ **(curada pela F3-b, logo abaixo — conferido em 2026-09-16)** ~~DÍVIDA NOMEADA~~: o painel mostra os dois ângulos e **não diz qual acção está ligada** — falta a
 este painel uma **linha de texto de leitura**, e construí-la é wave própria. Quem responde é o log do
 gesto. *Uma dívida nomeada e um controlo mudo leem-se igual na tela; a diferença é esta linha
 existir.*
@@ -830,13 +830,17 @@ DOIS. Hoje nenhuma sonda deste repo pergunta se duas prosas sobre o mesmo facto 
 `#[cfg(test)]` e o item dele** e herdou-o — *um item novo colado a um atributo rouba-o ao dono*, que
 é exactamente a família (quatro ocorrências) que a lente da correcção acabara de nomear.
 
-⏳ **FICA ABERTO desta auditoria** (com mecanismo, sem cura): *Remove Smart Bone* não devolve a pose
+✅ **FECHADOS, os seis — e esta linha dizia «FICA ABERTO» até à auditoria de 2026-09-16**, que a
+conferiu contra as secções abaixo: o gizmo do limite (**F3-h**), o *Remove Smart Bone* (**F3-i**), o
+silêncio e o aviso nas três ordens (**F3-j**), os nomes repetidos e a 5.ª escrita (**F3-k**, a
+segunda como recusa medida). A redacção de então fica, como contraste:
+*«FICA ABERTO desta auditoria (com mecanismo, sem cura): Remove Smart Bone não devolve a pose
 autorada (o *Remove IK* devolve, e o preço é a lista de N entidades × 4 drivers em vez de uma
 corrente) · dois clips podem partilhar o NOME e o controlo percorre o primeiro, calado · o ledger
 cobre 4 das 5 escritas do `write_prop` (falta o `VecDrivenStyle`, que é desregistado) · o gizmo do
 limite é pintado e ACENDE em todo modo de vector e só é agarrável no modo Osso · o aviso do osso
 governado só dispara na ordem *IK → Smart* · e quatro verbos da secção morrem em silêncio na janela
-*«nenhum osso em foco»* (o braço que fala cobre só os dois da âncora).
+*«nenhum osso em foco»* (o braço que fala cobre só os dois da âncora).»*
 
 
 ### F3-g — ✅ *«selecionar o bone nem sempre abre a seção de skeleton no painel»* (report, 2026-09-08)
@@ -1583,8 +1587,10 @@ existe **está** naquele corte, e forçar um segundo ali produziria uma tira de 
 célula de aspecto enorme que esta wave inteira existe para apagar. *Um gate que exige igualdade onde
 a lei tem tolerância mede o defeito que a tolerância evita.*
 
-⏳ **ABERTO:** os três números (`fine 10` · `coarse 26` · `radius 40` px) são de **PRODUTO, não
-tectos de recurso** — o que está medido é a FORMA da resposta, e quem os julga é o smoke do dono.
+✅ **JULGADOS** (conferido em 2026-09-16): os três números (`fine 10` · `coarse 26` · `radius 40` px)
+são de **PRODUTO, não tectos de recurso**, e o smoke do dono julgou-os — a F6-c abre com *«malha bem
+desenhada»*. Desde 2026-09-15 a contagem é um ORÇAMENTO (`target_tris`) e estes três são a FORMA da
+graduação.
 
 
 ### F6-c — ✅ **`SMOOTH`: A MALHA REFINA-SE NA HORA DE DESENHAR** (report do dono, 2026-09-10)
@@ -1717,17 +1723,18 @@ costura do painel (o da alcançabilidade também morto por mutação).
   13/09: **`1,08 µs` por peça entregue**, com o envio e o desenho na conta (`0,039 µs`). O orçamento
   do QUADRO é `1 543` peças (`1/10` de um quadro de 60 fps), com cerca em tempo de compilação nas
   duas pontas.
-  ⇒ ⏳ **O que fica ABERTO é outra coisa, e é uma DECISÃO DO DONO:** o `Smooth` continua a nascer
-  desligado por uma razão que **já não existe**. *Um default mantido por uma nota obsoleta é uma
-  feature desligada por engano.*
+  ⇒ ✅ ~~O que fica ABERTO é outra coisa, e é uma DECISÃO DO DONO: o `Smooth` continua a nascer
+  desligado~~ — **decidido**: o `Smooth` é o de fábrica desde 2026-09-14, e o dono manteve os dois em
+  2026-09-16 (F6-p).
 - ⛔⛔ **O MAPA DOBRA SOBRE SI MESMO em dobras fortes, e isso NÃO é o que esta wave curou.** Medido:
   a `60°` por junta a área no pior ponto é **`−0,129`** (negativa ⇒ inversão) e `0,22 %` da imagem
   está dobrada; a `150°` são **`−1,017`** e `2,52 %`. O `Smooth` desenha o campo com fidelidade —
   **inclusive a dobra**. A causa é o gradiente dos pesos com `raio = comprimento do osso`, e a
   família de curas (pesos mais apertados · *centers of rotation* · o alcance por osso) não foi
   medida.
-- O `max_split = 6` tem tecto de **CPU**; a tolerância de `0,5 px` é de PRODUTO, e quem a julga é o
-  dono.
+- ✅ ~~O `max_split = 6` tem tecto de CPU~~ — **obsoleto desde 2026-09-16**: a lei do produto é a
+  adaptativa, cujo tecto é o orçamento do QUADRO (`SKIN_FRAME_PIECES`); o `max_split` só serve a porta
+  de bissecção uniforme. A tolerância de `0,5 px` é de PRODUTO.
 
 ### F6-d — ⛔⛔⛔ *«Smooth bugado quebrando a forma»* — **o TECTO estava na grandeza errada** (report, 2026-09-10)
 
@@ -2251,7 +2258,8 @@ faltava:** um `let malha = MeshUv::Quad;` ao lado de um `let _ = mesh_uv(..)` de
 sobre o defeito inteiro. *Citar uma porta não é consultá-la* ⇒ ele passou a exigir a **ligação**
 (`let malha = ph2d_render::mesh_uv(`).
 
-⏳ **ABERTO e NOMEADO:** o **chrome** do Painter continua no quad de repouso (o anel do pincel segue o
+✅ **DISSOLVIDO pela ordem do dono de 2026-09-15** (sob o Painter a sprite pintada é desenhada
+ACHATADA — `skin_suspend::sprite_achatada` —, logo o quad de repouso É o ecrã): ~~o **chrome** do Painter continua no quad de repouso~~ (o anel do pincel segue o
 ponteiro e só o TAMANHO dele sai do afim; a curva, a linha, o gizmo de deformação, os gizmos de
 selecção, os crachás e a humidade desenham-se em posições de IMAGEM) — numa arte dobrada eles ficam
 no sítio de repouso. Não piorou com esta wave: antes a tinta estava errada **com** eles.
@@ -2307,7 +2315,7 @@ translada) · o `stroke_spec` a pagá-la (com o controlo da identidade) · e o f
 **Cinco mutações, cinco RED** — ⚠️ **uma sobreviveu à primeira, pela segunda vez no mesmo dia:** o
 arch-gate exigia a MENÇÃO da porta e não a LIGAÇÃO à resposta dela.
 
-⏳ **ABERTO e NOMEADO:** a deformação é a do **pen-down**, para o traço inteiro (é o `stroke_spec`
+✅ **DISSOLVIDO pela mesma ordem (a arte pintada está achatada):** ~~a deformação é a do **pen-down**, para o traço inteiro~~ (é o `stroke_spec`
 que o motor captura ao abrir, e é a mesma fotografia que o pincel de tecido tira da lista de
 obstáculos). Um traço LONGO que atravesse regiões de compressão diferentes usa a do princípio. Para
 seguir por dab, o caminho está medido: a deformação tem de viajar no `StrokePoint`, como a pressão.
@@ -2391,7 +2399,7 @@ isso que a varredura é **UMA** passagem com rejeito por caixa em UV, e não oit
 3. **um gate só com o raio grande não pina o raio de amostragem** — a lei só se lê com a coluna do
    raio PEQUENO ao lado.
 
-⏳ **ABERTO e NOMEADO — e é aqui que o dono tem razão:** o que sobra (`≈1,1`–`1,2` no pior regime) é
+✅ **CURADO pela F6-l (`1,002`) e depois DISSOLVIDO pelo achatamento** — a redacção de então: o que sobra (`≈1,1`–`1,2` no pior regime) é
 inerente a **UMA elipse por dab** — sobre um footprint em que a deformação varia, nenhum afim único
 a descreve. ⛔ **Mas não é uma parede: é uma troca de RESOLUÇÃO** — os dois diminuidores medidos são
 a malha mais fina (o `Smooth`) e o pincel menor.

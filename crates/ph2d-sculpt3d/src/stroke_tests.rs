@@ -68,6 +68,37 @@ fn dab_for(verb: Verb, center: [f32; 3], radius: f32) -> Dab {
     }
 }
 
+/// **ARMA O TRAÇO para um verbo que exige ESFREGAR** — o primeiro dab de uma
+/// passagem não tem direcção, logo não move nada
+/// ([`Verb::exige_esfregar`]).
+///
+/// ⚠️ **Ela pergunta ao MOTOR e não a uma lista de nomes**, como as irmãs
+/// [`dab_for`] e [`mesh_for`]: um gate que enumerasse `Verb::Plane` aqui
+/// apodrecia no dia do segundo verbo desta família.
+///
+/// ⛔ **E ela não é um atalho para «ignorar este verbo»:** o dab de aquecimento
+/// corre o motor inteiro, um pouco atrás, para que o dab MEDIDO tenha a direcção
+/// que a lei pede. *Saltar o verbo deixaria o gate a medir vácuo exactamente onde
+/// a lei nova vive.*
+fn arma_o_traco(
+    s: &mut SculptStroke,
+    mesh: &mut Mesh,
+    brush: &Brush,
+    center: [f32; 3],
+    radius: f32,
+) {
+    if !brush.verb.exige_esfregar() {
+        return;
+    }
+    let atras = [center[0] - radius * 0.5, center[1], center[2]];
+    s.dab(
+        mesh,
+        brush,
+        &dab_for(brush.verb, atras, radius),
+        Symmetry::default(),
+    );
+}
+
 /// **A MALHA que ESTE verbo precisa** — a irmã do [`dab_for`], e pelo mesmo
 /// motivo: um gate que dá a MESMA malha a todo verbo mede vácuo em quem só age
 /// sobre irregularidade.

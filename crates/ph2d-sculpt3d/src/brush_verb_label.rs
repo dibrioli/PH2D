@@ -16,6 +16,16 @@ impl crate::Verb {
     pub fn label(self) -> &'static str {
         match self {
             Self::BoxTrim => "Box Trim",
+            // ⚠️ **«Plane», e o nome é uma decisão de PRODUTO com duas cercas:**
+            // (a) o dono pediu-o pela palavra *trim*, e esta casa já tem um
+            // **Box Trim** que é outra coisa inteira (uma booleana no largar) —
+            // dois chips com *trim* no nome seriam duas ferramentas
+            // indistinguíveis na fileira, que é o defeito que o glifo
+            // obrigatório de um painel existe para impedir; (b) o que este
+            // pincel faz é ajustar um PLANO e puxar para ele, e é isso que o
+            // artista precisa de ler para saber que os dois tectos são as duas
+            // metades desse plano.
+            Self::Plane => "Plane",
             Self::Cloth => "Cloth",
             Self::Draw => "Draw",
             Self::Inflate => "Inflate",

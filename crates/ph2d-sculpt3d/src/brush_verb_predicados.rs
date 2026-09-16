@@ -156,6 +156,66 @@ impl Verb {
     /// esquerda encolhe. Um `Ctrl` ali seria a segunda maneira de dizer a mesma
     /// coisa — e uma que **compõe** com a primeira, então varrer ao contrário
     /// com `Ctrl` apertado voltaria a torcer no sentido original.
+    /// **DE QUE SUPERFÍCIE o plano deste verbo é lido** — `true` = a viva,
+    /// `false` = a congelada no pen-down.
+    ///
+    /// ⛔⛔ **A linha que separa os três braços é *de que REFERÊNCIA aquele verbo
+    /// veio*, NÃO *se ele ajusta um plano*** — e confundir as duas é o erro que a
+    /// 1.ª redacção da espec do [`Verb::Plane`] cometeu, mandando o pincel novo
+    /// para o braço onde o interruptor fica **inerte**:
+    ///
+    /// | braço | quem | o que faz |
+    /// |---|---|---|
+    /// | lê o VIVO sempre | os quatro verbos de plano da casa (`Flatten`, `Fill`, `Scrape`, `Clay`) — o braço por omissão | **nunca** consulta o acumular |
+    /// | **CONSULTA** o acumular | os verbos cuja referência é o alvo restrito (`ClayStrips`, `ClayThumb`, `MultiplaneScrape`, [`Verb::Plane`]) | congela no pen-down com o interruptor desligado |
+    /// | lê o CONGELADO sempre | [`Verb::SceneProject`] | o interruptor deixou de lhe ser oferecido, de propósito |
+    ///
+    /// ⚠️ **PORTA e não um `match` no sítio de uso, e ela nasceu de o segundo
+    /// consumidor aparecer:** o [`crate::stroke_plane`] guardava esta escada num
+    /// `match` local, e o estimador do [`Verb::Plane`] precisa da MESMA resposta
+    /// — *uma lei escrita em dois sítios ainda não é uma lei*, e esta casa já
+    /// pagou essa frase três vezes (o `sem_lei_por_vertice` derivado duas vezes,
+    /// a lei refutada com uma segunda cópia neste mesmo ficheiro, e o
+    /// `honours_invert` logo abaixo).
+    ///
+    /// ⚠️ **O preço do braço errado está MEDIDO na nossa própria casa**, que o
+    /// pagou e o curou: com o plano congelado, o acumular ficava **INERTE** nos
+    /// quatro verbos de plano (`1,04×` no barro, `0,99×` no achatar, `1,00×` no
+    /// raspar, contra `1,74×` num verbo que o consome) — *o barro subia até ao
+    /// plano do pen-down e PARAVA*.
+    /// ⭐⭐⭐ **ESTE VERBO EXIGE ESFREGAR?** — `true` quando o primeiro dab de uma
+    /// passagem **não move nada**, porque o quadro local dele nasce da DIRECÇÃO
+    /// do traço (`SPEC_pincel_de_plano.md` §1).
+    ///
+    /// ⚠️ **É uma LEI do verbo, e não um detalhe de arnês:** medido no alvo, um
+    /// traço de **um** dab move `0` de `2 401` vértices e um de dois move `265`.
+    /// *Carimbar no mesmo sítio sem arrastar não faz nada* — e um artista que não
+    /// o saiba lê a ferramenta como partida.
+    ///
+    /// ⚠️ **Porta e não um `matches!` nos arneses:** os gates do aplicador dão a
+    /// cada verbo o gesto que ele precisa **perguntando ao motor**, nunca a uma
+    /// lista de nomes (é a lei que o `dab_for` e o `mesh_for` já seguem). Escrita
+    /// à mão em cada um deles, ela apodrecia no dia do segundo verbo desta
+    /// família.
+    ///
+    /// ⛔ **Ela NÃO é «não carimba»:** o [`Self::BoxTrim`] também não carimba e
+    /// responde `false` aqui, porque ele não é um pincel de todo — não tem dab,
+    /// nem queda, nem pressão. Aqui há tudo isso; o que falta no primeiro dab é
+    /// **só** a direcção.
+    #[must_use]
+    pub fn exige_esfregar(self) -> bool {
+        matches!(self, Self::Plane)
+    }
+
+    #[must_use]
+    pub fn le_a_superficie_viva(self, accumulate: bool) -> bool {
+        match self {
+            Self::SceneProject => false,
+            Self::ClayStrips | Self::ClayThumb | Self::MultiplaneScrape | Self::Plane => accumulate,
+            _ => true,
+        }
+    }
+
     #[must_use]
     pub fn honours_invert(self) -> bool {
         matches!(
@@ -172,6 +232,13 @@ impl Verb {
                 // (`if (angle >= 0.0f)`). É o `if (flip) angle *= -1` do
                 // *Multiplane Scrape*, e não uma força negativa.
                 | Self::MultiplaneScrape
+                // ⭐⭐ **O PINCEL DE PLANO honra-o, e com DUAS leis** — ver
+                // [`crate::PlanoInversao`]: no alvo o modificador escolhe entre
+                // *afastar do plano* e *trocar os tectos*, e a segunda é EXACTA
+                // (byte-idêntica ao par trocado, medida). ⚠️ É o único verbo
+                // desta casa em que o modificador tem um SELECTOR, e é por isso
+                // que este predicado não basta para saber o que ele faz.
+                | Self::Plane
                 // ⚠️ **A DEMÃO cava, e é a direcção do pincel da referência** —
                 // lá o sinal viaja **dentro da força efectiva**, que a
                 // referência já entrega negativa. Aqui ele viaja no alvo (o

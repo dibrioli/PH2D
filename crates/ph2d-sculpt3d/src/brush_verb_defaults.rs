@@ -149,6 +149,28 @@ impl Verb {
         if self == Self::SceneProject {
             law.from_live = true;
         }
+        // ⭐⭐⭐ **O PINCEL DE PLANO também o prega, e por uma razão que é a mais
+        // fina desta família: o interruptor de acumular responde a OUTRA PERGUNTA
+        // neste verbo.**
+        //
+        // Nesta casa o `Accumulate` **é** o `from_live` do [`crate::Grip::Stamp`]
+        // — *de onde a curva de queda mede a distância*. Na lei deste pincel
+        // (espec §2.6) ele decide **de que superfície o PLANO é lido**, e mais
+        // nada; o quadro local da §3 mede sempre da posição **VIVA**.
+        //
+        // ⇒ **duas perguntas com a mesma palavra**, e deixá-las na mesma coluna
+        // faz o interruptor mover as duas ao mesmo tempo. Quem lê a pose do plano
+        // é a porta [`Self::le_a_superficie_viva`]; aqui a coluna fica pregada.
+        //
+        // ⚠️⚠️ **MEDIDO, e o corpus apontou o dedo ao dab exacto:** com a coluna
+        // presa ao interruptor, uma cadeia de **2** dabs (ou seja UM dab efectivo)
+        // reproduzia o oráculo a `2,980e-08` e as de `4` e `8` dabs desviavam
+        // `1,634e-01` e `3,022e-01`. *O primeiro dab estava certo e o segundo já
+        // não* — que é a assinatura de uma coluna que governa a coisa errada
+        // assim que a superfície se move.
+        if self == Self::Plane {
+            law.from_live = true;
+        }
         law
     }
 

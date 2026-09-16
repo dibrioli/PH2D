@@ -332,6 +332,28 @@ impl RefMode {
                     | Verb::Layer
                     | Verb::Thumb
                     | Verb::Nudge
+                    // ⛔⛔⛔ **E nem o PINCEL DE PLANO, a décima — e esta entrou
+                    // por MEDIÇÃO, não por leitura.** O SculptGL tem os três
+                    // verbos separados (`Flatten`/`Fill`/`Scrape`) e **não tem**
+                    // a ferramenta unificada; sem esta linha o `S` declarava-a,
+                    // o `profile_s` devolvia `None` e o [`crate::Brush::weight`]
+                    // caía no **slider cru**.
+                    //
+                    // ⚠️⚠️ **O corpus do oráculo apontou o dedo ao número:** com
+                    // a força a `0,5` o alvo desloca `0,052399` e nós
+                    // deslocávamos `0,104798` — **exactamente `2×`**, que é
+                    // `0,5` contra `0,5²`. À força CHEIA os dois são
+                    // indistinguíveis (`s² = s` em `1`), e é por isso que
+                    // **vinte e duas** fixturas verdes não o viam: *um corpus na
+                    // força máxima não testa a curva da força*.
+                    //
+                    // ⛔ **É uma LISTA NEGRA, e a direcção é o defeito:** um
+                    // verbo novo nasce a reivindicar uma referência que não o
+                    // tem, calado. O predicado vizinho
+                    // ([`Verb::honours_invert`]) já escreve esta frase e a cura
+                    // dele foi virar a lista; aqui a inversão tem alcance maior e
+                    // fica NOMEADA como dívida (`o_censo_das_referencias_que_ninguem_declara`).
+                    | Verb::Plane
             ),
             // A lei de kernel (bilateral · tangencial · front-face contínuo) e
             // a `StrengthCurve::Squared` do E13.

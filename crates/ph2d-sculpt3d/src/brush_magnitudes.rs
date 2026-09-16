@@ -244,6 +244,27 @@ pub const DEFAULT_MULTIPLANE_ANGLE_DEG: f32 = 60.0;
 /// longo.
 pub const MULTIPLANE_TIP_STRETCH: f32 = 2.0;
 
+/// ⭐⭐⭐ **Quantos raios o CENTRO DO PLANO do [`crate::Verb::Plane`] se pode
+/// afastar do cursor**, antes do termo do deslocamento.
+///
+/// ⚠️⚠️ **METADE medida, metade NOSSA, e as duas declaradas** (espec §12, G-6):
+/// sobre as `11` células de `lei/*` o alvo lê **`0,0000 … 0,4947`** raios,
+/// mediana `0,1649`, com o máximo na célula de **menor raio**. O `0,75` é
+/// **`1,5×` o máximo medido**, e a margem é **decisão nossa** — um corpus de
+/// **um** dab efectivo não limita o que um traço longo faz.
+///
+/// ⛔ **A 1.ª redacção da espec dizia `1` raio e citava um defeito público do
+/// alvo como fonte:** aquele defeito entrega uma **PROPRIEDADE** (*«o plano segue
+/// o cursor»*), não um número. *Uma barra sem medição por perto de onde a derivar
+/// é a única deste documento que o R-pré teve de mandar medir.*
+///
+/// ⭐⭐ **Ela tem DOIS consumidores, e é isso que a torna verificável:** o gate
+/// **G-6** afirma-a, e a [`crate::Footprint::tectos_query_factor`] dimensiona a
+/// consulta com ela. Se o centro passar desta folga, o gate reprova **e** a
+/// pegada sai com o anel de fora comido — os dois pela mesma causa, em vez de um
+/// número solto que ninguém mede.
+pub const TECTOS_CENTRO_MAX: f32 = 0.75;
+
 /// Quanto do ângulo ANTERIOR sobrevive a cada amostra, no modo dinâmico.
 ///
 /// ✅ **É o `0,2` da referência** — ela interpola entre o ângulo anterior e o

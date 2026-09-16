@@ -231,6 +231,41 @@ pub struct SculptStroke {
     /// ⚠️ **`None` é *este dab não deposita*.** Ela é reescrita no topo de todo
     /// dab, então nunca sobrevive ao seguinte.
     scrape: Option<plane::ScrapePlanes>,
+    /// ⭐⭐⭐ **O TRAÇO JÁ TEVE DIRECÇÃO?** — o único bit de memória que o
+    /// [`crate::Verb::Plane`] precisa (`SPEC_pincel_de_plano.md` §1 e §8).
+    ///
+    /// O quadro local daquele pincel nasce da **direcção do traço**, e no
+    /// primeiro dab ela ainda não existe ⇒ o quadro é degenerado e **nada se
+    /// move** (medido: um traço de UM dab move `0` de `2 401`; de dois, `265`).
+    ///
+    /// ⚠️⚠️ **E um TRAÇO PARADO continua a trabalhar** (§8), que é a metade que
+    /// obriga a este bit em vez de uma pergunta ao dab: se a mão para, a
+    /// diferença entre dois centros é nula e o quadro voltaria a degenerar — o
+    /// pincel apagava-se no meio do gesto. *A direcção, uma vez existida, não
+    /// deixa de existir.*
+    ///
+    /// ⭐ **Um BIT, e não a direcção:** a medição derrubou a premissa óbvia — *a
+    /// orientação do quadro DENTRO do plano não alcança a saída* (a reprodução
+    /// usa só a normal, o centro e o raio, e bate a `≤ 8,0e-08` em 18 de 19
+    /// configurações). Guardar o vector seria guardar estado que ninguém lê.
+    plano_teve_direccao: bool,
+    /// ⭐⭐ **O PLANO que este dab do [`crate::Verb::Plane`] ajustou** — escrito
+    /// pela construção da pegada, lido pelo alvo por-vértice.
+    ///
+    /// ⚠️ **Mesma rota que o [`Self::scrape`] e o `thumb_tilt_deg`, e pela mesma
+    /// razão de empréstimo:** ele nasce de `&mut self` (a varredura da pegada) e
+    /// é lido do `&self` que o alvo recebe — as duas metades não cabem no mesmo
+    /// empréstimo, e passá-lo por argumento enfiaria um `Option` a mais numa
+    /// função que trinta e três verbos não leem.
+    ///
+    /// ⭐ **UMA fonte, DOIS leitores:** a silhueta ([`crate::Tectos`]) e o alvo
+    /// saem deste mesmo valor, escrito uma vez por dab. ⛔ Derivá-lo outra vez no
+    /// alvo seria a segunda resposta à pergunta *«onde está o plano?»*, e as duas
+    /// divergiriam no dia em que o deslocamento mudasse de sítio.
+    ///
+    /// ⚠️ **`None` é *este dab não tem plano*** — sem amostra nenhuma na pegada.
+    /// O alvo devolve a posição viva, ou seja não move nada.
+    plano: Option<plano_da_pegada::PlanoDaPegada>,
     /// ⭐⭐ **O CAMPO DE DESLOCAMENTO DO ESFREGÃO, por SLOT** — ver
     /// [`super::stroke_smear`].
     ///
@@ -490,6 +525,14 @@ mod plane;
 /// com a curva suave fixa e os dois lados da silhueta em baldes separados.
 #[path = "stroke_normal_do_gesto.rs"]
 mod normal_do_gesto;
+
+/// ⭐⭐⭐ **O PLANO DO [`crate::Verb::Plane`]** — ver [`plano_da_pegada`]. Irmão do
+/// [`plane`] e do [`normal_do_gesto`], e o corte é a LEI: aquele pesa pela
+/// máscara sobre a pegada inteira (referência MIT, paridade a 1 ULP), este pesa
+/// pela curva suave sobre DOIS raios próprios e puxa cada posição para o cursor.
+/// ⛔ Fundi-los poria as duas leis onde uma edição futura alcança as duas.
+#[path = "plano_da_pegada.rs"]
+mod plano_da_pegada;
 
 /// **A SUPERFÍCIE LOCAL do `l-mode`** — ver [`surface`]. Irmão do [`plane`], e o
 /// corte são dois PAPERS: lá o plano da pegada por média de posições e normais

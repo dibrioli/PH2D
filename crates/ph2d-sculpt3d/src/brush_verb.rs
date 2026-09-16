@@ -592,11 +592,51 @@ pub enum Verb {
     /// por-vértice** — os censos filtram por [`Self::writes_through_applicator`],
     /// e o dab nunca corre para ele.
     BoxTrim,
+    /// ⭐⭐⭐ **O PINCEL DE PLANO** — aparar, encher e achatar **esfregando**, com
+    /// um pincel só e **dois tectos**.
+    ///
+    /// Report do dono (2026-09-15): *«o Trim Brush do próprio blender que faz o
+    /// trim esfregando o pincel como massinha, modelando»*. A espec é
+    /// `docs/3D/cleanroom/SPEC_pincel_de_plano.md`, atestada em 2026-09-16.
+    ///
+    /// ⭐⭐ **A razão de existir é a UNIFICAÇÃO, e ela é medida:** no alvo os três
+    /// verbos separados que esta casa portou (`Flatten`, `Fill`, `Scrape`) já
+    /// **não existem** como ferramentas — o que ficou no lugar deles é um pincel
+    /// com um par de números, **altura** e **profundidade**, que escolhe o lado
+    /// **e o alcance**. Não é um quarto irmão: é o que torna os três um.
+    ///
+    /// ⚠️ **A pegada dele NÃO é uma esfera** ([`crate::Footprint::Tectos`]): os
+    /// dois tectos achatam-na num **elipsóide** ao longo da normal do plano, e
+    /// isso muda a POPULAÇÃO tocada e não só o peso — com o tecto de cima em
+    /// `0,2` a população acima do plano cai de `151` para `78` vértices. ⛔
+    /// Nenhuma combinação dos knobs dos outros quatro produz isto.
+    ///
+    /// ⚠️ **Ele exige ESFREGAR: o primeiro dab de cada passagem não move nada**
+    /// (espec §1, medido `0` de `2 401`) — o quadro local nasce da direcção do
+    /// traço, que no primeiro dab ainda não existe. ⭐ E a medição derrubou a
+    /// premissa óbvia sobre esse quadro: **a orientação dele DENTRO do plano não
+    /// alcança a saída** (`≤ 8,0e-08` em 18 de 19 configurações usando só a
+    /// normal, o centro e o raio) ⇒ a simplificação é adoptada **sem divergir**,
+    /// e o G-1 afirma-o. ⛔ Ela **não** vale para os irmãos: a lâmina em V e a
+    /// faixa constroem a silhueta A PARTIR daquele quadro.
+    ///
+    /// ⚠️ **Ele lê a superfície pela porta [`Self::le_a_superficie_viva`], no
+    /// braço que CONSULTA o acumular** — ao lado dos três verbos cuja referência
+    /// é este mesmo alvo. ⛔ **Os quatro verbos de plano da casa são o
+    /// CONTRA-EXEMPLO, não o modelo**: eles lêem o vivo incondicionalmente, e
+    /// mandá-lo para lá reabriria o controlo morto que esta casa já removeu uma
+    /// vez (espec §2.6, com o `1,04×` medido ao lado).
+    ///
+    /// ⛔ **O knob de *aparar* do alvo NÃO entra aqui**, e é por desenho: os dois
+    /// tectos fazem o trabalho dele com uma fronteira que é um elipsóide em vez
+    /// de um degrau — medido, ligá-lo sobre este pincel devolve saída
+    /// **byte-idêntica** (espec §7.1).
+    Plane,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 33] = [
+    pub const ALL: [Self; 34] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -630,6 +670,7 @@ impl Verb {
         Self::SmearMultires,
         Self::SceneProject,
         Self::BoxTrim,
+        Self::Plane,
     ];
 }
 /// ⭐ **COMO O GESTO É CONDUZIDO** — o [`Grip`] de cada verbo. Ver [`grip_por_verbo`].
@@ -664,5 +705,5 @@ pub use magnitudes::{
     BLENDER_REACH_FRACTION, CLAY_PLANE_FRACTION, CLAY_THUMB_TILT_MAX_DEG, CLAY_THUMB_TILT_STEP_DEG,
     CREASE_FRACTION, DEFAULT_MULTIPLANE_ANGLE_DEG, LAYER_HEIGHT_HARD_MAX, LAYER_HEIGHT_UI_MAX,
     MULTIPLANE_ANGLE_MAX_DEG, MULTIPLANE_ANGLE_SMOOTH, MULTIPLANE_TIP_STRETCH, PINCH_GAIN,
-    REACH_FRACTION, STRIP_PLANE_FRACTION,
+    REACH_FRACTION, STRIP_PLANE_FRACTION, TECTOS_CENTRO_MAX,
 };

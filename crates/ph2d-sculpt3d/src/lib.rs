@@ -44,7 +44,7 @@ pub mod ancora;
 pub mod auto_smooth;
 /// **A SILHUETA DE UM DAB** — ver [`footprint`].
 mod footprint;
-pub use footprint::{Blade, Footprint, Strip, rounded_box};
+pub use footprint::{Blade, Footprint, Strip, Tectos, rounded_box};
 
 /// Os controlos próprios do pincel de CONTORNO — ver [`boundary_controlos`].
 pub mod boundary_controlos;
@@ -72,6 +72,10 @@ mod trim_forma;
 
 /// ⭐⭐ **PARA ONDE O RAIO DA PROJECÇÃO APONTA** — ver [`project_mode`].
 mod project_mode;
+
+/// ⭐⭐ **DUAS LEIS PARA A MESMA TECLA** — o que o `Ctrl` faz ao pincel de plano;
+/// ver [`plano_inversao`].
+mod plano_inversao;
 
 /// ⭐⭐⭐ **A DISTÂNCIA ATÉ À OUTRA PEÇA** — ver [`projectar`].
 mod projectar;
@@ -127,7 +131,8 @@ pub use brush::{
     CLAY_THUMB_TILT_STEP_DEG, CREASE_FRACTION, DEFAULT_MULTIPLANE_ANGLE_DEG, FilterKind,
     LAYER_HEIGHT_HARD_MAX, LAYER_HEIGHT_UI_MAX, MAX_MASK_HARDNESS, MULTIPLANE_ANGLE_MAX_DEG,
     MULTIPLANE_ANGLE_SMOOTH, MULTIPLANE_TIP_STRETCH, PINCH_GAIN, Pass, REACH_FRACTION,
-    RingOperator, STRIP_PLANE_FRACTION, Symmetry, TAUBIN_LAMBDA, TAUBIN_MU, TAUBIN_PASS_BAND, Verb,
+    RingOperator, STRIP_PLANE_FRACTION, Symmetry, TAUBIN_LAMBDA, TAUBIN_MU, TAUBIN_PASS_BAND,
+    TECTOS_CENTRO_MAX, Verb,
 };
 pub use cloth_filter_kind::{ClothFilterKind, ClothFilterOrientation};
 pub use cloth_filter_props::ClothFilterProps;
@@ -139,6 +144,7 @@ pub use falloff::Falloff;
 pub use filter_law::FilterLaw;
 pub use grip::{Amount, Grip, GripLaw};
 pub use kelvinlet::KELVINLET_REACH;
+pub use plano_inversao::PlanoInversao;
 pub use preview::{NO_PREVIEW, preview_into, preview_verts};
 pub use project_mode::ProjectMode;
 pub use ref_mode::{Field, FrontFace, KernelLaw, LateralPull, PlaneReach, RefMode};

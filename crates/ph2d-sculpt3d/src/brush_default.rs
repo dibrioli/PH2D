@@ -151,6 +151,22 @@ impl Default for Brush {
             // ⚠️ **Nasce em ZERO, e é a lei desta casa para todo knob novo:** o
             // caminho de omissão fica byte-idêntico ao traço que a mão fez.
             trim_suavizacao: 0.0,
+            // ⭐⭐ **O pincel de plano nasce a APARAR**, e os dois números dizem
+            // porquê: o dono pediu-o pela palavra (*«faz o trim esfregando»*), e
+            // os autores do alvo registam em público que os dois tectos no
+            // máximo ao mesmo tempo deformam algumas superfícies (espec §10.2).
+            // ⛔ **É decisão de PRODUTO, não um número lido do alvo** — os
+            // defaults por-ferramenta dele vivem num ficheiro binário, e a espec
+            // §13 declara este par como o único que ela não carrega.
+            plano_altura: 1.0,
+            plano_profundidade: 0.0,
+            // ⚠️ **`0,5`, e é facto de INTERFACE do alvo** (espec §13) — não uma
+            // escolha nossa: as duas fracções de amostragem nascem ali.
+            area_radius_frac: 0.5,
+            // ⚠️ **AFASTAR é o de fábrica** porque é o que a família inteira
+            // desta casa já faz com o `Ctrl`; a outra lei existe para o artista
+            // ter *aparar* e *encher* na mesma mão.
+            plano_inversao: crate::PlanoInversao::Afastar,
             project_min_distance: 0.0,
             project_bidirectional: false,
             // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo

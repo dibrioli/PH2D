@@ -140,6 +140,18 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // peso, a força ao quadrado, a folga) vêm da OUTRA referência e estão
         // medidos na espec §1 e §6.
         Verb::SceneProject => return None,
+        // ⛔ **O PINCEL DE PLANO não tem perfil `s`, e a ausência é o achado
+        // central da espec dele:** no alvo restrito ele é a UNIFICAÇÃO de três
+        // ferramentas que o SculptGL ainda tem separadas (`Flatten`, `Fill`,
+        // `Scrape`) — logo não há aqui um número a LER, há três, e cada um
+        // descreve uma ferramenta que este verbo substitui em vez de ser.
+        //
+        // ⚠️ **E a consequência é load-bearing:** sem perfil `s`, o
+        // [`crate::RefMode::for_verb`] recua para o `B`, que é a referência que
+        // TEM a ferramenta — e é de lá que vem a **força ao quadrado** que a
+        // espec §4 mede (`0,5` ⇒ `0,250000` do deslocamento). Um perfil `s`
+        // inventado aqui entregaria força **linear** em silêncio.
+        Verb::Plane => return None,
         // `Brush.js:11-16` — `_radius 50 · _intensity 0.5 · _clay true ·
         // _accumulate true`. A tool `Brush` do original é a nossa **Draw E
         // Clay** (o `_clay` é um checkbox dela, ligado de fábrica).

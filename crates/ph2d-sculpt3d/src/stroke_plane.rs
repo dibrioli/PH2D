@@ -205,11 +205,11 @@ impl SculptStroke {
         // passaria a empurrar numa direcção que gira sozinha»*) — e aqui o preço
         // é maior, porque o `d` deste verbo é uma distância da CENA e não uma
         // fracção do raio.
-        let live = match brush.verb {
-            Verb::SceneProject => false,
-            Verb::ClayStrips | Verb::ClayThumb | Verb::MultiplaneScrape => brush.accumulate,
-            _ => true,
-        };
+        // ⚠️ **A escada acima mora numa PORTA desde 2026-09-16**
+        // ([`Verb::le_a_superficie_viva`]) — o estimador do [`Verb::Plane`] é o
+        // segundo consumidor dela, e a tabela dos três braços vive lá, com o
+        // preço do braço errado medido ao lado.
+        let live = brush.verb.le_a_superficie_viva(brush.accumulate);
         // ⚠️ **A fotografia do pen-down GANHA do `base_nrm` quando existe** — ver
         // [`crate::SculptStroke::nrm0_do_pen_down`]: o `base_nrm` é o PRIMEIRO
         // TOQUE, e para quem lê esta normal como DIRECÇÃO isso não basta.

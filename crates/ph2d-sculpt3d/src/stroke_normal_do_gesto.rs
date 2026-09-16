@@ -46,7 +46,7 @@ use super::*;
 /// o `Falloff` é a forma que o artista escolheu para o CARIMBO, e trocá-lo faria
 /// a leitura da superfície mudar com um knob que não fala sobre ela. Um gate
 /// nomeia esta independência.
-fn peso_da_amostra(d: f32, r: f32) -> f32 {
+pub(super) fn peso_da_amostra(d: f32, r: f32) -> f32 {
     let f = 1.0 - d / r;
     (f * f * (3.0 - 2.0 * f)).clamp(0.0, 1.0)
 }

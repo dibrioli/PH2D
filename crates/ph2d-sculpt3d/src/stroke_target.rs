@@ -252,6 +252,45 @@ impl SculptStroke {
             // lado que RASPA; quem quer o outro escolhe o `Fill`, que é o mesmo
             // kernel com o flag virado. Em `B` ele morde os dois, que é o
             // verbo de PLANO da referência (um controlo acima, outro abaixo).
+            // ⭐⭐⭐ **O PINCEL DE PLANO — e o alvo dele é a projecção BILATERAL,
+            // sem um único caso especial.** A espec §4 fecha-se em
+            //
+            // ```text
+            // translação(v) = − n · força² · factor(v) · distância_com_sinal(v)
+            // ```
+            //
+            // que é **literalmente** o que a [`to_plane`] escreve (`p − n·(d·w)`)
+            // com `w = factor × intensidade`, e a intensidade já traz a força ao
+            // quadrado pela porta [`crate::Brush::weight`].
+            //
+            // ⭐⭐ **Quem escolhe o LADO não é este `match` — é a PEGADA.** Nos
+            // quatro verbos de plano da casa o lado é um `if d > 0.0` aqui; aqui
+            // ele vive na [`crate::Footprint::Tectos`], que põe o vértice **fora
+            // da silhueta** quando o tecto daquele lado é zero. ⇒ *é isso que
+            // transforma três verbos num só*: `altura 1 / profundidade 0` dá o
+            // raspar, `0 / 1` dá o encher, `1 / 1` dá o achatar — medido, `151`
+            // e `114` vértices que somam exactamente os `265` do bilateral.
+            //
+            // ⚠️ **E é por isso que ele não lê o [`crate::PlaneReach`]:** aquele
+            // enum responde *«este verbo toca um lado ou os dois?»*, e para este
+            // a resposta é do artista, num par de números contínuos.
+            Verb::Plane => {
+                // ⚠️ **O plano é o DESTE pincel, não o do [`super::plane`]** — ver
+                // [`super::SculptStroke::plano`], escrito pela construção da
+                // pegada no mesmo dab. `None` é *sem amostra nenhuma*: não mover.
+                let Some(p) = self.plano else { return live };
+                let d = (live[0] - p.centro[0]) * p.normal[0]
+                    + (live[1] - p.centro[1]) * p.normal[1]
+                    + (live[2] - p.centro[2]) * p.normal[2];
+                // ⭐ **O SINAL é da porta da inversão**, e só a lei *afastar* o
+                // move: no modo *trocar os tectos* a força **não muda** (espec
+                // §5), e trocar o sinal ali daria as duas leis ao mesmo tempo —
+                // uma saída que não é nenhuma delas.
+                let s = brush
+                    .plano_inversao
+                    .sinal(brush.invert && brush.verb.honours_invert());
+                to_plane(live, p.normal, d * s, w)
+            }
             Verb::Flatten => {
                 let d = signed_distance(live, plane);
                 match brush.mode.kernel_for(brush.verb).plane {

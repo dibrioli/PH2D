@@ -235,7 +235,19 @@ fn the_census_of_offered_chips() {
     // conta é **de onde o verbo veio**, e não que ele carimbe barro. *Uma
     // contagem que junta as duas perguntas mente no dia em que elas se
     // separam, e hoje foi esse dia.*
-    assert_eq!(count(RefMode::B), 27, "B: a lei da força vale para todos");
+    // ⭐⭐⭐ **28 desde o PINCEL DE PLANO**, e ele entra por uma razão que este
+    // censo nunca tinha tido: a referência restrita tem-no e o SculptGL **não**
+    // — lá os três verbos separados que esta casa portou (`Flatten`, `Fill`,
+    // `Scrape`) já nem sequer existem como ferramentas. ⇒ o `B` é a única
+    // referência que o declara, e a força ao quadrado vem de lá.
+    //
+    // ⛔⛔ **E este número foi MEDIDO antes de ser escrito, porque o oposto
+    // aconteceu:** sem a entrada dele na lista do `S`, o `for_verb` devolvia `S`,
+    // o `profile_s` devolvia `None` e o peso caía no **slider cru** — medido
+    // contra o oráculo, `0,5` em vez de `0,5²`, ou seja **`2×`** o deslocamento.
+    // *À força cheia os dois são indistinguíveis, e foi por isso que vinte e duas
+    // fixturas verdes não o viram.*
+    assert_eq!(count(RefMode::B), 28, "B: a lei da força vale para todos");
     // A literatura chega paper a paper, nas waves W4/W5/W7.
     //
     // ⚠️ **E o Surface Smooth NÃO o move, embora SEJA um paper** (Vollmer,

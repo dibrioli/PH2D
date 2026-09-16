@@ -405,6 +405,19 @@ impl Brush {
             // um defeito mudo, porque a silhueta continuaria plausível. O fator
             // é perguntado à própria forma, nunca recomputado aqui.
             radius * crate::Footprint::strip_query_factor(self.strip_length)
+        } else if self.verb == crate::Verb::Plane {
+            // ⚠️ **O elipsóide dos dois tectos NÃO cabe no círculo do cursor**, e
+            // a razão é outra que a da faixa: ele cabe no círculo do **centro do
+            // plano**, que a lei do centro e o deslocamento afastam do cursor. O
+            // factor é perguntado à forma ([`crate::Footprint::tectos_query_factor`]),
+            // que o deriva da MESMA barra que o gate G-6 afirma — e é este o
+            // único sítio que sabe o deslocamento.
+            radius
+                * crate::Footprint::tectos_query_factor(
+                    self.plane_offset,
+                    self.normal_radius_frac,
+                    self.area_radius_frac,
+                )
         } else {
             radius
         }

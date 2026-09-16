@@ -109,6 +109,11 @@ impl SculptStroke {
         // com o ângulo que a superfície tinha noutro lugar.
         self.scrape_angle_deg = 0.0;
         self.scrape = None;
+        // ⚠️ **E a direcção do pincel de plano morre com o traço**, pela razão
+        // gémea: herdá-la faria o PRIMEIRO dab do gesto novo já mover barro, e a
+        // espec §1 mede-o em `0` de `2 401`. *O bit é do TRAÇO, não da sessão.*
+        self.plano_teve_direccao = false;
+        self.plano = None;
         // ⚠️ **O `b` do HC morre com o traço**, e é o que faz dele o *"array
         // zerado no início do traço"* do *Surface Smooth*: dentro de um gesto
         // ele PERSISTE entre dabs (a lei da referência), entre gestos não.

@@ -41,6 +41,9 @@ impl SculptStroke {
         } else {
             None
         };
+        if brush.verb == Verb::Plane {
+            return self.pegada_de_plano(mesh, brush, dab);
+        }
         if brush.verb == Verb::ClayStrips {
             // ⚠️ **O plano da faixa SOBE**, e o `plane_offset` do artista já
             // está dentro do `plane.point` — este termo soma ao dele. Ver
@@ -73,5 +76,61 @@ impl SculptStroke {
         } else {
             crate::Footprint::Disc
         }
+    }
+
+    /// ⭐⭐⭐ **A PEGADA DO [`Verb::Plane`]** — o elipsóide dos dois tectos, ou o
+    /// **nada** quando o traço ainda não tem direcção.
+    ///
+    /// ⚠️⚠️ **O «nada» é uma pegada e não um `return` antecipado**, e é isso que
+    /// o torna a lei da espec §1 em vez de uma optimização: um par de tectos a
+    /// zero põe todo vértice **na borda** da silhueta, onde toda curva de queda
+    /// vale zero ⇒ o dab corre inteiro (a máscara, a simetria, o undo, o refit) e
+    /// **move `0` vértices**, que é exactamente o que o alvo mede num traço de um
+    /// dab só. ⛔ Um desvio antes do laço teria de reproduzir à mão tudo o que o
+    /// laço faz de resto.
+    ///
+    /// ⚠️ **A direcção é lida do MESMO produto vectorial que a faixa lê**
+    /// (`normal × caminho`), e é ele que responde aos dois degenerados de uma vez:
+    /// caminho nulo (o primeiro dab) e caminho paralelo à normal (a mão a andar
+    /// «para dentro» da superfície). *Duas leituras do mesmo eixo divergiriam no
+    /// dia em que o piso de degeneração de uma delas mudasse.*
+    fn pegada_de_plano(&mut self, mesh: &Mesh, brush: &Brush, dab: &Dab) -> crate::Footprint {
+        let inerte = |origem: [f32; 3]| {
+            crate::Footprint::Tectos(crate::Tectos {
+                origin: origem,
+                // ⚠️ Uma normal qualquer serve: com os dois tectos a zero a
+                // coordenada é `1` para todo vértice, e a curva não a lê.
+                normal: [0.0, 1.0, 0.0],
+                altura: 0.0,
+                profundidade: 0.0,
+            })
+        };
+        // ⭐ **UMA escrita, DOIS leitores** — ver [`super::SculptStroke::plano`]:
+        // a silhueta abaixo e o alvo por-vértice saem deste mesmo valor.
+        self.plano = self.plano_da_pegada(mesh, brush, dab);
+        let Some(plano) = self.plano else {
+            // Sem amostra nenhuma não há plano — e um pincel sem plano não tem
+            // para onde puxar. Ver [`super::plano_da_pegada`].
+            return inerte(dab.center);
+        };
+        if crate::footprint::unit(target::cross(plano.normal, dab.path)).is_some() {
+            self.plano_teve_direccao = true;
+        }
+        if !self.plano_teve_direccao {
+            return inerte(plano.centro);
+        }
+        // ⭐ A inversão escolhe **qual** par de tectos este dab usa, por uma porta
+        // com dois chamadores — ver [`crate::PlanoInversao::tectos`].
+        let invertido = brush.invert && brush.verb.honours_invert();
+        let (altura, profundidade) =
+            brush
+                .plano_inversao
+                .tectos(invertido, brush.plano_altura, brush.plano_profundidade);
+        crate::Footprint::Tectos(crate::Tectos {
+            origin: plano.centro,
+            normal: plano.normal,
+            altura,
+            profundidade,
+        })
     }
 }

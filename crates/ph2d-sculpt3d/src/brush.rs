@@ -25,7 +25,7 @@ pub use verb::{
     BLENDER_REACH_FRACTION, CLAY_PLANE_FRACTION, CLAY_THUMB_TILT_MAX_DEG, CLAY_THUMB_TILT_STEP_DEG,
     CREASE_FRACTION, DEFAULT_MULTIPLANE_ANGLE_DEG, FilterKind, LAYER_HEIGHT_HARD_MAX,
     LAYER_HEIGHT_UI_MAX, MULTIPLANE_ANGLE_MAX_DEG, MULTIPLANE_ANGLE_SMOOTH, MULTIPLANE_TIP_STRETCH,
-    PINCH_GAIN, REACH_FRACTION, STRIP_PLANE_FRACTION, Verb,
+    PINCH_GAIN, REACH_FRACTION, STRIP_PLANE_FRACTION, TECTOS_CENTRO_MAX, Verb,
 };
 
 /// A ferramenta na mão. Um traço inteiro corre contra um destes.
@@ -319,6 +319,50 @@ pub struct Brush {
     /// medida**. ⛔ Só o laço a lê ([`crate::TrimForma::le_o_caminho`]): a caixa
     /// e o círculo guardam dois pontos, e não há traço a suavizar.
     pub trim_suavizacao: f32,
+    /// ⭐⭐⭐ **O TECTO DE CIMA do [`Verb::Plane`]**, `0..=1` em raios — quanto
+    /// acima do plano o pincel alcança (`SPEC_pincel_de_plano.md` §3.1).
+    ///
+    /// ⚠️ **Ele NÃO é um peso: é o semi-eixo de um elipsóide** — a pegada deixa
+    /// de ser uma esfera e achata-se ao longo da normal do plano, e isso muda a
+    /// POPULAÇÃO tocada. Medido: a `0,2` a população acima do plano cai de `151`
+    /// para `78` vértices. ⚠️ E ele **também pesa** (§3.3): quem baixa a altura
+    /// acaricia mais suavemente o que sobra.
+    ///
+    /// ⚠️ **`0` apaga aquele lado inteiro**, e com os dois a zero o pincel é
+    /// **inerte sem deixar de existir** — o *nada* do controlo, alcançável.
+    ///
+    /// ⚠️⚠️ **O valor de fábrica é NOSSO e não do alvo**, e os dois motivos estão
+    /// escritos: o dono pediu-o pela palavra *aparar* (*«faz o trim esfregando o
+    /// pincel como massinha»*), que é exactamente `altura 1 / profundidade 0`; e
+    /// os autores do alvo registam em público que **os dois tectos no máximo ao
+    /// mesmo tempo produzem deformação indesejável** em algumas superfícies
+    /// (espec §10.2). ⇒ nasce a **aparar**, e o `Ctrl` com
+    /// [`crate::PlanoInversao::TrocarTectos`] dá o encher na mesma mão.
+    pub plano_altura: f32,
+    /// ⭐⭐⭐ **O TECTO DE BAIXO do [`Verb::Plane`]**, `0..=1` em raios — ver
+    /// [`Self::plano_altura`], de que ele é o espelho.
+    ///
+    /// ⚠️ **`altura 1 / profundidade 0` é o RASPAR, `0 / 1` é o ENCHER, `1 / 1` é
+    /// o ACHATAR** — e a prova é uma contagem: `151`, `114` e `265`, que é
+    /// exactamente `151 + 114`. *É este par que transforma três verbos num só.*
+    pub plano_profundidade: f32,
+    /// ⭐⭐ **A EXTENSÃO com que o CENTRO do plano é amostrado**, em fracção do
+    /// raio do pincel (`0..=2`, fábrica `0,5`) — o `R_c` da espec §2.3.
+    ///
+    /// ⚠️ **Ela é uma SEGUNDA extensão, e só este pincel a tem:** a normal já
+    /// tinha a sua ([`Self::normal_radius_frac`]), e nos irmãos da família o
+    /// centro é amostrado com essa mesma. ⭐ **A queda foi provada por um PAR,
+    /// não lida:** com as duas fracções iguais a saída com esta a `0` é
+    /// **byte-idêntica** à com ela a `0,5`; com a da normal em `1,0` as mesmas
+    /// duas divergem `5,6e-2` ⇒ *o zero desta cai na outra*.
+    ///
+    /// ⚠️ **O valor de fábrica significa que o plano é ajustado sobre METADE do
+    /// círculo que o artista vê** — e é isso que explica o sinal invertido da
+    /// tabela da espec §2.2: num sulco, meia pegada e pegada inteira olham para
+    /// lados diferentes da curvatura.
+    pub area_radius_frac: f32,
+    /// ⭐⭐ **O que o `Ctrl` faz a este pincel** — ver [`crate::PlanoInversao`].
+    pub plano_inversao: crate::PlanoInversao,
     /// **A FOLGA da projecção** — quanto barro fica ANTES de encostar no alvo
     /// (o *minimum distance* da espec §6.3.4), em unidades do objecto.
     ///

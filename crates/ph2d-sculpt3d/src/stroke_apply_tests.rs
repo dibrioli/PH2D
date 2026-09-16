@@ -106,6 +106,9 @@ fn the_applicator_writes_the_target_verbatim_when_the_weight_lives_in_it() {
                 };
                 let mut s = SculptStroke::default();
                 s.begin(&mesh);
+                // ⚠️ Quem **exige esfregar** precisa de um dab atrás: o primeiro
+                // de cada passagem não tem direcção e não move nada, por LEI.
+                super::tests::arma_o_traco(&mut s, &mut mesh, &brush, c, radius);
                 let n = s.dab(
                     &mut mesh,
                     &brush,
@@ -298,6 +301,7 @@ fn no_vertex_reaches_the_applicator_with_zero_weight() {
         };
         let mut s = SculptStroke::default();
         s.begin(&mesh);
+        super::tests::arma_o_traco(&mut s, &mut mesh, &brush, c, radius);
         let n = s.dab(
             &mut mesh,
             &brush,

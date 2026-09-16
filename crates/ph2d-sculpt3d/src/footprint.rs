@@ -28,6 +28,9 @@
 pub enum Footprint {
     /// O disco de sempre: `t = dist / raio`, sem portão de profundidade.
     Disc,
+    /// ⭐⭐⭐ **O ELIPSÓIDE DOS DOIS TECTOS** — a silhueta do [`crate::Verb::Plane`],
+    /// e a peça que transforma três verbos num só. Ver [`Tectos`].
+    Tectos(Tectos),
     /// A **FAIXA** do Clay Strips: caixa arredondada no plano e parábola na
     /// profundidade.
     Strip(Strip),
@@ -87,6 +90,86 @@ pub struct Blade {
     pub extra: f32,
 }
 
+/// ⭐⭐⭐ **A moldura dos DOIS TECTOS** — a silhueta do [`crate::Verb::Plane`]
+/// (`SPEC_pincel_de_plano.md` §3.1).
+///
+/// A pegada deixa de ser uma esfera de raio `R` e passa a ser um **ELIPSÓIDE**
+/// de semi-eixos `R`, `R` e `altura·R` **acima** do plano, `profundidade·R`
+/// **abaixo**. Um vértice está dentro quando a coordenada devolvida é `< 1`.
+///
+/// ```text
+/// z  = ((p − centro) · n) / R              a altura com sinal, em raios
+/// t² = |p − centro|²/R² − z²               o quadrado da distância TANGENCIAL
+/// d  = √( t² + (z/tecto)² )                tecto = altura se z ≥ 0, senão profundidade
+/// ```
+///
+/// ⭐⭐ **É ela que transforma três verbos num só, e a prova é uma CONTAGEM, não
+/// um peso:** `altura 1 / profundidade 0` move `151` vértices, todos **acima** do
+/// plano; `0 / 1` move `114`, todos **abaixo**; `1 / 1` move `265`, que é
+/// **exactamente** `151 + 114`. ⛔ Nenhuma combinação dos knobs dos quatro verbos
+/// de plano da casa produz isto — eles escolhem o lado por um booleano e não têm
+/// tecto de alcance nenhum.
+///
+/// ⚠️ **O TECTO PESA TAMBÉM** (§3.3): ele encolhe o elipsóide **e** enfraquece o
+/// toque naquele lado — quem baixa a altura não está só a proteger o que está
+/// alto, está também a acariciar mais suavemente o que sobra. É por isso que ele
+/// sai no `gate`, e não só na coordenada.
+///
+/// ⚠️ **A multiplicação é INCONDICIONAL de propósito.** Com o tecto em `1` ela é
+/// a identidade; com o tecto em `0` o factor daquele lado **já** é zero pela
+/// coordenada (`d = 1` põe o vértice na borda, onde toda curva de queda vale
+/// zero). ⇒ *quem a escrever com um caso especial não compra comportamento
+/// nenhum, só relógio* — a espec §3.3 diz isto com todas as letras.
+///
+/// ⚠️ **E `tecto = 0` é uma escolha de DESENHO, não um limite:** ele apaga
+/// aquele lado inteiro, e `altura 0 E profundidade 0` deixa o pincel **inerte
+/// sem deixar de existir** — o *nada* do controlo, alcançável, e o sujeito do
+/// gate G-8.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Tectos {
+    /// O centro do plano ajustado — ⚠️ **NÃO o centro do dab**.
+    pub origin: [f32; 3],
+    /// A normal do plano ajustado, unitária.
+    pub normal: [f32; 3],
+    /// O tecto de **cima**, em raios: `0 … 1`.
+    pub altura: f32,
+    /// O tecto de **baixo**, em raios: `0 … 1`.
+    pub profundidade: f32,
+}
+
+impl Tectos {
+    /// A coordenada local e o portão — ver [`Tectos`].
+    #[must_use]
+    #[inline]
+    pub fn at(self, p: [f32; 3], inv_r: f32) -> (f32, f32) {
+        let d = [
+            p[0] - self.origin[0],
+            p[1] - self.origin[1],
+            p[2] - self.origin[2],
+        ];
+        let z = dot(d, self.normal) * inv_r;
+        let tecto = if z >= 0.0 {
+            self.altura
+        } else {
+            self.profundidade
+        };
+        // ⚠️ **`<= 0` e não `== 0`:** um tecto negativo (um ficheiro antigo, uma
+        // faixa de painel que mude) tem de cair no mesmo sítio que o zero, senão
+        // a divisão devolve um `d` com o sinal trocado e o lado errado acende.
+        if tecto <= 0.0 {
+            return (1.0, 0.0);
+        }
+        // ⚠️ **O `max(0)` é contra o `f32`, não contra a geometria:** `t²` é uma
+        // diferença de dois quadrados quase iguais quando o vértice está sobre o
+        // eixo, e ali ela pode sair `−1e-9`. A raiz de um negativo é `NaN`, e um
+        // `NaN` na coordenada envenena a curva, o peso e a malha.
+        let r2 = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]) * inv_r * inv_r;
+        let t2 = (r2 - z * z).max(0.0);
+        let zt = z / tecto;
+        ((t2 + zt * zt).sqrt(), tecto)
+    }
+}
+
 impl Footprint {
     /// **A coordenada que a curva consome, e o portão que a profundidade
     /// impõe** — `(t, gate)`.
@@ -98,6 +181,13 @@ impl Footprint {
     #[inline]
     pub fn at(self, p: [f32; 3], dist: f32, inv_r: f32) -> (f32, f32) {
         match self {
+            // ⚠️ **A distância que ENTRA é ignorada aqui, e é de propósito:** ela
+            // é medida ao CURSOR e este elipsóide é centrado no **centro do
+            // plano**, que o deslocamento (espec §2.4) e a lei do centro (§2.2)
+            // afastam do cursor. Usar a que entra seria medir a partir do sítio
+            // errado — e o defeito seria mudo, porque com o deslocamento a zero
+            // e uma superfície plana os dois pontos quase coincidem.
+            Self::Tectos(t) => t.at(p, inv_r),
             Self::Disc => (dist * inv_r, 1.0),
             Self::Strip(s) => s.at(p),
             // ⚠️ **A distância euclidiana ENTRA em vez de ser recomputada**, e é
@@ -126,6 +216,24 @@ impl Footprint {
         match self {
             Self::Disc => 1.0,
             Self::Strip(s) => Self::strip_query_factor(s.length()),
+            // ⚠️⚠️ **O factor DESTA forma não é derivável da forma**, e é a
+            // primeira da família em que isso acontece: o elipsóide é centrado no
+            // **centro do plano**, e quantos raios ele alcança a partir do CURSOR
+            // depende de quão longe aquele centro caiu — que é um facto da lei
+            // (§2.2 + §2.4), não da silhueta. Ver [`Self::tectos_query_factor`].
+            //
+            // ⚠️ **Este método não tem chamador de PRODUTO** (quem dimensiona a
+            // consulta é a [`crate::Brush::query_radius`], que sabe o
+            // deslocamento) — ele serve os gates, e aqui devolve o factor **com
+            // deslocamento zero**, com um gate a atar as duas respostas nesse
+            // ponto. *Devolver `1,0` seria dizer que a pegada cabe no círculo do
+            // cursor, que é precisamente o que ela não faz.*
+            // ⚠️ **Ele responde pelo ENQUADRAMENTO DE FÁBRICA** (deslocamento
+            // `0`, as duas fracções de amostragem em `0,5`), porque a silhueta
+            // não carrega nenhum dos três — quem os sabe é a
+            // [`crate::Brush::query_radius`], o único consumidor de produto. Um
+            // gate ata as duas respostas nesse ponto.
+            Self::Tectos(_) => Self::tectos_query_factor(0.0, 0.5, 0.5),
             // ⚠️ **UM, e não `1/k`.** A lâmina é o disco ESPREMIDO — ela cabe
             // inteira dentro dele, por construção (`|d'| >= |d|` para qualquer
             // `k >= 1`) —, então a consulta que já servia o disco a serve com
@@ -146,6 +254,48 @@ impl Footprint {
     #[must_use]
     pub fn strip_query_factor(length: f32) -> f32 {
         (1.0 + length * length).sqrt()
+    }
+
+    /// ⭐⭐⭐ **Quantos raios a pegada do [`crate::Verb::Plane`] alcança a partir
+    /// do CURSOR** — e este número é o mesmo que o gate **G-6** afirma.
+    ///
+    /// O elipsóide cabe na esfera de raio `R` em torno do **centro do plano**
+    /// (os dois tectos são `≤ 1`), logo o alcance a partir do cursor é
+    ///
+    /// ```text
+    /// |centro − cursor| + R
+    /// ```
+    ///
+    /// e o primeiro termo é exactamente o que o **G-6** limita:
+    /// [`crate::TECTOS_CENTRO_MAX`]` · R + |deslocamento| · R`.
+    ///
+    /// ⭐⭐ **Uma lei, DOIS consumidores — e é isso que faz este número ser
+    /// verificável:** se o centro do plano se afastar mais do que isto, o G-6
+    /// reprova **e** a consulta fica curta, os dois pela mesma causa. ⛔ Um
+    /// número escolhido aqui seria um palpite que nenhum gate alcança, e a
+    /// pegada sairia com o anel de fora comido — *um defeito mudo, porque a
+    /// silhueta continuaria plausível* (é a lição que a QUINA da faixa, três
+    /// parágrafos acima, já pagou nesta casa).
+    ///
+    /// ⛔⛔ **E há uma SEGUNDA razão para a consulta crescer, que a 1.ª redacção
+    /// desta porta não tinha e que o corpus do oráculo apanhou em cheio: as
+    /// EXTENSÕES DE AMOSTRAGEM.** O plano é ajustado sobre `R_n` e `R_c`, e as
+    /// duas fracções sobem até **`2`** (espec §2.3) — ou seja o estimador lê até
+    /// `2 R`, o **dobro** do círculo que o artista vê. A amostragem percorre a
+    /// pegada consultada, logo uma consulta de `1,75 R` **trunca a média** e o
+    /// centro sai errado.
+    ///
+    /// ⭐⭐⭐ **MEDIDO, e por isso está aqui:** a fixtura `lei/lei_area20`
+    /// (`R_c = 2 R`) desviava **`1,703e-01`** com `279` vértices movidos contra
+    /// `276` do oráculo, enquanto as outras treze da mesma família liam
+    /// `1,5e-08`–`7,5e-08`. *Uma única célula do corpus separou uma consulta certa
+    /// de uma truncada* — e sem ela o defeito seria mudo, porque `279` contra
+    /// `276` lê-se como ruído.
+    #[must_use]
+    pub fn tectos_query_factor(plane_offset: f32, normal_frac: f32, area_frac: f32) -> f32 {
+        (1.0 + crate::TECTOS_CENTRO_MAX + plane_offset.abs())
+            .max(normal_frac)
+            .max(area_frac)
     }
 }
 
@@ -349,7 +499,12 @@ fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
 
-fn unit(v: [f32; 3]) -> Option<[f32; 3]> {
+/// ⚠️ **`pub(crate)` e não privado, desde 2026-09-16:** a construção da pegada
+/// do [`crate::Verb::Plane`] lê a degenerescência da direcção do traço pelo
+/// MESMO teste que a faixa usa (`unit(normal × caminho)`), e reescrevê-lo lá
+/// daria duas leituras do mesmo eixo, que divergiriam no dia em que o piso de
+/// uma delas mudasse.
+pub(crate) fn unit(v: [f32; 3]) -> Option<[f32; 3]> {
     let len = dot(v, v).sqrt();
     if len.is_finite() && len > 1e-9 {
         Some([v[0] / len, v[1] / len, v[2] / len])

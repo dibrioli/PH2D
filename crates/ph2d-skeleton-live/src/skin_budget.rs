@@ -32,7 +32,7 @@ const CUSTO_POR_PECA_NS: usize = 353;
 /// ⭐ **O que UMA peça custa, MEDIDO OUTRA VEZ em 2026-09-16** (a lei do refinamento mudou, logo o
 /// número tinha de ser remedido; `load 5,6`–`6,1`, o MÍNIMO de 40/60 corridas, **três** corridas com
 /// leituras entre `0,328` e `0,355` — as sondas são
-/// [`tests::custo::measure_the_cpu_cost_of_a_skinned_frame`] e a
+/// `skin_image::tests::custo::measure_the_cpu_cost_of_a_skinned_frame` e a
 /// `ph2d-render::sprite_mesh_gpu::measure_the_frame_cost_of_a_mesh_sprite`):
 ///
 /// | o que o quadro faz por peça | µs |
@@ -62,7 +62,7 @@ const CUSTO_POR_PECA_NS: usize = 353;
 /// que a lei uniforme é **inerte** acima de `orçamento / 4` peças, logo o que o produto de facto
 /// pagava era o `Fast` mais o custo de decidir. *Um custo medido sobre um caminho que não corre é
 /// um orçamento que mente nos dois sentidos* — e este mentia para BAIXO, o que fazia a malha de
-/// bind de `2 430` peças disparar o [`avisa_malhas_acima_do_orcamento`] em toda a execução.
+/// bind de `2 430` peças disparar o `avisa_malhas_acima_do_orcamento` em toda a execução.
 ///
 /// ⚠️⚠️ **A lei nova é `3,9×` mais cara POR PEÇA** (`0,340` contra `0,087`), e isso é o preço de
 /// ela decidir: ela mede o desvio de cada aresta, mantém o livro de donos e escolhe. *O que ela
@@ -70,7 +70,7 @@ const CUSTO_POR_PECA_NS: usize = 353;
 ///
 /// ⭐ **E o livro de contas já foi medido e cortado uma vez:** a 1.ª redacção usava DOIS mapas e um
 /// `Vec` por aresta, e lia `0,52 µs`; com um mapa só e os donos num par fixo desceu a `0,34`
-/// (`−35 %`). Ver [`ph2d_poly2d::refine_adaptive`].
+/// (`−35 %`). Ver `ph2d_poly2d::refine_adaptive`.
 pub const SKIN_FRAME_PIECES: usize = QUADRO_60FPS_US * 1_000 / FATIA_DA_PELE / CUSTO_POR_PECA_NS;
 
 /// ⛔⛔ **A OUTRA PONTA DO TECTO, verificada na COMPILAÇÃO.** Um tecto apertado de mais deixa de
@@ -94,7 +94,7 @@ const _: () = assert!(
 ///
 /// ⭐⭐⭐ **`PH2D_SKIN_REFINE=uniforme` volta à lei do `k` global**, para bissecar. Ela é o que o
 /// `Smooth` usou até 2026-09-16 e é **provadamente inerte** acima de `orçamento / 4` peças — ver
-/// [`ph2d_poly2d::refine_adaptive`].
+/// `ph2d_poly2d::refine_adaptive`.
 #[must_use]
 pub fn refine_options() -> RefineOptions {
     static PECAS: std::sync::OnceLock<Option<usize>> = std::sync::OnceLock::new();

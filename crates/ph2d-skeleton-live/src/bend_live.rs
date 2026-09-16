@@ -14,7 +14,7 @@ use crate::skin_live::world_of;
 
 /// **As duas alças de curvatura e as duas extremidades de um osso**, em MUNDO.
 ///
-/// ⚠️⚠️ **Existe um alias GÉMEO na [`ph2d_skeleton_render`], e as duas crates NÃO se conhecem —
+/// ⚠️⚠️ **Existe um alias GÉMEO na `ph2d_skeleton_render`, e as duas crates NÃO se conhecem —
 /// de propósito.** O desenho do osso nunca importou a lei (ele é `ph2d-vector` + tokens, e é isso
 /// que o deixa servir qualquer mídia), e criar a aresta só para partilhar um nome trocaria uma
 /// duplicação de **quatro palavras** por uma dependência entre duas famílias. *A forma é a mesma
@@ -120,7 +120,7 @@ fn filho_osso_unico(sim: &SimWorld, e: Entity) -> Option<(Entity, f64)> {
 }
 
 /// ⭐⭐⭐ **AS DUAS ALÇAS DE CURVATURA de um osso, em MUNDO**, mais as duas extremidades dele — a
-/// porta ÚNICA do desenho e do dedo ([`ph2d_skeleton_render::draw_bend`] e o `bone_pick`).
+/// porta ÚNICA do desenho e do dedo (`ph2d_skeleton_render::draw_bend` e o `bone_pick`).
 ///
 /// ⛔⛔ **`None` quando a curvatura é INERTE**, isto é, quando o osso produz um sub-osso só
 /// (`segments <= 1`). Pintar a alça ali prometeria um verbo que o arrasto não executa — a espécie

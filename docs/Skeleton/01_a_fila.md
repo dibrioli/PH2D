@@ -2909,6 +2909,40 @@ jornada.
 ⇒ ⛔ **Não reconstrua nenhuma das três rotas.** Quem as ler aqui estaria a pagar de novo um problema
 que a troca de lei dissolveu — que é a forma nº 1 pela qual esta lista custa dinheiro.
 
+### F6-s — ⭐⭐⭐⭐ **REGRA DO DONO: editar PIXELS acontece na imagem PLANA** (ordem de 2026-09-16)
+
+> *«nenhuma ferramente de edição de imagem deve trabalhar com arte dobrada. Aqui o mesmo que fizemos
+> para painter: ao usar Background removal, a imagem fica sem deformação até o fim da operação. Ao
+> finalizar a operação ela se dobra para obedecer aos ossos. Isso serve para todas as tools de
+> pintura e remoção e deformação de pixels com exceção do Liquify que deverá ser capaz de fazer
+> ajustes na imagem dobrada. Exceção também para filtros (como contraste, blur, etc) e shaders como
+> shadows e outros que não pintam ou apagam a imagem. Escreva isso para não esquecer.»*
+
+Ela estende a ordem de 2026-09-15 (só o Painter achatava) a **toda ferramenta da mesma espécie**, e
+mora na mesma porta: [`ph2d_app_painter::skin_suspend`](../../crates/ph2d-app-painter/src/skin_suspend.rs).
+⛔ **Uma ferramenta nova desta espécie entra na TABELA dessa porta** — nunca numa cerca própria, nunca
+num «o pincel X segue a dobra».
+
+| ferramenta | achata? | porquê |
+|---|---|---|
+| **Painter** — Paint · Erase · Smear · Blur · Clone · Mask · Inpaint · Fill · Selection · Sculpt · Knife · Wet Paint | ✅ **sim** | pinta, apaga ou mexe em pixels (a ordem de 15/09) |
+| **Painter — Liquify** (o modo `Deform`) | ⛔ **não** | a exceção nomeada: *«deverá ser capaz de fazer ajustes na imagem dobrada»* |
+| **Background Removal** | ✅ **sim** | remove pixels (a ferramenta nomeada) |
+| filtros (contraste, blur, …) e shaders/efeitos (sombras, …) | ⛔ não | a exceção nomeada: não pintam nem apagam |
+| **Color Equalization** | ⛔ não *(leitura da linha)* | é um filtro de cor |
+| **Upscale** · **Equalize Sizes** | ⛔ não *(leitura da linha)* | reamostram a imagem inteira, não pintam nem apagam |
+| **Padding** | ⛔ não *(leitura da linha)* | mexe na MOLDURA da tela, não no conteúdo |
+
+⚠️ **As quatro linhas marcadas *leitura da linha* são pergunta ao dono**, e a resposta dele troca uma
+linha da tabela da porta, nada mais.
+
+⏳ **ABERTO e nomeado, achado ao escrever a regra:** o Padding (e os botões de imagem que cortam ou
+acrescentam margem) mudam ONDE o conteúdo está na textura, e a malha do bind guarda a arte em px da
+textura de ANTES — numa imagem presa, depois do Apply, a pele leria os texels errados. Não é desta
+regra (ela é sobre a DOBRA durante a edição); é do bind, e não foi medido.
+
+---
+
 ### F6-r — ✅ **As alças do gizmo de uma imagem presa cercam a arte DOBRADA** (2026-09-16)
 
 **UMA LINHA:** a caixa do gizmo de uma sprite era sempre o **quad de repouso** (ou a folha aberta),

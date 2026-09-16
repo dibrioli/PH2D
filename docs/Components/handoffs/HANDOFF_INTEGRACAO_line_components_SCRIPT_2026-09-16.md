@@ -159,6 +159,14 @@ faixa é pista de edição) · **Q7** (a ordem é a da declaração) · **Q9** (
    a sétima irmã do mesmo molde, ⛔ nunca uma entrada no `FN_OVERAGE_OK`; e o `clippy::map_entry` no
    nascimento de uma instância (`contains_key` + `insert` + `expect`) ⇒ `Entry::Vacant`, que também
    apaga o `expect`.
+9. ⛔⛔ **A CENA dizia ao dono uma coisa FALSA, e o gate dela não a via:** a linha `[script-smoke]`
+   mandava *«mude um default, grave — só o «Bob» muda»*. **«Próprio» é por NÚMERO, não por
+   objecto:** o «Bob (fast)» tem `speed` e `top_signal` próprios e **segue** a `amplitude` do
+   ficheiro — mudar essa muda **dois** bonecos. O gate da recarga media só o «Bob» e o «Bob (tall)»,
+   logo era cego ao terceiro. Achado ao conferir os passos do smoke contra o código, **antes** de os
+   enviar ⇒ a frase e o doc da cena dizem os dois, e o gate (`mudar_o_default_no_ficheiro_muda_quem_
+   nao_tem_aquele_numero_proprio`) mede os **três**. *Uma cena que ensina o contrário é pior que uma
+   ausente* (§5.0).
 
 ---
 

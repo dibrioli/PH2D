@@ -11,8 +11,10 @@
 //! | **«Bob (fast)»** | `speed = 6` · `top_signal = "top"` | sobe e desce depressa e, a cada topo, **grita** `top` — e a tabela de acções dele acende e apaga a lâmpada |
 //!
 //! ⭐⭐⭐ **O que a cena ensina é o §0 do plano, à vista:** o mesmo script vira três comportamentos
-//! pelos números de cada objecto, e o ficheiro é vivo — mudar o default no editor de texto e gravar
-//! muda o **«Bob»** e deixa os outros dois nos números deles (Q1/Q2 do oráculo).
+//! pelos números de cada objecto, e o ficheiro é vivo — mudar o default da `amplitude` no editor de
+//! texto e gravar muda o **«Bob»** e o **«Bob (fast)»** e deixa o **«Bob (tall)»** na dele (Q1/Q2
+//! do oráculo). ⚠️ *«Próprio» é por NÚMERO, não por objecto* — o rápido tem `speed` próprio e
+//! segue a `amplitude` do ficheiro.
 //!
 //! ⭐ **E o grito liga o script ao mundo pela porta que o levantamento prescreve** (sinais, nunca uma
 //! referência directa a outro objecto): o script não sabe que a lâmpada existe.
@@ -188,7 +190,8 @@ pub fn montar(world: &mut World, _nivel: u32, dir: &Path) -> std::io::Result<Mon
         "[script-smoke] =1 tres bonecos correm o MESMO script ({path}) com numeros diferentes: \
          «Bob» segue o ficheiro, «Bob (tall)» sobe o dobro, «Bob (fast)» e' rapido e acende a \
          lampada a cada topo. Carregue num boneco e veja a seccao Script do painel; abra o \
-         ficheiro, mude um default, grave — so' o «Bob» muda"
+         ficheiro, mude o default da amplitude, grave — o «Bob» e o «Bob (fast)» mudam, o \
+         «Bob (tall)» fica com a dele"
     );
     Ok(Montada {
         nivel: 1,

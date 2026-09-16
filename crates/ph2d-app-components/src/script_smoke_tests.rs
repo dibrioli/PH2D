@@ -164,13 +164,18 @@ fn o_bob_alto_mostra_o_orfao_height() {
 }
 
 /// ⭐⭐ **O ficheiro é VIVO** — mudar o default e gravar muda só quem não tem número próprio (Q1/Q2).
+///
+/// ⚠️ **«Próprio» é por NÚMERO, não por objecto:** o «Bob (fast)» tem `speed` e `top_signal`
+/// próprios e **segue** a `amplitude` do ficheiro — a 1.ª redacção da cena dizia ao dono que *só o
+/// «Bob»* mudava, e este gate media dois bonecos e não via o terceiro.
 #[test]
-fn mudar_o_default_no_ficheiro_muda_so_o_bob_que_o_segue() {
+fn mudar_o_default_no_ficheiro_muda_quem_nao_tem_aquele_numero_proprio() {
     let (mut sim, dir) = montada();
     let mut host = ScriptHost::new().expect("vm");
     let mut drive = PreviewDrive::default();
     let bob = por_nome(&mut sim, "Bob");
     let alto = por_nome(&mut sim, "Bob (tall)");
+    let rapido = por_nome(&mut sim, "Bob (fast)");
     let novo = BOB_LUAU.replace(
         r#"ph2d.property("amplitude", 1.0, { min = 0, max = 4 })"#,
         r#"ph2d.property("amplitude", 1.5, { min = 0, max = 4 })"#,
@@ -183,11 +188,11 @@ fn mudar_o_default_no_ficheiro_muda_so_o_bob_que_o_segue() {
         drive.settle();
     }
     std::fs::write(dir.join(FILE_NAME), novo).expect("grava");
-    let mut max_dy = [0.0f32; 2];
+    let mut max_dy = [0.0f32; 3];
     for _ in 0..240 {
         crate::script_bridge::frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[]);
         drive.settle();
-        for (i, e) in [bob, alto].into_iter().enumerate() {
+        for (i, e) in [bob, alto, rapido].into_iter().enumerate() {
             let y = sim.world().get::<Transform>(e).expect("pose").translation.y;
             max_dy[i] = max_dy[i].max((y - BOB_Y).abs());
         }
@@ -199,6 +204,10 @@ fn mudar_o_default_no_ficheiro_muda_so_o_bob_que_o_segue() {
     assert!(
         (f64::from(max_dy[1]) - TALL_AMPLITUDE).abs() < 0.1,
         "o alto guardou o dele: {max_dy:?}"
+    );
+    assert!(
+        (max_dy[2] - 1.5).abs() < 0.05,
+        "o rápido não tem amplitude própria e seguiu o default novo: {max_dy:?}"
     );
     let cfg = sim.world().get::<LuauScript>(alto).expect("cfg");
     assert_eq!(

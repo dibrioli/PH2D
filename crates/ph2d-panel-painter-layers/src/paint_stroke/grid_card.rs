@@ -85,7 +85,7 @@ pub(super) fn paint_grid_stamp_card(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_SHOW,
-        tr("panel.painter_layers.stroke.grid.show_grid"),
+        "panel.painter_layers.stroke.grid.show_grid",
         brush.grid_show,
     )
 }

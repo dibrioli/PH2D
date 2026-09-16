@@ -6,5 +6,6 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod as_duas_caixas_cabem_na_coluna;
 mod panel_chrome;
 mod seam;

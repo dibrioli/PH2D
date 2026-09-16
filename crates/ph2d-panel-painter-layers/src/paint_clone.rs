@@ -54,7 +54,7 @@ pub(crate) fn paint_clone_card(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_CLONE_ALIGNED,
-        tr("panel.painter_layers.clone.aligned"),
+        "panel.painter_layers.clone.aligned",
         brush.clone_aligned,
     );
 

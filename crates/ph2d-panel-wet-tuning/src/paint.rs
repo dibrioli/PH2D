@@ -380,6 +380,16 @@ fn header_row(
     y + ph2d_tokens::row_pitch_px()
 }
 
+/// ⭐ **As duas caixas deste painel, e elas são UMA secção** — o cartão *Experimental*.
+///
+/// ⛔ Sem esta declaração as duas caíam na metade cega da linha, e medido em 2026-09-16 com o
+/// sistema de texto real as duas saíam **cortadas em todo o curso útil do dock**: `Pigment mixing
+/// (K-M)` mede `123,9 px` e `Glaze layering (K-M)` `114,2`, contra uma coluna de `84,0` no mínimo,
+/// `96,5` a `245` e `110,6` na largura do dono. Medida, a coluna cresce até elas e o corte
+/// desaparece de `273,3` para cima (no mínimo do dock ganha o tecto do campo, que é a troca que o
+/// dono escolheu em 2026-05-24).
+const CAIXAS: &[&str] = &["panel.wet_tuning.km_mixing", "panel.wet_tuning.km_glaze"];
+
 #[allow(clippy::too_many_arguments)] // a row is (geometry, id, label, state) — splitting hides the seam
 fn checkbox_row(
     ctx: &mut PaintCtx,
@@ -392,13 +402,16 @@ fn checkbox_row(
     on: bool,
 ) -> f32 {
     let rect = Rect::new(x, y, w, ROW_H_PX);
+    let rotulos: Vec<&str> = CAIXAS.iter().map(|k| tr(k)).collect();
+    let seccao = ph2d_editor_core::widget::Seccao::medida(ctx.text_system, 1, &rotulos);
     let cb = Checkbox::new(id, label)
         .visual(ctx.host.store().checkbox_visual(id))
         .value(if on {
             CheckboxValue::Checked
         } else {
             CheckboxValue::Unchecked
-        });
+        })
+        .seccao(seccao);
     paint_checkbox(&cb, rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(id, rect);
     y + ph2d_tokens::row_pitch_px()

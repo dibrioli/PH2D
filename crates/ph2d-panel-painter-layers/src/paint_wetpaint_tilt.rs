@@ -11,7 +11,6 @@ use crate::PaintCtx;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_circle, resolve, stroke_polyline};
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
@@ -55,7 +54,7 @@ pub(crate) fn paint_tilt_card(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_TOGGLE,
-        tr("panel.painter_layers.wetpaint.tilt"),
+        "panel.painter_layers.wetpaint.tilt",
         brush.wet_tilt_on,
     );
     let side = DIAL_PX.min(content_w);

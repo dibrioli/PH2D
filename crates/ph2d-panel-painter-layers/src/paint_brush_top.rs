@@ -72,6 +72,16 @@ pub(crate) fn paint_slider_chip_row(
 /// A canonical checkbox row (box + label) driven by the brush snapshot. The id stays a `Button` in the
 /// store (the click forwards over the existing Click channel — the tool toggles the bool); only the
 /// VISUAL is a checkbox. Returns the next `y`.
+///
+/// ⭐⭐⭐ **Ela recebe a CHAVE do rótulo, não o texto** (2026-09-16) — e a razão é a coluna do nome.
+/// Uma linha de marcar é uma linha de propriedade (spec §6-quinquies), logo o nome dela vive na
+/// coluna da **secção**; e *quem só tem o texto traduzido não sabe a que secção pertence*. A chave
+/// sabe ([`crate::seccoes::nome_da_seccao`]), então a escolha deixa de existir nos ~30 sítios de
+/// pintura e passa a ser uma derivação num sítio só.
+///
+/// ⛔ Sem isto a linha caía no default (*«não sei que nomes vou pintar»*), cuja coluna é a metade
+/// cega: medido a `273,3` — a largura do dono — um nome saía cortado, `6` a `245` e `11` no mínimo
+/// do dock (a tabela está em [`crate::seccoes`]).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_checkbox_row(
     ctx: &mut PaintCtx,
@@ -80,7 +90,7 @@ pub(crate) fn paint_checkbox_row(
     content_w: f32,
     y: f32,
     id: ph2d_a11y::NodeId,
-    label: &str,
+    chave: &str,
     checked: bool,
 ) -> f32 {
     let value = if checked {
@@ -88,9 +98,11 @@ pub(crate) fn paint_checkbox_row(
     } else {
         CheckboxValue::Unchecked
     };
-    let cb = Checkbox::new(id, label)
+    let seccao = crate::seccoes::seccao_da_chave(ctx.text_system, chave);
+    let cb = Checkbox::new(id, tr(chave))
         .visual(ctx.host.store().checkbox_visual(id))
-        .value(value);
+        .value(value)
+        .seccao(seccao);
     let rect = Rect::new(x, y, content_w, ROW_H_PX);
     paint_checkbox(&cb, rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(id, rect);

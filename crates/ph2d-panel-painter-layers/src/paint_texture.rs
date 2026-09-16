@@ -164,7 +164,7 @@ pub(crate) fn paint_texture_section(
                 content_w,
                 y,
                 ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAKE,
-                tr("panel.painter_layers.grain.rake"),
+                "panel.painter_layers.grain.rake",
                 brush.texture_rake,
             );
         }

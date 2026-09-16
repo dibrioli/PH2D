@@ -84,9 +84,13 @@ pub(crate) fn paint_composite_card(
     let mut iy = y + pad;
 
     // The enable checkbox (forwards a plain Click → the tool's `toggle_composite`).
+    // ⚠️ Ela é uma linha de propriedade como as outras, logo o nome vive na coluna da SECÇÃO
+    // (spec §6-quinquies) — aqui construída à mão só por causa do `visual`, não por ser outra lei.
+    const CHAVE: &str = "panel.painter_layers.composite.composite_brush";
+    let seccao = crate::seccoes::seccao_da_chave(ctx.text_system, CHAVE);
     let cb = Checkbox::new(
         ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE,
-        tr("panel.painter_layers.composite.composite_brush"),
+        tr(CHAVE),
     )
     .visual(
         ctx.host
@@ -97,7 +101,8 @@ pub(crate) fn paint_composite_card(
         CheckboxValue::Checked
     } else {
         CheckboxValue::Unchecked
-    });
+    })
+    .seccao(seccao);
     let cb_rect = Rect::new(ix, iy, iw, ROW_H_PX);
     paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(

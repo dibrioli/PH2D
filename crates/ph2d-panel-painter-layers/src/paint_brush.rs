@@ -93,7 +93,7 @@ pub(crate) fn paint_brush_body(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYNC,
-        tr("panel.painter_layers.brush.sync_tools"),
+        "panel.painter_layers.brush.sync_tools",
         brush.link_shared,
     );
 
@@ -276,7 +276,7 @@ fn paint_top_basics(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE,
-            tr("panel.painter_layers.brush.accumulate"),
+            "panel.painter_layers.brush.accumulate",
             brush.accumulate,
         );
     }

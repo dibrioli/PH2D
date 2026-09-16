@@ -95,7 +95,7 @@ pub(crate) fn paint_light_rows(
             w,
             ry,
             ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_ON,
-            tr("panel.painter_layers.impasto.enable"),
+            "panel.painter_layers.impasto.enable",
             lamp.on,
         );
     }

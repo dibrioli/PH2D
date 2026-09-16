@@ -86,7 +86,7 @@ pub(crate) fn paint_shape_per_layer_color(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
-            tr("panel.painter_layers.shape.alpha_from_image"),
+            "panel.painter_layers.shape.alpha_from_image",
             brush.shape_alpha_from_image,
         );
     }
@@ -99,9 +99,9 @@ pub(crate) fn paint_shape_per_layer_color(
         y,
         ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR,
         if single {
-            tr("panel.painter_layers.shape.use_texture_colors")
+            "panel.painter_layers.shape.use_texture_colors"
         } else {
-            tr("panel.painter_layers.shape.per_layer_color")
+            "panel.painter_layers.shape.per_layer_color"
         },
         brush.shape_per_layer_color,
     );
@@ -128,6 +128,10 @@ pub(crate) fn paint_shape_per_layer_color(
         } else {
             content_w
         };
+        // ⚠️ A coluna do nome é a da secção *Shape*, como as outras caixas dela — o que esta linha
+        // tem de próprio é o `cb_w` (a amostra de cor à direita come o fim da faixa), nunca a
+        // coluna: *quem partilha o cartão partilha a coluna* (spec §6).
+        let seccao = crate::seccoes::seccao(ctx.text_system, crate::seccoes::SHAPE);
         let cb = Checkbox::new(
             check_id,
             tr_with("panel.painter_layers.shape.layer_color", &[("n", &(i + 1))]),
@@ -137,7 +141,8 @@ pub(crate) fn paint_shape_per_layer_color(
             CheckboxValue::Checked
         } else {
             CheckboxValue::Unchecked
-        });
+        })
+        .seccao(seccao);
         let cb_rect = Rect::new(x, y, cb_w, ROW_H_PX);
         paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
         register_button(ctx.host.store_mut(), check_id);

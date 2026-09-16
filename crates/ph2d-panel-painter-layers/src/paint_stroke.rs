@@ -75,7 +75,7 @@ pub(crate) fn paint_stroke_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_BRUSH_LINE_DIMENSIONS,
-            tr("panel.painter_layers.stroke.dimensions"),
+            "panel.painter_layers.stroke.dimensions",
             brush.line_show_dimensions,
         );
     }
@@ -112,7 +112,7 @@ pub(crate) fn paint_stroke_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
-            tr("panel.painter_layers.stroke.edge_to_edge"),
+            "panel.painter_layers.stroke.edge_to_edge",
             brush.edge_to_edge,
         );
     }
@@ -154,7 +154,7 @@ pub(crate) fn paint_stroke_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
-            tr("panel.painter_layers.stroke.adjust_strength"),
+            "panel.painter_layers.stroke.adjust_strength",
             brush.space_attenuation,
         );
     }
@@ -257,7 +257,7 @@ pub(crate) fn paint_tiling_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_X,
-        tr("panel.painter_layers.stroke.tiling_x"),
+        "panel.painter_layers.stroke.tiling_x",
         brush.tiling[0],
     );
     y = paint_checkbox_row(
@@ -267,7 +267,7 @@ pub(crate) fn paint_tiling_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_Y,
-        tr("panel.painter_layers.stroke.tiling_y"),
+        "panel.painter_layers.stroke.tiling_y",
         brush.tiling[1],
     );
     // Repeat Image: on-canvas 3×3 tile preview + its per-axis Aspect Ratio (shown when on).
@@ -278,7 +278,7 @@ pub(crate) fn paint_tiling_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_REPEAT_IMAGE,
-        tr("panel.painter_layers.stroke.repeat_image"),
+        "panel.painter_layers.stroke.repeat_image",
         brush.repeat_image,
     );
     let out = y;

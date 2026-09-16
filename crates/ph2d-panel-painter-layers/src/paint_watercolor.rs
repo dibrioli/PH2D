@@ -291,7 +291,7 @@ fn paint_wash_card(
         iw,
         ry,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SMOOTH_EDGES,
-        tr("panel.painter_layers.watercolor.smooth_edges"),
+        "panel.painter_layers.watercolor.smooth_edges",
         brush.smooth_edges,
     );
     next_y

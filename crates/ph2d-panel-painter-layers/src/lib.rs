@@ -79,6 +79,8 @@ mod populate_deform;
 mod populate_grid_stamp;
 mod populate_sculpt;
 mod populate_sections;
+/// As secções que pintam linhas de marcar, e os rótulos de cada uma (a coluna do nome sai daqui).
+pub mod seccoes;
 pub mod state;
 mod state_dropdowns;
 mod state_ramp;

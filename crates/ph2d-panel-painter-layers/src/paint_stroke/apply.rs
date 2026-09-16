@@ -205,7 +205,7 @@ pub(super) fn paint_offset_card(
         inner_w,
         iy,
         ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET_TRIM,
-        tr("panel.painter_layers.stroke.trim"),
+        "panel.painter_layers.stroke.trim",
         brush.offset_trim,
     );
     y + card_h + ph2d_tokens::control_gap_px()

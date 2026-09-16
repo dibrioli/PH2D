@@ -459,6 +459,7 @@ pub(super) fn paint_source_row(
 pub(super) fn paint_toggle_row(
     row: &ToggleRow,
     i: usize,
+    seccao: ph2d_editor_core::widget::Seccao,
     inner_x: f32,
     inner_w: f32,
     _row_gap: f32,
@@ -477,7 +478,8 @@ pub(super) fn paint_toggle_row(
     };
     let cb = Checkbox::new(cb_id, row.label.clone())
         .visual(store.checkbox_visual(cb_id))
-        .value(value);
+        .value(value)
+        .seccao(seccao);
     let crect = Rect::new(inner_x, y, inner_w, ROW_H_PX);
     paint_checkbox(&cb, crect, scene, text_system, theme);
     hit_index.register(cb_id, crect);

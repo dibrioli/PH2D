@@ -219,7 +219,7 @@ fn paint_reshape_body(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_DEFORM_RELIEF,
-            tr("panel.painter_layers.deform.affect_relief"),
+            "panel.painter_layers.deform.affect_relief",
             brush.deform_affect_relief,
         );
     }

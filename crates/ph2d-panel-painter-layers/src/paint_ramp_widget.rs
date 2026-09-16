@@ -22,7 +22,6 @@ use ph2d_editor_core::widget::{
     paint_color_swatch, paint_number_chip,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
 use ph2d_tool_painter::{
     ColorRamp, RampAlphaMode, RampColorMode, RampInterp, RampStop, linear_to_srgb_byte,
@@ -115,7 +114,7 @@ pub(crate) fn paint_color_ramp_section(
         content_w,
         y,
         ids.enable,
-        tr("panel.painter_layers.ramp.use_color_ramp"),
+        "panel.painter_layers.ramp.use_color_ramp",
         view.enabled,
     );
     if !view.enabled {

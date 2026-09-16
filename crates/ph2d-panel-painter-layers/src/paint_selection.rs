@@ -139,7 +139,7 @@ pub(crate) fn paint_selection_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_SEL_EDIT,
-        tr("panel.painter_layers.selection.edit_gizmos"),
+        "panel.painter_layers.selection.edit_gizmos",
         brush.selection_edit,
     );
 

@@ -68,7 +68,7 @@ pub(crate) fn paint_sculpt_rows(
                     content_w,
                     y,
                     ph2d_tool_painter::ids::PAINTER_SCULPT_RAKE,
-                    tr("panel.painter_layers.sculpt.rake"),
+                    "panel.painter_layers.sculpt.rake",
                     brush.sculpt_rake,
                 );
             }

@@ -418,7 +418,7 @@ pub(crate) fn paint_grain_watercolor_extras(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_GRAN_SAME,
-        tr("panel.painter_layers.paper.same_as_paper"),
+        "panel.painter_layers.paper.same_as_paper",
         brush.granulation_use_paper,
     );
     let sec = seccao_dos_extras(ctx);

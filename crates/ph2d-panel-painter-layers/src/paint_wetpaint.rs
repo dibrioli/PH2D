@@ -210,7 +210,7 @@ pub(crate) fn paint_wetpaint_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_SHOWWET,
-            tr("panel.painter_layers.wetpaint.show_wet"),
+            "panel.painter_layers.wetpaint.show_wet",
             brush.wet_show_wet,
         );
         // Paper — the tooth becomes visually part of the painting (render
@@ -222,7 +222,7 @@ pub(crate) fn paint_wetpaint_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_PAPER_VISUAL,
-            tr("panel.painter_layers.wetpaint.paper"),
+            "panel.painter_layers.wetpaint.paper",
             brush.wet_paper_visual,
         );
         // Tuning — opens the side panel with the engine's full knob table.
@@ -233,7 +233,7 @@ pub(crate) fn paint_wetpaint_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_TUNING,
-            tr("panel.painter_layers.wetpaint.tuning"),
+            "panel.painter_layers.wetpaint.tuning",
             brush.wet_tuning_open,
         );
     }

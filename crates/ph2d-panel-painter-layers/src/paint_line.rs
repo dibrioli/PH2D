@@ -117,6 +117,9 @@ pub(crate) fn paint_line_card(
     let iw = content_w - 2.0 * pad;
     let mut iy = y + pad;
 
+    // ⚠️ A coluna do nome é a da secção *Line* (spec §6-quinquies) — as três caixas deste cartão
+    // (`Solid`, `Magnetify`, `Connection line`) caem todas no mesmo `x`.
+    let seccao = crate::seccoes::seccao(ctx.text_system, crate::seccoes::LINE);
     let cb = Checkbox::new(
         ph2d_tool_painter::ids::PAINTER_LINE_SOLID,
         tr("panel.painter_layers.line.solid"),
@@ -125,7 +128,8 @@ pub(crate) fn paint_line_card(
         CheckboxValue::Checked
     } else {
         CheckboxValue::Unchecked
-    });
+    })
+    .seccao(seccao);
     let cb_rect = Rect::new(ix, iy, iw, ROW_H_PX);
     paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
     ctx.host
@@ -366,11 +370,14 @@ fn paint_param_rows(
         iy += ph2d_tokens::row_pitch_px();
     }
     if let Some((id, label, read)) = checkbox_of(kind) {
-        let cb = Checkbox::new(id, tr(label)).value(if read(brush) {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        });
+        let seccao = crate::seccoes::seccao(ctx.text_system, crate::seccoes::LINE);
+        let cb = Checkbox::new(id, tr(label))
+            .value(if read(brush) {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            })
+            .seccao(seccao);
         let cb_rect = Rect::new(x, iy, row_w, ROW_H_PX);
         paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
         ctx.host.hit_index_mut().register(id, cb_rect);

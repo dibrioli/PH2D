@@ -55,7 +55,7 @@ pub(crate) fn paint_symmetry_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_USE,
-        tr("panel.painter_layers.symmetry.use_symmetry"),
+        "panel.painter_layers.symmetry.use_symmetry",
         brush.symmetry_enabled,
     );
     // The rest of the controls only make sense once symmetry is on.
@@ -69,7 +69,7 @@ pub(crate) fn paint_symmetry_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_CIRCULAR,
-        tr("panel.painter_layers.symmetry.circular"),
+        "panel.painter_layers.symmetry.circular",
         brush.symmetry_circular,
     );
     if brush.symmetry_circular {

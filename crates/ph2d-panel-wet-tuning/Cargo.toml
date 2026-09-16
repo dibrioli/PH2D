@@ -32,6 +32,9 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # `PointerEvent` — the chrome seams drive REAL Down/Move/Up drags (title
 # band, corner grippers) through the same dispatcher the shell runs.
 ph2d-host = { path = "../ph2d-host" }
+# `as_duas_caixas_cabem_na_coluna`: a régua é o sistema de texto REAL — medir um rótulo
+# noutro peso corta-o curto, e é o defeito que esta casa já pagou duas vezes.
+ph2d-text = { path = "../ph2d-text" }
 
 [lints]
 workspace = true

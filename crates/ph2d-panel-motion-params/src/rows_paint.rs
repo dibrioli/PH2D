@@ -51,6 +51,7 @@ use kinds::{
 fn paint_one_row(
     row: &ParamRow,
     i: usize,
+    seccao: ph2d_editor_core::widget::Seccao,
     inner_x: f32,
     inner_w: f32,
     chip_w: f32,
@@ -117,6 +118,7 @@ fn paint_one_row(
             y = paint_toggle_row(
                 row,
                 i,
+                seccao,
                 inner_x,
                 inner_w,
                 row_gap,
@@ -305,8 +307,13 @@ pub(crate) fn paint_rows(
     // ser pintado — senão ele sairia dentro do recorte da seção anterior — e a última é fechada
     // depois do laço.
     let mut fold: Option<sections::SectionFold> = None;
+    // ⭐ **A coluna do nome das caixas de marcar deste troço**, medida UMA vez por secção e não uma
+    // por linha: *uma coluna é uma resposta da secção* (spec §6). Ela é refeita a cada cabeçalho,
+    // que é exactamente onde o troço muda.
+    let mut seccao = sections::seccao_das_caixas(rows, section_at, 0, text_system);
     for (i, row) in rows.iter().enumerate().take(MAX_PARAM_ROWS) {
         if sections::has_header_at(section_at, i) {
+            seccao = sections::seccao_das_caixas(rows, section_at, i, text_system);
             y = turn_the_page(
                 &mut fold,
                 section_at,
@@ -340,6 +347,7 @@ pub(crate) fn paint_rows(
         y = paint_one_row(
             row,
             i,
+            seccao,
             inner_x,
             inner_w,
             chip_w,

@@ -118,7 +118,7 @@ pub(crate) fn paint_impasto_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_IMPASTO_LIVE_EDIT,
-        tr("panel.painter_layers.impasto.adjust_last_stroke"),
+        "panel.painter_layers.impasto.adjust_last_stroke",
         brush.impasto_live_edit,
     );
     // …and directly beneath it, the ten tools (Enio: *"as tools todas devem ser organizadas logo abaixo
@@ -448,7 +448,7 @@ pub(crate) fn paint_body_card(
         iw,
         ry,
         ph2d_tool_painter::ids::PAINTER_IMPASTO_SMOOTH_EDGES,
-        tr("panel.painter_layers.impasto.smooth_edges"),
+        "panel.painter_layers.impasto.smooth_edges",
         brush.impasto_smooth_edges,
     );
     next_y
@@ -484,7 +484,7 @@ fn paint_lighting_card(
         iw,
         ry,
         ph2d_tool_painter::ids::PAINTER_IMPASTO_SHOW,
-        tr("panel.painter_layers.impasto.show_impasto"),
+        "panel.painter_layers.impasto.show_impasto",
         brush.impasto_show,
     );
     let _ = crate::paint_impasto_rig::paint_light_rows(ctx, theme, ix, iw, ry, brush);

@@ -92,7 +92,7 @@ pub(crate) fn paint_shape_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
-            tr("panel.painter_layers.shape.automatic"),
+            "panel.painter_layers.shape.automatic",
             brush.watercolor_shape_auto,
         );
         if brush.watercolor_shape_auto {

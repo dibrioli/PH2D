@@ -3944,7 +3944,14 @@ descobrir que **a grandeza não ordena os resultados**.
 | `384` | `10 351` | `1 309,1` | `1 669,1` | `1,28×` |
 | `512` | `13 789` | `2 066,3` / `787,2` | `2 366,8` / `2 334,6` | `1,15×` / **`2,97×`** |
 | `768` | `20 675` | `6 575,7` / `6 429,9` | `3 423,1` / `3 366,1` | `0,52×` / `0,52×` ⬅ penhasco |
-| `1024` | `27 563` | `3 508,7` | `4 546,9` | **`1,30×`** |
+| `1024` | `27 563` | `3 508,7` ⚠️ | `4 546,9` | **`1,30×`** |
+
+⛔⛔ **O `1024` está marcado porque ele PENDUROU a placa na segunda corrida:** o binário ficou em
+`S (sleeping)` com o tempo de CPU parado, mais de meia hora, até ser morto — sobre um shader de
+~`27 500` valores guardados. ⚠️ **Não é determinista** (a primeira corrida deu o número da tabela), e
+é por isso que a varredura da sonda passa a acabar em `768`: *uma sonda que PODE pendurar a placa
+gasta a máquina de quem a corre e não avisa.* ⇒ ⏳ **há um tecto de verdade algures acima de `768`,
+e ele é do DRIVER e não do relógio** — quem o for medir, que o faça com tempo-limite.
 
 ⛔⛔ **O `768` perde de forma REPRODUTÍVEL e os dois vizinhos ganham.** Um tecto em `13 789`
 apanharia o `768` **e excluiria o `1024`, que a placa ganha por `1,30×`** — ⇒ *a grandeza não ordena

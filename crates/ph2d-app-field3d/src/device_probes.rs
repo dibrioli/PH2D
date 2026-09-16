@@ -37,7 +37,14 @@ fn mede_o_preco_de_uma_aresta_de_perfil() {
         cpu_ociosa_pct()
     );
     let mut pontos: Vec<(u32, usize, usize, f32)> = Vec::new();
-    for n in [32u32, 64, 96, 128, 192, 256, 384, 512, 768, 1024] {
+    // ⛔⛔ **O TOPO DA VARREDURA É `768` E NÃO `1024`, e o motivo é MEDIDO** (2026-09-15): o ponto de
+    // `1024` arestas produz um shader de ~`27 500` valores guardados, e ele **pendurou o driver** —
+    // o binário ficou em `S (sleeping)` com o tempo de CPU a não avançar, por mais de meia hora,
+    // até ser morto. ⚠️ Não é determinista (ele já tinha corrido uma vez, em `3 508,70 ms`), e é
+    // exactamente por isso que não fica numa sonda: *uma sonda que PODE pendurar a placa gasta a
+    // máquina de quem a corre e não avisa.* O número que ele deu fica na tabela do
+    // `docs/Render3d/05` §43.8, com esta nota ao lado.
+    for n in [32u32, 64, 96, 128, 192, 256, 384, 512, 768] {
         let doc = ph2d_field::FieldDoc::new(
             vec![ph2d_field_eval::leaf(
                 ph2d_field::Primitive::Extrude {

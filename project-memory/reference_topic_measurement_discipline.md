@@ -325,3 +325,12 @@ vizinho mede antes de reaproveitar a régua dele.
   peça de `512` leu `787` e `2 066 ms` (`2,6×`) em corridas do mesmo código. ⇒ **antes de cortar,
   meça um ponto ALÉM do lado mau** — e se a grandeza não ordenar, a cura não é uma constante, é um
   laço fechado sobre o que foi de facto entregue.
+- ⛔⛔ **UMA SONDA QUE PODE PENDURAR O DISPOSITIVO GASTA A MÁQUINA DE QUEM A CORRE E NÃO AVISA.**
+  Medido 2026-09-15: o ponto mais largo de uma varredura (um shader de ~`27 500` valores guardados)
+  pendurou o driver — o binário ficou em `S (sleeping)` com o tempo de CPU **parado**, meia hora,
+  segurando a GPU e `2,6 GB`, até o DONO da máquina reparar e pedir. ⚠️ **Não era determinista**: o
+  mesmo ponto correra antes e dera um número. ⚠️⚠️ E o `ps` mentia sobre ele — mostrava `95 % CPU`,
+  que é a **média da vida do processo** e não o instante; a leitura que o desmascara é o `utime +
+  stime` do `/proc/<pid>/stat` medido **duas vezes**. ⇒ *toda varredura que empurra um recurso até
+  ao limite acaba num ponto MEDIDO e seguro, e o ponto que a pendurou fica na tabela com a marca* —
+  e quem o quiser medir usa tempo-limite.

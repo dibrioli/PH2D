@@ -118,7 +118,7 @@
 - [fixture (6)](reference_topic_fixture_discipline.md) · [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md) · [Protocolo de auditoria (6)](reference_topic_audit_protocol.md)
 - [Física do impasto/sculpt (8)](reference_topic_impasto_physics.md) · 📚 [Auditoria: mais 9 lições](reference_topic_audit_lessons.md)
 - ⛔ [`touch` NÃO mede uma edição (incremental vê hash igual; mtime suja TODOS os targets) · `--timings` é parede por unidade, dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
-- ⭐ [**Como uma RÉGUA mente** — a família inteira (80 entradas)](reference_topic_measurement_discipline.md)
+- ⭐ [**Como uma RÉGUA mente** — a família inteira (81 entradas)](reference_topic_measurement_discipline.md)
 - ⛔⛔⛔ [Um tecto derivado pode medir a ORDEM DE EMISSÃO, não o objecto — `vivos` de `492` para `48` sem mudar uma operação, e o preço de produto da cura prescrita era desnecessário](feedback_a_derived_quantity_may_be_a_property_of_emission_order.md)
 - ⛔⛔ [O JOELHO de uma curva ≠ a TRAVESSIA de duas — usar o 1.º por não medir o 2.º shipou um tecto `2,4×` permissivo; e «esperar pela calma» ali CHEGOU](reference_topic_measurement_discipline.md)
 - ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA ⇒ reporta-o LIMPO (vinco: 2,2e-6 contra 1,9e-1) — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)

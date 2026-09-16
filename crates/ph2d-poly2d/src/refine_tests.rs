@@ -119,17 +119,26 @@ fn without_refining_the_output_is_byte_identical() {
     for m in [malha(), malha_permutada()] {
         let mut campo = campo_dobrado(0.6);
         let esperado: Vec<[f64; 2]> = m.rest.iter().map(|&p| campo(p)).collect();
-        let (saida, posed, k) = refine_posed(
-            &m,
-            &mut campo,
-            RefineOptions {
-                tolerance_px: f64::INFINITY,
-                max_pieces: 216 * 36,
-            },
-        );
-        assert_eq!(k, 1, "com tolerancia infinita nao ha' nada a refinar");
-        assert_eq!(saida, m, "a malha tem de sair a MESMA, ao bit");
-        assert_eq!(posed, esperado, "as posicoes tem de sair as MESMAS, ao bit");
+        // ⭐⭐ **AS DUAS LEIS**, porque a promessa é do PRODUTO e não de uma delas: o `Fast` do
+        // painel tem de desenhar o mesmo, esteja o `Smooth` a usar a lei que estiver.
+        for adaptativo in [false, true] {
+            let (saida, posed, r) = refine_posed(
+                &m,
+                &mut campo,
+                RefineOptions {
+                    tolerance_px: f64::INFINITY,
+                    max_pieces: 216 * 36,
+                    adaptativo,
+                },
+            );
+            assert_eq!(
+                r.pecas,
+                m.tris.len(),
+                "com tolerancia infinita nada se parte"
+            );
+            assert_eq!(saida, m, "a malha tem de sair a MESMA, ao bit");
+            assert_eq!(posed, esperado, "as posicoes tem de sair as MESMAS, ao bit");
+        }
     }
 }
 
@@ -148,14 +157,16 @@ fn without_refining_the_output_is_byte_identical() {
 fn the_refined_mesh_has_no_hanging_nodes_and_no_duplicated_points() {
     let m = malha();
     let mut campo = campo_dobrado(1.8);
-    let (r, posed, k) = refine_posed(
+    let (r, posed, rel) = refine_posed(
         &m,
         &mut campo,
         RefineOptions {
             tolerance_px: 0.5,
             max_pieces: 216 * 36,
+            adaptativo: false,
         },
     );
+    let k = rel.k().expect("a lei uniforme declara o k");
     assert!(k >= 3, "uma dobra a serio tem de pedir refinamento: k={k}");
     assert_eq!(r.rest.len(), posed.len());
 
@@ -219,12 +230,13 @@ fn refining_brings_the_drawn_map_within_the_tolerance() {
     // morde por construção, e a fixtura pode mudar sem o gate passar a medir o ponto neutro.
     for tol in [cru / 2.0, cru / 4.0, cru / 8.0, cru / 16.0] {
         let mut campo = campo_dobrado(1.8);
-        let (r, posed, _k) = refine_posed(
+        let (r, posed, _rel) = refine_posed(
             &m,
             &mut campo,
             RefineOptions {
                 tolerance_px: tol,
                 max_pieces: 216 * 64,
+                adaptativo: false,
             },
         );
         let d = deviation(&r, &posed, &mut campo);
@@ -261,6 +273,7 @@ fn the_split_count_follows_the_square_root_law() {
     let o = RefineOptions {
         tolerance_px: 1.0,
         max_pieces: 64 * 64,
+        adaptativo: false,
     };
     assert_eq!(splits_for(1.0, 1, o), 1, "no ponto certo nao se parte nada");
     assert_eq!(splits_for(0.2, 1, o), 1, "abaixo da barra tambem nao");
@@ -296,9 +309,11 @@ fn the_piece_budget_is_honoured_because_it_is_what_the_renderer_pays() {
         let opts = RefineOptions {
             tolerance_px: 0.001,
             max_pieces: orcamento,
+            adaptativo: false,
         };
         let mut campo = campo_dobrado(1.8);
-        let (r, _p, k) = refine_posed(&m, &mut campo, opts);
+        let (r, _p, rel) = refine_posed(&m, &mut campo, opts);
+        let k = rel.k().expect("a lei uniforme declara o k");
         assert!(
             r.tris.len() <= orcamento,
             "com orcamento {orcamento} a malha saiu com {} pecas (k={k})",
@@ -317,24 +332,32 @@ fn the_piece_budget_is_honoured_because_it_is_what_the_renderer_pays() {
         let opts = RefineOptions {
             tolerance_px: 0.5,
             max_pieces: orcamento,
+            adaptativo: false,
         };
         let mut campo = campo_traicoeiro();
-        let (r, _p, k) = refine_posed(&m, &mut campo, opts);
+        let (r, _p, rel) = refine_posed(&m, &mut campo, opts);
         assert!(
             r.tris.len() <= orcamento,
-            "o campo traicoeiro furou o orcamento {orcamento}: {} pecas (k={k})",
-            r.tris.len()
+            "o campo traicoeiro furou o orcamento {orcamento}: {} pecas ({:?})",
+            r.tris.len(),
+            rel.lei
         );
     }
     // ⛔ Um orçamento menor que a própria malha não pode partir nada — nem entrar em pânico.
     let apertado = RefineOptions {
         tolerance_px: 0.001,
         max_pieces: 10,
+        adaptativo: false,
     };
     let mut campo = campo_dobrado(1.8);
-    let (r, _p, k) = refine_posed(&m, &mut campo, apertado);
-    assert_eq!(k, 1, "sem orcamento para uma peca a mais, o `k` e' 1");
+    let (r, _p, rel) = refine_posed(&m, &mut campo, apertado);
+    assert_eq!(rel.k(), Some(1), "sem orcamento para uma peca a mais, k=1");
     assert_eq!(r.tris.len(), m.tris.len());
+    assert!(
+        rel.travado_pelo_orcamento,
+        "o relatorio tem de DIZER que foi o orcamento — e' esta a linha que separa «nao precisou» \
+         de «nao pode»"
+    );
 }
 
 /// ⛔ **DENTRO DE UMA CONSTRUÇÃO, CADA PONTO É PERGUNTADO UMA VEZ SÓ** — é o que a chave canónica
@@ -356,15 +379,19 @@ fn within_one_build_each_point_is_asked_once() {
         *vistos.entry((p[0].to_bits(), p[1].to_bits())).or_default() += 1;
         base(p)
     };
-    let (r, _posed, k) = refine_posed(
+    let (r, _posed, rel) = refine_posed(
         &m,
         &mut campo,
         RefineOptions {
             tolerance_px: 0.5,
             max_pieces: 216 * 36,
+            adaptativo: false,
         },
     );
-    assert!(k > 1, "a fixtura tem de pedir refinamento");
+    assert!(
+        rel.k().is_some_and(|k| k > 1),
+        "a fixtura tem de pedir refinamento"
+    );
     let perguntas: usize = vistos.values().sum();
     // ⚠️⚠️ **O denominador é o número de posições DISTINTAS, e não o de vértices** — e a diferença
     // foi medida por uma mutação que SOBREVIVEU: sem a chave canónica os pontos de aresta nascem
@@ -464,7 +491,7 @@ fn an_invented_vertex_inherits_the_attribute_of_the_triangle_that_made_it() {
         .collect();
 
     let mut base = campo_dobrado(1.8);
-    let (r, _p, saida, k) = crate::refine_posed_attrs(
+    let (r, _p, saida, rel) = crate::refine_posed_attrs(
         &m,
         &attrs,
         1,
@@ -472,8 +499,10 @@ fn an_invented_vertex_inherits_the_attribute_of_the_triangle_that_made_it() {
         RefineOptions {
             tolerance_px: 0.12,
             max_pieces: m.tris.len() * 36,
+            adaptativo: false,
         },
     );
+    let k = rel.k().expect("a lei uniforme declara o k");
     // ⛔ `4`, e não `1`: ver o cabeçalho — a `k = 3` a mutação do miolo é a identidade.
     assert!(
         k >= 4,
@@ -520,24 +549,32 @@ fn an_invented_vertex_inherits_the_attribute_of_the_triangle_that_made_it() {
 #[test]
 fn carrying_attributes_does_not_move_a_single_vertex() {
     let m = malha();
-    let opts = RefineOptions {
-        tolerance_px: 0.5,
-        max_pieces: m.tris.len() * 36,
-    };
-    let mut a = campo_dobrado(1.8);
-    let (m0, p0, k0) = refine_posed(&m, &mut a, opts);
+    // ⭐ **As DUAS leis**: a promessa é da porta, e ela despacha para as duas.
+    for adaptativo in [false, true] {
+        let opts = RefineOptions {
+            tolerance_px: 0.5,
+            max_pieces: m.tris.len() * 36,
+            adaptativo,
+        };
+        let mut a = campo_dobrado(1.8);
+        let (m0, p0, r0) = refine_posed(&m, &mut a, opts);
 
-    let attrs: Vec<f64> = (0..m.rest.len() * 3)
-        .map(|i| (i % 7) as f64 / 7.0)
-        .collect();
-    let mut b = campo_dobrado(1.8);
-    let (m1, p1, saida, k1) = crate::refine_posed_attrs(&m, &attrs, 3, &mut |q, _| b(q), opts);
+        let attrs: Vec<f64> = (0..m.rest.len() * 3)
+            .map(|i| (i % 7) as f64 / 7.0)
+            .collect();
+        let mut b = campo_dobrado(1.8);
+        let (m1, p1, saida, r1) = crate::refine_posed_attrs(&m, &attrs, 3, &mut |q, _| b(q), opts);
 
-    assert_eq!(k0, k1, "o `k` mudou por levar carga");
-    assert_eq!(m0.rest, m1.rest, "as posicoes de repouso mudaram");
-    assert_eq!(m0.tris, m1.tris, "os triangulos mudaram");
-    assert_eq!(p0, p1, "as posicoes posadas mudaram");
-    assert_eq!(saida.len(), m1.rest.len() * 3, "stride errado na saida");
+        assert_eq!(r0.lei, r1.lei, "a lei mudou por levar carga");
+        assert_eq!(
+            r0.pecas, r1.pecas,
+            "a contagem de pecas mudou por levar carga"
+        );
+        assert_eq!(m0.rest, m1.rest, "as posicoes de repouso mudaram");
+        assert_eq!(m0.tris, m1.tris, "os triangulos mudaram");
+        assert_eq!(p0, p1, "as posicoes posadas mudaram");
+        assert_eq!(saida.len(), m1.rest.len() * 3, "stride errado na saida");
+    }
 }
 
 /// ⛔ **SEM ATRIBUTOS, A PORTA NOVA É A ANTIGA** — `stride = 0` não inventa carga nenhuma.
@@ -556,7 +593,11 @@ fn with_no_attributes_the_new_door_carries_nothing() {
         RefineOptions {
             tolerance_px: 0.5,
             max_pieces: m.tris.len() * 36,
+            ..RefineOptions::default()
         },
     );
     assert!(saida.is_empty(), "a saida inventou atributos");
 }
+
+#[path = "refine_adaptive_tests.rs"]
+mod adaptativo;

@@ -257,7 +257,7 @@ const FATIA_DA_PELE: usize = 10;
 
 /// O custo MEDIDO de uma peça ENTREGUE com `Smooth`, em nanossegundos (a tabela do
 /// [`SKIN_FRAME_PIECES`]).
-const CUSTO_POR_PECA_NS: usize = 1_080;
+const CUSTO_POR_PECA_NS: usize = 353;
 
 /// ⭐⭐⭐ **O ORÇAMENTO DE PEÇAS DA PELE DE IMAGEM, POR QUADRO** — derivado do recurso deste caminho:
 /// o TEMPO do quadro.
@@ -269,53 +269,60 @@ const CUSTO_POR_PECA_NS: usize = 1_080;
 /// não é gasto por ela, e `8 738` peças custariam hoje **`9,4 ms`** — mais de metade de um quadro de
 /// 60 fps. *§0.0: o número de um caminho morto não limita o vivo.*
 ///
-/// ⭐ **O que UMA peça custa, medido** (W4, 2026-09-13; `load 3,7`–`3,9`, o MÍNIMO de 40/60 corridas
-/// — as sondas são [`tests::measure_the_cpu_cost_of_a_skinned_frame`] e a
+/// ⭐ **O que UMA peça custa, MEDIDO OUTRA VEZ em 2026-09-16** (a lei do refinamento mudou, logo o
+/// número tinha de ser remedido; `load 5,6`–`6,1`, o MÍNIMO de 40/60 corridas, **três** corridas com
+/// leituras entre `0,328` e `0,355` — as sondas são
+/// [`tests::custo::measure_the_cpu_cost_of_a_skinned_frame`] e a
 /// `ph2d-render::sprite_mesh_gpu::measure_the_frame_cost_of_a_mesh_sprite`):
 ///
 /// | o que o quadro faz por peça | µs |
 /// |---|---:|
-/// | descodificar a malha guardada (postcard, **por quadro**) | `0,134` |
-/// | `Fast`: descodificar + deformar + montar o `SpriteMesh` | `0,200` |
-/// | recolher + costurar a tira + enviar + DESENHAR (GPU esperada) | `0,039` |
-/// | **`Smooth`: o quadro inteiro, por peça ENTREGUE** | **`1,08`** |
+/// | descodificar a malha guardada (postcard, **por quadro**) | `0,014` |
+/// | `Fast`: descodificar + deformar + montar o `SpriteMesh` | `0,025` |
+/// | recolher + costurar a tira + enviar + DESENHAR (marginal, GPU esperada) | `0,013` |
+/// | `Smooth` **uniforme**: o quadro inteiro, por peça entregue | `0,087` |
+/// | **`Smooth` ADAPTATIVO: o quadro inteiro, por peça ENTREGUE** | **`0,340`** |
 ///
-/// ⇒ `16,667 ms ÷ 10 ÷ 1,08 µs` = **`1 543` peças**.
+/// ⇒ `16,667 ms ÷ 10 ÷ 0,353 µs` = **`4 721` peças**.
 ///
-/// ⛔⛔⛔ **E ESTA NOTA AFIRMAVA UMA COISA FALSA ATÉ 2026-09-15:** *«este é o tecto; quem decide o
-/// refinamento é a TOLERÂNCIA — dentro dele o `Smooth` refina só o que a dobra pedir»*. Ele **não**
-/// refina só o que a dobra pede: o `k` do [`ph2d_poly2d::refine_posed`] é **GLOBAL** (cada triângulo
-/// é partido `k × k`), e o tecto dele é `max_split = ⌊√(orçamento / peças)⌋`. ⇒ **uma malha base
-/// acima de `orçamento / 4` peças só admite `k = 1`, e o `Smooth` fica byte-idêntico ao `Fast`, com
-/// a tolerância a não decidir nada.**
+/// ⛔⛔⛔ **E O NÚMERO DE ANTES (`1 080 ns` ⇒ `1 543` peças) ERA DE UM CAMINHO QUE O PRODUTO NUNCA
+/// CORREU.** Ele foi medido em 2026-09-13 sobre um `Smooth` que **refinava**; desde então mediu-se
+/// que a lei uniforme é **inerte** acima de `orçamento / 4` peças, logo o que o produto de facto
+/// pagava era o `Fast` mais o custo de decidir. *Um custo medido sobre um caminho que não corre é
+/// um orçamento que mente nos dois sentidos* — e este mentia para BAIXO, o que fazia a malha de
+/// bind de `2 430` peças disparar o [`avisa_malhas_acima_do_orcamento`] em toda a execução.
 ///
-/// ⚠️ Com `1 543` de orçamento isso é toda malha acima de **`385`** triângulos — que é quase toda
-/// arte real. Medido na cena do osso (`PH2D_VEC_BONE_PAINT_SMOKE`, 2026-09-15): `780` peças ⇒
-/// `k = 1` ⇒ desvio de **`14,24 px`** de ecrã contra uma tolerância que promete `0,5`.
+/// ⚠️⚠️ **A lei nova é `3,9×` mais cara POR PEÇA** (`0,340` contra `0,087`), e isso é o preço de
+/// ela decidir: ela mede o desvio de cada aresta, mantém o livro de donos e escolhe. *O que ela
+/// compra em troca é entregar alguma coisa* — a uniforme era barata porque não fazia nada.
 ///
-/// ⭐ **O caminho está medido e é o ADAPTATIVO:** com `k` por triângulo (só onde o desvio pede) a
-/// mesma cena custa `3 034` peças contra as `28 080` do `k = 6` global — **`9×` mais barato** —, e
-/// numa cena bem autorada cai para `1 059`, **dentro** deste orçamento. Ele não está construído; o
-/// mecanismo, os números e a armadilha (as arestas pendentes) estão no handoff §13 de 2026-09-15.
-/// ⚠️ **O `PH2D_BONE_LOG=1` diz agora quando o refinamento está desligado por esta aritmética** —
-/// antes «não precisou» e «não pôde» imprimiam a mesma linha.
+/// ⭐ **E o livro de contas já foi medido e cortado uma vez:** a 1.ª redacção usava DOIS mapas e um
+/// `Vec` por aresta, e lia `0,52 µs`; com um mapa só e os donos num par fixo desceu a `0,34`
+/// (`−35 %`). Ver [`ph2d_poly2d::refine_adaptive`].
 pub const SKIN_FRAME_PIECES: usize = QUADRO_60FPS_US * 1_000 / FATIA_DA_PELE / CUSTO_POR_PECA_NS;
 
 /// ⛔⛔ **A OUTRA PONTA DO TECTO, verificada na COMPILAÇÃO.** Um tecto apertado de mais deixa de
-/// refinar uma malha comum: a malha guardada do smoke tem `~200` peças e um `k = 2` entrega `~800`
-/// — abaixo de `1 000` o `Smooth` fica inerte, que é a doença do tecto de `1 024` POR IMAGEM que
-/// este número substituiu. Uma fatia mais fina (ou um custo por peça maior, medido outra vez) tem
-/// de PARAR a build aqui, e não passar em silêncio.
+/// refinar uma malha comum, e a barra sai da malha que o produto **de facto** guarda: a do bind de
+/// uma arte normal mede `~2 430` peças (medido 2026-09-15), então um orçamento abaixo disso não
+/// deixa a lei adaptativa partir **uma** aresta que seja. Uma fatia mais fina (ou um custo por peça
+/// maior, medido outra vez) tem de PARAR a build aqui, e não passar em silêncio.
+///
+/// ⚠️ A barra anterior era `1 000` e vinha de `k = 2` sobre uma malha de `~200` peças — a aritmética
+/// da lei uniforme, que já não é a do produto.
 const _: () = assert!(
-    SKIN_FRAME_PIECES >= 1_000,
-    "o orcamento da pele nao chega para refinar uma malha comum (k = 2)"
+    SKIN_FRAME_PIECES >= 2_500,
+    "o orcamento da pele nao chega para refinar a malha que o bind de facto guarda"
 );
 
-/// ⭐⭐⭐ **OS NÚMEROS DO `Smooth`**: a tolerância da `ph2d-poly2d` e o orçamento do QUADRO.
+/// ⭐⭐⭐ **OS NÚMEROS DO `Smooth`**: a tolerância da `ph2d-poly2d`, o orçamento do QUADRO e a LEI.
 ///
 /// ⚠️ **`PH2D_SKIN_PIECES=<n>` afina o orçamento do QUADRO**, e não de uma imagem — ele existe desde
 /// o report *«Smooth bugado quebrando a forma»* (dono, 2026-09-10), cuja causa se mediu depois
 /// (a porta crua enchia o atlas, F6-e). *Um smoke que MEDE vale mais que um smoke que pergunta.*
+///
+/// ⭐⭐⭐ **`PH2D_SKIN_REFINE=uniforme` volta à lei do `k` global**, para bissecar. Ela é o que o
+/// `Smooth` usou até 2026-09-16 e é **provadamente inerte** acima de `orçamento / 4` peças — ver
+/// [`ph2d_poly2d::refine_adaptive`].
 #[must_use]
 pub fn refine_options() -> RefineOptions {
     static PECAS: std::sync::OnceLock<Option<usize>> = std::sync::OnceLock::new();
@@ -325,8 +332,13 @@ pub fn refine_options() -> RefineOptions {
             .and_then(|v| v.trim().parse::<usize>().ok())
             .filter(|n| *n > 0)
     });
+    static LEI: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    let adaptativo = *LEI.get_or_init(|| {
+        !std::env::var("PH2D_SKIN_REFINE").is_ok_and(|v| v.trim().eq_ignore_ascii_case("uniforme"))
+    });
     RefineOptions {
         max_pieces: escolhido.unwrap_or(SKIN_FRAME_PIECES),
+        adaptativo,
         ..RefineOptions::default()
     }
 }
@@ -334,8 +346,9 @@ pub fn refine_options() -> RefineOptions {
 /// ⭐ **A parte do orçamento do quadro que cabe a uma imagem** — proporcional à malha que ela guarda,
 /// e nunca abaixo dela (a malha guardada é o desenho mínimo; não há como desenhá-la com menos).
 ///
-/// ⚠️ **Proporcional dá o MESMO `k` a todas**, logo a mesma qualidade: o `k` sai de
-/// `√(parte / triângulos)`, e a razão é a mesma para todas as imagens do quadro.
+/// ⚠️ **Proporcional dá a todas o MESMO factor de crescimento**, logo a mesma qualidade relativa:
+/// cada imagem pode chegar a `orçamento × (peças dela / peças de todas)`, e essa razão é a mesma
+/// para todas. *Repartir por igual daria à imagem pequena um luxo que a grande não tem.*
 fn parte_do_orcamento(triangulos: usize, guardadas: usize, orcamento: usize) -> usize {
     let parte = orcamento.saturating_mul(triangulos) / guardadas.max(1);
     parte.max(triangulos)
@@ -443,7 +456,7 @@ pub fn posed_sprite_mesh(
     anchor: [f32; 2],
     size: [f32; 2],
     refine: Option<RefineOptions>,
-) -> Option<(SpriteMesh, u32)> {
+) -> Option<(SpriteMesh, ph2d_poly2d::RefineReport)> {
     let mut escrever = pele.scratch();
     // ⭐ **UMA porta por lei, escolhida UMA vez** — e não um `if` por vértice: a tabela ou existe
     // para esta malha ou não existe, e isso é um facto do bind, não de um ponto.
@@ -460,7 +473,7 @@ pub fn posed_sprite_mesh(
             pele.point_with(p, w, &mut escrever)
         }
     };
-    let (mesh, posed, k) = match refine {
+    let (mesh, posed, relatorio) = match refine {
         None => {
             let posed: Vec<[f64; 2]> = mesh
                 .rest
@@ -471,11 +484,23 @@ pub fn posed_sprite_mesh(
                     campo(q, w)
                 })
                 .collect();
-            (mesh, posed, 1)
+            let pecas = mesh.tris.len();
+            (
+                mesh,
+                posed,
+                ph2d_poly2d::RefineReport {
+                    pecas,
+                    // ⚠️ O `Fast` não MEDE desvio nenhum — ele não refina, logo não pergunta. `None`
+                    // di-lo; um `0.0` aqui seria um número a afirmar que a malha está perfeita.
+                    desvio: None,
+                    travado_pelo_orcamento: false,
+                    lei: ph2d_poly2d::RefineLaw::Uniform { k: 1 },
+                },
+            )
         }
         Some(o) => {
-            let (m, p, _, k) = ph2d_poly2d::refine_posed_attrs(&mesh, pesos, ossos, &mut campo, o);
-            (m, p, k)
+            let (m, p, _, r) = ph2d_poly2d::refine_posed_attrs(&mesh, pesos, ossos, &mut campo, o);
+            (m, p, r)
         }
     };
     // ⭐ A UV de cada vértice é a do QUAD no ponto de REPOUSO dele — ver [`pixel_to_local`].
@@ -490,7 +515,7 @@ pub fn posed_sprite_mesh(
             uv,
             tris: mesh.tris,
         },
-        k,
+        relatorio,
     ))
 }
 
@@ -608,10 +633,13 @@ pub fn attach_skin_meshes(
             RefineOptions {
                 tolerance_px: o.tolerance_px / escala,
                 max_pieces: parte_do_orcamento(antes, guardadas, o.max_pieces),
+                // ⚠️ A LEI vem de quem chamou (o `refine_options`) — só a tolerância e o orçamento
+                // é que são factos DESTE quadro.
+                adaptativo: o.adaptativo,
             }
         });
         let SkinnedMesh { mesh, pesos } = mesh;
-        let Some((malha, k)) =
+        let Some((malha, rel)) =
             posed_sprite_mesh(mesh, p2l, &pele, &pesos, inst.anchor, inst.size, refine)
         else {
             continue;
@@ -621,23 +649,27 @@ pub fn attach_skin_meshes(
         // importa.
         if let (Some(o), true) = (refine, std::env::var_os("PH2D_BONE_LOG").is_some()) {
             eprintln!(
-                "[bone] pele suave: {antes} -> {} pecas (k={k}, de um orcamento de quadro {})",
+                "[bone] pele suave: {antes} -> {} pecas ({:?}, desvio {}, de um orcamento de \
+                 quadro {})",
                 malha.tris.len(),
+                rel.lei,
+                rel.desvio
+                    .map_or_else(|| "nao medido".to_owned(), |d| format!("{d:.3} px locais")),
                 o.max_pieces
             );
-            // ⭐⭐⭐ **A LINHA QUE FALTAVA: «k=1» tem DUAS causas e elas são opostas.**
+            // ⭐⭐⭐ **A LINHA QUE FALTAVA: «não refinou» tem DUAS causas e elas são opostas.**
             //
             // ⛔⛔ Ou a dobra não pediu refinamento nenhum (tudo bem), ou o ORÇAMENTO o proibiu —
             // e nesse caso o `Smooth` é o `Fast` **ao bit**, com o painel a dizer que está ligado.
-            // Medido 2026-09-15 na cena do osso: `780` peças com orçamento `1 543` ⇒
-            // `780 × 2² = 3 120 > 1 543` ⇒ `max_split = 1`, e a tolerância nunca decide nada.
-            // *Um diagnóstico que imprime o mesmo número para «não precisou» e para «não pôde»
-            // cala exactamente a pergunta que o report do dono fazia.*
-            if ph2d_poly2d::max_split(antes, o) == 1 {
+            // Medido 2026-09-15 na cena do osso, com a lei UNIFORME: `780` peças com orçamento
+            // `1 543` ⇒ `780 × 2² = 3 120 > 1 543` ⇒ `max_split = 1`, e a tolerância nunca decidia
+            // nada. *Um diagnóstico que imprime o mesmo número para «não precisou» e para «não
+            // pôde» cala exactamente a pergunta que o report do dono fazia.*
+            if rel.travado_pelo_orcamento {
                 eprintln!(
-                    "[bone]   ⚠ o REFINAMENTO esta' DESLIGADO POR ARITMETICA: {antes} x 2² = {} > \
-                     {} -- aqui o Smooth E' o Fast, e a tolerancia nao decide nada",
-                    antes * 4,
+                    "[bone]   ⚠ o REFINAMENTO PAROU NO ORCAMENTO: {antes} -> {} pecas de um tecto \
+                     de {} -- a tolerancia pedida nao foi alcancada",
+                    malha.tris.len(),
                     o.max_pieces
                 );
             }

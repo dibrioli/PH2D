@@ -486,6 +486,7 @@ fn the_smooth_pieces_of_all_skinned_images_share_one_frame_budget() {
     let suave = desenha(Some(RefineOptions {
         tolerance_px: 1e-3,
         max_pieces: orcamento,
+        ..RefineOptions::default()
     }));
     let total: usize = suave.iter().sum();
     assert!(

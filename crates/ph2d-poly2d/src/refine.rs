@@ -44,12 +44,23 @@
 //!
 //! # ⭐⭐⭐ A conformidade é EXACTA, e não uma tolerância
 //!
-//! O refinamento é **uniforme, com o mesmo `k` para toda a malha**, e cada ponto novo é nomeado
+//! O refinamento **uniforme** usa o mesmo `k` para toda a malha, e cada ponto novo é nomeado
 //! pela **aresta canónica** que o gera (`o vértice de índice menor primeiro`) — logo os dois
 //! triângulos que partilham uma aresta calculam o ponto do meio dela a partir da **mesma expressão,
-//! na mesma ordem**, e obtêm os **mesmos bits**. ⛔ Um `k` por triângulo abriria **nós pendurados**,
-//! que é a fenda que a `grid.rs` recusa por escrito — e aqui seria pior, porque cada peça é um
-//! recorte independente e a fenda é um fio de fundo a atravessar a arte.
+//! na mesma ordem**, e obtêm os **mesmos bits**.
+//!
+//! ⛔⛔⛔ **E ESTE CABEÇALHO AFIRMAVA, ATÉ 2026-09-16, QUE UM `k` POR TRIÂNGULO ERA IMPOSSÍVEL**
+//! (*«abriria nós pendurados, que é a fenda que a `grid.rs` recusa por escrito»*). A afirmação
+//! estava certa sobre **uma** maneira de o fazer — dar a cada triângulo a sua própria grelha
+//! baricêntrica — e foi lida como se fosse sobre a pergunta inteira. ⭐ A
+//! [`crate::refine_adaptive`] faz `k` por triângulo **sem nó pendurado nenhum**, porque a operação
+//! dela não é *«partir um triângulo»* e sim *«partir uma ARESTA»*: os dois donos da aresta partem-se
+//! **ao mesmo tempo**, e um ponto no meio de uma aresta que deixou de existir não fica pendurado em
+//! coisa nenhuma.
+//!
+//! ⚠️ **O preço da afirmação errada foi o `Smooth` INERTE:** o `k` global tem tecto
+//! `⌊√(orçamento/peças)⌋` ([`max_split`]), logo toda malha acima de `orçamento/4` peças só admite
+//! `k = 1` — e o botão do painel prometia uma coisa que a aritmética proibia. Ver [`RefineLaw`].
 
 use crate::Mesh2d;
 
@@ -92,6 +103,64 @@ pub struct RefineOptions {
     /// ⛔ A tabela anterior (`deformar`/`encodar`, até `10`–`16 %` a `7 776` peças) media o caminho
     /// do **Vello**, que a W2 retirou.
     pub max_pieces: usize,
+    /// ⭐⭐⭐ **QUAL DAS DUAS LEIS** — `true` (o padrão) parte só os triângulos que a dobra pede.
+    ///
+    /// ⚠️ **Ele existe para BISSECAR, não para escolher gosto:** a lei uniforme é
+    /// provadamente inerte acima de `max_pieces / 4` peças (ver o cabeçalho e [`max_split`]), e o
+    /// produto lê-o de `PH2D_SKIN_REFINE=uniforme`. *Um caminho antigo sem porta não se mede
+    /// contra o novo.*
+    pub adaptativo: bool,
+}
+
+/// ⭐ **QUAL LEI CORREU, e o que ela usou como grandeza de trabalho** — a metade do
+/// [`RefineReport`] que só faz sentido dentro de uma lei.
+///
+/// ⛔ **Um `k = 0` para dizer «não houve `k`» seria um número a mentir**: o `0` é um valor legal do
+/// tipo, e todo leitor teria de saber que naquele caso ele não quer dizer *zero partes*.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RefineLaw {
+    /// **Uniforme:** cada triângulo partido numa grelha baricêntrica de `k × k`.
+    Uniform {
+        /// `1` = não refinou (o caminho de omissão, byte-idêntico à malha de entrada).
+        k: u32,
+    },
+    /// **Adaptativo:** `rondas` bissecções da aresta mais longa, escolhidas pelo pior desvio.
+    Adaptive {
+        /// Quantas vezes o laço escolheu um triângulo e o partiu (⚠️ **não** é o número de arestas
+        /// partidas: a propagação de conformidade parte mais do que uma por ronda).
+        rondas: usize,
+    },
+}
+
+/// ⭐⭐ **O QUE O REFINAMENTO FEZ** — a resposta que o produto imprime no diagnóstico.
+///
+/// ⚠️⚠️ **`desvio` é `Option` de propósito, e é a parte honesta deste tipo.** A lei uniforme mede o
+/// desvio da malha que construiu **só quando não precisa de corrigir o `k`** — depois da correcção
+/// ela não volta a medir, porque isso seria uma travessia inteira da malha por quadro para um
+/// número que ninguém consome no desenho. *Um campo que devolvesse o valor PRÉ-correcção seria um
+/// número que mente exactamente no caso que interessa*, e `None` diz o que é: **não medido**.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RefineReport {
+    /// Quantas peças a malha devolvida tem.
+    pub pecas: usize,
+    /// O pior desvio ao campo que FICOU, em unidades de entrada — `None` = não medido (ver acima).
+    pub desvio: Option<f64>,
+    /// ⛔ **O orçamento parou o refinamento antes da tolerância.** É esta a linha que separa
+    /// *«a dobra não pediu nada»* de *«o quadro não paga»*, e o produto imprime-a.
+    pub travado_pelo_orcamento: bool,
+    /// Qual lei correu — ver [`RefineLaw`].
+    pub lei: RefineLaw,
+}
+
+impl RefineReport {
+    /// O `k` da lei uniforme; `None` na adaptativa (lá não há `k`).
+    #[must_use]
+    pub fn k(&self) -> Option<u32> {
+        match self.lei {
+            RefineLaw::Uniform { k } => Some(k),
+            RefineLaw::Adaptive { .. } => None,
+        }
+    }
 }
 
 impl Default for RefineOptions {
@@ -104,6 +173,8 @@ impl Default for RefineOptions {
             // QUADRO (`ph2d_skeleton_live::skin_image::SKIN_FRAME_PIECES`, hoje derivado do TEMPO
             // do quadro com o custo por peça MEDIDO — W4 do plano `docs/Skeleton/03`).
             max_pieces: 1024,
+            // ⭐ A lei que de facto refina. A uniforme fica alcançável para bissecar.
+            adaptativo: true,
         }
     }
 }
@@ -215,19 +286,46 @@ pub fn max_split(pecas: usize, opts: RefineOptions) -> u32 {
 /// **agora**. Ele é chamado uma vez por vértice novo, e ⛔ nunca duas vezes para o mesmo ponto —
 /// é a chave [`No`] que o garante.
 ///
-/// Com `k == 1` devolve a malha original e as posições dela, **ao bit**: é o caminho de omissão, e
-/// ele tem de ser byte-idêntico ao que o desenho já fazia.
+/// Sem refinamento devolve a malha original e as posições dela, **ao bit**: é o caminho de omissão,
+/// e ele tem de ser byte-idêntico ao que o desenho já fazia.
 #[must_use]
 pub fn refine_posed(
     mesh: &Mesh2d,
     deform: &mut dyn FnMut([f64; 2]) -> [f64; 2],
     opts: RefineOptions,
-) -> (Mesh2d, Vec<[f64; 2]>, u32) {
-    let (m, p, _, k) = refine_posed_attrs(mesh, &[], 0, &mut |q, _| deform(q), opts);
-    (m, p, k)
+) -> (Mesh2d, Vec<[f64; 2]>, RefineReport) {
+    let (m, p, _, r) = refine_posed_attrs(mesh, &[], 0, &mut |q, _| deform(q), opts);
+    (m, p, r)
 }
 
-/// ⭐⭐⭐ **[`refine_posed`] COM ATRIBUTOS POR VÉRTICE A BORDO** — a porta que a pele de imagem usa.
+/// ⭐⭐⭐ **A PORTA DO REFINAMENTO — ela ESCOLHE a lei, e é a única que o produto chama.**
+///
+/// ⛔⛔ **Ela não é um atalho: é o sítio onde o `opts.adaptativo` é lido.** Com as duas leis
+/// exportadas e nenhum despachante, o chamador escolheria a função e o campo das opções ficaria a
+/// ser um knob que ninguém lê — *a espécie de controlo morto que o `CLAUDE.md` §5.0 chama de
+/// «consumidor que projecta o valor fora»*.
+///
+/// `attrs` é achatado: `attrs[v * stride + c]` é a componente `c` do vértice `v`; com `stride == 0`
+/// não há atributos e o vector de saída sai vazio.
+#[must_use]
+pub fn refine_posed_attrs(
+    mesh: &Mesh2d,
+    attrs: &[f64],
+    stride: usize,
+    deform: &mut DeformAttrs<'_>,
+    opts: RefineOptions,
+) -> (Mesh2d, Vec<[f64; 2]>, Vec<f64>, RefineReport) {
+    if opts.adaptativo {
+        crate::refine_adaptive::refine_posed_adaptive(mesh, attrs, stride, deform, opts)
+    } else {
+        refine_posed_uniform(mesh, attrs, stride, deform, opts)
+    }
+}
+
+/// ⭐⭐ **A LEI UNIFORME: o mesmo `k` para toda a malha** — ver o cabeçalho do módulo.
+///
+/// Cada vértice NOVO recebe o atributo **interpolado baricentricamente** dos vértices originais que
+/// o geraram, e o campo passa a ser chamado com ele: `deform(ponto, atributos)`.
 ///
 /// `attrs` é achatado: `attrs[v * stride + c]` é a componente `c` do vértice `v`. Cada vértice NOVO
 /// recebe o atributo **interpolado baricentricamente** dos vértices originais que o geraram, e o
@@ -247,15 +345,16 @@ pub fn refine_posed(
 /// é nomeado pela [`No::Aresta`] canónica, então os dois triângulos vizinhos interpolam o atributo
 /// **das mesmas duas pontas, na mesma ordem** — mesmos bits, logo nenhuma costura de peso.
 ///
-/// Com `stride == 0` é o [`refine_posed`] **ao bit**, e o vector de atributos sai vazio.
+/// ⛔ **O tecto dela é `⌊√(orçamento/peças)⌋`** ([`max_split`]), logo acima de `orçamento/4` peças
+/// ela é **inerte** — é essa a razão de ela ter deixado de ser o caminho de omissão em 2026-09-16.
 #[must_use]
-pub fn refine_posed_attrs(
+pub fn refine_posed_uniform(
     mesh: &Mesh2d,
     attrs: &[f64],
     stride: usize,
     deform: &mut DeformAttrs<'_>,
     opts: RefineOptions,
-) -> (Mesh2d, Vec<[f64; 2]>, Vec<f64>, u32) {
+) -> (Mesh2d, Vec<[f64; 2]>, Vec<f64>, RefineReport) {
     let posed: Vec<[f64; 2]> = mesh
         .rest
         .iter()
@@ -263,13 +362,22 @@ pub fn refine_posed_attrs(
         .map(|(v, &p)| deform(p, fatia(attrs, stride, v)))
         .collect();
     let tecto = max_split(mesh.tris.len(), opts);
-    let k = splits_for(
-        deviation_attrs(mesh, &posed, attrs, stride, deform),
-        mesh.tris.len(),
-        opts,
-    );
+    let cru = deviation_attrs(mesh, &posed, attrs, stride, deform);
+    let k = splits_for(cru, mesh.tris.len(), opts);
     if k <= 1 {
-        return (mesh.clone(), posed, attrs.to_vec(), 1);
+        let pecas = mesh.tris.len();
+        return (
+            mesh.clone(),
+            posed,
+            attrs.to_vec(),
+            RefineReport {
+                pecas,
+                desvio: Some(cru),
+                // ⭐ O `k` saturou no tecto do orçamento: a tolerância pedia mais e não há onde.
+                travado_pelo_orcamento: tecto <= 1 && cru > opts.tolerance_px,
+                lei: RefineLaw::Uniform { k: 1 },
+            },
+        );
     }
     let (r, p, a) = build(mesh, attrs, stride, deform, k);
     // ⭐⭐⭐ **O ESTIMADOR CONFERE O QUE ENTREGOU, e corrige UMA vez.**
@@ -283,7 +391,18 @@ pub fn refine_posed_attrs(
     // seria trabalho por quadro sem tecto, exactamente o que o orçamento existe para impedir.
     let d = deviation_attrs(&r, &p, &a, stride, deform);
     if d <= opts.tolerance_px || k >= tecto {
-        return (r, p, a, k);
+        let pecas = r.tris.len();
+        return (
+            r,
+            p,
+            a,
+            RefineReport {
+                pecas,
+                desvio: Some(d),
+                travado_pelo_orcamento: d > opts.tolerance_px,
+                lei: RefineLaw::Uniform { k },
+            },
+        );
     }
     #[expect(
         clippy::cast_possible_truncation,
@@ -293,13 +412,26 @@ pub fn refine_posed_attrs(
     let k2 = ((f64::from(k) * (d / opts.tolerance_px.max(f64::MIN_POSITIVE)).sqrt()).ceil() as u32)
         .clamp(k + 1, tecto.max(k + 1));
     let (r2, p2, a2) = build(mesh, attrs, stride, deform, k2);
-    (r2, p2, a2, k2)
+    let pecas = r2.tris.len();
+    (
+        r2,
+        p2,
+        a2,
+        RefineReport {
+            pecas,
+            // ⚠️ **NÃO medido**: uma segunda travessia da malha já refinada, por quadro, para um
+            // número que só o diagnóstico lê. Ver o doc do [`RefineReport`].
+            desvio: None,
+            travado_pelo_orcamento: k2 >= tecto,
+            lei: RefineLaw::Uniform { k: k2 },
+        },
+    )
 }
 
 /// Os atributos do vértice `v`. Vazio quando não há atributos — ⛔ **nunca** um índice fora da
 /// fatia: uma tabela mais curta que a malha é um defeito do chamador, e `&[]` di-lo em vez de
 /// entregar os pesos do vizinho.
-fn fatia(attrs: &[f64], stride: usize, v: usize) -> &[f64] {
+pub(crate) fn fatia(attrs: &[f64], stride: usize, v: usize) -> &[f64] {
     if stride == 0 {
         return &[];
     }

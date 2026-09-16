@@ -60,8 +60,8 @@ fn measure_the_cpu_cost_of_a_skinned_frame() {
     );
     println!("ms: MINIMO/mediana de 40 corridas (a media sob contencao mede o vizinho)");
     println!(
-        "{:>8} | {:>13} | {:>13} | {:>13} | {:>12}",
-        "pecas", "descodificar", "Fast", "Smooth", "pecas Smooth"
+        "{:>8} | {:>13} | {:>13} | {:>30} | {:>30}",
+        "pecas", "descodificar", "Fast", "Smooth UNIFORME", "Smooth ADAPTATIVO"
     );
 
     for (cols, rows) in [(6_u32, 6_u32), (12, 12), (24, 24), (48, 48), (72, 72)] {
@@ -91,9 +91,16 @@ fn measure_the_cpu_cost_of_a_skinned_frame() {
         // `skinned_mesh_of` **recusa** — a sonda é `#[ignore]`, logo isso ficava verde a medir
         // ZERO peles. *Uma sonda que o CI nunca corre é o sítio onde um formato novo se esconde.*
         //
-        // ⭐ Os pesos são UNIFORMES de propósito: o relógio não depende do VALOR deles, e uniforme
-        // é o **pior caso** do `blend` (nenhum osso é saltado por peso zero, o que a solução real
-        // faz na maioria dos vértices). *Medir o limite superior é o lado certo para errar.*
+        // ⛔⛔⛔ **OS PESOS TÊM DE VARIAR NO ESPAÇO, e a 1.ª redacção desta sonda não o fazia.**
+        // Ela escrevia a tabela **UNIFORME** (`1/n` em todo o vértice) com a justificação de que
+        // era o pior caso do `blend` — e é, para o `Fast`. ⚠️ Mas com pesos iguais em todo o lado
+        // a mistura das poses é a **MESMA** em todo o ponto, logo o campo é um AFIM — e um
+        // triângulo desenhado com um afim reproduz um afim **exactamente**. ⇒ o desvio é zero,
+        // **nenhuma** das duas leis refina, e a coluna do `Smooth` media o custo de *decidir não
+        // fazer nada*. Medido: `saiu == pecas` nas cinco linhas.
+        //
+        // ⭐ A tabela agora é uma rampa em `x` (o osso da raiz manda à esquerda, a ponta à
+        // direita), que é a forma de uma pele de verdade — e é ela que põe curvatura no campo.
         let malha = malha_grelha([40, 20], cols, rows);
         let pecas = malha.tris.len();
         let ossos_n = sim
@@ -102,12 +109,21 @@ fn measure_the_cpu_cost_of_a_skinned_frame() {
             .expect("pele")
             .tendons
             .len();
-        #[expect(clippy::cast_precision_loss, reason = "duas casas")]
-        let uniforme = 1.0 / ossos_n as f64;
-        let guardada = crate::skinned_mesh::SkinnedMesh {
-            pesos: vec![uniforme; malha.rest.len() * ossos_n],
-            mesh: malha,
-        };
+        let largura = f64::from(malha.size[0]).max(f64::MIN_POSITIVE);
+        let mut pesos = vec![0.0; malha.rest.len() * ossos_n];
+        for (v, p) in malha.rest.iter().enumerate() {
+            let t = (p[0] / largura).clamp(0.0, 1.0);
+            for b in 0..ossos_n {
+                // ⚠️ Partição da unidade por construção: a rampa entre os dois primeiros ossos, e
+                // zero nos outros. *Uma tabela que não soma `1` mede outra lei.*
+                pesos[v * ossos_n + b] = match b {
+                    0 => 1.0 - t,
+                    1 => t,
+                    _ => 0.0,
+                };
+            }
+        }
+        let guardada = crate::skinned_mesh::SkinnedMesh { pesos, mesh: malha };
         let bytes = postcard::to_allocvec(&guardada).expect("serializa");
         {
             let mut skin = sim
@@ -135,29 +151,51 @@ fn measure_the_cpu_cost_of_a_skinned_frame() {
             descodif.push(t.elapsed().as_secs_f64() * 1e3);
             assert_eq!(m.tris.len(), pecas);
         }
-        let mut medir = |modo: Option<RefineOptions>| -> Vec<f64> {
+        // ⚠️ O `present` entra por ARGUMENTO (e não capturado): a sonda lê a malha que ficou
+        // **entre** duas medições, e um empréstimo mutável preso no fecho proíbe isso.
+        let medir = |present: &mut PresentWorld, modo: Option<RefineOptions>| -> Vec<f64> {
             let mut ms = Vec::with_capacity(RONDAS);
             for _ in 0..RONDAS {
                 present.world_mut().entity_mut(p).remove::<SpriteMesh>();
                 let t = Instant::now();
-                attach_skin_meshes(&sim, &mut present, PPM, modo, PX_POR_METRO, None);
+                attach_skin_meshes(&sim, present, PPM, modo, PX_POR_METRO, None);
                 ms.push(t.elapsed().as_secs_f64() * 1e3);
             }
             ms
         };
         let descodif = melhor(descodif);
-        let fast = melhor(medir(None));
-        let suave = melhor(medir(Some(RefineOptions {
+        let fast = melhor(medir(&mut present, None));
+        let opcoes = |adaptativo: bool| RefineOptions {
             tolerance_px: 0.5,
             max_pieces: SKIN_FRAME_PIECES,
-        })));
-        let saiu = present
+            adaptativo,
+        };
+        // ⚠️ **As DUAS leis, e o número que interessa é o µs POR PEÇA ENTREGUE** — é dele que o
+        // `CUSTO_POR_PECA_NS` sai, e a lei que o produto corre é a adaptativa.
+        let uniforme = melhor(medir(&mut present, Some(opcoes(false))));
+        let saiu_u = present
             .world()
             .get::<SpriteMesh>(p)
             .map_or(0, |m| m.tris.len());
+        let adaptativo = melhor(medir(&mut present, Some(opcoes(true))));
+        let saiu_a = present
+            .world()
+            .get::<SpriteMesh>(p)
+            .map_or(0, |m| m.tris.len());
+        #[expect(clippy::cast_precision_loss, reason = "contagens de peças")]
+        let por_peca =
+            |ms: f64, n: usize| -> f64 { if n == 0 { 0.0 } else { ms * 1e3 / n as f64 } };
         println!(
-            "{pecas:>8} | {:>6.3}/{:<6.3} | {:>6.3}/{:<6.3} | {:>6.3}/{:<6.3} | {saiu:>12}",
-            descodif.0, descodif.1, fast.0, fast.1, suave.0, suave.1
+            "{pecas:>8} | {:>6.3}/{:<6.3} | {:>6.3}/{:<6.3} | {:>6.3} ({saiu_u:>6}, {:>5.3} us/p) \
+             | {:>6.3} ({saiu_a:>6}, {:>5.3} us/p)",
+            descodif.0,
+            descodif.1,
+            fast.0,
+            fast.1,
+            uniforme.0,
+            por_peca(uniforme.0, saiu_u),
+            adaptativo.0,
+            por_peca(adaptativo.0, saiu_a),
         );
     }
 }

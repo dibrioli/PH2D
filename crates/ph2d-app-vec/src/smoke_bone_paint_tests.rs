@@ -611,3 +611,7 @@ fn the_router_declares_only_the_scene_that_exists() {
 /// herdar as fixturas deste arnês: uma cópia delas mediria outra cena.
 #[path = "smoke_bone_paint_bancada.rs"]
 mod bancada;
+
+/// ⭐⭐⭐⭐ **Os gates do botão `Smooth`** — filho por ASSUNTO (e pelo tecto de LOC).
+#[path = "smoke_bone_paint_smooth_tests.rs"]
+mod suave;

@@ -153,6 +153,13 @@
 - ⛔⛔ [Consumidor que escolhe o relógio à mão escreve um 4.º palpite](feedback_a_consumer_that_picks_among_clocks_by_hand_is_the_answer_that_ages.md)
 - ⛔⛔ [Duas guardas que se EXCLUEM desligam um recurso sem o dizer](feedback_two_guards_that_exclude_each_other_disable_a_feature_silently.md)
 - [Registro de painel (5 sites)](reference_topic_panel_registration.md) · [Gotchas de código (15)](reference_topic_code_gotchas.md) · 📚 [mais 6 lições](reference_topic_code_pattern_gotchas.md)
+- ⛔⛔ [Um painel pode ter UMA coluna de nome por FAMÍLIA de linha (caixa · chip · número), as três no mesmo cartão — «este painel já foi convertido?» é a pergunta errada](feedback_a_panel_can_hold_one_name_column_per_family_of_row.md)
+- ⛔ [Medir um texto num peso e pintá-lo noutro faz o pintor CORTÁ-LO (`0....`, e ao afastar some) — a porta é `title_elided_width`, ao lado do pintor](feedback_measuring_a_text_at_one_weight_and_painting_it_at_another_elides_the_text.md)
+- ⛔ [Renomear um símbolo por NOME destrói a PROSA que o cita — num repo onde o porquê vive em doc-comments, a memória histórica é a vítima mais comum](feedback_a_rename_by_name_cannot_tell_an_address_from_a_memory.md)
+- ⛔⛔ [Apagar um item deixa o `#[cfg]` dele a gatear o VIZINHO — e com a feature ligada por omissão nenhuma build da CI o vê](feedback_an_orphaned_cfg_attaches_to_the_next_item_and_the_default_build_is_blind.md)
+- [Registro de painel (5 sites)](reference_topic_panel_registration.md)
+- [Gotchas de código (14)](reference_topic_code_gotchas.md)
+- 📚 [Padrões de código (gotchas silenciosos): mais 6 lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 
 ## Arquitetura / norte / perf
 - ⛔ [REGRA DO DONO: editar pixels ou tamanho/margem = imagem SEM a dobra (exceto Liquify, cor, filtros); tamanho/margem SOLTA dos ossos](project_pixel_tools_flatten_bone_bound_art.md)

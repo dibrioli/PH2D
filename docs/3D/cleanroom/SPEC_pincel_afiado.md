@@ -21,7 +21,24 @@ Filtragem §4.3: executada em 2026-09-16 sobre este texto (zero código, zero no
 Sweep: controlo do instrumento corrido PRIMEIRO (exit 0, todos os canais), depois VERDE sobre a
   vassoura desta obra (ver o ledger para a contagem) aplicada a esta espec, às 80 fixturas e ao
   README delas, e em --git-history da pasta.
-Auditoria §4.2 (R-pré): ⏳ POR CORRER — é condição de abrir a janela que implementa.
+Auditoria §4.2 (R-pré): ⛔ 1.ª PASSAGEM CORRIDA em 2026-09-16 por um subagente NOVO — NÃO
+  atestada. ⭐ A PAREDE DO §4.2 ESTÁ LIMPA (os 4 blocos cercados são fórmula de 1–3 linhas; os 141
+  code spans não-numéricos são todos nossos; sweep verde com as nove vassouras da pasta, e verde em
+  memória sem caixa nem acentos sobre esta espec, o README e os 80 cabeçalhos). ⭐ A lei
+  re-derivou-se por um modelo escrito SÓ a partir desta página: as 27 fixturas por script fecham
+  dentro das barras do G-1 e do G-2, e as tabelas da régua reproduzem-se ao dígito impresso.
+  ⛔ TRÊS achados BLOQUEIAM, os três de exactidão: (1) as 5 fixturas de cilindro do produto não
+  trazem o píxel do pen-down nem o passo de um píxel, e a §11 diz que toda arrastada os traz — lido
+  com a linha do traço que o cabeçalho escreve (y = 0), o G-3a lê 3,8e-3 (barra 2e-3) e o G-3b
+  1,1e-1; (2) o G-1 e o G-2 contam 3 fixturas cuja lei a própria página recomenda não construir ou
+  nunca pede (a pegada projectada — P-4 —, o acumular ligado — P-2 — e a opção da normal do
+  pen-down, que nem a §10.3 nem a §15 pedem): o produto recomendado lê-as a 8,5e-2, 4,7e-4 e
+  6,2e-2; (3) o G-4 declara 16 e 12 + 4 células e o corpus só sustenta 14 e 10 + 4 (a grelha 192²
+  publica só a 1.ª passagem e o fim), e a §7.3 imprime valores de 192² que não estão publicados.
+  ⚠️ Ficam 17 erratas e 1 nota sobre um ponteiro da §0.2 (a janela I NÃO reconfere as notas do
+  plano 21 — é acto do E/R), nomeadas no ledger com o sítio e a instrução.
+  ⏳ A janela I continua FECHADA ⇒ emenda do E sobre os 3 (as erratas cabem nela), depois 2.ª
+  passagem do R-pré.
 Mapa de leitura da literatura: não há paper. A literatura pública utilizável é (a) o manual do
   alvo (factos, ⛔ nunca o wording), (b) as notas públicas de versão, (c) a revisão pública de 2019
   em que o pincel nasceu, destilada em vocabulário nosso na §14, e (d) o NOSSO código, citado por

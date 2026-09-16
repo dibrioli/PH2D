@@ -108,6 +108,10 @@ Mesma análise do ledger do pincel de plano (fundação de software livre; GPLv2
 
 (a janela I declara-se no `INBOX_blender-pincel-afiado.md`)
 
+| elo | sessão | data | estado |
+|---|---|---|---|
+| I-1 (desta obra; é a I-3 do `LEDGER_blender-cloth.md`) | `9f820704-0d7e-4d96-847e-9cd720cbf178` | 2026-09-16 | **INC-I1** (leitura por `grep` de documentos NOSSOS, antes da espec) classificado **RELANCE** pelo R de incidente `agent-af9327b96fad70a1b` ⇒ **não queima** (ver *Incidentes*) · ⏳ a declaração da janela ainda não chegou pelo inbox |
+
 ---
 
 ## Cobertura da travessia (§3.E) — 2026-09-16
@@ -451,4 +455,140 @@ dos traços 2 e 4 como **não publicados**, e recalcular o aprovado sobre as cé
 
 ## Incidentes
 
-(nenhum)
+### INC-I1 (2026-09-16) — a janela I leu, por `grep` com contexto, três documentos NOSSOS anteriores à limpeza de citações · classificado **RELANCE** ⇒ a janela I **não** queima
+
+> Registado pela janela I no INBOX (append cego). Transcrito e classificado pelo **subagente-R de
+> incidente `agent-af9327b96fad70a1b`** (tipo `general-purpose`, descrição «R: classificar a
+> exposição da janela I»), despachado pela janela I `9f820704-0d7e-4d96-847e-9cd720cbf178` —
+> **contexto novo**, distinto do E (`agent-acf4ca41445c57ad7`) e do R-pré (`agent-a8b293ca5ea3dc7d7`).
+> Viu os dois lados: os três documentos, a espec, este ledger e as vassouras (em memória).
+> ⛔ Nenhum ficheiro de trabalho gravado; as saídas com acertos ficaram só no terminal.
+
+#### 1. O evento (descrito, não reproduzido)
+
+- **Quando:** 2026-09-16, ao preparar a missão-E — **antes** de a espec existir e **antes** do aviso
+  N1 do R-pré (`16fd88497`), que foi escrito depois da leitura.
+- **Como:** `grep -n -i -B2 -A8` pelo nome público do pincel. Reproduzido por este R com o **mesmo
+  comando** sobre os **mesmos blobs** (`git hash-object` igual ao `HEAD`; os três ficheiros estão
+  intocados desde 13/09):
+
+| documento (NOSSO) | blob | saída | janelas de linhas | sha256 da saída exacta |
+|---|---|---|---|---|
+| `docs/3D/20_divergencias_tools.md` | `7220a657` | 47 linhas | 47–57 · 381–391 · 468–478 · 520–530 | `d8fe18f963f1b3a816281a2e793ba0e005d5e9d6f77c130f500da19e701e064e` |
+| `docs/3D/21_plano_modos_e_ferramentas.md` | `866a6347` | 47 linhas | 257–267 · 432–442 · 445–467 | `a643eb28a0568e27136b109c35c7d75b28167eba7c790f7431fa6cd1d4e3c9e5` |
+| `docs/3D/04-Ferramentas/04.1-Pinceis.md` | `72b628b1` | 11 linhas | 80–90 | `1336218e7679841b518e9a73eba2ea1e03f16a5aa3f91c7f628122a311c5b517` |
+
+#### 2. O que havia de EXPRESSÃO do alvo, por espécie
+
+As linhas que a carregam, identificadas pelo sha256 do conteúdo (16 hex, sem o fim de linha):
+doc 20 **L49** `dbbdf724d0013ee7` · **L383** `7e4ada1f01b15deb` · **L384** `05fde5988852c149` ·
+**L385** `8b165b754a89b806` · **L386** `1fc903aad7b8bcca` · **L388** `7c06980fbc84ba56` · doc 21
+**L435** `ddd22849f4ddd346` · **L437** `5f7595f1453a2910`.
+
+- **Nomes internos isolados** — enumeradores (em boa parte identificadores públicos da API de
+  propriedades), nomes de campo e de função, nomes de ficheiro, dois deles com número de linha. A
+  fila do **pincel afiado** (doc 20 L383) carrega um enumerador e **um nome de campo interno**.
+- **Fragmentos de comentário entre aspas: DOIS**, cada um uma oração curta (menos de dez
+  palavras), **nenhum** um comentário inteiro — doc 20 L386 (o barro de plano inclinado) e doc 21
+  L437 (o filtro de afiar).
+- **Fórmulas de uma linha de OUTROS verbos** (a força do barro e das tiras, a lei da demão, as leis
+  dos filtros de escala, esfera, aleatório e afiar), em notação nossa.
+- ⚠️ **A doc 21 L437 é UMA linha física de 11 038 caracteres** (a célula W9 da tabela de waves). É
+  **prosa nossa** — o relato de três waves fechadas em agosto; a expressão do alvo dentro dela
+  limita-se a ~8 nomes internos (dois com endereço ficheiro:linha) e a **um** dos dois fragmentos.
+  *O comprimento da linha não a torna um bloco de expressão.*
+- **Nenhum** corpo de função · **nenhum** bloco de código · **nenhum** comentário inteiro ·
+  **nenhuma** tabela de valores do alvo.
+- O resto das 105 linhas é **prosa e decisão nossas**, em vocabulário nosso (doc 21 L259–260, L434,
+  L447, L459 · doc 20 L470, L522 · doc 04.1 L82). A doc 20 L389 traz só identificadores públicos.
+
+#### 3. Classificação (§6.2): ⛔ **RELANCE**
+
+Nomes isolados e duas orações curtas, vistos por contexto de busca; sem corpo de função, sem bloco
+de dez ou mais linhas de expressão, sem comentário inteiro. Mesma espécie e mesmo desfecho do
+**INC-4** do `LEDGER_blender-cloth.md` (13/09, mesma sessão-mãe). ⇒ a janela I `9f820704-…`
+**continua I** para este módulo; **não há BLOCO-RETOMADA** (§6.4 não se aplica).
+
+#### 4. É MATERIAL para o pincel afiado? **NÃO — nada que a espec não meça já**
+
+O que as linhas expostas afirmam sobre ESTE pincel, em termos funcionais: (a) é o deslocamento do
+desenho comum com a distância medida a partir das posições do pen-down → espec §2.1; (b) vinco
+duro em vez de domo → §0 e §7; (c) queda afiada de quarta potência → §2.2 e §6; (d) sem
+auto-alisar → §6. Tudo é facto funcional, público ou obtido **correndo** o programa, e já medido
+na espec.
+
+⚠️ **UMA afirmação exposta é CONTRADITA pela espec, e a espec manda:** a fila do doc 20 (L383) diz
+que também a **normal** vem do pen-down; a espec §3 mede que, **no valor de fábrica** (acumular
+desligado), a normal da área e o cursor são lidos da superfície **viva** e só as posições da
+distância são as do pen-down (`≤ 1,9e-6` contra `4,7e-4` da alternativa). ⇒ transmitido à janela I
+em termos funcionais: *a nota velha não é fonte; a §3 é*.
+
+- A exposição toca também leis de **outros** verbos (a demão, os filtros de malha, os barros),
+  todos **já shipados** (W6, W8, W9 — agosto) e sem obra clean-room aberta. ⚠️ Se esta janela abrir
+  uma obra clean-room sobre um deles, **este incidente entra na triagem de exposição dessa obra**.
+
+#### 5. Quarentena (§6.3) — LEVE, dobrada no R-PÓS
+
+Nenhum código deste pincel foi escrito depois da exposição (a janela ainda não abriu a espec), mas
+**todo** o código desta obra será ⇒ a comparação do §6.3 passa a ser **item obrigatório do R-PÓS**,
+com três perguntas:
+
+1. **O diff de produto não contém nenhum dos nomes internos das linhas acima.** ⚠️⚠️ **O sweep NÃO o
+   garante sozinho — medido por este R:**
+   - com as **nove** vassouras sobre os três documentos, das linhas expostas só **duas** acordam
+     alguma: doc 21 **L437** (três vassouras) e doc 20 **L389** (uma; identificador público). As
+     linhas **L383, L386 e L388** do doc 20 e **L435** do doc 21 — nomes internos e um dos
+     fragmentos — **não acordam nenhuma**;
+   - em memória, contra a vassoura **desta obra**: das **15** cadeias expostas testadas (nomes
+     internos e os dois fragmentos), **uma** é entrada exacta, **três** só existem **dentro** de
+     entradas mais longas (que uma cadeia nua não acorda — entre elas **o nome de campo da fila do
+     pincel afiado**), e **onze** não existem de forma nenhuma (entre elas **os dois fragmentos**).
+     sha256 (16 hex) das onze mais o nome de campo, para a emenda conferir sem as ler aqui:
+     `9cc856db91cfb85f` (o campo) · `6d3e24dcd8013e46` · `363a22c5920f92eb` · `a1579b78b6ae6138` ·
+     `abef2d14efcca5f9` · `9bae24bee55c5797` · `81a86b8e9c5911d6` · `78485d6fb7d91cf4` ·
+     `82eec370625edab8` · `626c7e163855d857` · `c3cc45424166b8b3` · `6048608d585f0031`;
+   - controlo do lado do produto: três dessas cadeias (o campo, um nome da demão, um dos
+     fragmentos) dão **0** ficheiros em `crates/` + `shells/` (`git grep -l -F`) ⇒ acrescentá-las
+     à vassoura **não** cria falso positivo no código.
+   - ⇒ **Cura: emenda do E à vassoura**, com as cadeias das linhas endereçadas acima (acto do E, que
+     pode lê-las). **Estende a N1 do R-pré**, que só nomeava a L435 como descoberta. Até à emenda, o
+     R-PÓS confere estas cadeias **à mão** sobre o diff.
+2. **Nenhum comentário ou doc-comment do produto reproduz, nem parafraseia de perto, os dois
+   fragmentos.**
+3. **A leitura da normal segue a espec §3** (viva no valor de fábrica), não a nota velha.
+
+⚠️ E a N1 continua de pé: a §0.2 da espec manda a janela I às linhas 434 e 447 do plano 21 vivo,
+que estão a uma e a três linhas das expostas. Este incidente mostra que a leitura já aconteceu (por
+outro caminho); a emenda tem de retirar o ponteiro na mesma, porque ele expõe **toda janela
+seguinte** da corrente.
+
+#### 6. Rasto na memória (§6.4): **NENHUM**
+
+- **Controlo positivo primeiro:** `scripts/cleanroom-sweep-controlo.sh` → os 11 canais
+  discriminam, `exit 0`.
+- `scripts/cleanroom-sweep.sh` com **as nove vassouras** da pasta sobre cinco populações:
+  `project-memory/` da **worktree** (zero ficheiros alterados desde 15/09; `git status` limpo) ·
+  `project-memory/` do **checkout primário**, que é **a memória injectada** (a ligação
+  `~/.claude/projects/-home-enio-Documentos-Projetos-PH2D/memory` aponta para ela; 68 ficheiros por
+  commitar, 19 com data de 15/09 ou 16/09) · o **INBOX** · a pasta de **resultados persistidos** da
+  sessão-mãe (14 ficheiros) · o **scratchpad** da sessão-mãe (12 ficheiros).
+- **`exit 0` em 43 de 45 corridas.** As duas `exit 1` são a vassoura do **trim** sobre as duas
+  cópias de `project-memory/`, na **mesma linha** — `feedback_disabled_button_still_dispatches.md`
+  L12 (sha256/16 `6fd05d0cafa9dc42`). ⛔ **Não é rasto deste incidente:** o ficheiro é de
+  2026-07-09 (`8efbd4510`) e está intocado desde então, e a cadeia acusada é o nome de uma função
+  **NOSSA** do módulo de áudio (`ph2d-audio-edit`, a operação de aparar um clipe), que colide com
+  uma entrada da vassoura do trim. **Falso positivo pré-existente — dívida de triagem da obra do
+  trim** (alongar a entrada, como a R6 dela já fez com três outras). Nada a reverter.
+- Nenhum ficheiro de resultados persistidos contém a saída do grep (procurado por uma cadeia NOSSA
+  da L437: zero). A transcrição da sessão-mãe contém a exposição por construção (é o contexto
+  exposto) e não é injectada em janela nova.
+
+#### 7. Higiene desta passagem
+
+- Vassouras descodificadas **só em memória**: pelo próprio `cleanroom-sweep.sh` e por um
+  `while read | base64 -d` que só compara e imprime contagens. ⛔ Nada gravado em `/tmp`,
+  `/dev/shm` nem no scratchpad.
+- As saídas com acertos (as linhas dos três documentos, a linha de memória do trim) ficaram só no
+  terminal.
+- O relatório devolvido à janela I segue o contrato: zero trecho, zero wording, zero nome interno,
+  zero caminho de ficheiro do alvo.

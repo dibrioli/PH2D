@@ -20,6 +20,7 @@ use ph2d_editor_core::paint::paint_text_title_elided;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_node_registry::ParamWidget;
 use ph2d_tokens::{ColorToken, Theme};
 
@@ -102,7 +103,14 @@ fn shown(p: &CardParam) -> Shown {
         // eles é a face, e ela já vem resolvida na row.
         ParamWidget::Slider | ParamWidget::Angle => level(com_face(p.value)),
         ParamWidget::IntSlider | ParamWidget::Seed => level(com_face(p.value.round())),
-        ParamWidget::Toggle => Shown::State(if p.value >= 0.5 { "On" } else { "Off" }.to_string()),
+        ParamWidget::Toggle => Shown::State(
+            if p.value >= 0.5 {
+                tr("panel.motion_graph.card.on")
+            } else {
+                tr("panel.motion_graph.card.off")
+            }
+            .to_string(),
+        ),
         ParamWidget::Enum { labels } => Shown::State(
             labels
                 .get(p.value.round().max(0.0) as usize)

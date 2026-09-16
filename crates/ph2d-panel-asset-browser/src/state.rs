@@ -7,6 +7,7 @@
 
 use ph2d_asset_index::{AssetIndex, AssetKind, SortBy};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use std::cell::RefCell;
 
 thread_local! {
@@ -259,7 +260,7 @@ impl AssetBrowserState {
     /// O rótulo do chip `i`.
     #[must_use]
     pub fn kind_chip_label(i: usize) -> &'static str {
-        Self::kind_for_chip(i).map_or("All", AssetKind::label)
+        Self::kind_for_chip(i).map_or(tr("panel.asset_browser.catalog.all"), AssetKind::label)
     }
 }
 

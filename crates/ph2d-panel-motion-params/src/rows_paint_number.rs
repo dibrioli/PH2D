@@ -11,6 +11,7 @@ use super::{
 };
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ROW_H_PX, Theme};
 use ph2d_vector::VectorScene;
@@ -66,7 +67,7 @@ pub(crate) fn paint_box_row(
             paint_text_row(
                 Rect::new(inner_x, y, inner_w, ROW_H_PX),
                 &row.label,
-                "e.g. sin(t)",
+                tr("panel.motion_params.rows.e_g_sin_t"),
                 param_text_id(i),
                 store,
                 hit_index,

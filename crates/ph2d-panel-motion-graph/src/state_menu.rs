@@ -7,6 +7,8 @@
 
 use crate::snapshot::PortChoice;
 use ph2d_editor_core::interaction::GraphKey;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// **A row of the node context menu** (right-click a node or a group card, doc 62). The menu is
 /// an alternate TRIGGER, never a second implementation: each row routes back through the SAME door
@@ -71,14 +73,14 @@ impl NodeAction {
     }
     pub(crate) fn label(self) -> &'static str {
         match self {
-            NodeAction::Enter => "Enter (Double-click)",
-            NodeAction::Cut => "Cut (Ctrl+X)",
-            NodeAction::Copy => "Copy (Ctrl+C)",
-            NodeAction::Duplicate => "Duplicate (Ctrl+D)",
-            NodeAction::Delete => "Delete (Del)",
-            NodeAction::Bypass => "Toggle Mute (H)",
-            NodeAction::Rename => "Rename (F2)",
-            NodeAction::Ungroup => "Ungroup (Ctrl+Alt+G)",
+            NodeAction::Enter => tr("panel.motion_graph.menu.enter_double_click"),
+            NodeAction::Cut => tr("panel.motion_graph.menu.cut_ctrl_x"),
+            NodeAction::Copy => tr("panel.motion_graph.menu.copy_ctrl_c"),
+            NodeAction::Duplicate => tr("panel.motion_graph.menu.duplicate_ctrl_d"),
+            NodeAction::Delete => tr("panel.motion_graph.menu.delete_del"),
+            NodeAction::Bypass => tr("panel.motion_graph.menu.toggle_mute_h"),
+            NodeAction::Rename => tr("panel.motion_graph.menu.rename_f2"),
+            NodeAction::Ungroup => tr("panel.motion_graph.menu.ungroup_ctrl_alt_g"),
         }
     }
     /// The keyboard verb this row runs, or `None` for [`NodeAction::Enter`] — a NAVIGATION
@@ -103,9 +105,15 @@ impl NodeAction {
 /// right-press left SELECTED — so the menu can never drift from the key. This is the ONE list
 /// `menu_rows` appends and `resolve_menu` dispatches (past the tints), so a row means the same
 /// thing on screen and under the cursor.
-pub(crate) const BACKDROP_ACTIONS: [(&str, GraphKey); 2] = [
-    ("Rename (F2)", GraphKey::Rename),
-    ("Delete (Del)", GraphKey::Delete),
+pub(crate) const BACKDROP_ACTIONS: [(TextKey, GraphKey); 2] = [
+    (
+        TextKey::new("panel.motion_graph.menu.rename_f2"),
+        GraphKey::Rename,
+    ),
+    (
+        TextKey::new("panel.motion_graph.menu.delete_del"),
+        GraphKey::Delete,
+    ),
 ];
 
 #[derive(Clone, Debug, PartialEq)]

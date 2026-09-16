@@ -1,0 +1,3 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI de Param Editors, para as chaves `panel.param_editors.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+curve.rs	curve

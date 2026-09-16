@@ -1,0 +1,7 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI de Assets, para as chaves `panel.asset_browser.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+lib.rs	panel
+paint.rs	panel
+paint_catalog.rs	catalog
+paint_related.rs	related
+state.rs	catalog

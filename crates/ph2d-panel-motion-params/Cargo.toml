@@ -16,6 +16,8 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# A tabela de strings (HR-15) — deixou de escrever texto no fonte em 2026-09-16.
+ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # ⭐ Os EDITORES RICOS (curva, gradiente, paleta) — crate-folha com dois hospedeiros: esta row
 # e o cartão do nó no grafo (doc 101). Ela nasceu porque este painel SAI (doc 103).
@@ -36,6 +38,8 @@ ph2d-text = { path = "../ph2d-text" }
 ph2d-vector = { path = "../ph2d-vector" }
 
 [dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate.
+ph2d-label-census = { path = "../ph2d-label-census" }
 # Behavioural seam gates (DIRETIVA §5 DoD): drive real ValueChanged events
 # through `apply_event` and assert the param intent that comes out — the only
 # way to prove the soft/hard limit split actually reaches the document.

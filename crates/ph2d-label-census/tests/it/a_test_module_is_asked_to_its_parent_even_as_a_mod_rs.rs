@@ -83,3 +83,19 @@ fn every_shape_of_a_test_module_is_test_and_the_product_neighbour_is_not() {
     assert!(!is_test(&t, "src/paint/commented_prod.rs"));
     assert!(!Path::new(&t.0).join("src/nao_existe.rs").exists());
 }
+
+/// ⛔ **Um COMENTÁRIO entre o `#[cfg(test)]` e o `#[path]` não esconde o teste** (2026-09-16, a
+/// `ph2d-panel-motion-params`) — e um comentário acima de um `mod` de PRODUTO não o torna teste.
+#[test]
+fn a_comment_between_the_attributes_does_not_hide_the_cfg_test() {
+    let t = tree(&[
+        (
+            "src/lib.rs",
+            "#[cfg(test)]\n// o sufixo `_tests.rs` não é cosmético\n// (e explica-o em duas linhas)\n#[path = \"lib_gradient_tests.rs\"]\nmod tests_gradient;\n// um comentário sobre produção\nmod rows;\n",
+        ),
+        ("src/lib_gradient_tests.rs", "fn g() {}\n"),
+        ("src/rows.rs", "fn r() {}\n"),
+    ]);
+    assert!(is_test(&t, "src/lib_gradient_tests.rs"));
+    assert!(!is_test(&t, "src/rows.rs"));
+}

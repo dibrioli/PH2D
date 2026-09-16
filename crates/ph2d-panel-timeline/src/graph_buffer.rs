@@ -36,9 +36,25 @@ pub(super) fn paint_buffer_buttons(
     let top = band_rect.y + BUF_BTN_GAP;
     let mut right = band_rect.x + band_rect.w - BUF_BTN_GAP;
     if track.buffer_ghost.is_some() {
-        right = paint_buffer_chip(ctx, theme, "Swap", right, top, target, BufferAction::Swap);
+        right = paint_buffer_chip(
+            ctx,
+            theme,
+            ph2d_i18n::tr("panel.timeline.buffer.swap"),
+            right,
+            top,
+            target,
+            BufferAction::Swap,
+        );
     }
-    paint_buffer_chip(ctx, theme, "Store", right, top, target, BufferAction::Store);
+    paint_buffer_chip(
+        ctx,
+        theme,
+        ph2d_i18n::tr("panel.timeline.buffer.store"),
+        right,
+        top,
+        target,
+        BufferAction::Store,
+    );
 }
 
 /// Paint one buffer chip right-aligned at `right`, register its click surface, and

@@ -28,6 +28,7 @@ use ph2d_editor_core::widget::{
     TextInputState, paint_button, paint_scrollbar, paint_slider, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Density, Radius, Spacing, StrokeToken, TypeToken};
 
 mod card;
@@ -166,7 +167,7 @@ fn paint_chrome(ctx: &mut PaintCtx, rect: Rect) {
     let title_y = rect.y + PANEL_TITLE_BASELINE;
     paint_panel_title(
         rect,
-        "Assets",
+        tr("panel.asset_browser.title"),
         Spacing::Xl3.px(),
         ctx.scene,
         ctx.text_system,
@@ -202,7 +203,7 @@ fn paint_controls(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect) -> 
     // ── A busca da grade ───────────────────────────────────────────────────────────────────────
     let (st, value, caret, anchor) = read_search(ctx.host.store());
     let input = TextInput::new(ids::ASSET_SEARCH, "")
-        .placeholder("Search assets\u{2026}")
+        .placeholder(tr("panel.asset_browser.panel.search_assets"))
         .visual((st, ctx.host.store().hover_live(ids::ASSET_SEARCH)));
     // ⭐ **O interruptor da coluna vive na fileira da busca, e NÃO dentro da coluna** — senão
     // fechá-la tornava-o inalcançável. É o que sobrou da decisão D2 do plano (o botão *só-grade*).
@@ -399,14 +400,18 @@ fn paint_grid(
         // this search» seria verdade e inútil: a grade está vazia porque a RESPOSTA é vazia, e é
         // essa a informação — *este prefab não usa imagem nenhuma* é um facto sobre o asset.
         let msg = if !is_published() {
-            "Loading assets\u{2026}"
+            tr("panel.asset_browser.panel.loading_assets")
         } else if total == 0 {
-            "No assets yet \u{2014} right-click an object and choose Make Prefab"
+            tr("panel.asset_browser.panel.no_assets_yet")
         } else {
             match state.related {
-                Some((_, ph2d_asset_index::Relation::Uses)) => "This asset uses nothing else",
-                Some((_, ph2d_asset_index::Relation::UsedBy)) => "Nothing in the library uses this",
-                None => "Nothing matches this search",
+                Some((_, ph2d_asset_index::Relation::Uses)) => {
+                    tr("panel.asset_browser.panel.this_asset_uses_nothing_else")
+                }
+                Some((_, ph2d_asset_index::Relation::UsedBy)) => {
+                    tr("panel.asset_browser.panel.nothing_in_the_library_uses_this")
+                }
+                None => tr("panel.asset_browser.panel.nothing_matches_this_search"),
             }
         };
         paint_text_centered(
@@ -463,7 +468,7 @@ fn paint_grid(
         paint_text(
             ctx.text_system,
             ctx.scene,
-            &format!("+{beyond} more \u{2014} narrow the search to reach them"),
+            &ph2d_i18n::tr_with("panel.asset_browser.panel.n_more", &[("beyond", &beyond)]),
             x,
             y,
             TypeToken::Sm.px(),

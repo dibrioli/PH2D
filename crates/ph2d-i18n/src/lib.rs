@@ -27,6 +27,8 @@
 //! assert_eq!(tr("tool.unknown.key"), "tool.unknown.key"); // missing-key passthrough
 //! ```
 
+/// As strings do navegador de assets.
+mod asset_browser;
 /// As strings dos dois painéis de áudio (editor + mixer).
 mod audio;
 /// As strings dos dois painéis do Flip (o painel e a tira de quadros).
@@ -35,6 +37,8 @@ mod flip;
 mod grid_snap;
 /// As strings dos cinco painéis das ferramentas de imagem.
 mod image_tools;
+/// As strings dos painéis do Motion (grafo, params) e dos editores ricos partilhados.
+mod motion_panels;
 mod vector;
 
 /// Look up a string by Fluent-style key. Missing keys round-trip the
@@ -203,6 +207,10 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.extrap.loop" => "Loop",
         "panel.timeline.extrap.pingpong" => "Ping-Pong",
         "panel.timeline.extrap.continue" => "Continue",
+        // Os dois chips do BUFFER do grafo (2026-09-16 — eram os dois textos que a timeline ainda
+        // escrevia no fonte).
+        "panel.timeline.buffer.swap" => "Swap",
+        "panel.timeline.buffer.store" => "Store",
         // ── Vector panel (ADR-0108/0112) — section headers, tool modes and the
         // shape catalogue. The panel is a 17-section stack; every section title
         // and every chrome word routes through here (the shape NAMES themselves
@@ -352,7 +360,11 @@ pub fn tr(key: &str) -> &'static str {
         // artista precisa de PROCURAR impossível de procurar — a mesma lei que mantém as chaves
         // dos tokens fora desta tabela.
         "panel.tokens.contrast.title" => "Contrast below WCAG",
-        "panel.tokens.contrast.on" => "on",
+        // ⭐ A LINHA inteira é uma frase (2026-09-16): colar `on` entre dois pedaços de código
+        //    fixava a ordem das palavras. O critério (`WCAG 2.2 AA 1.4.3`) entra como PEÇA — é o
+        //    endereço de uma norma, não se traduz.
+        "panel.tokens.contrast.line" => "{fg} on {bg} - {ratio}:1, need {min} ({criterion})",
+        "panel.tokens.swatch" => "Design token colour",
         // A família NUMÉRICA (plano UI/UX W4c.1) — a escala que se mede em px.
         // ⚠️ O cabeçalho diz a UNIDADE, e é o que separa esta lista da de cima: as duas listam
         // "tokens", e sem a unidade um chip com `8` ao lado de uma swatch não diz de que grandeza
@@ -480,6 +492,8 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| grid_snap::tr(k))
             .or_else(|| flip::tr(k))
             .or_else(|| image_tools::tr(k))
+            .or_else(|| motion_panels::tr(k))
+            .or_else(|| asset_browser::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

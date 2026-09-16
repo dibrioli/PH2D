@@ -12,6 +12,7 @@ use ph2d_editor_core::paint::paint_text_title_elided;
 use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Theme};
 
 /// The popup: a `Bg2` panel with a header, and one row per entry — a category-tinted dot
@@ -30,9 +31,9 @@ pub(super) fn draw_menu(
     // The header names the question being asked. "Add Node" for the library; for a wire
     // dropped on a collapsed card, the question is which port INSIDE it the wire lands on.
     let header = match &menu.body {
-        MenuBody::CardPorts { .. } => "Connect Inside Group",
-        MenuBody::BackdropTints { .. } => "Backdrop",
-        MenuBody::NodeActions { .. } => "Node",
+        MenuBody::CardPorts { .. } => tr("panel.motion_graph.menu.connect_inside_group"),
+        MenuBody::BackdropTints { .. } => tr("panel.motion_graph.menu.backdrop"),
+        MenuBody::NodeActions { .. } => tr("panel.motion_graph.menu.node"),
         // ⭐ O cabeçalho de uma lista de opções é o RÓTULO do param — a lista de um selector
         // não diz *o que* se está a escolher, e "Read" ou "Waveform" é a pergunta inteira.
         MenuBody::ParamOptions { title, .. } => title,

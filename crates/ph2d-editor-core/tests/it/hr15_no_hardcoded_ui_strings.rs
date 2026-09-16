@@ -68,13 +68,9 @@ const BASELINE: &[(&str, usize)] = &[
     // binário, não só do alcance deste scanner (o contrário da nota do `physics_rows.rs` abaixo). O
     // painel inteiro fala pela tabela, com gate próprio na crate dele
     // (`every_word_this_panel_shows_comes_from_the_string_table`, régua da `ph2d-label-census`).
-    // O `placeholder` da busca do NAVEGADOR DE ASSETS (plano `docs/Components/07`, wave A5).
-    // ⚠️ Mesma forma e mesma dívida do irmão da Hierarquia, uma linha acima — é literalmente o
-    // mesmo widget a fazer o mesmo trabalho no painel ao lado —, e cai com ele quando o `t!(…)`
-    // shipar. ⛔ E ele fica VISÍVEL de propósito: passar a string por um argumento faria a
-    // contagem cair para 0 sem tirar o literal do binário, que é a isenção silenciosa que as
-    // duas notas abaixo já nomeiam.
-    ("ph2d-panel-asset-browser/src/paint.rs", 1),
+    // ✅ **A entrada do NAVEGADOR DE ASSETS saiu (2026-09-16, `line/UIUX`), com a dívida** — o
+    // `"Search assets…"` passou a `tr("panel.asset_browser.panel.search_assets")`, como o irmão da
+    // Hierarquia; o painel inteiro fala pela tabela, com gate próprio na crate dele.
     // ✅ **As SETE entradas do INSPECTOR saíram (2026-09-13, `line/UIUX`) — e a DÍVIDA com elas.**
     // Os `placeholder` do nome (`identity.rs`), do nome da âncora (`anchors.rs`), da §11
     // (`anim_rows.rs`, 3), dos TIMERS (2), das SIGNAL ACTIONS (3), do AUDIO e da CAMERA passaram a

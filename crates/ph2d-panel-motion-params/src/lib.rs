@@ -31,6 +31,7 @@ mod palette_row;
 /// O ESTADO de uma row no store — irmão cortado pelo teto de LOC (HR-18).
 mod row_state;
 mod rows_paint;
+use ph2d_i18n::tr;
 pub use row_state::*;
 use row_state::{number_input, seed_rows};
 mod shaper_dispatch;
@@ -172,7 +173,10 @@ impl Panel for MotionParamsPanel {
         paint_panel_surface(rect, ctx.scene, theme);
 
         let snap = current_params();
-        let title = snap.as_ref().map(|s| s.title.as_str()).unwrap_or("Motion");
+        let title = snap
+            .as_ref()
+            .map(|s| s.title.as_str())
+            .unwrap_or(tr("panel.motion_params.panel.motion"));
         let title_size = paint_panel_title(rect, title, 0.0, ctx.scene, ctx.text_system, theme);
 
         let Some(snap) = snap else {

@@ -8,6 +8,7 @@
 
 use super::{GraphViewSnapshot, NodeChoice, PortView, current_catalog};
 use crate::state::{Menu, MenuBody};
+use ph2d_i18n::TextKey;
 use ph2d_tokens::ColorToken;
 
 /// **One row of the popup** — a label, a tinted dot, and (for the library) the node type
@@ -32,8 +33,15 @@ pub(crate) struct MenuRow<'a> {
 /// (`graph-backdrop-1..8`: hues 20, 60, 110, 150, 200, 250, 300, and a near-neutral at 320), so
 /// the names are read off the hues rather than invented — "Colour 5" is not a name anybody can
 /// use. English (app UI, HR-15).
-pub(crate) const TINT_NAMES: [&str; 8] = [
-    "Red", "Amber", "Lime", "Green", "Teal", "Blue", "Violet", "Grey",
+pub(crate) const TINT_NAMES: [TextKey; 8] = [
+    TextKey::new("panel.motion_graph.menu.red"),
+    TextKey::new("panel.motion_graph.menu.amber"),
+    TextKey::new("panel.motion_graph.menu.lime"),
+    TextKey::new("panel.motion_graph.menu.green"),
+    TextKey::new("panel.motion_graph.menu.teal"),
+    TextKey::new("panel.motion_graph.menu.blue"),
+    TextKey::new("panel.motion_graph.menu.violet"),
+    TextKey::new("panel.motion_graph.menu.grey"),
 ];
 
 /// The rows the popup shows. The node LIBRARY moved to the shell's full-screen palette; the local
@@ -71,7 +79,7 @@ pub(crate) fn menu_rows<'a>(_snap: &GraphViewSnapshot, menu: &'a Menu) -> Vec<Me
             .iter()
             .enumerate()
             .map(|(i, name)| MenuRow {
-                label: name,
+                label: name.tr(),
                 dot: crate::backdrop::tint_token(i as u8),
                 selected: i as u8 == *current,
             })
@@ -82,7 +90,7 @@ pub(crate) fn menu_rows<'a>(_snap: &GraphViewSnapshot, menu: &'a Menu) -> Vec<Me
                 crate::state::BACKDROP_ACTIONS
                     .iter()
                     .map(|(label, _)| MenuRow {
-                        label,
+                        label: label.tr(),
                         dot: ColorToken::Text2,
                         selected: false,
                     }),

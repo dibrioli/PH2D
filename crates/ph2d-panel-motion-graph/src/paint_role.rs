@@ -18,6 +18,7 @@ use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, resolve};
 use ph2d_editor_core::paint_shapes::{fill_diamond, fill_polygon};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_node_registry::NodeSilhouette;
 use ph2d_nodegraph::port::{Clock, Dim, Domain};
 use ph2d_tokens::{ColorToken, Theme};
@@ -327,14 +328,14 @@ mod socket_token_tests {
 #[must_use]
 pub(crate) fn socket_tip(p: &PortView) -> String {
     let kind = match (p.clock, p.domain, p.dim) {
-        (Clock::Event, _, _) => "a pulse",
-        (Clock::Static, _, _) => "a constant",
-        (_, Domain::Instances, Dim::Scalar) => "a number",
-        (_, Domain::Instances, _) => "a stream",
-        (_, Domain::Vector, _) => "a vector shape",
-        (_, Domain::Field, _) => "a field",
-        (_, Domain::Signal, _) => "an audio signal",
-        (_, Domain::Control, _) => "control data",
+        (Clock::Event, _, _) => tr("panel.motion_graph.role.a_pulse"),
+        (Clock::Static, _, _) => tr("panel.motion_graph.role.a_constant"),
+        (_, Domain::Instances, Dim::Scalar) => tr("panel.motion_graph.role.a_number"),
+        (_, Domain::Instances, _) => tr("panel.motion_graph.role.a_stream"),
+        (_, Domain::Vector, _) => tr("panel.motion_graph.role.a_vector_shape"),
+        (_, Domain::Field, _) => tr("panel.motion_graph.role.a_field"),
+        (_, Domain::Signal, _) => tr("panel.motion_graph.role.an_audio_signal"),
+        (_, Domain::Control, _) => tr("panel.motion_graph.role.control_data"),
     };
     format!("{} · {kind}", crate::PortLabel::of(p.name).as_str())
 }

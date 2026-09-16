@@ -1,0 +1,10 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI de Motion Graph, para as chaves `panel.motion_graph.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+lib.rs	panel
+paint_card_params.rs	card
+paint_chrome.rs	chrome
+paint_menu.rs	menu
+paint_role.rs	role
+snapshot_menu.rs	menu
+snapshot_thumb.rs	panel
+state_menu.rs	menu

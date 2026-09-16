@@ -34,6 +34,8 @@ ph2d-host = { path = "../ph2d-host" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 
 [dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate.
+ph2d-label-census = { path = "../ph2d-label-census" }
 # Behavioral seam harness (MockPanelHost) for the transport wire test
 # (architecture_interactive_crate_has_behavioral_test).
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

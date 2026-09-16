@@ -128,6 +128,14 @@ fn decl_matches(src: &str, stem: &str, path: &Path, parent: &Path, need_cfg: boo
         let mut j = i;
         while j > 0 {
             let a = lines[j - 1].trim();
+            // ⛔ **Um COMENTÁRIO entre os atributos escondia o `#[cfg(test)]`** (2026-09-16): a
+            //    `ph2d-panel-motion-params` escreve `#[cfg(test)]`, quatro linhas `//` a explicar o
+            //    sufixo, e só depois `#[path = "lib_gradient_tests.rs"] mod tests_gradient;` — e este
+            //    laço parava no primeiro `//`, lendo o ficheiro de teste como PRODUÇÃO.
+            if a.starts_with("//") {
+                j -= 1;
+                continue;
+            }
             if !a.starts_with("#[") {
                 break;
             }

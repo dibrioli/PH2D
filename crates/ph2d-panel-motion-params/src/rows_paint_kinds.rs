@@ -10,6 +10,7 @@ use crate::{ChannelsRow, ColorRow, EnumRow, ScalarRow, SourceRow, ToggleRow};
 use ph2d_editor_core::paint::paint_text_elided;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button_in_group;
 use ph2d_editor_core::widget::{block_cells, grid_height};
+use ph2d_i18n::tr;
 
 /// A coluna da DIREITA de uma row dirigida: o ícone de elo mais o nome de quem dirige.
 ///
@@ -188,7 +189,8 @@ pub(super) fn paint_color_row(
     );
     let swatch_id = param_swatch_id(row.channels[0]);
     let srect = Rect::new(inner_x + inner_w - swatch_w, y, swatch_w, ROW_H_PX);
-    let sw = ColorSwatch::new(swatch_id, "Color", row.srgb).size(SwatchSize::Md);
+    let sw = ColorSwatch::new(swatch_id, tr("panel.motion_params.rows.color"), row.srgb)
+        .size(SwatchSize::Md);
     paint_color_swatch(&sw, srect, scene, theme);
     hit_index.register(swatch_id, srect);
     y += ph2d_tokens::row_pitch_px();
@@ -293,7 +295,7 @@ pub(super) fn paint_channels_row(
         let caption = if opt < n {
             row.channels[opt].0
         } else {
-            "Custom"
+            tr("panel.motion_params.rows.custom")
         };
         let bid = param_enum_id(i, opt);
         let (brect, cell) = gblock[opt / cols][opt % cols];
@@ -322,7 +324,7 @@ pub(super) fn paint_channels_row(
             paint_text_elided(
                 text_system,
                 scene,
-                "From stream",
+                tr("panel.motion_params.rows.from_stream"),
                 inner_x,
                 y,
                 TypeToken::Sm.px(),
@@ -358,8 +360,8 @@ pub(super) fn paint_channels_row(
         // The raw text field for anything not listed (honest placeholder, never "e.g. sin(t)").
         let used = paint_text_row(
             Rect::new(inner_x, y, inner_w, ROW_H_PX),
-            "Column",
-            "e.g. inv_mass, id",
+            tr("panel.motion_params.rows.column"),
+            tr("panel.motion_params.rows.e_g_inv_mass_id"),
             param_text_id(i),
             store,
             hit_index,
@@ -404,7 +406,7 @@ pub(super) fn paint_source_row(
         paint_text_elided(
             text_system,
             scene,
-            "Drawn shapes",
+            tr("panel.motion_params.rows.drawn_shapes"),
             inner_x,
             y,
             TypeToken::Sm.px(),
@@ -440,8 +442,8 @@ pub(super) fn paint_source_row(
     // The raw text field for a name not (yet) in the list — the honest escape.
     let used = paint_text_row(
         Rect::new(inner_x, y, inner_w, ROW_H_PX),
-        "Name",
-        "e.g. a drawn shape",
+        tr("panel.motion_params.rows.name"),
+        tr("panel.motion_params.rows.e_g_a_drawn_shape"),
         param_text_id(i),
         store,
         hit_index,
@@ -540,7 +542,7 @@ pub(super) fn paint_file_row(
     let bid = param_file_browse_id(i);
     paint_segmented_button(
         btn,
-        "Browse\u{2026}",
+        tr("panel.motion_params.rows.browse"),
         false,
         store.button_visual(bid),
         scene,
@@ -553,7 +555,7 @@ pub(super) fn paint_file_row(
     let field = Rect::new(inner_x, y, inner_w, ROW_H_PX);
     crate::text_rows::paint_text_field(
         field,
-        "e.g. /home/you/song.wav",
+        tr("panel.motion_params.rows.e_g_home_you_song_wav"),
         param_text_id(i),
         store,
         hit_index,
@@ -568,7 +570,7 @@ pub(super) fn paint_file_row(
         paint_text_elided(
             text_system,
             scene,
-            "File not found",
+            tr("panel.motion_params.rows.file_not_found"),
             inner_x,
             y,
             label_font,

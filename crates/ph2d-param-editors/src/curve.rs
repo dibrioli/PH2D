@@ -24,6 +24,7 @@ use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_polyline,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -350,9 +351,9 @@ pub fn cycle_interp(value: &str, key: EditorKey<'_>) -> String {
 /// The English caption for a segment interp (the interp button label).
 fn interp_name(interp: Interp) -> &'static str {
     match interp {
-        Interp::Linear => "Linear",
-        Interp::Smooth => "Smooth",
-        Interp::Hold => "Hold",
+        Interp::Linear => tr("panel.param_editors.curve.linear"),
+        Interp::Smooth => tr("panel.param_editors.curve.smooth"),
+        Interp::Hold => tr("panel.param_editors.curve.hold"),
     }
 }
 

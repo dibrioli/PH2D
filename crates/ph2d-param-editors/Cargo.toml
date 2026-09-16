@@ -17,6 +17,8 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# A tabela de strings (HR-15) — deixou de escrever texto no fonte em 2026-09-16.
+ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-color = { path = "../ph2d-color" }
 ph2d-curve = { path = "../ph2d-curve" }
@@ -24,6 +26,10 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate.
+ph2d-label-census = { path = "../ph2d-label-census" }
 
 [lints]
 workspace = true

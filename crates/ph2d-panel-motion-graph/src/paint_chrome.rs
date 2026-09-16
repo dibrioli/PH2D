@@ -14,6 +14,7 @@ use ph2d_editor_core::interaction::GraphHitKind;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, resolve, stroke_polyline};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Theme};
 
 // Divider line + toolbar chip metrics (graph-canvas chrome, not design tokens).
@@ -148,15 +149,15 @@ pub(crate) fn chip_specs(state: ChromeState, vertical: bool) -> [(u16, IconId, b
 /// que neste painel é **Rename**.
 pub(crate) fn chip_tooltip(id: u16) -> &'static str {
     match id {
-        CHROME_SPLIT_H => "Split horizontally",
-        CHROME_SPLIT_V => "Split vertically",
-        CHROME_FIT => "Fit view \u{00b7} F",
-        CHROME_BACKDROP => "Add group backdrop",
-        CHROME_KNIFE => "Knife \u{00b7} K \u{00b7} drag across wires to cut",
-        CHROME_PROBE => "Probe \u{00b7} P \u{00b7} click a node to read its stream",
-        CHROME_GROUP => "Group / Ungroup \u{00b7} Ctrl+G",
-        CHROME_ARRANGE => "Auto-arrange the graph",
-        CHROME_NODE_HELP => "Node help on/off \u{00b7} badges + auto-fix",
+        CHROME_SPLIT_H => tr("panel.motion_graph.chrome.split_horizontally"),
+        CHROME_SPLIT_V => tr("panel.motion_graph.chrome.split_vertically"),
+        CHROME_FIT => tr("panel.motion_graph.chrome.fit_view_f"),
+        CHROME_BACKDROP => tr("panel.motion_graph.chrome.add_group_backdrop"),
+        CHROME_KNIFE => tr("panel.motion_graph.chrome.knife"),
+        CHROME_PROBE => tr("panel.motion_graph.chrome.probe"),
+        CHROME_GROUP => tr("panel.motion_graph.chrome.group_ungroup_ctrl_g"),
+        CHROME_ARRANGE => tr("panel.motion_graph.chrome.auto_arrange"),
+        CHROME_NODE_HELP => tr("panel.motion_graph.chrome.node_help"),
         // ⚠️ Inalcançável: o gate `every_chip_carries_a_tooltip` varre a `chip_specs` inteira.
         // Um braço vazio aqui seria um chip mudo a passar despercebido.
         _ => "",

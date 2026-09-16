@@ -1,0 +1,5 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI de Motion Params, para as chaves `panel.motion_params.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+lib.rs	panel
+rows_paint_kinds.rs	rows
+rows_paint_number.rs	rows

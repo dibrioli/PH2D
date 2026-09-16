@@ -21,6 +21,8 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 
 [dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate.
+ph2d-label-census = { path = "../ph2d-label-census" }
 # `architecture_interactive_crate_has_behavioral_test`: um painel com `event.rs`
 # tem de trazer um teste que dirige um WidgetEvent REAL.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

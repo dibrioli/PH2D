@@ -17,6 +17,8 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# A tabela de strings (HR-15) — deixou de escrever texto no fonte em 2026-09-16.
+ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # ⭐ Os EDITORES RICOS (curva, gradiente, paleta) — a crate-folha com dois hospedeiros: a row do
 # painel lateral e o CARTÃO daqui (doc 101 / doc 103).
@@ -37,6 +39,8 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 
 [dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate.
+ph2d-label-census = { path = "../ph2d-label-census" }
 # Behavioral seam harness (`MockPanelHost`) — it PAINTS the panel, which is the only
 # way to test the add-menu the way the artist meets it: the search field is registered
 # by the paint, and the click that picks a row is resolved against what the paint drew.

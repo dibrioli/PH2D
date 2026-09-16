@@ -213,18 +213,19 @@ fn paint_contrast(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) 
         w,
         warn,
     );
-    let on = tr("panel.tokens.contrast.on");
     for pair in &failing {
         // ⚠️ O CRITÉRIO viaja no texto e **não** passa pela i18n: `WCAG 2.2 AA 1.4.3` é o endereço
         // de uma norma, não uma frase — traduzi-lo tornaria improcurável exactamente a coisa que o
         // artista leva para a especificação.
-        let line = format!(
-            "{} {on} {} - {:.1}:1, need {:.1} ({})",
-            pair.fg.key(),
-            pair.bg.key(),
-            pair.ratio(theme),
-            pair.min_ratio,
-            pair.criterion,
+        let line = ph2d_i18n::tr_with(
+            "panel.tokens.contrast.line",
+            &[
+                ("fg", &pair.fg.key()),
+                ("bg", &pair.bg.key()),
+                ("ratio", &format!("{:.1}", pair.ratio(theme))),
+                ("min", &format!("{:.1}", pair.min_ratio)),
+                ("criterion", &pair.criterion),
+            ],
         );
         y += paint_text_block(
             ctx.text_system,
@@ -264,7 +265,7 @@ fn paint_token_row(
     let colour = token.resolve(theme);
     let sw = ColorSwatch::new(
         crate::ids::tokens_swatch_id(row),
-        "Design token colour",
+        tr("panel.tokens.swatch"),
         [colour.r, colour.g, colour.b, colour.a],
     )
     .size(SwatchSize::Md);

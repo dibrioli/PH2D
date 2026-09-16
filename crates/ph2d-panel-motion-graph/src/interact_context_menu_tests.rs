@@ -269,10 +269,10 @@ fn the_backdrop_menu_offers_rename_and_delete() {
     );
     assert_eq!(
         rows[rows.len() - 2].label,
-        acts[0].0,
+        acts[0].0.tr(),
         "Rename after the tints"
     );
-    assert_eq!(rows[rows.len() - 1].label, acts[1].0, "Delete last");
+    assert_eq!(rows[rows.len() - 1].label, acts[1].0.tr(), "Delete last");
 
     // REGRESSION: a tint row still sets that colour by its index.
     let mut st = open();

@@ -26,6 +26,7 @@ use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, rect_to_vello, reso
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Density, Radius, Spacing, StrokeToken, TypeToken};
 
 /// Quantos níveis de aninhamento a largura da coluna ORÇA.
@@ -97,13 +98,13 @@ fn rows(needle: &str) -> Vec<Row> {
         let mut out = vec![
             Row {
                 pick: CatalogPick::All,
-                label: "All".into(),
+                label: tr("panel.asset_browser.catalog.all").into(),
                 depth: 0,
                 count: 0,
             },
             Row {
                 pick: CatalogPick::Unassigned,
-                label: "Unassigned".into(),
+                label: tr("panel.asset_browser.catalog.unassigned").into(),
                 depth: 0,
                 count: 0,
             },
@@ -184,7 +185,10 @@ pub(crate) fn paint(
         col.w - Spacing::Xs.px() * 2.0,
         row_h,
     );
-    let mut new_btn = ph2d_editor_core::widget::Button::new(ids::ASSET_CATALOG_NEW, "+ Catalog");
+    let mut new_btn = ph2d_editor_core::widget::Button::new(
+        ids::ASSET_CATALOG_NEW,
+        tr("panel.asset_browser.catalog.catalog"),
+    );
     new_btn.state = ctx.host.store().button_visual(ids::ASSET_CATALOG_NEW).0;
     ph2d_editor_core::widget::paint_button(&new_btn, new_rect, ctx.scene, ctx.text_system, theme);
     ctx.host

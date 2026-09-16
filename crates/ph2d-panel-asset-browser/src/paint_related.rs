@@ -34,6 +34,7 @@ use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{IconButtonStyle, IconGlyph, paint_icon_button};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Density, Radius, Spacing, TypeToken};
 
 thread_local! {
@@ -110,10 +111,16 @@ pub(crate) fn paint(
         .register(ids::ASSET_RELATED_CLEAR, close);
 
     let name = with_index(|ix| ix.get(&anchor).map(|e| e.name.clone()));
-    let name = name.unwrap_or_else(|| "this asset".to_string());
+    let name = name.unwrap_or_else(|| tr("panel.asset_browser.related.this_asset").to_string());
     let label = match dir {
-        Relation::Uses => format!("What \u{201c}{name}\u{201d} uses"),
-        Relation::UsedBy => format!("What uses \u{201c}{name}\u{201d}"),
+        Relation::Uses => ph2d_i18n::tr_with(
+            "panel.asset_browser.related.what_name_uses",
+            &[("name", &name)],
+        ),
+        Relation::UsedBy => ph2d_i18n::tr_with(
+            "panel.asset_browser.related.what_uses_name",
+            &[("name", &name)],
+        ),
     };
     paint_text(
         ctx.text_system,

@@ -5,9 +5,9 @@
 //! booleano se desenha*; ao lado (`mod.rs`) mora *o que um booleano É* — estado, valor, construtor
 //! e o nó de acessibilidade. ⛔ A casa não tolera folga de tecto: parte-se para um irmão.
 
-use super::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue};
+use super::{CHECKBOX_BOX_PX, CheckboxState, CheckboxValue};
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
+use crate::paint::{fill_rounded_rect, paint_icon, resolve};
 
 /// O repouso e o quente do eixo do hover, no vocabulário da porta da tinta.
 const FEEL_REST: ph2d_tokens::visuals::Feel = ph2d_tokens::visuals::Feel::Rest;
@@ -26,8 +26,7 @@ fn feel_of_state(state: CheckboxState) -> ph2d_tokens::visuals::Feel {
     }
 }
 use crate::zones::Rect;
-use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
 /// ⭐⭐⭐ **O pintor de uma MARCA BOOLEANA — e desde 2026-09-03 há um só no app.**
@@ -61,6 +60,11 @@ pub(crate) struct BooleanMark {
     pub box_px: Option<f32>,
     /// Reserva e desenha a coluna de animação. Ver [`Checkbox::decorator`].
     pub decorator: bool,
+    /// ⭐⭐⭐ **A linha de formulário a que esta marca pertence** — ver [`Checkbox::seccao`].
+    ///
+    /// `Some(sec)` faz a marca viver **dentro de uma CAIXA** que ocupa a coluna do controlo;
+    /// `None` é a pele de canvas e o interruptor, que trazem o rect já do tamanho que querem.
+    pub linha: Option<crate::widget::Seccao>,
 }
 
 pub(crate) fn paint_boolean_mark(
@@ -75,6 +79,7 @@ pub(crate) fn paint_boolean_mark(
         hover_t,
         box_px,
         decorator,
+        linha,
     } = m;
     // A moldura é o TETO em qualquer dos dois casos (a caixa não transborda o que a contém);
     // o que `box_px` troca é a BASE — o token, ou o que o chamador mediu. `None` reduz à
@@ -105,15 +110,38 @@ pub(crate) fn paint_boolean_mark(
     // o app pinta desde sempre, e é o caminho de OMISSÃO.
     let redesign = crate::paint::ui_is_redesign();
     let decorator = decorator && redesign;
-    let box_rect = if redesign {
-        Rect::new(
+    // ⭐⭐⭐ **A MARCA VIVE DENTRO DE UMA CAIXA, encostada à ESQUERDA dela** — ordem do dono,
+    // 2026-09-15, com a foto do inspector do **Godot**: *«coloca um box em todo o lado direito da
+    // linha e dentro do box o checkbox alinhado à esquerda. Vamos adotar essa aparência»*.
+    //
+    // ⭐⭐ **E com isso a linha de marcar deixa de ser a excepção do §3 do manual:** a caixa ocupa
+    // a coluna do CONTROLO — começa no meio da linha e acaba na margem direita, exactamente como a
+    // caixa de um número. *A «uma margem direita» que a âncora à direita comprava passa a sair da
+    // própria caixa, e o meio da linha passa a valer também aqui.*
+    //
+    // ⚠️ A superfície é a PORTA do campo ([`crate::widget::paint_field_surface`]) — ⛔ nunca uma
+    // cópia das quatro linhas que o `paint_number_input_with_buffer` escreve.
+    let caixa = match (redesign, linha) {
+        (true, Some(sec)) => Some(
+            crate::widget::property_box::colunas_da_linha(rect.x, rect.w, rect.y, rect.h, sec)
+                .control,
+        ),
+        _ => None,
+    };
+    let box_rect = match (redesign, caixa) {
+        (true, Some(campo)) => Rect::new(
+            campo.x + crate::widget::field_pad_x(),
+            box_y,
+            box_size,
+            box_size,
+        ),
+        (true, None) => Rect::new(
             crate::widget::property_box::value_column(rect, box_size, decorator).x,
             box_y,
             box_size,
             box_size,
-        )
-    } else {
-        Rect::new(rect.x, box_y, box_size, box_size)
+        ),
+        (false, _) => Rect::new(rect.x, box_y, box_size, box_size),
     };
 
     // ⭐ **A superfície da linha ACENDE**, e é ela que ensina que o alvo é largo. Emerge do nada
@@ -146,6 +174,29 @@ pub(crate) fn paint_boolean_mark(
                 resolve(ColorToken::Bg2, theme),
             );
         }
+    }
+
+    // ⭐⭐⭐ **A CAIXA** — ver o bloco da geometria acima. Ela vem depois do realce da linha (que é
+    //    o fundo) e antes da marca (que assenta nela).
+    if let Some(campo) = caixa {
+        crate::widget::paint_field_surface(
+            scene,
+            campo,
+            match state {
+                CheckboxState::Disabled => crate::widget::TextInputState::Disabled,
+                CheckboxState::Focused => crate::widget::TextInputState::Focused,
+                // ⚠️ **`Pressed` lê-se como `Hovered` na CAIXA**, e a diferença fica na marca: um
+                //    campo não tem estado «carregado» (ver o `TextInputState`), e inventar um aqui
+                //    poria a linha de marcar a responder ao dedo de uma maneira que nenhum outro
+                //    campo do app responde.
+                CheckboxState::Hovered | CheckboxState::Pressed => {
+                    crate::widget::TextInputState::Hovered
+                }
+                CheckboxState::Normal => crate::widget::TextInputState::Normal,
+            },
+            hover_t,
+            theme,
+        );
     }
 
     let radius = crate::paint::frame_radius(theme, Radius::Xs.px());
@@ -247,111 +298,16 @@ pub(crate) fn paint_boolean_mark(
     box_rect
 }
 
-/// Square box + label. Box fills with `Accent` when Checked, paints a check glyph; Indeterminate
-/// paints a dash glyph.
-///
-/// ⚠️ **A marca vai à DIREITA e o rótulo à esquerda** desde o redesenho de 2026-09 — ver
-/// [`paint_boolean_mark`], que é onde a geometria vive.
-pub fn paint_checkbox(
-    cb: &Checkbox,
-    rect: Rect,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-) {
-    let box_rect = paint_boolean_mark(
-        rect,
-        BooleanMark {
-            value: cb.value,
-            state: cb.state,
-            hover_t: cb.hover_t,
-            box_px: cb.box_px,
-            decorator: cb.decorator,
-        },
-        scene,
-        theme,
-    );
-
-    if !cb.label.is_empty() {
-        let label_color = if cb.state == CheckboxState::Disabled {
-            ColorToken::TextDisabled
-        } else {
-            ColorToken::Text1
-        };
-        // ⚠️ **`Sm`, e não `Base`** — medido em 2026-09-03: a linha de propriedade escreve o
-        // rótulo a `12 px` e esta escrevia a `13`. Num formulário as duas alternam, e **1 px de
-        // corpo de letra entre linhas vizinhas lê-se como desalinho**, não como ênfase.
-        // ⚠️ **No clássico volta a `Base`, à DIREITA da caixa** — é a linha de sempre.
-        let redesign = crate::paint::ui_is_redesign();
-        let font_size = if redesign {
-            TypeToken::Sm.px()
-        } else {
-            TypeToken::Base.px()
-        };
-        let ly = rect.y + (rect.h - font_size) * 0.5;
-        if let (true, Some(sec)) = (redesign, cb.seccao) {
-            // ⭐⭐⭐ **O NOME VAI À COLUNA DO NOME DA SECÇÃO** — report do dono, 2026-09-14
-            // (*«as labels alinhadas todas à direita»*) levado até à linha de MARCAR.
-            //
-            // ⛔⛔ Até 2026-09-15 ele era encostado à esquerda da faixa e corria até à marca. Num
-            // formulário que alterna números e marcas isso dá **duas colunas de nome**, alternando
-            // linha sim linha não — *a mesma doença do rótulo por cima do campo, meia volta
-            // adiante*.
-            //
-            // ⚠️ **A marca NÃO se move**, e isso é uma lei com gate: ela partilha a
-            // [`super::super::property_box::value_column`] com o número, e é isso que dá ao
-            // formulário **uma** margem direita (`the_mark_is_anchored_to_the_right_edge`). ⇒ entre
-            // o nome e a marca fica um vão, e ele é o mesmo em todas as linhas de marcar.
-            let row =
-                crate::widget::property_box::colunas_da_linha(rect.x, rect.w, rect.y, rect.h, sec);
-            crate::widget::property_box::paint_property_label(
-                text_system,
-                scene,
-                &cb.label,
-                row.label.x,
-                ly,
-                font_size,
-                row.label.w,
-                resolve(label_color, theme),
-            );
-        } else if redesign {
-            // ⛔ **Fora do formulário** (a pele de canvas): o nome fica onde o artista o pôs.
-            let lx = rect.x + Spacing::Md.px();
-            let budget = (box_rect.x - lx - Spacing::Md.px()).max(0.0);
-            let cut =
-                crate::widget::property_box::fit_label(text_system, &cb.label, font_size, budget);
-            if !cut.is_empty() {
-                paint_text(
-                    text_system,
-                    scene,
-                    &cut,
-                    lx,
-                    ly,
-                    font_size,
-                    f32::INFINITY,
-                    resolve(label_color, theme),
-                );
-            }
-        } else if rect.w > box_rect.w + Spacing::Md.px() {
-            let lx = rect.x + box_rect.w + Spacing::Md.px();
-            paint_text(
-                text_system,
-                scene,
-                &cb.label,
-                lx,
-                ly,
-                font_size,
-                (rect.x + rect.w - lx).max(0.0),
-                resolve(label_color, theme),
-            );
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    // ⚠️ O pintor que COMPÕE a marca com o nome vive no irmão desde 2026-09-15 (tecto de LOC) —
+    //    estes testes exercitam-no de propósito: é ele o caminho do produto.
+    use super::super::Checkbox;
+    use super::super::label::paint_checkbox;
+    use crate::zones::Rect;
     use ph2d_a11y::NodeId;
+    use ph2d_text::TextSystem;
     use ph2d_tokens::CHECKBOX_BOX_PX as CHROME_CHECKBOX_BOX;
 
     /// A caixa de partida dos testes de tinta — um sítio só.

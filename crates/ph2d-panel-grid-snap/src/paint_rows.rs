@@ -12,7 +12,7 @@ use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::widget::{TextInputState, Toggle, paint_toggle};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, Theme};
+use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::VectorScene;
 
 pub(crate) fn read_number_input(
@@ -410,13 +410,42 @@ pub(crate) fn paint_labeled_toggle(
         resolve(ColorToken::Text1, theme),
     );
 
-    let toggle_w = 40.0; // LITERAL-PX-OK: canonical compact toggle width (matches Inspector toggles)
-    let toggle_h = 20.0; // LITERAL-PX-OK: canonical compact toggle height (matches Inspector toggles)
+    // ⭐⭐⭐ **A MARCA VIVE DENTRO DE UMA CAIXA que ocupa a coluna do controlo, encostada à
+    // ESQUERDA dela** — ordem do dono, 2026-09-15, com a foto do inspector do Godot. ⛔ Antes disto
+    // o interruptor era um comprimido de `40 × 20` encostado à margem direita, com dois literais
+    // próprios: *o único controlo deste painel que não acabava onde os campos acabam.*
+    //
+    // ⚠️ **As duas portas são as do app**, e nenhuma linha de tinta se escreve aqui: a superfície é
+    // a [`ph2d_editor_core::widget::paint_field_surface`] (a MESMA do campo numérico) e a marca é o
+    // [`paint_toggle`], a quem se dá um rect do tamanho dela.
+    let (visual, t) = store.toggle_visual(id);
+    ph2d_editor_core::widget::paint_field_surface(
+        scene,
+        colunas.control,
+        match visual {
+            ph2d_editor_core::widget::ToggleState::Disabled => {
+                ph2d_editor_core::widget::TextInputState::Disabled
+            }
+            ph2d_editor_core::widget::ToggleState::Focused => {
+                ph2d_editor_core::widget::TextInputState::Focused
+            }
+            ph2d_editor_core::widget::ToggleState::Hovered
+            | ph2d_editor_core::widget::ToggleState::Pressed => {
+                ph2d_editor_core::widget::TextInputState::Hovered
+            }
+            ph2d_editor_core::widget::ToggleState::Normal => {
+                ph2d_editor_core::widget::TextInputState::Normal
+            }
+        },
+        t,
+        theme,
+    );
+    let marca = ph2d_tokens::CHECKBOX_BOX_PX.min(colunas.control.h);
     let toggle_rect = Rect::new(
-        row.x + row.w - toggle_w - Spacing::Xs.px(),
-        row.y + (row.h - toggle_h) * 0.5,
-        toggle_w,
-        toggle_h,
+        colunas.control.x + ph2d_editor_core::widget::field_pad_x(),
+        colunas.control.y + (colunas.control.h - marca) * 0.5,
+        marca,
+        marca,
     );
     // ⚠️ **Era um literal de struct com uma derivação PRIVADA do estado** (`toggle_state`, a sexta
     //    cópia da mesma pergunta no app) — e um literal não tem como ganhar um campo novo sem que
@@ -426,7 +455,8 @@ pub(crate) fn paint_labeled_toggle(
         .on(on)
         .visual(store.toggle_visual(id));
     paint_toggle(&toggle, toggle_rect, scene, theme);
-    hit_index.register(id, toggle_rect);
+    // ⭐ **O alvo é a CAIXA inteira, não a marca** — ela é o que o artista vê como o controlo.
+    hit_index.register(id, colunas.control);
 }
 
 // ⛔ **A re-exportação do `button_state` MORREU em 2026-09-15.** Ela existia *«para o

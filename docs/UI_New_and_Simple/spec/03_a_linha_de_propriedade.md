@@ -314,11 +314,43 @@ adiante*.
 na coluna da SECÇÃO** (§6). A [`Seccao`] viaja no próprio widget (`Checkbox::seccao`), e o default é
 «sou uma linha de formulário» — são 27 sítios contra um.
 
-⚠️⚠️ **A MARCA não se move, e é uma divergência DELIBERADA do §3.** Ela fica na **coluna do valor**,
-partilhada com o número, e é isso que dá ao formulário **uma** margem direita — a lei que o
-`the_form_has_one_right_margin` defende desde o redesenho. ⇒ entre o nome e a marca fica um vão, e
-ele é o mesmo em todas as linhas de marcar. *Pôr a marca no meio da linha alinharia-a com os campos
-e desalinharia-a com a margem direita; o dono já decidiu esta.*
+### ⭐⭐⭐ E a MARCA vive dentro de uma CAIXA — a aparência do inspector do Godot
+
+⛔⛔ **Ordem do dono, 2026-09-15, com duas fotos (Godot e Blender):** *«tanto o Blender como o Godot
+têm checkbox mais sofisticada que a nossa. Na Godot coloca um box em todo o lado direito da linha e
+dentro do box o checkbox alinhado à esquerda. Vamos adotar essa aparência»*.
+
+```
+.........Nome    [ ☑                        ] ·
+         ^ a coluna do nome    ^ a caixa = a COLUNA DO CONTROLO      ^ a coluna de animação
+```
+
+- a **caixa** ocupa a coluna do controlo — começa no meio da linha e acaba na margem direita,
+  **exactamente como a caixa de um número**;
+- a **marca** encosta à ESQUERDA dentro dela, no mesmo recuo em que um campo põe o primeiro
+  caractere ([`field_pad_x`]);
+- o alvo do clique é a linha inteira, como sempre.
+
+⭐⭐ **Com isto a linha de marcar deixa de ser a excepção do §3.** A redacção anterior desta secção
+dizia que a marca ficava na coluna do VALOR *«e é uma divergência deliberada»*, porque era ela que
+dava ao formulário **uma** margem direita. Hoje essa margem sai da **própria caixa**, e o *«o
+controlo começa no meio da linha»* passa a valer também aqui. *A cura do dono desfez uma excepção
+que eu tinha escrito como permanente.*
+
+⚠️ **A superfície é a PORTA do campo** ([`paint_field_surface`]) — o raio pelo tema, o fundo pelo
+`field_fill`, a moldura com o eixo do hover. ⛔ Nunca uma cópia das quatro linhas que o
+`paint_number_input_with_buffer` escreve: *duas superfícies de campo que hoje concordam são duas que
+amanhã divergem*, e este pintor já pagou isso ao escrever `Bg1` (a cor de um CARTÃO) e deixar a
+caixa invisível.
+
+⛔ **O que NÃO foi copiado do Godot: a palavra «On» dentro da caixa.** Ela não muda com o valor — a
+linha desligada continua a dizer *On* —, e um rótulo constante ao lado de um indicador que varia é
+exactamente a família de defeitos que o `CLAUDE.md` §5.0 caça. *Decisão do dono se a quiser de
+volta; é uma linha.*
+
+⚠️ **O INTERRUPTOR segue a mesma lei** (a linha *Show grid* do painel da Grelha): ele era um
+comprimido de `40 × 20` encostado à margem direita, com dois literais próprios — *o único controlo
+daquele painel que não acabava onde os campos acabam*.
 
 ⛔ **A pele de canvas é a excepção, com nome:** ali a moldura é o que o **artista** desenhou, não a
 linha de um painel, e o nome fica onde ele o pôs (`Checkbox::fora_do_formulario`). ⚠️ É um campo
@@ -398,6 +430,8 @@ ali eles cortam — que é a troca que o dono escolheu em 2026-05-24.
 | §6 | numa secção, todas as caixas começam no mesmo `x` | `Seccao` | `a_seccao_poe_todas_as_caixas_na_mesma_coluna` |
 | §6-quinquies | o nome de uma linha de marcar vive na coluna do nome | `Checkbox` | `a_linha_de_marcar_poe_o_nome_na_coluna_do_nome` |
 | §6-quinquies | a pele de canvas não segue a coluna de uma secção | `fora_do_formulario` | `fora_do_formulario_o_nome_fica_onde_o_artista_o_pos` |
+| §6-quinquies | a marca vive dentro de uma caixa que ocupa a coluna do controlo | `paint_field_surface` | `a_marca_vive_dentro_de_uma_caixa_que_ocupa_a_coluna_do_controlo` |
+| §6-quinquies | o interruptor pinta a MESMA marca que a caixa de verificação | `paint_boolean_mark` | `the_switch_paints_the_very_same_mark_as_the_checkbox` |
 | §6 | quantos rótulos elidem, por largura do dock | `property_row_columns_for` | `the_elision_ladder_only_shrinks` |
 | §6-bis | as componentes que não cabem ao piso descem, dentro da coluna do controlo | `property_fields_layout` | `a_row_of_many_fields_never_starves_them` |
 | §6-bis | alargar o painel nunca faz caber menos campos por linha | `property_fields_layout` | `a_wider_panel_never_fits_fewer_fields` |

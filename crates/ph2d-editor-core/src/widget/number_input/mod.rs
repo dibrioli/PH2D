@@ -8,11 +8,11 @@
 
 use crate::icons::IconId;
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
-use crate::widget::text_input::{TextInputState, border_color, field_fill};
+use crate::widget::text_input::TextInputState;
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
@@ -218,28 +218,12 @@ pub fn paint_number_input_with_buffer(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    // ⭐ Raio e moldura pela porta do TEMA — no clássico byte-idêntico; num tema moderno o campo
-    //    é plano e a moldura só aparece no foco (anel a 2 px) ou no erro.
-    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    // ⭐⭐ **O fundo é do TEMA, pela porta** ([`crate::widget::text_input::field_fill`]) — este
-    //    pintor escrevia `Bg1`, que é a cor de um CARTÃO de secção, e num tema moderno não há
-    //    moldura de repouso: a caixa ficava a `0/255` do que está por baixo. Report do dono,
-    //    2026-09-14: *«caixas de input numérico sem cor de fundo»*.
-    fill_rounded_rect(scene, rect, radius, field_fill(input.state, theme));
-    let stroke_w = if input.state == TextInputState::Focused {
-        2.0
-    } else {
-        1.0
-    };
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        crate::widget::text_input::feel_of(input.state),
-        stroke_w,
-        border_color(input.state, input.hover_t, theme),
-    );
+    // ⭐⭐⭐ **A superfície é a PORTA** ([`crate::widget::paint_field_surface`]) — o raio pelo tema,
+    //    o fundo pelo `field_fill` e a moldura com o eixo do hover. ⛔ As quatro linhas viviam aqui
+    //    e a LINHA DE MARCAR passou a precisar delas (2026-09-15): *uma segunda cópia divergiria no
+    //    primeiro caso especial*, que é o que este mesmo pintor já pagou ao escrever `Bg1` — a cor
+    //    de um CARTÃO — e a deixar a caixa a `0/255` do que está por baixo (report do dono, 14/09).
+    crate::widget::paint_field_surface(scene, rect, input.state, input.hover_t, theme);
 
     let chip_w = stepper_width(rect);
     let pad_x = crate::widget::field_pad_x();

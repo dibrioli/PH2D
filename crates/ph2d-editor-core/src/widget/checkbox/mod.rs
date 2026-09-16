@@ -159,8 +159,10 @@ impl Checkbox {
     }
 }
 
+/// ⭐ O NOME de uma linha de marcar — irmão por responsabilidade (ver o topo dele).
+mod label;
 mod mark;
-pub use mark::paint_checkbox;
+pub use label::paint_checkbox;
 // ⚠️ `pub(crate)`: o pintor da marca é a porta do **interruptor**, não da casa. Um `pub` aqui
 // convidaria um painel a desenhar um booleano sem passar pelo `Checkbox`, que é onde vivem o
 // estado, o valor e o nó de acessibilidade.

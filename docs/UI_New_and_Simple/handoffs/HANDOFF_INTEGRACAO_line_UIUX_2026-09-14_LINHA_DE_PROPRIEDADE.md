@@ -2105,3 +2105,76 @@ a quem sabe repartir a linha.* O `property_row` re-exporta-a e **nenhum chamador
 - As caixas de meia largura (câmera, animação) ficam no default **de propósito**: ali a secção é o
   PAR, não a coluna do painel.
 - O `row2` e as amostras de cor do Vector, e as cinco barras do Painter (spec §2).
+
+---
+
+## 32 — ⭐⭐⭐ *«Na Godot coloca um box em todo o lado direito da linha»* — A CAIXA DA LINHA DE MARCAR
+
+**Ordem do dono, 2026-09-15**, com duas fotos (o inspector do **Godot** e um painel do **Blender**):
+*«tanto o Blender como o Godot têm checkbox mais sofisticada que a nossa. Na Godot coloca um box em
+todo o lado direito da linha e dentro do box o checkbox alinhado à esquerda. Vamos adotar essa
+aparência. Documente»*.
+
+### 32.1 — O que ficou
+
+```
+.........Nome    [ ☑                        ] ·
+         ^ coluna do nome   ^ a CAIXA = a coluna do CONTROLO        ^ coluna de animação
+```
+
+- a **caixa** ocupa a coluna do controlo (do meio da linha à margem direita), pintada pela **porta
+  do campo** — a mesma superfície do campo numérico;
+- a **marca** encosta à esquerda dentro dela, no recuo [`field_pad_x`];
+- o **interruptor** (a linha *Show grid* da Grelha) segue a mesma lei: ele era um comprimido de
+  `40 × 20` encostado à margem direita, com dois literais próprios, e era *o único controlo daquele
+  painel que não acabava onde os campos acabam*. O alvo do clique dele passou da pílula para a
+  **caixa**.
+
+### 32.2 — ⭐⭐ A cura do dono DESFEZ uma excepção que eu tinha escrito como permanente
+
+O §31 (a wave anterior, do mesmo dia) declarava: *«a MARCA não se move, e é uma divergência
+DELIBERADA do §3 — ela fica na coluna do VALOR, e é isso que dá ao formulário uma margem direita»*.
+
+Com a caixa, essa margem passa a sair da **própria caixa**, e o *«o controlo começa no meio da
+linha»* volta a valer também aqui. ⇒ **a linha de marcar deixou de ser a excepção do manual.**
+
+⚠️ *Uma divergência que eu justifiquei com uma lei real pode desaparecer quando o desenho muda — e
+a nota que a declara permanente é a que envelhece.*
+
+### 32.3 — A porta que a wave criou
+
+`widget::paint_field_surface(scene, rect, state, hover_t, theme)` — o raio pelo tema, o fundo pelo
+`field_fill` e a moldura com o eixo do hover, **num sítio só**. As quatro linhas viviam dentro do
+`paint_number_input_with_buffer`; sem a extracção a caixa de verificação teria de as copiar.
+
+⛔ *Duas superfícies de campo que hoje concordam são duas que amanhã divergem* — e este mesmo pintor
+já pagou isso: ele escrevia `Bg1` (a cor de um CARTÃO) e num tema moderno a caixa ficava a `0/255`
+do que está por baixo (report do dono, 14/09: *«caixas de input numérico sem cor de fundo»*).
+
+### 32.4 — ⛔ O que NÃO foi copiado do Godot, e porquê
+
+**A palavra «On» dentro da caixa.** No Godot ela está lá em todas as linhas e **não muda com o
+valor** — a linha desligada continua a dizer *On*. Um rótulo constante ao lado de um indicador que
+varia é a família de defeitos que o `CLAUDE.md` §5.0 caça (*um controlo que mente*). ⇒ fica de fora,
+**com a decisão devolvida ao dono**: se ele a quiser, é uma linha.
+
+### 32.5 — Os gates, e o que cada mutação matou
+
+| gate | mutação que sangra |
+|---|---|
+| `a_marca_vive_dentro_de_uma_caixa_que_ocupa_a_coluna_do_controlo` | apagar a chamada à `paint_field_surface` ⇒ `21` segmentos dos dois lados |
+| `a_linha_de_marcar_poe_o_nome_na_coluna_do_nome` | o rótulo volta ao ramo encostado à esquerda ⇒ `23` glifos dos dois lados |
+| `the_form_has_one_right_margin` | dar tinta própria ao `paint_toggle` |
+
+⚠️ **E o `the_switch_paints_the_very_same_mark_as_the_checkbox` teve de ser corrigido em voz:** ele
+compara a tinta do interruptor com a de uma caixa de verificação no MESMO rect, e uma linha de
+formulário passou a pintar a superfície do campo à volta da marca. A comparação justa é contra a
+marca **fora do formulário** (`seccao = None`) — *o que aquele gate afirma é a fusão da MARCA*, e
+comparar com a caixa ligada mediria a moldura de um campo contra a ausência dela.
+
+### 32.6 — ⏳ ABERTO
+
+- A palavra «On» (32.4) — decisão do dono.
+- Os 23 sítios de `Checkbox` que ficam no default (`apenas_campos(1)`), e as caixas de **meia
+  largura** (câmara, animação), de propósito: ali a secção é o PAR.
+- O `row2` e as amostras de cor do Vector; as cinco barras do Painter (spec §2).

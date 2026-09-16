@@ -191,6 +191,12 @@ fn the_switch_paints_the_very_same_mark_as_the_checkbox() {
         // uma linha de formulário). Comparar com ela ligada mediria a coluna, não o desenho.
         let mut cb = Checkbox::new(ID, "").value(v).state(st);
         cb.decorator = false;
+        // ⚠️⚠️ **E `seccao = None` desde 2026-09-15**, quando a linha de marcar ganhou CAIXA (a
+        // aparência do inspector do Godot, ordem do dono): uma linha de formulário pinta agora a
+        // superfície do campo à volta da marca, e o interruptor — que recebe um rect com forma de
+        // interruptor — não. *O que este gate afirma é a fusão da MARCA*; comparar com a caixa
+        // ligada mediria a moldura de um campo contra a ausência dela.
+        cb.seccao = None;
         paint_checkbox(&cb, r, &mut scene, &mut text, Theme::Forge);
         let e = scene.inner().encoding();
         (e.path_data.clone(), e.draw_data.clone())

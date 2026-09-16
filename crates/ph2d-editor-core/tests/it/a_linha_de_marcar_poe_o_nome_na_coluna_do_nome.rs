@@ -144,3 +144,54 @@ fn fora_do_formulario_o_nome_fica_onde_o_artista_o_pos() {
         "a pele de canvas passou a seguir a coluna de uma seccao"
     );
 }
+
+/// ⭐⭐⭐ **A MARCA VIVE DENTRO DE UMA CAIXA que ocupa a coluna do controlo.**
+///
+/// ⛔⛔ **Ordem do dono, 2026-09-15, com a foto do inspector do Godot:** *«coloca um box em todo o
+/// lado direito da linha e dentro do box o checkbox alinhado à esquerda. Vamos adotar essa
+/// aparência»*.
+///
+/// ⭐⭐ Com ela a linha de marcar deixa de ser a **excepção do §3** do manual: a caixa começa no meio
+/// da linha e acaba na margem direita, exactamente como a caixa de um número — *a «uma margem
+/// direita» passa a sair da própria caixa*.
+///
+/// # A régua
+///
+/// Aqui os **caminhos** servem (ao contrário do rótulo, que é glifo): a superfície do campo é um
+/// rectângulo arredondado mais uma moldura, e isso são segmentos.
+///
+/// 1. **a caixa existe** — a linha de formulário desenha mais caminhos que a mesma marca fora dele;
+/// 2. **a caixa é a coluna do CONTROLO** — trocar a secção move-a, e a tinta muda.
+///
+/// **Mutação que deve sangrar:** apagar a chamada à `paint_field_surface` no `paint_boolean_mark`.
+#[test]
+fn a_marca_vive_dentro_de_uma_caixa_que_ocupa_a_coluna_do_controlo() {
+    redesign();
+    let mut ts = TextSystem::new();
+    let (sem_nomes, com_o_nome) = duas_seccoes(&mut ts);
+
+    // Sem rótulo: o que se mede é a CAIXA, não o texto.
+    let mut caminhos = |sec: Option<Seccao>| -> (u32, Vec<u32>) {
+        let mut scene = VectorScene::new();
+        let mut cb = Checkbox::new(ID, "")
+            .state(CheckboxState::Normal)
+            .value(CheckboxValue::Unchecked);
+        cb.seccao = sec;
+        paint_checkbox(&cb, FAIXA, &mut scene, &mut ts, Theme::Forge);
+        let e = scene.inner().encoding();
+        (e.n_path_segments, e.path_data.clone())
+    };
+
+    let (com_caixa, tinta_estreita) = caminhos(Some(sem_nomes));
+    let (sem_caixa, _) = caminhos(None);
+    assert!(
+        com_caixa > sem_caixa,
+        "a linha de formulario desenhou {com_caixa} segmentos e a marca sozinha {sem_caixa}:          a CAIXA nao esta' la'"
+    );
+
+    let (_, tinta_larga) = caminhos(Some(com_o_nome));
+    assert_ne!(
+        tinta_estreita, tinta_larga,
+        "a caixa nao se moveu quando a coluna da seccao mudou: ela nao e' a coluna do CONTROLO"
+    );
+}

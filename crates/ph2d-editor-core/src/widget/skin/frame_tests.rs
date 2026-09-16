@@ -38,6 +38,11 @@ fn the_skin_asks_for_the_whole_frame() {
     // (2026-09-03): ali a moldura é o que o artista desenhou, não uma linha de formulário. Sem esta
     // linha o gate compara duas configurações diferentes e acusa a moldura — que está certa.
     c.decorator = false;
+    // ⚠️⚠️ **E o mesmo para a CAIXA do campo** (2026-09-15, quando a linha de marcar a ganhou): a
+    // pele declara `seccao = None` pela mesma razão — ali não há secção nenhuma, e a superfície de
+    // um campo à volta da marca desenharia uma moldura que o artista não pediu. Sem esta linha o
+    // oráculo pinta a caixa, a pele não, e o gate acusa a moldura — que está certa.
+    c.seccao = None;
     paint_checkbox(&c, tall, &mut want, &mut ts, Theme::Forge);
     let mut got = ph2d_vector::VectorScene::new();
     paint_widget_skin(

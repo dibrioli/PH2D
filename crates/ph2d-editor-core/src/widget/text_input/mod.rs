@@ -195,6 +195,44 @@ pub(crate) fn border_color(
     )
 }
 
+/// ⭐⭐⭐ **A SUPERFÍCIE DE UM CAMPO — o fundo, o raio e a moldura, num sítio só.**
+///
+/// ⛔⛔ **Ela nasce em 2026-09-15, quando a LINHA DE MARCAR passou a ter caixa** (ordem do dono,
+/// com a foto do inspector do Godot: *«coloca um box em todo o lado direito da linha e dentro do
+/// box o checkbox alinhado à esquerda»*). Sem esta porta, a caixa de verificação teria de **copiar**
+/// as quatro linhas que o [`super::paint_number_input_with_buffer`] escreve — o raio pela porta do
+/// tema, o `field_fill`, a espessura do traço no foco e o `border_color` com o eixo do hover.
+///
+/// ⚠️ *Duas superfícies de campo que hoje concordam são duas que amanhã divergem* — e esta casa já
+/// pagou isso na coluna do rótulo (seis literais) e na âncora do arrasto (`surface_rect`).
+///
+/// ⚠️ **O `hover_t` entra**: quem responde ao rato num campo é a BORDA, não o fundo — ver
+/// [`field_fill`] e [`border_color`].
+pub fn paint_field_surface(
+    scene: &mut ph2d_vector::VectorScene,
+    rect: Rect,
+    state: TextInputState,
+    hover_t: f32,
+    theme: Theme,
+) {
+    let radius = crate::paint::frame_radius(theme, ph2d_tokens::Radius::Sm.px());
+    crate::paint::fill_rounded_rect(scene, rect, radius, field_fill(state, theme));
+    let stroke_w = if state == TextInputState::Focused {
+        2.0 // LITERAL-PX-OK: anel de foco, o dobro do traco de repouso
+    } else {
+        1.0 // LITERAL-PX-OK: o traco de repouso de um campo
+    };
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        feel_of(state),
+        stroke_w,
+        border_color(state, hover_t, theme),
+    );
+}
+
 pub fn paint_text_input(
     input: &TextInput,
     rect: Rect,

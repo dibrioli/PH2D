@@ -685,5 +685,24 @@
 ///
 /// ⛔ **Sem degrau de migração** (Enio, 26/08) — derivar os pesos no load seria correr o solver
 /// dentro do caminho de abrir um ficheiro. ⚠️ **A tripla NÃO o vê** (14.ª vez): estes bytes estão
-/// DENTRO do `source` de um `ComponentBlob`, opaco duas vezes.
+/// DENTRO do `source` de um `ComponentBlob`, opaco duas vezes./// # 130 -> 131 — a forma VECTORIAL presa também leva os pesos dentro (`line/Vector`)
+///
+/// O degrau `130` deixou a 1.ª mídia na lei euclidiana **por limite nomeado** (*«o padrão-ouro
+/// precisa de uma malha do domínio, e uma Bézier não tem uma»*). Ela tem: o **interior** dos
+/// contornos fechados. ⇒ o `SkinBind::source` de um `VecPathRef` deixou de ser um `VecPath` e passou
+/// a ser um `ph2d_skeleton_live::skinned_mesh::SkinnedPath` (`{ path, pesos }`), com um peso por
+/// **ponto de controlo**.
+///
+/// ⚠️⚠️ **Obrigatório, e a razão é o postcard** — a mesma dos degraus `112`, `127`, `129` e `130`:
+/// ele é **posicional**, e a struct nova é a antiga **seguida** do vector.
+///
+/// ⭐ **E é o degrau que fecha a divergência que o `130` abriu:** as duas mídias voltam a responder à
+/// MESMA lei. Um rig com um braço vectorial e um braço em imagem deixou de ter duas.
+///
+/// ⛔ **Um caminho ABERTO fica na lei derivada, e é uma resposta**: uma linha tem área zero, logo não
+/// há domínio para a energia. A tabela sai **vazia**, que é a mesma forma que uma imagem sem pesos
+/// usa.
+///
+/// ⛔ **Sem degrau de migração** (Enio, 26/08). ⚠️ **A tripla NÃO o vê** (15.ª vez): os bytes estão
+/// DENTRO do `source` de um `ComponentBlob`.
 pub(crate) const PROJECT_SCHEMA: u32 = 137;

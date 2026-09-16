@@ -96,6 +96,48 @@ impl SkinnedMesh {
     }
 }
 
+/// ⭐⭐⭐ **A FORMA VECTORIAL PRESA, COM OS PESOS DENTRO** — o gémeo da [`SkinnedMesh`] para a 1.ª
+/// mídia.
+///
+/// ⚠️ **Ela é uma struct própria e não um genérico**, e a razão é o que cada mídia GUARDA: uma
+/// imagem guarda uma malha (a amostragem da arte) e um caminho guarda o **caminho** (a arte
+/// exacta). ⛔ A malha do domínio de um caminho é um **andaime do bind** — ela não sobrevive, e
+/// guardá-la seria guardar o andaime em vez da obra.
+///
+/// ⚠️ **A tabela é por PONTO DE CONTROLO**, na ordem do `for_each_vert_mut`: `3k`, `3k+1`, `3k+2`
+/// são âncora, alça de entrada e alça de saída do vértice `k`. Ver
+/// [`ph2d_vec_skin::pesos::pesos_do_caminho`].
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SkinnedPath {
+    /// A geometria autorada, como ela foi presa.
+    pub path: ph2d_vec_scene::VecPath,
+    /// **Achatado**: `pesos[c * ossos + j]` é a fracção do ponto de controlo `c` que pertence ao
+    /// tendão `j`. ⭐ Vazio ⇒ a lei derivada (um caminho ABERTO não tem interior, logo não tem
+    /// domínio, logo não tem pesos — e isso é uma resposta, não um erro).
+    pub pesos: Vec<f64>,
+}
+
+impl SkinnedPath {
+    /// Quantos ossos a tabela cobre — `0` quando não há tabela. ⚠️ **DERIVADO**, como na irmã.
+    #[must_use]
+    pub fn ossos(&self) -> usize {
+        self.pesos.len().checked_div(self.pontos()).unwrap_or(0)
+    }
+
+    /// Quantos pontos de controlo o caminho tem — três por vértice.
+    #[must_use]
+    pub fn pontos(&self) -> usize {
+        self.path.verts_all().count() * 3
+    }
+
+    /// ⛔ **O par fecha?** — `pesos` tem de ser um múltiplo exacto do número de pontos de controlo.
+    #[must_use]
+    pub fn valida(&self) -> bool {
+        let n = self.pontos();
+        n > 0 && self.pesos.len().is_multiple_of(n)
+    }
+}
+
 #[cfg(test)]
 #[path = "skinned_mesh_tests.rs"]
 mod tests;

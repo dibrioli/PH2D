@@ -19,7 +19,7 @@
 use ph2d_ecs::{ChildOf, Entity, SimWorld, StableId, VecPathRef};
 use ph2d_skeleton::{Skin, SkinBone, Xform};
 use ph2d_skeleton_ecs::{Bone, SkinBind, Tendon};
-use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
+use ph2d_vec_scene::{VecPathId, VecScene};
 
 use ph2d_vec_entities::entities::VecEntityMap;
 
@@ -320,10 +320,19 @@ pub fn recook(sim: &SimWorld, scene: &mut VecScene) {
         }
         // Uma fonte corrompida é PULADA (não há o que deformar, e melhor não escrever lixo) — a
         // forma fica com a última geometria boa. Mesma escolha do envelope.
-        let Ok(mut src) = postcard::from_bytes::<VecPath>(&skin.source) else {
+        let Ok(guardado) = postcard::from_bytes::<crate::skinned_mesh::SkinnedPath>(&skin.source)
+        else {
             continue;
         };
-        ph2d_vec_skin::apply(&pele, &mut src);
+        // ⛔ Uma tabela que não fecha com o caminho cai na lei derivada em vez de ser lida
+        // deslocada — pesos plausíveis sobre os pontos errados dão arte errada sem um erro.
+        let pesos: &[f64] = if guardado.valida() {
+            &guardado.pesos
+        } else {
+            &[]
+        };
+        let mut src = guardado.path.clone();
+        ph2d_vec_skin::aplica_com(&pele, &mut src, pesos);
         if let Some(p) = scene.path_mut(id) {
             p.replace_cooked(src);
         }
@@ -360,39 +369,35 @@ pub fn bind(
         let Some(src) = scene.paths().iter().find(|p| p.id == id) else {
             continue;
         };
-        let Ok(bytes) = postcard::to_allocvec(src) else {
-            continue;
-        };
         let Some(shape_inv) = world_of(sim, shape).inverse() else {
             continue;
         };
-        let tendoes = tendons_for(sim, &ossos, shape_inv);
+        let pares = tendons_and_axes(sim, &ossos, shape_inv);
+        // ⭐⭐⭐ **OS PESOS DO PADRÃO-OURO TAMBÉM PARA O VECTOR** (2026-09-15, 2.ª metade). Os eixos
+        // já vêm no espaço da forma — que é o espaço em que os vértices dela vivem.
+        //
+        // ⛔ **Vazio é uma resposta:** um caminho ABERTO não tem interior, logo não tem domínio para
+        // a energia, e ele fica na lei derivada. *Inventar um domínio para uma linha seria inventar
+        // uma arte que o artista não desenhou.*
+        let eixos: Vec<ph2d_skin_weights::Handle> = pares
+            .iter()
+            .map(|o| ph2d_skin_weights::Handle { a: o.a, b: o.b })
+            .collect();
+        let pesos = ph2d_vec_skin::pesos::pesos_do_caminho(src, &eixos).unwrap_or_default();
+        let guardado = crate::skinned_mesh::SkinnedPath {
+            path: src.clone(),
+            pesos,
+        };
+        let Ok(bytes) = postcard::to_allocvec(&guardado) else {
+            continue;
+        };
+        let tendoes = pares.into_iter().map(|o| o.tendon).collect();
         sim.world_mut()
             .entity_mut(shape)
             .insert(SkinBind::new(bytes, tendoes));
         feitos += 1;
     }
     feitos
-}
-
-/// ⭐⭐⭐ **OS TENDÕES DE UMA COISA** — a lei do bind, escrita uma vez para as DUAS mídias.
-///
-/// `rest = S⁻¹ ∘ B` — aplica o mundo do osso primeiro, depois leva ao espaço da coisa.
-///
-/// ⚠️ **Um osso sem `StableId` é SALTADO**: `StableId::NONE` não nomeia ninguém, e guardá-lo daria
-/// um tendão que resolve para nada — pior que um osso a menos, porque *parece* ligado.
-///
-/// ⚠️ **Ela saiu do laço do [`bind`] quando a 2.ª mídia chegou** (uma imagem que obedece ao
-/// esqueleto). A tentação era copiá-la para o bind novo: a lei é curta e a cópia compilava. ⛔ Mas
-/// é exactamente a lei cuja divergência ninguém veria — uma forma e uma imagem presas no mesmo
-/// gesto passariam a responder a poses diferentes, e o sintoma seria *«o braço desenhado não
-/// acompanha o braço vectorial»*.
-#[must_use]
-fn tendons_for(sim: &SimWorld, ossos: &[Entity], shape_inv: Xform) -> Vec<Tendon> {
-    tendons_and_axes(sim, ossos, shape_inv)
-        .into_iter()
-        .map(|o| o.tendon)
-        .collect()
 }
 
 /// ⭐⭐ **UM OSSO PRESO: o tendão que se guarda MAIS o eixo dele**, no espaço da coisa deformada.
@@ -422,6 +427,16 @@ pub struct OssoPreso {
 ///
 /// O eixo sai do próprio `rest` (`S⁻¹ ∘ B`), que é a única coisa que o tendão guarda — logo ele é,
 /// por construção, o eixo que a pele vai usar no quadro.
+///
+/// ⚠️⚠️ **Ela é a ÚNICA porta do bind das DUAS mídias, e essa lei vem do `tendons_for` que ela
+/// substituiu** (morto em 2026-09-15, quando os pesos passaram a precisar dos eixos): *a tentação
+/// era copiar a lei para o bind novo — ela é curta e a cópia compilava. ⛔ Mas é exactamente a lei
+/// cuja divergência ninguém veria: uma forma e uma imagem presas no mesmo gesto passariam a
+/// responder a poses diferentes, e o sintoma seria «o braço desenhado não acompanha o braço
+/// vectorial».*
+///
+/// ⚠️ **Um osso sem `StableId` é SALTADO**: `StableId::NONE` não nomeia ninguém, e guardá-lo daria
+/// um tendão que resolve para nada — pior que um osso a menos, porque *parece* ligado.
 #[must_use]
 fn tendons_and_axes(sim: &SimWorld, ossos: &[Entity], shape_inv: Xform) -> Vec<OssoPreso> {
     ossos
@@ -516,10 +531,10 @@ pub fn release(
             continue;
         };
         if keep == Keep::Source
-            && let Ok(src) = postcard::from_bytes::<VecPath>(&skin.source)
+            && let Ok(g) = postcard::from_bytes::<crate::skinned_mesh::SkinnedPath>(&skin.source)
             && let Some(p) = scene.path_mut(id)
         {
-            p.replace_cooked(src);
+            p.replace_cooked(g.path);
         }
         sim.world_mut().entity_mut(e).remove::<SkinBind>();
         feitos += 1;

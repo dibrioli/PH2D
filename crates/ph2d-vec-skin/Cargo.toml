@@ -18,6 +18,9 @@ ph2d-skeleton = { path = "../ph2d-skeleton" }
 # O documento vectorial. ⛔ Ele NÃO é dependência da lei: uma pele que precisasse dele deixaria de
 # servir raster, 3D e Flip — que é a razão de o módulo existir.
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# ⭐ A malha do DOMÍNIO (a mesma da imagem) e o padrão-ouro dos pesos. As duas são folhas.
+ph2d-poly2d = { path = "../ph2d-poly2d" }
+ph2d-skin-weights = { path = "../ph2d-skin-weights" }
 
 [lints]
 workspace = true

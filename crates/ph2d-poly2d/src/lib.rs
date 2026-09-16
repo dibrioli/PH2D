@@ -49,7 +49,7 @@ mod simplify;
 mod triangulate;
 
 pub use contour::contour;
-pub use grid::{GridOptions, axis_samples, grid_mesh_of};
+pub use grid::{Cobertura, GridOptions, axis_samples, grid_mesh_com, grid_mesh_of};
 pub use mesh::{Mesh2d, MeshOptions, mesh_of};
 pub use refine::{
     RefineOptions, deviation, deviation_attrs, max_split, refine_posed, refine_posed_attrs,

@@ -35,6 +35,8 @@ ph2d-vec-skin = { path = "../ph2d-vec-skin" }
 # ⭐⭐⭐ **O PADRÃO-OURO dos pesos de pele** (Bounded Biharmonic Weights, SIGGRAPH 2011), resolvido
 # uma vez ao PRENDER. ⚠️ Ele é uma folha que só depende da `ph2d-poly2d` — não há ciclo por aqui.
 ph2d-skin-weights = { path = "../ph2d-skin-weights" }
+# ⚠️ A `ph2d-vec-skin` já era dependência (a lei do vector); desde 2026-09-15 ela também resolve os
+# pesos do padrão-ouro para um caminho, e o `bind` chama-a.
 postcard = { version = "1", features = ["use-std"] }
 # ⚠️ A malha GUARDADA passou a levar os pesos dentro (`skinned_mesh`), e o `derive` tem de ser
 # desta crate: o `postcard` traz o `serde` mas não o macro.

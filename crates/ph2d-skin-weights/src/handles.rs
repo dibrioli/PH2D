@@ -36,11 +36,19 @@ fn dist2(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
 /// 1. **um vértice suficientemente perto do eixo de um osso é dele** — a tolerância é a **aresta
 ///    média da malha**, ⛔ nunca um número em pixels: numa arte dez vezes maior a malha é dez vezes
 ///    mais larga, e uma tolerância absoluta prenderia dez vezes menos vértices;
-/// 2. **todo osso fica com pelo menos UM vértice** — o mais próximo dele.
+/// 2. **todo osso QUE TOCA A ARTE fica com pelo menos UM vértice** — o mais próximo dele.
 ///
 /// ⚠️⚠️ **Sem a segunda metade, um osso curto entre dois cortes da grelha não prende nada** e a
 /// energia dele fica sem condição de fronteira: a solução seria `w ≡ 0` e a normalização final
 /// entregaria a arte inteira ao vizinho, **em silêncio**.
+///
+/// ⛔⛔⛔ **E sem a CERCA da segunda metade, um esqueleto do outro lado da cena manda na arte.** O
+/// `Bind` sem semente apanha todos os ossos da cena; a lei euclidiana estava protegida de graça (o
+/// suporte dela é FINITO) e o padrão-ouro não está — o suporte dele é global **por desenho**, e é
+/// isso que compra a suavidade. ⇒ um osso cujo vértice mais próximo está a mais de `2` arestas
+/// médias **não é handle desta arte**, e fica sem pino: a coluna dele sai a zero e a normalização
+/// apaga-o. *Um gate apanhou isto (`binding_to_the_whole_scene_draws_the_same…`), e ele mede
+/// exactamente a cena que o artista produz sem querer.*
 ///
 /// ⚠️ **Em disputa ganha o MAIS PRÓXIMO.** Dois ossos que se encontram numa junta partilham o ponto,
 /// e sem desempate o vértice ficaria do último a ser visto — *a ordem da lista não é uma lei*.
@@ -98,7 +106,20 @@ pub(crate) fn pin(
             dono[v] = Some(j);
         }
     }
-    // 2ª metade — todo osso leva pelo menos um.
+    // 2ª metade — todo osso que TOCA a arte leva pelo menos um.
+    //
+    // ⛔⛔⛔ **«Que toca a arte» é a metade que faltava, e um gate apanhou-a.** A rede existe para um
+    // osso CURTO que cai entre duas linhas da grelha — ele está dentro da arte e merece um sujeito.
+    // ⚠️ Mas o *bind* sem semente apanha **todos** os ossos da cena, incluindo um segundo esqueleto
+    // do outro lado do mundo: sem esta cerca, esse osso rouba o vértice mais próximo da arte e passa
+    // a mandar nele com peso `1`. *A lei euclidiana estava protegida de graça — o suporte dela é
+    // FINITO; o do padrão-ouro é global por desenho, e é ele que compra a suavidade.*
+    //
+    // ⚠️ **O alcance é `2 ×` a aresta média**, e os dois controlos estão longe um do outro: um osso
+    // curto perdido numa célula tem o vértice mais próximo a menos de `0,71` arestas (meia diagonal)
+    // e um esqueleto vizinho está a dezenas. ⇒ o número não decide nada que esteja em disputa, e o
+    // gate `bind_ao_esqueleto_inteiro` é o que o mantém honesto.
+    let alcance2 = tol2 * 16.0;
     for (j, o) in ossos.iter().enumerate() {
         if dono.contains(&Some(j)) {
             continue;
@@ -110,7 +131,7 @@ pub(crate) fn pin(
                 alvo = (d, v);
             }
         }
-        if alvo.1 != usize::MAX {
+        if alvo.1 != usize::MAX && alvo.0 <= alcance2 {
             // ⚠️ Ele pode roubar um vértice a outro osso, e é o correcto: um osso sem sujeito é uma
             // equação sem condição de fronteira, e o vizinho tem outros.
             dono[alvo.1] = Some(j);

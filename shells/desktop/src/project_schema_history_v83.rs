@@ -1,7 +1,8 @@
 //! **A ESCADA do `PROJECT_SCHEMA`, de v83 a v98** — a metade ARQUIVADA da metade arquivada.
 //!
 //! ⚠️ **O corte por IDADE repete-se, e é isso que este arquivo prova.** O irmão
-//! [`super::project_schema_history`] nasceu em `v82` quando a escada viva passou as 600 linhas do
+//! A faixa `v2`..`v82` (hoje em `docs/archive/project-schema/escada_v2_a_v82.md`) nasceu em `v82`
+//! quando a escada viva passou as 600 linhas do
 //! HR-18; em 2026-09-07 o degrau `122` levou-a lá outra vez, e mover estes dezasseis degraus para
 //! dentro daquele **também** o punha acima do teto (`730`). ⇒ um arquivo por faixa, com a faixa no
 //! NOME — assim quem procura um degrau sabe onde bater sem abrir os dois.

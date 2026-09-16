@@ -368,7 +368,6 @@ mod project_migrate_sprite;
 mod project_painter;
 mod project_schema;
 /// A metade ARQUIVADA da escada do `PROJECT_SCHEMA` (v2..v79) — irmã por LOC (HR-18).
-mod project_schema_history;
 /// A escada arquivada de `v83` a `v98` — o corte por idade, a 2.ª vez (ver o cabeçalho dela).
 mod project_schema_history_v83;
 mod project_schema_history_v99;

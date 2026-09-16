@@ -426,10 +426,10 @@ fn the_canvas_chrome_census_is_derived_and_nobody_maps_an_authored_point_by_the_
         }
         // ⛔ **A LEI ANTIGA, proibida pelo NOME** — mapear um ponto autorado (px de IMAGEM) pelo
         // afim do quad de repouso. É ela que volta sozinha no primeiro desenhador novo.
-        if src.contains("affine * Point::new") || src.contains("affine * ph2d_vector::Point::new") {
-            if !ISENTOS.iter().any(|(f, _)| *f == nome) {
-                acusados.push(nome.clone());
-            }
+        let mapeia_pelo_afim =
+            src.contains("affine * Point::new") || src.contains("affine * ph2d_vector::Point::new");
+        if mapeia_pelo_afim && !ISENTOS.iter().any(|(f, _)| *f == nome) {
+            acusados.push(nome.clone());
         }
     }
 

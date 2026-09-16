@@ -10,7 +10,7 @@ use super::*;
 // sequência do smoke (na shell) também os usa.
 use crate::test_support::{pior_desvio, quadro};
 use ph2d_ecs::{ChildOf, Name, RootOrder, Transform};
-use ph2d_vec_scene::{ShapeKind, cook};
+use ph2d_vec_scene::{ShapeKind, VecPath, cook};
 
 /// Uma cena com UMA forma (um rectângulo deitado de `(0,0)` a `(40,10)`) e um esqueleto de dois
 /// ossos ao longo dela. Devolve `(sim, scene, map, id, [osso_raiz, osso_ponta])`.
@@ -217,11 +217,21 @@ fn a_second_skeleton_is_only_bound_when_it_is_the_one_pointed_at() {
     );
 }
 
-/// ⚠️ **A ORDEM dos ossos numa pele não é carregada** — permutá-la devolve o mesmo desenho.
+/// ⚠️ **A ORDEM dos ossos numa pele é um RÓTULO, não uma lei** — permutá-la devolve o mesmo desenho.
 ///
 /// É este gate que autoriza `skeleton_of` a ordenar por `to_bits`: se a ordem decidisse alguma
 /// coisa, ordenar por id de ALOCAÇÃO seria o defeito que o `CLAUDE.md` §5 nomeia. O que ela decide
 /// é só a ordem da soma em `f64`, e a medida está aqui.
+///
+/// ⚠️⚠️ **A permutação passou a ter DUAS metades em 2026-09-15, e a 1.ª redacção só mexia numa.**
+/// Enquanto os pesos eram DERIVADOS de uma distância, a lista de tendões era a única coisa
+/// ordenada; com os pesos do padrão-ouro GUARDADOS, a coluna `j` da tabela **é** o tendão `j`.
+/// Reverter os tendões sem reverter as colunas não permuta nada — produz **dados incoerentes**, e
+/// o gate lia `18,5` de desvio a acusar um defeito que não existe. *É o mesmo erro que reverter os
+/// triângulos de uma malha sem reverter os vértices.*
+///
+/// ⇒ ele permuta **as duas metades**, que é o que «permutar os ossos» quer dizer desde que a tabela
+/// existe.
 #[test]
 fn the_order_of_the_bones_in_a_skin_does_not_change_the_drawing() {
     let (mut sim, mut scene, map, id, ossos) = palco();
@@ -230,11 +240,26 @@ fn the_order_of_the_bones_in_a_skin_does_not_change_the_drawing() {
     let direita = quadro(&sim, &mut scene, id);
 
     let e = Entity::from_bits(map[&id]);
-    sim.world_mut()
+    let mut skin = sim
+        .world_mut()
         .get_mut::<SkinBind>(e)
         .expect("a pele")
-        .tendons
-        .reverse();
+        .clone();
+    skin.tendons.reverse();
+    // E as COLUNAS da tabela com eles — as duas metades do mesmo facto.
+    if let Ok(mut g) = postcard::from_bytes::<crate::skinned_mesh::SkinnedPath>(&skin.source)
+        && g.ossos() > 0
+    {
+        let n = g.ossos();
+        let revertidos: Vec<f64> = g
+            .pesos
+            .chunks_exact(n)
+            .flat_map(|c| c.iter().rev().copied().collect::<Vec<_>>())
+            .collect();
+        g.pesos = revertidos;
+        skin.source = postcard::to_allocvec(&g).expect("serializa");
+    }
+    sim.world_mut().entity_mut(e).insert(skin);
     let avessa = quadro(&sim, &mut scene, id);
     let pior = pior_desvio(&direita, &avessa);
     assert!(
@@ -469,5 +494,175 @@ fn authoring_curvature_makes_the_producer_emit_sub_bones_and_bows_the_art() {
     assert!(
         pior > 1.0,
         "a curvatura nao chegou ao desenho: pior desvio {pior}"
+    );
+}
+
+/// ⭐⭐⭐ **AS DUAS MÍDIAS RESPONDEM À MESMA LEI** — é o gate por que esta wave existe.
+///
+/// ⛔⛔⛔ **Em 2026-09-15 o padrão-ouro entrou só para IMAGENS**, porque ele precisa de uma malha do
+/// domínio e uma Bézier não tem uma. O preço foi um rig com **duas leis**: um braço vectorial e um
+/// braço em imagem, presos ao mesmo esqueleto, deformavam-se por matemáticas diferentes — e o
+/// sintoma seria *«o braço desenhado não acompanha o braço vectorial»*.
+///
+/// ⚠️ **A régua não é «as duas ficam iguais»** — elas não têm de ficar: uma amostra a arte numa
+/// grelha e a outra move pontos de controlo de uma curva. O que se afirma é que **a forma vectorial
+/// deixou de responder à lei EUCLIDIANA**, e a prova é directa: a tabela de pesos existe e é
+/// coerente com o caminho.
+///
+/// ⛔ E a metade que impede isto de ser vácuo: um caminho **ABERTO** continua sem tabela, porque não
+/// tem interior — e isso é uma resposta, não uma falha.
+#[test]
+fn as_duas_midias_respondem_a_mesma_lei() {
+    let (mut sim, scene, map, id, _) = palco();
+    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    let e = Entity::from_bits(map[&id]);
+    let skin = sim.world().get::<SkinBind>(e).expect("a pele").clone();
+    let g: crate::skinned_mesh::SkinnedPath =
+        postcard::from_bytes(&skin.source).expect("a forma guardada");
+    assert!(
+        g.valida(),
+        "a tabela de pesos nao fecha com o caminho ({} pesos para {} pontos de controlo)",
+        g.pesos.len(),
+        g.pontos()
+    );
+    assert_eq!(
+        g.ossos(),
+        skin.tendons.len(),
+        "a tabela cobre {} ossos e a pele tem {} tendoes — a coluna `j` deixou de ser o tendao `j`",
+        g.ossos(),
+        skin.tendons.len()
+    );
+    // ⭐ E os pesos são uma PARTIÇÃO: cada ponto de controlo soma `1`.
+    let n = g.ossos();
+    let mut pior = 0.0_f64;
+    for c in g.pesos.chunks_exact(n) {
+        pior = pior.max((c.iter().sum::<f64>() - 1.0).abs());
+    }
+    assert!(
+        pior < 1e-9,
+        "o pior |soma - 1| dos pesos do caminho e' {pior:.2e}: a particao da unidade partiu-se"
+    );
+}
+
+/// ⛔ **UM CAMINHO ABERTO NÃO TEM INTERIOR, e fica na lei derivada** — o controlo do gate acima.
+///
+/// ⚠️ Sem ele, o gate irmão passaria com uma lei que inventasse um domínio para qualquer coisa. *Uma
+/// linha de construção tem área zero: recusar é a resposta honesta.*
+#[test]
+fn um_caminho_aberto_fica_na_lei_derivada() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    // Uma POLILINHA aberta — dois pontos, sem fecho.
+    let mut aberto = cook(ShapeKind::Rectangle, [0.0, 0.0], [40.0, 10.0], &[]);
+    aberto.closed = false;
+    let id = scene.push_path(aberto);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
+    let raiz = osso(&mut sim, "Root", [0.0, 5.0], 20.0, None);
+    osso(&mut sim, "Tip", [20.0, 0.0], 20.0, Some(raiz));
+    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    let e = Entity::from_bits(map[&id]);
+    let skin = sim.world().get::<SkinBind>(e).expect("a pele").clone();
+    let g: crate::skinned_mesh::SkinnedPath =
+        postcard::from_bytes(&skin.source).expect("a forma guardada");
+    assert!(
+        g.pesos.is_empty(),
+        "um caminho ABERTO recebeu {} pesos: alguem inventou um dominio para uma linha",
+        g.pesos.len()
+    );
+    // E o desenho continua a resolver — pela lei derivada.
+    let depois = quadro(&sim, &mut scene, id);
+    assert!(
+        depois.verts_all().all(|v| v.anchor[0].is_finite()),
+        "a forma aberta virou NaN ao cair na lei derivada"
+    );
+}
+
+/// ⭐⭐⭐ **O palco com VÉRTICES NA JUNTA** — e ele existe porque o [`palco`] não distingue as leis.
+///
+/// ⛔⛔ **O rectângulo do [`palco`] tem os quatro pontos de controlo nos CANTOS, e ali as duas leis
+/// concordam** — a diferença entre elas vive **junto da junta**, e um rectângulo de `40 × 10` com a
+/// junta a meio não tem vértice nenhum lá. Medido: a separação entre as duas leis é `0,000`, e o
+/// gate que as compara não afirmava nada.
+///
+/// ⇒ este palco põe seis vértices, **dois deles exactamente sobre a junta**, e a arte é **ALTA**
+/// (`40 × 30` contra `40 × 10`): a aresta de cima fica a `25` do eixo, para lá do raio de `20` do
+/// *bump* — que é onde a lei antiga degenera numa partição dura e as duas mais se afastam.
+/// *Uma fixtura que não produz o fenómeno mede outro programa.*
+fn palco_com_vertices_na_junta() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let path = VecPath {
+        verts: [
+            [0.0, 0.0],
+            [20.0, 0.0],
+            [40.0, 0.0],
+            [40.0, 30.0],
+            [20.0, 30.0],
+            [0.0, 30.0],
+        ]
+        .into_iter()
+        .map(ph2d_vec_scene::VecVertex::corner)
+        .collect(),
+        closed: true,
+        ..VecPath::default()
+    };
+    let id = scene.push_path(path);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
+    let raiz = osso(&mut sim, "Root", [0.0, 5.0], 20.0, None);
+    let ponta = osso(&mut sim, "Tip", [20.0, 0.0], 20.0, Some(raiz));
+    (sim, scene, map, id, [raiz, ponta])
+}
+
+/// ⭐⭐⭐ **A TABELA CHEGA AO DESENHO** — e este gate existe porque uma mutação SOBREVIVEU.
+///
+/// ⛔⛔⛔ Os dois gates acima provam que a tabela **existe** e que ela **fecha** com o caminho; pôr
+/// `usa = false` no [`ph2d_vec_skin::aplica_com`] — isto é, o vector a ignorar os pesos guardados e
+/// a cair na lei derivada — deixava **os 29 verdes**. *É o terceiro passo que um `grep` não vê: o
+/// painel escreve · alguém lê · **o leitor DECIDE, ou entrega a quem descarta?***
+///
+/// ⚠️ **A régua tem DUAS metades, e nenhuma basta:** o quadro tem de dar o que a lei GUARDADA dá
+/// (`≈ 0`) **e** tem de diferir do que a lei DERIVADA dá. Só a primeira passaria com as duas leis a
+/// coincidirem por acaso; só a segunda passaria com o quadro a dar uma terceira coisa qualquer.
+#[test]
+fn a_tabela_de_pesos_do_caminho_chega_ao_desenho() {
+    let (mut sim, mut scene, map, id, ossos) = palco_com_vertices_na_junta();
+    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    gira(&mut sim, ossos[1], 55.0);
+    let desenhado = quadro(&sim, &mut scene, id);
+
+    // As duas leis, pela porta do produto, sobre a MESMA pele e o MESMO caminho guardado.
+    let e = Entity::from_bits(map[&id]);
+    let skin = sim.world().get::<SkinBind>(e).expect("a pele").clone();
+    let g: crate::skinned_mesh::SkinnedPath =
+        postcard::from_bytes(&skin.source).expect("a forma guardada");
+    assert!(!g.pesos.is_empty(), "a fixtura tem de ter tabela");
+    let pele = skin_of(&sim, e).expect("a pele resolve");
+    let (mut com, mut sem) = (g.path.clone(), g.path.clone());
+    ph2d_vec_skin::aplica_com(&pele, &mut com, &g.pesos);
+    ph2d_vec_skin::aplica_com(&pele, &mut sem, &[]);
+
+    let segue_guardada = pior_desvio(&desenhado, &com);
+    let segue_derivada = pior_desvio(&desenhado, &sem);
+    let separacao = pior_desvio(&com, &sem);
+    println!(
+        "quadro vs guardada {segue_guardada:.3e} | quadro vs derivada {segue_derivada:.3e} | \
+         as duas leis separam {separacao:.3}"
+    );
+    // ⛔ O CONTROLO: se as duas leis dessem o mesmo, o gate abaixo não afirmaria nada.
+    assert!(
+        separacao > 0.1,
+        "as duas leis entregam o MESMO desenho (separacao {separacao:.3e}) — a fixtura deixou de \
+         distinguir a lei guardada da derivada"
+    );
+    assert!(
+        segue_guardada < 1e-9,
+        "o quadro NAO desenhou a lei guardada (desviou {segue_guardada:.3e})"
+    );
+    assert!(
+        segue_derivada > 0.1,
+        "o quadro desenhou a lei DERIVADA (desviou so' {segue_derivada:.3e} dela) — a tabela de \
+         pesos nao chega ao desenho"
     );
 }

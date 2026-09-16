@@ -16,6 +16,10 @@
 //! Bézier deformada continua a ser uma Bézier — exacta e editável, sem reamostrar. O envelope paga
 //! `sample + fit` porque o mapa dele não é afim.
 
+/// ⭐⭐⭐ **Os pesos do PADRÃO-OURO para uma forma vectorial** — a 2.ª mídia a deixar a lei
+/// euclidiana derivada.
+pub mod pesos;
+
 use ph2d_skeleton::Skin;
 use ph2d_vec_scene::VecPath;
 
@@ -27,11 +31,36 @@ use ph2d_vec_scene::VecPath;
 /// que é a mesma conta da caneta do bug #27 (`√|det|`) mas com um afim diferente por ponto.
 /// Fica **nomeado**, não esquecido.
 pub fn apply(skin: &Skin, path: &mut VecPath) {
+    aplica_com(skin, path, &[]);
+}
+
+/// ⭐⭐⭐ **[`apply`] com os pesos do PADRÃO-OURO guardados no bind** — `pesos` vazio ⇒ a lei
+/// derivada, que é o caminho de sempre **ao bit**.
+///
+/// A tabela é achatada e a ordem é a de [`VecPath::for_each_vert_mut`]: para o vértice `k`, as três
+/// casas `3k`, `3k+1`, `3k+2` são **âncora**, **alça de entrada** e **alça de saída**.
+///
+/// ⚠️⚠️ **As três metades continuam a pesar SEPARADAMENTE** — é o `CubicWeight` do Rive, e a razão
+/// está no cabeçalho: pesar o vértice inteiro pela âncora faria uma alça que atravessa uma junta
+/// rodar com o osso errado. *A lei dos pesos mudou; o que é um ponto aqui, não.*
+///
+/// ⛔ **Uma tabela que não fecha com o caminho é IGNORADA** (cai na lei derivada) em vez de ser lida
+/// deslocada: uma tabela deslocada por um ponto entrega pesos plausíveis e arte errada.
+pub fn aplica_com(skin: &Skin, path: &mut VecPath, pesos: &[f64]) {
     let mut w = skin.scratch();
+    let pontos = path.verts_all().count() * 3;
+    let n = pesos.len().checked_div(pontos).unwrap_or(0);
+    let usa = n > 0 && pesos.len() == pontos * n;
+    let mut k = 0usize;
     path.for_each_vert_mut(|v| {
-        v.anchor = skin.point(v.anchor, &mut w);
-        v.in_handle = skin.point(v.in_handle, &mut w);
-        v.out_handle = skin.point(v.out_handle, &mut w);
+        for p in [&mut v.anchor, &mut v.in_handle, &mut v.out_handle] {
+            *p = if usa {
+                skin.point_with(*p, &pesos[k * n..(k + 1) * n], &mut w)
+            } else {
+                skin.point(*p, &mut w)
+            };
+            k += 1;
+        }
     });
 }
 

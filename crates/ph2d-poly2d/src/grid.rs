@@ -46,6 +46,42 @@
 
 use crate::Mesh2d;
 
+/// A cobertura de uma IMAGEM: algum pixel da célula (mais a folga) passa do limiar de alfa?
+#[expect(
+    clippy::too_many_arguments,
+    reason = "é o predicado de cobertura completo: a fatia, o tamanho, a célula, a folga e o limiar"
+)]
+fn tinta_na_celula(
+    alpha: &[u8],
+    width: u32,
+    height: u32,
+    x0: f64,
+    y0: f64,
+    x1: f64,
+    y1: f64,
+    e: f64,
+    limiar: u8,
+) -> bool {
+    let (w, h) = (width as usize, height as usize);
+    if alpha.len() < w * h {
+        return false;
+    }
+    let (a, b) = ((x0 - e).max(0.0), (y0 - e).max(0.0));
+    let (c, d) = ((x1 + e).min(width.into()), (y1 + e).min(height.into()));
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "os quatro foram limitados à grelha nas linhas acima"
+    )]
+    let (ix0, iy0, ix1, iy1) = (
+        a as usize,
+        b as usize,
+        (c.ceil() as usize).min(w),
+        (d.ceil() as usize).min(h),
+    );
+    (iy0..iy1).any(|y| (ix0..ix1).any(|x| alpha[y * w + x] >= limiar))
+}
+
 /// ⭐ **Os números da grelha.** Todos em **pixels da imagem**.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GridOptions {
@@ -178,7 +214,46 @@ pub fn grid_mesh_of(
     focos: &[[f64; 2]],
     opts: GridOptions,
 ) -> Option<Mesh2d> {
-    let bruta = grelha(alpha, width, height, focos, opts)?;
+    grid_mesh_com(
+        &|x0, y0, x1, y1, e| {
+            tinta_na_celula(
+                alpha,
+                width,
+                height,
+                x0,
+                y0,
+                x1,
+                y1,
+                e,
+                opts.alpha_threshold,
+            )
+        },
+        width,
+        height,
+        focos,
+        opts,
+    )
+}
+
+/// ⭐⭐⭐ **A MESMA GRELHA, com a COBERTURA injectada** — *«onde há arte?»* tem duas respostas neste
+/// app e uma lei só.
+///
+/// `cobre(x0, y0, x1, y1, folga)` responde *«esta célula tem arte, com esta folga à volta?»*. Uma
+/// imagem responde pelo **alfa**; um caminho vectorial responde por **estar dentro do contorno**.
+///
+/// ⛔⛔ **Ela existe para as duas mídias não terem duas malhas.** A graduação pelas articulações, a
+/// conformidade (dois vizinhos partilham a aresta inteira), o orçamento em triângulos e a
+/// renormalização são do GRID, não da mídia — e uma segunda grelha escrita para o vector divergiria
+/// desta no primeiro ajuste, com o sintoma a ser *«a forma vectorial dobra diferente da imagem»*.
+#[must_use]
+pub fn grid_mesh_com(
+    cobre: &Cobertura<'_>,
+    width: u32,
+    height: u32,
+    focos: &[[f64; 2]],
+    opts: GridOptions,
+) -> Option<Mesh2d> {
+    let bruta = grelha(cobre, width, height, focos, opts)?;
     if opts.target_tris == 0 {
         return Some(bruta);
     }
@@ -203,19 +278,21 @@ pub fn grid_mesh_of(
         radius: opts.radius * escala,
         ..opts
     };
-    grelha(alpha, width, height, focos, escalada).or(Some(bruta))
+    grelha(cobre, width, height, focos, escalada).or(Some(bruta))
 }
+
+/// ⭐ **«Esta célula tem arte?»** — `(x0, y0, x1, y1, folga)` em coordenadas da malha.
+pub type Cobertura<'a> = dyn Fn(f64, f64, f64, f64, f64) -> bool + 'a;
 
 /// A grelha com os passos **literais** — sem a contagem. É a lei de sempre.
 fn grelha(
-    alpha: &[u8],
+    cobre: &Cobertura<'_>,
     width: u32,
     height: u32,
     focos: &[[f64; 2]],
     opts: GridOptions,
 ) -> Option<Mesh2d> {
-    let (w, h) = (width as usize, height as usize);
-    if w == 0 || h == 0 || alpha.len() < w * h {
+    if width == 0 || height == 0 {
         return None;
     }
     let fx: Vec<f64> = focos.iter().map(|p| p[0]).collect();
@@ -223,23 +300,8 @@ fn grelha(
     let xs = axis_samples(0.0, width.into(), &fx, opts);
     let ys = axis_samples(0.0, height.into(), &fy, opts);
 
-    let tem_tinta = |x0: f64, y0: f64, x1: f64, y1: f64| -> bool {
-        let e = opts.expand.max(0.0);
-        let (a, b) = ((x0 - e).max(0.0), (y0 - e).max(0.0));
-        let (c, d) = ((x1 + e).min(width.into()), (y1 + e).min(height.into()));
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "os quatro foram limitados à grelha nas linhas acima"
-        )]
-        let (ix0, iy0, ix1, iy1) = (
-            a as usize,
-            b as usize,
-            (c.ceil() as usize).min(w),
-            (d.ceil() as usize).min(h),
-        );
-        (iy0..iy1).any(|y| (ix0..ix1).any(|x| alpha[y * w + x] >= opts.alpha_threshold))
-    };
+    let tem_tinta =
+        |x0: f64, y0: f64, x1: f64, y1: f64| cobre(x0, y0, x1, y1, opts.expand.max(0.0));
 
     // Índice do vértice `(i, j)` da grelha, criado só quando uma célula viva o pede — ⛔ emitir a
     // grelha inteira deixaria vértices órfãos, que o esqueleto pesaria e ninguém desenharia.

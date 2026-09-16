@@ -220,6 +220,18 @@ pub(crate) const LINE: &[&str] = &[
     "panel.painter_layers.line.magnetify",
     "panel.painter_layers.line.connection_line",
     "panel.painter_layers.line.type",
+    "panel.painter_layers.line.line_width",
+    "panel.painter_layers.line.opacity",
+    "panel.painter_layers.line.density",
+    "panel.painter_layers.line.reach",
+    "panel.painter_layers.line.history",
+    "panel.painter_layers.line.rungs",
+    "panel.painter_layers.line.weight",
+    "panel.painter_layers.line.gravity",
+    "panel.painter_layers.line.friction",
+    "panel.painter_layers.line.roughness",
+    "panel.painter_layers.line.bowing",
+    "panel.painter_layers.line.passes",
 ];
 /// *Paper* (o substrato da aquarela) — o dente, o relevo, a cor e os números do ladrilho.
 pub(crate) const PAPER: &[&str] = &[

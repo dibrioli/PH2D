@@ -24,8 +24,6 @@ use ph2d_tool_painter::{
     SKETCHY_REACH_MAX, THREAD_WIDTH_MAX_PX, WIRE_HISTORY_MAX,
 };
 
-/// Coluna fixa do rótulo de uma row de parâmetro do tipo (cabe "Line Width" na fonte Base).
-const LABEL_W: f32 = 62.0; // LITERAL-PX-OK: coluna do rótulo do card Line
 /// Coluna do readout "0.35" à direita do slider.
 const READOUT_W: f32 = 34.0; // LITERAL-PX-OK: coluna do readout
 /// Piso da pista do slider nu (chão de chrome num painel estreito).
@@ -367,7 +365,7 @@ fn paint_param_rows(
     let mut iy = y;
     for (id, label, read) in sliders_of(kind) {
         let (track, shown) = read(brush);
-        paint_param_row(ctx, theme, x, row_w, iy, tr(label), *id, track, shown);
+        paint_param_row(ctx, theme, x, row_w, iy, label, *id, track, shown);
         iy += ph2d_tokens::row_pitch_px();
     }
     if let Some((id, label, read)) = checkbox_of(kind) {
@@ -390,6 +388,18 @@ fn paint_param_rows(
 
 /// Uma row de parâmetro do tipo: rótulo · slider nu · readout. O valor vem do snapshot e o ESTADO do
 /// store, como toda row de slider deste painel.
+///
+/// ⛔⛔ **A coluna do rótulo era o literal `LABEL_W = 62,0`, e o doc dele dizia *«cabe "Line Width"
+/// na fonte Base»* — medido em 2026-09-16, `Line Width` mede `66,4 px` e `Roughness` `68,8`.** As
+/// duas saíam cortadas, e a justificação escrita ao lado do número era falsa no dia em que foi
+/// escrita. *Um literal que se justifica por um texto CABER tem de trazer a medição do texto.*
+///
+/// ⏳ **E esta linha continua a ser a FORMA errada** (spec §2): um valor com fracção pede a **caixa
+/// única**, com o nome DENTRO da barra. A conversão custa **12 chips editáveis** (um por slider do
+/// cartão) com **12 mapeamentos afins distintos** — cada `read` daqui tem a escala dele (`/
+/// ROUGH_AMOUNT_MAX_D`, `* ROUGH_READOUT_D`, …) —, e um mapeamento errado edita o valor errado **em
+/// silêncio**. ⇒ a coluna passa pela porta agora; a caixa única é wave própria, com a ordem do dono
+/// de 2026-06-26 por trás dela.
 #[allow(clippy::too_many_arguments)]
 fn paint_param_row(
     ctx: &mut PaintCtx,
@@ -397,25 +407,29 @@ fn paint_param_row(
     x: f32,
     row_w: f32,
     y: f32,
-    label: &str,
+    chave: &str,
     sid: ph2d_editor_core::NodeId,
     track: f32,
     shown: f32,
 ) {
     let gap = Spacing::Xs.px();
-    let font = TypeToken::Base.px();
-    let readout_x = x + row_w - READOUT_W;
-    let slider_x = x + LABEL_W + gap;
+    // ⛔⛔ **Era `TypeToken::Base` e a coluna é medida em `Sm`** — *medir num peso e pintar noutro
+    //    corta curto* (spec §4.3, defeito que esta casa já pagou duas vezes). E `Sm` é o que toda
+    //    linha de propriedade do app pinta: este cartão era o único a destoar.
+    let font = TypeToken::Sm.px();
+    let linha = crate::paint_brush_rows::linha_da_chave(ctx, x, row_w, y, chave);
+    let readout_x = linha.control.x + linha.control.w - READOUT_W;
+    let slider_x = linha.control.x;
     let slider_w = (readout_x - gap - slider_x).max(MIN_SLIDER_W);
 
-    paint_text(
+    ph2d_editor_core::widget::paint_property_label(
         ctx.text_system,
         ctx.scene,
-        label,
-        x,
-        y + (ROW_H_PX - font) * 0.5,
+        tr(chave),
+        linha.label.x,
+        linha.label.y + (linha.label.h - font) * 0.5,
         font,
-        LABEL_W,
+        linha.label.w,
         resolve(ColorToken::Text1, theme),
     );
     // ⚠️ Pela porta do `slider_visual` como os irmãos desta crate — UMA pergunta, o estado

@@ -79,7 +79,6 @@ const AINDA_A_MAO: &[&str] = &[
     "crates/ph2d-panel-painter-layers/src/card.rs",
     "crates/ph2d-panel-painter-layers/src/paint_adjust.rs",
     "crates/ph2d-panel-painter-layers/src/paint_composite.rs",
-    "crates/ph2d-panel-painter-layers/src/paint_line.rs",
     "crates/ph2d-panel-painter-layers/src/paint_shape_layers.rs",
 ];
 

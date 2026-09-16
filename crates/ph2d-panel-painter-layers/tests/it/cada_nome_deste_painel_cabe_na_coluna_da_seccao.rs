@@ -291,13 +291,11 @@ fn toda_caixa_deste_painel_declara_a_seccao_dela() {
 ///
 /// ⏳ **Catraca: esta lista só ENCOLHE.** Cada entrada é uma coluna que ainda não passou pela porta,
 /// com o que falta para ela passar.
+/// ⭐ **O `paint_line.rs` SAIU desta lista em 2026-09-16** — a coluna dele passou pela porta, e as
+/// duas que ele cortava (`Line Width` `66,4` e `Roughness` `68,8` numa coluna de `62`) deixaram de
+/// cortar. ⏳ A FORMA dele continua errada (spec §2: uma fracção pede caixa única) e isso está
+/// escrito no `paint_param_row`, com o preço: 12 chips com 12 mapeamentos afins distintos.
 const COLUNAS_A_MAO: &[(&str, &str)] = &[
-    (
-        "paint_line.rs",
-        "as rows de parâmetro do card Line são `rótulo | trilho nu | readout`, que a spec §2 manda \
-         ser CAIXA ÚNICA — a conversão precisa de um chip editável por slider (ordem do dono de \
-         2026-06-26), não de mudar a coluna",
-    ),
     (
         "paint_composite.rs",
         "idem: as três rows de força são trilho nu + readout",

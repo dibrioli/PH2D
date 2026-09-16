@@ -11,7 +11,6 @@ mod curve_handle_menu_e2e;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod falloff_drain_repro;
 mod falloff_handle_menu_e2e;
-mod probe2;
 mod seam;
 mod seam_curve_drag_ownership;
 mod seam_deform;

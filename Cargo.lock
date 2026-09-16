@@ -7577,6 +7577,7 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-editor-core",
  "ph2d-host",
+ "ph2d-label-census",
  "ph2d-tokens",
  "ph2d-tool-registry",
  "ph2d-ui-codegen",

@@ -40,6 +40,9 @@ ph2d-host = { path = "../ph2d-host" }
 # pode alcançá-lo — o gerador é quem escreve este código, não quem ele consome. Em
 # `[dependencies]` seria a aresta que deixa o painel compilado depender do gerador que o produziu.
 ph2d-ui-codegen = { path = "../ph2d-ui-codegen" }
+# A régua lexical do HR-15 — o gate que impede texto do PROGRAMA de entrar nos ficheiros escritos à
+# mão deste painel (o texto do desenho é do artista; ver a nota do `ph2d-i18n` acima).
+ph2d-label-census = { path = "../ph2d-label-census" }
 
 [lints]
 workspace = true

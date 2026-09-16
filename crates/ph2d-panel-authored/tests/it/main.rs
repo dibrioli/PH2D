@@ -13,3 +13,4 @@ mod seam_authored_popover;
 mod seam_authored_rekind;
 mod seam_authored_sections;
 mod the_generated_panel_is_what_the_emitter_emits;
+mod the_program_writes_no_word_into_this_panel;

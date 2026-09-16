@@ -125,8 +125,8 @@ restrição sustentar a orientação sem a re-excitar — o *warm starting* que 
 | ~~**W0**~~ | ~~o ATRITO na cena~~ | — | ✅ **DISSOLVIDA pelo §2.1:** as peças já têm `μ = 0,5`. A wave saiu de uma ausência que nunca foi medida. |
 | ~~**W1**~~ | ~~o REPOUSO~~ | — | ⛔ **REFUTADA no §5.2:** o zumbido IMPEDE o sono. |
 | ~~**W2**~~ | ~~a CHAVE do contacto~~ | **`92,7 %` de sobrevivência** | ✅ **MEDIDA no §5.3: há o que aquecer.** Luz verde para a W3. |
-| **W3a** ✅ | a **MEMÓRIA** | [`ph2d_contact::warm`](../../crates/ph2d-contact/src/warm.rs) — o cache, a chave e as cercas, com 9 gates e `3/3` mutações | **FEITA** (§5.4). ⛔ Nada a consome ainda ⇒ o produto é byte-idêntico. |
-| **W3b** | a **LEI** | o `λ` acumulado a entrar no [`separate`](../../crates/ph2d-contact/src/lib.rs), atrás de interruptor | é a obra; a W3a é o chão dela |
+| ~~**W3a**~~ | ~~a **MEMÓRIA**~~ | o `ph2d_contact::warm` — o cache, a chave e as cercas, com 9 gates e `3/3` mutações | ✅ FEITA (§5.4) e ⛔ **APAGADA no §11**: nunca teve consumidor. Vive no commit `76dfd1947`. |
+| ~~**W3b**~~ | ~~a **LEI**~~ | — | ⛔ **DISSOLVIDA no §11:** o defeito que ela vinha curar foi curado pelos sub-passos (§5.8), e o que lhe sobra é custo, com tecto MEDIDO de `≈ 11 %`. |
 | ~~**W4**~~ | ~~o DISPOSITIVO~~ | — | ⭐ **deixou de ser uma wave** (§5.4): o cache é uma COLUNA de largura fixa, logo atravessa a fronteira como o `age` |
 
 ⚠️ **A W1 é a fronteira da encomenda.** Ela é a mais barata das quatro e pode tornar as outras três
@@ -1294,12 +1294,12 @@ corte de responsabilidade: os gates AFIRMAM (`contact_tests.rs`, `454`) e as son
 ### §9.10 — O que fica ABERTO
 
 - ✅ **O atrito de ROLAMENTO continua a não alcançar o contacto peça×peça** — **FECHADO no §10.**
-- ⏳ **O `warm.rs` continua sem consumidor.** A fatia 2 encomendada pelo dono (a lei que consome a
+- ✅ **(FECHADO no §11 — a memória foi apagada.)** **O `warm.rs` continua sem consumidor.** A fatia 2 encomendada pelo dono (a lei que consome a
   memória do `λ`) **não** foi o que curou isto, e o solver de `8` iterações arranca frio a cada
   sub-passo. Ele é o caminho para baixar as iterações, não para curar a rotação.
 - ✅ O §7.5 fica de pé: um disco não converge para rolamento puro (`v = ω·R`) — **FECHADO pelo
   próprio §9, e quem o escondia era a SONDA** (ver §10.1).
-- ⏳ `Saida::salto` continua sem leitor de produção.
+- ✅ `Saida::salto` continua sem leitor de produção — **FECHADO no §11 (apagado).**
 - ⚠️ **O `Leis` tem cinco campos e o produto usa UMA combinação.** Eles são as colunas de uma tabela
   medida, não configuração; quem lhes mexer sem re-medir a `=114` está a escolher uma célula ao
   acaso. Se a tabela não voltar a ser precisa, a struct colapsa na lei.
@@ -1412,8 +1412,65 @@ tocam e as outras não.
 
 ### §10.6 — O que fica ABERTO
 
-- ⏳ **O `warm.rs` continua sem consumidor** (a fatia 2 encomendada). O solver arranca frio a cada
+- ✅ **(FECHADO no §11.)** **O `warm.rs` continua sem consumidor** (a fatia 2 encomendada). O solver arranca frio a cada
   sub-passo com `8` iterações; a memória é o caminho para as baixar, e nenhuma régua desta cena a
   pede hoje.
-- ⏳ `Saida::salto` continua sem leitor de produção.
+- ✅ `Saida::salto` continua sem leitor de produção — **FECHADO no §11.**
 - ⚠️ O `Leis` tem cinco campos e o produto usa uma combinação — ver §9.10.
+
+---
+
+## §11 — ⛔ A MEMÓRIA do contacto e o `Saida::salto` SAEM: duas portas sem chamador (2026-09-16)
+
+Smoke do §10 aprovado (*«Smoke OK. Siga»*). Sobravam da obra dois itens internos, e os dois eram
+**portas sem chamador** — *uma porta sem chamador e uma lei ausente produzem o mesmo app*, e a
+primeira ainda paga gates, leitura e a ilusão de que a obra está a meio.
+
+### §11.1 — A W3b está DISSOLVIDA, com o tecto do que ela ainda podia comprar
+
+A memória (`ph2d_contact::warm`, W3a) foi encomendada como o chão da W3b — *«o `λ` acumulado a
+entrar no solver»* — para curar o **zumbido** da pilha. O zumbido foi curado por outro lado: os
+**sub-passos** (§5.8), e depois o solver de velocidade do §9 passou a acumular o `λ` DENTRO do
+sub-passo. O que o aquecimento ainda podia comprar é **custo**, e esse tecto já estava medido nas
+tabelas do §9 (`=114`, lei em vigor):
+
+```text
+  iteracoes |  1   |  2   |  4   |  8   |  16  |  32  |  64
+  ms/tique  | 0,59 | 0,62 | 0,65 | 0,66 | 0,73 | 0,82 | 1,73
+```
+
+⇒ aquecer o `λ` até uma varredura só dar o que dão oito poupa, **no melhor caso**, `0,07 ms` de
+`0,66` — **`≈ 11 %`** de um cozimento que já é barato. E ela traz uma cerca de CORRECÇÃO (§5.4):
+sem a coluna `id` — que a `=114` não tem — a chave é o índice, e um nascimento ou uma morte aquece o
+**contacto errado**, que é pior que não aquecer. ⇒ *11 % não compra uma cerca que parte cenas com
+`sim.spawn`.*
+
+⛔ **Apagada**, com os `9` gates dela (`ph2d-contact` passa de `39` para `30`, exactamente). Ela vive
+no commit **`76dfd1947`**. ⭐ **O gatilho que a traria de volta tem nome:** um solver de contacto no
+DISPOSITIVO — um Jacobi em GPU converge devagar e é onde o aquecimento compra ordens de grandeza, e
+a morada dela já foi medida para isso (uma coluna de largura fixa, `24 B` por elemento).
+
+### §11.2 — O `Saida::salto`: um gate a defender uma saída sem leitor
+
+A varredura de posição recolhia o *«salto efectivo de cada peça»* (o maior dos pares que ela tocou)
+e o devolvia na `Saida`. **Ninguém o lia** desde o §5.12, quando o ressalto passou a viver no
+impulso do par (`atrito::salto` dentro do `monta`). E o gate
+`the_bounce_of_the_liveliest_pair_reaches_the_piece_that_touched` **defendia essa saída** — *um gate
+verde sobre uma saída sem consumidor é um controlo morto com certificado.*
+
+Hoje o gate mede onde o salto ACONTECE: um disco a `1 u/s` contra um chão fixo, `salto = 0,8`, volta
+a `+0,8` (`Δv = 1,8`). Mutação (o ressalto a zero no impulso): **RED**, `Δv = 1,0`.
+
+⚠️ **E o gate da fronteira do rolamento mudou de afirmação.** O
+`the_piece_against_piece_contact_ignores_rolling_bit_for_bit` declarava *«o contacto peça×peça
+ignora o rolamento»* e prometia reprovar *«se um dia alguém der velocidade angular a este
+solver»* — **e não reprovou quando o §9 o fez**, porque o arnês dele corre o `Leis::HOJE` e o produto
+passou a correr o `EM_VIGOR`. *Um gate cujo sujeito não é a lei que o artista vê não afirma nada
+sobre ela.* Hoje ele defende o que ainda é verdade: **sem velocidade angular o rolamento é inerte ao
+bit** (o controlo de toda medição da família não se move).
+
+### §11.3 — O que a obra do contacto deixa
+
+Nada aberto que mude o ecrã. ⚠️ O `Leis` fica com cinco campos e **uma** combinação em produto
+(§9.10) — eles são as colunas das tabelas deste doc, e a varredura por mutação do `const` é o
+instrumento que as lê.

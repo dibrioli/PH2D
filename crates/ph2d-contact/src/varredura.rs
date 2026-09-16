@@ -7,9 +7,9 @@
 //! ⚠️ O par é sempre lido na ordem do PAR (menor → maior) e os parceiros chegam em ordem CRESCENTE:
 //! é isso que faz a grelha dar os MESMOS BITS que todos-os-pares. Ver o cabeçalho do `lib.rs`.
 
-use super::{Colisor, GRAUS, Nova, Pecas, atrito, manifesto};
+use super::{Colisor, GRAUS, Nova, Pecas, manifesto};
 
-/// A posição, o giro e o salto de `k` depois desta varredura, ou `None` se nada lhe tocou. Os `parceiros` têm
+/// A posição e o giro de `k` depois desta varredura, ou `None` se nada lhe tocou. Os `parceiros` têm
 /// de vir em ordem CRESCENTE — ver o cabeçalho.
 pub(super) fn corrigida(
     k: usize,
@@ -22,7 +22,6 @@ pub(super) fn corrigida(
     let (pesos, inv_inercia) = (pecas.pesos, pecas.inv_inercia);
     let mut delta = [0.0_f32; 2];
     let mut giro = 0.0_f32;
-    let mut salto = 0.0_f32;
     let mut contatos = 0_u32;
     for j in parceiros {
         if j == k || !ativo[j] {
@@ -98,12 +97,9 @@ pub(super) fn corrigida(
             // atrito é o impulso de Coulomb do [`super::impulso`], com tecto `μ·g·dt` — LINEAR, e
             // por isso invariante aos sub-passos —, e ele leva as DUAS metades: travar e RODAR.
             //
-            // ⚠️ O `salto` continua a recolher-se aqui: ele não é atrito, é a escrituração do
-            // ressalto do par.
-            if pecas.deslize.is_some() {
-                let (mk, mj) = (pecas.material(k), pecas.material(j));
-                salto = salto.max(atrito::salto(mk.salto, mj.salto));
-            }
+            // ⛔ **E o `salto` também saiu (doc 111 §11):** ele recolhia-se aqui como «escrituração
+            // do ressalto do par» e **ninguém o lia** desde que o ressalto passou a viver no
+            // impulso (§5.12) — um gate defendia uma saída sem consumidor.
         }
         if !tocou {
             continue;
@@ -119,7 +115,6 @@ pub(super) fn corrigida(
         (
             [foto[k][0] + delta[0] * inv, foto[k][1] + delta[1] * inv],
             giro * inv,
-            salto,
         )
     })
 }

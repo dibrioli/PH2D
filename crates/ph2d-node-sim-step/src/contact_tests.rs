@@ -132,13 +132,10 @@ fn two_boxes_rest_face_to_face_and_stop() {
             .zip(w)
             .map(|(c, w)| c.map_or(0.0, |c| c.inv_inercia(w)))
             .collect();
-        let (mut g, mut s) = (vec![0.0; 2], vec![0.0; 2]);
+        let mut g = vec![0.0; 2];
         ph2d_contact::separate(
             &mut p,
-            &mut ph2d_contact::Saida {
-                giro: &mut g,
-                salto: &mut s,
-            },
+            &mut ph2d_contact::Saida { giro: &mut g },
             &ph2d_contact::Pecas::novas(&c, &w, &inv),
             64,
         );

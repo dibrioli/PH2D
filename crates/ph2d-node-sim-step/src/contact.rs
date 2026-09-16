@@ -97,7 +97,7 @@ pub(crate) fn resolve(
     // o solver devolve a lei de antes do §7 **ao bit** — é isso que dispensa migração nenhuma.
     let material =
         ph2d_contact::materiais(state).unwrap_or_else(|| vec![ph2d_contact::Material::LISO; n]);
-    let (mut giro, mut salto) = (vec![0.0_f32; n], vec![0.0_f32; n]);
+    let mut giro = vec![0.0_f32; n];
     let antes = p.to_vec();
     let pecas = ph2d_contact::Pecas {
         colisores: &colisores,
@@ -111,10 +111,7 @@ pub(crate) fn resolve(
     };
     ph2d_contact::separate(
         p,
-        &mut ph2d_contact::Saida {
-            giro: &mut giro,
-            salto: &mut salto,
-        },
+        &mut ph2d_contact::Saida { giro: &mut giro },
         &pecas,
         VARREDURAS,
     );

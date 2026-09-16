@@ -98,7 +98,6 @@ mod par;
 mod trig;
 /// A acumulação por peça — ver o cabeçalho dele.
 mod varredura;
-pub mod warm;
 
 pub use atrito::{Deslize, Material, Pecas, Saida, materiais};
 pub use impulso::{Leis, Movimento, impulsos};
@@ -451,14 +450,12 @@ pub fn inv_inercias(s: &Stream, colisores: &[Option<Colisor>], pesos: &[f32]) ->
         .collect()
 }
 
-/// O que uma varredura decidiu para uma peça: a posição nova, o giro em graus e o salto do par
-/// mais vivo que ela tocou.
-type Nova = Option<([f32; 2], f32, f32)>;
+/// O que uma varredura decidiu para uma peça: a posição nova e o giro em graus/// mais vivo que ela tocou.
+type Nova = Option<([f32; 2], f32)>;
 
 /// Confere que toda coluna tem o comprimento da nuvem.
 fn confere(n: usize, saida: &Saida<'_>, pecas: &Pecas<'_>) {
     assert_eq!(saida.giro.len(), n, "um giro por peca");
-    assert_eq!(saida.salto.len(), n, "um salto por peca");
     assert_eq!(pecas.colisores.len(), n, "um colisor por peca");
     assert_eq!(pecas.pesos.len(), n, "um peso por peca");
     assert_eq!(pecas.inv_inercia.len(), n, "uma inercia por peca");
@@ -470,7 +467,7 @@ fn confere(n: usize, saida: &Saida<'_>, pecas: &Pecas<'_>) {
 }
 
 /// Afasta as peças sobrepostas, `varreduras` vezes. `p` é reescrito no sítio; a [`Saida`] ACUMULA
-/// em GRAUS o quanto cada peça rodou (doc 109 §6) e recolhe o salto de cada uma (§7).
+/// em GRAUS o quanto cada peça rodou (doc 109 §6).
 ///
 /// # Panics
 ///
@@ -555,10 +552,9 @@ pub fn separate_all_pairs(
 /// Escreve o que uma varredura produziu.
 fn aplica(p: &mut [[f32; 2]], saida: &mut Saida<'_>, novas: Vec<Nova>) {
     for (k, nova) in novas.into_iter().enumerate() {
-        if let Some((q, g, s)) = nova {
+        if let Some((q, g)) = nova {
             p[k] = q;
             saida.giro[k] += g;
-            saida.salto[k] = saida.salto[k].max(s);
         }
     }
 }

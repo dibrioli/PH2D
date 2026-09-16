@@ -261,7 +261,4 @@ impl<'a> Pecas<'a> {
 pub struct Saida<'a> {
     /// Quanto cada peça rodou, em GRAUS — o chamador soma-o à coluna `rot`.
     pub giro: &'a mut [f32],
-    /// O salto efectivo de cada peça neste tique: o maior [`salto`] entre os pares que ela tocou.
-    /// `0` onde nada lhe tocou, que é a lei de sempre.
-    pub salto: &'a mut [f32],
 }

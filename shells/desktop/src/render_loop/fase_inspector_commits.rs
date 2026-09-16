@@ -25,6 +25,10 @@ mod projectile_commits;
 #[path = "fase_statemachine_commits.rs"]
 mod statemachine_commits;
 
+/// ⭐⭐⭐ A fase-filha das edições do SCRIPT (TOP-20 #16) — irmã das de cima.
+#[path = "fase_script_commits.rs"]
+mod script_commits;
+
 /// ⭐⭐⭐ A fase-filha das edições da secção TAGS — irmã das de cima, e pelo mesmo tecto.
 #[path = "fase_tags_commits.rs"]
 mod tags_commits;
@@ -237,17 +241,8 @@ impl crate::App {
         inspector_queue_dirty |= projectile_commits::aplicar(sim, &projectile_edits);
         // ⭐ O CÉREBRO (TOP-20 #15) — fase-filha, como as irmãs.
         inspector_queue_dirty |= statemachine_commits::aplicar(sim, &statemachine_edits);
-        // ⭐ O SCRIPT (TOP-20 #16) — o corpo mora na família; o DIÁLOGO é daqui, que tem a janela.
-        inspector_queue_dirty |=
-            ph2d_app_components::script_inspector::apply_all(sim, &script_edits, || {
-                rfd::FileDialog::new()
-                    .add_filter(
-                        "Luau",
-                        ph2d_app_components::script_inspector::SCRIPT_EXTENSIONS,
-                    )
-                    .pick_file()
-                    .map(|p| p.to_string_lossy().into_owned())
-            });
+        // ⭐ O SCRIPT (TOP-20 #16) — fase-filha (o tecto de LOC desta função pôs-no lá).
+        inspector_queue_dirty |= script_commits::aplicar(sim, &script_edits);
         // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — na fase-filha, pela mesma razão das irmãs acima e
         // pelo mesmo tecto de LOC (esta função chegou a `202` contra `200` ao ganhar o cérebro).
         // ⛔ *Partir por RESPONSABILIDADE, nunca subir o número* — e a fronteira já estava escrita

@@ -28,6 +28,7 @@
 //!   script que tinha partido volta a correr — a correcção é a razão de o artista ter gravado.
 
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -411,17 +412,14 @@ impl SceneScripts {
             let init = module.hook("init");
             let update = module.hook("update");
             let bits = a.entity.to_bits();
-            if !self.instances.contains_key(&bits) {
-                match born(lua, a, bits) {
-                    Ok(inst) => {
-                        self.instances.insert(bits, inst);
-                    }
+            if let Entry::Vacant(slot) = self.instances.entry(bits) {
+                let inst = match born(lua, a, bits) {
+                    Ok(inst) => slot.insert(inst),
                     Err(e) => {
                         report.failed.push((a.entity, runtime_message(&e)));
                         continue;
                     }
-                }
-                let inst = self.instances.get_mut(&bits).expect("acabou de nascer");
+                };
                 apply_props(lua, inst, &decls, &a.cfg);
                 if let Some(init) = init {
                     report.calls += 1;

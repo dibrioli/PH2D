@@ -81,8 +81,9 @@ fn todo_boneco_com_script_se_desenha_e_se_apanha_no_centro() {
         assert_eq!((t.translation.x, t.translation.y), (BOB_X[i], BOB_Y));
         assert_eq!(s.size, BOB_SIZE);
     }
-    // E nenhum dos três se sobrepõe a outro: o dedo não tem desempate a fazer.
-    assert!(BOB_X[1] - BOB_X[0] > BOB_SIZE[0] && BOB_X[2] - BOB_X[1] > BOB_SIZE[0]);
+    // E nenhum dos três se sobrepõe a outro: o dedo não tem desempate a fazer. ⭐ Em `const`: uma
+    // disposição que os encoste deixa de COMPILAR.
+    const { assert!(BOB_X[1] - BOB_X[0] > BOB_SIZE[0] && BOB_X[2] - BOB_X[1] > BOB_SIZE[0]) };
 }
 
 /// ⭐⭐⭐ **O §0 do plano, à vista** — o mesmo script, três comportamentos; e o grito acende a

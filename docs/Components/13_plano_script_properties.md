@@ -256,3 +256,29 @@ número escolhido.
    `o_registo_das_fixturas_e_o_do_produto` reprovou com os dois nomes lado a lado até o sexto
    registador entrar em `component_registry_for_tests`. *É o gate a fazer exactamente o que o
    cabeçalho dele promete.*
+5. ⛔⛔ **«Os gates do painel bastam para a secção»** — a **foto** da cena (tela virtual) apanhou
+   **três** defeitos com a suíte verde: `Reset`/`Remove` liam-se `…` (largura em passos de
+   espaçamento ⇒ hoje **medida** do rótulo, `title_elided_width` + `2·padding`); a linha de uma
+   caixa tinha **dois** pontos (o `paint_checkbox` já reserva o dele ⇒ o `paint_decorator_dot` só
+   nas linhas de número e texto); e a cena **não cabia** no ecrã do dono (±6 m e a lâmpada a
+   `y = 5` ⇒ ±4 m e a lâmpada logo acima do boneco rápido, conferido a 2560 e a ~1930 de largura).
+6. ⛔ **«Um gate na shell amarra `STATES_MAX` à tabela de linhas»** — o cabeçalho dos ids do #15
+   dizia-o e o gate **não existia**. Nasceu nesta wave (`o_painel_pinta_todo_o_modelo_aceita`),
+   junto com o `PROPS_MAX`.
+7. ⛔⛔ **Processo — «o `spectacle` fotografa a sessão em que corre»**: ele fala com o KWin pelo
+   D-Bus da sessão **real** e fotografou o ecrã do dono. A imagem foi apagada sem uso; o instrumento
+   ([`fotografa_cena.sh`](ferramentas/fotografa_cena.sh)) **recusa** `DISPLAY=:0` e lê só a Xwayland
+   da sessão virtual, pela janela (`import -window root` falha numa raiz *rootless*). ⚠️ O XTest é
+   **ignorado** naquela Xwayland e o `ydotool` moveria o rato real ⇒ o **clique** prova-se no gate
+   de costura (`a_seccao_script_esta_viva`), nunca na foto.
+
+---
+
+## §8 — Como ficou, e o que fica aberto
+
+As quatro waves shiparam como planeadas (W2 partida em **W2a** — o componente, a VM por objecto — e
+**W2b** — a gravação, a ponte, o rebobinar). **33 provas de mutação, todas a sangrar**
+([`mutacao_script_2026-09-16.sh`](ferramentas/mutacao_script_2026-09-16.sh)). O mecanismo, os
+contadores como DELTA, as leituras que o diff inverte e a lista do que fica **ABERTO** vivem no
+[handoff](handoffs/HANDOFF_INTEGRACAO_line_components_SCRIPT_2026-09-16.md) (§6 e §9) — ⛔ não os
+copie para aqui.

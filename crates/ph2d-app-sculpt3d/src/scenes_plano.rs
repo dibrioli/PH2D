@@ -81,7 +81,7 @@ pub(crate) fn announce() {
          [sculpt3d]        -> Agora e' o contrario: ele ENCHE os vales e nao toca nas cristas.\n\
          [sculpt3d]    (5) Ponha os DOIS em 1 e esfregue.\n\
          [sculpt3d]        -> Ele ACHATA: corta as cristas e enche os vales ao mesmo tempo.\n\
-         [sculpt3d]        (Sao estas tres coisas que antes eram tres pincels diferentes.)\n\
+         [sculpt3d]        (Sao estas tres coisas que antes eram tres pinceis diferentes.)\n\
          [sculpt3d]    (6) Ponha os DOIS em 0 e esfregue.\n\
          [sculpt3d]        -> Nao faz nada, de proposito. E' o `desligado` da ferramenta.\n\
          [sculpt3d]    (7) Volte a Height 1 / Depth 0 e experimente segurar o CTRL enquanto\n\

@@ -334,3 +334,27 @@ vizinho mede antes de reaproveitar a régua dele.
   stime` do `/proc/<pid>/stat` medido **duas vezes**. ⇒ *toda varredura que empurra um recurso até
   ao limite acaba num ponto MEDIDO e seguro, e o ponto que a pendurou fica na tabela com a marca* —
   e quem o quiser medir usa tempo-limite.
+
+---
+
+## ⛔ Um desvio IGUAL em todas as amostras é assinatura da RÉGUA (2026-09-16)
+
+A régua que comparava a decomposição em arcos com a polilinha densa acusou uma decomposição
+**correcta** com `0,0028`–`0,0032` de erro — *uniformemente nos dez arcos*. A causa: ela media
+**ponto→VÉRTICE** em vez de **ponto→SEGMENTO**. Numa polilinha achatada a `9,7e-5` sobre um arco de
+raio `0,05` os vértices ficam a `~0,0062` um do outro, logo um ponto no meio de dois lê `~0,0031`.
+
+**Why:** um defeito real varia com o objecto; um artefacto de régua é constante. *Quando dez
+sujeitos diferentes dão o mesmo número, o número é da régua.* — e esta casa já tinha pago
+exactamente esta lição na régua da ponta (`tip_deviation`, ponto→FACE e não ponto→vértice).
+
+**How to apply:** antes de acreditar num erro pequeno-mas-uniforme, calcule **quanto vale o
+artefacto da própria régua** (aqui: metade do espaçamento da referência) e compare. Se baterem, a
+régua é que está errada.
+
+## ⛔ O SENTIDO de um arco deriva-se, não se decora (2026-09-16)
+
+A 1.ª amostragem de um arco usou `θ = 4·atan(bulge)` com o sinal de uma convenção («DXF: positivo =
+anti-horário») — e leu `0,065` de discordância sobre uma decomposição correcta. Com `|bulge| < 1` o
+arco é o **menor**, logo a diferença dos ângulos das pontas dobrada para `(−π, π]` **é** ele, sem
+convenção nenhuma pelo meio. *Uma convenção decorada é uma premissa que não falha alto.*

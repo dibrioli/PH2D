@@ -216,3 +216,5 @@
 - [Perf do Painter (3)](reference_topic_painter_perf.md) · [spatial GPU reconcilia vs CPU](project_painter_w4_spatial_gpu_bloom_sh.md)
 - [HISTÓRICO: Painter no teto — premissa dissolvida](project_painter_core_files_at_loc_cap.md) · [8GB = full-gate ~10min](project_solo_coord_backlog_ship_2026_05_29.md)
 - 📚 [Arquitetura / norte / perf: mais 14 lições](reference_topic_architecture_north_perf_lessons.md)
+- [fixture (7) — ⛔⛔ uma fixtura de UM ÂNGULO não mede uma lei que depende do ângulo: o gate do filete corria sobre um QUADRADO, e a `90°` o defeito anula-se](reference_topic_fixture_discipline.md)
+- ⛔⛔ [Uma vista NOVA entra ao LADO da que os consumidores já lêem, nunca no lugar dela — 24 leitores tratavam `contours()` como a figura e estavam certos; 2 gates velhos apanharam-no](feedback_a_new_view_cannot_replace_the_one_consumers_read.md)

@@ -24,3 +24,24 @@ metadata:
 - ⚠️ **Diferença em centímetros entre corpos de proporções diferentes não é erro de representação** — é proporção. A canela do sujeito é 54 cm e a nossa 40; dali só vêm os ângulos. Um número em cm nessa comparação mede o corpo, não a lei.
 - ⛔ **Todo gate e todo smoke no ponto de OMISSÃO de um knob** (16/09, `Resolution` do modelador): o defeito só existia com o botão acima de `1`, e o corpus inteiro estava no `1`. É a lei «um corpus no neutro de um knob não testa esse knob» (Motion, 31/08) noutro módulo — varra o knob no gate.
 - [[feedback_choosing_faces_does_not_drop_positions_and_the_orphans_hijack_the_cursor]] — recortar por FACES deixa 721 órfãos; o «vértice mais próximo» aterra na metade deitada fora e a queixa aponta para o verbo
+## ⛔⛔ Uma fixtura de UM ÂNGULO não mede uma lei que depende do ângulo (2026-09-16)
+O `ph2d_vec_scene::corner_live::fillet_handles` emitia o alçapão do arco como
+`(4/3)·tan(α/4)·**s_in**` onde a lei pede `·r`. Como `s_in = r·tan(α/2)`, o factor a mais vale
+**exactamente `1` a `α = 90°`** e cresce para os dois lados. Medido, raio pedido `0,05`:
+| α | raio que saía | × tolerância |
+|---:|---:|---:|
+| `30°` | `0,04875` | `4,2` |
+| `70°` | `0,04729` | `9,1` |
+| **`90°`** | **`0,05000`** | `0,0` ⬅ o único certo |
+| `130°` | **`0,08304`** | `110,7` |
+⚠️⚠️ **E o gate que existia para o atar à lei canónica corria sobre um QUADRADO** —
+`the_fillet_agrees_with_the_crates_canonical_corner_rounding`, quatro cantos a `90°`, que é
+precisamente o ângulo onde o defeito é invisível. O artista pedia `0,05` e recebia `0,083`, em toda
+quina arredondada do app, durante meses.
+**Why:** é a mesma forma de *«uma fixtura alinhada aos eixos não mede uma base»*, um nível acima: a
+fixtura não era degenerada por acaso, era degenerada **no parâmetro de que a lei depende**. Um
+quadrado é a figura que qualquer um desenha primeiro para testar quinas.
+**How to apply:** quando a lei tem um parâmetro (ângulo, escala, razão de aspecto, número de
+lados), a fixtura **varre** esse parâmetro — e o valor «natural» que vem à cabeça (`90°`, `1:1`,
+`potência de 2`) é justamente o mais provável de ser o ponto onde o erro se anula. *Pergunte de que
+número a lei depende, e teste longe dele.*

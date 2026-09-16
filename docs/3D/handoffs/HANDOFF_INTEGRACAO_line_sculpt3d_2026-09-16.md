@@ -56,12 +56,14 @@ oráculo e a saída **ainda** bate — a lei da §2.1 é robusta a isso por cons
 
 - **Inversão `Afastar`** (o sinal troca): `1,007e-1` contra o oráculo, com gate a medir o número
   (`o_afastar_e_uma_divergencia_declarada_com_numero`). A `TrocarTectos` é **exacta**.
-- ⏳ Por escrever: G-5 (o discriminante), G-6, G-12, G-13, G-14; a pegada projectada; a máscara
-  no arnês de bancada. ⚠️ **G-12/G-14 dependem dos estabilizadores**, que são o §51.
+- ⏳ Por escrever: G-5 (o discriminante), G-6, G-13; a pegada projectada; a máscara no arnês de
+  bancada. (G-12 e G-14 fecharam com os estabilizadores, §51.)
+- ⚠️ Desde o §51 o `Ctrl` de FÁBRICA é o `TrocarTectos` (o perfil *aparar* do alvo); o `Afastar`
+  continua no chip.
 - O verbo shipa **só com chip** (`CHIP_ONLY` no gate do teclado): `25` das `26` letras estão
   tomadas, medido.
 
-**Smoke:** `PH2D_SCULPT3D_SMOKE=47` (bossas em `40 k` triângulos, roteiro de 7 passos).
+**Smoke:** `PH2D_SCULPT3D_SMOKE=47` (bossas em `40 k` triângulos; o roteiro, reescrito no §51, tem 9 passos).
 
 ---
 
@@ -160,3 +162,90 @@ no `ph2d-editor-core` (`state/slider_curve.rs`): `número = offset + scale · pi
 
 Prova de mutação **10 de 10** — ⚠️ a 1.ª ronda deu **9**: a curva sobre um mapa afim
 **identidade** era descartada em silêncio, e o gate só usava a faixa do raio.
+
+---
+
+## §51 — ⭐⭐⭐ *«resultado inferior ao blender para produzir superfícies planas»*: a MEMÓRIA do plano
+
+### §51.1 — A causa não estava na lei, e o próprio alvo a reproduziu
+
+A lei por dab já batia o oráculo a `1e-8` (§48) — e o relato era verdadeiro. A 2.ª missão do E
+(§14 da espec, **R-pré 5.ª passagem: verde**, `515e887ee`) mediu porquê: o corpus da 1.ª missão
+escrevia os valores **à mão para a lei ser RECUPERÁVEL**, dava os dabs **por script** e punha o
+cursor **fora** do relevo. O artista tem os valores **de fábrica**, um traço **arrastado** e o
+cursor **na** superfície. ⭐⭐ **Os nossos valores de fábrica, no motor do alvo e com o traço
+dele, deixam o relevo `1,114×` MAIS rugoso em oito passagens** — o relato do dono, reproduzido no
+próprio alvo com os nossos números. A ablação (§14.7) nomeia a alavanca: **a firmeza da normal**
+(`0,029` com ela, `1,380` sem ela), depois o acumular, depois a dureza.
+
+### §51.2 — O que entrou
+
+| peça | onde | o que é |
+|---|---|---|
+| **a memória do plano** (§6.1 + §6.2) | [`plano_memoria.rs`](../../../crates/ph2d-sculpt3d/src/plano_memoria.rs) | normal interpolada com a publicada e média numa memória circular (tecto `20`); centro puxado para o plano anterior, publicado com o desvio MÉDIO. **Uma por passe de simetria**, semeada no 1.º dab (o inerte, errata Q6), esquecida a cada traço |
+| **o passo e a atenuação** (§14.4) | [`atenuacao_do_traco.rs`](../../../crates/ph2d-sculpt3d/src/atenuacao_do_traco.rs) | passo `raio × 7 / 50` só no plano; `(1 + a)/2 = 0,570` por dab arrastado (`0,5·a` no afastar invertido), calculado UMA vez por dab e guardado no plano |
+| **o arrasto** | `Brush::traco_arrastado`, ligado **só** pelo `armed_brush_on` da família | a porta por script (bancada, oráculo) fica com o factor `1` |
+| **os valores de fábrica do *aparar*** | `brush_default.rs` + `brush_verb_defaults.rs` | força `0,7`, dureza `0,6`, acumular **ligado**, extensão do centro `0,6`, firmeza da normal `1`, `Ctrl` a **trocar os tectos** |
+| **o painel** | `rows_plano.rs` | `Hold Tilt` (BÁSICO — é a alavanca) e `Hold Height` (Pro, só com a da normal ligada — §6.3) |
+| **o roteiro da `=47`** | `scenes_plano.rs` | pincel grande, ida e volta sem largar, e o passo que mostra o `Hold Tilt` a 0 |
+
+⭐ **Um achado que a espec não fixava, e o oráculo decidiu:** a normal interpolada é
+**NORMALIZADA** antes de entrar na memória — crua, as fixturas de firmeza `0,25`/`0,5` erram
+`1,2e-4`/`6,6e-5`; normalizada, `3e-8`/`6e-8`. Com a firmeza a zero ela entra crua, e o caminho da
+1.ª missão não muda um bit.
+
+### §51.3 — O que se mediu
+
+| gate | afirma | medido |
+|---|---|---|
+| memória (as `12` fixturas de `firmeza/`) + **G-12** | reprodução `≤ 1e-6`; o centro mudo nas bossas simétricas e vivo no degrau | pior `1,34e-7` |
+| **G-14** | tecto da memória `20`, comprimento truncado | contagens exactas |
+| **G-15** | um dab com o cursor NA superfície e os valores de fábrica | `≤ 1e-6` |
+| **G-19** + 9 células | uma rampa e um degrau não se mexem; as outras 9 da §2.2 reproduzem | rampa `8,8e-8`, degrau `1,8e-7` (o alvo: `0`/`3e-8`) |
+| **G-16** | o passo é `7 %` do diâmetro | `6/13/14/21` px ⇒ `0/1/2/3`; ⛔ **`7` px dá `0` contra `1` do alvo — divergência DECLARADA** (errata Q4: o `<=` do `walk` da casa tem gate e razão escrita; o dab fica para o evento seguinte, no mesmo sítio) |
+| **G-17** | cada dab arrastado vale `(1 + a)/2` | lei `0,570`; o oráculo lê `0,563`; o produto, a razão exacta |
+| ⭐⭐ **G-18** | a firmeza da normal é a alavanca | **fábrica `0,028`** (alvo `0,029`) · **sem firmeza `1,188`** (alvo `1,380`) · **os valores de antes `1,134`** (alvo `1,114`) |
+| os valores de fábrica | nascem os do *aparar* | contra a fixtura de pincel nosso que os escreve |
+| simetria e ciclo de vida | uma memória por passe; cada traço esquece | saída espelhada `≤ 1e-5`; B depois de A = B num traço novo, ao bit |
+
+⚠️ **A planura do traço arrastado bate também a 4 passagens** (`0,092` contra `0,092`), e ⭐
+**uma passagem é UMA travessia** — lida como ida-e-volta ela seria `0,028` a 4. ⚠️ Ponto a ponto o
+arrasto desvia até `1,9e-2`: é a posição sub-píxel de cada dab (o arrasto do alvo nem é
+determinístico ao bit), e a espec põe a afirmação na planura, não nas posições.
+⛔ **Os gates usam só fixturas de pincel NOSSO** (`copia_*`, `ablacao_*`, `ctl_*`) — a nota de
+proveniência do R-pré tira as `fab_*` (geradas com o perfil do alvo carregado).
+
+Prova de mutação **12 de 12** (a memória desligada · a interpolada crua · o centro sem puxão ·
+a memória partilhada entre passes · o traço que não esquece · o factor fora do alvo · a atenuação
+a `1` · a app sem arrasto · o centro sem a normal · a dureza e o acumular de fábrica · o tecto a
+`10`).
+
+---
+
+## §52 — ⏳ O que fica ABERTO, e de quem é
+
+- **Dono:** o **G-20** (tecto do raio *digitável* `≥ 5 000` px, errata Q2) — a pista vai a `5 000`
+  e aceita-o, mas a cena prende o raio na **diagonal da vista** (`2 203` px a 1920×1080), que é o
+  recurso nomeado no §50; o gate nasce com os tamanhos de vista nomeados, se o dono o quiser.
+- **E:** regenerar as **14** `fab_*` com pincel nosso (nota de proveniência do R-pré); os `25`
+  cabeçalhos com `o_que_ela_fixa` vazio e o salto de `20` px sem fixtura (errata Q8); a linha do
+  G-1b na espec ainda diz «dívida» e a reprodução existe desde `1809f8b18` (Q9).
+- **E/R:** a linha deste pincel no `docs/3D/cleanroom/README.md` ainda diz *«R-pré da §14
+  PENDENTE»* — a janela I não lê esse ficheiro.
+- **R-pré, ficou de fora dos portões dele:** a varredura achou citações antigas de nomes internos
+  do alvo em **16 ficheiros do Painter** (registadas no ledger, para decisão do coordenador).
+- **Nossas, nomeadas:** a extensão do centro que **segue a pressão** (o alvo a multiplica pela
+  pressão; esta casa não tem pressão de caneta) · a **ordem do deslocamento** contra a memória (o
+  deslocamento aplica-se depois da estabilização; o corpus só o exercita com a memória a zero) ·
+  o **Sharpen** e os outros que caem no slider cru (§48.2) · os gates G-5, G-6, G-13 · a pegada
+  projectada · a máscara no arnês de bancada · o gémeo Motion do defeito do §49 (o undo do grafo
+  consome o `Ctrl+Z` antes da escultura) · os passos de PAINEL da sonda do undo são roteiro morto
+  com `active=vector`.
+
+**Smoke:**
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULPT3D_SMOKE=47 cargo run -p ph2d-host-desktop --profile smoke
+```
+
+Diagnóstico do undo: `PH2D_SCULPT3D_UNDO_PROBE=1` com a mesma cena.

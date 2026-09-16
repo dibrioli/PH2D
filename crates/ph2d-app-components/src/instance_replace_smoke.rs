@@ -169,7 +169,7 @@ fn item(id: ph2d_editor_core::NodeId) -> &'static str {
     })
     .iter()
     .find(|(row, _, _)| *row == id)
-    .map_or("(este item saiu do menu)", |(_, label, _)| *label)
+    .map_or("(este item saiu do menu)", |(_, label, _)| label.tr())
 }
 
 /// Cena 4 — ver o cabeçalho do módulo.

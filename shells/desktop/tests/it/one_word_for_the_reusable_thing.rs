@@ -46,9 +46,13 @@ const SURFACES: &[&str] = &[
 ];
 
 /// As tabelas de rótulos — o que o painel e os menus pintam.
+///
+/// ⚠️ **Os menus moram na tabela de strings desde 2026-09-16** (`chrome_menus.rs`): o `menu_rows.rs`
+/// passou a guardar CHAVES, e lido como texto ele deixaria de ter um único rótulo — a metade
+/// «tem a palavra `Prefab`» apanhou a mudança, e é por isso que ela existe.
 const LABEL_TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/vector.rs",
-    "crates/ph2d-editor-core/src/screens/hero/menu_rows.rs",
+    "crates/ph2d-i18n/src/chrome_menus.rs",
 ];
 
 /// As palavras que a coisa reutilizável **não** pode ter na tela.

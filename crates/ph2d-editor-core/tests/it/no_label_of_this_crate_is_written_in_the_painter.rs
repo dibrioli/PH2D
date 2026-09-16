@@ -73,11 +73,17 @@ const NOT_LANGUAGE: &[(&str, &str)] = &[(
 /// (`"Line / Neighbors"`, `"{} cells / {}"`) e o `bottom_hud.rs` (`"{}\u{2192}{} ev/stamp"`).
 /// *Uma correcção da medição, nunca licença para crescer*: a partir daqui os números voltam a só
 /// descer.
+///
+/// ✅ **2026-09-16 (`line/UIUX`): os MENUS e a BARRA DE FERRAMENTAS saíram — 311 literais em nove
+/// ficheiros** (`menu_rows` 164 · `ids/menus_timeline` 50 · `left_rail` 71+3 · barra de menus,
+/// paleta, radial, fila horizontal, cabeçalho da paleta). As tabelas passaram a guardar `TextKey`
+/// (`ids::MenuRow`, `left_rail::RailTool`) e o texto sai de `ph2d-i18n/src/chrome_menus.rs` e
+/// `chrome_rail.rs`. ⚠️ O `left_rail` tinha SUBIDO de 71 para 74 nesse dia, e foi a RÉGUA outra
+/// vez: `"C&F"` passou a contar como língua (`B&W` da pilha de ajustes).
 const DIVIDA: &[(&str, usize)] = &[
     ("floating_panel.rs", 13),
     ("grid_snap/inspect.rs", 21),
     ("grid_snap/state.rs", 9),
-    ("ids/menus_timeline.rs", 50),
     ("interaction/dispatch/hierarchy.rs", 3),
     ("interaction/drag_payload.rs", 2),
     ("interaction/state/blender_ops.rs", 3),
@@ -92,20 +98,13 @@ const DIVIDA: &[(&str, usize)] = &[
     ("screens/hero/chrome/fill_modal.rs", 3),
     ("screens/hero/color_picker_demo.rs", 1),
     ("screens/hero/context_menu_dialogs.rs", 9),
-    ("screens/hero/context_menu_overlay.rs", 2),
     ("screens/hero/fixture.rs", 26),
-    ("screens/hero/global_palette.rs", 4),
     ("screens/hero/inspector_model.rs", 1),
     ("screens/hero/inspector_model_anchor.rs", 3),
     ("screens/hero/inspector_model_instance.rs", 15),
-    ("screens/hero/left_rail.rs", 71),
-    ("screens/hero/menu_bar.rs", 5),
-    ("screens/hero/menu_rows.rs", 164),
     ("screens/hero/pre_populate.rs", 17),
     ("screens/hero/pre_populate_blender.rs", 2),
     ("screens/hero/prefab_bar.rs", 4),
-    ("screens/hero/radial.rs", 1),
-    ("screens/hero/tool_bar.rs", 3),
     ("screens/hero/topbar/chip_name.rs", 35),
     ("screens/hero/topbar/cluster_painter.rs", 6),
     ("screens/hero/topbar/tooltips.rs", 28),
@@ -117,7 +116,6 @@ const DIVIDA: &[(&str, usize)] = &[
     ("widget/blender_color_picker/state.rs", 1),
     ("widget/color_picker.rs", 11),
     ("widget/combobox.rs", 1),
-    ("widget/command_palette/header.rs", 2),
     ("widget/dropdown/mod.rs", 1),
     ("widget/key_value_list.rs", 2),
     ("widget/variant_editor.rs", 9),
@@ -239,10 +237,17 @@ fn the_debt_only_describes_what_is_still_there() {
 #[test]
 fn every_chrome_key_exists_on_both_sides() {
     const PREFIX: &str = "chrome.";
-    const TABLE: &str = "crates/ph2d-i18n/src/chrome.rs";
+    // ⚠️ **Três tabelas, um prefixo** (2026-09-16): os menus e a barra de ferramentas moram em
+    // irmãs do `chrome.rs` (isolamento entre linhas, `CLAUDE.md` §0.2), e as chaves continuam
+    // `chrome.*`. Com uma tabela só aqui, as 244 chaves novas liam-se «sem tradução».
+    const TABLES: &[&str] = &[
+        "crates/ph2d-i18n/src/chrome.rs",
+        "crates/ph2d-i18n/src/chrome_menus.rs",
+        "crates/ph2d-i18n/src/chrome_rail.rs",
+    ];
     let repo = repo_root();
-    let used = keys::keys_used(&repo, PREFIX, &[TABLE]);
-    let declared = keys::keys_declared(&repo, &[TABLE], PREFIX);
+    let used = keys::keys_used(&repo, PREFIX, TABLES);
+    let declared = keys::keys_declared(&repo, TABLES, PREFIX);
     // ⛔ Controlo de vacuidade: um caminho errado dá dois conjuntos vazios, que concordam.
     assert!(
         declared.len() >= 10 && used.len() >= 10,
@@ -258,7 +263,7 @@ fn every_chrome_key_exists_on_both_sides() {
         .collect();
     assert!(
         sem_traducao.is_empty(),
-        "estas chaves são usadas e NÃO existem em `{TABLE}` — o `tr` faz `leak_key` e pinta o \
+        "estas chaves são usadas e NÃO existem em {TABLES:?} — o `tr` faz `leak_key` e pinta o \
          identificador cru na tela, um vazamento por quadro:\n  {}",
         sem_traducao.join("\n  ")
     );

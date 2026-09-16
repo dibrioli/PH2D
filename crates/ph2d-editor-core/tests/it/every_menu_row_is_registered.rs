@@ -63,6 +63,7 @@ fn every_painted_menu_row_is_registered_and_therefore_clickable() {
     let mut rows_seen = 0usize;
     for kind in ContextMenuKind::ALL.iter().copied() {
         for (id, label, _) in menu_rows(kind) {
+            let label = label.tr();
             rows_seen += 1;
             // ⚠️ **A barra é a do `is_focusable` do despachante**
             // (`interaction/dispatch/focus.rs`), e não uma inventada aqui: o que mata o clique é o

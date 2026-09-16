@@ -42,7 +42,7 @@ fn what_does_not_fit_gets_a_door_never_a_silent_cut() {
              para a paleta",
             n - MAX_SECTORS + 1
         );
-        assert_eq!(last.label, MORE_LABEL);
+        assert_eq!(last.label, MORE_LABEL.tr());
         // E os sete primeiros são os sete primeiros — o transbordo não reordena nada.
         assert_eq!(&out[..MAX_SECTORS - 1], &items(n)[..MAX_SECTORS - 1]);
     }

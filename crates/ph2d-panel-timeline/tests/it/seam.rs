@@ -351,6 +351,7 @@ fn every_track_menu_row_is_handled_by_the_panel() {
     let _ = ph2d_panel_timeline::drain_intents();
     let target = publish_one_track(3, ph2d_timeline::PropKind::Opacity);
     for (id, label, _) in ph2d_editor_core::ids::TIMELINE_TRACK_MENU {
+        let label = label.tr();
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
         let mut state = TimelinePanelState::default();
         host.store_mut().open_context_menu(ContextMenuRequest {
@@ -735,6 +736,7 @@ fn every_strip_menu_row_raises_the_intent_its_label_promises() {
     };
 
     for (id, label, _) in c::TIMELINE_STRIP_MENU {
+        let label = label.tr();
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
         let mut state = TimelinePanelState::default();
         park_strip_menu(&mut host, strip);
@@ -864,6 +866,7 @@ fn every_lane_menu_row_does_what_its_label_promises() {
 
     let mut saw_rename = false;
     for (id, label, _) in c::TIMELINE_LANE_MENU {
+        let label = label.tr();
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
         let mut state = TimelinePanelState::default();
         park_lane_menu(&mut host, 0);
@@ -1064,6 +1067,7 @@ fn every_path_track_menu_row_is_handled_and_the_orient_row_raises_its_intent() {
     let _ = ph2d_panel_timeline::drain_intents();
     let target = publish_one_track(4, ph2d_timeline::PropKind::Position);
     for (id, label, _) in ph2d_editor_core::ids::TIMELINE_PATH_TRACK_MENU {
+        let label = label.tr();
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
         let mut state = TimelinePanelState::default();
         host.store_mut().open_context_menu(ContextMenuRequest {
@@ -1105,6 +1109,7 @@ fn every_axis_track_menu_row_is_handled_and_the_convert_row_raises_its_intent() 
     let _ = ph2d_panel_timeline::drain_intents();
     let target = publish_one_track(5, ph2d_timeline::PropKind::TranslationX);
     for (id, label, _) in ph2d_editor_core::ids::TIMELINE_AXIS_TRACK_MENU {
+        let label = label.tr();
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
         let mut state = TimelinePanelState::default();
         host.store_mut().open_context_menu(ContextMenuRequest {

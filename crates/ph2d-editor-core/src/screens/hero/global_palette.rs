@@ -56,10 +56,12 @@
 
 use crate::widget::command_palette::{PaletteGroup, PaletteItem, PaletteModel, PaletteSub};
 use ph2d_a11y::NodeId;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 use ph2d_tokens::ColorToken;
 
 /// O título da paleta global — o que o cabeçalho mostra.
-pub const GLOBAL_PALETTE_TITLE: &str = "Commands";
+pub const GLOBAL_PALETTE_TITLE: TextKey = TextKey::new("chrome.palette.commands");
 
 /// `snake_case` → `Title Case`. Ver o doc-header: é uma DERIVAÇÃO do id, nunca uma tabela.
 #[must_use]
@@ -119,7 +121,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
             .collect();
     if !tools.is_empty() {
         groups.push(PaletteGroup {
-            title: "Tools".into(),
+            title: tr("chrome.palette.tools").into(),
             color: ColorToken::NodeCatTransform,
             subs: vec![PaletteSub {
                 title: None,
@@ -146,7 +148,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
     panels.sort_by(|a, b| a.label.cmp(&b.label));
     if !panels.is_empty() {
         groups.push(PaletteGroup {
-            title: "Panels".into(),
+            title: tr("chrome.palette.panels").into(),
             color: ColorToken::NodeCatUtility,
             subs: vec![PaletteSub {
                 title: None,
@@ -169,7 +171,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
             let items: Vec<PaletteItem> = super::menu_rows::menu_rows(*kind)
                 .iter()
                 .map(|(id, label, _)| PaletteItem {
-                    label: palette_label(label),
+                    label: palette_label(label.tr()),
                     id: *id,
                 })
                 .collect();
@@ -181,14 +183,14 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
         .collect();
     if !menus.is_empty() {
         groups.push(PaletteGroup {
-            title: "Menus".into(),
+            title: tr("chrome.palette.menus").into(),
             color: ColorToken::NodeCatOutput,
             subs: menus,
         });
     }
 
     PaletteModel {
-        title: GLOBAL_PALETTE_TITLE.into(),
+        title: GLOBAL_PALETTE_TITLE.tr().into(),
         groups,
         // O `Ctrl+K` não tem caixa nenhuma — ver `PaletteModel::toggle`.
         toggle: None,

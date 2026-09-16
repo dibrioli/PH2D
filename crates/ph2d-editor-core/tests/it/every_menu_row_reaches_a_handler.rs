@@ -52,11 +52,21 @@ fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-const MENU_ROWS: &str = "crates/ph2d-editor-core/src/screens/hero/menu_rows.rs";
+/// ⚠️ **DOIS ficheiros desde 2026-09-16:** as linhas passaram a guardar chaves (`ids::MenuRow`) e as
+/// tabelas mudaram-se para `menu_tables.rs` (itens `const`), com o `match` a ficar no `menu_rows.rs`.
+/// Lendo só o primeiro, a população caía para ~10 e o controlo positivo reprovava — que é o motivo
+/// de ele existir.
+const MENU_ROWS: &[&str] = &[
+    "crates/ph2d-editor-core/src/screens/hero/menu_rows.rs",
+    "crates/ph2d-editor-core/src/screens/hero/menu_tables.rs",
+];
 
 /// **A população** — todo `ids::NOME` que a tabela de linhas menciona, menos as tabelas.
 fn menu_row_ids(root: &Path) -> BTreeSet<String> {
-    let src = std::fs::read_to_string(root.join(MENU_ROWS)).expect("menu_rows.rs");
+    let src: String = MENU_ROWS
+        .iter()
+        .map(|f| std::fs::read_to_string(root.join(f)).expect("tabela de linhas de menu"))
+        .collect();
     let mut out = BTreeSet::new();
     let mut rest = src.as_str();
     while let Some(i) = rest.find("ids::") {
@@ -83,7 +93,7 @@ fn menu_row_ids(root: &Path) -> BTreeSet<String> {
 /// | excluído | porque um sítio ali não é um handler |
 /// |---|---|
 /// | `/ids/` | é a declaração do nome |
-/// | `menu_rows.rs` | é a tabela que o PINTA |
+/// | `menu_rows.rs` · `menu_tables.rs` | é a tabela que o PINTA |
 /// | `pre_populate*.rs` · `populate.rs` | é o REGISTO — cunha o widget no store |
 /// | `tests/` · `*_tests.rs` | prova que alguém o TESTA, não que alguém o despacha |
 fn dispatch_sources(root: &Path) -> Vec<(PathBuf, String)> {
@@ -117,6 +127,7 @@ fn dispatch_sources(root: &Path) -> Vec<(PathBuf, String)> {
             let s = p.to_string_lossy();
             !s.contains("/ids/")
                 && !s.ends_with("menu_rows.rs")
+                && !s.ends_with("menu_tables.rs")
                 && !s.contains("pre_populate")
                 && !s.ends_with("populate.rs")
                 && !s.contains("/tests/")

@@ -66,6 +66,7 @@ fn no_file_menu_row_is_left_out_of_the_census() {
     use ph2d_editor_core::interaction::ContextMenuKind;
     use ph2d_editor_core::screens::hero::menu_rows::menu_rows;
     for (id, label, _) in menu_rows(ContextMenuKind::SaveMenu) {
+        let label = label.tr();
         let mut h = hero();
         assert!(
             h.apply_event(WidgetEvent::Click(*id)),

@@ -33,6 +33,7 @@ fn the_tab_and_the_menu_call_a_panel_the_same_thing() {
     let mut checked = 0usize;
     for kind in menus {
         for (row_id, label, _) in menu_rows::menu_rows(kind) {
+            let label = label.tr();
             let Some((_, truth)) = menu_bar::MODULE_TRUTHS.iter().find(|(id, _)| id == row_id)
             else {
                 continue; // esta linha não fala de um painel
@@ -44,7 +45,7 @@ fn the_tab_and_the_menu_call_a_panel_the_same_thing() {
                 continue; // o painel não está nas features desta build
             };
             checked += 1;
-            if title != label {
+            if *title != label {
                 disagree.push(format!(
                     "{panel_id}: o menu diz {label:?} e a aba diz {title:?}"
                 ));

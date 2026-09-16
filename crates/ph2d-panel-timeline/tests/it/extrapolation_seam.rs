@@ -124,6 +124,7 @@ fn every_extrap_mode_row_is_handled_by_the_panel() {
     let _ = ph2d_panel_timeline::drain_intents();
     let target = publish_one_track(5, ph2d_timeline::PropKind::ScaleX);
     for (id, label, _) in ids::TIMELINE_EXTRAP_MENU {
+        let label = label.tr();
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
         let mut state = TimelinePanelState::default();
         host.store_mut().open_context_menu(ContextMenuRequest {
@@ -151,7 +152,7 @@ fn the_time_remap_menu_has_no_extrapolation_cascade() {
     // Remap track does not (its clock is its own, so extrapolation is inert). A row
     // offered but inert would be the dead-item bug the one-table-per-menu shape
     // exists to prevent.
-    let has = |menu: &[(ph2d_a11y::NodeId, &str, Option<[u8; 4]>)], id| {
+    let has = |menu: &[ids::MenuRow], id| {
         menu.iter().any(|(row, _, _)| *row == id)
     };
     assert!(

@@ -208,6 +208,7 @@ fn every_hierarchy_row_menu_entry_dispatches_something() {
 
     let mut dead: Vec<&str> = Vec::new();
     for (id, label, _) in menu_rows(ContextMenuKind::HierarchyRow { row: NodeId(1) }) {
+        let label = label.tr();
         let mut hero = setup_hero();
         let mut state = HierarchyState::default();
         stage_hierarchy_row_snapshot(&mut hero, NodeId(100_600));
@@ -401,7 +402,7 @@ fn the_menu_opens_the_prefab_and_says_so() {
     let (_, label, _) = achado.expect(
         "o menu da Hierarquia nao oferece `Edit Prefab` - a receita volta a ser alcancavel so'          pelo cartao da biblioteca",
     );
-    assert_eq!(*label, "Edit Prefab", "a linha mudou de nome");
+    assert_eq!(label.tr(), "Edit Prefab", "a linha mudou de nome");
 }
 
 /// ⭐⭐⭐ **AS DUAS LINHAS ESTÃO NO MENU** (Enio, 2026-08-30: *"no menu do botão direito da hierarquia
@@ -430,7 +431,7 @@ fn the_menu_offers_group_and_ungroup_by_name() {
             )
         });
         assert_eq!(
-            *label, rotulo,
+            label.tr(), rotulo,
             "a linha mudou de nome - o artista procura a palavra que os outros editores usam"
         );
     }

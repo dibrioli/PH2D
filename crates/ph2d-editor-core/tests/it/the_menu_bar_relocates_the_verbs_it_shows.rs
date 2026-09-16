@@ -160,6 +160,7 @@ fn choosing_a_row_closes_the_menu() {
         ContextMenuKind::MenuBarView,
     ] {
         let (id, label, _) = menu_rows(kind)[0];
+        let label = label.tr();
         let mut h = hero();
         h.store
             .open_context_menu(ph2d_editor_core::interaction::ContextMenuRequest {
@@ -390,6 +391,7 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
     let mut covered = 0usize;
     for kind in MENUS.iter().map(|(_, _, k)| *k) {
         for (id, label, _) in menu_rows(kind) {
+            let label = label.tr();
             let is_toggle = kind == ContextMenuKind::MenuBarWindow
                 || *id == ids::RAIL_SHOW_HIERARCHY
                 || *id == ids::RAIL_SHOW_INSPECTOR
@@ -619,6 +621,7 @@ fn clicking_a_toggle_row_moves_its_mark() {
     let mut stuck = Vec::new();
     let mut moved = Vec::new();
     for (id, label, _) in menu_rows(ContextMenuKind::MenuBarWindow) {
+        let label = label.tr();
         let truth = menu_bar::MODULE_TRUTHS
             .iter()
             .find(|(mid, _)| mid == id)
@@ -636,9 +639,9 @@ fn clicking_a_toggle_row_moves_its_mark() {
         menu_bar::publish_toggle_state(&mut h);
         let after = matches!(h.store.button_state(*id), Some(ButtonState::Pressed));
         if before == after {
-            stuck.push(*label);
+            stuck.push(label);
         } else {
-            moved.push(*label);
+            moved.push(label);
         }
     }
     assert!(

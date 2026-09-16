@@ -106,6 +106,7 @@ fn every_marker_menu_row_is_handled_by_the_panel() {
     // nothing. Drive each one through the real seam and demand the panel consume it.
     let _ = ph2d_panel_timeline::drain_intents();
     for (id, label, _) in ph2d_editor_core::ids::TIMELINE_MARKER_MENU {
+        let label = label.tr();
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
         let mut state = TimelinePanelState::default();
         park_marker_menu(&mut host, 0);

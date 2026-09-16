@@ -84,6 +84,7 @@ fn the_bar_relocated_every_row_of_the_menus_it_replaced() {
     let mut homeless = Vec::new();
     for (_, kind) in LEGACY_PILL_MENUS {
         for (id, label, _) in menu_rows(*kind) {
+            let label = label.tr();
             if !reachable.contains(id) {
                 homeless.push(format!("{label} ({kind:?})"));
             }
@@ -92,6 +93,7 @@ fn the_bar_relocated_every_row_of_the_menus_it_replaced() {
     // ⭐ E os BOTÕES directos da barra legada (sem menu) — o navegador de Assets ficou sem porta
     //    porque o censo só via os menus (Enio, 2026-09-05).
     for (id, label) in LEGACY_PILL_BUTTONS {
+        let label = label.tr();
         if !reachable.contains(id) {
             homeless.push(format!("{label} (botao directo da barra legada)"));
         }

@@ -85,6 +85,7 @@ mod live;
 /// A TABELA de rows de cada menu — a porta única de *«que linhas este menu tem?»*.
 pub mod menu_bar;
 pub mod menu_rows;
+mod menu_tables;
 /// O que esta tela OFERECE agora — as portas de *«esta superfície está viva?»*.
 mod offers;
 mod paint;

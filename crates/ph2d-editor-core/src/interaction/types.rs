@@ -75,7 +75,7 @@ impl TimelineInterpScope {
     /// carries a scar from — it hand-listed the leaf ids once, `Nearest` was added to the
     /// table, and the row was born dead.
     #[must_use]
-    pub fn menu_table(self) -> &'static [(NodeId, &'static str, Option<[u8; 4]>)] {
+    pub fn menu_table(self) -> &'static [crate::ids::MenuRow] {
         match self {
             Self::StripFade { .. } => &crate::ids::TIMELINE_FADE_MENU,
             Self::Key { .. } | Self::Column { .. } => &crate::ids::TIMELINE_SEGMENT_MENU,

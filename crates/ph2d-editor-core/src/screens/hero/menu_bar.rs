@@ -47,6 +47,7 @@ use crate::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolv
 use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_i18n::TextKey;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -58,16 +59,32 @@ use ph2d_vector::VectorScene;
 pub const MENU_BAR_H: f32 = ROW_H_PX;
 
 /// ⭐ **A TABELA** — título, id, e o menu que ele abre. A fonte única desta barra.
-pub const MENUS: [(NodeId, &str, ContextMenuKind); 5] = [
-    (ids::MENUBAR_FILE, "File", ContextMenuKind::MenuBarFile),
-    (ids::MENUBAR_EDIT, "Edit", ContextMenuKind::MenuBarEdit),
-    (ids::MENUBAR_VIEW, "View", ContextMenuKind::MenuBarView),
+pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 5] = [
+    (
+        ids::MENUBAR_FILE,
+        TextKey::new("chrome.menu_bar.file"),
+        ContextMenuKind::MenuBarFile,
+    ),
+    (
+        ids::MENUBAR_EDIT,
+        TextKey::new("chrome.menu_bar.edit"),
+        ContextMenuKind::MenuBarEdit,
+    ),
+    (
+        ids::MENUBAR_VIEW,
+        TextKey::new("chrome.menu_bar.view"),
+        ContextMenuKind::MenuBarView,
+    ),
     (
         ids::MENUBAR_WINDOW,
-        "Window",
+        TextKey::new("chrome.menu_bar.window"),
         ContextMenuKind::MenuBarWindow,
     ),
-    (ids::MENUBAR_RUN, "Run", ContextMenuKind::MenuBarRun),
+    (
+        ids::MENUBAR_RUN,
+        TextKey::new("chrome.menu_bar.run"),
+        ContextMenuKind::MenuBarRun,
+    ),
 ];
 
 /// Os ids de linha que **esta** barra trouxe — os que nenhum outro botão do app alcançava.
@@ -267,7 +284,8 @@ pub fn menu_rects(
     let font = TypeToken::Sm.px();
     let mut x = bar.x + bar_inset_x();
     std::array::from_fn(|i| {
-        let (id, title, _) = MENUS[i];
+        let (id, key, _) = MENUS[i];
+        let title = key.tr();
         let w = text_system.prefix_width(title, font) + title_pad_x() * 2.0;
         let r = Rect::new(x, bar.y, w, bar.h);
         x += w;

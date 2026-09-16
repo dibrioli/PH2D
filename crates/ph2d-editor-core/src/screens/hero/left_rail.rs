@@ -25,50 +25,86 @@ use crate::paint::{fill_rounded_rect, resolve};
 use crate::widget::{ButtonState, ToolRail, ToolRailEntry, paint_tool_rail_t};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::VectorScene;
+
+/// Uma ferramenta do rail: `(id, NOME, ícone, SUB-RÓTULO vertical)` — os dois textos são CHAVES
+/// (`chrome.rail.*` / `chrome.rail.sub.*`), traduzidas no [`tool_entry`], que é quem as pinta.
+pub(super) type RailTool = (NodeId, TextKey, IconId, TextKey);
 
 /// Painter-mode paint tools, in rail order: `(id, a11y label, icon, vertical
 /// sub-label)`. Replaces the object-mode transform block while the Painter tool
 /// is active. Exclusive radio selection (`chrome/rail_painter_tools.rs`); the
 /// last entry (Shapes) also owns the shape flyout ([`PAINTER_SHAPES`]).
-const PAINTER_TOOLS: [(NodeId, &str, IconId, &str); 11] = [
-    (ids::PAINTER_RAIL_BRUSH, "Brush", IconId::Painter, "BRUSH"),
+const PAINTER_TOOLS: [RailTool; 11] = [
+    (
+        ids::PAINTER_RAIL_BRUSH,
+        TextKey::new("chrome.rail.brush"),
+        IconId::Painter,
+        TextKey::new("chrome.rail.sub.brush"),
+    ),
     (
         ids::PAINTER_RAIL_EYEDROPPER,
-        "Eyedropper",
+        TextKey::new("chrome.rail.eyedropper"),
         IconId::Eyedropper,
-        "PICK",
+        TextKey::new("chrome.rail.sub.pick"),
     ),
-    (ids::PAINTER_RAIL_ERASER, "Eraser", IconId::Erase, "ERASE"),
-    (ids::PAINTER_RAIL_CLONE, "Clone", IconId::Clone, "CLONE"),
-    (ids::PAINTER_RAIL_SMEAR, "Smear", IconId::Smear, "SMEAR"),
-    (ids::PAINTER_RAIL_BLUR, "Blur", IconId::Blur, "BLUR"),
+    (
+        ids::PAINTER_RAIL_ERASER,
+        TextKey::new("chrome.rail.eraser"),
+        IconId::Erase,
+        TextKey::new("chrome.rail.sub.erase"),
+    ),
+    (
+        ids::PAINTER_RAIL_CLONE,
+        TextKey::new("chrome.rail.clone"),
+        IconId::Clone,
+        TextKey::new("chrome.rail.sub.clone"),
+    ),
+    (
+        ids::PAINTER_RAIL_SMEAR,
+        TextKey::new("chrome.rail.smear"),
+        IconId::Smear,
+        TextKey::new("chrome.rail.sub.smear"),
+    ),
+    (
+        ids::PAINTER_RAIL_BLUR,
+        TextKey::new("chrome.rail.blur"),
+        IconId::Blur,
+        TextKey::new("chrome.rail.sub.blur"),
+    ),
     (
         ids::PAINTER_RAIL_LIQUIFY,
-        "Liquify",
+        TextKey::new("chrome.rail.liquify"),
         IconId::Liquify,
-        "LIQFY",
+        TextKey::new("chrome.rail.sub.liqfy"),
     ),
     (
         ids::PAINTER_RAIL_TRANSFORM,
-        "Transform",
+        TextKey::new("chrome.rail.transform"),
         IconId::Transform,
-        "XFORM",
+        TextKey::new("chrome.rail.sub.xform"),
     ),
-    (ids::PAINTER_RAIL_MASK_GROUP, "Mask", IconId::Mask, "MASK"),
+    (
+        ids::PAINTER_RAIL_MASK_GROUP,
+        TextKey::new("chrome.rail.mask"),
+        IconId::Mask,
+        TextKey::new("chrome.rail.sub.mask"),
+    ),
     (
         ids::PAINTER_RAIL_INPAINT,
-        "Inpaint",
+        TextKey::new("chrome.rail.inpaint"),
         IconId::Inpaint,
-        "INPNT",
+        TextKey::new("chrome.rail.sub.inpnt"),
     ),
     (
         ids::PAINTER_RAIL_SHAPES,
-        "Shapes",
+        TextKey::new("chrome.rail.shapes"),
         IconId::VectorShape,
-        "SHAPE",
+        TextKey::new("chrome.rail.sub.shape"),
     ),
 ];
 
@@ -78,36 +114,51 @@ const PAINTER_TOOLS: [(NodeId, &str, IconId, &str); 11] = [
 /// The Mask-group flyout options, in flyout order: `(id, a11y label, icon, sub)`. Same chip appearance
 /// as the rail tools. Revealed right of the Mask button. Mask is the default sub-tool (its icon is the
 /// group's default face); Selection is the Procreate-style marquee.
-pub(super) const PAINTER_MASK_SUBS: [(NodeId, &str, IconId, &str); 2] = [
-    (ids::PAINTER_RAIL_MASK, "Mask", IconId::Mask, "MASK"),
-    (ids::PAINTER_RAIL_SELECTION, "Select", IconId::Select, "SEL"),
+pub(super) const PAINTER_MASK_SUBS: [RailTool; 2] = [
+    (
+        ids::PAINTER_RAIL_MASK,
+        TextKey::new("chrome.rail.mask"),
+        IconId::Mask,
+        TextKey::new("chrome.rail.sub.mask"),
+    ),
+    (
+        ids::PAINTER_RAIL_SELECTION,
+        TextKey::new("chrome.rail.select"),
+        IconId::Select,
+        TextKey::new("chrome.rail.sub.sel"),
+    ),
 ];
 
-pub(super) const PAINTER_SHAPES: [(NodeId, &str, IconId, &str); 5] = [
+pub(super) const PAINTER_SHAPES: [RailTool; 5] = [
     (
         ids::PAINTER_RAIL_SHAPE_FREEHAND,
-        "Free Hand",
+        TextKey::new("chrome.rail.free_hand"),
         IconId::VectorPencil,
-        "FREE",
+        TextKey::new("chrome.rail.sub.free"),
     ),
-    (ids::PAINTER_RAIL_SHAPE_LINE, "Line", IconId::Line, "LINE"),
+    (
+        ids::PAINTER_RAIL_SHAPE_LINE,
+        TextKey::new("chrome.rail.line"),
+        IconId::Line,
+        TextKey::new("chrome.rail.sub.line"),
+    ),
     (
         ids::PAINTER_RAIL_SHAPE_CURVE,
-        "Curve",
+        TextKey::new("chrome.rail.curve"),
         IconId::VectorPen,
-        "CURVE",
+        TextKey::new("chrome.rail.sub.curve"),
     ),
     (
         ids::PAINTER_RAIL_SHAPE_ELLIPSE,
-        "Ellipse",
+        TextKey::new("chrome.rail.ellipse"),
         IconId::Circle,
-        "ELLI",
+        TextKey::new("chrome.rail.sub.elli"),
     ),
     (
         ids::PAINTER_RAIL_SHAPE_POLYGON,
-        "Polygon",
+        TextKey::new("chrome.rail.polygon"),
         IconId::Polygon,
-        "POLY",
+        TextKey::new("chrome.rail.sub.poly"),
     ),
 ];
 
@@ -223,40 +274,37 @@ pub fn apply_event(_store: &mut WidgetStore, event: WidgetEvent) -> bool {
 
 fn left_rail_chip_name(id: NodeId) -> Option<&'static str> {
     if let Some((_, label, ..)) = PAINTER_TOOLS.iter().find(|(tid, ..)| *tid == id) {
-        return Some(label);
+        return Some(label.tr());
     }
     if let Some((_, label, ..)) = PAINTER_SHAPES.iter().find(|(sid, ..)| *sid == id) {
-        return Some(label);
+        return Some(label.tr());
     }
     if let Some((_, label, ..)) = PAINTER_MASK_SUBS.iter().find(|(sid, ..)| *sid == id) {
-        return Some(label);
+        return Some(label.tr());
     }
     Some(match id {
-        x if x == ids::PAINTER_RAIL_MASK_GROUP => "Mask",
-        x if x == ids::PAINTER_RAIL_FILL => "C&F", // Colour & Fill well (opens the picker; drag = ColorDrop)
-        x if x == ids::RAIL_SHOW_INSPECTOR => "Show Inspector",
-        x if x == ids::RAIL_SHOW_HIERARCHY => "Show Hierarchy",
-        x if x == ids::TOOL_TRANSLATE => "Translate",
-        x if x == ids::TOOL_ROTATE => "Rotate",
-        x if x == ids::TOOL_SCALE => "Scale",
-        x if x == ids::TOOL_PIVOT => "Pivot",
-        x if x == ids::TOOL_SPACE => "Coordinate Space",
-        x if x == ids::TOOL_PROJECTION => "Projection",
-        x if x == ids::TOOL_HOME => "Frame View",
-        x if x == ids::TOOL_UNDO => "Undo",
-        x if x == ids::TOOL_REDO => "Redo",
-        x if x == ids::RAIL_BACKDROP => "Rail Backdrop",
+        x if x == ids::PAINTER_RAIL_MASK_GROUP => tr("chrome.rail.mask"),
+        x if x == ids::PAINTER_RAIL_FILL => tr("chrome.rail.c_and_f"), // Colour & Fill well (opens the picker; drag = ColorDrop)
+        x if x == ids::RAIL_SHOW_INSPECTOR => tr("chrome.rail.show_inspector"),
+        x if x == ids::RAIL_SHOW_HIERARCHY => tr("chrome.rail.show_hierarchy"),
+        x if x == ids::TOOL_TRANSLATE => tr("chrome.rail.translate"),
+        x if x == ids::TOOL_ROTATE => tr("chrome.rail.rotate"),
+        x if x == ids::TOOL_SCALE => tr("chrome.rail.scale"),
+        x if x == ids::TOOL_PIVOT => tr("chrome.rail.pivot"),
+        x if x == ids::TOOL_SPACE => tr("chrome.rail.coordinate_space"),
+        x if x == ids::TOOL_PROJECTION => tr("chrome.rail.projection"),
+        x if x == ids::TOOL_HOME => tr("chrome.rail.frame_view"),
+        x if x == ids::TOOL_UNDO => tr("chrome.rail.undo"),
+        x if x == ids::TOOL_REDO => tr("chrome.rail.redo"),
+        x if x == ids::RAIL_BACKDROP => tr("chrome.rail.rail_backdrop"),
         _ => return None,
     })
 }
 
 /// Build the rail entry for one `(id, label, icon, sub)` tool tuple, flagging it
 /// `active` when its store button state is `Pressed`.
-pub(super) fn tool_entry(
-    store: &WidgetStore,
-    (id, label, icon, sub): (NodeId, &str, IconId, &str),
-) -> ToolRailEntry {
-    let mut e = ToolRailEntry::icon(id, label, icon).with_sub(sub);
+pub(super) fn tool_entry(store: &WidgetStore, (id, label, icon, sub): RailTool) -> ToolRailEntry {
+    let mut e = ToolRailEntry::icon(id, label.tr(), icon).with_sub(sub.tr());
     if matches!(store.button_state(id), Some(ButtonState::Pressed)) {
         e = e.active();
     }
@@ -271,7 +319,8 @@ fn fill_swatch_entry(store: &WidgetStore) -> ToolRailEntry {
     let color = store
         .widget_color(ids::PAINTER_COLOR_THUMB)
         .unwrap_or([0x88, 0x88, 0x88, 0xFF]); // LITERAL-COLOR-OK: neutral default before a colour is set
-    let mut e = ToolRailEntry::swatch(ids::PAINTER_RAIL_FILL, "C&F", color).with_sub("C&F");
+    let mut e = ToolRailEntry::swatch(ids::PAINTER_RAIL_FILL, tr("chrome.rail.c_and_f"), color)
+        .with_sub(tr("chrome.rail.sub.c_and_f"));
     if matches!(
         store.button_state(ids::PAINTER_RAIL_FILL),
         Some(ButtonState::Pressed)
@@ -284,7 +333,7 @@ fn fill_swatch_entry(store: &WidgetStore) -> ToolRailEntry {
 /// The Shapes-flyout entry (`label`, `icon`, `sub`) whose sub-radio is Pressed — so the Shapes rail
 /// button can adopt the ACTIVE shape's icon in place of the generic Shapes icon. `None` until a shape
 /// is picked (the button then keeps the last-picked shape's icon, like a Photoshop tool group).
-fn active_shape(store: &WidgetStore) -> Option<(&'static str, IconId, &'static str)> {
+fn active_shape(store: &WidgetStore) -> Option<(TextKey, IconId, TextKey)> {
     PAINTER_SHAPES.iter().find_map(|(id, label, icon, sub)| {
         matches!(store.button_state(*id), Some(ButtonState::Pressed))
             .then_some((*label, *icon, *sub))
@@ -293,7 +342,7 @@ fn active_shape(store: &WidgetStore) -> Option<(&'static str, IconId, &'static s
 
 /// The Mask-group sub-tool (`label`, `icon`, `sub`) whose sub-radio is Pressed — so the Mask rail button
 /// adopts the ACTIVE sub-tool's icon (Mask by default, Select once picked), like the Shapes group.
-fn active_mask_sub(store: &WidgetStore) -> Option<(&'static str, IconId, &'static str)> {
+fn active_mask_sub(store: &WidgetStore) -> Option<(TextKey, IconId, TextKey)> {
     PAINTER_MASK_SUBS.iter().find_map(|(id, label, icon, sub)| {
         matches!(store.button_state(*id), Some(ButtonState::Pressed))
             .then_some((*label, *icon, *sub))
@@ -313,7 +362,7 @@ pub fn paint_left_rail(
 ) {
     let rail = ToolRail::new(
         NodeId(200),
-        "Editor tools",
+        tr("chrome.rail.editor_tools"),
         rail_entries(store, painter_active),
     );
     paint_rail(
@@ -367,10 +416,30 @@ pub fn tool_section(store: &WidgetStore, painter_active: bool) -> Vec<ToolRailEn
         }
     } else {
         let entries = [
-            (ids::TOOL_TRANSLATE, "Translate", IconId::Transform, "MOVE"),
-            (ids::TOOL_ROTATE, "Rotate", IconId::Rotate, "ROT"),
-            (ids::TOOL_SCALE, "Scale", IconId::Scale, "SCALE"),
-            (ids::TOOL_PIVOT, "Pivot", IconId::Pivot, "PIVOT"),
+            (
+                ids::TOOL_TRANSLATE,
+                TextKey::new("chrome.rail.translate"),
+                IconId::Transform,
+                TextKey::new("chrome.rail.sub.move"),
+            ),
+            (
+                ids::TOOL_ROTATE,
+                TextKey::new("chrome.rail.rotate"),
+                IconId::Rotate,
+                TextKey::new("chrome.rail.sub.rot"),
+            ),
+            (
+                ids::TOOL_SCALE,
+                TextKey::new("chrome.rail.scale"),
+                IconId::Scale,
+                TextKey::new("chrome.rail.sub.scale"),
+            ),
+            (
+                ids::TOOL_PIVOT,
+                TextKey::new("chrome.rail.pivot"),
+                IconId::Pivot,
+                TextKey::new("chrome.rail.sub.pivot"),
+            ),
         ];
         for tool in entries {
             rail_entries.push(tool_entry(store, tool));
@@ -407,30 +476,36 @@ pub fn rail_entries(store: &WidgetStore, painter_active: bool) -> Vec<ToolRailEn
     // Face label reflects the live store state: SPACE toggles
     // Global ↔ Local on click; VIEW cycles Selected → Camera → All.
     let space_face = if store.tool_space_local() {
-        "Local"
+        tr("chrome.rail.local")
     } else {
-        "Global"
+        tr("chrome.rail.global")
     };
     rail_entries.push(ToolRailEntry::compound(
         ids::TOOL_SPACE,
-        "Coordinate space",
+        tr("chrome.rail.coordinate_space"),
         space_face,
-        "SPACE",
+        tr("chrome.rail.sub.space"),
     ));
     let view_face = match store.tool_view_mode() {
-        1 => "Camera",
-        2 => "All",
-        _ => "Selected",
+        1 => tr("chrome.rail.camera"),
+        2 => tr("chrome.rail.all"),
+        _ => tr("chrome.rail.selected"),
     };
     rail_entries.push(ToolRailEntry::compound(
         ids::TOOL_HOME,
-        "Frame view",
+        tr("chrome.rail.frame_view"),
         view_face,
-        "VIEW",
+        tr("chrome.rail.sub.view"),
     ));
     rail_entries.push(ToolRailEntry::Divider);
-    rail_entries.push(ToolRailEntry::icon(ids::TOOL_UNDO, "Undo", IconId::Undo).with_sub("UNDO"));
-    rail_entries.push(ToolRailEntry::icon(ids::TOOL_REDO, "Redo", IconId::Redo).with_sub("REDO"));
+    rail_entries.push(
+        ToolRailEntry::icon(ids::TOOL_UNDO, tr("chrome.rail.undo"), IconId::Undo)
+            .with_sub(tr("chrome.rail.sub.undo")),
+    );
+    rail_entries.push(
+        ToolRailEntry::icon(ids::TOOL_REDO, tr("chrome.rail.redo"), IconId::Redo)
+            .with_sub(tr("chrome.rail.sub.redo")),
+    );
     rail_entries
 }
 
@@ -559,7 +634,7 @@ fn paint_rail_flyout(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    subs: &[(NodeId, &str, IconId, &str)],
+    subs: &[RailTool],
     rail_id: NodeId,
     a11y: &str,
     motion: &crate::motion::UiMotion,

@@ -352,6 +352,7 @@ fn every_asset_card_menu_entry_dispatches_something() {
 
     let mut dead: Vec<&str> = Vec::new();
     for (id, label, _) in rows {
+        let label = label.tr();
         let (mut host, mut st) = open_host();
         ph2d_panel_asset_browser::state::probe_set_painted(vec![AssetRef::Component {
             stable_id: 77,
@@ -523,6 +524,7 @@ fn every_catalog_row_menu_entry_does_something() {
 
     let mut dead: Vec<&str> = Vec::new();
     for (id, label, _) in rows {
+        let label = label.tr();
         let (mut host, mut st) = open_host();
         stage_one_catalog();
         stage_catalog_menu(&mut host, ph2d_editor_core::ids::catalog_row_id(2));

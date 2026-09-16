@@ -318,7 +318,7 @@ fn the_menu_group_carries_every_leaf_row_verbatim() {
             let found = items.iter().find(|it| it.id == *id).unwrap_or_else(|| {
                 panic!("a row {label:?} de {kind:?} é PINTADA no menu e não está na paleta")
             });
-            assert_eq!(found.label, palette_label(label));
+            assert_eq!(found.label, palette_label(label.tr()));
             seen += 1;
         }
     }

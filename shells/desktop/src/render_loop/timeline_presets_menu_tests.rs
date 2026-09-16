@@ -17,7 +17,8 @@ fn every_published_menu_row_resolves_to_a_preset() {
         .iter()
         .chain(c::TIMELINE_FADE_MENU.iter())
     {
-        let (id, label) = (*id, *label);
+        let label = label.tr();
+        let id = *id;
         let is_cascade = id == c::CTX_MENU_TL_EASE_IN
             || id == c::CTX_MENU_TL_EASE_OUT
             || id == c::CTX_MENU_TL_EASE_INOUT;
@@ -36,6 +37,7 @@ fn every_published_menu_row_resolves_to_a_preset() {
         c::TL_EASE_MODE_INOUT,
     ] {
         for (id, label, _) in c::TIMELINE_EASE_MENU {
+            let label = label.tr();
             assert!(
                 matches!(preset_for(id, mode), Some(Preset::Eased(_))),
                 "family {label:?} paints but resolves to nothing under mode {mode}"
@@ -244,14 +246,15 @@ fn a_column_rove_selects_the_column_and_toggles_it() {
 fn the_easing_menu_names_every_family_exactly_as_the_catalogue_does() {
     let mut seen = 0;
     for (id, label, _) in c::TIMELINE_EASE_MENU.iter() {
+        let label = label.tr();
         let Some(Preset::Eased(e)) = preset_for(*id, c::TL_EASE_MODE_IN) else {
             panic!("a row {label:?} do menu de easing nao resolve numa curva");
         };
         assert_eq!(
             e.family.label(),
-            *label,
+            label,
             "a row do menu diz {:?} e o catalogo diz {:?} -- duas listas de nomes",
-            *label,
+            label,
             e.family.label()
         );
         seen += 1;

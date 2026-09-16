@@ -34,6 +34,7 @@ use crate::widget::{
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::VectorScene;
@@ -126,12 +127,15 @@ pub fn bar_split(
     fits.push(
         crate::widget::ToolRailEntry::icon(
             ids::TOOL_BAR_OVERFLOW,
-            "More",
+            tr("chrome.tool_bar.more"),
             crate::icons::IconId::MoreHorizontal,
         )
         .with_sub(""),
     );
-    (ToolRail::new(NodeId(203), "Editor tools", fits), over)
+    (
+        ToolRail::new(NodeId(203), tr("chrome.rail.editor_tools"), fits),
+        over,
+    )
 }
 
 /// **O rectângulo em que os chips de facto correm** — a faixa menos o respiro.
@@ -200,7 +204,7 @@ pub fn bar_rail(store: &WidgetStore, painter_active: bool, image_tools_on: bool)
             ));
         }
     }
-    ToolRail::new(NodeId(203), "Editor tools", entries)
+    ToolRail::new(NodeId(203), tr("chrome.rail.editor_tools"), entries)
 }
 
 /// Desenha a fila e regista os alvos.
@@ -325,7 +329,7 @@ fn paint_flyout_below(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    subs: &[(NodeId, &str, crate::icons::IconId, &str)],
+    subs: &[super::left_rail::RailTool],
     rail_id: NodeId,
     a11y: &str,
     motion: &crate::motion::UiMotion,

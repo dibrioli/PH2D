@@ -529,6 +529,7 @@ fn simple_row_context_menu_items_are_populate_registered() {
             row: NodeId(1),
         })
     {
+        let label = label.tr();
         assert!(
             hero.store.contains(*id),
             "a linha `{label}` do menu da Hierarquia nao esta' registada pelo \

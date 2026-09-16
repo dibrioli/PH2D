@@ -15,6 +15,7 @@ use crate::interaction::HitIndex;
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_tool_registry::hash_node_id;
@@ -78,7 +79,7 @@ pub(super) fn paint_header(
     // paleta de componentes lia *"43 nodes"* sobre uma lista onde não há nó nenhum. Um substantivo
     // genérico é a resposta certa para um widget genérico; um campo novo no modelo seria pedir a
     // três consumidores que declarassem o óbvio.
-    let count_str = format!("{} items", model.item_count());
+    let count_str = ph2d_i18n::tr_with("chrome.palette.n_items", &[("n", &model.item_count())]);
     let count_w = ts.prefix_width(&count_str, TypeToken::Sm.px());
     let close_x = card_x + card_w - CLOSE_W - pad;
     let count_x = close_x - count_w - Spacing::Sm.px();
@@ -124,7 +125,10 @@ pub(super) fn paint_header(
         resolve(ColorToken::Border, theme),
     );
     let (search_text, search_color) = if query.is_empty() {
-        ("Search", resolve(ColorToken::Text2, theme))
+        (
+            tr("chrome.palette.search"),
+            resolve(ColorToken::Text2, theme),
+        )
     } else {
         (query, resolve(ColorToken::Text1, theme))
     };

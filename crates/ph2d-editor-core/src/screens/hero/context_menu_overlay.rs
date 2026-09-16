@@ -13,6 +13,7 @@ use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_ro
 use crate::widget::{TextInput, paint_text_input_with_buffer};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
     ColorToken, INLINE_ICON_PX, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken,
@@ -208,8 +209,9 @@ pub fn paint_context_menu_overlay(
     // app — o acoplamento que a **D2** existe para não ter.
     //
     // ⚠️ O `Vec` vive nesta função de propósito: o empréstimo é do `store`, que sobrevive a ela, e
-    // o laço de rows a seguir é o MESMO. *A row continua a ser `(id, rótulo, swatch)`.*
-    let merged: Vec<(NodeId, &str, Option<[u8; 4]>)>;
+    // o laço de rows a seguir é o MESMO. *A row pintada é `(id, rótulo, swatch)`* — a tabela guarda
+    // a CHAVE (`MenuRow`), e o texto sai AQUI, no sítio que o pinta (HR-15). Um menu só é pintado
+    // aberto, e a lista tem dezenas de linhas: o `Vec` por quadro é esse preço.
     let statics = super::menu_rows::menu_rows(req.kind);
     // ⭐⭐ **As duas metades da D2 caem na MESMA aritmética.** Um pulldown de área é o caso em que
     // as estáticas são `&[]` (ver `menu_rows`), e o *File* é o caso em que as duas existem — as
@@ -219,22 +221,17 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::AreaCommands { slot } => store.area_menu_rows(slot),
         kind => store.menu_contrib(kind),
     };
-    let items: &[(NodeId, &str, Option<[u8; 4]>)] = if contrib.is_empty() {
-        statics
-    } else {
-        // ⚠️ `filter_map` e não `map`: o `Divider` não tem id nem rótulo, e uma linha de menu
-        // sem verbo seria um alvo que consome o clique e não faz nada.
-        merged = statics
-            .iter()
-            .copied()
-            .chain(
-                contrib
-                    .iter()
-                    .filter_map(|e| Some((e.node_id()?, e.label()?, None))),
-            )
-            .collect();
-        &merged
-    };
+    // ⚠️ `filter_map` e não `map`: o `Divider` não tem id nem rótulo, e uma linha de menu sem verbo
+    // seria um alvo que consome o clique e não faz nada.
+    let items: Vec<(NodeId, &str, Option<[u8; 4]>)> = statics
+        .iter()
+        .map(|&(id, key, swatch)| (id, key.tr(), swatch))
+        .chain(
+            contrib
+                .iter()
+                .filter_map(|e| Some((e.node_id()?, e.label()?, None))),
+        )
+        .collect();
 
     if matches!(req.kind, ContextMenuKind::SceneList) {
         paint_scene_list(req, scene, text_system, theme, hit_index, store, viewport);
@@ -458,7 +455,7 @@ fn paint_scene_list(
     let search_rect = Rect::new(inner_x, rect.y + pad_y(), inner_w, search_h);
     hit_index.register(ids::CTX_SCENE_SEARCH, search_rect);
     let ti = TextInput::new(ids::CTX_SCENE_SEARCH, "")
-        .placeholder("Search scenes\u{2026}")
+        .placeholder(tr("chrome.menu.search_scenes"))
         .visual((ti_state, store.hover_live(ids::CTX_SCENE_SEARCH)));
     paint_text_input_with_buffer(
         &ti,
@@ -580,7 +577,7 @@ fn paint_tool_bar_overflow(
     // taparia a área de desenho que esta wave existe para poupar.
     let rail = crate::widget::ToolRail::new(
         ph2d_a11y::NodeId(204),
-        "More tools",
+        tr("chrome.menu.more_tools"),
         over.into_iter().collect(),
     );
     // A largura de uma coluna de chips, e a altura pelo passo de linha — as mesmas contas do

@@ -39,6 +39,10 @@ mod grid_snap;
 mod image_tools;
 /// As strings dos painéis do Motion (grafo, params) e dos editores ricos partilhados.
 mod motion_panels;
+/// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
+mod chrome_menus;
+/// As strings da BARRA DE FERRAMENTAS (o rail esquerdo e a fila horizontal).
+mod chrome_rail;
 mod vector;
 
 /// Look up a string by Fluent-style key. Missing keys round-trip the
@@ -494,6 +498,8 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| image_tools::tr(k))
             .or_else(|| motion_panels::tr(k))
             .or_else(|| asset_browser::tr(k))
+            .or_else(|| chrome_menus::tr(k))
+            .or_else(|| chrome_rail::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

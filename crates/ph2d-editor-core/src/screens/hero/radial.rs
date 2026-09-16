@@ -28,6 +28,7 @@
 use super::HeroScreen;
 use crate::widget::{RADIAL_MAX_SECTORS as MAX_SECTORS, RadialItem};
 use ph2d_a11y::NodeId;
+use ph2d_i18n::TextKey;
 
 /// O id do sector *"More…"* — a porta para a paleta quando a secção não cabe.
 ///
@@ -36,9 +37,10 @@ use ph2d_a11y::NodeId;
 /// router reconhece-o antes de tudo, num sítio só.
 pub const RADIAL_MORE: NodeId = NodeId(0x0052_4144_494F_4C21);
 
-/// O rótulo do sector de transbordo. ⚠️ Não passa por i18n pela mesma razão que os selos da
-/// hierarquia: o app é inglês-only por decisão do Enio.
-pub const MORE_LABEL: &str = "More...";
+/// O rótulo do sector de transbordo — a CHAVE (o pintor traduz). ⚠️ A nota antiga dizia que ele não
+/// passava por i18n «porque o app é inglês-only»; a ordem do dono de 2026-09-16 (*«converter o APP
+/// todo ao manual»*) pôs a moldura inteira na tabela, como os selos da hierarquia antes dela.
+pub const MORE_LABEL: TextKey = TextKey::new("chrome.radial.more");
 
 /// **AS FERRAMENTAS SOB A CANETA** — a secção do meio do rail, pronta para o radial.
 ///
@@ -74,7 +76,7 @@ pub fn fit(mut items: Vec<RadialItem>) -> Vec<RadialItem> {
     }
     items.truncate(MAX_SECTORS - 1);
     items.push(RadialItem {
-        label: MORE_LABEL.to_string(),
+        label: MORE_LABEL.tr().to_string(),
         id: RADIAL_MORE,
     });
     items

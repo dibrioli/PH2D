@@ -9,6 +9,7 @@
 //! they are tables and not hand-listed consts, and a gate walks each one.
 
 use super::*;
+use ph2d_i18n::TextKey;
 
 // ── Timeline segment (graph editor) preset menu — W3.E4 ────────────────────
 // Right-click a key (its dope-sheet diamond or its graph anchor) to retune the
@@ -74,15 +75,15 @@ pub const TL_EASE_MODE_INOUT: u8 = 2;
 /// it, and the shell's gate proves every row resolves to something. A row added
 /// here and forgotten in the shell is a compile-green menu item that does
 /// nothing; that is the bug this shape exists to make impossible.
-pub const TIMELINE_SEGMENT_MENU: [(NodeId, &str, Option<[u8; 4]>); 8] = [
-    (CTX_MENU_TL_HOLD, "Hold", None),
-    (CTX_MENU_TL_NEAREST, "Nearest", None),
-    (CTX_MENU_TL_LINEAR, "Linear", None),
-    (CTX_MENU_TL_EASE_IN, "Ease In \u{25b6}", None),
-    (CTX_MENU_TL_EASE_OUT, "Ease Out \u{25b6}", None),
-    (CTX_MENU_TL_EASE_INOUT, "Ease In-Out \u{25b6}", None),
-    (CTX_MENU_TL_CUSTOM, "Custom (B\u{e9}zier)", None),
-    (CTX_MENU_TL_ROVE, "Rove Across Time", None),
+pub const TIMELINE_SEGMENT_MENU: [MenuRow; 8] = [
+    menu_row(CTX_MENU_TL_HOLD, "chrome.timeline_menu.hold"),
+    menu_row(CTX_MENU_TL_NEAREST, "chrome.timeline_menu.nearest"),
+    menu_row(CTX_MENU_TL_LINEAR, "chrome.timeline_menu.linear"),
+    menu_row(CTX_MENU_TL_EASE_IN, "chrome.timeline_menu.ease_in"),
+    menu_row(CTX_MENU_TL_EASE_OUT, "chrome.timeline_menu.ease_out"),
+    menu_row(CTX_MENU_TL_EASE_INOUT, "chrome.timeline_menu.ease_in_out"),
+    menu_row(CTX_MENU_TL_CUSTOM, "chrome.timeline_menu.custom_b_zier"),
+    menu_row(CTX_MENU_TL_ROVE, "chrome.timeline_menu.rove_across_time"),
 ];
 
 // ── Timeline track-row menu ─────────────────────────────────────────────────
@@ -113,20 +114,29 @@ pub const CTX_MENU_TL_EXTRAP_CONTINUE: NodeId = hash_node_id("ctx_menu_tl_extrap
 
 /// The two extrapolation cascade rows shared by the plain/axis/path track menus,
 /// so they read identically wherever they appear. Time Remap does not include them.
-pub const TIMELINE_EXTRAP_CASCADES: [(NodeId, &str, Option<[u8; 4]>); 2] = [
-    (CTX_MENU_TL_EXTRAP_PRE, "Extrapolation Pre \u{25b6}", None),
-    (CTX_MENU_TL_EXTRAP_POST, "Extrapolation Post \u{25b6}", None),
+pub const TIMELINE_EXTRAP_CASCADES: [MenuRow; 2] = [
+    menu_row(
+        CTX_MENU_TL_EXTRAP_PRE,
+        "chrome.timeline_menu.extrapolation_pre",
+    ),
+    menu_row(
+        CTX_MENU_TL_EXTRAP_POST,
+        "chrome.timeline_menu.extrapolation_post",
+    ),
 ];
 
 /// The extrapolation-mode submenu (the four `Extrap` modes), shared by both
 /// sides — the side rides in the `ContextMenuKind::TimelineExtrap`. One table,
 /// three consumers: the overlay paints it, `pre_populate` registers it, and the
 /// panel's `event_track_menu::route` resolves each mode.
-pub const TIMELINE_EXTRAP_MENU: [(NodeId, &str, Option<[u8; 4]>); 4] = [
-    (CTX_MENU_TL_EXTRAP_HOLD, "Hold", None),
-    (CTX_MENU_TL_EXTRAP_LOOP, "Loop", None),
-    (CTX_MENU_TL_EXTRAP_PINGPONG, "Ping-Pong", None),
-    (CTX_MENU_TL_EXTRAP_CONTINUE, "Continue", None),
+pub const TIMELINE_EXTRAP_MENU: [MenuRow; 4] = [
+    menu_row(CTX_MENU_TL_EXTRAP_HOLD, "chrome.timeline_menu.hold"),
+    menu_row(CTX_MENU_TL_EXTRAP_LOOP, "chrome.timeline_menu.loop"),
+    menu_row(
+        CTX_MENU_TL_EXTRAP_PINGPONG,
+        "chrome.timeline_menu.ping_pong",
+    ),
+    menu_row(CTX_MENU_TL_EXTRAP_CONTINUE, "chrome.timeline_menu.continue"),
 ];
 
 /// The plain track-row menu, in paint order: Delete + the two extrapolation
@@ -134,8 +144,11 @@ pub const TIMELINE_EXTRAP_MENU: [(NodeId, &str, Option<[u8; 4]>); 4] = [
 /// registers it, and the timeline panel's `apply_event` resolves every row (a row
 /// added here and unhandled there is a menu item that silently does nothing — the
 /// bug this table shape prevents).
-pub const TIMELINE_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 3] = [
-    (CTX_MENU_TL_DELETE_TRACK, "Delete Track", None),
+pub const TIMELINE_TRACK_MENU: [MenuRow; 3] = [
+    menu_row(
+        CTX_MENU_TL_DELETE_TRACK,
+        "chrome.timeline_menu.delete_track",
+    ),
     TIMELINE_EXTRAP_CASCADES[0],
     TIMELINE_EXTRAP_CASCADES[1],
 ];
@@ -144,8 +157,10 @@ pub const TIMELINE_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 3] = [
 /// through its own clock (`remap_through`), so per-track extrapolation is inert —
 /// the menu does not offer it (both halves of the same fact). A table of its own
 /// rather than a conditional row on the plain menu.
-pub const TIMELINE_TIMEREMAP_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 1] =
-    [(CTX_MENU_TL_DELETE_TRACK, "Delete Track", None)];
+pub const TIMELINE_TIMEREMAP_TRACK_MENU: [MenuRow; 1] = [menu_row(
+    CTX_MENU_TL_DELETE_TRACK,
+    "chrome.timeline_menu.delete_track",
+)];
 
 /// **Auto-orient** (ADR-0141 §6): o objeto encara a tangente do caminho enquanto o
 /// percorre. Só existe numa track de TRAJETÓRIA, e por isso mora numa tabela própria.
@@ -163,9 +178,15 @@ pub const CTX_MENU_TL_TO_AXES: NodeId = hash_node_id("ctx_menu_tl_to_axes");
 /// O menu de uma track de **EIXO** (`TranslationX`/`Y`) — o comum mais a conversão
 /// mais as duas cascatas de extrapolação (um eixo de posição cicla/reflete como
 /// qualquer canal).
-pub const TIMELINE_AXIS_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 4] = [
-    (CTX_MENU_TL_DELETE_TRACK, "Delete Track", None),
-    (CTX_MENU_TL_TO_PATH, "Convert to Motion Path", None),
+pub const TIMELINE_AXIS_TRACK_MENU: [MenuRow; 4] = [
+    menu_row(
+        CTX_MENU_TL_DELETE_TRACK,
+        "chrome.timeline_menu.delete_track",
+    ),
+    menu_row(
+        CTX_MENU_TL_TO_PATH,
+        "chrome.timeline_menu.convert_to_motion_path",
+    ),
     TIMELINE_EXTRAP_CASCADES[0],
     TIMELINE_EXTRAP_CASCADES[1],
 ];
@@ -179,10 +200,16 @@ pub const TIMELINE_AXIS_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 4] = [
 /// ⚠️ **O `Delete Track` aparece nas DUAS tabelas, e é o mesmo id de propósito**: é a
 /// mesma ação, e dar-lhe um segundo id seriam duas portas para uma pergunta. O
 /// `node_id_collisions` deduplica por `(id, label)` exatamente por isto.
-pub const TIMELINE_PATH_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 5] = [
-    (CTX_MENU_TL_DELETE_TRACK, "Delete Track", None),
-    (CTX_MENU_TL_AUTO_ORIENT, "Auto-Orient", None),
-    (CTX_MENU_TL_TO_AXES, "Convert to Separate Axes", None),
+pub const TIMELINE_PATH_TRACK_MENU: [MenuRow; 5] = [
+    menu_row(
+        CTX_MENU_TL_DELETE_TRACK,
+        "chrome.timeline_menu.delete_track",
+    ),
+    menu_row(CTX_MENU_TL_AUTO_ORIENT, "chrome.timeline_menu.auto_orient"),
+    menu_row(
+        CTX_MENU_TL_TO_AXES,
+        "chrome.timeline_menu.convert_to_separate_axes",
+    ),
     TIMELINE_EXTRAP_CASCADES[0],
     TIMELINE_EXTRAP_CASCADES[1],
 ];
@@ -205,11 +232,11 @@ pub const CTX_MENU_TL_LANE_DELETE: NodeId = hash_node_id("ctx_menu_tl_lane_delet
 /// gate as the strip menu below. Rename sits above Delete: naming a lane is a far
 /// more common act than destroying it (Enio, 2026-07-23), and lanes come out
 /// "Lane 1/2/3" so most animators will want to name at least one.
-pub const TIMELINE_LANE_MENU: [(NodeId, &str, Option<[u8; 4]>); 4] = [
-    (CTX_MENU_TL_LANE_OVERRIDE, "Override", None),
-    (CTX_MENU_TL_LANE_ADDITIVE, "Additive", None),
-    (CTX_MENU_TL_LANE_RENAME, "Rename Lane", None),
-    (CTX_MENU_TL_LANE_DELETE, "Delete Lane", None),
+pub const TIMELINE_LANE_MENU: [MenuRow; 4] = [
+    menu_row(CTX_MENU_TL_LANE_OVERRIDE, "chrome.timeline_menu.override"),
+    menu_row(CTX_MENU_TL_LANE_ADDITIVE, "chrome.timeline_menu.additive"),
+    menu_row(CTX_MENU_TL_LANE_RENAME, "chrome.timeline_menu.rename_lane"),
+    menu_row(CTX_MENU_TL_LANE_DELETE, "chrome.timeline_menu.delete_lane"),
 ];
 
 // ── Timeline clip-strip menu (ADR-0115 B6) ──────────────────────────────────
@@ -238,18 +265,30 @@ pub const CTX_MENU_TL_STRIP_RESET_SPEED: NodeId = hash_node_id("ctx_menu_tl_stri
 /// it, and the timeline panel's `apply_event` resolves every row. A row added
 /// here and unhandled there is a menu item that silently does nothing; the seam
 /// test walks this table and fails on exactly that.
-pub const TIMELINE_STRIP_MENU: [(NodeId, &str, Option<[u8; 4]>); 7] = [
+pub const TIMELINE_STRIP_MENU: [MenuRow; 7] = [
     // First, because it is the only row that CHANGES WHERE YOU ARE rather than editing the
     // strip under the cursor — and because on a container strip it is the thing you came for.
     // On a clip strip it raises nothing (`enter_target` returns `None`): a row that acted on
     // the wrong kind of strip would be worse than one that is simply inert here.
-    (CTX_MENU_TL_STRIP_ENTER, "Enter Container", None),
-    (CTX_MENU_TL_STRIP_DUPLICATE, "Duplicate Strip", None),
-    (CTX_MENU_TL_STRIP_DELETE, "Delete Strip", None),
-    (CTX_MENU_TL_STRIP_ONCE, "Play Once", None),
-    (CTX_MENU_TL_STRIP_LOOP, "Loop", None),
-    (CTX_MENU_TL_STRIP_PINGPONG, "Ping-Pong", None),
-    (CTX_MENU_TL_STRIP_RESET_SPEED, "Reset Speed", None),
+    menu_row(
+        CTX_MENU_TL_STRIP_ENTER,
+        "chrome.timeline_menu.enter_container",
+    ),
+    menu_row(
+        CTX_MENU_TL_STRIP_DUPLICATE,
+        "chrome.timeline_menu.duplicate_strip",
+    ),
+    menu_row(
+        CTX_MENU_TL_STRIP_DELETE,
+        "chrome.timeline_menu.delete_strip",
+    ),
+    menu_row(CTX_MENU_TL_STRIP_ONCE, "chrome.timeline_menu.play_once"),
+    menu_row(CTX_MENU_TL_STRIP_LOOP, "chrome.timeline_menu.loop"),
+    menu_row(CTX_MENU_TL_STRIP_PINGPONG, "chrome.timeline_menu.ping_pong"),
+    menu_row(
+        CTX_MENU_TL_STRIP_RESET_SPEED,
+        "chrome.timeline_menu.reset_speed",
+    ),
 ];
 
 // ── Timeline marker menu (ADR-0143) ─────────────────────────────────────────
@@ -272,10 +311,16 @@ pub const CTX_MENU_TL_DELETE_MARKER: NodeId = hash_node_id("ctx_menu_tl_delete_m
 /// `pre_populate` registers it, and the timeline panel's `apply_event` resolves
 /// every row (via `marker_menu::route`); a row added here and unhandled there is
 /// a menu item that silently does nothing — the bug this table shape prevents.
-pub const TIMELINE_MARKER_MENU: [(NodeId, &str, Option<[u8; 4]>); 3] = [
-    (CTX_MENU_TL_RENAME_MARKER, "Rename Marker", None),
-    (CTX_MENU_TL_SET_SIGNAL, "Set Signal", None),
-    (CTX_MENU_TL_DELETE_MARKER, "Delete Marker", None),
+pub const TIMELINE_MARKER_MENU: [MenuRow; 3] = [
+    menu_row(
+        CTX_MENU_TL_RENAME_MARKER,
+        "chrome.timeline_menu.rename_marker",
+    ),
+    menu_row(CTX_MENU_TL_SET_SIGNAL, "chrome.timeline_menu.set_signal"),
+    menu_row(
+        CTX_MENU_TL_DELETE_MARKER,
+        "chrome.timeline_menu.delete_marker",
+    ),
 ];
 
 // ── Timeline strip FADE menu (Enio, 2026-07-31) ─────────────────────────────
@@ -300,32 +345,52 @@ pub const CTX_MENU_TL_FADE_SMOOTH: NodeId = hash_node_id("ctx_menu_tl_fade_smoot
 ///
 /// One table, three consumers — the overlay paints it, `pre_populate` registers it,
 /// and the shell's `preset_for` resolves every row (its gate walks this table too).
-pub const TIMELINE_FADE_MENU: [(NodeId, &str, Option<[u8; 4]>); 5] = [
-    (CTX_MENU_TL_FADE_SMOOTH, "Smooth (Default)", None),
-    (CTX_MENU_TL_LINEAR, "Linear", None),
-    (CTX_MENU_TL_EASE_IN, "Ease In \u{25b6}", None),
-    (CTX_MENU_TL_EASE_OUT, "Ease Out \u{25b6}", None),
-    (CTX_MENU_TL_EASE_INOUT, "Ease In-Out \u{25b6}", None),
+pub const TIMELINE_FADE_MENU: [MenuRow; 5] = [
+    menu_row(
+        CTX_MENU_TL_FADE_SMOOTH,
+        "chrome.timeline_menu.smooth_default",
+    ),
+    menu_row(CTX_MENU_TL_LINEAR, "chrome.timeline_menu.linear"),
+    menu_row(CTX_MENU_TL_EASE_IN, "chrome.timeline_menu.ease_in"),
+    menu_row(CTX_MENU_TL_EASE_OUT, "chrome.timeline_menu.ease_out"),
+    menu_row(CTX_MENU_TL_EASE_INOUT, "chrome.timeline_menu.ease_in_out"),
 ];
 
 /// The easing-family submenu, shared by all three modes (the mode rides in the
 /// `ContextMenuKind`). Ordered gentlest-first, with the two non-monotone
 /// families (overshoot, bounce) last — the order animators scan.
-pub const TIMELINE_EASE_MENU: [(NodeId, &str, Option<[u8; 4]>); 10] = [
-    (CTX_MENU_TL_FAM_SINE, "Sine", None),
-    (CTX_MENU_TL_FAM_QUAD, "Quad", None),
-    (CTX_MENU_TL_FAM_CUBIC, "Cubic", None),
-    (CTX_MENU_TL_FAM_QUART, "Quart", None),
-    (CTX_MENU_TL_FAM_QUINT, "Quint", None),
-    (CTX_MENU_TL_FAM_EXPO, "Expo", None),
-    (CTX_MENU_TL_FAM_CIRC, "Circ", None),
-    (CTX_MENU_TL_FAM_BACK, "Back", None),
-    (CTX_MENU_TL_FAM_ELASTIC, "Elastic", None),
-    (CTX_MENU_TL_FAM_BOUNCE, "Bounce", None),
+pub const TIMELINE_EASE_MENU: [MenuRow; 10] = [
+    menu_row(CTX_MENU_TL_FAM_SINE, "chrome.timeline_menu.sine"),
+    menu_row(CTX_MENU_TL_FAM_QUAD, "chrome.timeline_menu.quad"),
+    menu_row(CTX_MENU_TL_FAM_CUBIC, "chrome.timeline_menu.cubic"),
+    menu_row(CTX_MENU_TL_FAM_QUART, "chrome.timeline_menu.quart"),
+    menu_row(CTX_MENU_TL_FAM_QUINT, "chrome.timeline_menu.quint"),
+    menu_row(CTX_MENU_TL_FAM_EXPO, "chrome.timeline_menu.expo"),
+    menu_row(CTX_MENU_TL_FAM_CIRC, "chrome.timeline_menu.circ"),
+    menu_row(CTX_MENU_TL_FAM_BACK, "chrome.timeline_menu.back"),
+    menu_row(CTX_MENU_TL_FAM_ELASTIC, "chrome.timeline_menu.elastic"),
+    menu_row(CTX_MENU_TL_FAM_BOUNCE, "chrome.timeline_menu.bounce"),
 ];
 
-/// Uma row de menu: o id, o rótulo, e o atalho opcional que ela mostra.
-pub type MenuRow = (NodeId, &'static str, Option<[u8; 4]>);
+/// Uma row de menu: o id, a CHAVE do rótulo (traduz-se ao pintar — `TextKey::tr`), e a cor de
+/// amostra opcional que ela mostra.
+pub type MenuRow = (NodeId, TextKey, Option<[u8; 4]>);
+
+/// Uma [`MenuRow`] sem amostra de cor — a forma de quase todas as linhas.
+///
+/// ⚠️ **Existe pelo tecto de LOC, e é a cura certa dele:** escrita por extenso,
+/// `(id, TextKey::new("chrome.menu.…"), None)` passa da largura da linha e o `rustfmt` parte-a em
+/// cinco — o `menu_rows.rs` foi de 659 para 1234 linhas na migração para a tabela (2026-09-16).
+#[must_use]
+pub const fn menu_row(id: NodeId, key: &'static str) -> MenuRow {
+    (id, TextKey::new(key), None)
+}
+
+/// Uma [`MenuRow`] com a amostra de cor que a linha mostra (temas, contornos de secção).
+#[must_use]
+pub const fn menu_row_swatch(id: NodeId, key: &'static str, rgba: [u8; 4]) -> MenuRow {
+    (id, TextKey::new(key), Some(rgba))
+}
 /// Uma tabela de menu — o que a [`ALL_TIMELINE_MENUS`] lista e o overlay pinta.
 pub type MenuTable = &'static [MenuRow];
 

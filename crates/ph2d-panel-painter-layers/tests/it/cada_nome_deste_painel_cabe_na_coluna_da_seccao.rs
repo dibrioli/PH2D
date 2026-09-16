@@ -293,16 +293,16 @@ fn toda_caixa_deste_painel_declara_a_seccao_dela() {
 /// com o que falta para ela passar.
 /// ⭐ **O `paint_line.rs` SAIU desta lista em 2026-09-16** — a coluna dele passou pela porta, e as
 /// duas que ele cortava (`Line Width` `66,4` e `Roughness` `68,8` numa coluna de `62`) deixaram de
-/// cortar. ⏳ A FORMA dele continua errada (spec §2: uma fracção pede caixa única) e isso está
-/// escrito no `paint_param_row`, com o preço: 12 chips com 12 mapeamentos afins distintos.
+/// cortar; no mesmo dia as barras dele viraram caixa única (spec §2), com os 12 chips da tabela
+/// `line_barras`.
+/// ⭐ **E o `paint_adjust.rs` saiu logo a seguir** — o `ADJ_LABEL_W = 44` cortava **17 de 44** nomes
+/// em toda largura; a pilha passou pela porta e tem gate próprio, que pinta o painel
+/// (`cada_nome_da_pilha_de_ajustes_cabe_na_coluna`).
 const COLUNAS_A_MAO: &[(&str, &str)] = &[
     (
         "paint_composite.rs",
-        "idem: as três rows de força são trilho nu + readout",
-    ),
-    (
-        "paint_adjust.rs",
-        "idem: a rack de ajustes é rótulo + trilho nu",
+        "o `LABEL_W` é a coluna «N Ferramenta» de cada CAMADA do pincel composto — uma linha de \
+         LISTA (índice, nome, força, reordenar), que a spec §1 governa por lei própria",
     ),
     (
         "paint_shape_layers.rs",

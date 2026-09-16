@@ -73,11 +73,11 @@ const AINDA_A_MAO: &[&str] = &[
     "crates/ph2d-panel-widget-lab/src/study.rs",
     // ⏳⏳ **Os do Painter têm censo PRÓPRIO, com o mecanismo de cada um**
     // (`cada_nome_deste_painel_cabe_na_coluna_da_seccao::nenhuma_coluna_de_rotulo_e_escolhida_no_sitio_de_pintura`,
-    // na crate do painel): três são rows de `rótulo | trilho nu | readout` que a spec §2 manda ser
-    // CAIXA ÚNICA — a conversão delas precisa de um chip editável por slider (ordem do dono de
-    // 2026-06-26), e não de trocar a coluna. ⛔ Quem apagar uma entrada aqui apaga a de lá também.
+    // na crate do painel): o do cartão de técnica tem layout próprio, o do pincel composto é uma
+    // linha de LISTA (spec §1) e o das camadas de forma é uma fileira de cluster. ⭐ O
+    // `paint_adjust.rs` SAIU em 2026-09-16 (a pilha passou pela porta, com gate que pinta o
+    // painel). ⛔ Quem apagar uma entrada aqui apaga a de lá também.
     "crates/ph2d-panel-painter-layers/src/card.rs",
-    "crates/ph2d-panel-painter-layers/src/paint_adjust.rs",
     "crates/ph2d-panel-painter-layers/src/paint_composite.rs",
     "crates/ph2d-panel-painter-layers/src/paint_shape_layers.rs",
 ];

@@ -126,13 +126,20 @@ pub(super) fn paint_gradient_map(
     y += GRAD_BAR_H + GRAD_HANDLE_R + gap;
 
     // ── Selected stop's RGB sliders ──
-    for (slot, (label, val01)) in ph2d_tool_painter::gradient_stop_color_params(g, selected)
-        .into_iter()
-        .enumerate()
-    {
+    let sliders = ph2d_tool_painter::gradient_stop_color_params(g, selected);
+    let sec = linha::seccao_de(ctx.text_system, &sliders, &[]);
+    for (slot, (label, val01)) in sliders.into_iter().enumerate() {
         let Some(kind) = slot_kind(slot) else { break };
         let id = painter_layer_widget_id(layer_id, kind);
-        paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
+        paint_labeled_slider(
+            ctx,
+            theme,
+            id,
+            label,
+            val01,
+            Rect::new(x, y, w, ROW_H_PX),
+            sec,
+        );
         y += ph2d_tokens::row_pitch_px();
     }
 

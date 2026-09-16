@@ -6,6 +6,7 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod cada_nome_da_pilha_de_ajustes_cabe_na_coluna;
 mod cada_nome_deste_painel_cabe_na_coluna_da_seccao;
 mod curve_handle_menu_e2e;
 mod every_word_this_panel_shows_comes_from_the_string_table;

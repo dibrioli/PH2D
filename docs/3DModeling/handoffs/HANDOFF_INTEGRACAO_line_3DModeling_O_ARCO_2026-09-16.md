@@ -160,4 +160,12 @@ era a contagem da estrela. Workspace inteira (`ci-test`): `22 885` / `22 886` �
 verde sozinho a load `14–17`, zero linhas na `ph2d-timeline`). Clippy `-D warnings` limpo nas seis
 crates tocadas.
 
+⏳ **Os gates de PLACA (`#[ignore]`, `PH2D_GPU=1`) NÃO foram re-corridos nesta adenda:** às 19:00 a
+placa estava com o smoke de outra linha (`line/sculpt3d`, cena `47`) e com o Blender, e a regra da
+casa para a placa é exclusão ([`TETOS_DE_RECURSO_POR_LINHA.md`](../../DevOps/TETOS_DE_RECURSO_POR_LINHA.md)).
+A última corrida deles foi a do §9 (`62/62`). O risco que sobra é baixo e está nomeado: a fita do
+dispositivo recebe `12` arcos em vez de `10` no vaso, e agora arcos também nos níveis altos (antes
+a polilinha engrossada) — a mesma lei que os `62` já provaram. ⇒ **quem integrar corre-os** com a
+placa livre.
+
 **Smoke:** o mesmo comando do §8; subir **Resolution** no painel do modelo e olhar o lábio de perto.

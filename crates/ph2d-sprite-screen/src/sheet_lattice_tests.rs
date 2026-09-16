@@ -1,0 +1,268 @@
+//! Gates da GRELHA de uma folha — mudaram-se da shell com a [`super`] (2026-09-16).
+//!
+//! ⚠️ **O que se afirma são NÚMEROS, e não pixels.** O traço em si é traço; o que pode estar errado
+//! é o sinal do `Y`, o pivô e o espelho — e esses cabem num `assert_eq`.
+//!
+//! ⚠️ **O gate que cruza com os FANTASMAS da folha ficou na shell** (`the_lines_land_on_the_cells_
+//! the_ghosts_draw`): ele lê o `sim_extract_sheet::cell`, que mora lá — *um gate que atravessa uma
+//! porta mora com o que exercita* (HOWTO §2.6).
+
+use super::*;
+
+/// Uma sprite de células de `2×2` metros numa grelha `hf × vf`, parada no frame `live`.
+///
+/// ⚠️ **`Sprite::atlas` nasce CENTRADA**, então o `resolve_anchor` dela é a origem — e é por isso
+/// que o gate do pivô abaixo o move de propósito: com o pivô na origem, uma implementação que
+/// ignorasse o `resolve_anchor` ficaria verde.
+/// ⭐ Devolve o PAR desde o ADR-0164 F1 passo 6: a grelha saiu da `Sprite` para um componente,
+/// e o retículo é função dos dois (o tamanho da célula é da sprite; os cortes, da grelha).
+fn spr(hf: u32, vf: u32, live: u32) -> (Sprite, ph2d_ecs::SpriteGrid) {
+    (
+        Sprite::atlas(0, [2.0, 2.0], [1.0; 4]),
+        ph2d_ecs::SpriteGrid {
+            hframes: hf,
+            vframes: vf,
+            frame: live,
+        },
+    )
+}
+
+/// O [`lattice`] sobre o par — para os gates lerem como liam.
+fn lat(f: &(Sprite, ph2d_ecs::SpriteGrid), ppm: f32, unfolded: bool) -> Option<Lattice> {
+    lattice(&f.0, f.1, ppm, unfolded)
+}
+
+/// O [`gizmo_box`] sobre o par.
+fn gbox(
+    f: &(Sprite, ph2d_ecs::SpriteGrid),
+    ppm: f32,
+    sheet_open: bool,
+    unfolded: bool,
+) -> ([f32; 2], [f32; 2]) {
+    gizmo_box(&f.0, Some(f.1), ppm, sheet_open, unfolded)
+}
+
+const PPM: f32 = 100.0;
+
+/// **Sem grelha não há retículo** — e uma célula de área nula também não.
+#[test]
+fn there_is_no_lattice_without_a_grid() {
+    assert!(lat(&spr(1, 1, 0), PPM, false).is_none());
+    let mut degenerate = spr(4, 2, 0);
+    degenerate.0.size = [0.0, 2.0];
+    assert!(
+        lat(&degenerate, PPM, false).is_none(),
+        "uma celula de largura zero nao tem retículo"
+    );
+    assert!(lat(&spr(4, 2, 0), PPM, false).is_some());
+}
+
+/// **A folha abre-se à volta da célula viva, e a linha seguinte fica ABAIXO.**
+///
+/// ⚠️ É a inversão `V cresce para baixo · Y do mundo cresce para cima`. Trocá-la desenharia a
+/// grelha espelhada na vertical sobre células que estão do outro lado — e o desenho continuaria
+/// «bonito», que é o que torna este gate necessário.
+#[test]
+fn the_lattice_opens_around_the_live_cell_and_downward() {
+    // Viva = célula 0 (coluna 0, linha 0), grelha 4×2, células de 2 m.
+    let l = lat(&spr(4, 2, 0), PPM, false).unwrap();
+    assert_eq!((l.live_cx, l.live_cy), (0.0, 0.0), "a viva esta' na origem");
+    assert_eq!(l.x0, -1.0, "meia celula a' esquerda da viva");
+    assert_eq!(
+        l.y0, 1.0,
+        "meia celula ACIMA da viva -- a linha 0 e' a de cima"
+    );
+    assert_eq!((l.w, l.h), (8.0, 4.0));
+
+    // Viva = célula 5 (coluna 1, linha 1): a folha estende-se para trás e para cima.
+    let l = lat(&spr(4, 2, 5), PPM, false).unwrap();
+    assert_eq!(l.x0, -3.0, "uma celula e meia a' esquerda");
+    assert_eq!(
+        l.y0, 3.0,
+        "uma celula e meia acima -- a linha de cima existe"
+    );
+    // E o retângulo contém a célula viva, sempre.
+    assert!(l.x0 <= l.live_cx - 1.0 && l.live_cx + 1.0 <= l.x0 + l.w);
+    assert!(l.y0 - l.h <= l.live_cy - 1.0 && l.live_cy + 1.0 <= l.y0);
+}
+
+/// **O retículo segue o PIVÔ autorado**, e não a origem do objeto.
+///
+/// ⚠️ O shader desenha o quad em `anchor + quad_pos * size` — desenhar a grelha a partir da origem
+/// deixaria as linhas ao lado da arte em toda sprite não centrada, que é o caso de toda sprite
+/// importada com `Centered` desmarcado.
+#[test]
+fn the_lattice_follows_the_authored_pivot() {
+    let centred = lat(&spr(4, 2, 0), PPM, false).unwrap();
+    let mut off = spr(4, 2, 0);
+    off.0.centered = false;
+    let moved = lat(&off, PPM, false).unwrap();
+    assert_ne!(
+        (moved.live_cx, moved.live_cy),
+        (centred.live_cx, centred.live_cy),
+        "tirar o `centered` MOVE o quad -- se nao move, esta fixtura nao contem o fenomeno"
+    );
+    // E o retículo acompanha, mantendo a mesma folga da célula viva.
+    assert_eq!(moved.x0 - moved.live_cx, centred.x0 - centred.live_cx);
+    assert_eq!(moved.y0 - moved.live_cy, centred.y0 - centred.live_cy);
+}
+
+/// **O FLIP abre a folha para o outro lado** — e a célula viva não sai do lugar.
+///
+/// ⚠️ As duas metades juntas: o `ghost` nega o deslocamento, então as linhas têm de acompanhar,
+/// **mas** o quad do sprite continua onde está. Uma cura que espelhasse o retículo inteiro (centro
+/// incluído) descolaria as linhas da arte.
+#[test]
+fn a_flipped_sheet_opens_the_other_way_and_the_live_cell_stays() {
+    let plain = lat(&spr(4, 2, 0), PPM, false).unwrap();
+    let mut fx = spr(4, 2, 0);
+    fx.0.flip_x = true;
+    let flipped = lat(&fx, PPM, false).unwrap();
+    assert_eq!(
+        (flipped.live_cx, flipped.live_cy),
+        (plain.live_cx, plain.live_cy),
+        "a celula VIVA nao se move"
+    );
+    // Sem flip, a célula 0 é a mais à esquerda; com flip, é a mais à direita.
+    assert_eq!(plain.x0, -1.0);
+    assert_eq!(flipped.x0, -7.0, "a folha abre para a ESQUERDA da viva");
+    assert_eq!(flipped.x0 + flipped.w, 1.0, "e acaba na borda direita dela");
+
+    let mut fy = spr(4, 2, 0);
+    fy.0.flip_y = true;
+    let flipped = lat(&fy, PPM, false).unwrap();
+    assert_eq!(flipped.y0, 3.0, "a linha 0 passa a ser a de BAIXO");
+    assert_eq!(flipped.y0 - flipped.h, -1.0);
+}
+
+/// **DESDOBRADA, o retículo centra-se no PIVÔ — e é isso que alinha as linhas com a arte pintada.**
+///
+/// ⚠️ O defeito que este gate prende foi fotografado pelo Enio (2026-08-23): a folha pintada
+/// centra-se no pivô e o retículo continuava a dispor-se à volta da célula viva, o que desloca as
+/// linhas **meia célula**. As duas contas só coincidem quando `lcol = hf/2 − ½`, que não é inteiro.
+///
+/// **Mutação que deve sangrar:** passar `false` no braço desdobrado do overlay.
+#[test]
+fn the_unfolded_lattice_is_centred_on_the_pivot_and_matches_the_painted_quad() {
+    for live in 0..8u32 {
+        let s = spr(4, 2, live);
+        let l = lat(&s, PPM, true).unwrap();
+        // ⭐ O retículo E o quad que a pintura desenha descrevem o MESMO rectângulo.
+        let size = crate::unfolded_quad(&s.0, s.1).unwrap();
+        let pivot = s.0.resolve_anchor(PPM);
+        assert_eq!((l.w, l.h), (f64::from(size[0]), f64::from(size[1])));
+        assert_eq!(l.x0, f64::from(pivot[0]) - f64::from(size[0]) * 0.5);
+        assert_eq!(l.y0, f64::from(pivot[1]) + f64::from(size[1]) * 0.5);
+        // ⚠️ E NÃO depende do frame: só o realce se move.
+        assert_eq!(l.x0, lat(&spr(4, 2, 0), PPM, true).unwrap().x0);
+        // A célula viva está no SLOT dela, dentro do retículo.
+        let (col, row) = (f64::from(live % 4), f64::from(live / 4));
+        assert_eq!(l.live_cx, l.x0 + (col + 0.5) * l.cell_w);
+        assert_eq!(l.live_cy, l.y0 - (row + 0.5) * l.cell_h);
+    }
+
+    // ⚠️ E a metade que nomeia o defeito: DOBRADA, a disposição é OUTRA — e tem de ser.
+    //
+    // ⚠️ **O desvio é `(lcol + ½ − hf/2)·cw`, e NÃO «meia célula» sempre** — a primeira versão
+    // deste gate afirmou o segundo e sangrou na hora. Meia célula é o valor no caso
+    // **fotografado** (8 células, viva na 4), e a asserção genérica é a fórmula.
+    for live in 0..8u32 {
+        let s = spr(4, 2, live);
+        let folded = lat(&s, PPM, false).unwrap();
+        let unfolded = lat(&s, PPM, true).unwrap();
+        let lcol = f64::from(live % 4);
+        assert_eq!(
+            unfolded.x0 - folded.x0,
+            (lcol + 0.5 - 4.0 * 0.5) * folded.cell_w,
+            "o desvio do frame {live}"
+        );
+    }
+    // O caso da FOTO: 8 células numa tira, a viva na 4 ⇒ exactamente meia célula.
+    let photo = spr(8, 1, 4);
+    let folded = lat(&photo, PPM, false).unwrap();
+    let unfolded = lat(&photo, PPM, true).unwrap();
+    assert_eq!(
+        (unfolded.x0 - folded.x0).abs(),
+        folded.cell_w * 0.5,
+        "e' o deslocamento de meia celula que a foto mostra"
+    );
+}
+
+/// **O RETÍCULO É O QUE A CAIXA DO GIZMO ENVOLVE** (Enio, 2026-08-23: *«o gizmo da sprite deve
+/// englobar todas as células»*).
+///
+/// ⚠️ A caixa do gizmo lê o **mesmo** [`Lattice`] que desenha as linhas — este gate afirma que ele
+/// dá tudo o que ela precisa e que os números fecham: o rectângulo contém as `hf × vf` células, e o
+/// centro dele é o que a caixa usa como âncora efetiva. Sem isto, a caixa ficaria do tamanho de UMA
+/// célula no meio de oito, e o artista agarraria uma alça que não cerca o que ele vê.
+#[test]
+fn the_lattice_is_the_box_the_gizmo_wraps() {
+    for unfolded in [false, true] {
+        for (hf, vf, live) in [(8u32, 1u32, 4u32), (4, 2, 5), (3, 3, 0)] {
+            let s = spr(hf, vf, live);
+            let l = lat(&s, PPM, unfolded).unwrap();
+            // A caixa mede a folha inteira, e não uma célula.
+            assert_eq!(l.w, f64::from(hf) * l.cell_w);
+            assert_eq!(l.h, f64::from(vf) * l.cell_h);
+            assert!(
+                l.w > l.cell_w || l.h > l.cell_h,
+                "uma folha e' maior que uma celula"
+            );
+            // O centro (o que a caixa usa como âncora efetiva) cai dentro dela, e a caixa
+            // contém TODAS as células — inclusive as das pontas.
+            let (cx, cy) = (l.x0 + l.w * 0.5, l.y0 - l.h * 0.5);
+            for i in 0..hf * vf {
+                let (col, row) = (f64::from(i % hf), f64::from(i / hf));
+                let ccx = l.x0 + (col + 0.5) * l.cell_w;
+                let ccy = l.y0 - (row + 0.5) * l.cell_h;
+                assert!(
+                    (ccx - cx).abs() <= l.w * 0.5 + 1.0e-9
+                        && (ccy - cy).abs() <= l.h * 0.5 + 1.0e-9,
+                    "a celula {i} cai fora da caixa (unfolded={unfolded})"
+                );
+            }
+            // ⚠️ E a célula VIVA está DENTRO dela nos dois modos — é a asserção que apanharia uma
+            // caixa desdobrada desenhada com a âncora dobrada, e vice-versa.
+            assert!(
+                (l.live_cx - cx).abs() <= l.w * 0.5 + 1.0e-9
+                    && (l.live_cy - cy).abs() <= l.h * 0.5 + 1.0e-9,
+                "a celula viva cai fora da caixa (unfolded={unfolded})"
+            );
+        }
+    }
+}
+
+/// **A CAIXA DO GIZMO: com a folha aberta ela envolve a folha; sem ela, a célula.**
+///
+/// ⚠️ **As duas metades**, e a de AUSÊNCIA é a que impede a cura de virar *«a caixa cresce
+/// sempre»*: numa sprite sem grelha, ou com a caixa desmarcada, o gizmo tem de continuar a cercar
+/// exactamente o quad — senão toda sprite normal passaria a ter alças fora dela.
+///
+/// **Mutação que deve sangrar:** devolver sempre o `folded`.
+#[test]
+fn the_gizmo_box_wraps_the_sheet_only_when_the_sheet_is_open() {
+    let s = spr(8, 1, 4);
+    let cell = spr(1, 1, 0);
+
+    // Fechada: a caixa é o quad de uma célula, no pivô.
+    let (c, h) = gbox(&s, PPM, false, false);
+    assert_eq!(c, s.0.resolve_anchor(PPM), "o centro e' o pivo");
+    assert_eq!(h, [s.0.size[0] * 0.5, s.0.size[1] * 0.5], "meia celula");
+
+    // Aberta: a caixa é a folha inteira, nos DOIS modos.
+    for unfolded in [false, true] {
+        let (c, h) = gbox(&s, PPM, true, unfolded);
+        let l = lat(&s, PPM, unfolded).unwrap();
+        assert_eq!(h, [(l.w * 0.5) as f32, (l.h * 0.5) as f32]);
+        assert_eq!(c, [(l.x0 + l.w * 0.5) as f32, (l.y0 - l.h * 0.5) as f32]);
+        assert!(
+            f64::from(h[0]) > f64::from(s.0.size[0]) * 0.5,
+            "a caixa tem de CRESCER (unfolded={unfolded})"
+        );
+    }
+
+    // ⚠️ E uma sprite SEM grelha não cresce, nem com a caixa marcada — não há folha.
+    let (c, h) = gbox(&cell, PPM, true, false);
+    assert_eq!(c, cell.0.resolve_anchor(PPM));
+    assert_eq!(h, [cell.0.size[0] * 0.5, cell.0.size[1] * 0.5]);
+}

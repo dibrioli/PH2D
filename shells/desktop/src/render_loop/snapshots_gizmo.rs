@@ -178,7 +178,7 @@ pub(super) fn sprite_view(
     // sprite deve englobar todas as células»*). A escolha e os números vivem em
     // `sheet_grid_overlay::gizmo_box`, que é onde eles têm gate — aqui só se aplica a
     // escala e a rotação, como sempre.
-    let (eff_anchor, half) = crate::render_loop::sheet_grid_overlay::gizmo_box(
+    let (eff_anchor, half) = ph2d_sprite_screen::sheet_lattice::gizmo_box(
         sprite,
         sim.world().get::<ph2d_ecs::SpriteGrid>(sim_entity).copied(),
         gizmo_ppm,

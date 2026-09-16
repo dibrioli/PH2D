@@ -128,7 +128,18 @@ fn corre_com_atrito_girando(
         8,
     );
     let mut vel = vel0.clone();
-    impulsos(&antes_do_passo, &mut vel, &mut giro, &pecas, |_| DT_ARNES);
+    let mut spin = vec![0.0; n];
+    impulsos(
+        &antes_do_passo,
+        &mut Movimento {
+            vel: &mut vel,
+            giro: &mut giro,
+            spin: &mut spin,
+        },
+        &pecas,
+        |_| DT_ARNES,
+        Leis::HOJE,
+    );
     ULTIMA_VEL.with(|c| {
         *c.borrow_mut() = (0..n)
             .map(|i| [vel[i][0] - vel0[i][0], vel[i][1] - vel0[i][1]])
@@ -865,7 +876,18 @@ fn an_icy_material_changes_nothing_to_the_bit() {
             })
             .collect();
         let mut dspin = vec![0.0; n];
-        impulsos(&antes_do_passo, &mut vel, &mut dspin, &pecas, |_| DT_ARNES);
+        let mut spin = vec![0.0; n];
+        impulsos(
+            &antes_do_passo,
+            &mut Movimento {
+                vel: &mut vel,
+                giro: &mut dspin,
+                spin: &mut spin,
+            },
+            &pecas,
+            |_| DT_ARNES,
+            Leis::HOJE,
+        );
         (p, giro, dspin)
     };
     let (com, g_com, s_com) = corre(Some(Deslize {

@@ -460,7 +460,10 @@ fn step(
     );
     // ⭐⭐ O CONTACTO ENTRE PEÇAS (doc 109) — depois da integração, só onde há colisor declarado.
     // Ele devolve o quanto cada peça RODOU (doc 109 §6), em graus.
-    let giro = contact::resolve(
+    // ⭐⭐ Ele devolve DUAS coisas: o ÂNGULO que o contacto rodou (graus, a lei posicional) e a
+    // VELOCIDADE ANGULAR que o impulso acrescentou (graus/s, a lei que persiste). Qual das duas vem
+    // preenchida é a [`contact::LEIS`] que decide — nunca as duas, que seria contá-la a dobrar.
+    let (giro, dspin) = contact::resolve(
         state,
         &mut p,
         &mut vel,
@@ -500,10 +503,16 @@ fn step(
             if let Some(g) = giro.get(i).copied().filter(|g| g.is_finite()) {
                 rot[i] += g;
             }
+            // ⭐⭐⭐ **E a VELOCIDADE ANGULAR que o contacto trocou entra no `spin`** — é isto que
+            // faz uma caixa atingida fora do centro CONTINUAR a girar depois de se separarem, em
+            // vez de levar meio grau e congelar (doc 111 §8.2, o 8.º report do dono).
+            if let Some(d) = dspin.get(i).copied().filter(|d| d.is_finite()) {
+                spin[i] += d;
+            }
         }
         out.set(SPIN, Column::Scalar(spin));
         out.set(ROT, Column::Scalar(rot));
-    } else if giro.iter().any(|g| *g != 0.0) {
+    } else if giro.iter().any(|g| *g != 0.0) || dspin.iter().any(|d| *d != 0.0) {
         // ⭐⭐ **Sem `spin` autorado, o contacto é o ÚNICO a girar** (doc 109 §6) — e só escreve a
         // coluna quando de facto rodou alguém: uma pilha travada sai como sempre saiu.
         let mut rot = scalar_col(state, ROT, n, 0.0).unwrap_or_else(|| vec![0.0; n]);
@@ -513,6 +522,12 @@ fn step(
             }
         }
         out.set(ROT, Column::Scalar(rot));
+        // ⚠️ **Sem `spin` autorado, uma velocidade angular do contacto CUNHA a coluna** — é a
+        // mesma lei do `rot` uma linha acima (só se escreve o que de facto se moveu), e sem ela a
+        // rotação que persiste seria deitada fora em toda cena que não declara giro.
+        if dspin.iter().any(|d| d.is_finite() && *d != 0.0) {
+            out.set(SPIN, Column::Scalar(dspin));
+        }
     }
 
     out.set("P", Column::Vec2(p));

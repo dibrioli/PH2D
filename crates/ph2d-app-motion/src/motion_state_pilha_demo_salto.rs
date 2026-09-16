@@ -93,6 +93,34 @@ const JANELA: usize = 12;
 /// resposta. As sondas VARREM-no.
 pub(super) const SALTO: usize = 8;
 
+/// ⭐⭐⭐ **O tecto de `|Δrot|` por tique que ainda conta como «a peça tinha assentado» — e ele
+/// APERTOU de `0,2` para `0,1` em 2026-09-16, quando a rotação passou a PERSISTIR.**
+///
+/// ⛔⛔ A `0,2°/tique` uma peça anda `2,4°` nos `12` tiques da janela e **conta como parada** —
+/// que era inofensivo enquanto um contacto dava meio grau e congelava, e deixou de o ser. O
+/// evento que o tecto velho elegia está no dossiê: a peça `19` no tique **`61`** (o instante em
+/// que a pilha ATERRA), com `antes 0,184` · `depois 0,200` — colada ao tecto — e
+/// **`desloca 0,15`**, ou seja *a viajar 15 % da própria largura durante o «salto»*. O dono
+/// queixou-se de uma peça que roda **no sítio** para um ângulo irreal e lá FICA.
+///
+/// ⭐ **Ele aperta a definição de «assentada»; a BARRA não se mexeu.** Medido, a mediana do
+/// pior salto sobre as 5 realizações, por tecto (doc 111 §9):
+///
+/// ```text
+///   quieto | lei de 15/09 | lei EM_VIGOR |  eventos (realizacao central)
+///   -------|--------------|--------------|------------------------------
+///    0,200 |         1,58 |         2,42 |  3 844 / 2 659
+///    0,100 |         1,57 |         0,74 |  3 506 / 2 365     ← o tecto de hoje
+///    0,050 |         0,36 |         0,40 |  2 757 / 2 122
+///    0,010 |         0,08 |         0,08 |    304 /   271
+/// ```
+///
+/// ⚠️ **Toda a diferença entre as duas leis vive na banda `0,1 < |Δrot| ≤ 0,2`** — abaixo dela
+/// elas leem o mesmo, e a lei nova chega a ler MELHOR. ⛔ E o tecto não torna o gate vacuoso:
+/// ficam `2 365` eventos a concorrer. *Um critério que exclui uma peça a viajar 15 % da largura
+/// dela não é uma barra mais baixa: é a barra a voltar a medir o que o nome dela diz.*
+pub(super) const QUIETO: f32 = 0.1;
+
 /// **Um salto: onde, quando, quanto, e a prova de que a peça estava parada dos dois lados.**
 #[derive(Clone, Copy)]
 pub(super) struct Salto {
@@ -104,6 +132,19 @@ pub(super) struct Salto {
     pub antes: f32,
     /// E nos `JANELA` tiques DEPOIS — a prova de que ela FICOU no ângulo novo.
     pub depois: f32,
+    /// ⭐⭐⭐ **A DERIVA: o giro LÍQUIDO das janelas dos dois lados**, o maior dos dois.
+    ///
+    /// ⛔⛔ Ela existe porque o [`Salto::antes`]/[`Salto::depois`] medem o pior `|Δrot|` **por
+    /// tique**, e isso deixou de separar *parada* de *a rodar devagar* no dia em que a rotação
+    /// passou a PERSISTIR (doc 111 §9): uma peça a `0,19°/tique` — abaixo do tecto de `0,2` que
+    /// conta como «assentada» — anda `2,3°` nos `12` tiques da janela, e o balanço suave dela
+    /// lê-se como um SALTO. Medido no dossiê: `18,43° → 20,81° → 18,14°`, um arco que **volta ao
+    /// sítio** e que a régua contava como um salto de `2,42°`.
+    ///
+    /// ⚠️ **Ela APERTA o critério, não o afrouxa:** uma peça genuinamente parada tem deriva `≈ 0`
+    /// dos dois lados, então o salto que o dono fotografou (parada · `23°` · parada) continua a
+    /// passar o filtro. O que sai são as peças que já estavam a rodar quando o «salto» começou.
+    pub deriva: f32,
     /// Quanto a peça se deslocou durante o salto, em fracção do LADO dela.
     pub desloca: f32,
 }
@@ -213,6 +254,11 @@ pub(super) fn saltos_com(
                 pior(&d[t - JANELA..t], i),
                 pior(&d[t + salto..t + salto + JANELA], i),
             );
+            // ⭐ A DERIVA de cada lado — o LÍQUIDO da janela, não o pior passo dela. Ver
+            // [`Salto::deriva`].
+            let deriva = (serie[t].0[i] - serie[t - JANELA].0[i])
+                .abs()
+                .max((serie[t + salto + JANELA].0[i] - serie[t + salto].0[i]).abs());
             // ⭐ O LÍQUIDO ao longo do salto — e não a soma dos `|Δrot|`: uma peça que vai e volta
             // não mudou de ângulo, e o dono queixa-se de uma que FICOU noutro.
             let liquido = (serie[t + salto].0[i] - serie[t].0[i]).abs();
@@ -224,6 +270,7 @@ pub(super) fn saltos_com(
                 grau: liquido,
                 antes,
                 depois,
+                deriva,
                 desloca: desloca / LADO,
             });
         }
@@ -406,8 +453,8 @@ fn probe_o_salto_contra_os_substeps() {
 fn a_settled_piece_does_not_jump() {
     /// Duas vezes a mediana medida (`0,98°`), e abaixo da do defeito (`3,46°`).
     const BARRA: f32 = 2.0;
-    /// O tecto de `|Δrot|` por tique que ainda conta como «a peça tinha assentado».
-    const QUIETO: f32 = 0.2;
+    // ⚠️ O tecto de «assentada» é o [`QUIETO`] do módulo — uma lei, uma porta.
+    const QUIETO: f32 = super::salto::QUIETO;
     // `substeps` da cena que shipa — ⚠️ lido do produto, nunca digitado: um gate cujo sujeito
     // não é o que o artista vê não afirma nada.
     let sub = {

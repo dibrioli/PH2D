@@ -590,10 +590,14 @@ lê-se exactamente como um controlo que não funciona.* A cura foi dar-lhe o A/B
 - ⏳ **O kernel de GPU do `sim.collide` não conhece nem a forma declarada nem o material** — ele
   implementa `contact` + o sangramento. É o **mesmo** vão que o §5 já abriu (a caixa declarada
   também não chega lá), e não um vão novo: quem o fechar fecha os dois de uma vez.
-- ⏳ **A rotação do contacto peça×peça continua sem velocidade angular** (§6): ela é projecção de
-  posição, e uma peça roda enquanto toca. O que MUDOU é que uma bola contra um obstáculo agora
-  ganha `spin` de verdade — as duas metades do app já não dizem a mesma coisa sobre isto, e
-  unificá-las é uma wave própria.
+- ✅ **A rotação do contacto peça×peça continua sem velocidade angular** (§6) — **FECHADO em
+  2026-09-16**, e a wave está no [doc 111 §9](111_o_motor_de_contacto_com_memoria.md). A redacção
+  original está acima e era verdade: *«ela é projecção de posição, e uma peça roda enquanto toca»*,
+  com as duas metades do app a não dizerem a mesma coisa (o `sim.collide` já dava `spin` de
+  verdade). ⭐ Hoje o impulso do par escreve `spin`, e **a projecção de posição deixou de rodar** —
+  duas leis de rotação a somar-se era exactamente o que partia a pilha na 1.ª tentativa. ⚠️ O preço
+  declarado: uma caixa em penetração pura **com velocidade zero** já não roda; sob gravidade isso é
+  invisível.
 - ⏳ **Entre CAIXAS o `Friction` quase não pesa** (tabela acima): o encaixe geométrico de duas faces
   planas já impede o deslize, e o que sobra para o atrito é pouco. Não está errado — está **medido e
   nomeado**, e quem quiser mudá-lo tem de dizer que recurso é que o limita.

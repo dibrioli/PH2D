@@ -262,3 +262,8 @@ mod salto;
 #[cfg(test)]
 #[path = "motion_state_pilha_demo_salto_diag.rs"]
 mod salto_diag;
+
+/// As sondas da VELOCIDADE ANGULAR — irmã da [`salto_diag`] pelo tecto de LOC e por assunto.
+#[cfg(test)]
+#[path = "motion_state_pilha_demo_giro_diag.rs"]
+mod giro_diag;

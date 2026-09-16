@@ -289,6 +289,77 @@ fn probe_os_sub_passos() {
     eprintln!("  ⚠️ hoje (substeps 1): 3,79..5,69 · 24,3..28,4 · −2,56 · 0,3094.");
 }
 
+/// ⭐⭐⭐ **UMA LINHA DA TABELA DAS LEIS** — as cinco réguas da `=114` para a lei que o
+/// [`ph2d_node_sim_step`] tem em vigor **agora**.
+///
+/// ## ⛔⛔ Porque a varredura é por MUTAÇÃO do `const`, e não por um parâmetro
+///
+/// As [`ph2d_contact::Leis`] são um argumento da porta e a escolha vive num `const` do `sim.step`
+/// (o `contact::LEIS`). Para as varrer daqui seria preciso uma **bandeira global** lida dentro do
+/// solver — *o defeito que o `remesh_with` da `line/sculpt3d` pagou por escrito, e que alcança todo
+/// chamador*. ⇒ a varredura é `backup → mutar o const → correr esta sonda → restaurar`, que é a
+/// forma que o `CLAUDE.md` §2 sanciona para uma edição derivada de medição.
+///
+/// ⛔⛔ **E a alternativa — uma bancada de pilha DENTRO da `ph2d-contact` — foi construída, medida
+/// e DEITADA FORA no mesmo dia.** Ela é barata e varre à vontade, e não vale nada: a 1.ª fixtura
+/// (uma grelha `5 × 5` alinhada num caixote do tamanho dela) caía a direito e pousava alinhada,
+/// lendo `rodopio 0,00` com a lei de hoje e `0,46` com a velocidade angular — *uma fixtura onde não
+/// acontece nada não distingue lei nenhuma*. Dando-lhe rampas e ângulos de chegada ela passou a
+/// ler `2,0×` onde a cena mede `~40×`, e **afinar uma fixtura até ela concordar com a resposta que
+/// se quer é a pior espécie de medição**. ⇒ *o instrumento é a cena.*
+#[test]
+#[ignore = "sonda: a linha da tabela das leis, para a varredura por mutacao do const"]
+fn probe_a_linha_das_leis() {
+    let sub = {
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "uma contagem de sub-passos pequena"
+        )]
+        let s = super::SUBSTEPS as u32;
+        s
+    };
+    // ⚠️ O MESMO tecto de «assentada» que o gate usa — ver [`super::salto::QUIETO`]. ⛔ Uma
+    // segunda cópia dele fazia esta sonda imprimir `2,42` onde o gate lia `0,74`, e *duas medidas
+    // da mesma grandeza a discordar na mesma página são o achado, não um detalhe*.
+    const QUIETO: f32 = super::salto::QUIETO;
+    let (mut ts, mut rs, mut js) = (Vec::new(), Vec::new(), Vec::new());
+    for k in 0..5 {
+        #[expect(clippy::cast_precision_loss, reason = "um indice pequeno")]
+        let eps = (k as f32 - 2.0) * 1.5e-3;
+        let (t, r) = realizacao_com_substeps(eps, sub);
+        ts.push(t);
+        rs.push(r);
+        let todos = super::salto::saltos(sub, eps, super::salto::SALTO);
+        assert!(
+            todos.len() > 500,
+            "piso de populacao: a marcha tem de produzir eventos ({})",
+            todos.len()
+        );
+        js.push(
+            todos
+                .iter()
+                .find(|s| s.antes <= QUIETO && s.depois <= QUIETO)
+                .map_or(0.0, |s| s.grau),
+        );
+    }
+    for v in [&mut ts, &mut rs, &mut js] {
+        v.sort_by(f32::total_cmp);
+    }
+    let (y, vao, ms) = altura_vao_e_relogio(sub);
+    eprintln!(
+        "\n  LINHA | tremor {:>6.3}..{:>6.3} | rodopio {:>6.1}..{:>6.1} | salto {:>5.2} | y {y:>6.2} | vao {vao:.4} | {ms:.2} ms",
+        ts[0],
+        ts[ts.len() - 1],
+        rs[0],
+        rs[rs.len() - 1],
+        js[js.len() / 2],
+    );
+    eprintln!(
+        "  barras: tremor <= 0,15 · rodopio <= 28 · salto <= 2,0 · y muito abaixo de -2 · vao ~ 0,31"
+    );
+}
+
 /// A cena com `substeps` escrito na zona da DIREITA e o berço deslocado `eps`.
 ///
 /// ⚠️ **`pub(super)` porque o irmão [`super::salto`] a consome** — uma 2.ª cópia desta montagem

@@ -101,7 +101,7 @@ mod varredura;
 pub mod warm;
 
 pub use atrito::{Deslize, Material, Pecas, Saida, materiais};
-pub use impulso::impulsos;
+pub use impulso::{Leis, Movimento, impulsos};
 pub use par::{Manifesto, contato, disco_caixa, manifesto};
 
 /// Abaixo disto dois centros coincidem e a normal não existe (o `EPS` do `motion.collide`).

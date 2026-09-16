@@ -27,8 +27,8 @@ use ph2d_nodegraph::attr::Column;
 #[test]
 #[ignore = "sonda de medicao"]
 fn probe_o_dossie_do_salto() {
-    /// O tecto de `|Δrot|` por tique que ainda conta como «a peça tinha assentado».
-    const QUIETO: f32 = 0.2;
+    /// O tecto de «assentada» — a porta do módulo, ver [`super::salto::QUIETO`].
+    const QUIETO: f32 = super::salto::QUIETO;
     let (sub, eps) = (8_u32, 0.0_f32);
     let Some(alvo) = pior_salto(sub, eps, QUIETO, SALTO) else {
         eprintln!("nenhum salto legitimo — nada a dissecar");

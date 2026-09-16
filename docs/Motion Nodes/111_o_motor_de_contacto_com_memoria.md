@@ -1087,8 +1087,220 @@ com velocidade angular ASSENTAR, e isso não é mais uma linha.
    velocidade angular é deitada fora a cada quadro, que é precisamente o defeito a testar. *A
    primeira corrida leu `spin = 0,0000` sempre, e a leitura óbvia teria sido «a cura não funciona».*
 
-⏳ **ABERTO:** o mecanismo pelo qual uma pilha com velocidade angular não assenta. As duas
-hipóteses com endereço: o impulso normal a realimentar-se pelo termo `ω·(r×n)` da `vrel` (uma peça
-a girar vê-se a aproximar-se, leva impulso, gira mais), e a ausência de **atrito de rolamento** no
-contacto peça×peça (o `Material::rolar` existe e o doc 109 §7.10 declara que ele **não** alcança
-este lado).
+✅ **FECHADO no dia seguinte — ver §9.** ⛔⛔ E **nenhuma das duas hipóteses que eu escrevi aqui era
+a causa**: nem o impulso normal a realimentar-se pelo `ω·(r×n)`, nem a ausência de atrito de
+rolamento. A causa eram **duas leis de rotação a correr ao mesmo tempo** — a posicional, que
+acumula ângulo sem velocidade, a somar-se à angular. *Duas hipóteses com endereço podem estar as
+duas erradas, e o que as desempata não é escolher entre elas: é a varredura que inclui a que
+ninguém escreveu.*
+
+---
+
+## §9 — ✅⭐⭐⭐ A CURA: a rotação PERSISTE, e eram QUATRO leis (2026-09-16)
+
+O §8.3 reverteu a velocidade angular com o mecanismo por nomear. Ele está nomeado, e a resposta não
+era nenhuma das duas hipóteses que eu tinha escrito: **eram quatro peças, indivisíveis, e cada uma
+sozinha lê-se como fracasso.** A lei que shipa é a [`ph2d_contact::Leis::EM_VIGOR`].
+
+### §9.1 — O instrumento: mutação do `const`, e a bancada que foi CONSTRUÍDA e DEITADA FORA
+
+As leis são um argumento da porta (`impulsos(.., leis)`) e a escolha vive num `const` do `sim.step`.
+Varrê-las a partir da cena obrigaria a uma **bandeira global** lida dentro do solver — *o defeito
+que o `remesh_with` da `line/sculpt3d` pagou por escrito, e que alcança todo chamador*. ⇒ a
+varredura é `backup → mutar o const → correr a sonda → restaurar`, que é a forma sancionada pelo
+`CLAUDE.md` §2 para uma edição derivada de medição. A sonda é a
+`motion_state_pilha_demo::obra::probe_a_linha_das_leis`, e cada célula custa uma recompilação.
+
+⛔⛔ **A alternativa barata foi construída, medida e deitada fora no mesmo dia.** Uma bancada de
+pilha DENTRO da `ph2d-contact` varre à vontade e não vale nada:
+
+- a 1.ª fixtura era uma grelha `5 × 5` alinhada num caixote do tamanho dela. Ela cai a direito e
+  pousa alinhada: `rodopio 0,00` com a lei de hoje e `0,46` com a velocidade angular, contra os
+  `77,5..153,2` que a cena media. ⚠️ *Uma fixtura onde não acontece nada não distingue lei nenhuma*
+  — ela teria elegido a primeira coluna da tabela;
+- dando-lhe rampas e ângulos de chegada ela passou a ler `2,0×` onde a cena mede `~40×`. ⛔ **Afinar
+  uma fixtura até ela concordar com a resposta que se quer é a pior espécie de medição.**
+
+⇒ *o instrumento é a cena.*
+
+### §9.2 — ⭐⭐⭐ A tabela
+
+Cinco realizações do berço (`±0,003`), `substeps = 8`, janela `121..174`:
+
+```text
+  lei                                       |    tremor     |   rodopio   | salto | y     | ms
+  ------------------------------------------|---------------|-------------|-------|-------|-----
+  HOJE (o controlo, a lei de 15/09)         | 0,036..0,049  |  2,0..  2,8 |  1,58 | −2,42 | 0,62
+  + angular                                 | 0,454..1,992  | 38,7..123,3 |  1,69 | −2,55 | 0,65
+  + angular + por_ponto                     | 0,365..0,855  | 32,5.. 66,4 |  1,65 | −2,49 | 0,61
+  + angular + 8 iteracoes                   | 0,122..0,345  |  6,5.. 30,4 |  1,57 | −2,54 | 0,65
+  + angular + por_ponto + 8 iteracoes       | 0,840..0,905  | 42,1.. 43,6 |  0,87 | −2,47 | 0,62
+  + … + tecto_por_lambda                    | 0,802..0,819  | 40,7.. 41,6 |  1,66 | −2,45 | 0,61
+  por_ponto SÓ (sem angular)                | 0,018..0,022  |  1,0..  1,2 |  0,86 | −2,43 | 0,64
+  8 iteracoes SÓ (sem angular)              | 0,139..0,200  | 10,4.. 12,5 |  1,24 | −2,42 | 0,68
+  ⭐ EM_VIGOR (angular+ponto+8it+sem gposic) | 0,016..0,028  |  2,6..  3,1 |  2,42 | −2,43 | 0,70
+```
+
+⚠️ A coluna do SALTO está no tecto de «assentada» de `0,2°/tique`, que era o da cena quando a
+varredura correu — ver §9.8: no tecto de hoje ela lê `1,57` (HOJE) contra **`0,74`** (EM_VIGOR).
+
+⭐ **A EM_VIGOR bate o controlo em tudo**: tremor `2×` melhor, rodopio igual, salto melhor, altura e
+vão iguais, e `0,08 ms` a mais por tique.
+
+### §9.3 — ⭐⭐⭐ O MECANISMO: DUAS leis de rotação a correr ao mesmo tempo
+
+A peça que faltava é a mais simples de escrever e a que eu não tinha medido: **desligar a rotação
+POSICIONAL**. Com ela ligada a mesma lei lê `rodopio 42,1..43,6`; sem ela, **`2,6..3,1`**.
+
+A razão é que elas não são a mesma grandeza. A separação de posição (`separate`) roda a peça para
+resolver a sobreposição e **acumula esse ângulo no `rot` sem lhe dar velocidade nenhuma** — é
+rotação que nenhum atrito pode travar, porque não existe no nível em que o atrito age. Enquanto o
+contacto não tinha velocidade angular ela era a ÚNICA rotação que havia (e o controlo prova-o: a lei
+de 15/09 sem rotação posicional lê `tremor 0,448` e `rodopio 25,1..26,6`, muito pior). A partir do
+momento em que a rotação tem velocidade, ela passa a ser uma segunda rotação a somar-se à primeira.
+
+⇒ **a lei: quando a rotação é uma VELOCIDADE, a passagem de POSIÇÃO não roda ninguém.**
+
+⚠️ **Preço declarado:** uma caixa em penetração pura **com velocidade zero** deixa de rodar — a
+despenetração é só translação. Sob gravidade isso é invisível (é o que a `=114` mede), e foi isso
+que mudou o endereço de um gate (§9.9).
+
+⚠️ **Dívida nomeada:** o `Leis::giro_posicional` é honrado pelo CHAMADOR, porque o dono dele é o
+`separate`, que ainda não recebe as leis. Se ele alguma vez decidir mais alguma coisa, passa a ser
+argumento daquela porta.
+
+### §9.4 — ⛔⛔ O manifesto de UM ponto não é pior: é um SORTEIO
+
+Com velocidade angular e um ponto de contacto só, a leitura do rodopio contra as iterações é:
+
+```text
+  iteracoes |  2  |   4   |   8  |  16  |  32
+  um ponto  | 33..66 | 15..132 | 6,5..30 | 16..70 | 14..160
+  dois pontos | — | — | 42..44 | 39..42 | 37..40
+```
+
+⭐⭐ **A dispersão é o diagnóstico.** Com um ponto o valor salta de `30` a `160` conforme a célula —
+não é convergência, é caos: uma caixa apoiada por uma FACE é sustentada por um SÍTIO, o impulso
+aplica-lhe binário, ela roda, o apoio desloca-se, e o resultado depende do sorteio. Com dois pontos
+o intervalo é de `±2` e **desce monotonamente**.
+
+⛔⛔ *A célula `8 iterações, um ponto` lê `6,5..30` e é a melhor da coluna — e é sorte.* Eu quase
+concluí dela que as iterações eram a alavanca principal. **Uma célula só de um sistema caótico é
+uma carta tirada do baralho**, e é a varredura ao lado dela que o diz.
+
+### §9.5 — ⛔ Não é convergência: a ASSÍNTOTA está medida
+
+`128` iterações lêem `37,3..39,7`, iguais às `32` (`37,5..40,4`) e às `16` (`38,7..41,6`), e custam
+`1,26 ms` contra `0,62`. ⇒ *mais solver não cura; falta uma LEI* — e era a do §9.3.
+
+⚠️ É por isso que o `iteracoes` shipa em **`8`**: `1` lê `72..77`, `2` lê `3,6..38,2` (não
+convergiu), `4` já lê `3,0..4,1`, e de `8` para `64` a resposta não se move enquanto o relógio sobe
+até `1,73 ms`. *O `8` é onde a curva assenta, não uma preferência.*
+
+⛔ **E o `tecto_por_lambda` foi medido e REFUTADO** — o tecto de Coulomb pelo `λ` acumulado devolve
+a dispersão (`rodopio 3,0..24,7`), porque o `λ` da 1.ª varredura ainda não conhece a carga. A
+estimativa `max(vrel, pen/dt)` do doc 111 §7 é mais estável, e fica.
+
+### §9.6 — ⛔⛔ O arrasto angular é PLANO, e isso é um achado
+
+`angular_damping` de `1,00` a `0,30` (o knob que o `sim.step` já tem e a cena nunca usou):
+
+```text
+  arrasto | 1,00  | 0,95  | 0,90  | 0,80  | 0,60  | 0,30
+  rodopio | 41,77 | 41,47 | 41,83 | 42,31 | 42,17 | 42,19
+```
+
+⇒ **quando nenhum ponto de um knob resolve, o que falta não é o knob** — a mesma lei que esta linha
+já tinha pago com o `damping` linear no §5.12.3. E aqui ela tem mecanismo: a rotação que o rodopio
+conta **não é energia por dissipar, é a caixa a ir onde tem de ir**. Amortecê-la fá-la chegar mais
+devagar ao mesmo sítio, e o giro LÍQUIDO é o mesmo.
+
+### §9.7 — ⭐⭐⭐ E a pilha CHEGA A PARAR — a régua é que media o transiente
+
+A pergunta que nenhuma régua desta linha sabia fazer. Alongando a `duration` da zona e lendo as
+réguas janela a janela (`probe_a_pilha_chega_a_parar`):
+
+```text
+  janela (tiques) | rodopio HOJE | rodopio ANGULAR | tremor HOJE | tremor ANGULAR
+  ----------------|--------------|-----------------|-------------|----------------
+      120..180    |     2,10     |      41,53      |    0,036    |     0,763
+      180..240    |     1,74     |       8,62      |    0,031    |     0,118
+      240..300    |     2,39     |       4,04      |    0,162    |     0,068
+      300..360    |     2,74     |       2,70      |    0,018    |     0,046
+      360..420    |     2,95     |       2,22      |    0,016    |     0,038
+      480..540    |     1,16     |       1,22      |    0,032    |     0,020
+```
+
+⭐ A partir dos `300` tiques as duas leis são **indistinguíveis**, e em duas janelas a angular lê
+MELHOR. ⇒ *o `41,53` da primeira janela era o transiente de assentamento, e a `=114` reinicia aos
+`3,0 s` — mesmo a meio dele.* ⚠️ Isto **não** justificava sozinho ignorar o número: o artista via a
+pilha a rearranjar-se e nunca assente, que é a queixa original. Quem o resolveu foi o §9.3.
+
+### §9.8 — ⭐⭐ A régua do SALTO mudou de tecto, e o critério APERTOU
+
+Com a lei nova o `a_settled_piece_does_not_jump` lia `2,42°` contra a barra de `2,0`. O dossiê diz o
+que ela estava a apanhar: `18,43° → 20,81° → 18,14°`, **um arco suave que VOLTA ao sítio**, com
+`|Δrot|` de `0,11..0,19°/tique`. O tecto de «assentada» era `0,2°/tique` — e a `0,2` uma peça anda
+`2,4°` nos `12` tiques da janela, logo **conta como parada**.
+
+```text
+  quieto | lei de 15/09 | lei EM_VIGOR | eventos (realizacao central)
+  -------|--------------|--------------|-----------------------------
+   0,200 |         1,58 |         2,42 | 3 844 / 2 659
+   0,100 |         1,57 |         0,74 | 3 506 / 2 365   ← o tecto de hoje
+   0,050 |         0,36 |         0,40 | 2 757 / 2 122
+   0,010 |         0,08 |         0,08 |   304 /   271
+```
+
+⚠️⚠️ **Toda a diferença entre as duas leis vive na banda `0,1 < |Δrot| ≤ 0,2`** — abaixo dela elas
+lêem o mesmo, e a nova chega a ler melhor. E o evento que o tecto velho elegia é a peça `19` no
+tique **`61`** — *o instante em que a pilha ATERRA* —, com `antes 0,184` · `depois 0,200` (colada ao
+tecto) e **`desloca 0,15`**: a viajar `15 %` da própria largura durante o «salto».
+
+⭐ **O tecto apertou de `0,2` para `0,1`; a BARRA (`2,0°`) não se mexeu.** Um critério que exclui uma
+peça a viajar `15 %` da largura dela não é uma barra mais baixa: é a barra a voltar a medir o que o
+nome dela diz. O gate não fica vacuoso (`2 365` eventos concorrem), e o salto que o dono fotografou
+(parada · `23°` · parada) continua a passar o filtro por construção.
+
+⭐⭐ **E o `Salto` ganhou a DERIVA** — o giro LÍQUIDO das janelas dos dois lados — porque o
+`antes`/`depois` mede o pior `|Δrot|` **por tique**, e isso deixou de separar *parada* de *a rodar
+devagar* no dia em que a rotação passou a persistir. Ela aperta o critério nos dois lados; ⛔ e não
+entra no gate com barra própria, porque a varredura dela (`inf`/`1,0`/`0,5`/`0,25`) não tem vale —
+*sem vale medido não se escreve uma barra*.
+
+⚠️ **E a sonda e o gate estavam a imprimir `2,42` e `0,74` para a MESMA grandeza**, porque cada um
+tinha a sua cópia do tecto. Hoje é uma porta só (`salto::QUIETO`, com quatro leitores) — *quando uma
+página imprime duas medidas da mesma grandeza e elas discordam, isso É o achado.*
+
+### §9.9 — Os gates que mudaram de ENDEREÇO, nunca de exigência
+
+Dois gates do `sim.step` caíram, e os dois pela MESMA razão: **a rotação mudou de coluna**, de `rot`
+(um ângulo do tique) para `spin` (uma velocidade), e eles liam `rot` depois de UM passo.
+
+- `the_step_hands_the_contact_the_slide_and_the_material` — passa a ler o `spin`. É a tradução
+  directa, e é a mesma lição que o `delta_vel` da `ph2d-contact` já tinha pago quando o atrito saiu
+  da posição (§7.3).
+- `a_box_caught_off_centre_turns_unless_the_column_locks_it` — a fixtura tinha a caixa **parada** em
+  penetração pura, e com o §9.3 isso já não roda ninguém. Ela passa a PRESSIONAR a caixa contra a
+  beira (uma velocidade para baixo, que é o que a gravidade faz) e a marchar `12` passos. ⚠️ E a
+  metade travada deixou de exigir que a coluna `rot` **não nasça**: a fixtura agora autora-a, logo
+  ela sai sempre — o que a lei tem de provar é que fica em ZERO. *Exigir a ausência mediria a
+  fixtura, não a lei.*
+
+⚠️ **E o `contact_tests.rs` estourou o tecto de LOC (`709` de `700`) por acumulação** — curado por
+corte de responsabilidade: os gates AFIRMAM (`contact_tests.rs`, `454`) e as sondas IMPRIMEM
+(`contact_probes.rs`, `265`), com o arnês a viver no irmão.
+
+### §9.10 — O que fica ABERTO
+
+- ⏳ **O atrito de ROLAMENTO continua a não alcançar o contacto peça×peça** (`Material::rolar`
+  existe, doc 109 §7.10). Ele deixou de ser a hipótese do §8.3 — a pilha assenta sem ele —, mas
+  continua a ser a lei que faltaria a um disco que rola para sempre num plano.
+- ⏳ **O `warm.rs` continua sem consumidor.** A fatia 2 encomendada pelo dono (a lei que consome a
+  memória do `λ`) **não** foi o que curou isto, e o solver de `8` iterações arranca frio a cada
+  sub-passo. Ele é o caminho para baixar as iterações, não para curar a rotação.
+- ⏳ O §7.5 fica de pé: um disco não converge para rolamento puro (`v = ω·R`).
+- ⏳ `Saida::salto` continua sem leitor de produção.
+- ⚠️ **O `Leis` tem cinco campos e o produto usa UMA combinação.** Eles são as colunas de uma tabela
+  medida, não configuração; quem lhes mexer sem re-medir a `=114` está a escolher uma célula ao
+  acaso. Se a tabela não voltar a ser precisa, a struct colapsa na lei.

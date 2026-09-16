@@ -38,8 +38,17 @@
 //! parado não ganha velocidade (`vrel = 0`), só se responde a quem se aproxima (`vrel > 0`), e um
 //! obstáculo devolve o salto inteiro (`w = 0`).
 //!
-//! ⛔ **A rotação não tem velocidade angular** — ela é projecção de posição, como o afastamento. Uma
-//! peça roda enquanto toca e não continua a girar no ar (doc 109 §6, nomeado).
+//! ## ⭐⭐⭐ E a ROTAÇÃO PERSISTE (doc 111 §9, 2026-09-16)
+//!
+//! Report do dono: *«umas caixas rodam, outras parecem não rotacionar»*. A rotação deixou de ser
+//! uma projecção de posição e passou a ser **velocidade angular**, que o `sim.step` integra: uma
+//! caixa atingida fora do centro gira a `101,9°/s` e **continua a girar** depois de se separarem,
+//! contra `0,5341°` uma vez e congelar.
+//!
+//! ⛔⛔ **E a metade que faltava à 1.ª tentativa não era angular: era DESLIGAR a outra rotação.** A
+//! separação de posição também roda (doc 109 §6) e acumula esse ângulo **sem lhe dar velocidade**,
+//! logo nenhum atrito o pode travar. Com as duas a correr o rodopio da `=114` lê `42`; com uma só,
+//! `2,6..3,1`. Ver [`ph2d_contact::Leis::EM_VIGOR`], que tem a tabela das cinco células.
 
 use ph2d_nodegraph::attr::Stream;
 
@@ -48,6 +57,14 @@ use ph2d_nodegraph::attr::Stream;
 /// com Gauss–Seidel para `0,270` com este esquema a 8); e os `substeps` da zona multiplicam-no sem
 /// mais nenhum knob.
 pub(crate) const VARREDURAS: usize = 8;
+
+/// **AS LEIS DO SOLVER DE VELOCIDADE** — uma escolha do produto, e o único sítio onde ela se faz.
+///
+/// ⚠️ Ela é um `const` e **não** uma variável de ambiente de propósito: uma bandeira global lida
+/// dentro do solver alcançaria todo chamador dele (o defeito que o `remesh_with` da `line/sculpt3d`
+/// pagou por escrito). Quem varre as células é a bancada da `ph2d-contact`, que chama a porta com
+/// as leis na mão; aqui escolhe-se **uma**, com a tabela que a escolheu ao lado — doc 111 §9.
+const LEIS: ph2d_contact::Leis = ph2d_contact::Leis::EM_VIGOR;
 
 /// Separa as peças com colisor, troca o momento delas pelo IMPULSO do par, e devolve **quanto cada
 /// uma rodou**, em graus (vazio quando ninguém declara colisor).
@@ -67,13 +84,13 @@ pub(crate) fn resolve(
     antes_do_passo: &[[f32; 2]],
     girou: &[f32],
     dt: impl Fn(usize) -> f32,
-) -> Vec<f32> {
+) -> (Vec<f32>, Vec<f32>) {
     let n = p.len();
     let Some(colisores) = ph2d_contact::colisores(state) else {
-        return Vec::new();
+        return (Vec::new(), Vec::new());
     };
     if colisores.len() != n || antes_do_passo.len() != n || girou.len() != n {
-        return Vec::new();
+        return (Vec::new(), Vec::new());
     }
     let inv_inercia = ph2d_contact::inv_inercias(state, &colisores, pesos);
     // ⭐ O MATERIAL de cada peça (doc 109 §7). Sem as colunas ele é `LISO` para todas, `μ = 0`, e
@@ -116,10 +133,32 @@ pub(crate) fn resolve(
     //
     // ⚠️ O impulso corre sobre `antes` — as posições em que os contactos DE FACTO aconteceram.
     // Depois da separação as peças já não se sobrepõem, e ali não haveria par nenhum a encontrar.
-    ph2d_contact::impulsos(&antes, vel, &mut giro, &pecas, &dt);
-    giro
+    // ⚠️ **A rotação POSICIONAL, quando as leis a dispensam** — ver `Leis::giro_posicional`. Ela é
+    // a projecção de despenetração (doc 109 §6) e corre a par da velocidade angular; zerá-la aqui é
+    // o que permite medir qual das duas é que a pilha precisa.
+    if !LEIS.giro_posicional {
+        giro.iter_mut().for_each(|g| *g = 0.0);
+    }
+    let mut spin = vec![0.0_f32; n];
+    ph2d_contact::impulsos(
+        &antes,
+        &mut ph2d_contact::Movimento {
+            vel,
+            giro: &mut giro,
+            spin: &mut spin,
+        },
+        &pecas,
+        &dt,
+        LEIS,
+    );
+    (giro, spin)
 }
 
 #[cfg(test)]
 #[path = "contact_tests.rs"]
-mod tests;
+mod contact_tests;
+
+/// As SONDAS — irmã dos gates pelo tecto de LOC e por responsabilidade; ver o cabeçalho delas.
+#[cfg(test)]
+#[path = "contact_probes.rs"]
+mod contact_probes;

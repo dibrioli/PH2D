@@ -48,7 +48,7 @@
 //! atrito continua a ser a projecção de posição que o [`super::atrito`] descreve. Dar giro aqui
 //! seria um corpo rígido a sério, que é outra obra.
 
-use super::{Pecas, atrito, dot, manifesto};
+use super::{GRAUS, Pecas, atrito, dot, manifesto};
 
 /// **UMA passagem de velocidade sobre os contactos**, sobre as posições `p` em que eles de facto
 /// aconteceram (as de ANTES da separação). `vel` é reescrito no sítio.
@@ -61,11 +61,21 @@ use super::{Pecas, atrito, dot, manifesto};
 ///
 /// Se `vel` não tiver o comprimento de `p` — duas colunas da mesma corrente com comprimentos
 /// diferentes não são uma pergunta com resposta.
-pub fn impulsos(p: &[[f32; 2]], vel: &mut [[f32; 2]], pecas: &Pecas<'_>) {
+pub fn impulsos(
+    p: &[[f32; 2]],
+    vel: &mut [[f32; 2]],
+    giro: &mut [f32],
+    pecas: &Pecas<'_>,
+    dt: impl Fn(usize) -> f32,
+) {
     let n = p.len();
     assert_eq!(vel.len(), n, "uma velocidade por peca");
+    assert_eq!(giro.len(), n, "um giro por peca");
     assert_eq!(pecas.colisores.len(), n, "um colisor por peca");
     assert_eq!(pecas.pesos.len(), n, "um peso por peca");
+    assert_eq!(pecas.inv_inercia.len(), n, "uma inercia por peca");
+    let inv_inercia = pecas.inv_inercia;
+    let massa = |w: f32, inv_i: f32, b: f32| w + inv_i * b * b;
     // ⚠️ A MESMA porta que o `separate` usa (`super::ativo`) — o que conta como peça é uma lei só.
     let ativo: Vec<bool> = (0..n)
         .map(|i| super::ativo(p[i], pecas.colisores[i].as_ref()))
@@ -93,18 +103,37 @@ pub fn impulsos(p: &[[f32; 2]], vel: &mut [[f32; 2]], pecas: &Pecas<'_>) {
                 continue;
             };
             let vrel = dot([vel[lo][0] - vel[hi][0], vel[lo][1] - vel[hi][1]], c.normal);
-            // Só se responde a quem se move PARA DENTRO — um contacto empurra, nunca puxa.
-            if vrel <= 0.0 {
-                continue;
-            }
             let soma = pecas.pesos[lo] + pecas.pesos[hi];
             // Dois obstáculos não têm momento a trocar.
             if soma <= 0.0 {
                 continue;
             }
+            let passo = dt(lo).max(dt(hi));
+            // ⭐⭐⭐ **A FORÇA NORMAL DE UM CONTACTO EM REPOUSO É A PENETRAÇÃO** — e sem esta linha o
+            // atrito desaparece exactamente onde ele mais importa.
+            //
+            // ⛔⛔ A 1.ª redacção prendia o tecto de Coulomb à velocidade de APROXIMAÇÃO (`vrel`), e
+            // num contacto assente ela é **zero**: a peça já não se aproxima de nada. *O atrito
+            // ficava ligado só no instante do embate e desligado no resto do tempo* — e as fixturas
+            // que o apanharam foram as dos discos, que não têm gravidade nenhuma e portanto `vrel`
+            // exactamente `0`.
+            //
+            // ⚠️ **As duas leituras são a MESMA grandeza:** numa pilha sob gravidade a penetração
+            // por sub-passo é `~g·dt²`, logo `pen/dt ≈ g·dt`, que é exactamente o `vrel` que a
+            // gravidade repõe a cada sub-passo. Tomar o MAIOR das duas cobre o embate (onde manda a
+            // velocidade) e o repouso (onde manda o peso), sem duas leis.
+            let normal_ref = vrel.max(c.penetracao / passo.max(f32::MIN_POSITIVE));
+            let (clo_c, chi_c) = (clo.centro(p[lo]), chi.centro(p[hi]));
             let (mlo, mhi) = (pecas.material(lo), pecas.material(hi));
             let e = atrito::salto(mlo.salto, mhi.salto);
-            let j = (1.0 + e) * vrel / soma;
+            // ⚠️ **O impulso NORMAL só responde a quem se aproxima** — um contacto empurra, nunca
+            // puxa. O ATRITO, esse, age em repouso também: é por isso que a guarda é aqui e não
+            // à entrada do par.
+            let j = if vrel > 0.0 {
+                (1.0 + e) * vrel / soma
+            } else {
+                0.0
+            };
             let (dlo, dhi) = (j * pecas.pesos[lo], j * pecas.pesos[hi]);
             let mut novo_lo = [
                 vel[lo][0] - c.normal[0] * dlo,
@@ -127,26 +156,77 @@ pub fn impulsos(p: &[[f32; 2]], vel: &mut [[f32; 2]], pecas: &Pecas<'_>) {
             // contacto — *é o mesmo `j`, e é isso que a torna uma lei e não um amortecedor*:
             // uma peça que mal encosta mal é travada, e uma que carrega peso é travada muito.
             let t = c.tangente();
-            let vt = dot([novo_lo[0] - novo_hi[0], novo_lo[1] - novo_hi[1]], t);
+            let (bt_lo, bt_hi) = (c.braco_tangente(clo_c), c.braco_tangente(chi_c));
+            // ⭐⭐⭐ **A velocidade tangencial é a do PONTO DE CONTACTO, não a do centro** — e o
+            // ponto de contacto de um corpo que RODA move-se mesmo com o centro parado.
+            //
+            // ⛔ Sem este termo uma bola a girar **não esfrega** contra o chão: ela gira para
+            // sempre, sem atrito nenhum, porque o centro dela está quieto. Em 2D a contribuição da
+            // rotação na tangente é `ω · (r · n)` — a mesma alavanca [`Contacto::braco_tangente`]
+            // que reparte o impulso, pela identidade `r × perp(n) = r · n`.
+            //
+            // ⚠️ A velocidade angular sai do que a peça JÁ rodou neste passo (o `spin` integrado,
+            // mais o que o contacto lhe acrescentou), dividido pelo passo — este modelo não tem
+            // coluna de velocidade angular, e é isso que o doc 109 §6 nomeia.
+            let omega = |i: usize| {
+                pecas
+                    .deslize
+                    .map_or(0.0, |d| d.girou_antes.get(i).copied().unwrap_or(0.0))
+                    .to_radians()
+                    / passo.max(f32::MIN_POSITIVE)
+            };
+            let vt = dot([novo_lo[0] - novo_hi[0], novo_lo[1] - novo_hi[1]], t) + omega(lo) * bt_lo
+                - omega(hi) * bt_hi;
             let mu = atrito::mu(mlo.atrito, mhi.atrito);
+            let (mut glo, mut ghi) = (0.0_f32, 0.0_f32);
             if mu > 0.0 && vt != 0.0 {
-                // ⚠️ O tecto sai do impulso normal SEM o salto: o ressalto devolve energia na
-                // normal e não compra aderência nenhuma na tangente.
-                let tecto = mu * (vrel / soma);
-                let jt = (vt / soma).clamp(-tecto, tecto);
-                novo_lo = [
-                    novo_lo[0] - t[0] * jt * pecas.pesos[lo],
-                    novo_lo[1] - t[1] * jt * pecas.pesos[lo],
-                ];
-                novo_hi = [
-                    novo_hi[0] + t[0] * jt * pecas.pesos[hi],
-                    novo_hi[1] + t[1] * jt * pecas.pesos[hi],
-                ];
+                // ⭐⭐⭐ **E ELE REPARTE-SE ENTRE TRAVAR E RODAR**, pela massa efectiva ao longo da
+                // tangente — exactamente como a lei POSICIONAL que ele substitui (doc 109 §7):
+                //
+                // ```text
+                //   kt = w + invI · (r · n)²          jt = clamp(vt / Σkt, ±μ·jn)
+                //   Δv = −t · jt · w                  Δω = −(r·n) · jt · invI
+                // ```
+                //
+                // ⭐ **Numa bola pousada isto dá o rolamento de manual, ao bit:** `kt = w + 2w = 3w`,
+                // logo a translação leva `⅓` e a rotação `⅔`, e a soma no ponto de contacto é
+                // exactamente `−vt`. *A bola deixa de derrapar porque começou a rodar, não porque
+                // travou* — e sem esta metade um disco **PÁRA A SECO**, que é o que a auditoria do
+                // doc 111 §6 mediu (`ω·R ≈ 0` a todo `μ`).
+                let kt = massa(pecas.pesos[lo], inv_inercia[lo], bt_lo)
+                    + massa(pecas.pesos[hi], inv_inercia[hi], bt_hi);
+                if kt > 0.0 {
+                    // ⚠️ O tecto sai do impulso normal SEM o salto: o ressalto devolve energia na
+                    // normal e não compra aderência nenhuma na tangente.
+                    let tecto = mu * (normal_ref / soma);
+                    let jt = (vt / kt).clamp(-tecto, tecto);
+                    novo_lo = [
+                        novo_lo[0] - t[0] * jt * pecas.pesos[lo],
+                        novo_lo[1] - t[1] * jt * pecas.pesos[lo],
+                    ];
+                    novo_hi = [
+                        novo_hi[0] + t[0] * jt * pecas.pesos[hi],
+                        novo_hi[1] + t[1] * jt * pecas.pesos[hi],
+                    ];
+                    // ⚠️ `jt` é uma VELOCIDADE e a coluna `rot` é um ÂNGULO: a conversão é o `dt`
+                    // deste par. *É o único sítio em que o passo volta a ser preciso, e por um
+                    // motivo diferente do de antes* — ali ele punha tecto a uma velocidade
+                    // inventada; aqui converte uma velocidade angular real num ângulo.
+                    glo = -bt_lo * jt * inv_inercia[lo] * passo * GRAUS;
+                    ghi = bt_hi * jt * inv_inercia[hi] * passo * GRAUS;
+                }
             }
             // ⚠️ Um `NaN` que entre por uma coluna torta não contamina a cena inteira.
-            if novo_lo.iter().chain(&novo_hi).all(|x| x.is_finite()) {
+            if novo_lo
+                .iter()
+                .chain(&novo_hi)
+                .chain(&[glo, ghi])
+                .all(|x| x.is_finite())
+            {
                 vel[lo] = novo_lo;
                 vel[hi] = novo_hi;
+                giro[lo] += glo;
+                giro[hi] += ghi;
             }
         }
     }

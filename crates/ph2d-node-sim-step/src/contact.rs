@@ -66,6 +66,7 @@ pub(crate) fn resolve(
     pesos: &[f32],
     antes_do_passo: &[[f32; 2]],
     girou: &[f32],
+    dt: impl Fn(usize) -> f32,
 ) -> Vec<f32> {
     let n = p.len();
     let Some(colisores) = ph2d_contact::colisores(state) else {
@@ -115,7 +116,7 @@ pub(crate) fn resolve(
     //
     // ⚠️ O impulso corre sobre `antes` — as posições em que os contactos DE FACTO aconteceram.
     // Depois da separação as peças já não se sobrepõem, e ali não haveria par nenhum a encontrar.
-    ph2d_contact::impulsos(&antes, vel, &pecas);
+    ph2d_contact::impulsos(&antes, vel, &mut giro, &pecas, &dt);
     giro
 }
 

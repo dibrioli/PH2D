@@ -295,11 +295,13 @@ fn the_step_tells_the_contact_how_much_the_spin_already_turned() {
         0.0,
         1.0,
     );
-    // A bola patina: o chão empurra-a para o lado contrário ao varrimento do ponto de baixo.
-    let (a, b) = (col(&girando, "P"), col(&parada, "P"));
+    // A bola patina: o chão TRAVA-a para o lado contrário ao varrimento do ponto de baixo.
+    // ⚠️ **Em VELOCIDADE** (doc 111 §7): o atrito deixou de ser uma correcção de posição e passou a
+    // ser um impulso. *Um gate cujo sujeito muda de unidade muda de endereço, nunca de exigência.*
+    let (a, b) = (col(&girando, "vel"), col(&parada, "vel"));
     assert!(
         a[1][0] < b[1][0] - 1e-6,
-        "o atrito tinha de empurrar a bola que patina: {:?} contra {:?}",
+        "o atrito tinha de travar a bola que patina: {:?} contra {:?}",
         a[1],
         b[1]
     );

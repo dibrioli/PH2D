@@ -72,7 +72,19 @@ fn corre_com_atrito(
     corre_com_atrito_girando(p, antes, &vec![0.0; p.len()], c, w, m)
 }
 
+/// O passo que o arnês do atrito usa para converter um DESLOCAMENTO numa VELOCIDADE.
+const DT_ARNES: f32 = 1.0 / 60.0;
+
 /// Idem, mas com uma rotação PRÓPRIA já feita neste passo (o `spin` integrado).
+///
+/// ⭐⭐⭐ **Ele corre as DUAS portas — `separate` e `impulsos` — porque foi isso que o produto passou
+/// a fazer** (doc 111 §7). O atrito já não é uma projecção de posição: ele é o impulso de Coulomb,
+/// e vive na VELOCIDADE. ⚠️ *Um gate cujo sujeito se mudou muda de ENDEREÇO, nunca de exigência* —
+/// as barras destes gates são as mesmas, e o que mudou é onde a lei é lida.
+///
+/// A fixtura continua a dizer *«a peça deslizou `Δ` desde o início do passo»*, e o arnês converte-o
+/// na velocidade que o produz (`Δ / dt`): é a mesma pergunta física, na unidade em que a lei nova a
+/// faz.
 fn corre_com_atrito_girando(
     p: &mut [[f32; 2]],
     antes: &[[f32; 2]],
@@ -85,25 +97,59 @@ fn corre_com_atrito_girando(
     let inv = inercias(c, w);
     let material = vec![m; n];
     let (mut giro, mut salto) = (vec![0.0; n], vec![0.0; n]);
+    let pecas = Pecas {
+        colisores: c,
+        pesos: w,
+        inv_inercia: &inv,
+        deslize: Some(Deslize {
+            antes,
+            girou_antes,
+            material: &material,
+        }),
+    };
+    // A velocidade que produziu o deslocamento da fixtura, MAIS a que a rotação própria põe no
+    // ponto de contacto (o `girou_antes`, que é o que faz uma bola a girar esfregar parada).
+    let vel0: Vec<[f32; 2]> = (0..n)
+        .map(|i| {
+            [
+                (p[i][0] - antes[i][0]) / DT_ARNES,
+                (p[i][1] - antes[i][1]) / DT_ARNES,
+            ]
+        })
+        .collect();
+    let antes_do_passo = p.to_vec();
     separate(
         p,
         &mut Saida {
             giro: &mut giro,
             salto: &mut salto,
         },
-        &Pecas {
-            colisores: c,
-            pesos: w,
-            inv_inercia: &inv,
-            deslize: Some(Deslize {
-                antes,
-                girou_antes,
-                material: &material,
-            }),
-        },
+        &pecas,
         8,
     );
+    let mut vel = vel0.clone();
+    impulsos(&antes_do_passo, &mut vel, &mut giro, &pecas, |_| DT_ARNES);
+    ULTIMA_VEL.with(|c| {
+        *c.borrow_mut() = (0..n)
+            .map(|i| [vel[i][0] - vel0[i][0], vel[i][1] - vel0[i][1]])
+            .collect();
+    });
     (giro, salto)
+}
+
+// ⭐ **O Δvelocidade que o último `corre_com_atrito_girando` produziu.**
+//
+// ⚠️ Ele existe porque **o atrito mudou de UNIDADE**: ele era uma correcção de POSIÇÃO e passou a
+// ser um impulso de VELOCIDADE (doc 111 §7). Os gates que mediam a metade translacional em
+// `p − p0` mediam-na no sítio certo da lei ANTIGA, e no sítio vazio da nova. *Um gate cujo sujeito
+// muda de unidade muda de endereço, nunca de exigência.*
+thread_local! {
+    static ULTIMA_VEL: std::cell::RefCell<Vec<[f32; 2]>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+fn delta_vel(i: usize) -> [f32; 2] {
+    ULTIMA_VEL.with(|c| c.borrow().get(i).copied().unwrap_or([0.0, 0.0]))
 }
 
 /// Uma nuvem APERTADA com o que a lei tem de saber tratar: discos e caixas (giradas e fora do
@@ -760,9 +806,10 @@ fn the_rolling_split_gives_the_spin_twice_the_slide() {
             rolar: 0.0,
         },
     );
-    // Quanto o ponto de contacto andou por cada uma das duas metades, ao longo da tangente.
-    let da_translacao = (p[1][0] - p0[1][0]).abs();
-    let da_rotacao = (giro[1] / GRAUS * raio).abs();
+    // ⚠️ **Em VELOCIDADE**, que é a unidade em que o atrito passou a viver (doc 111 §7): quanto o
+    // ponto de contacto foi travado por cada uma das duas metades.
+    let da_translacao = delta_vel(1)[0].abs();
+    let da_rotacao = (giro[1] / GRAUS * raio / DT_ARNES).abs();
     assert!(
         da_translacao > 1e-9,
         "tem de haver correccao: {da_translacao}"
@@ -891,10 +938,11 @@ fn a_spinning_disc_rubs_against_the_floor_even_standing_still() {
     // para `+x`, logo o chão empurra a bola para `−x` — é o que um carro faz quando a roda patina.
     // ⚠️ Bate com o gate irmão (`a_disc_that_slides_starts_to_roll…`): a deslizar para `+x` ela
     // roda no horário, logo rolar para `−x` É girar no anti-horário. *As duas metades da mesma lei.*
+    // ⚠️ **Em VELOCIDADE** (doc 111 §7): o atrito deixou de mover a peça e passou a travá-la.
     assert!(
-        p[1][0] < p0[1][0] - 1e-6,
-        "e empurra a bola para o lado contrario ao varrimento, e ela ficou em {:?}",
-        p[1]
+        delta_vel(1)[0] < -1e-6,
+        "e empurra a bola para o lado contrario ao varrimento, e o Δv dela foi {:?}",
+        delta_vel(1)
     );
     // O CONTROLO: parada e sem girar, o atrito não tem nada a opor.
     let mut quieta = p0.clone();

@@ -7,7 +7,7 @@
 //! ⚠️ O par é sempre lido na ordem do PAR (menor → maior) e os parceiros chegam em ordem CRESCENTE:
 //! é isso que faz a grelha dar os MESMOS BITS que todos-os-pares. Ver o cabeçalho do `lib.rs`.
 
-use super::{Colisor, GRAUS, Nova, Pecas, atrito, dot, manifesto};
+use super::{Colisor, GRAUS, Nova, Pecas, atrito, manifesto};
 
 /// A posição, o giro e o salto de `k` depois desta varredura, ou `None` se nada lhe tocou. Os `parceiros` têm
 /// de vir em ordem CRESCENTE — ver o cabeçalho.
@@ -15,7 +15,6 @@ pub(super) fn corrigida(
     k: usize,
     parceiros: impl Iterator<Item = usize>,
     foto: &[[f32; 2]],
-    girado: &[f32],
     colisores: &[Option<Colisor>],
     pecas: &Pecas<'_>,
     ativo: &[bool],
@@ -92,29 +91,18 @@ pub(super) fn corrigida(
             // ⭐⭐⭐ **A METADE TANGENCIAL** (doc 109 §7) — o deslize desfeito, limitado por Coulomb.
             // ⚠️ Sem `sinal`: o deslize já é medido **de `k` para `j`**, então a correcção dele é
             // simétrica por construção e os dois lados do par concordam sem desempate nenhum.
-            if let Some(d) = pecas.deslize {
+            // ⛔⛔⛔ **O ATRITO SAIU DAQUI** (doc 111 §7, 2026-09-15). Ele era POSICIONAL — desfazia
+            // o deslize já acontecido — e o tecto de Coulomb dele era `μ·λn ≈ μ·g·dt²`,
+            // **QUADRÁTICO no passo**. Medido: ele nunca removeu velocidade nenhuma (`v` fica em
+            // `1,0000` a todo `μ`) e enfraquecia `8×` ao partir o tique em 8 sub-passos. Hoje o
+            // atrito é o impulso de Coulomb do [`super::impulso`], com tecto `μ·g·dt` — LINEAR, e
+            // por isso invariante aos sub-passos —, e ele leva as DUAS metades: travar e RODAR.
+            //
+            // ⚠️ O `salto` continua a recolher-se aqui: ele não é atrito, é a escrituração do
+            // ressalto do par.
+            if pecas.deslize.is_some() {
                 let (mk, mj) = (pecas.material(k), pecas.material(j));
                 salto = salto.max(atrito::salto(mk.salto, mj.salto));
-                let t = c.tangente();
-                let (tk, tj) = (c.braco_tangente(ck), c.braco_tangente(cj));
-                // Quanto o PONTO de contacto de cada lado andou desde o início do passo: o centro
-                // MAIS o que a rotação do corpo lhe acrescentou (`dθ × r`, em 2D `dθ · perp(r)`).
-                let andou = |i: usize, centro: [f32; 2]| {
-                    let dtheta = (girado[i] + d.girou_antes[i]) / GRAUS;
-                    let r = c.raio(centro);
-                    [
-                        foto[i][0] - d.antes[i][0] - dtheta * r[1],
-                        foto[i][1] - d.antes[i][1] + dtheta * r[0],
-                    ]
-                };
-                let (ak, aj) = (andou(k, ck), andou(j, cj));
-                let desliza = dot([ak[0] - aj[0], ak[1] - aj[1]], t);
-                let soma_t =
-                    massa(pesos[k], inv_inercia[k], tk) + massa(pesos[j], inv_inercia[j], tj);
-                let lt = atrito::lambda(desliza, soma_t, atrito::mu(mk.atrito, mj.atrito), lambda);
-                delta[0] -= t[0] * lt * pesos[k] * quota;
-                delta[1] -= t[1] * lt * pesos[k] * quota;
-                giro -= tk * lt * inv_inercia[k] * GRAUS * quota;
             }
         }
         if !tocou {

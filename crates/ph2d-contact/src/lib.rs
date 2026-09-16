@@ -512,15 +512,7 @@ pub fn separate(p: &mut [[f32; 2]], saida: &mut Saida<'_>, pecas: &Pecas<'_>, va
                 }
             }
             parceiros.sort_unstable();
-            varredura::corrigida(
-                k,
-                parceiros.into_iter(),
-                &foto,
-                &girado,
-                &agora,
-                pecas,
-                &ativo,
-            )
+            varredura::corrigida(k, parceiros.into_iter(), &foto, &agora, pecas, &ativo)
         });
         aplica(p, saida, novas);
     }
@@ -550,7 +542,7 @@ pub fn separate_all_pairs(
         let novas: Vec<Nova> = (0..n)
             .map(|k| {
                 if ativo[k] {
-                    varredura::corrigida(k, 0..n, &foto, &girado, &agora, pecas, &ativo)
+                    varredura::corrigida(k, 0..n, &foto, &agora, pecas, &ativo)
                 } else {
                     None
                 }

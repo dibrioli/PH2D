@@ -913,3 +913,103 @@ endereço — nunca de exigência.*
    pela lei de velocidade antiga (a que matava a velocidade ABSOLUTA). Ela travava tudo,
    independentemente do `μ` — um amortecedor com nome de atrito. Trocá-la por física correcta tirou
    o disfarce, e é por isso que o dono só agora vê o atrito verdadeiro, que é fraco.
+
+## §7 — ✅⭐⭐⭐ A CURA DO ATRITO: uma lei só, no nível da VELOCIDADE
+
+A auditoria do §6 nomeou-a e esta secção constrói-a. **O atrito posicional saiu inteiro**; o impulso
+de Coulomb do [`ph2d_contact::impulsos`](../../crates/ph2d-contact/src/impulso.rs) passa a carregar
+as **duas** metades — travar **e** rodar.
+
+### §7.1 — As três peças que a fizeram funcionar
+
+| # | a peça | porque ela era obrigatória |
+|---|---|---|
+| 1 | a **repartição** translação/rotação, `kt = w + invI·(r·n)²` | sem ela um disco **PÁRA A SECO** em vez de rolar — a energia era destruída, não convertida |
+| 2 | o tecto lê **também a PENETRAÇÃO** (`max(vrel, pen/dt)`) | ⛔⛔ a 1.ª redacção prendia-o à velocidade de aproximação, e num contacto **assente ela é ZERO**: *o atrito ficava ligado no embate e desligado no repouso* |
+| 3 | o `vt` inclui a **rotação PRÓPRIA** (`ω·(r·n)`) | sem ela uma bola a girar no sítio **não esfrega** — o centro está quieto e o atrito lia zero |
+
+⚠️ **A nº 2 é a mesma degenerescência que a lei antiga tinha, um nível acima**: ali o tecto era a
+penetração (`~g·dt²`, quadrática), aqui era a aproximação (zero em repouso). *A força normal de um
+contacto em repouso tem de ser lida de onde ela de facto está*, e neste modelo ela está nas duas.
+
+### §7.2 — ⭐⭐⭐ O resultado: monótono, plano, e MAIS BARATO
+
+O `Friction` do cartão, 5 realizações por célula (deslize mediano por tique em fracção do lado · a
+largura do monte):
+
+| μ | ANTES (as duas leis) | DEPOIS (uma só) |
+|---|---|---|
+| `0,00` | `0,0929` · `2,21` | `0,0929` · `2,21` |
+| `0,25` | `0,0080` · `1,08` | **`0,0039`** · `1,05` |
+| `0,50` | `0,0105` · `1,18` | **`0,0036`** · `1,00` |
+| `0,75` | `0,0146` · `1,33` | **`0,0035`** · `1,00` |
+| `1,00` | `0,0174` · `1,40` | **`0,0036`** · `1,00` |
+
+⭐ **A curva deixou de subir depois de `0,25`: ela desce e depois fica PLANA.** A `μ = 1` são
+**`4,8×` menos deslize** e um monte **`29 %` mais apertado. *«No máximo parece desligado»* acabou.*
+
+E as cinco réguas da cena, a `substeps = 8`:
+
+| régua | antes | depois |
+|---|---|---|
+| tremor | `0,246 .. 0,327` | **`0,014 .. 0,024`** (`13×`) |
+| rodopio | `2,6 .. 2,8` | **`0,7 .. 2,4`** |
+| altura `y` | `−2,43` | `−2,43` |
+| vão típico | `0,2206` | `0,2192` (face exacta `0,2200`) |
+| **cozimento** | `7,05 ms` | **`6,17 ms`** |
+
+⭐⭐ **Tudo melhora e ainda fica mais barato** — a matemática do atrito posicional saiu do laço.
+
+E as bancadas analíticas continuam certas: uma caixa a deslizar trava a `μ·g` (`0,1241` contra a
+teoria `0,125`), invariante aos sub-passos, e numa torre o peso propaga (`0,1241` / `0,0370` /
+`0,0208`).
+
+### §7.3 — ⛔ Os SEIS gates que mudaram de ENDEREÇO, nunca de exigência
+
+O atrito mudou de **UNIDADE**: era uma correcção de POSIÇÃO e passou a ser um impulso de
+VELOCIDADE. Seis gates mediam a metade translacional em `p − p0` — *o sítio certo da lei antiga, e o
+sítio vazio da nova*:
+
+- `the_rolling_split_gives_the_spin_twice_the_slide` — a razão `2` é a mesma, lida em `Δv`;
+- `a_spinning_disc_rubs_against_the_floor_even_standing_still` — o empurrão passa a ser um travão;
+- `the_step_tells_the_contact_how_much_the_spin_already_turned` — idem, na coluna `vel`;
+- e o arnês `corre_com_atrito_girando` corre as **duas** portas, porque é isso que o produto faz.
+
+⛔⛔ **E um gate da cena passava por COINCIDÊNCIA.** O `the_controls_the_announcement_names_do_what_it_says`
+exigia que `Width 1,6` alargasse o monte `10 %` sobre `1,0`. Varrida, a grandeza **não é sequer
+monótona** (`0,6 → 1,4150 · 1,0 → 1,2873 · 1,6 → 1,4108`): *a largura do monte é governada pela
+TAÇA*, não pelo colisor. A régua certa é o **vão LATERAL** — a distância em `x` à vizinha à mesma
+altura —, que dá `0,2596 → 0,3151 → 0,3520`, monótono e com margem. ⚠️ O vão ao vizinho **mais
+próximo** também não serve: ele satura no espaçamento VERTICAL, que o `Width` não toca.
+
+### §7.4 — ⛔⛔ E o VALE do gate do salto DISSOLVEU-SE, o que muda o que ele defende
+
+A barra de `2,0°` do §5.11 saiu do vale `[0,96° .. 3,15°]` entre o manifesto ligado e desligado. Com
+o atrito a funcionar, as duas configurações **deixaram de se separar** aos `substeps = 8`:
+
+```text
+  substeps | manifesto LIGADO             | manifesto DESLIGADO
+         8 | 0,94 0,97 2,18 1,00 0,98     | 2,05 1,04 1,36 1,04 1,25
+        16 | 0,74 0,82 0,76 0,77 0,82     | 1,38 1,39 4,67 2,50 7,89
+```
+
+⛔ **Subir a barra para cobrir o `2,18` tornaria o gate VAZIO** (o pior do lado reprovado a `8` é
+`2,05`). ⇒ mudam-se duas coisas, **e nenhuma é a exigência**:
+
+1. a grandeza passa a ser a **MEDIANA de cinco realizações** — a disciplina que esta cena exige em
+   todo o resto; o `2,18` é um **sorteio**, e a mediana do mesmo conjunto é `0,98`;
+2. o que ele defende passa a ser **o DEFEITO DO DONO** (`23,26°`, mediana `3,46°`), e não o
+   manifesto — que tem gate próprio e directo na crate
+   (`a_box_supported_under_its_centre_does_not_topple`).
+
+### §7.5 — ⏳ O que FICA aberto, nomeado
+
+⛔ **Um disco não converge para o rolamento puro: ele trava até parar.** `v = ω·R` nunca se atinge
+porque **este modelo não tem coluna de velocidade angular** (doc 109 §6, declarado): o `giro` é uma
+rotação por tique, não um estado que persista, logo o atrito vê sempre derrapagem plena. ⚠️ *Isto é
+anterior a esta cura e ela não o piora* — antes o disco nem sequer rodava (`ω·R ≈ 0` a todo `μ`);
+agora roda enquanto desliza. Curá-lo é dar uma **velocidade angular** ao contacto, que é obra com
+espec própria.
+
+⚠️ E o `Saida::salto` deixou de ter leitor no produto (o impulso lê o material directamente) — ele
+continua a ser recolhido, e é **dívida nomeada**, não um descuido.

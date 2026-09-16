@@ -133,11 +133,32 @@ pub(super) fn vizinho_mediano(p: &[[f32; 2]]) -> f32 {
 }
 
 /// A LARGURA da pilha: da peça mais à esquerda à mais à direita.
-fn largura(p: &[[f32; 2]]) -> f32 {
-    let (lo, hi) = p.iter().fold((f32::MAX, f32::MIN), |(lo, hi), q| {
-        (lo.min(q[0]), hi.max(q[0]))
-    });
-    hi - lo
+/// ⭐⭐ **O vão LATERAL: a distância em `x` à vizinha mais próxima que está À MESMA ALTURA.**
+///
+/// ⛔⛔ Ela existe porque as duas réguas óbvias **não medem o `Width`**, e as duas passavam por
+/// coincidência (doc 111 §7): a LARGURA do monte é governada pela taça (`0,6 → 1,4150 · 1,0 →
+/// 1,2873 · 1,6 → 1,4108`, nem sequer monótona), e o VÃO ao vizinho mais próximo satura no
+/// espaçamento VERTICAL, que o `Width` não toca (`0,194 · 0,212 · 0,198`).
+///
+/// ⚠️ *Uma caixa mais larga só em `x` afasta as vizinhas DE LADO* — e é só essa a grandeza que o
+/// controlo governa.
+fn vizinho_lateral(p: &[[f32; 2]]) -> f32 {
+    // «À mesma altura» = a menos de meia peça em `y`; acima disso a vizinha está empilhada.
+    let mut v: Vec<f32> = p
+        .iter()
+        .filter_map(|a| {
+            p.iter()
+                .filter(|b| {
+                    let dy = (a[1] - b[1]).abs();
+                    let dx = (a[0] - b[0]).abs();
+                    dy < LADO && dx > 1e-6
+                })
+                .map(|b| (a[0] - b[0]).abs())
+                .fold(None, |m: Option<f32>, d| Some(m.map_or(d, |m| m.min(d))))
+        })
+        .collect();
+    v.sort_by(f32::total_cmp);
+    v.get(v.len() / 2).copied().unwrap_or(0.0)
 }
 
 const PECAS: usize = (ROWS * COLS) as usize;
@@ -270,17 +291,23 @@ fn the_controls_the_announcement_names_do_what_it_says() {
         "largura e altura juntas incham a pilha: {v:?}"
     );
 
-    let larga = pilha_travada(&[(param::COLLIDER_WIDTH, 1.6)]);
-    eprintln!(
-        "  Width       1.0 -> largura {:.4} · 1.6 -> largura {:.4}",
-        largura(&ligado),
-        largura(&larga)
-    );
+    // ⛔⛔⛔ **A LARGURA DO MONTE NÃO É A RÉGUA DESTE CONTROLO, e o gate anterior passava por
+    // COINCIDÊNCIA.** Ele comparava `Width 1,0` com `1,6` e exigia `+10 %`. Varrida, a grandeza não
+    // é sequer monótona — `0,6 → 1,4150 · 1,0 → 1,2873 · 1,6 → 1,4108`: a largura do monte é
+    // governada pela **TAÇA** e pelo arranjo em que as peças calham de assentar, não pelo colisor.
+    //
+    // ⚠️ *Um gate que mede a grandeza errada passa enquanto o acaso o acompanhar*, e este deixou de
+    // passar quando o atrito começou a funcionar de verdade (doc 111 §7) e o monte empacotou de
+    // outra maneira. ⛔ A cura é a RÉGUA, nunca a barra — e é a mesma que a linha de cima já usa
+    // para `Width+Height`: o **VÃO entre vizinhas**, que é o que um colisor mais largo abre.
+    let vaos: Vec<f32> = [0.6_f32, 1.0, 1.6]
+        .iter()
+        .map(|k| vizinho_lateral(&pilha_travada(&[(param::COLLIDER_WIDTH, *k)])))
+        .collect();
+    eprintln!("  Width       [0.6, 1.0, 1.6] -> vao LATERAL {vaos:?}");
     assert!(
-        largura(&larga) > largura(&ligado) * 1.1,
-        "so' a largura alarga a pilha: {:.4} contra {:.4}",
-        largura(&larga),
-        largura(&ligado)
+        vaos[0] < vaos[1] && vaos[1] < vaos[2],
+        "so' a largura afasta as vizinhas DE LADO, e por igual: {vaos:?}"
     );
 
     let circulo = vizinho_mediano(&pilha_travada(&[(param::COLLIDER_SHAPE, 1.0)]));

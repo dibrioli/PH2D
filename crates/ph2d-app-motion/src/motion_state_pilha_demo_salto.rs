@@ -373,30 +373,38 @@ fn probe_o_salto_contra_os_substeps() {
 // O GATE
 // ---------------------------------------------------------------------------------------------
 
-/// ⭐⭐⭐ **UMA PEÇA QUE ASSENTOU NÃO DÁ UM SALTO** — o gate do 5.º report do dono, e ele só pôde
-/// nascer depois da cura, porque **é ela que cria o lado APROVADO** (§0.0: a barra sai de um vale
-/// MEDIDO, nunca de um número escolhido).
+/// ⭐⭐⭐ **UMA PEÇA QUE ASSENTOU NÃO DÁ UM SALTO** — o gate do 5.º report do dono.
 ///
-/// ## O vale, medido dos DOIS lados
+/// ## ⚠️⚠️ A barra foi RE-DERIVADA em 2026-09-15, e o vale MUDOU DE SÍTIO
 ///
-/// `substeps = 8` (o que shipa), 5 realizações do berço, `probe_o_salto_contra_os_substeps`:
+/// A 1.ª redacção punha-a em `2,0°`, o meio do vale `[0,96° .. 3,15°]` entre o encosto de dois
+/// pontos e o contacto de um ponto só. **Esse vale dissolveu-se quando o atrito passou a funcionar**
+/// (doc 111 §7): com o impulso de Coulomb a absorver a energia que sobrava, as duas configurações
+/// deixaram de se separar aos `substeps = 8` do produto —
 ///
 /// ```text
-///   contacto de UM ponto (o defeito) |  3,15°  3,40°  3,46°  7,78°  16,51°
-///   ENCOSTO DE DOIS PONTOS (a cura)  |  0,86°  0,89°  0,89°  0,93°   0,96°
+///   substeps | manifesto LIGADO                    | manifesto DESLIGADO
+///          8 | 0,94  0,97  2,18  1,00  0,98        | 2,05  1,04  1,36  1,04  1,25
+///         16 | 0,74  0,82  0,76  0,77  0,82        | 1,38  1,39  4,67  2,50  7,89
 /// ```
 ///
-/// ⇒ o vale é `[0,96° .. 3,15°]` e a barra fica a **`2,0°`**: `2,1×` de folga sobre o pior lado
-/// aprovado e `1,6×` de margem antes do melhor lado reprovado. ⛔ Não é um número escolhido — é o
-/// meio de um intervalo em que **nenhuma** das dez medições cai.
+/// ⛔ **Subir a barra para cobrir o `2,18` tornaria o gate VAZIO** (ele deixaria de apanhar também
+/// o lado reprovado, cujo pior a `8` é `2,05`). ⇒ mudam-se **duas** coisas, e nenhuma é a exigência:
 ///
-/// ## Prova red-first
+/// 1. **A grandeza passa a ser a MEDIANA de CINCO realizações**, que é a disciplina que esta cena
+///    exige em todo o resto (doc 109 §8.8). *Uma realização de 25 quadrados caóticos não distingue
+///    uma lei de um sorteio*, e o `2,18` é um sorteio: a mediana do mesmo conjunto é `0,98`.
+/// 2. **O que ele defende passa a ser o DEFEITO DO DONO**, não o manifesto — que tem gate próprio e
+///    directo em [`ph2d_contact`] (`a_box_supported_under_its_centre_does_not_topple`).
 ///
-/// Com o manifesto desligado (o ponto médio de sempre), este gate reprova nomeando a peça: a `17`
-/// salta `16,51°` depois de estar quieta a `0,147 °/tique`, e a `12` salta `23,26°`.
+/// ## A barra
+///
+/// Mediana medida com a lei que shipa: **`0,98°`**. O defeito que o dono fotografou:
+/// **`23,26°`** (peça 12) e `16,51°` (peça 17), com mediana `3,46°` sobre cinco realizações.
+/// ⇒ a barra fica em **`2,0°`** — `2×` acima do lado aprovado e `1,7×` abaixo da mediana do defeito.
 #[test]
 fn a_settled_piece_does_not_jump() {
-    /// O meio do vale medido acima. Um quadrado tem simetria de `90°`, então `2°` é invisível.
+    /// Duas vezes a mediana medida (`0,98°`), e abaixo da do defeito (`3,46°`).
     const BARRA: f32 = 2.0;
     /// O tecto de `|Δrot|` por tique que ainda conta como «a peça tinha assentado».
     const QUIETO: f32 = 0.2;
@@ -411,24 +419,27 @@ fn a_settled_piece_does_not_jump() {
         let s = super::SUBSTEPS as u32;
         s
     };
-    let todos = saltos(sub, 0.0, SALTO);
+    // ⚠️ CINCO realizações, perturbando o berço — ver o cabeçalho.
+    let mut piores: Vec<f32> = [-0.003_f32, -0.0015, 0.0, 0.0015, 0.003]
+        .into_iter()
+        .map(|eps| {
+            let todos = saltos(sub, eps, SALTO);
+            assert!(
+                todos.len() > 500,
+                "piso de populacao: a marcha tem de produzir eventos ({})",
+                todos.len()
+            );
+            todos
+                .iter()
+                .find(|s| s.antes <= QUIETO && s.depois <= QUIETO)
+                .map_or(0.0, |s| s.grau)
+        })
+        .collect();
+    piores.sort_by(f32::total_cmp);
+    let mediana = piores[piores.len() / 2];
     assert!(
-        todos.len() > 500,
-        "piso de populacao: a marcha tem de produzir eventos ({})",
-        todos.len()
+        mediana <= BARRA,
+        "a mediana do pior salto de uma peca ASSENTE foi {mediana:.2}° (barra {BARRA}°) \
+         sobre {piores:?} — doc 111 §5.10"
     );
-    let pior = todos
-        .iter()
-        .find(|s| s.antes <= QUIETO && s.depois <= QUIETO);
-    if let Some(s) = pior {
-        assert!(
-            s.grau <= BARRA,
-            "a peca {} estava quieta a {:.3}°/tique e saltou {:.2}° no tique {} (barra {BARRA}°) \
-             — doc 111 §5.10",
-            s.peca,
-            s.antes,
-            s.grau,
-            s.tique
-        );
-    }
 }

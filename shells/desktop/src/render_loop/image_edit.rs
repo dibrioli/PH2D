@@ -16,7 +16,8 @@
 //! 1-frame-no-defer contract from the pre-Wave-2.5 `pending_bgremoval`
 //! field.
 
-use crate::{ImageEditSnapshot, ImageEditTransaction, commit_image_edit_transaction, hero_intents};
+use crate::app_state::{Edicao, commit_edit, solta_os_ossos};
+use crate::{ImageEditTransaction, hero_intents};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
@@ -147,7 +148,7 @@ pub(super) fn dispatch(
             toasts.push(Toast::error(tr("shell.image_edit.painter_apply_tool_was")));
             return true;
         };
-        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+        let mut pending = Edicao::new("painter");
         if hero_intents::drain_painter(
             entity_bits,
             sim,
@@ -161,7 +162,7 @@ pub(super) fn dispatch(
         ) {
             title_dirty = true;
         }
-        commit_image_edit_transaction(renderer, image_edit_undo, pending);
+        commit_edit(renderer, image_edit_undo, pending, sim, toasts);
     }
     // Image-edit undo drain. Cmd+Z (or TOOL_UNDO click)
     // pushes `EditorAction::UndoImageEdit` onto the bus; the
@@ -231,7 +232,7 @@ fn drain_per_sprite_bakes(
     // happens in pure-CPU pixel math (Y-flip handled inside
     // `recenter_after_crop`); HR-5-deterministic.
     {
-        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+        let mut pending = Edicao::new("trim_transparency");
         for entity_bits in trim_entities {
             if hero_intents::drain_trim_transparency(
                 entity_bits,
@@ -246,7 +247,7 @@ fn drain_per_sprite_bakes(
                 title_dirty = true;
             }
         }
-        commit_image_edit_transaction(renderer, image_edit_undo, pending);
+        commit_edit(renderer, image_edit_undo, pending, sim, toasts);
     }
     // Make Square drain — parallel to Trim Transparency. Pads
     // the source image with transparent pixels on the shorter
@@ -262,7 +263,7 @@ fn drain_per_sprite_bakes(
     // C1 (release OLD individual texture id after a successful
     // re-acquire — was leaking GPU memory on repeated edits).
     {
-        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+        let mut pending = Edicao::new("make_square");
         for entity_bits in make_square_entities {
             if hero_intents::drain_make_square(
                 entity_bits,
@@ -277,14 +278,14 @@ fn drain_per_sprite_bakes(
                 title_dirty = true;
             }
         }
-        commit_image_edit_transaction(renderer, image_edit_undo, pending);
+        commit_edit(renderer, image_edit_undo, pending, sim, toasts);
     }
     // Rasterize drain — bake Transform.scale + .rotation into the
     // source pixel buffer (Mitchell-Netravali resample + rotation) and
     // reset Transform to identity. Per-sprite broadcast in the
     // `OneShotImageOp` arm above; mirror of Trim / Make Square.
     {
-        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+        let mut pending = Edicao::new("rasterize");
         for entity_bits in rasterize_entities {
             if hero_intents::drain_rasterize(
                 entity_bits,
@@ -299,7 +300,7 @@ fn drain_per_sprite_bakes(
                 title_dirty = true;
             }
         }
-        commit_image_edit_transaction(renderer, image_edit_undo, pending);
+        commit_edit(renderer, image_edit_undo, pending, sim, toasts);
     }
     // Real Size drain — reset the selected sprite's Transform scale to
     // 1:1 (preserving flip sign). Unlike Trim / Make Square this is a
@@ -307,6 +308,7 @@ fn drain_per_sprite_bakes(
     // no pivot reproject (scale changes around the existing pivot). The
     // ±1 reset itself is the single-source-of-truth pure helper in
     // `ph2d-tool-real-size`.
+    let mut real_size_mudou = Vec::new();
     for entity_bits in real_size_entities {
         let entity = ph2d_ecs::Entity::from_bits(entity_bits);
         if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity) {
@@ -317,15 +319,17 @@ fn drain_per_sprite_bakes(
                 // Project mutated → dirty the title (no toast: the visible
                 // scale snap is the feedback).
                 title_dirty = true;
+                real_size_mudou.push(entity_bits);
             }
         }
     }
+    solta_os_ossos(sim, toasts, "real_size", real_size_mudou);
     // Padding Apply drain — multi-sprite. The bridge captures the full
     // `iter_selected()` snapshot on Apply along with the shared per-edge
     // spec + pivot mode; we bake the same spec into each selected
     // sprite (one drain per entity, mirror of Color EQ).
     if let Some((spec, recenter_pivot, bits_list)) = padding_apply {
-        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+        let mut pending = Edicao::new("padding");
         for entity_bits in bits_list {
             if hero_intents::drain_padding(
                 entity_bits,
@@ -342,7 +346,7 @@ fn drain_per_sprite_bakes(
                 title_dirty = true;
             }
         }
-        commit_image_edit_transaction(renderer, image_edit_undo, pending);
+        commit_edit(renderer, image_edit_undo, pending, sim, toasts);
     }
     // Color Equalization drain — multi-sprite Apply. The bridge
     // returns the entire `iter_selected()` snapshot when the user
@@ -353,7 +357,7 @@ fn drain_per_sprite_bakes(
         let ceq_id = ph2d_editor_core::ToolId::new("color_equalization");
         let ceq_active = tools.active().map(|t| t.id() == ceq_id).unwrap_or(false);
         if ceq_active {
-            let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+            let mut pending = Edicao::new("color_equalization");
             for entity_bits in bits_list {
                 let mut ran = false;
                 if let Some(tool) = tools.active_mut()
@@ -376,7 +380,7 @@ fn drain_per_sprite_bakes(
                     title_dirty = true;
                 }
             }
-            commit_image_edit_transaction(renderer, image_edit_undo, pending);
+            commit_edit(renderer, image_edit_undo, pending, sim, toasts);
         }
     }
     title_dirty
@@ -417,7 +421,7 @@ fn drain_tool_applies(
             // Capture Square-grid origin before borrowing `tools` for
             // the drain — the snap math (align-to-grid) anchors to it.
             let grid_origin = hero.grid.snap_state.square_cfg.origin;
-            let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+            let mut pending = Edicao::new("equalize_sizes");
             if hero_intents::drain_equalize_sizes(
                 &bits_list,
                 hero.project.pixels_per_meter,
@@ -432,7 +436,7 @@ fn drain_tool_applies(
             ) {
                 title_dirty = true;
             }
-            commit_image_edit_transaction(renderer, image_edit_undo, pending);
+            commit_edit(renderer, image_edit_undo, pending, sim, toasts);
         }
     }
     // Upscale Apply drain — sabor 3 (mirror of Color Equalization),
@@ -444,7 +448,7 @@ fn drain_tool_applies(
         let ups_id = ph2d_editor_core::ToolId::new("upscale");
         let ups_active = tools.active().map(|t| t.id() == ups_id).unwrap_or(false);
         if ups_active {
-            let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+            let mut pending = Edicao::new("upscale");
             for entity_bits in bits_list {
                 let mut ran = false;
                 if let Some(tool) = tools.active_mut()
@@ -468,7 +472,7 @@ fn drain_tool_applies(
                     title_dirty = true;
                 }
             }
-            commit_image_edit_transaction(renderer, image_edit_undo, pending);
+            commit_edit(renderer, image_edit_undo, pending, sim, toasts);
         }
     }
     // Bg Removal drain — parallel to Trim Transparency, but
@@ -531,7 +535,7 @@ fn drain_tool_applies(
                     .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
             })
             .expect("bgremoval_active gate guarantees a BgRemovalTool");
-        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+        let mut pending = Edicao::new("bgremoval");
         if hero_intents::drain_bgremoval(
             entity_bits,
             hero.project.pixels_per_meter,
@@ -546,7 +550,7 @@ fn drain_tool_applies(
         ) {
             title_dirty = true;
         }
-        commit_image_edit_transaction(renderer, image_edit_undo, pending);
+        commit_edit(renderer, image_edit_undo, pending, sim, toasts);
     }
     title_dirty
 }

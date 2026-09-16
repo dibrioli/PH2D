@@ -87,7 +87,9 @@
 //! *Toda* ferramenta que pinta, apaga ou deforma pixels endireita a imagem (a Remoção de fundo
 //! incluída), **menos o Liquify**, que trabalha sobre a dobra. ⇒ o roteiro passou a ter as TRÊS
 //! metades: o Painter endireita, o Liquify volta a dobrar (e o anel dele segue a dobra — o chrome
-//! dormente acorda ali), a Remoção de fundo endireita outra vez.
+//! dormente acorda ali), a Remoção de fundo endireita outra vez. ⭐ E as de TAMANHO/MARGEM (a
+//! resposta do dono no mesmo dia): o Padding endireita e avisa; o Make Square — o canvas desta cena
+//! não é quadrado — solta a imagem dos ossos, e o Ctrl+Z devolve-a.
 //!
 //! ⚠️ **Se a linha `[bone-paint-smoke]` não aparecer, PARE:** a cena não montou.
 
@@ -335,7 +337,9 @@ pub fn build(
          um traco)  4) no Painter escolha o Liquify: o canvas VOLTA a dobrar-se, o anel do cursor \
          segue a dobra e empurrar deforma a imagem dobrada  5) pegue a Remocao de fundo (tecla 3): \
          endireita-se outra vez  6) pegue noutra ferramenta (Select): o canvas tem de VOLTAR a \
-         dobrar-se, e o que voce pintou tem de dobrar com ele."
+         dobrar-se, e o que voce pintou tem de dobrar com ele  7) PAD (Padding): endireita e o aviso \
+         diz que o Apply solta dos ossos  8) SQUAR (Make Square): o canvas fica QUADRADO, RETO e \
+         SOLTO dos ossos; Ctrl+Z devolve-o dobrado."
     );
     Some(bits)
 }

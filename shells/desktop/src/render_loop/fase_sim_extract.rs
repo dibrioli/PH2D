@@ -74,9 +74,12 @@ impl crate::App {
         );
         // ⭐⭐⭐ **EDITAR PIXELS ACHATA A ARTE** (regra do dono, F6-s): a sprite que a ferramenta
         // edita não recebe malha — a tabela e a exceção do Liquify vivem na porta.
-        let achatada = ph2d_app_painter::skin_suspend::achata_e_avisa(
+        let achatadas = ph2d_app_painter::skin_suspend::achata_e_avisa(
             tools,
-            hero_screen.as_ref().and_then(|h| h.gizmo.selection),
+            hero_screen
+                .as_ref()
+                .into_iter()
+                .flat_map(|h| h.gizmo.iter_selected()),
             |e| ph2d_skeleton_live::skin_image::is_skinned_image(sim.world(), e),
             toasts,
         );
@@ -86,7 +89,7 @@ impl crate::App {
             ppm,
             pele_suave,
             px_por_metro,
-            achatada,
+            &achatadas,
         );
     }
 }

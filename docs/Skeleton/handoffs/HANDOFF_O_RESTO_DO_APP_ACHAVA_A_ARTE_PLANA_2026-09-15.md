@@ -1476,3 +1476,33 @@ integrador precisa de saber:
 8. ⚠️ **PRÉ-EXISTENTE, não desta wave:** a fila `docs/Skeleton/01_a_fila.md` está em **~244 KB**,
    acima do joelho medido (80–110 KB) em que o `Read` deixa de ser o acesso — pede o corte com prova
    (`scripts/doc-split.py`) numa jornada própria.
+
+---
+
+## §28 — ⭐⭐⭐ AS FERRAMENTAS DE MOLDURA ENDIREITAM A SELECÇÃO E O APPLY SOLTA DOS OSSOS (2026-09-16)
+
+Fila **F6-s**, secção *«A MOLDURA»* (a resposta do dono às leituras da §27). O que o integrador
+precisa de saber:
+
+1. ⚠️ **Assinaturas mudadas:** `ph2d_skeleton_live::skin_image::attach_skin_meshes` recebe
+   `suspensas: &[u64]` (era `Option<u64>`); `ph2d_app_painter::skin_suspend::achata_e_avisa` recebe a
+   SELECÇÃO (`impl IntoIterator<Item = u64>`, principal primeiro) e devolve `Vec<u64>`;
+   `sprite_achatada` chama-se agora **`sprites_achatadas`**; `acabou_de_achatar` recebe `&[u64]` e
+   devolve `bool`. O `FERRAMENTAS_QUE_ACHATAM` passou a `&[(&str, Alcance)]`.
+2. **Portas novas:** `skin_image::release_image` (tira a pele de uma imagem presa) ·
+   `skin_suspend::{FERRAMENTAS_QUE_MUDAM_A_MOLDURA, Edicao, solta_se_mudou_a_moldura, AVISO_PIXELS,
+   AVISO_MOLDURA}` · na shell, `app_state::{Edicao, commit_edit, solta_os_ossos}`.
+3. ⚠️⚠️ **Todo Apply de ferramenta de imagem grava pela `commit_edit`**, e a transacção nasce com o
+   id (`Edicao::new("<id>")`). A `commit_image_edit_transaction` ficou **privada** ao módulo e saiu
+   das reexportações (`app_state.rs`, `main.rs`). ⛔ **Um ramo que acrescente um dreno de imagem**
+   funde com um `Vec::new()` / `commit_image_edit_transaction(` que já não compila — a cura é a
+   forma nova, e o gate `every_image_apply_commits_through_the_door_with_its_own_tool_id` confere o
+   id contra o dreno do bloco.
+4. ⚠️ **Movimento para o núcleo:** `is_image_edit_tool` e `palette_visible_tool_indices` saíram de
+   `shells/desktop/src/app_state_image_tools.rs` para `ph2d_editor_core::tool` (iguais tirando
+   formatação e caminhos; `main.rs` reexporta-os com o mesmo nome, os chamadores `crate::…` não
+   mudam). A shell fica em **`−7`** linhas no saldo desta wave.
+5. **O Ctrl+Z geral devolve imagem e ligação no mesmo passo** (a pele é componente registado e sai
+   no mesmo quadro do Apply). ⏳ O desfazer de UM nível das ferramentas de imagem (o que responde
+   quando NÃO há passo geral) repõe a textura e não a pele — nomeado na fila.
+6. **Zero schema, zero contrato, zero registo novo.**

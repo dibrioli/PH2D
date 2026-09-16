@@ -2930,17 +2930,20 @@ num «o pincel X segue a dobra».
 | **Painter — Liquify** | ⛔ **não** | a exceção nomeada: *«deverá ser capaz de fazer ajustes na imagem dobrada»* |
 | **Background Removal** | ✅ **sim** | remove pixels (a ferramenta nomeada) |
 | filtros (contraste, blur, …) e shaders/efeitos (sombras, …) | ⛔ não | a exceção nomeada: não pintam nem apagam |
-| **Color Equalization** | ⛔ não *(leitura da linha)* | é um filtro de cor |
-| **Upscale** · **Equalize Sizes** | ⛔ não *(leitura da linha)* | reamostram a imagem inteira, não pintam nem apagam |
-| **Padding** | ⛔ não *(leitura da linha)* | mexe na MOLDURA da tela, não no conteúdo |
+| **Color Equalization** e toda ferramenta que só trata CORES | ⛔ **não** *(decisão do dono)* | *«pode ser aplicada dobrada»* |
+| **Padding** · **Upscale** · **Equalize Sizes** | ✅ **sim, a SELECÇÃO inteira** *(decisão do dono)* | mudam o TAMANHO ou a MARGEM — e o **Apply SOLTA a imagem dos ossos** |
+| **Trim Transparency** · **Make Square** · **Rasterize** · **Real Size** (um clique) | — (não têm «enquanto») | mudam o tamanho ou a margem — e **SOLTAM a imagem dos ossos** |
 
-⚠️ **As quatro linhas marcadas *leitura da linha* são pergunta ao dono**, e a resposta dele troca uma
-linha da tabela da porta, nada mais.
+⭐ **As leituras da linha foram RESPONDIDAS pelo dono no mesmo dia** (as três linhas de baixo da
+tabela): *«Color Equalization e qualquer outra do tipo que trata apenas cores, não endireita a
+imagem, pode ser aplicada dobrada. As que mudam tamanho ou padding devem endireitar e se aplicadas
+quebrar o binding com os ossos.»*
 
-⏳ **ABERTO e nomeado, achado ao escrever a regra:** o Padding (e os botões de imagem que cortam ou
-acrescentam margem) mudam ONDE o conteúdo está na textura, e a malha do bind guarda a arte em px da
-textura de ANTES — numa imagem presa, depois do Apply, a pele leria os texels errados. Não é desta
-regra (ela é sobre a DOBRA durante a edição); é do bind, e não foi medido.
+✅ ~~**ABERTO e nomeado, achado ao escrever a regra:** o Padding (e os botões de imagem que cortam
+ou acrescentam margem) mudam ONDE o conteúdo está na textura, e a malha do bind guarda a arte em px
+da textura de ANTES — numa imagem presa, depois do Apply, a pele leria os texels errados.~~
+**DISSOLVIDO pela decisão do dono:** o Apply dessas ferramentas solta a imagem dos ossos (ver
+*«a moldura»* abaixo).
 
 #### ✅ IMPLEMENTADA no mesmo dia (2026-09-16)
 
@@ -2974,6 +2977,46 @@ regra (ela é sobre a DOBRA durante a edição); é do bind, e não foi medido.
   de PINTURA · o anel sem a guarda do Deform · o desenho sem a chamada · a tabela sem `"bgremoval"`
   com as notas no sítio.
 
+
+#### ✅ A MOLDURA — a resposta do dono, implementada no mesmo dia (2026-09-16)
+
+- **Duas tabelas na mesma porta** (`skin_suspend`): `FERRAMENTAS_QUE_ACHATAM` ganhou o **alcance**
+  (`Principal` para o Painter e a Remoção de fundo; `Seleccao` para o Padding, o Upscale e o Equalize
+  Sizes, que aplicam a TODAS as selecionadas) e `FERRAMENTAS_QUE_MUDAM_A_MOLDURA` lista as sete que
+  mudam o tamanho ou a margem. ⚠️ **A suspensão passou a ser um CONJUNTO** (`attach_skin_meshes(…,
+  suspensas: &[u64])`): com o alcance de antes, uma selecção de três imagens presas deixava duas
+  dobradas debaixo do Padding.
+- **O Apply solta:** todo Apply de ferramenta de imagem grava pela porta `commit_edit` da shell, e a
+  transacção NASCE com o id da ferramenta (`Edicao::new("padding")`, onde estava `Vec::new()`) — a
+  tabela decide, e soltar é tirar a pele (`ph2d_skeleton_live::skin_image::release_image`). O *Real
+  Size* não tem transacção e solta pela metade sem ela. ⚠️ A gravação antiga ficou **privada**: um
+  Apply novo não consegue gravar sem passar pela decisão.
+- ⭐ **O Ctrl+Z devolve as duas coisas:** a pele é um componente registado, e soltar no MESMO quadro
+  do Apply põe a imagem nova e a ligação perdida no mesmo passo de desfazer. Os avisos dizem-no: ao
+  abrir uma ferramenta de moldura (*«… Apply unbinds it from the bones»*) e ao aplicar (*«N image(s)
+  unbound … Ctrl+Z brings the binding back»*).
+- ⚠️ **A shell ENCOLHE `7` linhas** apesar da porta nova: os dois predicados do grupo Image Tools
+  (`is_image_edit_tool`, `palette_visible_tool_indices`), que só usam tipos do núcleo, mudaram-se
+  para `ph2d_editor_core::tool` (igual ao original tirando formatação e caminhos; a shell
+  reexporta-os com o mesmo nome). ⛔ A 1.ª forma (o id como 6.º argumento da gravação) deixava a
+  shell em **`+65`** (medido) — o `fn_call_width` do `rustfmt` é `60`, e cada chamada com um id
+  longo partia-se em oito linhas.
+- **Gates (7 novos/endurecidos):** `every_suspended_image_is_flat_and_the_rest_stays_bent` ·
+  `releasing_an_image_takes_its_skin_and_nothing_else` · `the_frame_tools_flatten_the_whole_selection_and_the_colour_tools_nothing`
+  · `the_two_tables_agree` · `a_frame_apply_releases_the_bound_images_it_changed_and_a_colour_apply_does_not`
+  · `every_image_apply_commits_through_the_door_with_its_own_tool_id` (o id de cada transacção contra
+  o DRENO do mesmo bloco, e cada id das tabelas contra os MANIFESTOS reais) · e o
+  `painting_flattens_the_art_and_the_frame_passes_it_through` passou a exigir a SELECÇÃO inteira.
+- **Mutações (14, todas RED):** suspender só o 1.º · soltar sem a guarda da imagem · soltar sem
+  remover · o alcance ignorado · o aviso de moldura para todas · o Color Equalization na tabela · o
+  Apply sem a guarda da tabela · contar as que não tinham pele · o aviso calado · o Padding fora do
+  achatamento · o id do vizinho numa transacção · o Real Size sem soltar · um id inventado na tabela
+  · o quadro a passar só a principal.
+- ⏳ **ABERTO e nomeado:** o Separate Islands da Remoção de fundo cria sprites novas a partir das
+  ilhas de uma imagem presa — ele não muda a moldura da original e fica fora da tabela, mas as ilhas
+  nascem **sem** ligação aos ossos, e ninguém mediu se isso é o que o dono espera. E o desfazer de
+  UM nível das ferramentas de imagem (o que o Ctrl+Z usa quando não há passo geral) repõe a textura
+  e **não** a pele.
 ---
 
 ### F6-r — ✅ **As alças do gizmo de uma imagem presa cercam a arte DOBRADA** (2026-09-16)

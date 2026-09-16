@@ -426,6 +426,31 @@ pub fn is_skinned_image(world: &ph2d_ecs::World, e: Entity) -> bool {
     world.get::<Sprite>(e).is_some() && world.get::<ph2d_skeleton_ecs::SkinBind>(e).is_some()
 }
 
+/// ⭐⭐ **SOLTA UMA IMAGEM DO ESQUELETO** — tira-lhe a pele; devolve se havia pele a tirar.
+///
+/// ⚠️ **Existe pela regra F6-s do dono** (2026-09-16): uma ferramenta que muda o TAMANHO ou a
+/// MARGEM da imagem, ao ser aplicada, quebra a ligação com os ossos — a malha do bind foi traçada
+/// sobre a moldura de ANTES, e lê-la sobre a nova poria cada texel no sítio errado. Quem decide
+/// QUANDO é a porta das ferramentas (`ph2d_app_painter::skin_suspend`); esta só sabe O QUÊ.
+///
+/// ⭐ **O regresso é o Ctrl+Z de sempre:** a pele é um componente registado, então tirá-la no mesmo
+/// quadro do Apply põe a imagem nova e a ligação perdida no MESMO passo de desfazer.
+///
+/// ⛔ Só uma imagem presa (uma `Sprite` com pele) é tocada — uma forma vectorial presa solta-se pela
+/// `skin_live::release`, que sabe devolver a geometria autorada.
+pub fn release_image(sim: &mut SimWorld, bits: u64) -> bool {
+    let Some(e) = Entity::try_from_bits(bits) else {
+        return false;
+    };
+    if !is_skinned_image(sim.world(), e) {
+        return false;
+    }
+    sim.world_mut()
+        .entity_mut(e)
+        .remove::<ph2d_skeleton_ecs::SkinBind>();
+    true
+}
+
 fn f32_de(q: [f64; 2]) -> [f32; 2] {
     [q[0] as f32, q[1] as f32]
 }
@@ -445,12 +470,13 @@ fn f32_de(q: [f64; 2]) -> [f32; 2] {
 /// (o `size` e a âncora resolvida dela); fora disso a sprite desenha-se sem deformar e o aviso diz
 /// porquê.
 ///
-/// ⭐⭐⭐ **`suspensa` é a sprite que NÃO recebe malha neste quadro** — hoje, aquela que o Painter
-/// está a editar (ordem do dono, 2026-09-15: *«se o usuário entrar no modo Painter em imagem
-/// deformada por ossos a imagem deixa a deformação para ser pintada; ao sair, ela retorna»*).
+/// ⭐⭐⭐ **`suspensas` são as sprites que NÃO recebem malha neste quadro** — as que uma ferramenta de
+/// pixels ou de moldura está a editar (ordem do dono, 2026-09-15, e a regra F6-s de 2026-09-16:
+/// *«ao usar a ferramenta a imagem fica sem deformação até o fim da operação»*). ⚠️ **Um CONJUNTO, e
+/// não uma:** o Padding, o Upscale e o Equalize Sizes editam a SELECÇÃO inteira.
 ///
 /// ⚠️ **Esta folha não sabe o que é um Painter, e é assim que tem de ser:** quem decide é quem
-/// chama ([`ph2d_app_painter::skin_suspend::sprite_achatada`]), e o parâmetro diz **o quê**, nunca
+/// chama (`ph2d_app_painter::skin_suspend::sprites_achatadas`), e o parâmetro diz **o quê**, nunca
 /// **porquê**. ⭐ O filtro é o PRIMEIRO da cadeia, logo a malha suspensa nem chega a ser
 /// descodificada — a suspensão é mais barata que a deformação, não mais cara.
 ///
@@ -467,12 +493,14 @@ pub fn attach_skin_meshes(
     pixels_per_meter: f32,
     smooth: Option<RefineOptions>,
     px_per_world: f64,
-    suspensa: Option<u64>,
+    suspensas: &[u64],
 ) -> usize {
     let presas: Vec<(Entity, SkinnedMesh)> = sim
         .world()
         .iter_entities()
-        .filter(|er| is_skinned_image(sim.world(), er.id()) && Some(er.id().to_bits()) != suspensa)
+        .filter(|er| {
+            is_skinned_image(sim.world(), er.id()) && !suspensas.contains(&er.id().to_bits())
+        })
         .filter_map(|er| Some((er.id(), skinned_mesh_of(sim, er.id())?)))
         .collect();
     if presas.is_empty() {

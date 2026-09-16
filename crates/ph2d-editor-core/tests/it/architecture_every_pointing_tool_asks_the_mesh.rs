@@ -28,6 +28,17 @@ fn fonte(rel: &str) -> String {
         .join("\n")
 }
 
+/// O CORPO de uma `pub const <nome>` (da declaração ao primeiro `];`), sem comentários — uma tabela
+/// que o `fmt` parte em várias linhas continua a ser UMA tabela para quem a lê.
+fn tabela(rel: &str, nome: &str) -> String {
+    let src = fonte(rel);
+    let inicio = src.find(&format!("pub const {nome}")).unwrap_or_else(|| {
+        panic!("{rel}: a tabela `{nome}` mudou de nome — o gate perdeu o sujeito")
+    });
+    let corpo = &src[inicio..];
+    corpo[..corpo.find("];").expect("a tabela fecha")].to_string()
+}
+
 /// O mesmo ficheiro **com os comentários**, para quem mede uma NOTA em vez de uma lei.
 fn texto(rel: &str) -> String {
     let f = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -381,12 +392,7 @@ fn the_liquify_ring_is_drawn_through_the_art_mesh() {
 fn the_background_remover_notes_its_mesh_branch_is_dormant_while_it_flattens() {
     const MARCA: &str = "DORMENTE para a Remoção de fundo";
     const TABELA: &str = "crates/ph2d-app-painter/src/skin_suspend.rs";
-    let tabela = fonte(TABELA);
-    let linha = tabela
-        .lines()
-        .find(|l| l.contains("pub const FERRAMENTAS_QUE_ACHATAM"))
-        .expect("a tabela do achatamento mudou de nome — este gate perdeu o sujeito");
-    let achata = linha.contains("\"bgremoval\"");
+    let achata = tabela(TABELA, "FERRAMENTAS_QUE_ACHATAM").contains("(\"bgremoval\",");
     for porta in [
         "crates/ph2d-sprite-screen/src/uv_sob_o_ponteiro.rs",
         "crates/ph2d-sprite-screen/src/anel_do_pincel.rs",
@@ -396,6 +402,127 @@ fn the_background_remover_notes_its_mesh_branch_is_dormant_while_it_flattens() {
             achata,
             "{porta}: a nota `{MARCA}` e a tabela `FERRAMENTAS_QUE_ACHATAM` ({TABELA}) deixaram de \
              concordar (a Remoção de fundo achata: {achata})."
+        );
+    }
+}
+
+/// ⭐⭐⭐ **TODO APPLY de ferramenta de imagem grava pela porta, com o id DA ferramenta que o fez** — e
+/// é essa porta que solta dos ossos o que uma ferramenta de MOLDURA mudou (decisão do dono,
+/// 2026-09-16: *«as que mudam tamanho ou padding … se aplicadas quebrar o binding com os ossos»*).
+///
+/// ⚠️ **O id nasce com a transacção** (`Edicao::new("<id>")`) e o gate confere-o contra o DRENO do
+/// mesmo bloco (`hero_intents::drain_<id>`) — um bloco copiado com o id do vizinho soltaria (ou
+/// deixaria de soltar) as imagens da ferramenta errada, e compilava. O *Real Size* não tem transacção
+/// e solta pela metade sem ela.
+///
+/// ⚠️ **E cada id das duas tabelas é uma ferramenta REAL** (`id: "<id>"` num manifesto de
+/// `crates/ph2d-tool-*`): uma tabela que nomeia uma ferramenta que não existe é uma regra que nunca
+/// dispara, e lê-se igual a uma que dispara.
+///
+/// (Mutações: o id de um bloco trocado pelo do vizinho ⇒ RED; o *Real Size* sem soltar ⇒ RED; um id
+/// inventado na tabela ⇒ RED.)
+#[test]
+fn every_image_apply_commits_through_the_door_with_its_own_tool_id() {
+    const APPLY: &str = "shells/desktop/src/render_loop/image_edit.rs";
+    const PORTA: &str = "crates/ph2d-app-painter/src/skin_suspend.rs";
+    let src = fonte(APPLY);
+    let linhas: Vec<&str> = src.lines().collect();
+    let mut nascidas = Vec::new();
+    for (i, l) in linhas.iter().enumerate() {
+        let Some(resto) = l.split_once("Edicao::new(\"").map(|(_, r)| r) else {
+            continue;
+        };
+        let id = resto.split('"').next().expect("id");
+        let dreno = linhas[i..]
+            .iter()
+            .find_map(|l| l.split_once("hero_intents::drain_").map(|(_, r)| r))
+            .and_then(|r| r.split('(').next())
+            .unwrap_or_else(|| panic!("{APPLY}: a transacção `{id}` nasce sem dreno a seguir"));
+        assert_eq!(
+            id, dreno,
+            "{APPLY}: a transacção nasce com o id `{id}` e quem a enche é o dreno `{dreno}`"
+        );
+        nascidas.push(id.to_string());
+    }
+    // ⚠️ Piso de população: as NOVE transacções de hoje (painter · trim · make square · rasterize ·
+    // padding · color EQ · equalize sizes · upscale · bg removal).
+    assert!(
+        nascidas.len() >= 9,
+        "{APPLY}: só {} transacções nascem com id — o gate perdeu o sujeito: {nascidas:?}",
+        nascidas.len()
+    );
+    assert!(
+        !src.contains("Vec<ImageEditSnapshot>") && !src.contains("commit_image_edit_transaction("),
+        "{APPLY}: uma transacção nasceu (ou foi gravada) SEM o id da ferramenta — a regra da moldura \
+         não a vê"
+    );
+    assert_eq!(
+        src.matches("commit_edit(renderer, image_edit_undo, pending, sim, toasts);")
+            .count(),
+        nascidas.len(),
+        "{APPLY}: cada transacção nascida tem de ser gravada pela porta"
+    );
+    assert!(
+        src.contains("solta_os_ossos(sim, toasts, \"real_size\", real_size_mudou);")
+            && src.contains("real_size_mudou.push(entity_bits);"),
+        "{APPLY}: o Real Size muda a escala e deixou de soltar a imagem dos ossos"
+    );
+
+    // Cada id das duas tabelas é uma ferramenta real, e cada ferramenta de MOLDURA está ligada.
+    let raiz = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("dois pais")
+        .join("crates");
+    // ⚠️ O id de uma ferramenta é o do `MANIFEST` dela (em `lib.rs` ou `manifest.rs`, conforme a
+    // crate) — lido DENTRO do bloco, para um `id: "…"` de teste ou de outra struct não contar.
+    let mut reais = Vec::new();
+    for entry in std::fs::read_dir(&raiz).expect("crates/") {
+        let dir = entry.expect("entrada").path();
+        let nome = dir.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+        if !nome.starts_with("ph2d-tool-") {
+            continue;
+        }
+        for f in ["src/lib.rs", "src/manifest.rs"] {
+            let Ok(t) = std::fs::read_to_string(dir.join(f)) else {
+                continue;
+            };
+            if let Some((_, bloco)) =
+                t.split_once("pub const MANIFEST: ToolManifest = ToolManifest {")
+                && let Some((_, resto)) = bloco.split_once("id: \"")
+            {
+                reais.push(resto.split('"').next().expect("id").to_string());
+            }
+        }
+    }
+    assert!(
+        reais.iter().any(|r| r == "painter") && reais.iter().any(|r| r == "padding"),
+        "a varredura dos manifestos deixou de os achar — o gate perdeu o sujeito: {reais:?}"
+    );
+    let ids = |corpo: String| -> Vec<String> {
+        corpo
+            .split('"')
+            .skip(1)
+            .step_by(2)
+            .map(str::to_string)
+            .collect()
+    };
+    let moldura = ids(tabela(PORTA, "FERRAMENTAS_QUE_MUDAM_A_MOLDURA"));
+    let achatam = ids(tabela(PORTA, "FERRAMENTAS_QUE_ACHATAM"));
+    assert!(
+        moldura.len() >= 7 && achatam.len() >= 5,
+        "as tabelas encolheram: {moldura:?} {achatam:?}"
+    );
+    for id in moldura.iter().chain(&achatam) {
+        assert!(
+            reais.contains(id),
+            "{PORTA}: a tabela nomeia `{id}`, que nenhuma ferramenta de `crates/ph2d-tool-*` declara"
+        );
+    }
+    for id in &moldura {
+        assert!(
+            nascidas.contains(id) || *id == "real_size",
+            "{PORTA}: `{id}` muda a moldura e nenhum Apply dele passa pela porta em {APPLY}"
         );
     }
 }
@@ -491,7 +618,7 @@ fn the_canvas_chrome_census_is_derived_and_nobody_maps_an_authored_point_by_the_
          chrome tem `&World`. Curar só o desenho poria um rectângulo bem dobrado à volta da \
          célula ERRADA — *meia lei aplicada é pior que nenhuma*. ✅ O item que isto deixava ABERTO \
          DISSOLVEU em 2026-09-15 por ordem do dono: sob o Painter a sprite pintada é desenhada \
-         ACHATADA (`skin_suspend::sprite_achatada`), logo o quad de repouso É o que está no ecrã \
+         ACHATADA (`skin_suspend::sprites_achatadas`), logo o quad de repouso É o que está no ecrã \
          e esta célula cai certa. ⭐ A exceção dessa regra (F6-s, 2026-09-16) é o LIQUIFY, que \
          trabalha sobre a dobra — e o anel dele JÁ pergunta à malha (`anel_do_liquify`, gate \
          `the_liquify_ring_is_drawn_through_the_art_mesh`); o Grid Stamp não o alcança \
@@ -660,9 +787,17 @@ fn painting_flattens_the_art_and_the_frame_passes_it_through() {
         "{FASE} pergunta e NAO passa a resposta ao `attach_skin_meshes`: a arte continua deformada \
          por baixo do pincel"
     );
-    // ⚠️ E a porta MUDA (`sprite_achatada`) achataria em silencio: o report seguinte seria «a arte saltou».
+    // ⚠️ E a pergunta leva a SELECÇÃO inteira: o Padding, o Upscale e o Equalize Sizes editam todas
+    // as selecionadas, e só a principal deixaria as outras dobradas debaixo da operação.
+    let pedido = &src[pergunta..produtor];
     assert!(
-        !src.contains("skin_suspend::sprite_achatada("),
+        pedido.contains("h.gizmo.iter_selected()"),
+        "{FASE} pergunta pelo achatamento só com a imagem PRINCIPAL: as ferramentas que editam a \
+         selecção inteira deixam as outras dobradas"
+    );
+    // ⚠️ E a porta MUDA (`sprites_achatadas`) achataria em silencio: o report seguinte seria «a arte saltou».
+    assert!(
+        !src.contains("skin_suspend::sprites_achatadas("),
         "{FASE} chama a porta MUDA: a arte endireita-se sem uma palavra"
     );
 }

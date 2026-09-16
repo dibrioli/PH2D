@@ -650,10 +650,8 @@ mod width_tool_smoke;
 mod winit_host;
 mod zorder_smoke;
 
-pub(crate) use app_state::{
-    App, AppGfx, HeroLive, ImageEditSnapshot, ImageEditTransaction, commit_image_edit_transaction,
-    is_image_edit_tool, palette_visible_tool_indices,
-};
+pub(crate) use app_state::{App, AppGfx, HeroLive, ImageEditSnapshot, ImageEditTransaction};
+pub(crate) use ph2d_editor_core::tool::{is_image_edit_tool, palette_visible_tool_indices};
 
 // forwarding::* moved to input_dispatch.rs (PR 9b).
 // cursor_pos::live_cursor_in_window + image_import::import_images_grid

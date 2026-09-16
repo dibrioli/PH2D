@@ -89,7 +89,10 @@ pub(crate) fn drop_undo_pre_sources_if_individual(
 /// sprite actually changed → nothing to undo). The transaction label
 /// comes from the first entry; per-drain code pushes the same label on
 /// every entry it appends, so all N entries agree by construction.
-pub(crate) fn commit_image_edit_transaction(
+/// ⛔ **Privada desde 2026-09-16:** todo Apply grava pela [`commit_edit`], que decide antes se a
+/// ferramenta solta a imagem dos ossos — uma porta de gravar que a contornasse seria a ferramenta
+/// seguinte a esquecer a regra.
+fn commit_image_edit_transaction(
     renderer: &mut SpriteRenderer,
     slot: &mut Option<ImageEditTransaction>,
     entries: Vec<ImageEditSnapshot>,
@@ -100,6 +103,34 @@ pub(crate) fn commit_image_edit_transaction(
     let label = entries[0].label;
     drop_undo_pre_sources_if_individual(renderer, slot);
     *slot = Some(ImageEditTransaction { entries, label });
+}
+
+/// O que uma ferramenta mudou num Apply, com o id dela (`ph2d_app_painter::skin_suspend::Edicao`).
+pub(crate) type Edicao = ph2d_app_painter::skin_suspend::Edicao<ImageEditSnapshot>;
+
+/// ⭐⭐⭐ **A PORTA DE TODO APPLY** — solta dos ossos o que uma ferramenta de MOLDURA mudou (a
+/// decisão é a tabela de `ph2d_app_painter::skin_suspend`) e grava a transação, no mesmo passo.
+pub(crate) fn commit_edit(
+    renderer: &mut SpriteRenderer,
+    slot: &mut Option<ImageEditTransaction>,
+    edicao: Edicao,
+    sim: &mut ph2d_ecs::SimWorld,
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) {
+    let mudadas = edicao.iter().map(|e| e.entity_bits);
+    solta_os_ossos(sim, toasts, edicao.ferramenta, mudadas);
+    commit_image_edit_transaction(renderer, slot, edicao.entradas);
+}
+
+/// A metade da [`commit_edit`] sem transação (o *Real Size* só escreve a escala).
+pub(crate) fn solta_os_ossos(
+    sim: &mut ph2d_ecs::SimWorld,
+    toasts: &mut ph2d_editor_core::ToastQueue,
+    tool: &str,
+    mudadas: impl IntoIterator<Item = u64>,
+) {
+    let solta = |b| ph2d_skeleton_live::skin_image::release_image(sim, b);
+    ph2d_app_painter::skin_suspend::solta_se_mudou_a_moldura(tool, mudadas, solta, toasts);
 }
 
 /// Cached on-canvas preview bitmap for the Background-Removal tool.
@@ -158,46 +189,3 @@ pub(crate) type ColorEqualizationPreview = ph2d_tool_runtime::PreviewCache;
 /// resolve; new code uses `PreviewCache` directly via the
 /// `drive_*` helpers in `ph2d-tool-runtime`.
 pub(crate) type UpscalePreview = ph2d_tool_runtime::PreviewCache;
-
-/// True for any tool that belongs to the **Image Tools** group — i.e.
-/// whose manifest is registered in the `"image_tools"` cluster (Bg
-/// Removal, Padding, Trim Transparency, Make Square, Real Size, and
-/// EVERY future image tool). Data-driven on purpose: there is no
-/// hardcoded id list to keep in sync — add a tool to the `image_tools`
-/// cluster in its manifest and this predicate (and everything gated on
-/// it) picks it up automatically.
-///
-/// `installed_registry()` is `Some` in the real editor (installed at
-/// boot); the `None` fallback (pre-registry boot / isolated tests)
-/// reports `false`, matching the legacy "no gating" behavior there.
-pub(crate) fn is_image_edit_tool(id: &ph2d_editor_core::ToolId) -> bool {
-    // `m.id` is the manifest's `&'static str` id; `id` is the editor's
-    // `ToolId` newtype (what `Tool::id()` returns). Bridge the two via
-    // `ToolId::new`.
-    ph2d_editor_core::installed_registry()
-        .map(|reg| {
-            reg.cluster("image_tools")
-                .iter()
-                .any(|m| ph2d_editor_core::ToolId::new(m.id) == *id)
-        })
-        .unwrap_or(false)
-}
-
-/// Indices into `tools.tools()` that are visible in the top-right tool
-/// palette right now. Brush / Move are always present; the image-edit
-/// tools appear ONLY while Image Tools mode is on — off, they're fully
-/// gone (no icon painted, no hit zone), the absolute rule for "Image
-/// Tools off ⟹ image tools inaccessible". Paint AND hit-test must both
-/// map palette slots through this so their indices can't drift.
-pub(crate) fn palette_visible_tool_indices(
-    tools: &ph2d_editor_core::ToolRegistry,
-    image_tools_mode_on: bool,
-) -> Vec<usize> {
-    tools
-        .tools()
-        .iter()
-        .enumerate()
-        .filter(|(_, t)| image_tools_mode_on || !is_image_edit_tool(&t.id()))
-        .map(|(i, _)| i)
-        .collect()
-}

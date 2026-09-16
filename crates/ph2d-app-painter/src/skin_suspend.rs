@@ -12,6 +12,13 @@
 //! ([`FERRAMENTAS_QUE_ACHATAM`], [`MODOS_SOBRE_A_DOBRA`]), e uma ferramenta nova desta espécie entra
 //! nela — ⛔ nunca numa cerca própria.
 //!
+//! ⭐⭐⭐ **E no mesmo dia o dono completou-a** (respostas às perguntas da linha): *«Color Equalization
+//! e qualquer outra do tipo que trata apenas cores, não endireita a imagem, pode ser aplicada
+//! dobrada. As que mudam tamanho ou padding devem endireitar e se aplicadas quebrar o binding com os
+//! ossos.»* ⇒ a segunda tabela, [`FERRAMENTAS_QUE_MUDAM_A_MOLDURA`], e a porta do Apply
+//! ([`solta_se_mudou_a_moldura`]). ⚠️ E a suspensão passou a ser um CONJUNTO ([`Alcance`]): essas
+//! ferramentas editam a selecção inteira.
+//!
 //! # Por que isto é UMA porta e não uma cerca em cada sítio
 //!
 //! ⭐⭐ **Toda a app deriva de *«esta sprite tem malha posada?»***, e é isso que faz esta ordem
@@ -45,14 +52,33 @@
 
 use ph2d_editor_core::ToolRegistry;
 
-/// ⭐⭐⭐ **AS FERRAMENTAS QUE EDITAM PIXELS** — a tabela da regra (F6-s). Uma imagem presa a ossos é
-/// desenhada ACHATADA enquanto uma destas está na mão.
+/// ⭐⭐ **ATÉ ONDE A SUSPENSÃO CHEGA** — a imagem que a ferramenta edita, ou todas as que ela edita.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Alcance {
+    /// Só a imagem PRINCIPAL da selecção: o Painter trava a selecção numa só (`painter_lock`), e a
+    /// Remoção de fundo pré-visualiza e aplica na principal.
+    Principal,
+    /// A SELECÇÃO inteira: o Padding, o Upscale e o Equalize Sizes aplicam a todas as selecionadas
+    /// (os três drenos percorrem o `iter_selected`) — achatar só a principal deixaria as outras
+    /// dobradas debaixo da mesma operação.
+    Seleccao,
+}
+
+/// ⭐⭐⭐ **AS FERRAMENTAS QUE ACHATAM** — a tabela da regra (F6-s). Uma imagem presa a ossos é
+/// desenhada ACHATADA enquanto uma destas está na mão: as que pintam, apagam ou deformam pixels, e as
+/// que mudam a MOLDURA da imagem ([`FERRAMENTAS_QUE_MUDAM_A_MOLDURA`] — as que têm painel, porque as
+/// de um clique não têm «enquanto»).
 ///
-/// ⚠️ **As que ficam de fora, e porquê** (a tabela inteira está na fila, com as leituras que são
-/// pergunta ao dono): o Color Equalization é um FILTRO; o Upscale e o Equalize Sizes reamostram a
-/// imagem inteira; o Padding mexe na moldura da tela; o vector, o flip, o motion e o move não editam
+/// ⚠️ **As que ficam de fora, e porquê:** o Color Equalization e toda ferramenta que só trata CORES
+/// (decisão do dono: *«pode ser aplicada dobrada»*); o vector, o flip, o motion e o move não editam
 /// pixels.
-pub const FERRAMENTAS_QUE_ACHATAM: &[&str] = &["painter", "bgremoval"];
+pub const FERRAMENTAS_QUE_ACHATAM: &[(&str, Alcance)] = &[
+    ("painter", Alcance::Principal),
+    ("bgremoval", Alcance::Principal),
+    ("padding", Alcance::Seleccao),
+    ("upscale", Alcance::Seleccao),
+    ("equalize_sizes", Alcance::Seleccao),
+];
 
 /// ⭐⭐ **OS MODOS que, dentro de uma ferramenta da tabela, trabalham SOBRE A DOBRA** — a exceção
 /// nomeada pelo dono: o Liquify *«deverá ser capaz de fazer ajustes na imagem dobrada»*.
@@ -62,10 +88,69 @@ pub const FERRAMENTAS_QUE_ACHATAM: &[&str] = &["painter", "bgremoval"];
 /// deforma pixels por gizmo, e achata).
 pub const MODOS_SOBRE_A_DOBRA: &[&str] = &["liquify"];
 
-/// ⭐⭐⭐ **A sprite cuja pele fica suspensa neste quadro** — `None` quando ninguém está a editar
-/// pixels (ou quando o modo na mão trabalha sobre a dobra).
+/// ⭐⭐⭐ **AS FERRAMENTAS QUE MUDAM A MOLDURA DA IMAGEM** — o TAMANHO ou a MARGEM. Aplicadas a uma
+/// imagem presa, **quebram a ligação com os ossos** (decisão do dono, 2026-09-16).
 ///
-/// `seleccionada` são os bits da entidade que o gizmo tem na mão: é ela que a ferramenta edita.
+/// ⚠️ **O porquê é geométrico, e não um gosto:** a malha do bind foi traçada sobre a moldura de
+/// ANTES (a tinta, em px da textura daquele tamanho). Depois de cortar, acrescentar margem,
+/// reamostrar ou assar a escala, a mesma malha lê os texels do sítio errado.
+///
+/// | ferramenta | o que muda |
+/// |---|---|
+/// | `padding` | a margem (e o tamanho) |
+/// | `upscale` | a resolução |
+/// | `equalize_sizes` | o tamanho (tela ou escala) |
+/// | `trim_transparency` | corta a margem transparente |
+/// | `make_square` | acrescenta margem |
+/// | `rasterize` | assa a escala e a rotação nos pixels |
+/// | `real_size` | a escala volta a `1:1` |
+pub const FERRAMENTAS_QUE_MUDAM_A_MOLDURA: &[&str] = &[
+    "padding",
+    "upscale",
+    "equalize_sizes",
+    "trim_transparency",
+    "make_square",
+    "rasterize",
+    "real_size",
+];
+
+/// O aviso ao achatar, para quem só mexe em pixels.
+pub const AVISO_PIXELS: &str =
+    "Editing pixels flattens this image — the bone deformation returns when you leave the tool.";
+/// O aviso ao achatar, para quem muda a moldura — ⚠️ ele diz o que o Apply vai fazer, ANTES de o
+/// artista carregar no botão.
+pub const AVISO_MOLDURA: &str = "This tool changes the image size or margins: the image is shown \
+     without the bone deformation, and Apply unbinds it from the bones.";
+
+/// A decisão: que sprites ficam achatadas, e se a ferramenta na mão muda a moldura.
+fn decide(tools: &mut ToolRegistry, seleccao: impl IntoIterator<Item = u64>) -> (Vec<u64>, bool) {
+    let Some(ferramenta) = tools.active_mut() else {
+        return (Vec::new(), false);
+    };
+    let id = ferramenta.id();
+    let Some(&(_, alcance)) = FERRAMENTAS_QUE_ACHATAM.iter().find(|(f, _)| id.0 == *f) else {
+        return (Vec::new(), false);
+    };
+    let sobre_a_dobra = ferramenta
+        .as_any_mut()
+        .downcast_mut::<ph2d_tool_painter::PainterTool>()
+        .is_some_and(|p| MODOS_SOBRE_A_DOBRA.contains(&p.active_paint_mode_id()));
+    if sobre_a_dobra {
+        return (Vec::new(), false);
+    }
+    let mut seleccao = seleccao.into_iter();
+    let achatadas = match alcance {
+        Alcance::Principal => seleccao.next().into_iter().collect(),
+        Alcance::Seleccao => seleccao.collect(),
+    };
+    let moldura = FERRAMENTAS_QUE_MUDAM_A_MOLDURA.contains(&id.0.as_str());
+    (achatadas, moldura)
+}
+
+/// ⭐⭐⭐ **As sprites cuja pele fica suspensa neste quadro** — vazio quando ninguém está a editar
+/// pixels ou a moldura (ou quando o modo na mão trabalha sobre a dobra).
+///
+/// `seleccao` é a selecção do gizmo, com a PRINCIPAL primeiro (`GizmoStateGroup::iter_selected`).
 ///
 /// ⚠️ **`&mut` por causa do contrato das ferramentas** (`Tool`, congelado): o único caminho até ao
 /// Painter concreto é o `as_any_mut`, e perguntar-lhe o modo precisa dele.
@@ -75,44 +160,42 @@ pub const MODOS_SOBRE_A_DOBRA: &[&str] = &["liquify"];
 /// segunda resposta à mesma pergunta — sobre uma sprite sem pele esta devolve um id que não tem
 /// malha nenhuma para suspender, e o efeito é exactamente nenhum.
 #[must_use]
-pub fn sprite_achatada(tools: &mut ToolRegistry, seleccionada: Option<u64>) -> Option<u64> {
-    let ferramenta = tools.active_mut()?;
-    let id = ferramenta.id();
-    if !FERRAMENTAS_QUE_ACHATAM
-        .iter()
-        .any(|f| id == ph2d_editor_core::ToolId::new(*f))
-    {
-        return None;
-    }
-    let sobre_a_dobra = ferramenta
-        .as_any_mut()
-        .downcast_mut::<ph2d_tool_painter::PainterTool>()
-        .is_some_and(|p| MODOS_SOBRE_A_DOBRA.contains(&p.active_paint_mode_id()));
-    if sobre_a_dobra {
-        return None;
-    }
-    seleccionada
+pub fn sprites_achatadas(
+    tools: &mut ToolRegistry,
+    seleccao: impl IntoIterator<Item = u64>,
+) -> Vec<u64> {
+    decide(tools, seleccao).0
 }
 
-/// **Quem passou a estar achatada desde o último quadro** — para quem quiser dizê-lo ao artista.
+/// **O conjunto achatado MUDOU desde o último quadro?** — para quem quiser dizê-lo ao artista.
 ///
-/// ⚠️⚠️ **Sem isto a arte SALTA e o artista lê um defeito.** Pegar no pincel faz um canvas dobrado
-/// endireitar-se de um quadro para o outro; sem uma palavra, o report seguinte é *«a arte saltou»* —
-/// e a cura seria explicar o que o app já sabia.
+/// ⚠️⚠️ **Sem isto a arte SALTA e o artista lê um defeito.** Pegar na ferramenta faz um canvas
+/// dobrado endireitar-se de um quadro para o outro; sem uma palavra, o report seguinte é *«a arte
+/// saltou»* — e a cura seria explicar o que o app já sabia.
 ///
 /// ⛔ **É um latch por ARESTA, e ele não é um campo da `App`:** o idioma é o que o
 /// `color_equalization_bridge` já usa (um `static` + `swap`), e a razão de não ser estado da `App` é
 /// a catraca `the_app_only_sheds_fields` — mas também é a mais honesta, porque isto não é estado do
 /// documento nem da sessão: é a memória de UM quadro.
 ///
-/// `0` é «nenhuma» (uma `Entity` nunca vale `0` em bits — o índice `0` carrega geração `1`).
+/// ⚠️ **Guarda uma IMPRESSÃO do conjunto** (FNV-1a sobre os bits, pela ordem da selecção), com `0`
+/// para «nenhuma»: o conjunto vazio imprime `0`, e um conjunto cheio nunca (`max(1)`).
 #[must_use]
-pub fn acabou_de_achatar(achatada: Option<u64>) -> Option<u64> {
+pub fn acabou_de_achatar(achatadas: &[u64]) -> bool {
     use std::sync::atomic::{AtomicU64, Ordering};
     static ULTIMA: AtomicU64 = AtomicU64::new(0);
-    let agora = achatada.unwrap_or(0);
+    let agora = if achatadas.is_empty() {
+        0
+    } else {
+        achatadas
+            .iter()
+            .fold(0xcbf2_9ce4_8422_2325_u64, |h, b| {
+                (h ^ b).wrapping_mul(0x0100_0000_01b3)
+            })
+            .max(1)
+    };
     let antes = ULTIMA.swap(agora, Ordering::Relaxed);
-    (agora != 0 && agora != antes).then_some(agora)
+    agora != 0 && agora != antes
 }
 
 /// ⭐⭐⭐ **A PORTA QUE A SHELL CHAMA: decide E avisa, numa linha.**
@@ -128,127 +211,92 @@ pub fn acabou_de_achatar(achatada: Option<u64>) -> Option<u64> {
 /// mentir ao artista.
 pub fn achata_e_avisa(
     tools: &mut ToolRegistry,
-    seleccionada: Option<u64>,
+    seleccao: impl IntoIterator<Item = u64>,
     e_pele: impl Fn(ph2d_ecs::Entity) -> bool,
     toasts: &mut ph2d_editor_core::toast::ToastQueue,
-) -> Option<u64> {
-    let achatada = sprite_achatada(tools, seleccionada);
-    if let Some(bits) = acabou_de_achatar(achatada)
-        && ph2d_ecs::Entity::try_from_bits(bits).is_some_and(&e_pele)
+) -> Vec<u64> {
+    let (achatadas, moldura) = decide(tools, seleccao);
+    if acabou_de_achatar(&achatadas)
+        && achatadas
+            .iter()
+            .any(|b| ph2d_ecs::Entity::try_from_bits(*b).is_some_and(&e_pele))
     {
-        toasts.push(ph2d_editor_core::toast::Toast::info(
-            "Editing pixels flattens this image — the bone deformation returns when you leave the \
-             tool."
-                .to_string(),
-        ));
+        let aviso = if moldura { AVISO_MOLDURA } else { AVISO_PIXELS };
+        toasts.push(ph2d_editor_core::toast::Toast::info(aviso.to_string()));
     }
-    achatada
+    achatadas
+}
+
+/// ⭐⭐ **O QUE UMA FERRAMENTA MUDOU NUM APPLY** — as entradas da transacção de desfazer, com o id
+/// de quem as fez.
+///
+/// ⚠️ **O id nasce JUNTO da transacção** (`Edicao::new("padding")` no sítio onde antes se escrevia
+/// `Vec::new()`), e é isso que impede a gravação de o esquecer: quem grava recebe uma `Edicao`, e
+/// uma `Edicao` sem ferramenta não existe. Ela é um `Vec` por `Deref`, então os drenos que enchem a
+/// transacção não mudam.
+pub struct Edicao<T> {
+    /// O id da ferramenta que aplicou (o de `Tool::id`).
+    pub ferramenta: &'static str,
+    /// O que ela mudou — uma entrada por sprite.
+    pub entradas: Vec<T>,
+}
+
+impl<T> Edicao<T> {
+    /// Uma transacção vazia da ferramenta `ferramenta`.
+    #[must_use]
+    pub fn new(ferramenta: &'static str) -> Self {
+        Self {
+            ferramenta,
+            entradas: Vec::new(),
+        }
+    }
+}
+
+impl<T> std::ops::Deref for Edicao<T> {
+    type Target = Vec<T>;
+    fn deref(&self) -> &Vec<T> {
+        &self.entradas
+    }
+}
+
+impl<T> std::ops::DerefMut for Edicao<T> {
+    fn deref_mut(&mut self) -> &mut Vec<T> {
+        &mut self.entradas
+    }
+}
+
+/// ⭐⭐⭐ **O APPLY DE UMA FERRAMENTA QUE MUDA A MOLDURA SOLTA AS IMAGENS DOS OSSOS** (decisão do
+/// dono, 2026-09-16) — devolve quantas soltou.
+///
+/// `ferramenta` é o id da ferramenta que aplicou; `editadas` são as sprites que o Apply DE FACTO
+/// mudou (as que entraram na transacção de desfazer — um Trim sobre uma imagem sem margem não muda
+/// nada, e não solta nada); `solta` tira a pele a uma e diz se havia pele (quem sabe fazê-lo é a
+/// `ph2d-skeleton-live`, e esta crate não depende dela).
+///
+/// ⚠️ **Uma porta para TODOS os Apply** — o chamador passa sempre o id, e é ESTA tabela que decide.
+/// *Uma decisão escrita no sítio de chamada seria esquecida pela próxima ferramenta.*
+///
+/// ⭐ **O regresso é o Ctrl+Z de sempre:** soltar no mesmo quadro do Apply põe a imagem nova e a
+/// ligação perdida no MESMO passo de desfazer, e o aviso di-lo.
+pub fn solta_se_mudou_a_moldura(
+    ferramenta: &str,
+    editadas: impl IntoIterator<Item = u64>,
+    mut solta: impl FnMut(u64) -> bool,
+    toasts: &mut ph2d_editor_core::toast::ToastQueue,
+) -> usize {
+    if !FERRAMENTAS_QUE_MUDAM_A_MOLDURA.contains(&ferramenta) {
+        return 0;
+    }
+    let soltas = editadas.into_iter().filter(|b| solta(*b)).count();
+    if soltas > 0 {
+        toasts.push(ph2d_editor_core::toast::Toast::info(format!(
+            "The image size or margins changed: {soltas} image(s) unbound from the bones. \
+             Ctrl+Z brings the binding back."
+        )));
+    }
+    soltas
 }
 
 #[cfg(test)]
-mod tests {
-    use ph2d_editor_core::ToolRegistry;
-
-    /// ⭐⭐ **SEM O PAINTER NA MÃO, NADA É SUSPENSO** — o controlo desta porta.
-    ///
-    /// ⛔ Sem esta metade, um `sprite_achatada` que devolvesse sempre a selecção achataria toda arte
-    /// presa a ossos o tempo todo, e a 2.ª mídia deixava de existir. *A cura de um modo tem de estar
-    /// presa ao modo.*
-    #[test]
-    fn sem_o_painter_na_mao_nada_e_suspenso() {
-        let mut tools = ToolRegistry::default();
-        assert_eq!(
-            super::sprite_achatada(&mut tools, Some(42)),
-            None,
-            "sem ferramenta activa nenhuma pele pode ser suspensa"
-        );
-    }
-
-    /// ⭐⭐⭐ **O LATCH DISPARA UMA VEZ POR ENTRADA, e volta a armar ao sair.**
-    ///
-    /// ⚠️ **As três metades**: ele fala na entrada, **cala-se** enquanto se pinta (senão o aviso
-    /// aparece a 60 Hz) e **volta a armar** quando se sai — sem a terceira, entrar uma segunda vez
-    /// no mesmo canvas seria mudo, que é exactamente quando o artista já esqueceu a primeira.
-    #[test]
-    fn o_latch_fala_uma_vez_por_entrada_e_volta_a_armar() {
-        assert_eq!(super::acabou_de_achatar(Some(7)), Some(7), "a entrada fala");
-        assert_eq!(
-            super::acabou_de_achatar(Some(7)),
-            None,
-            "o quadro seguinte com a MESMA sprite tem de ser mudo"
-        );
-        assert_eq!(super::acabou_de_achatar(None), None, "sair e' mudo");
-        assert_eq!(
-            super::acabou_de_achatar(Some(7)),
-            Some(7),
-            "entrar OUTRA VEZ no mesmo canvas volta a falar"
-        );
-        // ⚠️ E trocar de sujeito SEM sair também fala: é outra arte a achatar.
-        assert_eq!(super::acabou_de_achatar(Some(9)), Some(9));
-        let _ = super::acabou_de_achatar(None);
-    }
-
-    /// Um registo com o Painter NA MÃO, no modo do trilho pedido.
-    fn painter_no_modo(modo: &str) -> ToolRegistry {
-        let mut tools = ToolRegistry::default();
-        let mut p = ph2d_tool_painter::PainterTool::default();
-        p.set_paint_tool_mode(modo);
-        assert_eq!(p.active_paint_mode_id(), modo, "o modo {modo} nao pegou");
-        tools.register(Box::new(p));
-        assert!(tools.set_active(&ph2d_editor_core::ToolId::new("painter")));
-        tools
-    }
-
-    /// ⭐⭐⭐ **A REGRA (F6-s): todo modo do Painter que mexe em pixels achata — e o LIQUIFY não.**
-    ///
-    /// ⚠️ **O `Transform` é o gémeo que prova a chave:** ele partilha o `PaintMode::Deform` com o
-    /// Liquify, e uma exceção escrita sobre o `PaintMode` deixava-o dobrado — deformando pixels por
-    /// gizmo sobre a arte dobrada, que é o que a regra proíbe.
-    ///
-    /// (Mutações: a exceção desaparecer ⇒ RED no Liquify; a exceção ser o `is_deform_mode` ⇒ RED no
-    /// Transform.)
-    #[test]
-    fn every_pixel_mode_flattens_and_liquify_works_on_the_bend() {
-        for modo in [
-            "brush",
-            "eraser",
-            "smear",
-            "blur",
-            "clone",
-            "inpaint",
-            "transform",
-        ] {
-            assert_eq!(
-                super::sprite_achatada(&mut painter_no_modo(modo), Some(7)),
-                Some(7),
-                "o modo {modo} do Painter edita pixels e tem de achatar"
-            );
-        }
-        assert_eq!(
-            super::sprite_achatada(&mut painter_no_modo("liquify"), Some(7)),
-            None,
-            "o Liquify trabalha SOBRE a dobra (a excecao do dono)"
-        );
-    }
-
-    /// ⭐ **A TABELA é a da regra** — a Remoção de fundo entra; uma ferramenta que não edita pixels,
-    /// não. ⚠️ Lido da tabela (a Remoção de fundo não é dependência desta crate): o que este gate
-    /// prende é o CONTEÚDO dela, e o do Painter prende o CAMINHO.
-    #[test]
-    fn the_table_is_the_rule() {
-        assert!(super::FERRAMENTAS_QUE_ACHATAM.contains(&"bgremoval"));
-        assert!(super::FERRAMENTAS_QUE_ACHATAM.contains(&"painter"));
-        for fora in [
-            "color_equalization",
-            "upscale",
-            "equalize_sizes",
-            "padding",
-            "vector",
-        ] {
-            assert!(
-                !super::FERRAMENTAS_QUE_ACHATAM.contains(&fora),
-                "{fora} nao edita pixels por pincel — a regra deixa-o sobre a dobra"
-            );
-        }
-    }
-}
+#[path = "skin_suspend_tests.rs"]
+mod tests;

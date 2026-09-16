@@ -158,7 +158,7 @@ fn measure_the_cpu_cost_of_a_skinned_frame() {
             for _ in 0..RONDAS {
                 present.world_mut().entity_mut(p).remove::<SpriteMesh>();
                 let t = Instant::now();
-                attach_skin_meshes(&sim, present, PPM, modo, PX_POR_METRO, None);
+                attach_skin_meshes(&sim, present, PPM, modo, PX_POR_METRO, &[]);
                 ms.push(t.elapsed().as_secs_f64() * 1e3);
             }
             ms

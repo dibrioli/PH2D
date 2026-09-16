@@ -51,9 +51,9 @@ pub(crate) use gfx::AppGfx;
 #[path = "app_state_image_tools.rs"]
 mod image_tools; // o que a `App` guarda para as ferramentas de imagem (LOC cap: sibling module)
 pub(crate) use image_tools::{
-    BgremovalPreview, BgremovalPreviewGpu, ColorEqualizationPreview, ImageEditSnapshot,
-    ImageEditTransaction, PainterPreview, PainterPreviewGpu, UpscalePreview,
-    commit_image_edit_transaction, is_image_edit_tool, palette_visible_tool_indices,
+    BgremovalPreview, BgremovalPreviewGpu, ColorEqualizationPreview, Edicao, ImageEditSnapshot,
+    ImageEditTransaction, PainterPreview, PainterPreviewGpu, UpscalePreview, commit_edit,
+    solta_os_ossos,
 };
 #[path = "app_state_devices.rs"]
 pub(crate) mod devices; // o comando e o áudio: arranque e bombeio (LOC cap: sibling module)

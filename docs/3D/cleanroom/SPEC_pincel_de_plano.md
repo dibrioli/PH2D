@@ -1,0 +1,651 @@
+# SPEC — o PINCEL DE PLANO: aparar a forma esfregando, como massa de modelar
+
+```
+Alvo: Blender 5.2 (fonte lido na tag v5.2.0; oráculo corrido = binário 5.2.1 LTS) · Licença: GPL-2.0-or-later · Degrau: T2
+Ledger: aberto em docs/3D/cleanroom/LEDGER_blender-trim-pincel.md, 2026-09-15
+Patente (§8.1): buscado em 2026-09-15 — pincel de escultura que achata contra um plano ajustado ·
+  deslocamento do plano · corte por distância ao plano · média de normais de área. Resultado:
+  NENHUMA patente viva alcança o método. A mais próxima achada (um pincel de suavização com
+  preservação de volume, concedida em 2017) é de OUTRO assunto — suavização laplaciana com
+  compensação de volume —, e está registada no ledger porque é vizinha dos nossos verbos de
+  alisamento, não deste. As três patentes de escultura da era de 2001 estão EXPIRADAS. Arte
+  anterior pública desde os anos 1990, e a metade antiga desta família distribui-se hoje sob MIT.
+  Veredito: prosseguir.
+Filtragem §4.3: executada em 2026-09-15 · Sweep: ✅ VERDE em 2026-09-15 sobre **321** entradas
+  (104 identificadores internos + prosa do alvo em DUAS línguas, com e sem acentos − 16
+  identificadores PÚBLICOS da API, que são a chave de regeneração das fixtures e que o
+  precedente da casa deixa de fora — §4.1.13).
+  ⭐⭐ **Controlo positivo corrido DUAS vezes, e a primeira corrida expôs um buraco NO
+  INSTRUMENTO:** a redacção anterior desta espec foi reconstruída e varrida. Com a vassoura de
+  264 entradas ela acusou **1** dos **3** trechos que a filtragem tinha removido — a vassoura
+  carregava os comentários e as dicas de painel do alvo e **não carregava as frases da discussão
+  pública de desenho dele**, que é a terceira fonte de prosa (§4.1.12). Acrescentadas **57**
+  entradas dessa fonte (nas duas línguas, com e sem acentos), o controlo passou a acusar **2** de
+  3, e esta redacção acusa **0**. ⚠️ O terceiro trecho é uma observação de **FORMA**, que nenhuma
+  vassoura pode apanhar por construção — é exactamente o que o R-pré existe para ver.
+  ⛔ Um sweep verde cujo controlo ninguém correu não é prova de filtragem: é prova de que o
+  instrumento não foi apontado a nada.
+Auditoria §4.2 (R-pré): ⏳ PENDENTE — a janela ainda NÃO pode implementar.
+Mapa de leitura da literatura: não há paper. A literatura pública utilizável é (a) o manual do
+  alvo (factos, ⛔ nunca o wording), (b) a discussão pública de desenho no fórum de
+  desenvolvimento dele, destilada na §10 desta espec, e (c) o nosso próprio registo do porte MIT
+  que já shipa (`crates/ph2d-sculpt3d/src/stroke_plane.rs`). ⛔ Não há apêndice com listing.
+Denylist de URLs (⛔ o Implementador não abre): projects.blender.org · o espelho em github.com/blender ·
+  developer.blender.org · qualquer code-search sobre eles · o rastreador de PRs e issues do alvo.
+  ✅ Livres: docs.blender.org (manual) e devtalk.blender.org (discussão de desenho, sem listings).
+"Este documento descreve comportamento; não contém expressão do alvo."
+```
+
+---
+
+## §0 — A PERGUNTA ZERO, respondida com MEDIÇÃO
+
+> *«vamos ao Trim Brush do próprio blender que faz o trim esfregando o pincel como massinha,
+> modelando. veja lá como é»* — o dono, 2026-09-15.
+
+**O que ele descreveu existe, e não é o gesto de corte que esta casa já especificou.** O
+[`SPEC_trim_gesture.md`](SPEC_trim_gesture.md) descreve um gesto que se **desenha uma vez** e
+corta a peça com uma booleana no pen-up. O que se **esfrega** é outra coisa inteira: um pincel
+que, dab a dab, ajusta um **plano à superfície debaixo dele** e puxa os vértices na direcção
+desse plano. É a família a que pertencem *achatar*, *encher*, *raspar* e *barro* — e no alvo de
+hoje ela está **unificada num pincel só**.
+
+⭐⭐⭐ **E a unificação é recente e TOTAL, medido no catálogo do alvo:** os três verbos separados
+que a nossa casa portou (`Flatten`, `Fill`, `Scrape`) já **não existem** como ferramentas
+naquele catálogo — sobrevivem apenas como valores obsoletos, para ler ficheiros antigos, e
+**nada no modo de escultura os despacha**. O pincel único que ficou no lugar deles é o assunto
+desta espec.
+
+### §0.1 — O que a nossa casa JÁ exprime
+
+O nosso catálogo tem **33 verbos** ([`brush_verb.rs`](../../../crates/ph2d-sculpt3d/src/brush_verb.rs)),
+e **sete** são desta vizinhança: `Flatten` · `Fill` · `Scrape` · `Clay` · `ClayStrips` ·
+`ClayThumb` · `MultiplaneScrape`. Os quatro primeiros partilham um estimador de plano
+([`stroke_plane.rs`](../../../crates/ph2d-sculpt3d/src/stroke_plane.rs)) portado de uma
+referência **MIT** — porte fiel, sem parede, a 1 ULP.
+
+⇒ **O GESTO já existe.** Pôr o pincel na superfície e esfregar já apara, já enche e já raspa.
+Quem pedir *«um pincel que apara esfregando»* e receber o nosso `Scrape` não recebe um erro.
+
+### §0.2 — O que ela NÃO exprime, e o tamanho de cada buraco (MEDIDO)
+
+| o que falta | por que a composição não o dá | medição |
+|---|---|---|
+| **A) o par ALTURA/PROFUNDIDADE** | os nossos quatro verbos escolhem o lado por um **booleano** (`d>0`, `d<0`, bilateral) e não têm tecto nenhum de alcance. O alvo escolhe o lado **e** o alcance, e o alcance **reforma a pegada**: ela deixa de ser uma esfera e passa a ser um **elipsóide achatado ao longo da normal do plano** | com o tecto de cima em `0,2` a população tocada acima do plano cai de **151 para 78** vértices, e os que ficam mudam de peso. Nenhuma combinação dos nossos knobs produz isto (fixtures `lados/*`) |
+| **B) a lei do CENTRO da área** | a nossa é a **média ponderada** das posições da pegada; a do alvo **não é uma média ponderada de coisa nenhuma** — é a média das posições **puxadas em direcção ao cursor** pelo COMPLEMENTO do peso (§2.2) | a altura do nosso centro contra o plano do alvo, num pincel de raio `0,4`: **`−0,0229`** (`5,7 %` do raio) num sulco, **`−0,0464`** (`11,6 %`) com o raio de amostragem em `1,0`. ⚠️ O nosso próprio registo de perf já mediu que um erro de centro de **`5,8 %` do raio** move o `Flatten` `0,54×` e o `Clay` `1,74×` |
+| **C) a ponderação da NORMAL da área** | a nossa pesa pela **máscara**; a do alvo pesa por uma curva suave da distância ao cursor | `cos(medida, ponderada) = 1,000000` contra `0,990`–`0,996` para a média simples, em 6 configurações (fixtures `lei/*`) |
+| **D) DOIS raios de amostragem** independentes (um para a normal, outro para o centro), **com queda** | temos **um** raio de pegada, e ele é o do pincel | provado por um par: com os dois raios iguais as saídas são **byte-idênticas**; com o raio da normal em `1,0` e o do centro a `0` elas divergem `5,6e-2` ⇒ *o zero do segundo cai no primeiro* (fixtures `amostragem/*`) |
+| **E) os dois ESTABILIZADORES** (a normal e o centro do plano, cada um com memória do traço) | não temos nada equivalente; o nosso `accumulate` decide **de que superfície** o plano é lido, não **quanto o plano se lembra** | sobre um degrau, a firmeza da normal muda a saída em `2,8e-2` e a do centro em `2,4e-1` (fixtures `firmeza/*`) |
+| **F) o CORTE por distância ao plano** | não temos knob nenhum que limite o alcance por distância ao plano | vivo em dois dos quatro consumidores do alvo, e **morto em dois** — §7 |
+| **G) o MODO de inversão** | o nosso `invert` só troca o sinal | o alvo oferece **duas** leis para o `Ctrl`, e a segunda é *trocar os papéis dos dois tectos* — que dá exactamente a saída do par trocado, **byte a byte** (fixture `inversao/inversao_troca`) |
+
+### §0.3 — A resposta
+
+> **O gesto que o dono descreveu já é nosso; a LEI que o faz sentir-se como massa de modelar
+> não.** O que falta e vale a wave, por ordem de efeito medido, é **(A) o par de tectos por
+> lado** — que é o que transforma quatro verbos num só e é a razão de o alvo os ter fundido —,
+> depois **(B) a lei do centro da área**, que hoje nos põe o plano `5,7 %`–`11,6 %` do raio fora
+> do sítio, numa grandeza que os nossos próprios gates já sabem que o produto sente.
+
+⛔ **E há uma coisa que NÃO se copia:** dois dos knobs que este pincel oferece no painel do alvo
+estão **mortos** nos verbos onde ele os mostra (§7.3). Portá-los sem os medir seria importar um
+controlo que não faz nada.
+
+---
+
+## §1 — O gesto, e a primeira lei: ele exige ESFREGAR
+
+O artista põe o cursor na superfície, carrega e **arrasta**. Cada amostra do traço (*dab*)
+executa o ciclo inteiro das §§2–4.
+
+⭐⭐ **LEI MEDIDA, e é a que dá o nome ao pedido do dono: o PRIMEIRO dab de cada passagem de
+simetria não move NADA.** O quadro local do pincel é construído a partir da **direcção do
+traço**, e no primeiro dab essa direcção ainda não existe ⇒ o quadro é degenerado e nenhum
+vértice se desloca.
+
+- Medido: um traço de **um** dab sobre uma malha de `2 401` vértices move **`0`**. Um traço de
+  **dois** dabs move `265`. (fixture `lei/lei_primeiro_dab`)
+- ⇒ *não é um pincel de carimbo*: carimbar no mesmo sítio sem arrastar não faz nada.
+- ⚠️ **Isto não é o nosso `Verb::BoxTrim`**, que também não carimba — aquele não é um pincel de
+  todo. Aqui há dab, há falloff, há pressão; o que falta no primeiro é só a **direcção**.
+
+⭐⭐⭐ **E a MEDIÇÃO derrubou a premissa óbvia sobre esse quadro: a orientação dele DENTRO do
+plano não alcança o resultado.** A reprodução da §4 usa **só** a normal do plano, o centro do
+plano e o raio — e reproduz a saída do alvo a **`3e-8`** (ruído de `f32`) em **24 de 25**
+configurações. ⇒ *a direcção do traço só serve para o quadro existir; que direcção ela é não é
+observável na saída deste pincel.* É uma simplificação que podemos adoptar **sem divergir**, e
+está gateada (§12, G-1).
+
+⚠️ ⛔ **A mesma simplificação NÃO vale para os irmãos:** a lâmina em V e o pincel de tiras
+constroem a silhueta **a partir** desse quadro (uma caixa, uma dobradiça ao longo do traço) e ali
+a orientação decide tudo. A lei é deste pincel, não da família.
+
+---
+
+## §2 — Fase 1: o PLANO da pegada
+
+Três grandezas, nesta ordem: a **normal**, o **centro**, e o **deslocamento** que os separa da
+superfície.
+
+### §2.1 — A normal da área
+
+Sobre os vértices cuja distância ao cursor não excede `R_n = raio_do_pincel × fracção_da_normal`:
+
+```
+peso(v)   = suave(1 − dist(v, cursor) / R_n)          suave(p) = clamp(3p² − 2p³, 0, 1)
+normal    = normalizar( Σ_v  peso(v) · normal_do_vértice(v) )
+```
+
+- ⚠️ **É a normal DO VÉRTICE que entra, não a da face.**
+- ⚠️ **A ponderação é a curva suave da distância — não é a máscara, e não é uniforme.** É a
+  diferença (C) da §0.2, e ela foi **discriminada por medição, não escolhida**:
+  `cos(normal medida, candidata ponderada) = 1,000000` contra `0,990`–`0,996` da média simples,
+  nas seis configurações das fixtures `lei/*`.
+
+### §2.2 — O centro da área — ⭐ a lei que NENHUMA intuição dá
+
+Sobre os vértices cuja distância ao cursor não excede `R_c` (§2.3):
+
+```
+peso(v)    = suave(1 − dist(v, cursor) / R_c)                     [a MESMA curva da §2.1]
+ajustado(v)= cursor + (posição(v) − cursor) · (1 − peso(v))
+centro     = média_aritmética_simples( ajustado(v) )               [dividida pela CONTAGEM]
+```
+
+⭐⭐⭐ **Leia-o duas vezes: o peso não multiplica a posição — ele PUXA a posição para o cursor, e
+a média é simples.** Um vértice **no centro** da pegada (peso `1`) contribui com o **cursor**; um
+vértice **na borda** (peso `0`) contribui com a **própria posição**. É o oposto do que a palavra
+*peso* sugere.
+
+⚠️ **Discriminação MEDIDA, em 9 configurações** (fixtures `lei/*`, coluna «altura do candidato
+contra o plano medido», pincel de raio `0,4`):
+
+| candidato | crista | rampa | degrau | raio da área `1,0` | raio da área `2,0` |
+|---|---|---|---|---|---|
+| média aritmética das posições | `−0,01392` | `−0,01603` | `−0,00731` | `−0,01613` | `−0,00269` |
+| média **ponderada** pelo peso (o que NÓS fazemos) | `−0,02287` | `−0,01603` | `−0,00731` | `−0,04635` | `−0,02928` |
+| ⭐ **média das posições PUXADAS para o cursor** | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** | **`0,00000`** |
+
+⇒ o terceiro cai **exactamente** no plano que o alvo usou, e os outros dois erram por uma
+fracção do raio que o produto sente. *Três candidatos, uma régua, um sobrevivente.*
+
+### §2.3 — Os DOIS raios, e a queda
+
+```
+R_n = raio × fracção_da_normal                            (a normal, §2.1)
+R_c = raio × fracção_da_área      se  fracção_da_área > 0
+R_c = raio × fracção_da_normal    se  fracção_da_área = 0  ⭐ a QUEDA
+```
+
+- ⚠️ **A segunda fracção só existe para ESTE pincel.** Nos irmãos da família o centro é amostrado
+  com a fracção da normal, sempre.
+- ⭐ **A queda foi provada por um PAR, não lida:** com as duas fracções iguais (`0,5` e `0,5`) as
+  saídas com `fracção_da_área = 0` e `= 0,5` são **byte-idênticas**; com a fracção da normal em
+  `1,0`, as mesmas duas divergem `5,6e-2`. *Um zero que cai noutro knob não se vê num valor —
+  vê-se num par.* (fixtures `amostragem/amostragem_area0_normal10` e `_area05_normal10`)
+- Faixa das duas fracções: `0 … 2`, valor de fábrica `0,5` nas duas.
+- ⚠️ A fracção da área aceita ser modulada pela **pressão**; a da normal não.
+
+### §2.4 — O deslocamento do plano
+
+```
+centro ← centro + normal · (raio × deslocamento)
+```
+
+⭐ **Medido exactamente:** com `deslocamento = +0,2` num pincel de raio `0,4` o plano anda
+`+0,08000` ao longo da normal — razão `0,2000` do raio, ao dígito impresso; com `−0,2` anda
+`−0,08000` (fixtures `lei/lei_deslocado_p02` e `_m02`).
+
+- ⚠️ O deslocamento pode ser modulado pela **pressão**.
+- ⚠️ Ele é **o mesmo knob** que na nossa casa transforma o `Flatten` num `Clay`. Aqui não
+  transforma em nada: ele apenas levanta ou baixa o plano, e são a **altura** e a
+  **profundidade** que decidem quem é tocado.
+- ⛔ **Num dos irmãos da família ele está MORTO, e noutro quase** — §7.3.
+
+### §2.5 — As duas metades da pegada, e qual ganha
+
+Os vértices da amostragem são separados em **dois baldes** pelo sinal do produto interno entre a
+normal do vértice e a normal da vista: os que **olham para o observador** e os que **olham para o
+outro lado**. ⭐ **O primeiro balde não-vazio ganha, e a ordem é fixa: primeiro o que olha para o
+observador.**
+
+⚠️ **A nossa casa já tem esta lei, e já a tem com o mesmo fallback** — está escrita no
+`fit_plane` (`front_only = true`, e se ninguém pesar, repete sem o filtro). ⇒ **nada a fazer
+aqui**, e a coincidência é a esperada: as duas referências resolvem a mesma armadilha (um dab
+perto da silhueta ajustar o plano com vértices do outro lado).
+
+### §2.6 — De que superfície o plano é lido
+
+Com o **acumular** desligado (o valor de fábrica) a amostragem lê as posições e as normais
+**congeladas no pen-down**; ligado, lê as vivas.
+
+⚠️ **A nossa casa já ramifica assim**, e a lista de quem congela está lá, com a medição ao lado.
+⇒ o pincel novo entra nessa lista **como os outros de plano**.
+
+### §2.7 — ⛔ O que este pincel IGNORA, e é preciso medir para acreditar
+
+Dois interruptores que a família inteira tem — *usar o plano do pen-down* e *usar a normal do
+pen-down* — **não alcançam este pincel**. Ele recalcula o plano **a cada dab, sempre**.
+
+⭐ **Medido, e o resultado é `0,000e+00`:** ligar cada um deles devolve a saída **byte-idêntica**
+à da base, sobre `2 401` vértices (fixtures `inercias/*`, com `inercia_repete` como controlo de
+determinismo, também `0,000e+00`).
+
+---
+
+## §3 — Fase 2: o quadro local, e os DOIS tectos
+
+Com a normal `n`, o centro `c` e o raio `R`, cada vértice ganha coordenadas locais em **unidades
+de raio**:
+
+```
+z(v)     = ((posição(v) − c) · n) / R          → a altura com sinal, acima (+) ou abaixo (−) do plano
+t²(v)    = |posição(v) − c|² / R² − z(v)²      → o quadrado da distância TANGENCIAL ao plano
+```
+
+### §3.1 — Altura e profundidade: uma pegada que deixa de ser redonda
+
+```
+se z ≥ 0:   d(v) = √( t² + (z / altura)² )        e   d(v) = 1  quando altura = 0
+se z < 0:   d(v) = √( t² + (z / profundidade)² )  e   d(v) = 1  quando profundidade = 0
+```
+
+⭐ **O que isto é, geometricamente:** a pegada deixa de ser uma esfera de raio `R` e passa a ser
+um **elipsóide** de semi-eixos `R`, `R` e `altura · R` acima do plano, `profundidade · R` abaixo.
+Um vértice está dentro se `d < 1`.
+
+⚠️ **E o caso `= 0` é uma escolha de desenho, não um limite:** pôr `d = 1` é pôr o vértice
+**exactamente na borda**, onde toda curva de falloff vale zero ⇒ **aquele lado inteiro deixa de
+ser tocado**.
+
+- ⭐ **Medido:** `altura = 1, profundidade = 0` move **151** vértices, **todos acima** do plano e
+  **nenhum abaixo**. `altura = 0, profundidade = 1` move **114**, todos abaixo. `1` e `1` move
+  **265 = 151 + 114**, os dois lados (fixtures `lados/*`).
+- ⭐ **`altura = 0` E `profundidade = 0` ⇒ ZERO vértices movidos.** O pincel fica inerte sem
+  deixar de existir — é o *nada* do controlo, e é alcançável (fixture `lados/traco_inerte`).
+- ⭐ **O tecto é de facto um tecto:** a maior distância ao plano tocada acima dele foi `0,0460`
+  com `altura = 0,2`, `0,1316` com `0,5`, `0,2278` com `0,8` e `0,2278` com `1,0` (raio `0,4`; a
+  `0,8` a fixtura já não tem geometria mais alta ao alcance).
+- Faixa dos dois: `0 … 1`.
+
+### §3.2 — A curva e a dureza
+
+`d` entra na **dureza** e depois na **curva de falloff**, exactamente como em qualquer outro
+pincel da casa — com o raio **já normalizado a `1`**, porque `d` é adimensional.
+
+```
+factor(v) = curva( dureza( d(v) ) )      e      factor(v) = 0  quando  d(v) ≥ 1
+```
+
+⚠️ Depois entram, pela ordem, a **máscara**, o **recorte de região**, o filtro de **faces viradas
+ao observador** (opcional), a **auto-máscara** e a **textura** — todos partilhados com o resto da
+casa. Nada aqui é próprio deste pincel.
+
+### §3.3 — O tecto também pesa
+
+```
+se altura ∉ {0, 1}        e z > 0:   factor(v) ← factor(v) × altura
+se profundidade ∉ {0, 1}  e z < 0:   factor(v) ← factor(v) × profundidade
+```
+
+⭐ **Os dois tectos fazem DUAS coisas**: encolhem o elipsóide (§3.1) **e** enfraquecem o toque
+naquele lado. Um artista que baixa a altura não está só a proteger o que está alto — está também
+a acariciar mais suavemente o que sobra.
+
+⚠️ **Os dois casos extremos não precisam de ser tratados à parte:** com o tecto em `1` a
+multiplicação é a identidade, e com o tecto em `0` o factor daquele lado já é zero pela §3.1. ⇒
+*a multiplicação pode ser incondicional e o resultado é o mesmo, ao bit* — quem a escrever com um
+caso especial não compra comportamento nenhum, só relógio.
+
+---
+
+## §4 — Fase 3: a translação, e a LEI EXACTA
+
+```
+factor(v) ← factor(v) × z(v)
+translação(v) = − n · R · força² · factor(v)
+```
+
+⇒ substituindo `z(v) = ((p − c) · n)/R`:
+
+> **translação(v) = − n · força² · factor_de_falloff(v) · distância_com_sinal_ao_plano(v)**
+
+Ou seja: **cada vértice caminha em direcção ao plano, ao longo da normal do plano, uma fracção da
+sua própria distância a ele.** Com a curva constante e a força a `1`, a fracção é `1` e o vértice
+aterra **no plano**.
+
+⭐⭐⭐ **VERIFICADO, e é o resultado central desta espec.** Com a curva constante e força `1`, os
+vértices tocados aterram sobre **um único plano**, com resíduo:
+
+| superfície | vértices tocados | resíduo ao plano ajustado |
+|---|---|---|
+| sulco | `265` | `1,7e-08` |
+| rampa | `274` | `6,8e-09` |
+| degrau | `271` | **`0,0e+00`** |
+| bossas | `287` | `2,1e-08` |
+| sulco, meio raio | `62` | `6,7e-09` |
+| sulco, raio e meio | `632` | `2,4e-08` |
+
+e **todas as translações são paralelas à normal do plano** (`min |cos| = 1,000000000`).
+
+⚠️ **A FORÇA entra AO QUADRADO.** Medido: com `força = 0,5` o deslocamento é **`0,250000`** do
+que ele é a `1,0` (mediana sobre os vértices tocados; `min 0,249999`, `max 0,250001`).
+⇒ *é `força²`, não `força`* — a mesma lei que os outros pincéis desta casa já pagaram.
+
+### §4.1 — A reprodução END-TO-END
+
+A lei inteira das §§2–4 foi reprogramada a partir do **repouso** e comparada à saída do alvo, em
+**25** configurações (fixtures `lei/*` e `lados/*`), variando superfície, raio, os dois raios de
+amostragem, o deslocamento e os dois tectos:
+
+- **24 de 25:** `max |Δ| ∈ [6,7e-09 … 8,0e-08]`, e a **população tocada bate exactamente** (por
+  exemplo `265` previstos contra `265` medidos, `151` contra `151`, `114` contra `114`).
+- **1 de 25 — e a causa está NOMEADA:** a superfície com curvatura nos **dois** eixos lê
+  `3,2e-05` (`1,5e-04` do deslocamento máximo). ⭐ **A divergência é inteiramente da NORMAL** — o
+  centro previsto cai a `1,3e-09` do plano medido e o ângulo entre as duas normais é
+  **`0,00575°`**. ⚠️ **E o mecanismo é da MALHA, não do pincel:** as três superfícies exactas têm
+  quadriláteros **planos** (a altura depende de um eixo só) e a divergente tem quadriláteros
+  **empenados**, onde *a própria definição da normal de um vértice* é uma escolha a montante
+  desta lei. ⇒ **a nossa malha é de triângulos e a ambiguidade não existe lá**; o número fica
+  registado para quem um dia alimentar este verbo com quadriláteros.
+
+---
+
+## §5 — A inversão: DUAS leis para a mesma tecla
+
+O `Ctrl` (ou o sentido «subtrair») escolhe **uma de duas** leis, num selector próprio:
+
+| modo | o que faz |
+|---|---|
+| **afastar** (o de fábrica) | a **força troca de sinal** ⇒ os vértices afastam-se do plano em vez de se aproximarem |
+| **trocar os tectos** | a **altura e a profundidade trocam de papel**; a força não muda |
+
+⭐ **Medido, e o segundo modo é EXACTO:** invertendo um pincel de `altura 1 / profundidade 0` no
+modo *trocar*, a saída é **byte-idêntica** (`0,000e+00`) à do mesmo pincel não invertido com
+`altura 0 / profundidade 1`. Com `altura = profundidade` o modo *trocar* é um **no-op**, também
+byte-idêntico. O modo *afastar*, esse, dá saída diferente (`7,0e-02`).
+(fixtures `inversao/*`)
+
+⚠️ **O que ele NÃO permite, e os autores dizem-no em público:** não há como ter um pincel que
+*muda de modo* ao ser invertido — o selector é um só, e o `Ctrl` aplica o modo que está escolhido.
+É uma limitação **declarada** do desenho, não um defeito.
+
+---
+
+## §6 — Os ESTABILIZADORES: quanto o plano se LEMBRA
+
+Dois números em `0 … 1`, ambos a **zero** de fábrica. Eles dão ao plano uma **memória do traço**.
+
+### §6.1 — A firmeza da NORMAL
+
+Uma média móvel sobre as normais dos dabs anteriores, com **duas** metades:
+
+```
+comprimento_da_memória = 1 + firmeza_da_normal × (LIMITE − 1)        [inteiro, truncado]
+```
+
+- **No primeiro dab da passagem:** a memória nasce cheia com a normal daquele dab.
+- **Nos seguintes:** a normal nova é primeiro **interpolada com a última normal publicada**,
+  usando a própria firmeza como fracção (firmeza `1` ⇒ fica a antiga); o resultado entra na
+  memória circular; e a normal que o pincel usa é a **média normalizada** de tudo o que está lá.
+
+⚠️ **São dois filtros em série, não um:** uma interpolação com o valor anterior **e** uma média
+móvel. Escrever só um dos dois dá outra curva de resposta.
+
+- `LIMITE` (o comprimento máximo da memória) é **`20`** dabs.
+- ⭐ Medido sobre um degrau: firmeza `0,25` muda a saída em `2,6e-02`, `0,5` em `2,7e-02`, `1,0`
+  em `2,8e-02` contra a firmeza `0` (fixtures `firmeza/firmeza_normal_*`).
+
+### §6.2 — A firmeza do CENTRO
+
+Também uma média móvel, mas o que ela guarda **não é o centro** — é a **altura com sinal** de
+cada centro guardado contra um plano de referência:
+
+```
+comprimento_da_memória = 1 + firmeza_do_centro × (LIMITE − 1)
+
+no primeiro dab:   a memória nasce cheia com o centro daquele dab
+nos seguintes:     projecta-se o centro novo sobre o plano publicado no dab anterior,
+                   e interpola-se entre o centro novo e essa projecção pela firmeza
+                   (firmeza 1 ⇒ fica a projecção, isto é, o centro não sai do plano anterior)
+
+publicação:  plano_de_referência = (centro que acabou de entrar, normal já estabilizada)
+             média  = média das alturas com sinal de TODOS os centros guardados
+             centro = centro_que_entrou − normal · (altura_dele − média)
+```
+
+⭐ **O efeito: o centro publicado mantém o desvio MÉDIO dos centros recentes**, em vez de saltar
+para o centro de agora.
+
+⚠️⚠️ **E aqui está uma lição de RÉGUA que esta espec pagou.** A primeira fixtura deste knob era
+uma superfície de **bossas simétricas**, e nela o knob leu-se **inerte** (`1,5e-08` a `3,0e-08`,
+que é ruído de `f32`) para **todos** os valores e para **todos** os comprimentos de traço (`4`,
+`8`, `16` e `24` dabs). Concluir dali *«o knob do centro é mudo»* teria sido um erro, e é
+exactamente o defeito que o mecanismo explica: **numa superfície simétrica as alturas dos centros
+recentes somam ~zero**, então a correcção é ~zero por construção.
+
+Sobre superfícies onde o centro **passeia com o traço**, ele é vivo e forte:
+
+| superfície | firmeza `0,25` | `0,5` | `1,0` |
+|---|---|---|---|
+| **degrau** | `1,7e-01` | `2,4e-01` | `1,9e-01` |
+| **rampa** | `1,7e-02` | `2,2e-02` | `2,5e-02` |
+| bossas simétricas (⚠️ o controlo mudo) | `1,5e-08` | `3,0e-08` | `3,0e-08` |
+
+⇒ **as duas linhas mudas viajam na fixture** (`firmeza/firmeza_centro_bossas_00` e `_10`), com
+este parágrafo, para que o próximo leitor não repita a medição errada.
+
+### §6.3 — ⚠️ A advertência dos autores, e ela bate com a medição
+
+Os autores do alvo dizem em público que **estabilizar o centro sem estabilizar a normal dá
+resultados estranhos**. A medição concorda com o mecanismo: o plano de referência de §6.2 usa a
+normal **já estabilizada**, então a correcção do centro é calculada contra uma direcção que, sem
+a firmeza da normal, salta de dab a dab.
+
+⇒ **se a nossa UI oferecer os dois, os dois andam juntos** (um só controlo, ou o segundo gateado
+pelo primeiro). É decisão de produto, e o número que a sustenta está acima.
+
+---
+
+## §7 — O CORTE POR DISTÂNCIA AO PLANO — o knob que se chama *aparar*
+
+⭐⭐⭐ **Esta é, à letra, a palavra que o dono usou.** O alvo tem um par de controlos — um
+interruptor e um número em `0 … 1` — que o painel dele apresenta sob a palavra *aparar*: ligado,
+ele **deixa de fora do dab tudo o que estiver demasiado afastado do plano**. Ele é oferecido na
+**família do barro**, não neste pincel.
+
+### §7.1 — ⛔ Ele NÃO alcança o pincel de plano, e isso é por desenho
+
+A altura e a profundidade (§3.1) **fazem o trabalho dele, e melhor**: elas cortam por lado, com
+uma fronteira que é um elipsóide e não um degrau.
+
+⭐ **Medido:** ligar o corte com o limiar em `0,05` (bem apertado) sobre o pincel de plano devolve
+a saída **byte-idêntica** (`0,000e+00`) à da base (fixture `inercias/inercia_corte`).
+⇒ *no alvo, o painel deste pincel não o mostra, e o motor dele não o lê.*
+
+### §7.2 — Ele existe em DUAS leis diferentes, sob o mesmo nome
+
+| lei | onde | o que ela mede | quando corta |
+|---|---|---|---|
+| **A — pelo DESLOCAMENTO** | a lâmina em V | o **comprimento da translação** que o dab ia aplicar | `|translação|² > raio² × limiar²` |
+| **B — pela ALTURA LOCAL** | o pincel de tiras | a **altura do vértice** no quadro local do dab, já em unidades de raio | `altura_local > limiar` |
+
+⚠️ **São duas grandezas diferentes com o mesmo rótulo.** A lei A pergunta *«quanto ia mexer?»* e a
+lei B pergunta *«quão alto está?»*. Um vértice muito alto mas com falloff zero passa na A e
+reprova na B. ⇒ **ao portar, escolha a lei e nomeie-a**; herdar «um knob chamado aparar» sem
+dizer qual é herdar uma ambiguidade.
+
+- ⭐ Medido, os dois vivos: com o limiar de `0,05` a `1,0`, a lâmina em V vai de `52` a `402`
+  vértices tocados (a saída muda até `1,0e-01`) e o pincel de tiras de `290` a `444` (até
+  `1,4e-02`). **Em `1,0` os dois voltam a ser byte-idênticos ao desligado** — o limiar máximo
+  não corta nada (fixtures `corte/*`).
+
+### §7.3 — ⛔⛔ E em DOIS dos quatro consumidores ele está MORTO — com o painel do alvo a mostrá-lo
+
+Esta é a medição que mais muda o que devemos construir. A família do barro tem **quatro**
+membros; o painel do alvo oferece o corte em **três** deles (e esconde-o no quarto, que é
+justamente onde ele funciona melhor).
+
+| verbo | o painel do alvo MOSTRA o corte? | ele FAZ alguma coisa? | prova |
+|---|---|---|---|
+| **barro** | ✅ sim | ⛔ **MORTO** | seis valores de limiar (`desligado`, `0,05`, `0,1`, `0,3`, `0,5`, `1,0`) dão saídas **byte-idênticas** |
+| **polegar de barro** | ✅ sim | ⛔ **MORTO** | idem, as seis byte-idênticas |
+| **tiras de barro** | ✅ sim | ✅ vivo (lei B) | `290 … 444` vértices |
+| **lâmina em V** | ⛔ **não** | ✅ vivo (lei A) | `52 … 402` vértices |
+
+⭐⭐⭐ **E o DESLOCAMENTO do plano (§2.4) tem a mesma doença, num recorte diferente:**
+
+| verbo | o deslocamento faz alguma coisa? | prova |
+|---|---|---|
+| **barro** | ✅ vivo | `+0,2` e `−0,2` mudam a saída `4,4e-02` |
+| **tiras de barro** | ✅ vivo | `3,4e-02` / `1,1e-02` |
+| **polegar de barro** | ⛔ **MORTO** | `+0,2` e `−0,2` dão saída **byte-idêntica** a `0` |
+| **lâmina em V** | ⛔ **MORTO** — ⭐ **excepto numa célula** | ver abaixo |
+
+⭐⭐⭐ **A célula única é a assinatura mais limpa desta espec.** Na lâmina em V o centro do plano
+recebe o deslocamento **e depois é substituído pela posição do cursor** — o valor chega ao
+consumidor e a matemática deita-o fora. A substituição corre em todos os caminhos **menos um**:
+no modo **dinâmico E invertido** ela não corre, e o deslocamento **sobrevive**.
+
+Medido (fixtures `corte/corte_laminav_*`):
+
+| célula | deslocamento `+0,2` contra `0` |
+|---|---|
+| modo fixo | **byte-idêntico** |
+| modo dinâmico | **byte-idêntico** |
+| modo dinâmico **+ invertido** | **`3,2e-02`** ⇒ ele vive |
+
+⚠️ **É exactamente a espécie que o `CLAUDE.md §5.0` chama *«o consumidor que PROJECTA o valor
+fora»*: o fio está completo, o valor chega ao solver, e a matemática descarta-o.** Nenhuma sonda
+de *«quem lê este campo?»* o veria — ele **é** lido.
+
+⇒ **A consequência para nós é directa: NÃO porte o par (corte, deslocamento) para os quatro
+verbos por simetria.** Cada um deles ou lê o knob ou não o lê, e três das oito células medidas
+estão mortas no alvo.
+
+---
+
+## §8 — Casos de borda (todos observados)
+
+| entrada | o que acontece |
+|---|---|
+| **primeiro dab de uma passagem de simetria** | nada se move (§1) |
+| **superfície já plana** | `0` de `2 401` vértices movidos — o plano ajustado É a superfície, e toda distância com sinal é zero. ⭐ É o **auto-limite**: o pincel pára sozinho quando acabou (fixture `superficies/superficie_lisa`) |
+| **altura `0` e profundidade `0`** | `0` movidos (§3.1) |
+| **pegada inteiramente do outro lado da silhueta** | a segunda metade da §2.5 assume; nunca se devolve um plano indefinido |
+| **máscara** | entra como factor, antes de tudo; metade mascarada move `327` em vez de `560` |
+| **traço parado** | os dabs seguintes ao primeiro continuam a trabalhar, porque a direcção já existe |
+| **objecto com escala** | o deslocamento do plano é multiplicado pela escala do objecto antes de o aplicar ao centro |
+| **pegada projectada em vez de esférica** | a normal do plano é projectada para fora da direcção da vista e renormalizada |
+
+---
+
+## §9 — Custo
+
+| fase | custo | onde dói |
+|---|---|---|
+| amostragem da normal e do centro (§2) | `O(vértices na pegada)`, **duas** varreduras com raios diferentes | com a fracção da área em `2,0` a segunda varredura cobre `4×` a área da primeira (medido: `1 131` amostras contra `61` a `0,25`) |
+| quadro local + distâncias (§3) | `O(vértices na pegada)`, uma passagem | — |
+| translação (§4) | `O(vértices na pegada)` | — |
+| estabilizadores (§6) | `O(comprimento da memória)` por dab, tecto `20` | desprezável |
+
+⚠️ **A amostragem é a metade cara**, e ela corre **por dab e por passagem de simetria**. A nossa
+casa já paga isto nos quatro verbos de plano; o pincel novo acrescenta **uma** varredura (o
+segundo raio), não duas.
+
+---
+
+## §10 — O que os autores aprenderam, e o que NÃO copiar
+
+⚠️ Destilado da discussão pública de desenho do alvo (§4.1.12: facto e método são livres; o
+texto não — re-dito aqui em palavras nossas).
+
+1. **A razão de existir do pincel é a unificação**: três ferramentas que só diferiam em *que lado
+   tocar* viraram uma com dois números. É a mesma economia que a nossa `RefMode` já faz noutro
+   eixo.
+2. **Os dois tectos no máximo ao mesmo tempo produzem deformação indesejável em algumas
+   superfícies** — registo público dos próprios autores, que chegaram a propor baixar o tecto de
+   baixo para metade no perfil de *achatar*. ⇒ *o nosso valor de fábrica é decisão de produto, e
+   existe um aviso do lado deles.*
+3. **A firmeza do centro sozinha, sem a da normal, produz resultado que eles próprios
+   classificam como imprevisível** (§6.3).
+4. **Não é possível misturar os dois modos de inversão** (§5) — limitação declarada.
+5. **Um defeito público deles vale como gate para nós:** o pincel chegou a comportar-se como se
+   o plano estivesse ancorado num ponto fixo da cena em vez de acompanhar o cursor, e a causa
+   estava em como a distância passou a ser medida. ⇒ o nosso gate G-6 (§12) mede exactamente isso.
+6. ⛔ **Não copiar:** o cursor deles **não desenha** a orientação nem o deslocamento do plano,
+   por política deliberada de não acrescentar desenho ao cursor — e os utilizadores pedem-no. *A
+   nossa casa não tem essa política*, e um traço de plano é precisamente o gesto em que o artista
+   não sabe onde o plano está. É uma oportunidade, não uma omissão a herdar.
+
+---
+
+## §11 — As fixtures
+
+`docs/3D/cleanroom/fixtures/pincel_de_plano/` — **100** traços, agrupados por assunto:
+
+| pasta | o que fixa |
+|---|---|
+| `lei/` | a lei exacta num dab efectivo, sobre quatro superfícies, dois raios, os dois raios de amostragem e os dois deslocamentos (14) |
+| `lados/` | altura e profundidade, isolados e em traço inteiro (14) |
+| `inversao/` | as duas leis do `Ctrl` (3) |
+| `firmeza/` | os dois estabilizadores, incluindo **o controlo mudo** da §6.2 (12) |
+| `inercias/` | as três coisas que este pincel ignora, mais o determinismo (5) |
+| `amostragem/` | os dois raios e a queda (7) |
+| `corte/` | o corte e o deslocamento nos quatro consumidores — com os **três** pares mortos (25) |
+| `superficies/` | plana, degrau, rampa, esfera, máscara, e as opções partilhadas (11) |
+| `cadeia/` | o traço passo a passo, e a força ao quadrado (8) |
+
+Cada ficheiro é texto comprimido com **cabeçalho de proveniência** (todas as grandezas que
+enquadram o traço, uma por linha), blocos `r` (repouso), `n` (normais de repouso), `s` (saída) e
+`c` (os pontos do cursor). Malhas de entrada **nossas**; regeneração é acto de **E**.
+
+---
+
+## §12 — Os GATES propostos, cada um com a barra e de onde ela veio
+
+⚠️ **A barra de paridade é DERIVADA, e a derivação é esta:** o oráculo calcula em `f32`; a
+reprodução independente da lei inteira lê `6,7e-09 … 8,0e-08` em 24 de 25 configurações, sobre
+coordenadas de ordem `0,4`. Um ULP de `f32` a `0,4` é `≈ 2,4e-08`. ⇒ a barra é **`1e-6` em
+unidades de objecto**, que é `≈ 40` ULP — folga para a ordem de somatório, e **duas ordens de
+grandeza** abaixo do pior desvio que a espec regista como divergência. ⛔ Não é um epsilon de
+conforto: é `40 ULP` do formato em que o oráculo respondeu.
+
+| # | gate | o que afirma | barra, e de onde |
+|---|---|---|---|
+| **G-1** | `a_lei_do_plano_reproduz_o_oraculo` | a lei das §§2–4 reproduz as **25** fixtures de `lei/` e `lados/` | `max|Δ| ≤ 1e-6` (40 ULP de `f32` a `0,4`) |
+| **G-2** | `o_primeiro_dab_nao_move_nada` | um traço de **um** dab deixa a malha byte-idêntica | **igualdade exacta** — o alvo mede `0` de `2 401` |
+| **G-3** | `com_a_curva_constante_os_tocados_aterram_no_plano` | força `1` + curva constante ⇒ todos os tocados num plano só | resíduo `≤ 1e-6`; o alvo mede `0,0e+00 … 2,4e-08` |
+| **G-4** | `a_forca_entra_ao_quadrado` | força `0,5` desloca `0,25×` | `|razão − 0,25| ≤ 1e-5`; o alvo mede `0,249999 … 0,250001` |
+| **G-5** | `o_centro_da_area_e_a_media_das_posicoes_puxadas_para_o_cursor` | ⭐ **o gate DISCRIMINANTE**: a lei da §2.2 cai no plano do oráculo e as outras duas candidatas **não** | a candidata certa `≤ 1e-6`; as outras duas têm de **reprovar** por `≥ 5e-3` — a barra vem do **vale medido** entre `0,00000` e `0,00731` (o menor desvio das candidatas erradas em 9 configurações) |
+| **G-6** | `o_plano_segue_o_cursor_e_nao_a_origem` | o centro do plano acompanha o cursor ao longo do traço | ⭐ a barra é o **defeito público do alvo** (§10.5): o centro não pode ficar a mais de `1` raio do dab. Um gate cuja barra é a de um defeito real vale mais do que um número escolhido |
+| **G-7** | `os_dois_tectos_escolhem_o_lado_e_so_o_lado` | `altura 1/profundidade 0` toca **só** acima; `0/1` **só** abaixo; `1/1` toca a união exacta dos dois | **contagens exactas** (`151` / `114` / `265 = 151+114`) |
+| **G-8** | `altura_zero_e_profundidade_zero_e_um_no_op` | o pincel inerte é alcançável | **igualdade exacta** |
+| **G-9** | `a_inversao_por_troca_e_o_par_trocado` | inverter no modo *trocar* = o par `(profundidade, altura)` não invertido | **igualdade exacta** — o alvo mede `0,000e+00` |
+| **G-10** | `o_raio_da_area_a_zero_cai_no_raio_da_normal` | o par que prova a queda da §2.3 | **igualdade exacta** quando as duas fracções coincidem, e **desigualdade ≥ 1e-3** quando não |
+| **G-11** | `uma_superficie_ja_plana_nao_se_mexe` | o auto-limite | **igualdade exacta** |
+| **G-12** | `a_firmeza_do_centro_e_muda_numa_superficie_simetrica_e_viva_num_degrau` | ⭐ o gate das **duas metades**: ele reprova se o knob deixar de ser mudo no controlo **ou** se deixar de ser vivo no degrau | mudo `≤ 1e-6`; vivo `≥ 1e-2`. ⛔ Sem a metade muda, um knob que mexa em tudo passaria |
+| **G-13** | `cada_verbo_le_o_corte_que_o_nosso_painel_lhe_oferece` | ⛔ **o gate contra o knob morto**: para cada verbo do nosso catálogo que mostre o corte ou o deslocamento, varrer o knob **tem** de mudar a saída | mudança `≥ 1e-4`. A barra sai do **lado aprovado** — a menor mudança medida num knob VIVO do alvo foi `1,1e-02`, duas ordens acima |
+| **G-14** | `a_memoria_da_normal_tem_tecto` | o comprimento da memória satura em `20` dabs | contagem exacta |
+
+⚠️ **G-13 é o gate que esta espec mais recomenda**, e ele não existe em lado nenhum deste repo
+hoje: nenhum instrumento nosso pergunta se o **valor** de um controlo chega a um consumidor
+(`CLAUDE.md §5.0`). O alvo tem **três** pares mortos entre oito células medidas; construir a
+nossa versão sem este gate é herdar a doença com o desenho.
+
+---
+
+## §13 — A proveniência de cada número
+
+| número | de onde |
+|---|---|
+| todas as contagens de vértices, resíduos, razões e `max |Δ|` | **medição**: o oráculo corrido pelo subagente-E em 2026-09-15 sobre malhas nossas, `149` corridas em duas rodadas; as fixtures publicadas são `100` delas |
+| `suave(p) = 3p² − 2p³` | **fórmula**, e a mesma que esta casa já usa na curva `SMOOTH` |
+| o tecto `20` da memória dos estabilizadores | **facto de comportamento** lido do alvo, confirmado pela saturação medida |
+| faixas `0…1` (altura, profundidade, corte, firmezas) e `0…2` (os dois raios de amostragem) | **facto de interface** do alvo |
+| valores de fábrica (`0,5` nos dois raios; `0` nas duas firmezas; `0` no deslocamento) | **facto de interface** do alvo |
+| a barra `1e-6` dos gates | **derivada**: `≈ 40 ULP` de `f32` na escala das fixtures (§12) |
+| a barra `5e-3` do G-5 e a `1e-4` do G-13 | **derivadas de vales MEDIDOS** que incluem o lado aprovado (§12) |
+| a lição da §6.2 (a fixtura muda) | **medição**, e ela fica na espec porque uma barra calibrada sem o lado vivo mede outra coisa |
+
+⛔ **Nenhum número desta espec foi escolhido por conforto.**

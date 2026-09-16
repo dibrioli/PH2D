@@ -40,6 +40,23 @@ A alternativa é ordenar antes a integração desta pasta para o `main`.
 ⛔ *Um handoff nunca acrescenta conteúdo além dos campos do molde* — o resto vive na espec
 e no ledger.
 
+## ⭐⭐ A obra do PINCEL DE PLANO (alvo `blender-trim-pincel`, 2026-09-15)
+
+> *«o Trim Brush … que faz o trim esfregando o pincel como massinha, modelando»* — o dono.
+> ⚠️⚠️ **NÃO é o [`SPEC_trim_gesture.md`](SPEC_trim_gesture.md)**: aquele é um gesto que se
+> **desenha uma vez** e corta com uma booleana; este é um **pincel que se esfrega**. Os dois
+> chamam-se «trim» e não têm uma linha em comum — por isso têm ledgers e vassouras próprios.
+
+| arquivo | quem lê |
+|---|---|
+| ⭐⭐ [`SPEC_pincel_de_plano.md`](SPEC_pincel_de_plano.md) | **todos** — a espec: a PERGUNTA ZERO respondida com medição (§0), o plano da pegada, os dois tectos por lado, a lei exacta reproduzida a `8e-08` em 24 de 25 configurações, as duas inversões, os dois estabilizadores, e ⛔ **os três pares de knobs MORTOS no alvo** (§7.3). **14 gates propostos.** ⏳ **R-pré PENDENTE — a janela I ainda não pode implementar** |
+| ⭐ [`fixtures/pincel_de_plano/`](fixtures/pincel_de_plano/README.md) | **todos** — **100** traços do oráculo sobre malhas NOSSAS, em 9 famílias; inclui as **três** que existem para não se mexerem e as **duas** que existem para serem mudas |
+| [`INBOX_blender-trim-pincel.md`](INBOX_blender-trim-pincel.md) | o Implementador **escreve** (append cego), nunca lê |
+| ⛔ `LEDGER_blender-trim-pincel.md` · `VASSOURA_blender-trim-pincel.txt` | **E e R apenas** — carregam rastros do alvo de propósito |
+
+⛔ **Denylist de caminhos desta obra** (o Passo 0 do BLOCO-I nega `Read` E `Bash` sobre eles):
+`~/Referencias/**` · `/home/enio/Documentos/Recursos/BlenderSculpt/**`.
+
 ## ⭐ A obra do PINCEL DE TECIDO (alvo `blender-cloth`, 2026-09-05)
 
 | arquivo | quem lê |

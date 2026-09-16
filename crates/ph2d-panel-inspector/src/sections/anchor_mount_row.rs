@@ -76,6 +76,23 @@ pub(crate) fn mount_placeholder(info: &InspectorAnchorInfo) -> String {
     }
 }
 
+/// ⭐⭐⭐ **A COLUNA desta secção — os TRÊS nomes que ela pinta.**
+///
+/// ⛔⛔ Medido em 2026-09-15: os dois nomes das caixas medem `115,4` e `135,8 px` a `Sm` e a
+/// **metade cega** dá `104,6` na largura do dono — *os dois saíam cortados*, e a linha de escolher
+/// ao lado deles pedia a mesma metade por outra conta. ⇒ uma declaração, três linhas.
+fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.anchors.rides_parent_anchor"),
+            tr("panel.inspector.anchors.always_show_anchors"),
+            RUNTIME_BOX_LABEL.tr(),
+        ],
+    )
+}
+
 /// Pinta a linha e devolve o `y` seguinte. Não pinta nada — nem consome altura — quando o modelo
 /// diz que não há o que escolher.
 #[allow(clippy::too_many_arguments)]
@@ -96,8 +113,9 @@ pub(crate) fn paint_mount_row(
     let h = ROW_H_PX;
     // ⭐ A coluna do rótulo sai da porta (14/09) — era a `LABEL_COL_W` deste ficheiro, cujo próprio
     // comentário dizia *«igual à da §7»*: uma cópia a prometer que acompanharia outra.
+    // ⭐⭐ E desde 15/09 é a coluna da SECÇÃO — ver [`seccao`].
     let font = TypeToken::Sm.px();
-    let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
+    let row = ph2d_editor_core::property_row::colunas_da_linha(x, w, y, h, seccao(text_system));
     ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
@@ -236,6 +254,11 @@ pub(crate) fn paint_visibility_rows(
         return y;
     }
     let mut cur_y = y;
+    // ⚠️ **Estas duas NÃO passam pela [`ph2d_editor_core::property_row::paint_check_row`]**, e a
+    // razão é a segunda: ela nasce **PARADA** (ver [`RUNTIME_BOX_LABEL`]), e o estado dela não vem
+    // do store. A porta serve quem lê o par visual da loja; aqui o painel sobrepõe-se a ele.
+    // ⭐ O que a porta dá — **a coluna da SECÇÃO** — chega na mesma, pelo `.seccao(..)`.
+    let sec = seccao(text_system);
     for (id, label, on) in [
         (
             ids::INSP_ANCHOR_VIS_EDITOR,
@@ -257,7 +280,8 @@ pub(crate) fn paint_visibility_rows(
                 CheckboxValue::Checked
             } else {
                 CheckboxValue::Unchecked
-            });
+            })
+            .seccao(sec);
         if id == ids::INSP_ANCHOR_VIS_RUNTIME {
             cb = cb.state(CheckboxState::Disabled);
         }

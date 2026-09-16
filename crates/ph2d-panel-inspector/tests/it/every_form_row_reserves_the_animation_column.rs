@@ -39,12 +39,94 @@ const ROW_PAINTERS: &[&str] = &[
 /// compõem com a `property_row_columns` por dentro e devolvem o mesmo `dot` — *um censo que só
 /// conhece as portas de GEOMETRIA acusa quem passou a usar o PINTOR*, que foi o que ele fez às três
 /// secções quando a implementação saiu do Inspector.
-const BASE_DOORS: [&str; 4] = [
-    "form_row_columns",
+/// ⚠️⚠️ **E em 2026-09-15 mordeu pela QUARTA vez, com a QUINTA grafia** (`colunas_da_linha`, a
+/// porta que a `Seccao` trouxe) — o `anchor_mount_row.rs` passou a chamá-la e foi **acusado por ter
+/// feito a coisa certa**, exactamente como o doc abaixo prevê. ⇒ a lista de base deixou de ser
+/// escrita: ela **deriva-se** do `ph2d-editor-core`, seda por [`SEMENTE`], pela mesma lei de ponto
+/// fixo que já valia para o `rows.rs`. *Uma régua que enumera portas à mão volta sempre.*
+const SEMENTE: &str = "form_row_columns";
+
+/// Os ficheiros do `ph2d-editor-core` onde uma porta que reserve a coluna pode viver.
+const FONTES_DA_FUNDACAO: [&str; 5] = [
+    "src/widget/property_box/row.rs",
+    "src/widget/property_box/seccao.rs",
+    "src/property_row.rs",
+    "src/widget/checkbox/mark.rs",
+    "src/widget/checkbox/label.rs",
+];
+
+/// ⭐ **O PISO DE POPULAÇÃO da derivação** (`CLAUDE.md` §5.0): se o parse partir, a lista encolhe e
+/// o gate acusa toda a gente — mas se ela encolher **em silêncio** para algo ainda plausível, este
+/// piso reprova em voz alta. ⛔ Não é uma lista de portas: é a prova de que a derivação funciona.
+const PISO_DE_PORTAS: [&str; 6] = [
     "property_row_columns",
+    "property_row_columns_for",
+    "colunas_da_linha",
     "paint_fields_row",
     "paint_label_row",
+    "paint_check_row",
 ];
+
+/// Extrai `(nome, corpo)` de cada `fn` de topo de um ficheiro. O corpo de uma vai até à declaração
+/// seguinte — *sobra prosa e nunca falta código*, que é o sentido seguro para um censo de
+/// composição.
+fn fns_de(texto: &str) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    for linha in texto.lines() {
+        let l = linha.trim_start();
+        let corpo = l
+            .strip_prefix("pub ")
+            .or_else(|| l.strip_prefix("pub(crate) "))
+            .or_else(|| l.strip_prefix("pub(super) "))
+            .unwrap_or(l);
+        let corpo = corpo.strip_prefix("const ").unwrap_or(corpo);
+        if let Some(resto) = corpo.strip_prefix("fn ")
+            && let Some((nome, _)) = resto.split_once('(')
+            && !nome.is_empty()
+            && nome.chars().all(|c| c.is_alphanumeric() || c == '_')
+        {
+            out.push((nome.to_string(), String::new()));
+            continue;
+        }
+        if let Some(ultimo) = out.last_mut() {
+            ultimo.1.push_str(linha);
+            ultimo.1.push('\n');
+        }
+    }
+    out
+}
+
+/// ⭐ **Ponto fixo sobre uma lista de blocos `(nome, corpo)`** — um nome entra quando o corpo dele
+/// menciona alguém que já está dentro.
+fn fecho(out: &mut Vec<String>, fns: &[(String, String)]) {
+    loop {
+        let antes = out.len();
+        for (nome, corpo) in fns {
+            if !out.iter().any(|d| d == nome) && out.iter().any(|d| corpo.contains(d.as_str())) {
+                out.push(nome.clone());
+            }
+        }
+        if out.len() == antes {
+            break;
+        }
+    }
+}
+
+/// As portas de BASE, **derivadas** do `ph2d-editor-core`.
+fn base_doors() -> Vec<String> {
+    let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../ph2d-editor-core")
+        .canonicalize()
+        .expect("a crate da fundação existe");
+    let mut fns: Vec<(String, String)> = Vec::new();
+    for f in FONTES_DA_FUNDACAO {
+        let texto = fs::read_to_string(raiz.join(f)).unwrap_or_else(|e| panic!("{f}: {e}"));
+        fns.extend(fns_de(&texto));
+    }
+    let mut out = vec![SEMENTE.to_string()];
+    fecho(&mut out, &fns);
+    out
+}
 
 /// ⭐⭐⭐ **As portas DERIVAM-SE do `rows.rs`, nunca se escrevem à mão — e isto é a TERCEIRA
 /// correcção da mesma forma.**
@@ -62,7 +144,7 @@ const BASE_DOORS: [&str; 4] = [
 /// base e o gate passa a acusar as secções que usam `rows.rs` — vermelho em voz alta, nunca verde
 /// a medir nada.
 fn doors() -> Vec<String> {
-    let mut out: Vec<String> = BASE_DOORS.iter().map(|d| (*d).to_string()).collect();
+    let mut out = base_doors();
     let rows = fs::read_to_string(sections_dir().join("rows.rs")).expect("rows.rs legível");
     let mut fns: Vec<(String, String)> = rows
         .split("\npub(super) fn ")
@@ -88,17 +170,7 @@ fn doors() -> Vec<String> {
     // ⚠️ **Ponto FIXO, e não uma passagem só:** a `num_row` não chama porta de base nenhuma — ela
     // delega na `num_row_unit`, que chama. *Uma passagem só deixaria de fora quem está a DOIS
     // saltos*, e a secção que a usasse seria acusada de não reservar a coluna que ela reserva.
-    loop {
-        let antes = out.len();
-        for (nome, corpo) in &fns {
-            if !out.iter().any(|d| d == nome) && out.iter().any(|d| corpo.contains(d.as_str())) {
-                out.push(nome.clone());
-            }
-        }
-        if out.len() == antes {
-            break;
-        }
-    }
+    fecho(&mut out, &fns);
     out
 }
 
@@ -243,11 +315,17 @@ fn the_debt_list_has_no_stale_entries() {
 /// `fields_row`). O piso fica em `4` para tolerar um corte honesto e ainda apanhar um parse morto.
 #[test]
 fn the_door_census_derives_the_second_order_doors() {
+    // ⭐⭐ **A derivação da FUNDAÇÃO tem o piso dela** (2026-09-15): ela deixou de ser uma lista
+    //    escrita e passa a sair do `ph2d-editor-core`, seda por uma função só.
+    let base = base_doors();
+    for esperada in PISO_DE_PORTAS {
+        assert!(
+            base.iter().any(|d| d == esperada),
+            "a derivacao da FUNDACAO nao achou a porta `{esperada}` — o parse dela morreu: {base:?}"
+        );
+    }
     let portas = doors();
-    let derivadas: Vec<&String> = portas
-        .iter()
-        .filter(|d| !BASE_DOORS.contains(&d.as_str()))
-        .collect();
+    let derivadas: Vec<&String> = portas.iter().filter(|d| !base.contains(d)).collect();
     assert!(
         derivadas.len() >= 4,
         "a derivacao leu {} porta(s) de 2.a ordem no rows.rs — o parse dela morreu: {derivadas:?}",

@@ -35,7 +35,6 @@ use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
-const CHECK_H: f32 = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
 
 /// **As opções do seletor de barramento** — uma por `AudioBus::ALL`, na ordem dele.
 ///
@@ -314,45 +313,32 @@ fn source_body(
         src.bus_tag,
     );
 
-    let half = (w - Spacing::Sm.px()) * 0.5;
-    for (i, (id, label, on)) in [
-        (
-            ids::INSP_AUDIO_LOOP,
-            tr("panel.inspector.audio.loop"),
-            src.looping,
-        ),
-        (
-            ids::INSP_AUDIO_AUTOPLAY,
-            tr("panel.inspector.audio.autoplay"),
-            src.autoplay,
-        ),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        let rect = Rect::new(
-            x + (half + Spacing::Sm.px()) * i as f32,
-            cur_y,
-            half,
-            CHECK_H,
-        );
-        hit_index.register(id, rect);
-        // ⚠️ **O valor vem do SNAPSHOT**, nunca do store — a lei que a §11 escreveu para o `Playing`.
-        paint_checkbox(
-            &Checkbox::new(id, label)
-                .visual(store.checkbox_visual(id))
-                .value(if on {
-                    CheckboxValue::Checked
-                } else {
-                    CheckboxValue::Unchecked
-                }),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    cur_y + CHECK_H + ph2d_tokens::control_gap_px()
+    // ⭐⭐⭐ **As duas caixas partilham uma fileira SE couberem** — spec §6-quater; a tabela medida
+    //    está no doc da porta. ⚠️ **O valor vem do SNAPSHOT**, nunca do store — a lei que a §11
+    //    escreveu para o `Playing`.
+    ph2d_editor_core::property_row::paint_check_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        &[
+            (
+                ids::INSP_AUDIO_LOOP,
+                tr("panel.inspector.audio.loop"),
+                src.looping,
+            ),
+            (
+                ids::INSP_AUDIO_AUTOPLAY,
+                tr("panel.inspector.audio.autoplay"),
+                src.autoplay,
+            ),
+        ],
+        seccao,
+    )
 }
 
 /// A secção inteira — cabeçalho, dobra e corpo. Devolve o `y` seguinte.

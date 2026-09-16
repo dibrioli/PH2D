@@ -2242,3 +2242,129 @@ sítio.*
 - O gate `hr12_widgets_a11y` varrer só código de produção (33.4).
 - As caixas de marcar de **meia largura** (câmara, animação) continuam no default, de propósito.
 - O `row2` e as amostras de cor do Vector; as cinco barras do Painter (spec §2).
+
+---
+
+## §34 — ⛔⛔⛔ A CAIXA NÃO CABE EM MEIA LINHA — e a decisão do §33.5 estava errada por falta de medição
+
+**Ordem em vigor:** «Se temos o manual precisamos converter o APP todo a ele». Sem report novo: esta
+wave nasce de **medir** o que o §33.5 deixou *«no default, de propósito»*.
+
+### 34.1 — A medição que desfaz a decisão da véspera
+
+O §33.5 escreveu: *«as caixas de marcar de meia largura (câmara, animação) continuam no default, de
+propósito»*, com a razão *«ali a secção é o PAR»*. **Isso foi decidido sem medir o que a CAIXA faz a
+meia linha.** Medido em 2026-09-15, com o sistema de texto real:
+
+| painel | METADE da linha | coluna que sobra ao NOME | os dez nomes medem |
+|---|---|---|---|
+| `220` (mínimo do dock) | `83,0` | **`0,0`** ⛔ *nome nenhum é pintado* | `28,5`–`79,8` |
+| `273,3` (a largura do dono) | `109,6` | **`15,6`** ⛔ | idem |
+| `304` (omissão) | `125,0` | **`31,0`** ⛔ | idem |
+| `420` | `183,0` | `83,5` ✅ | idem |
+
+⇒ **os dez nomes das cinco fileiras emparelhadas do Inspector** (*Animation* `Playing`/`Autoplay` ·
+*Timers* `Repeat`/`Autostart` · *Audio* `Loop`/`Autoplay` · *Camera* `Active`/`Look Through` · a
+folha `Flip H`/`Flip V`) **saíam cortados em todo o curso útil do dock**, e a `220` não eram pintados
+de todo.
+
+⚠️ **A aritmética é a mesma da wave anterior, um nível acima:** a caixa ocupa a coluna do controlo e
+o piso dela é o do campo (`NUMBER_INPUT_MIN_W_PX = 72`, ordem do dono de 2026-05-24). Numa metade de
+`109,6` ele come tudo menos `15,6`. *A aparência que o dono mandou adoptar não cabe em meia linha* —
+e é por isso que no inspector do Godot **todo booleano é uma linha inteira**.
+
+### 34.2 — A lei que responde já estava escrita: §6-quater
+
+*Emparelhar é uma escolha do PAINEL; caber é uma medição da PORTA.* Ela shipou em 2026-09-15 para as
+fileiras de NÚMERO (o Painter e o Vector consomem-na), e **as cinco fileiras de booleanos nunca lhe
+perguntaram nada**.
+
+⇒ porta nova em `ph2d_editor_core::property_row`:
+
+| porta | o que faz |
+|---|---|
+| `paint_check_row` | UMA linha de marcar: o rect, o `register`, o `checkbox_visual`, o `bool → CheckboxValue` e a `Seccao` — os quatro passos que dez sítios escreviam à mão |
+| `paint_check_rows` | N linhas: **emparelha quando `property_row_fits` diz que sim**, empilha quando não |
+
+⚠️ **Quando emparelham, a «secção» das duas é o PAR** (uma coluna medida sobre os dois nomes, senão
+a metade esquerda e a direita caem em `x` diferentes dentro da mesma fileira). **Quando partem, cada
+uma entra na coluna da SECÇÃO** — que é o que as alinha com os números ao lado.
+
+⭐ **Preço:** cinco secções ficam **uma linha mais altas** (`22 + 3 px`) no regime estreito, e voltam
+a emparelhar sozinhas acima de `~400 px` de dock.
+
+### 34.3 — ⛔⛔⛔ E a MESMA aritmética tinha apagado os 32 números do `BitmaskGrid32`
+
+Achado ao varrer os outros consumidores de `Checkbox`. A *Cull Mask* da câmera e a *Layer* da
+visibilidade pintam **32 caixas numa grelha de 4 colunas**, cada célula um QUARTO de linha — e cada
+uma estava no default («sou uma linha de formulário»). Medido:
+
+| painel | célula (`linha / 4`) | coluna do NOME | a caixa |
+|---|---|---|---|
+| `220` | `43,00` | **`0,00`** ⛔ | `21,00` |
+| `273,3` | `56,32` | **`0,00`** ⛔ | `34,32` |
+| `304` | `64,00` | **`0,00`** ⛔ | `42,00` |
+
+⇒ *nenhum dos 32 números (1..32) era pintado*, e a caixa ficava abaixo dos `52,9 px` que a marca mais
+a palavra *On* pedem. **Duas secções do Inspector com 32 caixas iguais e mudas.**
+
+⚠️ **O dono aprovou o smoke da véspera sem ver isto** — a `Cull Mask` nasce **recolhida**
+(`INSP_CAMERA_CULL_HEADER`). *Um defeito atrás de uma dobra fechada sobrevive a um smoke aprovado.*
+
+⇒ segunda excepção nomeada ao formulário (`Checkbox::fora_do_formulario`), com a decisão a viver numa
+**função** (`widget::bitmask_grid32::cell_checkbox`) e não no fio do laço: *no fio ela não é
+alcançável de um teste, e a mutação que a apaga compila e passa a suíte inteira* — a lei que o
+`sheet_grid_overlay::gizmo_box` do Inspector já tinha pago.
+
+### 34.4 — O que mais foi convertido, e o que morreu
+
+| secção | antes | agora |
+|---|---|---|
+| *Sprite Sheet* | a **metade cega** para todas as linhas; `Show sheet on canvas` (`126,1 px`) **cortado em todo o curso** | `Seccao` medida sobre os **sete** nomes de linha inteira ⇒ o corte desaparece a `273,3` e a `304` |
+| *Ordering* | **três** derivações da mesma coluna (número · marcar · escolher), todas a metade cega | uma `Seccao` **derivada do descritor**, como os rótulos dela já eram (ADR-0166) |
+| *Anchors (mount)* | `Always show anchors` (`115,4`) e `Show anchors at runtime` (`135,8`) contra uma metade de `104,6` | `Seccao` sobre os três nomes da secção |
+| *Identity* · *Color/Tint* · *Render Source* | construção à mão, `18`/`ROW_H_PX` local | pela porta, com a secção declarada |
+
+⭐ **Quatro `const CHECK_H` morreram** (`anim` · `audio` · `camera` · `timers`) e com elas o helper
+`camera::check` — *a porta passou a ser a dona da altura*, que era o defeito de origem do report de
+33.1 (o mesmo literal em treze sítios).
+
+### 34.5 — Os gates, e as quatro mutações que sangram
+
+| gate | mutação que sangra |
+|---|---|
+| `uma_linha_de_marcar_ocupa_a_linha_inteira` | emparelhar SEMPRE ⇒ vermelho a `220`–`304`; empilhar SEMPRE ⇒ vermelho a `520`/`720` |
+| `a_altura_de_uma_linha_de_marcar_e_a_do_app` | `Rect::new(x, y, w, 18.0)` na porta |
+| `uma_celula_nao_e_uma_linha_de_formulario` | tirar o `.fora_do_formulario()` da `cell_checkbox` |
+| `e_a_razao_e_que_num_quarto_de_linha_nao_sobra_coluna` | é o **censo de obsolescência** da isenção acima: no dia em que a porta couber num quarto de linha, ele reprova |
+
+⚠️ **A régua do primeiro é o RECT REGISTADO**, nunca uma segunda aritmética: o alvo do clique de uma
+linha de marcar **é** a linha, logo ele diz se ela ocupou a largura toda ou metade dela. ⚠️ E o
+VEREDITO esperado sai da **mesma porta** que o painel consulta — o que o gate afirma é que o *painel
+PERGUNTA*, e por isso a escada tem de conter os **dois** regimes (há asserção sobre isso).
+
+### 34.6 — ⛔⛔ E o portão apanhou DOIS gates que acusavam quem fez a coisa certa
+
+**(a) `every_form_row_reserves_the_animation_column` acusou o `anchor_mount_row.rs`** — que passou a
+chamar `colunas_da_linha`, a **quinta grafia** da mesma porta. O doc daquele gate já dizia, por
+escrito, que aquilo tinha acontecido **três** vezes (`form_row_columns` → `property_row_columns` →
+os dois pintores) e que *«uma régua que enumera portas à mão acusa, a cada wave, exactamente quem fez
+a coisa certa»* — e a lista de BASE continuava escrita à mão.
+⇒ ela passa a **derivar-se** do `ph2d-editor-core` (ponto fixo seda por `form_row_columns` sobre
+cinco ficheiros da fundação), com **piso de população** de seis nomes para o parse não morrer em
+silêncio. *A cura de uma lista que volta é apagar a lista, não acrescentar-lhe uma linha.*
+
+**(b) `the_foundation_modules_form_a_dag` acusou um CICLO** `widget → property_row → interaction →
+widget`, criado por um `#[cfg(test)]` que eu tinha posto dentro do `widget/bitmask_grid32.rs`.
+⚠️ **Aquele gate conta os testes de propósito** (*«os testes contam»*, está escrito nele) — e a cura
+foi mover o teste para `tests/it/`, onde ele não é do módulo, e **não** uma entrada na lista de
+isenções «só em teste». *Um controlo que mede a fundação não pertence ao módulo que ele mede.*
+
+### 34.7 — ⏳ ABERTO
+
+- O gate `hr12_widgets_a11y` varrer só código de produção (§33.4).
+- O `row2` e as amostras de cor do Vector; as **cinco barras** do Painter (spec §2 — ali o nome vive
+  DENTRO da barra, logo é outra lei).
+- ⚠️ **O resto do app não foi varrido para esta aritmética**: os `Checkbox` do `painter-layers`, do
+  `vector`, do `motion-params` e do `wet-tuning` são todos de **linha inteira** (verificado), mas
+  nenhum declara `Seccao` — logo o nome deles está na metade cega, não na coluna da secção.

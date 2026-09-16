@@ -372,10 +372,47 @@ a decisão é dele**.
 comprimido de `40 × 20` encostado à margem direita, com dois literais próprios — *o único controlo
 daquele painel que não acabava onde os campos acabam*.
 
-⛔ **A pele de canvas é a excepção, com nome:** ali a moldura é o que o **artista** desenhou, não a
-linha de um painel, e o nome fica onde ele o pôs (`Checkbox::fora_do_formulario`). ⚠️ É um campo
-**próprio** — derivá-lo do `box_px` ou do `decorator` seria o erro que o doc do `box_px` já regista
-e que um gate já apanhou uma vez.
+⛔ **Há DUAS excepções, as duas com nome** (`Checkbox::fora_do_formulario`), e as duas pela mesma
+razão — *não há secção nenhuma de que a coluna possa ser*:
+
+| quem | o que a linha é |
+|---|---|
+| a **pele de canvas** | a moldura é o que o **artista** desenhou, não a linha de um painel |
+| uma **célula do `BitmaskGrid32`** | um QUARTO de linha, com o número por etiqueta |
+
+⚠️ É um campo **próprio** — derivá-lo do `box_px` ou do `decorator` seria o erro que o doc do
+`box_px` já regista e que um gate já apanhou uma vez.
+
+### ⛔⛔⛔ E a CAIXA NÃO CABE EM MEIA LINHA — o que emparelhava, PARTE
+
+**Medido em 2026-09-15, um dia depois de a caixa entrar.** A caixa ocupa a coluna do controlo e o
+piso dela é o do campo (`NUMBER_INPUT_MIN_W_PX` = `72`, ordem do dono de 2026-05-24). Numa METADE
+de linha os dois não cabem, e **quem paga é o nome**:
+
+| painel | METADE da linha | coluna que sobra ao nome | os dez nomes medem |
+|---|---|---|---|
+| `220` (mínimo do dock) | `83,0` | **`0,0`** ⛔ *nome nenhum é pintado* | `28,5`–`79,8` |
+| `273,3` (a do dono) | `109,6` | **`15,6`** ⛔ | idem |
+| `304` (omissão) | `125,0` | **`31,0`** ⛔ | idem |
+| `420` | `183,0` | `83,5` ✅ | idem |
+
+⇒ as **cinco** fileiras emparelhadas de booleanos do Inspector (*Animation* · *Timers* · *Audio* ·
+*Camera* · o *Flip H/V* da folha) ficaram com os **dez** nomes cortados em todo o curso útil do dock.
+⚠️ **Elas tinham sido deixadas de fora da wave anterior de propósito** — *«ali a secção é o PAR»* —
+e essa decisão foi tomada **sem medir o que a caixa faz a meia linha**.
+
+⭐ **A lei que responde já estava escrita: o §6-quater.** *Emparelhar é uma escolha do painel; caber
+é uma medição da porta.* A porta é `paint_check_rows`, que pergunta à `property_row_fits` e
+**empilha** quando a resposta é não — e aí cada linha entra na coluna da **secção**, que é o que a
+alinha com os números ao lado. Acima de `~400 px` ela volta a emparelhar sozinha.
+
+⚠️ **E a mesma aritmética apagou os 32 números do `BitmaskGrid32`** (a *Cull Mask* da câmera e a
+*Layer* da visibilidade): num quarto de linha (`43`–`64 px`) a coluna do nome dá **`0,00`** em todo
+o curso do dock. *Uma célula de grelha não é uma linha de propriedade* — é a segunda excepção da
+tabela acima.
+
+⭐ **Custo da cura:** cinco secções do Inspector ficam **uma linha mais altas** (`22 + 3 px` cada) no
+regime estreito, e voltam a emparelhar quando o dono alarga o dock.
 
 **Custo medido** (26 rótulos booleanos reais do app, `Sm`, quantos passam da metade da linha):
 
@@ -461,6 +498,9 @@ ali eles cortam — que é a troca que o dono escolheu em 2026-05-24.
 | §6-bis | dispor N campos numa linha tem UM chamador em todo o painel | `property_fields_layout` | `only_one_door_lays_out_a_row_of_fields` |
 | §6-ter | uma linha nunca quebra enquanto a coluna do nome tem folga | `property_label_col_w_for` | `a_row_never_wraps_while_the_name_column_has_slack` |
 | §6-quater | quem emparelha duas propriedades pergunta antes se o nome cabe | `property_row_fits` | `a_paired_row_breaks_before_its_name_disappears` |
+| §6-quinquies | uma linha de marcar ocupa a linha inteira quando o par não cabe | `paint_check_rows` | `uma_linha_de_marcar_ocupa_a_linha_inteira` |
+| §6-quinquies | a altura de uma linha de marcar é a de toda linha de propriedade | `paint_check_row` | `a_altura_de_uma_linha_de_marcar_e_a_do_app` |
+| §6-quinquies | uma célula de mapa de bits não é uma linha de formulário | `cell_checkbox` | `uma_celula_nao_e_uma_linha_de_formulario` |
 | §6-bis | nenhuma linha do Inspector põe o nome por cima do controlo | `fields_row` | `no_row_paints_its_name_above_its_control` |
 | §7 | toda linha reserva a coluna de animação | `form_row_columns` | `every_form_row_reserves_the_animation_column` |
 | §7 | as portas que reservam a coluna DERIVAM-SE, nunca se enumeram | `property_label_row` | `the_door_census_derives_the_second_order_doors` |

@@ -28,7 +28,6 @@ use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
-const CHECK_H: f32 = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
 /// Espessura da barra de frames.
 ///
 /// ⚠️ **Subiu de 6 para 10 px quando ela passou a arrastar-se**, e o número não é gosto: o
@@ -167,47 +166,36 @@ fn player_block(
     let font = TypeToken::Sm.px();
     let mut cur_y = y;
 
-    // As duas caixas, lado a lado.
-    let half = (w - Spacing::Sm.px()) * 0.5;
-    for (i, (id, label, on)) in [
-        (
-            ids::INSP_ANIM_PLAYING,
-            tr("panel.inspector.animation.playing"),
-            info.playing,
-        ),
-        (
-            ids::INSP_ANIM_AUTOPLAY,
-            tr("panel.inspector.animation.autoplay"),
-            info.autoplay,
-        ),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        let rect = Rect::new(
-            x + (half + Spacing::Sm.px()) * i as f32,
-            cur_y,
-            half,
-            CHECK_H,
-        );
-        hit_index.register(id, rect);
-        paint_checkbox(
-            &Checkbox::new(id, label)
-                .visual(store.checkbox_visual(id))
-                .value(if on {
-                    CheckboxValue::Checked
-                } else {
-                    CheckboxValue::Unchecked
-                }),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    cur_y += CHECK_H + ph2d_tokens::control_gap_px();
-
+    // ⭐⭐⭐ **As duas caixas partilham uma fileira SE couberem** — spec §6-quater, e a porta
+    //    [`ph2d_editor_core::property_row::paint_check_rows`] tem a tabela medida: desde que a
+    //    marca ganhou CAIXA, uma METADE deixa ao nome `0,0`–`31,0 px` em todo o curso útil do dock,
+    //    e os dois nomes saíam CORTADOS. *O degrau a seguir a «não cabe o nome» é deixar de
+    //    emparelhar.*
     let sec = super::anim_rows::seccao_da_animacao(text_system);
+    cur_y = ph2d_editor_core::property_row::paint_check_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        &[
+            (
+                ids::INSP_ANIM_PLAYING,
+                tr("panel.inspector.animation.playing"),
+                info.playing,
+            ),
+            (
+                ids::INSP_ANIM_AUTOPLAY,
+                tr("panel.inspector.animation.autoplay"),
+                info.autoplay,
+            ),
+        ],
+        sec,
+    );
+
     cur_y = super::rows::fields_row(
         scene,
         text_system,

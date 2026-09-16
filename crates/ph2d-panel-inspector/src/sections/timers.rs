@@ -35,7 +35,6 @@ use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à da §11
-const CHECK_H: f32 = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
 /// A linha de uma lista é a linha do app — pela porta, nunca por um literal que coincide.
 const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 
@@ -276,46 +275,32 @@ fn editor(
         sec,
     );
 
-    let half = (w - Spacing::Sm.px()) * 0.5;
-    for (i, (id, label, on)) in [
-        (
-            ids::INSP_TIMER_REPEAT,
-            tr("panel.inspector.timers.repeat"),
-            row.repeat,
-        ),
-        (
-            ids::INSP_TIMER_AUTOSTART,
-            tr("panel.inspector.timers.autostart"),
-            row.autostart,
-        ),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        let rect = Rect::new(
-            x + (half + Spacing::Sm.px()) * i as f32,
-            cur_y,
-            half,
-            CHECK_H,
-        );
-        hit_index.register(id, rect);
-        // ⚠️ **O valor vem do SNAPSHOT**, nunca do store: ler dali faria a caixa sobreviver à troca
-        // de objecto — a lei que a §11 escreveu para o `Playing`.
-        paint_checkbox(
-            &Checkbox::new(id, label)
-                .visual(store.checkbox_visual(id))
-                .value(if on {
-                    CheckboxValue::Checked
-                } else {
-                    CheckboxValue::Unchecked
-                }),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    cur_y += CHECK_H + ph2d_tokens::control_gap_px();
+    // ⭐⭐⭐ **As duas caixas partilham uma fileira SE couberem** — spec §6-quater; a tabela medida
+    //    está no doc da porta. ⚠️ **O valor vem do SNAPSHOT**, nunca do store: ler dali faria a
+    //    caixa sobreviver à troca de objecto — a lei que a §11 escreveu para o `Playing`.
+    cur_y = ph2d_editor_core::property_row::paint_check_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        &[
+            (
+                ids::INSP_TIMER_REPEAT,
+                tr("panel.inspector.timers.repeat"),
+                row.repeat,
+            ),
+            (
+                ids::INSP_TIMER_AUTOSTART,
+                tr("panel.inspector.timers.autostart"),
+                row.autostart,
+            ),
+        ],
+        sec,
+    );
 
     cur_y = super::anim_rows::text_row(
         scene,

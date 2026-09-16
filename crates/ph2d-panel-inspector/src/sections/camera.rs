@@ -35,8 +35,6 @@ use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{BitmaskGrid32, paint_bitmask_grid32};
 use ph2d_i18n::tr;
 
-const CHECK_H: f32 = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
-
 /// Uma linha de aviso. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 fn warn(
@@ -63,37 +61,10 @@ fn warn(
     y + font + ph2d_tokens::control_gap_px()
 }
 
-/// Uma caixa de marcar, com o valor vindo do SNAPSHOT.
-///
-/// ⚠️ **Nunca do store** — é a lei que a §11 escreveu para o `Playing`: ler o visual faria o
-/// primeiro clique depois de trocar de objecto mandar o valor do objecto **anterior**.
-#[allow(clippy::too_many_arguments)]
-fn check(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    rect: Rect,
-    id: ph2d_a11y::NodeId,
-    label: &str,
-    on: bool,
-) {
-    hit_index.register(id, rect);
-    paint_checkbox(
-        &Checkbox::new(id, label)
-            .visual(store.checkbox_visual(id))
-            .value(if on {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            }),
-        rect,
-        scene,
-        text_system,
-        theme,
-    );
-}
+// ⭐ **A caixa de marcar desta secção MUDOU-SE para a porta** (2026-09-15) — este ficheiro tinha a
+//    quarta cópia do mesmo `register` + `checkbox_visual` + `bool → CheckboxValue`, e a lei *«o
+//    valor vem do SNAPSHOT, nunca do store»* estava escrita em cada uma delas.
+//    Ver [`ph2d_editor_core::property_row::paint_check_row`].
 
 /// O corpo da CÂMERA. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
@@ -187,31 +158,33 @@ fn camera_body(
         );
     }
 
-    let half = (w - Spacing::Sm.px()) * 0.5;
-    check(
+    // ⭐⭐⭐ **As duas caixas partilham uma fileira SE couberem** — spec §6-quater; a tabela medida
+    //    está no doc da porta. ⚠️ A segunda é **o interruptor da PRÉ-VISUALIZAÇÃO**, e o
+    //    `look_through` é o nome mais largo dos dez booleanos emparelhados do Inspector (`79,8 px`):
+    //    é ele que decide quando esta fileira parte.
+    ph2d_editor_core::property_row::paint_check_rows(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        Rect::new(x, cur_y, half, CHECK_H),
-        ids::INSP_CAMERA_ACTIVE,
-        tr("panel.inspector.camera.active"),
-        cam.active,
-    );
-    // ⭐⭐⭐ **O interruptor da PRÉ-VISUALIZAÇÃO** — a metade que a W2 deixou por entregar.
-    check(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        Rect::new(x + half + Spacing::Sm.px(), cur_y, half, CHECK_H),
-        ids::INSP_CAMERA_PREVIEW,
-        tr("panel.inspector.camera.look_through"),
-        info.preview_on,
-    );
-    cur_y + CHECK_H + ph2d_tokens::control_gap_px()
+        x,
+        w,
+        cur_y,
+        &[
+            (
+                ids::INSP_CAMERA_ACTIVE,
+                tr("panel.inspector.camera.active"),
+                cam.active,
+            ),
+            (
+                ids::INSP_CAMERA_PREVIEW,
+                tr("panel.inspector.camera.look_through"),
+                info.preview_on,
+            ),
+        ],
+        seccao,
+    )
 }
 
 /// O corpo de QUEM ELA SEGUE. Devolve o `y` seguinte.

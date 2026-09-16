@@ -63,19 +63,36 @@ pub(crate) fn paint_visibility_row(
     // making the gap to the separator visibly larger than Transform's
     // (user 2026-05-24: "espaço entre visible e separador fora do
     // padrão"). Now both sections finish at the same visual rhythm.
-    let row_h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
     let (_, value) = match store.checkbox(ids::INSP_VISIBILITY_CHECK) {
         Some(pair) => pair,
         None => (CheckboxState::Normal, CheckboxValue::Checked),
     };
-    let host = Rect::new(x, y, w, row_h);
-    hit_index.register(ids::INSP_VISIBILITY_CHECK, host);
-    let checkbox = Checkbox::new(
-        ids::INSP_VISIBILITY_CHECK,
-        tr("panel.inspector.identity.visible"),
-    )
-    .visual(store.checkbox_visual(ids::INSP_VISIBILITY_CHECK))
-    .value(value);
-    paint_checkbox(&checkbox, host, scene, text_system, theme);
-    y + row_h + SECTION_BOTTOM_PAD_PX
+    // ⭐ **Pela porta** (2026-09-15): a altura, o registo, o par visual e o `bool → CheckboxValue`
+    //    eram quatro passos escritos aqui, iguais aos de mais nove sítios.
+    // ⚠️ **A secção tem UM nome**, e a declaração é dela na mesma — a coluna fica na metade porque
+    //    `Visible` (`37,3 px`) é mais estreito do que ela, que é o comportamento do §6.
+    let sec = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[tr("panel.inspector.identity.visible")],
+    );
+    ph2d_editor_core::property_row::paint_check_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        (
+            ids::INSP_VISIBILITY_CHECK,
+            tr("panel.inspector.identity.visible"),
+            matches!(value, CheckboxValue::Checked),
+        ),
+        sec,
+    );
+    // ⚠️ **A cauda é da SECÇÃO, não da linha** — a porta devolve o ritmo de uma linha, e aqui o que
+    //    vem a seguir é o fim do cartão.
+    y + ROW_H_PX + SECTION_BOTTOM_PAD_PX
 }

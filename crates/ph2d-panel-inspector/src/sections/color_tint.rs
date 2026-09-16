@@ -250,26 +250,34 @@ pub(crate) fn paint_color_tint_section(
     );
     cur_y += opacity_h + row_gap;
 
-    // Tint Fill silhouette toggle.
-    let cb_h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
+    // Tint Fill silhouette toggle — **pela porta** (2026-09-15).
+    //
+    // ⚠️ **A secção declara UM nome**, e não os das barras deslizantes acima: ali o nome vive
+    // DENTRO da barra (spec §2), logo não partilha coluna nenhuma com esta linha.
     let (_, tf_value) = store
         .checkbox(ids::INSP_SPRITE_TINT_FILL)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
-    let tf_rect = Rect::new(x, cur_y, w, cb_h);
-    hit_index.register(ids::INSP_SPRITE_TINT_FILL, tf_rect);
-    paint_checkbox(
-        &Checkbox::new(
-            ids::INSP_SPRITE_TINT_FILL,
-            tr("panel.inspector.color_tint.tint_fill"),
-        )
-        .visual(store.checkbox_visual(ids::INSP_SPRITE_TINT_FILL))
-        .value(tf_value),
-        tf_rect,
+    let sec = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[tr("panel.inspector.color_tint.tint_fill")],
+    );
+    cur_y = ph2d_editor_core::property_row::paint_check_row(
         scene,
         text_system,
         theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        (
+            ids::INSP_SPRITE_TINT_FILL,
+            tr("panel.inspector.color_tint.tint_fill"),
+            matches!(tf_value, CheckboxValue::Checked),
+        ),
+        sec,
     );
-    cur_y += cb_h + row_gap;
 
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
 }

@@ -238,3 +238,37 @@ fn a_palavra_do_valor_vive_dentro_da_caixa() {
          formulario e foi parar onde o artista desenha"
     );
 }
+
+/// ⭐⭐ **A RAZÃO da isenção da célula de mapa de bits, medida: ali não sobra coluna de nome.**
+///
+/// ⛔⛔ Em 2026-09-15 a marca ganhou CAIXA, e com a [`Seccao`] de omissão («sou uma linha de
+/// formulário») uma célula do [`ph2d_editor_core::widget::BitmaskGrid32`] — um QUARTO de linha —
+/// passou a receber coluna de nome **`0,00`**: os 32 números da *Cull Mask* da câmera e da *Layer*
+/// da visibilidade deixaram de ser pintados. A cura é a célula **declarar-se fora do formulário**
+/// (gate irmão, `uma_celula_nao_e_uma_linha_de_formulario`, dentro daquele módulo).
+///
+/// ⚠️ **Este é o censo de OBSOLESCÊNCIA dessa isenção** (`CLAUDE.md` §5.0): no dia em que a porta
+/// couber num quarto de linha, ele reprova e a isenção volta a ser discutida em vez de ficar por
+/// inércia.
+#[test]
+fn e_a_razao_e_que_num_quarto_de_linha_nao_sobra_coluna() {
+    let sec = ph2d_editor_core::property_row::Seccao::apenas_campos(1);
+    for painel in [220.0_f32, 273.3, 304.0] {
+        let linha =
+            painel - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX - 2.0 * ph2d_tokens::Spacing::Sm.px();
+        let celula = linha / ph2d_editor_core::widget::BITMASK_COLS as f32;
+        let r = ph2d_editor_core::property_row::colunas_da_linha(
+            0.0,
+            celula,
+            0.0,
+            ph2d_tokens::ROW_H_PX,
+            sec,
+        );
+        assert!(
+            r.label.w < 1.0,
+            "painel {painel}: a celula ({celula:.2}) ja' da' {:.2} de coluna ao nome — a isencao \
+             da `cell_checkbox` deixou de ser necessaria, reveja-a",
+            r.label.w
+        );
+    }
+}

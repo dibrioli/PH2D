@@ -481,25 +481,36 @@ fn paint_region_rows(
     // own rect from the asset). Toggle + (when on) X/Y/W/H px inputs +
     // Filter Clip. Renders via the extract `region_subrect` (W2.T2.4).
     if !matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }) {
-        let cb_h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
+        // ⭐⭐ **As duas caixas desta sub-secção partilham UMA coluna** (2026-09-15), medida sobre
+        //    os dois nomes — e a segunda só é pintada com a primeira ligada, logo a coluna tem de
+        //    contar as duas ou ela salta no clique. Ver [`Seccao::medida`].
+        let sec = ph2d_editor_core::property_row::Seccao::medida(
+            text_system,
+            1,
+            &[
+                tr("panel.inspector.render_source.region"),
+                tr("panel.inspector.render_source.filter_clip"),
+            ],
+        );
         let re_value = store
             .checkbox(ids::INSP_REGION_ENABLED)
             .map_or(CheckboxValue::Unchecked, |(_, v)| v);
-        let re_rect = Rect::new(x, cur_y, w, cb_h);
-        hit_index.register(ids::INSP_REGION_ENABLED, re_rect);
-        paint_checkbox(
-            &Checkbox::new(
-                ids::INSP_REGION_ENABLED,
-                tr("panel.inspector.render_source.region"),
-            )
-            .visual(store.checkbox_visual(ids::INSP_REGION_ENABLED))
-            .value(re_value),
-            re_rect,
+        cur_y = ph2d_editor_core::property_row::paint_check_row(
             scene,
             text_system,
             theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            (
+                ids::INSP_REGION_ENABLED,
+                tr("panel.inspector.render_source.region"),
+                matches!(re_value, CheckboxValue::Checked),
+            ),
+            sec,
         );
-        cur_y += cb_h + row_gap;
 
         if matches!(re_value, CheckboxValue::Checked) {
             let field_h = ROW_H_PX;
@@ -558,21 +569,22 @@ fn paint_region_rows(
             let fc_value = store
                 .checkbox(ids::INSP_REGION_FILTER_CLIP)
                 .map_or(CheckboxValue::Checked, |(_, v)| v);
-            let fc_rect = Rect::new(x, cur_y, w, cb_h);
-            hit_index.register(ids::INSP_REGION_FILTER_CLIP, fc_rect);
-            paint_checkbox(
-                &Checkbox::new(
-                    ids::INSP_REGION_FILTER_CLIP,
-                    tr("panel.inspector.render_source.filter_clip"),
-                )
-                .visual(store.checkbox_visual(ids::INSP_REGION_FILTER_CLIP))
-                .value(fc_value),
-                fc_rect,
+            cur_y = ph2d_editor_core::property_row::paint_check_row(
                 scene,
                 text_system,
                 theme,
+                hit_index,
+                store,
+                x,
+                w,
+                cur_y,
+                (
+                    ids::INSP_REGION_FILTER_CLIP,
+                    tr("panel.inspector.render_source.filter_clip"),
+                    matches!(fc_value, CheckboxValue::Checked),
+                ),
+                sec,
             );
-            cur_y += cb_h + row_gap;
         }
     }
     cur_y

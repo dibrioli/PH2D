@@ -98,7 +98,19 @@ impl Checkbox {
         self
     }
 
-    /// ⛔ **Esta caixa NÃO é uma linha de formulário** — a pele de canvas, e mais ninguém.
+    /// ⛔ **Esta caixa NÃO é uma linha de formulário.**
+    ///
+    /// São **dois** sítios, e os dois pela mesma razão — *não há secção nenhuma de que a coluna
+    /// possa ser*:
+    ///
+    /// | quem | o que a linha é |
+    /// |---|---|
+    /// | a **pele de canvas** ([`crate::widget::skin`]) | a moldura é o que o ARTISTA desenhou |
+    /// | uma **célula do [`crate::widget::BitmaskGrid32`]** | um quarto de linha, com o número por etiqueta |
+    ///
+    /// ⚠️ **A segunda entrou em 2026-09-15 a corrigir uma regressão medida**: com a `Seccao` de
+    /// omissão, uma célula de `43`–`64 px` dá coluna de nome **`0,00`** — os 32 números
+    /// simplesmente não eram pintados. A tabela está no doc de [`crate::widget::paint_bitmask_grid32`].
     #[must_use]
     pub fn fora_do_formulario(mut self) -> Self {
         self.seccao = None;

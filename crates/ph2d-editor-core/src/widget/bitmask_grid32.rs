@@ -91,6 +91,21 @@ impl BitmaskGrid32 {
     }
 }
 
+/// ⭐⭐⭐ **A CAIXA DE UMA CÉLULA — e é aqui que se decide que ela NÃO é uma linha de formulário.**
+///
+/// ⛔ A decisão vive numa **função** e não dentro do laço do pintor, pela mesma razão que o
+/// `sheet_grid_overlay::gizmo_box` do Inspector: no fio ela não é alcançável de um teste, e a
+/// mutação que a apaga compila e passa a suíte inteira.
+pub(crate) fn cell_checkbox(grid: &BitmaskGrid32, bit: usize, checked: bool) -> Checkbox {
+    Checkbox::new(grid.bit_ids[bit], format!("{}", bit + 1))
+        .fora_do_formulario()
+        .value(if checked {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        })
+}
+
 /// Paint the 32 checkbox cells. The caller is responsible for
 /// registering each cell's hit rect (via [`BitmaskGrid32::cell_rect`])
 /// so clicks toggle the bit.
@@ -108,11 +123,27 @@ pub fn paint_bitmask_grid32(
     for bit in 0..32usize {
         let rect = BitmaskGrid32::cell_rect(origin_x, origin_y, w, cell_h, bit);
         let checked = grid.enabled && grid.is_set(bit);
-        let cb = Checkbox::new(grid.bit_ids[bit], format!("{}", bit + 1)).value(if checked {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        });
+        // ⛔⛔⛔ **UMA CÉLULA DESTA GRELHA NÃO É UMA LINHA DE PROPRIEDADE** — e desde que a marca
+        // ganhou CAIXA (2026-09-15, spec §6-quinquies) tratá-la como tal APAGA os 32 números.
+        //
+        // Medido em 2026-09-15, com a `Seccao` de omissão («sou uma linha de formulário»):
+        //
+        // | painel | célula (`linha / 4`) | coluna do NOME | a caixa |
+        // |---|---|---|---|
+        // | `220` | `43,00` | **`0,00`** ⛔ | `21,00` |
+        // | `273,3` | `56,32` | **`0,00`** ⛔ | `34,32` |
+        // | `304` | `64,00` | **`0,00`** ⛔ | `42,00` |
+        //
+        // ⇒ *nenhum dos 32 números era pintado*, e a caixa ficava abaixo dos `52,9 px` que a marca
+        // mais a palavra *On* pedem — a `Cull Mask` da câmera e a `Layer` da visibilidade ficavam
+        // 32 caixas iguais e mudas. A causa é a mesma do par emparelhado: **o piso do campo
+        // ([`super::NUMBER_INPUT_MIN_W_PX`] = `72`) não cabe num quarto de linha**, e quem paga é
+        // o nome.
+        //
+        // ⚠️ **A cura não é encolher a caixa: é dizer o que esta coisa é.** Uma célula de grelha
+        // não tem coluna de nome porque não tem secção — o número É a etiqueta dela, ao lado da
+        // marca, como num mapa de bits.
+        let cb = cell_checkbox(grid, bit, checked);
         paint_checkbox(&cb, rect, scene, text_system, theme);
     }
 }
@@ -128,6 +159,31 @@ mod tests {
     fn fixture() -> BitmaskGrid32 {
         BitmaskGrid32::new(NodeId(1), "Visibility Layer", ids(), 0b1011)
     }
+
+    /// ⭐⭐⭐ **UMA CÉLULA DESTA GRELHA NÃO É UMA LINHA DE FORMULÁRIO — e isto é uma REGRESSÃO
+    /// medida, não uma preferência.**
+    ///
+    /// Com a `Seccao` de omissão, uma célula de `43`–`64 px` recebe coluna de nome **`0,00`** em
+    /// todo o curso do dock: os 32 números deixam de ser pintados. A tabela e o mecanismo estão no
+    /// corpo da [`paint_bitmask_grid32`].
+    ///
+    /// **Mutação que deve sangrar:** tirar o `.fora_do_formulario()` da [`cell_checkbox`].
+    #[test]
+    fn uma_celula_nao_e_uma_linha_de_formulario() {
+        let g = fixture();
+        for bit in [0usize, 11, 31] {
+            let cb = cell_checkbox(&g, bit, g.is_set(bit));
+            assert!(
+                cb.seccao.is_none(),
+                "a celula do bit {bit} declarou-se linha de formulario — os 32 numeros somem"
+            );
+        }
+    }
+
+    // ⭐⭐ **O CONTROLO da isenção acima vive em `tests/it/`**, e não aqui: ele chama a
+    //    `property_row`, e o `architecture_the_foundation_modules_form_a_dag` conta um
+    //    `#[cfg(test)]` como aresta a sério (*«os testes contam»*, está escrito lá).
+    //    ⇒ `a_linha_de_marcar_poe_o_nome_na_coluna_do_nome::e_a_razao_e_que_num_quarto_de_linha_nao_sobra_coluna`.
 
     #[test]
     fn dimensions_are_4x8() {

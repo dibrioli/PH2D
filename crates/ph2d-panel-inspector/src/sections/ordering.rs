@@ -45,6 +45,39 @@ fn marker_label(canonical_name: &'static str) -> &'static str {
     ph2d_component_desc::desc_for(canonical_name).map_or("??", |d| d.display_name)
 }
 
+/// ⭐⭐⭐ **A COLUNA desta secção — DERIVADA do descritor, como os rótulos dela já eram.**
+///
+/// ⛔⛔ Até 2026-09-15 as três famílias de linha desta secção (número · marcar · escolher) pediam
+/// cada uma a **metade cega** ([`property_row_columns`] sem nome). Elas concordavam por acidente —
+/// *três derivações da mesma coluna, e nenhuma sabia o que ia pintar* —, e o nome mais largo
+/// (`Show Behind Parent`) não tinha como pedir a folga que o campo ao lado não usa (spec §6).
+///
+/// ⚠️ **A lista é o que a secção PINTA, incluindo as linhas gateadas** (*Sort at Root* só aparece
+/// com o *Sorting Group* ligado, o *Axis X/Y* só com *Custom*): uma coluna que muda quando uma
+/// linha aparece salta debaixo do olho do artista — a lei está no doc de [`Seccao::medida`].
+///
+/// ⛔ E ela é **derivada**, nunca escrita à mão: esta é a secção-piloto do ADR-0166, e uma segunda
+/// lista de rótulos ao lado da primeira é a que envelhece.
+fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            field_label("ph2d::ecs::ZIndexOverride", 1),
+            field_label("ph2d::ecs::ZAsRelative", 1),
+            marker_label("ph2d::ecs::ShowBehindParent"),
+            field_label("ph2d::ecs::OrderInLayer", 1),
+            tr("panel.inspector.ordering.sorting_layer"),
+            field_label("ph2d::ecs::YSort", 1),
+            tr("panel.inspector.ordering.axis_x"),
+            tr("panel.inspector.ordering.axis_y"),
+            marker_label("ph2d::ecs::SortingGroup"),
+            field_label("ph2d::ecs::SortingGroup", 1),
+            marker_label("ph2d::ecs::TopLevel"),
+        ],
+    )
+}
+
 fn label_color(theme: Theme) -> VelloColor {
     resolve(ColorToken::Text2, theme)
 }
@@ -62,18 +95,23 @@ fn check_row(
     y: f32,
     id: NodeId,
     label: &str,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
     let (_, value) = store
         .checkbox(id)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
-    let host = Rect::new(x, y, w, h);
-    hit_index.register(id, host);
-    let cb = Checkbox::new(id, label)
-        .visual(store.checkbox_visual(id))
-        .value(value);
-    paint_checkbox(&cb, host, scene, text_system, theme);
-    y + h + ph2d_tokens::control_gap_px()
+    ph2d_editor_core::property_row::paint_check_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        (id, label, matches!(value, CheckboxValue::Checked)),
+        sec,
+    )
 }
 
 /// One left-label + single NumberInput row. Returns the next `y`.
@@ -89,12 +127,14 @@ fn number_row(
     y: f32,
     id: NodeId,
     label: &str,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     // ⭐ **A coluna do rótulo deixou de ser um literal** (14/09): ela era `96 px` escritos aqui, e
     // a mesma pergunta tinha SEIS respostas no app (`96` · `78` · `84` · `76` · `72` · `150`).
     // ⛔ Uma largura fixa está errada por construção — a coluna docada é arrastável.
+    // ⭐⭐ E desde 15/09 a coluna é a da SECÇÃO, medida sobre os onze nomes que ela pinta.
     let h = ROW_H_PX;
-    let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
+    let row = ph2d_editor_core::property_row::colunas_da_linha(x, w, y, h, sec);
     ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
@@ -138,10 +178,11 @@ fn layer_row(
     w: f32,
     y: f32,
     fallback_idx: usize,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    // ⭐ Irmã da row acima: a coluna do rótulo sai da porta, não de um literal.
+    // ⭐ Irmã da row acima: a coluna do rótulo sai da porta, e é a da SECÇÃO.
     let h = ROW_H_PX;
-    let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
+    let row = ph2d_editor_core::property_row::colunas_da_linha(x, w, y, h, sec);
     ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
@@ -200,6 +241,7 @@ fn ysort_point_rows(
     w: f32,
     y: f32,
     info: &InspectorOrderingInfo,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let h = ROW_H_PX;
     let rect = Rect::new(x, y, w, h);
@@ -241,6 +283,7 @@ fn ysort_point_rows(
             cur_y,
             ids::INSP_ORDER_AXIS_X,
             tr("panel.inspector.ordering.axis_x"),
+            sec,
         );
         cur_y = number_row(
             scene,
@@ -253,6 +296,7 @@ fn ysort_point_rows(
             cur_y,
             ids::INSP_ORDER_AXIS_Y,
             tr("panel.inspector.ordering.axis_y"),
+            sec,
         );
     }
     cur_y
@@ -304,6 +348,7 @@ pub(crate) fn paint_ordering_section(
         return y + header_h;
     };
     let mut yy = y + header_h;
+    let sec = seccao(text_system);
     let live =
         |store: &WidgetStore, id: NodeId, snap: bool| match store.checkbox(id).map(|(_, v)| v) {
             Some(CheckboxValue::Checked) => true,
@@ -325,6 +370,7 @@ pub(crate) fn paint_ordering_section(
                 $yy,
                 $id,
                 $l,
+                sec,
             )
         };
     }
@@ -341,6 +387,7 @@ pub(crate) fn paint_ordering_section(
                 $yy,
                 $id,
                 $l,
+                sec,
             )
         };
     }
@@ -379,6 +426,7 @@ pub(crate) fn paint_ordering_section(
         w,
         yy,
         info.sorting_layer as usize,
+        sec,
     );
     yy = cb!(
         yy,
@@ -386,7 +434,18 @@ pub(crate) fn paint_ordering_section(
         field_label("ph2d::ecs::YSort", 1)
     );
     if live(store, ids::INSP_ORDER_YSORT_ENABLED, info.y_sort_enabled) {
-        yy = ysort_point_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
+        yy = ysort_point_rows(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            info,
+            sec,
+        );
     }
     // ⚠️ A linha-mãe mostra o nome do COMPONENTE (a presença do `SortingGroup` é o que ela
     // liga) e a filha mostra o nome do CAMPO dele — duas perguntas, dois rótulos.

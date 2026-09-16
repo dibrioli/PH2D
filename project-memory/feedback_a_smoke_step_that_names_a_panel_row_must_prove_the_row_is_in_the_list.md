@@ -76,6 +76,32 @@ que objecto?»* — uma cláusula acima do que as três espécies anteriores olh
 *Timers* — este corrigido de *Timer* pela leitura do catálogo), o que é o pior resultado possível:
 **verificar quase tudo produz a confiança de ter verificado tudo**. O report do dono veio no dia
 seguinte, e a frase dele foi *«não temos mais Add Physics Body no painel»*.
+⛔⛔⛔ **E há uma QUARTA espécie, medida em 2026-09-15: o passo que manda clicar num OBJECTO DA
+CENA — e o portador do componente NÃO TEM CORPO.** O dono correu o smoke da máquina de estados e
+reportou *«não apareceu no painel a seção state machine»*. A fiação do painel estava **inteira**: a
+entidade que carregava o componente não tinha `Sprite` nenhum, logo não emitia `RenderInstance`, e o
+`pick_sprite_at_world` **nunca a devolvia** — o clique na porta escolhia uma das placas de cor
+empilhadas, que não têm o componente. *A cena estava certa como DADOS e era impossível como GESTO*, e
+o Inspector mostrava, correctamente, a verdade sobre o objecto escolhido.
+
+⚠️ **Os SEIS gates da cena liam-na toda como dados** — *«a porta tem o componente?»*, *«as duas
+tabelas têm o mesmo tamanho?»*, *«as setas ouvem o nome que o relógio publica?»* — e **nenhum**
+perguntava o que o roteiro promete: ***o artista consegue CHEGAR a ela?*** Uma cena de smoke tem duas
+metades e esta linha gateava uma.
+
+⛔ **E a cura tem uma cerca que não é óbvia:** o corpo e a peça que ele comanda têm de **encostar sem
+se sobrepor**, porque o pick devolve *«o último da ordem de iteração»* e **entre arquétipos
+diferentes essa ordem é indefinida por escrito** (o corpo carrega o componente novo, a placa carrega
+`Visibility`). Sobrepostos, quem ganha o clique depende da ordem em que o `bevy_ecs` visita os
+arquétipos.
+
+⚠️ **E o CONTROLO da cena precisa de corpo pelo mesmo motivo** — sem ele, *«a porta que NÃO tem
+cérebro»* é inalcançável e a comparação que torna a wave legível não existe.
+
+⇒ **os dois gates que fecham isto:** *o portador do componente tem `Sprite` visível e de área não
+nula* · *no ponto que o roteiro nomeia, o único sprite visível que o contém é ele* (o chão à parte).
+⛔ Um censo TEXTUAL por `world.spawn` não serve de gate — ele dá falso positivo assim que a geometria
+sai para um helper; quem o quiser como gate tem de **montar o mundo**.
 
 **Why:** o texto de um smoke é **superfície de produto** — é onde o dono aprende a ferramenta
 (CLAUDE.md §0.8) —, e é a única superfície do repo cuja correcção nada media.

@@ -10,6 +10,23 @@
 //! | **esquerda — «Door»** | uma **máquina de estados** de 3 estados | `Fechada → A abrir → Aberta → Fechada`, um passo por toque |
 //! | **direita — «Door (no brain)»** | só a tabela de acções, com as MESMAS duas linhas | fica **sempre escondida**: o mesmo sinal manda mostrar E esconder, e a última ganha |
 //!
+//! # ⛔⛔ Cada porta é um CORPO com uma FAIXA de sinal por cima — e a partição é load-bearing
+//!
+//! O cérebro mora no **corpo** (o batente escuro), que é a parte grande e a que o artista carrega
+//! para o escolher. A cor vive numa **faixa** por cima dele — três placas empilhadas, uma visível —,
+//! e a faixa **não cobre o corpo**: elas encostam e não se sobrepõem.
+//!
+//! ⚠️ **Isto não é decoração, é o que torna a cena ALCANÇÁVEL** (report do dono, 2026-09-15:
+//! *«não apareceu no painel a seção state machine»*). Antes, a entidade com o cérebro **não tinha
+//! `Sprite` nenhum**: ela não emitia `RenderInstance`, logo o
+//! [`ph2d_render::pick_sprite_at_world`] nunca a devolvia, e um clique na porta escolhia uma das
+//! placas — que não tem cérebro. *A cena estava certa como DADOS e era impossível como GESTO*, e o
+//! Inspector mostrava, correctamente, a verdade sobre o objecto escolhido.
+//!
+//! ⛔ E elas não se sobrepõem **por causa do desempate**: o pick devolve *«o último da ordem de
+//! iteração»*, que **entre arquétipos diferentes é indefinido** (o corpo carrega `StateMachine`, a
+//! placa carrega `Visibility` ⇒ arquétipos diferentes). Encostadas, não há desempate nenhum a fazer.
+//!
 //! ⭐⭐⭐ **É o CONTROLO que torna a wave legível.** Sem ele, a porta da esquerda parece uma porta
 //! que abre — com ele, vê-se *o que um estado compra*: **escolher UMA coisa de cada vez**. É
 //! exactamente o que a sonda do §5.0 mediu antes da primeira linha de código (duas linhas
@@ -17,12 +34,12 @@
 //!
 //! # O que tem de acontecer
 //!
-//! A porta da **esquerda** muda de cor num ciclo de três: **vermelha** (fechada) → **amarela** (a
-//! abrir) → **verde** (aberta) → vermelha outra vez. A da **direita** fica na mesma cor o tempo
-//! todo.
+//! A faixa da porta da **esquerda** muda de cor num ciclo de três: **vermelha** (fechada) →
+//! **amarela** (a abrir) → **verde** (aberta) → vermelha outra vez. A da **direita** fica na mesma
+//! cor o tempo todo.
 //!
-//! ⚠️ **Escolha a porta da esquerda e olhe o painel:** a secção *State Machine* diz **`Now: …`** —
-//! o estado corrente, a andar com a cena.
+//! ⚠️ **Carregue no CORPO da porta da esquerda** (o batente escuro por baixo da faixa) **e olhe o
+//! painel:** a secção *State Machine* diz **`Now: …`** — o estado corrente, a andar com a cena.
 //!
 //! ⚠️ Se a linha `[statemachine-smoke]` não aparecer, **PARE**: a cena não montou.
 //!
@@ -45,22 +62,69 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 pub const CENAS: u32 = 1;
 
 const CHAO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];
+const PORTA_RGBA: [f32; 4] = [0.30, 0.33, 0.40, 1.0];
 const FECHADA_RGBA: [f32; 4] = [0.85, 0.30, 0.28, 1.0];
 const A_ABRIR_RGBA: [f32; 4] = [0.92, 0.76, 0.26, 1.0];
 const ABERTA_RGBA: [f32; 4] = [0.36, 0.78, 0.44, 1.0];
 
-/// Uma placa colorida — as três de uma porta, empilhadas, e a máquina escolhe qual se vê.
+/// ⭐ **A geometria de uma porta, num sítio só** — o corpo em baixo, a faixa em cima, encostados.
+///
+/// ⚠️ **Elas TOCAM-SE e não se sobrepõem**, e a aritmética tem de o dizer: o [`JUNTA_Y`] é ao mesmo
+/// tempo o topo do corpo e o fundo da faixa. Escrever as duas caixas à mão seria a segunda resposta à mesma pergunta,
+/// e o ponto que o gate carrega deixaria de ser o ponto que o dono carrega.
+mod porta {
+    /// Meia-largura das duas peças.
+    pub(super) const MEIA_LARGURA: f32 = 1.3;
+    /// O `y` onde o corpo acaba e a faixa começa.
+    pub(super) const JUNTA_Y: f32 = 0.8;
+    /// O `y` do fundo do corpo.
+    pub(super) const BASE_Y: f32 = -2.2;
+    /// O `y` do topo da faixa.
+    pub(super) const TOPO_Y: f32 = 2.2;
+
+    /// `(tamanho, centro_y)` do CORPO — a peça que carrega o cérebro e o que o dedo apanha.
+    pub(super) const fn corpo() -> ([f32; 2], f32) {
+        (
+            [MEIA_LARGURA * 2.0, JUNTA_Y - BASE_Y],
+            (BASE_Y + JUNTA_Y) * 0.5,
+        )
+    }
+
+    /// `(tamanho, centro_y)` da FAIXA — a peça que a máquina acende.
+    pub(super) const fn faixa() -> ([f32; 2], f32) {
+        (
+            [MEIA_LARGURA * 2.0, TOPO_Y - JUNTA_Y],
+            (JUNTA_Y + TOPO_Y) * 0.5,
+        )
+    }
+}
+
+/// Uma placa colorida da FAIXA — as três de uma porta, empilhadas, e a máquina escolhe qual se vê.
 ///
 /// ⚠️ **Três objectos e não um objecto que muda de cor**, e é a decisão que torna a cena honesta:
 /// a tabela de acções (#5) sabe **mostrar e esconder**, e não sabe pintar. Inventar um verbo de cor
 /// só para o smoke seria medir um app que não existe.
-fn placa(world: &mut World, nome: &str, em: Vec2, cor: [f32; 4], visivel: bool) {
+fn placa(world: &mut World, nome: &str, x: f32, cor: [f32; 4], visivel: bool) {
+    let (tamanho, y) = porta::faixa();
     world.spawn((
         Name::new(nome),
-        Sprite::atlas(WHITE_TILE_KEY, [2.2, 4.0], cor),
+        Sprite::atlas(WHITE_TILE_KEY, tamanho, cor),
         Visibility { hidden: !visivel },
-        Transform::from_translation(em),
+        Transform::from_translation(Vec2::new(x, y)),
     ));
+}
+
+/// O SPRITE do corpo de uma porta — o batente escuro, sempre visível, que carrega os componentes.
+///
+/// ⛔ **Ele é a razão de o `Transform` dos dois «donos» ter deixado de estar na origem:** uma
+/// entidade sem sprite podia ficar em qualquer sítio porque não se via nem se apanhava; esta **é** o
+/// alvo do dedo, logo tem de estar debaixo da faixa que ela comanda.
+fn corpo_da_porta(x: f32) -> (Sprite, Transform) {
+    let (tamanho, y) = porta::corpo();
+    (
+        Sprite::atlas(WHITE_TILE_KEY, tamanho, PORTA_RGBA),
+        Transform::from_translation(Vec2::new(x, y)),
+    )
 }
 
 /// As duas linhas que uma porta tem para CADA estado: mostra a placa dele, esconde as outras duas.
@@ -112,12 +176,11 @@ fn cena_um(world: &mut World) {
         Transform::from_translation(Vec2::new(0.0, 5.2)),
     ));
 
-    // ── A PORTA da esquerda: as três placas + o cérebro + a tabela ───────────
-    let esq = Vec2::new(-4.5, 0.0);
-    placa(world, "Left Closed", esq, FECHADA_RGBA, true);
-    placa(world, "Left Opening", esq, A_ABRIR_RGBA, false);
-    placa(world, "Left Open", esq, ABERTA_RGBA, false);
-
+    // ── A PORTA da esquerda: o corpo + as três placas + o cérebro + a tabela ─
+    //
+    // ⚠️ **O corpo nasce ANTES das placas** — a ordem de criação é a ordem de desenho (ver o chão,
+    // acima), e o batente é o que fica por baixo.
+    let esq = -4.5;
     let mut linhas = acende("Left Closed", "door_closed", ["Left Opening", "Left Open"]);
     linhas.extend(acende(
         "Left Opening",
@@ -172,17 +235,21 @@ fn cena_um(world: &mut World) {
             initial: 0,
         },
         SignalActions(linhas),
-        Transform::from_translation(Vec2::new(0.0, 0.0)),
+        corpo_da_porta(esq),
     ));
+    placa(world, "Left Closed", esq, FECHADA_RGBA, true);
+    placa(world, "Left Opening", esq, A_ABRIR_RGBA, false);
+    placa(world, "Left Open", esq, ABERTA_RGBA, false);
 
     // ── O CONTROLO: as MESMAS acções, SEM cérebro ────────────────────────────
     //
     // ⭐⭐⭐ Ele ouve o `botao` directamente — e as três linhas disparam **todas**, na ordem em que
     // estão escritas. A última ganha, e a porta fica presa. *É a medição do §5.0 posta no ecrã.*
-    let dir = Vec2::new(4.5, 0.0);
-    placa(world, "Right Closed", dir, FECHADA_RGBA, true);
-    placa(world, "Right Opening", dir, A_ABRIR_RGBA, false);
-    placa(world, "Right Open", dir, ABERTA_RGBA, false);
+    //
+    // ⚠️ **Ele tem CORPO pelo mesmo motivo que a irmã** — e é isso que faz o controlo controlar
+    // alguma coisa: o dono escolhe as duas portas e o painel diz, de uma, que ela tem cérebro, e da
+    // outra que não. Sem corpo, «a que não tem» era inalcançável e a comparação não existia.
+    let dir = 4.5;
     let mut controlo = acende("Right Closed", "botao", ["Right Opening", "Right Open"]);
     controlo.extend(acende(
         "Right Opening",
@@ -197,8 +264,11 @@ fn cena_um(world: &mut World) {
     world.spawn((
         Name::new("Door (no brain)"),
         SignalActions(controlo),
-        Transform::from_translation(Vec2::new(0.0, 0.0)),
+        corpo_da_porta(dir),
     ));
+    placa(world, "Right Closed", dir, FECHADA_RGBA, true);
+    placa(world, "Right Opening", dir, A_ABRIR_RGBA, false);
+    placa(world, "Right Open", dir, ABERTA_RGBA, false);
 }
 
 /// Monta a cena pedida e devolve o nível montado.
@@ -210,9 +280,10 @@ fn cena_um(world: &mut World) {
 pub fn montar(world: &mut World, _nivel: u32) -> u32 {
     cena_um(world);
     println!(
-        "[statemachine-smoke] =1 a porta da ESQUERDA cicla vermelho -> amarelo -> verde (um passo \
-         por toque do botao); a da DIREITA tem as MESMAS accoes SEM cerebro e fica presa. Escolha \
-         a da esquerda e veja «Now: …» no painel"
+        "[statemachine-smoke] =1 a FAIXA da porta da ESQUERDA cicla vermelho -> amarelo -> verde \
+         (um passo por toque do botao); a da DIREITA tem as MESMAS accoes SEM cerebro e fica \
+         presa. Carregue no CORPO da porta da esquerda (o batente escuro por baixo da faixa) e \
+         veja «Now: …» na seccao State Machine do painel"
     );
     1
 }

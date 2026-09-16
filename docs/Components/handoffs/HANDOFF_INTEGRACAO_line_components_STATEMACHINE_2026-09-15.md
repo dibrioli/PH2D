@@ -77,8 +77,9 @@ comparada.*
 
 ## §5 — As provas
 
-[`mutacao_statemachine_2026-09-15.sh`](../ferramentas/mutacao_statemachine_2026-09-15.sh) — **14
-mutações, todas a sangrar**, e **DUAS sobreviveram primeiro**:
+[`mutacao_statemachine_2026-09-15.sh`](../ferramentas/mutacao_statemachine_2026-09-15.sh) — **16
+mutações, todas a sangrar** (as **duas** últimas são do report do §9-bis: o cérebro sem corpo, e a
+faixa por cima do corpo), e **DUAS sobreviveram primeiro**:
 
 1. ⚠️ **A fixtura da ORDEM era fraca:** com **duas** máquinas semeadas ao contrário, `reverse()`
    devolve **exactamente** a ordem certa — ela não separava *«ordenado»* de *«ao contrário da
@@ -101,7 +102,9 @@ mutações, todas a sangrar**, e **DUAS sobreviveram primeiro**:
    é uma auto-transição, que a lei recusa — ela leria-se como um controlo partido ao nascer.
 5. **A cena de smoke usa TRÊS placas empilhadas e não um objecto que muda de cor** — a tabela de
    acções sabe mostrar e esconder, e **não sabe pintar**. Inventar um verbo de cor só para o smoke
-   seria medir um app que não existe.
+   seria medir um app que não existe. ⚠️ **E desde o §9-bis as placas são uma FAIXA sobre um CORPO**,
+   que é quem carrega os componentes e quem o dedo apanha — as duas peças **encostam sem se
+   sobrepor**, de propósito.
 6. **O `montar` da cena não tem `match`** (uma cena só; o `clippy` recusa um braço único) — o que
    mantém o `CENAS` honesto é um **gate** que varre níveis, não a forma do código.
 
@@ -123,6 +126,88 @@ mutações, todas a sangrar**, e **DUAS sobreviveram primeiro**:
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_STATEMACHINE_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke
 ```
+
+⚠️ **O passo que escolhe o objecto é *«carregue no CORPO da porta da esquerda»* — o batente escuro
+por baixo da faixa de cor**, e não na faixa: a faixa são as três placas que a máquina acende, e elas
+não têm o componente. Ver o §9-bis.
+
+---
+
+## §9-bis — ⛔⛔⛔ O SMOKE do dono: *«não apareceu no painel a seção state machine»*
+
+**Report de 2026-09-15, depois do fecho.** A fiação do painel estava **inteira** — o defeito era a
+**CENA**, e ela estava certa como DADOS e era impossível como GESTO.
+
+### O que era
+
+A entidade que carregava o `StateMachine` chamava-se `Door` e **não tinha `Sprite` nenhum**. O que
+se via no ecrã eram as três placas coloridas (`Left Closed`/`Opening`/`Open`), e **nenhuma delas tem
+cérebro**. ⇒ um objecto sem sprite não emite `RenderInstance`, logo o
+[`ph2d_render::pick_sprite_at_world`] **nunca o devolve**; o clique na porta escolhia uma placa, e o
+Inspector mostrava — correctamente — a verdade sobre o objecto escolhido.
+
+⚠️ **O roteiro impresso pela própria cena dizia *«Escolha a da esquerda»*, e esse passo era
+impossível.** É o irmão exacto da lei
+[`feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list`](../../../project-memory/feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md),
+um nível acima: *um passo que manda CLICAR numa coisa afirma que ela é clicável.*
+
+### ⛔ Porque nenhum dos seis gates da cena o via, e a cegueira é ESTRUTURAL
+
+Os seis liam a cena como **dados** — *«a porta tem `StateMachine`?»*, *«as duas tabelas têm o mesmo
+tamanho?»*, *«as três setas ouvem o nome que o relógio publica?»* — e **nenhum** perguntava o que o
+roteiro promete: ***o artista consegue CHEGAR a ela?*** Uma cena de smoke tem duas metades, e esta
+linha só gateava uma.
+
+### A cura
+
+Cada porta passa a ser um **CORPO** (o batente escuro, sempre visível, que carrega `StateMachine` +
+`SignalActions`) com uma **FAIXA** de cor por cima — as três placas empilhadas, uma visível. O corpo
+é a peça grande e é onde o dedo cai.
+
+⛔⛔ **E elas ENCOSTAM sem se sobrepor, por causa do desempate:** o `pick_sprite_at_world` devolve
+*«o último da ordem de iteração»*, que **entre arquétipos diferentes é indefinido por escrito** (o
+corpo carrega `StateMachine`, a placa carrega `Visibility` ⇒ arquétipos diferentes). Sobrepostas, a
+resposta dependeria da ordem em que o `bevy_ecs` visita os arquétipos; encostadas, não há desempate
+nenhum a fazer. A geometria vive num módulo só (`porta::{corpo, faixa}`), com `JUNTA_Y` a ser ao
+mesmo tempo o topo de um e o fundo do outro — *duas caixas escritas à mão seriam a segunda resposta
+à mesma pergunta, e o ponto que o gate carrega deixaria de ser o ponto que o dono carrega.*
+
+⚠️ **O CONTROLO ganhou corpo pelo mesmo motivo, e é isso que o torna um controlo:** o dono escolhe
+as duas portas e o painel diz, de uma, que ela tem cérebro, e da outra que não. Sem corpo, *«a que
+não tem»* era inalcançável e a comparação não existia.
+
+### Os dois gates que faltavam
+
+- **`o_que_tem_cerebro_tem_corpo`** — o portador do componente tem `Sprite`, de área não-nula e não
+  escondido. Sozinho, este teria apanhado o defeito.
+- **`o_dedo_do_dono_apanha_a_porta_e_nao_uma_placa`** — no ponto que o roteiro nomeia
+  (`ONDE_O_DONO_TOCA`, derivado da geometria), os únicos sprites visíveis que o contêm são a porta e
+  o chão.
+
+⚠️ **O segundo é uma REPRODUÇÃO declarada da lei do `pick_sprite_at_world`**, não ela: aquela corre
+sobre o mundo de PRESENTE (`RenderInstance` + `GlobalTransform`), que esta crate não monta. A
+divergência fecha-se por **asserção**: o gate afirma, de cada sprite da cena, que não tem rotação,
+escala, skew, âncora nem deslocamento — e só então aplica a caixa alinhada aos eixos. ⛔ E a
+visibilidade lê-se por `world.get` entidade a entidade, **nunca** por um `Option<&Visibility>` dentro
+da consulta: o `try_query` do `bevy_ecs` devolve `None` quando *qualquer* componente dela é
+desconhecido do mundo — a armadilha que a wave das TAGS já pagou.
+
+### O CENSO: as outras cenas desta linha
+
+Varridas as cenas de `ph2d-app-components` e `ph2d-app-physics` à procura de um `world.spawn` que
+carregue um componente do TOP-20 **sem** `Sprite`, sobram **dois** acertos e **nenhum é defeito**:
+as duas `GameCamera` (`camera_2d_smoke` e `factory_smoke`). Uma câmera **não tem corpo** por
+natureza, e o roteiro impresso das duas cenas não manda clicar nela. ⚠️ **E o censo é um proxy
+TEXTUAL que dá falso positivo na própria cura** — ele acusa `Door` porque a palavra `Sprite` mora
+dentro do `corpo_da_porta()` e não no bloco do `spawn`. *Um censo por texto sobre uma cena mede
+como ela está escrita, não o que ela monta;* quem o repetir num gate tem de montar o mundo.
+
+### ⏳ O que este report deixa ABERTO e NÃO foi curado
+
+**Nenhuma secção opcional do Inspector — as 26 — tem gate a provar que ela chega a PIXEL.** A
+presença é decidida por `build_*_info` (gateado) e a tabela `LIVE_SECTIONS` é gateada por censo,
+mas não existe arnês de pintura na `ph2d-panel-inspector`, e construí-lo é wave própria. Esta
+rodada **não** o construiu, e o defeito de hoje não estava aí — mas a lente continua a faltar.
 
 ---
 

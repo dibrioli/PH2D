@@ -140,6 +140,24 @@ sed -i 's|Name::new("Door (no brain)"),|Name::new("Door (nao e o controlo)"),|' 
 prova "a cena traz o CONTROLO" ph2d-app-components "a_cena_traz_a_porta_e_o_controlo"
 restaura "$SMOKE"
 
+# ── W5: o corpo da porta (report do dono, 2026-09-15: «nao apareceu no painel a
+#        seccao state machine») ─────────────────────────────────────────────────
+#
+# ⚠️ As duas mutações abaixo reproduzem, uma de cada vez, as DUAS metades do defeito: o cérebro
+# numa entidade SEM sprite (invisível ao `pick_sprite_at_world`), e a faixa de cor por CIMA do
+# corpo (o clique escolhe a placa, que não tem cérebro).
+guarda "$SMOKE"
+conta "$SMOKE" "        corpo_da_porta(esq)," 1 || exit 1
+sed -i 's|^        corpo_da_porta(esq),$|        Transform::from_translation(Vec2::new(0.0, 0.0)),|' "$SMOKE"
+prova "o que tem CEREBRO tem CORPO" ph2d-app-components "o_que_tem_cerebro_tem_corpo"
+restaura "$SMOKE"
+
+guarda "$SMOKE"
+conta "$SMOKE" "    pub(super) const JUNTA_Y: f32 = 0.8;" 1 || exit 1
+sed -i 's|    pub(super) const JUNTA_Y: f32 = 0.8;|    pub(super) const JUNTA_Y: f32 = BASE_Y;|' "$SMOKE"
+prova "a FAIXA nao cobre o corpo" ph2d-app-components "o_dedo_do_dono_apanha_a_porta"
+restaura "$SMOKE"
+
 echo
 if [ "$FALHAS" = 0 ]; then echo "TODAS as $TOTAL mutacoes sangraram."; else echo "⛔ $FALHAS de $TOTAL SOBREVIVERAM"; fi
 git diff --stat -- crates shells | tail -3

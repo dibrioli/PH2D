@@ -221,3 +221,12 @@ esquecido. *A cura de um NOME repete-se; a de uma PORTA não.*
 4. ⏳ **A arbitragem é a ordem da tabela e a tabela não se REORDENA no painel** — hoje o artista
    apaga e reescreve. Um arrasto de linha é o `PanelRowFamily` que a wave das tags trouxe, e ele
    **existe**; ligá-lo aqui é uma linha de UI, não um mecanismo.
+5. ⛔⛔ **NENHUMA das 26 secções opcionais do Inspector tem gate a provar que ela chega a PIXEL**
+   — aberto pelo report do dono de 2026-09-15 (*«não apareceu no painel a seção state machine»*),
+   que acabou por ser um defeito da CENA e não da pintura
+   ([handoff §9-bis](handoffs/HANDOFF_INTEGRACAO_line_components_STATEMACHINE_2026-09-15.md)). A
+   **presença** é gateada nos dois sítios que a decidem (o `build_*_info` e o censo
+   `architecture_every_live_section_is_in_the_table`) e a **pintura** não é, porque não existe arnês
+   de pintura na `ph2d-panel-inspector`. ⚠️ É a mesma forma que a lei
+   *«uma faixa RESERVADA não é uma faixa PINTADA»* já mediu noutro painel — construí-lo é wave
+   própria, e esta rodada **não** o construiu.

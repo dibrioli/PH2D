@@ -158,3 +158,123 @@ fn o_roteador_nunca_devolve_acima_do_tecto() {
         "o roteador tem de ALCANCAR todas as cenas que declara: {vistos:?}"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ O QUE TEM CÉREBRO TEM DE TER CORPO (report do dono, 2026-09-15)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// O dono correu a cena e escreveu: *«não apareceu no painel a seção state machine»*. A fiação do
+// painel estava inteira — o defeito era **a cena**: o cérebro morava numa entidade **sem `Sprite`**,
+// logo invisível e **impossível de apontar**, enquanto o que se vê no ecrã (as placas coloridas) não
+// tem cérebro nenhum. O Inspector mostrava a verdade sobre o objecto escolhido.
+//
+// ⚠️ **Nenhum dos seis gates acima o via, e a cegueira é estrutural:** eles todos leem a cena como
+// DADOS (*«a porta tem `StateMachine`?»*) e nenhum pergunta o que o roteiro promete — *«o artista
+// consegue CHEGAR a ela?»*. ⛔ Uma cena correcta como dados e impossível como gesto ensina o
+// contrário do que diz, que é pior que uma cena ausente (`CLAUDE.md` §5.0).
+
+/// O ponto do ecrã onde o roteiro manda tocar — o meio do corpo da porta da esquerda.
+///
+/// ⚠️ **Não é o meio da PORTA**: a faixa de cor ocupa o topo dela, e um ponto ali apanharia a
+/// faixa. O número sai da geometria que o [`cena_um`] monta, e é por isso que ele vive ao lado
+/// dela.
+const ONDE_O_DONO_TOCA: [f32; 2] = [-4.5, -0.7];
+
+/// As entidades VISÍVEIS cujo rectângulo contém o ponto, pela ordem em que o mundo as devolve.
+///
+/// ⚠️ **É uma REPRODUÇÃO da lei do [`ph2d_render::pick_sprite_at_world`]**, não ela: aquela corre
+/// sobre o mundo de PRESENTE (`RenderInstance` + `GlobalTransform`), que esta crate não monta. A
+/// divergência é declarada e **fechada por asserção**: a reprodução só vale para sprites sem
+/// rotação, escala, âncora nem deslocamento, e o gate afirma isso de cada uma antes de a medir.
+///
+/// ⚠️ **Um sprite `hidden` NÃO entra** — ele não emite `RenderInstance` (`sim_extract`), logo não
+/// é apontável. É isso que torna as placas apagadas invisíveis ao dedo, e não só ao olho.
+///
+/// ⛔ **`world.get` por entidade, nunca um `Option<&Visibility>` dentro da consulta:** o
+/// `try_query` do `bevy_ecs` devolve `None` quando **qualquer** componente dela não está registado,
+/// e um mundo sem `Visibility` responderia *«ninguém»* — o defeito que a `lifetime.rs` já nomeia.
+fn quem_o_dedo_apanha(sim: &SimWorld, ponto: [f32; 2]) -> Vec<String> {
+    let world = sim.world();
+    let mut q = world
+        .try_query::<(ph2d_ecs::Entity, &Transform, &Sprite)>()
+        .expect("a cena tem sprites");
+    let mut apanhados = Vec::new();
+    for (e, t, s) in q.iter(world) {
+        let nome = world
+            .get::<Name>(e)
+            .map_or_else(|| format!("{e:?}"), |n| n.as_str().to_string());
+        assert_eq!(
+            (t.rotation, t.scale.x, t.scale.y, t.skew_x, t.skew_y),
+            (0.0, 1.0, 1.0, 0.0, 0.0),
+            "«{nome}»: a reproducao da lei do pick so' vale sem rotacao/escala/skew"
+        );
+        assert_eq!(
+            (s.anchor, s.offset, s.centered),
+            ([0.0, 0.0], [0.0, 0.0], true),
+            "«{nome}»: a reproducao da lei do pick so' vale com a ancora no centro"
+        );
+        if world.get::<Visibility>(e).is_some_and(|v| v.hidden) {
+            continue;
+        }
+        let dx = (ponto[0] - t.translation.x).abs();
+        let dy = (ponto[1] - t.translation.y).abs();
+        if dx <= s.size[0] * 0.5 && dy <= s.size[1] * 0.5 {
+            apanhados.push(nome);
+        }
+    }
+    apanhados
+}
+
+/// ⭐⭐⭐ **O cérebro mora num objecto que EXISTE NO ECRÃ.**
+///
+/// ⛔ Sem isto, a cena monta-se, os seis gates acima passam, e o roteiro manda o dono escolher uma
+/// coisa que **não se pode escolher**: um objecto sem `Sprite` não emite `RenderInstance`, logo o
+/// [`ph2d_render::pick_sprite_at_world`] nunca o devolve, e o Inspector — correctamente — mostra o
+/// que ele escolheu em vez dele.
+///
+/// **Mutação que deve sangrar:** tirar o `Sprite` da porta (o estado exacto de 2026-09-15).
+#[test]
+fn o_que_tem_cerebro_tem_corpo() {
+    let sim = cena();
+    for nome in ["Door", "Door (no brain)"] {
+        let e = por_nome(&sim, nome);
+        let s = sim
+            .world()
+            .get::<Sprite>(e)
+            .unwrap_or_else(|| panic!("«{nome}» tem de ter CORPO — sem sprite ninguem lhe toca"));
+        assert!(
+            s.size[0] > 0.0 && s.size[1] > 0.0,
+            "«{nome}»: um corpo de area zero e' o mesmo que nenhum"
+        );
+        assert!(
+            !sim.world().get::<Visibility>(e).is_some_and(|v| v.hidden),
+            "«{nome}»: um corpo ESCONDIDO nao emite RenderInstance — e' o mesmo que nenhum"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **E o dedo apanha-o: no ponto que o roteiro nomeia, a porta é o único objecto dela ali.**
+///
+/// ⚠️ **O chão é esperado e não é ambiguidade:** ele é a primeira raiz criada, desenha ATRÁS de
+/// tudo, e nenhum outro objecto da porta disputa aquele ponto — logo o dedo não tem por onde se
+/// enganar. ⛔ O que este gate proíbe é a faixa de cor cobrir o corpo: aí o clique escolheria a
+/// placa, que é exactamente o report de 2026-09-15.
+///
+/// **Mutação que deve sangrar:** pôr a faixa por cima do corpo inteiro (o desenho de 2026-09-15).
+#[test]
+fn o_dedo_do_dono_apanha_a_porta_e_nao_uma_placa() {
+    let sim = cena();
+    let apanhados = quem_o_dedo_apanha(&sim, ONDE_O_DONO_TOCA);
+    assert!(
+        apanhados.contains(&"Door".to_string()),
+        "o ponto do roteiro tem de apanhar a porta; apanhou {apanhados:?}"
+    );
+    let intrusos: Vec<&String> = apanhados
+        .iter()
+        .filter(|n| n.as_str() != "Door" && n.as_str() != "Floor")
+        .collect();
+    assert!(
+        intrusos.is_empty(),
+        "so' o chao pode partilhar o ponto com a porta; tambem la' estao {intrusos:?}"
+    );
+}

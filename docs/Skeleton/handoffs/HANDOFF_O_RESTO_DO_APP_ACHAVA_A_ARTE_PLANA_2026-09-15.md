@@ -1425,3 +1425,19 @@ Fila **F6-q**. O que o integrador precisa de saber:
 5. ⚠️ **Aviso PRÉ-EXISTENTE visto na corrida impactada** (não é desta linha): dois exemplos
    chamados `probe_cost` (`ph2d-table` e `ph2d-node-source-lsystem`) colidem no `target/ci-test/examples`
    — o cargo avisa que isso *«pode vir a ser erro»*.
+
+---
+
+## §26 — ✅ AS ALÇAS DO GIZMO DE UMA IMAGEM PRESA CERCAM A ARTE DOBRADA (2026-09-16)
+
+Fila **F6-r**. O que o integrador precisa de saber:
+
+1. ⚠️ **Movimento da shell para a folha, em commit PRÓPRIO e provado:** `Lattice`, `lattice` e
+   `gizmo_box` saíram de `shells/desktop/src/render_loop/sheet_grid_overlay.rs` para
+   `crates/ph2d-sprite-screen/src/sheet_lattice.rs` (+ `sheet_lattice_tests.rs`, sete gates com os
+   mesmos nomes). Um ramo que tenha tocado nessas funções na shell funde **em conflito com um
+   ficheiro que já não as tem** — a cura é aplicar a mudança no destino.
+2. **O `gizmo_box` ganhou o 6.º parâmetro `desenhada: Option<&SpriteMesh>`** — o único chamador de
+   produto é o `snapshots_gizmo.rs`, que o tira da `ph2d_render::drawn_instance_of`.
+3. **A shell encolhe** (o movimento leva `~350` linhas; o fio ganha duas).
+4. **Zero schema, zero contrato, zero registo.**

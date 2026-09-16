@@ -174,16 +174,16 @@ pub(super) fn sprite_view(
     let scale_y = (col1_x * col1_x + col1_y * col1_y).sqrt();
     let rotation = col0_y.atan2(col0_x);
     let p = gt.translation();
-    // **COM A FOLHA ABERTA, A CAIXA ENVOLVE A FOLHA** (Enio, 2026-08-23: *«o gizmo da
-    // sprite deve englobar todas as células»*). A escolha e os números vivem em
-    // `sheet_grid_overlay::gizmo_box`, que é onde eles têm gate — aqui só se aplica a
-    // escala e a rotação, como sempre.
+    // A caixa (folha aberta · malha desenhada · quad) vive na `sheet_lattice::gizmo_box`, onde tem
+    // gate — aqui só se aplicam a escala e a rotação.
+    let malha = ph2d_render::drawn_instance_of(present.world(), bits).and_then(|(_, m)| m);
     let (eff_anchor, half) = ph2d_sprite_screen::sheet_lattice::gizmo_box(
         sprite,
         sim.world().get::<ph2d_ecs::SpriteGrid>(sim_entity).copied(),
         gizmo_ppm,
         sheet_gizmo_bits == Some(bits),
         crate::render_loop::sim_extract_sheet::is_tool_previewed(tool_preview_bits, sim_entity),
+        malha,
     );
     let half_w = half[0] * scale_x;
     let half_h = half[1] * scale_y;

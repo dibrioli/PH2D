@@ -331,10 +331,28 @@ fn the_protection_brush_ring_is_drawn_through_the_art_mesh() {
         "{GPU} deixou de desenhar o anel do pincel pela porta que o leva pela malha da arte."
     );
     // ⛔ A LEI ANTIGA proibida pelo nome: um círculo com o raio da escala do quad de repouso.
+    // (A caixa do gizmo da sprite é a irmã deste gate: `the_sprite_gizmo_box_is_the_drawn_mesh_box`.)
     assert!(
         !src.contains("Circle::new") && !src.contains("pixel_scale"),
         "{GPU} voltou a desenhar o anel como um círculo com a escala do quad: numa arte dobrada ele \
          mostra um tamanho e o pincel pinta outro."
+    );
+}
+
+/// ⭐⭐ **A CAIXA DO GIZMO de uma sprite desenhada como malha é a caixa da MALHA** (2026-09-16) — a
+/// metade da COSTURA; a escolha e o gate dela moram na `ph2d_sprite_screen::sheet_lattice::gizmo_box`.
+/// Na cena do smoke do osso a arte dobrada saía `221` px acima da caixa de repouso.
+///
+/// (Mutação: passar `None` em vez da malha ⇒ RED.)
+#[test]
+fn the_sprite_gizmo_box_is_the_drawn_mesh_box() {
+    const GIZMO: &str = "shells/desktop/src/render_loop/snapshots_gizmo.rs";
+    let src = fonte(GIZMO);
+    assert!(
+        src.contains("ph2d_render::drawn_instance_of(present.world(), bits)")
+            && src.contains("is_tool_previewed(tool_preview_bits, sim_entity),\n        malha,"),
+        "{GIZMO} deixou de dar à caixa do gizmo a malha com que a sprite é desenhada: numa imagem \
+         presa e dobrada as alças voltam a cercar o quad de repouso."
     );
 }
 

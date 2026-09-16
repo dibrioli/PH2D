@@ -301,3 +301,51 @@ fn mede_o_anel(graus: f32) {
         );
     }
 }
+
+/// ⏱️ **SONDA (`--ignored`) — a CAIXA do gizmo (o quad de repouso) contra o que a malha desenha.**
+#[test]
+#[ignore = "sonda: imprime a tabela, sem barra"]
+fn sonda_a_caixa_do_gizmo_contra_a_malha() {
+    for graus in [0.0_f32, super::super::super::super::DOBRA_GRAUS, 60.0] {
+        let (sim, e) = cena_dobrada(
+            super::super::super::super::ALTURA_PX,
+            None,
+            ph2d_poly2d::GridOptions::default(),
+            graus,
+        );
+        let (sm, p2l, pele) = campo_da_cena(&sim, e);
+        let sprite = *sim.world().get::<ph2d_render::Sprite>(e).expect("sprite");
+        let (size, anchor) = (sprite.size, sprite.resolve_anchor(PPM));
+        let (m, _) = ph2d_skeleton_live::skin_image::posed_sprite_mesh(
+            sm.mesh.clone(),
+            p2l,
+            &pele,
+            &sm.pesos,
+            anchor,
+            size,
+            None,
+        )
+        .expect("malha posada");
+        let (mut lo, mut hi) = ([f32::MAX; 2], [f32::MIN; 2]);
+        for p in &m.local {
+            for k in 0..2 {
+                lo[k] = lo[k].min(p[k]);
+                hi[k] = hi[k].max(p[k]);
+            }
+        }
+        let quad_lo = [anchor[0] - size[0] / 2.0, anchor[1] - size[1] / 2.0];
+        let quad_hi = [anchor[0] + size[0] / 2.0, anchor[1] + size[1] / 2.0];
+        let px = |v: f32| v * PX_POR_METRO as f32;
+        println!(
+            "{graus:>4} graus | quad [{:.0},{:.0}]..[{:.0},{:.0}] px | malha [{:.0},{:.0}]..[{:.0},{:.0}] px",
+            px(quad_lo[0]),
+            px(quad_lo[1]),
+            px(quad_hi[0]),
+            px(quad_hi[1]),
+            px(lo[0]),
+            px(lo[1]),
+            px(hi[0]),
+            px(hi[1])
+        );
+    }
+}

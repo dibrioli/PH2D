@@ -39,7 +39,7 @@ fn gbox(
     sheet_open: bool,
     unfolded: bool,
 ) -> ([f32; 2], [f32; 2]) {
-    gizmo_box(&f.0, Some(f.1), ppm, sheet_open, unfolded)
+    gizmo_box(&f.0, Some(f.1), ppm, sheet_open, unfolded, None)
 }
 
 const PPM: f32 = 100.0;
@@ -265,4 +265,42 @@ fn the_gizmo_box_wraps_the_sheet_only_when_the_sheet_is_open() {
     let (c, h) = gbox(&cell, PPM, true, false);
     assert_eq!(c, cell.0.resolve_anchor(PPM));
     assert_eq!(h, [cell.0.size[0] * 0.5, cell.0.size[1] * 0.5]);
+}
+
+/// ⭐⭐ **UMA IMAGEM DESENHADA COMO MALHA TEM A CAIXA DO QUE DESENHA** — e a folha aberta não lha tira.
+///
+/// ⚠️ A malha da fixtura sai do quad **para cima e para a direita**, como a arte dobrada da cena do
+/// smoke do osso; o controlo é a mesma sprite sem malha, que continua com a caixa do quad.
+///
+/// (Mutação: ignorar `desenhada` ⇒ RED.)
+#[test]
+fn a_sprite_drawn_as_a_mesh_is_boxed_by_what_it_draws() {
+    let s = spr(1, 1, 0);
+    let malha = ph2d_render::SpriteMesh {
+        local: vec![[-1.0, -1.0], [1.5, -1.0], [1.5, 2.5], [-1.0, 1.0]],
+        uv: vec![[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
+        tris: vec![[0, 1, 2], [0, 2, 3]],
+    };
+    for sheet_open in [false, true] {
+        let (c, h) = gizmo_box(&s.0, Some(s.1), PPM, sheet_open, false, Some(&malha));
+        assert_eq!(
+            c,
+            [0.25, 0.75],
+            "o centro e' o da malha (sheet_open={sheet_open})"
+        );
+        assert_eq!(h, [1.25, 1.75], "e a meia-extensao tambem");
+    }
+    // ⛔ O CONTROLO: sem malha, a caixa é a do quad — a fixtura contém o fenómeno.
+    let (c, h) = gizmo_box(&s.0, Some(s.1), PPM, false, false, None);
+    assert_eq!((c, h), ([0.0, 0.0], [1.0, 1.0]));
+    // Uma malha VAZIA não é uma caixa — vale a do quad.
+    let vazia = ph2d_render::SpriteMesh {
+        local: Vec::new(),
+        uv: Vec::new(),
+        tris: Vec::new(),
+    };
+    assert_eq!(
+        gizmo_box(&s.0, Some(s.1), PPM, false, false, Some(&vazia)),
+        ([0.0, 0.0], [1.0, 1.0])
+    );
 }

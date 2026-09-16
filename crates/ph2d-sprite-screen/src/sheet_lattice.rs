@@ -120,6 +120,13 @@ pub fn lattice(
 ///
 /// `sheet_open` = a caixa «Show sheet on canvas» está marcada **para este sprite**;
 /// `unfolded` = uma ferramenta pré-visualiza-o (a folha centra-se no pivô). Ver [`lattice`].
+///
+/// ⭐⭐ **`desenhada` é a MALHA com que a sprite é desenhada** (uma imagem presa ao esqueleto — a
+/// `ph2d_render::drawn_instance_of` responde). Com ela a caixa é a do que se DESENHA, e não a do quad
+/// de repouso: medido na cena do smoke do osso (`sonda_a_caixa_do_gizmo_contra_a_malha`, `25°` por
+/// junta), a arte dobrada sai **`221` px acima** e **`69` px à direita** da caixa de repouso. ⚠️ Ela
+/// ganha à folha aberta: uma sprite desenhada como malha não desenha a folha (a malha só conhece o
+/// quad dela), logo a folha não é o que está no ecrã.
 #[must_use]
 pub fn gizmo_box(
     spr: &Sprite,
@@ -127,7 +134,11 @@ pub fn gizmo_box(
     pixels_per_meter: f32,
     sheet_open: bool,
     unfolded: bool,
+    desenhada: Option<&ph2d_render::SpriteMesh>,
 ) -> ([f32; 2], [f32; 2]) {
+    if let Some(caixa) = desenhada.and_then(caixa_da_malha) {
+        return caixa;
+    }
     let folded = (
         spr.resolve_anchor(pixels_per_meter),
         [spr.size[0] * 0.5, spr.size[1] * 0.5],
@@ -143,6 +154,22 @@ pub fn gizmo_box(
         // Sem grelha não há folha para envolver — e a caixa é a de sempre.
         None => folded,
     }
+}
+
+/// A caixa alinhada ao referencial LOCAL dos vértices POSADOS — `(centro, meia-extensão)`; `None`
+/// numa malha sem vértices.
+fn caixa_da_malha(m: &ph2d_render::SpriteMesh) -> Option<([f32; 2], [f32; 2])> {
+    let primeiro = *m.local.first()?;
+    let (lo, hi) = m.local.iter().fold((primeiro, primeiro), |(lo, hi), p| {
+        (
+            [lo[0].min(p[0]), lo[1].min(p[1])],
+            [hi[0].max(p[0]), hi[1].max(p[1])],
+        )
+    });
+    Some((
+        [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5],
+        [(hi[0] - lo[0]) * 0.5, (hi[1] - lo[1]) * 0.5],
+    ))
 }
 
 #[cfg(test)]

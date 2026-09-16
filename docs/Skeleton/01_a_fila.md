@@ -2897,6 +2897,22 @@ jornada.
 ⇒ ⛔ **Não reconstrua nenhuma das três rotas.** Quem as ler aqui estaria a pagar de novo um problema
 que a troca de lei dissolveu — que é a forma nº 1 pela qual esta lista custa dinheiro.
 
+### F6-r — ✅ **As alças do gizmo de uma imagem presa cercam a arte DOBRADA** (2026-09-16)
+
+**UMA LINHA:** a caixa do gizmo de uma sprite era sempre o **quad de repouso** (ou a folha aberta),
+enquanto o realce e o *View All* já liam a malha — *duas caixas neste repo, que a F6-i nomeou e não
+unificou*. Medido na cena do smoke (`sonda_a_caixa_do_gizmo_contra_a_malha`): a `25°` por junta a arte
+dobrada sai **`221` px acima** e **`69` px à direita** da caixa; a `60°`, `324` px acima. ⭐ A caixa
+passa a ser a do que se DESENHA quando a sprite é malha
+([`sheet_lattice::gizmo_box`](../../crates/ph2d-sprite-screen/src/sheet_lattice.rs), parâmetro
+`desenhada`), e ganha à folha aberta (uma sprite em malha não desenha a folha).
+
+⭐ **O código saiu da shell primeiro, num commit de movimento PROVADO** (`scripts/moved-proof.py`,
+quatro blocos `OK`; `8` gates antes, `7 + 1` depois com os mesmos nomes — fica na shell o que cruza
+com o `sim_extract_sheet::cell`). Gates: 1 na folha + 1 de costura; **duas mutações, duas RED**.
+
+---
+
 ### F6-q — ✅ **O anel do pincel da Remoção de fundo mostra onde o pincel PINTA, na arte dobrada** (2026-09-16)
 
 **UMA LINHA:** o anel era um círculo com a escala do **quad de repouso**; o pincel pinta pela

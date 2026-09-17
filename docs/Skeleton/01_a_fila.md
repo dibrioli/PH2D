@@ -173,7 +173,39 @@ só onde se pergunta (um ponto, não a malha inteira), ou leitura da GPU.
      triângulos) custa à placa `~0,2 %` de um quadro, e `100 k` custam `4,4 %` — **6×** o orçamento
      actual com folga. Quem tem o tecto é a CPU (F6-t: `0,156 µs` para avaliar uma peça, `~0,32 µs`
      por peça nova ⇒ `50 k` peças ≈ `7,8 ms`), que é exactamente o que a F9 remove.
-- **W1 — a malha fina no bind**, com a régua da silhueta a mesma de hoje (sem mudar o que se vê).
+- ✅ **W1 — FECHADA (2026-09-17), com a porta DESLIGADA e o número que prova que ela tem de ficar assim.**
+  - **A porta**: [`ph2d_poly2d::refine_rest_by_attrs`] refina a malha de **repouso** onde o campo de
+    atributos curva (`Σ_j |w_j(meio) − w̄_j|`), sem pose nenhuma; e
+    [`ph2d_skeleton_live::skin_bake::assar`] liga-a aos pesos BBW do bind. `PH2D_SKIN_BAKE=1` abre.
+  - ⭐⭐⭐ **A conta que sustenta a F9 está escrita e CORRIDA:** com ossos afins,
+    `P(meio) − corda = Σ_j Δw_j · T_j(meio)` ⇒ *a única coisa não-linear numa aresta é o PESO*, e
+    assar com tolerância `τ` garante `|erro| ≤ τ · dispersão` em **toda** pose. É o mecanismo por
+    trás do que a W0 mediu.
+  - ⛔⛔ **A tolerância que eu tinha escrito era INERTE, e foi a arte REAL que o disse:** `0,02`
+    saía de uma fixtura sintética, e na cena do dono o pior desvio de peso de toda aresta já é
+    **`0,0154`** — a malha do bind **já é graduada pelas articulações** (wave de 10/09), logo a
+    densidade já está onde o campo vira. ⇒ a tolerância passa a ser **DERIVADA**
+    (`0,5 px / diagonal da arte`), que é a mesma barra que o `Smooth` do quadro promete.
+  - **Medido na arte do dono** (`512 × 320`, `2 430` peças, BBW por 3 ossos), com `τ = 8,3e-4`:
+
+    | desenho | peças | desvio ao CAMPO |
+    |---|---:|---:|
+    | `Fast` (o bind de hoje) | `2 430` | `0,4143 px` |
+    | `Smooth` (do quadro, zoom `8×`) | — | `0,0881 px` |
+    | **assada** | **`13 996`** (`5,76×`) | **`0,1781 px`** |
+
+    ⇒ a assada erra `2,3×` menos que o `Fast` e fica dentro da barra de `0,5 px`. ⚠️ Ela erra `2×`
+    mais que o `Smooth` **por desenho**: aquele refina para ESTA pose e este zoom, e a assada é
+    independente da pose — *uma aproximação que serve todas nunca bate, peça a peça, uma feita para
+    uma só*.
+  - ⭐⭐ **E é o `5,76×` que PROVA que a porta fica fechada até à W2:** `13 996` peças numa imagem
+    contra um orçamento de CPU de **`8 738` para o quadro inteiro** — *uma imagem assada não cabe
+    nele sozinha*. Na placa, `13 000` triângulos custam `~0,15 %` de um quadro (a tabela da W0-b).
+    **A assadura não é cara; caro é deformá-la na CPU.**
+  - ⚠️⚠️ **A régua da silhueta NÃO serve para comparar densidades diferentes** (a fila pedia-a, e a
+    medição refutou o pedido): o «vai-e-volta» soma a viragem absoluta da polilinha, logo **cresce
+    com o número de nós por construção** (`Fast` `26,60°` com 46 nós · `Smooth` `26,71°` com 64 ·
+    assada `29,44°` com 85). A régua com unidade e barra declarada é o **desvio ao campo**.
 - **W2 — o *vertex shader* de pele**, atrás da mesma escolha `Fast`/`Smooth` do painel, com o gate
   de paridade CPU×GPU e o caminho da CPU vivo para bissecar.
 - **W3 — as costuras** (ponteiro, chrome, onion) contra a malha que a GPU desenha.

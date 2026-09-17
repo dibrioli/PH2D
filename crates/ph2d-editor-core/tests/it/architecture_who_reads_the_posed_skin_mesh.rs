@@ -28,20 +28,25 @@
 use std::path::Path;
 
 /// As três portas públicas que entregam a malha desenhada, mais o próprio componente.
-const PORTAS: [&str; 4] = ["drawn_mesh_of", "drawn_instance_of", "mesh_uv", "SpriteMesh"];
+const PORTAS: [&str; 4] = [
+    "drawn_mesh_of",
+    "drawn_instance_of",
+    "mesh_uv",
+    "SpriteMesh",
+];
 
 /// ⭐ **O LADO DE DENTRO — quem PRODUZ, DESENHA ou DECLARA a malha.**
 ///
 /// Estes não são costuras: são o motor. Eles mudam **com** a F9, por construção, e é por isso que
 /// ficam fora da população de leitores (um censo que os contasse mediria o próprio produtor).
 const MOTOR: [&str; 7] = [
-    "crates/ph2d-render/src/lib.rs",                    // re-exporta as portas
-    "crates/ph2d-render/src/picking.rs",                // as três portas vivem aqui
-    "crates/ph2d-render/src/sprite_mesh.rs",            // o componente
-    "crates/ph2d-render/src/sprite_collect.rs",         // o passe que DESENHA
-    "crates/ph2d-render/src/sprite_mesh_warp.rs",       // a deformação
+    "crates/ph2d-render/src/lib.rs",              // re-exporta as portas
+    "crates/ph2d-render/src/picking.rs",          // as três portas vivem aqui
+    "crates/ph2d-render/src/sprite_mesh.rs",      // o componente
+    "crates/ph2d-render/src/sprite_collect.rs",   // o passe que DESENHA
+    "crates/ph2d-render/src/sprite_mesh_warp.rs", // a deformação
     "crates/ph2d-render/src/sprite_mesh_warp_probe.rs", // a sonda dela
-    "crates/ph2d-skeleton-live/src/skin_image.rs",      // `attach_skin_meshes`: o produtor
+    "crates/ph2d-skeleton-live/src/skin_image.rs", // `attach_skin_meshes`: o produtor
 ];
 
 /// ⭐⭐⭐ **AS COSTURAS, e a resposta que cada uma precisa quando a GPU posar.**
@@ -113,7 +118,9 @@ fn fontes() -> Vec<(String, String)> {
 }
 
 fn varre(dir: &Path, out: &mut Vec<(String, String)>) {
-    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
     for e in rd.flatten() {
         let p = e.path();
         if p.is_dir() {

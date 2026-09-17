@@ -33,6 +33,7 @@ pub mod bend_live;
 pub mod bone;
 pub mod goal;
 /// ⭐ O ORÇAMENTO de peças do quadro — irmão do `skin_image` pelo tecto de LOC, cortado por assunto.
+pub mod skin_bake;
 pub mod skin_budget;
 pub mod skin_image;
 pub mod skin_live;

@@ -208,3 +208,200 @@ fn sonda_a_malha_assada_contra_o_refinamento_por_quadro() {
         }
     }
 }
+
+/// ⏱️ **A ESCADA τ ↔ PEÇAS NA ARTE REAL** — o número que decide se a W1 tem sujeito.
+///
+/// `cargo test -p ph2d-app-vec --lib -- --ignored --nocapture escada_da_assadura_na_arte_real`
+#[test]
+#[ignore = "MEDICAO, nao gate"]
+fn escada_da_assadura_na_arte_real() {
+    let (sim, e) = cena(super::super::super::ALTURA_PX, None);
+    let (sm, _p2l, _pele) = campo_da_cena(&sim, e);
+    let ossos = sm.ossos();
+    let attrs = ph2d_poly2d::hermite_attrs(&sm.mesh, &sm.pesos, ossos);
+    let lei = ph2d_poly2d::AttrLaw::Hermite { values: ossos };
+    println!(
+        "\n  bind: {} vertices x {ossos} ossos, {} pecas, arte {}x{} px (diagonal {:.0})\n",
+        sm.mesh.rest.len(),
+        sm.mesh.tris.len(),
+        sm.mesh.size[0],
+        sm.mesh.size[1],
+        f64::from(sm.mesh.size[0]).hypot(f64::from(sm.mesh.size[1]))
+    );
+    println!("       tau |    pecas | x entrada |   desvio");
+    println!("  ---------+----------+-----------+---------");
+    for tau in [0.05_f64, 0.02, 0.01, 0.005, 0.002, 0.001] {
+        let (m, _, r) = ph2d_poly2d::refine_rest_by_attrs(
+            &sm.mesh,
+            &attrs,
+            ossos * 3,
+            lei,
+            ph2d_poly2d::RefineOptions {
+                tolerance_px: tau,
+                max_pieces: sm.mesh.tris.len() * 8,
+                adaptativo: true,
+            },
+        );
+        println!(
+            "  {tau:>8.4} | {:>8} | {:>8.2}x | {:>8.5}",
+            m.tris.len(),
+            m.tris.len() as f64 / sm.mesh.tris.len() as f64,
+            r.desvio.unwrap_or(f64::NAN)
+        );
+    }
+    println!();
+}
+
+/// ⭐⭐⭐ **A W1 DA F9 NA ARTE REAL — a malha ASSADA no bind erra o campo menos do que o `Fast`, e
+/// dentro da barra que as duas leis prometem.**
+///
+/// Corrido sobre a arte da cena do dono (`512 × 320`) e sobre os pesos BBW que o bind dela de facto
+/// resolve — ⛔ não sobre um campo sintético.
+///
+/// # ⛔⛔ A régua desta wave NÃO é a silhueta, e a medição é que o disse
+///
+/// A fila pedia *«a régua da silhueta a mesma de hoje»*, e a 1.ª redacção deste gate obedeceu à
+/// letra. Medido:
+///
+/// | desenho | peças | nós no topo | vai-e-volta | **desvio ao CAMPO** |
+/// |---|---:|---:|---:|---:|
+/// | `Fast` | `2 430` | `46` | `26,60°` | `0,4143 px` |
+/// | `Smooth` (do quadro, zoom `8×`) | — | `64` | `26,71°` | `0,0881 px` |
+/// | **assada** | `13 996` | `85` | `29,44°` | **`0,1781 px`** |
+///
+/// ⚠️⚠️ **O «vai-e-volta» CRESCE COM A DENSIDADE por construção** — ele soma a viragem absoluta ao
+/// longo da polilinha da silhueta, e uma polilinha com mais nós segue melhor a curva verdadeira e
+/// portanto acumula mais viragem. *Uma régua cuja janela segue o número que se está a variar não
+/// pode ser a testemunha da variação* — a mesma lei que o espaçamento do pincel afiado já pagou.
+///
+/// ⇒ a régua com UNIDADE e com barra declarada é o **desvio ao campo** (`skinned_deviation`, em
+/// pixels da arte), e a barra é a que as duas leis já prometem: [`TOLERANCIA_PX`] (`0,5 px`).
+///
+/// # O que os números dizem
+///
+/// A assada erra **`2,3×` menos** que o `Fast` e **`2,0×` mais** que o `Smooth` do quadro — e as
+/// duas estão **dentro** de `0,5 px`. ⭐ E a diferença é esperada e não é um defeito: o `Smooth`
+/// refina onde o erro está **naquela pose e naquele zoom**, e a assada é **independente da pose**
+/// por construção. *Uma aproximação que serve todas as poses nunca bate, peça a peça, uma feita
+/// para uma só* — e é precisamente por servir todas que ela se paga uma vez.
+///
+/// ⚠️ **O CONTROLO é o `Fast`:** ele tem de errar MAIS, senão a cena não contém o fenómeno e um
+/// empate a três não afirmaria nada.
+#[test]
+fn a_malha_assada_no_bind_desenha_como_o_smooth_do_quadro() {
+    const FOLGA_GRAUS: f64 = 2.0;
+    const FOLGA_CANTO: f64 = 1.0;
+    let (sim, e) = cena(super::super::super::ALTURA_PX, None);
+    let (sm, p2l, pele) = campo_da_cena(&sim, e);
+    let ossos = sm.ossos();
+    let mut ws = pele.scratch();
+    let mut campo =
+        |q: [f64; 2], pesos: &[f64]| ponto_do_produto(&pele, p2l.apply(q), pesos, &mut ws);
+
+    // A ASSADURA — a lei, não a porta (ela lê uma env var que um teste não pode fixar).
+    let (assada, pesos_assados) = ph2d_skeleton_live::skin_bake::assar(&sm.mesh, &sm.pesos, ossos)
+        .expect("o campo de pesos BBW desta arte curva na articulacao");
+    println!(
+        "  bind {} -> assada {} pecas ({:.2}x)",
+        sm.mesh.tris.len(),
+        assada.tris.len(),
+        assada.tris.len() as f64 / sm.mesh.tris.len() as f64
+    );
+
+    let zoom = 8.0_f64;
+    let posa = |m: &ph2d_poly2d::Mesh2d,
+                pesos: &[f64],
+                campo: &mut dyn FnMut([f64; 2], &[f64]) -> [f64; 2]| {
+        m.rest
+            .iter()
+            .enumerate()
+            .map(|(v, &q)| campo(q, &pesos[v * ossos..(v + 1) * ossos]))
+            .collect::<Vec<_>>()
+    };
+    let p_fast = posa(&sm.mesh, &sm.pesos, &mut campo);
+    let p_assada = posa(&assada, &pesos_assados, &mut campo);
+    let smooth = ph2d_skeleton_live::skin_refine::refine_skinned(
+        &sm.mesh,
+        &sm.pesos,
+        ossos,
+        &mut campo,
+        opcoes(true, zoom),
+    );
+
+    // ⭐⭐⭐ **O DISCRIMINADOR: quanto cada malha erra o CAMPO VERDADEIRO** (a régua do
+    // `skinned_deviation`, em pixels da arte). A silhueta mede ONDULAÇÃO, que cresce com a
+    // densidade por construção — *uma régua cuja janela segue o número que se está a variar não
+    // pode ser a única testemunha da variação*, a lei que o espaçamento do pincel afiado já pagou.
+    let desvio = |m: &ph2d_poly2d::Mesh2d,
+                  pesos: &[f64],
+                  posed: &[[f64; 2]],
+                  campo: &mut dyn FnMut([f64; 2], &[f64]) -> [f64; 2]| {
+        let lei = ph2d_skeleton_live::skin_refine::weight_law(ossos, true);
+        let attrs = ph2d_skeleton_live::skin_refine::weight_attrs(m, pesos, lei);
+        ph2d_skeleton_live::skin_refine::skinned_deviation(m, posed, &attrs, lei, campo)
+            * PX_POR_METRO
+    };
+    let d_fast = desvio(&sm.mesh, &sm.pesos, &p_fast, &mut campo);
+    let d_assada = desvio(&assada, &pesos_assados, &p_assada, &mut campo);
+    let d_smooth = ph2d_skeleton_live::skin_refine::skinned_deviation(
+        &smooth.mesh,
+        &smooth.posed,
+        &smooth.attrs,
+        smooth.law,
+        &mut campo,
+    ) * PX_POR_METRO;
+    println!(
+        "  desvio ao CAMPO (px da arte): Fast {d_fast:.4} | Smooth {d_smooth:.4} | ASSADA {d_assada:.4}"
+    );
+
+    let l_fast = silhueta(&sm.mesh, &p_fast, zoom);
+    let l_smooth = silhueta(&smooth.mesh, &smooth.posed, zoom);
+    let l_assada = silhueta(&assada, &p_assada, zoom);
+    let vv = |p: &[[f64; 2]]| {
+        let (n, a, _) = vai_e_volta(p);
+        a - n.abs()
+    };
+    for ((nome, f), ((_, s), (_, a))) in l_fast.iter().zip(l_smooth.iter().zip(&l_assada)) {
+        println!(
+            "  {nome:>4} | Fast {:>6.2} ({} nos) | Smooth {:>6.2} ({} nos) | ASSADA {:>6.2} ({} nos)",
+            {
+                let (n, t, _) = vai_e_volta(f);
+                t - n.abs()
+            },
+            f.len(),
+            {
+                let (n, t, _) = vai_e_volta(s);
+                t - n.abs()
+            },
+            s.len(),
+            {
+                let (n, t, _) = vai_e_volta(a);
+                t - n.abs()
+            },
+            a.len(),
+        );
+    }
+    assert!(
+        d_assada <= ph2d_skeleton_live::skin_bake::TOLERANCIA_PX,
+        "a malha ASSADA erra {d_assada:.4} px do campo, acima da barra de {} px que a lei promete",
+        ph2d_skeleton_live::skin_bake::TOLERANCIA_PX
+    );
+    assert!(
+        d_assada < d_fast,
+        "a malha ASSADA ({d_assada:.4} px) nao bate a malha do bind sem assar ({d_fast:.4} px) — \
+         a assadura nao esta' a comprar nada"
+    );
+    // ⛔ **O CONTROLO:** sem uma malha crua que erre MAIS do que a barra, a asserção de cima
+    // passaria sobre qualquer coisa.
+    assert!(
+        d_fast > d_assada * 2.0,
+        "o `Fast` erra {d_fast:.4} px contra {d_assada:.4} da assada — a cena deixou de conter o \
+         fenomeno, e um empate nao afirma nada"
+    );
+    // ⚠️ E o `Smooth` do quadro fica NOMEADO: ele erra menos por ser feito para ESTA pose.
+    assert!(
+        d_smooth <= d_assada,
+        "o Smooth do quadro ({d_smooth:.4}) passou a errar MAIS que a assada ({d_assada:.4}) — \
+         a leitura escrita no doc deste gate deixou de valer"
+    );
+}

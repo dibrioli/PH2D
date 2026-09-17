@@ -11,6 +11,7 @@
 //!   Hierarquia. O que a queda acrescenta é **onde**.
 
 use ph2d_asset::AssetId;
+use ph2d_i18n::{tr, tr_with};
 use ph2d_render::premul::{AlphaMode, SpriteImage};
 
 impl crate::App {
@@ -71,12 +72,14 @@ impl crate::App {
         gfx.toasts = toasts;
         match r {
             Ok(_) => {
-                gfx.toasts
-                    .push(ph2d_editor_core::Toast::success("Texture applied"));
+                gfx.toasts.push(ph2d_editor_core::Toast::success(tr(
+                    "shell.asset_drop_apply.texture_applied",
+                )));
             }
             Err(e) => {
-                gfx.toasts.push(ph2d_editor_core::Toast::warning(format!(
-                    "Could not apply: {e}"
+                gfx.toasts.push(ph2d_editor_core::Toast::warning(tr_with(
+                    "shell.asset_drop_apply.could_not_apply",
+                    &[("e", &e)],
                 )));
             }
         }
@@ -121,13 +124,14 @@ impl crate::App {
             },
             ph2d_core::Vec2::new(world[0], world[1]),
             world_size,
-            "Image",
+            tr("shell.asset_drop_apply.image"),
         );
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.gizmo.replace_selection(Some(bits));
         }
-        gfx.toasts
-            .push(ph2d_editor_core::Toast::success("Image placed"));
+        gfx.toasts.push(ph2d_editor_core::Toast::success(tr(
+            "shell.asset_drop_apply.image_placed",
+        )));
     }
 
     /// **Uma cópia do prefab nasce ONDE a mão largou.**
@@ -159,9 +163,9 @@ impl crate::App {
     /// ⛔ **Uma queda que não deu diz que não deu.** Silêncio faria o artista concluir que colocou.
     fn toast_drop_failed(&mut self) {
         if let Some(gfx) = self.gfx.as_mut() {
-            gfx.toasts.push(ph2d_editor_core::Toast::warning(
-                "Could not place that asset",
-            ));
+            gfx.toasts.push(ph2d_editor_core::Toast::warning(tr(
+                "shell.asset_drop_apply.could_not_place_that",
+            )));
         }
     }
 }

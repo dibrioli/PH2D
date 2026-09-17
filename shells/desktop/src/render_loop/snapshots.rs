@@ -21,6 +21,7 @@ use ph2d_ecs::{Name, PresentWorld, SimRef, SimWorld, Transform, Visibility};
 use ph2d_editor_core::HeroScreen;
 use ph2d_flip::FlipDoc;
 use ph2d_host::WindowSize;
+use ph2d_i18n::tr;
 use ph2d_render::{Camera2d, Sprite};
 use std::collections::BTreeMap;
 
@@ -556,7 +557,7 @@ fn publish_hierarchy(
         if let Some((label, badge)) = primary_label {
             hero.selection = Some(ph2d_editor_core::HeroSelection {
                 label,
-                kind: badge.unwrap_or_else(|| "ENT".to_string()),
+                kind: badge.unwrap_or_else(|| tr("shell.snapshots.ent").to_string()),
                 world_pos: (0.0, 0.0),
             });
         } else if hero.gizmo.selection.is_none() {

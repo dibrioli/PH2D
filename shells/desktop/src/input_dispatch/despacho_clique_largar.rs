@@ -3,6 +3,7 @@
 //! `gfx`/`hero` com o MESMO guarda do braço; a chamada seguinte só é legal porque o empréstimo MORRE antes (NLL).
 
 use super::*;
+use ph2d_i18n::tr;
 
 impl crate::App {
     /// O fim do arrasto do gizmo: a solda das pontas abertas ao mover e a limpeza dos instantâneos do gesto.
@@ -166,7 +167,9 @@ impl crate::App {
                     if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary) {
                         hero.selection = Some(ph2d_editor_core::HeroSelection {
                             label: entry.name.clone(),
-                            kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
+                            kind: entry.badge.clone().unwrap_or_else(|| {
+                                tr("shell.despacho_clique_largar.ent").to_string()
+                            }),
                             world_pos: (0.0, 0.0),
                         });
                     } else if primary.is_none() {
@@ -204,7 +207,9 @@ impl crate::App {
                     if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), Some(bits)) {
                         hero.selection = Some(ph2d_editor_core::HeroSelection {
                             label: entry.name.clone(),
-                            kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
+                            kind: entry.badge.clone().unwrap_or_else(|| {
+                                tr("shell.despacho_clique_largar.ent").to_string()
+                            }),
                             world_pos: (0.0, 0.0),
                         });
                     }

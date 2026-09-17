@@ -6,6 +6,7 @@
 //! vê a fusão já feita.
 
 use super::*;
+use ph2d_i18n::tr;
 
 /// Os pedidos de agrupar e fundir que o dreno do barramento recolheu neste quadro.
 pub(super) struct HierarchyMergeIntents {
@@ -97,9 +98,9 @@ impl crate::App {
             // "select 2+ first" — misleading. Steer them to the
             // actual fix.
             if !in_selection && selected_count >= 2 {
-                toasts.push(ph2d_editor_core::Toast::warning(
-                    "Merge Sprites: right-click on one of the selected sprites",
-                ));
+                toasts.push(ph2d_editor_core::Toast::warning(tr(
+                    "shell.fase_hierarchy_group_merge.merge_sprites_right",
+                )));
                 self.title_dirty = true;
             } else {
                 let to_merge: Vec<u64> = if in_selection {

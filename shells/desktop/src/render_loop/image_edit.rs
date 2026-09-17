@@ -21,6 +21,7 @@ use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::{Toast, ToastQueue, ToolRegistry};
+use ph2d_i18n::tr;
 use ph2d_render::{Camera2d, SpriteRenderer};
 use std::collections::BTreeMap;
 
@@ -143,9 +144,7 @@ pub(super) fn dispatch(
             t.as_any_mut()
                 .downcast_mut::<ph2d_tool_painter::PainterTool>()
         }) else {
-            toasts.push(Toast::error(
-                "Painter Apply: tool was inactive when bake fired (gate desynced)",
-            ));
+            toasts.push(Toast::error(tr("shell.image_edit.painter_apply_tool_was")));
             return true;
         };
         let mut pending: Vec<ImageEditSnapshot> = Vec::new();

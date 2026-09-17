@@ -28,6 +28,7 @@
 //! sempre: *duas respostas à mesma pergunta, e a que o artista encontra é a que envelhece.*
 
 use ph2d_editor_core::Toast;
+use ph2d_i18n::{tr, tr_with};
 
 /// O que o verbo fez — ou porque não fez nada.
 ///
@@ -54,19 +55,25 @@ impl Outcome {
     /// soubesse.
     pub(crate) fn toast(self) -> Toast {
         match self {
-            Self::Grouped { members, .. } => Toast::success(format!("Grouped {members} objects")),
-            Self::Ungrouped { groups: 1 } => Toast::success("Ungrouped"),
-            Self::Ungrouped { groups } => Toast::success(format!("Ungrouped {groups} groups")),
+            Self::Grouped { members, .. } => Toast::success(tr_with(
+                "shell.hier_group.grouped_objects",
+                &[("members", &members)],
+            )),
+            Self::Ungrouped { groups: 1 } => Toast::success(tr("shell.hier_group.ungrouped")),
+            Self::Ungrouped { groups } => Toast::success(tr_with(
+                "shell.hier_group.ungrouped_groups",
+                &[("groups", &groups)],
+            )),
             // ⚠️ `warning` e não `error`: o app está correcto e o documento está intacto — o que
             // falhou foi a pré-condição do gesto. E a frase diz **o que fazer**, não só o que
             // faltou: uma recusa que não ensina o próximo gesto obriga a adivinhar.
-            Self::NeedsTwo => Toast::warning("Select at least 2 objects to group"),
-            Self::NotGrouped => Toast::warning("Nothing in the selection is inside a group"),
+            Self::NeedsTwo => Toast::warning(tr("shell.hier_group.select_at_least_2")),
+            Self::NotGrouped => Toast::warning(tr("shell.hier_group.nothing_in_the")),
             // ⚠️ A MESMA frase que o *Merge Sprites* usa para a mesma ambiguidade, com o sujeito
             // trocado. Duas redacções para a mesma situação ensinariam que são situações
             // diferentes.
             Self::ClickedOutsideSelection => {
-                Toast::warning("Right-click on one of the selected objects")
+                Toast::warning(tr("shell.hier_group.right_click_on_one_of"))
             }
         }
     }
@@ -111,7 +118,7 @@ pub(crate) fn apply(sim: &mut ph2d_ecs::SimWorld, subject: &Subject, group: bool
         // membro só, e um "Group 2" sobre uma coisa só seria mentira no primeiro sítio que o
         // artista lê.
         let membros = ph2d_vec_entities::entities::top_members(sim, subjects);
-        let nome = format!("Group {}", membros.len());
+        let nome = tr_with("shell.hier_group.group", &[("membros", &(membros.len()))]);
         ph2d_vec_entities::entities::group_entities(sim, subjects, nome).map_or(
             Outcome::NeedsTwo,
             |group| Outcome::Grouped {

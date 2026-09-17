@@ -31,6 +31,7 @@ use ph2d_asset::{AssetDb, AssetId};
 use ph2d_color::Precision;
 use ph2d_ecs::{Entity, SimWorld, SpritePixels};
 use ph2d_editor_core::{Toast, ToastQueue};
+use ph2d_i18n::{tr, tr_with};
 use ph2d_render::{Sprite, SpriteRenderer, SpriteSource};
 use std::collections::BTreeMap;
 
@@ -71,17 +72,21 @@ pub(crate) fn apply(
         return false;
     };
     if matches!(sprite.source, SpriteSource::CookedTexture { .. }) {
-        toasts.push(Toast::info(
-            "Cooked textures come from the asset pipeline — format is read-only",
-        ));
+        toasts.push(Toast::info(tr(
+            "shell.precision_convert.cooked_textures_come",
+        )));
         return true;
     }
     let Some(asset_id) = source_asset(entity, sim, &sprite, atlas_asset_map) else {
-        toasts.push(Toast::error("Cannot convert — source pixels missing"));
+        toasts.push(Toast::error(tr(
+            "shell.precision_convert.cannot_convert_source_2",
+        )));
         return true;
     };
     let Some(asset) = asset_db.get(&asset_id) else {
-        toasts.push(Toast::error("Cannot convert — source pixels missing"));
+        toasts.push(Toast::error(tr(
+            "shell.precision_convert.cannot_convert_source_2",
+        )));
         return true;
     };
     if asset.precision() == Some(wanted) {
@@ -90,7 +95,9 @@ pub(crate) fn apply(
         return false;
     }
     let Some((width, height)) = asset.image_dimensions() else {
-        toasts.push(Toast::error("Cannot convert — source is not an image"));
+        toasts.push(Toast::error(tr(
+            "shell.precision_convert.cannot_convert_source",
+        )));
         return true;
     };
 
@@ -100,7 +107,9 @@ pub(crate) fn apply(
     let uploaded = match wanted {
         Precision::Rgba16 => {
             let Some((_, _, straight)) = asset.image_rgba8() else {
-                toasts.push(Toast::error("Cannot convert — source is not an image"));
+                toasts.push(Toast::error(tr(
+                    "shell.precision_convert.cannot_convert_source",
+                )));
                 return true;
             };
             let halves = ph2d_color::rgba8_to_rgba16(&straight);
@@ -123,7 +132,9 @@ pub(crate) fn apply(
                 Some((_, _, halves)) => ph2d_color::rgba16_to_rgba8_dithered(halves, width),
                 None => {
                     let Some((_, _, straight)) = asset.image_rgba8() else {
-                        toasts.push(Toast::error("Cannot convert — source is not an image"));
+                        toasts.push(Toast::error(tr(
+                            "shell.precision_convert.cannot_convert_source",
+                        )));
                         return true;
                     };
                     straight.into_owned()
@@ -138,7 +149,10 @@ pub(crate) fn apply(
     let (texture_id, pixels_id) = match uploaded {
         Ok(v) => v,
         Err(e) => {
-            toasts.push(Toast::error(format!("Format conversion failed: {e}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.precision_convert.format_conversion",
+                &[("e", &e)],
+            )));
             return true;
         }
     };
@@ -166,7 +180,10 @@ pub(crate) fn apply(
         // janela porque a regra do OUTRO chamador tinha vindo junto na extração.
         crate::hero_intents::texture_rebind::SamplingWindow::Survives,
     );
-    toasts.push(Toast::success(format!("Format · {}", wanted.label())));
+    toasts.push(Toast::success(tr_with(
+        "shell.precision_convert.format",
+        &[("label", &(wanted.label()))],
+    )));
     true
 }
 

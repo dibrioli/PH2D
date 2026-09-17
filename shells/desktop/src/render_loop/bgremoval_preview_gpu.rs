@@ -7,6 +7,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::toast::{Toast, ToastQueue};
 use ph2d_host::WindowSize;
+use ph2d_i18n::tr_with;
 use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
 // ⭐ O afim saiu para uma FOLHA porque quatro assuntos o partilhavam (HOWTO §1.2).
 use ph2d_sprite_screen::sprite_image_to_screen_affine;
@@ -94,9 +95,9 @@ pub(super) fn upload_preview(
                         // via toast instead of an eprintln the user
                         // never reads. The next frame retries
                         // automatically (we drop the stale slot below).
-                        toasts.push(Toast::error(format!(
-                            "Bg Removal: upload da preview pra GPU falhou ({e}). \
-                             Tentando novamente no próximo frame."
+                        toasts.push(Toast::error(tr_with(
+                            "shell.bgremoval_preview_gpu.preview_upload_failed",
+                            &[("e", &e)],
                         )));
                         // Drop the stale slot; next frame retries.
                         release_preview_texture(renderer, bgremoval_preview_gpu);

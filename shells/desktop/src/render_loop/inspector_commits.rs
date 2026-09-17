@@ -28,6 +28,7 @@ use ph2d_editor_core::{
     BlendFieldEdit, HeroScreen, InspectorNameInfo, InspectorTransformInfo, OrderingFieldEdit,
     PhysicsFieldEdit, SamplingFieldEdit, SpriteFieldEdit, Toast, ToastQueue, VisibilityFieldEdit,
 };
+use ph2d_i18n::{tr, tr_with};
 use ph2d_render::Sprite;
 use std::collections::BTreeMap;
 
@@ -90,14 +91,20 @@ pub(super) fn dispatch(
             let sim_w = sim.world_mut();
             if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
                 sprite.size = size;
-                toasts.push(Toast::success(format!(
-                    "Reimported at {:.0} px/m · {:.3} × {:.3} m",
-                    px_per_m, size[0], size[1]
+                toasts.push(Toast::success(tr_with(
+                    "shell.inspector_commits.reimported_at_px_m_m",
+                    &[
+                        ("px_per_m_0", &format!("{:.0}", px_per_m)),
+                        ("size_3", &format!("{:.3}", size[0])),
+                        ("size2_3", &format!("{:.3}", size[1])),
+                    ],
                 )));
                 title_dirty = true;
             }
         } else {
-            toasts.push(Toast::error("Reimport unavailable for this source"));
+            toasts.push(Toast::error(tr(
+                "shell.inspector_commits.reimport_unavailable",
+            )));
             title_dirty = true;
         }
     }
@@ -128,17 +135,17 @@ pub(super) fn dispatch(
                     data,
                 });
                 if let Err(e) = push_res {
-                    toasts.push(Toast::error(format!("Editor queue full: {e}")));
+                    toasts.push(failed("shell.inspector_commits.editor_queue_full", &e));
                     title_dirty = true;
                 } else if let Err(e) =
                     apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
                 {
-                    toasts.push(Toast::error(format!("Transform commit failed: {e}")));
+                    toasts.push(failed("shell.inspector_commits.transform_commit", &e));
                     title_dirty = true;
                 }
             }
             Err(e) => {
-                toasts.push(Toast::error(format!("Transform encode failed: {e}")));
+                toasts.push(failed("shell.inspector_commits.transform_encode", &e));
                 title_dirty = true;
             }
         }
@@ -167,17 +174,17 @@ pub(super) fn dispatch(
                     data,
                 });
                 if let Err(e) = push_res {
-                    toasts.push(Toast::error(format!("Editor queue full: {e}")));
+                    toasts.push(failed("shell.inspector_commits.editor_queue_full", &e));
                     title_dirty = true;
                 } else if let Err(e) =
                     apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
                 {
-                    toasts.push(Toast::error(format!("Visibility commit failed: {e}")));
+                    toasts.push(failed("shell.inspector_commits.visibility_commit", &e));
                     title_dirty = true;
                 }
             }
             Err(e) => {
-                toasts.push(Toast::error(format!("Visibility encode failed: {e}")));
+                toasts.push(failed("shell.inspector_commits.visibility_encode", &e));
                 title_dirty = true;
             }
         }
@@ -225,17 +232,17 @@ pub(super) fn dispatch(
                     data,
                 });
                 if let Err(e) = push_res {
-                    toasts.push(Toast::error(format!("Editor queue full: {e}")));
+                    toasts.push(failed("shell.inspector_commits.editor_queue_full", &e));
                     title_dirty = true;
                 } else if let Err(e) =
                     apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
                 {
-                    toasts.push(Toast::error(format!("Name commit failed: {e}")));
+                    toasts.push(failed("shell.inspector_commits.name_commit_failed", &e));
                     title_dirty = true;
                 }
             }
             Err(e) => {
-                toasts.push(Toast::error(format!("Name encode failed: {e}")));
+                toasts.push(failed("shell.inspector_commits.name_encode_failed", &e));
                 title_dirty = true;
             }
         }
@@ -286,7 +293,7 @@ fn drain_section_edits(
             component_registry,
         );
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
-            toasts.push(Toast::error(format!("Ordering commit failed: {e}")));
+            toasts.push(failed("shell.inspector_commits.ordering_commit_failed", &e));
             title_dirty = true;
         }
     }
@@ -300,7 +307,7 @@ fn drain_section_edits(
             component_registry,
         );
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
-            toasts.push(Toast::error(format!("Sampling commit failed: {e}")));
+            toasts.push(failed("shell.inspector_commits.sampling_commit_failed", &e));
             title_dirty = true;
         }
     }
@@ -320,7 +327,7 @@ fn drain_section_edits(
             continue;
         }
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
-            toasts.push(Toast::error(format!("Anchor commit failed: {e}")));
+            toasts.push(failed("shell.inspector_commits.anchor_commit_failed", &e));
             title_dirty = true;
         }
     }
@@ -338,7 +345,7 @@ fn drain_section_edits(
             continue;
         }
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
-            toasts.push(Toast::error(format!("Animation commit failed: {e}")));
+            toasts.push(failed("shell.inspector_commits.animation_commit", &e));
             title_dirty = true;
         }
     }
@@ -357,7 +364,7 @@ fn drain_section_edits(
             continue;
         }
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
-            toasts.push(Toast::error(format!("Timer commit failed: {e}")));
+            toasts.push(failed("shell.inspector_commits.timer_commit_failed", &e));
             title_dirty = true;
         }
     }
@@ -374,7 +381,7 @@ fn drain_section_edits(
             continue;
         }
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
-            toasts.push(Toast::error(format!("Signal action commit failed: {e}")));
+            toasts.push(failed("shell.inspector_commits.signal_action_commit", &e));
             title_dirty = true;
         }
     }
@@ -389,7 +396,7 @@ fn drain_section_edits(
             component_registry,
         );
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
-            toasts.push(Toast::error(format!("9-Slice commit failed: {e}")));
+            toasts.push(failed("shell.inspector_commits.n9_slice_commit_failed", &e));
             title_dirty = true;
         }
     }
@@ -403,7 +410,7 @@ fn drain_section_edits(
             component_registry,
         );
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
-            toasts.push(Toast::error(format!("Blend commit failed: {e}")));
+            toasts.push(failed("shell.inspector_commits.blend_commit_failed", &e));
             title_dirty = true;
         }
     }
@@ -416,7 +423,7 @@ fn drain_section_edits(
             component_registry,
         );
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
-            toasts.push(Toast::error(format!("Physics commit failed: {e}")));
+            toasts.push(failed("shell.inspector_commits.physics_commit_failed", &e));
             title_dirty = true;
         }
     }
@@ -431,7 +438,7 @@ fn drain_section_edits(
             component_registry,
         );
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
-            toasts.push(Toast::error(format!("Visibility commit failed: {e}")));
+            toasts.push(failed("shell.inspector_commits.visibility_commit", &e));
             title_dirty = true;
         }
     }
@@ -491,19 +498,22 @@ fn drain_signal_names(
                     data,
                 });
                 if let Err(e) = push_res {
-                    toasts.push(Toast::error(format!("Editor queue full: {e}")));
+                    toasts.push(failed("shell.inspector_commits.editor_queue_full", &e));
                 } else if let Err(e) =
                     apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
                 {
-                    toasts.push(Toast::error(format!("Signal commit failed: {e}")));
+                    toasts.push(failed("shell.inspector_commits.signal_commit_failed", &e));
                 }
                 title_dirty = true;
             }
             (Err(e), _) => {
-                toasts.push(Toast::error(format!("Signal encode failed: {e}")));
+                toasts.push(failed("shell.inspector_commits.signal_encode_failed", &e));
             }
             (_, None) => {
-                toasts.push(Toast::error(format!("{type_name} is not registered")));
+                toasts.push(Toast::error(tr_with(
+                    "shell.inspector_commits.is_not_registered",
+                    &[("type_name", &type_name)],
+                )));
             }
         }
     }
@@ -513,3 +523,10 @@ fn drain_signal_names(
 #[cfg(test)]
 #[path = "inspector_commits_sprite_field_tests.rs"]
 mod sprite_field_tests;
+
+/// Um aviso de falha com a razão — a forma de TODA recusa deste despacho: a frase é da tabela
+/// (HR-15), a razão é a do erro. ⚠️ Uma porta só, e não vinte chamadas de quatro linhas: foi a
+/// migração para a tabela que as fez crescer, e o tecto de linhas por função apanhou-o.
+fn failed(key: &str, e: &dyn std::fmt::Display) -> Toast {
+    Toast::error(tr_with(key, &[("e", e)]))
+}

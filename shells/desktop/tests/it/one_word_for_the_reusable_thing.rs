@@ -135,7 +135,12 @@ fn no_screen_sentence_about_the_reusable_thing_uses_the_old_words() {
         let Ok(body) = std::fs::read_to_string(root.join(rel)) else {
             panic!("o ficheiro {rel} mudou de sitio — reancore este censo");
         };
-        for s in screen_strings(&body) {
+        // ⚠️ Desde 2026-09-16 as frases destes ficheiros moram na tabela: o censo lê também o
+        //    TEXTO de cada chave citada, senão ficava verde sobre literais que já não existem.
+        let da_tabela = crate::i18n_view::keys_in(&body)
+            .into_iter()
+            .map(|(_, k)| ph2d_i18n::tr(k).to_string());
+        for s in screen_strings(&body).into_iter().chain(da_tabela) {
             // Só frases: um literal sem espaço é um nome de chave, de ficheiro ou de env var.
             if !s.contains(' ') {
                 continue;
@@ -187,12 +192,14 @@ fn the_fallback_name_of_an_unnamed_recipe_is_not_an_old_word() {
     //
     // ⇒ a guarda pergunta o que de facto importa: **cada uma das duas casas do sujeito
     // contribuiu?** Um piso por raiz não tem folga onde uma árvore inteira caiba.
+    // ⚠️ Desde 2026-09-16 um fallback pode ser uma CHAVE (`unwrap_or_else(|| ph2d_i18n::tr("…")`),
+    //    e o `rustfmt` parte-o em linhas: o texto lê-se achatado e as duas formas contam.
     let conta = |raiz: &Path| -> usize {
         files
             .iter()
             .filter(|p| p.starts_with(raiz))
             .filter_map(|p| std::fs::read_to_string(p).ok())
-            .map(|b| b.matches("unwrap_or_else(|| \"").count())
+            .map(|b| fallbacks(&b).len())
             .sum()
     };
     let na_shell = conta(&Path::new(env!("CARGO_MANIFEST_DIR")).join("src"));
@@ -211,15 +218,10 @@ fn the_fallback_name_of_an_unnamed_recipe_is_not_an_old_word() {
         let Ok(body) = std::fs::read_to_string(&path) else {
             continue;
         };
-        let mut rest = body.as_str();
-        while let Some(i) = rest.find("unwrap_or_else(|| \"") {
-            let after = &rest[i + "unwrap_or_else(|| \"".len()..];
-            let Some(j) = after.find('"') else { break };
-            let word = &after[..j];
+        for word in fallbacks(&body) {
             if BANNED.iter().any(|w| word.contains(w)) {
                 offenders.push(format!("{rel}: fallback {word:?}"));
             }
-            rest = &after[j + 1..];
         }
     }
     assert!(
@@ -227,6 +229,34 @@ fn the_fallback_name_of_an_unnamed_recipe_is_not_an_old_word() {
         "um nome de recurso mostrado ao artista voltou a usar a palavra antiga:\n  {}",
         offenders.join("\n  ")
     );
+}
+
+/// Os textos de recurso (`unwrap_or_else(|| "…"` ou `unwrap_or_else(|| ph2d_i18n::tr("…")`) de um
+/// ficheiro — a chave lida pela tabela, que é o que o artista vê.
+fn fallbacks(body: &str) -> Vec<String> {
+    let flat = body.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut out = Vec::new();
+    for (pat, via_tabela) in [
+        ("unwrap_or_else(|| \"", false),
+        ("unwrap_or_else(|| ph2d_i18n::tr(\"", true),
+        ("unwrap_or_else(|| { ph2d_i18n::tr(\"", true),
+        ("unwrap_or_else(|| tr(\"", true),
+        ("unwrap_or_else(|| { tr(\"", true),
+    ] {
+        let mut rest = flat.as_str();
+        while let Some(i) = rest.find(pat) {
+            let after = &rest[i + pat.len()..];
+            let Some(j) = after.find('"') else { break };
+            let raw = &after[..j];
+            out.push(if via_tabela {
+                ph2d_i18n::tr(raw).to_string()
+            } else {
+                raw.to_string()
+            });
+            rest = &after[j + 1..];
+        }
+    }
+    out
 }
 
 /// ⭐⭐ **E as TABELAS de rótulos dizem `Prefab`** — o que o artista lê nos botões.

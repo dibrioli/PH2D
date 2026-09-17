@@ -76,7 +76,10 @@ fn the_keyboard_group_refuses_out_loud() {
          conclui que a feature esta' partida"
     );
     assert_eq!(
-        body.matches("toasts.push").count(),
+        body.split_whitespace()
+            .collect::<String>()
+            .matches("toasts.push")
+            .count(),
         2,
         "as duas recusas do agrupar/desagrupar tem de falar — uma muda le'-se como defeito"
     );

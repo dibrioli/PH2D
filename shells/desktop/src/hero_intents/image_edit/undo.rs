@@ -4,6 +4,7 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::{Toast, ToastQueue};
+use ph2d_i18n::{tr, tr_with};
 use ph2d_render::{Sprite, SpriteRenderer};
 
 use crate::ImageEditTransaction;
@@ -25,7 +26,7 @@ pub(crate) fn drain_undo_image_edit(
 ) -> bool {
     match image_edit_undo.take() {
         None => {
-            toasts.push(Toast::info(ph2d_i18n::tr(
+            toasts.push(Toast::info(tr(
                 "edit.undo.image_edit.toast_nothing_to_undo",
             )));
             true
@@ -55,17 +56,15 @@ pub(crate) fn drain_undo_image_edit(
                 }
             }
             let toast_body = if n == 1 {
-                format!(
-                    "{} · {}",
-                    ph2d_i18n::tr("edit.undo.image_edit.toast_done"),
-                    tx.label,
-                )
+                format!("{} · {}", tr("edit.undo.image_edit.toast_done"), tx.label,)
             } else {
-                format!(
-                    "{} · {} ({} sprites)",
-                    ph2d_i18n::tr("edit.undo.image_edit.toast_done"),
-                    tx.label,
-                    n,
+                tr_with(
+                    "shell.undo.sprites",
+                    &[
+                        ("toast_done", &(tr("edit.undo.image_edit.toast_done"))),
+                        ("label", &(tx.label)),
+                        ("n", &n),
+                    ],
                 )
             };
             toasts.push(Toast::success(toast_body));

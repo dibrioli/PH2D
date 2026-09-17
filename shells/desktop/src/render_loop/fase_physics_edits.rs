@@ -2,6 +2,7 @@
 //! Wheel: cada edição escreve o componente no lugar, e o undo global por-diff captura o passo (OBRA 2 da `line/render-loop`, 2026-09-12).
 
 use super::*;
+use ph2d_i18n::tr_with;
 
 /// As edições de física que o dreno do barramento recolheu neste quadro.
 pub(super) struct PhysicsEditIntents {
@@ -91,8 +92,9 @@ impl crate::App {
                         editor_queue,
                         component_registry,
                     ) {
-                        toasts.push(ph2d_editor_core::Toast::error(format!(
-                            "Joint commit failed: {e}"
+                        toasts.push(ph2d_editor_core::Toast::error(tr_with(
+                            "shell.fase_physics_edits.joint_commit_failed",
+                            &[("e", &e)],
                         )));
                     }
                 }
@@ -125,8 +127,9 @@ impl crate::App {
                     editor_queue,
                     component_registry,
                 ) {
-                    toasts.push(ph2d_editor_core::Toast::error(format!(
-                        "Joint commit failed: {e}"
+                    toasts.push(ph2d_editor_core::Toast::error(tr_with(
+                        "shell.fase_physics_edits.joint_commit_failed",
+                        &[("e", &e)],
                     )));
                 }
             }
@@ -157,8 +160,9 @@ impl crate::App {
                 editor_queue,
                 component_registry,
             ) {
-                toasts.push(ph2d_editor_core::Toast::error(format!(
-                    "Wheel commit failed: {e}"
+                toasts.push(ph2d_editor_core::Toast::error(tr_with(
+                    "shell.fase_physics_edits.wheel_commit_failed",
+                    &[("e", &e)],
                 )));
             }
             // ⚠️ **DEPOIS do flush, e só quando a ROTA mudou.** O `L0` da corda

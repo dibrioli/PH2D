@@ -25,6 +25,7 @@ use ph2d_ecs::{Entity, InstanceOf, SimWorld, SpritePixels, StableId};
 use ph2d_editor_core::Toast;
 use ph2d_editor_core::action_bus::AssetCardAction;
 use ph2d_editor_core::interaction::drag_payload::DragPayload;
+use ph2d_i18n::{tr, tr_with};
 
 /// **Quem usa este asset**, em bits de entidade, ordenado por `StableId`.
 ///
@@ -132,7 +133,9 @@ pub(crate) fn drain(
             let Some(bits) =
                 ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id)
             else {
-                toasts.push(Toast::warning("That prefab is no longer in the project"));
+                toasts.push(Toast::warning(tr(
+                    "shell.asset_card_verbs.that_prefab_is_no",
+                )));
                 return false;
             };
             *select_out = Some(bits);
@@ -142,8 +145,9 @@ pub(crate) fn drain(
                 // *uma palavra sozinha lê-se como chave de i18n ou nome de ficheiro*. Aqui ela vai para
                 // dentro de aspas curvas num toast, logo é tela.
                 .unwrap_or_else(|| "prefab".to_string());
-            toasts.push(Toast::success(format!(
-                "Editing \u{201c}{name}\u{201d} \u{2014} move a piece and every copy follows"
+            toasts.push(Toast::success(tr_with(
+                "shell.asset_card_verbs.editing_move_a_piece",
+                &[("name", &name)],
             )));
             true
         }
@@ -151,10 +155,9 @@ pub(crate) fn drain(
             // ⛔ **A recusa nomeia o FACTO, como as outras três da tabela plana.** Uma imagem não
             // tem forma que este app autore — quem a edita são as ferramentas de imagem, sobre o
             // objecto que a desenha, e é por isso que a saída é o *Select users*.
-            toasts.push(Toast::info(
-                "An image has no shape to edit here \u{2014} use \u{201c}Select users\u{201d} and \
-                 edit it on an object",
-            ));
+            toasts.push(Toast::info(tr(
+                "shell.asset_card_verbs.an_image_has_no_shape",
+            )));
             false
         }
 
@@ -168,7 +171,9 @@ pub(crate) fn drain(
             let Some(bits) =
                 ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id)
             else {
-                toasts.push(Toast::warning("That prefab is no longer in the project"));
+                toasts.push(Toast::warning(tr(
+                    "shell.asset_card_verbs.that_prefab_is_no",
+                )));
                 return false;
             };
             ph2d_app_components::instance_verbs::drain(
@@ -194,9 +199,9 @@ pub(crate) fn drain(
             // ⛔ A mesma recusa que o duplo-clique já declara, agora **em voz alta**: no
             // duplo-clique o silêncio era defensável (ninguém apertou um item que prometia algo);
             // num item de menu com o nome escrito, não é.
-            toasts.push(Toast::info(
-                "Drop an image on an object to use it \u{2014} an image has no place of its own",
-            ));
+            toasts.push(Toast::info(tr(
+                "shell.asset_card_verbs.drop_an_image_on_an",
+            )));
             false
         }
 
@@ -205,8 +210,8 @@ pub(crate) fn drain(
             let users = users_of(sim, asset, atlas_assets);
             if users.is_empty() {
                 toasts.push(Toast::info(match asset {
-                    DragPayload::Prefab { .. } => "No copies of this prefab in the scene",
-                    DragPayload::Image { .. } => "Nothing is using this image",
+                    DragPayload::Prefab { .. } => tr("shell.asset_card_verbs.no_copies_of_this"),
+                    DragPayload::Image { .. } => tr("shell.asset_card_verbs.nothing_is_using_this"),
                 }));
                 return false;
             }
@@ -215,7 +220,10 @@ pub(crate) fn drain(
             for bits in &users[1..] {
                 gizmo.add_to_selection(*bits);
             }
-            toasts.push(Toast::success(format!("Selected {n} object(s)")));
+            toasts.push(Toast::success(tr_with(
+                "shell.asset_card_verbs.selected_object_s",
+                &[("n", &n)],
+            )));
             false
         }
 
@@ -243,9 +251,7 @@ pub(crate) fn drain(
             // ⛔ A quarta recusa da tabela plana, e ela nomeia o facto como as outras três: trocar
             // é trocar de RECEITA, e uma imagem não é uma. O que o artista quer aqui tem outro
             // gesto — largá-la sobre o objecto — e a frase manda-o para lá.
-            toasts.push(Toast::info(
-                "An image is not a prefab \u{2014} drop it on an object to change what it draws",
-            ));
+            toasts.push(Toast::info(tr("shell.asset_card_verbs.an_image_is_not_a")));
             false
         }
 
@@ -254,7 +260,9 @@ pub(crate) fn drain(
             let Some(bits) =
                 ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id)
             else {
-                toasts.push(Toast::warning("That prefab is no longer in the project"));
+                toasts.push(Toast::warning(tr(
+                    "shell.asset_card_verbs.that_prefab_is_no",
+                )));
                 return false;
             };
             ph2d_app_components::instance_verbs::drain(
@@ -279,7 +287,9 @@ pub(crate) fn drain(
                 // biblioteca porque 0 objecto(s) a usam — mude esses para a tirar»*: um beco sem
                 // saída que manda mudar um conjunto vazio.
                 crate::asset_index_build::forget_texture(ph2d_asset::AssetId::from_digest(id));
-                toasts.push(Toast::success("Removed from library"));
+                toasts.push(Toast::success(tr(
+                    "shell.asset_card_verbs.removed_from_library",
+                )));
                 // ⭐⭐ **`true` desde 2026-08-30, e a inversão é o pedido do Enio** (*«deveria ter
                 // undo/redo no painel inclusive em del»*). A 1.ª versão devolvia `false` com o
                 // motivo *«a biblioteca é memória de SESSÃO e o undo não desfaz isto»* — e era
@@ -293,8 +303,9 @@ pub(crate) fn drain(
             // ⚠️ **Com utilizadores a recusa CONTINUA certa**, e o número é o corpo dela: tirar a
             // imagem deixaria aqueles objectos sem pixels, e não há saída sem perda. *O que estava
             // errado era aplicar esta frase ao caso em que ninguém tem nada a perder.*
-            toasts.push(Toast::info(format!(
-                "This image is in the library because {n} object(s) use it \u{2014} change those to remove it"
+            toasts.push(Toast::info(tr_with(
+                "shell.asset_card_verbs.this_image_is_in_the",
+                &[("n", &n)],
             )));
             false
         }
@@ -336,9 +347,9 @@ fn replace_selection(
     };
     let chosen: Vec<u64> = gizmo.iter_selected().collect();
     if chosen.is_empty() {
-        toasts.push(Toast::info(
-            "Pick the copy you want to replace first \u{2014} then choose this again",
-        ));
+        toasts.push(Toast::info(tr(
+            "shell.asset_card_verbs.pick_the_copy_you_want",
+        )));
         return false;
     }
     // As raízes, sem repetições: duas peças da MESMA cópia escolhidas são uma troca, não duas.
@@ -374,11 +385,11 @@ fn replace_selection(
         // ⚠️ **Cada caminho vazio diz uma coisa DIFERENTE**, e as três são accionáveis: *já é este*
         // não pede nada, *não é uma cópia* diz o que escolher, e a terceira é o resto.
         toasts.push(Toast::info(if already > 0 {
-            "Those are already copies of this prefab"
+            tr("shell.asset_card_verbs.those_are_already")
         } else if skipped > 0 {
-            "That copy cannot become this prefab"
+            tr("shell.asset_card_verbs.that_copy_cannot")
         } else {
-            "Nothing you picked is a copy of a prefab"
+            tr("shell.asset_card_verbs.nothing_you_picked_is")
         }));
         return false;
     }
@@ -388,16 +399,21 @@ fn replace_selection(
         // *uma palavra sozinha lê-se como chave de i18n ou nome de ficheiro*. Aqui ela vai para
         // dentro de aspas curvas num toast, logo é tela.
         .unwrap_or_else(|| "prefab".to_string());
-    let mut say = format!(
-        "Replaced {done} object(s) with \u{201c}{name}\u{201d} \u{2014} {kept} override(s) kept"
+    let mut say = tr_with(
+        "shell.asset_card_verbs.replaced_object_s_with",
+        &[("done", &done), ("name", &name), ("kept", &kept)],
     );
     if ambiguous > 0 {
-        say.push_str(&format!(
-            " \u{b7} {ambiguous} name(s) used more than once were skipped"
+        say.push_str(&tr_with(
+            "shell.asset_card_verbs.name_s_used_more_than",
+            &[("ambiguous", &ambiguous)],
         ));
     }
     if already + skipped > 0 {
-        say.push_str(&format!(" \u{b7} {} left alone", already + skipped));
+        say.push_str(&tr_with(
+            "shell.asset_card_verbs.left_alone",
+            &[("skipped", &(already + skipped))],
+        ));
     }
     toasts.push(Toast::success(say));
     true

@@ -25,6 +25,7 @@
 //! **ao lado** do `.png`, com o mesmo nome — tem de ir: o formato do Aseprite refere a imagem pelo
 //! nome de ficheiro nu, resolvido relativo ao próprio `.json`.
 
+use ph2d_i18n::{tr, tr_with};
 use std::path::PathBuf;
 
 use ph2d_editor_core::{Toast, ToastQueue};
@@ -105,7 +106,7 @@ pub(crate) fn export(sheet: &AuthoredSheet, toasts: &mut ToastQueue) -> Option<P
     // ⚠️ O nome da folha vai como sugestão, não como imposição — e passa pelo `safe_stem` na mesma:
     // um `/` no nome faria o diálogo abrir noutra pasta sem o artista perceber porquê.
     let picked = rfd::FileDialog::new()
-        .add_filter("PNG", &["png"])
+        .add_filter(tr("shell.sheet_export.png"), &["png"])
         .set_directory(start_dir())
         .set_file_name(format!("{stem}.png"))
         .save_file()?;
@@ -142,9 +143,9 @@ pub(crate) fn write_pair(
         sheet.height,
         image::ColorType::Rgba8,
     ) {
-        toasts.push(Toast::error(format!(
-            "Export Sheet: could not write {}: {e}",
-            png.display()
+        toasts.push(Toast::error(tr_with(
+            "shell.sheet_export.export_sheet_could_not",
+            &[("png", &(png.display())), ("e", &e)],
         )));
         return None;
     }
@@ -152,9 +153,9 @@ pub(crate) fn write_pair(
     if let Err(e) = std::fs::write(&json, meta) {
         // ⚠️ O PNG já está em disco, e dizê-lo importa: sem esta metade da frase o artista fica a
         // pensar que nada saiu, apaga a pasta e perde o que de facto tinha.
-        toasts.push(Toast::error(format!(
-            "Export Sheet: image written, but metadata failed ({}): {e}",
-            json.display()
+        toasts.push(Toast::error(tr_with(
+            "shell.sheet_export.export_sheet_image",
+            &[("json", &(json.display())), ("e", &e)],
         )));
         return Some(png);
     }

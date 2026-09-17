@@ -47,6 +47,7 @@ use ph2d_ecs::scene::HierarchySnapshot;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::screens::hero::fixture::HierarchyEntity;
+use ph2d_i18n::tr;
 use std::collections::BTreeMap;
 
 /// Bi-directional `Entity::to_bits() ↔ NodeId` map.
@@ -164,7 +165,9 @@ impl EntityNodeMap {
                     // conhece `PRF` (tom `Accent`) desde que existe. *Um canal declarado sem
                     // produtor é decoração — e este esteve a decorar enquanto o artista não achava
                     // a linha.*
-                    badge: entry.is_master.then(|| "PRF".to_string()),
+                    badge: entry
+                        .is_master
+                        .then(|| tr("shell.hero_bridge.prf").to_string()),
                     swatch: None,
                     visible: entry.visible,
                     selected: false,

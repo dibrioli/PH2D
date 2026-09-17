@@ -21,6 +21,7 @@ use ph2d_ecs::{
     Entity, SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalVerb, SimWorld, World,
 };
 use ph2d_editor_core::{ActionFieldEdit, InspectorActionInfo, InspectorActionRow, Toast};
+use ph2d_i18n::tr_with;
 
 use ph2d_inspector_ordering::queue_set;
 
@@ -74,8 +75,9 @@ pub(super) fn apply_action_edit(
     match edit {
         ActionFieldEdit::Add => {
             if table.0.len() >= SIGNAL_ACTIONS_MAX {
-                return Some(Toast::warning(format!(
-                    "This object already has the maximum of {SIGNAL_ACTIONS_MAX} actions."
+                return Some(Toast::warning(tr_with(
+                    "shell.inspector_action.this_object_already",
+                    &[("SIGNAL_ACTIONS_MAX", &SIGNAL_ACTIONS_MAX)],
                 )));
             }
             // ⚠️ **Nasce SEM nome de sinal**, e o painel di-lo em WARN. Um default que disparasse

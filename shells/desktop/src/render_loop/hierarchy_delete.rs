@@ -24,6 +24,7 @@
 
 use ph2d_editor_core::Toast;
 use ph2d_editor_core::screens::hero::HeroScreen;
+use ph2d_i18n::{tr, tr_with};
 
 /// Drena o pedido de apagar. Devolve `true` quando o documento mudou.
 pub(super) fn drain(
@@ -131,20 +132,24 @@ pub(super) fn drain(
         // resposta diferente de *«apagado»* — o artista tem de saber que a receita ficou intacta.
         if n > 0 || refused > 0 {
             toasts.push(Toast::warning(match (n, refused, kept) {
-                (1, 0, 0) => "Deleted entity".to_string(),
-                (0, 1, 0) => "Removed from this copy \u{2014} the prefab still has it".to_string(),
-                (0, r, 0) => format!("Removed {r} piece(s) from this copy only"),
-                (_, 0, 0) => format!("Deleted {n} entities"),
-                (_, r, 0) => format!("Deleted {n} \u{2014} {r} removed from this copy only"),
-                _ => format!(
-                    "Deleted {n} \u{2014} {refused} removed from this copy \u{2014} {kept} stayed"
+                (1, 0, 0) => tr("shell.hierarchy_delete.deleted_entity").to_string(),
+                (0, 1, 0) => tr("shell.hierarchy_delete.removed_from_this_copy").to_string(),
+                (0, r, 0) => tr_with("shell.hierarchy_delete.removed_piece_s_from", &[("r", &r)]),
+                (_, 0, 0) => tr_with("shell.hierarchy_delete.deleted_entities", &[("n", &n)]),
+                (_, r, 0) => tr_with(
+                    "shell.hierarchy_delete.deleted_removed_from",
+                    &[("n", &n), ("r", &r)],
+                ),
+                _ => tr_with(
+                    "shell.hierarchy_delete.deleted_removed_from_2",
+                    &[("n", &n), ("refused", &refused), ("kept", &kept)],
                 ),
             }));
             title_dirty = true;
         } else if kept > 0 {
-            toasts.push(Toast::warning(
-                "That piece comes from a prefab \u{2014} delete it in the prefab, or Detach this copy first",
-            ));
+            toasts.push(Toast::warning(tr(
+                "shell.hierarchy_delete.that_piece_comes_from",
+            )));
         }
     }
     title_dirty

@@ -27,6 +27,7 @@ use ph2d_ecs::{
     Name, SignalActions, SignalVerb, SimWorld, World,
 };
 use ph2d_editor_core::{AudioFieldEdit, InspectorAudioInfo, InspectorAudioSource, Toast};
+use ph2d_i18n::tr_with;
 
 use ph2d_inspector_ordering::queue_set;
 
@@ -145,9 +146,9 @@ pub(super) fn apply_audio_edit(
             // ⚠️ **Recusa com VOZ acima do teto**, e não em silêncio: o teto é do pool do mixer, e
             // um número que entra saturado sem dizer nada lê-se como o campo estar partido.
             if *n > AUDIO_MAX_POLYPHONY {
-                return Some(Toast::warning(format!(
-                    "One source can hold at most {AUDIO_MAX_POLYPHONY} voices \u{2014} the mixer's \
-                     pool is shared with the whole scene."
+                return Some(Toast::warning(tr_with(
+                    "shell.inspector_audio.one_source_can_hold_at",
+                    &[("AUDIO_MAX_POLYPHONY", &AUDIO_MAX_POLYPHONY)],
                 )));
             }
             src.max_polyphony = (*n).max(1);

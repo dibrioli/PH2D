@@ -31,6 +31,7 @@
 
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, SpriteSheetFrame, Transform, VecShape};
 use ph2d_editor_core::{Toast, ToastQueue};
+use ph2d_i18n::{tr, tr_with};
 use ph2d_render::Sprite;
 use ph2d_sprite_sheet::{Layout, LayoutItem, PackError, PackOptions};
 use ph2d_vec_scene::{ShapeKind, VecScene};
@@ -73,10 +74,16 @@ pub(crate) fn repack_all(
     }
     match failure {
         Some(e) => {
-            toasts.push(Toast::error(format!("Sheet: {e}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.sheet_frame.sheet",
+                &[("e", &e)],
+            )));
         }
         None => {
-            toasts.push(Toast::success(format!("Sheet re-packed: {moved} pieces")));
+            toasts.push(Toast::success(tr_with(
+                "shell.sheet_frame.sheet_re_packed_pieces",
+                &[("moved", &moved)],
+            )));
         }
     }
 }
@@ -130,15 +137,19 @@ pub(crate) fn create_at(
             // `targets.len()`. Selecionar três sprites e uma forma vetorial anunciava "4 pieces
             // packed" e mostrava três: *o número tem de vir de onde a coisa aconteceu.*
             let pieces = child_bits(sim, Entity::from_bits(sheet)).len();
-            toasts.push(Toast::success(format!(
-                "Sheet: {pieces} pieces packed into {size_px} \u{00d7} {size_px}"
+            toasts.push(Toast::success(tr_with(
+                "shell.sheet_frame.sheet_pieces_packed",
+                &[("pieces", &pieces), ("size_px", &size_px)],
             )));
             Some(sheet)
         }
         // ⚠️ A razão sobe VERBATIM do empacotador. Um "não foi possível" mandaria o artista
         // adivinhar entre cem sprites.
         Err(e) => {
-            toasts.push(Toast::error(format!("Sheet: {e}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.sheet_frame.sheet",
+                &[("e", &e)],
+            )));
             None
         }
     }
@@ -183,7 +194,7 @@ pub(crate) fn create_from_selection(
     // O centro da seleção — a folha nasce onde o artista estava a olhar.
     let center = selection_center(&pieces);
     let entity = spawn_rect(sim, scene, map, center, side_m)?;
-    let name = ph2d_unique_name::unique_name(sim, "Sprite Sheet");
+    let name = ph2d_unique_name::unique_name(sim, tr("shell.sheet_frame.sprite_sheet"));
     if let Ok(mut e) = sim.world_mut().get_entity_mut(entity) {
         e.insert(frame);
         e.insert(Name::new(name));
@@ -281,9 +292,9 @@ pub(crate) enum SheetFrameError {
 impl std::fmt::Display for SheetFrameError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NoSprites => write!(f, "select at least one sprite first"),
-            Self::NotASheet => write!(f, "select a sprite sheet, or sprites to pack"),
-            Self::ShapeFailed => write!(f, "the sheet rectangle could not be created"),
+            Self::NoSprites => f.write_str(tr("shell.sheet_frame.select_at_least_one")),
+            Self::NotASheet => f.write_str(tr("shell.sheet_frame.select_a_sprite_sheet")),
+            Self::ShapeFailed => f.write_str(tr("shell.sheet_frame.the_sheet_rectangle")),
             Self::Pack(e) => write!(f, "{e}"),
         }
     }

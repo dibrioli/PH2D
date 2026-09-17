@@ -6,6 +6,7 @@
 //! O corte também devolveu o ficheiro-mãe ao teto de 600 LOC, que ele tinha acabado de passar.
 
 use ph2d_ecs::{Name, SimWorld, Transform};
+use ph2d_i18n::tr;
 
 /// Cria um objeto vazio na raiz e devolve os bits dele.
 ///
@@ -20,7 +21,7 @@ use ph2d_ecs::{Name, SimWorld, Transform};
 /// classe de pergunta (identidade que sobrevive ao respawn), e por isso os dois andam em par —
 /// precedente: [`super::inspector_joint_create`].
 pub(super) fn spawn_empty_root(sim: &mut SimWorld) -> u64 {
-    let name = ph2d_unique_name::unique_name(sim, "Object");
+    let name = ph2d_unique_name::unique_name(sim, tr("shell.hierarchy_add_root.object"));
     let bits = sim
         .world_mut()
         .spawn((Transform::IDENTITY, Name::new(name)))

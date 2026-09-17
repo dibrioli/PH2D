@@ -1,6 +1,7 @@
 //! Drain `OneShotImageOp { tool_id: "make_square" }` — see the
 //! function docstring for the full contract.
 
+use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -43,9 +44,7 @@ pub(crate) fn drain_make_square(
     let Some(src) =
         texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
-        toasts.push(Toast::error(ph2d_i18n::tr(
-            "tool.make_square.toast.unavailable",
-        )));
+        toasts.push(Toast::error(tr("tool.make_square.toast.unavailable")));
         return true;
     };
     // Wave 11 migration (ADR-0042 §6 #2): make_square takes typed
@@ -53,16 +52,19 @@ pub(crate) fn drain_make_square(
     let typed: &[ph2d_color::SrgbRgba] = bytemuck::cast_slice(&src.image.pixels);
     let result = ph2d_tool_make_square::make_square(typed, src.image.width, src.image.height);
     if !result.made_square {
-        toasts.push(Toast::info(ph2d_i18n::tr(
-            "tool.make_square.toast.already_square",
-        )));
+        toasts.push(Toast::info(tr("tool.make_square.toast.already_square")));
         return true;
     }
     if result.size > renderer.max_texture_dimension_2d() {
-        toasts.push(Toast::error(format!(
-            "Make Square would exceed GPU texture limit ({} px max, would need {} px)",
-            renderer.max_texture_dimension_2d(),
-            result.size,
+        toasts.push(Toast::error(tr_with(
+            "shell.make_square.make_square_would",
+            &[
+                (
+                    "max_texture_dimension_2d",
+                    &(renderer.max_texture_dimension_2d()),
+                ),
+                ("size", &(result.size)),
+            ],
         )));
         return true;
     }
@@ -112,7 +114,10 @@ pub(crate) fn drain_make_square(
         toasts,
     ) {
         Err(err) => {
-            toasts.push(Toast::error(format!("Make Square failed: {err}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.make_square.make_square_failed",
+                &[("err", &err)],
+            )));
             true
         }
         Ok(texture_id) => {
@@ -128,11 +133,11 @@ pub(crate) fn drain_make_square(
                 pre_premultiplied: src.old_premultiplied,
                 pre_anchor: src.old_anchor,
                 post_individual_id: texture_id,
-                label: "Make square",
+                label: tr("shell.make_square.make_square"),
             });
-            toasts.push(Toast::success(format!(
-                "Made square · {} × {} px · Cmd+Z to undo",
-                result.size, result.size
+            toasts.push(Toast::success(tr_with(
+                "shell.make_square.made_square_px_cmd_z",
+                &[("size", &(result.size)), ("size2", &(result.size))],
             )));
             true
         }

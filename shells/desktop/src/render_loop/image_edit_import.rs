@@ -6,6 +6,7 @@ use crate::image_import::ImportItemResult;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::{HeroScreen, Toast, ToastQueue};
+use ph2d_i18n::tr_with;
 use ph2d_render::{Camera2d, SpriteRenderer};
 use std::collections::BTreeMap;
 
@@ -62,8 +63,9 @@ pub(super) fn drain_import(
                 },
             );
             for name in &batch.skipped {
-                toasts.push(Toast::warning(format!(
-                    "Skipped {name}: not an image, an SVG drawing or an Aseprite file"
+                toasts.push(Toast::warning(tr_with(
+                    "shell.image_edit_import.skipped_not_an_image",
+                    &[("name", &name)],
                 )));
                 title_dirty = true;
             }
@@ -83,12 +85,18 @@ pub(super) fn drain_import(
                             hero.gizmo.replace_selection(Some(bits));
                             selected_any = true;
                         }
-                        toasts.push(Toast::success(format!("Imported {label}")));
+                        toasts.push(Toast::success(tr_with(
+                            "shell.image_edit_import.imported",
+                            &[("label", &label)],
+                        )));
                         title_dirty = true;
                     }
                     ImportItemResult::Err { name, error } => {
                         eprintln!("M14.4c import failed ({name}): {error}");
-                        toasts.push(Toast::error(format!("Import failed: {error}")));
+                        toasts.push(Toast::error(tr_with(
+                            "shell.image_edit_import.import_failed",
+                            &[("error", &error)],
+                        )));
                         title_dirty = true;
                     }
                 }

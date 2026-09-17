@@ -5806,6 +5806,7 @@ dependencies = [
  "ph2d-imageio-registry-init",
  "ph2d-input",
  "ph2d-inspector-ordering",
+ "ph2d-label-census",
  "ph2d-light",
  "ph2d-mesh",
  "ph2d-mesh-render",

@@ -18,7 +18,8 @@ use ph2d_editor_core::screens::hero::InspectorInstanceInfo;
 ///
 /// ⚠️ **A linha fica na mesma** — ver o `map` do construtor: escondê-la faria o botão prometer
 /// apagar mais do que a lista mostra.
-const UNKNOWN_COMPONENT: &str = "(component no longer in this build)";
+const UNKNOWN_COMPONENT: ph2d_i18n::TextKey =
+    ph2d_i18n::TextKey::new("shell.inspector_instance.component_no_longer_in");
 
 /// Lê o estado de instância da entidade selecionada. `None` = ela não é peça de cópia nenhuma, e
 /// aí a seção **não existe** (a lei da F3: o Inspector mostra o que o objeto TEM).
@@ -90,7 +91,7 @@ pub(super) fn build_instance_info(
         .iter()
         .map(|(k, o)| ph2d_editor_core::screens::hero::OrphanRow {
             component: registry.get_by_id(k.type_id).map_or_else(
-                || UNKNOWN_COMPONENT.to_string(),
+                || UNKNOWN_COMPONENT.tr().to_string(),
                 |e| {
                     e.desc
                         .map_or(e.canonical_name, |d| d.display_name)

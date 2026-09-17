@@ -10,6 +10,7 @@
 //! Separado de `vec_text.rs` pelo teto de 600 LOC/arquivo (HR-18).
 
 use ph2d_ecs::{Entity, SimWorld, Transform, VecShape, VecTextParams};
+use ph2d_i18n::tr;
 use ph2d_vec_scene::{VecPathId, VecScene};
 use ph2d_vec_text::TextAlign;
 use ph2d_vector_font::AxisTag;
@@ -367,7 +368,7 @@ pub(crate) fn convert_text_selection_to_curves(
             .iter()
             .filter_map(|p| map.get(p).copied())
             .collect();
-        group_entities(sim, &members, "Text".to_owned());
+        group_entities(sim, &members, tr("shell.vec_text_object.text").to_owned());
         result.extend(glyph_ids);
     }
     result

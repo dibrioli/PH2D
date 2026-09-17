@@ -2,6 +2,7 @@
 //! selecção do gizmo 3D, o painel de tokens e o painel da escultura (OBRA 2 da `line/render-loop`, 2026-09-13).
 
 use super::*;
+use ph2d_i18n::tr;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -59,9 +60,9 @@ impl crate::App {
             {
                 hero.panel_visibility
                     .insert(ph2d_panel_model3d::PANEL_ID, false);
-                toasts.push(ph2d_editor_core::Toast::info(
-                    "Modelling stepped aside for the other tool",
-                ));
+                toasts.push(ph2d_editor_core::Toast::info(tr(
+                    "shell.fase_world_panel_bridges.modelling_stepped",
+                )));
             }
             // ⭐⭐ **E a metade SIMÉTRICA**: abrir o MODEL tira o barro da tela — e, desde
             // 2026-08-31, também **larga a ferramenta em mãos**.
@@ -89,7 +90,9 @@ impl crate::App {
             {
                 tools.set_active(&neutral);
                 self.title_dirty = true;
-                toasts.push(ph2d_editor_core::Toast::info("Modelling took the canvas"));
+                toasts.push(ph2d_editor_core::Toast::info(tr(
+                    "shell.fase_world_panel_bridges.modelling_took_the",
+                )));
             }
             // ⚠️ A saída do BARRO é a **porta do próprio módulo de escultura**
             // (`toggle_clay`), nunca uma escrita aqui: ela conhece a ordem do ciclo (sair do

@@ -5,6 +5,7 @@
 //! correm antes dela.
 
 use super::*;
+use ph2d_i18n::tr_with;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -49,10 +50,16 @@ impl crate::App {
                         .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
                             kind: ph2d_editor_core::ViewFocusKind::Selected,
                         });
-                    toasts.push(Toast::success(format!("New canvas · {label} ({size}²)")));
+                    toasts.push(Toast::success(tr_with(
+                        "shell.fase_new_image_modal.new_canvas",
+                        &[("label", &label), ("size", &size)],
+                    )));
                 }
                 Err(e) => {
-                    toasts.push(Toast::error(format!("New canvas failed: {e}")));
+                    toasts.push(Toast::error(tr_with(
+                        "shell.fase_new_image_modal.new_canvas_failed",
+                        &[("e", &e)],
+                    )));
                 }
             }
             self.title_dirty = true;

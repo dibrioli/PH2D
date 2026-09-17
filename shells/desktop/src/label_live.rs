@@ -27,6 +27,7 @@
 //!    o desprende da forma (o offset engoliria o movimento do hospedeiro, e o alvo nunca mudaria).
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecConnector, VecLabel};
+use ph2d_i18n::tr_with;
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms, xform_of};
 
 use ph2d_vec_entities::entities::VecEntityMap;
@@ -291,12 +292,18 @@ pub(crate) fn attach(
     let base = map
         .get(&host)
         .and_then(|&b| sim.world().get::<Name>(Entity::from_bits(b)))
-        .map_or_else(|| format!("Path {host}"), |n| n.0.clone());
+        .map_or_else(
+            || tr_with("shell.label_live.path", &[("host", &host)]),
+            |n| n.0.clone(),
+        );
     let Ok(mut e) = sim.world_mut().get_entity_mut(entity) else {
         return false;
     };
     e.insert(VecLabel::on(host));
-    e.insert(Name::new(format!("{base} Label")));
+    e.insert(Name::new(tr_with(
+        "shell.label_live.label",
+        &[("base", &base)],
+    )));
     true
 }
 

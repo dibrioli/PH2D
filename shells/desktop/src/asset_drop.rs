@@ -26,6 +26,7 @@
 //! gateável sem GPU — e é onde o defeito de *«o alvo adivinha»* moraria.
 
 use ph2d_editor_core::interaction::drag_payload::DragPayload;
+use ph2d_i18n::tr;
 
 /// Onde o cursor estava quando a mão largou.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -113,10 +114,8 @@ impl DropAction {
     #[must_use]
     pub fn refusal_line(payload: DragPayload) -> String {
         match payload {
-            DragPayload::Prefab { .. } => "Drop a prefab on the canvas to place it".to_string(),
-            DragPayload::Image { .. } => {
-                "Drop an image on a sprite to retexture it, or on empty canvas".to_string()
-            }
+            DragPayload::Prefab { .. } => tr("shell.asset_drop.drop_a_prefab_on_the").to_string(),
+            DragPayload::Image { .. } => tr("shell.asset_drop.drop_an_image_on_a").to_string(),
         }
     }
 }

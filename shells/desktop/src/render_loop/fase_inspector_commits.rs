@@ -3,6 +3,7 @@
 //! secções AUDIO e CAMERA (edições de DUAS naturezas: campo do documento, e dispositivo/vista) e a fila (OBRA 2 da `line/render-loop`, 2026-09-12).
 
 use super::*;
+use ph2d_i18n::tr_with;
 
 /// As edições do Inspector que o dreno do barramento recolheu neste quadro.
 pub(super) struct InspectorIntents {
@@ -187,8 +188,9 @@ impl crate::App {
                 component_registry,
             )
         {
-            toasts.push(ph2d_editor_core::Toast::error(format!(
-                "Audio commit failed: {e}"
+            toasts.push(ph2d_editor_core::Toast::error(tr_with(
+                "shell.fase_inspector_commits.audio_commit_failed",
+                &[("e", &e)],
             )));
             self.title_dirty = true;
         }

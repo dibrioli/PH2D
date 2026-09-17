@@ -1,6 +1,7 @@
 //! **Fase do quadro: A ACTIVAÇÃO DA FERRAMENTA DE IMAGEM** — a activação da ferramenta de imagem pedida pelo barramento (o hero não alcança `gfx.tools`) (OBRA 2 da `line/render-loop`, 2026-09-13).
 
 use super::*;
+use ph2d_i18n::tr_with;
 
 /// Os pedidos que o dreno do barramento recolheu neste quadro para esta fase.
 pub(super) struct ImageToolActivationIntents {
@@ -93,7 +94,10 @@ impl crate::App {
                 tools.activate_default();
                 self.title_dirty = true;
                 if let Some(active) = tools.active() {
-                    toasts.push(Toast::info(format!("Tool · {}", active.label())));
+                    toasts.push(Toast::info(tr_with(
+                        "shell.fase_image_tool_activation.tool",
+                        &[("label", &(active.label()))],
+                    )));
                 }
             } else if gate_on && tools.set_active(&ph2d_editor_core::ToolId::new(tool_id)) {
                 // **ENTRAR NO PAINTER COLAPSA A SELEÇÃO À ÚLTIMA** (Enio, 2026-08-19: *"se o
@@ -107,8 +111,9 @@ impl crate::App {
                 if tool_id == "painter" {
                     let dropped = ph2d_app_painter::painter_lock::collapse_to_last(hero);
                     if dropped > 0 {
-                        toasts.push(Toast::info(format!(
-                            "Painter: kept the last selected sprite ({dropped} deselected)"
+                        toasts.push(Toast::info(tr_with(
+                            "shell.fase_image_tool_activation.painter_kept_the_last",
+                            &[("dropped", &dropped)],
                         )));
                     }
                 }
@@ -117,7 +122,10 @@ impl crate::App {
                     self.last_bgremoval_pushed_entity = None;
                 }
                 if let Some(active) = tools.active() {
-                    toasts.push(Toast::info(format!("Tool · {}", active.label())));
+                    toasts.push(Toast::info(tr_with(
+                        "shell.fase_image_tool_activation.tool",
+                        &[("label", &(active.label()))],
+                    )));
                 }
                 // (R4: Pen activation no longer needs a sprite —
                 // network IS the asset, world-coords throughout.)

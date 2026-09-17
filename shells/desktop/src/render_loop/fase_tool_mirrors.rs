@@ -2,6 +2,7 @@
 //! borda de activação e o painel de mundo da física (OBRA 2 da `line/render-loop`, 2026-09-13).
 
 use super::*;
+use ph2d_i18n::tr;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -33,9 +34,10 @@ impl crate::App {
                 .active()
                 .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("flip"));
             if now_active && !self.flip_state.active && flip.is_empty() {
-                let oid = flip.push_object("Flip");
+                let oid = flip.push_object(tr("shell.fase_tool_mirrors.flip"));
                 if let Some(obj) = flip.object_mut(oid) {
-                    self.flip_state.active_layer = Some(obj.add_layer("Layer 1"));
+                    self.flip_state.active_layer =
+                        Some(obj.add_layer(tr("shell.fase_tool_mirrors.layer_1")));
                 }
             }
         }

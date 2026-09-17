@@ -1,6 +1,7 @@
 //! Drain one Upscale-bake request — caller iterates per-sprite for
 //! cross-sprite Apply.
 
+use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -56,7 +57,7 @@ pub(crate) fn drain_upscale(
     let Some(src) =
         texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
-        toasts.push(Toast::error("Upscale: source unavailable"));
+        toasts.push(Toast::error(tr("shell.upscale.upscale_source")));
         return true;
     };
     let old_size_world = src.old_size_world;
@@ -94,9 +95,9 @@ pub(crate) fn drain_upscale(
     // user can lower the factor.
     let max_dim = renderer.max_texture_dimension_2d();
     if out_w > max_dim || out_h > max_dim {
-        toasts.push(Toast::error(format!(
-            "Upscale would exceed GPU texture limit ({} px max, would need {} × {} px). Try a smaller scale factor.",
-            max_dim, out_w, out_h
+        toasts.push(Toast::error(tr_with(
+            "shell.upscale.upscale_would_exceed",
+            &[("max_dim", &max_dim), ("out_w", &out_w), ("out_h", &out_h)],
         )));
         return true;
     }
@@ -135,7 +136,10 @@ pub(crate) fn drain_upscale(
         toasts,
     ) {
         Err(err) => {
-            toasts.push(Toast::error(format!("Upscale failed: {err}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.upscale.upscale_failed",
+                &[("err", &err)],
+            )));
             true
         }
         Ok(texture_id) => {
@@ -155,11 +159,11 @@ pub(crate) fn drain_upscale(
                 pre_premultiplied: old_premultiplied,
                 pre_anchor: old_anchor,
                 post_individual_id: texture_id,
-                label: "Upscale",
+                label: tr("shell.upscale.upscale"),
             });
-            toasts.push(Toast::success(format!(
-                "Upscaled · {} × {} px · Cmd+Z to undo",
-                out_w, out_h
+            toasts.push(Toast::success(tr_with(
+                "shell.upscale.upscaled_px_cmd_z_to",
+                &[("out_w", &out_w), ("out_h", &out_h)],
             )));
             true
         }

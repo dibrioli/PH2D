@@ -2,6 +2,7 @@
 //! do vetor e o editor de áudio, mudados VERBATIM; os privados passam a `pub(super)`, o preço de morar num irmão.
 
 use super::*;
+use ph2d_i18n::tr_with;
 
 impl crate::App {
     /// **O press das ferramentas de PONTO** (W-Hand: explosão e atração).
@@ -45,8 +46,9 @@ impl crate::App {
             if hit > 0
                 && let Some(gfx) = self.gfx.as_mut()
             {
-                gfx.toasts.push(ph2d_editor_core::Toast::info(format!(
-                    "Blast: {hit} bodies"
+                gfx.toasts.push(ph2d_editor_core::Toast::info(tr_with(
+                    "shell.despacho_metodos_picks_e_arrastos.blast_bodies",
+                    &[("hit", &hit)],
                 )));
             }
         }

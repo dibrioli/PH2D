@@ -56,6 +56,7 @@
 //! aparece e não faz nada é o defeito que este repo caça.*
 
 use ph2d_ecs::{Entity, MasterRoot, SimWorld};
+use ph2d_i18n::{tr, tr_with};
 use ph2d_vec_scene::VecPathId;
 
 use ph2d_vec_entities::entities::VecEntityMap;
@@ -223,14 +224,14 @@ pub(crate) fn dispatch(
     if verb == crate::vec_component_edit::ComponentEdit::Reset {
         let Some(r) = ph2d_app_components::instance_revert::revert_all_overrides(sim, echo, e)
         else {
-            toasts.push(ph2d_editor_core::Toast::warning(
-                "That is not a copy of a prefab",
-            ));
+            toasts.push(ph2d_editor_core::Toast::warning(tr(
+                "shell.vec_component_general.that_is_not_a_copy_of",
+            )));
             return false;
         };
-        toasts.push(ph2d_editor_core::Toast::success(format!(
-            "Reverted {} override(s) to the prefab",
-            r.count
+        toasts.push(ph2d_editor_core::Toast::success(tr_with(
+            "shell.vec_component_general.reverted_override_s_to",
+            &[("r", &(r.count))],
         )));
         return r.count > 0;
     }
@@ -283,9 +284,9 @@ pub(crate) fn swap_by_pick(
     clicked: Entity,
 ) -> bool {
     let Some(root) = ph2d_app_components::instance_verbs::instance_root_of(sim, source) else {
-        toasts.push(ph2d_editor_core::Toast::warning(
-            "That is not a copy of a prefab",
-        ));
+        toasts.push(ph2d_editor_core::Toast::warning(tr(
+            "shell.vec_component_general.that_is_not_a_copy_of",
+        )));
         return false;
     };
     let target = ph2d_app_components::instance_verbs_walk::master_subject(sim, clicked);
@@ -297,9 +298,9 @@ pub(crate) fn swap_by_pick(
     else {
         // ⚠️ **A recusa NOMEIA o que fazer** — o artista clicou numa forma comum, e o gesto fica
         // armado de propósito (desarmar aqui faria um clique fora do alvo parecer uma troca).
-        toasts.push(ph2d_editor_core::Toast::warning(
-            "That shape is not a copy of a prefab \u{2014} click one, or the open prefab",
-        ));
+        toasts.push(ph2d_editor_core::Toast::warning(tr(
+            "shell.vec_component_general.that_shape_is_not_a",
+        )));
         return false;
     };
     match ph2d_app_components::instance_variant::swap(
@@ -312,38 +313,37 @@ pub(crate) fn swap_by_pick(
         Ok(r) => {
             let name = ph2d_app_components::instance_verbs::master_named(sim, id)
                 .unwrap_or_else(|| "prefab".to_string());
-            let mut say = format!(
-                "Now a copy of \u{201c}{name}\u{201d} \u{2014} {} override(s) kept",
-                r.overrides_kept
+            let mut say = tr_with(
+                "shell.vec_component_general.now_a_copy_of_override",
+                &[("name", &name), ("overrides_kept", &(r.overrides_kept))],
             );
             // ⚠️ **O que se PERDEU é dito no mesmo fôlego.** O motor velho escrevia isto num
             // `eprintln!`, que o artista não vê — e o que ele vê é uma peça a desaparecer.
             if r.dropped > 0 {
-                say.push_str(&format!(
-                    " \u{b7} {} piece(s) the new prefab does not have were removed",
-                    r.dropped
+                say.push_str(&tr_with(
+                    "shell.vec_component_general.piece_s_the_new_prefab",
+                    &[("dropped", &(r.dropped))],
                 ));
             }
             toasts.push(ph2d_editor_core::Toast::success(say));
             true
         }
         Err(ph2d_app_components::instance_variant::SwapRefusal::Already) => {
-            toasts.push(ph2d_editor_core::Toast::info(
-                "It is already a copy of that prefab",
-            ));
+            toasts.push(ph2d_editor_core::Toast::info(tr(
+                "shell.vec_component_general.it_is_already_a_copy",
+            )));
             false
         }
         Err(ph2d_app_components::instance_variant::SwapRefusal::Unrelated) => {
-            toasts.push(ph2d_editor_core::Toast::warning(
-                "Those two prefabs are unrelated \u{2014} use \u{201c}Replace selection with \
-                 this\u{201d} in the library to choose how to match the pieces",
-            ));
+            toasts.push(ph2d_editor_core::Toast::warning(tr(
+                "shell.vec_component_general.those_two_prefabs_are",
+            )));
             false
         }
         Err(_) => {
-            toasts.push(ph2d_editor_core::Toast::warning(
-                "That copy cannot become this prefab",
-            ));
+            toasts.push(ph2d_editor_core::Toast::warning(tr(
+                "shell.vec_component_general.that_copy_cannot",
+            )));
             false
         }
     }

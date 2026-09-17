@@ -1,5 +1,6 @@
 //! Drain Bg Removal — single-sprite + Separate Islands spawn.
 
+use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -47,9 +48,7 @@ pub(crate) fn drain_bgremoval(
     let Some(src) =
         texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
-        toasts.push(Toast::error(
-            "Bg Removal: source unavailable (Atlas key missing or readback failed)",
-        ));
+        toasts.push(Toast::error(tr("shell.bgremoval.bg_removal_source")));
         return true;
     };
     let old_size_world = src.old_size_world;
@@ -121,7 +120,10 @@ pub(crate) fn drain_bgremoval(
             toasts,
         ) {
             Err(err) => {
-                toasts.push(Toast::error(format!("Bg Removal failed: {err}")));
+                toasts.push(Toast::error(tr_with(
+                    "shell.bgremoval.bg_removal_failed",
+                    &[("err", &err)],
+                )));
                 true
             }
             Ok(texture_id) => {
@@ -133,9 +135,9 @@ pub(crate) fn drain_bgremoval(
                     pre_premultiplied: old_premultiplied,
                     pre_anchor: old_anchor,
                     post_individual_id: texture_id,
-                    label: "Bg Removal",
+                    label: tr("shell.bgremoval.bg_removal"),
                 });
-                toasts.push(Toast::success("Bg Removal applied · Cmd+Z to undo"));
+                toasts.push(Toast::success(tr("shell.bgremoval.bg_removal_applied_cmd")));
                 *last_bgremoval_pushed_entity = None;
                 true
             }
@@ -190,7 +192,10 @@ pub(crate) fn drain_bgremoval(
         toasts,
     ) {
         Err(err) => {
-            toasts.push(Toast::error(format!("Bg Removal failed: {err}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.bgremoval.bg_removal_failed",
+                &[("err", &err)],
+            )));
             return true;
         }
         Ok(texture_id) => {
@@ -206,7 +211,7 @@ pub(crate) fn drain_bgremoval(
                 pre_premultiplied: old_premultiplied,
                 pre_anchor: old_anchor,
                 post_individual_id: texture_id,
-                label: "Bg Removal · Separate Islands",
+                label: tr("shell.bgremoval.bg_removal_separate"),
             });
         }
     }
@@ -250,7 +255,10 @@ fn spawn_islands(
         match renderer.acquire_individual(img.width, img.height, &img.pixels) {
             Err(e) => {
                 spawn_failed += 1;
-                toasts.push(Toast::error(format!("Island {n} acquire failed: {e}")));
+                toasts.push(Toast::error(tr_with(
+                    "shell.bgremoval.island_acquire_failed",
+                    &[("n", &n), ("e", &e)],
+                )));
             }
             Ok(tex_id) => {
                 let world_w = island.w as f32 / px_per_m;
@@ -290,17 +298,18 @@ fn spawn_islands(
     }
 
     if spawn_failed == 0 {
-        format!(
-            "Bg Removal · {} island(s), {} spawned · Cmd+Z restores",
-            islands.len(),
-            spawned
+        tr_with(
+            "shell.bgremoval.bg_removal_island_s",
+            &[("islands", &(islands.len())), ("spawned", &spawned)],
         )
     } else {
-        format!(
-            "Bg Removal · {} island(s), {} spawned, {} failed · Cmd+Z restores",
-            islands.len(),
-            spawned,
-            spawn_failed
+        tr_with(
+            "shell.bgremoval.bg_removal_island_s_2",
+            &[
+                ("islands", &(islands.len())),
+                ("spawned", &spawned),
+                ("spawn_failed", &spawn_failed),
+            ],
         )
     }
 }

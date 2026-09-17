@@ -94,7 +94,7 @@ fn the_recipe_given_piece_is_refused_not_despawned() {
 /// por falta de voz que o report de 05/09 existiu.*
 #[test]
 fn the_refusal_says_where_to_do_it_instead() {
-    let body = code_of("render_loop/hierarchy_delete.rs");
+    let body = crate::i18n_view::with_texts(&code_of("render_loop/hierarchy_delete.rs"));
     assert!(
         body.contains("delete it in the prefab"),
         "a recusa nao diz ONDE fazer — o artista fica com um Delete que nao faz nada"

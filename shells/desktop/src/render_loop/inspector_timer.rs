@@ -25,6 +25,7 @@
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, SimWorld, TIMER_MAX_US, TIMERS_MAX, Timer, Timers, World};
 use ph2d_editor_core::{InspectorTimerInfo, InspectorTimerRow, TimerFieldEdit, Toast};
+use ph2d_i18n::{tr, tr_with};
 
 use ph2d_inspector_ordering::queue_set;
 
@@ -67,12 +68,12 @@ pub(super) fn build_timer_info(
 /// consegue ler.
 fn next_free_name(timers: &Timers) -> String {
     for n in 1..=(TIMERS_MAX + 1) {
-        let candidate = format!("Timer {n}");
+        let candidate = tr_with("shell.inspector_timer.timer_2", &[("n", &n)]);
         if !timers.0.iter().any(|t| t.name == candidate) {
             return candidate;
         }
     }
-    String::from("Timer")
+    String::from(tr("shell.inspector_timer.timer"))
 }
 
 /// Aplica uma [`TimerFieldEdit`]. Devolve um aviso quando a edição foi **recusada**.
@@ -95,8 +96,9 @@ pub(super) fn apply_timer_edit(
             // ⚠️ **Recusa com aviso**, nunca em silêncio: um `+` que não faz nada lê-se como um
             // botão partido, e o artista carrega nele outra vez.
             if timers.0.len() >= TIMERS_MAX {
-                return Some(Toast::warning(format!(
-                    "This object already has the maximum of {TIMERS_MAX} timers."
+                return Some(Toast::warning(tr_with(
+                    "shell.inspector_timer.this_object_already",
+                    &[("TIMERS_MAX", &TIMERS_MAX)],
                 )));
             }
             let name = next_free_name(&timers);
@@ -120,9 +122,9 @@ pub(super) fn apply_timer_edit(
             // ⚠️ **Um nome vazio é RECUSADO com voz.** A lista escolhe-se por nome; uma linha em
             // branco é uma linha que não se consegue apontar.
             if trimmed.is_empty() {
-                return Some(Toast::warning(
-                    "A timer needs a name — the list is how you pick one.",
-                ));
+                return Some(Toast::warning(tr(
+                    "shell.inspector_timer.a_timer_needs_a_name",
+                )));
             }
             t.name = trimmed.to_string();
         }

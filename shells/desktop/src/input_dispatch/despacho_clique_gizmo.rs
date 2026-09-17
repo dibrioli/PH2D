@@ -3,6 +3,7 @@
 //! re-empresta `gfx`/`hero` com o MESMO guarda do braço, e chama o seguinte depois do último uso deles (NLL).
 
 use super::*;
+use ph2d_i18n::tr;
 
 /// **O que o hit de um pen-down disse**, calculado UMA vez e lido pelos ramos seguintes (o pivô, as âncoras, a
 /// cadeia). Os campos têm exactamente os nomes das variáveis que eram no `on_mouse_input`: cada ramo desestrutura-o
@@ -453,7 +454,9 @@ impl crate::App {
                     if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary) {
                         hero.selection = Some(ph2d_editor_core::HeroSelection {
                             label: entry.name.clone(),
-                            kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
+                            kind: entry.badge.clone().unwrap_or_else(|| {
+                                tr("shell.despacho_clique_gizmo.ent").to_string()
+                            }),
                             world_pos: (0.0, 0.0),
                         });
                     } else if primary.is_none() {

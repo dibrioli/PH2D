@@ -3,6 +3,7 @@
 //! ⚠️ Cada ramo re-empresta `gfx`/`hero` com o MESMO guarda do braço, e chama o seguinte depois do último uso (NLL).
 
 use super::*;
+use ph2d_i18n::tr;
 
 impl crate::App {
     /// O arrasto que o pick abre (a mão, a pose, o Translate e o rig articulado) e o rótulo da seleção.
@@ -148,7 +149,10 @@ impl crate::App {
             if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary) {
                 hero.selection = Some(ph2d_editor_core::HeroSelection {
                     label: entry.name.clone(),
-                    kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
+                    kind: entry
+                        .badge
+                        .clone()
+                        .unwrap_or_else(|| tr("shell.despacho_clique_pick.ent").to_string()),
                     world_pos: (0.0, 0.0),
                 });
             } else if primary.is_none() {

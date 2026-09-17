@@ -13,6 +13,7 @@
 //! `the_registry_is_installed_before_the_hero` lê a ORDEM das duas chamadas naquele ficheiro.
 
 use super::*;
+use ph2d_i18n::tr;
 
 /// **O banco de assets, o atlas e o renderer de sprites** — o atlas compõe-se dos PNG do disco (ou
 /// do procedural de recurso), reserva o ladrilho branco do Motion e entra no renderer.
@@ -225,8 +226,12 @@ pub(super) fn boot_editor_layer(
     let zen = ZenMode::new();
     let jobs = JobQueue::new();
     let mut toasts = ToastQueue::new();
-    toasts.push(Toast::success("Editor data layer wired (M12)"));
-    toasts.push(Toast::info("Press 1=Brush, 2=Move, 3=Bg Removal, Tab=Zen"));
+    toasts.push(Toast::success(tr(
+        "shell.init_subsystems.editor_data_layer",
+    )));
+    toasts.push(Toast::info(tr(
+        "shell.init_subsystems.press_1_brush_2_move_3",
+    )));
     // All modal tools are registered by codegen (ADR-0040 T-close):
     // `ph2d-tool-sync` generates `register_all_tools` from the scan of
     // `crates/ph2d-tool-*` (pub fn make). Adding a tool = drop a crate +

@@ -26,6 +26,7 @@
 //! toast nomeia o remédio — *recusar apontando para a cura é melhor do que assar uma folha
 //! partida.*
 
+use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
 use ph2d_asset::AssetDb;
@@ -90,7 +91,7 @@ pub(crate) fn compose_sheet(
 ) -> Option<(AuthoredSheet, Vec<(Entity, String)>)> {
     let sheet = Entity::from_bits(sheet_bits);
     let Some(cfg) = sim.world().get::<SpriteSheetFrame>(sheet).copied() else {
-        toasts.push(Toast::warning("Bake Sheet: select a sheet"));
+        toasts.push(Toast::warning(tr("shell.sheet_bake.bake_sheet_select_a")));
         return None;
     };
     // ⚠️ A recusa vem ANTES de qualquer leitura de GPU: ler N texturas para depois descobrir que a
@@ -98,17 +99,18 @@ pub(crate) fn compose_sheet(
     let health = crate::sheet_bounds::health(sim, sheet);
     if !health.is_ok() {
         let what = match (health.overlap, health.overflow) {
-            (true, true) => "pieces overlap and some fall outside",
-            (true, false) => "pieces overlap",
-            _ => "some pieces fall outside the sheet",
+            (true, true) => tr("shell.sheet_bake.pieces_overlap_and"),
+            (true, false) => tr("shell.sheet_bake.pieces_overlap"),
+            _ => tr("shell.sheet_bake.some_pieces_fall"),
         };
-        toasts.push(Toast::error(format!(
-            "Bake Sheet: {what} - fix it first (Auto-Arrange Pieces)"
+        toasts.push(Toast::error(tr_with(
+            "shell.sheet_bake.bake_sheet_fix_it",
+            &[("what", &what)],
         )));
         return None;
     }
     let Some(sheet_half) = crate::sheet_bounds::sheet_half_local(sim, sheet) else {
-        toasts.push(Toast::warning("Bake Sheet: select a sheet"));
+        toasts.push(Toast::warning(tr("shell.sheet_bake.bake_sheet_select_a")));
         return None;
     };
     let size_px = cfg.pixels_for(sheet_half[0] * 2.0).max(1);
@@ -131,8 +133,9 @@ pub(crate) fn compose_sheet(
     // decisão diferente de «doze de doze»).
     let downgraded = sixteen_bit_pieces(sim, renderer, sheet);
     if downgraded > 0 {
-        toasts.push(Toast::info(format!(
-            "Converted {downgraded} piece(s) to RGBA8 — a sheet is one texture, and it is 8-bit"
+        toasts.push(Toast::info(tr_with(
+            "shell.sheet_bake.converted_piece_s_to",
+            &[("downgraded", &downgraded)],
         )));
     }
     let baked = read_pieces(
@@ -145,7 +148,7 @@ pub(crate) fn compose_sheet(
         sheet_half,
     );
     if baked.is_empty() {
-        toasts.push(Toast::warning("Bake Sheet: this sheet has no pieces"));
+        toasts.push(Toast::warning(tr("shell.sheet_bake.bake_sheet_this_sheet")));
         return None;
     }
     let name = sim
@@ -171,7 +174,10 @@ pub(crate) fn compose_sheet(
     let authored = match ph2d_sprite_sheet::compose(sheet_id, name, size_px, inputs, &at, true) {
         Ok(s) => s,
         Err(e) => {
-            toasts.push(Toast::error(format!("Bake Sheet: {e}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.sheet_bake.bake_sheet",
+                &[("e", &e)],
+            )));
             return None;
         }
     };
@@ -208,18 +214,23 @@ pub(crate) fn bake(
         match renderer.acquire_individual(authored.width, authored.height, &authored.rgba) {
             Ok(id) => id,
             Err(e) => {
-                toasts.push(Toast::error(format!("Bake Sheet: GPU upload: {e}")));
+                toasts.push(Toast::error(tr_with(
+                    "shell.sheet_bake.bake_sheet_gpu_upload",
+                    &[("e", &e)],
+                )));
                 return None;
             }
         };
     rebind(sim, &authored, &entities, texture_id, sheet_id);
     sheet_textures.insert(sheet_id, texture_id);
     sheets.insert(sheet_id, authored.clone());
-    toasts.push(Toast::success(format!(
-        "Sheet baked: {} pieces share one {}\u{00d7}{} texture",
-        authored.regions.len(),
-        authored.width,
-        authored.height
+    toasts.push(Toast::success(tr_with(
+        "shell.sheet_bake.sheet_baked_pieces",
+        &[
+            ("regions", &(authored.regions.len())),
+            ("width", &(authored.width)),
+            ("height", &(authored.height)),
+        ],
     )));
     Some(authored)
 }

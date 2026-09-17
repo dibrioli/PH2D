@@ -12,6 +12,7 @@
 //! ⛔ Sem intercalação nada disto corre, e o quadro é **byte-idêntico** ao de sempre.
 
 use ph2d_host::WindowSize;
+use ph2d_i18n::tr;
 use ph2d_vector::Color as VelloColor;
 
 /// ⚠️ **A engrenagem viaja numa struct, e não em onze argumentos.** Os dois passes usam
@@ -210,7 +211,7 @@ pub(super) fn rebind_compositor_if_mode_changed(
             world_rt
                 .texture()
                 .create_view(&wgpu::TextureViewDescriptor {
-                    label: Some("world RT sample view (sRGB)"),
+                    label: Some(tr("shell.present_bands.world_rt_sample_view")),
                     format: Some(ph2d_render::WorldRt::SAMPLE_FORMAT),
                     ..Default::default()
                 })

@@ -2,6 +2,7 @@
 //! largados, modificadores, IME, cursores e os verbos do vetor, mudados VERBATIM; os privados passam a `pub(super)`.
 
 use super::*;
+use ph2d_i18n::{tr, tr_with};
 
 impl crate::App {
     /// **Pick Shapes** (ADR-0128 C2b): alterna a forma FECHADA sob `world` na lista de escolhidas
@@ -456,16 +457,19 @@ impl crate::App {
         // que não faz nada e não diz porquê ensina que a feature está partida*, e foi assim que
         // um smoke desta linha mandou o dono agrupar um objecto só e ficar a olhar para o nada.
         if group {
-            let name = format!("Group {}", sel.len());
+            let name = tr_with(
+                "shell.despacho_metodos_janela_e_vetor.group",
+                &[("sel", &(sel.len()))],
+            );
             if ph2d_vec_entities::entities::group_entities(sim, &sel, name).is_none() {
-                gfx.toasts.push(ph2d_editor_core::Toast::warning(
-                    "Select two or more objects to group",
-                ));
+                gfx.toasts.push(ph2d_editor_core::Toast::warning(tr(
+                    "shell.despacho_metodos_janela_e_vetor.select_two_or_more",
+                )));
             }
         } else if ph2d_vec_entities::entities::ungroup_entities(sim, &sel) == 0 {
-            gfx.toasts.push(ph2d_editor_core::Toast::warning(
-                "That selection is not inside a group",
-            ));
+            gfx.toasts.push(ph2d_editor_core::Toast::warning(tr(
+                "shell.despacho_metodos_janela_e_vetor.that_selection_is_not",
+            )));
         }
     }
 

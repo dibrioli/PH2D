@@ -1,6 +1,7 @@
 //! Drain one `OneShotImageOp { tool_id: "color_equalization" }` per
 //! sprite — the cross-sprite list iterates in the caller.
 
+use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -39,9 +40,7 @@ pub(crate) fn drain_color_equalization(
     let Some(src) =
         texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
-        toasts.push(Toast::error(
-            "Color EQ: source unavailable (Atlas key missing or readback failed)",
-        ));
+        toasts.push(Toast::error(tr("shell.color_equalization.color_eq_source")));
         return true;
     };
     let old_size_world = src.old_size_world;
@@ -78,7 +77,10 @@ pub(crate) fn drain_color_equalization(
         toasts,
     ) {
         Err(err) => {
-            toasts.push(Toast::error(format!("Color EQ failed: {err}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.color_equalization.color_eq_failed",
+                &[("err", &err)],
+            )));
             true
         }
         Ok(texture_id) => {
@@ -90,9 +92,11 @@ pub(crate) fn drain_color_equalization(
                 pre_premultiplied: old_premultiplied,
                 pre_anchor: old_anchor,
                 post_individual_id: texture_id,
-                label: "Color EQ",
+                label: tr("shell.color_equalization.color_eq"),
             });
-            toasts.push(Toast::success("Color EQ applied · Cmd+Z to undo"));
+            toasts.push(Toast::success(tr(
+                "shell.color_equalization.color_eq_applied_cmd_z",
+            )));
             true
         }
     }

@@ -2,6 +2,7 @@
 //! shell servir: exportar, importar, re-ligar, a paleta de formas, o pick, os avisos e abrir o painel (OBRA 2 da `line/render-loop`, 2026-09-12).
 
 use super::*;
+use ph2d_i18n::tr;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -78,7 +79,7 @@ impl crate::App {
             ph2d_app_field3d::smoke::note_live_sculpt(live.is_some());
             if ph2d_app_field3d::smoke::take_scene_sculpt_request() {
                 let msg = live.map_or_else(
-                    || "There is no sculpture in the scene to bring in".to_string(),
+                    || tr("shell.fase_field3d_requests.there_is_no_sculpture").to_string(),
                     |m| ph2d_app_field3d::import::field3d_scene_sculpt(m.clone()),
                 );
                 toasts.push(ph2d_editor_core::Toast::info(msg));

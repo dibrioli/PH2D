@@ -6,6 +6,7 @@
 //! texture — same path as `drain_bgremoval` (alpha-mode preserved → premul
 //! for the sprite shader's bilinear sample).
 
+use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -89,9 +90,7 @@ pub(crate) fn drain_painter(
     let Some(src) =
         texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
-        toasts.push(Toast::error(
-            "Painter: source unavailable (Atlas key missing or readback failed)",
-        ));
+        toasts.push(Toast::error(tr("shell.painter.painter_source")));
         return true;
     };
     let old_size_world = src.old_size_world;
@@ -105,7 +104,7 @@ pub(crate) fn drain_painter(
     // sample, identical to bgremoval's discipline.
     let (canvas, w, h) = (painter as &mut dyn RasterEditTool).run_full();
     if canvas.is_empty() || w == 0 || h == 0 {
-        toasts.push(Toast::error("Painter: empty canvas (no source pushed)"));
+        toasts.push(Toast::error(tr("shell.painter.painter_empty_canvas")));
         return true;
     }
     let edited =
@@ -121,7 +120,10 @@ pub(crate) fn drain_painter(
         toasts,
     ) {
         Err(err) => {
-            toasts.push(Toast::error(format!("Painter failed: {err}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.painter.painter_failed",
+                &[("err", &err)],
+            )));
             true
         }
         Ok(texture_id) => {
@@ -133,9 +135,9 @@ pub(crate) fn drain_painter(
                 pre_premultiplied: old_premultiplied,
                 pre_anchor: old_anchor,
                 post_individual_id: texture_id,
-                label: "Painter",
+                label: tr("shell.painter.painter"),
             });
-            toasts.push(Toast::success("Painter applied · Cmd+Z to undo"));
+            toasts.push(Toast::success(tr("shell.painter.painter_applied_cmd_z")));
             *last_painter_pushed_entity = None;
             true
         }

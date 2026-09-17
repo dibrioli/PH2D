@@ -1,6 +1,7 @@
 //! Drain the Padding Apply latch — see the function docstring for the
 //! full contract.
 
+use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -45,13 +46,13 @@ pub(crate) fn drain_padding(
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
     let px_per_m = project_pixels_per_meter.max(EPS_PIXELS_PER_METER);
     if spec.is_noop() {
-        toasts.push(Toast::info("Padding: nothing to apply (all edges 0)"));
+        toasts.push(Toast::info(tr("shell.padding.padding_nothing_to")));
         return true;
     }
     let Some(src) =
         texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
-        toasts.push(Toast::error("Padding unavailable for this sprite"));
+        toasts.push(Toast::error(tr("shell.padding.padding_unavailable")));
         return true;
     };
     let (src_w, src_h) = (src.image.width, src.image.height);
@@ -61,7 +62,7 @@ pub(crate) fn drain_padding(
     let typed_pixels: &[ph2d_color::SrgbRgba] = bytemuck::cast_slice(&src.image.pixels);
     let result = ph2d_tool_padding::add_padding(typed_pixels, src_w, src_h, spec);
     if !result.changed {
-        toasts.push(Toast::info("Padding: nothing changed"));
+        toasts.push(Toast::info(tr("shell.padding.padding_nothing")));
         return true;
     }
     // M1 (make_square precedent): cap BOTH output dims against the GPU
@@ -69,9 +70,13 @@ pub(crate) fn drain_padding(
     // clear toast instead of a deferred device-loss.
     let max_dim = renderer.max_texture_dimension_2d();
     if result.width > max_dim || result.height > max_dim {
-        toasts.push(Toast::error(format!(
-            "Padding would exceed GPU texture limit ({} px max, would need {} × {} px)",
-            max_dim, result.width, result.height
+        toasts.push(Toast::error(tr_with(
+            "shell.padding.padding_would_exceed",
+            &[
+                ("max_dim", &max_dim),
+                ("width", &(result.width)),
+                ("height", &(result.height)),
+            ],
         )));
         return true;
     }
@@ -160,7 +165,10 @@ pub(crate) fn drain_padding(
         toasts,
     ) {
         Err(err) => {
-            toasts.push(Toast::error(format!("Padding failed: {err}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.padding.padding_failed",
+                &[("err", &err)],
+            )));
             true
         }
         Ok(texture_id) => {
@@ -182,11 +190,11 @@ pub(crate) fn drain_padding(
                 pre_premultiplied: src.old_premultiplied,
                 pre_anchor: src.old_anchor,
                 post_individual_id: texture_id,
-                label: "Padding",
+                label: tr("shell.padding.padding"),
             });
-            toasts.push(Toast::success(format!(
-                "Padded · {} × {} px · Cmd+Z to undo",
-                result.width, result.height
+            toasts.push(Toast::success(tr_with(
+                "shell.padding.padded_px_cmd_z_to",
+                &[("width", &(result.width)), ("height", &(result.height))],
             )));
             true
         }

@@ -30,6 +30,7 @@
 //! existing per-sprite `ImageEditTransaction` shape; revisit when
 //! the user asks (Enio explicitly skipped undo for v1).
 
+use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -109,9 +110,9 @@ pub(crate) fn drain_merge_sprites(
     toasts: &mut ToastQueue,
 ) -> bool {
     if entity_bits_list.len() < 2 {
-        toasts.push(Toast::warning(
-            "Merge Sprites: select 2 or more sprites first",
-        ));
+        toasts.push(Toast::warning(tr(
+            "shell.sprite_merge.merge_sprites_select_2",
+        )));
         return true;
     }
     let project_pm = project_pixels_per_meter.max(EPS_PIXELS_PER_METER);
@@ -122,9 +123,7 @@ pub(crate) fn drain_merge_sprites(
     let srcs = read_sources(ordered_bits, sim, renderer, asset_db, atlas_asset_map);
 
     if srcs.len() < 2 {
-        toasts.push(Toast::error(
-            "Merge Sprites: could not read 2 source images (atlas miss or readback failed)",
-        ));
+        toasts.push(Toast::error(tr("shell.sprite_merge.merge_sprites_could")));
         return true;
     }
 
@@ -158,8 +157,9 @@ pub(crate) fn drain_merge_sprites(
     let texture_id = match renderer.acquire_individual(out_w, out_h, &out_rgba) {
         Ok(id) => id,
         Err(e) => {
-            toasts.push(Toast::error(format!(
-                "Merge Sprites: GPU upload failed: {e}"
+            toasts.push(Toast::error(tr_with(
+                "shell.sprite_merge.merge_sprites_gpu",
+                &[("e", &e)],
             )));
             return true;
         }
@@ -191,7 +191,7 @@ pub(crate) fn drain_merge_sprites(
                 sim.world()
                     .get::<ph2d_ecs::Name>(Entity::from_bits(src.bits))
                     .map(|n| n.as_str().to_string())
-                    .unwrap_or_else(|| "Layer".to_string())
+                    .unwrap_or_else(|| tr("shell.sprite_merge.layer").to_string())
             })
             .collect()
     } else {
@@ -222,7 +222,7 @@ pub(crate) fn drain_merge_sprites(
     // Uniqueness: a 2nd merge would otherwise produce another "Merged"
     // — collision risk per the 2026-05-27 same-name bug. Bump with the
     // shared scheme (` (1)`, ` (2)`, ...).
-    let merged_name = ph2d_unique_name::unique_name(sim, "Merged");
+    let merged_name = ph2d_unique_name::unique_name(sim, tr("shell.sprite_merge.merged"));
     let new_entity = match parent_opt {
         Some(parent) => sim
             .world_mut()
@@ -272,11 +272,15 @@ pub(crate) fn drain_merge_sprites(
     // selection and got SKIPPED (not merged, but also not destroyed).
     let skipped = n_requested.saturating_sub(n_sources);
     if skipped > 0 {
-        toasts.push(Toast::success(format!(
-            "Merged {n_sources} sprites · skipped {skipped} non-sprite entries"
+        toasts.push(Toast::success(tr_with(
+            "shell.sprite_merge.merged_sprites_skipped",
+            &[("n_sources", &n_sources), ("skipped", &skipped)],
         )));
     } else {
-        toasts.push(Toast::success(format!("Merged {n_sources} sprites")));
+        toasts.push(Toast::success(tr_with(
+            "shell.sprite_merge.merged_sprites",
+            &[("n_sources", &n_sources)],
+        )));
     }
     true
 }
@@ -323,8 +327,9 @@ fn order_selection(
         .filter(|&&bits| texture_edit::holds_sixteen_bit(Entity::from_bits(bits), sim, renderer))
         .count();
     if downgraded > 0 {
-        toasts.push(Toast::info(format!(
-            "Converted {downgraded} sprite(s) to RGBA8 — merging composites in 8-bit"
+        toasts.push(Toast::info(tr_with(
+            "shell.sprite_merge.converted_sprite_s_to",
+            &[("downgraded", &downgraded)],
         )));
     }
     (ordered_bits, total_requested)

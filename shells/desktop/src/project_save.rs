@@ -10,6 +10,7 @@
 //! o viu foi a árvore combinada.
 
 use super::{PROJECT_SCHEMA, ProjectFile};
+use ph2d_i18n::tr_with;
 
 impl crate::App {
     /// **Os bytes da escultura que este save vai gravar.**
@@ -143,14 +144,17 @@ impl crate::App {
             Ok(()) => {
                 eprintln!("[proj] salvo: {path} ({} bytes)", bytes.len());
                 let n = self.timeline.doc.bindings().len();
-                self.toast(format!(
-                    "Project saved · {} KB · {n} animation track(s)",
-                    bytes.len() / 1024
+                self.toast(tr_with(
+                    "shell.project_save.project_saved_kb",
+                    &[("bytes", &(bytes.len() / 1024)), ("n", &n)],
                 ));
             }
             Err(e) => {
                 eprintln!("[proj] erro ao gravar {path}: {e}");
-                self.toast(format!("Project save FAILED: {e}"));
+                self.toast(tr_with(
+                    "shell.project_save.project_save_failed",
+                    &[("e", &e)],
+                ));
             }
         }
     }

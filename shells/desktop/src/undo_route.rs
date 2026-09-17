@@ -8,6 +8,7 @@
 //! projeto (mover uma forma e clicar em Undo não fazia nada), e o botão **Redo não
 //! despachava coisa alguma** — pintado, clicável, órfão. Agora os dois entram por aqui.
 
+use ph2d_i18n::tr;
 /// **Quem responde por um Ctrl+Z** (ou pelo botão Undo/Redo da barra — são a MESMA
 /// pergunta, e é por isso que a política mora numa função só).
 ///
@@ -147,7 +148,11 @@ impl crate::App {
             eprintln!(
                 "[undo] Ctrl+{} respondido por {dono:?} (audio={audio_owns} painter={painter_active} \
                  colorize={colorize_owns} global={global_has})",
-                if redo { "Shift+Z" } else { "Z" }
+                if redo {
+                    tr("shell.undo_route.shift_z")
+                } else {
+                    "Z"
+                }
             );
         }
         match dono {

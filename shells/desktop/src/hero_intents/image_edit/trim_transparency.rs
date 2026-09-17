@@ -1,6 +1,7 @@
 //! Drain `OneShotImageOp { tool_id: "trim_transparency" }` — see the
 //! function docstring for the full contract.
 
+use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -42,9 +43,7 @@ pub(crate) fn drain_trim_transparency(
     let Some(src) =
         texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
-        toasts.push(Toast::error(ph2d_i18n::tr(
-            "tool.trim_transparency.toast.unavailable",
-        )));
+        toasts.push(Toast::error(tr("tool.trim_transparency.toast.unavailable")));
         return true;
     };
     // Wave 11 migration (ADR-0042 §6 #2): typed `&[SrgbRgba]` input.
@@ -52,9 +51,7 @@ pub(crate) fn drain_trim_transparency(
     let result =
         ph2d_tool_trim_transparency::trim_transparency(typed, src.image.width, src.image.height, 0);
     if !result.trimmed {
-        toasts.push(Toast::info(ph2d_i18n::tr(
-            "tool.trim_transparency.toast.nothing",
-        )));
+        toasts.push(Toast::info(tr("tool.trim_transparency.toast.nothing")));
         return true;
     }
     // Color-agnostic crop: PRESERVE the source alpha mode (no
@@ -115,7 +112,10 @@ pub(crate) fn drain_trim_transparency(
         toasts,
     ) {
         Err(err) => {
-            toasts.push(Toast::error(format!("Trim failed: {err}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.trim_transparency.trim_failed",
+                &[("err", &err)],
+            )));
             true
         }
         Ok(texture_id) => {
@@ -131,11 +131,11 @@ pub(crate) fn drain_trim_transparency(
                 pre_premultiplied: src.old_premultiplied,
                 pre_anchor: src.old_anchor,
                 post_individual_id: texture_id,
-                label: "Trim",
+                label: tr("shell.trim_transparency.trim"),
             });
-            toasts.push(Toast::success(format!(
-                "Trimmed · {} × {} px · Cmd+Z to undo",
-                result.width, result.height
+            toasts.push(Toast::success(tr_with(
+                "shell.trim_transparency.trimmed_px_cmd_z_to",
+                &[("width", &(result.width)), ("height", &(result.height))],
             )));
             true
         }

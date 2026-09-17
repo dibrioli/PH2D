@@ -16,9 +16,10 @@ use ph2d_asset_index::{CatalogId, CatalogTree};
 use ph2d_editor_core::Toast;
 use ph2d_editor_core::action_bus::CatalogVerb;
 use ph2d_editor_core::interaction::drag_payload::DragPayload;
+use ph2d_i18n::{tr, tr_with};
 
 /// O nome com que um catálogo nasce.
-const BASE: &str = "Catalog";
+const BASE: ph2d_i18n::TextKey = ph2d_i18n::TextKey::new("shell.asset_catalog_verbs.catalog");
 
 /// Um caminho livre dentro de `parent`.
 fn free_path(tree: &CatalogTree, parent: Option<CatalogId>) -> String {
@@ -27,16 +28,16 @@ fn free_path(tree: &CatalogTree, parent: Option<CatalogId>) -> String {
         .map_or_else(String::new, |c| format!("{}/", c.path));
     for n in 1..1000 {
         let label = if n == 1 {
-            BASE.to_string()
+            BASE.tr().to_string()
         } else {
-            format!("{BASE} {n}")
+            format!("{} {n}", BASE.tr())
         };
         let path = format!("{prefix}{label}");
         if !tree.catalogs().iter().any(|c| c.path == path) {
             return path;
         }
     }
-    format!("{prefix}{BASE}")
+    format!("{prefix}{}", BASE.tr())
 }
 
 /// ⭐ **O dreno.** Devolve `true` quando a taxonomia mudou.
@@ -58,8 +59,9 @@ pub(crate) fn drain(
             let path = free_path(tree, parent.map(CatalogId));
             let id = tree.create(&path);
             let label = tree.get(id).map_or(path.clone(), |c| c.label().to_string());
-            toasts.push(Toast::success(format!(
-                "Catalog \u{201c}{label}\u{201d} created"
+            toasts.push(Toast::success(tr_with(
+                "shell.asset_catalog_verbs.catalog_created",
+                &[("label", &label)],
             )));
             true
         }
@@ -70,9 +72,9 @@ pub(crate) fn drain(
                 // ⚠️ **A recusa NOMEIA a razão.** O modelo recusa um nome vazio ou com separador —
                 // este último seria *mover* escondido dentro de *renomear* —, e um silêncio aqui
                 // deixaria o artista a olhar para o nome antigo sem saber porquê.
-                toasts.push(Toast::warning(
-                    "A catalog name cannot be empty or contain \u{201c}/\u{201d}",
-                ));
+                toasts.push(Toast::warning(tr(
+                    "shell.asset_catalog_verbs.a_catalog_name_cannot",
+                )));
                 false
             }
         }
@@ -87,8 +89,9 @@ pub(crate) fn drain(
             tree.delete(CatalogId(*id));
             // ⚠️ **A voz diz o que NÃO aconteceu**, porque é isso que o artista teme: apagar uma
             // gaveta não apaga o que estava lá dentro.
-            toasts.push(Toast::warning(format!(
-                "Catalog \u{201c}{label}\u{201d} deleted \u{2014} the assets in it were not"
+            toasts.push(Toast::warning(tr_with(
+                "shell.asset_catalog_verbs.catalog_deleted_the",
+                &[("label", &label)],
             )));
             true
         }
@@ -107,11 +110,16 @@ pub(crate) fn drain(
                         return false;
                     };
                     tree.assign(key, CatalogId(*c));
-                    toasts.push(Toast::success(format!("Moved to \u{201c}{name}\u{201d}")));
+                    toasts.push(Toast::success(tr_with(
+                        "shell.asset_catalog_verbs.moved_to",
+                        &[("name", &name)],
+                    )));
                 }
                 None => {
                     tree.unassign(&key);
-                    toasts.push(Toast::info("Removed from its catalog"));
+                    toasts.push(Toast::info(tr(
+                        "shell.asset_catalog_verbs.removed_from_its",
+                    )));
                 }
             }
             true

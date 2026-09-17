@@ -38,6 +38,7 @@
 //! está certo.
 
 use ph2d_editor_core::{Toast, ToastQueue, ToolRegistry};
+use ph2d_i18n::{tr, tr_with};
 use ph2d_tool_painter::PainterTool;
 
 use crate::hero_intents::MergedLayers;
@@ -55,9 +56,9 @@ pub(crate) fn install(tools: &mut ToolRegistry, doc: &MergedLayers, toasts: &mut
         // ⚠️ Diz-se, e não se cala: a sprite fundida existe e desenha certo, mas a metade que o
         // artista pediu — as camadas — não aconteceu. Um verbo que faz metade em silêncio é pior
         // que um que falha.
-        toasts.push(Toast::error(
-            "Merged, but the layered document could not be created (painter unavailable)",
-        ));
+        toasts.push(Toast::error(tr(
+            "shell.merge_layers.merged_but_the_layered",
+        )));
         return;
     };
     let Some(((_, bottom), rest)) = doc.layers.split_first() else {
@@ -82,13 +83,14 @@ pub(crate) fn install(tools: &mut ToolRegistry, doc: &MergedLayers, toasts: &mut
     if made < doc.layers.len() {
         // O tecto de camadas do Painter, ou um tamanho que não bate. As duas coisas são reais e as
         // duas têm de ser ditas com o NÚMERO — «algumas falharam» não deixa ninguém decidir nada.
-        toasts.push(Toast::info(format!(
-            "Merged into {made} of {} layers — the rest did not fit",
-            doc.layers.len()
+        toasts.push(Toast::info(tr_with(
+            "shell.merge_layers.merged_into_of_layers",
+            &[("made", &made), ("layers", &(doc.layers.len()))],
         )));
     } else {
-        toasts.push(Toast::success(format!(
-            "Merged into {made} layers — open the Painter on it to separate them again"
+        toasts.push(Toast::success(tr_with(
+            "shell.merge_layers.merged_into_layers",
+            &[("made", &made)],
         )));
     }
 }

@@ -47,6 +47,10 @@ mod grid_snap;
 mod image_tools;
 /// As strings dos painéis do Motion (grafo, params) e dos editores ricos partilhados.
 mod motion_panels;
+/// As strings da SHELL (avisos, diálogos, nomes por omissão).
+mod shell;
+/// As strings da SHELL sobre mídia (imagem, folhas, importar/exportar, áudio).
+mod shell_media;
 mod vector;
 /// As strings que o MOTOR publica para o painel de Vector (efeitos, filtros, misturas).
 mod vector_engine;
@@ -509,6 +513,8 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| chrome_panes::tr(k))
             .or_else(|| audio_fx::tr(k))
             .or_else(|| vector_engine::tr(k))
+            .or_else(|| shell::tr(k))
+            .or_else(|| shell_media::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

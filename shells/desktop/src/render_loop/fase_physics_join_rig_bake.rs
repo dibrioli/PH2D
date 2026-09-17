@@ -5,6 +5,7 @@
 //! ser simulado.
 
 use super::*;
+use ph2d_i18n::{tr, tr_with};
 
 /// Os pedidos de ligar, rigar e assar que o dreno do barramento recolheu neste quadro.
 pub(super) struct PhysicsCreateIntents {
@@ -58,9 +59,9 @@ impl crate::App {
                 hero.gizmo.extra_selection.clear();
             }
             if made > 1 {
-                toasts.push(ph2d_editor_core::Toast::info(format!(
-                    "Chained {} bodies with {made} joints",
-                    made + 1
+                toasts.push(ph2d_editor_core::Toast::info(tr_with(
+                    "shell.fase_physics_join_rig_bake.chained_bodies_with",
+                    &[("made2", &(made + 1)), ("made", &made)],
                 )));
             }
         }
@@ -83,8 +84,9 @@ impl crate::App {
             // emenda mede o `Collider` que a primeira metade acabou de
             // enfileirar. Aqui fica só o deck de toasts, que é deste laço.
             if let Some(e) = out.error {
-                toasts.push(ph2d_editor_core::Toast::error(format!(
-                    "Rig commit failed: {e}"
+                toasts.push(ph2d_editor_core::Toast::error(tr_with(
+                    "shell.fase_physics_join_rig_bake.rig_commit_failed",
+                    &[("e", &e)],
                 )));
             }
             let (bodies, joints, last) = (out.bodies, out.joints, out.last);
@@ -97,8 +99,9 @@ impl crate::App {
                 hero.gizmo.extra_selection.clear();
             }
             if joints > 0 {
-                toasts.push(ph2d_editor_core::Toast::info(format!(
-                    "Rigged {bodies} new bodies with {joints} joints"
+                toasts.push(ph2d_editor_core::Toast::info(tr_with(
+                    "shell.fase_physics_join_rig_bake.rigged_new_bodies_with",
+                    &[("bodies", &bodies), ("joints", &joints)],
                 )));
             }
         }
@@ -127,21 +130,21 @@ impl crate::App {
                 component_registry,
             );
             if outcome.unmappable {
-                toasts.push(ph2d_editor_core::Toast::info(
-                    "Cannot bake here: this clip does not play exactly once",
-                ));
+                toasts.push(ph2d_editor_core::Toast::info(tr(
+                    "shell.fase_physics_join_rig_bake.cannot_bake_here_this",
+                )));
             } else if outcome.refused {
-                toasts.push(ph2d_editor_core::Toast::info(
-                    "Finish the current edit before baking",
-                ));
+                toasts.push(ph2d_editor_core::Toast::info(tr(
+                    "shell.fase_physics_join_rig_bake.finish_the_current",
+                )));
             } else if outcome.already_baked {
-                toasts.push(ph2d_editor_core::Toast::info(
-                    "Already baked - the timeline drives these bodies now",
-                ));
+                toasts.push(ph2d_editor_core::Toast::info(tr(
+                    "shell.fase_physics_join_rig_bake.already_baked_the",
+                )));
             } else if outcome.is_empty() {
-                toasts.push(ph2d_editor_core::Toast::info(
-                    "Nothing to bake: nothing moved",
-                ));
+                toasts.push(ph2d_editor_core::Toast::info(tr(
+                    "shell.fase_physics_join_rig_bake.nothing_to_bake",
+                )));
             } else {
                 // Back to the top, because that is where the animation the
                 // artist just made begins - and because the kind change only
@@ -167,9 +170,13 @@ impl crate::App {
                 } else {
                     format!("{end:.1}s")
                 };
-                toasts.push(ph2d_editor_core::Toast::info(format!(
-                    "Baked {window} - {} bodies, {} tracks - now Kinematic",
-                    outcome.bodies, outcome.tracks
+                toasts.push(ph2d_editor_core::Toast::info(tr_with(
+                    "shell.fase_physics_join_rig_bake.baked_bodies_tracks",
+                    &[
+                        ("window", &window),
+                        ("bodies", &(outcome.bodies)),
+                        ("tracks", &(outcome.tracks)),
+                    ],
                 )));
             }
         }

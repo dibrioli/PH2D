@@ -2,6 +2,7 @@
 //! peça acrescentada, a troca de variante e os verbos de catálogo (OBRA 2 da `line/render-loop`, 2026-09-13).
 
 use super::*;
+use ph2d_i18n::{tr, tr_with};
 
 /// Os pedidos de receita e de assets que o dreno do barramento recolheu neste quadro.
 pub(super) struct RecipeVerbIntents {
@@ -79,24 +80,35 @@ impl crate::App {
                 },
             ) {
                 Ok(done) if done.changed == 0 && done.left == 0 => {
-                    toasts.push(Toast::info("Nothing overridden here"));
+                    toasts.push(Toast::info(tr(
+                        "shell.fase_recipe_and_asset_verbs.nothing_overridden",
+                    )));
                 }
                 Ok(done) => {
                     // ⚠️ **O que ficou por aplicar é DITO** — uma excepção cuja escada não
                     // alcança aquela receita fica onde está, e um número que desaparece em
                     // silêncio lê-se como trabalho perdido.
                     toasts.push(Toast::success(if done.left > 0 {
-                            format!(
-                                "Applied {} change(s) to \u{201c}{name}\u{201d} \u{2014} {} left (not part of it)",
-                                done.changed, done.left
-                            )
-                        } else {
-                            format!("Applied {} change(s) to \u{201c}{name}\u{201d}", done.changed)
-                        }));
+                        tr_with(
+                            "shell.fase_recipe_and_asset_verbs.applied_change_s_to_2",
+                            &[
+                                ("changed", &(done.changed)),
+                                ("name", &name),
+                                ("left", &(done.left)),
+                            ],
+                        )
+                    } else {
+                        tr_with(
+                            "shell.fase_recipe_and_asset_verbs.applied_change_s_to",
+                            &[("changed", &(done.changed)), ("name", &name)],
+                        )
+                    }));
                     self.title_dirty = true;
                 }
                 Err(_) => {
-                    toasts.push(Toast::warning("Not part of an instance"));
+                    toasts.push(Toast::warning(tr(
+                        "shell.fase_recipe_and_asset_verbs.not_part_of_an",
+                    )));
                 }
             }
         }
@@ -124,22 +136,26 @@ impl crate::App {
                 }) {
                 Ok(p) => {
                     let name = crate::render_loop::inspector_instance::master_named(sim, p.master)
-                        .unwrap_or_else(|| "the prefab".to_string());
-                    toasts.push(Toast::success(format!(
-                        "Added {} piece(s) to \u{201c}{name}\u{201d} \u{2014} every copy gets them",
-                        p.pieces
+                        .unwrap_or_else(|| {
+                            tr("shell.fase_recipe_and_asset_verbs.the_prefab").to_string()
+                        });
+                    toasts.push(Toast::success(tr_with(
+                        "shell.fase_recipe_and_asset_verbs.added_piece_s_to_every",
+                        &[("pieces", &(p.pieces)), ("name", &name)],
                     )));
                     self.title_dirty = true;
                 }
                 // ⚠️ **Todo caminho negativo fala** — a lei do menu dos verbos. Um botão que
                 // come o clique em silêncio é pior que um ausente.
                 Err(ph2d_app_components::instance_added::AddRefusal::NotAdded) => {
-                    toasts.push(Toast::warning(
-                        "That piece came from the component \u{2014} it is already in it",
-                    ));
+                    toasts.push(Toast::warning(tr(
+                        "shell.fase_recipe_and_asset_verbs.that_piece_came_from",
+                    )));
                 }
                 Err(_) => {
-                    toasts.push(Toast::warning("That is not a piece of a copy"));
+                    toasts.push(Toast::warning(tr(
+                        "shell.fase_recipe_and_asset_verbs.that_is_not_a_piece_of",
+                    )));
                 }
             }
         }
@@ -156,14 +172,17 @@ impl crate::App {
             ) {
                 Ok(r) => {
                     toasts.push(Toast::success(if r.dropped > 0 {
-                        format!(
-                            "Switched variant \u{2014} {} override(s) kept, {} piece(s) unused",
-                            r.overrides_kept, r.dropped
+                        tr_with(
+                            "shell.fase_recipe_and_asset_verbs.switched_variant_2",
+                            &[
+                                ("overrides_kept", &(r.overrides_kept)),
+                                ("dropped", &(r.dropped)),
+                            ],
                         )
                     } else {
-                        format!(
-                            "Switched variant \u{2014} {} override(s) kept",
-                            r.overrides_kept
+                        tr_with(
+                            "shell.fase_recipe_and_asset_verbs.switched_variant",
+                            &[("overrides_kept", &(r.overrides_kept))],
                         )
                     }));
                     self.title_dirty = true;
@@ -172,12 +191,14 @@ impl crate::App {
                 // pior que um ausente — a mesma lei que o menu dos verbos paga.
                 Err(ph2d_app_components::instance_variant::SwapRefusal::Already) => {}
                 Err(ph2d_app_components::instance_variant::SwapRefusal::Unrelated) => {
-                    toasts.push(Toast::warning(
-                            "These components are not related \u{2014} switching would lose every override",
-                        ));
+                    toasts.push(Toast::warning(tr(
+                        "shell.fase_recipe_and_asset_verbs.these_components_are",
+                    )));
                 }
                 Err(_) => {
-                    toasts.push(Toast::warning("That is not a copy of a prefab"));
+                    toasts.push(Toast::warning(tr(
+                        "shell.fase_recipe_and_asset_verbs.that_is_not_a_copy_of",
+                    )));
                 }
             }
         }

@@ -25,6 +25,7 @@
 //! recorte é o mesmo que os painéis roláveis do editor usam.
 
 use ph2d_ecs::{Name, SimWorld, SpriteSheetFrame, VecShape};
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Theme, TypeToken};
 use ph2d_vector::{Affine, BezPath, Brush, Color, Fill, Point, Stroke, VectorScene};
@@ -182,7 +183,7 @@ pub(crate) fn draw(
             sim.world()
                 .get::<Name>(entity)
                 .map(|n| n.0.clone())
-                .unwrap_or_else(|| "Sprite Sheet".to_string()),
+                .unwrap_or_else(|| tr("shell.sheet_overlay.sprite_sheet").to_string()),
             cfg.pixels_for(w as f32),
             cfg.pixels_for(h as f32),
             warning_suffix(health),
@@ -326,9 +327,9 @@ fn draw_label(
 /// ao ecrã). O separador é o `\u{00b7}`, o único não-ASCII que aquele gate nomeia como seguro.
 fn warning_suffix(health: crate::sheet_bounds::SheetHealth) -> &'static str {
     match (health.overlap, health.overflow) {
-        (true, true) => "  \u{00b7} OVERLAP \u{00b7} DOESN'T FIT",
-        (true, false) => "  \u{00b7} OVERLAP",
-        (false, true) => "  \u{00b7} DOESN'T FIT",
+        (true, true) => tr("shell.sheet_overlay.overlap_doesn_t_fit"),
+        (true, false) => tr("shell.sheet_overlay.overlap"),
+        (false, true) => tr("shell.sheet_overlay.doesn_t_fit"),
         (false, false) => "",
     }
 }

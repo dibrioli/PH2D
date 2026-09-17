@@ -32,6 +32,7 @@
 //! isso que ela tem um: `the_host_never_reads_the_borrowed_scene`.
 
 use crate::app_state::{App, AppGfx};
+use ph2d_i18n::tr;
 
 impl App {
     /// **Onde a cena mora** — `AppGfx.sculpt3d`, que nasce `None`.
@@ -211,7 +212,7 @@ impl App {
         ph2d_app_sculpt3d::entities::entities_sync(sim, scene, shell, hier_sel, &mut |sim| {
             // ⛔ **A folha do nome único NÃO é da família** — ela serve o Flip, o vetor, a
             // física e a Hierarquia, e é alvo de linha própria. Quem a possui passa-a.
-            ph2d_unique_name::unique_name(sim, "Sculpt")
+            ph2d_unique_name::unique_name(sim, tr("shell.sculpt3d_host.sculpt"))
         });
     }
 

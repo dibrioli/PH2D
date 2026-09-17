@@ -11,6 +11,7 @@
 use crate::HeroLive;
 use ph2d_ecs::{Name, SimWorld};
 use ph2d_editor_core::{HeroScreen, NodeId, Toast, ToastQueue};
+use ph2d_i18n::tr_with;
 
 /// Devolve `true` quando o título da janela ficou por refazer.
 pub(super) fn drain(
@@ -62,11 +63,15 @@ pub(super) fn drain(
         if let Ok(mut entry) = sim_w.get_entity_mut(entity) {
             entry.insert(Name::new(final_name.clone()));
             if was_adjusted {
-                toasts.push(Toast::warning(format!(
-                    "Name in use — renamed to {final_name}"
+                toasts.push(Toast::warning(tr_with(
+                    "shell.hierarchy_rename.name_in_use_renamed_to",
+                    &[("final_name", &final_name)],
                 )));
             } else {
-                toasts.push(Toast::success(format!("Renamed to {final_name}")));
+                toasts.push(Toast::success(tr_with(
+                    "shell.hierarchy_rename.renamed_to",
+                    &[("final_name", &final_name)],
+                )));
             }
             title_dirty = true;
         }

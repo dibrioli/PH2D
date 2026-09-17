@@ -2,6 +2,7 @@
 //! verbatim (`line/input-dispatch`, 2026-09-13) e correm no sítio da chamada, pela mesma ordem.
 
 use super::*;
+use ph2d_i18n::tr_with;
 
 impl crate::App {
     /// O pan do botão do meio, a barra lateral espelhada, a paleta legada e o painel da ferramenta.
@@ -33,9 +34,9 @@ impl crate::App {
                     && btn.contains(self.last_pointer.0, self.last_pointer.1)
                 {
                     gfx.layout.mirror_sidebar();
-                    gfx.toasts.push(Toast::info(format!(
-                        "Sidebar · {:?}",
-                        gfx.layout.sidebar_side
+                    gfx.toasts.push(Toast::info(tr_with(
+                        "shell.despacho_clique_reclamantes.sidebar",
+                        &[("sidebar_side_", &format!("{:?}", gfx.layout.sidebar_side))],
                     )));
                     self.title_dirty = true;
                     consumed = true;
@@ -77,7 +78,10 @@ impl crate::App {
                         let tool_id = gfx.tools.tools()[tool_idx].id();
                         let tool_label = gfx.tools.tools()[tool_idx].label().to_string();
                         if gfx.tools.set_active(&tool_id) {
-                            gfx.toasts.push(Toast::info(format!("Tool · {tool_label}")));
+                            gfx.toasts.push(Toast::info(tr_with(
+                                "shell.despacho_clique_reclamantes.tool",
+                                &[("tool_label", &tool_label)],
+                            )));
                             self.title_dirty = true;
                         }
                         consumed = true;

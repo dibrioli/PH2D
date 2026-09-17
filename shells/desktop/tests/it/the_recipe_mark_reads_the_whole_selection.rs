@@ -73,8 +73,7 @@ fn the_duplicate_row_offsets_the_copy_and_puts_the_gizmo_on_it() {
     };
     // Do início da chamada até ao toast que a fecha: é exactamente o ramo genérico.
     let block = &s[at..];
-    let end = block
-        .find("Duplicated entity")
+    let end = crate::i18n_view::key_pos(block, "Duplicated entity")
         .expect("o ramo generico do Duplicate deixou de responder ao artista");
     let block = &block[..end];
     // ⚠️ O degrau é calculado ANTES do `if` (os dois ramos partilham-no), então a janela do ramo

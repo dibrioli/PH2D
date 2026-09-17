@@ -20,6 +20,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -97,9 +98,9 @@ pub(super) fn draw_audio_overlay(
         text,
         scene,
         if spectral {
-            "Audio Editor \u{00b7} Spectrogram"
+            tr("shell.audio_overlay.audio_editor")
         } else {
-            "Audio Editor \u{00b7} Waveform"
+            tr("shell.audio_overlay.audio_editor_waveform")
         },
         header,
         TypeToken::Xs.px(),

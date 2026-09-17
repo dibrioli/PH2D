@@ -6,6 +6,7 @@
 //! 16 bits não se perdem aqui.
 
 use super::*;
+use ph2d_i18n::{tr, tr_with};
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -85,25 +86,26 @@ impl crate::App {
                     }) {
                         if as_granulation {
                             painter.use_layers_as_granulation(lum, w, h);
-                            toasts.push(ph2d_editor_core::Toast::success(
-                                "Watercolor granulation set from layer",
-                            ));
+                            toasts.push(ph2d_editor_core::Toast::success(tr(
+                                "shell.fase_use_as_paper.watercolor_granulation",
+                            )));
                         } else {
                             painter.use_layers_as_watercolor_paper(lum, w, h);
-                            toasts.push(ph2d_editor_core::Toast::success(
-                                "Watercolor paper set from layer",
-                            ));
+                            toasts.push(ph2d_editor_core::Toast::success(tr(
+                                "shell.fase_use_as_paper.watercolor_paper_set",
+                            )));
                         }
                     }
                 }
                 None => {
                     let what = if as_granulation {
-                        "Granulation"
+                        tr("shell.fase_use_as_paper.granulation")
                     } else {
-                        "Watercolor Paper"
+                        tr("shell.fase_use_as_paper.watercolor_paper")
                     };
-                    toasts.push(ph2d_editor_core::Toast::warning(format!(
-                        "Use as {what}: select an image sprite"
+                    toasts.push(ph2d_editor_core::Toast::warning(tr_with(
+                        "shell.fase_use_as_paper.use_as_select_an_image",
+                        &[("what", &what)],
                     )));
                 }
             }

@@ -58,6 +58,18 @@ const AINDA_NO_ROTULO: &[(&str, &str)] = &[
         "«override(s)» — plural, nao unidade",
     ),
     (
+        "shell.asset_card_verbs.selected_object_s",
+        "«object(s)» — plural num aviso da shell, nao unidade",
+    ),
+    (
+        "shell.fase_bus_inspector.cleared_unused",
+        "«override(s)» — plural num aviso da shell, nao unidade",
+    ),
+    (
+        "shell.project_load.project_loaded_2",
+        "«track(s)» — plural num aviso da shell, nao unidade",
+    ),
+    (
         "panel.timeline.length",
         "faixa da timeline: outra familia de linha (ver a spec §1)",
     ),

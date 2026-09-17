@@ -9,6 +9,7 @@ use crate::App;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::zones::Rect as EditorRect;
 use ph2d_editor_core::{PanelControl, PanelEvent, Toast};
+use ph2d_i18n::{tr, tr_with};
 use ph2d_render::Camera2d;
 use winit::keyboard::KeyCode;
 
@@ -119,9 +120,9 @@ impl App {
         match code {
             KeyCode::Tab if gfx.zen.try_toggle() => {
                 let msg = if gfx.zen.is_active() {
-                    "Zen mode ON (zones collapsed)"
+                    tr("shell.input_handlers.zen_mode_on_zones")
                 } else {
-                    "Zen mode OFF (zones restored)"
+                    tr("shell.input_handlers.zen_mode_off_zones")
                 };
                 gfx.toasts.push(Toast::info(msg));
                 self.title_dirty = true;
@@ -145,7 +146,9 @@ impl App {
                     let items = ph2d_editor_core::screens::hero::radial::build_radial_model(hero);
                     let center = [self.last_pointer.0, self.last_pointer.1];
                     if !hero.store.open_radial(center, items) {
-                        gfx.toasts.push(Toast::info("No tools to show here (P)"));
+                        gfx.toasts.push(Toast::info(tr(
+                            "shell.input_handlers.no_tools_to_show_here",
+                        )));
                     }
                 }
             }
@@ -156,8 +159,10 @@ impl App {
             }
             KeyCode::KeyM => {
                 gfx.theme = gfx.theme.next();
-                gfx.toasts
-                    .push(Toast::info(format!("Theme · {}", gfx.theme.id())));
+                gfx.toasts.push(Toast::info(tr_with(
+                    "shell.input_handlers.theme",
+                    &[("id", &(gfx.theme.id()))],
+                )));
                 self.title_dirty = true;
             }
             // Contorno dos colliders. `B` estava livre (a demo de SpriteAnimation
@@ -167,9 +172,9 @@ impl App {
             KeyCode::KeyB => {
                 self.show_colliders = !self.show_colliders;
                 gfx.toasts.push(Toast::info(if self.show_colliders {
-                    "Colliders shown (B)"
+                    tr("shell.input_handlers.colliders_shown_b")
                 } else {
-                    "Colliders hidden (B)"
+                    tr("shell.input_handlers.colliders_hidden_b")
                 }));
             }
             // Toggle the Physics world panel (ADR-0131 D8 / W2b). Mirror of the
@@ -185,9 +190,9 @@ impl App {
                     false
                 };
                 gfx.toasts.push(Toast::info(if shown {
-                    "Physics shown (W)"
+                    tr("shell.input_handlers.physics_shown_w")
                 } else {
-                    "Physics hidden (W)"
+                    tr("shell.input_handlers.physics_hidden_w")
                 }));
                 self.title_dirty = true;
             }
@@ -207,9 +212,9 @@ impl App {
                     false
                 };
                 gfx.toasts.push(Toast::info(if shown {
-                    "Tokens shown (T)"
+                    tr("shell.input_handlers.tokens_shown_t")
                 } else {
-                    "Tokens hidden (T)"
+                    tr("shell.input_handlers.tokens_hidden_t")
                 }));
                 self.title_dirty = true;
             }

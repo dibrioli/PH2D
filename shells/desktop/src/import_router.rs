@@ -22,6 +22,7 @@
 
 use crate::image_import::{ImportItemResult, import_images_grid};
 use ph2d_asset::{AssetDb, AssetId};
+use ph2d_i18n::{tr, tr_with};
 use ph2d_render::SpriteRenderer;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -49,10 +50,10 @@ pub(crate) fn dialog_filters() -> Vec<(String, Vec<&'static str>)> {
     all.extend(svg.iter().copied());
     all.extend(img.iter().copied());
     vec![
-        ("All supported".to_owned(), all),
-        ("Aseprite".to_owned(), ase),
-        ("Vector (SVG)".to_owned(), svg),
-        ("Images".to_owned(), img),
+        (tr("shell.import_router.all_supported").to_owned(), all),
+        (tr("shell.import_router.aseprite").to_owned(), ase),
+        (tr("shell.import_router.vector_svg").to_owned(), svg),
+        (tr("shell.import_router.images").to_owned(), img),
     ]
 }
 
@@ -138,7 +139,7 @@ pub(crate) fn import_paths_grid(
             .map(|p| {
                 p.file_name()
                     .and_then(|s| s.to_str())
-                    .unwrap_or("(unnamed)")
+                    .unwrap_or(tr("shell.import_router.unnamed"))
                     .to_owned()
             })
             .collect(),
@@ -172,7 +173,14 @@ pub(crate) fn import_paths_grid(
                 cursor_x += size[0] * (1.0 + crate::image_import::IMPORT_GRID_GAP_FRAC);
                 row_h = row_h.max(size[1]);
                 out.items.push(ImportItemResult::Ok {
-                    label: format!("{name} ({frames} frames, {animations} animations)"),
+                    label: tr_with(
+                        "shell.import_router.frames_animations",
+                        &[
+                            ("name", &name),
+                            ("frames", &frames),
+                            ("animations", &animations),
+                        ],
+                    ),
                     bits,
                 });
                 out.notes.extend(notes);
@@ -209,7 +217,10 @@ pub(crate) fn import_paths_grid(
                 cursor_x += w * (1.0 + crate::image_import::IMPORT_GRID_GAP_FRAC);
                 row_h = row_h.max(h);
                 out.items.push(ImportItemResult::Ok {
-                    label: format!("{name} ({shapes} shapes)"),
+                    label: tr_with(
+                        "shell.import_router.shapes",
+                        &[("name", &name), ("shapes", &shapes)],
+                    ),
                     bits,
                 });
                 out.notes.extend(notes);

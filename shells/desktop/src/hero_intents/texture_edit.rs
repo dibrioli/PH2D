@@ -17,6 +17,7 @@
 //! cannot obtain individual-texture pixels without the mode-carrying
 //! wrapper.
 
+use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -253,8 +254,9 @@ pub(crate) fn warn_precision_loss(
     because: &str,
 ) {
     if holds_sixteen_bit(entity, sim, renderer) {
-        toasts.push(ph2d_editor_core::Toast::info(format!(
-            "Converted to RGBA8 — {because}"
+        toasts.push(ph2d_editor_core::Toast::info(tr_with(
+            "shell.texture_edit.converted_to_rgba8",
+            &[("because", &because)],
         )));
     }
 }
@@ -272,7 +274,13 @@ pub(crate) fn commit_edited_texture(
     //
     // O aviso é DEPOIS e não antes de propósito: antes exigiria interceptar a activação de cada
     // ferramenta (nove sítios) para dizer o que este único sítio sabe de facto.
-    warn_precision_loss(entity, sim, renderer, toasts, "image tools work in 8-bit");
+    warn_precision_loss(
+        entity,
+        sim,
+        renderer,
+        toasts,
+        tr("shell.texture_edit.image_tools_work_in_8"),
+    );
     let texture_id = renderer
         .acquire_individual(img.width, img.height, &img.pixels)
         .map_err(|e| e.to_string())?;

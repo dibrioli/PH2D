@@ -13,6 +13,7 @@
 use super::{
     ProjectState, SelectionMark, field_selection_back, field_selection_ids, surviving_selection,
 };
+use ph2d_i18n::tr;
 use ph2d_vec_scene::VecScene;
 
 impl crate::App {
@@ -390,19 +391,19 @@ impl crate::App {
         // AUSÊNCIA de eventos é o último.** *Um diagnóstico que nomeia a causa errada entre duas
         // simultâneas é pior do que não nomear nenhuma.*
         let motivo = if self.held_button.is_some() {
-            Some("botao do rato em baixo")
+            Some(tr("shell.undo_app.botao_do_rato_em_baixo"))
         } else if ph2d_app_field3d::smoke::gesture_in_progress() {
-            Some("arrasto do gizmo 3D em curso")
+            Some(tr("shell.undo_app.arrasto_do_gizmo_3d_em"))
         } else if self
             .flip_state
             .colorize
             .live_busy(self.flip_state.style.as_ref())
         {
-            Some("colorize a recalcular")
+            Some(tr("shell.undo_app.colorize_a_recalcular"))
         } else if self.ui_state_live {
-            Some("transicao de estado de UI ao vivo")
+            Some(tr("shell.undo_app.transicao_de_estado_de"))
         } else if !had_input {
-            Some("sem entrada neste quadro")
+            Some(tr("shell.undo_app.sem_entrada_neste"))
         } else {
             None
         };

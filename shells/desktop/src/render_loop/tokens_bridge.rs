@@ -17,6 +17,7 @@
 //! tecla `M` cicla e que o painel lê para pintar. Perguntá-lo a um segundo lugar faria o artista
 //! editar um modo e ver outro re-vestir.
 
+use ph2d_i18n::tr_with;
 use ph2d_panel_tokens::TokensIntent;
 use ph2d_tokens::color::Color;
 use ph2d_tokens::num_overrides::{
@@ -86,11 +87,13 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, toasts: &mut ToastQueue) -> bool {
                     match set_color_override(theme, a, Some(TokenValue::Alias(b))) {
                         Ok(()) => changed = true,
                         Err(e) => {
-                            toasts.push(Toast::warning(format!(
-                                "Can't make {} follow {}: that closes a loop at {}",
-                                e.token.key(),
-                                e.target.key(),
-                                e.at.key()
+                            toasts.push(Toast::warning(tr_with(
+                                "shell.tokens_bridge.can_t_make_follow_that",
+                                &[
+                                    ("token", &(e.token.key())),
+                                    ("target", &(e.target.key())),
+                                    ("at", &(e.at.key())),
+                                ],
                             )));
                         }
                     }
@@ -221,14 +224,17 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, toasts: &mut ToastQueue) -> bool {
 /// quebrado, e o que torna a mensagem accionável é ela nomear *o que* foi pedido e *por quê* não deu.
 fn refusal_toast(e: &NumRefusal) -> Toast {
     match e {
-        NumRefusal::Cycle { token, target, at } => Toast::warning(format!(
-            "Can't make {} follow {}: that closes a loop at {}",
-            token.key(),
-            target.key(),
-            at.key()
+        NumRefusal::Cycle { token, target, at } => Toast::warning(tr_with(
+            "shell.tokens_bridge.can_t_make_follow_that",
+            &[
+                ("token", &(token.key())),
+                ("target", &(target.key())),
+                ("at", &(at.key())),
+            ],
         )),
-        NumRefusal::NotALength(v) => Toast::warning(format!(
-            "{v} is not a length: a px token needs a finite value >= 0"
+        NumRefusal::NotALength(v) => Toast::warning(tr_with(
+            "shell.tokens_bridge.is_not_a_length_a_px",
+            &[("v", &v)],
         )),
         // ⚠️ A frase vem do MOTOR e é repassada inteira: dobrá-la num texto genérico poria o
         // artista a adivinhar QUAL caractere não foi entendido, que é o oposto de accionável.

@@ -30,6 +30,7 @@
 //! retângulo em pixels para UV — vide `ph2d_ecs::SpriteSheetRef`.
 
 use ph2d_ecs::{Name, SimWorld, SpriteSheetRef, Transform};
+use ph2d_i18n::{tr, tr_with};
 use ph2d_render::{Sprite, SpriteRenderer};
 use std::path::{Path, PathBuf};
 
@@ -99,7 +100,7 @@ pub(crate) fn import_sheet(
     };
     let bytes = match std::fs::read(json_path) {
         Ok(b) => b,
-        Err(e) => return fail(format!("read: {e}")),
+        Err(e) => return fail(tr_with("shell.sheet_import.read", &[("e", &e)])),
     };
     let meta = match ph2d_asset::parse_atlas_meta(&bytes) {
         Ok(m) => m,
@@ -108,7 +109,7 @@ pub(crate) fn import_sheet(
     // O PNG irmão. O parser não toca no disco de propósito (é uma função pura sobre bytes), então
     // resolver o caminho é responsabilidade de quem chama — aqui.
     let Some(dir) = json_path.parent() else {
-        return fail("the metadata file has no directory".into());
+        return fail(tr("shell.sheet_import.the_metadata_file_has").into());
     };
     let image_path = dir.join(&meta.image_filename);
     let image_bytes = match std::fs::read(&image_path) {
@@ -116,9 +117,9 @@ pub(crate) fn import_sheet(
         Err(e) => {
             // ⚠️ A mensagem NOMEIA o arquivo que falta: o `.json` aponta para um `.png` por nome,
             // e o modo de falha nº 1 deste formato é o artista mover ou renomear um dos dois.
-            return fail(format!(
-                "{} not found next to the metadata ({e})",
-                meta.image_filename
+            return fail(tr_with(
+                "shell.sheet_import.not_found_next_to_the",
+                &[("image_filename", &(meta.image_filename)), ("e", &e)],
             ));
         }
     };
@@ -127,29 +128,46 @@ pub(crate) fn import_sheet(
     // seria uma segunda resposta a *"que pixels tem este arquivo?"*.
     let asset_id = match asset_db.insert_image_bytes(&image_bytes) {
         Ok(id) => id,
-        Err(e) => return fail(format!("decode {}: {e}", meta.image_filename)),
+        Err(e) => {
+            return fail(tr_with(
+                "shell.sheet_import.decode",
+                &[("image_filename", &(meta.image_filename)), ("e", &e)],
+            ));
+        }
     };
     let Some(asset) = asset_db.get(&asset_id) else {
-        return fail(format!("{} vanished after decode", meta.image_filename));
+        return fail(tr_with(
+            "shell.sheet_import.vanished_after_decode",
+            &[("image_filename", &(meta.image_filename))],
+        ));
     };
     // ⚠️ `image_rgba8` e não um `match` na variante: uma folha de sprites é de 8 bits (plano
     // `docs/Sprite_projeto/18` §3.3 — 16 bits obriga a `Individual`), por isso converter para baixo
     // é correcto. Casar a variante fazia um `.png` de 16 bits ser recusado com "is not an image".
     let Some((width, height, pixels)) = asset.image_rgba8() else {
-        return fail(format!("{} is not an image", meta.image_filename));
+        return fail(tr_with(
+            "shell.sheet_import.is_not_an_image",
+            &[("image_filename", &(meta.image_filename))],
+        ));
     };
     let pixels = pixels.into_owned();
     // O `.json` declara o tamanho da folha; se o `.png` discorda, os dois divergiram e cada
     // retângulo passa a apontar para o sítio errado. Recusar aqui é a leitura honesta — deixar
     // passar daria N sprites com o desenho trocado, e ninguém saberia porquê.
     if (width, height) != meta.image_size {
-        return fail(format!(
-            "metadata says {}x{} but {} is {}x{} — re-export both",
-            meta.image_size.0, meta.image_size.1, meta.image_filename, width, height
+        return fail(tr_with(
+            "shell.sheet_import.metadata_says_x_but_is",
+            &[
+                ("image_size", &(meta.image_size.0)),
+                ("image_size2", &(meta.image_size.1)),
+                ("image_filename", &(meta.image_filename)),
+                ("width", &width),
+                ("height", &height),
+            ],
         ));
     }
     if meta.regions.is_empty() {
-        return fail("the metadata declares no frames".into());
+        return fail(tr("shell.sheet_import.the_metadata_declares").into());
     }
     let sheet_id = *next_sheet_id;
     let sheet = ph2d_sprite_sheet::AuthoredSheet::new(
@@ -164,7 +182,9 @@ pub(crate) fn import_sheet(
     );
     let texture_id = match renderer.acquire_individual(sheet.width, sheet.height, &sheet.rgba) {
         Ok(id) => id,
-        Err(e) => return fail(format!("GPU upload: {e}")),
+        Err(e) => {
+            return fail(tr_with("shell.sheet_import.gpu_upload", &[("e", &e)]));
+        }
     };
     *next_sheet_id = next_sheet_id.saturating_add(1);
     sheet_textures.insert(sheet_id, texture_id);

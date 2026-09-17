@@ -1,6 +1,7 @@
 //! Drain `OneShotImageOp { tool_id: "rasterize" }` — see the
 //! function docstring for the full contract.
 
+use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -42,13 +43,13 @@ pub(crate) fn drain_rasterize(
         .get::<ph2d_ecs::Transform>(entity)
         .map(|t| (t.scale.x, t.scale.y, t.rotation))
     else {
-        toasts.push(Toast::error("Rasterize unavailable for this sprite"));
+        toasts.push(Toast::error(tr("shell.rasterize.rasterize_unavailable")));
         return true;
     };
     let Some(src) =
         texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
-        toasts.push(Toast::error("Rasterize: source unavailable"));
+        toasts.push(Toast::error(tr("shell.rasterize.rasterize_source")));
         return true;
     };
     // Resample kernels operate on straight-alpha RGBA per-channel; a
@@ -66,7 +67,7 @@ pub(crate) fn drain_rasterize(
         rotation,
     );
     if !result.did_change {
-        toasts.push(Toast::info("Rasterize: already at identity Transform"));
+        toasts.push(Toast::info(tr("shell.rasterize.rasterize_already_at")));
         return true;
     }
     // GPU texture cap — the rotated bbox can grow above
@@ -74,9 +75,13 @@ pub(crate) fn drain_rasterize(
     // device limit.
     let max_dim = renderer.max_texture_dimension_2d();
     if result.width > max_dim || result.height > max_dim {
-        toasts.push(Toast::error(format!(
-            "Rasterize would exceed GPU texture limit ({} px max, would need {} × {} px)",
-            max_dim, result.width, result.height
+        toasts.push(Toast::error(tr_with(
+            "shell.rasterize.rasterize_would_exceed",
+            &[
+                ("max_dim", &max_dim),
+                ("width", &(result.width)),
+                ("height", &(result.height)),
+            ],
         )));
         return true;
     }
@@ -105,7 +110,10 @@ pub(crate) fn drain_rasterize(
         toasts,
     ) {
         Err(err) => {
-            toasts.push(Toast::error(format!("Rasterize failed: {err}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.rasterize.rasterize_failed",
+                &[("err", &err)],
+            )));
             true
         }
         Ok(texture_id) => {
@@ -127,11 +135,11 @@ pub(crate) fn drain_rasterize(
                 pre_premultiplied: src.old_premultiplied,
                 pre_anchor: src.old_anchor,
                 post_individual_id: texture_id,
-                label: "Rasterize",
+                label: tr("shell.rasterize.rasterize"),
             });
-            toasts.push(Toast::success(format!(
-                "Rasterized · {} × {} px · Cmd+Z to undo",
-                result.width, result.height
+            toasts.push(Toast::success(tr_with(
+                "shell.rasterize.rasterized_px_cmd_z_to",
+                &[("width", &(result.width)), ("height", &(result.height))],
             )));
             true
         }

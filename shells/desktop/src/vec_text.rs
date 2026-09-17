@@ -15,6 +15,7 @@
 // hoje uma FACHADA — um `pub(crate) use ph2d_app_vec::…` de uma linha que o `render_loop/mod.rs`
 // mantém para os sítios de chamada ficarem byte a byte iguais. ⛔ Mas ela faz este ficheiro
 // *parecer* preso ao LAÇO da shell, quando o que ele usa é uma crate.
+use ph2d_i18n::tr;
 use ph2d_vec_text::TextAlign;
 
 use ph2d_app_vec::text_edit::VecTextEdit;
@@ -395,7 +396,7 @@ pub(crate) fn import_text_font(
     scene: &mut ph2d_vec_scene::VecScene,
 ) -> bool {
     let Some(path) = rfd::FileDialog::new()
-        .add_filter("Font (TTF / OTF)", &["ttf", "otf", "ttc"])
+        .add_filter(tr("shell.vec_text.font_ttf_otf"), &["ttf", "otf", "ttc"])
         .pick_file()
     else {
         return false; // cancelado
@@ -406,7 +407,7 @@ pub(crate) fn import_text_font(
     let label = path
         .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "Imported".to_owned());
+        .unwrap_or_else(|| tr("shell.vec_text.imported").to_owned());
     let Some(name) = crate::vec_font::import(label, bytes) else {
         return false; // não é uma fonte válida
     };

@@ -4,6 +4,7 @@
 
 use super::{SrcRecord, bilinear_sample_premul, world_to_image};
 use ph2d_editor_core::{Toast, ToastQueue};
+use ph2d_i18n::{tr, tr_with};
 use ph2d_render::SpriteRenderer;
 
 /// A caixa de união e a grelha de saída que o [`merge_grid`] devolve, com os nomes que o dreno usa.
@@ -45,7 +46,7 @@ pub(super) fn merge_grid(
         .map(|s| s.world_max_y)
         .fold(f32::NEG_INFINITY, f32::max);
     if union_max_x <= union_min_x || union_max_y <= union_min_y {
-        toasts.push(Toast::error("Merge Sprites: degenerate union bounding box"));
+        toasts.push(Toast::error(tr("shell.sprite_merge_warp.merge_sprites")));
         return None;
     }
 
@@ -100,8 +101,9 @@ pub(super) fn merge_grid(
     let out_h = (union_h_m * out_pm).round().max(1.0) as u32;
     let max_dim = renderer.max_texture_dimension_2d();
     if out_w > max_dim || out_h > max_dim {
-        toasts.push(Toast::error(format!(
-            "Merge Sprites: output {out_w}×{out_h} px exceeds device limit {max_dim} px"
+        toasts.push(Toast::error(tr_with(
+            "shell.sprite_merge_warp.merge_sprites_output",
+            &[("out_w", &out_w), ("out_h", &out_h), ("max_dim", &max_dim)],
         )));
         return None;
     }

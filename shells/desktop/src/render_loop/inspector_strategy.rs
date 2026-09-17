@@ -32,6 +32,7 @@ use ph2d_ecs::scene::{
 use ph2d_ecs::{SimWorld, SpritePixels};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::{RequestedSpriteStrategy, Toast, ToastQueue};
+use ph2d_i18n::{tr, tr_with};
 use ph2d_render::{Sprite, SpriteRenderer, SpriteSource};
 use std::collections::BTreeMap;
 
@@ -113,9 +114,9 @@ pub(super) fn dispatch(
                 .get::<ph2d_ecs::SpriteSheetRef>(entity)
                 .is_some() =>
         {
-            toasts.push(Toast::info(
-                "This sprite is a piece of a sheet \u{00b7} its pixels already live in an individual texture",
-            ));
+            toasts.push(Toast::info(tr(
+                "shell.inspector_strategy.this_sprite_is_a_piece",
+            )));
             reject_visual_reset(hero, requested);
             true
         }
@@ -126,9 +127,9 @@ pub(super) fn dispatch(
         // Uma textura cozida vem do pipeline de asset: não tem chave de atlas nem bake legível na
         // CPU, então nenhuma estratégia é autorável a partir do Inspector.
         (SpriteSource::CookedTexture { .. }, _) => {
-            toasts.push(Toast::info(
-                "Cooked textures come from the asset pipeline — render strategy is read-only",
-            ));
+            toasts.push(Toast::info(tr(
+                "shell.inspector_strategy.cooked_textures_come",
+            )));
             reject_visual_reset(hero, requested);
             true
         }
@@ -144,9 +145,9 @@ pub(super) fn dispatch(
         // `[SHEET]`, e **envelhecida no dia em que ele saiu**. *Uma recusa que nomeia um gesto
         // inexistente é pior que uma recusa muda: ela manda o artista procurar o que não há.*
         (_, RequestedSpriteStrategy::HandPacked) => {
-            toasts.push(Toast::info(
-                "Hand-packed comes from a sheet: right-click in the Hierarchy \u{00b7} Pack into Sheet, then Bake Sheet",
-            ));
+            toasts.push(Toast::info(tr(
+                "shell.inspector_strategy.hand_packed_comes_from",
+            )));
             reject_visual_reset(hero, requested);
             true
         }
@@ -190,16 +191,19 @@ fn promote_to_individual(
         })
     });
     let Some((w, h, pixels)) = decoded else {
-        toasts.push(Toast::error(
-            "Cannot promote to Individual — source asset missing",
-        ));
+        toasts.push(Toast::error(tr(
+            "shell.inspector_strategy.cannot_promote_to",
+        )));
         reject_visual_reset(hero, RequestedSpriteStrategy::Individual);
         return true;
     };
     let texture_id = match renderer.acquire_individual(w, h, &pixels) {
         Ok(id) => id,
         Err(err) => {
-            toasts.push(Toast::error(format!("Individual acquire failed: {err}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.inspector_strategy.individual_acquire",
+                &[("err", &err)],
+            )));
             reject_visual_reset(hero, RequestedSpriteStrategy::Individual);
             return true;
         }
@@ -232,8 +236,9 @@ fn promote_to_individual(
         .insert(SpritePixels(pixels_id));
     // A célula volta ao atlas — se, e só se, mais nenhum sprite a nomeia.
     release_atlas_key_if_unused(key, sim, renderer, atlas_asset_map);
-    toasts.push(Toast::success(format!(
-        "Strategy · Individual (texture {texture_id})"
+    toasts.push(Toast::success(tr_with(
+        "shell.inspector_strategy.strategy_individual",
+        &[("texture_id", &texture_id)],
     )));
     true
 }
@@ -264,9 +269,9 @@ fn demote_to_atlas(
     let Some(read) =
         texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
-        toasts.push(Toast::error(
-            "Cannot pack into the atlas — this sprite's pixels are unreadable",
-        ));
+        toasts.push(Toast::error(tr(
+            "shell.inspector_strategy.cannot_pack_into_the",
+        )));
         reject_visual_reset(hero, RequestedSpriteStrategy::Atlas);
         return true;
     };
@@ -281,7 +286,7 @@ fn demote_to_atlas(
         sim,
         renderer,
         toasts,
-        "the shared atlas is one texture, and it is 8-bit",
+        tr("shell.inspector_strategy.the_shared_atlas_is"),
     );
     // O atlas guarda alfa RETO. `into_straight` é no-op para quem já o é.
     let straight = read.image.into_straight();
@@ -308,8 +313,9 @@ fn demote_to_atlas(
         atlas_asset_map.remove(&key);
         // ⚠️ O toast nomeia **de que recurso** é o limite, e traz os números — um *"não foi
         // possível"* manda o artista adivinhar (`CLAUDE.md` §0).
-        toasts.push(Toast::error(format!(
-            "Cannot pack {w}×{h} into the shared atlas: {e}. Keep this sprite Individual."
+        toasts.push(Toast::error(tr_with(
+            "shell.inspector_strategy.cannot_pack_into_the_2",
+            &[("w", &w), ("h", &h), ("e", &e)],
         )));
         reject_visual_reset(hero, RequestedSpriteStrategy::Atlas);
         return true;
@@ -359,7 +365,10 @@ fn demote_to_atlas(
     // clicar «Atlas» cai aqui (auditoria `docs/Sprite_projeto/20` §4.3).
     crate::hero_intents::texture_rebind::drop_sheet_authorship(entity, sim);
     release_texture_if_unused(texture_id, sim, renderer);
-    toasts.push(Toast::success(format!("Strategy · Atlas (cell {key})")));
+    toasts.push(Toast::success(tr_with(
+        "shell.inspector_strategy.strategy_atlas_cell",
+        &[("key", &key)],
+    )));
     true
 }
 
@@ -378,7 +387,10 @@ fn write_sprite(
     let data = match postcard::to_allocvec(&updated) {
         Ok(d) => d,
         Err(e) => {
-            toasts.push(Toast::error(format!("Sprite encode failed: {e}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.inspector_strategy.sprite_encode_failed",
+                &[("e", &e)],
+            )));
             return false;
         }
     };
@@ -387,11 +399,17 @@ fn write_sprite(
         type_id: sprite_type_id,
         data,
     }) {
-        toasts.push(Toast::error(format!("Editor queue full: {e}")));
+        toasts.push(Toast::error(tr_with(
+            "shell.inspector_strategy.editor_queue_full",
+            &[("e", &e)],
+        )));
         return false;
     }
     if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
-        toasts.push(Toast::error(format!("Strategy commit failed: {e}")));
+        toasts.push(Toast::error(tr_with(
+            "shell.inspector_strategy.strategy_commit_failed",
+            &[("e", &e)],
+        )));
         return false;
     }
     true

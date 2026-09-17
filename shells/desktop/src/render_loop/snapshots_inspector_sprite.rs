@@ -3,6 +3,7 @@
 //! `#[path]` (OBRA 3 da `line/render-bodies`): a `publish` do Inspector chama [`sprite_info`] no sítio do bloco.
 
 use super::*;
+use ph2d_i18n::{tr, tr_with};
 
 /// **A autoria de folha que o painel MOSTRA** — a regra, isolada do mundo para poder ser testada.
 ///
@@ -29,7 +30,10 @@ pub(super) fn sheet_authorship(
                 sheet: 0,
                 region: 0,
             },
-            Some(format!("{name} \u{00b7} not baked yet")),
+            Some(tr_with(
+                "shell.snapshots_inspector_sprite.not_baked_yet",
+                &[("name", &name)],
+            )),
         ),
         None => (storage, baked_label),
     }
@@ -254,7 +258,9 @@ pub(super) fn sprite_info(
                     world
                         .get::<ph2d_ecs::Name>(p)
                         .map(|n| n.0.clone())
-                        .unwrap_or_else(|| "Sprite Sheet".to_string())
+                        .unwrap_or_else(|| {
+                            tr("shell.snapshots_inspector_sprite.sprite_sheet").to_string()
+                        })
                 })
         } else {
             None

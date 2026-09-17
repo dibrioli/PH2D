@@ -4,6 +4,7 @@
 //! the HR-18 closeout split. Behavior-preserving lift.
 
 use ph2d_ecs::SimWorld;
+use ph2d_i18n::tr;
 
 /// Drain a `pending_reparent` hierarchy intent: move a dragged
 /// hierarchy row to a new parent (or root), positioning it relative
@@ -110,10 +111,9 @@ pub(crate) fn drain_reparent(
     // que recebe o `HeroLive`, e por isso nenhum teste a monta — **não havia como medir qual dos
     // dois gestos ela apanha.* Agora há.
     if ph2d_app_components::instance_verbs_walk::refuses_reparent(sim, dragged, new_parent_entity) {
-        toasts.push(ph2d_editor_core::Toast::warning(
-            "That piece's place comes from the prefab \u{2014} open it with \u{201c}Edit \
-             Prefab\u{201d} to move it there",
-        ));
+        toasts.push(ph2d_editor_core::Toast::warning(tr(
+            "shell.hierarchy.that_piece_s_place",
+        )));
         return false;
     }
     let sim_w = sim.world_mut();
@@ -212,9 +212,9 @@ pub(crate) fn drain_reparent(
     crate::sheet_bounds::confine(sim, dragged);
     // ⭐ A única fala deste dreno — ver o doc: sem ela o objecto sai da cena em silêncio.
     if into_a_recipe {
-        toasts.push(ph2d_editor_core::Toast::warning(
-            "Moved into a prefab — it shows while the prefab row is selected",
-        ));
+        toasts.push(ph2d_editor_core::Toast::warning(tr(
+            "shell.hierarchy.moved_into_a_prefab_it",
+        )));
     }
     false
 }

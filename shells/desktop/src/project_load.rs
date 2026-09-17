@@ -12,6 +12,7 @@
 //! já aconteceu, e cada um nomeado no ponto onde é resolvido.
 
 use super::*;
+use ph2d_i18n::{tr, tr_with};
 
 impl crate::App {
     /// O load de verdade, com o caminho **injetado** — substitui a cena atual e assenta a
@@ -23,6 +24,11 @@ impl crate::App {
     /// para no-op. Os gates em `tests` dirigem ESTA função — o corpo inteiro que o Ctrl+O
     /// executa (o `project_load` acima só resolve o caminho) — e não uma cópia da decisão
     /// posta num helper que ninguém chama.
+    /// Um aviso de recusa com a razão — a frase é da tabela (HR-15), a razão é a do erro.
+    fn toast_refused(&mut self, key: &str, e: &dyn std::fmt::Display) {
+        self.toast(tr_with(key, &[("e", e)]));
+    }
+
     pub(crate) fn project_load_from(&mut self, path: &str) {
         let bytes = match std::fs::read(path) {
             Ok(b) => b,
@@ -100,24 +106,24 @@ impl crate::App {
                             m.file.state.world.entities.len(),
                             split.sprites
                         );
-                        self.toast(format!(
-                            "Project migrated from format 95 to {PROJECT_SCHEMA}"
+                        self.toast(tr_with(
+                            "shell.project_load.project_migrated_from",
+                            &[("PROJECT_SCHEMA", &PROJECT_SCHEMA)],
                         ));
                         (m.file, Some(m.stable_id_counter))
                     }
                     Err(e) => {
                         eprintln!("[proj] v95 ilegivel: {e}");
-                        self.toast(format!(
-                            "Project refused: format 95 file is unreadable ({e})"
-                        ));
+                        self.toast_refused("shell.project_load.project_refused_format", &e);
                         return;
                     }
                 }
             }
             _ => {
                 eprintln!("[proj] schema {ver} != {PROJECT_SCHEMA} — recusado");
-                self.toast(format!(
-                    "Project refused: file format {ver}, this build reads {PROJECT_SCHEMA}"
+                self.toast(tr_with(
+                    "shell.project_load.project_refused_file",
+                    &[("ver", &ver), ("PROJECT_SCHEMA", &PROJECT_SCHEMA)],
                 ));
                 return;
             }
@@ -134,9 +140,7 @@ impl crate::App {
             Ok(t) => t,
             Err(e) => {
                 eprintln!("[proj] timeline ilegivel — load RECUSADO: {e}");
-                self.toast(format!(
-                    "Project refused: its animation is from another version ({e})"
-                ));
+                self.toast_refused("shell.project_load.project_refused_its", &e);
                 return;
             }
         };
@@ -156,9 +160,7 @@ impl crate::App {
                 Ok(v) => v,
                 Err(e) => {
                     eprintln!("[proj] arte de padrao ilegivel — load RECUSADO: {e}");
-                    self.toast(format!(
-                        "Project refused: its pattern artwork is from another version ({e})"
-                    ));
+                    self.toast_refused("shell.project_load.project_refused_its_2", &e);
                     return;
                 }
             };
@@ -178,9 +180,7 @@ impl crate::App {
                 Ok(v) => Some(v),
                 Err(e) => {
                     eprintln!("[proj] escultura ilegivel — load RECUSADO: {e}");
-                    self.toast(format!(
-                        "Project refused: its sculpture is from another version ({e})"
-                    ));
+                    self.toast_refused("shell.project_load.project_refused_its_3", &e);
                     return;
                 }
             }
@@ -195,9 +195,7 @@ impl crate::App {
             Ok(v) => v,
             Err(e) => {
                 eprintln!("[proj] pixels de sprite ilegiveis — load RECUSADO: {e}");
-                self.toast(format!(
-                    "Project refused: its sprite images are from another version ({e})"
-                ));
+                self.toast_refused("shell.project_load.project_refused_its_4", &e);
                 return;
             }
         };
@@ -550,9 +548,12 @@ impl crate::App {
         self.undo_baseline = None;
         eprintln!("[proj] carregado: {path} ({tracks} track(s) de animacao)");
         self.toast(if tracks == 0 {
-            "Project loaded".to_string()
+            tr("shell.project_load.project_loaded").to_string()
         } else {
-            format!("Project loaded · {tracks} animation track(s)")
+            tr_with(
+                "shell.project_load.project_loaded_2",
+                &[("tracks", &tracks)],
+            )
         });
     }
 }

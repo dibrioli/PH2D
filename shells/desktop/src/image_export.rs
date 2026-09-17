@@ -33,6 +33,7 @@
 //! existe para não repetir (`docs/Sprite_projeto/19` §5). *Quem sabe se um formato aguenta HDR é o
 //! formato.*
 
+use ph2d_i18n::{tr, tr_with};
 use std::path::{Path, PathBuf};
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -183,24 +184,30 @@ pub(crate) fn export_to(
     toasts: &mut ToastQueue,
 ) -> Result<usize, String> {
     let Some(format) = format_for_path(path) else {
-        return Err(format!(
-            "unknown extension — try one of: {}",
-            OFFERED
-                .iter()
-                .map(|f| f.extension())
-                .collect::<Vec<_>>()
-                .join(", ")
+        return Err(tr_with(
+            "shell.image_export.unknown_extension_try",
+            &[(
+                "join",
+                &(OFFERED
+                    .iter()
+                    .map(|f| f.extension())
+                    .collect::<Vec<_>>()
+                    .join(", ")),
+            )],
         ));
     };
     let Some(src) = source_for(entity, sim, renderer, asset_db, atlas_asset_map) else {
-        return Err("this sprite's pixels are unreadable".to_string());
+        return Err(tr("shell.image_export.this_sprite_s_pixels").to_string());
     };
     let opts = ExportOpts {
         format,
         ..Default::default()
     };
     let Some(exporter) = exporters.find_for(&opts) else {
-        return Err(format!("no exporter for .{}", format.extension()));
+        return Err(tr_with(
+            "shell.image_export.no_exporter_for",
+            &[("extension", &(format.extension()))],
+        ));
     };
 
     // ⚠️ **A ALTA PRECISÃO PRIMEIRO, e a queda só quando o formato a recusa.** Ver o cabeçalho: não
@@ -211,9 +218,9 @@ pub(crate) fn export_to(
             Err(ph2d_imageio::Error::HdrUnsupported) => {
                 // A perda é do FICHEIRO, não da sprite — e diz-se, como todo verbo que custa
                 // precisão neste projeto (`docs/Sprite_projeto/19` §5).
-                toasts.push(Toast::info(format!(
-                    "Exported as RGBA8 — .{} cannot carry 16-bit; try .exr or .hdr",
-                    format.extension()
+                toasts.push(Toast::info(tr_with(
+                    "shell.image_export.exported_as_rgba8",
+                    &[("extension", &(format.extension()))],
                 )));
                 exporter
                     .export(&DecodedImage::Flat(src.flat), &opts)
@@ -227,7 +234,12 @@ pub(crate) fn export_to(
             .map_err(|e| e.to_string())?
     };
 
-    std::fs::write(path, &bytes).map_err(|e| format!("could not write {}: {e}", path.display()))?;
+    std::fs::write(path, &bytes).map_err(|e| {
+        tr_with(
+            "shell.image_export.could_not_write",
+            &[("path", &(path.display())), ("e", &e)],
+        )
+    })?;
     Ok(bytes.len())
 }
 
@@ -274,14 +286,17 @@ pub(crate) fn export_with_dialog(
         Ok(n) => {
             // ⚠️ O caminho COMPLETO, e não «exportado com sucesso» — foi por não o dizer que o Enio
             // perguntou *"não sei onde foi parar"* do `sheet_export`.
-            toasts.push(Toast::success(format!(
-                "Exported: {} ({n} bytes)",
-                picked.display()
+            toasts.push(Toast::success(tr_with(
+                "shell.image_export.exported_bytes",
+                &[("picked", &(picked.display())), ("n", &n)],
             )));
             Some(picked)
         }
         Err(e) => {
-            toasts.push(Toast::error(format!("Export failed: {e}")));
+            toasts.push(Toast::error(tr_with(
+                "shell.image_export.export_failed",
+                &[("e", &e)],
+            )));
             None
         }
     }

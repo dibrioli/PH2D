@@ -14,6 +14,7 @@ use ph2d_ecs::{
     SpriteAnimator, World,
 };
 use ph2d_editor_core::{AnimFieldEdit, InspectorAnimInfo, InspectorAnimRow, Toast};
+use ph2d_i18n::{tr, tr_with};
 
 use ph2d_inspector_ordering::queue_set;
 
@@ -324,9 +325,9 @@ pub(super) fn apply_anim_edit(
             // sempre quer estreitar depois. Um intervalo de uma célula não mostraria nada.
             let cells = cells_of(world, entity);
             if let Err(e) = lib.insert(AnimationTag::new(name, 0, cells.saturating_sub(1))) {
-                return Some(Toast::error(format!(
-                    "Animation not added: {}",
-                    describe(e)
+                return Some(Toast::error(tr_with(
+                    "shell.inspector_anim.animation_not_added",
+                    &[("e", &(describe(e)))],
                 )));
             }
         }
@@ -338,9 +339,9 @@ pub(super) fn apply_anim_edit(
             let idx = usize::from(*i);
             lib.iter().nth(idx)?;
             if let Err(e) = ph2d_ecs::validate_tag_name(new_name) {
-                return Some(Toast::error(format!(
-                    "Animation name rejected: {}",
-                    describe(e)
+                return Some(Toast::error(tr_with(
+                    "shell.inspector_anim.animation_name",
+                    &[("e", &(describe(e)))],
                 )));
             }
             if lib
@@ -348,8 +349,9 @@ pub(super) fn apply_anim_edit(
                 .enumerate()
                 .any(|(j, t)| j != idx && t.name == *new_name)
             {
-                return Some(Toast::error(format!(
-                    "Animation name '{new_name}' is already used on this sprite"
+                return Some(Toast::error(tr_with(
+                    "shell.inspector_anim.animation_name_is",
+                    &[("new_name", &new_name)],
                 )));
             }
             let old = lib.0.get(idx).map(|t| t.name.clone());
@@ -447,18 +449,21 @@ fn as_player_edit(edit: &AnimFieldEdit) -> Option<PlayerEdit<'_>> {
 /// o SEU teto, pela lição que o `describe` da §12 pagou.
 fn describe(e: ph2d_ecs::AnimTagError) -> String {
     match e {
-        ph2d_ecs::AnimTagError::Empty => "the name is empty".to_string(),
-        ph2d_ecs::AnimTagError::TooLong => {
-            format!("the name is over {} bytes", ph2d_ecs::ANIM_NAME_MAX_BYTES)
+        ph2d_ecs::AnimTagError::Empty => tr("shell.inspector_anim.the_name_is_empty").to_string(),
+        ph2d_ecs::AnimTagError::TooLong => tr_with(
+            "shell.inspector_anim.the_name_is_over_bytes",
+            &[("anim_name_max_bytes", &(ph2d_ecs::ANIM_NAME_MAX_BYTES))],
+        ),
+        ph2d_ecs::AnimTagError::ControlChar => {
+            tr("shell.inspector_anim.the_name_has_a_control").to_string()
         }
-        ph2d_ecs::AnimTagError::ControlChar => "the name has a control character".to_string(),
-        ph2d_ecs::AnimTagError::Duplicate => "that name is already used".to_string(),
-        ph2d_ecs::AnimTagError::ListFull => {
-            format!(
-                "this sprite already has {} animations",
-                ph2d_ecs::ANIM_TAGS_MAX
-            )
+        ph2d_ecs::AnimTagError::Duplicate => {
+            tr("shell.inspector_anim.that_name_is_already").to_string()
         }
+        ph2d_ecs::AnimTagError::ListFull => tr_with(
+            "shell.inspector_anim.this_sprite_already",
+            &[("anim_tags_max", &(ph2d_ecs::ANIM_TAGS_MAX))],
+        ),
     }
 }
 

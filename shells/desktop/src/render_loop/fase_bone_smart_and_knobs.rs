@@ -2,6 +2,7 @@
 //! IK, e os controlos que nasceram mudos (OBRA 2 da `line/render-loop`, 2026-09-13).
 
 use super::*;
+use ph2d_i18n::{tr, tr_with};
 
 /// Os pedidos que o dreno do barramento recolheu neste quadro para esta fase.
 pub(super) struct BoneSmartAndKnobsIntents {
@@ -76,9 +77,9 @@ impl crate::App {
             // a única que não corre, e nada na tela o dizia. ⚠️ A lei fica (um controlo não
             // percorre o que o artista está a gravar — os dois escreveriam o mesmo objecto
             // no mesmo quadro); o que não pode é ser **calada**.
-            toasts.push(ph2d_editor_core::Toast::warning(format!(
-                "\"{nome}\" is open in the timeline, so you are EDITING it - the bone will \
-                         not run it. Switch the timeline to another animation to see it play."
+            toasts.push(ph2d_editor_core::Toast::warning(tr_with(
+                "shell.fase_bone_smart_and_knobs.is_open_in_the",
+                &[("nome", &nome)],
             )));
         }
         if pending_smart_remove {
@@ -141,10 +142,9 @@ impl crate::App {
         // não pode é o app ficar **calado** sobre um controlo que ele sabe que vai nascer
         // mudo.
         if crate::skeleton_smart::governed_controls(sim).len() > mudos_antes {
-            toasts.push(ph2d_editor_core::Toast::warning(
-                "This bone is driven by an IK anchor, so its angle is derived - turning it \
-                         will not run the action. Use a free bone, or Remove IK.",
-            ));
+            toasts.push(ph2d_editor_core::Toast::warning(tr(
+                "shell.fase_bone_smart_and_knobs.this_bone_is_driven_by",
+            )));
         }
     }
 }

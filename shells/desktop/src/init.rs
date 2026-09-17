@@ -13,6 +13,7 @@
 //! 9c.next decomposes the body into per-subsystem sub-fns; this commit
 //! is the safe atomic move.
 
+use ph2d_i18n::tr;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -84,7 +85,7 @@ pub(crate) fn build_initial_state(
     event_loop: &ActiveEventLoop,
 ) -> (Arc<Window>, WinitHost, AppGfx) {
     let attrs = Window::default_attributes()
-        .with_title("PH2D — editor")
+        .with_title(tr("shell.init.ph2d_editor"))
         .with_inner_size(LogicalSize::new(1024, 768));
     let window = Arc::new(
         event_loop

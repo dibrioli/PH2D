@@ -46,6 +46,7 @@ use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_editor_core::{HeroScreen, Toast, ToastQueue, ToolRegistry};
 use ph2d_host::WindowSize;
+use ph2d_i18n::tr_with;
 use ph2d_render::{AlphaMode, Camera2d, SpriteImage, SpriteRenderer};
 use ph2d_vector::VectorScene;
 use std::cell::RefCell;
@@ -214,8 +215,9 @@ pub(super) fn dispatch(
             if let Err(e) = texture_edit::commit_edited_texture(
                 entity, sim, renderer, asset_db, &image, size_world, toasts,
             ) {
-                toasts.push(Toast::error(format!(
-                    "Color Equalization: GPU texture upload failed ({e})"
+                toasts.push(Toast::error(tr_with(
+                    "shell.color_equalization_bridge.color_equalization_gpu",
+                    &[("e", &e)],
                 )));
             }
         }
@@ -359,8 +361,9 @@ fn revert_all_and_clear(
         if let Err(e) = texture_edit::commit_edited_texture(
             entity, sim, renderer, asset_db, &image, size_world, toasts,
         ) {
-            toasts.push(Toast::error(format!(
-                "Color Equalization: GPU texture upload failed during revert ({e})"
+            toasts.push(Toast::error(tr_with(
+                "shell.color_equalization_bridge.color_equalization_gpu_3",
+                &[("e", &e)],
             )));
         }
     }
@@ -401,8 +404,9 @@ fn prune_and_revert_unselected(
         if let Err(e) = texture_edit::commit_edited_texture(
             entity, sim, renderer, asset_db, &image, size_world, toasts,
         ) {
-            toasts.push(Toast::error(format!(
-                "Color Equalization: GPU texture upload failed during deselect revert ({e})"
+            toasts.push(Toast::error(tr_with(
+                "shell.color_equalization_bridge.color_equalization_gpu_2",
+                &[("e", &e)],
             )));
         }
     }

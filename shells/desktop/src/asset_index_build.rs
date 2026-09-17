@@ -25,6 +25,7 @@
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_asset_index::{AssetEntry, AssetIndex, AssetRef};
+use ph2d_i18n::{tr, tr_with};
 // ⚠️ **A memória do que um cartão DESENHA** mudou-se para o irmão `asset_card_art` — ver o
 // cabeçalho de lá. Re-exportada para os gates e os chamadores a nomearem como sempre.
 pub(crate) use crate::asset_card_art::{CardArt, dimensions, swatch_for, thumb_for};
@@ -147,10 +148,7 @@ pub(crate) fn build(
     masters.dedup_by_key(|(id, _)| *id);
 
     for (stable_id, entity) in masters {
-        let name = sim
-            .world()
-            .get::<Name>(entity)
-            .map_or_else(|| format!("Component {stable_id}"), |n| n.0.clone());
+        let name = master_label(sim, entity, stable_id);
         let pieces = subtree(sim, entity);
         // As dependências: as texturas que as peças desta receita usam. É a metade guardada; o
         // sentido inverso (*quem usa esta textura?*) é derivado pelo índice.
@@ -453,9 +451,9 @@ impl TextureLibrary {
 /// `"3 pieces"` / `"1 piece"` — o detalhe de um componente.
 fn piece_count_label(n: usize) -> String {
     if n == 1 {
-        "1 piece".to_string()
+        tr("shell.asset_index_build.n1_piece").to_string()
     } else {
-        format!("{n} pieces")
+        tr_with("shell.asset_index_build.pieces", &[("n", &n)])
     }
 }
 
@@ -579,3 +577,16 @@ mod tests;
 #[cfg(test)]
 #[path = "asset_index_build_library_tests.rs"]
 mod library_tests;
+
+/// O nome que a biblioteca mostra para uma receita — o `Name` dela, ou o de recurso da tabela.
+fn master_label(sim: &SimWorld, entity: Entity, stable_id: u64) -> String {
+    sim.world().get::<Name>(entity).map_or_else(
+        || {
+            tr_with(
+                "shell.asset_index_build.component",
+                &[("stable_id", &stable_id)],
+            )
+        },
+        |n| n.0.clone(),
+    )
+}

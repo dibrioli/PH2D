@@ -1,6 +1,7 @@
 //! Drain Equalize Sizes Apply over the multi-selection — cross-sprite
 //! bake + optional Arrange-on-Grid layout.
 
+use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -187,9 +188,7 @@ pub(crate) fn drain_equalize_sizes(
         inputs.push(input);
     }
     if entries.is_empty() {
-        toasts.push(Toast::error(
-            "Equalize Sizes: no eligible sprites in selection",
-        ));
+        toasts.push(Toast::error(tr("shell.equalize_sizes.equalize_sizes_no")));
         return true;
     }
 
@@ -225,21 +224,25 @@ pub(crate) fn drain_equalize_sizes(
     );
 
     if applied == 0 {
-        toasts.push(Toast::info("Equalize Sizes: nothing to change"));
+        toasts.push(Toast::info(tr(
+            "shell.equalize_sizes.equalize_sizes_nothing",
+        )));
         return true;
     }
 
     if skipped > 0 {
-        toasts.push(Toast::success(format!(
-            "Equalize Sizes · {} sprite(s), {} skipped · Cmd+Z to undo",
-            applied, skipped
+        toasts.push(Toast::success(tr_with(
+            "shell.equalize_sizes.equalize_sizes_sprite",
+            &[("applied", &applied), ("skipped", &skipped)],
         )));
     } else if applied == 1 {
-        toasts.push(Toast::success("Equalize Sizes applied · Cmd+Z to undo"));
+        toasts.push(Toast::success(tr(
+            "shell.equalize_sizes.equalize_sizes_applied",
+        )));
     } else {
-        toasts.push(Toast::success(format!(
-            "Equalize Sizes · {} sprites · Cmd+Z to undo",
-            applied
+        toasts.push(Toast::success(tr_with(
+            "shell.equalize_sizes.equalize_sizes_sprites",
+            &[("applied", &applied)],
         )));
     }
     true
@@ -277,9 +280,13 @@ fn commit_per_entity(
         let mut produced_individual: Option<u32> = None;
         if buffer_changed {
             if out.width > max_dim || out.height > max_dim {
-                toasts.push(Toast::error(format!(
-                    "Equalize Sizes: target exceeds GPU texture limit ({} px max, would need {} × {} px)",
-                    max_dim, out.width, out.height
+                toasts.push(Toast::error(tr_with(
+                    "shell.equalize_sizes.equalize_sizes_target",
+                    &[
+                        ("max_dim", &max_dim),
+                        ("width", &(out.width)),
+                        ("height", &(out.height)),
+                    ],
                 )));
                 continue;
             }
@@ -310,7 +317,10 @@ fn commit_per_entity(
                 toasts,
             ) {
                 Err(err) => {
-                    toasts.push(Toast::error(format!("Equalize Sizes failed: {err}")));
+                    toasts.push(Toast::error(tr_with(
+                        "shell.equalize_sizes.equalize_sizes_failed",
+                        &[("err", &err)],
+                    )));
                     continue;
                 }
                 Ok(texture_id) => {
@@ -340,7 +350,7 @@ fn commit_per_entity(
             pre_premultiplied: entry.src.old_premultiplied,
             pre_anchor: entry.src.old_anchor,
             post_individual_id: produced_individual.unwrap_or(0),
-            label: "Equalize Sizes",
+            label: tr("shell.equalize_sizes.equalize_sizes"),
         });
     }
     applied

@@ -2,6 +2,7 @@
 //! uma sprite e o Create do modal de tamanho (OBRA 2 da `line/render-loop`, 2026-09-12).
 
 use super::*;
+use ph2d_i18n::tr;
 
 /// Os pedidos de folha de sprites que o dreno do barramento recolheu neste quadro.
 pub(super) struct SheetIntents {
@@ -64,9 +65,9 @@ impl crate::App {
             // está escondido nele. O Enio pediu o segundo **pelo nome** (2026-08-19), que é a
             // prova de que ele não o encontrava. Agora recusar aponta para onde ele mora.
             if !crate::sheet_frame::sheets_among(sim, &sheet_targets).is_empty() {
-                toasts.push(Toast::warning(
-                    "Pack into Sheet: that is already a sheet - use Auto-Arrange Pieces",
-                ));
+                toasts.push(Toast::warning(tr(
+                    "shell.fase_sheet_verbs.pack_into_sheet_that",
+                )));
             } else {
                 // **CRIAR pergunta primeiro** (Enio 2026-08-19: *"Ao criar uma sheet um modal
                 // com a resolução deve aparecer antes da criação"*). Os alvos ficam
@@ -81,7 +82,9 @@ impl crate::App {
                     // Sem peça nenhuma não há o que perguntar: um modal a pedir a resolução de
                     // uma folha vazia é a caixa de diálogo que não devia ter aberto.
                     None => {
-                        toasts.push(Toast::warning("Sheet: select at least one sprite first"));
+                        toasts.push(Toast::warning(tr(
+                            "shell.fase_sheet_verbs.sheet_select_at_least",
+                        )));
                     }
                 }
             }
@@ -109,9 +112,9 @@ impl crate::App {
             }
             let sheets = crate::sheet_frame::sheets_among(sim, &targets);
             if sheets.is_empty() {
-                toasts.push(Toast::warning(
-                    "Auto-Arrange: select a sheet - to make one, use Pack into Sheet",
-                ));
+                toasts.push(Toast::warning(tr(
+                    "shell.fase_sheet_verbs.auto_arrange_select_a",
+                )));
             } else {
                 crate::sheet_frame::repack_all(sim, vec_scene, &sheets, toasts);
             }

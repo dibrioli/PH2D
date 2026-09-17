@@ -3,6 +3,7 @@
 //! marcadores, variações). Chamadas pela [`super`] (`fase_audio_panels`) no sítio e pela ordem dos blocos (OBRA 3
 //! da `line/render-bodies`); cada uma re-deriva o `self.audio`, que nenhuma delas troca.
 
+use ph2d_i18n::tr;
 impl crate::App {
     /// A entrada e a saída: carregar, exportar, LUFS em lote, peças e conjunto, o transporte e o loop, o ML, e a
     /// entrega com o preço das plataformas (só com a secção Delivery aberta).
@@ -154,7 +155,7 @@ impl crate::App {
                 // IR keeps its own list (an impulse response is normally lossless), but if
                 // ogg is allowed then opus is too — both lossy, both decodable here.
                 .add_filter(
-                    "impulse response",
+                    tr("shell.fase_audio_editor.impulse_response"),
                     &["wav", "flac", "aiff", "aif", "ogg", "opus"],
                 )
                 .pick_file()
@@ -173,7 +174,7 @@ impl crate::App {
         }
         if ed::take_save_preset()
             && let Some(path) = rfd::FileDialog::new()
-                .add_filter("PH2D audio preset", &["txt"])
+                .add_filter(tr("shell.fase_audio_editor.ph2d_audio_preset"), &["txt"])
                 .set_file_name("chain-preset.txt")
                 .save_file()
         {
@@ -184,7 +185,7 @@ impl crate::App {
         }
         if ed::take_load_preset()
             && let Some(path) = rfd::FileDialog::new()
-                .add_filter("PH2D audio preset", &["txt"])
+                .add_filter(tr("shell.fase_audio_editor.ph2d_audio_preset"), &["txt"])
                 .pick_file()
         {
             match std::fs::read_to_string(&path) {
@@ -288,7 +289,7 @@ impl crate::App {
         }
         if ed::take_save_variation_set()
             && let Some(path) = rfd::FileDialog::new()
-                .add_filter("PH2D variation set", &["txt"])
+                .add_filter(tr("shell.fase_audio_editor.ph2d_variation_set"), &["txt"])
                 .set_file_name("variations.txt")
                 .save_file()
         {
@@ -296,7 +297,7 @@ impl crate::App {
         }
         if ed::take_load_variation_set()
             && let Some(path) = rfd::FileDialog::new()
-                .add_filter("PH2D variation set", &["txt"])
+                .add_filter(tr("shell.fase_audio_editor.ph2d_variation_set"), &["txt"])
                 .pick_file()
         {
             audio.editor_load_variation_set(&path);

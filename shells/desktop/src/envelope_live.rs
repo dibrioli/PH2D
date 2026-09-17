@@ -34,6 +34,7 @@ use ph2d_ecs::{
     ChildOf, Entity, EnvelopeKind, Name, RootOrder, SimWorld, Transform, VecEnvelope,
     VecEnvelopeChild,
 };
+use ph2d_i18n::tr;
 use ph2d_vec_envelope::{CoonsWarp, QuadWarp, rest_edges, warp_path};
 
 /// Os pontos da **ARTE** de um envelope, em local do container — onde o guard de dobra dos pinos
@@ -158,7 +159,7 @@ pub(crate) fn create(
         .world_mut()
         .spawn((
             Transform::default(),
-            Name::new("Envelope"),
+            Name::new(tr("shell.envelope_live.envelope")),
             RootOrder(order),
         ))
         .id();

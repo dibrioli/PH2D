@@ -7,6 +7,7 @@
 
 use ph2d_ecs::{SpriteCornerTint, SpriteGrid, SpriteRegion};
 use ph2d_editor_core::SpriteFieldEdit;
+use ph2d_i18n::tr_with;
 use ph2d_render::Sprite;
 
 /// **Os quatro editáveis da §2**, lidos da entidade com o default benigno no lugar do que ela
@@ -293,12 +294,18 @@ pub(super) fn apply_sprite_edits(
                     data,
                 });
                 if let Err(e) = push_res {
-                    toasts.push(Toast::error(format!("Editor queue full: {e}")));
+                    toasts.push(Toast::error(tr_with(
+                        "shell.inspector_commits_sprite.editor_queue_full",
+                        &[("e", &e)],
+                    )));
                     dirty = true;
                 } else if let Err(e) =
                     apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
                 {
-                    toasts.push(Toast::error(format!("Sprite commit failed: {e}")));
+                    toasts.push(Toast::error(tr_with(
+                        "shell.inspector_commits_sprite.sprite_commit_failed",
+                        &[("e", &e)],
+                    )));
                     dirty = true;
                 } else if was_premultiplied
                     && let Some(mut s) = sim.world_mut().get_mut::<Sprite>(entity)
@@ -308,7 +315,10 @@ pub(super) fn apply_sprite_edits(
                 }
             }
             Err(e) => {
-                toasts.push(Toast::error(format!("Sprite encode failed: {e}")));
+                toasts.push(Toast::error(tr_with(
+                    "shell.inspector_commits_sprite.sprite_encode_failed",
+                    &[("e", &e)],
+                )));
                 dirty = true;
             }
         }

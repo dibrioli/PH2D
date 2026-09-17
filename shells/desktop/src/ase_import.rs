@@ -36,6 +36,7 @@
 
 use ph2d_aseprite::{AseDoc, AseFrame, AseTag};
 use ph2d_ecs::{AnimDirection, AnimationTag, SimWorld, SpriteAnimations, SpriteAnimator};
+use ph2d_i18n::tr_with;
 use ph2d_render::SpriteRenderer;
 use std::path::Path;
 
@@ -147,13 +148,20 @@ pub(crate) fn tag_from_ase(t: &AseTag, frames: &[AseFrame]) -> (AnimationTag, Op
     // de saber que aquela tag tem ritmo próprio, porque nenhum campo do Inspector o edita ainda
     // (a §8.8 põe essa edição no editor de timeline futuro, e não aqui).
     let note = (!per_frame_ms.is_empty()).then(|| {
-        format!(
-            "\"{}\" has per-frame timing ({} frames, {}..{} ms) — the Frame ms field shows the \
-             most common one",
-            t.name,
-            per_frame_ms.len(),
-            per_frame_ms.iter().copied().min().unwrap_or(ms.into()),
-            per_frame_ms.iter().copied().max().unwrap_or(ms.into()),
+        tr_with(
+            "shell.ase_import.has_per_frame_timing",
+            &[
+                ("t", &(t.name)),
+                ("per_frame_ms", &(per_frame_ms.len())),
+                (
+                    "into",
+                    &(per_frame_ms.iter().copied().min().unwrap_or(ms.into())),
+                ),
+                (
+                    "into2",
+                    &(per_frame_ms.iter().copied().max().unwrap_or(ms.into())),
+                ),
+            ],
         )
     });
     (
@@ -187,9 +195,9 @@ pub(crate) fn library(doc: &AseDoc, stem: &str) -> (SpriteAnimations, Vec<String
             .map_or(100, |f| u32::from(f.duration_ms))
             .max(1);
         let _ = lib.insert(all);
-        notes.push(format!(
-            "the file has no tags — one animation named \"{stem}\" covers all {} frames",
-            doc.frames.len()
+        notes.push(tr_with(
+            "shell.ase_import.the_file_has_no_tags",
+            &[("stem", &stem), ("frames", &(doc.frames.len()))],
         ));
         return (lib, notes);
     }
@@ -200,7 +208,10 @@ pub(crate) fn library(doc: &AseDoc, stem: &str) -> (SpriteAnimations, Vec<String
             Ok(()) => notes.extend(note),
             // ⚠️ NOMEIA a tag e o motivo: «alguma coisa não entrou» manda o artista adivinhar
             // entre um nome repetido, um nome vazio e uma lista cheia — três consertos diferentes.
-            Err(e) => notes.push(format!("tag \"{name}\" was not imported ({e:?})")),
+            Err(e) => notes.push(tr_with(
+                "shell.ase_import.tag_was_not_imported",
+                &[("name", &name), ("e_", &format!("{:?}", e))],
+            )),
         }
     }
     (lib, notes)
@@ -246,7 +257,7 @@ pub(crate) fn import_ase(
     };
     let bytes = match std::fs::read(path) {
         Ok(b) => b,
-        Err(e) => return fail(format!("read: {e}")),
+        Err(e) => return fail(tr_with("shell.ase_import.read", &[("e", &e)])),
     };
     let doc = match ph2d_aseprite::parse(&bytes) {
         Ok(d) => d,
@@ -257,11 +268,16 @@ pub(crate) fn import_ase(
     let sheet_h = rows * u32::from(doc.height);
     if sheet_w > MAX_SHEET_EDGE_PX || sheet_h > MAX_SHEET_EDGE_PX {
         // ⚠️ A mensagem traz OS DOIS números: o que a folha precisaria e o que a placa aceita.
-        return fail(format!(
-            "{} frames of {}x{} need a {sheet_w}x{sheet_h} sheet, and the limit is {MAX_SHEET_EDGE_PX}",
-            doc.frames.len(),
-            doc.width,
-            doc.height
+        return fail(tr_with(
+            "shell.ase_import.frames_of_x_need_a_x",
+            &[
+                ("frames", &(doc.frames.len())),
+                ("width", &(doc.width)),
+                ("height", &(doc.height)),
+                ("sheet_w", &sheet_w),
+                ("sheet_h", &sheet_h),
+                ("MAX_SHEET_EDGE_PX", &MAX_SHEET_EDGE_PX),
+            ],
         ));
     }
     let pixels = pack(&doc.frames, doc.width, doc.height, cols, rows);

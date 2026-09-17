@@ -8,6 +8,7 @@
 //! que a `fase_fixed_step_clocks` produziu neste quadro, consumidos aqui.
 
 use super::*;
+use ph2d_i18n::tr_with;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -104,7 +105,10 @@ impl crate::App {
         // não permite, e provavelmente por que o `ph2d-script::messaging` tem zero consumidores
         // desde que nasceu.
         for sig in self.signals.read(&mut self.signal_toast_reader) {
-            toasts.push(Toast::info(format!("Signal: {}", sig.name)));
+            toasts.push(Toast::info(tr_with(
+                "shell.fase_signal_outbox.signal",
+                &[("sig", &(sig.name))],
+            )));
         }
         // ⭐⭐⭐ **O CONSUMIDOR QUE FAZ ALGUMA COISA** (TOP-20 #5) — a tabela nome → acção.
         //

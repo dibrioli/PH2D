@@ -10,6 +10,7 @@ use crate::App;
 use crate::cursor_pos::live_cursor_in_window;
 use crate::image_import::ImportItemResult;
 use ph2d_editor_core::Toast;
+use ph2d_i18n::tr_with;
 
 impl App {
     /// Imports each dropped path that resolves to an image, anchoring
@@ -107,13 +108,17 @@ impl App {
                         regions,
                         bits,
                     } => {
-                        gfx.toasts
-                            .push(Toast::success(format!("Sheet {name}: {regions} sprites")));
+                        gfx.toasts.push(Toast::success(tr_with(
+                            "shell.input_drop.sheet_sprites",
+                            &[("name", &name), ("regions", &regions)],
+                        )));
                         sheet_bits.extend(bits);
                     }
                     crate::sheet_import::SheetImportResult::Err { name, error } => {
-                        gfx.toasts
-                            .push(Toast::error(format!("Sheet {name}: {error}")));
+                        gfx.toasts.push(Toast::error(tr_with(
+                            "shell.input_drop.sheet",
+                            &[("name", &name), ("error", &error)],
+                        )));
                     }
                 }
                 self.title_dirty = true;
@@ -147,8 +152,9 @@ impl App {
             // ⚠️ A mensagem diz o que o app SABE ler. Ela dizia «Skipped non-image», e isso
             // virou mentira no dia em que um `.ase` — que não é uma imagem — passou a entrar; e
             // outra vez em 05/09, quando o `.svg` passou a entrar como DESENHO.
-            gfx.toasts.push(Toast::warning(format!(
-                "Skipped {name}: not an image, an SVG drawing or an Aseprite file"
+            gfx.toasts.push(Toast::warning(tr_with(
+                "shell.input_drop.skipped_not_an_image",
+                &[("name", &name)],
             )));
             self.title_dirty = true;
         }
@@ -178,13 +184,18 @@ impl App {
             match r {
                 ImportItemResult::Ok { label, bits } => {
                     seat(gfx, bits, &mut selected_any);
-                    gfx.toasts.push(Toast::success(format!("Imported {label}")));
+                    gfx.toasts.push(Toast::success(tr_with(
+                        "shell.input_drop.imported",
+                        &[("label", &label)],
+                    )));
                     self.title_dirty = true;
                 }
                 ImportItemResult::Err { name, error } => {
                     eprintln!("M14.4e drop failed ({name}): {error}");
-                    gfx.toasts
-                        .push(Toast::error(format!("Drop failed: {error}")));
+                    gfx.toasts.push(Toast::error(tr_with(
+                        "shell.input_drop.drop_failed",
+                        &[("error", &error)],
+                    )));
                     self.title_dirty = true;
                 }
             }

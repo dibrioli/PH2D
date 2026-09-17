@@ -5,6 +5,7 @@
 //! contíguo.
 
 use super::*;
+use ph2d_i18n::tr;
 
 /// Os pedidos de precisão, emissão e saída da folha que o dreno do barramento recolheu neste quadro.
 pub(super) struct SpriteRowIntents {
@@ -128,11 +129,13 @@ impl crate::App {
                     sim,
                     toasts,
                 );
-                toasts.push(Toast::success("Removed from sheet"));
+                toasts.push(Toast::success(tr(
+                    "shell.fase_sprite_precision_emissive.removed_from_sheet",
+                )));
             } else {
-                toasts.push(Toast::warning(
-                    "Remove from Sheet: this object is not in a sheet",
-                ));
+                toasts.push(Toast::warning(tr(
+                    "shell.fase_sprite_precision_emissive.remove_from_sheet_this",
+                )));
             }
             self.title_dirty = true;
         }

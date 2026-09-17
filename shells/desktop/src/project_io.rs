@@ -29,6 +29,7 @@
 //! sítio. O projeto é **`.ph2dproj`**, e o `.postcard` continua a ser oferecido para abrir o que já
 //! foi gravado.
 
+use ph2d_i18n::{tr, tr_with};
 use std::path::Path;
 
 /// As extensões que um ficheiro de projeto pode ter, para o diálogo **enumerar**.
@@ -141,7 +142,10 @@ impl crate::App {
     fn ask_where_to_save(suggested: &str) -> Option<String> {
         let mut dialog = rfd::FileDialog::new().set_file_name(suggested);
         for ext in PROJECT_EXTENSIONS {
-            dialog = dialog.add_filter(format!("PH2D project (.{ext})"), &[*ext]);
+            dialog = dialog.add_filter(
+                tr_with("shell.project_io.ph2d_project_2", &[("ext", &ext)]),
+                &[*ext],
+            );
         }
         dialog
             .save_file()
@@ -151,7 +155,7 @@ impl crate::App {
     /// Abre o seletor nativo para ABRIR.
     fn ask_what_to_open() -> Option<String> {
         rfd::FileDialog::new()
-            .add_filter("PH2D project", PROJECT_EXTENSIONS)
+            .add_filter(tr("shell.project_io.ph2d_project"), PROJECT_EXTENSIONS)
             .pick_file()
             .and_then(|p| p.to_str().map(ToOwned::to_owned))
     }

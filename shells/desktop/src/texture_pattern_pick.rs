@@ -19,6 +19,7 @@
 //! 23/08 em que o `.gif`/`.psd`/`.ora` estavam invisíveis no *Import…* havia meses.
 
 use ph2d_asset::AssetDb;
+use ph2d_i18n::tr;
 use ph2d_vec_scene::{Paint, PatternSource, Rgba8, VecPathId, VecScene};
 
 /// Quantas cópias do padrão cabem, por omissão, no lado MENOR da forma.
@@ -79,7 +80,7 @@ pub(crate) fn source_for(
 /// **mudo** — o defeito que esta linha recebeu três vezes.
 pub(crate) fn pick_source(assets: &AssetDb) -> Option<PatternSource> {
     let dialog = rfd::FileDialog::new().add_filter(
-        "Image",
+        tr("shell.texture_pattern_pick.image"),
         &ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS
             .iter()
             .map(|e| e.trim_start_matches('.'))

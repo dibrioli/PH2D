@@ -18,6 +18,7 @@
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, NamedAnchor, NamedAnchorList, SimWorld, World};
 use ph2d_editor_core::{AnchorFieldEdit, InspectorAnchorInfo, InspectorAnchorRow, Toast};
+use ph2d_i18n::{tr, tr_with};
 
 use ph2d_inspector_ordering::queue_set;
 
@@ -182,7 +183,10 @@ pub(super) fn apply_anchor_edit(
         AnchorFieldEdit::Add => {
             let name = list.next_free_name();
             if let Err(e) = list.insert(NamedAnchor::socket(name)) {
-                return Some(Toast::error(format!("Anchor not added: {}", describe(e))));
+                return Some(Toast::error(tr_with(
+                    "shell.inspector_anchor.anchor_not_added",
+                    &[("e", &(describe(e)))],
+                )));
             }
         }
         AnchorFieldEdit::Remove(i) => {
@@ -196,9 +200,9 @@ pub(super) fn apply_anchor_edit(
             let idx = usize::from(*i);
             list.iter().nth(idx)?;
             if let Err(e) = ph2d_ecs::validate_anchor_name(new_name) {
-                return Some(Toast::error(format!(
-                    "Anchor name rejected: {}",
-                    describe(e)
+                return Some(Toast::error(tr_with(
+                    "shell.inspector_anchor.anchor_name_rejected",
+                    &[("e", &(describe(e)))],
                 )));
             }
             if list
@@ -206,8 +210,9 @@ pub(super) fn apply_anchor_edit(
                 .enumerate()
                 .any(|(j, a)| j != idx && a.name == *new_name)
             {
-                return Some(Toast::error(format!(
-                    "Anchor name '{new_name}' is already used on this sprite"
+                return Some(Toast::error(tr_with(
+                    "shell.inspector_anchor.anchor_name_is_already",
+                    &[("new_name", &new_name)],
                 )));
             }
             if let Some(a) = list.0.get_mut(idx) {
@@ -345,15 +350,23 @@ fn apply_field(a: &mut NamedAnchor, edit: &AnchorFieldEdit, ppm: f32) {
 /// teto uma falha é, é a falha.*
 fn describe(e: ph2d_ecs::AnchorNameError) -> String {
     match e {
-        ph2d_ecs::AnchorNameError::Empty => "the name is empty".to_string(),
-        ph2d_ecs::AnchorNameError::TooLong => {
-            format!("the name is over {} bytes", ph2d_ecs::ANCHOR_NAME_MAX_BYTES)
+        ph2d_ecs::AnchorNameError::Empty => {
+            tr("shell.inspector_anchor.the_name_is_empty").to_string()
         }
-        ph2d_ecs::AnchorNameError::ControlChar => "the name has a control character".to_string(),
-        ph2d_ecs::AnchorNameError::Duplicate => "that name is already used".to_string(),
-        ph2d_ecs::AnchorNameError::ListFull => {
-            format!("this sprite already has {} anchors", ph2d_ecs::ANCHORS_MAX)
+        ph2d_ecs::AnchorNameError::TooLong => tr_with(
+            "shell.inspector_anchor.the_name_is_over_bytes",
+            &[("anchor_name_max_bytes", &(ph2d_ecs::ANCHOR_NAME_MAX_BYTES))],
+        ),
+        ph2d_ecs::AnchorNameError::ControlChar => {
+            tr("shell.inspector_anchor.the_name_has_a_control").to_string()
         }
+        ph2d_ecs::AnchorNameError::Duplicate => {
+            tr("shell.inspector_anchor.that_name_is_already").to_string()
+        }
+        ph2d_ecs::AnchorNameError::ListFull => tr_with(
+            "shell.inspector_anchor.this_sprite_already",
+            &[("anchors_max", &(ph2d_ecs::ANCHORS_MAX))],
+        ),
     }
 }
 

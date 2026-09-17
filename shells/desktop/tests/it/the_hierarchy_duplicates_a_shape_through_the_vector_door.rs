@@ -57,11 +57,11 @@ fn the_shape_route_goes_through_the_one_duplicate_door() {
 #[test]
 fn the_sprite_route_is_still_there() {
     assert!(
-        SRC.contains("Duplicated entity"),
+        crate::i18n_view::with_texts(SRC).contains("Duplicated entity"),
         "o caminho do sprite sumiu"
     );
     assert!(
-        SRC.contains("Duplicated shape"),
+        crate::i18n_view::with_texts(SRC).contains("Duplicated shape"),
         "o caminho da forma nao confirma nada ao artista"
     );
 }

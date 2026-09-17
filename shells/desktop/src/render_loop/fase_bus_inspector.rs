@@ -4,6 +4,7 @@
 
 use super::*;
 use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_i18n::{tr, tr_with};
 
 impl crate::App {
     /// A vista, o reimport, a precisão e a emissão da sprite, e as ferramentas de imagem de um disparo.
@@ -252,8 +253,9 @@ impl crate::App {
             EditorAction::InspectorClearUnusedOverrides { root_bits } => {
                 let n = inspector_instance::clear_orphans(sim, root_bits);
                 if n > 0 {
-                    toasts.push(ph2d_editor_core::Toast::success(format!(
-                        "Cleared {n} unused override(s)"
+                    toasts.push(ph2d_editor_core::Toast::success(tr_with(
+                        "shell.fase_bus_inspector.cleared_unused",
+                        &[("n", &n)],
                     )));
                 }
             }
@@ -265,9 +267,9 @@ impl crate::App {
             // artista tinha nela é o passe estrutural, no quadro seguinte.
             EditorAction::InspectorRestoreRemovedPiece { root_bits, piece } => {
                 if ph2d_app_components::instance_structure::restore_piece(sim, root_bits, piece) {
-                    toasts.push(ph2d_editor_core::Toast::success(
-                        "Put the piece back \u{2014} it returns as the component has it",
-                    ));
+                    toasts.push(ph2d_editor_core::Toast::success(tr(
+                        "shell.fase_bus_inspector.put_the_piece_back_it",
+                    )));
                 }
             }
             EditorAction::InspectorDropUnusedOverride {
@@ -276,9 +278,9 @@ impl crate::App {
                 type_id,
             } => {
                 if inspector_instance::drop_orphan(sim, root_bits, piece, type_id) {
-                    toasts.push(ph2d_editor_core::Toast::success(
-                        "Dropped 1 unused override",
-                    ));
+                    toasts.push(ph2d_editor_core::Toast::success(tr(
+                        "shell.fase_bus_inspector.dropped_1_unused",
+                    )));
                 }
             }
             // ⭐⭐⭐ **Trocar a VARIANTE** (ADR-0164 / F5, critério 2).

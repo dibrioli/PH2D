@@ -11,6 +11,7 @@
 //! ⚠️ Sem esse corte a wave inteira seria *"provada"* por um gate que só consegue afirmar que a
 //! crate do codec funciona — e a costura, que é onde as waves desta linha falham, ficaria de fora.
 
+use ph2d_i18n::tr_with;
 use std::path::Path;
 
 use ph2d_editor_core::{Toast, ToastQueue};
@@ -21,12 +22,15 @@ use ph2d_tokens_dtcg::Imported;
 
 /// A extensão que o diálogo oferece. `.json` porque é o que o ecossistema escreve; o `.tokens.json`
 /// é convenção de NOME, não de extensão.
-const FILTER: (&str, &[&str]) = ("DTCG tokens", &["json"]);
+const FILTER: (ph2d_i18n::TextKey, &[&str]) = (
+    ph2d_i18n::TextKey::new("shell.tokens_bridge_dtcg.dtcg_tokens"),
+    &["json"],
+);
 
 /// **A tabela deste modo SAI.** Não muda o documento, então não devolve nada.
 pub(crate) fn export(theme: Theme, toasts: &mut ToastQueue) {
     let Some(path) = rfd::FileDialog::new()
-        .add_filter(FILTER.0, FILTER.1)
+        .add_filter(FILTER.0.tr(), FILTER.1)
         .set_file_name(default_name(theme))
         .save_file()
     else {
@@ -34,21 +38,29 @@ pub(crate) fn export(theme: Theme, toasts: &mut ToastQueue) {
     };
     let body = ph2d_tokens_dtcg::export(theme);
     match std::fs::write(&path, &body) {
-        Ok(()) => toasts.push(Toast::success(format!(
-            "DTCG exported: {} tokens to {}",
-            ph2d_tokens::ColorToken::ALL.len() + ph2d_tokens::NumToken::ALL.len(),
-            file_name(&path)
+        Ok(()) => toasts.push(Toast::success(tr_with(
+            "shell.tokens_bridge_dtcg.dtcg_exported_tokens",
+            &[
+                (
+                    "all",
+                    &(ph2d_tokens::ColorToken::ALL.len() + ph2d_tokens::NumToken::ALL.len()),
+                ),
+                ("path", &(file_name(&path))),
+            ],
         ))),
         // ⚠️ A frase do SO é repassada inteira: *"não deu"* sem o porquê manda o artista adivinhar
         // se o disco está cheio, se a pasta é só de leitura, ou se o app está partido.
-        Err(e) => toasts.push(Toast::warning(format!("DTCG export failed: {e}"))),
+        Err(e) => toasts.push(Toast::warning(tr_with(
+            "shell.tokens_bridge_dtcg.dtcg_export_failed",
+            &[("e", &e)],
+        ))),
     };
 }
 
 /// **Um `.tokens.json` re-veste o modo vigente.** Devolve `true` se a camada mudou.
 pub(crate) fn import(theme: Theme, toasts: &mut ToastQueue) -> bool {
     let Some(path) = rfd::FileDialog::new()
-        .add_filter(FILTER.0, FILTER.1)
+        .add_filter(FILTER.0.tr(), FILTER.1)
         .pick_file()
     else {
         return false;
@@ -56,7 +68,10 @@ pub(crate) fn import(theme: Theme, toasts: &mut ToastQueue) -> bool {
     let body = match std::fs::read_to_string(&path) {
         Ok(b) => b,
         Err(e) => {
-            toasts.push(Toast::warning(format!("DTCG import failed: {e}")));
+            toasts.push(Toast::warning(tr_with(
+                "shell.tokens_bridge_dtcg.dtcg_import_failed",
+                &[("e", &e)],
+            )));
             return false;
         }
     };
@@ -69,7 +84,10 @@ pub(crate) fn import(theme: Theme, toasts: &mut ToastQueue) -> bool {
         // ⚠️ O erro do codec traz linha e coluna — repassá-lo inteiro é o que torna um arquivo
         // meio-escrito consertável em vez de misterioso.
         Err(e) => {
-            toasts.push(Toast::warning(format!("DTCG import failed: {e}")));
+            toasts.push(Toast::warning(tr_with(
+                "shell.tokens_bridge_dtcg.dtcg_import_failed",
+                &[("e", &e)],
+            )));
             false
         }
     }
@@ -131,15 +149,27 @@ pub(crate) fn install(theme: Theme, imported: Imported) -> bool {
 /// diferentes de zero: uma linha que diz sempre *"0 desconhecidos"* é uma linha que se aprende a
 /// não ler, e no dia em que ela tiver conteúdo ninguém olha para lá.
 fn report(r: &Imported) -> String {
-    let mut s = format!("DTCG imported: {} token(s) authored", r.authored());
+    let mut s = tr_with(
+        "shell.tokens_bridge_dtcg.dtcg_imported_token_s",
+        &[("authored", &(r.authored()))],
+    );
     if r.at_factory > 0 {
-        s.push_str(&format!(", {} already at factory", r.at_factory));
+        s.push_str(&tr_with(
+            "shell.tokens_bridge_dtcg.already_at_factory",
+            &[("at_factory", &(r.at_factory))],
+        ));
     }
     if r.unknown > 0 {
-        s.push_str(&format!(", {} unknown", r.unknown));
+        s.push_str(&tr_with(
+            "shell.tokens_bridge_dtcg.unknown",
+            &[("unknown", &(r.unknown))],
+        ));
     }
     if r.dropped > 0 {
-        s.push_str(&format!(", {} unusable", r.dropped));
+        s.push_str(&tr_with(
+            "shell.tokens_bridge_dtcg.unusable",
+            &[("dropped", &(r.dropped))],
+        ));
     }
     s
 }

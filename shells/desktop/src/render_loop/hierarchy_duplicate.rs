@@ -9,6 +9,7 @@
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::{Toast, ToastQueue, screens::hero::HeroScreen};
 use ph2d_host::WindowSize;
+use ph2d_i18n::tr;
 use ph2d_render::Camera2d;
 
 /// ⭐ **Quem sabe duplicar esta entidade.**
@@ -95,7 +96,9 @@ pub(super) fn drain(
             // ⭐ A cópia fica selecionada, como no botão do painel: é o que põe o gizmo em cima
             // dela sem ninguém a ter de procurar.
             hero.gizmo.replace_selection(Some(copy));
-            toasts.push(Toast::success("Duplicated shape"));
+            toasts.push(Toast::success(tr(
+                "shell.hierarchy_duplicate.duplicated_shape",
+            )));
             return true;
         }
         return false;
@@ -108,7 +111,9 @@ pub(super) fn drain(
     );
     if let Some(vp) = sim.world().get::<ph2d_ecs::VecPathRef>(src).copied() {
         if crate::input_dispatch::duplicate_vec_paths(vec_scene, vec_pen, &[vp.0], dx, dy) {
-            toasts.push(Toast::success("Duplicated shape"));
+            toasts.push(Toast::success(tr(
+                "shell.hierarchy_duplicate.duplicated_shape",
+            )));
             return true;
         }
         return false;
@@ -157,11 +162,11 @@ pub(super) fn drain(
     // um objeto que desaparece, em vez de o não produzir. Hoje a cópia de uma receita é um objeto
     // comum, e o toast nomeia a diferença para o artista não a procurar na biblioteca.
     toasts.push(if recipe {
-        Toast::success("Duplicated as a plain object — use Make Component for a second component")
+        Toast::success(tr("shell.hierarchy_duplicate.duplicated_as_a_plain"))
     } else if inside {
-        Toast::warning("Duplicated inside the prefab — it shows while the prefab is selected")
+        Toast::warning(tr("shell.hierarchy_duplicate.duplicated_inside_the"))
     } else {
-        Toast::success("Duplicated entity")
+        Toast::success(tr("shell.hierarchy_duplicate.duplicated_entity"))
     });
     true
 }

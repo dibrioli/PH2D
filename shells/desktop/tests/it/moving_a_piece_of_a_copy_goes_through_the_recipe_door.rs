@@ -119,7 +119,7 @@ fn reordering_between_siblings_is_still_allowed() {
 /// recusa muda deixa o artista a repetir o mesmo gesto até desistir.
 #[test]
 fn the_refusal_says_where_to_do_it_instead() {
-    let body = code_of("hero_intents/hierarchy.rs");
+    let body = crate::i18n_view::with_texts(&code_of("hero_intents/hierarchy.rs"));
     assert!(
         body.contains("Edit \\\n             Prefab") || body.contains("Edit Prefab"),
         "a recusa nao nomeia a porta que abre a receita"

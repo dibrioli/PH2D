@@ -6,6 +6,7 @@
 //! não se perdem aqui.
 
 use super::*;
+use ph2d_i18n::{tr, tr_with};
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -54,15 +55,15 @@ impl crate::App {
                 }) {
                     if as_shape {
                         painter.capture_layers_as_brush_shape();
-                        toasts.push(ph2d_editor_core::Toast::success(
-                            "Brush shape set from layers",
-                        ));
+                        toasts.push(ph2d_editor_core::Toast::success(tr(
+                            "shell.fase_use_as_brush.brush_shape_set_from",
+                        )));
                         handled = true;
                     } else if let Some((lum, w, h)) = painter.composite_to_lum() {
                         painter.set_brush_texture_image(lum, w, h);
-                        toasts.push(ph2d_editor_core::Toast::success(
-                            "Brush grain set from sprite",
-                        ));
+                        toasts.push(ph2d_editor_core::Toast::success(tr(
+                            "shell.fase_use_as_brush.brush_grain_set_from",
+                        )));
                         handled = true;
                     }
                 }
@@ -113,25 +114,26 @@ impl crate::App {
                                     h,
                                     Some(bits),
                                 );
-                                toasts.push(ph2d_editor_core::Toast::success(
-                                    "Brush shape set from sprite",
-                                ));
+                                toasts.push(ph2d_editor_core::Toast::success(tr(
+                                    "shell.fase_use_as_brush.brush_shape_set_from_2",
+                                )));
                             } else {
                                 painter.set_brush_texture_image(lum, w, h);
-                                toasts.push(ph2d_editor_core::Toast::success(
-                                    "Brush grain set from sprite",
-                                ));
+                                toasts.push(ph2d_editor_core::Toast::success(tr(
+                                    "shell.fase_use_as_brush.brush_grain_set_from",
+                                )));
                             }
                         }
                     }
                     None => {
                         let what = if as_shape {
-                            "Brush Shape"
+                            tr("shell.fase_use_as_brush.brush_shape")
                         } else {
-                            "Brush Grain"
+                            tr("shell.fase_use_as_brush.brush_grain")
                         };
-                        toasts.push(ph2d_editor_core::Toast::warning(format!(
-                            "Use as {what}: select an image sprite"
+                        toasts.push(ph2d_editor_core::Toast::warning(tr_with(
+                            "shell.fase_use_as_brush.use_as_select_an_image",
+                            &[("what", &what)],
                         )));
                     }
                 }

@@ -6,6 +6,7 @@
 use ph2d_ecs::PresentWorld;
 use ph2d_editor_core::{Toast, ToastQueue, ViewFocusKind};
 use ph2d_host::WindowSize;
+use ph2d_i18n::tr;
 use ph2d_render::Camera2d;
 
 /// Drain `hero.pending_view_focus`. Per [`ViewFocusKind`]:
@@ -29,16 +30,16 @@ pub(crate) fn drain_view_focus(
             if let Some(bbox) = target {
                 let ([cx, cy], _) = bbox.center_half();
                 camera.center = [cx, cy];
-                "View · Selected"
+                tr("shell.view.view_selected")
             } else {
                 camera.center = [0.0, 0.0];
-                "View · Selected (no selection · origin)"
+                tr("shell.view.view_selected_no")
             }
         }
         ViewFocusKind::Camera => {
             // No camera-object yet — frame the origin.
             camera.center = [0.0, 0.0];
-            "View · Camera (origin)"
+            tr("shell.view.view_camera_origin")
         }
         ViewFocusKind::All => {
             // Walk PresentWorld for every sprite's bbox and fit
@@ -71,10 +72,10 @@ pub(crate) fn drain_view_focus(
                 let need_h = span_y.max(span_x / aspect.max(1e-3));
                 camera.center = [cx, cy];
                 camera.height_world = (need_h * 1.1).max(0.5);
-                "View · All"
+                tr("shell.view.view_all")
             } else {
                 *camera = Camera2d::default();
-                "View · All (empty scene · reset)"
+                tr("shell.view.view_all_empty_scene")
             }
         }
     };

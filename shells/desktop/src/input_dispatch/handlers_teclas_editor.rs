@@ -3,6 +3,7 @@
 //! FILHO do `input_handlers` (por `#[path]`), para ver os métodos privados de lá sem mudar a visibilidade de nenhum.
 
 use super::*;
+use ph2d_i18n::tr;
 
 impl crate::App {
     /// Enquadrar (grafo, timeline ou cena), a grelha, o transporte (Space, vírgula/ponto) e o flip do animador.
@@ -50,7 +51,8 @@ impl crate::App {
                     // camera" so the non-editor demo mode still has
                     // a way to recover from a bad pan/zoom.
                     gfx.camera = Camera2d::default();
-                    gfx.toasts.push(Toast::info("Camera · reset"));
+                    gfx.toasts
+                        .push(Toast::info(tr("shell.handlers_teclas_editor.camera_reset")));
                 }
                 self.title_dirty = true;
             }
@@ -65,9 +67,9 @@ impl crate::App {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     hero.view.grid_visible = !hero.view.grid_visible;
                     let msg = if hero.view.grid_visible {
-                        "Grid · on"
+                        tr("shell.handlers_teclas_editor.grid_on")
                     } else {
-                        "Grid · off"
+                        tr("shell.handlers_teclas_editor.grid_off")
                     };
                     gfx.toasts.push(Toast::info(msg));
                     self.title_dirty = true;
@@ -82,14 +84,15 @@ impl crate::App {
                 // bridge would pause it right back next frame anyway — refusing
                 // here keeps the toast from announcing a play that never happens.
                 if self.timeline.containers_list {
-                    gfx.toasts
-                        .push(Toast::info("Timeline · no playback in the Containers list"));
+                    gfx.toasts.push(Toast::info(tr(
+                        "shell.handlers_teclas_editor.timeline_no_playback",
+                    )));
                 } else {
                     let playing = self.playhead.toggle_play();
                     gfx.toasts.push(Toast::info(if playing {
-                        "Timeline · play"
+                        tr("shell.handlers_teclas_editor.timeline_play")
                     } else {
-                        "Timeline · pause"
+                        tr("shell.handlers_teclas_editor.timeline_pause")
                     }));
                 }
             }
@@ -145,9 +148,9 @@ impl crate::App {
                     false
                 };
                 gfx.toasts.push(Toast::info(if shown {
-                    "Timeline shown (L)"
+                    tr("shell.handlers_teclas_editor.timeline_shown_l")
                 } else {
-                    "Timeline hidden (L)"
+                    tr("shell.handlers_teclas_editor.timeline_hidden_l")
                 }));
                 self.title_dirty = true;
             }

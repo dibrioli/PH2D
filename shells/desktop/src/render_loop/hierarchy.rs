@@ -17,6 +17,7 @@ use ph2d_editor_core::action_bus::SelectModifier;
 use ph2d_editor_core::screens::hero::HierReparentIntent;
 use ph2d_editor_core::{HeroScreen, NodeId, Toast, ToastQueue, ViewFocusKind};
 use ph2d_host::WindowSize;
+use ph2d_i18n::tr;
 use ph2d_render::Camera2d;
 
 /// ⭐ A selecção pela Hierarquia (o modificador e o intervalo) — filho por ASSUNTO, num ficheiro
@@ -158,13 +159,13 @@ pub(super) fn dispatch(
         && let Some(parent_bits) = live.bridge.entity_for(row)
     {
         let parent = ph2d_ecs::Entity::from_bits(parent_bits);
-        let child_name = ph2d_unique_name::unique_name(sim, "Child");
+        let child_name = ph2d_unique_name::unique_name(sim, tr("shell.hierarchy.child"));
         sim.world_mut().spawn((
             Transform::IDENTITY,
             Name::new(child_name),
             ph2d_ecs::ChildOf(parent),
         ));
-        toasts.push(Toast::success("Added child entity"));
+        toasts.push(Toast::success(tr("shell.hierarchy.added_child_entity")));
         title_dirty = true;
     }
     // ⭐ **O objeto VAZIO na raiz** (ADR-0166 / F3) — o primeiro passo do smoke desta fase.
@@ -233,7 +234,7 @@ pub(super) fn dispatch(
     if add_root {
         let bits = super::hierarchy_add_root::spawn_empty_root(sim);
         hero.gizmo.replace_selection(Some(bits));
-        toasts.push(Toast::success("Added empty object"));
+        toasts.push(Toast::success(tr("shell.hierarchy.added_empty_object")));
         title_dirty = true;
     }
     if let Some(row) = reset_transform_row
@@ -243,7 +244,7 @@ pub(super) fn dispatch(
         let entity = ph2d_ecs::Entity::from_bits(entity_bits);
         if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) {
             *t = Transform::IDENTITY;
-            toasts.push(Toast::info("Transform reset"));
+            toasts.push(Toast::info(tr("shell.hierarchy.transform_reset")));
             title_dirty = true;
         }
     }
@@ -313,7 +314,7 @@ fn drain_view_and_row_toggles(
     if hero.camera_reset_pending {
         hero.camera_reset_pending = false;
         *camera = Camera2d::default();
-        toasts.push(Toast::info("View · Zero (camera reset)"));
+        toasts.push(Toast::info(tr("shell.hierarchy.view_zero_camera_reset")));
         title_dirty = true;
     }
     // M14.7 polish: drain pending view-focus intent (F/Home key OR
@@ -466,7 +467,7 @@ fn drain_instance_verbs(
     if let Some((stable_id, _, _)) = instance_verb_stable_id
         && ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id).is_none()
     {
-        toasts.push(Toast::warning("That prefab is no longer in the project"));
+        toasts.push(Toast::warning(tr("shell.hierarchy.that_prefab_is_no")));
     }
     if let Some((stable_id, verb, _at)) = instance_verb_stable_id
         && let Some(entity_bits) =

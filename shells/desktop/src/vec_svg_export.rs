@@ -13,6 +13,7 @@
 //! escreve (HOWTO §1.4 — *a reescrita uniforme é o que evita um mapa de excepções*).
 
 pub(crate) use ph2d_app_vec::svg_export::*;
+use ph2d_i18n::{tr, tr_with};
 
 impl crate::App {
     /// ⭐⭐⭐ **O GESTO de exportar** — *File > Export SVG…*.
@@ -35,7 +36,7 @@ impl crate::App {
             vista.is_derived(id)
         });
         if out.formas == 0 {
-            self.toast("Export SVG: the drawing has no visible shape".to_string());
+            self.toast(tr("shell.vec_svg_export.export_svg_the_drawing").to_string());
             return;
         }
         let sugerido = self
@@ -55,7 +56,10 @@ impl crate::App {
                 let extra = if out.aproximadas.is_empty() {
                     String::new()
                 } else {
-                    format!(" ({} approximated)", out.aproximadas.len())
+                    tr_with(
+                        "shell.vec_svg_export.approximated",
+                        &[("aproximadas", &(out.aproximadas.len()))],
+                    )
                 };
                 eprintln!(
                     "[ph2d-vec] SVG: {} ({} forma[s], {} bytes){extra}",
@@ -63,15 +67,24 @@ impl crate::App {
                     out.formas,
                     out.texto.len()
                 );
-                self.toast(format!(
-                    "Exported {} shape(s) to {}{extra}",
-                    out.formas,
-                    path.file_name().unwrap_or_default().to_string_lossy()
+                self.toast(tr_with(
+                    "shell.vec_svg_export.exported_shape_s_to",
+                    &[
+                        ("formas", &(out.formas)),
+                        (
+                            "to_string_lossy",
+                            &(path.file_name().unwrap_or_default().to_string_lossy()),
+                        ),
+                        ("extra", &extra),
+                    ],
                 ));
             }
             Err(e) => {
                 eprintln!("[ph2d-vec] SVG: erro ao gravar {}: {e}", path.display());
-                self.toast(format!("Export SVG FAILED: {e}"));
+                self.toast(tr_with(
+                    "shell.vec_svg_export.export_svg_failed",
+                    &[("e", &e)],
+                ));
             }
         }
     }

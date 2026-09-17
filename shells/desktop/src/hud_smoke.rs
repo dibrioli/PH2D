@@ -206,9 +206,14 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return;
         };
+        // ⚠️ **Pela BANDA da cena, e não pela janela** — foi exactamente aqui que a 1.ª redacção
+        // desta sonda mediu outro sítio (`787` contra os `432` da foto). A porta é a mesma que o
+        // pick usa ([`crate::App::scene_window`]), senão o arnês e o produto discordam por
+        // construção.
+        let janela = self.scene_window().unwrap_or_else(|| gfx.surface.size());
         let tela = gfx
             .camera
-            .world_to_screen([centro[0] as f32, centro[1] as f32], gfx.surface.size());
+            .world_to_screen([centro[0] as f32, centro[1] as f32], janela);
         let painel = self
             .gfx
             .as_ref()
@@ -272,6 +277,18 @@ impl crate::App {
             self.gfx.as_ref().map(|g| g.camera.height_world),
             self.game_camera_preview
         );
+        // ⚠️ **O SPLIT do centro** — se a cena desenha numa banda e o cursor é mapeado contra a
+        // JANELA, o que se vê e o que se pega vivem em espaços diferentes.
+        let split = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .map(|h| h.view.center_split);
+        let banda = split.and_then(|sp| {
+            let (w, h) = tamanho.unwrap_or((0, 0));
+            sp.scene_viewport(w as f32, h as f32)
+        });
+        eprintln!("[hud-smoke] split do centro={split:?} banda da cena={banda:?}");
         let antes = self.hud_smoke_pontos();
         self.last_pointer = tela;
         let baixo = self.ramo_botao_do_hud(PointerKind::Down, PointerButton::Primary, on_canvas);

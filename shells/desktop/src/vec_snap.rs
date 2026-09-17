@@ -54,7 +54,10 @@ impl App {
         let Some(gfx) = self.gfx.as_ref() else {
             return 0.0;
         };
-        let win = gfx.surface.size();
+        // ⚠️ **A BANDA da cena, não a janela** — a mesma lei da [`App::scene_window`]: sob um split
+        // a projecção muda, e um pixel vale outra coisa em mundo. Sem isto a tolerância de captura
+        // sai `1,85×` maior do que o artista vê (medido em 17/09).
+        let win = self.scene_window().unwrap_or_else(|| gfx.surface.size());
         let a = gfx.camera.screen_to_world((0.0, 0.0), win);
         let b = gfx.camera.screen_to_world((1.0, 0.0), win);
         f64::from(((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt())

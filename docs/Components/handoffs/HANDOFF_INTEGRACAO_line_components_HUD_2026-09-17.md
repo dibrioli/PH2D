@@ -180,3 +180,54 @@ de crates que a linha não corre no laço interno (a família que o `CLAUDE.md` 
 **15 009** testes e passa **3 de 3 sozinho a `load 14–22`**, com **zero linhas** do diff desta linha
 naquela crate (`git diff --stat <merge-base> -- crates/ph2d-tool-painter/` vem vazio). É um gate que
 compara um custo medido contra um número — a forma canónica da família.
+
+## §10 — O report do dono: *«passo 4 não funciona»* — e o defeito NÃO era do botão
+
+⛔⛔⛔ **O botão era DESENHADO num sítio e PICADO noutro.** A auto-conferência da §7 dizia `SIM` — e
+ela mede **metade** da corrente: *que forma está sob um PONTO DO MUNDO, e de quem ela é*. O clique
+do artista começa no **ECRÃ**, e era ali que a corrente estava partida.
+
+### As caixas, medidas
+
+A sonda nova (`PH2D_HUD_PROBE=1`) conduz o `ramo_botao_do_hud` **real** e **varre o ecrã** a
+perguntar ao mesmo `path_at` do produto onde o botão é alcançável:
+
+| | caixa de ecrã do botão |
+|---|---|
+| onde ele é **DESENHADO** (medido na foto) | `x 879..1050 · y 402..462` |
+| onde o dedo o **ENCONTRAVA** | `x 800..1128 · y 728..848` |
+| **depois da cura** | `x 872..1056 · y 392..472` |
+
+⇒ ele era clicável **~340 px abaixo** de onde aparece — **dentro do painel da timeline**, onde
+`on_canvas` é `false` (medido: `painel=true widget=true`) e o ramo **nem chegava a correr**.
+
+### A causa, e a lei que já estava escrita
+
+`center_split = Horizontal { t: 0,55 }` ⇒ **a cena desenha numa BANDA de `1930×556`** e a projecção
+dela MUDA, enquanto `vec_world_at` mapeava o cursor contra a janela de `1930×1012`.
+⭐ **A aritmética fecha antes do código:** `10` unidades de mundo em `556 px` são `55,6 px/unidade`,
+e o centro do botão (`y = −2,778`) cai em **`432`** — exactamente onde a foto o mostra.
+
+⚠️⚠️ **A lei já estava escrita e a porta não a usava:** o doc do
+`ph2d_app_motion::field_gizmo::scene_window_wh` diz *«todo mapeamento mundo↔tela do chrome da cena
+TEM de usar isto»*, e há um gate vizinho chamado
+`the_cursor_is_mapped_through_the_scene_viewport_not_the_window`.
+⇒ porta nova [`App::scene_window`](../../../shells/desktop/src/connector_gesture.rs), lida pelo
+`vec_world_at` **e** pelo `vec_px_to_world` (sem ela a tolerância de captura saía `1,85×` maior).
+
+### ⚠️ Isto é PRÉ-EXISTENTE e MAIOR que o HUD — o censo
+
+O `vec_world_at` é a porta de **seis** gestos vectoriais (selecção, balde, trim, esqueleto,
+conector, pré-visualização de UI): **todos** apontavam ao sítio errado com a timeline aberta. E o
+censo da shell mede **72** chamadas de `screen_to_world` em **33** ficheiros, contra **19** sítios
+que já passam pela banda ⇒ *a dívida não é do HUD, é do mapeamento do chrome*. Os nomes saem de
+`grep -rn "screen_to_world(" shells/desktop/src/`; ⛔ **esta linha curou as DUAS portas do vector** e
+deixa as outras nomeadas — o dono do chrome decide a rodada.
+
+### A prova
+
+Com a cura, a sonda conduz o gesto na posição em que o botão **aparece** (`tela=(965, 432,4)`),
+`on_canvas=true`, os dois lados do clique são consumidos, e a foto seguinte lê **`Pontos: 17`**
+contra os `6`–`7` que o relógio sozinho dá no mesmo instante — os `+10` do botão.
+Gates: `o_cursor_e_mapeado_pela_banda_da_cena` (as duas portas · e a própria `scene_window` derivar
+do split, senão a cura morre calada).

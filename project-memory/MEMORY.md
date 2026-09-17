@@ -109,6 +109,7 @@
 - ⛔ [Barra calibrada SEM o lado aprovado mede os nossos defeitos; o PISO do censo decide o que a régua vê (4× «nenhuma melhoria»)](feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects.md)
 - ⛔⛔ [Empate resolvido por `round` é artefacto do QUADRANTE, não decisão — passa em todo gate até o dono o encontrar](feedback_a_tie_broken_by_rounding_is_a_quadrant_artefact_not_a_law.md)
 - ⛔⛔⛔ [24 provas VERDES sobre um componente que não andava — todas entravam pelo canal INTERNO, que fica ABAIXO da metade partida do gesto](feedback_the_inner_channel_fixture_is_below_the_break.md)
+- ⛔⛔⛔ [Régua que pára no espaço do MUNDO aprova um clique partido no ECRÃ — sob split o chrome desenha numa BANDA e o cursor era mapeado contra a janela (340 px)](feedback_a_ruler_that_stops_at_world_space_approves_a_broken_click.md)
 - [Costura de UI (23)](reference_topic_ui_seam_discipline.md) — ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md)
 - [**Ofício de gate** — a família (95); censo textual · censo que presume o destino · censo que partilha estado (esse acusa 14 vivos, e os 3 que sobram são cegueiras do oráculo)](reference_topic_gate_discipline.md)
 - ⛔ [Mutação que apaga um TECTO aloca o que o tecto impedia — 27 GB de RSS, morto à mão](feedback_a_mutation_that_deletes_a_cap_allocates_what_the_cap_prevented.md)

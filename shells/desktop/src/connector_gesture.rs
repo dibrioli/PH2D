@@ -29,10 +29,47 @@ use ph2d_app_vec::connector_drag::ConnectorDrag;
 const MIN_DRAG: f64 = 0.02;
 
 impl App {
+    /// ⭐⭐⭐ **A JANELA EM QUE A CENA DE FACTO DESENHA** — e não a da aplicação.
+    ///
+    /// ⛔⛔ **Com um painel a partir o centro (a timeline, por exemplo), a cena renderiza numa
+    /// BANDA** (`CenterSplit::scene_viewport`) e a projecção dela MUDA. Mapear o cursor contra a
+    /// janela inteira põe o que se VÊ e o que se PEGA em espaços diferentes.
+    ///
+    /// **Medido em 2026-09-17** (report do dono: *«o botão +10 não faz nada»*), com a timeline
+    /// aberta a `t = 0,55` numa janela de `1930×1012`, logo uma banda de `1930×556`:
+    ///
+    /// | | caixa de ecrã do botão |
+    /// |---|---|
+    /// | onde ele é DESENHADO (medido na foto) | `x 879..1050 · y 402..462` |
+    /// | onde o dedo o ENCONTRAVA (varredura do produto) | `x 800..1128 · y 728..848` |
+    ///
+    /// ⇒ o alvo era clicável `~340 px` abaixo de onde aparece — dentro do painel da timeline, onde
+    /// o `on_canvas` é `false` e o gesto nem chega a correr. A aritmética fecha antes do código:
+    /// `10` unidades de mundo em `556 px` são `55,6 px/unidade`, e o centro do botão (`y = −2,778`)
+    /// cai em `432` — exactamente onde a foto o mostra.
+    ///
+    /// ⚠️ **A lei já estava escrita**: o doc do `field_gizmo::scene_window_wh` diz *«todo mapeamento
+    /// mundo↔tela do chrome da cena TEM de usar isto»*, e esta porta não o usava.
+    pub(crate) fn scene_window(&self) -> Option<ph2d_host::WindowSize> {
+        let gfx = self.gfx.as_ref()?;
+        let split = gfx
+            .hero_screen
+            .as_ref()
+            .map_or(ph2d_editor_core::screens::layout::CenterSplit::None, |h| {
+                h.view.center_split
+            });
+        Some(ph2d_app_motion::field_gizmo::scene_camera_window(
+            split,
+            gfx.surface.size(),
+        ))
+    }
+
     /// O ponto de MUNDO sob um ponto de tela. `None` antes do primeiro frame (sem `gfx`).
+    ///
+    /// ⚠️ Pela [`Self::scene_window`], nunca pela janela — ver o doc dela.
     pub(crate) fn vec_world_at(&self, screen: (f32, f32)) -> Option<[f64; 2]> {
         let gfx = self.gfx.as_ref()?;
-        let w = gfx.camera.screen_to_world(screen, gfx.surface.size());
+        let w = gfx.camera.screen_to_world(screen, self.scene_window()?);
         Some([f64::from(w[0]), f64::from(w[1])])
     }
 

@@ -162,7 +162,9 @@ viewport de render.
 
 ⏳ **O que fica por fazer, por ordem:**
 
-1. ✅ **o ricochete em fatias — FEITO (§8)**, e é o que o pôs no produto;
+1. ✅ **o ricochete em fatias — FEITO (§8)**; ⛔⛔ **e a segunda metade desta linha — *«é o que o põe
+   no produto»* — está REFUTADA pelo report do dono (§11).** Ela põe-no no caminho de **referência**,
+   que nasce DESLIGADO;
 2. o segundo **ricochete** (hoje a luz que sai do ponto acertado é só a directa dele);
 3. a parcela **especular** do indirecto (hoje é só o céu: uma irradiância por pixel não tem
    direcção, e o lóbulo especular pergunta por uma);
@@ -275,3 +277,67 @@ Na ordem do §7, menos o item 1 — mais o que as fatias deixaram nomeado:
 [`para_cada_vizinhanca`]: ../../crates/ph2d-field-render/src/occlusion.rs
 [`occlusion_slice`]: ../../crates/ph2d-field-render/src/occlusion.rs
 [`cone_dir`]: ../../crates/ph2d-field-render/src/occlusion.rs
+
+## §11 — ⛔⛔⛔ O REPORT DO DONO: *«não funciona, não clareia»*
+
+E ele tem razão: **o laço que a `§8` estendeu não corre no produto.**
+
+### §11.1 — A causa, com o endereço
+
+O quadro assente só refina se a [`preview::refines_occlusion`] disser que sim, e ela é
+
+```rust
+antialias && plate_parked && cpu_occlusion_enabled()
+```
+
+— e a terceira lê `PH2D_FIELD_AO`, que **não está posta**. O doc daquela função escreve a razão por
+extenso, e ela é uma decisão do próprio dono:
+
+> ⛔⛔⛔ **O REFINAMENTO DE CPU NASCE DESLIGADO — por veredito do dono e por medição.**
+> *«funciona mas com aspecto ruim, muito demorado e em etapas estranhas»* · *«mover os objetos ficou
+> muito lento»* … **a cura não é afinar isto — é o DISPOSITIVO** (`1 998 ms` contra **`5,00 ms`**,
+> `399,5×`).
+
+⇒ desde então o quadro assente do modelador vem da **placa**: a
+[`DeviceGbuffer::to_cpu`](../../crates/ph2d-field-gpu/src/trace_to_cpu.rs) entrega `t`, a normal, uma
+sombra por lâmpada e a **oclusão** — e **nenhum canal de ricochete**. O laço de CPU fica como
+*referência*, que é o molde *dois motores, uma lei* desta casa.
+
+### §11.2 — ⛔⛔ E a premissa REFUTADA é minha, escrita na §7 deste mesmo doc
+
+A fila dizia *«1. o ricochete em fatias … **é o que o põe no produto**»* e *«4. o dispositivo»*.
+**A ordem está invertida:** as fatias põem-no na referência, e quem o põe no produto é o
+dispositivo. *A `§7` foi escrita a olhar para a arquitectura do traçado de CPU, que deixou de ser o
+que o artista vê — e nada neste doc me obrigou a reconferir.*
+
+### §11.3 — ⛔⛔⛔ E o gate de costura que eu escrevi é a MESMA armadilha, um nível acima
+
+O [`render_bounce_seam_tests`](../../crates/ph2d-app-field3d/src/render_bounce_seam_tests.rs) prova
+que a thread do quadro assente passa **os materiais e as lâmpadas** ao refinamento — e é verdade, e
+é **inútil**, porque a chamada inteira está atrás de uma bandeira desligada.
+
+⚠️ É a família que o `CLAUDE.md §5.0` nomeia (*«um gate pode provar que o dado existe e que ele
+fecha, e não provar que ele CHEGA ao consumidor»*) com uma volta a mais: **eu gateei a costura de
+uma chamada que não acontece.** *Antes de gatear que um valor chega a uma porta, meça se a porta é
+chamada no caminho de omissão* — um `git grep` pelo predicado que a governa responde em dez
+segundos, e eu não o corri.
+
+### §11.4 — ⏳ O que a wave seguinte tem de fazer
+
+O ricochete **no dispositivo**, que é o item 4 da fila e afinal era o pré-requisito do item 1. O
+levantamento diz que a peça grande já lá está:
+
+| o que o ricochete precisa | no dispositivo hoje |
+|---|---|
+| marchar um raio e achar onde ele parou | ✅ [`marcha(r) -> vec4(t, normal)`](../../crates/ph2d-field-gpu/src/trace_wgsl.rs) |
+| o conjunto de direcções | ✅ `direccao_do_cone`, o `cone_dir` linha a linha |
+| a sombra no ponto acertado | ✅ `visivel(origem, dir, t_max, dureza)` |
+| o material do ponto acertado | ✅ a tabela `materiais` + `ler_mat` do [`paint.rs`](../../crates/ph2d-field-gpu/src/paint.rs) |
+| a luz directa daquele material | ✅ *«a luz que UM material devolve ao olho»*, o `radiance` da CPU |
+| **um canal por pixel para o levar** | ⛔ falta — o buffer de luz tem passo `1 + n_lâmpadas` |
+| **a paridade contra a referência** | ⛔ falta — é o que a `§8` acabou de tornar possível |
+
+⇒ *a wave é o laço e o canal, não o motor* — e a referência de CPU contra a qual ela se mede é
+exactamente o que esta jornada construiu.
+
+[`preview::refines_occlusion`]: ../../crates/ph2d-app-field3d/src/preview.rs

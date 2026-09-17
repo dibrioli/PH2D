@@ -517,8 +517,11 @@ INALCANÇÁVEL, cuja cura é OPOSTA à do morto.** ⚠️ *Um censo que procura 
 mortos nunca o encontraria: ele não é pintado, logo não entra na varredura.* O
 que o revelou foi o gate **imprimir** a população em vez de a contar em silêncio.
 
-⇒ o `uses_plane()` passa a conter o `Verb::Plane`, a população vai a **`7`**, e a
-célula nova passa a barra com folga (`1,28e-2`, a mais fraca de todas).
+⇒ o `uses_plane()` passou a conter o `Verb::Plane` e a população foi a **`7`**.
+
+⛔⛔⛔ **E o dono REPROVOU essa cura na mesma hora — ver a §64.** A ausência era
+**certa**; o que lhe faltava era o motivo escrito. *Curei uma lacuna de
+documentação criando um controlo que destrói a peça.*
 
 ⚠️⚠️ **E o gate que devia ter apanhado isto estava VERDE:** o
 `the_families_that_the_ui_asks_about_agree_with_the_verb_list` compara a lista
@@ -546,6 +549,91 @@ G-6 existe para apanhar — e que agora sangra sobre a lei certa) · a barra da
 discriminação acima do piso publicado · a coluna `discrimina?` a mentir numa
 célula · e uma candidata rejeitada a virar a do produto (que torna a metade (b)
 vácua).
+
+---
+
+## §64 — ⛔⛔⛔ O DONO REPROVOU O CONTROLO QUE EU ACABARA DE LIGAR (§63.5)
+
+> *«Plane Offset com resultado completamente errado. Primeira etapa: Plane Offset
+> = 0 — correto. Segunda: Plane Offset = −0,5 — bizarro.»* (três fotos: a peça
+> passa de bossas a lajes facetadas e depois a um barril irreconhecível)
+
+### §64.1 — O que a medição diz, e ela ILIBA a lei
+
+Sonda versionada `diag_o_deslocamento_do_plano` (a peça da cena `=47`: bossas de
+amplitude `0,09` sobre raio `1`, pincel `0,35`, oito dabs, **valores de fábrica**
+do verbo — tectos `1/0`, do perfil *aparar*):
+
+| deslocamento | vértices movidos | corte máximo |
+|---|---|---|
+| `−0,50` | `739` | **`0,3552`** (`2,2×` o corte de `0`) |
+| `−0,20` | `596` | `0,2732` |
+| `−0,10` | `456` | `0,2320` |
+| `−0,05` | `414` | `0,1942` |
+| **`0`** | `380` | `0,1633` |
+| `+0,05` | `354` | `0,1418` |
+| `+0,10` | `333` | `0,1216` |
+| `+0,20` | `216` | `0,0828` |
+| `+0,50` | **`2`** | **`0,0007`** — inerte |
+
+⭐ **A lei está certa e o knob é MONÓTONO** — nove posições, uma curva sem
+degraus. ⇒ *o defeito não é a lei nem a fiação: é a FAIXA.*
+
+### §64.2 — A assimetria é dos TECTOS, e isso separa duas leituras
+
+A mesma varredura com os tectos **bilaterais** (`1/1`, o perfil *achatar*):
+
+| deslocamento | movidos | corte máximo |
+|---|---|---|
+| `0` | `649` | `0,1863` |
+| `−0,50` | `794` | `0,3559` |
+| `+0,50` | **`478`** | **`0,1981`** — **vivo** |
+
+⇒ *com um tecto de um lado só, afastar o plano do material deixa de haver
+material para tirar* — a `+0,5` o plano já limpou o relevo inteiro. **A metade
+morta do slider é dos valores de fábrica deste pincel, não do knob.**
+
+### §64.3 — Porque a cura é RETIRAR, e não estreitar
+
+A fileira herdaria a faixa `−1 … +1` dos quatro verbos da casa. Nela, com os
+valores que o pincel ship: **metade do curso é inerte** e a outra **dobra o corte
+por passagem** — que é a foto do dono, ao fim de algumas passagens.
+
+⛔ **E eu não tenho de onde derivar uma faixa mais estreita.** O que a limita aqui
+é a **altura do relevo em raios de pincel**, que é da PEÇA e não do produto; e a
+faixa do alvo para este controlo **neste pincel** nunca foi medida — a §14.2 da
+espec publica só o valor de fábrica (`0`). *Escolher um número sem isso é o
+palpite que o `CLAUDE.md` §0.0 proíbe por escrito.*
+
+### §64.4 — ⚠️⚠️ A LIÇÃO, e ela é sobre o meu próprio instrumento
+
+O G-13 **imprimiu** a população e mostrou a ausência; eu li a ausência como um
+**controlo inalcançável** e liguei-a. ⛔ *Mas um censo de knobs MORTOS não podia
+proteger disto:* ele pergunta se o knob **move** o barro, e este move **de mais**.
+
+⇒ **«o painel esconde × o knob CHEGA» tem DUAS leituras, e elas são opostas:** o
+*inalcançável* (cura: ligar) e a *ausência DECIDIDA* (cura: escrever o motivo).
+⚠️ **A sonda vê as duas iguais** — a mesma forma que o §5.0 já regista para o
+morto contra o órfão, agora uma casa acima. *E o que me faltava para as separar
+não era um gate: era a medição da FAIXA, que ninguém tinha corrido.*
+
+### §64.5 — O que fica
+
+* `uses_plane()` volta a `Flatten · Fill · Scrape · Clay`, **com a tabela medida
+  no doc dele** — para ninguém a religar por leitura.
+* A população do G-13 volta a `6`.
+* Nasce `o_deslocamento_do_plano_nao_e_oferecido_ao_pincel_de_plano`, em **duas
+  metades**: o painel não o pinta, **e a lei continua a lê-lo** (medido `1,225e-1`
+  entre `0` e `−0,5`). ⛔ Sem a segunda, alguém leria a ausência como *«o verbo
+  não tem deslocamento»* e apagaria a lei, levando as duas fixturas
+  `lei_deslocado_*` e a §2.4 da espec com ela.
+* A sonda `diag_o_deslocamento_do_plano` fica **versionada** — é ela que produziu
+  as duas tabelas acima.
+
+⏳ **DECISÃO DO DONO, com o preço na mesa:** se ele quiser o controlo, ele volta
+no dia em que a faixa tiver de onde sair — e a pergunta que a destranca é *qual é
+a faixa que o alvo oferece para este controlo NESTE pincel*, que é um acto do
+**E** (correr o programa, não ler).
 
 ---
 

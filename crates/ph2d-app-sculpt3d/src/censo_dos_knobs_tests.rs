@@ -554,17 +554,21 @@ fn diag_a_pose_por_deformacao() {
 fn cada_verbo_le_o_corte_que_o_nosso_painel_lhe_oferece() {
     /// `73×` abaixo da menor mudança publicada num knob vivo do alvo.
     const BARRA: f32 = 1e-4;
-    /// ⭐ **PISO DE POPULAÇÃO** — `7` células, **CONTADAS e não escolhidas** (o
+    /// ⭐ **PISO DE POPULAÇÃO** — `6` células, **CONTADAS e não escolhidas** (o
     /// gate imprime-as). Sem ele, esconder os três knobs deixaria o gate **verde
     /// a medir nada** (`CLAUDE.md` §5.0).
     ///
-    /// ⭐⭐ **Ela era `6` e a 7.ª foi uma CURA que este gate provocou:** o
-    /// `Plane × plane_offset` não aparecia na lista impressa porque o painel
-    /// **não o pintava**, apesar de o verbo o ler desde que existe (o
-    /// `uses_plane` não o continha). *Um censo de knobs MORTOS é cego ao
-    /// INALCANÇÁVEL — o morto está pintado, o inalcançável não —, e o que o
-    /// revelou foi o gate imprimir a população em vez de a contar em silêncio.*
-    const PISO: usize = 7;
+    /// ⚠️⚠️ **Ela foi a `7` e voltou a `6` no mesmo dia.** Este gate imprimiu a
+    /// população e mostrou que o `Plane × plane_offset` não estava lá; eu li isso
+    /// como um **controlo inalcançável** e liguei a fileira — e o smoke do dono
+    /// devolveu-a: *«Plane Offset com resultado completamente errado»*. ⛔ A
+    /// ausência era **certa**; o que lhe faltava era o **motivo escrito**.
+    ///
+    /// ⭐ *E este gate não me podia proteger disso:* ele pergunta se o knob MOVE
+    /// o barro, e aquele move de mais. Quem afirma a ausência agora é o irmão
+    /// [`o_deslocamento_do_plano_nao_e_oferecido_ao_pincel_de_plano`], com a
+    /// tabela medida no doc do `Verb::uses_plane`.
+    const PISO: usize = 6;
 
     /// Como se põe um knob num dos dois extremos da varredura.
     type Varredura = fn(&mut Brush, bool);
@@ -625,4 +629,52 @@ fn cada_verbo_le_o_corte_que_o_nosso_painel_lhe_oferece() {
         pior.0,
         pior.1
     );
+}
+
+/// ⛔⛔⛔ **O DESLOCAMENTO DO PLANO NÃO É OFERECIDO AO PINCEL DE PLANO — e isso é
+/// uma DECISÃO, não um esquecimento.**
+///
+/// Veredito do dono, 2026-09-17, com foto: *«Plane Offset com resultado
+/// completamente errado. Plane Offset = 0 correto; −0,5 bizarro»*.
+///
+/// # As DUAS metades, e a segunda é a que torna a primeira honesta
+///
+/// 1. o painel **não pinta** a fileira com este verbo na mão;
+/// 2. a **LEI continua a lê-lo** — o mesmo gesto com `0` e com `−0,5` dá barro
+///    diferente. ⛔ Sem esta metade, alguém leria a ausência como *«o verbo não
+///    tem deslocamento»* e apagaria a lei, levando as duas fixturas do corpus
+///    (`lei_deslocado_m02` e `_p02`) e a §2.4 da espec com ela.
+///
+/// ⚠️ *Esconder um knob VIVO e esconder um knob MORTO leem-se igual numa tabela;
+/// o que os separa é a medição escrita ao lado* — e ela está no doc do
+/// [`ph2d_sculpt3d::Verb::uses_plane`], com as sete posições do slider.
+///
+/// ⏳ **O que falta para o reabrir é um NÚMERO:** a faixa `−1 … +1` que a fileira
+/// herdaria dos quatro verbos da casa tem **metade do curso inerte** e a outra
+/// metade a **dobrar o corte**; uma faixa mais estreita teria de sair de um
+/// recurso medido, e o que a limita aqui é a altura do relevo em raios de
+/// pincel, que é da PEÇA e não do produto.
+#[test]
+fn o_deslocamento_do_plano_nao_e_oferecido_ao_pincel_de_plano() {
+    let ui = painel_com(Verb::Plane);
+    assert!(
+        !pintado(&ui, "panel.sculpt3d.plane_offset"),
+        "o painel voltou a oferecer o `Plane Offset` ao pincel de plano — e a \
+         medicao que o tirou esta' no doc do `Verb::uses_plane`: metade do curso \
+         e' inerte e a outra dobra o corte por passagem"
+    );
+
+    // ⭐ **A metade que impede a leitura errada:** a lei LÊ o knob, e é por isso
+    // que o que está escondido é um controlo e não uma capacidade.
+    let (mut a, mut b) = (pincel(Verb::Plane), pincel(Verb::Plane));
+    a.plane_offset = 0.0;
+    b.plane_offset = -0.5;
+    let d = desvio(&corre(&a), &corre(&b));
+    assert!(
+        d > 1e-3,
+        "o deslocamento deixou de mover o barro deste verbo ({d:.3e}) — entao o \
+         que esta' escondido ja' nao e' um controlo, e' uma lei morta: ou ela \
+         volta, ou as duas fixturas `lei_deslocado_*` deixam de medir o produto"
+    );
+    println!("o deslocamento do pincel de plano: escondido, e VIVO ({d:.3e})");
 }

@@ -102,3 +102,116 @@ pub(crate) fn announce() {
          [sculpt3d]    barro.\n"
     );
 }
+
+/// **SONDA — o que o `Plane Offset` de facto faz na peça desta cena.**
+///
+/// ```text
+/// cargo test -p ph2d-app-sculpt3d --lib diag_o_deslocamento_do_plano -- --ignored --nocapture
+/// ```
+#[cfg(test)]
+mod diag {
+    use ph2d_mesh::Mesh;
+    use ph2d_panel_sculpt3d::slots::VerbSlot;
+    use ph2d_sculpt3d::{Dab, SculptStroke, Symmetry, Verb};
+
+    fn corre(offset: f32, dabs: usize) -> (Mesh, Mesh) {
+        corre_com(offset, dabs, None)
+    }
+
+    fn corre_com(offset: f32, dabs: usize, tectos: Option<(f32, f32)>) -> (Mesh, Mesh) {
+        let base = super::peca();
+        let mut m = base.clone();
+        let mut b = VerbSlot::for_verb(Verb::Plane).brush;
+        b.radius = 0.35;
+        b.plane_offset = offset;
+        if let Some((alt, prof)) = tectos {
+            b.plano_altura = alt;
+            b.plano_profundidade = prof;
+        }
+        let olho = [0.0, 0.0, -1.0];
+        let mut s = SculptStroke::default();
+        s.begin(&m);
+        // ⚠️ **O centro tem de estar SOBRE a peça** — a 1.ª redacção pôs o cursor
+        // em `z = 1,2`, fora de uma bola de raio `1,09`, e a sonda leu `0`
+        // movidos em todas as linhas. *Uma sonda que não toca nada lê-se como um
+        // knob morto.*
+        for k in 0..dabs {
+            let x = -0.25 + 0.5 * (k as f32) / ((dabs - 1).max(1) as f32);
+            let alvo = [x, 0.0, 1.0];
+            let centro = *m
+                .positions()
+                .iter()
+                .min_by(|a, c| {
+                    let d = |q: &[f32; 3]| {
+                        (q[0] - alvo[0]).powi(2)
+                            + (q[1] - alvo[1]).powi(2)
+                            + (q[2] - alvo[2]).powi(2)
+                    };
+                    d(a).total_cmp(&d(c))
+                })
+                .expect("a peca tem vertices");
+            s.dab(
+                &mut m,
+                &b,
+                &Dab::at(centro, b.radius, olho),
+                Symmetry::default(),
+            );
+        }
+        (base, m)
+    }
+
+    #[test]
+    #[ignore]
+    fn diag_o_deslocamento_do_plano() {
+        println!(
+            "{:>8} {:>8} {:>10} {:>10} {:>10} {:>10}",
+            "offset", "movidos", "max|d|", "medio|d|", "raio_toc", "raio/R"
+        );
+        for offset in [0.0f32, -0.5, -0.2, -0.1, -0.05, 0.05, 0.1, 0.2, 0.5] {
+            let (base, m) = corre(offset, 8);
+            let (mut movidos, mut maxd, mut soma) = (0usize, 0.0f32, 0.0f64);
+            let mut raio_toc = 0.0f32;
+            for (i, p) in m.positions().iter().enumerate() {
+                let r = base.positions()[i];
+                let d =
+                    ((p[0] - r[0]).powi(2) + (p[1] - r[1]).powi(2) + (p[2] - r[2]).powi(2)).sqrt();
+                if d > 0.0 {
+                    movidos += 1;
+                    maxd = maxd.max(d);
+                    soma += f64::from(d);
+                    // distancia do vertice ao EIXO do traco (que corre em x, z~1.2)
+                    let lateral = (r[1] * r[1]).sqrt();
+                    raio_toc = raio_toc.max(lateral);
+                }
+            }
+            println!(
+                "{offset:>8.2} {movidos:>8} {maxd:>10.4} {:>10.4} {raio_toc:>10.4} {:>10.2}",
+                if movidos > 0 {
+                    soma / movidos as f64
+                } else {
+                    0.0
+                },
+                raio_toc / 0.35
+            );
+        }
+
+        // A MESMA varredura com os tectos BILATERAIS (o perfil *achatar*), para
+        // separar «o knob e' assimetrico» de «os tectos de fabrica sao de UM
+        // lado so'».
+        println!("\n-- com tectos 1/1 (bilateral, o perfil *achatar*) --");
+        for offset in [0.0f32, -0.5, 0.5] {
+            let (base, m) = corre_com(offset, 8, Some((1.0, 1.0)));
+            let (mut movidos, mut maxd) = (0usize, 0.0f32);
+            for (i, q) in m.positions().iter().enumerate() {
+                let r = base.positions()[i];
+                let d =
+                    ((q[0] - r[0]).powi(2) + (q[1] - r[1]).powi(2) + (q[2] - r[2]).powi(2)).sqrt();
+                if d > 0.0 {
+                    movidos += 1;
+                    maxd = maxd.max(d);
+                }
+            }
+            println!("{offset:>8.2} {movidos:>8} {maxd:>10.4}");
+        }
+    }
+}

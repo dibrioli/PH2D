@@ -30,35 +30,56 @@ impl Verb {
     /// Este verbo ajusta um plano à pegada do dab? (Quem responde `true` usa o
     /// knob `plane_offset`.)
     ///
-    /// ⛔⛔⛔ **O [`Self::Plane`] entrou aqui em 2026-09-17, e a ausência dele era
-    /// um CONTROLO INALCANÇÁVEL.** Ele lê o `plane_offset` desde que existe — o
-    /// [`crate::plano_da_pegada`] faz `lift = dab.radius × plane_offset`, a espec
-    /// §2.4 mede-o (`+0,2` num raio `0,4` move o plano `+0,08000`, razão `0,2000`
-    /// ao dígito impresso) e **duas fixturas do corpus o exercitam** — e o painel
-    /// **não lhe oferecia a fileira**, porque o único consumidor deste predicado
-    /// é o `show` dela.
+    /// # ⛔⛔⛔ O [`Self::Plane`] ficou FORA — e ele entrou e saiu no mesmo dia
     ///
-    /// ⚠️ **Quem o apanhou foi o G-13**, ao IMPRIMIR a população que mede: a
-    /// lista saiu `Flatten · Fill · Scrape · Clay` no deslocamento e `Plane` só
-    /// nos dois tectos. *É a coluna «o painel esconde × o knob CHEGA» da tabela
-    /// do próprio censo — o **inalcançável**, cuja cura é OPOSTA à do morto: um
-    /// liga-se, o outro apaga-se.* ⛔ Um censo que só procura knobs mortos nunca
-    /// o encontraria: ele não é pintado, logo não entra na varredura.
+    /// Ele **lê** o `plane_offset` (o [`crate::plano_da_pegada`] faz
+    /// `lift = raio × plane_offset`, espec §2.4, com duas fixturas a
+    /// exercitá-lo), e em 2026-09-17 eu pu-lo aqui a chamar-lhe *controlo
+    /// inalcançável*. ⛔ **O smoke do dono devolveu-o na mesma hora:**
+    /// *«Plane Offset com resultado completamente errado»*, com foto da peça
+    /// destruída.
     ///
-    /// ⚠️⚠️ **E o plano que o [`Self::Plane`] ajusta NÃO é o dos outros quatro** —
-    /// eles usam o [`crate::stroke::plane`] (portado, pesado pela máscara sobre a
-    /// pegada inteira) e ele usa o [`crate::plano_da_pegada`] (curva suave, dois
-    /// raios próprios), que diferem `17,1 %` do raio no centro. ⇒ *este predicado
-    /// responde «este verbo LÊ o `plane_offset`», e não «qual lei de plano ele
-    /// corre»* — quem o usar para ROTEAR entrega o plano errado, que é o defeito
-    /// que a porta de bancada [`crate::SculptStroke::plano_do_ultimo_dab_para_teste`]
-    /// já pagou.
-    #[must_use]
+    /// ⭐⭐ **Medido depois, na peça da cena `=47`** (bossas de amplitude `0,09`,
+    /// raio do pincel `0,35`, oito dabs, valores de fábrica do verbo — tectos
+    /// `1/0`, do perfil *aparar*):
+    ///
+    /// | deslocamento | vértices movidos | corte máximo |
+    /// |---|---|---|
+    /// | `−0,50` | `739` | **`0,3552`** (`2,2×`) |
+    /// | `−0,20` | `596` | `0,2732` |
+    /// | `−0,10` | `456` | `0,2320` |
+    /// | **`0`** | `380` | `0,1633` |
+    /// | `+0,10` | `333` | `0,1216` |
+    /// | `+0,20` | `216` | `0,0828` |
+    /// | `+0,50` | **`2`** | **`0,0007`** — inerte |
+    ///
+    /// ⇒ **a lei está certa e o knob é MONÓTONO; o que não serve é a FAIXA.** A
+    /// fileira herdaria o `−1 … +1` dos quatro verbos da casa, e nessa faixa
+    /// **metade do curso é inerte** (a partir de `+0,5` o plano já limpou o
+    /// relevo inteiro) e a outra metade **dobra o corte por passagem** — que é a
+    /// foto do dono, depois de algumas passagens.
+    ///
+    /// ⚠️ **A assimetria é dos TECTOS e não do knob**, e isso está medido: com os
+    /// tectos bilaterais (`1/1`, o perfil *achatar*) o `+0,50` move `478`
+    /// vértices e corta `0,1981`. *Com um tecto de um lado só, afastar o plano
+    /// do material deixa de ter material para tirar.*
+    ///
+    /// ⛔⛔ **E a minha leitura de «inalcançável» estava ERRADA no sentido que
+    /// importa:** a ausência da fileira era **certa** e o que lhe faltava era um
+    /// MOTIVO ESCRITO. *Curei a falta de documentação criando um controlo que
+    /// destrói a peça* — e um censo de knobs mortos não me podia proteger disso,
+    /// porque ele mede se o knob MOVE o barro e este move de mais.
+    ///
+    /// ⏳ **Para o reabrir falta um NÚMERO:** a faixa teria de sair de um recurso
+    /// medido, e o que a limita aqui é a **altura do relevo em raios de pincel**,
+    /// que é da peça e não do produto. ⛔ A faixa do alvo para este controlo
+    /// **neste pincel** nunca foi medida (a §14.2 publica só o valor de fábrica,
+    /// `0`) — *e escolher um número sem isso é o palpite que o §0.0 proíbe.*
+    /// Enquanto isso, a capacidade continua alcançável por script e pelas
+    /// fixturas, e o gate `o_deslocamento_do_plano_nao_e_oferecido_ao_pincel_de_plano`
+    /// afirma as duas metades.
     pub fn uses_plane(self) -> bool {
-        matches!(
-            self,
-            Self::Flatten | Self::Fill | Self::Scrape | Self::Clay | Self::Plane
-        )
+        matches!(self, Self::Flatten | Self::Fill | Self::Scrape | Self::Clay)
     }
 
     /// Este verbo lê o anel de vizinhos? (Quem responde `true` custa a

@@ -1,0 +1,323 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · Coisas que se seguram</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+    --src: #5f9e79; --tra: #6f86c9; --out: #c96a6a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  h4 { font-size:13px; margin:14px 0 4px; color:var(--t1); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .figs { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+  .figs.two { grid-template-columns:repeat(2,1fr); }
+  .fig { background:var(--card); border:1px solid var(--line); border-radius:10px;
+         padding:8px; text-align:center; break-inside:avoid; }
+  .fig img { width:100%; display:block; border-radius:6px; }
+  .fig figcaption { font-size:11px; color:var(--t2); margin-top:6px; }
+  .fig b { color:var(--t1); display:block; font-size:12.5px; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .key { font-size:11.5px; color:var(--t2); margin-top:8px; display:flex; flex-wrap:wrap; gap:14px; }
+  .key i { font-style:normal; display:inline-flex; align-items:center; gap:6px; }
+  .key s { width:16px; height:3px; border-radius:2px; display:inline-block; text-decoration:none; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .card-demo { background:var(--card); border:1px solid var(--line); border-radius:9px;
+       width:230px; overflow:hidden; font-size:11px; }
+  .card-demo .h { padding:5px 9px; font-weight:600; color:#0e0d10; font-size:11.5px; }
+  .card-demo .rows { padding:6px; display:grid; gap:3px; }
+  .card-demo .r { background:#0b0a0e; border-radius:4px; padding:3px 7px; display:flex;
+       justify-content:space-between; position:relative; overflow:hidden; }
+  .card-demo .r i { position:absolute; inset:0 auto 0 0; background:#3b3350; }
+  .card-demo .r span { position:relative; }
+  .card-demo .r .n { color:var(--t1); }
+  .card-demo .r .l { color:var(--t2); }
+  .card-demo .sec { color:var(--t3); padding:3px 7px; font-size:10.5px; }
+  .two-col { display:grid; grid-template-columns:230px 1fr; gap:16px; align-items:start; }
+  .params { font-size:11px; }
+  .params h4 { margin-top:12px; }
+  .soft { color:var(--t3); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+<h1>Coisas que se seguram
+  <small>PH2D · Motion Nodes · tutorial 9 — o que faz um monte de peças <b>ficar junto</b>: uma
+  corda, um campo de onda, uma corrente de ossos e a pele que os segue</small></h1>
+
+<p>Os oito tutoriais anteriores fizeram coisas <b>às</b> peças — puseram-nas na tela, fizeram-nas
+andar, dobraram-nas, escolheram quem é afetado, entregaram-nas a uma lei, deram-lhes uma cara — e
+o último respondeu <b>de onde elas vêm</b>. Falta a pergunta que está por baixo de tudo o que se
+anima a sério: <b>o que faz um monte de peças deixar de ser um monte</b>.</p>
+
+<p>Dez cartões respondem a isso, e eles vivem em <b>duas metades</b> que fazem coisas opostas.
+Cinco <b>produzem</b> uma coisa que já se segura sozinha; cinco <b>agem</b> sobre uma coisa que
+alguém lhes deu. A cena é essa partição:</p>
+
+<table>
+  <tr><th>fileira</th><th>a pergunta</th><th>o par</th></tr>
+  <tr><td><b>cima</b></td><td>e se a coisa <b>se segurar sozinha</b>?</td>
+      <td><code>Verlet Rope</code> contra <code>Wave</code></td></tr>
+  <tr><td><b>meio</b></td><td>e se <b>eu</b> quiser segurá-la?</td>
+      <td><code>FK</code> contra <code>IK 2-Bone</code></td></tr>
+  <tr><td><b>baixo</b></td><td>e quanto é que <b>cada osso</b> segura?</td>
+      <td>a pele com todos iguais contra a pele com um <b>quinhão</b> por osso</td></tr>
+</table>
+
+<div class="note"><b>Nenhum destes cartões inventa movimento bonito por si.</b> O que eles dão é
+uma <b>relação</b>: este ponto puxa aquele, esta junta manda naquela, este osso pesa nesta parte da
+pele. Tudo o que os oito tutoriais anteriores ensinaram continua a valer por cima disso, sem mudar
+uma linha.</div>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=120 cargo run -p ph2d-host-desktop --profile smoke</div>
+
+<ol class="steps">
+  <li><b>Carregue em <kbd>Play</kbd>.</b>
+      <div class="out">Seis panos, em três fileiras. A de <b>cima</b> mexe-se sozinha (a corda
+      balança, o campo ondula) e a do <b>meio</b> também (o ponto que varre é o alvo). A de
+      <b>baixo</b> fica <b>parada</b>, e é de propósito: uma pele não tem tempo — ela segue os
+      ossos.</div>
+      <div class="bad">Se algum pano estiver <b>vazio</b>, a fonte dele não entregou nada —
+      avise, e diga qual.</div></li>
+</ol>
+
+<h2>2 · Em cima: o que se segura sozinho</h2>
+
+<p>À <b>esquerda</b> está uma <b>corda</b>. Ninguém lhe desenhou a forma: cada ponto está preso ao
+vizinho por uma distância, a gravidade puxa todos, e a curva que você vê é o que <em>sobra</em>
+dessa discussão, resolvida sessenta vezes por segundo.</p>
+
+<p>À <b>direita</b> está um <b>campo de onda</b>, visto de cima. Cada célula empurra as quatro
+vizinhas, e uma fonte no meio sobe e desce. O que você vê são <b>anéis</b> a crescer do centro
+para fora — as peças <b>engordam</b> com a altura da onda.</p>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/rig_corda.svg" alt="vinte marcas numa curva pendurada">
+    <b>Verlet Rope</b>
+    <figcaption><strong>20</strong> pontos — a forma é consequência, não desenho</figcaption></figure>
+  <figure class="fig"><img src="../fig/rig_campo.svg" alt="grelha de onze por onze com as marcas do meio maiores">
+    <b>Wave</b>
+    <figcaption><strong>121</strong> células — o tamanho de cada uma <em>é</em> a altura</figcaption></figure>
+</div>
+
+<ol class="steps" start="2" style="counter-reset:s 1">
+  <li><b>Clique no cartão <code>Verlet Rope: a corda</code></b> e suba a linha
+      <code>Gravity</code>.
+      <div class="out">A corda cai mais depressa e balança menos. Baixe-a até perto de zero e ela
+      fica a flutuar.</div></li>
+  <li><b>Clique no cartão <code>Wave: o campo</code></b> e mude a linha
+      <code>Height Drives</code> de <code>Size</code> para <code>Y</code>.
+      <div class="out">As peças deixam de engordar e passam a <b>subir e descer</b>. É a
+      <em>mesma</em> onda, escrita noutro sítio. Volte a <code>Size</code> depois de ver.</div></li>
+  <li><b>Ainda no <code>Wave</code>, escreva nesta ordem</b>: <code>512</code> na linha
+      <code>Rows</code>, <code>512</code> em <code>Cols</code>, e <code>0.004</code> em
+      <code>Spacing</code>.
+      <div class="out">O pano enche-se de <b>meio milhão</b> de células e a onda continua a correr
+      sem o programa engasgar.</div></li>
+</ol>
+
+<div class="note"><b>Até esta volta de trabalho aquele campo parava em 60 de cada lado.</b> O
+número não era de nenhum recurso — era um palpite. Medido, ele custa <b>0,06 %</b> de um quadro no
+tamanho antigo e <b>6 %</b> a 512×512. O irmão dele, o corpo mole, já permitia 512 e é
+<em>mais</em> caro: o cartão mais barato tinha o limite mais apertado.</div>
+
+<h2>3 · No meio: quem segura</h2>
+
+<p>Os dois panos têm a <b>mesma</b> corrente de cinco juntas. O que muda é <b>quem escreve o
+quê</b>, e as duas maneiras estão certas:</p>
+
+<table>
+  <tr><th></th><th>eu digo…</th><th>o programa acha…</th></tr>
+  <tr><td><b>FK</b> (esquerda)</td><td>o <b>ângulo</b> de cada junta</td>
+      <td>onde a corrente vai parar</td></tr>
+  <tr><td><b>IK</b> (direita)</td><td>onde a <b>mão</b> tem de estar</td>
+      <td>os ângulos que a põem lá</td></tr>
+</table>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/rig_fk.svg" alt="cinco marcas ligadas numa curva que se enrola">
+    <b>FK</b>
+    <figcaption>cada junta dobra o seu tanto — a corrente enrola</figcaption></figure>
+  <figure class="fig"><img src="../fig/rig_ik.svg" alt="cinco marcas ligadas a esticarem-se para cima e para a direita">
+    <b>IK 2-Bone</b>
+    <figcaption>a ponta está no alvo; os ângulos foram achados</figcaption></figure>
+</div>
+
+<ol class="steps" start="5" style="counter-reset:s 4">
+  <li><b>Olhe para o pano da direita enquanto o ponto varre.</b>
+      <div class="out">A mão nunca larga o alvo. O cotovelo é que se arranja.</div></li>
+  <li><b>Clique no cartão <code>Strength: quanto a restricao puxa</code></b> (o da direita) e
+      baixe a linha <code>Radius</code> de 20 até perto de 1.
+      <div class="out">A mão <b>deixa de chegar</b> ao alvo e fica a meio caminho: a força da
+      restrição deixou de valer para os ossos mais distantes. Ponha <code>Radius</code> de volta
+      em 20 e a mão volta a agarrar.</div></li>
+  <li><b>No pano da <em>esquerda</em>, clique no cartão
+      <code>Drive: o angulo de cada junta</code></b> (o que está antes do
+      <code>FK: os pais decidem</code>) e mude a linha <code>Scale</code>.
+      <div class="out">Cada junta dobra mais — ou menos — e a corrente inteira enrola. O ângulo é
+      <b>de cada junta</b>, não da corrente.</div></li>
+</ol>
+
+<div class="note"><b>A força de uma restrição não é um botão do solver: é uma coluna.</b> O cartão
+<code>Strength</code> é um <em>campo</em> — o mesmo tipo de cartão que o tutorial 4 usou para
+escolher <b>quem</b> é afetado — e o que ele escreve serve os <b>três</b> solvers deste grupo
+(<code>IK 2-Bone</code>, <code>FABRIK</code> e <code>Rubber Hose</code>) sem que nenhum deles tenha
+um controlo próprio para isso.</div>
+
+<h2>4 · Em baixo: a pele</h2>
+
+<p>Os dois panos têm a <b>mesma manga</b> de 21 peças vestida na <b>mesma</b> corrente dobrada. A
+pele não sabe nada de ossos: ela vê a corrente <b>em repouso</b>, vê a corrente <b>dobrada</b>, e
+segue a diferença.</p>
+
+<p>À <b>esquerda</b> todos os ossos puxam por igual e a manga dobra inteira. À <b>direita</b> os
+<b>dois últimos ossos não puxam nada</b> — a metade de cima da manga fica direita, como uma manga
+larga que não acompanha o cotovelo.</p>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/rig_pele_igual.svg" alt="malha de tres por sete dobrada ao longo de uma curva">
+    <b>todos iguais</b>
+    <figcaption>a manga acompanha a corrente do princípio ao fim</figcaption></figure>
+  <figure class="fig"><img src="../fig/rig_pele_quinhao.svg" alt="malha de tres por sete dobrada em baixo e direita em cima">
+    <b>um quinhão por osso</b>
+    <figcaption>os dois últimos ossos têm quinhão zero</figcaption></figure>
+</div>
+
+<ol class="steps" start="8" style="counter-reset:s 7">
+  <li><b>Compare as duas mangas.</b>
+      <div class="out">A da direita só dobra em <b>baixo</b>. É o mesmo esqueleto e a mesma
+      pele — muda quanto cada osso <em>pesa</em>.</div></li>
+  <li><b>Clique no cartão <code>Range: que ossos puxam</code></b> (pano da direita) e suba a linha
+      <code>End</code> até 1.
+      <div class="out">Agora todos os ossos puxam, e a manga da direita fica <b>igual</b> à da
+      esquerda.</div></li>
+  <li><b>Baixe <code>End</code> até 0.</b>
+      <div class="out">Nenhum osso puxa: a manga fica <b>direita por completo</b>, exatamente onde
+      a grelha a pôs.</div></li>
+</ol>
+
+<div class="note"><b>São três cartões, e é a mesma receita do passo 6.</b> Um <b>campo</b> decide
+o <em>quanto</em>; o <code>Attribute</code> lê esse número; o <code>Drive</code> escreve-o na
+coluna que você nomear. No passo 6 a coluna era a força de uma restrição; aqui é o peso de um
+osso. <b>Não há um cartão por coluna</b> — há um cartão que escreve <em>qualquer</em> coluna.</div>
+
+<h2>5 · Vá além</h2>
+
+<ol class="steps" start="11" style="counter-reset:s 10">
+  <li><b>Ponha um campo do tutorial 4 no lugar do <code>Range</code></b> — um
+      <code>Falloff</code> redondo, por exemplo.
+      <div class="out">O peso de cada osso passa a depender de <b>onde ele está</b>, e não da
+      ordem dele na corrente.</div></li>
+  <li><b>Ligue a saída da corda a um <code>Trail</code></b> (tutorial 7).
+      <div class="out">Cada ponto da corda deixa rasto: a corda passa a desenhar por onde
+      andou.</div></li>
+  <li><b>Anime o alvo do <code>IK</code> com um <code>Oscillator</code> nos dois eixos</b>
+      (tutorial 2).
+      <div class="out">O braço passa a desenhar a figura que o alvo desenha. É assim que se anima
+      um membro sem tocar num ângulo.</div></li>
+</ol>
+
+<h2>6 · O resto do grupo</h2>
+
+<p>São dez cartões. A cena mostra seis; os outros quatro fazem o que estes seis já ensinaram, com
+outra forma.</p>
+
+<table>
+  <tr><th>quando você quer…</th><th>procure por</th></tr>
+  <tr><td>uma <b>corda</b>, uma corrente, um chicote</td><td><code>Verlet Rope</code></td></tr>
+  <tr><td>água, uma bandeira, um pano que <b>ondula</b></td><td><code>Wave</code></td></tr>
+  <tr><td>uma coisa <b>mole</b> que se amassa e volta à forma</td><td><code>Soft Body</code> —
+      tem cena própria</td></tr>
+  <tr><td>um <b>bando</b> que se junta e desvia</td><td><code>Boids</code> — tem cena própria</td></tr>
+  <tr><td>uma <b>corrente de ossos</b> para segurar o resto</td><td><code>Skeleton</code></td></tr>
+  <tr><td>resolver a corrente <b>dos pais para os filhos</b></td><td><code>FK</code></td></tr>
+  <tr><td>pôr a <b>mão</b> num sítio, com dois ossos</td><td><code>IK 2-Bone</code></td></tr>
+  <tr><td>o mesmo com <b>muitas</b> juntas (uma cauda, uma tromba)</td><td><code>FABRIK</code></td></tr>
+  <tr><td>um braço de <b>borracha</b>, sem cotovelo à vista</td><td><code>Rubber Hose</code></td></tr>
+  <tr><td>uma <b>pele</b> que segue os ossos</td><td><code>Skin</code></td></tr>
+</table>
+
+<div class="note"><b>Os três solvers fazem a mesma pergunta com carácter diferente.</b> O
+<code>IK 2-Bone</code> resolve <em>exatamente</em> e serve um braço ou uma perna; o
+<code>FABRIK</code> resolve por aproximação e serve correntes longas; o <code>Rubber Hose</code> é
+o braço de desenho animado, que dobra sem cotovelo. Os três leem a <b>mesma</b> coluna de força —
+o que você aprendeu no passo 6 vale para os três.</div>
+
+<h2>7 · O que isto custa</h2>
+
+<p>Este grupo é o primeiro em que <b>quase nada corre na placa gráfica</b>: nove dos dez cartões
+só têm caminho no processador. Isso não é um defeito escondido — é uma conta, e ela está feita.</p>
+
+<table>
+  <tr><th>o cartão</th><th>o tamanho</th><th class="n">por quadro</th><th class="n">de um quadro</th></tr>
+  <tr><td><code>Verlet Rope</code></td><td>uma corda de 200 pontos</td>
+      <td class="n">0,055&nbsp;ms</td><td class="n">0,3&nbsp;%</td></tr>
+  <tr><td><code>Wave</code></td><td>60×60 (o limite antigo)</td>
+      <td class="n">0,010&nbsp;ms</td><td class="n">0,06&nbsp;%</td></tr>
+  <tr><td><code>Wave</code></td><td>512×512 (o limite de hoje)</td>
+      <td class="n">1,32&nbsp;ms</td><td class="n">7,9&nbsp;%</td></tr>
+  <tr><td><code>Soft Body</code></td><td>512×512</td>
+      <td class="n">2,26&nbsp;ms</td><td class="n">13,6&nbsp;%</td></tr>
+  <tr><td><code>Boids</code></td><td>3 600 no processador</td>
+      <td class="n"><b>13,77&nbsp;ms</b></td><td class="n"><b>82,6&nbsp;%</b></td></tr>
+</table>
+
+<div class="note"><b>A última linha é a que interessa, e é uma boa notícia.</b> O
+<code>Boids</code> é o <em>único</em> deste grupo que <b>tem</b> caminho na placa gráfica — e
+aquele número é o que ele custa quando cai para o processador. Cada agente olha para todos os
+outros, por isso dobrar o bando custa quatro vezes mais. É por isso que um bando grande
+<b>precisa</b> da placa, e os outros nove não: uma corda de 200 pontos gasta três décimos de um
+por cento.</div>
+
+<h2>8 · Se algo não bater</h2>
+
+<ul>
+  <li>A corda <b>não balança</b> ao dar <kbd>Play</kbd> → ela está a recomeçar do zero a cada
+      quadro; avise.</li>
+  <li>O campo fica uma <b>grelha parada</b> → a fonte do meio não está a ser alimentada.</li>
+  <li>Os dois panos do <b>meio</b> iguais → o alvo não chega ao solver, e o <code>IK</code> está a
+      devolver a pose de repouso.</li>
+  <li>Os dois panos de <b>baixo</b> iguais → o quinhão por osso não chega à pele. É a novidade
+      deste ciclo; se falhar, é aqui.</li>
+  <li>Algum pano <b>vazio</b> → a fonte dele não entregou nada. Avise, e diga qual.</li>
+</ul>
+
+<footer>PH2D · Motion Nodes · tutorial 9 de uma série · cena
+<code>PH2D_GPU_COOK_DEMO=120</code> · as figuras são saída do motor, não desenhos · os números da
+secção 7 foram medidos em 2026-09-17.</footer>

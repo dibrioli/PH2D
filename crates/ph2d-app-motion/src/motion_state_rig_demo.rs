@@ -387,6 +387,10 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         let y = grafo_y(1, 0);
         let e = esqueleto(doc, y);
         let dobra = caneta(doc, e, COLUNA_ROT, FK_DOBRA, y)?;
+        // ⚠️ **O rótulo não é enfeite: o passo 7 do tutorial manda clicar NESTE cartão**, e a cena
+        // tem quatro `motion.drive`. *Um passo que diz «o Drive» num grafo com quatro é um passo
+        // que o dono não consegue executar.*
+        doc.graph.set_label(dobra, "Drive: o angulo de cada junta");
         let f = no(doc, "rig.fk", 120.0, y);
         doc.graph.set_label(f, "FK: os pais decidem");
         liga(doc, dobra, (f, 0))?;
@@ -458,3 +462,7 @@ pub(super) fn captions() -> Vec<Caption> {
 #[cfg(test)]
 #[path = "motion_state_rig_demo_tests.rs"]
 mod tests;
+/// Os gates do TUTORIAL deste ciclo — irmãos dos da cena pelo teto de LOC; ver o cabeçalho deles.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_state_rig_tutorial_tests.rs"]
+mod tutorial_tests;

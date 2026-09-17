@@ -322,7 +322,7 @@ pub(super) fn rig() {
      do meio para fora -- as pecas ENGORDAM com a altura da onda.
   3. Clique no cartao `Verlet Rope: a corda` e suba a linha `Gravity`: a corda cai mais
      depressa e balanca menos. Baixe-a ate' perto de zero: ela fica a flutuar.
-  4. Clique no cartao `Wave: o campo` e mude a linha `Height Channel` de `Size` para
+  4. Clique no cartao `Wave: o campo` e mude a linha `Height Drives` de `Size` para
      `Y`: as pecas deixam de engordar e passam a SUBIR e DESCER. E' a MESMA onda,
      escrita noutro sitio. Volte a `Size` depois de ver.
   5. Ainda no cartao `Wave`, escreva nesta ordem: `512` na linha `Rows`, `512` em `Cols`

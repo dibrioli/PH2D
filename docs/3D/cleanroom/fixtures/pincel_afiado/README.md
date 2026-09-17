@@ -7,13 +7,18 @@ de saída, e (conforme a família) os estados intermédios dab a dab ou passagem
 ⚠️ **A contagem sai do directório, nunca desta prosa:**
 `find docs/3D/cleanroom/fixtures/pincel_afiado -name '*.txt.gz' | wc -l`.
 
-| família | ficheiros | o que ela fixa |
-|---|---|---|
-| [`lei/`](lei/) | **17** | a lei de **um** dab, um knob de cada vez (curva, força, dureza, raio da normal, máscara, faces de frente, pegada projectada, plano do pen-down, controlo do desenho comum) |
-| [`cadeia/`](cadeia/) | **10** | **cadeias** de dabs dados por script, com o estado depois de CADA dab (`d<j>`): de onde se mede a distância, de onde vem a normal, o que o acumular muda, a auto-limitação |
-| [`produto/`](produto/) | **35** | o **produto**: traços arrastados com o rato, os valores de fábrica, o pincel tal como nasce no catálogo, oito passagens contínuas e separadas, três densidades, superfície curva, malha em triângulos, a ablação e o motor do alvo com os valores da nossa casa |
-| [`detector/`](detector/) | **15** | o **passo** do traço: um salto curto do rato e quantos dabs ele deposita |
-| [`artefacto_caixa/`](artefacto_caixa/) | **3** | um **artefacto do alvo que NÃO se copia** (ver §4 abaixo) |
+| família | ficheiros | o que ela fixa | nos gates (espec §12) |
+|---|---|---|---|
+| [`lei/`](lei/) | **17** | a lei de **um** dab, um knob de cada vez (curva, força, dureza, raio da normal, máscara, faces de frente, pegada projectada, plano do pen-down, controlo do desenho comum) | **16** no G-1 · **1** pendente |
+| [`cadeia/`](cadeia/) | **10** | **cadeias** de dabs dados por script, com o estado depois de CADA dab (`d<j>`): de onde se mede a distância, de onde vem a normal, o que o acumular muda, a auto-limitação | **5** no G-2 · **2** pendentes · **3** controlos |
+| [`produto/`](produto/) | **35** | o **produto**: traços arrastados com o rato, os valores de fábrica, o pincel tal como nasce no catálogo, oito passagens contínuas e separadas, três densidades, superfície curva, malha em triângulos, a ablação e o motor do alvo com os valores da nossa casa | **6** no G-3a · **5** no G-3b · **2** de completude · **22** excluídos com nome |
+| [`detector/`](detector/) | **15** | o **passo** do traço: um salto curto do rato e quantos dabs ele deposita | **13** no G-5a/b · **1** declarado · **1** no G-5c |
+| [`artefacto_caixa/`](artefacto_caixa/) | **3** | um **artefacto do alvo que NÃO se copia** (ver §4 abaixo) | **1** no G-11 · **2** documentação |
+
+⛔ **Pendentes de decisão do dono** (fora do G-1/G-2 até o controlo existir — espec §12.1):
+`lei/pegada_projectada` · `cadeia/bossas_cursor_vivo_acumula` ·
+`cadeia/bossas_cursor_vivo_normal_do_pen_down`. A lista inteira de exclusões e declarados, com o
+papel de cada ficheiro, está na espec §12.2.
 
 ## §1 Proveniência (SKILL_Cleanroom §5 — a da ENTRADA decide a da saída)
 
@@ -34,7 +39,7 @@ Texto comprimido (`gzip`, `mtime` fixo a `0` ⇒ reprodutível byte a byte). Cab
 | prefixo | o que é |
 |---|---|
 | `r x y z` | posição de **repouso**, uma linha por vértice, pela ordem dos índices |
-| `n x y z` | **normal** do vértice no repouso (a que o próprio alvo calculou) |
+| `n x y z` | **normal** do vértice no repouso (a que o próprio alvo guardou: média das normais unitárias das faces vizinhas **pesada pelo ângulo do canto**) |
 | `m v` | **máscara** por vértice (`1` = travado) — só em `lei/mascara_metade` |
 | `c x y z` | nas famílias por script: o cursor de **cada** dab, pela ordem. Nas de arrasto: só o início e o fim da linha do traço, na superfície de repouso |
 | `d<j> i x y z` | posição do vértice `i` **depois do dab `j`** (só os que diferem do repouso) — cada `j` é uma corrida **própria** com os `j` primeiros pontos `c` |
@@ -43,9 +48,11 @@ Texto comprimido (`gzip`, `mtime` fixo a `0` ⇒ reprodutível byte a byte). Cab
 
 ⚠️⚠️ **O cabeçalho é a fonte; esta prosa nunca é.** Toda grandeza que enquadra o traço está lá,
 uma por linha: superfície (com a caixa envolvente), vista, píxeis por unidade, o píxel do
-pen-down e o passo de um píxel no mundo, o raio efectivo, o caminho do traço (passagens,
-contínuo ou separado, saltos), o cursor (dado ou vivo), as normais entre dabs, pressão,
-**modificador** (Ctrl), máscara, simetria, auto-máscara, textura, e os valores do pincel.
+pen-down e o passo de um píxel no mundo (nas **53** arrastadas, todas — derive-o:
+`zcat … | grep '^# pixel_do_pen_down_no_mundo'`), o raio efectivo, o caminho do traço
+(passagens, contínuo ou separado, saltos; a linha **pedida** e a **real**), o cursor (dado ou
+vivo), as normais entre dabs e a **lei da normal de vértice**, pressão, **modificador** (Ctrl),
+máscara, simetria, auto-máscara, textura, e os valores do pincel.
 
 ⚠️ **As chaves do cabeçalho estão em vocabulário do DOMÍNIO; os VALORES de enumeração são os
 públicos da API do alvo**, porque são eles que tornam a fixtura regenerável (SKILL_Cleanroom
@@ -79,8 +86,11 @@ que aparece em todas, é exactamente como alguém inventa uma dependência que n
    posto pelo harness no acerto de um raio vertical sobre a superfície **viva**, que é o que o
    produto faz com o acumular desligado. A metade «com acumular ligado o cursor é o do
    pen-down» não se mede por aqui — está em `produto/ablacao_acumular`.
-3. ⭐ **O caminho arrastado refresca as normais** (uma vez por evento de rato) — e é por isso que
-   as famílias de produto têm de ser comparadas com normais **vivas**. As fotos `p<k>` são tiradas
+3. ⭐ **O caminho arrastado refresca as normais** (entre eventos do rato) — e é por isso que as
+   famílias de produto têm de ser comparadas com normais **vivas**. ⚠️⚠️ **A lei que o reproduz
+   não é a do bloco `n`:** durante o traço a normal de vértice é a **média SEM peso** das normais
+   unitárias das faces vizinhas, **com a malha lida como está** (espec §2.3.1). ⇒ **carregue os
+   quadriláteros COMO quadriláteros**; triangular antes reprova o G-3b na grelha 48². As fotos `p<k>` são tiradas
    depois de uma **pausa** no fim de cada passagem; o relógio do desenho do alvo nessa pausa
    move o resultado em `≤ 1,8e-4` contra uma corrida que acaba naquela passagem. Esse é o chão
    de uma comparação passagem a passagem.
@@ -106,7 +116,18 @@ canto a `z = −1` e outro a `z = +1`** (as de triângulos, que só afundam, só
 cilindro tem espessura própria), para a caixa engrossar; o cabeçalho di-lo. *A nossa casa não recorta o raio pela caixa, e não o deve
 passar a fazer.*
 
-## §5 Regenerar
+## §5 A 1.ª emenda (2026-09-16) — o que mudou, provado contra a publicação anterior
+
+| ficheiros | o que mudou | prova |
+|---|---|---|
+| **71** | só o cabeçalho (a linha `normais_de_vertice` e a linha do traço reescrita) | todos os blocos idênticos, linha a linha |
+| **3** de 192² | + as fotos `p2` e `p4` | os outros blocos idênticos, linha a linha |
+| **6** (as 5 de cilindro do produto + `artefacto_caixa/caixa_fina_ctrl`) | **re-corridas**, com o mapa do píxel gravado (as primeiras corridas não o tinham) | os mesmos vértices movidos; posições a `≤ 3,3e-7` das anteriores |
+
+⚠️ **O arrasto do alvo não é determinístico ao bit**: a mesma corrida repetida difere `2,3e-8` a
+`3,3e-7`. Nenhuma comparação passagem a passagem pode exigir o bit.
+
+## §6 Regenerar
 
 ⛔ Acto do E. O harness, o escritor e a bancada de reprodução vivem na zona do alvo; o que o I
 precisa de saber para LER estas fixturas está no cabeçalho de cada uma e na espec.

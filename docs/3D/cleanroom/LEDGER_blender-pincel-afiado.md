@@ -191,8 +191,8 @@ foi feita na prosa pública acima.
 
 ## Vassoura (§7.1)
 
-`docs/3D/cleanroom/VASSOURA_blender-pincel-afiado.txt` — **229** entradas em base64, uma por
-linha: identificadores internos (funções, tipos, sinalizadores, campos) e prosa do alvo —
+`docs/3D/cleanroom/VASSOURA_blender-pincel-afiado.txt` — **262** entradas em base64 (**229** na
+entrega; **+33** na 1.ª emenda, ver §1.ª EMENDA DO E), uma por linha: identificadores internos (funções, tipos, sinalizadores, campos) e prosa do alvo —
 comentários do fonte, textos do manual e frases da revisão pública —, a prosa também em
 **tradução** e em **variante sem acentos**. Escrita e estendida **em memória** (o texto nunca
 tocou disco).
@@ -592,3 +592,135 @@ seguinte** da corrente.
   terminal.
 - O relatório devolvido à janela I segue o contrato: zero trecho, zero wording, zero nome interno,
   zero caminho de ficheiro do alvo.
+
+---
+
+## 1.ª EMENDA DO E — 2026-09-16 (resposta à 1.ª passagem do R-pré: 3 bloqueadores + 17 erratas + N1, e ao pedido do R do INC-I1)
+
+> **Quem:** o mesmo subagente-E `agent-acf4ca41445c57ad7`, retomado pela janela I com a lista do
+> R-pré. Fonte do alvo lido **por shell**, só para estender a vassoura (o uso de um nome que as linhas
+> do INC-I1 citam) — nenhuma região nova do assunto. O oráculo foi **corrido**
+> outra vez (seis corridas). Rascunho na zona (`draft/`), filtragem §4.3 re-corrida, espec copiada.
+
+### B1 — o mapa do píxel no cilindro e na caixa fina com `Ctrl`: **RE-CORRIDAS**
+
+As seis corridas sem mapa (as 5 de cilindro do produto + a da caixa fina com `Ctrl`) foram
+repetidas com o harness que o grava (`oracle/cfg_regrava.json`, `log_regrava.txt`, `exit 0`).
+
+| corrida | vértices movidos | `max |Δ|` contra a primeira vez | mapa gravado |
+|---|---|---|---|
+| cilindro contínuo | iguais | `6,0e-8` | = o das planas, ao dígito |
+| cilindro separados | iguais | `3,3e-7` (cresce com as fotos: `1,5e-8 … 3,3e-7`) | idem |
+| cilindro, controlo do desenho comum | iguais | `2,3e-8` | idem |
+| cilindro, ablação do acumular | iguais | `3,0e-8` | idem |
+| cilindro, o motor do alvo com o nosso composto | iguais | `6,0e-8` | idem |
+| caixa fina com `Ctrl` | iguais | `3,0e-8` | idem |
+
+- ⚠️ **Não é ao bit** ⇒ o arrasto do alvo **não é determinístico** a esse nível; o chão medido
+  (`≤ 3,3e-7`) está ~6 000× abaixo da barra do G-3a. Um valor de cena difere entre as duas vezes
+  (o diâmetro em unidades de objecto que o programa guarda em cache, com o diâmetro preso ao
+  ecrã) e é **inerte** — a saída prova-o.
+- As fixturas passaram a sair das corridas novas (mapa e saída **da mesma corrida**). A régua e a
+  bancada nas novas: cilindro contínuo `4,87e-4`, separados `1,39e-3` (com a lei de vértice
+  fixada), acumular `3,55e-6`; as réguas impressas não mudam em nenhum dígito.
+- **Derivado:** as **53** arrastadas trazem o mapa (`zcat | grep`), 53 de 53.
+
+### B2 — a catraca «pendentes de decisão do dono»
+
+As três saíram dos G-1/G-2 para a espec §12.1, com o censo que as devolve: `lei/pegada_projectada`
+(P-4; o produto recomendado lê `8,51e-2`), `cadeia/bossas_cursor_vivo_acumula` (P-2; `4,7e-4`),
+`cadeia/bossas_cursor_vivo_normal_do_pen_down` (**P-5**, decisão nova; `6,16e-2`) — os três números
+re-medidos com o modelo do E. Populações recontadas: G-1 **16** (aprovado `8,1e-8` · `3,3e-6`), G-2
+**5** cadeias / **36** estados (aprovado `1,6e-6`; errados: normal do pen-down `4,7e-4` só na de
+bossas, distância viva `≥ 2,6e-2`, cursor do pen-down `≥ 3,6e-2` e inerte na de cursor imposto).
+
+### B3 — as três de 192² ganharam as fotos 2 e 4
+
+Os outros blocos ficaram idênticos linha a linha. A régua das §7.2/§7.3 foi re-derivada **a partir
+dos ficheiros publicados** (48² e 192², contínuo e separados): confere ao dígito. O G-4 sustenta as
+16 e 12 + 4 células que declara; os aprovados não mudam.
+
+### N1 — a §0.2 reescrita
+
+Ela diz agora o **resultado** da reconferência (o que vale, o que caiu) e **não manda a janela I a
+nota antiga nenhuma**; o ponteiro para o plano de modos e ferramentas saiu (e o link). As notas do
+NOSSO código que continua a citar (três sítios em `ph2d-sculpt3d`) foram varridas com as **nove**
+vassouras: limpas, salvo o nome **público** de um campo de pincel (a vassoura do *pull*), que é a
+isenção já pendente de triagem do R (`CLAUDE.md` §5) e está a dezenas de linhas das citadas.
+⭐ E a ambiguidade que o R do INC-I1 apontou ficou fechada em dois sítios (§0.2 e §2.1): **só as
+posições da distância são do pen-down; o cursor e a normal da área são vivos no valor de fábrica.**
+
+### As 17 erratas
+
+| # | cura |
+|---|---|
+| E1 | §7.1: `W_f` é a largura **inteira** entre os dois cruzamentos; «meia-largura» → «largura a meia profundidade» em toda a página (§0.1, §1, §7, §14) |
+| E2 | G-7: aprovado `3,0e-7` (re-medido: `1,5e-9 · 2,4e-7 · 3,0e-7 · 2,5e-7`); o gémeo da §4.1 reescrito (forma fechada `3,0e-7`; modelo completo `1,5e-8`) |
+| E3 | G-5c: aprovado `7,4e-8` |
+| E4 | G-3a: normais congeladas `1,11e-2`; G-1: força linear `5,2e-2` (inerte nas 6 de força `1`); G-2: recontado com a população nova |
+| E5 | G-10: 3 fotos + a saída; compara **deslocamentos** (ou salta os cantos) |
+| E6 | G-11: aprovado `2,9e-4`; salta os dois cantos; excepção nomeada na regra da §11 |
+| E7 | G-8: o par nomeado (afiado contínuo × desenho comum contínuo); o par separado lê `2,75` |
+| E8 | §12.2: os **22** excluídos nomeados um a um, com o papel; soma derivável do directório = 80 |
+| E9 | §0.1: «CINCO valores — três do pincel e dois do traço» |
+| E10 | §11: `0,4` em 23 das 27 por script, `0,25` nas 4 de cilindro e nas 53 arrastadas |
+| E11 | §10.1: o cursor é governado pelo predicado do pick do pen-down (e a app que o consulta); o outro predicado governa de que superfície a normal e o plano são lidos |
+| E12 | §10.2: a consulta do pincel de plano **já** alarga para `R_n > R`; o modo afiado alarga pela mesma porta |
+| E13 | §10.4: a fotografia do **pen-down** (armada só no projectar em modo plano) ≠ a normal por slot (primeiro toque) |
+| E14 | ⭐ §2.3.1 nova — a lei da normal de vértice **fixada** (tabela abaixo); cabeçalhos com a linha `normais_de_vertice`; G-3b recalibrado |
+| E15 | §9.1: a folga retirada; §13 di-lo |
+| E16 | §1: a faixa do fundo por grelha |
+| E17 | G-4: «corre com a normal que o produto tiver» |
+
+### E14 medida — a normal de vértice (`oracle/normais_de_vertice.py`, `oracle/bancada_emenda.py`)
+
+- **No repouso** o bloco `n` é a média das normais unitárias **pesada pelo ângulo** (`5,4e-7`;
+  sem peso `1,8e-4`).
+- **Durante o traço** (separados, malha inteira · faixa `|x| ≤ 0,25`):
+
+| lei | 96² | 48² | 192² | cilindro | triângulos |
+|---|---|---|---|---|---|
+| **sem peso, malha como está** | `1,43e-3 · 7,7e-4` | `3,10e-3 · 2,30e-3` | `2,19e-3 · 1,12e-3` | `1,39e-3 · 7,5e-4` | `1,56e-3 · 8,2e-4` |
+| pesada pelo ângulo | `3,70e-3 · 7,9e-4` | `1,17e-2 · 2,31e-3` | `2,60e-3 · 1,12e-3` | `3,60e-3 · 7,8e-4` | `5,48e-3 · 1,21e-3` (sobre quadriláteros) |
+| sem peso, triangulada | `3,20e-3 · 1,35e-3` | `3,25e-2 · 7,95e-3` | `2,39e-3 · 1,42e-3` | `3,10e-3 · 1,33e-3` | = a lei |
+| pesada pela área | `4,87e-2` | `8,79e-2` | — | — | — |
+
+- Contínuos: todas `≤ 1,04e-3` (não separam). Detector: as duas primeiras idênticas.
+- ⇒ a lei é a da nossa casa; o G-3b passa a `8e-3` (malha inteira) e `5e-3` (faixa), com a 48² a
+  discriminar a lei de vértice.
+
+### A vassoura, alongada (pedido do R do INC-I1)
+
+- **+33** entradas (262): os **12** nomes e fragmentos das linhas expostas cujo sha256/16 o R deu
+  — **os 12 conferidos contra os hashes** —, mais o tempo de vida do cache por traço (que o R contou
+  como «só dentro de entradas mais longas»), as traduções portuguesas dos dois fragmentos (várias
+  formas) e as variantes sem acentos.
+- ⚠️ **Uma das 12 cadeias é um nome curto que também existe no NOSSO código** (5 ficheiros, sem
+  relação com o alvo): entrou só na **forma longa** que o alvo usa (lida no fonte), que dá **0**
+  no nosso código. Nenhuma das outras 11 casa em `crates/`, `shells/` ou `scripts/`.
+- ⛔⛔ **ACHADO N2 — pré-existente, NÃO desta obra:** a tradução portuguesa de um dos dois
+  fragmentos **acorda no NOSSO código de produto** — `crates/ph2d-sculpt3d/src/brush_verb_filter.rs`,
+  linhas **150** e **292** (um doc-comment e um comentário do filtro de malha de afiar, W9 de
+  agosto). É a mesma oração que o INC-I1 achou no plano 21, traduzida de perto. ⇒ a entrada
+  **fica** (é para isto que ela existe); a reescrita desses dois comentários em palavras próprias
+  é trabalho do dono da W9 (ou da janela I sob ordem do R), e entra no R-PÓS como item.
+- O sweep desta vassoura sobre `crates/` + `shells/` + `scripts/` acusa hoje: as **3** citações do
+  módulo Painter (pré-existentes, já registadas) e o **N2**. Relatório na zona
+  (`notes/sweep_arvore_codigo_v4.txt`).
+
+### Filtragem e sweeps desta emenda
+
+- Filtragem §4.3 re-corrida sobre o texto novo (todos os *code spans* novos são caminhos e
+  símbolos nossos, nomes de fixtura nossa, ou variáveis da página).
+- Controlo do instrumento **primeiro**, depois o sweep com as **nove** vassouras sobre a espec, as
+  80 fixturas + README, o INBOX e o README da pasta; e a verificação em memória sem caixa e sem
+  acentos. Resultados no relatório final desta emenda.
+
+### Higiene
+
+- As seis corridas novas escreveram só na zona (`out/*_r2.npz`, `TMPDIR` na zona).
+- As saídas das tarefas em segundo plano (em `/tmp/claude-1000/…`) contêm só linhas de resultado
+  em vocabulário nosso (nomes de corrida e números).
+- A vassoura foi estendida por um processo Python que recebeu o texto no argumento e escreveu só
+  base64; as linhas expostas do INC-I1 foram lidas por shell (são documentos NOSSOS) e ficaram no
+  terminal.

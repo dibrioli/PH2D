@@ -18,9 +18,11 @@ Filtragem §4.3: executada em 2026-09-16 sobre este texto (zero código, zero no
   comentário, zero wording de manual ou da discussão pública, zero tabela transcrita; as fórmulas
   são matemática do método em notação genérica; todo `code span` é nosso, de fixtura nossa, ou
   valor público de enumeração usado como chave de regeneração — §4.1.13).
-Sweep: controlo do instrumento corrido PRIMEIRO (exit 0, todos os canais), depois VERDE sobre a
-  vassoura desta obra (ver o ledger para a contagem) aplicada a esta espec, às 80 fixturas e ao
-  README delas, e em --git-history da pasta.
+Sweep: controlo do instrumento corrido PRIMEIRO (exit 0, todos os canais), depois VERDE com a
+  vassoura desta obra (alongada na 1.ª emenda — contagem no ledger) e com as outras oito da pasta,
+  sobre esta espec, as 80 fixturas e o README delas, o INBOX e o README da pasta. O
+  --git-history da pasta acusa só patches de ledgers de OUTRAS obras (registado no ledger); o
+  commit desta obra, varrido à parte: 0.
 Auditoria §4.2 (R-pré): ⛔ 1.ª PASSAGEM CORRIDA em 2026-09-16 por um subagente NOVO — NÃO
   atestada. ⭐ A PAREDE DO §4.2 ESTÁ LIMPA (os 4 blocos cercados são fórmula de 1–3 linhas; os 141
   code spans não-numéricos são todos nossos; sweep verde com as nove vassouras da pasta, e verde em
@@ -39,6 +41,19 @@ Auditoria §4.2 (R-pré): ⛔ 1.ª PASSAGEM CORRIDA em 2026-09-16 por um subagen
   plano 21 — é acto do E/R), nomeadas no ledger com o sítio e a instrução.
   ⏳ A janela I continua FECHADA ⇒ emenda do E sobre os 3 (as erratas cabem nela), depois 2.ª
   passagem do R-pré.
+1.ª EMENDA DO E (2026-09-16), resposta à 1.ª passagem — registo com as medições no ledger:
+  (1) as 5 fixturas de cilindro e a da caixa fina com Ctrl foram RE-CORRIDAS com o mapa do píxel
+  gravado; os mesmos vértices movem-se e a saída difere ≤ 3,3e-7 da publicação anterior (é o
+  não-determinismo do próprio arrasto do alvo, medido repetindo as seis); as 53 arrastadas trazem
+  hoje o mapa, conferido por derivação (§11). (2) as 3 fixturas cuja lei a página não pede saíram
+  para uma catraca NOMEADA «pendentes de decisão do dono» (§12): o G-1 conta 16 e o G-2 conta 5
+  cadeias / 36 estados; a opção da normal do pen-down ganhou decisão própria (P-5). (3) as 3 de
+  192² foram regeneradas com as fotos 2 e 4 (os outros blocos idênticos ao bit): o G-4 sustenta as
+  16 e 12 + 4 células que declara. ⭐ E a lei da NORMAL DE VÉRTICE ficou escrita (§2.3.1): a do
+  repouso é pesada pelo ângulo do canto; a que o alvo recalcula durante o traço é a média SEM peso
+  das normais unitárias das faces, com a malha lida como está — a da nossa casa. As 17 erratas e a
+  nota N1 (a §0.2 já não manda ninguém a notas antigas) curadas; a filtragem §4.3 re-corrida.
+  ⏳ 2.ª passagem do R-pré por correr.
 Mapa de leitura da literatura: não há paper. A literatura pública utilizável é (a) o manual do
   alvo (factos, ⛔ nunca o wording), (b) as notas públicas de versão, (c) a revisão pública de 2019
   em que o pincel nasceu, destilada em vocabulário nosso na §14, e (d) o NOSSO código, citado por
@@ -59,29 +74,29 @@ Denylist de URLs (⛔ o Implementador não abre): projects.blender.org · o espe
 
 ### §0.1 — A resposta
 
-⭐⭐ **O pincel afiado DE FÁBRICA é o nosso `Draw` (modo B) com quatro valores de fábrica
-trocados e com o passo e a atenuação do traço arrastado que a casa já tem para o pincel de
-plano — e mais NADA de lei nova.** Medido no nosso motor, sobre as mesmas malhas e o mesmo traço
+⭐⭐ **O pincel afiado DE FÁBRICA é o nosso `Draw` (modo B) com CINCO valores trocados — três do
+pincel (acumular, curva, direcção) e dois do traço (o passo e a atenuação por dab, que a casa já
+tem para o pincel de plano) — e mais NADA de lei nova.** Medido no nosso motor, sobre as mesmas malhas e o mesmo traço
 arrastado do oráculo (§7, §8):
 
 | régua (§7), traço contínuo, grelha 96² | passagem 1 | 2 | 4 | 8 |
 |---|---|---|---|---|
 | profundidade `D/R` — alvo | `0,2058` | `0,3221` | `0,4367` | `0,5406` |
 | profundidade `D/R` — nosso `Draw` composto | `0,2121` | `0,3236` | `0,4377` | `0,5411` |
-| meia-largura `W50/R` — alvo | `0,506` | `0,527` | `0,543` | `0,550` |
-| meia-largura `W50/R` — nosso `Draw` composto | `0,504` | `0,526` | `0,542` | `0,549` |
+| largura a meia profundidade `W50/R` — alvo | `0,506` | `0,527` | `0,543` | `0,550` |
+| largura a meia profundidade `W50/R` — nosso `Draw` composto | `0,504` | `0,526` | `0,542` | `0,549` |
 
 *«composto»* = o nosso `Draw` modo B com **Acumular desligado · curva afiada
 ([`Falloff::Sharper`]) · direcção a afundar · o passo de `5 %` do diâmetro · a atenuação `a` por
 dab** (§5). O desvio é de `+3,1 %` na profundidade da 1.ª passagem e cai para `+0,1 %` na 8.ª; a
-meia-largura fica a `≤ 0,4 %` em todas. Nas grelhas 48² e 192² e no cilindro os desvios são os
+largura fica a `≤ 0,4 %` em todas. Nas grelhas 48² e 192² e no cilindro os desvios são os
 mesmos (§12, G-4).
 
 ⚠️ **O que o nosso `Draw` ainda NÃO exprime, e o tamanho de cada buraco:**
 
 1. **A normal da área do alvo** (§2.3) — o nosso `Draw` usa a normal do plano da casa. É esta a
    causa dos `+3,1 %` da 1.ª passagem e do resto do desvio nos traços **separados**: depois de
-   oito traços separados a nossa meia-largura fica `11,7 %` mais estreita (`0,237` contra
+   oito traços separados a nossa largura fica `11,7 %` mais estreita (`0,237` contra
    `0,269`), com a profundidade a `+4,6 %`. A lei do alvo **já existe na casa, duas vezes**
    (§10.2), só não serve o `Draw`. Com ela o modelo de referência do E reproduz o produto
    **vértice a vértice** (§12, G-3).
@@ -97,30 +112,35 @@ mesmos (§12, G-4).
 ⇒ **Não falta uma lei para o pincel de fábrica; faltam valores por pincel, o passo/atenuação por
 pincel e — para a paridade vértice a vértice — a normal da área que a casa já tem noutro sítio.**
 
-### §0.2 — A recusa antiga, reconferida
+### §0.2 — A recusa antiga, reconferida (o RESULTADO — ⛔ não há nada a reabrir)
 
-O plano [`docs/3D/21_plano_modos_e_ferramentas.md`](../21_plano_modos_e_ferramentas.md) (linhas
-da W6 e da tabela de itens fora) tirou este pincel da fila com duas afirmações. As duas foram
-reconferidas contra o oráculo **a correr**:
+Uma nota de planeamento da casa, de 2026-08-14, tirou este pincel da fila com duas afirmações. A
+reconferência foi feita **pelo E**, contra o oráculo **a correr**, e o resultado está todo aqui —
+⛔ **a janela que implementa não abre notas antigas para a refazer** (algumas, fora do código, têm
+linhas vizinhas com nomes internos do alvo; dívida registada no ledger para a integração).
 
 | afirmação de 2026-08-14 | o que a medição diz hoje |
 |---|---|
-| *«o que o nome promete mora na CURVA, e a curva de fábrica está num ficheiro binário ⇒ bloqueado»* | ⛔ **DISSOLVIDA.** Os valores de fábrica foram **lidos correndo o programa**: o pincel do catálogo, carregado pelo próprio programa num arranque de fábrica, e os valores lidos dele (§6). A prova de que a lista está completa é uma fixtura: o pincel de catálogo e um pincel nosso com os valores escritos dão o mesmo traço a `1,2e-7` (ruído de `f32`). ⇒ *um ficheiro binário não é uma fonte ilegível quando o programa que o lê se corre.* |
-| *«um verbo só sobre o dado congelado seria um chip que o artista já alcança por um checkbox — os dois perfis são o mesmo domo»* | ⚠️ **METADE certa, metade medida com a curva errada.** Certa: a distância medida do pen-down **já existe** no nosso `Draw` (é o Acumular desligado, §10.1) — não há verbo novo a construir. Errada: com a curva **afiada** e oito passagens a distância do pen-down **é** uma alavanca, tão forte como a curva: trocá-la pela distância viva (o pincel de desenho comum com todo o resto igual) alarga o vinco de `0,550` para `0,852` raio (`+55 %`), e trocar só a curva alarga-o para `0,837` (`+52 %`) — §8.1. A medição antiga usou a curva suave e 9 dabs, onde a diferença não aparece. |
+| *«o que o nome promete mora na CURVA, e a curva de fábrica está num ficheiro binário ⇒ bloqueado»* | ⛔ **CAIU.** Os valores de fábrica foram **lidos correndo o programa**: o pincel do catálogo, carregado pelo próprio programa num arranque de fábrica, e os valores lidos dele (§6). A prova de que a lista está completa é uma fixtura: o pincel de catálogo e um pincel nosso com os valores escritos dão o mesmo traço a `1,2e-7` (ruído de `f32`). ⇒ *um ficheiro binário não é uma fonte ilegível quando o programa que o lê se corre.* |
+| *«um verbo só sobre o dado congelado seria um chip que o artista já alcança por um checkbox — os dois perfis são o mesmo domo»* | ⚠️ **METADE VALE, metade CAIU.** **Vale:** a distância medida do pen-down **já existe** no nosso `Draw` (é o Acumular desligado, §10.1) — não há verbo novo a construir. **Caiu:** com a curva **afiada** e oito passagens a distância do pen-down **é** uma alavanca, tão forte como a curva: trocá-la pela distância viva (o pincel de desenho comum com todo o resto igual — que, com o interruptor desligado, também lê o cursor e a normal do pen-down; o par que isola **só** a distância está no §8.2) alarga o vinco de `0,550` para `0,852` raio (`+55 %`), e trocar só a curva alarga-o para `0,837` (`+52 %`) — §8.1. A medição antiga usou a curva suave e 9 dabs, onde a diferença não aparece. |
 
-⚠️ **Notas da casa cuja premissa esta medição mudou** (§0.0 do `CLAUDE.md`: *quem move o número
-que tornava algo inalcançável reconfere a nota*) — ⛔ o E não as edita; ficam para a janela que
-implementa:
+⚠️⚠️ **E uma terceira afirmação das notas antigas CAIU, e é a mais perigosa para o produto:** a de
+que neste pincel **também a normal** vem do pen-down. **No valor de fábrica (acumular desligado)
+só as POSIÇÕES DA DISTÂNCIA são do pen-down; o CURSOR e a NORMAL DA ÁREA vêm da superfície VIVA**
+(§3, medido: `≤ 1,6e-6` contra `4,7e-4` da alternativa). A normal do pen-down só existe com o
+acumular ligado (§3) ou com a opção própria (§3.1) — as duas fora do valor de fábrica.
 
-- `crates/ph2d-sculpt3d/src/brush_verb_defaults.rs:257-260` (*«a W1 e o Draw Sharp são decisão
-  de produto… os defaults moram num binário»*);
-- `crates/ph2d-sculpt3d/src/brush_magnitudes.rs:123` (*«a mesma lacuna que bloqueou … o Draw
-  Sharp»*);
-- `crates/ph2d-sculpt3d/src/ref_profiles.rs:315-347` (a coluna `B` *«não pode responder»* os
-  defaults por ferramenta — ela pode, correndo o programa; a obra do pincel de plano já o fez para
-  o dela);
-- `docs/3D/21_plano_modos_e_ferramentas.md:434,447` e a linha do §5 do `CLAUDE.md` que diz o
-  mesmo.
+⚠️ **Notas do NOSSO código com a premissa caída** (a janela que implementa toca estes ficheiros
+de qualquer forma; varridos com as nove vassouras da pasta: limpos, salvo o nome público de um
+campo de pincel que já está na triagem do R, `CLAUDE.md` §5):
+
+- `crates/ph2d-sculpt3d/src/brush_verb_defaults.rs:257-260` — *«… decisão de produto … binário»*;
+- `crates/ph2d-sculpt3d/src/brush_magnitudes.rs:120-124` — *«a mesma lacuna que bloqueou …»*;
+- `crates/ph2d-sculpt3d/src/ref_profiles.rs:343-347` — *«os defaults por ferramenta … não pode
+  responder»*: pode, correndo o programa (a obra do pincel de plano já o fez para o dela).
+
+A frase do `CLAUDE.md` §5 sobre este pincel diz o mesmo e fica com a premissa caída; a linha do
+§5 é da integração.
 
 ---
 
@@ -136,11 +156,13 @@ propriedades o distinguem do pincel de desenho comum, e as três estão medidas:
    levantar a caneta, a profundidade converge e nunca passa de `R` abaixo da superfície do
    pen-down (§4). Medido: `0,21 → 0,32 → 0,44 → 0,54 R` em 1, 2, 4, 8 passagens.
 3. **Levantar a caneta e voltar a descer RECOMEÇA o limite**: oito traços separados levam o vinco
-   a `1,51 R`, e ele **estreita** a cada traço (`0,51 → 0,27 R`), ficando cada vez mais afiado
-   (nitidez `D/W50` de `0,41` a `5,62`).
+   a `1,51 R`, e ele **estreita** a cada traço (a largura a meia profundidade cai de `0,51` para
+   `0,27 R`), ficando cada vez mais afiado (nitidez `D/W50` de `0,41` a `5,62`).
 
 ⭐ **O vinco não tem rebordo** (a régua do rebordo lê `0,000` em todas as corridas) e o **fundo
-é agudo**: a curvatura normalizada do fundo lê `6,2`–`6,8` contra `3,2`–`5,0` do desenho comum.
+é agudo**: na grelha 96² a curvatura normalizada do fundo lê `6,2`–`6,8` contra `3,2`–`5,0` do
+desenho comum. ⚠️ Ela depende da amostragem (48²: `5,3`–`5,6`; 192²: `6,6`–`7,4`) e só se compara
+dentro da mesma grelha.
 
 ---
 
@@ -160,8 +182,9 @@ g(v)   = C( dureza_h(u) ) · [u < 1]             (§2.2)
 - `F(v)` — o factor de faces de frente (§2.6); `1` com a opção desligada (o valor de fábrica).
 - `σ = −1` com a direcção *afundar* e `+1` com *levantar*; o `Ctrl` troca-a (§2.4).
 
-Reprodução das `17` fixturas de um dab pelo modelo de referência do E (`float64`): `≤ 8,1e-8`
-nas planas e no cilindro, `≤ 4,2e-6` nas de bossas (§12, G-1).
+Reprodução pelo modelo de referência do E (`float64`) das `16` fixturas de um dab que o G-1 conta:
+`≤ 8,1e-8` nas planas e no cilindro, `≤ 3,3e-6` nas de bossas; e da 17.ª, a da pegada projectada
+(pendente de decisão, §2.7): `4,2e-6` (§12).
 
 ### §2.1 — A distância mede-se das posições do PEN-DOWN — sempre
 
@@ -175,6 +198,9 @@ diferença de LEI em relação ao pincel de desenho comum, que mede da posição
   pen-down** — é daqui que vem a auto-limitação (§4).
 - Medido: numa cadeia de 8 dabs num plano, medir da posição viva erra `3,1e-2`; do pen-down,
   `2,4e-8` (`cadeia/plano_cursor_vivo`).
+- ⚠️⚠️ **SÓ a distância é do pen-down.** No valor de fábrica o **cursor** e a **normal da área**
+  são lidos da superfície **VIVA** (§3). Ler a normal do pen-down com o acumular desligado é um
+  defeito medido (`4,7e-4` na cadeia de bossas, contra `1,6e-6`).
 
 ⚠️ **O conjunto de vértices considerado** (os que têm posição VIVA dentro da esfera do dab, ou os
 que têm posição do PEN-DOWN dentro dela) **não é separado por nenhuma corrida deste corpus**: as
@@ -211,6 +237,38 @@ n       = n_bruto da FRENTE, normalizada; se ela for nula, a do VERSO
 - ⭐ **É, letra por letra, a lei que a nossa casa já corre para os pincéis de puxar e para o
   pincel de plano** (§10.2).
 
+### §2.3.1 — A NORMAL DE VÉRTICE `N(v)` — a lei está FIXADA
+
+Duas leituras, e **não são a mesma lei**:
+
+1. **No repouso** (o bloco `n` das fixturas) a normal é a que o alvo guarda: a média das normais
+   **unitárias** das faces vizinhas **pesada pelo ângulo do canto**. Medido sobre as bossas: esta
+   lei reproduz o bloco `n` a `5,4e-7`; a média sem peso erra `1,8e-4`.
+2. ⭐ **Durante o traço arrastado** o alvo recalcula as normais entre eventos do rato, e a lei que o
+   reproduz é **a média normalizada SEM PESO das normais UNITÁRIAS (Newell) das faces vizinhas, com
+   a malha lida COMO ESTÁ** — quadriláteros como quadriláteros, triângulos como triângulos. ⭐ **É a
+   lei da nossa casa** (`crates/ph2d-mesh/src/normals.rs:40-62`, a normal unitária da face, e `:165-185`, a soma sem peso do anel).
+
+Os traços **separados** são o caso que discrimina (erro máximo na malha inteira, modelo de
+referência com a normal da área do §2.3):
+
+| lei da normal de vértice durante o traço | 96² | 48² | 192² | cilindro |
+|---|---|---|---|---|
+| ⭐ **média sem peso, malha como está** | **`1,43e-3`** | **`3,10e-3`** | **`2,19e-3`** | **`1,39e-3`** |
+| pesada pelo ângulo do canto | `3,70e-3` | `1,17e-2` | `2,60e-3` | `3,60e-3` |
+| média sem peso, quadriláteros TRIANGULADOS pela diagonal `(i,j)–(i+1,j+1)` | `3,20e-3` | **`3,25e-2`** | `2,39e-3` | `3,10e-3` |
+| pesada pela área | `4,87e-2` | `8,79e-2` | — | — |
+
+- Na faixa `|x| ≤ 0,25` a lei fixada lê `7,7e-4 · 2,3e-3 · 1,1e-3 · 7,5e-4`; a triangulada lê
+  `1,4e-3 · 8,0e-3 · 1,4e-3 · 1,3e-3`.
+- A fixtura já em triângulos (`produto/triangulos_afiado_separados`) lê `1,56e-3` com a mesma lei
+  sobre os triângulos dela.
+- Nos traços **contínuos** as leis não se separam (todas `≤ 1,04e-3`).
+
+⇒ **A bancada carrega as fixturas de quadriláteros COMO quadriláteros** (a malha da casa aceita-os)
+e recalcula as normais com a lei da casa; o cabeçalho de cada fixtura di-lo na linha
+`normais_de_vertice`. ⛔ Triangular antes de carregar **reprova** o G-3b na grelha 48² (§12).
+
 ### §2.4 — A direcção e o `Ctrl`
 
 `σ` vem do valor de fábrica do pincel (**afundar**) e o `Ctrl` segurado **inverte-o** para o
@@ -244,7 +302,8 @@ a `4,2e-6`):
 
 Candidatas refutadas: normal da área com distância 3D (`3,1e-4`); sem renormalizar (`6,5e-2`).
 ⛔ Esta espec **não recomenda** oferecer este modo neste pincel: ele não faz o que o nome promete
-(§15).
+(§15, **P-4**). ⇒ a fixtura está **FORA do G-1**, na catraca nomeada «pendentes de decisão do
+dono» (§12), e só volta ao gate no dia em que o modo for oferecido.
 
 ### §2.8 — O que este pincel IGNORA
 
@@ -266,15 +325,18 @@ Candidatas refutadas: normal da área com distância 3D (`3,1e-4`); sem renormal
 
 ⚠️⚠️ **O interruptor tem, neste pincel, o efeito INVERSO do que tem no desenho comum** — medido,
 não suposto: no desenho comum, *desligado* lê o cursor e a normal do pen-down e *ligado* lê-os
-vivos (`cadeia/controlo_desenho_*`, `§11`).
+vivos (a normal: `cadeia/controlo_desenho_*`, §11; o cursor: `produto/ablacao_tipo_desenho_comum`,
+reproduzida a `8,7e-7` com o cursor do pen-down).
 
 Medições:
 
-- **cursor e normal vivos com o interruptor desligado**: cadeias `cadeia/*_cursor_vivo`
-  reproduzem a `≤ 1,9e-6`; ler a normal do pen-down erra `4,7e-4` (bossas).
+- **cursor e normal vivos com o interruptor desligado**: as quatro cadeias de cursor vivo do G-2
+  (plano, bossas, mesmo ponto, cilindro) reproduzem a `≤ 1,6e-6`; ler a normal do pen-down erra
+  `4,7e-4` (bossas — nas outras três é inerte por geometria).
 - **normal do pen-down com o interruptor ligado**: `cadeia/bossas_cursor_vivo_acumula` reproduz a
   `1,6e-6`; ler a normal viva erra `4,7e-4`. (⚠️ nesta cadeia o cursor é imposto pelo script; a
-  metade do cursor é a seguinte.)
+  metade do cursor é a seguinte.) ⛔ **Pendente de decisão do dono (P-2)** — o modo não é o de
+  fábrica e a espec recomenda escondê-lo; a fixtura está **FORA do G-2** (§12).
 - **cursor do pen-down com o interruptor ligado**: `produto/ablacao_acumular` (traço arrastado)
   reproduz a `3,6e-6` com o cursor lido da superfície do pen-down, e a régua lê o perfil
   **constante** (`W50/R = 0,473` em 1, 2, 4 e 8 passagens) com a profundidade **linear**
@@ -285,6 +347,10 @@ Medições:
 Com ela ligada, **a normal da área do PRIMEIRO dab do traço é usada por todos os dabs seguintes**
 desse traço (`cadeia/bossas_cursor_vivo_normal_do_pen_down`: `1,9e-6`). Cada pen-down recomeça.
 Num plano ela é inerte (`produto/ablacao_normal_do_pen_down` difere do de fábrica em `+0,1 %`).
+
+⛔ **O nosso `Draw` não tem esta opção** e a espec não a pede (§10.3). **Decisão do dono (P-5)**;
+até lá a fixtura está **FORA do G-2**, na catraca nomeada da §12. Se a opção nascer, ela precisa
+da normal do **PEN-DOWN** (não a do primeiro toque — §10.4) congelada no primeiro dab.
 
 ---
 
@@ -305,8 +371,9 @@ z_{k+1} = z_k + R · S² · a · C(z_k / R)          z_0 = 0
 e como `C(1) = 0` e `S² · a ≤ 1`, **`z` nunca passa de `R`** num traço (`(1 − t)⁴ ≤ 1 − t` para
 `0 ≤ t ≤ 1`): é essa a razão física do limite.
 Conferido dab a dab em `cadeia/mesmo_ponto_cursor_vivo` (`R = 0,4`, `S = 0,5`, `a = 1`, curva
-afiada): a fórmula dá `0,1 · 0,13164 · 0,15190 · 0,16670` e o alvo dá os mesmos quatro números
-(reprodução `1,5e-8`).
+afiada): a fórmula dá `0,1 · 0,13164 · 0,15190 · 0,16670` e o fundo da fixtura lê os mesmos
+quatro números a `3,0e-7` (o cursor gravado na fixtura carrega o arredondamento `f32` do alvo; o
+modelo completo, que usa esse cursor, fecha a `1,5e-8`).
 
 - **O controlo**: com o cursor **imposto** na superfície de repouso (`cadeia/mesmo_ponto_cursor_dado`)
   cada dab é igual ao primeiro: `0,1 · 0,2 · 0,3 · 0,4` — linear.
@@ -320,8 +387,8 @@ traços separados: `0,21 · 0,41 · 0,83 · 1,51 R` depois de 1, 2, 4, 8 traços
 
 ### §4.3 — Consequência para o produto
 
-A profundidade de um traço contínuo **não depende do número de passagens depois das primeiras**
-(`+24 %` de 4 para 8 passagens) e **não depende da densidade** da malha (`D/R` a `8` passagens:
+A profundidade de um traço contínuo **cresce cada vez menos** com as passagens (`+36 %` de 2 para
+4, `+24 %` de 4 para 8) e **não depende da densidade** da malha (`D/R` a `8` passagens:
 `0,5427 · 0,5406 · 0,5389` em 48², 96², 192²).
 
 ---
@@ -427,8 +494,10 @@ Sobre um traço ao longo de `x`, na linha `y ≈ 0`:
   analítica), com sinal escolhido para que o vinco seja positivo;
 - o **perfil**: a média desse deslocamento sobre as colunas com `|x| ≤ 0,1`, em função da
   coordenada transversal de repouso (no cilindro, o comprimento de arco);
-- **`D`** = o máximo do perfil; **`W_f`** = a largura onde o perfil cruza `f·D` (interpolação
-  linear entre amostras), com `W50` a meia-largura;
+- **`D`** = o máximo do perfil; **`W_f`** = a largura **INTEIRA** entre os dois pontos onde o
+  perfil cruza `f·D`, achados andando **para fora** a partir do máximo, um de cada lado
+  (interpolação linear entre amostras) — ⚠️ **não** a metade dela; `W50` é a **largura a meia
+  profundidade**;
 - **nitidez** `D/W50` · **agudeza** `W25/W75` · **rebordo** = `−min/D` · **curvatura do fundo**
   = `−κ·W50²/D`, com `κ` a segunda diferença no máximo.
 
@@ -439,8 +508,8 @@ Tudo em unidades de `R`. `R = 0,25`, grelha de lado `2`, traço de `x = −0,5` 
 | grelha | passagem | `D/R` | `W50/R` | nitidez | agudeza | fundo |
 |---|---|---|---|---|---|---|
 | 96² | 1 · 2 · 4 · 8 | `0,2058 · 0,3221 · 0,4367 · 0,5406` | `0,506 · 0,527 · 0,543 · 0,550` | `0,407 · 0,611 · 0,805 · 0,983` | `2,54 · 2,45 · 2,39 · 2,35` | `6,82 · 6,57 · 6,39 · 6,23` |
-| 48² | 1 · 8 | `0,2064 · 0,5427` | `0,517 · 0,554` | `0,399 · 0,979` | `2,69 · 2,43` | `5,56 · 5,33` |
-| 192² | 1 · 8 | `0,2055 · 0,5389` | `0,505 · 0,548` | `0,407 · 0,983` | `2,51 · 2,33` | `7,44 · 6,56` |
+| 48² | 1 · 2 · 4 · 8 | `0,2064 · 0,3228 · 0,4382 · 0,5427` | `0,517 · 0,536 · 0,548 · 0,554` | `0,399 · 0,602 · 0,799 · 0,979` | `2,69 · 2,56 · 2,48 · 2,43` | `5,56 · 5,49 · 5,41 · 5,33` |
+| 192² | 1 · 2 · 4 · 8 | `0,2055 · 0,3214 · 0,4355 · 0,5389` | `0,505 · 0,526 · 0,541 · 0,548` | `0,407 · 0,611 · 0,805 · 0,983` | `2,51 · 2,43 · 2,37 · 2,33` | `7,44 · 7,04 · 6,77 · 6,56` |
 | cilindro 96² | 1 · 2 · 4 · 8 | `0,2057 · 0,3220 · 0,4366 · 0,5406` | `0,510 · 0,535 · 0,555 · 0,565` | `0,403 · 0,602 · 0,787 · 0,956` | `2,54 · 2,45 · 2,39 · 2,34` | `2,19 · 2,11 · 2,06 · 2,01` |
 
 (A curvatura do fundo depende da amostragem — cresce com a densidade — e a do cilindro mede-se
@@ -454,6 +523,10 @@ contra a curvatura da peça; ela compara-se **só dentro da mesma linha**.)
 | 48² | 2 · 4 · 8 | `0,4154 · 0,8338 · 1,7609` | `0,474 · 0,349 · 0,225` | `0,876 · 2,391 · 7,815` |
 | 192² | 2 · 4 · 8 | `0,4116 · 0,8243 · 1,6604` | `0,458 · 0,345 · 0,195` | `0,899 · 2,392 · 8,527` |
 | cilindro | 2 · 4 · 8 | `0,4129 · 0,8291 · 1,5147` | `0,465 · 0,352 · 0,270` | `0,888 · 2,358 · 5,603` |
+
+Todas as células das duas tabelas estão **publicadas** (as fotos `p1`, `p2`, `p4` e a saída `s` das
+fixturas; as de 192² ganharam as fotos 2 e 4 na 1.ª emenda) e foram re-derivadas **a partir dos
+ficheiros**, não dos dados do oráculo.
 
 ⚠️ **O 8.º traço separado é SENSÍVEL** (`1,51`–`1,76 R` entre densidades): o cursor cai num
 vinco já estreito, e onde ele cai muda a profundidade. As barras do §12 respeitam-no.
@@ -486,7 +559,9 @@ com a diagonal `(i,j)–(i+1,j+1)`, o cilindro de raio `1,2`, um evento por píx
 unidade), o passeio do traço da casa com o passo pedido, um dab no pen-down, e o cursor lançado
 por um raio vertical na linha `y = 0,0025` (o centro do píxel do alvo). A atenuação `a` entrou
 como `√a` na força (a força é elevada ao quadrado). ⚠️ **O arnês não passa pela porta do
-produto** — é uma medição de lei, não um gate; o G-4 tem de a refazer pela porta.
+produto** — é uma medição de lei, não um gate; o G-4 tem de a refazer pela porta. ⛔ **E a malha
+triangulada da sonda NÃO é receita** — a bancada carrega os quadriláteros como quadriláteros
+(§2.3.1).
 
 ---
 
@@ -497,7 +572,7 @@ produto** — é uma medição de lei, não um gate; o G-4 tem de a refazer pela
 | troca | `D/R` | `W50/R` | nitidez | leitura |
 |---|---|---|---|---|
 | (fábrica) | `0,5406` | `0,550` | `0,983` | — |
-| **tipo = desenho comum** (distância viva) | `0,5355` | **`0,852`** (`+55 %`) | `0,628` (`−36 %`) | ⭐ alavanca da **largura** |
+| **tipo = desenho comum** (distância viva; com o interruptor desligado ele lê o cursor e a normal do pen-down, §3) | `0,5355` | **`0,852`** (`+55 %`) | `0,628` (`−36 %`) | ⭐ alavanca da **largura** |
 | **curva suave** | `0,7777` (`+44 %`) | **`0,837`** (`+52 %`) | `0,929` | ⭐ alavanca da **largura** |
 | **acumular ligado** | **`1,9561`** (`+262 %`) | `0,473` | `4,133` | ⭐ alavanca da **profundidade** (§3) |
 | sem atenuação | `0,7062` (`+31 %`) | `0,565` | `1,251` | alavanca da profundidade |
@@ -559,13 +634,13 @@ viva, como a corrida «viva» do §8.2); o do alvo aprofunda com o perfil consta
 
 O modelo de referência do E reproduz o produto do alvo com três leituras da normal da área:
 
-| traço (96²) | normal do alvo (§2.3), viva | normais congeladas no repouso | a lei da nossa casa (soma simples sobre a pegada, viva) |
+| traço (96²) | normal da área do alvo (§2.3), viva, com a normal de vértice da §2.3.1 | normais congeladas no repouso | a lei da nossa casa (soma simples sobre a pegada, viva) |
 |---|---|---|---|
 | contínuo, 8 passagens | **`4,9e-4`** | `2,5e-2` | `1,7e-2` |
-| separados, 8 traços | **`3,7e-3`** | `1,25e-1` | `9,3e-2` |
+| separados, 8 traços | **`1,4e-3`** | `1,25e-1` | `9,2e-2` |
 
 (erro máximo por vértice na malha inteira). ⇒ **o desvio de `+3,1 %` e o estreitamento de
-`11,7 %` são da lei da normal**, e com a lei do alvo o resíduo cai 35× no contínuo e 25× nos
+`11,7 %` são da lei da normal**, e com a lei do alvo o resíduo cai 35× no contínuo e 64× nos
 separados.
 
 ⭐ **A alavanca, numa frase:** *medir a distância a partir das posições do pen-down* — é ela que
@@ -579,11 +654,13 @@ faz o vinco limitar-se (no alvo, `2,99 → 0,66 R`; na nossa casa é o acumular 
 ### §9.1 — ⛔ O recorte do cursor pela caixa envolvente
 
 Numa vista ortográfica o alvo recorta o raio do cursor à caixa envolvente da malha antes de o
-lançar. Num plano essa caixa tem espessura zero (mais uma folga de `1e-3`); um vinco mais fundo
-fica **fora** e o acerto seguinte falha — **o dab perde-se em silêncio**
+lançar. Num plano essa caixa tem espessura (praticamente) zero; um vinco mais fundo fica
+**fora** e o acerto seguinte falha — **o dab perde-se em silêncio**
 (`artefacto_caixa/caixa_fina_salto_14px`: só o dab do pen-down, `446` vértices e fundo `0,0148`,
 contra três dabs, `507` vértices e `0,0323` com caixa espessa). O mesmo acontece a um traço que
-**levanta** acima de uma caixa que só engrossa para baixo (`1,5e-2` e `2,4e-2`). ⇒ **a nossa casa
+**levanta**: acima de uma caixa que só engrossa para baixo (`artefacto_caixa/caixa_funda_somar`,
+`1,5e-2` da corrida com caixa dupla) e acima da caixa fina com o `Ctrl`
+(`artefacto_caixa/caixa_fina_ctrl`, `2,4e-2`). ⇒ **a nossa casa
 não recorta, e o gate G-11 prende isso.**
 
 ### §9.2 — As normais que o caminho por script não refresca
@@ -612,8 +689,14 @@ célula por modo, ou **divergência declarada**. Decisão do dono (§15).
 
 - **A distância do pen-down**: o `Draw` é `Grip::Stamp`, cujo `from_live` **é** o acumular
   (`grip.rs:233-261`); com ele desligado a distância sai do `base` (`stroke_dab_core.rs:273-278`).
-- **O cursor na superfície viva** a cada dab: `Verb::le_a_superficie_viva` responde `true` para o
-  `Draw` (`brush_verb_predicados.rs:211-217`).
+- **O cursor na superfície viva** a cada dab: quem o governa é
+  `Verb::pica_na_superficie_do_pen_down` (`brush_verb_predicados.rs:574-576`, `false` para o
+  `Draw`), consultado quando a app fotografa ou não a superfície do pen-down
+  (`ph2d-app-sculpt3d/src/space.rs:389-395`).
+- **A normal e o plano lidos da superfície viva**: quem o governa é outro predicado,
+  `Verb::le_a_superficie_viva` (`brush_verb_predicados.rs:211-217`), que responde `true` para o
+  `Draw` **qualquer que seja o interruptor** — que é exactamente o que o valor de fábrica deste
+  pincel pede (§3).
 - **A composição aditiva** sobre a posição viva (`stroke_target.rs:187`).
 - **A curva afiada** `(1−u)⁴` (`Falloff::Sharper`, `falloff.rs:90-97`), a **dureza**
   (`brush_scale.rs:298-312`), a **força ao quadrado** (`ref_profiles.rs:437-451`), o **alcance
@@ -627,8 +710,11 @@ célula por modo, ou **divergência declarada**. Decisão do dono (§15).
   `plano_da_pegada.rs:102-140` (o pincel de plano) implementam a lei do §2.3 — raio próprio,
   curva suave fixa, dois baldes com a frente a ganhar.
 - O `Draw` lê `plane.normal` (`stroke_target.rs:97`), a normal do estimador de plano da casa.
-- ⚠️ **As duas implementações percorrem só a pegada do dab** (`self.footprint`, raio `R`): com
-  `f_n > 1` (`lei/normal_da_area_raio_2_0`) faltam vértices.
+- ⚠️ **As duas percorrem a pegada do dab** (`self.footprint`), e é o **raio da consulta** dessa
+  pegada que decide se `f_n > 1` (`lei/normal_da_area_raio_2_0`) é exprimível: o do pincel de plano
+  **já é alargado** pela porta `Brush::query_radius` (`brush_scale.rs:398-424`) para cobrir a
+  fracção do raio da normal; o dos pincéis de puxar fica em `R`. ⇒ o modo afiado alarga a consulta
+  **pela mesma porta**, nunca com uma segunda varredura.
 
 ### §10.3 — Falta
 
@@ -641,14 +727,21 @@ célula por modo, ou **divergência declarada**. Decisão do dono (§15).
    `verb == Plane` (`atenuacao_do_traco.rs:37-44`, `:77-91`); este pincel pede o passo de `5 %` e
    o factor **`a`** (não `(1 + a)/2`).
 4. **(para a paridade vértice a vértice)** a normal da área do §2.3 no `Draw`-afiado, com a soma
-   sobre `R_n` mesmo quando `R_n > R`.
+   sobre `R_n` mesmo quando `R_n > R` — pela porta do raio da consulta (§10.2).
+5. **Nada** na normal de VÉRTICE: a lei que o traço do alvo pede já é a da casa (§2.3.1) — o que
+   falta é a **bancada** carregar as fixturas de quadriláteros como quadriláteros.
 
 ### §10.4 — Não é o valor de fábrica, e seria lei nova: o acumular ligado deste pincel
 
 Ele pede o cursor da superfície do pen-down, a normal do pen-down e a distância do pen-down. As
 peças existem — `Verb::pica_na_superficie_do_pen_down` (`brush_verb_predicados.rs:574-576`, hoje
-só o projectar na cena), a fotografia das normais do primeiro toque (`stroke.rs:138`,
-`stroke_plane.rs:214-222`) —, mas nenhuma está ligada ao `Draw`. ⇒ **decisão** (§15): esconder o
+só o projectar na cena) e a fotografia das normais do **PEN-DOWN** (`stroke.rs:132-138`, armada em
+`stroke_dab_core.rs:101-115` só para o projectar em modo plano) —, mas nenhuma está ligada ao
+`Draw`. ⚠️ **Não confundir com a normal POR SLOT** (`base_nrm`), que é a do **primeiro toque** de cada
+vértice (`stroke_plane.rs:213-224`): num arrasto as duas diferem, porque a normal de um vértice
+muda quando os vizinhos se mexem antes de ele ser tocado. Esta lei (e a opção do §3.1) precisa da
+do **pen-down**. As posições não têm o problema: um vértice só se mexe depois de ser tocado, logo
+a posição do primeiro toque **é** a do pen-down. ⇒ **decisão** (§15): esconder o
 interruptor neste modo, ou ligá-lo à lei do alvo.
 
 ---
@@ -658,58 +751,116 @@ interruptor neste modo, ou ligá-lo à lei do alvo.
 [`fixtures/pincel_afiado/`](fixtures/pincel_afiado/README.md) — **80** ficheiros; a contagem sai
 do directório (`find … -name '*.txt.gz' | wc -l`).
 
-| família | n | o que a bancada faz com ela |
-|---|---|---|
-| `lei/` | 17 | um dab por ponto `c`, com o bloco `n` como normal de vértice, a máscara `m` onde houver, e compara `s` |
-| `cadeia/` | 10 | os pontos `c` pela ordem, o bloco `n` para **todos** os dabs, e compara cada `d<j>` e `s` — `7` cadeias do pincel afiado (`52` estados) + `3` controlos do desenho comum do alvo (`20` estados), que **documentam** a lei dele (§3) e não são gate do nosso produto |
-| `produto/` | 35 | o traço arrastado pela **porta do produto** (passo, atenuação, cursor vivo, normais vivas) e compara `p<k>` e `s`, ou a régua do §7 |
-| `detector/` | 15 | um pen-down e um salto do rato, e conta os dabs / compara `s` |
-| `artefacto_caixa/` | 3 | o controlo do §9.1 |
+| família | n | no gate | o que a bancada faz com ela |
+|---|---|---|---|
+| `lei/` | 17 | **16** no G-1 · **1** pendente (§12) | um dab por ponto `c`, com o bloco `n` como normal de vértice, a máscara `m` onde houver, e compara `s` |
+| `cadeia/` | 10 | **5** no G-2 (**36** estados) · **2** pendentes (16 estados) · **3** controlos (20 estados) | os pontos `c` pela ordem, o bloco `n` para **todos** os dabs, e compara cada `d<j>` e `s`. Os 3 controlos do desenho comum do alvo **documentam** a lei dele (§3) e não são gate do nosso produto |
+| `produto/` | 35 | **6** no G-3a · **5** no G-3b · **2** de completude · **22** excluídos com nome (§12) | o traço arrastado pela **porta do produto** (passo, atenuação, cursor vivo, normais vivas) e compara `p<k>` e `s`, ou a régua do §7 |
+| `detector/` | 15 | **13** no G-5a/b · **1** declarado · **1** no G-5c (com o `salto_00px`) | um pen-down e um salto do rato, e conta os dabs / compara `s` |
+| `artefacto_caixa/` | 3 | G-11 (1) · documentação (2) | o controlo do §9.1 |
 
 ⚠️ **Regras de leitura** (todas no README das fixturas e no cabeçalho de cada uma):
 
-- o raio efectivo é o do cabeçalho (`0,4` nas por script, `0,25` nas arrastadas);
-- nas arrastadas, o píxel do pen-down e o passo de um píxel no mundo estão no cabeçalho; a linha
-  do traço fica meio píxel ao lado de `y = 0` (`y = 0,0025`);
+- o raio efectivo é **o do cabeçalho**: `0,4` em 23 das 27 por script, `0,25` nas 4 de cilindro
+  (`lei/cilindro_um_dab`, as duas de faces de frente, `cadeia/cilindro_cursor_vivo`) e `0,25` nas
+  53 arrastadas;
+- nas **53** arrastadas o cabeçalho traz o píxel do pen-down e o passo de um píxel no mundo —
+  conferido por derivação (`zcat … | grep '^# pixel_do_pen_down_no_mundo'` nas três famílias
+  arrastadas: 53 de 53). ⚠️ A linha do traço **pedida** é `y = 0`; a **real** é a do píxel do
+  pen-down, meio píxel ao lado (`y = 0,0025`);
+- **a malha lê-se como está**: quadriláteros como quadriláteros (as duas de triângulos, como
+  triângulos), e a normal de vértice recalcula-se com a lei da §2.3.1 — a linha
+  `normais_de_vertice` de cada cabeçalho di-lo;
 - nas de caixa dupla, **dois vértices de canto estão fora do plano** (`z = ±1`) — a régua ignora-os
-  (estão longe do traço), mas uma comparação vértice a vértice tem de os incluir tal como estão;
+  (estão longe do traço) e uma comparação vértice a vértice inclui-os tal como estão, **salvo** nos
+  G-10 e G-11, que os **saltam** (lá comparam-se superfícies com repousos diferentes nesses dois
+  vértices, ou posições espelhadas, e os cantos leriam `1` ou `2`);
 - as `2` de catálogo servem de **completude** (o pincel de fábrica = os valores escritos); ⛔ os
   gates ancoram-se nas de pincel **nosso**, cujo cabeçalho diz `origem_dos_valores: … ESCRITOS`.
+
+### §11.1 — O que a 1.ª emenda regenerou (provado contra a publicação anterior)
+
+| ficheiros | o que mudou | prova |
+|---|---|---|
+| **71** | só o cabeçalho: a linha `normais_de_vertice` nova e a linha do traço reescrita | todos os blocos idênticos, linha a linha |
+| **3** de 192² | + as fotos `p2` e `p4` | os blocos `r`, `n`, `c`, `p1` e `s` idênticos, linha a linha |
+| **6** (as 5 de cilindro do produto + `artefacto_caixa/caixa_fina_ctrl`) | **re-corridas** com o mapa do píxel gravado | os **mesmos** vértices movidos; posições a `≤ 3,3e-7` da publicação anterior (o traço separado; `≤ 6e-8` nos outros cinco) |
+
+⚠️ **O arrasto do alvo não é determinístico ao bit:** as seis corridas repetidas diferem da
+primeira vez entre `2,3e-8` e `3,3e-7`, e o erro cresce com as fotos de um traço separado. É um
+chão de ruído **~6 000×** abaixo da barra do G-3a. ⇒ a comparação passagem a
+passagem não pode exigir o bit, e nenhuma exige.
 
 ---
 
 ## §12 — Os GATES propostos, cada um com a população, o piso, a barra e a origem
 
 Convenção: «aprovado» = o maior erro do lado que tem de passar; «errado» = o menor erro da
-candidata que tem de reprovar. A barra fica **estritamente entre** os dois. As medições do lado
-aprovado são do **modelo de referência do E** (`float64`); a implementação em `f32` pode pedir
-reconferência — ⛔ **nunca** afrouxar uma barra por isso sem a medição ao lado.
+candidata que tem de reprovar, **dentro da população do gate**. A barra fica **estritamente entre**
+os dois. As medições do lado aprovado são do **modelo de referência do E** (`float64`); a
+implementação em `f32` pode pedir reconferência — ⛔ **nunca** afrouxar uma barra por isso sem a
+medição ao lado.
 
 | gate | população (piso) | mede | barra | aprovado | errado mais perto | origem |
 |---|---|---|---|---|---|---|
-| **G-1** lei de um dab | `lei/` (**17**) | max `|Δ|` por vértice contra `s` | `2e-6` planas e cilindro · `1e-5` bossas e pegada projectada (estas exigem a normal do §2.3, D-3) | `8,1e-8` · `4,2e-6` | faces de frente sem o factor `5,2e-3`; normal com distância 3D na pegada projectada `3,1e-4`; `R_n` trocado `≥ 1,9e-3`; força linear `1e-1` | §2 |
-| **G-2** cadeias | as `7` cadeias do pincel afiado em `cadeia/` (**52** estados) | max `|Δ|` contra cada `d<j>` e `s` | `1e-5` (as de bossas exigem a normal do §2.3, D-3) | `1,9e-6` | normal lida do lado errado (§3) `4,7e-4`; distância viva `≥ 2,6e-2`; cursor do pen-down com o interruptor desligado `≥ 3,6e-2` | §2.1, §3, §4 |
-| **G-3a** produto vértice a vértice, contínuo (⚠️ exige a normal do §2.3) | as `6` contínuas de pincel NOSSO (96², 48², 192², cilindro, `Ctrl`, triângulos) × fotos | max `|Δ|` na malha inteira | `2e-3` | `5,1e-4` | a lei de normal da casa `9,5e-3`; normais congeladas `2,35e-2`; sem atenuação `7,95e-2`; `(1+a)/2` `4,7e-2` | §2.3, §5 |
-| **G-3b** produto vértice a vértice, separados (idem) | as `4` separadas (96², 48², 192², cilindro) + triângulos (**5**) | max `|Δ|` em `|x| ≤ 0,25` · na malha inteira | `8e-3` · `3e-2` | `2,3e-3` · `1,17e-2` | lei da casa `2,4e-2` · `9,1e-2` | §2.3, §4.2 |
-| **G-4a** régua, contínuo — o `Draw` composto SEM a normal do alvo | 4 superfícies (96², 48², 192², cilindro) × passagens 1, 2, 4, 8 (**16** células) | desvio relativo de `D/R` · `W50/R` · nitidez contra o alvo | `6 %` · `2 %` · `6 %` | `3,2 %` · `0,4 %` · `3,6 %` | acumular ligado (p1) `D +13,6 %`, `W −4,5 %`; tipo desenho comum (p1) `W +7,1 %`, nitidez `−8,1 %`; curva suave `D +146 %`; sem passo/atenuação `D +112 %`; força `1` `D +146 %` | §7, §8 |
-| **G-4b** régua, separados — idem | 4 superfícies × traços 1, 2, 4 (**12**) · × traço 8 (**4**) | idem | `6 %` · `3 %` · `8 %` (1–4) · `8 %` · `15 %` · `25 %` (8) | `3,5 %` · `1,3 %` · `4,8 %` · `4,9 %` · `11,8 %` · `18,9 %` | sem passo/atenuação (traço 8) `D +86 %`; desenho comum separado `W +175 %` | §7.3 |
-| **G-5a** passo — contagem | `detector/salto_*` sem os declarados (**13**) | nº de dabs = `⌊N/5⌋ + 1` | exacto | exacto | `±1` dab | §5.1 |
+| **G-1** lei de um dab | `lei/` menos a pendente (**16**: 9 planas · 3 de cilindro · 4 de bossas) | max `|Δ|` por vértice contra `s` | `2e-6` planas e cilindro · `1e-5` bossas (estas exigem a normal do §2.3, D-3) | `8,1e-8` · `3,3e-6` | `R_n` trocado `≥ 1,9e-3`; faces de frente sem o factor `5,2e-3`; força linear `5,2e-2` (nas 10 com força `< 1`; nas outras 6 é inerte) | §2 |
+| **G-2** cadeias | `cadeia/plano_cursor_vivo` · `bossas_cursor_vivo` · `mesmo_ponto_cursor_vivo` · `mesmo_ponto_cursor_dado` · `cilindro_cursor_vivo` (**5**, **36** estados) | max `|Δ|` contra cada `d<j>` e `s` | `1e-5` (a de bossas exige a normal do §2.3, D-3) | `1,6e-6` | normal lida do pen-down `4,7e-4` (só na de bossas; nas outras é inerte por geometria); distância viva `≥ 2,6e-2`; cursor do pen-down com o interruptor desligado `≥ 3,6e-2` (inerte na de cursor imposto) | §2.1, §3, §4 |
+| **G-3a** produto vértice a vértice, contínuo — com a normal da área do §2.3 **e** a de vértice da §2.3.1 | `produto/afiado_valores_de_fabrica_continuo` · `afiado_valores_de_fabrica_ctrl` · `densidade_48_afiado_continuo` · `densidade_192_afiado_continuo` · `cilindro_afiado_continuo` · `triangulos_afiado_continuo` (**6**) × fotos + saída | max `|Δ|` na malha inteira | `2e-3` | `5,1e-4` | a lei de normal da área da casa `9,5e-3`; normais congeladas `1,11e-2`; `(1+a)/2` `4,7e-2`; sem atenuação `7,95e-2` | §2.3, §5 |
+| **G-3b** produto vértice a vértice, separados — idem | `produto/afiado_valores_de_fabrica_separados` · `densidade_48_afiado_separados` · `densidade_192_afiado_separados` · `cilindro_afiado_separados` · `triangulos_afiado_separados` (**5**) | max `|Δ|` na malha inteira · em `|x| ≤ 0,25` | `8e-3` · `5e-3` | `3,1e-3` · `2,3e-3` | na 48² (a que discrimina a normal de vértice): pesada pelo ângulo `1,17e-2` · —, triangulada `3,25e-2` · `8,0e-3`; em todas: a lei de normal da área da casa `≥ 9,0e-2` · `≥ 2,6e-2`; normais congeladas `≥ 1,21e-1` · `≥ 1,19e-2` | §2.3, §2.3.1, §4.2 |
+| **G-4a** régua, contínuo — corre com a normal que o produto tiver (as barras foram calibradas com a da casa e ficam folgadas com a do alvo) | 4 superfícies (96², 48², 192², cilindro) × passagens 1, 2, 4, 8 (**16** células, todas publicadas) | desvio relativo de `D/R` · `W50/R` · nitidez contra o alvo | `6 %` · `2 %` · `6 %` | `3,2 %` · `0,4 %` · `3,6 %` | nosso acumular ligado (p1) `D +13,6 %`, `W −4,5 %`; tipo desenho comum no alvo (p1) `W +7,1 %`, nitidez `−8,1 %`; curva suave `D +146 %`; sem passo/atenuação `D +112 %`; força `1` `D +146 %` | §7, §8 |
+| **G-4b** régua, separados — idem | 4 superfícies × traços 1, 2, 4 (**12**) · × traço 8 (**4**), todas publicadas | idem | `6 %` · `3 %` · `8 %` (1–4) · `8 %` · `15 %` · `25 %` (8) | `3,5 %` · `1,3 %` · `4,8 %` · `4,9 %` · `11,8 %` · `18,9 %` | sem passo/atenuação `D +112 %` (traço 1), `W −9,4 %` (traço 2), `D +86 %` (traço 8); desenho comum separado `W +175 %` | §7.3 |
+| **G-5a** passo — contagem | `detector/salto_*` menos o declarado (**13**) | nº de dabs = `⌊N/5⌋ + 1` | exacto | exacto | `±1` dab | §5.1 |
 | **G-5b** passo — posições | as mesmas (**13**) | max `|Δ|` contra `s` | `7e-3` | `4,6e-3` | um dab a mais ou a menos `≥ 1,06e-2` | §5.1, §9.3 |
-| **G-5c** o dab do pen-down é atenuado | `detector/salto_00px` e `…_sem_atenuacao` (**2**) | max `|Δ|` | `1e-5` | `1,8e-8` | sem atenuação `4,5e-2`; `(1+a)/2` `2,3e-2` | §5.3 |
+| **G-5c** o dab do pen-down é atenuado | `detector/salto_00px` e `detector/salto_00px_sem_atenuacao` (**2**) | max `|Δ|` | `1e-5` | `7,4e-8` | sem atenuação `4,5e-2`; `(1+a)/2` `2,3e-2` | §5.3 |
 | **G-6** valores de fábrica | as linhas do §6 que o modo muda contra o nosso `Draw` (**5**: curva · direcção · acumular · espaçamento · atenuação) | o pincel nasce com cada valor | exacto | — | — | §6 |
-| **G-7** auto-limitação, forma fechada | a recorrência do §4.1 contra `cadeia/mesmo_ponto_cursor_vivo` (**4** dabs) | `|Δz|` | `1e-6` | `1,5e-8` | cursor imposto (linear) `≥ 6,8e-2` | §4.1 |
-| **G-8** a régua separa o afiado do desenho comum | `produto/*_valores_de_fabrica_*` (**2**) | razão `W50` desenho/afiado a 8 passagens | `≥ 1,8` | `2,29` | — (o controlo: se a razão cair, a régua deixou de ver) | §7.4 |
-| **G-9** o primeiro dab é o do desenho comum | `lei/um_dab_curva_afiada` × `…_controlo_desenho_comum` (**2**) | diferença | `0` ao bit | `0,0` | — | §1 |
-| **G-10** simetria de direcção | `produto/ablacao_somar` × `produto/afiado_valores_de_fabrica_continuo` (**2**, `4` fotos + a saída) | `|Δ|` contra o espelho `z → −z` | `2e-6` | `1,2e-7` | — | §2.4 |
-| **G-11** o recorte pela caixa NÃO se copia | o salto de `14` px numa malha plana **sem** vértices de canto | `|Δ|` contra `detector/salto_14px` e contra `artefacto_caixa/caixa_fina_salto_14px` | `≤ 7e-3` do primeiro **e** `≥ 1e-2` do segundo | — | os dois diferem `2,24e-2` | §9.1 |
+| **G-7** auto-limitação, forma fechada | a recorrência do §4.1 contra o fundo de `cadeia/mesmo_ponto_cursor_vivo` (**4** dabs) | `|Δz|` | `1e-6` | `3,0e-7` | cursor imposto (linear) `6,8e-2` | §4.1 |
+| **G-8** a régua separa o afiado do desenho comum | `produto/afiado_valores_de_fabrica_continuo` × `produto/desenho_valores_de_fabrica_continuo` (**2**) | razão `W50` desenho/afiado a 8 passagens | `≥ 1,8` | `2,29` (o par separado lê `2,75` e também passa) | — (o controlo: se a razão cair, a régua deixou de ver) | §7.4 |
+| **G-9** o primeiro dab é o do desenho comum | `lei/um_dab_curva_afiada` × `lei/um_dab_controlo_desenho_comum` (**2**) | diferença | `0` ao bit | `0,0` | — | §1 |
+| **G-10** simetria de direcção | `produto/ablacao_somar` × `produto/afiado_valores_de_fabrica_continuo` (**2**; `3` fotos + a saída) | `|Δ|` entre os **DESLOCAMENTOS** e o espelho `z → −z` (ou as posições, **saltando** os dois vértices de canto) | `2e-6` | `1,2e-7` | — | §2.4 |
+| **G-11** o recorte pela caixa NÃO se copia | o salto de `14` px numa malha plana **sem** vértices de canto (**1** corrida nossa × **2** fixturas) | `|Δ|` contra `detector/salto_14px` e contra `artefacto_caixa/caixa_fina_salto_14px`, **saltando** os dois vértices de canto | `≤ 7e-3` do primeiro **e** `≥ 1e-2` do segundo | `2,9e-4` (o modelo contra a de caixa dupla) | as duas fixturas diferem `2,24e-2` | §9.1 |
 | **G-12** nenhum knob morto neste modo | cada knob oferecido × duas posições (piso = os knobs pintados) | o barro muda | `> 0` | — | — | §8 (o censo dos knobs da casa) |
 
-⛔ **Declarados, com nome** (catraca, nunca silêncio): o G-5a/G-5b excluem **um** ficheiro,
-`detector/salto_05px` — é o único salto de **exactamente** um passo (D-1); os de `9`, `14`, `19`,
-`24` e `29` px dão os passos inteiros e um resto, e a casa já os reproduz. O
-`detector/salto_00px_sem_atenuacao` pertence ao G-5c. Os G-3 excluem `produto/alvo_com_*`
-(corridas do alvo com valores nossos, para a ablação), as `produto/desenho_*` (controlos da
-régua) e as `produto/*_de_catalogo_*` (completude, §11).
+### §12.1 — ⛔ A catraca «PENDENTES DE DECISÃO DO DONO»
+
+Três fixturas descrevem leis que **a própria página não pede** ao produto recomendado. Elas **não
+contam** no G-1 nem no G-2 enquanto a decisão do dono não as pedir; um censo de obsolescência
+devolve cada uma ao seu gate **no dia em que o controlo correspondente for oferecido** (e reprova
+se o controlo existir e a fixtura continuar na catraca).
+
+| fixtura | decisão | o modelo reproduz a | o produto recomendado (sem a lei) lê | volta ao |
+|---|---|---|---|---|
+| `lei/pegada_projectada` | **P-4** (não oferecer) | `4,2e-6` | `8,5e-2` | G-1 (barra `1e-5`) |
+| `cadeia/bossas_cursor_vivo_acumula` | **P-2** (esconder o interruptor) | `1,6e-6` | `4,7e-4` | G-2 (8 estados) |
+| `cadeia/bossas_cursor_vivo_normal_do_pen_down` | **P-5** (não oferecer a opção) | `1,9e-6` | `6,2e-2` | G-2 (8 estados) |
+
+⚠️ *Uma lei construída sem controlo que a alcance é um knob inalcançável* — a regra da casa é *o
+painel oferece exactamente o que o gesto faz*. Por isso estas três ficam FORA até haver o controlo.
+
+### §12.2 — ⛔ Declarados e excluídos, com nome (catraca, nunca silêncio)
+
+- **G-5a/G-5b excluem 1 ficheiro:** `detector/salto_05px` — o único salto de **exactamente** um
+  passo (D-1); os de `9`, `14`, `19`, `24` e `29` px dão os passos inteiros e um resto, e a casa já
+  os reproduz.
+- **Completude (2), fora dos G-3:** `produto/afiado_de_catalogo_continuo`,
+  `produto/desenho_de_catalogo_continuo`.
+- **Excluídos dos G-3 (22), cada um com o papel:**
+  - controlos do desenho comum (usados na régua; o G-8 usa um par): `produto/desenho_valores_de_fabrica_continuo`,
+    `produto/desenho_valores_de_fabrica_separados`, `produto/desenho_valores_de_fabrica_subtrair_continuo`,
+    `produto/densidade_48_desenho_subtrair_continuo`, `produto/densidade_192_desenho_subtrair_continuo`,
+    `produto/cilindro_desenho_subtrair_continuo`;
+  - a ablação (§8.1; o G-10 usa uma): `produto/ablacao_acumular`, `produto/ablacao_curva_suave`,
+    `produto/ablacao_espacamento_10`, `produto/ablacao_espacamento_8`, `produto/ablacao_forca_1`,
+    `produto/ablacao_normal_do_pen_down`, `produto/ablacao_raio_da_normal_1`,
+    `produto/ablacao_sem_atenuacao`, `produto/ablacao_somar`, `produto/ablacao_tipo_desenho_comum`,
+    `produto/cilindro_ablacao_acumular`;
+  - o motor do alvo com valores nossos (§8.2–§8.3): `produto/alvo_com_o_nosso_afiado_composto`,
+    `produto/alvo_com_o_nosso_afiado_composto_tipo_desenho`, `produto/alvo_com_os_valores_do_nosso_desenho`,
+    `produto/alvo_com_os_valores_do_nosso_desenho_subtrair`, `produto/cilindro_alvo_com_o_nosso_afiado_composto`.
+- **Os 3 controlos de `cadeia/`** (`controlo_desenho_*`) e as **2** de `artefacto_caixa/` que o
+  G-11 não usa (`caixa_funda_somar`, `caixa_fina_ctrl`) documentam; não são gate.
+
+⇒ **Soma, derivável do directório:** `lei/` 16 + 1 · `cadeia/` 5 + 2 + 3 · `produto/` 6 + 5 + 2 + 22 ·
+`detector/` 13 + 1 + 1 · `artefacto_caixa/` 1 + 2 = **80**.
 
 ---
 
@@ -723,8 +874,13 @@ régua) e as `produto/*_de_catalogo_*` (completude, §11).
 | todas as reproduções «`≤ …`» | o modelo de referência do E (`float64`), fora da árvore, a partir **só** do repouso, do caminho e do cabeçalho |
 | as réguas do alvo | as fotos `p<k>` e `s` das fixturas de `produto/` |
 | as réguas nossas | a sonda temporária do §7.5 |
-| a atribuição do §8.4 | o mesmo modelo, trocando só a lei da normal |
+| a atribuição do §8.4 | o mesmo modelo, trocando só a lei da normal da área |
+| a lei da normal de vértice (§2.3.1) | o mesmo modelo, trocando só a normal de vértice (quatro leis × quatro superfícies nos traços separados); a do repouso, contra o bloco `n` |
+| a largura `W_f` (§7.1) | a régua do E, com os cruzamentos achados a partir do máximo; re-implementada de raiz pelo R-pré sobre os blocos publicados |
+| o não-determinismo do arrasto (§11.1) | seis corridas repetidas, comparadas com a primeira |
+| os números da catraca (§12.1) | o mesmo modelo, com e sem a lei pendente |
 | a recusa do dyntopo | a obra do dyntopo (`fixtures/dyntopo/README.md`) |
+| a folga do recorte do alvo | ⛔ retirada da espec (o produto não recorta, §9.1) |
 
 ---
 
@@ -745,8 +901,8 @@ régua) e as `produto/*_de_catalogo_*` (completude, §11).
    construção: decisão (§15).
 4. **Com topologia dinâmica o alvo não mexe na malha com este pincel**, e a documentação pública
    aponta o pincel de vinco para esse caso (§9.4).
-5. **O vinco só se lê em malha fina**: a meia-largura é `≈ 0,55 R`; com menos de `~3` arestas
-   nessa largura o fundo não é representável (medição nossa: `W50` em 48² são `3,3` células com
+5. **O vinco só se lê em malha fina**: a largura a meia profundidade é `≈ 0,55 R`; com menos de
+   `~3` arestas nessa largura o fundo não é representável (medição nossa: `W50` em 48² são `3,3` células com
    `R = 0,25`).
 6. ⛔ **Não copiar:** o recorte do cursor pela caixa (§9.1); a pegada projectada que empurra de
    lado (§2.7), se oferecida neste pincel.
@@ -759,8 +915,9 @@ régua) e as `produto/*_de_catalogo_*` (completude, §11).
 |---|---|---|---|
 | D-1 | um salto de exactamente um passo (§5.1) | mudar a fronteira do passeio da casa · declarar | **declarar** (a fronteira tem gate e o mesmo precedente do pincel de plano; num arrasto real as listas coincidem) |
 | D-2 | o recorte pela caixa (§9.1) | copiar · não copiar | **não copiar** (G-11) |
-| D-3 | a normal da área (§10.2) | manter a da casa (desvio `+3,1 %` · `−11,7 %`, G-4) · adoptar a do alvo neste modo (G-3) | adoptar — a lei já vive em duas portas da casa |
+| D-3 | a normal da área (§10.2) | manter a da casa (desvio `+3,1 %` · `−11,7 %`, G-4) · adoptar a do alvo neste modo (G-3, e as bossas do G-1/G-2) | adoptar — a lei já vive em duas portas da casa, e a consulta alarga pela porta que o pincel de plano já usa |
 | **P-1** (dono) | **o nome e a forma**: um modo/valor do nosso `Draw` ou um pincel próprio no catálogo | as duas exprimem a lei | técnica: modo do `Draw` (§0.1); o nome no catálogo é do dono |
-| **P-2** (dono) | **o acumular neste modo** (§10.4) | esconder · oferecer com a lei do alvo (lei nova) · oferecer com a nossa (outro vinco, §8.3) | esconder até haver pedido |
+| **P-2** (dono) | **o acumular neste modo** (§10.4) | esconder · oferecer com a lei do alvo (lei nova) · oferecer com a nossa (outro vinco, §8.3) | esconder até haver pedido — a fixtura dele fica na catraca do §12.1 e volta ao G-2 se a lei do alvo for oferecida |
 | **P-3** (dono) | **a topologia dinâmica** (§9.4) | não refinar (como o alvo) · refinar (como o nosso `Draw`) | não refinar — é o que o nome promete (um vinco fino não sobrevive a um remalhe) |
-| **P-4** (dono) | **a pegada projectada** (§2.7) | não oferecer · oferecer | não oferecer neste modo |
+| **P-4** (dono) | **a pegada projectada** (§2.7) | não oferecer · oferecer | não oferecer neste modo — a fixtura fica na catraca do §12.1 e volta ao G-1 se for oferecida |
+| **P-5** (dono) | **a opção da normal do pen-down** (§3.1) — o nosso `Draw` não a tem | não oferecer · oferecer (congela a normal do **pen-down** no primeiro dab, §10.4) | não oferecer — é inerte num plano e não faz parte do valor de fábrica; a fixtura fica na catraca do §12.1 e volta ao G-2 se for oferecida |

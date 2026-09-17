@@ -388,3 +388,31 @@ com as figuras geradas por `write_the_source_figures` a partir da cena do produt
 cada figura por si dá duas escalas, e o leitor compara desenhos incomparáveis.
 
 ---
+
+## §9 — ✅ O VEREDITO DO DONO (2026-09-16): o ciclo 8 FECHA
+
+Ele correu a cena `=119`, seguiu o [tutorial](tutoriais/08_de_onde_vem_as_coisas.pdf) e aprovou —
+*«smoke OK»*. Pelo [doc 103 §1](103_dinamica_dos_ciclos.md) passo 7, é isto que fecha um ciclo.
+
+**O que o ciclo 8 deixa no produto:**
+
+| | |
+|---|---|
+| ⭐⭐⭐ **a costura deixou de ser taxa por quadro** | `9,62 → 1,62 ms` a um milhão de linhas (§6), pela régua *«isto é o mesmo armazenamento»* — e ela vale para **todas** as membranas de uma vez |
+| ⭐⭐ **a VISTA entra no grafo** | `source.camera` (§5): uma peça pede o tamanho em **pixels de ecrã** e a câmara converte |
+| ⭐ **um fio sem valor NÃO escreve** | a lei que a câmara destapou no `motion.drive`, curada nos dois motores (§5) |
+| ⭐ **o cartão do `Shape` abre pela forma** | e as cores foram para a secção `Look` (§4) |
+| 📘 **o tutorial 8** | `=119`, 5 páginas, 10 passos, 12 gates |
+
+⏳ **Abertos do 8** (nenhum bloqueia):
+
+1. **A tabela do relógio do grupo (§7)** — a sonda está escrita, comitada e com a espera armada; os
+   números faltam porque a máquina não ficou abaixo de `load 5` nesta jornada.
+2. ⛔ **O `value.math` continua a ler um operando AUSENTE como `0`** (§5) — a cura pede
+   conectividade no `EvalCtx`, que é wave de SUBSTRATO. A composição que o tutorial ensina evita-o
+   por construção (o `motion.drive` sabe dividir), e é por isso que ela é a que está na cena.
+3. ⛔ **Cinco das sete fontes ficam fora do dispositivo** (§2), e duas delas **recusam o device para
+   o grafo inteiro** (forma viva). Não é dívida escondida: é o canal de `geometry_id` que a placa
+   não tem, e ele é wave própria.
+
+---

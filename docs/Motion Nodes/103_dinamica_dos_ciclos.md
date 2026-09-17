@@ -111,12 +111,22 @@ inventada. Contagens do registry em 2026-09-05.
 | **5** ✅ ([doc 108](108_ciclo_5_simulacao.md)) | SIMULAÇÃO | `sim.zone` · `sim.spawn` · `sim.step` · `sim.lifetime` · `sim.collide` · `motion.integrate` · as `force.*` | «Deixar a física decidir» |
 | **6** ✅ ([doc 110](110_ciclo_6_valor_e_pulso.md)) | VALOR & PULSO — o cérebro | a família `value.*` e `pulse.*` (**35**) | «Um número que manda em tudo» |
 | **7** ✅ ([doc 112](112_ciclo_7_aparencia.md)) | APARÊNCIA (Fx) | `tint` · `color_ramp` · `color_array` · `trail` · `strobe` · `glow` · `drop_shadow` · `rgb_split` · `sub_uv` · `slit_scan` | «A cor e o rasto» |
-| **8** ⏳ ([doc 113](113_ciclo_8_fontes_e_dados.md)) | FONTES & DADOS | `source.shape` · `source.object` · `source.text` · `source.table` · `source.lsystem` · `motion.emitter` | «De onde vêm as coisas» |
+| **8** ✅ ([doc 113](113_ciclo_8_fontes_e_dados.md)) | FONTES & DADOS | `source.shape` · `source.object` · `source.text` · `source.table` · `source.lsystem` · `motion.emitter` · **`source.camera`** (nasceu no ciclo) | «De onde vêm as coisas» — cena `=119`, [tutorial 8](tutoriais/08_de_onde_vem_as_coisas.pdf) |
 | 9 | RIG & CORPOS MOLES | `rig.*` · `soft_body` · `verlet_rope` · `wave` · `boids` | «Coisas que se seguram» |
 | **10** | ⚡ **O CARIMBO NO DISPOSITIVO** — `source.shape` + `motion.duplicator` | (optimização, não um grupo novo) | «Um milhão de cópias» |
 | **11** | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o módulo inteiro, cena a cena | (varredura) | — |
 | **12** | ⚡ **OS TETOS CONFORTÁVEIS** — quantos objectos o sistema aguenta, com número | (decisão do Enio, com a tabela) | — |
 
+> ⚠️ **Estado em 2026-09-16 (fecho da LINHA).** O ciclo **8** FECHOU — o dono correu a cena `=119`,
+> seguiu o [tutorial 08](tutoriais/08_de_onde_vem_as_coisas.pdf) e aprovou (*«smoke OK»*). O achado
+> que o decidiu **não estava no catálogo**: uma fonte é o PRIMEIRO nó de um grafo, então a costura
+> cai NELA e era **re-enviada e re-lida a cada quadro** mesmo parada — `9,62 → 1,62 ms` a um milhão
+> de linhas, por uma régua só (*«isto é o mesmo armazenamento»*) que serve as cinco membranas
+> ([doc 113 §6](113_ciclo_8_fontes_e_dados.md)). O grupo ganhou um nó (`source.camera`, a VISTA
+> dentro do grafo) e a linha **FECHA AQUI**, com o handoff de integração escrito; o ciclo **9 (RIG
+> & CORPOS MOLES)** abre depois da integração. ⏳ Fica **a tabela do relógio do grupo** (§7): a
+> sonda está comitada e a máquina não desceu de `load 5` nesta jornada.
+>
 > ⚠️ **Estado em 2026-09-16 (fim do dia).** O ciclo **7** FECHOU — o dono correu a cena `=118`,
 > seguiu o [tutorial 07](tutoriais/07_a_cor_e_o_rasto.pdf) e aprovou (*«smoke OK»*). Os dez nós
 > ficam na placa (`~2 ns` por linha contra `7–15×` na CPU), e a medição achou e curou um nó em série

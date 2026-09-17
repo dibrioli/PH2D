@@ -89,36 +89,63 @@ sobre `P`. O que é CPU-only é a **caixa declarada** (com centro e rotação).
 
 ---
 
-## §3 — A ESPINHA: onde é que a separação automática corre
+## §3 — ✅ W0 MEDIDA: o passe corre no FIM, e a minha hipótese estava ERRADA
 
-⛔ **Esta é a pergunta que nenhuma leitura do pedido responde, e ela tem de ser medida antes de
-escolhida.** Hoje a separação é um nó *dentro* do grafo, e é por isso que a corda tem auto-colisão:
-a saída separada é **realimentada** em `rope.state` (doc 114 §11 — 32 iterações, `1,3 %`–`4,7 %` de
-um quadro). Um passe automático tem duas moradas possíveis e elas **não** são equivalentes:
+⛔ **A 1.ª redacção desta secção dizia o contrário, e fica aqui o que ela dizia** — porque a morte
+de uma premissa vale mais que a premissa: *«um passe no fim do cozimento não realimenta o solver,
+logo a corda separa na imagem e volta a sobrepor-se no quadro seguinte; a lei deixa de ser a que a
+§11 mediu»*.
 
-- **(a) no fim do cozimento, sobre o que vai ser desenhado.** Simples, e encaixa no *«toda
-  visualização passa pelo Duplicator»*. ⚠️ Mas o estado do solver **não aprende**: a corda separa na
-  imagem e volta a sobrepor-se no quadro seguinte, partindo de onde estava. *A lei deixa de ser a
-  que a §11 mediu.*
-- **(b) realimentado, como hoje, mas sem nó** — o cozedor fecha o anel sozinho onde há colisor
-  armado.
+⭐⭐ **A medição existia antes da pergunta.** A sonda da §11
+([`motion_rig_colisao_probe`](../../crates/ph2d-app-motion/src/motion_rig_colisao_probe.rs)) já
+montava as duas moradas — o `CollideDepois` (o separador é um **acabamento**, e o estado volta da
+CORDA) e o `CollideNoLaco` (a saída separada é **realimentada** no `rope.state`). O que faltava era
+a **célula que ninguém tinha corrido**: a varredura de iterações estava feita só para o laço.
 
-⇒ **W0 do plano é uma MEDIÇÃO, não código:** correr a fixtura da corda da §11 nas duas moradas e
-comparar contra o que o anel entrega hoje. *Se (a) não reproduzir, a resposta é (b) e o plano muda
-de tamanho* — e é mais barato descobrir isso numa sonda do que depois de a wave estar escrita.
+Corrida para as duas, sobre a corda chicoteada de 25 pontos, 240 tiques, barra `0,140`:
 
----
+| iterações | **DEPOIS** (vão / pares) | NO LAÇO (vão / pares) |
+|---|---|---|
+| 8 | 0,1051 / **9** | 0,1063 / **7** |
+| 16 | **0,1346** / 3 | 0,1284 / 3 |
+| 32 | **0,1393** / **0** | 0,1383 / **0** |
+| 64 | **0,1400** / 0 | 0,1399 / 0 |
+| 128 | 0,1400 / 0 | 0,1399 / 0 |
+
+⭐⭐⭐ **De 16 iterações para cima as duas moradas são indistinguíveis — e a barata é a que
+encosta na barra.** Aos 32, as duas entregam **zero pares sobrepostos**; aos 64 a do acabamento lê
+`0,1400` contra `0,1399`, que é o vão inteiro.
+
+⚠️ **E a única diferença real está ABAIXO da convergência:** a 8 iterações a realimentada ganha
+(`7` pares contra `9`). *A realimentação compra alguma coisa enquanto o passe está sub-convergido, e
+deixa de comprar quando ele converge* — o que é exactamente o mecanismo, e não um acaso: o Verlet
+re-deriva a pose de cada tique das restrições dele, logo a sobreposição que ele produz é pequena e
+um acabamento por quadro chega para a apagar.
+
+### ⇒ A decisão que a W0 fecha
+
+**O passe automático corre no FIM do cozimento, sobre o que vai ser desenhado.** Não precisa de
+fechar anel nenhum, o que:
+
+- encaixa na outra metade da ordem do dono (*«toda visualização passa pelo Duplicador»*);
+- apaga a maior incógnita de custo do plano — não há realimentação a plumbar;
+- e **mantém a capacidade que a §11 mediu**, que era o risco declarado de tirar o nó.
+
+⚠️ **O que fica NOMEADO e não resolvido:** a barra é `32` iterações nesta fixtura, e `32` a 200
+pontos custa `10,467 ms` de um quadro de `16,67` (§1-ter da mesma sonda). *O tecto de iterações é
+um número que tem de sair de uma medição no caminho do produto, não desta corda* — e é a W2 que
+decide se ele é do dispositivo ou da CPU.
 
 ## §4 — As waves
 
 | wave | o que fecha | depende de |
 |---|---|---|
-| **W0** | a medição da §3 — (a) contra (b) contra o anel de hoje, na fixtura da corda | — |
+| ~~W0~~ | ✅ **FECHADA** (§3): as duas moradas são indistinguíveis acima de 16 iterações ⇒ o passe corre no FIM | — |
 | **W1** | ⛔ **a CERCA**: ela pergunta *«alguém declara?»* e tem de perguntar *«alguém CONSOME?»* | §1.4 |
 | **W2** | a caixa declarada no **dispositivo** (o disco já lá está) — ou a recusa MEDIDA de que não vale | W1 |
 | **W3** | a membrana publica a forma do objecto (`Collider` → as três colunas) | §1.1 |
 | **W4** | Sprite · vector · Flip nascem com `Collider`, e o `Collide` do Inspector arma | W3 |
-| **W5** | o passe automático, na morada que a W0 escolheu | W0 |
+| **W5** | o passe automático **no fim do cozimento** — a morada que a W0 escolheu | W1 · W3 |
 | **W6** | `motion.collide` sai do catálogo; as 4 cenas passam pelo caminho novo | W5 |
 
 ⚠️ **A W1 vem antes de tudo o que é visível** pela mesma razão que a W1 do doc 102: sem ela, cada
@@ -149,7 +176,9 @@ wave a seguir torna mais cenas lentas, e o custo só aparece no fim.
 
 ## §6 — ⛔ O que NÃO está decidido
 
-- **A morada do passe** (§3) — sai da W0, por medição.
+- ~~A morada do passe~~ — ✅ **decidida pela W0** (§3): o fim do cozimento.
+- **O TECTO DE ITERAÇÕES** — `32` fecha a corda e custa `10,5 ms` a 200 pontos; o número do produto
+  sai da W2, com o recurso nomeado.
 - **Se a caixa vai ao dispositivo** (W2) — sai de uma medição, e a recusa é resposta legítima desde
   que traga o número.
 - **Quem dá colisor aos 8 nós que geram nuvem nova** (§5.4) — decisão do dono, e ela fica melhor

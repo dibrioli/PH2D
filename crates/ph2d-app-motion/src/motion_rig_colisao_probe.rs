@@ -256,23 +256,24 @@ fn colisao_probe_o_que_o_grupo_faz_com_um_colisor() {
         eprintln!("  {nome:<26} │ {menor:>12.4} │ {pares:>14}");
     }
 
-    eprintln!("\n  ═══ 1-bis · ATÉ ONDE A COMPOSIÇÃO CHEGA ═══\n");
+    eprintln!("\n  ═══ 1-bis · ATÉ ONDE A COMPOSIÇÃO CHEGA — E AS DUAS MORADAS LADO A LADO ═══\n");
     eprintln!(
-        "  O `motion.collide` NO LAÇO, a varrer as iterações dele. A barra é {:.3} — abaixo dela\n  \
-         dois discos estão um dentro do outro.\n",
+        "  A barra é {:.3}: abaixo dela dois discos estão um dentro do outro.\n\n  \
+         ⚠️ As DUAS colunas são a W0 do doc 115 — a pergunta de onde o passe automático corre.\n  \
+         DEPOIS = o separador é um acabamento, e o estado do solver volta da CORDA (a morada\n  \
+         barata, e a que encaixa em «toda visualização passa pelo Duplicador»).\n  \
+         NO LAÇO = a saída separada é REALIMENTADA no `rope.state`, que é o que existe hoje.\n",
         2.0 * RAIO
     );
     eprintln!(
-        "  {:<12} │ {:>12} │ {:>14} │ {:>10}",
-        "iterações", "menor vão", "pares sobrepostos", "% da barra"
+        "  {:<12} │ {:>21} │ {:>21}",
+        "iterações", "DEPOIS  (vão / pares)", "NO LAÇO (vão / pares)"
     );
-    eprintln!("  -------------|--------------|---------------|-----------");
+    eprintln!("  -------------|-----------------------|----------------------");
     for it in [8.0f32, 16.0, 32.0, 64.0, 128.0] {
-        let (menor, pares, _) = corre_com(&m, Arranjo::CollideNoLaco, it);
-        eprintln!(
-            "  {it:<12.0} │ {menor:>12.4} │ {pares:>14} │ {:>9.0}%",
-            menor / (2.0 * RAIO) * 100.0
-        );
+        let (md, pd, _) = corre_com(&m, Arranjo::CollideDepois, it);
+        let (ml, pl, _) = corre_com(&m, Arranjo::CollideNoLaco, it);
+        eprintln!("  {it:<12.0} │ {md:>13.4} / {pd:>5} │ {ml:>13.4} / {pl:>5}");
     }
 
     eprintln!("\n  ═══ 1-ter · O QUE A COMPOSIÇÃO CUSTA ═══\n");

@@ -527,13 +527,22 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // campos apendados a um componente ⇒ o postcard, que e' posicional, leria um ficheiro de
         // dois campos como tendo quatro. ⚠️ **A tripla NAO ve^ este degrau** -- os bytes mudaram
         // dentro de um `ComponentBlob`, opaco para ela. E' a DECIMA TERCEIRA vez (ver a escada).
-        // PROJECT 136→137: a malha guardada de uma IMAGEM presa passou a levar os pesos do
-        // padrao-ouro dentro (`SkinnedMesh { mesh, pesos }` no lugar de `Mesh2d`). O postcard e'
-        // posicional e a struct nova e' a antiga SEGUIDA do vector ⇒ um ficheiro velho acaba onde
-        // a nova espera o comprimento da tabela. ⚠️ **A tripla NAO ve^ este degrau** -- estes
-        // bytes estao DENTRO do `source` de um `ComponentBlob`, opaco duas vezes. E' a DECIMA
-        // QUARTA vez (ver a escada).
-        (137, 13, 22),
+        // PROJECT 136→137: a malha de uma IMAGEM presa passou a levar os pesos do padrao-ouro
+        // dentro (`SkinnedMesh` no lugar de `Mesh2d`); o postcard e' posicional. ⚠️ **A tripla NAO
+        // ve^ este degrau** (14.a vez): os bytes estao DENTRO de um `ComponentBlob`.
+        // PROJECT 137→138: a forma VECTORIAL presa passou a levar os pesos do padrao-ouro dentro
+        // (`SkinnedPath` no lugar de `VecPath`) — fecha a divergencia que o 137 abriu, e o postcard
+        // e' posicional. ⚠️ A tripla NAO ve^ (15.a vez): bytes dentro de um `ComponentBlob`.
+        // PROJECT 138→139: o `Bone` ganhou `handles` (de onde ve^m as duas alcas de curvatura —
+        // autoradas ou derivadas da corrente). Um campo APENDADO a um componente ⇒ o postcard, que
+        // e' posicional, leria um ficheiro velho com um campo a mais e comeria os bytes do vizinho.
+        // ⚠️ **A tripla NAO ve^ este degrau** (16.a vez): os bytes estao dentro de um
+        // `ComponentBlob`.
+        // PROJECT 139→140: o `Bone` ganhou `curve_tip` (QUEM manda na ponta da curva — a corrente,
+        // ninguem, ou um filho escolhido pelo `StableId` dele). Outro campo APENDADO ⇒ a mesma
+        // razao do 139. ⚠️ **A tripla NAO ve^ este degrau** (17.a vez): bytes dentro de um
+        // `ComponentBlob`.
+        (140, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

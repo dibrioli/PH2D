@@ -284,5 +284,107 @@ como gate de partida. A cadeia que o tutorial ensina é a curta, que não tem es
 1. ✅ **W1 — a costura** (§6) — `9,62 → 1,62 ms` a um milhão de linhas, pela régua «isto é o mesmo armazenamento».
 2. 🟡 **W2 — o cartão e o alcance** — o cartão do `Shape` feito (§4); o censo do alcance é gate do catálogo inteiro e está verde.
 3. ✅ **W3 — o poder que falta** (§5) — a VISTA no grafo, e a lei *«um fio sem valor não escreve»* que ela destapou.
-4. ⏳ **W4 — a MEDIÇÃO.**
-5. ⏳ **W5 — a cena e o TUTORIAL** *«De onde vêm as coisas»* — o smoke do dono.
+4. ⏳ **W4 — a MEDIÇÃO** (§7) — a sonda está escrita e comitada; os números esperam a máquina calma.
+5. ✅ **W5 — a cena `=119` e o TUTORIAL** (§8) *«De onde vêm as coisas»* — 9 + 3 gates, 5 páginas, 10 passos.
+
+---
+
+## §7 — ⏳ W4: o relógio do grupo
+
+Sonda [`measure_the_source_group`](../../crates/ph2d-app-motion/src/motion_bridge_fontes_relogio.rs)
+— `X → scale → output` pela ponte do PRODUTO, com as membranas publicadas **na ordem do quadro** e
+os DOIS relógios da W1 separados (`publicar` · `cozer+enviar`), mais a `motion.grid` da contagem do
+maior como controlo.
+
+⚠️⚠️ **Uma fonte não se mede como um transforme, e a diferença decide a TABELA.** O relógio do
+ciclo 7 punha o nó no MEIO de uma cadeia com `n` objectos a entrar e perguntava o preço por objecto.
+Aqui o nó é a CABEÇA: ele não recebe objectos, ele **faz** os objectos — e quantos ele faz é
+governado, em cada um, por **outra coisa** (um ficheiro · um texto · uma gramática · uma taxa · a
+vista). ⇒ **não existe um `n` do grupo**, e a tabela imprime a ALAVANCA de cada linha ao lado da
+contagem. *Uma coluna `n` seria a média de sete perguntas diferentes.*
+
+**Quatro coisas que uma tabela ingénua deste grupo mediria errado**, e que a sonda evita:
+
+| a armadilha | o que ela devolveria |
+|---|---|
+| **a MEMBRANA** — cinco dos sete LEEM um external que a shell publica | *zero linhas, muito depressa* — a tabela mais rápida que este repo saberia imprimir, e sobre nada |
+| **UM relógio só** | esconderia qual metade paga (no §6, `6,05` dos `9,62 ms` eram a REPUBLICAÇÃO) |
+| **contar só `instances`** | **zero** sobre uma cena cheia de desenho: uma fonte de forma viva emite `VectorInstance` |
+| **o NEUTRO** | um `source.table` sem ficheiro é uma fonte de nada, e o emissor só tem nuvem depois de uma vida de partícula |
+
+⛔⛔ **E a sonda RECUSA uma fonte que não saiba encher** (o braço `_` de `prepara` estoura com o
+nome): sem isso, uma fonte nova entraria na tabela a medir o próprio neutro — *que é a primeira
+armadilha, disfarçada de linha nova*.
+
+⏳ **Os números ficam por escrever, e o motivo é o de sempre:** nenhuma leitura de relógio desta
+máquina vale nada acima de `load ~5` (`CLAUDE.md` §5.0) e a `line/UIUX` esteve a correr a suíte
+dela a noite inteira (`load 10`–`60`). A sonda está comitada e a espera está armada pela ferramenta
+do repo (`medir_quando_calmo.sh`, 4 amostras seguidas abaixo de `4,5`). ⚠️ **O smoke do dono NÃO
+depende desta tabela** — ela é o registo do grupo, e a §6 já traz medido o número que o tutorial
+cita.
+
+---
+
+## §8 — ✅ W5: a cena `=119` e o tutorial
+
+**A cena** ([`motion_state_fontes_demo.rs`](../../crates/ph2d-app-motion/src/motion_state_fontes_demo.rs)):
+seis panos em três fileiras, e **em cada par muda a FONTE** — o que se faz com as peças depois é o
+mesmo nos seis, que é a lição do grupo.
+
+```text
+  CIMA    O QUE EU FIZ      Text «OLA»               |  Shape (uma estrela)
+  MEIO    O QUE EU TENHO    Table: as linhas         |  + a COLUNA a dar a altura
+  BAIXO   O QUE A CENA DÁ   Emitter: as partículas   |  Camera: o tamanho no ECRÃ
+```
+
+⚠️ **A fileira do MEIO é o par do ciclo 7** (um cartão a mais), e é ela que transforma uma fila de
+quadrados num **gráfico** sem escrever um número. ⚠️⚠️ **A de BAIXO é a única do protocolo que pede
+a MÃO do dono** — sem o zoom os dois panos dela são iguais, e a metade nova (a vista dentro do
+grafo, §5) lê-se como inerte; o anúncio di-lo no passo.
+
+⛔ **Duas fontes do grupo ficam de fora, com smoke próprio:** o `source.lsystem` (cena `=108`, com
+[auditoria própria](96_auditoria_do_lsystem_2026-08-31.md)) e o `source.object`, porque **uma cena
+de ciclo constrói um GRAFO e um objecto é uma coisa na HIERARQUIA** (`PH2D_MOTION_OBJ_SMOKE`).
+
+⚠️⚠️ **A cena inteira coze na CPU, e é PROPRIEDADE declarada:** um `source.shape` ou um
+`source.text` recusa o dispositivo para o grafo TODO (a placa não tem rota para `geometry_id`).
+Gate `the_scene_recuses_the_device_because_a_live_vector_source_is_in_it`, que existe **para o dia
+em que alguém ler a recusa como defeito**.
+
+**Os gates** (9 na cena + 3 no tutorial), com as duas metades onde elas existem:
+
+| gate | a metade que o torna forte |
+|---|---|
+| `every_panel_draws_something` | ⛔ sem ele os outros mediriam streams vazios e passariam por **vacuidade** |
+| `each_panel_carries_the_source_its_card_names` | …e o pano vizinho **não** traz a fonte do outro |
+| `the_word_becomes_one_piece_per_letter` | trocar a palavra troca a contagem (o passo 2) |
+| `both_table_panels_read_the_same_file_and_only_one_reads_a_column` | o mesmo ficheiro **e** só um lê a coluna |
+| `the_right_table_panel_is_a_chart_and_the_left_is_a_flat_row` | a régua é a EXCURSÃO — duas filas planas a alturas diferentes passariam por «são diferentes» |
+| `the_chart_follows_the_column_the_card_names` | trocar o NOME da coluna muda o desenho (senão um `Drive` que lesse qualquer coisa passava) |
+| `the_camera_panel_measures_the_same_pixels_at_any_zoom` | …e o pano da tabela **não** segue o zoom |
+| `the_announcement_names_cards_the_scene_has` | o cartão existe **e** o anúncio nomeia-o |
+
+⭐ **MUTAÇÃO:** `Divide → Add` no drive da câmara e a coluna `vendas → nao_existe` matam
+exactamente os dois gates que as medem, e nada mais.
+
+### O tutorial, e os TRÊS defeitos que só o PDF revelou — todos de RÉGUA
+
+📘 [`08_de_onde_vem_as_coisas.pdf`](tutoriais/08_de_onde_vem_as_coisas.pdf) (5 páginas, 10 passos),
+com as figuras geradas por `write_the_source_figures` a partir da cena do produto.
+
+1. ⛔⛔ **O `draw::moldura` devolve o CENTRO e eu usei-o como canto do `viewBox`** — cada figura saiu
+   deslocada **meia moldura** (a peça da forma no canto, as letras cortadas). A conversão certa é a
+   que o `draw::svg` já fazia: *quando uma porta partilhada já responde, é a resposta dela que se
+   copia.*
+2. ⛔⛔ **O `size` de uma peça de TEXTO ou de FORMA é um factor de escala de geometria VECTORIAL**,
+   não a extensão de um quadrado — desenhá-lo como lado dá quadrados de `100 px` sobre posições
+   separadas por `2`. ⇒ esse par leva **marca** de tamanho fixo, e a legenda diz *«cada marca é uma
+   peça — não é o desenho dela»*.
+3. ⛔⛔ **A figura do zoom dizia «as nove peças» e mostrava UMA:** com zoom o **vão** segue a câmara
+   (`162 px`) e só o **tamanho** é que não, e a moldura de `360 × 210` não cabia a grelha.
+   *Uma figura que contradiz a própria legenda é pior que nenhuma.*
+
+⚠️ E um par partilha **uma** moldura (cada pano centrado em si, só a ESCALA partilhada): enquadrar
+cada figura por si dá duas escalas, e o leitor compara desenhos incomparáveis.
+
+---

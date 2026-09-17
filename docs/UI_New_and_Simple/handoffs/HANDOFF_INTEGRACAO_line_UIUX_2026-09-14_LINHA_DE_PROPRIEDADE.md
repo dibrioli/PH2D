@@ -2872,3 +2872,47 @@ de um grupo. O sub-grupo é também a identidade do agrupamento → `TextKey` co
   migração pelo script aponta para `shells/desktop/src`.
 - As cenas de demonstração (`ph2d-app-physics`, a maior parte de `ph2d-app-motion` e da shell)
   escrevem NOMES DE OBJECTOS de cena — dado da cena, não vocabulário; triagem antes de migrar.
+
+## §41 — ⭐⭐⭐ OS AVISOS DA SHELL (os toasts) FALAM PELA TABELA
+
+Commit `3e70ddfec` (2026-09-16). **496** textos fora das cenas de smoke, quase todos toasts — a
+superfície que o artista lê quando um verbo recusa.
+
+### 41.1 — A conversão, e o que ela impôs
+
+- `229` literais → `tr("shell.<ficheiro>.<frase>")`; **`207` `format!` → `tr_with`** com marcadores
+  **nomeados**, por script: ele confere o literal nos índices que a régua deu (um `replace` que não
+  casa **aborta**), deriva o nome do marcador da expressão e deixa a especificação de formato no
+  argumento (`{:.1}` → `format!("{:.1}", x)`). ⚠️ **Um marcador nomeado reserva o nome antes de
+  qualquer posicional ser baptizado** — sem isso `format!("Chained {} bodies with {made} joints",
+  made + 1)` dava duas peças com o mesmo nome e a frase mentia.
+- Tabelas `ph2d-i18n/src/shell.rs` + `shell_media.rs` (o corte por assunto veio do tecto: 796/700).
+- ⭐ Um aviso estava **em português** (`Bg Removal: upload da preview pra GPU falhou`) — hoje é inglês.
+- **Tectos de função:** a conversão engordou quatro despachos acima de 200 linhas. Curados por
+  PORTA — `inspector_commits::failed`, `project_load::toast_refused`,
+  `asset_index_build::master_label` —, nunca por número.
+
+### 41.2 — ⛔⛔ Seis gates liam a FRASE no fonte, e teriam ficado verdes sobre chaves
+
+`deleting_/moving_a_piece_of_a_copy…`, `the_hierarchy_duplicates_a_shape…`,
+`the_recipe_mark_reads_the_whole_selection`, `the_sculpt_document_is_wired`,
+`one_word_for_the_reusable_thing` (duas metades) e `a_refused_gesture_speaks_on_screen`. Curados por
+`tests/it/i18n_view.rs`: **a chave está no código E o texto dela diz a frase** — as duas metades.
+⚠️ Dois deles medem uma **ORDEM** (onde o aviso é dado) e usam a POSIÇÃO da chave, não a da frase.
+⚠️ E o `a_refused_gesture` contava `toasts.push` no texto: o `rustfmt` partiu-o em duas linhas, e o
+censo passou a contar sobre o texto **achatado**. *Um censo textual mede a formatação, não a lei.*
+
+### 41.3 — O gate novo, e o que fica de fora
+
+`every_word_the_shell_shows_comes_from_the_string_table` (mutação provada). As isenções são
+nomeadas com mecanismo: **cenas de smoke** (`*smoke*`/`*probe*` — nomes de objectos de cena e
+instruções de consola; ⚠️ a régua é por NOME de ficheiro, logo traz **piso de população** de 200 —
+hoje 421), formatos de ficheiro, diagnóstico de consola, razões de `#[allow]` e
+**nomes-identificador** (`Entity_{:x}`, `piece_{}`).
+
+### 41.4 — Para o integrador
+
+⚠️⚠️ **A folga da catraca da shell desceu para ~230 linhas** (196 760 contra o tecto de 196 990) — e
+ela SOMA entre linhas (`CLAUDE.md` §5.0). Duas linhas que acrescentem 150 linhas cada fecham verdes
+e a árvore combinada reprova. ⇒ **reconte na fusão**, e se reprovar a cura é mover código para
+`crates/ph2d-app-*`, nunca subir o número.

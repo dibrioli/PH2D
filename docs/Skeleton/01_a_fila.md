@@ -173,7 +173,9 @@ só onde se pergunta (um ponto, não a malha inteira), ou leitura da GPU.
      triângulos) custa à placa `~0,2 %` de um quadro, e `100 k` custam `4,4 %` — **6×** o orçamento
      actual com folga. Quem tem o tecto é a CPU (F6-t: `0,156 µs` para avaliar uma peça, `~0,32 µs`
      por peça nova ⇒ `50 k` peças ≈ `7,8 ms`), que é exactamente o que a F9 remove.
-- ✅ **W1 — FECHADA (2026-09-17), com a porta DESLIGADA e o número que prova que ela tem de ficar assim.**
+- ✅ **W1 — FECHADA (2026-09-17). ⚠️ Ela fechou com a porta DESLIGADA e o número que dizia que ela
+  tinha de ficar assim; a medição do custo por quadro REFUTOU esse número no mesmo dia e a porta
+  ABRIU — ver a W2c abaixo.**
   - **A porta**: [`ph2d_poly2d::refine_rest_by_attrs`] refina a malha de **repouso** onde o campo de
     atributos curva (`Σ_j |w_j(meio) − w̄_j|`), sem pose nenhuma; e
     [`ph2d_skeleton_live::skin_bake::assar`] liga-a aos pesos BBW do bind. `PH2D_SKIN_BAKE=1` abre.
@@ -198,10 +200,13 @@ só onde se pergunta (um ponto, não a malha inteira), ou leitura da GPU.
     mais que o `Smooth` **por desenho**: aquele refina para ESTA pose e este zoom, e a assada é
     independente da pose — *uma aproximação que serve todas nunca bate, peça a peça, uma feita para
     uma só*.
-  - ⭐⭐ **E é o `5,76×` que PROVA que a porta fica fechada até à W2:** `13 996` peças numa imagem
-    contra um orçamento de CPU de **`8 738` para o quadro inteiro** — *uma imagem assada não cabe
-    nele sozinha*. Na placa, `13 000` triângulos custam `~0,15 %` de um quadro (a tabela da W0-b).
-    **A assadura não é cara; caro é deformá-la na CPU.**
+  - ⛔⛔ **E a frase que estava aqui — *«é o `5,76×` que PROVA que a porta fica fechada até à W2»* —
+    foi REFUTADA no mesmo dia (W2c):** o `SKIN_FRAME_PIECES` é um tecto de **REFINAMENTO**, e uma
+    malha já assada **não refina**. *Comparar uma contagem de peças com um orçamento cuja unidade é
+    «peças que a lei pode PARTIR» é somar duas grandezas diferentes* — e o resultado dessa soma
+    mandava fechar a porta que a medição mandou abrir. Na placa, `13 000` triângulos custam
+    `~0,15 %` de um quadro (a tabela da W0-b). **A assadura não é cara; caro é deformá-la na CPU —
+    e mesmo isso cabe (`1,4 %` numa imagem).**
   - ⚠️⚠️ **A régua da silhueta NÃO serve para comparar densidades diferentes** (a fila pedia-a, e a
     medição refutou o pedido): o «vai-e-volta» soma a viragem absoluta da polilinha, logo **cresce
     com o número de nós por construção** (`Fast` `26,60°` com 46 nós · `Smooth` `26,71°` com 64 ·
@@ -253,7 +258,38 @@ só onde se pergunta (um ponto, não a malha inteira), ou leitura da GPU.
       `o_bind_da_imagem_chama_o_assador` afirmava o CONTRÁRIO do que hoje é verdade ⇒
       `o_assador_tem_um_chamador_e_ele_nao_e_o_bind`, com as duas metades.
     - **7 gates · 7 mutações, todas sangram.**
-  - ⏳ **O que falta da W2**, e o que já está medido sobre isso:
+  - ✅⭐⭐⭐ **A W2c FECHOU, e é ela que responde ao pedido do dono: A PORTA ABRIU** (2026-09-17) —
+    `PH2D_SKIN_BAKE=0` passa a ser a porta de **bissecar**, e o caminho de omissão do `Smooth` é a
+    malha ASSADA. **Medido na arte do dono** (zoom `8×`, `N` cópias, o MÍNIMO de 30, `load 15` ⇒ os
+    relógios são **tectos**):
+
+    | imagens | lei | porta | peças entregues | ms | % de um quadro |
+    |---:|---|---|---:|---:|---:|
+    | 1 | `Fast` | — | `2 430` | `0,059` | `0,4 %` |
+    | 1 | `Smooth` | **fechada** | `5 143` | `1,302` | `7,8 %` |
+    | 1 | `Smooth` | **aberta** | **`13 996`** | **`0,232`** | **`1,4 %`** |
+    | 4 | `Smooth` | **fechada** | `9 720` ⇐ **é o `Fast`** | `0,238` | `1,4 %` |
+    | 4 | `Smooth` | **aberta** | `55 984` | `0,938` | `5,6 %` |
+    | 8 | `Smooth` | **fechada** | `19 440` ⇐ **é o `Fast`** | `0,478` | `2,9 %` |
+    | 8 | `Smooth` | **aberta** | `111 968` | `1,879` | `11,3 %` |
+
+    ⭐⭐⭐ **Numa imagem a assadura é `5,6×` MAIS BARATA e entrega `2,7×` MAIS peças** — *refinar* uma
+    peça custa `~0,32 µs` e *desenhar* uma peça já fina custa `~0,017 µs` (números da F6-t, que
+    ninguém tinha composto). ⛔⛔ **E as linhas de `4` e `8` com a porta fechada são o report do dono
+    reproduzido ao número:** `peças(Smooth) == peças(Fast)`.
+    - **O gate que é a F9 numa asserção:** `o_smooth_alisa_em_qualquer_cena` — *a malha assada é um
+      CHÃO que o tamanho da cena não consegue erodir*, com as três metades (a cena **contém** o
+      fenómeno · o `Smooth` entrega **estritamente** mais que o `Fast` · e entrega pelo menos o
+      chão, senão ele degrada em vez de sumir). ⚠️ O chão sai da **lei do produto**, nunca de um
+      número escrito no gate — a tolerância é derivada da diagonal da arte. **3 mutações, todas
+      sangram** (a porta fechada · o `Smooth` sem consultar o memo · a tolerância de volta ao `0,02`
+      que a arte real já tinha refutado).
+    - ⚠️ **Assar custa `4,0 ms`, UMA vez por bind**, ao lado do solver BBW que o mesmo `bind_image`
+      já paga, e **fora** do quadro.
+    - ⚠️ **DUAS premissas morreram com a morte visível no diff:** a porta nascer desligada, e o
+      *«sem espaço no orçamento o `Smooth` desenha o `Fast` AO BIT»* — hoje ele desenha a **assada**,
+      que é o ponto.
+  - ⏳ **O que falta da W2 (a placa), e o que já está medido sobre isso:**
     - o **formato de vértice**: o [`ph2d_render::QuadVertex`] é **partilhado com o quad simples**
       (`pos` + `uv`, 16 bytes), logo acrescentar-lhe pesos paga em toda sprite do app ⇒ ou um
       segundo *layout*/pipeline, ou um buffer à parte indexado pelo vértice. ⚠️ Medido na arte do

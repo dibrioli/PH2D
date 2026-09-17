@@ -58,6 +58,10 @@
 //!
 //! Deterministic → `Effect::Temporal`, replays bit-for-bit.
 
+// ⚠️ Os três tipos das TABELAS (`ParamHardMax`/`ParamUnit`/`ParamUnitDecl`) viveram aqui até a
+// W4-bis cortar as tabelas para o `params_ui.rs` — que as importa por si. *Um corte de LOC leva o
+// CÓDIGO e deixa os `use` para trás*, e o `cargo check` chama-lhes «unused» enquanto o `-D warnings`
+// só corre no `ship.sh`: o aviso fica invisível à linha que o produziu.
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;

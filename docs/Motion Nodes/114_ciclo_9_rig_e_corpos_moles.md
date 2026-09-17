@@ -3,8 +3,10 @@
 > **Protocolo:** [doc 103](103_dinamica_dos_ciclos.md) — sete passos, nesta ordem, e **o tutorial É o
 > smoke**. Este doc é o do ciclo: cada passo escreve a secção dele aqui.
 >
-> **Estado:** passos **1** (grupo) e **2** (auditoria) FECHADOS em 2026-09-17. Os passos 3–7 têm
-> plano na §5 e ainda não começaram.
+> **Estado (2026-09-17):** passos **1** (grupo), **2** (auditoria) e **5** (a medição, §7) FECHADOS.
+> Do passo 3/4 fecharam as waves **W0 · W1′ · W2 · W4 · W4-bis**; ⛔ a **W1 foi REFUTADA por medição**
+> (§3.1) e a wave da força de constraint **dissolveu** na coluna que já existia (§7-W2). Faltam o
+> **W6** (tutorial em PDF + cena) e o **W7** (smoke do dono) — o plano vive na §5.
 
 ---
 
@@ -230,9 +232,9 @@ já exprime o item antes de o construir, e aqui ela exprimia — *o que se perde
 | ~~**W1**~~ ⛔ | ~~O escritor genérico de coluna~~ — **REFUTADA em 2026-09-17: ele já existe** (§3.1) | *A composição já o exprimia; medir antes de construir poupou a wave inteira* |
 | **W1′** ✅ | O **peso por osso** do `rig.skin_deformer` — o LEITOR que faltava (P0 da folha) — FECHADA em 2026-09-17 (§6) | Era o que a medição pôs no lugar da W1, e é o item *«que todo rigger encontra no primeiro dia»* |
 | **W2** ✅ | **`Strength`/`Mix` como COLUNA** nos constraints — FECHADA em 2026-09-17 (§7) | Um item, três lugares — e nasce melhor que as três referências |
-| **W4** ⏳ | A **razão nomeada** de cada corpo mole estar na CPU (§8) — ✅ feita; o **preço** espera máquina calma, e a sonda está comitada | Lei 1 do doc 103 §2 |
-| **W4-bis** | O **tecto `MAX_SIDE = 60`** do `motion.wave`, com o recurso nomeado e medido | ⛔ **Vem ANTES do kernel** (§8): não se decide uma placa para um campo que não pode crescer |
-| **W5** | A **MEDIÇÃO** do grupo (passo 5): tabela CPU · dispositivo · passes · objectos/ms, com `loadavg` ao lado | §0.0 |
+| **W4** ✅ | A **razão nomeada** de cada corpo mole estar na CPU (§8) — FECHADA; o **preço** do recuo veio com a W5: `13,770 ms` a 3 600 agentes | Lei 1 do doc 103 §2 |
+| **W4-bis** ✅ | O **tecto `MAX_SIDE`** do `motion.wave` — `60 → 512`, FECHADA em 2026-09-17 (§9) | ⛔ **Vem ANTES do kernel** (§8): não se decide uma placa para um campo que não pode crescer |
+| **W5** ✅ | A **MEDIÇÃO** do grupo (passo 5) — FECHADA em 2026-09-17 (§7): 21 células em RELEASE com o `loadavg` impresso pela sonda | §0.0 |
 | **W6** | O **TUTORIAL em PDF** (passo 6) + a cena de smoke | O tutorial É o smoke |
 | **W7** | O **smoke do dono** (passo 7) | **Enio** |
 
@@ -263,10 +265,107 @@ provavelmente mordem uma wave deste ciclo:
 
 ---
 
-## §7 — A MEDIÇÃO (passo 5)
+## §7 — ✅ W5: A MEDIÇÃO do grupo (passo 5)
 
-⏳ Por correr — é a W5. A tabela vem para aqui com o `loadavg` ao lado de cada leitura (§0.0), pela
-sonda que a W0 deixar escrita.
+Corrida em **RELEASE**, `load 22,88` (`/proc/loadavg` impresso pela própria sonda, §0.0), pela ponte
+do produto: `<nó> → motion.output` com a aresta de estado ATRASADA sobre si mesmo, mediana de **9**
+quadros depois de **60** tiques de aquecimento. Um quadro de 60 fps tem **16,67 ms**.
+
+⚠️⚠️ **A carga LÊ-SE NA TABELA e não se corrige:** cada número aqui é um **tecto**, nunca um valor
+nominal — a máquina estava a `22,88` com outra linha a cozinhar. Isso é conclusivo **numa direcção
+só**: o que já cabe no quadro AQUI cabe sempre; o que não cabe, não se pode absolver com esta
+corrida. (O `motion.wave` a `512` lê `1,322` aqui e leu `1,001` a `load 16,17` na W4-bis — `+32 %`
+de deriva de carga sobre o MESMO binário, que é a escala do ruído que esta coluna carrega.)
+
+| nó | lado | linhas | quadro/ms | ns/linha | % de um quadro |
+|---|---:|---:|---:|---:|---:|
+| `motion.wave` | 16 | 256 | 0,001 | 5,6 | 0,01 % |
+| `motion.wave` | 32 | 1 024 | 0,004 | 3,6 | 0,02 % |
+| `motion.wave` | 60 | 3 600 | 0,010 | 2,9 | 0,06 % |
+| `motion.wave` | 128 | 16 384 | 0,046 | 2,8 | 0,28 % |
+| `motion.wave` | 256 | 65 536 | 0,207 | 3,2 | 1,24 % |
+| **`motion.wave`** | **512** | **262 144** | **1,322** | **5,0** | **7,93 %** |
+| `motion.soft_body` | 16 | 256 | 0,002 | 8,3 | 0,01 % |
+| `motion.soft_body` | 32 | 1 024 | 0,006 | 6,1 | 0,04 % |
+| `motion.soft_body` | 60 | 3 600 | 0,020 | 5,5 | 0,12 % |
+| `motion.soft_body` | 128 | 16 384 | 0,094 | 5,7 | 0,56 % |
+| `motion.soft_body` | 256 | 65 536 | 0,373 | 5,7 | 2,24 % |
+| **`motion.soft_body`** | **512** | **262 144** | **2,259** | **8,6** | **13,55 %** |
+| `motion.verlet_rope` | 16 | 256 | 0,070 | 272,7 | 0,42 % |
+| `motion.verlet_rope` | 32 | 1 024 | 0,281 | 274,0 | 1,69 % |
+| `motion.verlet_rope` | 60 | 3 600 | 0,992 | 275,5 | 5,95 % |
+| `motion.boids` | 16 | 256 | 0,044 | 172,3 | 0,26 % |
+| `motion.boids` | 32 | 1 024 | 1,099 | 1 073,4 | 6,59 % |
+| **`motion.boids`** | **60** | **3 600** | **13,770** | **3 825,0** | **82,6 %** |
+
+⚠️ **As duas escadas não são a mesma escada, e a coluna `linhas` é quem o diz:** um campo 2D cresce
+com a ÁREA (`lado²` células) e uma corda é 1D — a sonda dá aos nós de CONTAGEM o **lado ao quadrado**
+como contagem, justamente para as duas colunas serem comparáveis. ⛔ O `ns/linha` **só** se compara
+entre linhas da mesma contagem.
+
+---
+
+### §7.1 — O que a tabela decide, uma leitura por nó
+
+⭐⭐⭐ **(1) O IRMÃO MAIS CARO É QUEM TINHA O TECTO MAIS LARGO — e agora está medido na escada
+inteira, não num ponto.** O `motion.soft_body` custa `1,71×` o `motion.wave` a `512²` (`2,259`
+contra `1,322`) e `1,80×` a `256²`, e **já shipava com `MAX_SIDE = 512`** enquanto o mais barato
+estava preso em `60`. *A W4-bis não escolheu um número: ela copiou o do irmão, e esta tabela mostra
+que o irmão o suporta com folga maior do que o novo dono precisa.*
+
+⭐⭐ **(2) O `ns/linha` do campo tem VALE, e o vale é a memória.** `5,6 → 3,6 → 2,9 → 2,8` e depois
+`3,2 → 5,0`: o custo por célula **desce** enquanto a grelha cabe em cache (o estêncil de 5 pontos lê
+os quatro vizinhos) e **volta a subir** quando ela deixa de caber — a `512²` são `262 144` células ×
+(estado + saída), e o passeio deixa de ser servido pelo L2. ⇒ *o recurso do tecto do campo é a
+LARGURA DE BANDA de memória, e não a aritmética* — o que torna `512` um sítio honesto para parar
+**hoje**, e o kernel de GPU a resposta certa para o degrau seguinte (lá a banda é outra ordem de
+grandeza).
+
+⭐⭐⭐ **(3) A CORDA É PLANA, e é isso que fecha a decisão de a deixar em Gauss-Seidel.** `272,7 ·
+274,0 · 275,5` ns/ponto sobre uma faixa de **14×** na contagem — variação de `1,0 %`. ⇒ o custo é
+**estritamente linear** nos pontos, logo uma corda do tamanho que alguém de facto faz (100–200
+pontos) custa **`0,027`–`0,055 ms`**, `0,2 %`–`0,3 %` de um quadro. *Paralelizar a relaxação
+compraria um número que já é ruído e pagaria com a CONVERGÊNCIA, que é o resultado.* ⛔ O gatilho de
+reabertura fica nomeado e é o mesmo: cordas de dezenas de milhares de pontos — e a tabela diz quando
+isso morde (`3 600` pontos já são `5,95 %` de um quadro).
+
+⛔⛔⛔ **(4) O PREÇO DO RECUO ESTÁ MEDIDO, e é o número mais violento desta tabela: `13,770 ms`.**
+O `motion.boids` é o **único** dos dez nós do grupo que chega ao dispositivo (§2), e este arnês coze
+com o `Cook` da **CPU** — logo o que esta linha mede é a **rota lenta de quem tem placa**, que é
+exactamente o que a lei 1 do doc 103 §2 manda medir. A `3 600` agentes ele come **82,6 % de um
+quadro** sozinho, e a escada diz porquê:
+
+| de → para | vezes mais agentes | vezes mais caro | expoente |
+|---|---:|---:|---:|
+| 256 → 1 024 | 4,00× | 25,0× | **2,32** |
+| 1 024 → 3 600 | 3,52× | 12,5× | **2,01** |
+
+⇒ **`O(N²)` confirmado pela porta do produto** (cada agente consulta todos os outros), com o
+expoente a assentar em `2,0` assim que a contagem sai do regime em que o custo fixo ainda pesa.
+⭐ *É por isso que a escada dos nós de contagem pára em `60` e não é preguiça: `512² = 262 144`
+agentes na rota da CPU custariam `~5,3 × 10⁶ ms` pela mesma lei — a corrida penduraria, e uma escada
+que ninguém sobe mede um programa que ninguém corre.*
+
+⚠️ **E isto é a MELHOR notícia da tabela, não a pior:** o número grande é o preço de **não** estar na
+placa, e ele mede-se **num nó que tem para onde ir**. Os outros nove não têm — é isso que a §8 nomeia
+um a um.
+
+---
+
+### §7.2 — O que a tabela NÃO diz
+
+⛔ **Ela não mede a cadeia.** Cada linha é **um** nó entre a fonte e o `motion.output`; uma cena real
+empilha `field.*`, `motion.scale` e o resto por cima, e o custo do grupo numa cena cheia é outra
+medição (a do doc 98, que já existe e mede o MÓDULO).
+
+⛔ **Ela não mede o dispositivo.** A coluna `quadro/ms` é sempre CPU, **incluindo** a do
+`motion.boids` — *um controlo que não percorre o mesmo caminho não controla nada*, e a sonda diz
+isso de si mesma no doc-comment da tabela `MOLES`.
+
+⚠️ **E o `ns/linha` da corda e do bando não se compara com o do campo:** a contagem de um nó 1D é o
+lado ao quadrado **por construção da escada**, para as duas caberem no mesmo eixo. Um ponto de corda
+custa `~273 ns` e uma célula de campo `~3 ns` porque são trabalhos diferentes (a corda faz
+`solver_substeps` passagens de relaxação sobre as restrições; o campo faz **um** estêncil).
 
 
 ---

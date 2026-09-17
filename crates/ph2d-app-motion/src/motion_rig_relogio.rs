@@ -189,9 +189,12 @@ fn measure_the_soft_body_group() {
     );
     let m = crate::motion_state::MotionState::new();
     for mole in MOLES {
-        // ⚠️ `60` é o TECTO do `motion.wave` (`MAX_SIDE`), não um número escolhido: pedir `64`
-        // devolve `3 600` células, não `4 096`. A escada pára ali de propósito — medir além do
-        // tecto pela porta do produto é impossível, e é isso que esta linha torna visível.
+        // ⚠️ A escada dos campos passa POR `60` — o tecto ANTIGO do `motion.wave` — e segue até
+        // `512`, que é o vigente desde a W4-bis. A coluna `linhas` é a testemunha: enquanto o
+        // tecto era `60`, pedir `128` devolvia `3 600` células em vez de `16 384`, e a saturação
+        // lia-se na tabela sem ninguém ter de a anunciar. ⛔ Nunca escreva o tecto AQUI: ele
+        // mede-se na coluna, e uma segunda cópia do número envelhece no dia em que ele mudar
+        // (foi o que aconteceu a esta linha).
         let escada = if mole.tamanho.1.is_some() {
             LADOS_CAMPO
         } else {

@@ -222,6 +222,114 @@ a `1` · a app sem arrasto · o centro sem a normal · a dureza e o acumular de 
 
 ---
 
+## §53 — ⭐⭐⭐ *«Próximo pincel: Draw Sharp»*: o VINCO, e ele não trouxe lei nova
+
+**Ordem do dono (2026-09-16):** *«Próximo pincel: Draw Sharp. Veja no blender com a mesma
+investigação que fez para Plane»*. Espec atestada à 2.ª passagem
+(`docs/3D/cleanroom/SPEC_pincel_afiado.md`, `80` fixturas); o incidente **INC-I1** da janela I foi
+classificado **RELANCE** por um R independente (`b7bdb3e48`).
+
+### §53.1 — A resposta da PERGUNTA ZERO, e porque ela é o achado
+
+⭐⭐ **O pincel afiado de fábrica é o nosso `Draw` com CINCO valores trocados e NENHUMA lei nova**
+(espec §0.1) — três do pincel (a curva afiada, a direcção a afundar, a distância medida sempre do
+pen-down) e dois do traço (o passo de `5 %` do diâmetro e a atenuação `a` por dab). ⇒ ele entra
+como **verbo** (`Verb::DrawSharp`, o 35.º; a contagem é o `Verb::ALL`) porque é assim que esta casa
+oferece uma ferramenta — o precedente é o par `Pinch`/`Magnify`, o mesmo kernel com um sinal e dois
+chips —, e o `match` do alvo por-vértice ganha **um braço**, que difere do `Draw` só na NORMAL.
+
+⛔⛔ **E a recusa de 2026-08-14 CAIU, com a medição ao lado:** a nota de planeamento tirava este
+pincel da fila dizendo que *«o que o nome promete mora na CURVA, e a curva de fábrica está num
+ficheiro binário»*. Os valores de fábrica **lêem-se correndo o programa** — foi o que a obra do
+pincel de plano já fizera para a dela. ⚠️ *Quem move o número que tornava algo inalcançável tem de
+reconferir a nota* (§0.0), e as três notas do nosso código com a premissa caída estão nomeadas na
+§0.2 da espec.
+
+### §53.2 — As cinco leis, e onde cada uma mora
+
+| o que muda | onde | porquê ali |
+|---|---|---|
+| a distância mede-se do **pen-down**, sempre | `Verb::grip_law` prega `from_live = false` | é a **única** diferença de LEI (espec §2.1), e pendurá-la no interruptor faria o vinco ALARGAR ao aprofundar |
+| a **normal da área** é a do alvo | `stroke_dab_core` pede o `n_gesto` e o braço do `stroke_target` lê-o | a lei já vivia em duas portas da casa (os gestos tangenciais, o pincel de plano) e o `Draw` não a usa |
+| a direcção de fábrica **afunda** | `Verb::afunda_de_fabrica` + `Brush::reach` | a casa só sabia *«o Ctrl inverte»*, e o `invert` tem **um** escritor no produto inteiro |
+| o passo de `5 %` e a atenuação **`a` crua** | `espacamento_do_verbo` + `Brush::factor_do_traco` | uma porta só para o número, lida pelo passo E pela atenuação |
+| a curva **afiada** e a força ao quadrado | a lista negra do `S` em `RefMode::declares` | sem a entrada, o `S` declarava-o calado ⇒ força **linear** e curva suave |
+
+⚠️ **A atenuação entra pelo [`Brush::reach`]**, que é onde o deslocamento de um dab é escrito e já
+carregava o sinal; o pincel de plano lê a MESMA porta no sítio onde a lei dele pesa. *Uma lei, uma
+porta, dois consumidores — e cada um multiplica-a na grandeza que a sua própria lei escala.*
+
+### §53.3 — O que a bancada mede (14 gates, `crates/ph2d-sculpt3d/tests/it/oraculo_do_pincel_afiado*.rs`)
+
+| gate | população | barra | medido |
+|---|---|---|---|
+| **G-1** a lei de um dab | `16` fixturas (a pegada projectada fica na catraca dos pendentes) | `2e-6` · `1e-5` nas bossas | **`5,96e-8`** |
+| **G-2** as cadeias | `5` cadeias, **`36`** estados | `1e-5` | **`1,57e-6`** |
+| **G-3a** o traço contínuo, vértice a vértice | `6` superfícies × fotos | `2e-3` na faixa do vinco | **`6,07e-4`** |
+| **G-3b** os traços separados | `5` superfícies × fotos | `5e-3` | **`2,54e-3`** |
+| **G-4** a RÉGUA do vinco (profundidade · largura · nitidez) | `8` células × `4` passagens | `6 %` · `2 %` (contínuo) | **`≤ 0,5 %`** |
+| **G-5** o passo do traço | `13` saltos | contagem exacta + `7e-3` | **`4,61e-3`** |
+| **G-5c** o dab do pen-down é atenuado | `2` | `1e-5` | **`1,96e-8`** (sem atenuação: `4,53e-2`) |
+| **G-6** os valores de fábrica | os `5` que mudam | exacto | — |
+| **G-7** a auto-limitação, forma fechada | `4` dabs + o controlo linear | `1e-6` | dentro |
+| **G-8** a régua SEPARA o afiado do desenho comum | `2` saídas do alvo | `≥ 1,8` | **`2,29`** |
+| **G-9** o 1.º dab é o do desenho comum | `2` | ao bit | **`0,0`** |
+| **G-10** a direcção é simétrica | `2` | `2e-6` | dentro |
+| **G-11** o recorte pela caixa NÃO se copia | `1` corrida nossa × `2` fixturas | `≤ 7e-3` e `≥ 1e-2` | **`2,9e-4`** e **`2,24e-2`** |
+| — as duas leis de normal de vértice | `1` | `1e-5` | **`0,0`** |
+
+**Prova de mutação: `10` mutações, `10` sangram** (a coluna do pen-down · a direcção de fábrica · a
+atenuação trocada pela do plano · o espaçamento trocado · a normal da área · a curva de fábrica · a
+consulta da pegada · a lista negra do `S` · o interruptor de acumular · a topologia dinâmica), com o
+controlo da árvore limpa verde.
+
+### §53.4 — ⛔ A DIVERGÊNCIA DECLARADA, e ela refuta um comentário que já shipava
+
+O alvo deposita um dab num salto de **exactamente** um passo e o `walk` desta casa recusa-o
+(`spacing.rs`, com gate próprio há mais tempo que esta wave). ⚠️⚠️ **O doc daquele `walk` afirma
+que as duas fronteiras dão a MESMA lista de dabs — e isso é verdade a MEIO do traço e FALSO na
+INVERSÃO:** ali o dab adiado nunca chega, porque a passagem seguinte anda para o outro lado. Medido
+num vaivém simulado a `1` px por evento: perdemos **um** dab em cada ponta de cada passagem, o
+vértice da ponta desvia **`1,03e-2`** na 1.ª passagem e a sombra chega a **`4,06e-2`** ao 8.º traço
+separado, sobre `30` de `1 514` vértices.
+
+⭐ **Por isso a barra que discrimina a LEI é a da FAIXA do vinco** (`|x| ≤ 0,25`), e as pontas
+ficam com um **tecto declarado** (`5e-2`) que reprova se a sombra crescer. ⚠️ **O artista não a
+atinge:** com eventos de rato irregulares, a distância cair exactamente sobre um múltiplo do passo
+tem medida nula, e o fim de um traço real perde a fracção de passo que sobra **nas duas casas**.
+
+### §53.5 — A costura de teste que a espec pediu, e porque ela é `test-support`
+
+O caminho por script do oráculo **não refresca** as normais de vértice entre dabs e o nosso refresca
+sempre ⇒ sem pregar as normais, a cadeia de oito dabs desvia `4,45e-2` **por uma razão que não é a
+lei**. ⇒ `Mesh::pregar_normais_para_teste`, `#[cfg(any(test, feature = "test-support"))]`, com a
+feature do tamanho do que ATRAVESSA a fronteira: **um** item. ⛔ No produto as normais seguem a
+superfície — é isso que faz um traço arrastado ser o que é.
+
+⚠️ **E a normal que a bancada usa é a NOSSA, não o bloco `n`** (errata do R-pré): o bloco é a normal
+do REPOUSO do alvo (pesada pelo ângulo do canto) e a lei que reproduz o TRAÇO dele é a média **sem
+peso**, que é a da casa. Há gate a afirmar que as duas leis são **duas**.
+
+### §53.6 — Cena `=48`
+
+Abre numa bola **lisa e densa**, e as duas metades são a lição: ao contrário do vizinho de plano
+(que precisa de relevo para aparar), este **faz** o relevo; e o vinco mede `≈ 0,55 R` de largura, que
+com menos de três arestas não é representável. O roteiro tem `6` passos e acaba no controlo — pegar
+no `Draw` e arrastar do mesmo jeito, para ver o monte largo ao lado do vinco fino.
+
+### §53.7 — O que fica ABERTO deste pincel
+
+- **Dono (as três decisões da espec §15):** **P-2** o interruptor de acumular neste modo (hoje
+  ESCONDIDO, com a fixtura da lei do alvo na catraca e o número que ela vale, `4,7e-4`) · **P-4** a
+  pegada projectada (hoje não oferecida; ela empurra **de lado** e não faz o que o nome promete) ·
+  **P-5** a opção da normal do pen-down (hoje não oferecida; inerte num plano).
+- **Nossas, nomeadas:** a linha do `Radius` da normal tem tecto `1` no painel e o corpus tem uma
+  fixtura a `2` (a consulta já a suporta; o tecto é de produto) · a divergência do §53.4 ·
+  as `22` fixturas de `produto/` que são ablação e controlos ficam **fora** dos gates, com o papel
+  de cada uma nomeado na espec §12.2.
+
+---
+
 ## §52 — ⏳ O que fica ABERTO, e de quem é
 
 - **Dono:** o **G-20** (tecto do raio *digitável* `≥ 5 000` px, errata Q2) — a pista vai a `5 000`

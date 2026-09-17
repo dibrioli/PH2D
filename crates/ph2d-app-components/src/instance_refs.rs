@@ -157,7 +157,7 @@ mod tests {
                     f.is_ref.is_some(),
                     "{}.{} declara metade de uma referencia ({:?} / {:?})",
                     d.canonical_name,
-                    f.name,
+                    f.label_key,
                     f.kind,
                     f.is_ref
                 );

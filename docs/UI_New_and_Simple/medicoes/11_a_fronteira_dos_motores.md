@@ -98,3 +98,49 @@ python3 scripts/censo-texto-pintado.py                            # 63 em 10 cra
 
 A sonda da derivação vive no scratchpad de propósito (ela responde UMA pergunta e o `assert` dela é
 o que a torna honesta); o que fica versionado é o **número**, nesta página.
+
+---
+
+# §6 — ⛔ RECUSA MEDIDA: a coluna do rótulo NÃO era a wave (2026-09-17)
+
+Antes de escolher a fronteira dos motores eu preferi uma candidata **visível**: generalizar a
+`every_label_this_panel_paints_fits_its_column` (que existe em **3** de **29** painéis) aos outros
+26, porque havia um report do dono por trás — *«3 pontos (…) sendo usados antes de ficar estreito»*,
+com foto, em 2026-09-14.
+
+A crate-régua foi construída (`ph2d-label-fit`, quarta irmã da família `ph2d-label-*`), correu sobre
+**as tabelas de texto dos 24 painéis** — possível *só porque esta linha as construiu* — e o
+resultado **refutou a hipótese**:
+
+| largura do painel | strings acima da coluna do rótulo |
+|---:|---:|
+| `220` (mínimo do dock) | **510** |
+| `245` | 219 |
+| `304` (omissão) | 59 |
+| `333,8` · `369,7` (**as que o dono tem hoje**, lidas do `layout.txt`) | **37** · **24** |
+
+⛔⛔ **E a população estava ERRADA, que é o defeito que este repo já pagou quatro vezes.** Os mais
+largos não são rótulos de coluna nenhuns — são **frases de estado**:
+
+```
+physics    300,4 px   "Paused: drag carries the whole rig, anchors included"
+sculpt3d   298,8 px   "Only used by Twist, and only with Segments above 1"
+```
+
+…e elas **DOBRAM**, não cortam: o `paint_hint` da física passa por `paint_text_block` com a largura
+inteira da linha, e o doc dele já o diz (*«só o excedente da quebra é acrescentado»*). *Uma régua
+que mede uma frase que dobra contra uma coluna que ela não usa fabrica dívida* — exactamente o que a
+1.ª redacção do censo do ritmo fez ao ler `48 de 81` ficheiros.
+
+⇒ **o que sobra à largura REAL do dono é quase nada, e nada do que sobra é um rótulo cortado.** A
+wave era **insurance**, não um defeito visível — e a ordem em vigor do dono é *«se temos o manual,
+precisamos converter o APP todo a ele»*, que é a §2 desta página.
+
+⚠️ **A crate foi APAGADA no mesmo dia.** Ela compilava e fazia a coisa certa, e **não tinha
+consumidor** — a lei desta casa é que uma ferramenta que nenhum passo escrito chama pelo nome morre.
+*O que se guarda de uma experiência revertida é a MEDIÇÃO, e ela está nesta tabela.*
+
+⭐ **O que ela deixa para quem voltar aqui:** a régua honesta desta pergunta **não é a tabela de
+i18n de um painel** — é a tabela de LINHAS que o pintor dele lê (`IROWS` na física, `PLAYER_CARDS` no
+Inspector). Medido: **11** dos 29 painéis têm uma, e **3** já têm o gate. *Quem quiser a insurance
+começa nos 8 que têm tabela e nenhuma prova; os outros 18 pagam primeiro a tabela.*

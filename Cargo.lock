@@ -5482,6 +5482,9 @@ dependencies = [
 [[package]]
 name = "ph2d-component-desc"
 version = "0.0.0"
+dependencies = [
+ "ph2d-label-census",
+]
 
 [[package]]
 name = "ph2d-contact"

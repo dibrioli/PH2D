@@ -138,11 +138,11 @@ fn every_offered_item_maps_back_to_its_component() {
         let name = name_of_pick(it.id)
             .unwrap_or_else(|| panic!("o item {:?} nao volta a ser um componente", it.label));
         assert!(
-            it.label.starts_with(
+            it.label.starts_with(ph2d_i18n::tr(
                 ph2d_component_desc::desc_for(name)
                     .expect("o descritor")
-                    .display_name
-            ),
+                    .display_key
+            )),
             "o id do item {:?} nomeia {name}, que tem outro rotulo",
             it.label
         );

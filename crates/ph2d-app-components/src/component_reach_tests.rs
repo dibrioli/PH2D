@@ -111,7 +111,7 @@ fn the_palette_census() {
             continue;
         }
         if !buildable_in_the_product(d.canonical_name) {
-            without.push((d.category, d.canonical_name, d.display_name));
+            without.push((d.category, d.canonical_name, ph2d_i18n::tr(d.display_key)));
         }
     }
     without.sort_by_key(|(c, n, _)| (format!("{c:?}"), *n));

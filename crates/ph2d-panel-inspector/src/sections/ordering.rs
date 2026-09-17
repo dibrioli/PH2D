@@ -36,13 +36,13 @@ pub(crate) const LAYER_LABELS: [TextKey; 5] = [
 fn field_label(canonical_name: &'static str, field_id: u16) -> &'static str {
     ph2d_component_desc::desc_for(canonical_name)
         .and_then(|d| d.field(field_id))
-        .map_or("??", |f| f.name)
+        .map_or("??", |f| tr(f.label_key))
 }
 
 /// O rótulo de um **marcador de tamanho zero** — nele a presença É o valor, então a linha
 /// mostra o nome do COMPONENTE (`Show Behind Parent`), não o de um campo que não existe.
 fn marker_label(canonical_name: &'static str) -> &'static str {
-    ph2d_component_desc::desc_for(canonical_name).map_or("??", |d| d.display_name)
+    ph2d_component_desc::desc_for(canonical_name).map_or("??", |d| tr(d.display_key))
 }
 
 /// ⭐⭐⭐ **A COLUNA desta secção — DERIVADA do descritor, como os rótulos dela já eram.**

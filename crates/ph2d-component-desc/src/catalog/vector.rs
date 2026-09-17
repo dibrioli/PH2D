@@ -64,8 +64,8 @@ use crate::{ComponentCategory as C, ComponentDesc as D};
 /// `register_default` (`the trait bound X: Default is not satisfied`). Para estes não há
 /// neutro que signifique alguma coisa — uma `VecShape` sem geometria não é uma forma vazia,
 /// não é uma forma.
-const fn g(canonical_name: &'static str, display_name: &'static str) -> D {
-    D::intrinsic(canonical_name, display_name, C::Vector, &[])
+const fn g(canonical_name: &'static str, display_key: &'static str) -> D {
+    D::intrinsic(canonical_name, display_key, C::Vector, &[])
 }
 
 /// ⭐ **Uma ROW ou um GESTO da secção, não um item de paleta** (varredura de 2026-09-14 — ver o
@@ -73,61 +73,82 @@ const fn g(canonical_name: &'static str, display_name: &'static str) -> D {
 /// aqui há, e ele é exactamente o que o artista **não** quer — porque o que falta à paleta não é o
 /// `Default`, é o **CONTEXTO** (a escala da selecção, qual dos dois escolhidos é o guia, que o eixo
 /// de simetria se captura no nascimento do traço).
-const fn i(canonical_name: &'static str, display_name: &'static str) -> D {
-    D::intrinsic(canonical_name, display_name, C::Vector, &[])
+const fn i(canonical_name: &'static str, display_key: &'static str) -> D {
+    D::intrinsic(canonical_name, display_key, C::Vector, &[])
 }
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
 pub const DESCS: &[D] = &[
-    g("ph2d::ecs::VecAnchors", "Anchors"),
+    g("ph2d::ecs::VecAnchors", "component.vec_anchors.name"),
     // ⇒ as rows de TOKEN do painel escrevem-no (`bindings::set_selected_binding`), com o idioma da presença: vazio ⇒ `remove`.
-    i("ph2d::ecs::VecBindings", "Bindings"),
-    g("ph2d::ecs::VecBlend", "Blend"),
-    g("ph2d::ecs::VecBoolGroup", "Boolean Group"),
-    g("ph2d::ecs::VecBoolOp", "Boolean Op"),
-    g("ph2d::ecs::VecBucketFill", "Bucket Fill"),
-    g("ph2d::ecs::VecClipContent", "Clip Content"),
-    g("ph2d::ecs::VecConnector", "Connector"),
+    i("ph2d::ecs::VecBindings", "component.vec_bindings.name"),
+    g("ph2d::ecs::VecBlend", "component.vec_blend.name"),
+    g("ph2d::ecs::VecBoolGroup", "component.vec_bool_group.name"),
+    g("ph2d::ecs::VecBoolOp", "component.vec_bool_op.name"),
+    g("ph2d::ecs::VecBucketFill", "component.vec_bucket_fill.name"),
+    g(
+        "ph2d::ecs::VecClipContent",
+        "component.vec_clip_content.name",
+    ),
+    g("ph2d::ecs::VecConnector", "component.vec_connector.name"),
     // ⇒ o botão *Add* do painel SEMEIA o `d` da escala da selecção (`contour_live::arm`: `DEFAULT_D_FRAC * scale`) — o neutro é `d = 0`, anéis invisíveis. É a razão do `Collider` da física, sem o seed que lá existe.
-    i("ph2d::ecs::VecContour", "Contour"),
+    i("ph2d::ecs::VecContour", "component.vec_contour.name"),
     // ⇒ é o marcador da LÂMINA, posto no NASCIMENTO do traço (`cut_line::upkeep`), e armá-lo MATA a lâmina anterior — pendurá-lo à mão não é inerte, é destrutivo.
-    i("ph2d::ecs::VecCutPath", "Cut Path"),
-    g("ph2d::ecs::VecEnvelope", "Envelope"),
+    i("ph2d::ecs::VecCutPath", "component.vec_cut_path.name"),
+    g("ph2d::ecs::VecEnvelope", "component.vec_envelope.name"),
     // ⇒ é DERIVADO da lista de filtros do painel (`ui_state_edit`: lista vazia ⇒ `remove`) — um `default()` vazio é removido na primeira edição.
-    i("ph2d::ecs::VecFilter", "Filter"),
-    g("ph2d::ecs::VecFrame", "Frame"),
+    i("ph2d::ecs::VecFilter", "component.vec_filter.name"),
+    g("ph2d::ecs::VecFrame", "component.vec_frame.name"),
     // ⚠️ `VecLabel.host` é um `VecPathId` cru (correção de 2026-08-21 ao doc 01 §1.3: NÃO é
     // um hash de nome) ⇒ `RefKind::VecPath` quando o campo for descrito, e entra no remap da
     // F4 como as juntas da física.
-    g("ph2d::ecs::VecLabel", "Label"),
+    g("ph2d::ecs::VecLabel", "component.vec_label.name"),
     // ⇒ o controlo de Auto Layout do painel escreve-o (`vec_layout_edit::write_layout`: `Some` ⇒ `insert`, `None` ⇒ `remove`).
-    i("ph2d::ecs::VecLayout", "Auto Layout"),
+    i("ph2d::ecs::VecLayout", "component.vec_layout.name"),
     // ⇒ a caixa *Absolute* do painel de layout: presença = bandeira, e ela alterna (`vec_layout_edit`).
-    i("ph2d::ecs::VecLayoutAbsolute", "Layout Absolute"),
+    i(
+        "ph2d::ecs::VecLayoutAbsolute",
+        "component.vec_layout_absolute.name",
+    ),
     // ⇒ row do painel de layout, com o idioma da presença escrito ao lado dela: *«o neutro DESTACA: um componente que não faz nada não viaja no arquivo»* — a paleta escreveria exactamente o neutro que o painel remove.
-    i("ph2d::ecs::VecLayoutItem", "Layout Item"),
+    i("ph2d::ecs::VecLayoutItem", "component.vec_layout_item.name"),
     // ⇒ idem, o mesmo `if next == default() { remove }` do irmão.
-    i("ph2d::ecs::VecLayoutSize", "Layout Size"),
-    g("ph2d::ecs::VecMorph", "Morph"),
-    g("ph2d::ecs::VecMorphMachine", "Morph States"),
-    g("ph2d::ecs::VecOffset", "Offset"),
+    i("ph2d::ecs::VecLayoutSize", "component.vec_layout_size.name"),
+    g("ph2d::ecs::VecMorph", "component.vec_morph.name"),
+    g(
+        "ph2d::ecs::VecMorphMachine",
+        "component.vec_morph_machine.name",
+    ),
+    g("ph2d::ecs::VecOffset", "component.vec_offset.name"),
     // ⇒ precisa dos DOIS lados (motivo + guia) e a porta é `pattern_live::link`, que os recebe resolvidos; o `default()` é um padrão preso a caminho nenhum — a forma do `PhysicsJoint`.
-    i("ph2d::ecs::VecPatternPath", "Pattern Path"),
+    i(
+        "ph2d::ecs::VecPatternPath",
+        "component.vec_pattern_path.name",
+    ),
     // ⇒ é um knob do padrão acima; sem ele não tem sujeito.
-    i("ph2d::ecs::VecPatternRotation", "Pattern Rotation"),
-    g("ph2d::ecs::VecResizeBox", "Resize Box"),
-    g("ph2d::ecs::VecShape", "Shape"),
+    i(
+        "ph2d::ecs::VecPatternRotation",
+        "component.vec_pattern_rotation.name",
+    ),
+    g("ph2d::ecs::VecResizeBox", "component.vec_resize_box.name"),
+    g("ph2d::ecs::VecShape", "component.vec_shape.name"),
     // ⇒ os QUATRO sliders de largura e as alças de canvas passam os dois pela MESMA porta (`profile_live::arm`), que o anexa com os stops e o **destaca** no neutro — anexá-lo pela paleta dá um perfil que o painel apaga no toque seguinte.
-    i("ph2d::ecs::VecStrokeProfile", "Stroke Profile"),
+    i(
+        "ph2d::ecs::VecStrokeProfile",
+        "component.vec_stroke_profile.name",
+    ),
     // ⇒ é adoptado no NASCIMENTO do traço (o eixo de sessão é capturado em LOCAL), e a exigência do dono é explícita: *«não deve fazer simetria de formas que já existem previamente»*.
-    i("ph2d::ecs::VecSymmetry", "Symmetry"),
-    g("ph2d::ecs::VecTextPath", "Text on Path"),
-    g("ph2d::ecs::VecWidget", "Widget"),
+    i("ph2d::ecs::VecSymmetry", "component.vec_symmetry.name"),
+    g("ph2d::ecs::VecTextPath", "component.vec_text_path.name"),
+    g("ph2d::ecs::VecWidget", "component.vec_widget.name"),
     // ⇒ guarda o ALVO, e a porta (`widget_edit`) confere que este widget conduz e que o alvo não é widget; o `default()` prende ao alvo `0` — a forma do `PhysicsJoint`.
-    i("ph2d::ecs::VecWidgetBind", "Widget Bind"),
-    g("ph2d::ecs::VecWidgetIcon", "Widget Icon"),
+    i("ph2d::ecs::VecWidgetBind", "component.vec_widget_bind.name"),
+    g("ph2d::ecs::VecWidgetIcon", "component.vec_widget_icon.name"),
     // ⇒ é escrito pelo próprio CONTROLO autorado quando o artista o move (`widget_value`), e a AUSÊNCIA dele significa *«onde quer que o controlo esteja»* — anexá-lo pela paleta grava uma posição que ninguém escolheu, que é pior do que o neutro.
-    i("ph2d::ecs::VecWidgetValue", "Widget Value"),
+    i(
+        "ph2d::ecs::VecWidgetValue",
+        "component.vec_widget_value.name",
+    ),
 ];
 
 #[cfg(test)]

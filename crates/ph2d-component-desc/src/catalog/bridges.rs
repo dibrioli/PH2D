@@ -27,12 +27,32 @@ use crate::{ComponentCategory as C, ComponentDesc as D};
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
 pub const DESCS: &[D] = &[
-    D::owned_bridge("ph2d::ecs::BakedForm", "Baked Form", C::Model3D),
-    D::owned_bridge("ph2d::ecs::FlipObjectRef", "Flip Object", C::Identity),
-    D::owned_bridge("ph2d::ecs::PaintedDoc", "Painted Document", C::Identity),
+    D::owned_bridge(
+        "ph2d::ecs::BakedForm",
+        "component.baked_form.name",
+        C::Model3D,
+    ),
+    D::owned_bridge(
+        "ph2d::ecs::FlipObjectRef",
+        "component.flip_object_ref.name",
+        C::Identity,
+    ),
+    D::owned_bridge(
+        "ph2d::ecs::PaintedDoc",
+        "component.painted_doc.name",
+        C::Identity,
+    ),
     // ADR-0150: a peça da escultura. Entrou em 2026-09-04, quando o mesh passou a APARECER na
     // Hierarquia — e ela é `owned_document` pelo mesmo motivo dos outros: copiar o id daria duas
     // entidades sobre a mesma peça, e o `sculpt3d::entities::sync` mantém-nas 1:1.
-    D::owned_bridge("ph2d::ecs::Sculpt3dPieceRef", "Sculpt Piece", C::Model3D),
-    D::owned_bridge("ph2d::ecs::VecPathRef", "Vector Path", C::Vector),
+    D::owned_bridge(
+        "ph2d::ecs::Sculpt3dPieceRef",
+        "component.sculpt_3d_piece_ref.name",
+        C::Model3D,
+    ),
+    D::owned_bridge(
+        "ph2d::ecs::VecPathRef",
+        "component.vec_path_ref.name",
+        C::Vector,
+    ),
 ];

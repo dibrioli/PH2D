@@ -72,7 +72,7 @@ pub(super) fn build_instance_info(
         .filter_map(|k| registry.get_by_id(k.type_id))
         .map(|e| {
             e.desc
-                .map_or(e.canonical_name, |d| d.display_name)
+                .map_or(e.canonical_name, |d| ph2d_i18n::tr(d.display_key))
                 .to_string()
         })
         .collect();
@@ -94,7 +94,7 @@ pub(super) fn build_instance_info(
                 || UNKNOWN_COMPONENT.tr().to_string(),
                 |e| {
                     e.desc
-                        .map_or(e.canonical_name, |d| d.display_name)
+                        .map_or(e.canonical_name, |d| ph2d_i18n::tr(d.display_key))
                         .to_string()
                 },
             ),

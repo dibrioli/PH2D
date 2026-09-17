@@ -71,6 +71,7 @@ mod vector;
 /// As strings que o MOTOR publica para o painel de Vector (efeitos, filtros, misturas).
 mod vector_engine;
 
+mod chrome;
 /// Look up a string by Fluent-style key. Missing keys round-trip the
 /// key itself so missing entries are visible in the UI (debugging
 /// aid) rather than silently rendering as empty.
@@ -78,7 +79,8 @@ mod vector_engine;
 /// Returns `&'static str` — current implementation is a compile-time
 /// table. The Fluent migration will widen this to `String` (formatted
 /// with arguments) at that point.
-mod chrome;
+/// As palavras do catálogo de componentes — o 1.º MOTOR a falar pela tabela.
+mod component_catalog;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
 mod factory;
 mod inspector;
@@ -528,6 +530,7 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| tags::tr(k))
             .or_else(|| factory::tr(k))
             .or_else(|| topdown::tr(k))
+            .or_else(|| component_catalog::tr(k))
             .or_else(|| chrome::tr(k))
             .or_else(|| painter_layers::tr(k))
             .or_else(|| inspector::tr(k))

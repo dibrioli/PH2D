@@ -59,10 +59,10 @@ use crate::{
 };
 
 /// Um campo simples que segue o mestre e não é referência — o caso esmagadoramente comum.
-const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
+const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
     FieldDesc {
         field_id,
-        name,
+        label_key,
         kind,
         policy: Propagation::Propagate,
         is_ref: None,
@@ -78,11 +78,11 @@ const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
 /// CONTROLO (que fala graus, a unidade autorada do app). A conversão é do consumidor —
 /// declarar graus aqui faria a tabela mentir sobre os bytes.
 const TRANSFORM: &[FieldDesc] = &[
-    f(1, "Position", K::Vec2),
-    f(2, "Rotation", K::Angle),
-    f(3, "Scale", K::Vec2),
-    f(4, "Skew X", K::Angle),
-    f(5, "Skew Y", K::Angle),
+    f(1, "component.field.transform.1", K::Vec2),
+    f(2, "component.field.transform.2", K::Angle),
+    f(3, "component.field.transform.3", K::Vec2),
+    f(4, "component.field.transform.4", K::Angle),
+    f(5, "component.field.transform.5", K::Angle),
 ];
 
 /// **`Name`** — ⚠️ `InstanceLocal`: o nome da raiz de uma instância é dela. Senão três
@@ -90,13 +90,13 @@ const TRANSFORM: &[FieldDesc] = &[
 /// (a crate `ph2d-unique-name`) entraria em guerra com o sync todo o quadro.
 const NAME: &[FieldDesc] = &[FieldDesc {
     field_id: 1,
-    name: "Name",
+    label_key: "component.field.name.1",
     kind: K::Text,
     policy: Propagation::InstanceLocal,
     is_ref: None,
 }];
 
-const VISIBILITY: &[FieldDesc] = &[f(1, "Hidden", K::Toggle)];
+const VISIBILITY: &[FieldDesc] = &[f(1, "component.field.visibility.1", K::Toggle)];
 
 /// **`InstanceOf`** — o `StableId` do mestre de que esta raiz nasceu (F4.2).
 ///
@@ -111,7 +111,7 @@ const VISIBILITY: &[FieldDesc] = &[f(1, "Hidden", K::Toggle)];
 /// exatamente o certo.
 const INSTANCE_OF: &[FieldDesc] = &[FieldDesc {
     field_id: 1,
-    name: "Master",
+    label_key: "component.field.instance_of.1",
     kind: K::Ref,
     policy: Propagation::Propagate,
     is_ref: Some(crate::RefKind::Object),
@@ -119,25 +119,28 @@ const INSTANCE_OF: &[FieldDesc] = &[FieldDesc {
 
 // ── Ordenação: a família PILOTO da F0 (a §7 do Inspector) ──────────────────────────
 
-const SORTING_LAYER: &[FieldDesc] = &[f(1, "Sorting Layer", K::Enum)];
-const ORDER_IN_LAYER: &[FieldDesc] = &[f(1, "Order in Layer", K::Int)];
-const Z_INDEX: &[FieldDesc] = &[f(1, "Z Index", K::Int)];
-const Z_AS_RELATIVE: &[FieldDesc] = &[f(1, "Z as Relative", K::Toggle)];
+const SORTING_LAYER: &[FieldDesc] = &[f(1, "component.field.sorting_layer.1", K::Enum)];
+const ORDER_IN_LAYER: &[FieldDesc] = &[f(1, "component.field.order_in_layer.1", K::Int)];
+const Z_INDEX: &[FieldDesc] = &[f(1, "component.field.z_index.1", K::Int)];
+const Z_AS_RELATIVE: &[FieldDesc] = &[f(1, "component.field.z_as_relative.1", K::Toggle)];
 // ⚠️ **Os rótulos abaixo são os que o Inspector JÁ PINTA, ao byte** — não os que eu
 // escolheria. A seção §7 é o piloto da F0, e ao ligá-la ao descritor apareceu o defeito que
 // justifica a ligação: as duas fontes já discordavam (*"Sort At Root"* × *"Sort at Root"*,
 // *"Y-Sort"* × *"Enabled"*). Quem manda é o produto, então o descritor foi corrigido para
 // ele — e agora há **uma** fonte, que é o ponto.
-const SORTING_GROUP: &[FieldDesc] = &[f(1, "Sort At Root", K::Toggle)];
+const SORTING_GROUP: &[FieldDesc] = &[f(1, "component.field.sorting_group.1", K::Toggle)];
 const Y_SORT: &[FieldDesc] = &[
-    f(1, "Y-Sort", K::Toggle),
-    f(2, "Axis", K::Vec2),
-    f(3, "Sort Point", K::Enum),
+    f(1, "component.field.y_sort.1", K::Toggle),
+    f(2, "component.field.y_sort.2", K::Vec2),
+    f(3, "component.field.y_sort.3", K::Enum),
 ];
-const CLIP_CHILDREN: &[FieldDesc] = &[f(1, "Mode", K::Enum), f(2, "Alpha Cutoff", K::Scalar)];
+const CLIP_CHILDREN: &[FieldDesc] = &[
+    f(1, "component.field.clip_children.1", K::Enum),
+    f(2, "component.field.clip_children.2", K::Scalar),
+];
 
 /// Um marcador de tamanho zero: a **presença** é o valor.
-const MARKER: &[FieldDesc] = &[f(1, "Present", K::Marker)];
+const MARKER: &[FieldDesc] = &[f(1, "component.field.marker.1", K::Marker)];
 
 /// **`Tags`** — as tags DIRECTAS do objecto (TOP-20 #9, `docs/Components/08_plano_tags.md`).
 ///
@@ -150,7 +153,7 @@ const MARKER: &[FieldDesc] = &[f(1, "Present", K::Marker)];
 /// copiar (ver [`RefKind::Tag`]).
 const TAGS: &[FieldDesc] = &[FieldDesc {
     field_id: 1,
-    name: "Tags",
+    label_key: "component.field.tags.1",
     kind: K::Ref,
     policy: Propagation::Propagate,
     is_ref: Some(RefKind::Tag),
@@ -160,14 +163,14 @@ const TAGS: &[FieldDesc] = &[FieldDesc {
 pub const DESCS: &[D] = &[
     D::authored(
         "ph2d::ecs::BlendMode",
-        "Blend Mode",
+        "component.blend_mode.name",
         C::Rendering,
         O::IMAGE,
         &[],
     ),
     D::authored(
         "ph2d::ecs::ClipChildren",
-        "Clip Children",
+        "component.clip_children.name",
         C::Ordering,
         O::ANY,
         CLIP_CHILDREN,
@@ -175,7 +178,7 @@ pub const DESCS: &[D] = &[
     // ⇒ a porta é o alternador de GRUPO da Hierarquia, em toda linha.
     D::intrinsic(
         "ph2d::ecs::GroupedChildren",
-        "Grouped Children",
+        "component.grouped_children.name",
         C::Identity,
         MARKER,
     ),
@@ -188,7 +191,7 @@ pub const DESCS: &[D] = &[
     // que o artista tem, ou não escreveria nada, os dois calados.
     D::intrinsic(
         "ph2d::ecs::InstanceOf",
-        "Instance",
+        "component.instance_of.name",
         C::Instancing,
         INSTANCE_OF,
     ),
@@ -202,13 +205,29 @@ pub const DESCS: &[D] = &[
     //
     // ⭐ E ela aparece no Inspector porque é a única superfície que diz ao artista **qual das duas
     // leis** esta cópia segue: as duas são iguais na tela até ao gesto seguinte.
-    D::intrinsic("ph2d::ecs::LinkedArt", "Linked Art", C::Instancing, MARKER),
+    D::intrinsic(
+        "ph2d::ecs::LinkedArt",
+        "component.linked_art.name",
+        C::Instancing,
+        MARKER,
+    ),
     // ⇒ a porta é o CADEADO da Hierarquia, em toda linha.
-    D::intrinsic("ph2d::ecs::Locked", "Locked", C::Identity, MARKER),
-    D::authored("ph2d::ecs::Mask2D", "Mask", C::Rendering, O::IMAGE, &[]),
+    D::intrinsic(
+        "ph2d::ecs::Locked",
+        "component.locked.name",
+        C::Identity,
+        MARKER,
+    ),
+    D::authored(
+        "ph2d::ecs::Mask2D",
+        "component.mask_2d.name",
+        C::Rendering,
+        O::IMAGE,
+        &[],
+    ),
     D::authored(
         "ph2d::ecs::MaskInteraction",
-        "Mask Interaction",
+        "component.mask_interaction.name",
         C::Rendering,
         O::IMAGE,
         &[],
@@ -227,8 +246,13 @@ pub const DESCS: &[D] = &[
     //
     // ⛔ O `MasterPiece` **não tem entrada aqui**, e a ausência é a decisão: ele não é registado
     // (é derivado), e o censo de dois lados proíbe um descritor que nomeie um tipo fora do registo.
-    D::intrinsic("ph2d::ecs::MasterRoot", "Master", C::Instancing, &[]),
-    D::intrinsic("ph2d::ecs::Name", "Name", C::Identity, NAME),
+    D::intrinsic(
+        "ph2d::ecs::MasterRoot",
+        "component.master_root.name",
+        C::Instancing,
+        &[],
+    ),
+    D::intrinsic("ph2d::ecs::Name", "component.name.name", C::Identity, NAME),
     // ⭐ **As EXCEPÇÕES de uma instância** (ADR-0164 / F4.4) — o conjunto de `(peça, componente)`
     // que a cópia possui contra a receita.
     //
@@ -236,10 +260,14 @@ pub const DESCS: &[D] = &[
     // artista (*criar componente*, *instanciar*); este é **mantido pelo passe de sync**, que o
     // escreve sozinho quando o artista mexe numa peça. Oferecê-lo em qualquer porta daria um
     // conjunto de chaves que ninguém sabe preencher à mão.
-    D::machinery("ph2d::ecs::ObjectInstance", "Overrides", C::Instancing),
+    D::machinery(
+        "ph2d::ecs::ObjectInstance",
+        "component.object_instance.name",
+        C::Instancing,
+    ),
     D::authored(
         "ph2d::ecs::OnScreenEnabler",
-        "On-Screen Enabler",
+        "component.on_screen_enabler.name",
         C::Rendering,
         O::IMAGE,
         &[],
@@ -247,71 +275,95 @@ pub const DESCS: &[D] = &[
     // ⇒ a porta é §7 Ordering, pintada em TODO objecto.
     D::intrinsic(
         "ph2d::ecs::OrderInLayer",
-        "Order in Layer",
+        "component.order_in_layer.name",
         C::Ordering,
         ORDER_IN_LAYER,
     ),
     // ⚠️ Máquina: o editor mantém-no para desempatar raízes (*"não se escolhe um desempate
     // melhor, não se tem empate"*). Um artista que o pusesse à mão estaria a escrever num
     // campo que o próprio editor reescreve no quadro seguinte.
-    D::machinery("ph2d::ecs::RootOrder", "Root Order", C::Ordering),
+    D::machinery(
+        "ph2d::ecs::RootOrder",
+        "component.root_order.name",
+        C::Ordering,
+    ),
     // ⇒ a porta é §7 Ordering.
     D::intrinsic(
         "ph2d::ecs::ShowBehindParent",
-        "Show Behind Parent",
+        "component.show_behind_parent.name",
         C::Ordering,
         MARKER,
     ),
     // ⚠️ Máquina, pela MESMA razão do `RootOrder` (o gémeo dele para raízes): a ordem entre
     // irmãos é escrita pelo GESTO de arrastar na Hierarquia, e o editor mantém-na. Um artista
     // que a pusesse à mão estaria a escrever num campo que a varredura reescreve.
-    D::machinery("ph2d::ecs::SiblingOrder", "Sibling Order", C::Ordering),
+    D::machinery(
+        "ph2d::ecs::SiblingOrder",
+        "component.sibling_order.name",
+        C::Ordering,
+    ),
     // ⇒ a porta é §7 Ordering (*Sorting Group* + *Sort At Root*).
     D::intrinsic(
         "ph2d::ecs::SortingGroup",
-        "Sorting Group",
+        "component.sorting_group.name",
         C::Ordering,
         SORTING_GROUP,
     ),
     // ⇒ a porta é §7 Ordering.
     D::intrinsic(
         "ph2d::ecs::SortingLayer",
-        "Sorting Layer",
+        "component.sorting_layer.name",
         C::Ordering,
         SORTING_LAYER,
     ),
     // ⇒ a porta é a row *Emissive* do §Render Source, pintada em toda sprite (ausente **é** `EMISSIVE_OFF`).
-    D::intrinsic("ph2d::ecs::SpriteEmissive", "Emissive", C::Rendering, &[]),
+    D::intrinsic(
+        "ph2d::ecs::SpriteEmissive",
+        "component.sprite_emissive.name",
+        C::Rendering,
+        &[],
+    ),
     // ⭐⭐⭐ **As TAGS** (TOP-20 #9). `C::Identity` porque dizem O QUE o objecto é (a secção nasce
     // logo abaixo da *Identity*), e `O::ANY` porque o objecto vazio que o artista usa como
     // *«o cérebro da cena»* e um grupo são tão marcáveis quanto uma sprite.
-    D::authored("ph2d::ecs::Tags", "Tags", C::Identity, O::ANY, TAGS),
+    D::authored(
+        "ph2d::ecs::Tags",
+        "component.tags.name",
+        C::Identity,
+        O::ANY,
+        TAGS,
+    ),
     D::authored(
         "ph2d::ecs::TextureFilter",
-        "Texture Filter",
+        "component.texture_filter.name",
         C::Rendering,
         O::IMAGE,
         &[],
     ),
     D::authored(
         "ph2d::ecs::TextureRepeat",
-        "Texture Repeat",
+        "component.texture_repeat.name",
         C::Rendering,
         O::IMAGE,
         &[],
     ),
     // ⇒ a porta é §7 Ordering.
-    D::intrinsic("ph2d::ecs::TopLevel", "Top Level", C::Ordering, MARKER),
+    D::intrinsic(
+        "ph2d::ecs::TopLevel",
+        "component.top_level.name",
+        C::Ordering,
+        MARKER,
+    ),
     D::authored(
         "ph2d::ecs::Transform",
-        "Transform",
+        "component.transform.name",
         C::Transform,
         O::ANY,
         TRANSFORM,
     ),
     D::authored(
         "ph2d::ecs::UvTransform",
-        "UV Transform",
+        "component.uv_transform.name",
         C::Rendering,
         O::IMAGE,
         &[],
@@ -319,28 +371,38 @@ pub const DESCS: &[D] = &[
     // ⇒ a porta é o OLHO da Hierarquia, em toda linha.
     D::intrinsic(
         "ph2d::ecs::Visibility",
-        "Visibility",
+        "component.visibility.name",
         C::Identity,
         VISIBILITY,
     ),
     D::authored(
         "ph2d::ecs::VisibilityLayer",
-        "Visibility Layer",
+        "component.visibility_layer.name",
         C::Rendering,
         O::IMAGE,
         &[],
     ),
     // ⇒ a porta é §7 Ordering (tres rows: ligar · eixo · ponto).
-    D::intrinsic("ph2d::ecs::YSort", "Y Sort", C::Ordering, Y_SORT),
+    D::intrinsic(
+        "ph2d::ecs::YSort",
+        "component.y_sort.name",
+        C::Ordering,
+        Y_SORT,
+    ),
     // ⇒ a porta é §7 Ordering.
     D::intrinsic(
         "ph2d::ecs::ZAsRelative",
-        "Z as Relative",
+        "component.z_as_relative.name",
         C::Ordering,
         Z_AS_RELATIVE,
     ),
     // ⇒ a porta é §7 Ordering — e o `—` dela é a AUSENCIA deste componente.
-    D::intrinsic("ph2d::ecs::ZIndexOverride", "Z Index", C::Ordering, Z_INDEX),
+    D::intrinsic(
+        "ph2d::ecs::ZIndexOverride",
+        "component.z_index_override.name",
+        C::Ordering,
+        Z_INDEX,
+    ),
 ];
 
 #[cfg(test)]

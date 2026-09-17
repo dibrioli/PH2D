@@ -23,10 +23,10 @@ use crate::{
     ObjectKinds as O, Propagation,
 };
 
-const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
+const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
     FieldDesc {
         field_id,
-        name,
+        label_key,
         kind,
         policy: Propagation::Propagate,
         is_ref: None,
@@ -47,16 +47,16 @@ const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
 const TIMER_FIELDS: &[FieldDesc] = &[
     // ⚠️ **O nome do TIMER, que não é o nome do sinal** — confundi-los obrigaria a renomear o
     // componente para mudar o contrato.
-    f(1, "Name", K::Text),
+    f(1, "component.field.timer_fields.1", K::Text),
     // ⚠️ **Em SEGUNDOS no painel, microssegundos no modelo.** A conversão vive nas duas pontas do
     // `render_loop::inspector_timer`, e há gate de ida-e-volta.
-    f(2, "Duration", K::Scalar),
-    f(3, "Repeat", K::Toggle),
+    f(2, "component.field.timer_fields.2", K::Scalar),
+    f(3, "component.field.timer_fields.3", K::Toggle),
     // ⚠️ **É este o campo autorado** — o «está a correr agora» é vivo e não chega ao Inspector.
-    f(4, "Autostart", K::Toggle),
+    f(4, "component.field.timer_fields.4", K::Toggle),
     // ⚠️ **Vazio = calado** — a lei da §11: um produtor sem nome não fala, em vez de falar com um
     // nome vazio.
-    f(5, "Signal", K::Text),
+    f(5, "component.field.timer_fields.5", K::Text),
 ];
 
 /// **Os campos de um `StateMachine`** — os três de um ESTADO, os três de uma SETA, e o inicial.
@@ -67,17 +67,17 @@ const TIMER_FIELDS: &[FieldDesc] = &[
 /// ⛔ **Não há campo para o `StateMachineRuntime`** — o estado corrente é vivo, o undo não o
 /// fotografa, e descrevê-lo aqui seria prometer ao Inspector um valor que ele não deve editar.
 const STATE_MACHINE_FIELDS: &[FieldDesc] = &[
-    f(1, "State Name", K::Text),
+    f(1, "component.field.state_machine_fields.1", K::Text),
     // ⚠️ **Vazio = calado**, a lei do produtor de sinal desta casa.
-    f(2, "On Enter", K::Text),
-    f(3, "On Exit", K::Text),
+    f(2, "component.field.state_machine_fields.2", K::Text),
+    f(3, "component.field.state_machine_fields.3", K::Text),
     // ⚠️ Os dois extremos de uma seta são ÍNDICES e não nomes — um nome ligaria a seta ao texto
     // que o artista pode reescrever a meio, e a seta saltaria de estado.
-    f(4, "From", K::Scalar),
+    f(4, "component.field.state_machine_fields.4", K::Scalar),
     // ⚠️ **Este é um NOME**, e é o único: ele é o contrato com o resto do mundo.
-    f(5, "On Signal", K::Text),
-    f(6, "To", K::Scalar),
-    f(7, "Initial State", K::Scalar),
+    f(5, "component.field.state_machine_fields.5", K::Text),
+    f(6, "component.field.state_machine_fields.6", K::Scalar),
+    f(7, "component.field.state_machine_fields.7", K::Scalar),
 ];
 
 /// **Os campos de UMA linha da tabela `SignalActions`** — *quando o sinal `on` chegar, faz `verb`
@@ -87,20 +87,23 @@ const STATE_MACHINE_FIELDS: &[FieldDesc] = &[
 /// durável entre objectos é o NOME, nunca os bits*. Um `FieldKind::Ref` prometeria um picker que
 /// guarda uma identidade — e o undo respawna tudo com bits novos.
 const ACTION_FIELDS: &[FieldDesc] = &[
-    f(1, "On Signal", K::Text),
-    f(2, "Target", K::Text),
-    f(3, "Action", K::Enum),
-    f(4, "Timer", K::Text),
+    f(1, "component.field.action_fields.1", K::Text),
+    f(2, "component.field.action_fields.2", K::Text),
+    f(3, "component.field.action_fields.3", K::Enum),
+    f(4, "component.field.action_fields.4", K::Text),
 ];
 
 /// **Os campos de uma cópia que MORRE SOZINHA** (TOP-20 #12).
 ///
 /// ⚠️ **Só dois, e o painel tem uma terceira linha que NÃO é campo:** a metade honesta —
 /// *«isto só corre em cópias que uma fábrica pôs na cena»* — é derivada, não autorada.
-const LIFETIME_FIELDS: &[FieldDesc] = &[f(1, "Lifetime", K::Scalar), f(2, "On Death", K::Text)];
+const LIFETIME_FIELDS: &[FieldDesc] = &[
+    f(1, "component.field.lifetime_fields.1", K::Scalar),
+    f(2, "component.field.lifetime_fields.2", K::Text),
+];
 
 /// O campo do fora-do-ecrã: a folga, em metros, antes de a morte valer.
-const OUTSIDE_FIELDS: &[FieldDesc] = &[f(1, "Margin", K::Scalar)];
+const OUTSIDE_FIELDS: &[FieldDesc] = &[f(1, "component.field.outside_fields.1", K::Scalar)];
 
 /// **Os campos da FÁBRICA** (TOP-20 #11) — *o quê · onde · quando · quanto*.
 ///
@@ -108,18 +111,18 @@ const OUTSIDE_FIELDS: &[FieldDesc] = &[f(1, "Margin", K::Scalar)];
 /// que o `requires` puxa quando o artista acrescenta a fábrica. Um `rate` aqui seria um **segundo
 /// relógio** para a mesma lei.
 const FACTORY_FIELDS: &[FieldDesc] = &[
-    f(1, "Recipe", K::Text),
-    f(2, "On Signal", K::Text),
-    f(3, "Where", K::Enum),
-    f(4, "Area", K::Vec2),
-    f(5, "Spawn Point Tag", K::Text),
-    f(6, "Pick", K::Enum),
-    f(7, "Burst", K::Int),
-    f(8, "Max Alive", K::Int),
-    f(9, "Max Total", K::Int),
-    f(10, "On Spawned", K::Text),
-    f(11, "On Exhausted", K::Text),
-    f(12, "Seed", K::Seed),
+    f(1, "component.field.factory_fields.1", K::Text),
+    f(2, "component.field.factory_fields.2", K::Text),
+    f(3, "component.field.factory_fields.3", K::Enum),
+    f(4, "component.field.factory_fields.4", K::Vec2),
+    f(5, "component.field.factory_fields.5", K::Text),
+    f(6, "component.field.factory_fields.6", K::Enum),
+    f(7, "component.field.factory_fields.7", K::Int),
+    f(8, "component.field.factory_fields.8", K::Int),
+    f(9, "component.field.factory_fields.9", K::Int),
+    f(10, "component.field.factory_fields.10", K::Text),
+    f(11, "component.field.factory_fields.11", K::Text),
+    f(12, "component.field.factory_fields.12", K::Seed),
 ];
 
 /// Os descritores da família. ⚠️ **ORDENADOS por `canonical_name`** — há gate.
@@ -131,7 +134,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // objecto solto elas são inertes, e é o painel que o diz.
     D::authored(
         "ph2d::ecs::DestroyOutside",
-        "Destroy Outside",
+        "component.destroy_outside.name",
         C::Logic,
         O::ANY,
         OUTSIDE_FIELDS,
@@ -144,7 +147,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // dá ritmo, já ligado. ⛔ É o que torna honesto **não** ter um `rate` próprio.
     D::authored_requiring(
         "ph2d::ecs::Factory",
-        "Factory",
+        "component.factory.name",
         C::Logic,
         O::ANY,
         FACTORY_FIELDS,
@@ -152,7 +155,7 @@ pub const DESCS: &[ComponentDesc] = &[
     ),
     D::authored(
         "ph2d::ecs::Lifetime",
-        "Lifetime",
+        "component.lifetime.name",
         C::Logic,
         O::ANY,
         LIFETIME_FIELDS,
@@ -161,7 +164,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // reage a um sinal é tantas vezes um objecto VAZIO («o cérebro da cena») quanto uma sprite.
     D::authored(
         "ph2d::ecs::SignalActions",
-        "Signal Actions",
+        "component.signal_actions.name",
         C::Logic,
         O::ANY,
         ACTION_FIELDS,
@@ -174,7 +177,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // descritor que não é encontrado lê-se exactamente como um que não existe*.
     D::authored(
         "ph2d::ecs::StateMachine",
-        "State Machine",
+        "component.state_machine.name",
         C::Logic,
         O::ANY,
         STATE_MACHINE_FIELDS,
@@ -184,7 +187,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // artista usa como *«o cérebro da cena»* — não poder ter um.
     D::authored(
         "ph2d::ecs::Timers",
-        "Timers",
+        "component.timers.name",
         C::Logic,
         O::ANY,
         TIMER_FIELDS,

@@ -57,7 +57,7 @@
 //! não mostra secção de física nenhuma, e as doze secções de zeros continuam mortas.
 //!
 //! ⚠️ **O rótulo passa a nomear a SECÇÃO que nascerá**, que é a regra do campo
-//! [`crate::ComponentDesc::display_name`] (*nomeado pelo resultado, não pelo tipo Rust*):
+//! [`crate::ComponentDesc::display_key`] (*nomeado pelo resultado, não pelo tipo Rust*):
 //! `Rigid Body` → **Physics Body** (o cabeçalho da §11, e a palavra do botão que o dono conhecia).
 //! O `Collider` fica **Collision Shape** para o rótulo *«brings …»* dizer o que de facto chega.
 //!
@@ -90,10 +90,10 @@ use crate::{
 ///
 /// ⚠️ `Propagate`: o campo segue o mestre **depois de remapeado**. Não é `RuntimeOwned` — a
 /// referência é AUTORIA (*"prende neste corpo"*), e quem o solver possui é a pose, não o elo.
-const fn r(field_id: u16, name: &'static str) -> FieldDesc {
+const fn r(field_id: u16, label_key: &'static str) -> FieldDesc {
     FieldDesc {
         field_id,
-        name,
+        label_key,
         kind: K::Ref,
         policy: Propagation::Propagate,
         is_ref: Some(RefKind::Object),
@@ -103,13 +103,19 @@ const fn r(field_id: u16, name: &'static str) -> FieldDesc {
 /// **`PhysicsJoint`** — os dois corpos que ele prende. ⚠️ Os `field_id` seguem a ordem de
 /// declaração da struct (`joint.rs`), para que uma wave que descreva o resto do tipo não tenha
 /// de saltar por cima destes dois.
-const JOINT: &[FieldDesc] = &[r(1, "Body A"), r(2, "Body B")];
+const JOINT: &[FieldDesc] = &[
+    r(1, "component.field.joint.1"),
+    r(2, "component.field.joint.2"),
+];
 
 /// **`PulleyWheel`** — a CORDA a que ela pertence (`rope`) e o CORPO em que é montada
 /// (`body`, `0` = pregada no cenário). Os ids seguem a struct (`components/rope.rs`):
 /// `rope` é o 1.º campo e `body` é o 7.º — os do meio ficam por descrever, e o id declarado
 /// é precisamente o que torna isso seguro.
-const PULLEY_WHEEL: &[FieldDesc] = &[r(1, "Rope"), r(7, "Body")];
+const PULLEY_WHEEL: &[FieldDesc] = &[
+    r(1, "component.field.pulley_wheel.1"),
+    r(7, "component.field.pulley_wheel.7"),
+];
 
 /// ⭐ **Uma LINHA DE SECÇÃO, não um item de paleta** — ver a tabela das três portas no cabeçalho.
 ///
@@ -120,8 +126,8 @@ const PULLEY_WHEEL: &[FieldDesc] = &[r(1, "Rope"), r(7, "Body")];
 /// ⚠️ **Continua a poder ter secção** ([`crate::ComponentDesc::may_have_section`]): `Intrinsic` diz
 /// *não se oferece*, nunca *não se edita*. É precisamente a distinção que a terceira variante
 /// comprou.
-const fn i(canonical_name: &'static str, display_name: &'static str) -> D {
-    D::intrinsic(canonical_name, display_name, C::Physics, &[])
+const fn i(canonical_name: &'static str, display_key: &'static str) -> D {
+    D::intrinsic(canonical_name, display_key, C::Physics, &[])
 }
 
 /// **A PORTA, e o que ela não funciona sem** — ver [`D::requires`].
@@ -138,12 +144,12 @@ const fn i(canonical_name: &'static str, display_name: &'static str) -> D {
 /// existe **sobre** um corpo.)
 const fn pr(
     canonical_name: &'static str,
-    display_name: &'static str,
+    display_key: &'static str,
     requires: &'static [&'static str],
 ) -> D {
     D::authored_requiring(
         canonical_name,
-        display_name,
+        display_key,
         C::Physics,
         O::ANY,
         &[],
@@ -161,14 +167,26 @@ pub const DESCS: &[D] = &[
     // *Sensor* e escritas pelos `PhysicsFieldEdit::Force*/AreaDrag/AreaDensity/AreaFormDrag/
     // AreaTorque/AreaFalloff/ForceWorldAxes`. ⚠️ Fora de um sensor elas **não têm leitor**: a
     // ponte não lê `AreaEffector` de uma peça nem de um corpo sólido.
-    i("ph2d::physics::AreaBuoyancy", "Buoyancy Zone"),
-    i("ph2d::physics::AreaDrag", "Drag Zone"),
-    i("ph2d::physics::AreaEffector", "Force Zone"),
-    i("ph2d::physics::AreaFalloff", "Zone Falloff"),
-    i("ph2d::physics::AreaForceWorldAxes", "Zone World Axes"),
-    i("ph2d::physics::AreaFormDrag", "Form Drag Zone"),
-    i("ph2d::physics::AreaTorque", "Torque Zone"),
-    i("ph2d::physics::Ccd", "Continuous Collision"),
+    i(
+        "ph2d::physics::AreaBuoyancy",
+        "component.area_buoyancy.name",
+    ),
+    i("ph2d::physics::AreaDrag", "component.area_drag.name"),
+    i(
+        "ph2d::physics::AreaEffector",
+        "component.area_effector.name",
+    ),
+    i("ph2d::physics::AreaFalloff", "component.area_falloff.name"),
+    i(
+        "ph2d::physics::AreaForceWorldAxes",
+        "component.area_force_world_axes.name",
+    ),
+    i(
+        "ph2d::physics::AreaFormDrag",
+        "component.area_form_drag.name",
+    ),
+    i("ph2d::physics::AreaTorque", "component.area_torque.name"),
+    i("ph2d::physics::Ccd", "component.ccd.name"),
     // ⭐⭐ **A forma do corpo — e ela CHEGA COM ELE** (ordem do dono, 2026-09-14). Todas as opções
     // dela (forma, meias-extensões, offset, densidade, quique, atrito, camada, Solid|Sensor) são
     // rows da §11, que nasce com o `Physics Body`. A outra vida dela — *esta forma é mais uma peça
@@ -179,8 +197,11 @@ pub const DESCS: &[D] = &[
     // `every_declared_requirement_names_a_real_component` exigia `Authored` e o recurso de que ele
     // falava é OUTRO — quem constrói a cascata é o `insert_default` do REGISTO, que não consulta o
     // `attach`. Hoje ele exige o que de facto é preciso: que o registo saiba construir o alvo.
-    i("ph2d::physics::Collider", "Collision Shape"),
-    i("ph2d::physics::DampingOverride", "Damping"),
+    i("ph2d::physics::Collider", "component.collider.name"),
+    i(
+        "ph2d::physics::DampingOverride",
+        "component.damping_override.name",
+    ),
     // ⚠️⚠️ `Dominance` e `MassOverride` são `Intrinsic` por uma CERCA, não por falta de
     // desenho — e a cerca está escrita no doc-comment deles (`components/overrides.rs`):
     // *"absent = the neutral default and the Inspector detaches it at 0 (a project file
@@ -188,28 +209,67 @@ pub const DESCS: &[D] = &[
     // anexação teria de vir do CONTEXTO (a massa que o corpo tem agora) — que a paleta
     // genérica não conhece. ⇒ **A porta por-seção deles não é redundante com o `+`**: ela
     // SEMEIA do valor vivo, que é uma coisa que o `+` não pode fazer (ADR-0166).
-    D::intrinsic("ph2d::physics::Dominance", "Dominance", C::Physics, &[]),
-    i("ph2d::physics::GravityScale", "Gravity Scale"),
-    i("ph2d::physics::InitialVelocity", "Initial Velocity"),
+    D::intrinsic(
+        "ph2d::physics::Dominance",
+        "component.dominance.name",
+        C::Physics,
+        &[],
+    ),
+    i(
+        "ph2d::physics::GravityScale",
+        "component.gravity_scale.name",
+    ),
+    i(
+        "ph2d::physics::InitialVelocity",
+        "component.initial_velocity.name",
+    ),
     // O pino de MUNDO: ele chega com o gesto que prega a junta ao cenário (`joint_world`), e
     // sozinho não nomeia ponto nenhum.
-    i("ph2d::physics::JointWorldAnchor", "World Anchor"),
-    i("ph2d::physics::LockPositionX", "Lock Position X"),
-    i("ph2d::physics::LockPositionY", "Lock Position Y"),
-    i("ph2d::physics::LockRotation", "Lock Rotation"),
+    i(
+        "ph2d::physics::JointWorldAnchor",
+        "component.joint_world_anchor.name",
+    ),
+    i(
+        "ph2d::physics::LockPositionX",
+        "component.lock_position_x.name",
+    ),
+    i(
+        "ph2d::physics::LockPositionY",
+        "component.lock_position_y.name",
+    ),
+    i(
+        "ph2d::physics::LockRotation",
+        "component.lock_rotation.name",
+    ),
     // Irmã do `Dominance` acima, pela mesma cerca (a massa e a densidade são a mesma
     // grandeza por dois caminhos; ausente = a densidade manda).
-    D::intrinsic("ph2d::physics::MassOverride", "Mass", C::Physics, &[]),
-    i("ph2d::physics::MaterialCombine", "Material Combine"),
-    i("ph2d::physics::NoWallCling", "No Wall Cling"),
-    i("ph2d::physics::OneWayPlatform", "One-Way Platform"),
+    D::intrinsic(
+        "ph2d::physics::MassOverride",
+        "component.mass_override.name",
+        C::Physics,
+        &[],
+    ),
+    i(
+        "ph2d::physics::MaterialCombine",
+        "component.material_combine.name",
+    ),
+    i("ph2d::physics::NoWallCling", "component.no_wall_cling.name"),
+    i(
+        "ph2d::physics::OneWayPlatform",
+        "component.one_way_platform.name",
+    ),
     // ⛔⛔ **A junta é o caso em que oferecer é PIOR que não oferecer.** Ela nasce dos gestos que
     // conhecem os DOIS corpos (*Join Selected Bodies* · *Join by drawing* · *Rig N Parts*), e o
     // ponto neutro do tipo prende `StableId 0` a `StableId 0`: uma junta que não prende nada, num
     // objeto que pode nem ser corpo. ✅ `body_a`/`body_b` seguem DECLARADOS (F4.2) — `Intrinsic`
     // **pode** ter campos, e sem eles a junta de uma instância prende os corpos do mestre (gate
     // `the_instance_joint_binds_the_instances_own_bodies`).
-    D::intrinsic("ph2d::physics::PhysicsJoint", "Joint", C::Physics, JOINT),
+    D::intrinsic(
+        "ph2d::physics::PhysicsJoint",
+        "component.physics_joint.name",
+        C::Physics,
+        JOINT,
+    ),
     // ⭐⭐ **O comportamento — e ele também chega com o corpo** (ordem do dono, 2026-09-14). A §14
     // volta a pintar-se sobre **todo corpo Dynamic**, com ou sem o componente, e a face vazia dela é
     // o botão *Make Platform Player* — que foi a porta original (W5) e morreu na F3.
@@ -224,19 +284,22 @@ pub const DESCS: &[D] = &[
     // deixava-o lá a não fazer nada, em silêncio. Ver [`D::intrinsic_requiring`].
     D::intrinsic_requiring(
         "ph2d::physics::PlatformPlayer",
-        "Platform Player",
+        "component.platform_player.name",
         C::Physics,
         &[],
         &["ph2d::physics::RigidBody"],
     ),
-    i("ph2d::physics::PlayerMode", "Player Mode"),
-    i("ph2d::physics::PlayerSignals", "Player Signals"),
+    i("ph2d::physics::PlayerMode", "component.player_mode.name"),
+    i(
+        "ph2d::physics::PlayerSignals",
+        "component.player_signals.name",
+    ),
     // ⭐⭐⭐ **O PROJÉCTIL de arcade** (TOP-20 #14). ⚠️ `RigidBody` é requerido pela mesma razão
     // dos dois movers irmãos: sem corpo não há o que mover nem em que bater, e a paleta anexa os
     // dois de uma vez em vez de entregar um componente inerte.
     pr(
         "ph2d::physics::ProjectileMotion",
-        "Projectile Motion",
+        "component.projectile_motion.name",
         &["ph2d::physics::RigidBody"],
     ),
     // ✅ `rope`/`body` idem — e a roldana é a SEXTA consulta da ponte, a que a refutação não
@@ -245,7 +308,7 @@ pub const DESCS: &[D] = &[
     // ela chega pelo botão da §12, que já tem a corda em mãos.
     D::intrinsic(
         "ph2d::physics::PulleyWheel",
-        "Pulley Wheel",
+        "component.pulley_wheel.name",
         C::Physics,
         PULLEY_WHEEL,
     ),
@@ -254,23 +317,29 @@ pub const DESCS: &[D] = &[
     // que nasce diz.
     pr(
         "ph2d::physics::RigidBody",
-        "Physics Body",
+        "component.rigid_body.name",
         &["ph2d::physics::Collider"],
     ),
-    i("ph2d::physics::RopeStops", "Rope Stops"),
-    i("ph2d::physics::SignalOnHit", "Signal on Hit"),
-    i("ph2d::physics::SignalOnLeave", "Signal on Leave"),
-    i("ph2d::physics::SignalTagFilter", "Signal Tag Filter"),
+    i("ph2d::physics::RopeStops", "component.rope_stops.name"),
+    i("ph2d::physics::SignalOnHit", "component.signal_on_hit.name"),
+    i(
+        "ph2d::physics::SignalOnLeave",
+        "component.signal_on_leave.name",
+    ),
+    i(
+        "ph2d::physics::SignalTagFilter",
+        "component.signal_tag_filter.name",
+    ),
     // ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13). ⚠️ `RigidBody` é requerido pela
     // mesma razão do irmão `PlatformPlayer`: sem corpo não há o que mover, e a paleta
     // anexa os dois de uma vez em vez de entregar um componente inerte.
     pr(
         "ph2d::physics::TopDownPlayer",
-        "Top-Down Player",
+        "component.top_down_player.name",
         &["ph2d::physics::RigidBody"],
     ),
-    i("ph2d::physics::WalkSurface", "Walk Surface"),
-    i("ph2d::physics::WestonAxle", "Weston Axle"),
+    i("ph2d::physics::WalkSurface", "component.walk_surface.name"),
+    i("ph2d::physics::WestonAxle", "component.weston_axle.name"),
 ];
 
 #[cfg(test)]

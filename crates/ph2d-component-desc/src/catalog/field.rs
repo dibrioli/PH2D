@@ -27,16 +27,40 @@ pub const DESCS: &[D] = &[
     // Inspector que o anexasse a uma sprite, a um caminho vectorial ou a uma forma transformaria
     // essa coisa numa luz — e o gesto que cria uma é o chip *Light* do painel `MODEL`, que também
     // lhe dá a pose e o nome.
-    D::machinery("ph2d::field::FieldLight", "Field Light", C::Model3D),
-    D::machinery("ph2d::field::FieldMaterial", "Field Material", C::Model3D),
-    D::machinery("ph2d::field::FieldMods", "Field Modifiers", C::Model3D),
-    D::machinery("ph2d::field::FieldNode", "Field Node", C::Model3D),
+    D::machinery(
+        "ph2d::field::FieldLight",
+        "component.field_light.name",
+        C::Model3D,
+    ),
+    D::machinery(
+        "ph2d::field::FieldMaterial",
+        "component.field_material.name",
+        C::Model3D,
+    ),
+    D::machinery(
+        "ph2d::field::FieldMods",
+        "component.field_mods.name",
+        C::Model3D,
+    ),
+    D::machinery(
+        "ph2d::field::FieldNode",
+        "component.field_node.name",
+        C::Model3D,
+    ),
     // O MARCADOR de ObjectKind::Model3D.
-    D::machinery("ph2d::field::FieldObject", "3D Model", C::Model3D),
-    D::machinery("ph2d::field::FieldPose", "Field Pose", C::Model3D),
+    D::machinery(
+        "ph2d::field::FieldObject",
+        "component.field_object.name",
+        C::Model3D,
+    ),
+    D::machinery(
+        "ph2d::field::FieldPose",
+        "component.field_pose.name",
+        C::Model3D,
+    ),
     D::machinery(
         "ph2d::field::FieldProfileSource",
-        "Profile Source",
+        "component.field_profile_source.name",
         C::Model3D,
     ),
     // ⭐⭐ **O VERBO da forma** (W97) — com que operação ela dobra sobre os irmãos anteriores.
@@ -45,5 +69,9 @@ pub const DESCS: &[D] = &[
     // significa *«herda o do pai»*. Um `+` do Inspector que o anexasse escreveria um verbo que
     // ninguém escolheu, e a forma passaria a discordar do grupo em silêncio — quem o autora é a
     // fileira do painel `MODEL`, que sabe qual é o verbo em vigor antes de o escrever.
-    D::machinery("ph2d::field::FieldVerb", "Field Verb", C::Model3D),
+    D::machinery(
+        "ph2d::field::FieldVerb",
+        "component.field_verb.name",
+        C::Model3D,
+    ),
 ];

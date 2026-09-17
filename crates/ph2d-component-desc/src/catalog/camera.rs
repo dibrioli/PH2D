@@ -25,10 +25,10 @@ use crate::{
     ObjectKinds as O, Propagation,
 };
 
-const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
+const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
     FieldDesc {
         field_id,
-        name,
+        label_key,
         kind,
         policy: Propagation::Propagate,
         is_ref: None,
@@ -41,24 +41,27 @@ const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
 /// com bits novos, e um `Entity` gravado daria uma câmera a seguir o vazio depois do primeiro
 /// `Ctrl+Z`. É a mesma decisão do `SignalActions` e do `AnchorMount`.
 const FOLLOW_FIELDS: &[FieldDesc] = &[
-    f(0, "Target", K::Text),
-    f(1, "Damping", K::Vec2),
-    f(2, "Dead Zone", K::Vec2),
-    f(3, "Lookahead", K::Vec2),
-    f(4, "Offset", K::Vec2),
+    f(0, "component.field.follow_fields.0", K::Text),
+    f(1, "component.field.follow_fields.1", K::Vec2),
+    f(2, "component.field.follow_fields.2", K::Vec2),
+    f(3, "component.field.follow_fields.3", K::Vec2),
+    f(4, "component.field.follow_fields.4", K::Vec2),
 ];
 
 /// Os campos da câmera.
 const CAMERA_FIELDS: &[FieldDesc] = &[
-    f(0, "Height", K::Scalar),
-    f(1, "Offset", K::Vec2),
-    f(2, "Priority", K::Int),
-    f(3, "Active", K::Toggle),
-    f(4, "Cull Mask", K::Int),
+    f(0, "component.field.camera_fields.0", K::Scalar),
+    f(1, "component.field.camera_fields.1", K::Vec2),
+    f(2, "component.field.camera_fields.2", K::Int),
+    f(3, "component.field.camera_fields.3", K::Toggle),
+    f(4, "component.field.camera_fields.4", K::Int),
 ];
 
 /// Os limites da fase — a caixa de que a JANELA não sai.
-const LIMITS_FIELDS: &[FieldDesc] = &[f(0, "Min", K::Vec2), f(1, "Max", K::Vec2)];
+const LIMITS_FIELDS: &[FieldDesc] = &[
+    f(0, "component.field.limits_fields.0", K::Vec2),
+    f(1, "component.field.limits_fields.1", K::Vec2),
+];
 
 /// Os descritores da família.
 pub const DESCS: &[ComponentDesc] = &[
@@ -67,21 +70,21 @@ pub const DESCS: &[ComponentDesc] = &[
     // inexprimível, que é o mesmo argumento que o ouvinte de áudio já pagou.
     D::authored(
         "ph2d::ecs::CameraFollow",
-        "Camera Follow",
+        "component.camera_follow.name",
         C::Camera,
         O::ANY,
         FOLLOW_FIELDS,
     ),
     D::authored(
         "ph2d::ecs::CameraLimits",
-        "Camera Limits",
+        "component.camera_limits.name",
         C::Camera,
         O::ANY,
         LIMITS_FIELDS,
     ),
     D::authored(
         "ph2d::ecs::GameCamera",
-        "Game Camera",
+        "component.game_camera.name",
         C::Camera,
         O::ANY,
         CAMERA_FIELDS,

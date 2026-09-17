@@ -42,10 +42,10 @@ use crate::{
     Propagation,
 };
 
-const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
+const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
     FieldDesc {
         field_id,
-        name,
+        label_key,
         kind,
         policy: Propagation::Propagate,
         is_ref: None,
@@ -62,36 +62,39 @@ const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
 /// outro campo faria um override por-campo gravado antes do corte (F4) apontar para o campo
 /// errado — a colisão passa muda porque os dois lados são `u16`.
 const SPRITE: &[FieldDesc] = &[
-    f(1, "Tint", K::Color),
-    f(2, "Flip X", K::Toggle),
-    f(3, "Flip Y", K::Toggle),
-    f(4, "Pivot", K::Vec2),
+    f(1, "component.field.sprite.1", K::Color),
+    f(2, "component.field.sprite.2", K::Toggle),
+    f(3, "component.field.sprite.3", K::Toggle),
+    f(4, "component.field.sprite.4", K::Vec2),
     // 5 — APOSENTADO (era "Frame"; ver a nota acima).
 ];
 
 /// Os três grupos que saíram da `Sprite` (ADR-0164 F1 passo 6 / ADR-0166).
 const SPRITE_GRID: &[FieldDesc] = &[
-    f(1, "Columns", K::Int),
-    f(2, "Rows", K::Int),
-    f(3, "Frame", K::Int),
+    f(1, "component.field.sprite_grid.1", K::Int),
+    f(2, "component.field.sprite_grid.2", K::Int),
+    f(3, "component.field.sprite_grid.3", K::Int),
 ];
 
-const SPRITE_REGION: &[FieldDesc] = &[f(1, "Region", K::Vec4), f(2, "Filter Clip", K::Toggle)];
+const SPRITE_REGION: &[FieldDesc] = &[
+    f(1, "component.field.sprite_region.1", K::Vec4),
+    f(2, "component.field.sprite_region.2", K::Toggle),
+];
 
 const SPRITE_CORNER_TINT: &[FieldDesc] = &[
-    f(1, "Top Left", K::Color),
-    f(2, "Top Right", K::Color),
-    f(3, "Bottom Left", K::Color),
-    f(4, "Bottom Right", K::Color),
+    f(1, "component.field.sprite_corner_tint.1", K::Color),
+    f(2, "component.field.sprite_corner_tint.2", K::Color),
+    f(3, "component.field.sprite_corner_tint.3", K::Color),
+    f(4, "component.field.sprite_corner_tint.4", K::Color),
 ];
 
 const SLICE_NINE: &[FieldDesc] = &[
-    f(1, "Left", K::Scalar),
-    f(2, "Right", K::Scalar),
-    f(3, "Top", K::Scalar),
-    f(4, "Bottom", K::Scalar),
-    f(5, "Fill Center", K::Toggle),
-    f(6, "Tile Mode", K::Enum),
+    f(1, "component.field.slice_nine.1", K::Scalar),
+    f(2, "component.field.slice_nine.2", K::Scalar),
+    f(3, "component.field.slice_nine.3", K::Scalar),
+    f(4, "component.field.slice_nine.4", K::Scalar),
+    f(5, "component.field.slice_nine.5", K::Toggle),
+    f(6, "component.field.slice_nine.6", K::Enum),
 ];
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
@@ -106,7 +109,7 @@ pub const DESCS: &[D] = &[
     // onde o censo confere declaração ↔ remapeador.)
     D::authored(
         "ph2d::ecs::AnchorMount",
-        "Anchor Mount",
+        "component.anchor_mount.name",
         C::Anchors,
         O::ANY,
         &[],
@@ -114,34 +117,34 @@ pub const DESCS: &[D] = &[
     // ⇒ a porta é a caixa «Always show anchors» da §12, pintada sempre que o objecto TEM âncoras (`anchor_mount_row::paint_visibility_rows`).
     D::intrinsic(
         "ph2d::ecs::AnchorVisibility",
-        "Anchor Visibility",
+        "component.anchor_visibility.name",
         C::Anchors,
         &[],
     ),
     D::authored(
         "ph2d::ecs::NamedAnchorList",
-        "Anchors",
+        "component.named_anchor_list.name",
         C::Anchors,
         O::ANY,
         &[],
     ),
     D::authored(
         "ph2d::ecs::SliceNine",
-        "9-Slice",
+        "component.slice_nine.name",
         C::Image,
         O::IMAGE,
         SLICE_NINE,
     ),
     D::authored(
         "ph2d::ecs::SpriteAnimations",
-        "Animations",
+        "component.sprite_animations.name",
         C::Animation,
         O::IMAGE,
         &[],
     ),
     D::authored(
         "ph2d::ecs::SpriteAnimator",
-        "Animator",
+        "component.sprite_animator.name",
         C::Animation,
         O::IMAGE,
         &[],
@@ -152,7 +155,7 @@ pub const DESCS: &[D] = &[
     // ⇒ a porta é as rows do degradê de cantos, pintadas em toda sprite (ausente = os quatro cantos brancos).
     D::intrinsic(
         "ph2d::ecs::SpriteCornerTint",
-        "Corner Tint",
+        "component.sprite_corner_tint.name",
         C::Image,
         SPRITE_CORNER_TINT,
     ),
@@ -162,23 +165,45 @@ pub const DESCS: &[D] = &[
     // ⇒ a porta é a §4 Sprite Sheet, pintada em toda sprite (ausente = `SpriteGrid::SINGLE`).
     D::intrinsic(
         "ph2d::ecs::SpriteGrid",
-        "Sprite Grid",
+        "component.sprite_grid.name",
         C::Image,
         SPRITE_GRID,
     ),
     // Os pixels editados desta sprite (`project_sprite_pixels.rs`): identidade de CONTEÚDO,
     // posta pelo funil de commit das oito ferramentas de imagem. O artista não a anexa.
-    D::machinery("ph2d::ecs::SpritePixels", "Sprite Pixels", C::Image),
+    D::machinery(
+        "ph2d::ecs::SpritePixels",
+        "component.sprite_pixels.name",
+        C::Image,
+    ),
     // ⇒ a porta é as rows de REGIÃO do §Render Source, pintadas em toda sprite (`paint_region_rows`, sem condição).
-    D::intrinsic("ph2d::ecs::SpriteRegion", "Region", C::Image, SPRITE_REGION),
+    D::intrinsic(
+        "ph2d::ecs::SpriteRegion",
+        "component.sprite_region.name",
+        C::Image,
+        SPRITE_REGION,
+    ),
     // Proveniência de autoria (que folha esta sprite veio de), não índice de célula — o
     // índice vivo é o `SpriteGrid::frame`. Máquina: quem a põe é o importador.
-    D::machinery("ph2d::ecs::SpriteSheetFrame", "Sheet Frame", C::Image),
-    D::machinery("ph2d::ecs::SpriteSheetRef", "Sheet Source", C::Image),
+    D::machinery(
+        "ph2d::ecs::SpriteSheetFrame",
+        "component.sprite_sheet_frame.name",
+        C::Image,
+    ),
+    D::machinery(
+        "ph2d::ecs::SpriteSheetRef",
+        "component.sprite_sheet_ref.name",
+        C::Image,
+    ),
     // ⚠️ O MARCADOR de ObjectKind::Image. Sem `Default` ⇒ sem `insert_default` ⇒ a paleta
     // não a oferece; ela chega pelo gesto que cria a imagem. **Tem seção**, e das maiores —
     // é o caso que a variante `Intrinsic` existe para exprimir.
-    D::intrinsic("ph2d::render::Sprite", "Sprite", C::Image, SPRITE),
+    D::intrinsic(
+        "ph2d::render::Sprite",
+        "component.sprite.name",
+        C::Image,
+        SPRITE,
+    ),
 ];
 
 #[cfg(test)]

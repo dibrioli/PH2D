@@ -44,18 +44,24 @@ fn the_ordering_rows_read_exactly_what_shipped() {
     ];
     for (canonical, field_id, want) in expected {
         let d = desc_for(canonical).unwrap_or_else(|| panic!("'{canonical}' sem descritor"));
+        // ⭐⭐ **Desde 2026-09-17 isto mede a VOLTA INTEIRA, e ficou mais forte:** o descritor
+        //    devolve uma CHAVE e o texto vive em `ph2d-i18n` (`component.*`), logo esta asserção
+        //    atravessa os DOIS — a chave certa **e** a tradução certa. Antes ela comparava um
+        //    literal com ele próprio a uma crate de distância; agora reprova também quando a chave
+        //    existe e a tabela não a tem (o `tr` devolveria o identificador cru).
         let got = match field_id {
-            Some(id) => {
+            Some(id) => ph2d_i18n::tr(
                 d.field(*id)
                     .unwrap_or_else(|| panic!("'{canonical}' sem campo {id}"))
-                    .name
-            }
-            None => d.display_name,
+                    .label_key,
+            ),
+            None => ph2d_i18n::tr(d.display_key),
         };
         assert_eq!(
             got, *want,
             "'{canonical}' mudou o rotulo que a secao 7 pinta: '{got}' (era '{want}'). \
-             O descritor e' a fonte UNICA — mexer nele renomeia a UI.",
+             O descritor e' a fonte UNICA da CHAVE e a tabela e' a do TEXTO — mexer em qualquer \
+             um deles renomeia a UI.",
         );
     }
 }

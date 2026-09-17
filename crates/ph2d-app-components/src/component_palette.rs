@@ -81,12 +81,16 @@ fn cat_token(c: C) -> ColorToken {
 
 /// O rótulo em inglês de cada categoria (HR-15: a UI do app é em inglês).
 ///
-/// ⚠️ **UMA porta:** ele delega para [`C::label`], que é a dona do rótulo. Este `match` existiu
+/// ⚠️ **UMA porta:** ele delega para [`C::label_key`], que é a dona da CHAVE. Este `match` existiu
 /// aqui em cópia até 2026-09-06, com as 12 linhas repetidas letra a letra — duas respostas à mesma
 /// pergunta, e a segunda envelhece na primeira categoria nova (foi o que quase aconteceu ao
 /// acrescentar o `Skeleton`).
+///
+/// ⚠️⚠️ **E desde 2026-09-17 o catálogo devolve uma CHAVE, não o texto** — o rótulo vive em
+/// `ph2d-i18n` (`component.category.*`). *Uma função chamada `label` que devolvesse uma chave seria
+/// a armadilha que o `display_key` também evita: o TIPO não distingue as duas, só o nome.*
 fn cat_title(c: C) -> &'static str {
-    c.label()
+    ph2d_i18n::tr(c.label_key())
 }
 
 /// **Um componente é oferecível?** Três condições, e cada uma barra um defeito diferente.
@@ -128,10 +132,10 @@ fn brings_along(desc: &ComponentDesc) -> Vec<&'static str> {
         let Some(d) = ph2d_component_desc::desc_for(name) else {
             continue;
         };
-        if out.contains(&d.display_name) {
+        if out.contains(&ph2d_i18n::tr(d.display_key)) {
             continue;
         }
-        out.push(d.display_name);
+        out.push(ph2d_i18n::tr(d.display_key));
         stack.extend_from_slice(d.requires);
     }
     out
@@ -144,7 +148,7 @@ fn make_item(desc: &ComponentDesc, applicable: bool) -> PaletteItem {
     // `disabled_reason` + um `brings` faria os outros dois carregar dois campos que não usam. O
     // esmaecido pertence ao widget; o *porquê* e o *o-que-vem-junto* pertencem a quem construiu o
     // modelo. E é a MESMA porta, o que é o ponto: um só sítio para tudo o que o item explica.
-    let mut label = desc.display_name.to_string();
+    let mut label = ph2d_i18n::tr(desc.display_key).to_string();
     let brings = brings_along(desc);
     if !brings.is_empty() {
         label.push_str(ph2d_i18n::tr("app.components.component_palette.brings"));

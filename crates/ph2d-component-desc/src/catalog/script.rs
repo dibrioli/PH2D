@@ -29,10 +29,10 @@ use crate::{
     Propagation,
 };
 
-const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
+const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
     FieldDesc {
         field_id,
-        name,
+        label_key,
         kind,
         policy: Propagation::Propagate,
         is_ref: None,
@@ -41,16 +41,16 @@ const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
 
 /// Os dois campos do `LuauScript`.
 const SCRIPT_FIELDS: &[FieldDesc] = &[
-    f(1, "Script File", K::Text),
+    f(1, "component.field.script_fields.1", K::Text),
     // ⚠️ Um MAPA nome → valor. `Text` é o controlo mais honesto que esta enumeração tem para ele:
     // o painel não o edita como um campo só, edita-o linha a linha a partir das declarações.
-    f(2, "Properties", K::Text),
+    f(2, "component.field.script_fields.2", K::Text),
 ];
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
 pub const DESCS: &[D] = &[D::authored(
     "ph2d::script::LuauScript",
-    "Script",
+    "component.luau_script.name",
     C::Scripting,
     O::ANY,
     SCRIPT_FIELDS,

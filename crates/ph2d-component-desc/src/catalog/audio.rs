@@ -18,10 +18,10 @@ use crate::{
     ObjectKinds as O, Propagation,
 };
 
-const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
+const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
     FieldDesc {
         field_id,
-        name,
+        label_key,
         kind,
         policy: Propagation::Propagate,
         is_ref: None,
@@ -36,17 +36,17 @@ const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
 /// custava **104 sítios em 19 ficheiros**). A secção do Inspector põe um botão de procurar ao lado
 /// do campo, que é a afordância que falta — e o campo continua a ser um caminho.
 const SOURCE_FIELDS: &[FieldDesc] = &[
-    f(0, "Sound", K::Text),
-    f(1, "Volume (dB)", K::Scalar),
-    f(2, "Pitch", K::Scalar),
-    f(3, "Loop", K::Toggle),
-    f(4, "Autoplay", K::Toggle),
-    f(5, "Max Distance", K::Scalar),
-    f(6, "Attenuation", K::Scalar),
-    f(7, "Non-Spatialized Radius", K::Scalar),
-    f(8, "Panning Strength", K::Scalar),
-    f(9, "Max Polyphony", K::Int),
-    f(10, "Bus", K::Enum),
+    f(0, "component.field.source_fields.0", K::Text),
+    f(1, "component.field.source_fields.1", K::Scalar),
+    f(2, "component.field.source_fields.2", K::Scalar),
+    f(3, "component.field.source_fields.3", K::Toggle),
+    f(4, "component.field.source_fields.4", K::Toggle),
+    f(5, "component.field.source_fields.5", K::Scalar),
+    f(6, "component.field.source_fields.6", K::Scalar),
+    f(7, "component.field.source_fields.7", K::Scalar),
+    f(8, "component.field.source_fields.8", K::Scalar),
+    f(9, "component.field.source_fields.9", K::Int),
+    f(10, "component.field.source_fields.10", K::Enum),
 ];
 
 /// Os descritores da família.
@@ -59,7 +59,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // coordenadas próprias seria a segunda resposta à pergunta *«onde está isto?»*.
     D::authored(
         "ph2d::ecs::AudioListener2D",
-        "Audio Listener 2D",
+        "component.audio_listener_2d.name",
         C::Audio,
         O::ANY,
         &[],
@@ -68,7 +68,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // ambiente de uma sala é um objecto vazio no meio dela.
     D::authored(
         "ph2d::ecs::AudioSource2D",
-        "Audio Source 2D",
+        "component.audio_source_2d.name",
         C::Audio,
         O::ANY,
         SOURCE_FIELDS,

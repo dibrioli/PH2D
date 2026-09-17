@@ -25,5 +25,9 @@ authors.workspace = true
 # os seus próprios tipos, não dado do documento. O que vai a disco é o `field_id` (um `u16`
 # que o override carrega), e quem o serializa é o consumidor.
 
+[dev-dependencies]
+# A régua lexical do HR-15, para o censo desta crate.
+ph2d-label-census = { path = "../ph2d-label-census" }
+
 [lints]
 workspace = true

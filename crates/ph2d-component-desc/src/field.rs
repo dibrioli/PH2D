@@ -18,7 +18,7 @@ pub struct FieldDesc {
     /// snapshot com prova de mutação.
     pub field_id: u16,
     /// O nome que o Inspector mostra. Inglês (HR-15).
-    pub name: &'static str,
+    pub label_key: &'static str,
     /// Que controlo o edita.
     pub kind: FieldKind,
     /// O que a propagação mestre→instância faz com ele (F4).

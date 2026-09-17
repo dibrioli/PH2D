@@ -53,7 +53,7 @@ pub struct ComponentDesc {
     pub canonical_name: &'static str,
     /// O rótulo que o artista lê na paleta e no cabeçalho da seção. Inglês (HR-15), e
     /// **nomeado pelo resultado**, não pelo tipo Rust ("9-Slice", não "SliceNine").
-    pub display_name: &'static str,
+    pub display_key: &'static str,
     /// A gaveta colorida da paleta.
     pub category: ComponentCategory,
     /// Autorável (e onde se aplica) ou máquina.
@@ -99,14 +99,14 @@ impl ComponentDesc {
     #[must_use]
     pub const fn authored(
         canonical_name: &'static str,
-        display_name: &'static str,
+        display_key: &'static str,
         category: ComponentCategory,
         applies_to: ObjectKinds,
         fields: &'static [FieldDesc],
     ) -> Self {
         Self {
             canonical_name,
-            display_name,
+            display_key,
             category,
             attach: Attach::Authored { applies_to },
             fields,
@@ -123,7 +123,7 @@ impl ComponentDesc {
     #[must_use]
     pub const fn authored_requiring(
         canonical_name: &'static str,
-        display_name: &'static str,
+        display_key: &'static str,
         category: ComponentCategory,
         applies_to: ObjectKinds,
         fields: &'static [FieldDesc],
@@ -131,7 +131,7 @@ impl ComponentDesc {
     ) -> Self {
         Self {
             canonical_name,
-            display_name,
+            display_key,
             category,
             attach: Attach::Authored { applies_to },
             fields,
@@ -146,13 +146,13 @@ impl ComponentDesc {
     #[must_use]
     pub const fn intrinsic(
         canonical_name: &'static str,
-        display_name: &'static str,
+        display_key: &'static str,
         category: ComponentCategory,
         fields: &'static [FieldDesc],
     ) -> Self {
         Self {
             canonical_name,
-            display_name,
+            display_key,
             category,
             attach: Attach::Intrinsic,
             fields,
@@ -181,14 +181,14 @@ impl ComponentDesc {
     #[must_use]
     pub const fn intrinsic_requiring(
         canonical_name: &'static str,
-        display_name: &'static str,
+        display_key: &'static str,
         category: ComponentCategory,
         fields: &'static [FieldDesc],
         requires: &'static [&'static str],
     ) -> Self {
         Self {
             canonical_name,
-            display_name,
+            display_key,
             category,
             attach: Attach::Intrinsic,
             fields,
@@ -206,12 +206,12 @@ impl ComponentDesc {
     #[must_use]
     pub const fn machinery(
         canonical_name: &'static str,
-        display_name: &'static str,
+        display_key: &'static str,
         category: ComponentCategory,
     ) -> Self {
         Self {
             canonical_name,
-            display_name,
+            display_key,
             category,
             attach: Attach::Machinery,
             fields: &[],
@@ -228,12 +228,12 @@ impl ComponentDesc {
     #[must_use]
     pub const fn owned_bridge(
         canonical_name: &'static str,
-        display_name: &'static str,
+        display_key: &'static str,
         category: ComponentCategory,
     ) -> Self {
         Self {
             canonical_name,
-            display_name,
+            display_key,
             category,
             attach: Attach::Machinery,
             fields: &[],
@@ -364,15 +364,15 @@ impl ObjectKind {
 
     /// O rótulo que o artista lê no filtro da paleta. Inglês (HR-15).
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
-            ObjectKind::Empty => "Empty",
-            ObjectKind::Image => "Image",
-            ObjectKind::Vector => "Vector",
-            ObjectKind::Flip => "Flip",
-            ObjectKind::Painted => "Painted",
-            ObjectKind::Model3D => "3D Model",
-            ObjectKind::Sculpt3D => "Sculpt",
+            ObjectKind::Empty => "component.object_kind.empty",
+            ObjectKind::Image => "component.object_kind.image",
+            ObjectKind::Vector => "component.object_kind.vector",
+            ObjectKind::Flip => "component.object_kind.flip",
+            ObjectKind::Painted => "component.object_kind.painted",
+            ObjectKind::Model3D => "component.object_kind.model_3d",
+            ObjectKind::Sculpt3D => "component.object_kind.sculpt_3d",
         }
     }
 
@@ -562,24 +562,24 @@ impl ComponentCategory {
 
     /// O cabeçalho do grupo na paleta. Inglês (HR-15).
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
-            ComponentCategory::Identity => "Identity",
-            ComponentCategory::Transform => "Transform",
-            ComponentCategory::Ordering => "Ordering",
-            ComponentCategory::Rendering => "Rendering",
-            ComponentCategory::Image => "Image",
-            ComponentCategory::Animation => "Animation",
-            ComponentCategory::Anchors => "Anchors",
-            ComponentCategory::Skeleton => "Skeleton",
-            ComponentCategory::Vector => "Vector",
-            ComponentCategory::Physics => "Physics",
-            ComponentCategory::Model3D => "3D",
-            ComponentCategory::Scripting => "Scripting",
-            ComponentCategory::Logic => "Logic",
-            ComponentCategory::Audio => "Audio",
-            ComponentCategory::Camera => "Camera",
-            ComponentCategory::Instancing => "Instancing",
+            ComponentCategory::Identity => "component.category.identity",
+            ComponentCategory::Transform => "component.category.transform",
+            ComponentCategory::Ordering => "component.category.ordering",
+            ComponentCategory::Rendering => "component.category.rendering",
+            ComponentCategory::Image => "component.category.image",
+            ComponentCategory::Animation => "component.category.animation",
+            ComponentCategory::Anchors => "component.category.anchors",
+            ComponentCategory::Skeleton => "component.category.skeleton",
+            ComponentCategory::Vector => "component.category.vector",
+            ComponentCategory::Physics => "component.category.physics",
+            ComponentCategory::Model3D => "component.category.model_3d",
+            ComponentCategory::Scripting => "component.category.scripting",
+            ComponentCategory::Logic => "component.category.logic",
+            ComponentCategory::Audio => "component.category.audio",
+            ComponentCategory::Camera => "component.category.camera",
+            ComponentCategory::Instancing => "component.category.instancing",
         }
     }
 }

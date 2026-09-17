@@ -24,13 +24,19 @@ use crate::{ComponentCategory as C, ComponentDesc as D, ObjectKinds as O};
 pub const DESCS: &[D] = &[
     // ⭐ O OSSO — `authored`: ele TEM `Default` (comprimento 1, força 1 é um osso legítimo), logo
     // a paleta do `+` consegue construí-lo no ponto neutro.
-    D::authored("ph2d::skeleton::Bone", "Bone", C::Skeleton, O::ANY, &[]),
+    D::authored(
+        "ph2d::skeleton::Bone",
+        "component.bone.name",
+        C::Skeleton,
+        O::ANY,
+        &[],
+    ),
     // ⭐ O LIMITE — `authored` porque a faixa de nascimento é a volta inteira, que não apara nada:
     // pendurá-lo pela paleta é um no-op exacto, e o artista aperta-o depois. ⚠️ É a diferença
     // com a âncora, que sem alvo seria inerte e sem caminho para o artista a completar.
     D::authored(
         "ph2d::skeleton::BoneLimit",
-        "Angle Limit",
+        "component.bone_limit.name",
         C::Skeleton,
         O::ANY,
         &[],
@@ -40,13 +46,28 @@ pub const DESCS: &[D] = &[
     // caminho pelo qual o artista a completasse.
     //
     // ⚠️ O rótulo é o nome que as quatro referências usam (*IK*), e não o do tipo.
-    D::intrinsic("ph2d::skeleton::IkGoal", "IK Goal", C::Skeleton, &[]),
+    D::intrinsic(
+        "ph2d::skeleton::IkGoal",
+        "component.ik_goal.name",
+        C::Skeleton,
+        &[],
+    ),
     // ⭐ A MARCA do alvo — `intrinsic` pela mesma razão: ela chega com o gesto, e pendurá-la à mão
     // num objecto qualquer só o esconderia do anel de objecto vazio sem lhe dar alça nenhuma.
-    D::intrinsic("ph2d::skeleton::IkTarget", "IK Target", C::Skeleton, &[]),
+    D::intrinsic(
+        "ph2d::skeleton::IkTarget",
+        "component.ik_target.name",
+        C::Skeleton,
+        &[],
+    ),
     // ⭐ A PELE — `intrinsic`: ela chega com o GESTO (*Bind*) e **não tem `Default`**, porque uma
     // pele sem a fonte autorada dentro não é uma pele, é uma forma prestes a sumir.
-    D::intrinsic("ph2d::skeleton::Skin", "Skin", C::Skeleton, &[]),
+    D::intrinsic(
+        "ph2d::skeleton::Skin",
+        "component.skin.name",
+        C::Skeleton,
+        &[],
+    ),
     // ⭐ O OSSO INTELIGENTE — `authored`, e a razão MUDOU em 2026-09-08. Ele era `intrinsic` porque
     // o gesto lhe dava a acção e a paleta não tinha caminho para o artista o completar; hoje o gesto
     // **não cria nada** (ordem do dono) e as duas linhas da secção Skeleton — *Pick Object* e
@@ -54,7 +75,7 @@ pub const DESCS: &[D] = &[
     // que é a mesma razão do `BoneLimit`.
     D::authored(
         "ph2d::skeleton::SmartBone",
-        "Smart Bone",
+        "component.smart_bone.name",
         C::Skeleton,
         O::ANY,
         &[],

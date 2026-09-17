@@ -143,7 +143,7 @@ decide se ele é do dispositivo ou da CPU.
 | ~~W0~~ | ✅ **FECHADA** (§3): as duas moradas são indistinguíveis acima de 16 iterações ⇒ o passe corre no FIM | — |
 | ~~W1~~ | ✅ **FECHADA** (§7): não era estreitar a cerca — era escrever a que FALTA, para a rota dos externos | §1.4 |
 | ~~W2~~ | ✅ **FECHADA por RECUSA MEDIDA** (§9): a `500` objectos a separação custa `12,4 %` de um quadro a 8 varreduras — o dispositivo não é preciso à população do dono | W1 |
-| **W3** | a membrana publica a forma do objecto (`Collider` → as três colunas) | §1.1 |
+| **W3** | ⏳ **medida** (§10): a forma **deriva-se** do `size`+`rot` que já viajam ⇒ zero dependência nova, zero conversão, zero cápsula. Falta a decisão do §10.4 | §1.1 |
 | **W4** | Sprite · vector · Flip nascem com `Collider`, e o `Collide` do Inspector arma | W3 |
 | **W5** | o passe automático **no fim do cozimento** — a morada que a W0 escolheu | W1 · W3 |
 | **W6** | `motion.collide` sai do catálogo; as 4 cenas passam pelo caminho novo | W5 |
@@ -328,3 +328,62 @@ carimbo de PARTÍCULAS, e nenhuma cena de objectos o produz.*
 ⛔ **O que fica a vigiar, nomeado:** um **duplicador** que multiplique um objecto com colisor em
 milhares. Aí a população deixa de ser a que o dono nomeou, e esta recusa expira — *uma recusa
 medida responde UMA pergunta*.
+
+---
+
+## §10 — ⏳ W3 medida: o colisor de um Sprite **DERIVA-SE**, e isso apaga três armadilhas do §5
+
+### §10.1 — ⭐⭐⭐ A §5.0 outra vez: a membrana já tem tudo
+
+A pergunta que faltava fazer era *«um Sprite precisa mesmo de um colisor AUTORADO?»*. Medido:
+
+- a membrana publica **`size`**, que é `spr.size` **tal e qual** — e o campo declara-se *«Sprite size
+  in world units (**meters**)»*;
+- publica **`rot`**, que é a orientação do objecto;
+- e a aparência é um **TEMPLATE na origem**, com a pose noutro canal — por desenho.
+
+⇒ o colisor de um Sprite é a **caixa das bounds dele**: `ph2d_collider_box = size / 2`,
+`ph2d_collider_offset = [0, 0]`, com a rotação a vir do `rot` que já viaja. **Nada de novo é
+autorado, e nada é inventado.**
+
+### §10.2 — E isso apaga TRÊS coisas que o §5 deste doc listava como armadilhas
+
+| §5 dizia | medido |
+|---|---|
+| **unidades** — metros contra geometria, a atravessar pelo `pixels_per_meter` | ⛔ **dissolvida**: o `size` do stream **é** `spr.size`, e os dois lados estão em metros. Não há conversão nenhuma. |
+| **a `Capsule` não tem contraparte** no motor de contacto | ⛔ **dissolvida**: uma caixa derivada das bounds não tem cápsula. |
+| *(implícito)* ler o `Collider` do ECS | ⛔ **desnecessário** — e era caro: o `ph2d-app-motion` **não** depende do `ph2d-physics-ecs`, e lê-lo custaria uma aresta nova entre duas famílias. |
+
+⚠️ **A aresta era a decisão mais cara do plano e ela desapareceu por uma pergunta**, não por um
+refactor. *Uma capacidade derivável do que já viaja não precisa de um dono novo.*
+
+### §10.3 — ⛔ O que SOBRA, e é uma decisão de produto
+
+Não há bandeira reusável: o `Sprite` tem cinco `bool` e os cinco são de aparência
+(`premultiplied` · `tint_fill` · `flip_x` · `flip_y` · `centered`). ⇒ *«este objecto colide»* é
+estado novo.
+
+⭐⭐ **Mas a medição sugere que ele não precisa de governar a DECLARAÇÃO, e sim a SEPARAÇÃO:**
+
+- declarar a forma é **grátis** — três colunas derivadas do que já viaja;
+- o que custa é o passe automático correr (§9) **e** a cerca da W1 derrubar o cozimento;
+- logo a pergunta certa da cerca deixa de ser *«alguém declara?»* e passa a ser *«a separação está
+  ARMADA?»* — que é exactamente a pergunta *«o valor chega a um consumidor?»* que o `CLAUDE.md`
+  §5.0 diz que nenhum instrumento deste repo faz.
+
+⇒ **o desenho que a medição favorece:** *os objectos trazem sempre a forma; o interruptor arma o
+PASSE.* Assim a ordem do dono — *«criados com seus próprios colliders»* — é literal, e nenhuma cena
+sem colisão paga nada.
+
+⚠️⚠️ **E o número que falta para o fechar é honesto declarar como EXTRAPOLAÇÃO:** o doc 98 mede
+`195,9 ms` de CPU a **4,19 M** objectos, ou seja `~47 ns` por objecto; a `500` isso dá `0,023 ms`.
+*É uma extrapolação linear de uma medição feita seis ordens de grandeza acima, e um cozimento tem
+custos fixos* — ela sugere fortemente que centenas de objectos na CPU são gratuitas, e **não** o
+prova. Medi-lo a sério pede a placa em exclusão, e é a primeira coisa da wave seguinte.
+
+### §10.4 — ⏸️ Onde isto pára, e porquê
+
+Escolher entre *«interruptor por objecto, no Inspector»* (`PROJECT_SCHEMA` +1 e uma superfície que
+é de outra linha) e *«a forma é sempre declarada, o passe é que se arma»* é **decisão de produto**,
+e as duas leituras cabem na frase do dono. A medição está toda feita e escrita acima; a wave
+seguinte começa por ela.

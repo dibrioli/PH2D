@@ -340,6 +340,20 @@ Quatro medições do [inventário](pesquisa/inventario_ph2d.md) reordenam tudo:
 | 19 | `SequencePlayer` | o difícil (religar bindings por WireId) está SHIPADO — o componente transforma a Timeline em cutscenes de jogo |
 | 20 | HUD mínimo: `UiCanvas`+`UiAnchor`+`UiLabel`+`UiButton` | placar, vida e menu fecham o loop de demo — o botão publica Signal para a tabela do item 5 |
 
+> ⛔⛔ **O `#3 SensorZone` FECHOU por COMPOSIÇÃO, e esta linha da tabela envelheceu** (medido
+> 2026-09-17). Ela diz *«o rapier já reporta, falta a costura»* — e a costura foi construída na wave
+> das **Tags** (#9, 14/09): a armadilha da cena `PH2D_TAGS_SMOKE=2` é um colisor **sensor** com
+> `SignalOnHit("trap")` + `SignalTagFilter(Player)`, a Porta reage pela tabela do #5, e os dois
+> gates `the_trap_lets_the_hero_through_and_ignores_the_goblin` e
+> `the_trap_is_a_sensor_and_carries_its_filter` provam-no. Os três componentes
+> (`SignalOnHit` · `SignalOnLeave` · `SignalTagFilter`) estão no catálogo com rótulo, têm linhas no
+> Inspector e commit. ⇒ **não reconstrua o item**: o que ele pediria já se autora hoje.
+>
+> ⚠️ *É a lei do `CLAUDE.md` §5.0 a pagar-se: «antes de construir um item de lista aberta, MEÇA se a
+> composição já o exprime» — o que se perde ao não reconferir não é tempo, é construir o que já
+> existe.* E a leitura por `grep` **não** bastou: o veredito saiu de CORRER a cena e de achar os
+> gates que a afirmam.
+
 **Suplentes (21–25), para quando um jogo-guia puxar:** `RaySensor` · `Tween`+presets Fade/Flash ·
 `PathFollow` (a vitrine da caneta) · `Health`+`WeaponFire` (o domínio combate, §6) ·
 `CameraShake`+`ShakeEmitter`.

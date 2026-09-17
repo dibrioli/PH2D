@@ -38,6 +38,8 @@
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
 - 📚 [Comunicação & decisão: mais 50 lições](reference_topic_communication_and_decision_lessons.md)
 - ⛔ [Tilemap (TOP-20 #17) é do projeto `docs/Tilling`, não da line/components — o dono mandou pular (16/09)](project_tilemap_belongs_to_the_tiling_project.md)
+- ⛔⛔ [Recusa que só o TERMINAL vê é um botão mudo — o doc dizia «a frase que o artista lê» e eram três `eprintln!`](feedback_a_refusal_only_the_terminal_sees.md)
+- ⛔⛔ [Um SELO é pintado E é a chave da própria COR (`badge_tone` casa contra o texto) — traduzi-lo apaga o tom em silêncio](feedback_a_badge_is_painted_text_and_the_key_of_its_own_colour.md)
 - ⭐ [**Como um CONTROLO mente** — a família inteira (10 entradas): morto vs ausente · faixa · rótulo · enum serializado](reference_topic_control_design_hazards.md)
 - ⛔⛔ [Nota que declara a granularidade certa para UM dos dois lados da fórmula lê-se como cumprida — junte-os num TIPO](feedback_a_note_that_names_the_right_granularity_for_one_side_reads_as_done.md)
 - ⛔ [Passo que manda clicar numa LINHA de painel afirma que ela está na lista — e o dono aprova o smoke com o passo impossível dentro](feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)

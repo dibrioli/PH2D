@@ -2916,3 +2916,70 @@ hoje 421), formatos de ficheiro, diagnóstico de consola, razões de `#[allow]` 
 ela SOMA entre linhas (`CLAUDE.md` §5.0). Duas linhas que acrescentem 150 linhas cada fecham verdes
 e a árvore combinada reprova. ⇒ **reconte na fusão**, e se reprovar a cura é mover código para
 `crates/ph2d-app-*`, nunca subir o número.
+
+## §42 — ⭐⭐⭐ AS OITO FAMÍLIAS FALAM PELA TABELA (e uma recusa saiu do terminal)
+
+Commits `489ea6458` · `90d90ee4c` · `74ede818e` (2026-09-16). Depois da shell (§41), as crates
+`crates/ph2d-app-*` eram o que sobrava do HR-15 **fora dos motores**: `198` textos migrados em oito
+crates, cada uma com o gate dela.
+
+| crate | chaves | o que era |
+|---|---|---|
+| `app.components` | 33 | as recusas dos verbos de prefab, a paleta de componentes |
+| `app.field3d` | 71 | importar/exportar, os **diagnósticos da peça**, a paleta de formas, os selos |
+| `app.flip` | 12 | balde, colorize, escultura de traço, edição de pontos |
+| `app.painter` | 18 | texturas de pincel, as quedas da pré-visualização de GPU |
+| `app.sculpt3d` | 20 | as **12 recusas da retopologia** + importar/exportar malhas |
+| `app.physics` | 9 | desenhar uma junta, a junta que parte, o leitor de carga |
+| `app.motion` | 47 | ligar/religar, os **conselhos** do grafo, o cartão dobrado |
+| `app.vec` | 8 | os selos da booleana, importar SVG |
+
+### 42.1 — ⛔⛔ O achado: uma recusa que se declarava «a frase que o artista lê» e ninguém via
+
+O doc de `RemeshRefusal::explain` chama-lhe isso por escrito — e os **três** sítios que a mostravam
+eram `eprintln!`. O botão `Quad Retopology` recusava com a cura DENTRO da frase (*ACHATE a pilha*,
+*baixe o Detail*) e no ecrã não acontecia nada. ⇒ `Sculpt3dScene::fala` (caixa de saída, ADR-0075:
+publica, não chama) + o dreno da shell no sítio onde ela já drena o painel. ⚠️ O `eprintln!` FICA,
+**dentro da porta**: o terminal é de quem bisseca, o ecrã é de quem esculpe.
+⚠️ E as doze estavam **em português num app inglês** — reescritas, com a chave renomeada.
+
+### 42.2 — ⭐⭐⭐ O SELO da Hierarquia é pintado **E** é a chave do TOM
+
+O `badge_tone` (`ph2d-panel-hierarchy`) casa contra o **texto**: `"ISO"`, `"SUB"`, `"LNK"`. O
+`bool_shape::badge` usava isso como JUSTIFICAÇÃO para o literal — e a razão é verdadeira sobre o
+`badge_tone` e falsa como defesa: *um literal no fonte não conserta a dupla vida, só a esconde*.
+Hoje o texto sai da tabela (nada muda: ela devolve o mesmo código) e a dupla vida tem cerca
+executável — `the_badge_tone_still_matches_what_the_table_paints` reprova no dia em que alguém
+traduzir um selo, e diz que a cura é o selo viajar como **ID**.
+
+### 42.3 — ⚠️⚠️ «Cena» não se chama `smoke` em toda a parte
+
+As demonstrações do Motion chamam-se `motion_state_conferencia_demos_*`: **93 ficheiros, 471
+literais** de conteúdo de cena. ⇒ os marcadores de cena passaram a ser **parâmetro** do gate
+(`gate::CENAS` por omissão) e cada crate declara o que é uma cena NELA — com o piso de população a
+controlar a enumeração. ⭐ O corpo repetido dos gates vive agora em `ph2d_label_census::gate`
+(`Isento`, `intrusos_fora_de`, `isentos_mortos`, `e_de_cena`, `literais_de_cena`), e **o gate da
+shell foi refactorado para ele**: era a segunda cópia, que é a que diverge.
+
+### 42.4 — O que fica de fora, e a lei que o decide
+
+**Um NOME é identidade, não vocabulário.** `Prefab`, `Instance`, `Body`, `Layer {}`, `Blend {id}`,
+`Model` entram no `Name`, e o `stable_name_id` fecha um hash sobre ele — é assim que uma junta, uma
+faixa de timeline e um elo de instância reencontram o objecto depois do respawn do undo; na física o
+`physics_ecs_c9` fecha sobre o mundo que esses nomes identificam. Traduzir um deles mudaria a
+identidade **com a língua** ⇒ decisão do dono. Mais: o diagnóstico de consola (o idioma da
+escultura), os formatos de ficheiro (o SVG que se exporta), os nomes de **coluna** (um nó a jusante
+lê-os pelo nome) e as cenas.
+
+### 42.5 — ⚠️ Para o integrador
+
+- ⚠️⚠️ **A catraca da shell tem ~10 linhas de folga** (`196 981` contra `196 990`) — e ela SOMA entre
+  linhas (§5.0). **Reconte na fusão**; a cura é mover para uma `ph2d-app-*`, nunca subir o número.
+  É por isso que o gate do dreno mora na CRATE e lê a shell por `include_str!`.
+- O **sétimo** gate que lia a frase no fonte foi repontado pelo `i18n_view`
+  (`an_unknown_export_extension_is_refused_not_silently_defaulted`), e a **quarta** isenção
+  «plural, não unidade» entrou no `no_row_label_carries_its_own_unit` («piece(s)»).
+- ⏳ **ABERTO — a fronteira seguinte são os MOTORES:** `ph2d-component-desc` (225 rótulos do
+  catálogo do Inspector), os manifestos dos nós (`ph2d-node-*`, os rótulos de param que o cartão
+  pinta), `ph2d-painter-effects`/`-brush`, `ph2d-tool-vector`. É outra natureza: ali o rótulo nasce
+  **numa tabela de dados** e a chave tem de ser derivada do id do nó/param.

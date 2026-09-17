@@ -81,6 +81,18 @@ SUPERFÍCIE DE COLISÃO — line/3DModeling contra main
 ⇒ **os dois degraus desta linha são `PROJECT_SCHEMA` `+4` e `FIELD_DOC_VERSION` `+1`.** ⚠️ Conte-os
 como **delta**; a tripla do gate vive em ficheiro IRMÃO do da escada e os dois têm de subir juntos.
 
+⛔⛔ **E há OUTRA linha na mesma faixa, medida hoje (16/09):** a `line/Vector` escreve
+`PROJECT_SCHEMA = 133` sobre o **mesmo** `main` de `128` — ou seja `+5`. Os literais **não** colidem
+(`132` contra `133`), o que é pior do que parece: *um merge textual funde os dois sem um marcador de
+conflito e o degrau da segunda linha evapora*. ⇒ **quem entrar em segundo re-conta o seu DELTA sobre
+o valor que o `main` passar a ter** (esta entrando primeiro, a `Vector` vai a `132 → 137`, nunca
+`133`). ⚠️ Medido com `git show <ramo>:shells/desktop/src/project_schema.rs`, **não** de memória.
+
+⚠️ **Estavam vivas SEIS linhas às 16/09** (`git worktree list`), com commits próprios sobre este
+mesmo `main`: `3DModeling` (90) · `sculpt3d` (193) · `Vector` (147) · `UIUX` (94) · `motion-value`
+(69) · `components` (67). *A afirmação «`main` não andou» do §1 é sobre o passado; o futuro desta
+rodada depende da ORDEM que o integrador escolher.*
+
 ✅ **Os três pacotes novos do `Cargo.lock` são INTERNOS** (crates nossas, `crates/ph2d-*`) —
 **nenhuma dependência externa nova** entra com esta linha, logo não há `cargo deny`/`audit` novo a
 julgar.

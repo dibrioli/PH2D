@@ -1,7 +1,6 @@
 //! Tests for [`super`] (`timeline_presets.rs`) — the pick→intents
 //! resolution. Extracted to a sibling module (`#[path]`) under the HR-18
 //! shell LOC cap. Pure relocation.
-use super::*;
 use crate::render_loop::timeline_bridge::default_interp;
 use ph2d_anim::{AnimTarget, AnimValue, Easing, EasingFamily, EasingMode, Interp, KeyId};
 use ph2d_core::Playhead;

@@ -2,7 +2,6 @@
 //! extracted to a sibling file under the HR-18 shell LOC cap (same pattern as
 //! `timeline_presets_tests.rs`).
 
-use super::*;
 use ph2d_editor_core::ids as c;
 use ph2d_panel_timeline::presets::*;
 

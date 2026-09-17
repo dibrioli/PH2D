@@ -23,24 +23,25 @@ Sweep: controlo do instrumento corrido PRIMEIRO (exit 0, todos os canais), depoi
   sobre esta espec, as 80 fixturas e o README delas, o INBOX e o README da pasta. O
   --git-history da pasta acusa só patches de ledgers de OUTRAS obras (registado no ledger); o
   commit desta obra, varrido à parte: 0.
-Auditoria §4.2 (R-pré): ⛔ 1.ª PASSAGEM CORRIDA em 2026-09-16 por um subagente NOVO — NÃO
-  atestada. ⭐ A PAREDE DO §4.2 ESTÁ LIMPA (os 4 blocos cercados são fórmula de 1–3 linhas; os 141
-  code spans não-numéricos são todos nossos; sweep verde com as nove vassouras da pasta, e verde em
-  memória sem caixa nem acentos sobre esta espec, o README e os 80 cabeçalhos). ⭐ A lei
-  re-derivou-se por um modelo escrito SÓ a partir desta página: as 27 fixturas por script fecham
-  dentro das barras do G-1 e do G-2, e as tabelas da régua reproduzem-se ao dígito impresso.
-  ⛔ TRÊS achados BLOQUEIAM, os três de exactidão: (1) as 5 fixturas de cilindro do produto não
-  trazem o píxel do pen-down nem o passo de um píxel, e a §11 diz que toda arrastada os traz — lido
-  com a linha do traço que o cabeçalho escreve (y = 0), o G-3a lê 3,8e-3 (barra 2e-3) e o G-3b
-  1,1e-1; (2) o G-1 e o G-2 contam 3 fixturas cuja lei a própria página recomenda não construir ou
-  nunca pede (a pegada projectada — P-4 —, o acumular ligado — P-2 — e a opção da normal do
-  pen-down, que nem a §10.3 nem a §15 pedem): o produto recomendado lê-as a 8,5e-2, 4,7e-4 e
-  6,2e-2; (3) o G-4 declara 16 e 12 + 4 células e o corpus só sustenta 14 e 10 + 4 (a grelha 192²
-  publica só a 1.ª passagem e o fim), e a §7.3 imprime valores de 192² que não estão publicados.
-  ⚠️ Ficam 17 erratas e 1 nota sobre um ponteiro da §0.2 (a janela I NÃO reconfere as notas do
-  plano 21 — é acto do E/R), nomeadas no ledger com o sítio e a instrução.
-  ⏳ A janela I continua FECHADA ⇒ emenda do E sobre os 3 (as erratas cabem nela), depois 2.ª
-  passagem do R-pré.
+Auditoria §4.2 (R-pré): ✅ **auditada contra §4.2 por R-pré em 2026-09-16, 2.ª passagem** — por um
+  subagente NOVO, independente do E e da 1.ª passagem. ⭐ A PAREDE ESTÁ LIMPA (os 5 blocos cercados
+  são o cabeçalho e fórmulas de 1–3 linhas; os 172 code spans não-numéricos são todos nossos, nomes
+  de fixtura nossa, chaves de cabeçalho ou variáveis da página; os 80 cabeçalhos lidos linha a
+  linha; sweep verde com as nove vassouras da pasta sobre a espec, as 80 fixturas, o README, o
+  INBOX e os anexos citados, e verde em memória sem caixa e sem acentos, incluindo os quatro
+  commits desta obra). ⭐ A lei re-derivou-se por um modelo MEU, escrito só a partir desta página e
+  dos cabeçalhos e alimentado **só pelas fixturas publicadas**: G-1 `≤ 7,9e-8` (planas/cilindro) e
+  `≤ 3,3e-6` (bossas) · G-2 `≤ 1,6e-6` em 36 estados · G-3a `5,1e-4` · G-3b `3,1e-3` / `2,3e-3` ·
+  G-5 contagem exacta e `≤ 4,6e-3` · G-7 `3,0e-7` · G-9 `0` ao bit · G-10 `1,2e-7` · G-11 `2,9e-4`
+  contra `2,24e-2`, e as tabelas do §5.2, §7.2, §7.3, §7.4, §8.1, §8.2 e §9.1 ao dígito impresso.
+  Cada barra fica **estritamente** entre o lado aprovado e a candidata errada mais perto, medidas
+  sobre o corpus publicado. ⛔ **ZERO achados que bloqueiam.** ⚠️ Ficam **10 erratas** (E18–E27),
+  nomeadas no ledger com o sítio e a instrução — entre elas a lei de normal de vértice das famílias
+  por script (a da casa, congelada, lê melhor que o bloco `n`), o refresco de normais por dab da
+  nossa casa, e a condição do censo do §12.1 contra a 3.ª saída do P-2.
+  1.ª PASSAGEM (2026-09-16, subagente próprio): parede LIMPA, 3 achados a bloquear (o mapa do píxel
+  das 5 de cilindro · 3 fixturas pendentes dentro do G-1/G-2 · células de 192² não publicadas) e 17
+  erratas — os três curados pela emenda abaixo e re-conferidos nesta passagem.
 1.ª EMENDA DO E (2026-09-16), resposta à 1.ª passagem — registo com as medições no ledger:
   (1) as 5 fixturas de cilindro e a da caixa fina com Ctrl foram RE-CORRIDAS com o mapa do píxel
   gravado; os mesmos vértices movem-se e a saída difere ≤ 3,3e-7 da publicação anterior (é o
@@ -53,7 +54,8 @@ Auditoria §4.2 (R-pré): ⛔ 1.ª PASSAGEM CORRIDA em 2026-09-16 por um subagen
   repouso é pesada pelo ângulo do canto; a que o alvo recalcula durante o traço é a média SEM peso
   das normais unitárias das faces, com a malha lida como está — a da nossa casa. As 17 erratas e a
   nota N1 (a §0.2 já não manda ninguém a notas antigas) curadas; a filtragem §4.3 re-corrida.
-  ⏳ 2.ª passagem do R-pré por correr.
+  ✅ Os três bloqueadores e as 17 erratas foram re-conferidos um a um pela 2.ª passagem do R-pré,
+  com um modelo independente alimentado só pelas fixturas publicadas.
 Mapa de leitura da literatura: não há paper. A literatura pública utilizável é (a) o manual do
   alvo (factos, ⛔ nunca o wording), (b) as notas públicas de versão, (c) a revisão pública de 2019
   em que o pincel nasceu, destilada em vocabulário nosso na §14, e (d) o NOSSO código, citado por

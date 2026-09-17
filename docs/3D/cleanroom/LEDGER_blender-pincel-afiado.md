@@ -724,3 +724,133 @@ posições da distância são do pen-down; o cursor e a normal da área são viv
 - A vassoura foi estendida por um processo Python que recebeu o texto no argumento e escreveu só
   base64; as linhas expostas do INC-I1 foram lidas por shell (são documentos NOSSOS) e ficaram no
   terminal.
+
+---
+
+## R-PRÉ — 2.ª PASSAGEM (2026-09-16) — veredito: ✅ **ATESTA.** Parede LIMPA · **zero** achados que bloqueiam · **10 erratas** (E18–E27)
+
+> Subagente R-pré **novo**, contexto independente do E (`agent-acf4ca41445c57ad7`), do R-pré da 1.ª
+> passagem (`agent-a8b293ca5ea3dc7d7`) e do R do INC-I1 (`agent-af9327b96fad70a1b`). Corrido sob a
+> regra das duas perguntas (§3.R). Viu os dois lados: a espec, as 80 fixturas publicadas, este
+> ledger, o código vivo da casa, e — por shell, dentro do papel R — os modelos e as notas do E na
+> zona. ⚠️ **Toda a EXACTIDÃO foi re-derivada por um modelo MEU** (`~/Referencias/blender-pincel-afiado/rpre2/`),
+> escrito só a partir do texto da espec e dos cabeçalhos, e alimentado **só pelas fixturas
+> publicadas** — nunca pelos `.npz` da zona.
+
+### 1. A parede (§4.2) — LIMPA, pela forma da §4.3.1
+
+| item | resultado |
+|---|---|
+| texto de código, trechos, diffs | **nenhum** |
+| nomes internos | **nenhum** — extraí os **172** *code spans* não-numéricos e classifiquei um a um: caminhos e símbolos NOSSOS com linha, nomes de fixtura nossa, chaves do cabeçalho das fixturas (vocabulário do domínio), variáveis da página, o modificador público e `float64` |
+| comentários do original · wording de manual/revisão | **nenhum**; o ponto mais perto continua a §14, que afirma FACTOS (medidos ou públicos) em frases nossas |
+| tabela verbatim / LUT | **nenhuma** — a única tabela de constantes (§5.2) re-derivei-a inteira da fórmula ao lado (`0,24591 · 0,38367 · 0,46887 · 0,20000 · 0,10000`) |
+| pseudo-código espelhado · organização transcrita | **não** — 5 blocos cercados: o cabeçalho e quatro fórmulas de 1–3 linhas, sem controlo de fluxo |
+| os **80** cabeçalhos (população NOVA: 71 reescritos, 3 regenerados, 6 re-corridos) | **limpos** — 63 chaves, todas em vocabulário do domínio; os valores de enumeração são os públicos (§4.1.13) |
+| a §0.2 manda a janela I a alguma nota antiga? | ⛔ **não** — `grep` sobre a espec: zero ponteiros para os docs 20, 21 e 04.1. A N1 está curada |
+| os 3 ficheiros do NOSSO código que a §0.2 cita | varridos com as nove vassouras: **limpos**, salvo o nome público já em triagem (`brush_magnitudes.rs:87`, a **33 linhas** das linhas citadas) |
+
+### 2. Sweep — controlo primeiro
+
+- `scripts/cleanroom-sweep-controlo.sh`: os **11** canais discriminam, `exit 0`.
+- `cleanroom-sweep.sh` com **as nove** vassouras da pasta sobre: a espec · a pasta das 80 fixturas
+  (README incluído) · o INBOX · o `README.md` da pasta · o anexo citado
+  (`fixtures/dyntopo/README.md`) · os três ficheiros do nosso código citados na §0.2 ⇒ **`exit 0`
+  em oito**; a nona (`pull`) acusa **um** hit, o nome público de campo de pincel já registado como
+  isenção pendente de triagem.
+- Varredura extra **em memória** (sem caixa, sem acentos, sem ênfase, com as quebras desfeitas),
+  com as nove vassouras, sobre a espec, o README das fixturas, os **80** cabeçalhos, o INBOX e as
+  mensagens **e** os patches dos quatro commits desta obra: **0 acertos**.
+- `--git-history docs/3D/cleanroom`: `exit 1` com as **3** linhas de sempre — patches de ledgers de
+  OUTRAS obras (E/R-only), já registadas.
+- ⛔ Nenhum relatório de sweep foi gravado; as saídas com acertos ficaram só no terminal.
+
+### 3. O que RE-DERIVEI (modelo próprio, só das fixturas publicadas)
+
+- **G-1 (16):** planas e cilindro `≤ 7,9e-8`, bossas `≤ 3,3e-6` (barras `2e-6` · `1e-5`). Erradas
+  re-medidas: `R_n` trocado `≥ 1,86e-3` · faces de frente sem o factor `5,17e-3` · força linear
+  `5,17e-2` nas **10** com força `< 1` (inerte nas **6** com força `1`).
+- **G-2 (5 cadeias, 36 estados — contados bloco a bloco: 8+8+4+4+12):** `≤ 1,61e-6` (barra `1e-5`);
+  normal do pen-down `4,69e-4` só na de bossas · distância viva `≥ 2,57e-2` · cursor do pen-down
+  `≥ 3,62e-2`.
+- **Catraca (§12.1):** a pegada projectada reproduz a `4,23e-6` e o produto recomendado lê-a a
+  `8,51e-2`; o acumular `1,60e-6` contra `4,71e-4`; a normal do pen-down `1,95e-6` contra
+  `6,16e-2`. Os três números da tabela conferem.
+- **G-3a (6):** `5,09e-4` (barra `2e-3`); erradas: lei de normal da área da casa `9,50e-3` ·
+  normais congeladas `1,11e-2` · `(1+a)/2` `4,68e-2` · sem atenuação `7,95e-2`.
+- **G-3b (5):** `3,10e-3` na malha inteira e `2,30e-3` na faixa (barras `8e-3` · `5e-3`), com a 48²
+  a fixar os dois; erradas: pesada pelo ângulo `1,17e-2` · triangulada `3,25e-2` / `7,95e-3`.
+  **A lei de vértice que a página fixa passa**, e passa com a malha carregada como QUADRILÁTEROS.
+- **G-4:** a régua do §7.1 re-implementada de raiz reproduz §7.2, §7.3 (as **16** e **12 + 4**
+  células, com as fotos 2 e 4 da 192² agora publicadas), §7.4, §8.1, §8.2, a linha do §3
+  (`0,473` constante; `0,2445 · 0,4890 · 0,9781 · 1,9561`) e o §4.3 — **ao dígito impresso**, salvo
+  a coluna «fundo» do cilindro (errata **E21**).
+- **G-5:** as 7 classes do detector idênticas **ao bit** dentro e `1,06e-2`–`1,28e-2` entre
+  vizinhas; contagem `⌊N/5⌋ + 1` exacta nas 14; posições `≤ 4,61e-3` (barra `7e-3`); G-5c
+  `7,36e-8` contra `4,53e-2` (sem `a`) e `2,26e-2` (`(1+a)/2`).
+- **G-7** `3,0e-7` (a recorrência dá `0,10000 · 0,13164 · 0,15190 · 0,16670`) · **G-8** `2,287` e
+  `2,747` · **G-9** `0,0` ao bit · **G-10** `1,20e-7` nos deslocamentos (`2,00` nas posições, os
+  dois cantos) · **G-11** `2,90e-4` contra a de caixa dupla e `2,24e-2` contra a de caixa fina, com
+  as duas fixturas a diferirem `2,24e-2`.
+- **As fixturas re-corridas (B1):** as **53** arrastadas trazem o mapa do píxel (53 de 53); com a
+  linha que o cabeçalho **pede** (`y = 0`) o G-3a leria `3,76e-3`–`4,18e-3` ⇒ a cura era necessária
+  e está feita. As réguas do cilindro re-corrido não mudam num dígito.
+- **Completude:** catálogo × valores escritos `1,19e-7` (afiado) e `1,9e-9` (desenho).
+- **O código vivo, sítio a sítio:** os **~30** endereços citados na §6 e na §10 conferem (curva
+  `(1−u)⁴`, dureza, força ao quadrado, alcance `= R`, acumular de fábrica LIGADO, `from_live` = o
+  acumular, a distância do `base`, o passo `0,15 R`, a fronteira `<=` do passeio, o `(1+a)/2` só do
+  plano, a normal da área nas duas portas, o alargamento da consulta pela porta do raio, a
+  fotografia do pen-down armada só num verbo+modo, o `invert = ctrl`, o dyntopo do `Draw`). ⭐ E a
+  MALHA DA CASA GUARDA QUADRILÁTEROS (`Face::quad`, `from_parts`, Newell por face, soma sem peso no
+  anel) — a §2.3.1 está certa sobre a nossa casa.
+- ⭐ **A fronteira `<=` do passeio só separa o salto de EXACTAMENTE um passo:** nos saltos de `10`,
+  `15`, `20`, `25` e `30` px o passeio da casa dá `dist > passo` e `floor(dist/passo)` dabs — a
+  contagem do G-5a bate nos 13. (O passo é `raio × pct / 50`, exactamente `5` px aqui.)
+
+### 4. ⚠️ As DEZ erratas (gaveta B — a janela I corrige-as enquanto constrói)
+
+| # | sítio | o que está errado, e a instrução |
+|---|---|---|
+| **E18** | **§2.3.1 item 1 · §11 (linhas `lei/` e `cadeia/`) · README §3.1** | a normal de vértice que o caminho por SCRIPT do alvo lê **não é o bloco `n`** (que é a do repouso, pesada pelo ângulo): é a **lei da nossa casa** — média SEM peso das normais unitárias, malha como está — **congelada** no repouso. Medido: bossas do G-1 `3,3e-6 → 2,9e-8`, pegada projectada `4,2e-6 → 2,5e-8`, cadeia de bossas `1,6e-6 → 5,8e-8`, as duas pendentes `→ 6,6e-8` e `3,7e-8`, os dois controlos `→ 6,2e-8`. O bloco `n` **também** passa (dentro das barras) ⇒ não bloqueia; mas o implementador **não precisa de injectar o bloco nem de escrever a lei pesada pelo ângulo** |
+| **E19** | **§9.2 · §11 · §10 (o que falta)** | a nossa casa **refresca as normais depois de CADA dab** (`stroke_dab_core.rs:566`, `Mesh::refresh_region`) e nenhuma porta pública as congela. Uma bancada que corra as cadeias pela porta do dab lê normais VIVAS e reprova o G-2 por `4,45e-2` (plano) · `4,39e-2` (bossas) · `6,49e-2` (cilindro). ⇒ a página tem de dizer que o G-1/G-2 pedem uma **costura de teste** que congele as normais do traço inteiro (o produto ARRASTADO refresca, e está certo assim) |
+| **E20** | **§12.1** (a condição do censo) | ela devolve a fixtura ao gate *«no dia em que o CONTROLO correspondente for oferecido (e reprova se o controlo existir e a fixtura continuar na catraca)»* — mas o **P-2** tem TRÊS saídas, e uma delas é *«oferecer com a NOSSA lei»*: aí o controlo existe, a lei do alvo não, e a fixtura devolvida ao G-2 lê **`2,56e-2`** contra a barra de `1e-5`. A condição tem de ser a que a própria linha do P-2 já escreve: **a LEI DO ALVO ser oferecida** |
+| **E21** | **§7.2**, coluna «fundo» do cilindro | `2,19 · 2,11 · 2,06 · 2,01` não saem da definição do §7.1: eles usam o passo de arco na **BORDA** da grelha (onde `ds/dy = 1,81`) e não junto do fundo. Com a definição escrita, o cilindro lê `6,83 · 6,61 · 6,44 · 6,30` — praticamente a coluna da 96², que é o esperado. A frase *«a do cilindro mede-se contra a curvatura da peça»* descreve outra conta. ⛔ Nenhum gate a usa (o G-4 mede `D`, `W50` e nitidez) |
+| **E22** | **§2.3.1** (tabela) e **§12 G-3b** (coluna «errado») | os números por-fixtura vêm de um SUPERCONJUNTO: a corrida tem 8 fotos e as fixturas publicam `p1`, `p2`, `p4` e `s`. Sobre o que está publicado a lei lê `1,30e-3` (96²), `2,15e-3` (192²), `1,27e-3` (cilindro), `1,25e-3` (triângulos) contra os `1,43e-3 · 2,19e-3 · 1,39e-3 · 1,56e-3` impressos — e a 48², que é a que FIXA o aprovado, bate ao dígito (`3,10e-3` / `2,30e-3`). Pelo mesmo motivo a faixa lê `2,20e-2` (lei da casa) e `1,01e-2` (normais congeladas) em vez de `2,6e-2` e `1,19e-2`. **As barras continuam a separar** |
+| **E23** | **§11** (regras de leitura) | a **ORDEM DOS CANTOS** de cada quadrilátero não está escrita, e é ela que decide a diagonal com que a nossa casa intersecta o raio do cursor (`Face::tri_at`: 1.º→3.º canto; `Mesh::raycast` usa a mesma). Com a ordem da bancada irmã — `(i,j) (i+1,j) (i+1,j+1) (i,j+1)` — sai o aprovado impresso; com a outra diagonal o G-3b passa de `3,10e-3` para `4,04e-3` (barra `8e-3`) e o G-3a de `5,09e-4` para `5,12e-4`. Nomeie a ordem |
+| **E24** | **§0.2** (a lista de notas nossas com a premissa caída) | faltam duas: `crates/ph2d-sculpt3d/tests/it/measure_draw_sharp.rs:4-6` (a sonda que decidiu a pergunta zero em agosto — diz *«o Draw sobre as posições/NORMAIS do pen-down»*) e `crates/ph2d-tool-painter/src/tool/paint/sculpt/mode.rs:34-37`, que é uma **decisão de produto de outro módulo** apoiada na mesma premissa (*«todo verbo aditivo aqui é afiado por construção»*) e que o §8.1 contradiz (a curva vale `+55 %` de largura). ⛔ Nenhuma é do I para curar — ficam nomeadas |
+| **E25** | **README das fixturas §4** | ainda traz a folga `1e-3` do recorte, que a errata E15 retirou da espec por não ter proveniência — **gémeo** da errata já curada |
+| **E26** | **§12 G-7**, coluna «errado mais perto» | `6,8e-2` é a diferença no **2.º dab**; o `max |Δz|` do candidato linear sobre os quatro dabs é `2,33e-1`. A barra (`1e-6`) não muda |
+| **E27** | **§12 G-5a/G-5b**, população | o padrão *«`detector/salto_*` menos o declarado»* casa **14** ficheiros e a população diz **13**: o 14.º é `detector/salto_00px_sem_atenuacao`, que só entra no G-5c. Nomeie-o (a mesma forma das E7/E8 já curadas) |
+
+### 5. O ACHADO N2, confirmado (para a janela I, sem o reproduzir)
+
+A vassoura desta obra acusa **duas** linhas no nosso código de produto —
+`crates/ph2d-sculpt3d/src/brush_verb_filter.rs`, linhas **150** e **292** (um doc-comment e um
+comentário do filtro de malha de afiar, da W9 de agosto): a tradução próxima de uma oração do alvo.
+A contagem é **2**, e mais nenhuma linha da árvore (`crates` + `shells` + `scripts`) acorda esta
+vassoura além das **4** linhas pré-existentes do módulo Painter (3 ficheiros), que são dívida de
+outra linha. ⇒ **instrução funcional para os dois comentários:** eles têm de passar a dizer, em
+palavras nossas e sem a frase do alvo, **o que o filtro faz**: *ele acentua o relevo afastando cada
+vértice da média alisada da vizinhança — o que já sobressai sobressai mais, e o que afunda afunda
+mais*; e, no sítio do doc-comment, **de onde vem o número** (a nossa medição, com a fixtura ao
+lado). ⛔ Nada de citar o alvo, nem entre aspas.
+
+### 6. Higiene
+
+- A vassoura foi descodificada **só em memória** — pelo próprio `cleanroom-sweep.sh` e por um
+  processo Python que lê o base64 e compara sem escrever. ⛔ Nada gravado em `/tmp`, `/dev/shm` nem
+  no scratchpad da sessão-mãe (que é da janela I).
+- O modelo desta passagem e as suas saídas vivem **na zona** (`~/Referencias/blender-pincel-afiado/rpre2/`),
+  fora da árvore. Nenhuma saída de sweep com acertos foi gravada em ficheiro.
+- ✅ **R-pré, 2.ª passagem: ATESTA.** A janela I pode implementar. As 10 erratas ficam nomeadas
+  acima, com o sítio e a instrução; nenhuma exige emenda do E antes de a construção começar.
+
+### 7. ⚠️ Achado de higiene que NÃO é desta obra (registado para o R-PÓS / a integração)
+
+O `--git-history` desta pasta com **as NOVE** vassouras (as passagens anteriores correram só a
+desta obra, que acusa as 3 linhas já registadas) devolve acertos de **outras** obras: patches de
+ledgers E/R-only — legítimo — **e, pelo menos uma vez, uma MENSAGEM DE COMMIT que nomeia um
+ficheiro interno do alvo**. Isso é dívida das linhas donas daquelas obras e vive no histórico do
+`main`, logo reescrevê-lo não a cura (o precedente é o INC-U1 do ledger dos pincéis). ⇒ item para o
+R-PÓS, com a lei que a casa já escreveu: *o sweep é propriedade do PAR (artefacto, vassoura), e uma
+vassoura que cresce obriga a corrida nova sobre tudo o que já passou.*

@@ -161,6 +161,9 @@ ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 # honra o `rate`, e essa cadência é `ph2d_core::DEFAULT_HZ`. Escrevê-la à mão aqui faria a
 # medição correr num relógio que o app pode não ter — o defeito que ela existe para apanhar.
 ph2d-core = { path = "../ph2d-core" }
+# Só o gate dos NOMES: ele prova que a chave derivada do tipo RESOLVE a uma palavra, e
+# resolver é o que a tabela faz. A lib desta crate continua sem saber o que é texto de UI.
+ph2d-i18n = { path = "../ph2d-i18n" }
 
 [lints]
 workspace = true

@@ -161,7 +161,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Fibonacci Spiral",
+            display_key: "node.motion.fibonacci.name",
             // Source: a generator that mints the stream (like Grid).
             category: ph2d_node_registry::NodeUiCategory::Source,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,

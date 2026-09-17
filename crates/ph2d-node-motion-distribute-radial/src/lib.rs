@@ -485,7 +485,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Radial Array",
+            display_key: "node.motion.distribute_radial.name",
             category: ph2d_node_registry::NodeUiCategory::Source,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },

@@ -457,7 +457,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Pin Constraint",
+            display_key: "node.motion.pin_constraint.name",
             // It authors a weight FIELD the sims read — the falloff family's
             // category, not a transform (it moves nothing itself).
             category: ph2d_node_registry::NodeUiCategory::Focus,

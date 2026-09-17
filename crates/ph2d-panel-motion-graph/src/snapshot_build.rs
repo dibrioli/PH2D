@@ -39,7 +39,8 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 // the string you edit is the string you were looking at.
                 display_name: ph2d_node_registry::card_title(
                     graph.label(inst.id),
-                    ui,
+                    // ⭐ A FRONTEIRA onde a chave vira palavra — ver o doc do `card_title`.
+                    ui.map(|u| ph2d_i18n::tr(u.display_key)),
                     &inst.type_name,
                 ),
                 category: ui.map(|u| u.category).unwrap_or(NodeUiCategory::Utility),

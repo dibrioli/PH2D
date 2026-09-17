@@ -584,7 +584,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Trail",
+            display_key: "node.motion.trail.name",
             category: ph2d_node_registry::NodeUiCategory::Fx,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },

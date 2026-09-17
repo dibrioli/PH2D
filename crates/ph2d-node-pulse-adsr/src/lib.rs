@@ -413,7 +413,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "ADSR",
+            display_key: "node.pulse.adsr.name",
             // Cinza de utilidade: um adaptador pulso→valor, não uma transformação
             // visível — a mesma categoria dos irmãos que cruzam a membrana.
             category: ph2d_node_registry::NodeUiCategory::Utility,

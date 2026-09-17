@@ -174,7 +174,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             // ⚠️ **«Number», não «Value»** — o artista procura o que quer PÔR no grafo, e a
             // família inteira já se chama `value.*`. Um nó chamado *Value* na paleta seria o
             // nome da prateleira, e a busca por *"number"* não o acharia.
-            display_name: "Number",
+            display_key: "node.value.number.name",
             // Cinzento de utilidade: ele não transforma nada, é encanamento — a mesma escolha
             // do `value.math`, que é o consumidor que o report nomeou.
             category: ph2d_node_registry::NodeUiCategory::Utility,

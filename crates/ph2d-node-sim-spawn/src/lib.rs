@@ -541,7 +541,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Spawn",
+            display_key: "node.sim.spawn.name",
             category: ph2d_node_registry::NodeUiCategory::Source,
             silhouette: ph2d_node_registry::NodeSilhouette::TrapezoidDown,
         },

@@ -183,7 +183,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Level",
+            display_key: "node.pulse.level.name",
             // Cinza de utilidade: encanamento de pulso, não um transform visível.
             category: ph2d_node_registry::NodeUiCategory::Utility,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,

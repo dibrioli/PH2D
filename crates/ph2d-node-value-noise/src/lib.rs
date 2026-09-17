@@ -320,7 +320,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Noise",
+            display_key: "node.value.noise.name",
             // Utility grey: a value producer, plumbing (not a transform).
             category: ph2d_node_registry::NodeUiCategory::Utility,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,

@@ -62,7 +62,7 @@ pub fn derive_ligado(entradas: &[(&str, &str)], ligados: &[(&str, &str, f32)]) -
         let nome = aux
             .registry
             .ui_manifest(tid)
-            .map_or(*node, |u| u.display_name);
+            .map_or(*node, |u| ph2d_i18n::tr(u.display_key));
         ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
         let painel = crate::motion_bridge::params::build_params_snapshot(
             &aux,

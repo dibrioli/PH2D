@@ -228,7 +228,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Time Remap",
+            display_key: "node.motion.time_remap.name",
             category: ph2d_node_registry::NodeUiCategory::Utility,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },

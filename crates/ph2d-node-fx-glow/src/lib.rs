@@ -338,7 +338,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         NodeUiManifest {
-            display_name: "Glow",
+            display_key: "node.fx.glow.name",
             category: NodeUiCategory::Fx,
             silhouette: NodeSilhouette::Rect,
         },

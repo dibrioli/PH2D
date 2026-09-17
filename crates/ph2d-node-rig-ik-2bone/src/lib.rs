@@ -172,7 +172,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "IK 2-Bone",
+            display_key: "node.rig.ik_2bone.name",
             category: ph2d_node_registry::NodeUiCategory::Transform,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },

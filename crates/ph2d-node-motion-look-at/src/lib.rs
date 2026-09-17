@@ -472,7 +472,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Look At",
+            display_key: "node.motion.look_at.name",
             // Transform blue: it writes the rotation channel.
             category: ph2d_node_registry::NodeUiCategory::Transform,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,

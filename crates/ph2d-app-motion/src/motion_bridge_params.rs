@@ -246,10 +246,13 @@ pub fn build_params_snapshot(
     let inst = motion.doc.graph.node(nid)?;
     let type_id = inst.type_id();
     let manifest = motion.registry.resolve(type_id)?.manifest();
+    // ⭐ A TERCEIRA fronteira onde a chave do nó vira palavra (as outras duas são o
+    //   `snapshot_build` do grafo e o `driver_title`) — o título deste painel tem de ser o MESMO
+    //   que o cartão pinta, senão o artista lê um nome no inspector e procura outro no grafo.
     let title = motion
         .registry
         .ui_manifest(type_id)
-        .map(|u| u.display_name.to_string())
+        .map(|u| ph2d_i18n::tr(u.display_key).to_string())
         .unwrap_or_else(|| inst.type_name.clone());
     let hints = motion.registry.param_ui(type_id);
     let visible = params_visible::Visibility::of(&motion.registry, type_id);

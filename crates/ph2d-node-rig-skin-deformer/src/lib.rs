@@ -242,7 +242,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Skin",
+            display_key: "node.rig.skin_deformer.name",
             category: ph2d_node_registry::NodeUiCategory::Transform,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },

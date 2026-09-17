@@ -425,7 +425,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Bend",
+            display_key: "node.motion.bend.name",
             // Transform blue: a spatial deformer.
             category: ph2d_node_registry::NodeUiCategory::Transform,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,

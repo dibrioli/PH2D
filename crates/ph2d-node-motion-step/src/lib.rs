@@ -388,7 +388,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Step",
+            display_key: "node.motion.step.name",
             // Transform blue: a visible behaviour — it pushes a transform channel
             // per beat (the very reason it is `motion.*`, not `pulse.*`).
             category: ph2d_node_registry::NodeUiCategory::Transform,

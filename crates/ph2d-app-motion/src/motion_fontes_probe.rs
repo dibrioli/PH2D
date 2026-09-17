@@ -28,7 +28,7 @@ fn the_source_palette_census() {
                 (
                     format!("{:?}", u.category),
                     man.name,
-                    u.display_name.to_string(),
+                    ph2d_i18n::tr(u.display_key).to_string(),
                 )
             })
         })

@@ -53,7 +53,7 @@ pub enum NodeSilhouette {
 /// result-named label (HR-15); `category` + `silhouette` drive the card look.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NodeUiManifest {
-    pub display_name: &'static str,
+    pub display_key: &'static str,
     pub category: NodeUiCategory,
     pub silhouette: NodeSilhouette,
 }
@@ -585,9 +585,14 @@ impl Coupling {
 /// grafo. Duas cópias da escada divergiriam no dia do rename, que é justamente o caso em que
 /// ela existe ([[feedback_two_doors_to_the_same_question_diverge]]).
 #[must_use]
-pub fn card_title(label: Option<&str>, ui: Option<&NodeUiManifest>, type_name: &str) -> String {
+/// ⚠️⚠️ **O 2.º argumento é o nome JÁ TRADUZIDO, não o manifesto** (2026-09-17): desde que o
+/// `NodeUiManifest::display_name` passou a ser uma CHAVE, alguém tem de a resolver — e não pode ser
+/// aqui. Esta crate é foundational e não depende da [`ph2d_i18n`]; a aresta nova mexeria no DAG que
+/// tem catraca. ⇒ *a tradução acontece na FRONTEIRA (quem monta o instantâneo), e esta escada
+/// continua a ser a única resposta à pergunta «que nome tem este cartão?».*
+pub fn card_title(label: Option<&str>, ui_name: Option<&str>, type_name: &str) -> String {
     label
+        .or(ui_name)
         .map(str::to_string)
-        .or_else(|| ui.map(|u| u.display_name.to_string()))
         .unwrap_or_else(|| type_name.to_string())
 }

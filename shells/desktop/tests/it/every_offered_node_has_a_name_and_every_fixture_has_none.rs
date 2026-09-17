@@ -76,8 +76,12 @@ fn the_signal_node_is_offered_by_its_artist_name() {
         .find(|m| m.name == "pulse.signal")
         .expect("o `pulse.signal` existe");
     assert!(!reg.is_fixture(m.id), "ele e' um no' de artista");
+    // ⭐ **Desde 2026-09-17 isto atravessa a TABELA e ficou mais forte:** o manifesto declara uma
+    //    CHAVE (`node.pulse.signal.name`) e a palavra vive em `ph2d-i18n`, logo esta asserção
+    //    reprova nos DOIS casos — a chave errada **e** a chave sem tradução (o `tr` devolveria o
+    //    identificador cru, que é o que o cartão pintaria).
     assert_eq!(
-        reg.ui_manifest(m.id).map(|u| u.display_name),
+        reg.ui_manifest(m.id).map(|u| ph2d_i18n::tr(u.display_key)),
         Some("Signal")
     );
 }

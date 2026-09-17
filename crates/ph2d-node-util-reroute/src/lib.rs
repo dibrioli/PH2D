@@ -118,16 +118,20 @@ impl NodeOp for Reroute {
 /// One crate, three node types: they differ only by a `const`, and three crates of forty
 /// identical lines would be three places for the same bug to hide.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
+    // ⚠️ **O 2.º elemento é uma CHAVE de i18n desde 2026-09-17**, e não o nome. Esta crate é o
+    //    único caso de UM crate com TRÊS tipos, logo a derivação `crate → tipo` do gerador não a
+    //    resolve — aqui a chave é escrita ao lado do manifesto que lhe corresponde, e o gate
+    //    `every_node_name_is_a_key_derived_from_its_type` prova que ela é a do tipo certo.
     for (manifest, display) in [
-        (&MANIFEST_STREAM, "Reroute"),
-        (&MANIFEST_VALUE, "Reroute (Value)"),
-        (&MANIFEST_PULSE, "Reroute (Pulse)"),
+        (&MANIFEST_STREAM, "node.util.reroute.name"),
+        (&MANIFEST_VALUE, "node.util.reroute_value.name"),
+        (&MANIFEST_PULSE, "node.util.reroute_pulse.name"),
     ] {
         reg.register(Box::new(Reroute(manifest)))?;
         reg.register_ui(
             manifest.id,
             ph2d_node_registry::NodeUiManifest {
-                display_name: display,
+                display_key: display,
                 category: ph2d_node_registry::NodeUiCategory::Utility,
                 // A circle: it is a DOT on a wire, which is what every node editor draws and
                 // what the gesture that makes it leads the artist to expect.

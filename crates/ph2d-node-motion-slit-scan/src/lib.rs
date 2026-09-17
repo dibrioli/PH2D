@@ -232,7 +232,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Slit Scan",
+            display_key: "node.motion.slit_scan.name",
             // A stylistic time effect, like its neighbour Trail.
             category: ph2d_node_registry::NodeUiCategory::Fx,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,

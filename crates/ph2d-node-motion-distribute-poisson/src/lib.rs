@@ -139,7 +139,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Poisson Disk",
+            display_key: "node.motion.distribute_poisson.name",
             category: ph2d_node_registry::NodeUiCategory::Distribute,
             silhouette: ph2d_node_registry::NodeSilhouette::TrapezoidDown,
         },

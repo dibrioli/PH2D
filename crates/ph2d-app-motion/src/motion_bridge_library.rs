@@ -78,7 +78,7 @@ pub(super) fn build_catalog(
             let ui = registry.ui_manifest(m.id);
             NodeChoice {
                 type_name: m.name,
-                display: ui.map(|u| u.display_name).unwrap_or(m.name),
+                display: ui.map(|u| ph2d_i18n::tr(u.display_key)).unwrap_or(m.name),
                 category: ui.map(|u| u.category).unwrap_or(NodeUiCategory::Utility),
                 // Straight off the manifest (`&'static`), so the panel can filter
                 // the smart-connect menu by what each type can actually take.

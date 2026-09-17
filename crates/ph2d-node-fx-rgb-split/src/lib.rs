@@ -348,7 +348,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "RGB Split",
+            display_key: "node.fx.rgb_split.name",
             category: ph2d_node_registry::NodeUiCategory::Fx,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },

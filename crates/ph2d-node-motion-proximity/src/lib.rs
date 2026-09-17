@@ -238,7 +238,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Proximity",
+            display_key: "node.motion.proximity.name",
             // A categoria do `motion.velocity` — o irmão exacto em papel (mede a nuvem e
             // escreve o número numa coluna). O artista que achou um procura o outro no
             // mesmo lugar, e isso vale mais que a taxonomia: `Utility` descreveria

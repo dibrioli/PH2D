@@ -657,7 +657,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Verlet Rope",
+            display_key: "node.motion.verlet_rope.name",
             // Source: it mints its own point stream (like Grid / Scatter), then
             // simulates it.
             category: ph2d_node_registry::NodeUiCategory::Source,

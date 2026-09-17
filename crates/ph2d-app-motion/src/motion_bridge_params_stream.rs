@@ -54,7 +54,12 @@ pub(super) fn driver_title(
     let inst = motion.doc.graph.node(src)?;
     Some(ph2d_node_registry::card_title(
         motion.doc.graph.label(src),
-        motion.registry.ui_manifest(inst.type_id()),
+        // ⭐ A mesma FRONTEIRA do `snapshot_build` — e o nome tem de ser o MESMO que o cartão
+        //   pinta, senão o artista lê um nome no inspector e procura outro no grafo.
+        motion
+            .registry
+            .ui_manifest(inst.type_id())
+            .map(|u| ph2d_i18n::tr(u.display_key)),
         &inst.type_name,
     ))
 }

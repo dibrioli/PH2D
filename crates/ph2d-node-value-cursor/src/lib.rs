@@ -146,7 +146,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Cursor",
+            display_key: "node.value.cursor.name",
             // Utility grey: a value SOURCE, plumbing — não uma transformação visível.
             category: ph2d_node_registry::NodeUiCategory::Utility,
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,

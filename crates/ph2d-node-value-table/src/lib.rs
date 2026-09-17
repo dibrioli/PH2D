@@ -210,7 +210,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
-            display_name: "Table Value",
+            display_key: "node.value.table.name",
             category: ph2d_node_registry::NodeUiCategory::Utility,
             silhouette: ph2d_node_registry::NodeSilhouette::TrapezoidDown,
         },

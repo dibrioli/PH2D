@@ -197,6 +197,34 @@ do gizmo afasta-a e amolece-a.
 
 ---
 
+## §8-bis — ⛔⛔ O que o INTEGRADOR vai encontrar na ÁRVORE PRIMÁRIA (medido 16/09)
+
+**Um `git merge --ff-only line/3DModeling` na primária é RECUSADO pelo git hoje** — e não por
+conflito de merge nenhum, mas por ficheiros **por comitar** lá dentro:
+
+| | |
+|---|---|
+| `/home/enio/Documentos/Projetos/PH2D` (`main`) | **74** ficheiros sujos |
+| dos quais | **71** em `project-memory/` · **3** em `docs/_ComoInvestigarApps/` |
+| que ESTA linha também altera | **6** — `MEMORY.md`, `feedback_a_probe_that_arms_a_module_by_env_var…`, `reference_topic_{fixture_discipline,implicit_field_laws,measurement_discipline,mutation_proofs}` |
+| sintoma | `error: Your local changes to the following files would be overwritten by merge` |
+
+⚠️ **Não é sujidade de uma linha: é como a MEMÓRIA funciona neste repo.** O
+`~/.claude/projects/<key>/memory` é um **symlink** para `project-memory/` da primária
+(CLAUDE.md §4), logo **toda sessão de toda linha escreve ali, na árvore do `main`, e ninguém
+comita**. As linhas que versionam memória (esta versiona 12 ficheiros) trazem a **versão do ramo**
+dos mesmos ficheiros ⇒ a colisão é estrutural e repete-se em **toda** rodada.
+
+⛔ **Esta linha NÃO lhe tocou, de propósito** — aquelas alterações são de outras sessões e a decisão
+é do integrador. As três saídas, com o preço:
+
+1. **comitar a memória no `main` primeiro** (um commit só, `project-memory/` + os 3 docs) — é onde
+   ela é suposta viver, e nada se perde. *A saída recomendada por esta linha.*
+2. **ramo WIP** (`wip/memoria-<data>`) — destrava o `ff-only` e deixa a memória fora do `main` até
+   alguém a trazer, o que é exactamente como uma memória se perde;
+3. `git stash` — ⛔ **proibido**: a pilha é **partilhada** entre as worktrees e há outras sessões
+   vivas (CLAUDE.md §0.4).
+
 ## §9 — ⏳ O que fica aberto (além do §7)
 
 - o chão **não devolve luz** à peça — é a `W5` (GI), e o chão será o primeiro receptor dela;

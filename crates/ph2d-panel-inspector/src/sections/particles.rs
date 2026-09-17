@@ -195,7 +195,15 @@ fn num_row(
         return y;
     };
     let (label, step) = ROTULOS[i];
-    super::anchors::field_row(
+    // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): aqui ela mede-se da
+    //    própria tabela, que É a lista de nomes desta secção — as 19 linhas partilham-na, e
+    //    medir só a desta faria a coluna saltar de linha para linha.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &ROTULOS.map(|(nome, _)| nome),
+    );
+    super::rows::fields_row(
         scene,
         text_system,
         theme,
@@ -207,6 +215,8 @@ fn num_row(
         label,
         &[crate::ids::INSP_PART_NUM[i]],
         step,
+        None,
+        seccao,
     )
 }
 

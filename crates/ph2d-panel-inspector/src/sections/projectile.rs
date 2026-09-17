@@ -127,6 +127,25 @@ fn corpo(
     i: &InspectorProjectileInfo,
 ) -> f32 {
     let mut cur_y = avisos(scene, text_system, theme, x, w, y, i);
+    // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): esta secção nasceu
+    //    contra a porta antiga (`anchors::field_row`, o nome POR CIMA do campo) e passa à
+    //    única que existe. ⚠️ Os nomes são os da secção INTEIRA, inclusive os das linhas que
+    //    este quadro não pinta — *uma coluna que salta quando uma linha aparece é uma coluna
+    //    por linha com outro nome.*
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            "Speed (m/s)",
+            "Acceleration",
+            "Max Speed (0 = no cap)",
+            "Gravity (0 = straight)",
+            "Max Bounces",
+            "Bounciness (1 = perfect)",
+            "Range (m, 0 = forever)",
+            "Homing (0 = none)",
+        ],
+    );
     for (label, id, step) in [
         ("Speed (m/s)", crate::ids::INSP_PJ_SPEED, 0.5), // LITERAL-PX-OK: m/s
         ("Acceleration", crate::ids::INSP_PJ_ACCEL, 0.5), // LITERAL-PX-OK: m/s²
@@ -134,7 +153,7 @@ fn corpo(
         ("Gravity (0 = straight)", crate::ids::INSP_PJ_GRAVITY, 0.5), // LITERAL-PX-OK: m/s²
         ("Max Bounces", crate::ids::INSP_PJ_MAX_BOUNCES, 1.0), // LITERAL-PX-OK: contagem
     ] {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -146,11 +165,13 @@ fn corpo(
             label,
             &[id],
             step,
+            None,
+            seccao,
         );
     }
     // ⭐ **Só com saltos** — sem ricochete nenhum, a perda por salto não tem sujeito.
     if i.max_bounces > 0 {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -162,9 +183,11 @@ fn corpo(
             "Bounciness (1 = perfect)",
             &[crate::ids::INSP_PJ_BOUNCINESS],
             0.05, // LITERAL-PX-OK: fracção
+            None,
+            seccao,
         );
     }
-    cur_y = super::anchors::field_row(
+    cur_y = super::rows::fields_row(
         scene,
         text_system,
         theme,
@@ -176,8 +199,10 @@ fn corpo(
         "Range (m, 0 = forever)",
         &[crate::ids::INSP_PJ_RANGE],
         1.0, // LITERAL-PX-OK: metros
+        None,
+        seccao,
     );
-    cur_y = super::anchors::field_row(
+    cur_y = super::rows::fields_row(
         scene,
         text_system,
         theme,
@@ -189,6 +214,8 @@ fn corpo(
         "Homing (0 = none)",
         &[crate::ids::INSP_PJ_HOMING_ACCEL],
         10.0, // LITERAL-PX-OK: m/s²
+        None,
+        seccao,
     );
     // ⭐ **Só com perseguição** — um campo de alvo sem aceleração é um controlo morto.
     if i.homing_accel > 0.0 {

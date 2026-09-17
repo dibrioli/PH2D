@@ -79,10 +79,10 @@ mod vector_engine;
 /// table. The Fluent migration will widen this to `String` (formatted
 /// with arguments) at that point.
 mod chrome;
-mod inspector;
-mod inspector_player;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
 mod factory;
+mod inspector;
+mod inspector_player;
 mod model3d;
 mod painter_layers;
 mod sculpt3d;

@@ -67,6 +67,8 @@ serde = { version = "1", features = ["rc"] }
 # no dia em que alguém reordenasse o enum.
 [dev-dependencies]
 ph2d-topdown = { path = "../ph2d-topdown" }
+# A régua lexical do HR-15, para o gate por crate (`tests/it/`).
+ph2d-label-census = { path = "../ph2d-label-census" }
 
 [features]
 # ⚠️⚠️ **Um `#[cfg(test)]` é INVISÍVEL do outro lado da fronteira de crate**
@@ -82,10 +84,6 @@ ph2d-topdown = { path = "../ph2d-topdown" }
 # ⚠️ Ligada pela shell nas **dev-dependencies**: no `cargo build` do produto ela
 # fica desligada, e no `cargo test` fica ligada.
 test-support = []
-
-[dev-dependencies]
-# A régua lexical do HR-15, para o gate por crate (`tests/it/`).
-ph2d-label-census = { path = "../ph2d-label-census" }
 
 [lints]
 workspace = true

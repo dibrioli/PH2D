@@ -286,8 +286,13 @@ pub(crate) fn paint_statemachine_section(
         trans_sel,
     );
     // ── O INICIAL ────────────────────────────────────────────────────────────
+    // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): esta secção nasceu
+    //    contra a porta antiga (`anchors::field_row`, o nome POR CIMA do campo) e passa à
+    //    única que existe. ⚠️ Os nomes são os da secção INTEIRA, inclusive os das linhas que
+    //    este quadro não pinta.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &["Initial state"]);
     if !info.states.is_empty() {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -299,6 +304,8 @@ pub(crate) fn paint_statemachine_section(
             "Initial state",
             &[crate::ids::INSP_SM_INITIAL],
             1.0, // LITERAL-PX-OK: índice
+            None,
+            seccao,
         );
     }
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
@@ -509,7 +516,16 @@ fn setas(
         !info.transitions.is_empty(),
     );
     if let Some(t) = info.transitions.get(selected) {
-        cur_y = super::anchors::field_row(
+        // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): esta secção nasceu
+        //    contra a porta antiga (`anchors::field_row`, o nome POR CIMA do campo) e passa à
+        //    única que existe. ⚠️ Os nomes são os da secção INTEIRA, inclusive os das linhas que
+        //    este quadro não pinta.
+        let seccao = ph2d_editor_core::property_row::Seccao::medida(
+            text_system,
+            1,
+            &["From state", "To state"],
+        );
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -521,6 +537,8 @@ fn setas(
             "From state",
             &[crate::ids::INSP_SM_TRANS_FROM],
             1.0, // LITERAL-PX-OK: índice
+            None,
+            seccao,
         );
         cur_y = super::anim_rows::text_row(
             scene,
@@ -534,7 +552,7 @@ fn setas(
             crate::ids::INSP_SM_TRANS_ON,
             TextInput::new(crate::ids::INSP_SM_TRANS_ON, "").placeholder("on signal\u{2026}"),
         );
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -546,6 +564,8 @@ fn setas(
             "To state",
             &[crate::ids::INSP_SM_TRANS_TO],
             1.0, // LITERAL-PX-OK: índice
+            None,
+            seccao,
         );
         // ⚠️⚠️ **A LINHA QUE RESPONDE AO «não acontece nada»** — a mesma da tabela de acções.
         if t.on.is_empty() {

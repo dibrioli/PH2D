@@ -18,12 +18,11 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # HR-15: todo texto que o painel pinta sai da tabela de strings (`panel.inspector.*`, 2026-09-13).
+# ⭐ **E as frases das TAGS** (TOP-20 #9) — o `hr15_no_hardcoded_ui_strings` mede `.placeholder("…")`
+# e o `Pick a tag…` estava escrito em três pintores desta crate. A tabela colapsa-os.
 ph2d-i18n        = { path = "../ph2d-i18n" }
 ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
-# ⭐ **As frases das TAGS** (TOP-20 #9) — o `hr15_no_hardcoded_ui_strings` mede `.placeholder("…")`
-# e o `Pick a tag…` estava escrito em três pintores desta crate. A tabela colapsa-os.
-ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-text        = { path = "../ph2d-text" }
 ph2d-vector      = { path = "../ph2d-vector" }
 # ⭐⭐ **A DOBRA de um rótulo** (TOP-20 #9) — a busca da secção Tags tem de honrar a decisão do dono

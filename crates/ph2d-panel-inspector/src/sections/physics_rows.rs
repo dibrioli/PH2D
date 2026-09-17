@@ -509,4 +509,3 @@ pub(super) fn paint_collision_rows(
         signal_tag_path,
     )
 }
-

@@ -184,12 +184,30 @@ fn corpo(
     i: &InspectorTopDownInfo,
 ) -> f32 {
     let mut cur_y = avisos(scene, text_system, theme, x, w, y, i);
+    // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): esta secção nasceu
+    //    contra a porta antiga (`anchors::field_row`, o nome POR CIMA do campo) e passa à
+    //    única que existe. ⚠️ Os nomes são os da secção INTEIRA, inclusive os das linhas que
+    //    este quadro não pinta — *uma coluna que salta quando uma linha aparece é uma coluna
+    //    por linha com outro nome.*
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            "Speed (m/s)",
+            "Acceleration (0 = instant)",
+            "Deceleration (0 = instant)",
+            "Board Angle (deg)",
+            "Turn Speed (deg/s, 0 = instant)",
+            "Min Slide Angle (deg)",
+            "Max Slides",
+        ],
+    );
     for (label, id, step) in [
         ("Speed (m/s)", crate::ids::INSP_TD_SPEED, 0.1), // LITERAL-PX-OK: m/s
         ("Acceleration (0 = instant)", crate::ids::INSP_TD_ACCEL, 0.5), // LITERAL-PX-OK: m/s²
         ("Deceleration (0 = instant)", crate::ids::INSP_TD_DECEL, 0.5), // LITERAL-PX-OK: m/s²
     ] {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -201,6 +219,8 @@ fn corpo(
             label,
             &[id],
             step,
+            None,
+            seccao,
         );
     }
 
@@ -240,7 +260,7 @@ fn corpo(
     );
     // ⭐ **Só em `Custom`** — ver o cabeçalho.
     if i.viewpoint.uses_angle() {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -252,6 +272,8 @@ fn corpo(
             "Board Angle (deg)",
             &[crate::ids::INSP_TD_VIEW_ANGLE],
             0.5, // LITERAL-PX-OK: graus
+            None,
+            seccao,
         );
     }
 
@@ -272,7 +294,7 @@ fn corpo(
     );
     // ⭐ **Só quando ele roda.**
     if i.facing.uses_turn_speed() {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -284,6 +306,8 @@ fn corpo(
             "Turn Speed (deg/s, 0 = instant)",
             &[crate::ids::INSP_TD_TURN_SPEED],
             10.0, // LITERAL-PX-OK: graus/s
+            None,
+            seccao,
         );
     }
 
@@ -291,7 +315,7 @@ fn corpo(
         ("Min Slide Angle (deg)", crate::ids::INSP_TD_MIN_SLIDE, 1.0), // LITERAL-PX-OK: graus
         ("Max Slides", crate::ids::INSP_TD_MAX_SLIDES, 1.0),           // LITERAL-PX-OK: contagem
     ] {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -303,6 +327,8 @@ fn corpo(
             label,
             &[id],
             step,
+            None,
+            seccao,
         );
     }
 

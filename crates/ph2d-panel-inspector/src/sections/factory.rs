@@ -124,6 +124,22 @@ fn factory_body(
 ) -> f32 {
     // ⚠️ **Os avisos vêm ANTES dos números** — quem não vê nada nascer não quer afinar uma rajada.
     let mut cur_y = y;
+    // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): esta secção nasceu
+    //    contra a porta antiga (`anchors::field_row`, o nome POR CIMA do campo) e passa à
+    //    única que existe. ⚠️ Os nomes são os da secção INTEIRA, inclusive os das linhas que
+    //    este quadro não pinta — *uma coluna que salta quando uma linha aparece é uma coluna
+    //    por linha com outro nome.*
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        2,
+        &[
+            "Area (m)",
+            "Burst",
+            "Max Alive (0 = no limit)",
+            "Max Total (0 = no limit)",
+            "Seed",
+        ],
+    );
     if f.recipe.trim().is_empty() || !f.recipe_found {
         cur_y = warn(
             scene,
@@ -200,7 +216,7 @@ fn factory_body(
     // ⚠️ **Só o que o MODO lê é pintado** — a lei do `SignalVerb::uses_arg`: um campo que o modo não
     // lê é um controlo morto; escondê-lo onde ele lê é uma feature inalcançável.
     if f.spawn_where.uses_area() {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -215,6 +231,8 @@ fn factory_body(
                 crate::ids::INSP_FACTORY_AREA_H,
             ],
             0.1, // LITERAL-PX-OK: passo em metros
+            None,
+            seccao,
         );
     }
     if f.spawn_where.uses_tag() {
@@ -263,7 +281,7 @@ fn factory_body(
         ), // LITERAL-PX-OK: contagem
         ("Seed", crate::ids::INSP_FACTORY_SEED, 1.0),   // LITERAL-PX-OK: contagem
     ] {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -275,6 +293,8 @@ fn factory_body(
             label,
             &[id],
             step,
+            None,
+            seccao,
         );
     }
     // ⚠️ **Os dois pela TABELA**, como os irmãos — um literal aqui seria a palavra do app escrita
@@ -332,6 +352,16 @@ fn lifecycle_body(
     info: &InspectorFactoryInfo,
 ) -> f32 {
     let mut cur_y = y;
+    // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): esta secção nasceu
+    //    contra a porta antiga (`anchors::field_row`, o nome POR CIMA do campo) e passa à
+    //    única que existe. ⚠️ Os nomes são os da secção INTEIRA, inclusive os das linhas que
+    //    este quadro não pinta — *uma coluna que salta quando uma linha aparece é uma coluna
+    //    por linha com outro nome.*
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &["Lifetime (s, 0 = forever)", "Off-screen margin (m)"],
+    );
     // ⭐⭐ **A metade honesta** — a lei é *a morte só alcança quem nasceu numa corrida*.
     if !info.is_spawned {
         cur_y = warn(
@@ -346,7 +376,7 @@ fn lifecycle_body(
         );
     }
     if l.lifetime_s.is_some() {
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -358,6 +388,8 @@ fn lifecycle_body(
             "Lifetime (s, 0 = forever)",
             &[crate::ids::INSP_LIFE_SECONDS],
             0.1, // LITERAL-PX-OK: passo em segundos
+            None,
+            seccao,
         );
         cur_y = super::anim_rows::text_row(
             scene,
@@ -386,7 +418,7 @@ fn lifecycle_body(
                 ColorToken::Warn,
             );
         }
-        cur_y = super::anchors::field_row(
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -398,6 +430,8 @@ fn lifecycle_body(
             "Off-screen margin (m)",
             &[crate::ids::INSP_LIFE_OUTSIDE_MARGIN],
             0.1, // LITERAL-PX-OK: passo em metros
+            None,
+            seccao,
         );
     }
     cur_y

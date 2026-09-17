@@ -110,6 +110,8 @@ ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 # `[dependencies]` a feature de teste entraria no binário do produto.
 image = { version = "0.25", default-features = false, features = ["png"] }
 ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }
+# A régua lexical do HR-15, para o gate por crate (`tests/it/`).
+ph2d-label-census = { path = "../ph2d-label-census" }
 
 [features]
 # ⚠️⚠️ **Um `#[cfg(test)]` da família é INVISÍVEL do outro lado da fronteira**
@@ -125,10 +127,6 @@ ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support
 # ⚠️ Ligada pela shell nas **dev-dependencies**: no `cargo build` do produto ela
 # fica desligada, e no `cargo test` fica ligada.
 test-support = []
-
-[dev-dependencies]
-# A régua lexical do HR-15, para o gate por crate (`tests/it/`).
-ph2d-label-census = { path = "../ph2d-label-census" }
 
 [lints]
 workspace = true

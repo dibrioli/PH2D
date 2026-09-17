@@ -35,7 +35,7 @@ impl crate::App {
             let envelope_selected = hero
                 .gizmo
                 .selection
-                .is_some_and(|bits| crate::envelope_gesture::is_envelope(sim, bits));
+                .is_some_and(|bits| ph2d_app_vec::envelope_gesture::is_envelope(sim, bits));
             if !envelope_selected {
                 ph2d_vec_render::draw_overlays(
                     vec_scene,
@@ -86,7 +86,7 @@ impl crate::App {
             // regra seleciona-só-o-container põe os bits dele em `hero.gizmo.selection`.
             if overlay.envelope_cage
                 && let Some(cage) =
-                    crate::envelope_gesture::view(sim, hero.gizmo.selection, self.vec.envelope_drag)
+                    ph2d_app_vec::envelope_gesture::view(sim, hero.gizmo.selection, self.vec.envelope_drag)
             {
                 ph2d_vec_render::draw_envelope_cage(&cage, cam_affine, hero.theme, vector_scene);
             }
@@ -96,7 +96,7 @@ impl crate::App {
             if overlay.envelope_cage
                 && let Some(bits) = hero.gizmo.selection
             {
-                let pins = crate::envelope_gesture::pins_world(sim, bits);
+                let pins = ph2d_app_vec::envelope_gesture::pins_world(sim, bits);
                 ph2d_vec_render::draw_envelope_pins(
                     &pins,
                     self.vec

@@ -54,10 +54,10 @@ const FORA: &[Isento] = &[
         "integration.rs",
         "a demo de integração (script de exemplo e erros de arranque, no terminal)",
     ),
-    (
-        "envelope_gesture.rs",
-        "o diagnóstico `vec_overlay_diag::refused`, que só sai com a env ligada",
-    ),
+    // ⚠️ **O `envelope_gesture.rs` SAIU daqui na integração de 2026-09-17** (foi para a
+    // `ph2d-app-vec`) e a isenção dele foi COM ele — *uma isenção é propriedade do CÓDIGO, não do
+    // sítio onde o código está*. Quem obriga é o censo de obsolescência abaixo: ele acusa a linha
+    // que já não abriga nada, na mesma corrida em que o censo da crate nova acusa os literais.
     (
         "legacy_chrome.rs",
         "o `eprintln!` que diz se o chrome legado está visível (bissecção)",

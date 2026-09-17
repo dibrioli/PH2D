@@ -363,7 +363,7 @@ fn publish_gizmo(
             {
                 // (O SPINE de um Blend não publica gizmo — o `vec_gizmo_view::view` o pula, como
                 // faz com o conector. ADR-0128.)
-                return crate::vec_gizmo_view::view(
+                return ph2d_app_vec::vec_gizmo_view::view(
                     sim,
                     vec_scene,
                     vec_view,
@@ -400,7 +400,7 @@ fn publish_gizmo(
                 .get::<ph2d_ecs::VecEnvelope>(sim_entity)
                 .is_some()
             {
-                return crate::vec_gizmo_view::container_view(
+                return ph2d_app_vec::vec_gizmo_view::container_view(
                     sim,
                     vec_scene,
                     sim_entity,

@@ -32,7 +32,7 @@ impl crate::App {
         } = intents;
         if pending_create_envelope {
             let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
-            match crate::envelope_live::create(sim, vec_scene, &self.vec.entities, &ids) {
+            match ph2d_app_vec::envelope_live::create(sim, vec_scene, &self.vec.entities, &ids) {
                 Some(_) => {
                     // O artista SELECIONOU a forma e SÓ ENTÃO clicou Envelope: enveloparr
                     // re-parenteia o filho sem tocar o pen, então o `sync_selection` deste
@@ -54,23 +54,23 @@ impl crate::App {
         // ADR-0129: **Expand** (a deformada vira o desenho) e **Release** (a fonte autorada
         // volta). O MESMO `dissolve` — muda só QUAL geometria fica.
         if pending_expand_envelope
-            && crate::envelope_live::dissolve(
+            && ph2d_app_vec::envelope_live::dissolve(
                 sim,
                 vec_scene,
                 &self.vec.entities,
                 &mut self.vec.pen,
-                crate::envelope_live::Keep::Deformed,
+                ph2d_app_vec::envelope_live::Keep::Deformed,
             )
         {
             eprintln!("[ph2d-vec] envelope: expandido (a deformacao virou o desenho)");
         }
         if pending_release_envelope
-            && crate::envelope_live::dissolve(
+            && ph2d_app_vec::envelope_live::dissolve(
                 sim,
                 vec_scene,
                 &self.vec.entities,
                 &mut self.vec.pen,
-                crate::envelope_live::Keep::Authored,
+                ph2d_app_vec::envelope_live::Keep::Authored,
             )
         {
             eprintln!("[ph2d-vec] envelope: solto (a forma original voltou)");
@@ -87,13 +87,13 @@ impl crate::App {
                 .iter()
                 .filter_map(|id| self.vec.entities.get(id).copied())
                 .collect();
-            if let Some(bits) = crate::envelope_live::sole_container(sim, &sel) {
+            if let Some(bits) = ph2d_app_vec::envelope_live::sole_container(sim, &sel) {
                 if let Some(kind) = pending_envelope_kind
-                    && crate::envelope_gesture::set_kind(sim, bits, kind)
+                    && ph2d_app_vec::envelope_gesture::set_kind(sim, bits, kind)
                 {
                     eprintln!("[ph2d-vec] envelope: gesto {kind:?}");
                 }
-                if pending_clear_pins && crate::envelope_gesture::clear_pins(sim, bits) {
+                if pending_clear_pins && ph2d_app_vec::envelope_gesture::clear_pins(sim, bits) {
                     eprintln!("[ph2d-vec] envelope: pinos apagados");
                 }
             }
@@ -109,8 +109,8 @@ impl crate::App {
                 .iter()
                 .filter_map(|id| self.vec.entities.get(id).copied())
                 .collect();
-            if let Some(bits) = crate::envelope_live::sole_container(sim, &sel)
-                && let Some((cur_warp, cur_bend)) = crate::envelope_gesture::warp_of(sim, bits)
+            if let Some(bits) = ph2d_app_vec::envelope_live::sole_container(sim, &sel)
+                && let Some((cur_warp, cur_bend)) = ph2d_app_vec::envelope_gesture::warp_of(sim, bits)
             {
                 let warp = pending_envelope_preset
                     .and_then(|i| ph2d_ecs::EnvelopeWarp::ALL.get(i).copied())
@@ -119,7 +119,7 @@ impl crate::App {
                 // Sem preset na mao E sem preset ativo, o Bend nao tem o que re-carimbar --
                 // e' o caso da gaiola promovida a manual pelo arrasto.
                 if let Some(warp) = warp
-                    && crate::envelope_live::apply_preset(sim, bits, warp, bend)
+                    && ph2d_app_vec::envelope_live::apply_preset(sim, bits, warp, bend)
                 {
                     eprintln!("[ph2d-vec] envelope: preset {warp:?} bend {bend:.2}");
                 }

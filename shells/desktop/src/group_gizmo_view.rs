@@ -29,7 +29,7 @@
 //! **já publicam alças** (os dots de [`crate::render_loop::point_gizmo`]). Uma caixa por cima
 //! registaria o interior dela como *Translate* no hit-index e **engoliria o clique nas alças**, que
 //! são os controlos que aquelas entidades de facto têm. *É a mesma razão pela qual o conector e o
-//! spine de um Blend não publicam gizmo* (ver o cabeçalho de [`crate::vec_gizmo_view`]).
+//! spine de um Blend não publicam gizmo* (ver o cabeçalho de [`ph2d_app_vec::vec_gizmo_view`]).
 
 use ph2d_ecs::{Entity, SimWorld, Transform, Visibility};
 use ph2d_editor_core::GizmoView;
@@ -205,7 +205,7 @@ pub(crate) fn view(
         return None;
     }
     let half = marker_half(pixels_per_meter);
-    Some(crate::vec_gizmo_view::gizmo_view_from(
+    Some(ph2d_app_vec::vec_gizmo_view::gizmo_view_from(
         [0.0, 0.0],
         [half, half],
         world_transform(sim, entity),

@@ -85,11 +85,11 @@ pub(crate) fn pick_objects_at(
     pointer: (f32, f32),
 ) -> Vec<u64> {
     let world = w.camera.screen_to_world(pointer, w.window_size);
-    let stroke_r = crate::vec_gizmo_view::stroke_hit_r(w.camera, w.window_size);
+    let stroke_r = ph2d_app_vec::vec_gizmo_view::stroke_hit_r(w.camera, w.window_size);
     let flip_r = ph2d_app_flip::gizmo_view::stroke_hit_r(w.camera, w.window_size);
     let view =
         ph2d_vec_entities::entities::view_state_for_pick(w.sim, vec_entities, vec_view_derived);
-    let mut hits = crate::vec_gizmo_view::pick_all_at_world(
+    let mut hits = ph2d_app_vec::vec_gizmo_view::pick_all_at_world(
         w.sim,
         w.vec_scene,
         vec_live_drawn,

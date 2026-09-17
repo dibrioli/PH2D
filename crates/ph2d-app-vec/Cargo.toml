@@ -42,6 +42,14 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }
+ph2d-vec-envelope = { path = "../ph2d-vec-envelope" }
+# ⚠️ **Era `dev-` e deixou de o ser na integração de 2026-09-17**, quando o `vec_gizmo_view` veio
+# da shell: ele converte o raio de acerto em píxeis de ECRÃ, logo o produto lê a `WindowSize`.
+ph2d-host = { path = "../ph2d-host" }
+# O `vec_gizmo_view` roda a caixa do gizmo pela pose (`sincosf`), como a shell fazia.
+libm = { version = "=0.2.16", default-features = false }
+# O `envelope_live` lê e escreve o `VecPath` autorado nos bytes opacos do `VecEnvelopeChild`.
+postcard = { version = "1", features = ["alloc"] }
 ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # ⚠️ **MAIS DUAS que só a crate revelou** (HOWTO §1.3) — a Fase A achou quatro, e o corte da 2.ª
@@ -122,9 +130,6 @@ ph2d-vec-text = { path = "../ph2d-vec-text" }
 [dev-dependencies]
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
-# ⚠️ Só os GATES a usam (o `widget_icon_tests` encena um redimensionamento de janela) — logo é
-# `dev-`, e não uma dependência do produto.
-ph2d-host = { path = "../ph2d-host" }
 # ⚠️ Só a sonda do anel da Remoção de fundo sobre a arte dobrada a usa (`smoke_bone_paint_pincel_tests`):
 # a cena presa ao esqueleto mora AQUI, e a porta do ponteiro e a do anel moram naquela folha.
 ph2d-sprite-screen = { path = "../ph2d-sprite-screen" }

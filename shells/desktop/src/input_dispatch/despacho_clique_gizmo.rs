@@ -265,14 +265,14 @@ impl crate::App {
                 let on_object =
                     ph2d_render::pick_sprite_at_world(gfx.present.world_mut(), world_pos)
                         == Some(entity_bits)
-                        || crate::vec_gizmo_view::contains_world(
+                        || ph2d_app_vec::vec_gizmo_view::contains_world(
                             &gfx.sim,
                             &gfx.vec_scene,
                             &self.vec.live_drawn,
                             &self.vec.view_derived,
                             entity,
                             world_pos,
-                            crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
+                            ph2d_app_vec::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                         )
                         || ph2d_app_flip::gizmo_view::contains_world(
                             &gfx.sim,
@@ -507,14 +507,14 @@ impl crate::App {
                     &self.vec.entities,
                     &self.vec.view_derived,
                 );
-                let hits = crate::vec_gizmo_view::pick_all_at_world(
+                let hits = ph2d_app_vec::vec_gizmo_view::pick_all_at_world(
                     &gfx.sim,
                     &gfx.vec_scene,
                     &self.vec.live_drawn,
                     &vec_view,
                     &self.vec.entities,
                     world_pos,
-                    crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
+                    ph2d_app_vec::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                 );
                 hits.first().is_some_and(|&bits| {
                     gfx.sim

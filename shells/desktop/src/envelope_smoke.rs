@@ -60,7 +60,7 @@ fn frame_cage(app: &mut crate::App, f: u32, level: u32) {
                 let Some(id) = gfx.vec_scene.paths().first().map(|p| p.id) else {
                     return;
                 };
-                crate::envelope_live::create(
+                ph2d_app_vec::envelope_live::create(
                     &mut gfx.sim,
                     &mut gfx.vec_scene,
                     &self_.vec.entities,
@@ -140,7 +140,7 @@ fn frame_cage(app: &mut crate::App, f: u32, level: u32) {
                     return;
                 };
                 let ids: Vec<_> = gfx.vec_scene.paths().iter().map(|p| p.id).collect();
-                crate::envelope_live::create(
+                ph2d_app_vec::envelope_live::create(
                     &mut gfx.sim,
                     &mut gfx.vec_scene,
                     &self_.vec.entities,
@@ -239,7 +239,7 @@ fn frame_star(app: &mut crate::App, f: u32, level: u32) {
                 let Some(id) = gfx.vec_scene.paths().first().map(|p| p.id) else {
                     return;
                 };
-                crate::envelope_live::create(
+                ph2d_app_vec::envelope_live::create(
                     &mut gfx.sim,
                     &mut gfx.vec_scene,
                     &self_.vec.entities,

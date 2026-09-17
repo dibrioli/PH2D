@@ -42,7 +42,7 @@ impl crate::App {
                     let fill = self.vec.pen.style().fill;
                     let fill_on_close = (fill.a != 0).then(|| ph2d_vec_scene::Paint::solid(fill));
                     let win = gfx.surface.size();
-                    let tol = crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, win) * 1.5;
+                    let tol = ph2d_app_vec::vec_gizmo_view::stroke_hit_r(&gfx.camera, win) * 1.5;
                     // O alinhamento (bordas/centros/vértices + grade, com guias)
                     // já foi aplicado ao vivo pelo motor de snap durante o
                     // arraste. No release resta só a FUSÃO das formas abertas:
@@ -121,7 +121,7 @@ impl crate::App {
                         &self.vec.entities,
                         &self.vec.view_derived,
                     );
-                    let mut bits = crate::vec_gizmo_view::pick_in_world_rect(
+                    let mut bits = ph2d_app_vec::vec_gizmo_view::pick_in_world_rect(
                         &gfx.sim,
                         &gfx.vec_scene,
                         &self.vec.live_drawn,

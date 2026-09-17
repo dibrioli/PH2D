@@ -36,14 +36,14 @@ impl crate::App {
             &self.vec.entities,
             &self.vec.view_derived,
         );
-        let hits = crate::vec_gizmo_view::pick_all_at_world(
+        let hits = ph2d_app_vec::vec_gizmo_view::pick_all_at_world(
             &gfx.sim,
             &gfx.vec_scene,
             self.offset_live.live(),
             &view,
             &self.vec.entities,
             [world[0] as f32, world[1] as f32],
-            crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
+            ph2d_app_vec::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
         );
         // `pick_all_at_world` devolve do TOPO para o fundo (bits de entidade); a preview quer
         // caminhos, e o **primeiro** que pertence a um hospedeiro ganha — o de cima é o que o

@@ -243,7 +243,7 @@ impl crate::App {
         };
         let win = gfx.surface.size();
         let w = gfx.camera.screen_to_world((x, y), win);
-        crate::envelope_gesture::drag(
+        ph2d_app_vec::envelope_gesture::drag(
             &mut gfx.sim,
             Some(active),
             [f64::from(w[0]), f64::from(w[1])],

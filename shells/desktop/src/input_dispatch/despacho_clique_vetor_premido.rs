@@ -54,7 +54,7 @@ impl crate::App {
                     // modo **Select** (a bolinha se perdia no meio das âncoras
                     // do Node; Enio, smoke). Vive ao lado das alças do conector,
                     // mais acima neste arquivo.
-                    if crate::envelope_gesture::press(
+                    if ph2d_app_vec::envelope_gesture::press(
                         &mut gfx.sim,
                         &gfx.vec_scene,
                         &self.vec.live_drawn,

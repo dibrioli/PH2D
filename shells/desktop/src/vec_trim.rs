@@ -190,7 +190,7 @@ impl crate::App {
     /// curva usam, para o Trim não pegar a uma distância diferente das vizinhas.
     pub(crate) fn trim_tolerance(&self) -> Option<f64> {
         let gfx = self.gfx.as_ref()?;
-        Some(crate::vec_gizmo_view::stroke_hit_r(
+        Some(ph2d_app_vec::vec_gizmo_view::stroke_hit_r(
             &gfx.camera,
             gfx.surface.size(),
         ))

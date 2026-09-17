@@ -5219,6 +5219,7 @@ version = "0.0.0"
 name = "ph2d-app-vec"
 version = "0.0.0"
 dependencies = [
+ "libm",
  "ph2d-anim",
  "ph2d-app-host",
  "ph2d-asset",
@@ -5259,6 +5260,7 @@ dependencies = [
  "ph2d-vec-connect",
  "ph2d-vec-edit",
  "ph2d-vec-entities",
+ "ph2d-vec-envelope",
  "ph2d-vec-fill",
  "ph2d-vec-pattern",
  "ph2d-vec-render",
@@ -5267,6 +5269,7 @@ dependencies = [
  "ph2d-vec-text",
  "ph2d-vector",
  "ph2d-vector-font",
+ "postcard",
  "wgpu",
 ]
 

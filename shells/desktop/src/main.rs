@@ -168,10 +168,12 @@ mod dock_resize;
 mod draw_bands;
 /// `PH2D_EMISSIVE_SMOKE` — a sprite como fonte de luz (plano `docs/Sprite_projeto/18` W8).
 mod emissive_smoke;
-mod envelope_gesture;
-mod envelope_live;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.
 mod envelope_smoke;
+/// ⚠️ O gate da COSTURA entre o `undo` da shell e o overlay do envelope — ele ficou aqui quando o
+/// cacho do envelope saiu para a `ph2d-app-vec`, porque o que ele exercita é o `ProjectState`.
+#[cfg(test)]
+mod envelope_undo_seam_tests;
 mod expr_blend_smoke;
 mod extrap_smoke;
 mod falloff_smoke;
@@ -585,7 +587,6 @@ mod vec_frame_edit;
 pub(crate) use ph2d_app_vec::frame_labels as vec_frame_labels;
 mod vec_frame_resize;
 pub(crate) use ph2d_app_vec::frame_spans as vec_frame_spans;
-mod vec_gizmo_view;
 pub(crate) use ph2d_vec_text::glyph as vec_glyph;
 // ⚠️ O alias `vec_glyph_build` SAIU em 2026-09-12: o `motion_text_gen` era o último
 // consumidor dele na shell e mudou-se para `ph2d-app-motion`, onde escreve

@@ -18,7 +18,7 @@ use super::*;
 /// (linha, arco, pen não-fechado) não tem interior, então sem isso ela nunca seria
 /// pega — e o gizmo de Select nunca a agarraria (Enio 2026-07-09).
 #[must_use]
-pub(crate) fn contains_world(
+pub fn contains_world(
     sim: &SimWorld,
     scene: &VecScene,
     live: &LiveGeometry,
@@ -253,7 +253,7 @@ fn hits_source(
 /// que o desenha por cima**. O remendo (`demote_hoisted_frames`) foi REMOVIDO — não há segunda
 /// resposta a manter em dia.
 #[must_use]
-pub(crate) fn pick_all_at_world(
+pub fn pick_all_at_world(
     sim: &SimWorld,
     scene: &VecScene,
     live: &LiveGeometry,
@@ -364,7 +364,7 @@ fn world_bbox(
 
 /// Toda forma vetorial cuja bbox de mundo intersecta o retângulo — o marquee.
 #[must_use]
-pub(crate) fn pick_in_world_rect(
+pub fn pick_in_world_rect(
     sim: &SimWorld,
     scene: &VecScene,
     live: &LiveGeometry,

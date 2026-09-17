@@ -117,7 +117,7 @@ fn accuracy(size: [f64; 2]) -> f64 {
 ///
 /// Devolve os bits do container criado (para a seleção/gizmo), ou `None` se nenhuma forma resolveu
 /// (ids sumidos) ou o domínio-união é degenerado.
-pub(crate) fn create(
+pub fn create(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -221,7 +221,7 @@ pub(crate) fn create(
 /// `flip_entities` já faz. **A pose NÃO é tocada:** o recook escreve só GEOMETRIA (`scene`), e é o
 /// `Transform` do container (via `vec_transform::build`) que a leva ao mundo. É essa pose que o gizmo
 /// move no Select (Fatia 2).
-pub(crate) fn recook(sim: &mut SimWorld, scene: &mut VecScene) {
+pub fn recook(sim: &mut SimWorld, scene: &mut VecScene) {
     let envs: Vec<VecEnvelope> = {
         let mut q = sim.world_mut().query::<&VecEnvelope>();
         q.iter(sim.world()).cloned().collect()
@@ -297,7 +297,7 @@ fn cook_children(
 /// escala. ⚠️ A escala é **não-uniforme**, então a barriga deixa de ser exatamente perpendicular ao
 /// lado — e isso é o que se quer: o preset acompanha a proporção da arte, em vez de ficar circular
 /// numa forma achatada.
-pub(crate) fn apply_preset(
+pub fn apply_preset(
     sim: &mut SimWorld,
     bits: u64,
     warp: ph2d_ecs::EnvelopeWarp,
@@ -354,7 +354,7 @@ const MAX_DEPTH: usize = 64;
 /// ([`crate::vec_selection`], que decide selecionar-só-o-container) e o [`dissolve`] a fazem por
 /// AQUI. Duas cópias divergiriam — e a que esquecesse de aninhar deixaria um envelope inalcançável.
 #[must_use]
-pub(crate) fn container_of(sim: &SimWorld, bits: u64) -> Option<u64> {
+pub fn container_of(sim: &SimWorld, bits: u64) -> Option<u64> {
     let w = sim.world();
     let mut cur = Entity::from_bits(bits);
     for _ in 0..MAX_DEPTH {
@@ -369,7 +369,7 @@ pub(crate) fn container_of(sim: &SimWorld, bits: u64) -> Option<u64> {
 /// O container que **todos** os bits compartilham, ou `None` — se a lista está vazia, se algum bit
 /// não vive sob um envelope, ou se há dois envelopes diferentes (a seleção não é "um envelope").
 #[must_use]
-pub(crate) fn sole_container(sim: &SimWorld, selected: &[u64]) -> Option<u64> {
+pub fn sole_container(sim: &SimWorld, selected: &[u64]) -> Option<u64> {
     let mut found: Option<u64> = None;
     for &b in selected {
         let c = container_of(sim, b)?;
@@ -384,7 +384,7 @@ pub(crate) fn sole_container(sim: &SimWorld, selected: &[u64]) -> Option<u64> {
 
 /// O que sobra no path de cada filho quando a gaiola se dissolve ([`dissolve`]).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) enum Keep {
+pub enum Keep {
     /// **Expand:** a geometria DEFORMADA (a que está na tela) vira a forma definitiva. A deformação
     /// deixa de ser uma relação viva e passa a ser o desenho.
     Deformed,
@@ -404,7 +404,7 @@ pub(crate) enum Keep {
 ///
 /// A seleção passa às formas libertadas — o artista fica com o material na mão e a seleção não
 /// aponta para um container morto. `true` se algum envelope foi dissolvido.
-pub(crate) fn dissolve(
+pub fn dissolve(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,

@@ -123,7 +123,7 @@ fn the_drawing_pass_still_projects_the_z_order_before_the_consumers() {
     let reorder = at(&quadro, "vec_scene.reorder_to(", "o quadro emendado");
     let consumidor = at(
         &quadro,
-        "crate::envelope_live::recook(",
+        "ph2d_app_vec::envelope_live::recook(",
         "o quadro emendado",
     );
     assert!(

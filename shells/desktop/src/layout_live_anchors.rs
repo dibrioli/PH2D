@@ -22,7 +22,7 @@
 //!
 //! ⚠️ **Ela é exacta enquanto o mapa local→mundo for alinhado aos eixos, e aproximada sob
 //! ROTAÇÃO** — a caixa de mundo de um retângulo rodado é maior que ele. É a mesma aproximação
-//! declarada que a caixa do gizmo carrega ([`crate::vec_gizmo_view::fold_layout_pose`]), e pela
+//! declarada que a caixa do gizmo carrega ([`ph2d_app_vec::vec_gizmo_view::fold_layout_pose`]), e pela
 //! mesma razão: o que se compara são caixas alinhadas aos eixos, e um retângulo rodado não é uma.
 //!
 //! # O neutro é EXACTO, não *"quase zero"*

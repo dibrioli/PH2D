@@ -40,7 +40,7 @@ fn cage_of(sim: &SimWorld, bits: u64) -> Option<([[f64; 2]; 4], CageEdges, Envel
 /// (nada a desenhar aceso). É o que o painel pergunta para acender o chip certo, pela MESMA leitura
 /// que o [`drag`] usa para escolher o guard.
 #[must_use]
-pub(crate) fn kind_of(sim: &SimWorld, bits: u64) -> EnvelopeKind {
+pub fn kind_of(sim: &SimWorld, bits: u64) -> EnvelopeKind {
     cage_of(sim, bits).map_or(EnvelopeKind::Perspective, |(_, _, k)| k)
 }
 
@@ -51,7 +51,7 @@ pub(crate) fn kind_of(sim: &SimWorld, bits: u64) -> EnvelopeKind {
 /// desenham — o artista edita a GAIOLA. Cobre os TRÊS gestos (Perspective/Mesh/Pins), ao contrário
 /// do [`view`], que devolve `None` no gesto Pins.
 #[must_use]
-pub(crate) fn is_envelope(sim: &SimWorld, bits: u64) -> bool {
+pub fn is_envelope(sim: &SimWorld, bits: u64) -> bool {
     cage_of(sim, bits).is_some()
 }
 
@@ -62,7 +62,7 @@ pub(crate) fn is_envelope(sim: &SimWorld, bits: u64) -> bool {
 /// que re-carimbar quando só o Bend mudou. **A mesma leitura para os dois** — se o painel dissesse
 /// "Arc ativo" e o dispatch achasse outro, arrastar o slider trocaria o preset debaixo do dedo.
 #[must_use]
-pub(crate) fn warp_of(sim: &SimWorld, bits: u64) -> Option<(Option<ph2d_ecs::EnvelopeWarp>, f64)> {
+pub fn warp_of(sim: &SimWorld, bits: u64) -> Option<(Option<ph2d_ecs::EnvelopeWarp>, f64)> {
     sim.world()
         .get::<VecEnvelope>(Entity::from_bits(bits))
         .map(|env| (env.warp, env.bend))
@@ -118,7 +118,7 @@ fn edges_to_world(local: CageEdges, xf: &Xform) -> CageEdges {
 // sete são intrínsecos ao gesto, e o `live` viaja com o `scene` porque a pergunta do hit-test é
 // *"o que está na tela aqui?"* — apalpar a fonte pegaria a forma onde ela não está.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn press(
+pub fn press(
     sim: &mut SimWorld,
     scene: &VecScene,
     live: &ph2d_vec_render::LiveGeometry,
@@ -160,7 +160,7 @@ pub(crate) fn press(
     // Clique fora da arte continua a cair no pen — desselecionar segue funcionando.
     let on_art = hits_child_art(sim, scene, live, view_state, bits, world_pt, px_to_world);
     if on_art {
-        crate::vec_overlay_diag::refused(
+        crate::overlay_diag::refused(
             "ancora de filho",
             "a geometria e' COZIDA (o recook a reescreve todo frame) -- use Expand",
         );
@@ -255,7 +255,7 @@ fn press_pin(
 /// antes do `move_handle`, então mover uma alça sob pose girada/escalada segue o dedo. Convexidade e
 /// orientação são invariantes a afim de determinante positivo, logo checá-las em local basta.
 #[must_use]
-pub(crate) fn drag(sim: &mut SimWorld, active: Option<(u64, usize)>, world_pt: [f64; 2]) -> bool {
+pub fn drag(sim: &mut SimWorld, active: Option<(u64, usize)>, world_pt: [f64; 2]) -> bool {
     let Some((bits, handle)) = active else {
         return false;
     };
@@ -275,7 +275,7 @@ pub(crate) fn drag(sim: &mut SimWorld, active: Option<(u64, usize)>, world_pt: [
     let mesh = kind == EnvelopeKind::Mesh;
     let moved = ph2d_vec_envelope::move_handle(corners, edges, mesh, handle, local_pt);
     if moved.is_none() {
-        crate::vec_overlay_diag::refused(
+        crate::overlay_diag::refused(
             "alca da gaiola",
             &format!("mover a alca {handle} para {local_pt:?} quebraria o guard do gesto"),
         );
@@ -298,7 +298,7 @@ pub(crate) fn drag(sim: &mut SimWorld, active: Option<(u64, usize)>, world_pt: [
 /// `dragging` — a bolinha cheia. Os controles de lado só viajam no gesto Mesh, pela MESMA
 /// [`offered_edges`] que o hit-test consulta: uma alça pintada é sempre uma alça viva.
 #[must_use]
-pub(crate) fn view(
+pub fn view(
     sim: &SimWorld,
     selected: Option<u64>,
     active: Option<(u64, usize)>,
@@ -346,7 +346,7 @@ fn drag_pin(
     if ph2d_vec_envelope::pins_fold_at(&next, &samples) {
         // O pino PARA na fronteira. É por construção — e é exatamente o que o artista lê como
         // "travou", então tem de ser dizível.
-        crate::vec_overlay_diag::refused(
+        crate::overlay_diag::refused(
             "pino",
             &format!("mover o pino {index} para {local_pt:?} dobraria a arte"),
         );
@@ -362,7 +362,7 @@ fn drag_pin(
 /// É a única porta de remoção da Fatia E, e é assumido: apagar UM pino exige um gesto próprio
 /// (Alt+clique) que compete com o "clicar no vazio prega", e essa disputa é decisão de UX, não
 /// encanamento. Sem *nenhuma* porta, porém, um pino mal pregado seria permanente.
-pub(crate) fn clear_pins(sim: &mut SimWorld, bits: u64) -> bool {
+pub fn clear_pins(sim: &mut SimWorld, bits: u64) -> bool {
     let Some(mut env) = sim
         .world_mut()
         .get_mut::<VecEnvelope>(Entity::from_bits(bits))
@@ -378,7 +378,7 @@ pub(crate) fn clear_pins(sim: &mut SimWorld, bits: u64) -> bool {
 
 /// Os pinos do container `bits` em MUNDO, para o desenho — `[repouso, movido]` por pino.
 #[must_use]
-pub(crate) fn pins_world(sim: &SimWorld, bits: u64) -> Vec<[[f64; 2]; 2]> {
+pub fn pins_world(sim: &SimWorld, bits: u64) -> Vec<[[f64; 2]; 2]> {
     let (Some(env), Some(xf)) = (
         sim.world().get::<VecEnvelope>(Entity::from_bits(bits)),
         container_world_xform(sim, bits),
@@ -397,7 +397,7 @@ pub(crate) fn pins_world(sim: &SimWorld, bits: u64) -> Vec<[[f64; 2]; 2]> {
 /// retos por invariante, e deixar guardados os controles que o artista dobrou faria a troca de volta
 /// para Mesh ressuscitar uma gaiola que o mapa nunca aplicou. Ir para **Mesh** não mexe em nada — os
 /// controles guardados já descrevem os lados atuais (é para isso que o invariante existe).
-pub(crate) fn set_kind(sim: &mut SimWorld, bits: u64, kind: EnvelopeKind) -> bool {
+pub fn set_kind(sim: &mut SimWorld, bits: u64, kind: EnvelopeKind) -> bool {
     let Some(mut env) = sim
         .world_mut()
         .get_mut::<VecEnvelope>(Entity::from_bits(bits))

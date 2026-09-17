@@ -124,7 +124,7 @@ impl crate::App {
         // pela gaiola comum — re-cozida aqui, todo frame. Sem xforms nem mapa: a fonte é LOCAL do
         // container e é o `Transform` do container (via `vec_transform::build`) que leva os filhos
         // ao mundo; o recook varre os containers por QUERY (eles não têm path).
-        crate::envelope_live::recook(sim, vec_scene);
+        ph2d_app_vec::envelope_live::recook(sim, vec_scene);
         // ⭐⭐⭐ **O ESQUELETO** (estudo 42 item 5): a forma presa aos ossos é re-cozida da fonte
         // autorada e da pose de AGORA. Ao lado do envelope de propósito — os dois deformam a
         // partir de uma fonte guardada em bytes — e DEPOIS dele, porque a pele fala de formas

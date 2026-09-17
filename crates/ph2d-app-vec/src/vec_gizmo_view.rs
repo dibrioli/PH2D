@@ -54,7 +54,7 @@ const OPEN_PATH_HIT_K: f64 = 1.75;
 
 /// `STROKE_HIT_PX` convertido a world-units no zoom atual.
 #[must_use]
-pub(crate) fn stroke_hit_r(camera: &Camera2d, window_size: WindowSize) -> f64 {
+pub fn stroke_hit_r(camera: &Camera2d, window_size: WindowSize) -> f64 {
     let w0 = camera.screen_to_world((0.0, 0.0), window_size);
     let w1 = camera.screen_to_world((1.0, 0.0), window_size);
     let px = ((f64::from(w1[0] - w0[0])).powi(2) + (f64::from(w1[1] - w0[1])).powi(2)).sqrt();
@@ -72,7 +72,7 @@ pub(crate) fn stroke_hit_r_from(px_to_world: f64) -> f64 {
 /// na linguagem que o gizmo de sprite fala. `None` se a entidade não é um path, ou
 /// se o path está vazio.
 #[must_use]
-pub(crate) fn anchor_half(
+pub fn anchor_half(
     sim: &SimWorld,
     scene: &VecScene,
     entity: Entity,
@@ -97,7 +97,7 @@ pub(crate) fn anchor_half(
 /// um path não é extraído para lá — ele não tem `RenderInstance`.
 #[must_use]
 #[allow(clippy::too_many_arguments)] // as mesmas entradas que a caixa do gizmo pede
-pub(crate) fn view(
+pub fn view(
     sim: &SimWorld,
     scene: &VecScene,
     view_state: &VecViewState,
@@ -167,7 +167,7 @@ fn fold_layout_pose(
 /// vetorial ([`view`]) e o container do envelope ([`container_view`]) chamam esta função, então as
 /// duas caixas concordam por construção (quad center = pivot + R·(anchor ⊙ scale)).
 #[must_use]
-pub(crate) fn gizmo_view_from(
+pub fn gizmo_view_from(
     anchor: [f32; 2],
     half_intrinsic: [f32; 2],
     wt: ph2d_ecs::Transform,
@@ -213,7 +213,7 @@ pub(crate) fn gizmo_view_from(
 /// filho no gizmo), então o drag escreve só o `Transform` do container e os filhos o seguem por
 /// parentesco — sem cisalhar. `None` se a entidade não é um envelope ou os filhos sumiram.
 #[must_use]
-pub(crate) fn container_view(
+pub fn container_view(
     sim: &SimWorld,
     scene: &VecScene,
     entity: Entity,
@@ -281,7 +281,7 @@ fn scene_with_square() -> (SimWorld, VecScene, VecEntityMap, Entity) {
 /// por assunto: aqui *o que o gizmo MOSTRA*, ali *o que o ponteiro ACHA*.
 #[path = "vec_gizmo_pick.rs"]
 mod pick;
-pub(crate) use pick::{contains_world, pick_all_at_world, pick_in_world_rect};
+pub use pick::{contains_world, pick_all_at_world, pick_in_world_rect};
 
 #[cfg(test)]
 #[path = "vec_gizmo_view_tests.rs"]

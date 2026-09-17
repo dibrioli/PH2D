@@ -76,7 +76,7 @@ pub(crate) fn has_derived_verts(
     // ENVELOPE: o componente mora no CONTAINER, não no filho — perguntar só à própria
     // entidade devolveria `false` para o caso reportado. Sobe a cadeia pela porta única
     // que o `envelope_live` já é dono (`container_of`), em vez de reandar a árvore aqui.
-    crate::envelope_live::container_of(sim, bits).is_some_and(|c| c != bits)
+    ph2d_app_vec::envelope_live::container_of(sim, bits).is_some_and(|c| c != bits)
 }
 
 // NOTA: `view` (as alças de raio a desenhar) foi REMOVIDO junto com a alça de raio do Node — o

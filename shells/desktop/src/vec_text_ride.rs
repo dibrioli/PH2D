@@ -10,7 +10,7 @@
 //!
 //! O caminho-guia é um `VecPath` normal — geometria LOCAL + pose no `Transform` (ADR-0111).
 //! Para o texto o cavalgar, o caminho é lido **cozido e assado em MUNDO** (o mesmo passo 1 do
-//! [`crate::envelope_live`]), e o texto que sai daí já é geometria de mundo.
+//! [`ph2d_app_vec::envelope_live`]), e o texto que sai daí já é geometria de mundo.
 //!
 //! Logo o `Transform` do texto tem de ser a **identidade**: uma pose por cima aplicaria a
 //! transformação duas vezes. Isso não é efeito colateral a tolerar — é o desenho, e o

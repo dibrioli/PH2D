@@ -24,7 +24,7 @@ impl crate::App {
             .iter()
             .filter_map(|id| self.vec.entities.get(id).copied())
             .collect();
-        let env_container = crate::envelope_live::sole_container(sim, &sel_bits);
+        let env_container = ph2d_app_vec::envelope_live::sole_container(sim, &sel_bits);
         ph2d_panel_vector::set_current_has_envelope(env_container.is_some());
         Some(env_container)
     }

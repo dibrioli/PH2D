@@ -276,7 +276,7 @@ fn the_border_the_gizmo_pinned_does_not_walk_across_drags() {
     let mut lefts = Vec::new();
     for _ in 0..3 {
         let (anchor, half) =
-            crate::vec_gizmo_view::anchor_half(&sim, &scene, entity_of(&sim, &map, id))
+            ph2d_app_vec::vec_gizmo_view::anchor_half(&sim, &scene, entity_of(&sim, &map, id))
                 .expect("a caixa");
         let snap = snapshot_of(&sim, &map, id);
         // O pivô que o produto captura no pen-down.
@@ -318,7 +318,7 @@ fn the_pinned_point_survives_a_rotated_frame() {
     if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(e) {
         t.rotation = 0.7;
     }
-    let (anchor, half) = crate::vec_gizmo_view::anchor_half(&sim, &scene, e).expect("a caixa");
+    let (anchor, half) = ph2d_app_vec::vec_gizmo_view::anchor_half(&sim, &scene, e).expect("a caixa");
     let snap = snapshot_of(&sim, &map, id);
     let kind = ph2d_editor_core::GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 };
     let pivot = ph2d_editor_core::anchor_pivot_world(kind, anchor, half, snap, false);

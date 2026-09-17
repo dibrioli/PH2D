@@ -46,6 +46,16 @@ const FORA: &[Isento] = &[
         "o desenho de DIAGNÓSTICO sobre o canvas (`⚠ NÃO-FINITO`), que só existe com a env ligada \
          — a instrumentação de quem caça uma alça disparada",
     ),
+    // ⚠️ **Esta isenção VEIO DA SHELL na integração de 2026-09-17**, com o ficheiro: ela vivia no
+    // `FORA` do censo de `shells/desktop` e o `git mv` deixou-a lá **morta** (o censo de
+    // obsolescência de lá acusou-a na mesma corrida em que este acusou os cinco literais).
+    // *Uma isenção é uma propriedade do CÓDIGO, não do sítio onde o código está, logo ela viaja.*
+    (
+        "envelope_gesture.rs",
+        "os cinco argumentos de `overlay_diag::refused` — o MESMO diagnóstico da linha acima, visto \
+         do lado de quem o chama: ele só existe com a env ligada, e quem o lê caça uma alça que \
+         recusou mexer-se",
+    ),
 ];
 
 /// Um literal isento, com o mecanismo — todos NOMES de objecto.

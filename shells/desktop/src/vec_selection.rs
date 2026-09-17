@@ -104,7 +104,7 @@ pub(crate) fn sync_selection(
         // o gizmo os moveria uma vez pelo próprio `Transform` e outra pelo do pai). O pen fica com
         // os filhos (a gaiola do Node os alcança pelo container no gizmo). A pergunta "de quem é
         // este envelope?" é do `envelope_live` — porta única, partilhada com o `dissolve`.
-        if let Some(container) = crate::envelope_live::sole_container(sim, &bits) {
+        if let Some(container) = ph2d_app_vec::envelope_live::sole_container(sim, &bits) {
             gizmo.replace_selection(Some(container));
             state.bits = vec![container];
             state.paths = pen_now;
@@ -401,7 +401,7 @@ mod tests {
         let (mut sim, mut scene, mut map) = setup();
         let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 2.0]));
         sync(&mut sim, &mut scene, &mut map);
-        let container = crate::envelope_live::create(&mut sim, &mut scene, &map, &[a]).unwrap();
+        let container = ph2d_app_vec::envelope_live::create(&mut sim, &mut scene, &map, &[a]).unwrap();
 
         let mut gizmo = GizmoStateGroup::default();
         let mut pen = ph2d_vec_edit::PenTool::default();
@@ -446,7 +446,7 @@ mod tests {
         assert_eq!(gizmo.selection, Some(a_bits), "o gizmo pousou na forma");
 
         // 2. O artista clica **Envelope**: re-parenteia SEM tocar o pen.
-        let container = crate::envelope_live::create(&mut sim, &mut scene, &map, &[a]).unwrap();
+        let container = ph2d_app_vec::envelope_live::create(&mut sim, &mut scene, &map, &[a]).unwrap();
         // 3. O fix: o create invalida a memória do sync (o render_loop faz o mesmo).
         state.invalidate();
 
@@ -458,7 +458,7 @@ mod tests {
             "o gizmo subiu para o container — a gaiola tem quem desenhar"
         );
         assert!(
-            crate::envelope_gesture::view(&sim, gizmo.selection, None).is_some(),
+            ph2d_app_vec::envelope_gesture::view(&sim, gizmo.selection, None).is_some(),
             "e a `view` devolve a gaiola"
         );
     }

@@ -22,7 +22,7 @@ impl crate::App {
         // Qual chip de gesto acende. O painel pergunta ao MESMO container que o
         // dispatch vai escrever, senao a tela mostraria um gesto e o clique mudaria outro.
         ph2d_panel_vector::set_current_envelope_mode(env_container.map_or(0, |b| {
-            match crate::envelope_gesture::kind_of(sim, b) {
+            match ph2d_app_vec::envelope_gesture::kind_of(sim, b) {
                 ph2d_ecs::EnvelopeKind::Perspective => 0,
                 ph2d_ecs::EnvelopeKind::Mesh => 1,
                 ph2d_ecs::EnvelopeKind::Pins => 2,
@@ -35,7 +35,7 @@ impl crate::App {
             .map(|w| w.label())
             .collect();
         let (active, bend) = env_container
-            .and_then(|b| crate::envelope_gesture::warp_of(sim, b))
+            .and_then(|b| ph2d_app_vec::envelope_gesture::warp_of(sim, b))
             .map_or((None, 0.0), |(w, bend)| {
                 (
                     w.and_then(|w| ph2d_ecs::EnvelopeWarp::ALL.iter().position(|c| *c == w)),

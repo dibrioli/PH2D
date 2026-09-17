@@ -187,6 +187,12 @@ impl crate::App {
                 // ⚠️ **A ÁRVORE DE TAGS entra aqui** (TOP-20 #9): uma linha com alvo por TAG pergunta
                 // quem pertence à subárvore dela; uma por nome nunca a lê.
                 let efeitos = ph2d_ecs::resolve_signal_actions(sim.world_mut(), tags, &nomes);
+                if self.signal_readers.logging() {
+                    // ⭐ **Imprime mesmo quando dá ZERO, e é esse o caso que interessa:** um
+                    // sinal que soa e não resolve efeito nenhum é o modo de falha MUDO desta
+                    // tabela (um reactor sem `StableId` não entra na consulta do `resolve`).
+                    eprintln!("[signal] {nomes:?} -> {} efeito(s)", efeitos.len());
+                }
                 if !efeitos.is_empty() {
                     let r = signal_actions::apply(
                         sim,

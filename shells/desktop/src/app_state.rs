@@ -432,6 +432,9 @@ pub(crate) struct App {
     ///
     /// ⚠️ **Runtime-only:** nunca é gravado e nunca entra no undo — um gesto a meio não é documento.
     pub(crate) hud_press: Option<ph2d_ecs::Entity>,
+    /// O último rectângulo de vista já impresso pelo `PH2D_HUD_LOG` — para a linha sair **uma vez
+    /// por mudança** em vez de sessenta vezes por segundo. Runtime-only, como o irmão acima.
+    pub(crate) hud_log: Option<String>,
     /// Input snapshot pumped by the gilrs adapter each frame.
     pub(crate) input: InputState,
     /// **O que cada acção VALE** neste tique — resolvido do `input` através do mapa AUTORADO.

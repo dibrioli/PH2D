@@ -19,6 +19,11 @@
 /// que os outros quatro poderiam ser, se a lei do latch não fosse a que é.
 #[derive(Default)]
 pub(crate) struct ComponentsSmokeLatches {
+    /// ⭐⭐⭐ **O HUD** (TOP-20 #20) — `PH2D_HUD_SMOKE=1`. ⚠️ **`u8` e não `bool`**, sozinho entre
+    /// os irmãos: esta cena tem TRÊS estados (por montar · formas montadas · componentes vestidos),
+    /// porque o `sync` do render loop só dá entidade a um `VecPath` no quadro SEGUINTE — e sem
+    /// entidade não há onde pendurar um `UiLabel`.
+    pub(crate) hud: u8,
     /// ⭐⭐⭐ O smoke do `Timer` (TOP-20 #2). `PH2D_TIMER_SMOKE=1`.
     pub(crate) timer: bool,
     /// ⭐ A cena do `SignalActions` (TOP-20 #5).

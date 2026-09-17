@@ -26,7 +26,7 @@ use ph2d_ecs::{Entity, SimWorld, UiLabel, VecShape};
 use ph2d_tags::TagTree;
 use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_render::LiveGeometry;
-use ph2d_vec_scene::{VecPathId, VecScene};
+use ph2d_vec_scene::{VecPathId, VecScene, VecXforms, bake_xform, xform_of};
 
 use crate::vec_glyph::{TextPlacement, text_to_compound_path};
 use crate::vec_text_object::{axes_of_params, layout_of_params};
@@ -48,6 +48,7 @@ pub(crate) fn cook(
     sim: &mut SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
+    xforms: &VecXforms,
     tags: &TagTree,
 ) -> LiveGeometry {
     // Fase de LEITURA: o mundo é emprestado enquanto se deriva, e larga-se antes do cozimento.
@@ -109,7 +110,25 @@ pub(crate) fn cook(
             let ctr = crate::vec_glyph::path_center(&compound);
             crate::vec_glyph::offset_path(&mut compound, [-ctr[0], -ctr[1]]);
         }
-        live.insert(p.id, vec![compound]);
+        // ⛔⛔ **O caminho vivo é o do DOCUMENTO com a geometria trocada, e não o compound cru** —
+        // e foi a FOTO que o disse: com o cru, os dois rótulos **desapareceram** da tela enquanto
+        // o irmão sem `UiLabel` continuou a desenhar. Um `VecPath` acabado de cozer nasce de um
+        // `default()`: ele não tem o `id`, a opacidade, a mistura nem a pilha de efeitos do
+        // objecto, e a entrada viva SUBSTITUI o que o documento desenha.
+        // ⇒ a porta é a mesma que o `recook_text_object` usa (`replace_cooked`), que existe
+        // exactamente para isto: *o re-cozimento produz geometria e estilo, e não conhece a
+        // identidade*.
+        let Some(mut vivo) = scene.paths().iter().find(|q| q.id == p.id).cloned() else {
+            continue;
+        };
+        vivo.replace_cooked(compound);
+        // ⛔⛔ **A `LiveGeometry` é em MUNDO, e a foto foi quem o disse:** sem esta linha o número
+        // saiu desenhado no CENTRO da cena e ao dobro do tamanho — a geometria crua, sem a pose
+        // nem a escala que o canvas conduz. Todos os produtores deste mapa assam o afim do caminho
+        // (é o que o `profile_live`, o `offset_live` e a simetria fazem), e um que não o faça
+        // desenha noutro espaço.
+        bake_xform(&mut vivo, &xform_of(xforms, p.id));
+        live.insert(p.id, vec![vivo]);
     }
     live
 }

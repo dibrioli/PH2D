@@ -96,7 +96,10 @@ XDG_CONFIG_HOME="$TMP/cfg" timeout 120 kwin_wayland --virtual --width "$LARG" --
 cat "$TMP/log" 2>/dev/null || true
 if [ -s "$SAIDA" ]; then
   echo "foto: $SAIDA"
-  grep -m3 -i 'smoke\]' "$TMP/app.log" || true
+  # ⚠️ **`-m12` e não `-m3`** (2026-09-17): com três linhas, a 1.ª cena que imprime um
+  # diagnóstico a seguir ao anúncio perde-o — e um diagnóstico que não se vê lê-se como um
+  # motor que não corre. Foi o que custou uma volta ao HUD (TOP-20 #20).
+  grep -m12 -i 'smoke\]' "$TMP/app.log" || true
 else
   echo "sem foto — log do app:" >&2
   tail -20 "$TMP/app.log" >&2 || true

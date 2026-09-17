@@ -122,6 +122,9 @@ fn add_to_counter(sim: &mut SimWorld, fx: &ph2d_ecs::SignalEffect) -> bool {
     };
     if let Some(mut rt) = ent.get_mut::<ph2d_ecs::CounterRuntime>() {
         rt.value = rt.value.saturating_add(quanto);
+        if std::env::var_os("PH2D_SIGNAL_LOG").is_some() {
+            eprintln!("[signal] contador += {quanto} -> {}", rt.value);
+        }
     } else {
         // ⚠️ O vivo NASCE do `start` da config, e não de zero — a mesma lei do rebobinar.
         ent.insert(ph2d_ecs::CounterRuntime {

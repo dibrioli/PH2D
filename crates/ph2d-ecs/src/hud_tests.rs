@@ -242,3 +242,57 @@ fn a_caixa_do_canvas_atravessa_o_ficheiro() {
     );
     assert_eq!(UiCanvas::default().fit, Fit::Keep, "o de fábrica não distorce");
 }
+
+/// ⭐ **O caminho inteiro do placar, em unidade:** um sinal chega à tabela, a tabela nomeia o
+/// contador, e o verbo soma.
+///
+/// ⛔⛔ **E a metade de baixo é a ARMADILHA que custou seis corridas de foto:** um reactor sem
+/// `Transform` e sem `ChildOf` **nunca recebe um `StableId`** (é o critério do
+/// [`crate::assign_missing_stable_ids`], escrito lá com o porquê), e o
+/// [`crate::signal_actions::resolve`] colhe os reactores com `(Entity, &SignalActions, &StableId)`
+/// ⇒ **ele não entra na consulta**. O sinal soa, o toast aparece na tela, e NADA acontece.
+///
+/// *Um placar que não conta e um placar que não existe leem-se exactamente igual.*
+#[test]
+fn o_sinal_chega_ao_contador_pelo_nome_e_so_com_identidade() {
+    use crate::{SignalAction, SignalActions, SignalTarget, SignalVerb};
+
+    fn placar(w: &mut World, com_pose: bool) -> usize {
+        let tabela = SignalActions(vec![SignalAction {
+            on: "tick".into(),
+            target: "Placar".into(),
+            verb: SignalVerb::AddToCounter,
+            arg: "1".into(),
+            target_by: SignalTarget::Named,
+        }]);
+        let e = w
+            .spawn((
+                Counter {
+                    name: "pontos".into(),
+                    start: 0,
+                },
+                CounterRuntime { value: 0 },
+                crate::Name::new("Placar"),
+                tabela,
+            ))
+            .id();
+        if com_pose {
+            w.entity_mut(e).insert(crate::Transform::default());
+        }
+        crate::assign_missing_stable_ids(w);
+        crate::signal_actions::resolve(w, &TagTree::default(), &["tick"]).len()
+    }
+
+    // ⛔ O CONTROLO NEGATIVO: sem pose, o reactor é invisível — e em silêncio.
+    assert_eq!(
+        placar(&mut mundo(), false),
+        0,
+        "sem `Transform` nem `ChildOf` não há identidade, e sem identidade não há reactor"
+    );
+    // ⭐ E com ela, o caminho inteiro fecha.
+    let mut w = mundo();
+    assert_eq!(placar(&mut w, true), 1, "⛔ o alvo resolve-se pelo NOME");
+    let efeitos = crate::signal_actions::resolve(&mut w, &TagTree::default(), &["tick"]);
+    assert_eq!(efeitos[0].verb, SignalVerb::AddToCounter);
+    assert_eq!(efeitos[0].arg, "1");
+}

@@ -28,6 +28,8 @@ impl crate::App {
         self.script_smoke();
         self.projectile_smoke();
         self.particles_smoke();
+        // ⭐⭐⭐ **O HUD** (TOP-20 #20) — DEPOIS da câmera, que ela compõe (ver o cabeçalho).
+        self.hud_smoke();
         #[cfg(feature = "panel-audio-editor")]
         self.audio_2d_smoke();
         self.game_camera_smoke();

@@ -229,6 +229,7 @@ mod hero_intents;
 /// e que nenhum menu, botão ou rótulo do app nomeava.
 mod hier_group;
 mod hud_label_live;
+mod hud_smoke;
 mod hover_highlight;
 /// `Export Image…` — a porta dos 16 exportadores (plano `docs/Sprite_projeto/18` W9).
 mod image_export;
@@ -819,6 +820,7 @@ impl App {
             #[cfg(feature = "panel-audio-editor")]
             audio_scrub_drag: false,
             hud_press: None,
+            hud_log: None,
             input: InputState::new(),
             input_actions: ph2d_input::ActionState::new(),
             pan_anchor: None,

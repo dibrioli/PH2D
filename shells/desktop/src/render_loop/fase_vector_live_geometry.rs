@@ -112,6 +112,7 @@ impl crate::App {
             sim,
             vec_scene,
             &self.vec.entities,
+            &vec_xf,
             tags,
         ));
         vec_live.extend(

@@ -162,6 +162,7 @@ fn boot() -> Option<Smoke> {
         pending_lasso: None,
         gizmo_mode: v.gizmo_mode,
         lasso_subtracts: false,
+        floor: None,
         gizmo_frame: v.gizmo_frame,
         look: v.look,
     };

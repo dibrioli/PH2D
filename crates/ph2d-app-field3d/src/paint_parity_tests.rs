@@ -110,13 +110,23 @@ pub(super) fn dois_caminhos(
     doc: &FieldDoc,
     luz: &[ph2d_field_render::PointLamp],
 ) -> Option<(Vec<u8>, Vec<u8>, usize)> {
+    dois_caminhos_com(surfaces, doc, luz, None)
+}
+
+/// O mesmo, com o CHÃO que só recebe — ver `docs/Render3d/07`.
+pub(super) fn dois_caminhos_com(
+    surfaces: &ph2d_field_render::Surfaces<'_>,
+    doc: &FieldDoc,
+    luz: &[ph2d_field_render::PointLamp],
+    chao: Option<ph2d_field_render::Ground>,
+) -> Option<(Vec<u8>, Vec<u8>, usize)> {
     let t = crate::gpu_frame::shared()?;
     let reg = ph2d_field_eval::hybrid::Registry::new();
     let cam = ph2d_field_render::Orbit::default();
     let olhar = ph2d_view_transform::Look::default();
     let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
 
-    let (g, sh) = crate::gpu_frame::march(t, doc, &reg, &cam, &mundos, W, H, true)?;
+    let (g, sh) = crate::gpu_frame::march(t, doc, &reg, &cam, &mundos, chao, W, H, true)?;
     let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
     let cpu = ph2d_field_render::shade_render(
         &g,
@@ -131,7 +141,9 @@ pub(super) fn dois_caminhos(
         olhar,
         FUNDO,
     );
-    let gpu = crate::gpu_frame::paint(t, doc, &reg, &cam, luz, surfaces, olhar, FUNDO, W, H, true)?;
+    let gpu = crate::gpu_frame::paint(
+        t, doc, &reg, &cam, luz, surfaces, olhar, FUNDO, chao, W, H, true,
+    )?;
     // ⚠️ **As duas contagens de borda têm de bater**, e são medidas por caminhos diferentes: a do
     // G-buffer vem da lista lida de volta, a do pintor vem do contador que decidiu o despacho.
     assert_eq!(
@@ -274,6 +286,7 @@ fn a_regua_da_pintura_acusa_a_lei_do_dono_apagada() {
         },
         olhar,
         FUNDO,
+        None,
         W,
         H,
         true,
@@ -292,6 +305,7 @@ fn a_regua_da_pintura_acusa_a_lei_do_dono_apagada() {
         },
         olhar,
         FUNDO,
+        None,
         W,
         H,
         true,
@@ -358,6 +372,7 @@ fn a_lampada_encostada_a_peca_concorda_nos_dois_motores() {
         &reg,
         &cam,
         &[luz[0].world],
+        None,
         W,
         H,
         true,
@@ -441,21 +456,21 @@ fn mede_o_que_o_pintor_do_dispositivo_compra() {
     };
 
     // ⚠️ **Uma corrida de aquecimento fora da conta** — a primeira compila o pipeline (`6`–`49 ms`).
-    let _ = crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, LW, LH, true);
+    let _ = crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, None, LW, LH, true);
     let _ = crate::gpu_frame::paint(
-        t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, LW, LH, true,
+        t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, None, LW, LH, true,
     );
 
     // ⭐ **A fatia que é SÓ o dispositivo mais a leitura do G-buffer** — sem ela, a diferença entre
     // os dois caminhos lê-se como um número só e não se sabe quanto dela é o barramento.
     let (m_min, m_med) = mede(Box::new(|| {
-        let (g, _) =
-            crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, LW, LH, true).expect("a marcha");
+        let (g, _) = crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, None, LW, LH, true)
+            .expect("a marcha");
         std::hint::black_box(g.hit.len());
     }));
     let (a_min, a_med) = mede(Box::new(|| {
-        let (g, sh) =
-            crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, LW, LH, true).expect("a marcha");
+        let (g, sh) = crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, None, LW, LH, true)
+            .expect("a marcha");
         let px = ph2d_field_render::shade_render(
             &g,
             &cam,
@@ -473,7 +488,7 @@ fn mede_o_que_o_pintor_do_dispositivo_compra() {
     }));
     let (b_min, b_med) = mede(Box::new(|| {
         let p = crate::gpu_frame::paint(
-            t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, LW, LH, true,
+            t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, None, LW, LH, true,
         )
         .expect("o pintor");
         std::hint::black_box(p.rgba.len());
@@ -499,3 +514,99 @@ fn mede_o_que_o_pintor_do_dispositivo_compra() {
 /// ⭐⭐⭐ **Os gates das LÂMPADAS** — ver [`lamps`].
 #[path = "paint_lamps_tests.rs"]
 mod lamps;
+
+/// ⭐⭐⭐ **O CHÃO DO DISPOSITIVO É O DA CPU** (`docs/Render3d/07`) — a sombra, a oclusão e a
+/// escurecida do fundo, nos dois motores.
+///
+/// ⚠️ **A população vem primeiro, e ela é a DIFERENÇA**: quantos bytes o chão muda contra o mesmo
+/// quadro sem chão. Sem isso, dois fundos transparentes iguais leriam `100 %` de paridade sobre um
+/// chão que nenhum dos dois desenhou.
+#[test]
+#[ignore = "precisa de GPU"]
+fn o_chao_do_dispositivo_e_o_da_cpu() {
+    if crate::gpu_frame::shared().is_none() {
+        println!("sem adaptador — saltado");
+        return;
+    }
+    let folha = |p: ph2d_field::Primitive, x: ph2d_field::Xform| ph2d_field_eval::leaf(p, x);
+    let doc = FieldDoc::new(
+        vec![
+            folha(
+                ph2d_field::Primitive::Sphere { radius: 0.25 },
+                ph2d_field::Xform::at(-0.25, 0.25, 0.0),
+            ),
+            folha(
+                ph2d_field::Primitive::Box {
+                    half: [0.16; 3],
+                    round: 0.02,
+                    chamfer: 0.0,
+                },
+                ph2d_field::Xform::at(0.3, 0.16, 0.1),
+            ),
+            combina(
+                Op::Union(ph2d_field::Blend::Sharp),
+                vec![NodeId(0), NodeId(1)],
+            ),
+        ],
+        NodeId(2),
+    )
+    .expect("a peça pousada");
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+    let cam = ph2d_field_render::Orbit::default();
+    let luz = [lampada(&cam)];
+    let chao = ph2d_field_render::lowest_point(&doc, &reg)
+        .map(|height| ph2d_field_render::Ground { height });
+    assert!(chao.is_some(), "a peça tem chão");
+    let (cpu_sem, _, _) =
+        dois_caminhos_com(&surfaces, &doc, &luz, None).expect("o dispositivo toma a peça");
+    let (cpu, gpu, bordas) =
+        dois_caminhos_com(&surfaces, &doc, &luz, chao).expect("o dispositivo toma a peça");
+
+    let mudados = cpu.iter().zip(&cpu_sem).filter(|(a, b)| a != b).count();
+    assert!(
+        mudados > 4_000,
+        "o chão só mudou {mudados} bytes — a fixtura não o mostra, e o gate não afirma nada"
+    );
+    assert!(
+        bordas > 100,
+        "só {bordas} pixels de borda — a metade da borda ficou por exercitar"
+    );
+
+    let mut hist = [0usize; 256];
+    let mut pior = (0u8, 0usize, 0usize);
+    for (i, (a, b)) in cpu.iter().zip(gpu.iter()).enumerate() {
+        let d = a.abs_diff(*b);
+        hist[d as usize] += 1;
+        if d > pior.0 {
+            pior = (d, i / 4 % W as usize, i / 4 / W as usize);
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let total = hist.iter().sum::<usize>() as f64;
+    #[allow(clippy::cast_precision_loss)]
+    let fraccao = hist[..2].iter().sum::<usize>() as f64 / total;
+    println!(
+        "chão · {mudados} bytes mudados pelo chão · ≤1 nivel em {:.3} % · pior {} em ({}, {})",
+        fraccao * 100.0,
+        pior.0,
+        pior.1,
+        pior.2
+    );
+    assert!(
+        fraccao >= 0.995,
+        "só {:.3} % dos canais estão a ≤1 nível — a lei do chão divergiu entre os motores",
+        fraccao * 100.0
+    );
+    assert!(
+        pior.0 <= 2,
+        "o pior canal diverge {} níveis em ({}, {})",
+        pior.0,
+        pior.1,
+        pior.2
+    );
+}

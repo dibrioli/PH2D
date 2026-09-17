@@ -100,6 +100,7 @@ mod escultura_posta {
                 ball_radius: bola.radius,
                 ao_rays: 0,
                 ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+                ground: None,
                 antialias: false,
                 edge_cos: ph2d_field_render::EDGE_COS,
                 step: passo,
@@ -192,7 +193,7 @@ mod escultura_posta {
         const BG: [u8; 4] = [0, 0, 0, 0];
 
         let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
-        let (g, sh) = crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, W, H, true)
+        let (g, sh) = crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, None, W, H, true)
             .expect("a marcha da escultura");
         let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
         let cpu = ph2d_field_render::shade_render(
@@ -208,10 +209,11 @@ mod escultura_posta {
             olhar,
             BG,
         );
-        let gpu =
-            crate::gpu_frame::paint(t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, W, H, true)
-                .expect("o pintor da escultura")
-                .rgba;
+        let gpu = crate::gpu_frame::paint(
+            t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, W, H, true,
+        )
+        .expect("o pintor da escultura")
+        .rgba;
 
         // ⭐ A população primeiro: sem ela duas imagens pretas leriam zero de desvio.
         let pintados = cpu.as_chunks::<4>().0.iter().filter(|p| p[3] > 0).count();
@@ -288,7 +290,7 @@ mod grade_residente {
                 lens: base.lens,
                 ..ph2d_field_render::Orbit::from_yaw_pitch(0.05 * i as f32, 0.1)
             };
-            crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, 96, 54, false)
+            crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, None, 96, 54, false)
                 .expect("a marcha da escultura");
             enviadas.push(t.lock().expect("o traçador").grades_enviadas());
         }
@@ -349,7 +351,7 @@ mod relogio_da_escultura {
         };
         // ⚠️ Uma corrida de aquecimento fora da conta: a primeira compila o pipeline e sobe a grade.
         let _ = crate::gpu_frame::paint(
-            t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, LW, LH, true,
+            t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, LW, LH, true,
         );
 
         let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
@@ -373,7 +375,7 @@ mod relogio_da_escultura {
         }));
         let (gpu_min, gpu_med) = mede(Box::new(|| {
             let p = crate::gpu_frame::paint(
-                t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, LW, LH, true,
+                t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, LW, LH, true,
             )
             .expect("o pintor da escultura");
             std::hint::black_box(p.rgba.len());

@@ -58,6 +58,12 @@ pub struct PaintSetup<'a> {
     /// A largura em MUNDO da fronteira entre dois materiais — ver o `BOUNDARY_PIXELS` do
     /// [`ph2d_field_render::shade_render`], que é quem a deriva.
     pub pixel_world: f32,
+    /// ⭐⭐⭐ **A difusa BRANCA com que o CHÃO mede a luz** (`docs/Render3d/07`) — a
+    /// [`ph2d_field_render::catcher_surface`], empacotada como as outras.
+    ///
+    /// ⚠️ Ela viaja **depois** dos materiais da peça, no índice `materiais`, e o guarda do
+    /// [`PaintSetup::materials`] não a alcança de propósito: ela não é o material de folha nenhuma.
+    pub catcher: &'a [f32],
 }
 
 /// ⭐⭐⭐ **QUANTOS ARMAZÉNS O PASSE QUE PINTA LIGA** — seis do grupo `0` e três do grupo `1`.
@@ -115,7 +121,15 @@ const PACKED: u32 = {PACKED}u;
 fn ler_mat(i: u32) -> Mat {
     var j = i;
     if (j >= pintor.modo.w) { j = 0u; }
-    let o = j * PACKED;
+    return mat_em(j * PACKED);
+}
+
+// ⭐ **O material do CHÃO** — a difusa branca que vive depois dos da peça. Ver `PaintSetup::catcher`.
+fn mat_do_chao() -> Mat {
+    return mat_em(pintor.modo.w * PACKED);
+}
+
+fn mat_em(o: u32) -> Mat {
     var m: Mat;
     m.base_color_weight    = vec4<f32>(materiais[o +  0u], materiais[o +  1u], materiais[o +  2u], materiais[o +  3u]);
     m.specular_color_metal = vec4<f32>(materiais[o +  4u], materiais[o +  5u], materiais[o +  6u], materiais[o +  7u]);
@@ -212,14 +226,76 @@ fn direccao_de_vista(d: vec3<f32>) -> vec3<f32> {
     return vec3<f32>(-dot(d, s.right), -dot(d, s.up), -dot(d, s.fwd));
 }
 
+// ⭐⭐⭐ **A LEI DO CHÃO QUE SÓ RECEBE** — `luz que chega com a peça / luz que chegaria sem ela`, em
+// luminância, sobre a difusa branca. É o `shade_render::catcher` da CPU, linha a linha.
+//
+// ⚠️ **As duas somas correm as mesmas contas na mesma ordem**, e onde nada tapa elas são o MESMO
+// número: a razão sai exactamente `1` e o pixel fica com os bytes do fundo.
+fn fator_do_chao(i: u32, q: vec3<f32>, v: vec3<f32>) -> f32 {
+    let m = mat_do_chao();
+    let n = mundo_para_vista(vec3<f32>(0.0, 1.0, 0.0));
+    let ceu = mx_indirect(m, n, v);
+    let base = i * passo_da_luz();
+    var livre = ceu;
+    var chega = ceu * luz[base];
+    let piso = PISO_LUZ * PISO_LUZ;
+    for (var l: u32 = 0u; l < s.n_lamps; l = l + 1u) {
+        let d = s.lamps[l].xyz - q;
+        let cru = dot(d, d);
+        var to_light = n;
+        if (cru > piso) { to_light = mundo_para_vista(d * (1.0 / sqrt(cru))); }
+        let rad = pintor.lamp[l].rgb / max(cru, piso);
+        livre = livre + mx_direct(m, n, v, to_light, rad);
+        chega = chega + mx_direct(m, n, v, to_light, rad * luz[base + 1u + l]);
+    }
+    let luma = vec3<f32>({LUMA_R}, {LUMA_G}, {LUMA_B});
+    let a = luma.x * chega.x + luma.y * chega.y + luma.z * chega.z;
+    let b = luma.x * livre.x + luma.y * livre.y + luma.z * livre.z;
+    if (!(b > 0.0)) { return 1.0; }
+    return clamp(a / b, 0.0, 1.0);
+}
+
+// O fundo com a sombra do chão por cima, em linear pré-multiplicado — o `shadowed_background` da CPU.
+fn fundo_sombreado(f: f32) -> vec4<f32> {
+    return vec4<f32>(pintor.fundo.rgb * f, (1.0 - f) + pintor.fundo.a * f);
+}
+
+// O factor do chão DESTE pixel — `1,0` quando ele não vê chão nenhum.
+fn fator_no_pixel(j: u32, x: u32, y: u32) -> f32 {
+    let r = ray_at_plane(raio(f32(x) + 0.5, f32(y) + 0.5));
+    let q = chao_em(r);
+    if (q.w == 0.0) { return 1.0; }
+    return fator_do_chao(j, q.xyz, direccao_de_vista(r.d));
+}
+
+// ⭐⭐ **O factor de uma BORDA** — o do próprio pixel quando ele falha a peça; senão, a média dos
+// vizinhos de cruz que a falham (esquerda, direita, cima, baixo — a ordem da CPU).
+fn fator_da_borda(i: u32, x: u32, y: u32) -> f32 {
+    if (s.chao == 0u) { return 1.0; }
+    if (centro[i].x < 0.0) { return fator_no_pixel(i, x, y); }
+    var soma = 0.0;
+    var n = 0u;
+    if (x > 0u && centro[i - 1u].x < 0.0) { soma = soma + fator_no_pixel(i - 1u, x - 1u, y); n = n + 1u; }
+    if (x + 1u < s.w && centro[i + 1u].x < 0.0) { soma = soma + fator_no_pixel(i + 1u, x + 1u, y); n = n + 1u; }
+    if (y > 0u && centro[i - s.w].x < 0.0) { soma = soma + fator_no_pixel(i - s.w, x, y - 1u); n = n + 1u; }
+    if (y + 1u < s.h && centro[i + s.w].x < 0.0) { soma = soma + fator_no_pixel(i + s.w, x, y + 1u); n = n + 1u; }
+    if (n == 0u) { return 1.0; }
+    return soma / f32(n);
+}
+
 // ⭐⭐⭐ **O INTERIOR: um pixel, um material, uma escrita.**
 @compute @workgroup_size(8, 8, 1)
 fn pinta(@builtin(global_invocation_id) g: vec3<u32>) {
     if (g.x >= s.w || g.y >= s.h) { return; }
     let i = g.y * s.w + g.x;
     let c = centro[i];
-    // ⚠️ **O fundo é COPIADO**, e não passa pela conversão — a mesma cerca da CPU.
-    if (c.x < 0.0) { saida[i] = pintor.modo.z; return; }
+    if (c.x < 0.0) {
+        // ⭐ **O CHÃO**: onde ele é tapado o fundo escurece; onde nada o tapa a razão é exactamente
+        // `1`. ⚠️ **O fundo é COPIADO** nesse caso, e não passa pela conversão — a cerca da CPU.
+        let f = fator_no_pixel(i, g.x, g.y);
+        if (f < 1.0) { saida[i] = empacota(fundo_sombreado(f)); } else { saida[i] = pintor.modo.z; }
+        return;
+    }
     let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
     // ⭐ O PONTO reconstrói-se do `t` — a mesma álgebra do `Rays::point_at`.
     let p = r.o + r.d * c.x;
@@ -244,10 +320,15 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     let v = direccao_de_vista(r.d);
     let p = r.o + r.d * c.x;
     let ceu_vis = ceu_em(x, y, i, c.yzw);
+    // ⭐⭐ **O fundo de uma sub-amostra que falha é o fundo COM o chão** — sem isto a silhueta de
+    // baixo pinta um fio do fundo limpo entre a peça e a sombra de contacto.
+    let f_chao = fator_da_borda(i, x, y);
+    var fundo = pintor.fundo;
+    if (f_chao < 1.0) { fundo = fundo_sombreado(f_chao); }
     var acc = vec4<f32>(0.0);
     for (var j = 0u; j < 4u; j = j + 1u) {
         let q = borda[slot * 5u + 1u + j];
-        var cor = pintor.fundo;
+        var cor = fundo;
         if (q.x >= 0.0) { cor = vec4<f32>(radiancia(p, q.yzw, v, i, ceu_vis), 1.0); }
         acc = acc + cor * 0.25;
     }
@@ -273,7 +354,10 @@ pub(crate) fn fonte(pintor: &PaintSetup<'_>, lei_do_dono: Option<&OwnersWgsl>) -
             &formata(ph2d_field_render::POINT_LAMP_MIN_DISTANCE),
         )
         .replace("{PACKED}", &ph2d_material::wgsl::PACKED.to_string())
-        .replace("{MAX_LAMPS}", &crate::trace::MAX_LAMPS.to_string());
+        .replace("{MAX_LAMPS}", &crate::trace::MAX_LAMPS.to_string())
+        .replace("{LUMA_R}", &formata(ph2d_field_render::GROUND_LUMA[0]))
+        .replace("{LUMA_G}", &formata(ph2d_field_render::GROUND_LUMA[1]))
+        .replace("{LUMA_B}", &formata(ph2d_field_render::GROUND_LUMA[2]));
     format!(
         "{}{material}\n{}\n{dono}\n{corpo}",
         crate::trace_wgsl::comum(),
@@ -352,11 +436,16 @@ pub(crate) fn pinta(
         contents: &bytes(pintor.env_tables),
         usage: wgpu::BufferUsages::STORAGE,
     });
-    let mats = if pintor.materials.is_empty() {
+    let mut mats = if pintor.materials.is_empty() {
         vec![0.0f32; ph2d_material::wgsl::PACKED]
     } else {
         pintor.materials.to_vec()
     };
+    #[allow(clippy::cast_possible_truncation)]
+    let n_mats = (mats.len() / ph2d_material::wgsl::PACKED) as u32;
+    // ⭐ **O material do chão vai no fim**, e o `n_mats` continua a contar só os da peça — é ele o
+    // guarda do `ler_mat`, e o chão não é uma folha.
+    mats.extend_from_slice(pintor.catcher);
     let materiais = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("materiais"),
         contents: &bytes(&mats),
@@ -386,8 +475,6 @@ pub(crate) fn pinta(
         | (u32::from(bg[1]) << 8)
         | (u32::from(bg[2]) << 16)
         | (u32::from(bg[3]) << 24);
-    #[allow(clippy::cast_possible_truncation)]
-    let n_mats = (mats.len() / ph2d_material::wgsl::PACKED) as u32;
     for v in [pintor.view, n_bordas, empacotado, n_mats] {
         u.extend_from_slice(&v.to_le_bytes());
     }

@@ -15,10 +15,11 @@
 pub(crate) const COMUM: &str = r"
 struct Setup {
     w: u32, h: u32, budget: u32, ao_rays: u32,
-    n_lamps: u32, _p0: u32, _p1: u32, _p2: u32,
+    // ⭐ `chao`: `1` quando o quadro tem CHÃO (`docs/Render3d/07`), e a altura dele é o `chao_y`.
+    n_lamps: u32, chao: u32, _p1: u32, _p2: u32,
     half_extent: f32, half_px: f32, ortho_start: f32, eye_distance: f32,
     hit_eps: f32, normal_eps: f32, step: f32, t_max: f32,
-    ball_radius: f32, ao_reach: f32, edge_cos: f32, _p3: f32,
+    ball_radius: f32, ao_reach: f32, edge_cos: f32, chao_y: f32,
     alvo: vec3<f32>, right: vec3<f32>, up: vec3<f32>, fwd: vec3<f32>,
     ball_center: vec3<f32>,
     // ⭐⭐⭐ **AS LÂMPADAS, e não uma** — `xyz` é a posição no MUNDO. Ver `MAX_LAMPS`.
@@ -52,6 +53,14 @@ fn raio(px: f32, py: f32) -> vec2<f32> {
     return vec2<f32>(u, v);
 }
 struct Raio { o: vec3<f32>, d: vec3<f32> };
+// ⭐⭐ **Onde o raio toca o CHÃO** (`xyz`), e `w = 1` quando toca — a `Ground::hit` da CPU, linha a
+// linha: só de CIMA, e o `y` é a ALTURA escrita, nunca `o.y + d.y·t`.
+fn chao_em(r: Raio) -> vec4<f32> {
+    if (s.chao == 0u || !(r.d.y < 0.0)) { return vec4<f32>(0.0); }
+    let t = (s.chao_y - r.o.y) / r.d.y;
+    if (t <= 0.0) { return vec4<f32>(0.0); }
+    return vec4<f32>(r.o.x + r.d.x * t, s.chao_y, r.o.z + r.d.z * t, 1.0);
+}
 fn ray_at_plane(uv: vec2<f32>) -> Raio {
     let on_plane = s.alvo + s.right * uv.x + s.up * uv.y;
     var r: Raio;
@@ -126,12 +135,40 @@ fn direccao_do_cone(k: u32, total: u32) -> vec3<f32> {
 
 // A saída da bola, que é o DOMÍNIO da pergunta — ver `ph2d_field_render::shadow`.
 fn cerca_da_bola(p: vec3<f32>, dir: vec3<f32>, ate: f32) -> f32 {
+    return cerca_com(p, dir, ate, 0.0);
+}
+
+// A mesma, com a bola ALARGADA por `folga` — a cerca de um raio que parte do CHÃO usa
+// `folga = distância à luz / dureza`. Ver `ph2d_field_render::shadow::cerca_com`: sem ela a penumbra
+// era cortada numa elipse dura à volta da sombra.
+fn cerca_com(p: vec3<f32>, dir: vec3<f32>, ate: f32, folga: f32) -> f32 {
+    let raio = s.ball_radius + folga;
     let oc = p - s.ball_center;
     let b = dot(oc, dir);
-    let c = dot(oc, oc) - s.ball_radius * s.ball_radius;
+    let c = dot(oc, oc) - raio * raio;
     let disc = b * b - c;
     if (disc <= 0.0) { return 0.0; }
     return clamp(-b + sqrt(disc), 0.0, ate);
+}
+
+// ⭐⭐⭐ **QUANTO DO CÉU CHEGA A UM PONTO DO CHÃO** — a `ph2d_field_render::ground::ground_sky`, com as
+// mesmas constantes (elas são LIDAS do ficheiro que as declara) e a mesma ordem de soma.
+fn ceu_do_chao(q: vec3<f32>) -> f32 {
+    var soma = 0.0;
+    var soma_w = 0.0;
+    var w = 1.0;
+    for (var k: u32 = 1u; k <= {CHAO_N}u; k = k + 1u) {
+        let h = s.ao_reach * f32(k) / {CHAO_N}.0;
+        let p = vec3<f32>(q.x, q.y + h, q.z);
+        soma_w = soma_w + w;
+        // A cerca: fora dela o termo é zero num campo de distância exacto.
+        if (length(p - s.ball_center) - s.ball_radius < {CHAO_ESPALHA} * h) {
+            let t = clamp(1.0 - field(p) / ({CHAO_ESPALHA} * h), 0.0, 1.0);
+            soma = soma + w * t;
+        }
+        w = w * {CHAO_QUEDA};
+    }
+    return clamp(1.0 - {CHAO_FORCA} * (soma / soma_w), 0.0, 1.0);
 }
 
 @compute @workgroup_size(8, 8, 1)
@@ -146,6 +183,25 @@ fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
         // ⚠️ Um pixel que não acerta recebe **luz inteira** em todos os canais — é o que a CPU
         // devolve (`vis` nasce a `1.0` e o laço salta quem não acerta).
         for (var l: u32 = 0u; l < passo_da_luz(); l = l + 1u) { luz[base + l] = 1.0; }
+        // ⭐⭐⭐ **O CHÃO QUE SÓ RECEBE**: o que este pixel mostra é o chão, e os canais passam a dizer
+        // quanto de cada fonte chega A ELE. Ver `docs/Render3d/07`.
+        let q = chao_em(r);
+        if (q.w == 0.0) { return; }
+        let up = vec3<f32>(0.0, 1.0, 0.0);
+        let erguido = q.xyz + up * (s.hit_eps * 4.0);
+        for (var l: u32 = 0u; l < s.n_lamps; l = l + 1u) {
+            let d = s.lamps[l].xyz - q.xyz;
+            let dist = length(d);
+            // A normal do chão é `+y`: `N·L > 0` é a lâmpada estar ACIMA dele.
+            if (dist <= 1e-6 || d.y <= 0.0) { continue; }
+            let dir = d / dist;
+            let ate = cerca_com(q.xyz, dir, dist, dist / 8.0);
+            // ⚠️ **Um raio que nem toca a bola alargada não marcha** — a CPU salta-o também, e um
+            // raio marchado com cerca `0` ainda avaliaria o campo uma vez.
+            if (ate <= 0.0) { continue; }
+            luz[base + 1u + l] = visivel(erguido, dir, ate, 8.0);
+        }
+        luz[base] = ceu_do_chao(q.xyz);
         return;
     }
 
@@ -237,7 +293,36 @@ fn difere(a: u32, b: u32) -> bool {
 /// ⚠️ Ele é uma função e não uma constante porque o `concat!` só junta LITERAIS. O custo é uma
 /// alocação por quadro, ao lado do `replace` do `{FIELD}` que o cache de pipelines já faz.
 pub(crate) fn molde() -> String {
-    format!("{}{MARCHA}", comum())
+    // ⚠️ **As constantes do chão são LIDAS do ficheiro que as declara** — transcritas aqui, elas
+    // divergiriam no dia em que a varredura que as ajustou fosse refeita.
+    let marcha = MARCHA
+        .replace(
+            "{CHAO_N}",
+            &ph2d_field_render::GROUND_SKY_SAMPLES.to_string(),
+        )
+        .replace(
+            "{CHAO_ESPALHA}",
+            &numero(ph2d_field_render::GROUND_SKY_SPREAD),
+        )
+        .replace(
+            "{CHAO_QUEDA}",
+            &numero(ph2d_field_render::GROUND_SKY_FALLOFF),
+        )
+        .replace(
+            "{CHAO_FORCA}",
+            &numero(ph2d_field_render::GROUND_SKY_STRENGTH),
+        );
+    format!("{}{marcha}", comum())
+}
+
+/// Um `f32` que o WGSL leia como `f32` — o irmão do `paint::formata`, e pela mesma razão.
+fn numero(v: f32) -> String {
+    let s = format!("{v:?}");
+    if s.contains('.') || s.contains('e') {
+        s
+    } else {
+        format!("{s}.0")
+    }
 }
 
 /// ⭐ **O [`COMUM`] com o tecto de lâmpadas preenchido.**

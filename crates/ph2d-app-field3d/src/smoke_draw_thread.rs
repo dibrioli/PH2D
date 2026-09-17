@@ -36,6 +36,9 @@ pub(crate) struct Pedido {
     /// ⚠️ **As luzes ACESAS**, e não a lista do módulo: esta tem também as apagadas, porque o gizmo
     /// do canvas precisa de as desenhar para se poderem voltar a acender.
     pub lights: Vec<ph2d_field_render::PointLamp>,
+    /// ⭐⭐⭐ **O CHÃO que só recebe** (`docs/Render3d/07`) — `None` fora do Render. Copiado da
+    /// âncora do módulo ([`crate::floor`]) antes de a thread nascer, como as luzes.
+    pub ground: Option<ph2d_field_render::Ground>,
     pub tapes: Arc<ph2d_field_render::TapeCache>,
     pub usa_cache: bool,
     pub refinar: bool,
@@ -84,6 +87,7 @@ pub(crate) fn traca(p: &Pedido) {
                 &surfaces,
                 p.look,
                 BACKGROUND,
+                p.ground,
                 p.tw,
                 p.th,
                 p.antialias,
@@ -118,7 +122,17 @@ pub(crate) fn traca(p: &Pedido) {
     }
     let do_gpu = if pelo_dispositivo {
         p.gpu.as_ref().and_then(|t| {
-            crate::gpu_frame::march(t, &p.doc, &p.reg, &p.cam, &mundos, p.tw, p.th, p.antialias)
+            crate::gpu_frame::march(
+                t,
+                &p.doc,
+                &p.reg,
+                &p.cam,
+                &mundos,
+                p.ground,
+                p.tw,
+                p.th,
+                p.antialias,
+            )
         })
     } else {
         None
@@ -208,9 +222,9 @@ pub(crate) fn traca(p: &Pedido) {
             // resposta.
             let mut sombras = match sombras_do_gpu {
                 Some(sh) => Some(sh),
-                None => p
-                    .antialias
-                    .then(|| ph2d_field_render::shadow_pass(&p.doc, &p.reg, &p.cam, &g, &mundos)),
+                None => p.antialias.then(|| {
+                    ph2d_field_render::shadow_pass_on(&p.doc, &p.reg, &p.cam, &g, &mundos, p.ground)
+                }),
             };
             let pinta = |sh: Option<&ph2d_field_render::Shadows>| {
                 ph2d_field_render::shade_render(

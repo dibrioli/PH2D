@@ -4,6 +4,7 @@ use super::*;
 use ph2d_field::{NodeId, Primitive, Xform};
 use ph2d_field_eval::hybrid::Registry;
 
+mod ground_gates;
 mod hull_cache_probe;
 mod shade_render_gates;
 mod shadow_gates;
@@ -6187,13 +6188,21 @@ fn a_shape_with_both_recesses_draws_whole_and_strands_no_ray() {
         ..Orbit::default()
     };
     let (w, h) = (192u32, 192u32);
+    // ⚠️ **Numa pool de UMA thread, e com o contador DELA** — ver `march::EXHAUSTED_HERE`: o global
+    // conta também o que os outros gates do binário esgotam em paralelo.
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(1)
+        .build()
+        .expect("a pool de uma thread");
     let conta = |doc: &FieldDoc| {
-        crate::march::EXHAUSTED.store(0, std::sync::atomic::Ordering::Relaxed);
-        let g = trace(doc, &Registry::new(), &cam, w, h);
-        (
-            g.hits(),
-            crate::march::EXHAUSTED.load(std::sync::atomic::Ordering::Relaxed),
-        )
+        pool.install(|| {
+            crate::march::EXHAUSTED_HERE.with(|c| c.set(0));
+            let g = trace(doc, &Registry::new(), &cam, w, h);
+            (
+                g.hits(),
+                crate::march::EXHAUSTED_HERE.with(std::cell::Cell::get),
+            )
+        })
     };
     let (vivos, largados_vivo) = conta(&peca(0.0, 0.0));
     assert_eq!(

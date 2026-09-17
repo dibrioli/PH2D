@@ -2324,6 +2324,10 @@ câmera a girar em torno do Y do mundo (`smoke_draw.rs`, `turn_world`), e o est�
 ⇒ *a régua da wave não é corrível sem uma decisão de produto que não é da linha*: **o modelador passa
 a ter um chão visível?** A pergunta vai ao dono no relatório, com o preço já medido ao lado.
 
+✅ **RESPONDIDA em 2026-09-16: um chão INVISÍVEL** — ele não aparece; aparecem a sombra e o
+escurecimento de contacto que ele recebe. A `W4` fecha, e a wave inteira está em
+[`07_o_chao_que_so_recebe.md`](07_o_chao_que_so_recebe.md).
+
 ⭐ O que **não** depende dessa decisão é a outra metade, e é ela que esta secção entrega: **a peça
 tapa-se a si própria**. Numa peça de três cilindros cruzados isso é a diferença entre ler *três
 cilindros* e ler *uma mancha*.
@@ -2444,8 +2448,9 @@ com a peça no denominador. *Uma fracção sem o denominador escrito ao lado del
 
 ### §27.8 — ⏳ O que fica aberto
 
-- ⭐⭐⭐ **O CHÃO é decisão do dono** (§27.1) — sem ele a régua da W4 não tem sujeito, e o objecto
-  continua a flutuar mesmo com a auto-sombra a funcionar.
+- ~~⭐⭐⭐ **O CHÃO é decisão do dono** (§27.1)~~ — ✅ **decidido e construído em 16/09: um chão
+  INVISÍVEL** (o *shadow catcher*), com a régua da `W4` corrida: a `0`, `1` e `10 cm` a sombra
+  afasta-se do pé e a penumbra alarga. Ver [`07_o_chao_que_so_recebe.md`](07_o_chao_que_so_recebe.md).
 - **As luzes ancoradas no ECRÃ não fazem sombra**, e é deliberado: elas giram com a câmera, e uma
   sombra que gira com o olhar não pousa nada — ensinaria o contrário do que a wave existe para dizer.
 - **A `HARDNESS = 8` não foi varrida.** Ela é a constante da lei de penumbra (um `k` maior endurece),

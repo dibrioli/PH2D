@@ -55,6 +55,8 @@ pub mod export;
 pub mod export_job;
 /// ADR-0161 W51 — a VIAGEM entre vistas: a câmera vai suavemente, com a lei de motion da casa.
 pub mod flight;
+/// `docs/Render3d/07` — o CHÃO do modo Render, ancorado quando o modo liga.
+pub(crate) mod floor;
 pub mod gizmo_paint;
 /// ADR-0161 W24 — a resolução do preview é DERIVADA do relógio: grossa ao mexer, nítida ao assentar.
 pub mod gpu_frame;

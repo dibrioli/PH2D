@@ -45,6 +45,10 @@ pub struct DeviceGbuffer {
     pub lamps: usize,
     /// ⭐ Quanto do céu chega a cada pixel — a oclusão.
     pub ambient: Vec<f32>,
+    /// ⭐ **O chão com que este quadro foi marchado** — ver [`MarchSetup::ground`]. Ele viaja no
+    /// G-buffer porque é ele que diz ao pintor da CPU (o [`DeviceGbuffer::to_cpu`]) de que altura
+    /// são os canais de fundo que vêm no [`Self::shadow`].
+    pub ground: Option<f32>,
     /// ⭐⭐⭐ **Os pixels de BORDA, re-amostrados no padrão 4-rook** — a `Gbuffer::edges` da CPU.
     ///
     /// ⚠️ Sem eles a silhueta sai serrilhada, e ligar o dispositivo ao produto seria trocar um
@@ -67,54 +71,7 @@ impl DeviceGbuffer {
     }
 }
 
-/// ⭐⭐⭐ **QUANTAS LÂMPADAS CABEM NO UNIFORME** — o tecto da FORMA, e não o do quadro.
-///
-/// # ⚠️ De que recurso ele é
-///
-/// Do **bloco de uniforme**: as posições e as radiâncias viajam em dois `array<vec4, N>`, que a
-/// `32` são `1 KiB` de um bloco com `64 KiB` de tecto. Ele é folgado de propósito — o tecto que
-/// **morde** é outro, e é o [`lamps_that_fit`].
-///
-/// ⛔⛔ **A primeira redacção escreveu `8` aqui e disse que o recurso era o RELÓGIO**, com a conta
-/// *«o passe cresce ~1 traçado por lâmpada»*. Medido a `1920×1080` (`load 4,8`, mínimo de 7):
-///
-/// | lâmpadas | 1 | 2 | 4 | 8 | 12 |
-/// |---|---:|---:|---:|---:|---:|
-/// | quadro | `4,20` | `4,28` | `4,47` | `6,94` | `7,48 ms` |
-///
-/// ⇒ `12` lâmpadas custam **`1,8×`** uma, não `12×`: a marcha de sombra só corre nos pixels que
-/// acertam **e** que vêem aquela luz, e as direcções partilham a mesma cache. *Um tecto derivado
-/// de uma estimativa em vez de uma medição erra para o lado de dentro — e foi o que este fez.*
-pub const MAX_LAMPS: usize = 32;
-
-/// ⭐⭐⭐ **QUANTAS LÂMPADAS CABEM NESTE QUADRO** — o tecto que de facto morde.
-///
-/// # ⛔⛔ O recurso é o TAMANHO DE LIGAÇÃO DE UM BUFFER, e foi a placa que o disse
-///
-/// O canal de luz guarda `1 + n_lamps` floats **por pixel** (o céu mais uma visibilidade por
-/// lâmpada). A `1920×1080` com `16` lâmpadas isso são `141 004 800 B`, e a `wgpu` recusou:
-///
-/// ```text
-/// Buffer binding 3 range 141004800 exceeds `max_*_buffer_binding_size` limit 134217728
-/// ```
-///
-/// ⇒ o tecto é `limite / (pixels · 4) − 1`, e ele **depende da resolução**: `15` lâmpadas a
-/// `1920×1080` e `144` a `640×360`. *Um tecto que muda com o tamanho da tela não é uma constante,
-/// e escrevê-lo como uma teria posto o número do quadro assente a governar o de movimento.*
-///
-/// ⚠️ **A placa é quem diz o limite** ([`Tracer::binding_limit`]) — a `wgpu` garante `128 MiB` como
-/// mínimo, e uma placa que ofereça mais fica com mais lâmpadas sem ninguém mexer num número.
-#[must_use]
-pub fn lamps_that_fit(binding_limit: u64, width: u32, height: u32) -> usize {
-    let pixels = u64::from(width) * u64::from(height);
-    if pixels == 0 {
-        return MAX_LAMPS;
-    }
-    // ⚠️ O `saturating_sub(1)` é o slot do CÉU, que ocupa o primeiro lugar de cada pixel.
-    #[allow(clippy::cast_possible_truncation)]
-    let cabem = (binding_limit / (pixels * 4)).saturating_sub(1) as usize;
-    cabem.min(MAX_LAMPS)
-}
+pub use crate::trace_lampadas::{MAX_LAMPS, lamps_that_fit};
 
 /// Tudo o que a marcha precisa de saber e que **não** sai da fita — os mesmos números que a
 /// [`ph2d_field_render::Scene`] carrega.
@@ -149,6 +106,12 @@ pub struct MarchSetup {
     pub ao_rays: u32,
     /// O alcance da oclusão em unidades de mundo.
     pub ao_reach: f32,
+    /// ⭐⭐⭐ **O CHÃO QUE SÓ RECEBE** (`docs/Render3d/07`) — a altura dele no MUNDO, ou `None`.
+    ///
+    /// Com ele, um pixel que **falha** a peça e vê o chão guarda nos canais de luz a sombra e o céu
+    /// que chegam **ao chão**, e o pintor escurece o fundo por essa razão. ⚠️ `None` é o caminho de
+    /// sempre, ao bit: os canais de um pixel de fundo ficam todos a `1,0`.
+    pub ground: Option<f32>,
     /// O cosseno abaixo do qual duas normais vizinhas são ARESTA — o `EDGE_COS` da CPU.
     /// ⭐⭐⭐ **A bandeira da W73 — *grosso a mexer, nítido ao assentar*.**
     ///
@@ -695,6 +658,7 @@ fn marcha_com(
         #[allow(clippy::cast_possible_truncation)]
         lamps: (passo_luz - 1) as usize,
         ambient,
+        ground: setup.ground,
         edges,
     })
 }

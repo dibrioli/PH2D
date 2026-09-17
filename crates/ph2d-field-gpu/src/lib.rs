@@ -101,6 +101,7 @@ pub mod probe;
 pub mod sculpt;
 pub mod trace;
 mod trace_grupo;
+mod trace_lampadas;
 mod trace_leitura;
 mod trace_to_cpu;
 mod trace_uniforme;

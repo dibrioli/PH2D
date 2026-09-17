@@ -475,12 +475,25 @@ pub fn refine_occlusion(
         sum: vec![0.0f32; pixels],
         weight: vec![0.0f32; pixels],
     };
+    // ⭐⭐ **O CHÃO já tem o céu dele**, e não pelos cones: o passe da sombra calculou-o
+    // ([`crate::ground::ground_sky`]), e aqui ele só atravessa cada publicação. ⚠️ Os cones num chão
+    // plano desenham ANÉIS — as `48` direcções fixas viram `24` sombras fracas sobrepostas (medido,
+    // `docs/Render3d/07`).
+    let chao: Vec<(usize, f32)> = crate::ground::ground_points(cam, g, shadows.ground())
+        .iter()
+        .enumerate()
+        .filter(|(_, q)| q.is_some())
+        .map(|(i, _)| (i, shadows.ambient_at(i)))
+        .collect();
     for k in 0..OCCLUSION_PASSES {
         acc.add(&occlusion_slice(doc, reg, cam, g, k, 1, OCCLUSION_PASSES));
         // ⚠️ **A média é sobre o PESO já acumulado**, e não sobre o total nem sobre a contagem de
         // passagens — senão a imagem mudaria de nível a cada passo em vez de afinar. Ver
         // [`ConeSlice`], que é onde essa lei vive.
-        let cru = acc.average(&g.hit);
+        let mut cru = acc.average(&g.hit);
+        for &(i, v) in &chao {
+            cru[i] = v;
+        }
         // ⭐ **Suavizada no PUBLICAR, e não no acumulador** — a soma tem de continuar crua, senão
         // cada passagem borraria o que a anterior já borrou e a oclusão espalhar-se-ia.
         shadows.set_ambient(blur_occlusion(g, &cru));

@@ -65,6 +65,12 @@ impl DeviceGbuffer {
         // ⚠️ **A suavização é aplicada AQUI**, como o refinamento da CPU a aplica no publicar — ela
         // faz parte do que a oclusão entrega, e não do que ela calcula.
         sh.set_ambient(ph2d_field_render::blur_occlusion(&g, &self.ambient));
+        // ⭐ **De que chão são os canais de fundo** — sem isto o pintor da CPU leria «não há chão» e
+        // o quadro do dispositivo sairia sem a sombra que ele acabou de calcular.
+        sh.set_ground(
+            self.ground
+                .map(|height| ph2d_field_render::Ground { height }),
+        );
         (g, sh)
     }
 }

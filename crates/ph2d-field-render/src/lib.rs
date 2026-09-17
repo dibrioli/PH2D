@@ -106,6 +106,8 @@ impl Sharpness {
 
 mod camera;
 mod edges;
+/// ⭐⭐⭐ **O chão que só recebe** — a metade da `W4` que esperava o dono (`docs/Render3d/07`).
+mod ground;
 mod march;
 /// ⭐⭐⭐ **A oclusão** — a sombra do céu. Irmã do [`shadow`], com a fronteira escrita lá.
 mod occlusion;
@@ -120,6 +122,10 @@ use march::{Scene, march};
 use tiles::{SLABS, TILE, tiled_trace};
 
 pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Rays, Screen};
+pub use ground::{
+    GROUND_SKY_FALLOFF, GROUND_SKY_SAMPLES, GROUND_SKY_SPREAD, GROUND_SKY_STRENGTH, Ground,
+    LOWEST_SIDE, LUMA as GROUND_LUMA, UP as GROUND_UP, catcher_surface, lowest_point,
+};
 pub use march::{
     EXHAUSTED, FORKED, HIST, MARCH_RAYS, NORMAL_SAMPLES, SLAB_SAMPLES, SLABS_COUNTED, STEP_HIST,
     STEP_SAMPLES, Stencil,
@@ -135,7 +141,7 @@ pub use shade::{shade, shade_with};
 pub use shade_render::{
     Lamp, Lighting, POINT_LAMP_MIN_DISTANCE, PointLamp, Surfaces, boundary_world, shade_render,
 };
-pub use shadow::{HARDNESS, Shadows, shadow_pass};
+pub use shadow::{HARDNESS, Shadows, shadow_pass, shadow_pass_on};
 pub use tape_cache::{
     EVICT_NS, GET_NS, Growth, INFLATE, PAD_OF_REACH, TAPE_DROPPED, TAPE_EVICTIONS, TAPE_HITS,
     TapeCache,

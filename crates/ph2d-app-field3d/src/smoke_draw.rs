@@ -433,6 +433,8 @@ fn viewport_pass(
         // diferentes, e não com leis diferentes. O que ship até à W84 era «engrossa a mexer,
         // autoral ao parar»; medido, o autoral acima de `0,5°` de erro de normal compra
         // `≤3/255` no pixel e custa o dobro. Ver `preview::SETTLED_NORMAL_ERR_DEG`.
+        // O documento REAL, antes de o contorno engrossar — é dele que o chão se lê.
+        let real = doc;
         let doc = crate::preview::coarse_doc(doc, coarse).unwrap_or_else(|| doc.clone());
         let antialias = !coarse;
         // ⭐⭐⭐ **LIMITADO, e não ilimitado** (`docs/Render3d/05` §30). Desde que um trabalho manda
@@ -472,6 +474,9 @@ fn viewport_pass(
         // ⚠️ **O que viaja são as ACESAS** — a lista do módulo tem também as apagadas, porque o gizmo
         // do canvas precisa de as desenhar para se poderem voltar a acender.
         let lights = crate::lights::lamps_of(&smoke.lights);
+        // ⭐⭐⭐ **O CHÃO viaja com o pedido** — lido do documento REAL (nunca do contorno engrossado)
+        // e ancorado quando o Render liga. Ver [`crate::floor`].
+        let ground = crate::floor::anchored(&mut smoke.floor, shading, real, &reg);
         // ⭐⭐⭐ **O TRAÇADOR DO DISPOSITIVO atravessa a fronteira como PONTEIRO** — como a tabela
         // de materiais e a cache de fitas, e pela mesma razão: abri-lo por quadro custa mais do que
         // a CPU inteira (`130 ms` contra `13`, §35).
@@ -498,6 +503,7 @@ fn viewport_pass(
             matcap,
             materials,
             lights,
+            ground,
             tapes,
             usa_cache,
             refinar,

@@ -130,7 +130,10 @@ fn main() {
         return;
     };
     let info = adapter.get_info();
-    println!("GPU: {} ({:?}, {:?})", info.name, info.device_type, info.backend);
+    println!(
+        "GPU: {} ({:?}, {:?})",
+        info.name, info.device_type, info.backend
+    );
     let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
         label: Some("field march ceiling"),
         required_features: wgpu::Features::empty(),
@@ -154,9 +157,7 @@ fn main() {
         cache: None,
     });
 
-    println!(
-        "\n  px        · raios/px ·      GPU · a CPU faz (medido, docs/Render3d/05) · ganho"
-    );
+    println!("\n  px        · raios/px ·      GPU · a CPU faz (medido, docs/Render3d/05) · ganho");
     for &(w, h) in &[(640u32, 360u32), (1920, 1080)] {
         for &rays in &[0u32, 1, 16] {
             let n = (w as u64) * (h as u64);
@@ -223,9 +224,8 @@ fn main() {
             });
 
             let corrida = || {
-                let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: None,
-                });
+                let mut enc =
+                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
                 {
                     let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                         label: None,

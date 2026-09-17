@@ -50,6 +50,18 @@ pub static NORMAL_SAMPLES: std::sync::atomic::AtomicU64 = std::sync::atomic::Ato
 #[doc(hidden)]
 pub static EXHAUSTED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
+thread_local! {
+    /// ⭐ **O mesmo contador, por THREAD** — o que um gate lê quando corre ao lado de outros.
+    ///
+    /// ⛔ O [`EXHAUSTED`] é do PROCESSO: sob `cargo test` (um processo por binário, testes em
+    /// threads) um gate que o zera e o lê conta também os raios que os vizinhos esgotam ao mesmo
+    /// tempo (medido 2026-09-16: o `a_shape_with_both_recesses_draws_whole_and_strands_no_ray`
+    /// reprovou no pacote e passou sozinho, no dia em que os gates do chão passaram a traçar ao lado
+    /// dele; sob `nextest`, um processo por teste, passava). ⇒ o gate traça numa pool de UMA thread e
+    /// lê este, e fica certo nos dois executores.
+    pub(crate) static EXHAUSTED_HERE: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
 /// Quantos degraus o histograma da marcha distingue antes de saturar o último balde.
 pub const HIST: usize = 64;
 
@@ -391,6 +403,7 @@ pub(crate) fn march_slabs(
         // [`EXHAUSTED`]. Ele cai aqui **de propósito** (a alternativa seria inventar um acerto), e o
         // que não pode é cair sem ser contado.
         EXHAUSTED.fetch_add(cur.len() as u64, std::sync::atomic::Ordering::Relaxed);
+        EXHAUSTED_HERE.with(|c| c.set(c.get() + cur.len() as u64));
         normals_into(
             &mut eval,
             scene,

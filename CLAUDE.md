@@ -1005,6 +1005,20 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   primeira que funcionou:** `opt-level = 3` não dá diferença real, juntar mais três crates **parte um
   teste**, e tirar a `fidget` custa `21 %`. Cenas **`=30`..`=32`**
   ([handoff de 10/09](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_2026-09-10.md)).
+  ⭐⭐ **O modo Render tem CHÃO, e ele NÃO se desenha** (16/09, `W4` do render): a peça deixa de
+  flutuar e pousa num **chão invisível** que não entra na marcha — só recebe a sombra das lâmpadas e o
+  escurecimento de contacto do céu (decisão do dono, com as quatro saídas na mesa). Custa **`+0,43 ms`
+  no dispositivo** a `1080p`, contra `+86,3 ms` da CPU **pela mesma resposta**. ⛔⛔ **A oclusão do
+  chão NÃO são os cones da peça** — `48` cones num recetor **plano** desenham **ANÉIS** (`17` extremos
+  contra `1` da referência convergida) ⇒ lei própria por campo de distância, ajustada contra `2 048`
+  cones; e a cerca da penumbra do chão é **alargada** por `dist/HARDNESS`, porque a bola simples a
+  cortava numa **elipse dura**. ⚠️ A altura lê-se **uma vez**, quando o Render liga (levantar a peça
+  afasta a sombra — é isso que a régua pede), e a **caixa** da peça não serve para a pousar (num
+  cilindro inclinado ela desce `0,02` abaixo). No mesmo dia, o **arco** do perfil passou a ter a barra
+  que está escrita (`ERRO_DO_QUARTO`, pico do desvio em `t = (3−√3)/6`) e o preview deixou de trocar
+  arcos por polilinha ao engrossar.
+  [chão](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_O_CHAO_2026-09-16.md) ·
+  [arco](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_O_ARCO_2026-09-16.md)
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

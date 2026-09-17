@@ -168,6 +168,7 @@ fn acima_do_tecto_de_lampadas_o_dispositivo_recusa() {
             &surfaces,
             olhar,
             FUNDO,
+            None,
             W,
             H,
             true,
@@ -263,7 +264,7 @@ fn mede_o_que_cada_lampada_custa_no_dispositivo() {
         for _ in 0..7 {
             let t0 = std::time::Instant::now();
             let p = crate::gpu_frame::paint(
-                t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, LW, LH, true,
+                t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, None, LW, LH, true,
             )
             .expect("o pintor");
             std::hint::black_box(p.rgba.len());

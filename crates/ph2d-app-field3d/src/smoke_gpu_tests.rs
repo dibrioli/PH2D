@@ -101,7 +101,7 @@ mod gpu_coarse_law {
         };
 
         let bordas = |antialias: bool| {
-            crate::gpu_frame::march(t, &doc, &reg, &cam, &luz, 192, 108, antialias)
+            crate::gpu_frame::march(t, &doc, &reg, &cam, &luz, None, 192, 108, antialias)
                 .map(|(g, _)| g.edges.len())
         };
         let nitido = bordas(true).expect("o dispositivo tem de marchar a peça limpa");
@@ -210,6 +210,7 @@ mod gpu_gbuffer_parity {
                 ball_radius: bola.radius,
                 ao_rays: ph2d_field_render::OCCLUSION_PASSES,
                 ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+                ground: None,
                 antialias: true,
                 edge_cos: ph2d_field_render::EDGE_COS,
                 step: passo,
@@ -522,6 +523,7 @@ mod gpu_frame_clock {
                 ball_radius: bola.radius,
                 ao_rays: ph2d_field_render::OCCLUSION_PASSES,
                 ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+                ground: None,
                 antialias: true,
                 edge_cos: ph2d_field_render::EDGE_COS,
             };

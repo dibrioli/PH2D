@@ -177,6 +177,10 @@ impl View {
             // modo que sobrevivesse ao fecho ficaria **armado e invisível** — a armadilha que esta
             // casa mede desde 30/08. *O que não se vê não se lembra.*
             lasso_subtracts: _,
+            // ⭐ **A altura do chão é CACHE** (`docs/Render3d/07`): ela é lida do documento quando o
+            // Render liga, e um módulo que re-arma lê-a de novo — um chão lembrado de outra sessão
+            // do painel ficaria à altura de uma peça que entretanto pode ter mudado.
+            floor: _,
         } = s;
         Self {
             split: *split,

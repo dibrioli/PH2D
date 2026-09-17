@@ -334,6 +334,13 @@ pub struct Smoke {
     /// publicada com **duas ou mais** peças escolhidas, e o modo é reposto assim que ela deixa de
     /// ser oferecida. Ver [`crate::view::View::of`].
     pub lasso_subtracts: bool,
+    /// ⭐⭐⭐ **A altura do CHÃO do modo Render** (`docs/Render3d/07`), ou `None` enquanto ninguém a
+    /// leu — ver [`crate::floor`].
+    ///
+    /// ⚠️ **Da cena, e lida uma vez**: o [`Smoke::set_shading`] esquece-a quando o Render LIGA, e o
+    /// pedido seguinte pousa-a no ponto mais baixo da peça. **CACHE, não vista** — um módulo que
+    /// re-arma lê-a de novo.
+    pub floor: Option<f32>,
     /// ⭐ **Em que referencial os eixos do gizmo apontam** — do mundo, ou do próprio objeto.
     /// Estado de **vista**, como o verbo.
     pub gizmo_frame: crate::gizmo::Frame,
@@ -447,6 +454,10 @@ impl Smoke {
         if vp.shading != shading {
             vp.shading = shading;
             vp.requested = None;
+            // ⭐ **Ligar o Render POUSA o chão de novo** — ver [`crate::floor`].
+            if shading == crate::shading::Shading::Render {
+                self.floor = None;
+            }
         }
     }
 

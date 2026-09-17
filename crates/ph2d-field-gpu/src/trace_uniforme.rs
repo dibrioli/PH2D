@@ -26,7 +26,8 @@ pub(super) fn uniforme_do_pedido(
         setup.budget,
         setup.ao_rays,
         setup.n_lamps,
-        0,
+        // ⭐ **Há chão?** — a altura vai no `f32` do grupo de baixo. Ver `MarchSetup::ground`.
+        u32::from(setup.ground.is_some()),
         0,
         0,
     ] {
@@ -44,7 +45,7 @@ pub(super) fn uniforme_do_pedido(
         setup.ball_radius,
         setup.ao_reach,
         setup.edge_cos,
-        0.0,
+        setup.ground.unwrap_or(0.0),
     ] {
         u.extend_from_slice(&f.to_le_bytes());
     }

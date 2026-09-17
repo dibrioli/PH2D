@@ -49,13 +49,17 @@ Ambiente pré-filtrado: irradiância difusa + especular por rugosidade + a BRDF 
 - **Substitui** o `env_ambient` constante do `ph2d-light`, que é a razão de a peça de hoje flutuar.
 - **Régua:** a mesma esfera contra o mesmo ambiente, comparada com o `MaterialXView`.
 
-## W4 — Sombras que POUSAM o objecto
+## W4 — Sombras que POUSAM o objecto ✅ **FECHADA (14/09 + 16/09)**
 
 Cascatas para o sol + **endurecimento no contacto**.
 
 - ⚠️ **SSAO não é isto**, e o `01` §4 explica porquê — nós já temos SSAO e o objecto continua a
   flutuar.
 - **Régua:** um objecto a `0`, `1` e `10` cm do chão tem de dar três sombras diferentes.
+- ✅ **A peça tapa-se a si própria** em 14/09 ([`05` §27](05_o_modo_render_do_modelador.md)) e o
+  **chão INVISÍVEL** em 16/09 ([`07`](07_o_chao_que_so_recebe.md)), com a régua corrida — ela não
+  tinha sujeito até lá, porque não havia chão. ⛔ **Fica NOMEADO o que não entrou:** luz de área, cone,
+  e o chão a DEVOLVER luz (isso é a `W5`).
 
 ## W5 — ⭐⭐⭐ A luz indirecta, traçada contra o NOSSO campo
 

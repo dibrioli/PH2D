@@ -61,7 +61,7 @@
 //!   continua a 60 Hz, que é a cerca que aquele módulo inteiro protege.
 
 use crate::march::{Scene, march_shadow_to};
-use crate::{Gbuffer, Orbit, Sharpness, Stencil};
+use crate::{Gbuffer, Ground, Orbit, Sharpness, Stencil};
 use ph2d_field::FieldDoc;
 use ph2d_field_eval::hybrid::Registry;
 
@@ -80,9 +80,30 @@ pub struct Shadows {
     /// faria o pintor perguntar duas vezes a mesma coisa, e é assim que dois canais divergem.
     ambient: Vec<f32>,
     pixels: usize,
+    /// ⭐⭐⭐ **O CHÃO para o qual os pixels de FUNDO foram calculados** — ver [`crate::ground`].
+    ///
+    /// ⚠️ Com ele, um pixel que **falha** a peça e vê o chão guarda nos mesmos canais a luz que chega
+    /// **ao chão** — as lâmpadas e o céu. *O canal responde sempre «quanto desta fonte chega ao que
+    /// este pixel mostra»*, e o que um pixel de fundo mostra passa a ser o chão.
+    ///
+    /// ⚠️ **`None` é o caminho de sempre, ao bit**: os pixels de fundo guardam `1,0` e o pintor
+    /// copia os bytes do fundo. O pintor lê o chão DAQUI, e não de um argumento ao lado: a altura a
+    /// que os canais foram calculados e a altura a que se pinta são a MESMA por construção.
+    ground: Option<Ground>,
 }
 
 impl Shadows {
+    /// O chão que os pixels de fundo destes canais recebem — ver o campo.
+    #[must_use]
+    pub fn ground(&self) -> Option<Ground> {
+        self.ground
+    }
+
+    /// Declara o chão destes canais — para quem os calculou noutro sítio (o traçador de GPU).
+    pub fn set_ground(&mut self, ground: Option<Ground>) {
+        self.ground = ground;
+    }
+
     /// Quanto da lâmpada `lamp` chega ao pixel `i`. ⚠️ **Fora de alcance devolve `1,0`** — uma
     /// sombra que não foi calculada é ausência de sombra, nunca escuridão.
     #[must_use]
@@ -160,12 +181,40 @@ pub fn shadow_pass(
     g: &Gbuffer,
     lamps_world: &[[f32; 3]],
 ) -> Shadows {
+    shadow_pass_on(doc, reg, cam, g, lamps_world, None)
+}
+
+/// ⭐⭐⭐ **O mesmo passe, com o CHÃO** — os pixels de fundo que o vêem recebem a sombra que cai nele.
+///
+/// ⚠️ **As mesmas três cercas**, com a normal do chão ([`crate::GROUND_UP`]) no lugar da do pixel: uma
+/// lâmpada abaixo do chão não o ilumina, o raio pára na lâmpada e na saída da bola. E uma quarta,
+/// só do chão: **um raio que nem toca a bola não marcha** — ali a peça não pode tapar nada, e o chão
+/// é quase toda a imagem. O dispositivo faz o mesmo salto, e é isso que mantém os dois motores no
+/// mesmo número (um raio marchado com cerca `0` ainda avalia o campo uma vez).
+#[must_use]
+pub fn shadow_pass_on(
+    doc: &FieldDoc,
+    reg: &Registry,
+    cam: &Orbit,
+    g: &Gbuffer,
+    lamps_world: &[[f32; 3]],
+    ground: Option<Ground>,
+) -> Shadows {
     let pixels = g.hit.len();
+    let chao = crate::ground::ground_points(cam, g, ground);
+    // ⭐ **O céu do chão sai daqui, e não do refinamento** — ver [`crate::ground::ground_sky`]. Nos
+    // pixels de peça ele lê `1,0`, que é exactamente o que um canal vazio significa.
+    let ambient = if chao.is_empty() {
+        Vec::new()
+    } else {
+        crate::ground::ground_sky(doc, reg, cam, &chao)
+    };
     if lamps_world.is_empty() || pixels == 0 {
         return Shadows {
             per_lamp: Vec::new(),
-            ambient: Vec::new(),
+            ambient,
             pixels,
+            ground,
         };
     }
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
@@ -194,6 +243,26 @@ pub fn shadow_pass(
             let mut cercas = Vec::new();
             for i in 0..pixels {
                 if !g.hit[i] {
+                    // ⭐ **O CHÃO que este pixel de fundo vê**, se algum — ver a nota do passe.
+                    let Some(q) = chao.get(i).copied().flatten() else {
+                        continue;
+                    };
+                    let d = [luz[0] - q[0], luz[1] - q[1], luz[2] - q[2]];
+                    let dist = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+                    // A normal do chão é `+y`: `N·L > 0` é a lâmpada estar ACIMA dele.
+                    if dist <= f32::EPSILON || d[1] <= 0.0 {
+                        continue;
+                    }
+                    let dir = [d[0] / dist, d[1] / dist, d[2] / dist];
+                    // ⛔⛔ **A bola ALARGADA pela penumbra, e não a bola** — ver [`cerca_com`].
+                    let ate = cerca_com(bola.as_ref(), dist / HARDNESS, q, dir, dist);
+                    if ate <= 0.0 {
+                        continue;
+                    }
+                    quais.push(i);
+                    origens.push([q[0], q[1] + lift, q[2]]);
+                    dirs.push(dir);
+                    cercas.push(ate);
                     continue;
                 }
                 let p = g.point[i];
@@ -261,8 +330,9 @@ pub fn shadow_pass(
 
     Shadows {
         per_lamp,
-        ambient: Vec::new(),
+        ambient,
         pixels,
+        ground,
     }
 }
 
@@ -273,12 +343,38 @@ fn cerca(
     dir: [f32; 3],
     ate_a_luz: f32,
 ) -> f32 {
+    cerca_com(bola, 0.0, p, dir, ate_a_luz)
+}
+
+/// Onde o raio pode parar, com a bola ALARGADA por `folga` — a cerca de um raio que parte do CHÃO
+/// usa `folga = distância à luz / HARDNESS`.
+///
+/// ⛔⛔ **A bola simples cortava a penumbra numa elipse DURA** (medido 2026-09-16, a cruz pousada: um
+/// disco com a borda preta à volta da sombra). O estimador escurece um raio que passa a menos de
+/// `t/k` da peça — e um raio do chão viaja `t ~ 1` até lá, logo a penumbra estende-se `~0,12` para
+/// fora da bola. Um raio que só passava a raspar a ponta de um cilindro, fora da bola, não marchava
+/// e lia `1`; o vizinho que a tocava marchava e lia `0,4`.
+///
+/// ⭐ **Com a folga a cerca é EXACTA num campo de distância**: a distância à peça é pelo menos a
+/// distância à bola, logo um raio que fica a mais de `t_máx/k` dela nunca lê abaixo de `1`.
+///
+/// ⚠️ **Os pixels de PEÇA ficam com a bola simples, e não por economia**: ali ela é o que impede o
+/// estimador de ler a superfície de onde o raio saiu (a acne da esfera, ver a nota do módulo). Um
+/// ponto do chão não está sobre superfície nenhuma.
+fn cerca_com(
+    bola: Option<&ph2d_field_eval::bounds::Ball>,
+    folga: f32,
+    p: [f32; 3],
+    dir: [f32; 3],
+    ate_a_luz: f32,
+) -> f32 {
     let Some(b) = bola else {
         return ate_a_luz;
     };
+    let raio = b.radius + folga;
     let oc = [p[0] - b.center[0], p[1] - b.center[1], p[2] - b.center[2]];
     let bb = oc[0] * dir[0] + oc[1] * dir[1] + oc[2] * dir[2];
-    let c = oc[0] * oc[0] + oc[1] * oc[1] + oc[2] * oc[2] - b.radius * b.radius;
+    let c = oc[0] * oc[0] + oc[1] * oc[1] + oc[2] * oc[2] - raio * raio;
     let disc = bb * bb - c;
     if disc <= 0.0 {
         // O raio nem toca a bola: nada o pode tapar. ⚠️ `0` e não `ate_a_luz` — marchar seria

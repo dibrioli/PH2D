@@ -84,7 +84,11 @@ fn duplicar_uma_luz_da_uma_segunda_luz() {
         vec_entities: &mut vec_entities,
     };
     let copia = ph2d_app_components::instantiate::duplicate_subtree(
-        &mut sim, &registry, luz, &mut docs, [0.0, 0.0],
+        &mut sim,
+        &registry,
+        luz,
+        &mut docs,
+        [0.0, 0.0],
     )
     .expect("a cópia de uma luz");
 
@@ -102,7 +106,9 @@ fn duplicar_uma_luz_da_uma_segunda_luz() {
         "a cópia tem de levar a INTENSIDADE e a COR, não só o componente"
     );
     assert!(
-        sim.world().get::<ph2d_field_ecs::FieldPose>(copia).is_some(),
+        sim.world()
+            .get::<ph2d_field_ecs::FieldPose>(copia)
+            .is_some(),
         "sem a pose a cópia não tem onde estar, e o gizmo não a agarra"
     );
     assert!(

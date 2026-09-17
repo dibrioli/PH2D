@@ -82,6 +82,7 @@ pub fn march(
     reg: &ph2d_field_eval::hybrid::Registry,
     cam: &ph2d_field_render::Orbit,
     lamps: &[[f32; 3]],
+    ground: Option<ph2d_field_render::Ground>,
     w: u32,
     h: u32,
     antialias: bool,
@@ -92,6 +93,7 @@ pub fn march(
         reg,
         cam,
         lamps,
+        ground,
         cabem,
         Sonda::default(),
         w,
@@ -124,6 +126,7 @@ pub fn paint(
     surfaces: &ph2d_field_render::Surfaces<'_>,
     look: ph2d_view_transform::Look,
     background: [u8; 4],
+    ground: Option<ph2d_field_render::Ground>,
     w: u32,
     h: u32,
     antialias: bool,
@@ -137,6 +140,7 @@ pub fn paint(
         surfaces,
         look,
         background,
+        ground,
         w,
         h,
         antialias,
@@ -178,6 +182,7 @@ pub fn paint_com(
     surfaces: &ph2d_field_render::Surfaces<'_>,
     look: ph2d_view_transform::Look,
     background: [u8; 4],
+    ground: Option<ph2d_field_render::Ground>,
     w: u32,
     h: u32,
     antialias: bool,
@@ -194,7 +199,9 @@ pub fn paint_com(
         return None;
     }
     let cabem = lamps_that_fit(tracer, w, h);
-    let (campo, fita, setup) = pedido(doc, reg, cam, &mundos, cabem, sonda, w, h, antialias)?;
+    let (campo, fita, setup) = pedido(
+        doc, reg, cam, &mundos, ground, cabem, sonda, w, h, antialias,
+    )?;
     // ⚠️ **As duas listas nascem do MESMO `points`**, e é por isso que a ordem não pode divergir:
     // a posição da lâmpada `l` viaja no `MarchSetup` e a radiância dela aqui.
     let mut lamp_radiance = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
@@ -202,6 +209,7 @@ pub fn paint_com(
         *dst = l.radiance_at_one;
     }
     let materiais = packed(surfaces.all);
+    let chao_packed = packed(&[ph2d_field_render::catcher_surface()]);
     let tabelas = crate::studio_wgsl::tables();
     let pintor = ph2d_field_gpu::paint::PaintSetup {
         owners: surfaces.owners,
@@ -216,6 +224,8 @@ pub fn paint_com(
         // ⚠️ **A largura da fronteira de cor sai do [`ph2d_field_render::boundary_world`]**, que é
         // quem a deriva — o factor dela foi VARRIDO e mora lá, não aqui.
         pixel_world: ph2d_field_render::boundary_world(cam.half_extent, w.min(h)),
+        // ⭐ **A difusa branca do chão** — a régua da escurecida, empacotada como os outros.
+        catcher: &chao_packed,
     };
     Some(
         tracer
@@ -295,6 +305,7 @@ fn pedido(
     reg: &ph2d_field_eval::hybrid::Registry,
     cam: &ph2d_field_render::Orbit,
     mundos: &[[f32; 3]],
+    ground: Option<ph2d_field_render::Ground>,
     cabem: usize,
     sonda: Sonda,
     w: u32,
@@ -359,6 +370,7 @@ fn pedido(
         ball_radius: bola.radius,
         ao_rays: ph2d_field_render::OCCLUSION_PASSES,
         ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+        ground: ground.map(|g| g.height),
         edge_cos: ph2d_field_render::EDGE_COS,
     };
     Some((campo, fita, setup))

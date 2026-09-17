@@ -181,6 +181,7 @@
 - ⛔⛔ [Copiar UM componente deixa para trás os IRMÃOS](feedback_a_copy_of_one_component_silently_drops_its_siblings.md)
 - ⛔⛔ [Fazer uma coisa EXISTIR acorda quem respondia `None`](feedback_making_a_thing_exist_gives_answers_where_there_were_none.md)
 - ⛔⛔ [Duas portas com a lei certa e ZERO chamadores; o consumidor usa uma terceira](feedback_the_door_with_the_right_law_had_no_caller_and_the_consumer_used_a_third.md)
+- ⛔⛔ [«é a MESMA conta que X faz» ao lado de uma CÓPIA é o cheiro da lei duplicada — 3 cópias, cada uma a declará-lo](feedback_a_promise_of_sameness_beside_a_copy_is_the_shape_that_diverges.md)
 - ⛔⛔ [Um gesto NOVO herda os inimigos do antigo](feedback_a_new_gesture_inherits_the_enemies_of_the_old_one.md)
 - ⛔⛔ [Lei de ORDEM do 1.º consumidor não viaja para o 2.º](feedback_a_law_written_for_one_medium_does_not_travel_to_the_second.md)
 - ⛔⛔ [Consumidor que escolhe o relógio à mão escreve um 4.º palpite](feedback_a_consumer_that_picks_among_clocks_by_hand_is_the_answer_that_ages.md)

@@ -268,7 +268,7 @@ fn every_declared_param_has_a_hint_and_every_hint_has_a_home() {
 ///
 /// ⚠️ **`24 → 25`, `25 → 30` e `30 → 33`, os três em 2026-08-30** — o primeiro com as três letras
 /// que plantam um objecto, o segundo com os cinco controlos que o 2.º smoke pediu. O número
-/// vive em `ph2d_panel_motion_params::MAX_PARAM_ROWS`, onde está a medição que o justifica
+/// vivia no `MAX_PARAM_ROWS` do painel lateral de params, que saiu com ele (doc 114 §13)
 /// (~10 µs por slot, uma vez por construção de tela).
 const fn ph2d_panel_motion_params_row_cap() -> usize {
     33

@@ -201,7 +201,7 @@ pub struct GraphNodeView {
     /// decisão do Enio, 2026-09-05: *«como no Blender, os parâmetros dos nós devem ser
     /// desenhados nos nós e vamos retirar o painel lateral»*).
     ///
-    /// ⚠️ **É [`CardParam`] e NÃO [`ph2d_panel_motion_params::ParamRow`], e a razão é MEDIDA**
+    /// ⚠️ **É [`CardParam`] e NÃO o `ParamRow` da ponte, e a razão é MEDIDA**
     /// (doc 103 §7): uma row do painel carrega um `String` por rótulo e outro por valor, e
     /// 20 cartões × 5 rows seriam **200 alocações por quadro**. Aqui tudo o que vem do
     /// registry é `&'static` e o valor é um `f32` — **zero alocação por row** —, e quem

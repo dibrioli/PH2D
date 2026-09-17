@@ -224,7 +224,7 @@ fn parse_decls(src: &str, parent: &Path) -> Vec<Decl> {
             // ⚠️ `cfg(all(test, …))` também é SÓ-teste — um `all` com `test` dentro é falso fora de
             // `cargo test`. Medido 2026-09-12 pelo censo derivado de colisões: o
             // `ph2d-app-motion/src/motion_bridge_library_tests.rs` é declarado com
-            // `#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]`
+            // `#[cfg(all(test, feature = "panel-motion-graph"))]`
             // e esta função lia-o como PRODUÇÃO. ⛔ `cfg(any(test, …))` NÃO entra: compila no produto
             // com a feature ligada.
             if a.starts_with("#[cfg(test)]") || a.starts_with("#[cfg(all(test") {

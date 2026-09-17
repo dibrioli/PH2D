@@ -244,6 +244,14 @@ desbloqueia nenhuma das duas — o que ali falta é a forma chegar ao dispositiv
 vez; os ciclos 2+ só pagam o grupo deles. ⚠️ **A ordem dos 2..9 pode mudar** por decisão do Enio;
 a do 1 não, porque o resto assenta nela.
 
+> ⛔⛔ **PEDIDO DO DONO, ABERTO E FORA DA FILA (2026-09-17): RETIRAR o painel lateral de params.**
+> Ele está **desligado e não apagado** desde o ciclo 1, e o dono disse no smoke *«não temos mais o
+> painel da direita. estamos retirando ele»*. ⚠️ **Não é «apagar 7 558 linhas»: são `85` que têm de
+> MUDAR DE SÍTIO primeiro** — a crate do painel guarda o `MotionParamIntent` e a fila por onde as
+> edições do **CARTÃO** viajam (`5` sítios empurram, `1` drena), e apagá-la sem a mover pára o
+> cartão. Os números, a ordem prescrita, os `65` testes que morrem com ela e a pergunta que falta
+> ao dono: [`104_pedido_retirar_o_painel_lateral.md`](104_pedido_retirar_o_painel_lateral.md).
+
 ## §6 — Onde cada coisa fica (para o agente não procurar)
 
 | coisa | caminho |

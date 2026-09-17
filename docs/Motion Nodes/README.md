@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**123 arquivos** · **12** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**124 arquivos** · **12** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -118,6 +118,7 @@
 | 102 | ◆ | [102_o_outro_patamar_plano_dos_nos_2026-09-04.md](102_o_outro_patamar_plano_dos_nos_2026-09-04.md) | plano | 102 — O OUTRO PATAMAR: o plano dos nós além de Blender, Cavalry e Houdini |
 | 103 | ◆ | [103_dinamica_dos_ciclos.md](103_dinamica_dos_ciclos.md) | — | 103 — A DINÂMICA DOS CICLOS (o protocolo desta obra até ao fim) |
 | 104 |   | [104_ciclo_1_arranjo.md](104_ciclo_1_arranjo.md) | — | 104 — CICLO 1 · ARRANJO: pôr muitos objectos na tela |
+| 104 |   | [104_pedido_retirar_o_painel_lateral.md](104_pedido_retirar_o_painel_lateral.md) | — | PEDIDO À `line/motion-value`: RETIRAR o painel lateral de params |
 | 105 |   | [105_ciclo_2_animadores.md](105_ciclo_2_animadores.md) | — | Ciclo 2 — ANIMADORES · «O tempo entra no grafo» |
 | 106 |   | [106_ciclo_3_transformes_e_deformadores.md](106_ciclo_3_transformes_e_deformadores.md) | — | Ciclo 3 — TRANSFORMES & DEFORMADORES · «Dobrar o mundo» |
 | 107 |   | [107_ciclo_4_foco_os_campos.md](107_ciclo_4_foco_os_campos.md) | — | 107 — CICLO 4: FOCO — quem é afectado (os CAMPOS) |

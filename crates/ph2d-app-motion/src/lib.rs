@@ -66,6 +66,9 @@ pub mod motion_delay_smoke;
 /// em cima do caso que ele explica, em vez de num terminal atrás da janela.
 pub mod motion_demo_legend;
 pub mod motion_flip_bake;
+/// A auditoria do grupo do ciclo 8 (as FONTES) — `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+pub mod motion_fontes_probe;
 pub mod motion_fx_smoke;
 pub mod motion_node_path_smoke;
 pub mod motion_object_bake;

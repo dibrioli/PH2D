@@ -78,6 +78,12 @@ mod animadores_probe;
 #[path = "motion_bridge_aparencia_relogio.rs"]
 mod aparencia_relogio;
 
+/// O preço da costura de uma FONTE (ciclo 8, doc 113 §3) — sonda `#[ignore]`, não um gate. Mora
+/// aqui porque corre a ponte do produto (`cook_gpu`).
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_fontes_costura.rs"]
+mod fontes_costura;
+
 /// As figuras do tutorial do ciclo 1 — geradas COZINHANDO os nós (doc 103 §3).
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_arranjo_figures.rs"]

@@ -628,8 +628,24 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_G
 6. ✅ **W3 — o poder que falta** (§4-sexies).
 7. ✅ **W4 — a MEDIÇÃO** (§4-septies) — `10 de 10` na placa, os dois relógios, e o slit-scan
    curado (`16,33 → 3,49 ms` a um milhão).
-8. ⏳ **W5 — a cena e o TUTORIAL** *«A cor e o rasto»* — construídos (§4-octies); falta o **smoke
-   do dono**.
+8. ✅ **W5 — a cena e o TUTORIAL** *«A cor e o rasto»* (§4-octies) — e o smoke do dono (§6).
 
 ⚠️ **A ordem W1 → W2 não é preferência: é a lei 1 do protocolo.** Um grupo cujo uso normal leva o
 grafo inteiro para a CPU não fecha um ciclo com «tem mais botões».
+
+---
+
+## §6 — ✅ O VEREDITO DO DONO (2026-09-16): o ciclo 7 FECHA
+
+Ele correu a cena `=118`, seguiu o [tutorial](tutoriais/07_a_cor_e_o_rasto.pdf) e aprovou —
+*«smoke OK»*. Pelo [doc 103 §1](103_dinamica_dos_ciclos.md) passo 7, é isto que fecha um ciclo.
+
+⭐ **E o defeito que o §4-octies deixou nomeado nos tutoriais anteriores fechou no mesmo commit:** os
+`04`, `05` e `06` repõem o contador por lista (`counter-reset:s <start−1>`), e os três PDFs foram
+regenerados. *A numeração recomeçava em `1` a cada capítulo enquanto o texto citava «o passo 7»* —
+três tutoriais aprovados com o defeito dentro, porque o smoke segue o TEXTO e não confere o número.
+
+⏳ **Abertos do 7** (nenhum bloqueia; cada um com o mecanismo acima): o `motion.slit_scan` a
+`~3,5 ns` por linha, o dobro dos irmãos, e é o preço de `64` números por elemento (§4-septies) · o
+`motion.trail` em `Resampled` fica na CPU por desenho (ADR-0163) · a sombra macia e a cauda cortadas
+pelo tecto acima de `~185 k` / `~65 k` objectos — tectos medidos, não defeitos.

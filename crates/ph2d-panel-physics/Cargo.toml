@@ -23,6 +23,8 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 
 [dev-dependencies]
+# A régua do HR-15 — dev-dep só: o produto não conhece o censo dele.
+ph2d-label-census = { path = "../ph2d-label-census" }
 # `architecture_interactive_crate_has_behavioral_test`: a panel with an
 # `event.rs` must ship a test that drives a REAL WidgetEvent and asserts the
 # observable effect. The debt list is empty; there is no exemption.

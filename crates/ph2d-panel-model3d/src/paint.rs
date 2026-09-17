@@ -471,12 +471,14 @@ pub(crate) fn paint_note(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32)
 /// seguinte — e um painel que esconde isso deixa a lentidão parecer um defeito em vez de uma conta.
 fn paint_footer(ctx: &mut PaintCtx, snap: &state::ModelSnapshot, x: f32, w: f32, y: f32) -> f32 {
     let hidden = snap.rows.len().saturating_sub(MAX_ROWS);
-    let mut line = format!(
-        "{}: {} · {} {:.1} ms",
-        tr("panel.model3d.nodes"),
-        snap.node_count,
-        tr("panel.model3d.trace_cost"),
-        snap.last_trace_ms
+    let mut line = ph2d_i18n::tr_with(
+        "panel.model3d.footer",
+        &[
+            ("nodes", &tr("panel.model3d.nodes")),
+            ("count", &snap.node_count),
+            ("cost", &tr("panel.model3d.trace_cost")),
+            ("ms", &format!("{:.1}", snap.last_trace_ms)),
+        ],
     );
     if hidden > 0 {
         // ⛔ **Nunca em silêncio.** Se a família de ids não chegou para todos os nós, o artista tem

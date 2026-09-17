@@ -18,6 +18,8 @@ ph2d-text        = { path = "../ph2d-text" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
 
 [dev-dependencies]
+# A régua do HR-15 — dev-dep só: o produto não conhece o censo dele.
+ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-host       = { path = "../ph2d-host" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 bumpalo         = "3"

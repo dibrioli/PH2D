@@ -38,6 +38,8 @@ ph2d-mesh = { path = "../ph2d-mesh" }
 ph2d-light = { path = "../ph2d-light" }
 
 [dev-dependencies]
+# A régua do HR-15 — dev-dep só: o produto não conhece o censo dele.
+ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-panel-model3d = { path = "../ph2d-panel-model3d" }
 # `architecture_interactive_crate_has_behavioral_test`: um painel com `event.rs`
 # tem de dirigir um `WidgetEvent` REAL e afirmar o efeito observável.

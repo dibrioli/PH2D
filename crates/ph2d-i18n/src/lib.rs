@@ -481,7 +481,6 @@ pub fn tr(key: &str) -> &'static str {
         // modelo entrega, e o que ele entrega é dormir, não rodar.
         "panel.physics.sleep_enabled" => "Enabled",
         "panel.physics.sleep_speed" => "Speed",
-        "panel.physics.sleep_spin" => "Spin",
         "panel.physics.sleep_delay" => "Delay",
         // ── Interaction tool (W-Hand): what the POINTER does to a running scene.
         "panel.physics.section.interact" => "Interaction",
@@ -532,6 +531,10 @@ pub fn tr(key: &str) -> &'static str {
         // setting. This panel shows it so the metre-valued knobs above can be
         // read in pixels, and deliberately does not own or duplicate it (D4).
         "panel.physics.scale" => "Scale",
+        // ⭐ O leitor da escala do mundo é uma FRASE — ver a nota do `panel.model3d.footer`. ⚠️ O
+        // `px/m` é um SÍMBOLO de unidade e fica dentro dela: ele é igual em toda língua, e parti-lo
+        // num argumento daria a alguém a ideia de o traduzir.
+        "panel.physics.scale_readout" => "{label}: {value} px/m",
         "panel.physics.bodies" => "Bodies",
         // As oito operações do Pathfinder. As quatro primeiras eram literais no painel até a W5;
         // passam por aqui agora porque a fileira é UMA e metade dela em i18n seria o pior dos dois.

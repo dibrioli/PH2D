@@ -15,10 +15,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // chave (2026-09-17); ganhou a palavra da aba, que é a que o menu *Window* também diz.
         "panel.model3d.title" => "Model 3D",
         "panel.model3d.empty" => "Select an object to edit its dimensions.",
-        // ⚠️ O rótulo diz **Radius**, e é um compromisso que o documento honra: quem escolher a
-        // mistura orgânica vê um número que entrega 3/4 do que promete (ver `Blend::Organic`), e
-        // isso é uma decisão de produto por tomar — não uma etiqueta a corrigir aqui.
-        "panel.model3d.radius" => "Radius",
+        // ⭐⭐ **O RODAPÉ é uma FRASE, e a ordem das palavras é dela** (2026-09-17): o pintor
+        // montava `"{}: {} \u{b7} {} {:.1} ms"` à mão com os dois rótulos traduzidos lá dentro —
+        // as palavras vinham da tabela e a SINTAXE não, e há línguas em que a contagem vem à
+        // frente do nome. ⚠️ Os dois rótulos continuam a ser chaves próprias e entram aqui como
+        // ARGUMENTOS: a frase não os duplica.
+        "panel.model3d.footer" => "{nodes}: {count} \u{b7} {cost} {ms} ms",
         // ⭐ Os três verbos do gizmo. ⚠️ **"Size", e não "Scale"** — a escala deste módulo é
         // UNIFORME por decisão medida (ADR-0161 §6: a não-uniforme destrói a propriedade de
         // distância), e "Scale" num app 3D promete três eixos. Um rótulo tem de prometer o que o
@@ -613,12 +615,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.rot_z" => "Rotation Z",
         // ⚠️ A escala só aparece numa OPERAÇÃO: numa forma, o tamanho são as dimensões dela.
         "field.dim.scale" => "Scale",
-        "panel.model3d.kind.union" => "Union",
-        "panel.model3d.kind.intersection" => "Intersect",
-        "panel.model3d.kind.difference" => "Subtract",
-        "panel.model3d.kind.box" => "Box",
-        "panel.model3d.kind.cylinder" => "Cylinder",
-        "panel.model3d.kind.extrude" => "Extrude",
         // ⭐⭐ AS FORMAS DE PERFIL (W53) — o desenho do editor vetorial vira peça. É o fluxo do
         // MoI, e o motor delas está construído e medido desde a W3; faltava o botão.
         "panel.model3d.add.extrude" => "Extrude",

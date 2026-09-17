@@ -31,6 +31,8 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-field = { path = "../ph2d-field" }
 
 [dev-dependencies]
+# A régua do HR-15 — dev-dep só: o produto não conhece o censo dele.
+ph2d-label-census = { path = "../ph2d-label-census" }
 # `architecture_interactive_crate_has_behavioral_test`: um painel com `event.rs`
 # tem de dirigir um `WidgetEvent` REAL e afirmar o efeito observável. Os testes
 # dentro da crate mediam a FILA; este mede a costura.

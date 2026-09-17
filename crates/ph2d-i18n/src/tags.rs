@@ -23,6 +23,24 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ **O `(any)` faz parte da frase**, e não é decoração: sem filtro escolhido a armadilha
         // dispara para TODOS, e o campo vazio tem de o dizer (a §7.3 do plano).
         "panel.tags.only_for" => "Only for tag\u{2026}  (any)",
+        // ⭐⭐ **OS VERBOS DA BARRA** (2026-09-17) — o painel TAGS nunca teve régua de HR-15, e estes
+        // oito eram os literais que ela não via. ⚠️ O `+` faz parte do rótulo: ele é o que diz que o
+        // botão CRIA, e a barra não tem ícone.
+        "panel.tags.verb.new" => "+ New",
+        "panel.tags.verb.child" => "+ Child",
+        "panel.tags.verb.rename" => "Rename",
+        "panel.tags.verb.unparent" => "Move to root",
+        // ⚠️ **Frases com peças do código, lidas por [`crate::tr_with`] com marcadores NOMEADOS** —
+        // colar o número no pintor fixaria a ordem das palavras, e há línguas em que a contagem vem
+        // à frente. ⭐⭐ E o rótulo de apagar CARREGA O ESTRAGO: apagar `Enemy` leva `Flying` e
+        // `Boss` junto, e o artista só vê isso se o botão o disser ANTES de ser carregado — são
+        // duas frases porque uma tag-folha não leva tags nenhumas.
+        "panel.tags.verb.select" => "Select ({members})",
+        "panel.tags.verb.delete_subtree" => "Delete ({tags} tags, {objects} objects)",
+        "panel.tags.verb.delete" => "Delete ({objects} objects)",
+        // ⚠️ A frase do vazio NOMEIA o botão que a cura (`+ New`), e por isso ela é uma frase
+        // inteira e não um fragmento: um *«Nenhuma tag»* solto não diz ao artista o que fazer.
+        "panel.tags.empty" => "No tags yet. Press + New to make the first one.",
         _ => return None,
     })
 }

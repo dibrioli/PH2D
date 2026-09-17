@@ -34,6 +34,8 @@ ph2d-skeleton    = { path = "../ph2d-skeleton" }
 # o `machete`, e nenhuma das seis worktrees da rodada o correu.
 
 [dev-dependencies]
+# A régua do HR-15 — dev-dep só: o produto não conhece o censo dele.
+ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-host = { path = "../ph2d-host" }
 bumpalo   = "3"
 # Arnês headless de costura — dev-dep só, o `architecture_cycle_prevention` lê `[dependencies]`.

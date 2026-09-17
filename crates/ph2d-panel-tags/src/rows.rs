@@ -42,35 +42,38 @@ pub(crate) struct Verb {
 pub(crate) fn verbs(focused: Option<&TagsPanelRow>) -> Vec<Verb> {
     let mut out = vec![Verb {
         id: crate::ids::TAGS_NEW,
-        label: "+ New".into(),
+        label: ph2d_i18n::tr("panel.tags.verb.new").into(),
     }];
     let Some(row) = focused else { return out };
     out.push(Verb {
         id: crate::ids::TAGS_CHILD,
-        label: "+ Child".into(),
+        label: ph2d_i18n::tr("panel.tags.verb.child").into(),
     });
     out.push(Verb {
         id: crate::ids::TAGS_RENAME,
-        label: "Rename".into(),
+        label: ph2d_i18n::tr("panel.tags.verb.rename").into(),
     });
     if row.depth > 0 {
         out.push(Verb {
             id: crate::ids::TAGS_UNPARENT,
-            label: "Move to root".into(),
+            label: ph2d_i18n::tr("panel.tags.verb.unparent").into(),
         });
     }
     out.push(Verb {
         id: crate::ids::TAGS_SELECT,
-        label: format!("Select ({})", row.members),
+        label: ph2d_i18n::tr_with("panel.tags.verb.select", &[("members", &row.members)]),
     });
     // ⭐⭐ **O rótulo CARREGA o estrago.** Apagar `Enemy` leva `Flying` e `Boss` junto — e o artista
     // só vê isso se o botão o disser antes de ser carregado.
     out.push(Verb {
         id: crate::ids::TAGS_DELETE,
         label: if row.subtree > 1 {
-            format!("Delete ({} tags, {} objects)", row.subtree, row.members)
+            ph2d_i18n::tr_with(
+                "panel.tags.verb.delete_subtree",
+                &[("tags", &row.subtree), ("objects", &row.members)],
+            )
         } else {
-            format!("Delete ({} objects)", row.members)
+            ph2d_i18n::tr_with("panel.tags.verb.delete", &[("objects", &row.members)])
         },
     });
     out
@@ -268,7 +271,7 @@ pub(crate) fn empty_line(
     paint_text(
         text_system,
         scene,
-        "No tags yet. Press + New to make the first one.",
+        ph2d_i18n::tr("panel.tags.empty"),
         x + Spacing::Sm.px(),
         y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
         TypeToken::Sm.px(),

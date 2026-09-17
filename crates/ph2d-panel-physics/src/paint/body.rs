@@ -181,10 +181,12 @@ pub(super) fn paint_sections(
     // would diverge from the one in Project Settings.
     y = readout(
         ctx,
-        &format!(
-            "{}: {:.0} px/m",
-            tr("panel.physics.scale"),
-            snapshot.pixels_per_meter
+        &ph2d_i18n::tr_with(
+            "panel.physics.scale_readout",
+            &[
+                ("label", &tr("panel.physics.scale")),
+                ("value", &format!("{:.0}", snapshot.pixels_per_meter)),
+            ],
         ),
         x,
         w,

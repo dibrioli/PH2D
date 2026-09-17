@@ -40,6 +40,13 @@ pub fn looks_like_a_key(k: &str, prefix: &str) -> bool {
         //    PREFIXO de uma secção (`"panel.inspector.player."`, para separar as duas metades de um
         //    vocabulário) era lido como uma chave em uso, e o censo acusava o próprio gate.
         && !k.ends_with('.')
+        // ⚠️⚠️ **NEM NUM SUBLINHADO, e é a MESMA coisa** (2026-09-17): um prefixo montado com
+        //    `format!` não tem de acabar num ponto — o censo da escultura escreve
+        //    `"panel.sculpt3d.cfilter_"` e cola-lhe o nome do knob, e a régua leu-o como uma chave
+        //    em uso e acusou a tabela de não a declarar. ⇒ *a cura de 2026-09-13 curou UMA forma de
+        //    prefixo e o mecanismo tem duas.* Medido antes de escrita: **nenhuma** das chaves
+        //    declaradas neste repo acaba em `_`.
+        && !k.ends_with('_')
         && k.chars()
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '.')
 }

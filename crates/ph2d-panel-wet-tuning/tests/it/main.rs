@@ -7,5 +7,6 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod as_duas_caixas_cabem_na_coluna;
+mod every_word_this_panel_shows_comes_from_the_string_table;
 mod panel_chrome;
 mod seam;

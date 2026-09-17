@@ -50,6 +50,8 @@ ph2d-timeline-preview = { path = "../ph2d-timeline-preview" }
 # `architecture_no_dependency_climbs_a_layer` mediu-a como família → família, e o que os testes
 # usavam era CONTEÚDO da cena, com dois consumidores de propósito. Desceu para a folha do assunto.
 [dev-dependencies]
+# A régua do HR-15 — dev-dep só: o produto não conhece o censo dele.
+ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-skeleton-demo = { path = "../ph2d-skeleton-demo" }
 # ⛔⛔ **A FEATURE NÃO VIAJA COM O CÓDIGO** (HOWTO §2.4, o pior modo de falha da wave). O
 # `PreviewDrive::is_empty` é `#[cfg(any(test, feature = "test-support"))]`, e três gates desta

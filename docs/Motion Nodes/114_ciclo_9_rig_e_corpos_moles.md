@@ -3,10 +3,11 @@
 > **Protocolo:** [doc 103](103_dinamica_dos_ciclos.md) — sete passos, nesta ordem, e **o tutorial É o
 > smoke**. Este doc é o do ciclo: cada passo escreve a secção dele aqui.
 >
-> **Estado (2026-09-17):** passos **1** (grupo), **2** (auditoria) e **5** (a medição, §7) FECHADOS.
-> Do passo 3/4 fecharam as waves **W0 · W1′ · W2 · W4 · W4-bis**; ⛔ a **W1 foi REFUTADA por medição**
-> (§3.1) e a wave da força de constraint **dissolveu** na coluna que já existia (§7-W2). Faltam o
-> **W6** (tutorial em PDF + cena) e o **W7** (smoke do dono) — o plano vive na §5.
+> **Estado (2026-09-17):** passos **1** (grupo), **2** (auditoria), **5** (a medição, §7) e **6**
+> (a cena `=120` + o tutorial, §10) FECHADOS. Do passo 3/4 fecharam as waves
+> **W0 · W1′ · W2 · W4 · W4-bis**; ⛔ a **W1 foi REFUTADA por medição** (§3.1) e a wave da força de
+> constraint **dissolveu** na coluna que já existia (§7-W2). ⏳ **Falta o passo 7 — o smoke do
+> DONO**, que não é da linha: ela fecha, entrega o handoff e espera (§0.7).
 
 ---
 
@@ -235,7 +236,7 @@ já exprime o item antes de o construir, e aqui ela exprimia — *o que se perde
 | **W4** ✅ | A **razão nomeada** de cada corpo mole estar na CPU (§8) — FECHADA; o **preço** do recuo veio com a W5: `13,770 ms` a 3 600 agentes | Lei 1 do doc 103 §2 |
 | **W4-bis** ✅ | O **tecto `MAX_SIDE`** do `motion.wave` — `60 → 512`, FECHADA em 2026-09-17 (§9) | ⛔ **Vem ANTES do kernel** (§8): não se decide uma placa para um campo que não pode crescer |
 | **W5** ✅ | A **MEDIÇÃO** do grupo (passo 5) — FECHADA em 2026-09-17 (§7): 21 células em RELEASE com o `loadavg` impresso pela sonda | §0.0 |
-| **W6** | O **TUTORIAL em PDF** (passo 6) + a cena de smoke | O tutorial É o smoke |
+| **W6** ✅ | O **TUTORIAL em PDF** (passo 6) + a cena `=120` — FECHADA em 2026-09-17 (§10) | O tutorial É o smoke |
 | **W7** | O **smoke do dono** (passo 7) | **Enio** |
 
 ⛔ **A ALÇA no canvas (P0 da folha) fica NOMEADA e fora desta lista até o dono decidir:** ela é
@@ -604,3 +605,113 @@ linha de WGSL e sem nenhum risco de divergência CPU/GPU.
 ⇒ **o kernel deixa de ser o que destrava o nó e passa a ser o que o leva de `512` a milhões** — com
 o `ns/célula` plano a dizer exactamente quanto ele compraria. *Uma optimização com o número ao lado
 é uma decisão; sem ele era uma aposta.*
+---
+
+## §10 — ✅ W6: a CENA `=120` e o TUTORIAL (passo 6)
+
+O entregável do ciclo, e **o tutorial É o smoke** (doc 103 §1). Três peças, nesta ordem: a cena, as
+figuras que saem dela, e o PDF que as mostra.
+
+### §10.1 — A cena, e por que ela é esta
+
+`PH2D_GPU_COOK_DEMO=120` — seis panos em três fileiras, cada fileira um par *«o base | o base mais
+uma coisa»*:
+
+| fileira | a pergunta | esquerda | direita |
+|---|---|---|---|
+| **cima** | e se a coisa **se segurar sozinha**? | `Verlet Rope` | `Wave` |
+| **meio** | e se **eu** quiser segurá-la? | `FK` (eu digo o ângulo) | `IK 2-Bone` (eu digo a mão) |
+| **baixo** | quanto é que **cada osso** segura? | a pele com todos iguais | a pele com **quinhão** |
+
+⭐ **A partição em duas categorias É o grupo** (§1) e não arrumação: a fileira de cima são nós
+**Source**, as outras duas são **Transform**. É essa a premissa do tutorial.
+
+⭐⭐ **Cada wave deste ciclo tem um passo que o dono EXECUTA**, e é isso que a torna entregue:
+
+| wave | o passo | a alavanca |
+|---|---|---|
+| **W4-bis** (§9) | escrever `512`/`512`/`0,004` no campo | `Rows` · `Cols` · `Spacing` |
+| **W2** (§7-W2) | apertar o raio do cartão `Strength` | `Radius`, `20 → 1` |
+| **W1′** (§6) | mexer no fim da banda do quinhão | `End` do `Range: que ossos puxam` |
+
+⛔ **QUATRO dos dez nós não estão na cena, com motivo:** `motion.soft_body` e `motion.boids`
+produzem como a corda e o campo e já têm cena própria; `rig.fabrik` e `rig.rubber_hose` são **a
+mesma lei do `ik_2bone`** com outra contagem de juntas — pô-los lado a lado ensinaria *«há três
+nomes»*, que é o oposto de *«a mão vai ao alvo»*. ⭐ E a força dos três é a **mesma** coluna, logo o
+passo da W2 vale para todos.
+
+### §10.2 — ⛔⛔⛔ A IMAGEM REFUTOU A CENA DUAS VEZES, com a suíte VERDE
+
+*Nenhum gate desta linha olha para uma figura*, e as duas vezes o defeito só apareceu ao render os
+SVG e olhar.
+
+**(1) A pele lia-se como RUÍDO.** Ela era uma grelha `5 × 5` de vão `0,4` sobre uma corrente de
+`1,8` de comprimento ⇒ **mais larga do que a corrente é comprida**, com metade das peças longe de
+qualquer osso e cada uma a seguir o osso mais próximo por si. ⇒ a pele passa a ser uma **MANGA**
+(`3 × 7`, `0,44 × 1,68`) que embrulha a corrente, e a figura desenha a **malha** (fio à direita, fio
+abaixo) em vez de pontos soltos. ⚠️ *A ligação não é decoração: é a informação que a nuvem de pontos
+perdeu* — numa corrente ela é o `parent`, numa pele é a vizinhança da grelha.
+
+**(2) E depois disso os dois panos de baixo ainda eram INDISTINGUÍVEIS.** O envelope era uma
+**rampa** (`0` na raiz, `1` na ponta) — e a ponta é justamente onde a corrente mais se dobra, logo o
+quinhão pequeno caía sobre a parte da pele **que já não se mexia**. Medido nas próprias figuras:
+
+| envelope | desvio máximo entre os dois panos | em lados de peça |
+|---|---:|---:|
+| rampa (`value.instance_field`) | `0,035` de mundo | **`0,39`** |
+| **banda** (`field.index_range`) | `0,63` de mundo | **`6,97`** |
+
+⇒ o envelope passa a ser uma **banda** com `soft = 0`: as duas últimas juntas ficam com quinhão
+**zero** e a metade de cima da manga fica direita, *como uma manga larga que não acompanha o
+cotovelo*. **`18×`** mais contraste.
+
+⭐⭐ **E a cura trouxe uma lição melhor que a que substituiu:** a caneta do envelope passou a ser o
+**mesmo trio** do cartão `Strength` do pano do IK — um **campo** decide o *quanto*, o
+`value.attribute` lê esse número da coluna `falloff`, e o `motion.drive(Custom…)` escreve-o na
+coluna que se quiser. *Dois panos, uma lição*, e é exactamente a composição por que a W1 foi
+refutada (§3.1).
+
+⛔⛔ **E os gates da pele eram CÚMPLICES.** Eles pediam `d > 1e-3` — *«os dois panos diferem»* — e a
+versão invisível passava-os com folga. ⚠️ *Uma régua que só vê o SINAL não vê a MAGNITUDE*, a mesma
+família do `edge_max` cego ao quad fino. ⇒ barra **`VISIVEL = 0,3`** de mundo (quase três peças da
+pele), com a medição e a folga de `2×` escritas no doc-comment: o que ela proíbe não é o defeito de
+hoje, é a **regressão ao invisível**.
+
+### §10.3 — ⛔⛔ E o GATE apanhou um passo IMPOSSÍVEL num PDF já impresso
+
+O passo 3 do tutorial mandava mudar a linha **`Height Channel`** do cartão `Wave`, e o cartão
+mostra **`Height Drives`** — o param chama-se `height_channel` e o **rótulo que o artista lê é
+outro**. ⚠️ *Um passo que manda clicar numa linha AFIRMA que ela está no cartão*, e o modo de falha
+é o pior de todos: o dono procura, não encontra, e conclui que o programa está partido. Curado nos
+**três** sítios (o HTML, o anúncio do terminal e o gate).
+
+⚠️ E a cena ganhou um rótulo por causa disto: ela tem **quatro** `motion.drive`, e o passo dizia
+*«o cartão Drive»*. *Um passo que diz «o Drive» num grafo com quatro é um passo que o dono não
+consegue executar.*
+
+### §10.4 — O que fica GATEADO
+
+| gate | o que ele afirma |
+|---|---|
+| `a_cena_monta_seis_panos_e_nenhum_vem_vazio` | os seis panos, com piso de população |
+| `a_corda_balanca_e_o_campo_ondula` | a fileira de cima mexe-se — pela **assinatura** (posição **e** tamanho) |
+| `a_cinematica_directa_e_a_inversa_dao_panos_diferentes` | o par do meio não é o mesmo nó duas vezes |
+| `a_mao_segue_o_alvo_e_o_pano_do_fk_nao_se_mexe` | a mão segue — com o FK `Pure` como CONTROLO |
+| `apertar_a_forca_da_restricao_muda_a_pose_do_ik` | a W2, pelo BARRO e não pelo param |
+| `o_quinhao_por_osso_muda_a_pele` · `o_quinhao_a_zero_devolve_a_pele_ao_repouso` | a W1′, com a barra do que se **vê** |
+| `o_passo_do_tecto_entrega_meio_milhao_de_celulas` | a W4-bis, pela porta da cena |
+| `every_row_the_rig_tutorial_names_is_on_the_card` | cada linha que o PDF nomeia está no cartão |
+| `every_figure_the_rig_tutorial_shows_exists` | as seis figuras existem, contadas |
+| `the_rig_tutorial_opens_the_scene_this_cycle_built` | ele abre a `=120` (metade em COMPILAÇÃO) |
+| `the_cost_table_the_rig_tutorial_prints_is_the_one_that_was_measured` | os números da §7 do PDF são os da §7 deste doc |
+
+⚠️ **O último NÃO re-mede:** medir num gate fá-lo-ia membro da família de flakes de carga
+(`CLAUDE.md` §5.0), e o que se defende ali é a **honestidade do texto**, não o relógio. *Uma tabela
+de custo num PDF é a afirmação mais fácil de deixar apodrecer do repo — ela não compila, não corre
+e ninguém a relê.*
+
+⚠️ **E um gate do ciclo 8 teve a premissa MORTA**, que é o gate a funcionar: ele afirmava
+`!is_cycle_scene("120")` — *«a tabela não pode responder por uma cena que não existe»* — e este
+ciclo construiu-a. ⛔ O defeito não era o número, era a **forma**: um gate escrito sobre o SUCESSOR
+de hoje reprova no dia em que alguém escrever o ciclo seguinte, **sobre produto correcto**. ⇒
+reescrito DERIVADO do tecto (`MAX_DEMO_LEVEL + 1`), com a morte visível no diff.

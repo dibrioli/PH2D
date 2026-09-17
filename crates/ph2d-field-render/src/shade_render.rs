@@ -68,6 +68,25 @@ pub struct PointLamp {
 /// a metade que fica tem o mesmo sintoma.*
 pub const POINT_LAMP_MIN_DISTANCE: f32 = 0.05;
 
+/// O quadrado do [`POINT_LAMP_MIN_DISTANCE`] — o piso, na grandeza em que ele é comparado.
+pub(crate) const PISO_DA_LAMPADA: f32 = POINT_LAMP_MIN_DISTANCE * POINT_LAMP_MIN_DISTANCE;
+
+/// ⭐⭐ **A radiância que uma [`PointLamp`] ENTREGA a um ponto** — a queda `1/r²`, o piso e a
+/// visibilidade, numa porta.
+///
+/// ⚠️ **É a parte da lei que NÃO depende de referencial**, e é por isso que é ela que se partilha: a
+/// DIRECÇÃO para a luz tem de sair no espaço de quem pergunta (o sombreador quer-a em VISTA, o
+/// [`crate::bounce`] em MUNDO) e o braço degenerado devolve *«a normal»*, que é uma resposta
+/// diferente em cada um. *Partilhar o que é comum e nomear o que não é vale mais que uma porta que
+/// converte duas vezes para caber nos dois.*
+///
+/// ⚠️ A visibilidade entra **aqui, na luz que chega** — nunca no `N·L` e nunca no resultado. Ver o
+/// comentário no laço do [`radiance`] para a razão física.
+pub(crate) fn chega_da_lampada(lamp: &PointLamp, dist2: f32, visivel: f32) -> [f32; 3] {
+    lamp.radiance_at_one
+        .map(|c| c * visivel / dist2.max(PISO_DA_LAMPADA))
+}
+
 /// A luz de uma cena: as lâmpadas de estúdio, as luzes-objecto e o céu.
 pub struct Lighting<'a> {
     /// Ancoradas no ECRÃ — o estúdio.
@@ -82,6 +101,22 @@ pub struct Lighting<'a> {
     /// ([`Lighting::lamps`]) NÃO têm sombra e não é omissão: elas estão ancoradas no ecrã, logo
     /// giram com a câmera — uma sombra que gira com o olhar não pousa nada, ensina o contrário.
     pub shadows: Option<&'a crate::Shadows>,
+}
+
+/// ⭐ **Um ambiente que só tem a parcela DIFUSA** — a irradiância que a cena devolve a este pixel.
+///
+/// ⚠️ A [`Environment::radiance`] responde **zero** de propósito: ela é a pergunta do lóbulo
+/// ESPECULAR (*«que luz vem daquela direcção?»*), e uma média do hemisfério não a responde.
+/// Devolver a média ali poria um realce de espelho com a cor do ricochete e sem sítio nenhum.
+struct SoIrradiancia([f32; 3]);
+
+impl Environment for SoIrradiancia {
+    fn radiance(&self, _dir: [f32; 3], _alpha: f32) -> [f32; 3] {
+        [0.0; 3]
+    }
+    fn irradiance(&self, _n: [f32; 3]) -> [f32; 3] {
+        self.0
+    }
 }
 
 /// A base de VISTA — o que converte uma direcção de MUNDO no referencial em que o G-buffer guarda a
@@ -171,8 +206,11 @@ impl<'a> Surfaces<'a> {
     /// indexação crua entraria em pânico **no meio de um quadro**; pintar com o primeiro material é
     /// uma resposta que o artista lê como «ainda não actualizou», que é o que de facto aconteceu.
     ///
-    /// ⛔ **O irmão `of`, que devolvia só o dono, foi APAGADO em 14/09** — o `mix_of` tomou-lhe os
-    /// dois chamadores, e um método que ninguém chama é **lixo**, não um morto a ligar.
+    /// ⚠️⚠️ **O irmão [`Self::of`] foi APAGADO em 14/09 e VOLTOU em 17/09** — e as duas decisões
+    /// estão certas, com a mesma lei: *um método que ninguém chama é lixo*. Ele saiu quando o
+    /// `mix_of` lhe tomou os dois chamadores e voltou quando a `W5` trouxe o terceiro — o passe do
+    /// ricochete, que pergunta pelo material de um ponto que um RAIO acertou, onde não há pixel
+    /// nem largura de fronteira para suavizar.
     /// ⭐⭐⭐ **OS DOIS MATERIAIS QUE DISPUTAM ESTE PONTO, e o peso do segundo** — a fronteira de cor,
     /// suavizada.
     ///
@@ -190,6 +228,20 @@ impl<'a> Surfaces<'a> {
     /// ⚠️ **`t == 0` é o caminho de sempre**, e ele cobre os dois casos que dominam: uma peça de um
     /// material só (`owners: None`) e todo pixel longe de uma fronteira. *O custo desta lei mora nos
     /// `0,5 %` de pixels que estão em cima dela.*
+    /// ⭐ **O material de um ponto, sem fronteira suavizada** — para quem não tem pixel.
+    ///
+    /// ⚠️ **Ele NÃO é o [`Self::mix_of`] com `t = 0`:** aquele pergunta *«que dois materiais
+    /// disputam este PIXEL e com que peso»*, e a largura da transição sai do tamanho do pixel no
+    /// mundo. Um raio de ricochete não tem pixel — ele acerta um ponto —, e inventar-lhe uma
+    /// largura seria inventar a resposta.
+    pub(crate) fn of(&self, p: [f32; 3]) -> &Surface {
+        let rede = &self.all[0];
+        self.owners
+            .and_then(|o| o.at(p))
+            .and_then(|k| self.all.get(k))
+            .unwrap_or(rede)
+    }
+
     fn mix_of(&self, p: [f32; 3], pixel_world: f32) -> (&Surface, &Surface, f32) {
         let rede = self.all.first().unwrap_or(&self.all[0]);
         let Some(o) = self.owners else {
@@ -239,6 +291,21 @@ fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom
     // superfície polida. Separá-los é mexer na fronteira do `ph2d-material`, e fica nomeado.
     let ceu = light.shadows.map_or(1.0, |s| s.ambient_at(geom.i));
     let mut rgb = surface.indirect(n, v, light.sky).map(|c| c * ceu);
+    // ⭐⭐⭐ **A OUTRA METADE DO HEMISFÉRIO: a luz que a CENA devolve** (a `W5`).
+    //
+    // ⚠️ **Ela entra SOMADA e num ambiente próprio**, e não a multiplicar o céu: o `ambient_at`
+    // responde *«que fracção do céu chega»* e este responde *«que luz mais chega»*. Somar é o que
+    // as torna as duas parcelas de um integral; multiplicar faria a cena APAGAR o céu.
+    //
+    // ⚠️ **Só a parcela DIFUSA**, declarado: uma irradiância por pixel não tem direcção, e o lóbulo
+    // especular pergunta *«que luz vem DAQUELA direcção»*. O especular indirecto continua a ser o
+    // céu — ver o [`crate::bounce`].
+    //
+    // ⭐ **Canal vazio ⇒ o quadro de sempre, ao BIT**: sem ele o ramo não corre.
+    let devolvida = light.shadows.map_or([0.0; 3], |s| s.bounce_at(geom.i));
+    if devolvida != [0.0; 3] {
+        rgb = add(rgb, surface.indirect(n, v, &SoIrradiancia(devolvida)));
+    }
     for lamp in light.lamps {
         rgb = add(rgb, surface.direct(n, v, lamp.to_light, lamp.radiance));
     }
@@ -250,7 +317,7 @@ fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom
             lamp.world[2] - p[2],
         ];
         let cru = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
-        let piso = POINT_LAMP_MIN_DISTANCE * POINT_LAMP_MIN_DISTANCE;
+        let piso = PISO_DA_LAMPADA;
         // ⚠️⚠️ **O piso protege DUAS grandezas, e a primeira redacção só protegia uma.** Ela coava
         // o `r²` e normalizava o vector **cru**: com a luz exactamente sobre o ponto, `d` é o vector
         // ZERO, a direcção sai `[0,0,0]`, o `N·L` dá `0` e o pixel fica **PRETO** — o mesmo sintoma
@@ -272,7 +339,7 @@ fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom
         // especular do céu e a emissão — *uma peça tapada por outra continua a reflectir o
         // ambiente, e continua a brilhar se for ela própria uma luz.*
         let visivel = light.shadows.map_or(1.0, |s| s.at(l, geom.i));
-        let chega = lamp.radiance_at_one.map(|c| c * visivel / cru.max(piso));
+        let chega = chega_da_lampada(lamp, cru, visivel);
         rgb = add(rgb, surface.direct(n, v, to_light, chega));
     }
     look.apply(add(rgb, surface.emission(n, v)))
@@ -552,7 +619,7 @@ fn catcher(
         livre = add(livre, d);
         chega = add(chega, d);
     }
-    let piso = POINT_LAMP_MIN_DISTANCE * POINT_LAMP_MIN_DISTANCE;
+    let piso = PISO_DA_LAMPADA;
     for (l, lamp) in light.points.iter().enumerate() {
         let d = [
             lamp.world[0] - q[0],
@@ -567,7 +634,9 @@ fn catcher(
             let inv = cru.sqrt().recip();
             basis.world_to_view([d[0] * inv, d[1] * inv, d[2] * inv])
         };
-        let rad = lamp.radiance_at_one.map(|c| c / cru.max(piso));
+        // ⚠️ **`visivel = 1`**, e a visibilidade entra na linha de baixo: aqui a razão do chão
+        // precisa das DUAS luzes — a que chegaria LIVRE e a que de facto chega.
+        let rad = chega_da_lampada(lamp, cru, 1.0);
         let vis = light.shadows.map_or(1.0, |s| s.at(l, i));
         livre = add(livre, branco.direct(n, v, to_light, rad));
         chega = add(chega, branco.direct(n, v, to_light, rad.map(|c| c * vis)));

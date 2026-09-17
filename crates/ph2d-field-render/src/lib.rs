@@ -104,6 +104,9 @@ impl Sharpness {
     }
 }
 
+/// ⭐⭐⭐ **O RICOCHETE** — a luz que a cena devolve (a `W5`). Irmão da [`occlusion`]: elas são as
+/// duas metades do mesmo integral do hemisfério.
+pub mod bounce;
 mod camera;
 mod edges;
 /// ⭐⭐⭐ **O chão que só recebe** — a metade da `W4` que esperava o dono (`docs/Render3d/07`).

@@ -79,6 +79,18 @@ pub struct Shadows {
     /// as lâmpadas respondem: *«quanto desta fonte chega a este pixel?»*. Um segundo canal ao lado
     /// faria o pintor perguntar duas vezes a mesma coisa, e é assim que dois canais divergem.
     ambient: Vec<f32>,
+    /// ⭐⭐⭐ **A OUTRA METADE do integral do hemisfério: a luz que a CENA devolve** (a `W5`, ver
+    /// [`crate::bounce`]).
+    ///
+    /// O [`Self::ambient`] mede a parte do CÉU e **atenua**; esta é a parte das SUPERFÍCIES e
+    /// **soma**. As duas saem do mesmo conjunto de direcções e do mesmo peso `max(0, n·d)` — dois
+    /// conjuntos diferentes fariam a soma deixar de ser o integral de coisa nenhuma.
+    ///
+    /// ⚠️⚠️ **Fora de alcance devolve `[0, 0, 0]`, que é o OPOSTO da lei das irmãs** — e a razão é
+    /// que a pergunta é outra. Uma sombra que não foi calculada é *ausência de sombra* (`1,0`);
+    /// uma luz que não foi calculada é **ausência de luz**. *Inventar luz é a única das duas que
+    /// acende o que devia estar escuro.*
+    bounce: Vec<[f32; 3]>,
     pixels: usize,
     /// ⭐⭐⭐ **O CHÃO para o qual os pixels de FUNDO foram calculados** — ver [`crate::ground`].
     ///
@@ -120,6 +132,24 @@ impl Shadows {
     #[must_use]
     pub fn ambient_at(&self, i: usize) -> f32 {
         self.ambient.get(i).copied().unwrap_or(1.0)
+    }
+
+    /// A luz que a CENA devolve ao pixel `i` — ver o campo [`Shadows::bounce`].
+    ///
+    /// ⚠️ **Fora de alcance devolve `[0, 0, 0]`** — ausência de luz, nunca luz inventada. É o que
+    /// mantém o quadro sem esta passagem **byte a byte** o de sempre.
+    #[must_use]
+    pub fn bounce_at(&self, i: usize) -> [f32; 3] {
+        self.bounce.get(i).copied().unwrap_or([0.0; 3])
+    }
+
+    /// ⭐ Declara o canal do ricochete — para quem o calculou (o [`crate::bounce::bounce_pass`], ou
+    /// o traçador de GPU quando ele o souber fazer).
+    pub fn set_bounce(&mut self, bounce: Vec<[f32; 3]>) {
+        if self.pixels == 0 {
+            self.pixels = bounce.len();
+        }
+        self.bounce = bounce;
     }
 
     /// ⭐ **O canal de UMA lâmpada**, para quem o calculou noutro sítio (o traçador de GPU).
@@ -213,6 +243,10 @@ pub fn shadow_pass_on(
         return Shadows {
             per_lamp: Vec::new(),
             ambient,
+            // ⚠️ Vazio: este passe não o calcula. Quem o quiser chama o
+            // [`crate::bounce::bounce_pass`] e declara-o com o [`Shadows::set_bounce`] — é o mesmo
+            // desenho do `ambient`, que também vem de outro passe.
+            bounce: Vec::new(),
             pixels,
             ground,
         };
@@ -328,6 +362,7 @@ pub fn shadow_pass_on(
     Shadows {
         per_lamp,
         ambient,
+        bounce: Vec::new(),
         pixels,
         ground,
     }

@@ -716,3 +716,147 @@ fn a_parede_tinge_o_chao_e_o_sinal_e_conhecido() {
         "sem luz indirecta os dois pontos são indistinguíveis — é este o buraco que a W5 fecha"
     );
 }
+
+// ── o gate do PRODUTO: o sangramento nos PIXELS ───────────────────────────────────────────────
+
+/// O fundo do modelador: transparente.
+const FUNDO: [u8; 4] = [0, 0, 0, 0];
+
+/// ⭐⭐⭐ **O que o DONO vê: o chão da imagem fica tingido da parede ao lado.**
+///
+/// A referência mede a irradiância num ponto; este mede **bytes**, pelo caminho do produto — o
+/// traçado, o passe da sombra, o [`crate::bounce::bounce_pass`] e o [`crate::shade_render`].
+///
+/// ⛔⛔ **E o CONTROLO é a mesma imagem sem o canal do ricochete**, pintada na mesma corrida: sem
+/// ele os dois lados do chão são indistinguíveis, porque o céu desta caixa é preto. *Uma régua que
+/// só mede o lado novo não sabe dizer se a wave mexeu alguma coisa.*
+#[test]
+fn o_ricochete_tinge_o_chao_da_imagem() {
+    let (doc, postas, materiais) = caixa();
+    let reg = Registry::new();
+    let cam = camara();
+    // ⚠️ **`128` e não `64`, e o motivo é a POPULAÇÃO e não o gosto:** a peça baixa tapa parte do
+    // chão do lado direito, e a `64` sobravam `30` pixels ali depois de excluir a banda da
+    // fronteira. *Baixar o piso da população para a régua passar seria afrouxar a régua; dar-lhe
+    // resolução é dar-lhe amostras.*
+    let (w, h) = (128u32, 128u32);
+    let g = trace(&doc, &reg, &cam, w, h);
+    let donos = donos(&postas, &reg, &cam, w.min(h));
+    let prontos: Vec<ph2d_material::Surface> = materiais.iter().map(OpenPbr::prepare).collect();
+    let surfaces = Surfaces {
+        all: &prontos,
+        owners: Some(&donos),
+    };
+
+    let sem = crate::shadow_pass(&doc, &reg, &cam, &g, &[LAMPADA.world]);
+    let mut com = sem.clone();
+    com.set_bounce(crate::bounce::bounce_pass(
+        &doc,
+        &reg,
+        &cam,
+        &g,
+        &surfaces,
+        &[LAMPADA],
+        64,
+    ));
+
+    let pinta = |sh: &crate::Shadows| {
+        crate::shade_render(
+            &g,
+            &cam,
+            &surfaces,
+            &crate::Lighting {
+                lamps: &[],
+                points: &[LAMPADA],
+                sky: &Escuro,
+                shadows: Some(sh),
+            },
+            ph2d_view_transform::Look::default(),
+            FUNDO,
+        )
+    };
+    let img_sem = pinta(&sem);
+    let img_com = pinta(&com);
+
+    // O tom médio dos pixels do CHÃO de cada metade da sala.
+    let tom_do_chao = |img: &[u8], esquerda: bool| -> (f32, usize) {
+        let (mut r, mut v, mut n) = (0.0f64, 0.0f64, 0usize);
+        for i in 0..(w * h) as usize {
+            if !g.hit[i] || donos.at(g.point[i]) != Some(Face::Chao as usize) {
+                continue;
+            }
+            // Só o chão junto da parede, e longe do meio — é ali que o tingimento vive.
+            //
+            // ⛔⛔ **E FORA da banda em que o produto MISTURA os dois materiais.** A 1.ª redacção
+            // ia até `|x| = 0,4998` — encostada à parede — e o CONTROLO (sem ricochete nenhum) lia
+            // `+0,0082` e `−0,0271` num chão branco sob uma lâmpada branca. Não era defeito: é a
+            // fronteira de cor suavizada do [`Surfaces::mix_of`], cuja largura é **um pixel no
+            // mundo**. *A régua estava a medir a mistura de materiais e a chamar-lhe luz.*
+            //
+            // ⇒ a margem é **três larguras de pixel**, derivada do quadro
+            // (`2 × half_extent / lado`), e não um número escolhido.
+            let pixel_mundo = 2.0 * camara().half_extent / w.min(h) as f32;
+            let limite = SALA - 3.0 * pixel_mundo;
+            let x = g.point[i][0];
+            if x.abs() < 0.22 || x.abs() > limite {
+                continue;
+            }
+            if esquerda == (x > 0.0) {
+                continue;
+            }
+            r += f64::from(img[i * 4]);
+            v += f64::from(img[i * 4 + 1]);
+            n += 1;
+        }
+        if n == 0 {
+            return (0.0, 0);
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        let tom = ((r - v) / (r + v).max(1.0)) as f32;
+        (tom, n)
+    };
+
+    // ⏱️ diagnóstico: onde estão de facto os pixels que a régua chamou de chão?
+    {
+        let (mut ymin, mut ymax, mut xabs) = (f32::MAX, f32::MIN, 0.0f32);
+        let mut n = 0;
+        for i in 0..(w * h) as usize {
+            if g.hit[i] && donos.at(g.point[i]) == Some(Face::Chao as usize) {
+                let p = g.point[i];
+                ymin = ymin.min(p[1]);
+                ymax = ymax.max(p[1]);
+                xabs = xabs.max(p[0].abs());
+                n += 1;
+            }
+        }
+        println!("  DIAG chão: {n} px · y de {ymin:.4} a {ymax:.4} · |x| até {xabs:.4}");
+    }
+    let (sem_e, quantos_e) = tom_do_chao(&img_sem, true);
+    let (sem_d, quantos_d) = tom_do_chao(&img_sem, false);
+    let (com_e, _) = tom_do_chao(&img_com, true);
+    let (com_d, _) = tom_do_chao(&img_com, false);
+    println!(
+        "  o chão da IMAGEM ({quantos_e} px à esquerda, {quantos_d} à direita)\n    \
+         SEM ricochete   esquerda {sem_e:+.4}   direita {sem_d:+.4}\n    \
+         COM ricochete   esquerda {com_e:+.4}   direita {com_d:+.4}"
+    );
+
+    assert!(
+        quantos_e > 40 && quantos_d > 40,
+        "poucos pixels de chão para medir ({quantos_e} / {quantos_d}) — a régua não tem população"
+    );
+    // ⭐ O CONTROLO: sem o canal, as duas metades do chão são a mesma cor.
+    assert!(
+        (sem_e - sem_d).abs() < 0.01,
+        "sem ricochete o chão tinha de ser igual dos dois lados, e lê {sem_e:+.4} contra {sem_d:+.4}"
+    );
+    // ⭐⭐ E com ele, cada metade puxa para a parede do seu lado.
+    assert!(
+        com_e > sem_e + 0.02,
+        "o chão junto da parede VERMELHA tinha de avermelhar ({sem_e:+.4} → {com_e:+.4})"
+    );
+    assert!(
+        com_d < sem_d - 0.02,
+        "o chão junto da parede VERDE tinha de esverdear ({sem_d:+.4} → {com_d:+.4})"
+    );
+}

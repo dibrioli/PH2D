@@ -538,6 +538,184 @@ tectos de LOC verdes (`workspace_src_files_under_loc_cap` + o censo de folgas ob
 
 ---
 
+## §55 — ⭐⭐⭐ *«o spacing está alto e fica meio pontilhada. Reduza o spacing»*: o espaçamento sai do VERBO e passa para o PINCEL
+
+Segundo report do dono sobre o mesmo traço, depois da cura do §54: melhorou, mas o sulco ainda se
+lê pontilhado. **Ordem: reduzir o espaçamento.**
+
+### §55.1 — A escada medida, e porque a troca é barata
+
+| espaçamento | `D/R` no meio | `D/R` junto à borda | ondulação pior (bandas do regime) |
+|---|---|---|---|
+| `5 %` (fábrica do alvo) | `0,2041` | `0,2061` | `0,0643` |
+| `3 %` | `0,2019` | `0,2061` | `0,0921` |
+| **`2 %` (ship)** | `0,2007` | `0,2032` | **`0,0407`** |
+| `1,5 %` | `0,2010` | `0,2065` | `0,0784` |
+| `1 %` | `0,1992` | `0,2012` | `0,0402` |
+
+⭐⭐ **A profundidade é praticamente INDEPENDENTE do espaçamento** (`0,199`–`0,208` sobre uma faixa
+de `5×`), e a razão é a lei deste pincel: a queda mede-se das posições do **pen-down**, logo o
+cursor afasta-se delas enquanto cava e a profundidade **converge**. ⇒ baixar o espaçamento compra
+continuidade sem mexer no que o dono já aprovou.
+
+⚠️ **A espec §5.3 media a MESMA coisa do outro lado** (`8 %` e `10 %` dão `−0,2 %` e `−0,6 %`) e
+concluía que o espaçamento *«quase não é alavanca»* — **verdade sobre a PROFUNDIDADE e falsa sobre
+a CONTINUIDADE do sulco**, que é o que o artista vê. *Uma recusa medida responde UMA pergunta.*
+
+⚠️⚠️ **A coluna da ondulação não é monótona** (`3 %` lê pior que `5 %`), e a causa é da RÉGUA: a
+ondulação do §16.1 normaliza por **um período de dab**, e o período segue o espaçamento ⇒ a janela
+move-se com a variável. *Uma régua cuja janela segue o número que se está a variar não pode ser a
+única testemunha da variação* — por isso o gate afirma pelo **passo** (aritmética, sem janela) e usa
+a ondulação como coluna que corrobora.
+
+### §55.2 — ⛔⛔ O espaçamento é um valor de FÁBRICA, e por isso mudou de dono
+
+A 1.ª tentativa foi trocar a constante — e **partiu seis gates de paridade de uma vez**, com as
+mensagens a acusar a LEI. O mecanismo: `espacamento_do_verbo` é lido pelo **passo** *e* pela
+**atenuação**, e o corpus do oráculo foi gravado com o espaçamento **do alvo**. Com o nosso número,
+a bancada arrastava a `2 %` contra uma saída gravada a `5 %` — *dois pincéis diferentes, e o desvio
+lido como defeito de lei*.
+
+⇒ **três mudanças, e a do meio é a que importa:**
+
+1. `ESPACAMENTO_DO_AFIADO_DO_ALVO_PCT = 5,0` — o **FACTO** sobre o alvo, que as `80` fixturas fixam
+   no cabeçalho.
+2. **`Brush::espacamento_pct: Option<f32>`** — `None` é *«o que o verbo declara»*. É a porta pela
+   qual a fixtura diz *«corre com ESTE espaçamento»*, e é o que mantém o oráculo vivo. ⛔ **Não é um
+   knob de painel:** nenhum controlo o escreve.
+3. `ESPACAMENTO_DO_AFIADO_PCT = 2,0` — o que **ship**, por ordem do dono.
+
+⭐ E uma porta só (`espacamento_do_traco`) lida pelo passo de ecrã, pelo passo de mundo **e** pela
+atenuação: *escrita duas vezes, um traço andaria com o espaçamento de um pincel e enfraqueceria com
+o de outro* — que foi exactamente o modo de falha da 1.ª tentativa.
+
+### §55.3 — ⚠️ Três gates tiveram a premissa MORTA, e a morte está visível no diff
+
+1. *«o passo é `5 %` do diâmetro»* → hoje afirma as **duas** coisas: que o alvo vale `5` e que nós
+   shipamos **menos**, com piso de `1 %` nomeado pelo recurso.
+2. *«a atenuação de fábrica é `a = 0,24591`»* → hoje mede-a **com o espaçamento do alvo** (o facto) e
+   exige que a **nossa** seja mais forte (a compensação que mantém a profundidade).
+3. *«o passo de mundo é o espaçamento declarado»* → fixava `0,04` à mão e reprovou sobre produto
+   correcto. Hoje afirma a **unidade** (`2·raio·pct/100`) e, de graça, separa **declarar** de
+   **medir no mundo**: o afiado declara e mede · o plano declara e **não** mede · o `Draw` não
+   declara. ⛔ `passo_no_mundo` passou a devolver `None` a quem não mede — *um número devolvido ao
+   plano era uma segunda resposta a «este verbo mede no mundo?»*.
+
+⭐ **E a ordem do dono é agora um ERRO DE COMPILAÇÃO** (`const _: () = assert!(nosso < do_alvo)`),
+ao lado dos dois números: um `assert!` de teste sobre duas constantes é **dobrado pelo compilador**
+antes de correr, e o clippy di-lo em voz alta (*«this assertion has a constant value»*).
+
+### §55.4 — O gate que faltava, e o recurso
+
+**G-21** (`o_nosso_espacamento_de_fabrica_deixa_o_sulco_mais_continuo`): todo o corpus arrasta com o
+espaçamento do **alvo**, logo **nenhum gate media o que o produto ship** — reverter o número passaria
+calado. Ele corre as duas colunas com a cura ligada e afirma: o passo é **`2,50×`** mais fino
+(aritmética), a profundidade move-se **≤ 5 %** em todas as bandas do regime (medido: `1,7 %`), e a
+ondulação pior **desce** (`0,0643 → 0,0407`).
+
+⛔ **O RECURSO é o RELÓGIO**, medido (`--release`, mínimo de três, malha de `185 977` vértices, o
+traço da silhueta a `1` px por evento): **`0,472 → 1,074 ms` por evento**, contra o *kill* de `8 ms`
+(`13 %` do orçamento). ⚠️ **Ele não cresce só com os dabs:** a granularidade dos candidatos é
+proporcional ao passo, logo um espaçamento `2,5×` mais fino pede também `2,5×` mais **raios** contra
+a superfície congelada. Sonda: `diag_o_custo_do_traco_aos_dois_espacamentos`.
+
+**Mutação: 4 de 4 sangram** — a porta a ignorar o pincel (`7` de `19` gates de paridade) · o nosso
+número a voltar ao do alvo (G-21) · cada uma das **duas** bancadas a deixar de escrever o
+espaçamento da fixtura no pincel (`3` de `19`, e `3` de `5`).
+
+---
+
+## §56 — 📦 PARA O AGENTE INTEGRADOR
+
+> ⛔ **Esta linha NÃO integrou e NÃO enviou nada** (`CLAUDE.md` §0.7). O que segue é o que a
+> integração precisa de saber, e **só isso** — o mecanismo de cada wave está nas secções acima.
+
+### §56.1 — A linha
+
+| | |
+|---|---|
+| ramo | `line/sculpt3d` |
+| worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d` |
+| merge-base | `1d43da737` |
+| commits | **198** |
+| diff | `976` ficheiros, `+75 653 / −1 743` (⚠️ **`634` são `docs/`**, a maioria fixturas de oráculo em `.gz`) |
+| árvore | **limpa** — tudo comitado |
+
+**Crates NOVAS (4), todas folhas:** [`ph2d-boundary`](../../../crates/ph2d-boundary/) ·
+[`ph2d-pose`](../../../crates/ph2d-pose/) · [`ph2d-trim`](../../../crates/ph2d-trim/) ·
+[`ph2d-mesh-bool`](../../../crates/ph2d-mesh-bool/). ⚠️ A última traz **uma dependência externa
+nova** (motor de booleana de malha, **Apache-2.0**, Rust puro, feature `parallel` **desligada** de
+propósito — §43).
+
+### §56.2 — ⭐ O que NÃO se move (a parte fácil)
+
+**Zero contadores partilhados.** Conferido por diff contra o merge-base: `PROJECT_SCHEMA` ·
+`VEC_SCENE_SCHEMA` · `FLIP_SCHEMA` · `FIELD_DOC_VERSION` · `DOC_VERSION` da timeline · os **três**
+registos de componentes — **nenhum** ficheiro que os declara foi tocado.
+**Zero contrato congelado** (§6), **zero ADR**, **zero** mudança no `AppHost`.
+
+⚠️ **UMA mudança foundational, e ela é ADITIVA:** o `ph2d-editor-core` ganha a ligação **curva**
+pista↔número (`link_slider_number_curved`, §50.3) — nenhuma assinatura pública muda e a identidade
+é byte-idêntica no caso linear. *É o único sítio onde esta linha toca código de outra família.*
+
+### §56.3 — ⚠️ O que a integração tem de RE-CORRER (e não pode herdar desta linha)
+
+1. **Tectos de LOC**, que é a única grandeza deste repo que **SOMA entre linhas sem ninguém a
+   contar** (§5.0). Esta linha fechou com todos verdes **sozinha**; duas linhas a somar 200 linhas
+   cada não acordam gate nenhum até se juntarem. ⇒ `workspace_src_files_under_loc_cap` +
+   `the_shell_only_shrinks` **na árvore combinada**, e a cura é **corte por responsabilidade**,
+   nunca uma entrada nova no `FILE_OVERAGE_OK`.
+2. **As vassouras clean-room**, **todas** as vivas, sobre a árvore combinada — *o sweep é
+   propriedade do PAR (código, vassoura)*, e os agentes E estendem as vassouras a cada emenda.
+   Instrumento: `bash scripts/cleanroom-sweep.sh <VASSOURA_*.txt> <paths…>`.
+3. **Os gates de ARQUITECTURA**, que vivem em crates que esta linha não editou e que um fecho
+   por-crate é cego a eles (a lição custou NOVE vermelhos numa integração anterior).
+4. **`scripts/ship.sh`** inteiro antes do push, como sempre.
+
+### §56.4 — ⚠️ O que uma leitura rápida do diff entende ao contrário
+
+1. **O `ESPACAMENTO_DO_AFIADO_PCT` mudou de `5` para `2` e isso NÃO é um desvio de paridade** — é
+   ordem do dono (§55), e o corpus continua a medir-se com o número do alvo, que vive agora numa
+   constante própria. Há `const _: () = assert!(…)` a prender a relação.
+2. **O `TECTO_DAS_PONTAS` DESCEU** (`5e-2 → 2,5e-2`) — uma catraca a apertar, não a afrouxar.
+3. **O `TECTO_DO_ULTIMO_SEPARADO` é uma divergência DECLARADA com o mecanismo** (§54.4), e o gate
+   **exige que ela exista**: se alguém a fizer desaparecer, ele reprova e manda apagar o tecto.
+4. **`passo_do_traco` e `passo_no_mundo` mudaram de assinatura** (`Verb` → `&Brush`). É mecânico;
+   o que não é mecânico é a razão: o espaçamento passou a ser um valor do PINCEL.
+5. **`passo_no_mundo` devolve `None` ao pincel de plano** — ele declara espaçamento e **não** mede
+   no mundo; antes devolvia um número que ninguém devia usar.
+6. **As `22` fixturas de `produto/` que são ablação e controlos ficam FORA dos gates**, de
+   propósito, com o papel de cada uma na espec §12.2.
+
+### §56.5 — Portão de fecho desta linha (o que já está medido)
+
+`nextest-impacted` **15 368/15 368** verdes na wave do §54 e **15 369/15 369** na do §55 ·
+`clippy --all-targets` nas crates da linha: **zero** avisos · `cargo fmt --all` aplicado ·
+tectos de LOC verdes · `ph2d-sculpt3d` **565** testes · `ph2d-app-sculpt3d` **206** ·
+mutação **17 de 17** nas duas waves (13 + 4) · as **nove** vassouras corridas, com as **três**
+acusações medidas como **pré-existentes** (zero adições nesta linha; a triagem é do **R**).
+
+⚠️ **Flake conhecida desta crate**, membro confirmado da família de fan-out do §5.0:
+`the_frame_is_hoisted_out_of_the_vertex_loop` — re-rode-a **sozinha**, com o `/proc/loadavg`
+impresso ao lado, antes de suspeitar do merge.
+
+### §56.6 — ⛔ O que o dono AINDA NÃO smokou
+
+O **§55** (o espaçamento a `2 %`) foi medido e gateado e **não passou pelo smoke dele** — o report
+que o pediu é de 16/09 e a resposta saiu no mesmo dia. *Integrar não é aprovar* (§5.0): se a
+integração acontecer antes do smoke, ela leva uma mudança de **valor de fábrica** que o dono pediu
+mas ainda não viu.
+
+**Smoke:**
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULPT3D_SMOKE=48 cargo run -p ph2d-host-desktop --profile smoke
+```
+
+O passo **(6)** do roteiro é o do report: começar o traço **na beirada** da bola e puxar para o meio.
+
+---
+
 ## §52 — ⏳ O que fica ABERTO, e de quem é
 
 - **Dono:** o **G-20** (tecto do raio *digitável* `≥ 5 000` px, errata Q2) — a pista vai a `5 000`

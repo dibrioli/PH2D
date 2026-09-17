@@ -381,6 +381,21 @@ pub struct Brush {
     /// §14.4, [`crate::atenuacao_do_traco`]). ⚠️ **Só a app o liga** (`armed_brush_on`): a porta por
     /// script — a bancada, o oráculo por script — dá os dabs um a um, com o factor em `1`.
     pub traco_arrastado: bool,
+    /// ⭐⭐⭐ **O ESPAÇAMENTO DESTE TRAÇO**, em % do DIÂMETRO — `None` é *«o que o
+    /// verbo declara»*, que é o valor de fábrica do produto.
+    ///
+    /// ⚠️⚠️ **Ele existe porque o espaçamento é um valor de FÁBRICA e não uma
+    /// lei**, e o dono acabou de o provar ao mandar baixar o do pincel afiado
+    /// (16/09). Desde então o nosso número (`2 %`) e o do alvo (`5 %`) são
+    /// diferentes — e a **bancada de paridade tem de arrastar com o DELE**, senão
+    /// ela compara dois pincéis e chama-lhe desvio. ⇒ a fixtura escreve-o aqui e
+    /// tudo o resto segue pelas portas do produto: o passo de ecrã, o passo de
+    /// mundo e a ATENUAÇÃO, que sem isto ficaria com o nosso número enquanto o
+    /// traço andava com o dele.
+    ///
+    /// ⛔ **Não é um knob de painel** — nenhum controlo o escreve hoje; ele é a
+    /// porta pela qual uma medição diz *«corre com ESTE espaçamento»*.
+    pub espacamento_pct: Option<f32>,
     /// **A FOLGA da projecção** — quanto barro fica ANTES de encostar no alvo
     /// (o *minimum distance* da espec §6.3.4), em unidades do objecto.
     ///

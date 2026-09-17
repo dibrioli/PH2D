@@ -45,7 +45,6 @@
 //! paridade deste pincel — que corre em planos e num cilindro percorrido ao
 //! longo do eixo.
 
-use crate::Verb;
 use ph2d_mesh::{Hit, Mesh};
 
 /// **Quantos dabs um único píxel do caminho pode fechar.**
@@ -64,8 +63,12 @@ pub const MAX_DABS_POR_PASSO: u32 = 8;
 /// **O passo deste verbo medido no MUNDO**, ou `None` quando ele não declara um
 /// espaçamento próprio (e então vale a régua de ecrã da casa).
 #[must_use]
-pub fn passo_no_mundo(verb: Verb, raio_de_mundo: f32) -> Option<f32> {
-    crate::espacamento_do_verbo(verb).map(|pct| raio_de_mundo * pct / 50.0)
+pub fn passo_no_mundo(pincel: &crate::Brush, raio_de_mundo: f32) -> Option<f32> {
+    if !pincel.verb.mede_o_passo_no_mundo() {
+        return None;
+    }
+    crate::espacamento_do_traco(pincel)
+        .map(|pct| crate::passo_de_um_espacamento(pct, raio_de_mundo))
 }
 
 /// **O acumulador do caminho sobre a superfície congelada.**

@@ -328,7 +328,7 @@ pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
             // que arrastar rápido pelo mesmo traçado. Com ele, o número de
             // parcelas é função do comprimento percorrido.
             Grip::Hook => {
-                let spacing = ph2d_sculpt3d::passo_do_traco(scene.brush.verb, scene.radius_px());
+                let spacing = ph2d_sculpt3d::passo_do_traco(&scene.brush, scene.radius_px());
                 if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
                     let mut prev = scene.stroke_anchor;
                     for step in steps {
@@ -354,7 +354,7 @@ pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
             // CAMINHO*), e aqui ela não é uma escolha de estilo — é o que
             // impede o mesmo gesto de dar dois panos diferentes.
             Grip::Simulate => {
-                let spacing = ph2d_sculpt3d::passo_do_traco(scene.brush.verb, scene.radius_px());
+                let spacing = ph2d_sculpt3d::passo_do_traco(&scene.brush, scene.radius_px());
                 if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
                     let mut prev = scene.stroke_anchor;
                     // ⚠️ Os modos de FORÇA da lei da referência re-picam o
@@ -384,7 +384,7 @@ pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
                 percorre_no_mundo(scene, x, y);
             }
             Grip::Stamp | Grip::Paint => {
-                let spacing = ph2d_sculpt3d::passo_do_traco(scene.brush.verb, scene.radius_px());
+                let spacing = ph2d_sculpt3d::passo_do_traco(&scene.brush, scene.radius_px());
                 if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
                     // Lido ANTES do laço: o `for` consome o iterador, e o
                     // `anchor()` responde onde o walk PARA — que é o fato
@@ -462,7 +462,7 @@ pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
 /// o centro levado pelo barro é que cura a ONDULAÇÃO e paga a divergência
 /// declarada (`oraculo_do_pincel_afiado_produto::TECTO_DO_ULTIMO_SEPARADO`).
 fn percorre_no_mundo(scene: &mut Sculpt3dScene, x: f32, y: f32) {
-    let Some(passo) = ph2d_sculpt3d::passo_no_mundo(scene.brush.verb, scene.brush.radius) else {
+    let Some(passo) = ph2d_sculpt3d::passo_no_mundo(&scene.brush, scene.brush.radius) else {
         return;
     };
     // O segmento de ecrã deste evento, em píxeis a partir da âncora.

@@ -251,6 +251,12 @@ fn pincel(f: &Fixtura) -> Brush {
         accumulate: false,
         normal_radius_frac: f.num("raio_da_normal"),
         traco_arrastado: true,
+        // ⭐⭐⭐ **O ESPAÇAMENTO DO ALVO, do cabeçalho — NUNCA o nosso.** Desde
+        // 16/09 o produto ship `2 %` por ordem do dono e o alvo tem `5 %`:
+        // arrastar o traço DELE com o NOSSO espaçamento não mede paridade
+        // nenhuma, mede dois pincéis diferentes. ⚠️ E a metade que engana é a
+        // ATENUAÇÃO, que sai do mesmo número.
+        espacamento_pct: Some(f.num("espacamento_pct_do_diametro")),
         ..Brush::default()
     }
 }
@@ -350,8 +356,9 @@ fn arrastar_por(
         }
     };
     carimbar(&mut m, &mut s, 0.0);
-    let passo_de_ecra = ph2d_sculpt3d::passo_do_traco(b.verb, b.radius * ppu);
-    let passo_de_mundo = ph2d_sculpt3d::passo_no_mundo(b.verb, b.radius).expect("passo de mundo");
+    let passo_de_ecra = ph2d_sculpt3d::passo_do_traco(b, b.radius * ppu);
+    let passo_de_mundo =
+        ph2d_sculpt3d::passo_no_mundo(b, b.radius).expect("o afiado mede no mundo");
     let mut caminho = CaminhoNoMundo::novo();
     let mut ancora = [0.0f32, 0.0];
     let mut t = 0.0f32;
@@ -774,5 +781,135 @@ fn diag_o_percurso_ao_longo_da_borda_mal_esculpe() {
         for (k, (d, r)) in l.iter().enumerate() {
             println!("{percurso:?} banda {k}: D/R {d:.4} · ondulação {r:.4}");
         }
+    }
+}
+
+/// ⭐⭐⭐ **G-21 — o NOSSO espaçamento de fábrica deixa o sulco mais contínuo que
+/// o do alvo, e quase não mexe na profundidade.**
+///
+/// ⛔⛔ **Este gate existe porque nenhum outro mede o que o produto ship.** Todo
+/// o corpus arrasta com o espaçamento do **alvo** (é o que o cabeçalho fixa, e é
+/// o que torna a paridade uma medição em vez de uma comparação de dois pincéis
+/// diferentes) ⇒ *sem esta metade, a ordem do dono de 16/09 — «o spacing está
+/// alto e fica meio pontilhada. Reduza o spacing» — não teria régua nenhuma, e
+/// reverter o número passaria calado.*
+///
+/// A régua é a do §16.1, com a cura ligada dos dois lados: o que muda entre as
+/// colunas é **só** o espaçamento.
+///
+/// ⚠️⚠️ **RESSALVA da régua, escrita porque ela existe:** a ondulação do §16.1 é
+/// normalizada por **UM período de dab**, e o período segue o espaçamento ⇒ parte
+/// da melhoria daquela coluna é *definicional* e não do produto. É por isso que
+/// a afirmação que este gate faz sobre a continuidade **não é a ondulação**: é o
+/// **passo**, que é aritmética e não tem janela nenhuma — dois dabs consecutivos
+/// passam a ficar `2,5×` mais perto, logo sobrepõem-se `2,5×` mais. A ondulação
+/// entra como a coluna que **corrobora** e que reprovaria se a troca piorasse o
+/// sulco. *Uma régua cuja janela segue o número que se está a variar não pode ser
+/// a única testemunha da variação.*
+#[test]
+fn o_nosso_espacamento_de_fabrica_deixa_o_sulco_mais_continuo() {
+    let f = ler("produto_cupula_fabrica_da_silhueta");
+    let como_o_alvo = pincel(&f);
+    assert!(
+        como_o_alvo.espacamento_pct == Some(ph2d_sculpt3d::ESPACAMENTO_DO_AFIADO_DO_ALVO_PCT),
+        "a fixtura tem de trazer o espaçamento do alvo"
+    );
+    // `None` = o que o verbo declara, que é o que o pincel VESTE ao nascer.
+    let nosso = Brush {
+        espacamento_pct: None,
+        ..como_o_alvo.clone()
+    };
+    let (base, g) = malha_da_formula(&f);
+    let repouso = base.positions().to_vec();
+    let medir = |b: &Brush| {
+        let m = arrastar(&f, b, LeiDoCursor::PassoEBarro, 1.0);
+        regua(&f, &g, &repouso, &|k| m.positions()[k], b.radius)
+    };
+    let (la, ln) = (medir(&como_o_alvo), medir(&nosso));
+    let mut pior_alvo = 0.0f32;
+    let mut pior_nosso = 0.0f32;
+    for (k, ((da, ra), (dn, rn))) in la.iter().zip(&ln).take(BANDAS_DO_REGIME).enumerate() {
+        println!("banda {k}: alvo D/R {da:.4} r {ra:.4} → nosso D/R {dn:.4} r {rn:.4}");
+        pior_alvo = pior_alvo.max(*ra);
+        pior_nosso = pior_nosso.max(*rn);
+        // ⚠️ **A profundidade quase não se mexe, e é isso que torna a troca
+        // barata:** quem limita este vinco é a auto-limitação (a queda mede-se
+        // das posições do pen-down), não o número de dabs.
+        let delta = (dn - da).abs() / da;
+        assert!(
+            delta <= 0.05,
+            "banda {k}: o nosso espaçamento mudou a profundidade {:.1} %",
+            delta * 100.0
+        );
+    }
+    // ⭐ **A metade que NÃO depende de régua nenhuma**: o passo do produto é
+    // estritamente mais fino que o do alvo, na mesma unidade e no mesmo raio.
+    let passo_alvo = ph2d_sculpt3d::passo_no_mundo(&como_o_alvo, como_o_alvo.radius)
+        .expect("o afiado mede no mundo");
+    let passo_nosso =
+        ph2d_sculpt3d::passo_no_mundo(&nosso, nosso.radius).expect("o afiado mede no mundo");
+    let razao = passo_alvo / passo_nosso;
+    println!("passo: alvo {passo_alvo:.5} → nosso {passo_nosso:.5} ({razao:.2}× mais fino)");
+    assert!(
+        razao >= 2.0,
+        "o espaçamento de fábrica tem de ser pelo menos o DOBRO do fino: {razao:.2}×"
+    );
+    println!("ondulação pior: alvo {pior_alvo:.4} → nosso {pior_nosso:.4}");
+    assert!(
+        pior_nosso < pior_alvo,
+        "o nosso espaçamento tem de deixar o sulco MAIS contínuo: {pior_nosso:.4} contra \
+         {pior_alvo:.4}"
+    );
+}
+
+/// SONDA: o relógio de um traço aos dois espaçamentos.
+#[test]
+#[ignore = "sonda: imprime o custo do traço"]
+fn diag_o_custo_do_traco_aos_dois_espacamentos() {
+    let f = ler("produto_cupula_fabrica_da_silhueta");
+    let como_o_alvo = pincel(&f);
+    let nosso = Brush {
+        espacamento_pct: None,
+        ..como_o_alvo.clone()
+    };
+    let (base, _) = malha_da_formula(&f);
+    println!("malha: {} vertices", base.positions().len());
+    for (nome, b) in [("alvo 5 %", &como_o_alvo), ("nosso 2 %", &nosso)] {
+        let mut melhor = f64::MAX;
+        for _ in 0..3 {
+            let t = std::time::Instant::now();
+            let _ = arrastar(&f, b, LeiDoCursor::PassoEBarro, 1.0);
+            melhor = melhor.min(t.elapsed().as_secs_f64() * 1000.0);
+        }
+        // O traço é entregue a 1 px por evento ⇒ o custo por EVENTO é o que o
+        // quadro paga, e é ele que se compara com o orçamento de 8 ms.
+        let px = f.num("vista_px_por_unidade");
+        let pd: Vec<f32> = f
+            .chave("pixel_do_pen_down_no_mundo")
+            .split_whitespace()
+            .take(2)
+            .map(|s| s.parse().expect("pd"))
+            .collect();
+        let um: Vec<f32> = f
+            .chave("um_pixel_para_a_direita")
+            .split_whitespace()
+            .take(2)
+            .map(|s| s.parse().expect("um"))
+            .collect();
+        let fim: Vec<f32> = f
+            .chave("caminho_do_traco")
+            .split(" a (")
+            .nth(1)
+            .and_then(|s| s.split(')').next())
+            .expect("fim")
+            .split_whitespace()
+            .map(|s| s.parse().expect("p"))
+            .collect();
+        let eventos = ((fim[0] - pd[0]) / um[0]).abs();
+        let _ = px;
+        println!(
+            "{nome}: traço inteiro {melhor:.1} ms sobre {eventos:.0} eventos ⇒ {:.3} ms/evento",
+            melhor / f64::from(eventos)
+        );
     }
 }

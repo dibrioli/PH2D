@@ -90,8 +90,9 @@ pub use passo_no_mundo::{
 };
 
 pub use atenuacao_do_traco::{
-    ESPACAMENTO_DO_AFIADO_PCT, ESPACAMENTO_DO_PLANO_PCT, atenuacao_por_espacamento,
-    espacamento_do_verbo, passo_do_traco,
+    ESPACAMENTO_DO_AFIADO_DO_ALVO_PCT, ESPACAMENTO_DO_AFIADO_PCT, ESPACAMENTO_DO_PLANO_PCT,
+    atenuacao_por_espacamento, espacamento_do_traco, espacamento_do_verbo, passo_de_um_espacamento,
+    passo_do_traco,
 };
 
 /// ⭐⭐⭐ **A DISTÂNCIA ATÉ À OUTRA PEÇA** — ver [`projectar`].

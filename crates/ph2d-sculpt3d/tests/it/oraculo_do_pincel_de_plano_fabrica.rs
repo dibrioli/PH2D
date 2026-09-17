@@ -226,7 +226,11 @@ fn a_memoria_do_plano_reproduz_o_oraculo_e_o_centro_e_mudo_so_na_simetria() {
 /// existe se a caneta levantar nesse evento.
 #[test]
 fn o_passo_do_traco_e_sete_por_cento_do_diametro() {
-    let passo = ph2d_sculpt3d::passo_do_traco(Verb::Plane, 50.0);
+    let plano = Brush {
+        verb: Verb::Plane,
+        ..Brush::default()
+    };
+    let passo = ph2d_sculpt3d::passo_do_traco(&plano, 50.0);
     assert_eq!(passo, 7.0, "a 50 px o passo e' EXACTAMENTE 7");
     for (salto, alvo, nosso) in [
         (6.0f32, 0u32, 0u32),
@@ -354,7 +358,7 @@ fn arrastar(f: &Fixtura, pincel: &Brush, passagens: usize) -> Vec<[f32; 3]> {
     const PX: f32 = 200.0;
     let mut m = grelha(f).expect("grelha");
     let olho = olho(f);
-    let passo = ph2d_sculpt3d::passo_do_traco(pincel.verb, pincel.radius * PX);
+    let passo = ph2d_sculpt3d::passo_do_traco(pincel, pincel.radius * PX);
     let mut s = SculptStroke::default();
     s.begin(&m);
     let dab = |m: &mut Mesh, s: &mut SculptStroke, x_px: f32| {

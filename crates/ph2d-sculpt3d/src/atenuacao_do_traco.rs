@@ -42,13 +42,61 @@ use crate::{Brush, Falloff, PlanoInversao, Verb};
 /// O espaçamento do pincel de plano, em % do DIÂMETRO — o perfil *aparar* do alvo (espec §14.2).
 pub const ESPACAMENTO_DO_PLANO_PCT: f32 = 7.0;
 
-/// O espaçamento do pincel AFIADO, em % do DIÂMETRO — o valor de fábrica dele no alvo
+/// ⛔ **O espaçamento de fábrica do pincel afiado NO ALVO**, em % do DIÂMETRO
 /// (`SPEC_pincel_afiado.md` §5.1 e §6), lido correndo o programa.
 ///
-/// ⚠️ **Ele quase não é alavanca, e a espec diz porquê:** a atenuação compensa-o, então
-/// `8 %` e `10 %` entregam `−0,2 %` e `−0,6 %` da profundidade que `5 %` dá (§5.3). Quem
-/// muda o vinco é a curva e a distância do pen-down, não o espaçamento.
-pub const ESPACAMENTO_DO_AFIADO_PCT: f32 = 5.0;
+/// ⚠️ **Ele é um FACTO sobre o alvo, e não o que este produto ship** — ver
+/// [`ESPACAMENTO_DO_AFIADO_PCT`]. É este o número que as `80` fixturas do corpus
+/// fixam no cabeçalho, e é com ele que a bancada arrasta: *uma bancada que
+/// arrastasse com o nosso espaçamento deixaria de ter oráculo.*
+pub const ESPACAMENTO_DO_AFIADO_DO_ALVO_PCT: f32 = 5.0;
+
+/// ⭐⭐⭐ **O espaçamento do pincel AFIADO que ESTE produto ship**, em % do DIÂMETRO —
+/// **`2 %`, por ordem do dono** (16/09: *«o spacing está alto e fica meio pontilhada.
+/// Reduza o spacing»*), contra os `5 %` de fábrica do alvo
+/// ([`ESPACAMENTO_DO_AFIADO_DO_ALVO_PCT`]).
+///
+/// ⭐⭐ **A troca é barata, e é MEDIDA — a profundidade do vinco é praticamente
+/// independente do espaçamento**, porque quem a limita é a auto-limitação deste
+/// pincel (a queda mede-se das posições do **pen-down**, logo o cursor afasta-se
+/// delas enquanto cava e a profundidade converge). Varrido sobre a fixtura da
+/// silhueta, `D/R` nas seis bandas do regime:
+///
+/// | espaçamento | `D/R` no meio | `D/R` junto à borda |
+/// |---|---|---|
+/// | `5 %` (o alvo) | `0,2041` | `0,2061` |
+/// | `3 %` | `0,2019` | `0,2061` |
+/// | `2 %` (ship) | `0,2007` | `0,2032` |
+/// | `1 %` | `0,1992` | `0,2012` |
+///
+/// ⇒ `2 %` custa **`−1,4 %`** de profundidade e entrega `2,5×` a densidade de
+/// dabs. ⚠️ **A espec §5.3 mede a mesma coisa do outro lado** (`8 %` e `10 %`
+/// dão `−0,2 %` e `−0,6 %`), e é por isso que ela diz que o espaçamento *«quase
+/// não é alavanca»* — verdade sobre a PROFUNDIDADE, e falso sobre a
+/// CONTINUIDADE do sulco, que é o que o dono vê.
+///
+/// ⛔ **E o RECURSO que fixa o piso é o RELÓGIO**, medido (`--release`, mínimo de
+/// três, malha de `185 977` vértices, o traço da silhueta a `1` px por evento):
+/// `0,472 ms` por evento a `5 %` e **`1,074 ms`** a `2 %`, contra o *kill* de
+/// `8 ms` — `13 %` do orçamento. ⚠️ **Ele NÃO cresce só com os dabs:** a
+/// granularidade dos candidatos é proporcional ao passo, logo um espaçamento
+/// `2,5×` mais fino pede também `2,5×` mais RAIOS contra a superfície congelada.
+/// A sonda que o mede é a `diag_o_custo_do_traco_aos_dois_espacamentos`.
+///
+/// ⛔⛔ **Isto é uma DIVERGÊNCIA DECLARADA do valor de fábrica do alvo**, e o
+/// corpus de paridade continua a medir-se com o número DELE: o que diverge é o
+/// que o pincel VESTE ao nascer, nunca a lei que ele corre.
+pub const ESPACAMENTO_DO_AFIADO_PCT: f32 = 2.0;
+
+/// ⛔⛔ **A ORDEM DO DONO, como erro de COMPILAÇÃO** — reduzir o espaçamento só é
+/// uma decisão enquanto o nosso número for menor que o do alvo, e um `assert!` em
+/// teste sobre duas constantes é dobrado pelo compilador antes de correr (o
+/// clippy di-lo: *«this assertion has a constant value»*). ⇒ a lei mora aqui, ao
+/// lado dos dois números, e quem os igualar **não compila**.
+const _: () = assert!(
+    ESPACAMENTO_DO_AFIADO_PCT < ESPACAMENTO_DO_AFIADO_DO_ALVO_PCT,
+    "o dono mandou REDUZIR o espaçamento do afiado (16/09)"
+);
 
 /// **O espaçamento declarado por este verbo**, em % do diâmetro — `None` quando o verbo não
 /// declara nenhum e cai no passo da casa.
@@ -67,11 +115,40 @@ pub fn espacamento_do_verbo(verb: Verb) -> Option<f32> {
 
 /// **O passo entre dois dabs de um traço arrastado**, na régua em que `raio` vem (a app dá pixels).
 #[must_use]
-pub fn passo_do_traco(verb: Verb, raio: f32) -> f32 {
-    match espacamento_do_verbo(verb) {
-        Some(pct) => raio * pct / 50.0,
+pub fn passo_do_traco(pincel: &Brush, raio: f32) -> f32 {
+    match espacamento_do_traco(pincel) {
+        Some(pct) => passo_de_um_espacamento(pct, raio),
         None => crate::min_spacing(raio),
     }
+}
+
+/// ⭐⭐ **O espaçamento que ESTE traço corre** — o do pincel quando ele o declara,
+/// senão o do verbo.
+///
+/// ⚠️ **Uma porta só, lida pelos DOIS passos E pela atenuação.** Escrita duas
+/// vezes, um traço andaria com o espaçamento de um pincel e enfraqueceria com o
+/// de outro — e foi exactamente isso que aconteceu na primeira tentativa de
+/// baixar o nosso: a bancada passou a arrastar a `5 %` e o motor continuou a
+/// atenuar a `2 %`, com seis gates de paridade a acusar a LEI por causa de um
+/// número.
+#[must_use]
+pub fn espacamento_do_traco(pincel: &Brush) -> Option<f32> {
+    pincel
+        .espacamento_pct
+        .or_else(|| espacamento_do_verbo(pincel.verb))
+}
+
+/// ⭐⭐ **A LEI do passo, com o espaçamento explícito** — `pct` é do DIÂMETRO,
+/// logo o passo é `2·raio·pct/100`.
+///
+/// ⚠️ **Ela existe porque há TRÊS chamadores e um deles não usa o nosso número:**
+/// o passo de ecrã, o passo de mundo, e a **bancada de paridade**, que tem de
+/// arrastar com o espaçamento do ALVO (o do cabeçalho da fixtura) desde que o
+/// dono mandou baixar o nosso. *Escrita três vezes, esta aritmética divergiria
+/// no dia em que uma delas ganhasse um factor.*
+#[must_use]
+pub fn passo_de_um_espacamento(espacamento_pct: f32, raio: f32) -> f32 {
+    raio * espacamento_pct / 50.0
 }
 
 /// **O factor de atenuação `a`** de uma curva a um espaçamento (em % do diâmetro). `1` fora de
@@ -108,7 +185,7 @@ impl Brush {
     /// laço por-vértice não as pode pagar a cada vértice.
     #[must_use]
     pub fn factor_do_traco(&self) -> f32 {
-        let Some(pct) = espacamento_do_verbo(self.verb) else {
+        let Some(pct) = espacamento_do_traco(self) else {
             return 1.0;
         };
         if !self.traco_arrastado {
@@ -191,7 +268,15 @@ mod tests {
     /// O passo do plano é `7 %` do diâmetro, EXACTO a 50 px; os outros verbos ficam nos `0,15 R`.
     #[test]
     fn o_passo_do_plano_e_sete_por_cento_do_diametro() {
-        assert_eq!(passo_do_traco(Verb::Plane, 50.0), 7.0);
-        assert_eq!(passo_do_traco(Verb::Draw, 50.0), crate::min_spacing(50.0));
+        let plano = Brush {
+            verb: Verb::Plane,
+            ..Brush::default()
+        };
+        assert_eq!(passo_do_traco(&plano, 50.0), 7.0);
+        let liso = Brush {
+            verb: Verb::Draw,
+            ..Brush::default()
+        };
+        assert_eq!(passo_do_traco(&liso, 50.0), crate::min_spacing(50.0));
     }
 }

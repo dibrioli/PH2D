@@ -172,6 +172,8 @@ impl Default for Brush {
             plano_firmeza_centro: 0.0,
             // A porta por script é a omissão; só a app diz que o traço foi arrastado.
             traco_arrastado: false,
+            // `None` = o que o verbo declara (`espacamento_do_verbo`).
+            espacamento_pct: None,
             project_min_distance: 0.0,
             project_bidirectional: false,
             // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo

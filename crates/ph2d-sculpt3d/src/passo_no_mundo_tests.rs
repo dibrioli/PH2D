@@ -1,19 +1,67 @@
 //! Os gates da lei do passo medido sobre a superfície — ver o módulo.
 
 use super::{CaminhoNoMundo, MAX_DABS_POR_PASSO, passo_no_mundo};
-use crate::Verb;
+use crate::{Verb, espacamento_do_verbo};
 
-/// ⭐ **O passo de mundo é o espaçamento declarado, na régua do mundo.**
+/// ⭐ **O passo é o espaçamento declarado, na régua certa** — e DECLARAR um
+/// espaçamento não é o mesmo que MEDI-LO sobre a superfície.
+///
+/// ⚠️⚠️ **A afirmação é a UNIDADE, não o número de hoje:** o espaçamento é uma
+/// percentagem do **DIÂMETRO** ⇒ `passo = 2·raio·pct/100`. A 1.ª redacção deste
+/// gate fixava `0,04` à mão e reprovou no dia em que o dono mandou baixar o
+/// espaçamento — *sobre produto correcto*, porque ela media a constante e não a
+/// lei. O erro de factor `2` entre raio e diâmetro continua a ser apanhado, que
+/// é o que este gate existe para dizer.
+///
+/// ⛔⛔ **E as TRÊS respostas são diferentes**, o que é a razão de a porta do
+/// passo de mundo perguntar ao verbo: o **afiado** declara e mede no mundo · o
+/// **plano** declara e **não** mede (ele corre a régua de ecrã da casa) · o
+/// `Draw` não declara nada. *Uma porta que devolvesse um número ao plano estaria
+/// a dar uma segunda resposta a «este verbo mede no mundo?», e o dia em que
+/// alguém a lesse seria o dia em que o pincel de plano mudava de lei.*
 #[test]
-fn o_passo_no_mundo_e_o_espacamento_declarado() {
-    // `5 %` do diâmetro = `0,1` do raio.
-    let p = passo_no_mundo(Verb::DrawSharp, 0.4).expect("o afiado declara espaçamento");
-    assert!((p - 0.04).abs() < 1e-7, "{p}");
-    // E o pincel de plano tem o dele, pela MESMA porta.
-    let q = passo_no_mundo(Verb::Plane, 0.5).expect("o plano declara espaçamento");
-    assert!((q - 0.07).abs() < 1e-7, "{q}");
-    // ⛔ Quem não declara não tem passo de mundo — cai na régua de ecrã da casa.
-    assert!(passo_no_mundo(Verb::Draw, 0.4).is_none());
+fn o_passo_e_o_espacamento_declarado_e_so_um_verbo_o_mede_no_mundo() {
+    for (verb, raio) in [(Verb::DrawSharp, 0.4f32), (Verb::Plane, 0.5)] {
+        let pct = espacamento_do_verbo(verb).expect("o verbo declara espaçamento");
+        let b = crate::Brush {
+            verb,
+            ..crate::Brush::default()
+        };
+        let devido = 2.0 * raio * pct / 100.0;
+        let ecra = crate::passo_do_traco(&b, raio);
+        assert!(
+            (ecra - devido).abs() < 1e-7,
+            "{verb:?}: {ecra} contra {devido}"
+        );
+        match passo_no_mundo(&b, raio) {
+            Some(p) => {
+                assert!(verb.mede_o_passo_no_mundo(), "{verb:?} não mede no mundo");
+                assert!((p - devido).abs() < 1e-7, "{verb:?}: {p} contra {devido}");
+            }
+            None => assert!(
+                !verb.mede_o_passo_no_mundo(),
+                "{verb:?} mede no mundo e a porta não lhe deu passo"
+            ),
+        }
+    }
+    // ⛔ Quem não declara não tem espaçamento — cai na régua mínima da casa.
+    assert!(espacamento_do_verbo(Verb::Draw).is_none());
+    let liso = crate::Brush {
+        verb: Verb::Draw,
+        ..crate::Brush::default()
+    };
+    assert!(passo_no_mundo(&liso, 0.4).is_none());
+
+    // ⭐⭐ **E o pincel pode trazer o SEU espaçamento**, que é a porta pela qual a
+    // bancada de paridade arrasta com o do ALVO enquanto o produto ship o nosso.
+    let afiado = crate::Brush {
+        verb: Verb::DrawSharp,
+        espacamento_pct: Some(crate::ESPACAMENTO_DO_AFIADO_DO_ALVO_PCT),
+        ..crate::Brush::default()
+    };
+    let p = passo_no_mundo(&afiado, 0.4).expect("o afiado mede no mundo");
+    let devido = 2.0 * 0.4 * crate::ESPACAMENTO_DO_AFIADO_DO_ALVO_PCT / 100.0;
+    assert!((p - devido).abs() < 1e-7, "{p} contra {devido}");
 }
 
 /// ⭐⭐⭐ **O RESÍDUO VIAJA — a mesma lei do carry do `walk`, e é ela que torna o

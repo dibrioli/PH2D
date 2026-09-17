@@ -147,7 +147,9 @@ fn arrastar_com(f: &Fixtura, b: &Brush, passagens: usize, lei: LeiDoCursor) -> V
         .map(|s| s.parse().expect("um pixel"))
         .collect();
     let separados = f.chave("caminho_do_traco").contains("SEPARADOS");
-    let passo = ph2d_sculpt3d::passo_do_traco(b.verb, b.radius * px);
+    // ⭐ O passo sai do PINCEL, que já traz o espaçamento do alvo escrito pelo
+    // `pincel()` a partir do cabeçalho — ver `espacamento_da_fixtura`.
+    let passo = ph2d_sculpt3d::passo_do_traco(b, b.radius * px);
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let eventos = (1.0 / um[0]).round() as usize;
     let mut m = malha(f);
@@ -177,7 +179,7 @@ fn arrastar_com(f: &Fixtura, b: &Brush, passagens: usize, lei: LeiDoCursor) -> V
     // *Uma bancada que corresse a lei antiga mediria um programa que já não
     // existe.*
     let no_mundo = b.verb.mede_o_passo_no_mundo() && lei != LeiDoCursor::Ecra;
-    let passo_mundo = ph2d_sculpt3d::passo_no_mundo(b.verb, b.radius);
+    let passo_mundo = ph2d_sculpt3d::passo_no_mundo(b, b.radius);
     let mut caminho = ph2d_sculpt3d::CaminhoNoMundo::novo();
     for k in 0..passagens {
         let dir = if k % 2 == 0 { 1.0 } else { -1.0 };
@@ -643,10 +645,13 @@ fn o_passo_do_traco_e_o_do_alvo() {
         let f = ler("detector", &nome);
         let b = pincel_produto(&f);
         let px = f.num("vista_px_por_unidade");
-        let passo = ph2d_sculpt3d::passo_do_traco(b.verb, b.radius * px);
+        // ⚠️ **O passo DO ALVO** — o pincel vem do cabeçalho, logo carrega o
+        // espaçamento dele; com o nosso (`2 %`) este detector lia `2` px e o
+        // gate acusaria a LEI por causa de um valor de fábrica.
+        let passo = ph2d_sculpt3d::passo_do_traco(&b, b.radius * px);
         assert!(
             (passo - 5.0).abs() < 1e-4,
-            "{nome}: o passo devia ser 5 px, e' {passo}"
+            "{nome}: o passo do ALVO devia ser 5 px, e' {passo}"
         );
         // A contagem, pela porta do produto.
         let dabs = 1 + ph2d_sculpt3d::walk(
@@ -681,7 +686,7 @@ fn arrastar_salto(f: &Fixtura, b: &Brush, n: u32) -> Vec<[f32; 3]> {
         .take(2)
         .map(|s| s.parse().expect("um pixel"))
         .collect();
-    let passo = ph2d_sculpt3d::passo_do_traco(b.verb, b.radius * px);
+    let passo = ph2d_sculpt3d::passo_do_traco(b, b.radius * px);
     let mut m = malha(f);
     let e = olho(f);
     let mut s = SculptStroke::default();

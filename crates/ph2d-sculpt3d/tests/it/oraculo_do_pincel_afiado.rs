@@ -250,6 +250,19 @@ pub fn olho(f: &Fixtura) -> [f32; 3] {
 ///
 /// ⚠️⚠️ **Todo knob sai do CABEÇALHO, e uma chave que falte FAZ PANIC** — é a
 /// única forma de um leitor de 80 fixturas não medir outro programa em silêncio.
+/// ⭐⭐⭐ **O ESPAÇAMENTO COM QUE A BANCADA ARRASTA — o da FIXTURA, nunca o nosso.**
+///
+/// ⛔⛔ Desde 16/09 o produto ship `2 %` por ordem do dono e o alvo tem `5 %`
+/// ([`ph2d_sculpt3d::ESPACAMENTO_DO_AFIADO_PCT`] contra
+/// [`ph2d_sculpt3d::ESPACAMENTO_DO_AFIADO_DO_ALVO_PCT`]). *Reproduzir o traço do
+/// alvo com o NOSSO espaçamento não é medir paridade nenhuma — é medir dois
+/// pincéis diferentes e chamar-lhe desvio.* ⇒ o corpus continua a medir a LEI, e
+/// o que diverge é só o que o pincel VESTE ao nascer, que tem gate próprio
+/// (`o_pincel_afiado_nasce_com_os_valores_do_alvo`).
+fn espacamento_da_fixtura(f: &Fixtura) -> f32 {
+    f.num("espacamento_pct_do_diametro")
+}
+
 pub fn pincel(f: &Fixtura) -> Brush {
     let verb = match f.chave("pincel") {
         "DRAW_SHARP" => Verb::DrawSharp,
@@ -293,15 +306,25 @@ pub fn pincel(f: &Fixtura) -> Brush {
         f.nome
     );
     if arrastado {
+        // ⛔⛔ **Contra o valor de fábrica do ALVO, e não contra o nosso** — desde
+        // que o dono mandou baixar o espaçamento (16/09) os dois números são
+        // diferentes, e é o DELE que o corpus fixa. *Uma bancada que conferisse
+        // o nosso deixaria de ter oráculo no dia da divergência.*
         assert_eq!(
             f.num("espacamento_pct_do_diametro"),
-            ph2d_sculpt3d::ESPACAMENTO_DO_AFIADO_PCT,
-            "{}: o espaçamento da fixtura não é o de fábrica",
+            ph2d_sculpt3d::ESPACAMENTO_DO_AFIADO_DO_ALVO_PCT,
+            "{}: o espaçamento da fixtura não é o de fábrica DO ALVO",
             f.nome
         );
     }
     Brush {
         verb,
+        // ⭐⭐⭐ **O ESPAÇAMENTO DO ALVO, do cabeçalho** — ver
+        // [`espacamento_da_fixtura`]. ⛔ Sem esta linha a bancada arrastaria com
+        // o NOSSO (`2 %` desde a ordem do dono de 16/09) e mediria dois pincéis
+        // diferentes; e a metade que engana é a ATENUAÇÃO, que sai do mesmo
+        // número e ficaria a enfraquecer cada dab na proporção errada.
+        espacamento_pct: arrastado.then(|| espacamento_da_fixtura(f)),
         // ⭐⭐ **O MODO é o `B` em TODA fixtura deste corpus, e a razão é a
         // proveniência:** ele foi corrido no alvo restrito, logo a lei que o
         // governa é a da referência que ESSE alvo é — para os dois verbos.
@@ -666,25 +689,68 @@ fn o_pincel_afiado_nasce_com_os_valores_do_alvo() {
         !Verb::DrawSharp.accumulates(),
         "o interruptor de acumular nao tem o que escolher neste verbo (espec §2.1)"
     );
-    // O passo e a atenuação, os dois do traço.
-    let passo = ph2d_sculpt3d::passo_do_traco(Verb::DrawSharp, 50.0);
+    // ⛔⛔⛔ **O ESPAÇAMENTO é a ÚNICA divergência de fábrica deste pincel, e ela
+    // é ORDEM DO DONO** (16/09: *«o spacing está alto e fica meio pontilhada.
+    // Reduza o spacing»*). ⚠️ A premissa deste gate MUDOU e a morte dela está
+    // visível aqui: ele afirmava *«o passo é 5 % do diâmetro»*, que era a
+    // fidelidade ao alvo; hoje afirma as DUAS coisas — que o alvo vale `5` e que
+    // nós shipamos MENOS.
+    let alvo = ph2d_sculpt3d::ESPACAMENTO_DO_AFIADO_DO_ALVO_PCT;
     assert!(
-        (passo - 5.0).abs() < 1e-6,
-        "o passo e' 5 % do diametro: {passo}"
+        (alvo - 5.0).abs() < 1e-6,
+        "o espacamento de fabrica DO ALVO e' 5 % do diametro: {alvo}"
     );
-    let arrastado = Brush {
+    let nosso = ph2d_sculpt3d::ESPACAMENTO_DO_AFIADO_PCT;
+    assert!(
+        nosso < alvo,
+        "a ordem do dono foi REDUZIR o espacamento: {nosso} contra {alvo}"
+    );
+    // ⚠️ E o piso: um espaçamento que tenda a zero faz a densidade de dabs
+    // tender ao infinito, e o recurso e' o RELOGIO do traco. `1 %` do diametro
+    // sao `50` dabs por raio de pincel, que ja' e' dez vezes o que a curva
+    // afiada distingue (`(1-u)^4` cai a `6 %` em `u = 0,5`).
+    assert!(
+        nosso >= 1.0,
+        "o espacamento nao pode cair abaixo de 1 %: {nosso}"
+    );
+    // E o passo continua a ser essa percentagem do DIAMETRO, pela porta unica.
+    let passo = ph2d_sculpt3d::passo_do_traco(&b, 50.0);
+    assert!(
+        (passo - nosso).abs() < 1e-6,
+        "o passo e' o espacamento em % do diametro: {passo} contra {nosso}"
+    );
+    // ⭐⭐⭐ **A ATENUAÇÃO SAI DO MESMO NÚMERO, e é essa a razão de o espaçamento
+    // viver no PINCEL e não no verbo.** Com o espaçamento DO ALVO ela vale `a` =
+    // `0,24591` — o facto que a espec §5.3 publica e que o corpus reproduz.
+    let como_o_alvo = Brush {
         traco_arrastado: true,
-        ..b
+        espacamento_pct: Some(alvo),
+        ..b.clone()
     };
-    let a = arrastado.factor_do_traco();
+    let a = como_o_alvo.factor_do_traco();
     assert!(
         (a - 0.24591).abs() < 5e-4,
-        "a atenuacao de fabrica e' `a` = 0,24591: {a}"
+        "com o espacamento DO ALVO a atenuacao e' `a` = 0,24591: {a}"
     );
     // ⛔ **E ela NÃO é a lei do pincel de plano** — a espec §5.3 mede `4,7e-2`
     // de erro com `(1 + a)/2`, contra `4,9e-4` com `a`.
     assert!(
         (a - (1.0 + a) / 2.0).abs() > 0.1,
         "o factor do afiado nao pode ser o do plano"
+    );
+    // ⚠️⚠️ **E o nosso pincel de fábrica atenua MAIS**, porque o espaçamento
+    // menor põe mais dabs no mesmo arco: é isto que mantém a profundidade do
+    // vinco praticamente igual à do alvo enquanto o sulco fica CONTÍNUO
+    // (`D/R 0,2007` contra `0,2041`, medido). *Sem esta metade, alguém leria a
+    // atenuação mais fraca como uma regressão em vez da compensação que ela é.*
+    let nosso_arrastado = Brush {
+        traco_arrastado: true,
+        ..b
+    };
+    let a_nosso = nosso_arrastado.factor_do_traco();
+    assert!(
+        a_nosso < a,
+        "com o nosso espacamento ({nosso} %) a atenuacao tem de ser MAIS forte: \
+         {a_nosso} contra {a}"
     );
 }

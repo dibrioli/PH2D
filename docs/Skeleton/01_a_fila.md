@@ -3001,6 +3001,25 @@ filho **sem** endireitar a raiz · o escolhido alheio/apagado deixa recta · a l
 escolhas · o pool alcança toda linha que a lei oferece · e o **gesto REAL** (`MockPanelHost`) do chip
 que abre e da linha que atravessa até ao barramento. **3 mutações, todas a sangrar.**
 
+#### A-bis) ⛔⛔ **E elas não estavam POR CIMA** (report do dono no mesmo dia)
+
+*«os handles não estão por cima (z-index). Handles com Z-index maior que ossos»* — elas pintavam-se
+**antes** do `draw_bones`, com a justificação de que *«o osso por cima deixa a bolinha da junta
+inteira»*: uma razão de ACABAMENTO a decidir a ordem de um CONTROLO.
+
+⚠️⚠️ **E a ordem do desenho contradizia a do DEDO**, que é o defeito a sério: no `bone_pick::hover`
+as alças do osso em foco competem por proximidade e ganham ao CORPO — a de curvatura chega a ignorar
+a distância ao osso, senão seria inalcançável no ponto neutro. *O artista agarrava o que não via.*
+⇒ a lei é a inversa da do pick: **o que o dedo apanha primeiro pinta-se por último**, e o
+`draw_bend` passa a ser o ÚLTIMO passe do rig (depois dos ossos **e** das âncoras, porque no pick
+ele também ganha ao losango).
+
+⭐ **É a população INTEIRA do defeito, não metade:** a mancha da influência e o arco do limite são
+fundo, e as alças deles vivem FORA do eixo do osso; as de curvatura nascem **em cima do eixo** (o
+ponto de controlo no terço), logo são as únicas que se sobrepõem ao corpo por construção. Gate
+posicional com controlo de população (`the_bend_handles_are_the_last_pass_of_the_rig`), vermelho com
+a ordem antiga.
+
 #### B) A cor das alças — o token `bone-handle`
 
 Elas eram `ColorToken::Accent`, que é **exactamente** o corpo aceso do osso: distância **ZERO**. A

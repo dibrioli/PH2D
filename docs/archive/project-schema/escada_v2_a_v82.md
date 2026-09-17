@@ -12,7 +12,8 @@
 > ⚠️ **Os degraus VIVOS continuam colados à constante**, em
 > [`shells/desktop/src/project_schema.rs`](../../../shells/desktop/src/project_schema.rs) — *quem
 > conta o próximo degrau lê a escada, não o literal*, e o que ele precisa de ler é a **ponta**.
-> A faixa `v83`..`v98` continua em `project_schema_history_v83.rs`.
+> As faixas `v83`..`v98` e `v99`..`v108` estão ao lado, em `escada_v83_a_v98.md` e
+> `escada_v99_a_v108.md` (as duas mudaram-se para cá em 2026-09-16, pela mesma catraca).
 
 ---
 

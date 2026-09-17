@@ -100,6 +100,7 @@ mod the_axis_chip_goes_through_the_swap_door;
 mod the_bake_button_is_wired;
 mod the_bake_replays_the_recorded_run;
 mod the_bind_beats_every_editor_shortcut;
+mod the_bone_handles_are_painted_over_the_bones;
 mod the_bone_pickers_are_modal;
 mod the_boolean_cooks_before_the_alignment;
 mod the_border_gesture_reaches_the_panel;

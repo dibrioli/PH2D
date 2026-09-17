@@ -1,0 +1,265 @@
+# A ESCADA do `PROJECT_SCHEMA`, de `v83` a `v98` — ARQUIVO VERBATIM
+
+> ⚠️ **Este ficheiro era `shells/desktop/src/project_schema_history_v83.rs`** e mudou-se para cá em 2026-09-16, **verbatim**, pela MESMA
+> catraca que já tinha movido a faixa `v2`..`v82`: a `the_shell_only_shrinks`. Ela nasceu em 2026-09-07 como módulo da shell — *«nada saiu do código»* — e a razão que a tirou de lá é a que o arquivo da faixa anterior já trazia escrita: **o tecto da shell é fixo e a escada ganha um parágrafo por wave**.
+>
+> ⛔ **Nada foi reescrito.** A prosa abaixo é a do ficheiro, linha a linha, sem o marcador `//!`.
+> O `sha256` do original está no fim, e o commit que o moveu tem os dois lados.
+>
+> ⚠️ **Os degraus VIVOS continuam colados à constante**, em
+> [`shells/desktop/src/project_schema.rs`](../../../shells/desktop/src/project_schema.rs) — *quem
+> conta o próximo degrau lê a escada, não o literal*, e o que ele precisa de ler é a **ponta**.
+
+---
+
+**A ESCADA do `PROJECT_SCHEMA`, de v83 a v98** — a metade ARQUIVADA da metade arquivada.
+
+⚠️ **O corte por IDADE repete-se, e é isso que este arquivo prova.** O irmão
+A faixa `v2`..`v82` (hoje em `docs/archive/project-schema/escada_v2_a_v82.md`) nasceu em `v82`
+quando a escada viva passou as 600 linhas do
+HR-18; em 2026-09-07 o degrau `122` levou-a lá outra vez, e mover estes dezasseis degraus para
+dentro daquele **também** o punha acima do teto (`730`). ⇒ um arquivo por faixa, com a faixa no
+NOME — assim quem procura um degrau sabe onde bater sem abrir os dois.
+
+⚠️ **Nada saiu do código.** A história é `//!` em vez de `///` e continua a ser lida, grepada e
+publicada pelo `cargo doc` exactamente como era; o que mudou foi de que arquivo ela vem.
+
+v83 (`line/Vector`, item 4 do estudo dos contêineres — A TABELA SINAL → AÇÃO): o
+`HostStates` ganhou **`on_signal`**, a lista de ligações *nome de sinal → papel*
+(`ph2d_ui_state::SignalBinding`). Ele mora DENTRO do `HostStates` — e não numa
+tabela própria — porque o `retain_hosts` já corre por frame: uma forma apagada leva
+as ligações dela sem uma linha a mais, no mesmo frame e no mesmo passo de undo. É o
+degrau irmão do `spring` (v62), no mesmo struct e pelo mesmo motivo posicional: o
+postcard grava na ordem de declaração, então um leitor velho leria lixo bem-formado.
+v84 (`line/Vector`, item 5 do estudo dos contêineres — A GRADE): o `LayoutDir` ganhou
+**`Grid`** (variante APENDADA, logo `Row`/`Column`/`RowWrap` continuam em 0/1/2 e todo
+arquivo já salvo segue legível) e o `VecLayout` ganhou **`columns`**.
+⚠️ O bump é pelo caminho **INVERSO**, e é o campo que o obriga: o postcard é
+posicional, então um leitor velho leria os bytes do `columns` como o começo do que
+vem a seguir. O número transforma isso num erro de VERSÃO — o raciocínio do
+`Cap::Square` do Flip e do `JointKind::Weld` da física.
+⚠️ A contagem mora no `VecLayout` e **não** dentro do variante, para sobreviver a uma
+troca de direção: ir a `Row` e voltar devolve a grade intacta, como o vão e o recuo já
+fazem.
+v85 (`line/Sprite`, plano [`docs/Sprite_projeto/17`] §3 — OS PIXELS GANHAM NOME): o
+`ProjectFile` ganhou **`sprite_pixels`**, o documento do `ph2d-sprite-sheet`. Campo
+apendado ⇒ bump pelo motivo posicional de sempre.
+⚠️ **O que este degrau CONSERTA é perda de dados em produção, não uma capacidade nova.**
+`SpriteSource::Individual { texture_id }` guarda um id de alocação da GPU, e o
+`IndividualTextureStore` recomeça a numerar em `1` a cada processo: um sprite tocado por
+QUALQUER ferramenta de imagem (trim · bgremoval · make-square · padding · upscale ·
+rasterize · equalize) reabria **invisível**, ou a exibir os pixels de outro sprite que
+ficou com aquele id no restore. O Painter (v3) e o bake 3D (`baked_forms`) já tinham sido
+resgatados um a um; este degrau é o **chão** que faltava debaixo dos dois.
+⚠️ **E ele bumpa UMA vez.** O blob carrega a própria versão (`SHEET_DOC_VERSION`), como o
+`TimelineDoc` e o `sculpt` — então as regiões do hand-packed, que entram neste MESMO
+documento, não voltarão a recusar projeto salvo nenhum.
+v86 (`line/Sprite`, §5 9-Slice — A FORMA DO `SliceNine` MUDOU TRÊS VEZES NUM DIA): o
+componente `SliceNine`, registado em `register_ecs_components`, perdeu o campo
+**`stretch_value`** (o slider `Stretch` do `Adaptive`, retirado porque o mecanismo dele não
+podia funcionar) e o `SliceDrawMode` perdeu a variante **`Tiled`** (ela era o `Sliced` menos a
+capacidade de esticar uma região).
+⚠️ **O componente é name-keyed, mas o BLOB dele é posicional.** Um projeto gravado hoje de
+manhã tem a mesma chave `"ph2d::ecs::SliceNine"` com o layout velho: sem este degrau o leitor
+novo lê o `bool` do `fill_center` onde estavam os quatro bytes do `stretch_value`. É a lei que
+os degraus v6/v7/v8 já escreveram — *não é campo novo no arquivo, é o MESMO campo com outro
+layout, e posicional é posicional*.
+⚠️ **Um bump para as três mudanças, não três.** Elas caem no mesmo dia e no mesmo componente,
+e nenhuma chegou ao `main`: o que o número tem de separar é o formato de ontem do de hoje.
+⚠️ Adicionar o `SliceNine` e o `NamedAnchorList` ao registo (2026-08-21) **não** pediu degrau —
+isso é aditivo numa tabela por NOME, e um arquivo velho apenas não os tem. O que pede degrau é
+**mudar a forma de uma chave que já existe**.
+v87 (`line/Vector` — O RECORTE SAIU DA MOLDURA): o `VecFrame` perdeu o campo `clip` e virou
+**marcador**, e o recorte passou a ser o componente próprio `ph2d_ecs::VecClipContent`, que
+qualquer forma FECHADA pode carregar (Enio: *"coloque a feature Clip Content para qualquer
+forma vetorial fechada"*).
+⚠️ **Quem obriga o bump é o campo REMOVIDO**, e é o caso inverso ao do v84: o postcard é
+posicional, então um leitor novo sobre bytes velhos leria o `bool` do `clip` como o começo do
+componente seguinte — e ao contrário de um campo apendado, aqui nem o tamanho bate. O número
+transforma isso num erro de VERSÃO honesto.
+⚠️ E o registro de componentes subiu junto (63 → 64): um componente que não passa por
+`register_ecs_components` é descartado em silêncio pelo snapshot, e o recorte evaporaria no
+primeiro Ctrl+Z com a arte toda no lugar — o modo de falha mais enganoso da lista.
+⚠️ **Este degrau nasceu como v85 na `line/Vector` e foi RECONTADO na integração de
+2026-08-22**: a `line/Sprite` entrou antes com v85/v86, e *número que soma entre linhas se
+CONTA, nunca se escolhe* (CLAUDE.md §5.0) — o handoff da linha ainda diz 85.
+v88 (`line/Vector` — OS FILTROS NOS ESTADOS DE UI): o `ph2d_ui_state::ObjectPose` ganhou
+**`filters`**, a pilha de FX raster daquele estado (`ph2d_fx_op::FxOp`), apendada ao fim.
+⚠️ **É o irmão exacto do `width`**, e pela mesma razão que aquele campo existe: os dois são
+canais que NÃO vivem no `VecPath` — são componentes ECS (`VecStrokeProfile`, `VecFilter`) —,
+então a pose tem de os carregar por si. Sem ele um blur era o único efeito do editor incapaz
+de diferir entre *Default* e *Hover* (Enio, 2026-08-21).
+⚠️ O bump é posicional como sempre: o campo entra dentro de cada `ObjectPose`, que viaja no
+`HostStates` (v83), que viaja no `ProjectFile`.
+⚠️ E o degrau MUDOU DE CASA na mesma wave — `FxOp` saiu do `ph2d-ecs` para a folha
+`ph2d-fx-op`, para a `ph2d-ui-state` (que deliberadamente não vê ECS) o poder carregar. A
+forma serializada é a MESMA; o que mudou foi de que crate o tipo vem.
+⚠️ Nasceu como v86 na `line/Vector`; RECONTADO para v88 na integração de 2026-08-22 (ver v87).
+v89 (`line/Vector` — UM VERBO POR FORMA na booleana viva): o componente novo
+`ph2d_ecs::VecBoolOp` guarda, **por forma**, a operação com que ela dobra sobre o resultado das
+anteriores (Enio, 2026-08-22: *"o modo do boolean é escolhido por shape e na ordem em que
+aparece na hierarquia atua sobre o resultante das operações pregressas"*).
+⚠️ **Quem obriga o bump é o REGISTRO, não um campo.** O componente não muda a forma de nenhum
+tipo já serializado — ele é uma entrada NOVA no `ComponentRegistry` (64 → 65). E o modo de
+falha de esquecer o registro é o mais enganoso desta escada inteira: um componente que não
+passa por `register_ecs_components` é **descartado em silêncio** pelo snapshot, então o
+primeiro Ctrl+Z devolveria a arte toda no lugar, a combinação intacta — e a receita achatada de
+volta no `op` do grupo, desenhando outra coisa **sem nada em falta na tela a denunciá-lo**.
+⚠️ Ausência do componente continua a ser **herança** do `op` do grupo, e é isso que faz todo
+arquivo ≤ v88 desenhar byte-idêntico: nenhuma forma o tem, todas herdam, e herdar é o que o
+grupo já fazia.
+⚠️ Nasceu como v87 na `line/Vector` (o handoff dela diz «86 → 87»); RECONTADO para v89 na
+integração de 2026-08-22 — a `line/Sprite` entrou antes com v85/v86 (ver v87).
+v90 (`line/Sprite` — QUEM MONTA numa âncora): o componente novo `ph2d_ecs::AnchorMount`
+guarda, na entidade FILHA, o **nome** da âncora do pai de que ela parte (ADR-0072 §2.6 — o
+consumidor que o ADR declarou em 2026-05 e que nunca existiu).
+⚠️ **Quem obriga o bump é o REGISTRO, não um campo** — irmão exacto do v89, e com o mesmo modo
+de falha enganoso: um componente fora do `ComponentRegistry` é **descartado em silêncio** pelo
+snapshot, e então reabrir o projeto devolveria a espada como filha comum do personagem —
+no sítio certo, parada. Nada some, nada avisa, e o defeito só aparece quando o braço se mexe.
+⚠️ Ausência do componente é **não montar**, que é o que toda entidade fazia até v89: por isso
+todo arquivo ≤ v89 desenha byte-idêntico.
+⚠️ O componente guarda o NOME, nunca o índice na lista nem os bits da entidade — apagar a
+âncora `0` faria toda a gente descer uma casa em silêncio, e *o undo respawna tudo com bits
+novos*.
+v91 (`line/Sprite` — QUANDO as âncoras se desenham): o componente novo
+`ph2d_ecs::AnchorVisibility` guarda, no DONO das âncoras, duas intenções do artista (Enio,
+2026-08-23): mantê-las visíveis **sem a entidade estar selecionada**, e mantê-las visíveis
+**em runtime**.
+⚠️ **Irmão do v90, e pela mesma razão: quem obriga o bump é o REGISTRO.** O modo de falha aqui é
+dos que ninguém reporta como bug — marcar a caixa, gravar, reabrir, e ver os pontos voltarem a
+aparecer só com o dono selecionado. O artista remarcaria a caixa todos os dias sem perceber que
+ela nunca guardou.
+⚠️ **Componente SEPARADO do `NamedAnchorList`** de propósito: aquele é um newtype sobre um
+`SmallVec` e o postcard é posicional — acrescentar-lhe campos faria todo projeto anterior ser
+lido torto em silêncio.
+⚠️ Ausência do componente é «só quando selecionada», que é o que toda entidade fazia até v90.
+v92 (`line/Sprite` — §11 ANIMATION): dois componentes novos, `ph2d_ecs::SpriteAnimations` (a
+biblioteca de tags: intervalos nomeados sobre a grelha da sprite) e `ph2d_ecs::SpriteAnimator`
+(o estado de reprodução).
+⚠️ **Terceiro degrau seguido em que quem obriga o bump é o REGISTRO**, e o modo de falha é o
+mesmo: sem ele, o artista autora `idle`/`walk`/`attack`, grava, reabre — e a sprite volta a ser
+uma grelha parada, **sem nada em falta no ecrã a denunciá-lo**.
+⚠️ O `SpriteAnimator` grava também o ESTADO (frame, ciclo, acumulador de tempo), e é isso que
+faz o replay reproduzir a mesma animação — a razão de ele ser `SimComponent`.
+⚠️ Ausência dos dois é «sprite parada na `frame` atual», que é o que toda sprite fazia até v91.
+v93 (`line/Sprite` — os SINAIS da §11, spec §8.10): a `AnimationTag` ganhou
+`signal_on_finish` e `signal_on_loop` — os nomes que uma animação grita ao acabar e ao fechar
+um ciclo.
+⚠️ **Campos APENDADOS no fim do struct, e o postcard é posicional**: um projeto de v92 lido
+como v93 tentaria ler as duas strings dos bytes da tag seguinte. Falha alto na maioria dos
+casos e **calada** quando o resto do buffer calhar a decodificar — que é o modo caro.
+⚠️ **Dois campos e não um mais uma fase**: é a lei que a física já escreveu para os contatos —
+acabar e dar a volta distinguem-se por serem NOMES diferentes, autorados em dois sítios.
+⚠️ Ausência dos dois é «a animação é calada», que é o que toda animação fazia até v92.
+v94 (`line/Sprite` — a DURAÇÃO POR-QUADRO, spec §8.12): a `AnimationTag` ganhou
+`per_frame_ms: Vec<u32>`.
+⚠️ **É uma recusa medida que se REABRIU**: ela dizia *«não há quem produza durações
+por-quadro»*, e o importador de `.ase` (construído no mesmo dia) é exactamente quem as produz —
+nos ficheiros reais elas variam. *Quem move o número que tornava algo inalcançável tem de
+reconferir a nota.*
+⚠️ Campo apendado, postcard posicional — e um `Vec` **vazio** é o comportamento de sempre, então
+um projeto de v93 lido com o modelo novo comporta-se igual **depois** de migrar; antes disso,
+falha alto no schema, que é o que este número existe para fazer.
+v95 (`line/Vector` — A BOOLEANA VIVA NOS ESTADOS DE UI; ⚠️ nasceu como v90 na linha e foi
+RECONTADO para v95 na integração de 2026-08-23 — a `line/Sprite` ocupou 90..94 antes): o `ph2d_ui_state::ObjectPose` ganhou
+**DOIS** campos apendados ao fim — `bool_op` (o verbo próprio daquela forma naquele estado) e
+`bool_group_op` (a operação do grupo booleano acima dela). Enio, 2026-08-23: *"Sistema Live
+Boolean compatível plenamente com o sistema de animação States, inclusive com a possibilidade
+de mudar o tipo do boolean no meio da animação"*.
+⚠️ **Dois campos e não um, porque são dois FATOS.** O primeiro é *"que verbo esta forma manda"*;
+o segundo é *"em que operação ela está metida"* — e é o segundo que faz a receita INTEIRA do
+grupo mudar entre dois estados, inclusive as quatro receitas (`Trim`/`Crop`/`Merge`/
+`MinusBack`), que não têm decomposição por forma nenhuma. Um campo só teria de escolher qual
+dos dois carregar, e a escolha calada é como um `Trim` autorado no Hover não anima nada.
+⚠️ **O `bool_group_op` repete-se em cada operando do mesmo grupo**, e a redundância é
+deliberada: o grupo é uma entidade **sem `VecPathId`** e a pose é chaveada por caminho, então
+ele não tem slot próprio. Quem o governa é a única chave que já existe.
+⚠️ **Nenhum registro novo no `ComponentRegistry`** — os dois componentes que estes campos
+espelham (`VecBoolOp` em v89, `VecBoolGroup` antes dele) já lá estavam. Aqui quem obriga o bump
+é o LAYOUT: postcard é posicional, e um leitor velho leria os bytes de `bool_op` como o começo
+do `ObjectPose` seguinte.
+⚠️ **`None` nos dois é a identidade byte-a-byte de todo arquivo ≤ v94**: nenhuma pose antiga
+nomeia verbo nenhum, e `None` no primeiro é *herda* (a lei do componente) enquanto no segundo é
+*não sei de grupo nenhum* — que **nunca** desfaz um grupo.
+## v96 — ⭐ **A IDENTIDADE DO OBJETO, e a PRIMEIRA migração da história do repo**
+([ADR-0164](../../../docs/architecture/decisions/0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md) F1).
+
+Dois fatos ao mesmo tempo, e é por isso que este degrau **tem migração** em vez de só
+recusar (`crate::project_migrate`):
+
+1. **`WorldSnapshot` v1 → v2** — a linha passa a ser chaveada e ordenada por `StableId`, e
+   o `parent` deixa de ser um índice para ser um id. ⚠️ *Um índice desloca-se*: inserir uma
+   entidade mudava os bytes de todas as linhas seguintes, o que a captura incremental da F2
+   não pode pagar. E a ordem por id **apaga o `canonicalize`** do undo (18,7 ms → 0,088 ms
+   a 10 k entidades, medido).
+2. **`ProjectFile.stable_id_counter`** — o próximo id livre. ⚠️ Fora do `ProjectState`, e
+   não pela razão dos outros campos (o escopo do undo): um undo que o rebobinasse faria um
+   **redo** entregar um id ainda vivo.
+
+⚠️ **Nenhum dos dois é aditivo no wire.** O postcard é posicional e não auto-descritivo:
+um leitor v96 sobre bytes v95 **não erra — lê errado**. Daí o tipo congelado
+`ProjectFileV95` e o gate que guarda os BYTES de um ficheiro v95, não o tipo.
+
+⚠️ **Este degrau é o primeiro que não recusa o passado.** Até aqui a política de facto era
+*"versão diferente = recusado"* (a auditoria de 21/08 registou-a como ambiguidade §8 item
+7: HR-14 exige `migrate_vN_to_vN+1` e o repo tinha **zero**). Um v95 agora abre.
+
+## v97 (`line/Vector` — O INPUT MAP): o `ProjectFile` ganhou **`input_map`** apendado ao fim — as
+acções nomeadas do projecto (`ph2d_input::InputMap`), com as ligações de cada uma e os dois
+números da zona. Enio, 2026-08-24: *"precisamos do input Map completo não apenas para o jogador
+mas para qualquer objeto do game via UI"*.
+⚠️ **É AUTORIA, e é por isso que viaja no arquivo e não no `prefs.txt`**: `jump` é uma decisão
+do projecto (o jogo tem um botão de pulo), enquanto *qual tecla* um jogador prefere é dele. O
+segundo mora fora do repo, como o `motion_character` — a mesma divisão que o Godot faz entre as
+project settings e o remap em runtime.
+⚠️ **Fora do `ProjectState`**, pelo motivo de sempre: aquele é a unidade do undo GLOBAL, e um
+Ctrl+Z do canvas não pode rebobinar o mapa de controlos.
+⚠️ Campo apendado, postcard posicional — um mapa **vazio** é o comportamento de sempre (nenhuma
+acção declarada ⇒ toda leitura devolve silêncio), então um projecto antigo comporta-se igual
+**depois** de migrar.
+⚠️ **Nenhum registro novo no `ComponentRegistry`** — o mapa não é um componente: ele é do
+PROJECTO, não de uma entidade. Quem o consome pergunta pelo nome.
+
+⚠️⚠️ **ESTE DEGRAU NASCEU `96` E FOI RECONTADO PARA `97` NA INTEGRAÇÃO de 2026-08-24.** Duas
+linhas paralelas apendaram um campo no `ProjectFile` na mesma jornada e **as duas escreveram
+o literal `96`** — o valor certo não estava em nenhum dos dois lados: conta-se
+(95 + identidade + input map). ⛔ E a `collision-surface.sh` **não podia** ver esta colisão:
+ela compara a linha com o **ponto de fork**, não com o tip do `main`, então a segunda linha
+da jornada lê `base: 95` para um `main` que já estava em `96`.
+
+⛔ **E a nota original deste degrau dizia *"antes disso falha alto no schema"* — ela envelheceu
+no mesmo instante em que foi escrita.** A linha irmã construiu a PRIMEIRA escada de migração do
+repo um degrau abaixo; recusar aqui deixaria o trabalho dela morto à nascença (um v95 subiria
+um degrau e bateria numa parede). Como este campo é apendado com default vazio, o v95 sobe
+**direto** até aqui — ver `crate::project_migrate`.
+⚠️ **Não há degrau `96 -> 97`, e a ausência é a decisão:** a v96 nunca existiu fora destas duas
+worktrees (nada foi publicado nela), então não há ficheiro v96 no mundo para migrar. Quem
+precisar de um um dia, congela o tipo primeiro — como o `ProjectFileV95` foi congelado.
+⚠️ **97 → 98 (plano 32 W11c):** o `ObjectPose` do `ph2d-ui-state` ganhou `morph_shape` — *em que
+forma o conjunto de Morph States está nesta pose*. As poses viajam **dentro** do `ProjectFile`
+(o `StateSets`), então um campo novo nelas move o esquema do projecto.
+
+⛔ **NÃO há degrau de migração, e a ausência é uma DECISÃO do Enio** (2026-08-26: *"não há
+projetos salvos. esse app está em fase inicial de desenvolvimento, podemos fazer o que
+quisermos"*). Um ficheiro v97 é **recusado em voz alta** no `project_load` (`"schema {ver} !=
+{PROJECT_SCHEMA} — recusado"`), que é o comportamento certo: postcard é posicional e
+não-auto-descritivo, então **sem o bump ele leria os bytes errados em silêncio**. *O bump é o
+que transforma um mal-entendido silencioso numa recusa legível.*
+
+⚠️⚠️ **ESTE DEGRAU NASCEU `98` E FOI RECONTADO PARA `99` NA INTEGRAÇÃO de 2026-08-26** — a
+SEGUNDA vez que isto acontece neste ficheiro (ver o degrau `97` acima). A `line/Vector` e a
+`line/components` mudaram o formato **por razões diferentes** e as duas escreveram o literal
+`98`; o valor certo não estava em nenhum dos dois lados. ⛔ **E desta vez a `collision-surface.sh`
+ficou CEGA por outro motivo:** depois de a primeira linha aterrar, o merge-base da segunda passa
+a ser um `main` que já diz `98`, então ela lê `98 (base: 98)` — **sem aviso nenhum**, e o git
+funde o literal repetido **limpo**. *Conte o delta de cada linha; não confie no aviso.*
+
+⚠️ **Um v97 é RECUSADO** (não migrado): o degrau `98` acima é da `line/Vector` e ela decidiu,
+com o Enio, não congelar um tipo `ProjectFileV97`. Sem tipo congelado não há como ler aqueles
+bytes sem os reinterpretar — que é exactamente o que o bump existe para impedir. O `v95`
+continua a subir a escada inteira.
+
+---
+
+`sha256` do `project_schema_history_v83.rs` movido: `7fc80872dbe289fd321bdfb61a98f0ab26717bfaee5d5225f2b91c08931ee346`

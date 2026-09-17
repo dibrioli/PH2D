@@ -101,23 +101,6 @@ impl crate::App {
                     hero.theme,
                     vector_scene,
                 );
-                // ⭐⭐⭐ **AS DUAS ALÇAS DE CURVATURA do osso em foco** — os pontos de controlo da
-                // cúbica que arqueia o corpo dele.
-                //
-                // ⚠️ **A MESMA porta que o dedo usa** (`skin_live::bend_handles`), e é ela que
-                // decide que um osso sem segmentos não tem alça nenhuma: com `segments = 1` a
-                // curvatura é inerte por construção, e pintar a alça ali prometeria um verbo que o
-                // arrasto não executa.
-                //
-                // ⚠️ **Depois do arco e ANTES dos ossos**: as hastes dela ligam-se à junta e à
-                // ponta, que o `draw_bones` pinta por cima — a bolinha da junta fica inteira.
-                ph2d_skeleton_render::draw_bend(
-                    osso_focado.and_then(|b| crate::skeleton_live::bend_handles(sim, b)),
-                    self.skeleton.bone_hover.map(|h| h.part),
-                    cam_affine,
-                    hero.theme,
-                    vector_scene,
-                );
                 // ⚠️ **Que pontas recebem anel é um CORPO e mora na família**
                 // ([`ph2d_app_skeleton::goal::ring_targets`]): aqui decide-se a ORDEM dos passes,
                 // não o que cada um desenha.
@@ -154,6 +137,31 @@ impl crate::App {
                     &crate::skeleton_goal::anchors(sim),
                     hero.gizmo.selection,
                     ph2d_app_skeleton::goal::goal_hover(criar, self.skeleton.bone_hover),
+                    cam_affine,
+                    hero.theme,
+                    vector_scene,
+                );
+                // ⭐⭐⭐⭐ **AS DUAS ALÇAS DE CURVATURA — POR CIMA DE TUDO O QUE É RIG.**
+                //
+                // ⛔⛔ **Report do dono (2026-09-16): *«os handles não estão por cima (z-index).
+                // Handles com Z-index maior que ossos»*.** Elas pintavam-se ANTES do `draw_bones`,
+                // com a justificação de que *«as hastes ligam-se à junta e à ponta, e o osso por
+                // cima deixa a bolinha da junta inteira»* — uma razão de ACABAMENTO a decidir a
+                // ordem de um CONTROLO.
+                //
+                // ⚠️⚠️ **E a ordem do desenho contradizia a do DEDO**, que é o defeito a sério: no
+                // `bone_pick::hover` as alças do osso em foco competem por proximidade e ganham ao
+                // CORPO (a de curvatura chega a ignorar a distância ao osso, senão seria
+                // inalcançável no ponto neutro) — *o artista agarrava o que não via*. A lei é a
+                // inversa da do pick: **o que o dedo apanha primeiro pinta-se por último.**
+                //
+                // ⭐ **E esta é a população inteira do defeito, não metade dele:** a mancha da
+                // influência e o arco do limite são FUNDO, e as alças deles vivem FORA do eixo do
+                // osso; as de curvatura nascem **em cima do eixo** (o ponto de controlo no terço),
+                // logo são as únicas que se sobrepõem ao corpo por construção.
+                ph2d_skeleton_render::draw_bend(
+                    osso_focado.and_then(|b| crate::skeleton_live::bend_handles(sim, b)),
+                    self.skeleton.bone_hover.map(|h| h.part),
                     cam_affine,
                     hero.theme,
                     vector_scene,

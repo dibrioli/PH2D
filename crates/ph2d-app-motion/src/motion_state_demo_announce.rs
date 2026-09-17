@@ -290,6 +290,72 @@ pub(super) fn fontes() {
     );
 }
 
+/// ⭐ **COISAS QUE SE SEGURAM** (ciclo 9, cena `=120`).
+///
+/// ⚠️ **O passo 6 é o único que pede uma leitura COMPARADA e não um clique:** os dois panos do
+/// meio correm cinemáticas opostas e um artista que não saiba isso lê *«dois nós que fazem o
+/// mesmo»*. O passo diz QUEM escreve o quê, que é a diferença inteira.
+///
+/// ⚠️⚠️ **O passo 5 é o tecto MEDIDO a chegar ao artista** (§9 do doc): ele manda escrever `512`
+/// num campo que até 2026-09-17 parava em `60`. *Um tecto que subiu e que ninguém consegue tocar
+/// não subiu para o artista* — e os três números do passo (Rows · Cols · Spacing) são três porque
+/// o pano tem um tamanho: sem apertar o vão, `512` células saem do ecrã e o passo ensinaria que a
+/// cena se partiu.
+///
+/// ⛔⛔ **E o passo 2 diz que as peças ENGORDAM, não que sobem** — o `motion.wave` escreve a altura
+/// no canal `Size` por omissão (`height_channel = 0`), logo um campo visto de cima lê-se em ANÉIS.
+/// ⚠️ *Foi um GATE que o apanhou, não uma leitura*: a primeira redacção da régua media só o `P` e
+/// declarava *«o campo não se mexeu»* sobre produto correcto — e a primeira redacção do passo
+/// prometia uma onda a viajar, que é o que o artista **não** vê. ⭐ O passo 4 fecha a lição ao
+/// mandar pôr a altura no `Y` e voltar atrás: *a mesma onda, escrita noutro sítio*.
+pub(super) fn rig() {
+    eprintln!(
+        "[cena 120] COISAS QUE SE SEGURAM. Seis panos, em tres fileiras. Em cada par muda
+  UMA coisa -- o que se faz com as pecas DEPOIS e' o mesmo nos seis.
+
+  1. Carregue em PLAY. A fileira de CIMA mexe-se sozinha (a corda balanca, o campo
+     ondula) e a do MEIO tambem (o alvo varre de um lado ao outro). A de BAIXO fica
+     PARADA de proposito: uma pele nao tem tempo, ela segue os ossos.
+  2. Fileira de CIMA -- O QUE SE SEGURA SOZINHO. A ESQUERDA e' uma CORDA pendurada: cada
+     ponto puxa o vizinho, e ninguem lhe disse a forma. A DIREITA e' um CAMPO visto DE
+     CIMA: cada celula empurra as quatro vizinhas, e o que voce ve' sao ANEIS a crescer
+     do meio para fora -- as pecas ENGORDAM com a altura da onda.
+  3. Clique no cartao `Verlet Rope: a corda` e suba a linha `Gravity`: a corda cai mais
+     depressa e balanca menos. Baixe-a ate' perto de zero: ela fica a flutuar.
+  4. Clique no cartao `Wave: o campo` e mude a linha `Height Channel` de `Size` para
+     `Y`: as pecas deixam de engordar e passam a SUBIR e DESCER. E' a MESMA onda,
+     escrita noutro sitio. Volte a `Size` depois de ver.
+  5. Ainda no cartao `Wave`, escreva nesta ordem: `512` na linha `Rows`, `512` em `Cols`
+     e `0.004` em `Spacing`. O pano enche-se de meio milhao de celulas e a onda continua
+     a correr sem o app engasgar.
+     (i) Ate' hoje este campo parava em 60 de cada lado. O numero novo foi MEDIDO.
+  6. Fileira do MEIO -- QUEM SEGURA. Os dois panos tem a MESMA corrente de ossos, e
+     resolvem-na ao contrario um do outro:
+       ESQUERDA (FK) -- eu digo o ANGULO de cada junta, e a corrente vai parar onde for.
+       DIREITA  (IK) -- eu digo ONDE A MAO TEM DE ESTAR, e o app acha os angulos.
+     O ponto que varre a direita e' o ALVO. Repare que a mao nunca o larga.
+  7. Clique no cartao `Strength: quanto a restricao puxa` (o da direita) e baixe a linha
+     `Radius` de 20 ate' perto de 1. A mao deixa de chegar ao alvo e fica a meio
+     caminho: a forca da restricao deixou de valer para os ossos mais distantes.
+     Ponha `Radius` de volta em 20 e a mao volta a agarrar o alvo.
+  8. Na fileira do MEIO, no pano da ESQUERDA, clique no cartao `Drive` (o que esta'
+     ANTES do `FK: os pais decidem`) e mude a linha `Scale`. Cada junta dobra mais (ou
+     menos), e a corrente inteira enrola: o angulo e' de cada junta, nao da corrente.
+  9. Fileira de BAIXO -- A PELE. Os dois panos tem a MESMA grelha de 25 pecas por cima
+     da MESMA corrente dobrada. A ESQUERDA todos os ossos puxam por igual. A DIREITA
+     cada osso tem o SEU quinhao: o de baixo quase nao puxa e o de cima puxa tudo, e a
+     pele da direita fica torcida de outra maneira.
+ 10. Clique no cartao `Drive` da fileira de BAIXO, no pano da DIREITA, e baixe a linha
+     `Scale` ate' zero. A pele da direita fica PARADA: com o quinhao de todos os ossos
+     a zero, nenhum a puxa.
+
+  DEU ERRADO se: a corda nao balancar ao dar PLAY; se o campo ficar uma grelha parada;
+  se os dois panos do MEIO ficarem iguais (o alvo nao chegou ao solver); se os dois de
+  BAIXO ficarem iguais (o quinhao por osso nao chegou a' pele); ou se algum pano estiver
+  VAZIO -- um pano vazio quer dizer que a fonte dele nao entregou nada."
+    );
+}
+
 pub(super) fn aparencia() {
     eprintln!(
         "[cena 118] A COR E O RASTO. Seis panos de 36 pecas, em tres fileiras. Em cada par

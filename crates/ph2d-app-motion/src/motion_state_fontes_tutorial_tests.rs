@@ -97,8 +97,16 @@ fn the_tutorial_opens_the_scene_this_cycle_built() {
         super::super::demo_router::is_cycle_scene("119"),
         "o `119` tem de estar na tabela das cenas de ciclo"
     );
+    // ⛔⛔ **A PREMISSA DESTA METADE MORREU EM 2026-09-17, e a morte está no diff.** Ela dizia
+    // `!is_cycle_scene("120")` — *«a tabela não pode responder por uma cena que não existe»* —, e o
+    // ciclo 9 construiu a `=120`. ⚠️ **O defeito não era o número, era a FORMA:** um gate escrito
+    // sobre o SUCESSOR de hoje reprova no dia em que alguém escrever o ciclo seguinte, e reprova
+    // sobre produto CORRECTO. ⇒ a pergunta certa é DERIVADA do tecto: a tabela não responde acima
+    // do que o roteador conhece, e essa afirmação sobrevive a todos os ciclos futuros.
+    let alem = (super::super::demo_router::MAX_DEMO_LEVEL + 1).to_string();
     assert!(
-        !super::super::demo_router::is_cycle_scene("120"),
-        "a tabela nao pode responder por uma cena que nao existe"
+        !super::super::demo_router::is_cycle_scene(&alem),
+        "a tabela responde por `{alem}`, que esta' ACIMA do `MAX_DEMO_LEVEL` — \
+         o gate `no_two_smoke_scenes_claim_the_same_level` mede o piso e nao veria isto"
     );
 }

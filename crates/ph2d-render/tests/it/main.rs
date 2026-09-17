@@ -44,6 +44,7 @@ mod migrate_sprite_v3_to_v4;
 mod precision_parity_gpu;
 mod preview_premul_gpu;
 mod render_instance_pod_size_v4;
+mod skin_mesh_gpu_ceiling;
 mod skin_pieces_gpu_cost;
 mod smoke_fixture_renderable;
 mod spatial_weights_parity;

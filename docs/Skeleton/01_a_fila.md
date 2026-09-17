@@ -145,6 +145,34 @@ só onde se pergunta (um ponto, não a malha inteira), ou leitura da GPU.
 - **W0 — medir:** o custo e a qualidade da malha fina ASSADA contra o refinamento por quadro (na
   dobra de `25°`/`60°`/`150°`, zoom `1`–`16`); o custo GPU real de `10⁴`–`10⁶` triângulos
   deformados no *vertex shader* nesta máquina; e o censo das costuras acima.
+- ✅ **W0 — FECHADA (2026-09-17). As três metades, e uma delas reescreveu a pergunta.**
+  1. **A topologia assada serve todas as poses** — medido com CONTROLO (o bind é idêntico nas 5
+     dobras, `< 1e-12`), assando no pior caso e re-posando em `5 × 4` células
+     (`ph2d-app-vec/src/smoke_bone_paint_assada_tests.rs`, `18aca6a75`). *A direcção da F9 aguenta.*
+  2. ⭐⭐⭐ **O CENSO DAS COSTURAS achou o facto que reescreve a W0-b: a malha JÁ vai para a placa
+     todos os quadros.** Desde que a pele entrou no passe de sprites, o `renderer_draw` copia o
+     `SpriteMesh` para um buffer e desenha — a CPU posa **e faz upload** de `N` vértices por quadro.
+     ⇒ a F9 **não acrescenta** um desenho de `N` triângulos: ela TIRA da CPU a deformação por
+     vértice e o upload, trocando-o por `N_ossos × 6` números. ⛔ A prosa desta fila listava os
+     leitores e a lista estava **incompleta** (faltava a grelha da folha de quadros) — hoje são
+     **10**, cada um com a espécie de resposta que vai precisar (**UM PONTO** `O(1)` na CPU · a
+     **MALHA** inteira), derivados por
+     [`architecture_who_reads_the_posed_skin_mesh`](../../crates/ph2d-editor-core/tests/it/architecture_who_reads_the_posed_skin_mesh.rs)
+     — *um leitor novo reprova ali, e não no dia do smoke*.
+  3. **O tecto do passe REAL** (`ph2d-render/tests/it/skin_mesh_gpu_ceiling.rs`, `--release`,
+     offscreen, mínimo de 5, ⚠️ **`load 7,53`** ⇒ a coluna do relógio pede re-leitura abaixo de `5`):
+
+     | triângulos | upload/quadro | quadro | de `16,67 ms` |
+     |---:|---:|---:|---:|
+     | `10 082` | `199 KiB` | `0,11 ms` | `0,7 %` |
+     | `100 352` | `1,92 MiB` | `0,73 ms` | `4,4 %` |
+     | `999 698` | `19,1 MiB` | `10,25 ms` | `61,5 %` |
+     | `3 998 792` | `76,3 MiB` | `52,51 ms` | `315 %` |
+
+     ⇒ **o desenho NÃO é o tecto.** O orçamento de hoje (`SKIN_FRAME_PIECES = 8 738` ⇒ `~17 k`
+     triângulos) custa à placa `~0,2 %` de um quadro, e `100 k` custam `4,4 %` — **6×** o orçamento
+     actual com folga. Quem tem o tecto é a CPU (F6-t: `0,156 µs` para avaliar uma peça, `~0,32 µs`
+     por peça nova ⇒ `50 k` peças ≈ `7,8 ms`), que é exactamente o que a F9 remove.
 - **W1 — a malha fina no bind**, com a régua da silhueta a mesma de hoje (sem mudar o que se vê).
 - **W2 — o *vertex shader* de pele**, atrás da mesma escolha `Fast`/`Smooth` do painel, com o gate
   de paridade CPU×GPU e o caminho da CPU vivo para bissecar.

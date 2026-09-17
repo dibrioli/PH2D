@@ -103,7 +103,7 @@ fn the_transient_set_covers_every_consumed_column() {
             }
             // O tipo que este binding LÊ contra o que o nó EMITE. Uma porta fora de alcance
             // não isenta ninguém: o `map_or(false, …)` deixa a asserção decidir.
-            let lido = m.inputs.get(b.port as usize).map(|p| p.ty);
+            let lido = m.inputs.get(b.port).map(|p| p.ty);
             let emitido = m.outputs.first().map(|p| p.ty);
             if lido.is_some() && emitido.is_some() && lido != emitido {
                 transdutores += 1;

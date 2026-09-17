@@ -87,8 +87,18 @@ fn the_tutorial_opens_the_scene_this_cycle_built() {
         TUTORIAL.contains("PH2D_GPU_COOK_DEMO=119"),
         "o tutorial tem de abrir a cena `=119`"
     );
+    // ⚠️ **O TECTO é `const`, então a metade dele é de COMPILAÇÃO** (o clippy tinha razão: um
+    // `assert!` sobre duas constantes decide-se antes de o teste correr). Escrito assim, baixar o
+    // `MAX_DEMO_LEVEL` deixa de compilar — que é mais forte do que reprovar.
+    const _: () = assert!(super::super::demo_router::MAX_DEMO_LEVEL >= 119);
+    // ⭐ E a metade que MEDE: o nível tem de estar na TABELA das cenas de ciclo, que é outra coisa
+    // — um tecto alto com a tabela sem a linha abre o canvas em branco.
     assert!(
-        super::super::demo_router::MAX_DEMO_LEVEL >= 119,
-        "o roteador tem de conhecer o nivel 119"
+        super::super::demo_router::is_cycle_scene("119"),
+        "o `119` tem de estar na tabela das cenas de ciclo"
+    );
+    assert!(
+        !super::super::demo_router::is_cycle_scene("120"),
+        "a tabela nao pode responder por uma cena que nao existe"
     );
 }

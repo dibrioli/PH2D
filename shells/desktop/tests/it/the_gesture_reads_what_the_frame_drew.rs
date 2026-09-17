@@ -124,18 +124,12 @@ fn the_draw_pass_publishes_the_facts_it_derived() {
     );
 }
 
-/// **O hit-test compõe a pose**, e não só a pose autorada.
-///
-/// ⚠️ O gate de comportamento vive no `vec_gizmo_view_hit_tests` (ele mede o PONTO que pega). Este
-/// afirma a outra metade — que a composição existe no produto —, porque um `contains_path` que
-/// aceite o `VecViewState` e não o use compila, passa em tudo o que não o exercita, e devolve o
-/// clique ao lugar de origem.
-#[test]
-fn the_hit_test_composes_the_layout_pose() {
-    let src = read("src/vec_gizmo_view.rs");
-    assert!(
-        src.contains("view_state.layout_pose(id)"),
-        "o hit-test recebe o VecViewState e NAO pergunta a pose — o clique volta a procurar a \
-         forma no lugar de onde ela saiu"
-    );
-}
+// ⚠️⚠️ **O `the_hit_test_composes_the_layout_pose` SAIU daqui na integração de 2026-09-17**, com o
+// `vec_gizmo_view.rs` que ele julga (hoje em `crates/ph2d-app-vec/tests/it/`). ⛔ Ele lia o ficheiro
+// **por caminho em tempo de execução**, logo sobreviveu ao `git mv` como um teste VERMELHO em vez de
+// um erro de compilação — o `cargo check --all-targets` ficou verde e ele foi o único vermelho de
+// `16 116` na árvore combinada. Do outro lado ele usa `include_str!`, que falha a COMPILAR.
+//
+// ⚠️ E a varredura acima passou a ver **cinco** sítios onde via sete: os outros dois vieram com o
+// cacho, e a crate tem agora a MESMA lei com o piso dela. *Um censo que passa a varrer MENOS
+// lê-se como «já não há mais nada»*, e o piso de `2` daqui nunca o teria acusado.

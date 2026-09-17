@@ -975,3 +975,17 @@ sobrevive indefinidamente, invisível, até alguém olhar para a tela.
 metades** — a que estoura e a que mede a FOLGA que sobra (`folga < x % do disponível`). Vale para
 tectos de recurso, tamanhos de fonte, raios, passos: *a metade que falta é sempre a que custa
 produto em vez de correcção*.
+## ⛔⛔⛔ Um QUASE-DELTA num conjunto FIXO de amostras não faz ruído — faz o estimador não convergir (2026-09-17)
+
+`96` direcções leram **7×** pior que `48` (`6,292` contra `0,872`) porque o integrando tinha um
+lóbulo especular. Tirado o pico, a coluna fica monótona. ⚠️ **E o sintoma que o dono vê são ARCOS e
+não granulado** — com um conjunto fixo os fireflies ficam **correlacionados**. ⇒ *varra o número de
+amostras e veja se a coluna é MONÓTONA; uma medição num ponto só não distingue os dois casos.*
+Detalhe: [`feedback_a_near_delta_in_a_fixed_sample_set_stops_the_estimator_converging.md`](feedback_a_near_delta_in_a_fixed_sample_set_stops_the_estimator_converging.md).
+
+## ⛔⛔ A fixtura do LABORATÓRIO pode ter um mecanismo verdadeiro que o PRODUTO não tem (2026-09-17)
+
+Na caixa de Cornell a decomposição acusou, com números impecáveis, o polo `1/r²` de uma lâmpada a
+`6 cm` do tecto — e a lâmpada do produto nasce **fora da peça**, onde `1/r²` ≤ `~1`. *A medição era
+boa e o sujeito dela era outro programa.* Sexta ocorrência desta forma nesta casa.
+Detalhe: [`feedback_the_owners_fixture_is_the_one_that_must_be_measured.md`](feedback_the_owners_fixture_is_the_one_that_must_be_measured.md).

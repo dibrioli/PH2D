@@ -140,11 +140,21 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param: "emit_mode",
         label: "Emit",
         min: 0.0,
-        max: 1.0,
+        max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Continuous", "Burst"],
+            labels: &["Continuous", "Burst", "Scheduled"],
         },
+    },
+    // ⭐ **A AGENDA** (TOP-20 #18) — um TEXT param, não um `ParamSpec`: uma lista de intervalos
+    // não é um número. Vazia = sempre ligada (a identidade). Ver `crate::schedule`.
+    ParamUiHint {
+        param: crate::schedule::SCHEDULE_KEY,
+        label: "Schedule",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Text,
     },
     ParamUiHint {
         param: "rate",
@@ -490,10 +500,16 @@ pub static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
         when: "shape_mode",
         values: &[1, 2, 3],
     },
+    // O `rate` é lido pelos DOIS modos de fluxo — o contínuo e o agendado.
     ph2d_node_registry::ParamGate {
         param: "rate",
         when: "emit_mode",
-        values: &[0],
+        values: &[0, 2],
+    },
+    ph2d_node_registry::ParamGate {
+        param: crate::schedule::SCHEDULE_KEY,
+        when: "emit_mode",
+        values: &[2],
     },
     ph2d_node_registry::ParamGate {
         param: "burst_count",

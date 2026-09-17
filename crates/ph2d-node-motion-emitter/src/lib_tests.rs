@@ -43,6 +43,8 @@ pub(super) fn spec() -> Spec {
         // A vida única que toda partícula tinha antes do `life_random` — DECLARADA, nunca
         // herdada, pela mesma razão que as cinco acima.
         life_random: 0.0,
+        // A emissão que sempre houve — sempre ligada —, declarada pela mesma razão.
+        schedule: crate::Schedule::ALWAYS,
     }
 }
 
@@ -524,3 +526,7 @@ mod burst;
 
 #[path = "lib_tests_window.rs"]
 mod window_law;
+
+/// A AGENDA — o modo `Scheduled` (TOP-20 #18).
+#[path = "lib_tests_schedule.rs"]
+mod schedule_law;

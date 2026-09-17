@@ -1116,7 +1116,14 @@ ecrã inalterado como prova de que o defeito não estava ali.
 
 ---
 
-## §14 — ⏸️ ADIADO POR ORDEM DO DONO: *o `collide` sai do app e tudo passa pela FORMA*
+## §14 — ▶️ REABERTO no mesmo dia: *o `collide` sai do app e tudo passa pela FORMA*
+
+> ⚠️⚠️ **Esta secção nasceu «ADIADO» e a palavra durou horas.** O dono reabriu a ordem com uma
+> metade NOVA — *«…e pelos outros objetos (como vector, Sprite, Flip) que serão criados com seus
+> próprios colliders (sem usar o grafo)»* — e decidiu a pergunta que faltava: **o app separa
+> sozinho**. O plano, com as quatro medições que o desenham, é o
+> [**doc 115**](115_o_colisor_sai_do_grafo.md). *O que fica escrito aqui é o estado em que a ordem
+> foi adiada, e serve de contraste: um «adiado» não é um estado estável.*
 
 > **Ordem do dono, 2026-09-17, logo a seguir à §12:** *«Prefiro retirar o nó collide do app todo
 > e deixar tudo para Shape. Prefiro que toda visualização passe pelo Duplicator e que nós como

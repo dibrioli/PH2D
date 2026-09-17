@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**124 arquivos** · **12** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**125 arquivos** · **12** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -129,6 +129,7 @@
 | 112 |   | [112_ciclo_7_aparencia.md](112_ciclo_7_aparencia.md) | — | 112 — CICLO 7: APARÊNCIA, a cor e o rasto |
 | 113 |   | [113_ciclo_8_fontes_e_dados.md](113_ciclo_8_fontes_e_dados.md) | — | 113 — CICLO 8: FONTES & DADOS, de onde vêm as coisas |
 | 114 |   | [114_ciclo_9_rig_e_corpos_moles.md](114_ciclo_9_rig_e_corpos_moles.md) | — | 114 — CICLO 9 · RIG & CORPOS MOLES — «Coisas que se seguram» |
+| 115 |   | [115_o_colisor_sai_do_grafo.md](115_o_colisor_sai_do_grafo.md) | — | 115 — O COLISOR SAI DO GRAFO: a forma é do OBJECTO, e o app separa sozinho |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

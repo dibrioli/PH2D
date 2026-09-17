@@ -328,6 +328,19 @@ os censos da crate antes de dar o corte por fechado.
   dispositivo, toda frase «isto shipa» escrita para o caminho de CPU passa a precisar de ser
   reconferida*, que é o `CLAUDE.md §0.0` («quem move o número que tornava algo inalcançável tem de
   reconferir a nota») aplicado a uma AFIRMAÇÃO em vez de a um limite.
+- ⛔⛔ **UM GATE QUE MEDE «SUBIU» NÃO MEDE «SUBIU PELA RAZÃO CERTA» — e o par que o cura.** Medido
+  2026-09-17 (o ricochete no dispositivo): o gate de chegada compara o brilho da imagem com e sem a
+  feature e exige que ele suba. A mutação que apaga o **despacho do ambiente** faz a segunda chamada
+  somar **céu a dobrar** em vez da luz devolvida — a imagem sobe na mesma e o gate fica **VERDE**.
+  **Why:** uma régua de MAGNITUDE não distingue duas causas que empurram para o mesmo lado. E a
+  régua de PARIDADE (contra a referência) tem o defeito simétrico: se ninguém calculasse a feature
+  em lado nenhum, os dois lados continuariam a concordar — *preto contra preto*.
+  **How to apply:** estas duas são um **PAR**, e nenhuma afirma a wave sozinha — *a paridade diz que
+  o número está certo, a de magnitude diz que ele não é zero*. Escreva as duas e mate cada mutação
+  com a que lhe compete; se uma mutação sobreviver às duas, falta uma terceira pergunta.
+  ⚠️ E a fixtura do lado da magnitude tem de **conter o fenómeno**: com três formas convexas no
+  aberto o ganho media `+0,513` níveis (ruído, porque quase todo raio do hemisfério escapa) e com um
+  CANTO media `+4,935`. *Ver [[feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects]].*
 
 ---
 

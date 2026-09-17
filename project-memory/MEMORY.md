@@ -32,7 +32,7 @@
 
 ## Comunicação & decisão
 - ⭐ [Decisões TÉCNICAS são delegadas (padrão-ouro); produto e envio são do Enio](feedback_architecture_decisions_are_delegated_to_the_gold_standard.md)
-- ⛔ [A linha acaba no HANDOFF: ordem das linhas e árvore suja são do INTEGRADOR — uma pergunta inédita ao dono é sinal do papel errado](feedback_the_line_ends_at_the_handoff_never_ask_the_owner_an_integrators_question.md)
+- ⛔ [A linha acaba no HANDOFF — ordem das linhas e árvore suja são do INTEGRADOR](feedback_the_line_ends_at_the_handoff_never_ask_the_owner_an_integrators_question.md)
 - ⭐⭐ [Chave e texto do MESMO tipo é defeito à espera — tipe a chave](feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting.md)
 - ⭐ [**Como um CONTROLO mente** — a família (14)](reference_topic_control_design_hazards.md)
 - ⛔ [Smoke ao dono explica o que cada coisa na tela É; cada passo conduzido e fotografado](feedback_a_smoke_for_the_owner_explains_what_each_thing_on_screen_is.md)
@@ -48,7 +48,7 @@
 - ⭐⭐ [Constante cara DENTRO do construtor de uma árvore corre onde a ÁRVORE é construída — 6 → 3 852 por quadro, com a imagem perfeita](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
 - ⭐⭐ [A CARA de um app é a tabela de tokens, não os widgets — redesenhar 44 pintores com a mesma pele deixa «a mesma cara»; comece pelos 5 números](feedback_the_face_of_an_app_is_its_token_table_not_its_widgets.md)
 - ⛔ [Gesto escrito em DUAS metades aceita a variante nova em SÓ UMA — silêncio absoluto, e a fixtura que chama a porta interna fica verde](feedback_a_gesture_written_in_two_halves_accepts_a_new_variant_in_only_one.md)
-- ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO — a variável da varredura é parte da correcção (16,3 % → 0,0000 %)](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
+- ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
 - 📚 [Comunicação & decisão: mais (51) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 
 ## Git & colisão multi-agente
@@ -102,14 +102,14 @@
 - ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA ⇒ reporta-o LIMPO (vinco: 2,2e-6 contra 1,9e-1) — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)
 - ⛔ [Cache que faz o trabalho `O(V)` da chave ANTES de a comparar: 456 µs/quadro para não fazer nada, com o gate de «não reconstrói» VERDE](feedback_a_cache_that_does_the_expensive_work_before_checking_is_not_a_cache.md)
 - ⛔ [Régua de vazamento cuja máscara usa o predicado DO PRODUTO lê 0,00 % sobre o defeito](feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak.md)
-- ⛔⛔ [Sweep da parede VERDE sobre espec que TRADUZIA o alvo — a vassoura estava noutra língua; o instrumento apanha colagem, o R-pré apanha tradução](feedback_a_sweep_in_one_language_does_not_prove_filtering_in_another.md)
+- ⛔⛔ [Sweep da parede VERDE sobre espec que TRADUZIA o alvo](feedback_a_sweep_in_one_language_does_not_prove_filtering_in_another.md)
 - ⛔⛔ [Corpus todo na força MÁXIMA não testa a curva da força (`s = s² = s⁴` em 1) — a lei do modo B estava errada e a suíte ficou verde com a troca](feedback_a_corpus_at_full_strength_cannot_test_the_strength_curve.md)
 - ⛔ [Régua que pergunta pelo NOME quebra na 1.ª família nova — «11× de divergência» era a bancada a dar o incremento a um gesto que quer o total](feedback_a_ruler_that_asks_for_the_name_breaks_on_the_first_new_family.md)
 - ⛔ [viés em NDC não é constante no mundo: 3e-3 = 30 % da distância do olho](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md)
 - ⛔ [Barra calibrada SEM o lado aprovado mede os nossos defeitos; o PISO do censo decide o que a régua vê (4× «nenhuma melhoria»)](feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects.md)
 - ⛔⛔ [Empate resolvido por `round` é artefacto do QUADRANTE, não decisão — passa em todo gate até o dono o encontrar](feedback_a_tie_broken_by_rounding_is_a_quadrant_artefact_not_a_law.md)
 - ⛔⛔⛔ [24 provas VERDES sobre um componente que não andava — todas entravam pelo canal INTERNO, que fica ABAIXO da metade partida do gesto](feedback_the_inner_channel_fixture_is_below_the_break.md)
-- ⛔⛔⛔ [Régua que pára no espaço do MUNDO aprova um clique partido no ECRÃ — sob split o chrome desenha numa BANDA e o cursor era mapeado contra a janela (340 px)](feedback_a_ruler_that_stops_at_world_space_approves_a_broken_click.md)
+- ⛔⛔⛔ [Régua que pára no MUNDO aprova um clique partido no ECRÃ (340 px: o chrome desenha numa BANDA)](feedback_a_ruler_that_stops_at_world_space_approves_a_broken_click.md)
 - [Costura de UI (23)](reference_topic_ui_seam_discipline.md) — ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md)
 - [**Ofício de gate** — a família (95); censo textual · censo que presume o destino · censo que partilha estado (esse acusa 14 vivos, e os 3 que sobram são cegueiras do oráculo)](reference_topic_gate_discipline.md)
 - ⛔ [Mutação que apaga um TECTO aloca o que o tecto impedia — 27 GB de RSS, morto à mão](feedback_a_mutation_that_deletes_a_cap_allocates_what_the_cap_prevented.md)

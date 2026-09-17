@@ -48,3 +48,115 @@ fn um_nome_que_nao_existe_nao_toca_nada() {
 fn com_nomes_duplicados_ganha_o_primeiro_e_isso_e_declarado() {
     assert_eq!(p("Porta").resolve(["Porta", "Porta"]), Some(0));
 }
+
+use super::{EmCorrida, em_corrida};
+use crate::timer::{TimerRuntime, TimerState};
+use bevy_ecs::world::World;
+
+fn objecto(w: &mut World, container: &str, estados: Vec<TimerState>) -> bevy_ecs::entity::Entity {
+    w.spawn((
+        SequencePlayer {
+            container: container.to_owned(),
+        },
+        TimerRuntime(estados),
+    ))
+    .id()
+}
+
+fn correndo(us: u64) -> TimerState {
+    TimerState {
+        elapsed_us: us,
+        running: true,
+    }
+}
+
+fn parado(us: u64) -> TimerState {
+    TimerState {
+        elapsed_us: us,
+        running: false,
+    }
+}
+
+/// ⭐ **O instante da cutscene é o decorrido do relógio do objecto**, em segundos.
+#[test]
+fn a_cutscene_corre_no_relogio_do_objecto() {
+    let mut w = World::new();
+    let e = objecto(&mut w, "Porta", vec![correndo(1_500_000)]);
+    assert_eq!(
+        em_corrida(&mut w, &["Intro", "Porta"]),
+        vec![EmCorrida {
+            entity: e,
+            container: 1,
+            t: 1.5
+        }]
+    );
+}
+
+/// ⛔ **Parada = ausente da lista** — e é isso que devolve o objecto à pose da cena, sem uma linha
+/// de código a repô-la.
+#[test]
+fn um_relogio_parado_nao_toca_nada() {
+    let mut w = World::new();
+    objecto(&mut w, "Porta", vec![parado(1_500_000)]);
+    assert!(em_corrida(&mut w, &["Porta"]).is_empty());
+}
+
+/// ⛔⛔ **Um nome que não resolve NÃO cai no container `0`** — tocar a cutscene errada lê-se como um
+/// defeito do motor; não tocar nada lê-se como o nome que está mal escrito, que é a verdade.
+#[test]
+fn um_nome_que_nao_resolve_nao_cai_no_primeiro() {
+    let mut w = World::new();
+    objecto(&mut w, "Ausente", vec![correndo(1_000_000)]);
+    assert!(em_corrida(&mut w, &["Intro", "Porta"]).is_empty());
+}
+
+/// ⚠️ **O relógio é o PRIMEIRO, e o gate prende a escolha.** Com dois timers, o segundo a correr
+/// não conduz a cutscene — senão ela trocaria de relógio quando o artista arranca outro para outra
+/// coisa, em silêncio.
+#[test]
+fn o_relogio_e_o_primeiro_e_nao_o_primeiro_a_correr() {
+    let mut w = World::new();
+    objecto(
+        &mut w,
+        "Porta",
+        vec![parado(9_000_000), correndo(2_000_000)],
+    );
+    assert!(
+        em_corrida(&mut w, &["Porta"]).is_empty(),
+        "com o timer 0 parado a cutscene não corre, mesmo havendo outro a andar"
+    );
+}
+
+/// ⛔ **Sem relógio nenhum não há cutscene** — o caso que o `requires` do descritor existe para
+/// evitar, e que um ficheiro montado à mão pode produzir na mesma.
+#[test]
+fn sem_relogio_nao_ha_cutscene() {
+    let mut w = World::new();
+    objecto(&mut w, "Porta", vec![]);
+    assert!(em_corrida(&mut w, &["Porta"]).is_empty());
+}
+
+/// ⭐ **Duas cutscenes ao mesmo tempo são duas entradas** — cada uma no relógio dela.
+#[test]
+fn duas_cutscenes_correm_cada_uma_no_relogio_dela() {
+    let mut w = World::new();
+    let a = objecto(&mut w, "Intro", vec![correndo(500_000)]);
+    let b = objecto(&mut w, "Porta", vec![correndo(2_250_000)]);
+    let mut v = em_corrida(&mut w, &["Intro", "Porta"]);
+    v.sort_by_key(|c| c.container);
+    assert_eq!(
+        v,
+        vec![
+            EmCorrida {
+                entity: a,
+                container: 0,
+                t: 0.5
+            },
+            EmCorrida {
+                entity: b,
+                container: 1,
+                t: 2.25
+            }
+        ]
+    );
+}

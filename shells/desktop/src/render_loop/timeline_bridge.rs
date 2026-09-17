@@ -233,6 +233,18 @@ pub(crate) fn run(
     // E o que os três ramos escreveram é declarado por UM sítio — pô-lo dentro de cada braço seria
     // três cópias, e a que ficasse de fora é a que ninguém repara (o Arrange é o ramo comum).
     crate::timeline_preview::declare_timeline_writes(world, &bound_before, drive);
+    // ⭐⭐⭐ **AS CUTSCENES** (TOP-20 #19) — cada objecto com um `SequencePlayer` toca o container
+    // dele, no relógio dele. ⚠️ **Aqui, e as duas metades são load-bearing:** DEPOIS do apply da
+    // cena (o ledger compõe `autorado → A → B`; antes dele, a cena escreveria por cima e o objecto
+    // ficaria parado com o relógio a andar), e **só neste ramo** — as outras duas vistas SOLAM o
+    // que o animador edita e congelam o relógio da cena, e escrever por cima delas faria a vista
+    // de edição mentir. Ver o cabeçalho da fase.
+    if container.is_none() && !solo {
+        let n = super::fase_sequences::toca_as_cutscenes(world, &mut timeline.doc, drive, skip);
+        if n > 0 && std::env::var_os("PH2D_SEQUENCE_LOG").is_some() {
+            eprintln!("[sequence] {n} cutscene(s) a correr");
+        }
+    }
     // Identity upkeep: heal (a project load's detached bindings recolam pelo
     // nome), then purge — a deleted object's tracks leave the document with it,
     // and deleting the LAST animated object resets the timeline whole

@@ -350,6 +350,7 @@ mod fase_selection_mirror_path_links;
 /// Fase do quadro: a pele e a ferramenta do osso no painel.
 #[cfg(feature = "panel-vector")]
 mod fase_selection_mirror_skin;
+mod fase_sequences;
 /// Fase do quadro: a manutenção de sessão (Shape Builder, tween, Colorize, Gap Closure).
 mod fase_session_upkeep;
 /// Fase do quadro: o latch da forma armada e os campos de forma.

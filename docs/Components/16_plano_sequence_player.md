@@ -97,3 +97,29 @@ componente), que é a lei que as cenas do #13/#14/#15 já seguem.
 ⛔ **Antes da primeira linha de código da W1**, a sonda `mede_o_que_a_composicao_ja_da_a_uma_cutscene`
 tem de correr e imprimir os números desta §1 — *uma tabela escrita à mão envelhece; uma que a sonda
 imprime, não*.
+
+## §7 — O que a W1 e a W2 entregaram (2026-09-17)
+
+| wave | o que ficou | onde |
+|---|---|---|
+| **W1** | o componente + a lei do NOME (`resolve`) + registo + degrau `145 → 146` + o descritor que **EXIGE** os `Timers` | [`sequence.rs`](../../crates/ph2d-ecs/src/sequence.rs) · [`catalog/logic.rs`](../../crates/ph2d-component-desc/src/catalog/logic.rs) |
+| **W2** | *quais correm e em que instante* (`em_corrida`) + a FASE que as aplica pelo ledger | [`fase_sequences.rs`](../../shells/desktop/src/render_loop/fase_sequences.rs) |
+
+**Gates:** 11 (5 da lei do nome · 6 do *quais correm*) + 4 da fase, **todos** pela porta do produto.
+**Mutação: 5 de 5 sangram** ([`mutacao_seq_w2.sh`](ferramentas/mutacao_seq_w2.sh)).
+
+⚠️⚠️ **E DUAS não sangraram à primeira, as duas por defeito MEU:**
+
+1. um filtro com o nome errado casou **zero** testes — e o controlo do arnês apanhou-o, que é
+   exactamente para isso que ele existe (*um filtro vazio sai verde e lê-se como «sobreviveu»*);
+2. ⭐⭐ **a fixtura não continha o fenómeno:** com **um só** container o alvo é sempre o índice `0`,
+   logo a mutação *«toca sempre o container 0»* era **inobservável**. A cura é uma **ISCA** — um
+   container vazio antes do verdadeiro — e o gate ficou mais forte do que era.
+
+## §8 — O que FALTA para o dono ver (W3)
+
+1. a **secção do Inspector** (o campo `Container`), com os ids no `populate` — ⛔ é aqui que sete
+   waves desta crate já morreram (*pintado e morto sob o dedo*);
+2. uma **cena de smoke**: uma porta que, ao ser tocada, corre uma cutscene — **com o CONTROLO ao
+   lado** (o mesmo objecto sem o componente);
+3. e a foto, que é o único oráculo do lado PINTADO.

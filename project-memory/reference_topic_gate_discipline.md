@@ -276,6 +276,41 @@ os censos da crate antes de dar o corte por fechado.
 - [[feedback_a_nextest_filter_matches_the_module_not_the_function]] — ⛔⛔ **no nextest o nome de um teste é `<MÓDULO>::<fn>`, e um `-E 'test(x)'` casa QUALQUER das duas metades.** Medido 17/09 ao validar o `censos-da-arvore-combinada.sh`: o filtro nomeava `every_key_of_this_family_exists` e os painéis chamam aos deles `every_key_of_this_panel_exists` — **eles entravam só porque o módulo se chama `every_word_…`**. *A cobertura era por ACIDENTE*, e os **2** censos cujo MÓDULO tinha outro nome corriam **zero** testes: `83` de `90` testes de censo, sete cegos, com o script a imprimir `✓ verdes`. ⚠️ **Um controlo por PACOTE não o apanha** (o `ph2d-editor-core` corria a catraca da shell e lia-se como coberto enquanto o 2.º censo dele estava fora) ⇒ *a granularidade do controlo tem de ser a do objecto que pode desaparecer*: o **MÓDULO**, derivado do mesmo `git grep` que deriva a lista de pacotes. ⛔⛔⛔ **E o controlo deu TRÊS acusações FALSAS antes de acertar, todas por trocar as duas metades do nome:** o `(n/N)` do nextest vem **alinhado à direita** (`( 3/83)`) e um `\([0-9]` acusa os primeiros de mudos; e pôr `the_shell_only_shrinks` (a **função**) numa lista de MÓDULOS acusa a catraca de muda com ela VERDE três linhas acima (o módulo é `architecture_the_shell_only_shrinks`). ⇒ **nada na lista de exigidos se escreve à mão: é o `basename` do ficheiro que DEFINE a coisa**, que é o que o nextest imprime como módulo
 - ⛔⛔⛔ **UMA METADE QUE A CINEMÁTICA JÁ GARANTE NÃO PROVA NADA** (Teste Cascadeur, 19/09): um portão chamado «o cotovelo pára no ponto do CÍRCULO mais perto do rato» media só a DIRECÇÃO, e uma mutação que liberta a raiz do boneco deixava-o VERDE (com o corpo livre o cotovelo alcança o rato, a direcção fica perfeita e o círculo desapareceu). ⛔ E a minha 1.ª cura foi pior: medir o RAIO (cotovelo↔ombro) é uma **tautologia** — o cotovelo É a ponta do osso, logo aquela distância é o comprimento dele SEMPRE, faça o solver o que fizer. ⇒ a afirmação com conteúdo é a **identidade do ponto mais perto**: ele NÃO alcança o alvo e fica a exactamente o quanto o alvo está fora do círculo (fecha a 3,8 µm, a tolerância do solver). ⚠️ *Antes de escrever uma metade nova, pergunte se a estrutura já a garante* — se garante, ela é decoração e o portão continua a medir metade do que o nome dele diz.
 - ⛔⛔ **Uma constante de nome de portão DECLARADA e nunca usada em `esperados` é uma lei por provar, e o controlo de órfãos não a vê** (mesma corrida): `PORTAO_CIRCULO` vivia há muito no arnês sem nenhuma mutação a nomeá-la — o controlo que criei em 19/09 verifica que todo nome ESPERADO existe na suíte, e é cego a um nome que ninguém espera. *Um portão que nenhuma mutação mata não está provado, está a ser acreditado* — e aqui nem o instrumento o dizia.
+- ⛔⛔⛔ **UMA ASSERÇÃO PODE ESTAR VERDE POR GEOMETRIA DA CÂMERA — e a mutação sobrevive.** Medido
+  2026-09-17 (`W5` do render): o gate *«uma fatia que começa depois do fim da sequência de direcções
+  é vazia»* passava na caixa de Cornell **com a cerca do laço apagada**. A sonda diz porquê: para
+  `k ≥ total` o reticulado devolve `[0, 0, z]` com `|z| > 1` (o raio sai `0` porque `1 − z²` fica
+  negativo), ou seja **`−z` do mundo**, e um pixel **VISÍVEL** satisfaz `n·olho > 0` *por
+  construção* ⇒ com o olho em `+z` todo pixel de peça tem `n_z > 0` e pesa aquela direcção com
+  `≤ 0`. Contado: **`0`** pares `(pixel, direcção fora)` com peso positivo em `2 304` px.
+  **Why:** a asserção era **impossível de violar naquela fixtura**, e isso lê-se exactamente como
+  uma lei cumprida. *Não é a régua que está errada — é a fixtura que não contém o fenómeno, e a
+  razão é uma identidade da geometria, não um acaso do corpus.*
+  **How to apply:** quando uma mutação sobrevive a uma asserção «X nunca acontece», pergunte
+  primeiro **se X pode acontecer naquela fixtura** antes de reforçar a régua — e escreva o
+  **CONTROLO DENTRO do gate** (aqui: *«esta fixtura pesaria `N > 100` direcções degeneradas»*,
+  medido `3 496` em `944` px numa esfera a yaw `135°`), para que uma fixtura que deixe de conter o
+  fenómeno reprove **alto** em vez de ficar verde a medir nada. Irmão de
+  [[feedback_an_axis_aligned_fixture_cannot_measure_a_basis]].
+- ⛔⛔ **UMA IGUALDADE ENTRE DUAS ROTAS QUE PARTILHAM UMA PORTA NÃO AFIRMA NADA SOBRE ESSA PORTA.**
+  Medido no mesmo dia: o gate do refinamento compara a saída do laço com
+  `blur_bounce(passe_inteiro(..))` — as duas passam pela **mesma** função de suavização, logo
+  mutá-la muda os dois lados e ele fica **VERDE** (a mutação «não borra nada» sobrevive).
+  **Why:** a régua cancelou-se: o que se queria medir entrou nos dois membros da igualdade.
+  **How to apply:** para gatear uma porta partilhada, a régua tem de ser **externa** aos dois
+  consumidores dela — aqui, cada canal do ricochete comparado com o que o borrão do CÉU devolveria
+  sozinho, canal a canal e ao bit (e com os três canais **diferentes**, senão um borrão que os
+  trocasse entre si ficava verde).
+- ⛔⛔ **«SOMAR TODAS AS FATIAS DÁ EXACTAMENTE O MESMO» é falso fora da partição que o gate corre.**
+  Medido 2026-09-17 nas duas metades do hemisfério: fatias de **uma** direcção reproduzem a dobra à
+  **esquerda** e batem **ao bit**; `3 + 5` contra `8` é uma dobra em **árvore** e desvia `2,5e-7`
+  (ricochete) / `2,4e-7` (céu) — associatividade de `f32`, nada mais.
+  **Why:** o doc prometia a lei GERAL e o gate só corria a partição que o produto usa; a frase
+  sobrevivia porque ninguém tinha corrido a outra. *Um gate que prova o caso que o produto usa não
+  autoriza a frase geral escrita ao lado dele.*
+  **How to apply:** ao escrever «X dá exactamente Y», corra a **segunda** partição no mesmo gate, e
+  se ela só concordar a menos de arredondamento escreva a barra **derivada** (`(n − 1) · eps`, o
+  limite clássico entre duas associações de `n` parcelas) em vez de afrouxar a primeira metade.
 
 ---
 

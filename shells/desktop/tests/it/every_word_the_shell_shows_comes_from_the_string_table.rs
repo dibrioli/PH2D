@@ -78,9 +78,14 @@ const FORA: &[Isento] = &[
         "render_loop/fase_path_shape_and_paint.rs",
         "o `log_shape` do padrão de textura — diagnóstico de consola",
     ),
+    // ⚠️ **A isenção MUDOU DE FICHEIRO na integração de 2026-09-17, não de mecanismo.** A
+    // `line/motion-value` reorganizou as fases do laço de desenho e o `warp_overlay::diag` passou
+    // do `fase_selection_highlight` para o `fase_vector_overlays`. As DUAS metades do censo
+    // acusaram na mesma corrida — a isenção órfã e o literal sem abrigo —, que é exactamente o par
+    // que prova que ela é uma MUDANÇA DE ENDEREÇO e não um literal novo.
     (
-        "render_loop/fase_selection_highlight.rs",
-        "o `warp_overlay::diag` — diagnóstico de consola",
+        "render_loop/fase_vector_overlays.rs",
+        "o `warp_overlay::diag` — diagnóstico de consola, só com `PH2D_WARP_DIAG=1`",
     ),
     (
         "render_loop/fase_game_camera.rs",

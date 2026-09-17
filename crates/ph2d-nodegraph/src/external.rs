@@ -76,6 +76,16 @@ pub fn is_reserved(name: &str) -> bool {
 /// without learning what a window or a camera is.
 pub const CURSOR: &str = "$cursor";
 
+/// O external onde o editor publica a **VISTA** — o centro da câmara (`P`), a extensão visível
+/// (`size`, em unidades de mundo) e o `zoom` (pixels de ecrã por unidade).
+///
+/// ⚠️ **Irmão exacto do [`CURSOR`], e pela mesma razão:** a câmara é um valor do EDITOR que muda a
+/// cada quadro e que um documento não pode guardar. A folha 14 da conferência nomeou-a como a
+/// segunda espécie de fonte em falta (*«sem ela, orientar para a câmera, escalar com o zoom,
+/// distribuir na área visível e o culling são todos inexprimíveis»*) e mediu o preço em *«quase
+/// zero»* — porque a porta já existia e era esta.
+pub const CAMERA: &str = "$camera";
+
 /// The external the editor publishes a named thing's **world POSITION** under.
 ///
 /// ⚠️ **A thing's appearance and a thing's position are different questions, and the
@@ -267,6 +277,10 @@ mod reserved_tests {
     fn the_cursor_lives_in_the_namespace_it_claims() {
         assert!(is_reserved(CURSOR));
         assert!(CURSOR.starts_with(RESERVED_PREFIX));
+        // ⚠️ E a VISTA, pela mesma lei (ciclo 8): sem isto um objecto chamado `$camera` seria
+        // publicável e passaria a SER a câmara.
+        assert!(is_reserved(CAMERA));
+        assert_ne!(CAMERA, CURSOR, "dois valores do editor, duas chaves");
     }
 
     /// **The unshifted appearance IS the raw name** — the neutrality of the whole

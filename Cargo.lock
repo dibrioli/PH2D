@@ -5038,6 +5038,7 @@ dependencies = [
  "ph2d-node-pulse-signal",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
+ "ph2d-node-source-camera",
  "ph2d-node-source-lsystem",
  "ph2d-node-source-object",
  "ph2d-node-source-table",
@@ -7296,6 +7297,7 @@ dependencies = [
  "ph2d-node-sim-spawn",
  "ph2d-node-sim-step",
  "ph2d-node-sim-zone",
+ "ph2d-node-source-camera",
  "ph2d-node-source-lsystem",
  "ph2d-node-source-object",
  "ph2d-node-source-table",
@@ -7423,6 +7425,14 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
  "ph2d-node-registry-init",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-source-camera"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
 

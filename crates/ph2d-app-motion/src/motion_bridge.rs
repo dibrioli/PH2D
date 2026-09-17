@@ -522,15 +522,20 @@ pub fn publish_shapes(
         shapes::publish(&mut motion.pump.cook, sim, scene, map, xforms, selected);
 }
 
-/// Publish the world-space **cursor** into the same external table
-/// ([`ph2d_nodegraph::external::CURSOR`]) — the editor input a document cannot hold,
-/// and what lets `motion.look_at` aim at the mouse.
+/// Publica os **valores do EDITOR** na mesma tabela de externos — o cursor
+/// ([`ph2d_nodegraph::external::CURSOR`]) e a vista ([`ph2d_nodegraph::external::CAMERA`]): os
+/// dois são entradas do editor que mudam a cada quadro e que um documento não pode guardar, e são
+/// eles que deixam um `motion.look_at` mirar o rato e um `source.camera` saber onde a câmara está.
+///
+/// ⚠️ **O nome diz os DOIS de propósito** (ciclo 8, W3): até 2026-09-16 esta porta chamava-se
+/// `publish_cursor` e publicava só o cursor; uma função que publica duas coisas com o nome de uma
+/// é como a segunda deixa de ser lembrada no dia em que a ordem do quadro mudar.
 ///
 /// ⚠️ Runs LAST of the three publishes: `publish_shapes` clears the table and the
 /// objects append to it, so an earlier cursor would be wiped by the shapes of the
 /// same frame. The `$` namespace it lands in is the one the artist-name publishes
 /// refuse (`shapes::is_reserved`), so the two can never collide.
-pub fn publish_cursor(
+pub fn publish_editor_inputs(
     motion: &mut MotionState,
     camera: &ph2d_render::Camera2d,
     cursor: (f32, f32),
@@ -538,6 +543,11 @@ pub fn publish_cursor(
     window: ph2d_host::WindowSize,
 ) {
     shapes::publish_cursor(&mut motion.pump.cook, camera, cursor, split, window);
+    // ⭐ E a VISTA, na mesma passagem e pela mesma razão (ciclo 8, W3): ela muda a cada quadro e
+    // um documento não a pode guardar. ⚠️ **Aqui, e não num sítio próprio:** o cursor e a câmara
+    // são o MESMO instante (o `publish_shapes` limpa a tabela antes dos dois), e separá-los seria
+    // a segunda oportunidade de publicar no ponto errado do quadro (a lei do `motion_externals`).
+    shapes::publish_camera(&mut motion.pump.cook, camera, split, window);
 }
 
 // The object-bake wiring (`publish_objects`/`bake_objects`/`bake_flip_objects`,

@@ -263,6 +263,45 @@ pub fn publish_cursor(
     );
 }
 
+/// ⭐⭐⭐ **A VISTA, pela MESMA porta** (ciclo 8, W3 — doc 113 §5): o centro da câmara (`P`), a
+/// extensão visível (`size`) e o `zoom` (pixels de ecrã por unidade de mundo), sob a chave
+/// reservada [`ph2d_nodegraph::external::CAMERA`].
+///
+/// ⚠️ **A janela é a da CENA, nunca a crua** — a mesma porta e a mesma razão do
+/// [`publish_cursor`] logo acima: sob o split a cena desenha num sub-rectângulo, e a extensão
+/// visível derivada da janela cheia estaria errada exactamente onde o artista está a olhar.
+///
+/// ⚠️ **A altura é a da câmara e a largura DERIVA do aspecto** — é assim que a projecção a calcula
+/// (`Camera2d::height_world`, *«width is derived from window aspect»*); escrever aqui uma segunda
+/// conta de largura seria a segunda resposta que diverge no primeiro redimensionamento.
+pub fn publish_camera(
+    cook: &mut ph2d_nodegraph::cook::Cook,
+    camera: &ph2d_render::Camera2d,
+    split: ph2d_editor_core::screens::layout::CenterSplit,
+    window: ph2d_host::WindowSize,
+) {
+    let scene = crate::field_gizmo::scene_camera_window(split, window);
+    let (w, h) = (scene.width as f32, scene.height as f32);
+    // Uma janela degenerada (altura zero num arranque) não tem vista: publicar `NaN` faria cada
+    // consumidor herdar o não-número em silêncio.
+    if h <= 0.0 || camera.height_world <= 0.0 {
+        return;
+    }
+    let altura = camera.height_world;
+    let largura = altura * (w / h);
+    let zoom = h / altura;
+    cook.set_external(
+        ph2d_nodegraph::external::CAMERA.to_string(),
+        Stream::new(1)
+            .with("P", Column::Vec2(vec![camera.center]))
+            .with("size", Column::Vec2(vec![[largura, altura]]))
+            .with(
+                ph2d_node_source_camera::ZOOM_COLUMN,
+                Column::Scalar(vec![zoom]),
+            ),
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -303,6 +342,79 @@ mod tests {
     /// sees half the height, so the same pixel maps to a world `y` twice as far from
     /// centre. Asserting the mapping MOVED (and by how much) is the property; asserting
     /// a literal world point would pin the camera's own arithmetic instead.
+    /// ⭐⭐ **A VISTA sai pela janela da CENA, e o `zoom` é o dela** (ciclo 8, W3).
+    ///
+    /// ⚠️ **A régua é a LARGURA e o ZOOM, não a altura:** a altura visível é a da câmara
+    /// (`height_world`) e não muda com o split — o que muda é o ASPECTO, e é aí que uma conta feita
+    /// sobre a janela cheia estaria errada. O gate afirma as duas metades: a altura FICA e a
+    /// largura/zoom SEGUEM a cena.
+    #[test]
+    fn the_view_is_published_through_the_scene_viewport() {
+        use ph2d_editor_core::screens::layout::CenterSplit;
+        use ph2d_host::WindowSize;
+
+        let win = WindowSize::new(800, 600);
+        let camera = ph2d_render::Camera2d::default();
+        let vista = |split: CenterSplit| -> ([f32; 2], [f32; 2], f32) {
+            let mut cook = ph2d_nodegraph::cook::Cook::new();
+            publish_camera(&mut cook, &camera, split, win);
+            let s = &cook.externals()[ph2d_nodegraph::external::CAMERA].value;
+            let dois = |col: &str| match s.get(col) {
+                Some(Column::Vec2(v)) => v[0],
+                other => panic!("a vista publica `{col}`: {other:?}"),
+            };
+            let zoom = match s.get(ph2d_node_source_camera::ZOOM_COLUMN) {
+                Some(Column::Scalar(v)) => v[0],
+                other => panic!("a vista publica o zoom: {other:?}"),
+            };
+            (dois("P"), dois("size"), zoom)
+        };
+        let (centro, cheia, zoom_cheio) = vista(CenterSplit::None);
+        let (_, meia, zoom_meio) = vista(CenterSplit::Horizontal { t: 0.5 });
+        assert_eq!(centro, camera.center, "o centro e' o da camara");
+        assert!(
+            (cheia[1] - camera.height_world).abs() < 1e-5
+                && (meia[1] - camera.height_world).abs() < 1e-5,
+            "a altura visivel e' a da camara nas duas: {} e {}",
+            cheia[1],
+            meia[1]
+        );
+        assert!(
+            meia[0] > cheia[0] * 1.5,
+            "com metade da altura o aspecto alarga a vista: {} contra {}",
+            meia[0],
+            cheia[0]
+        );
+        assert!(
+            (zoom_cheio - 600.0 / camera.height_world).abs() < 1e-3,
+            "o zoom e' px de CENA por unidade: {zoom_cheio}"
+        );
+        assert!(
+            (zoom_meio - zoom_cheio * 0.5).abs() < 1e-3,
+            "sob o split a cena tem metade dos pixels: {zoom_meio} contra {zoom_cheio}"
+        );
+    }
+
+    /// ⚠️ **Uma janela degenerada não publica vista nenhuma** — em vez de um `NaN` que cada
+    /// consumidor herda em silêncio.
+    #[test]
+    fn a_degenerate_window_publishes_no_view() {
+        use ph2d_editor_core::screens::layout::CenterSplit;
+        let mut cook = ph2d_nodegraph::cook::Cook::new();
+        publish_camera(
+            &mut cook,
+            &ph2d_render::Camera2d::default(),
+            CenterSplit::None,
+            ph2d_host::WindowSize::new(800, 0),
+        );
+        assert!(
+            !cook
+                .externals()
+                .contains_key(ph2d_nodegraph::external::CAMERA),
+            "sem altura nao ha' vista"
+        );
+    }
+
     #[test]
     fn the_cursor_is_mapped_through_the_scene_viewport_not_the_window() {
         use ph2d_editor_core::screens::layout::CenterSplit;

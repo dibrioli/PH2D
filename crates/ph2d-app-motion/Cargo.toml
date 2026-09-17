@@ -54,6 +54,8 @@ ph2d-node-motion-trail = { path = "../ph2d-node-motion-trail" }
 ph2d-node-motion-voronoi = { path = "../ph2d-node-motion-voronoi" }
 ph2d-node-pulse-signal = { path = "../ph2d-node-pulse-signal" }# A fonte de objeto, para a MEMBRANA. Aqui a dep não é de gate: o shell tem de
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }
+# A VISTA no grafo (ciclo 8, W3): a membrana publica `$camera` com a coluna que o nó declara.
+ph2d-node-source-camera = { path = "../ph2d-node-source-camera" }
 ph2d-node-source-lsystem = { path = "../ph2d-node-source-lsystem" }
 ph2d-node-source-object = { path = "../ph2d-node-source-object" }
 ph2d-node-source-table = { path = "../ph2d-node-source-table" }

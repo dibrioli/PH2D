@@ -857,3 +857,72 @@ fn the_new_arithmetic_modes_match_the_cpu_on_the_device() {
         previous = Some(cpu_p);
     }
 }
+
+/// ⭐⭐⭐ **SEM VALOR, NENHUM DOS DOIS MOTORES ESCREVE** (ciclo 8, W3 — doc 113 §5).
+///
+/// ⛔⛔ O `motion.drive` resolvia um campo de valor VAZIO (porta desligada, fonte sem conteúdo,
+/// atributo de uma coluna que não existe) pela identidade `0` — e em `Set` isso **apaga o canal**:
+/// `Size = 0` é a peça a desaparecer, nos DOIS caminhos, sem um erro em lado nenhum. A cura é uma
+/// lei só (`vals.is_empty()` na CPU, o `has` do `drive_resolve` no device), e este gate é o que
+/// prova que ela é a mesma nos dois.
+///
+/// ⚠️ **A régua é o `size` na IDENTIDADE (`1`)**, não «a coluna não existe»: a CPU não escreve
+/// coluna nenhuma e o device escreve o que leu (a identidade do binding), e as duas desenham a
+/// mesma peça — é isso que o lowering resolve. Comparar a PRESENÇA da coluna reprovaria sobre
+/// produto correcto.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn an_unconnected_value_writes_nothing_on_either_engine() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let (grid, _) = grid_and_ramp(&mut g);
+    let drive = g.add_node("motion.drive");
+    // `Size`, em `Set` — o par em que o defeito colapsa a peça.
+    g.set_param(drive, "channel", 3.0);
+    g.set_param(drive, "mode", 1.0);
+    connect(&mut g, grid, drive);
+    g.validate(&reg).expect("o grafo e' valido");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "a cadeia fica no dispositivo: {:?}", plan.boundaries);
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu");
+    match cpu[0].as_stream().get("size") {
+        None => {}
+        Some(Column::Vec2(v)) => assert!(
+            v.iter().all(|s| (s[0] - 1.0).abs() < 1e-6 && (s[1] - 1.0).abs() < 1e-6),
+            "a CPU escreveu tamanho sem valor nenhum: {:?}",
+            &v[..v.len().min(4)]
+        ),
+        outra => panic!("`size` devia ser Vec2: {outra:?}"),
+    }
+
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+        SinkStyle::PLAIN,
+    )
+    .expect("gpu");
+    let dev = gc
+        .read_column_vec2(&gpu, drive, "size")
+        .expect("o device escreve a coluna do canal");
+    assert!(
+        dev.iter()
+            .all(|s| (s[0] - 1.0).abs() < 1e-6 && (s[1] - 1.0).abs() < 1e-6),
+        "o device apagou a peca sem valor nenhum: {:?}",
+        &dev[..dev.len().min(4)]
+    );
+}

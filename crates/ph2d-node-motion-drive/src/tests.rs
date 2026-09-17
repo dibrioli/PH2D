@@ -155,22 +155,51 @@ fn one_value_fans_out_to_two_channels() {
 /// FALSIFICATION: with the value input UNCONNECTED (empty value field), the
 /// drive is a no-op — the channel passes through untouched. A drive that
 /// invented a value would move the grid off an empty input.
+///
+/// ⛔⛔ **A 1.ª redacção deste gate passava pela RAZÃO ERRADA, e por isso não defendia nada**
+/// (achado no ciclo 8, W3): ela varria só o modo de omissão (`Add`), onde a identidade `0` que o
+/// `value_at` devolvia É o neutro — o canal ficava igual por acidente aritmético, não por alguém
+/// recusar a escrita. Em `Set` o MESMO caminho escrevia `0` e **apagava o canal**: um `Drive(Size,
+/// Set)` com a porta desligada põe toda a peça a tamanho zero, que é a arte a desaparecer sem um
+/// erro em lado nenhum. *Um controlo que passa pelo motivo errado é um gate que não existe.*
+///
+/// ⇒ hoje ele varre **todos os modos**, e o `Set` é o que o teria apanhado.
 #[test]
 fn an_unconnected_value_leaves_the_channel_untouched() {
-    let mut g = Graph::new();
-    let grid = g.add_node("motion.drive.test.grid");
-    let drive = g.add_node("motion.drive");
-    g.connect(Edge {
-        from: (grid, 0),
-        to: (drive, 0),
-        delayed: false,
-    })
-    .unwrap();
-    let mut cook = Cook::new();
-    let out = cook.cook(&g, &Ops, drive, 0.0).unwrap();
-    match out[0].as_stream().get("P").unwrap() {
-        Column::Vec2(v) => assert_eq!(v, &vec![[0.0, 0.0], [0.0, 0.0]], "no value → no move"),
-        _ => panic!("P"),
+    // Add · Set · Multiply · Subtract · Divide · Min · Max · Remap — a escada inteira do `mode`.
+    for mode in 0..=7 {
+        // E o canal com que o defeito se vê: `Size`, que em `Set` colapsa a peça.
+        for (canal, coluna, esperado) in [
+            (0.0, "P", vec![[0.0, 0.0], [0.0, 0.0]]),
+            (3.0, "size", Vec::new()),
+        ] {
+            let mut g = Graph::new();
+            let grid = g.add_node("motion.drive.test.grid");
+            let drive = g.add_node("motion.drive");
+            g.set_param(drive, "mode", mode as f32);
+            g.set_param(drive, "channel", canal);
+            g.connect(Edge {
+                from: (grid, 0),
+                to: (drive, 0),
+                delayed: false,
+            })
+            .unwrap();
+            let mut cook = Cook::new();
+            let out = cook.cook(&g, &Ops, drive, 0.0).unwrap();
+            let s = out[0].as_stream();
+            match (s.get(coluna), esperado.is_empty()) {
+                // O `size` não existia na entrada, e sem valor ele NÃO nasce: um `size` escrito
+                // aqui seria o zero que apaga a peça.
+                (None, true) => {}
+                (Some(Column::Vec2(v)), false) => {
+                    assert_eq!(
+                        v, &esperado,
+                        "modo {mode}, canal {canal}: sem valor, sem escrita"
+                    );
+                }
+                (outra, _) => panic!("modo {mode}, canal {canal}: `{coluna}` veio {outra:?}"),
+            }
+        }
     }
 }
 

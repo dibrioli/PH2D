@@ -64,7 +64,13 @@ macro_rules! drive_lib_src {
     // **A porta unica** -- o gemeo de `Combine::resolve`. Ela existe do lado da\n\
     // CPU porque a lei estava escrita OITO vezes; aqui pelo mesmo motivo, e a\n\
     // paridade entre as duas so' e' verificavel se as duas tiverem UMA porta.\n\
-    fn drive_resolve(cur: f32, v: f32, mode: i32, f: f32) -> f32 {\n\
+    // ⛔⛔ **SEM VALOR NAO SE ESCREVE** (ciclo 8, W3): um fio que nao existe (a porta
+    // desligada, uma fonte sem conteudo, um atributo que nao esta' na coluna) deixava a
+    // identidade `0` entrar no combine — e em `Set` isso APAGA o canal (tamanho zero, a arte
+    // some). O `has` e' o gemeo do `vals.is_empty()` da CPU, e mora nesta porta porque a lei
+    // tem de ser UMA nos dois motores.\n\
+    fn drive_resolve(cur: f32, v: f32, mode: i32, f: f32, has: bool) -> f32 {\n\
+        if (!has) { return cur; }\n\
         let b = drive_base(cur, mode);\n\
         return b + (drive_combine(cur, v, mode) - b) * f;\n\
     }\n\
@@ -129,7 +135,7 @@ const DRIVE_P: GpuKernel = GpuKernel {
         if (dr_comp == 1) { dr_cur = dr_p.y; }\n\
         let dr_v = read_value_v(i) * params.scale;\n\
         let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
-        let dr_out = drive_resolve(dr_cur, dr_v, dr_mode, dr_f);\n\
+        let dr_out = drive_resolve(dr_cur, dr_v, dr_mode, dr_f, HAS_value_v);\n\
         var dr_next = dr_p;\n\
         if (params.space >= 0.5) {\n\
             // O MODO decide a magnitude, o ESPACO decide a direccao -- e o que se\n\
@@ -177,7 +183,7 @@ const DRIVE_ROT: GpuKernel = GpuKernel {
         let dr_cur = read_in_rot(i);\n\
         let dr_v = read_value_v(i) * params.scale;\n\
         let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
-        write_rot(i, drive_resolve(dr_cur, dr_v, dr_mode, dr_f));\n",
+        write_rot(i, drive_resolve(dr_cur, dr_v, dr_mode, dr_f, HAS_value_v));\n",
     wgsl_lib: DRIVE_LIB,
     bindings: &[
         ColumnBinding {
@@ -203,8 +209,8 @@ const DRIVE_SIZE: GpuKernel = GpuKernel {
         let dr_s = read_in_size(i);\n\
         let dr_v = read_value_v(i) * params.scale;\n\
         let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
-        let dr_x = drive_resolve(dr_s.x, dr_v, dr_mode, dr_f);\n\
-        let dr_y = drive_resolve(dr_s.y, dr_v, dr_mode, dr_f);\n\
+        let dr_x = drive_resolve(dr_s.x, dr_v, dr_mode, dr_f, HAS_value_v);\n\
+        let dr_y = drive_resolve(dr_s.y, dr_v, dr_mode, dr_f, HAS_value_v);\n\
         write_size(i, vec2<f32>(dr_x, dr_y));\n",
     wgsl_lib: DRIVE_LIB,
     bindings: &[
@@ -239,7 +245,7 @@ const DRIVE_SIZE_AXIS: GpuKernel = GpuKernel {
         if (dr_comp == 1) { dr_cur = dr_s.y; }\n\
         let dr_v = read_value_v(i) * params.scale;\n\
         let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
-        let dr_out = drive_resolve(dr_cur, dr_v, dr_mode, dr_f);\n\
+        let dr_out = drive_resolve(dr_cur, dr_v, dr_mode, dr_f, HAS_value_v);\n\
         var dr_next = dr_s;\n\
         if (dr_comp == 1) { dr_next.y = dr_out; } else { dr_next.x = dr_out; }\n\
         write_size(i, dr_next);\n",
@@ -271,7 +277,7 @@ const DRIVE_TINT: GpuKernel = GpuKernel {
         let dr_t = read_in_tint(i);\n\
         let dr_v = read_value_v(i) * params.scale;\n\
         let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
-        let dr_a = drive_resolve(dr_t.w, dr_v, dr_mode, dr_f);\n\
+        let dr_a = drive_resolve(dr_t.w, dr_v, dr_mode, dr_f, HAS_value_v);\n\
         write_tint(i, vec4<f32>(dr_t.x, dr_t.y, dr_t.z, clamp(dr_a, 0.0, 1.0)));\n",
     wgsl_lib: DRIVE_LIB,
     bindings: &[
@@ -366,7 +372,7 @@ const DRIVE_HSV: GpuKernel = GpuKernel {
         var dr_cur = dr_hsv.z;\n\
         if (dr_ch == 6) { dr_cur = dr_hsv.x; }\n\
         else if (dr_ch == 7) { dr_cur = dr_hsv.y; }\n\
-        let dr_next = drive_resolve(dr_cur, dr_v, dr_mode, dr_f);\n\
+        let dr_next = drive_resolve(dr_cur, dr_v, dr_mode, dr_f, HAS_value_v);\n\
         var dr_h = dr_hsv.x;\n\
         var dr_s = dr_hsv.y;\n\
         var dr_val = dr_hsv.z;\n\

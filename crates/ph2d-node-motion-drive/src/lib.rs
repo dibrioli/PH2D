@@ -120,6 +120,21 @@ impl NodeOp for MotionDrive {
             Some(Column::Scalar(v)) => v.clone(),
             _ => Vec::new(),
         };
+        // ⛔⛔ **SEM VALOR NAO SE ESCREVE** (ciclo 8, W3 — doc 113 §5). Um campo de valor VAZIO
+        // (a porta desligada, uma fonte sem conteúdo publicado, um `value.attribute` de uma coluna
+        // que não existe) fazia o `value_at` devolver a identidade `0` — e em `Set` isso **apaga o
+        // canal**: `Size = 0` é a arte a desaparecer, sem erro nenhum. O gate que dizia defender
+        // isto (`an_unconnected_value_leaves_the_channel_untouched`) passava por `0` ser o neutro
+        // do modo de omissão (`Add`), e não porque alguém recusasse a escrita.
+        //
+        // ⚠️ **Aqui, e não dentro do `drive_channel`/`drive_named`:** a lei é UMA e os dois
+        // caminhos a herdam — escrevê-la duas vezes seria a segunda que envelhece. O gémeo do
+        // dispositivo é o `has` do `drive_resolve` (kernel.rs).
+        if vals.is_empty() {
+            let passa = ctx.input(0).clone();
+            ctx.emit(passa);
+            return;
+        }
         // ⚠️ O canal CUSTOM pega o alvo do text param; os nove do enum pegam-no do
         // `channel_column`. Uma porta por pergunta, e a LEI (blend · broadcast ·
         // falloff) é a mesma nas duas.

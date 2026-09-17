@@ -138,10 +138,76 @@ forma não é tocada por um ciclo há semanas, e o fecho de uma linha corre as c
 
 ---
 
-## §5 — A fila do ciclo
+## §5 — ✅ W3: o poder que faltava — a VISTA entra no grafo (`source.camera`)
+
+A folha 14 tem o placar a **zero**, e mesmo assim havia um **P1 aberto** — porque ele vivia na §3
+(*«espécies de fonte que faltam»*), que é PROSA, e o placar conta **linhas de tabela**:
+
+> *«**CÂMERA / a vista.** Blender GN `Active Camera`/`Camera Info` … sem ela, **orientar para a
+> câmera**, **escalar com o zoom**, **distribuir na área visível** e o **culling** são todos
+> inexprimíveis. ⚠️ E o mecanismo de publicar já existe a UMA linha de distância … **Exprimível?
+> NÃO** (nada publica a câmera). **P1, custo quase zero.»**
+
+⚠️⚠️ ***Uma folha «a zero» pode ter um P1 dentro dela***, e a régua que a lê não o vê: o gate
+`every_node_has_a_conference_row_or_is_named_in_the_debt` mede linhas de TABELA pela mesma razão. ⇒ a
+cura levou também uma **linha de tabela** para a `source.camera`, e a §3 item 2 ficou marcada.
+
+### O nó
+
+Crate nova [`ph2d-node-source-camera`](../../crates/ph2d-node-source-camera/) — **UMA** instância que
+É a vista: `P` (o centro), `size` (a extensão visível, em unidades de mundo) e `zoom` (px de ecrã por
+unidade). Zero params, e a ausência é a decisão: *a vista não se autora aqui — ela é o que o artista
+já fez com o rato*.
+
+⭐ **A porta é a do cursor**, como a folha previu: o external reservado `$camera`
+([`external::CAMERA`](../../crates/ph2d-nodegraph/src/external.rs)), publicado pela mesma membrana e
+no mesmo instante do `$cursor` — que por isso deixou de se chamar `publish_cursor` e passou a
+`publish_editor_inputs` (*uma função que publica duas coisas com o nome de uma é como a segunda
+deixa de ser lembrada*). A janela é a da **CENA** e não a crua (a mesma armadilha que o cursor já
+documentava), e uma janela degenerada **não publica** em vez de publicar `NaN`.
+
+### ⭐⭐⭐ E o gate que prova que ele SERVE apanhou um defeito do `motion.drive`
+
+*Um nó que publica e ninguém consegue usar é um controlo morto com cara de feature.* A primeira das
+quatro coisas que a folha nomeou — **escalar com o zoom** — é uma CADEIA:
+
+```text
+  source.camera → value.attribute(zoom) → motion.drive(Size, Divide, Scale = 1/px)
+                             grid ↗                                   ↘ output
+```
+
+com a régua certa (o produto `tamanho × zoom`, que é o tamanho em PIXELS: `40` px em qualquer zoom,
+e o controlo de que no MUNDO ele quadruplica quando a câmara se afasta `4×`).
+
+⛔⛔ **A metade «e sem vista publicada?» reprovou — e o defeito não era da câmara:** o
+`motion.drive` resolvia um campo de valor **VAZIO** pela identidade `0`, e em `Set` isso escreve
+`Size = 0` — **a arte desaparece**, sem erro nenhum, nos dois motores. Acontece com a porta
+desligada, com uma fonte sem conteúdo publicado e com um `value.attribute` de uma coluna que não
+existe.
+
+⇒ **a lei que fica é uma só, nos dois lados:** *um fio sem valor não escreve* (`vals.is_empty()` na
+CPU; o `has` do `drive_resolve` no kernel, que é a porta única onde a lei já morava). Provas de
+mutação: apagar a guarda da CPU ⇒ **RED**; apagar a do device ⇒ **RED** no gate de paridade novo
+(`an_unconnected_value_writes_nothing_on_either_engine`).
+
+⚠️⚠️ **E o gate que devia ter apanhado isto passava pela RAZÃO ERRADA há meses:** o
+`an_unconnected_value_leaves_the_channel_untouched` varria só o modo de omissão (`Add`), onde o `0`
+inventado **é** o neutro — o canal ficava igual por acidente aritmético. Hoje ele varre os oito
+modos e os dois canais, e o `Set` é o que o teria apanhado. *Um controlo que passa pelo motivo
+errado é um gate que não existe.*
+
+⚠️ **Fica NOMEADO o que não foi curado:** um `value.math` com um operando ausente continua a lê-lo
+como `0` (lei declarada do nó — é o que faz `a + <nada>` ser `a`), então a mesma cadeia com um
+`Math` no meio ainda colapsa. Distinguir *«porta desligada»* de *«porta ligada a um campo vazio»*
+exige connectividade no `EvalCtx` **e** no plano do dispositivo — wave de substrato, com este caso
+como gate de partida. A cadeia que o tutorial ensina é a curta, que não tem esse estado.
+
+---
+
+## §5-bis — A fila do ciclo
 
 1. ⏳ **W1 — a costura** — o preço da §3.1 decide a cura.
 2. 🟡 **W2 — o cartão e o alcance** — o cartão do `Shape` feito (§4); o censo do alcance é gate do catálogo inteiro e está verde.
-3. ⏳ **W3 — o poder que falta** — a partir das recusas das folhas 14 e 01 e do doc 96.
+3. ✅ **W3 — o poder que falta** (§5) — a VISTA no grafo, e a lei *«um fio sem valor não escreve»* que ela destapou.
 4. ⏳ **W4 — a MEDIÇÃO.**
 5. ⏳ **W5 — a cena e o TUTORIAL** *«De onde vêm as coisas»* — o smoke do dono.

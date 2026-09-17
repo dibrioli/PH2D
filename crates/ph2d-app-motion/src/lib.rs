@@ -43,6 +43,10 @@ pub mod motion_aparencia_probe;
 pub mod motion_autofix_smoke;
 pub mod motion_autofix_smoke_appropriate;
 pub mod motion_autofix_smoke_dead_branch;
+/// ⭐ **A VISTA chega ao tamanho** — o gate que prova que o `source.camera` serve (ciclo 8, W3).
+#[cfg(test)]
+#[path = "motion_camera_source_tests.rs"]
+mod motion_camera_source_tests;
 /// A auditoria do grupo do ciclo 4 (os CAMPOS) — `#[cfg(test)]`, não entra no bin.
 #[cfg(test)]
 pub mod motion_campos_probe;

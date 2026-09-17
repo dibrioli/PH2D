@@ -66,13 +66,14 @@ impl crate::App {
             // fio — e um param conduzido só tem valor num INSTANTE (doc 58).
             self.playhead.time(),
         );
-        // ...and the CURSOR, last, into the same table (`ph2d_nodegraph::external`).
+        // ...and the editor's own values (the CURSOR and the VIEW), last, into the same
+        // table (`ph2d_nodegraph::external`).
         // It is not a document value — it is an editor input that changes every
         // frame — so publishing it is what lets `motion.look_at` aim at the mouse
         // without the node learning what a window or a camera is. Last, because
         // `publish_shapes` CLEARS and the objects append; and in the reserved `$`
         // namespace, which the artist-name publishes above refuse.
-        ph2d_app_motion::motion_bridge::publish_cursor(
+        ph2d_app_motion::motion_bridge::publish_editor_inputs(
             motion,
             camera,
             self.last_cursor,

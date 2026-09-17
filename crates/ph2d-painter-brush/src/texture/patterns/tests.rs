@@ -38,12 +38,12 @@ fn paper_presets_are_distinct_and_tooth_like() {
         assert!(
             (0.2..0.8).contains(mean),
             "{} tooth should sit mid-band, mean {mean}",
-            kind.name()
+            kind.name_key()
         );
         assert!(
             *var > 1e-4,
             "{} must have tooth relief (variance), got {var}",
-            kind.name()
+            kind.name_key()
         );
     }
     // The three surfaces differ: at least one sampled pixel diverges between each pair.
@@ -57,8 +57,8 @@ fn paper_presets_are_distinct_and_tooth_like() {
             assert!(
                 diff,
                 "papers {} and {} are identical",
-                kinds[a].name(),
-                kinds[b].name()
+                kinds[a].name_key(),
+                kinds[b].name_key()
             );
         }
     }
@@ -164,13 +164,13 @@ fn every_kind_is_bounded_and_deterministic() {
                 assert!(
                     (0.0..=1.0).contains(&a),
                     "{} out of range: {a}",
-                    kind.name()
+                    kind.name_key()
                 );
                 assert_eq!(
                     a,
                     sample_kind(kind, [u, v], params, None),
                     "{} must be pure",
-                    kind.name()
+                    kind.name_key()
                 );
             }
         }
@@ -201,7 +201,7 @@ fn every_procedural_kind_varies_across_the_plane() {
         assert!(
             hi - lo > 0.05,
             "{} should vary (lo={lo} hi={hi})",
-            kind.name()
+            kind.name_key()
         );
     }
 }
@@ -351,7 +351,7 @@ fn paper_tiles_are_mid_band_tooth_not_low_frequency_blotch() {
         assert!(
             std > 0.03,
             "{} needs real tooth relief (std {std})",
-            kind.name()
+            kind.name_key()
         );
         // 32-px block means.
         let mut blocks = Vec::new();
@@ -378,7 +378,7 @@ fn paper_tiles_are_mid_band_tooth_not_low_frequency_blotch() {
             ratio < 0.35,
             "{}: block-mean std / field std = {ratio:.3} — low-frequency blotch (the old generator \
              measured 0.917); the tooth must live in the 2-32 px band",
-            kind.name()
+            kind.name_key()
         );
         // Seamless wrap: one full tile later the field repeats exactly.
         for &(u, v) in &[(0.123f32, 0.456f32), (0.9, 0.05)] {
@@ -388,7 +388,7 @@ fn paper_tiles_are_mid_band_tooth_not_low_frequency_blotch() {
             assert!(
                 (a - b).abs() < 1e-4 && (a - c).abs() < 1e-4,
                 "{} tile seam",
-                kind.name()
+                kind.name_key()
             );
         }
     }

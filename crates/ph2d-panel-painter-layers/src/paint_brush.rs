@@ -145,7 +145,7 @@ fn paint_top_basics(
                 "panel.painter_layers.brush.blend",
                 ph2d_tool_painter::ids::PAINTER_BRUSH_BLEND,
                 brush.blend,
-                BrushBlend::from_u8(brush.blend).name(),
+                ph2d_i18n::tr(BrushBlend::from_u8(brush.blend).name_key()),
             );
             y = ny;
             if let Some(r) = blend_open {
@@ -502,7 +502,7 @@ fn brush_blend_options() -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 painter_brush_blend_option_id(m),
                 m,
-                BrushBlend::from_u8(m).name(),
+                ph2d_i18n::tr(BrushBlend::from_u8(m).name_key()),
             )
         })
         .collect()
@@ -516,7 +516,7 @@ fn falloff_options() -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 painter_brush_falloff_option_id(p),
                 p,
-                Falloff::from_u8(p).name(),
+                ph2d_i18n::tr(Falloff::from_u8(p).name_key()),
             )
         })
         .collect()

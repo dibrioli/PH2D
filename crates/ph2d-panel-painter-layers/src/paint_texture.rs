@@ -98,7 +98,7 @@ pub(crate) fn paint_texture_section(
         "panel.painter_layers.grain.grain",
         ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_KIND,
         brush.texture_kind,
-        kind.name(),
+        ph2d_i18n::tr(kind.name_key()),
     );
     y = ny;
     if let Some(r) = open {
@@ -134,7 +134,7 @@ pub(crate) fn paint_texture_section(
             "panel.painter_layers.grain.mapping",
             ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
             brush.texture_mapping,
-            TextureMapping::from_u8(brush.texture_mapping).name(),
+            ph2d_i18n::tr(TextureMapping::from_u8(brush.texture_mapping).name_key()),
         );
         y = ny;
         if let Some(r) = open {
@@ -219,7 +219,7 @@ fn paint_texture_params_and_ramp(
         .enumerate()
         .map(|(i, s)| {
             (
-                s.label,
+                ph2d_i18n::tr(s.label),
                 ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_PARAMS[i],
                 brush.texture_params[i],
             )
@@ -502,7 +502,7 @@ fn texture_kind_options() -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 painter_brush_texture_kind_option_id(k),
                 k,
-                TextureKind::from_u8(k).name(),
+                ph2d_i18n::tr(TextureKind::from_u8(k).name_key()),
             )
         })
         .collect()
@@ -515,7 +515,7 @@ fn texture_mapping_options() -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 painter_brush_texture_mapping_option_id(m),
                 m,
-                TextureMapping::from_u8(m).name(),
+                ph2d_i18n::tr(TextureMapping::from_u8(m).name_key()),
             )
         })
         .collect()

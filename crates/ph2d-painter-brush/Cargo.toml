@@ -32,5 +32,9 @@ authors.workspace = true
 # ADR novo (a cerca de contenção do ADR-0109).
 rayon = "1"
 
+[dev-dependencies]
+# A régua lexical do HR-15, para o censo deste motor.
+ph2d-label-census = { path = "../ph2d-label-census" }
+
 [lints]
 workspace = true

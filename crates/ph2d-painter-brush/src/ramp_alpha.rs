@@ -47,11 +47,11 @@ impl RampAlphaMode {
     /// Short label for the panel dropdown (English; HR-15). The row carries an "Alpha" label, so the
     /// option names are just the action.
     #[must_use]
-    pub fn name(self) -> &'static str {
+    pub fn name_key(self) -> &'static str {
         match self {
-            Self::None => "Off",
-            Self::Strength => "Reduce Strength",
-            Self::TextureAlpha => "Sprite Alpha",
+            Self::None => "paint_brush.ramp_alpha_mode.none",
+            Self::Strength => "paint_brush.ramp_alpha_mode.strength",
+            Self::TextureAlpha => "paint_brush.ramp_alpha_mode.texture_alpha",
         }
     }
 }

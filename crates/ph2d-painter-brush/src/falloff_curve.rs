@@ -53,10 +53,10 @@ impl HandleType {
 
     /// Display name for the right-click handle menu (English UI per HR-15).
     #[must_use]
-    pub const fn name(self) -> &'static str {
+    pub const fn name_key(self) -> &'static str {
         match self {
-            Self::Auto => "Auto",
-            Self::Vector => "Vector",
+            Self::Auto => "paint_brush.handle_type.auto",
+            Self::Vector => "paint_brush.handle_type.vector",
         }
     }
 }
@@ -493,7 +493,7 @@ mod tests {
     fn handle_wire_round_trips() {
         for v in 0..MAX_HANDLE_TYPES {
             assert_eq!(HandleType::from_u8(v).to_u8(), v);
-            assert!(!HandleType::from_u8(v).name().is_empty());
+            assert!(!HandleType::from_u8(v).name_key().is_empty());
         }
         assert_eq!(HandleType::from_u8(99), HandleType::Auto, "OOR → Auto");
     }

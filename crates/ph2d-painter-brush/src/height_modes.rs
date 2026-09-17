@@ -52,10 +52,10 @@ impl DepthSource {
 
     /// Short label for the panel cycler (English; HR-15).
     #[must_use]
-    pub fn name(self) -> &'static str {
+    pub fn name_key(self) -> &'static str {
         match self {
-            Self::Uniform => "Uniform",
-            Self::Grain => "Grain",
+            Self::Uniform => "paint_brush.depth_source.uniform",
+            Self::Grain => "paint_brush.depth_source.grain",
         }
     }
 }
@@ -118,11 +118,11 @@ impl DrawTo {
 
     /// Short label for the panel cycler (English; HR-15).
     #[must_use]
-    pub fn name(self) -> &'static str {
+    pub fn name_key(self) -> &'static str {
         match self {
-            Self::ColorAndDepth => "Color + Depth",
-            Self::Color => "Color",
-            Self::Depth => "Depth",
+            Self::ColorAndDepth => "paint_brush.draw_to.color_and_depth",
+            Self::Color => "paint_brush.draw_to.color",
+            Self::Depth => "paint_brush.draw_to.depth",
         }
     }
 }

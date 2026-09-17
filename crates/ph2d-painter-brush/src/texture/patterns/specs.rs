@@ -18,31 +18,31 @@ pub struct ParamSpec {
 }
 
 const CONTRAST: ParamSpec = ParamSpec {
-    label: "Contrast",
+    label: "paint_brush.pattern_param.contrast",
     default: 0.5,
 };
 const BRIGHTNESS: ParamSpec = ParamSpec {
-    label: "Brightness",
+    label: "paint_brush.pattern_param.brightness",
     default: 0.5,
 };
 const DETAIL: ParamSpec = ParamSpec {
-    label: "Detail",
+    label: "paint_brush.pattern_param.detail",
     default: 0.5,
 };
 const ROUGHNESS: ParamSpec = ParamSpec {
-    label: "Roughness",
+    label: "paint_brush.pattern_param.roughness",
     default: 0.5,
 };
 const WARP: ParamSpec = ParamSpec {
-    label: "Warp",
+    label: "paint_brush.pattern_param.warp",
     default: 0.0,
 };
 const FREQUENCY: ParamSpec = ParamSpec {
-    label: "Frequency",
+    label: "paint_brush.pattern_param.frequency",
     default: 0.35,
 };
 const SOFTNESS: ParamSpec = ParamSpec {
-    label: "Softness",
+    label: "paint_brush.pattern_param.softness",
     default: 0.3,
 };
 
@@ -63,66 +63,122 @@ pub fn param_specs(kind: TextureKind) -> &'static [ParamSpec] {
         None => &[],
         Image => &[CONTRAST, BRIGHTNESS],
         // Fractal noise: octaves + persistence + domain warp.
-        Noise => &[CONTRAST, BRIGHTNESS, p!("Detail", 0.0), ROUGHNESS, WARP],
+        Noise => &[
+            CONTRAST,
+            BRIGHTNESS,
+            p!("paint_brush.pattern_param.detail", 0.0),
+            ROUGHNESS,
+            WARP,
+        ],
         Clouds | Grain => &[CONTRAST, BRIGHTNESS, DETAIL, ROUGHNESS, WARP],
-        Stucci => &[CONTRAST, BRIGHTNESS, DETAIL, p!("Depth", 0.5), WARP],
+        Stucci => &[
+            CONTRAST,
+            BRIGHTNESS,
+            DETAIL,
+            p!("paint_brush.pattern_param.depth", 0.5),
+            WARP,
+        ],
         Musgrave => &[
             CONTRAST,
             BRIGHTNESS,
             DETAIL,
             ROUGHNESS,
-            p!("Sharpness", 0.5),
+            p!("paint_brush.pattern_param.sharpness", 0.5),
         ],
         // Voronoi — the exemplar: cell jitter, smooth merge, distance metric, cells↔cracks.
         Voronoi => &[
             CONTRAST,
             BRIGHTNESS,
-            p!("Randomness", 1.0),
-            p!("Smoothness", 0.0),
-            p!("Metric", 0.0),
-            p!("Edges", 0.0),
+            p!("paint_brush.pattern_param.randomness", 1.0),
+            p!("paint_brush.pattern_param.smoothness", 0.0),
+            p!("paint_brush.pattern_param.metric", 0.0),
+            p!("paint_brush.pattern_param.edges", 0.0),
         ],
-        Marble => &[CONTRAST, BRIGHTNESS, p!("Turbulence", 0.5), FREQUENCY],
+        Marble => &[
+            CONTRAST,
+            BRIGHTNESS,
+            p!("paint_brush.pattern_param.turbulence", 0.5),
+            FREQUENCY,
+        ],
         Wood => &[
             CONTRAST,
             BRIGHTNESS,
-            p!("Turbulence", 0.5),
-            p!("Rings", 0.35),
+            p!("paint_brush.pattern_param.turbulence", 0.5),
+            p!("paint_brush.pattern_param.rings", 0.35),
         ],
         DistortedNoise => &[
             CONTRAST,
             BRIGHTNESS,
-            p!("Distortion", 0.5),
-            p!("Detail", 0.0),
+            p!("paint_brush.pattern_param.distortion", 0.5),
+            p!("paint_brush.pattern_param.detail", 0.0),
         ],
         Magic => &[
             CONTRAST,
             BRIGHTNESS,
-            p!("Distortion", 0.5),
-            p!("Complexity", 0.5),
+            p!("paint_brush.pattern_param.distortion", 0.5),
+            p!("paint_brush.pattern_param.complexity", 0.5),
         ],
-        Checker => &[CONTRAST, BRIGHTNESS, p!("Softness", 0.0)],
-        Stripes | Chevron => &[CONTRAST, BRIGHTNESS, p!("Width", 0.5), FREQUENCY, SOFTNESS],
+        Checker => &[
+            CONTRAST,
+            BRIGHTNESS,
+            p!("paint_brush.pattern_param.softness", 0.0),
+        ],
+        Stripes | Chevron => &[
+            CONTRAST,
+            BRIGHTNESS,
+            p!("paint_brush.pattern_param.width", 0.5),
+            FREQUENCY,
+            SOFTNESS,
+        ],
         Waves => &[
             CONTRAST,
             BRIGHTNESS,
-            p!("Width", 0.5),
+            p!("paint_brush.pattern_param.width", 0.5),
             FREQUENCY,
-            p!("Ripple", 0.5),
+            p!("paint_brush.pattern_param.ripple", 0.5),
         ],
-        Gradient => &[CONTRAST, BRIGHTNESS, p!("Curve", 0.5), p!("Repeat", 0.0)],
-        Crosshatch | Grid => &[CONTRAST, BRIGHTNESS, p!("Thickness", 0.4), FREQUENCY],
+        Gradient => &[
+            CONTRAST,
+            BRIGHTNESS,
+            p!("paint_brush.pattern_param.curve", 0.5),
+            p!("paint_brush.pattern_param.repeat", 0.0),
+        ],
+        Crosshatch | Grid => &[
+            CONTRAST,
+            BRIGHTNESS,
+            p!("paint_brush.pattern_param.thickness", 0.4),
+            FREQUENCY,
+        ],
         Dots | Scales => &[
             CONTRAST,
             BRIGHTNESS,
-            p!("Radius", 0.5),
-            p!("Softness", 1.0),
-            p!("Randomness", 0.0),
+            p!("paint_brush.pattern_param.radius", 0.5),
+            p!("paint_brush.pattern_param.softness", 1.0),
+            p!("paint_brush.pattern_param.randomness", 0.0),
         ],
-        Bricks => &[CONTRAST, BRIGHTNESS, p!("Gap", 0.4), p!("Bond", 0.5)],
-        Weave => &[CONTRAST, BRIGHTNESS, p!("Gap", 0.4), FREQUENCY],
-        Hexagons => &[CONTRAST, BRIGHTNESS, p!("Rim", 0.5), FREQUENCY],
-        Diamonds | Triangles => &[CONTRAST, BRIGHTNESS, p!("Softness", 0.0)],
+        Bricks => &[
+            CONTRAST,
+            BRIGHTNESS,
+            p!("paint_brush.pattern_param.gap", 0.4),
+            p!("paint_brush.pattern_param.bond", 0.5),
+        ],
+        Weave => &[
+            CONTRAST,
+            BRIGHTNESS,
+            p!("paint_brush.pattern_param.gap", 0.4),
+            FREQUENCY,
+        ],
+        Hexagons => &[
+            CONTRAST,
+            BRIGHTNESS,
+            p!("paint_brush.pattern_param.rim", 0.5),
+            FREQUENCY,
+        ],
+        Diamonds | Triangles => &[
+            CONTRAST,
+            BRIGHTNESS,
+            p!("paint_brush.pattern_param.softness", 0.0),
+        ],
         // Watercolor papers: the preset (cold / rough / hot) IS the character; Contrast tunes the tooth
         // depth, Size x/y the scale + anisotropy, Angle the fibre orientation — so no redundant knobs.
         PaperCold | PaperRough | PaperHot => &[CONTRAST, BRIGHTNESS],

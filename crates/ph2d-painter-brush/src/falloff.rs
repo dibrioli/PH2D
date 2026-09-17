@@ -83,19 +83,19 @@ impl Falloff {
     /// Display name for the Falloff section dropdown (Blender's preset labels;
     /// `Pow4` is shown as Blender's "Sharper"). English UI per HR-15.
     #[must_use]
-    pub const fn name(self) -> &'static str {
+    pub const fn name_key(self) -> &'static str {
         match self {
-            Self::Smooth => "Smooth",
-            Self::Smoother => "Smoother",
-            Self::Sphere => "Sphere",
-            Self::Root => "Root",
-            Self::Sharp => "Sharp",
-            Self::Linear => "Linear",
-            Self::Pow4 => "Sharper",
-            Self::InvSquare => "Inverse Square",
-            Self::Constant => "Constant",
-            Self::Custom => "Custom",
-            Self::Watercolor => "Watercolor",
+            Self::Smooth => "paint_brush.falloff.smooth",
+            Self::Smoother => "paint_brush.falloff.smoother",
+            Self::Sphere => "paint_brush.falloff.sphere",
+            Self::Root => "paint_brush.falloff.root",
+            Self::Sharp => "paint_brush.falloff.sharp",
+            Self::Linear => "paint_brush.falloff.linear",
+            Self::Pow4 => "paint_brush.falloff.pow_4",
+            Self::InvSquare => "paint_brush.falloff.inv_square",
+            Self::Constant => "paint_brush.falloff.constant",
+            Self::Custom => "paint_brush.falloff.custom",
+            Self::Watercolor => "paint_brush.falloff.watercolor",
         }
     }
 
@@ -155,8 +155,8 @@ mod tests {
         for (i, &f) in Falloff::ALL.iter().enumerate() {
             assert_eq!(f.to_u8() as usize, i, "{f:?} discriminant != index");
             assert_eq!(Falloff::from_u8(i as u8), f);
-            assert!(!f.name().is_empty());
-            names.push(f.name());
+            assert!(!f.name_key().is_empty());
+            names.push(f.name_key());
         }
         assert_eq!(
             Falloff::from_u8(MAX_FALLOFF),

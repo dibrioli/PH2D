@@ -107,7 +107,7 @@ fn ramp_alpha_options() -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 painter_brush_texture_ramp_alpha_option_id(m),
                 m,
-                RampAlphaMode::from_u8(m).name(),
+                ph2d_i18n::tr(RampAlphaMode::from_u8(m).name_key()),
             )
         })
         .collect()

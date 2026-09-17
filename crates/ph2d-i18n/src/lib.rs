@@ -91,6 +91,8 @@ mod inspector;
 mod inspector_game;
 mod inspector_player;
 mod model3d;
+/// As palavras dos motores do pincel e dos efeitos — a 2.ª fatia da fronteira.
+mod paint_engines;
 mod painter_layers;
 mod sculpt3d;
 mod tags;
@@ -531,6 +533,7 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| factory::tr(k))
             .or_else(|| topdown::tr(k))
             .or_else(|| component_catalog::tr(k))
+            .or_else(|| paint_engines::tr(k))
             .or_else(|| chrome::tr(k))
             .or_else(|| painter_layers::tr(k))
             .or_else(|| inspector::tr(k))

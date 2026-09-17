@@ -93,32 +93,32 @@ impl BrushBlend {
 
     /// Human display name for the brush-settings dropdown (English UI per HR-15).
     #[must_use]
-    pub const fn name(self) -> &'static str {
+    pub const fn name_key(self) -> &'static str {
         match self {
-            Self::Mix => "Mix",
-            Self::Add => "Add",
-            Self::Subtract => "Subtract",
-            Self::Multiply => "Multiply",
-            Self::Lighten => "Lighten",
-            Self::Darken => "Darken",
-            Self::EraseAlpha => "Erase Alpha",
-            Self::AddAlpha => "Add Alpha",
-            Self::Overlay => "Overlay",
-            Self::HardLight => "Hard Light",
-            Self::ColorBurn => "Color Burn",
-            Self::LinearBurn => "Linear Burn",
-            Self::ColorDodge => "Color Dodge",
-            Self::Screen => "Screen",
-            Self::SoftLight => "Soft Light",
-            Self::PinLight => "Pin Light",
-            Self::LinearLight => "Linear Light",
-            Self::VividLight => "Vivid Light",
-            Self::Difference => "Difference",
-            Self::Exclusion => "Exclusion",
-            Self::Color => "Color",
-            Self::Hue => "Hue",
-            Self::Saturation => "Saturation",
-            Self::Luminosity => "Luminosity",
+            Self::Mix => "paint_brush.brush_blend.mix",
+            Self::Add => "paint_brush.brush_blend.add",
+            Self::Subtract => "paint_brush.brush_blend.subtract",
+            Self::Multiply => "paint_brush.brush_blend.multiply",
+            Self::Lighten => "paint_brush.brush_blend.lighten",
+            Self::Darken => "paint_brush.brush_blend.darken",
+            Self::EraseAlpha => "paint_brush.brush_blend.erase_alpha",
+            Self::AddAlpha => "paint_brush.brush_blend.add_alpha",
+            Self::Overlay => "paint_brush.brush_blend.overlay",
+            Self::HardLight => "paint_brush.brush_blend.hard_light",
+            Self::ColorBurn => "paint_brush.brush_blend.color_burn",
+            Self::LinearBurn => "paint_brush.brush_blend.linear_burn",
+            Self::ColorDodge => "paint_brush.brush_blend.color_dodge",
+            Self::Screen => "paint_brush.brush_blend.screen",
+            Self::SoftLight => "paint_brush.brush_blend.soft_light",
+            Self::PinLight => "paint_brush.brush_blend.pin_light",
+            Self::LinearLight => "paint_brush.brush_blend.linear_light",
+            Self::VividLight => "paint_brush.brush_blend.vivid_light",
+            Self::Difference => "paint_brush.brush_blend.difference",
+            Self::Exclusion => "paint_brush.brush_blend.exclusion",
+            Self::Color => "paint_brush.brush_blend.color",
+            Self::Hue => "paint_brush.brush_blend.hue",
+            Self::Saturation => "paint_brush.brush_blend.saturation",
+            Self::Luminosity => "paint_brush.brush_blend.luminosity",
         }
     }
 }
@@ -517,7 +517,7 @@ mod tests {
             // The array index IS the wire discriminant.
             assert_eq!(mode.to_u8() as usize, i, "{mode:?} discriminant != index");
             assert_eq!(BrushBlend::from_u8(i as u8), mode, "from_u8 != ALL[{i}]");
-            assert!(!mode.name().is_empty(), "{mode:?} has no display name");
+            assert!(!mode.name_key().is_empty(), "{mode:?} has no display name");
         }
         // Out-of-range falls back to Mix (never panics).
         assert_eq!(BrushBlend::from_u8(MAX_BRUSH_BLEND_MODES), BrushBlend::Mix);
@@ -526,7 +526,7 @@ mod tests {
 
     #[test]
     fn display_names_are_unique() {
-        let mut names: Vec<&str> = BrushBlend::ALL.iter().map(|m| m.name()).collect();
+        let mut names: Vec<&str> = BrushBlend::ALL.iter().map(|m| m.name_key()).collect();
         names.sort_unstable();
         let n = names.len();
         names.dedup();

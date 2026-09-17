@@ -102,7 +102,7 @@ pub(crate) fn paint_shape_section(
             "panel.painter_layers.shape.falloff",
             ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF,
             brush.falloff,
-            Falloff::from_u8(brush.falloff).name(),
+            ph2d_i18n::tr(Falloff::from_u8(brush.falloff).name_key()),
         );
         y = ny;
         if let Some(r) = open {
@@ -135,7 +135,7 @@ pub(crate) fn paint_shape_section(
         "panel.painter_layers.shape.texture",
         ph2d_tool_painter::ids::PAINTER_SHAPE_KIND,
         brush.shape_kind,
-        kind.name(),
+        ph2d_i18n::tr(kind.name_key()),
     );
     y = ny;
     if let Some(r) = open {
@@ -338,7 +338,7 @@ pub(crate) fn shape_kind_options() -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 ph2d_tool_painter::ids::painter_shape_kind_option_id(k),
                 k,
-                TextureKind::from_u8(k).name(),
+                ph2d_i18n::tr(TextureKind::from_u8(k).name_key()),
             )
         })
         .collect()

@@ -145,7 +145,7 @@ pub(crate) fn paint_color_ramp_section(
         theme,
         ids.alpha_mode,
         view.alpha_mode,
-        RampAlphaMode::from_u8(view.alpha_mode).name(),
+        ph2d_i18n::tr(RampAlphaMode::from_u8(view.alpha_mode).name_key()),
         alpha_rect,
     ) {
         (ids.set_pending_alpha)(Some((alpha_rect, view.alpha_mode)));

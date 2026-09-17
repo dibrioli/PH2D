@@ -91,12 +91,12 @@ impl TextureMapping {
 
     /// English label for the dropdown.
     #[must_use]
-    pub fn name(self) -> &'static str {
+    pub fn name_key(self) -> &'static str {
         match self {
-            Self::ViewPlane => "View Plane",
-            Self::Tiled => "Tiled",
-            Self::Random => "Random Offset",
-            Self::Stencil => "Stencil",
+            Self::ViewPlane => "paint_brush.texture_mapping.view_plane",
+            Self::Tiled => "paint_brush.texture_mapping.tiled",
+            Self::Random => "paint_brush.texture_mapping.random",
+            Self::Stencil => "paint_brush.texture_mapping.stencil",
         }
     }
 

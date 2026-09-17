@@ -174,7 +174,7 @@ pub(crate) fn paint_paper_section(
         "panel.painter_layers.paper.paper",
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_KIND,
         brush.paper_kind,
-        kind.name(),
+        ph2d_i18n::tr(kind.name_key()),
     );
     y = ny;
     if let Some(r) = open {
@@ -208,7 +208,7 @@ pub(crate) fn paint_paper_section(
             "panel.painter_layers.paper.mapping",
             ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
             brush.paper_mapping,
-            mapping.name(),
+            ph2d_i18n::tr(mapping.name_key()),
         );
         y = ny;
         if let Some(r) = open {
@@ -290,7 +290,7 @@ pub(crate) fn paint_paper_section(
         .enumerate()
         .map(|(i, s)| {
             (
-                s.label,
+                ph2d_i18n::tr(s.label),
                 ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_PARAMS[i],
                 brush.paper_params[i],
             )
@@ -427,7 +427,7 @@ pub(crate) fn paint_watercolor_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::
                 DropdownOption::new(
                     ph2d_tool_painter::ids::painter_paper_kind_option_id(k),
                     k,
-                    TextureKind::from_u8(k).name(),
+                    ph2d_i18n::tr(TextureKind::from_u8(k).name_key()),
                 )
             })
             .collect();
@@ -446,7 +446,7 @@ pub(crate) fn paint_watercolor_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::
                 DropdownOption::new(
                     ph2d_tool_painter::ids::painter_paper_mapping_option_id(m),
                     m,
-                    TextureMapping::from_u8(m).name(),
+                    ph2d_i18n::tr(TextureMapping::from_u8(m).name_key()),
                 )
             })
             .collect();

@@ -63,7 +63,8 @@ impl crate::App {
                         let xforms =
                             ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
                         let win = gfx.surface.size();
-                        let tol = ph2d_app_vec::vec_gizmo_view::stroke_hit_r(&gfx.camera, win) * 1.5;
+                        let tol =
+                            ph2d_app_vec::vec_gizmo_view::stroke_hit_r(&gfx.camera, win) * 1.5;
                         gfx.vec_scene
                             .weld_new_shape(new_id, &xforms, tol, fill_on_close);
                     }

@@ -36,9 +36,7 @@ impl TrimRecusa {
     pub(crate) fn porque(self) -> &'static str {
         match self {
             Self::SemPeca => ph2d_i18n::tr("app.sculpt3d.trim_aplica.sem_peca_para_cortar"),
-            Self::PilhaMontada => {
-                ph2d_i18n::tr("app.sculpt3d.trim_aplica.pilha_montada_j_reverte")
-            }
+            Self::PilhaMontada => ph2d_i18n::tr("app.sculpt3d.trim_aplica.pilha_montada_j_reverte"),
             Self::Gesto(r) => r.porque(),
             Self::Corte(r) => r.porque(),
         }

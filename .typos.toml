@@ -6,6 +6,76 @@
 
 [default]
 extend-ignore-identifiers-re = [
+    # ─────────────────────────────────────────────────────────────────────────
+    # ⚠️ **Rodada de integração de 2026-09-17 — seis linhas.** Vinte palavras de uma
+    # vez, e isso não é coincidência: o `typos` só corre no `ship.sh`, logo **cada
+    # palavra portuguesa nova de CADA linha aterra na mesa do integrador**, nunca na
+    # de quem a escreveu. (A mesma forma dos censos de texto e dos tectos de LOC —
+    # ver `docs/IntegracaoMultiAgente/ANATOMIA_DE_UMA_RODADA_2026-09-17.md`.)
+    # ⛔ Uma delas era um erro A SÉRIO e foi CORRIGIDA no código, não isentada: a chave
+    #    `…follows_the_drawin`, truncada pelo script de migração (o valor dela já dizia
+    #    «drawing»). *Uma chave que se lê como palavra mal escrita é re-acusada para sempre.*
+    # ─────────────────────────────────────────────────────────────────────────
+    # `contactos` / `CONTACTOS` — pt-PT de «contatos», o vocabulário do módulo de FÍSICA
+    # (`ph2d-contact`): *«dois contactos, e a lei deles é a dos vizinhos»*. O typos quer o
+    # inglês `contacts`. 16 ocorrências, a maioria em doc-comments do solver.
+    "^(contactos|CONTACTOS)$",
+    # `DIRECCIONAL` — pt-PT de «direcional», no doc do `ph2d-material`: *«a radiância que uma
+    # luz DIRECCIONAL devolve»*. O typos quer `DIRECTIONAL`.
+    "^DIRECCIONAL$",
+    # `abstracto` — pt-PT de «abstrato», no doc do indicador do pincel de pose: *«deixa de ser
+    # abstracto e passa a ser uma coisa que se vê»*. O typos quer `abstraction`/`abstract`.
+    "^abstracto$",
+    # `reflecte` — pt-PT de «reflete», no NOME de um gate do `ph2d-sweep`
+    # (`o_espelho_conserva_o_comprimento_e_reflecte_o_angulo`). ⚠️ É um identificador: trocá-lo
+    # renomeia um teste que outros docs citam pelo nome.
+    "^reflecte$",
+    # `capitulo` — pt «capítulo» sem acento, nas sondas do Motion que seguem os capítulos de um
+    # tutorial (*«o capitulo 6 manda clicar no cartao»*). O typos quer `capitol`, que é um
+    # EDIFÍCIO — a troca não corrige nada, inverte o sentido.
+    "^capitulo$",
+    # `cenarios` — pt «cenários» sem acento, nos testes do catálogo de assets (uma pasta que o
+    # teste cria chama-se mesmo «Cenários»). O typos quer `scenarios`.
+    "^cenarios$",
+    # `instantaneos` — pt «instantâneos» sem acento, na razão de um gate de a11y: *«lê os
+    # instantaneos vivos do quadro»*. São os SNAPSHOTS do quadro, não um advérbio.
+    "^instantaneos$",
+    # `liquidos` — pt «líquidos» sem acento, na mensagem de um gate do Motion: *«uma peça girou
+    # {pior}° liquidos em 0,9 s»* — graus LÍQUIDOS, isto é, o saldo. O typos quer `liquids`, que
+    # trocaria um adjetivo de saldo por um substantivo de fluido.
+    "^liquidos$",
+    # `pretendendo` — pt, gerúndio de «pretender», no doc de um gate de rótulos: *«somando `x` e
+    # subtraindo `x`, *pretendendo* dizer `largura`»*. O typos quer o inglês `pretended`.
+    "^pretendendo$",
+    # `compre` — pt, presente do conjuntivo de «comprar», no doc do painel do projéctil: *«acima
+    # disto não há caso de jogo que o compre»* (= que JUSTIFIQUE o custo). O typos lê `compare`.
+    "^compre$",
+    # `correc` — o pedaço que sobra de `correc&ccedil;&atilde;o` (pt-PT «correcção» escrito em
+    # entidades HTML, num doc-comment). ⚠️ O typos tokeniza a palavra no `&` e vê só o prefixo.
+    "^correc$",
+    # `eis` — o que sobra de `ilegivel(eis)` (pt «ilegíveis») numa linha de log do carregador de
+    # projecto. Mesma tokenização: o typos corta no parêntese.
+    "^eis$",
+    # `caf` — o que sobra de `"caf\u{e9}"` (= «café») numa fixtura do `ph2d-label-fold`, que
+    # testa precisamente a dobra de acentos. ⚠️ A palavra ESTÁ escapada de propósito: escrevê-la
+    # com o acento literal tiraria à fixtura o caso que ela existe para medir.
+    "^caf$",
+    # `gir` — nome de variável, abreviatura de «giro» numa sonda do Motion
+    # (`let (mut bal, mut gir, mut slt) = …`, de balanço/giro/salto). O typos quer `git`.
+    "^gir$",
+    # `bse` — ⚠️ **NÃO é um erro:** é um dos SEIS selos de três letras da booleana viva na
+    # Hierarquia (`BSE`/`RCP`/`UNI`/`SUB`/`INT`/`EXC`), e a chave de i18n espelha o selo. O
+    # `badge_tone` casa contra o próprio texto pintado, logo mexer-lhe apaga o TOM em silêncio.
+    "^(bse|BSE)$",
+    # `factorys` — parte de DOIS nomes de gate (`…counts_only_this_factorys_copies`, no
+    # `ph2d-ecs` e na shell). É inglês sem apóstrofo, porque um nome de teste não leva um.
+    "^factorys$",
+    # `LARG` — variável de shell, abreviatura de «largura», no `fotografa_cena.sh`
+    # (`LARG="${2:?largura}"`). O typos quer `LARGE`.
+    "^LARG$",
+    # `PN` — variável de shell que guarda o CAMINHO de um painel, no arnês de mutação das tags
+    # (`PN=crates/ph2d-panel-tags/src/rows.rs`). O typos quer `ON`.
+    "^PN$",
     # Abbreviated git commit hashes quoted in handoffs — typos tokenizes a
     # hex hash like `b685beed` and reads "beed" wanting "bead"/"been".
     "\\b[0-9a-f]{8,40}\\b",
@@ -280,6 +350,14 @@ extend-ignore-identifiers-re = [
 FleX = "FleX"
 
 [default.extend-words]
+# ─────────────────────────────────────────────────────────────────────────────
+# ⚠️ Rodada de 2026-09-17. ⛔ **Estas TRÊS não cabem no `extend-ignore-identifiers-re`**, e a razão
+# é a régua e não a palavra: aquela lista casa o identificador INTEIRO (`^x$`), e aqui a palavra
+# aparece ou em PROSA (um comentário) ou DENTRO de um nome composto — o typos tokeniza-o e vê só
+# o pedaço. *Uma isenção ancorada no sítio errado lê-se como escrita e não faz nada.*
+contactos = "contactos"  # pt-PT de «contatos» — o vocabulário do módulo de FÍSICA, em prosa de doc-comment
+factorys = "factorys"  # dentro de `…counts_only_this_factorys_copies`: um nome de teste não leva apóstrofo
+reflecte = "reflecte"  # pt-PT de «reflete», dentro de `o_espelho_conserva_o_comprimento_e_reflecte_o_angulo`
 # CITACOES VERBATIM do Enio (2026-07-20/21) sobre a aba Containers da timeline:
 # "a aba conteiner so serve como uma lista de containers criados". Corrigir a grafia
 # dentro das aspas falsificaria a citacao, entao a palavra entra aqui. O identificador

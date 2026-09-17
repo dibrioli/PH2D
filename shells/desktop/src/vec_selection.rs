@@ -401,7 +401,8 @@ mod tests {
         let (mut sim, mut scene, mut map) = setup();
         let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 2.0]));
         sync(&mut sim, &mut scene, &mut map);
-        let container = ph2d_app_vec::envelope_live::create(&mut sim, &mut scene, &map, &[a]).unwrap();
+        let container =
+            ph2d_app_vec::envelope_live::create(&mut sim, &mut scene, &map, &[a]).unwrap();
 
         let mut gizmo = GizmoStateGroup::default();
         let mut pen = ph2d_vec_edit::PenTool::default();
@@ -446,7 +447,8 @@ mod tests {
         assert_eq!(gizmo.selection, Some(a_bits), "o gizmo pousou na forma");
 
         // 2. O artista clica **Envelope**: re-parenteia SEM tocar o pen.
-        let container = ph2d_app_vec::envelope_live::create(&mut sim, &mut scene, &map, &[a]).unwrap();
+        let container =
+            ph2d_app_vec::envelope_live::create(&mut sim, &mut scene, &map, &[a]).unwrap();
         // 3. O fix: o create invalida a memória do sync (o render_loop faz o mesmo).
         state.invalidate();
 

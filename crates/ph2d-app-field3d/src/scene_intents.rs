@@ -120,7 +120,7 @@ pub(super) fn apply(
                                 .entity_mut(one)
                                 .remove::<ph2d_field_ecs::FieldProfileSource>();
                             crate::notice::say(
-                                ph2d_i18n::tr("app.field3d.scene_intents.unlinked_this_shape_no_longer_follows_the_drawin").into(),
+                                ph2d_i18n::tr("app.field3d.scene_intents.unlinked_this_shape_no_longer_follows_the_drawing").into(),
                             );
                         }
                         // ⭐⭐ **LIGAR ao contorno escolhido** (W57).

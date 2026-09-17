@@ -23,8 +23,8 @@ fn envelope_over(shapes: Vec<ph2d_vec_scene::VecPath>) -> (SimWorld, VecScene, V
     let mut map = VecEntityMap::new();
     let ids: Vec<VecPathId> = shapes.into_iter().map(|s| scene.push_path(s)).collect();
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
-    let container = ph2d_app_vec::envelope_live::create(&mut sim, &mut scene, &map, &ids)
-        .expect("create");
+    let container =
+        ph2d_app_vec::envelope_live::create(&mut sim, &mut scene, &map, &ids).expect("create");
     (sim, scene, map, container)
 }
 
@@ -46,11 +46,7 @@ fn the_pins_survive_an_undo() {
         envelope_over(vec![ph2d_vec_scene::ellipse([5.0, 5.0], 3.0, 3.0)]);
 
     // O envelope no gesto Pinos, com um pino pregado — o que uma sessão de cliques produziria.
-    ph2d_app_vec::envelope_gesture::set_kind(
-        &mut sim,
-        container,
-        ph2d_ecs::EnvelopeKind::Pins,
-    );
+    ph2d_app_vec::envelope_gesture::set_kind(&mut sim, container, ph2d_ecs::EnvelopeKind::Pins);
     sim.world_mut()
         .get_mut::<VecEnvelope>(Entity::from_bits(container))
         .expect("VecEnvelope")

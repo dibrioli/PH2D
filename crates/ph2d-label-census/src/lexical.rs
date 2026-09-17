@@ -93,6 +93,14 @@ const CHAMADAS_QUE_NAO_PINTAM: &[&str] = &[
     "must_use",
 ];
 
+/// A memória da [`language_literals`]: uma entrada por RAIZ varrida.
+///
+/// ⚠️ Ela é um alias por exigência do `clippy::type_complexity`, que o `ship.sh` corre com
+/// `-D warnings` — e ⛔ **só o `ship.sh` o corre**, logo isto chegou ao `main` verde e foi
+/// apanhado pela integração seguinte. É a mesma forma dos censos e dos tectos de LOC: um portão
+/// que a LINHA nunca vê.
+type Memo = Vec<(PathBuf, Vec<Literal>)>;
+
 /// Todo literal com cara de língua nos `.rs` debaixo de `src_root` que o produto compila.
 ///
 /// ⚠️ **Um ficheiro de teste é perguntado ao PAI** ([`is_declared_under_cfg_test`]), nunca ao nome.
@@ -103,13 +111,12 @@ pub fn language_literals(src_root: &Path) -> Vec<Literal> {
     //    morte de `180 s` do executor. ⚠️ A cura NÃO é subir o tecto: era a mesma resposta calculada
     //    três vezes. O fonte não muda enquanto um binário de teste corre, logo a cache é correcta
     //    por construção; ela vive no processo e morre com ele.
-    static CACHE: std::sync::OnceLock<std::sync::Mutex<Vec<(PathBuf, Vec<Literal>)>>> =
-        std::sync::OnceLock::new();
+    static CACHE: std::sync::OnceLock<std::sync::Mutex<Memo>> = std::sync::OnceLock::new();
     let cache = CACHE.get_or_init(|| std::sync::Mutex::new(Vec::new()));
-    if let Ok(c) = cache.lock() {
-        if let Some((_, v)) = c.iter().find(|(k, _)| k == src_root) {
-            return v.clone();
-        }
+    if let Ok(c) = cache.lock()
+        && let Some((_, v)) = c.iter().find(|(k, _)| k == src_root)
+    {
+        return v.clone();
     }
     let out = language_literals_uncached(src_root);
     if let Ok(mut c) = cache.lock() {

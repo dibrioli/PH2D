@@ -85,8 +85,11 @@ impl crate::App {
             // selecionada não carrega um `VecEnvelope`. O alvo é o CONTAINER (Fatia 3): a
             // regra seleciona-só-o-container põe os bits dele em `hero.gizmo.selection`.
             if overlay.envelope_cage
-                && let Some(cage) =
-                    ph2d_app_vec::envelope_gesture::view(sim, hero.gizmo.selection, self.vec.envelope_drag)
+                && let Some(cage) = ph2d_app_vec::envelope_gesture::view(
+                    sim,
+                    hero.gizmo.selection,
+                    self.vec.envelope_drag,
+                )
             {
                 ph2d_vec_render::draw_envelope_cage(&cage, cam_affine, hero.theme, vector_scene);
             }

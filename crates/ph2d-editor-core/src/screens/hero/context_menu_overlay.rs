@@ -106,16 +106,16 @@ pub fn paint_context_menu_overlay(
     // daqui é o do `menu_row_mark` (importado no topo); o da tabela chega qualificado, pelo
     // `menu_rows::menu_rows`.
     let rows: Vec<MenuRow<'_>> = statics
-    .iter()
-    .map(|&(id, key, swatch)| MenuRow::Item(id, key.tr(), swatch))
-    .chain(contrib.iter().map(|e| {
-        match (e.node_id(), e.label()) {
-            (Some(id), Some(label)) => MenuRow::Item(id, label, None),
-            // Um alvo sem id consumiria o clique e não faria nada; o que ele é, é um risco.
-            _ => MenuRow::Divider,
-        }
-    }))
-    .collect();
+        .iter()
+        .map(|&(id, key, swatch)| MenuRow::Item(id, key.tr(), swatch))
+        .chain(contrib.iter().map(|e| {
+            match (e.node_id(), e.label()) {
+                (Some(id), Some(label)) => MenuRow::Item(id, label, None),
+                // Um alvo sem id consumiria o clique e não faria nada; o que ele é, é um risco.
+                _ => MenuRow::Divider,
+            }
+        }))
+        .collect();
 
     if matches!(req.kind, ContextMenuKind::SceneList) {
         paint_scene_list(req, scene, text_system, theme, hit_index, store, viewport);

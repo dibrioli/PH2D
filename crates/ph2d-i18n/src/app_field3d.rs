@@ -124,7 +124,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.field3d.scene_intents.linked_this_shape_now_follows_the_selected_drawi" => {
             "Linked: this shape now follows the selected drawing"
         }
-        "app.field3d.scene_intents.unlinked_this_shape_no_longer_follows_the_drawin" => {
+        "app.field3d.scene_intents.unlinked_this_shape_no_longer_follows_the_drawing" => {
             "Unlinked: this shape no longer follows the drawing"
         }
         "app.field3d.scene_intents.isolation_off_the_whole_part_is_back" => {

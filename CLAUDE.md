@@ -392,6 +392,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **E uma quinta ficou por promover porque NÃO TEM NOME:** a `line/Vector` reportou *«um do shell
   que não reproduziu em 4 corridas»* sem o nomear. *Uma flake sem nome não entra numa lista — quem
   a encontrar outra vez recomeça do zero.*
+  **Promovido pela integração de 2026-09-17:** `sub_stepping_costs_what_it_says_it_costs`
+  ([`ph2d-physics`](crates/ph2d-physics/tests/it/penetration.rs)) — reprovou no meio de um fan-out de
+  **24 368** testes do `ship.sh` e passa **3 de 3 sozinho a 95–96 % de CPU OCIOSA**, com zero linhas
+  do diff da rodada naquele caminho. ⛔ É o **SEXTO** deste repo cujo doc-comment se declara imune
+  por escrito (*«A RATIO against the single-step cost, not a wall-clock bar»*, e a frase seguinte
+  explica que é para não medir o perfil de build) — ⚠️ **verdade sobre o PERFIL e falso sobre o
+  FAN-OUT**, que é exactamente a distinção que esta lista existe para guardar.
   *Todo gate que compara duas medianas de um RECURSO é candidato, e a lista nunca estará completa.*
   ⛔ **E um CONTADOR atrás de estado POR THREAD (memo, arena) também** — ele conta quantas threads o escalonador pôs a
   trabalhar: o gate da superfórmula leu `morno 0/4/8` sob fan-out e foi curado numa pool de UMA thread (13/09, ESTADO W2 §6).

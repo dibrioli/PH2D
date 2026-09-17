@@ -3,7 +3,7 @@
 #
 # # Porque este script existe
 #
-# Medido na rodada de 2026-09-17 (seis linhas, `docs/IntegracaoMultiAgente/ANATOMIA_DE_UMA_RODADA_2026-09-17.md`):
+# Medido na rodada de 2026-09-17 (seis linhas, `docs/archive/integracao-jornadas/ANATOMIA_DE_UMA_RODADA_2026-09-17.md`):
 # **cinco das oito** falhas que o integrador encontrou eram censos de texto (HR-15) e **duas** eram
 # tectos de LOC por ACUMULAÇÃO. As duas famílias têm a mesma forma:
 #

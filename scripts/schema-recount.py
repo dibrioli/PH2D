@@ -24,7 +24,7 @@ de uma rodada.
 
 Medido na rodada de 2026-09-17: quatro degraus da `line/3DModeling` (`128->132` escritos) foram
 re-contados para `140->144`, e os dois primeiros custaram uma volta a` mao cada antes de este
-script existir. Ver `docs/IntegracaoMultiAgente/ANATOMIA_DE_UMA_RODADA_2026-09-17.md` §5.2.
+script existir. Ver `docs/archive/integracao-jornadas/ANATOMIA_DE_UMA_RODADA_2026-09-17.md` §5.2.
 """
 import subprocess
 import sys

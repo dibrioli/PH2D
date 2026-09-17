@@ -110,7 +110,8 @@ impl crate::App {
                 .filter_map(|id| self.vec.entities.get(id).copied())
                 .collect();
             if let Some(bits) = ph2d_app_vec::envelope_live::sole_container(sim, &sel)
-                && let Some((cur_warp, cur_bend)) = ph2d_app_vec::envelope_gesture::warp_of(sim, bits)
+                && let Some((cur_warp, cur_bend)) =
+                    ph2d_app_vec::envelope_gesture::warp_of(sim, bits)
             {
                 let warp = pending_envelope_preset
                     .and_then(|i| ph2d_ecs::EnvelopeWarp::ALL.get(i).copied())

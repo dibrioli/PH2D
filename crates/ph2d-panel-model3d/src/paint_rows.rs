@@ -244,7 +244,12 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
         .collect();
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let used = paint_segmented_group_adaptive(
-        Rect::new(x + ph2d_editor_core::widget::property_label_col_w(x, w), y, (w - ph2d_editor_core::widget::property_label_col_w(x, w)).max(0.0), ROW_H_PX),
+        Rect::new(
+            x + ph2d_editor_core::widget::property_label_col_w(x, w),
+            y,
+            (w - ph2d_editor_core::widget::property_label_col_w(x, w)).max(0.0),
+            ROW_H_PX,
+        ),
         &labels,
         ctx.scene,
         ctx.text_system,

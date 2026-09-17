@@ -1,25 +1,30 @@
 //! **A CENA DO BOX TRIM** (`=46`) — cortar a peça com uma forma desenhada.
 //!
-//! # ⚠️ Ela abre com uma peça MAIS LEVE que o resto do módulo, e o número é o
-//! argumento
+//! # ⛔⛔⛔ Ela abriu com uma peça PRÓPRIA até 2026-09-17, e isso foi o defeito
 //!
-//! Um corte é uma operação sobre a peça **INTEIRA** e corre uma vez por gesto,
-//! no largar. Medido nesta casa (`--release`, o mesmo anel de ecrã, a cadeia
-//! completa — lâmina mais booleana):
+//! O cabeçalho que estava aqui escolhia uma esfera de `50 k` triângulos e
+//! defendia a escolha com **um** número — o relógio do corte:
 //!
-//! | peça | triângulos | o corte custa |
-//! |---|---|---|
-//! | cubo subdividido `3×` | `768` | `1,3 ms` |
-//! | esfera `20 k` | `19 800` | `23,8 ms` |
-//! | **esfera `50 k`** (esta cena) | **`49 612`** | **`58,4 ms`** |
-//! | `sculpt_sphere` (o default do módulo) | `196 608` | **`380,6 ms`** |
+//! | peça | triângulos | o corte custa | **a borda desvia (mundo)** |
+//! |---|---|---|---|
+//! | esfera `12 k` | `11 900` | — | `0,0277` · p90 `0,0557` |
+//! | **esfera `50 k`** (esta cena até 17/09) | `49 612` | `97,7 ms` | **`0,0103` · p90 `0,0201`** |
+//! | esfera `80 k` | `79 000` | — | `0,00007` · p90 `0,0137` |
+//! | **`sculpt_sphere` — a peça do MÓDULO** | `196 608` | `375,1 ms` | **`0,00000` · p90 `0,00007`** |
 //!
-//! ⇒ no default do módulo o artista larga o rato e espera **mais de um terço de
-//! segundo**, que é exactamente o report que esta família já pagou uma vez
-//! (*«meio travado»*, 14/09, e a causa foi a cena a fabricar a peça pesada).
-//! ⚠️ **E o extremo barato também não serve:** com `768` triângulos a face
-//! cortada sai com uma dúzia deles e o artista não consegue ver se ela tem
-//! malha — que é precisamente o que esta cena existe para mostrar.
+//! ⚠️⚠️ **A coluna da direita não existia, e é a que o dono julga** (report de
+//! 2026-09-17: *«o que não fica legal é a topologia das bordas do corte»*). A
+//! borda de um corte é feita de pontos **na curva desenhada** e de **vértices da
+//! própria peça** que o motor aproveita quando estão perto — e os segundos não
+//! estão na curva, logo ela **serrilha com a amplitude da malha**. À densidade
+//! do módulo isso cai para **`0,00007`**; a `50 k` vai a `1,2` arestas.
+//!
+//! ⇒ **a cena deixou de escolher peça**: ela abre com a do módulo, e o corte
+//! custa os `375 ms` que o produto custa. ⚠️ **O precedente de 14/09 (*«meio
+//! travado»*) media OUTRO recurso** — ali era o custo **por dab**, a 60 Hz,
+//! contra um *kill* de `8 ms`; aqui é uma espera **uma vez por gesto**, numa
+//! operação destrutiva que tem desfazer. *Comparar os dois foi o que deixou a
+//! cena a ensinar uma borda que o artista não tem.*
 //!
 //! # ⛔ O que o dono viu em 2026-09-15, e o que esta cena tem de provar
 //!
@@ -38,17 +43,6 @@
 /// reclamar um número tomado, e a segunda fica **inalcançável e muda**.
 pub(crate) fn box_trim_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("46")
-}
-
-/// **Quantos triângulos a peça desta cena tem** — ver a tabela do cabeçalho.
-///
-/// ⚠️ **Ele nomeia o recurso, que é o relógio do CORTE**, e não um gosto: a
-/// cadeia é `O(peça)` e o gesto acaba com ela a correr uma vez.
-pub(crate) const TRIANGULOS_DA_PECA: usize = 50_000;
-
-/// A peça com que a `=46` abre.
-pub(crate) fn peca() -> ph2d_mesh::Mesh {
-    ph2d_mesh::shapes::sphere_with_triangles(TRIANGULOS_DA_PECA, 1.0)
 }
 
 /// O roteiro da `=46`.
@@ -92,6 +86,13 @@ pub(crate) fn announce() {
          [sculpt3d]           a' borda -- um triangulo que apanha a luz de outra maneira\n\
          [sculpt3d]           que os vizinhos -- e' o defeito de 17/09 a voltar, e ele so'\n\
          [sculpt3d]           aparecia no corte que sai pela beira.\n\
+         [sculpt3d]        E OLHE PARA A LINHA DA BORDA em si:\n\
+         [sculpt3d]        -> ela tem de seguir o circulo que voce desenhou. Se ela\n\
+         [sculpt3d]           serrilhar -- entrar e sair do circulo de meio triangulo em\n\
+         [sculpt3d]           meio triangulo --, a peca esta' grossa de mais para esse\n\
+         [sculpt3d]           corte. Nenhum pincel conserta isso: falta MALHA, nao falta\n\
+         [sculpt3d]           alisar. Adense com o pincel `Density` por onde vai cortar e\n\
+         [sculpt3d]           corte outra vez.\n\
          [sculpt3d]    (6) Carregue em `Lasso` e desenhe a mao livre, inclusive uma forma\n\
          [sculpt3d]        em C. Repare que aparece uma pista nova, `Smooth Stroke`,\n\
          [sculpt3d]        que nao existe nas outras duas.\n\
@@ -129,36 +130,41 @@ mod tests {
         }
     }
 
-    /// ⭐⭐ **A CENA CONTÉM O FENÓMENO — e as duas cercas são as duas maneiras de
-    /// ela mentir.**
+    /// ⛔⛔⛔ **A PREMISSA DESTE GATE MORREU EM 2026-09-17, e a morte está no
+    /// diff.**
     ///
-    /// ⚠️ *Uma cena de smoke que ensina o contrário do que acontece é pior que
-    /// uma cena ausente* (`CLAUDE.md` §5.0), e aqui há **duas** formas disso:
-    /// uma peça **pesada** faz o largar do rato parecer um travamento (o report
-    /// de 14/09), e uma peça **leve demais** entrega uma face cortada com uma
-    /// dúzia de triângulos — onde o passo (3), que manda olhar para a malha
-    /// dela, não consegue afirmar nada.
+    /// Ele chamava-se `a_peca_da_cena_cabe_num_gesto_e_mostra_a_malha_do_corte`
+    /// e prendia a peça desta cena entre `10 000` e `60 000` triângulos, com o
+    /// tecto derivado **do relógio do corte**. ⚠️ **Ele nomeava UM recurso e era
+    /// cego ao segundo:** a `50 k` a borda do corte serrilha até `1,2` arestas
+    /// da malha, e na peça do módulo ela cai **na curva desenhada**
+    /// (`0,00007` de mundo). *A cena estava a trocar a coluna que o dono julga
+    /// pela que ela media.*
+    ///
+    /// ⇒ o que fica é a lei, e ela é **derivada**: a cena não escolhe peça
+    /// nenhuma. Quem lhe quiser dar uma outra vez tem de escrever o ramo, e é
+    /// esse ramo que este gate proíbe.
     #[test]
-    fn a_peca_da_cena_cabe_num_gesto_e_mostra_a_malha_do_corte() {
-        let m = super::peca();
+    fn a_cena_do_corte_nao_escolhe_a_propria_peca() {
+        let src = include_str!("scenes_mesh.rs");
+        assert!(
+            !src.contains("box_trim_scene"),
+            "o roteador de peças voltou a ter um ramo para a `=46` — e uma cena \
+             que escolhe a sua peça escolhe também os defeitos que o dono vê"
+        );
+        // ⭐ E o piso que a metade antiga tinha razão em guardar: a face cortada
+        // é uma secção da peça, e abaixo de uma certa densidade o passo (3) do
+        // roteiro não tem o que afirmar.
+        let m = crate::scenes::mesh::peca_de_fabrica();
         let tris: usize = m
             .faces()
             .iter()
             .map(|f| f.verts().len().saturating_sub(2))
             .sum();
-        // O tecto sai da tabela do cabeçalho: `196 608` triângulos custam
-        // `380,6 ms` e `49 612` custam `58,4`, e o corte é ~linear na peça.
-        assert!(
-            tris <= 60_000,
-            "a peça tem {tris} triângulos — acima daqui o corte passa dos ~70 ms \
-             e o largar do rato lê-se como travamento"
-        );
-        // E o piso: a face cortada é uma secção da peça, logo a contagem dela
-        // escala com `tris^(2/3)`. Abaixo daqui ela não tem malha para mostrar.
         assert!(
             tris >= 10_000,
-            "a peça tem {tris} triângulos — a face cortada sairia com uma dúzia \
-             deles e o passo (3) do roteiro não teria o que afirmar"
+            "a peça do módulo tem {tris} triângulos — a face cortada sairia com \
+             uma dúzia deles"
         );
     }
 }

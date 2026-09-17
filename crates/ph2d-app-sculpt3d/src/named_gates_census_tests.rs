@@ -63,7 +63,18 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 6] = [
+const MEMORIAS: [(&str, &str, &str); 7] = [
+    (
+        "a_peca_da_cena_cabe_num_gesto_e_mostra_a_malha_do_corte",
+        "crates/ph2d-app-sculpt3d/src/scenes_trim.rs",
+        "o gate SUBSTITUÍDO em 2026-09-17 pelo \
+         `a_cena_do_corte_nao_escolhe_a_propria_peca`, quando a medição mostrou \
+         que ele prendia a peça da `=46` entre `10 000` e `60 000` triângulos \
+         com o tecto derivado do RELÓGIO do corte e era CEGO à BORDA — a `50 k` \
+         ela serrilha `1,2` arestas da malha e à densidade do módulo cai na \
+         curva desenhada. A nota guarda a premissa que morreu, que é o que \
+         impede alguém de voltar a dar uma peça própria à cena para a acelerar",
+    ),
     (
         "o_pincel_nasce_com_a_projeccao_no_osso",
         "crates/ph2d-sculpt3d/src/pose_controlos.rs",

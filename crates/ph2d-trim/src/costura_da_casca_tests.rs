@@ -125,6 +125,14 @@ fn desvio_da_casca(m: &Mesh) -> Vec<f32> {
     v
 }
 
+/// O percentil `q` de uma lista JÁ ORDENADA.
+fn pc(v: &[f32], q: usize) -> f32 {
+    if v.is_empty() {
+        return f32::NAN;
+    }
+    v[(v.len() - 1) * q / 100]
+}
+
 /// Quantos graus de desvio um vértice pode ter sem que isso seja uma mancha.
 ///
 /// ⭐ **Medido, e o vale é de duas ordens de grandeza:** a peça INTACTA lê
@@ -352,6 +360,132 @@ fn diag_o_que_a_cerca_muda() {
             cru.faces().len(),
             limpo.faces().len(),
             (vl - vc) / vc
+        );
+    }
+}
+
+/// Parte os vértices da borda em ANTIGOS e NOVOS, cada um com o desvio ordenado.
+fn partido(
+    m: &Mesh,
+    antigos: &std::collections::BTreeSet<[u32; 3]>,
+    alvo: f32,
+) -> (Vec<f32>, Vec<f32>) {
+    let p = m.positions();
+    let mut t = Vec::new();
+    for f in m.faces() {
+        f.triangles(&mut t);
+    }
+    let na_casca = |i: u32| {
+        let q = p[i as usize];
+        ((q[0] * q[0] + q[1] * q[1] + q[2] * q[2]).sqrt() - 1.0).abs() < 1e-4
+    };
+    let mut por_aresta: std::collections::BTreeMap<(u32, u32), Vec<bool>> =
+        std::collections::BTreeMap::new();
+    for x in &t {
+        let casca = x.iter().all(|&i| na_casca(i));
+        for (a, b) in [(x[0], x[1]), (x[1], x[2]), (x[2], x[0])] {
+            por_aresta
+                .entry((a.min(b), a.max(b)))
+                .or_default()
+                .push(casca);
+        }
+    }
+    let mut verts = std::collections::BTreeSet::new();
+    for (k, v) in &por_aresta {
+        if v.len() == 2 && v[0] != v[1] {
+            verts.insert(k.0);
+            verts.insert(k.1);
+        }
+    }
+    let (mut a, mut n) = (Vec::new(), Vec::new());
+    for &i in &verts {
+        let q = p[i as usize];
+        let dv = (q[0].hypot(q[1]) - 0.6).abs() / alvo;
+        if antigos.contains(&[q[0].to_bits(), q[1].to_bits(), q[2].to_bits()]) {
+            a.push(dv);
+        } else {
+            n.push(dv);
+        }
+    }
+    a.sort_by(f32::total_cmp);
+    n.sort_by(f32::total_cmp);
+    (a, n)
+}
+
+/// SONDA (`#[ignore]`) — **a BORDA do corte zigue-zagueia: de quem é?**
+///
+/// O gesto desenhou um círculo de raio `0,6` no plano `xy`, logo a borda vive
+/// **exactamente** em `x² + y² = 0,36` sobre a esfera. O desvio mede-se em
+/// arestas da peça.
+#[test]
+#[ignore = "sonda de diagnóstico: corre à mão"]
+fn diag_de_quem_e_o_zigue_zague_da_borda() {
+    let (bola, cru, limpo) = corta_a_bola(0.0);
+    let tris: usize = bola
+        .faces()
+        .iter()
+        .map(|f| f.verts().len().saturating_sub(2))
+        .sum();
+    let alvo = ph2d_mesh::edge_for_tri_count(bola.surface_area(), tris as f32);
+    let na_casca = |p: &[[f32; 3]], i: u32| {
+        let q = p[i as usize];
+        ((q[0] * q[0] + q[1] * q[1] + q[2] * q[2]).sqrt() - 1.0).abs() < 1e-4
+    };
+    let desvio = |m: &Mesh| -> Vec<f32> {
+        let p = m.positions();
+        let mut t = Vec::new();
+        for f in m.faces() {
+            f.triangles(&mut t);
+        }
+        let mut por_aresta: std::collections::BTreeMap<(u32, u32), Vec<bool>> =
+            std::collections::BTreeMap::new();
+        for x in &t {
+            let casca = x.iter().all(|&i| na_casca(p, i));
+            for (a, b) in [(x[0], x[1]), (x[1], x[2]), (x[2], x[0])] {
+                por_aresta
+                    .entry((a.min(b), a.max(b)))
+                    .or_default()
+                    .push(casca);
+            }
+        }
+        let mut verts = std::collections::BTreeSet::new();
+        for (k, v) in &por_aresta {
+            if v.len() == 2 && v[0] != v[1] {
+                verts.insert(k.0);
+                verts.insert(k.1);
+            }
+        }
+        let mut d: Vec<f32> = verts
+            .iter()
+            .map(|&i| {
+                let q = p[i as usize];
+                (q[0].hypot(q[1]) - 0.6).abs() / alvo
+            })
+            .collect();
+        d.sort_by(f32::total_cmp);
+        d
+    };
+    // ⭐ A população parte-se em ANTIGOS e NOVOS: um vértice da borda que é
+    // ANTIGO só lá está porque o colapso fundiu um da curva dentro dele.
+    let antigos: std::collections::BTreeSet<[u32; 3]> = bola
+        .positions()
+        .iter()
+        .map(|v| [v[0].to_bits(), v[1].to_bits(), v[2].to_bits()])
+        .collect();
+    for (nome, m) in [("CRUA", &cru), ("LIMPA", &limpo)] {
+        let v = desvio(m);
+        let (a, n) = partido(m, &antigos, alvo);
+        println!(
+            "{nome:>6}: n={:>4}  desvio do círculo — p50={:.4} p90={:.4} MAX={:.4}   \
+             || ANTIGOS n={:>4} p50={:.4}  ·  NOVOS n={:>4} p50={:.4}",
+            v.len(),
+            pc(&v, 50),
+            pc(&v, 90),
+            v.last().copied().unwrap_or(f32::NAN),
+            a.len(),
+            pc(&a, 50),
+            n.len(),
+            pc(&n, 50)
         );
     }
 }

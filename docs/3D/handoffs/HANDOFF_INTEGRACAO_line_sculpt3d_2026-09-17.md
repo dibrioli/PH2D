@@ -788,6 +788,124 @@ pólo da peça** (cerca 1a), e os `171`–`514` estão na **quina do corte**
 
 ---
 
+## §66 — ⭐⭐⭐ «A TOPOLOGIA DAS BORDAS DO CORTE»: a borda serrilha, e a CENA é que a mostrava assim
+
+> **Report do dono** (2026-09-17, depois do smoke da §65 aprovado): *«Smoke OK.
+> O que não fica legal é a topologia das bordas do corte, pois com smooth não se
+> consegue alisar»*.
+
+### §66.1 — ⭐⭐⭐ O mecanismo, medido
+
+A borda de um corte é feita de **duas espécies de ponto**: os que o motor põe
+**na curva desenhada** e os **vértices da própria peça** que ele aproveita
+quando estão perto. Medido na esfera de `50 k`, partindo a população:
+
+| | vértices de borda | desvio da curva (p50, em arestas da malha) |
+|---|---|---|
+| os que estão na CURVA | `107` | **`0,0023`** |
+| os que são da PEÇA | `322` | **`0,4954`** |
+
+⇒ **a borda entra e sai do círculo desenhado de meia aresta em meia aresta**, com
+picos de `1,2`. É isso que se vê.
+
+⚠️ **E não é da nossa limpeza:** a saída CRUA do motor já traz `300` pontos da
+peça na borda, e desligar o colapso de par misto move o `p50` de `0,4250` para
+`0,4166` — *nada*. A escolha de qual vértice sobrevive num colapso misto também
+é indiferente (`429` contra `434` pontos, mesmo `p50`).
+
+### §66.2 — ⛔⛔ Nenhum pincel a pode curar, e a prova é o movimento IDEAL
+
+* o **`Smooth` funciona**: ele amacia a quina (p90 `125,9° → 41,1°` numa
+  passagem) e **não encrespa** a casca à volta (`p50 1,14°` antes e depois —
+  ⚠️ a minha 1.ª leitura dizia `2° → 15°` e era um **conjunto de arestas
+  poluído**, que misturava a quina do corte com a casca);
+* mas ele **não põe a borda na curva**, porque *mover vértices não muda de que
+  vértices o anel é feito*;
+* e **nem o movimento ideal o faz**: pondo cada ponto da borda exactamente na
+  curva, o desvio vai a `0` e o pior triângulo da casca salta de `25,7` para
+  **`1 166`**.
+
+⇒ *o que falta não são POSIÇÕES, são CÉLULAS* — a mesma frase que a linha do
+quad remesh pagou duas vezes.
+
+### §66.3 — ⭐⭐⭐ E a alavanca é a DENSIDADE, com o número
+
+| peça | aresta | desvio da curva (mundo) p50 · p90 · MAX |
+|---|---|---|
+| `12 k` T | `0,0498` | `0,0277` · `0,0557` · `0,0665` |
+| `30 k` T | `0,0314` | `0,0077` · `0,0277` · `0,0405` |
+| **`50 k` T** (a `=46` até hoje) | `0,0242` | **`0,0103` · `0,0201` · `0,0298`** |
+| `80 k` T | `0,0191` | `0,00007` · `0,0137` · `0,0209` |
+| `120 k` T | `0,0156` | `0,00006` · `0,00007` · `0,0114` |
+| **`196 k` T — a peça do MÓDULO** | `0,0124` | **`0,00000` · `0,00007` · `0,00007`** |
+
+⇒ **na peça com que o artista de facto trabalha, a borda cai na curva.**
+
+### §66.4 — ⛔⛔⛔ A CENA é que abria com uma peça `4×` mais grossa, e o cabeçalho dela nomeava UM recurso
+
+O cabeçalho da `=46` defendia a esfera de `50 k` com o **relógio do corte**
+(`58 ms` contra `380` no default) e **não tinha a coluna da BORDA** — que é a
+que o dono julga. ⇒ *a cena estava a trocar a qualidade que ele avalia pela que
+ela media*, e a `=46` deixou de escolher peça: ela abre com a do módulo, e o
+corte custa os **`375,1 ms`** que o produto custa.
+
+⚠️⚠️ **O precedente de 14/09 (*«meio travado»*) media OUTRO recurso:** ali era o
+custo **por dab**, a 60 Hz, contra um *kill* de `8 ms`; aqui é uma espera **uma
+vez por gesto**, numa operação destrutiva com desfazer. *Comparar os dois é o
+que deixou a cena a ensinar uma borda que o artista não tem.*
+
+### §66.5 — O que fica
+
+* `scenes::mesh::peca_de_fabrica()` — **uma porta**, para que nenhuma cena
+  reescreva a peça do módulo; o ramo da `=46` no roteador **saiu**.
+* **`a_borda_do_corte_cai_na_curva_desenhada`** — a lei, com o CONTROLO a um
+  quarto da densidade. ⚠️ **As duas metades correm sobre a MESMA primitiva**: a
+  1.ª redacção comparava a `sculpt_sphere` com uma esfera UV e precisou de
+  **duas** tolerâncias de *«isto está na casca»* (o raio da primeira varia
+  `3,09 %`) — *com duas réguas o controlo leu `0,0000` e acusou a fixtura de não
+  conter o fenómeno que ela continha*. A densidade da metade fina é **lida do
+  produto**.
+* **`a_cena_do_corte_nao_escolhe_a_propria_peca`** — substitui o
+  `a_peca_da_cena_cabe_num_gesto_e_mostra_a_malha_do_corte`, cuja premissa
+  morreu; a morte está registada em `MEMORIAS` (o censo dos gates nomeados
+  apanhou a citação na mesma corrida, que é ele a funcionar).
+* O roteiro da `=46` passa a mandar olhar para **a linha da borda** e diz a cura
+  quando ela serrilha: *adensar com o `Density` por onde se vai cortar*.
+* Sondas versionadas: `diag_o_zigue_zague_contra_a_densidade` ·
+  `diag_a_borda_na_peca_de_fabrica` · `diag_o_relogio_do_corte` ·
+  `diag_a_quina_contra_o_smooth` · `diag_o_smooth_encrespa_a_casca` ·
+  `diag_o_premio_de_por_a_borda_na_curva` · `diag_de_quem_e_o_zigue_zague_da_borda`.
+
+### §66.6 — Números
+
+* **Mutação: `4` de `4` sangram.** ⚠️⚠️ **E o arnês mentiu primeiro:** a agulha da
+  M4 casou **duas** vezes (o mesmo laço existe em duas funções da sonda), o
+  `muta` abortou e o caso leu-se como **SOBREVIVEU** sobre produto correcto ⇒ o
+  arnês passou a **abortar o caso** quando a mutação não entra, em vez de o
+  reportar.
+* Tecto de LOC curado por **CORTE**: a sonda tinha `893` linhas com cinco
+  medições exploratórias que nenhuma tabela cita — saíram (`893 → 590`).
+  ⛔ Nenhuma entrada no `FILE_OVERAGE_OK`.
+* Portão: `nextest-impacted` **15 104 / 15 106**, com as **duas** reprovadas a
+  serem membros **já nomeados** da família de flakes de fan-out do `CLAUDE.md`
+  §5.0 — `the_cost_of_depth_is_linear_not_explosive` (`ph2d-timeline`) e
+  `the_mask_stroke_cost_does_not_follow_the_canvas` (`ph2d-tool-painter`). As
+  **três** assinaturas batem: o diff desta wave tem **zero linhas** nas duas
+  crates; a corrida ANTERIOR da mesma árvore fechou **15 105 / 15 105** verde (o
+  conjunto de reprovadas MUDOU); e sozinhas elas passam **7 de 7** ao longo da
+  banda `load 18–37`, que **contém** a carga em que reprovaram.
+  ⚠️⚠️ **A máquina nunca ficou calma:** uma espera com prazo chegou a ler abaixo
+  de `6`, e à corrida seguinte já estava em `20` — há outra árvore a correr. ⇒ *o
+  «sozinho» desta confirmação é «a esta carga», e é por isso que o número vai com
+  o `loadavg` ao lado de cada corrida* (`CLAUDE.md` §5.0).
+* ⏳ **ABERTO:** a borda só cai na curva onde a malha tem resolução para isso. A
+  cura de fundo — **o corte partir as faces ao longo da curva em vez de
+  aproveitar os vértices da peça** — vive dentro do motor de booleana
+  (dependência Apache-2.0) e não é nossa; a nossa é adensar antes de cortar, e
+  ela já tem ferramenta (`Density`).
+
+---
+
 ## §58 — 📦 PARA O AGENTE INTEGRADOR
 
 ### §58.1 — Os factos da linha

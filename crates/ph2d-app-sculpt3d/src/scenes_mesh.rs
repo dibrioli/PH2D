@@ -207,14 +207,6 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
         // detalhe nascendo se vê.
         return ph2d_mesh::shapes::uv_sphere(10, 14, 1.0);
     }
-    if crate::scenes::trim::box_trim_scene() {
-        // ⚠️ **MAIS LEVE que o default do módulo, e o número é o argumento** —
-        // ver a tabela do cabeçalho da [`crate::scenes::trim`]: no default o
-        // corte custa `380,6 ms` contra `58,4` aqui, e ele corre no LARGAR do
-        // rato. *Uma cena que faz o gesto parecer travado ensina o contrário do
-        // que a ferramenta é.*
-        return crate::scenes::trim::peca();
-    }
     if crate::scenes::plano::plano_scene() {
         // ⚠️ **Com BOSSAS, e a razão é a lição da cena** — ver o cabeçalho da
         // [`crate::scenes::plano`]: numa esfera lisa este pincel pára sozinho
@@ -252,6 +244,16 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
         // ⚠️ **Ela é 7,2× mais densa** (98 306 vértices contra 13 682) e abre em
         // **14,3 ms** contra 1,2 — o mesmo custo de abertura que a cena `=16`
         // já paga com folga (35 ms), e sob o kill de dab de 8 ms.
-        ph2d_mesh::shapes::sculpt_sphere(1.0)
+        peca_de_fabrica()
     }
+}
+
+/// **A PEÇA COM QUE O MÓDULO ABRE** — uma porta, para que nenhuma cena a
+/// escreva outra vez.
+///
+/// ⚠️ Ela existe desde 2026-09-17, quando a cena `=46` deixou de abrir com uma
+/// peça própria: *uma cena que escolhe a sua peça escolhe também os defeitos
+/// que o dono vai ver.*
+pub(crate) fn peca_de_fabrica() -> ph2d_mesh::Mesh {
+    ph2d_mesh::shapes::sculpt_sphere(1.0)
 }

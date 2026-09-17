@@ -205,6 +205,10 @@ mod scenes_announce_census_tests;
 #[path = "censo_dos_knobs_tests.rs"]
 mod censo_dos_knobs_tests;
 
+#[cfg(test)]
+#[path = "borda_do_corte_tests.rs"]
+mod borda_do_corte_tests;
+
 /// ⭐⭐⭐ **O OLHO DA HIERARQUIA CHEGA AO PINCEL?** — os gates da regra *«um alvo
 /// ESCONDIDO não conta»* (`SPEC_unblocked_brushes.md` §6.1).
 #[cfg(test)]

@@ -92,16 +92,15 @@ impl Entradas<'_> {
         // *«falta uma pilha»* a quem também não tem bordo seria mandá-lo
         // resolver a metade errada.
         if verbo.precisa_de_referencia() && !self.tem_referencia {
-            return Some(format!(
-                "{nome} precisa de uma pilha de multiresolucao -- sem um nivel \
-                 ABAIXO nao ha' deslocamento nenhum (K subdivide, ',' desce)"
+            return Some(ph2d_i18n::tr_with(
+                "app.sculpt3d.recusa.precisa_de_uma_pilha",
+                &[("nome", &nome)],
             ));
         }
         if verbo.precisa_de_bordo_aberto() && !tem_bordo_aberto(self.mesh) {
-            return Some(format!(
-                "{nome} trabalha a BEIRA de uma peca aberta -- esta peca e' \
-                 fechada, e a regiao dele comeca na borda (experimente uma \
-                 tigela, ou apague faces para abrir uma boca)"
+            return Some(ph2d_i18n::tr_with(
+                "app.sculpt3d.recusa.trabalha_a_beira_de_uma_peca_aberta",
+                &[("nome", &nome)],
             ));
         }
         if self.brush.precisa_das_pecas_da_cena() && self.outras_pecas == 0 {
@@ -109,16 +108,15 @@ impl Entradas<'_> {
             // peca»* vai criar geometria; quem ouve *«esta' escondida»* vai
             // abrir um olho. As duas leem-se igual num contador só.
             if self.outras_escondidas > 0 {
-                return Some(format!(
-                    "{nome} precisa de OUTRA peca A' VISTA -- a{} que ha' esta' \
-                     escondida (abra o olho dela na Hierarquia, ou saia do \
-                     isolamento)",
-                    if self.outras_escondidas == 1 { "" } else { "s" }
+                let plural = if self.outras_escondidas == 1 { "" } else { "s" };
+                return Some(ph2d_i18n::tr_with(
+                    "app.sculpt3d.recusa.precisa_de_outra_peca_a_vista",
+                    &[("nome", &nome), ("plural", &plural)],
                 ));
             }
-            return Some(format!(
-                "{nome} precisa de OUTRA peca na cena -- ele empurra o barro \
-                 ate' encostar nela, e aqui so' ha' uma"
+            return Some(ph2d_i18n::tr_with(
+                "app.sculpt3d.recusa.precisa_de_outra_peca_na_cena",
+                &[("nome", &nome)],
             ));
         }
         None

@@ -23,6 +23,13 @@ const TABLE: &str = "crates/ph2d-i18n/src/app_sculpt3d.rs";
 /// Um ficheiro isento inteiro, com o mecanismo — **todos são consola**.
 const FORA: &[Isento] = &[
     (
+        "sonda_undo.rs",
+        "a SONDA do undo (`PH2D_SCULPT3D_UNDO_PROBE`): as linhas `[probe-sculpt-undo]` e os nomes \
+         dos passos do roteiro (`chip Plane`, `pista Height`, `campo Depth`) saem no TERMINAL de \
+         quem corre a sonda — elas nomeiam o controlo que o passo aperta para quem lê o log, e \
+         nenhuma chega ao ecrã do artista",
+    ),
+    (
         "history_retopo_global.rs",
         "a LINHA do relatório da retopologia (vértices, quads, aspecto, enviesamento) impressa no \
          terminal — a régua de quem mede o botão, com colunas que só fazem sentido lado a lado",

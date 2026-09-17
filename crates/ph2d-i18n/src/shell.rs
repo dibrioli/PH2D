@@ -373,6 +373,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.tokens_bridge_dtcg.dtcg_exported_tokens" => "DTCG exported: {all} tokens to {path}",
         "shell.tokens_bridge_dtcg.dtcg_tokens" => "DTCG tokens",
         "shell.sculpt3d_host.sculpt" => "Sculpt",
+        "shell.sculpt3d_host.sculpting_took_the_canvas" => "Sculpting took the canvas",
         "shell.texture_pattern_pick.image" => "Image",
         "shell.undo_app.sem_entrada_neste" => "sem entrada neste quadro",
         "shell.undo_app.transicao_de_estado_de" => "transicao de estado de UI ao vivo",

@@ -245,7 +245,7 @@ impl Sculpt3dScene {
         if self.level_count() > 1 {
             self.queixa_do_passe(
                 verbo,
-                "ha' uma pilha de multiresolucao montada -- J reverte-a",
+                ph2d_i18n::tr("app.sculpt3d.dyntopo.pilha_montada_j_reverte"),
             );
             return false;
         }
@@ -340,9 +340,7 @@ impl Sculpt3dScene {
             // esse ajuste e a cura dele continua a ser baixar o detalhe.
             self.queixa_do_passe(
                 verbo,
-                "a malha aqui ja' esta' no ponto que o Detail pede -- mova o \
-                 slider (ou a tecla U) para pedir outra densidade, ou aumente o \
-                 pincel com ] para alcancar mais peca",
+                ph2d_i18n::tr("app.sculpt3d.dyntopo.ja_no_ponto_que_o_detail_pede"),
             );
             return false;
         }

@@ -75,6 +75,37 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
          above it is a subdivision of that one \u{2014} FLATTEN the stack first"
         }
         // ph2d-migrar-texto:end
+        // ⬇️ **Escritas à MÃO, fora dos marcadores** (o cabeçalho manda): a caixa de saída da
+        //    escultura — a queixa do passe de topologia, as três recusas do pen-down e as duas do
+        //    corte. ⚠️ Cada uma é *a frase que o artista lê*, e não diagnóstico de consola: quem
+        //    só vê o terminal é o `sonda_undo.rs`, isento com o mecanismo no gate da crate.
+        "app.sculpt3d.dyntopo.pilha_montada_j_reverte" => {
+            "ha' uma pilha de multiresolucao montada -- J reverte-a"
+        }
+        "app.sculpt3d.dyntopo.ja_no_ponto_que_o_detail_pede" => {
+            "a malha aqui ja' esta' no ponto que o Detail pede -- mova o slider (ou a tecla U) \
+             para pedir outra densidade, ou aumente o pincel com ] para alcancar mais peca"
+        }
+        "app.sculpt3d.recusa.precisa_de_uma_pilha" => {
+            "{nome} precisa de uma pilha de multiresolucao -- sem um nivel ABAIXO nao ha' \
+             deslocamento nenhum (K subdivide, ',' desce)"
+        }
+        "app.sculpt3d.recusa.trabalha_a_beira_de_uma_peca_aberta" => {
+            "{nome} trabalha a BEIRA de uma peca aberta -- esta peca e' fechada, e a regiao dele \
+             comeca na borda (experimente uma tigela, ou apague faces para abrir uma boca)"
+        }
+        "app.sculpt3d.recusa.precisa_de_outra_peca_a_vista" => {
+            "{nome} precisa de OUTRA peca A' VISTA -- a{plural} que ha' esta' escondida (abra o \
+             olho dela na Hierarquia, ou saia do isolamento)"
+        }
+        "app.sculpt3d.recusa.precisa_de_outra_peca_na_cena" => {
+            "{nome} precisa de OUTRA peca na cena -- ele empurra o barro ate' encostar nela, e \
+             aqui so' ha' uma"
+        }
+        "app.sculpt3d.trim_aplica.sem_peca_para_cortar" => "nao ha' peca nenhuma para cortar",
+        "app.sculpt3d.trim_aplica.pilha_montada_j_reverte" => {
+            "ha' uma pilha de multiresolucao montada -- J reverte-a e o corte volta"
+        }
         _ => return None,
     })
 }

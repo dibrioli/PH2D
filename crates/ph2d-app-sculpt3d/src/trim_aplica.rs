@@ -35,9 +35,9 @@ impl TrimRecusa {
     /// A frase que o artista lê.
     pub(crate) fn porque(self) -> &'static str {
         match self {
-            Self::SemPeca => "nao ha' peca nenhuma para cortar",
+            Self::SemPeca => ph2d_i18n::tr("app.sculpt3d.trim_aplica.sem_peca_para_cortar"),
             Self::PilhaMontada => {
-                "ha' uma pilha de multiresolucao montada -- J reverte-a e o corte volta"
+                ph2d_i18n::tr("app.sculpt3d.trim_aplica.pilha_montada_j_reverte")
             }
             Self::Gesto(r) => r.porque(),
             Self::Corte(r) => r.porque(),

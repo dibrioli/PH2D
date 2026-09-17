@@ -109,8 +109,9 @@ impl App {
         };
         if clay && ph2d_app_field3d::mode::clay_takes_the_canvas(&owner, &neutral) {
             gfx.tools.set_active(&neutral);
-            gfx.toasts
-                .push(ph2d_editor_core::Toast::info("Sculpting took the canvas"));
+            gfx.toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+                "shell.sculpt3d_host.sculpting_took_the_canvas",
+            )));
             self.title_dirty = true;
         }
     }

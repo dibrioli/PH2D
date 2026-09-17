@@ -1220,3 +1220,120 @@ gémeo da **agregação**, que é a E28, e foi curado à raiz — ver abaixo.
   pasta sobre a espec, as 30 fixturas, os READMEs, este ledger e o texto do report final do E.
 - **Higiene:** a vassoura foi descodificada só pelo próprio `cleanroom-sweep.sh`, em memória; o
   instrumento de re-derivação e as suas saídas vivem em `~/Referencias/blender-pincel-afiado/`.
+
+---
+
+## R-PRÉ — 4.ª PASSAGEM, a 2.ª sobre a §16 (2026-09-16) — veredito: ✅ **ATESTA.** Parede LIMPA · **zero** achados que bloqueiam · **9 erratas** (E42–E50)
+
+Subagente NOVO, independente do E e das três passagens anteriores. Auditou a **§16 inteira** (o
+texto de hoje, não os parágrafos que a 3.ª passagem citou), os **30** cabeçalhos da família
+`silhueta/`, o conferidor e os anexos.
+
+### 1. A PAREDE (§4.2) — **LIMPA**, varrida pela forma da §4.3.1 sobre a §16 INTEIRA
+
+- **Blocos cercados: 3.** O cabeçalho da emenda (prosa nossa) e **duas identidades matemáticas** de
+  1 e 3 linhas, em notação do domínio e em português (`passo_de_mundo`, `passo_de_ECRA`,
+  `diametro_de_ecra_px`). ⛔ Nenhum é código, nenhum espelha uma decomposição do alvo.
+- **Code spans: 542, dos quais 99 distintos não-numéricos.** Censo item a item: nomes de **fixtura
+  nossa** · ficheiros e símbolos do **NOSSO** código (`spacing.rs`, `input.rs`,
+  `atenuacao_do_traco.rs`, `space.rs`, `walk`, `min_spacing`, `passo_do_traco`,
+  `espacamento_do_verbo`, `DrawSharp`, `scene.radius_px()`) · símbolos matemáticos (`D`, `r`, `s`,
+  `u`, `θ`, `δ`, `W50`, `cos θ`, `1/cos θ`, `f32`) · chaves de cabeçalho **nosso** (`malha_*`,
+  `caminho_do_traco`) · e os valores **públicos** de enumeração (`VIEW`, `SCENE`, `Draw`).
+  ⛔ **Zero** nomes internos do alvo, zero comentários, zero wording de manual, zero LUT.
+- ⭐ **A cláusula do §4.1.13 foi RE-CONFERIDA na fonte, não herdada:** o harness escreve esses
+  valores em propriedades **públicas** da API do alvo (e a chave `espacamento_medido_em` mapeia
+  para a propriedade do **espaçamento**, não para a do **tamanho** — as duas existem e leem-se
+  parecido). Os **nomes das propriedades públicas** não aparecem nem na espec nem nos cabeçalhos:
+  o que viaja é o vocabulário do domínio, e só o VALOR (a chave de regeneração) fica.
+- **Os 30 cabeçalhos** (73 chaves distintas, todas em vocabulário do domínio) e o
+  `confere_a_formula.py` lidos linha a linha: limpos.
+
+### 2. Sweep — o controlo PRIMEIRO
+
+| corrida | resultado |
+|---|---|
+| `cleanroom-sweep-controlo.sh` | ✅ `exit 0` — os **10** canais discriminam (nome · texto · binário · dentro do `.gz` · dobrado com ênfase · dobrado entre comentários · comprimido · dobrado no `.gz` · marcador de outra família · o negativo · o `exit 2`) |
+| as **nove** vassouras da pasta × (espec + as 30 fixturas + o conferidor + README das fixturas + README da pasta + INBOX + este ledger) | ✅ **limpo nas nove** (2 395 entradas ao todo) |
+| `--git-history` de `docs/3D/cleanroom/` | acusa **só** patches de ledgers de **outras** obras (já registado na 3.ª passagem); nada desta obra |
+| os **5 commits desta obra**, varridos à parte (`87657cf46`, `b2f281294`, `6a41f45bc`, `c57bef203`, `f0fe07a4a`) | ✅ `0` achados de **262** agulhas |
+| passagem extra em memória: **1 799** agulhas normalizadas (sem caixa, sem acentos, sem pontuação) × **67** artefactos (espec · 30 conteúdos · 30 nomes de ficheiro · 4 anexos) | ✅ `0` |
+
+### 3. O que RE-DERIVEI — régua própria, escrita só da §16.1 e dos cabeçalhos, alimentada só pelas 30 fixturas publicadas
+
+| o que | a página diz | eu medi |
+|---|---|---|
+| **§16.2, meia-cana**, as 8 bandas (período · `D/R` · ondulação) | `0,0169…0,1719` · `0,2019…0,0389` · `0,002…0,977` | **idêntico ao dígito nas 24 células** |
+| **§16.2, esfera** | `0,2025 · 0,1860 · 0,1498 · 0,1092 · 0,0831 · 0,0605 · 0,0345 · 0,0386` e `0,002…0,978` | **idêntico ao dígito nas 16 células** |
+| **a AGREGAÇÃO** (§16.1) | `0,0389` (definida) contra `0,0225` (todas), e só na banda do pen-down | `0,0389` / `0,0225`; nas outras **sete** bandas as duas coincidem ao 4.º decimal ✅ |
+| **controlo de resolução** (sub-amostrar `1:2`, `1:3`) | `0,023 / 0,019 / —` · `0,314 / 0,306 / 0,307` · `0,977 / 0,973 / 0,975` | **as nove células, incluindo o `—`** ✅ |
+| **G-13** (pico refinado por parábola, desvio à grelha por mínimos quadrados) | `0,081 · 0,093 · 0,088` px | `0,0807 · 0,0929 · 0,0878` ✅ |
+| **G-13, a leitura simples** (vértice mais alto) | `0,558 · 0,646 · 0,515` px | `0,5583 · 0,6464 · 0,5152` ✅ (⚠️ ver **E42**) |
+| **G-13, o «errado»** | 2.º dab a `12,43 · 20,10 · 29,10` px do sítio certo | `12,44 · 20,14 · 29,15`, recuperável das fixturas de cena **e** analiticamente ✅ |
+| **G-14 (a)** | `0,014763483 · 0,014763472 · 0,014763474`, espalhamento `1,1e-8` | idêntico; espalhamento `1,13e-8` ✅ |
+| **G-14 (b)** | `1,658 · 1,654 · 1,163` | idêntico ✅ |
+| **a razão do G-14** (a `4`–`5` px os dois dabs fundem-se num pico só) | contar picos leria `1` dos dois lados nas oito | **confirmado nas oito**: `1` pico na fila em todas ✅ |
+| **G-15** | `0,006` e `0,314`; sem a cláusula das pontas lê `1,000` | idêntico; sem a cláusula **172** estações leem `1,000`, todas fora da faixa coberta ✅ |
+| **G-16** | `0,52 %` e `0,0036` | `0,51 %` e `0,0036` ✅ |
+| **G-17** | `3,6e-12` (vista) e `0` ao bit (cena) | `3,600e-12` e `0` ✅, sobre `300`/`410` vértices movidos comuns |
+| **G-18** | `0,084 %` (mediana) e `0,115 %` | ⚠️ ver **E43** e **E44** |
+| **G-19** | `1,89 %` contra `53,5 %`; `0,1092 · 0,0607 · 0,0389` e `−45,6 / −30,4 / −51,1 %` | idêntico nas 16 células das duas corridas ✅ |
+| **G-20** | `0` contra `154` de `2 497` | idêntico ✅ |
+| **§16.4, a lei do passo** | ecrã `14,40 · 24,00 · 36,00` px; corda `0,07204 · 0,12015 · 0,18016` contra o alvo `esp·D_mundo` | `14,401 · 23,993 · 36,012` e `0,07205 · 0,12033 · 0,18019` ✅ (⚠️ **E47**, **E48**) |
+| **§16.4, ângulo uniforme em cena** | `4,13° · 6,90° · 10,35°` | `4,13 · 6,90 · 10,34` ✅ |
+| **§16.6, a razão** | `0,20` · `0,40` · `1,91` dabs por píxel, `9,6×` | idêntico ✅ |
+| **§16.8** | `1,0093 · 1,0540 · 1,2032 · 1,4565 · 2,5152` | idêntico **só** sob uma agregação que a página não nomeia — ⚠️ **E46** |
+| **§16.9, o preço** | `10×` a profundidade · `−45,6 / −30,4 / −51,1 %` · `3,3×` o sentido · o cursor parado a carimbar | `10,35×` · idêntico · `3,25×` (e `2,85×` / `3,59×`) · `0,00983` contra `0,01727` ✅ (⚠️ **E45**) |
+| **§16.7, os valores de fábrica** | `VIEW` · adaptativo desligado · não segue a pressão · `5 %` (afiado) e `10 %` (desenho comum) | lidos nos cabeçalhos dos pincéis de **catálogo** publicados ✅ |
+| **a prova de completude** | `1,200e-7` sobre os mesmos `1 114` vértices | `1,2000e-07`, conjuntos de índices **iguais** ✅ |
+| **as afirmações sobre a NOSSA casa** | `spacing.rs:46-49` · `input.rs:331,357,384` · `atenuacao_do_traco.rs:51,70` · `space.rs:253` · `raio · pct / 50` · o `Draw` a cair no `min_spacing` (`0,15 R` = `7,5 %`) | **as quatro citações batem linha a linha**; `ESPACAMENTO_DO_AFIADO_PCT = 5.0` está mesmo na linha 51 ✅ |
+| **o conferidor** | 30 ficheiros, `36` chaves, piso `≥ 20`, tolerância `2e-6`, provado nas quatro podridões | corrido: `0 problemas`; mutei-o **em memória** e ele reprova na fórmula errada (`1,0e-03`), na chave a mais e no piso (`5 < 20`), com o controlo verde ✅ |
+| **o inventário do §16.11** | 30, agrupados | os **30** nomes da tabela são **exactamente** os 30 do directório (`0` só num lado, `0` só no outro) ✅ |
+
+### 4. ⛔ Achados que BLOQUEIAM: **NENHUM**
+
+Nenhuma lei atribuída à nossa casa que ela não tenha · nenhuma barra impossível contra a tabela que
+a fundamenta · nenhuma população que a página não sustente. Os **dois gémeos** que a 3.ª emenda diz
+ter matado à raiz estão **mortos**, e varri a página inteira por cada número: `0,0225` aparece
+**três** vezes e **sempre** como a agregação recusada; `0,0389` aparece **seis** vezes e **sempre**
+como o valor da agregação declarada; `1,8e-7` aparece **uma** vez e **só** na narrativa da passagem
+que o apanhou; a completude imprime `1,2e-7`/`1,200e-7` nos quatro sítios, que é o mesmo valor
+(`1,2000e-07`) a duas precisões.
+
+### 5. ⚠️ As NOVE erratas (gaveta B — a janela I corrige-as enquanto constrói)
+
+| # | sítio | o que está escrito | o que a fixtura publicada dá |
+|---|---|---|---|
+| **E42** | §16.12, a nota do G-13 | *«reprova a barra de `0,5` px em **duas das três**»*, com desvios-padrão *«`4×`–`5×` maiores»* | reprova nas **TRÊS** (`0,5583` · `0,6464` · `0,5152`, e a coluna «aprovado» é o pior das três); os desvios-padrão são `8,2×` · `5,1×` · `4,8×` — o pior é o de `60 %`, não `4×`–`5×` |
+| **E43** | §16.12, G-18, coluna «aprovado» | `0,084 %`, com a régua nomeada como **«mediana ao longo da fila»** | a mediana **ao longo da fila** (`j = 96`) dá **`0,0817 %`**; `0,0840 %` é a mediana sobre **todos** os vértices publicados. As duas passam a barra de `0,5 %` — mas a régua nomeada e o número impresso não são a mesma. Escolha uma e escreva-a |
+| **E44** | §16.12, G-18, o parêntese | *«pelo **máximo global** o mesmo par lê `0,115 %`; as duas passam»* | `0,115 %` é a razão entre os **dois máximos de `D`** (`0,052004866` contra `0,052064676`). A leitura literal de *«máximo global»* — o maior desvio relativo **por vértice** — lê **`99,4 %`** e **reprovaria**. Nomeie-a: *«pela razão entre os dois máximos de `D`»* (é a mesma espécie do B4, um nível abaixo) |
+| **E45** | §16.12, G-14 «errado» · §16.11, tabela · §16.9, célula do cursor parado | `0,022055817` e `0,01728` | esses são o **módulo** do deslocamento `\|s−r\|`; a régua que a §16.1 nomeia (`D` = deslocamento **ao longo da normal de repouso**) dá **`0,022055091`** e **`0,0172677`**. As colunas (a) e (b) do G-14 **são** pela projecção e reproduzem ao dígito — só o «errado» e a célula do parado saem do outro lado |
+| **E46** | §16.8, a tabela `D_cena / D_vista` | as cinco razões | reproduzem **exactamente** sob a **mediana das razões por estação**; sob a agregação que o §16.1 declara (mediana de `D` por banda, depois a razão) duas células mudam: `1,0052` em vez de `1,0093` e `2,4993` em vez de `2,5152`. **Nomeie a agregação desta tabela** — é a espécie da E28 num sítio que a 3.ª emenda não varreu |
+| **E47** | §16.4, a descrição do percurso | os dabs caem entre `+84,25°` e `−15,4°`/`−19,0°`/`−19,2°` *«conforme o espaçamento»* | o `+84,25°` bate nas seis. O trio **não** é recuperável por espaçamento: em **VISTA** é `−17,5°` (`60 %`) · `−18,9°` (`100 %`) · `−15,5°` (`150 %`); em **CENA** é `−19,0°` · `−19,2°` · `−19,1°` |
+| **E48** | §16.4, a tabela do passo | os desvios-padrão do passo de ecrã `0,05` · `0,06` · `0,09` px | `0,040` · `0,080` · `0,094` (desvio-padrão populacional dos vãos consecutivos, com o pico refinado). As **médias** (`14,40` · `23,99` · `36,01`) e as cordas de cena batem |
+| **E49** | os **30** cabeçalhos, chave `caminho_do_traco` | *«(x decrescente = para DENTRO da peça)»* | é um parêntese de molde, **invertido** para a família do detector/plano: ali o pen-down está em `x = −0,5` e o 2.º dab cai em `x` **crescente** (medido: `+5 px` em `detector_plano_vista_salto_05px`). Está certo para a família da meia-cana (pen-down em `x ≈ +1`, e o dab de `pen_down_…_um_px_para_dentro` cai a `−0,98 px`). O **número** do salto é um deslocamento **com sinal no `x` de ecrã** nas duas — diga isso |
+| **E50** | §16.12, G-13 e G-15, coluna «população» | `passo_em_vista_esp{060,100,150}` (3) e `produto_cupula_fabrica_da_silhueta` (1) | a coluna «errado» de cada um precisa de ficheiros que a população não nomeia (as três `passo_em_cena_esp*` — ou a lei analítica — no G-13; `produto_cupula_cena_da_silhueta` no G-15). Nomeie-os na população: um gate corre com os dois lados |
+
+⚠️ Nenhuma das nove muda um veredito de gate: em todas, o lado aprovado continua a passar e a
+candidata errada continua a reprovar com a mesma folga.
+
+### 6. O que NÃO auditei, e é preciso dizê-lo
+
+- As **§1–§15** e as 80 fixturas da 1.ª emenda — atestadas na 2.ª passagem, não re-abertas aqui.
+- As populações que a própria §16 declara **medidas fora do corpus** (o controlo de resolução em
+  duas malhas · o cursor parado a `60°` e `75°` · a sonda de linearidade · os saltos de `2·3·5·8` px
+  · o controlo em VISTA do sentido do gesto): confirmei que estão **marcadas**, não que os números
+  estejam certos — por construção não há fixtura que os sustente.
+- O `W50/R` do §16.2: a régua exige a secção transversal, publicada em **16** estações por ficheiro;
+  re-derivei `D` e `r` (que são o que os gates medem) e não a coluna `W50`.
+
+### 7. Higiene
+
+- A vassoura foi descodificada **só** em memória (pelo `cleanroom-sweep.sh` e, na passagem extra,
+  por cano dentro do processo). ⛔ Nunca para ficheiro, nem `/dev/shm`, nem `/tmp`, nem o scratchpad
+  da sessão-mãe — nada foi escrito lá.
+- A régua de re-derivação foi escrita e corrida **por cano**, sem deixar ficheiro; o `__pycache__`
+  que o import do conferidor criou dentro da pasta das fixturas foi **removido** (é ignorado pelo
+  git, e a árvore ficou como estava).
+- Fonte do alvo consultado **só** para a conferência do §4.1.13 (que propriedade é pública e para
+  onde mapeia a chave do espaçamento); nada dele entrou neste ledger, na espec ou no report.

@@ -54,7 +54,38 @@ Sweep: controlo do instrumento corrido PRIMEIRO (exit 0, todos os canais), depoi
   lados nas oito). ⛔ Ela não muda medição nenhuma do oráculo e não regenera fixtura nenhuma — muda
   o que a página DIZ. **Todo número da §16 foi re-derivado das 30 fixturas PUBLICADAS**, e os que o
   corpus não suporta estão marcados como **medidos fora dele**. Lista item a item: ledger, «3.ª
-  EMENDA DO E». ⚠️ **A §16 aguarda a 4.ª passagem do R-pré.**
+  EMENDA DO E».
+Auditoria da §16 (R-pré): ✅ **§16 auditada contra §4.2 por R-pré em 2026-09-16, 2.ª passagem sobre
+  a §16 (a 4.ª da obra)** — por um subagente NOVO, independente do E e das três passagens
+  anteriores. ⭐ **A PAREDE DA §16 ESTÁ LIMPA**, varrida pela forma da §4.3.1 sobre o texto INTEIRO
+  e não só sobre os parágrafos que a 3.ª passagem citou: os 3 blocos cercados são o cabeçalho e
+  duas identidades matemáticas de 1 e 3 linhas; dos 542 code spans, os 99 distintos não-numéricos
+  são todos nossos (fixtura nossa · ficheiro/símbolo do NOSSO código · chave de cabeçalho nosso ·
+  símbolo matemático) ou valor público de enumeração usado como chave de regeneração (§4.1.13),
+  o que foi **re-conferido na fonte**: o harness escreve-os em propriedades **públicas** e a chave
+  `espacamento_medido_em` mapeia para a do **espaçamento**, não para a do tamanho. Os 30 cabeçalhos
+  (73 chaves distintas) e o conferidor lidos linha a linha. Sweep: controlo do instrumento PRIMEIRO
+  (`exit 0`, todos os canais), depois **as nove vassouras** da pasta sobre a espec + as 30 fixturas
+  + o conferidor + os READMEs + o INBOX + o ledger — **limpo nas nove**; `--git-history` da pasta
+  acusa só patches de ledgers de OUTRAS obras (já registado), e os **cinco commits desta obra
+  varridos à parte dão `0` de 262 agulhas; mais uma passagem em memória com 1 799 agulhas
+  normalizadas (sem caixa, sem acentos, sem pontuação) contra 67 artefactos: `0`.
+  ⭐ **Re-derivei a §16 por régua própria, escrita só desta página e dos cabeçalhos e alimentada só
+  pelas 30 fixturas publicadas**: a tabela inteira do §16.2 ao dígito nas duas formas (incluindo o
+  `0,0389` contra `0,0225` da agregação e as sete bandas que coincidem), o controlo de resolução
+  (`0,023 / 0,019 / —` · `0,314 / 0,306 / 0,307` · `0,977 / 0,973 / 0,975`), o G-13 (`0,0807` ·
+  `0,0929` · `0,0878` px com a parábola contra `0,558` · `0,646` · `0,515` com o vértice mais alto),
+  o G-14 (`1,13e-8` de espalhamento e `1,658`/`1,654`/`1,163`, com **um** pico dos dois lados nas
+  oito), G-16 `0,51 %`/`0,0036`, G-17 `3,6e-12` e `0` ao bit, G-19 `1,89 %` contra `53,5 %`, G-20
+  `0` contra `154`, a lei do passo nos dois modos (`14,40`/`23,99`/`36,01` px e `0,07205`/`0,12033`/
+  `0,18019` de corda), o preço do modo de cena (`10,35×`, `−45,6/−30,4/−51,1 %`, `3,25×`) e a prova
+  de completude a `1,2000e-07` sobre os mesmos `1 114` vértices. Os **dois gémeos** que a 3.ª emenda
+  diz ter matado estão **mortos**: `0,0225` só aparece como a agregação recusada, e `1,8e-7` só
+  aparece na narrativa da passagem que o apanhou. As afirmações sobre a NOSSA casa conferidas no
+  código vivo, linha a linha (as quatro citações batem). ⛔ **ZERO achados que bloqueiam.**
+  ⚠️ Ficam **9 erratas** (E42–E50), nomeadas no ledger com o sítio e a instrução — entre elas a
+  agregação não-nomeada do §16.8 (a mesma espécie do gémeo E28, um nível acima), a leitura que o
+  G-18 nomeia contra o número que imprime, e o trio de ângulos do §16.4.
   ⚠️ O atestado abaixo cobre as §1–§15 e as 80 fixturas da 1.ª emenda.
 Auditoria §4.2 (R-pré): ✅ **auditada contra §4.2 por R-pré em 2026-09-16, 2.ª passagem** — por um
   subagente NOVO, independente do E e da 1.ª passagem. ⭐ A PAREDE ESTÁ LIMPA (os 5 blocos cercados

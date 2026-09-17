@@ -233,8 +233,52 @@ pub(crate) fn march_slabs(
     bounds: &[f32],
     shape_of: &mut dyn FnMut(usize) -> Option<ph2d_field_eval::hybrid::Hybrid>,
 ) -> (Vec<bool>, Vec<[f32; 3]>, Vec<[f32; 3]>) {
-    let (cam, sharp) = (scene.cam, scene.sharp);
-    let n = screen.len();
+    // ⭐ **O raio vem da CÂMERA**, e não de uma segunda cópia da conta dela. Este laço reconstruía
+    // a aritmética do `Orbit::ray` com um afastamento próprio — duas respostas para *"que raio sai
+    // daqui?"*, no mesmo módulo cujo doc promete que a projeção é a mesma do gizmo. Com a lente
+    // convergente a direção passou a ser **por raio**, e uma das duas cópias teria ficado paralela.
+    let mut origens = Vec::with_capacity(screen.len());
+    let mut dirs = Vec::with_capacity(screen.len());
+    for &(sx, sy) in screen {
+        let (o, d) = scene.cam.ray_at_plane(sx, sy);
+        origens.push(o);
+        dirs.push(d);
+    }
+    march_rays(scene, &origens, &dirs, bounds, shape_of)
+}
+
+/// ⭐⭐⭐ **A MARCHA DE RAIOS SOLTOS — o núcleo, sem a câmera** (W5).
+///
+/// # Porque ela existe, e porque não é uma segunda lei
+///
+/// Até 2026-09-17 esta crate sabia lançar raios de **três** maneiras, e as três respondiam a
+/// perguntas de SIM/NÃO: a marcha da câmera (que devolve onde parou, mas só para os raios que a
+/// lente gera), a sombra ([`march_shadow_to`]) e o cone da oclusão ([`march_cone_to`]) — as duas
+/// últimas devolvem **visibilidade**, um número entre `0` e `1`.
+///
+/// ⛔⛔ **A luz indirecta não cabe em nenhuma delas, e a razão é o que a torna luz e não sombra:**
+/// ela precisa de saber **o que** bloqueou o raio, para lhe perguntar a cor. *A oclusão que este
+/// módulo já ship é a GI com a cor do ricochete posta a PRETO; a `W5` é trocar esse preto pela
+/// superfície que bloqueou.*
+///
+/// ⚠️ **E ela é o MESMO código, não um irmão:** a [`march_slabs`] passou a ser o caso em que as
+/// origens e as direcções saem do [`Orbit::ray_at_plane`]. Escrever um segundo marchador daria
+/// duas respostas para *«onde este raio para?»* — o passo, a cerca de `hit`, o `shrink`, as fatias
+/// de profundidade e a normal por diferença central teriam de ser mantidos iguais **à mão**, que é
+/// precisamente a forma de defeito que o comentário acima já descreve para o raio da câmera.
+///
+/// ⚠️ `scene.clip` e `scene.sharp` continuam a valer: quem lança um raio solto declara a cerca dele
+/// no [`Scene`], como a câmera declara a dela.
+pub(crate) fn march_rays(
+    scene: &Scene<'_>,
+    origens: &[[f32; 3]],
+    dirs: &[[f32; 3]],
+    bounds: &[f32],
+    shape_of: &mut dyn FnMut(usize) -> Option<ph2d_field_eval::hybrid::Hybrid>,
+) -> (Vec<bool>, Vec<[f32; 3]>, Vec<[f32; 3]>) {
+    let sharp = scene.sharp;
+    let n = origens.len();
+    debug_assert_eq!(n, dirs.len(), "uma direcção por origem");
     let mut hit = vec![false; n];
     let mut normal = vec![[0.0f32; 3]; n];
     // ⭐ **Onde o raio parou, no MUNDO.** Ele sai de graça (a marcha já sabe o `t`), e é o que uma
@@ -245,16 +289,11 @@ pub(crate) fn march_slabs(
         return (hit, normal, point);
     }
 
-    // ⭐ **O raio vem da CÂMERA**, e não de uma segunda cópia da conta dela. Este laço reconstruía
-    // a aritmética do `Orbit::ray` com um afastamento próprio — duas respostas para *"que raio sai
-    // daqui?"*, no mesmo módulo cujo doc promete que a projeção é a mesma do gizmo. Com a lente
-    // convergente a direção passou a ser **por raio**, e uma das duas cópias teria ficado paralela.
     let (mut ox, mut oy, mut oz) = (vec![0.0f32; n], vec![0.0f32; n], vec![0.0f32; n]);
     let mut dir = vec![[0.0f32; 3]; n];
-    for (i, &(sx, sy)) in screen.iter().enumerate() {
-        let (o, d) = cam.ray_at_plane(sx, sy);
-        (ox[i], oy[i], oz[i]) = (o[0], o[1], o[2]);
-        dir[i] = d;
+    for i in 0..n {
+        (ox[i], oy[i], oz[i]) = (origens[i][0], origens[i][1], origens[i][2]);
+        dir[i] = dirs[i];
     }
 
     let mut t = vec![0.0f32; n];

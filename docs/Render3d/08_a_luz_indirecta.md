@@ -341,3 +341,117 @@ levantamento diz que a peça grande já lá está:
 exactamente o que esta jornada construiu.
 
 [`preview::refines_occlusion`]: ../../crates/ph2d-app-field3d/src/preview.rs
+
+## §12 — ⭐⭐⭐ O RICOCHETE NO DISPOSITIVO: onde o artista o vê
+
+A `§11` disse que o laço de CPU não corre no produto. Esta é a wave que o põe lá.
+
+### §12.1 — Ele vive no passe que PINTA, e isso é uma decisão
+
+| candidato | tem a marcha? | tem os materiais? |
+|---|---|---|
+| o kernel da **marcha** (`centro_e_luz`) | ✅ | ⛔ |
+| o passe que **pinta** | ⛔ (tinha) | ✅ |
+
+O ricochete precisa dos **dois**: ele marcha um raio e depois pergunta *de que cor é o que eu
+acertei*. ⇒ o passe que pinta recebe as **leis** da marcha (o campo, a `marcha`, a `visivel`, o
+conjunto de cones), e os dois **kernels** dela ficam de fora — *um módulo com pontos de entrada que
+ninguém despacha é código que não se apaga porque compila*. Zero ligações novas: o pintor já ligava
+as grades das esculturas e o `k`.
+
+⚠️ **E a marcha ganhou o alcance por ARGUMENTO** (`marcha_ate`): um raio de câmera anda até
+`t_max`, um raio de hemisfério anda até sair da bola que contém a peça. *Uma segunda marcha para a
+segunda pergunta seria a segunda resposta a «onde este raio para?».*
+
+### §12.2 — ⭐⭐ O ambiente passa a ser um DESPACHO, e a álgebra autoriza-o
+
+Na CPU o ricochete entra por uma **segunda chamada** à lei indirecta, com um ambiente falso
+(`SoIrradiancia`: irradiância = o ricochete, radiância = `0`). No dispositivo a lei indirecta lê
+duas funções globais ⇒ elas passam a despachar:
+
+```wgsl
+fn env_irradiance(n) { if (ambiente_e_ricochete) { return ricochete; } return ceu_irradiance(n); }
+fn env_radiance(..)  { if (ambiente_e_ricochete) { return vec3(0.0); } return ceu_radiance(..); }
+```
+
+⚠️⚠️ **Tinham de ser DUAS chamadas e não um ambiente somado**, e a razão não é de gosto: a parcela
+do céu leva a oclusão por cima (`* ceu_vis`) e a do ricochete não. *A oclusão é a sombra do CÉU, e a
+luz que vem das superfícies não é céu.*
+
+⛔ É por isso que o `PaintSetup::env_source` passou a declarar `ceu_*` em vez de `env_*`: quem manda
+no ambiente é o despacho, e o céu de quem chama é **um dos dois braços** dele.
+
+### §12.3 — ⭐⭐ Ele é um CANAL, e não um valor local
+
+O ricochete precisa de ser **suavizado** pela mesma razão que a oclusão (as estrias do conjunto
+discreto — `§8.3`), e suavizar precisa dos **vizinhos**. ⇒ um valor calculado e consumido na mesma
+invocação não tem onde ser suavizado:
+
+- o passo do buffer de luz passa de `1 + n_lâmpadas` para **`1 + n_lâmpadas + 3`**;
+- uma passagem nova (`pinta_ricochete`) calcula e **guarda**;
+- a pintura lê a vizinhança `3×3` guardada pela normal — a mesma lei do céu.
+
+⚠️ **E o fundo recebe `0` nos três slots, não `1`:** uma sombra que não foi calculada é *ausência de
+sombra*; uma luz que não foi calculada é **ausência de luz**.
+
+### §12.4 — ⭐⭐⭐ A prova: os dois motores, e o par de gates que se controla
+
+| gate | o que afirma |
+|---|---|
+| `a_imagem_do_dispositivo_e_a_da_cpu` | a imagem do dispositivo **é** a da referência: `100,000 %` dos canais a `≤ 1` nível, pior `1` |
+| `o_ricochete_chega_a_imagem_do_dispositivo` | e ela é **mais clara** do que a mesma imagem sem ricochete: `179,4 → 184,4` níveis num CANTO |
+| `o_quadro_de_movimento_nao_paga_o_ricochete` | com a bandeira em baixo ela volta a ser a de sempre |
+
+⛔⛔ **E a fixtura do segundo teve de ser TROCADA:** com a peça da paridade — três formas convexas
+no aberto — o brilho subia `+0,513` níveis, que é ruído: ali quase todo raio do hemisfério
+**escapa**. Com um CANTO (duas placas em ângulo recto, cada uma a ver a outra a meio hemisfério) ele
+sobe `+4,935`. *Não era o produto — era a fixtura a não conter o fenómeno*, pela segunda vez nesta
+wave (a primeira foi a `§9.2`).
+
+⛔⛔ **O segundo existe porque o primeiro é cego ao caso que abriu esta wave:** a referência de CPU
+dele passou a calcular o ricochete também, logo *se ninguém o calculasse em lado nenhum eles
+continuariam a concordar* — preto contra preto. É a mesma forma do `§11.3`, e desta vez está
+gateada.
+
+### §12.5 — ⚠️ E ele viaja na bandeira que JÁ EXISTE
+
+O quadro assente (`antialias`, a lei da W73 — *grosso a mexer, nítido ao assentar*) ganha o
+**quarto** passageiro, a seguir ao contorno fino, ao anti-serrilhado e à sombra directa.
+
+⛔⛔ **Sem isso o ricochete corria no quadro de MOVIMENTO**, que é exactamente a regressão que o dono
+já reprovou uma vez (*«mover os objetos ficou muito lento»*). Com a bandeira em baixo a passagem não
+compila, não despacha, o canal fica vazio e o quadro que a mão arrasta é **byte-idêntico** ao de
+hoje.
+
+### §12.6 — ⏳ O que fica
+
+- ✅ **o custo está MEDIDO** (ver a `§12.7`);
+- **o caminho de LEITURA continua sem ricochete** (`DeviceGbuffer::bounce` vem a zero) — quem enche
+  o canal é a passagem do pintor, e aquele caminho existe para quando o pintor não corre. O canal
+  atravessa-o na mesma, e um canal vazio é o quadro de sempre ao bit;
+- o **chão invisível** continua sem receber ricochete (`§10`);
+- e o **segundo** ricochete e a parcela **especular** continuam na fila (`§7`).
+
+### §12.7 — ⏱️ O PREÇO, e a razão que ele fecha
+
+Medido a `1920×1080` com `48` direcções, `load 2,5`–`5,0`, mínimo de 7 corridas — A/B pela fonte
+(`ao_rays: 0` no `PaintSetup` desliga só a passagem do ricochete):
+
+| | min | mediana |
+|---|---:|---:|
+| marcha + sombra + oclusão + pintura | `6,14 ms` | `6,62` |
+| **e mais o ricochete** | **`9,86`** | `10,44` |
+
+⇒ **`+3,72 ms`**, `1,61×` o quadro assente — e o quadro inteiro continua **abaixo** de um de
+`16,7 ms`, noutra thread.
+
+⭐⭐⭐ **A mesma resposta na CPU custava `~1,15 s`** (a `§8.2`: `19,06 ms` por direcção × `48`) ⇒
+**`309×`**. É o número que fecha a `§11`: *o caminho mais lento definia o tecto do mais rápido, no
+módulo cuja razão de existir é o mais rápido* — e por isso o refinamento por fatias da `§8` fica
+onde pertence, como **referência**, e não como o que o artista recebe.
+
+⚠️ **E a flake que a rodada apanhou:** o `na_faixa_do_produto_a_placa_ganha_com_margem` reprovou com
+outra sessão a correr um fan-out nesta máquina, e passa **3 de 3** a `load 3,0`–`4,3` com a CPU a
+`96`–`99 %` ociosa (razões `3,90×`–`8,63×` contra a barra de `2`). ⛔ Ele mede o quadro de
+**MOVIMENTO**, onde o ricochete nem despacha — *o diff não toca no caminho que ele mede*. Membro da
+família do `CLAUDE.md §5.0`.

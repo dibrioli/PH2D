@@ -35,7 +35,16 @@ pub struct PaintSetup<'a> {
     /// ⚠️ **A ordem é a das folhas do [`Owners`]**, e quem constrói um constrói o outro: uma lista
     /// com outra ordem pinta cada peça com a cor da vizinha, sem erro nenhum.
     pub materials: &'a [f32],
-    /// O corpo que preenche o [`ph2d_material::wgsl::ENV_SLOT`] — o céu de quem chama.
+    /// O céu de quem chama, que tem de declarar **exactamente**:
+    ///
+    /// ```wgsl
+    /// fn ceu_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32>
+    /// fn ceu_irradiance(n: vec3<f32>) -> vec3<f32>
+    /// ```
+    ///
+    /// ⚠️ **`ceu_*` e não `env_*`, desde o ricochete** (`docs/Render3d/08` §12): quem preenche o
+    /// [`ph2d_material::wgsl::ENV_SLOT`] é o [`ambiente`] desta crate, e o céu é **um dos dois
+    /// braços** dele — o outro é a luz que as superfícies devolvem.
     ///
     /// ⚠️ **Ele vem de fora de propósito:** o céu do produto vive na família `field3d`, que é
     /// composição, e esta crate não desenha estúdio nenhum.
@@ -49,6 +58,12 @@ pub struct PaintSetup<'a> {
     /// [`crate::trace::MarchSetup::lamps`], e as duas listas **têm de ter o mesmo comprimento e a
     /// mesma ordem**: quem monta uma monta a outra.
     pub lamp_radiance: [[f32; 3]; crate::trace::MAX_LAMPS],
+    /// ⭐ **Quantas direcções o RICOCHETE percorre** — o mesmo `ao_rays` da marcha
+    /// (`docs/Render3d/08`). `0` não compila nem despacha a passagem, e o canal fica vazio.
+    ///
+    /// ⚠️ **Ele vem do chamador e não do uniforme** porque quem decide COMPILAR um pipeline é o
+    /// Rust, e o uniforme só é lido dentro do shader.
+    pub ao_rays: u32,
     /// A exposição, em paragens.
     pub stops: f32,
     /// A vista, no código do [`ph2d_view_transform::wgsl::view_code`].
@@ -74,6 +89,12 @@ pub const ARMAZENS: u32 = 9;
 
 /// Os buffers do grupo `0`, que a marcha já criou e escreveu.
 pub(crate) struct Alvos<'a> {
+    /// ⭐ **As LEIS da marcha, com as esculturas já substituídas** — o pintor marcha o ricochete
+    /// com elas (`docs/Render3d/08` §12), e quem as compõe é quem também compõe o molde da marcha:
+    /// *a origem que o texto indexa e a ordem dos vectores são a MESMA decisão.*
+    pub leis: &'a str,
+    /// A fita do campo — a mesma que a marcha compilou, pela mesma razão.
+    pub fita: &'a ph2d_field_eval::wgsl::TapeWgsl,
     pub bgl: &'a wgpu::BindGroupLayout,
     /// As grades das esculturas — o pintor lê-as pela mesma lei que a marcha.
     pub grades: &'a wgpu::Buffer,
@@ -172,11 +193,129 @@ fn ceu_em(x: u32, y: u32, i: u32, n0: vec3<f32>) -> f32 {
     return luz[i * passo_da_luz()];
 }
 
+// A base é ortonormal, logo a transposta é a inversa — a volta do `mundo_para_vista`.
+fn vista_para_mundo(v: vec3<f32>) -> vec3<f32> {
+    return s.right * v.x + s.up * v.y + s.fwd * v.z;
+}
+
+// ⭐⭐⭐ **A RADIÂNCIA QUE SAI DO PONTO ACERTADO, por luz DIRECTA** — e é isto que faz o ricochete
+// ser **UM**: a luz que sai dali não traz o que lhe chegou por sua vez.
+//
+// O `ph2d_field_render::bounce_slice`, passo 4, linha a linha.
+fn devolvida_de(q: vec3<f32>, nq_vista: vec3<f32>, veio_de: vec3<f32>) -> vec3<f32> {
+    // ⚠️ **Sem fronteira suavizada, e o doc da `Surfaces::of` diz porquê:** *«um raio de ricochete
+    // não tem pixel — ele acerta um ponto —, e inventar-lhe uma largura seria inventar a
+    // resposta»*. Só o dono (`.a`) é lido; a largura não muda quem ele é.
+    let m = ler_mat(dono_mix(q, pintor.knobs.y).a);
+    // ⭐ O observador daquele ponto é **quem lhe perguntou**: o raio veio de `-veio_de`.
+    let v = mundo_para_vista(-veio_de);
+    let nq = vista_para_mundo(nq_vista);
+    let erguido = q + nq * (s.hit_eps * 4.0);
+    let piso = PISO_LUZ * PISO_LUZ;
+    var sai = vec3<f32>(0.0);
+    for (var l: u32 = 0u; l < s.n_lamps; l = l + 1u) {
+        let d = s.lamps[l].xyz - q;
+        let cru = dot(d, d);
+        // ⚠️ **O braço degenerado é o do sombreador**: abaixo do piso a direcção é a NORMAL, que é
+        // o limite finito. A mesma lei da `shade_render::chega_da_lampada`.
+        var to_light = nq_vista;
+        var vis = 1.0;
+        if (cru > piso) {
+            let dist = sqrt(cru);
+            let dir = d / dist;
+            to_light = mundo_para_vista(dir);
+            // ⭐ **Só quem VÊ a luz paga raio** — e isto não muda a resposta: com `N·L <= 0` o
+            // `mx_direct` devolve zero seja qual for a visibilidade. É a mesma cerca do passe da
+            // sombra, e o gate de paridade contra a referência de CPU é quem o prova.
+            if (dot(nq, dir) > 0.0) {
+                vis = visivel(erguido, dir, cerca_da_bola(erguido, dir, dist), 8.0);
+            }
+        }
+        sai = sai + mx_direct(m, nq_vista, v, to_light, pintor.lamp[l].rgb * vis / max(cru, piso));
+    }
+    return sai;
+}
+
+// ⭐⭐⭐ **O RICOCHETE: a luz que a CENA devolve a este ponto** (`docs/Render3d/08`).
+//
+// ⚠️⚠️ **O conjunto de direcções é o `s.ao_rays` da OCLUSÃO, e isso não é economia:** a oclusão
+// mede a parte do céu e **atenua**; esta mede a parte das superfícies e **soma**. Dois conjuntos
+// diferentes fariam a soma deixar de ser o integral de coisa nenhuma.
+fn ricochete_em(p: vec3<f32>, n_vista: vec3<f32>) -> vec3<f32> {
+    if (s.ao_rays == 0u || s.n_lamps == 0u) { return vec3<f32>(0.0); }
+    let n = vista_para_mundo(n_vista);
+    let erguido = p + n * (s.hit_eps * 4.0);
+    // ⭐ **Até onde um raio pode bater:** a bola que envolve a peça. Um raio que parte de dentro
+    // dela sai, no máximo, pelo diâmetro — e para lá disso não há o que acertar.
+    let alcance = 2.0 * s.ball_radius;
+    var soma = vec3<f32>(0.0);
+    var peso = 0.0;
+    for (var j: u32 = 0u; j < s.ao_rays; j = j + 1u) {
+        let dd = direccao_do_cone(j, s.ao_rays);
+        let c = dot(n, dd);
+        if (c <= 0.0) { continue; }
+        // ⚠️ **O peso acumula-se mesmo quando o raio ESCAPA** — ele é o denominador de uma média
+        // sobre o hemisfério, e um raio que não acerta em nada continua a ser hemisfério medido.
+        peso = peso + c;
+        var r: Raio;
+        r.o = erguido;
+        r.d = dd;
+        let h = marcha_ate(r, alcance);
+        if (h.x < 0.0) { continue; }
+        soma = soma + c * devolvida_de(erguido + dd * h.x, h.yzw, dd);
+    }
+    if (peso <= 0.0) { return vec3<f32>(0.0); }
+    return soma / peso;
+}
+
+// ⭐⭐⭐ **O RICOCHETE SUAVIZADO — a MESMA vizinhança do céu**, canal a canal.
+//
+// ⚠️⚠️ **Ele é suavizado pela mesma razão que a oclusão**, e o doc do
+// `ph2d_field_render::blur_occlusion` escreve-a: o que aquele borrão apaga hoje não é ruído de
+// amostragem — são as **estrias do conjunto discreto de direcções**. O ricochete corre no MESMO
+// conjunto, logo tem a mesma assinatura. *E é por isso que ele tem de ser um CANAL: um valor
+// calculado e consumido na mesma invocação não tem vizinhos para suavizar.*
+fn ricochete_no_pixel(x: u32, y: u32, i: u32, n0: vec3<f32>) -> vec3<f32> {
+    var soma = vec3<f32>(0.0);
+    var cont = 0u;
+    for (var dy = -1; dy <= 1; dy = dy + 1) {
+        for (var dx = -1; dx <= 1; dx = dx + 1) {
+            let xx = i32(x) + dx;
+            let yy = i32(y) + dy;
+            if (xx < 0 || yy < 0 || xx >= i32(s.w) || yy >= i32(s.h)) { continue; }
+            let j = u32(yy) * s.w + u32(xx);
+            let c = centro[j];
+            if (c.x < 0.0) { continue; }
+            if (dot(n0, c.yzw) < BLUR_COS) { continue; }
+            let b = base_do_ricochete(j);
+            soma = soma + vec3<f32>(luz[b], luz[b + 1u], luz[b + 2u]);
+            cont = cont + 1u;
+        }
+    }
+    let b = base_do_ricochete(i);
+    if (cont > 0u) { return soma / f32(cont); }
+    return vec3<f32>(luz[b], luz[b + 1u], luz[b + 2u]);
+}
+
 // A luz que UM material devolve ao olho, já com o olhar — o `shade_render::radiance` da CPU.
-fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu_vis: f32) -> vec3<f32> {
+fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu_vis: f32, ric: vec3<f32>) -> vec3<f32> {
     // ⭐⭐⭐ **A OCLUSÃO É A SOMBRA DO CÉU** — ela multiplica o que o AMBIENTE entrega, e mais nada.
     // Não toca nas lâmpadas (que têm sombra a sério) nem na emissão.
     var rgb = mx_indirect(m, n, v) * ceu_vis;
+    // ⭐⭐⭐ **E A OUTRA METADE DO HEMISFÉRIO: a luz que as SUPERFÍCIES devolvem.**
+    //
+    // ⚠️ **É uma SEGUNDA chamada à mesma lei indirecta, com o ambiente trocado** — exactamente o
+    // que o `shade_render` faz com o `SoIrradiancia`. Ela não leva o `ceu_vis`: a oclusão é a
+    // sombra do CÉU, e a luz que vem das superfícies não é céu.
+    //
+    // ⛔ **Fora deste ramo o quadro é o de sempre, AO BIT** — `ricochete` nasce a zero e o
+    // `ambiente_e_ricochete` a `false`.
+    if (ric.x > 0.0 || ric.y > 0.0 || ric.z > 0.0) {
+        ricochete = ric;
+        ambiente_e_ricochete = true;
+        rgb = rgb + mx_indirect(m, n, v);
+        ambiente_e_ricochete = false;
+    }
     let piso = PISO_LUZ * PISO_LUZ;
     let base = i * passo_da_luz();
     // ⭐⭐⭐ **AS LUZES-OBJECTO, uma a uma** — a direcção e a distância de cada saem do PONTO deste
@@ -200,11 +339,11 @@ fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu
 
 // ⭐⭐ **Sombreia DUAS vezes e mistura o RESULTADO**, nunca os materiais: um metal e um dieléctrico
 // a meio caminho não são um meio-metal. E só paga o dobro onde há fronteira.
-fn radiancia(p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, i: u32, ceu_vis: f32) -> vec3<f32> {
+fn radiancia(p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, i: u32, ceu_vis: f32, ric: vec3<f32>) -> vec3<f32> {
     let d = dono_mix(p, pintor.knobs.y);
-    let ca = luz_do_material(ler_mat(d.a), n, v, p, i, ceu_vis);
+    let ca = luz_do_material(ler_mat(d.a), n, v, p, i, ceu_vis, ric);
     if (d.t <= 0.0) { return ca; }
-    let cb = luz_do_material(ler_mat(d.b), n, v, p, i, ceu_vis);
+    let cb = luz_do_material(ler_mat(d.b), n, v, p, i, ceu_vis, ric);
     return ca + (cb - ca) * d.t;
 }
 
@@ -284,6 +423,28 @@ fn fator_da_borda(i: u32, x: u32, y: u32) -> f32 {
 }
 
 // ⭐⭐⭐ **O INTERIOR: um pixel, um material, uma escrita.**
+// ⭐⭐⭐ **A PASSAGEM QUE CALCULA O RICOCHETE E O GUARDA** (`docs/Render3d/08` §12).
+//
+// ⚠️⚠️ **Ela vive no PINTOR e não na marcha, e é uma decisão:** o ricochete precisa do MATERIAL do
+// ponto acertado, e a tabela de materiais é o grupo `1` deste passe. ⇒ *quem marcha não sabe de que
+// cor é o que ele acertou.*
+//
+// ⚠️ **E ela é um despacho SEPARADO porque a suavização precisa dos VIZINHOS** — a mesma razão que
+// faz a re-amostragem da borda ser um segundo despacho e não uma linha dentro do primeiro.
+@compute @workgroup_size(8, 8, 1)
+fn pinta_ricochete(@builtin(global_invocation_id) g: vec3<u32>) {
+    if (g.x >= s.w || g.y >= s.h) { return; }
+    let i = g.y * s.w + g.x;
+    let c = centro[i];
+    if (c.x < 0.0) { return; }
+    let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
+    let devolvida = ricochete_em(r.o + r.d * c.x, c.yzw);
+    let b = base_do_ricochete(i);
+    luz[b] = devolvida.x;
+    luz[b + 1u] = devolvida.y;
+    luz[b + 2u] = devolvida.z;
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn pinta(@builtin(global_invocation_id) g: vec3<u32>) {
     if (g.x >= s.w || g.y >= s.h) { return; }
@@ -299,7 +460,14 @@ fn pinta(@builtin(global_invocation_id) g: vec3<u32>) {
     let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
     // ⭐ O PONTO reconstrói-se do `t` — a mesma álgebra do `Rays::point_at`.
     let p = r.o + r.d * c.x;
-    let rgb = radiancia(p, c.yzw, direccao_de_vista(r.d), i, ceu_em(g.x, g.y, i, c.yzw));
+    let rgb = radiancia(
+        p,
+        c.yzw,
+        direccao_de_vista(r.d),
+        i,
+        ceu_em(g.x, g.y, i, c.yzw),
+        ricochete_no_pixel(g.x, g.y, i, c.yzw),
+    );
     saida[i] = empacota(vec4<f32>(rgb, 1.0));
 }
 
@@ -320,6 +488,9 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     let v = direccao_de_vista(r.d);
     let p = r.o + r.d * c.x;
     let ceu_vis = ceu_em(x, y, i, c.yzw);
+    // ⚠️ **As sub-amostras partilham o ricochete do CENTRO**, exactamente como partilham o ponto e
+    // o material — a mesma aproximação declarada da borda, e pela mesma razão.
+    let ric = ricochete_no_pixel(x, y, i, c.yzw);
     // ⭐⭐ **O fundo de uma sub-amostra que falha é o fundo COM o chão** — sem isto a silhueta de
     // baixo pinta um fio do fundo limpo entre a peça e a sombra de contacto.
     let f_chao = fator_da_borda(i, x, y);
@@ -329,7 +500,7 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     for (var j = 0u; j < 4u; j = j + 1u) {
         let q = borda[slot * 5u + 1u + j];
         var cor = fundo;
-        if (q.x >= 0.0) { cor = vec4<f32>(radiancia(p, q.yzw, v, i, ceu_vis), 1.0); }
+        if (q.x >= 0.0) { cor = vec4<f32>(radiancia(p, q.yzw, v, i, ceu_vis, ric), 1.0); }
         acc = acc + cor * 0.25;
     }
     saida[i] = empacota(acc);
@@ -340,10 +511,14 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
 ///
 /// ⚠️ **A ordem é a que o WGSL precisa para o `struct Ceu` existir antes do binding que o nomeia.**
 /// O material traz a ranhura do ambiente já preenchida pelo céu de quem chama.
-pub(crate) fn fonte(pintor: &PaintSetup<'_>, lei_do_dono: Option<&OwnersWgsl>) -> String {
+pub(crate) fn fonte(
+    pintor: &PaintSetup<'_>,
+    lei_do_dono: Option<&OwnersWgsl>,
+    leis: &str,
+) -> String {
     let dono = lei_do_dono.map_or(DONO_DE_UMA_FOLHA, |l| l.source.as_str());
-    let material =
-        ph2d_material::wgsl::SOURCE.replace(ph2d_material::wgsl::ENV_SLOT, pintor.env_source);
+    let material = ph2d_material::wgsl::SOURCE
+        .replace(ph2d_material::wgsl::ENV_SLOT, &ambiente(pintor.env_source));
     let corpo = PINTOR
         .replace(
             "{BLUR_COS}",
@@ -358,10 +533,52 @@ pub(crate) fn fonte(pintor: &PaintSetup<'_>, lei_do_dono: Option<&OwnersWgsl>) -
         .replace("{LUMA_R}", &formata(ph2d_field_render::GROUND_LUMA[0]))
         .replace("{LUMA_G}", &formata(ph2d_field_render::GROUND_LUMA[1]))
         .replace("{LUMA_B}", &formata(ph2d_field_render::GROUND_LUMA[2]));
+    // ⚠️⚠️ **As LEIS da marcha entram aqui desde o ricochete** (`docs/Render3d/08` §12): ele marcha
+    // a partir da superfície, logo o passe que PINTA precisa do campo, da marcha e da
+    // visibilidade. ⛔ **E só as leis** — os dois kernels da marcha ficam de fora, senão este
+    // módulo teria pontos de entrada que ninguém despacha.
     format!(
-        "{}{material}\n{}\n{dono}\n{corpo}",
+        "{}{leis}{material}\n{}\n{dono}\n{corpo}",
         crate::trace_wgsl::comum(),
         ph2d_view_transform::wgsl::SOURCE
+    )
+}
+
+/// ⭐⭐⭐ **O AMBIENTE QUE O MATERIAL VÊ — o céu de quem chama, OU o ricochete.**
+///
+/// A lei indirecta do OpenPBR pergunta duas coisas ao ambiente (`env_radiance` e `env_irradiance`)
+/// e é **linear** nas duas: o termo difuso entra pela irradiância, o especular pela radiância, e o
+/// empilhamento é linear nas respostas. ⇒ *chamar a lei duas vezes com dois ambientes é somar os
+/// dois*, que é exactamente o que o [`ph2d_field_render::shade_render`] faz com o `SoIrradiancia`.
+///
+/// ⚠️⚠️ **E tinham de ser DUAS chamadas e não um ambiente somado**, porque a parcela do céu leva a
+/// oclusão por cima (`* ceu_vis`) e a do ricochete não: *a oclusão é a sombra do CÉU, e a luz que
+/// vem das superfícies não é céu.*
+///
+/// ⛔ **É por isso que o [`PaintSetup::env_source`] declara `ceu_*` e não `env_*`:** quem manda no
+/// ambiente é este despacho, e o céu de quem chama é um dos dois braços dele. Com o
+/// `ambiente_e_ricochete` a `false` — o valor de nascença — o texto gerado entrega o céu **ao
+/// bit**.
+fn ambiente(ceu: &str) -> String {
+    format!(
+        r"{ceu}
+// ⭐ O estado deste pixel, por invocação: o WGSL dá `var<private>`, que é exactamente isso.
+var<private> ricochete: vec3<f32> = vec3<f32>(0.0);
+var<private> ambiente_e_ricochete: bool = false;
+
+fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {{
+    // ⚠️ **O ricochete NÃO tem direcção**: ele é uma irradiância por pixel, e o lóbulo especular
+    // pergunta *«que luz vem DAQUELA direcção»*. A resposta honesta é zero — a mesma que o
+    // `SoIrradiancia` da CPU dá.
+    if (ambiente_e_ricochete) {{ return vec3<f32>(0.0); }}
+    return ceu_radiance(dir, alpha, shrink);
+}}
+
+fn env_irradiance(n: vec3<f32>) -> vec3<f32> {{
+    if (ambiente_e_ricochete) {{ return ricochete; }}
+    return ceu_irradiance(n);
+}}
+"
     )
 }
 
@@ -391,6 +608,8 @@ pub(crate) fn pinta(
     height: u32,
     bordas: u64,
 ) -> Vec<u8> {
+    let leis = alvos.leis;
+    let fita = alvos.fita;
     use crate::trace::{armazem, uniforme};
     use wgpu::util::DeviceExt;
 
@@ -411,17 +630,23 @@ pub(crate) fn pinta(
     });
     // ⚠️ **O cache é o mesmo do traçado**, e a chave é o TEXTO: um arrasto de slider muda números e
     // não recompila nada, exactamente como na marcha.
-    let fonte = fonte(pintor, lei_do_dono);
-    let vazia = ph2d_field_eval::wgsl::TapeWgsl {
-        source: String::new(),
-        consts: Vec::new(),
-    };
+    let fonte = fonte(pintor, lei_do_dono, leis);
+    // ⚠️ **A fita é a MESMA da marcha, e tem de o ser:** o `k` que o grupo `0` liga já traz as
+    // constantes dela, e um texto gerado de outra fita indexaria aquele armazém por outra
+    // aritmética. *Era a fita VAZIA enquanto o pintor não marchava.*
     let p_pinta = cache
-        .entry_with_layout(device, &fonte, &vazia, "pinta", Some(&layout))
+        .entry_with_layout(device, &fonte, fita, "pinta", Some(&layout))
         .clone();
+    // ⭐ **O ricochete só compila quando ele vai de facto correr** — a mesma lei que a borda já
+    // segue: *compilar é o caro*.
+    let p_ricochete = (pintor.ao_rays > 0).then(|| {
+        cache
+            .entry_with_layout(device, &fonte, fita, "pinta_ricochete", Some(&layout))
+            .clone()
+    });
     let p_bordas = (bordas > 0).then(|| {
         cache
-            .entry_with_layout(device, &fonte, &vazia, "pinta_bordas", Some(&layout))
+            .entry_with_layout(device, &fonte, fita, "pinta_bordas", Some(&layout))
             .clone()
     });
 
@@ -532,6 +757,19 @@ pub(crate) fn pinta(
     });
 
     let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    // ⚠️⚠️ **O ricochete ANTES da pintura, e a ordem é a lei**: a pintura lê a vizinhança `3×3` do
+    // canal para o suavizar, logo ela precisa dele escrito em TODO o quadro — não só neste pixel.
+    // *Escrito na mesma passagem, cada pixel leria oito vizinhos de um quadro que ainda não existe.*
+    if let Some(p) = &p_ricochete {
+        let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: None,
+            timestamp_writes: None,
+        });
+        cp.set_pipeline(p);
+        cp.set_bind_group(0, &bg0, &[]);
+        cp.set_bind_group(1, &bg1, &[]);
+        cp.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
+    }
     {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,

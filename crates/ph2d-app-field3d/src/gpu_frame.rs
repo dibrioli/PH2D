@@ -218,6 +218,24 @@ pub fn paint_com(
         env_consts: &crate::studio_wgsl::constants(),
         env_tables: &tabelas,
         lamp_radiance,
+        // ⭐ **O MESMO número de direcções da oclusão** — as duas metades do hemisfério partilham
+        // o conjunto (`docs/Render3d/08`), logo partilham a contagem. ⚠️ Ele é lido do sítio que o
+        // declara, e não transcrito: duas cópias divergiriam no dia em que uma subisse.
+        //
+        // ⭐⭐⭐ **E ele viaja na bandeira que JÁ EXISTE** (`antialias`, a lei da W73: *grosso a
+        // mexer, nítido ao assentar*), que é o QUARTO passageiro dela — a seguir ao contorno fino,
+        // ao anti-serrilhado e à sombra directa. *Uma segunda pergunta para o mesmo facto podia
+        // divergir dela.*
+        //
+        // ⛔⛔ **Sem isto o ricochete corria no quadro de MOVIMENTO**, que é exactamente a
+        // regressão que o dono já reprovou uma vez (*«mover os objetos ficou muito lento»*). Com
+        // `0` a passagem não compila nem despacha, o canal fica vazio, e o quadro que a mão arrasta
+        // é **byte-idêntico** ao de hoje.
+        ao_rays: if antialias {
+            ph2d_field_render::OCCLUSION_PASSES
+        } else {
+            0
+        },
         stops: look.exposure_stops,
         view: ph2d_view_transform::wgsl::view_code(look.view),
         background,
@@ -383,4 +401,4 @@ mod tests;
 /// ⭐⭐⭐ **O PASSE QUE PINTA, nos dois motores** — irmão por assunto do gate do G-buffer.
 #[cfg(test)]
 #[path = "paint_parity_tests.rs"]
-mod paint_parity_tests;
+pub(crate) mod paint_parity_tests;

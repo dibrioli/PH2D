@@ -193,8 +193,24 @@ mod escultura_posta {
         const BG: [u8; 4] = [0, 0, 0, 0];
 
         let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
-        let (g, sh) = crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, None, W, H, true)
+        let (g, mut sh) = crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, None, W, H, true)
             .expect("a marcha da escultura");
+        // ⭐⭐⭐ **O RICOCHETE entra na REFERÊNCIA** (`docs/Render3d/08` §12), porque o pintor do
+        // dispositivo o calcula. ⚠️ Ele NÃO vem do `march`: por aquele caminho o canal chega vazio
+        // — quem o enche é a passagem do pintor. *Sem esta linha o gate compara dois programas
+        // diferentes e chama à diferença um defeito de paridade.*
+        sh.set_bounce(ph2d_field_render::blur_bounce(
+            &g,
+            &ph2d_field_render::bounce_pass(
+                &doc,
+                &reg,
+                &cam,
+                &g,
+                &surfaces,
+                &luz,
+                ph2d_field_render::OCCLUSION_PASSES,
+            ),
+        ));
         let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
         let cpu = ph2d_field_render::shade_render(
             &g,

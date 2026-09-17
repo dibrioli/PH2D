@@ -92,7 +92,11 @@ fn softbox_diffuse(cos_psi: f32) -> f32 {
 }
 
 /// `Studio::radiance` — ⚠️ o `shrink` chega pronto (é `f64` na CPU e constante por material).
-fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
+///
+/// ⚠️ **`ceu_*` e não `env_*` desde o ricochete** (`docs/Render3d/08` §12): o ambiente que o
+/// material vê é um DESPACHO entre o céu e a luz que as superfícies devolvem, e quem o escreve
+/// é o `ph2d_field_gpu::paint::ambiente`. *Este ficheiro entrega um dos dois braços.*
+fn ceu_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
     let up = shrink * dir.y;
     // ⚠️ **O eixo da caixa é `+y`**, logo `cos ψ` é a própria componente `y`.
     let base = 1.0 - ceu.slope_share.a + ceu.amp.x * softbox_specular(alpha, dir.y);
@@ -103,7 +107,7 @@ fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
 /// `Studio::irradiance`. ⚠️ Vista (`y` para cima) → canvas (`y` para baixo): a rampa da
 /// `ph2d_light::env_ambient` recebe `-n.y`, e o `env_ambient` volta a negar. Aqui está inline, e o
 /// sinal é o MESMO: `up = +n.y`.
-fn env_irradiance(n: vec3<f32>) -> vec3<f32> {
+fn ceu_irradiance(n: vec3<f32>) -> vec3<f32> {
     let ambient = ceu.base_ambient.a;
     let rampa = ambient * (ceu.base_ambient.rgb + ceu.slope_share.rgb * n.y);
     let delta = ceu.amp.x * softbox_diffuse(n.y) - ceu.slope_share.a;

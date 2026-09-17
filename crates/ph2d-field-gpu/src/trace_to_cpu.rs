@@ -65,6 +65,14 @@ impl DeviceGbuffer {
         // ⚠️ **A suavização é aplicada AQUI**, como o refinamento da CPU a aplica no publicar — ela
         // faz parte do que a oclusão entrega, e não do que ela calcula.
         sh.set_ambient(ph2d_field_render::blur_occlusion(&g, &self.ambient));
+        // ⭐⭐⭐ **E o RICOCHETE, pela mesma lei** (`docs/Render3d/08`): a suavização faz parte do que
+        // o canal ENTREGA, e não do que ele calcula.
+        //
+        // ⚠️⚠️ **Ele vem VAZIO por este caminho, e isso é um facto e não um esquecimento:** quem
+        // enche o canal é a passagem do PINTOR (ela precisa dos materiais), e este caminho é o que
+        // existe justamente para quando o pintor do dispositivo não corre. *Um canal vazio é
+        // ausência de luz — o quadro de sempre, ao bit.*
+        sh.set_bounce(ph2d_field_render::blur_bounce(&g, &self.bounce));
         // ⭐ **De que chão são os canais de fundo** — sem isto o pintor da CPU leria «não há chão» e
         // o quadro do dispositivo sairia sem a sombra que ele acabou de calcular.
         sh.set_ground(

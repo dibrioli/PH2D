@@ -45,6 +45,13 @@ pub struct DeviceGbuffer {
     pub lamps: usize,
     /// ⭐ Quanto do céu chega a cada pixel — a oclusão.
     pub ambient: Vec<f32>,
+    /// ⭐⭐⭐ **A luz que a CENA devolve a cada pixel** — o ricochete (`docs/Render3d/08`).
+    ///
+    /// ⚠️⚠️ **Por ESTE caminho ele vem a ZERO, e é um facto e não um esquecimento:** quem enche o
+    /// canal é a passagem do PINTOR, que precisa da tabela de materiais — e este caminho existe
+    /// justamente para quando o pintor do dispositivo não corre. *Zero é ausência de luz, que é o
+    /// quadro de sempre ao bit.*
+    pub bounce: Vec<[f32; 3]>,
     /// ⭐ **O chão com que este quadro foi marchado** — ver [`MarchSetup::ground`]. Ele viaja no
     /// G-buffer porque é ele que diz ao pintor da CPU (o [`DeviceGbuffer::to_cpu`]) de que altura
     /// são os canais de fundo que vêm no [`Self::shadow`].
@@ -424,10 +431,12 @@ fn marcha_com(
     // das esculturas, depois a lei do dono. Cada emissor recebe a origem dele **desta** aritmética,
     // e é por isso que ela vive aqui e não em três sítios.
     let escultura = crate::sculpt::emit(sculpts, fita.consts.len());
-    let molde_com_esculturas = molde().replace(
-        "{ESCULTURAS}",
-        escultura.as_ref().map_or("", |e| e.source.as_str()),
-    );
+    let esculturas = escultura.as_ref().map_or("", |e| e.source.as_str());
+    let molde_com_esculturas = molde().replace("{ESCULTURAS}", esculturas);
+    // ⭐ **As mesmas leis, para o pintor** (`docs/Render3d/08` §12) — ele marcha o ricochete, e
+    // marchar é isto. ⚠️ Elas saem da MESMA substituição: uma segunda chamada ao
+    // `crate::sculpt::emit` daria outra aritmética de origens para o mesmo `k`.
+    let leis_com_esculturas = crate::trace_wgsl::leis().replace("{ESCULTURAS}", esculturas);
     let p_centro = cache
         .entry_with_layout(
             device,
@@ -489,8 +498,10 @@ fn marcha_com(
     // empréstimo do cache impediria a compilação do pipeline mais abaixo de lhe tocar.
     let b_grades = cache.grades(device, sculpts).clone();
     let b_centro = cria("centro", n * 16);
-    // ⭐ O passo é `1 + n_lamps`: o céu mais uma visibilidade por lâmpada.
-    let passo_luz = u64::from(setup.n_lamps) + 1;
+    // ⭐ O passo é `1 + n_lamps + 3`: o céu, uma visibilidade por lâmpada e o RICOCHETE
+    // (`docs/Render3d/08`). ⚠️ Ele é a mesma conta do `passo_da_luz()` do WGSL, e as duas têm de
+    // andar juntas: um buffer curto faz o shader escrever fora e a `wgpu` recusa o despacho.
+    let passo_luz = u64::from(setup.n_lamps) + 1 + 3;
     let b_luz = cria("luz", n * passo_luz * 4);
     // ⛔⛔ **O TECTO da lista de bordas era `6 %` e ESTOUROU** — o gate da paridade apanhou-o: na
     // ROSCA a GPU devolveu exactamente `1 296` bordas, que **é** o tecto, contra `1 745` da CPU, e
@@ -592,6 +603,8 @@ fn marcha_com(
                 pintor,
                 lei_do_dono.as_ref(),
                 &crate::paint::Alvos {
+                    leis: &leis_com_esculturas,
+                    fita,
                     bgl: &bgl,
                     grades: &b_grades,
                     setup: &ub,
@@ -641,7 +654,7 @@ fn marcha_com(
         None
     };
 
-    let (t, normal, shadow, ambient, edges) =
+    let (t, normal, shadow, ambient, bounce, edges) =
         lida(&d_centro, &d_luz, passo_luz, usadas, d_borda.as_deref());
 
     drop(d_centro);
@@ -655,9 +668,14 @@ fn marcha_com(
         t,
         normal,
         shadow,
+        // ⚠️ **Menos os TRÊS do ricochete** — o passo deixou de ser `1 + n_lamps`
+        // (`docs/Render3d/08`), e sem este desconto os canais dele leriam-se como lâmpadas
+        // fantasma. *O modo de falha foi o bom: um índice fora do `shadow`, alto e no primeiro
+        // quadro.*
         #[allow(clippy::cast_possible_truncation)]
-        lamps: (passo_luz - 1) as usize,
+        lamps: (passo_luz - 1 - 3) as usize,
         ambient,
+        bounce,
         ground: setup.ground,
         edges,
     })

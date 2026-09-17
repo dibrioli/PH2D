@@ -11,7 +11,14 @@ use crate::trace::DeviceEdge;
 /// ⚠️ **O passo do `luz` é `1 + n_lamps`**: o céu à frente, as lâmpadas a seguir — e o `shadow`
 /// devolvido sai por BLOCO de lâmpada, que é o que o `Shadows::set_lamp` recebe.
 /// O que uma leitura devolve: `t`, a normal, a sombra por lâmpada, o céu e as bordas.
-pub(super) type Lido = (Vec<f32>, Vec<[f32; 3]>, Vec<f32>, Vec<f32>, Vec<DeviceEdge>);
+pub(super) type Lido = (
+    Vec<f32>,
+    Vec<[f32; 3]>,
+    Vec<f32>,
+    Vec<f32>,
+    Vec<[f32; 3]>,
+    Vec<DeviceEdge>,
+);
 
 pub(super) fn lida(
     d_centro: &[u8],
@@ -27,17 +34,30 @@ pub(super) fn lida(
         t.push(f4(q, 0));
         normal.push([f4(q, 4), f4(q, 8), f4(q, 12)]);
     }
-    // ⭐ O passo do `luz` é `1 + n_lamps`: o céu à frente, as lâmpadas a seguir.
+    // ⭐ O passo do `luz` é `1 + n_lamps + 3`: o céu à frente, as lâmpadas a seguir, e os TRÊS do
+    // RICOCHETE no fim (`docs/Render3d/08`).
+    //
+    // ⚠️⚠️ **As lâmpadas CONTAM-SE tirando os três do fim, e não são `passo - 1`** — era assim
+    // antes do ricochete, e uma leitura que não descontasse leria os canais dele como três
+    // lâmpadas fantasma, **em silêncio**.
     #[allow(clippy::cast_possible_truncation)]
     let passo = passo_luz as usize;
+    let lamps = passo - 1 - 3;
     let cruas = d_luz.as_chunks::<4>().0;
     let mut ambient = Vec::with_capacity(t.len());
-    let mut shadow = vec![1.0f32; t.len() * (passo - 1)];
+    let mut bounce = Vec::with_capacity(t.len());
+    let mut shadow = vec![1.0f32; t.len() * lamps];
     for (i, bloco) in cruas.chunks_exact(passo).enumerate() {
         ambient.push(f32::from_le_bytes(bloco[0]));
-        for l in 1..passo {
-            shadow[(l - 1) * t.len() + i] = f32::from_le_bytes(bloco[l]);
+        for l in 0..lamps {
+            shadow[l * t.len() + i] = f32::from_le_bytes(bloco[1 + l]);
         }
+        let b = 1 + lamps;
+        bounce.push([
+            f32::from_le_bytes(bloco[b]),
+            f32::from_le_bytes(bloco[b + 1]),
+            f32::from_le_bytes(bloco[b + 2]),
+        ]);
     }
     let vazio: [u8; 0] = [];
     let quads = d_borda.unwrap_or(&vazio).as_chunks::<16>().0;
@@ -63,5 +83,5 @@ pub(super) fn lida(
     // ⚠️ **Ordenada por pixel**, como a `Gbuffer::edges` da CPU promete — a ordem da lista aqui é
     // a de chegada dos workgroups, que é arbitrária.
     edges.sort_by_key(|e| e.pixel);
-    (t, normal, shadow, ambient, edges)
+    (t, normal, shadow, ambient, bounce, edges)
 }

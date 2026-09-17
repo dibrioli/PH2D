@@ -14,8 +14,8 @@ fn avalia(@builtin(global_invocation_id) g: vec3<u32>) {
     let a = entrada[i];
     // `a.xyz` é a direcção; `a.w` é o `alpha`. O `shrink` chega a `1` — o que este gate mede é a
     // TABELA e a rampa, e o encolhimento tem a lei dele na CPU (ver o `ENV_SLOT`).
-    saida[i * 2u + 0u] = vec4<f32>(env_radiance(a.xyz, a.w, 1.0), 0.0);
-    saida[i * 2u + 1u] = vec4<f32>(env_irradiance(a.xyz), 0.0);
+    saida[i * 2u + 0u] = vec4<f32>(ceu_radiance(a.xyz, a.w, 1.0), 0.0);
+    saida[i * 2u + 1u] = vec4<f32>(ceu_irradiance(a.xyz), 0.0);
 }
 "#;
 

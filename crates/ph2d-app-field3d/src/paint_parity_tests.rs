@@ -15,9 +15,9 @@
 use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Xform};
 use ph2d_material::{OpenPbr, Surface};
 
-pub(super) const W: u32 = 192;
-pub(super) const H: u32 = 108;
-pub(super) const FUNDO: [u8; 4] = [0, 0, 0, 0];
+pub(crate) const W: u32 = 192;
+pub(crate) const H: u32 = 108;
+pub(crate) const FUNDO: [u8; 4] = [0, 0, 0, 0];
 
 fn combina(op: Op, filhos: Vec<NodeId>) -> Node {
     Node::new(
@@ -33,7 +33,7 @@ fn combina(op: Op, filhos: Vec<NodeId>) -> Node {
 ///
 /// ⚠️ **Duas folhas não bastavam:** com duas, a rede do filtro de bolas (*«ninguém contém o
 /// ponto»*) e o filtro a sério dão a mesma resposta, e o ramo que a terceira exercita nunca corre.
-pub(super) fn fixtura() -> (FieldDoc, Vec<FieldDoc>, Vec<Surface>) {
+pub(crate) fn fixtura() -> (FieldDoc, Vec<FieldDoc>, Vec<Surface>) {
     let folhas = [
         ph2d_field_eval::leaf(
             Primitive::Sphere { radius: 0.45 },
@@ -105,7 +105,7 @@ fn lampada(cam: &ph2d_field_render::Orbit) -> ph2d_field_render::PointLamp {
 }
 
 /// Os DOIS caminhos sobre a MESMA marcha do dispositivo — ver a nota do módulo.
-pub(super) fn dois_caminhos(
+pub(crate) fn dois_caminhos(
     surfaces: &ph2d_field_render::Surfaces<'_>,
     doc: &FieldDoc,
     luz: &[ph2d_field_render::PointLamp],
@@ -114,7 +114,7 @@ pub(super) fn dois_caminhos(
 }
 
 /// O mesmo, com o CHÃO que só recebe — ver `docs/Render3d/07`.
-pub(super) fn dois_caminhos_com(
+pub(crate) fn dois_caminhos_com(
     surfaces: &ph2d_field_render::Surfaces<'_>,
     doc: &FieldDoc,
     luz: &[ph2d_field_render::PointLamp],
@@ -126,7 +126,26 @@ pub(super) fn dois_caminhos_com(
     let olhar = ph2d_view_transform::Look::default();
     let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
 
-    let (g, sh) = crate::gpu_frame::march(t, doc, &reg, &cam, &mundos, chao, W, H, true)?;
+    let (g, mut sh) = crate::gpu_frame::march(t, doc, &reg, &cam, &mundos, chao, W, H, true)?;
+    // ⭐⭐⭐ **O RICOCHETE entra na REFERÊNCIA de CPU** (`docs/Render3d/08` §12), porque o pintor do
+    // dispositivo o calcula.
+    //
+    // ⚠️⚠️ **Ele NÃO vem do `march`, e não podia vir:** por aquele caminho o canal chega VAZIO —
+    // quem o enche é a passagem do pintor, que precisa dos materiais. ⇒ a referência calcula-o com
+    // a lei da CPU (`bounce_pass`) e suaviza-o com a MESMA porta que o dispositivo usa. *É esta
+    // linha que faz o gate comparar dois motores e não dois caminhos diferentes.*
+    sh.set_bounce(ph2d_field_render::blur_bounce(
+        &g,
+        &ph2d_field_render::bounce_pass(
+            doc,
+            &reg,
+            &cam,
+            &g,
+            surfaces,
+            luz,
+            ph2d_field_render::OCCLUSION_PASSES,
+        ),
+    ));
     let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
     let cpu = ph2d_field_render::shade_render(
         &g,

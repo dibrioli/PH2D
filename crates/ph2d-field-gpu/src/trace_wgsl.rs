@@ -42,8 +42,16 @@ struct Setup {
 // mais barramento do que a imagem inteira que este passe veio poupar.
 @group(0) @binding(6) var<storage, read> grades: array<f32>;
 
-/// O passo de [`luz`] — o céu mais uma visibilidade por lâmpada.
-fn passo_da_luz() -> u32 { return 1u + s.n_lamps; }
+/// O passo de [`luz`] — o céu, uma visibilidade por lâmpada, e os TRÊS do ricochete.
+///
+/// ⭐⭐⭐ **O ricochete mora AQUI e não num canal ao lado** (`docs/Render3d/08`), e a razão é a que o
+/// `ph2d_field_render::Shadows` já escreve: *«é a MESMA pergunta que as lâmpadas respondem —
+/// quanto desta fonte chega a este pixel? Um segundo canal ao lado faria o pintor perguntar duas
+/// vezes a mesma coisa, e é assim que dois canais divergem.»*
+fn passo_da_luz() -> u32 { return 1u + s.n_lamps + 3u; }
+
+/// Onde começam os três `f32` do ricochete deste pixel.
+fn base_do_ricochete(i: u32) -> u32 { return i * passo_da_luz() + 1u + s.n_lamps; }
 
 // ⚠️ **A MESMA lei de marcha da CPU**, e ela é uma função porque as quatro amostras do
 // anti-serrilhado a repetem: uma segunda cópia seria a segunda resposta à mesma pergunta.
@@ -78,19 +86,28 @@ fn ray_at_plane(uv: vec2<f32>) -> Raio {
 }";
 
 /// O que só a marcha tem: a fita da peça, a marcha, a visibilidade e as duas passagens.
-pub(crate) const MARCHA: &str = r"
+pub(crate) const LEIS: &str = r"
 {ESCULTURAS}
 {FIELD}
 
 // Devolve `vec4(t, normal em VISTA)`, com `t < 0` quando não acerta.
+//
+// ⚠️ **O alcance é ARGUMENTO desde o ricochete** (`docs/Render3d/08`): um raio de câmera anda até
+// `s.t_max` e um raio de hemisfério anda até sair da bola que contém a peça. *Uma segunda marcha
+// para a segunda pergunta seria a segunda resposta a «onde este raio para?», que é precisamente o
+// que a nota do topo do `trace` proíbe.*
 fn marcha(r: Raio) -> vec4<f32> {
+    return marcha_ate(r, s.t_max);
+}
+
+fn marcha_ate(r: Raio, t_max: f32) -> vec4<f32> {
     var t = 0.0;
     var acertou = false;
     for (var n: u32 = 0u; n < s.budget; n = n + 1u) {
         let d = field(r.o + r.d * t);
         if (d < s.hit_eps) { acertou = true; break; }
         t = t + d * s.step;
-        if (t >= s.t_max) { break; }
+        if (t >= t_max) { break; }
     }
     if (!acertou) { return vec4<f32>(-1.0, 0.0, 0.0, 0.0); }
     let p = r.o + r.d * t;
@@ -170,7 +187,16 @@ fn ceu_do_chao(q: vec3<f32>) -> f32 {
     }
     return clamp(1.0 - {CHAO_FORCA} * (soma / soma_w), 0.0, 1.0);
 }
+";
 
+/// ⭐⭐⭐ **OS DOIS KERNELS DA MARCHA** — o que só o traçado despacha.
+///
+/// ⚠️⚠️ **Eles saíram das [`LEIS`] quando o pintor passou a precisar das leis** (`docs/Render3d/08`
+/// §12): o ricochete marcha a partir da superfície, logo o passe que PINTA precisa do campo, da
+/// marcha e da visibilidade — e **não** precisa de declarar outra vez as duas entradas que escrevem
+/// no `centro`, na `luz` e na lista de bordas. *Um segundo ponto de entrada num módulo que ninguém
+/// despacha é código que não se apaga porque compila.*
+pub(crate) const KERNELS: &str = r"
 @compute @workgroup_size(8, 8, 1)
 fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
     if (g.x >= s.w || g.y >= s.h) { return; }
@@ -180,9 +206,14 @@ fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
     centro[i] = c;
     let base = i * passo_da_luz();
     if (c.x < 0.0) {
-        // ⚠️ Um pixel que não acerta recebe **luz inteira** em todos os canais — é o que a CPU
+        // ⚠️ Um pixel que não acerta recebe **luz inteira** nos canais de SOMBRA — é o que a CPU
         // devolve (`vis` nasce a `1.0` e o laço salta quem não acerta).
-        for (var l: u32 = 0u; l < passo_da_luz(); l = l + 1u) { luz[base + l] = 1.0; }
+        //
+        // ⛔⛔ **Mas NÃO no ricochete, e a lei é a OPOSTA:** uma sombra que não foi calculada é
+        // *ausência de sombra* (`1`); uma luz que não foi calculada é **ausência de luz** (`0`).
+        // *Inventar luz é a única das duas que acende o que devia estar escuro.*
+        for (var l: u32 = 0u; l <= s.n_lamps; l = l + 1u) { luz[base + l] = 1.0; }
+        for (var c: u32 = 0u; c < 3u; c = c + 1u) { luz[base_do_ricochete(i) + c] = 0.0; }
         // ⭐⭐⭐ **O CHÃO QUE SÓ RECEBE**: o que este pixel mostra é o chão, e os canais passam a dizer
         // quanto de cada fonte chega A ELE. Ver `docs/Render3d/07`.
         let q = chao_em(r);
@@ -226,6 +257,11 @@ fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
         }
         luz[base + 1u + l] = sombra;
     }
+
+    // ⚠️ **O ricochete nasce a ZERO e é o passe do PINTOR que o enche** — ele precisa dos
+    // materiais, que vivem no grupo `1` daquele passe. Sem esse passe o canal fica vazio, e um
+    // canal vazio é o quadro de sempre **ao bit**.
+    for (var c: u32 = 0u; c < 3u; c = c + 1u) { luz[base_do_ricochete(i) + c] = 0.0; }
 
     // ⭐⭐⭐ **A OCLUSÃO POR CONES** — `ao_rays` direcções FIXAS de mundo, pesadas pelo cosseno.
     //
@@ -288,31 +324,40 @@ fn difere(a: u32, b: u32) -> bool {
     return dot(ca.yzw, cb.yzw) < s.edge_cos;
 }";
 
-/// ⭐ **O molde do traçado, inteiro** — [`COMUM`] mais [`MARCHA`], na ordem em que o WGSL os lê.
+/// ⭐ **O molde do traçado, inteiro** — [`COMUM`] mais as [`leis`] mais os [`KERNELS`].
 ///
 /// ⚠️ Ele é uma função e não uma constante porque o `concat!` só junta LITERAIS. O custo é uma
 /// alocação por quadro, ao lado do `replace` do `{FIELD}` que o cache de pipelines já faz.
 pub(crate) fn molde() -> String {
+    format!("{}{}{KERNELS}", comum(), leis())
+}
+
+/// ⭐⭐⭐ **AS LEIS DA MARCHA, sem os kernels** — o campo, a marcha, a visibilidade, o conjunto de
+/// cones e as cercas.
+///
+/// ⚠️ **Ela é `pub(crate)` porque o passe que PINTA passou a precisar delas** (`docs/Render3d/08`
+/// §12): o ricochete marcha a partir da superfície, e marchar é isto. *O pintor recebe as leis e
+/// não os kernels — declarar outra vez as duas entradas que escrevem no `centro` e na `luz` daria
+/// um módulo com pontos de entrada que ninguém despacha.*
+pub(crate) fn leis() -> String {
     // ⚠️ **As constantes do chão são LIDAS do ficheiro que as declara** — transcritas aqui, elas
     // divergiriam no dia em que a varredura que as ajustou fosse refeita.
-    let marcha = MARCHA
-        .replace(
-            "{CHAO_N}",
-            &ph2d_field_render::GROUND_SKY_SAMPLES.to_string(),
-        )
-        .replace(
-            "{CHAO_ESPALHA}",
-            &numero(ph2d_field_render::GROUND_SKY_SPREAD),
-        )
-        .replace(
-            "{CHAO_QUEDA}",
-            &numero(ph2d_field_render::GROUND_SKY_FALLOFF),
-        )
-        .replace(
-            "{CHAO_FORCA}",
-            &numero(ph2d_field_render::GROUND_SKY_STRENGTH),
-        );
-    format!("{}{marcha}", comum())
+    LEIS.replace(
+        "{CHAO_N}",
+        &ph2d_field_render::GROUND_SKY_SAMPLES.to_string(),
+    )
+    .replace(
+        "{CHAO_ESPALHA}",
+        &numero(ph2d_field_render::GROUND_SKY_SPREAD),
+    )
+    .replace(
+        "{CHAO_QUEDA}",
+        &numero(ph2d_field_render::GROUND_SKY_FALLOFF),
+    )
+    .replace(
+        "{CHAO_FORCA}",
+        &numero(ph2d_field_render::GROUND_SKY_STRENGTH),
+    )
 }
 
 /// Um `f32` que o WGSL leia como `f32` — o irmão do `paint::formata`, e pela mesma razão.

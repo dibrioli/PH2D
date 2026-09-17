@@ -144,3 +144,7 @@ mod shell_frame_tests;
 /// A costura do quadro ASSENTE: o refinamento do hemisfério recebe a cena (`docs/Render3d/08`).
 #[cfg(test)]
 mod render_bounce_seam_tests;
+
+/// O ricochete NO DISPOSITIVO: que ele chega à imagem, e quanto custa (`docs/Render3d/08` §12).
+#[cfg(test)]
+mod render_bounce_gpu_tests;

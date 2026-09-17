@@ -98,8 +98,17 @@ pub(crate) fn announce() {
          [sculpt3d]    (8) Escolha `Squash / Stretch` e arraste AO LONGO dela.\n\
          [sculpt3d]        -> A orelha ESTICA e AFINA junto (ou encolhe e engorda): o volume\n\
          [sculpt3d]           dela mantem-se, como massa a ser puxada.\n\
-         [sculpt3d]        ⚠️ Estes tres leem o arrasto AO LONGO do osso: arrastar de\n\
-         [sculpt3d]           travessao move pouco, e isso e' a lei, nao um defeito.\n\
+         [sculpt3d]        ⚠️ `Scale` e `Squash / Stretch` leem so' o arrasto AO LONGO do\n\
+         [sculpt3d]           osso: arrastar de travessao move pouco. (O `Translate` nao --\n\
+         [sculpt3d]           esse usa o movimento inteiro.)\n\
+         [sculpt3d]        AGORA a escolha e' SUA: com `Scale` ou `Squash / Stretch` na mao\n\
+         [sculpt3d]        aparece a linha `Drag Reads`, com dois botoes.\n\
+         [sculpt3d]        -> `Along Bone` e' a lei acima, e e' a de fabrica.\n\
+         [sculpt3d]        -> Carregue em `Full Drag` e arraste DE TRAVESSAO outra vez: agora\n\
+         [sculpt3d]           o movimento de lado conta tambem, e a orelha responde muito\n\
+         [sculpt3d]           mais ao mesmo gesto.\n\
+         [sculpt3d]        -> Arrastando AO LONGO do osso as duas leis fazem o mesmo -- o\n\
+         [sculpt3d]           botao so' muda alguma coisa quando a mao sai do eixo.\n\
          [sculpt3d]    (9) Escolha `Twist` e arraste na HORIZONTAL.\n\
          [sculpt3d]        -> Agora ela TORCE sobre o proprio eixo, em vez de dobrar.\n\
          [sculpt3d]   (10) Ctrl+Z e volte a `Rotate`. No painel, o `Auto-Smooth` so' aparece\n\
@@ -120,8 +129,11 @@ pub(crate) fn announce() {
          [sculpt3d]    NADA; se o corpo da bola se deformar junto com ela; se desmarcar\n\
          [sculpt3d]    `Pin far end` nao mudar nada; se `Scale without rotating` nao tirar a\n\
          [sculpt3d]    rotacao do passo (6); se algum dos CINCO botoes de\n\
-         [sculpt3d]    `Deformation` nao mudar o gesto ao ser carregado; ou se o\n\
-         [sculpt3d]    `Auto-Smooth` do passo (10) nao mudar a superficie.\n\
+         [sculpt3d]    `Deformation` nao mudar o gesto ao ser carregado; se a linha\n\
+         [sculpt3d]    `Drag Reads` NAO aparecer com `Scale` ou `Squash / Stretch` na mao,\n\
+         [sculpt3d]    ou APARECER com `Rotate`, `Twist` ou `Translate`; se `Full Drag` nao\n\
+         [sculpt3d]    mudar nada num arrasto de travessao; ou se o `Auto-Smooth` do passo\n\
+         [sculpt3d]    (10) nao mudar a superficie.\n\
          [sculpt3d]\n\
          [sculpt3d]    (Se em vez do osso aparecer so' uma BOLINHA VERMELHA sobre o cursor, e'\n\
          [sculpt3d]     um aviso: ali nao ha' dobradica nenhuma e arrastar nao move nada.\n\

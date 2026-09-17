@@ -240,11 +240,27 @@ fn the_material_rows_take_their_range_from_the_column_ceiling() {
         (0.0, 0.0),
         "as duas comecam em zero"
     );
-    // ⚠️ E o CONTROLO: as duas faixas são DIFERENTES, senão este gate passaria com um tecto só.
+    // ⚠️ E o CONTROLO: as faixas NÃO são um tecto só — senão este gate passaria com todas as linhas
+    // a lerem a mesma constante.
+    //
+    // ⛔⛔ **A 1.ª redacção dizia `salto.max > atrito.max` («o dono pediu o dobro SÓ no salto»), e
+    // ficou VERMELHA por uma ORDEM DO DONO:** o 8.º report de 2026-09-15 mandou o salto voltar a
+    // `1` (doc 111 §8.1, `BOUNCE_MAX` `2,0 → 1,0`), revertendo a ordem dele próprio de 13/09 — e o
+    // controlo passou a afirmar o contrário da decisão. *Um controlo escrito sobre DOIS valores
+    // morre quando um deles muda; o que ele queria dizer é que as faixas vêm de tectos DISTINTOS da
+    // coluna*, e o rolamento (`1,5`, medido no ponto em que a curva satura) di-lo sem depender de
+    // uma escolha de produto.
+    let rolamento = de(param::ROLLING);
+    assert_eq!(
+        rolamento.max,
+        ph2d_nodegraph::attr::ROLLING_MAX,
+        "a faixa do rolamento e' a da coluna"
+    );
     assert!(
-        salto.max > atrito.max,
-        "o dono pediu o dobro SO' no salto: {} contra {}",
+        rolamento.max > salto.max && rolamento.max > atrito.max,
+        "as tres faixas nao podem ser o mesmo tecto: salto {} · atrito {} · rolamento {}",
         salto.max,
-        atrito.max
+        atrito.max,
+        rolamento.max
     );
 }

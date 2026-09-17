@@ -18,6 +18,36 @@ use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamUnit, ParamUnitDecl, Para
 /// row past `size` is gated by [`super::param_gates::PARAM_GATES`], so the panel shows ONLY the
 /// controls the current `kind` uses.
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
+    // ⚠️⚠️ **A ordem ABRE pela FORMA** (ciclo 8, W2 — doc 113 §4). Até 2026-09-16 a lista
+    // começava em `Own Fill`, e o comentário ao lado dela dizia a lei que ela violava: *«de que
+    // cor é e para que lado aponta são o que se pergunta de uma forma DEPOIS de escolher qual ela
+    // é»*. O cartão de uma FONTE abre com o que ela produz.
+    ParamUiHint {
+        param: param::KIND,
+        label: "Shape",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Enum {
+            labels: KIND_LABELS,
+        },
+    },
+    ParamUiHint {
+        param: param::SIZE,
+        label: "Size",
+        min: 0.05,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::ROTATION,
+        label: "Rotation",
+        min: -180.0,
+        max: 180.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
+    },
     // **A COR e a ROTAÇÃO próprias** (doc 89 folha 14, as duas últimas células) — no topo, com
     // o traço, porque *de que cor é* e *para que lado aponta* são o que se pergunta de uma
     // forma depois de escolher qual ela é.
@@ -39,14 +69,6 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Color {
             channels: [param::FILL_R, param::FILL_G, param::FILL_B, param::FILL_A],
         },
-    },
-    ParamUiHint {
-        param: param::ROTATION,
-        label: "Rotation",
-        min: -180.0,
-        max: 180.0,
-        step: 1.0,
-        widget: ParamWidget::Angle,
     },
     // **O TRAÇO** (doc 89 folha 14, P0) — o controle que separa *forma* de
     // *silhueta*. `0` = sem traço ⇒ a forma que sempre shipou.
@@ -76,24 +98,6 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
                 param::STROKE_A,
             ],
         },
-    },
-    ParamUiHint {
-        param: param::KIND,
-        label: "Shape",
-        min: 0.0,
-        max: 0.0,
-        step: 0.0,
-        widget: ParamWidget::Enum {
-            labels: KIND_LABELS,
-        },
-    },
-    ParamUiHint {
-        param: param::SIZE,
-        label: "Size",
-        min: 0.05,
-        max: 10.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
     },
     ParamUiHint {
         param: param::ASPECT,
@@ -387,6 +391,12 @@ pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
 /// **A secção «Collision»** — os do colisor juntos, depois de tudo o que desenha a forma (os params
 /// sem grupo vêm antes de toda secção, que é onde os essenciais moram).
 pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
+    // ⭐ **A APARÊNCIA junta, depois da forma** (ciclo 8, W2): o que a forma É vem primeiro (sem
+    // secção, que é onde os essenciais moram), e *de que cor* é outra pergunta.
+    ParamGroup::new(param::FILL, "Look"),
+    ParamGroup::new(param::FILL_R, "Look"),
+    ParamGroup::new(param::STROKE_WIDTH, "Look"),
+    ParamGroup::new(param::STROKE_R, "Look"),
     ParamGroup::new(param::COLLIDE, "Collision"),
     ParamGroup::new(param::COLLIDER_SHAPE, "Collision"),
     ParamGroup::new(param::COLLIDER_WIDTH, "Collision"),

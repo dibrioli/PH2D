@@ -107,10 +107,41 @@ membranas antes, e a `motion.grid` do mesmo tamanho como controlo) — a correr 
 
 ---
 
+## §4 — ✅ W2 (a primeira metade): o cartão do `Shape` abre pela FORMA
+
+O censo dos cartões (§2) achou **uma** ordem errada no grupo, e o comentário ao lado dela já dizia a
+lei que ela violava — *«de que cor é e para que lado aponta são o que se pergunta de uma forma
+DEPOIS de escolher qual ela é»* — com a lista a começar em `Own Fill`:
+
+```text
+  antes  | Own Fill · Rotation · Stroke Width · Shape · Size · Corner Radius · Sweep · Start · Inner · Collide
+  depois | Shape · Size · Rotation · Corner Radius · Sweep · Start · Inner · [Look] Own Fill · Stroke Width · Collide
+```
+
+⇒ os dois essenciais (`Shape`, `Size`) abrem a lista, a `Rotation` fica com eles (ela é POSE, não
+aparência) e as quatro linhas de aparência (`Own Fill` · `Fill` · `Stroke Width` · `Stroke`) passam a
+uma secção **`Look`** — o mesmo molde do ciclo 7. ⚠️ Os outros cinco cartões do grupo já abrem pelo
+que produzem (`Object` · `Table File` · `Text` · e as duas secções do `L-System`), e ficam como estão.
+
+### ⛔⛔ E a mudança destapou um VERMELHO PRÉ-EXISTENTE — de uma ORDEM DO DONO
+
+O `the_material_rows_take_their_range_from_the_column_ceiling` (crate da forma) reprovava com
+*«o dono pediu o dobro SÓ no salto: 1 contra 1»*: o controlo dele comparava **dois** tectos
+(`BOUNCE_MAX > FRICTION_MAX`), e o 8.º report de 2026-09-15 mandou o salto **voltar a `1`**
+([doc 111 §8.1](111_o_motor_de_contacto_com_memoria.md)), revertendo a ordem do próprio dono de
+13/09. *Um controlo escrito sobre dois valores morre quando um deles muda por decisão de produto.*
+⇒ ele passa a exigir tectos **distintos** pela linha do rolamento (`1,5`, medido no ponto em que a
+curva satura), que não depende de escolha nenhuma.
+
+⚠️ **Ele estava vermelho na árvore desde 15/09 e nenhum portão desta linha o via** — a crate da
+forma não é tocada por um ciclo há semanas, e o fecho de uma linha corre as crates que ela EDITA.
+
+---
+
 ## §5 — A fila do ciclo
 
 1. ⏳ **W1 — a costura** — o preço da §3.1 decide a cura.
-2. ⏳ **W2 — o cartão e o alcance.**
+2. 🟡 **W2 — o cartão e o alcance** — o cartão do `Shape` feito (§4); o censo do alcance é gate do catálogo inteiro e está verde.
 3. ⏳ **W3 — o poder que falta** — a partir das recusas das folhas 14 e 01 e do doc 96.
 4. ⏳ **W4 — a MEDIÇÃO.**
 5. ⏳ **W5 — a cena e o TUTORIAL** *«De onde vêm as coisas»* — o smoke do dono.

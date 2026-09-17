@@ -51,6 +51,7 @@
 - ⛔ [Gesto escrito em DUAS metades aceita a variante nova em SÓ UMA — silêncio absoluto, e a fixtura que chama a porta interna fica verde](feedback_a_gesture_written_in_two_halves_accepts_a_new_variant_in_only_one.md)
 - ⭐ [**Campo IMPLÍCITO (SDF) e réguas de FORMA** — a família inteira (14): união coplanar incha · `max` cru = aresta viva · o semiespaço INFINITO ganha o `min` dentro da peça · o gate no REPRESENTANTE](reference_topic_implicit_field_laws.md)
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO — a variável da varredura é parte da correcção (16,3 % → 0,0000 %)](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
+- ⛔⛔ [O painel À FRENTE não é propriedade do código — vem de `~/.ph2d/layout.txt`, fora do repo (e outra árvore a correr reescreve-o); um `bump` de z no quadro do arranque fica por baixo do que o `reconcile_z` acrescenta](feedback_the_front_panel_is_not_a_property_of_the_code.md)
 - 📚 [Comunicação & decisão: mais 50 lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 
 ## Git & colisão multi-agente

@@ -25,6 +25,7 @@ impl crate::App {
             sim,
             camera,
             vec_scene,
+            tags,
             ..
         } = FrameGfx::of(gfx);
         // ── A SIMETRIA de DESENHO (plano 25 W6.3) ────────────────────────────
@@ -103,6 +104,16 @@ impl crate::App {
         // então fundir é seguro; começa do offset (em cena típica dos outros, vazio ⇒ clone
         // trivial) e junta os demais por cima.
         let mut vec_live = self.offset_live.live().clone();
+        // ⭐⭐⭐ **O 10.º produtor: o texto que o JOGO muda** (TOP-20 #20). Ele entra AQUI, entre os
+        // que estendem o mapa, porque um rótulo de HUD é uma forma como as outras — e sai vazio na
+        // cena típica (só um `UiLabel` com fonte derivada e número diferente do autorado o enche).
+        // ⛔ O documento não é tocado: ver o cabeçalho do [`crate::hud_label_live`].
+        vec_live.extend(crate::hud_label_live::cook(
+            sim,
+            vec_scene,
+            &self.vec.entities,
+            tags,
+        ));
         vec_live.extend(
             self.pattern_live
                 .live()

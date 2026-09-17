@@ -228,6 +228,7 @@ mod hero_intents;
 /// ⭐⭐⭐ **AGRUPAR / DESAGRUPAR pela Hierarquia** — o alcance de um verbo que já existia em `Ctrl+G`
 /// e que nenhum menu, botão ou rótulo do app nomeava.
 mod hier_group;
+mod hud_label_live;
 mod hover_highlight;
 /// `Export Image…` — a porta dos 16 exportadores (plano `docs/Sprite_projeto/18` W9).
 mod image_export;
@@ -817,6 +818,7 @@ impl App {
             audio_sel_drag: None,
             #[cfg(feature = "panel-audio-editor")]
             audio_scrub_drag: false,
+            hud_press: None,
             input: InputState::new(),
             input_actions: ph2d_input::ActionState::new(),
             pan_anchor: None,

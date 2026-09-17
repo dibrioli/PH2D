@@ -68,6 +68,7 @@ mod despacho_clique_flip;
 mod despacho_clique_gizmo;
 mod despacho_clique_largar;
 mod despacho_clique_pick;
+mod despacho_clique_hud;
 mod despacho_clique_prologo;
 mod despacho_clique_reclamantes;
 mod despacho_clique_roldana;
@@ -449,6 +450,12 @@ impl App {
             })
             .unwrap_or(false);
         if self.ramo_preview_e_fechos(kind, mapped_button, evt, menu_open_before) {
+            return;
+        }
+        // ⭐⭐⭐ **O BOTÃO DO HUD** (TOP-20 #20) — cedo de propósito: durante a CORRIDA um clique num
+        // botão é do jogo, não do editor, e deixá-lo cair na selecção tornaria o menu inalcançável.
+        // ⛔ Fora da corrida este ramo devolve `false` e a forma selecciona-se como qualquer outra.
+        if self.ramo_botao_do_hud(kind, mapped_button, on_canvas) {
             return;
         }
         if self.ramo_flip_premidos(kind, mapped_button, menu_open_before, on_canvas) {

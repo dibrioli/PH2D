@@ -253,6 +253,7 @@ mod fase_frame_profile;
 mod fase_frame_profile_report;
 /// Fase do quadro: a câmera de jogo (o herói da cena de smoke e o passe da câmera).
 mod fase_game_camera;
+mod fase_hud;
 /// Fase do quadro: a supressao do gizmo e a moldura do modelador 3D.
 mod fase_gizmo_suppression_and_field3d_frame;
 /// Fase do quadro: a receita aberta e as vistas do gizmo.

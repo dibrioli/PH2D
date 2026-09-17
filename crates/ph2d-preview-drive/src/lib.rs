@@ -114,6 +114,10 @@ pub enum Driver {
     /// não ACABOU — sem isso a `settle` promovia a pose da corrida a documento, e o rebobinar já não
     /// tinha para onde voltar.
     ScriptPose,
+    /// ⭐⭐⭐ **A pose da RAIZ de um HUD** (TOP-20 #20) — ela é reescrita a cada quadro para colar a
+    /// caixa de referência à vista da câmera do jogo, e por isso **não é documento**: sem esta
+    /// entrada, *«o HUD acompanhou a câmera»* seria um passo de `Ctrl+Z` por quadro.
+    CanvasPose,
 }
 
 /// **O FACTO que um motor escreve** — o recorte exacto do componente que é dele, e nada mais.
@@ -164,6 +168,8 @@ pub enum Driven {
     Visible(bool),
     /// ⭐ **A pose de um objecto movido por script** — ver [`Driver::ScriptPose`].
     ScriptPose(Transform),
+    /// ⭐ A pose conduzida da raiz de um HUD — ver [`Driver::CanvasPose`].
+    CanvasPose(Transform),
 }
 
 impl Driven {
@@ -179,6 +185,7 @@ impl Driven {
             Self::StagePose(_) => Driver::PrefabStage,
             Self::Visible(_) => Driver::SignalVisibility,
             Self::ScriptPose(_) => Driver::ScriptPose,
+            Self::CanvasPose(_) => Driver::CanvasPose,
         }
     }
 
@@ -219,6 +226,7 @@ impl Driven {
                 sim.world().get::<ph2d_ecs::Visibility>(entity)?.hidden,
             )),
             Driver::ScriptPose => Some(Self::ScriptPose(*sim.world().get::<Transform>(entity)?)),
+            Driver::CanvasPose => Some(Self::CanvasPose(*sim.world().get::<Transform>(entity)?)),
         }
     }
 
@@ -296,7 +304,7 @@ impl Driven {
                     *cur = j;
                 }
             }
-            Self::StagePose(pose) | Self::ScriptPose(pose) => {
+            Self::StagePose(pose) | Self::ScriptPose(pose) | Self::CanvasPose(pose) => {
                 if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity)
                     && *t != pose
                 {

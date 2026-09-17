@@ -117,6 +117,7 @@ pub mod prefab_stage;
 pub mod projectile_smoke;
 pub mod scene_ctx;
 /// ⭐ TOP-20 #16 — a ponte dos scripts do artista (o quadro, o ledger e o rebobinar).
+pub mod hud_bridge;
 pub mod script_bridge;
 /// ⭐ TOP-20 #16 — a secção SCRIPT do Inspector: o instantâneo e o dreno.
 pub mod script_inspector;

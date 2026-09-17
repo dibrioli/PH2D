@@ -191,6 +191,14 @@ pub enum SignalOrigin {
         /// Quem acabou — a entidade que carrega o emissor.
         source: EntityBits,
     },
+    /// ⭐⭐⭐ **O jogador CARREGOU num botão do HUD** (TOP-20 #20).
+    ///
+    /// ⚠️ **Publicado ao LARGAR, e só se o carregar e o largar caírem os dois dentro** — é a lei
+    /// medida no oráculo (Godot 4.7.2, bloco L3 de `godot_hud_probe.gd`), e não uma escolha nossa.
+    UiButton {
+        /// Em que botão — a entidade que o carrega.
+        source: EntityBits,
+    },
 }
 
 /// Um sinal publicado neste quadro.
@@ -302,6 +310,17 @@ impl Signal {
         Self {
             name: Arc::from(name),
             origin: SignalOrigin::Particles {
+                source: EntityBits(source),
+            },
+        }
+    }
+
+    /// **O jogador carregou num botão do HUD** ([`SignalOrigin::UiButton`]).
+    #[must_use]
+    pub fn from_ui_button(name: &str, source: u64) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::UiButton {
                 source: EntityBits(source),
             },
         }

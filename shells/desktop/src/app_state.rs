@@ -426,6 +426,12 @@ pub(crate) struct App {
     /// selection drag (which lives in the wave body above the ruler).
     #[cfg(feature = "panel-audio-editor")]
     pub(crate) audio_scrub_drag: bool,
+    /// ⭐ **O botão do HUD em que o dedo POUSOU** (TOP-20 #20) — a memória de um gesto, e a razão
+    /// de ela existir é a lei do oráculo: um botão dispara ao LARGAR, e só se o largar cair no
+    /// MESMO botão em que se carregou. Sem esta memória não há como saber onde o gesto começou.
+    ///
+    /// ⚠️ **Runtime-only:** nunca é gravado e nunca entra no undo — um gesto a meio não é documento.
+    pub(crate) hud_press: Option<ph2d_ecs::Entity>,
     /// Input snapshot pumped by the gilrs adapter each frame.
     pub(crate) input: InputState,
     /// **O que cada acção VALE** neste tique — resolvido do `input` através do mapa AUTORADO.

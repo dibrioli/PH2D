@@ -36,6 +36,10 @@ impl crate::App {
         // no dreno seria a segunda resposta a *«qual é a vista?»*, e as duas divergiriam no dia em
         // que uma delas mudasse.
         let camera_rect = self.fase_game_camera(player_input, report);
+        // ⭐⭐⭐ **O HUD** (TOP-20 #20) — a raiz de um placar cola-se a` vista que a linha de
+        // cima acabou de calcular. Ver o cabecalho da fase: ela tem de correr DEPOIS da camera
+        // e ANTES do extract, e as duas metades sao load-bearing.
+        self.fase_hud(camera_rect);
         let fase_extract_inputs::ExtractInputs {
             dt,
             preview_overrides,

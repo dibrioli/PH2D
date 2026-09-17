@@ -130,7 +130,6 @@ pub fn populate(store: &mut WidgetStore) {
         // continua a ter de ser escrita.
         &crate::ids::SCULPT3D_PLANO_INVERSAO[..],
         &crate::ids::SCULPT3D_PROJECT_MODE[..],
-        &crate::ids::SCULPT3D_FOLGA_MODO[..],
         // ⛔⛔⛔ **E A SÉTIMA OCORRÊNCIA — report do dono (2026-09-15): *«os
         // outros 2 botões ainda não funcionam»*.** As três fileiras abaixo
         // (`3 + 6 + 4 = 13` chips) nasceram pintadas, hit-indexadas, **com braço

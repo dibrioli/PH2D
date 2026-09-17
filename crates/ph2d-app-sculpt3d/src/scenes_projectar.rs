@@ -139,16 +139,8 @@ pub(crate) fn announce() {
          [sculpt3d]        ATENCAO -- suba o `Gap` ate' ao MAXIMO e passe:\n\
          [sculpt3d]        -> Agora o barro AFASTA-SE da mesa em vez de se aproximar.\n\
          [sculpt3d]           Isto NAO e' um defeito: e' o comportamento da ferramenta de\n\
-         [sculpt3d]           referencia.\n\
-         [sculpt3d]        AGORA a escolha e' SUA, na linha `Gap Law` logo abaixo:\n\
-         [sculpt3d]        -> `Signed` e' a lei acima (a da referencia), e e' a de fabrica.\n\
-         [sculpt3d]        -> Carregue em `Symmetric` e passe outra vez com o `Gap` no\n\
-         [sculpt3d]           MAXIMO: o barro deixa de se afastar e simplesmente NAO ANDA.\n\
-         [sculpt3d]           Volte a ligar `Search Both Ways`, ponha a camera POR BAIXO e\n\
-         [sculpt3d]           compare as duas leis: com `Signed` o barro ULTRAPASSA a mesa,\n\
-         [sculpt3d]           com `Symmetric` ele para' antes dela.\n\
-         [sculpt3d]        -> Com o `Gap` em ZERO as duas leis fazem exactamente o mesmo --\n\
-         [sculpt3d]           o botao so' muda alguma coisa com uma folga a valer.\n\
+         [sculpt3d]           referencia, e esta' aqui para voce decidir se o quer assim.\n\
+         [sculpt3d]           Se preferir que ele apenas PARE (nunca inverta), diga.\n\
          [sculpt3d]    (6) Ponha o `Gap` de volta a zero, troque `Ray Direction` de `View`\n\
          [sculpt3d]        para `Surface` e passe perto da BORDA da calota.\n\
          [sculpt3d]        -> `View` empurra para dentro do ecra (segue os seus olhos);\n\
@@ -165,11 +157,7 @@ pub(crate) fn announce() {
          [sculpt3d]           app, e antes de hoje o olho nao chegava aqui.\n\
          [sculpt3d]        Abra o olho outra vez e o pincel volta a funcionar.\n\
          [sculpt3d]\n\
-         [sculpt3d]    DEU ERRADO SE: a linha `Gap Law` nao aparecer; se `Symmetric`
-\
-         [sculpt3d]    continuar a AFASTAR o barro com o `Gap` no maximo; se as duas leis
-\
-         [sculpt3d]    derem resultados diferentes com o `Gap` em ZERO; no (1) a calota RASGAR (riscos escuros a atravessar\n\
+         [sculpt3d]    DEU ERRADO SE: no (1) a calota RASGAR (riscos escuros a atravessar\n\
          [sculpt3d]    a peca), inchar, encolher ou o barro atravessar a mesa; se no (2)\n\
          [sculpt3d]    alguma coisa se mexer antes de ligar `Search Both Ways`, ou nada se\n\
          [sculpt3d]    mexer depois; se no (8) a mesa continuar a ver-se depois de fechar\n\

@@ -63,9 +63,6 @@ mod dab_alcance;
 mod falloff;
 /// **A LEI QUE UM ARRASTO DE FILTRO APLICA** — a uniao das duas familias.
 mod filter_law;
-/// ⭐⭐⭐ **COMO A FOLGA DO *PROJECTAR* ENTRA NA DISTÂNCIA** — as duas leis que o
-/// artista escolhe por botão desde 17/09. Ver [`folga_modo`].
-mod folga_modo;
 mod grip;
 /// ⭐⭐ **PARA ONDE O ESFREGÃO EMPURRA** — ver [`smear_mode`].
 mod smear_mode;
@@ -167,7 +164,6 @@ pub use coat::{COAT_HEAD, coat_step};
 pub use curva_inerte::CurvaInerte;
 pub use falloff::Falloff;
 pub use filter_law::FilterLaw;
-pub use folga_modo::FolgaModo;
 pub use grip::{Amount, Grip, GripLaw};
 pub use kelvinlet::KELVINLET_REACH;
 pub use plano_inversao::PlanoInversao;
@@ -188,9 +184,8 @@ pub fn distancia_de_projeccao_para_teste(
     alvos: &[(ph2d_mesh::Mesh, ph2d_mesh::Pose)],
     bidir: bool,
     folga: f32,
-    modo: FolgaModo,
 ) -> Option<f32> {
-    projectar::distancia(ponto, direccao, activo, alvos, bidir, folga, modo)
+    projectar::distancia(ponto, direccao, activo, alvos, bidir, folga)
 }
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::ClothFilterStep;

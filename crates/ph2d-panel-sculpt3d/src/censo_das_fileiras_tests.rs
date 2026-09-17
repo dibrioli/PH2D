@@ -245,24 +245,6 @@ fn the_panel_offers_every_pose_drag_law_the_engine_has() {
     );
 }
 
-/// ⭐⭐ **GATE — o painel oferece TODA lei de folga que o motor tem.**
-///
-/// ⚠️ **Duas é a conta de 17/09**, e não um número escolhido: a do alvo (de
-/// fábrica, que o corpus gravou) e a simétrica. ⛔ **Uma terceira lei sem chip
-/// nasce inalcançável** — e este pincel é justamente aquele em que isso seria
-/// invisível, porque com a folga em `0` as duas leis são a identidade ao bit:
-/// *o artista só descobriria a lei que falta no dia em que subisse o vão*.
-#[test]
-fn the_panel_offers_every_gap_law_the_engine_has() {
-    assert_eq!(
-        crate::ids::SCULPT3D_FOLGA_MODO.len(),
-        ph2d_sculpt3d::FolgaModo::ALL.len(),
-        "o painel tem {} chips de folga e o motor tem {} leis",
-        crate::ids::SCULPT3D_FOLGA_MODO.len(),
-        ph2d_sculpt3d::FolgaModo::ALL.len()
-    );
-}
-
 /// **GATE — o painel oferece TODA direcção de esfregão que o motor tem.**
 ///
 /// ⚠️ **Três é a conta da espec §5.3**, e não um número que alguém escolheu:

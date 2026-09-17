@@ -7,8 +7,7 @@
 //! mistura seis aplicações da curva com a re-medição da §6.6, e um desvio nele
 //! não diz qual dos dois falhou* (espec §8.4).
 
-use super::distancia;
-use crate::FolgaModo;
+use super::{distancia, folga_simetrica};
 use ph2d_mesh::{Face, Mesh, Pose};
 
 /// Um quadrado grande em `z = alt`, virado para cima — o alvo mais simples que
@@ -36,32 +35,15 @@ const ORIGEM: [f32; 3] = [0.0, 0.0, 0.0];
 #[test]
 fn ganha_o_alvo_mais_perto_e_a_folga_entra_depois() {
     let alvos = vec![(plano(-0.8), Pose::IDENTITY), (plano(-0.3), Pose::IDENTITY)];
-    let d = distancia(
-        ORIGEM,
-        PARA_BAIXO,
-        Pose::IDENTITY,
-        &alvos,
-        false,
-        0.0,
-        FolgaModo::DoAlvo,
-    )
-    .expect("o raio tem de acertar em alguma coisa");
+    let d = distancia(ORIGEM, PARA_BAIXO, Pose::IDENTITY, &alvos, false, 0.0)
+        .expect("o raio tem de acertar em alguma coisa");
     assert!(
         (d - 0.3).abs() < 1e-6,
         "ganhou o alvo errado: {d} (o perto está a 0,3 e o longe a 0,8)"
     );
     // ⭐ Com folga, o vencedor continua a ser o perto E o valor é o dele menos
     // a folga — `0,3 − 0,1`, nunca `0,8 − 0,1`.
-    let d = distancia(
-        ORIGEM,
-        PARA_BAIXO,
-        Pose::IDENTITY,
-        &alvos,
-        false,
-        0.1,
-        FolgaModo::DoAlvo,
-    )
-    .expect("acerto");
+    let d = distancia(ORIGEM, PARA_BAIXO, Pose::IDENTITY, &alvos, false, 0.1).expect("acerto");
     assert!(
         (d - 0.2).abs() < 1e-6,
         "a folga entrou no sítio errado da ordem: {d}"
@@ -78,46 +60,22 @@ fn ganha_o_alvo_mais_perto_e_a_folga_entra_depois() {
 fn sem_acerto_nao_ha_lei() {
     let vazio: Vec<(Mesh, Pose)> = Vec::new();
     assert_eq!(
-        distancia(
-            ORIGEM,
-            PARA_BAIXO,
-            Pose::IDENTITY,
-            &vazio,
-            false,
-            0.0,
-            FolgaModo::DoAlvo
-        ),
+        distancia(ORIGEM, PARA_BAIXO, Pose::IDENTITY, &vazio, false, 0.0),
         None,
         "sem outra peça na cena o pincel tem de ser inerte"
     );
     // O alvo está ATRÁS e os dois sentidos estão desligados.
     let acima = vec![(plano(0.5), Pose::IDENTITY)];
     assert_eq!(
-        distancia(
-            ORIGEM,
-            PARA_BAIXO,
-            Pose::IDENTITY,
-            &acima,
-            false,
-            0.0,
-            FolgaModo::DoAlvo
-        ),
+        distancia(ORIGEM, PARA_BAIXO, Pose::IDENTITY, &acima, false, 0.0),
         None,
         "um alvo do lado errado sem os dois sentidos não pode ser alcançado"
     );
     // ⭐ O CONTROLO: com os dois sentidos ele é alcançado, e com sinal
     // NEGATIVO. Sem esta metade o gate acima ficaria verde sobre uma lei que
     // nunca acerta em nada.
-    let d = distancia(
-        ORIGEM,
-        PARA_BAIXO,
-        Pose::IDENTITY,
-        &acima,
-        true,
-        0.0,
-        FolgaModo::DoAlvo,
-    )
-    .expect("com os dois sentidos ele acerta");
+    let d = distancia(ORIGEM, PARA_BAIXO, Pose::IDENTITY, &acima, true, 0.0)
+        .expect("com os dois sentidos ele acerta");
     assert!(
         (d + 0.5).abs() < 1e-6,
         "um acerto para trás tem de vir com `d` negativo, e veio {d}"
@@ -133,108 +91,44 @@ fn sem_acerto_nao_ha_lei() {
 /// | folga `0,6` sobre um vão de `0,5` | o barro pára a `0,1` do alvo | ele **AFASTA-SE** `0,1` |
 /// | folga `0,1` num acerto para TRÁS | a excursão encolhe `0,1` | ela **CRESCE** `0,1` |
 ///
-/// ⭐⭐ **E desde 17/09 a alternativa simétrica SHIPA, como o outro botão** —
-/// decisão do dono (*«cada modo com opção»*), depois de a espec §10.3 a deixar
-/// em aberto. ⚠️ **Este gate mudou de forma com ela:** ele comparava a lei do
-/// alvo contra uma função SOLTA, e hoje corre **as duas pela mesma porta**
-/// ([`crate::FolgaModo`]) — *uma lei medida fora do caminho do produto não
-/// afirma nada sobre o produto*, que é a armadilha que esta linha já pagou na
-/// ponte da curva do contorno e na da pose.
-///
-/// ⚠️ A 3.ª metade é o **CONTROLO**: no sentido de avanço as duas leis têm de
-/// dar o MESMO número. Sem ela, um modo que fosse a outra lei com outro nome
-/// passaria nas duas primeiras.
+/// ⚠️ **A alternativa simétrica está escrita e NÃO shipa** — a decisão é do
+/// dono (espec §10.3), e este gate mede as duas leis lado a lado para a troca
+/// ser **uma linha**. *Reproduzir o alvo é reproduzir um defeito; divergir sem
+/// o dizer é pior.*
 #[test]
 fn a_folga_so_e_minima_no_sentido_de_avanco() {
     let abaixo = vec![(plano(-0.5), Pose::IDENTITY)];
     let acima = vec![(plano(0.5), Pose::IDENTITY)];
 
     // (a) A folga maior que o vão INVERTE o sentido.
-    let d = distancia(
-        ORIGEM,
-        PARA_BAIXO,
-        Pose::IDENTITY,
-        &abaixo,
-        false,
-        0.6,
-        FolgaModo::DoAlvo,
-    )
-    .expect("acerto");
+    let d = distancia(ORIGEM, PARA_BAIXO, Pose::IDENTITY, &abaixo, false, 0.6).expect("acerto");
     assert!(
         (d + 0.1).abs() < 1e-6,
         "a folga maior que o vão tinha de dar `-0,1` (o barro afasta-se), e deu {d}"
     );
-    let s = distancia(
-        ORIGEM,
-        PARA_BAIXO,
-        Pose::IDENTITY,
-        &abaixo,
-        false,
-        0.6,
-        FolgaModo::Simetrica,
-    )
-    .expect("acerto");
     assert!(
-        (s - 0.0).abs() < 1e-6,
-        "a lei simétrica tem de PARAR em zero, nunca inverter — deu {s}"
+        (folga_simetrica(0.5, 0.6) - 0.0).abs() < 1e-6,
+        "a lei simétrica tem de PARAR em zero, nunca inverter"
     );
 
     // (b) Num acerto para trás a folga SOMA em magnitude.
-    let d = distancia(
-        ORIGEM,
-        PARA_BAIXO,
-        Pose::IDENTITY,
-        &acima,
-        true,
-        0.1,
-        FolgaModo::DoAlvo,
-    )
-    .expect("acerto");
+    let d = distancia(ORIGEM, PARA_BAIXO, Pose::IDENTITY, &acima, true, 0.1).expect("acerto");
     assert!(
         (d + 0.6).abs() < 1e-6,
         "a folga tinha de CRESCER a excursão para `-0,6`, e deu {d}"
     );
-    let s = distancia(
-        ORIGEM,
-        PARA_BAIXO,
-        Pose::IDENTITY,
-        &acima,
-        true,
-        0.1,
-        FolgaModo::Simetrica,
-    )
-    .expect("acerto");
     assert!(
-        (s + 0.4).abs() < 1e-6,
-        "a lei simétrica tem de ENCOLHER a excursão para `-0,4` — deu {s}"
+        (folga_simetrica(-0.5, 0.1) + 0.4).abs() < 1e-6,
+        "a lei simétrica tem de ENCOLHER a excursão para `-0,4`"
     );
 
     // ⭐ E o CONTROLO de que as duas leis não são a mesma função com outro
     // nome: no sentido de avanço elas **concordam**, e é só nas duas
     // armadilhas que se separam.
-    let d = distancia(
-        ORIGEM,
-        PARA_BAIXO,
-        Pose::IDENTITY,
-        &abaixo,
-        false,
-        0.1,
-        FolgaModo::DoAlvo,
-    )
-    .expect("acerto");
-    let s = distancia(
-        ORIGEM,
-        PARA_BAIXO,
-        Pose::IDENTITY,
-        &abaixo,
-        false,
-        0.1,
-        FolgaModo::Simetrica,
-    )
-    .expect("acerto");
+    let d = distancia(ORIGEM, PARA_BAIXO, Pose::IDENTITY, &abaixo, false, 0.1).expect("acerto");
     assert!(
-        (d - s).abs() < 1e-6,
-        "no sentido de avanço as duas leis têm de dar o mesmo número: {d} contra {s}"
+        (d - folga_simetrica(0.5, 0.1)).abs() < 1e-6,
+        "no sentido de avanço as duas leis têm de dar o mesmo número"
     );
 }
 
@@ -255,16 +149,7 @@ fn a_folga_so_e_minima_no_sentido_de_avanco() {
 #[test]
 fn a_distancia_atravessa_a_escala_das_duas_pecas() {
     let alvo = vec![(plano(-0.25), Pose::new([0.0, 0.0, 0.0], 2.0))];
-    let d = distancia(
-        ORIGEM,
-        PARA_BAIXO,
-        Pose::IDENTITY,
-        &alvo,
-        false,
-        0.0,
-        FolgaModo::DoAlvo,
-    )
-    .expect("acerto");
+    let d = distancia(ORIGEM, PARA_BAIXO, Pose::IDENTITY, &alvo, false, 0.0).expect("acerto");
     assert!(
         (d - 0.5).abs() < 1e-6,
         "a escala do ALVO não atravessou: {d} (o `t` cru daria 0,25)"
@@ -281,7 +166,6 @@ fn a_distancia_atravessa_a_escala_das_duas_pecas() {
         &alvo,
         false,
         0.0,
-        FolgaModo::DoAlvo,
     )
     .expect("acerto");
     assert!(
@@ -298,16 +182,7 @@ fn a_distancia_atravessa_a_escala_das_duas_pecas() {
 fn a_translacao_do_alvo_atravessa_e_a_direccao_nao_a_apanha() {
     // O plano local está em `z = 0`, e a peça está pousada em `z = −0,5`.
     let alvo = vec![(plano(0.0), Pose::new([0.0, 0.0, -0.5], 1.0))];
-    let d = distancia(
-        ORIGEM,
-        PARA_BAIXO,
-        Pose::IDENTITY,
-        &alvo,
-        false,
-        0.0,
-        FolgaModo::DoAlvo,
-    )
-    .expect("acerto");
+    let d = distancia(ORIGEM, PARA_BAIXO, Pose::IDENTITY, &alvo, false, 0.0).expect("acerto");
     assert!(
         (d - 0.5).abs() < 1e-6,
         "a translação do alvo não atravessou: {d}"
@@ -322,7 +197,6 @@ fn a_translacao_do_alvo_atravessa_e_a_direccao_nao_a_apanha() {
         &alvo,
         false,
         0.0,
-        FolgaModo::DoAlvo,
     )
     .expect("acerto");
     assert!(

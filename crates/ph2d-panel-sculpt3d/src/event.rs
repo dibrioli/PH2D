@@ -403,10 +403,6 @@ fn group_chip_ui(
         // ⚠️ **Sem re-armar nada**, pela mesma razão dos irmãos: escolher O QUE
         // O `Ctrl` FAZ é uma escolha sobre o pincel que já está na mão.
         ui.brush.plano_inversao = ph2d_sculpt3d::PlanoInversao::ALL[i];
-    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_FOLGA_MODO, id) {
-        // ⚠️ **Sem re-armar nada**, pela mesma razão dos irmãos: escolher COMO a
-        // folga entra é uma escolha sobre o pincel que já está na mão.
-        ui.brush.folga_modo = ph2d_sculpt3d::FolgaModo::ALL[i];
     } else if let Some(i) = index_of(&crate::ids::SCULPT3D_PROJECT_MODE, id) {
         // ⚠️ **Sem re-armar nada**, pela mesma razão dos irmãos: escolher CONTRA
         // QUE DIRECÇÃO o raio mede é uma escolha sobre o pincel que já está na

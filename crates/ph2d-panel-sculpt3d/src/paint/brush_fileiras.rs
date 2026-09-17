@@ -18,7 +18,7 @@
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
 use ph2d_sculpt3d::{
-    ClothArea, ClothForceFalloff, ClothMode, FolgaModo, ProjectMode, SmearMode, TrimForma, Verb,
+    ClothArea, ClothForceFalloff, ClothMode, ProjectMode, SmearMode, TrimForma, Verb,
 };
 use ph2d_tokens::Spacing;
 
@@ -332,34 +332,11 @@ pub(super) fn paint_project_rows(
     // ⚠️ **A caixa responde *«a lei existe»*, nunca *«o flag está ligado»*** — a
     // mesma cerca do `Connected Only`: uma caixa que se escondesse quando
     // desmarcada seria uma caixa que ninguém consegue marcar.
-    let y = toggle(
+    toggle(
         ctx,
         crate::ids::SCULPT3D_PROJECT_BIDIR,
         tr("panel.sculpt3d.project_bidir"),
         snap.ui.brush.project_bidirectional,
-        x,
-        w,
-        y,
-    ) + Spacing::Sm.px();
-    // ⭐⭐ **A QUARTA superfície: COMO a folga entra.** Ela é pintada SEMPRE que o
-    // verbo a oferece, e **não** só com a folga acima de zero — a cerca é a
-    // mesma da caixa de cima e do `Connected Only`: *um selector que só
-    // aparecesse depois de o artista mexer noutro knob é um selector que ele não
-    // sabe que existe*. ⚠️ Com a folga em `0` as duas leis são a identidade ao
-    // bit ([`ph2d_sculpt3d::FolgaModo::aplica`]), logo o chip é honesto: ele diz
-    // o que vai acontecer quando a folga subir, e não mente sobre agora.
-    let selected = FolgaModo::ALL
-        .iter()
-        .position(|&m| m == snap.ui.brush.folga_modo)
-        .unwrap_or(0);
-    let labels: Vec<&str> = FolgaModo::ALL.iter().map(|m| m.label()).collect();
-    labelled_seg(
-        ctx,
-        tr("panel.sculpt3d.folga_modo"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
-        &crate::ids::SCULPT3D_FOLGA_MODO,
-        &labels,
-        selected,
         x,
         w,
         y,

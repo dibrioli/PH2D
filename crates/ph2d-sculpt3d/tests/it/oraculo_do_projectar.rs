@@ -460,8 +460,6 @@ fn diag_o_calibrador() {
         &alvos,
         false,
         0.0,
-        // ⚠️ A bancada corre SEMPRE a lei de fábrica: o corpus foi gravado com ela.
-        ph2d_sculpt3d::FolgaModo::DoAlvo,
     );
     eprintln!("distancia crua no centro: {d:?}");
     let nosso = correr(&f, alvos, false);

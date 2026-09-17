@@ -147,11 +147,6 @@ impl Default for Brush {
             // ⭐ Os três de fábrica do corpus do oráculo: raio de vista,
             // folga `0`, um sentido — a base de `21` das `24` fixturas.
             project_mode: crate::ProjectMode::View,
-            // ⚠️ **A lei da folga é a do ALVO de fábrica, e isso NÃO é inércia:**
-            // é ela que as `14` fixturas vivas do oráculo gravaram, logo é ela
-            // que a paridade mede. A simétrica é o outro botão, e o artista
-            // escolhe (ordem do dono, 17/09).
-            folga_modo: crate::FolgaModo::DoAlvo,
             trim_forma: crate::TrimForma::Caixa,
             // ⚠️ **Nasce em ZERO, e é a lei desta casa para todo knob novo:** o
             // caminho de omissão fica byte-idêntico ao traço que a mão fez.

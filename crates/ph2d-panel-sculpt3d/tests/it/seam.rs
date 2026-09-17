@@ -920,8 +920,8 @@ fn every_smear_control_is_clickable_where_it_is_drawn() {
     let _ = by_id;
 }
 
-/// ⭐⭐ **GATE — com o PROJECTAR na mão, as QUATRO superfícies dele são pintadas
-/// e respondem ao ponteiro.**
+/// ⭐⭐ **GATE — com o PROJECTAR na mão, as TRÊS superfícies dele são pintadas e
+/// respondem ao ponteiro.**
 ///
 /// ⛔⛔ **Irmão exacto do gate do esfregão, e ele existe porque aquele defeito
 /// aconteceu:** os três chips do esfregão nasceram pintados, hit-indexados e
@@ -956,26 +956,6 @@ fn every_project_control_is_clickable_where_it_is_drawn() {
         "a espec §6.2 conta DUAS direcções — a fixtura deixou de conter o fenómeno"
     );
     want.push(("search both ways".to_owned(), ids::SCULPT3D_PROJECT_BIDIR));
-    // ⭐⭐ **A QUARTA superfície, desde 17/09: COMO a folga entra** (ordem do
-    // dono, *«cada modo com opção»*). ⚠️ Ela entra AQUI e não num gate novo
-    // porque o sujeito é o mesmo — *o pincel de projectar com todas as suas
-    // superfícies* —, e um gate irmão que armasse o mesmo verbo seria a segunda
-    // resposta à mesma pergunta, que é como a cobertura diverge em silêncio.
-    let folgas = ph2d_sculpt3d::FolgaModo::ALL;
-    assert_eq!(
-        folgas.len(),
-        ids::SCULPT3D_FOLGA_MODO.len(),
-        "o motor tem {} leis de folga e o painel {} chips — uma delas nasce \
-         inalcançável",
-        folgas.len(),
-        ids::SCULPT3D_FOLGA_MODO.len()
-    );
-    for (i, m) in folgas.into_iter().enumerate() {
-        want.push((
-            format!("gap law {}", m.label()),
-            ids::SCULPT3D_FOLGA_MODO[i],
-        ));
-    }
     for (name, id) in &want {
         assert!(
             painted.iter().any(|(pid, _)| pid == id),
@@ -3042,9 +3022,16 @@ fn every_trim_control_is_clickable_where_it_is_drawn() {
 ///
 /// 2026-09-17: *«não vejo os botões mas deveriam ficar na secção detail»*. Os
 /// dois chips novos estavam **pintados, hit-indexados e vivos sob o dedo** — o
-/// gate de costura provava as três coisas — e caíam em `y = 1049` (`Gap Law`) e
-/// `y = 858` (`Drag Reads`), **abaixo da dobra de um encaixe real**. O `Gap` que
-/// a primeira governa está em `y = 636`: **413 px** entre uma pista e a lei dela.
+/// gate de costura provava as três coisas — e caíam em `y = 1049` e `y = 858`,
+/// **abaixo da dobra de um encaixe real**. O `Gap` que o primeiro acompanha está
+/// em `y = 636`: **413 px** de distância.
+///
+/// ⚠️ **O selector que provocou a medição (`Gap Law`) foi APAGADO no mesmo dia**,
+/// por veredito do dono sobre o smoke — e este gate **fica**, porque o que ele
+/// mede não era aquele chip: era *os controlos próprios de um pincel caberem no
+/// encaixe*, e o `Ray Direction` e o `Search Both Ways` nasciam em `967` e `1001`
+/// muito antes de ele existir. *Um gate cujo sujeito era um exemplo sobrevive ao
+/// exemplo; um cujo sujeito era o exemplo teria de morrer com ele.*
 ///
 /// ⛔⛔ **E NENHUM gate desta crate o podia ver, por construção:** os de costura
 /// pintam numa [`VIEWPORT`] de **`2400`** px de altura, escolhida para caber
@@ -3093,7 +3080,7 @@ fn os_controlos_proprios_de_um_pincel_cabem_no_encaixe() {
         &ids::SCULPT3D_SMEAR_MODE[..],
         &ids::SCULPT3D_TRIM_FORMA[..],
         &ids::SCULPT3D_PLANO_INVERSAO[..],
-        &ids::SCULPT3D_FOLGA_MODO[..],
+        &[ids::SCULPT3D_PROJECT_BIDIR][..],
         &ids::SCULPT3D_POSE_ARRASTO[..],
         &[ids::SCULPT3D_POSE_ROT_LOCK][..],
     ];

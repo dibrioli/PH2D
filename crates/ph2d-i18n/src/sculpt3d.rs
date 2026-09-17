@@ -68,10 +68,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.project_mode" => "Ray Direction",
         "panel.sculpt3d.project_bidir" => "Search Both Ways",
         "panel.sculpt3d.project_min_dist" => "Gap",
-        // ⚠️ **«Gap Law» e não «Gap Mode»:** o que o chip escolhe é *como o vão
-        // acima entra na conta*, e o rótulo tem de o colar ao knob de cima —
-        // *«Mode» já é a palavra da direcção do raio, três linhas antes*.
-        "panel.sculpt3d.folga_modo" => "Gap Law",
         "panel.sculpt3d.cloth_mode" => "Deformation",
         // ── O pincel de POSE ────────────────────────────────────────────────
         // ⚠️ **«Deformation» é a MESMA palavra do tecido, e está certo:** as

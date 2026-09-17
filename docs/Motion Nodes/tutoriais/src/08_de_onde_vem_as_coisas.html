@@ -1,0 +1,292 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · De onde vêm as coisas</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+    --src: #5f9e79; --tra: #6f86c9; --out: #c96a6a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  h4 { font-size:13px; margin:14px 0 4px; color:var(--t1); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .figs { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+  .figs.two { grid-template-columns:repeat(2,1fr); }
+  .fig { background:var(--card); border:1px solid var(--line); border-radius:10px;
+         padding:8px; text-align:center; break-inside:avoid; }
+  .fig img { width:100%; display:block; border-radius:6px; }
+  .fig figcaption { font-size:11px; color:var(--t2); margin-top:6px; }
+  .fig b { color:var(--t1); display:block; font-size:12.5px; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .key { font-size:11.5px; color:var(--t2); margin-top:8px; display:flex; flex-wrap:wrap; gap:14px; }
+  .key i { font-style:normal; display:inline-flex; align-items:center; gap:6px; }
+  .key s { width:16px; height:3px; border-radius:2px; display:inline-block; text-decoration:none; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .card-demo { background:var(--card); border:1px solid var(--line); border-radius:9px;
+       width:230px; overflow:hidden; font-size:11px; }
+  .card-demo .h { padding:5px 9px; font-weight:600; color:#0e0d10; font-size:11.5px; }
+  .card-demo .rows { padding:6px; display:grid; gap:3px; }
+  .card-demo .r { background:#0b0a0e; border-radius:4px; padding:3px 7px; display:flex;
+       justify-content:space-between; position:relative; overflow:hidden; }
+  .card-demo .r i { position:absolute; inset:0 auto 0 0; background:#3b3350; }
+  .card-demo .r span { position:relative; }
+  .card-demo .r .n { color:var(--t1); }
+  .card-demo .r .l { color:var(--t2); }
+  .card-demo .sec { color:var(--t3); padding:3px 7px; font-size:10.5px; }
+  .two-col { display:grid; grid-template-columns:230px 1fr; gap:16px; align-items:start; }
+  .params { font-size:11px; }
+  .params h4 { margin-top:12px; }
+  .soft { color:var(--t3); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+<h1>De onde vêm as coisas
+  <small>PH2D · Motion Nodes · tutorial 8 — os cartões que fazem <b>aparecer</b> as peças: uma
+  forma, um texto, um ficheiro, uma gramática, um emissor — e a própria vista</small></h1>
+
+<p>Os sete tutoriais anteriores fizeram coisas <b>às</b> peças: puseram-nas na tela, fizeram-nas
+andar, dobraram-nas, escolheram quem é afetado, entregaram-nas a uma lei, deram-lhes um número que
+manda em tudo e uma cara. Falta a pergunta que vem <b>antes</b> de todas: de onde é que as peças
+vêm.</p>
+
+<p>Todo cartão deste grupo tem uma coisa em comum: ele <b>não recebe peças — ele fá-las</b>. É
+sempre o primeiro do caminho. O que muda de um para o outro é <em>a partir de quê</em>:</p>
+
+<table>
+  <tr><th>fileira</th><th>a pergunta</th><th>o par</th></tr>
+  <tr><td><b>cima</b></td><td>e se a coisa for algo que <b>eu fiz</b>?</td>
+      <td><code>Text</code> contra <code>Shape</code></td></tr>
+  <tr><td><b>meio</b></td><td>e se for algo que <b>eu já tenho</b>?</td>
+      <td><code>Table</code> sozinho contra <code>Table</code> + uma <b>coluna</b></td></tr>
+  <tr><td><b>baixo</b></td><td>e se for algo que a <b>cena</b> dá?</td>
+      <td><code>Emitter</code> contra <code>Camera</code></td></tr>
+</table>
+
+<div class="note"><b>Estes cartões vivem no PRINCÍPIO do caminho.</b> Tudo o que os sete
+tutoriais anteriores ensinaram continua a valer a seguir a eles, sem mudar uma linha: o que
+chega é diferente, o que se faz com isso é o mesmo. É por isso que os seis panos desta cena
+acabam todos da mesma maneira.</div>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=119 cargo run -p ph2d-host-desktop --profile smoke</div>
+
+<ol class="steps">
+  <li><b>Carregue em <kbd>Play</kbd>.</b>
+      <div class="out">Seis panos, em três fileiras. Só a fileira de <b>baixo à esquerda</b> se
+      mexe — são partículas a nascer e a morrer. As outras não precisam de tempo.</div>
+      <div class="bad">Se algum pano estiver <b>vazio</b>, a fonte dele não entregou nada —
+      avise, porque é isso que este tutorial existe para mostrar.</div></li>
+</ol>
+
+<h2>2 · Em cima: o que eu fiz</h2>
+
+<p>À <b>esquerda</b> está uma <b>palavra</b>. O cartão <b>Text</b> entrega <b>uma peça por
+letra</b> — e a partir daí cada letra é uma peça como qualquer outra: pode ser espalhada,
+animada, colorida.</p>
+
+<p>À <b>direita</b> está uma <b>forma</b>. O cartão <b>Shape</b> entrega <b>uma peça</b> — a
+forma inteira é <em>uma</em> coisa. É a diferença que decide tudo o resto: o que você vai poder
+fazer a seguir depende de quantas peças a fonte lhe deu.</p>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/fonte_texto.svg" alt="tres marcas em fila">
+    <b>Text</b>
+    <figcaption><strong>3</strong> peças — uma por letra de «OLA»</figcaption></figure>
+  <figure class="fig"><img src="../fig/fonte_forma.svg" alt="uma marca sozinha">
+    <b>Shape</b>
+    <figcaption><strong>1</strong> peça — a forma inteira</figcaption></figure>
+</div>
+
+<div class="note"><b>Nestas duas, cada marca é uma peça — não é o desenho dela.</b> As peças de
+texto e de forma levam consigo geometria (a letra, a estrela), e o que a figura mostra é
+<em>quantas são e onde estão</em>, que é o assunto. As figuras das outras páginas mostram o
+tamanho verdadeiro, porque lá a peça é um quadrado.</div>
+
+<ol class="steps" start="2" style="counter-reset:s 1">
+  <li><b>Clique no cartão <code>Text: a palavra</code></b> e escreva outra coisa na linha
+      <code>Text</code>.
+      <div class="out">As peças da esquerda passam a ser as letras novas — mais letras, mais
+      peças.</div></li>
+  <li><b>Clique no cartão <code>Shape: a forma</code></b> e mude a linha <code>Shape</code>.
+      <div class="out">A peça da direita troca de forma, e continua a ser <b>uma</b>.</div></li>
+</ol>
+
+<h2>3 · No meio: o que eu tenho</h2>
+
+<p>Os dois panos do meio leem o <b>mesmo ficheiro</b> — uma tabela com doze linhas e quatro
+colunas. O cartão <b>Table</b> entrega <b>uma peça por linha</b>, e põe-nas em fila.</p>
+
+<p>À <b>direita</b> há <b>um cartão a mais</b>: o <code>Drive</code>, alimentado por uma
+<b>coluna</b> do ficheiro. A altura de cada peça deixa de ser igual e passa a ser o número que
+está escrito naquela linha. A fila vira um <b>gráfico</b> — e não escrevemos um único
+número.</p>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/tabela_linhas.svg" alt="doze quadrados em fila, todos a mesma altura">
+    <b>Table</b>
+    <figcaption>doze linhas, doze peças — todas à mesma altura</figcaption></figure>
+  <figure class="fig"><img src="../fig/tabela_grafico.svg" alt="doze quadrados em fila, cada um a uma altura diferente">
+    <b>+ a coluna «vendas»</b>
+    <figcaption>a mesma fila, com a <strong>altura</strong> vinda do ficheiro</figcaption></figure>
+</div>
+
+<ol class="steps" start="4" style="counter-reset:s 3">
+  <li><b>Abra o ficheiro que o terminal imprimiu</b> (a linha começa por
+      <code>O ficheiro esta' aqui:</code>), <b>mude um número</b> da coluna
+      <code>vendas</code> e guarde.
+      <div class="out">Nada acontece ainda — o programa não vigia o ficheiro.</div></li>
+  <li><b>No cartão <code>Table: o grafico</code>, carregue em <code>Table File</code></b> e
+      escolha o mesmo ficheiro outra vez.
+      <div class="out">O gráfico muda. <b>Escolher é recarregar</b>: é assim que se traz dados
+      novos para dentro de uma animação já feita.</div>
+      <div class="bad">Se os dois panos do meio ficarem iguais, a coluna não está a chegar ao
+      <code>Drive</code>.</div></li>
+</ol>
+
+<div class="note"><b>Uma coluna de palavras é saltada, e dita.</b> A primeira coluna do ficheiro
+tem nomes de meses. O leitor não a converte em zeros às escondidas: ele salta-a e diz no
+terminal qual saltou. <em>Um leitor que adivinha é pior que um que recusa.</em></div>
+
+<h2>4 · Em baixo: o que a cena dá</h2>
+
+<p>À <b>esquerda</b>, as peças <b>nascem</b>: o cartão <b>Emitter</b> faz partículas a um
+ritmo, cada uma vive um tempo e desaparece. Ninguém as pôs lá — elas são o que a cena está a
+fazer <em>agora</em>.</p>
+
+<p>À <b>direita</b>, a fonte é a <b>própria vista</b>: o cartão <b>Camera</b> entrega onde a
+câmara está, quanto ela mostra, e quantos pixels de ecrã vale uma unidade de mundo. Com esse
+último número, as nove peças pedem <b>40 pixels</b> — e passam a medir 40 pixels <em>esteja o
+zoom onde estiver</em>.</p>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/zoom_perto.svg" alt="nove quadrados claros e um cinzento maior ao lado">
+    <b>com zoom</b>
+    <figcaption>as nove peças da câmara: <strong>40&nbsp;px</strong> · a peça da tabela,
+    ao lado, <strong>54&nbsp;px</strong></figcaption></figure>
+  <figure class="fig"><img src="../fig/zoom_longe.svg" alt="nove quadrados claros do mesmo tamanho e um cinzento muito pequeno ao lado">
+    <b>sem zoom</b>
+    <figcaption>as nove: <strong>40&nbsp;px</strong>, iguais · a da tabela encolheu para
+    <strong>13,5&nbsp;px</strong></figcaption></figure>
+</div>
+
+<ol class="steps" start="6" style="counter-reset:s 5">
+  <li><b>Dê zoom</b> com a roda do rato, para os dois lados.
+      <div class="out">Tudo cresce e encolhe — <b>menos</b> as nove peças da direita, que medem
+      sempre o mesmo no ecrã.</div>
+      <div class="bad">Se elas crescerem como o resto, a vista não está a chegar ao
+      <code>Drive</code> daquele pano.</div></li>
+  <li><b>Clique no cartão <code>Drive: o tamanho no ecra</code></b> e arraste
+      <code>Scale</code>.
+      <div class="out">As nove peças passam a pedir outro número de pixels — e continuam a
+      ignorar o zoom.</div></li>
+</ol>
+
+<div class="note"><b>Isto é o que uma interface faz.</b> Uma alça que tem de ter sempre o mesmo
+tamanho no ecrã, um rótulo que não pode encolher, uma grelha que não muda de espessura quando se
+aproxima: é tudo a mesma conta — <em>pedir em pixels e deixar a câmara converter</em>.</div>
+
+<h2>5 · Vá além</h2>
+
+<ol class="steps" start="8" style="counter-reset:s 7">
+  <li><b>No cartão <code>Text: a palavra</code></b>, mexa em <code>Tracking</code>.
+      <div class="out">As letras afastam-se — e como cada uma é uma peça, tudo o que estiver
+      a seguir continua a valer.</div></li>
+  <li><b>Ligue o <code>Emitter</code> a um campo</b> (o <code>Falloff</code> do tutorial 4).
+      <div class="out">As partículas passam a obedecer a um mapa: nascem em todo o lado e só
+      algumas são afetadas.</div></li>
+  <li><b>Aponte o <code>Table</code> a um ficheiro seu</b> — qualquer texto com vírgulas e uma
+      primeira linha de nomes serve.
+      <div class="out">As suas linhas viram peças. É a mesma cena, com os seus dados.</div></li>
+</ol>
+
+<h2>6 · O resto do grupo</h2>
+
+<p>São sete cartões. A cena mostra cinco; os outros dois têm cena própria, porque pedem coisas
+que esta não tem.</p>
+
+<table>
+  <tr><th>quando você quer…</th><th>procure por</th></tr>
+  <tr><td>uma <b>forma</b> que você escolhe no cartão</td><td><code>Shape</code></td></tr>
+  <tr><td>um <b>texto</b>, uma peça por letra</td><td><code>Text</code></td></tr>
+  <tr><td>as linhas de um <b>ficheiro</b> de dados</td><td><code>Table</code></td></tr>
+  <tr><td>uma <b>planta</b> que cresce por regras</td><td><code>L-System</code> — tem cena
+      própria, e um manual só dele</td></tr>
+  <tr><td>a aparência de um <b>objeto da cena</b> (uma imagem, um desenho, uma animação)</td>
+      <td><code>Object</code> — ele vai buscá-lo pelo <b>nome</b> que está na Hierarquia</td></tr>
+  <tr><td>partículas a <b>nascer e morrer</b></td><td><code>Emitter</code></td></tr>
+  <tr><td>onde a <b>câmara</b> está e quanto ela mostra</td><td><code>Camera</code></td></tr>
+</table>
+
+<div class="note"><b>O <code>Object</code> é a ponte para o resto do programa.</b> Tudo o que
+você desenhar, pintar ou animar noutro sítio do PH2D pode entrar aqui pelo nome e ser
+multiplicado, espalhado e animado como uma peça. É por isso que ele não está nesta cena: ele
+precisa de uma <b>coisa na Hierarquia</b>, e esta cena é só um caminho de cartões.</div>
+
+<h2>7 · O que isto custa</h2>
+
+<p>Uma fonte cobra em dois sítios, e só um deles é óbvio: <b>fazer</b> as peças, e <b>levá-las</b>
+para a placa gráfica. O segundo é o que faz um ficheiro grande pesar mesmo quando nada
+muda — e foi o que esta volta de trabalho corrigiu.</p>
+
+<table>
+  <tr><th>uma tabela de <b>um milhão</b> de linhas, por quadro</th><th class="n">antes</th><th class="n">agora</th></tr>
+  <tr><td>voltar a ler a tabela</td><td class="n">6,05&nbsp;ms</td><td class="n">0,01&nbsp;ms</td></tr>
+  <tr><td>preparar e enviar para a placa</td><td class="n">3,57&nbsp;ms</td><td class="n">1,61&nbsp;ms</td></tr>
+  <tr><td><b>o quadro inteiro</b></td><td class="n"><b>9,62&nbsp;ms</b></td><td class="n"><b>1,62&nbsp;ms</b></td></tr>
+  <tr><td>a mesma quantidade de peças feita por um <code>Grid</code></td>
+      <td class="n">1,36&nbsp;ms</td><td class="n">1,41&nbsp;ms</td></tr>
+</table>
+
+<div class="note"><b>Um milhão de linhas de um ficheiro custa hoje o mesmo que um milhão de
+peças de uma grelha</b> — e um quadro tem 16,7 milésimos de segundo. Antes, a mesma tabela era
+sete vezes mais cara só por estar lá: o programa relia-a e reenviava-a a cada quadro, mesmo
+parada. Agora o preço é pago <b>quando alguma coisa muda</b>, e não por quadro.</div>
+
+<h2>8 · Se algo não bater</h2>
+
+<ul>
+  <li>Algum pano <b>vazio</b> → a fonte dele não entregou nada. Avise, e diga qual.</li>
+  <li>Os dois panos do <b>meio</b> iguais → a coluna não chega ao <code>Drive</code>.</li>
+  <li>A palavra <b>não muda</b> ao escrever → o <code>Text</code> não está a ser relido.</li>
+  <li>Ao dar zoom as <b>nove peças crescem</b> como o resto → a vista não chega ao pano dela.
+      É a novidade deste ciclo; se falhar, é aqui.</li>
+</ul>
+
+<footer>PH2D · Motion Nodes · tutorial 8 de uma série · cena
+<code>PH2D_GPU_COOK_DEMO=119</code> · as figuras são saída do motor, não desenhos.</footer>

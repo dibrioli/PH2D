@@ -90,6 +90,11 @@ mod fontes_costura;
 #[path = "motion_bridge_fontes_relogio.rs"]
 mod fontes_relogio;
 
+/// As figuras do tutorial do **ciclo 8** — quadrados que são a saída do motor; ver o cabeçalho.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_fontes_figures.rs"]
+mod fontes_figures;
+
 /// As figuras do tutorial do ciclo 1 — geradas COZINHANDO os nós (doc 103 §3).
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_arranjo_figures.rs"]

@@ -274,3 +274,6 @@ pub(super) fn captions() -> Vec<Caption> {
 #[cfg(test)]
 #[path = "motion_state_fontes_demo_tests.rs"]
 mod tests;
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_state_fontes_tutorial_tests.rs"]
+mod tutorial_tests;

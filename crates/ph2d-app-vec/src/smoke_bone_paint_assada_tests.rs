@@ -209,6 +209,50 @@ fn sonda_a_malha_assada_contra_o_refinamento_por_quadro() {
     }
 }
 
+/// ⏱️⏱️ **A W2 DA F9 — QUANTOS OSSOS UM VÉRTICE DE FACTO USA?**
+///
+/// O número que DIMENSIONA o formato de vértice do *vertex shader* de pele: se um vértice for
+/// influenciado por `K` ossos, o vértice carrega `K` índices e `K` pesos, e o resto do buffer é
+/// desperdício pago em TODA sprite do app (o [`ph2d_render::QuadVertex`] é partilhado com o quad
+/// simples).
+///
+/// ⚠️ **A pergunta é sobre pesos SIGNIFICATIVOS, não sobre não-zeros:** os pesos BBW são a solução
+/// de um problema variacional sobre a arte inteira, logo quase todo vértice tem um resíduo minúsculo
+/// em quase todo osso. O que interessa é quantos são precisos para reproduzir a pose **dentro da
+/// barra que o produto já promete**.
+///
+/// `cargo test -p ph2d-app-vec --lib -- --ignored --nocapture quantos_ossos_um_vertice_usa`
+#[test]
+#[ignore = "MEDICAO, nao gate"]
+fn quantos_ossos_um_vertice_usa() {
+    let (sim, e) = cena(super::super::super::ALTURA_PX, None);
+    let (sm, _p2l, _pele) = campo_da_cena(&sim, e);
+    let ossos = sm.ossos();
+    println!("\n  bind: {} vertices x {ossos} ossos\n", sm.mesh.rest.len());
+    for corte in [0.0_f64, 1e-6, 1e-4, 1e-3, 1e-2] {
+        let mut hist = vec![0usize; ossos + 1];
+        let mut pior_resto = 0.0_f64;
+        for v in 0..sm.mesh.rest.len() {
+            let w = sm.pesos_de(v);
+            let n = w.iter().filter(|x| x.abs() > corte).count();
+            hist[n] += 1;
+            let resto: f64 = w.iter().filter(|x| x.abs() <= corte).map(|x| x.abs()).sum();
+            pior_resto = pior_resto.max(resto);
+        }
+        let dist: Vec<String> = hist
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| **c > 0)
+            .map(|(n, c)| format!("{n}:{c}"))
+            .collect();
+        println!(
+            "  corte {corte:>8.0e} | ossos por vertice {:<28} | pior peso descartado {pior_resto:.2e}",
+            dist.join(" ")
+        );
+    }
+    println!();
+}
+
 /// ⏱️ **A ESCADA τ ↔ PEÇAS NA ARTE REAL** — o número que decide se a W1 tem sujeito.
 ///
 /// `cargo test -p ph2d-app-vec --lib -- --ignored --nocapture escada_da_assadura_na_arte_real`

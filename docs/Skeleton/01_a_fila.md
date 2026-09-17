@@ -206,8 +206,32 @@ só onde se pergunta (um ponto, não a malha inteira), ou leitura da GPU.
     medição refutou o pedido): o «vai-e-volta» soma a viragem absoluta da polilinha, logo **cresce
     com o número de nós por construção** (`Fast` `26,60°` com 46 nós · `Smooth` `26,71°` com 64 ·
     assada `29,44°` com 85). A régua com unidade e barra declarada é o **desvio ao campo**.
-- **W2 — o *vertex shader* de pele**, atrás da mesma escolha `Fast`/`Smooth` do painel, com o gate
+- ⏳ **W2 — o *vertex shader* de pele**, atrás da mesma escolha `Fast`/`Smooth` do painel, com o gate
   de paridade CPU×GPU e o caminho da CPU vivo para bissecar.
+  - ✅ **A metade da CPU FECHOU (2026-09-17)** — [`ph2d_skeleton_live::skin_gpu`]: o empacotamento e
+    a **lei de referência** (`posa_como_a_placa`), que é o que **define** o shader e contra o que a
+    paridade se vai medir. Ela reproduz a lei do produto a **`1,4e-5`** contra uma barra derivada de
+    `4 ULP` de `f32` na magnitude em jogo (`7,6e-5`), com o controlo dentro (poses erradas violam-na
+    `100×`).
+  - ⭐⭐⭐ **E o achado que torna o shader TRIVIAL:** a quota que reparte o peso de um tendão pelos
+    sub-ossos de um osso que dobra depende de `u = projecção do ponto no eixo de REPOUSO` ⇒ ela é
+    uma grandeza do **BIND**. Logo a tabela de pesos **por osso, já normalizada**, só muda quando a
+    TOPOLOGIA do rig muda — nunca quando o artista posa. ⇒ *o shader não precisa de saber o que é
+    um osso que dobra*: ele lê `N` pesos por vértice e `N` afins por quadro, e a mistura é a linear
+    clássica. Gate `mover_um_osso_nao_muda_a_tabela_de_pesos`.
+  - ⚠️⚠️ **E a 1.ª fixtura destes gates tinha a corrente toda RECTA — MEDIDO, ela deixa a mutação
+    que apaga a quota passar em TODOS os três gates.** Com um osso que dobra, ela sangra. *Uma
+    fixtura no ponto neutro de uma lei não testa essa lei.*
+  - ⏳ **O que falta da W2**, e o que já está medido sobre isso:
+    - o **formato de vértice**: o [`ph2d_render::QuadVertex`] é **partilhado com o quad simples**
+      (`pos` + `uv`, 16 bytes), logo acrescentar-lhe pesos paga em toda sprite do app ⇒ ou um
+      segundo *layout*/pipeline, ou um buffer à parte indexado pelo vértice. ⚠️ Medido na arte do
+      dono: `3` tendões e **nenhum vértice esparso** (`139` vértices usam 1 osso, `662` usam 2,
+      `487` usam 3) — *num rig pequeno não há esparsidade a explorar, e um `K = 4` fixo do formato
+      da indústria seria um TECTO a justificar, não um ganho*;
+    - o **buffer por-BIND com invalidação** (hoje o `MeshFrame` é reconstruído do zero a cada
+      quadro) — é ele que troca o upload de `19 MiB/quadro` por `N × 6` números;
+    - as **10 costuras** do censo da W0, cada uma com a espécie de resposta já escrita.
 - **W3 — as costuras** (ponteiro, chrome, onion) contra a malha que a GPU desenha.
 - **W4 — o orçamento**: ele deixa de ser um tecto de peças da CPU; o que sobra de CPU por quadro é
   enviar poses, e o recurso passa a ser memória de GPU (com o número medido ao lado).

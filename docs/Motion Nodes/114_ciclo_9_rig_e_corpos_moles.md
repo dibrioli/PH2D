@@ -1,0 +1,187 @@
+# 114 — CICLO 9 · RIG & CORPOS MOLES — «Coisas que se seguram»
+
+> **Protocolo:** [doc 103](103_dinamica_dos_ciclos.md) — sete passos, nesta ordem, e **o tutorial É o
+> smoke**. Este doc é o do ciclo: cada passo escreve a secção dele aqui.
+>
+> **Estado:** passos **1** (grupo) e **2** (auditoria) FECHADOS em 2026-09-17. Os passos 3–7 têm
+> plano na §5 e ainda não começaram.
+
+---
+
+## §1 — O GRUPO (passo 1), **contado** e não copiado
+
+⚠️ A linha do doc 103 §5 (`rig.*` · `soft_body` · `verlet_rope` · `wave` · `boids`) é uma
+**verificação**, nunca a fonte: o grupo sai do que o artista VÊ na paleta. Contado pelo censo
+(`the_source_palette_census`, [`motion_fontes_probe.rs`](../../crates/ph2d-app-motion/src/motion_fontes_probe.rs)),
+em 2026-09-17, são **DEZ** nós — e eles vivem em **duas categorias diferentes**:
+
+| categoria na paleta | nó | cartão | o que ele é |
+|---|---|---|---|
+| **Source** | `rig.skeleton` | Skeleton | EMITE a corrente de juntas (`parent`, `len`, `rot`) |
+| **Source** | `motion.soft_body` | Soft Body | emite a nuvem de um corpo mole |
+| **Source** | `motion.verlet_rope` | Verlet Rope | emite a corda |
+| **Source** | `motion.wave` | Wave | emite a superfície que ondula |
+| **Source** | `motion.boids` | Boids | emite o bando |
+| **Transform** | `rig.fk` | FK | resolve a pose pela árvore de pais |
+| **Transform** | `rig.ik_2bone` | IK 2-Bone | cinemática inversa fechada e EXACTA |
+| **Transform** | `rig.fabrik` | FABRIK | a iterativa, para N juntas |
+| **Transform** | `rig.rubber_hose` | Rubber Hose | o membro de borracha |
+| **Transform** | `rig.skin_deformer` | Skin | a pele que segue os ossos |
+
+⭐ **A partição em duas categorias é o grupo, não um acidente de arrumação:** cinco nós **produzem**
+uma coisa que se segura e cinco **agem** sobre ela. É essa a premissa do tutorial — *«coisas que se
+seguram»* — e é ela que dá a forma da cena do passo 6.
+
+⚠️ **A folha de conferência [16_rig.md](89_conferencia/16_rig.md) abre com um aviso que EXPIROU:**
+*«esta família está DEFERIDA por decisão do Enio … nenhum item abaixo vira wave agora»* (2026-08-09).
+O doc 103 §5 (**05/09**, ordem do dono) põe a família como ciclo 9, e é a ordem mais nova que manda.
+⇒ a folha volta a ser tabela de trabalho; o cabeçalho dela é corrigido na wave que a tocar.
+
+---
+
+## §2 — A RESIDÊNCIA (passo 2, primeira metade): **1 de 10 chega ao dispositivo**
+
+A lei 1 de todo ciclo (doc 103 §2) manda cada nó dizer ONDE corre. Censo por crate, contra o canal
+de kernel do registry (`register_gpu_kernel`, `ph2d-node-registry/src/gpu_channels.rs`), em
+2026-09-17:
+
+| nó | kernel no dispositivo? |
+|---|---|
+| `motion.boids` | ✅ **sim** (`gpu::GPU_KERNEL`, `lib.rs:648`) |
+| `rig.skeleton` · `rig.fk` · `rig.ik_2bone` · `rig.fabrik` · `rig.rubber_hose` · `rig.skin_deformer` | ⛔ **não** — nenhuma das seis crates regista kernel |
+| `motion.soft_body` · `motion.verlet_rope` · `motion.wave` | ⛔ **não** |
+
+⚠️ **Controlo positivo do instrumento** (senão o censo mede zero e lê-se como «nenhum»):
+`motion.oscillator` regista **1** e as **100** crates que registam kernel aparecem na mesma
+varredura. O censo vê quem tem; estes nove não têm.
+
+⛔⛔ **E isto é PIOR do que o mesmo número noutro grupo, por causa da POSIÇÃO dos nós na cadeia.**
+O ciclo 7 mediu *«seis dos dez levavam a cadeia inteira para a CPU»* porque um nó de aparência é o
+**último** de um grafo. Aqui a partição da §1 diz que cinco são **fontes** — o **primeiro** nó — e
+cinco são **transformes** no meio: ⇒ *todo grafo que segure seja o que for corre inteiro na CPU*,
+com a única excepção de um bando de boids que ninguém deforme a seguir.
+
+⚠️ **A régua que fecha esta secção é a do ciclo 7** (`cadeia_no_dispositivo`, em
+[`motion_aparencia_probe.rs`](../../crates/ph2d-app-motion/src/motion_aparencia_probe.rs)), que
+pergunta ao **planeador** em vez de ao registo — ela mede a cadeia montada, que é o que o artista
+tem. ⏳ Ela ainda **não** foi corrida sobre este grupo: as duas formas de cadeia são
+`X → scale → output` (as cinco fontes) e `skeleton → X → output` (os cinco transformes), e é a W0
+da §5 que a escreve, com a catraca das duas metades que o ciclo 7 já paga.
+
+---
+
+## §3 — O QUE FALTA (passo 2, segunda metade): **duas metades com doenças OPOSTAS**
+
+A auditoria contra o estado da arte está feita e é boa: a folha
+[16_rig.md](89_conferencia/16_rig.md) mede os seis `rig.*` contra **Rive**, **Spine**, **Blender** e
+**RubberHose/DUIK**, com fonte por afirmação, 23 linhas, cercas grepadas e uma §SUPERAR. O que este
+ciclo acrescenta é a outra metade do grupo e a leitura de conjunto.
+
+### §3.1 — Os seis `rig.*`: MUITO poder, quase nenhum dial
+
+**9 params em 6 nós** (4 · 0 · 2 · 1 · 1 · 1). O IK do Spine sozinho tem 6 propriedades mais 3
+referências de osso; o Rive põe `Strength` em **cada um** dos 7 constraints dele.
+
+⭐⭐⭐ **E a folha já nomeou a causa mecânica, numa linha (§0 dela):** o catálogo sabe **LER**
+qualquer coluna por nome e sabe **ESCREVER** exactamente cinco (`X`, `Y`, `Rotation`, `Size`,
+`Opacity`, via `motion.drive`) ⇒ **`parent` e `len` — as duas colunas que FAZEM de uma corrente um
+esqueleto — não têm ESCRITOR nenhum.** Isso explica **seis** «inexprimíveis» de uma vez
+(comprimento por osso · peso por osso · limite de junta · rigidez por junta · stretch · compress).
+
+> *A família não é magra por natureza: é magra por não ter uma caneta.*
+
+**Os três buracos de maior alcance, na ordem em que a folha os mede:**
+
+1. **`Strength` / `Mix`** — Rive tem em **7 de 7** constraints, Spine em **4 de 4**, nós em **0 de
+   6**. *Um item, sete lugares.* ⭐ E a §SUPERAR da folha mostra que aqui ele nasce **melhor que a
+   referência**: nas três, o `Mix` é um número keyado; aqui um esqueleto é uma corrente ordinária,
+   logo o strength é uma **COLUNA** — e a família `field.*` inteira (com gizmo de canvas) já a
+   produz. *«Um IK cuja influência desvanece com a distância de uma caixa que o artista arrasta»*
+   não existe em nenhuma das três.
+2. **O peso por osso do `rig.skin_deformer`** (P0 na folha) — *«o item que todo rigger encontra no
+   primeiro dia»*. Hoje há **um** expoente global (`falloff`, inteiro 1..8) onde Spine e Rive
+   **pintam** peso por vértice e por osso.
+3. **A ALÇA no canvas** (P0) — hoje o alvo do IK é *«o primeiro elemento de uma corrente»*, uma
+   convenção **invisível** onde as três referências têm uma alça que se arrasta. ⚠️ É UI e não
+   param, e é o que torna a família **usável**.
+
+⚠️ **E um item da folha é um DEFEITO, não um pedido:** o `motion.look_at` escreve o heading de
+**MUNDO** numa coluna que o `rig.fk` lê como **LOCAL** ⇒ acerta a raiz e **rasga** tudo abaixo dela
+(cerca 2 da folha: `rot` é LOCAL, `P` é DERIVADO). Ele está derivado do código e **pendente de gate
+red-first**.
+
+### §3.2 — Os quatro corpos moles: MUITOS dials, nenhuma placa
+
+Contagem de `ParamSpec` no manifesto, 2026-09-17: `soft_body` **11** · `verlet_rope` **12** ·
+`wave` **11** · `boids` **17**. ⇒ **a doença é a oposta** da dos `rig.*`: aqui os dials existem e o
+que falta é a rota.
+
+| nó | o que está aberto hoje | fonte |
+|---|---|---|
+| `motion.wave` | ⏳ **[Bug #7](BUGS_motion_nodes.md)**, report do dono: a fileira de mar de **4 ondas não mostra cristas diferentes** — a BOIA é um passa-baixo e apaga as camadas finas (excursão `0,228` contra `0,377` da de 1 onda). A alavanca medida é o **calado**; ⛔ **não** a densidade, que reabre o Bug #6 | CLAUDE.md §5 |
+| `motion.wave` · `motion.boids` | ⏳ **tectos por medir** — o bloco Z do [doc 91](91_os_tetos_que_ninguem_mediu.md) fechou 7 células e deixou estas duas de fora | doc 91 |
+| `motion.verlet_rope` | a composição **sub-passos × `damping`**, medida e **não curada de propósito**; ⚠️ o sub-passo local dele chama-se `solver_substeps` e **não** `substeps` — enquanto usava a mesma chave, o app corria as duas leis e a corda caía **4,8× menos** que os gates dela medem | CLAUDE.md §5 |
+| `motion.soft_body` | ✅ o P1 dele FECHOU (a porta `shape`: a nuvem que chega é a forma de repouso) — a folha 03 está a **zero P1** | CLAUDE.md §5 |
+
+---
+
+## §4 — A LEITURA DE CONJUNTO (o que decide este ciclo)
+
+⭐⭐⭐ **O grupo tem duas metades com doenças opostas, e uma cura comum.**
+
+- Os `rig.*` têm **o solver e não a interface** (a folha di-lo por escrito: *«temos o SOLVER — falta
+  a INTERFACE»*). O que lhes falta escreve-se em **colunas**, e a coluna não tem caneta.
+- Os corpos moles têm **a interface e não a placa**. O que lhes falta é a **rota**.
+
+⚠️ E as duas metades encontram-se na §SUPERAR item 6 da folha: **um escritor genérico de coluna**
+(`motion.set_attribute`, o gémeo escritor do `value.attribute`, com o nome por text param do doc 32)
+destrava de uma vez comprimento por osso, ramificação, peso por osso, limites, rigidez e stretch —
+**e serve o catálogo inteiro, não só o rig**. *Se esta família for retomada, este é o primeiro item
+— e provavelmente ele não é do rig.* ⇒ ele é a **W1** da §5.
+
+---
+
+## §5 — O PLANO (passos 3 a 7), na ordem em que serão atacados
+
+| wave | o que é | porquê primeiro |
+|---|---|---|
+| **W0** | A **catraca da rota do grupo** — `cadeia_no_dispositivo` sobre as duas formas de cadeia da §2, com as duas metades (quem está fora da lista fica no dispositivo; quem está dentro continua na CPU) | *Sem a régua, toda a §2 é uma leitura de registo em vez de uma medição do planeador.* É o que o ciclo 7 já paga |
+| **W1** | O **escritor genérico de coluna** (`motion.set_attribute`) | Destrava seis células de uma vez (§4) e é a caneta que a família não tem |
+| **W2** | **`Strength`/`Mix` como COLUNA** nos constraints | Um item, sete lugares — e nasce melhor que as três referências (§3.1) |
+| **W3** | O **peso por osso** do `rig.skin_deformer` (P0) | *O item que todo rigger encontra no primeiro dia* |
+| **W4** | A **rota no dispositivo** para os corpos moles, com o preço de cada um nomeado | Lei 1 do doc 103 §2 |
+| **W5** | A **MEDIÇÃO** do grupo (passo 5): tabela CPU · dispositivo · passes · objectos/ms, com `loadavg` ao lado | §0.0 |
+| **W6** | O **TUTORIAL em PDF** (passo 6) + a cena de smoke | O tutorial É o smoke |
+| **W7** | O **smoke do dono** (passo 7) | **Enio** |
+
+⛔ **A ALÇA no canvas (P0 da folha) fica NOMEADA e fora desta lista até o dono decidir:** ela é
+**UI e não param**, e um gesto de canvas novo neste módulo compete com a selecção — a decisão é de
+produto, com o preço na folha.
+
+⚠️ **A cena de smoke deste ciclo é a `=120`** — ⛔ **conte-a no
+[roteador](../../crates/ph2d-app-motion/src/motion_state_demo_router.rs)** antes de a escrever
+(`MAX_DEMO_LEVEL` era `119` em 2026-09-17), nunca nesta linha: o gate
+`no_two_smoke_scenes_claim_the_same_level` mede o **piso**, não o tecto.
+
+---
+
+## §6 — CERCAS que este ciclo herda (grepadas, não lembradas)
+
+As dez da folha [16_rig.md](89_conferencia/16_rig.md) `CERCAS:` valem inteiras. As três que mais
+provavelmente mordem uma wave deste ciclo:
+
+1. **Os leaves `fk.rs`/`pose.rs`/`trig.rs` são BYTE-IDÊNTICOS nas 6 crates** — *«a cópia não pode
+   divergir, é o contrato dela»* (doc 42 §4). ⚠️ **Toda mudança de leaf é × 6**, e uma wave que
+   edite `fk.rs` numa crate só **nasce quebrada**.
+2. **Um solver escreve uma POSE, nunca posições** (doc 41 §3) — mutante provado: escrever `P`
+   directo deixa **16 de 17** testes verdes. É isso que mata o `motion.mixer` como rota de
+   `Strength`, e é por isso que a cadeia da W2 mistura **ângulos**.
+3. **`break_collinearity`** (`fabrik/lib.rs:104-129`) — a degenerescência é o **default** aqui, não
+   um caso exótico. ⛔ Qualquer `strength`/`pre` novo corre **depois** dela.
+
+---
+
+## §7 — A MEDIÇÃO (passo 5)
+
+⏳ Por correr — é a W5. A tabela vem para aqui com o `loadavg` ao lado de cada leitura (§0.0), pela
+sonda que a W0 deixar escrita.

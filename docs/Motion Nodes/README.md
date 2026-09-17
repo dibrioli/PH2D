@@ -128,6 +128,7 @@
 | 111 |   | [111_o_motor_de_contacto_com_memoria.md](111_o_motor_de_contacto_com_memoria.md) | — | 111 — O MOTOR DE CONTACTO COM MEMÓRIA (a espec da obra encomendada) |
 | 112 |   | [112_ciclo_7_aparencia.md](112_ciclo_7_aparencia.md) | — | 112 — CICLO 7: APARÊNCIA, a cor e o rasto |
 | 113 |   | [113_ciclo_8_fontes_e_dados.md](113_ciclo_8_fontes_e_dados.md) | — | 113 — CICLO 8: FONTES & DADOS, de onde vêm as coisas |
+| 114 |   | [114_ciclo_9_rig_e_corpos_moles.md](114_ciclo_9_rig_e_corpos_moles.md) | — | 114 — CICLO 9 · RIG & CORPOS MOLES — «Coisas que se seguram» |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

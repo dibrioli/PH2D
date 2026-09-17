@@ -112,11 +112,26 @@ inventada. Contagens do registry em 2026-09-05.
 | **6** ✅ ([doc 110](110_ciclo_6_valor_e_pulso.md)) | VALOR & PULSO — o cérebro | a família `value.*` e `pulse.*` (**35**) | «Um número que manda em tudo» |
 | **7** ✅ ([doc 112](112_ciclo_7_aparencia.md)) | APARÊNCIA (Fx) | `tint` · `color_ramp` · `color_array` · `trail` · `strobe` · `glow` · `drop_shadow` · `rgb_split` · `sub_uv` · `slit_scan` | «A cor e o rasto» |
 | **8** ✅ ([doc 113](113_ciclo_8_fontes_e_dados.md)) | FONTES & DADOS | `source.shape` · `source.object` · `source.text` · `source.table` · `source.lsystem` · `motion.emitter` · **`source.camera`** (nasceu no ciclo) | «De onde vêm as coisas» — cena `=119`, [tutorial 8](tutoriais/08_de_onde_vem_as_coisas.pdf) |
-| 9 | RIG & CORPOS MOLES | `rig.*` · `soft_body` · `verlet_rope` · `wave` · `boids` | «Coisas que se seguram» |
+| 9 ⏳ ([doc 114](114_ciclo_9_rig_e_corpos_moles.md)) | RIG & CORPOS MOLES | `rig.*` (**6**) · `soft_body` · `verlet_rope` · `wave` · `boids` — **10**, contados | «Coisas que se seguram» |
 | **10** | ⚡ **O CARIMBO NO DISPOSITIVO** — `source.shape` + `motion.duplicator` | (optimização, não um grupo novo) | «Um milhão de cópias» |
 | **11** | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o módulo inteiro, cena a cena | (varredura) | — |
 | **12** | ⚡ **OS TETOS CONFORTÁVEIS** — quantos objectos o sistema aguenta, com número | (decisão do Enio, com a tabela) | — |
 
+> ⚠️ **Estado em 2026-09-17 (reabertura da linha).** A linha foi integrada e reaberta sobre o `main`
+> novo; o ciclo **9 (RIG & CORPOS MOLES) ABRIU** ([doc 114](114_ciclo_9_rig_e_corpos_moles.md)), com
+> os passos **1** e **2** fechados. O grupo são **DEZ** nós **contados** pelo censo da paleta — e eles
+> vivem em **duas categorias**: cinco **produzem** a coisa que se segura (`Source`) e cinco **agem**
+> sobre ela (`Transform`). ⭐ O achado que decide o ciclo é que as duas metades têm doenças
+> **OPOSTAS**: os seis `rig.*` têm **o solver e não a interface** (9 params em 6 nós, contra o
+> `Strength` que o Rive põe em 7 de 7 constraints) e os quatro corpos moles têm **a interface e não a
+> placa** (11–17 params cada, e só o `motion.boids` regista kernel — **1 de 10** no dispositivo).
+> ⛔⛔ E isto é pior que o mesmo número no ciclo 7: lá o nó era o **último** do grafo, aqui cinco são o
+> **primeiro** e cinco são do meio ⇒ *todo grafo que segure seja o que for corre inteiro na CPU*.
+> ⭐⭐ As duas metades curam-se pelo mesmo sítio — **`parent` e `len` não têm ESCRITOR**, e um escritor
+> genérico de coluna destrava seis células de uma vez e serve o catálogo inteiro (doc 114 §4).
+> ⏳ Fica ainda **a tabela do relógio do ciclo 8** (doc 113 §7): a sonda está comitada e a espera pela
+> máquina calma corre por vigia (`ferramentas/medir_quando_calmo.sh`).
+>
 > ⚠️ **Estado em 2026-09-16 (fecho da LINHA).** O ciclo **8** FECHOU — o dono correu a cena `=119`,
 > seguiu o [tutorial 08](tutoriais/08_de_onde_vem_as_coisas.pdf) e aprovou (*«smoke OK»*). O achado
 > que o decidiu **não estava no catálogo**: uma fonte é o PRIMEIRO nó de um grafo, então a costura

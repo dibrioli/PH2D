@@ -311,6 +311,23 @@ os censos da crate antes de dar o corte por fechado.
   **How to apply:** ao escrever «X dá exactamente Y», corra a **segunda** partição no mesmo gate, e
   se ela só concordar a menos de arredondamento escreva a barra **derivada** (`(n − 1) · eps`, o
   limite clássico entre duas associações de `n` parcelas) em vez de afrouxar a primeira metade.
+- ⛔⛔⛔ **GATEAR A COSTURA DE UMA CHAMADA QUE NÃO ACONTECE — e o gate fica verde, honesto e
+  inútil.** Medido 2026-09-17 (`W5` do render, report do dono *«não funciona, não clareia»*):
+  escrevi um gate textual a provar que a thread do quadro assente passa **os materiais e as
+  lâmpadas** ao refinamento — e era **verdade**. A chamada inteira está atrás de
+  `refines_occlusion(antialias, parked) = … && cpu_occlusion_enabled()`, que lê `PH2D_FIELD_AO` e
+  **nasce desligada por veredito do dono** (o refinamento de CPU custava `1 998 ms` contra `5,00 ms`
+  no dispositivo). O produto lê os canais da PLACA, que não calcula aquilo.
+  **Why:** é a família do §5.0 (*«um gate prova que o dado existe e que ele fecha, e não que ele
+  CHEGA ao consumidor»*) **com uma volta a mais** — aqui o consumidor existe, está bem fiado e
+  **não corre**. Um gate de costura mede a ligação, nunca se o fio tem corrente.
+  **How to apply:** antes de gatear que um valor chega a uma porta, **meça se a porta é chamada no
+  caminho de OMISSÃO** — um `git grep` pelo predicado que a governa responde em dez segundos, e eu
+  não o corri. ⚠️ E o sintoma que o antecede é uma nota minha a dizer *«é o que o põe no produto»*
+  sobre um caminho que deixou de ser o que o artista vê: *quando um módulo migra para o
+  dispositivo, toda frase «isto shipa» escrita para o caminho de CPU passa a precisar de ser
+  reconferida*, que é o `CLAUDE.md §0.0` («quem move o número que tornava algo inalcançável tem de
+  reconferir a nota») aplicado a uma AFIRMAÇÃO em vez de a um limite.
 
 ---
 

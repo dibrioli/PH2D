@@ -563,3 +563,6 @@ fn sonda_a_faceta_do_fast_na_dobra_forte() {
 
 #[path = "smoke_bone_paint_pincel_tests.rs"]
 mod pincel;
+
+#[path = "smoke_bone_paint_assada_tests.rs"]
+mod assada;

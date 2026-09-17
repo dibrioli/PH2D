@@ -453,7 +453,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // uma que cobre), e a ordem do painel é a das perguntas, não a da história do arquivo.
     ParamUiHint {
         param: SHADOW_BLEND,
-        label: "Shadow Blend",
+        label: "node.fx.drop_shadow.param.shadow_blend",
         min: 0.0,
         max: (SHADOW_BLEND_LABELS.len() - 1) as f32,
         step: 1.0,
@@ -463,7 +463,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "direction",
-        label: "Direction",
+        label: "node.fx.drop_shadow.param.direction",
         min: 0.0,
         max: DEGREES_PER_TURN,
         step: 1.0,
@@ -471,7 +471,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "distance",
-        label: "Distance",
+        label: "node.fx.drop_shadow.param.distance",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -479,7 +479,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "softness",
-        label: "Softness",
+        label: "node.fx.drop_shadow.param.softness",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -487,7 +487,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "r",
-        label: "Color",
+        label: "node.fx.drop_shadow.param.r",
         min: 0.0,
         max: 1.0,
         step: 0.01,

@@ -521,7 +521,7 @@ static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registr
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count_max",
-        label: "Count",
+        label: "node.pulse.counter.param.count_max",
         min: 1.0,
         max: 32.0,
         step: 1.0,
@@ -529,7 +529,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.pulse.counter.param.mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -539,7 +539,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "reset_to",
-        label: "Reset To",
+        label: "node.pulse.counter.param.reset_to",
         min: 0.0,
         max: 32.0,
         step: 1.0,
@@ -549,7 +549,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // capacidade que este param compra, e um slider que só sobe a esconderia.
     ParamUiHint {
         param: "step",
-        label: "Increment",
+        label: "node.pulse.counter.param.step",
         min: -8.0,
         max: 8.0,
         step: 1.0,

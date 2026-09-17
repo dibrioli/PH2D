@@ -489,7 +489,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "mode",
-        label: "Aim At",
+        label: "node.motion.look_at.param.mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -501,7 +501,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // (doc 33) — the same channel and the same picker `motion.path` uses.
     ParamUiHint {
         param: "target",
-        label: "Object",
+        label: "node.motion.look_at.param.target",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -509,7 +509,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "target_x",
-        label: "Target X",
+        label: "node.motion.look_at.param.target_x",
         min: -20.0,
         max: 20.0,
         step: 0.05,
@@ -517,7 +517,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "target_y",
-        label: "Target Y",
+        label: "node.motion.look_at.param.target_y",
         min: -20.0,
         max: 20.0,
         step: 0.05,
@@ -527,7 +527,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // is a pass-through, and a floor here would hide the neutral.
     ParamUiHint {
         param: "strength",
-        label: "Strength",
+        label: "node.motion.look_at.param.strength",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -535,7 +535,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.motion.look_at.param.offset",
         min: -180.0,
         max: 180.0,
         step: 1.0,

@@ -228,7 +228,7 @@ static PARAM_GATES: &[ParamGate] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: KIND,
-        label: "Kind",
+        label: "node.value.number.param.kind",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -238,7 +238,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: VALUE_PARAM,
-        label: "Value",
+        label: "node.value.number.param.value",
         min: -HAND_SPAN,
         max: HAND_SPAN,
         step: 0.01,
@@ -246,7 +246,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: STATE,
-        label: "State",
+        label: "node.value.number.param.state",
         min: 0.0,
         max: 1.0,
         step: 1.0,

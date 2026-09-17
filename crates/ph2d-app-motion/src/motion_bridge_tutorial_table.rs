@@ -150,7 +150,7 @@ fn so_noutro_modo(
         hints
             .iter()
             .find(|h| h.param == nome)
-            .map_or(nome, |h| h.label)
+            .map_or(nome, |h| ph2d_i18n::tr(h.label))
     };
     // ⚠️ **Por PARAM e não por gate:** um controlo pode ter um gate de cada família (o
     // `Collider Radius` tem), e uma linha por gate escrevia-o duas vezes a prometer coisas

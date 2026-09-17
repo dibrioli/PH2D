@@ -24,7 +24,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // é»*. O cartão de uma FONTE abre com o que ela produz.
     ParamUiHint {
         param: param::KIND,
-        label: "Shape",
+        label: "node.source.shape.param.kind",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -34,7 +34,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::SIZE,
-        label: "Size",
+        label: "node.source.shape.param.size",
         min: 0.05,
         max: 10.0,
         step: 0.05,
@@ -42,7 +42,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::ROTATION,
-        label: "Rotation",
+        label: "node.source.shape.param.rotation",
         min: -180.0,
         max: 180.0,
         step: 1.0,
@@ -53,7 +53,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // forma depois de escolher qual ela é.
     ParamUiHint {
         param: param::FILL,
-        label: "Own Fill",
+        label: "node.source.shape.param.fill",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -62,7 +62,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // O MESMO swatch do traço, pela mesma lei (nunca quatro sliders lineares crus).
     ParamUiHint {
         param: param::FILL_R,
-        label: "Fill",
+        label: "node.source.shape.param.fill_r",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -74,7 +74,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // *silhueta*. `0` = sem traço ⇒ a forma que sempre shipou.
     ParamUiHint {
         param: param::STROKE_WIDTH,
-        label: "Stroke Width",
+        label: "node.source.shape.param.stroke_width",
         min: 0.0,
         max: 1.0,
         step: 0.005,
@@ -86,7 +86,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // bridge lê o pick de volta (sRGB→linear).
     ParamUiHint {
         param: param::STROKE_R,
-        label: "Stroke",
+        label: "node.source.shape.param.stroke_r",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -101,7 +101,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::ASPECT,
-        label: "Aspect (H/W)",
+        label: "node.source.shape.param.aspect",
         min: 0.1,
         max: 4.0,
         step: 0.01,
@@ -109,7 +109,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::SIDES,
-        label: "Sides / Points / Teeth",
+        label: "node.source.shape.param.sides",
         min: 3.0,
         max: 32.0,
         step: 1.0,
@@ -117,7 +117,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::CORNER,
-        label: "Corner Radius",
+        label: "node.source.shape.param.corner",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -125,7 +125,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::STAR_DEPTH,
-        label: "Point Depth",
+        label: "node.source.shape.param.star_depth",
         min: 0.05,
         max: 0.95,
         step: 0.01,
@@ -133,7 +133,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::CLEFT,
-        label: "Cleft",
+        label: "node.source.shape.param.cleft",
         min: 0.02,
         max: 0.45,
         step: 0.01,
@@ -141,7 +141,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::TOOTH_DEPTH,
-        label: "Tooth Depth",
+        label: "node.source.shape.param.tooth_depth",
         min: 0.05,
         max: 0.6,
         step: 0.01,
@@ -149,7 +149,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::HOLE,
-        label: "Hole",
+        label: "node.source.shape.param.hole",
         min: 0.0,
         max: 0.9,
         step: 0.01,
@@ -160,7 +160,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // começo é o gesto, e parar em 359 faria o slider bater numa parede invisível.
     ParamUiHint {
         param: param::SWEEP,
-        label: "Sweep",
+        label: "node.source.shape.param.sweep",
         min: 0.0,
         max: 360.0,
         step: 1.0,
@@ -168,7 +168,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::START,
-        label: "Start",
+        label: "node.source.shape.param.start",
         min: 0.0,
         max: 360.0,
         step: 1.0,
@@ -178,7 +178,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // mesmo teto do `Hole` da engrenagem, pela mesma razão.
     ParamUiHint {
         param: param::INNER,
-        label: "Inner",
+        label: "node.source.shape.param.inner",
         min: 0.0,
         max: 0.95,
         step: 0.01,
@@ -190,7 +190,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // faixa que a biblioteca aceita.
     ParamUiHint {
         param: param::CORNER_TR,
-        label: "Corner TR",
+        label: "node.source.shape.param.corner_tr",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -198,7 +198,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::CORNER_BR,
-        label: "Corner BR",
+        label: "node.source.shape.param.corner_br",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -206,7 +206,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::CORNER_BL,
-        label: "Corner BL",
+        label: "node.source.shape.param.corner_bl",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -214,7 +214,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::SMOOTHING,
-        label: "Smoothing",
+        label: "node.source.shape.param.smoothing",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -225,7 +225,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // de um círculo e metade de uma estrela, que é a promessa do *Trim Paths*.
     ParamUiHint {
         param: param::TRIM_START,
-        label: "Trim Start",
+        label: "node.source.shape.param.trim_start",
         min: 0.0,
         max: 1.0,
         step: 0.005,
@@ -233,7 +233,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::TRIM_END,
-        label: "Trim End",
+        label: "node.source.shape.param.trim_end",
         min: 0.0,
         max: 1.0,
         step: 0.005,
@@ -241,7 +241,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::TRIM_OFFSET,
-        label: "Trim Offset",
+        label: "node.source.shape.param.trim_offset",
         min: 0.0,
         max: 1.0,
         step: 0.005,
@@ -252,7 +252,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // linha de corte larga sem que engrossar o traço mude o ritmo.
     ParamUiHint {
         param: param::DASH,
-        label: "Dash",
+        label: "node.source.shape.param.dash",
         min: 0.0,
         max: 20.0,
         step: 0.1,
@@ -260,7 +260,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::DASH_GAP,
-        label: "Dash Gap",
+        label: "node.source.shape.param.dash_gap",
         min: 0.0,
         max: 20.0,
         step: 0.1,
@@ -270,7 +270,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // sentinela no tamanho: um `Collider Width` de zero é uma caixa sem largura, não a ausência dela.
     ParamUiHint {
         param: param::COLLIDE,
-        label: "Collide",
+        label: "node.source.shape.param.collide",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -280,7 +280,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // retangulares que tentam se adaptar às dimensões da shape»*).
     ParamUiHint {
         param: param::COLLIDER_SHAPE,
-        label: "Collider Shape",
+        label: "node.source.shape.param.collider_shape",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -293,7 +293,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // a alça do canvas escreve além dele.
     ParamUiHint {
         param: param::COLLIDER_WIDTH,
-        label: "Collider Width",
+        label: "node.source.shape.param.collider_width",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -301,7 +301,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::COLLIDER_HEIGHT,
-        label: "Collider Height",
+        label: "node.source.shape.param.collider_height",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -309,7 +309,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::COLLIDER_RADIUS,
-        label: "Collider Radius",
+        label: "node.source.shape.param.collider_radius",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -319,7 +319,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // collider»*) — o contorno de cada peça desta forma, por cima da arte.
     ParamUiHint {
         param: param::SHOW_COLLIDER,
-        label: "Show Collider",
+        label: "node.source.shape.param.show_collider",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -329,7 +329,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // travar rotação»*): desligado elas tombam, ligado só deslizam.
     ParamUiHint {
         param: param::LOCK_ROTATION,
-        label: "Lock Rotation",
+        label: "node.source.shape.param.lock_rotation",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -339,7 +339,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // que faz um círculo RODAR em vez de derrapar, e não apenas o que o trava.
     ParamUiHint {
         param: param::FRICTION,
-        label: "Friction",
+        label: "node.source.shape.param.friction",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -352,7 +352,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // exactamente por ele. A tabela MEDIDA que abriu a faixa está no doc de `BOUNCE_MAX`.
     ParamUiHint {
         param: param::BOUNCE,
-        label: "Bounciness",
+        label: "node.source.shape.param.bounce",
         min: 0.0,
         max: ph2d_nodegraph::attr::BOUNCE_MAX,
         step: 0.01,
@@ -363,7 +363,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // trava a peça é o atrito de Coulomb e não esta lei.
     ParamUiHint {
         param: param::ROLLING,
-        label: "Rolling Friction",
+        label: "node.source.shape.param.rolling",
         min: 0.0,
         max: ph2d_nodegraph::attr::ROLLING_MAX,
         step: 0.01,

@@ -355,7 +355,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "life",
-        label: "Life",
+        label: "node.sim.lifetime.param.life",
         min: 0.0,
         max: 20.0,
         step: 0.1,
@@ -363,7 +363,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "variance",
-        label: "Variance",
+        label: "node.sim.lifetime.param.variance",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -371,7 +371,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.sim.lifetime.param.seed",
         min: 0.0,
         max: 9999.0,
         step: 1.0,

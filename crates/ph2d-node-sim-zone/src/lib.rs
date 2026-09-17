@@ -279,7 +279,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "substeps",
-        label: "Substeps",
+        label: "node.sim.zone.param.substeps",
         min: 1.0,
         max: 16.0,
         step: 1.0,
@@ -288,7 +288,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // ── O CICLO DE VIDA ──────────────────────────────────────────────────────
     ParamUiHint {
         param: "mode",
-        label: "Life Cycle",
+        label: "node.sim.zone.param.mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -299,7 +299,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // ⚠️ O `start` vale nos TRÊS modos — atrasar o começo não tem nada a ver com ter fim.
     ParamUiHint {
         param: "start",
-        label: "Start",
+        label: "node.sim.zone.param.start",
         min: 0.0,
         max: 10.0,
         step: 0.05,
@@ -307,7 +307,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "duration",
-        label: "Duration",
+        label: "node.sim.zone.param.duration",
         min: MIN_DURATION_UI,
         max: 20.0,
         step: 0.05,
@@ -315,7 +315,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "loop_delay",
-        label: "Loop Delay",
+        label: "node.sim.zone.param.loop_delay",
         min: 0.0,
         max: 10.0,
         step: 0.05,

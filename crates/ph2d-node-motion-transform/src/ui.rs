@@ -13,7 +13,7 @@ use ph2d_node_registry::{ParamGate, ParamUiHint, ParamUnit, ParamUnitDecl, Param
 pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "pivot_mode",
-        label: "Pivot",
+        label: "node.motion.transform.param.pivot_mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -23,7 +23,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pivot_x",
-        label: "Pivot X",
+        label: "node.motion.transform.param.pivot_x",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -31,7 +31,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pivot_y",
-        label: "Pivot Y",
+        label: "node.motion.transform.param.pivot_y",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -39,7 +39,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "scale",
-        label: "Scale",
+        label: "node.motion.transform.param.scale",
         min: 0.0,
         max: 5.0,
         step: 0.05,
@@ -49,7 +49,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // desligar a corrente.
     ParamUiHint {
         param: UNIFORM,
-        label: "Uniform",
+        label: "node.motion.transform.param.uniform",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -57,7 +57,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: SCALE_Y,
-        label: "Scale Y",
+        label: "node.motion.transform.param.scale_y",
         min: 0.0,
         max: 5.0,
         step: 0.05,
@@ -69,7 +69,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // não o teto do dado, e a inclinação é ilimitada por construção, ao contrário de um ângulo.
     ParamUiHint {
         param: super::SKEW_X,
-        label: "Skew X",
+        label: "node.motion.transform.param.skew_x",
         min: -2.0,
         max: 2.0,
         step: 0.01,
@@ -77,7 +77,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: super::SKEW_Y,
-        label: "Skew Y",
+        label: "node.motion.transform.param.skew_y",
         min: -2.0,
         max: 2.0,
         step: 0.01,
@@ -85,7 +85,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset_x",
-        label: "Offset X",
+        label: "node.motion.transform.param.offset_x",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -93,7 +93,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset_y",
-        label: "Offset Y",
+        label: "node.motion.transform.param.offset_y",
         min: -10.0,
         max: 10.0,
         step: 0.1,

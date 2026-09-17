@@ -347,7 +347,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "start",
-        label: "Start",
+        label: "node.field.index_range.param.start",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -355,7 +355,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "end",
-        label: "End",
+        label: "node.field.index_range.param.end",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -363,7 +363,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "soft",
-        label: "Softness",
+        label: "node.field.index_range.param.soft",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -371,7 +371,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "curve",
-        label: "Curve",
+        label: "node.field.index_range.param.curve",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -381,7 +381,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "invert",
-        label: "Invert",
+        label: "node.field.index_range.param.invert",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -391,7 +391,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // `attr`, e um rótulo que diz *"Attribute"* é o que faz o artista procurá-la.
     ParamUiHint {
         param: "key",
-        label: "Order By",
+        label: "node.field.index_range.param.key",
         min: 0.0,
         max: 1.0,
         step: 1.0,

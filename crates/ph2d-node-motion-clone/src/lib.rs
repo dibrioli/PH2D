@@ -455,7 +455,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count",
-        label: "Count",
+        label: "node.motion.clone.param.count",
         min: 1.0,
         max: 32.0,
         step: 1.0,
@@ -466,7 +466,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // `motion.path`, cujo sinal também é uma direcção e não uma magnitude.
     ParamUiHint {
         param: fan::TIME_OFFSET,
-        label: "Time Offset",
+        label: "node.motion.clone.param.time_offset",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -475,7 +475,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // ⚠️ **Primeiro, porque ele decide o que os outros QUEREM DIZER** (a fila ou o leque).
     ParamUiHint {
         param: MODE,
-        label: "Mode",
+        label: "node.motion.clone.param.mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -487,7 +487,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // `Linear` é o passo entre cópias, em `Radial` é o RAIO a que o leque as põe.
     ParamUiHint {
         param: "distance",
-        label: "Distance",
+        label: "node.motion.clone.param.distance",
         min: 0.0,
         max: 10.0,
         step: 0.1,
@@ -495,7 +495,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "angle",
-        label: "Angle",
+        label: "node.motion.clone.param.angle",
         min: -360.0,
         max: 360.0,
         step: 1.0,
@@ -506,7 +506,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // doc 90 mede.
     ParamUiHint {
         param: ARC,
-        label: "Arc",
+        label: "node.motion.clone.param.arc",
         min: -360.0,
         max: 360.0,
         step: 1.0,
@@ -514,7 +514,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pivot_x",
-        label: "Pivot X",
+        label: "node.motion.clone.param.pivot_x",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -522,7 +522,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pivot_y",
-        label: "Pivot Y",
+        label: "node.motion.clone.param.pivot_y",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -530,7 +530,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "center",
-        label: "Center",
+        label: "node.motion.clone.param.center",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -542,7 +542,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // megafone) é metade do que a referência lista como caso de uso.
     ParamUiHint {
         param: SCALE_TAPER,
-        label: "Scale Taper",
+        label: "node.motion.clone.param.scale_taper",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -552,7 +552,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // nó — uma volta inteira para cada lado.
     ParamUiHint {
         param: ROT_TAPER,
-        label: "Rot Taper",
+        label: "node.motion.clone.param.rot_taper",
         min: -360.0,
         max: 360.0,
         step: 1.0,

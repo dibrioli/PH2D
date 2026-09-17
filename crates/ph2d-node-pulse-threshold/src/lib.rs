@@ -465,7 +465,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
-        label: "Channel",
+        label: "node.pulse.threshold.param.channel",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -475,7 +475,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "rise",
-        label: "Rise",
+        label: "node.pulse.threshold.param.rise",
         min: -10.0,
         max: 5.0,
         step: 0.05,
@@ -483,7 +483,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "fall",
-        label: "Fall",
+        label: "node.pulse.threshold.param.fall",
         min: -10.0,
         max: 3.0,
         step: 0.05,
@@ -491,7 +491,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "edge",
-        label: "Edge",
+        label: "node.pulse.threshold.param.edge",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -501,7 +501,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "debounce",
-        label: "Debounce",
+        label: "node.pulse.threshold.param.debounce",
         min: 0.0,
         // The HAND's range: a bouncing gesture settles in tens of milliseconds
         // and "at most one pulse per second" is the far end of what anyone drags

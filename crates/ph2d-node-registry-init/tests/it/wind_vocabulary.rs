@@ -42,9 +42,15 @@ fn both_forces_speak_the_same_target_velocity_vocabulary() {
         ph2d_node_force_vortex::MODE_LABELS,
         "os rotulos do modo"
     );
+    // ⚠️⚠️ **Compara-se o TEXTO RESOLVIDO, e nao as duas constantes.** Desde que o rotulo e' uma
+    // chave derivada do TIPO, estas duas sao `node.force.wind.param.mode` e
+    // `node.force.vortex.param.mode` — diferentes **por construcao**, e uma igualdade entre elas
+    // seria impossivel de satisfazer sem quebrar a lei da chave. ⭐ E o gate fica MAIS FORTE: ele
+    // deixou de afirmar que dois literais estao escritos igual e passou a afirmar que o artista
+    // le' a mesma palavra nos dois cartoes, que e' a propriedade que ele sempre quis.
     assert_eq!(
-        ph2d_node_force_wind::MODE_LABEL,
-        ph2d_node_force_vortex::MODE_LABEL,
+        ph2d_i18n::tr(ph2d_node_force_wind::MODE_LABEL),
+        ph2d_i18n::tr(ph2d_node_force_vortex::MODE_LABEL),
         "o rotulo da PERGUNTA -- os dois fazem a mesma, logo ela tem UM nome"
     );
     let mode = ph2d_node_force_wind::MODE;
@@ -76,15 +82,19 @@ fn both_forces_speak_the_same_target_velocity_vocabulary() {
         };
         assert_eq!(labels, ph2d_node_force_wind::MODE_LABELS, "`{ty}`");
         assert_eq!(
-            h.label,
-            ph2d_node_force_wind::MODE_LABEL,
+            ph2d_i18n::tr(h.label),
+            ph2d_i18n::tr(ph2d_node_force_wind::MODE_LABEL),
             "`{ty}`: o rotulo do painel"
         );
         let a = hints
             .iter()
             .find(|h| h.param == air)
             .unwrap_or_else(|| panic!("`{ty}` tem hint da resistencia"));
-        assert_eq!(a.label, "Air Resistance", "`{ty}`: o rotulo do painel");
+        assert_eq!(
+            ph2d_i18n::tr(a.label),
+            "Air Resistance",
+            "`{ty}`: o rotulo do painel"
+        );
         // E a resistência só aparece no modo que a lê, nos dois.
         let gates = reg
             .param_gates(m.id)
@@ -167,12 +177,17 @@ fn the_mode_label_names_the_question_it_asks() {
             .expect("hint do modo")
             .label
     };
+    // ⚠️⚠️ **A comparação é do TEXTO, e a razão é muda se se esquecer.** Desde que o rótulo é
+    // uma chave derivada do TIPO, dois nós que façam a mesma pergunta têm chaves DIFERENTES por
+    // construção — uma busca por `h.label == nosso` deixaria de achar ninguém, a lista de
+    // acusados ficaria vazia, e **uma lista vazia lê-se aqui como aprovado**.
+    let nosso = ph2d_i18n::tr(nosso);
     let alheios: Vec<(&str, &[&str])> = reg
         .manifests()
         .filter(|m| !PAIR.contains(&m.name))
         .filter_map(|m| {
             let hs = reg.param_ui(m.id)?;
-            let h = hs.iter().find(|h| h.label == nosso)?;
+            let h = hs.iter().find(|h| ph2d_i18n::tr(h.label) == nosso)?;
             match h.widget {
                 ParamWidget::Enum { labels } => Some((m.name, labels)),
                 _ => None,
@@ -203,7 +218,7 @@ fn the_house_census_of_enum_labels() {
         for h in hs {
             if let ParamWidget::Enum { labels } = h.widget {
                 tabela
-                    .entry(h.label)
+                    .entry(ph2d_i18n::tr(h.label))
                     .or_default()
                     .entry(labels.join(" | "))
                     .or_default()

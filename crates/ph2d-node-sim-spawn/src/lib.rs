@@ -559,7 +559,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "rate",
-        label: "Rate",
+        label: "node.sim.spawn.param.rate",
         min: 0.0,
         max: 60.0,
         step: 0.5,
@@ -567,7 +567,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "scatter",
-        label: "Scatter",
+        label: "node.sim.spawn.param.scatter",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -575,7 +575,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.sim.spawn.param.seed",
         min: 0.0,
         max: 9999.0,
         step: 1.0,
@@ -585,7 +585,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // HONOURS — a box that accepted 5 000 over a cap of 256 would accept and lie (doc 88, B2).
     ParamUiHint {
         param: "burst",
-        label: "Burst",
+        label: "node.sim.spawn.param.burst",
         min: 0.0,
         max: 32.0,
         step: 1.0,
@@ -593,7 +593,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "burst_speed",
-        label: "Burst Speed",
+        label: "node.sim.spawn.param.burst_speed",
         min: 0.0,
         // A faixa CONFORTÁVEL do arrasto (doc 88 B2), não um teto: acima disto o estouro
         // ainda é legível, só sai de quadro depressa. Sem `ParamHardMax` de propósito — o
@@ -604,7 +604,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "probability",
-        label: "Probability",
+        label: "node.sim.spawn.param.probability",
         min: 0.0,
         max: 1.0,
         step: 0.01,

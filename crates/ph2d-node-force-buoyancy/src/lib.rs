@@ -537,7 +537,7 @@ static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registr
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "level",
-        label: "Level",
+        label: "node.force.buoyancy.param.level",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -545,7 +545,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "density",
-        label: "Density",
+        label: "node.force.buoyancy.param.density",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -553,7 +553,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "depth",
-        label: "Depth",
+        label: "node.force.buoyancy.param.depth",
         min: 0.01,
         max: 3.0,
         step: 0.01,
@@ -561,7 +561,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "drag",
-        label: "Drag",
+        label: "node.force.buoyancy.param.drag",
         min: 0.0,
         max: 20.0,
         step: 0.05,
@@ -569,7 +569,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "wave_amplitude",
-        label: "Wave Amplitude",
+        label: "node.force.buoyancy.param.wave_amplitude",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -577,7 +577,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "wave_length",
-        label: "Wave Length",
+        label: "node.force.buoyancy.param.wave_length",
         min: 0.05,
         max: 20.0,
         step: 0.05,
@@ -585,7 +585,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "wave_speed",
-        label: "Wave Speed",
+        label: "node.force.buoyancy.param.wave_speed",
         min: -5.0,
         max: 5.0,
         step: 0.05,
@@ -593,7 +593,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: WAVES,
-        label: "Waves",
+        label: "node.force.buoyancy.param.waves",
         min: 1.0,
         max: 4.0,
         step: 1.0,

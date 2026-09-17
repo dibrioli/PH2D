@@ -348,7 +348,7 @@ static PARAM_GATES: &[ParamGate] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "in_lo",
-        label: "In Low",
+        label: "node.value.map_range.param.in_lo",
         min: -100.0,
         max: 100.0,
         step: 0.05,
@@ -356,7 +356,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "in_hi",
-        label: "In High",
+        label: "node.value.map_range.param.in_hi",
         min: -100.0,
         max: 10.0,
         step: 0.05,
@@ -364,7 +364,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "out_lo",
-        label: "Out Low",
+        label: "node.value.map_range.param.out_lo",
         min: -100.0,
         max: 100.0,
         step: 0.05,
@@ -372,7 +372,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "out_hi",
-        label: "Out High",
+        label: "node.value.map_range.param.out_hi",
         min: -100.0,
         max: 10.0,
         step: 0.05,
@@ -380,7 +380,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "clamp",
-        label: "Clamp",
+        label: "node.value.map_range.param.clamp",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -390,7 +390,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "interpolation",
-        label: "Interpolation",
+        label: "node.value.map_range.param.interpolation",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -404,7 +404,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "steps",
-        label: "Steps",
+        label: "node.value.map_range.param.steps",
         min: 1.0,
         max: 32.0,
         step: 1.0,

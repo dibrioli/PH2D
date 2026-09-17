@@ -461,14 +461,14 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 /// inteiro ao lado do valor mais largo da faixa (`-10,00`). Se não coubesse, a unificação teria
 /// ido para o lado curto — *um rótulo elidido lê-se como o vizinho dele*.
 static PARAM_HINTS: &[ParamUiHint] = &[
-    hint("tl_dx", "Top-Left X"),
-    hint("tl_dy", "Top-Left Y"),
-    hint("tr_dx", "Top-Right X"),
-    hint("tr_dy", "Top-Right Y"),
-    hint("br_dx", "Bottom-Right X"),
-    hint("br_dy", "Bottom-Right Y"),
-    hint("bl_dx", "Bottom-Left X"),
-    hint("bl_dy", "Bottom-Left Y"),
+    hint("tl_dx", "node.motion.four_point_warp.param.tl_dx"),
+    hint("tl_dy", "node.motion.four_point_warp.param.tl_dy"),
+    hint("tr_dx", "node.motion.four_point_warp.param.tr_dx"),
+    hint("tr_dy", "node.motion.four_point_warp.param.tr_dy"),
+    hint("br_dx", "node.motion.four_point_warp.param.br_dx"),
+    hint("br_dy", "node.motion.four_point_warp.param.br_dy"),
+    hint("bl_dx", "node.motion.four_point_warp.param.bl_dx"),
+    hint("bl_dy", "node.motion.four_point_warp.param.bl_dy"),
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is

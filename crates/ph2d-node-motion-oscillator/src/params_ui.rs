@@ -23,7 +23,7 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
-        label: "Channel",
+        label: "node.motion.oscillator.param.channel",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -33,7 +33,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "wave",
-        label: "Wave",
+        label: "node.motion.oscillator.param.wave",
         min: 0.0,
         // ⚠️ **Apendada**: a `Custom` é o índice 5, e as cinco de sempre ficam onde
         // estavam — um documento autorado guarda o NÚMERO, não o nome.
@@ -48,7 +48,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // `value.curve`). Ver `super::WAVE_CUSTOM`.
     ParamUiHint {
         param: super::CURVE_KEY,
-        label: "Custom Wave",
+        label: "node.motion.oscillator.param.curve",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -56,7 +56,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "amplitude",
-        label: "Amplitude",
+        label: "node.motion.oscillator.param.amplitude",
         min: 0.0,
         max: 10.0,
         step: 0.05,
@@ -67,7 +67,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // ver `natural_range`, e a armadilha do Spike que ela cura.
     ParamUiHint {
         param: "range_mode",
-        label: "Range",
+        label: "node.motion.oscillator.param.range_mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -77,7 +77,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "min",
-        label: "Minimum",
+        label: "node.motion.oscillator.param.min",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -85,7 +85,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "max",
-        label: "Maximum",
+        label: "node.motion.oscillator.param.max",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -93,7 +93,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "frequency",
-        label: "Frequency",
+        label: "node.motion.oscillator.param.frequency",
         min: 0.0,
         max: 8.0,
         step: 0.05,
@@ -101,7 +101,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "phase_stagger",
-        label: "Stagger",
+        label: "node.motion.oscillator.param.phase_stagger",
         min: 0.0,
         max: 1.0,
         step: 0.02,
@@ -109,7 +109,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.motion.oscillator.param.offset",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -120,7 +120,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // na primeira metade.
     ParamUiHint {
         param: "pulse_width",
-        label: "Pulse Width",
+        label: "node.motion.oscillator.param.pulse_width",
         min: 0.05,
         max: 0.95,
         step: 0.01,
@@ -128,7 +128,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "phase",
-        label: "Phase",
+        label: "node.motion.oscillator.param.phase",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -136,7 +136,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "time_mode",
-        label: "Time Mode",
+        label: "node.motion.oscillator.param.time_mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -149,7 +149,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // `frequency`) faria o slider inteiro caber entre 0 e 8 batidas por minuto.
     ParamUiHint {
         param: "bpm",
-        label: "BPM",
+        label: "node.motion.oscillator.param.bpm",
         min: 20.0,
         max: 300.0,
         step: 1.0,

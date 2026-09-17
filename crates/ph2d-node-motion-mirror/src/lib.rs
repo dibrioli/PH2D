@@ -362,7 +362,7 @@ use ph2d_node_registry::{ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "axis",
-        label: "Axis",
+        label: "node.motion.mirror.param.axis",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -372,7 +372,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset",
-        label: "Axis Offset",
+        label: "node.motion.mirror.param.offset",
         // Simetrico em torno do centroide: a linha anda para os DOIS lados, e o
         // teto e o piso sao a folga de autoria confortavel, nao um recurso.
         min: -400.0,
@@ -384,7 +384,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // querem dizer nada, e um slider convidaria a procurar o meio.
     ParamUiHint {
         param: FLIP_ROT,
-        label: "Flip Orientation",
+        label: "node.motion.mirror.param.flip_rot",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -392,7 +392,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: REINDEX,
-        label: "Reindex",
+        label: "node.motion.mirror.param.reindex",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -403,7 +403,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // `mode` do `motion.spline_wrap` fez pelo vocabulário da referência.
     ParamUiHint {
         param: KEEP,
-        label: "Keep",
+        label: "node.motion.mirror.param.keep",
         min: 0.0,
         max: 1.0,
         step: 1.0,

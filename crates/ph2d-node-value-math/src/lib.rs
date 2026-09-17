@@ -513,7 +513,7 @@ use ph2d_node_registry::{ParamGate, ParamHardMax, ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "op",
-        label: "Op",
+        label: "node.value.math.param.op",
         min: 0.0,
         max: 16.0,
         step: 1.0,
@@ -548,7 +548,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "epsilon",
-        label: "Epsilon",
+        label: "node.value.math.param.epsilon",
         // ⚠️ **The soft max is DERIVED, not chosen**, and a convention gate produced
         // the number: the panel's track is 154 px and the mapping is linear, so
         // `span / 154` is the smallest step a DRAG can make — above
@@ -578,7 +578,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // convenção deste domínio.
     ParamUiHint {
         param: "distance",
-        label: "Distance",
+        label: "node.value.math.param.distance",
         min: 0.0,
         max: 1.0,
         step: 0.01,

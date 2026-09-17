@@ -255,7 +255,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "falloff",
-    label: "Stiffness",
+    label: "node.rig.skin_deformer.param.falloff",
     min: 1.0,
     max: 8.0,
     step: 1.0,

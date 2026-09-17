@@ -524,7 +524,7 @@ macro_rules! weight_hint {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.motion.mixer.param.mode",
         min: 0.0,
         max: 6.0,
         step: 1.0,
@@ -538,7 +538,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // De qual entrada vem a GEOMETRIA. `Mixed` é o nó de sempre.
     ParamUiHint {
         param: "geom_from",
-        label: "Geometry From",
+        label: "node.motion.mixer.param.geom_from",
         min: 0.0,
         max: 4.0,
         step: 1.0,
@@ -546,10 +546,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &["Mixed", "In 0", "In 1", "In 2", "In 3"],
         },
     },
-    weight_hint!(WEIGHTS[0], "Weight 0"),
-    weight_hint!(WEIGHTS[1], "Weight 1"),
-    weight_hint!(WEIGHTS[2], "Weight 2"),
-    weight_hint!(WEIGHTS[3], "Weight 3"),
+    weight_hint!(WEIGHTS[0], "node.motion.mixer.param.weight_0"),
+    weight_hint!(WEIGHTS[1], "node.motion.mixer.param.weight_1"),
+    weight_hint!(WEIGHTS[2], "node.motion.mixer.param.weight_2"),
+    weight_hint!(WEIGHTS[3], "node.motion.mixer.param.weight_3"),
 ];
 
 /// Os pesos só aparecem onde são lidos — ver [`WEIGHTS`]: no `Blend` quem responde

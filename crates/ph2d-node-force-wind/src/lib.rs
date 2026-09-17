@@ -86,7 +86,10 @@ pub const MODE_LABELS: &[&str] = &["Force", "Target Velocity"];
 ///
 /// A lei que o defende é derivada, não uma lista de palavras proibidas:
 /// `the_mode_label_names_the_question_it_asks`.
-pub const MODE_LABEL: &str = "Acts As";
+/// ⚠️ **Desde a migracao do HR-15 isto e' uma CHAVE, nao um rotulo** — o texto vive em
+/// `ph2d-i18n/src/node_params.rs` e o nome desta constante ficou por nao valer a churn de
+/// a renomear em duas crates. Quem a ler pinta `ph2d_i18n::tr(MODE_LABEL)`.
+pub const MODE_LABEL: &str = "node.force.wind.param.mode";
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {

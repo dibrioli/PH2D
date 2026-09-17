@@ -549,7 +549,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "pick",
-        label: "Pick",
+        label: "node.motion.duplicator.param.pick",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -559,7 +559,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.motion.duplicator.param.seed",
         min: 0.0,
         max: 999.0,
         step: 1.0,
@@ -570,7 +570,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // a escala do ponto em que pousou, tal como no `Cycle` e no `Random`.
     ParamUiHint {
         param: POINT_SCALE,
-        label: "Point Scale",
+        label: "node.motion.duplicator.param.point_scale",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -580,7 +580,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // transferência compõe-se com o carimbo nos três modos.
     ParamUiHint {
         param: transfer::TRANSFER,
-        label: "Transfer",
+        label: "node.motion.duplicator.param.transfer",
         min: 0.0,
         max: 3.0,
         step: 1.0,

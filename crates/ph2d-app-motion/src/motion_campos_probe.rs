@@ -259,7 +259,11 @@ fn every_row_the_tutorial_names_is_on_the_card() {
                      esse nome -- ha': {havia:?}"
                 )
             });
-        let rows: Vec<&str> = v.params.iter().map(|c| c.hint.label).collect();
+        let rows: Vec<&str> = v
+            .params
+            .iter()
+            .map(|c| ph2d_i18n::tr(c.hint.label))
+            .collect();
         for l in *linhas {
             assert!(
                 rows.contains(l),
@@ -310,7 +314,11 @@ fn every_row_the_tutorial_names_is_on_the_card() {
         .iter()
         .find(|v| v.display_name == "Falloff")
         .expect("o cartao");
-    let rows: Vec<&str> = falloff.params.iter().map(|c| c.hint.label).collect();
+    let rows: Vec<&str> = falloff
+        .params
+        .iter()
+        .map(|c| ph2d_i18n::tr(c.hint.label))
+        .collect();
     assert!(
         !rows.contains(&"Rotation"),
         "a cena abre com `Rotation` ja' no cartao -- o passo 4 promete que ela APARECE"

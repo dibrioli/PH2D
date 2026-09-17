@@ -193,7 +193,7 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count",
-        label: "Count",
+        label: "node.motion.fibonacci.param.count",
         min: 1.0,
         max: 2000.0,
         step: 1.0,
@@ -201,7 +201,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "spacing",
-        label: "Spacing",
+        label: "node.motion.fibonacci.param.spacing",
         min: 0.01,
         max: 1.0,
         step: 0.005,
@@ -209,7 +209,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "angle",
-        label: "Angle",
+        label: "node.motion.fibonacci.param.angle",
         min: 0.0,
         max: 360.0,
         step: 0.01,

@@ -170,7 +170,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     // Amplifies the derivative (slopes are small); negative flips the sign.
     param: "scale",
-    label: "Scale",
+    label: "node.value.slope.param.scale",
     min: -8.0,
     max: 8.0,
     step: 0.05,

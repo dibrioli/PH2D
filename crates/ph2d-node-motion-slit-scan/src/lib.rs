@@ -252,7 +252,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "lag",
-        label: "Lag",
+        label: "node.motion.slit_scan.param.lag",
         min: 0.0,
         max: 32.0,
         step: 0.5,
@@ -260,7 +260,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: RAMP,
-        label: "Delay By",
+        label: "node.motion.slit_scan.param.ramp",
         min: 0.0,
         max: 1.0,
         step: 1.0,

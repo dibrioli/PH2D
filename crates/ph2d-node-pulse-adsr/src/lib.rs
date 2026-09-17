@@ -511,7 +511,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "delay",
-        label: "Delay",
+        label: "node.pulse.adsr.param.delay",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -519,7 +519,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "attack",
-        label: "Attack",
+        label: "node.pulse.adsr.param.attack",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -527,7 +527,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "decay",
-        label: "Decay",
+        label: "node.pulse.adsr.param.decay",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -535,7 +535,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "sustain",
-        label: "Sustain",
+        label: "node.pulse.adsr.param.sustain",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -543,7 +543,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "hold",
-        label: "Hold",
+        label: "node.pulse.adsr.param.hold",
         min: 0.0,
         max: 4.0,
         step: 0.01,
@@ -551,7 +551,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "release",
-        label: "Release",
+        label: "node.pulse.adsr.param.release",
         min: 0.0,
         max: 4.0,
         step: 0.01,
@@ -559,7 +559,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "attack_shape",
-        label: "Attack Shape",
+        label: "node.pulse.adsr.param.attack_shape",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -567,7 +567,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "release_shape",
-        label: "Release Shape",
+        label: "node.pulse.adsr.param.release_shape",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -575,7 +575,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "retrigger",
-        label: "Retrigger",
+        label: "node.pulse.adsr.param.retrigger",
         min: 0.0,
         max: 1.0,
         step: 1.0,

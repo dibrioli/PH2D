@@ -429,7 +429,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "target_x",
-        label: "Target X",
+        label: "node.force.attractor.param.target_x",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -437,7 +437,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "target_y",
-        label: "Target Y",
+        label: "node.force.attractor.param.target_y",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -445,7 +445,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "strength",
-        label: "Strength",
+        label: "node.force.attractor.param.strength",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -453,7 +453,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "radius",
-        label: "Radius",
+        label: "node.force.attractor.param.radius",
         min: 0.1,
         max: 20.0,
         step: 0.1,
@@ -461,7 +461,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "curve",
-        label: "Curve",
+        label: "node.force.attractor.param.curve",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -471,7 +471,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "repel",
-        label: "Repel",
+        label: "node.force.attractor.param.repel",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -481,7 +481,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // rótulo *"Stream"* que faz o artista procurá-la.
     ParamUiHint {
         param: "target_mode",
-        label: "Target",
+        label: "node.force.attractor.param.target_mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -493,7 +493,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // raio de influência antes de a força chegar lá — curso morto, não mais alcance.
     ParamUiHint {
         param: "lead",
-        label: "Predict",
+        label: "node.force.attractor.param.lead",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -504,7 +504,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // borda de influência seria meio controle.
     ParamUiHint {
         param: INNER,
-        label: "Min Distance",
+        label: "node.force.attractor.param.inner",
         min: 0.0,
         max: 20.0,
         step: 0.05,
@@ -512,7 +512,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: PEAK,
-        label: "Peak Distance",
+        label: "node.force.attractor.param.peak",
         min: 0.0,
         max: 20.0,
         step: 0.05,
@@ -520,7 +520,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: REVERSE,
-        label: "Reversal Distance",
+        label: "node.force.attractor.param.reverse",
         min: 0.0,
         max: 20.0,
         step: 0.05,

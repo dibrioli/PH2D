@@ -12,7 +12,7 @@ use ph2d_node_registry::ParamGroup;
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "shape",
-        label: "Shape",
+        label: "node.sim.collide.param.shape",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -28,7 +28,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         // model delivers, and "Height" stopped being able to
         // ([[feedback_a_label_must_promise_what_the_model_delivers]]).
         param: "height",
-        label: "Offset",
+        label: "node.sim.collide.param.height",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -36,7 +36,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "angle",
-        label: "Angle",
+        label: "node.sim.collide.param.angle",
         // The full turn, because every quarter of it is a different idiom: 0 floor,
         // 90 wall, 180 ceiling, 270 the other wall.
         min: -180.0,
@@ -46,7 +46,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "center_x",
-        label: "Center X",
+        label: "node.sim.collide.param.center_x",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -54,7 +54,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "center_y",
-        label: "Center Y",
+        label: "node.sim.collide.param.center_y",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -62,7 +62,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "radius",
-        label: "Radius",
+        label: "node.sim.collide.param.radius",
         min: 0.0,
         max: 10.0,
         step: 0.1,
@@ -70,7 +70,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "radius_from",
-        label: "Radius From",
+        label: "node.sim.collide.param.radius_from",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -83,7 +83,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "particle_radius",
-        label: "Particle Radius",
+        label: "node.sim.collide.param.particle_radius",
         min: 0.0,
         max: 4.0,
         step: 0.01,
@@ -91,7 +91,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "size_scale",
-        label: "Size Scale",
+        label: "node.sim.collide.param.size_scale",
         // 1 = the circle inscribed in the sprite; 1.414… = the one around a square
         // one. Above ~2 the collider is visibly bigger than the art it catches.
         min: 0.0,
@@ -101,7 +101,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "restitution",
-        label: "Bounce",
+        label: "node.sim.collide.param.restitution",
         min: 0.0,
         // ⭐⭐ **A FAIXA É A DA PEÇA, lida da porta e não escrita outra vez** (doc 109 §7.9): o
         // salto do obstáculo e o da peça combinam-se por `max` e entram no mesmo campo, logo um
@@ -112,7 +112,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "friction",
-        label: "Friction",
+        label: "node.sim.collide.param.friction",
         min: 0.0,
         max: ph2d_nodegraph::attr::FRICTION_MAX,
         step: 0.01,
@@ -125,7 +125,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // 2 de largura», e a metade é conta de quem implementa (feita uma vez, no `eval`).
     ParamUiHint {
         param: "box_width",
-        label: "Box Width",
+        label: "node.sim.collide.param.box_width",
         min: 0.0,
         max: 20.0,
         step: 0.1,
@@ -133,7 +133,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "box_height",
-        label: "Box Height",
+        label: "node.sim.collide.param.box_height",
         min: 0.0,
         max: 20.0,
         step: 0.1,
@@ -141,7 +141,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "restitution_randomness",
-        label: "Restitution Randomness",
+        label: "node.sim.collide.param.restitution_randomness",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -149,7 +149,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.sim.collide.param.seed",
         min: 0.0,
         max: 999.0,
         step: 1.0,

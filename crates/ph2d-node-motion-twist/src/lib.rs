@@ -446,7 +446,7 @@ static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "angle",
-        label: "Angle",
+        label: "node.motion.twist.param.angle",
         min: -720.0,
         max: 720.0,
         step: 1.0,
@@ -456,7 +456,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // artista lê. Um `min` acima de zero tornaria o modo automático inalcançável pelo painel.
     ParamUiHint {
         param: RADIUS,
-        label: "Radius (0 = auto)",
+        label: "node.motion.twist.param.radius",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -464,7 +464,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: PROFILE,
-        label: "Profile",
+        label: "node.motion.twist.param.profile",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -474,7 +474,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: ph2d_nodegraph::pivot::PARAM,
-        label: "Pivot",
+        label: "node.motion.twist.param.pivot_mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -484,7 +484,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pivot_x",
-        label: "Pivot X",
+        label: "node.motion.twist.param.pivot_x",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -492,7 +492,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pivot_y",
-        label: "Pivot Y",
+        label: "node.motion.twist.param.pivot_y",
         min: -10.0,
         max: 10.0,
         step: 0.05,

@@ -50,7 +50,8 @@ fn every_node_that_asks_where_the_centre_is_asks_it_with_the_same_words() {
                 )
             });
         assert_eq!(
-            hint.label, "Pivot",
+            ph2d_i18n::tr(hint.label),
+            "Pivot",
             "{}: a mesma pergunta tem de ter a mesma palavra",
             manifest.name
         );

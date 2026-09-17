@@ -384,7 +384,7 @@ fn param_choices(motion: &MotionState, n: NodeId, v: &GraphNodeView) -> Vec<Port
             // offering something they cannot find.
             let label = hints
                 .and_then(|hs| hs.iter().find(|h| h.param == p.name))
-                .map_or(p.name, |h| h.label);
+                .map_or(p.name, |h| ph2d_i18n::tr(h.label));
             PortChoice {
                 node: n.0,
                 target: ChoiceTarget::Param(p.name),

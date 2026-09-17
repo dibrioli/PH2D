@@ -427,7 +427,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: BLEND,
-        label: "Blend",
+        label: "node.value.switch.param.blend",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -440,7 +440,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // contagem — está no doc de [`LAZY`] e no aviso da folha.
     ParamUiHint {
         param: LAZY,
-        label: "Skip Unused Inputs",
+        label: "node.value.switch.param.lazy",
         min: 0.0,
         max: 1.0,
         step: 1.0,

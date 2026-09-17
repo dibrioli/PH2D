@@ -182,7 +182,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 /// stream column this node adds to. Painted as a `deg` numeric box.
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "angle",
-    label: "Angle",
+    label: "node.motion.rotate.param.angle",
     min: -180.0,
     max: 180.0,
     step: 1.0,

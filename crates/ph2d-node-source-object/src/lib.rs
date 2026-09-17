@@ -258,7 +258,7 @@ const OFFSET_HARD: f32 = 999.0;
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: OBJECT_PARAM,
-        label: "Object",
+        label: "node.source.object.param.object",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -266,7 +266,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: TIME_OFFSET_PARAM,
-        label: "Time Offset",
+        label: "node.source.object.param.time_offset",
         min: -2.0,
         max: 2.0,
         step: OFFSET_STEP,
@@ -276,7 +276,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // (*Original/Relative*), que são ambíguos fora do Blender. Ver [`SPACE_PARAM`].
     ParamUiHint {
         param: SPACE_PARAM,
-        label: "Transform",
+        label: "node.source.object.param.space",
         min: 0.0,
         max: 1.0,
         step: 1.0,

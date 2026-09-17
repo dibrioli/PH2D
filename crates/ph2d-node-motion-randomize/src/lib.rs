@@ -305,7 +305,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
-        label: "Channel",
+        label: "node.motion.randomize.param.channel",
         min: 0.0,
         max: 6.0,
         step: 1.0,
@@ -315,7 +315,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "amount",
-        label: "Amount",
+        label: "node.motion.randomize.param.amount",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -323,7 +323,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.motion.randomize.param.seed",
         min: 0.0,
         max: 9999.0,
         step: 1.0,

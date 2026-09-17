@@ -385,7 +385,7 @@ static PARAM_UNITS: &[ph2d_node_registry::ParamUnitDecl] = &[ph2d_node_registry:
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.motion.cull.param.mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -395,7 +395,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "amount",
-        label: "Amount",
+        label: "node.motion.cull.param.amount",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -403,7 +403,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "max",
-        label: "Max Count",
+        label: "node.motion.cull.param.max",
         min: 0.0,
         max: 4096.0,
         step: 1.0,
@@ -411,7 +411,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "invert",
-        label: "Invert",
+        label: "node.motion.cull.param.invert",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -424,7 +424,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // rótulo diz a consequência.
     ParamUiHint {
         param: "reindex",
-        label: "Renumber Survivors",
+        label: "node.motion.cull.param.reindex",
         min: 0.0,
         max: 1.0,
         step: 1.0,

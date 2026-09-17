@@ -304,7 +304,7 @@ static PARAM_GATES: &[ParamGate] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
-        label: "Channel",
+        label: "node.motion.wiggle.param.channel",
         min: 0.0,
         // ⚠️ **Apendado**: o `Position XY` é o índice 4, e os quatro de sempre ficam
         // onde estavam — um documento autorado guarda o NÚMERO, não o nome.
@@ -316,7 +316,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "amplitude",
-        label: "Amplitude",
+        label: "node.motion.wiggle.param.amplitude",
         min: 0.0,
         max: 10.0,
         step: 0.05,
@@ -326,7 +326,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // única forma de este nó dizer um CENTRO: ele nunca teve `offset`.
     ParamUiHint {
         param: "range_mode",
-        label: "Range",
+        label: "node.motion.wiggle.param.range_mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -336,7 +336,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "min",
-        label: "Minimum",
+        label: "node.motion.wiggle.param.min",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -344,7 +344,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "max",
-        label: "Maximum",
+        label: "node.motion.wiggle.param.max",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -352,7 +352,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "frequency",
-        label: "Frequency",
+        label: "node.motion.wiggle.param.frequency",
         min: 0.0,
         max: 8.0,
         step: 0.05,
@@ -360,7 +360,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.motion.wiggle.param.seed",
         min: 0.0,
         max: 100.0,
         step: 1.0,
@@ -368,7 +368,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "octaves",
-        label: "Octaves",
+        label: "node.motion.wiggle.param.octaves",
         min: 1.0,
         max: MAX_OCTAVES as f32,
         step: 1.0,
@@ -379,7 +379,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // de `amp_mult` — quem procura o wiggle procura a palavra do AE.
     ParamUiHint {
         param: "amp_mult",
-        label: "Amp Multiplier",
+        label: "node.motion.wiggle.param.amp_mult",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -387,7 +387,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "loop_len",
-        label: "Loop Length",
+        label: "node.motion.wiggle.param.loop_len",
         min: 0.0,
         max: 30.0,
         step: 0.1,

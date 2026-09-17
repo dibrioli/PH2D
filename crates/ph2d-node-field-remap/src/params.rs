@@ -113,7 +113,7 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "inner_offset",
-        label: "Inner Offset",
+        label: "node.field.remap.param.inner_offset",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -121,7 +121,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "contour",
-        label: "Contour",
+        label: "node.field.remap.param.contour",
         min: 0.0,
         max: 4.0,
         step: 1.0,
@@ -134,7 +134,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         // (the `motion.expression` Text precedent). The panel draws the curve editor;
         // inert unless `contour = Curve`. `min/max/step` are inert for a curve widget.
         param: CURVE_KEY,
-        label: "Curve",
+        label: "node.field.remap.param.curve",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -142,7 +142,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "curvature",
-        label: "Curvature",
+        label: "node.field.remap.param.curvature",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -150,7 +150,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "steps",
-        label: "Steps",
+        label: "node.field.remap.param.steps",
         min: 2.0,
         max: 32.0,
         step: 1.0,
@@ -158,7 +158,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "min",
-        label: "Min",
+        label: "node.field.remap.param.min",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -166,7 +166,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "max",
-        label: "Max",
+        label: "node.field.remap.param.max",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -174,7 +174,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "multiplier",
-        label: "Multiplier",
+        label: "node.field.remap.param.multiplier",
         min: 0.0,
         max: 4.0,
         step: 0.01,
@@ -182,7 +182,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "clamp",
-        label: "Clamp",
+        label: "node.field.remap.param.clamp",
         min: 0.0,
         #[expect(clippy::cast_precision_loss, reason = "quatro rotulos")]
         max: (super::CLAMP_LABELS.len() - 1) as f32,
@@ -195,7 +195,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "invert",
-        label: "Invert",
+        label: "node.field.remap.param.invert",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -207,7 +207,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // largo seria curso morto.
     ParamUiHint {
         param: "curve_offset",
-        label: "Curve Offset",
+        label: "node.field.remap.param.curve_offset",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -215,7 +215,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "strength",
-        label: "Strength",
+        label: "node.field.remap.param.strength",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -223,7 +223,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "probability",
-        label: "Probability",
+        label: "node.field.remap.param.probability",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -231,7 +231,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.field.remap.param.seed",
         min: 0.0,
         max: 9999.0,
         step: 1.0,

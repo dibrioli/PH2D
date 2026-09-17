@@ -360,12 +360,12 @@ fn the_row_blend_speaks_one_word() {
                 continue;
             }
             assert!(
-                h.label.ends_with(" Blend"),
+                ph2d_i18n::tr(h.label).ends_with(" Blend"),
                 "`{}`::{} oferece a escada do modo por linha e chama-lhe «{}» — a palavra da \
                  casa e' `<quem> Blend` (o `motion.output` diz `Blend`)",
                 man.name,
                 h.param,
-                h.label
+                ph2d_i18n::tr(h.label)
             );
             vistos.push(man.name);
         }

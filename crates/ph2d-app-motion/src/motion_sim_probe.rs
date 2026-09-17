@@ -241,7 +241,11 @@ fn what_the_sim_scene_cards_show() {
         &mut snap,
     );
     for v in &snap.nodes {
-        let rows: Vec<&str> = v.params.iter().map(|c| c.hint.label).collect();
+        let rows: Vec<&str> = v
+            .params
+            .iter()
+            .map(|c| ph2d_i18n::tr(c.hint.label))
+            .collect();
         eprintln!("  {:<18} | {}", v.display_name, rows.join(" · "));
         if !v.sections.is_empty() {
             let secs: Vec<String> = v
@@ -306,7 +310,11 @@ fn every_row_the_sim_tutorial_names_is_on_the_card() {
                      esse nome -- ha': {havia:?}"
                 )
             });
-        let rows: Vec<&str> = v.params.iter().map(|c| c.hint.label).collect();
+        let rows: Vec<&str> = v
+            .params
+            .iter()
+            .map(|c| ph2d_i18n::tr(c.hint.label))
+            .collect();
         for l in *linhas {
             assert!(
                 rows.contains(l),
@@ -363,7 +371,11 @@ fn every_row_the_sim_tutorial_names_is_on_the_card() {
                 let havia: Vec<&str> = s115.nodes.iter().map(|v| v.display_name.as_str()).collect();
                 panic!("o capitulo 6 manda clicar no cartao `{titulo}` -- ha': {havia:?}")
             });
-        let rows: Vec<&str> = forma.params.iter().map(|c| c.hint.label).collect();
+        let rows: Vec<&str> = forma
+            .params
+            .iter()
+            .map(|c| ph2d_i18n::tr(c.hint.label))
+            .collect();
         for l in linhas {
             assert!(
                 rows.contains(l),

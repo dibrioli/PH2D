@@ -301,27 +301,27 @@ static PARAM_GROUPS: &[ParamGroup] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count",
-        label: "Count",
+        label: "node.motion.distribute_curve.param.count",
         min: 1.0,
         max: 320.0,
         step: 1.0,
         widget: ParamWidget::Slider,
     },
-    pt("p0x", "P0 X"),
-    pt("p0y", "P0 Y"),
-    pt("p1x", "P1 X"),
-    pt("p1y", "P1 Y"),
-    pt("p2x", "P2 X"),
-    pt("p2y", "P2 Y"),
-    pt("p3x", "P3 X"),
-    pt("p3y", "P3 Y"),
+    pt("p0x", "node.motion.distribute_curve.param.p0x"),
+    pt("p0y", "node.motion.distribute_curve.param.p0y"),
+    pt("p1x", "node.motion.distribute_curve.param.p1x"),
+    pt("p1y", "node.motion.distribute_curve.param.p1y"),
+    pt("p2x", "node.motion.distribute_curve.param.p2x"),
+    pt("p2y", "node.motion.distribute_curve.param.p2y"),
+    pt("p3x", "node.motion.distribute_curve.param.p3x"),
+    pt("p3y", "node.motion.distribute_curve.param.p3y"),
     // ⚠️ "Align To **Curve**", not the sibling's "Align To Path": the two nodes walk different
     // objects, and this node's own vocabulary for its object is `Curve` (the group name it
     // shares with `motion.spline_wrap`). A label naming the wrong object is worse than a
     // label that differs from a cousin's.
     ParamUiHint {
         param: "align",
-        label: "Align To Curve",
+        label: "node.motion.distribute_curve.param.align",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -329,7 +329,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.motion.distribute_curve.param.mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -343,7 +343,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // being a spacing and becomes "one point".
     ParamUiHint {
         param: "spacing",
-        label: "Spacing",
+        label: "node.motion.distribute_curve.param.spacing",
         min: 0.01,
         max: 2.0,
         step: 0.01,

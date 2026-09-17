@@ -10,7 +10,7 @@ use ph2d_node_registry::{ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
 pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "angle",
-        label: "Angle",
+        label: "node.motion.bend.param.angle",
         min: -270.0,
         max: 270.0,
         step: 1.0,
@@ -20,7 +20,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // resposta distinta (a `−90` a dobra corre para baixo, e isso não é o mesmo que `+90`).
     ParamUiHint {
         param: DIRECTION,
-        label: "Direction",
+        label: "node.motion.bend.param.direction",
         min: -180.0,
         max: 180.0,
         step: 1.0,
@@ -28,7 +28,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: MODE,
-        label: "Mode",
+        label: "node.motion.bend.param.mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -40,7 +40,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // curso INTEIRO tem de ser alcançável — um `min` acima de `−1` esconderia a ponta.
     ParamUiHint {
         param: LIMITS.0,
-        label: "Limit Lower",
+        label: "node.motion.bend.param.limit_lo",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -48,7 +48,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: LIMITS.1,
-        label: "Limit Upper",
+        label: "node.motion.bend.param.limit_hi",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -56,7 +56,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: ph2d_nodegraph::pivot::PARAM,
-        label: "Pivot",
+        label: "node.motion.bend.param.pivot_mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -66,7 +66,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pivot_x",
-        label: "Pivot X",
+        label: "node.motion.bend.param.pivot_x",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -74,7 +74,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pivot_y",
-        label: "Pivot Y",
+        label: "node.motion.bend.param.pivot_y",
         min: -10.0,
         max: 10.0,
         step: 0.05,

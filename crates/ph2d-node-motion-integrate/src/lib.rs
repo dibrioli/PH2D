@@ -208,7 +208,7 @@ const MAX_SUBSTEPS: f32 = 64.0;
 /// sub-passo é uma CONTAGEM, e meio sub-passo não quer dizer nada.
 static PARAM_HINTS: &[ph2d_node_registry::ParamUiHint] = &[ph2d_node_registry::ParamUiHint {
     param: "substeps",
-    label: "Substeps",
+    label: "node.motion.integrate.param.substeps",
     min: 1.0,
     max: 16.0,
     step: 1.0,

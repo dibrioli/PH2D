@@ -221,7 +221,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         // The half-window. `0` is a passthrough; the max is the fixed selection window.
         param: "radius",
-        label: "Radius",
+        label: "node.value.percentile.param.radius",
         min: 0.0,
         max: 16.0,
         step: 1.0,
@@ -230,7 +230,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         // 0 = min (erosion) · 0.5 = median · 1 = max (dilation).
         param: "percentile",
-        label: "Percentile",
+        label: "node.value.percentile.param.percentile",
         min: 0.0,
         max: 1.0,
         step: 0.01,

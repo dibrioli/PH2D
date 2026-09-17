@@ -260,7 +260,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // a mediana deixa de substituir seja o que for.
     ParamUiHint {
         param: "tolerance",
-        label: "Tolerance",
+        label: "node.value.median.param.tolerance",
         min: 0.0,
         max: 10.0,
         step: 0.01,
@@ -270,7 +270,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         // The half-window. `0` is a passthrough; `1` is the classic median-of-3. The
         // max is the fixed selection window (a median is a small-window de-spiker).
         param: "radius",
-        label: "Radius",
+        label: "node.value.median.param.radius",
         min: 0.0,
         max: 16.0,
         step: 1.0,

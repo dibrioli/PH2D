@@ -228,7 +228,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "target",
-        label: "Builds",
+        label: "node.motion.make_point.param.target",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -241,7 +241,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.motion.make_point.param.mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,

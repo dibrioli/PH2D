@@ -324,7 +324,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // convention), but the fold is scale-free: any `[min, max]` is a valid tile.
     ParamUiHint {
         param: "lo",
-        label: "Min",
+        label: "node.value.wrap.param.lo",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -332,7 +332,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "hi",
-        label: "Max",
+        label: "node.value.wrap.param.hi",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -340,7 +340,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.value.wrap.param.mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,

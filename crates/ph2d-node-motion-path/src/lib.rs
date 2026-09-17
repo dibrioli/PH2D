@@ -421,7 +421,7 @@ static PARAM_GATES: &[ParamGate] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: PATH_PARAM,
-        label: "Shape",
+        label: "node.motion.path.param.path",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -429,7 +429,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "mode",
-        label: "Count By",
+        label: "node.motion.path.param.mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -439,7 +439,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "count",
-        label: "Count",
+        label: "node.motion.path.param.count",
         min: 1.0,
         max: 240.0,
         step: 1.0,
@@ -449,7 +449,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // acima dele nada quebra — só não cabe cópia nenhuma, que é a resposta certa.
     ParamUiHint {
         param: "spacing",
-        label: "Spacing",
+        label: "node.motion.path.param.spacing",
         min: MIN_SPACING,
         max: 4.0,
         step: 0.01,
@@ -457,7 +457,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.motion.path.param.offset",
         min: -1.0,
         max: 1.0,
         step: 0.005,
@@ -469,7 +469,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // exactamente para isto que o rótulo é side-metadata e a chave é contrato.
     ParamUiHint {
         param: "from",
-        label: "Start",
+        label: "node.motion.path.param.from",
         min: 0.0,
         max: 1.0,
         step: 0.005,
@@ -477,7 +477,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "to",
-        label: "End",
+        label: "node.motion.path.param.to",
         min: 0.0,
         max: 1.0,
         step: 0.005,
@@ -487,7 +487,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // curso que só subisse esconderia metade da resposta atrás de um campo digitado.
     ParamUiHint {
         param: "perp",
-        label: "Perpendicular",
+        label: "node.motion.path.param.perp",
         min: -2.0,
         max: 2.0,
         step: 0.01,
@@ -497,7 +497,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // que sempre guardaram (nada · tangente), e um documento de ontem abre igual.
     ParamUiHint {
         param: "align",
-        label: "Align To Path",
+        label: "node.motion.path.param.align",
         min: 0.0,
         max: 2.0,
         step: 1.0,

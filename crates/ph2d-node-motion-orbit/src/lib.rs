@@ -358,7 +358,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "pivot_x",
-        label: "Pivot X",
+        label: "node.motion.orbit.param.pivot_x",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -366,7 +366,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pivot_y",
-        label: "Pivot Y",
+        label: "node.motion.orbit.param.pivot_y",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -374,7 +374,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "angle",
-        label: "Angle",
+        label: "node.motion.orbit.param.angle",
         min: -360.0,
         max: 360.0,
         step: 1.0,
@@ -382,7 +382,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "speed",
-        label: "Speed",
+        label: "node.motion.orbit.param.speed",
         min: -720.0,
         max: 720.0,
         step: 1.0,
@@ -390,7 +390,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: CARRY_ROTATION,
-        label: "Carry Rotation",
+        label: "node.motion.orbit.param.carry_rotation",
         min: 0.0,
         max: 1.0,
         step: 1.0,

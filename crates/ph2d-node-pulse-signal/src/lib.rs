@@ -159,7 +159,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: NAME_KEY,
-    label: "Signal Name",
+    label: "node.pulse.signal.param.name",
     min: 0.0,
     max: 0.0,
     step: 0.0,

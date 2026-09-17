@@ -164,7 +164,19 @@ pub fn stamp_card_params(
                 )]
                 let vestir = |v: f32| (f64::from(v) * face.scale) as f32;
                 ph2d_panel_motion_graph::CardParam {
-                    hint: *h,
+                    // ⚠️⚠️ **A TRADUÇÃO ACONTECE AQUI E EM MAIS SÍTIO NENHUM deste caminho.** O
+                    // `hint.label` é uma chave desde a migração do HR-15, e o snapshot do cartão
+                    // é — por lei escrita no doc dele — feito de **primitivos RESOLVIDOS**: o
+                    // painel do grafo é um pintor, não um tradutor. ⛔ E não é só arrumação: o
+                    // `ph2d_i18n::tr` de algo que não é chave faz `leak_key` (`Box::leak`), logo
+                    // **traduzir duas vezes é um vazamento por quadro e por linha** — foi por
+                    // isso que os três `tr` que este ficheiro pôs no pintor foram retirados
+                    // quando esta linha nasceu. O gate é o
+                    // `no_card_param_of_any_node_paints_a_raw_key`.
+                    hint: ph2d_node_registry::ParamUiHint {
+                        label: ph2d_i18n::tr(h.label),
+                        ..*h
+                    },
                     value: vestir(param_value(motion, nid, h.param)),
                     min: vestir(min),
                     max: vestir(max),
@@ -281,6 +293,10 @@ mod card_range_tests;
 #[cfg(test)]
 #[path = "motion_bridge_card_census.rs"]
 mod card_census;
+
+#[cfg(test)]
+#[path = "motion_bridge_param_label_reaches_the_panel_tests.rs"]
+mod param_label_reaches_the_panel_tests;
 
 /// ⭐⭐ **O QUE UMA ROW DE TEXTO MOSTRA NO CARTÃO** — e as espécies que deliberadamente **não**
 /// mostram nada.

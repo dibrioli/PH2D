@@ -296,7 +296,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "segments",
-        label: "Segments",
+        label: "node.motion.kaleidoscope.param.segments",
         min: 1.0,
         max: 64.0,
         step: 1.0,
@@ -304,7 +304,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "reflect",
-        label: "Reflect",
+        label: "node.motion.kaleidoscope.param.reflect",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -314,7 +314,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: ph2d_nodegraph::pivot::PARAM,
-        label: "Pivot",
+        label: "node.motion.kaleidoscope.param.pivot_mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -324,7 +324,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pivot_x",
-        label: "Pivot X",
+        label: "node.motion.kaleidoscope.param.pivot_x",
         min: -20.0,
         max: 20.0,
         step: 0.05,
@@ -332,7 +332,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pivot_y",
-        label: "Pivot Y",
+        label: "node.motion.kaleidoscope.param.pivot_y",
         min: -20.0,
         max: 20.0,
         step: 0.05,
@@ -340,7 +340,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: REINDEX,
-        label: "Reindex",
+        label: "node.motion.kaleidoscope.param.reindex",
         min: 0.0,
         max: 1.0,
         step: 1.0,

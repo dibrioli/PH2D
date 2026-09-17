@@ -18,7 +18,7 @@ use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamWidget};
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "tl_dx",
-        label: "Top-Left X",
+        label: "node.motion.bezier_warp.param.tl_dx",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -26,7 +26,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "tl_dy",
-        label: "Top-Left Y",
+        label: "node.motion.bezier_warp.param.tl_dy",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -34,7 +34,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "tr_dx",
-        label: "Top-Right X",
+        label: "node.motion.bezier_warp.param.tr_dx",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -42,7 +42,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "tr_dy",
-        label: "Top-Right Y",
+        label: "node.motion.bezier_warp.param.tr_dy",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -50,7 +50,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "br_dx",
-        label: "Bottom-Right X",
+        label: "node.motion.bezier_warp.param.br_dx",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -58,7 +58,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "br_dy",
-        label: "Bottom-Right Y",
+        label: "node.motion.bezier_warp.param.br_dy",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -66,7 +66,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "bl_dx",
-        label: "Bottom-Left X",
+        label: "node.motion.bezier_warp.param.bl_dx",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -74,7 +74,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "bl_dy",
-        label: "Bottom-Left Y",
+        label: "node.motion.bezier_warp.param.bl_dy",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -82,7 +82,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "top_a_dx",
-        label: "In X",
+        label: "node.motion.bezier_warp.param.top_a_dx",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -90,7 +90,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "top_a_dy",
-        label: "In Y",
+        label: "node.motion.bezier_warp.param.top_a_dy",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -98,7 +98,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "top_b_dx",
-        label: "Out X",
+        label: "node.motion.bezier_warp.param.top_b_dx",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -106,7 +106,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "top_b_dy",
-        label: "Out Y",
+        label: "node.motion.bezier_warp.param.top_b_dy",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -114,7 +114,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "right_a_dx",
-        label: "In X",
+        label: "node.motion.bezier_warp.param.right_a_dx",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -122,7 +122,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "right_a_dy",
-        label: "In Y",
+        label: "node.motion.bezier_warp.param.right_a_dy",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -130,7 +130,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "right_b_dx",
-        label: "Out X",
+        label: "node.motion.bezier_warp.param.right_b_dx",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -138,7 +138,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "right_b_dy",
-        label: "Out Y",
+        label: "node.motion.bezier_warp.param.right_b_dy",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -146,7 +146,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "bottom_a_dx",
-        label: "In X",
+        label: "node.motion.bezier_warp.param.bottom_a_dx",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -154,7 +154,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "bottom_a_dy",
-        label: "In Y",
+        label: "node.motion.bezier_warp.param.bottom_a_dy",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -162,7 +162,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "bottom_b_dx",
-        label: "Out X",
+        label: "node.motion.bezier_warp.param.bottom_b_dx",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -170,7 +170,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "bottom_b_dy",
-        label: "Out Y",
+        label: "node.motion.bezier_warp.param.bottom_b_dy",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -178,7 +178,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "left_a_dx",
-        label: "In X",
+        label: "node.motion.bezier_warp.param.left_a_dx",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -186,7 +186,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "left_a_dy",
-        label: "In Y",
+        label: "node.motion.bezier_warp.param.left_a_dy",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -194,7 +194,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "left_b_dx",
-        label: "Out X",
+        label: "node.motion.bezier_warp.param.left_b_dx",
         min: -10.0,
         max: 10.0,
         step: 0.01,
@@ -202,7 +202,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "left_b_dy",
-        label: "Out Y",
+        label: "node.motion.bezier_warp.param.left_b_dy",
         min: -10.0,
         max: 10.0,
         step: 0.01,

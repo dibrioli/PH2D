@@ -357,7 +357,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // painel é a das perguntas.
     ParamUiHint {
         param: OPERATION,
-        label: "Operation",
+        label: "node.fx.glow.param.operation",
         min: 0.0,
         max: (OPERATION_LABELS.len() - 1) as f32,
         step: 1.0,
@@ -374,7 +374,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // inertes num widget de gradiente.
     ParamUiHint {
         param: RAMP_KEY,
-        label: "Halo Ramp",
+        label: "node.fx.glow.param.ramp",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -382,7 +382,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: SOURCE,
-        label: "Glow Based On",
+        label: "node.fx.glow.param.source",
         min: 0.0,
         max: (SOURCE_LABELS.len() - 1) as f32,
         step: 1.0,
@@ -392,7 +392,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "threshold",
-        label: "Threshold",
+        label: "node.fx.glow.param.threshold",
         min: 0.0,
         max: 4.0,
         step: 0.05,
@@ -400,7 +400,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "knee",
-        label: "Soft Knee",
+        label: "node.fx.glow.param.knee",
         min: 0.0,
         max: 2.0,
         step: 0.05,
@@ -408,7 +408,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "intensity",
-        label: "Intensity",
+        label: "node.fx.glow.param.intensity",
         min: 0.0,
         max: 4.0,
         step: 0.05,
@@ -416,7 +416,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "radius",
-        label: "Radius",
+        label: "node.fx.glow.param.radius",
         min: 0.25,
         max: 4.0,
         step: 0.05,
@@ -424,7 +424,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "saturation",
-        label: "Saturation",
+        label: "node.fx.glow.param.saturation",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -434,7 +434,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // channels are the tint params. White is the neutral no-op.
     ParamUiHint {
         param: "tint_r",
-        label: "Tint",
+        label: "node.fx.glow.param.tint_r",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -444,7 +444,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "stretch",
-        label: "Anamorphic",
+        label: "node.fx.glow.param.stretch",
         min: 0.2,
         max: 6.0,
         step: 0.05,
@@ -452,7 +452,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "angle",
-        label: "Streak Angle",
+        label: "node.fx.glow.param.angle",
         min: 0.0,
         max: 360.0,
         step: 1.0,
@@ -460,7 +460,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "clamp",
-        label: "Clamp",
+        label: "node.fx.glow.param.clamp",
         min: 0.0,
         max: 16.0,
         step: 0.1,
@@ -472,7 +472,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // de hints por nó — duas chamadas apagariam a primeira em silêncio.
     ParamUiHint {
         param: dirt::DIRT_KEY,
-        label: "Dirt Texture",
+        label: "node.fx.glow.param.dirt",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -480,7 +480,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: dirt::DIRT_INTENSITY,
-        label: "Dirt Intensity",
+        label: "node.fx.glow.param.dirt_intensity",
         min: 0.0,
         // ⚠️ **`8` e não `4`, e o número saiu da MEDIÇÃO** (ver a tabela em `glow_dirt_smoke`):
         // o padrão da máscara só começa a ler-se como mancha por volta de `5` — o decil de cima

@@ -138,7 +138,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // (`size`/`size_random` could not: those are a base and its variance).
     ParamUiHint {
         param: "emit_mode",
-        label: "Emit",
+        label: "node.motion.emitter.param.emit_mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -150,7 +150,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // não é um número. Vazia = sempre ligada (a identidade). Ver `crate::schedule`.
     ParamUiHint {
         param: crate::schedule::SCHEDULE_KEY,
-        label: "Schedule",
+        label: "node.motion.emitter.param.schedule",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -158,7 +158,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "rate",
-        label: "Rate",
+        label: "node.motion.emitter.param.rate",
         min: 0.0,
         // ⚠️ The old comment here read *"12.000/s is a dense fountain at a 1 s
         // life"* — and `life` defaults to **3 s**, where 12.000/s means 36.000
@@ -174,7 +174,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "burst_count",
-        label: "Burst Count",
+        label: "node.motion.emitter.param.burst_count",
         min: 1.0,
         // The SLIDER's range — where a hand works. `MAX_ALIVE` is still the ceiling and is still
         // DERIVED (`PARAM_HARD_MAX`), never re-typed, exactly as `max`'s is.
@@ -184,7 +184,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "burst_time",
-        label: "Burst At",
+        label: "node.motion.emitter.param.burst_time",
         min: 0.0,
         max: 20.0,
         step: 0.1,
@@ -194,7 +194,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // heartbeat is the addition, not the default.
     ParamUiHint {
         param: "burst_period",
-        label: "Burst Every",
+        label: "node.motion.emitter.param.burst_period",
         min: 0.0,
         max: 20.0,
         step: 0.1,
@@ -202,7 +202,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "life",
-        label: "Life",
+        label: "node.motion.emitter.param.life",
         min: 0.1,
         max: 20.0,
         step: 0.1,
@@ -210,7 +210,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "speed",
-        label: "Speed",
+        label: "node.motion.emitter.param.speed",
         min: 0.0,
         max: 20.0,
         step: 0.1,
@@ -221,7 +221,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // the opposite half of the cone, which is `spread`'s job and better said there.
     ParamUiHint {
         param: "speed_random",
-        label: "Speed Random",
+        label: "node.motion.emitter.param.speed_random",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -229,7 +229,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "angle",
-        label: "Angle",
+        label: "node.motion.emitter.param.angle",
         min: 0.0,
         max: 360.0,
         step: 1.0,
@@ -237,7 +237,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "spread",
-        label: "Spread",
+        label: "node.motion.emitter.param.spread",
         min: 0.0,
         max: 360.0,
         step: 1.0,
@@ -245,7 +245,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "x",
-        label: "Origin X",
+        label: "node.motion.emitter.param.x",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -253,7 +253,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "y",
-        label: "Origin Y",
+        label: "node.motion.emitter.param.y",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -265,7 +265,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // painted as raw indices — for nothing, since the name is internal.
     ParamUiHint {
         param: "shape_mode",
-        label: "Shape",
+        label: "node.motion.emitter.param.shape_mode",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -275,7 +275,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "shape_w",
-        label: "Shape W",
+        label: "node.motion.emitter.param.shape_w",
         min: 0.0,
         max: 10.0,
         step: 0.05,
@@ -283,7 +283,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "shape_h",
-        label: "Shape H",
+        label: "node.motion.emitter.param.shape_h",
         min: 0.0,
         max: 10.0,
         step: 0.05,
@@ -293,7 +293,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // catalogue's `a_mode_wears_words_not_an_index` scans for (`mode` / `*_mode`).
     ParamUiHint {
         param: "dir_mode",
-        label: "Direction",
+        label: "node.motion.emitter.param.dir_mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -303,7 +303,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.motion.emitter.param.seed",
         min: 0.0,
         max: 100.0,
         step: 1.0,
@@ -311,7 +311,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "max",
-        label: "Max Particles",
+        label: "node.motion.emitter.param.max",
         min: 1.0,
         // The SLIDER's range — where a HAND works, not where the machine stops.
         // `MAX_ALIVE` is still the ceiling and is still DERIVED (never re-typed);
@@ -326,7 +326,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "size",
-        label: "Size",
+        label: "node.motion.emitter.param.size",
         min: 0.01,
         max: 2.0,
         step: 0.01,
@@ -342,7 +342,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // zero, i.e. some particles simply vanish, which is a thing to type rather than to drag past.
     ParamUiHint {
         param: crate::LIFE_RANDOM,
-        label: "Life Random",
+        label: "node.motion.emitter.param.life_random",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -350,7 +350,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "size_random",
-        label: "Size Random",
+        label: "node.motion.emitter.param.size_random",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -362,7 +362,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         // movimento do emissor* — e cada rótulo diz a resposta. «Inherit
         // Velocity» sozinho (o nome da referência) esconderia que o modo do meio
         // existe, e é ele o comportamento base de toda referência.
-        label: "Emitter Motion",
+        label: "node.motion.emitter.param.emitter_motion",
         min: 0.0,
         #[expect(clippy::cast_precision_loss, reason = "tres rotulos")]
         max: (crate::MOTION_LABELS.len() - 1) as f32,
@@ -374,7 +374,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: crate::INHERIT,
         // O *Strength* da Cavalry. Fica GATEADO ao modo que o lê — ver `PARAM_GATES`.
-        label: "Inherit Strength",
+        label: "node.motion.emitter.param.inherit",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -385,7 +385,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // lhe mexer no `rate`, e é o que um `pulse.*` dirigido liga e desliga.
     ParamUiHint {
         param: "probability",
-        label: "Probability",
+        label: "node.motion.emitter.param.probability",
         min: 0.0,
         max: 1.0,
         step: 0.01,

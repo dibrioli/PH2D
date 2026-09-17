@@ -255,7 +255,7 @@ static PARAM_GATES: &[ParamGate] = &[ParamGate {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.motion.time_remap.param.mode",
         min: 0.0,
         max: 5.0,
         step: 1.0,
@@ -268,7 +268,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // a menos do arredondamento da ida-e-volta pela tabela.
     ParamUiHint {
         param: CURVE_KEY,
-        label: "Curve",
+        label: "node.motion.time_remap.param.curve",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -276,7 +276,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "scale",
-        label: "Speed",
+        label: "node.motion.time_remap.param.scale",
         min: -4.0,
         max: 4.0,
         step: 0.05,
@@ -284,7 +284,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.motion.time_remap.param.offset",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -292,7 +292,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "duration",
-        label: "Duration",
+        label: "node.motion.time_remap.param.duration",
         min: 0.1,
         max: 10.0,
         step: 0.1,

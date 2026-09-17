@@ -349,7 +349,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "rise",
-        label: "Rise",
+        label: "node.pulse.compare.param.rise",
         min: -10.0,
         max: 5.0,
         step: 0.05,
@@ -357,7 +357,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "fall",
-        label: "Fall",
+        label: "node.pulse.compare.param.fall",
         min: -10.0,
         max: 3.0,
         step: 0.05,
@@ -365,7 +365,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "edge",
-        label: "Edge",
+        label: "node.pulse.compare.param.edge",
         min: 0.0,
         max: 2.0,
         step: 1.0,

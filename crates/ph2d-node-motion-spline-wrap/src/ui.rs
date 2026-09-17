@@ -121,7 +121,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // re-aprende no outro.
     ParamUiHint {
         param: PATH_PARAM,
-        label: "Shape",
+        label: "node.motion.spline_wrap.param.path.source",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -140,7 +140,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // separá-las faria o artista procurar a segunda depois de a primeira o ter desiludido.
     ParamUiHint {
         param: PATH_PARAM,
-        label: "Use Selected Path",
+        label: "node.motion.spline_wrap.param.path.pick_selection",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -148,7 +148,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "follow_rotation",
-        label: "Follow Curve",
+        label: "node.motion.spline_wrap.param.follow_rotation",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -156,7 +156,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "height_scale",
-        label: "Height",
+        label: "node.motion.spline_wrap.param.height_scale",
         min: 0.0,
         max: 4.0,
         step: 0.05,
@@ -167,7 +167,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // deita-se para o outro lado, que não é o mesmo que `+90`).
     ParamUiHint {
         param: super::taper::DIRECTION,
-        label: "Axis",
+        label: "node.motion.spline_wrap.param.direction",
         min: -180.0,
         max: 180.0,
         step: 1.0,
@@ -177,7 +177,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // *"Keep Length"* diz o que faz enquanto *"não esticar"* pedia para se adivinhar o resto.
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.motion.spline_wrap.param.mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -187,7 +187,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.motion.spline_wrap.param.offset",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -199,7 +199,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // aceitar um número que o `clamp` desmente em silêncio.
     ParamUiHint {
         param: "from",
-        label: "From",
+        label: "node.motion.spline_wrap.param.from",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -207,7 +207,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "to",
-        label: "To",
+        label: "node.motion.spline_wrap.param.to",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -218,7 +218,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // e acima de `1` ele engrossa, que é a outra metade do que a referência desenha.
     ParamUiHint {
         param: super::taper::SIZE_TAPER.0,
-        label: "Size Start",
+        label: "node.motion.spline_wrap.param.size_start",
         min: 0.0,
         max: 4.0,
         step: 0.05,
@@ -226,7 +226,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: super::taper::SIZE_TAPER.1,
-        label: "Size End",
+        label: "node.motion.spline_wrap.param.size_end",
         min: 0.0,
         max: 4.0,
         step: 0.05,
@@ -234,7 +234,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: super::taper::SIZE_TAPER.2,
-        label: "Size Profile",
+        label: "node.motion.spline_wrap.param.size_profile",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -242,14 +242,14 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &["Linear", "Quad", "Smooth", "Smoother"],
         },
     },
-    pt("p0x", "P0 X"),
-    pt("p0y", "P0 Y"),
-    pt("p1x", "P1 X"),
-    pt("p1y", "P1 Y"),
-    pt("p2x", "P2 X"),
-    pt("p2y", "P2 Y"),
-    pt("p3x", "P3 X"),
-    pt("p3y", "P3 Y"),
+    pt("p0x", "node.motion.spline_wrap.param.p0x"),
+    pt("p0y", "node.motion.spline_wrap.param.p0y"),
+    pt("p1x", "node.motion.spline_wrap.param.p1x"),
+    pt("p1y", "node.motion.spline_wrap.param.p1y"),
+    pt("p2x", "node.motion.spline_wrap.param.p2x"),
+    pt("p2y", "node.motion.spline_wrap.param.p2y"),
+    pt("p3x", "node.motion.spline_wrap.param.p3x"),
+    pt("p3y", "node.motion.spline_wrap.param.p3y"),
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is

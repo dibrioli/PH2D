@@ -14,7 +14,7 @@ use ph2d_node_registry::{
 pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "length",
-        label: "Length",
+        label: "node.motion.trail.param.length",
         min: 1.0,
         max: MAX_LENGTH as f32,
         step: 1.0,
@@ -30,7 +30,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // opaco que a fonte dele não é uma cauda, é outra coisa.
     ParamUiHint {
         param: super::ALPHA_MAX,
-        label: "Tail Alpha Max",
+        label: "node.motion.trail.param.alpha_max",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -38,7 +38,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "fade",
-        label: "Tail Alpha",
+        label: "node.motion.trail.param.fade",
         // Fechado pelo SIGNIFICADO, não por orçamento: a alfa é uma fração da cabeça viva,
         // e acima de 1 o fantasma ficaria mais opaco que a fonte dele.
         min: 0.0,
@@ -48,7 +48,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "shrink",
-        label: "Tail Size",
+        label: "node.motion.trail.param.shrink",
         // ⚠️ Passa de 1 de propósito: abaixo é o cometa (a cauda afina), acima é a baforada
         // (a cauda ABRE). A lei antiga também permitia, mas exponencialmente — `1.1` por
         // tick virava 6,7× em 20 ticks; agora `2.0` é exatamente o dobro na ponta.
@@ -59,7 +59,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "hue_shift",
-        label: "Tail Hue Shift",
+        label: "node.motion.trail.param.hue_shift",
         // Uma volta INTEIRA para cada lado — o total que a cauda percorre. Além de 360°
         // ela repete matizes que já tem, então é onde a grandeza se fecha.
         min: -360.0,
@@ -69,7 +69,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "saturation",
-        label: "Tail Saturation",
+        label: "node.motion.trail.param.saturation",
         // Abaixo de 1 a cauda desbota a cinza; acima ela satura — as duas direções são
         // usadas (fumaça × brasa), então a faixa não pode parar na identidade.
         min: 0.0,
@@ -79,7 +79,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "spin",
-        label: "Tail Spin",
+        label: "node.motion.trail.param.spin",
         // O mesmo fecho do matiz: a 360° a cauda completou uma revolução.
         min: -360.0,
         max: 360.0,
@@ -88,7 +88,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "spacing",
-        label: "Spacing",
+        label: "node.motion.trail.param.spacing",
         min: 1.0,
         // O teto do slider É o teto do recurso: acima dele a janela de idade cresceria
         // sem o eco aparecer, entao nao ha faixa confortavel a separar da legal.
@@ -106,7 +106,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // `the_row_blend_speaks_one_word` prende a forma `<quem> Blend`.
     ParamUiHint {
         param: ECHO_BLEND,
-        label: "Echo Blend",
+        label: "node.motion.trail.param.echo_blend",
         min: 0.0,
         #[expect(clippy::cast_precision_loss, reason = "sete rotulos")]
         max: (ECHO_BLEND_LABELS.len() - 1) as f32,
@@ -117,7 +117,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: SOURCE,
-        label: "Source",
+        label: "node.motion.trail.param.source",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -129,7 +129,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: FORWARD,
-        label: "Forward Steps",
+        label: "node.motion.trail.param.forward",
         min: 0.0,
         // O curso é o dos ecos que podem existir: `length` conta a cabeça, então
         // um a menos. O clamp real vive no `forward_of`, contra o `length` DESTE

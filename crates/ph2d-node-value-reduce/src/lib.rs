@@ -299,7 +299,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 /// documento é o índice, então a lista só cresce pelo FIM.
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "mode",
-    label: "Mode",
+    label: "node.value.reduce.param.mode",
     min: 0.0,
     max: 7.0,
     step: 1.0,

@@ -249,7 +249,7 @@ pub fn rotulos_colididos() -> Vec<(&'static str, String, String, usize)> {
         let mut contagem: BTreeMap<(&str, &str), usize> = BTreeMap::new();
         for h in m.registry.param_ui(man.id).unwrap_or(&[]) {
             let sec = grupos.get(h.param).copied().unwrap_or("");
-            *contagem.entry((sec, h.label)).or_default() += 1;
+            *contagem.entry((sec, ph2d_i18n::tr(h.label))).or_default() += 1;
         }
         for ((sec, rotulo), n) in contagem {
             if n > 1 {

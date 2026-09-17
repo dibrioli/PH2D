@@ -50,10 +50,11 @@ fn every_node_that_offsets_a_corner_calls_it_the_same_thing() {
                 queixas.push(format!("{}: `{param}` não tem hint nenhum", manifest.name));
                 continue;
             };
-            if h.label != esperado {
+            if ph2d_i18n::tr(h.label) != esperado {
                 queixas.push(format!(
                     "{}: `{param}` diz `{}` e o vocabulário do grupo é `{esperado}`",
-                    manifest.name, h.label
+                    manifest.name,
+                    ph2d_i18n::tr(h.label)
                 ));
             }
         }

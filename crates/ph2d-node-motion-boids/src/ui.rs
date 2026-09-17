@@ -187,7 +187,7 @@ pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
 pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count",
-        label: "Count",
+        label: "node.motion.boids.param.count",
         min: 1.0,
         max: 500.0,
         step: 1.0,
@@ -195,7 +195,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.motion.boids.param.seed",
         min: 0.0,
         max: 9999.0,
         step: 1.0,
@@ -203,7 +203,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "radius",
-        label: "Radius",
+        label: "node.motion.boids.param.radius",
         min: 0.1,
         max: 10.0,
         step: 0.05,
@@ -211,7 +211,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "separation",
-        label: "Separation",
+        label: "node.motion.boids.param.separation",
         min: 0.0,
         max: 6.0,
         step: 0.05,
@@ -229,7 +229,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // número: é `radius`, e a recusa vive no `applicable` do kernel.
     ParamUiHint {
         param: "separation_radius",
-        label: "Separation Radius",
+        label: "node.motion.boids.param.separation_radius",
         min: 0.0,
         max: 10.0,
         step: 0.05,
@@ -237,7 +237,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "alignment",
-        label: "Alignment",
+        label: "node.motion.boids.param.alignment",
         min: 0.0,
         max: 6.0,
         step: 0.05,
@@ -245,7 +245,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "cohesion",
-        label: "Cohesion",
+        label: "node.motion.boids.param.cohesion",
         min: 0.0,
         max: 6.0,
         step: 0.05,
@@ -253,7 +253,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seek",
-        label: "Seek",
+        label: "node.motion.boids.param.seek",
         min: 0.0,
         max: 6.0,
         step: 0.05,
@@ -261,7 +261,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "max_speed",
-        label: "Max Speed",
+        label: "node.motion.boids.param.max_speed",
         min: 0.1,
         max: 20.0,
         step: 0.1,
@@ -274,7 +274,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // pista onde o clamp já não morde.
     ParamUiHint {
         param: "max_force",
-        label: "Max Force",
+        label: "node.motion.boids.param.max_force",
         min: 0.0,
         max: 20.0,
         step: 0.1,
@@ -295,7 +295,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // move.
     ParamUiHint {
         param: "fov",
-        label: "View Cone",
+        label: "node.motion.boids.param.fov",
         min: 10.0,
         max: 360.0,
         step: 1.0,
@@ -307,7 +307,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // resposta certa no default.
     ParamUiHint {
         param: "speed_floor",
-        label: "Speed Floor",
+        label: "node.motion.boids.param.speed_floor",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -320,7 +320,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // artist there is something in between.
     ParamUiHint {
         param: "spread",
-        label: "Spread √N",
+        label: "node.motion.boids.param.spread",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -332,7 +332,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // knobs mortos.
     ParamUiHint {
         param: "avoid",
-        label: "Avoid (0 = off)",
+        label: "node.motion.boids.param.avoid",
         min: 0.0,
         max: 20.0,
         step: 0.1,
@@ -340,7 +340,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "avoid_radius",
-        label: "Avoid Radius",
+        label: "node.motion.boids.param.avoid_radius",
         min: 0.0,
         max: 8.0,
         step: 0.05,
@@ -348,7 +348,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "lookahead",
-        label: "Look Ahead",
+        label: "node.motion.boids.param.lookahead",
         min: 0.0,
         max: 2.0,
         step: 0.01,

@@ -467,7 +467,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // selecionar coisas diferentes em dois nós irmãos é o que faz um menu mentir.
     ParamUiHint {
         param: "kernel",
-        label: "Pattern",
+        label: "node.value.noise.param.kernel",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -478,7 +478,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // Os dois seguintes são gateados no Cellular (ver `PARAM_GATES`).
     ParamUiHint {
         param: "feature",
-        label: "Cell",
+        label: "node.value.noise.param.feature",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -488,7 +488,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "jitter",
-        label: "Jitter",
+        label: "node.value.noise.param.jitter",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -500,7 +500,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // folha 10, o P0 do `field.noise`).
     ParamUiHint {
         param: "space",
-        label: "Sample",
+        label: "node.value.noise.param.space",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -510,7 +510,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "frequency",
-        label: "Frequency",
+        label: "node.value.noise.param.frequency",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -518,7 +518,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "speed",
-        label: "Speed",
+        label: "node.value.noise.param.speed",
         min: 0.0,
         max: 8.0,
         step: 0.01,
@@ -526,7 +526,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "octaves",
-        label: "Octaves",
+        label: "node.value.noise.param.octaves",
         min: 1.0,
         max: 8.0,
         step: 1.0,
@@ -555,7 +555,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // sustenta na PIOR cena que este nó consegue produzir.
     ParamUiHint {
         param: "lacunarity",
-        label: "Lacunarity",
+        label: "node.value.noise.param.lacunarity",
         min: 1.0,
         max: 4.0,
         step: 0.05,
@@ -563,7 +563,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "roughness",
-        label: "Roughness",
+        label: "node.value.noise.param.roughness",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -575,7 +575,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // afirmava sobre si mesmo.
     ParamUiHint {
         param: "loop_period",
-        label: "Loop",
+        label: "node.value.noise.param.loop_period",
         min: 0.0,
         max: 30.0,
         step: 0.1,
@@ -586,7 +586,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // é mais do que qualquer deslize que se assista.
     ParamUiHint {
         param: "pan_x",
-        label: "Pan X",
+        label: "node.value.noise.param.pan_x",
         min: -8.0,
         max: 8.0,
         step: 0.01,
@@ -594,7 +594,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pan_y",
-        label: "Pan Y",
+        label: "node.value.noise.param.pan_y",
         min: -8.0,
         max: 8.0,
         step: 0.01,
@@ -602,7 +602,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "amplitude",
-        label: "Amplitude",
+        label: "node.value.noise.param.amplitude",
         min: 0.0,
         max: 10.0,
         step: 0.05,
@@ -610,7 +610,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.value.noise.param.offset",
         min: -100.0,
         max: 100.0,
         step: 0.05,
@@ -618,7 +618,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.value.noise.param.seed",
         min: 0.0,
         max: 1000.0,
         step: 1.0,

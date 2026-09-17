@@ -361,7 +361,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // with `clamp` off.
     ParamUiHint {
         param: "factor",
-        label: "Factor",
+        label: "node.value.mix.param.factor",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -375,7 +375,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // o que fez a conferência ter de MEDIR qual dos dois este era.
     ParamUiHint {
         param: "clamp",
-        label: "Clamp Factor",
+        label: "node.value.mix.param.clamp",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -387,7 +387,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // crossfade this node always was.
     ParamUiHint {
         param: "blend",
-        label: "Blend",
+        label: "node.value.mix.param.blend",
         min: 0.0,
         max: 8.0,
         step: 1.0,
@@ -409,7 +409,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // `[0,1]` — o que os modos de blend (Add/Screen/Subtract) fazem transbordar.
     ParamUiHint {
         param: "clamp_result",
-        label: "Clamp Result",
+        label: "node.value.mix.param.clamp_result",
         min: 0.0,
         max: 1.0,
         step: 1.0,

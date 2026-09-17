@@ -388,7 +388,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "period",
-        label: "Period",
+        label: "node.pulse.beat.param.period",
         min: 0.05,
         max: 8.0,
         step: 0.05,
@@ -396,7 +396,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.pulse.beat.param.offset",
         min: -4.0,
         max: 4.0,
         step: 0.05,
@@ -405,7 +405,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // A RÉGUA do mesmo número — `Seconds` é o nó que sempre shipou.
     ParamUiHint {
         param: "time_mode",
-        label: "Time Mode",
+        label: "node.pulse.beat.param.time_mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -418,7 +418,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // significa coisas diferentes.
     ParamUiHint {
         param: "bpm",
-        label: "BPM",
+        label: "node.pulse.beat.param.bpm",
         min: 20.0,
         max: 300.0,
         step: 1.0,
@@ -427,7 +427,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // A fase POR LINHA, em segundos. `0` = o metrónomo uniforme de sempre.
     ParamUiHint {
         param: "phase_stagger",
-        label: "Phase Stagger",
+        label: "node.pulse.beat.param.phase_stagger",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -436,7 +436,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // Quantas batidas antes de parar. `0` = sem janela (o metrónomo eterno).
     ParamUiHint {
         param: "count",
-        label: "Beat Count",
+        label: "node.pulse.beat.param.count",
         min: 0.0,
         max: 64.0,
         step: 1.0,

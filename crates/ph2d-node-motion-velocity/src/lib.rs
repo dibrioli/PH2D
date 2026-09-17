@@ -289,7 +289,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 /// Param UI hints (M1.P1).
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "smooth",
-    label: "Smooth",
+    label: "node.motion.velocity.param.smooth",
     min: 0.0,
     max: 32.0,
     step: 0.5,

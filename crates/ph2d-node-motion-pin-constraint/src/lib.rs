@@ -500,7 +500,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "first",
-        label: "First",
+        label: "node.motion.pin_constraint.param.first",
         min: 0.0,
         max: 4096.0,
         step: 1.0,
@@ -508,7 +508,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "count",
-        label: "Count",
+        label: "node.motion.pin_constraint.param.count",
         min: 0.0,
         // ⚠️ **Um IntSlider cujo curso passa da largura do track não consegue
         // selecionar todo inteiro.** O track mede ~154 px, então os 4.096 de
@@ -522,7 +522,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "strength",
-        label: "Strength",
+        label: "node.motion.pin_constraint.param.strength",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -533,7 +533,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // seria curso morto, porque nenhuma carga do catálogo lá chega.
     ParamUiHint {
         param: "break_above",
-        label: "Break Above (0 = never)",
+        label: "node.motion.pin_constraint.param.break_above",
         min: 0.0,
         max: 20.0,
         step: 0.1,

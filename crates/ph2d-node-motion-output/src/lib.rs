@@ -182,7 +182,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: BLEND_PARAM,
-        label: "Blend",
+        label: "node.motion.output.param.blend",
         min: 0.0,
         max: (BLEND_LABELS.len() - 1) as f32,
         step: 1.0,
@@ -194,7 +194,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // alguma coisa (um pivo' a 0,25 do centro), ao contrario de um tag.
     ParamUiHint {
         param: PIVOT_X_PARAM,
-        label: "Pivot X",
+        label: "node.motion.output.param.pivot_x",
         min: -PIVOT_LIMIT,
         max: PIVOT_LIMIT,
         step: 0.05,
@@ -202,7 +202,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: PIVOT_Y_PARAM,
-        label: "Pivot Y",
+        label: "node.motion.output.param.pivot_y",
         min: -PIVOT_LIMIT,
         max: PIVOT_LIMIT,
         step: 0.05,
@@ -210,7 +210,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: FILTER_PARAM,
-        label: "Filter",
+        label: "node.motion.output.param.filter",
         min: 0.0,
         max: (FILTER_LABELS.len() - 1) as f32,
         step: 1.0,
@@ -220,7 +220,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: SORT_PARAM,
-        label: "Sort",
+        label: "node.motion.output.param.sort",
         min: 0.0,
         max: (SORT_LABELS.len() - 1) as f32,
         step: 1.0,

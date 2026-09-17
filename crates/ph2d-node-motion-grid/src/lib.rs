@@ -293,7 +293,7 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "rows",
-        label: "Rows",
+        label: "node.motion.grid.param.rows",
         min: 1.0,
         max: 20.0,
         step: 1.0,
@@ -301,7 +301,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "cols",
-        label: "Columns",
+        label: "node.motion.grid.param.cols",
         min: 1.0,
         max: 20.0,
         step: 1.0,
@@ -309,7 +309,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "gap_x",
-        label: "Gap X",
+        label: "node.motion.grid.param.gap_x",
         min: 0.0,
         max: 10.0,
         step: 0.1,
@@ -317,7 +317,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "gap_y",
-        label: "Gap Y",
+        label: "node.motion.grid.param.gap_y",
         min: 0.0,
         max: 10.0,
         step: 0.1,
@@ -325,7 +325,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: ph2d_motion_region::SHAPE,
-        label: "Shape",
+        label: "node.motion.grid.param.shape",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -335,7 +335,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: ph2d_motion_region::INNER,
-        label: "Hole",
+        label: "node.motion.grid.param.inner",
         min: 0.0,
         max: 0.98,
         step: 0.01,

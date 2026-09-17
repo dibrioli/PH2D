@@ -380,7 +380,7 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
-        label: "Channel",
+        label: "node.motion.spring.param.channel",
         min: 0.0,
         max: 4.0,
         step: 1.0,
@@ -392,7 +392,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "tension",
-        label: "Tension",
+        label: "node.motion.spring.param.tension",
         min: 0.5,
         max: 60.0,
         step: 0.1,
@@ -400,7 +400,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "friction",
-        label: "Friction",
+        label: "node.motion.spring.param.friction",
         min: 0.1,
         max: 20.0,
         step: 0.1,
@@ -409,7 +409,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // ⭐⭐⭐ **A MOLA EM DOIS NÚMEROS QUE SE SABE PENSAR** (ciclo 2, W1 — ver [`law`]).
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.motion.spring.param.mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -419,7 +419,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "duration",
-        label: "Duration",
+        label: "node.motion.spring.param.duration",
         min: law::MIN_DURATION,
         max: 3.0,
         step: 0.01,
@@ -428,7 +428,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // ⚠️ `0` é criticamente amortecida (chega e pára). Positivo salta; negativo arrasta-se.
     ParamUiHint {
         param: "bounce",
-        label: "Bounce",
+        label: "node.motion.spring.param.bounce",
         min: -law::MAX_BOUNCE,
         max: law::MAX_BOUNCE,
         step: 0.01,

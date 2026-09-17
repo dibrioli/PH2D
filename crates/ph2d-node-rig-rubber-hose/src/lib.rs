@@ -207,7 +207,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "flip",
-    label: "Flip Bend",
+    label: "node.rig.rubber_hose.param.flip",
     min: 0.0,
     max: 1.0,
     step: 1.0,

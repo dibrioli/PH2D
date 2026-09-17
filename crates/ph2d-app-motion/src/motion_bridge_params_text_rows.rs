@@ -66,7 +66,7 @@ pub(super) fn push_text_rows(
                 channels.iter().map(|c| c.column).collect();
             let extra = params_stream::upstream_scalar_columns(motion, nid, &covered, &attr);
             rows.push(ParamRow::Channels(ChannelsRow {
-                label: h.label.to_string(),
+                label: ph2d_i18n::tr(h.label).to_string(),
                 text_param: h.param,
                 mode_param,
                 // Resolve to primitives so the panel needs no registry dependency.
@@ -96,7 +96,7 @@ pub(super) fn push_text_rows(
                 .unwrap_or_default();
             let options = params_stream::source_options(motion);
             rows.push(ParamRow::Source(SourceRow {
-                label: h.label.to_string(),
+                label: ph2d_i18n::tr(h.label).to_string(),
                 param: h.param,
                 options,
                 current,
@@ -116,7 +116,7 @@ pub(super) fn push_text_rows(
                 .unwrap_or_default();
             rows.push(ParamRow::Palette(ph2d_panel_motion_params::PaletteRow {
                 name: h.param,
-                label: h.label.to_string(),
+                label: ph2d_i18n::tr(h.label).to_string(),
                 value,
             }));
             continue;
@@ -131,7 +131,7 @@ pub(super) fn push_text_rows(
                 .unwrap_or_default();
             rows.push(ParamRow::Gradient(GradientRow {
                 name: h.param,
-                label: h.label.to_string(),
+                label: ph2d_i18n::tr(h.label).to_string(),
                 value,
             }));
             continue;
@@ -152,7 +152,7 @@ pub(super) fn push_text_rows(
             let missing = !value.is_empty() && !std::path::Path::new(&value).exists();
             rows.push(ParamRow::File(ph2d_panel_motion_params::FileRow {
                 name: h.param,
-                label: h.label.to_string(),
+                label: ph2d_i18n::tr(h.label).to_string(),
                 value,
                 missing,
             }));
@@ -167,7 +167,7 @@ pub(super) fn push_text_rows(
                 .cloned()
                 .unwrap_or_default();
             let name = h.param;
-            let label = h.label.to_string();
+            let label = ph2d_i18n::tr(h.label).to_string();
             rows.push(if h.widget == ParamWidget::Curve {
                 ParamRow::Curve(CurveRow { name, label, value })
             } else {

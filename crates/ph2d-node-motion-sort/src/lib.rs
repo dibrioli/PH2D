@@ -386,7 +386,7 @@ use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "key",
-        label: "Key",
+        label: "node.motion.sort.param.key",
         min: 0.0,
         max: 4.0,
         step: 1.0,
@@ -396,7 +396,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "descending",
-        label: "Descending",
+        label: "node.motion.sort.param.descending",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -406,7 +406,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "center_x",
-        label: "Center X",
+        label: "node.motion.sort.param.center_x",
         min: -20.0,
         max: 20.0,
         step: 0.05,
@@ -414,7 +414,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "center_y",
-        label: "Center Y",
+        label: "node.motion.sort.param.center_y",
         min: -20.0,
         max: 20.0,
         step: 0.05,
@@ -424,7 +424,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // pintá-lo ali seria o botão morto que esta casa recusa.
     ParamUiHint {
         param: AXIS_ANGLE,
-        label: "Axis Angle",
+        label: "node.motion.sort.param.axis_angle",
         min: 0.0,
         max: 360.0,
         step: 1.0,
@@ -432,7 +432,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.motion.sort.param.seed",
         min: 0.0,
         max: 9999.0,
         step: 1.0,
@@ -444,7 +444,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // um botão morto: ele continua a dizer a verdade sobre o que faria.
     ParamUiHint {
         param: REINDEX,
-        label: "Reindex",
+        label: "node.motion.sort.param.reindex",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -454,7 +454,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // continua a ter toda peça exactamente uma vez.
     ParamUiHint {
         param: "shift",
-        label: "Shift",
+        label: "node.motion.sort.param.shift",
         min: -32.0,
         max: 32.0,
         step: 1.0,

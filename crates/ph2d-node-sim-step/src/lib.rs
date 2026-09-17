@@ -592,7 +592,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "damping",
-        label: "Damping",
+        label: "node.sim.step.param.damping",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -609,7 +609,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // *A rede do knob morto desta casa funciona, e ela é uma rede de TRÊS.*
     ParamUiHint {
         param: ANGULAR,
-        label: "Angular Damping",
+        label: "node.sim.step.param.angular_damping",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -626,7 +626,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // que este nó não possui.
     ParamUiHint {
         param: "max_speed",
-        label: "Speed Limit",
+        label: "node.sim.step.param.max_speed",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -634,7 +634,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "min_speed",
-        label: "Min Speed",
+        label: "node.sim.step.param.min_speed",
         min: 0.0,
         max: 40.0,
         step: 0.1,

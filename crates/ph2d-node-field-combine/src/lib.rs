@@ -271,7 +271,7 @@ static REQUER: &[&str] = &["b"];
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.field.combine.param.mode",
         min: 0.0,
         max: 8.0,
         step: 1.0,
@@ -284,7 +284,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "strength",
-        label: "Strength",
+        label: "node.field.combine.param.strength",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -296,7 +296,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // desaparece ao trocar de modo ensina que a resposta mudou com ele.
     ParamUiHint {
         param: CLAMP,
-        label: "Clamp",
+        label: "node.field.combine.param.clamp",
         min: 0.0,
         max: 1.0,
         step: 1.0,

@@ -419,7 +419,7 @@ static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "key",
-        label: "Key By",
+        label: "node.value.instance_field.param.key",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -429,7 +429,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.value.instance_field.param.mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -439,7 +439,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.value.instance_field.param.seed",
         min: 0.0,
         max: 9999.0,
         step: 1.0,
@@ -447,7 +447,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "unique_per_node",
-        label: "Unique Per Node",
+        label: "node.value.instance_field.param.unique_per_node",
         min: 0.0,
         max: 1.0,
         step: 1.0,

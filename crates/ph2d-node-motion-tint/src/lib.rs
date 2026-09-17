@@ -486,7 +486,7 @@ const _: () = assert!(
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.motion.tint.param.mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -496,7 +496,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "r",
-        label: "Color",
+        label: "node.motion.tint.param.r",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -506,7 +506,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "r2",
-        label: "End",
+        label: "node.motion.tint.param.r2",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -519,7 +519,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // without a name would not compile.
     ParamUiHint {
         param: "blend",
-        label: "Blend",
+        label: "node.motion.tint.param.blend",
         min: 0.0,
         max: BLEND_MAX,
         step: 1.0,

@@ -84,7 +84,7 @@ pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
 pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "width",
-        label: "Width",
+        label: "node.field.box.param.width",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -92,7 +92,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "height",
-        label: "Height",
+        label: "node.field.box.param.height",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -100,7 +100,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "soft",
-        label: "Softness",
+        label: "node.field.box.param.soft",
         min: 0.0,
         max: 10.0,
         step: 0.1,
@@ -108,7 +108,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "center_x",
-        label: "Center X",
+        label: "node.field.box.param.center_x",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -116,7 +116,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "center_y",
-        label: "Center Y",
+        label: "node.field.box.param.center_y",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -124,7 +124,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "rotation",
-        label: "Rotation",
+        label: "node.field.box.param.rotation",
         min: -180.0,
         max: 180.0,
         step: 1.0,
@@ -132,7 +132,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "curve",
-        label: "Curve",
+        label: "node.field.box.param.curve",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -142,7 +142,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "invert",
-        label: "Invert",
+        label: "node.field.box.param.invert",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -151,7 +151,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // ⚠️ A faixa é o CURSO ÚTIL e não um teto — ver [`STRENGTH`].
     ParamUiHint {
         param: STRENGTH,
-        label: "Strength",
+        label: "node.field.box.param.strength",
         min: -1.0,
         max: 2.0,
         step: 0.01,

@@ -376,7 +376,7 @@ fn drop_hidden_drivers(
         .map(|name| {
             hints
                 .and_then(|hs| hs.iter().find(|h| h.param == *name))
-                .map_or(name.as_str(), |h| h.label)
+                .map_or(name.as_str(), |h| ph2d_i18n::tr(h.label))
         })
         .collect();
     toasts.push(ph2d_editor_core::Toast::info(if labels.len() == 1 {
@@ -443,7 +443,7 @@ fn drop_preset_drivers(
         .map(|name| {
             hints
                 .and_then(|hs| hs.iter().find(|h| h.param == *name))
-                .map_or(name.as_str(), |h| h.label)
+                .map_or(name.as_str(), |h| ph2d_i18n::tr(h.label))
         })
         .collect();
     toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr_with(

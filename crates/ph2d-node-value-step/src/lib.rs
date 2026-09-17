@@ -306,7 +306,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // first to place the threshold where you want it.
     ParamUiHint {
         param: "threshold",
-        label: "Threshold",
+        label: "node.value.step.param.threshold",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -315,7 +315,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // The full width of the smooth band (Smooth/Smoother only). `0` = a hard edge.
     ParamUiHint {
         param: "width",
-        label: "Width",
+        label: "node.value.step.param.width",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -323,7 +323,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.value.step.param.mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -334,7 +334,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // O espelho da máscara. Desligado = o nó de sempre.
     ParamUiHint {
         param: "invert",
-        label: "Invert",
+        label: "node.value.step.param.invert",
         min: 0.0,
         max: 1.0,
         step: 1.0,

@@ -323,7 +323,7 @@ static REQUER: &[&str] = &["shape"];
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "mode",
-        label: "Path Mode",
+        label: "node.field.shape.param.mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -335,7 +335,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // fracção não teria como ser comparado com a forma que o alimenta.
     ParamUiHint {
         param: "distance",
-        label: "Distance",
+        label: "node.field.shape.param.distance",
         min: 0.0,
         max: 20.0,
         step: 0.05,
@@ -343,7 +343,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "curve",
-        label: "Curve",
+        label: "node.field.shape.param.curve",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -353,7 +353,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "invert",
-        label: "Invert",
+        label: "node.field.shape.param.invert",
         min: 0.0,
         max: 1.0,
         step: 1.0,

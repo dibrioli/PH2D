@@ -504,7 +504,7 @@ static PARAM_HARD_MIN: &[ph2d_node_registry::ParamHardMin] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.fx.rgb_split.param.mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -514,7 +514,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "x",
-        label: "Offset X",
+        label: "node.fx.rgb_split.param.x",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -522,7 +522,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "y",
-        label: "Offset Y",
+        label: "node.fx.rgb_split.param.y",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -530,7 +530,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "strength",
-        label: "Strength",
+        label: "node.fx.rgb_split.param.strength",
         min: 0.0,
         max: 0.5,
         step: 0.005,
@@ -538,7 +538,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "opacity",
-        label: "Opacity",
+        label: "node.fx.rgb_split.param.opacity",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -547,7 +547,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // A LENTE (doc 89 folha 11) — os três só aparecem no modo `Aberration`, ver [`PARAM_GATES`].
     ParamUiHint {
         param: CENTER_X,
-        label: "Axis X",
+        label: "node.fx.rgb_split.param.center_x",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -555,7 +555,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: CENTER_Y,
-        label: "Axis Y",
+        label: "node.fx.rgb_split.param.center_y",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -563,7 +563,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: START,
-        label: "Start Radius",
+        label: "node.fx.rgb_split.param.start",
         min: 0.0,
         max: 10.0,
         step: 0.05,

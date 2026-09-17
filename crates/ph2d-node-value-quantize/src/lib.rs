@@ -246,7 +246,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // levels.
     ParamUiHint {
         param: "step",
-        label: "Step",
+        label: "node.value.quantize.param.step",
         min: 0.0,
         max: 4.0,
         step: 0.01,
@@ -254,7 +254,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.value.quantize.param.mode",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -266,7 +266,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // sempre). Meio degrau move os patamares para o meio entre eles.
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.value.quantize.param.offset",
         min: -1.0,
         max: 1.0,
         step: 0.01,

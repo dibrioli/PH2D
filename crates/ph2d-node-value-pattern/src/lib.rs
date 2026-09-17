@@ -440,7 +440,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // exatamente como desenha a fórmula do `motion.expression`.
     ParamUiHint {
         param: TABLE_KEY,
-        label: "Table",
+        label: "node.value.pattern.param.table",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -450,25 +450,25 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // above `steps`; the doc says so.
     ParamUiHint {
         param: "steps",
-        label: "Steps",
+        label: "node.value.pattern.param.steps",
         min: 1.0,
         max: SLOTS as f32,
         step: 1.0,
         widget: ParamWidget::Slider,
     },
-    slot("v0", "V0"),
-    slot("v1", "V1"),
-    slot("v2", "V2"),
-    slot("v3", "V3"),
-    slot("v4", "V4"),
-    slot("v5", "V5"),
-    slot("v6", "V6"),
-    slot("v7", "V7"),
+    slot("v0", "node.value.pattern.param.v0"),
+    slot("v1", "node.value.pattern.param.v1"),
+    slot("v2", "node.value.pattern.param.v2"),
+    slot("v3", "node.value.pattern.param.v3"),
+    slot("v4", "node.value.pattern.param.v4"),
+    slot("v5", "node.value.pattern.param.v5"),
+    slot("v6", "node.value.pattern.param.v6"),
+    slot("v7", "node.value.pattern.param.v7"),
     // A FASE do padrão, em unidades de índice. `0` = o nó de sempre. Fracionária
     // de propósito: é ela que cria o "entre dois slots" que o `interp` resolve.
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.value.pattern.param.offset",
         min: -8.0,
         max: 8.0,
         step: 0.01,
@@ -479,7 +479,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         // ⚠️ **`Interpolation`, não `Interp`** (ciclo 6 W3): o `value.table` pergunta a MESMA coisa
         // com a MESMA chave e as MESMAS duas opções, e escrevia a palavra por extenso. *Uma chave é
         // o que o código guarda; um rótulo é o que o artista lê, e é o rótulo que tem de ser um só.*
-        label: "Interpolation",
+        label: "node.value.pattern.param.interp",
         min: 0.0,
         max: 1.0,
         step: 1.0,

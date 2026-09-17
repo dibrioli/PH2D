@@ -209,7 +209,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "rows",
-        label: "Rows",
+        label: "node.motion.lattice.param.rows",
         min: 1.0,
         max: 60.0,
         step: 1.0,
@@ -217,7 +217,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "cols",
-        label: "Cols",
+        label: "node.motion.lattice.param.cols",
         min: 1.0,
         max: 60.0,
         step: 1.0,
@@ -225,7 +225,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "spacing",
-        label: "Spacing",
+        label: "node.motion.lattice.param.spacing",
         min: 0.1,
         max: 4.0,
         step: 0.05,
@@ -233,7 +233,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.motion.lattice.param.seed",
         min: 0.0,
         max: 9999.0,
         step: 1.0,
@@ -241,7 +241,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: ph2d_motion_region::SHAPE,
-        label: "Shape",
+        label: "node.motion.lattice.param.shape",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -251,7 +251,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: ph2d_motion_region::INNER,
-        label: "Hole",
+        label: "node.motion.lattice.param.inner",
         min: 0.0,
         max: 0.98,
         step: 0.01,

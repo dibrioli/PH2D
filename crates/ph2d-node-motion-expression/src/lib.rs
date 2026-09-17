@@ -203,22 +203,29 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // that writes it through `Graph::set_text_param` (doc 32/33).
     ParamUiHint {
         param: EXPR_KEY,
-        label: "Formula",
+        label: "node.motion.expression.param.expr",
         min: 0.0,
         max: 0.0,
         step: 0.0,
         widget: ParamWidget::Text,
     },
-    coeff("a"),
-    coeff("b"),
-    coeff("c"),
-    coeff("d"),
+    coeff("a", "node.motion.expression.param.a"),
+    coeff("b", "node.motion.expression.param.b"),
+    coeff("c", "node.motion.expression.param.c"),
+    coeff("d", "node.motion.expression.param.d"),
 ];
 
-const fn coeff(param: &'static str) -> ParamUiHint {
+/// ⚠️ **A CHAVE VEM DE FORA, e num nó onde o rótulo era o próprio `param`.** Aqui o texto
+/// que o artista lê é o nome do coeficiente — `a`, `b`, `c`, `d` —, logo `label: param`
+/// dizia a verdade e não havia literal a migrar. ⛔ A chave, essa, **não** é derivável de
+/// `param` sozinho: ela precisa do TIPO, que esta função não conhece. ⇒ os dois vêm do
+/// chamador, e o gate `every_param_label_is_a_key_derived_from_its_type_and_param` é que
+/// verifica o par — *um construtor que derivasse a chave aqui teria de saber de que nó é,
+/// e um segundo nó a usá-lo herdaria a chave do primeiro em silêncio.*
+const fn coeff(param: &'static str, chave: &'static str) -> ParamUiHint {
     ParamUiHint {
         param,
-        label: param,
+        label: chave,
         min: -10.0,
         max: 10.0,
         step: 0.01,

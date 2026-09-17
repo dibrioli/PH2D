@@ -412,7 +412,7 @@ use ph2d_node_registry::{ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
-        label: "Channel",
+        label: "node.motion.step.param.channel",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -422,7 +422,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "step",
-        label: "Step",
+        label: "node.motion.step.param.step",
         min: -4.0,
         max: 4.0,
         step: 0.05,
@@ -430,7 +430,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "count_max",
-        label: "Count",
+        label: "node.motion.step.param.count_max",
         min: 1.0,
         max: 32.0,
         step: 1.0,
@@ -438,7 +438,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.motion.step.param.mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -453,7 +453,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // percorre os mesmos degraus ao contrário DENTRO do ciclo; esta muda o tamanho do degrau).
     ParamUiHint {
         param: "increment",
-        label: "Increment",
+        label: "node.motion.step.param.increment",
         min: -8.0,
         max: 8.0,
         step: 1.0,
@@ -461,7 +461,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "limit_min",
-        label: "Limit Min",
+        label: "node.motion.step.param.limit_min",
         min: -32.0,
         max: 32.0,
         step: 1.0,
@@ -469,7 +469,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "direction",
-        label: "Direction",
+        label: "node.motion.step.param.direction",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -479,7 +479,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "reset_to",
-        label: "Reset To",
+        label: "node.motion.step.param.reset_to",
         // The slider stops at 0 because a staircase restarting BELOW its own
         // floor is a fourth limit-mode nobody asked for; the modes above describe
         // the range `0..count_max` and nothing else.

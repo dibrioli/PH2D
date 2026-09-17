@@ -338,7 +338,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // As duas strings primeiro: é o que o artista muda antes de tudo.
     ParamUiHint {
         param: TEXT_KEY,
-        label: "Text",
+        label: "node.source.text.param.text",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -346,7 +346,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: FONT_KEY,
-        label: "Font",
+        label: "node.source.text.param.font",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -354,7 +354,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::SIZE,
-        label: "Size",
+        label: "node.source.text.param.size",
         min: 0.05,
         max: 10.0,
         step: 0.05,
@@ -362,7 +362,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::TRACKING,
-        label: "Tracking",
+        label: "node.source.text.param.tracking",
         min: -0.3,
         max: 1.0,
         step: 0.01,
@@ -370,7 +370,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::LINE_HEIGHT,
-        label: "Line Height",
+        label: "node.source.text.param.line_height",
         min: 0.5,
         max: 3.0,
         step: 0.05,
@@ -378,7 +378,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::ALIGN,
-        label: "Align",
+        label: "node.source.text.param.align",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -391,7 +391,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // move o contorno.
     ParamUiHint {
         param: param::WEIGHT,
-        label: "Weight",
+        label: "node.source.text.param.weight",
         min: 100.0,
         max: 900.0,
         step: 1.0,
@@ -399,7 +399,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::PIVOT,
-        label: "Pivot",
+        label: "node.source.text.param.pivot",
         min: 0.0,
         max: 0.0,
         step: 0.0,

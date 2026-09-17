@@ -64,7 +64,7 @@ pub(super) static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
 pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "octaves",
-        label: "Octaves",
+        label: "node.force.wind.param.octaves",
         min: 1.0,
         max: 4.0,
         step: 1.0,
@@ -72,7 +72,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "type",
-        label: "Noise Type",
+        label: "node.force.wind.param.type",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -82,7 +82,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "lacunarity",
-        label: "Lacunarity",
+        label: "node.force.wind.param.lacunarity",
         min: 1.0,
         max: 4.0,
         step: 0.05,
@@ -90,7 +90,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "roughness",
-        label: "Roughness",
+        label: "node.force.wind.param.roughness",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -98,7 +98,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "loop_period",
-        label: "Loop Period",
+        label: "node.force.wind.param.loop_period",
         min: 0.0,
         max: 20.0,
         step: 0.1,
@@ -106,7 +106,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "angle",
-        label: "Angle",
+        label: "node.force.wind.param.angle",
         min: 0.0,
         max: 360.0,
         step: 1.0,
@@ -116,7 +116,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // NEGATIVA — ver [`PARAM_HARD_MIN`].
     ParamUiHint {
         param: "strength",
-        label: "Strength",
+        label: "node.force.wind.param.strength",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -124,7 +124,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "gust",
-        label: "Gust",
+        label: "node.force.wind.param.gust",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -132,7 +132,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "gust_freq",
-        label: "Gust Frequency",
+        label: "node.force.wind.param.gust_freq",
         min: 0.1,
         max: 5.0,
         step: 0.05,
@@ -140,7 +140,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.force.wind.param.seed",
         min: 0.0,
         max: 100.0,
         step: 1.0,
@@ -158,7 +158,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: AIR_RESIST,
-        label: "Air Resistance",
+        label: "node.force.wind.param.air_resist",
         min: 0.0,
         max: 20.0,
         step: 0.1,

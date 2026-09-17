@@ -430,7 +430,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // estavam cravados no laço, então o campo de antes sai ao bit.
     ParamUiHint {
         param: "type",
-        label: "Noise Type",
+        label: "node.force.curl.param.type",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -442,7 +442,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // o campo perde a leitura fractal. `2` é o universal.
     ParamUiHint {
         param: "lacunarity",
-        label: "Lacunarity",
+        label: "node.force.curl.param.lacunarity",
         min: 1.0,
         max: 4.0,
         step: 0.05,
@@ -450,7 +450,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "roughness",
-        label: "Roughness",
+        label: "node.force.curl.param.roughness",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -458,7 +458,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset_x",
-        label: "Offset X",
+        label: "node.force.curl.param.offset_x",
         min: -20.0,
         max: 20.0,
         step: 0.05,
@@ -466,7 +466,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset_y",
-        label: "Offset Y",
+        label: "node.force.curl.param.offset_y",
         min: -20.0,
         max: 20.0,
         step: 0.05,
@@ -475,7 +475,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // `0` = nunca fecha (o mundo de sempre, e a segunda amostra nem é avaliada).
     ParamUiHint {
         param: "loop_period",
-        label: "Loop Period",
+        label: "node.force.curl.param.loop_period",
         min: 0.0,
         max: 20.0,
         step: 0.1,
@@ -483,7 +483,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "strength",
-        label: "Strength",
+        label: "node.force.curl.param.strength",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -491,7 +491,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "scale",
-        label: "Scale",
+        label: "node.force.curl.param.scale",
         min: 0.01,
         max: 3.0,
         step: 0.01,
@@ -499,7 +499,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "speed",
-        label: "Speed",
+        label: "node.force.curl.param.speed",
         min: 0.0,
         max: 2.0,
         step: 0.05,
@@ -507,7 +507,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "octaves",
-        label: "Octaves",
+        label: "node.force.curl.param.octaves",
         min: 1.0,
         max: 4.0,
         step: 1.0,
@@ -515,7 +515,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.force.curl.param.seed",
         min: 0.0,
         max: 100.0,
         step: 1.0,

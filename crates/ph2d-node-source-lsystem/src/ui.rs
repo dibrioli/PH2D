@@ -30,7 +30,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // que se vê — e a segunda pergunta é a que o artista faz primeiro.
     ParamUiHint {
         param: param::GEOMETRY,
-        label: "Geometry",
+        label: "node.source.lsystem.param.geometry",
         min: 0.0,
         max: (GEOMETRY_LABELS.len() - 1) as f32,
         step: 1.0,
@@ -44,7 +44,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // desconfiar dos vivos.
     ParamUiHint {
         param: param::TIP_TAPER,
-        label: "Tip Taper",
+        label: "node.source.lsystem.param.tip_taper",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -56,7 +56,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // saber que `J` vale 74.
     ParamUiHint {
         param: LEAF_PARAMS[0],
-        label: "Leaf (J)",
+        label: "node.source.lsystem.param.leaf_j",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -64,7 +64,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: LEAF_PARAMS[1],
-        label: "Leaf (K)",
+        label: "node.source.lsystem.param.leaf_k",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -72,7 +72,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: LEAF_PARAMS[2],
-        label: "Leaf (M)",
+        label: "node.source.lsystem.param.leaf_m",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -81,7 +81,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // ⭐⭐ **OS CINCO CONTROLOS** que o 2.º smoke de 2026-08-30 pediu.
     ParamUiHint {
         param: param::LEAF_FIRST_LEVEL,
-        label: "First Level",
+        label: "node.source.lsystem.param.leaf_first_level",
         min: 1.0,
         // ⚠️ **`12` é o tecto de PROFUNDIDADE que uma planta desta casa alcança** — o
         // `MAX_MODULES` corta a derivação muito antes de 12 níveis de encaixe numa gramática
@@ -92,7 +92,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::LEAF_ANGLE,
-        label: "Leaf Angle",
+        label: "node.source.lsystem.param.leaf_angle",
         min: -180.0,
         max: 180.0,
         step: 1.0,
@@ -100,7 +100,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::LEAF_SPREAD,
-        label: "Leaf Spread",
+        label: "node.source.lsystem.param.leaf_spread",
         min: 0.0,
         max: 180.0,
         step: 1.0,
@@ -108,7 +108,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::LEAF_FRONT,
-        label: "Leaves In Front",
+        label: "node.source.lsystem.param.leaf_front",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -116,7 +116,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::LEAF_SIZE,
-        label: "Leaf Size",
+        label: "node.source.lsystem.param.leaf_size",
         min: 0.0,
         // ⚠️ **`8` é o tecto do SLIDER, não do modelo** — a caixa aceita mais, e o `step` de
         // `0,01` dá o tecto digitável derivado (doc 91). Uma folha `8×` já é maior que o ramo
@@ -127,7 +127,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::LEAF_SIZE_JITTER,
-        label: "Size Jitter",
+        label: "node.source.lsystem.param.leaf_size_jitter",
         min: 0.0,
         // `1` = de metade ao dobro; acima disto a folha pode ficar em zero, e uma folha
         // invisível não é uma variação, é uma folha perdida.
@@ -137,7 +137,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::LEAF_POS_JITTER,
-        label: "Position Jitter",
+        label: "node.source.lsystem.param.leaf_pos_jitter",
         min: 0.0,
         // Em FRACÇÃO do tamanho da folha: `1` = ±meia folha, que é o quanto se pode empurrar
         // antes de ela se descolar do ramo que a plantou.
@@ -147,7 +147,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::LEAF_EFFECTS,
-        label: "Effects Reach Leaves",
+        label: "node.source.lsystem.param.leaf_effects",
         min: 0.0,
         max: (LEAF_EFFECTS_LABELS.len() - 1) as f32,
         step: 1.0,
@@ -158,7 +158,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // ⚠️ **O MODO vem antes de tudo** — ele decide qual metade do painel existe.
     ParamUiHint {
         param: param::MODE,
-        label: "Mode",
+        label: "node.source.lsystem.param.mode",
         min: 0.0,
         max: (MODE_LABELS.len() - 1) as f32,
         step: 1.0,
@@ -169,7 +169,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // Os quatro números de FORMA — o modo guiado inteiro. Ver [`shape`].
     ParamUiHint {
         param: param::BRANCHES,
-        label: "Branches",
+        label: "node.source.lsystem.param.branches",
         min: 1.0,
         max: shape::MAX_BRANCHES,
         step: 1.0,
@@ -177,7 +177,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::SEGMENTS,
-        label: "Trunk Segments",
+        label: "node.source.lsystem.param.segments",
         min: 1.0,
         max: shape::MAX_SEGMENTS,
         step: 1.0,
@@ -185,7 +185,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::VARIATION,
-        label: "Variation",
+        label: "node.source.lsystem.param.variation",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -193,7 +193,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::BEND,
-        label: "Bend",
+        label: "node.source.lsystem.param.bend",
         min: -30.0,
         max: 30.0,
         step: 0.5,
@@ -203,7 +203,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // Os números são a interpretação dela.
     ParamUiHint {
         param: AXIOM_PARAM,
-        label: "Axiom",
+        label: "node.source.lsystem.param.axiom",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -211,7 +211,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: RULES_PARAM,
-        label: "Rules",
+        label: "node.source.lsystem.param.rules",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -221,7 +221,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // continuamente a planta CRESCE, e com ele em degraus ela salta.
     ParamUiHint {
         param: param::GENERATIONS,
-        label: "Generations",
+        label: "node.source.lsystem.param.generations",
         min: 0.0,
         max: 12.0,
         step: 0.01,
@@ -229,7 +229,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::ANGLE,
-        label: "Angle",
+        label: "node.source.lsystem.param.angle",
         min: 0.0,
         max: 180.0,
         step: 0.5,
@@ -237,7 +237,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::STEP,
-        label: "Step",
+        label: "node.source.lsystem.param.step",
         min: 0.01,
         max: 4.0,
         step: 0.01,
@@ -245,7 +245,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::WIDTH,
-        label: "Width",
+        label: "node.source.lsystem.param.width",
         min: 0.01,
         max: 8.0,
         step: 0.01,
@@ -253,7 +253,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::WIDTH_SCALE,
-        label: "Width Scale",
+        label: "node.source.lsystem.param.width_scale",
         min: 0.1,
         max: 1.5,
         step: 0.01,
@@ -261,7 +261,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::LENGTH_SCALE,
-        label: "Length Scale",
+        label: "node.source.lsystem.param.length_scale",
         min: 0.1,
         max: 1.5,
         step: 0.01,
@@ -269,7 +269,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::ROOT_ANGLE,
-        label: "Root Angle",
+        label: "node.source.lsystem.param.root_angle",
         min: -180.0,
         max: 360.0,
         step: 1.0,
@@ -281,7 +281,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // do que a sem.
     ParamUiHint {
         param: param::TROPISM,
-        label: "Tropism",
+        label: "node.source.lsystem.param.tropism",
         min: -45.0,
         max: 45.0,
         step: 0.5,
@@ -289,7 +289,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::TROPISM_ANGLE,
-        label: "Tropism Direction",
+        label: "node.source.lsystem.param.tropism_angle",
         min: -180.0,
         max: 360.0,
         step: 1.0,
@@ -300,7 +300,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // edita o texto. Um selector abaixo das caixas seria a ajuda escondida atrás do problema.
     ParamUiHint {
         param: param::PRESET,
-        label: "Preset",
+        label: "node.source.lsystem.param.preset",
         min: 0.0,
         // ⚠️ **`PRESET_LABELS`, e não `PRESETS`** — a lista tem uma entrada a mais, o
         // [`PRESET_CUSTOM`], que não é um molde e sim *"nenhum destes"*.
@@ -312,7 +312,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::ORIENT,
-        label: "Shape Faces",
+        label: "node.source.lsystem.param.orient",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -323,7 +323,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // As tres do CRESCIMENTO SUAVE (2026-08-29). Ver `turtle::walk` para a medicao.
     ParamUiHint {
         param: param::CONTINUOUS_LENGTH,
-        label: "Grow Length",
+        label: "node.source.lsystem.param.continuous_length",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -331,7 +331,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::CONTINUOUS_ANGLE,
-        label: "Grow Angle",
+        label: "node.source.lsystem.param.continuous_angle",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -339,7 +339,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::GROWTH,
-        label: "Growth",
+        label: "node.source.lsystem.param.growth",
         min: 0.0,
         max: 1.0,
         step: 0.005,
@@ -347,7 +347,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::STEP_SCALE,
-        label: "Step Scale",
+        label: "node.source.lsystem.param.step_scale",
         min: 0.1,
         max: 1.0,
         step: 0.01,
@@ -355,7 +355,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::SEED,
-        label: "Seed",
+        label: "node.source.lsystem.param.seed",
         min: 0.0,
         max: 9999.0,
         step: 1.0,

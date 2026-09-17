@@ -560,7 +560,7 @@ static PARAM_GROUPS: &[ParamGroup] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "radius",
-        label: "Radius",
+        label: "node.field.radial_sweep.param.radius",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -571,7 +571,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // alcança. Acima do externo o campo fica vazio — que é uma resposta, não um erro.
     ParamUiHint {
         param: INNER_RADIUS,
-        label: "Inner Radius",
+        label: "node.field.radial_sweep.param.inner_radius",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -579,7 +579,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "start_angle",
-        label: "Start Angle",
+        label: "node.field.radial_sweep.param.start_angle",
         min: -360.0,
         max: 360.0,
         step: 1.0,
@@ -587,7 +587,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "end_angle",
-        label: "End Angle",
+        label: "node.field.radial_sweep.param.end_angle",
         min: -360.0,
         max: 360.0,
         step: 1.0,
@@ -595,7 +595,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "repetitions",
-        label: "Repetitions",
+        label: "node.field.radial_sweep.param.repetitions",
         min: 1.0,
         max: 32.0,
         step: 1.0,
@@ -603,7 +603,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "soft",
-        label: "Softness",
+        label: "node.field.radial_sweep.param.soft",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -613,7 +613,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: SOFT_ANGULAR,
         // O rótulo diz que ele é RELATIVO — «Angular Softness» prometeria uma
         // maciez própria, e o modelo entrega um viés sobre a de cima.
-        label: "Angular Bias",
+        label: "node.field.radial_sweep.param.soft_angular",
         min: 0.0,
         // O curso vai a 2 porque o interessante é a razão entre as duas bordas, e
         // acima do dobro a angular já está saturada na sua própria extensão.
@@ -623,7 +623,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "center_x",
-        label: "Center X",
+        label: "node.field.radial_sweep.param.center_x",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -631,7 +631,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "center_y",
-        label: "Center Y",
+        label: "node.field.radial_sweep.param.center_y",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -639,7 +639,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "rotation",
-        label: "Rotation",
+        label: "node.field.radial_sweep.param.rotation",
         min: -180.0,
         max: 180.0,
         step: 1.0,
@@ -647,7 +647,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "curve",
-        label: "Curve",
+        label: "node.field.radial_sweep.param.curve",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -657,7 +657,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "invert",
-        label: "Invert",
+        label: "node.field.radial_sweep.param.invert",
         min: 0.0,
         max: 1.0,
         step: 1.0,

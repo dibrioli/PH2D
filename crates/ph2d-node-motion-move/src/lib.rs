@@ -339,7 +339,7 @@ static PARAM_HARD_MIN: &[ParamHardMin] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "dx",
-        label: "Move X",
+        label: "node.motion.move.param.dx",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -347,7 +347,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "dy",
-        label: "Move Y",
+        label: "node.motion.move.param.dy",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -355,7 +355,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: SPACE,
-        label: "Space",
+        label: "node.motion.move.param.space",
         min: 0.0,
         max: SPACE_LOCAL,
         step: 1.0,

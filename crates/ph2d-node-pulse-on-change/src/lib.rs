@@ -295,7 +295,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "epsilon",
-        label: "Epsilon",
+        label: "node.pulse.on_change.param.epsilon",
         min: 0.0,
         // O curso da MÃO: com o teto em `1.0` um pixel do track (~154 px) valia
         // `0,0065` — **seis vezes e meia o default de 0,001** —, então a guarda de
@@ -309,7 +309,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "direction",
-        label: "Direction",
+        label: "node.pulse.on_change.param.direction",
         min: 0.0,
         max: 2.0,
         step: 1.0,

@@ -256,7 +256,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "radius",
-    label: "Radius",
+    label: "node.motion.proximity.param.radius",
     min: 0.0,
     max: 5.0,
     step: 0.01,

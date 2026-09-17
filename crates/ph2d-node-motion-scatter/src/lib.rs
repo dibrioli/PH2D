@@ -387,7 +387,7 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count",
-        label: "Count",
+        label: "node.motion.scatter.param.count",
         min: 1.0,
         max: 2000.0,
         step: 1.0,
@@ -395,7 +395,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "width",
-        label: "Width",
+        label: "node.motion.scatter.param.width",
         min: 0.1,
         max: 20.0,
         step: 0.05,
@@ -403,7 +403,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "height",
-        label: "Height",
+        label: "node.motion.scatter.param.height",
         min: 0.1,
         max: 20.0,
         step: 0.05,
@@ -411,7 +411,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.motion.scatter.param.seed",
         min: 0.0,
         max: 9999.0,
         step: 1.0,
@@ -419,7 +419,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: ph2d_motion_region::SHAPE,
-        label: "Shape",
+        label: "node.motion.scatter.param.shape",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -429,7 +429,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: ph2d_motion_region::INNER,
-        label: "Hole",
+        label: "node.motion.scatter.param.inner",
         min: 0.0,
         max: 0.98,
         step: 0.01,
@@ -437,7 +437,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: DENSITY_FALLOFF,
-        label: "Density Falloff",
+        label: "node.motion.scatter.param.density_falloff",
         min: 0.0,
         max: 1.0,
         step: 0.01,

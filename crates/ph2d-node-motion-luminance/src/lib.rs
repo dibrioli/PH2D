@@ -204,7 +204,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
 
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "channel",
-    label: "Read",
+    label: "node.motion.luminance.param.channel",
     min: 0.0,
     max: (CHANNEL_LABELS.len() - 1) as f32,
     step: 1.0,

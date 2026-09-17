@@ -276,7 +276,7 @@ use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "amount",
-        label: "Scale",
+        label: "node.motion.scale.param.amount",
         min: 0.0,
         max: 5.0,
         step: 0.05,
@@ -284,7 +284,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "uniform",
-        label: "Uniform",
+        label: "node.motion.scale.param.uniform",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -292,7 +292,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "amount_y",
-        label: "Scale Y",
+        label: "node.motion.scale.param.amount_y",
         min: 0.0,
         max: 5.0,
         step: 0.05,
@@ -300,7 +300,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: USE_FALLOFF_Y,
-        label: "Separate Y Mask",
+        label: "node.motion.scale.param.use_falloff_y",
         min: 0.0,
         max: 1.0,
         step: 1.0,

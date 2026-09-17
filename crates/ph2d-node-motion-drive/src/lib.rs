@@ -201,7 +201,7 @@ static PARAM_GATES: &[ParamGate] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
-        label: "Channel",
+        label: "node.motion.drive.param.channel",
         min: 0.0,
         max: 11.0,
         step: 1.0,
@@ -231,7 +231,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // `motion.expression` e a tabela do `value.pattern` ocupam.
     ParamUiHint {
         param: DRIVE_COL_KEY,
-        label: "Column",
+        label: "node.motion.drive.param.column",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -239,7 +239,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "space",
-        label: "Space",
+        label: "node.motion.drive.param.space",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -249,7 +249,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "scale",
-        label: "Scale",
+        label: "node.motion.drive.param.scale",
         min: -4.0,
         max: 4.0,
         step: 0.05,
@@ -257,7 +257,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.motion.drive.param.mode",
         min: 0.0,
         max: 7.0,
         step: 1.0,

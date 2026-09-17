@@ -158,7 +158,7 @@ impl NodeOp for ValueTable {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: FILE_KEY,
-        label: "Table File",
+        label: "node.value.table.param.file",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -168,7 +168,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: TIME_KEY,
-        label: "Time Column",
+        label: "node.value.table.param.time",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -176,7 +176,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: VALUE_KEY,
-        label: "Value Column",
+        label: "node.value.table.param.value",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -184,7 +184,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::INTERP,
-        label: "Interpolation",
+        label: "node.value.table.param.interp",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -194,7 +194,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::OUTSIDE,
-        label: "Outside",
+        label: "node.value.table.param.outside",
         min: 0.0,
         max: 1.0,
         step: 1.0,

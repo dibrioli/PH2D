@@ -504,7 +504,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // (`attr`) and the `mode` behind it. "mode" gets no row of its own — folded in.
     ParamUiHint {
         param: ATTR_KEY,
-        label: "Read",
+        label: "node.value.attribute.param.attr",
         min: 0.0,
         max: 0.0,
         step: 0.0,

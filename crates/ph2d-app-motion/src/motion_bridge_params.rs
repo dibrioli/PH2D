@@ -325,7 +325,7 @@ pub fn build_params_snapshot(
                 value_of(channels[3]),
             ];
             rows.push(ParamRow::Color(ColorRow {
-                label: h.label.to_string(),
+                label: ph2d_i18n::tr(h.label).to_string(),
                 channels,
                 srgb: linear_rgba_to_srgb8(lin),
             }));
@@ -342,7 +342,7 @@ pub fn build_params_snapshot(
                 ParamWidget::Toggle => {
                     rows.push(ParamRow::Toggle(ToggleRow {
                         name: spec.name,
-                        label: h.label.to_string(),
+                        label: ph2d_i18n::tr(h.label).to_string(),
                         on: value_of(spec.name) >= 0.5,
                     }));
                     continue;
@@ -352,7 +352,7 @@ pub fn build_params_snapshot(
                         .min(labels.len().max(1) - 1);
                     rows.push(ParamRow::Enum(EnumRow {
                         name: spec.name,
-                        label: h.label.to_string(),
+                        label: ph2d_i18n::tr(h.label).to_string(),
                         selected,
                         labels,
                     }));
@@ -367,7 +367,7 @@ pub fn build_params_snapshot(
                     let (min, max) = contain(h.min, h.max, deg);
                     rows.push(ParamRow::Angle(AngleRow {
                         name: spec.name,
-                        label: h.label.to_string(),
+                        label: ph2d_i18n::tr(h.label).to_string(),
                         deg: f64::from(deg),
                         min_deg: f64::from(min),
                         max_deg: f64::from(max),
@@ -380,7 +380,7 @@ pub fn build_params_snapshot(
                     let (min, max) = contain(h.min, h.max, seed);
                     rows.push(ParamRow::Seed(SeedRow {
                         name: spec.name,
-                        label: h.label.to_string(),
+                        label: ph2d_i18n::tr(h.label).to_string(),
                         value: f64::from(seed),
                         min: f64::from(min),
                         max: f64::from(max),
@@ -461,7 +461,7 @@ pub fn build_params_snapshot(
                         .min(min);
                     ScalarRow {
                         name: spec.name,
-                        label: h.label.to_string(),
+                        label: ph2d_i18n::tr(h.label).to_string(),
                         value,
                         min: f64::from(min),
                         hard_min: f64::from(hard_min),

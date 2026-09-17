@@ -389,7 +389,7 @@ static PARAM_GATES: &[ParamGate] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "wave",
-        label: "Wave",
+        label: "node.value.lfo.param.wave",
         min: 0.0,
         max: 4.0,
         step: 1.0,
@@ -399,7 +399,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "period",
-        label: "Period",
+        label: "node.value.lfo.param.period",
         min: 0.05,
         max: 8.0,
         step: 0.05,
@@ -407,7 +407,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "amplitude",
-        label: "Amplitude",
+        label: "node.value.lfo.param.amplitude",
         min: 0.0,
         max: 10.0,
         step: 0.05,
@@ -415,7 +415,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.value.lfo.param.offset",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -423,7 +423,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "phase",
-        label: "Phase",
+        label: "node.value.lfo.param.phase",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -433,7 +433,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "phase_stagger",
         // ⚠️ **`Phase Stagger`** (ciclo 6 W3): o `pulse.beat` pergunta a MESMA coisa — a fase
         // POR LINHA — e escrevia o nome inteiro. Três nós, uma palavra.
-        label: "Phase Stagger",
+        label: "node.value.lfo.param.phase_stagger",
         min: 0.0,
         max: 2.0,
         step: 0.02,
@@ -441,7 +441,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "time_mode",
-        label: "Time Mode",
+        label: "node.value.lfo.param.time_mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -455,7 +455,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // (a do `period`) faria o slider inteiro caber entre 0 e 8 batidas por minuto.
     ParamUiHint {
         param: "bpm",
-        label: "BPM",
+        label: "node.value.lfo.param.bpm",
         min: 20.0,
         max: 300.0,
         step: 1.0,
@@ -465,7 +465,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // disso a oscilação cresce do nada até à amplitude cheia.
     ParamUiHint {
         param: "fade_in",
-        label: "Fade In",
+        label: "node.value.lfo.param.fade_in",
         min: 0.0,
         max: 5.0,
         step: 0.01,

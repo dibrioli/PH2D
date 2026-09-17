@@ -112,7 +112,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // escolhe a rectificação por oitava, a base escolhe o ruído em si.
     ParamUiHint {
         param: "base",
-        label: "Base",
+        label: "node.motion.noise.param.base",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -127,7 +127,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         // ⚠️ **`Distance` e nao `Metric`** — o `motion.voronoi` ja shipava esse rotulo para a
         // mesma pergunta, e o censo `metric_vocabulary` apanhou a divergencia no primeiro
         // dia. *O que ja shipou ganha:* mudar o outro mexeria num nome que o artista aprendeu.
-        label: "Distance",
+        label: "node.motion.noise.param.metric",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -140,7 +140,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // frequência. `2` é o universal, e `1,5..3` é onde a mão trabalha.
     ParamUiHint {
         param: "lacunarity",
-        label: "Lacunarity",
+        label: "node.motion.noise.param.lacunarity",
         min: 1.0,
         max: 4.0,
         step: 0.05,
@@ -148,7 +148,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "channel",
-        label: "Channel",
+        label: "node.motion.noise.param.channel",
         min: 0.0,
         // ⚠️ **Apendado**: o `Position XY` é o índice 4, e os quatro de sempre ficam
         // onde estavam — um documento autorado guarda o NÚMERO, não o nome.
@@ -160,7 +160,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "amplitude",
-        label: "Amplitude",
+        label: "node.motion.noise.param.amplitude",
         min: 0.0,
         max: 10.0,
         step: 0.05,
@@ -169,7 +169,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // A RÉGUA da mesma saída — `Amplitude` é o nó que sempre shipou.
     ParamUiHint {
         param: "range_mode",
-        label: "Range",
+        label: "node.motion.noise.param.range_mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -181,7 +181,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // razão de este par existir (ver `NoiseType::natural_range`).
     ParamUiHint {
         param: "min",
-        label: "Minimum",
+        label: "node.motion.noise.param.min",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -189,7 +189,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "max",
-        label: "Maximum",
+        label: "node.motion.noise.param.max",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -197,7 +197,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "scale",
-        label: "Scale",
+        label: "node.motion.noise.param.scale",
         min: 0.02,
         max: 2.0,
         step: 0.02,
@@ -205,7 +205,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "octaves",
-        label: "Octaves",
+        label: "node.motion.noise.param.octaves",
         min: 1.0,
         max: MAX_OCTAVES as f32,
         step: 1.0,
@@ -213,7 +213,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "roughness",
-        label: "Roughness",
+        label: "node.motion.noise.param.roughness",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -221,7 +221,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "type",
-        label: "Type",
+        label: "node.motion.noise.param.type",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -231,7 +231,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "speed",
-        label: "Speed",
+        label: "node.motion.noise.param.speed",
         min: 0.0,
         max: 3.0,
         step: 0.05,
@@ -246,7 +246,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // este muda o que a caixa aceita e é decisão do dono deste nó.
     ParamUiHint {
         param: "loop_len",
-        label: "Loop Length",
+        label: "node.motion.noise.param.loop_len",
         min: 0.0,
         max: 30.0,
         step: 0.1,
@@ -254,7 +254,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.motion.noise.param.seed",
         min: 0.0,
         max: 100.0,
         step: 1.0,
@@ -265,7 +265,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // longe do número obrigaria o artista a ligar dois controles com a memória.
     ParamUiHint {
         param: "own_field",
-        label: "Seed Per Element",
+        label: "node.motion.noise.param.own_field",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -276,7 +276,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // `angle` do `motion.orbit`, que é a outra rotação de ESPAÇO da casa.
     ParamUiHint {
         param: "rotation",
-        label: "Rotation",
+        label: "node.motion.noise.param.rotation",
         min: -360.0,
         max: 360.0,
         step: 1.0,
@@ -284,7 +284,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "uniform",
-        label: "Uniform",
+        label: "node.motion.noise.param.uniform",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -295,7 +295,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // diferentes.
     ParamUiHint {
         param: "scale_y",
-        label: "Scale Y",
+        label: "node.motion.noise.param.scale_y",
         min: 0.02,
         max: 2.0,
         step: 0.02,

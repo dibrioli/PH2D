@@ -169,7 +169,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "rate",
-        label: "Rate",
+        label: "node.value.time.param.rate",
         min: -8.0,
         max: 8.0,
         step: 0.05,
@@ -177,7 +177,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.value.time.param.offset",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -187,7 +187,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "stagger",
         // ⚠️ **`Phase Stagger`** (ciclo 6 W3): o `pulse.beat` pergunta a MESMA coisa — a fase
         // POR LINHA — e escrevia o nome inteiro. Três nós, uma palavra.
-        label: "Phase Stagger",
+        label: "node.value.time.param.stagger",
         min: -2.0,
         max: 2.0,
         step: 0.02,

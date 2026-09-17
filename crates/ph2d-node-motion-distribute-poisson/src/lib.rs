@@ -154,7 +154,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "radius",
-        label: "Radius",
+        label: "node.motion.distribute_poisson.param.radius",
         min: 0.02,
         max: 2.0,
         step: 0.01,
@@ -162,7 +162,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "width",
-        label: "Width",
+        label: "node.motion.distribute_poisson.param.width",
         min: 0.1,
         max: 20.0,
         step: 0.1,
@@ -170,7 +170,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "height",
-        label: "Height",
+        label: "node.motion.distribute_poisson.param.height",
         min: 0.1,
         max: 20.0,
         step: 0.1,
@@ -178,7 +178,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.motion.distribute_poisson.param.seed",
         min: 0.0,
         max: 999.0,
         step: 1.0,
@@ -186,7 +186,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: ph2d_motion_region::SHAPE,
-        label: "Shape",
+        label: "node.motion.distribute_poisson.param.shape",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -196,7 +196,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: ph2d_motion_region::INNER,
-        label: "Hole",
+        label: "node.motion.distribute_poisson.param.inner",
         min: 0.0,
         max: 0.98,
         step: 0.01,
@@ -204,7 +204,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: DENSITY_FALLOFF,
-        label: "Density Falloff",
+        label: "node.motion.distribute_poisson.param.density_falloff",
         min: 0.0,
         max: 1.0,
         step: 0.01,

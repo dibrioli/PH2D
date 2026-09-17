@@ -43,7 +43,10 @@ pub const MODE_LABELS: &[&str] = &["Force", "Target Velocity"];
 /// palavra é pintada por 26 nós sobre 24 perguntas diferentes (censo de 2026-09-09), logo
 /// não nomeia nenhuma. O mecanismo está no doc do irmão
 /// [`ph2d_node_force_wind::MODE_LABEL`](../../ph2d-node-force-wind/src/lib.rs).
-pub const MODE_LABEL: &str = "Acts As";
+/// ⚠️ **Desde a migracao do HR-15 isto e' uma CHAVE, nao um rotulo** — o texto vive em
+/// `ph2d-i18n/src/node_params.rs` e o nome desta constante ficou por nao valer a churn de
+/// a renomear em duas crates. Quem a ler pinta `ph2d_i18n::tr(MODE_LABEL)`.
+pub const MODE_LABEL: &str = "node.force.vortex.param.mode";
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -327,7 +330,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "center_x",
-        label: "Center X",
+        label: "node.force.vortex.param.center_x",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -335,7 +338,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "center_y",
-        label: "Center Y",
+        label: "node.force.vortex.param.center_y",
         min: -10.0,
         max: 10.0,
         step: 0.1,
@@ -343,7 +346,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "strength",
-        label: "Strength",
+        label: "node.force.vortex.param.strength",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -351,7 +354,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "radius",
-        label: "Radius",
+        label: "node.force.vortex.param.radius",
         min: 0.1,
         max: 20.0,
         step: 0.1,
@@ -359,7 +362,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: CURVE,
-        label: "Curve",
+        label: "node.force.vortex.param.curve",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -369,7 +372,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "clockwise",
-        label: "Clockwise",
+        label: "node.force.vortex.param.clockwise",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -387,7 +390,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: AIR_RESIST,
-        label: "Air Resistance",
+        label: "node.force.vortex.param.air_resist",
         min: 0.0,
         max: 20.0,
         step: 0.1,

@@ -198,7 +198,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "wave",
-        label: "Wave",
+        label: "node.value.wave.param.wave",
         min: 0.0,
         max: 4.0,
         step: 1.0,
@@ -208,7 +208,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "frequency",
-        label: "Frequency",
+        label: "node.value.wave.param.frequency",
         min: 0.0,
         max: 16.0,
         step: 0.05,
@@ -216,7 +216,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "amplitude",
-        label: "Amplitude",
+        label: "node.value.wave.param.amplitude",
         min: 0.0,
         max: 10.0,
         step: 0.05,
@@ -224,7 +224,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.value.wave.param.offset",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -232,7 +232,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "phase",
-        label: "Phase",
+        label: "node.value.wave.param.phase",
         min: 0.0,
         max: 1.0,
         step: 0.01,

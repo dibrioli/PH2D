@@ -525,7 +525,7 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count",
-        label: "Count",
+        label: "node.motion.distribute_radial.param.count",
         min: 1.0,
         max: 600.0,
         step: 1.0,
@@ -533,7 +533,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "rings",
-        label: "Rings",
+        label: "node.motion.distribute_radial.param.rings",
         min: 1.0,
         max: 64.0,
         step: 1.0,
@@ -541,7 +541,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "radius",
-        label: "Radius",
+        label: "node.motion.distribute_radial.param.radius",
         min: 0.1,
         max: 20.0,
         step: 0.05,
@@ -549,7 +549,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "inner",
-        label: "Inner",
+        label: "node.motion.distribute_radial.param.inner",
         min: 0.0,
         max: 6.0,
         step: 0.05,
@@ -559,7 +559,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // way round or backwards — `end < start` is a legal wedge that runs clockwise.
     ParamUiHint {
         param: "start_angle",
-        label: "Start Angle",
+        label: "node.motion.distribute_radial.param.start_angle",
         min: -360.0,
         max: 720.0,
         step: 1.0,
@@ -567,7 +567,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "end_angle",
-        label: "End Angle",
+        label: "node.motion.distribute_radial.param.end_angle",
         min: -360.0,
         max: 720.0,
         step: 1.0,
@@ -578,7 +578,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // (the radius, or the ring's tangent). It picks the radius, so it says so.
     ParamUiHint {
         param: "align",
-        label: "Align To Radius",
+        label: "node.motion.distribute_radial.param.align",
         min: 0.0,
         max: 1.0,
         step: 1.0,

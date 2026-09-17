@@ -228,7 +228,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // lets one slider drive the effect both ways from a centred rest.
     ParamUiHint {
         param: "strength",
-        label: "Strength",
+        label: "node.value.gain.param.strength",
         min: -1.0,
         max: 1.0,
         step: 0.01,
@@ -236,7 +236,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.value.gain.param.mode",
         min: 0.0,
         max: 1.0,
         step: 1.0,

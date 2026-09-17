@@ -242,7 +242,7 @@ static PARAM_GATES: &[ParamGate] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
-        label: "Channel",
+        label: "node.motion.stagger.param.channel",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -252,7 +252,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "min",
-        label: "Min",
+        label: "node.motion.stagger.param.min",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -260,7 +260,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "max",
-        label: "Max",
+        label: "node.motion.stagger.param.max",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -268,7 +268,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "ease_curve",
-        label: "Ease",
+        label: "node.motion.stagger.param.ease_curve",
         min: 0.0,
         // ⚠️ **Apendada**: a `Custom` é o índice 8, e as oito de sempre ficam onde
         // estavam — um documento autorado guarda o NÚMERO, não o nome.
@@ -284,7 +284,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // Não-setada = `t`, ou seja o `Linear`. Ver `ease::EASE_CUSTOM`.
     ParamUiHint {
         param: CURVE_KEY,
-        label: "Custom Ease",
+        label: "node.motion.stagger.param.curve",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -292,7 +292,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "ease_dir",
-        label: "Direction",
+        label: "node.motion.stagger.param.ease_dir",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -305,7 +305,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // que o artista não distingue.
     ParamUiHint {
         param: "offset",
-        label: "Offset",
+        label: "node.motion.stagger.param.offset",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -313,7 +313,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "reverse",
-        label: "Reverse",
+        label: "node.motion.stagger.param.reverse",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -323,7 +323,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // toggle que já existe, e `By X`/`By Y` pedem uma ordenação (o `motion.sort` a montante).
     ParamUiHint {
         param: "order",
-        label: "Order",
+        label: "node.motion.stagger.param.order",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -333,7 +333,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.motion.stagger.param.seed",
         min: 0.0,
         max: 999.0,
         step: 1.0,

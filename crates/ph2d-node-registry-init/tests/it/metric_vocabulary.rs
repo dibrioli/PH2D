@@ -60,7 +60,8 @@ fn both_nodes_speak_the_same_distance_vocabulary() {
             .find(|h| h.param == "metric")
             .expect("hint da metrica");
         assert_eq!(
-            h.label, "Distance",
+            ph2d_i18n::tr(h.label),
+            "Distance",
             "`{ty}`: o rotulo do painel -- o `motion.voronoi` ja shipava `Distance`, e este \
              censo apanhou a divergencia no dia em que o segundo no' a escreveu"
         );

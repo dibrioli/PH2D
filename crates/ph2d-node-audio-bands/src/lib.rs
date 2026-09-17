@@ -421,7 +421,7 @@ impl NodeOp for AudioBands {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: FILE_KEY,
-        label: "Audio File",
+        label: "node.audio.bands.param.file",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -435,7 +435,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::COUNT,
-        label: "Bands",
+        label: "node.audio.bands.param.count",
         min: 1.0,
         max: 64.0,
         step: 1.0,
@@ -443,7 +443,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::MIN_HZ,
-        label: "Low",
+        label: "node.audio.bands.param.min_hz",
         min: 20.0,
         max: 2000.0,
         step: 1.0,
@@ -451,7 +451,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::MAX_HZ,
-        label: "High",
+        label: "node.audio.bands.param.max_hz",
         min: 1000.0,
         max: 22_000.0,
         step: 10.0,
@@ -459,7 +459,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::SCALE,
-        label: "Scale",
+        label: "node.audio.bands.param.scale",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -469,7 +469,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::WEIGHTING,
-        label: "Weighting",
+        label: "node.audio.bands.param.weighting",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -479,7 +479,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::FLOOR_DB,
-        label: "Floor",
+        label: "node.audio.bands.param.floor_db",
         min: -90.0,
         max: -10.0,
         step: 1.0,
@@ -487,7 +487,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::GAIN,
-        label: "Gain",
+        label: "node.audio.bands.param.gain",
         min: 0.0,
         max: 4.0,
         step: 0.01,
@@ -495,7 +495,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::SMOOTHING,
-        label: "Smoothing",
+        label: "node.audio.bands.param.smoothing",
         min: 0.0,
         max: 1.0,
         step: 0.01,

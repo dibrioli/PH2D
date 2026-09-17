@@ -230,7 +230,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 /// renumeração não quer dizer nada, e um slider convidaria a procurar o meio.
 static PARAM_HINTS: &[ph2d_node_registry::ParamUiHint] = &[ph2d_node_registry::ParamUiHint {
     param: REINDEX,
-    label: "Reindex",
+    label: "node.motion.combine.param.reindex",
     min: 0.0,
     max: 1.0,
     step: 1.0,

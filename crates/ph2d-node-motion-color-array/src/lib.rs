@@ -327,7 +327,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 /// list it was capping.
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "palette",
-    label: "Palette",
+    label: "node.motion.color_array.param.palette",
     min: 0.0,
     max: 0.0,
     step: 0.0,

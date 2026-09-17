@@ -204,7 +204,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "op",
-    label: "Op",
+    label: "node.value.unary.param.op",
     min: 0.0,
     max: 7.0,
     step: 1.0,

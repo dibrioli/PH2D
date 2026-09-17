@@ -186,7 +186,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "root",
-        label: "Root Joint",
+        label: "node.rig.ik_2bone.param.root",
         min: 0.0,
         max: 62.0,
         step: 1.0,
@@ -194,7 +194,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "flip",
-        label: "Flip Elbow",
+        label: "node.rig.ik_2bone.param.flip",
         min: 0.0,
         max: 1.0,
         step: 1.0,

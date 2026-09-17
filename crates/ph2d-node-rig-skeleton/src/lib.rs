@@ -155,7 +155,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // `filho=pai` (o canal do doc 32) — ver [`branches`].
     ParamUiHint {
         param: BRANCHES_PARAM,
-        label: "Branches",
+        label: "node.rig.skeleton.param.branches",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -163,7 +163,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "joints",
-        label: "Joints",
+        label: "node.rig.skeleton.param.joints",
         min: 1.0,
         max: MAX_JOINTS as f32,
         step: 1.0,
@@ -171,7 +171,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "length",
-        label: "Bone Length",
+        label: "node.rig.skeleton.param.length",
         min: 0.05,
         max: 4.0,
         step: 0.05,
@@ -179,7 +179,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "angle",
-        label: "Bend",
+        label: "node.rig.skeleton.param.angle",
         min: -180.0,
         max: 180.0,
         step: 1.0,
@@ -187,7 +187,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "root_angle",
-        label: "Root Angle",
+        label: "node.rig.skeleton.param.root_angle",
         min: -180.0,
         max: 360.0,
         step: 1.0,

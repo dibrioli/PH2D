@@ -140,7 +140,9 @@ pub fn params_de(grupo: &[&str]) {
             }
             eprintln!(
                 "    {:<20} (TEXTO)  {:<16}  {:?}",
-                h.param, h.label, h.widget
+                h.param,
+                ph2d_i18n::tr(h.label),
+                h.widget
             );
         }
     }
@@ -192,7 +194,12 @@ pub fn cartao(grupo: &[&str]) {
         );
         let view = snap.nodes.iter().find(|v| v.id == id.0);
         let rows: Vec<String> = view
-            .map(|v| v.params.iter().map(|c| c.hint.label.to_string()).collect())
+            .map(|v| {
+                v.params
+                    .iter()
+                    .map(|c| ph2d_i18n::tr(c.hint.label).to_string())
+                    .collect()
+            })
             .unwrap_or_default();
         let secs: Vec<String> = view
             .map(|v| {
@@ -253,7 +260,7 @@ pub fn vocabulario(grupo: &[&str]) {
             let rotulo = hints
                 .iter()
                 .find(|h| h.param == spec.name)
-                .map_or("(sem hint)", |h| h.label);
+                .map_or("(sem hint)", |h| ph2d_i18n::tr(h.label));
             tabela
                 .entry(spec.name)
                 .or_default()
@@ -329,7 +336,7 @@ pub fn vocabulario_do_artista(grupo: &[&str]) {
         let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
         for h in m.registry.param_ui(tid).unwrap_or(&[]) {
             por_rotulo
-                .entry(h.label.to_string())
+                .entry(ph2d_i18n::tr(h.label).to_string())
                 .or_default()
                 .entry(h.param)
                 .or_default()
@@ -337,7 +344,7 @@ pub fn vocabulario_do_artista(grupo: &[&str]) {
             por_chave
                 .entry(h.param)
                 .or_default()
-                .entry(h.label.to_string())
+                .entry(ph2d_i18n::tr(h.label).to_string())
                 .or_default()
                 .push((*nome).to_string());
             if let ph2d_node_registry::ParamWidget::Enum { labels } = h.widget {
@@ -345,7 +352,7 @@ pub fn vocabulario_do_artista(grupo: &[&str]) {
                     palavras
                         .entry((*w).to_string())
                         .or_default()
-                        .insert(format!("{nome}::{}", h.label));
+                        .insert(format!("{nome}::{}", ph2d_i18n::tr(h.label)));
                 }
             }
         }

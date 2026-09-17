@@ -344,7 +344,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         // softens more AND reaches further. The slider stops where the hand
         // works; the typable box goes to [`RADIUS_LAST_USEFUL`].
         param: "radius",
-        label: "Radius",
+        label: "node.value.smooth.param.radius",
         min: 0.0,
         max: 16.0,
         step: 1.0,
@@ -354,7 +354,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         // ⚠️ A ordem dos rótulos É a ordem dos índices — o `weight` guardado num
         // documento é o índice, então a lista só cresce pelo FIM.
         param: "weight",
-        label: "Weight",
+        label: "node.value.smooth.param.weight",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -367,7 +367,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // não o de uma inteira cortada ao meio.
     ParamUiHint {
         param: "window",
-        label: "Window",
+        label: "node.value.smooth.param.window",
         min: 0.0,
         max: 2.0,
         step: 1.0,

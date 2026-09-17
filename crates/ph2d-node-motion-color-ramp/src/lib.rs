@@ -376,7 +376,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // preset seeds (Rainbow / Heat / Ice / Grayscale) that load into it.
     ParamUiHint {
         param: RAMP_KEY,
-        label: "Gradient",
+        label: "node.motion.color_ramp.param.ramp",
         min: 0.0,
         max: 0.0,
         step: 0.0,

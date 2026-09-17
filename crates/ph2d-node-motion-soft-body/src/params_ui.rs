@@ -48,7 +48,7 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "rows",
-        label: "Rows",
+        label: "node.motion.soft_body.param.rows",
         min: 2.0,
         max: 64.0,
         step: 1.0,
@@ -56,7 +56,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "cols",
-        label: "Cols",
+        label: "node.motion.soft_body.param.cols",
         min: 2.0,
         max: 64.0,
         step: 1.0,
@@ -64,7 +64,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "spacing",
-        label: "Spacing",
+        label: "node.motion.soft_body.param.spacing",
         min: 0.1,
         max: 4.0,
         step: 0.05,
@@ -72,7 +72,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "gravity",
-        label: "Gravity",
+        label: "node.motion.soft_body.param.gravity",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -80,7 +80,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "stiffness",
-        label: "Stiffness",
+        label: "node.motion.soft_body.param.stiffness",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -88,7 +88,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "stretch",
-        label: "Stretch",
+        label: "node.motion.soft_body.param.stretch",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -96,7 +96,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "damping",
-        label: "Damping",
+        label: "node.motion.soft_body.param.damping",
         min: 0.0,
         max: 0.5,
         step: 0.01,
@@ -104,7 +104,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pressure",
-        label: "Pressure",
+        label: "node.motion.soft_body.param.pressure",
         // The slider is the FINGER's range, not the ceiling (doc 88 §11): 2 is
         // where the measured band of *does what it says* ends. The typable max
         // is twice that.
@@ -115,7 +115,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "clusters",
-        label: "Clusters",
+        label: "node.motion.soft_body.param.clusters",
         // The finger's range is the band the measurement found USEFUL. Fitting a
         // rigid frame to a chord of an arc leaves an error that falls as the
         // square of the piece, and the arc probe reads it: 1 → 1,075 · 2 → 0,503 ·
@@ -128,7 +128,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pin",
-        label: "Pin Top",
+        label: "node.motion.soft_body.param.pin",
         min: 0.0,
         max: 1.0,
         step: 1.0,

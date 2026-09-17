@@ -189,7 +189,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: SCALE_X,
-        label: "Drag X",
+        label: "node.force.drag.param.scale_x",
         min: 0.0,
         max: 3.0,
         step: 0.05,
@@ -197,7 +197,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: SCALE_Y,
-        label: "Drag Y",
+        label: "node.force.drag.param.scale_y",
         min: 0.0,
         max: 3.0,
         step: 0.05,
@@ -205,7 +205,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "coefficient",
-        label: "Coefficient",
+        label: "node.force.drag.param.coefficient",
         min: 0.0,
         max: 10.0,
         step: 0.05,

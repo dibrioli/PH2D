@@ -515,7 +515,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // RECUSAR todo grafo salvo que o sobrescreve.
     ParamUiHint {
         param: "attack",
-        label: "Attack",
+        label: "node.motion.strobe.param.attack",
         // Ticks até o pico. Mesma régua do Decay: o que fecha a faixa é a
         // PALAVRA (acima de dois segundos deixou de ser um strobe), não recurso.
         min: 0.0,
@@ -525,7 +525,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "hold",
-        label: "Hold",
+        label: "node.motion.strobe.param.hold",
         min: 0.0,
         max: 120.0,
         step: 1.0,
@@ -533,7 +533,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "decay",
-        label: "Decay",
+        label: "node.motion.strobe.param.decay",
         // Ticks. `0` é o flash de um tick; a 120 (dois segundos a 60 Hz) a coisa deixou
         // de ser um strobe e virou um fade — não há recurso a limitar aqui, o que se
         // fecha é a PALAVRA. Um documento pode carregar mais, e a derivação o honra.
@@ -546,7 +546,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // editor de curva arrastável. Não-setada = identidade (a lei do `value.curve`).
     ParamUiHint {
         param: CURVE_KEY,
-        label: "Shape",
+        label: "node.motion.strobe.param.curve",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -554,7 +554,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "probability",
-        label: "Probability",
+        label: "node.motion.strobe.param.probability",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -562,7 +562,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "size_boost",
-        label: "Size Boost",
+        label: "node.motion.strobe.param.size_boost",
         min: 0.0,
         max: 4.0,
         step: 0.05,
@@ -573,7 +573,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // `Echo Blend` do `motion.trail`; gate `the_row_blend_speaks_one_word`).
     ParamUiHint {
         param: FLASH_BLEND,
-        label: "Flash Blend",
+        label: "node.motion.strobe.param.flash_blend",
         min: 0.0,
         #[expect(clippy::cast_precision_loss, reason = "sete rotulos")]
         max: (FLASH_BLEND_LABELS.len() - 1) as f32,
@@ -590,7 +590,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // `consumed`), so a dedicated Slider hint here would be dead code.
     ParamUiHint {
         param: "flash_r",
-        label: "Flash",
+        label: "node.motion.strobe.param.flash_r",
         min: 0.0,
         max: 1.0,
         step: 0.01,

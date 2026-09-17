@@ -419,7 +419,7 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "radius",
-        label: "Radius",
+        label: "node.motion.collide.param.radius",
         min: 0.0,
         max: 5.0,
         step: 0.01,
@@ -427,7 +427,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "iterations",
-        label: "Iterations",
+        label: "node.motion.collide.param.iterations",
         min: 0.0,
         max: 64.0,
         step: 1.0,
@@ -435,7 +435,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "strength",
-        label: "Strength",
+        label: "node.motion.collide.param.strength",
         min: 0.0,
         max: 1.0,
         step: 0.01,

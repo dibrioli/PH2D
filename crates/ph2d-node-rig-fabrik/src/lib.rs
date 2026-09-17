@@ -237,7 +237,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "iterations",
-    label: "Iterations",
+    label: "node.rig.fabrik.param.iterations",
     min: 1.0,
     max: MAX_ITERATIONS as f32,
     step: 1.0,

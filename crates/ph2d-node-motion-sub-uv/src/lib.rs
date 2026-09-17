@@ -273,7 +273,7 @@ static LUTS: &[ph2d_nodegraph::gpu::LutSpec] = &[ph2d_nodegraph::gpu::LutSpec {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "cols",
-        label: "Columns",
+        label: "node.motion.sub_uv.param.cols",
         min: 1.0,
         max: SOFT_CELLS_PER_AXIS,
         step: 1.0,
@@ -281,7 +281,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "rows",
-        label: "Rows",
+        label: "node.motion.sub_uv.param.rows",
         min: 1.0,
         max: SOFT_CELLS_PER_AXIS,
         step: 1.0,
@@ -291,7 +291,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "cell",
         // A célula EMBRULHA na grelha, então o curso do slider só precisa de alcançar a
         // maior folha que o slider da grelha exprime — e o teto duro segue os irmãos.
-        label: "Cell",
+        label: "node.motion.sub_uv.param.cell",
         min: 0.0,
         max: SOFT_CELLS_PER_AXIS * SOFT_CELLS_PER_AXIS,
         step: 1.0,
@@ -299,7 +299,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "speed",
-        label: "Cells / Second",
+        label: "node.motion.sub_uv.param.speed",
         min: -MAX_CELL_SPEED,
         max: MAX_CELL_SPEED,
         step: 0.5,
@@ -310,7 +310,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // resposta a *«quão rápido»* ao lado do `Cells / Second`.
     ParamUiHint {
         param: holds::HOLDS_KEY,
-        label: "Frame Holds",
+        label: "node.motion.sub_uv.param.holds",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -318,7 +318,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "stagger",
-        label: "Stagger",
+        label: "node.motion.sub_uv.param.stagger",
         min: -16.0,
         max: 16.0,
         step: 0.25,

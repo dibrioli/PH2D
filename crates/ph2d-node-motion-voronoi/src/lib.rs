@@ -362,7 +362,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count",
-        label: "Count",
+        label: "node.motion.voronoi.param.count",
         min: 1.0,
         // O curso do SLIDER, não o teto da máquina: a 165.000 um pixel do track
         // (~154 px) valia **1.070 células**, onde o default são 96 — o default
@@ -376,7 +376,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "width",
-        label: "Width",
+        label: "node.motion.voronoi.param.width",
         min: 0.5,
         max: 20.0,
         step: 0.05,
@@ -384,7 +384,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "height",
-        label: "Height",
+        label: "node.motion.voronoi.param.height",
         min: 0.5,
         max: 20.0,
         step: 0.05,
@@ -392,7 +392,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "seed",
-        label: "Seed",
+        label: "node.motion.voronoi.param.seed",
         min: 0.0,
         max: 9999.0,
         step: 1.0,
@@ -400,7 +400,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "iterations",
-        label: "Relax Steps",
+        label: "node.motion.voronoi.param.iterations",
         min: 0.0,
         max: 64.0,
         step: 1.0,
@@ -408,7 +408,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: METRIC,
-        label: "Distance",
+        label: "node.motion.voronoi.param.metric",
         min: 0.0,
         max: 2.0,
         step: 1.0,

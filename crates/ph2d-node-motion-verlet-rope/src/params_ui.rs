@@ -105,7 +105,7 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count",
-        label: "Points",
+        label: "node.motion.verlet_rope.param.count",
         min: 2.0,
         max: 200.0,
         step: 1.0,
@@ -113,7 +113,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "length",
-        label: "Length",
+        label: "node.motion.verlet_rope.param.length",
         min: 0.5,
         max: 40.0,
         step: 0.1,
@@ -121,7 +121,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "gravity",
-        label: "Gravity",
+        label: "node.motion.verlet_rope.param.gravity",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -129,7 +129,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "iterations",
-        label: "Stiffness",
+        label: "node.motion.verlet_rope.param.iterations",
         min: 1.0,
         max: 128.0,
         step: 1.0,
@@ -137,7 +137,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "damping",
-        label: "Damping",
+        label: "node.motion.verlet_rope.param.damping",
         min: 0.0,
         max: 0.2,
         step: 0.01,
@@ -145,7 +145,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "pin_tail",
-        label: "Pin Tail",
+        label: "node.motion.verlet_rope.param.pin_tail",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -161,7 +161,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // folga — e o total é preservado, então mexer aqui redistribui em vez de encompridar.
     ParamUiHint {
         param: super::rest::REST_START,
-        label: "Rest Start",
+        label: "node.motion.verlet_rope.param.rest_start",
         min: 0.0,
         max: 3.0,
         step: 0.05,
@@ -169,7 +169,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: super::rest::REST_END,
-        label: "Rest End",
+        label: "node.motion.verlet_rope.param.rest_end",
         min: 0.0,
         max: 3.0,
         step: 0.05,
@@ -177,7 +177,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: super::rest::REST_PROFILE,
-        label: "Rest Profile",
+        label: "node.motion.verlet_rope.param.rest_profile",
         min: 0.0,
         max: 3.0,
         step: 1.0,
@@ -187,7 +187,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "bend",
-        label: "Bend Stiffness",
+        label: "node.motion.verlet_rope.param.bend",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -201,7 +201,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // folha. O porquê, com a tabela medida, está no `ParamSpec` do `lib.rs`.
     ParamUiHint {
         param: "solver_substeps",
-        label: "Substeps",
+        label: "node.motion.verlet_rope.param.solver_substeps",
         min: 1.0,
         max: 8.0,
         step: 1.0,

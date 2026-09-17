@@ -97,7 +97,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 /// Param UI hints.
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "gain",
-    label: "Gain",
+    label: "node.debug.wave.param.gain",
     min: 0.0,
     max: 4.0,
     step: 0.05,

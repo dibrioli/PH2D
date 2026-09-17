@@ -292,7 +292,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "in_lo",
-        label: "In Low",
+        label: "node.value.curve.param.in_lo",
         min: -100.0,
         max: 100.0,
         step: 0.05,
@@ -300,7 +300,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "in_hi",
-        label: "In High",
+        label: "node.value.curve.param.in_hi",
         min: -100.0,
         max: 10.0,
         step: 0.05,
@@ -310,7 +310,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // draggable curve editor. Unset = identity (a straight remap).
     ParamUiHint {
         param: CURVE_KEY,
-        label: "Curve",
+        label: "node.value.curve.param.curve",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -318,7 +318,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "out_lo",
-        label: "Out Low",
+        label: "node.value.curve.param.out_lo",
         min: -100.0,
         max: 100.0,
         step: 0.05,
@@ -326,7 +326,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "out_hi",
-        label: "Out High",
+        label: "node.value.curve.param.out_hi",
         min: -100.0,
         max: 10.0,
         step: 0.05,
@@ -336,7 +336,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // intacta. É o primeiro socket do *Float Curve* do Blender.
     ParamUiHint {
         param: "factor",
-        label: "Factor",
+        label: "node.value.curve.param.factor",
         min: 0.0,
         max: 1.0,
         step: 0.01,

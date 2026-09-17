@@ -305,7 +305,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "radius",
-        label: "Radius",
+        label: "node.motion.spherize.param.radius",
         min: 0.1,
         max: 20.0,
         step: 0.05,
@@ -315,7 +315,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // inalcançável pelo painel, e o círculo é o default.
     ParamUiHint {
         param: RADIUS_Y,
-        label: "Radius Y (0 = round)",
+        label: "node.motion.spherize.param.radius_y",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -323,7 +323,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset_x",
-        label: "Offset X",
+        label: "node.motion.spherize.param.offset_x",
         min: -10.0,
         max: 10.0,
         step: 0.05,
@@ -331,7 +331,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "offset_y",
-        label: "Offset Y",
+        label: "node.motion.spherize.param.offset_y",
         min: -10.0,
         max: 10.0,
         step: 0.05,

@@ -18,6 +18,7 @@ mod collide_ceiling;
 mod dead_knob_sweep;
 mod death_replicates;
 mod every_node_name_is_a_key_derived_from_its_type;
+mod every_param_label_is_a_key_derived_from_its_type_and_param;
 mod falloff_declaration;
 mod from_wire_units;
 mod generators_consume_accel;

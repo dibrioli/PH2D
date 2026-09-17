@@ -126,7 +126,7 @@ impl NodeOp for SourceTable {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: FILE_KEY,
-        label: "Table File",
+        label: "node.source.table.param.file",
         min: 0.0,
         max: 0.0,
         step: 0.0,
@@ -138,7 +138,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::SPACING,
-        label: "Spacing",
+        label: "node.source.table.param.spacing",
         min: 0.0,
         max: 2.0,
         step: 0.01,

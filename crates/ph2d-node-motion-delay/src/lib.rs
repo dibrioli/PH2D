@@ -537,7 +537,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "channel",
-        label: "Channel",
+        label: "node.motion.delay.param.channel",
         min: 0.0,
         max: 5.0,
         step: 1.0,
@@ -550,7 +550,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "mode",
-        label: "Mode",
+        label: "node.motion.delay.param.mode",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -563,7 +563,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "ticks",
-        label: "Rise",
+        label: "node.motion.delay.param.ticks",
         min: 0.0,
         max: 32.0,
         step: 0.5,
@@ -573,7 +573,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // descida ao lado, *"Ticks"* deixou de nomear a única duração do nó.
     ParamUiHint {
         param: "ticks_down",
-        label: "Fall",
+        label: "node.motion.delay.param.ticks_down",
         min: 0.0,
         max: 32.0,
         step: 0.5,
@@ -585,7 +585,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // governa. Só a régua de DESCIDA é do `Blend`.
     ParamUiHint {
         param: "max_step",
-        label: "Max Step",
+        label: "node.motion.delay.param.max_step",
         min: 0.0,
         max: 2.0,
         step: 0.05,
@@ -593,7 +593,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "max_accel",
-        label: "Max Accel",
+        label: "node.motion.delay.param.max_accel",
         min: 0.0,
         max: 1.0,
         step: 0.05,

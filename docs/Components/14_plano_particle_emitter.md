@@ -96,8 +96,10 @@ porta a do Godot (um segundo motor seria o que o levantamento proíbe).
 
 O emissor ganha um terceiro modo de nascer, ao lado de `Continuous` e `Burst`, **sem estado**:
 
-- a agenda é uma lista de intervalos **ligado** `[a, b)` em segundos do emissor, com um **período**
-  opcional (repete) — num **parâmetro de texto** (`schedule`), o molde da onda `Custom`;
+- a agenda são **segmentos** ligados `[a, b)` em segundos do emissor (o que um sinal liga e
+  desliga) e um **pulso** opcional (`pulse ON/PERIOD`: ligado `ON` de cada `PERIOD` segundos,
+  contado desde o início de **cada** segmento) — num **parâmetro de texto** (`schedule`), o molde da
+  onda `Custom`;
 - o **relógio de emissão** `τ(t)` = tempo ligado acumulado até `t`;
 - a partícula `k` nasce no **primeiro** instante em que `τ = k/rate` ⇒ as ids vivas continuam um
   **intervalo contíguo** (o `SourceWindow` não muda de forma) e a idade é `t − nascimento(k)`;
@@ -106,7 +108,7 @@ O emissor ganha um terceiro modo de nascer, ao lado de `Continuous` e `Burst`, *
   o molde do `Leave`/`Inherit`. A fronteira fica **nomeada** (o kernel precisaria da agenda numa LUT).
 
 Com ela: **rajada única** = `[0, (1−e)·vida)` a `rate = n/((1−e)·vida)` (L1, e `e = 1` é o `Burst`
-que já existe) · **contínuo com explosividade** = o mesmo intervalo **com período = vida** ·
+que já existe) · **contínuo com explosividade** = `pulse (1−e)·vida / vida` dentro dos segmentos ·
 **ligar/desligar** = acrescentar uma fronteira · **recomeçar** = relógio novo (L7).
 
 ### §3.2 — *Onde mora o que o artista escolhe?* ⇒ `ph2d_ecs::ParticleEmitter` (gravado)
@@ -202,3 +204,10 @@ leva o onion e o Motion — **independente** da ferramenta MOTION. `z_order` = o
 ## §7 — ⚠️ Premissas DESTE plano que a implementação derrubar
 
 *(escrito durante a construção)*
+
+1. ⛔ **«Um período global basta para o contínuo com explosividade»** — a 1.ª redacção da agenda
+   (`a-b every P`, os intervalos dentro de um período global) não sabia **cortar** um padrão
+   periódico num segmento finito: desligar um emissor que pulsa só se exprimia expandindo o padrão
+   em N intervalos (um por ciclo, e o custo de `birth` é linear neles). ⇒ **segmentos + pulso por
+   segmento** (`0-10 20- pulse 0.5/1`), e religar recomeça o ciclo. Achado ao desenhar o relógio do
+   componente, antes de alguém depender da forma velha.

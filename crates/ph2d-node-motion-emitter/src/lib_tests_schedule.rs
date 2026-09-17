@@ -109,7 +109,8 @@ fn a_janela_e_a_enumeracao_bruta() {
     let agendas = [
         "0-1 2-",
         "0.3-0.8 1-1.1 1.5-2",
-        "0-0.25 every 0.6",
+        "pulse 0.25/0.6",
+        "0-1.3 2- pulse 0.3/0.5",
         "1-3",
         "off",
     ];

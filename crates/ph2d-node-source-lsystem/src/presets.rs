@@ -321,5 +321,13 @@ pub const PRESETS: &[Preset] = &[
 /// ⚠️ Uma `const` não pode iterar, então isto é escrito e há gate a exigir que cada entrada
 /// bata com `PRESETS[k].label` e que o último seja o `Custom`.
 pub const PRESET_LABELS: &[&str] = &[
-    "Tree", "Fern", "Bush", "Weed", "Wild", "Koch", "Dragon", "Sprig", "Custom",
+    "node.opts.node_source_lsystem.preset_labels.0",
+    "node.opts.node_source_lsystem.preset_labels.1",
+    "node.opts.node_source_lsystem.preset_labels.2",
+    "node.opts.node_source_lsystem.preset_labels.3",
+    "node.opts.node_source_lsystem.preset_labels.4",
+    "node.opts.node_source_lsystem.preset_labels.5",
+    "node.opts.node_source_lsystem.preset_labels.6",
+    "node.opts.node_source_lsystem.preset_labels.7",
+    "node.opts.node_source_lsystem.preset_labels.8",
 ];

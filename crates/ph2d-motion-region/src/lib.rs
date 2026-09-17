@@ -65,7 +65,11 @@ pub const SHAPE_RING: i32 = 2;
 ///
 /// ⚠️ **Apendar é a única operação legal aqui** — um documento autorado guarda o
 /// NÚMERO, não o nome, e reordenar mudaria a forma de toda cena já salva.
-pub const SHAPE_LABELS: &[&str] = &["Rect", "Circle", "Ring"];
+pub const SHAPE_LABELS: &[&str] = &[
+    "node.opts.motion_region.shape_labels.0",
+    "node.opts.motion_region.shape_labels.1",
+    "node.opts.motion_region.shape_labels.2",
+];
 
 /// O buraco mais fino que um anel pode ter sem a banda deixar de ter área. Acima
 /// disto o anel seria uma linha, e o sorteio por área dividiria por zero.

@@ -435,7 +435,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["fBm", "Turbulence", "Ridged"],
+            labels: &[
+                "node.force.curl.param.type.0",
+                "node.force.curl.param.type.1",
+                "node.force.curl.param.type.2",
+            ],
         },
     },
     // ⚠️ A faixa começa em 1: abaixo disso as oitavas ficam MAIORES que a base e

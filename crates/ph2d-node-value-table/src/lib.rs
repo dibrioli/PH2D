@@ -189,7 +189,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Step", "Linear"],
+            labels: &[
+                "node.value.table.param.interp.0",
+                "node.value.table.param.interp.1",
+            ],
         },
     },
     ParamUiHint {
@@ -199,7 +202,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Hold", "Loop"],
+            labels: &[
+                "node.value.table.param.outside.0",
+                "node.value.table.param.outside.1",
+            ],
         },
     },
 ];

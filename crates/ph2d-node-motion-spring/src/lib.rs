@@ -387,7 +387,13 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Enum {
             // ⚠️ **Apendado no FIM** — ver [`CHANNEL_POSITION_XY`]: os quatro índices que já
             // existiam ficam onde estavam, e toda cena guardada continua a nomear o mesmo canal.
-            labels: &["X", "Y", "Rotation", "Size", "Position XY"],
+            labels: &[
+                "node.motion.spring.param.channel.0",
+                "node.motion.spring.param.channel.1",
+                "node.motion.spring.param.channel.2",
+                "node.motion.spring.param.channel.3",
+                "node.motion.spring.param.channel.4",
+            ],
         },
     },
     ParamUiHint {
@@ -414,7 +420,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Physics", "Time"],
+            labels: &[
+                "node.motion.spring.param.mode.0",
+                "node.motion.spring.param.mode.1",
+            ],
         },
     },
     ParamUiHint {

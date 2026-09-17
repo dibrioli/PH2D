@@ -210,14 +210,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     step: 1.0,
     widget: ParamWidget::Enum {
         labels: &[
-            "Abs",
-            "Negate",
-            "Sign",
-            "Floor",
-            "Fract",
-            "Square",
-            "Sqrt",
-            "Reciprocal",
+            "node.value.unary.param.op.0",
+            "node.value.unary.param.op.1",
+            "node.value.unary.param.op.2",
+            "node.value.unary.param.op.3",
+            "node.value.unary.param.op.4",
+            "node.value.unary.param.op.5",
+            "node.value.unary.param.op.6",
+            "node.value.unary.param.op.7",
         ],
     },
 }];

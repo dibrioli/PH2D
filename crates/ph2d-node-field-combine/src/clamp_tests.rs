@@ -118,7 +118,7 @@ fn the_panel_shows_the_toggle_and_the_ninth_mode() {
     match mode.widget {
         ParamWidget::Enum { labels } => {
             assert_eq!(labels.len(), 9, "nove modos: {labels:?}");
-            assert_eq!(labels[MODE_AVERAGE as usize], "Average");
+            assert_eq!(ph2d_i18n::tr(labels[MODE_AVERAGE as usize]), "Average");
             // ⚠️ E o teto do slider tem de alcançar o índice novo, senão o modo existe no
             // cozimento e é inalcançável pelo painel.
             assert!(

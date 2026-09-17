@@ -464,7 +464,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Linear", "Log", "Mel"],
+            labels: &[
+                "node.audio.bands.param.scale.0",
+                "node.audio.bands.param.scale.1",
+                "node.audio.bands.param.scale.2",
+            ],
         },
     },
     ParamUiHint {
@@ -474,7 +478,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["None", "A"],
+            labels: &[
+                "node.audio.bands.param.weighting.0",
+                "node.audio.bands.param.weighting.1",
+            ],
         },
     },
     ParamUiHint {

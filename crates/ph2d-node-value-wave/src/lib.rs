@@ -203,7 +203,13 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Sine", "Tri", "Square", "Saw", "Spike"],
+            labels: &[
+                "node.value.wave.param.wave.0",
+                "node.value.wave.param.wave.1",
+                "node.value.wave.param.wave.2",
+                "node.value.wave.param.wave.3",
+                "node.value.wave.param.wave.4",
+            ],
         },
     },
     ParamUiHint {

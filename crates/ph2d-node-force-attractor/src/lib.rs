@@ -466,7 +466,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Linear", "Quad", "Smooth", "Smoother"],
+            labels: &[
+                "node.force.attractor.param.curve.0",
+                "node.force.attractor.param.curve.1",
+                "node.force.attractor.param.curve.2",
+                "node.force.attractor.param.curve.3",
+            ],
         },
     },
     ParamUiHint {
@@ -486,7 +491,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Point", "Stream"],
+            labels: &[
+                "node.force.attractor.param.target_mode.0",
+                "node.force.attractor.param.target_mode.1",
+            ],
         },
     },
     // O tecto da antecipação. ⚠️ A faixa para em 2 s porque acima disso a mira sai do

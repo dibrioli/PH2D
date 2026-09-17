@@ -328,7 +328,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Hard", "Smooth", "Smoother"],
+            labels: &[
+                "node.value.step.param.mode.0",
+                "node.value.step.param.mode.1",
+                "node.value.step.param.mode.2",
+            ],
         },
     },
     // O espelho da máscara. Desligado = o nó de sempre.

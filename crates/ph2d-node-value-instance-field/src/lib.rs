@@ -424,7 +424,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Index", "Id"],
+            labels: &[
+                "node.value.instance_field.param.key.0",
+                "node.value.instance_field.param.key.1",
+            ],
         },
     },
     ParamUiHint {
@@ -434,7 +437,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Index", "Ramp", "Random"],
+            labels: &[
+                "node.value.instance_field.param.mode.0",
+                "node.value.instance_field.param.mode.1",
+                "node.value.instance_field.param.mode.2",
+            ],
         },
     },
     ParamUiHint {

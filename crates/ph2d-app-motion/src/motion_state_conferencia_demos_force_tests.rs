@@ -149,9 +149,11 @@ fn the_buoyancy_pair_drives_the_density_column_on_the_right_only() {
         #[expect(clippy::cast_sign_loss, reason = "o canal é >= 0")]
         let idx = ch.round() as usize;
         assert!(
-            labels.get(idx).is_some_and(|l| l.contains("Custom")),
+            labels
+                .get(idx)
+                .is_some_and(|l| ph2d_i18n::tr(l).contains("Custom")),
             "o canal {ch} tem de ser o Custom, e é `{:?}`",
-            labels.get(idx)
+            labels.get(idx).map(|l| ph2d_i18n::tr(l))
         );
     } else {
         panic!("o `channel` do motion.drive tem de ser um Enum pintado");

@@ -434,7 +434,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Number", "Spacing"],
+            labels: &[
+                "node.motion.path.param.mode.0",
+                "node.motion.path.param.mode.1",
+            ],
         },
     },
     ParamUiHint {
@@ -502,7 +505,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Off", "Tangent", "Normal"],
+            labels: &[
+                "node.motion.path.param.align.0",
+                "node.motion.path.param.align.1",
+                "node.motion.path.param.align.2",
+            ],
         },
     },
 ];

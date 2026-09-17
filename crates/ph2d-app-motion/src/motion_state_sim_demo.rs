@@ -84,7 +84,10 @@ pub(super) fn indice_de(reg: &NodeRegistry, no: &str, param: &str, valor: &str) 
     let ParamWidget::Enum { labels } = hint.widget else {
         return None;
     };
-    let i = labels.iter().position(|l| *l == valor)?;
+    // ⚠️⚠️ **A comparação é do TEXTO, e sem isto a falha é MUDA:** o array carrega chaves
+    // desde a migração do HR-15, `position` não acharia nada, o `?` devolveria `None` e a cena
+    // simplesmente não escreveria o param — sem erro, sem aviso, com a demo a abrir errada.
+    let i = labels.iter().position(|l| ph2d_i18n::tr(l) == valor)?;
     #[expect(
         clippy::cast_precision_loss,
         reason = "um indice de enum, sempre pequeno"

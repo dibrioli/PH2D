@@ -67,8 +67,12 @@ fn the_pulse_family_speaks_one_edge_vocabulary() {
     );
     let canonical = ["Rise", "Fall", "Both"];
     for (type_name, param) in EDGE_SELECTORS {
+        // ⚠️ O array carrega CHAVES; a língua da família são as PALAVRAS que elas resolvem.
         assert_eq!(
-            labels(&reg, type_name, param),
+            labels(&reg, type_name, param)
+                .iter()
+                .map(|l| ph2d_i18n::tr(l))
+                .collect::<Vec<_>>(),
             &canonical,
             "{type_name}.{param} tem de falar a língua da família"
         );

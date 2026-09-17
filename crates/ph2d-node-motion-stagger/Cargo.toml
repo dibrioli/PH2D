@@ -14,5 +14,11 @@ ph2d-curve = { path = "../ph2d-curve" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 
+# ⚠️ **DEV-dependency, e só isso:** um teste desta crate afirma a PALAVRA que o selector
+# mostra, e desde a 5.ª fatia do HR-15 o array carrega CHAVES. O produto não conhece a
+# tabela — quem traduz é quem pinta.
+[dev-dependencies]
+ph2d-i18n = { path = "../ph2d-i18n" }
+
 [lints]
 workspace = true

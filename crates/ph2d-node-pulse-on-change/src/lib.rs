@@ -315,7 +315,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         // The family's three words, in the family's order.
         widget: ParamWidget::Enum {
-            labels: &["Rise", "Fall", "Both"],
+            labels: &[
+                "node.pulse.on_change.param.direction.0",
+                "node.pulse.on_change.param.direction.1",
+                "node.pulse.on_change.param.direction.2",
+            ],
         },
     },
 ];

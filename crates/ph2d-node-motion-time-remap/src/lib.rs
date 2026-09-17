@@ -37,7 +37,14 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// Option order of the `mode` enum param — mirrors [`TimeMode`]'s declaration
 /// order (`TimeMode::from_index`) and the panel's segmented selector labels.
 /// Changing one without the others silently re-labels every saved document.
-pub const MODE_LABELS: &[&str] = &["Scale", "Loop", "Ping Pong", "Freeze", "Reverse", "Curve"];
+pub const MODE_LABELS: &[&str] = &[
+    "node.opts.node_motion_time_remap.mode_labels.0",
+    "node.opts.node_motion_time_remap.mode_labels.1",
+    "node.opts.node_motion_time_remap.mode_labels.2",
+    "node.opts.node_motion_time_remap.mode_labels.3",
+    "node.opts.node_motion_time_remap.mode_labels.4",
+    "node.opts.node_motion_time_remap.mode_labels.5",
+];
 
 /// A chave do text param que carrega a FORMA da curva (uma string do
 /// `ph2d-curve`, autorada pelo editor arrastável `ParamWidget::Curve`).

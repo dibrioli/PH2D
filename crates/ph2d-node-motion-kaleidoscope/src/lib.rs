@@ -309,7 +309,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Rotational", "Mirrored"],
+            labels: &[
+                "node.motion.kaleidoscope.param.reflect.0",
+                "node.motion.kaleidoscope.param.reflect.1",
+            ],
         },
     },
     ParamUiHint {

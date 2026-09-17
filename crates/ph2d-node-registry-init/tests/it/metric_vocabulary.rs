@@ -43,10 +43,17 @@ fn both_nodes_speak_the_same_distance_vocabulary() {
             .unwrap_or_else(|| panic!("`{ty}` oferece um param `metric` com rotulos"));
         seen.push((ty, l));
     }
+    // ⚠️⚠️ **Compara-se o TEXTO, e não os dois arrays.** Desde a 5.ª fatia do HR-15 a chave de
+    // uma opção deriva do sítio onde o array é DECLARADO, e estes dois declaram em sítios
+    // diferentes — o `motion.noise` inline, o `motion.voronoi` numa `const`. ⇒ as chaves são
+    // diferentes por construção, e o que o gate sempre quis afirmar é que o artista lê as
+    // mesmas palavras nos dois cartões.
+    let palavras = |l: &[&str]| l.iter().map(|x| ph2d_i18n::tr(x)).collect::<Vec<_>>();
     let (first_ty, first) = seen[0];
     for (ty, l) in &seen[1..] {
         assert_eq!(
-            l, &first,
+            palavras(l),
+            palavras(first),
             "`{ty}` e `{first_ty}` medem a mesma coisa e chamam-lhe nomes diferentes"
         );
     }

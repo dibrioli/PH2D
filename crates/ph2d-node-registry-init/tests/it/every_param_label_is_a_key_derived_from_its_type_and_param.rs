@@ -125,3 +125,94 @@ fn every_param_label_key_resolves_to_a_word() {
         cruas.join("\n  ")
     );
 }
+
+/// ⭐⭐⭐ **E AS OPÇÕES DE CADA SELECTOR TAMBÉM SÃO CHAVES — mas de DOIS sítios, porque são
+/// duas identidades.**
+///
+/// Um array escrito INLINE dentro de um `ParamUiHint` pertence a um par `(tipo, param)` e a mais
+/// ninguém ⇒ `node.<tipo>.param.<param>.<i>`. Uma `const` é um VOCABULÁRIO com N leitores — o
+/// `ph2d_motion_region::SHAPE_LABELS` é lido por quatro nós e o `ph2d_nodegraph::pivot::LABELS`
+/// por três ⇒ `node.opts.<crate>.<CONST>.<i>`, uma vez para todos.
+///
+/// ⛔ **A chave derivada do NÓ estaria errada para a segunda metade:** daria N cópias do mesmo
+/// texto, e mudar uma não mudava as outras. ⚠️ E o NOME da const não é a identidade dela —
+/// `MODE_LABELS` existe em SEIS crates com conteúdos diferentes (`2 · 2 · 3 · 2 · 6 · 2` opções).
+#[test]
+fn every_enum_option_is_a_key_from_its_declaration_site() {
+    use ph2d_node_registry::ParamWidget;
+    let catalogo = catalogo();
+    let (mut inline, mut partilhadas, mut opcoes) = (0usize, 0usize, 0usize);
+    let mut erradas = Vec::new();
+    for (tipo, hints) in &catalogo {
+        for h in hints.iter() {
+            let ParamWidget::Enum { labels } = h.widget else {
+                continue;
+            };
+            if labels.is_empty() {
+                continue;
+            }
+            let base_inline = format!("node.{tipo}.param.{}", h.param);
+            let por_no = labels
+                .iter()
+                .enumerate()
+                .all(|(i, l)| *l == format!("{base_inline}.{i}"));
+            let por_const = labels
+                .iter()
+                .enumerate()
+                .all(|(i, l)| l.starts_with("node.opts.") && l.ends_with(&format!(".{i}")));
+            opcoes += labels.len();
+            if por_no {
+                inline += 1;
+            } else if por_const {
+                partilhadas += 1;
+            } else {
+                erradas.push(format!("{tipo}::{}: {labels:?}", h.param));
+            }
+        }
+    }
+    // ⛔ Piso nas TRÊS grandezas: sem eles um catálogo sem selectores passa trivialmente, e uma
+    // metade que desaparecesse não seria vista pela outra.
+    assert!(inline >= 100, "só {inline} arrays inline — encolheu?");
+    assert!(
+        partilhadas >= 25,
+        "só {partilhadas} arrays por const — encolheu?"
+    );
+    assert!(opcoes >= 500, "só {opcoes} opções — encolheu?");
+    assert!(
+        erradas.is_empty(),
+        "estes {} selectores não carregam chaves derivadas do sítio onde o array é DECLARADO:\n  \
+         {}\n\nInline ⇒ `node.<tipo>.param.<param>.<i>`; const ⇒ `node.opts.<crate>.<CONST>.<i>`.",
+        erradas.len(),
+        erradas.join("\n  ")
+    );
+}
+
+/// ⭐⭐ **E cada opção RESOLVE-SE** — a metade que o gate acima não faz.
+#[test]
+fn every_enum_option_key_resolves_to_a_word() {
+    use ph2d_node_registry::ParamWidget;
+    let catalogo = catalogo();
+    let mut cruas = Vec::new();
+    let mut n = 0usize;
+    for (tipo, hints) in &catalogo {
+        for h in hints.iter() {
+            let ParamWidget::Enum { labels } = h.widget else {
+                continue;
+            };
+            for l in labels {
+                n += 1;
+                if ph2d_i18n::tr(l) == *l {
+                    cruas.push(format!("{tipo}::{}: {l:?}", h.param));
+                }
+            }
+        }
+    }
+    assert!(n >= 500, "só {n} opções — encolheu?");
+    assert!(
+        cruas.is_empty(),
+        "estas {} opções não têm palavra em `node_options.rs` e o selector pinta o \
+         identificador:\n  {}",
+        cruas.len(),
+        cruas.join("\n  ")
+    );
+}

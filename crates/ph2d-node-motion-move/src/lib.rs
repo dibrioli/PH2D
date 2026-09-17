@@ -360,7 +360,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: SPACE_LOCAL,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["World", "Local"],
+            labels: &[
+                "node.motion.move.param.space.0",
+                "node.motion.move.param.space.1",
+            ],
         },
     },
 ];

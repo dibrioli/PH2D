@@ -28,7 +28,11 @@ pub const INHERIT: &str = "inherit";
 /// - **`Inherit`** — fica onde nasceu **e** parte com a velocidade que o emissor
 ///   tinha nesse instante (Cavalry *Use Emitter Velocity*, Niagara *Inherit
 ///   Velocity*).
-pub const MOTION_LABELS: &[&str] = &["Carry", "Leave", "Inherit"];
+pub const MOTION_LABELS: &[&str] = &[
+    "node.opts.node_motion_emitter.motion_labels.0",
+    "node.opts.node_motion_emitter.motion_labels.1",
+    "node.opts.node_motion_emitter.motion_labels.2",
+];
 
 /// **A HISTÓRIA da origem: quantas amostras por segundo o leque pede.**
 ///

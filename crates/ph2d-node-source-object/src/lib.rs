@@ -281,7 +281,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Position Only", "Object Pose"],
+            labels: &[
+                "node.source.object.param.space.0",
+                "node.source.object.param.space.1",
+            ],
         },
     },
 ];

@@ -173,7 +173,7 @@ fn so_noutro_modo(
             .map(|v| match opcoes {
                 Some(ph2d_node_registry::ParamWidget::Enum { labels }) => labels
                     .get(*v as usize)
-                    .map_or_else(|| v.to_string(), |s| (*s).to_string()),
+                    .map_or_else(|| v.to_string(), |s| ph2d_i18n::tr(s).to_string()),
                 _ => v.to_string(),
             })
             .collect();

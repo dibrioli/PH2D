@@ -470,7 +470,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size"],
+            labels: &[
+                "node.pulse.threshold.param.channel.0",
+                "node.pulse.threshold.param.channel.1",
+                "node.pulse.threshold.param.channel.2",
+                "node.pulse.threshold.param.channel.3",
+            ],
         },
     },
     ParamUiHint {
@@ -496,7 +501,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Rise", "Fall", "Both"],
+            labels: &[
+                "node.pulse.threshold.param.edge.0",
+                "node.pulse.threshold.param.edge.1",
+                "node.pulse.threshold.param.edge.2",
+            ],
         },
     },
     ParamUiHint {

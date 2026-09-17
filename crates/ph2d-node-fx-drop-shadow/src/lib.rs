@@ -203,14 +203,13 @@ pub const BLEND_COLUMN: &str = "blend";
 /// de a cobrir, que é o que uma sombra faz no mundo. O default aqui continua `Sink` porque o
 /// default de um param apendado **reduz** ao mundo de antes; a escolha é do artista.
 pub const SHADOW_BLEND_LABELS: [&str; 7] = [
-    // ⚠️ O primeiro NÃO é um modo: é a ausência de escolha.
-    "Sink",
-    "Normal",
-    "Add",
-    "Subtract",
-    "Multiply",
-    "Screen",
-    "Premultiplied",
+    "node.opts.node_fx_drop_shadow.shadow_blend_labels.0",
+    "node.opts.node_fx_drop_shadow.shadow_blend_labels.1",
+    "node.opts.node_fx_drop_shadow.shadow_blend_labels.2",
+    "node.opts.node_fx_drop_shadow.shadow_blend_labels.3",
+    "node.opts.node_fx_drop_shadow.shadow_blend_labels.4",
+    "node.opts.node_fx_drop_shadow.shadow_blend_labels.5",
+    "node.opts.node_fx_drop_shadow.shadow_blend_labels.6",
 ];
 
 /// O valor de coluna de um `shadow_blend` autorado — `None` quando ele é *o do sink*.

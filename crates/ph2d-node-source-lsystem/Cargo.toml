@@ -19,5 +19,11 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-expr = { path = "../ph2d-expr" }
 ph2d-expr-parse = { path = "../ph2d-expr-parse" }
 
+# ⚠️ **DEV-dependency, e só isso:** o gate dos presets compara o rótulo do molde com a
+# palavra que o selector mostra, e desde a 5.ª fatia do HR-15 o array carrega CHAVES. O
+# produto desta crate não conhece a tabela — quem traduz é quem pinta.
+[dev-dependencies]
+ph2d-i18n = { path = "../ph2d-i18n" }
+
 [lints]
 workspace = true

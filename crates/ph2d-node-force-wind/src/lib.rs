@@ -65,7 +65,10 @@ pub const AIR_RESIST: &str = "air_resist";
 /// ⚠️ **O irmão `force.vortex` tem o MESMO par de params, com os mesmos rótulos** (a
 /// referência põe o `Treat as Wind` no POP Axis Force também). A lei é uma linha de
 /// aritmética em cada um — o que se partilha é o VOCABULÁRIO, e há gate a compará-lo.
-pub const MODE_LABELS: &[&str] = &["Force", "Target Velocity"];
+pub const MODE_LABELS: &[&str] = &[
+    "node.opts.node_force_wind.mode_labels.0",
+    "node.opts.node_force_wind.mode_labels.1",
+];
 
 /// O rótulo da PERGUNTA que [`MODE_LABELS`] responde — *«isto empurra, ou impõe uma
 /// velocidade?»*.

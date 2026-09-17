@@ -66,7 +66,11 @@ fn every_row_the_appearance_tutorial_names_is_on_the_card() {
         reg.param_ui(ph2d_nodegraph::node::NodeTypeId::of(tipo))
             .and_then(|h| h.iter().find(|h| h.param == p))
             .and_then(|h| match h.widget {
-                ph2d_node_registry::ParamWidget::Enum { labels } => Some(labels.to_vec()),
+                // ⚠️ O array carrega CHAVES desde a 5.ª fatia do HR-15; o tutorial nomeia a
+                // PALAVRA que o artista lê no menu, logo a comparação passa pela tabela.
+                ph2d_node_registry::ParamWidget::Enum { labels } => {
+                    Some(labels.iter().map(|l| ph2d_i18n::tr(l)).collect())
+                }
                 _ => None,
             })
             .unwrap_or_default()

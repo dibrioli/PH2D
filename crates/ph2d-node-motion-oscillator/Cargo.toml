@@ -15,6 +15,7 @@ ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 
 [dev-dependencies]
+ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }
 
 [lints]

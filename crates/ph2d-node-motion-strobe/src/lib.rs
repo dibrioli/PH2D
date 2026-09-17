@@ -485,14 +485,13 @@ pub const BLEND_COLUMN: &str = "blend";
 /// alcança o `ph2d-ecs` nem o nó irmão; quem impede as listas de divergir é um gate na
 /// shell, que vê os dois lados.
 pub const FLASH_BLEND_LABELS: [&str; 7] = [
-    // O primeiro NÃO é um modo: é a ausência de escolha.
-    "Sink",
-    "Normal",
-    "Add",
-    "Subtract",
-    "Multiply",
-    "Screen",
-    "Premultiplied",
+    "node.opts.node_motion_strobe.flash_blend_labels.0",
+    "node.opts.node_motion_strobe.flash_blend_labels.1",
+    "node.opts.node_motion_strobe.flash_blend_labels.2",
+    "node.opts.node_motion_strobe.flash_blend_labels.3",
+    "node.opts.node_motion_strobe.flash_blend_labels.4",
+    "node.opts.node_motion_strobe.flash_blend_labels.5",
+    "node.opts.node_motion_strobe.flash_blend_labels.6",
 ];
 
 /// O valor da coluna para um `flash_blend` autorado — `None` quando ele é *o do sink*.

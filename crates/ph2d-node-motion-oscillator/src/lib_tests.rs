@@ -549,7 +549,7 @@ fn the_wave_dropdown_offers_exactly_the_shapes_the_law_knows() {
         WAVE_CUSTOM,
         "a ultima etiqueta é a Custom"
     );
-    assert_eq!(labels[WAVE_CUSTOM as usize], "Custom");
+    assert_eq!(ph2d_i18n::tr(labels[WAVE_CUSTOM as usize]), "Custom");
     assert!(
         (row.max - WAVE_CUSTOM as f32).abs() < f32::EPSILON,
         "o teto do seletor é o indice da ultima forma"

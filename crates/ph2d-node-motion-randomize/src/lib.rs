@@ -73,13 +73,13 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// ⚠️ **Apendar é a única operação legal** — um documento guarda o NÚMERO, e reordenar
 /// trocaria o canal de toda cena já autorada, em silêncio.
 pub const CHANNEL_LABELS: &[&str] = &[
-    "Rotation",
-    "Opacity",
-    "Hue",
-    "Saturation",
-    "Brightness",
-    "Size",
-    "Position",
+    "node.opts.node_motion_randomize.channel_labels.0",
+    "node.opts.node_motion_randomize.channel_labels.1",
+    "node.opts.node_motion_randomize.channel_labels.2",
+    "node.opts.node_motion_randomize.channel_labels.3",
+    "node.opts.node_motion_randomize.channel_labels.4",
+    "node.opts.node_motion_randomize.channel_labels.5",
+    "node.opts.node_motion_randomize.channel_labels.6",
 ];
 
 const CH_ROTATION: i32 = 0;

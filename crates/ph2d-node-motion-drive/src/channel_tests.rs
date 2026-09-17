@@ -26,7 +26,14 @@ fn every_channel_the_node_routes_has_a_chip_in_the_menu() {
         panic!("o canal e' um enum");
     };
     // CONTROLE: a varredura achou a lista do CANAL, e nao uma vazia.
-    assert!(labels.contains(&"Custom…"), "os rotulos sao os do canal");
+    assert!(
+        labels
+            .iter()
+            .map(|l| ph2d_i18n::tr(l))
+            .collect::<Vec<_>>()
+            .contains(&"Custom…"),
+        "os rotulos sao os do canal"
+    );
     assert_eq!(
         labels.len() as i32,
         CH_SIZE_Y + 1,

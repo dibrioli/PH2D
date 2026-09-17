@@ -19,7 +19,10 @@ pub const GEOMETRY_BRANCHES: i32 = 1;
 
 /// Os dois modos de geometria. ⚠️ A ordem É o valor gravado — `Segments` fica em `0` para
 /// sempre, mesmo sendo o `Branches` o **default** (ver o `ParamSpec` de [`param::GEOMETRY`]).
-pub const GEOMETRY_LABELS: &[&str] = &["Segments", "Branches"];
+pub const GEOMETRY_LABELS: &[&str] = &[
+    "node.opts.node_source_lsystem.geometry_labels.0",
+    "node.opts.node_source_lsystem.geometry_labels.1",
+];
 
 /// **A chave do canal externo** por onde a shell entrega as fitas já construídas — o nome que o
 /// `eval` lê e sob o qual a shell publica.

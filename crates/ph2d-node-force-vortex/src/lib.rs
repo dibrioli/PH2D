@@ -37,7 +37,10 @@ pub const MODE: &str = "mode";
 pub const AIR_RESIST: &str = "air_resist";
 
 /// Os rótulos de [`MODE`] — idênticos aos do `force.wind`, por gate.
-pub const MODE_LABELS: &[&str] = &["Force", "Target Velocity"];
+pub const MODE_LABELS: &[&str] = &[
+    "node.opts.node_force_vortex.mode_labels.0",
+    "node.opts.node_force_vortex.mode_labels.1",
+];
 
 /// O rótulo da PERGUNTA — idêntico ao do `force.wind`, por gate, e ⛔ **não `"Mode"`**: essa
 /// palavra é pintada por 26 nós sobre 24 perguntas diferentes (censo de 2026-09-09), logo
@@ -367,7 +370,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Linear", "Quad", "Smooth", "Smoother"],
+            labels: &[
+                "node.force.vortex.param.curve.0",
+                "node.force.vortex.param.curve.1",
+                "node.force.vortex.param.curve.2",
+                "node.force.vortex.param.curve.3",
+            ],
         },
     },
     ParamUiHint {

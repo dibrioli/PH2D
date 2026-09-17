@@ -380,7 +380,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Off", "On"],
+            labels: &[
+                "node.value.mix.param.clamp.0",
+                "node.value.mix.param.clamp.1",
+            ],
         },
     },
     // What `b` does to `a` before the factor weighs them. `Mix` is the plain
@@ -393,15 +396,15 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: &[
-                "Mix",
-                "Add",
-                "Subtract",
-                "Multiply",
-                "Screen",
-                "Difference",
-                "Darken",
-                "Lighten",
-                "Overlay",
+                "node.value.mix.param.blend.0",
+                "node.value.mix.param.blend.1",
+                "node.value.mix.param.blend.2",
+                "node.value.mix.param.blend.3",
+                "node.value.mix.param.blend.4",
+                "node.value.mix.param.blend.5",
+                "node.value.mix.param.blend.6",
+                "node.value.mix.param.blend.7",
+                "node.value.mix.param.blend.8",
             ],
         },
     },
@@ -414,7 +417,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Off", "On"],
+            labels: &[
+                "node.value.mix.param.clamp_result.0",
+                "node.value.mix.param.clamp_result.1",
+            ],
         },
     },
 ];

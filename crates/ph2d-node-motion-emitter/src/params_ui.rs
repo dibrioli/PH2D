@@ -143,7 +143,11 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Continuous", "Burst", "Scheduled"],
+            labels: &[
+                "node.motion.emitter.param.emit_mode.0",
+                "node.motion.emitter.param.emit_mode.1",
+                "node.motion.emitter.param.emit_mode.2",
+            ],
         },
     },
     // ⭐ **A AGENDA** (TOP-20 #18) — um TEXT param, não um `ParamSpec`: uma lista de intervalos
@@ -270,7 +274,12 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Point", "Disc", "Ring", "Rect"],
+            labels: &[
+                "node.motion.emitter.param.shape_mode.0",
+                "node.motion.emitter.param.shape_mode.1",
+                "node.motion.emitter.param.shape_mode.2",
+                "node.motion.emitter.param.shape_mode.3",
+            ],
         },
     },
     ParamUiHint {
@@ -298,7 +307,11 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Angle", "Outwards", "Inwards"],
+            labels: &[
+                "node.motion.emitter.param.dir_mode.0",
+                "node.motion.emitter.param.dir_mode.1",
+                "node.motion.emitter.param.dir_mode.2",
+            ],
         },
     },
     ParamUiHint {

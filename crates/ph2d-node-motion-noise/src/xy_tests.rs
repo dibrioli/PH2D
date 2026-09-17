@@ -237,7 +237,7 @@ fn the_channel_dropdown_offers_the_two_axis_entry() {
         panic!("o canal é um seletor nomeado")
     };
     assert_eq!(labels.len() as i32 - 1, CH_XY, "a ultima etiqueta é o XY");
-    assert_eq!(labels[CH_XY as usize], "Position XY");
+    assert_eq!(ph2d_i18n::tr(labels[CH_XY as usize]), "Position XY");
     assert!((row.max - CH_XY as f32).abs() < f32::EPSILON);
 }
 

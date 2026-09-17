@@ -19,7 +19,12 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Enum {
             // ⚠️ **`Box` é APENDADA**: o `shape` é um param que o documento guarda, e
             // renumerar re-aponta em silêncio toda cena salva.
-            labels: &["Plane", "Disc", "Bowl", "Box"],
+            labels: &[
+                "node.sim.collide.param.shape.0",
+                "node.sim.collide.param.shape.1",
+                "node.sim.collide.param.shape.2",
+                "node.sim.collide.param.shape.3",
+            ],
         },
     },
     ParamUiHint {
@@ -78,7 +83,11 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
             // Reads as a sentence. ⚠️ The default is "Auto" and not "Point" since doc 109: it
             // is the radius the piece DECLARED (a shape with Collide on), and a point only where
             // nothing was declared — "Point" would lie the moment a shape says how big it is.
-            labels: &["Auto", "Fixed", "Sprite Size"],
+            labels: &[
+                "node.sim.collide.param.radius_from.0",
+                "node.sim.collide.param.radius_from.1",
+                "node.sim.collide.param.radius_from.2",
+            ],
         },
     },
     ParamUiHint {

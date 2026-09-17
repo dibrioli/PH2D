@@ -545,7 +545,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         // listed in INDEX order — the default (Position) is not first, and that is the price of
         // the shared numbering being worth more than the list reading prettily.
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size", "Position", "Colour"],
+            labels: &[
+                "node.motion.delay.param.channel.0",
+                "node.motion.delay.param.channel.1",
+                "node.motion.delay.param.channel.2",
+                "node.motion.delay.param.channel.3",
+                "node.motion.delay.param.channel.4",
+                "node.motion.delay.param.channel.5",
+            ],
         },
     },
     ParamUiHint {
@@ -558,7 +565,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         // `IntSlider` made the artist read those NUMBERS. Seventeen other `mode` params in the
         // catalogue paint words.
         widget: ParamWidget::Enum {
-            labels: &["Delay", "Average", "Blend"],
+            labels: &[
+                "node.motion.delay.param.mode.0",
+                "node.motion.delay.param.mode.1",
+                "node.motion.delay.param.mode.2",
+            ],
         },
     },
     ParamUiHint {

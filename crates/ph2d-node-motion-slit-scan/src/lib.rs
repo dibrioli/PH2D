@@ -266,7 +266,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Enum {
             // *Order* = a rampa do stream (o nó de sempre). *Field* = o campo sozinho.
-            labels: &["Order", "Field"],
+            labels: &[
+                "node.motion.slit_scan.param.ramp.0",
+                "node.motion.slit_scan.param.ramp.1",
+            ],
         },
     },
 ];

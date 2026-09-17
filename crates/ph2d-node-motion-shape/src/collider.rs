@@ -38,7 +38,10 @@ use ph2d_nodegraph::attr::{
 };
 
 /// Os rótulos do `Collider Shape`. ⚠️ O índice é formato de arquivo — APPEND ONLY.
-pub(crate) static SHAPE_LABELS: &[&str] = &["Box", "Circle"];
+pub(crate) static SHAPE_LABELS: &[&str] = &[
+    "node.opts.node_motion_shape.shape_labels.0",
+    "node.opts.node_motion_shape.shape_labels.1",
+];
 
 /// O índice de `Box` em [`SHAPE_LABELS`] — o default.
 pub(crate) const SHAPE_BOX: i32 = 0;

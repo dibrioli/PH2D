@@ -36,7 +36,13 @@ fn text_of(motion: &MotionState, nid: ph2d_nodegraph::graph::NodeId, key: &str) 
 fn every_preset_is_a_grammar_that_actually_draws() {
     assert!(!ls::PRESETS.is_empty());
     for (k, p) in ls::PRESETS.iter().enumerate() {
-        assert_eq!(p.label, ls::PRESET_LABELS[k], "o rotulo {k} discorda");
+        // ⚠️ O array do selector carrega CHAVES desde a 5.ª fatia do HR-15; o `label` do molde é
+        // texto. A costura que este gate mede é a MESMA, lida pela tabela.
+        assert_eq!(
+            p.label,
+            ph2d_i18n::tr(ls::PRESET_LABELS[k]),
+            "o rotulo {k} discorda"
+        );
         assert!(!p.axiom.trim().is_empty() && !p.rules.trim().is_empty());
         // Deriva com o enquadramento que o próprio molde declara — a mesma coisa que o
         // `apply_lsystem_preset` escreve.

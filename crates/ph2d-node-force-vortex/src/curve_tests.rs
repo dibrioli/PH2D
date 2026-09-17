@@ -177,7 +177,10 @@ fn the_knob_is_painted_with_the_family_labels_and_uploaded() {
         .expect("o Curve tem de estar pintado");
     match h.widget {
         ParamWidget::Enum { labels } => {
-            assert_eq!(labels, &["Linear", "Quad", "Smooth", "Smoother"]);
+            assert_eq!(
+                labels.iter().map(|l| ph2d_i18n::tr(l)).collect::<Vec<_>>(),
+                ["Linear", "Quad", "Smooth", "Smoother"]
+            );
         }
         _ => panic!("o Curve é um Enum"),
     }

@@ -64,14 +64,14 @@ const WB: f32 = 0.0722;
 /// cor*), e mandar o artista digitar `tint` com um modo mágico para pegar o vermelho é
 /// o jargão que o picker de canais existiu para remover.
 pub const CHANNEL_LABELS: &[&str] = &[
-    "Luma",
-    "Hue",
-    "Saturation",
-    "Value",
-    "Red",
-    "Green",
-    "Blue",
-    "Alpha",
+    "node.opts.node_motion_luminance.channel_labels.0",
+    "node.opts.node_motion_luminance.channel_labels.1",
+    "node.opts.node_motion_luminance.channel_labels.2",
+    "node.opts.node_motion_luminance.channel_labels.3",
+    "node.opts.node_motion_luminance.channel_labels.4",
+    "node.opts.node_motion_luminance.channel_labels.5",
+    "node.opts.node_motion_luminance.channel_labels.6",
+    "node.opts.node_motion_luminance.channel_labels.7",
 ];
 
 /// The one value `channel` reads out of a colour — the law the WGSL body mirrors

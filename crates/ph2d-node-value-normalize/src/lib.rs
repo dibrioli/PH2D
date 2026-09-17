@@ -238,7 +238,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     max: 1.0,
     step: 1.0,
     widget: ParamWidget::Enum {
-        labels: &["Range", "MaxAbs"],
+        labels: &[
+            "node.value.normalize.param.mode.0",
+            "node.value.normalize.param.mode.1",
+        ],
     },
 }];
 

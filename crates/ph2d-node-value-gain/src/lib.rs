@@ -241,7 +241,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Gain", "Bias"],
+            labels: &[
+                "node.value.gain.param.mode.0",
+                "node.value.gain.param.mode.1",
+            ],
         },
     },
 ];

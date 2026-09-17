@@ -247,7 +247,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size"],
+            labels: &[
+                "node.motion.stagger.param.channel.0",
+                "node.motion.stagger.param.channel.1",
+                "node.motion.stagger.param.channel.2",
+                "node.motion.stagger.param.channel.3",
+            ],
         },
     },
     ParamUiHint {
@@ -276,7 +281,15 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: &[
-                "Linear", "Quad", "Cubic", "Quart", "Quint", "Circ", "Back", "Bounce", "Custom",
+                "node.motion.stagger.param.ease_curve.0",
+                "node.motion.stagger.param.ease_curve.1",
+                "node.motion.stagger.param.ease_curve.2",
+                "node.motion.stagger.param.ease_curve.3",
+                "node.motion.stagger.param.ease_curve.4",
+                "node.motion.stagger.param.ease_curve.5",
+                "node.motion.stagger.param.ease_curve.6",
+                "node.motion.stagger.param.ease_curve.7",
+                "node.motion.stagger.param.ease_curve.8",
             ],
         },
     },
@@ -297,7 +310,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["In", "Out", "In-Out"],
+            labels: &[
+                "node.motion.stagger.param.ease_dir.0",
+                "node.motion.stagger.param.ease_dir.1",
+                "node.motion.stagger.param.ease_dir.2",
+            ],
         },
     },
     // ⚠️ **A faixa é um ciclo INTEIRO** (`0..1`): a rampa fecha em si mesma, e um
@@ -328,7 +345,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Index", "From Center", "Random"],
+            labels: &[
+                "node.motion.stagger.param.order.0",
+                "node.motion.stagger.param.order.1",
+                "node.motion.stagger.param.order.2",
+            ],
         },
     },
     ParamUiHint {

@@ -134,7 +134,12 @@ fn the_knob_is_painted_and_the_device_has_one_variant_per_channel() {
         .find(|h| h.param == MASK_CHANNEL)
         .expect("o Channel tem de estar pintado");
     match h.widget {
-        ParamWidget::Enum { labels } => assert_eq!(labels, &["Falloff", "Falloff Y"]),
+        ParamWidget::Enum { labels } => {
+            assert_eq!(
+                labels.iter().map(|l| ph2d_i18n::tr(l)).collect::<Vec<_>>(),
+                ["Falloff", "Falloff Y"]
+            );
+        }
         _ => panic!("o Channel é um Enum"),
     }
     let base = GPU_KERNEL.resolve(&|_| 0.0);

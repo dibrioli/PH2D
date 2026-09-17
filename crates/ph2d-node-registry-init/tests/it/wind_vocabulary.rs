@@ -37,9 +37,21 @@ fn both_forces_speak_the_same_target_velocity_vocabulary() {
         ph2d_node_force_vortex::AIR_RESIST,
         "a chave da resistencia"
     );
+    // ⚠️⚠️ **O TEXTO, e não as duas constantes.** Desde a 5.ª fatia do HR-15 cada uma carrega
+    // chaves do PRÓPRIO endereço (`node.opts.node_force_wind.…` contra
+    // `node.opts.node_force_vortex.…`), logo elas são diferentes por construção — e o gate passa
+    // a afirmar que o artista LÊ as mesmas palavras nos dois cartões, que é o que ele sempre
+    // quis. ⛔ Uni-las numa const partilhada é outra decisão: elas vivem em crates irmãs sem
+    // dependência entre si.
     assert_eq!(
-        ph2d_node_force_wind::MODE_LABELS,
-        ph2d_node_force_vortex::MODE_LABELS,
+        ph2d_node_force_wind::MODE_LABELS
+            .iter()
+            .map(|l| ph2d_i18n::tr(l))
+            .collect::<Vec<_>>(),
+        ph2d_node_force_vortex::MODE_LABELS
+            .iter()
+            .map(|l| ph2d_i18n::tr(l))
+            .collect::<Vec<_>>(),
         "os rotulos do modo"
     );
     // ⚠️⚠️ **Compara-se o TEXTO RESOLVIDO, e nao as duas constantes.** Desde que o rotulo e' uma
@@ -80,7 +92,14 @@ fn both_forces_speak_the_same_target_velocity_vocabulary() {
         let ParamWidget::Enum { labels } = h.widget else {
             panic!("`{ty}`: o modo e' um enum")
         };
-        assert_eq!(labels, ph2d_node_force_wind::MODE_LABELS, "`{ty}`");
+        assert_eq!(
+            labels.iter().map(|l| ph2d_i18n::tr(l)).collect::<Vec<_>>(),
+            ph2d_node_force_wind::MODE_LABELS
+                .iter()
+                .map(|l| ph2d_i18n::tr(l))
+                .collect::<Vec<_>>(),
+            "`{ty}`"
+        );
         assert_eq!(
             ph2d_i18n::tr(h.label),
             ph2d_i18n::tr(ph2d_node_force_wind::MODE_LABEL),

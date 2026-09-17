@@ -356,7 +356,11 @@ fn the_row_blend_speaks_one_word() {
             let ph2d_node_registry::ParamWidget::Enum { labels } = h.widget else {
                 continue;
             };
-            if labels.first() != Some(&"Sink") {
+            // ⚠️⚠️ **O filtro passa pela TABELA, e sem isso a falha era MUDA:** o array
+            // carrega chaves desde a 5.ª fatia do HR-15, `first()` deixaria de casar
+            // «Sink», nenhum nó entraria em `vistos` e a varredura passaria a medir
+            // NADA. ⭐ Quem a tornou barulhenta foi o piso de população lá em baixo.
+            if labels.first().map(|l| ph2d_i18n::tr(l)) != Some("Sink") {
                 continue;
             }
             assert!(

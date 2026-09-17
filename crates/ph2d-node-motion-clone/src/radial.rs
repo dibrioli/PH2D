@@ -60,7 +60,10 @@ pub(super) const MODE_LINEAR: i32 = 0;
 /// O leque em torno de um pivô.
 pub(super) const MODE_RADIAL: i32 = 1;
 /// As palavras da referência (C4D Cloner ▸ Mode), na ordem dos números acima.
-pub(super) const MODE_LABELS: &[&str] = &["Linear", "Radial"];
+pub(super) const MODE_LABELS: &[&str] = &[
+    "node.opts.node_motion_clone.mode_labels.0",
+    "node.opts.node_motion_clone.mode_labels.1",
+];
 
 /// Graus por volta — o divisor exacto do ângulo autorado para a unidade da trig em ciclos.
 const DEG_PER_TURN: f32 = 360.0;

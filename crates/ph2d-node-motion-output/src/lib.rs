@@ -62,12 +62,12 @@ pub const BLEND_PARAM: &str = "blend";
 /// `ph2d_ecs::BlendMode::ALL`. Kept as one list so the UI hint and any future
 /// reader share it (the labels are what a segmented row paints).
 pub const BLEND_LABELS: [&str; 6] = [
-    "Normal",
-    "Add",
-    "Subtract",
-    "Multiply",
-    "Screen",
-    "Premultiplied",
+    "node.opts.node_motion_output.blend_labels.0",
+    "node.opts.node_motion_output.blend_labels.1",
+    "node.opts.node_motion_output.blend_labels.2",
+    "node.opts.node_motion_output.blend_labels.3",
+    "node.opts.node_motion_output.blend_labels.4",
+    "node.opts.node_motion_output.blend_labels.5",
 ];
 
 /// O pivô do elemento, em **fracção do tamanho dele**. Dois params porque a UI
@@ -112,13 +112,13 @@ pub const FILTER_PARAM: &str = "filter";
 /// Fica nomeado no registo (§24.2). O que se faz aqui é a metade barata: **o rótulo deixa de
 /// prometer anisotropia**.
 pub const FILTER_LABELS: [&str; 7] = [
-    "Project",
-    "Nearest",
-    "Linear",
-    "Nearest Mip",
-    "Linear Mip",
-    "Nearest Mip (legacy)",
-    "Linear Aniso",
+    "node.opts.node_motion_output.filter_labels.0",
+    "node.opts.node_motion_output.filter_labels.1",
+    "node.opts.node_motion_output.filter_labels.2",
+    "node.opts.node_motion_output.filter_labels.3",
+    "node.opts.node_motion_output.filter_labels.4",
+    "node.opts.node_motion_output.filter_labels.5",
+    "node.opts.node_motion_output.filter_labels.6",
 ];
 
 /// Como este sink ordena as linhas para desenhar.
@@ -126,7 +126,10 @@ pub const SORT_PARAM: &str = "sort";
 
 /// ⚠️ **`Texture` é o de sempre, e é o RÁPIDO.** `Stream` honra a ordem das linhas
 /// e paga em draw calls — a conta é o próprio pedido (ver `SinkStyle::stream_order`).
-pub const SORT_LABELS: [&str; 2] = ["Texture", "Stream"];
+pub const SORT_LABELS: [&str; 2] = [
+    "node.opts.node_motion_output.sort_labels.0",
+    "node.opts.node_motion_output.sort_labels.1",
+];
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {

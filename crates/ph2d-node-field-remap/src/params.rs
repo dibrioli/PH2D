@@ -126,7 +126,13 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["None", "Quadratic", "Step", "Quantize", "Curve"],
+            labels: &[
+                "node.field.remap.param.contour.0",
+                "node.field.remap.param.contour.1",
+                "node.field.remap.param.contour.2",
+                "node.field.remap.param.contour.3",
+                "node.field.remap.param.contour.4",
+            ],
         },
     },
     ParamUiHint {

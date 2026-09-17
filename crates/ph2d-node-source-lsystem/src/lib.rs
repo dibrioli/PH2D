@@ -213,11 +213,17 @@ pub const MODE_GUIDED: i32 = 0;
 pub const MODE_GRAMMAR: i32 = 1;
 
 /// Os dois modos de autoria. ⚠️ A ordem É o valor gravado: `Guided` tem de ficar em `0`.
-pub const MODE_LABELS: &[&str] = &["Guided", "Grammar"];
+pub const MODE_LABELS: &[&str] = &[
+    "node.opts.node_source_lsystem.mode_labels.0",
+    "node.opts.node_source_lsystem.mode_labels.1",
+];
 
 /// **O que a coluna `rot` quer dizer** — ver [`crate::turtle::Setup::orient_world`] para o
 /// mecanismo. `0` = mundo (o desenho alinha com o ramo) · `1` = local (o contrato do `rig.*`).
-pub const ORIENT_LABELS: &[&str] = &["Growth", "Local"];
+pub const ORIENT_LABELS: &[&str] = &[
+    "node.opts.node_source_lsystem.orient_labels.0",
+    "node.opts.node_source_lsystem.orient_labels.1",
+];
 
 /// ⚠️ **`Keep Own Colour` é o DEFAULT**, e é o pedido do Enio de 2026-08-30: *"uma opção para
 /// livrar as folhas, os frutos do tint que pinta tudo na árvore"*.
@@ -226,7 +232,10 @@ pub const ORIENT_LABELS: &[&str] = &["Growth", "Local"];
 /// `lerp(existente, alvo, falloff)` — com `falloff = 0` a instância **mantém a cor que tem**.
 /// Publicar `0` nas linhas de folha exclui-as de todo nó que honre essa máscara, e `1` deixa a
 /// corrente sem coluna nenhuma ⇒ byte-idêntica ao que havia antes deste param.
-pub const LEAF_EFFECTS_LABELS: &[&str] = &["Keep Own Colour", "Reached"];
+pub const LEAF_EFFECTS_LABELS: &[&str] = &[
+    "node.opts.node_source_lsystem.leaf_effects_labels.0",
+    "node.opts.node_source_lsystem.leaf_effects_labels.1",
+];
 
 /// O axioma de fábrica: um módulo `A` que carrega o `step` do painel.
 ///

@@ -305,7 +305,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     step: 1.0,
     widget: ParamWidget::Enum {
         labels: &[
-            "Sum", "Mean", "Min", "Max", "Range", "Variance", "Std Dev", "Median",
+            "node.value.reduce.param.mode.0",
+            "node.value.reduce.param.mode.1",
+            "node.value.reduce.param.mode.2",
+            "node.value.reduce.param.mode.3",
+            "node.value.reduce.param.mode.4",
+            "node.value.reduce.param.mode.5",
+            "node.value.reduce.param.mode.6",
+            "node.value.reduce.param.mode.7",
         ],
     },
 }];

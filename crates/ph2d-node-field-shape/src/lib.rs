@@ -328,7 +328,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Filled Path", "Path Edges"],
+            labels: &[
+                "node.field.shape.param.mode.0",
+                "node.field.shape.param.mode.1",
+            ],
         },
     },
     // ⚠️ A faixa é de MUNDO, como a do `field.box`: um campo cuja penumbra fosse uma
@@ -348,7 +351,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Linear", "Quad", "Smooth", "Smoother"],
+            labels: &[
+                "node.field.shape.param.curve.0",
+                "node.field.shape.param.curve.1",
+                "node.field.shape.param.curve.2",
+                "node.field.shape.param.curve.3",
+            ],
         },
     },
     ParamUiHint {

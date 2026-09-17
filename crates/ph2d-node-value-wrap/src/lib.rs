@@ -345,7 +345,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Clamp", "Repeat", "Mirror"],
+            labels: &[
+                "node.value.wrap.param.mode.0",
+                "node.value.wrap.param.mode.1",
+                "node.value.wrap.param.mode.2",
+            ],
         },
     },
 ];

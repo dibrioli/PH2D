@@ -124,7 +124,10 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Enum {
             // *Remembered* = o ring (o que sempre houve). *Resampled* = a entrada
             // RE-COZIDA nos instantes de cada eco.
-            labels: &["Remembered", "Resampled"],
+            labels: &[
+                "node.motion.trail.param.source.0",
+                "node.motion.trail.param.source.1",
+            ],
         },
     },
     ParamUiHint {

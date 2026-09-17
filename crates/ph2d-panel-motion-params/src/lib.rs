@@ -67,6 +67,10 @@ mod tests_scroll;
 #[path = "lib_problem_tests.rs"]
 mod tests_problem;
 
+#[cfg(test)]
+#[path = "lib_enum_option_ink_tests.rs"]
+mod enum_option_ink_tests;
+
 /// A afordância de **reverter ao default** — as quatro condições de UI dela.
 #[cfg(test)]
 #[path = "lib_reset_tests.rs"]

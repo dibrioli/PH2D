@@ -494,7 +494,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Point", "Object", "Cursor"],
+            labels: &[
+                "node.motion.look_at.param.mode.0",
+                "node.motion.look_at.param.mode.1",
+                "node.motion.look_at.param.mode.2",
+            ],
         },
     },
     // The named target. A TEXT param, so it never touches the frozen manifest

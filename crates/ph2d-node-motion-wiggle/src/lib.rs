@@ -311,7 +311,13 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size", "Position XY"],
+            labels: &[
+                "node.motion.wiggle.param.channel.0",
+                "node.motion.wiggle.param.channel.1",
+                "node.motion.wiggle.param.channel.2",
+                "node.motion.wiggle.param.channel.3",
+                "node.motion.wiggle.param.channel.4",
+            ],
         },
     },
     ParamUiHint {
@@ -331,7 +337,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Amplitude", "Min / Max"],
+            labels: &[
+                "node.motion.wiggle.param.range_mode.0",
+                "node.motion.wiggle.param.range_mode.1",
+            ],
         },
     },
     ParamUiHint {

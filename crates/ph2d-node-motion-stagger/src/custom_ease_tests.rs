@@ -187,7 +187,7 @@ fn the_panel_offers_the_custom_family_and_hides_the_direction_in_it() {
         ease::EASE_CUSTOM,
         "a ultima etiqueta é a Custom"
     );
-    assert_eq!(labels[ease::EASE_CUSTOM as usize], "Custom");
+    assert_eq!(ph2d_i18n::tr(labels[ease::EASE_CUSTOM as usize]), "Custom");
     assert!((row.max - ease::EASE_CUSTOM as f32).abs() < f32::EPSILON);
 
     // A linha da CURVA existe — senão a família nova nasce sem como ser desenhada.

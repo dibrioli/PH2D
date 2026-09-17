@@ -208,7 +208,12 @@ fn the_knob_is_painted_and_the_device_has_one_variant_per_mode() {
         .find(|h| h.param == SPACE)
         .expect("o Space tem de estar pintado");
     match h.widget {
-        ParamWidget::Enum { labels } => assert_eq!(labels, &["World", "Local"]),
+        ParamWidget::Enum { labels } => {
+            assert_eq!(
+                labels.iter().map(|l| ph2d_i18n::tr(l)).collect::<Vec<_>>(),
+                ["World", "Local"]
+            );
+        }
         _ => panic!("o Space é um Enum"),
     }
     let world = GPU_KERNEL.resolve(&|_| 0.0);

@@ -658,7 +658,7 @@ fn the_flash_operator_uses_the_same_ladder_as_the_echo() {
     let top = (super::FLASH_BLEND_LABELS.len() - 1) as f32;
     assert_eq!(super::flash_blend_tag(999.0), Some(top), "teto da lista");
     assert_eq!(
-        super::FLASH_BLEND_LABELS[0],
+        ph2d_i18n::tr(super::FLASH_BLEND_LABELS[0]),
         "Sink",
         "o 0 do dropdown tem de DIZER que e' o do sink"
     );

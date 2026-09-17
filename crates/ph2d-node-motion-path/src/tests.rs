@@ -354,7 +354,11 @@ fn the_align_row_offers_three_modes_and_is_no_longer_a_toggle() {
     let ParamWidget::Enum { labels } = row.widget else {
         panic!("o align passou a ser um seletor NOMEADO, nunca um toggle")
     };
-    assert_eq!(labels, &["Off", "Tangent", "Normal"]);
+    // ⚠️ O array carrega CHAVES; o que este gate afirma são as PALAVRAS do selector.
+    assert_eq!(
+        labels.iter().map(|l| ph2d_i18n::tr(l)).collect::<Vec<_>>(),
+        ["Off", "Tangent", "Normal"]
+    );
     assert_eq!(labels.len() as i32 - 1, ALIGN_NORMAL);
     assert!((row.max - ALIGN_NORMAL as f32).abs() < f32::EPSILON);
 }

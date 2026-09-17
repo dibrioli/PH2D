@@ -431,7 +431,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Circle", "Rect", "Linear"],
+            labels: &[
+                "node.motion.falloff.param.shape.0",
+                "node.motion.falloff.param.shape.1",
+                "node.motion.falloff.param.shape.2",
+            ],
         },
     },
     ParamUiHint {
@@ -441,7 +445,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Linear", "Quad", "Smooth", "Smoother"],
+            labels: &[
+                "node.motion.falloff.param.curve.0",
+                "node.motion.falloff.param.curve.1",
+                "node.motion.falloff.param.curve.2",
+                "node.motion.falloff.param.curve.3",
+            ],
         },
     },
     ParamUiHint {
@@ -483,7 +492,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: MASK_CHANNEL_Y as f32,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Falloff", "Falloff Y"],
+            labels: &[
+                "node.motion.falloff.param.mask_channel.0",
+                "node.motion.falloff.param.mask_channel.1",
+            ],
         },
     },
 ];

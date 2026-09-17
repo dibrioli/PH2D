@@ -137,7 +137,12 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Linear", "Quad", "Smooth", "Smoother"],
+            labels: &[
+                "node.field.box.param.curve.0",
+                "node.field.box.param.curve.1",
+                "node.field.box.param.curve.2",
+                "node.field.box.param.curve.3",
+            ],
         },
     },
     ParamUiHint {

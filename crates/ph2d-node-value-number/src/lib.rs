@@ -233,7 +233,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Number", "Boolean"],
+            labels: &[
+                "node.value.number.param.kind.0",
+                "node.value.number.param.kind.1",
+            ],
         },
     },
     ParamUiHint {

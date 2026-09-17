@@ -509,7 +509,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Split", "Aberration"],
+            labels: &[
+                "node.fx.rgb_split.param.mode.0",
+                "node.fx.rgb_split.param.mode.1",
+            ],
         },
     },
     ParamUiHint {

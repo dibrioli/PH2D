@@ -277,8 +277,15 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: &[
-                "Normal", "Add", "Subtract", "Multiply", "Screen", "Min", "Max", "Overlay",
-                "Average",
+                "node.field.combine.param.mode.0",
+                "node.field.combine.param.mode.1",
+                "node.field.combine.param.mode.2",
+                "node.field.combine.param.mode.3",
+                "node.field.combine.param.mode.4",
+                "node.field.combine.param.mode.5",
+                "node.field.combine.param.mode.6",
+                "node.field.combine.param.mode.7",
+                "node.field.combine.param.mode.8",
             ],
         },
     },

@@ -150,7 +150,10 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Free", "Pinned"],
+            labels: &[
+                "node.motion.verlet_rope.param.pin_tail.0",
+                "node.motion.verlet_rope.param.pin_tail.1",
+            ],
         },
     },
     // ⚠️ A pista começa em `0` porque `0` é o DESLIGADO — um piso aqui esconderia

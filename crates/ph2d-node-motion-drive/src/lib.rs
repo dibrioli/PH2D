@@ -210,18 +210,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             // ordem "mais bonita" (as três cores ao lado do Opacity) trocaria o canal de todo
             // documento já autorado — em silêncio, porque o param é um `f32` sem versão.
             labels: &[
-                "X",
-                "Y",
-                "Rotation",
-                "Size",
-                "Opacity",
-                "Falloff",
-                "Hue",
-                "Saturation",
-                "Value",
-                "Custom…",
-                "Size X",
-                "Size Y",
+                "node.motion.drive.param.channel.0",
+                "node.motion.drive.param.channel.1",
+                "node.motion.drive.param.channel.2",
+                "node.motion.drive.param.channel.3",
+                "node.motion.drive.param.channel.4",
+                "node.motion.drive.param.channel.5",
+                "node.motion.drive.param.channel.6",
+                "node.motion.drive.param.channel.7",
+                "node.motion.drive.param.channel.8",
+                "node.motion.drive.param.channel.9",
+                "node.motion.drive.param.channel.10",
+                "node.motion.drive.param.channel.11",
             ],
         },
     },
@@ -244,7 +244,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["World", "Element"],
+            labels: &[
+                "node.motion.drive.param.space.0",
+                "node.motion.drive.param.space.1",
+            ],
         },
     },
     ParamUiHint {
@@ -270,7 +273,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             // ele leva o canal a ZERO. É a diferença entre *"pinte por cima onde a máscara
             // deixar"* e *"esta máscara É o valor"* — ver [`combine::Combine::Remap`].
             labels: &[
-                "Add", "Set", "Multiply", "Subtract", "Divide", "Min", "Max", "Remap",
+                "node.motion.drive.param.mode.0",
+                "node.motion.drive.param.mode.1",
+                "node.motion.drive.param.mode.2",
+                "node.motion.drive.param.mode.3",
+                "node.motion.drive.param.mode.4",
+                "node.motion.drive.param.mode.5",
+                "node.motion.drive.param.mode.6",
+                "node.motion.drive.param.mode.7",
             ],
         },
     },

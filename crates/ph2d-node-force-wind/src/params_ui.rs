@@ -77,7 +77,11 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["fBm", "Turbulence", "Ridged"],
+            labels: &[
+                "node.force.wind.param.type.0",
+                "node.force.wind.param.type.1",
+                "node.force.wind.param.type.2",
+            ],
         },
     },
     ParamUiHint {

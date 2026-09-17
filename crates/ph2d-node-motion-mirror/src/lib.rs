@@ -112,7 +112,10 @@ const KEEP: &str = "keep";
 /// Só o reflexo — ver [`KEEP`].
 const KEEP_REFLECTION: i32 = 1;
 /// As palavras que o painel mostra, na ordem dos números.
-const KEEP_LABELS: &[&str] = &["Both", "Reflection Only"];
+const KEEP_LABELS: &[&str] = &[
+    "node.opts.node_motion_mirror.keep_labels.0",
+    "node.opts.node_motion_mirror.keep_labels.1",
+];
 
 /// As duas colunas de identidade — *quem é este elemento na lista*. Os mesmos
 /// nomes que o `motion.sort` e o `motion.combine` usam.
@@ -367,7 +370,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Vertical", "Horizontal"],
+            labels: &[
+                "node.motion.mirror.param.axis.0",
+                "node.motion.mirror.param.axis.1",
+            ],
         },
     },
     ParamUiHint {

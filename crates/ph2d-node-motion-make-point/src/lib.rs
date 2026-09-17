@@ -236,7 +236,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         // reordenar por gosto trocaria a coluna de todo documento já autorado — em
         // silêncio, porque o param é um `f32` sem versão (a cerca do `motion.drive`).
         widget: ParamWidget::Enum {
-            labels: &["Position", "Velocity", "Acceleration"],
+            labels: &[
+                "node.motion.make_point.param.target.0",
+                "node.motion.make_point.param.target.1",
+                "node.motion.make_point.param.target.2",
+            ],
         },
     },
     ParamUiHint {
@@ -248,7 +252,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         // O que o PAR de entradas significa. `Cartesian` é o nó de sempre; em `Polar` a
         // primeira porta é o RAIO e a segunda o ÂNGULO, em voltas (1 = uma volta).
         widget: ParamWidget::Enum {
-            labels: &["Cartesian", "Polar"],
+            labels: &[
+                "node.motion.make_point.param.mode.0",
+                "node.motion.make_point.param.mode.1",
+            ],
         },
     },
 ];

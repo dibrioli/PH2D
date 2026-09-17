@@ -28,7 +28,10 @@ fn the_glow_operations_are_the_pipelines_the_renderer_built() {
 /// vai querer acrescentá-lo por simetria com a referência; que essa pessoa leia primeiro.
 #[test]
 fn no_darkening_operation_is_offered_over_a_depthless_composite() {
-    for label in ph2d_node_fx_glow::OPERATION_LABELS {
+    // ⚠️ O array carrega CHAVES desde a 5.ª fatia do HR-15; a palavra proibida é a que o
+    // artista LÊ, logo a varredura passa pela tabela.
+    for chave in ph2d_node_fx_glow::OPERATION_LABELS {
+        let label = ph2d_i18n::tr(chave);
         assert!(
             !label.eq_ignore_ascii_case("multiply"),
             "`Multiply` escurece, e o halo compoe-se sem z: ver o doc-comment de `OPERATION`"
@@ -36,7 +39,9 @@ fn no_darkening_operation_is_offered_over_a_depthless_composite() {
     }
     // E o controle positivo: a lista não está vazia nem é uma lista de nomes inventados.
     assert!(
-        ph2d_node_fx_glow::OPERATION_LABELS.contains(&"Add"),
+        ph2d_node_fx_glow::OPERATION_LABELS
+            .iter()
+            .any(|k| ph2d_i18n::tr(k) == "Add"),
         "o modo de sempre tem de continuar a ser oferecido"
     );
 }
@@ -63,7 +68,7 @@ fn the_halo_lut_is_the_same_length_on_both_sides() {
 #[test]
 fn the_bright_pass_source_defaults_to_the_one_that_always_shipped() {
     assert_eq!(
-        ph2d_node_fx_glow::SOURCE_LABELS[0],
+        ph2d_i18n::tr(ph2d_node_fx_glow::SOURCE_LABELS[0]),
         "Luminance",
         "a tag 0 e' a fonte de sempre"
     );

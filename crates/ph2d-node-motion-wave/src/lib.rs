@@ -592,7 +592,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Reflect", "Absorb"],
+            labels: &[
+                "node.motion.wave.param.edges.0",
+                "node.motion.wave.param.edges.1",
+            ],
         },
     },
     // ⚠️ **PARA ONDE a altura vai** — um seletor NOMEADO, nunca um slider de passos a decorar
@@ -605,7 +608,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Size", "Y", "Rotation"],
+            labels: &[
+                "node.motion.wave.param.height_channel.0",
+                "node.motion.wave.param.height_channel.1",
+                "node.motion.wave.param.height_channel.2",
+            ],
         },
     },
     ParamUiHint {

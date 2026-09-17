@@ -534,7 +534,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Wrap", "Clamp", "Zigzag"],
+            labels: &[
+                "node.pulse.counter.param.mode.0",
+                "node.pulse.counter.param.mode.1",
+                "node.pulse.counter.param.mode.2",
+            ],
         },
     },
     ParamUiHint {

@@ -484,7 +484,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Step", "Linear"],
+            labels: &[
+                "node.value.pattern.param.interp.0",
+                "node.value.pattern.param.interp.1",
+            ],
         },
     },
 ];

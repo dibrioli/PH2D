@@ -417,7 +417,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size"],
+            labels: &[
+                "node.motion.step.param.channel.0",
+                "node.motion.step.param.channel.1",
+                "node.motion.step.param.channel.2",
+                "node.motion.step.param.channel.3",
+            ],
         },
     },
     ParamUiHint {
@@ -443,7 +448,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Wrap", "Clamp", "Zigzag"],
+            labels: &[
+                "node.motion.step.param.mode.0",
+                "node.motion.step.param.mode.1",
+                "node.motion.step.param.mode.2",
+            ],
         },
     },
     // **A ESCADA PUBLICADA** (doc 89 folha 07 — TD *Count CHOP*) — ver [`Ladder`].
@@ -474,7 +483,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Up", "Down"],
+            labels: &[
+                "node.motion.step.param.direction.0",
+                "node.motion.step.param.direction.1",
+            ],
         },
     },
     ParamUiHint {

@@ -110,7 +110,13 @@ fn the_gpu_route_reads_the_tag_from_the_one_door() {
 /// não tem o `Sink` na frente — ele É o sink —, e é essa a única diferença permitida.
 #[test]
 fn the_row_operators_speak_the_sinks_vocabulary() {
-    let sink = ph2d_node_motion_output::BLEND_LABELS;
+    // ⚠️⚠️ **Compara-se o TEXTO, e não os quatro arrays.** Desde a 5.ª fatia do HR-15 a chave de
+    // uma opção deriva do sítio onde o array é DECLARADO, e estas quatro `const` vivem em quatro
+    // crates sem dependência entre si — as chaves são diferentes por construção. ⭐ E o gate fica
+    // mais forte: ele deixou de afirmar que quatro listas estão escritas igual e passou a
+    // afirmar que o artista lê a mesma palavra nos quatro cartões, que é o que ele sempre quis.
+    let palavras = |l: &[&'static str]| l.iter().map(|k| ph2d_i18n::tr(k)).collect::<Vec<_>>();
+    let sink = palavras(&ph2d_node_motion_output::BLEND_LABELS[..]);
     for (who, labels) in [
         ("trail", ph2d_node_motion_trail::ECHO_BLEND_LABELS),
         ("strobe", ph2d_node_motion_strobe::FLASH_BLEND_LABELS),
@@ -118,6 +124,7 @@ fn the_row_operators_speak_the_sinks_vocabulary() {
         // escrever a coluna, e o vocabulário dela é copiado à mão como o dos outros dois.
         ("drop_shadow", ph2d_node_fx_drop_shadow::SHADOW_BLEND_LABELS),
     ] {
+        let labels = palavras(&labels[..]);
         assert_eq!(
             labels[0], "Sink",
             "{who}: o indice 0 da coluna quer dizer *o modo do sink*, e o rotulo tem de o dizer"

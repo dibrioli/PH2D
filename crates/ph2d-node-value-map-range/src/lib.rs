@@ -385,7 +385,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Off", "On"],
+            labels: &[
+                "node.value.map_range.param.clamp.0",
+                "node.value.map_range.param.clamp.1",
+            ],
         },
     },
     ParamUiHint {
@@ -399,7 +402,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         // MESMA palavra para a MESMA coisa. ⛔ Só o valor guardado é um índice, então trocar a
         // palavra não toca em documento nenhum.
         widget: ParamWidget::Enum {
-            labels: &["Linear", "Step", "Smooth", "Smoother"],
+            labels: &[
+                "node.value.map_range.param.interpolation.0",
+                "node.value.map_range.param.interpolation.1",
+                "node.value.map_range.param.interpolation.2",
+                "node.value.map_range.param.interpolation.3",
+            ],
         },
     },
     ParamUiHint {

@@ -532,7 +532,15 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             // ⚠️ Os quatro últimos são APENDADOS (folha 08 linha 45): `0..2` ficam
             // onde estavam, então todo documento já autorado lê o mesmo modo. Ver
             // [`fold_col`] para porque são QUATRO e não os oito do `field.combine`.
-            labels: &["Avg", "Add", "Blend", "Subtract", "Multiply", "Min", "Max"],
+            labels: &[
+                "node.motion.mixer.param.mode.0",
+                "node.motion.mixer.param.mode.1",
+                "node.motion.mixer.param.mode.2",
+                "node.motion.mixer.param.mode.3",
+                "node.motion.mixer.param.mode.4",
+                "node.motion.mixer.param.mode.5",
+                "node.motion.mixer.param.mode.6",
+            ],
         },
     },
     // De qual entrada vem a GEOMETRIA. `Mixed` é o nó de sempre.
@@ -543,7 +551,13 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Mixed", "In 0", "In 1", "In 2", "In 3"],
+            labels: &[
+                "node.motion.mixer.param.geom_from.0",
+                "node.motion.mixer.param.geom_from.1",
+                "node.motion.mixer.param.geom_from.2",
+                "node.motion.mixer.param.geom_from.3",
+                "node.motion.mixer.param.geom_from.4",
+            ],
         },
     },
     weight_hint!(WEIGHTS[0], "node.motion.mixer.param.weight_0"),

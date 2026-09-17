@@ -62,7 +62,12 @@ fn painted_width(ctx: &mut PaintCtx, text: &str, size: f32) -> f32 {
 /// `0.00`. ⚠️ *Uma row que mostra um número onde não há número é a mesma mentira que um knob
 /// morto* — e com um `match` sem `_` uma espécie NOVA é erro de compilação aqui, que é o aviso
 /// certo.
-enum Shown {
+/// ⚠️ `pub(crate)` pela mesma razão que o [`shows_a_level`] irmão: o veredito deste `match`
+/// exaustivo é a ÚNICA resposta da casa à pergunta *«o que esta row mostra?»*, e quem a quiser
+/// afirmar — hoje o gate `an_enum_row_shows_the_word_and_never_the_key` — tem de a poder ler.
+/// ⛔ Uma segunda função a recalcular o mesmo veredito seria a segunda lista que o doc daquele
+/// irmão proíbe por escrito.
+pub(crate) enum Shown {
     /// Um NÍVEL: a faixa preenche-se e o número lê-se à direita.
     Level { text: String, fill: f32 },
     /// Um ESTADO sem nível — um interruptor, uma opção de enum, um nome de canal.
@@ -74,7 +79,7 @@ enum Shown {
     Editor,
 }
 
-fn shown(p: &CardParam) -> Shown {
+pub(crate) fn shown(p: &CardParam) -> Shown {
     let level = |text: String| {
         // ⚠️ A faixa **RESOLVIDA** (`p.min`/`p.max`), nunca a do hint: numa magnitude ligada a
         // um canal angular o hint descreve o outro canal, e o nível saía saturado.
@@ -114,7 +119,7 @@ fn shown(p: &CardParam) -> Shown {
         ParamWidget::Enum { labels } => Shown::State(
             labels
                 .get(p.value.round().max(0.0) as usize)
-                .map_or_else(|| p.value.to_string(), |s| (*s).to_string()),
+                .map_or_else(|| p.value.to_string(), |s| ph2d_i18n::tr(s).to_string()),
         ),
         // Sem amostra (a shell não a preencheu) a row diz que há uma cor, não uma cor errada.
         ParamWidget::Color { .. } => p.swatch.map_or(Shown::Editor, Shown::Swatch),

@@ -6473,6 +6473,7 @@ dependencies = [
 name = "ph2d-node-field-combine"
 version = "0.0.0"
 dependencies = [
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6547,6 +6548,7 @@ dependencies = [
 name = "ph2d-node-force-vortex"
 version = "0.0.0"
 dependencies = [
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6698,6 +6700,7 @@ name = "ph2d-node-motion-drive"
 version = "0.0.0"
 dependencies = [
  "ph2d-color",
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6732,6 +6735,7 @@ dependencies = [
 name = "ph2d-node-motion-falloff"
 version = "0.0.0"
 dependencies = [
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6807,6 +6811,7 @@ dependencies = [
 name = "ph2d-node-motion-make-point"
 version = "0.0.0"
 dependencies = [
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6839,6 +6844,7 @@ dependencies = [
 name = "ph2d-node-motion-move"
 version = "0.0.0"
 dependencies = [
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6848,6 +6854,7 @@ name = "ph2d-node-motion-noise"
 version = "0.0.0"
 dependencies = [
  "ph2d-fbm",
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6865,6 +6872,7 @@ name = "ph2d-node-motion-oscillator"
 version = "0.0.0"
 dependencies = [
  "ph2d-curve",
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
  "ph2d-nodegraph",
@@ -6883,6 +6891,7 @@ name = "ph2d-node-motion-path"
 version = "0.0.0"
 dependencies = [
  "ph2d-arc-length",
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6999,6 +7008,7 @@ name = "ph2d-node-motion-stagger"
 version = "0.0.0"
 dependencies = [
  "ph2d-curve",
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -7017,6 +7027,7 @@ version = "0.0.0"
 dependencies = [
  "libm",
  "ph2d-curve",
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -7109,6 +7120,7 @@ name = "ph2d-node-motion-wiggle"
 version = "0.0.0"
 dependencies = [
  "ph2d-fbm",
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -7446,6 +7458,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-expr",
  "ph2d-expr-parse",
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

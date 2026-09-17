@@ -410,7 +410,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Seconds", "BPM"],
+            labels: &[
+                "node.pulse.beat.param.time_mode.0",
+                "node.pulse.beat.param.time_mode.1",
+            ],
         },
     },
     // ⚠️ A faixa é a MESMA do irmão `value.lfo` (20‥300), de propósito: dois nós

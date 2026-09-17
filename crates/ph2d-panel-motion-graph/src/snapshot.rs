@@ -393,7 +393,9 @@ impl CardChoices {
     /// Os rótulos, uma cópia só — chamada **ao ABRIR** a lista, nunca por quadro.
     fn labels(&self) -> Vec<String> {
         match self {
-            Self::Static(l) => l.iter().map(|s| (*s).to_string()).collect(),
+            // ⚠️ **A tradução das opções acontece AQUI e em mais sítio nenhum desta lista** — e é de
+            // graça, porque este método corre ao ABRIR e não por quadro (ver o doc acima).
+            Self::Static(l) => l.iter().map(|s| ph2d_i18n::tr(s).to_string()).collect(),
             Self::Live(l) => l.clone(),
         }
     }
@@ -550,3 +552,7 @@ pub(crate) fn current_snapshot() -> GraphViewSnapshot {
 #[path = "snapshot_build.rs"]
 mod build;
 pub use build::snapshot_from;
+
+#[cfg(test)]
+#[path = "snapshot_choices_tests.rs"]
+mod testes_das_escolhas;

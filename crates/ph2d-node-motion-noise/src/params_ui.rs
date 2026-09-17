@@ -117,7 +117,11 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Gradient", "Value", "Cellular"],
+            labels: &[
+                "node.motion.noise.param.base.0",
+                "node.motion.noise.param.base.1",
+                "node.motion.noise.param.base.2",
+            ],
         },
     },
     // ⚠️ **O vocabulário é o do `motion.voronoi`, literalmente** — um censo no
@@ -132,7 +136,11 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Euclidean", "Manhattan", "Chebyshev"],
+            labels: &[
+                "node.motion.noise.param.metric.0",
+                "node.motion.noise.param.metric.1",
+                "node.motion.noise.param.metric.2",
+            ],
         },
     },
     // ⚠️ A faixa começa em 1: lacunarity < 1 faz as oitavas ficarem mais GRANDES
@@ -155,7 +163,13 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size", "Position XY"],
+            labels: &[
+                "node.motion.noise.param.channel.0",
+                "node.motion.noise.param.channel.1",
+                "node.motion.noise.param.channel.2",
+                "node.motion.noise.param.channel.3",
+                "node.motion.noise.param.channel.4",
+            ],
         },
     },
     ParamUiHint {
@@ -174,7 +188,10 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Amplitude", "Min / Max"],
+            labels: &[
+                "node.motion.noise.param.range_mode.0",
+                "node.motion.noise.param.range_mode.1",
+            ],
         },
     },
     // ⚠️ Onde a saída de facto CAI — e ela cai lá seja qual for o `type`, que é a
@@ -226,7 +243,11 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["fBm", "Turbulence", "Ridged"],
+            labels: &[
+                "node.motion.noise.param.type.0",
+                "node.motion.noise.param.type.1",
+                "node.motion.noise.param.type.2",
+            ],
         },
     },
     ParamUiHint {

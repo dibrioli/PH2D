@@ -187,7 +187,11 @@ pub const METRIC_CHEBYSHEV: i32 = 2;
 /// ⚠️ **E o que se perde é menos do que a lista sugere:** `p = 1` **é** a Manhattan,
 /// `p = 2` **é** a Euclidiana e `p → ∞` **é** a Chebyshev. As três que shipam são os
 /// três marcos da família; o que fica de fora é o contínuo ENTRE elas.
-pub const METRIC_LABELS: &[&str] = &["Euclidean", "Manhattan", "Chebyshev"];
+pub const METRIC_LABELS: &[&str] = &[
+    "node.opts.node_motion_voronoi.metric_labels.0",
+    "node.opts.node_motion_voronoi.metric_labels.1",
+    "node.opts.node_motion_voronoi.metric_labels.2",
+];
 
 /// The index of the point nearest to `sp` under `metric`.
 ///

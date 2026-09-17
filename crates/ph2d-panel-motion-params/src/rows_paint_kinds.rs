@@ -236,6 +236,9 @@ pub(super) fn paint_enum_row(
         .collect();
     let block = block_cells(Rect::new(inner_x, y, inner_w, 0.0), &rows_n, ROW_H_PX);
     for (opt, caption) in row.labels.iter().enumerate().take(k) {
+        // ⚠️ O array carrega CHAVES (a fronteira não o pode reconstruir: ele vive dentro de um
+        // `ParamUiHint` que é `Copy`), logo quem resolve é quem desenha — e só as que desenha.
+        let caption = &ph2d_i18n::tr(caption);
         let bid = param_enum_id(i, opt);
         let (brect, cell) = block[opt / cols][opt % cols];
         let bstate = store.button_visual(bid);

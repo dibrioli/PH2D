@@ -61,7 +61,11 @@ fn from_edges_is_from_center_mirrored_and_needs_no_entry() {
     let ph2d_node_registry::ParamWidget::Enum { labels } = hints.widget else {
         panic!("a ordem e' um enum")
     };
-    assert_eq!(labels, &["Index", "From Center", "Random"]);
+    // ⚠️ O array carrega CHAVES; o que este gate afirma são as PALAVRAS do selector.
+    assert_eq!(
+        labels.iter().map(|l| ph2d_i18n::tr(l)).collect::<Vec<_>>(),
+        ["Index", "From Center", "Random"]
+    );
 }
 
 /// ⭐⭐ **`RANDOM` DÁ A CADA UM O SEU ATRASO, E A MESMA SEMENTE DÁ A MESMA FILA.**

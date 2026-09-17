@@ -331,8 +331,15 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
 /// artista.
 static FACTORY_TEXT: &[(&str, &str)] = &[(TEXT_KEY, DEFAULT_TEXT)];
 
-static ALIGN_LABELS: &[&str] = &["Left", "Center", "Right"];
-static PIVOT_LABELS: &[&str] = &["Pen", "Center"];
+static ALIGN_LABELS: &[&str] = &[
+    "node.opts.node_source_text.align_labels.0",
+    "node.opts.node_source_text.align_labels.1",
+    "node.opts.node_source_text.align_labels.2",
+];
+static PIVOT_LABELS: &[&str] = &[
+    "node.opts.node_source_text.pivot_labels.0",
+    "node.opts.node_source_text.pivot_labels.1",
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     // As duas strings primeiro: é o que o artista muda antes de tudo.

@@ -257,7 +257,11 @@ const MODE_LIMITED: i32 = 1;
 /// Fora da fatia, identidade — o elemento fica onde estava.
 const MODE_WITHIN_BOX: i32 = 2;
 /// As PALAVRAS da referência, na ordem dos números acima (C4D Bend ▸ Mode).
-const MODE_LABELS: &[&str] = &["Unlimited", "Limited", "Within Box"];
+const MODE_LABELS: &[&str] = &[
+    "node.opts.node_motion_bend.mode_labels.0",
+    "node.opts.node_motion_bend.mode_labels.1",
+    "node.opts.node_motion_bend.mode_labels.2",
+];
 
 /// A fatia do eixo que dobra, no quadro LOCAL: `(a, b, mid, half)`.
 ///

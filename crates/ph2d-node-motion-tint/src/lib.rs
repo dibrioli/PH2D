@@ -138,7 +138,13 @@ impl BlendMode {
     /// The labels the panel paints, and the ONLY list of them — [`PARAM_HINTS`]
     /// reads this, so a mode added to the enum without a label fails to compile
     /// rather than shipping a nameless row.
-    pub const LABELS: [&'static str; 5] = ["Mix", "Add", "Subtract", "Multiply", "Divide"];
+    pub const LABELS: [&'static str; 5] = [
+        "node.opts.node_motion_tint.labels.0",
+        "node.opts.node_motion_tint.labels.1",
+        "node.opts.node_motion_tint.labels.2",
+        "node.opts.node_motion_tint.labels.3",
+        "node.opts.node_motion_tint.labels.4",
+    ];
 
     /// The mode a param value names. Rounded half-away-from-zero (Rust's own
     /// `f32::round`, mirrored in WGSL by `tn_round`); anything outside the list
@@ -491,7 +497,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Solid", "Gradient"],
+            labels: &[
+                "node.motion.tint.param.mode.0",
+                "node.motion.tint.param.mode.1",
+            ],
         },
     },
     ParamUiHint {

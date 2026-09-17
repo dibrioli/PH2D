@@ -28,7 +28,12 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size"],
+            labels: &[
+                "node.motion.oscillator.param.channel.0",
+                "node.motion.oscillator.param.channel.1",
+                "node.motion.oscillator.param.channel.2",
+                "node.motion.oscillator.param.channel.3",
+            ],
         },
     },
     ParamUiHint {
@@ -40,7 +45,14 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 5.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Sine", "Tri", "Square", "Saw", "Spike", "Custom"],
+            labels: &[
+                "node.motion.oscillator.param.wave.0",
+                "node.motion.oscillator.param.wave.1",
+                "node.motion.oscillator.param.wave.2",
+                "node.motion.oscillator.param.wave.3",
+                "node.motion.oscillator.param.wave.4",
+                "node.motion.oscillator.param.wave.5",
+            ],
         },
     },
     // A FORMA da onda `Custom` — um TEXT param (`CURVE_KEY`), não um `ParamSpec`: uma
@@ -72,7 +84,10 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Amplitude", "Min / Max"],
+            labels: &[
+                "node.motion.oscillator.param.range_mode.0",
+                "node.motion.oscillator.param.range_mode.1",
+            ],
         },
     },
     ParamUiHint {
@@ -141,7 +156,10 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Seconds", "BPM"],
+            labels: &[
+                "node.motion.oscillator.param.time_mode.0",
+                "node.motion.oscillator.param.time_mode.1",
+            ],
         },
     },
     // A faixa de um BPM é a de uma música, não a de um Hz: 20 é um *largo* muito

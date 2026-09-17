@@ -244,29 +244,131 @@ pintar o identificador** — o segundo consumidor que a wave não tinha coberto.
 
 Prova de mutação: **5 de 5 sangram**, com controlo sobre o próprio filtro.
 
-### §7.8 — ⏳ O que FICA para a 5.ª fatia
+### §7.8 — O que a 4.ª fatia deixou para a 5.ª (fechada — ver §8)
 
 | Alvo | Sítios | Nota |
 |---|---:|---|
-| opções de `ParamWidget::Enum` **inline** | `400` em 117 sítios | chave `…param.<p>.<i>` |
-| opções por **`const` partilhada** | 38 sítios, **27** consts | ⚠️ duas vivem noutra crate (`pivot::LABELS`, `motion_region::SHAPE_LABELS`) e são lidas por 3–4 nós ⇒ a const é a unidade, não o nó |
-| `ReadChannel.label` | 25 sítios | família própria, não medida |
+| opções de `ParamWidget::Enum` **inline** | `398` em 114 sítios | chave `…param.<p>.<i>` |
+| opções por **`const`** | 37 sítios, **32** consts | ⚠️ três vivem noutra crate e são lidas por 3–4 nós |
+| `ReadChannel.label` | 25 sítios | família própria, **não medida** |
 
-⚠️⚠️ **E a const partilhada tem uma armadilha que só a medição mostra: o NOME não é o
-vocabulário.** `MODE_LABELS` aparece em **seis** crates de nó com conteúdos **diferentes** —
-`2 · 2 · 3 · 2 · 6 · 2` opções —, logo ela é uma convenção de nome por crate e não uma tabela
-partilhada. *Uma regra que lesse o nome daria a mesma chave a seis vocabulários distintos.*
+## §8 — A 5.ª fatia: as OPÇÕES de cada selector (fechada)
 
-Medido, as **genuinamente partilhadas** são exactamente três — as que vivem numa crate e são
-lidas por outras:
+`562` chaves em [`node_options.rs`](../../../crates/ph2d-i18n/src/node_options.rs): **398** opções
+em `114` arrays inline e o resto em **32 `const`**.
 
-| Const | Declarada em | Leitores | Opções |
-|---|---|---:|---:|
-| `ph2d_motion_region::SHAPE_LABELS` | `ph2d-motion-region` | 4 | 3 |
-| `ph2d_nodegraph::pivot::LABELS` | `ph2d-nodegraph` | 3 | 3 |
-| `BlendMode::LABELS` | `ph2d-nodegraph` | 1 | 3 |
+### §8.1 — ⚠️⚠️ A chave deriva do sítio de DECLARAÇÃO, e são dois porque são duas identidades
 
-⇒ a regra da 5.ª fatia é **de duas metades**: uma const **cross-crate** tem a chave do próprio
-ENDEREÇO (um vocabulário, um conjunto de chaves, N leitores); tudo o resto — array inline e const
-local — segue a lei desta fatia, `…param.<p>.<i>`. ⚠️ E as duas crates que declaram as
-partilhadas são **foundational**, logo a tradução tem de acontecer na fronteira, como aqui.
+Um array escrito **inline** dentro de um `ParamUiHint` pertence a um par `(tipo, param)` e a mais
+ninguém ⇒ `node.<tipo>.param.<param>.<i>`. Uma **`const`** é um VOCABULÁRIO com N leitores ⇒
+`node.opts.<crate>.<CONST>.<i>`, uma vez para todos. ⛔ A chave derivada do nó daria N cópias do
+mesmo texto, e mudar uma não mudava as outras.
+
+⚠️ **E o NOME da const não é a identidade dela:** `MODE_LABELS` existe em **seis** crates de nó
+com conteúdos diferentes (`2 · 2 · 3 · 2 · 6 · 2` opções). *Uma regra que lesse o nome daria a
+mesma chave a seis vocabulários distintos* ⇒ a resolução é feita dentro da crate do **uso**, e só
+um caminho qualificado (`ph2d_motion_region::`, `ph2d_nodegraph::`) sai dela.
+
+### §8.2 — ⛔⛔ E aqui quem traduz é o PINTOR, ao contrário do rótulo — o motivo é o TIPO
+
+O `label` de uma row é um `&'static str` e pode ser trocado por outro, logo a 4.ª fatia resolve na
+**fronteira**. As opções são um `&'static [&'static str]` **dentro de um `ParamUiHint` que é
+`Copy`** e existe em ~800 sítios de struct-literal: reconstruí-lo na ponte obrigava a alocar por
+quadro no caminho de **OMISSÃO** (o cartão — o painel lateral está desligado desde 07/09).
+
+⇒ o array carrega as chaves até ao consumidor, e há **três** consumidores, cada um com o seu gate:
+
+| Superfície | Onde resolve | Gate |
+|---|---|---|
+| painel lateral | `rows_paint_kinds` (só as que desenha) | `the_option_captions_reach_ink_as_words_not_as_keys` |
+| ESTADO do cartão (a row fechada) | `paint_card_params::shown` | `an_enum_row_shows_the_word_and_never_the_key` |
+| LISTA do cartão (ao abrir) | `CardChoices::labels` | `a_static_choice_list_opens_with_words` |
+
+⭐ **A 3.ª é de graça e isso está escrito no doc dela:** aquele método corre **ao abrir a lista**,
+não por quadro.
+
+### §8.3 — ⭐ A régua do painel é DIFERENCIAL, porque o arnês conta glifos
+
+O `MockPanelHost` conta **glifos**, não texto ⇒ pinta-se a mesma row duas vezes — com as chaves e
+com as palavras que elas resolvem — e exige-se a **mesma contagem**. Isso afirma a propriedade
+inteira sem escrever um número: *se o pintor resolver, as duas pinturas são a mesma; se não, a das
+chaves emite muito mais glifos, porque uma chave é `~4×` mais longa.* ⚠️ Um `assert` contra um
+número mediria a fonte e o tema.
+
+⭐⭐ **E o controlo da fixtura apanhou a MINHA fixtura errada à primeira corrida:** escolhi
+`motion.mirror::keep`, que é servido por uma `const` — logo a chave dele é `node.opts.…` e não a
+forma inline, e *sem o controlo o gate teria medido dois lados iguais por serem os dois
+identificadores*.
+
+### §8.4 — ⛔⛔ O que a migração partiu, e a metade MUDA
+
+Seis gates de `ph2d-app-motion` liam o texto das opções. Cinco reprovaram em voz alta (comparam
+listas contra palavras). O sexto é a família muda outra vez:
+
+```rust
+if labels.first() != Some(&"Sink") { continue; }   // ⟵ deixa de casar; a lista fica VAZIA
+```
+
+⭐ **Quem o tornou barulhento foi o piso de população** (`vistos.len() >= 3`) que já lá estava.
+*Um censo que filtra por texto passa a medir nada, e só um piso o diz.*
+
+⚠️ E o **lookup por texto** do `sim_demo::indice_de` — que procura a opção pelo nome e devolve
+`None` em silêncio — está coberto: a mutação que lhe tira o `tr` faz reprovar **seis** gates de
+cena que já existiam.
+
+### §8.4-bis — ⭐⭐⭐ O achado: as chaves tornaram VISÍVEL uma duplicação que os gates não viam
+
+Cinco gates de **vocabulário** comparam os arrays de dois ou mais nós para afirmar que eles usam
+as mesmas palavras. Antes da migração todos passavam porque `&[&str] == &[&str]` compara
+**conteúdo** — e com chaves derivadas do sítio de declaração, dois arrays que *dizem* o mesmo
+deixam de ser iguais. Isso partiu os cinco, e a leitura de cada um é diferente:
+
+| Gate | O que a reprovação revelou | Cura |
+|---|---|---|
+| `the_pivot_question_has_one_vocabulary` | ⭐ o `motion.transform` tinha uma **cópia inline** do vocabulário do pivô, ao lado da porta `ph2d_nodegraph::pivot::LABELS` que os outros três lêem | **o nó passa a ler a porta** |
+| `wind_vocabulary` | duas `const` gémeas em crates irmãs **sem dependência entre si** | comparar o texto |
+| `metric_vocabulary` | um nó declara inline, o outro numa `const` | comparar o texto |
+| `pulse_edge_vocabulary` | a lista canónica do gate são PALAVRAS | comparar o texto |
+| `presets_frame_themselves` | o `label` do molde é texto e o do selector é chave | comparar o texto |
+
+⭐⭐ **O primeiro é o valioso:** a mensagem daquele gate já dizia *«os rótulos são os da PORTA»*, e
+o código tinha duas listas que coincidiam por acaso. *Uma lei escrita em dois sítios ainda não é
+uma lei — só uma PORTA é*, e foi preciso a chave, que carrega o endereço, para a duplicação
+aparecer. ⇒ os outros quatro são divergências legítimas de **declaração**, e nesses o gate fica
+mais forte por medir o que o artista lê.
+
+### §8.5 — ⛔ O defeito do gerador, outra vez uma leitura curta demais
+
+A 1.ª redacção lia o valor de `labels:` com `[^,\n]+` — que **corta no primeiro vírgula** —, logo
+`&["a", "b"]` lia-se `&["a"` e **nenhum** array inline foi reconhecido; em vez disso 117 nomes
+falsos foram tratados como consts e **30 foram reescritas**. ⇒ revertido antes de compilar, e o
+valor passa a ser lido como *array (por chavetas) ou caminho (até à vírgula de topo)*.
+
+Prova de mutação: **7 de 7 sangram**. Tecto de LOC curado por **corte**
+(`ph2d-node-field-radial-sweep`: as quatro tabelas de UI saem para `params_ui.rs`, o molde que os
+irmãos já têm) — as chaves são mais longas que as palavras e o `rustfmt` partiu os arrays.
+
+### §8.5-bis — ⛔⛔ E o meu PORTÃO estava a ser lido por uma JANELA
+
+Duas corridas seguidas do `nextest-impacted.sh` devolveram **sete** reprovadas cada uma, em
+conjuntos **disjuntos** de crates — o que eu li como *«o conjunto impactado cresceu com o diff»*.
+
+⛔ **Era mais simples e pior: eu canalizava a saída por `tail -8`.** Os ficheiros das duas
+corridas têm `10` linhas e **nenhuma linha de `Summary`** — nunca vi a lista completa de
+nenhuma delas, e as «sete» eram só as que cabiam na janela. *A memória desta casa já regista
+isto por escrito: «um `tail` é uma JANELA, não um veredito».*
+
+⭐ **A cura tem duas metades.** A primeira é não truncar o portão — o arnês já guarda a saída
+inteira num ficheiro, e o `tail` só a destrói antes de lá chegar. A segunda é **parar de
+descobrir uma família corrida a corrida**: uma varredura estática que cruza os textos migrados
+com as linhas que comparam `labels` responde a lista toda de uma vez, e foi ela que provou que
+não sobrava nenhum caso — três dos quatro «candidatos» que ela acusou eram **doc-comments**, e
+o quarto usa o rótulo só na mensagem de erro.
+
+### §8.6 — ⏳ O que FICA
+
+| Alvo | Sítios | Nota |
+|---|---:|---|
+| `ReadChannel.label` | 25 | os canais nomeados de um `ParamWidget::Channels` — família própria |
+| os `62` literais do censo de PORTA | — | `python3 scripts/censo-texto-pintado.py` |
+| `ph2d-tool-vector` | 7 braços de rótulo | fora dos motores de nó |

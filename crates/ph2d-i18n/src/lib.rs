@@ -93,6 +93,8 @@ mod inspector_player;
 mod model3d;
 /// Os nomes dos nós — a 3.ª fatia da fronteira dos motores.
 mod node_catalog;
+/// As OPCOES de cada selector de nó — a 5.ª fatia da fronteira dos motores.
+mod node_options;
 /// Os rótulos de PARAMETRO dos nós — a 4.ª fatia, e a maior.
 mod node_params;
 /// A metade `motion` dos rotulos de parametro — o corte de LOC por familia.
@@ -542,6 +544,7 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| paint_engines::tr(k))
             .or_else(|| node_catalog::tr(k))
             .or_else(|| node_params::tr(k))
+            .or_else(|| node_options::tr(k))
             .or_else(|| chrome::tr(k))
             .or_else(|| painter_layers::tr(k))
             .or_else(|| inspector::tr(k))

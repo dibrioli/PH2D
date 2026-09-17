@@ -328,14 +328,13 @@ pub const BLEND_COLUMN: &str = "blend";
 /// aquele nó também os escreve à mão. Quem impede as duas listas de divergir é um gate na
 /// shell, que vê os dois lados — a mesma solução que o `BLEND_PARAM` já usa.
 pub const ECHO_BLEND_LABELS: [&str; 7] = [
-    // ⚠️ O primeiro NÃO é um modo: é a ausência de escolha, e o rótulo tem de o dizer.
-    "Sink",
-    "Normal",
-    "Add",
-    "Subtract",
-    "Multiply",
-    "Screen",
-    "Premultiplied",
+    "node.opts.node_motion_trail.echo_blend_labels.0",
+    "node.opts.node_motion_trail.echo_blend_labels.1",
+    "node.opts.node_motion_trail.echo_blend_labels.2",
+    "node.opts.node_motion_trail.echo_blend_labels.3",
+    "node.opts.node_motion_trail.echo_blend_labels.4",
+    "node.opts.node_motion_trail.echo_blend_labels.5",
+    "node.opts.node_motion_trail.echo_blend_labels.6",
 ];
 
 /// O valor da coluna para um `echo_blend` autorado — `None` quando ele é *o do sink*.

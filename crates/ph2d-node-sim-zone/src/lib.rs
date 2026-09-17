@@ -293,7 +293,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Forever", "Once", "Loop"],
+            labels: &[
+                "node.sim.zone.param.mode.0",
+                "node.sim.zone.param.mode.1",
+                "node.sim.zone.param.mode.2",
+            ],
         },
     },
     // ⚠️ O `start` vale nos TRÊS modos — atrasar o começo não tem nada a ver com ter fim.

@@ -249,7 +249,12 @@ fn contour(
 /// Com a escada `0 = Off` e `1 = Both`, **todo documento já autorado lê
 /// exactamente o que escreveu** — os estados novos vivem em `2` e `3`, que
 /// nenhum deles contém.
-pub const CLAMP_LABELS: &[&str] = &["Off", "Both", "Min Only", "Max Only"];
+pub const CLAMP_LABELS: &[&str] = &[
+    "node.opts.node_field_remap.clamp_labels.0",
+    "node.opts.node_field_remap.clamp_labels.1",
+    "node.opts.node_field_remap.clamp_labels.2",
+    "node.opts.node_field_remap.clamp_labels.3",
+];
 
 /// scale it; `clamp` escolhe quais dos dois limites valem; and `strength` blends input→remapped (so
 /// `strength = 0` is an exact passthrough).

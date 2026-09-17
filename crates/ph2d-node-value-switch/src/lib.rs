@@ -432,7 +432,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Off", "On"],
+            labels: &[
+                "node.value.switch.param.blend.0",
+                "node.value.switch.param.blend.1",
+            ],
         },
     },
     // ⚠️ **O rótulo diz o que MUDA, não como funciona** (HR-15: rótulos por resultado). «Skip
@@ -445,7 +448,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Off", "On"],
+            labels: &[
+                "node.value.switch.param.lazy.0",
+                "node.value.switch.param.lazy.1",
+            ],
         },
     },
 ];

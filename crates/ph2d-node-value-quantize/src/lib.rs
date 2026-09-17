@@ -259,7 +259,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Round", "Floor", "Ceil", "Truncate"],
+            labels: &[
+                "node.value.quantize.param.mode.0",
+                "node.value.quantize.param.mode.1",
+                "node.value.quantize.param.mode.2",
+                "node.value.quantize.param.mode.3",
+            ],
         },
     },
     // A FASE da grade, nas unidades da entrada. `0` = pinada na origem (o nó de

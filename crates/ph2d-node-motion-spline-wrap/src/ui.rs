@@ -182,7 +182,10 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Fit Spline", "Keep Length"],
+            labels: &[
+                "node.motion.spline_wrap.param.mode.0",
+                "node.motion.spline_wrap.param.mode.1",
+            ],
         },
     },
     ParamUiHint {
@@ -239,7 +242,12 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Linear", "Quad", "Smooth", "Smoother"],
+            labels: &[
+                "node.motion.spline_wrap.param.size_profile.0",
+                "node.motion.spline_wrap.param.size_profile.1",
+                "node.motion.spline_wrap.param.size_profile.2",
+                "node.motion.spline_wrap.param.size_profile.3",
+            ],
         },
     },
     pt("p0x", "node.motion.spline_wrap.param.p0x"),

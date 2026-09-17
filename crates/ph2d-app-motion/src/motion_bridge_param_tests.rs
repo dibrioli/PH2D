@@ -121,7 +121,11 @@ fn stagger_params_are_named_enums_and_a_checkbox() {
             _ => None,
         })
         .expect("channel is a named Enum row, not a slider");
-    assert_eq!(channel.labels, ["X", "Y", "Rotation", "Size"]);
+    // ⚠️ A `EnumRow` carrega CHAVES por desenho (a fronteira não pode reconstruir o array —
+    // ele vive num `ParamUiHint` que é `Copy`), logo o gate lê pela tabela e passa a medir o
+    // que o artista LÊ, e não como duas listas estão escritas.
+    let palavras: Vec<&str> = channel.labels.iter().map(|l| ph2d_i18n::tr(l)).collect();
+    assert_eq!(palavras, ["X", "Y", "Rotation", "Size"]);
     let ease = snap
         .rows
         .iter()
@@ -131,7 +135,11 @@ fn stagger_params_are_named_enums_and_a_checkbox() {
         })
         .expect("ease_curve is a named Enum row");
     // The rich curve family set (Penner minus the transcendental ones).
-    assert!(ease.labels.contains(&"Bounce") && ease.labels.contains(&"Back"));
+    let eases: Vec<&str> = ease.labels.iter().map(|l| ph2d_i18n::tr(l)).collect();
+    assert!(
+        eases.contains(&"Bounce") && eases.contains(&"Back"),
+        "{eases:?}"
+    );
     // ⚠️ **Com a curva em `Linear` — o estado em que o nó nasce — a DIREÇÃO não aparece**, e é
     // a cura de 2026-08-22 (doc 90 §2): o `Linear` devolve `t` antes de olhar para a direção,
     // logo In/Out/In-Out davam a mesma saída ao bit.
@@ -399,6 +407,7 @@ fn the_look_at_picks_its_target_and_offers_the_picker_only_in_object_mode() {
             _ => None,
         })
         .expect("`Aim At` is a named selector");
+    let modes: Vec<&str> = modes.iter().map(|l| ph2d_i18n::tr(l)).collect();
     assert_eq!(modes, ["Point", "Object", "Cursor"]);
 
     // The offset is DEGREES and says so — an `Angle` row, which no unit table can

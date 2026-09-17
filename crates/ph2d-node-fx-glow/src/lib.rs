@@ -161,7 +161,10 @@ pub const OPERATION: &str = "operation";
 /// folha e não alcança o `ph2d-render`, então quem liga as duas pontas é um gate na shell
 /// (`the_glow_operations_are_the_pipelines_the_renderer_built`). Sem ele, um modo a mais aqui
 /// seria escolhível no dropdown e silenciosamente rebaixado para `Add`.
-pub const OPERATION_LABELS: [&str; 2] = ["Add", "Screen"];
+pub const OPERATION_LABELS: [&str; 2] = [
+    "node.opts.node_fx_glow.operation_labels.0",
+    "node.opts.node_fx_glow.operation_labels.1",
+];
 
 /// **DE QUE O BRIGHT-PASS SE ALIMENTA** — o *Glow Based On* do AE (doc 89 folha 11).
 ///
@@ -172,7 +175,10 @@ pub const OPERATION_LABELS: [&str; 2] = ["Add", "Screen"];
 pub const SOURCE: &str = "source";
 
 /// As fontes do bright-pass, na ordem das tags.
-pub const SOURCE_LABELS: [&str; 2] = ["Luminance", "Alpha"];
+pub const SOURCE_LABELS: [&str; 2] = [
+    "node.opts.node_fx_glow.source_labels.0",
+    "node.opts.node_fx_glow.source_labels.1",
+];
 
 /// **A RAMPA DO HALO** — a chave do param de TEXTO em que ela viaja (doc 32/85).
 ///

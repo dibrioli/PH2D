@@ -17,8 +17,14 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 2.0,
         step: 1.0,
+        // ⭐⭐ **A PORTA, e não uma cópia dela.** Este nó tinha as três opções escritas aqui,
+        // iguais às da [`ph2d_nodegraph::pivot::LABELS`] — e o gate
+        // `every_node_that_asks_where_the_centre_is_asks_it_with_the_same_words` passava porque
+        // `&[&str] == &[&str]` compara CONTEÚDO. ⚠️ A migração do HR-15 tornou a duplicação
+        // visível (cada cópia ganhou a sua própria chave) e a cura é a que a mensagem daquele
+        // gate já pedia: *uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é.*
         widget: ParamWidget::Enum {
-            labels: &["World Origin", "Point", "Centroid"],
+            labels: ph2d_nodegraph::pivot::LABELS,
         },
     },
     ParamUiHint {

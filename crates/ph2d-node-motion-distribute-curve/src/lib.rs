@@ -334,7 +334,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Count", "Length"],
+            labels: &[
+                "node.motion.distribute_curve.param.mode.0",
+                "node.motion.distribute_curve.param.mode.1",
+            ],
         },
     },
     // ⚠️ The slider's `min` IS this param's floor — there is no `ParamHardMin` entry, so the box

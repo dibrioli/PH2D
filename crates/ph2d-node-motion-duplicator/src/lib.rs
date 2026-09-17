@@ -554,7 +554,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Off", "Cycle", "Random"],
+            labels: &[
+                "node.motion.duplicator.param.pick.0",
+                "node.motion.duplicator.param.pick.1",
+                "node.motion.duplicator.param.pick.2",
+            ],
         },
     },
     ParamUiHint {
@@ -585,7 +589,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Shape Wins", "Point Wins", "Add", "Multiply"],
+            labels: &[
+                "node.motion.duplicator.param.transfer.0",
+                "node.motion.duplicator.param.transfer.1",
+                "node.motion.duplicator.param.transfer.2",
+                "node.motion.duplicator.param.transfer.3",
+            ],
         },
     },
 ];

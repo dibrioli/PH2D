@@ -133,7 +133,10 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Free", "Pinned"],
+            labels: &[
+                "node.motion.soft_body.param.pin.0",
+                "node.motion.soft_body.param.pin.1",
+            ],
         },
     },
 ];

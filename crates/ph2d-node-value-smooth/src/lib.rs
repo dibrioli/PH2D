@@ -359,7 +359,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Box", "Triangle", "Smooth"],
+            labels: &[
+                "node.value.smooth.param.weight.0",
+                "node.value.smooth.param.weight.1",
+                "node.value.smooth.param.weight.2",
+            ],
         },
     },
     // ⭐ **A JANELA** — ver [`Window`]. Os rótulos são os do Filter CHOP do TouchDesigner,
@@ -372,7 +376,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Centered", "Left Half", "Right Half"],
+            labels: &[
+                "node.value.smooth.param.window.0",
+                "node.value.smooth.param.window.1",
+                "node.value.smooth.param.window.2",
+            ],
         },
     },
 ];

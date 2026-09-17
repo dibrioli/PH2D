@@ -391,7 +391,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Radial", "X", "Y", "Random", "Index", "Weight"],
+            labels: &[
+                "node.motion.sort.param.key.0",
+                "node.motion.sort.param.key.1",
+                "node.motion.sort.param.key.2",
+                "node.motion.sort.param.key.3",
+                "node.motion.sort.param.key.4",
+                "node.motion.sort.param.key.5",
+            ],
         },
     },
     ParamUiHint {
@@ -401,7 +408,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Ascending", "Descending"],
+            labels: &[
+                "node.motion.sort.param.descending.0",
+                "node.motion.sort.param.descending.1",
+            ],
         },
     },
     ParamUiHint {

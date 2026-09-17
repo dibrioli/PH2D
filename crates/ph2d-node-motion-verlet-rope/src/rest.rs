@@ -12,7 +12,12 @@ pub(super) const REST_END: &str = "rest_end";
 /// A forma entre os dois — a mesma família de quatro que todo `field.*` desta casa oferece.
 pub(super) const REST_PROFILE: &str = "rest_profile";
 /// As palavras da família, na ordem dos números.
-pub(super) const REST_PROFILE_LABELS: &[&str] = &["Linear", "Quad", "Smooth", "Smoother"];
+pub(super) const REST_PROFILE_LABELS: &[&str] = &[
+    "node.opts.node_motion_verlet_rope.rest_profile_labels.0",
+    "node.opts.node_motion_verlet_rope.rest_profile_labels.1",
+    "node.opts.node_motion_verlet_rope.rest_profile_labels.2",
+    "node.opts.node_motion_verlet_rope.rest_profile_labels.3",
+];
 
 /// A curva de aresta sobre um `s ∈ [0,1]` já clampado — **a MESMA família dos `field.*`**
 /// (HR-5, espelho verbatim da do `motion.twist`). Monótona, exacta nos extremos.

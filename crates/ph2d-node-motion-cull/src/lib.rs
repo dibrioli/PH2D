@@ -390,7 +390,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Fraction", "Falloff", "Max Count"],
+            labels: &[
+                "node.motion.cull.param.mode.0",
+                "node.motion.cull.param.mode.1",
+                "node.motion.cull.param.mode.2",
+            ],
         },
     },
     ParamUiHint {
@@ -416,7 +420,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Keep", "Complement"],
+            labels: &[
+                "node.motion.cull.param.invert.0",
+                "node.motion.cull.param.invert.1",
+            ],
         },
     },
     // ⚠️ **Nomeado pelo que ele ENTREGA, não pelo mecanismo.** *"Reindex"* é o nome do

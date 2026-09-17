@@ -205,9 +205,12 @@ fn every_label_names_the_column_its_index_builds() {
     };
     assert_eq!(labels.len(), 3, "tres alvos, tres rotulos");
     #[expect(clippy::cast_precision_loss, reason = "tres opcoes")]
-    for (i, label) in labels.iter().enumerate() {
+    for (i, chave) in labels.iter().enumerate() {
+        // ⚠️ O array carrega CHAVES desde a 5.ª fatia do HR-15; o que este gate ata é o índice
+        // à PALAVRA que o selector mostra.
+        let label = ph2d_i18n::tr(chave);
         let built = Target::of(i as f32);
-        let expected = match *label {
+        let expected = match label {
             "Position" => Target::Position,
             "Velocity" => Target::Velocity,
             "Acceleration" => Target::Acceleration,

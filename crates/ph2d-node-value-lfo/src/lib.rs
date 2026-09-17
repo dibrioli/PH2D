@@ -394,7 +394,13 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Sine", "Tri", "Square", "Saw", "Spike"],
+            labels: &[
+                "node.value.lfo.param.wave.0",
+                "node.value.lfo.param.wave.1",
+                "node.value.lfo.param.wave.2",
+                "node.value.lfo.param.wave.3",
+                "node.value.lfo.param.wave.4",
+            ],
         },
     },
     ParamUiHint {
@@ -446,7 +452,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Seconds", "BPM"],
+            labels: &[
+                "node.value.lfo.param.time_mode.0",
+                "node.value.lfo.param.time_mode.1",
+            ],
         },
     },
     // A faixa de um BPM é a de uma música, não a de um período: 20 é um *largo*

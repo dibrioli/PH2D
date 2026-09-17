@@ -472,7 +472,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Value", "Perlin", "Cellular"],
+            labels: &[
+                "node.value.noise.param.kernel.0",
+                "node.value.noise.param.kernel.1",
+                "node.value.noise.param.kernel.2",
+            ],
         },
     },
     // Os dois seguintes são gateados no Cellular (ver `PARAM_GATES`).
@@ -483,7 +487,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Cells", "Cracks"],
+            labels: &[
+                "node.value.noise.param.feature.0",
+                "node.value.noise.param.feature.1",
+            ],
         },
     },
     ParamUiHint {
@@ -505,7 +512,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Index", "World"],
+            labels: &[
+                "node.value.noise.param.space.0",
+                "node.value.noise.param.space.1",
+            ],
         },
     },
     ParamUiHint {

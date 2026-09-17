@@ -56,7 +56,11 @@ pub const PARAM: &str = "pivot_mode";
 
 /// Os rótulos, na ordem dos valores. ⚠️ **A ordem é o contrato**: o valor é gravado no
 /// documento, então trocar duas entradas muda o significado de toda cena já salva.
-pub const LABELS: &[&str] = &["World Origin", "Point", "Centroid"];
+pub const LABELS: &[&str] = &[
+    "node.opts.nodegraph.labels.0",
+    "node.opts.nodegraph.labels.1",
+    "node.opts.nodegraph.labels.2",
+];
 
 /// **Em torno de quê a deformação acontece.**
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]

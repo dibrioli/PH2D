@@ -469,7 +469,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Linear", "Quad", "Smooth", "Smoother"],
+            labels: &[
+                "node.motion.twist.param.profile.0",
+                "node.motion.twist.param.profile.1",
+                "node.motion.twist.param.profile.2",
+                "node.motion.twist.param.profile.3",
+            ],
         },
     },
     ParamUiHint {

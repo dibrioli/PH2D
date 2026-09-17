@@ -234,10 +234,19 @@ fn the_read_gates_agree_with_what_each_grammar_contains() {
 #[test]
 fn the_labels_match_the_table_and_end_in_custom() {
     assert_eq!(ls::PRESET_LABELS.len(), ls::PRESETS.len() + 1);
+    // ⚠️ O array do selector carrega CHAVES desde a 5.ª fatia do HR-15 e o `label` do molde é
+    // texto — a costura que este gate mede é a MESMA, lida pela tabela.
     for (k, p) in ls::PRESETS.iter().enumerate() {
-        assert_eq!(ls::PRESET_LABELS[k], p.label, "o rotulo {k} divergiu");
+        assert_eq!(
+            ph2d_i18n::tr(ls::PRESET_LABELS[k]),
+            p.label,
+            "o rotulo {k} divergiu"
+        );
     }
-    assert_eq!(ls::PRESET_LABELS[ls::PRESET_CUSTOM], "Custom");
+    assert_eq!(
+        ph2d_i18n::tr(ls::PRESET_LABELS[ls::PRESET_CUSTOM]),
+        "Custom"
+    );
 }
 
 /// ⭐⭐ **O `Generations` de cada molde ainda MEXE a planta** — o achado do crítico de

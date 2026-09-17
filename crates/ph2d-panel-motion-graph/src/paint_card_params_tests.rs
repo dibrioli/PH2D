@@ -409,3 +409,47 @@ fn no_warp_label_is_cut_on_the_card() {
         impossivel.chars().count()
     );
 }
+
+/// ⭐⭐⭐ **O ESTADO DE UM SELECTOR NO CARTÃO É UMA PALAVRA, NÃO UM IDENTIFICADOR.**
+///
+/// ⚠️ Esta é a **segunda** das três superfícies do mesmo array de opções, e não passa por
+/// nenhuma das outras: o painel resolve no pintor dele, a LISTA resolve em
+/// [`crate::snapshot::CardChoices::labels`], e o ESTADO — a palavra que o cartão mostra sem
+/// abrir nada — resolve-se aqui. ⛔ Um `tr` em falta neste braço deixa os outros dois certos e
+/// escreve `node.motion.wave.param.edges.0` na row fechada, que é o que o artista vê primeiro.
+///
+/// FALSIFICADO por devolver `(*s).to_string()` — a forma que este ficheiro tinha antes da 5.ª
+/// fatia do HR-15, quando o array carregava texto.
+#[test]
+fn an_enum_row_shows_the_word_and_never_the_key() {
+    const K: &[&str] = &[
+        "node.motion.wave.param.edges.0",
+        "node.motion.wave.param.edges.1",
+    ];
+    // ⛔ Controlo da fixtura: com a chave a não resolver, os dois lados seriam identificadores e
+    // o gate mediria nada.
+    assert_ne!(
+        ph2d_i18n::tr(K[1]),
+        K[1],
+        "a chave {:?} não resolve — a fixtura deixou de conter o fenómeno",
+        K[1]
+    );
+    let p = crate::CardParam::from_hint(
+        ParamUiHint {
+            param: "edges",
+            label: "node.motion.wave.param.edges",
+            min: 0.0,
+            max: 1.0,
+            step: 1.0,
+            widget: ParamWidget::Enum { labels: K },
+        },
+        1.0,
+    );
+    let crate::paint::paint_card_params::Shown::State(s) =
+        crate::paint::paint_card_params::shown(&p)
+    else {
+        panic!("um selector mostra um ESTADO");
+    };
+    assert_eq!(s, ph2d_i18n::tr(K[1]), "o cartão escreveu {s:?}");
+    assert!(!s.starts_with("node."), "o cartão escreveu a chave: {s:?}");
+}

@@ -376,7 +376,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Linear", "Quad", "Smooth", "Smoother"],
+            labels: &[
+                "node.field.index_range.param.curve.0",
+                "node.field.index_range.param.curve.1",
+                "node.field.index_range.param.curve.2",
+                "node.field.index_range.param.curve.3",
+            ],
         },
     },
     ParamUiHint {
@@ -396,7 +401,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Index", "Attribute"],
+            labels: &[
+                "node.field.index_range.param.key.0",
+                "node.field.index_range.param.key.1",
+            ],
         },
     },
 ];

@@ -370,7 +370,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Rise", "Fall", "Both"],
+            labels: &[
+                "node.pulse.compare.param.edge.0",
+                "node.pulse.compare.param.edge.1",
+                "node.pulse.compare.param.edge.2",
+            ],
         },
     },
 ];

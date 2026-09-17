@@ -48,7 +48,9 @@ impl crate::App {
     }
 
     /// Ver o cabeçalho do módulo. `true` = o clique foi consumido pelo HUD.
-    pub(super) fn ramo_botao_do_hud(
+    /// ⚠️ `pub(crate)` e não `pub(super)`: a SONDA da cena (`PH2D_HUD_PROBE`) conduz este ramo
+    /// pela porta do produto — *um arnês que monta o estado à mão mede outro programa*.
+    pub(crate) fn ramo_botao_do_hud(
         &mut self,
         kind: PointerKind,
         mapped_button: ph2d_host::PointerButton,

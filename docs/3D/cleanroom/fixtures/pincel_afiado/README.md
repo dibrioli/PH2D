@@ -1,8 +1,8 @@
 # Fixtures — o PINCEL DE TRAÇO AFIADO, do ORÁCULO, sobre malhas NOSSAS
 
 ⭐ Estes ficheiros são os vectores de teste da [`SPEC_pincel_afiado.md`](../../SPEC_pincel_afiado.md)
-§11 — **80** traços sobre malhas geradas por nós, com as posições e normais de repouso, as posições
-de saída, e (conforme a família) os estados intermédios dab a dab ou passagem a passagem.
+§11 e §16.11 — **110** traços sobre malhas geradas por nós, com as posições e normais de repouso, as
+posições de saída, e (conforme a família) os estados intermédios dab a dab ou passagem a passagem.
 
 ⚠️ **A contagem sai do directório, nunca desta prosa:**
 `find docs/3D/cleanroom/fixtures/pincel_afiado -name '*.txt.gz' | wc -l`.
@@ -14,6 +14,14 @@ de saída, e (conforme a família) os estados intermédios dab a dab ou passagem
 | [`produto/`](produto/) | **35** | o **produto**: traços arrastados com o rato, os valores de fábrica, o pincel tal como nasce no catálogo, oito passagens contínuas e separadas, três densidades, superfície curva, malha em triângulos, a ablação e o motor do alvo com os valores da nossa casa | **6** no G-3a · **5** no G-3b · **2** de completude · **22** excluídos com nome |
 | [`detector/`](detector/) | **15** | o **passo** do traço: um salto curto do rato e quantos dabs ele deposita | **13** no G-5a/b · **1** declarado · **1** no G-5c |
 | [`artefacto_caixa/`](artefacto_caixa/) | **3** | um **artefacto do alvo que NÃO se copia** (ver §4 abaixo) | **1** no G-11 · **2** documentação |
+| [`silhueta/`](silhueta/) | **30** | ⭐ **a 2.ª emenda** — o **passo junto à silhueta** (o vinco pontilhado do report do dono): o controlo de que o alvo tem o mesmo defeito · as duas leis do eixo «medido em» · o interruptor adaptativo **inerte** · o preço do modo de cena · o degenerado | **8** gates (G-13..G-20, espec §16.12) |
+
+⚠️⚠️ **A família [`silhueta/`](silhueta/) tem convenção PRÓPRIA, e ela é EXECUTÁVEL:** a malha é
+**gerada por fórmula** (chaves `malha_*` no cabeçalho) e os blocos `r`/`n`/`s` publicam um
+**SUBCONJUNTO DECLARADO** dos vértices — a razão está medida na espec §16.11 (as malhas que a régua
+da ondulação exige têm `79 k`–`1,08 M` vértices). ⭐ [`silhueta/confere_a_formula.py`](silhueta/confere_a_formula.py)
+re-deriva as posições da fórmula, confere que os índices publicados são os declarados, exige as
+**36** chaves de cabeçalho e tem **piso de população**; corra-o antes de acreditar num cabeçalho.
 
 ⛔ **Pendentes de decisão do dono** (fora do G-1/G-2 até o controlo existir — espec §12.1):
 `lei/pegada_projectada` · `cadeia/bossas_cursor_vivo_acumula` ·

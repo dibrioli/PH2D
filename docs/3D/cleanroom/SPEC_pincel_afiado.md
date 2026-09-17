@@ -17,12 +17,18 @@ Patente (§8.1): buscado em 2026-09-16 — pincel de escultura que desloca vért
 Filtragem §4.3: executada em 2026-09-16 sobre este texto (zero código, zero nome interno, zero
   comentário, zero wording de manual ou da discussão pública, zero tabela transcrita; as fórmulas
   são matemática do método em notação genérica; todo `code span` é nosso, de fixtura nossa, ou
-  valor público de enumeração usado como chave de regeneração — §4.1.13).
+  valor público de enumeração usado como chave de regeneração — §4.1.13). Re-executada sobre a
+  §16 na 2.ª emenda, 2026-09-16.
 Sweep: controlo do instrumento corrido PRIMEIRO (exit 0, todos os canais), depois VERDE com a
   vassoura desta obra (alongada na 1.ª emenda — contagem no ledger) e com as outras oito da pasta,
-  sobre esta espec, as 80 fixturas e o README delas, o INBOX e o README da pasta. O
+  sobre esta espec, as 110 fixturas e o README delas, o INBOX e o README da pasta. O
   --git-history da pasta acusa só patches de ledgers de OUTRAS obras (registado no ledger); o
-  commit desta obra, varrido à parte: 0.
+  commit desta obra, varrido à parte: 0. Re-corrido na 2.ª emenda sobre a §16 e as 30 fixturas
+  novas, com o controlo do instrumento PRIMEIRO.
+2.ª EMENDA (§16, 2026-09-16): o PASSO JUNTO À SILHUETA, aberta por um report do dono com foto.
+  Ela NÃO altera nenhuma lei nem nenhum gate das §1–§15; acrescenta a §16, a família de fixturas
+  `silhueta/` (30) e os gates G-13..G-20. ⚠️ Ela ainda NÃO foi auditada por R-pré: o atestado
+  abaixo cobre as §1–§15 e as 80 fixturas da 1.ª emenda.
 Auditoria §4.2 (R-pré): ✅ **auditada contra §4.2 por R-pré em 2026-09-16, 2.ª passagem** — por um
   subagente NOVO, independente do E e da 1.ª passagem. ⭐ A PAREDE ESTÁ LIMPA (os 5 blocos cercados
   são o cabeçalho e fórmulas de 1–3 linhas; os 172 code spans não-numéricos são todos nossos, nomes
@@ -750,8 +756,10 @@ interruptor neste modo, ou ligá-lo à lei do alvo.
 
 ## §11 — As fixtures
 
-[`fixtures/pincel_afiado/`](fixtures/pincel_afiado/README.md) — **80** ficheiros; a contagem sai
-do directório (`find … -name '*.txt.gz' | wc -l`).
+[`fixtures/pincel_afiado/`](fixtures/pincel_afiado/README.md) — **110** ficheiros; a contagem sai
+do directório (`find … -name '*.txt.gz' | wc -l`). ⚠️ As **80** desta tabela são as da entrega e da
+1.ª emenda; as outras **30** são a família `silhueta/` da **2.ª emenda** (§16.11), com convenção
+própria e conferidor próprio.
 
 | família | n | no gate | o que a bancada faz com ela |
 |---|---|---|---|
@@ -862,7 +870,8 @@ painel oferece exactamente o que o gesto faz*. Por isso estas três ficam FORA a
   G-11 não usa (`caixa_funda_somar`, `caixa_fina_ctrl`) documentam; não são gate.
 
 ⇒ **Soma, derivável do directório:** `lei/` 16 + 1 · `cadeia/` 5 + 2 + 3 · `produto/` 6 + 5 + 2 + 22 ·
-`detector/` 13 + 1 + 1 · `artefacto_caixa/` 1 + 2 = **80**.
+`detector/` 13 + 1 + 1 · `artefacto_caixa/` 1 + 2 = **80** — mais as **30** da `silhueta/` (§16.11,
+gates G-13..G-20), que são população de OUTROS gates e não entram em nenhum dos acima.
 
 ---
 
@@ -923,3 +932,319 @@ painel oferece exactamente o que o gesto faz*. Por isso estas três ficam FORA a
 | **P-3** (dono) | **a topologia dinâmica** (§9.4) | não refinar (como o alvo) · refinar (como o nosso `Draw`) | não refinar — é o que o nome promete (um vinco fino não sobrevive a um remalhe) |
 | **P-4** (dono) | **a pegada projectada** (§2.7) | não oferecer · oferecer | não oferecer neste modo — a fixtura fica na catraca do §12.1 e volta ao G-1 se for oferecida |
 | **P-5** (dono) | **a opção da normal do pen-down** (§3.1) — o nosso `Draw` não a tem | não oferecer · oferecer (congela a normal do **pen-down** no primeiro dab, §10.4) | não oferecer — é inerte num plano e não faz parte do valor de fábrica; a fixtura fica na catraca do §12.1 e volta ao G-2 se for oferecida |
+
+---
+
+## §16 — 2.ª EMENDA: O PASSO JUNTO À SILHUETA (o vinco pontilhado)
+
+```
+Emenda aberta em 2026-09-16 por um report do dono, com foto: «se fizer o traço do canto para o
+início da esfera, no canto fica meio pontilhado». Autor: subagente-E. Oráculo: o mesmo binário
+5.2.1 LTS, re-conferido inalterado. Filtragem §4.3 executada sobre esta secção; sweep verde.
+Malhas: NOSSAS, geradas por fórmula pelo harness (meia-cana e esfera amostradas por ÂNGULO —
+espaçamento de MUNDO uniforme, que é o que a peça do dono tem; rampas de inclinação constante).
+```
+
+### §16.0 — A pergunta zero desta emenda
+
+⚠️ **Antes de escrever lei nova, o CONTROLO:** *o alvo, com o pincel de fábrica e o mesmo gesto,
+pontilha também?* Se pontilhar, o nosso produto está **fiel** e a pergunta passa a ser de produto;
+se não pontilhar, falta-nos uma lei. A resposta é **pontilha, e com os mesmos números** (§16.2).
+
+### §16.1 — A régua NOVA: a ondulação AO LONGO do traço
+
+A régua do §7 mede a secção **transversal** (`D`, `W50`, nitidez). Ela é cega a este defeito: um
+vinco contínuo e um pontilhado têm a MESMA secção transversal no fundo de cada dab. ⇒ régua nova,
+**ao longo** do traço:
+
+- **estação** = uma coluna da malha ao longo do traço; a coordenada é o **comprimento de arco de
+  mundo** `s`, ⛔ nunca `x` de ecrã (junto à silhueta um píxel vale muitos graus, e `arcsin` perde
+  toda a resolução: `x = 199` px e `x = 200` px distam `5,7°`);
+- **`D(s)`** = o máximo, sobre a secção transversal daquela estação, do deslocamento **ao longo da
+  normal de repouso**, positivo para dentro; **`W50(s)`** = a largura a meia profundidade daquela
+  secção, na régua do §7.1;
+- **ondulação `r(s)`** = `(max − min)/max` de `D` numa janela de **UM período de dab local**
+  centrada em `s` — o período sai da lei em vigor (§16.4), não de um número escolhido;
+- ⛔ **`r` só é definida onde a janela INTEIRA cai dentro da faixa que o traço cobriu**, e com `≥ 5`
+  amostras dentro dela. Sem esta cláusula a régua lê `1,000` nas duas pontas do traço — onde o
+  vinco termina, não onde ele pontilha — e chamar-lhe-ia defeito.
+
+⭐ **Controlo de resolução (a régua não é um artefacto da malha):** a mesma corrida em duas malhas,
+`6,8` e `3,2` amostras por período, lê `0,023`/`0,021` · `0,314`/`0,314` · `0,977`/`0,978`.
+⭐ **Controlo de forma:** a meia-cana (o instrumento) e a esfera (a forma do dono) lêem a mesma
+tabela (§16.2) — a meia-cana é o instrumento porque a geometria é exacta (`s = r·u`, `cos θ = cos u`).
+
+### §16.2 — O CONTROLO: o alvo tem o MESMO defeito, e ele é do ENCURTAMENTO
+
+Pincel afiado de fábrica, uma passagem de `u = 84°` (junto à silhueta) até `u = 0` (o topo), meia-cana
+de raio `1`, `300` px por unidade, diâmetro de cena `100` px ⇒ `R = 0,1667` de mundo.
+
+| banda `u` | período de mundo | `D/R` | `W50/R` | **ondulação** |
+|---|---|---|---|---|
+| `5–15°` | `0,0169` | `0,2019` | `0,503` | **`0,002`** |
+| `25–35°` | `0,0192` | `0,1860` | `0,498` | `0,006` |
+| `45–55°` | `0,0259` | `0,1497` | `0,487` | `0,023` |
+| `60–68°` | `0,0380` | `0,1092` | `0,480` | `0,085` |
+| `68–74°` | `0,0511` | `0,0831` | `0,476` | `0,182` |
+| `74–79°` | `0,0713` | `0,0608` | `0,471` | **`0,314`** |
+| `79–83°` | `0,1065` | `0,0346` | `0,533` | **`0,570`** |
+| `83–88°` | `0,1719` | `0,0389` | `0,455` | **`0,977`** |
+
+Na **esfera** (`1 200` anéis), o mesmo gesto: `0,2028 · 0,1860 · 0,1498 · 0,1092 · 0,0831 · 0,0605 ·
+0,0345 · 0,0386` de `D/R` e `0,002 · 0,006 · 0,025 · 0,084 · 0,185 · 0,311 · 0,568 · 0,978` de
+ondulação. ⇒ **as duas formas concordam**.
+
+⭐⭐ **Duas coisas ao mesmo tempo, e o dono viu as duas:** o vinco **pontilha** (`0,002 → 0,977`) **e
+fica 5× mais raso** (`0,2019 → 0,0389 R`). A segunda é a primeira: com os dabs separados, cada ponto
+recebe **um** dab em vez da sobreposição de vinte.
+
+⚠️ **A banda do defeito é `u ≳ 70°` e ela não depende do tamanho do pincel nem do tamanho da peça.**
+O dab separa-se quando o passo de mundo passa a valer mais do que a largura útil da curva afiada,
+e as duas escalam com o diâmetro: `(esp/100)·D_mundo / cos θ > k·D_mundo` ⇒ `cos θ < esp/(100·k)`.
+Em ecrã a banda mede `R_peça_px · (1 − sin 70°) ≈ 6 %` do raio da peça — **quanto maior a peça no
+ecrã, mais larga a faixa pontilhada**, que é o que faz o defeito saltar à vista numa esfera grande.
+
+### §16.3 — O mecanismo, com número
+
+O passo de fábrica é medido no **ECRÃ** (§16.4). Um passo de `p` píxeis sobre uma superfície cuja
+normal faz `θ` com a vista percorre, na superfície,
+
+```text
+passo_de_mundo(θ) = (p / ppu) / cos θ
+```
+
+e `1/cos θ` → ∞ na silhueta. Medido no detector (§16.5) a fronteira do passo é **`5` px num plano,
+numa rampa de `45°` e numa rampa `4:1` (`76°`) — a MESMA**: ⇒ *o passo é cego à inclinação, e é a
+superfície que foge por baixo dele*.
+
+### §16.4 — O eixo «espaçamento medido em»: as DUAS leis
+
+O valor tem dois estados públicos (`VIEW` · `SCENE`) e o de fábrica deste pincel é `VIEW` (§16.7).
+
+```text
+VIEW  :  passo_de_ECRA  = (esp/100) · diametro_de_ecra_px            [constante, cego à inclinação]
+SCENE :  passo_de_MUNDO = (esp/100) · (diametro_de_ecra_px / ppu)    [constante em mundo]
+         e a distância que ele compara é a distância 3D entre o último dab e o acerto VIVO
+```
+
+**Medido** (meia-cana varrida de `−17°` a `+85°` num traço só, diâmetro `24` px, `200` px/unidade,
+os dabs lidos como picos separados do próprio barro):
+
+| `esp` | `VIEW`: passo de ecrã | `SCENE`: corda 3D entre dabs | alvo `esp·D_mundo` |
+|---|---|---|---|
+| `60 %` | `14,40` px (desvio-padrão `0,05`) | `0,07204` (dp `5,7e-5`) | `0,07200` |
+| `100 %` | `24,00` px (dp `0,06`) | `0,12015` (dp `3,3e-4`) | `0,12000` |
+| `150 %` | `36,00` px (dp `0,09`) | `0,18016` (dp `9,5e-5`) | `0,18000` |
+
+⭐ Em `VIEW` o ângulo dos dabs ao longo da meia-cana é **desigual** e o passo de ecrã constante; em
+`SCENE` o ângulo é **uniforme** (`4,13° · 6,90° · 10,35°` para os três espaçamentos) e o passo de
+ecrã encolhe com `cos θ` (`23,98 → 3,86` px entre o topo e `84°`). ⭐ **A corda 3D ajusta melhor que
+o arco** (`+0,09 %` contra `+0,22 %` a `150 %`): a grandeza comparada é uma **distância entre dois
+pontos**, não um comprimento de caminho.
+
+⚠️ **Num plano de frente para a vista os dois modos COINCIDEM por construção** (`cos θ = 1`), e
+isso está medido: `plano_vista` × `plano_cena` diferem `+0,09 %` no fundo do vinco.
+
+### §16.5 — O «espaçamento adaptativo» é **INERTE** neste caminho
+
+⛔ **A hipótese natural era esta ser a cura. Não é.** Ligado, ele não muda **nada**:
+
+| população | `|Δ|` máximo entre ligado e desligado | o que vale um dab a mais |
+|---|---|---|
+| `12` traços de meia-cana (`3` espaçamentos × `VIEW`/`SCENE`) | `≤ 6,0e-8` (um par ao bit) | `1,3e-2` |
+| `132` pares do detector (`3` superfícies × `22` saltos × `VIEW`/`SCENE`) | `≤ 6,0e-8`; as **classes** de salto são idênticas | `1,3e-2` |
+
+⇒ razão `2×10⁵`. ⚠️ **E o chão de ruído tinha de ser medido:** duas corridas da MESMA configuração
+diferem `0` a `6,0e-8` (`f32`), então uma classe definida por igualdade **ao bit** parte-se em duas
+sem nenhuma diferença de comportamento — foi o que a 1.ª leitura desta emenda fez, e leu «o
+adaptativo mudou alguma coisa» onde não havia nada. *Uma classe de equivalência sem o chão de ruído
+ao lado é uma medição à espera de inventar um efeito.*
+
+⚠️ **O que NÃO foi medido, e porquê:** o interruptor só pode agir sobre um espaçamento que **varie
+ao longo do traço por outra causa**, e a única causa que o alvo oferece para isso é o **tamanho a
+seguir a pressão** — que um rato não produz (a pressão simulada é `1` constante). A janela virtual
+não entrega caneta. ⇒ **declarado**: inerte *para o dispositivo que o nosso produto tem* (a nossa
+casa também não tem pressão de caneta — §6), e a condição sob a qual poderia agir fica **nomeada e
+por medir**.
+
+### §16.6 — O caso degenerado: o cursor sobre a tangente
+
+- **A caneta que desce EXACTAMENTE no píxel da silhueta não deposita nada** — o raio não acerta,
+  e a malha fica intocada (`pen_down_na_silhueta_sem_dab`: zero vértices movidos).
+- **Um píxel para dentro, e o traço começa ali**, com **um** dab
+  (`pen_down_na_silhueta_um_px_para_dentro`) — o primeiro dab é o do primeiro acerto, não o do
+  píxel em que o botão desceu. Saltos de `1 · 2 · 3 · 5 · 8` px a partir desse píxel dão **um** dab
+  cada, o que é a grelha de `5` px a recomeçar no primeiro acerto.
+- **Não há infinito**, e a razão é geométrica: a superfície é finita, logo o comprimento de arco
+  sob o cursor é finito mesmo onde a projecção degenera. O que cresce sem tecto é o **número de
+  dabs por píxel de rato** no modo `SCENE` (`1/cos θ`): a `84°` um único píxel já pede `~10`
+  (`0,00333` de mundo em `x`, dividido por `cos 84° = 0,1045`, contra um passo de `0,01667`).
+- ⛔ **Tecto: não encontrado, e a régua é a LINEARIDADE.** Num único evento de ponteiro sobre uma
+  rampa `4:1` em modo `SCENE`, a soma do deslocamento cresce **linearmente** com o salto até `72` px
+  (`0,073` · `0,075` · `0,077` · `0,079` · `0,080` por píxel nos saltos `10` · `20` · `35` · `50` ·
+  `72`) — nenhum joelho, e o último vale `48×` o trabalho de um dab só. ⚠️ **Esta soma é um LIMITE
+  INFERIOR da contagem** (dabs sobrepostos somam sub-linearmente pela auto-limitação do §4), logo o
+  número real é `≥ 48`. *É uma ausência medida numa faixa, não uma prova de que não existe tecto.*
+
+### §16.7 — Os VALORES DE FÁBRICA dos três
+
+Lidos do pincel de **catálogo** carregado pelo próprio programa num arranque de fábrica (a mesma
+porta do §6; nenhum ficheiro de pincéis foi aberto pelo harness):
+
+| valor | pincel afiado | desenho comum | nosso |
+|---|---|---|---|
+| espaçamento medido em | **`VIEW`** (ecrã) | `VIEW` | ecrã — `spacing.rs:46-49` diz que a régua é a do chamador, e `input.rs:331,357,384` passa `scene.radius_px()` |
+| espaçamento adaptativo | **desligado** | desligado | não existe |
+| espaçamento segue a pressão | **não** | não | não há pressão de caneta |
+| espaçamento | `5 %` do diâmetro | `10 %` | `5 %` — `atenuacao_do_traco.rs:51,70` |
+
+⭐ **Prova de completude:** a corrida de catálogo e a de valores escritos dão a mesma malha a
+`1,8e-7` (ruído de `f32`) ⇒ os valores acima **são** o pincel de fábrica.
+
+### §16.8 — A COMPOSIÇÃO com a atenuação: `a` **não** segue o passo
+
+A atenuação `a` do §5.2 é derivada da **percentagem declarada**, e a percentagem não muda quando o
+passo efectivo muda. Medido pela razão de profundidade entre os dois modos, contra `1/cos θ`:
+
+| banda `u` | `D_cena / D_vista` | `1/cos u` | desvio |
+|---|---|---|---|
+| `0–10°` | `1,0093` | `1,0037` | `+0,6 %` |
+| `15–25°` | `1,0540` | `1,0640` | `−0,9 %` |
+| `30–40°` | `1,2032` | `1,2211` | `−1,5 %` |
+| `40–50°` | `1,4565` | `1,4153` | `+2,9 %` |
+| `50–58°` | `2,5152` | `1,7012` | `+47,9 %` (a auto-limitação do §4 já morde) |
+
+⇒ **a profundidade segue a DENSIDADE de dabs, um para um**, até a auto-limitação entrar. Se `a`
+fosse recalculado do passo efectivo, a razão seria `≈ 1` em toda a tabela. ⭐ **O contraste está no
+§5.3:** mudar a percentagem **declarada** de `5 %` para `10 %` move a profundidade `−0,6 %` (o `a`
+compensa); mudar o passo **efectivo** pelo mesmo factor move-a `+100 %` (não compensa).
+
+⇒ **Resposta à pergunta do report:** com o adaptativo (inerte) a profundidade no meio da peça **não
+muda** (`≤ 6e-8`); com o eixo que de facto varia o passo (`SCENE`) ela não muda **no meio** (plano
+`+0,09 %`; a `u = 5–15°` `+1,6 %`, contra `1/cos 10° = 1,015` previsto) e muda **fora dele**, por
+`1/cos θ`.
+
+### §16.9 — ⛔⛔ O PREÇO do modo `SCENE` — ele cura o pontilhado e NÃO se copia como está
+
+| medição | `VIEW` (fábrica) | `SCENE` |
+|---|---|---|
+| ondulação a `74–79°` | `0,314` | **`0,011`** ✅ cura |
+| `D/R` a `74–79°` | `0,0608` | **`0,6295`** ⛔ `10×` mais fundo que em `VIEW`, `3×` mais fundo que o próprio meio da peça |
+| o mesmo traço a **`4` px por evento** de rato em vez de `1` | `0,1092 · 0,0608 · 0,0225` (desvio `≤ 1,0 %` nestas três bandas; `1,9 %` na ponta do traço) | `0,3116 · 0,4380 · 0,2715` — **cai `45,6 %`, `30,4 %` e `51,1 %`** |
+| o mesmo caminho percorrido **ao contrário** (do meio para a silhueta) | igual, tirando a ponta | `0,1935` a `74–79°` contra `0,6295` — **`3,3×`** |
+| o cursor **PARADO** (eventos repetidos no mesmo píxel), `|Δ|` máximo | `0,00983` em `60°`, `75°` e `84°` (um dab) | `0,00977` · `0,01551` · `0,01728` — **continua a carimbar, e tanto mais quanto maior a inclinação** |
+
+⭐⭐ **O mecanismo das três últimas linhas é um só, e é uma realimentação:** o que `SCENE` compara é
+a distância 3D até ao acerto **vivo**, e o acerto vivo **afunda com o vinco**. Uma superfície
+deslocada de `δ` ao longo da própria normal move o acerto de um raio fixo em `δ / cos θ` —
+**o mesmo `1/cos θ`** — logo junto à silhueta o afundamento *sozinho* já ultrapassa o passo e pede
+mais dabs, que afundam mais. ⇒ o resultado passa a depender de **quantos eventos o rato entregou**
+e de **em que sentido** a mão andou.
+
+⛔⛔ **Isto viola por construção a lei que o módulo já pagou seis vezes** — *o traço é facto do
+CAMINHO, nunca de quão fino o motor amostrou o caminho* (`spacing.rs:1-40`, e o §0 do roteador).
+⇒ **copiar `SCENE` como está seria importar um defeito de classe**, e a fidelidade não o pede: ele
+**não é o valor de fábrica** de nenhum dos dois pincéis do alvo.
+
+### §16.10 — O que isto quer dizer para a NOSSA casa (lido no código vivo)
+
+1. **Somos fiéis, e o pontilhado é fidelidade.** O nosso passo é
+   `passo_do_traco(verb, raio) = raio · pct / 50` com `pct = 5` para o pincel afiado
+   (`atenuacao_do_traco.rs:51,70`) e o `raio` que os três sítios de chamada passam é
+   `scene.radius_px()` (`input.rs:331,357,384`), um raio de **ECRÃ** (`space.rs:253`). O módulo do
+   passeio declara-o por escrito: *«a unidade é a do CHAMADOR … no nosso shell essa régua é a TELA»*
+   (`spacing.rs:46-49`). ⇒ o nosso produto reproduz o modo `VIEW` do alvo, que é o de fábrica.
+2. **A cura, se o dono a quiser, tem DUAS metades, e só a primeira existe no alvo:**
+   - **(a) o passo em mundo.** ⚠️ ⛔ **não** pela lei do alvo (a distância ao acerto vivo, §16.9),
+     mas pela **geometria do caminho**: percorrer o caminho do cursor e medir a distância entre os
+     **acertos consecutivos na superfície do início do traço**. Isso dá o mesmo passo uniforme sem
+     realimentação, sem dependência da taxa de amostragem e sem dependência do sentido — e é a
+     forma que o nosso [`spacing.rs`](../../../crates/ph2d-sculpt3d/src/spacing.rs) já tem
+     (o `walk` recebe *dois pontos e uma distância mínima na mesma régua*; muda a régua, não a lei).
+   - **(b) a atenuação a seguir o passo efectivo.** Sem ela, (a) sozinha troca um vinco pontilhado
+     por um vinco `1/cos θ` mais fundo (§16.8) — que foi exactamente o que se mediu no alvo.
+     ⛔ **O alvo NÃO faz (b)**, logo isto é desenho nosso e não paridade: fora de qualquer gate de
+     paridade, e **decisão do dono** (P-6, §16.13).
+3. ⛔ **O «espaçamento adaptativo» não é a alavanca** e não deve ser implementado com esse nome à
+   espera de curar isto: medido inerte (§16.5).
+
+### §16.11 — As fixturas desta emenda
+
+Família nova [`fixtures/pincel_afiado/silhueta/`](fixtures/pincel_afiado/silhueta/) — **30**
+ficheiros; a contagem sai do directório, nunca desta prosa.
+
+⚠️ **Convenção NOVA, declarada:** a malha é **gerada por FÓRMULA** e o cabeçalho traz as chaves
+`malha_*` (tipo, raio, células, ângulos) que a reconstroem inteira; os blocos `r`/`n`/`s` publicam
+um **SUBCONJUNTO DECLARADO** (a fila do traço inteira + a secção transversal inteira em `16`
+estações). A razão é medida: a malha que esta régua exige tem `79 k`–`1,08 M` vértices e publicá-la
+toda custaria megabytes por ficheiro.
+⭐ **E a convenção é EXECUTÁVEL:** [`silhueta/confere_a_formula.py`](fixtures/pincel_afiado/silhueta/confere_a_formula.py)
+re-deriva as posições de repouso da fórmula do cabeçalho, confere que os índices publicados são
+exactamente os declarados, exige as `36` chaves de cabeçalho e tem **piso de população** (`≥ 20`
+ficheiros). Provado por mutação nas quatro formas de podridão: fórmula errada (`1,0e-3` contra a
+tolerância `2e-6`), chave de cabeçalho apagada, índice retirado do bloco, e o censo a varrer quase
+nada. *Sem ele o cabeçalho podia descrever uma malha e o ficheiro trazer outra — prosa não é
+executável.*
+
+| grupo | ficheiros | o que fixa |
+|---|---|---|
+| o CONTROLO do report | `produto_cupula_fabrica_da_silhueta` · `produto_cupula_catalogo_da_silhueta` · `produto_esfera_fabrica_da_silhueta` | o alvo pontilha, com o pincel de fábrica e com o de catálogo, na meia-cana e na esfera |
+| a LEI do passo | `passo_em_{vista,cena}_esp{060,100,150}` (**6**) | as duas leis do §16.4, com a percentagem a escalar |
+| o adaptativo INERTE | `adaptativo_ligado_em_{vista,cena}_esp100` (**2**) | têm de dar a MESMA saída que os dois de cima |
+| a inclinação não move a fronteira | `detector_{plano,rampa1,rampa4}_vista_salto_{04,05}px` (**6**) | a fronteira do passo é `5` px nas três |
+| … e move-a em `SCENE` | `detector_rampa4_cena_salto_{03,04}px` (**2**) | ali a fronteira desce para `4` px |
+| o PREÇO de `SCENE` | `produto_cupula_cena_da_silhueta` · `produto_esfera_cena_da_silhueta` · `produto_cupula_{fabrica,cena}_4px_por_evento` · `produto_cupula_cena_do_meio_para_a_silhueta` · `parado_cupula_{cena,vista}_u84` (**7**) | as quatro linhas do §16.9, cada uma com o seu controlo |
+| o degenerado | `pen_down_na_silhueta_sem_dab` · `pen_down_na_silhueta_um_px_para_dentro` (**2**) | §16.6 |
+| o controlo plano | `plano_vista` · `plano_cena` (**2**) | os dois modos coincidem de frente para a vista |
+
+### §16.12 — Os GATES propostos
+
+Mesma convenção do §12 («aprovado» = o maior erro do lado que tem de passar; «errado» = o menor
+erro da candidata que tem de reprovar; a barra fica **estritamente entre** os dois).
+
+| gate | população (piso) | mede | barra | aprovado | errado mais perto | origem |
+|---|---|---|---|---|---|---|
+| **G-13** o nosso passo é o do alvo junto à silhueta | `passo_em_vista_esp{060,100,150}` (**3**) | posição de cada dab, em píxeis de ecrã, contra os picos do barro | `0,5` px | `0,094` px (o maior desvio-padrão medido dos passos, a `150 %`) | a lei de `SCENE` no mesmo traço põe o 2.º dab a **`12,4`–`29,1` px** do sítio certo (o passo dela junto à silhueta é `1,96`/`3,86`/`6,85` px contra `14,40`/`24,00`/`36,00`) | §16.4 |
+| **G-14** a inclinação NÃO move a fronteira do passo | `detector_{plano,rampa1,rampa4}_vista_salto_{04,05}px` (**6**, piso `3` superfícies) | nº de dabs: `4` px ⇒ `1`, `5` px ⇒ `2`, nas TRÊS | exacto | exacto | uma lei que divida o passo por `cos θ` lê `2` dabs a `4` px na rampa `4:1` | §16.3 |
+| **G-15** a régua da ondulação separa o pontilhado do contínuo | `produto_cupula_fabrica_da_silhueta` (**1** corrida, **2** bandas) | `r` mediana em `u ∈ [25°,35°]` e em `u ∈ [74°,79°]` | `< 0,05` e `> 0,20` | `0,006` e `0,314` | um vinco contínuo lê `0,011` na banda de fora; a régua sem a cláusula das pontas lê `1,000` no meio | §16.1, §16.2 |
+| **G-16** a nossa saída pontilha como a do alvo | `produto_cupula_fabrica_da_silhueta` · `produto_esfera_fabrica_da_silhueta` (**2**) | desvio relativo de `D/R` e de `r`, por banda de `u` | `8 %` em `D/R` (bandas até `79°`) · `0,06` absoluto em `r` | `0,52 %` e `0,0036` (meia-cana × esfera, que são duas medições independentes da mesma lei) | a lei de `SCENE`: `D/R` `+935 %` a `74–79°` | §16.2 |
+| **G-17** o adaptativo é inerte | `adaptativo_ligado_em_{vista,cena}_esp100` × os dois pares (**2**) | `max |Δ|` contra o par sem o interruptor | `1e-6` | `6,0e-8` | um dab a mais `1,3e-2` | §16.5 |
+| **G-18** de frente para a vista os dois modos coincidem | `plano_vista` × `plano_cena` (**2**) | desvio relativo do fundo do vinco | `0,5 %` | `0,09 %` | na meia-cana a `74°` os mesmos dois modos diferem `935 %` | §16.4 |
+| **G-19** ⛔ o traço é facto do CAMINHO (a catraca que proíbe importar `SCENE`) | `produto_cupula_fabrica_4px_por_evento` × `produto_cupula_fabrica_da_silhueta` (**2**) | desvio relativo de `D/R` por banda entre `1` e `4` px por evento | `5 %` | `1,9 %` (só a banda da ponta do traço; as outras quatro leem `≤ 1,0 %`) | o par de `SCENE` lê `45,6 %` e `51,1 %` nas duas bandas junto à silhueta | §16.9 |
+| **G-20** o pen-down sobre a tangente não carimba | `pen_down_na_silhueta_sem_dab` (**1**) | vértices movidos | `0` | `0` | um dab move `3 229` | §16.6 |
+
+⚠️ **G-19 é o gate que esta emenda existe para deixar escrito.** Ele não mede o pincel afiado: mede
+a **classe** da lei do passo, e reprova qualquer futura implementação que meça a distância contra
+uma superfície que o próprio traço está a mover. *Uma recusa medida sem gate é uma nota que a
+próxima janela reabre.*
+
+### §16.13 — Decisões do dono e recusas medidas
+
+| # | assunto | as saídas | recomendação técnica |
+|---|---|---|---|
+| **P-6** (dono) | **o vinco pontilhado junto à silhueta** | (i) ficar fiel ao alvo (é o valor de fábrica dele, e é o que temos) · (ii) passo em MUNDO pela geometria do caminho, sem a realimentação do alvo · (iii) (ii) **mais** a atenuação a seguir o passo efectivo, que é o único que mantém a profundidade constante | **(iii)**, com (ii) isolado atrás de um interruptor para bissecar. ⛔ (i) é uma escolha legítima e barata; ⛔ copiar o `SCENE` do alvo **não** está na lista (§16.9) |
+| **P-7** (dono) | **oferecer o eixo «medido em» ao artista** | esconder · oferecer com as duas leis do alvo · oferecer só com a nossa | **esconder** até P-6 decidir: oferecer o `SCENE` do alvo é oferecer um knob cujo resultado depende da taxa de amostragem do rato |
+
+⛔ **Recusas MEDIDAS desta emenda — não as reconstrua:**
+
+1. **O «espaçamento adaptativo» como cura** — medido inerte em `12` traços e `132` pares do
+   detector (`≤ 6,0e-8` contra `1,3e-2` de um dab). §16.5.
+2. **Copiar o modo `SCENE` do alvo** — cura o pontilhado e compra três defeitos medidos: `10×` a
+   profundidade junto à silhueta, dependência da taxa de amostragem (`−30 %` a `−51 %` com `4` px
+   por evento) e dependência do sentido (`3,3×`). §16.9.
+3. **Medir a ondulação numa janela fixa** — lê `1,000` nas pontas do traço, onde o vinco acaba.
+   A janela é **um período de dab local** e só vale com a janela inteira dentro da faixa coberta.
+   §16.1.
+4. **Ler a posição do dab em `x` de ecrã junto à silhueta** — `x = 199` px e `x = 200` px distam
+   `5,7°` de superfície; a coordenada é o **arco de mundo**. §16.1.
+5. **Definir as classes do detector por igualdade AO BIT** — duas corridas da mesma configuração
+   diferem até `6,0e-8`, e a classe parte-se em duas sem que nada tenha mudado. §16.5.
+
+⚠️⚠️ **E uma armadilha que esta emenda pagou, na própria fixtura:** a primeira esfera do harness
+saiu com o **enrolamento das faces invertido**. Com a normal a apontar para dentro, o pincel que
+**afunda** levanta uma **crista** — e **todas** as réguas continuaram a devolver números plausíveis
+e da ordem de grandeza certa (`D_max` `0,0351` contra os `0,0346` do valor certo), porque o módulo
+do deslocamento é quase o mesmo. O que o denunciou foi medir o deslocamento **com sinal, ao longo
+da normal de repouso**; o que o teria apanhado antes é o guarda que o harness passou a ter
+(*a normal média tem de apontar para fora*). ⇒ *uma malha com o enrolamento trocado não reprova
+nenhum gate de magnitude: ela executa o verbo contrário e finge concordar.*

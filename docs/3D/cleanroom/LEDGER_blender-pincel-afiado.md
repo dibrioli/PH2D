@@ -854,3 +854,90 @@ ficheiro interno do alvo**. Isso é dívida das linhas donas daquelas obras e vi
 `main`, logo reescrevê-lo não a cura (o precedente é o INC-U1 do ledger dos pincéis). ⇒ item para o
 R-PÓS, com a lei que a casa já escreveu: *o sweep é propriedade do PAR (artefacto, vassoura), e uma
 vassoura que cresce obriga a corrida nova sobre tudo o que já passou.*
+
+---
+
+## 2.ª EMENDA DO E — 2026-09-16 (o PASSO JUNTO À SILHUETA, aberta por um report do dono com foto)
+
+> Report: *«se fizer o traço do canto para o início da esfera, no canto fica meio pontilhado»*.
+> A emenda acrescenta a **§16** da espec, a família de fixturas **`silhueta/`** (30) e os gates
+> **G-13..G-20**. ⛔ **Nenhuma lei, nenhuma fixtura e nenhum gate das §1–§15 foi alterado** — só as
+> contagens (`80 → 110`) e o cabeçalho.
+
+### O que foi corrido (oráculo)
+
+| | |
+|---|---|
+| binário | o MESMO `/usr/bin/blender` 5.2.1 LTS, re-conferido inalterado |
+| como | a mesma janela num compositor **virtual** (`kwin_wayland --virtual --xwayland`), `--factory-startup`, `--enable-event-simulate`, `TMPDIR` na zona; harness novo `oracle/harness_emenda2.py`, derivado do de arrasto, saídas em `out2/` |
+| entradas | ⭐ **100 % nossas**, geradas por FÓRMULA: meia-cana e esfera **amostradas por ÂNGULO** (espaçamento de MUNDO uniforme, que é o que a peça do dono tem) e rampas de inclinação constante sobre a grelha de sempre |
+| corridas | **376** (lei dos pits 12 · detector 264 · produto 10 · degenerado 50 · diagnóstico 8 · realimentação 16 · esfera re-corrida 12 · smoke 3 · enums 1), zero falhas no último registo de cada campanha |
+| publicadas | **30** fixturas em `docs/3D/cleanroom/fixtures/pincel_afiado/silhueta/` (2,06 MB) |
+| leitura dos valores de fábrica | pelo caminho do **produto** (o catálogo carregado pelo próprio programa); a corrida de catálogo coincide com a de valores escritos a `1,8e-7` |
+
+### ⛔ Quatro armadilhas que esta emenda pagou
+
+1. **O ENROLAMENTO da esfera saiu invertido no meu gerador**, e com a normal para dentro o pincel
+   que **afunda** levanta uma **crista** — com `D_max` `0,0351` contra os `0,0346` do valor certo.
+   ⚠️ **Todas** as réguas de magnitude continuaram a devolver números plausíveis; o que o denunciou
+   foi medir o deslocamento **com sinal ao longo da normal de repouso**. O harness ganhou um guarda
+   (`confere_normais_para_fora`) que corre em toda superfície convexa, e as corridas de esfera foram
+   **refeitas**. ⇒ registado na espec §16.13 como lei para obras futuras.
+2. **Uma classe de equivalência definida AO BIT partiu-se sem que nada mudasse:** duas corridas da
+   mesma configuração diferem até `6,0e-8` (o mesmo chão de ruído que a 1.ª emenda mediu em
+   `2,3e-8`–`3,3e-7`), e a 1.ª leitura do detector concluiu *«o adaptativo mudou alguma coisa»*
+   sobre isso. Com tolerância de `1e-6` os quatro modos colapsam nos dois que de facto existem.
+3. **A régua da ondulação lia `1,000` nas PONTAS do traço** — onde o vinco acaba, não onde ele
+   pontilha. A cláusula que a salva (a janela inteira dentro da faixa coberta, `≥ 5` amostras) está
+   na espec §16.1, e o **controlo de resolução** (a mesma corrida a `6,8` e a `3,2` amostras por
+   período) está medido ao lado.
+4. **`arcsin` perde toda a resolução junto à silhueta:** `x = 199` px e `x = 200` px distam `5,7°`
+   de superfície ⇒ toda posição de dab se lê em **arco de mundo**, nunca em `x` de ecrã.
+
+### A vassoura: NÃO foi alongada, e a decisão fica NOMEADA
+
+Os dois controlos que esta emenda mede (`use_scene_spacing` · `use_adaptive_space`, mais os
+vizinhos `use_pressure_spacing` · `use_locked_size` · `unprojected_size`) **não estão na vassoura**
+— conferido correndo o `cleanroom-sweep.sh` sobre um ficheiro de candidatos **na zona**, `exit 0`.
+
+⇒ **Isenção NOMEADA, nunca silêncio:** são **nomes de propriedade da API pública** do alvo, da mesma
+espécie dos seis que a família da escultura já declara como alcançados por **CORRER** o programa
+(dump de propriedades), nunca por ler fonte. Alargar a vassoura a eles criaria falsos positivos
+contra uma autorização que a casa já escreveu. ⚠️ **E a espec §16 não os usa**: ela escreve-os no
+vocabulário do domínio (*«espaçamento medido em»*, *«espaçamento adaptativo»*), como o cabeçalho das
+fixturas já fazia pela tabela de tradução do README delas. Os **valores** (`VIEW` · `SCENE`) ficam,
+que é a regra §4.1.13 já em vigor nesta obra.
+
+### Filtragem e sweeps desta emenda
+
+- **Filtragem §4.3** re-executada sobre a §16 inteira: zero código, zero nome interno, zero
+  comentário, zero wording de manual ou de discussão pública, zero tabela transcrita.
+- **Controlo do instrumento PRIMEIRO** (`scripts/cleanroom-sweep-controlo.sh`): `exit 0`, todos os
+  canais a discriminar.
+- **As NOVE vassouras da pasta** sobre a espec, as **30** fixturas novas, o README das fixturas e o
+  texto do report final do E: **as nove a `exit 0`**.
+- ⚠️ A corrida foi feita **depois** de a vassoura desta obra ter as 262 entradas da 1.ª emenda; não
+  houve alongamento, logo não há re-corrida sobre a árvore inteira a dever (a lei *«uma vassoura que
+  cresce obriga a corrida nova sobre tudo o que já passou»* fica satisfeita por vacuidade aqui).
+
+### ⚠️ O que esta emenda NÃO tem, e é preciso dizê-lo
+
+- **R-pré**: a §16 **não foi auditada**. O atestado de 2026-09-16 (2.ª passagem) cobre as §1–§15 e
+  as 80 fixturas; o cabeçalho da espec passou a dizê-lo por escrito.
+- **Duas decisões do dono novas** (P-6 e P-7, espec §16.13), as duas com o número ao lado.
+- **Uma condição por medir e NOMEADA**: o interruptor adaptativo só poderia agir sobre um
+  espaçamento que variasse ao longo do traço, e a única causa que o alvo oferece para isso é o
+  tamanho a seguir a **pressão** — que a janela virtual não entrega e que a nossa casa também não
+  tem. ⇒ *inerte para o dispositivo que o nosso produto tem*, com a condição escrita.
+- **Um tecto não encontrado**: um único evento de ponteiro depositou **48** dabs sem saturar
+  (rampa `4:1`, salto de `72` px, modo de cena). É uma ausência medida **numa faixa**, não uma prova.
+
+### Higiene
+
+- Tudo do alvo — harness, configurações, registos, `npz` crus, o rascunho deste report — vive em
+  `~/Referencias/blender-pincel-afiado/` (`oracle/`, `out2/`, `draft/`). ⛔ Nada em `/tmp`, nada no
+  scratchpad da sessão-mãe, nada no repo além das 30 fixturas, do conferidor e do texto da §16.
+- O conferidor `silhueta/confere_a_formula.py` **entra no repo** de propósito: ele não é do alvo —
+  é a régua da convenção nova, e foi provado por mutação nas quatro formas de podridão (fórmula
+  errada · chave de cabeçalho apagada · índice retirado · o censo a varrer quase nada), com as
+  mutações feitas numa **cópia** no scratchpad, nunca na árvore.

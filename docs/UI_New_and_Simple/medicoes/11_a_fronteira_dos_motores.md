@@ -311,6 +311,33 @@ superfície (foi ela que a desligou em 07/09). Apagar `7 558` linhas dali a part
 seria uma colisão de fusão com a linha que a possui — *o registo de posse é a própria árvore, e
 ela responde na hora* (`git worktree list`).
 
+### §8.2-ter — ⭐⭐⭐ RETIRAR uma superfície diz quem MAIS estava a ler o mesmo dado
+
+A `line/motion-value` executou o pedido do §8.2-bis no mesmo dia. Ao medir o que a remoção dela
+faria a esta linha, apareceu um defeito **meu**, que a suíte inteira (`24 397` testes) tinha
+deixado passar verde:
+
+```rust
+// motion_bridge_tutorial_table.rs:136 — o HTML que vai para o PDF que o dono lê
+ParamRow::Enum(r) => (r.label.clone(), r.labels.join(" · "), String::new()),
+```
+
+⛔ **Este ficheiro não DESENHA — ele ESCREVE.** Os três gates da §8.2 medem as superfícies que se
+pintam, e nenhum deles alcança uma página gerada. Com as opções a carregarem chaves, a tabela do
+tutorial imprimia `node.motion.wave.param.edges.0 · …`: medido pela mutação, **`27`
+identificadores** numa tabela de quatro nós.
+
+⭐ **A lei:** *retirar uma superfície é o instrumento mais barato para achar quem MAIS lia aquele
+dado.* Enquanto o painel existia, ele era o leitor óbvio e escondia os outros; removido, o
+tutorial ficou a ser **o único leitor de produto** das opções — e a olhar para essa lista de um
+só nome, o buraco apareceu sozinho. ⇒ gate `the_tutorial_table_never_prints_a_raw_key`, com a
+régua a ser o HTML de uma tabela **real** do produto (uma inventada mediria uma página que
+ninguém publica) e com dois controlos positivos (a tabela tem tamanho, e tem pelo menos uma linha
+de opções).
+
+⚠️ E a varredura que confirma que não sobra nenhum: **3** acertos no repo inteiro, os três falsos
+positivos (um doc-comment e dois `labels` de outro assunto).
+
 ### §8.3 — ⭐ A régua do painel é DIFERENCIAL, porque o arnês conta glifos
 
 O `MockPanelHost` conta **glifos**, não texto ⇒ pinta-se a mesma row duas vezes — com as chaves e

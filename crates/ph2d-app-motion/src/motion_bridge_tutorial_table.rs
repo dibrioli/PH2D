@@ -133,7 +133,20 @@ fn celula(row: &ph2d_panel_motion_params::ParamRow) -> Option<(String, String, S
         ),
         ParamRow::Toggle(r) => (r.label.clone(), "liga / desliga".to_string(), String::new()),
         // ⭐ Um enum não tem faixa: tem OPÇÕES, e é isso que serve a quem lê o tutorial.
-        ParamRow::Enum(r) => (r.label.clone(), r.labels.join(" · "), String::new()),
+        // ⚠️⚠️ **As opções são CHAVES e o tutorial é TEXTO.** Desde a 5.ª fatia do HR-15 o array
+        // de um `EnumRow` carrega identificadores, e quem os resolve é quem desenha — este
+        // ficheiro NÃO desenha: ele escreve o HTML que vai para o PDF que o dono lê. ⛔ Sem o
+        // `tr` aqui a tabela imprime `node.motion.wave.param.edges.0 · …`, e **nenhum outro gate
+        // o vê** (os três da 5.ª fatia medem as superfícies que se PINTAM).
+        ParamRow::Enum(r) => (
+            r.label.clone(),
+            r.labels
+                .iter()
+                .map(|k| ph2d_i18n::tr(k))
+                .collect::<Vec<_>>()
+                .join(" · "),
+            String::new(),
+        ),
         _ => return None,
     })
 }
@@ -247,6 +260,52 @@ fn one_unit_one_word_in_a_generated_table() {
             "a tabela imprime `{outra}` para uma unidade cuja face canónica é `{deg}` -- duas \
              palavras para a mesma unidade, na mesma página, decididas pelo widget que o nó \
              calhou usar"
+        );
+    }
+}
+
+#[cfg(test)]
+mod testes_da_tabela {
+    /// ⭐⭐⭐ **O TUTORIAL NÃO IMPRIME IDENTIFICADORES.**
+    ///
+    /// ⛔⛔ **Este ficheiro NÃO desenha, e é essa a razão de o gate existir.** Os três gates da
+    /// 5.ª fatia do HR-15 medem as superfícies que se PINTAM (o painel, o estado do cartão, a
+    /// lista do cartão) — e este escreve o **HTML que vai para o PDF que o dono lê**. Um `tr` em
+    /// falta aqui deixa os três verdes e põe `node.motion.wave.param.edges.0 · …` na página.
+    ///
+    /// ⚠️ **Ele foi encontrado por acidente**, ao medir o que a remoção do painel lateral faria a
+    /// esta linha: depois dela, este é o **único leitor de produto** que sobra das opções — e a
+    /// suíte inteira (`24 397` testes) estava verde com o defeito lá dentro.
+    ///
+    /// A régua é o HTML de uma tabela REAL do produto (as âncoras do ciclo dos campos), e não uma
+    /// fixtura montada aqui: *uma tabela inventada mede uma página que ninguém publica.*
+    #[test]
+    fn the_tutorial_table_never_prints_a_raw_key() {
+        let html = super::derive(&[
+            ("falloff", "motion.falloff"),
+            ("radial-sweep", "field.radial_sweep"),
+            ("remap", "field.remap"),
+            ("combine", "field.combine"),
+        ]);
+        // ⛔ Controlo positivo: sem isto, um `derive` que devolvesse a string vazia passaria.
+        assert!(
+            html.len() > 500,
+            "a tabela saiu com {} bytes — ela não chegou a listar nada",
+            html.len()
+        );
+        assert!(
+            html.contains(" · "),
+            "nenhuma linha de OPÇÕES saiu — a régua não vê o que mede"
+        );
+        let cruas: Vec<&str> = html
+            .split(|c: char| c.is_whitespace() || c == '<' || c == '>')
+            .filter(|w| w.starts_with("node.") && w.contains(".param."))
+            .collect();
+        assert!(
+            cruas.is_empty(),
+            "o tutorial imprimiu {} identificador(es) em vez de palavras:\n  {}",
+            cruas.len(),
+            cruas.join("\n  ")
         );
     }
 }

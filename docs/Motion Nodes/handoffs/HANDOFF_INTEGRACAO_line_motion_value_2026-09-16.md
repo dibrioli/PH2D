@@ -13,10 +13,10 @@
 | | |
 |---|---|
 | branch | `line/motion-value` |
-| HEAD | `bb0f371d1` |
-| merge-base com `main` | `1d43da737` |
-| commits | **74** |
-| ficheiros tocados | **284** |
+| HEAD | ⚠️ **um handoff não pode nomear o próprio commit** — leia `git rev-parse --short HEAD` na worktree |
+| merge-base com `main` | **`1d43da737`** (este é o número estável, e é o que a integração usa) |
+| commits | `git rev-list --count 1d43da737..HEAD` — **76** ao escrever esta linha |
+| ficheiros tocados | `git diff --name-only 1d43da737..HEAD \| wc -l` — **284** ao escrever esta linha |
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` |
 
 ---

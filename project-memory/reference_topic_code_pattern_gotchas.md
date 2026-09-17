@@ -40,3 +40,9 @@ metadata:
   do recurso** — e ⚠️ o gate que o defendia **re-derivava a mesma expressão do produto**, logo não
   podia acusar nada (*um gate que refaz a conta do produto mede a conta, não o produto* — 3.ª
   ocorrência em dois dias).
+
+## Descidas do índice em 2026-09-17 — a rodada de seis linhas pôs o `MEMORY.md` a **224 linhas / 36,5 KB** contra o tecto dele (140 / 17 KB), e o carregador cortou **66 linhas em silêncio**. Estas entradas descem VERBATIM; o ponteiro para esta família continua no índice.
+
+- ⛔⛔ [Um painel pode ter UMA coluna de nome por FAMÍLIA de linha (caixa · chip · número), as três no mesmo cartão — «este painel já foi convertido?» é a pergunta errada](feedback_a_panel_can_hold_one_name_column_per_family_of_row.md)
+- ⛔ [Medir um texto num peso e pintá-lo noutro faz o pintor CORTÁ-LO (`0....`, e ao afastar some) — a porta é `title_elided_width`, ao lado do pintor](feedback_measuring_a_text_at_one_weight_and_painting_it_at_another_elides_the_text.md)
+- ⛔⛔ [`try_query` com um `Option<&T>` devolve NONE se o MUNDO não conhece o tipo — a porta responde «ninguém» e nada o diz (um sinal por tag não alcançava nada)](feedback_a_try_query_with_an_optional_component_answers_nobody.md)

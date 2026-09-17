@@ -60,3 +60,7 @@ metadata:
 - [Recusa medida responde UMA pergunta](feedback_a_measured_refusal_answers_one_question_recheck_it_when_yours_is_another.md) · [cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) · [revert: leia o motivo](feedback_a_reverted_attempt_may_differ_only_in_lifetime_read_the_revert_reason.md)
 - [Gate que PARSEIA o fonte tem de saber TODAS as formas — a nova acusa o errado e cega o certo](feedback_a_source_parsing_gate_must_know_every_shape_of_what_it_parses.md)
 - [match não guarda a lista de um laço](feedback_an_exhaustive_match_does_not_guard_the_list_a_loop_iterates.md) · [nome de param carrega contrato](feedback_a_house_param_name_carries_a_contract_pick_another_word.md) · [convenção vs inércia](feedback_convention_vs_inertia.md)
+
+## Descidas do índice em 2026-09-17 — a rodada de seis linhas pôs o `MEMORY.md` a **224 linhas / 36,5 KB** contra o tecto dele (140 / 17 KB), e o carregador cortou **66 linhas em silêncio**. Estas entradas descem VERBATIM; o ponteiro para esta família continua no índice.
+
+- ⛔⛔ [O painel À FRENTE não é propriedade do código — vem de `~/.ph2d/layout.txt`, fora do repo (e outra árvore a correr reescreve-o); um `bump` de z no quadro do arranque fica por baixo do que o `reconcile_z` acrescenta](feedback_the_front_panel_is_not_a_property_of_the_code.md)

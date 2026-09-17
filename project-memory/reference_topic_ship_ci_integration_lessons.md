@@ -29,3 +29,8 @@ metadata:
 - [Clippy do fecho: alvo do DIFF](feedback_the_closing_clippy_must_cover_every_crate_the_line_touched.md) · [flake esconde a suíte — leia X/Y](feedback_a_flake_red_hides_the_rest_of_the_suite.md) · [corrida de fixtura em /tmp mal arquivada como flake de carga](feedback_a_shared_tmp_fixture_race_is_misfiled_as_a_load_flake.md)
 - ⛔ [Build da WORKSPACE unifica features: crate que nomeia dependência OPCIONAL fora do cfg compila verde em todo portão e tem 75 erros SOZINHA — `check-standalone-optional.sh` no ship](feedback_a_workspace_build_unifies_features_and_hides_a_crate_that_cannot_build_alone.md)
 - ⛔ [Apagar uma crate não acorda portão local nenhum e parte o job do CI que a nomeia com `-p` — o envio de 13/09 reprovou nos 3 sistemas antes de compilar; `check-workflow-packages.sh` no ship](feedback_deleting_a_crate_breaks_only_the_ci_job_that_names_packages.md)
+
+## Descidas do índice em 2026-09-17 — a rodada de seis linhas pôs o `MEMORY.md` a **224 linhas / 36,5 KB** contra o tecto dele (140 / 17 KB), e o carregador cortou **66 linhas em silêncio**. Estas entradas descem VERBATIM; o ponteiro para esta família continua no índice.
+
+- ⛔⛔ [`--bins` NÃO alcança `tests/` — e o gate pode viver na `tests/it/` de OUTRA crate: 7 vermelhos em `ph2d-editor-core` sobre painéis que a linha editou](feedback_a_bins_run_never_reaches_the_gates_that_live_in_tests.md)
+- ⛔ [`ph2d-field-render --test it`: 7-8 vermelhos são contadores GLOBAIS do próprio binário — `24/24` VERDE com `--test-threads=1` a load 75; pré-existente, confirme antes de culpar o seu diff](project_field_render_it_suite_is_green_single_threaded.md)

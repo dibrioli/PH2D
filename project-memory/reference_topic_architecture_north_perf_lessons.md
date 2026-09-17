@@ -24,3 +24,8 @@ metadata:
 - [Sonda no ramo do FRACASSO de A não vê os acertos de A](feedback_a_probe_in_the_failure_branch_cannot_see_the_other_sides_successes.md)
 - ⭐ [Defeito ESCONDIDO atrás de outro: o gate faz `continue` sobre entrada inválida e fica cego — curar o 1.º descega o instrumento, e o que aparece NÃO é regressão](feedback_a_defect_can_hide_behind_another_defect_and_blind_the_very_gate_that_would_find_it.md)
 - [Correlação sem contra-exemplos pode descrever DISPONIBILIDADE, não correcção](feedback_a_correlation_with_zero_counterexamples_may_describe_another_question.md)
+
+## Descidas do índice em 2026-09-17 — a rodada de seis linhas pôs o `MEMORY.md` a **224 linhas / 36,5 KB** contra o tecto dele (140 / 17 KB), e o carregador cortou **66 linhas em silêncio**. Estas entradas descem VERBATIM; o ponteiro para esta família continua no índice.
+
+- ⛔⛔ [Uma vista NOVA entra ao LADO da que os consumidores já lêem, nunca no lugar dela — 24 leitores tratavam `contours()` como a figura e estavam certos; 2 gates velhos apanharam-no](feedback_a_new_view_cannot_replace_the_one_consumers_read.md)
+- ⛔ [Sonda que arma o módulo por env var mede OUTRO programa que o pill (5 reports) — e a do arco cronometrava a PLACA com o dono no modo MODEL, que traça na CPU (12 196 facetas contra 0)](feedback_a_probe_that_arms_a_module_by_env_var_measures_another_program_than_the_pill.md)

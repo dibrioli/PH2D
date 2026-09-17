@@ -284,6 +284,7 @@ losango seria um alvo morto.
 | F6 | **A segunda mídia** (raster/Flip) | ✅ **FECHADA para o RASTER** (2026-09-09) — ver F6 abaixo. ⛔ A nota antiga dizia *«bloqueado: precisa de uma malha sobre a imagem, que não existe»*: estava certa sobre o facto e errada sobre o preço — **duas das quatro peças já existiam**, e o doc de uma delas dizia-o por escrito. O **Flip** continua por fazer |
 | **F8** | ✅ **BENDY BONES (B-Bones) — FECHADO em 2026-09-15**, da lei ao painel ([handoff](handoffs/HANDOFF_O_OSSO_QUE_DOBRA_2026-09-15.md)) | Um osso ganha `segments` + duas alças e **arqueia**: ele parte-se em `N` sub-ossos ao longo de uma Bézier, o desenho e o dedo seguem a curva, e o painel oferece os dois controlos. ⭐⭐⭐ **A LEI DA PELE NÃO MUDOU UMA LINHA** — o `Skin` já misturava `N` poses RÍGIDAS por peso, que é exactamente o que um B-Bone é; o que mudou foi **quem produz**, e era **um** sítio (`resolve_with`). ⛔⛔ **E esta célula dizia que o B-Bone «ataca na ORIGEM» a queixa das *«arestas retas ao dobrar»* — REFUTADO** pela recusa medida um bloco abaixo (subdividir com a população de amostras constante **piora**: `2,61 % → 4,94 %` a `24` sub-ossos): *o B-Bone é uma feature de AUTORIA — um rabo em S, um membro flexível —, não a cura da dobra.* ⭐⭐ **O ponto neutro é exacto POR CONSTRUÇÃO** (a fábrica colapsa num osso só quando a curva é recta, e mesmo sem colapsar o frame seria a identidade ao bit) ⇒ todo rig já autorado desenha-se e deforma-se **ao bit** como antes. ⚠️ `PROJECT_SCHEMA` **+1** — conte o DELTA. **Tecto MEDIDO: `MAX_SEGMENTS = 32`** (`17,9 %` de um quadro com um osso curvo sobre 20 000 pontos; a `64` um par come o quadro) — a tabela vive no doc da const. ✅ **OS TRÊS ABERTOS FECHARAM EM 2026-09-16.** **(1)** O esticão deixou de VARIAR ao longo do osso — os nós saem agora da **CORDA** e não do parâmetro (`12,63 % → 0,000 %` com as alças a `0,2 L`; `82,01 % → 0,000 %` a `0,6 L`; `1 051,95 % → 0,000 %` com as alças cruzadas no eixo). ⛔⛔ **E a cura publicada — equalizar o ARCO — NÃO chegava**, o que só a varredura da densidade disse: ela deixa um piso que **não desce com a tabela** (`1,22 %` a `0,6 L`, igual de `16` a `32` amostras), porque *arcos iguais dão cordas desiguais* e a grandeza que o artista vê é a corda. ⚠️ **E a objecção registada na recusa era verdadeira e não mordia** (*«um somatório de cordas não devolve `L` ao bit»*): o somatório **nunca corre** no ponto neutro — *uma recusa que nomeia um custo tem de dizer em que CAMINHO ele é pago*. **(2)** As alças **pegam-se no canvas** (duas alças de Bézier, com as hastes até à raiz e à ponta) — ⛔ e a armadilha foi que no ponto NEUTRO a alça está **em cima do eixo**, logo a competição por proximidade de sempre torná-la-ia inalcançável no único estado em que todo osso nasce: ela é a única que ignora o corpo, e paga um raio apertado cujo recurso é o comprimento que sobra para o verbo de girar. **(3)** As **tangentes dos vizinhos** existem (`Curve Handles: Manual | From Chain`), e o ponto neutro é **exacto** porque elas saem da transformação RELATIVA e não de uma volta pelo mundo. ⚠️ `PROJECT_SCHEMA` **+1** — conte o DELTA. Cena **`PH2D_VEC_BONE_SMOKE=1`**. |
 | F7 | **O painel próprio do módulo** | ✅ **FECHADO** (2026-09-09, por escolha do dono) — ver F3-m abaixo. A nota antiga: ⏸️ **a condição CAIU e a medição era falsa por ~3×** — ela dizia *«adiado até F3–F5 lhe darem conteúdo (hoje são 3 botões e 5 campos)»*, e as três estão ✅ nesta mesma tabela enquanto a secção tem **10 verbos** e **9 campos** (`VECTOR_BONE_VERBS`/`_FIELDS`, comprimento verificado pelo compilador), mais uma fileira segmentada e dois selectores. ⇒ decisão do dono, não mais um adiamento medido |
+| **F9** | ⏳ **A PELE DEFORMADA NA GPU — o `Smooth` a alisar em QUALQUER cena** (pedido do dono, 2026-09-16) | ⏳ **NA FILA** — ver F9 abaixo |
 
 ---
 
@@ -2909,6 +2910,56 @@ jornada.
 ⇒ ⛔ **Não reconstrua nenhuma das três rotas.** Quem as ler aqui estaria a pagar de novo um problema
 que a troca de lei dissolveu — que é a forma nº 1 pela qual esta lista custa dinheiro.
 
+### F9 — ⏳ **A PELE DEFORMADA NA GPU: o `Smooth` a alisar em QUALQUER cena** (pedido do dono, 2026-09-16)
+
+> Perguntado *«para ele alisar em qualquer cena a deformação teria de passar para a placa de vídeo —
+> quer que isso entre na fila?»*, o dono respondeu: ***«Quero que isso entre na fila!»***
+
+**O problema, medido (F6-t):** hoje a CPU deforma cada vértice de cada imagem presa a cada quadro, e
+o `Smooth` refina a malha na CPU dentro de um orçamento de `5 144` peças por quadro (`1/10` de um
+quadro de 60 fps). Uma cena com mais arte presa que isso — um personagem de muitas partes — fica
+com o `Smooth` **igual ao `Fast`** (agora de graça, mas sem alisar). Os números: avaliar uma peça
+`0,156 µs`, cada peça nova `~0,32 µs`, o `Fast` `0,024 µs` por peça; a GPU desenha centenas de
+milhares de triângulos num quadro sem esforço.
+
+**A direcção (a confirmar pela medição da W0, nada disto está decidido em código):**
+
+1. **A densidade sai do quadro e vai para o BIND.** A malha fina é assada uma vez, em repouso,
+   onde o CAMPO DE PESOS curva (a mesma lei de Hermite do `Smooth`, medida contra os pesos e não
+   contra uma pose) — e fica guardada. ⚠️ A pergunta a medir primeiro: uma malha fixa assada em
+   repouso alisa a dobra FORTE como o refinamento por quadro alisa? (a régua existe: a silhueta e a
+   faceta de `smoke_bone_paint_silhueta_tests.rs`, com as mesmas barras).
+2. **A deformação vai para o *vertex shader*:** por vértice, os índices e pesos dos ossos (enviados
+   quando a malha muda); por quadro, só as poses dos ossos (`N × 6` números por esqueleto). ⚠️ O
+   `Skin` mistura poses RÍGIDAS por peso, e um B-Bone é `N` sub-ossos — as duas coisas cabem num
+   *uniform/storage buffer* de poses, sem lei nova.
+3. **A lei da CPU fica como REFERÊNCIA**, e a paridade CPU×GPU é um gate com a barra derivada do
+   formato (o molde é o do Flip: `rgba16float` ⇒ `2⁻¹¹`; aqui, posições `f32` em pixels de ecrã).
+
+**As costuras que a W0 tem de mapear antes de qualquer código** (quem lê a malha DESENHADA na CPU,
+2026-09-16): o ponteiro (`ph2d_render::mesh_uv`), o `drawn_mesh_of`/`drawn_instance_of` (o anel do
+Liquify e da Remoção de fundo, o `CanvasMap`, a caixa do gizmo, a tinta da protecção), os fantasmas
+do onion e o `sprite_collect` (a tira do passe de sprites). ⛔ **Nenhum deles pode passar a ler a
+malha GROSSA enquanto a GPU desenha a FINA** — seria o *«controlo desenhado por um mapa e agarrado
+por outro»* que esta fila já pagou (F6-m). Cada um precisa de uma resposta: CPU da mesma malha fina
+só onde se pergunta (um ponto, não a malha inteira), ou leitura da GPU.
+
+**Ondas propostas:**
+- **W0 — medir:** o custo e a qualidade da malha fina ASSADA contra o refinamento por quadro (na
+  dobra de `25°`/`60°`/`150°`, zoom `1`–`16`); o custo GPU real de `10⁴`–`10⁶` triângulos
+  deformados no *vertex shader* nesta máquina; e o censo das costuras acima.
+- **W1 — a malha fina no bind**, com a régua da silhueta a mesma de hoje (sem mudar o que se vê).
+- **W2 — o *vertex shader* de pele**, atrás da mesma escolha `Fast`/`Smooth` do painel, com o gate
+  de paridade CPU×GPU e o caminho da CPU vivo para bissecar.
+- **W3 — as costuras** (ponteiro, chrome, onion) contra a malha que a GPU desenha.
+- **W4 — o orçamento**: ele deixa de ser um tecto de peças da CPU; o que sobra de CPU por quadro é
+  enviar poses, e o recurso passa a ser memória de GPU (com o número medido ao lado).
+
+**⛔ Não é:** subir o `SKIN_FRAME_PIECES` (o recurso dele é o tempo da CPU, e está medido) nem
+refinar em *compute shader* por quadro sem primeiro medir a malha assada.
+
+---
+
 ### F6-t — ⭐⭐⭐ **O `Smooth` COM A CENA CHEIA: pagava inerte, e custava o dobro do que o orçamento prometia** (2026-09-16)
 
 **UMA LINHA:** o item aberto *«o custo da adaptativa não foi medido sob cena cheia»* foi medido
@@ -2950,7 +3001,7 @@ produto, `25°`/`60°`, zoom `1`/`4`/`8`), e devolveu **dois defeitos** e uma no
 - ⏳ **ABERTO e nomeado:** uma cena com a arte presa **muito acima** do orçamento (um personagem de
   muitas peças) fica com o `Smooth` igual ao `Fast`, com um aviso único no terminal — agora de
   graça, mas sem alisar. O caminho que o alisaria em qualquer cena é deformar na GPU (a malha
-  densa assada no bind, deformada no *vertex shader*), e é obra de plano, não de afinação.
+  densa assada no bind, deformada no *vertex shader*) — ✅ **o dono pô-lo na fila: F9.**
 
 ---
 

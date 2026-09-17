@@ -3200,9 +3200,9 @@ de antes) e `PH2D_SKIN_WEIGHTS=linear` (a lei dos pesos de antes).
   diferença que a régua vê e o dono não vê é o número que decide se o custo compensa*, e ele está
   aqui: `+19 %` (`60°`, `2 898` peças) a `+91 %` (`150°`, `4 652`) sobre as `2 430` do `Fast`, a
   zoom `1`.
-- **a sonda de custo desta crate deixou de refinar** (a arte dela mede `200 × 100` px de ecrã) e
-  não reproduz a tabela do [`skin_budget`](../../crates/ph2d-skeleton-live/src/skin_budget.rs) hoje
-  — o preço da lei nova foi medido na cena do smoke, as duas leis intercaladas.
+- ✅ ~~**a sonda de custo desta crate deixou de refinar** (a arte dela mede `200 × 100` px de ecrã) e
+  não reproduz a tabela do [`skin_budget`](../../crates/ph2d-skeleton-live/src/skin_budget.rs) hoje~~
+  — **FECHADO na F6-t** (a sonda mede a zoom `8×` e marca `NAO PARTIU`; o orçamento foi remedido).
 
 ---
 

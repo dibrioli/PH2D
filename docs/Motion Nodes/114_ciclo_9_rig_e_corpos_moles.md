@@ -1113,3 +1113,39 @@ ecrã inalterado como prova de que o defeito não estava ali.
   linha e um id reusado ocupa duas barras ao mesmo tempo*;
 - o ramo do `dispatch/scroll.rs` que despacha aquele id fica **inerte por construção** (ninguém o
   regista, logo nenhum `id ==` casa).
+
+---
+
+## §14 — ⏸️ ADIADO POR ORDEM DO DONO: *o `collide` sai do app e tudo passa pela FORMA*
+
+> **Ordem do dono, 2026-09-17, logo a seguir à §12:** *«Prefiro retirar o nó collide do app todo
+> e deixar tudo para Shape. Prefiro que toda visualização passe pelo Duplicator e que nós como
+> Grid, rope, etc, não passem de posições do espaço, sem nenhuma capacidade de gerar pixels na
+> tela. MAs vamos adiar isso.»*
+
+⛔ **Ele adiou explicitamente, e isto fica aqui para não se perder.** Não é trabalho pendente
+desta linha; é a direcção arquitectural que a §12 tornou visível e que o dono escolheu não pagar
+agora.
+
+### §14.1 — As três metades da ordem
+
+1. **O nó `motion.collide` sai do catálogo.** A colisão passa a ser sempre o botão `Collide` da
+   forma — que é a decisão de 2026-09-10 (*«vou preferir colocar na shape»*) levada até ao fim.
+   A §12 deixou o substrato: o leitor do colisor declarado já existe e já honra a declaração em
+   todos os duplicadores.
+2. **Toda visualização passa pelo Duplicador.** Hoje vários nós desenham por si.
+3. **`Grid`, `rope` e os irmãos passam a ser POSIÇÕES e mais nada** — *«sem nenhuma capacidade de
+   gerar pixels na tela»*.
+
+### §14.2 — O que a §11 e a §12 já mediram, e que quem pegar nisto herda
+
+- A composição `rope → motion.collide → rope.state` entrega **auto-colisão completa** a 32
+  iterações, por `1,3 %`–`4,7 %` de um quadro (§11). Retirar o nó **tem de** manter essa
+  capacidade por outro caminho, ou o grupo perde-a.
+- Os **8 nós que geram nuvem NOVA** (corda, campo, corpo mole, bando, distribuições) não recebem
+  forma de ninguém: as peças deles não são cópias de nada. *A ordem 3 é exactamente a pergunta de
+  quem lhes dá o colisor* — e a §12 já a nomeia como pergunta de produto, não defeito.
+- O `sim.collide` (peça contra MUNDO) é outro nó e outra pergunta; a ordem fala do irmão.
+
+⚠️ **Nada disto está construído.** Quem abrir esta wave começa por medir o que a composição já
+exprime (§5.0), como a §12 fez — foi isso que mostrou que faltava um LEITOR e não um motor.

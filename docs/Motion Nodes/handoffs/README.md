@@ -8,9 +8,13 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**54 handoffs** · **6** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**61 handoffs** · **8** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
+> ⚠️ **Reconciliado outra vez em 2026-09-16, e a diferença era SEIS** — as quatro fases da saída da
+> família (11–12/09) e as duas integrações dos ciclos nunca entraram, e a contagem `54` descrevia
+> 07/09. *A doença que esta nota descreve reincidiu no mês seguinte, com o aviso escrito por cima.*
+>
 > ⚠️ **Reconciliado em 2026-08-18, e a diferença era OITO.** O índice parou em 09/08 e
 > a pasta continuou a andar: cinco handoffs de 16–18/08 e um de 10/08 nunca entraram,
 > e a contagem `37` descrevia o dia em que foi escrita. *Um número que se conta lendo
@@ -73,6 +77,12 @@
 | 2026-09-03 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-09-03.md](HANDOFF_INTEGRACAO_line_motion_value_2026-09-03.md) | integração | O fecho de 03/09 — o §6 tem **sete** coisas que uma leitura rápida do diff entende ao contrário (a nota `drops` foi REVERTIDA; `primary_input = 1` deixa a cena vazia de propósito), o §7 as **sete** premissas refutadas e o §8 os **nove** itens abertos |
 | 2026-09-06 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-09-06.md](HANDOFF_INTEGRACAO_line_motion_value_2026-09-06.md) | integração | O SUBSTRATO do cartão (os params passam a viver no nó) + a **dinâmica dos ciclos** (doc 103): ciclo 1 ARRANJO fechado com o smoke do Enio, ciclo 2 ANIMADORES com as 5 waves, a medição do grupo e os **dois tutoriais em PDF** — o smoke do 2 é o que falta |
 | 2026-09-07 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-09-07.md](HANDOFF_INTEGRACAO_line_motion_value_2026-09-07.md) | integração | **A linha FECHA por ordem do Enio, e vinha ATRASADA** (ficou de fora da rodada de 06/09). O censo `26 → 0` ⇒ **o painel lateral de params SAIU**; crate-folha nova `ph2d-param-editors` (os três editores ricos, dois hospedeiros). O §5 tem **sete** leituras ao contrário, o §6 os **nove** vermelhos que só o portão apanhou (e a causa: *um fecho que só corre as crates editadas é cego aos gates de arquitectura*) |
+| 2026-09-10 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-09-10.md](HANDOFF_INTEGRACAO_line_motion_value_2026-09-10.md) | integração | Os ciclos **3 (transformes, `=111`)**, **4 (campos, `=112`)** e **5 (simulação, `=113`)** fechados com o smoke do dono e três tutoriais em PDF; o §6 tem os vermelhos que só a linha do `ship.sh` tinha |
+| 2026-09-11 |  | [HANDOFF_INTEGRACAO_line_app_motion_FASE_A_2026-09-11.md](HANDOFF_INTEGRACAO_line_app_motion_FASE_A_2026-09-11.md) | W2 / fase | A família `motion` prepara a saída da shell — o endereço (W2 Fase A) |
+| 2026-09-11 |  | [HANDOFF_line_app_motion_FASE_B_O_BLOQUEIO_MEDIDO_2026-09-11.md](HANDOFF_line_app_motion_FASE_B_O_BLOQUEIO_MEDIDO_2026-09-11.md) | W2 / medição | O que BLOQUEIA a saída, medido — não suposto |
+| 2026-09-12 |  | [HANDOFF_line_app_motion_FASE_B2_O_FECHO_REMEDIDO_2026-09-12.md](HANDOFF_line_app_motion_FASE_B2_O_FECHO_REMEDIDO_2026-09-12.md) | W2 / medição | O fecho de compilação **remedido** depois da Fase B |
+| 2026-09-12 | ◆ | [HANDOFF_INTEGRACAO_line_app_motion_FASE_C_2026-09-12.md](HANDOFF_INTEGRACAO_line_app_motion_FASE_C_2026-09-12.md) | integração | **A família SAI da shell, inteira**: 454 ficheiros para `ph2d-app-motion`, a shell −29,8 %, e `"motion"` mata a catraca dos roteadores |
+| 2026-09-16 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-09-16.md](HANDOFF_INTEGRACAO_line_motion_value_2026-09-16.md) | integração | **Os ciclos 6, 7 e 8 fechados** (valor & pulso `=117` · aparência `=118` · fontes & dados `=119`) + o **colisor na SHAPE** (doc 109). ⭐⭐⭐ A costura de uma fonte deixou de ser taxa por quadro (`9,62 → 1,62 ms` a um milhão) e a **VISTA entra no grafo**. O §6 tem o teto de LOC que só o mapa de colisão vê e os **8 vermelhos de GPU com veredito um a um** |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

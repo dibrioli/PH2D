@@ -31,6 +31,7 @@ impl crate::App {
         // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — ela autora a timeline, logo corre DEPOIS das cenas
         // que também lhe tocam (a ordem é o contrato: a última a correr ganha).
         self.sequence_smoke();
+        self.counter_watch_smoke();
         // ⭐⭐⭐ **O HUD** (TOP-20 #20) — DEPOIS da câmera, que ela compõe (ver o cabeçalho).
         self.hud_smoke();
         #[cfg(feature = "panel-audio-editor")]

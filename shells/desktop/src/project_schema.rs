@@ -375,4 +375,28 @@
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um ficheiro anterior é recusado
 /// em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 146;
+/// # `146 → 147` — a VIGIA DO CONTADOR (`docs/Components/17_plano_counter_watch.md`)
+///
+/// **UM** componente novo no registo: o `CounterWatch`, uma LISTA de regras
+/// *«quando o contador X `<=`/`>=`/`==` N, diz S»*.
+///
+/// ⭐⭐⭐ **A wave nasceu de uma MEDIÇÃO da composição, não da tabela do TOP-20.** Fechada a lista,
+/// a §5.0 devolveu **um** buraco: o `Counter` era **escrito** (`AddToCounter`) e **mostrado**
+/// (`LabelSource::Counter`), e **ninguém reagia a ele** — nem a válvula de escape do #16, cuja
+/// superfície de Luau não tem porta nenhuma para contadores. *O artista contava e via a conta, e
+/// não podia fazer acontecer nada a um número.*
+///
+/// ⛔⛔ **E o que NÃO entra neste degrau é o suplente #24 `Health`.** Com a vigia ele é
+/// **composição** (`Counter{start:3}` + `AddToCounter(-1)` + `CounterWatch[AtMost 0 → "morri"]`),
+/// e um componente próprio seria a segunda resposta a *«quanto vale este número?»*.
+///
+/// ⚠️ **O estado vivo NÃO entra no registo:** o `CounterWatchRuntime` guarda a ARESTA
+/// (`held`/`fired`), que muda a cada travessia — registá-lo poria cada vida perdida dentro do
+/// ficheiro e faria dela um passo de `Ctrl+Z`. Ele nasce pela porta do `rewind_runtime`, onde é a
+/// **sétima** espécie.
+///
+/// ⚠️ **O `Compare` é `#[repr(u8)]` e APPEND-ONLY** — ele viaja pelo postcard, que é posicional.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um ficheiro anterior é recusado
+/// em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 147;

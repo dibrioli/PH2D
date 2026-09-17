@@ -58,6 +58,12 @@ impl crate::App {
                     ph2d_runtime::SignalOrigin::Death { source } => {
                         eprintln!("[signal] {} <- morreu a copia {}", sig.name, source.0);
                     }
+                    ph2d_runtime::SignalOrigin::CounterWatch { source, row } => {
+                        eprintln!(
+                            "[signal] {} <- vigia do objecto {}, regra #{row}",
+                            sig.name, source.0
+                        );
+                    }
                     ph2d_runtime::SignalOrigin::StateMachine { source } => {
                         eprintln!(
                             "[signal] {} <- o cerebro do objecto {} mudou de estado",

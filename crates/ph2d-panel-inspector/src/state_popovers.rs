@@ -79,6 +79,16 @@ thread_local! {
     pub(crate) static PENDING_SEQ_DD:
         std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> = const { std::cell::Cell::new(None) };
 
+    /// COUNTER WATCH: `(comparação escolhida, rect do chip)`.
+    ///
+    /// ⚠️ **A comparação VIAJA no slot, ao contrário do selector da cutscene** — e a razão é onde a
+    /// escolha mora: a cutscene é um facto do snapshot, e esta é a comparação da **regra ABERTA**,
+    /// cujo índice vive no `InspectorState`, que o passe diferido não vê. É o mesmo par do
+    /// [`PENDING_AUDIO_DD`].
+    pub(crate) static PENDING_WATCH_DD:
+        std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> =
+        const { std::cell::Cell::new(None) };
+
     /// ⭐ **O popover que ESTE painel pintou neste quadro** — `(dono, rect do painel)`.
     ///
     /// ⚠️ Ele existe para uma coisa só: o `dispatch::pointer_down` fecha um dropdown aberto quando
@@ -159,6 +169,14 @@ pub(crate) fn set_pending_seq_dd(chip: Option<ph2d_editor_core::zones::Rect>) {
 
 pub(crate) fn take_pending_seq_dd() -> Option<ph2d_editor_core::zones::Rect> {
     PENDING_SEQ_DD.with(std::cell::Cell::take)
+}
+
+pub(crate) fn set_pending_watch_dd(chip: Option<(u8, ph2d_editor_core::zones::Rect)>) {
+    PENDING_WATCH_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_watch_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
+    PENDING_WATCH_DD.with(std::cell::Cell::take)
 }
 
 /// Regista que um popover foi pintado neste quadro — ver [`PAINTED_POPOVER`].

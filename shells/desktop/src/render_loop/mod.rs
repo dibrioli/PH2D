@@ -181,6 +181,12 @@ mod present_fx;
 pub(crate) mod sprite_anim_tick;
 /// ⭐⭐⭐ **A ponte do `Timer`** (TOP-20 #2) — o tique no passo fixo e o sinal que sai dele.
 mod timer_tick;
+
+/// ⭐⭐⭐ **A corrente inteira da VIGIA DO CONTADOR**, sem janela — ver o cabeçalho do irmão.
+/// ⚠️ Ele mora aqui porque o `signal_actions` e o `timer_tick` são privados a este módulo.
+#[cfg(test)]
+#[path = "counter_watch_chain_tests.rs"]
+mod counter_watch_chain_tests;
 pub(crate) use sprite_anim_tick::start_autoplay_animations;
 pub(crate) use timer_tick::start_autostart_timers;
 /// Fase do quadro: as cenas de smoke que pedem a `App` inteira (1.ª metade).

@@ -54,3 +54,45 @@ fn o_documento_nao_aceita_mais_cutscenes_do_que_o_selector_enderaca() {
         ph2d_timeline::MAX_CONTAINERS
     );
 }
+
+/// ⭐⭐ **O modelo não aceita mais regras do que o selector consegue endereçar.**
+///
+/// **Mutação que deve sangrar:** mudar o `WATCHES_MAX` ou encurtar a tabela de ids.
+#[test]
+fn o_modelo_nao_aceita_mais_regras_do_que_a_seccao_pinta() {
+    assert_eq!(
+        ids::INSP_WATCH_ROW.len(),
+        ph2d_ecs::WATCHES_MAX,
+        "a lista da vigia endereça {} regras e o modelo aceita {}",
+        ids::INSP_WATCH_ROW.len(),
+        ph2d_ecs::WATCHES_MAX
+    );
+}
+
+/// ⭐⭐⭐ **A tabela de opções do chip cobre as variantes do `Compare`, e a ORDEM é a mesma.**
+///
+/// ⚠️ **As duas metades, e a segunda é a que importa:** uma quarta comparação no motor sem uma
+/// quarta entrada no painel é uma comparação que o artista nunca escolhe; e a **posição** na tabela
+/// de ids É o `u8` que a edição carrega, logo reordenar uma delas reescreve o sentido de toda regra
+/// já gravada, **em silêncio**.
+///
+/// **Mutação que deve sangrar:** trocar dois braços do `compare_de_u8`, ou encurtar
+/// `INSP_WATCH_CMP_OPT`.
+#[test]
+fn o_chip_da_comparacao_cobre_o_enum_e_respeita_a_ordem_dele() {
+    use ph2d_app_components::counter_watch_inspector::{compare_de_u8, u8_de_compare};
+    assert_eq!(
+        ids::INSP_WATCH_CMP_OPT.len(),
+        ph2d_app_components::counter_watch_inspector::comparacoes(),
+        "o chip endereça um número de comparações diferente do que o motor tem"
+    );
+    // A ORDEM, nomeada — ⛔ não é um laço sobre um `ALL`, porque o que se afirma é o VALOR de cada
+    // posição, e um laço derivado da mesma fonte concordaria consigo mesmo.
+    assert_eq!(compare_de_u8(0), ph2d_ecs::Compare::AtMost);
+    assert_eq!(compare_de_u8(1), ph2d_ecs::Compare::AtLeast);
+    assert_eq!(compare_de_u8(2), ph2d_ecs::Compare::Exactly);
+    // E a ida-e-volta, que é a metade que apanha uma tradução partida só de um lado.
+    for i in 0..u8::try_from(ids::INSP_WATCH_CMP_OPT.len()).unwrap() {
+        assert_eq!(u8_de_compare(compare_de_u8(i)), i, "a volta perdeu o {i}");
+    }
+}

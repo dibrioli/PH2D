@@ -62,6 +62,9 @@ impl Host {
                 SignalOrigin::UiButton { source } => {
                     format!("{} botao {}", sig.name, source.0)
                 }
+                SignalOrigin::CounterWatch { source, row } => {
+                    format!("{} vigia {}#{row}", sig.name, source.0)
+                }
             });
         }
     }

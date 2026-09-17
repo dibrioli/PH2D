@@ -457,6 +457,11 @@ pub(in crate::render_loop) struct DrainOut {
     /// ⭐ As edições da secção SEQUENCE (TOP-20 #19).
     pub(in crate::render_loop) sequence_edits:
         Vec<(u64, ph2d_editor_core::sequence_edits::SequenceFieldEdit)>,
+    /// ⭐ As edições da secção COUNTER WATCH.
+    pub(in crate::render_loop) counter_watch_edits: Vec<(
+        u64,
+        ph2d_editor_core::counter_watch_edits::CounterWatchFieldEdit,
+    )>,
     // ⭐ A secção TAGS (TOP-20 #9) — ver o dreno dela no `fase_inspector_commits`.
     pub(in crate::render_loop) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     // ⭐⭐⭐ O painel TAGS (TOP-20 #9, W4) — gestos sobre a ÁRVORE, que não é do mundo. Ver o

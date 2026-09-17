@@ -295,6 +295,42 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.sequence.now" => "Now: {t} s of {c}",
         "panel.inspector.sequence.primary_only" => "Editing the primary selection only.",
+        // ⭐⭐⭐ A VIGIA DO CONTADOR — as regras «quando o número X chegar a N, diz S».
+        "panel.inspector.counter_watch.counter_watch" => "Counter Watch",
+        "panel.inspector.counter_watch.title_count" => "Counter Watch ({n})",
+        // ⚠️ **O título CONTA as regras partidas**, porque é a única coisa visível com a secção
+        // dobrada — que é o estado em que uma regra órfã passa despercebida.
+        "panel.inspector.counter_watch.title_count_broken" => {
+            "Counter Watch ({n}, {broken} broken)"
+        }
+        "panel.inspector.counter_watch.no_rules_yet" => "No rules yet",
+        "panel.inspector.counter_watch.plus_add_rule" => "+ Add Rule",
+        "panel.inspector.counter_watch.x_remove_rule" => "x Remove Rule",
+        "panel.inspector.counter_watch.counter_name" => "Counter name",
+        "panel.inspector.counter_watch.compare" => "When",
+        "panel.inspector.counter_watch.at_most" => "drops to or below",
+        "panel.inspector.counter_watch.at_least" => "reaches or passes",
+        "panel.inspector.counter_watch.exactly" => "is exactly",
+        "panel.inspector.counter_watch.value" => "Value",
+        "panel.inspector.counter_watch.signal_name_empty_mute" => "Signal name (empty = mute)",
+        "panel.inspector.counter_watch.only_once" => "Only once",
+        "panel.inspector.counter_watch.mute" => "mute",
+        "panel.inspector.counter_watch.no_counter_named_yet" => {
+            "This rule watches no counter yet \u{2014} name one above."
+        }
+        "panel.inspector.counter_watch.there_is_no_counter_called" => {
+            "There is no counter called \u{201c}{name}\u{201d} \u{2014} this rule never fires."
+        }
+        "panel.inspector.counter_watch.this_rule_says_nothing" => {
+            "This rule says nothing \u{2014} give it a signal name."
+        }
+        "panel.inspector.counter_watch.the_clock_is_stopped" => {
+            "The clock is stopped \u{2014} rules are checked while it plays."
+        }
+        "panel.inspector.counter_watch.now_value" => "Now: {v}",
+        "panel.inspector.counter_watch.multiple_selected_edits_apply" => {
+            "Editing the primary selection only."
+        }
         // ph2d-migrar-texto:end
         _ => return None,
     })

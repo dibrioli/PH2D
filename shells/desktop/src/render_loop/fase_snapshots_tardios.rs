@@ -64,4 +64,10 @@ pub(super) fn publica(
         escolhido
             .and_then(|b| ph2d_app_components::hud_inspector::build_info(sim, tags, b, tem_camera)),
     );
+    // ⭐⭐⭐ **A VIGIA DO CONTADOR** — ela cabe aqui e não na fase-mãe pela mesma razão das irmãs:
+    // a coluna *«existe um contador com este nome?»* é uma **varredura do MUNDO**, e o painel não
+    // o vê. ⚠️ Sem ela, uma regra com um `d` a mais no nome lê-se exactamente como uma que funciona.
+    ph2d_panel_inspector::set_current_inspector_counter_watch(escolhido.and_then(|b| {
+        ph2d_app_components::counter_watch_inspector::build_info(sim, b, a_correr, quantos)
+    }));
 }

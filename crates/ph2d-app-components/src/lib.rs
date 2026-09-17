@@ -80,6 +80,9 @@ pub mod component_seed;
 pub mod component_smoke;
 /// ⭐⭐⭐ **A PONTE da FÁBRICA e da MORTE** (TOP-20 #11 e #12) — os factos que a lei pura devolve
 /// viram objectos no mundo.
+pub mod counter_watch_bridge;
+pub mod counter_watch_inspector;
+pub mod counter_watch_smoke;
 pub mod factory_bridge;
 /// ⭐⭐⭐ **A FÁBRICA e o CICLO DE VIDA** (TOP-20 #11 e #12) — as duas cenas do dono.
 pub mod factory_smoke;

@@ -9,11 +9,8 @@
 //! [`HeroScreen::apply_event`], que corre uma vez por evento de ponteiro/tecla; a shell drena
 //! depois da cascata. A ordem por-evento é preservada (HR-5).
 //!
-//! ⚠️⚠️ **DUAS descrições deste ficheiro morreram por terem narrado o COMMIT e não o FICHEIRO** —
-//! a primeira em 2026-08-31 (ela prometia *«3 variantes representativas»* sobre um enum que já
-//! passava das 150), e a segunda em 2026-09-17, que contava a migração dos `pending_X` com os
-//! números de 2026-05 (*«main.rs a 2421 LOC»*) sobre uma shell que entretanto perdeu 340 mil
-//! linhas. *Prosa que descreve o commit envelhece sem que nada fique vermelho.*
+//! ⚠️⚠️ **Duas descrições deste ficheiro morreram por narrarem o COMMIT e não o FICHEIRO** (08-31 e
+//! 09-17): *prosa que descreve o commit envelhece sem que nada fique vermelho.*
 
 /// ⛔⛔⛔ **MEDIDO 2026-09-01: acrescentar UMA variante a este enum custa +78 LINHAS.**
 ///
@@ -25,15 +22,15 @@
 ///
 /// ⇒ **quem acrescentar a próxima paga o corte.**
 ///
-/// ⚠️⚠️ **E a prescrição que estava aqui já tinha sido CUMPRIDA** (medido 2026-09-17): ela mandava
-/// colapsar *«a família `Hier*`, 33 variantes»* em `EditorAction::Hierarchy(HierRequest)` — e o
-/// enum tem **uma** variante `Hier*`, porque o colapso foi feito. *Uma prescrição cumprida que
-/// ninguém apaga manda o pagador seguinte cortar o que já está cortado.*
+/// ⚠️ **A prescrição anterior (colapsar a família `Hier*`) já estava CUMPRIDA quando alguém a foi
+/// pagar** — *uma prescrição cumprida que ninguém apaga manda o pagador seguinte cortar o que já
+/// está cortado.* ⇒ antes de agir sobre a linha abaixo, **meça-a**.
 ///
-/// ⇒ **o corte que FALTA é a família `Inspector*Edit`: 25 variantes** com a MESMA forma
+/// ⇒ **o corte que FALTA é a família `Inspector*Edit`: 26 variantes** com a MESMA forma
 /// (`{ entity_bits, edit }`) e o mesmo dreno — ela vira `EditorAction::InspectorSection(..)` num
-/// irmão. ⛔ Não subir o tecto: *a cura de um teto estourado é o corte; subir o número é adiar com
-/// juros.*
+/// irmão. ⭐⭐ **PREÇO MEDIDO (2026-09-17): `160` sítios em `58` ficheiros** ⇒ é uma wave PRÓPRIA, e
+/// fazê-la a meio de outra torna o diff ilegível para quem integra. ⛔ Não subir o tecto: *a cura
+/// de um teto estourado é o corte; subir o número é adiar com juros.*
 ///
 /// **Invariante:** toda variante é `Copy` ou carrega dados **próprios** — nunca empresta do
 /// `HeroScreen`. A fila tem de poder drenar **depois** de o `apply_event` do quadro devolver o
@@ -396,6 +393,16 @@ pub enum EditorAction {
         entity_bits: u64,
         /// O que mudou.
         edit: crate::sequence_edits::SequenceFieldEdit,
+    },
+    /// Uma edição da secção **COUNTER WATCH** do Inspector.
+    ///
+    /// ⚠️ **APENDADA, como as 25 irmãs** — e é uma das que a nota de corte deste ficheiro nomeia:
+    /// todas têm a mesma forma `{ entity_bits, edit }` e o mesmo dreno.
+    InspectorCounterWatchEdit {
+        /// A quem ela se aplica.
+        entity_bits: u64,
+        /// O que mudou.
+        edit: crate::counter_watch_edits::CounterWatchFieldEdit,
     },
 
     /// Inspector → shell, a secção PARTICLES (TOP-20 #18, W3).

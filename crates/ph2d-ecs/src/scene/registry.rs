@@ -604,6 +604,12 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register_default::<crate::UiLabel>("ph2d::ecs::UiLabel");
     reg.register_default::<crate::UiButton>("ph2d::ecs::UiButton");
     reg.register_default::<crate::Counter>("ph2d::ecs::Counter");
+    // ⭐⭐⭐ **A VIGIA DO CONTADOR** — o elo que faz um NÚMERO fazer acontecer alguma coisa.
+    // ⛔ **O `CounterWatchRuntime` NÃO está aqui e não pode estar:** ele guarda a ARESTA
+    // (`held`/`fired`), que muda a cada travessia — registá-lo poria cada vida perdida dentro do
+    // ficheiro gravado e faria dela um passo de `Ctrl+Z`. É o precedente do `CounterRuntime` logo
+    // acima, e ele nem compilaria aqui (não deriva `Serialize`).
+    reg.register_default::<crate::CounterWatch>("ph2d::ecs::CounterWatch");
     // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — o NOME do container que este objecto toca, e só isso.
     // ⛔ **Não há um `SequenceRuntime` aqui e não pode haver:** o relógio de corrida é o `Timer`
     // (plano 16 §1-bis), cujo estado vivo já mora fora do ficheiro. Um segundo relógio poria a

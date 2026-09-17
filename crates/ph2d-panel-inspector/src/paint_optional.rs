@@ -250,6 +250,8 @@ pub(crate) fn paint_optional_sections(
     particles: Option<&ph2d_editor_core::particles_edits::InspectorParticlesInfo>,
     hud: Option<&ph2d_editor_core::hud_edits::InspectorHudInfo>,
     sequence: Option<&ph2d_editor_core::sequence_edits::InspectorSequenceInfo>,
+    watch: Option<&ph2d_editor_core::counter_watch_edits::InspectorCounterWatchInfo>,
+    watch_selected: &mut usize,
     // ⚠️ **Duas selecções e não uma** — as listas de estados e de setas são independentes.
     sm_state_selected: &mut usize,
     sm_trans_selected: &mut usize,
@@ -430,6 +432,8 @@ pub(crate) fn paint_optional_sections(
             particles,
             hud,
             sequence,
+            watch,
+            watch_selected: *watch_selected,
             tags,
             sm_state_selected: *sm_state_selected,
             sm_trans_selected: *sm_trans_selected,

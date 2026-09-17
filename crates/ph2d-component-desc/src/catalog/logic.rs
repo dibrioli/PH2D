@@ -132,8 +132,39 @@ const FACTORY_FIELDS: &[FieldDesc] = &[
     f(12, "component.field.factory_fields.12", K::Seed),
 ];
 
+/// ⭐⭐⭐ **Uma REGRA da vigia** — como o `Timers`, o componente é uma LISTA e isto descreve a LINHA.
+///
+/// ⚠️ **`Counter` é o NOME do contador e não o deste objecto** — a vigia pode viver num objecto
+/// «Regras» sem contador nenhum, e é isso que a torna autorável num sítio só.
+const WATCH_FIELDS: &[FieldDesc] = &[
+    f(1, "Counter", K::Text),
+    f(2, "Compare", K::Enum),
+    f(3, "Value", K::Int),
+    // ⚠️ **Vazio = calada** — a lei da §11, a mesma do `Signal` do relógio logo abaixo.
+    f(4, "Signal", K::Text),
+    f(5, "Only Once", K::Toggle),
+];
+
 /// Os descritores da família. ⚠️ **ORDENADOS por `canonical_name`** — há gate.
 pub const DESCS: &[ComponentDesc] = &[
+    // ⭐⭐⭐ **A VIGIA DO CONTADOR** — o elo que faz um NÚMERO fazer acontecer alguma coisa, e o
+    // último buraco que a medição da composição encontrou depois de o TOP-20 fechar.
+    //
+    // ⛔⛔ **Ela NÃO requer o `Counter`, e a ausência é a decisão.** O alvo é o NOME, logo o sítio
+    // natural para as regras de um jogo é um objecto VAZIO chamado «Regras», que não tem contador
+    // nenhum — exigi-lo poria um contador órfão em toda cena bem montada, e o painel deixaria de
+    // poder distinguir *«falta-te o contador»* de *«este é o que eu quis»*.
+    //
+    // ⚠️ **E não há descritor para o `CounterWatchRuntime`**, pela linha que o `CounterRuntime` já
+    // escreve: a ARESTA é viva, o undo não a fotografa, e descrevê-la aqui prometeria ao Inspector
+    // um valor que ele não deve mostrar nem editar.
+    D::authored(
+        "ph2d::ecs::CounterWatch",
+        "Counter Watch",
+        C::Logic,
+        O::ANY,
+        WATCH_FIELDS,
+    ),
     // ⭐⭐ **A HIGIENE do ciclo de vida** (TOP-20 #12) — sem ela a fábrica e o projéctil VAZAM.
     //
     // ⚠️ **Estas duas vivem na RECEITA e correm nas CÓPIAS**: um mestre está escondido por

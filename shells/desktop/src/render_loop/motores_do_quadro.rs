@@ -1,5 +1,6 @@
-//! **OS DOIS MOTORES QUE CORREM NA JANELA DOS CÉREBROS** — os scripts do artista (TOP-20 #16) e os
-//! emissores de partículas (TOP-20 #18), tirados do corpo da [`super::fase_signal_outbox`].
+//! **OS MOTORES QUE CORREM NA JANELA DOS CÉREBROS** — os scripts do artista (TOP-20 #16), os
+//! emissores de partículas (TOP-20 #18) e as vigias de contador, tirados do corpo da
+//! [`super::fase_signal_outbox`].
 //!
 //! ⚠️ **São funções LIVRES e não fases-filhas**, e a razão é um empréstimo: o outbox segura o `sim`
 //! (e o resto do `gfx`) do princípio ao fim do corpo, então um `self.fase_*(…)` a meio é um segundo
@@ -26,12 +27,54 @@ pub(super) struct Relogio {
     pub(super) dt: f64,
 }
 
+impl Relogio {
+    /// **O relógio deste quadro.**
+    ///
+    /// ⚠️ **Construir-se é assunto de quem é dono do tipo** — e o corte foi imposto pelo tecto de
+    /// 200 LOC da `fase_signal_outbox` (ela chegou a `202` ao ganhar o terceiro motor). *A cura de
+    /// um tecto é o CORTE, nunca uma entrada nova no `FN_OVERAGE_OK`.*
+    pub(super) const fn do_quadro(playing: bool, ticks: u32, dt: f64) -> Self {
+        Self { playing, ticks, dt }
+    }
+}
+
+/// ⭐⭐⭐ **OS TRÊS MOTORES, pela ORDEM** — uma chamada só.
+///
+/// ⚠️ **A ordem é o contrato, e é o que o texto emendado do quadro mede:** os três falam ANTES de
+/// a tabela de acções ler, que é o que faz uma porta abrir no MESMO quadro em que o botão é tocado.
+///
+/// ⚠️ **Agrupá-los foi imposto pelo tecto de 200 LOC da [`super::fase_signal_outbox`]** (ela chegou
+/// a `202` ao ganhar o terceiro) **e é o certo por responsabilidade:** *correr os motores* é UM
+/// passo do quadro, e o quarto entra aqui sem tocar na fase.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn correm(
+    sim: &mut SimWorld,
+    script: &mut Option<ScriptHost>,
+    particles: &mut ParticlesState,
+    scratch: &SortScratch,
+    drive: &mut ph2d_preview_drive::PreviewDrive,
+    signals: &mut SignalOutbox,
+    leitores: &mut crate::app_state::app_state_signal_readers::SignalReaders,
+    relogio: &Relogio,
+) {
+    scripts(sim, script, drive, signals, &mut leitores.script, relogio);
+    particulas(
+        sim,
+        particles,
+        scratch,
+        signals,
+        &mut leitores.particles,
+        relogio,
+    );
+    vigias(sim, signals, relogio);
+}
+
 /// ⭐⭐⭐ **OS SCRIPTS DO ARTISTA** (TOP-20 #16) — o que um script emite chega à tabela de acções
 /// NESTE quadro.
 ///
 /// ⚠️ O cursor lê em TODO quadro, mesmo parado (a lei do `ui_signal_reader`), e uma falha imprime
 /// UMA linha — a mensagem fica no Inspector.
-pub(super) fn scripts(
+fn scripts(
     sim: &mut SimWorld,
     script: &mut Option<ScriptHost>,
     drive: &mut ph2d_preview_drive::PreviewDrive,
@@ -69,7 +112,7 @@ pub(super) fn scripts(
 /// objecto tinha no quadro passado, e um objecto acabado de reordenar na Hierarquia leva um quadro
 /// a levar o penacho consigo. ⛔ A alternativa (carimbar no presente) obrigaria cada instância a
 /// lembrar-se de quem a emitiu.
-pub(super) fn particulas(
+fn particulas(
     sim: &mut SimWorld,
     particles: &mut ParticlesState,
     scratch: &SortScratch,
@@ -88,5 +131,22 @@ pub(super) fn particulas(
     );
     for (bits, nome) in f.finished {
         signals.publish(ph2d_runtime::Signal::from_particles(&nome, bits));
+    }
+}
+
+/// ⭐⭐⭐ **AS VIGIAS DE CONTADOR** — uma travessia de limiar chega à tabela de acções NESTE quadro.
+///
+/// ⚠️ **Ela não OUVE, só FALA** — logo não tem `SignalReader`, ao contrário dos dois irmãos acima.
+/// É a única fonte desta janela cuja entrada é o estado do MUNDO e não o barramento.
+///
+/// ⚠️⚠️ **Ela corre AQUI, com os irmãos, e não depois da tabela de acções — e a escolha foi
+/// MEDIDA, não herdada.** Ela vê o valor que o quadro ANTERIOR deixou, porque quem move um contador
+/// é a tabela, que corre depois desta janela: isso custa `1` quadro na OBSERVAÇÃO e poupa `1` na
+/// REACÇÃO. Falar depois da tabela inverteria os dois e daria **o mesmo total** ⇒ escolhe-se a
+/// margem que o texto emendado do quadro já cobre, que é esta.
+fn vigias(sim: &mut SimWorld, signals: &mut SignalOutbox, relogio: &Relogio) {
+    let f = ph2d_app_components::counter_watch_bridge::frame(sim, relogio.playing, relogio.ticks);
+    for (bits, row, nome) in f.disparos {
+        signals.publish(ph2d_runtime::Signal::from_counter_watch(&nome, bits, row));
     }
 }

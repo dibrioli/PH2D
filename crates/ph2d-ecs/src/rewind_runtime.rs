@@ -34,8 +34,9 @@
 //! já não tem de se lembrar disto (o mesmo argumento do `release_grab` no `bridge::rewind`).
 
 use crate::{
-    CameraRuntime, Counter, CounterRuntime, Entity, FactoryRuntime, LifetimeRuntime, StateMachine,
-    StateMachineRuntime, TimerRuntime, Timers, World,
+    CameraRuntime, Counter, CounterRuntime, CounterWatch, CounterWatchRuntime, Entity,
+    FactoryRuntime, LifetimeRuntime, StateMachine, StateMachineRuntime, TimerRuntime, Timers,
+    World,
 };
 
 /// **Repõe o estado vivo de toda a gente, como no tique 0.** Devolve **quantos componentes** foram
@@ -55,6 +56,7 @@ use crate::{
 /// | [`StateMachineRuntime`] | [`crate::state_machine::born`] | volta ao estado **inicial**, e `started = false` fá-lo anunciar a entrada outra vez |
 /// | [`CameraRuntime`] | ⭐⭐ **APAGAR o componente** | o `ensure_runtime` da shell recria-o **da pose autorada**; um `Default` poria a câmera na ORIGEM |
 /// | [`CounterRuntime`] | ⭐ o **`start` da config** | a primeira espécie que LÊ a config: um `Default` poria todos a zero e apagaria as três vidas que o artista autorou |
+/// | [`CounterWatchRuntime`] | [`crate::counter_watch::born`] por slot | ⭐⭐ `held = false` **re-arma a aresta**: sem isso a 2.ª corrida nunca voltaria a anunciar a morte, porque a condição já estava satisfeita quando a 1.ª acabou |
 pub fn rewind_runtime_state(world: &mut World) -> usize {
     let mut n = 0;
 
@@ -101,6 +103,18 @@ pub fn rewind_runtime_state(world: &mut World) -> usize {
     let mut q = world.query::<(&Counter, &mut CounterRuntime)>();
     for (cfg, mut rt) in q.iter_mut(world) {
         rt.value = cfg.start;
+        n += 1;
+    }
+
+    // ── As VIGIAS ────────────────────────────────────────────────────────────
+    // ⭐⭐ **Re-armar a ARESTA é o trabalho todo.** Uma corrida que acabou com as vidas a zero
+    // deixou a regra `AtMost 0` com `held = true`; sem passar por aqui, a 2.ª corrida começaria
+    // com a condição «já satisfeita» e **nunca mais anunciaria a morte** — o mesmo defeito que o
+    // `started = false` do cérebro cura um parágrafo acima, e que a fábrica pagou com o `total`.
+    let mut q = world.query::<(&CounterWatch, &mut CounterWatchRuntime)>();
+    for (cfg, mut rt) in q.iter_mut(world) {
+        rt.0.clear();
+        rt.0.resize(cfg.0.len(), crate::counter_watch::born());
         n += 1;
     }
 

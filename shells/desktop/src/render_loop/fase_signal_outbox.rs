@@ -156,29 +156,22 @@ impl crate::App {
                     ));
             }
         }
-        // ⭐⭐⭐ **OS DOIS MOTORES DA JANELA DOS CÉREBROS** — os scripts do artista (#16) e os
-        // emissores de partículas (#18). O corpo mora no irmão `motores_do_quadro` (tecto de LOC);
-        // a ORDEM é esta, e é o que o texto emendado do quadro mede: os dois falam ANTES de a
-        // tabela de acções ler.
-        let relogio = motores_do_quadro::Relogio {
-            playing: self.playhead.is_playing(),
+        // ⭐⭐⭐ **OS MOTORES DA JANELA DOS CÉREBROS** — scripts (#16), partículas (#18) e as vigias
+        // de contador; o corpo mora no irmão. ⚠️ **A ORDEM é esta e é o que o texto emendado do
+        // quadro mede:** os três falam ANTES de a tabela de acções ler.
+        let relogio = motores_do_quadro::Relogio::do_quadro(
+            self.playhead.is_playing(),
             ticks,
-            dt: self.fixed_step.fixed_dt(),
-        };
-        motores_do_quadro::scripts(
+            self.fixed_step.fixed_dt(),
+        );
+        motores_do_quadro::correm(
             sim,
             script,
-            &mut self.preview_drive,
-            &mut self.signals,
-            &mut self.signal_readers.script,
-            &relogio,
-        );
-        motores_do_quadro::particulas(
-            sim,
             particles,
             sort_scratch,
+            &mut self.preview_drive,
             &mut self.signals,
-            &mut self.signal_readers.particles,
+            &mut self.signal_readers,
             &relogio,
         );
         // ⭐⭐⭐ **O CONSUMIDOR QUE FAZ ALGUMA COISA** (TOP-20 #5) — a tabela nome → acção.

@@ -130,6 +130,8 @@ pub fn installed_registry() -> Option<&'static registry::Registry> {
     EDITOR_REGISTRY.get()
 }
 
+/// ⭐⭐⭐ **O vocabulário da CUTSCENE** (TOP-20 #19) — o que o painel mostra de um `SequencePlayer`.
+pub mod counter_watch_edits;
 /// ⭐⭐⭐ **O vocabulário das TAGS** — os dois gestos, num módulo abaixo do `action_bus` e do
 /// `screens`. Ver o cabeçalho dele: é o primeiro degrau da cura que a catraca do DAG prescreve.
 /// ⭐ O VOCABULÁRIO da fábrica e do ciclo de vida — abaixo do `action_bus` (catraca do DAG).
@@ -142,7 +144,6 @@ pub mod particles_edits;
 pub mod projectile_edits;
 /// ⭐⭐⭐ **O vocabulário do SCRIPT DO ARTISTA** (TOP-20 #16) — o sexto degrau da mesma migração.
 pub mod script_edits;
-/// ⭐⭐⭐ **O vocabulário da CUTSCENE** (TOP-20 #19) — o que o painel mostra de um `SequencePlayer`.
 pub mod sequence_edits;
 /// ⭐⭐⭐ **O vocabulário do CÉREBRO** (TOP-20 #15) — o quinto degrau da migração que tira a
 /// aresta `action_bus → screens` da catraca do DAG. Ver o cabeçalho.

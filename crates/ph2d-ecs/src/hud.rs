@@ -176,22 +176,10 @@ pub fn valor(
 ) -> Option<ph2d_hud::Valor> {
     match &label.source {
         LabelSource::Authored => None,
-        // ⚠️ SOMA, e não «o primeiro»: a ordem de iteração entre arquétipos não é prometida.
+        // ⚠️ **Pela PORTA** ([`crate::counter::soma`]) — ela SOMA (a ordem de iteração entre
+        // arquétipos não é prometida) e distingue `None` de zero. O outro leitor é a vigia.
         LabelSource::Counter(nome) => {
-            let alvo = nome.trim();
-            if alvo.is_empty() {
-                return None;
-            }
-            let mut achou = false;
-            let mut total: i64 = 0;
-            let mut q = world.query::<(&Counter, &CounterRuntime)>();
-            for (cfg, rt) in q.iter(world) {
-                if cfg.name.trim() == alvo {
-                    achou = true;
-                    total = total.saturating_add(rt.value);
-                }
-            }
-            achou.then_some(ph2d_hud::Valor::Inteiro(total))
+            crate::counter::soma(world, nome).map(ph2d_hud::Valor::Inteiro)
         }
         // ⚠️ O MENOR tempo que falta — o relógio que vai tocar primeiro. ⛔ Somar tempos que
         // correm em paralelo não significa nada.

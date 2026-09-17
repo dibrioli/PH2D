@@ -74,6 +74,11 @@ pub(crate) fn apply_event(
     if crate::event_sequence::apply_sequence_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    // ⭐⭐⭐ A VIGIA DO CONTADOR — ela precisa do estado do painel (a lista tem uma regra aberta),
+    // como os timers e a tabela de acções.
+    if crate::event_counter_watch::apply_counter_watch_event(state, host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐ O EMISSOR DE PARTÍCULAS (TOP-20 #18) — sem estado de painel: um objecto tem UM emissor.
     if crate::event_particles::apply_particles_event(host, ev) {
         return EventOutcome::Consumed;

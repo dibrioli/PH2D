@@ -24,6 +24,8 @@ pub(crate) struct ComponentsShell {
     pub(crate) hud: HudShell,
     /// ⭐ O que a cena da CUTSCENE mede sobre si mesma — ver [`SequenceShell`].
     pub(crate) sequence: SequenceShell,
+    /// ⭐ O que a cena da VIGIA mede sobre si mesma — ver [`CounterWatchShell`].
+    pub(crate) counter_watch: CounterWatchShell,
 }
 
 /// ⭐⭐⭐ **A AUTO-CONFERÊNCIA da cena da cutscene** (TOP-20 #19) — o que ela mede sobre si mesma
@@ -45,6 +47,33 @@ pub(crate) struct SequenceShell {
     pub(crate) faixa_porta: (f32, f32),
     /// Ver [`Self::faixa_porta`].
     pub(crate) faixa_controlo: (f32, f32),
+}
+
+/// ⭐⭐⭐ **A AUTO-CONFERÊNCIA da cena da vigia** — o que ela mede sobre si mesma enquanto corre.
+///
+/// ⚠️ **Ela existe pela mesma razão da irmã** ([`SequenceShell`]): uma foto mostra um instante, e
+/// *«sumiu ao chegar a zero»* é uma propriedade de um INTERVALO.
+#[derive(Default)]
+pub(crate) struct CounterWatchShell {
+    /// Quantos quadros ainda faltam amostrar. `0` = a conferência já saiu.
+    pub(crate) resta: u32,
+    /// A entidade que TEM a vigia, e a que não tem.
+    pub(crate) heroi: u64,
+    /// Ver [`Self::heroi`].
+    pub(crate) controlo: u64,
+    /// Ele ficou invisível em algum quadro?
+    pub(crate) heroi_sumiu: bool,
+    /// Ver [`Self::heroi_sumiu`] — ⚠️ **tem de ficar `false`**, e é essa metade que faz da outra
+    /// uma prova.
+    pub(crate) controlo_sumiu: bool,
+    /// ⭐ Quantas LUZES de vida se apagaram de cada lado — a metade que o dono de facto VÊ.
+    pub(crate) luzes_heroi: usize,
+    /// Ver [`Self::luzes_heroi`] — ⚠️ **tem de ficar `0`**.
+    pub(crate) luzes_controlo: usize,
+    /// O valor mais baixo que o contador de cada um atingiu.
+    pub(crate) min_heroi: i64,
+    /// Ver [`Self::min_heroi`].
+    pub(crate) min_controlo: i64,
 }
 
 /// ⭐ **O que o HUD lembra entre quadros** — nada disto é documento.
@@ -113,6 +142,10 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) particles_raise: u8,
     /// ⭐ A CUTSCENE (TOP-20 #19) — `PH2D_SEQUENCE_SMOKE=1`.
     pub(crate) sequence: bool,
+    /// ⭐ A VIGIA DO CONTADOR — `PH2D_COUNTERWATCH_SMOKE=1`.
+    pub(crate) counter_watch: bool,
+    /// Quantos quadros ainda trazem o Inspector à frente na cena da vigia — ver `sequence_raise`.
+    pub(crate) counter_watch_raise: u8,
     /// Quantos quadros ainda trazem o Inspector à frente na cena da cutscene — ver o irmão
     /// `particles_raise`, que é a mesma cura da mesma ordem medida.
     pub(crate) sequence_raise: u8,

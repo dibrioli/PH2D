@@ -572,7 +572,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // registo (`SequencePlayer`). ⚠️ **A tripla NÃO vê este degrau** — a OITAVA vez, e pela
         // mesma razão: nem o `FlipDoc` nem a `VecScene` mudam de forma, e quem muda é a POPULAÇÃO
         // do registo (`registry_tests`, 95 → 96, e os dois espelhos 96 → 97).
-        (146, 13, 22),
+        // ⭐ **PROJECT 146→147** (2026-09-17): a VIGIA DO CONTADOR — UM componente novo no registo
+        // (`CounterWatch`). ⚠️ **A tripla NÃO vê este degrau** — a NONA vez, e pela mesma razão:
+        // nem o `FlipDoc` nem a `VecScene` mudam de forma, e quem muda é a POPULAÇÃO do registo
+        // (`registry_tests`, 96 → 97, e os dois espelhos 97 → 98).
+        (147, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

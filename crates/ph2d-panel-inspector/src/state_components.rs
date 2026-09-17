@@ -97,6 +97,32 @@ pub(crate) fn current_inspector_sequence()
     crate::state::CURRENT_INSPECTOR_SEQUENCE.with(|c| c.borrow().clone())
 }
 
+thread_local! {
+    /// ⭐⭐⭐ **O snapshot da secção COUNTER WATCH** — a vigia do contador.
+    ///
+    /// ⚠️ **Ela mora AQUI e não no [`crate::state`], ao contrário das irmãs mais velhas**, e o
+    /// corte foi imposto pelo tecto de 600 LOC daquele ficheiro (ele chegou a `601`). ⭐ É o
+    /// certo por responsabilidade: aquele módulo é sobre o que o PAINEL lembra entre quadros, e
+    /// isto é um instantâneo que a shell escreve — que é exactamente o assunto deste ficheiro,
+    /// onde o `set`/`current` dela já viviam.
+    static CURRENT_INSPECTOR_COUNTER_WATCH:
+        std::cell::RefCell<
+            Option<ph2d_editor_core::counter_watch_edits::InspectorCounterWatchInfo>,
+        > = const { std::cell::RefCell::new(None) };
+}
+
+/// ⭐ O snapshot da VIGIA DO CONTADOR — a shell escreve-o todo o quadro.
+pub fn set_current_inspector_counter_watch(
+    info: Option<ph2d_editor_core::counter_watch_edits::InspectorCounterWatchInfo>,
+) {
+    CURRENT_INSPECTOR_COUNTER_WATCH.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_counter_watch()
+-> Option<ph2d_editor_core::counter_watch_edits::InspectorCounterWatchInfo> {
+    CURRENT_INSPECTOR_COUNTER_WATCH.with(|c| c.borrow().clone())
+}
+
 /// ⭐ O snapshot do EMISSOR DE PARTÍCULAS (TOP-20 #18) — a shell escreve-o todo o quadro.
 pub fn set_current_inspector_particles(info: Option<InspectorParticlesInfo>) {
     CURRENT_INSPECTOR_PARTICLES.with(|c| *c.borrow_mut() = info);

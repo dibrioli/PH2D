@@ -199,6 +199,25 @@ pub enum SignalOrigin {
         /// Em que botão — a entidade que o carrega.
         source: EntityBits,
     },
+    /// ⭐⭐⭐ **Um CONTADOR atravessou um limiar** — a vigia (`ph2d_ecs::CounterWatch`).
+    ///
+    /// ⚠️ **APENDADO no fim, e isto não é estilo:** o `SignalOrigin` viaja nos diagnósticos e nos
+    /// gates por posição de variante — a mesma nota que o `SignalVerb` e o `Compare` carregam.
+    ///
+    /// ⚠️⚠️ **Ele leva o ÍNDICE DA REGRA, e não o nome do contador — e isso foi IMPOSTO, não
+    /// escolhido:** este enum é `Copy`, e um `Arc<str>` aqui tira o `Copy` a **todas** as origens.
+    /// ⭐ O índice é estritamente mais forte: dele tira-se o contador, a comparação e o limiar
+    /// (é a linha da vigia), enquanto do nome do contador não se tira qual das regras falou.
+    ///
+    /// ⚠️ **E não leva o VALOR.** Um sinal é o instante em que foi dito; guardar o número aqui
+    /// daria uma segunda resposta a *«quanto vale o contador?»*, e quem a lesse um quadro depois
+    /// leria um número que já não é verdade. *A porta é a [`ph2d_ecs::counter::soma`].*
+    CounterWatch {
+        /// Quem tem a regra — a entidade que carrega a vigia.
+        source: EntityBits,
+        /// **Qual** das regras dela falou, pela posição na lista.
+        row: u16,
+    },
 }
 
 /// Um sinal publicado neste quadro.
@@ -311,6 +330,18 @@ impl Signal {
             name: Arc::from(name),
             origin: SignalOrigin::Particles {
                 source: EntityBits(source),
+            },
+        }
+    }
+
+    /// **Um contador atravessou um limiar** ([`SignalOrigin::CounterWatch`]).
+    #[must_use]
+    pub fn from_counter_watch(name: &str, source: u64, row: u16) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::CounterWatch {
+                source: EntityBits(source),
+                row,
             },
         }
     }

@@ -70,6 +70,11 @@ pub(super) struct InspectorIntents {
     pub(super) hud_edits: Vec<(u64, ph2d_editor_core::hud_edits::HudFieldEdit)>,
     /// ⭐ As edições da secção SEQUENCE (TOP-20 #19).
     pub(super) sequence_edits: Vec<(u64, ph2d_editor_core::sequence_edits::SequenceFieldEdit)>,
+    /// As edições da secção COUNTER WATCH.
+    pub(super) counter_watch_edits: Vec<(
+        u64,
+        ph2d_editor_core::counter_watch_edits::CounterWatchFieldEdit,
+    )>,
     pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     pub(super) tag_tree_edits: Vec<ph2d_editor_core::TagTreeEdit>,
     pub(super) inspector_queue_dirty: bool,
@@ -129,6 +134,7 @@ impl crate::App {
             particles_edits,
             hud_edits,
             sequence_edits,
+            counter_watch_edits,
             tags_edits,
             tag_tree_edits,
             mut inspector_queue_dirty,
@@ -247,16 +253,19 @@ impl crate::App {
         }
         // ⭐⭐⭐ **As secções FACTORY e LIFECYCLE** (TOP-20 #11 e #12, W3) — na fase-filha.
         inspector_queue_dirty |= factory_commits::aplicar(sim, tags, &factory_edits);
-        // ⭐ O MOVER DE VISTA DE CIMA (TOP-20 #13) — fase-filha, como a fábrica.
-        inspector_queue_dirty |= topdown_commits::aplicar(sim, &topdown_edits);
-        inspector_queue_dirty |= projectile_commits::aplicar(sim, &projectile_edits);
-        // ⭐ O CÉREBRO (TOP-20 #15) — fase-filha, como as irmãs.
-        inspector_queue_dirty |= statemachine_commits::aplicar(sim, &statemachine_edits);
-        // ⭐ O SCRIPT (TOP-20 #16) — fase-filha (o tecto de LOC desta função pôs-no lá).
-        inspector_queue_dirty |= script_commits::aplicar(sim, &script_edits);
-        // ⭐ O EMISSOR (#18), o HUD (#20) e a CUTSCENE (#19) — fase-filha, pelo tecto desta função.
-        inspector_queue_dirty |=
-            top20_commits::aplicar(sim, &particles_edits, &hud_edits, &sequence_edits);
+        // ⭐ **AS OITO SECÇÕES DO TOP-20 que cabem numa porta só** — na fase-filha, pelo tecto
+        // desta função.
+        inspector_queue_dirty |= top20_commits::aplicar(
+            sim,
+            &particles_edits,
+            &hud_edits,
+            &sequence_edits,
+            &counter_watch_edits,
+            &topdown_edits,
+            &projectile_edits,
+            &statemachine_edits,
+            &script_edits,
+        );
         // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — na fase-filha, pela mesma razão das irmãs acima e
         // pelo mesmo tecto de LOC (esta função chegou a `202` contra `200` ao ganhar o cérebro).
         // ⛔ *Partir por RESPONSABILIDADE, nunca subir o número* — e a fronteira já estava escrita

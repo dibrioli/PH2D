@@ -256,36 +256,15 @@ pub(crate) fn paint_deferred_popovers(
         );
     }
 
-    // ⭐⭐⭐ **SEQUENCE** (TOP-20 #19) — a lista das cutscenes do documento, mesmo passe diferido.
+    // ⭐⭐⭐ **OS DOIS SELECTORES DAS SECÇÕES DO TOP-20** — a CUTSCENE (#19) e a COMPARAÇÃO da
+    // vigia do contador — no irmão, cortados pelo tecto de 200 LOC desta função (ela chegou a
+    // `211` ao ganhar o segundo).
     //
-    // ⚠️ **Só o rect viaja no slot** e a lista rederiva-se do snapshot, que é a fonte dela: uma
-    // cópia guardada ficaria um quadro atrás do documento no quadro em que alguém apaga um
-    // container com o selector aberto.
-    if let Some(chip) = state_popovers::take_pending_seq_dd()
-        && let Some(info) = crate::state_components::current_inspector_sequence()
-    {
-        let mut dd = Dropdown::new(
-            crate::ids::INSP_SEQ_PICK,
-            "",
-            sections::sequence::opcoes(&info.nomes),
-        )
-        .open(true)
-        .placeholder(sections::sequence::placeholder(&info));
-        if let Some(i) = info.escolhido {
-            dd.select(i);
-        }
-        paint_open_popover(
-            &dd,
-            chip,
-            region,
-            store,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-    }
-
+    // ⚠️ **O corte é por ASSUNTO, como o dos tags:** os quatro de cima escolhem um ENUM do
+    // OBJECTO (amostragem, camada, âncora, verbo) e os deles saem do descritor; estes dois
+    // escolhem dentro de uma lista que só a **fila do TOP-20** conhece — os containers do
+    // documento da timeline e as comparações do motor. ⛔ Subir o número seria adiar com juros.
+    top20::paint_deferred_top20_popovers(scene, text_system, theme, hit_index, store, region);
     // ⭐⭐⭐ **OS TRÊS POPOVERS DE TAG** (TOP-20 #9) — no irmão, cortados em 2026-09-14 pelo tecto
     // de 200 LOC desta função (ela chegou a `210`).
     //
@@ -298,3 +277,7 @@ pub(crate) fn paint_deferred_popovers(
 /// ⭐ **Os três popovers de TAG** — irmão por `#[path]`; ver a chamada acima.
 #[path = "popovers_tags.rs"]
 mod tags;
+
+/// ⭐ **Os dois selectores das secções do TOP-20** — irmão por `#[path]`; ver a chamada acima.
+#[path = "popovers_top20.rs"]
+mod top20;

@@ -111,6 +111,8 @@ pub use state_machine::{
 };
 /// ⭐⭐⭐ **O `Timer`** — o item #2 do TOP-20 e o primeiro produtor de sinal barato do produto
 /// (hoje o único produtor autorável é uma COLISÃO).
+pub mod counter;
+pub mod counter_watch;
 pub mod hud;
 pub mod tags;
 pub mod timer;
@@ -142,6 +144,9 @@ pub use anchor_mount::{
 };
 pub use baked_form::BakedForm;
 pub use blend::BlendMode;
+pub use counter_watch::{
+    Compare, CounterWatch, CounterWatchRow, CounterWatchRuntime, WATCHES_MAX, WatchState,
+};
 pub use emissive::{EMISSIVE_MAX, EMISSIVE_OFF, SpriteEmissive};
 pub use factory::{
     BURST_MAX, Birth, Factory, FactoryRuntime, FactoryTick, Pick, SpawnAt, alive_by_factory,

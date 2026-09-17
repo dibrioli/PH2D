@@ -85,6 +85,11 @@ pub struct InspectorState {
     pub last_timer_row: Option<usize>,
     /// SIGNAL ACTIONS — qual acção da lista está aberta. **Estado do painel**, como a das irmãs.
     pub action_selected: usize,
+    /// COUNTER WATCH — qual regra da lista está aberta. **Estado do painel**, como a das irmãs: as
+    /// N regras avaliam todas ao mesmo tempo, logo a cena não tem onde guardar «a actual».
+    pub watch_selected: usize,
+    /// Irmão do [`Self::last_timer_row`], e pela MESMA razão medida.
+    pub last_watch_row: Option<usize>,
     /// Irmão do [`Self::last_timer_row`], e pela MESMA razão medida.
     pub last_action_row: Option<usize>,
     /// STATE MACHINE — qual ESTADO da lista está aberto. **Estado do painel**, como as irmãs.

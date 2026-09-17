@@ -20,6 +20,9 @@ pub use inspector_anim::*;
 mod inspector_audio;
 pub use inspector_audio::*;
 mod inspector_camera;
+/// ⭐ Os ids da secção COUNTER WATCH — a vigia do contador.
+mod inspector_counter_watch;
+pub use inspector_counter_watch::*;
 mod inspector_factory;
 /// ⭐ Os ids da secção SCRIPT (TOP-20 #16) — ver o cabeçalho.
 mod inspector_hud;

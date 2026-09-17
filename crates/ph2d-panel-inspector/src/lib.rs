@@ -23,6 +23,8 @@ mod event_anchor;
 mod event_anim;
 mod event_audio;
 mod event_camera;
+/// ⭐ O clique da secção SEQUENCE (TOP-20 #19) — ver o cabeçalho.
+mod event_counter_watch;
 mod event_factory;
 /// ⭐ O registo dos widgets da secção PARTICLES — irmão por CAP de ficheiro.
 mod event_hud;
@@ -38,7 +40,6 @@ mod event_precision;
 mod event_projectile;
 /// ⭐ O despacho da secção SCRIPT — irmão do `event` por CAP de função.
 mod event_script;
-/// ⭐ O clique da secção SEQUENCE (TOP-20 #19) — ver o cabeçalho.
 mod event_sequence;
 mod event_slice;
 mod event_sprite_geometry;
@@ -74,6 +75,8 @@ mod populate_anchor;
 mod populate_anim;
 mod populate_audio;
 mod populate_camera;
+/// ⭐ O registo dos widgets da secção SEQUENCE (TOP-20 #19) — ver o cabeçalho.
+mod populate_counter_watch;
 mod populate_factory;
 mod populate_hud;
 /// ⭐⭐ O registo do CARTÃO de instância — irmão por assunto, ver o cabeçalho de lá.
@@ -84,7 +87,6 @@ mod populate_player;
 mod populate_projectile;
 /// ⭐ O registo dos widgets da secção SCRIPT — irmão por CAP de ficheiro.
 mod populate_script;
-/// ⭐ O registo dos widgets da secção SEQUENCE (TOP-20 #19) — ver o cabeçalho.
 mod populate_sequence;
 /// ⭐ O registo dos widgets da secção STATE MACHINE — irmão por CAP de ficheiro.
 mod populate_statemachine;
@@ -195,8 +197,9 @@ pub use state::{probe_current_instance, probe_current_properties, texture_slot_p
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{
     set_current_inspector_action, set_current_inspector_audio, set_current_inspector_camera,
-    set_current_inspector_factory, set_current_inspector_hud, set_current_inspector_particles,
-    set_current_inspector_projectile, set_current_inspector_script, set_current_inspector_sequence,
+    set_current_inspector_counter_watch, set_current_inspector_factory, set_current_inspector_hud,
+    set_current_inspector_particles, set_current_inspector_projectile,
+    set_current_inspector_script, set_current_inspector_sequence,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
 };
 

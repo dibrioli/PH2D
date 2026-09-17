@@ -77,6 +77,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             &mut inspector_state.anim_selected,
             &mut inspector_state.timer_selected,
             &mut inspector_state.action_selected,
+            &mut inspector_state.watch_selected,
             &mut inspector_state.sm_state_selected,
             &mut inspector_state.sm_trans_selected,
         );
@@ -158,6 +159,7 @@ fn paint_inspector(
     anim_selected: &mut usize,
     timer_selected: &mut usize,
     action_selected: &mut usize,
+    watch_selected: &mut usize,
     sm_state_selected: &mut usize,
     sm_trans_selected: &mut usize,
 ) {
@@ -317,6 +319,8 @@ fn paint_inspector(
         snaps.particles_info.as_ref(),
         snaps.hud_info.as_ref(),
         snaps.sequence_info.as_ref(),
+        snaps.watch_info.as_ref(),
+        watch_selected,
         sm_state_selected,
         sm_trans_selected,
         snaps.tags_info.as_ref(),

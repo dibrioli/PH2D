@@ -45,6 +45,8 @@ pub(crate) mod anim_rows;
 pub(crate) mod audio;
 pub(crate) mod camera;
 mod color_tint;
+/// ⭐ A secção COUNTER WATCH — a vigia do contador.
+pub(crate) mod counter_watch;
 /// A linha `Emissive` (plano `docs/Sprite_projeto/18` W8) — irmã do `render_source`, que está no
 /// tecto de LOC.
 mod emissive_row;

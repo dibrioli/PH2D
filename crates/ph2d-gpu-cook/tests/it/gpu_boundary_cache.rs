@@ -81,7 +81,7 @@ fn an_unchanged_boundary_is_uploaded_once_and_draws_the_same_bits() {
         .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]]))
         .with("size", Column::Vec2(vec![[1.0, 1.0]; 3]));
     let mut gc = ph2d_gpu_cook::GpuCook::new();
-    let mut cozer = |gc: &mut ph2d_gpu_cook::GpuCook, s: &Stream| {
+    let cozer = |gc: &mut ph2d_gpu_cook::GpuCook, s: &Stream| {
         gc.cook(
             &gpu,
             &g,

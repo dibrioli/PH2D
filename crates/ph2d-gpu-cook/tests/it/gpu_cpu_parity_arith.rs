@@ -79,7 +79,7 @@ use ph2d_render::SinkStyle;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::CookClock;
 use ph2d_node_registry::NodeRegistry;
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 

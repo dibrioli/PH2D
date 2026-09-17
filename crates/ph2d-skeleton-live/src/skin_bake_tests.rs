@@ -3,7 +3,8 @@
 //! ⚠️ **Eles medem a LEI ([`super::assar`]) e não a PORTA ([`super::assar_no_bind`])**, e a razão
 //! está escrita lá: a env var é lida uma vez por processo (`OnceLock`), logo um gate que a
 //! escrevesse mediria o que o vizinho já tinha fixado. O que se afirma da porta é a única coisa que
-//! se pode afirmar sem a escrever: **ela nasce desligada**.
+//! se pode afirmar sem a escrever: **qual é o valor de omissão dela** — e desde 2026-09-17, com a
+//! medição do custo por quadro, esse valor é **ABERTA**.
 
 use super::*;
 
@@ -45,24 +46,39 @@ fn pesos_articulados(m: &Mesh2d) -> Vec<f64> {
     out
 }
 
-/// ⛔⛔ **A PORTA NASCE DESLIGADA** — é o pedido da W1 (*«sem mudar o que se vê»*), e é o que faz
-/// esta wave não pôr mais vértices para a CPU deformar antes de a W2 pagar por eles.
+/// ⭐⭐⭐ **A PORTA NASCE ABERTA — e a premissa deste gate MORREU por MEDIÇÃO** (2026-09-17).
 ///
-/// ⚠️ **O CONTROLO está na segunda metade:** a mesma entrada, pela LEI, assa. Sem ele este gate
-/// passaria sobre um assador partido — *«não fez nada» e «está desligado» são o mesmo `None`*.
+/// # ⚠️ O que ele dizia, e o que a medição respondeu
+///
+/// Ele chamava-se `a_porta_nasce_desligada_e_a_lei_por_tras_dela_funciona` e afirmava o contrário:
+/// *«a porta nasce desligada — é o pedido da W1 (sem mudar o que se vê), e é o que faz esta wave
+/// não pôr mais vértices para a CPU deformar antes de a W2 pagar por eles»*.
+///
+/// ⛔ **Isso era verdade sobre a DIRECÇÃO e errado sobre o NÚMERO.** Medido na arte do dono (a
+/// tabela no cabeçalho do [`super`]): numa imagem a assadura entrega `2,7×` mais peças por `5,6×`
+/// MENOS relógio, porque **refinar** custa `~0,32 µs` por peça e **desenhar** uma peça já fina
+/// custa `~0,017 µs`. *§0.0: meça antes de limitar.*
+///
+/// ⚠️ **O CONTROLO continua a ser a segunda metade, e agora ao contrário:** a porta ABERTA e a LEI
+/// nua têm de dar a **mesma** contagem. Sem ele este gate passaria sobre uma porta que devolvesse
+/// uma malha qualquer — *«assou» e «assou o que a lei manda» não são o mesmo facto.*
 #[test]
-fn a_porta_nasce_desligada_e_a_lei_por_tras_dela_funciona() {
+fn a_porta_nasce_aberta_e_entrega_exactamente_o_que_a_lei_assa() {
     let m = grelha(16);
     let pesos = pesos_articulados(&m);
-    assert!(
-        assar_no_bind(&m, &pesos, 2).is_none(),
-        "a porta do assador nasceu LIGADA — a W1 nao pode mudar o que se ve'"
+    let pela_porta = assar_no_bind(&m, &pesos, 2).expect(
+        "a porta do assador nasceu FECHADA — desde 2026-09-17 a assadura e' o caminho de omissao",
     );
-    assert!(
-        assar(&m, &pesos, 2).is_some(),
-        "a LEI por tras da porta nao assa nada — o `None` acima nao prova que a porta esta' \
-         desligada, so' que o assador esta' partido"
+    let pela_lei = assar(&m, &pesos, 2).expect(
+        "a LEI por tras da porta nao assa nada — o `Some` acima nao prova que a porta esta' \
+         aberta, so' que alguem devolveu uma malha",
     );
+    assert_eq!(
+        pela_porta.0.tris.len(),
+        pela_lei.0.tris.len(),
+        "a porta entregou outra malha que nao a da lei"
+    );
+    assert_eq!(pela_porta.1.len(), pela_lei.1.len());
 }
 
 /// ⭐⭐ **A ASSADURA PARTE ONDE O PESO CURVA e devolve os pesos re-interpolados.**

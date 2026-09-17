@@ -288,16 +288,27 @@ fn quadro(
 ///
 /// ⛔⛔ **Medido antes da cura** (`measure_the_smooth_under_a_full_scene`): com as malhas guardadas
 /// acima do orçamento do quadro, cada imagem recebe um orçamento IGUAL ao que guarda — nada pode
-/// partir, a saída é a do `Fast` —, e o quadro pagava a avaliação inteira: `8` imagens do smoke
-/// custavam `5,9 ms` (`35 %` de um quadro) para entregar o que o `Fast` entrega em `0,21 ms`.
+/// partir —, e o quadro pagava a avaliação inteira: `8` imagens do smoke custavam `5,9 ms`
+/// (`35 %` de um quadro) para entregar o que o `Fast` entrega em `0,21 ms`.
 ///
-/// ⚠️ **As três metades:** sem espaço a lei NÃO corre · a saída é a do `Fast` AO BIT · e com espaço
-/// ela corre e parte (o controlo — sem ele, um curto-circuito que desligasse o `Smooth` sempre
-/// passaria as duas primeiras).
+/// # ⚠️ Uma METADE deste gate MORREU em 2026-09-17, e a morte é a wave
+///
+/// Ele afirmava também *«a saída é a do `Fast` AO BIT»*, e o nome dele acabava em
+/// `_and_draws_the_fast_mesh`. Com a assadura no caminho do `Smooth` (F9 W2b) isso é **falso e é o
+/// ponto**: sem espaço no orçamento ele desenha a malha **ASSADA**, que é mais fina que a do
+/// `Fast`. ⇒ o que sobra aqui é a lei que continua verdadeira — *o refinamento por quadro não
+/// corre* — e o **contraste** com o `Fast` passou a ser um gate PRÓPRIO
+/// ([`super::tests::o_smooth_entrega_mais_pecas_que_o_fast_por_mais_imagens_que_a_cena_tenha`]),
+/// onde ele é a afirmação principal em vez de uma nota de rodapé.
+///
+/// ⚠️ **As três metades que ficam:** sem espaço a lei NÃO corre · a saída é **ESTÁVEL** (duas
+/// corridas dão o mesmo, senão «não refinou» estaria a esconder um refinamento que varia) · e com
+/// espaço ela corre e parte (o controlo — sem ele, um curto-circuito que desligasse o `Smooth`
+/// sempre passaria as duas primeiras).
 ///
 /// (Mutação: o curto-circuito apagado ⇒ RED na contagem.)
 #[test]
-fn without_room_in_the_budget_the_smooth_pays_nothing_and_draws_the_fast_mesh() {
+fn without_room_in_the_budget_the_smooth_pays_nothing() {
     let (sim, mut present, instancias) = tres_dobradas();
     let (fast, corridas_fast) = quadro(&sim, &mut present, &instancias, None);
     assert_eq!(corridas_fast, 0);
@@ -314,23 +325,26 @@ fn without_room_in_the_budget_the_smooth_pays_nothing_and_draws_the_fast_mesh() 
         corridas, 0,
         "com as malhas guardadas acima do orcamento nada pode partir, e o Smooth pagou a lei na mesma"
     );
+    let (outra_vez, _) = quadro(&sim, &mut present, &instancias, Some(opcoes(guardadas - 1)));
     assert_eq!(
-        sem_espaco, fast,
-        "sem espaco, o Smooth tem de desenhar o Fast AO BIT"
+        sem_espaco, outra_vez,
+        "sem espaco a saida tem de ser ESTAVEL — duas corridas diferentes escondem um refinamento \
+         que a contagem de corridas nao viu"
     );
 
     // ⛔ O CONTROLO: com espaço, a lei corre nas três e parte.
+    let entregues_sem: usize = sem_espaco.iter().map(|m| m.tris.len()).sum();
     let (com_espaco, corridas) = quadro(
         &sim,
         &mut present,
         &instancias,
-        Some(opcoes(guardadas * 16)),
+        Some(opcoes(entregues_sem * 16)),
     );
     assert_eq!(corridas, 3, "com espaco a lei corre em cada imagem");
     let entregues: usize = com_espaco.iter().map(|m| m.tris.len()).sum();
     assert!(
-        entregues > guardadas,
-        "a fixtura nao dobra o bastante para o Smooth partir ({entregues} de {guardadas})"
+        entregues > entregues_sem,
+        "a fixtura nao dobra o bastante para o Smooth partir ({entregues} de {entregues_sem})"
     );
 }
 
@@ -453,4 +467,95 @@ fn measure_the_smooth_under_a_full_scene() {
             }
         }
     }
+}
+
+/// As peças que o quadro de facto entregou, com a lei `modo`.
+fn entregues(sim: &SimWorld, present: &mut PresentWorld, modo: Option<RefineOptions>) -> usize {
+    let ids: Vec<Entity> = present
+        .world_mut()
+        .query_filtered::<Entity, With<SpriteMesh>>()
+        .iter(present.world())
+        .collect();
+    for p in ids {
+        present.world_mut().entity_mut(p).remove::<SpriteMesh>();
+    }
+    attach_skin_meshes(sim, present, PPM, modo, PX_POR_METRO * 8.0, &[]);
+    present
+        .world_mut()
+        .query::<&SpriteMesh>()
+        .iter(present.world())
+        .map(|m| m.tris.len())
+        .sum()
+}
+
+/// ⭐⭐⭐⭐ **A F9 NUMA ASSERÇÃO: O `Smooth` ALISA EM QUALQUER CENA.**
+///
+/// O report que abriu a F9 (dono, 2026-09-16) é *«uma cena com muita arte presa fica com o `Smooth`
+/// igual ao `Fast`»*, e a causa era o orçamento de REFINAMENTO do quadro ser repartido pelas
+/// imagens: passada a soma, **nenhuma** refina. A W1+W2b tira a densidade do quadro e põe-na no
+/// BIND, e o que este gate afirma é a consequência:
+///
+/// > a malha ASSADA é um CHÃO que o tamanho da cena não consegue erodir.
+///
+/// # ⚠️ As três metades, e porque nenhuma basta sozinha
+///
+/// 1. **A cena CONTÉM o fenómeno** — com `4` e `8` imagens a soma das malhas de bind já passa o
+///    `SKIN_FRAME_PIECES`, que é exactamente o regime do report. *Sem esta metade o gate poderia
+///    estar a medir uma cena pequena, onde não há nada para curar.*
+/// 2. **O `Smooth` entrega ESTRITAMENTE mais que o `Fast`**, em todas elas — é a frase do report,
+///    negada.
+/// 3. **E entrega pelo menos o CHÃO** (`peças assadas × imagens`): sem isto a metade 2 passaria com
+///    o `Smooth` a refinar uma migalha por imagem, que é o defeito a degradar em vez de sumir.
+///
+/// ⚠️ **O chão sai da LEI do produto** ([`crate::skin_bake::assar`]) sobre a malha desta cena, e
+/// não de um número escrito aqui: *um chão escrito à mão envelhece no dia em que a tolerância
+/// mudar, e ela é DERIVADA da diagonal da arte.*
+#[test]
+fn o_smooth_alisa_em_qualquer_cena() {
+    let opcoes = RefineOptions {
+        tolerance_px: 0.5,
+        max_pieces: SKIN_FRAME_PIECES,
+        adaptativo: true,
+    };
+    let mut viu_cena_cheia = false;
+    for n in [1_usize, 4, 8] {
+        let (sim, mut present, por_imagem) = cena_cheia(n, 60.0);
+        let arte = sim
+            .world()
+            .iter_entities()
+            .find(|er| crate::skin_image::is_skinned_image(sim.world(), er.id()))
+            .map(|er| er.id())
+            .expect("ha' arte presa");
+        let sm = skinned_mesh_of(&sim, arte).expect("malha guardada");
+        let chao = crate::skin_bake::assar(&sm.mesh, &sm.pesos, sm.ossos())
+            .map_or(por_imagem, |(m, _)| m.tris.len());
+
+        let fast = entregues(&sim, &mut present, None);
+        assert_eq!(
+            fast,
+            por_imagem * n,
+            "o Fast tem de desenhar a malha do bind, e desenhou outra coisa"
+        );
+        let smooth = entregues(&sim, &mut present, Some(opcoes));
+
+        if por_imagem * n > SKIN_FRAME_PIECES {
+            viu_cena_cheia = true;
+        }
+        assert!(
+            smooth > fast,
+            "com {n} imagens o Smooth entregou {smooth} contra {fast} do Fast — e' o report do \
+             dono: «o Smooth fica igual ao Fast»"
+        );
+        assert!(
+            smooth >= chao * n,
+            "com {n} imagens o Smooth entregou {smooth}, abaixo do chao de {} ({chao} por imagem) \
+             — a densidade voltou a depender do tamanho da cena",
+            chao * n
+        );
+    }
+    assert!(
+        viu_cena_cheia,
+        "nenhuma das cenas passou o orcamento do quadro ({SKIN_FRAME_PIECES} pecas) — esta fixtura \
+         nao contem o fenomeno que o gate existe para medir"
+    );
 }

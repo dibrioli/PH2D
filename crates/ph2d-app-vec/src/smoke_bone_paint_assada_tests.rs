@@ -509,7 +509,6 @@ fn o_que_um_quadro_custa_com_a_malha_assada() {
     use ph2d_ecs::{PresentWorld, SimRef, Transform};
     use ph2d_render::{Sprite, SpriteMesh};
     use ph2d_skeleton_live::skin_image::{SKIN_FRAME_PIECES, attach_skin_meshes};
-    use ph2d_skeleton_live::skinned_mesh::SkinnedMesh;
     use std::time::Instant;
 
     const ZOOM: f64 = 8.0;
@@ -517,8 +516,9 @@ fn o_que_um_quadro_custa_com_a_malha_assada() {
     const RONDAS: usize = 30;
 
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    let porta = std::env::var("PH2D_SKIN_BAKE").unwrap_or_else(|_| "<fechada>".to_owned());
     println!(
-        "\n  carga: {}",
+        "\n  carga: {} · PH2D_SKIN_BAKE={porta}",
         carga
             .split_whitespace()
             .take(3)
@@ -526,7 +526,6 @@ fn o_que_um_quadro_custa_com_a_malha_assada() {
             .join(" ")
     );
 
-    // As DUAS fontes que o quadro pode encontrar no `SkinBind`: a de hoje e a assada.
     let (sim0, e0) = cena(super::super::super::ALTURA_PX, None);
     let (sm, _p2l, _pele) = campo_da_cena(&sim0, e0);
     let entrada_pecas = sm.mesh.tris.len();
@@ -540,26 +539,11 @@ fn o_que_um_quadro_custa_com_a_malha_assada() {
         assaduras.push(t.elapsed().as_secs_f64() * 1e3);
     }
     let (assadura_min, assadura_med) = melhor_ms(assaduras);
-    let (malha_assada, pesos_assados) =
-        ph2d_skeleton_live::skin_bake::assar(&sm.mesh, &sm.pesos, sm.ossos())
-            .expect("a assadura parte alguma coisa nesta arte");
-    let assada_pecas = malha_assada.tris.len();
-    let fontes: [(&str, Vec<u8>, usize); 2] = [
-        (
-            "bind (hoje)",
-            postcard::to_allocvec(&sm).expect("serializa o bind"),
-            entrada_pecas,
-        ),
-        (
-            "ASSADA",
-            postcard::to_allocvec(&SkinnedMesh {
-                mesh: malha_assada,
-                pesos: pesos_assados,
-            })
-            .expect("serializa a assada"),
-            assada_pecas,
-        ),
-    ];
+    let assada_pecas = ph2d_skeleton_live::skin_bake::assar(&sm.mesh, &sm.pesos, sm.ossos())
+        .expect("a assadura parte alguma coisa nesta arte")
+        .0
+        .tris
+        .len();
     println!(
         "  arte {}x{} px · bind {entrada_pecas} pecas · assada {assada_pecas} pecas ({:.2}x) · \
          orcamento do quadro {SKIN_FRAME_PIECES} pecas",
@@ -572,81 +556,78 @@ fn o_que_um_quadro_custa_com_a_malha_assada() {
     );
 
     println!(
-        "  {:>3} | {:>11} | {:>6} | {:>13} | {:>7} | {:>6}",
-        "img", "fonte", "lei", "ms (min/med)", "pecas", "% quadro"
+        "  {:>3} | {:>6} | {:>13} | {:>7} | {:>8}",
+        "img", "lei", "ms (min/med)", "pecas", "% quadro"
     );
-    println!("  ----+-------------+--------+---------------+---------+---------");
+    println!("  ----+--------+---------------+---------+---------");
 
     for n in [1_usize, 4, 8] {
-        for (nome, fonte, _) in &fontes {
-            for (lei, smooth) in [
-                ("Fast", None),
-                (
-                    "Smooth",
-                    Some(ph2d_poly2d::RefineOptions {
-                        tolerance_px: 0.5,
-                        max_pieces: SKIN_FRAME_PIECES,
-                        adaptativo: true,
-                    }),
-                ),
-            ] {
-                // A cena com `n` cópias da MESMA arte, cada uma com a fonte desta linha.
-                let (mut sim, e0) = cena(super::super::super::ALTURA_PX, None);
-                let bind = sim
-                    .world()
-                    .get::<ph2d_skeleton_ecs::SkinBind>(e0)
-                    .expect("pele do bind")
-                    .clone();
-                let sprite = *sim.world().get::<Sprite>(e0).expect("sprite da arte");
-                let mut artes = vec![e0];
-                for _ in 1..n {
-                    let e = sim.world_mut().spawn((Transform::IDENTITY, sprite)).id();
-                    sim.world_mut().entity_mut(e).insert(bind.clone());
-                    artes.push(e);
-                }
-                for &e in &artes {
-                    sim.world_mut()
-                        .get_mut::<ph2d_skeleton_ecs::SkinBind>(e)
-                        .expect("pele")
-                        .source
-                        .clone_from(fonte);
-                }
-                let mut present = PresentWorld::new();
-                let instancias: Vec<_> = artes
-                    .iter()
-                    .map(|&e| {
-                        present
-                            .world_mut()
-                            .spawn((SimRef(e), instancia_da_sonda(&sprite)))
-                            .id()
-                    })
-                    .collect();
-
-                let mut ms = Vec::with_capacity(RONDAS);
-                for _ in 0..RONDAS {
-                    for p in &instancias {
-                        present.world_mut().entity_mut(*p).remove::<SpriteMesh>();
-                    }
-                    let t = Instant::now();
-                    attach_skin_meshes(&sim, &mut present, PPM, smooth, PX_POR_METRO * ZOOM, &[]);
-                    ms.push(t.elapsed().as_secs_f64() * 1e3);
-                }
-                let saiu: usize = instancias
-                    .iter()
-                    .map(|p| {
-                        present
-                            .world()
-                            .get::<SpriteMesh>(*p)
-                            .map_or(0, |m| m.tris.len())
-                    })
-                    .sum();
-                let (min, med) = melhor_ms(ms);
-                println!(
-                    "  {n:>3} | {nome:>11} | {lei:>6} | {min:>6.3}/{med:<6.3} | {saiu:>7} | \
-                     {:>6.1} %",
-                    min / QUADRO_MS * 100.0
-                );
+        for (lei, smooth) in [
+            ("Fast", None),
+            (
+                "Smooth",
+                Some(ph2d_poly2d::RefineOptions {
+                    tolerance_px: 0.5,
+                    max_pieces: SKIN_FRAME_PIECES,
+                    adaptativo: true,
+                }),
+            ),
+        ] {
+            // ⚠️ **A fonte é a do BIND, sempre** — a assadura chega pelo caminho do PRODUTO (o memo
+            // do `Smooth`), e não escrita à mão aqui. *Uma sonda que planta o resultado na entrada
+            // mede a lei que ela própria escreveu, nunca a que o quadro corre.*
+            let (mut sim, e0) = cena(super::super::super::ALTURA_PX, None);
+            let bind = sim
+                .world()
+                .get::<ph2d_skeleton_ecs::SkinBind>(e0)
+                .expect("pele do bind")
+                .clone();
+            let sprite = *sim.world().get::<Sprite>(e0).expect("sprite da arte");
+            let mut artes = vec![e0];
+            for _ in 1..n {
+                let e = sim.world_mut().spawn((Transform::IDENTITY, sprite)).id();
+                sim.world_mut().entity_mut(e).insert(bind.clone());
+                artes.push(e);
             }
+            let mut present = PresentWorld::new();
+            let instancias: Vec<_> = artes
+                .iter()
+                .map(|&e| {
+                    present
+                        .world_mut()
+                        .spawn((SimRef(e), instancia_da_sonda(&sprite)))
+                        .id()
+                })
+                .collect();
+
+            // ⚠️ **Uma passagem a MORNO antes do relógio:** a assadura é paga uma vez por bind e já
+            // tem coluna própria acima — deixá-la cair dentro da 1.ª ronda mediria as duas coisas
+            // somadas e chamaria isso de custo por quadro.
+            attach_skin_meshes(&sim, &mut present, PPM, smooth, PX_POR_METRO * ZOOM, &[]);
+
+            let mut ms = Vec::with_capacity(RONDAS);
+            for _ in 0..RONDAS {
+                for p in &instancias {
+                    present.world_mut().entity_mut(*p).remove::<SpriteMesh>();
+                }
+                let t = Instant::now();
+                attach_skin_meshes(&sim, &mut present, PPM, smooth, PX_POR_METRO * ZOOM, &[]);
+                ms.push(t.elapsed().as_secs_f64() * 1e3);
+            }
+            let saiu: usize = instancias
+                .iter()
+                .map(|p| {
+                    present
+                        .world()
+                        .get::<SpriteMesh>(*p)
+                        .map_or(0, |m| m.tris.len())
+                })
+                .sum();
+            let (min, med) = melhor_ms(ms);
+            println!(
+                "  {n:>3} | {lei:>6} | {min:>6.3}/{med:<6.3} | {saiu:>7} | {:>6.1} %",
+                min / QUADRO_MS * 100.0
+            );
         }
     }
     println!();

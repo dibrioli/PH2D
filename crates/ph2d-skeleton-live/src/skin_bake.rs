@@ -10,15 +10,45 @@
 //! ⇒ a densidade passa a ser uma decisão do **BIND**: assa-se uma vez, em repouso, onde o campo de
 //! pesos curva ([`ph2d_poly2d::refine_rest_by_attrs`]), e o quadro só **posa** o que já está lá.
 //!
-//! # ⚠️ Esta wave NÃO muda o que se vê, e isso é o pedido
+//! # ⭐⭐⭐ A PORTA ABRIU, e foi a MEDIÇÃO que a virou (2026-09-17)
 //!
-//! A fila manda a W1 entregar *«a malha fina no bind, com a régua da silhueta a mesma de hoje»* —
-//! porque quem paga a densidade nova é o **quadro** enquanto a deformação estiver na CPU, e só a W2
-//! (o *vertex shader*) a torna de graça. ⇒ a porta nasce **DESLIGADA** e o caminho de omissão é
-//! byte-idêntico: [`assar_no_bind`] devolve `None` sem a env var.
+//! A W1 fechou com ela **desligada**, e o argumento escrito aqui era: *«um interruptor que nasce
+//! ligado antes de a W2 pagar por ele poria mais vértices para a CPU deformar por quadro —
+//! exactamente o recurso que a F9 existe para libertar»*. ⚠️ **Isso é verdade sobre a DIRECÇÃO e
+//! estava errado sobre o NÚMERO**, e o §0.0 manda medir antes de limitar.
 //!
-//! ⛔ **Um interruptor que nasce ligado antes de a W2 pagar por ele** poria mais vértices para a
-//! CPU deformar por quadro — exactamente o recurso que a F9 existe para libertar.
+//! Medido na arte do dono (`512 × 320`, `2 430` peças de bind, zoom `8×`, `N` cópias na cena, o
+//! MÍNIMO de 30 corridas; sonda `o_que_um_quadro_custa_com_a_malha_assada` da `ph2d-app-vec`):
+//!
+//! | imagens | lei | porta | peças entregues | ms | % de um quadro |
+//! |---:|---|---|---:|---:|---:|
+//! | 1 | `Fast` | — | `2 430` | `0,059` | `0,4 %` |
+//! | 1 | `Smooth` | **fechada** | `5 143` | `1,302` | `7,8 %` |
+//! | 1 | `Smooth` | **aberta** | **`13 996`** | **`0,232`** | **`1,4 %`** |
+//! | 4 | `Smooth` | **fechada** | `9 720` ⇐ **é o `Fast`** | `0,238` | `1,4 %` |
+//! | 4 | `Smooth` | **aberta** | `55 984` | `0,938` | `5,6 %` |
+//! | 8 | `Smooth` | **fechada** | `19 440` ⇐ **é o `Fast`** | `0,478` | `2,9 %` |
+//! | 8 | `Smooth` | **aberta** | `111 968` | `1,879` | `11,3 %` |
+//!
+//! ⭐⭐⭐ **Numa imagem a assadura é `5,6×` MAIS BARATA e entrega `2,7×` MAIS peças.** A razão é a
+//! aritmética que a F6-t já tinha medido e que ninguém tinha composto: **refinar** uma peça custa
+//! `~0,32 µs` e **desenhar** uma peça já fina custa `~0,017 µs` — *pagar uma vez por bind o que se
+//! pagava 60 vezes por segundo não é um compromisso, é uma troca só com lados bons.*
+//!
+//! ⛔⛔ **E as linhas de `4` e `8` imagens com a porta FECHADA são o report do dono, reproduzido:**
+//! `peças(Smooth) == peças(Fast)`, ao número. *O `Smooth` é o `Fast` com o painel a dizer que está
+//! ligado* — é isto que a F9 existe para curar, e a assadura cura-o em qualquer tamanho de cena
+//! porque **não há refinamento por quadro nenhum**: o custo é linear nas peças e o orçamento do
+//! quadro deixa de decidir a qualidade.
+//!
+//! ⚠️ **A leitura foi feita a `load 15` e vale à mesma**, no sentido que interessa: contaminação
+//! torna um relógio mais LENTO, nunca mais rápido, logo `11,3 %` é um **tecto**. (A tabela pede
+//! re-leitura abaixo de `load 5` — ver o §5.0 do `CLAUDE.md`.)
+//!
+//! ⚠️ **Assar custa `4,0 ms`, UMA vez por bind** — ao lado do solver de pesos BBW que o mesmo
+//! `bind_image` já paga, e fora do quadro.
+//!
+//! ⇒ `PH2D_SKIN_BAKE=0` passa a ser a porta de BISSECAR, e o caminho de omissão é a assadura.
 
 use ph2d_poly2d::{AttrLaw, Mesh2d, RefineOptions, hermite_attrs, refine_rest_by_attrs};
 
@@ -63,10 +93,14 @@ pub const TOLERANCIA_PX: f64 = 0.5;
 /// ⇒ com a diagonal de `604 px` desta arte, `τ = 0,5/604 ≈ 8,3e-4` e a assadura pede **`~5×`** a
 /// malha do bind (`~13 000` peças).
 ///
-/// ⭐⭐ **E é esse número que PROVA que a porta tem de ficar fechada até à W2:** o orçamento de CPU
-/// do quadro inteiro é `SKIN_FRAME_PIECES = 8 738` — *uma imagem assada não caberia nele sozinha*.
+/// ⛔⛔ **A frase que estava aqui — *«é esse número que PROVA que a porta tem de ficar fechada até à
+/// W2»* — foi REFUTADA pela medição** (a tabela do cabeçalho): o orçamento do quadro é um tecto de
+/// **REFINAMENTO**, e uma malha já assada **não refina**. *Comparar uma contagem de peças com um
+/// orçamento cuja unidade é «peças que a lei pode PARTIR» é somar duas grandezas diferentes* — e o
+/// resultado dessa soma mandava fechar a porta que a medição mandou abrir.
+///
 /// Na placa, `13 000` triângulos custam `~0,15 %` de um quadro (a tabela da W0-b). *A assadura não
-/// é cara: o que é caro é deformá-la na CPU.*
+/// é cara: o que é caro é deformá-la na CPU — e mesmo isso cabe (`1,4 %` numa imagem).*
 #[must_use]
 pub fn tolerancia_do_bind(mesh: &Mesh2d) -> f64 {
     let diagonal = f64::from(mesh.size[0]).hypot(f64::from(mesh.size[1]));
@@ -83,15 +117,18 @@ pub fn tolerancia_do_bind(mesh: &Mesh2d) -> f64 {
 /// atingir sai com `travado_pelo_orcamento` e não em silêncio.
 pub const CRESCIMENTO_MAX: usize = 8;
 
-/// ⭐ **A porta está ligada?** — `PH2D_SKIN_BAKE=1`, lido uma vez.
+/// ⭐⭐⭐ **A porta está ligada?** — `PH2D_SKIN_BAKE=0` DESLIGA, e é só para bissecar.
 ///
-/// ⚠️ Nasce DESLIGADA: ver o cabeçalho.
+/// ⚠️⚠️ **Ela NASCEU fechada e a medição VIROU-A** (2026-09-17, sonda
+/// `o_que_um_quadro_custa_com_a_malha_assada` em `ph2d-app-vec`): ver a tabela no cabeçalho deste
+/// módulo. O argumento que a mantinha fechada — *«mais vértices no bind são mais vértices para a
+/// CPU deformar por quadro»* — é verdade sobre a DIRECÇÃO e estava errado sobre o NÚMERO.
 fn ligada() -> bool {
     static LIGADA: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *LIGADA.get_or_init(|| {
-        std::env::var("PH2D_SKIN_BAKE").is_ok_and(|v| {
+        !std::env::var("PH2D_SKIN_BAKE").is_ok_and(|v| {
             let v = v.trim();
-            v == "1" || v.eq_ignore_ascii_case("sim") || v.eq_ignore_ascii_case("on")
+            v == "0" || v.eq_ignore_ascii_case("nao") || v.eq_ignore_ascii_case("off")
         })
     })
 }

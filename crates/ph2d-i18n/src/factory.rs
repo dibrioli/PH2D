@@ -21,6 +21,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.factory.on_spawned" => "on spawned\u{2026}",
         "panel.factory.on_exhausted" => "on exhausted\u{2026}",
         "panel.factory.on_death" => "on death\u{2026}",
+        // ph2d-migrar-texto:begin
+        "panel.factory.here" => "Here",
+        "panel.factory.area" => "Area",
+        "panel.factory.at_tag" => "At Tag",
+        // ph2d-migrar-texto:end
         _ => return None,
     })
 }

@@ -104,7 +104,7 @@ pub(super) fn has_any_visibility(world: &World, entity: Entity) -> bool {
 /// Build the §8 visibility-section snapshot, or `None` when the entity
 /// has no `Transform` (not Inspector-worthy).
 #[allow(clippy::float_cmp)] // exact compare: same stored value = not mixed
-pub(super) fn build_visibility_section_info(
+pub fn build_visibility_section_info(
     world: &World,
     entity_bits: u64,
     selected: &[u64],
@@ -147,7 +147,7 @@ pub(super) fn build_visibility_section_info(
 /// Apply one [`VisibilityFieldEdit`] (§8) by queueing the right
 /// `SetComponent` / `RemoveComponent` on the optional component it maps
 /// to (presence = override).
-pub(super) fn apply_visibility_section_edit(
+pub fn apply_visibility_section_edit(
     sim: &SimWorld,
     entity_bits: u64,
     edit: VisibilityFieldEdit,

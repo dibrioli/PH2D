@@ -38,7 +38,8 @@ pub(crate) fn slice(world: &World, bits: u64) -> bool {
 }
 
 pub(crate) fn visibility_section(world: &World, bits: u64) -> bool {
-    super::inspector_visibility::build_visibility_section_info(world, bits, &[], 1).is_some()
+    ph2d_app_components::inspector_visibility::build_visibility_section_info(world, bits, &[], 1)
+        .is_some()
 }
 
 pub(crate) fn anchors(world: &World, bits: u64) -> bool {

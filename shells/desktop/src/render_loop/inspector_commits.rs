@@ -430,7 +430,7 @@ fn drain_section_edits(
     // W3 §8 visibility-section edits (VisibilityLayer / ClipChildren /
     // MaskInteraction / OnScreenEnabler optional components).
     for &(entity_bits, edit) in visibility_section_edits {
-        super::inspector_visibility::apply_visibility_section_edit(
+        ph2d_app_components::inspector_visibility::apply_visibility_section_edit(
             sim,
             entity_bits,
             edit,

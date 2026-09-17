@@ -34,3 +34,12 @@ sections/timers.rs	timers
 sections/transform.rs	transform
 sections/visibility.rs	visibility
 sections/wheel.rs	wheel
+sections/factory.rs	factory
+sections/lifecycle	lifecycle
+sections/particles.rs	particles
+sections/projectile.rs	projectile
+sections/script.rs	script
+sections/statemachine.rs	statemachine
+sections/tags.rs	tags
+sections/topdown.rs	topdown
+sections/physics_tag_row.rs	physics

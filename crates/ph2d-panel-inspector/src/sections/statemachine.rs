@@ -25,6 +25,7 @@ use ph2d_editor_core::statemachine_edits::{
     InspectorStateMachineInfo, InspectorStateRow, InspectorTransitionRow,
 };
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::{tr, tr_with};
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
 /// A linha de uma lista é a linha do app — pela porta, nunca por um literal que coincide.
@@ -33,7 +34,7 @@ const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 /// **O que um estado É, numa linha** — `Fechada  →  porta_fechada`.
 fn resumo_estado(r: &InspectorStateRow, i: usize) -> String {
     let nome = if r.name.is_empty() {
-        format!("State {i}")
+        tr_with("panel.inspector.statemachine.state_n", &[("i", &i)])
     } else {
         r.name.clone()
     };
@@ -53,7 +54,7 @@ fn resumo_seta(t: &InspectorTransitionRow, estados: &[InspectorStateRow]) -> Str
             .map_or_else(|| format!("#{i}"), |s| s.name.clone())
     };
     let sinal = if t.on.is_empty() {
-        String::from("(never fires)")
+        String::from(tr("panel.inspector.statemachine.never_fires"))
     } else {
         t.on.clone()
     };
@@ -188,7 +189,12 @@ pub(crate) fn paint_statemachine_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
-    let header = section_header(store, core_ids::INSP_LIVE_SM_SECTION, "State Machine").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_SM_SECTION,
+        tr("panel.inspector.statemachine.state_machine"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -232,7 +238,9 @@ pub(crate) fn paint_statemachine_section(
             scene,
             text_system,
             &mut cur_y,
-            "Multiple selected \u{b7} edits apply to the active object only.",
+            tr(
+                "panel.inspector.statemachine.multiple_selected_u_edits_apply_to_the_active_object_only",
+            ),
             ColorToken::Warn,
         );
     }
@@ -247,7 +255,7 @@ pub(crate) fn paint_statemachine_section(
             scene,
             text_system,
             &mut cur_y,
-            &format!("Now: {nome}"),
+            &tr_with("panel.inspector.statemachine.now", &[("nome", &nome)]),
             ColorToken::Accent,
         );
     }
@@ -256,7 +264,9 @@ pub(crate) fn paint_statemachine_section(
             scene,
             text_system,
             &mut cur_y,
-            "The clock is stopped \u{2014} it only thinks while the scene plays.",
+            tr(
+                "panel.inspector.statemachine.the_clock_is_stopped_u_it_only_thinks_while_the_scene_plays",
+            ),
             ColorToken::Text3,
         );
     }
@@ -290,7 +300,11 @@ pub(crate) fn paint_statemachine_section(
     //    contra a porta antiga (`anchors::field_row`, o nome POR CIMA do campo) e passa à
     //    única que existe. ⚠️ Os nomes são os da secção INTEIRA, inclusive os das linhas que
     //    este quadro não pinta.
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &["Initial state"]);
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[tr("panel.inspector.statemachine.initial_state")],
+    );
     if !info.states.is_empty() {
         cur_y = super::rows::fields_row(
             scene,
@@ -301,7 +315,7 @@ pub(crate) fn paint_statemachine_section(
             x,
             w,
             cur_y,
-            "Initial state",
+            tr("panel.inspector.statemachine.initial_state"),
             &[crate::ids::INSP_SM_INITIAL],
             1.0, // LITERAL-PX-OK: índice
             None,
@@ -350,7 +364,7 @@ fn estados(
             scene,
             text_system,
             &mut cur_y,
-            "No states yet.",
+            tr("panel.inspector.statemachine.no_states_yet"),
             ColorToken::Text3,
         );
     } else {
@@ -383,8 +397,14 @@ fn estados(
         x,
         w,
         cur_y,
-        (crate::ids::INSP_SM_STATE_ADD, "+ Add State"),
-        (crate::ids::INSP_SM_STATE_REMOVE, "x Remove State"),
+        (
+            crate::ids::INSP_SM_STATE_ADD,
+            tr("panel.inspector.statemachine.add_state"),
+        ),
+        (
+            crate::ids::INSP_SM_STATE_REMOVE,
+            tr("panel.inspector.statemachine.x_remove_state"),
+        ),
         info.states.len() < crate::ids::INSP_SM_STATE_ROW.len(),
         !info.states.is_empty(),
     );
@@ -404,7 +424,8 @@ fn estados(
             w,
             cur_y,
             crate::ids::INSP_SM_STATE_NAME,
-            TextInput::new(crate::ids::INSP_SM_STATE_NAME, "").placeholder("state name\u{2026}"),
+            TextInput::new(crate::ids::INSP_SM_STATE_NAME, "")
+                .placeholder(tr("panel.inspector.statemachine.state_name_u")),
         );
         cur_y = super::anim_rows::text_row(
             scene,
@@ -417,7 +438,7 @@ fn estados(
             cur_y,
             crate::ids::INSP_SM_STATE_ON_ENTER,
             TextInput::new(crate::ids::INSP_SM_STATE_ON_ENTER, "")
-                .placeholder("on enter: signal name"),
+                .placeholder(tr("panel.inspector.statemachine.on_enter_signal_name")),
         );
         cur_y = super::anim_rows::text_row(
             scene,
@@ -430,7 +451,7 @@ fn estados(
             cur_y,
             crate::ids::INSP_SM_STATE_ON_EXIT,
             TextInput::new(crate::ids::INSP_SM_STATE_ON_EXIT, "")
-                .placeholder("on exit: signal name"),
+                .placeholder(tr("panel.inspector.statemachine.on_exit_signal_name")),
         );
         // ⚠️ **Um beco escreve-se em WARN** — quem lá entra fica, e isso é invisível numa lista.
         if !r.has_exit {
@@ -438,7 +459,7 @@ fn estados(
                 scene,
                 text_system,
                 &mut cur_y,
-                "Dead end: no transition leaves this state.",
+                tr("panel.inspector.statemachine.dead_end_no_transition_leaves_this_state"),
                 ColorToken::Warn,
             );
         }
@@ -447,137 +468,6 @@ fn estados(
     cur_y
 }
 
-/// **A lista de TRANSIÇÕES, os botões e o editor da linha aberta** — irmã da de cima.
-#[allow(clippy::too_many_arguments)]
-fn setas(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    info: &InspectorStateMachineInfo,
-    selected: usize,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    let mut cur_y = y;
-    let nota = |scene: &mut VectorScene,
-                text_system: &mut TextSystem,
-                cur_y: &mut f32,
-                texto: &str,
-                token: ColorToken| {
-        paint_text(
-            text_system,
-            scene,
-            texto,
-            x,
-            *cur_y,
-            font,
-            w,
-            resolve(token, theme),
-        );
-        *cur_y += font + ph2d_tokens::control_gap_px();
-    };
-    // ── TRANSIÇÕES ───────────────────────────────────────────────────────────
-    if !info.transitions.is_empty() {
-        let linhas: Vec<(String, bool)> = info
-            .transitions
-            .iter()
-            .map(|t| (resumo_seta(t, &info.states), t.on.is_empty()))
-            .collect();
-        cur_y = lista(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            &linhas,
-            &crate::ids::INSP_SM_TRANS_ROW,
-            selected,
-        );
-    }
-    cur_y = botoes(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        (crate::ids::INSP_SM_TRANS_ADD, "+ Add Transition"),
-        (crate::ids::INSP_SM_TRANS_REMOVE, "x Remove Transition"),
-        info.transitions.len() < crate::ids::INSP_SM_TRANS_ROW.len(),
-        !info.transitions.is_empty(),
-    );
-    if let Some(t) = info.transitions.get(selected) {
-        // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): esta secção nasceu
-        //    contra a porta antiga (`anchors::field_row`, o nome POR CIMA do campo) e passa à
-        //    única que existe. ⚠️ Os nomes são os da secção INTEIRA, inclusive os das linhas que
-        //    este quadro não pinta.
-        let seccao = ph2d_editor_core::property_row::Seccao::medida(
-            text_system,
-            1,
-            &["From state", "To state"],
-        );
-        cur_y = super::rows::fields_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            "From state",
-            &[crate::ids::INSP_SM_TRANS_FROM],
-            1.0, // LITERAL-PX-OK: índice
-            None,
-            seccao,
-        );
-        cur_y = super::anim_rows::text_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            crate::ids::INSP_SM_TRANS_ON,
-            TextInput::new(crate::ids::INSP_SM_TRANS_ON, "").placeholder("on signal\u{2026}"),
-        );
-        cur_y = super::rows::fields_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            "To state",
-            &[crate::ids::INSP_SM_TRANS_TO],
-            1.0, // LITERAL-PX-OK: índice
-            None,
-            seccao,
-        );
-        // ⚠️⚠️ **A LINHA QUE RESPONDE AO «não acontece nada»** — a mesma da tabela de acções.
-        if t.on.is_empty() {
-            nota(
-                scene,
-                text_system,
-                &mut cur_y,
-                "This transition never fires: it has no signal name.",
-                ColorToken::Warn,
-            );
-        }
-    }
-
-    cur_y
-}
+#[path = "statemachine_setas.rs"]
+mod irmao;
+use irmao::*;

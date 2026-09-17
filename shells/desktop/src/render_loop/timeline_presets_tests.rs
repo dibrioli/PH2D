@@ -7,7 +7,9 @@ use ph2d_anim::{AnimTarget, AnimValue, Easing, EasingFamily, EasingMode, Interp,
 use ph2d_core::Playhead;
 use ph2d_editor_core::ids as c;
 use ph2d_editor_core::interaction::{TL_NO_EASE_MODE, TimelineInterpPick, TimelineInterpScope};
+use ph2d_panel_timeline::presets::*;
 use ph2d_timeline::{PropKind, SelectedKey, apply_intent};
+use ph2d_timeline::{TimelineIntent, TimelineState};
 
 fn add(st: &mut TimelineState, ph: &mut Playhead, prop: PropKind, t: f64) {
     apply_intent(

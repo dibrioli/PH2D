@@ -21,7 +21,7 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_timeline::{PropKind, TimelineState};
+use crate::{PropKind, TimelineState};
 
 /// Value tolerance the record-cleanup fit targets, as a fraction of each track's
 /// recorded value range — 1% is visually lossless while cutting the dense
@@ -37,7 +37,7 @@ use ph2d_timeline::{PropKind, TimelineState};
 /// passes below. (The physics bake, the other input this once served, wanted the
 /// opposite of a fit and no longer calls in — see the module docs; the record is
 /// the sole caller today.)
-pub(crate) const REC_SIMPLIFY_REL: f64 = 0.01;
+pub const REC_SIMPLIFY_REL: f64 = 0.01;
 /// Absolute value-tolerance floor, so a near-constant track (its range ~0) does
 /// not get an impossibly tight tolerance that keeps every noise sample.
 const REC_SIMPLIFY_FLOOR: f64 = 1e-4;
@@ -45,7 +45,7 @@ const REC_SIMPLIFY_FLOOR: f64 = 1e-4;
 /// hand/mouse tremor that otherwise makes the fit over-subdivide (the "reduziu
 /// um pouco" symptom). A binomial `[1,2,1]` kernel ×8 ≈ a ~9-sample window,
 /// which at 60 fps is ~150 ms — removes jitter, keeps the gesture's shape.
-pub(crate) const REC_SMOOTH_PASSES: usize = 8;
+pub const REC_SMOOTH_PASSES: usize = 8;
 /// Two key times closer than this collapse into ONE dope-sheet column when the
 /// session's tracks are aligned — so a channel that turns a frame or two after
 /// another still shares its column instead of sitting beside it. ~2 frames at
@@ -56,7 +56,7 @@ const COLUMN_MERGE_S: f64 = 0.08;
 /// session — enough to simplify exactly the recorded range at a proportional
 /// tolerance when the drag ends.
 #[derive(Clone, Copy)]
-pub(crate) struct RecSpan {
+pub struct RecSpan {
     t_min: f64,
     t_max: f64,
     v_min: f64,
@@ -64,7 +64,9 @@ pub(crate) struct RecSpan {
 }
 
 impl RecSpan {
-    pub(crate) fn seed(t: f64, v: f64) -> Self {
+    /// O primeiro par `(t, v)` de uma corrida — o span nasce com uma amostra só.
+    #[must_use]
+    pub fn seed(t: f64, v: f64) -> Self {
         Self {
             t_min: t,
             t_max: t,
@@ -72,7 +74,8 @@ impl RecSpan {
             v_max: v,
         }
     }
-    pub(crate) fn extend(&mut self, t: f64, v: f64) {
+    /// Acrescenta uma amostra ao fim da corrida, e estica a janela de tempo dela.
+    pub fn extend(&mut self, t: f64, v: f64) {
         self.t_min = self.t_min.min(t);
         self.t_max = self.t_max.max(t);
         self.v_min = self.v_min.min(v);
@@ -92,7 +95,7 @@ impl RecSpan {
 /// instant land on one column instead of two a frame apart. `simplify_range_at`
 /// then pins every track's keys to those times (no splitting — a split would land
 /// off the column grid).
-pub(crate) fn simplify_recorded(
+pub fn simplify_recorded(
     timeline: &mut TimelineState,
     record: &BTreeMap<(u64, PropKind), RecSpan>,
     smooth_passes: usize,

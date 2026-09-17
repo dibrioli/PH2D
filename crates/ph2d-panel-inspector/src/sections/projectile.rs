@@ -20,6 +20,7 @@
 use super::*;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::tr;
 
 const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
 
@@ -72,7 +73,7 @@ fn avisos(
             x,
             w,
             cur_y,
-            "No body \u{2014} add a Rigid Body for this to move anything.",
+            tr("panel.inspector.projectile.no_body_u_add_a_rigid_body_for_this_to_move_anything"),
             ColorToken::Danger,
         );
     } else if !i.body_is_kinematic {
@@ -83,7 +84,9 @@ fn avisos(
             x,
             w,
             cur_y,
-            "The body must be Kinematic \u{2014} a dynamic body belongs to the solver.",
+            tr(
+                "panel.inspector.projectile.the_body_must_be_kinematic_u_a_dynamic_body_belongs_to_the_solver",
+            ),
             ColorToken::Danger,
         );
     }
@@ -95,7 +98,7 @@ fn avisos(
             x,
             w,
             cur_y,
-            "The flight is over \u{2014} rewind to launch it again.",
+            tr("panel.inspector.projectile.the_flight_is_over_u_rewind_to_launch_it_again"),
             ColorToken::Text3,
         );
     } else if !i.clock_playing {
@@ -106,7 +109,7 @@ fn avisos(
             x,
             w,
             cur_y,
-            "The clock is stopped \u{2014} it flies while the clock plays.",
+            tr("panel.inspector.projectile.the_clock_is_stopped_u_it_flies_while_the_clock_plays"),
             ColorToken::Text3,
         );
     }
@@ -136,22 +139,47 @@ fn corpo(
         text_system,
         1,
         &[
-            "Speed (m/s)",
-            "Acceleration",
-            "Max Speed (0 = no cap)",
-            "Gravity (0 = straight)",
-            "Max Bounces",
-            "Bounciness (1 = perfect)",
-            "Range (m, 0 = forever)",
-            "Homing (0 = none)",
+            tr("panel.inspector.projectile.speed_m_s"),
+            tr("panel.inspector.projectile.acceleration"),
+            tr("panel.inspector.projectile.max_speed_0_no_cap"),
+            tr("panel.inspector.projectile.gravity_0_straight"),
+            tr("panel.inspector.projectile.max_bounces"),
+            tr("panel.inspector.projectile.bounciness_1_perfect"),
+            tr("panel.inspector.projectile.range_m_0_forever"),
+            tr("panel.inspector.projectile.homing_0_none"),
         ],
     );
-    for (label, id, step) in [
-        ("Speed (m/s)", crate::ids::INSP_PJ_SPEED, 0.5), // LITERAL-PX-OK: m/s
-        ("Acceleration", crate::ids::INSP_PJ_ACCEL, 0.5), // LITERAL-PX-OK: m/s²
-        ("Max Speed (0 = no cap)", crate::ids::INSP_PJ_MAX_SPEED, 0.5), // LITERAL-PX-OK: m/s
-        ("Gravity (0 = straight)", crate::ids::INSP_PJ_GRAVITY, 0.5), // LITERAL-PX-OK: m/s²
-        ("Max Bounces", crate::ids::INSP_PJ_MAX_BOUNCES, 1.0), // LITERAL-PX-OK: contagem
+    for (label, id, step, unidade) in [
+        (
+            tr("panel.inspector.projectile.speed_m_s"),
+            crate::ids::INSP_PJ_SPEED,
+            0.5,
+            Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
+        ), // LITERAL-PX-OK: m/s
+        (
+            tr("panel.inspector.projectile.acceleration"),
+            crate::ids::INSP_PJ_ACCEL,
+            0.5,
+            None,
+        ), // LITERAL-PX-OK: m/s²
+        (
+            tr("panel.inspector.projectile.max_speed_0_no_cap"),
+            crate::ids::INSP_PJ_MAX_SPEED,
+            0.5,
+            None,
+        ), // LITERAL-PX-OK: m/s
+        (
+            tr("panel.inspector.projectile.gravity_0_straight"),
+            crate::ids::INSP_PJ_GRAVITY,
+            0.5,
+            None,
+        ), // LITERAL-PX-OK: m/s²
+        (
+            tr("panel.inspector.projectile.max_bounces"),
+            crate::ids::INSP_PJ_MAX_BOUNCES,
+            1.0,
+            None,
+        ), // LITERAL-PX-OK: contagem
     ] {
         cur_y = super::rows::fields_row(
             scene,
@@ -165,7 +193,7 @@ fn corpo(
             label,
             &[id],
             step,
-            None,
+            unidade,
             seccao,
         );
     }
@@ -180,7 +208,7 @@ fn corpo(
             x,
             w,
             cur_y,
-            "Bounciness (1 = perfect)",
+            tr("panel.inspector.projectile.bounciness_1_perfect"),
             &[crate::ids::INSP_PJ_BOUNCINESS],
             0.05, // LITERAL-PX-OK: fracção
             None,
@@ -196,7 +224,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        "Range (m, 0 = forever)",
+        tr("panel.inspector.projectile.range_m_0_forever"),
         &[crate::ids::INSP_PJ_RANGE],
         1.0, // LITERAL-PX-OK: metros
         None,
@@ -211,7 +239,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        "Homing (0 = none)",
+        tr("panel.inspector.projectile.homing_0_none"),
         &[crate::ids::INSP_PJ_HOMING_ACCEL],
         10.0, // LITERAL-PX-OK: m/s²
         None,
@@ -230,7 +258,7 @@ fn corpo(
             cur_y,
             crate::ids::INSP_PJ_HOMING_TARGET,
             TextInput::new(crate::ids::INSP_PJ_HOMING_TARGET, "")
-                .placeholder("target object name\u{2026}"),
+                .placeholder(tr("panel.inspector.projectile.target_object_name_u")),
         );
         // ⚠️ **Um nome escrito que ninguém tem** não é o mesmo que nenhum nome, e o painel diz a
         // diferença — senão um alvo apagado lê-se como uma perseguição partida.
@@ -242,7 +270,7 @@ fn corpo(
                 x,
                 w,
                 cur_y,
-                "No object in the scene has that name.",
+                tr("panel.inspector.projectile.no_object_in_the_scene_has_that_name"),
                 ColorToken::Warn,
             );
         }
@@ -251,13 +279,16 @@ fn corpo(
     let rect = Rect::new(x, cur_y, w, CHECK_H);
     hit_index.register(crate::ids::INSP_PJ_FACE_VELOCITY, rect);
     paint_checkbox(
-        &Checkbox::new(crate::ids::INSP_PJ_FACE_VELOCITY, "Face Velocity")
-            .visual(store.checkbox_visual(crate::ids::INSP_PJ_FACE_VELOCITY))
-            .value(if i.face_velocity {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            }),
+        &Checkbox::new(
+            crate::ids::INSP_PJ_FACE_VELOCITY,
+            tr("panel.inspector.projectile.face_velocity"),
+        )
+        .visual(store.checkbox_visual(crate::ids::INSP_PJ_FACE_VELOCITY))
+        .value(if i.face_velocity {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        }),
         rect,
         scene,
         text_system,
@@ -283,7 +314,7 @@ pub(crate) fn paint_projectile_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_PROJECTILE_SECTION,
-        "Projectile Motion",
+        tr("panel.inspector.projectile.projectile_motion"),
     );
     paint_section_header(
         &header,
@@ -312,7 +343,7 @@ pub(crate) fn paint_projectile_section(
             x,
             w,
             cur_y,
-            "Editing the primary selection only.",
+            tr("panel.inspector.projectile.editing_the_primary_selection_only"),
             ColorToken::Text3,
         );
     }

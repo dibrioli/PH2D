@@ -24,6 +24,7 @@ use ph2d_editor_core::topdown_edits::{
     InspectorFacing, InspectorMoveDirections, InspectorTopDownInfo, InspectorViewpoint,
 };
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::tr;
 
 const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
 
@@ -129,7 +130,7 @@ fn avisos(
             x,
             w,
             cur_y,
-            "No body \u{2014} add a Rigid Body for this to move anything.",
+            tr("panel.inspector.topdown.no_body_u_add_a_rigid_body_for_this_to_move_anything"),
             ColorToken::Danger,
         );
     } else if !i.body_is_kinematic {
@@ -140,7 +141,9 @@ fn avisos(
             x,
             w,
             cur_y,
-            "The body must be Kinematic \u{2014} a dynamic body belongs to the solver.",
+            tr(
+                "panel.inspector.topdown.the_body_must_be_kinematic_u_a_dynamic_body_belongs_to_the_solver",
+            ),
             ColorToken::Danger,
         );
     }
@@ -152,7 +155,9 @@ fn avisos(
             x,
             w,
             cur_y,
-            "A Platform Player on this object wins \u{2014} remove one of the two.",
+            tr(
+                "panel.inspector.topdown.a_platform_player_on_this_object_wins_u_remove_one_of_the_two",
+            ),
             ColorToken::Warn,
         );
     } else if !i.clock_playing {
@@ -163,7 +168,7 @@ fn avisos(
             x,
             w,
             cur_y,
-            "The clock is stopped \u{2014} it moves while the clock plays.",
+            tr("panel.inspector.topdown.the_clock_is_stopped_u_it_moves_while_the_clock_plays"),
             ColorToken::Text3,
         );
     }
@@ -193,19 +198,34 @@ fn corpo(
         text_system,
         1,
         &[
-            "Speed (m/s)",
-            "Acceleration (0 = instant)",
-            "Deceleration (0 = instant)",
-            "Board Angle (deg)",
-            "Turn Speed (deg/s, 0 = instant)",
-            "Min Slide Angle (deg)",
-            "Max Slides",
+            tr("panel.inspector.topdown.speed_m_s"),
+            tr("panel.inspector.topdown.acceleration_0_instant"),
+            tr("panel.inspector.topdown.deceleration_0_instant"),
+            tr("panel.inspector.topdown.board_angle_deg"),
+            tr("panel.inspector.topdown.turn_speed_deg_s_0_instant"),
+            tr("panel.inspector.topdown.min_slide_angle_deg"),
+            tr("panel.inspector.topdown.max_slides"),
         ],
     );
-    for (label, id, step) in [
-        ("Speed (m/s)", crate::ids::INSP_TD_SPEED, 0.1), // LITERAL-PX-OK: m/s
-        ("Acceleration (0 = instant)", crate::ids::INSP_TD_ACCEL, 0.5), // LITERAL-PX-OK: m/s²
-        ("Deceleration (0 = instant)", crate::ids::INSP_TD_DECEL, 0.5), // LITERAL-PX-OK: m/s²
+    for (label, id, step, unidade) in [
+        (
+            tr("panel.inspector.topdown.speed_m_s"),
+            crate::ids::INSP_TD_SPEED,
+            0.1, // LITERAL-PX-OK: passo de scrub em m/s
+            Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
+        ), // LITERAL-PX-OK: m/s
+        (
+            tr("panel.inspector.topdown.acceleration_0_instant"),
+            crate::ids::INSP_TD_ACCEL,
+            0.5,
+            None,
+        ), // LITERAL-PX-OK: m/s²
+        (
+            tr("panel.inspector.topdown.deceleration_0_instant"),
+            crate::ids::INSP_TD_DECEL,
+            0.5,
+            None,
+        ), // LITERAL-PX-OK: m/s²
     ] {
         cur_y = super::rows::fields_row(
             scene,
@@ -219,7 +239,7 @@ fn corpo(
             label,
             &[id],
             step,
-            None,
+            unidade,
             seccao,
         );
     }
@@ -237,7 +257,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        "Directions",
+        tr("panel.inspector.topdown.directions"),
         &crate::ids::INSP_TD_DIRECTIONS,
         &rotulos,
         usize::from(i.directions.tag()),
@@ -253,7 +273,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        "Viewpoint",
+        tr("panel.inspector.topdown.viewpoint"),
         &crate::ids::INSP_TD_VIEWPOINT,
         &rotulos,
         usize::from(i.viewpoint.tag()),
@@ -269,10 +289,10 @@ fn corpo(
             x,
             w,
             cur_y,
-            "Board Angle (deg)",
+            tr("panel.inspector.topdown.board_angle_deg"),
             &[crate::ids::INSP_TD_VIEW_ANGLE],
             0.5, // LITERAL-PX-OK: graus
-            None,
+            Some(ph2d_editor_core::widget::Unit::Degrees),
             seccao,
         );
     }
@@ -287,7 +307,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        "Facing",
+        tr("panel.inspector.topdown.facing"),
         &crate::ids::INSP_TD_FACING,
         &rotulos,
         usize::from(i.facing.tag()),
@@ -303,7 +323,7 @@ fn corpo(
             x,
             w,
             cur_y,
-            "Turn Speed (deg/s, 0 = instant)",
+            tr("panel.inspector.topdown.turn_speed_deg_s_0_instant"),
             &[crate::ids::INSP_TD_TURN_SPEED],
             10.0, // LITERAL-PX-OK: graus/s
             None,
@@ -311,9 +331,51 @@ fn corpo(
         );
     }
 
-    for (label, id, step) in [
-        ("Min Slide Angle (deg)", crate::ids::INSP_TD_MIN_SLIDE, 1.0), // LITERAL-PX-OK: graus
-        ("Max Slides", crate::ids::INSP_TD_MAX_SLIDES, 1.0),           // LITERAL-PX-OK: contagem
+    cur_y = deslize(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        seccao,
+        i,
+    );
+    cur_y
+}
+
+/// **O DESLIZE numa parede** — irmão por tecto de LOC (a função passou a `210/200` quando a
+/// coluna da secção entrou). ⚠️ Corte por RESPONSABILIDADE: é a metade que o TOP-20 #13 existe
+/// para trazer (deslizar à velocidade CHEIA), e ela tem os dois números que só ela lê.
+#[allow(clippy::too_many_arguments)]
+fn deslize(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    seccao: ph2d_editor_core::property_row::Seccao,
+    i: &InspectorTopDownInfo,
+) -> f32 {
+    let mut cur_y = y;
+    for (label, id, step, unidade) in [
+        (
+            tr("panel.inspector.topdown.min_slide_angle_deg"),
+            crate::ids::INSP_TD_MIN_SLIDE,
+            1.0,
+            Some(ph2d_editor_core::widget::Unit::Degrees),
+        ), // LITERAL-PX-OK: graus
+        (
+            tr("panel.inspector.topdown.max_slides"),
+            crate::ids::INSP_TD_MAX_SLIDES,
+            1.0,
+            None,
+        ), // LITERAL-PX-OK: contagem
     ] {
         cur_y = super::rows::fields_row(
             scene,
@@ -327,7 +389,7 @@ fn corpo(
             label,
             &[id],
             step,
-            None,
+            unidade,
             seccao,
         );
     }
@@ -335,13 +397,16 @@ fn corpo(
     let rect = Rect::new(x, cur_y, w, CHECK_H);
     hit_index.register(crate::ids::INSP_TD_DEFAULT_CONTROLS, rect);
     paint_checkbox(
-        &Checkbox::new(crate::ids::INSP_TD_DEFAULT_CONTROLS, "Default Controls")
-            .visual(store.checkbox_visual(crate::ids::INSP_TD_DEFAULT_CONTROLS))
-            .value(if i.default_controls {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            }),
+        &Checkbox::new(
+            crate::ids::INSP_TD_DEFAULT_CONTROLS,
+            tr("panel.inspector.topdown.default_controls"),
+        )
+        .visual(store.checkbox_visual(crate::ids::INSP_TD_DEFAULT_CONTROLS))
+        .value(if i.default_controls {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        }),
         rect,
         scene,
         text_system,
@@ -356,7 +421,9 @@ fn corpo(
             x,
             w,
             cur_y,
-            "Off \u{2014} the keys don't reach it; something else must drive it.",
+            tr(
+                "panel.inspector.topdown.off_u_the_keys_don_t_reach_it_something_else_must_drive_it",
+            ),
             ColorToken::Text3,
         );
     }
@@ -380,7 +447,7 @@ pub(crate) fn paint_topdown_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_TOPDOWN_SECTION,
-        "Top-Down Player",
+        tr("panel.inspector.topdown.top_down_player"),
     );
     paint_section_header(
         &header,
@@ -409,7 +476,7 @@ pub(crate) fn paint_topdown_section(
             x,
             w,
             cur_y,
-            "Editing the primary selection only.",
+            tr("panel.inspector.topdown.editing_the_primary_selection_only"),
             ColorToken::Text3,
         );
     }

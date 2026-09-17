@@ -24,6 +24,7 @@
 //! ⚠️ **Os dois primeiros são os que esta wave pagou a descobrir:** sem eles, um componente que
 //! está a funcionar perfeitamente lê-se como partido, e os números no painel estão todos certos.
 
+use ph2d_i18n::tr;
 /// Em que direcções o corpo aceita andar — o espelho do `ph2d_topdown::DirectionMode`.
 ///
 /// ⚠️ **Uma tag SEPARADA do enum da lei**, como todos os selectores deste painel: o painel fala em
@@ -56,13 +57,13 @@ impl InspectorMoveDirections {
 
     /// O rótulo que o artista lê (inglês, HR-15).
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub fn label(self) -> &'static str {
         match self {
-            Self::Free => "Free",
-            Self::Eight => "8 Dir",
-            Self::Four => "4 Dir",
-            Self::AxisX => "X Only",
-            Self::AxisY => "Y Only",
+            Self::Free => tr("panel.topdown.free"),
+            Self::Eight => tr("panel.topdown.8_dir"),
+            Self::Four => tr("panel.topdown.4_dir"),
+            Self::AxisX => tr("panel.topdown.x_only"),
+            Self::AxisY => tr("panel.topdown.y_only"),
         }
     }
 
@@ -98,12 +99,12 @@ impl InspectorViewpoint {
 
     /// O rótulo que o artista lê.
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub fn label(self) -> &'static str {
         match self {
-            Self::TopDown => "Top-Down",
-            Self::Iso2to1 => "Iso 2:1",
-            Self::Iso30 => "Iso 30°",
-            Self::Custom => "Custom",
+            Self::TopDown => tr("panel.topdown.top_down"),
+            Self::Iso2to1 => tr("panel.topdown.iso_2_1"),
+            Self::Iso30 => tr("panel.topdown.iso_30"),
+            Self::Custom => tr("panel.topdown.custom"),
         }
     }
 
@@ -148,12 +149,12 @@ impl InspectorFacing {
 
     /// O rótulo que o artista lê.
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub fn label(self) -> &'static str {
         match self {
-            Self::None => "Don't Turn",
-            Self::Movement => "Face Move",
-            Self::Snap4 => "Face 4",
-            Self::Snap8 => "Face 8",
+            Self::None => tr("panel.topdown.don_t_turn"),
+            Self::Movement => tr("panel.topdown.face_move"),
+            Self::Snap4 => tr("panel.topdown.face_4"),
+            Self::Snap8 => tr("panel.topdown.face_8"),
         }
     }
 

@@ -22,6 +22,7 @@ use ph2d_editor_core::script_edits::{
     InspectorScriptInfo, InspectorScriptProp, InspectorScriptStatus, InspectorScriptValue,
 };
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::{tr, tr_with};
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
 /// A altura do controlo de uma linha — a do campo de número das irmãs.
@@ -100,7 +101,7 @@ fn botao(
     );
 }
 
-/// **Uma linha de propriedade** — o nome por cima, o controlo e o `Reset` por baixo.
+/// **Uma linha de propriedade** — o nome à esquerda, o controlo e o `Reset` à direita.
 #[allow(clippy::too_many_arguments)]
 fn linha(
     scene: &mut VectorScene,
@@ -113,39 +114,42 @@ fn linha(
     y: f32,
     i: usize,
     p: &InspectorScriptProp,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let font = TypeToken::Sm.px();
-    let label_h = font + Spacing::Xs.px();
-    let cor = if p.own {
-        ColorToken::Accent
-    } else {
-        ColorToken::Text2
-    };
-    paint_text(
-        text_system,
+    // ⭐⭐ **O nome fica À ESQUERDA do controlo, não por cima** (`line/UIUX`, report do dono de
+    //    2026-09-14 e 15). ⚠️ A coluna é da SECÇÃO: os nomes vêm do script do artista, logo a
+    //    lista mede-se do INFO — uma coluna derivada só desta linha saltaria de linha para linha.
+    let row = super::rows::property_label_row(
         scene,
-        &p.name,
+        text_system,
+        theme,
         x,
-        y,
-        font,
         w,
-        resolve(cor, theme),
+        y,
+        FIELD_H,
+        &p.name,
+        seccao,
     );
-    let row_y = y + label_h;
+    let row_y = row.control.y;
     let gap = Spacing::Xs.px();
-    let reset_w = largura_do_botao(text_system, ids::INSP_SCRIPT_RESET[i], "Reset");
+    let reset_w = largura_do_botao(
+        text_system,
+        ids::INSP_SCRIPT_RESET[i],
+        tr("panel.inspector.script.reset"),
+    );
     // ⚠️ **A coluna de animação reserva-se como em toda linha de formulário** (gate
     // `every_form_row_reserves_the_animation_column`): o controlo e o `Reset` cabem em `control_w`.
     //
     // ⚠️ **A CAIXA não leva o ponto daqui**: o `paint_checkbox` reserva e desenha a coluna dele
     // sozinho (é por isso que o gate não o lista entre os pintores de linha), e a 1.ª redacção
     // mostrava DOIS pontos na linha de um `boolean` — foi a foto da cena que o disse.
+    // ⚠️ **A CAIXA não leva o ponto daqui**: o `paint_checkbox` reserva e desenha a coluna dele
+    //    sozinho, e a 1.ª redacção mostrava DOIS pontos na linha de um `boolean`.
     let caixa = matches!(p.value, InspectorScriptValue::Bool(_));
     let (control_w, dot) = if caixa {
-        (w, None)
+        (row.control.w + row.dot.w, None)
     } else {
-        let (cw, d) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, FIELD_H);
-        (cw, Some(d))
+        (row.control.w, Some(row.dot))
     };
     let ctrl_w = if p.own {
         control_w - reset_w - gap
@@ -153,7 +157,7 @@ fn linha(
         control_w
     }
     .max(0.0);
-    let ctrl = Rect::new(x, row_y, ctrl_w, FIELD_H);
+    let ctrl = Rect::new(row.control.x, row_y, ctrl_w, FIELD_H);
     match &p.value {
         InspectorScriptValue::Number(_) => {
             let id = ids::INSP_SCRIPT_NUM[i];
@@ -215,7 +219,7 @@ fn linha(
         }
     }
     if p.own {
-        let rect = Rect::new(x + ctrl_w + gap, row_y, reset_w, FIELD_H);
+        let rect = Rect::new(row.control.x + ctrl_w + gap, row_y, reset_w, FIELD_H);
         botao(
             scene,
             text_system,
@@ -224,7 +228,7 @@ fn linha(
             store,
             rect,
             ids::INSP_SCRIPT_RESET[i],
-            "Reset",
+            tr("panel.inspector.script.reset"),
         );
     }
     if let Some(dot) = dot {
@@ -256,7 +260,7 @@ fn avisos(
                 x,
                 w,
                 y,
-                "No script file yet \u{2014} use Browse to pick a .luau file.",
+                tr("panel.inspector.script.no_script_file_yet_u_use_browse_to_pick_a_luau_file"),
                 ColorToken::Text3,
             );
         }
@@ -268,7 +272,7 @@ fn avisos(
                 x,
                 w,
                 y,
-                "Scripting is not available in this session.",
+                tr("panel.inspector.script.scripting_is_not_available_in_this_session"),
                 ColorToken::Danger,
             );
         }
@@ -280,7 +284,7 @@ fn avisos(
                 x,
                 w,
                 y,
-                "Reading the file\u{2026}",
+                tr("panel.inspector.script.reading_the_file_u"),
                 ColorToken::Text3,
             );
         }
@@ -292,7 +296,7 @@ fn avisos(
                 x,
                 w,
                 y,
-                "That file is gone \u{2014} pick it again.",
+                tr("panel.inspector.script.that_file_is_gone_u_pick_it_again"),
                 ColorToken::Danger,
             );
         }
@@ -304,7 +308,10 @@ fn avisos(
                 x,
                 w,
                 y,
-                &format!("The script has an error: {msg}"),
+                &tr_with(
+                    "panel.inspector.script.the_script_has_an_error",
+                    &[("msg", &msg)],
+                ),
                 ColorToken::Danger,
             );
         }
@@ -317,7 +324,7 @@ fn avisos(
                     x,
                     w,
                     y,
-                    "This script offers no properties.",
+                    tr("panel.inspector.script.this_script_offers_no_properties"),
                     ColorToken::Text3,
                 );
             }
@@ -331,7 +338,10 @@ fn avisos(
             x,
             w,
             y,
-            &format!("Stopped: {msg} \u{2014} fix the script and save it."),
+            &tr_with(
+                "panel.inspector.script.stopped_fix_and_save",
+                &[("msg", &msg)],
+            ),
             ColorToken::Danger,
         );
     }
@@ -343,7 +353,10 @@ fn avisos(
             x,
             w,
             y,
-            &format!("{} value(s) kept until the script loads again.", info.kept),
+            &tr_with(
+                "panel.inspector.script.values_kept_until_reload",
+                &[("n", &info.kept)],
+            ),
             ColorToken::Text3,
         );
     }
@@ -355,7 +368,7 @@ fn avisos(
             x,
             w,
             y,
-            "This object is also moved by physics \u{2014} the two fight.",
+            tr("panel.inspector.script.this_object_is_also_moved_by_physics_u_the_two_fight"),
             ColorToken::Warn,
         );
     }
@@ -367,7 +380,9 @@ fn avisos(
             x,
             w,
             y,
-            "The clock is stopped \u{2014} scripts only run while the scene plays.",
+            tr(
+                "panel.inspector.script.the_clock_is_stopped_u_scripts_only_run_while_the_scene_plays",
+            ),
             ColorToken::Text3,
         );
     }
@@ -392,7 +407,12 @@ pub(crate) fn paint_script_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
-    let header = section_header(store, core_ids::INSP_LIVE_SCRIPT_SECTION, "Script").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_SCRIPT_SECTION,
+        tr("panel.inspector.script.script"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -419,7 +439,7 @@ pub(crate) fn paint_script_section(
             x,
             w,
             cur_y,
-            "Multiple selected \u{b7} edits apply to the active object only.",
+            tr("panel.inspector.script.multiple_selected_u_edits_apply_to_the_active_object_only"),
             ColorToken::Warn,
         );
     }
@@ -434,7 +454,8 @@ pub(crate) fn paint_script_section(
         w,
         cur_y,
         ids::INSP_SCRIPT_SOURCE,
-        TextInput::new(ids::INSP_SCRIPT_SOURCE, "").placeholder("script file\u{2026}"),
+        TextInput::new(ids::INSP_SCRIPT_SOURCE, "")
+            .placeholder(tr("panel.inspector.script.script_file_u")),
     );
     botao(
         scene,
@@ -444,12 +465,20 @@ pub(crate) fn paint_script_section(
         store,
         Rect::new(x, cur_y, w, BTN_H),
         ids::INSP_SCRIPT_BROWSE,
-        "Browse",
+        tr("panel.inspector.script.browse"),
     );
     cur_y += BTN_H + ph2d_tokens::control_gap_px();
     cur_y = avisos(scene, text_system, theme, x, w, cur_y, info);
 
     // ── OS NÚMEROS ───────────────────────────────────────────────────────────
+    // ⭐⭐ **A coluna do nome é da SECÇÃO, e aqui os nomes são do SCRIPT DO ARTISTA** — mede-se a
+    //    lista inteira uma vez; uma medida por linha seria uma coluna por linha (`line/UIUX`).
+    let nomes: Vec<&str> = info.props.iter().map(|p| p.name.as_str()).collect();
+    let seccao = if nomes.is_empty() {
+        ph2d_editor_core::property_row::Seccao::apenas_campos(1)
+    } else {
+        ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes)
+    };
     // ⚠️ `zip` com a tabela de ids: o script não pode declarar mais do que ela tem (o
     // `ph2d_script::PROPS_MAX`), e o gate da shell afirma que os dois são o mesmo número.
     for (i, p) in info
@@ -469,6 +498,7 @@ pub(crate) fn paint_script_section(
             cur_y,
             i,
             p,
+            seccao,
         );
     }
 
@@ -481,7 +511,7 @@ pub(crate) fn paint_script_section(
             x,
             w,
             cur_y,
-            "No longer in the script:",
+            tr("panel.inspector.script.no_longer_in_the_script"),
             ColorToken::Warn,
         );
     }
@@ -491,10 +521,13 @@ pub(crate) fn paint_script_section(
         .zip(ids::INSP_SCRIPT_ORPHAN_REMOVE.iter())
     {
         let porque = match o.wants {
-            None => String::from("not in the script"),
-            Some(tipo) => format!("the script now wants a {tipo}"),
+            None => String::from(tr("panel.inspector.script.not_in_the_script")),
+            Some(tipo) => tr_with(
+                "panel.inspector.script.the_script_now_wants_a",
+                &[("tipo", &tipo)],
+            ),
         };
-        let reset_w = largura_do_botao(text_system, id, "Remove");
+        let reset_w = largura_do_botao(text_system, id, tr("panel.inspector.script.remove"));
         let gap = Spacing::Xs.px();
         let texto = format!("{} = {} \u{2014} {porque}", o.name, legivel(&o.value));
         paint_text(
@@ -515,7 +548,7 @@ pub(crate) fn paint_script_section(
             store,
             Rect::new(x + w - reset_w, cur_y, reset_w, BTN_H),
             id,
-            "Remove",
+            tr("panel.inspector.script.remove"),
         );
         cur_y += BTN_H + ph2d_tokens::control_gap_px();
     }

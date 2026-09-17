@@ -371,6 +371,12 @@ mod topdown_finger_tests;
 #[cfg(any(test, feature = "test-support"))]
 pub mod physics_tests;
 
+/// ⭐ **Veio da shell na integração de 2026-09-16** — a catraca `the_shell_only_shrinks`
+/// ficou vermelha por ACUMULAÇÃO das seis linhas da rodada, e a cura dela é MOVER, nunca
+/// subir o número. Este ficheiro não tocava em nada da shell (zero `crate::`): ele é
+/// código DESTA família, e o sítio dele é aqui.
+#[cfg(test)]
+mod inspector_part_tests;
 pub mod physics_smoke_base;
 pub mod physics_smoke_joint_anim;
 pub mod physics_smoke_out;

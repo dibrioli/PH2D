@@ -202,6 +202,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.project_load.project_migrated_from" => {
             "Project migrated from format 95 to {PROJECT_SCHEMA}"
         }
+        "shell.project_load.project_refused_format_128" => {
+            "Project refused: format 128 file is unreadable ({e})"
+        }
+        "shell.project_load.project_migrated_from_128" => {
+            "Project migrated from format 128 to {PROJECT_SCHEMA}"
+        }
         "shell.project_save.project_save_failed" => "Project save FAILED: {e}",
         "shell.project_save.project_saved_kb" => {
             "Project saved · {bytes} KB · {n} animation track(s)"

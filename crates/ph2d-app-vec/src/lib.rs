@@ -146,6 +146,12 @@ pub mod font_preview;
 pub mod overlay;
 pub mod overlay_diag;
 pub mod paint_stack;
+/// ⭐ **Veio da shell na integração de 2026-09-16** — a catraca `the_shell_only_shrinks`
+/// ficou vermelha por ACUMULAÇÃO das seis linhas da rodada, e a cura dela é MOVER, nunca
+/// subir o número. Este ficheiro não tocava em nada da shell (zero `crate::`): ele é
+/// código DESTA família, e o sítio dele é aqui.
+#[cfg(test)]
+mod pattern_seam_probe;
 pub mod pick;
 pub mod shape_live;
 pub mod smoke_appearance;

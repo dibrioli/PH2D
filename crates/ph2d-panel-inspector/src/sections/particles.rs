@@ -22,6 +22,8 @@ use ph2d_editor_core::particles_edits::{
     InspectorParticlesInfo, PARTICLES_NUMBERS, PARTICLES_TEXTS, ParticlesNumber as N,
 };
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
 
@@ -29,26 +31,93 @@ const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à
 ///
 /// ⚠️ A tabela é indexada pela [`PARTICLES_NUMBERS`], e há gate a atar os comprimentos: uma linha
 /// nova entra num sítio só.
-const ROTULOS: [(&str, f64); 19] = [
-    ("Amount", 1.0),                   // LITERAL-PX-OK: partículas (inteiro)
-    ("Lifetime (s)", 0.1),             // LITERAL-PX-OK: segundos
-    ("Lifetime Randomness", 0.05),     // LITERAL-PX-OK: fracção 0..1
-    ("Explosiveness", 0.05),           // LITERAL-PX-OK: fracção 0..1
-    ("Preprocess (s)", 0.1),           // LITERAL-PX-OK: segundos
-    ("Speed Scale", 0.1),              // LITERAL-PX-OK: multiplicador do relógio
-    ("Seed", 1.0),                     // LITERAL-PX-OK: semente (inteiro)
-    ("Shape Width / Radius (m)", 0.1), // LITERAL-PX-OK: metros
-    ("Shape Height (m)", 0.1),         // LITERAL-PX-OK: metros
-    ("Speed (m/s)", 0.5),              // LITERAL-PX-OK: metros por segundo
-    ("Speed Randomness", 0.05),        // LITERAL-PX-OK: fracção 0..1
-    ("Direction (deg)", 5.0),          // LITERAL-PX-OK: graus
-    ("Spread (deg)", 5.0),             // LITERAL-PX-OK: graus
-    ("Gravity X (m/s\u{b2})", 0.5),    // LITERAL-PX-OK: metros por segundo²
-    ("Gravity Y (m/s\u{b2})", 0.5),    // LITERAL-PX-OK: metros por segundo²
-    ("Damping", 0.1),                  // LITERAL-PX-OK: fracção por segundo
-    ("Size (m)", 0.05),                // LITERAL-PX-OK: metros
-    ("Size Randomness", 0.05),         // LITERAL-PX-OK: fracção 0..1
-    ("Size at Death", 0.05),           // LITERAL-PX-OK: fracção do tamanho ao nascer
+/// ⭐ **A UNIDADE é do CAMPO, nunca do rótulo** (`line/UIUX`, spec §7): a terceira coluna é o
+/// sufixo que o `NumberInput` mostra E lê de volta. `None` = grandeza adimensional (uma fracção,
+/// uma contagem, um multiplicador).
+const ROTULOS: [(TextKey, f64, Option<ph2d_editor_core::widget::Unit>); 19] = [
+    (TextKey::new("panel.inspector.particles.amount"), 1.0, None), // LITERAL-PX-OK: partículas (inteiro)
+    (
+        TextKey::new("panel.inspector.particles.lifetime_s"),
+        0.1, // LITERAL-PX-OK: segundos
+        Some(ph2d_editor_core::widget::Unit::Seconds),
+    ), // LITERAL-PX-OK: segundos
+    (
+        TextKey::new("panel.inspector.particles.lifetime_randomness"),
+        0.05, // LITERAL-PX-OK: fracção 0..1
+        None,
+    ), // LITERAL-PX-OK: fracção 0..1
+    (
+        TextKey::new("panel.inspector.particles.explosiveness"),
+        0.05, // LITERAL-PX-OK: fracção 0..1
+        None,
+    ), // LITERAL-PX-OK: fracção 0..1
+    (
+        TextKey::new("panel.inspector.particles.preprocess_s"),
+        0.1, // LITERAL-PX-OK: segundos
+        Some(ph2d_editor_core::widget::Unit::Seconds),
+    ), // LITERAL-PX-OK: segundos
+    (
+        TextKey::new("panel.inspector.particles.speed_scale"),
+        0.1, // LITERAL-PX-OK: multiplicador do relógio
+        None,
+    ), // LITERAL-PX-OK: multiplicador do relógio
+    (TextKey::new("panel.inspector.particles.seed"), 1.0, None), // LITERAL-PX-OK: semente (inteiro)
+    (
+        TextKey::new("panel.inspector.particles.shape_width_radius_m"),
+        0.1, // LITERAL-PX-OK: metros
+        Some(ph2d_editor_core::widget::Unit::Meters),
+    ), // LITERAL-PX-OK: metros
+    (
+        TextKey::new("panel.inspector.particles.shape_height_m"),
+        0.1, // LITERAL-PX-OK: metros
+        Some(ph2d_editor_core::widget::Unit::Meters),
+    ), // LITERAL-PX-OK: metros
+    (
+        TextKey::new("panel.inspector.particles.speed_m_s"),
+        0.5, // LITERAL-PX-OK: metros por segundo
+        Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
+    ), // LITERAL-PX-OK: metros por segundo
+    (
+        TextKey::new("panel.inspector.particles.speed_randomness"),
+        0.05, // LITERAL-PX-OK: fracção 0..1
+        None,
+    ), // LITERAL-PX-OK: fracção 0..1
+    (
+        TextKey::new("panel.inspector.particles.direction_deg"),
+        5.0, // LITERAL-PX-OK: graus
+        Some(ph2d_editor_core::widget::Unit::Degrees),
+    ), // LITERAL-PX-OK: graus
+    (
+        TextKey::new("panel.inspector.particles.spread_deg"),
+        5.0, // LITERAL-PX-OK: graus
+        Some(ph2d_editor_core::widget::Unit::Degrees),
+    ), // LITERAL-PX-OK: graus
+    (
+        TextKey::new("panel.inspector.particles.gravity_x_m_s_u"),
+        0.5, // LITERAL-PX-OK: metros por segundo²
+        Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
+    ), // LITERAL-PX-OK: metros por segundo²
+    (
+        TextKey::new("panel.inspector.particles.gravity_y_m_s_u"),
+        0.5, // LITERAL-PX-OK: metros por segundo²
+        Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
+    ), // LITERAL-PX-OK: metros por segundo²
+    (TextKey::new("panel.inspector.particles.damping"), 0.1, None), // LITERAL-PX-OK: fracção por segundo
+    (
+        TextKey::new("panel.inspector.particles.size_m"),
+        0.05, // LITERAL-PX-OK: metros
+        Some(ph2d_editor_core::widget::Unit::Meters),
+    ), // LITERAL-PX-OK: metros
+    (
+        TextKey::new("panel.inspector.particles.size_randomness"),
+        0.05, // LITERAL-PX-OK: fracção 0..1
+        None,
+    ), // LITERAL-PX-OK: fracção 0..1
+    (
+        TextKey::new("panel.inspector.particles.size_at_death"),
+        0.05, // LITERAL-PX-OK: fracção do tamanho ao nascer
+        None,
+    ), // LITERAL-PX-OK: fracção do tamanho ao nascer
 ];
 
 /// Uma linha de aviso. (Gémea da do projéctil — ver a irmã.)
@@ -194,14 +263,15 @@ fn num_row(
     let Some(i) = PARTICLES_NUMBERS.iter().position(|&n| n == which) else {
         return y;
     };
-    let (label, step) = ROTULOS[i];
+    let (chave, step, unidade) = ROTULOS[i];
+    let label = chave.tr();
     // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): aqui ela mede-se da
     //    própria tabela, que É a lista de nomes desta secção — as 19 linhas partilham-na, e
     //    medir só a desta faria a coluna saltar de linha para linha.
     let seccao = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         1,
-        &ROTULOS.map(|(nome, _)| nome),
+        &ROTULOS.map(|(chave, _, _)| chave.tr()),
     );
     super::rows::fields_row(
         scene,
@@ -215,273 +285,11 @@ fn num_row(
         label,
         &[crate::ids::INSP_PART_NUM[i]],
         step,
-        None,
+        unidade,
         seccao,
     )
 }
 
-/// **Os AVISOS** — a metade que responde a *«pus o componente e não vejo nada»*.
-#[allow(clippy::too_many_arguments)]
-fn avisos(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    i: &InspectorParticlesInfo,
-) -> f32 {
-    let mut cur_y = y;
-    if !i.clock_playing {
-        cur_y = warn(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            "The clock is stopped \u{2014} particles are born while the clock plays.",
-            ColorToken::Text3,
-        );
-    } else if i.alive == 0 {
-        cur_y = warn(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            "Nothing alive right now \u{2014} the emission ended, or it is switched off.",
-            ColorToken::Text3,
-        );
-    }
-    if !i.emitting {
-        cur_y = warn(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            "It starts stopped \u{2014} a signal switches it on.",
-            ColorToken::Warn,
-        );
-    }
-    cur_y
-}
-
-/// O corpo da secção — os CONTROLOS, por módulo.
-#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
-fn corpo(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    i: &InspectorParticlesInfo,
-) -> f32 {
-    let mut cur_y = avisos(scene, text_system, theme, x, w, y, i);
-    // ── Emissão ──────────────────────────────────────────────────────────────
-    cur_y = titulo(scene, text_system, theme, x, w, cur_y, "Emission");
-    cur_y = check_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        crate::ids::INSP_PART_EMITTING,
-        "Emitting",
-        i.emitting,
-    );
-    cur_y = check_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        crate::ids::INSP_PART_ONE_SHOT,
-        "One Shot",
-        i.one_shot,
-    );
-    for n in [
-        N::Amount,
-        N::Life,
-        N::LifeRandom,
-        N::Explosiveness,
-        N::Prewarm,
-        N::TimeScale,
-        N::Seed,
-    ] {
-        cur_y = num_row(scene, text_system, theme, hit_index, store, x, w, cur_y, n);
-    }
-    // ── De onde nascem ───────────────────────────────────────────────────────
-    cur_y = seg_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        "Emission Shape",
-        &crate::ids::INSP_PART_SHAPE,
-        &["Point", "Disc", "Ring", "Rect"],
-        usize::from(i.shape),
-    );
-    // ⭐ **As duas medidas só existem fora do ponto** — num ponto elas são inertes, e um controlo
-    // vivo que não muda nada é a doença que os gates de param existem para curar.
-    if i.shape != 0 {
-        for n in [N::ShapeW, N::ShapeH] {
-            cur_y = num_row(scene, text_system, theme, hit_index, store, x, w, cur_y, n);
-        }
-    }
-    // ── Para onde vão ────────────────────────────────────────────────────────
-    cur_y = titulo(scene, text_system, theme, x, w, cur_y, "Velocity");
-    for n in [N::Speed, N::SpeedRandom, N::Angle, N::Spread] {
-        cur_y = num_row(scene, text_system, theme, hit_index, store, x, w, cur_y, n);
-    }
-    cur_y = titulo(scene, text_system, theme, x, w, cur_y, "Forces");
-    for n in [N::GravityX, N::GravityY, N::Damping] {
-        cur_y = num_row(scene, text_system, theme, hit_index, store, x, w, cur_y, n);
-    }
-    // ── Como são ─────────────────────────────────────────────────────────────
-    cur_y = titulo(scene, text_system, theme, x, w, cur_y, "Look");
-    for n in [N::Size, N::SizeRandom, N::SizeEnd] {
-        cur_y = num_row(scene, text_system, theme, hit_index, store, x, w, cur_y, n);
-    }
-    for (id, label, rgba) in [
-        (crate::ids::INSP_PART_COLOR, "Color", i.color),
-        (
-            crate::ids::INSP_PART_COLOR_END,
-            "Color at Death",
-            i.color_end,
-        ),
-    ] {
-        let cell = Rect::new(x, cur_y, w, ph2d_tokens::ROW_H_PX);
-        super::color_tint::paint_tint_swatch_cell(
-            cell,
-            label,
-            id,
-            crate::state_tint::tint_f32_to_u8(rgba),
-            false,
-            store,
-            hit_index,
-            scene,
-            text_system,
-            theme,
-        );
-        cur_y += ph2d_tokens::row_pitch_px();
-    }
-    // ── Onde vivem ───────────────────────────────────────────────────────────
-    cur_y = seg_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        "Simulation Space",
-        &crate::ids::INSP_PART_SPACE,
-        &["World", "Local"],
-        usize::from(i.space),
-    );
-    // ── Os sinais ────────────────────────────────────────────────────────────
-    cur_y = titulo(scene, text_system, theme, x, w, cur_y, "Signals");
-    for (k, _t) in PARTICLES_TEXTS.into_iter().enumerate() {
-        let dica = [
-            "switch on\u{2026}",
-            "switch off\u{2026}",
-            "restart\u{2026}",
-            "shout when done\u{2026}",
-        ][k];
-        cur_y = super::anim_rows::text_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            crate::ids::INSP_PART_TEXT[k],
-            TextInput::new(crate::ids::INSP_PART_TEXT[k], "").placeholder(dica),
-        );
-    }
-    cur_y
-}
-
-/// Pinta a secção. Devolve o `y` seguinte.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_particles_section(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    info: &InspectorParticlesInfo,
-) -> f32 {
-    let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
-    let header = section_header(
-        store,
-        ph2d_editor_core::ids::INSP_LIVE_PARTICLES_SECTION,
-        "Particles",
-    );
-    paint_section_header(
-        &header,
-        Rect::new(x, y, w, header_h),
-        scene,
-        text_system,
-        theme,
-    );
-    let Some(fold) = SectionFold::begin(
-        store,
-        ph2d_editor_core::ids::INSP_LIVE_PARTICLES_SECTION,
-        x,
-        w,
-        y + header_h,
-        scene,
-        hit_index,
-    ) else {
-        return y + header_h;
-    };
-    let mut cur_y = y + header_h;
-    if info.selected_count > 1 {
-        cur_y = warn(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            "Editing the primary selection only.",
-            ColorToken::Text3,
-        );
-    }
-    cur_y = corpo(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        info,
-    );
-    fold.finish(store, scene, hit_index, cur_y)
-}
+#[path = "particles_avisos.rs"]
+mod irmao;
+pub(crate) use irmao::*;

@@ -35,6 +35,10 @@ const PREFIX: &str = "panel.inspector.";
 const TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/inspector.rs",
     "crates/ph2d-i18n/src/inspector_player.rs",
+    // ⭐ **A TERCEIRA, pela mesma lei do tecto**: as secções de JOGO (TOP-20 #9..#18) somam 151
+    //    chaves, e escrevê-las na `inspector.rs` levava-a de `559` a mais de `900` — acima do
+    //    tecto de 700 da workspace. O corte é por ASSUNTO, que é o que esse tecto pede.
+    "crates/ph2d-i18n/src/inspector_game.rs",
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.
@@ -140,8 +144,16 @@ fn every_inspector_key_exists_on_both_sides() {
 #[test]
 fn every_inspector_key_lives_in_exactly_one_table() {
     let repo = repo_root();
-    let geral = keys::keys_declared(&repo, &TABLES[..1], PREFIX);
-    let player = keys::keys_declared(&repo, &TABLES[1..], PREFIX);
+    // ⚠️⚠️ **A partição é por NOME, nunca por índice** (2026-09-16): a metade *player* era
+    //    `TABLES[1..]`, e no dia em que a terceira tabela entrou ela passou a conter as 151 chaves
+    //    das secções de jogo — o gate acusou-as todas de estarem «na secção errada» sem uma linha
+    //    de produto ter mudado. *Uma fatia de índice é uma lista escrita à mão com outra sintaxe.*
+    let e_do_player = |t: &&&str| t.ends_with("inspector_player.rs");
+    let player_t: Vec<&str> = TABLES.iter().filter(e_do_player).copied().collect();
+    let geral_t: Vec<&str> = TABLES.iter().filter(|t| !e_do_player(t)).copied().collect();
+    assert_eq!(player_t.len(), 1, "a §14 mora numa tabela só");
+    let geral = keys::keys_declared(&repo, &geral_t, PREFIX);
+    let player = keys::keys_declared(&repo, &player_t, PREFIX);
     assert!(
         geral.len() >= 250 && player.len() >= 150,
         "o censo achou {} e {} chaves — uma das metades está a ser lida no sítio errado",
@@ -165,6 +177,6 @@ fn every_inspector_key_lives_in_exactly_one_table() {
     assert!(
         fora.is_empty(),
         "estas chaves estão na tabela da secção ERRADA (a §14 mora em `{}`): {fora:?}",
-        TABLES[1]
+        player_t[0]
     );
 }

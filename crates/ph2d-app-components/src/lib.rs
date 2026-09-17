@@ -148,6 +148,11 @@ pub mod test_support;
 /// (W2 5.ª rodada, 2026-09-13). *Um censo mora com o sujeito que mede* (HOWTO §2.6).
 #[cfg(test)]
 mod asset_texture_door_census_tests;
+/// ⭐ **Veio da shell na integração de 2026-09-16** — a catraca `the_shell_only_shrinks` ficou
+/// vermelha por ACUMULAÇÃO das seis linhas da rodada, e a cura dela é MOVER, nunca subir o
+/// número. A §8 *Visibility* do Inspector não tocava em nada da shell (zero `crate::`): ela é
+/// código desta família, e o sítio dela é aqui.
+pub mod inspector_visibility;
 #[cfg(test)]
 mod instance_tags_tests;
 

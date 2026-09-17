@@ -106,16 +106,15 @@ impl crate::App {
                             "[proj] migrado v128 -> v{PROJECT_SCHEMA} ({} tabela(s) de accoes reescrita(s), {} ilegivel(eis))",
                             m.actions.tables, m.actions.unreadable
                         );
-                        self.toast(format!(
-                            "Project migrated from format 128 to {PROJECT_SCHEMA}"
+                        self.toast(ph2d_i18n::tr_with(
+                            "shell.project_load.project_migrated_from_128",
+                            &[("PROJECT_SCHEMA", &PROJECT_SCHEMA)],
                         ));
                         (m.file, None)
                     }
                     Err(e) => {
                         eprintln!("[proj] v128 ilegivel: {e}");
-                        self.toast(format!(
-                            "Project refused: format 128 file is unreadable ({e})"
-                        ));
+                        self.toast_refused("shell.project_load.project_refused_format_128", &e);
                         return None;
                     }
                 }
@@ -137,24 +136,24 @@ impl crate::App {
                             m.file.state.world.entities.len(),
                             split.sprites
                         );
-                        self.toast(format!(
-                            "Project migrated from format 95 to {PROJECT_SCHEMA}"
+                        self.toast(ph2d_i18n::tr_with(
+                            "shell.project_load.project_migrated_from",
+                            &[("PROJECT_SCHEMA", &PROJECT_SCHEMA)],
                         ));
                         (m.file, Some(m.stable_id_counter))
                     }
                     Err(e) => {
                         eprintln!("[proj] v95 ilegivel: {e}");
-                        self.toast(format!(
-                            "Project refused: format 95 file is unreadable ({e})"
-                        ));
+                        self.toast_refused("shell.project_load.project_refused_format", &e);
                         return None;
                     }
                 }
             }
             _ => {
                 eprintln!("[proj] schema {ver} != {PROJECT_SCHEMA} — recusado");
-                self.toast(format!(
-                    "Project refused: file format {ver}, this build reads {PROJECT_SCHEMA}"
+                self.toast(ph2d_i18n::tr_with(
+                    "shell.project_load.project_refused_file",
+                    &[("ver", &ver), ("PROJECT_SCHEMA", &PROJECT_SCHEMA)],
                 ));
                 return None;
             }

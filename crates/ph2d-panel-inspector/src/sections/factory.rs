@@ -30,6 +30,7 @@ use ph2d_editor_core::screens::hero::{
     InspectorFactory, InspectorFactoryInfo, InspectorLifecycle, InspectorSpawnWhere,
 };
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::{tr, tr_with};
 
 const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
 
@@ -76,7 +77,7 @@ fn where_row(
     paint_text(
         text_system,
         scene,
-        "Where",
+        tr("panel.inspector.factory.where"),
         x,
         y,
         font,
@@ -133,49 +134,14 @@ fn factory_body(
         text_system,
         2,
         &[
-            "Area (m)",
-            "Burst",
-            "Max Alive (0 = no limit)",
-            "Max Total (0 = no limit)",
-            "Seed",
+            tr("panel.inspector.factory.area_m"),
+            tr("panel.inspector.factory.burst"),
+            tr("panel.inspector.factory.max_alive_0_no_limit"),
+            tr("panel.inspector.factory.max_total_0_no_limit"),
+            tr("panel.inspector.factory.seed"),
         ],
     );
-    if f.recipe.trim().is_empty() || !f.recipe_found {
-        cur_y = warn(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            "No recipe \u{2014} nothing to make copies of.",
-            ColorToken::Danger,
-        );
-    }
-    if f.on_signal.trim().is_empty() {
-        cur_y = warn(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            "No signal \u{2014} this factory never fires.",
-            ColorToken::Warn,
-        );
-    } else if !clock_playing {
-        cur_y = warn(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            "The clock is stopped \u{2014} copies are born while it plays.",
-            ColorToken::Text3,
-        );
-    }
-
+    cur_y = factory_avisos(scene, text_system, theme, x, w, cur_y, f, clock_playing);
     cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -225,13 +191,13 @@ fn factory_body(
             x,
             w,
             cur_y,
-            "Area (m)",
+            tr("panel.inspector.factory.area_m"),
             &[
                 crate::ids::INSP_FACTORY_AREA_W,
                 crate::ids::INSP_FACTORY_AREA_H,
             ],
             0.1, // LITERAL-PX-OK: passo em metros
-            None,
+            Some(ph2d_editor_core::widget::Unit::Meters),
             seccao,
         );
     }
@@ -252,13 +218,16 @@ fn factory_body(
         let rect = Rect::new(x, cur_y, w, CHECK_H);
         hit_index.register(crate::ids::INSP_FACTORY_PICK_RANDOM, rect);
         paint_checkbox(
-            &Checkbox::new(crate::ids::INSP_FACTORY_PICK_RANDOM, "Pick at random")
-                .visual(store.checkbox_visual(crate::ids::INSP_FACTORY_PICK_RANDOM))
-                .value(if f.pick_random {
-                    CheckboxValue::Checked
-                } else {
-                    CheckboxValue::Unchecked
-                }),
+            &Checkbox::new(
+                crate::ids::INSP_FACTORY_PICK_RANDOM,
+                tr("panel.inspector.factory.pick_at_random"),
+            )
+            .visual(store.checkbox_visual(crate::ids::INSP_FACTORY_PICK_RANDOM))
+            .value(if f.pick_random {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            }),
             rect,
             scene,
             text_system,
@@ -268,18 +237,26 @@ fn factory_body(
     }
 
     for (label, id, step) in [
-        ("Burst", crate::ids::INSP_FACTORY_BURST, 1.0), // LITERAL-PX-OK: contagem
         (
-            "Max Alive (0 = no limit)",
+            tr("panel.inspector.factory.burst"),
+            crate::ids::INSP_FACTORY_BURST,
+            1.0,
+        ), // LITERAL-PX-OK: contagem
+        (
+            tr("panel.inspector.factory.max_alive_0_no_limit"),
             crate::ids::INSP_FACTORY_ALIVE_MAX,
             1.0,
         ), // LITERAL-PX-OK: contagem
         (
-            "Max Total (0 = no limit)",
+            tr("panel.inspector.factory.max_total_0_no_limit"),
             crate::ids::INSP_FACTORY_TOTAL_MAX,
             1.0,
         ), // LITERAL-PX-OK: contagem
-        ("Seed", crate::ids::INSP_FACTORY_SEED, 1.0),   // LITERAL-PX-OK: contagem
+        (
+            tr("panel.inspector.factory.seed"),
+            crate::ids::INSP_FACTORY_SEED,
+            1.0,
+        ), // LITERAL-PX-OK: contagem
     ] {
         cur_y = super::rows::fields_row(
             scene,
@@ -332,9 +309,63 @@ fn factory_body(
         x,
         w,
         cur_y,
-        &format!("{} alive now", f.alive),
+        &tr_with("panel.inspector.factory.alive_now", &[("n", &f.alive)]),
         ColorToken::Text2,
     )
+}
+
+/// **Os avisos da FÁBRICA** — irmão por tecto de LOC (a função passou a `215/200` quando a
+/// coluna da secção entrou). ⚠️ O corte é por RESPONSABILIDADE: aqui *porque é que nada nasce*;
+/// lá *o que o artista afina*.
+#[allow(clippy::too_many_arguments)]
+fn factory_avisos(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    f: &InspectorFactory,
+    clock_playing: bool,
+) -> f32 {
+    let mut cur_y = y;
+    if f.recipe.trim().is_empty() || !f.recipe_found {
+        cur_y = warn(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            tr("panel.inspector.factory.no_recipe_u_nothing_to_make_copies_of"),
+            ColorToken::Danger,
+        );
+    }
+    if f.on_signal.trim().is_empty() {
+        cur_y = warn(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            tr("panel.inspector.factory.no_signal_u_this_factory_never_fires"),
+            ColorToken::Warn,
+        );
+    } else if !clock_playing {
+        cur_y = warn(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            tr("panel.inspector.factory.the_clock_is_stopped_u_copies_are_born_while_it_plays"),
+            ColorToken::Text3,
+        );
+    }
+
+    cur_y
 }
 
 /// O corpo do CICLO DE VIDA.
@@ -360,7 +391,10 @@ fn lifecycle_body(
     let seccao = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         1,
-        &["Lifetime (s, 0 = forever)", "Off-screen margin (m)"],
+        &[
+            tr("panel.inspector.factory.lifetime_s_0_forever"),
+            tr("panel.inspector.factory.off_screen_margin_m"),
+        ],
     );
     // ⭐⭐ **A metade honesta** — a lei é *a morte só alcança quem nasceu numa corrida*.
     if !info.is_spawned {
@@ -371,7 +405,9 @@ fn lifecycle_body(
             x,
             w,
             cur_y,
-            "Nothing is born from this object \u{2014} put this on the recipe a Factory makes.",
+            tr(
+                "panel.inspector.factory.nothing_is_born_from_this_object_u_put_this_on_the_recipe_a_factory_makes",
+            ),
             ColorToken::Text3,
         );
     }
@@ -385,7 +421,7 @@ fn lifecycle_body(
             x,
             w,
             cur_y,
-            "Lifetime (s, 0 = forever)",
+            tr("panel.inspector.factory.lifetime_s_0_forever"),
             &[crate::ids::INSP_LIFE_SECONDS],
             0.1, // LITERAL-PX-OK: passo em segundos
             None,
@@ -414,7 +450,7 @@ fn lifecycle_body(
                 x,
                 w,
                 cur_y,
-                "No game camera \u{2014} off-screen has no screen to measure.",
+                tr("panel.inspector.factory.no_game_camera_u_off_screen_has_no_screen_to_measure"),
                 ColorToken::Warn,
             );
         }
@@ -427,10 +463,10 @@ fn lifecycle_body(
             x,
             w,
             cur_y,
-            "Off-screen margin (m)",
+            tr("panel.inspector.factory.off_screen_margin_m"),
             &[crate::ids::INSP_LIFE_OUTSIDE_MARGIN],
             0.1, // LITERAL-PX-OK: passo em metros
-            None,
+            Some(ph2d_editor_core::widget::Unit::Meters),
             seccao,
         );
     }
@@ -458,7 +494,7 @@ pub(crate) fn paint_factory_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_FACTORY_SECTION,
-        "Factory",
+        tr("panel.inspector.factory.factory"),
     );
     paint_section_header(
         &header,
@@ -487,7 +523,7 @@ pub(crate) fn paint_factory_section(
             x,
             w,
             cur_y,
-            "Editing the primary selection only.",
+            tr("panel.inspector.factory.editing_the_primary_selection_only"),
             ColorToken::Text3,
         );
     }
@@ -526,7 +562,7 @@ pub(crate) fn paint_lifecycle_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_LIFECYCLE_SECTION,
-        "Lifecycle",
+        tr("panel.inspector.factory.lifecycle"),
     );
     paint_section_header(
         &header,

@@ -346,7 +346,7 @@ fn late(
         )
     });
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
-        crate::render_loop::inspector_visibility::build_visibility_section_info(
+        ph2d_app_components::inspector_visibility::build_visibility_section_info(
             sim.world(),
             b,
             sel,

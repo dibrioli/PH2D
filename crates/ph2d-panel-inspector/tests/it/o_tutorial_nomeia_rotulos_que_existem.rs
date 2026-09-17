@@ -35,11 +35,69 @@ const TUTORIAL: &str =
 
 /// Os pintores que produzem os r&oacute;tulos citados — a sec&ccedil;&atilde;o e o cabe&ccedil;alho
 /// do Inspector (de onde vem o bot&atilde;o *Add Component*).
-const PINTORES: [&str; 3] = [
+const PINTORES: [&str; 4] = [
     include_str!("../../src/sections/statemachine.rs"),
+    // ⚠️ **O irmão das SETAS** — o ficheiro passou o tecto de 600 na migração do HR-15 e as rows
+    //    das transições mudaram-se para cá. Um gate que lesse só o pai acusava metade do tutorial.
+    include_str!("../../src/sections/statemachine_setas.rs"),
     include_str!("../../src/paint_head.rs"),
     include_str!("../../src/sections/anchors.rs"),
 ];
+
+/// ⚠️⚠️ **A TABELA entra no gate porque o texto MUDOU DE SÍTIO** (`line/UIUX`, 2026-09-16): desde
+/// a migração do HR-15 o pintor escreve `tr("panel.inspector.…")` e a FRASE vive aqui. Um gate que
+/// só lesse o pintor acusaria como órfão todo rótulo VIVO — e, pior, ficaria **verde sobre uma
+/// chave** se a frase mudasse na tabela sem ninguém tocar no pintor (o defeito que os sete gates
+/// repontados da `line/UIUX` pagaram).
+///
+/// ⭐ **Por isso a régua tem DUAS metades:** a frase citada tem de ser o texto de uma chave, **e**
+/// essa chave tem de aparecer num pintor. Nenhuma das duas sozinha afirma o que o tutorial promete.
+const TABELAS: [&str; 2] = [
+    include_str!("../../../ph2d-i18n/src/inspector_game.rs"),
+    include_str!("../../../ph2d-i18n/src/inspector.rs"),
+];
+
+/// Os pares `("chave", "texto")` das tabelas, já com os escapes resolvidos.
+fn chaves_e_textos() -> Vec<(String, String)> {
+    let mut v = Vec::new();
+    for t in TABELAS {
+        // ⚠️⚠️ **Duas FORMAS de braço, e a segunda é a das frases longas**: o `rustfmt` escreve
+        //    `"k" => {` e põe o texto na linha seguinte. Um parser que só conhecesse a forma de
+        //    uma linha lia ZERO avisos — exactamente as frases que o tutorial cita.
+        let mut bloco: Option<String> = None;
+        for linha in t.lines() {
+            let linha = linha.trim();
+            if let Some(k) = bloco.take() {
+                if let Some(resto) = linha.strip_prefix('"') {
+                    if let Some(f) = resto.rfind('"') {
+                        v.push((k, desescapa(&resto[..f])));
+                    }
+                }
+                continue;
+            }
+            let Some(resto) = linha.strip_prefix('"') else {
+                continue;
+            };
+            let Some(fim) = resto.find('"') else { continue };
+            let chave = &resto[..fim];
+            let Some(depois) = resto[fim + 1..].trim_start().strip_prefix("=>") else {
+                continue;
+            };
+            let depois = depois.trim_start();
+            let Some(texto) = depois.strip_prefix('"') else {
+                if depois.starts_with('{') {
+                    bloco = Some(chave.to_string());
+                }
+                continue;
+            };
+            let Some(fim_t) = texto.rfind('"') else {
+                continue;
+            };
+            v.push((chave.to_string(), desescapa(&texto[..fim_t])));
+        }
+    }
+    v
+}
 
 /// **Traduz os escapes `\u{XXXX}` do fonte Rust para o caracter real.**
 ///
@@ -107,10 +165,24 @@ fn o_tutorial_so_cita_rotulos_que_o_painel_pinta() {
          `<code class=\"ui\">` mudou de nome?",
         citados.len()
     );
-    let orfaos: Vec<&String> = citados
-        .iter()
-        .filter(|r| !pintores.iter().any(|p| p.contains(r.as_str())))
-        .collect();
+    let tabela = chaves_e_textos();
+    // ⚠️ **PISO DA TABELA** — se o parser dela deixar de casar (um `match` reescrito, um texto em
+    //    várias linhas), ela devolve VAZIO e o gate passa a medir só o pintor, em silêncio.
+    assert!(
+        tabela.len() >= 100,
+        "li {} pares chave/texto nas tabelas — o formato do `match` mudou e este gate passaria a \
+         medir só os literais do pintor",
+        tabela.len()
+    );
+    let vivo = |r: &String| {
+        // (a) ainda escrito no pintor — os rótulos que não são língua, e os que a migração não tocou
+        pintores.iter().any(|p| p.contains(r.as_str()))
+            // (b) ou é o TEXTO de uma chave que um pintor de facto usa
+            || tabela
+                .iter()
+                .any(|(k, t)| t.contains(r.as_str()) && pintores.iter().any(|p| p.contains(k.as_str())))
+    };
+    let orfaos: Vec<&String> = citados.iter().filter(|r| !vivo(r)).collect();
     assert!(
         orfaos.is_empty(),
         "o tutorial cita rotulos que nenhum pintor do Inspector produz: {orfaos:?}"

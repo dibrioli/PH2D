@@ -35,6 +35,7 @@ use ph2d_editor_core::screens::hero::{InspectorTagRow, InspectorTagsInfo};
 use ph2d_editor_core::widget::{
     Dropdown, DropdownOption, SectionFold, Tag, TagState, TagTone, paint_dropdown_chip, paint_tag,
 };
+use ph2d_i18n::{tr, tr_with};
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
 /// A linha de uma lista é a linha do app — pela porta, nunca por um literal que coincide.
@@ -219,9 +220,12 @@ pub(crate) fn paint_tags_section(
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
     let title = if info.on_object.is_empty() {
-        String::from("Tags")
+        String::from(tr("panel.inspector.tags.tags"))
     } else {
-        format!("Tags  ({})", info.on_object.len())
+        tr_with(
+            "panel.inspector.tags.tags_count",
+            &[("n", &info.on_object.len())],
+        )
     };
     let header = section_header(store, core_ids::INSP_LIVE_TAGS_SECTION, &title).color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
@@ -257,7 +261,9 @@ pub(crate) fn paint_tags_section(
             w,
             cur_y,
             font,
-            "Multiple selected \u{b7} tag edits apply to the active object only.",
+            tr(
+                "panel.inspector.tags.multiple_selected_u_tag_edits_apply_to_the_active_object_only",
+            ),
             ColorToken::Warn,
         );
     }
@@ -271,7 +277,7 @@ pub(crate) fn paint_tags_section(
             w,
             cur_y,
             font,
-            "No tags yet.",
+            tr("panel.inspector.tags.no_tags_yet"),
             ColorToken::Text3,
         );
     } else {
@@ -299,7 +305,9 @@ pub(crate) fn paint_tags_section(
             w,
             cur_y,
             font,
-            "This object holds the most tags the section can show. Remove one to add another.",
+            tr(
+                "panel.inspector.tags.this_object_holds_the_most_tags_the_section_can_show_remove_one_to_add_another",
+            ),
             ColorToken::Warn,
         );
         return fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX);
@@ -333,9 +341,12 @@ pub(crate) fn paint_tags_section(
             w,
             cur_y,
             font,
-            &format!(
-                "Showing {} of {achadas} \u{b7} type to narrow.",
-                crate::ids::INSP_TAGS_OPT.len()
+            &tr_with(
+                "panel.inspector.tags.showing_of_type_to_narrow",
+                &[
+                    ("n", &crate::ids::INSP_TAGS_OPT.len()),
+                    ("achadas", &achadas),
+                ],
             ),
             ColorToken::Text3,
         );
@@ -367,7 +378,10 @@ pub(crate) fn paint_tags_section(
         paint_button(
             &Button::new(
                 crate::ids::INSP_TAGS_CREATE,
-                format!("+ Create \u{201c}{}\u{201d}", escrito.trim()),
+                tr_with(
+                    "panel.inspector.tags.create_named",
+                    &[("nome", &escrito.trim())],
+                ),
             )
             .kind(ButtonKind::Default)
             .visual(store.button_visual(crate::ids::INSP_TAGS_CREATE)),
@@ -376,7 +390,7 @@ pub(crate) fn paint_tags_section(
             text_system,
             theme,
         );
-        cur_y += BTN_H + Spacing::Sm.px();
+        cur_y += BTN_H + ph2d_tokens::control_gap_px();
     }
 
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)

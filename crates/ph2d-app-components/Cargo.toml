@@ -38,6 +38,7 @@ ph2d-audio = { path = "../ph2d-audio" }
 ph2d-audio-encode = { path = "../ph2d-audio-encode" }
 ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }
 ph2d-entity-visibility = { path = "../ph2d-entity-visibility" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-render = { path = "../ph2d-render" }

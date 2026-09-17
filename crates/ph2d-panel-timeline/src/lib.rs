@@ -59,6 +59,11 @@ mod marker_menu;
 mod marker_rename;
 mod paint;
 pub mod populate;
+/// ⭐ **Veio da shell na integração de 2026-09-16** — a catraca `the_shell_only_shrinks` ficou
+/// vermelha por ACUMULAÇÃO das seis linhas da rodada, e a cura é MOVER. ⚠️ O sítio é ESTE
+/// painel: quem pinta o menu de presets é ele, e o ficheiro só lê `ph2d-timeline`,
+/// `ph2d-anim` e os ids da `editor-core` — nada da shell (zero `crate::`).
+pub mod presets;
 mod resize;
 mod ruler;
 mod scale_drag;

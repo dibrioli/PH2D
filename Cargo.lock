@@ -4826,6 +4826,7 @@ dependencies = [
  "ph2d-field-ecs",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-inspector-ordering",
  "ph2d-label-census",
  "ph2d-node-registry",
  "ph2d-panel-asset-browser",
@@ -7986,6 +7987,7 @@ version = "0.0.0"
 dependencies = [
  "bumpalo",
  "ph2d-a11y",
+ "ph2d-anim",
  "ph2d-core",
  "ph2d-editor-core",
  "ph2d-host",

@@ -17,7 +17,7 @@ use ph2d_timeline::{TimelineIntent, TimelineState};
 /// freezes the handles the graph already draws), so it stays a variant instead
 /// of an `Interp` — see [`interp_for_pick`].
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) enum Preset {
+pub enum Preset {
     /// Hold the value, then jump.
     Hold,
     /// Nearest keyframe: hold, then jump at the segment MIDPOINT (Godot's
@@ -47,7 +47,7 @@ pub(crate) enum Preset {
 /// A gate below walks BOTH published tables through this function: a row painted
 /// into the menu but forgotten here would be an item that silently does nothing,
 /// which is the classic way a context menu ships dead.
-pub(crate) fn preset_for(item: ph2d_editor_core::NodeId, mode: u8) -> Option<Preset> {
+pub fn preset_for(item: ph2d_editor_core::NodeId, mode: u8) -> Option<Preset> {
     use ph2d_anim::{Easing, EasingFamily as F, EasingMode as M};
     use ph2d_editor_core::ids as c;
     if item == c::CTX_MENU_TL_HOLD {
@@ -104,7 +104,7 @@ pub(crate) fn preset_for(item: ph2d_editor_core::NodeId, mode: u8) -> Option<Pre
 /// It resolves by *making* that column the selection and then running the very
 /// same bulk edit — which is why the column also stays visibly selected
 /// afterwards, and why no third code path was needed.
-pub(crate) fn intents_for_pick(
+pub fn intents_for_pick(
     state: &TimelineState,
     pick: ph2d_editor_core::interaction::TimelineInterpPick,
 ) -> Vec<TimelineIntent> {
@@ -126,7 +126,7 @@ pub(crate) fn intents_for_pick(
 /// under the cursor is the whole scope. The four rows that name an interpolation KIND
 /// cannot arrive (the fade menu does not paint them), and a stray one is dropped rather
 /// than guessed at.
-fn strip_fade(preset: Preset, lane: usize, strip: u64, edge: u8) -> Vec<TimelineIntent> {
+pub fn strip_fade(preset: Preset, lane: usize, strip: u64, edge: u8) -> Vec<TimelineIntent> {
     use ph2d_anim::{Easing, EasingFamily, EasingMode};
     let curve = match preset {
         Preset::FadeSmooth => None,
@@ -148,7 +148,12 @@ fn strip_fade(preset: Preset, lane: usize, strip: u64, edge: u8) -> Vec<Timeline
 }
 
 /// A key: bulk when it is selected, otherwise just itself.
-fn single_key(state: &TimelineState, preset: Preset, target: u64, key: u64) -> Vec<TimelineIntent> {
+pub fn single_key(
+    state: &TimelineState,
+    preset: Preset,
+    target: u64,
+    key: u64,
+) -> Vec<TimelineIntent> {
     use ph2d_anim::{AnimTarget, KeyId};
     use ph2d_timeline::SelectedKey;
     let target = AnimTarget::new(target);
@@ -204,7 +209,7 @@ fn single_key(state: &TimelineState, preset: Preset, target: u64, key: u64) -> V
 
 /// A Summary column: bulk when it is already part of the selection, otherwise
 /// select every key at `t` and then bulk-edit the new selection.
-fn column(state: &TimelineState, preset: Preset, t: f64) -> Vec<TimelineIntent> {
+pub fn column(state: &TimelineState, preset: Preset, t: f64) -> Vec<TimelineIntent> {
     let keys = keys_at(state, t);
     if keys.is_empty() {
         return Vec::new();
@@ -243,7 +248,7 @@ fn column(state: &TimelineState, preset: Preset, t: f64) -> Vec<TimelineIntent> 
 /// Exact `f64` equality is right here, not sloppy: the time came from the panel,
 /// which read it out of `RationalTime::to_seconds()` on these very keys, and that
 /// map is deterministic. Two keys share a Summary column iff they share a time.
-pub(crate) fn keys_at(state: &TimelineState, t: f64) -> Vec<ph2d_timeline::SelectedKey> {
+pub fn keys_at(state: &TimelineState, t: f64) -> Vec<ph2d_timeline::SelectedKey> {
     use ph2d_timeline::SelectedKey;
     let clip = state.doc.active_clip();
     state
@@ -263,7 +268,7 @@ pub(crate) fn keys_at(state: &TimelineState, t: f64) -> Vec<ph2d_timeline::Selec
 }
 
 /// The presets that name one interpolation outright.
-fn absolute(preset: Preset) -> ph2d_anim::Interp {
+pub fn absolute(preset: Preset) -> ph2d_anim::Interp {
     use ph2d_anim::Interp;
     match preset {
         Preset::Hold => Interp::Hold,
@@ -278,7 +283,7 @@ fn absolute(preset: Preset) -> ph2d_anim::Interp {
 
 /// `true` iff every key in `keys` currently roves. Empty = `false`, so the
 /// menu toggle's first press always turns roving ON.
-fn all_roving(state: &TimelineState, keys: &[ph2d_timeline::SelectedKey]) -> bool {
+pub fn all_roving(state: &TimelineState, keys: &[ph2d_timeline::SelectedKey]) -> bool {
     !keys.is_empty()
         && keys.iter().all(|k| {
             state
@@ -289,10 +294,7 @@ fn all_roving(state: &TimelineState, keys: &[ph2d_timeline::SelectedKey]) -> boo
         })
 }
 
-#[cfg(test)]
-#[path = "timeline_presets_menu_tests.rs"]
-mod preset_tests;
-
-#[cfg(test)]
-#[path = "timeline_presets_tests.rs"]
-mod pick_tests;
+// ⚠️ **Os DOIS gates desta lei FICAM na shell** (`render_loop/timeline_presets{,_menu}_tests.rs`),
+//    e por isso tudo aqui é `pub`: um deles lê o `default_interp` do `timeline_bridge`, que é
+//    costura da shell e não viaja. *Mover a lei sem os gates apagava-os; mover os gates com ela
+//    partia o que eles medem.*

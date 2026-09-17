@@ -365,12 +365,13 @@ mod tests {
     /// (Mutação: devolver o `ZIndexOverride` a `D::authored` ⇒ RED, nomeando-o.)
     #[test]
     fn the_core_family_offers_intentions_and_not_rows() {
-        const PORTAS: [&str; 10] = [
+        const PORTAS: [&str; 11] = [
             "ph2d::ecs::BlendMode",
             "ph2d::ecs::ClipChildren",
             "ph2d::ecs::Mask2D",
             "ph2d::ecs::MaskInteraction",
             "ph2d::ecs::OnScreenEnabler",
+            "ph2d::ecs::Tags",
             "ph2d::ecs::TextureFilter",
             "ph2d::ecs::TextureRepeat",
             "ph2d::ecs::Transform",

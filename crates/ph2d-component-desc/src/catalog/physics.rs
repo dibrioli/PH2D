@@ -277,7 +277,7 @@ pub const DESCS: &[D] = &[
 mod tests {
     use super::DESCS;
 
-    /// ⭐⭐ **A família da física oferece UMA porta, e nenhuma linha de secção.**
+    /// ⭐⭐ **A família da física oferece TRÊS portas, e nenhuma linha de secção.**
     ///
     /// O gate que faltava em 2026-08-24, quando a F3 escreveu a família inteira com o helper
     /// autorado: **30 itens na paleta, e as opções de UM objecto de física espalhadas por eles**. O
@@ -296,7 +296,16 @@ mod tests {
     /// (Mutação: trocar um `i(...)` por `D::authored(...)` ⇒ o `assert_eq` reprova, nomeando-o.)
     #[test]
     fn the_physics_family_offers_one_door_and_not_its_rows() {
-        const PORTAS: [&str; 1] = ["ph2d::physics::RigidBody"];
+        // ⭐ **TRÊS portas desde 16/09** — as duas novas são os CONTROLADORES canónicos
+        //    (TOP-20 #13 e #14), e a resposta às duas metades da pergunta acima é a mesma: um
+        //    mover é uma **intenção** do artista (ele escolhe *este objecto é um jogador de
+        //    vista de cima*), nunca uma row que a §11 já pinta. ⚠️ Os dois pedem `RigidBody`
+        //    junto (`pr`), senão a paleta entregava um componente inerte.
+        const PORTAS: [&str; 3] = [
+            "ph2d::physics::ProjectileMotion",
+            "ph2d::physics::RigidBody",
+            "ph2d::physics::TopDownPlayer",
+        ];
         let offered: Vec<&str> = DESCS
             .iter()
             .filter(|d| d.is_offered())
@@ -305,7 +314,8 @@ mod tests {
         assert_eq!(
             offered,
             PORTAS.to_vec(),
-            "a paleta de FISICA tem de oferecer exatamente UMA porta -- o `Physics Body`.\n\
+            "a paleta de FISICA tem de oferecer exatamente estas TRES portas -- o `Physics Body` e os \
+             dois controladores canonicos.\n\
              Um componente novo aqui e' uma pergunta, nao um esquecimento: e' uma INTENCAO do \
              artista (entao e' `pr`, e esta lista cresce com ele), ou e' uma ROW / um GESTO que a \
              §11/§12/§13/§14 ja' oferece (entao e' `i(..)`)?"

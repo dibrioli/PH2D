@@ -10,6 +10,7 @@
 
 use super::*;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+use ph2d_i18n::tr;
 
 /// A row do filtro por tag, e o aviso quando ele deixou de alcançar alguém. Devolve o `y` seguinte.
 ///
@@ -36,7 +37,7 @@ pub(super) fn signal_tag_row(
         Some(InteractiveState::Dropdown { open: true, .. })
     );
     let mut dd = Dropdown::new(ids::INSP_PHYS_SIGNAL_TAG, "", phys_tag_options())
-        .placeholder("Only for tag\u{2026}  (any)")
+        .placeholder(tr("panel.inspector.physics.only_for_tag_u_any"))
         .open(open)
         .visual(store.dropdown_visual(ids::INSP_PHYS_SIGNAL_TAG));
     if let Some(t) = signal_tag.filter(|t| *t != 0) {
@@ -56,14 +57,14 @@ pub(super) fn signal_tag_row(
         paint_text(
             text_system,
             scene,
-            "That tag was deleted \u{b7} this reaches nobody.",
+            tr("panel.inspector.physics.that_tag_was_deleted_u_this_reaches_nobody"),
             x,
             cur_y,
             font,
             w,
             resolve(ColorToken::Warn, theme),
         );
-        cur_y += font + Spacing::Sm.px();
+        cur_y += font + ph2d_tokens::control_gap_px();
     }
     cur_y
 }
@@ -77,7 +78,7 @@ pub(crate) fn phys_tag_options() -> Vec<DropdownOption<u64>> {
     let mut out = vec![DropdownOption::new(
         ids::INSP_PHYS_SIGNAL_TAG_CLEAR,
         0u64,
-        String::from("(any)"),
+        String::from(tr("panel.inspector.physics.any")),
     )];
     out.extend(
         crate::state::current_tag_tree()

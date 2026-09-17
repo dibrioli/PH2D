@@ -40,6 +40,7 @@
 //! ⚠️ **E o quinto é do `DestroyOutside`**: sem uma `GameCamera` na cena ele **não mede nada** — o
 //! fora-do-ecrã precisa de um ecrã, e o ecrã de um jogo é a câmera dele, nunca a vista do editor.
 
+use ph2d_i18n::tr;
 /// Onde a cópia nasce — o espelho do `ph2d_ecs::SpawnAt` para o painel.
 ///
 /// ⚠️ **Uma tag SEPARADA do enum do ECS**, como todos os selectores deste painel: o painel fala em
@@ -62,11 +63,11 @@ impl InspectorSpawnWhere {
 
     /// O rótulo que o artista lê (inglês, HR-15).
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub fn label(self) -> &'static str {
         match self {
-            Self::Here => "Here",
-            Self::Area => "Area",
-            Self::Tagged => "At Tag",
+            Self::Here => tr("panel.factory.here"),
+            Self::Area => tr("panel.factory.area"),
+            Self::Tagged => tr("panel.factory.at_tag"),
         }
     }
 

@@ -52,8 +52,6 @@ mod inspector_commits;
 mod inspector_commits_tests;
 /// W-PartFace: o que o §11 responde sobre uma PEÇA (um filho com `Collider` e
 /// sem `RigidBody`) — a volta que a W-Compound não deu.
-#[cfg(test)]
-mod inspector_part_tests;
 /// **A conversão entre estratégias de origem** (Render Source → Strategy) — irmão do
 /// `inspector_commits`, e o corte que o marcador de exceção de LOC daquele arquivo pedia.
 mod inspector_strategy;
@@ -76,20 +74,23 @@ pub(crate) mod inspector_presence_probe;
 // em 2026-09-12 passou a nomear as duas na crate irmã. ⇒ o `render_loop` era, neste ponto, uma
 // FACHADA — *um módulo da shell que só re-exporta uma crate é uma CRATE a usar o nome da shell*
 // (o achado da Fase C da `line/app-vec`), e a régua do fecho conta-a como shell.
-mod inspector_visibility;
 /// MEASUREMENT scaffold: onde as fases PANEL e CHROME do `painter_bridge::dispatch` gastam um frame.
 #[cfg(test)]
 mod measure_bridge_phases;
 mod padding_bridge;
-/// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
-#[cfg(test)]
-mod push_look_probe;
-pub(crate) mod record_fit;
 pub(crate) mod timeline_bridge;
 /// **A AUTORIA de uma chave** — irmão do `timeline_bridge` por teto de LOC (HR-18).
 mod timeline_bridge_keys;
 pub(crate) mod timeline_onion;
-mod timeline_presets;
+#[cfg(test)]
+#[path = "timeline_presets_menu_tests.rs"]
+mod timeline_presets_menu_tests;
+/// Os dois gates da resolução de PRESETS da timeline. ⚠️ A LEI mudou-se para
+/// [`ph2d_panel_timeline::presets`] na integração de 2026-09-16 (tecto da shell) e eles FICAM:
+/// um deles lê o `default_interp` do `timeline_bridge`, que é costura desta shell.
+#[cfg(test)]
+#[path = "timeline_presets_tests.rs"]
+mod timeline_presets_tests;
 /// **A ponte do painel de TOKENS** (plano UI/UX W6) — o read-back do picker e os intents de
 /// Reset. A shell é o único escritor da camada de override de cor.
 pub(crate) mod tokens_bridge;

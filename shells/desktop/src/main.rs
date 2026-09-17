@@ -146,7 +146,6 @@ mod component_seed_seam_tests;
 mod components_scenes;
 mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).
-mod connector_handles;
 #[cfg(test)]
 mod instance_paint_seam_tests;
 pub(crate) use ph2d_app_vec::connector_live;
@@ -275,6 +274,7 @@ pub(crate) use ph2d_app_vec::morph_live;
 pub(crate) use ph2d_app_vec::morph_machine_drive;
 // A LEI mudou-se para a folha `ph2d-vec-entities`; a CADEIA de gates dela fica, porque
 // atravessa o `morph_live`, o `vec_convert`, o `vec_ui_state_edit` e o `render_loop`.
+mod connector_handles;
 /// A metade do gizmo de campo que fala com a `App` — o prólogo que FICA (W2 Fase C).
 mod field_gizmo_host;
 #[cfg(test)]
@@ -306,9 +306,6 @@ pub(crate) use ph2d_app_vec::pattern_live;
 mod pattern_path_smoke;
 /// ⛔⛔ **A MEDIÇÃO da costura do ladrilho** (plano 33, W10) — o amostrador do Vello grampeia os
 /// taps na fronteira do ladrilho em vez de dar a volta, e o `High` do vello 0.9+ triplicou a banda.
-#[cfg(test)]
-#[path = "pattern_seam_probe.rs"]
-mod pattern_seam_probe;
 mod pencil_smoke;
 /// A família `physics` (W2/L2): o que dela PRECISA da shell.
 /// O resto vive em `crates/ph2d-app-physics`.

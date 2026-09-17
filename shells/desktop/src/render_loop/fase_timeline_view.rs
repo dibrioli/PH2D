@@ -48,7 +48,7 @@ impl crate::App {
             .as_mut()
             .and_then(|h| h.pending_timeline_interp.take())
         {
-            let picked = timeline_presets::intents_for_pick(&self.timeline, pick);
+            let picked = ph2d_panel_timeline::presets::intents_for_pick(&self.timeline, pick);
             self.timeline_intents.extend(picked);
         }
         // The on-canvas motion-path anchor handle-type pick (ADR-0141): editor-core parked

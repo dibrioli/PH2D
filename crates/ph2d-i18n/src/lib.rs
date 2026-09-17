@@ -82,11 +82,19 @@ mod chrome;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
 mod factory;
 mod inspector;
+/// ⭐ **As secções de JOGO do Inspector** (TOP-20 #9..#18 — tags, fábrica, ciclo de vida, mover de
+/// vista de cima, projéctil, máquina de estados, script, partículas). ⚠️ Tabela IRMÃ e não o fim
+/// da `inspector.rs`: com os 151 braços destes lá dentro ela passava o tecto de 700 LOC do HR-18,
+/// e um corte por ASSUNTO é o que esse tecto pede.
+mod inspector_game;
 mod inspector_player;
 mod model3d;
 mod painter_layers;
 mod sculpt3d;
 mod tags;
+/// ⭐ **O vocabulário do mover de VISTA DE CIMA** (TOP-20 #13) — os três selectores que o
+/// `topdown_edits` declara e o Inspector pinta. Tabela irmã pela lei do assunto (ver [`tags`]).
+mod topdown;
 
 pub fn tr(key: &str) -> &'static str {
     match key {
@@ -519,9 +527,11 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| model3d::tr(k))
             .or_else(|| tags::tr(k))
             .or_else(|| factory::tr(k))
+            .or_else(|| topdown::tr(k))
             .or_else(|| chrome::tr(k))
             .or_else(|| painter_layers::tr(k))
             .or_else(|| inspector::tr(k))
+            .or_else(|| inspector_game::tr(k))
             .or_else(|| inspector_player::tr(k))
             .or_else(|| audio::tr(k))
             .or_else(|| grid_snap::tr(k))

@@ -115,6 +115,12 @@ pub mod wetpaint_smoke;
 
 #[cfg(test)]
 mod family_tests;
+/// ⭐ **Veio da shell na integração de 2026-09-16** — a catraca `the_shell_only_shrinks`
+/// ficou vermelha por ACUMULAÇÃO das seis linhas da rodada, e a cura dela é MOVER, nunca
+/// subir o número. Este ficheiro não tocava em nada da shell (zero `crate::`): ele é
+/// código DESTA família, e o sítio dele é aqui.
+#[cfg(test)]
+mod push_look_probe;
 
 /// **O que esta família declara à shell** (`ph2d_app_host::AppFamily`).
 ///

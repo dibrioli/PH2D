@@ -35,3 +35,13 @@ não distingue os dois casos.*
 Ver [[feedback-the-owners-fixture-is-the-one-that-must-be-measured]] — nesta mesma jornada a caixa
 de Cornell tinha um mecanismo VERDADEIRO e DIFERENTE (o polo `1/r²` de uma lâmpada a 6 cm do tecto)
 que **não existe no produto**, e curá-lo não teria tocado num pixel da foto do dono.
+
+⛔⛔⛔ **E a cura de tirar o pico não bastou — o MESMO conjunto fixo tem um segundo defeito, mais
+fundo (2026-09-17, 3.º report: *«um reflexo mal feito»*).** Sem pico nenhum, cada direcção fixa ainda
+é uma **projecção DURA** da peça sobre o receptor: aberta a soma numa linha de uma face plana, cada
+direcção acende um intervalo contíguo com arestas (a silhueta da peça ao longo dela), e `29` delas
+somadas **são** uma imagem esborratada da peça. ⇒ *nem mais direcções nem mais borrão curam uma
+recolha por pixel com direcções fixas* — a cura é trocar **ONDE** se recolhe (sondas fixas no
+espaço, com o pixel a INTERPOLAR: `ph2d_field_render::probes`), e o preço inverte (`1 M` raios que
+não dependem da câmera, contra `50 M` por quadro).
+

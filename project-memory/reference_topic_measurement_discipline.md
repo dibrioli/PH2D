@@ -989,3 +989,26 @@ Na caixa de Cornell a decomposição acusou, com números impecáveis, o polo `1
 `6 cm` do tecto — e a lâmpada do produto nasce **fora da peça**, onde `1/r²` ≤ `~1`. *A medição era
 boa e o sujeito dela era outro programa.* Sexta ocorrência desta forma nesta casa.
 Detalhe: [`feedback_the_owners_fixture_is_the_one_that_must_be_measured.md`](feedback_the_owners_fixture_is_the_one_that_must_be_measured.md).
+
+## ⛔⛔ A régua que apanha «reflexo mal feito» é a de MÉDIA FREQUÊNCIA, não a de 1 px (2026-09-17)
+
+Os terraços (segunda diferença a **um** pixel) liam `0,17` para a lei doente e `0,13` para a sã —
+quase nada — enquanto o perfil ao longo de uma linha mostrava a diferença inteira: uma soma de
+projecções deslocadas da peça desenha **ondulações de 4–8 px**, cada uma pequena, o conjunto uma
+imagem. *O olho integra a uma escala, e a régua tem de a ter.* ⇒ `banda::estrutura` (o resíduo
+contra a convergida menos a versão alisada dele numa janela de `4 px`, em RMS): `0,106 → 0,035`.
+⚠️ E a foto do dono foi o instrumento melhor durante uma ronda inteira — quando a régua diz «6×
+melhor» e ele diz «imprestável», é a régua que está a medir a grandeza errada.
+
+
+## ⛔⛔ Um termo herdado de um método de referência mede-se ANTES de o copiar — o raio de visibilidade do DDGI piorava aqui (2026-09-17)
+
+As sondas de irradiância vieram com o raio «vê-se daqui?» que o DDGI usa (via Chebyshev). Medido
+por mutação, **nenhum gate o via** (paridade `100 %` com e sem) — e na única faixa onde ele age, o pé
+das paredes de Cornell, ele **piorava**: erro `40,7 %` com, `35,2 %` sem. A sonda escura do outro
+lado da parede aproximava, por acaso, a oclusão que a própria parede faz; tirá-la deixava só sondas
+que vêem mais sala do que o pé da parede vê. ⇒ *um termo que nenhuma mutação mata é comentário com
+sintaxe de código, e um herdado de um paper não tem dispensa* — saiu, e levou oito marchas por pixel.
+⚠️ O que o fez visível foi uma régua sobre a **faixa que as réguas do módulo excluíam**: a mutação
+passava despercebida porque a região onde o termo age estava fora de toda régua. Detalhe no doc da
+`ph2d_field_render::probes::gather_probes_por`.

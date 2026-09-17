@@ -1,0 +1,38 @@
+[package]
+name = "ph2d-particles"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ **A fachada do emissor de partículas** (TOP-20 #18) — o componente vira um grafo de nós REAIS
+# do Motion, e esta crate corre-o. ⛔ Nenhuma simulação própria: um segundo motor de partículas é o
+# que o levantamento proíbe.
+#
+# ⚠️ **O registo é MÍNIMO de propósito** — só os dez nós que o compilador usa, pelo `register` de
+# cada um. Ligar o `ph2d-node-registry-init` arrastaria o catálogo inteiro para uma folha.
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-eval-motion = { path = "../ph2d-eval-motion" }
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-node-registry = { path = "../ph2d-node-registry" }
+ph2d-render = { path = "../ph2d-render" }
+ph2d-node-force-drag = { path = "../ph2d-node-force-drag" }
+ph2d-node-force-wind = { path = "../ph2d-node-force-wind" }
+ph2d-node-motion-drive = { path = "../ph2d-node-motion-drive" }
+ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
+ph2d-node-motion-integrate = { path = "../ph2d-node-motion-integrate" }
+ph2d-node-motion-output = { path = "../ph2d-node-motion-output" }
+ph2d-node-motion-tint = { path = "../ph2d-node-motion-tint" }
+ph2d-node-value-attribute = { path = "../ph2d-node-value-attribute" }
+ph2d-node-value-map-range = { path = "../ph2d-node-value-map-range" }
+ph2d-node-value-table = { path = "../ph2d-node-value-table" }
+# A direcção da gravidade é um `atan2` — pinado cross-OS pelo `libm`, como nas outras leis.
+libm = { version = "=0.2.16", default-features = false }
+
+[lints]
+workspace = true

@@ -71,6 +71,10 @@ pub mod name;
 /// **Named Anchors** (ADR-0072) — socket · slice · região 9-slice, num tipo só.
 pub mod named_anchor;
 pub mod painted_doc;
+/// ⭐⭐⭐ **O emissor de partículas de um objecto** (TOP-20 #18) — só CONFIG; a lei é do
+/// `ph2d-particles`.
+pub mod particle_emitter;
+pub use particle_emitter::{EmissionShape, ParticleEmitter, ParticleSpace};
 pub mod present;
 /// ⭐⭐⭐ **A reposição do estado VIVO ao rebobinar** — ver o cabeçalho do módulo.
 pub mod rewind_runtime;

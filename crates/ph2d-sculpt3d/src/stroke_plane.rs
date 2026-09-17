@@ -35,6 +35,28 @@ pub(super) struct PlaneFit {
 }
 
 impl SculptStroke {
+    /// ⭐⭐ **SÓ PARA A BANCADA — o PLANO que este dab ajustou** (`point`, `normal`).
+    ///
+    /// ⚠️ **Ela existe porque o G-6 da espec mede uma grandeza que o produto não
+    /// publica:** *a distância do cursor ao plano, ao longo da normal*. Derivá-la
+    /// da malha de saída seria medir o plano **através** da cadeia de peso — e
+    /// um desvio ali não diria qual das duas falhou, que é a lei que a §8.4
+    /// desta mesma espec já escreve para o corpus.
+    ///
+    /// ⛔ **A `Quadric` do `l-mode` fica de fora de propósito:** o G-6 pergunta
+    /// pelo PLANO, e devolver a superfície local convidaria um segundo
+    /// consumidor a depender de um detalhe interno.
+    #[must_use]
+    pub fn plano_do_dab_para_teste(
+        &self,
+        mesh: &Mesh,
+        brush: &Brush,
+        dab: &Dab,
+    ) -> ([f32; 3], [f32; 3]) {
+        let f = self.fit_plane(mesh, brush, dab);
+        (f.point, f.normal)
+    }
+
     pub(super) fn fit_plane(&self, mesh: &Mesh, brush: &Brush, dab: &Dab) -> PlaneFit {
         // ⚠️ **O conjunto FRONTAL, e é a metade que o original faz
         // INCONDICIONALMENTE.** O `getFrontVertices` (`SculptBase.js:206-221`)

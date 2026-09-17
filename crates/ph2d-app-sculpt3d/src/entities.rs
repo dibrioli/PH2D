@@ -161,12 +161,23 @@ pub(crate) fn world_map(sim: &mut SimWorld) -> SculptEntityMap {
 /// tem, e um query obrigatório deixaria o espelho vazio — lendo-se como *«nada
 /// está escondido»*, que é o valor conservador e por isso invisível.
 ///
-/// ⚠️ **PER-ENTIDADE, e o limite é declarado:** o `Visibility` desta casa **não
-/// propaga para descendentes** (está escrito no próprio componente), logo uma
-/// peça dentro de um grupo escondido continua a contar como alvo. Curá-lo é
-/// andar os ascendentes, que é o que a [`ph2d_entity_visibility`] faz para
-/// outro meio — e essa crate não é dependência desta. *Dívida nomeada, e o
-/// valor de hoje é o que a invariante da casa diz.*
+/// ⚠️ **PER-ENTIDADE, e o limite é INVARIANTE DA CASA e não dívida desta crate:**
+/// o `ph2d_ecs::Visibility` **não propaga para descendentes** — está escrito no
+/// próprio componente (*«absence of the component equals visible»*, HR-5) e
+/// **nada no repo anda a árvore para o resolver**, medido em 2026-09-17.
+///
+/// ⛔⛔ **A redacção anterior desta nota dizia que a cura «é andar os
+/// ascendentes, que é o que a `ph2d_entity_visibility` faz para outro meio», e
+/// isso é FALSO:** aquela crate resolve o caso da RECEITA com uma marca
+/// **derivada** (`MasterPiece`, re-carimbada por quadro em toda a descendência)
+/// — precisamente **porque** escrever `Visibility` nas peças estaria errado: a
+/// `Visibility` de uma peça é **autoria** e propaga para as instâncias, logo
+/// toda cópia nasceria invisível. *O doc dela escreve o argumento por extenso.*
+///
+/// ⇒ **esconder um grupo e esperar que as peças dele sumam é uma pergunta de
+/// PRODUTO que atravessa TODOS os meios** (sprite · vector · flip · escultura),
+/// e curá-la só aqui faria a escultura divergir do resto do app em silêncio.
+/// *Decisão do dono, com ADR — nunca uma linha nesta função.*
 #[must_use]
 pub(crate) fn escondidas_do_mundo(sim: &mut SimWorld) -> BTreeSet<ObjectId> {
     let mut fechadas = BTreeSet::new();

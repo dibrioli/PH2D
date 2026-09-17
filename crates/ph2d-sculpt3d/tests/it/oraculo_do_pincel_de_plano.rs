@@ -140,6 +140,29 @@ pub fn ler(familia: &str, nome: &str) -> Fixtura {
 /// ⛔ **A raiz é CONFERIDA e não suposta:** uma contagem que não seja um quadrado
 /// perfeito é outra família de malha (a esfera do corpus), e adivinhar-lhe a
 /// topologia daria um gate a medir uma superfície que não é a da fixtura.
+/// ⭐⭐ **A MESMA grelha, DESLOCADA no espaço** — a fixtura que faz o G-6
+/// discriminar.
+///
+/// ⛔⛔ **Ela existe porque uma MUTAÇÃO SOBREVIVEU:** ancorar o plano na ORIGEM
+/// (`fit.point = [0,0,0]`) deixava o `o_plano_segue_o_cursor_e_nao_a_origem`
+/// **verde** — o corpus inteiro vive perto da origem, logo *«segue o cursor»* e
+/// *«está na origem»* dão o mesmo número ali. *Uma fixtura que não contém o
+/// fenómeno não afirma nada sobre ele*, e o nome do gate prometia exactamente
+/// esse fenómeno.
+///
+/// ⚠️ **O deslocamento é GRANDE de propósito** (`3` unidades, contra uma peça de
+/// extensão `~1`): ele tem de ser muito maior que a barra em raios, senão a
+/// metade discriminante mede ruído.
+pub fn grelha_deslocada(f: &Fixtura, d: [f32; 3]) -> Option<Mesh> {
+    let g = grelha(f)?;
+    let pos: Vec<[f32; 3]> = g
+        .positions()
+        .iter()
+        .map(|p| [p[0] + d[0], p[1] + d[1], p[2] + d[2]])
+        .collect();
+    Mesh::from_parts(pos, g.faces().to_vec()).ok()
+}
+
 pub fn grelha(f: &Fixtura) -> Option<Mesh> {
     let n = f.repouso.len();
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -835,4 +858,155 @@ fn o_afastar_e_uma_divergencia_declarada_com_numero() {
         "a divergencia declarada do AFASTAR era 1,007e-01 e agora e' {nossa_divergencia:.4e} — \
          se a lei mudou, re-meca e reescreva a nota; se nao mudou, algo a montante mudou"
     );
+}
+
+/// ⭐⭐⭐ **G-6 — O PLANO SEGUE O CURSOR E NÃO A ORIGEM** (espec §12).
+///
+/// A distância do **cursor** ao plano que o dab ajustou, medida **ao longo da
+/// normal dele** e em raios de pincel, fica limitada. ⛔ *Sem isto, uma lei que
+/// ancorasse o plano na origem da peça — ou no primeiro dab do traço — passaria
+/// em toda a paridade de UM dab e só se revelaria num traço longo.*
+///
+/// # A barra, e a parte dela que é NOSSA
+///
+/// `0,75 R + |deslocamento| · R`, e os dois termos têm proveniências diferentes:
+///
+/// * o **segundo é EXACTO** — o deslocamento move o plano por `offset × R`
+///   (espec §2.4), logo as duas células deslocadas trazem-no por construção;
+/// * o **`0,75` é NOSSO e declarado**: a espec mede `0,0000 … 0,4947` raios
+///   sobre as células de `lei/*` (mediana `0,1649`, o máximo na de menor raio),
+///   e `0,75` é **`1,5×`** esse máximo — *porque um corpus de UM dab efectivo
+///   não limita o que um traço longo faz*.
+///
+/// **MEDIDO aqui:** pior **`0,2645`** raios, na `lei_crista_raio02` (a célula de
+/// menor raio, que é onde a espec também põe o máximo dela). ⚠️ O número é
+/// **menor** que os `0,4947` que a espec publica, e a razão é a régua e não a
+/// lei: ela mede no dab EFECTIVO e este mede **antes de cada dab**, ficando com
+/// o pior — *uma varredura mais larga que encontra um máximo menor é uma
+/// afirmação mais forte, não uma mais fraca.*
+///
+/// ⚠️⚠️ **A população que este gate alcança são `13` células e a espec diz `11`.**
+/// A diferença são as **duas deslocadas**, que a espec conta à parte por o termo
+/// do deslocamento ser delas — aqui elas entram na mesma varredura **porque a
+/// barra já as contém pelo segundo termo**. *Medir mais células com a mesma
+/// barra é estritamente mais forte; o que seria fraude era medir menos.*
+///
+/// ⛔ **A medição passa pela porta do produto**
+/// ([`ph2d_sculpt3d::SculptStroke::plano_do_dab_para_teste`]) e **não** deriva o
+/// plano da malha de saída: derivá-lo seria medi-lo *através* da cadeia de peso,
+/// e um desvio não diria qual das duas falhou — a lei que a §8.4 desta mesma
+/// espec já escreve para o corpus.
+#[test]
+fn o_plano_segue_o_cursor_e_nao_a_origem() {
+    use ph2d_sculpt3d::{Dab, SculptStroke, Symmetry};
+
+    /// O termo NOSSO da barra — ver o doc.
+    const FOLGA_EM_RAIOS: f32 = 0.75;
+
+    let mut pior = (0.0f32, String::new());
+    let mut medidas = 0usize;
+    for (familia, nome) in UM_DAB {
+        if familia != "lei" {
+            continue;
+        }
+        let f = ler(familia, nome);
+        let mut m = grelha(&f).expect("grelha");
+        let b = pincel(&f);
+        let e = olho(&f);
+        let mut s = SculptStroke::default();
+        s.begin(&m);
+
+        // ⚠️⚠️ **O plano mede-se ANTES de CADA dab, e o pior fica** — e a 1.ª
+        // redacção media só o `cursores[0]`. Uma célula pode abrir com um dab
+        // que não move nada (é o que a `lei_primeiro_dab` nomeia), e ali o plano
+        // medido **não governa coisa nenhuma**: o meu próprio controlo apanhou
+        // isso na primeira corrida, sobre a `lei_crista`.
+        let mut mexeu = false;
+        for cur in &f.cursores {
+            let dab = Dab::at(*cur, b.radius, e);
+            let (ponto, normal) = s.plano_do_dab_para_teste(&m, &b, &dab);
+            let d = (0..3).map(|k| (cur[k] - ponto[k]) * normal[k]).sum::<f32>();
+            let em_raios = d.abs() / b.radius;
+
+            // O termo exacto: o deslocamento move o plano por `offset × R`.
+            let deslocamento = f.num("deslocamento_do_plano").abs();
+            let barra = FOLGA_EM_RAIOS + deslocamento;
+            assert!(
+                em_raios <= barra,
+                "{nome}: o cursor esta' a {em_raios:.4} raios do plano, e a barra \
+                 e' {barra:.4} (0,75 + deslocamento {deslocamento:.4}) — o plano \
+                 deixou de seguir o cursor"
+            );
+            if em_raios > pior.0 {
+                pior = (em_raios, nome.to_string());
+            }
+
+            let antes = m.positions().to_vec();
+            s.dab(&mut m, &b, &dab, Symmetry::default());
+            mexeu |= m.positions().iter().zip(&antes).any(|(a, r)| a != r);
+        }
+        medidas += 1;
+
+        // ⭐ **O CONTROLO**: a célula tem de mover alguma coisa, senão a medição
+        // acima é sobre um plano que o produto nunca chega a usar.
+        assert!(
+            mexeu,
+            "{nome}: nenhum dab moveu um vertice — os planos medidos nesta \
+             celula nao governam nada"
+        );
+    }
+    // ⭐ **PISO DE POPULAÇÃO** — sem ele uma lista que encolhesse deixaria o gate
+    // verde a medir quase nada (`CLAUDE.md` §5.0).
+    assert_eq!(
+        medidas, 13,
+        "o G-6 correu {medidas} celulas de `lei/*` e a populacao alcancavel e' 13"
+    );
+    println!("G-6: 13 celulas, pior {:.4} raios em {}", pior.0, pior.1);
+
+    // ⛔⛔ **A METADE QUE DISCRIMINA, e ela nasceu de uma MUTAÇÃO SOBREVIVENTE:**
+    // ancorar o plano na ORIGEM (`fit.point = [0,0,0]`) deixava tudo acima
+    // **verde**, porque o corpus vive perto da origem e ali *«segue o cursor»* e
+    // *«está na origem»* dão o mesmo número. ⇒ a mesma célula, **deslocada `3`
+    // unidades**, onde as duas leis divergem por construção.
+    //
+    // ⚠️ **A asserção é a MESMA barra**, e é isso que a torna uma lei e não um
+    // caso especial: a distância do cursor ao plano é **invariante à
+    // translação**, logo deslocar a peça não pode mudar o número.
+    const LONGE: [f32; 3] = [3.0, 0.0, 0.0];
+    let mut discriminantes = 0usize;
+    for (familia, nome) in UM_DAB {
+        if familia != "lei" {
+            continue;
+        }
+        let f = ler(familia, nome);
+        let mut m = grelha_deslocada(&f, LONGE).expect("grelha deslocada");
+        let b = pincel(&f);
+        let e = olho(&f);
+        let mut s = SculptStroke::default();
+        s.begin(&m);
+        let deslocamento = f.num("deslocamento_do_plano").abs();
+        let barra = FOLGA_EM_RAIOS + deslocamento;
+        for cur in &f.cursores {
+            let alvo = [cur[0] + LONGE[0], cur[1] + LONGE[1], cur[2] + LONGE[2]];
+            let dab = Dab::at(alvo, b.radius, e);
+            let (ponto, normal) = s.plano_do_dab_para_teste(&m, &b, &dab);
+            let d = (0..3)
+                .map(|k| (alvo[k] - ponto[k]) * normal[k])
+                .sum::<f32>();
+            let em_raios = d.abs() / b.radius;
+            assert!(
+                em_raios <= barra,
+                "{nome} DESLOCADA: o cursor esta' a {em_raios:.4} raios do plano \
+                 (barra {barra:.4}) — o plano esta' ancorado em qualquer coisa \
+                 que NAO e' o cursor"
+            );
+            s.dab(&mut m, &b, &dab, Symmetry::default());
+        }
+        discriminantes += 1;
+    }
+    assert_eq!(
+        discriminantes, 13,
+        "a metade discriminante correu {discriminantes} celulas e devia correr 13"
+    );
+    println!("G-6: e as mesmas 13 DESLOCADAS {LONGE:?} passam a mesma barra");
 }

@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-hud"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ **ZERO dependências, e isso é o desenho** — a mesma lei da `ph2d-sweep`, da `ph2d-cloth` e da
+# `ph2d-pose`. Aqui mora uma aritmética fechada (duas divisões e um `min`); não há um transcendental,
+# não há um tipo de mundo, não há ECS. Quem a consome é que sabe o que é um `Transform`.
+
+[lints]
+workspace = true

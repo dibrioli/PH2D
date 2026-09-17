@@ -860,3 +860,189 @@ fn o_ricochete_tinge_o_chao_da_imagem() {
         "o chão junto da parede VERDE tinha de esverdear ({sem_d:+.4} → {com_d:+.4})"
     );
 }
+
+/// ⏱️⭐⭐⭐ **O PREÇO do ricochete por força bruta** — a medição que decide se a `W5` ship assim ou
+/// precisa do caminho rápido.
+///
+/// Duas cenas que fazem fronteira: a **caixa fechada**, onde todo raio bate (o pior caso), e uma
+/// **peça no aberto**, onde a maioria escapa — que é o modelador.
+#[test]
+#[ignore = "sonda de relógio: corre sozinha, com a máquina ociosa"]
+fn sonda_o_preco_do_ricochete() {
+    let ociosa = || {
+        std::process::Command::new("vmstat")
+            .args(["1", "2"])
+            .output()
+            .ok()
+            .and_then(|o| {
+                String::from_utf8(o.stdout)
+                    .ok()?
+                    .lines()
+                    .last()?
+                    .split_whitespace()
+                    .nth(14)
+                    .map(String::from)
+            })
+            .unwrap_or_else(|| "?".into())
+    };
+    println!("  ociosidade da CPU: {} %", ociosa());
+
+    let reg = Registry::new();
+    let (caixa_doc, caixa_postas, caixa_mats) = caixa();
+    let aberto_doc = ph2d_field_eval::leaf(
+        ph2d_field::Primitive::Sphere { radius: 0.35 },
+        ph2d_field::Xform::at(0.0, 0.0, 0.0),
+    );
+    let aberto_doc = FieldDoc::new(vec![aberto_doc], NodeId(0)).expect("a esfera");
+    let aberto_mats = vec![OpenPbr::default()];
+
+    for (nome, doc, postas, mats, cam) in [
+        (
+            "caixa FECHADA",
+            &caixa_doc,
+            caixa_postas.clone(),
+            caixa_mats.clone(),
+            camara(),
+        ),
+        (
+            "peça no ABERTO",
+            &aberto_doc,
+            vec![aberto_doc.clone()],
+            aberto_mats,
+            Orbit::default(),
+        ),
+    ] {
+        let prontos: Vec<ph2d_material::Surface> = mats.iter().map(OpenPbr::prepare).collect();
+        for (w, h) in [(640u32, 360u32)] {
+            let g = trace(doc, &reg, &cam, w, h);
+            let donos = donos(&postas, &reg, &cam, w.min(h));
+            let surfaces = Surfaces {
+                all: &prontos,
+                owners: Some(&donos),
+            };
+            let acertos = g.hit.iter().filter(|x| **x).count();
+            let mede = |f: &dyn Fn()| {
+                let mut melhor = f64::INFINITY;
+                for _ in 0..3 {
+                    let t0 = std::time::Instant::now();
+                    f();
+                    melhor = melhor.min(t0.elapsed().as_secs_f64() * 1e3);
+                }
+                melhor
+            };
+            let so_tracado = mede(&|| {
+                std::hint::black_box(trace(doc, &reg, &cam, w, h));
+            });
+            let sombra = mede(&|| {
+                std::hint::black_box(crate::shadow_pass(doc, &reg, &cam, &g, &[LAMPADA.world]));
+            });
+            println!(
+                "  {nome} {w}×{h} · {acertos} px de peça · traçado {so_tracado:7.2} ms · sombra {sombra:7.2} ms"
+            );
+            for dirs in [8u32, 16, 32, 64] {
+                let ms = mede(&|| {
+                    std::hint::black_box(crate::bounce::bounce_pass(
+                        doc,
+                        &reg,
+                        &cam,
+                        &g,
+                        &surfaces,
+                        &[LAMPADA],
+                        dirs,
+                    ));
+                });
+                println!(
+                    "      ricochete {dirs:>3} direcções · {ms:8.2} ms · {:5.1}× o traçado · {:5.1} quadros de 16,7",
+                    ms / so_tracado.max(1.0e-9),
+                    ms / 16.7
+                );
+            }
+        }
+    }
+}
+
+/// ⏱️⭐⭐⭐ **QUANTAS DIRECÇÕES o sangramento precisa** — a outra metade da decisão do knob.
+///
+/// O preço está na [`sonda_o_preco_do_ricochete`]; esta diz o que se compra com ele. A régua é o
+/// **tom do chão da imagem**, que é o que o gate do produto afirma, contra a mesma imagem com
+/// `256` direcções — a convergida.
+#[test]
+#[ignore = "sonda de calibração: a escada das direcções"]
+fn sonda_a_escada_das_direccoes() {
+    let (doc, postas, materiais) = caixa();
+    let reg = Registry::new();
+    let cam = camara();
+    let (w, h) = (128u32, 128u32);
+    let g = trace(&doc, &reg, &cam, w, h);
+    let donos = donos(&postas, &reg, &cam, w.min(h));
+    let prontos: Vec<ph2d_material::Surface> = materiais.iter().map(OpenPbr::prepare).collect();
+    let surfaces = Surfaces {
+        all: &prontos,
+        owners: Some(&donos),
+    };
+    let sem = crate::shadow_pass(&doc, &reg, &cam, &g, &[LAMPADA.world]);
+
+    let pixel_mundo = 2.0 * cam.half_extent / w.min(h) as f32;
+    let limite = SALA - 3.0 * pixel_mundo;
+    let tom = |img: &[u8], esquerda: bool| -> f32 {
+        let (mut r, mut v, mut n) = (0.0f64, 0.0f64, 0usize);
+        for i in 0..(w * h) as usize {
+            if !g.hit[i] || donos.at(g.point[i]) != Some(Face::Chao as usize) {
+                continue;
+            }
+            let x = g.point[i][0];
+            if x.abs() < 0.22 || x.abs() > limite || esquerda == (x > 0.0) {
+                continue;
+            }
+            r += f64::from(img[i * 4]);
+            v += f64::from(img[i * 4 + 1]);
+            n += 1;
+        }
+        if n == 0 {
+            return 0.0;
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        let t = ((r - v) / (r + v).max(1.0)) as f32;
+        t
+    };
+    let imagem_com = |dirs: u32| {
+        let mut sh = sem.clone();
+        sh.set_bounce(crate::bounce::bounce_pass(
+            &doc,
+            &reg,
+            &cam,
+            &g,
+            &surfaces,
+            &[LAMPADA],
+            dirs,
+        ));
+        crate::shade_render(
+            &g,
+            &cam,
+            &surfaces,
+            &crate::Lighting {
+                lamps: &[],
+                points: &[LAMPADA],
+                sky: &Escuro,
+                shadows: Some(&sh),
+            },
+            ph2d_view_transform::Look::default(),
+            FUNDO,
+        )
+    };
+
+    let convergida = imagem_com(1024);
+    let (alvo_e, alvo_d) = (tom(&convergida, true), tom(&convergida, false));
+    println!(
+        "  direcções ·  tom ESQ (erro) ·  tom DIR (erro)   [a 1024: {alvo_e:+.4} / {alvo_d:+.4}]"
+    );
+    for dirs in [4u32, 8, 16, 32, 64, 128, 256, 512] {
+        let img = imagem_com(dirs);
+        let (e, d) = (tom(&img, true), tom(&img, false));
+        println!(
+            "  {dirs:>9} · {e:+.4} ({:+.4}) · {d:+.4} ({:+.4})",
+            e - alvo_e,
+            d - alvo_d
+        );
+    }
+}

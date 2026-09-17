@@ -970,9 +970,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   com os vértices **arrastáveis no canvas**, *Torus Knot* `(p,q)`, *Thread* e *Knurled Grip*), com a
   fila de formas por fórmula a fechar de 10 para **6** ([doc 09](docs/3DModeling/09_plano_das_dez_que_faltam.md)).
   ⛔ **Conte os três no código**, nunca aqui: `PrimitiveKind::ALL` · `grep -c 'key: "panel.model3d.add'`
-  · as `CENAS` do smoke. `FIELD_DOC_VERSION` **17 → 18** — ⚠️⚠️ **e o `collision-surface.sh` NÃO o vê**
-  (ele conta `PROJECT_SCHEMA`, `VEC_SCENE_SCHEMA`, `FLIP_SCHEMA` e o `DOC_VERSION` da timeline, e este
-  fica de fora): duas linhas que o subam em paralelo fundem **mudas**. Cenas **`=26`..`=29`**.
+  · as `CENAS` do smoke. `FIELD_DOC_VERSION` **17 → 18** — ✅ **e o `collision-surface.sh` JÁ o vê**
+  (esta nota dizia o contrário e envelheceu: o `f065b17bb`, de 13/09, acrescentou-o ao mapa, que hoje
+  imprime `FIELD_DOC_VERSION … (base: …)` como os outros quatro). Cenas **`=26`..`=29`**.
   ⚠️ **O `Thread` NÃO é a `Helix` com um cilindro à volta** — a mola mede a distância a uma CURVA, a
   rosca é um **perfil varrido por movimento de parafuso**, e é isso que fecha o factor da tangente em
   forma fechada. ⏳ **ABERTO:** o arranque da rosca fica afiado (cura medida e **recusada** — a saída

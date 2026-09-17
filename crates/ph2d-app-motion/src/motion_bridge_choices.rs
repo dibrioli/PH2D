@@ -161,13 +161,11 @@ fn widget_of(motion: &MotionState, nid: ph2d_nodegraph::graph::NodeId, param: &s
 }
 
 fn write_source(nid: ph2d_nodegraph::graph::NodeId, param: &'static str, value: String) {
-    ph2d_panel_motion_params::push_param_intent(
-        ph2d_panel_motion_params::MotionParamIntent::SetTextParam {
-            node: nid.0,
-            param,
-            value,
-        },
-    );
+    crate::push_param_intent(crate::MotionParamIntent::SetTextParam {
+        node: nid.0,
+        param,
+        value,
+    });
 }
 
 /// ⚠️ **As duas escritas, sempre juntas**: escrever só a coluna deixaria o nó a ler o sítio certo
@@ -180,13 +178,11 @@ fn write_channel(
     (coluna, modo): (String, i32),
 ) {
     write_source(nid, param, coluna);
-    ph2d_panel_motion_params::push_param_intent(
-        ph2d_panel_motion_params::MotionParamIntent::SetParam {
-            node: nid.0,
-            param: mode_param,
-            value: f64::from(modo),
-        },
-    );
+    crate::push_param_intent(crate::MotionParamIntent::SetParam {
+        node: nid.0,
+        param: mode_param,
+        value: f64::from(modo),
+    });
 }
 
 /// **A LISTA VIVA de nomes publicados e a lei de andar por ela** — as duas metades da mesma

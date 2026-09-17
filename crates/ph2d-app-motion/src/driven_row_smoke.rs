@@ -167,11 +167,11 @@ pub fn driven_row_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ParamRow;
     use crate::motion_bridge::params::{build_params_snapshot, driven_value_for_probe};
     use crate::motion_state::MotionState;
     use ph2d_editor_core::ProjectSettings;
     use ph2d_nodegraph::cook::Cook;
-    use ph2d_panel_motion_params::ParamRow;
 
     /// A cena é bem-tipada e cozinha — um smoke cuja cena não cozinha mostra tela vazia, que é
     /// o que o artista reportaria como "o smoke está quebrado".

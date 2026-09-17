@@ -133,10 +133,10 @@ mod tests {
     /// mensagem que afirma uma AUSÊNCIA.
     #[test]
     fn the_message_promises_the_numbers_the_panel_paints() {
+        use crate::ParamRow;
         use crate::motion_bridge::params::build_params_snapshot;
         use crate::motion_state::MotionState;
         use ph2d_editor_core::ProjectSettings;
-        use ph2d_panel_motion_params::ParamRow;
 
         let mut motion = MotionState::new();
         let (_, heroes) = chain(&mut motion.doc.graph);

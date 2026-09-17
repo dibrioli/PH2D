@@ -21,13 +21,13 @@ use crate::motion_state::MotionState;
 /// sai), ou por ele emitir só o `SetTextParam` (o par quebra).
 #[test]
 fn the_card_walks_the_channel_list_and_writes_both_halves() {
+    use crate::MotionParamIntent as I;
     use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
-    use ph2d_panel_motion_params::MotionParamIntent as I;
 
     let clique =
         |m: &mut MotionState, id: ph2d_nodegraph::graph::NodeId| -> Option<(String, f64)> {
             let _ = drain_intents();
-            let _ = ph2d_panel_motion_params::drain_param_intents();
+            let _ = crate::drain_param_intents();
             push_intent(GraphIntent::StepChoice {
                 node: id.0,
                 param: "attr",
@@ -39,7 +39,7 @@ fn the_card_walks_the_channel_list_and_writes_both_halves() {
                 &mut ph2d_editor_core::ToastQueue::default(),
                 &mut ph2d_editor_core::screens::layout::CenterSplit::None,
             );
-            let saiu = ph2d_panel_motion_params::drain_param_intents();
+            let saiu = crate::drain_param_intents();
             let coluna = saiu.iter().find_map(|i| match i {
                 I::SetTextParam { param, value, .. } if *param == "attr" => Some(value.clone()),
                 _ => None,
@@ -106,7 +106,7 @@ fn the_card_walks_the_same_channel_order_the_panel_paints() {
         .rows
         .iter()
         .find_map(|r| match r {
-            ph2d_panel_motion_params::ParamRow::Channels(c) => Some(c),
+            crate::ParamRow::Channels(c) => Some(c),
             _ => None,
         })
         .expect("o `value.attribute` tem a row de canais");
@@ -182,8 +182,8 @@ fn the_card_names_a_channel_the_way_the_panel_names_it() {
 /// canais curados, ignorando as colunas vivas).
 #[test]
 fn the_line_the_list_shows_is_the_line_the_pick_writes() {
+    use crate::MotionParamIntent as I;
     use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
-    use ph2d_panel_motion_params::MotionParamIntent as I;
 
     let mut m = MotionState::new();
     let id = m.doc.graph.add_node("value.attribute");
@@ -198,7 +198,7 @@ fn the_line_the_list_shows_is_the_line_the_pick_writes() {
 
     for (k, esperado) in lista.iter().enumerate() {
         let _ = drain_intents();
-        let _ = ph2d_panel_motion_params::drain_param_intents();
+        let _ = crate::drain_param_intents();
         push_intent(GraphIntent::PickChoice {
             node: id.0,
             param: "attr",
@@ -210,7 +210,7 @@ fn the_line_the_list_shows_is_the_line_the_pick_writes() {
             &mut ph2d_editor_core::ToastQueue::default(),
             &mut ph2d_editor_core::screens::layout::CenterSplit::None,
         );
-        let saiu = ph2d_panel_motion_params::drain_param_intents();
+        let saiu = crate::drain_param_intents();
         let coluna = saiu.iter().find_map(|i| match i {
             I::SetTextParam { param, value, .. } if *param == "attr" => Some(value.clone()),
             _ => None,
@@ -238,7 +238,7 @@ fn an_index_past_the_end_of_a_live_list_writes_nothing() {
     let mut m = MotionState::new();
     let id = m.doc.graph.add_node("value.attribute");
     let _ = drain_intents();
-    let _ = ph2d_panel_motion_params::drain_param_intents();
+    let _ = crate::drain_param_intents();
     push_intent(GraphIntent::PickChoice {
         node: id.0,
         param: "attr",
@@ -250,7 +250,7 @@ fn an_index_past_the_end_of_a_live_list_writes_nothing() {
         &mut ph2d_editor_core::ToastQueue::default(),
         &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
-    let saiu = ph2d_panel_motion_params::drain_param_intents();
+    let saiu = crate::drain_param_intents();
     assert!(saiu.is_empty(), "um indice fora da lista e' mudo: {saiu:?}");
 }
 
@@ -303,9 +303,9 @@ fn the_list_shows_the_panels_names_and_marks_where_the_node_is() {
 /// `pick_choice` resolver o índice só contra os canais curados.
 #[test]
 fn the_live_columns_the_stream_cooked_are_in_the_list_and_pickable() {
+    use crate::MotionParamIntent as I;
     use ph2d_nodegraph::graph::Edge;
     use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
-    use ph2d_panel_motion_params::MotionParamIntent as I;
 
     // Um CSV próprio deste gate (nome único: o vizinho partilhado já custou uma reprovação).
     let csv = std::env::temp_dir().join(format!(
@@ -361,7 +361,7 @@ fn the_live_columns_the_stream_cooked_are_in_the_list_and_pickable() {
         .position(|(c, _)| c == "nivel")
         .expect("acabou de ser encontrada");
     let _ = drain_intents();
-    let _ = ph2d_panel_motion_params::drain_param_intents();
+    let _ = crate::drain_param_intents();
     push_intent(GraphIntent::PickChoice {
         node: attr.0,
         param: "attr",
@@ -373,7 +373,7 @@ fn the_live_columns_the_stream_cooked_are_in_the_list_and_pickable() {
         &mut ph2d_editor_core::ToastQueue::default(),
         &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
-    let saiu = ph2d_panel_motion_params::drain_param_intents();
+    let saiu = crate::drain_param_intents();
     assert!(
         saiu.iter().any(|i| matches!(
             i,
@@ -399,14 +399,12 @@ fn with_the_side_panel_out_the_card_still_writes() {
     let mut m = MotionState::new();
     let id = m.doc.graph.add_node("motion.oscillator");
     let antes = crate::motion_bridge::params::param_value(&m, id, "frequency");
-    let _ = ph2d_panel_motion_params::drain_param_intents();
-    ph2d_panel_motion_params::push_param_intent(
-        ph2d_panel_motion_params::MotionParamIntent::SetParam {
-            node: id.0,
-            param: "frequency",
-            value: f64::from(antes) + 3.0,
-        },
-    );
+    let _ = crate::drain_param_intents();
+    crate::push_param_intent(crate::MotionParamIntent::SetParam {
+        node: id.0,
+        param: "frequency",
+        value: f64::from(antes) + 3.0,
+    });
     let mut store = ph2d_editor_core::interaction::WidgetStore::default();
     crate::motion_bridge::params::publish_for_tests(
         &mut m,
@@ -415,10 +413,12 @@ fn with_the_side_panel_out_the_card_still_writes() {
         ph2d_editor_core::ProjectSettings::default(),
         &mut ph2d_editor_core::ToastQueue::default(),
     );
-    assert!(
-        ph2d_panel_motion_params::current_params().is_none(),
-        "com o painel fora, o snapshot nao se constroi para ninguem"
-    );
+    // ⚠️⚠️ **A metade do SNAPSHOT deixou de ser uma ASSERÇÃO e passou a ser o COMPILADOR**
+    // (doc 114 §13): ela lia `current_params().is_none()` enquanto o painel existia desligado,
+    // e hoje a caixa de correio dele não existe — *uma asserção que se torna trivialmente
+    // verdadeira lê-se como cobertura e não é nenhuma*. O que a substitui é mais forte: quem
+    // reconstruir aquele snapshot tem de reconstruir a crate inteira, e isso não passa
+    // despercebido num diff.
     let depois = crate::motion_bridge::params::param_value(&m, id, "frequency");
     assert!(
         (depois - antes - 3.0).abs() < 1e-4,

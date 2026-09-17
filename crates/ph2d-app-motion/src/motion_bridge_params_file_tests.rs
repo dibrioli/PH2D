@@ -113,7 +113,7 @@ fn the_missing_mark_tells_the_truth_about_all_three_cases() {
         snap.rows
             .iter()
             .find_map(|r| match r {
-                ph2d_panel_motion_params::ParamRow::File(f) => Some(f.missing),
+                crate::ParamRow::File(f) => Some(f.missing),
                 _ => None,
             })
             .expect("o audio.bands tem uma row de ficheiro")
@@ -162,7 +162,7 @@ fn the_file_row_carries_the_path_not_only_whether_it_is_missing() {
         snap.rows
             .iter()
             .find_map(|r| match r {
-                ph2d_panel_motion_params::ParamRow::File(f) => Some(f.value.clone()),
+                crate::ParamRow::File(f) => Some(f.value.clone()),
                 _ => None,
             })
             .expect("o audio.bands tem uma row de ficheiro")

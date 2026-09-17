@@ -92,7 +92,7 @@ fn every_channel_ranged_param_is_reset_on_a_channel_switch() {
 /// exists to guard. `to_stored` is the same door `events.rs` uses on the way back.
 #[test]
 fn rotation_channel_widens_the_magnitude_range_to_contain_its_preset() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
 
     let scalar = |motion: &MotionState, name: &str| {
@@ -246,7 +246,7 @@ fn every_declared_channel_ranged_param_is_brought_back_in_range() {
 /// (o `scale` é multiplicação pura, medido a `1e7` graus com erro `0.000e0`).
 #[test]
 fn the_drive_scale_speaks_degrees_on_rotation_and_types_far_past_the_slider() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     let d = motion.doc.graph.add_node("motion.drive");
     ph2d_panel_motion_graph::set_graph_selection(vec![d.0]);

@@ -158,10 +158,10 @@ fn an_unpublished_handle_is_none_and_encodes_without_panic() {
 /// controls the current `kind` uses (`ParamGate`): a circle is Shape + Size; a gear
 /// adds Sides + Tooth Depth + Hole and nothing else. FALSIFIED by dropping the
 /// `gated_off` filter in `build_params_snapshot` (a circle would show all nine).
-#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[cfg(feature = "panel-motion-graph")]
 #[test]
 fn the_params_panel_shows_only_the_shapes_kind_params() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let names = |motion: &MotionState| -> Vec<&'static str> {
         crate::motion_bridge::params::build_params_snapshot(motion, ProjectSettings::default())
             .expect("shape node resolvable")

@@ -37,17 +37,21 @@ pub const INSPECTOR_W: f32 = INSPECTOR_W_PX;
 /// metade do *«muitos espaços em todos os lugares»* que o Enio apontou com quatro setas. Um tecto
 /// de altura é coisa de painel que FLUTUA; uma coluna ANCORADA vai de ponta a ponta.
 ///
-/// ⚠️ **O número fica, e o consumidor dele também** — o `ph2d-panel-motion-params` mede contra
-/// isto quantas linhas cabem, e é a única coisa que o lê. Ele deixa de ser *«a altura do dock»* e
+/// ⛔⛔ **O ÚNICO CONSUMIDOR DELE SAIU em 2026-09-17** (doc 114 §13): era o
+/// `ph2d-panel-motion-params`, que media contra isto quantas linhas cabiam, e o painel de params
+/// do Motion foi retirado por ordem do dono. *O número fica órfão, nomeado* — apagá-lo é decisão
+/// de quem possui esta fundação, e a pergunta que ele responde continua a ser legítima para o
+/// próximo painel docado que precise de a fazer. Ele deixa de ser *«a altura do dock»* e
 /// passa a ser *«a altura que um painel pode contar ter»*: conservador no alvo de referência (a
 /// banda tem 960), e ⚠️ **optimista numa janela baixa** — o que já era verdade antes, porque o
 /// `min` dava a banda quando ela era menor. Quem quiser a altura REAL lê `layout.inspector.h`.
 ///
 /// ⚠️ Nomeado (era literal solto no `Rect::new` abaixo) porque um painel docado precisa saber
-/// **quanta altura existe** para decidir se o conteúdo dele cabe: o `motion-params` não rola, e
-/// um teto de linhas que não é conferido contra esta altura só troca o corte do `.take()` pelo
+/// **quanta altura existe** para decidir se o conteúdo dele cabe: o `motion-params` não rolava, e
+/// um tecto de linhas que não é conferido contra esta altura só troca o corte do `.take()` pelo
 /// corte da borda da tela. Uma segunda cópia deste número num gate divergiria no dia em que o
-/// dock mudar de tamanho — então há um número, com um dono.
+/// dock mudar de tamanho — então há um número, com um dono. ⚠️ O exemplo é hoje HISTÓRICO (ver
+/// acima), e a lei que ele ilustra não.
 pub const INSPECTOR_MAX_H: f32 = 880.0; // LITERAL-PX-OK: Inspector max height cap
 pub const HIERARCHY_W: f32 = HIERARCHY_W_PX;
 pub const HUD_H: f32 = HUD_H_PX;

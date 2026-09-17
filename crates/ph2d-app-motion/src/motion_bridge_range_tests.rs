@@ -37,7 +37,7 @@ fn every_type_and_its_params(motion: &MotionState) -> Vec<(&'static str, Vec<&'s
 /// idempotent, and a drag inside the range never triggers it.)
 #[test]
 fn a_drag_inside_the_range_never_moves_the_range() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
 
     // The range AND the face it is expressed in. ⚠️ The face is not decoration
@@ -48,9 +48,7 @@ fn a_drag_inside_the_range_never_moves_the_range() {
     // feedback loop in the product. (It did, the first time this wave ran: the
     // gate caught its own fixture skipping the conversion, which is the gate
     // working.) Angle/Seed rows never convert, so they carry the neutral face.
-    let range_of = |motion: &MotionState,
-                    param: &str|
-     -> Option<(f64, f64, ph2d_panel_motion_params::RowDisplay)> {
+    let range_of = |motion: &MotionState, param: &str| -> Option<(f64, f64, crate::RowDisplay)> {
         build_params_snapshot(motion, ProjectSettings::default())?
             .rows
             .into_iter()
@@ -99,7 +97,7 @@ fn a_drag_inside_the_range_never_moves_the_range() {
 /// missing hint is a missing decision, not a cosmetic gap.
 #[test]
 fn every_scalar_row_comes_from_a_declared_hint() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     let mut missing: Vec<String> = Vec::new();
 
@@ -242,8 +240,8 @@ fn every_param_default_is_inside_its_declared_range() {
 }
 
 /// A `ScalarRow` de `param` no nó `type_name`, montada pela porta REAL do bridge.
-fn row_of(type_name: &str, param: &str) -> ph2d_panel_motion_params::ScalarRow {
-    use ph2d_panel_motion_params::ParamRow;
+fn row_of(type_name: &str, param: &str) -> crate::ScalarRow {
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     let node = motion.doc.graph.add_node(type_name);
     ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
@@ -325,7 +323,7 @@ fn the_typed_ceiling_reaches_past_the_slider() {
 /// `spread` declarado e não pintado seria um escape que só o código conhece.
 #[test]
 fn the_raised_boid_ceiling_still_has_the_escape_that_justifies_it() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     let node = motion.doc.graph.add_node("motion.boids");
     ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);

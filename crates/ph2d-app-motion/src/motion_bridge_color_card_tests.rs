@@ -53,7 +53,7 @@ fn a_pick_on_a_cards_gradient_stop_reaches_the_string() {
         .graph
         .set_text_param(id, "ramp", "g1 2 0:1,0,0 1:0,0,1".to_string());
     let store = picker_on(id.0, "ramp", 0, [0, 255, 0, 255]);
-    super::apply_picker_readback(&mut m, None, &[], &[], &[], &store);
+    super::apply_picker_readback(&mut m, &store);
     let saiu = texto(&m, id, "ramp");
     let rampa = ph2d_color::parse_gradient(&saiu).expect("a rampa sai bem formada");
     assert!(
@@ -91,7 +91,7 @@ fn two_cards_of_the_same_type_never_share_a_stop_swatch() {
     );
     // O selector aponta ao cartão de B — a cor tem de ir a B, com A por seleccionar.
     let store = picker_on(b.0, "ramp", 0, [0, 255, 0, 255]);
-    super::apply_picker_readback(&mut m, None, &[], &[], &[], &store);
+    super::apply_picker_readback(&mut m, &store);
     let (ta, tb) = (texto(&m, a, "ramp"), texto(&m, b, "ramp"));
     assert!(
         tb.contains("0,1,0")
@@ -112,7 +112,7 @@ fn a_pick_on_a_cards_palette_colour_reaches_the_string_even_unauthored() {
     let id = m.doc.graph.add_node("motion.color_array");
     assert_eq!(texto(&m, id, "palette"), "", "a fixtura nasce por autorar");
     let store = picker_on(id.0, "palette", 0, [0, 255, 0, 255]);
-    super::apply_picker_readback(&mut m, None, &[], &[], &[], &store);
+    super::apply_picker_readback(&mut m, &store);
     let saiu = texto(&m, id, "palette");
     let cores = ph2d_color::parse_palette(&saiu).expect("a paleta sai bem formada");
     assert!(
@@ -137,7 +137,7 @@ fn a_picker_open_on_something_else_writes_no_gradient() {
         .set_text_param(id, "ramp", "g1 2 0:1,0,0 1:0,0,1".to_string());
     let mut store = picker_on(id.0, "ramp", 0, [0, 255, 0, 255]);
     store.set_picker_target(Some(ph2d_editor_core::ids::PAINTER_COLOR_THUMB));
-    super::apply_picker_readback(&mut m, None, &[], &[], &[], &store);
+    super::apply_picker_readback(&mut m, &store);
     assert_eq!(
         texto(&m, id, "ramp"),
         "g1 2 0:1,0,0 1:0,0,1",

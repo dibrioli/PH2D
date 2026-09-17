@@ -72,10 +72,6 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     reg.push(ErasedPanel::new::<ph2d_panel_model3d::Model3dPanel>());
     #[cfg(feature = "panel-motion-graph")]
     reg.push(ErasedPanel::new::<ph2d_panel_motion_graph::MotionGraphPanel>());
-    #[cfg(feature = "panel-motion-params")]
-    reg.push(ErasedPanel::new::<
-        ph2d_panel_motion_params::MotionParamsPanel,
-    >());
     #[cfg(feature = "panel-padding")]
     reg.push(ErasedPanel::new::<ph2d_panel_padding::PaddingPanel>());
     #[cfg(feature = "panel-painter-layers")]
@@ -217,10 +213,6 @@ mod tests {
             n += 1;
         }
         #[cfg(feature = "panel-motion-graph")]
-        {
-            n += 1;
-        }
-        #[cfg(feature = "panel-motion-params")]
         {
             n += 1;
         }

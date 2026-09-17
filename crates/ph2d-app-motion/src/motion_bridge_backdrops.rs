@@ -149,10 +149,8 @@ fn color_labels() -> &'static [&'static str] {
 /// a node (or nothing). A backdrop has no manifest and no `ParamUiHint`s — it is
 /// not a node — so its two properties are hand-built here: the rename box and the
 /// 8-tint picker. Without this the artist could create a group and never name it.
-pub(super) fn params_snapshot(
-    motion: &MotionState,
-) -> Option<ph2d_panel_motion_params::ParamsSnapshot> {
-    use ph2d_panel_motion_params::{EnumRow, ParamRow, ParamsSnapshot, TextRow};
+pub(super) fn params_snapshot(motion: &MotionState) -> Option<crate::ParamsSnapshot> {
+    use crate::{EnumRow, ParamRow, ParamsSnapshot, TextRow};
 
     let id = ph2d_panel_motion_graph::current_graph_backdrop_selection()?;
     let b = motion.doc.backdrops.iter().find(|b| b.id == id)?;
@@ -188,9 +186,9 @@ pub(super) fn params_snapshot(
 pub(super) fn apply_param_intent(
     motion: &mut MotionState,
     id: u32,
-    intent: ph2d_panel_motion_params::MotionParamIntent,
+    intent: crate::MotionParamIntent,
 ) {
-    use ph2d_panel_motion_params::MotionParamIntent as I;
+    use crate::MotionParamIntent as I;
     match intent {
         I::SetParam {
             param: "color",

@@ -1,11 +1,14 @@
-//! ⭐⭐ **O CANAL ENTRE A SHELL E O PAINEL** — o snapshot que desce e as intenções que sobem.
+//! ⭐⭐ **A CAIXA DE CORREIO DO CARTÃO** — as intenções de param que sobem para a ponte.
 //!
-//! ⚠️ **Irmão de [`super`] por RESPONSABILIDADE:** lá vivem os TIPOS de row (o que uma row É),
-//! aqui o que atravessa a fronteira. ⛔ E ele sobreviveu à saída do painel lateral: desde
-//! 2026-09-07 quem enche esta fila é sobretudo o **CARTÃO**, traduzido pelo
-//! `apply_graph_intents` da shell — o canal é do MÓDULO, não daquele painel.
+//! ⚠️⚠️ **Ela viveu dentro da crate do painel lateral até 2026-09-17, e isso era o que tornava a
+//! remoção dele impossível** (doc 114 §13): o TIPO e a FILA moravam lá, e quem os enchia era o
+//! CARTÃO — cinco sítios em `motion_bridge_intents.rs` e `motion_bridge_choices.rs`, mais o dreno
+//! do `motion_bridge_params_edit.rs`. ⛔ *Apagar o painel primeiro deixaria o cartão mudo.*
+//!
+//! ⭐ **A outra metade daquele ficheiro NÃO veio, e a ausência é a decisão:** o
+//! `set_current_params`/`current_params` publicava o `ParamsSnapshot` **para o painel pintar**, e
+//! sem painel não há quem leia. *O que se constrói para ninguém ver não se constrói.*
 
-use super::ParamsSnapshot;
 use std::cell::RefCell;
 
 /// A param edit the panel asks the shell to apply (M1.P1). Tagged with the node
@@ -46,25 +49,7 @@ pub enum MotionParamIntent {
 }
 
 thread_local! {
-    static CURRENT: RefCell<Option<ParamsSnapshot>> = const { RefCell::new(None) };
     static INTENTS: RefCell<Vec<MotionParamIntent>> = const { RefCell::new(Vec::new()) };
-}
-
-/// Publish the selected node's params (shell bridge → panel). `None` when no
-/// single node is selected or the Motion tool is inactive.
-pub fn set_current_params(snapshot: Option<ParamsSnapshot>) {
-    CURRENT.with(|c| *c.borrow_mut() = snapshot);
-}
-
-/// Read the published params (panel `paint` / `apply_event`).
-///
-/// ⚠️ **`pub` desde 2026-09-07**, quando o painel lateral saiu: a shell deixou de construir o
-/// snapshot com o painel fora (ninguém o lê), e o gate que mede essa saída tem de o poder
-/// verificar. *Uma optimização que ninguém consegue observar é uma optimização que ninguém
-/// consegue defender.*
-#[must_use]
-pub fn current_params() -> Option<ParamsSnapshot> {
-    CURRENT.with(|c| c.borrow().clone())
 }
 
 /// Queue a param edit for the bridge to apply (panel → shell).

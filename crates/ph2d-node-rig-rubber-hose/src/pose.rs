@@ -100,46 +100,6 @@ pub(crate) fn relocal(input: &Stream, solved: &[[f32; 2]], joints: &[usize]) -> 
     rot
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::attr::Column;
-
-    #[test]
-    fn the_heading_is_degrees_and_covers_every_quadrant() {
-        for (dx, dy, want) in [
-            (1.0, 0.0, 0.0),
-            (0.0, 1.0, 90.0),
-            (-1.0, 0.0, 180.0),
-            (0.0, -1.0, -90.0),
-            (1.0, 1.0, 45.0),
-            (-1.0, -1.0, -135.0),
-        ] {
-            let got = heading_deg(dx, dy);
-            assert!(
-                (got - want).abs() < 0.2,
-                "({dx},{dy}) -> {got}, want {want}"
-            );
-        }
-        assert_eq!(heading_deg(0.0, 0.0), 0.0, "no direction, no heading");
-    }
-
-    /// An unconnected target cooks to an empty stream — the solver must see "no goal",
-    /// not "the goal is the origin" (which would yank every limb to the middle).
-    #[test]
-    fn an_unconnected_target_is_no_goal_at_all() {
-        assert_eq!(goal(&Stream::new(0)), None);
-        let t = Stream::new(2).with("P", Column::Vec2(vec![[3.0, 4.0], [9.0, 9.0]]));
-        assert_eq!(goal(&t), Some([3.0, 4.0]), "the FIRST element is the goal");
-    }
-
-    #[test]
-    fn unit_falls_back_instead_of_dividing_by_zero() {
-        assert_eq!(unit([2.0, 0.0], [0.0, 1.0]), [1.0, 0.0]);
-        assert_eq!(unit([0.0, 0.0], [0.0, 1.0]), [0.0, 1.0]);
-    }
-}
-
 /// The column a constraint reads as its **strength** — the catalogue's existing mask channel.
 ///
 /// ⭐⭐ It is deliberately **not** a new name: `falloff` is what `motion.falloff` writes and what
@@ -197,4 +157,48 @@ pub(crate) fn mix_by_falloff(input: &Stream, solved: Vec<f32>) -> Vec<f32> {
             a * (1.0 - w) + b * w
         })
         .collect()
+}
+
+// ⚠️ O módulo de teste VIVIA a meio do ficheiro, com `const` e funções por baixo dele —
+// o clippy severo do portão de fecho chama-lhe `items after a test module`, e tem razão:
+// quem lê de cima para baixo dá o ficheiro por acabado onde os testes começam. Ele desceu
+// inteiro, sem uma linha mudada.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_nodegraph::attr::Column;
+
+    #[test]
+    fn the_heading_is_degrees_and_covers_every_quadrant() {
+        for (dx, dy, want) in [
+            (1.0, 0.0, 0.0),
+            (0.0, 1.0, 90.0),
+            (-1.0, 0.0, 180.0),
+            (0.0, -1.0, -90.0),
+            (1.0, 1.0, 45.0),
+            (-1.0, -1.0, -135.0),
+        ] {
+            let got = heading_deg(dx, dy);
+            assert!(
+                (got - want).abs() < 0.2,
+                "({dx},{dy}) -> {got}, want {want}"
+            );
+        }
+        assert_eq!(heading_deg(0.0, 0.0), 0.0, "no direction, no heading");
+    }
+
+    /// An unconnected target cooks to an empty stream — the solver must see "no goal",
+    /// not "the goal is the origin" (which would yank every limb to the middle).
+    #[test]
+    fn an_unconnected_target_is_no_goal_at_all() {
+        assert_eq!(goal(&Stream::new(0)), None);
+        let t = Stream::new(2).with("P", Column::Vec2(vec![[3.0, 4.0], [9.0, 9.0]]));
+        assert_eq!(goal(&t), Some([3.0, 4.0]), "the FIRST element is the goal");
+    }
+
+    #[test]
+    fn unit_falls_back_instead_of_dividing_by_zero() {
+        assert_eq!(unit([2.0, 0.0], [0.0, 1.0]), [1.0, 0.0]);
+        assert_eq!(unit([0.0, 0.0], [0.0, 1.0]), [0.0, 1.0]);
+    }
 }

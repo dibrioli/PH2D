@@ -27,8 +27,8 @@ fn text_of(motion: &MotionState, nid: ph2d_nodegraph::graph::NodeId, key: &str) 
 // O SELECTOR DEIXA DE MENTIR — auditoria de 2026-08-29, família D.
 // ─────────────────────────────────────────────────────────────────────────────────────────
 
+use crate::MotionParamIntent;
 use crate::motion_bridge::params;
-use ph2d_panel_motion_params::MotionParamIntent;
 
 /// Corre o caminho REAL de uma edição de param — a fila de intenções, e o dreno.
 ///
@@ -39,7 +39,7 @@ use ph2d_panel_motion_params::MotionParamIntent;
 pub fn dispatch(motion: &mut MotionState, intent: MotionParamIntent) {
     let mut toasts = ph2d_editor_core::ToastQueue::default();
     let store = ph2d_editor_core::interaction::WidgetStore::default();
-    ph2d_panel_motion_params::push_param_intent(intent);
+    crate::push_param_intent(intent);
     params::apply_param_edits_for_tests(motion, &store, &mut toasts);
 }
 

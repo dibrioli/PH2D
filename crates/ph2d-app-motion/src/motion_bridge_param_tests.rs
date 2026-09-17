@@ -25,7 +25,7 @@ use ph2d_editor_core::ProjectSettings;
 /// empty field) or never surfaced (no Text row).
 #[test]
 fn selected_expression_node_yields_a_formula_text_row() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     let ex = motion.doc.graph.add_node("motion.expression");
     motion.doc.graph.set_text_param(ex, "expr", "sin(t) * a");
@@ -61,7 +61,7 @@ fn selected_expression_node_yields_a_formula_text_row() {
 /// knobs remain below it.
 #[test]
 fn selected_field_remap_yields_an_interactive_curve_row() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     let rm = motion.doc.graph.add_node("field.remap");
     // ⚠️ **O contorno é ESCOLHIDO, e isso é a reconciliação que a cerca do nó nomeava.**
@@ -106,7 +106,7 @@ fn selected_field_remap_yields_an_interactive_curve_row() {
 /// exact fix the Enio asked for (no memorising slider steps).
 #[test]
 fn stagger_params_are_named_enums_and_a_checkbox() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     let st = motion.doc.graph.add_node("motion.stagger");
     ph2d_panel_motion_graph::set_graph_selection(vec![st.0]);
@@ -185,8 +185,8 @@ fn stagger_params_are_named_enums_and_a_checkbox() {
 /// It is the gate for the whole bug class, not for one node.
 #[test]
 fn every_row_range_contains_its_value_for_every_node_and_param() {
+    use crate::ParamRow;
     use ph2d_nodegraph::cook::OpResolver;
-    use ph2d_panel_motion_params::ParamRow;
     let mut motion = MotionState::new();
 
     // EVERY registered node type — the real registry, not a stub list, and no prefix
@@ -245,7 +245,7 @@ fn every_row_range_contains_its_value_for_every_node_and_param() {
 /// author in the SAME unit; radians and turns exist nowhere on this surface.
 #[test]
 fn angle_params_resolve_to_degree_rows() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
 
     let angle_row = |motion: &MotionState, who: &str| {
@@ -292,7 +292,7 @@ fn angle_params_resolve_to_degree_rows() {
 /// a slider the artist must drag through a range that means nothing.
 #[test]
 fn seed_param_resolves_to_a_seed_row_not_a_slider() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     let wig = motion.doc.graph.add_node("motion.wiggle");
     ph2d_panel_motion_graph::set_graph_selection(vec![wig.0]);
@@ -328,7 +328,7 @@ fn seed_param_resolves_to_a_seed_row_not_a_slider() {
 /// FALSIFIED if the panel fell through to the node path (`None`, an empty panel).
 #[test]
 fn a_selected_backdrop_yields_its_title_and_colour_rows() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     super::backdrops::add(&mut motion, 0.0, 0.0, 300.0, 200.0);
     let id = motion.doc.backdrops[0].id;
@@ -389,7 +389,7 @@ fn a_selected_node_still_wins_the_params_panel() {
 /// table per menu to prevent.
 #[test]
 fn the_look_at_picks_its_target_and_offers_the_picker_only_in_object_mode() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     let la = motion.doc.graph.add_node("motion.look_at");
     ph2d_panel_motion_graph::set_graph_selection(vec![la.0]);

@@ -56,7 +56,6 @@ use std::path::{Path, PathBuf};
 /// As crates cujo chrome é varrido por inteiro.
 const SCANNED_CRATES: &[&str] = &[
     "ph2d-panel-motion-graph",
-    "ph2d-panel-motion-params",
     // ⭐ **A LEI SEGUE O CÓDIGO** (2026-09-07): os três editores ricos (curva, gradiente,
     // paleta) mudaram-se para esta crate-folha quando ganharam um segundo hospedeiro — o
     // cartão do nó. Os rótulos que eles cortam são os MESMOS; sem esta linha o censo caía de
@@ -110,7 +109,12 @@ const WRAPPING_DOORS: &[&str] = &["paint_text", "paint_text_title", "paint_text_
 /// ⚠️ E este numero literal e' exactamente a armadilha que a memoria da casa nomeia — *uma
 /// contagem literal num gate faz cada feature nova editar o teste de outra pessoa*. Ele so' se
 /// sustenta porque tem o censo dos dois lados; deriva-lo continua por fazer.
-const ELIDED_TODAY: usize = 30;
+/// ⚠️⚠️ **`30 → 16` em 2026-09-17, e a DESCIDA é a catraca a funcionar:** o painel lateral de
+/// params saiu (doc 114 §13) e levou **catorze** rótulos que cortavam. A mensagem do gate manda
+/// perguntar *«alguém trocou um rótulo de volta ou apagou-o?»* — aqui a resposta é a terceira, e
+/// é por ela ser rara que a metade de baixo existe: *uma catraca que só sobe não distingue uma
+/// população que encolheu de um instrumento que cegou*.
+const ELIDED_TODAY: usize = 16;
 
 fn crates_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

@@ -85,28 +85,13 @@ pub(super) fn apply_color_to_node(
     motion.pump.mark_dirty();
 }
 
-/// Seed each colour swatch's `widget_color` from the snapshot's display colour
-/// (the OKLCH picker reads it on open + the swatch paints it). Keyed by the
-/// anchor channel — the same id the panel registers.
-pub(super) fn seed_color_swatches(
-    store: &mut ph2d_editor_core::interaction::WidgetStore,
-    snap: &ph2d_panel_motion_params::ParamsSnapshot,
-) {
-    use ph2d_panel_motion_params::{ParamRow, param_swatch_id};
-    for row in &snap.rows {
-        if let ParamRow::Color(c) = row {
-            store.set_widget_color(param_swatch_id(c.channels[0]), c.srgb);
-        }
-    }
-}
-
 /// Is a colour-swatch or gradient-stop picker open on this node right now? The undo-bracket
 /// edge — a whole colour/stop pick coalesces into ONE step (like a slider drag). Read-only;
 /// the caller opens the history bracket, THEN calls [`apply_picker_readback`] (writes must
 /// land inside the bracket).
 /// ⭐⭐⭐ **O ID DA AMOSTRA DE COR DE UM CARTÃO — e ele carrega o NÓ.**
 ///
-/// ⛔⛔ **Por que não se reusa o do painel.** O [`ph2d_panel_motion_params::param_swatch_id`] é
+/// ⛔⛔ **Por que não se reusava o do painel.** O `param_swatch_id` dele era
 /// função **só do nome do param âncora**, e o doc dele diz porquê: *«unique within a node»*. No
 /// painel isso basta — há **um** nó selecionado de cada vez. No **cartão** a premissa cai: vinte
 /// cartões estão visíveis ao mesmo tempo, e dois `motion.tint` na tela pediriam o MESMO id.
@@ -144,20 +129,15 @@ pub(super) fn card_swatch_id(node: u32, anchor: &str) -> ph2d_editor_core::NodeI
 /// não um quadro qualquer.
 pub(super) fn picker_target_of(
     motion: &MotionState,
-    sel: Option<ph2d_nodegraph::graph::NodeId>,
-    groups: &[[&'static str; 4]],
     store: &ph2d_editor_core::interaction::WidgetStore,
 ) -> Option<(ph2d_nodegraph::graph::NodeId, [&'static str; 4])> {
     use ph2d_node_registry::ParamWidget;
-    use ph2d_panel_motion_params::param_swatch_id;
     let alvo = store.picker_target()?;
-    // (a) a row do painel — o nó é o seleccionado.
-    if let Some(nid) = sel
-        && let Some(ch) = groups.iter().find(|ch| param_swatch_id(ch[0]) == alvo)
-    {
-        return Some((nid, *ch));
-    }
-    // (b) uma amostra de cartão — o nó vem do id.
+    // ⚠️ **Havia um ramo (a), «a row do painel», e ele SAIU com o painel lateral** (doc 114 §13):
+    // ele casava contra `param_swatch_id(canal)`, um id que o nó NÃO carrega, logo precisava do
+    // nó SELECCIONADO para saber de quem era a cor. O que fica é o ramo do cartão, e ele é o
+    // mais forte dos dois: *o nó vem de dentro do próprio id*, logo o cartão clicado nem precisa
+    // de estar seleccionado.
     for inst in motion.doc.graph.nodes() {
         let Some(hints) = motion.registry.param_ui(inst.type_id()) else {
             continue;
@@ -175,27 +155,19 @@ pub(super) fn picker_target_of(
 
 pub(super) fn picker_session(
     motion: &MotionState,
-    sel: Option<ph2d_nodegraph::graph::NodeId>,
-    groups: &[[&'static str; 4]],
-    grad_params: &[&'static str],
-    pal_params: &[&'static str],
     store: &ph2d_editor_core::interaction::WidgetStore,
 ) -> bool {
-    let color = picker_target_of(motion, sel, groups, store).is_some()
+    let color = picker_target_of(motion, store).is_some()
         // ⚠️ **A janela do cartão abre sessão como qualquer outra amostra**: sem isto, arrastar
         // no selector com o gradiente aberto num cartão gravaria um passo de undo POR QUADRO.
         || card::card_editor_pick(motion, store).is_some();
-    let grad = sel.is_some_and(|nid| {
-        grad_params
-            .iter()
-            .any(|p| gradient_picker_stop(motion, nid, p, store).is_some())
-    });
-    let pal = sel.is_some_and(|nid| {
-        pal_params
-            .iter()
-            .any(|p| palette_picker_index(motion, nid, p, store).is_some())
-    });
-    color || grad || pal
+    // ⚠️⚠️ **As duas outras famílias — gradiente e paleta — eram presas ao nó SELECCIONADO e
+    // saíram com o painel lateral** (doc 114 §13): os ids delas (`param_grad_swatch_id`,
+    // `param_pal_swatch_id`) não carregam o nó, logo precisavam da selecção para saber de quem
+    // era a parada. O cartão abre as mesmas duas numa janela flutuante cujo id **leva o nó**, e
+    // é o `card_editor_pick` acima que as resolve — *uma sessão de undo por escolha, e nenhuma
+    // dependência de o cartão estar seleccionado*.
+    color
 }
 
 /// Feed the live OKLCH pick into the node it targets — a colour group's 4 channel params
@@ -229,17 +201,15 @@ pub(super) fn current_palette_len(texto: &str) -> usize {
 
 pub(super) fn apply_picker_readback(
     motion: &mut MotionState,
-    sel: Option<ph2d_nodegraph::graph::NodeId>,
-    groups: &[[&'static str; 4]],
-    grad_params: &[&'static str],
-    pal_params: &[&'static str],
     store: &ph2d_editor_core::interaction::WidgetStore,
 ) {
     let pick = || store.blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER);
-    // ⭐ A cor vai ao nó que o ID nomeia — que pode NÃO ser o seleccionado, quando o artista
-    // clicou a amostra num cartão. As duas outras famílias abaixo continuam presas ao
-    // seleccionado, porque os ids delas ainda não carregam o nó (gradiente e paleta).
-    if let Some((alvo, ch)) = picker_target_of(motion, sel, groups, store)
+    // ⭐⭐ **A cor vai ao nó que o ID NOMEIA**, e desde a saída do painel lateral (doc 114 §13)
+    // essa é a única lei aqui: o id carrega o nó, logo a escolha não depende de o cartão estar
+    // seleccionado. ⚠️ Este comentário dizia que *«as duas outras famílias continuam presas ao
+    // seleccionado»* — era verdade, e as duas (gradiente e paleta por row do painel) saíram
+    // nesta mesma wave; as do CARTÃO resolvem-se logo abaixo, pelo id que leva o nó dentro.
+    if let Some((alvo, ch)) = picker_target_of(motion, store)
         && let Some((value, _, _, _)) = pick()
     {
         apply_color_to_node(motion, alvo, ch, value.rgba);
@@ -269,54 +239,8 @@ pub(super) fn apply_picker_readback(
             );
         }
     }
-    let Some(nid) = sel else { return };
-    for p in grad_params {
-        if let Some(stop) = gradient_picker_stop(motion, nid, p, store)
-            && let Some((value, _, _, _)) = pick()
-        {
-            apply_gradient_stop_pick(motion, nid, p, stop, value.rgba);
-        }
-    }
-    for p in pal_params {
-        if let Some(i) = palette_picker_index(motion, nid, p, store)
-            && let Some((value, _, _, _)) = pick()
-        {
-            apply_palette_pick(motion, nid, p, i, value.rgba);
-        }
-    }
-}
-
-/// The text params of a node type edited by a [`ParamWidget::Gradient`] (doc 85) — the
-/// `ColorRamp` string keys whose per-stop swatches the picker read-back writes into.
-pub(super) fn gradient_params(
-    registry: &ph2d_node_registry::NodeRegistry,
-    type_id: ph2d_nodegraph::node::NodeTypeId,
-) -> Vec<&'static str> {
-    use ph2d_node_registry::ParamWidget;
-    registry
-        .param_ui(type_id)
-        .into_iter()
-        .flatten()
-        .filter_map(|h| (h.widget == ParamWidget::Gradient).then_some(h.param))
-        .collect()
-}
-
-/// The text params edited by a [`ParamWidget::Palette`] — the palette string keys whose
-/// per-colour swatches the picker read-back writes into. Sibling of [`gradient_params`],
-/// asked separately because the two write DIFFERENT strings (a ramp has positions and an
-/// interp; a palette is a list) and a shared list would need a second lookup to tell them
-/// apart at the write.
-pub(super) fn palette_params(
-    registry: &ph2d_node_registry::NodeRegistry,
-    type_id: ph2d_nodegraph::node::NodeTypeId,
-) -> Vec<&'static str> {
-    use ph2d_node_registry::ParamWidget;
-    registry
-        .param_ui(type_id)
-        .into_iter()
-        .flatten()
-        .filter_map(|h| (h.widget == ParamWidget::Palette).then_some(h.param))
-        .collect()
+    // ⚠️ Os dois laços que aqui estavam liam o gradiente e a paleta da row do PAINEL, pelo nó
+    // seleccionado. Saíram com ele (doc 114 §13); o caminho do cartão, acima, escreve os dois.
 }
 
 /// The palette a node paints with — the authored string, else the factory list. ⚠️ **The
@@ -335,20 +259,6 @@ fn current_palette(
         .and_then(|v| ph2d_color::parse_palette(v))
         .filter(|p| !p.is_empty())
         .unwrap_or_else(|| ph2d_color::DEFAULT_PALETTE_FALLBACK.to_vec())
-}
-
-/// If the open picker targets a colour swatch of this node's `param` palette, its index.
-/// The id is [`ph2d_panel_motion_params::param_pal_swatch_id`] — the SAME the panel
-/// registers, so the two agree without sharing row order.
-pub(super) fn palette_picker_index(
-    motion: &MotionState,
-    nid: ph2d_nodegraph::graph::NodeId,
-    param: &str,
-    store: &ph2d_editor_core::interaction::WidgetStore,
-) -> Option<usize> {
-    let target = store.picker_target()?;
-    let n = current_palette(motion, nid, param).len();
-    (0..n).find(|&i| ph2d_panel_motion_params::param_pal_swatch_id(param, i) == target)
 }
 
 /// Write the live pick into the `i`-th colour and re-serialize the whole list — the same
@@ -382,21 +292,6 @@ pub(super) fn apply_palette_pick(
         .doc
         .graph
         .set_text_param(nid, param, ph2d_color::serialize_palette(&colors));
-}
-
-/// If the OKLCH picker open right now targets a stop swatch of this node's `param` gradient,
-/// the stop's index — else `None`. The stop count comes from parsing the current string, and
-/// its swatch id is [`ph2d_panel_motion_params::param_grad_swatch_id`] — the SAME id the
-/// panel registers, so the two agree without sharing row order.
-pub(super) fn gradient_picker_stop(
-    motion: &MotionState,
-    nid: ph2d_nodegraph::graph::NodeId,
-    param: &str,
-    store: &ph2d_editor_core::interaction::WidgetStore,
-) -> Option<usize> {
-    let target = store.picker_target()?;
-    let ramp = current_gradient(motion, nid, param);
-    (0..ramp.len()).find(|&i| ph2d_panel_motion_params::param_grad_swatch_id(param, i) == target)
 }
 
 /// The current `ColorRamp` of a node's gradient text param (override, else the default
@@ -476,15 +371,18 @@ pub(super) fn linear_rgba_to_srgb8(lin: [f32; 4]) -> [u8; 4] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ph2d_editor_core::interaction::WidgetStore;
-    use ph2d_panel_motion_params::param_grad_swatch_id;
 
-    /// **The gradient read-back writes a stop's OKLCH pick back into the string** (doc 85).
-    /// The bridge sees the `motion.color_ramp` Custom gradient (`gradient_params`), locates
-    /// which stop the open picker targets (`gradient_picker_stop`, keyed by the SAME
-    /// `param_grad_swatch_id` the panel registers), and re-serializes the `ColorRamp` with the
-    /// picked colour (sRGB→linear). RED-first: drop the `set_text_param` in
-    /// `apply_gradient_stop_pick` and stop 0 stays black.
+    /// **A escolha de uma PARADA volta a ser escrita na string** (doc 85).
+    ///
+    /// ⚠️⚠️ **Este gate tinha três metades e DUAS saíram com o painel lateral** (doc 114 §13):
+    /// ele perguntava ao registry quais text params são gradiente (`gradient_params`) e qual
+    /// parada o selector aponta (`gradient_picker_stop`, chaveado pelo id da ROW) — as duas
+    /// keyed num id que **não carrega o nó**, logo dependentes da selecção. O cartão resolve as
+    /// duas pelo `card_editor_swatch_id`, que leva o nó dentro, e tem gates próprios.
+    ///
+    /// ⭐ O que fica é a metade que nenhum dos dois hospedeiros dispensa: **a re-serialização**.
+    /// RED-first: apague o `set_text_param` do `apply_gradient_stop_pick` e a parada 0 fica
+    /// preta.
     #[test]
     fn a_gradient_stop_pick_re_serializes_the_string() {
         let mut motion = crate::motion_state::MotionState::new();
@@ -494,19 +392,6 @@ mod tests {
             .doc
             .graph
             .set_text_param(nid, "ramp", "g1 2 0:0,0,0 1:1,1,1".to_string());
-
-        // The bridge recognizes the Gradient widget as a colour text param.
-        let tid = motion.doc.graph.node(nid).unwrap().type_id();
-        assert_eq!(gradient_params(&motion.registry, tid), vec!["ramp"]);
-
-        // Open the picker on stop 0's swatch — the SAME id the panel would register.
-        let mut store = WidgetStore::with_capacity(4);
-        store.set_picker_target(Some(param_grad_swatch_id("ramp", 0)));
-        assert_eq!(
-            gradient_picker_stop(&motion, nid, "ramp", &store),
-            Some(0),
-            "the picker targets stop 0"
-        );
 
         // Pick pure red → the string's stop 0 becomes red (sRGB 255 → linear 1.0).
         apply_gradient_stop_pick(&mut motion, nid, "ramp", 0, [255, 0, 0, 255]);

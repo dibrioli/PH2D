@@ -24,7 +24,7 @@ use ph2d_editor_core::ProjectSettings;
 /// perguntas são independentes e as duas estão aqui.
 #[test]
 fn the_control_polygon_rows_hide_when_a_drawn_shape_is_named() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     const COORDS: [&str; 8] = ["p0x", "p0y", "p1x", "p1y", "p2x", "p2y", "p3x", "p3y"];
     let mut motion = MotionState::new();
     let sw = motion.doc.graph.add_node("motion.spline_wrap");

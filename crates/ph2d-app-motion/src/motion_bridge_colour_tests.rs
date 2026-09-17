@@ -21,7 +21,7 @@ use ph2d_editor_core::ProjectSettings;
 /// all the way to paintable rows (registry -> snapshot builder).
 #[test]
 fn selected_tint_node_yields_mode_and_colour_swatch_rows() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     let tint = motion.doc.graph.add_node("motion.tint");
     ph2d_panel_motion_graph::set_graph_selection(vec![tint.0]);
@@ -249,7 +249,7 @@ fn a_translucent_gradient_stop_reaches_the_cooked_tint() {
 /// nomeou) ou um contador ao lado da faixa.
 #[test]
 fn the_palette_is_one_row_with_no_count_beside_it() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     let ca = motion.doc.graph.add_node("motion.color_array");
     ph2d_panel_motion_graph::set_graph_selection(vec![ca.0]);

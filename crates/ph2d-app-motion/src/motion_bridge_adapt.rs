@@ -141,7 +141,7 @@ pub(super) fn try_insert_adapter(
     true
 }
 
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[cfg(all(test, feature = "panel-motion-graph"))]
 mod tests {
     //! The lookup gate is a pure unit test; the two behavioural gates drive the REAL
     //! intent funnel (`apply_graph_intents` → `apply_connect`), not the doc directly.

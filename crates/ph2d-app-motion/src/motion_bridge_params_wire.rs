@@ -34,11 +34,11 @@
 //! DISCORDAM, destino que também é `FromWire`) esta porta devolve `None` e a lacuna fica.
 
 use super::params_channel::channel_unit;
+use crate::RowDisplay;
 use crate::motion_state::MotionState;
 use ph2d_node_registry::{ParamUnit, ParamWidget};
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::graph::NodeId;
-use ph2d_panel_motion_params::RowDisplay;
 
 /// A face que o destino impõe a quem o conduz.
 #[derive(Copy, Clone, Debug, PartialEq)]

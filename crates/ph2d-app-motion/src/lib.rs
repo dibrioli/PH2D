@@ -58,6 +58,16 @@ pub mod motion_ciclo_preco;
 /// nomes e vocabulário. Nasceu ao abrir o ciclo 4, quando ia ser copiado do 3.
 #[cfg(test)]
 pub mod motion_ciclo_probe;
+/// ⭐⭐ **A CAIXA DE CORREIO DO CARTÃO** — as intenções de param que sobem para a ponte. Ela veio
+/// da crate do painel lateral quando ele saiu (doc 114 §13); era ela que tornava a remoção
+/// impossível, porque o TIPO e a FILA moravam lá e quem os enchia era o CARTÃO.
+pub mod motion_param_intent;
+pub use motion_param_intent::{MotionParamIntent, drain_param_intents, push_param_intent};
+/// ⭐ **O VOCABULÁRIO de uma row de param** — o que uma row É (`ParamRow` e as structs dela) e o
+/// `ParamsSnapshot` que o `build_params_snapshot` produz. ⚠️ **Dado puro, zero imports**, e é por
+/// isso que ele se moveu limpo: o painel PINTAVA-o, não o definia.
+pub mod motion_param_rows;
+pub use motion_param_rows::*;
 /// ⭐ O COLISOR DECLARADO contra os DUPLICADORES — a ordem do dono de 2026-09-17 (doc 114 §12).
 #[cfg(test)]
 pub mod motion_colisor_duplicador_probe;

@@ -117,13 +117,20 @@ pub const AUTHORED_SCROLLBAR_ID: NodeId = NodeId(839);
 /// irmãos acima. Next free id is `841`; re-read the collision note above before
 /// taking it.
 pub const SCULPT3D_SCROLLBAR_ID: NodeId = NodeId(840);
-/// Motion **params** docked-panel scrollbar (doc 88 §B3). Medido: uma linha
-/// escalar ocupa **34 px** e o dock comporta **24** delas, contra um teto de
-/// `MAX_PARAM_ROWS = 16` e um pior nó (`motion.tint`) de **15 params** — ou seja
-/// oito linhas de folga para uma varredura que dá a TODO nó o conjunto PRO. O
-/// gate `a_full_panel_of_rows_fits_the_inspector` já previa o dia em texto:
-/// *"o painel precisa ROLAR antes de o teto subir mais"*. Next free id is `842`;
-/// re-read the collision note above before taking it.
+/// Motion **params** docked-panel scrollbar (doc 88 §B3). Medido na época: uma linha escalar
+/// ocupa **34 px** e o dock comportava **24** delas, contra um tecto de `MAX_PARAM_ROWS = 16` e
+/// um pior nó (`motion.tint`) de **15 params**.
+///
+/// ⛔⛔ **ÓRFÃO DESDE 2026-09-17 — o painel que o pintava SAIU** (doc 114 §13, ordem do dono: os
+/// params do Motion vivem no CARTÃO). O tecto que esta nota cita também saiu com ele, e o ramo
+/// que despacha este id (`dispatch/scroll.rs`) fica **inerte por construção**: ninguém o regista,
+/// logo nenhum `id ==` casa.
+///
+/// ⚠️ **Ele FICA no livro-razão de propósito.** Este ficheiro é uma alocação append-only cuja
+/// única lei é *um número nunca se reusa* — apagar a entrada devolveria o `841` ao próximo a
+/// pedir, e a colisão que ela existe para impedir é silenciosa. *Um id retirado ocupa uma linha;
+/// um id reusado ocupa duas barras ao mesmo tempo.* Next free id is `842`; re-read the collision
+/// note above before taking it.
 ///
 /// ⚠️ **A linha escreveu 839; o valor CONTADO na integração é 841** — a
 /// `line/Vector` (AUTHORED, 839) e a `line/sculpt3d` (SCULPT3D, 840) pousaram

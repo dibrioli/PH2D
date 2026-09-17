@@ -14,10 +14,10 @@
 //! (`build_params_snapshot`), nunca uma `TextRow` montada à mão.
 
 use super::params::build_params_snapshot;
+use crate::ParamRow;
 use crate::motion_state::MotionState;
 use ph2d_editor_core::ProjectSettings;
 use ph2d_node_source_lsystem as ls;
-use ph2d_panel_motion_params::ParamRow;
 
 /// A queixa que a row de `Rules` daquele nó carrega, pela porta do produto.
 fn problem_of(motion: &MotionState, nid: ph2d_nodegraph::graph::NodeId) -> Option<String> {

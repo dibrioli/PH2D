@@ -145,16 +145,13 @@ pub(super) fn apply_graph_intents(
                     motion.card_sections.insert((n.0, section), !aberta);
                 }
             }
-            #[cfg(feature = "panel-motion-params")]
             GraphIntent::SetParam { node, param, value } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
-                    ph2d_panel_motion_params::push_param_intent(
-                        ph2d_panel_motion_params::MotionParamIntent::SetParam {
-                            node: n.0,
-                            param,
-                            value: f64::from(value),
-                        },
-                    );
+                    crate::push_param_intent(crate::MotionParamIntent::SetParam {
+                        node: n.0,
+                        param,
+                        value: f64::from(value),
+                    });
                 }
             }
             // ⭐ **O cartão pede um ficheiro pela MESMA porta que a row do painel** — a shell
@@ -216,19 +213,18 @@ pub(super) fn apply_graph_intents(
                     }
                 }
             }
-            #[cfg(feature = "panel-motion-params")]
             GraphIntent::PickFile { node, param } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
-                    ph2d_panel_motion_params::push_param_intent(
-                        ph2d_panel_motion_params::MotionParamIntent::PickFile { node: n.0, param },
-                    );
+                    crate::push_param_intent(crate::MotionParamIntent::PickFile {
+                        node: n.0,
+                        param,
+                    });
                 }
             }
             // ⭐⭐ **UMA SETA DE UM SELECTOR** — o cartão pede *«a anterior»* / *«a seguinte»*,
             // e a shell, que possui a lista viva, resolve qual é e escreve pelas mesmas portas
             // que a chip do painel usa. ⚠️ Com nada publicado não há o que escolher, e o clique
             // não escreve — um valor inventado seria pior que um clique mudo.
-            #[cfg(feature = "panel-motion-params")]
             GraphIntent::StepChoice { node, param, delta } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
                     super::params::step_choice(motion, n, param, delta);
@@ -236,7 +232,6 @@ pub(super) fn apply_graph_intents(
             }
             // ⭐⭐ **UMA LINHA DA LISTA** (o dropdown do report de 07/09) — o índice é contra a
             // lista que a shell publicou e o popup desenhou, resolvido pela MESMA porta.
-            #[cfg(feature = "panel-motion-params")]
             GraphIntent::PickChoice { node, param, index } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
                     super::params::pick_choice(motion, n, param, index);
@@ -244,16 +239,13 @@ pub(super) fn apply_graph_intents(
             }
             // ⭐ O texto escrito no cartão sai pela porta de texto do painel — a mesma que a
             // chip de uma fonte e o campo de uma fórmula usam.
-            #[cfg(feature = "panel-motion-params")]
             GraphIntent::SetTextParam { node, param, value } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {
-                    ph2d_panel_motion_params::push_param_intent(
-                        ph2d_panel_motion_params::MotionParamIntent::SetTextParam {
-                            node: n.0,
-                            param,
-                            value,
-                        },
-                    );
+                    crate::push_param_intent(crate::MotionParamIntent::SetTextParam {
+                        node: n.0,
+                        param,
+                        value,
+                    });
                 }
             }
             GraphIntent::Disconnect { to_node, to_port } => {

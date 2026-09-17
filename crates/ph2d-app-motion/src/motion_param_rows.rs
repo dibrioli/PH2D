@@ -155,7 +155,8 @@ pub struct PaletteRow {
 #[derive(Clone, Debug, PartialEq)]
 pub struct GradientRow {
     /// The text-param key (`Graph::set_text_param`) — echoed in the intent + the
-    /// per-stop swatch ids ([`param_grad_swatch_id`]).
+    /// per-stop swatch ids (o `param_grad_swatch_id` do painel lateral, que saiu com ele —
+    /// doc 114 §13; o cartão cunha os dele com o NÓ dentro, em `card_editor_swatch_id`).
     pub name: &'static str,
     /// English label (from the `ParamUiHint`).
     pub label: String,
@@ -428,7 +429,8 @@ pub fn scalar_text(row: &ScalarRow, value: f64) -> String {
 /// (the canonical colour UI). `srgb` is the bridge-converted display colour
 /// (linear→sRGB) the panel paints + the shell seeds the OKLCH picker with;
 /// `channels` are the params a pick writes back to (sRGB→linear). The swatch's
-/// widget id is [`param_swatch_id`]`(channels[0])`.
+/// widget id era o `param_swatch_id(channels[0])` do painel lateral, que saiu com ele (doc 114
+/// §13); no cartão ele é o `card_swatch_id(nó, channels[0])`, que leva o nó dentro.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ColorRow {
     /// English label (from the `ParamUiHint`).
@@ -482,36 +484,13 @@ pub struct ParamsSnapshot {
     pub folded_by_default: std::collections::BTreeSet<String>,
 }
 
-/// ⭐⭐ **O CANAL entre a shell e o painel** — o snapshot publicado e as intenções que voltam.
-/// Irmão por RESPONSABILIDADE (tecto de LOC dos painéis): aqui em cima ficam os TIPOS de row,
-/// ali o que atravessa a fronteira.
-///
-/// ⚠️ Re-exportado inteiro: nenhum chamador muda de endereço.
-#[path = "snapshot_channel.rs"]
-mod channel;
-pub use channel::{
-    MotionParamIntent, current_params, drain_param_intents, push_param_intent, set_current_params,
-};
-
-#[path = "snapshot_ids.rs"]
-mod ids;
-pub(crate) use ids::{
-    CHANNELS_EXTRA_BASE, param_checkbox_id, param_chip_id, param_curve_add_id,
-    param_curve_editor_id, param_curve_interp_id, param_curve_remove_id, param_enum_id,
-    param_file_browse_id, param_grad_add_id, param_grad_editor_id, param_grad_hue_id,
-    param_grad_interp_id, param_grad_preset_id, param_grad_remove_id, param_grad_space_id,
-    param_number_id, param_pal_add_id, param_pal_remove_id, param_reroll_id, param_reset_id,
-    param_slider_id, param_text_id,
-};
-pub use ids::{
-    MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, param_grad_swatch_id, param_pal_swatch_id, param_swatch_id,
-};
-/// ⚠️ **Só os GATES os leem desde que os editores se mudaram para a folha** — eles perguntam se
-/// a alça/o marcador ficou registado no store, que é uma pergunta sobre o hospedeiro. O produto
-/// já não os chama: quem desenha e quem despacha passaram a receber os ids dentro da sacola de
-/// widgets que o editor devolve.
-#[cfg(test)]
-pub(crate) use ids::{param_curve_point_id, param_grad_stop_id};
+// ⚠️⚠️ **Aqui viviam as declarações de módulo da crate do painel** (`snapshot_channel` e
+// `snapshot_ids`), porque este ficheiro era o hub dela — com um doc-comment por cima a descrever
+// *«o canal entre a shell e o painel»*. Com o painel fora (doc 114 §13) o canal é a caixa de
+// correio do CARTÃO (`motion_param_intent`), os ids morreram medidos a zero leitores, e o que
+// fica aqui é só o vocabulário de rows. *Um hub que sobrevive ao seu edifício é um endereço a
+// apontar para um sítio que já não existe* — e o clippy disse-o à letra, porque um doc-comment
+// que deixa de ter item por baixo fica a documentar o vazio.
 
 impl ParamRow {
     /// Os params que ESTA row edita — um só na maioria, quatro numa cor, dois num picker de canal.

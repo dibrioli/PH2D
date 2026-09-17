@@ -16,7 +16,7 @@ use crate::motion_state::MotionState;
 /// undo steps (M1.P1 + colour authoring). Two edit sources, ONE session model:
 ///
 /// - **Scalar** slider / chip edits arrive as queued
-///   [`SetParam`](ph2d_panel_motion_params::MotionParamIntent)s.
+///   [`SetParam`](crate::MotionParamIntent)s.
 /// - **Colour** edits arrive continuously while a swatch's OKLCH picker is open:
 ///   the live pick is read back (sRGB→linear) into the group's 4 channel params.
 ///
@@ -49,32 +49,30 @@ pub(super) fn apply_param_edits(
     store: &ph2d_editor_core::interaction::WidgetStore,
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
+    use crate::MotionParamIntent;
     use ph2d_nodegraph::graph::NodeId;
-    use ph2d_panel_motion_params::{MotionParamIntent, any_param_editing};
     use std::sync::atomic::{AtomicBool, Ordering};
     static PARAM_EDITING: AtomicBool = AtomicBool::new(false);
 
-    // The selected node + its colour groups (each = 4 RGBA channel params driven
-    // by one swatch → OKLCH picker).
-    let sel = super::selected_motion_node().map(NodeId);
-    let type_id = sel.and_then(|nid| motion.doc.graph.node(nid).map(|i| i.type_id()));
-    let groups = type_id
-        .map(|tid| color::color_groups(&motion.registry, tid))
-        .unwrap_or_default();
-    // The gradient text params (doc 85) — each stop's swatch feeds the SAME OKLCH picker.
-    let grad_params = type_id
-        .map(|tid| color::gradient_params(&motion.registry, tid))
-        .unwrap_or_default();
-    // The palette text params — each colour's swatch feeds the SAME OKLCH picker.
-    let pal_params = type_id
-        .map(|tid| color::palette_params(&motion.registry, tid))
-        .unwrap_or_default();
-
-    // A colour-swatch OR gradient-stop pick is an editing session (like a slider drag): its
-    // live writes coalesce into ONE undo step, opened here + committed on close. Detected
-    // BEFORE the bracket; the read-back writes go INSIDE it.
-    let session = color::picker_session(motion, sel, &groups, &grad_params, &pal_params, store);
-    let editing = any_param_editing(store) || session;
+    // ⛔⛔ **AS TRÊS LISTAS QUE AQUI NASCIAM ERAM DO NÓ SELECCIONADO, e saíram com o painel
+    // lateral** (doc 114 §13): os grupos de cor, os params de gradiente e os de paleta serviam
+    // para casar o alvo do selector contra os ids da ROW, que não carregam o nó — daí precisarem
+    // da selecção. ⭐ O cartão resolve as três pelo id, que **leva o nó dentro**, logo nem a
+    // selecção nem as listas entram na conta: *o que era um argumento passou a ser uma
+    // propriedade do próprio id*.
+    //
+    // Uma escolha de cor (amostra simples ou parada de gradiente aberta sobre um cartão) é uma
+    // sessão de edição, como um arrasto de slider: as escritas vivas dela coalescem num ÚNICO
+    // passo de undo, aberto aqui e fechado ao largar. Detectada ANTES do bracket; as escritas do
+    // read-back vão DENTRO dele.
+    let session = color::picker_session(motion, store);
+    // ⭐⭐ **A METADE DO PAINEL LATERAL SAIU DAQUI, e a troca é byte-idêntica ao produto.**
+    // Isto era `any_param_editing(store) || session`, e a primeira metade perguntava se alguma ROW
+    // do painel estava a ser arrastada ou digitada. ⚠️ **Ela já respondia sempre `false` desde
+    // 2026-09-07**: o painel está desligado por omissão, ninguém regista aqueles ids, e um widget
+    // que ninguém pinta não pode estar a ser editado. ⇒ apagá-la com a crate (doc 114 §13) não
+    // muda um bit do que o artista vê; *mantê-la seria uma função que só sabe dizer «não»*.
+    let editing = session;
     let was = PARAM_EDITING.swap(editing, Ordering::Relaxed);
     if editing && !was {
         motion.history.begin(&motion.doc);
@@ -83,10 +81,10 @@ pub(super) fn apply_param_edits(
     // Colour + gradient-stop read-back: feed the live pick into the params/string it targets
     // (sRGB→linear), re-cooking only on an actual change (the picker stays open across idle
     // frames). One door in `color.rs` (the sRGB↔linear boundary).
-    color::apply_picker_readback(motion, sel, &groups, &grad_params, &pal_params, store);
+    color::apply_picker_readback(motion, store);
 
     // Scalar slider / chip + enum edits.
-    let intents = ph2d_panel_motion_params::drain_param_intents();
+    let intents = crate::drain_param_intents();
     if !intents.is_empty() {
         // A discrete (typed) commit arrives with no bracket open → its own step.
         let discrete = !editing && !was;

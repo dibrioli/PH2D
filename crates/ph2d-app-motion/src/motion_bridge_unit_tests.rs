@@ -15,8 +15,8 @@
 
 use super::params::build_params_snapshot;
 use crate::motion_state::MotionState;
+use crate::{ParamRow, ScalarRow};
 use ph2d_editor_core::{DisplayUnit, ProjectSettings};
-use ph2d_panel_motion_params::{ParamRow, ScalarRow};
 
 /// Select a fresh node of `ty` and return its scalar row named `param`.
 fn scalar_row(ty: &str, param: &str, project: ProjectSettings) -> ScalarRow {

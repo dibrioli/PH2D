@@ -268,8 +268,14 @@ impl NodeOp for ValueAttribute {
 /// columns**, growing its own height, so eight + Custom paints as three rows rather than
 /// overflowing. Nobody reconciled this sentence with the number its own line had moved —
 /// which is the §0 rule biting at home: *quem move o número que tornava algo inalcançável tem
-/// de reconferir a nota*. The executable form now lives in the shell
-/// (`the_channel_picker_fits_the_panels_ceiling`), where the table and the cap meet.
+/// de reconferir a nota*.
+///
+/// ⛔⛔ **E a nota expirou OUTRA VEZ, pelo mesmo mecanismo:** o painel lateral saiu em 2026-09-17
+/// (doc 114 §13) e com ele o `.min()` que descartava a opção excedente — *não há tecto nenhum a
+/// citar*, porque o cartão **cicla** o selector em vez de desenhar um botão por opção. O gate
+/// executável mudou de nome com a metade que ficou:
+/// `the_channel_picker_offers_the_weight_the_fields_write`, que afirma a OFERTA e não a
+/// contagem.
 ///
 /// ⚠️ **`pub` porque um gate FORA desta crate a lê** — o
 /// `every_non_scalar_column_is_reachable_or_deliberately_hidden` do shell varre o registry

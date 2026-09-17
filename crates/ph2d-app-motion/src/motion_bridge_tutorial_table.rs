@@ -94,8 +94,8 @@ pub fn derive_ligado(entradas: &[(&str, &str)], ligados: &[(&str, &str, f32)]) -
 }
 
 /// `(rótulo, faixa, unidade)` de uma row — `None` para as que não são um controlo de valor.
-fn celula(row: &ph2d_panel_motion_params::ParamRow) -> Option<(String, String, String)> {
-    use ph2d_panel_motion_params::ParamRow;
+fn celula(row: &crate::ParamRow) -> Option<(String, String, String)> {
+    use crate::ParamRow;
     Some(match row {
         // ⚠️ **A faixa do DESLIZANTE não é o tecto do param**, e o tutorial do ciclo 1 ensinou
         // o número errado antes de esta coluna existir.
@@ -155,7 +155,7 @@ fn celula(row: &ph2d_panel_motion_params::ParamRow) -> Option<(String, String, S
 fn so_noutro_modo(
     aux: &MotionState,
     tid: ph2d_nodegraph::node::NodeTypeId,
-    painel: &ph2d_panel_motion_params::ParamsSnapshot,
+    painel: &crate::ParamsSnapshot,
 ) -> Option<String> {
     let mostrados: Vec<&str> = painel.rows.iter().flat_map(|r| r.params()).collect();
     let hints = aux.registry.param_ui(tid).unwrap_or(&[]);

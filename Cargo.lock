@@ -5000,6 +5000,7 @@ name = "ph2d-app-motion"
 version = "0.0.0"
 dependencies = [
  "bytemuck",
+ "ph2d-a11y",
  "ph2d-anim",
  "ph2d-app-host",
  "ph2d-asset",
@@ -5057,7 +5058,6 @@ dependencies = [
  "ph2d-nodegraph",
  "ph2d-pan-diag",
  "ph2d-panel-motion-graph",
- "ph2d-panel-motion-params",
  "ph2d-panel-timeline",
  "ph2d-render",
  "ph2d-system-fonts",
@@ -8023,23 +8023,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ph2d-panel-motion-params"
-version = "0.0.0"
-dependencies = [
- "ph2d-a11y",
- "ph2d-color",
- "ph2d-curve",
- "ph2d-editor-core",
- "ph2d-i18n",
- "ph2d-label-census",
- "ph2d-param-editors",
- "ph2d-text",
- "ph2d-tokens",
- "ph2d-ui-testkit",
- "ph2d-vector",
-]
-
-[[package]]
 name = "ph2d-panel-padding"
 version = "0.0.0"
 dependencies = [
@@ -8112,7 +8095,6 @@ dependencies = [
  "ph2d-panel-inspector",
  "ph2d-panel-model3d",
  "ph2d-panel-motion-graph",
- "ph2d-panel-motion-params",
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
  "ph2d-panel-physics",

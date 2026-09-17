@@ -521,10 +521,8 @@ pub(super) fn selected_card() -> Option<u32> {
 /// subgraph has no manifest — it is not a node — so its properties are hand-built
 /// here, exactly as a backdrop's are. Without this a group could never be named, and
 /// a wall of cards all reading "Group" is the wall we set out to remove.
-pub(super) fn params_snapshot(
-    motion: &MotionState,
-) -> Option<ph2d_panel_motion_params::ParamsSnapshot> {
-    use ph2d_panel_motion_params::{ParamRow, ParamsSnapshot, TextRow};
+pub(super) fn params_snapshot(motion: &MotionState) -> Option<crate::ParamsSnapshot> {
+    use crate::{ParamRow, ParamsSnapshot, TextRow};
     let sid = selected_card()?;
     let only = view_id(sid);
     let s = subgraph::find(&motion.doc.subgraphs, sid)?;
@@ -553,9 +551,9 @@ pub(super) fn params_snapshot(
 pub(super) fn apply_param_intent(
     motion: &mut MotionState,
     view: u32,
-    intent: ph2d_panel_motion_params::MotionParamIntent,
+    intent: crate::MotionParamIntent,
 ) {
-    use ph2d_panel_motion_params::MotionParamIntent as I;
+    use crate::MotionParamIntent as I;
     if let Some(sid) = subgraph_of(view)
         && let I::SetTextParam {
             param: "title",

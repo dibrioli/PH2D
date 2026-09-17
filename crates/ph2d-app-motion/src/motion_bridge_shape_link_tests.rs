@@ -14,9 +14,9 @@
 //! verde no dia em que ele deixar de a chamar.*
 
 use super::*;
+use crate::MotionParamIntent;
 use crate::motion_state::MotionState;
 use ph2d_node_motion_shape::ShapeKind;
-use ph2d_panel_motion_params::MotionParamIntent;
 
 /// O `kind` de uma forma, como o painel o escreve (um índice de enum em `f32`).
 fn set_kind(m: &mut MotionState, n: ph2d_nodegraph::graph::NodeId, k: ShapeKind) {
@@ -97,7 +97,7 @@ fn switching_the_shape_drops_the_wire_the_new_shape_cannot_read() {
     // O gesto: o painel escreve o `kind` pela fila de intenções.
     let mut toasts = ph2d_editor_core::ToastQueue::default();
     let store = ph2d_editor_core::interaction::WidgetStore::default();
-    ph2d_panel_motion_params::push_param_intent(MotionParamIntent::SetParam {
+    crate::push_param_intent(MotionParamIntent::SetParam {
         node: sh.0,
         param: "kind",
         value: f64::from(ShapeKind::Circle as i32),
@@ -138,7 +138,7 @@ fn the_repair_says_nothing_the_second_time() {
     let mut toasts = ph2d_editor_core::ToastQueue::default();
     let store = ph2d_editor_core::interaction::WidgetStore::default();
     let fire = |m: &mut MotionState, toasts: &mut ph2d_editor_core::ToastQueue| {
-        ph2d_panel_motion_params::push_param_intent(MotionParamIntent::SetParam {
+        crate::push_param_intent(MotionParamIntent::SetParam {
             node: sh.0,
             param: "kind",
             value: f64::from(ShapeKind::Circle as i32),
@@ -192,7 +192,7 @@ fn sweeping_a_threshold_through_zero_keeps_the_wire() {
     // E agora o gesto real: o slider a chegar a zero.
     let mut toasts = ph2d_editor_core::ToastQueue::default();
     let store = ph2d_editor_core::interaction::WidgetStore::default();
-    ph2d_panel_motion_params::push_param_intent(MotionParamIntent::SetParam {
+    crate::push_param_intent(MotionParamIntent::SetParam {
         node: sh.0,
         param: "stroke_width",
         value: 0.0,

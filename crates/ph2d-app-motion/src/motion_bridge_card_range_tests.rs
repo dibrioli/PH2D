@@ -30,7 +30,7 @@ use crate::motion_state::MotionState;
 /// discordar (o `motion.move::dx` lia `0.94` no cartão e `94 px` no painel).
 #[test]
 fn the_card_shows_and_drags_the_same_numbers_the_panel_does() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let base = MotionState::new();
     let tipos: Vec<String> = base
         .registry
@@ -110,7 +110,7 @@ fn the_card_shows_and_drags_the_same_numbers_the_panel_does() {
 #[test]
 #[ignore = "sonda de censo, nao um gate"]
 fn how_many_params_wear_a_face() {
-    use ph2d_panel_motion_params::ParamRow;
+    use crate::ParamRow;
     let base = MotionState::new();
     let tipos: Vec<String> = base
         .registry

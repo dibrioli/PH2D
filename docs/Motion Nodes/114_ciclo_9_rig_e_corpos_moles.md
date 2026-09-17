@@ -956,3 +956,160 @@ escondido e sem controlo de iterações. ⇒ **medido e não construído**, à e
 não recebem a forma de ninguém: as peças deles não são cópias de nada. Dar-lhes o colisor da forma
 que entra é uma pergunta de produto, não um defeito — e para a corda a §11 já mostra que o caminho
 que existe hoje entrega auto-colisão completa.
+
+---
+
+## §13 — ✅ O PAINEL LATERAL DE PARAMS SAIU DO APP (pedido da `line/UIUX`)
+
+> **Ordem do dono (2026-09-17), depois de eu lhe devolver a pergunta com as três leituras
+> possíveis do pedido:** *«Só o painel de parâmetros do Motion»*. A coluna da direita e o
+> Inspector **ficam**; o que sai é a crate `ph2d-panel-motion-params`.
+
+O pedido vive em [`104_pedido_retirar_o_painel_lateral.md`](104_pedido_retirar_o_painel_lateral.md)
+e a §3 dele prescreve cinco passos. Os cinco estão feitos. O que este §13 regista é o que a
+execução mediu **além** deles — que foi mais do que o pedido supunha, em duas direcções opostas.
+
+### §13.1 — O tamanho REAL, contra o que o pedido estimava
+
+| | O pedido dizia | Medido |
+|---|---|---|
+| mover para fora da crate | «a caixa de correio» (~85 linhas) | **592** linhas em 3 ficheiros — o `ParamRow` inteiro (522) mais a caixa (70) |
+| gates de outras crates a partir | «0» | **4** censos textuais (o de rótulos que embrulham, o de hashes nomeados, o registo tipado, o catálogo da paleta) |
+| apagar | 7 473 linhas | **7 551** linhas em 35 ficheiros, com **66** testes |
+
+⭐⭐ **A correcção que mudou a wave é a primeira linha:** o que o painel guardava não era só um
+canal — era o **vocabulário de rows** de que o CARTÃO se serve. *Ele PINTAVA o `ParamRow`; não o
+definia.* Foi por isso que a mudança de casa foi limpa (zero imports no ficheiro movido) e é por
+isso que apagar a crate sem o mover teria parado o cartão inteiro, que é exactamente o que o
+`CLAUDE.md` §5 avisava por escrito desde 2026-09-07.
+
+### §13.2 — ⛔⛔⛔ O achado que vale mais que a remoção: **TRÊS TECTOS MEDIDOS FICARAM ÓRFÃOS**
+
+O painel não levou só a pintura. Ele levou o **consumidor** de números que gates verdes continuavam
+a afirmar:
+
+| tecto | quem o fazia valer | leitores de produto hoje |
+|---|---|---|
+| `MAX_PARAM_ROWS = 16` | o `.take()` do `paint_rows` **do painel** | **0** |
+| `MAX_ENUM_OPTIONS = 48` | o `.min()` do `rows_paint_kinds` **do painel** | **0** |
+| `INSPECTOR_MAX_H` (foundational) | o painel media contra ele quantas linhas cabiam | **0** |
+
+⚠️⚠️ **E o cartão NÃO herda a pergunta** — isto foi medido antes de cortar, não presumido: ele não
+desenha uma fileira de slots com `.take()`; ele pinta as rows que o snapshot traz, e um selector
+dele **cicla** (`ClickDoes::Cycle(labels.len())`) em vez de expor uma opção por botão. *Não há onde
+truncar, logo não há param nem opção que caia em silêncio.*
+
+⇒ **Um tecto cujo consumidor saiu não protege nada: ele fica a ser um número que gates verdes
+continuam a afirmar sobre o vazio.** É a forma mais cara de cobertura falsa, porque ela cresce —
+cada wave nova soma gates àquele número. Os dois primeiros saíram com os gates que os mediam; o
+terceiro é foundational e fica **NOMEADO com o mecanismo** no `layout.rs`, porque apagá-lo é
+decisão de quem possui aquela fundação.
+
+### §13.3 — ⛔⛔ E o mesmo aconteceu com DOZE IDS, mas eu só o vi à terceira medição
+
+O ficheiro `motion_param_row_ids.rs` (397 linhas) tinha doze ids e os dois tectos. A primeira
+leitura resgatou **três** — as amostras de cor — apoiada numa frase do doc da
+[`ph2d_param_editors::EditorKey`]: *«as AMOSTRAS de cor têm prefixo próprio, e não é arrumação: a
+shell também as deriva»*.
+
+⛔⛔⛔ **A frase era verdadeira quando foi escrita e falsa no dia em que a li.** Ela descrevia os
+dois hospedeiros de então — a row do painel e o cartão. Medido nos SÍTIOS DE CHAMADA, o cartão usa
+`motion-card/swatch/{nó}/{canal}` e `card/editor_swatch/{nó}/{param}`: prefixos **com o nó lá
+dentro**, que é a razão de ele nem precisar de o nó estar seleccionado. *Nenhum `motion_param/*`
+atravessa fronteira nenhuma.*
+
+⇒ o censo por porta deu `produto = 0` para os **doze**, e o ficheiro foi apagado inteiro.
+
+⚠️ **A lei que isto paga, e que esta casa já tem escrita:** *uma ausência — ou uma presença —
+afirmada pela PROSA é um palpite com cara de medição.* Eu li o doc-comment de uma chave em vez de
+`git grep` nos chamadores dela, e construí uma justificação inteira, com gate novo, sobre o palpite.
+O gate teria ficado verde para sempre a medir três ids que ninguém regista.
+
+### §13.4 — O que a remoção de facto encostou, gate a gate
+
+- **`motion_bridge_dock_height_tests.rs`** (555 linhas, 6 testes) — **apagado**: cada teste pintava
+  o painel por `MockPanelHost::with_panel::<MotionParamsPanel>` e media rects. *Um teste que se
+  apaga com o sujeito é o caso certo.*
+- **`motion_bridge_enumcap_tests.rs`** (137 linhas, 3 testes) — **apagado** com o tecto de opções.
+- **`motion_bridge_rowcap_tests.rs`** — cortado a meio: saem os dois gates do tecto e a sonda;
+  **ficam** a ordenação por secções e a integridade da tabela de grupos, que são leis do
+  **snapshot** e nunca foram sobre quem pinta.
+- **`the_census_measures_the_fattest_panel_a_gesture_can_reach`** — perde a metade que comparava
+  contra o censo do tecto; **fica** a que mede que um gesto revela linhas que o estado de fábrica
+  não tem.
+- **`the_channel_picker_fits_the_panels_ceiling`** → renomeado
+  **`the_channel_picker_offers_the_weight_the_fields_write`**. ⚠️ *Um gate cujo nome promete uma
+  propriedade que já não existe é pior que a ausência dele.*
+- **`with_the_side_panel_out_the_card_still_writes`** — **fica inteiro**, e é o gate mais
+  load-bearing da wave: ele é quem prova que truncar o `publish` não parou o cartão. A metade
+  `current_params().is_none()` deixou de ser uma asserção e passou a ser o **compilador** — *uma
+  asserção que se torna trivialmente verdadeira lê-se como cobertura e não é nenhuma*.
+- **`two_cards_of_the_same_type_never_ask_for_the_same_colour_picker`** — a metade *«mesmo com A
+  seleccionado»* virou **estrutural**: o `picker_target_of` deixou de receber o nó seleccionado.
+
+### §13.5 — A ponte de cor perdeu METADE, e o código já a tinha separada
+
+O `motion_bridge_color.rs` tinha, escrito nos próprios comentários, **dois ramos rotulados**: `(a) a
+row do painel` e `(b) uma amostra de cartão`. Saiu o (a), e com ele `seed_color_swatches`,
+`gradient_picker_stop`, `palette_picker_index`, `gradient_params`, `palette_params` e quatro
+argumentos de duas portas (`sel`, `groups`, `grad_params`, `pal_params`).
+
+⭐ **O cartão semeia as amostras dele sozinho** (`register_card_swatches` regista no índice de hits
+**e** escreve a cor, por cartão, a cada pintura) — medido antes de cortar a semeadura do painel.
+
+### §13.6 — Os quatro vermelhos que só a varredura IMPACTADA viu
+
+Nenhum deles vive numa crate que a wave editou, e os quatro são **censos de obsolescência a
+funcionar**:
+
+| gate | era | é |
+|---|---|---|
+| `…never_gives_a_row_label_a_wrap_budget` | `ELIDED_TODAY = 30` | **16** (o painel levava 14 rótulos que cortam) |
+| `every_non_literal_hash_is_named` | uma entrada nomeando `motion_param_row_ids.rs :: fnv_id` | apagada |
+| `build_typed_registry_matches_enabled_features` | 28 painéis | **27** |
+| `the_two_ugly_derived_titles_are_named_here` | *"Motion Params"* na paleta | fora |
+
+⚠️ **O terceiro expôs um defeito anterior:** o contador do painel de params era um `{ n += 1; }`
+**nu**, sem `cfg` — ele tinha perdido a feature dele numa wave anterior e ninguém reparou. *Um
+censo derivado que não consegue explicar uma das suas próprias linhas já não é derivado.*
+
+### §13.7 — E TRÊS vermelhos de clippy severo que eram MEUS, deste ciclo
+
+O `-D warnings` só corre no portão de fecho, e apanhou três coisas que os `cargo check` desta linha
+nunca podiam ver:
+
+1. `#[expect(clippy::cast_sign_loss)]` **incumprido** no `ph2d-node-motion-wave` (W4-bis) — a lente
+   prova o literal não-negativo e a isenção nunca dispara. *Uma isenção que não é usada lê-se como
+   uma cerca a proteger alguma coisa*; virou `usize::try_from`.
+2. `items after a test module` em **três** `pose.rs` das crates de rig (W2) — o módulo de teste
+   vivia a meio, com `const` e funções por baixo.
+3. `empty line after doc comment` no ficheiro movido — um doc-comment que ficou **sem item por
+   baixo** quando as declarações de módulo do hub saíram. *O clippy disse à letra o que a nota
+   dizia: um hub que sobrevive ao seu edifício documenta o vazio.*
+
+### §13.8 — A porta de escape foi APAGADA, e essa é a diferença entre 09-07 e hoje
+
+Em 2026-09-07 o painel foi **desligado** e o `PH2D_MOTION_PANEL=1` trazia-o de volta: um
+interruptor de bissecção honesto, porque a crate existia. Com ela apagada, ele passaria a pôr
+**VISÍVEL** um painel que nenhum pintor conhece.
+
+⇒ `painel_lateral()`, a env e a escrita `panel_visibility["motion_params"]` saíram juntas. *Uma
+porta de escape que já não pode cumprir o que promete é pior que nenhuma*, porque quem a usar lê o
+ecrã inalterado como prova de que o defeito não estava ali.
+
+### §13.9 — Prova de fecho
+
+- `cargo check --workspace --all-targets` — verde, **zero avisos**.
+- `scripts/nextest-impacted.sh` — **15 030** testes, 15 030 verdes (a 1.ª corrida acusou os 4 da §13.6).
+- `cargo clippy --workspace --all-targets -- -D warnings` — verde (a 1.ª corrida acusou os 3 da §13.7).
+- `scripts/censos-da-arvore-combinada.sh` — **87/87**, com o controlo do filtro a `8 de 8`.
+- Contadores partilhados: `PROJECT_SCHEMA`, os três registos de componente e os schemas de documento
+  **intocados** — esta wave não escreve um único número que some entre linhas.
+- Diff: **97 ficheiros, +508 −8 539**.
+
+⏳ **ABERTO e NOMEADO** (nada disto é desta linha):
+- o `INSPECTOR_MAX_H` do `ph2d-editor-core` e o `MOTION_PARAMS_SCROLLBAR_ID` ficam **órfãos com a
+  nota ao lado** — o segundo permanece no livro-razão de propósito, porque *um id retirado ocupa uma
+  linha e um id reusado ocupa duas barras ao mesmo tempo*;
+- o ramo do `dispatch/scroll.rs` que despacha aquele id fica **inerte por construção** (ninguém o
+  regista, logo nenhum `id ==` casa).

@@ -241,7 +241,7 @@ fn does_the_tutorial_table_still_match_the_card() {
             continue;
         };
         for row in &painel.rows {
-            let ph2d_panel_motion_params::ParamRow::Scalar(r) = row else {
+            let crate::ParamRow::Scalar(r) = row else {
                 continue;
             };
             total += 1;

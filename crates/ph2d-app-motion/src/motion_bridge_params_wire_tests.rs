@@ -8,14 +8,14 @@
 
 use super::super::build_params_snapshot;
 use super::{WireFace, wire_face};
+use crate::ParamRow;
 use crate::motion_state::MotionState;
 use ph2d_editor_core::ProjectSettings;
 use ph2d_node_registry::ParamUnit;
-use ph2d_panel_motion_params::ParamRow;
 
 /// A row `Value` do `value.number` selecionado, já com a face aplicada (é o `.in_display`
 /// que o construtor faz no push, então o que sai daqui é o que o artista lê).
-fn value_row(motion: &MotionState) -> ph2d_panel_motion_params::ScalarRow {
+fn value_row(motion: &MotionState) -> crate::ScalarRow {
     let snap = build_params_snapshot(motion, ProjectSettings::default())
         .expect("o `value.number` resolve");
     snap.rows

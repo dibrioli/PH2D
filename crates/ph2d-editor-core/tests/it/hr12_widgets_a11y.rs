@@ -830,10 +830,6 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     // emite o a11y no sítio onde é PINTADO (`rows_paint` e os irmãos), que é o mesmo modelo do
     // `paint_wire.rs` invertido: ali o desenho sem hit, aqui o hit sem desenho.
     (
-        "ph2d-panel-motion-params/src/paint_seed.rs",
-        "semente do store — nao pinta (nem `VectorScene` nem `TextSystem` no escopo); o a11y de cada widget e' emitido onde ele e' pintado",
-    ),
-    (
         "ph2d-panel-motion-graph/src/paint_port_label.rs",
         "pure text drawing — the sockets' AccessKit nodes are registered in hits.rs",
     ),

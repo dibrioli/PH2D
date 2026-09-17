@@ -28,8 +28,8 @@ use ph2d_panel_motion_graph::{ClickDoes, click_does};
 use std::collections::BTreeMap;
 
 /// Como o PAINEL desenha este param — o que se perderia ao fechá-lo.
-fn especie_no_painel(row: &ph2d_panel_motion_params::ParamRow) -> &'static str {
-    use ph2d_panel_motion_params::ParamRow as R;
+fn especie_no_painel(row: &crate::ParamRow) -> &'static str {
+    use crate::ParamRow as R;
     match row {
         R::Scalar(_) => "número",
         R::Color(_) => "AMOSTRA + selector OKLCH",
@@ -175,7 +175,7 @@ fn the_text_typed_on_a_card_reaches_the_panels_text_door() {
     let mut m = MotionState::new();
     let id = m.doc.graph.add_node("motion.expression");
     let _ = drain_intents();
-    let _ = ph2d_panel_motion_params::drain_param_intents();
+    let _ = crate::drain_param_intents();
     push_intent(GraphIntent::SetTextParam {
         node: id.0,
         param: "expr",
@@ -187,11 +187,11 @@ fn the_text_typed_on_a_card_reaches_the_panels_text_door() {
         &mut ph2d_editor_core::ToastQueue::default(),
         &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
-    let saiu = ph2d_panel_motion_params::drain_param_intents();
+    let saiu = crate::drain_param_intents();
     assert!(
         saiu.iter().any(|i| matches!(
             i,
-            ph2d_panel_motion_params::MotionParamIntent::SetTextParam { node, param, value }
+            crate::MotionParamIntent::SetTextParam { node, param, value }
                 if *node == id.0 && *param == "expr" && value == "sin(t)"
         )),
         "o texto do cartao nao chegou a` porta do painel: {saiu:?}"
@@ -217,7 +217,7 @@ fn the_cards_file_click_reaches_the_same_door_the_panel_row_uses() {
     let mut m = MotionState::new();
     let id = m.doc.graph.add_node("source.table");
     let _ = drain_intents();
-    let _ = ph2d_panel_motion_params::drain_param_intents();
+    let _ = crate::drain_param_intents();
     push_intent(GraphIntent::PickFile {
         node: id.0,
         param: "file",
@@ -228,11 +228,11 @@ fn the_cards_file_click_reaches_the_same_door_the_panel_row_uses() {
         &mut ph2d_editor_core::ToastQueue::default(),
         &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
-    let saiu = ph2d_panel_motion_params::drain_param_intents();
+    let saiu = crate::drain_param_intents();
     assert!(
         saiu.iter().any(|i| matches!(
             i,
-            ph2d_panel_motion_params::MotionParamIntent::PickFile { node, param }
+            crate::MotionParamIntent::PickFile { node, param }
                 if *node == id.0 && *param == "file"
         )),
         "o pedido do cartao nao chegou a` porta do painel: {saiu:?}"
@@ -249,11 +249,16 @@ fn the_cards_file_click_reaches_the_same_door_the_panel_row_uses() {
 ///
 /// As duas metades:
 /// 1. os ids de dois nós do mesmo tipo **diferem**;
-/// 2. com o selector apontado ao cartão de **B**, a porta devolve **B** — mesmo com **A**
-///    selecionado. *Uma amostra de cartão não precisa de selecionar o nó para o editar.*
+/// 2. com o selector apontado ao cartão de **B**, a porta devolve **B** — e ela nem sabe quem
+///    está seleccionado. *Uma amostra de cartão não precisa de selecionar o nó para o editar.*
 ///
-/// FALSIFICADO por o `card_swatch_id` ignorar o nó (1 falha) ou por a porta voltar a presumir o
-/// nó selecionado (2 falha).
+/// ⭐⭐ **A segunda metade era «mesmo com A seleccionado» e virou ESTRUTURAL** (doc 114 §13): o
+/// ramo que lia a selecção era o da row do painel, e saiu com ele ⇒ o `picker_target_of` deixou
+/// de receber o nó seleccionado. *Uma propriedade que passa a não ser exprimível é mais forte
+/// que o gate que a vigiava* — e o gate fica, porque a metade 1 e a resolução por id continuam
+/// a ser falsificáveis.
+///
+/// FALSIFICADO por o `card_swatch_id` ignorar o nó (1 e 2 falham juntas).
 #[test]
 fn two_cards_of_the_same_type_never_ask_for_the_same_colour_picker() {
     use super::super::color::{card_swatch_id, picker_target_of};
@@ -271,7 +276,7 @@ fn two_cards_of_the_same_type_never_ask_for_the_same_colour_picker() {
     assert!(!grupos.is_empty(), "o `motion.tint` tem um grupo de cor");
     let mut store = ph2d_editor_core::interaction::WidgetStore::default();
     store.set_picker_target(Some(idb));
-    let alvo = picker_target_of(&m, Some(a), &grupos, &store);
+    let alvo = picker_target_of(&m, &store);
     assert_eq!(
         alvo.map(|(n, _)| n),
         Some(b),
@@ -344,7 +349,7 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
 
     let clique = |m: &mut MotionState, id: ph2d_nodegraph::graph::NodeId| -> Option<String> {
         let _ = drain_intents();
-        let _ = ph2d_panel_motion_params::drain_param_intents();
+        let _ = crate::drain_param_intents();
         push_intent(GraphIntent::StepChoice {
             node: id.0,
             param: "path",
@@ -356,12 +361,10 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
             &mut ph2d_editor_core::ToastQueue::default(),
             &mut ph2d_editor_core::screens::layout::CenterSplit::None,
         );
-        ph2d_panel_motion_params::drain_param_intents()
+        crate::drain_param_intents()
             .into_iter()
             .find_map(|i| match i {
-                ph2d_panel_motion_params::MotionParamIntent::SetTextParam { value, .. } => {
-                    Some(value)
-                }
+                crate::MotionParamIntent::SetTextParam { value, .. } => Some(value),
                 _ => None,
             })
     };

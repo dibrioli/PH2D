@@ -498,13 +498,13 @@ fn forward_edges(g: &Graph, node: NodeId) -> Vec<Edge> {
         .collect()
 }
 
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_heal_tests.rs"]
 mod tests;
 
 // A SEGUNDA espécie de diagnóstico, em arquivo próprio: os gates dela BOMBEIAM
 // antes de perguntar (a resposta só existe depois de um cook), e o irmão acima está
 // a 569 das 600 linhas do teto.
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_unresolved_tests.rs"]
 mod unresolved_tests;

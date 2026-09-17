@@ -172,18 +172,6 @@ const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
         "ids por-elemento do grafo (portas, fios, divisória) — cópia da lei sem o `0 → 1`; o espaço é o do grafo",
     ),
     (
-        "crates/ph2d-panel-motion-params/src/snapshot_ids.rs",
-        "fnv_id",
-        Especie::FnvAMao,
-        "ids por-row do painel de params (o mesmo esquema do grafo, com prefixo próprio)",
-    ),
-    (
-        "crates/ph2d-panel-motion-params/src/rows_paint_sections.rs",
-        "section_id",
-        Especie::FnvAMao,
-        "cabeçalho de secção do painel de params = FNV de `motion_param/section/<título>`",
-    ),
-    (
         "crates/ph2d-param-editors/src/lib.rs",
         "fnv_id",
         Especie::FnvAMao,

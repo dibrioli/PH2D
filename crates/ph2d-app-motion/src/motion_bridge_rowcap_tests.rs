@@ -1,139 +1,25 @@
-//! **Todo param de todo nó CHEGA ao painel** — o censo do teto de linhas (doc 88, B3).
+//! **As SEÇÕES de um nó chegam ORDENADAS, e cada uma nomeia um param que ele declara** — o que
+//! sobra do censo do tecto de linhas (doc 88 B3) depois de o painel lateral sair (doc 114 §13).
 //!
-//! Irmão do `range_tests` (a ESCALA de um valor) e do `unit_tests` (a UNIDADE dele): este mede
-//! se o valor **aparece**. Um param acima do `MAX_PARAM_ROWS` não é desenhado nem registrado —
-//! o `.take()` do `paint_rows` o descarta —, então ele existe no modelo, o cook o lê, e o
-//! artista não tem gesto nenhum que o alcance. É a falha silenciosa que as quatro condições de
-//! UI proíbem, e a única testemunha possível é um censo sobre o registry inteiro: nenhum gate
-//! por-nó a veria, porque cada um usa a fixture do seu próprio nó.
+//! ⛔⛔ **O TECTO SAIU DAQUI porque o consumidor dele saiu do app.** Este ficheiro tinha dois
+//! gates e uma sonda sobre o `MAX_PARAM_ROWS`, e a falha que eles vigiavam era o `.take()` do
+//! `paint_rows` **do painel** a descartar em silêncio a row acima do tecto. Com a pintura fora,
+//! o censo por porta dá **zero** leitores de produto para aquele número na workspace inteira: *um
+//! tecto cujo consumidor saiu não protege nada — ele fica a ser um número que gates verdes
+//! continuam a afirmar sobre o vazio*, que é a forma mais cara de cobertura falsa.
 //!
-//! ⚠️ O teto é um recurso de verdade — o `populate` do painel registra **21 widgets por slot**
-//! —, então ele não pode simplesmente sumir; o que ele pode é ser **medido** (§0). A sonda
-//! abaixo imprime o censo; o gate o mantém honesto.
+//! ⚠️ **E o cartão não herda a pergunta**, o que foi medido antes de cortar e não presumido: ele
+//! não desenha uma fileira de slots com `.take()` — ele pinta as rows que o snapshot traz, e um
+//! selector dele **cicla** (`ClickDoes::Cycle(labels.len())`) em vez de expor uma opção por
+//! botão. Não há onde truncar, logo não há param nem opção que caia em silêncio.
+//!
+//! ⭐ **O que fica é do SNAPSHOT, e o snapshot é do cartão:** a ordenação por grupo e a
+//! integridade da tabela de secções. Elas nunca foram sobre quem pinta — são sobre o que a
+//! ponte entrega —, e é por isso que sobrevivem à morte do pintor.
 
 use super::params::build_params_snapshot;
 use crate::motion_state::MotionState;
 use ph2d_editor_core::ProjectSettings;
-use ph2d_panel_motion_params::MAX_PARAM_ROWS;
-
-/// Quantas linhas de painel cada tipo de nó do registry produz, do maior para o menor.
-///
-/// ⚠️ Conta as linhas do SNAPSHOT, não os `ParamSpec` do manifesto: um nó emite também as
-/// linhas de text param (Curve / Gradient / Palette / Text / Source / Channels) **antes** do
-/// laço do manifesto, e é a soma que disputa os slots. Contar o manifesto responderia a outra
-/// pergunta e reportaria um teto folgado demais.
-fn row_census() -> Vec<(&'static str, usize)> {
-    let mut motion = MotionState::new();
-    let types: Vec<&'static str> = motion.registry.manifests().map(|m| m.name).collect();
-    let mut census: Vec<(&'static str, usize)> = types
-        .into_iter()
-        .map(|ty| {
-            let node = motion.doc.graph.add_node(ty);
-            // ⛔⛔ **ACORDA OS GATES DE LIMIAR ANTES DE CONTAR** (doc 96 §4.5).
-            //
-            // Um `ParamGateAbove` esconde enquanto a grandeza que o decide está em zero — e um
-            // nó recém-criado tem TODOS os params no default. O censo media logo a seguir ao
-            // `add_node` e por isso contava o `source.lsystem` em **32** linhas; **um gesto de
-            // slider** (`Tropism` fora do zero) revela a 33.ª, que é o `MAX_PARAM_ROWS`
-            // **exacto**. ⇒ a folga real era **ZERO** e o censo reportava `1`.
-            //
-            // ⚠️ *Um censo que mede o estado de fábrica mede o painel mais MAGRO que aquele nó
-            // consegue ter* — e o teto existe para o mais GORDO. Empurrar cada `when` de limiar
-            // um passo acima do limiar é o que torna a contagem a do pior caso alcançável.
-            for g in motion
-                .registry
-                .param_gates_above(
-                    motion
-                        .doc
-                        .graph
-                        .node(node)
-                        .map_or_else(|| unreachable!("acabou de ser criado"), |i| i.type_id()),
-                )
-                .into_iter()
-                .flatten()
-            {
-                motion.doc.graph.set_param(node, g.when, g.above + 1.0);
-            }
-            ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
-            let n = build_params_snapshot(&motion, ProjectSettings::default())
-                .map_or(0, |s| s.rows.len());
-            (ty, n)
-        })
-        .collect();
-    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
-    census.sort_by_key(|&(_, n)| std::cmp::Reverse(n));
-    census
-}
-
-/// **Nenhum param fica fora da tela.**
-///
-/// Nasceu VERMELHO contra o teto de 8 que shipava: o `field.remap` produz linhas acima dele, e
-/// as excedentes eram descartadas em silêncio. A mutação que o prova é baixar
-/// `MAX_PARAM_ROWS` de volta — o gate nomeia o nó e a contagem, em vez de dizer só "falhou".
-#[test]
-fn the_panel_shows_every_param_of_every_node() {
-    let census = row_census();
-    let over: Vec<String> = census
-        .iter()
-        .filter(|(_, n)| *n > MAX_PARAM_ROWS)
-        .map(|(ty, n)| format!("{ty} ({n} linhas)"))
-        .collect();
-    assert!(
-        over.is_empty(),
-        "estes nós têm mais linhas que MAX_PARAM_ROWS ({MAX_PARAM_ROWS}), e o excedente é \
-         descartado pelo `.take()` do paint_rows — o param existe e o artista não o alcança: \
-         {over:?}"
-    );
-}
-
-/// **E o teto não é folgado a ponto de não medir nada.**
-///
-/// A metade oposta, e ela não é cerimônia: sem isto, "conserte o gate acima" tem uma resposta
-/// trivial e errada — pôr o teto em 256 e pagar 5376 registros de widget no `populate` por um
-/// número que ninguém mediu. O teto é o pior caso medido mais folga de uma família; se o censo
-/// cair muito abaixo dele, é sinal de que ele foi escolhido em vez de medido.
-#[test]
-fn the_row_cap_is_measured_not_guessed() {
-    let census = row_census();
-    let worst = census.first().copied().expect("o registry não é vazio");
-    assert!(
-        worst.1 <= MAX_PARAM_ROWS,
-        "o pior nó ({} com {} linhas) não cabe no teto {MAX_PARAM_ROWS}",
-        worst.0,
-        worst.1
-    );
-    assert!(
-        MAX_PARAM_ROWS <= worst.1 * 2,
-        "o teto {MAX_PARAM_ROWS} é mais que o dobro do pior nó medido ({} com {} linhas) — \
-         cada slot custa 21 registros de widget no populate, então isto é orçamento gasto \
-         num número que ninguém mediu",
-        worst.0,
-        worst.1
-    );
-}
-
-/// A SONDA: imprime o censo inteiro, para o número do teto sair de uma medição.
-/// `cargo test -p ph2d-app-motion measure_the_param_row_census -- --ignored --nocapture`
-#[test]
-#[ignore = "sonda de medição, não gate"]
-fn measure_the_param_row_census() {
-    let census = row_census();
-    println!("\n=== LINHAS DE PAINEL POR NÓ (teto atual: {MAX_PARAM_ROWS}) ===");
-    for (ty, n) in census.iter().take(20) {
-        let flag = if *n > MAX_PARAM_ROWS {
-            "  <-- CORTADO"
-        } else {
-            ""
-        };
-        println!("{n:3}  {ty}{flag}");
-    }
-    let over = census.iter().filter(|(_, n)| *n > MAX_PARAM_ROWS).count();
-    println!(
-        "--- {} tipos no total, {} acima do teto\n",
-        census.len(),
-        over
-    );
-}
 
 /// **As SEÇÕES agrupam as rows, e a ordem é a que a tabela declara.**
 ///
@@ -262,8 +148,10 @@ fn every_param_group_entry_names_a_param_the_node_declares() {
 /// **E os nós que a medição nomeou de fato entregam seções.**
 ///
 /// A metade oposta do gate acima: sem ela, "conserte os nomes" tem a resposta trivial de
-/// apagar as tabelas. A lista sai da sonda `measure_the_param_row_census` — são os nós de 9+
-/// linhas, os que a parede de sliders de fato machuca.
+/// apagar as tabelas. ⚠️ A lista foi colhida de uma sonda de contagem de linhas que SAIU com o
+/// painel lateral (doc 114 §13) — são os nós de 9+ linhas, os que a parede de sliders de facto
+/// machuca. *A lista fica porque o que ela nomeia é o produto; o que morreu foi a ferramenta que
+/// a colheu, e quem a quiser refazer volta a contar `rows.len()` sobre o snapshot.*
 #[test]
 fn the_nodes_the_census_named_all_ship_sections() {
     let mut motion = MotionState::new();
@@ -342,21 +230,21 @@ fn the_oscillator_offers_only_the_time_ruler_it_uses() {
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
 
-/// ⛔⛔ **O CENSO MEDE O PAINEL MAIS GORDO QUE UM GESTO ALCANÇA, e não o de fábrica.**
+/// ⛔⛔ **UM GESTO REVELA LINHAS QUE O ESTADO DE FÁBRICA NÃO TEM** — e medir o painel de fábrica
+/// é medir o mais MAGRO.
 ///
-/// Auditoria de seis lentes, doc 96 §4.5. O [`row_census`] media logo a seguir ao `add_node`, e
-/// ali **todos** os params estão no default — logo todo `ParamGateAbove` está a esconder. O
-/// `source.lsystem` contava **32** linhas; **um gesto de slider** (`Tropism` fora do zero)
-/// revelava a 33.ª, que era o `MAX_PARAM_ROWS` **exacto**: a folga real era **zero** e o censo
-/// reportava `1`.
+/// Auditoria de seis lentes, doc 96 §4.5. Logo a seguir a um `add_node` **todos** os params
+/// estão no default, logo todo `ParamGateAbove` está a esconder: o `source.lsystem` entregava
+/// **32** linhas, e um gesto de slider (`Tropism` fora do zero) revelava a 33.ª.
 ///
-/// ⚠️⚠️ **E o defeito seguinte seria SILENCIOSO:** o `.take(MAX_PARAM_ROWS)` do pintor descarta
-/// a linha excedente sem dizer nada, e o gate que devia acusar mede o estado de fábrica — onde
-/// ela ainda cabe.
+/// ⚠️⚠️ **A SEGUNDA METADE deste gate SAIU com o painel lateral** (doc 114 §13): ela afirmava
+/// que o censo do tecto reportava o número GORDO e não o magro, e aquele censo existia para
+/// alimentar o `MAX_PARAM_ROWS`, cujo consumidor — o `.take()` do pintor — já não existe.
+/// *Uma metade que perde o sujeito sai; a que mede o SNAPSHOT fica*, porque o cartão lê
+/// exactamente as mesmas rows e a pergunta *«este param é alcançável?»* continua a ser dele.
 ///
-/// ⚠️ **Sem este gate, a cura do censo é infalsificável:** acordar os limiares mudou o número
-/// (`30 → 31`) e nenhuma asserção dependia dele. *Uma correcção que nenhum gate lê é uma
-/// declaração com um número mais bonito.*
+/// ⚠️ O que fica é falsificável na mesma: a mutação é não acordar os limiares no `contar`, e o
+/// gate lê `fabrica == gesto` com o número dos dois lados.
 #[test]
 fn the_census_measures_the_fattest_panel_a_gesture_can_reach() {
     let mut motion = MotionState::new();
@@ -398,14 +286,5 @@ fn the_census_measures_the_fattest_panel_a_gesture_can_reach() {
         gesto > fabrica,
         "acordar os {acima} limiar(es) de `{ty}` não revelou linha nenhuma ({fabrica} contra \
          {gesto}) — o censo está a medir o painel de fábrica, que é o mais MAGRO"
-    );
-    // E o censo do produto tem de reportar o número GORDO, não o magro.
-    let do_censo = row_census()
-        .into_iter()
-        .find(|(n, _)| *n == ty)
-        .map_or(0, |(_, n)| n);
-    assert_eq!(
-        do_censo, gesto,
-        "o censo reporta {do_censo} e o pior caso alcançável é {gesto}"
     );
 }

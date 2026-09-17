@@ -75,9 +75,7 @@ fn a_driven_row_names_the_card_that_drives_it() {
             .rows
             .iter()
             .find_map(|r| match r {
-                ph2d_panel_motion_params::ParamRow::Scalar(s) if s.name == "strength" => {
-                    Some(s.driven_by.clone())
-                }
+                crate::ParamRow::Scalar(s) if s.name == "strength" => Some(s.driven_by.clone()),
                 _ => None,
             })
             .expect("a row do param dirigido existe")
@@ -109,22 +107,25 @@ fn a_driven_row_names_the_card_that_drives_it() {
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
 
-/// **O picker de canais CABE no teto do painel — e o teto não é o que o doc dizia.**
+/// **O picker de canais OFERECE o peso que as `field.*` escrevem.**
 ///
-/// O doc-comment do `READ_CHANNELS` afirmava *"seven of them + Custom = 8 = the segmented
-/// selector's ceiling"*. O teto real é `MAX_ENUM_OPTIONS = 48` (DERIVADO, com o
-/// `CHANNELS_EXTRA_BASE` começando exatamente onde ele acaba) e a fileira **quebra em quatro
-/// colunas**, crescendo a própria altura — então o 8 era um palpite sobre LARGURA vestindo a
-/// palavra *teto*, e o canal `Falloff` (2026-08-09) o teria "estourado" sem nada acontecer.
+/// ⛔⛔ **Este gate chamava-se `…fits_the_panels_ceiling` e o tecto SAIU com o painel lateral**
+/// (doc 114 §13). A história vale a pena porque explica porque é que o tecto nunca foi o que o
+/// doc dizia: o `READ_CHANNELS` afirmava *"seven of them + Custom = 8 = the segmented selector's
+/// ceiling"* e o número real era `48`, com a fileira a **quebrar em quatro colunas** — *o 8 era
+/// um palpite sobre LARGURA vestindo a palavra tecto*, e o canal `Falloff` (2026-08-09) tê-lo-ia
+/// "estourado" sem nada acontecer.
 ///
-/// ⚠️ **Este gate mora AQUI porque é o único lugar onde as duas metades se encontram:** a
-/// tabela vive na crate do nó (que não conhece painel) e o teto vive na crate do painel (que
-/// não conhece registry). Ele afirma a PROPRIEDADE — *toda opção pintada tem id próprio* —
-/// e não a contagem de hoje, então um canal novo passa e o quadragésimo nono reprova, que é
-/// exatamente onde a decisão volta a ser necessária.
+/// ⚠️⚠️ **E hoje não há tecto nenhum a afirmar:** o cartão não desenha uma fileira de segmentos,
+/// ele **cicla** o selector, logo não existe o `.min()` que descartava a opção excedente. *Um
+/// gate cujo nome promete uma propriedade que já não existe é pior que a ausência dele* — por
+/// isso ele mudou de nome com a metade que ficou.
+///
+/// ⭐ O que fica é a lei do SNAPSHOT, e ela é do cartão: o peso é **OFERECIDO** na lista, não
+/// apenas legível se o artista adivinhar e digitar o nome da coluna (doc 89, folha 12).
 #[test]
-fn the_channel_picker_fits_the_panels_ceiling() {
-    use ph2d_panel_motion_params::{MAX_ENUM_OPTIONS, ParamRow};
+fn the_channel_picker_offers_the_weight_the_fields_write() {
+    use crate::ParamRow;
     let mut motion = MotionState::new();
     let attr = motion.doc.graph.add_node("value.attribute");
     ph2d_panel_motion_graph::set_graph_selection(vec![attr.0]);
@@ -147,15 +148,6 @@ fn the_channel_picker_fits_the_panels_ceiling() {
             .any(|(l, c, _)| *l == "Falloff" && *c == "falloff"),
         "o picker oferece o peso que as `field.*` escrevem: {:?}",
         ch.channels.iter().map(|(l, ..)| *l).collect::<Vec<_>>()
-    );
-    // A propriedade: cada canal + o "Custom…" final ganha um botão com id próprio. Acima do
-    // teto o `.min(MAX_ENUM_OPTIONS)` do painter simplesmente PARA de desenhar — a opção
-    // excedente nasceria invisível e inalcançável, em silêncio.
-    let painted = ch.channels.len() + 1; // os canais curados + o "Custom…" final
-    assert!(
-        painted <= MAX_ENUM_OPTIONS,
-        "{} canais + Custom = {painted} passam do teto de {MAX_ENUM_OPTIONS} — o excedente não é pintado",
-        ch.channels.len()
     );
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }

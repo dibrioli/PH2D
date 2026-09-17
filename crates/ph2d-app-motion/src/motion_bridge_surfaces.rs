@@ -7,16 +7,6 @@
 
 use super::{CenterSplit, HeroScreen, LAST_ACTIVE};
 
-/// ⭐ **O painel lateral de params foi pedido de volta?** (`PH2D_MOTION_PANEL=1`).
-///
-/// ⚠️ **Lida UMA vez** — uma env var lida por quadro é uma decisão que pode mudar a meio de um
-/// gesto, e o dock aparecia e desaparecia debaixo do dedo.
-pub fn painel_lateral() -> bool {
-    use std::sync::OnceLock;
-    static PEDIDO: OnceLock<bool> = OnceLock::new();
-    *PEDIDO.get_or_init(|| std::env::var("PH2D_MOTION_PANEL").is_ok_and(|v| v != "0"))
-}
-
 /// A metade de SUPERFÍCIE do `dispatch` — chamada por quadro, mas quase tudo aqui é
 /// edge-triggered na activação.
 pub(super) fn open_and_close(
@@ -39,12 +29,12 @@ pub(super) fn open_and_close(
     // (`CLAUDE.md` §5.0): o controlo continua declarado, continua desenhado, e simplesmente não
     // abre.
     //
-    // ⚠️ **E o painel não foi APAGADO, foi DESLIGADO** — `PH2D_MOTION_PANEL=1` traz-no de volta.
-    // A crate continua a ser a casa das rows que a shell constrói (o gerador de tutoriais, os
-    // params de um subgrafo, a leitura de volta do selector), e um smoke que precise de comparar
-    // as duas superfícies lado a lado não pode depender de uma recompilação.
-    hero.panel_visibility
-        .insert("motion_params", motion_active && painel_lateral());
+    // A linha que escrevia `panel_visibility["motion_params"]` SAIU com ele, junto com a porta
+    // que a guardava e a variável de ambiente dela (doc 114 §13). Entre 09-07 e 09-17 aquilo era
+    // um interruptor de bissecção honesto — o painel existia, desligado. Com a crate apagada,
+    // ele passaria a pôr VISÍVEL um painel que nenhum pintor conhece: *uma porta de escape que
+    // já não pode cumprir o que promete é pior que nenhuma*, porque quem a usar lê o ecrã
+    // inalterado como prova de que o defeito não estava ali.
 
     // Graph keyboard focus follows the cursor, re-evaluated EVERY frame (not just
     // on move) so a cursor that stopped over the graph before the panel published
@@ -74,9 +64,6 @@ pub(super) fn open_and_close(
             // ⚠️ **E a ausência é LIDA:** o gate `a_layout_names_the_inspector_exactly_when_…`
             // varre as pontes à procura desta escrita e exige que o layout do `motion` passe a
             // NOMEAR o inspector — o que ele faz agora. As duas metades não podem divergir.
-            //
-            // ⚠️ Com `PH2D_MOTION_PANEL=1` o painel volta e os dois partilham a coluna
-            // (empilhados). É uma porta de bissecção, não o produto.
             if motion_active {
                 // Split into scene ⟂ graph. Keep any orientation the user already
                 // chose (SplitH/SplitV chips); default to Cavalry-style horizontal.

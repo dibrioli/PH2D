@@ -38,18 +38,17 @@ use ph2d_editor_core::{HeroScreen, ToastQueue, ToolId, ToolRegistry};
 #[path = "motion_bridge_gpu.rs"]
 pub mod gpu;
 
-#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[cfg(feature = "panel-motion-graph")]
 /// **O que a ferramenta ABRE e FECHA** — a visibilidade dos painéis, a divisão do centro e o
 /// relógio que arranca. Irmão por RESPONSABILIDADE (HR-18): este ficheiro é o laço por quadro,
 /// aquele é *o que muda quando a ferramenta entra e sai*.
 #[path = "motion_bridge_surfaces.rs"]
 mod surfaces;
-pub use surfaces::painel_lateral;
 
 #[path = "motion_bridge_params.rs"]
 pub mod params;
 
-#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_color.rs"]
 mod color;
 
@@ -181,7 +180,7 @@ use signals::signal_nodes;
 mod intents;
 
 /// Os 22 módulos de TESTE desta membrana — declarados num irmão pelo teto de LOC (HR-18).
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_test_mods.rs"]
 mod test_mods;
 #[cfg(feature = "panel-motion-graph")]
@@ -296,7 +295,6 @@ pub fn dispatch(
             readout::stamp(motion, tapped.as_ref(), &mut snap);
             // ⭐ **Os params de cada cartão** (ciclo 1, doc 103): o que ele CONTROLA, pela
             // mesma porta de visibilidade que o painel usa. Antes do `fold`, como o readout.
-            #[cfg(feature = "panel-motion-params")]
             params::card::stamp_card_params(motion, hero.project, &mut snap);
             // **The fold** (doc 57), LAST: everything above published the whole flat
             // graph, and this cuts it down to the level the artist is standing in —
@@ -320,7 +318,7 @@ pub fn dispatch(
     // ── Params panel (M1.P1) — published by the params bridge, kept out of the
     // dispatch so this file stays under the shell LOC cap. Needs BOTH panels:
     // the selection comes from the graph, the rows go to params. ──────────────
-    #[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+    #[cfg(feature = "panel-motion-graph")]
     params::publish(motion, &mut hero.store, motion_active, hero.project, toasts);
 
     if !motion_active {

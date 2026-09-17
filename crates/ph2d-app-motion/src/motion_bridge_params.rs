@@ -1,20 +1,23 @@
-//! Params-panel side of the Motion bridge (split out of `motion_bridge.rs` to
-//! keep each file under the HR-18 LOC cap). Owns the selected node's param edits
-//! and the params-panel snapshot: scalar sliders, named enum / checkbox rows,
-//! and the OKLCH colour-swatch authoring (the sRGB↔linear boundary lives here).
+//! **O lado dos PARAMS da ponte do Motion** — as edições de param do nó em mãos e o snapshot de
+//! rows de que o CARTÃO se serve: sliders escalares, rows de enum e de caixa, e a autoria da
+//! amostra de cor em OKLCH (a fronteira sRGB↔linear mora aqui).
 //!
-//! The whole module is gated on both Motion panels — its parent declares it with
-//! the same `all(panel-motion-graph, panel-motion-params)` cfg — so the helpers
-//! carry no per-fn gate. Entry points are `pub(super)` for `dispatch`; the snapshot
-//! builder is `pub` so a sibling shape test can drive it (ADR-0154 gates).
+//! ⚠️ **Ele chamava-se «o lado do painel de params» e o painel SAIU** (doc 114 §13, ordem do
+//! dono): o módulo era gateado em `all(panel-motion-graph, panel-motion-params)` e hoje só a
+//! primeira metade existe. ⭐ O que isso torna visível é que **o snapshot nunca foi do painel** —
+//! ele é o vocabulário de rows que a ponte produz, e o painel era apenas UM dos hospedeiros que
+//! o pintava; o outro, o cartão, é o que fica.
+//!
+//! Os pontos de entrada são `pub(super)` para o `dispatch`; o construtor do snapshot é `pub`
+//! para um teste irmão de forma o poder conduzir (gates do ADR-0154).
 
 use super::color::{color_groups, linear_rgba_to_srgb8};
+use crate::RowDisplay;
 use crate::motion_state::MotionState;
 /// O vocabulário de unidades (o que o número de um param É). O `display_face` — a única
 /// conversão — mudou-se para `params_wire`, que é onde a pergunta *"em que face esta row se
 /// lê?"* passou a viver inteira; aqui fica só quem a consome.
 use ph2d_node_registry::ParamUnit;
-use ph2d_panel_motion_params::RowDisplay;
 
 /// The peek/stream-reading helpers (the live number a wire drives, the live columns
 /// the Custom picker offers) — a child so `motion_bridge.rs` stays under the cap.
@@ -165,7 +168,6 @@ pub(super) fn publish(
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     if !motion_active {
-        ph2d_panel_motion_params::set_current_params(None);
         return;
     }
     // Apply this frame's edits (colour picks + scalar sliders) BEFORE rebuilding, so the
@@ -175,19 +177,17 @@ pub(super) fn publish(
     // DRENA as intenções de param — e desde o ciclo 1 a maioria delas vem do CARTÃO, traduzida
     // pelo `apply_graph_intents`. Saltá-lo com o painel desligado pararia o cartão inteiro.
     apply_param_edits(motion, store, toasts);
-    // ⭐ **O que se constrói para NINGUÉM ver não se constrói.** Com o painel fora, a única
-    // leitora do snapshot é a row dele — e ele é a construção cara desta função (uma `String`
-    // por row do nó selecionado, por quadro). Os gates e o gerador de tutoriais chamam o
-    // `build_params_snapshot` directamente, então continuam a medir o mesmo produto.
-    if !super::painel_lateral() {
-        ph2d_panel_motion_params::set_current_params(None);
-        return;
-    }
-    let snap = build_params_snapshot(motion, project);
-    if let Some(s) = &snap {
-        super::color::seed_color_swatches(store, s);
-    }
-    ph2d_panel_motion_params::set_current_params(snap);
+    // ⭐⭐ **E ACABA AQUI — a segunda metade desta função saiu com o painel lateral** (doc 114 §13).
+    //
+    // Ela construía o `ParamsSnapshot` e publicava-o num canal que só a row daquele painel lia.
+    // ⚠️ **Desde 2026-09-07 esse ramo já não corria** (o `painel_lateral()` guardava-o e o painel
+    // nasce desligado), então apagá-lo não muda um bit do que o artista vê — o que ele apaga é o
+    // DESVIO e o canal, não trabalho que alguém via.
+    //
+    // ⭐ **O `build_params_snapshot` FICA**, e com quatro consumidores vivos: o censo do cartão, as
+    // secções, a sonda da saída do painel e o gerador da tabela dos TUTORIAIS. *O vocabulário
+    // sobreviveu ao pintor* — é isso que a §13 do doc mede.
+    let _ = project;
 }
 
 /// O caminho REAL do quadro, para o gate que mede a saída do painel — ele tem de chamar o
@@ -214,7 +214,7 @@ pub fn selected_motion_node() -> Option<u32> {
     }
 }
 
-/// Build the selected node's [`ParamsSnapshot`](ph2d_panel_motion_params::ParamsSnapshot)
+/// Build the selected node's [`ParamsSnapshot`](crate::ParamsSnapshot)
 /// (M1.P1): the display title + one row per declared `ParamSpec`, pairing each
 /// with its `ParamUiHint` (range / widget / label) and its current value (the
 /// per-instance override, else the manifest default). `None` unless exactly one
@@ -222,13 +222,13 @@ pub fn selected_motion_node() -> Option<u32> {
 pub fn build_params_snapshot(
     motion: &MotionState,
     project: ph2d_editor_core::ProjectSettings,
-) -> Option<ph2d_panel_motion_params::ParamsSnapshot> {
+) -> Option<crate::ParamsSnapshot> {
+    use crate::{
+        AngleRow, ColorRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, SeedRow, ToggleRow,
+    };
     use ph2d_node_registry::ParamWidget;
     use ph2d_nodegraph::cook::OpResolver;
     use ph2d_nodegraph::graph::NodeId;
-    use ph2d_panel_motion_params::{
-        AngleRow, ColorRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, SeedRow, ToggleRow,
-    };
 
     // The params panel shows the properties of whatever ONE subject is selected.
     // A backdrop is not a node (no manifest, never cooks), so its rows are built by

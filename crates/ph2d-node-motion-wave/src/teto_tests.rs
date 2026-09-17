@@ -67,8 +67,11 @@ fn o_teto_digitavel_alcanca_o_clamp_e_o_slider_fica_abaixo() {
 /// inteira; nenhuma delas sozinha.
 #[test]
 fn a_lei_do_campo_escala_ate_ao_tecto() {
-    #[expect(clippy::cast_sign_loss, reason = "MAX_SIDE e' positivo por construcao")]
-    let lado = MAX_SIDE as usize;
+    // ⚠️ Aqui havia um `#[expect(clippy::cast_sign_loss)]` sobre um `as usize`, e o clippy severo
+    // do portão de fecho acusou-o de **INCUMPRIDO**: o `MAX_SIDE` é um literal, logo a lente
+    // prova-o não-negativo e nunca dispara. *Uma isenção que não é usada lê-se como uma cerca a
+    // proteger alguma coisa*, e o que ela protegia era a ausência de uma conversão honesta.
+    let lado = usize::try_from(MAX_SIDE).expect("o tecto do lado e' positivo e cabe num usize");
     let p = params(lado, lado, 0.35, 0.02);
     let saida = simulate(None, &Stream::new(0), &[], 0.0, &p);
     assert_eq!(

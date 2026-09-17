@@ -169,10 +169,10 @@ mod tests {
     /// PRODUTO (o snapshot que o painel pinta), nunca pela tabela de gates.
     #[test]
     fn the_second_axis_row_appears_only_when_the_link_is_off() {
+        use crate::ParamRow;
         use crate::motion_bridge::params::build_params_snapshot;
         use crate::motion_state::MotionState;
         use ph2d_editor_core::ProjectSettings;
-        use ph2d_panel_motion_params::ParamRow;
 
         let mut motion = MotionState::new();
         let (_, heroes) = chain(&mut motion.doc.graph);

@@ -5,7 +5,7 @@
 //! a pergunta desenha: lá fica *que rows este nó tem*, aqui *como elas se agrupam*.
 
 use super::*;
-use ph2d_panel_motion_params::ParamRow;
+use crate::ParamRow;
 use std::collections::BTreeSet;
 
 /// Reordena as rows por GRUPO e devolve `(rows, onde cada seção começa, quais nascem

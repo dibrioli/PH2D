@@ -88,12 +88,7 @@ fn the_two_ugly_derived_titles_are_named_here() {
         .collect();
     println!("[palette-catalog] títulos: {labels:?}");
     // Nomes derivados que ESTE build regista — não a árvore inteira (ver o gate acima).
-    for pretty in [
-        "Color Equalization",
-        "Equalize Sizes",
-        "Grid Snap",
-        "Motion Params",
-    ] {
+    for pretty in ["Color Equalization", "Equalize Sizes", "Grid Snap"] {
         assert!(
             labels.iter().any(|l| l == pretty),
             "o título derivado {pretty:?} devia estar na paleta"

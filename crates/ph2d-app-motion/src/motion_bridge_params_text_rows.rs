@@ -11,8 +11,8 @@
 use super::*;
 // ⚠️ Explícitos: os `use` do pai são privados, então o `super::*` não os traz — é o
 // mesmo padrão do irmão `motion_bridge_params_sections.rs`.
+use crate::{ChannelsRow, CurveRow, GradientRow, ParamRow, SourceRow, TextRow};
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
-use ph2d_panel_motion_params::{ChannelsRow, CurveRow, GradientRow, ParamRow, SourceRow, TextRow};
 
 /// Acrescenta a `rows` uma row por text param VISÍVEL deste nó.
 ///
@@ -114,7 +114,7 @@ pub(super) fn push_text_rows(
                 .and_then(|m| m.get(h.param))
                 .cloned()
                 .unwrap_or_default();
-            rows.push(ParamRow::Palette(ph2d_panel_motion_params::PaletteRow {
+            rows.push(ParamRow::Palette(crate::PaletteRow {
                 name: h.param,
                 label: ph2d_i18n::tr(h.label).to_string(),
                 value,
@@ -150,7 +150,7 @@ pub(super) fn push_text_rows(
                 .cloned()
                 .unwrap_or_default();
             let missing = !value.is_empty() && !std::path::Path::new(&value).exists();
-            rows.push(ParamRow::File(ph2d_panel_motion_params::FileRow {
+            rows.push(ParamRow::File(crate::FileRow {
                 name: h.param,
                 label: ph2d_i18n::tr(h.label).to_string(),
                 value,

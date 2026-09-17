@@ -381,21 +381,37 @@ fn each_mirror_axis_toggles_only_itself() {
 
 /// **Todo comando de um toque chega ao shell**, e o certo.
 ///
-/// ⛔⛔ **Ele corre numa THREAD PRÓPRIA com 8 MiB de pilha, e o número é MEDIDO** (2026-09-19): na
-/// pilha de omissão de um teste ele saía **`SIGABRT — has overflowed its stack`**, `3` de `3`, numa
-/// máquina calma. ⚠️ *Não é uma flake de fan-out* — o discriminador daquela família é o FAN-OUT, e
-/// esta reprova sozinha e sempre.
+/// ⛔⛔⛔ **DUAS CURAS PARA O MESMO DEFEITO ENCONTRARAM-SE NA INTEGRAÇÃO DE 2026-09-20, e a medição
+/// desempatou-as.** O `main` e a `line/sculpt3d` curaram, cada um à sua maneira, o mesmo
+/// `SIGABRT — has overflowed its stack` que este teste dava no perfil de DESENVOLVIMENTO (e **só**
+/// nele: no `ci-test` ele passava, logo o CI e o `ship.sh` nunca o viam, e quem corria o caminho
+/// documentado da corrida dirigida — `cargo-test-narrow.sh`, que é `dev` — via o binário inteiro
+/// morrer com o script a imprimir **«0 falharam»**. *Um teste que aborta e se lê como zero falhas é
+/// pior que um vermelho.*)
 ///
-/// ⭐ **A causa é o BUILD DE DEBUG, não a lógica, e as peças foram pesadas uma a uma:**
-/// `MockPanelHost` = `6 208` B, `Sculpt3dSnapshot` = `9 688` B, `Sculpt3dIntent` = `9 608` B (ele
-/// carrega um `Sculpt3dUi` inteiro). O array de 24 casos são `~230 KB` — **um oitavo** do que
-/// estoura. O que sobra é a FRAME de `arrange` → `with_panel::<Sculpt3dPanel>` → `populate`, que
-/// num perfil sem optimização não coalesce os temporários deste painel (o maior do app).
+/// - o `main` pôs o corpo numa **thread com 8 MiB de pilha**, e atribuiu a causa à FRAME de
+///   `arrange` → `with_panel` → `populate`, com o array de 24 casos medido a `~230 KB` —
+///   *«um oitavo do que estoura»*;
+/// - a linha trocou a lista de **valores** por uma de **CONSTRUTORES** (`fn() -> Sculpt3dIntent`),
+///   com a causa atribuída às CÓPIAS daquele array (o literal · o `IntoIterator` · a
+///   desestruturação por iteração).
 ///
-/// ⚠️ **`RUST_MIN_STACK=16777216` faz o mesmo teste passar sem uma linha de produto mudar** — foi
-/// assim que se separou *tamanho de pilha* de *recursão*. ⛔ Pôr aquela variável no ambiente curaria
-/// isto e **calaria** o mesmo defeito em todo o resto da suíte; a thread própria é local e diz de
-/// que recurso fala.
+/// ⭐⭐⭐ **A atribuição do `main` está REFUTADA, com controlo positivo:** a lista de VALORES **sem**
+/// thread aborta (`SIGABRT`, na pilha de omissão de `2 MB`), e a lista de CONSTRUTORES **sem** thread
+/// passa `2` de `2` no MESMO perfil ⇒ *a frame sozinha cabe, e o dominante era o array*. Medido na
+/// integração, nesta árvore, com o controlo a reproduzir o defeito antes da cura.
+///
+/// ⚠️ **As duas FICAM, e os papéis são diferentes:** os construtores tiram a CAUSA (`24 × 16` bytes,
+/// e um intent vivo de cada vez); a thread fica como **folga DECLARADA** para a frame deste painel,
+/// que é o maior do app e não tem tecto medido. ⛔ *Nenhuma das duas é falsificável pela suíte de
+/// hoje* — tirar qualquer uma delas deixa este teste verde —, e é por isso que a tabela acima está
+/// escrita aqui: quem a quiser remover repete aquele par de corridas e escreve o número.
+///
+/// ⛔ E a saída que as duas recusam pelo mesmo motivo: `RUST_MIN_STACK=16777216` no ambiente cura
+/// isto e **cala** o mesmo defeito em todo o resto da suíte.
+///
+/// ⭐ O **piso de população** (`casos.len() == 24`) vem do lado da linha: sem ele, uma lista que
+/// encolhesse mediria menos comandos e lia-se como aprovação.
 #[test]
 fn every_command_reaches_the_shell() {
     std::thread::Builder::new()
@@ -407,32 +423,43 @@ fn every_command_reaches_the_shell() {
 }
 
 fn corpo_de_every_command_reaches_the_shell() {
-    for (id, want) in [
-        (ids::SCULPT3D_DYNTOPO, Sculpt3dIntent::ToggleDyntopo),
-        (ids::SCULPT3D_LEVEL_DOWN, Sculpt3dIntent::ChangeLevel(false)),
-        (ids::SCULPT3D_LEVEL_UP, Sculpt3dIntent::ChangeLevel(true)),
-        (ids::SCULPT3D_SUBDIVIDE, Sculpt3dIntent::Subdivide),
-        (ids::SCULPT3D_REVERSE, Sculpt3dIntent::ReverseLevel),
-        (ids::SCULPT3D_FLATTEN, Sculpt3dIntent::Flatten),
-        (ids::SCULPT3D_REMESH, Sculpt3dIntent::Remesh),
-        (ids::SCULPT3D_QUAD_REMESH, Sculpt3dIntent::QuadRemesh),
-        (ids::SCULPT3D_CLOSE_HOLES, Sculpt3dIntent::CloseHoles),
-        (ids::SCULPT3D_DUPLICATE, Sculpt3dIntent::Duplicate),
-        (ids::SCULPT3D_DELETE, Sculpt3dIntent::Delete),
-        (ids::SCULPT3D_ISOLATE, Sculpt3dIntent::ToggleIsolate),
-        (ids::SCULPT3D_MERGE, Sculpt3dIntent::Merge),
-        (ids::SCULPT3D_BAKE_AO, Sculpt3dIntent::BakeAo),
-        (ids::SCULPT3D_BAKE_SPRITE, Sculpt3dIntent::BakeToSprite),
-        (ids::SCULPT3D_ALPHA_SPRITE, Sculpt3dIntent::AlphaFromSprite),
-        (ids::SCULPT3D_ADD[0], Sculpt3dIntent::AddSphere),
-        (ids::SCULPT3D_ADD[1], Sculpt3dIntent::AddCube),
-        (ids::SCULPT3D_ADD[2], Sculpt3dIntent::AddCylinder),
-        (ids::SCULPT3D_ADD[3], Sculpt3dIntent::AddTorus),
-        (ids::SCULPT3D_MASK_OP[0], Sculpt3dIntent::MaskClear),
-        (ids::SCULPT3D_MASK_OP[1], Sculpt3dIntent::MaskInvert),
-        (ids::SCULPT3D_MASK_OP[2], Sculpt3dIntent::MaskBlur),
-        (ids::SCULPT3D_MASK_OP[3], Sculpt3dIntent::MaskSharpen),
-    ] {
+    let casos: [(ph2d_a11y::NodeId, fn() -> Sculpt3dIntent); 24] = [
+        (ids::SCULPT3D_DYNTOPO, || Sculpt3dIntent::ToggleDyntopo),
+        (ids::SCULPT3D_LEVEL_DOWN, || {
+            Sculpt3dIntent::ChangeLevel(false)
+        }),
+        (ids::SCULPT3D_LEVEL_UP, || Sculpt3dIntent::ChangeLevel(true)),
+        (ids::SCULPT3D_SUBDIVIDE, || Sculpt3dIntent::Subdivide),
+        (ids::SCULPT3D_REVERSE, || Sculpt3dIntent::ReverseLevel),
+        (ids::SCULPT3D_FLATTEN, || Sculpt3dIntent::Flatten),
+        (ids::SCULPT3D_REMESH, || Sculpt3dIntent::Remesh),
+        (ids::SCULPT3D_QUAD_REMESH, || Sculpt3dIntent::QuadRemesh),
+        (ids::SCULPT3D_CLOSE_HOLES, || Sculpt3dIntent::CloseHoles),
+        (ids::SCULPT3D_DUPLICATE, || Sculpt3dIntent::Duplicate),
+        (ids::SCULPT3D_DELETE, || Sculpt3dIntent::Delete),
+        (ids::SCULPT3D_ISOLATE, || Sculpt3dIntent::ToggleIsolate),
+        (ids::SCULPT3D_MERGE, || Sculpt3dIntent::Merge),
+        (ids::SCULPT3D_BAKE_AO, || Sculpt3dIntent::BakeAo),
+        (ids::SCULPT3D_BAKE_SPRITE, || Sculpt3dIntent::BakeToSprite),
+        (ids::SCULPT3D_ALPHA_SPRITE, || {
+            Sculpt3dIntent::AlphaFromSprite
+        }),
+        (ids::SCULPT3D_ADD[0], || Sculpt3dIntent::AddSphere),
+        (ids::SCULPT3D_ADD[1], || Sculpt3dIntent::AddCube),
+        (ids::SCULPT3D_ADD[2], || Sculpt3dIntent::AddCylinder),
+        (ids::SCULPT3D_ADD[3], || Sculpt3dIntent::AddTorus),
+        (ids::SCULPT3D_MASK_OP[0], || Sculpt3dIntent::MaskClear),
+        (ids::SCULPT3D_MASK_OP[1], || Sculpt3dIntent::MaskInvert),
+        (ids::SCULPT3D_MASK_OP[2], || Sculpt3dIntent::MaskBlur),
+        (ids::SCULPT3D_MASK_OP[3], || Sculpt3dIntent::MaskSharpen),
+    ];
+    assert_eq!(
+        casos.len(),
+        24,
+        "o piso de população: a lista dos comandos de um toque encolheu"
+    );
+    for (id, faz) in casos {
+        let want = faz();
         let (mut host, mut state) = arrange(Sculpt3dUi::default());
         let outcome = host.apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(id));
         assert_eq!(

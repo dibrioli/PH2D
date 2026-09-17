@@ -62,7 +62,7 @@ fn doc_with_path() -> TimelineState {
 }
 
 fn pose(vals: &[(usize, f32)]) -> PoseSample {
-    let mut p: PoseSample = [None; 7];
+    let mut p: PoseSample = [None; PropKind::AUTOKEYED.len()];
     for &(i, v) in vals {
         p[i] = Some(v);
     }

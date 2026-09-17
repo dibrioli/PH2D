@@ -195,7 +195,16 @@ impl PropKind {
     /// auto-key (`AutokeyPlan::path_key`), que é o precedente de que estar fora do `ALL`
     /// nunca significou estar fora do auto-key. [`PropKind::TimeRemap`] também não: é o
     /// relógio, e não tem valor de cena para amostrar.
-    pub const AUTOKEYED: [PropKind; 7] = [
+    /// ⛔⛔⛔ **E as QUATRO ALÇAS entraram aqui por um report do dono** (2026-09-17: *«mover
+    /// handles não cria keys»*). Elas nasceram fora desta lista com a nota de que o auto-key era
+    /// assunto de outra wave — e ele tinha razão: *um canal que o auto-key não AMOSTRA é invisível
+    /// a ele, por mais correcta que a lei dele seja*, e arquear um osso é uma edição como mover um
+    /// objecto é.
+    ///
+    /// ⚠️ **Elas não custam nada a quem não é osso:** o amostrador devolve `None` numa entidade sem
+    /// `Bone` (e também num osso cujas alças vêm da corrente — a mesma porta que recusa o `K`), e
+    /// o diff salta todo `None`.
+    pub const AUTOKEYED: [PropKind; 11] = [
         PropKind::TranslationX,
         PropKind::TranslationY,
         PropKind::Rotation,
@@ -203,6 +212,10 @@ impl PropKind {
         PropKind::ScaleY,
         PropKind::Opacity,
         PropKind::Morph,
+        PropKind::BoneBendInX,
+        PropKind::BoneBendInY,
+        PropKind::BoneBendOutX,
+        PropKind::BoneBendOutY,
     ];
 
     /// The opaque [`AnimTarget`] a track uses to drive this property.

@@ -56,7 +56,7 @@ fn x_of(world: &World, e: u64) -> f32 {
 }
 
 fn pose_x(x: f32) -> PoseSample {
-    let mut p: PoseSample = [None; 7];
+    let mut p: PoseSample = [None; PropKind::AUTOKEYED.len()];
     p[0] = Some(x); // PropKind::ALL[0] == TranslationX
     p
 }

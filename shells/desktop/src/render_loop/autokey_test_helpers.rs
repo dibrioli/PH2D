@@ -52,7 +52,7 @@ pub(super) fn state_with_tx_track() -> (TimelineState, Playhead) {
 }
 
 pub(super) fn pose(vals: &[(usize, f32)]) -> PoseSample {
-    let mut p: PoseSample = [None; 7];
+    let mut p: PoseSample = [None; PropKind::AUTOKEYED.len()];
     for &(i, v) in vals {
         p[i] = Some(v);
     }

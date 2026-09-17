@@ -784,8 +784,11 @@ fn the_autokey_plants_no_anchor_on_the_pose_the_apply_itself_wrote() {
         let t = 1.0 + f64::from(k) / 32.0;
         apply_from_doc(&mut w, &mut doc, t);
         let p = pos(&w, e);
-        let pose: ph2d_timeline::PoseSample =
-            [Some(p[0]), Some(p[1]), None, None, None, None, None];
+        // ⚠️ Só os dois eixos importam aqui; o resto do sample é derivado do comprimento da lista
+        // (ela cresceu com as alças de osso em 2026-09-17, e um literal aqui teria de a seguir).
+        let mut pose: ph2d_timeline::PoseSample = [None; ph2d_timeline::PropKind::AUTOKEYED.len()];
+        pose[0] = Some(p[0]);
+        pose[1] = Some(p[1]);
         let plan = ph2d_timeline::autokey_props(&doc, bits, t, &pose, &pose, false, false);
         if let Some(at) = plan.path_key {
             planted.push((t, at));

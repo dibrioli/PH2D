@@ -37,7 +37,12 @@ use crate::refusal::KeyRefusal;
 /// ⚠️ Indices 0 e 1 continuam sendo os dois eixos de translação — o ramo do
 /// motion-path (`path_key`) lê `world[0]`/`world[1]` diretamente, e a lista foi
 /// estendida no FIM por isso.
-pub type PoseSample = [Option<f32>; 7];
+///
+/// ⭐ **O tamanho é DERIVADO da lista** desde 2026-09-17 (ela foi de `7` para `11` com as alças de
+/// osso): um literal aqui e outro no amostrador da shell são dois sítios a dizer o mesmo número, e
+/// o dia em que um deles ficasse para trás daria um `pose[i]` fora do array — ou, pior, uma
+/// propriedade nova amostrada para o índice de outra.
+pub type PoseSample = [Option<f32>; PropKind::AUTOKEYED.len()];
 
 /// Which of a sprite's properties auto-key should write, given its live pose
 /// (`world`), the pose it had last frame (`baseline`, for unbound first-touch),

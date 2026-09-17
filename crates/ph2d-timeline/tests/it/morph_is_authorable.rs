@@ -50,9 +50,9 @@ fn arming_auto_key_and_moving_the_morph_t_writes_a_key() {
     );
 
     // O artista arrasta o slider "Morph t" para 0.80 no playhead 1.0.
-    let mut world = [None; 7];
+    let mut world: ph2d_timeline::PoseSample = [None; PropKind::AUTOKEYED.len()];
     world[morph_i] = Some(0.80_f32);
-    let baseline = [None; 7];
+    let baseline: ph2d_timeline::PoseSample = [None; PropKind::AUTOKEYED.len()];
 
     let plan = autokey_props(&doc, E, 1.0, &world, &baseline, true, false);
     assert_eq!(
@@ -96,9 +96,17 @@ fn a_morph_sitting_on_its_curve_mints_no_key() {
     // erro de arredondamento e acusaria o produto por um defeito da própria fixture. É a
     // armadilha que o doc do `autokey.rs` narra ("a test scrubs to 0.5, and 0.5 survives
     // the round-trip") vista do outro lado.
-    let mut world = [None; 7];
+    let mut world: ph2d_timeline::PoseSample = [None; PropKind::AUTOKEYED.len()];
     world[morph_i] = Some(0.5_f32);
-    let plan = autokey_props(&doc, E, 1.0, &world, &[None; 7], true, false);
+    let plan = autokey_props(
+        &doc,
+        E,
+        1.0,
+        &world,
+        &[None; PropKind::AUTOKEYED.len()],
+        true,
+        false,
+    );
     assert!(
         plan.keys.is_empty(),
         "na curva o auto-key fica quieto; gravou {:?}",

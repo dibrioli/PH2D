@@ -59,6 +59,23 @@ pub(crate) struct AutokeyState {
     /// The playhead time `displaced` was collected at (the bridge clears the
     /// set when the time changes).
     pub displaced_t: f64,
+    /// ⛔⛔⛔ **O instante que ESTE passe viu no quadro anterior** — a metade que faltava ao
+    /// guarda do `playing`.
+    ///
+    /// Report do dono (2026-09-17): *«ao arrastar o tempo na timeline cria keyframes em todos os
+    /// quadros»*. Reproduzido: **12 chaves em 30 quadros** de arrasto, com a mão parada e a pose
+    /// constante.
+    ///
+    /// ⚠️⚠️ **A razão do `playing` vale IGUAL para um arrasto, e o comentário dela já o dizia sem
+    /// dar por isso:** *«a pose muda em cada quadro tocado porque é a ANIMAÇÃO que a conduz, não o
+    /// utilizador»*. Arrastar o cursor conduz a pose exactamente da mesma maneira — só que
+    /// `is_playing()` responde `false`, logo o guarda não armava e `capturing = armed`.
+    ///
+    /// ⇒ *o gatilho do auto-key é a MÃO, nunca o relógio* — e um quadro em que a única coisa que
+    /// mudou foi o relógio não é uma edição, toque ou não toque o transporte.
+    ///
+    /// `None` no primeiro quadro: sem um instante anterior não há movimento que se afirme.
+    pub clock_t: Option<f64>,
     /// The refusal the animator has already been told about. A drag against an
     /// overriding lane refuses on EVERY frame — sixty identical toasts a second is
     /// not information, it is noise. The toast fires on the rising edge, again if
@@ -74,7 +91,7 @@ pub(crate) struct AutokeyState {
 /// `PropKind::ALL` order. `None` for a property whose backing component is absent
 /// (e.g. opacity on an entity with no `Sprite`).
 fn sample_pose(world: &World, entity: u64) -> PoseSample {
-    let mut pose: PoseSample = [None; 7];
+    let mut pose: PoseSample = [None; PropKind::AUTOKEYED.len()];
     for (i, &prop) in PropKind::AUTOKEYED.iter().enumerate() {
         pose[i] = sample_prop_value(world, entity, prop).and_then(|v| match v {
             AnimValue::Float(f) => Some(f),
@@ -253,7 +270,11 @@ fn diff_each_sample(
         //
         // Compare where you read. [[feedback_derived_coordinate_seed_must_match_sample]]
         let t_diff = t_src;
-        let base = ak.baseline.get(&entity).copied().unwrap_or([None; 7]);
+        let base = ak
+            .baseline
+            .get(&entity)
+            .copied()
+            .unwrap_or([None; PropKind::AUTOKEYED.len()]);
         if capturing {
             // Performing (playing) records only what the DRAG pushed off the
             // curve; under a plain Play the drag is the sole source of an
@@ -412,11 +433,18 @@ pub(crate) fn apply_samples(
     // The baseline still advances below regardless, so pausing mid-play never
     // misreads the settled pose as a jump.
     let playing = playhead.is_playing();
+    // ⛔⛔⛔ **E o RELÓGIO A ANDAR SEM TOCAR é o mesmo caso** (report do dono, 2026-09-17: *«ao
+    // arrastar o tempo na timeline cria keyframes em todos os quadros»* — medido, `12` chaves em
+    // `30` quadros de arrasto com a mão parada). O guarda acima raciocina sobre a CAUSA — *a
+    // animação conduz a pose, não o utilizador* — e depois pergunta pelo `is_playing()`, que é
+    // apenas uma das duas maneiras de o relógio andar. Ver [`AutokeyState::clock_t`].
+    let clock_moved = ak.clock_t.is_some_and(|t0| t0 != playhead.time());
     let capturing = if playing {
         performing && drag_now
     } else {
-        armed
+        armed && !clock_moved
     };
+    ak.clock_t = Some(playhead.time());
     let fps = timeline.doc.fps_display;
     // **The author's clock is the apply's clock, CUT included** (seed == sample).
     // The apply cuts every clock at the view's authored duration before anything
@@ -556,6 +584,10 @@ mod performing_tests;
 #[cfg(test)]
 #[path = "autokey_refusal_tests.rs"]
 mod refusal_tests;
+/// Os dois relatos do dono de 2026-09-17 — ver o cabeçalho de lá.
+#[cfg(test)]
+#[path = "autokey_scrub_tests.rs"]
+mod scrub_tests;
 #[cfg(test)]
 #[path = "autokey_test_helpers.rs"]
 mod test_helpers;

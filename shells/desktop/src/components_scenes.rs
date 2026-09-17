@@ -314,6 +314,58 @@ impl crate::App {
         self.playhead.play();
     }
 
+    /// ⭐⭐⭐ **O EMISSOR DE PARTÍCULAS** (TOP-20 #18) — `PH2D_PARTICLES_SMOKE=1|2`.
+    ///
+    /// ⚠️ **O prólogo ARMA O RELÓGIO**, e sem ele a cena ensina o contrário do que diz: a corrida
+    /// das partículas é o relógio A ANDAR, e sobre um transporte parado as quatro fontes ficam
+    /// vazias com todos os números certos — exactamente o que a linha de aviso da secção existe
+    /// para explicar. ⚠️ A `=2` precisa TAMBÉM da física (os dois voos são projécteis).
+    pub(crate) fn particles_smoke(&mut self) {
+        if self.components_smokes.particles {
+            self.particles_smoke_traz_o_inspector();
+            return;
+        }
+        let Some(v) = std::env::var_os("PH2D_PARTICLES_SMOKE") else {
+            return;
+        };
+        let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let montada = ph2d_app_components::particles_smoke::montar(cx.sim.world_mut(), nivel);
+        self.components_smokes.particles = true;
+        self.timeline.flags.simulate_physics = true;
+        // ⚠️ A régua abre junto — uma instrução que fala do transporte sobre um ecrã sem ele
+        // devolve *«que régua?»* (a lição da cena 67 da física).
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.panel_visibility.insert("timeline", true);
+            // ⛔⛔ **O INSPECTOR É TRAZIDO À FRENTE, e foi a FOTO que o disse:** a instrução manda
+            // clicar numa fonte e ver a secção *«no painel da direita»*, e naquele encaixe estava o
+            // painel do esqueleto por cima — o passo nomeava uma superfície que o dono não tinha à
+            // vista. ⚠️ **A arrumação vive FORA do repositório** (`~/.ph2d/layout.txt`), logo isto
+            // não é defensivo: é a única forma de a cena não depender do que ficou aberto ontem.
+            hero.panel_visibility.insert("inspector", true);
+            // ⚠️ O `clear()` anda colado ao `selection` (a lei da cena de física).
+            hero.gizmo.selection = Some(montada.escolhido);
+            hero.gizmo.extra_selection.clear();
+        }
+        // ⚠️ A subida acontece nos quadros SEGUINTES — ver o campo `particles_raise`.
+        self.components_smokes.particles_raise = 3;
+        self.playhead.rewind();
+        self.playhead.play();
+    }
+
+    /// Traz o Inspector à frente no encaixe dele, por alguns quadros. Ver `particles_raise`.
+    fn particles_smoke_traz_o_inspector(&mut self) {
+        if self.components_smokes.particles_raise == 0 {
+            return;
+        }
+        self.components_smokes.particles_raise -= 1;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
+        }
+    }
+
     /// Prólogo do quadro, uma vez. No-op sem a env.
     pub(crate) fn instance_smoke(&mut self) {
         if self.components_smokes.instance || std::env::var_os("PH2D_INSTANCE_SMOKE").is_none() {

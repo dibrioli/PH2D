@@ -39,6 +39,14 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) script: bool,
     /// ⭐ O PROJÉCTIL (TOP-20 #14) — `PH2D_PROJECTILE_SMOKE=1|2`.
     pub(crate) projectile: bool,
+    /// ⭐ O EMISSOR DE PARTÍCULAS (TOP-20 #18) — `PH2D_PARTICLES_SMOKE=1|2`.
+    pub(crate) particles: bool,
+    /// ⛔⛔ **Quantos quadros falta ainda trazer o Inspector à frente** — e ele não é um contador
+    /// defensivo, é a cura de uma ordem MEDIDA numa foto: o `reconcile_z` acrescenta, no início de
+    /// cada quadro, os painéis que ainda não estão na ordem z, logo um `bump` feito no quadro em
+    /// que a cena monta fica **por baixo** dos que chegam a seguir. ⚠️ Ele PÁRA — passados estes
+    /// quadros a aba é do dono, e uma subida por quadro roubar-lhe-ia o painel que ele escolhesse.
+    pub(crate) particles_raise: u8,
     /// O ragdoll instanciado 3× (ADR-0164 F4). `PH2D_INSTANCE_SMOKE=1..7`.
     pub(crate) instance: bool,
 }

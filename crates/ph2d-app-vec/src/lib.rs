@@ -216,17 +216,27 @@ pub mod weld;
 /// ⚠️ `PH2D_BLEND_LOG`, `PH2D_TEXT_LOG` e `PH2D_VEC_OVERLAY_DIAG` são **diagnóstico** e não entram;
 /// `PH2D_VEC_PEN` e `PH2D_VEC_DEMO_N` são configuração de arranque, não roteadores de cena.
 ///
-/// # O `max_level` é CONTADO, e para os cinco ele é `1`
+/// # O `max_level` é CONTADO, e desde 2026-09-17 eles NÃO são todos `1`
 ///
-/// Cada um é um **interruptor**: o corpo pergunta `std::env::var_os(..).is_some()` e monta UMA
-/// cena — não há `match` de níveis em nenhum deles (ao contrário do `PH2D_PHYSICS_SMOKE`, que
-/// declara 117). O número sai da forma do roteador, não de memória.
+/// Cinco são **interruptores**: o corpo pergunta `std::env::var_os(..).is_some()` e monta UMA cena
+/// — não há `match` de níveis neles (ao contrário do `PH2D_PHYSICS_SMOKE`, que declara 117).
+///
+/// ⚠️⚠️ **O `PH2D_VEC_BONE_PAINT_SMOKE` deixou de ser um deles:** o nível dele é uma **CONTAGEM**
+/// (quantos canvas dobrados a cena monta), porque a pergunta que a F9 traz — *o `Smooth` alisa numa
+/// cena CHEIA?* — **não é observável com uma imagem só**. Ele declara
+/// [`smoke_bone_paint::NIVEIS`], que é o tecto que o corpo de facto honra
+/// (`quantos()` faz `clamp(1, NIVEIS)`). ⛔ Declarar `1` aqui com o corpo a responder a `6` seria a
+/// mentira que o gate do painter nomeia: *um roteador que promete menos do que responde deixa
+/// cenas inalcançáveis pelo registo, e nenhum censo as vê.*
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "vec",
     routers: &[
         r("PH2D_VEC_APPEARANCE_SMOKE"),
         r("PH2D_VEC_BONE_SMOKE"),
-        r("PH2D_VEC_BONE_PAINT_SMOKE"),
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VEC_BONE_PAINT_SMOKE",
+            max_level: smoke_bone_paint::NIVEIS,
+        },
         r("PH2D_VEC_FADE_SMOKE"),
         r("PH2D_VEC_STACK_SMOKE"),
         r("PH2D_VEC_SVG_SMOKE"),

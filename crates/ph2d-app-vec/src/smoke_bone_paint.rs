@@ -99,12 +99,44 @@ use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_render::SpriteRenderer;
 use std::collections::BTreeMap;
 
-/// **O maior nível a que este roteador de facto responde.**
+/// ⭐⭐⭐ **O NÍVEL DESTE ROTEADOR É UMA CONTAGEM: quantos canvas dobrados a cena monta.**
 ///
-/// ⚠️⚠️ **CONTADO no roteador, nunca escrito de memória** (CLAUDE.md §5.0) — e este é de
-/// **PRESENÇA**, como o da máscara: ele lê `var_os(..).is_some()`, logo não há `match` de níveis e
-/// o maior com significado é `1`. ⛔ Declarar mais seria prometer uma cena que ninguém escreveu.
-pub const NIVEIS: u32 = 1;
+/// ⚠️⚠️ **A premissa da redacção anterior MORREU em 2026-09-17, e a morte é a wave.** Ela dizia:
+/// *«este é de PRESENÇA, como o da máscara: ele lê `var_os(..).is_some()`, logo não há `match` de
+/// níveis e o maior com significado é 1»*. Isso era verdade enquanto a única pergunta desta cena
+/// era o **Painter sobre uma arte dobrada**. A F9 trouxe outra, e ela **não é observável com uma
+/// imagem só**: o `Smooth` colapsava no `Fast` quando a soma das malhas presas passava o orçamento
+/// do quadro, e uma cena com UM canvas nunca lá chega.
+///
+/// ⇒ `PH2D_VEC_BONE_PAINT_SMOKE=<n>` monta `n` canvas. ⭐ **`=1` continua byte-idêntico** (há gate),
+/// e é isso que mantém o roteiro de 8 passos que o dono já aprovou.
+///
+/// ⚠️ **O tecto é a LEGIBILIDADE, e não um recurso:** acima de `6` os canvas deixam de caber no
+/// ecrã com a dobra à vista, e uma cena que sai do enquadramento ensina o contrário do que diz
+/// (a lição que a foto do `ParticleEmitter` pagou). Quem quiser medir mais tem a sonda
+/// `o_que_um_quadro_custa_com_a_malha_assada`, que varre `1`, `4` e `8` sem ecrã nenhum.
+pub const NIVEIS: u32 = 6;
+
+/// ⭐ **Quantos canvas a cena monta** — o valor do roteador, coagido a `1..=NIVEIS`.
+///
+/// ⚠️ Um valor ilegível (ou a env vazia, que é como um `env VAR=` a arma) cai em `1`: *o caminho de
+/// omissão é a cena que o dono já aprovou, nunca uma que ele não pediu.*
+#[must_use]
+pub fn quantos() -> u32 {
+    quantos_de(std::env::var("PH2D_VEC_BONE_PAINT_SMOKE").ok().as_deref())
+}
+
+/// A LEI do [`quantos`], sem a env.
+///
+/// ⚠️ **Ela existe separada porque uma env NÃO se escreve num gate:** `std::env::set_var` é
+/// `unsafe` na edição 2024 e corre numa árvore de testes com threads — *a lei é parâmetro e a
+/// leitura da env é uma linha em quem chama*, que é a mesma forma que a porta da assadura já usa.
+#[must_use]
+pub(crate) fn quantos_de(v: Option<&str>) -> u32 {
+    v.and_then(|v| v.trim().parse::<u32>().ok())
+        .unwrap_or(1)
+        .clamp(1, NIVEIS)
+}
 
 /// Ver o cabeçalho do módulo.
 #[must_use]
@@ -200,10 +232,10 @@ const DOBRA_GRAUS: f32 = 25.0;
 ///
 /// `None` quando um osso não nasce — e aí quem chama PARA, porque uma cena com meia corrente monta
 /// e não demonstra nada.
-fn corrente(sim: &mut SimWorld, pixels_per_meter: f32) -> Option<Vec<Entity>> {
+fn corrente_em(sim: &mut SimWorld, pixels_per_meter: f32, centro: [f64; 2]) -> Option<Vec<Entity>> {
     let mut pai: Option<Entity> = None;
     let mut ossos = Vec::new();
-    for (k, (a, b)) in eixos(pixels_per_meter).into_iter().enumerate() {
+    for (k, (a, b)) in eixos_em(pixels_per_meter, centro).into_iter().enumerate() {
         let Some(osso) = ph2d_skeleton_live::bone::create(sim, pai, a, b) else {
             eprintln!("[bone-paint-smoke] o osso {k} nao nasceu -- PARE");
             return None;
@@ -218,14 +250,18 @@ fn corrente(sim: &mut SimWorld, pixels_per_meter: f32) -> Option<Vec<Entity>> {
     Some(ossos)
 }
 
-fn eixos(pixels_per_meter: f32) -> Vec<([f64; 2], [f64; 2])> {
+/// A corrente, com o CENTRO escolhido — a cena lotada põe uma por canvas.
+///
+/// ⚠️ **Uma lei, dois consumidores.** Escrever a disposição outra vez na cena lotada faria as duas
+/// divergirem no primeiro ajuste, e os gates continuariam a medir a de cima.
+fn eixos_em(pixels_per_meter: f32, centro: [f64; 2]) -> Vec<([f64; 2], [f64; 2])> {
     let largura = f64::from(LARGURA_PX) / f64::from(pixels_per_meter.max(f32::MIN_POSITIVE));
-    let (x0, passo) = (-largura / 2.0, largura / f64::from(OSSOS));
+    let (x0, passo) = (centro[0] - largura / 2.0, largura / f64::from(OSSOS));
     (0..OSSOS)
         .map(|k| {
             (
-                [x0 + passo * f64::from(k), 0.0],
-                [x0 + passo * f64::from(k + 1), 0.0],
+                [x0 + passo * f64::from(k), centro[1]],
+                [x0 + passo * f64::from(k + 1), centro[1]],
             )
         })
         .collect()
@@ -248,11 +284,15 @@ fn branco(w: u32, h: u32) -> Vec<u8> {
     vec![255u8; (w as usize) * (h as usize) * 4]
 }
 
-/// Monta a cena. Devolve os bits do canvas, para o chamador assentar a selecção nele.
+/// Monta a cena. Devolve `(bits do 1.º canvas, quantos canvas foram montados)` — o chamador assenta
+/// a selecção no primeiro e avança as células do atlas pelo segundo.
 ///
 /// ⚠️ **UM tempo só, ao contrário da [`crate::smoke_bone`]**: aquela prende FORMAS vectoriais e
 /// precisa da entidade que o `vec_entities::sync` cria no meio do quadro. Aqui o sujeito é uma
 /// IMAGEM, e ela já existe no instante em que nasce.
+///
+/// ⭐⭐⭐ **`n = quantos()` canvas, e é essa contagem que torna a F9 OBSERVÁVEL** — ver o doc de
+/// [`NIVEIS`]. Com `n = 1` a cena é a de sempre, ao bit.
 pub fn build(
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
@@ -260,11 +300,79 @@ pub fn build(
     cell_idx: u32,
     pixels_per_meter: f32,
     atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+) -> Option<(u64, u32)> {
+    let n = quantos();
+    let mut primeiro = None;
+    let mut montados = 0_u32;
+    for k in 0..n {
+        let centro = centro_do_canvas(k, n, pixels_per_meter);
+        let Some(bits) = um_canvas(
+            sim,
+            renderer,
+            asset_db,
+            cell_idx + k,
+            pixels_per_meter,
+            atlas_asset_map,
+            centro,
+            k,
+        ) else {
+            break;
+        };
+        primeiro.get_or_insert(bits);
+        montados += 1;
+    }
+    let bits = primeiro?;
+    anuncia(n, montados);
+    Some((bits, montados.max(1)))
+}
+
+/// ⭐ **Onde o canvas `k` de `n` fica, em metros de mundo** — uma FILEIRA centrada na origem.
+///
+/// ⛔⛔ **Uma COLUNA foi construída, FOTOGRAFADA e REVERTIDA, e a causa não é o espaçamento:** a
+/// arte dobrada **varre para CIMA** muito além da caixa de repouso dela (com `OSSOS = 3` a ponta
+/// roda `2 × DOBRA_GRAUS`), e o enquadramento automático da cena (`ViewFocusKind::All`) ajusta-se às
+/// caixas das sprites, não ao que a pele desenha. ⇒ numa coluna o canvas de cima fica **sempre**
+/// cortado no topo, por mais que se afastem — *nenhum valor do parâmetro livre serve, logo o que
+/// está errado é a disposição.*
+///
+/// ⭐ **Deitada, o problema desaparece por geometria:** dobrar **encurta** a pegada horizontal (a
+/// tira enrola-se), logo a largura de repouso é um tecto para o que se vê, e o enquadramento por
+/// caixas acerta. ⚠️ **`1,2 ×` a largura** é o primeiro passo que separa as pontas de duas
+/// vizinhas sem as encostar.
+fn centro_do_canvas(k: u32, n: u32, pixels_per_meter: f32) -> [f64; 2] {
+    if n <= 1 {
+        return [0.0, 0.0];
+    }
+    let largura = f64::from(LARGURA_PX) / f64::from(pixels_per_meter.max(f32::MIN_POSITIVE));
+    let passo = largura * 1.2;
+    let x0 = -passo * f64::from(n - 1) / 2.0;
+    [x0 + passo * f64::from(k), 0.0]
+}
+
+/// Um canvas: sobe a tinta, monta a corrente dele, prende e dobra. `None` se alguma metade falhar.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "e' o construtor de uma cena: cada argumento e' uma porta do app (render, assets,               atlas, regua, posicao) e agrupa-los numa struct so' esconderia isso"
+)]
+fn um_canvas(
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    cell_idx: u32,
+    pixels_per_meter: f32,
+    atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+    centro: [f64; 2],
+    k: u32,
 ) -> Option<u64> {
     // ⚠️ **A porta RETANGULAR, e não a do *New Image…***: a `spawn_blank_canvas` é quadrada por
     // desenho (é o caminho daquele modal), e um canvas quadrado é exactamente o que esta cena não
     // pode ter. O doc da `spawn_rgba` diz que ela foi extraída para isto — *«uma tira RETANGULAR
     // com conteúdo»*.
+    let nome = if k == 0 {
+        "Canvas".to_owned()
+    } else {
+        format!("Canvas {}", k + 1)
+    };
     let (label, bits) = match ph2d_image_import::spawn_rgba(
         sim,
         renderer,
@@ -273,21 +381,21 @@ pub fn build(
         LARGURA_PX,
         ALTURA_PX,
         branco(LARGURA_PX, ALTURA_PX),
-        Vec2::new(0.0, 0.0),
+        Vec2::new(centro[0] as f32, centro[1] as f32),
         pixels_per_meter,
         atlas_asset_map,
-        "Canvas",
+        &nome,
     ) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("[bone-paint-smoke] o canvas nao subiu: {e}");
+            eprintln!("[bone-paint-smoke] o canvas {k} nao subiu: {e}");
             return None;
         }
     };
     let e = Entity::try_from_bits(bits)?;
 
     // ── Os três ossos, deitados ao longo do canvas ──────────────────────────────────────────────
-    let Some(ossos) = corrente(sim, pixels_per_meter) else {
+    let Some(ossos) = corrente_em(sim, pixels_per_meter, centro) else {
         return Some(bits);
     };
 
@@ -318,7 +426,8 @@ pub fn build(
         });
     if !preso {
         eprintln!(
-            "[bone-paint-smoke] o canvas NAO prendeu ao esqueleto -- PARE, a cena nao montou"
+            "[bone-paint-smoke] o canvas '{label}' NAO prendeu ao esqueleto -- PARE, a cena nao \
+             montou"
         );
         return Some(bits);
     }
@@ -328,20 +437,49 @@ pub fn build(
     // ⚠️⚠️ **Depois de prender, nunca antes.** O repouso de uma pele é o instante do bind: dobrada
     // antes, esta pose SERIA o repouso e o canvas sairia recto — a cena montaria e não provaria nada.
     dobra(sim, &ossos);
-
-    println!(
-        "[bone-paint-smoke] canvas '{label}' ({LARGURA_PX}x{ALTURA_PX}, branco) PRESO a {OSSOS} ossos \
-         e dobrado {DOBRA_GRAUS}° por junta. NADA mais esta' armado.\n\
-         [bone-paint-smoke] 1) veja o canvas DOBRADO  2) pegue a ferramenta Painter: ele tem de \
-         ENDIREITAR-SE para ser pintado, e um aviso diz porque  3) pinte qualquer coisa (uma forma, \
-         um traco)  4) no Painter escolha o Liquify: o canvas VOLTA a dobrar-se, o anel do cursor \
-         segue a dobra e empurrar deforma a imagem dobrada  5) pegue a Remocao de fundo (tecla 3): \
-         endireita-se outra vez  6) pegue noutra ferramenta (Select): o canvas tem de VOLTAR a \
-         dobrar-se, e o que voce pintou tem de dobrar com ele  7) PAD (Padding): endireita e o aviso \
-         diz que o Apply solta dos ossos  8) SQUAR (Make Square): o canvas fica QUADRADO, RETO e \
-         SOLTO dos ossos; Ctrl+Z devolve-o dobrado."
-    );
     Some(bits)
+}
+
+/// O roteiro, e ele é OUTRO conforme a cena tem um canvas ou muitos.
+///
+/// ⛔⛔ **Duas cenas, dois roteiros — e não um roteiro com uma frase a mais.** A cena de UM canvas é
+/// sobre o Painter a endireitar a arte; a lotada é sobre o `Smooth` a alisar **apesar** da cena
+/// cheia. *Um roteiro que tenta ensinar as duas manda o dono fazer oito passos para chegar ao que
+/// ele foi ver.*
+fn anuncia(pedidos: u32, montados: u32) {
+    if montados < pedidos {
+        eprintln!(
+            "[bone-paint-smoke] PARE: pedi {pedidos} canvas e montei {montados} — a cena nao esta' \
+             completa"
+        );
+    }
+    if pedidos <= 1 {
+        println!(
+            "[bone-paint-smoke] canvas 'Canvas' ({LARGURA_PX}x{ALTURA_PX}, branco) PRESO a {OSSOS} \
+             ossos e dobrado {DOBRA_GRAUS}° por junta. NADA mais esta' armado.\n\
+             [bone-paint-smoke] 1) veja o canvas DOBRADO  2) pegue a ferramenta Painter: ele tem de \
+             ENDIREITAR-SE para ser pintado, e um aviso diz porque  3) pinte qualquer coisa (uma \
+             forma, um traco)  4) no Painter escolha o Liquify: o canvas VOLTA a dobrar-se, o anel \
+             do cursor segue a dobra e empurrar deforma a imagem dobrada  5) pegue a Remocao de \
+             fundo (tecla 3): endireita-se outra vez  6) pegue noutra ferramenta (Select): o canvas \
+             tem de VOLTAR a dobrar-se, e o que voce pintou tem de dobrar com ele  7) PAD (Padding): \
+             endireita e o aviso diz que o Apply solta dos ossos  8) SQUAR (Make Square): o canvas \
+             fica QUADRADO, RETO e SOLTO dos ossos; Ctrl+Z devolve-o dobrado."
+        );
+        return;
+    }
+    println!(
+        "[bone-paint-smoke] {montados} canvas ({LARGURA_PX}x{ALTURA_PX}, brancos) PRESOS a {OSSOS} \
+         ossos cada e dobrados {DOBRA_GRAUS}° por junta — a cena CHEIA, que e' onde o Smooth \
+         costumava desistir. ⚠️ So' o PRIMEIRO esta' enquadrado: os outros ficam de lado de \
+         proposito, para ENCHER o orcamento do quadro. E' a junta do que esta' a` sua frente que \
+         voce julga.\n\
+         [bone-paint-smoke] 1) abra o painel dos ossos: menu Window > Bones, e carregue no separador \
+         «Bones» a` direita  2) na linha «Deform» carregue em «Fast»: a curva de cima do canvas fica \
+         com ARESTAS RETAS  3) carregue em «Smooth»: ela fica CURVA  4) o contraste: feche o app e \
+         volte a abri-lo com PH2D_SKIN_BAKE=0 na frente do comando; ali o «Smooth» desenha \
+         exactamente o mesmo que o «Fast» — era esse o defeito."
+    );
 }
 
 #[cfg(test)]

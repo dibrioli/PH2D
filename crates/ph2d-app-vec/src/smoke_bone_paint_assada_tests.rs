@@ -35,6 +35,13 @@
 
 use super::*;
 
+/// O CAMPO de deformação desta cena: `(repouso, pesos) → posado`.
+///
+/// ⚠️ Ele é um `dyn` e não um genérico porque as duas sondas o passam ADIANTE (a
+/// [`posa_a_assada`] recebe-o já construído por quem tem a pele na mão), e um `impl FnMut` não
+/// atravessa essa fronteira sem monomorfizar cada chamador.
+type Campo<'a> = dyn FnMut([f64; 2], &[f64]) -> [f64; 2] + 'a;
+
 /// Os pesos de um vértice DENTRO dos atributos refinados — os `ossos` primeiros do passo.
 ///
 /// ⚠️ **O passo não é `ossos`**: a lei de Hermite guarda gradientes ao lado dos pesos, e é por isso
@@ -53,7 +60,7 @@ fn posa_a_assada(
     attrs: &[f64],
     passo: usize,
     ossos: usize,
-    campo: &mut dyn FnMut([f64; 2], &[f64]) -> [f64; 2],
+    campo: &mut Campo<'_>,
 ) -> Vec<[f64; 2]> {
     (0..rest.len())
         .map(|v| campo(rest[v], pesos_no_passo(attrs, passo, v, ossos)))
@@ -354,9 +361,7 @@ fn a_malha_assada_no_bind_desenha_como_o_smooth_do_quadro() {
     );
 
     let zoom = 8.0_f64;
-    let posa = |m: &ph2d_poly2d::Mesh2d,
-                pesos: &[f64],
-                campo: &mut dyn FnMut([f64; 2], &[f64]) -> [f64; 2]| {
+    let posa = |m: &ph2d_poly2d::Mesh2d, pesos: &[f64], campo: &mut Campo<'_>| {
         m.rest
             .iter()
             .enumerate()
@@ -377,15 +382,13 @@ fn a_malha_assada_no_bind_desenha_como_o_smooth_do_quadro() {
     // `skinned_deviation`, em pixels da arte). A silhueta mede ONDULAÇÃO, que cresce com a
     // densidade por construção — *uma régua cuja janela segue o número que se está a variar não
     // pode ser a única testemunha da variação*, a lei que o espaçamento do pincel afiado já pagou.
-    let desvio = |m: &ph2d_poly2d::Mesh2d,
-                  pesos: &[f64],
-                  posed: &[[f64; 2]],
-                  campo: &mut dyn FnMut([f64; 2], &[f64]) -> [f64; 2]| {
-        let lei = ph2d_skeleton_live::skin_refine::weight_law(ossos, true);
-        let attrs = ph2d_skeleton_live::skin_refine::weight_attrs(m, pesos, lei);
-        ph2d_skeleton_live::skin_refine::skinned_deviation(m, posed, &attrs, lei, campo)
-            * PX_POR_METRO
-    };
+    let desvio =
+        |m: &ph2d_poly2d::Mesh2d, pesos: &[f64], posed: &[[f64; 2]], campo: &mut Campo<'_>| {
+            let lei = ph2d_skeleton_live::skin_refine::weight_law(ossos, true);
+            let attrs = ph2d_skeleton_live::skin_refine::weight_attrs(m, pesos, lei);
+            ph2d_skeleton_live::skin_refine::skinned_deviation(m, posed, &attrs, lei, campo)
+                * PX_POR_METRO
+        };
     let d_fast = desvio(&sm.mesh, &sm.pesos, &p_fast, &mut campo);
     let d_assada = desvio(&assada, &pesos_assados, &p_assada, &mut campo);
     let d_smooth = ph2d_skeleton_live::skin_refine::skinned_deviation(
@@ -631,4 +634,85 @@ fn o_que_um_quadro_custa_com_a_malha_assada() {
         }
     }
     println!();
+}
+
+/// ⭐⭐⭐ **A CENA LOTADA CONTÉM O FENÓMENO QUE ELA EXISTE PARA MOSTRAR.**
+///
+/// O report que abriu a F9 é *«uma cena com muita arte presa fica com o `Smooth` igual ao `Fast`»*,
+/// e a causa é a soma das malhas presas passar o orçamento de refinamento do quadro. ⚠️ **Uma cena
+/// que não lá chegue ensina o contrário do que diz** — o dono carregaria em `Smooth`, veria a
+/// diferença e concluiria que o defeito nunca existiu.
+///
+/// ⚠️ **As duas metades:** a cena de UM canvas fica ABAIXO do orçamento (é a que o dono já aprovou,
+/// e ela não é o sujeito desta pergunta) · e o TECTO do roteador tem de a levar ACIMA dele.
+///
+/// ⚠️ A contagem por canvas sai do BIND do produto, nunca de um número escrito aqui.
+#[test]
+fn a_cena_lotada_passa_o_orcamento_do_quadro() {
+    use ph2d_skeleton_live::skin_image::SKIN_FRAME_PIECES;
+    let (sim, e) = cena(super::super::super::ALTURA_PX, None);
+    let (sm, _p2l, _pele) = campo_da_cena(&sim, e);
+    let por_canvas = sm.mesh.tris.len();
+    assert!(
+        por_canvas <= SKIN_FRAME_PIECES,
+        "um canvas sozinho ({por_canvas} pecas) ja' passa o orcamento ({SKIN_FRAME_PIECES}) — a \
+         cena que o dono aprovou mudou de regime, e o roteiro de 8 passos dela deixou de valer"
+    );
+    let tecto = por_canvas * super::super::super::NIVEIS as usize;
+    assert!(
+        tecto > SKIN_FRAME_PIECES,
+        "com o tecto do roteador ({} canvas) a cena guarda {tecto} pecas e o orcamento e' \
+         {SKIN_FRAME_PIECES} — ela NAO chega ao regime do report, e o smoke nao mostra nada",
+        super::super::super::NIVEIS
+    );
+}
+
+/// ⛔ **O NÍVEL É UMA CONTAGEM, e o caminho de omissão é a cena de UM canvas.**
+///
+/// ⚠️ **O `=` vazio é o caso que morde:** `env VAR=` **define** a variável com a string vazia (a
+/// armadilha que esta casa já pagou num arnês de mutação), e ali a resposta certa é `1` e não zero
+/// — *uma cena com zero canvas monta e não demonstra nada.*
+#[test]
+fn o_nivel_e_uma_contagem_e_o_omisso_e_um_canvas() {
+    use super::super::super::{NIVEIS, quantos_de};
+    assert_eq!(quantos_de(None), 1, "sem env a cena e' a de sempre");
+    assert_eq!(
+        quantos_de(Some("")),
+        1,
+        "`env VAR=` define a variavel VAZIA"
+    );
+    assert_eq!(quantos_de(Some("1")), 1);
+    assert_eq!(quantos_de(Some(" 4 ")), 4);
+    assert_eq!(quantos_de(Some("0")), 1, "zero canvas nao e' uma cena");
+    assert_eq!(quantos_de(Some("99")), NIVEIS, "o tecto e' o do roteador");
+    assert_eq!(
+        quantos_de(Some("sim")),
+        1,
+        "um valor ilegivel cai no omisso"
+    );
+}
+
+/// ⛔⛔ **COM UM CANVAS A CENA É A DE SEMPRE, AO BIT** — é isto que mantém o roteiro de 8 passos que
+/// o dono aprovou.
+///
+/// ⚠️ A régua é a POSIÇÃO, que é a única coisa que a contagem podia mover: a coluna centra-se na
+/// origem, logo com `n = 1` o único canvas tem de ficar exactamente onde ele ficava.
+#[test]
+fn com_um_canvas_a_cena_fica_onde_sempre_esteve() {
+    use super::super::super::centro_do_canvas;
+    assert_eq!(centro_do_canvas(0, 1, PPM), [0.0, 0.0]);
+    // E o CONTROLO: com mais de um, eles separam-se — senão esta metade passaria sobre uma coluna
+    // que põe os seis no mesmo sítio.
+    let a = centro_do_canvas(0, 4, PPM);
+    let b = centro_do_canvas(1, 4, PPM);
+    assert!(
+        (a[0] - b[0]).abs() > f64::from(super::super::super::LARGURA_PX) / f64::from(PPM),
+        "dois canvas da cena lotada ficaram a menos de uma largura um do outro: {a:?} e {b:?}"
+    );
+    // ⛔ E a fileira é DEITADA: uma coluna põe a arte dobrada por cima do enquadramento (medido por
+    // foto), e a régua que o diz é o `y` ficar igual.
+    assert!(
+        (a[1] - b[1]).abs() < 1e-9,
+        "a cena lotada voltou a ser uma COLUNA: {a:?} e {b:?}"
+    );
 }

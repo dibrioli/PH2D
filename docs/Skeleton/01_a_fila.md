@@ -260,20 +260,19 @@ só onde se pergunta (um ponto, não a malha inteira), ou leitura da GPU.
     - **7 gates · 7 mutações, todas sangram.**
   - ✅⭐⭐⭐ **A W2c FECHOU, e é ela que responde ao pedido do dono: A PORTA ABRIU** (2026-09-17) —
     `PH2D_SKIN_BAKE=0` passa a ser a porta de **bissecar**, e o caminho de omissão do `Smooth` é a
-    malha ASSADA. **Medido na arte do dono** (zoom `8×`, `N` cópias, o MÍNIMO de 30, `load 15` ⇒ os
-    relógios são **tectos**):
+    malha ASSADA. **Medido na arte do dono** (zoom `8×`, `N` cópias, o MÍNIMO de 30, `load 4,6`):
 
     | imagens | lei | porta | peças entregues | ms | % de um quadro |
     |---:|---|---|---:|---:|---:|
-    | 1 | `Fast` | — | `2 430` | `0,059` | `0,4 %` |
-    | 1 | `Smooth` | **fechada** | `5 143` | `1,302` | `7,8 %` |
-    | 1 | `Smooth` | **aberta** | **`13 996`** | **`0,232`** | **`1,4 %`** |
-    | 4 | `Smooth` | **fechada** | `9 720` ⇐ **é o `Fast`** | `0,238` | `1,4 %` |
-    | 4 | `Smooth` | **aberta** | `55 984` | `0,938` | `5,6 %` |
-    | 8 | `Smooth` | **fechada** | `19 440` ⇐ **é o `Fast`** | `0,478` | `2,9 %` |
-    | 8 | `Smooth` | **aberta** | `111 968` | `1,879` | `11,3 %` |
+    | 1 | `Fast` | — | `2 430` | `0,056` | `0,3 %` |
+    | 1 | `Smooth` | **fechada** | `5 143` | `1,244` | `7,5 %` |
+    | 1 | `Smooth` | **aberta** | **`13 996`** | **`0,226`** | **`1,4 %`** |
+    | 4 | `Smooth` | **fechada** | `9 720` ⇐ **é o `Fast`** | `0,228` | `1,4 %` |
+    | 4 | `Smooth` | **aberta** | `55 984` | `0,903` | `5,4 %` |
+    | 8 | `Smooth` | **fechada** | `19 440` ⇐ **é o `Fast`** | `0,459` | `2,8 %` |
+    | 8 | `Smooth` | **aberta** | `111 968` | `1,824` | `10,9 %` |
 
-    ⭐⭐⭐ **Numa imagem a assadura é `5,6×` MAIS BARATA e entrega `2,7×` MAIS peças** — *refinar* uma
+    ⭐⭐⭐ **Numa imagem a assadura é `5,5×` MAIS BARATA e entrega `2,7×` MAIS peças** — *refinar* uma
     peça custa `~0,32 µs` e *desenhar* uma peça já fina custa `~0,017 µs` (números da F6-t, que
     ninguém tinha composto). ⛔⛔ **E as linhas de `4` e `8` com a porta fechada são o report do dono
     reproduzido ao número:** `peças(Smooth) == peças(Fast)`.
@@ -284,11 +283,26 @@ só onde se pergunta (um ponto, não a malha inteira), ou leitura da GPU.
       número escrito no gate — a tolerância é derivada da diagonal da arte. **3 mutações, todas
       sangram** (a porta fechada · o `Smooth` sem consultar o memo · a tolerância de volta ao `0,02`
       que a arte real já tinha refutado).
-    - ⚠️ **Assar custa `4,0 ms`, UMA vez por bind**, ao lado do solver BBW que o mesmo `bind_image`
+    - ⚠️ **Assar custa `3,9 ms`, UMA vez por bind**, ao lado do solver BBW que o mesmo `bind_image`
       já paga, e **fora** do quadro.
     - ⚠️ **DUAS premissas morreram com a morte visível no diff:** a porta nascer desligada, e o
       *«sem espaço no orçamento o `Smooth` desenha o `Fast` AO BIT»* — hoje ele desenha a **assada**,
       que é o ponto.
+  - ✅⭐⭐ **E A CENA PARA SE VER ISSO EXISTE** (2026-09-17): `PH2D_VEC_BONE_PAINT_SMOKE` deixou de
+    ser um interruptor e o nível dele é uma **CONTAGEM de canvas** — `=1` é a cena de 8 passos que o
+    dono já aprovou, **byte-idêntica**; `=3` ou mais põe a cena acima do orçamento do quadro, que é
+    o regime do report. ⚠️ *Sem ela a cura estava gateada e invisível, e uma cura que ninguém pode
+    ver é uma cura que ninguém julga.*
+    - ⛔⛔ **A FOTO (`fotografa_cena.sh`) apanhou DOIS defeitos de cena que gate nenhum via:** a
+      1.ª disposição era uma COLUNA e a arte dobrada **varre para cima** muito além da caixa de
+      repouso, logo o canvas de cima ficava sempre cortado — *nenhum valor do espaçamento serve,
+      logo o que estava errado era a disposição* (hoje é uma FILEIRA: dobrar **encurta** a pegada
+      horizontal); e o enquadramento `All`, que eu tinha posto para caber a cena inteira, ajusta-se
+      às CAIXAS das sprites e cortava as pontas de qualquer maneira. ⇒ volta ao `Selected`, e a
+      leitura muda com ele: *os outros canvas existem para ENCHER o orçamento, não para serem vistos
+      ao mesmo tempo.*
+    - ⚠️ E o roteiro passou a ser **outro** conforme a contagem: *«um roteiro que tenta ensinar as
+      duas coisas manda o dono fazer oito passos para chegar ao que ele foi ver».*
   - ⏳ **O que falta da W2 (a placa), e o que já está medido sobre isso:**
     - o **formato de vértice**: o [`ph2d_render::QuadVertex`] é **partilhado com o quad simples**
       (`pos` + `uv`, 16 bytes), logo acrescentar-lhe pesos paga em toda sprite do app ⇒ ou um

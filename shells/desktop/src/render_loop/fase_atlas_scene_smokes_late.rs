@@ -69,7 +69,10 @@ impl crate::App {
         {
             let ppm = hero.project.pixels_per_meter;
             let cell = *next_import_cell;
-            if let Some(bits) = ph2d_app_vec::smoke_bone_paint::build(
+            // ⚠️ **O `n` é do ROTEADOR e não desta fase**: a cena monta `n` canvas e diz quantos
+            // de facto montou — as células do atlas avançam por esse número, senão a cena seguinte
+            // sobrescreve a tinta desta.
+            if let Some((bits, quantos)) = ph2d_app_vec::smoke_bone_paint::build(
                 sim,
                 renderer,
                 asset_db,
@@ -77,16 +80,25 @@ impl crate::App {
                 ppm,
                 atlas_asset_map,
             ) {
-                *next_import_cell = next_import_cell.saturating_add(1);
+                *next_import_cell = next_import_cell.saturating_add(quantos);
                 hero.gizmo.replace_selection(Some(bits));
+                // ⛔⛔ **`Selected` mesmo na cena LOTADA, e o `All` foi construído, FOTOGRAFADO e
+                // REVERTIDO:** ele ajusta-se às CAIXAS das sprites e a arte dobrada varre para fora
+                // delas, logo os canvas das pontas saíam cortados de qualquer maneira — e, mais
+                // importante, *enquadrar a fileira inteira é a pergunta errada*: os outros canvas
+                // existem para ENCHER o orçamento do quadro, não para serem vistos ao mesmo tempo.
+                // O que o dono julga é a junta do canvas à frente dele.
                 hero.bus
                     .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
                         kind: ph2d_editor_core::ViewFocusKind::Selected,
                     });
-                toasts.push(Toast::success(
+                toasts.push(Toast::success(if quantos > 1 {
+                    "Bone-paint smoke: Window > Bones, e na linha Deform compare Fast com Smooth"
+                        .to_string()
+                } else {
                     "Bone-paint smoke: pegue o Painter e desenhe uma forma sobre o canvas dobrado"
-                        .to_string(),
-                ));
+                        .to_string()
+                }));
             }
         }
 

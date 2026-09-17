@@ -56,7 +56,7 @@ fn cena_dobrada(
     let mut sim = SimWorld::default();
     // ⭐⭐ **A PORTA DO PRODUTO**, e é ela que escreve o alcance: um `None` aqui mede a cena tal
     // como o dono a vê. Ver o doc da [`super::corrente`] — a mutação que a criou.
-    let ossos = super::corrente(&mut sim, PPM).expect("a corrente monta");
+    let ossos = super::corrente_em(&mut sim, PPM, [0.0, 0.0]).expect("a corrente monta");
     if let Some(f) = forca {
         for &ent in &ossos {
             if let Some(mut bone) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::Bone>(ent) {
@@ -604,10 +604,36 @@ fn the_scene_binds_before_it_bends() {
     );
 }
 
-/// ⭐ **O nível declarado é o que existe** — ver a nota do [`super::NIVEIS`].
+/// ⭐⭐ **O NÍVEL DECLARADO É O QUE O CORPO HONRA — e a premissa MORREU em 2026-09-17.**
+///
+/// Ele dizia `assert_eq!(super::NIVEIS, 1)`, porque a cena era um interruptor. A F9 tornou o nível
+/// uma **CONTAGEM** de canvas (a pergunta *«o `Smooth` alisa numa cena CHEIA?»* não é observável com
+/// uma imagem só), e o que se pode afirmar agora é a coisa que de facto importa: **o número que o
+/// registo promete é exactamente o que a lei do corpo aceita**.
+///
+/// ⚠️ **As duas pontas, e a de cima é a que mente sozinha:** um `NIVEIS` maior que o `clamp` promete
+/// uma cena que o corpo não monta; um menor deixa cenas **alcançáveis e não declaradas**, que é o
+/// defeito que nenhum censo vê.
 #[test]
-fn the_router_declares_only_the_scene_that_exists() {
-    assert_eq!(super::NIVEIS, 1);
+fn the_router_declares_exactly_the_levels_the_body_honours() {
+    assert_eq!(
+        super::quantos_de(Some(&super::NIVEIS.to_string())),
+        super::NIVEIS,
+        "o roteador promete um nivel que o corpo nao monta"
+    );
+    assert_eq!(
+        super::quantos_de(Some(&(super::NIVEIS + 1).to_string())),
+        super::NIVEIS,
+        "o corpo monta um nivel que o roteador nao declara"
+    );
+    // ⚠️ E o REGISTO da família tem de dizer o mesmo número — ele é lido por quem nunca abriu este
+    // ficheiro, e é o único sítio onde esta cena existe para o resto do app.
+    let declarado = crate::FAMILY
+        .routers
+        .iter()
+        .find(|r| r.env == "PH2D_VEC_BONE_PAINT_SMOKE")
+        .map(|r| r.max_level);
+    assert_eq!(declarado, Some(super::NIVEIS));
 }
 
 /// ⏱️ **A BANCADA das duas leis** — filha por ASSUNTO (e pelo tecto de LOC), e aqui dentro para

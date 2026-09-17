@@ -22,15 +22,15 @@
 //!
 //! | imagens | lei | porta | peças entregues | ms | % de um quadro |
 //! |---:|---|---|---:|---:|---:|
-//! | 1 | `Fast` | — | `2 430` | `0,059` | `0,4 %` |
-//! | 1 | `Smooth` | **fechada** | `5 143` | `1,302` | `7,8 %` |
-//! | 1 | `Smooth` | **aberta** | **`13 996`** | **`0,232`** | **`1,4 %`** |
-//! | 4 | `Smooth` | **fechada** | `9 720` ⇐ **é o `Fast`** | `0,238` | `1,4 %` |
-//! | 4 | `Smooth` | **aberta** | `55 984` | `0,938` | `5,6 %` |
-//! | 8 | `Smooth` | **fechada** | `19 440` ⇐ **é o `Fast`** | `0,478` | `2,9 %` |
-//! | 8 | `Smooth` | **aberta** | `111 968` | `1,879` | `11,3 %` |
+//! | 1 | `Fast` | — | `2 430` | `0,056` | `0,3 %` |
+//! | 1 | `Smooth` | **fechada** | `5 143` | `1,244` | `7,5 %` |
+//! | 1 | `Smooth` | **aberta** | **`13 996`** | **`0,226`** | **`1,4 %`** |
+//! | 4 | `Smooth` | **fechada** | `9 720` ⇐ **é o `Fast`** | `0,228` | `1,4 %` |
+//! | 4 | `Smooth` | **aberta** | `55 984` | `0,903` | `5,4 %` |
+//! | 8 | `Smooth` | **fechada** | `19 440` ⇐ **é o `Fast`** | `0,459` | `2,8 %` |
+//! | 8 | `Smooth` | **aberta** | `111 968` | `1,824` | `10,9 %` |
 //!
-//! ⭐⭐⭐ **Numa imagem a assadura é `5,6×` MAIS BARATA e entrega `2,7×` MAIS peças.** A razão é a
+//! ⭐⭐⭐ **Numa imagem a assadura é `5,5×` MAIS BARATA e entrega `2,7×` MAIS peças.** A razão é a
 //! aritmética que a F6-t já tinha medido e que ninguém tinha composto: **refinar** uma peça custa
 //! `~0,32 µs` e **desenhar** uma peça já fina custa `~0,017 µs` — *pagar uma vez por bind o que se
 //! pagava 60 vezes por segundo não é um compromisso, é uma troca só com lados bons.*
@@ -41,11 +41,12 @@
 //! porque **não há refinamento por quadro nenhum**: o custo é linear nas peças e o orçamento do
 //! quadro deixa de decidir a qualidade.
 //!
-//! ⚠️ **A leitura foi feita a `load 15` e vale à mesma**, no sentido que interessa: contaminação
-//! torna um relógio mais LENTO, nunca mais rápido, logo `11,3 %` é um **tecto**. (A tabela pede
-//! re-leitura abaixo de `load 5` — ver o §5.0 do `CLAUDE.md`.)
+//! ⭐ **A tabela foi lida DUAS vezes, a `load 15` e a `load 4,6`, e as duas concordam a menos de
+//! `3 %`** (`1,879` contra `1,824` na linha pior). ⚠️ Isso não é sorte e vale como método: *uma
+//! contaminação torna um relógio mais LENTO, nunca mais rápido* — uma leitura suja que diz *«cabe»*
+//! é um TECTO, e só uma que diz *«não cabe»* precisa de máquina calma. A da calma fica na tabela.
 //!
-//! ⚠️ **Assar custa `4,0 ms`, UMA vez por bind** — ao lado do solver de pesos BBW que o mesmo
+//! ⚠️ **Assar custa `3,9 ms`, UMA vez por bind** — ao lado do solver de pesos BBW que o mesmo
 //! `bind_image` já paga, e fora do quadro.
 //!
 //! ⇒ `PH2D_SKIN_BAKE=0` passa a ser a porta de BISSECAR, e o caminho de omissão é a assadura.

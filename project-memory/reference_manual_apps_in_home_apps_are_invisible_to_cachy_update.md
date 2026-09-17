@@ -24,5 +24,9 @@ notificador.
 **Como aplicar:** se um app «não atualiza» ou «não aparece no cachy-update», a primeira
 pergunta é `pacman -Qo $(which app)` — sem dono = instalação manual. Os outros cinco de
 `~/Apps/` (obsidian, keepassxc, github-desktop, alchemy, gh) seguem nessa condição; todos
-têm pacote no AUR ou em `extra`. ⚠️ Instalar pelo pacman exige senha (sudo) — prepare o
+têm pacote no AUR ou em `extra`. **Cascadeur** (13/09, 2026.2.2) também mora em `~/Apps/cascadeur`
+e é o único SEM pacote no AUR: tgz em `https://cascadeur.com/rest/download/build?platform=linux&buildId=<n>`
+(sem login; o `buildId` é o `data-build-id` do botão em /download), lançador `~/.local/bin/cascadeur`
+com `QT_QPA_PLATFORM=xcb` (o pacote só traz o backend X11) + `FONTCONFIG_PATH=/etc/fonts`. Atualizar
+= baixar de novo e trocar a pasta. ⚠️ Instalar pelo pacman exige senha (sudo) — prepare o
 pacote e entregue UM comando, por [[feedback_a_red_checksum_is_acted_on_by_the_agent_not_escalated]].

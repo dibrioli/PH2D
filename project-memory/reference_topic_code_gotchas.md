@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: d2f2dbec-7784-4b38-bcf8-424045e2fd3c
-  modified: 2026-08-23T00:59:25.541Z
+  modified: 2026-09-13T23:23:27.365Z
 ---
 
 - [[feedback_new_tool_icon_needs_iconid]] — tool nova exige `IconId` (gate `enum_order_matches_svgs`)
@@ -41,3 +41,9 @@ metadata:
   canal novo é **um método de trait com default vazio**: nenhum implementador muda, todo módulo
   que não o declare sai byte a byte igual, e a recusa desaparece. ⚠️ Ao reconferir uma nota
   dessas, vá **ao gerador** ver o que ele de facto cola — não deduza do doc-comment.
+
+- ⛔ **Uma `const` do módulo lida DENTRO de uma função chamada enquanto um objeto de topo nasce é ReferenceError (zona morta), e um `try/catch` em volta a engole** (Pixel Lab W28, 13/09): `readSessionMode()` rodava no literal do `app`, ANTES da linha `const SESSION_MODE_KEY`; o `catch` devolvia o padrão "sempre" para quem tinha escolhido outra coisa, sem erro nenhum. Declarações de `function` sobem; `const`/`let` não. ⇒ o que um inicializador de topo lê tem de estar ACIMA dele (ou escrito na função), e um `catch` que devolve um padrão precisa de um gate que prove que o caminho feliz é o que roda.
+- ⛔⛔ **Um ponto de contacto derivado do CENTRO tem braço ZERO e nunca roda nada** (`line/motion-value`, 13/09, doc 109 §6): a resposta do plano usava `centro − n · suporte` como ponto de aplicação, que cai sempre debaixo do centro ⇒ `(ponto − centro) × n = 0`, e uma caixa a `20°` nunca se endireitava (giro medido `0,000`, com a lei de rotação inteira escrita e ligada). O ponto certo é o do SUPORTE (o vértice extremo em `−n`) — ⚠️ **e com a face PARALELA à parede ele tem de ser o MEIO dela**: ali os dois cantos tocam à mesma profundidade, e escolher um deles faz uma pilha PARADA tombar sozinha. *Um suporte é um conjunto; o representante honesto dele é o meio.*
+- ⚠️ **«A coluna nem nasce» é a pergunta errada quando a coluna já vinha na ENTRADA** (mesma jornada): o gate do `sim.collide` afirmava que uma caixa de chapa não escreve `rot` — e o nó COPIA as colunas que recebe, então ela estava lá a `0`. A pergunta que mede a lei é *«o valor MUDOU?»*; a da ausência só vale onde o produtor é o único a poder criar a coluna (o `sim.step`, que a cria do nada).
+- ⛔ **Um passeio de grafo do Motion que segue a PRIMEIRA aresta de saída dá a volta a um laço de simulação** (`line/motion-value`, 13/09, doc 109 §5): o `warp_gizmo::sink_of` fazia `edges().find(from == cur)`, e a `sim.zone` tem duas saídas — a primeira é a entrada ATRASADA do laço (`zone → wind`). O passeio girava `zone → wind → step → collide → zone` até ao limite de passos e devolvia `None`, sem erro. ⇒ *quem procura o sink anda em largura e não segue arestas `delayed`* (o `collider_gizmo::sink_of`).
+- ⛔ **`Math.max(...lista)` tem teto de ARGUMENTOS, e um teto em BYTES deixa a lista passar dele** (Pixel Lab W28, 13/09, medido): o Node estoura a pilha a **125 408** argumentos; o Firefox recusou **500 592** (*too many function arguments*) e aceitou 524 288 na mesma página depois — nem determinístico. A fila de desfazer de 64 MB cabe **524 288** passos mínimos (128 bytes), e a abertura da sessão fazia `Math.max(0, ...ids)`. ⇒ *toda redução sobre uma lista cujo tamanho é limitado por bytes (ou por nada) é um laço*; espalhar em argumentos só com contagem pequena PROVADA.

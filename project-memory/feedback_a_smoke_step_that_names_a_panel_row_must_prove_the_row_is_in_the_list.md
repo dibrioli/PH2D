@@ -68,3 +68,10 @@ aquela linha é pintada**, e gate essa decisão com as entidades da cena. E quan
 lista, `grep` as cenas de smoke pelo nome do que ele passa a esconder. Ver
 [[feedback_a_smoke_step_that_needs_three_decisions_at_once_is_not_a_step]] e
 [[feedback_a_reserved_band_is_not_a_painted_band_and_geometry_gates_go_green_over_a_blank_screen]].
+
+⛔ **E outra vez, noutra forma (16/09, modelador):** mandei o dono desenhar no Vector com o app
+aberto por `PH2D_FIELD_SMOKE=5` — passo tirado dos nomes no código, sem o conduzir (a placa estava
+com o smoke de outra linha). O passo era impossível: a env do smoke armava o módulo sem olhar o
+painel e ele comia o clique do Vector (`BUGS_3dmodeling.md` #3). *Um passo não conduzido é uma
+hipótese sobre o produto* — e o COMANDO do smoke faz parte do passo: uma env de smoke dirigido pode
+mudar o que as outras ferramentas conseguem fazer.

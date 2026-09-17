@@ -11,12 +11,13 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**2 arquivos** · **0** citados pelo `CLAUDE.md` (marcados **◆**).
+**3 arquivos** · **0** citados pelo `CLAUDE.md` (marcados **◆**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
 | 00 |   | [00_o_metodo.md](00_o_metodo.md) | — | O ALVO É UM ORÁCULO QUE SE CORRE — nunca um fonte que se lê |
 | 01 |   | [01_o_arsenal.md](01_o_arsenal.md) | — | O ARSENAL — que app é oráculo de que módulo, e como se corre sem interface |
+| 02 |   | [02_MotionBricks.md](02_MotionBricks.md) | — | MotionBricks — o oráculo de MOVIMENTO, e a porta está **ABERTA** |
 
 ---
 

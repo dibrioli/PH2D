@@ -36,5 +36,18 @@ lado nenhum — quem o disse foi o censo de obsolescência do próprio gate.
 3. ⚠️ **Depois de toda a integração, um `cargo check --workspace` a olhar para os WARNINGS** — não
    só os erros. `dead_code` é o único sintoma desta família.
 
+## ⛔ RECORRÊNCIA — 2026-09-13, a espécie de APAGAR (refatoração final, 3 linhas)
+
+Não foram duas linhas a extrair o mesmo bloco: foram linhas a **apagar cada uma os usos DELAS** de um
+item partilhado. O `fn src` do gate `convert_to_curves_asks_one_question` tinha usos dos dois lados; o
+`const NASCEU` do `fn_loc_caps` era citado por entradas de três linhas. Cada ramo compila limpo (há
+sempre um uso do outro lado) e só a **árvore combinada** fica sem nenhum ⇒ `dead_code` sob
+`build.warnings = deny`, e o `ship.sh` reprova num sítio que nenhuma linha tocou por último.
+⇒ **a cura mora no commit rebaseado em que o ÚLTIMO uso morre** (edit-rebase, com a nota na mensagem),
+nunca num commit de limpeza no fim: um `bisect` que atravesse a janela entre os dois encontraria uma
+árvore que não compila com `-D warnings`. Prove o nascimento com `cargo check --test it` (warnings=deny)
+naquele commit e no anterior. E um `rustfmt` pode pedir forma nova só ali (a lista de UMA entrada compacta).
+
 Relacionado: [[feedback_when_two_lines_pick_the_same_literal_the_collision_probe_goes_blind]],
-[[feedback_collision_surface_reads_the_fork_point_not_the_tip_of_main]].
+[[feedback_collision_surface_reads_the_fork_point_not_the_tip_of_main]],
+[[feedback_mergiraf_silently_drops_a_deletion_in_a_list_and_says_solved]].

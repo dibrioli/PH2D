@@ -14,13 +14,14 @@
 
 ## §1 — A triagem, antes de tudo
 
-⭐⭐ **TRÊS destas portas são PERMISSIVAS, e isso muda o trabalho inteiro:**
+⭐⭐ **QUATRO destas portas são PERMISSIVAS, e isso muda o trabalho inteiro:**
 
 | app | licença | o que isso autoriza |
 |---|---|---|
 | **Godot** | **MIT** | ⭐ **portar**, com atribuição. Sem parede, sem subagentes, sem vassoura |
 | **OpenToonz** | **BSD-3-Clause** | ⭐ **portar**, com atribuição. Idem |
 | **MyPaint** (as PARTES) | **ISC** + **CC0** | ⭐ **portar E LIGAR**, com atribuição — ver o aviso abaixo |
+| **MotionBricks** (o CÓDIGO) | **Apache-2.0** | ⭐ **portar**, com atribuição. ⚠️ os **PESOS** são NVIDIA Open Model License (comercial OK, com atribuição) e o **corpus** BONES-SEED tem licença própria **com portão** — ⛔ não medida |
 
 ⚠️⚠️ **O MyPaint é a primeira entrada em que a licença do APP e a do MOTOR
 divergem, e tratá-lo como uma coisa só erra nos DOIS sentidos** (medido
@@ -65,8 +66,9 @@ clean-room gasta onde havia porta permissiva é a forma mais cara deste erro.*
 | **MyPaint** | 2.0.1 | GPL-2.0-or-later (⚠️ **mas o motor é ISC e os pincéis CC0** — §1) | ⚠️ **só o APP** | Painter · Flip | ⛔ **o app NÃO tem porta de consola** (`--help` medido: 5 opções, todas de GUI — nenhum export/batch). ⭐ **A porta é a BIBLIOTECA:** liga-se `libmypaint` por `pkg-config --cflags --libs libmypaint` e pinta-se em memória com `mypaint_fixed_tiled_surface_new` — **zero GTK, zero janela** |
 | **Audacity** | — | GPL-3.0-or-later | **SIM** | Áudio | ⏳ **não medido** — não afirme uma porta sem a correr |
 | **Ardour** | — | CC0 + GPL-2/3 + MIT | **SIM** | Áudio (rack, mixer) | ⏳ **não medido** — idem |
+| **MotionBricks** | 2026-04-27 | ⭐ **Apache-2.0** (código) + NVIDIA Open Model (pesos) | ⭐ **NÃO** | Motion Nodes (ciclos) · Timeline/Flip (in-between) · Skeleton · `ph2d-spring` | ⭐ `python scripts/interactive_demo_g1.py --has_viewer 0 --controller random` — **zero X11, zero `pynput`**. Harness e corpus: [`02_MotionBricks.md`](02_MotionBricks.md) §3. ⛔ **`--allowed_mode` casa por SUBSTRING quando recebe uma string** |
 
-⚠️ **As duas últimas linhas dizem «não medido» de propósito.** *Uma ausência
+⚠️ **As linhas do Audacity e do Ardour dizem «não medido» de propósito.** *Uma ausência
 afirmada sem olhar a API é um palpite com cara de medição* — esta casa pagou por
 isso pelo menos três vezes. Quem precisar delas mede e edita esta linha.
 

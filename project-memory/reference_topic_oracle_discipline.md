@@ -1,6 +1,6 @@
 ---
 name: reference-topic-oracle-discipline
-description: "Disciplina de oráculo (6) — o pixel/valor exato é o juiz"
+description: "Disciplina de oráculo (13) — o pixel/valor exato é o juiz; e um oráculo que só responde ao rato ainda se corre"
 metadata:
   node_type: memory
   type: reference
@@ -16,3 +16,43 @@ metadata:
 - [[feedback_a_mutation_that_does_not_bleed_may_indict_the_oracle_not_the_finding]] — meça a propriedade que a mudança É antes de descartar o achado
 - [[feedback_a_wrapping_coordinate_is_a_bad_oracle_measure_the_rate]] — ângulo mod 2π vira ruído acima de 1 volta; leia angvel, não rotation
 - [[feedback_a_presence_only_oracle_is_blind_to_the_smear]] — oito gates de presença verdes sobre uma mancha; exija um pixel VAZIO fora da peça
+- ⛔ **Uma ENTRADA defeituosa fabrica diferenças contra o oráculo** (Teste Cascadeur, 13/09): a animação que mandámos ao Cascadeur tinha o pé a afundar 10 cm entre chaves e o braço a dar uma volta no ombro; a comparação «achou» que a física dele *inclina o corpo 17°/24° na decolagem* e *decola 2 quadros antes* — com a entrada corrigida, **0°/0,2° e os mesmos quadros**. Quem derrubou os dois foi o smoke do dono, não a comparação. ⇒ *antes de ler uma diferença contra o oráculo, meça a sanidade da ENTRADA (pé no chão, junta dentro do limite) com a mesma régua que vai usar na saída* ([[project_teste_cascadeur_2d_bones_testbed]]).
+- ⛔ **Um repositório de referência pode trazer DUAS variantes do mesmo algoritmo que discordam** (Pixel
+  Lab W25, 13/09): o `rotsprite-webgl` (MIT) tem o shader WebGL, que lê cada pixel de saída no CENTRO, e a
+  versão JS, que reduz o ×8 tomando o CANTO de cada bloco. A W6 transcreveu a JS; o RotSprite afim da W25
+  lê no centro, e o comentário dizia *"no giro puro é o mesmo algoritmo"* — medido, **48 %** das células
+  pintadas diferem (mais que nearest × RotSprite, 33,9 %). ⇒ *"transcrevi o algoritmo X" nomeia a
+  VARIANTE (arquivo e fase da amostra), e "é o mesmo" se MEDE antes de ir para um comentário.* A fase
+  escolhida ficou pinada por uma LEI (onde o EPX não mexe, RotSprite = nearest), com controle de que a
+  outra fase a quebra (40 de 40).
+- ⛔ **Doze amostras "variadas" aprovaram um compressor que o corpus do ORÁCULO reprovou** (Pixel Lab
+  W26, 13/09): o DEFLATE voltava byte a byte no zlib e ficava a ≤ 1,06× do zlib-9 em vazio, corridas,
+  aleatório, quadros de pixel art — e o corpus do APNG (Pillow + ffmpeg) deu **1,249×**, todo o
+  buraco num caso só: ruído espalhado num 256×256, casamentos CURTOS a distâncias variadas, onde a busca
+  rasa perde. ⇒ *amostras escolhidas por "variedade" cobrem o fácil; o corpus tem de conter o caso DURO
+  do algoritmo* — e a cura saiu de uma CURVA medida (profundidade × tamanho × pior tempo), não de
+  "copiar o nível 9". Irmã: a minha barra "nunca pior que guardar" reprovou 70 031 bytes que eram
+  EXATAMENTE a saída do zlib — a barra se calibra contra o lado aprovado (o próprio zlib) antes do código.
+- ⛔ **Fixture que o ORÁCULO recusa nunca é comparada — e a recusa pode vir de um byte que não desenha nada**
+  (Pixel Lab W27, 13/09): a FreeType 2.14 recusa um `.bdf` INTEIRO (erro 3) por um "é" (UTF-8 ou Latin-1) ou
+  um TAB no COMEÇO de uma linha `COMMENT` (no fim aceita; numa propriedade, aceita). A fonte de casos-limite
+  do oráculo tinha acento no comentário. ⇒ *toda fixture leva a conferência "os DOIS leitores abrem" antes
+  de qualquer comparação* (foi ela que pegou), e a divergência medida vira conferência declarada — se o
+  oráculo mudar, a nota envelheceu. Irmãs da mesma wave: o Pillow usa a FreeType mas não expõe glifo por
+  índice nem o mapa de BYTES de um `.fnt` ⇒ a porta sem interface é a BIBLIOTECA por ctypes, com um controle
+  de layout das structs contra o Pillow (struct desalinhada não dá erro, dá números).
+- ⭐⭐⭐ **Um oráculo que só responde ao RATO ainda se corre — mas um evento sintético do Qt NÃO é entrada**
+  (Teste Cascadeur, 13/09; a rede neural de pose automática, seis rotas por script todas inertes).
+  Um `QMouseEvent` montado à mão e mandado à janela **seleciona** (o «pressionar» chega) e **não arrasta**:
+  o Qt Quick refaz o teste de acerto a cada evento sintético e o primeiro MOVIMENTO passa a pertencer a
+  outro item. ⇒ a porta é a do PLATAFORMA — `qt_handleMouseEvent`, exportada pela `libQt6Gui` do próprio
+  alvo e chamada por **ctypes**, com o `QWindow*` de `shiboken6.getCppPointer`; é o mesmo caminho do QtTest,
+  que não carrega quando o alvo traz um Qt mais velho que o do sistema. ⚠️ **E o XTest do X11 também não
+  serve** num Xwayland aninhado: o ponteiro é do compositor. ⛔⛔ **Cada peça em falta é MUDA** — janela não
+  ativa, área de rato por cima a roubar o movimento, arrasto longo demais, gizmo de girar em vez de mover,
+  seleção anterior que persiste e responde «há algo aqui» a um clique que não acertou nada. ⭐ **As duas
+  réguas que destravaram tudo:** um ESPIÃO de eventos nos itens da tela (quem recebe o quê) e a própria
+  IMAGEM da janela (`grabWindow` → numpy) para saber em que pixel está o controlador — *adivinhar o pixel
+  pela câmera erra 10–25 px, e um controlador tem 5 de raio*. Detalhe e as seis condições:
+  [[reference_cascadeur_oracle_door_measured]].
+- ⛔ [[feedback_a_law_parity_corpus_does_not_measure_the_product_the_owner_uses]] — lei a 1e-8 e o pincel piorava a superfície: peça a 2.ª missão de PRODUTO (valores de fábrica, gesto real, cursor na superfície, ablação)

@@ -5,6 +5,11 @@ metadata:
   type: project
 ---
 
+✅ **RESOLVIDO — HISTÓRICO.** A linha entrou na rodada de **10/09**: o tip `bc02236d7` (o handoff de
+integração, 2026-09-10) é ancestral do `main` (`git rev-list --count main..line/motion-value` = `0`,
+medido 13/09), e o CLAUDE.md §5 Motion cita o handoff de 10/09. As mitigações abaixo **já não estão em
+vigor**; ficam como registo do custo medido de esperar uma rodada.
+
 **O facto (2026-09-06).** A linha fechou às **14:39** com 35 commits sobre `53832c884`. O
 integrador começou às **15:01** com um commit que diz *«as lições das SEIS linhas, antes da
 integração»*, fundiu **cinco** — `sculpt3d`, `Vector`, `components`, `3DModeling`, `UIUX` — e

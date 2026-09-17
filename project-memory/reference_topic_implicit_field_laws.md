@@ -48,3 +48,6 @@ Vizinhas que ficam no índice por serem gerais: [[feedback_a_gate_that_measures_
 [[feedback_a_second_error_can_be_load_bearing_for_the_first]] ·
 [[feedback_two_halves_of_a_cure_each_refused_alone_do_not_refute_the_cure]] ·
 [[feedback_curing_half_a_family_can_leave_the_other_half_worse]]
+
+- ⛔⛔ **Uma cúbica NÃO é um círculo — erra `2,7253e-4·r` no quarto canónico** (16/09): a barra de «esta cúbica é um arco?» não pode ser a tolerância de achatamento (ela divide-se pelo `Resolution` e o erro da cúbica não) — com ela um CÍRCULO nunca era arco e subir o botão desfazia os arcos. A barra é `max(tol, 2,7254e-4·r)`, e arcos acima de `90°` escrevem-se em duas cúbicas (a lei que o `shapes::arc` da casa já tinha). Ver `docs/3DModeling/BUGS_3dmodeling.md` #2.
+- ⛔ **«Só uma operação tem filhos» valia para todos MENOS a raiz** (16/09): a nota dizia *«raiz-forma é um caso que não existe hoje»* e duas cenas de smoke nascem assim; a paleta pendura na raiz ⇒ a forma nova aparecia na Hierarquia e não no ecrã. A raiz não se embrulha (é dona da peça): vira a união NO MESMO SÍTIO e a forma desce com o que é dela. `BUGS_3dmodeling.md` #4.

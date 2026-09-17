@@ -29,7 +29,7 @@ Estado em 2026-09-10, fim do dia:
 - ✅ **W2.0 censo feito:** `App` tem ~401 campos; física toca 126 (22 `impl App`), sculpt 180, vec 89; 425
   ficheiros de smoke (95 k LOC), 22 com `impl App`. ⛔ Uma feature `smokes` por `#[cfg]` foi recusada.
 - ⭐ **ORDEM DO ENIO (10/09, noite): «Amanhã partiremos o shell» — a W2 começa em 11/09.** ⭐⭐ **Os
-  briefings das linhas estão em `docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md`:
+  briefings das linhas estão em `docs/archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md`:
   L0 `line/app-host` PRIMEIRO e sozinha (substrato `ph2d-app-host` + `ph2d-app-registry-init` + piloto
   `field3d` + o HOWTO); L1–L5 (motion, physics, sculpt3d, vec, flip) abrem NO MESMO DIA (decisão do Enio, 11/09) em
   duas fases: Fase A só nos ficheiros da família (poda de cenas, `impl App` → estado próprio, agrupar em

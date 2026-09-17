@@ -48,3 +48,11 @@ candidatos; (4) refine só onde a grelha **bracketou** um pico, com `>` de um la
 Relacionado: [[feedback_interval_error_is_first_order_so_a_uniform_grid_pays_n_cubed]] ·
 [[feedback_a_ruler_placed_after_the_tidying_step_measures_the_tidying]] ·
 [[reference_topic_implicit_field_laws]] · [[reference_topic_measurement_discipline]]
+
+**2.ª ocorrência (`line/3DModeling`, reconhecedor de arcos, 2026-09-16) — e a NOTA também era amostrada.**
+A barra «esta cúbica é um arco?» conferia seis parâmetros; o pico do erro de um arco numa cúbica cai em
+`t = (3 − √3)/6 ≈ 0,2113`, entre dois deles ⇒ a barra aplicada era `1,0535×` a escrita (um arco de
+`90,75°` passava por círculo). ⚠️ A nota de auditoria que o nomeava dizia *«subestima ~8 %»* — outra
+leitura por amostras, também errada. Nenhuma grelha fixa até `32` recusava um arco de `90,03°`
+(`1,002×`): só grelha + secção áurea em cada máximo local. **How to apply:** quando uma nota diz
+*«subestima X %»*, pergunte com que régua o X foi medido antes de o copiar.

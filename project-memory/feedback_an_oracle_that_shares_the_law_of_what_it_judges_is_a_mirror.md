@@ -32,3 +32,9 @@ mais do que um esperto que partilhe uma linha com o produto.
   ([[reference_topic_mutation_proofs]], [[reference_topic_oracle_discipline]]).
 - ⚠️ E o oráculo tem de usar a **mesma tolerância de paragem** do produto: um oráculo `10×`
   mais apertado mede a TOLERÂNCIA, não a lei — foram `10` pixels a `28°` numa peça correcta.
+- ⭐ **2.ª ocorrência (2026-09-16, `line/Vector`, Bug #33 do vetor):** o `Smooth` da pele de imagem
+  desenhava «micro irregularidades», e o gate do botão estava VERDE porque media o desvio da malha
+  contra o CAMPO que ela segue — o campo P1 dos pesos tinha um vinco por aresta, seguido fielmente e
+  aprovado fielmente. A régua que o apanhou **não sabe que campo existe**: olha só a polilinha
+  desenhada (vai-e-volta da tangente + trocas de sinal da curvatura: `2` contra `24`). *Quando o
+  refinador está certo e o desenho está errado, o defeito é do CAMPO — e só uma régua sem campo o vê.*

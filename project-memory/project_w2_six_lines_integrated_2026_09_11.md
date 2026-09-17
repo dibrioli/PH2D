@@ -107,7 +107,7 @@ na LEI, nunca em quem pode chamá-la.*
 2.ª volta (`flip`, `vec`) + `line/shell-folhas` · Fase C (`motion` −111 397, `vec`, `physics`) ·
 Fase D (`components`, `vec`, `painter` — a última linha NOVA). Shell **526 809 → 186 647** (2 023 →
 917 ficheiros); o portão de testes impactados caiu de 51 s para 27 s na mesma máquina. Estado
-completo, as leis e os blocos de reabertura em `docs/IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md`.
+completo, as leis e os blocos de reabertura em `docs/archive/integracao-jornadas/ESTADO_W2_2026-09-12.md`.
 
 **Aberto (12/09):** o **envio** — o `ship.sh` ficou **CI-clean** localmente (12/12, 22 689 testes) depois de
 curar 25 avisos, 79 dependências mortas, 2 ficheiros fora do build e um gate que lia uma dependência
@@ -120,6 +120,63 @@ Vetor e não tem dono.
 ⚠️ **E uma lei desta memória está REFUTADA desde 12/09:** a regra *«o `nextest-impacted` não alcança
 `shells/desktop/tests/it/`»*, que o integrador escreveu sem medir e espalhou por três blocos de
 reabertura — ele alcança (`rdeps(<família>)` → 793 testes). Ver o ESTADO §4 lei 4.
+
+**Actualização 2026-09-13 — a 2.ª jornada da auditoria de arquitectura, integrada por ordem do dono
+(*«integre»*):** duas linhas paralelas sobre o mesmo `main`, com uma CERCA de ficheiros entre elas.
+`line/render-loop` (A9 + o quadro: `run_render_frame` 13 685 → 984 linhas, 125 fases; `App` 245 → 187
+campos) primeiro — preserva os 145 hashes que o handoff dela cita — e `line/editor-core` (A5b + A10:
+1 737 ids para as crates donas, módulos da fundação em DAG) replicada por cima: UM conflito
+(`vector_bridge.rs`). ⚠️ **O tecto da shell SUBIU** (190 629 → 196 990) por autorização explícita do
+dono para caber a divisão do quadro. A integração desceu os 207 ids que a cerca prendia, matou a fachada
+`screens::hero::ids` e as três cópias de slug, e pagou curas de gates que nomeavam ENDEREÇOS (três de
+família a lerem o `mod.rs`, o verificador de docs cego aos gates da shell, cinco agulhas de id).
+O smoke do dono devolveu uma queixa (a arte do Flip sem contorno de realce, PRÉ-EXISTENTE) e a cura
+dela achou o `ph2d-app-flip` a não compilar SOZINHO (75 erros escondidos pela unificação de features
+da workspace) ⇒ as duas curadas e o `ship.sh` ganhou o passo `check-standalone-optional.sh`.
+**ENVIADO em 13/09 por ordem do dono** (*«envia»*): `aceaa439a`, 412 commits. A run 34757814212
+reprovou nos três sistemas antes de compilar (o `spike.yml` pedia o shim `ph2d-editor`, apagado a 12/09);
+cura `4b170862b` + portão `check-workflow-packages.sh`; a run 34758869553 ficou VERDE inteira.
+A seguir o dono abriu três linhas para fechar a refatoração
+(`docs/archive/integracao-jornadas/BLOCOS_ABERTURA_REFATORACAO_FINAL_2026-09-13.md`).
+
+**Actualização 2026-09-13 (tarde) — a REFATORAÇÃO FINAL integrada LOCALMENTE** (*«os 3 agentes
+finalizaram»*): `input-dispatch → render-bodies → loc-caps` rebaseadas em `integ/refatoracao-final`
+(134 commits) e o `main` do primário avançado por fast-forward para `530f66659` (depois `be42390df`,
+com a medição de compilação). ✅ **ENVIADO** em 13/09 15:40 por ordem do dono (`4b170862b..be42390df`),
+CI run 34775366240 **verde** (lint · 3 OS · replay C9). Números e achados no ESTADO W2 §6 e no
+BLOCOS §6-bis: `input_dispatch.rs` 7 115 → 527, `run_render_frame` 984 → 71, listas de LOC das
+crates/painéis a zero, shell 196 003 (tecto 196 990 intocado), suíte 22 735 (`ONLY-A 0`), `ship.sh`
+14/14. Três achados de integração: o Mergiraf largou duas deleções numa lista e disse «Solved»
+(prova commit a commit); dois `dead_code` só na árvore combinada (curados no commit em que nascem);
+e o ship reprovou um gate de OUTRA crate cujo contador passava por um memo POR THREAD (curado numa
+pool de 1 thread, [[feedback_a_counter_behind_a_per_thread_memo_depends_on_the_scheduler]]). A prova de
+movimento ficou versionada em `scripts/moved-proof.py`. ✅ **Smoke do dono OK** (13/09). ⭐ E a
+velocidade de compilação foi MEDIDA a pedido dele (antes `0bfee712e` × depois `530f66659`, edição real,
+45/45 recompilaram a shell): `check` incremental `0,95 → 0,88 s`, sem incremental `2,33 = 2,33 s`, smoke
+`5,00 → 4,72 s`, testes `ci-test` `10,65 → 10,2 s` — **não piorou, 3–8 % melhor**; tabela no ESTADO W2 §6,
+commit `be42390df`, e o `main` local avançou para ele.
+
+**Actualização 2026-09-13 (noite) — linhas limpas e pasta de processo arquivada** (*«é preciso limpar a
+pasta… deixando apenas os docs úteis»*): **20 worktrees `line-*` removidas** (os 21 ramos `line/*` FICAM);
+o que não se regenera foi preservado ANTES em `Worktrees/_arquivo-linhas-2026-09-13/` (73 MB: as três
+`.cauda-*` das linhas da refatoração final, o `ph2d_project.postcard` + `spikes/field-spike/out` da
+`line-3DModeling`, dois `.claude/settings.local.json`), e as 5 013 `referencias` da `line-UIUX` foram para
+`docs/UI_New_and_Simple/referencias/` do primário (gitignored). Disco `555 → 340 GB`. Ficam as worktrees
+`line-editor-core` (sessão integradora) e `integ-arquivo-docs`. Os 19 registos datados saíram de
+`docs/IntegracaoMultiAgente/` para `docs/archive/integracao-jornadas/` (gate
+`the_live_process_folder_holds_no_dated_record`) e os docs de abrir/assumir/fechar/integrar linha foram
+conferidos contra o código — `f065b17bb` (scripts) + `1d43da737` (docs). ✅ **ENVIADO** em 13/09 por ordem do dono (*«envie»*,
+`be42390df..1d43da737`): `ship.sh` verde (22 736/22 736) e CI run 34778901059 verde (3 SO + C9).
+⚠️ Antes de reabrir, os `+12` do `git cherry` em `line/loc-caps`/`line/render-bodies` foram conferidos um a um:
+todos têm gémeo no `main` pelo título, 10 com patch idêntico e 2 com a adaptação da integração ⇒ nada perdido.
+
+**Reabertura (13/09, noite):** o dono reabriu **6 linhas de módulo** — `motion-value`, `sculpt3d`, `3DModeling`,
+`Vector` (a janela que ele chama «Bones»), `UIUX`, `components` —, recriadas pelo integrador em `Worktrees/line-*`
+por **fast-forward** do `main` enviado (os 6 ramos eram ancestrais, `cherry +0`), `target/` com `chattr +C`, e os
+restauros do arquivo devolvidos (postcard + `spikes/field-spike/out` do 3DModeling; `.claude/settings.local.json` do
+sculpt3d). As janelas já estavam abertas com contexto antigo ⇒ o prompt de cada uma manda executar o
+`MODELO_TROCA_DE_AGENTE_NA_LINHA` + um adendo (a memória da conversa é mais velha que a árvore; onde a família mora
+hoje; o handoff da W2 dela; seguir com o item em curso em vez de esperar tarefa).
 
 **Why:** o Enio ordenou *«siga. integre.»* em 11/09, depois de as seis linhas fecharem.
 

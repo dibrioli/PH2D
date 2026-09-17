@@ -71,3 +71,9 @@ a do app — a mesma cerca que fez a sonda mentir, virada do avesso.
 
 ⚠️ **Sem adapter ele ESTOURA em vez de saltar** (§5.0: *skip gracioso não é verde*): um verde sem
 device afirmaria sobre um programa que não é este.
+
+⛔⛔ **Mais um caso, no mesmo módulo (16/09): o PREVIEW é outro programa.** Os gates do cozedor
+provavam as quinas do vaso como arcos em todo nível do `Resolution`; a app traça o que o
+`preview::coarse_doc` lhe dá, a mexer E parado, e ele trocava os arcos por uma polilinha `7×`–`83×`
+mais cara sempre que a polilinha encolhia (comparava `segment_count`; o custo é `prim_count`). ⇒ *o
+gate do produto passa pelo mesmo funil que a app — aqui, `coarse_doc(doc, mexer).unwrap_or(doc)`.*

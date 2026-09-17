@@ -77,3 +77,24 @@ acidental o denuncia, e o sintoma aparece **na crate errada**.
   a pergunta é *"o que ele estava a ler, e porque parou de ler?"*;
 - e a mutação que o prova é repor o literal: ela tem de sangrar com a mensagem do terminador, não com
   a asserção de conteúdo.
+
+---
+
+## ⚠️ A terceira forma: a âncora de **ADJACÊNCIA** — citar a condição INTEIRA (2026-09-14)
+
+Nem toda âncora métrica traz um número. O `the_gizmo_is_not_published_while_the_preview_runs` citava,
+achatada sem espaços, a condição do gizmo de objecto **inteira** — as duas cláusulas da ferramenta
+vectorial *imediatamente seguidas* do termo da preview. A lei dele é só a última: *o termo da preview
+é uma conjunção daquele argumento*. Quando a wave seguinte pôs uma cláusula legítima (a ferramenta
+Flip) **no meio das duas**, o gate ficou vermelho sobre um quadro correto.
+
+⇒ a cura foi encolher a agulha até ao **termo** (`&&!self.ui_preview.is_on(),` — a vírgula prova que
+ele fecha o argumento) e exigir **unicidade** dela no texto. O gate ficou **mais forte** do que era: a
+uniqueness apanha um segundo argumento a fazer a mesma pergunta, e a cláusula seguinte já não o
+expira.
+
+**Why:** citar texto vizinho é uma métrica disfarçada — «zero bytes entre A e B». Toda condição
+cresce por conjunção, e é exactamente aí que o gate de uma vizinha expira. **How to apply:** a agulha
+de um arch-gate é o **menor** pedaço que carrega a lei, mais um controlo de **unicidade** para ele não
+virar vácuo. Se a agulha contém algo que outra wave pode legitimamente empurrar para longe, ela ainda
+é um proxy.

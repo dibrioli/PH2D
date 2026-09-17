@@ -1,6 +1,6 @@
 ---
 name: topic-authored-state-and-clocks
-description: "Família: estado autorado, relógios, âncoras e ciclo de vida de snapshot/preview/load"
+description: "Família: estado autorado, relógios, âncoras, ciclo de vida de snapshot/preview/load; e o gesto que acumula estado invisível"
 metadata: 
   node_type: memory
   type: reference
@@ -43,3 +43,17 @@ velha ao escolher o objecto) sem tocar na digitação; o commit fica nas portas 
 
 ⚠️ E o gate disto é **textual** — um teste unitário chama a função directamente e nunca vê de que
 laço ela é chamada. Quatro mutações da FIAÇÃO desta wave sobreviveram a **6 407 testes verdes**.
+
+- ⛔⛔ **Um gesto que ACUMULA estado invisível degrada o produto a cada uso** (Teste Cascadeur, 14/09;
+  report do Enio: *«uma vez que movo o ponto/osso, o osso fica de algum modo preso e não consigo mover
+  novamente»*). Arrastar um ponto **prendia-o para sempre** (`travados.add`), e com preço de âncora: ao
+  4.º ponto tocado, puxar o peito 15 cm movia **3,2 cm**; com o rig limpo, 14,6. ⚠️ **E o rótulo mentia
+  junto** — a legenda dizia *«Vermelho = preso por VOCÊ»* sobre um vermelho que o app punha sozinho.
+  ⭐⭐ **A medição que resolveu:** o que segura uma pose já feita **não é a FORÇA do preço, é ele
+  EXISTIR** — aquela posição é uma direção LIVRE do problema de mínimos quadrados, e qualquer preço a
+  escolhe; a força só serve para **travar**. Tabela: preço `30` → deriva 1,9 cm / peito 2,4 · preço
+  `0,1` → deriva **1,9 cm** / peito **13,9** · preço `0` → deriva 11,9 / peito 14,6. ⇒ *quando um
+  termo existe só para quebrar uma degenerescência, pese-o com o MENOR valor que ainda a quebra —
+  procure o penhasco, não o platô.* ⛔ E a alternativa óbvia (subir a atração global à pose anterior)
+  foi **medida e recusada**: de 0,5 a 10 a deriva não baixa de 12 cm, porque ela não distingue o que
+  o artista posou do que ele não tocou.

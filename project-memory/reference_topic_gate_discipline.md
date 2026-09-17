@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: 85e38f84-1b86-49d2-aee2-91da101e1fd7
-  modified: 2026-07-21T01:04:29.502Z
+  modified: 2026-09-12T22:45:38.485Z
 ---
 
 # Ofício de gate (índice de família — detalhe em cada arquivo; irmãos: mutation_proofs · oracle_discipline · fixture_discipline)
@@ -102,3 +102,58 @@ metadata:
   «corrida» (porque o teste passava isolado) sobre uma reprova que era **determinística** e dizia
   o número exacto no texto do `assert`. *Uma reprova que passa isolada pode ter mudado de causa
   entre as duas corridas.*
+- ⭐ **Um gate num tamanho SÓ pode morar exactamente na zona em que o defeito some** (Pixel Lab
+  W23, 12/09): `rotatedSize` fazia `ceil(w·|cos| + h·|sin|)` e `sin(π)` é `1,2e-16` — num 4×6 o
+  resto some no arredondamento do float e o gate dizia «exacto»; varrido de 1×1 a 64×64, **11 292
+  de 12 288** tamanhos saíam com uma linha e uma coluna a mais, e o nearest estragava 7 287 de
+  8 000 giros de 90°. Irmão no mesmo dia: um corpus que amostra a célula de longe (9–16 amostras)
+  é cego à regra que só vale numa LASCA dela — a mutação passou verde no oráculo, e uma lupa ×128
+  sobre o canto a matou. ⇒ *varra o tamanho e a densidade; um exemplo escolhido afirma só o exemplo.*
+- [[feedback-a-census-gate-that-scans-its-own-tree-counts-itself]] — censo que varre a árvore onde mora conta-se a si mesmo (dados da metade justa, mensagens); salte o próprio ficheiro antes de TODAS as contagens e prove o piso com `piso + 1`
+- ⛔ **Uma cura que põe PISO numa grandeza cega o gate que media essa grandeza contra o MESMO número**
+  (Pixel Lab W24, 13/09): o gate exigia palco ≥ 100 px (barra do vão medido 0·146); a cura de uma
+  janela pequena pôs `minmax(100px, 1fr)` na linha do palco, e duas mutações que antes sangravam
+  (a legenda sem teto) voltaram a SOBREVIVER — levavam o palco ao piso em vez de a 0. Quem separa
+  «espremido» de «cabe» passou a ser uma propriedade SEM número (a página cabe sem rolar). ⇒ *depois
+  de pôr um piso/tecto, re-corra as mutações que os gates DAQUELA grandeza matavam.* Irmão: uma mutação
+  de «não quebra a fileira» sobreviveu a 1000 e a 760 px porque um filho quebrava por conta própria
+  — a largura do gate sai de MEDIR a mutação (1º botão fora só < 580 px), nunca de um palpite.
+- ⛔ **"Vazio" decidido DEPOIS de recortar à caixa do alvo esvazia os dois lados** (Pixel Lab W27, 13/09):
+  a comparação `.fnt` × `.bdf` recortava a letra do `.bdf` à célula do `.fnt` e só então perguntava se a do
+  `.fnt` estava vazia — as 27 letras exportadas com LARGURA ZERO viravam recorte vazio contra glifo vazio e
+  contavam como IGUAIS. ⇒ *a pergunta "falta?" se faz no lado NÃO recortado; o recorte só entra na
+  pergunta "é igual?"*, e a barra exige a população exata das ausentes (27, todas na faixa esperada).
+- ⛔ **Um gate de RESTAURAÇÃO que reabre UMA vez é cego ao que a restauração faz com o PRÓXIMO passo**
+  (Pixel Lab W28, 13/09): o gate do F5 usava a régua mais forte (o documento em CADA posição da fila) e a
+  mutação que recomeçava os ids dos passos do 1 SOBREVIVEU — a colisão só aparece quando o artista
+  CONTINUA depois de reabrir e reabre de novo (o banco ficava com o passo velho daquele número no lugar do
+  novo). ⇒ *restaurar → agir → restaurar*. E as três sobreviventes marcadas «(medir)» eram três coisas
+  diferentes: defeito real, correcto-mas-caro (reabrir regravava a fila de 64 MB) e EQUIVALENTE (a mesma
+  guarda escrita em três lugares ⇒ uma porta só). Classifique cada uma antes de curar.
+- ⛔⛔ [«Contador, logo imune à carga» é FALSO atrás de estado POR THREAD — o gate da superfórmula leu morno 0/4/8 sob fan-out e reprovou o ship sem Rust mudado; lei exacta numa pool de 1 thread, tecto estrutural `4×(threads+1)` no caminho do produto](feedback_a_counter_behind_a_per_thread_memo_depends_on_the_scheduler.md)
+
+- ⛔ **Um gate que ESCREVE no fonte aquilo que ele próprio varre acusa-se a si próprio** (13/09, `line/UIUX`): o teste que separa duas metades de um vocabulário escrevia o prefixo da secção (`"panel.inspector.player."`) e o censo de chaves leu-o como **chave em uso** — o gate reprovou sobre si mesmo. Duas curas: derive o prefixo (`format!("{PREFIX}player.")`) e ensine a régua que uma chave **não acaba em ponto**. *A fixtura de um gate é produto para a régua dele.*
+
+- ⛔ **Um marcador de isenção SEPARA-SE do que isenta quando algo reformata a linha** (13/09, `line/UIUX`): cinco `// LITERAL-PX-OK` do Inspector ficaram na linha do parêntese quando o `rustfmt` reflowou a chamada (o rótulo passou a `tr("…")`), o número ficou sozinho noutra, e o `no_magic_numeric` acusou cinco sítios que já estavam isentos havia meses. *Uma isenção presa a uma LINHA é uma isenção que o formatador pode apagar* — e só se vê no dia em que alguém reformata.
+
+- ⛔⛔ **Um CENSO TEXTUAL e um SEAM DE GESTO medem coisas diferentes, e o nome do primeiro não avisa**
+  (Tags W3c, 13/09): apontei duas mutações — *a row não é pintada* e *o controlo morre sob o dedo* — ao
+  `every_registered_physics_component_has_a_ui_writer`, e **as duas sobreviveram**. Aquele gate varre a
+  FONTE à procura do id e da edição escritos no painel; apagar o `hit_index.register` não muda uma linha
+  do que ele lê. ⇒ *um componente pode ter «caminho de escrita na UI» e estar invisível na tela*. As duas
+  perguntas precisam de dois gates: o censo prende a FIAÇÃO, o seam com ponteiro real prende a PINTURA e
+  a focabilidade. ⚠️ E o seam de um selector tem de **ABRIR a lista** antes de procurar as opções — elas
+  só são pintadas pelo passe diferido enquanto o popover está aberto, e um gate que as procura com a
+  caixa fechada mede um ecrã onde elas legitimamente não estão.
+- ⛔⛔ **Uma linha que nenhuma mutação consegue observar é código morto com cara de rigor** (mesma volta):
+  escrevi no `signal_passes` um `if tree.get(q).is_none() { return false }` para *declarar* a falha
+  fechada, e a mutação que o apagava não fez nada reprovar — o `TagTree::reaches` (W1) já recusa um id
+  fora da árvore, logo o guarda nunca era o que decidia. ⇒ apague-o e **NOMEIE a dependência**: a lei
+  passou a ter as duas metades escritas (`a_tag_that_no_longer_exists_reaches_nobody` a montante,
+  `a_missing_filter_tag_passes_nobody` aqui), porque se o `reaches` mudar, a armadilha abre em silêncio.
+  ⚠️ É o INVERSO de [[feedback_i_write_the_right_guard_and_do_not_gate_it]]: ali escrevo a guarda certa e
+  não a gateio; aqui escrevo uma guarda que outra porta já garantia.
+- ⛔⛔ **Nenhum portão perguntava se um GESTO é REVERSÍVEL** — 88 verdes sobre um defeito de 155 cm ([[feedback_a_gesture_that_returns_must_give_back_the_pose]]). Todo gesto contínuo precisa do portão do caminho fechado.
+- ⚠️ **Subir a barra de um portão pode ser uma TROCA MEDIDA e não um afrouxamento** — mas só se a troca estiver escrita AO LADO da barra, com os dois números: aqui a virada por movimento subiu de 11,1° para 15,4° (barra 15 → 18) e comprou 14 dos 16 círculos que deixavam o corpo fora do lugar. *Sem os dois números ao lado, é armengo.*
+- ⛔ **Um controlo que nunca APERTA não segura a barra** (16/09): o «arco de `150°` numa cúbica tem de ser recusado» (erra `22×` a barra) deixou passar uma barra `10×` mais larga; o de `95°` (`1,38×`) mata-a. *O controlo negativo tem de estar logo acima da barra, não longe dela.*
+- ⛔⛔ **Gate verde porque NENHUM teste corre com a env do smoke** (16/09, modelador): «fechar o painel desarma» estava provado no caminho do pill, e o caminho `PH2D_*_SMOKE=<n>` — o de todo passo de smoke — armava sem olhar o painel. `set_var` é `unsafe` e o `cargo test` partilha o processo, então a env nunca entra no corpus. ⇒ ler a env por uma porta com sobreposição POR THREAD só nos testes, e a lei pura com a env como argumento.

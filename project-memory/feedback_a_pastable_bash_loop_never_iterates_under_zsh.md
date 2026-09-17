@@ -45,3 +45,16 @@ com o `&&` a garantir que nada se seguia, o que foi a metade boa.
 ninguém consulta no momento de agir não impede nada.*
 ⇒ **escreva os caminhos LITERAIS no comando** (`git commit -- a.rs b.rs`), ou use um array
 (`arr=(a.rs b.rs); git add -- "${arr[@]}"`), que se comporta igual em bash e zsh.
+
+## ⛔⛔ 3.ª RECORRÊNCIA — 2026-09-13, e a forma PIOR: uma VERIFICAÇÃO que passa (integração da refatoração final)
+
+O integrador escreveu, inline, a comparação «cada commit rebaseado tem o mesmo patch que o original»:
+`files=$(git diff --name-only …); for f in $files; do … git diff -- "$f" …`. Sob zsh o laço correu **uma
+vez com a lista inteira como caminho**, os dois `git diff` devolveram vazio, as duas assinaturas deram o
+mesmo `md5` — e o relatório disse **«0 diferenças» em 130 commits**, com dois commits que tinham PERDIDO
+alterações ([[feedback-mergiraf-silently-drops-a-deletion-in-a-list-and-says-solved]]). Minutos antes, a
+mesma causa tinha dado `git diff A B -- $L` vazio e «as listas são iguais».
+⇒ *um `git grep`/`diff` sobre um caminho que não existe não falha: devolve nada, e «nada» é o veredito
+de «igual».* Verificação = **ficheiro `bash`** com arrays, `pipefail` com `|| true` onde o vazio é legítimo,
+e **um controlo positivo** (dois patches sabidamente diferentes TÊM de dar assinaturas diferentes) —
+foi só com o controlo que a régua achou os 2 de 130.

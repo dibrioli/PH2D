@@ -83,6 +83,15 @@ pub(crate) fn announce() {
          [sculpt3d]    (5) Carregue em `Circle` e arraste a partir do MEIO do sitio que\n\
          [sculpt3d]        quer tirar: aqui o ponto onde voce comeca e' o CENTRO, e\n\
          [sculpt3d]        afastar a mao aumenta o raio.\n\
+         [sculpt3d]        Faca DUAS vezes, e a segunda e' a que importa:\n\
+         [sculpt3d]        -> primeiro um corte todo DENTRO da bola;\n\
+         [sculpt3d]        -> depois Ctrl+Z e outro que SAIA pela beira dela, mordendo\n\
+         [sculpt3d]           a silhueta.\n\
+         [sculpt3d]        OLHE PARA A SUPERFICIE REDONDA AO LADO DO CORTE nos dois casos:\n\
+         [sculpt3d]        -> ela tem de estar lisa. Um pontinho claro ou escuro encostado\n\
+         [sculpt3d]           a' borda -- um triangulo que apanha a luz de outra maneira\n\
+         [sculpt3d]           que os vizinhos -- e' o defeito de 17/09 a voltar, e ele so'\n\
+         [sculpt3d]           aparecia no corte que sai pela beira.\n\
          [sculpt3d]    (6) Carregue em `Lasso` e desenhe a mao livre, inclusive uma forma\n\
          [sculpt3d]        em C. Repare que aparece uma pista nova, `Smooth Stroke`,\n\
          [sculpt3d]        que nao existe nas outras duas.\n\
@@ -99,8 +108,10 @@ pub(crate) fn announce() {
          [sculpt3d]    que voce cercou); se o corte acontecer DURANTE o arrasto; se a\n\
          [sculpt3d]    forma amarela nao aparecer; se a face cortada sair sem malha (veja\n\
          [sculpt3d]    o passo 3); se um dos tres botoes de forma nao fizer nada; se a\n\
-         [sculpt3d]    pista `Smooth Stroke` aparecer com Box ou Circle escolhidos; ou se\n\
-         [sculpt3d]    largar o rato travar o app por mais de um piscar de olhos."
+         [sculpt3d]    pista `Smooth Stroke` aparecer com Box ou Circle escolhidos; se\n\
+         [sculpt3d]    sobrar uma mancha de luz na superficie ao lado da borda do corte\n\
+         [sculpt3d]    (veja o passo 5); ou se largar o rato travar o app por mais de um\n\
+         [sculpt3d]    piscar de olhos."
     );
 }
 

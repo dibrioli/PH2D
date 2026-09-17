@@ -48,9 +48,9 @@ pub(super) fn apply_disconnect(
         NodeId(to_node),
         to_port,
     ) {
-        toasts.push(ph2d_editor_core::Toast::info(
-            "State wiring is automatic - disconnect the chain from the forces port instead",
-        ));
+        toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+            "app.motion.motion_bridge_remove.state_wiring_is_automatic_disconnect_the_chain_f",
+        )));
         return;
     }
     let pre = motion.doc.clone();
@@ -94,9 +94,9 @@ pub(super) fn apply_delete_selection(
             )
     });
     if !foreign.is_empty() {
-        toasts.push(ph2d_editor_core::Toast::info(
-            "That node lives outside this group - leave the group to delete it",
-        ));
+        toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+            "app.motion.motion_bridge_remove.that_node_lives_outside_this_group_leave_the_gro",
+        )));
     }
     for id in dead {
         match super::subgraph::target(id) {

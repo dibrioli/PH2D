@@ -100,14 +100,16 @@ pub(super) fn apply_connect(
                 {
                     return;
                 }
-                toasts.push(Toast::warning("Can't connect: incompatible ports"));
+                toasts.push(Toast::warning(ph2d_i18n::tr(
+                    "app.motion.motion_bridge_connect.can_t_connect_incompatible_ports",
+                )));
             } else if scopes_a_sequential_node(&trial) {
                 // A spring / integrate upstream of a Time Remap would be asked
                 // to integrate a recurrence on a rewritten clock — the cook
                 // refuses it (`SequentialInTimeScope`) and the scene goes dark.
                 // Refuse the WIRE instead, with the reason (M2.N1).
                 toasts.push(Toast::warning(
-                    "Can't connect: Time Remap can't rewrite time for a spring or integrate upstream",
+                    ph2d_i18n::tr("app.motion.motion_bridge_connect.can_t_connect_time_remap_can_t_rewrite_time_for"),
                 ));
             } else {
                 let pre = motion.doc.clone();
@@ -116,7 +118,9 @@ pub(super) fn apply_connect(
                 motion.history.push_undo(pre);
                 motion.pump.mark_dirty();
                 if edge.delayed {
-                    toasts.push(Toast::info("Connected as 1-tick feedback (pre)"));
+                    toasts.push(Toast::info(ph2d_i18n::tr(
+                        "app.motion.motion_bridge_connect.connected_as_1_tick_feedback_pre",
+                    )));
                 }
             }
         }
@@ -142,9 +146,15 @@ pub(super) fn scopes_a_sequential_node(graph: &ph2d_nodegraph::graph::Graph) -> 
 fn connect_err_msg(e: ph2d_nodegraph::graph::EdgeError) -> &'static str {
     use ph2d_nodegraph::graph::EdgeError;
     match e {
-        EdgeError::WouldCycle => "Can't connect: would create a cycle",
-        EdgeError::InputAlreadyConnected => "Can't connect: input already wired",
-        EdgeError::UnknownNode => "Can't connect: unknown node",
+        EdgeError::WouldCycle => {
+            ph2d_i18n::tr("app.motion.motion_bridge_connect.can_t_connect_would_create_a_cycle")
+        }
+        EdgeError::InputAlreadyConnected => {
+            ph2d_i18n::tr("app.motion.motion_bridge_connect.can_t_connect_input_already_wired")
+        }
+        EdgeError::UnknownNode => {
+            ph2d_i18n::tr("app.motion.motion_bridge_connect.can_t_connect_unknown_node")
+        }
     }
 }
 

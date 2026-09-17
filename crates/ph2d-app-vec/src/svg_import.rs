@@ -75,7 +75,7 @@ pub fn import_svg(
         Err(e) => {
             return SvgImportResult::Err {
                 name: ficheiro,
-                error: format!("read: {e}"),
+                error: ph2d_i18n::tr_with("app.vec.svg_import.read", &[("e", &e)]),
             };
         }
     };
@@ -98,7 +98,7 @@ pub fn import_svg(
         // imagem embutida) entra por aqui, e sem esta linha o artista veria "Imported" e nada no
         // ecrã. A nota diz-lhe o que o ficheiro tinha.
         let porque = if desenho.notes.is_empty() {
-            "no drawable shape".to_owned()
+            ph2d_i18n::tr("app.vec.svg_import.no_drawable_shape").to_owned()
         } else {
             desenho.notes.join("; ")
         };

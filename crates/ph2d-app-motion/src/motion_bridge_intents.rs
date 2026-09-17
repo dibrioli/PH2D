@@ -187,29 +187,30 @@ pub(super) fn apply_graph_intents(
                     FormaEscolhida::Nome(nome) => {
                         motion.doc.graph.set_text_param(n, param, nome.clone());
                         motion.pump.mark_dirty();
-                        toasts.push(ph2d_editor_core::Toast::info(format!(
-                            "Path set to '{nome}'"
+                        toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr_with(
+                            "app.motion.motion_bridge_intents.path_set_to",
+                            &[("nome", &nome)],
                         )));
                     }
                     FormaEscolhida::Nada => {
                         toasts.push(ph2d_editor_core::Toast::info(
-                            "Select a drawing first — on the canvas or in the Hierarchy"
+                            ph2d_i18n::tr("app.motion.motion_bridge_intents.select_a_drawing_first_on_the_canvas_or_in_the_h")
                                 .to_string(),
                         ));
                     }
                     FormaEscolhida::NaoEDesenho => {
                         toasts.push(ph2d_editor_core::Toast::info(
-                            "The selected object is not a drawing — pick a path".to_string(),
+                            ph2d_i18n::tr("app.motion.motion_bridge_intents.the_selected_object_is_not_a_drawing_pick_a_path").to_string(),
                         ));
                     }
                     FormaEscolhida::SemNome => {
                         toasts.push(ph2d_editor_core::Toast::info(
-                            "Give this drawing a name in the Hierarchy first".to_string(),
+                            ph2d_i18n::tr("app.motion.motion_bridge_intents.give_this_drawing_a_name_in_the_hierarchy_first").to_string(),
                         ));
                     }
                     FormaEscolhida::SemArco => {
                         toasts.push(ph2d_editor_core::Toast::info(
-                            "This drawing has fewer than two points — there is no curve to follow"
+                            ph2d_i18n::tr("app.motion.motion_bridge_intents.this_drawing_has_fewer_than_two_points_there_is")
                                 .to_string(),
                         ));
                     }

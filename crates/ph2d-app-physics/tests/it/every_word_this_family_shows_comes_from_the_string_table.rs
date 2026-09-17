@@ -84,7 +84,7 @@ const NOT_LANGUAGE: &[Excecao] = &[
 #[test]
 fn every_word_this_family_shows_comes_from_the_string_table() {
     let (src, _) = gate::raizes(env!("CARGO_MANIFEST_DIR"));
-    let intrusos = gate::intrusos_fora_de(&src, NOT_LANGUAGE, FORA);
+    let intrusos = gate::intrusos_fora_de(&src, NOT_LANGUAGE, FORA, gate::CENAS);
     assert!(
         intrusos.is_empty(),
         "texto com cara de língua escrito no fonte da física (HR-15):\n  {}\n\n\
@@ -109,7 +109,7 @@ fn every_named_exemption_still_shelters_what_it_names() {
         "isenções mortas:\n  {}",
         mortas.join("\n  ")
     );
-    let em_cena = gate::literais_de_cena(&src);
+    let em_cena = gate::literais_de_cena(&src, gate::CENAS);
     assert!(
         em_cena >= 600,
         "as cenas de smoke abrigam {em_cena} textos — em 2026-09-16 eram 816 (117 cenas). Ou elas \

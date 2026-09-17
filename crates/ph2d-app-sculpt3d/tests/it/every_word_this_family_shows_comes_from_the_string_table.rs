@@ -72,7 +72,7 @@ const NOT_LANGUAGE: &[Excecao] = &[];
 #[test]
 fn every_word_this_family_shows_comes_from_the_string_table() {
     let (src, _) = gate::raizes(env!("CARGO_MANIFEST_DIR"));
-    let intrusos = gate::intrusos_fora_de(&src, NOT_LANGUAGE, FORA);
+    let intrusos = gate::intrusos_fora_de(&src, NOT_LANGUAGE, FORA, gate::CENAS);
     assert!(
         intrusos.is_empty(),
         "texto com cara de língua escrito no fonte da escultura (HR-15):\n  {}\n\n\

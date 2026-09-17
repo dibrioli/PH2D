@@ -458,3 +458,39 @@ fn paint_row_name(
     );
     scene.pop_layer();
 }
+
+/// ⛔⛔ **O SELO É PINTADO **E** É A CHAVE DO TOM** — o gate que nomeia essa dupla vida.
+#[cfg(test)]
+mod badge_tests {
+    use super::{TagTone, badge_tone};
+
+    /// ⚠️⚠️ **[`badge_tone`] casa contra o TEXTO PINTADO**, e desde 2026-09-16 esse texto vem da
+    /// tabela de strings (`app.field3d.*`, `app.vec.*` — HR-15). As duas coisas convivem porque a
+    /// tabela devolve exactamente o mesmo código; **o dia em que uma língua traduzir `ISO` o selo
+    /// perde a cor em silêncio**, e é esse dia que este teste apanha.
+    ///
+    /// ⇒ a cura, quando ele reprovar, **não é reverter a tabela**: é o selo viajar como ID até
+    /// aqui (a lição *identidade ≠ exibição*), e o tom ser escolhido pelo id. Enquanto o app for
+    /// inglês-only, isto é uma cerca executável em vez de uma nota que envelhece.
+    #[test]
+    fn the_badge_tone_still_matches_what_the_table_paints() {
+        for (chave, tom) in [
+            ("app.field3d.scene_acts.iso", TagTone::Warn),
+            ("app.field3d.scene_acts.lnk", TagTone::Success),
+            ("app.field3d.scene_verb.sub", TagTone::Warn),
+            ("app.field3d.scene_verb.int", TagTone::Accent),
+            ("app.vec.bool_shape.sub", TagTone::Warn),
+            ("app.vec.bool_shape.int", TagTone::Accent),
+            ("app.vec.bool_shape.exc", TagTone::Accent),
+        ] {
+            let pintado = ph2d_i18n::tr(chave);
+            assert_eq!(
+                badge_tone(pintado),
+                tom,
+                "o selo `{chave}` pinta {pintado:?} e a tabela de TOM não o conhece — ela casa \
+                 contra o texto, logo traduzir um selo apaga-lhe a cor. A cura é o selo viajar \
+                 como ID até esta função, nunca reverter a tabela para um literal."
+            );
+        }
+    }
+}

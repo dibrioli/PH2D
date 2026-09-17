@@ -446,7 +446,10 @@ fn card_view(
             .collect(),
         // Not a cook readout — a card does not cook. It is how much is folded in
         // here, which is the number the artist actually wants off a closed door.
-        readout: Some(format!("{} nodes", inside.len())),
+        readout: Some(ph2d_i18n::tr_with(
+            "app.motion.motion_bridge_fold.nodes",
+            &[("inside", &(inside.len()))],
+        )),
         count: head.and_then(|v| v.count),
         hot: inside.iter().any(|n| by_id(*n).is_some_and(|v| v.hot)),
         is_sink: inside.iter().any(|n| by_id(*n).is_some_and(|v| v.is_sink)),

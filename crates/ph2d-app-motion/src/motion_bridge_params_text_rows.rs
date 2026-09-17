@@ -223,11 +223,13 @@ fn text_param_problem(
     // para fora do corpo enquanto o artista escreve, que é precisamente quando ele tem várias
     // regras a meio. A primeira é a que ele corrige primeiro, e ao corrigi-la a seguinte aparece.
     Some(if queixas.len() > 1 {
-        format!(
-            "«{}»: {} (+{} outra(s))",
-            primeira.rule,
-            primeira.problem.say(),
-            queixas.len() - 1
+        ph2d_i18n::tr_with(
+            "app.motion.motion_bridge_params_text_rows.rule_problem",
+            &[
+                ("rule", &(primeira.rule)),
+                ("say", &(primeira.problem.say())),
+                ("queixas", &(queixas.len() - 1)),
+            ],
         )
     } else {
         format!("«{}»: {}", primeira.rule, primeira.problem.say())

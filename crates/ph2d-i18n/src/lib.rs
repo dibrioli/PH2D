@@ -33,12 +33,16 @@ mod app_components;
 mod app_field3d;
 /// O que a família do FLIP diz (os avisos de pintar, preencher, colorir, esculpir).
 mod app_flip;
+/// O que a família do MOTION diz (as recusas de ligar, os conselhos do grafo, o cartão).
+mod app_motion;
 /// O que a família do PAINTER diz (texturas de pincel, a pré-visualização na GPU).
 mod app_painter;
 /// O que a família da FÍSICA diz (desenhar uma junta, o leitor de carga, o cartão do corpo).
 mod app_physics;
 /// O que a família da ESCULTURA diz (as recusas da retopologia, importar/exportar malhas).
 mod app_sculpt3d;
+/// O que a família do VETOR diz (os selos da booleana, importar SVG).
+mod app_vec;
 /// As strings do navegador de assets.
 mod asset_browser;
 /// As strings dos dois painéis de áudio (editor + mixer).
@@ -533,6 +537,8 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| app_painter::tr(k))
             .or_else(|| app_physics::tr(k))
             .or_else(|| app_sculpt3d::tr(k))
+            .or_else(|| app_motion::tr(k))
+            .or_else(|| app_vec::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

@@ -348,9 +348,9 @@ pub(super) fn smart_connect(
         if trial.connect(edge).is_ok() && trial.validate(&motion.registry).is_ok() {
             motion.doc.graph = trial;
         } else {
-            toasts.push(ph2d_editor_core::Toast::info(
-                "That wire cannot land there - the node was added unconnected",
-            ));
+            toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+                "app.motion.motion_bridge_edit.that_wire_cannot_land_there_the_node_was_added_u",
+            )));
         }
     }
     motion.history.push_undo(pre);
@@ -511,9 +511,9 @@ pub(super) fn cut_wires(
         }
     }
     if refused {
-        toasts.push(ph2d_editor_core::Toast::info(
-            "State wiring is automatic - disconnect the chain from the forces port instead",
-        ));
+        toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+            "app.motion.motion_bridge_edit.state_wiring_is_automatic_disconnect_the_chain_f",
+        )));
     }
     if cut > 0 {
         super::reconcile(motion, &pre.graph);

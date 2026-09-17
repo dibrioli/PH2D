@@ -281,8 +281,11 @@ fn an_unknown_export_extension_is_refused_not_silently_defaulted() {
         !body.contains("unwrap_or(MeshFormat::") && !body.contains("unwrap_or_default()"),
         "uma extensão desconhecida não pode virar um formato por default"
     );
+    // ⚠️ **A frase saiu do fonte para a tabela de strings em 2026-09-16** (HR-15): este gate lia o
+    // texto no código e teria ficado VERDE sobre uma chave — hoje lê as duas metades (a chave está
+    // no código **e** o texto dela diz a frase), pelo `i18n_view`.
     assert!(
-        body.contains("Unknown extension"),
+        crate::i18n_view::with_texts(&body).contains("Unknown extension"),
         "…ela tem de ser NOMEADA ao artista"
     );
 }

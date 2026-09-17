@@ -135,9 +135,9 @@ pub(super) fn splice_reroute(
         return;
     };
     let Some(type_name) = reroute_for(ty) else {
-        toasts.push(ph2d_editor_core::Toast::info(
-            "No reroute exists for this kind of wire",
-        ));
+        toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+            "app.motion.motion_bridge_rewire.no_reroute_exists_for_this_kind_of_wire",
+        )));
         return;
     };
     splice_into_wire(
@@ -147,7 +147,7 @@ pub(super) fn splice_reroute(
         type_name,
         x,
         y,
-        "Can't reroute this wire",
+        ph2d_i18n::tr("app.motion.motion_bridge_rewire.can_t_reroute_this_wire"),
     );
 }
 
@@ -173,7 +173,7 @@ pub(super) fn splice_node(
         type_name,
         x,
         y,
-        "Can't insert this node into this wire",
+        ph2d_i18n::tr("app.motion.motion_bridge_rewire.can_t_insert_this_node_into_this_wire"),
     );
 }
 
@@ -197,9 +197,9 @@ pub(super) fn move_wire_end(
 ) {
     let old = (NodeId(old_to_node), old_to_port);
     if plumbing::is_managed_pre(&motion.doc.graph, &motion.registry, old.0, old.1) {
-        toasts.push(ph2d_editor_core::Toast::info(
-            "State wiring is automatic - disconnect the chain from the forces port instead",
-        ));
+        toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+            "app.motion.motion_bridge_rewire.state_wiring_is_automatic_disconnect_the_chain_f",
+        )));
         return;
     }
 
@@ -236,9 +236,9 @@ pub(super) fn move_wire_end(
                 .is_ok(),
         } && trial.validate(&motion.registry).is_ok();
         if !landed {
-            toasts.push(ph2d_editor_core::Toast::info(
-                "Can't move the wire there - the original stays",
-            ));
+            toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+                "app.motion.motion_bridge_rewire.can_t_move_the_wire_there_the_original_stays",
+            )));
             return;
         }
     }

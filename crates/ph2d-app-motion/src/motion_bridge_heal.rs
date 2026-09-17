@@ -141,9 +141,13 @@ pub(super) fn heal_setup(motion: &mut MotionState, toasts: &mut ToastQueue) -> u
     motion.pump.mark_dirty();
     ph2d_panel_motion_graph::request_graph_selection(inserted.iter().map(|n| n.0).collect());
     toasts.push(Toast::info(if inserted.len() == 1 {
-        "Wired the force through Integrate so it moves the points (undo to revert)"
+        ph2d_i18n::tr(
+            "app.motion.motion_bridge_heal.wired_the_force_through_integrate_so_it_moves_th",
+        )
     } else {
-        "Wired the forces through Integrate so they move the points (undo to revert)"
+        ph2d_i18n::tr(
+            "app.motion.motion_bridge_heal.wired_the_forces_through_integrate_so_they_move",
+        )
     }));
     inserted.len()
 }
@@ -221,9 +225,9 @@ pub(super) fn heal_one(motion: &mut MotionState, toasts: &mut ToastQueue, node: 
             .find(|u| u.node == node)
         {
             ph2d_panel_motion_graph::request_graph_selection(vec![node.0]);
-            toasts.push(Toast::info(format!(
-                "Nothing upstream carries a column called '{}', so this node reads zeros",
-                u.column
+            toasts.push(Toast::info(ph2d_i18n::tr_with(
+                "app.motion.motion_bridge_heal.nothing_upstream_carries_a_column_called_so_this",
+                &[("column", &(u.column))],
             )));
         }
         return;
@@ -248,9 +252,9 @@ pub(super) fn heal_one(motion: &mut MotionState, toasts: &mut ToastQueue, node: 
             motion.history.push_undo(pre);
             motion.pump.mark_dirty();
             ph2d_panel_motion_graph::request_graph_selection(vec![integ.0]);
-            toasts.push(Toast::info(
-                "Wired the force through Integrate so it moves the points (undo to revert)",
-            ));
+            toasts.push(Toast::info(ph2d_i18n::tr(
+                "app.motion.motion_bridge_heal.wired_the_force_through_integrate_so_it_moves_th",
+            )));
             return;
         }
     }
@@ -266,50 +270,62 @@ fn explain(d: &Diagnostic) -> String {
     match (d.deficit, d.fix) {
         // A force downstream of an integrator, with a NON-integrator between them: reusing that
         // integrator would double-integrate a moving base, so the artist must place the fix.
-        (Deficit::InertProducer("accel"), Fix::Reorder) => {
-            "Wire this force upstream of the integrator so it drives the motion".into()
-        }
+        (Deficit::InertProducer("accel"), Fix::Reorder) => ph2d_i18n::tr(
+            "app.motion.motion_bridge_heal.wire_this_force_upstream_of_the_integrator_so_it",
+        )
+        .into(),
         // A pin_constraint's inv_mass with no solver: WHICH solver is a creative choice.
-        (Deficit::InertProducer("inv_mass"), _) => {
-            "This constraint needs a solver (Integrate / Sim Step / Spring / Collide) downstream to have any effect".into()
-        }
+        (Deficit::InertProducer("inv_mass"), _) => ph2d_i18n::tr(
+            "app.motion.motion_bridge_heal.this_constraint_needs_a_solver_integrate_sim_ste",
+        )
+        .into(),
         // A field's falloff read by no force/deformer: WHICH modulator is a creative choice.
-        (Deficit::InertProducer("falloff"), _) => {
-            "This field shapes a falloff that no force or deformer downstream reads — add one after it".into()
-        }
+        (Deficit::InertProducer("falloff"), _) => ph2d_i18n::tr(
+            "app.motion.motion_bridge_heal.this_field_shapes_a_falloff_that_no_force_or_def",
+        )
+        .into(),
         // A deformer/force with nothing wired into it: it reads P but has no stream — the
         // ROOT cause. WHICH source (grid / emitter / object) is a creative choice.
-        (Deficit::MissingSource("P"), _) => {
-            "This node has no points to work on — wire a source (Grid / Emitter) into it".into()
-        }
-        (Deficit::MissingSource(_), _) => {
-            "This node has nothing wired into it, so it has no data to work on".into()
-        }
+        (Deficit::MissingSource("P"), _) => ph2d_i18n::tr(
+            "app.motion.motion_bridge_heal.this_node_has_no_points_to_work_on_wire_a_source",
+        )
+        .into(),
+        (Deficit::MissingSource(_), _) => ph2d_i18n::tr(
+            "app.motion.motion_bridge_heal.this_node_has_nothing_wired_into_it_so_it_has_no",
+        )
+        .into(),
         // A required input port (a duplicator's shape/points) with nothing wired in: WHAT to
         // wire is the artist's choice, so it is named and offered, never guessed.
-        (Deficit::MissingInput(port), _) => {
-            format!("This node needs a stream wired into its '{port}' input")
-        }
+        (Deficit::MissingInput(port), _) => ph2d_i18n::tr_with(
+            "app.motion.motion_bridge_heal.this_node_needs_a_stream_wired_into_its_input",
+            &[("port", &port)],
+        ),
         // ⭐⭐ **O sujeito do nó é escolhido por NOME e ninguém o escolheu.** A frase nomeia o
         // gesto (*escolher*) e não o param, porque o que o artista tem de FAZER é escolher um
         // caminho — e diz o que o nó está a fazer entretanto, que é a metade que faltava: sem
         // ela ele vê uma cadeia completa a não mudar nada e conclui que o nó está avariado.
-        (Deficit::MissingChoice(_), _) => {
-            "This node has no path chosen yet, so it passes the layout straight through — pick one with 'Use Selected Path' or the Shape row".into()
-        }
+        (Deficit::MissingChoice(_), _) => ph2d_i18n::tr(
+            "app.motion.motion_bridge_heal.this_node_has_no_path_chosen_yet_so_it_passes_th",
+        )
+        .into(),
         // ⚠️ **Um irmão já ocupa o passe de tela.** A mensagem nomeia o TIPO porque é o que
         // o artista tem de procurar no grafo, e diz qual dos dois manda (o primeiro) — sem
         // isso ele apaga o errado e o efeito muda de aparência.
-        (Deficit::Shadowed(ty), _) => {
-            format!("Another '{ty}' already drives this screen pass — only the first one in the graph has any effect")
-        }
+        (Deficit::Shadowed(ty), _) => ph2d_i18n::tr_with(
+            "app.motion.motion_bridge_heal.another_already_drives_this_screen_pass_only_the",
+            &[("ty", &ty)],
+        ),
         // ⚠️ **Uma ramificação morta no meio do roteador.** A mensagem nomeia a PORTA (é o
         // que ele tem de ligar) e diz o que o índice dela devolve hoje — sem isso ele lê um
         // zero e não sabe se a ramificação está vazia ou se ela vale zero.
-        (Deficit::DeadBranch(port), _) => {
-            format!("Input '{port}' is empty but a later one is wired — that branch reads 0")
-        }
-        _ => "This node produces data nothing downstream consumes, so it does nothing".into(),
+        (Deficit::DeadBranch(port), _) => ph2d_i18n::tr_with(
+            "app.motion.motion_bridge_heal.input_is_empty_but_a_later_one_is_wired_that_bra",
+            &[("port", &port)],
+        ),
+        _ => ph2d_i18n::tr(
+            "app.motion.motion_bridge_heal.this_node_produces_data_nothing_downstream_consu",
+        )
+        .into(),
     }
 }
 

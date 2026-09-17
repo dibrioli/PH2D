@@ -120,6 +120,8 @@ ph2d-vec-text = { path = "../ph2d-vec-text" }
 # crate declarou a dependência como obrigatória por eu ter lido só o `use` do ficheiro e não o
 # `mod` que o declara: *a condição de compilação de um módulo não está escrita nele.*
 [dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate (`tests/it/`).
+ph2d-label-census = { path = "../ph2d-label-census" }
 # ⚠️ Só os GATES a usam (o `widget_icon_tests` encena um redimensionamento de janela) — logo é
 # `dev-`, e não uma dependência do produto.
 ph2d-host = { path = "../ph2d-host" }

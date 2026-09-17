@@ -380,11 +380,14 @@ fn drop_hidden_drivers(
         })
         .collect();
     toasts.push(ph2d_editor_core::Toast::info(if labels.len() == 1 {
-        format!("Unlinked {} - this shape has no such control", labels[0])
+        ph2d_i18n::tr_with(
+            "app.motion.motion_bridge_params_edit.unlinked_this_shape_has_no_such_control",
+            &[("labels", &(labels[0]))],
+        )
     } else {
-        format!(
-            "Unlinked {} - this shape has no such controls",
-            labels.join(", ")
+        ph2d_i18n::tr_with(
+            "app.motion.motion_bridge_params_edit.unlinked_this_shape_has_no_such_controls",
+            &[("join", &(labels.join(", ")))],
         )
     }));
     for name in &hidden {
@@ -443,9 +446,9 @@ fn drop_preset_drivers(
                 .map_or(name.as_str(), |h| h.label)
         })
         .collect();
-    toasts.push(ph2d_editor_core::Toast::info(format!(
-        "Unlinked {} - the preset needs its own",
-        labels.join(", ")
+    toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr_with(
+        "app.motion.motion_bridge_params_edit.unlinked_the_preset_needs_its_own",
+        &[("join", &(labels.join(", ")))],
     )));
     for name in &driven {
         motion.doc.graph.undrive_param(nid, name);

@@ -144,10 +144,14 @@ pub(super) fn drive(
         // respostas (a média? o máximo? o primeiro?) e ele escolhe uma sem dizer*. Aqui o
         // artista escolhe, e o nó que converte fica **à vista e ajustável**.
         let cura = converter_from(motion, from).map_or_else(String::new, |ty| {
-            format!(" — insert a `{ty}` to read one number from it")
+            ph2d_i18n::tr_with(
+                "app.motion.motion_bridge_subgraph.insert_a_to_read_one_number_from_it",
+                &[("ty", &ty)],
+            )
         });
-        toasts.push(ph2d_editor_core::Toast::warning(format!(
-            "Can't drive: that output is a per-element stream, not a value{cura}"
+        toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr_with(
+            "app.motion.motion_bridge_subgraph.can_t_drive_that_output_is_a_per_element_stream",
+            &[("cura", &cura)],
         )));
         return;
     }
@@ -160,9 +164,9 @@ pub(super) fn drive(
         // A outra recusa estrutural: fecharia um laço. (Um param não tem caso «já ligado» —
         // uma segunda fonte substitui a primeira, como re-plugar um socket de entrada.)
         Err(_) => {
-            toasts.push(ph2d_editor_core::Toast::warning(
-                "Can't drive: that would make a loop",
-            ));
+            toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
+                "app.motion.motion_bridge_subgraph.can_t_drive_that_would_make_a_loop",
+            )));
         }
     }
 }
@@ -527,13 +531,16 @@ pub(super) fn params_snapshot(
     let inside = subgraph::member_nodes_deep(&motion.doc.subgraphs, &motion.doc.members, sid);
     Some(ParamsSnapshot {
         node: only,
-        title: format!("Group ({} nodes)", inside.len()),
+        title: ph2d_i18n::tr_with(
+            "app.motion.motion_bridge_subgraph.group_nodes",
+            &[("inside", &(inside.len()))],
+        ),
         modified: Default::default(),
         sections: Vec::new(),
         folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![ParamRow::Text(TextRow {
             name: "title",
-            label: "Name".to_string(),
+            label: ph2d_i18n::tr("app.motion.motion_bridge_subgraph.name").to_string(),
             value: s.title.clone(),
             problem: None,
             // O título de um subgrafo é texto livre: não há alfabeto que explicar.

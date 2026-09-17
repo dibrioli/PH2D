@@ -40,21 +40,25 @@ pub enum BoolRole {
 impl BoolRole {
     /// O selo de três letras da linha da hierarquia.
     ///
-    /// ⚠️ **Não passa por i18n, de propósito**, e é a convenção dos selos que já existem (`PRF`,
-    /// `CAM`, `SPR`): eles são códigos, e a tabela de TOM da linha casa contra a própria string —
-    /// traduzir o selo tiraria a cor dele. O app é inglês-only por decisão do Enio.
+    /// ⚠️⚠️ **A nota anterior dizia que ele NÃO passava por i18n «de propósito»**, e a razão que
+    /// ela dava — *«a tabela de TOM da linha casa contra a própria string, logo traduzir o selo
+    /// tiraria a cor dele»* — é **verdadeira sobre o `badge_tone` e falsa como justificação**: um
+    /// literal no fonte não conserta a dupla vida do selo, só a esconde. Desde 2026-09-16 o texto
+    /// sai da tabela (HR-15) e a dupla vida tem gate: `badge_tests::
+    /// the_badge_tone_still_matches_what_the_table_paints`, na `ph2d-panel-hierarchy`, reprova no
+    /// dia em que uma língua traduzir um selo — e diz que a cura é o selo viajar como ID.
     #[must_use]
     pub fn badge(self) -> &'static str {
         match self {
-            BoolRole::Base => "BSE",
-            BoolRole::Recipe => "RCP",
-            BoolRole::Verb(0) => "UNI",
-            BoolRole::Verb(1) => "SUB",
-            BoolRole::Verb(2) => "INT",
-            BoolRole::Verb(3) => "EXC",
+            BoolRole::Base => ph2d_i18n::tr("app.vec.bool_shape.bse"),
+            BoolRole::Recipe => ph2d_i18n::tr("app.vec.bool_shape.rcp"),
+            BoolRole::Verb(0) => ph2d_i18n::tr("app.vec.bool_shape.uni"),
+            BoolRole::Verb(1) => ph2d_i18n::tr("app.vec.bool_shape.sub"),
+            BoolRole::Verb(2) => ph2d_i18n::tr("app.vec.bool_shape.int"),
+            BoolRole::Verb(3) => ph2d_i18n::tr("app.vec.bool_shape.exc"),
             // Um código que este build não conhece herda o do grupo antes de chegar aqui; se
             // ainda assim escapar, o selo não inventa um verbo.
-            BoolRole::Verb(_) => "BSE",
+            BoolRole::Verb(_) => ph2d_i18n::tr("app.vec.bool_shape.bse"),
         }
     }
 }

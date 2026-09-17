@@ -70,6 +70,10 @@ const AINDA_NO_ROTULO: &[(&str, &str)] = &[
         "«track(s)» — plural num aviso da shell, nao unidade",
     ),
     (
+        "app.sculpt3d.import.imported_mesh_piece_s",
+        "«piece(s)» — plural num aviso da escultura, nao unidade",
+    ),
+    (
         "panel.timeline.length",
         "faixa da timeline: outra familia de linha (ver a spec §1)",
     ),

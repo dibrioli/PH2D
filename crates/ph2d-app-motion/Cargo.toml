@@ -105,6 +105,8 @@ path = "../ph2d-panel-motion-params"
 optional = true
 
 [dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate (`tests/it/`).
+ph2d-label-census = { path = "../ph2d-label-census" }
 # ⚠️ HOWTO §1.3 — invisíveis dentro da shell, onde já eram dependência do binário.
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

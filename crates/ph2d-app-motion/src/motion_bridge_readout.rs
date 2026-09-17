@@ -112,7 +112,9 @@ fn readout_text(stream: &Stream, count: usize) -> String {
         // A stream with no elements is not "0 instances" in the sense of a count — it is a
         // node that produced NOTHING, and saying so plainly beats a bare zero.
         Reading::Instances(0) => "empty".to_string(),
-        Reading::Instances(n) => format!("{n} inst"),
+        Reading::Instances(n) => {
+            ph2d_i18n::tr_with("app.motion.motion_bridge_readout.inst", &[("n", &n)])
+        }
     };
     text.chars().take(MAX_LEN).collect()
 }

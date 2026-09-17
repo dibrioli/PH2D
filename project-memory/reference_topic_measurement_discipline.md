@@ -613,3 +613,30 @@ errado é pior do que uma sem número: ela prescreve a cura de um defeito que n�
 
 **How to apply:** re-meça o número de uma linha de dívida antes de a pegar, e escreva ao lado dela
 **de que espécie** é o corte (rótulo do programa = defeito · texto que o artista escreveu = a lei).
+
+## ⛔⛔⛔ Uma FOTO mostra um INSTANTE; «mexeu-se» é uma propriedade de um INTERVALO (2026-09-17)
+
+A cena da cutscene (TOP-20 #19) foi fotografada **três vezes** e as três fotos estavam certas — o
+enquadramento, as cores, o painel à frente, o objecto escolhido, o relógio a andar. E a cutscene
+**não corria**: a aba de omissão da timeline (`Tab::Keys`, que escolher um objecto ainda por cima
+PEDE) sola a clip que o animador edita e congela a fase que faz as cutscenes andarem.
+
+⭐ Quem o disse foi a cena a **conferir-se a si mesma no TEMPO**: 330 quadros a amostrar a excursão
+de dois objectos — o que tem o componente e o CONTROLO que não tem — e um veredito impresso
+(`MOVEU-SE 0.000` contra `2.200`). ⚠️ **O controlo é metade da conferência:** sem ele, um objecto que
+se mexesse por qualquer outra razão leria como aprovação.
+
+⇒ *a foto é o oráculo do que é ESTÁTICO. O que é movimento mede-se com uma janela e um controlo, e
+a cena é o único sítio onde essa janela existe.*
+
+## ⛔⛔ A ABA DE OMISSÃO de um painel de autoria pode parar o motor inteiro (2026-09-17)
+
+A mesma wave: a vista *Keys* existe para SOLAR o que se está a autorar, e é por isso que o motor de
+cutscenes não corre lá — semântica certa. O que ninguém tinha nomeado é que ela é o **default** do
+painel, logo *«abrir a timeline»* passou a querer dizer *«parar todas as cutscenes»*, em silêncio.
+
+⭐ Duas curas, e as duas são portas: a condição da vista virou **uma porta com dois leitores** (quem
+decide correr, e o instantâneo que **DIZ ao artista** porque é que a cutscene está parada — escrita
+duas vezes, o painel prometeria uma coisa e o motor faria outra); e o pedido de aba, que só existia
+num sentido (`request_keys_tab`), ganhou o **irmão simétrico**. ⛔ Sem ele a única saída era
+**esconder** o painel, que tira a régua do tempo ao artista exactamente quando ele a quer ver.

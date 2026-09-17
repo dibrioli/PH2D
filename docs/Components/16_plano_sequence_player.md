@@ -116,10 +116,93 @@ imprime, não*.
    logo a mutação *«toca sempre o container 0»* era **inobservável**. A cura é uma **ISCA** — um
    container vazio antes do verdadeiro — e o gate ficou mais forte do que era.
 
-## §8 — O que FALTA para o dono ver (W3)
+## §8 — O que FALTA para o dono ver (W3) — ✅ **FECHADO em 2026-09-17**
 
 1. a **secção do Inspector** (o campo `Container`), com os ids no `populate` — ⛔ é aqui que sete
    waves desta crate já morreram (*pintado e morto sob o dedo*);
 2. uma **cena de smoke**: uma porta que, ao ser tocada, corre uma cutscene — **com o CONTROLO ao
    lado** (o mesmo objecto sem o componente);
 3. e a foto, que é o único oráculo do lado PINTADO.
+
+## §9 — O que a W3 entregou, e o que ela descobriu
+
+> **O documento do INTEGRADOR é o
+> [handoff de 17/09](handoffs/HANDOFF_INTEGRACAO_line_components_SEQUENCE_2026-09-17.md)** — os
+> contadores como delta, a superfície de colisão, as sete leituras que o diff inverte e o que só a
+> árvore COMBINADA pode reprovar.
+
+| | onde |
+|---|---|
+| a secção **SEQUENCE** (a 30.ª de `LIVE_SECTIONS`) | [`sections/sequence.rs`](../../crates/ph2d-panel-inspector/src/sections/sequence.rs) |
+| o vocabulário (instantâneo + edição) | [`sequence_edits.rs`](../../crates/ph2d-editor-core/src/sequence_edits.rs) |
+| o instantâneo e o dreno | [`sequence_inspector.rs`](../../crates/ph2d-app-components/src/sequence_inspector.rs) |
+| a cena `PH2D_SEQUENCE_SMOKE=1` | [`sequence_smoke.rs`](../../shells/desktop/src/sequence_smoke.rs) |
+
+**Gates:** 5 de costura com **clique REAL** · 13 do instantâneo/dreno · 3 da porta da vista · 1 do
+tecto. **Mutação: 12 de 12 sangram** ([`mutacao_seq_w3.sh`](ferramentas/mutacao_seq_w3.sh)).
+
+### §9.1 — ⭐⭐ O controlo é um CHIP, e não um campo de texto
+
+O conjunto das cutscenes é **conhecido** (os containers do documento, que a aba *Containers* já
+lista). Um campo de texto obrigaria o artista a escrever um nome que casa **exactamente** — e
+`"porta"` contra `"Porta"` é uma cutscene que não corre com todos os campos certos no ecrã. ⇒ o
+mesmo idioma do verbo do sinal e do barramento do áudio.
+
+⚠️ **E a edição carrega o NOME, nunca o índice da opção** — apagar um container renumera os de
+baixo. O tecto das opções é o `ph2d_timeline::MAX_CONTAINERS`, com o gate na **shell** (a única
+crate que vê o painel e a timeline), à maneira do `PROPS_MAX`.
+
+### §9.2 — ⛔⛔⛔ O ACHADO: a aba de OMISSÃO da timeline parava TODAS as cutscenes
+
+`Tab::Keys` é `#[default]` **e** é a que escolher um objecto **PEDE**
+(`selection_jumps_to_keys`) — e ali o `keys_mode` é `true`, logo a condição da W2
+(`container.is_none() && !solo`) **não deixa a fase correr**. ⇒ a cena mostrava duas portas
+paradas com todos os dados certos, e o artista leria *«o componente não funciona»*.
+
+⚠️⚠️ **A FOTO não o viu:** uma imagem mostra um **instante**, e *«mexeu-se»* é uma propriedade de um
+**INTERVALO**. Quem o disse foi a **auto-conferência** que a cena faz sobre si mesma
+(`MOVEU-SE 0.000`) — a lição do HUD (*«o dedo alcança o botão?»*) levada ao tempo.
+
+Duas curas, e as duas são **portas**:
+
+* [`fase_sequences::a_vista_deixa_correr`](../../shells/desktop/src/render_loop/fase_sequences.rs)
+  — UMA porta com **dois leitores**: o `timeline_bridge`, que decide se a fase corre, e o
+  instantâneo do Inspector, que **diz ao artista** porque é que a cutscene dele está parada.
+  *Escrita duas vezes, o painel prometeria uma coisa e o motor faria outra.*
+* `ph2d_panel_timeline::state::request_arrange_tab()` — a porta **simétrica** que faltava ao
+  `request_keys_tab`, append-only, e que **vence** um pedido de Keys pendente. ⛔ Sem ela a única
+  saída era **esconder** a timeline, que tira a régua do tempo ao artista exactamente quando ele a
+  quer ver.
+
+⚠️ **A fronteira que fica, e ela é de PRODUTO:** na aba *Keys* as cutscenes pausam. É a semântica
+certa de autoria (ali sola-se a clip que se edita), e o painel **di-lo** em vez de a deixar muda.
+
+### §9.3 — ⛔ O que a FOTO acusou e nenhum gate via
+
+1. `Sprite::atlas(0, …)` em vez do `WHITE_TILE_KEY` ⇒ a cena inteira vermelha;
+2. o Inspector **atrás** do painel do Sculpt 3D — a arrumação vive fora do repositório
+   (`~/.ph2d/layout.txt`), logo `panel_visibility.insert("inspector", true)` não é defensivo;
+3. a aba da §9.2.
+
+### §9.4 — ⛔⛔ E a MUTAÇÃO acusou quatro defeitos meus
+
+Dois deles são a mesma forma — **um corpus que não continha o fenómeno**:
+
+* o gate da resolução comparava nomes **sem espaço**, e a lei (`SequencePlayer::resolve`) **apara os
+  dois lados** ⇒ um `==` cru escrito à mão no instantâneo respondia igual e a mutação sobrevivia.
+  A fixtura passou a ter `"Porta "`;
+* o gate do relógio curto media um empate **EXACTO**, e a folga de um milissegundo só é observável
+  quando os dois números diferem por **menos** do que ela (eles vêm de unidades diferentes:
+  microssegundos inteiros contra `f64` de segundos). Nasceu um caso com `2,0000` contra `2,0005`.
+
+Os outros dois foram do arnês: uma âncora com a indentação errada, e a fixtura do portão de costura
+que **não compilava** depois de o instantâneo ganhar um campo — *o portão estava partido no momento
+em que a prova correu*, e foi ela que o disse.
+
+### §9.5 — ⏳ O que fica ABERTO
+
+* a secção fica no **FIM** do painel, logo o dono tem de rolar para lá chegar — o mesmo item que o
+  emissor de partículas (#18) deixou aberto, e a cura é a mesma para os dois;
+* a cutscene não tem **transporte próprio** no painel (pausar/rebobinar só a dela): hoje isso faz-se
+  pelo `Timer`, que tem secção própria;
+* um objecto com **vários timers** usa sempre o `0`, e o painel não diz qual é.

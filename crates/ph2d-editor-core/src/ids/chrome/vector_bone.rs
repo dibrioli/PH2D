@@ -142,6 +142,39 @@ pub const VECTOR_BONE_HANDLES_AUTO: NodeId = hash_node_id("vector.bone.handles.a
 pub const VECTOR_BONE_HANDLES_IDS: [NodeId; 2] =
     [VECTOR_BONE_HANDLES_AUTHORED, VECTOR_BONE_HANDLES_AUTO];
 
+/// ⭐ **Quantas linhas o selector de PONTA alcança** — duas fixas (a corrente e «ninguém») mais um
+/// filho-osso por linha.
+///
+/// ⚠️ **O pool é fixo porque o chrome não cunha um id em tempo de execução**, e o número sai do
+/// recurso que ele serve: `ph2d_app_skeleton::curve_tip::MAX_TIP_CHILDREN`. ⛔ **A igualdade é
+/// gateada do lado da família** (`the_tip_picker_reaches_every_child_the_law_offers`), porque esta
+/// crate está ABAIXO dela e não a pode nomear.
+pub const MAX_TIP_OPTIONS: usize = 16;
+
+/// As linhas do selector de ponta — a posição é o índice na lista que a família publica.
+///
+/// ⚠️ **Uma TABELA, não uma função de índice**, pelo mesmo motivo da [`VECTOR_BONE_SMART_CLIP_IDS`]:
+/// o `populate` que as regista, o `paint` que as desenha e o encaminhamento que as deixa passar
+/// percorrem esta MESMA lista.
+pub const VECTOR_BONE_TIP_IDS: [NodeId; MAX_TIP_OPTIONS] = [
+    hash_node_id("vector.bone.tip_opt_0"),
+    hash_node_id("vector.bone.tip_opt_1"),
+    hash_node_id("vector.bone.tip_opt_2"),
+    hash_node_id("vector.bone.tip_opt_3"),
+    hash_node_id("vector.bone.tip_opt_4"),
+    hash_node_id("vector.bone.tip_opt_5"),
+    hash_node_id("vector.bone.tip_opt_6"),
+    hash_node_id("vector.bone.tip_opt_7"),
+    hash_node_id("vector.bone.tip_opt_8"),
+    hash_node_id("vector.bone.tip_opt_9"),
+    hash_node_id("vector.bone.tip_opt_10"),
+    hash_node_id("vector.bone.tip_opt_11"),
+    hash_node_id("vector.bone.tip_opt_12"),
+    hash_node_id("vector.bone.tip_opt_13"),
+    hash_node_id("vector.bone.tip_opt_14"),
+    hash_node_id("vector.bone.tip_opt_15"),
+];
+
 /// ⭐⭐⭐ **Add Angle Limit** — dá a esta junta um arco de que ela não sai.
 ///
 /// ⚠️ Só é pintado numa junta que ainda não tem limite — o par dele é o *Remove*, e os dois
@@ -306,4 +339,5 @@ pub fn needs_focused_bone(id: NodeId) -> bool {
         || VECTOR_BONE_BEND_IDS.contains(&id)
         || VECTOR_BONE_HANDLES_IDS.contains(&id)
         || VECTOR_BONE_SMART_CLIP_IDS.contains(&id)
+        || VECTOR_BONE_TIP_IDS.contains(&id)
 }

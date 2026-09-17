@@ -2968,6 +2968,61 @@ refinar em *compute shader* por quadro sem primeiro medir a malha assada.
 
 ---
 
+### F6-v — ⭐⭐⭐ **O ARTISTA ESCOLHE QUAL FILHO MANDA NA CURVA, e as alças deixaram de vestir a cor do osso** (duas ordens do dono, 2026-09-16)
+
+**UMA LINHA:** o dono viu a cena da bifurcação e respondeu às duas perguntas que ela punha —
+*«sim, escolher qual dos vários filhos manda na curva. E quero que o modo atual (ninguém manda na
+curva) seja uma das opções»* e *«os handles das Curve Handles têm a mesma cor dos ossos e se estão
+sobrepostos ficam invisíveis»*.
+
+#### A) O *custom handle* — `Bone::curve_tip`
+
+O `Bone` ganha [`CurveTip`](../../crates/ph2d-skeleton-ecs/src/lib.rs): **`Chain`** (o nascimento e a
+lei de sempre — o único filho-osso manda, e com zero ou mais de um a ponta fica recta), **`Straight`**
+(ninguém manda, mesmo havendo um filho) e **`Bone(StableId)`** (este filho manda). ⚠️ `PROJECT_SCHEMA`
+**+1** — conte o DELTA; o postcard é posicional e um campo apendado come os bytes do vizinho.
+
+⭐ **O filho é um `StableId` e nunca os bits dele** — a cerca do `IkGoal::target`, pelo mesmo defeito
+medido: bits de alocação não sobrevivem ao respawn do undo. ⚠️ **E ele resolve-se por COMPARAÇÃO
+ENTRE OS FILHOS**, nunca por busca global: um osso de outro esqueleto não pode mandar na curva deste,
+e um escolhido que já não é filho deixa a ponta **recta** — *uma referência que não se resolve não
+inventa um sorteio* (gate com os dois casos).
+
+⭐⭐ **A lista é UMA porta com dois leitores** ([`curve_tip::options`](../../crates/ph2d-app-skeleton/src/curve_tip.rs)):
+o painel PINTA a `n`-ésima linha e a shell APLICA a `n`-ésima escolha. Com duas derivações bastava um
+filho nascer entre dois quadros para o artista escolher *«Bone 21»* e o osso obedecer ao *«Bone 22»*.
+O selector é o *dropdown* do painel **Bones** (linha **Curve Tip**, só existe com as alças em
+`From Chain`), e o pool de ids tem `2 + 14` linhas — ⚠️ o recurso é a MÃO (um pulso tem cinco
+filhos), e um osso com mais filhos **não** vê a lista truncada em silêncio: o rótulo diz `+N`.
+
+⛔ **Gates:** a escolha segue o filho escolhido (régua = a SIMETRIA da cena, que reprova a escolha
+ignorada **e** a que pega sempre o mesmo filho) · «ninguém manda» endireita a ponta de um osso de UM
+filho **sem** endireitar a raiz · o escolhido alheio/apagado deixa recta · a lista alinhada com as
+escolhas · o pool alcança toda linha que a lei oferece · e o **gesto REAL** (`MockPanelHost`) do chip
+que abre e da linha que atravessa até ao barramento. **3 mutações, todas a sangrar.**
+
+#### B) A cor das alças — o token `bone-handle`
+
+Elas eram `ColorToken::Accent`, que é **exactamente** o corpo aceso do osso: distância **ZERO**. A
+régua nova é a distância no plano OKLab (matiz, croma e luminosidade) contra o corpo aceso **e** o
+apagado, nos **8 temas**, e o pai do apelido foi escolhido pelo PIOR caso de cada candidato:
+`CurveG 0,166` · `Text1 0,135` · **`Success 0,114`** · `Warn 0,080` · `Info`/`Danger 0,062`. ⚠️ Os
+dois primeiros perdem por SIGNIFICADO (cor de dado e cor de texto), não por número.
+
+⭐ **E o gate mede as PORTAS, não a tabela de cores**: `bendy::bend_handle_colour` contra
+`bone_body_colours` — comparar dois tokens escritos no teste ficaria verde se alguém trocasse a cor
+no desenho. ⛔ A varredura de apelidos deixou de ser `key().starts_with("timeline-")` (um censo por
+prefixo, que deixaria o apelido novo **sem gate nenhum**) e passa a sair do produto (`alias_parent`),
+com as famílias NOMEADAS e contadas.
+
+⚠️ **Dois tectos de LOC caíram por acumulação e curaram-se por CORTE**, nunca por isenção: a escada do
+`PROJECT_SCHEMA` arquivou a faixa `v99..v108` (3.ª faixa, o mesmo corte por idade das duas
+anteriores) e a `ph2d-tokens/src/color.rs` largou a aritmética OKLCH⇄sRGB para o irmão
+`color_space.rs` — ⚠️ com `pub use` no sítio antigo, porque a `ph2d-viewport3d` escreve
+`ph2d_tokens::color::srgb_to_oklch`.
+
+---
+
 ### F6-u — ⛔⛔⛔ **A CENA DOS OSSOS ABRIA SEM OSSOS na máquina do dono, e a peça nova estava FORA DO ECRÃ** (a foto, 2026-09-16)
 
 **UMA LINHA:** a cena `PH2D_VEC_BONE_SMOKE=1` foi fotografada **na arrumação que o dono tem

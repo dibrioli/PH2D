@@ -1,18 +1,13 @@
-//! **A ESCADA do `PROJECT_SCHEMA`, de v99 a v111** — a TERCEIRA faixa arquivada.
+//! **A ESCADA do `PROJECT_SCHEMA`, de v99 a v108** — a terceira faixa arquivada.
 //!
-//! ⚠️ **O corte por IDADE repete-se pela terceira vez, e o gatilho é sempre o mesmo:** o teto de
-//! 600 linhas do HR-18. O irmão [`super::project_schema_history`] nasceu em `v82`; o
-//! [`super::project_schema_history_v83`] em 2026-09-07, com o degrau `122`; este em 2026-09-15,
-//! com o degrau `132` (o `ProjectileMotion` do TOP-20 #14), que levou a escada viva a `602`.
-//!
-//! ⛔ **A cura é sempre o CORTE, nunca subir o número** — a entrada em `FILE_OVERAGE_OK` só desce.
+//! ⚠️ **O corte por IDADE repetiu-se pela terceira vez, e pela mesma régua**: a `v2`..`v82` saiu em
+//! `v82`, a `v83`..`v98` em `122`, e esta em **`133`** (o degrau que deu ao osso o *custom handle*),
+//! quando a escada viva voltou a passar as 600 linhas do HR-18. ⇒ um arquivo por faixa, com a faixa
+//! no NOME — assim quem procura um degrau sabe onde bater sem abrir os três.
 //!
 //! ⚠️ **Nada saiu do código.** A história é `//!` em vez de `///` e continua a ser lida, grepada e
 //! publicada pelo `cargo doc` exactamente como era; o que mudou foi de que arquivo ela vem.
 //!
-//! ⚠️ **E a PONTA fica na escada viva, de propósito:** *quem conta o próximo degrau lê a escada,
-//! não o literal* (a lição do degrau `v69`, que chegou ao `main` com a linha ausente).
-
 //! # 99 — o CORTE DA SPRITE (ADR-0164 F1 passo 6 / ADR-0166 / ADR-0070-amendment-8)
 //!
 //! ⚠️⚠️ **A forma do `ProjectFile` NÃO mudou, e o degrau é obrigatório na mesma.** Os 20 campos
@@ -139,45 +134,3 @@
 //! longe da causa.
 //!
 //! ⛔ Sem degrau de migração, pela mesma decisão do Enio de 26/08 (*"não há projetos salvos"*).
-//!
-//! # 108 -> 109 — a JUNTA entre as cópias de uma repetição (pedido do Enio, 2026-08-30)
-//!
-//! A `ph2d_field::Unary::Array` e a `::Radial` ganharam um `Joint { chamfer, fillet }`, e o
-//! `FIELD_DOC_VERSION` subiu **13 -> 14**. ⚠️ **Este número sobe por arrasto, e o caminho é o que
-//! engana:** o doc do `FIELD_DOC_VERSION` diz que *"nada persiste um `FieldDoc`"* e isso é
-//! literalmente verdade — mas a pilha de modificadores viaja, byte a byte e **posicionalmente**,
-//! dentro do blob do componente `ph2d_field_ecs::FieldMods`, que está no `WorldSnapshot`.
-//!
-//! ⛔⛔ **E NENHUM GATE LIGA OS DOIS NÚMEROS.** A tripla de `project_schema_tests` vigia
-//! `PROJECT_SCHEMA × FLIP_SCHEMA_VERSION × VEC_SCENE_SCHEMA_VERSION`; o `FIELD_DOC_VERSION` não está
-//! lá. Quem mexer numa `Primitive` ou num `Unary` tem de subir os dois **à mão**, e o instrumento
-//! que o avisa é o `the_shape_of_a_saved_modifier_stack_is_pinned` da `ph2d-field`.
-//!
-//! ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v103 é **recusado em voz alta**.
-//! # 109 -> 110 — o CHANFRO em toda forma com aresta (pedido do Enio, 2026-08-30)
-//!
-//! As **21 primitivas** que têm `round` ganharam um `chamfer` ao lado dele, e o
-//! `FIELD_DOC_VERSION` subiu **14 -> 15**. ⚠️ Sobe por arrasto pelo mesmo caminho do 104: a
-//! `Primitive` viaja, posicionalmente, dentro do blob do componente `ph2d_field_ecs::FieldNode`.
-//!
-//! ⭐ **E este degrau os DOIS goldens de forma apanham** (`151 -> 159` e `86 -> 90`), ao contrário
-//! dos v11-v13 do `FIELD_DOC_VERSION` — as fixturas deles instanciam primitivas.
-//!
-//! ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08.
-//! # 110 -> 111 — o EIXO de cada modificador com direcção (pedido do Enio, 2026-08-31)
-//!
-//! A `ph2d_field::Unary::Array`, `::Taper`, `::Radial`, `::Twist` e `::Bend` ganharam um
-//! `axis: Axis`, e o `FIELD_DOC_VERSION` subiu **15 -> 16**. ⚠️ Sobe por arrasto pelo mesmo caminho
-//! do 104: a pilha de modificadores viaja, posicionalmente, dentro do blob do componente
-//! `ph2d_field_ecs::FieldMods`.
-//!
-//! ⭐ **Do lado ADITIVO da regra**: o campo é o **último** de cada variante, então os índices
-//! anteriores não se mexem e o eixo de nascimento é o que cada modificador já usava
-//! (`ph2d_field::mods::ARRAY_AXIS` e irmãos) ⇒ o comportamento de toda peça é o de antes, **ao
-//! bit**.
-//!
-//! ⭐ **E o `the_shape_of_a_saved_modifier_stack_is_pinned` apanhou-o** — `77 -> 82`, um byte por
-//! modificador —, que é exactamente o instrumento que o degrau 104 diz existir para este caso.
-//! *A nota do 104 previu este dia e nomeou a ferramenta certa.*
-//!
-//! ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v105 é **recusado em voz alta**.

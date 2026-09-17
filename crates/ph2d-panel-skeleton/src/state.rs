@@ -112,6 +112,14 @@ thread_local! {
     /// **O selector de acção que está ABERTO** — irmão do `PENDING_KEY_DD` do Morph, e pela mesma
     /// razão: a seção rola, e sem o passe diferido a lista seria cortada na borda dela.
     static PENDING_ACTION_DD: Cell<Option<Rect>> = const { Cell::new(None) };
+    /// ⭐⭐⭐ **QUEM PODE MANDAR NA PONTA da curva do osso em foco** — a lista que o selector mostra,
+    /// publicada pela shell a partir da porta [`ph2d_app_skeleton::curve_tip::options`].
+    ///
+    /// ⚠️ **Ela vem inteira de lá, incluindo os RÓTULOS**: o painel não deriva a lista, porque quem
+    /// a aplica (a shell) tem de ler exactamente a mesma — a posição é a escolha.
+    static CURRENT_TIP: RefCell<Option<TipView>> = const { RefCell::new(None) };
+    /// O selector de PONTA que está ABERTO — irmão do `PENDING_ACTION_DD`, e pela mesma razão.
+    static PENDING_TIP_DD: Cell<Option<Rect>> = const { Cell::new(None) };
 }
 
 /// **As acções do documento** (shell → painel, todo quadro em que a seção vive).
@@ -129,6 +137,36 @@ pub(crate) fn set_pending_bone_action_dd(chip: Option<Rect>) {
 
 pub(crate) fn take_pending_bone_action_dd() -> Option<Rect> {
     PENDING_ACTION_DD.with(Cell::take)
+}
+
+/// ⭐⭐⭐ **O selector de PONTA do osso em foco** (shell → painel, todo quadro).
+///
+/// `None` ⇒ não há pergunta: não há osso em foco, ou as alças dele são autoradas.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct TipView {
+    /// Um rótulo por linha, na ordem em que a lista as pinta.
+    pub rotulos: Vec<String>,
+    /// A linha ligada.
+    pub ligado: usize,
+    /// Quantos filhos-osso não couberam no pool de ids. `0` no caso normal.
+    pub escondidos: usize,
+}
+
+/// **O selector de ponta** (shell → painel, todo quadro em que a seção vive).
+pub fn set_current_bone_tip(v: Option<TipView>) {
+    CURRENT_TIP.with(|c| *c.borrow_mut() = v);
+}
+
+pub(crate) fn bone_tip() -> Option<TipView> {
+    CURRENT_TIP.with(|c| c.borrow().clone())
+}
+
+pub(crate) fn set_pending_bone_tip_dd(chip: Option<Rect>) {
+    PENDING_TIP_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_bone_tip_dd() -> Option<Rect> {
+    PENDING_TIP_DD.with(Cell::take)
 }
 
 // ⛔⛔ **A ROLAGEM DE «REVELAR-AO-FOCAR» SAIU DAQUI, e é o painel próprio que a dissolveu**

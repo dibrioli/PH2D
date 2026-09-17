@@ -151,6 +151,7 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
             y = r.labeled_number_field(label, id, step, y);
         }
         y = handles_row(r, y);
+        y = crate::section_tip::tip_row(r, y);
         y = limit_rows(r, y);
         y = crate::section_smart::smart_rows(r, y);
         y = ik_rows(r, y);

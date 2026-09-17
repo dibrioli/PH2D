@@ -326,6 +326,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bone.handles" => "Curve Handles",
         "panel.vector.bone.handles.authored" => "Manual",
         "panel.vector.bone.handles.auto" => "From Chain",
+        // ⭐⭐⭐ **QUEM MANDA NA PONTA da curva** — o *custom handle* do Blender (ordem do dono,
+        // 2026-09-16). Só tem sujeito com as alças em `From Chain`.
+        "panel.vector.bone.tip" => "Curve Tip",
+        "panel.vector.bone.tip.chain" => "From Chain",
+        "panel.vector.bone.tip.straight" => "Nobody",
         "panel.vector.bone.ik.add" => "Add IK",
         "panel.vector.bone.ik.remove" => "Remove IK",
         "panel.vector.bone.ik.mix" => "IK Mix",

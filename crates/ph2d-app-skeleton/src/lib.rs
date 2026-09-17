@@ -39,6 +39,7 @@ pub mod bone_gesture;
 pub mod bone_limit;
 pub mod bone_pick;
 pub mod bone_pose;
+pub mod curve_tip;
 pub mod goal;
 /// ⭐ **A pose AUTORADA de uma corrente** — irmão do [`goal`] pelo tecto de LOC, cortado por
 /// responsabilidade: *quem resolve* e *o que o artista desenhou* são duas perguntas.

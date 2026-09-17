@@ -54,6 +54,7 @@ fn limpa() {
     state::set_current_skinned(false);
     state::set_current_bone(None);
     state::set_current_bone_handles(None);
+    state::set_current_bone_tip(None);
     state::set_current_bone_ik(None);
     state::set_current_bone_smart(None);
     state::set_current_bone_actions(Vec::new());
@@ -226,6 +227,20 @@ fn estado_de(id: ph2d_a11y::NodeId) {
     } else {
         Vec::new()
     });
+    // ⚠️ **O selector de PONTA tem a mesma forma de exclusão**: ele só existe onde a shell publica
+    // a lista, isto é, num osso cujas alças vêm da corrente.
+    let precisa_de_ponta =
+        id == ph2d_panel_skeleton::ids::VECTOR_BONE_TIP || ids::VECTOR_BONE_TIP_IDS.contains(&id);
+    state::set_current_bone_tip(precisa_de_ponta.then(|| state::TipView {
+        rotulos: vec![
+            "From Chain".to_string(),
+            "Nobody".to_string(),
+            "Bone 21".to_string(),
+            "Bone 22".to_string(),
+        ],
+        ligado: 0,
+        escondidos: 0,
+    }));
 }
 
 /// ⭐⭐⭐ **O SELECTOR DE ACÇÃO existe, lista o documento, e a escolha CHEGA AO BARRAMENTO.**
@@ -756,6 +771,58 @@ fn a_fileira_das_alcas_so_existe_onde_ela_manda_e_em_auto_os_numeros_somem() {
     assert!(
         !pintado(ids::VECTOR_BONE_CURVE_IN_Y) && !pintado(ids::VECTOR_BONE_CURVE_OUT_X),
         "os numeros da curvatura ficaram pintados em From Chain — eles nao sao autorados la'"
+    );
+    limpa();
+}
+
+/// ⭐⭐⭐ **O SELECTOR DE «QUEM MANDA NA PONTA» existe, lista os filhos, e a escolha CHEGA AO
+/// BARRAMENTO** — o irmão do de cima, para a ordem do dono de 2026-09-16 (*«escolher qual dos vários
+/// filhos manda na curva»*).
+///
+/// ⚠️ **As DUAS metades, e o gesto é REAL**: o chip tem de ABRIR (ele é `Dropdown` no store e botão
+/// na tela) e a linha de dentro tem de virar `Click` que ATRAVESSA. *Um `Click` sintético passa com
+/// o chip morto sob o ponteiro*, que é a cicatriz dos quatro chips da booleana.
+#[test]
+fn the_tip_picker_lists_the_children_and_the_choice_reaches_the_bus() {
+    estado_de(ph2d_panel_skeleton::ids::VECTOR_BONE_TIP);
+    let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+    let mut st = SkeletonPanelState;
+    let chip = host
+        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ph2d_panel_skeleton::ids::VECTOR_BONE_TIP)
+        .expect("o chip da ponta não foi PINTADO — a escolha do filho não teria onde acontecer");
+    host.dispatch_pointer_event(pointer(PointerKind::Down, chip.x + 2.0, chip.y + 2.0, SEC));
+    let evs = host.dispatch_pointer_event(pointer(
+        PointerKind::Up,
+        chip.x + 2.0,
+        chip.y + 2.0,
+        SEC + SEC / 100,
+    ));
+    for ev in evs {
+        host.apply_panel_event::<SkeletonPanel>(&mut st, ev);
+    }
+    // A 3.ª linha é o primeiro FILHO — o gesto que a ordem do dono pede.
+    let opt = ids::VECTOR_BONE_TIP_IDS[2];
+    let r = host
+        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, opt)
+        .expect("com a lista ABERTA o filho tem de ser pintado — senão não é escolhível");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, 2 * SEC));
+    let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, 2 * SEC + SEC / 100));
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == opt)),
+        "a linha da lista está desenhada e MORTA sob o ponteiro"
+    );
+    for ev in evs {
+        host.apply_panel_event::<SkeletonPanel>(&mut st, ev);
+    }
+    assert!(
+        host.drained_actions().into_iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == opt
+        )),
+        "o Click da linha não chegou ao barramento — escolher o filho não escreveria no mundo \
+         (falta `VECTOR_BONE_TIP_IDS` na allowlist do `event_clicks`)"
     );
     limpa();
 }

@@ -52,6 +52,31 @@ pub(crate) const fn parent_of(t: ColorToken) -> Option<ColorToken> {
         ColorToken::TimelineMissing => ColorToken::Danger,
         ColorToken::TimelineKey => ColorToken::Text1,
         ColorToken::TimelineRulerTick => ColorToken::Text3,
+        // ⭐⭐⭐ **A ALÇA DE CURVATURA DO OSSO — o pai foi MEDIDO, não escolhido** (report do dono,
+        // 2026-09-16: *«os handles das Curve Handles têm a mesma cor dos ossos e se estão
+        // sobrepostos ficam invisíveis»* — elas eram `Accent`, que é **exactamente** a cor do
+        // corpo do osso: distância ZERO).
+        //
+        // A régua é a distância no plano OKLab (matiz e croma juntos, mais a diferença de
+        // luminosidade), contra o corpo ACESO (`Accent`) **e** o apagado (`AccentSoft`), nos 8
+        // temas — o PIOR caso de cada candidato:
+        //
+        // | candidato | pior caso |
+        // |---|---:|
+        // | `CurveG` | `0,166` |
+        // | `Text1` | `0,135` |
+        // | **`Success`** | **`0,114`** |
+        // | `Warn` | `0,080` |
+        // | `Info` | `0,062` |
+        // | `Danger` | `0,062` |
+        //
+        // ⚠️ **Os dois primeiros perdem por SIGNIFICADO, não por número:** o `curve-g` é cor de
+        // DADO (o canal G de uma curva, com matiz por direito) e o `text-1` é a cor do texto —
+        // emprestar qualquer um deles poria a alça a mudar quando o artista re-veste outra coisa.
+        // ⭐ O verde ganha porque os acentos desta casa vivem todos fora dele (magenta `340`,
+        // ciano `200`, laranja `55`, azul `250`), e o gate
+        // `the_bend_handle_never_wears_the_colour_of_the_bone` guarda a barra.
+        ColorToken::BoneHandle => ColorToken::Success,
         _ => return None,
     })
 }

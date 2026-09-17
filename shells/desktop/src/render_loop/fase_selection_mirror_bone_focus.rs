@@ -182,6 +182,19 @@ impl crate::App {
         ph2d_panel_skeleton::set_current_bone_actions(smart.as_ref().map_or_else(Vec::new, |s| {
             crate::skeleton_smart::actions_for(sim.world(), &self.timeline.doc, s)
         }));
+        // ⭐⭐⭐ **QUEM PODE MANDAR NA PONTA da curva** — a lista inteira (rótulos incluídos) sai da
+        // porta da família, que é a MESMA que o dreno lê para aplicar o clique: a posição é a
+        // escolha, e uma segunda derivação aqui poria o artista a escolher um osso e outro a
+        // obedecer.
+        ph2d_panel_skeleton::set_current_bone_tip(osso_em_foco.and_then(|b| {
+            ph2d_app_skeleton::curve_tip::options(sim, ph2d_ecs::Entity::from_bits(b)).map(
+                |(o, _)| ph2d_panel_skeleton::TipView {
+                    rotulos: o.rotulos,
+                    ligado: o.ligado,
+                    escondidos: o.escondidos,
+                },
+            )
+        }));
         ph2d_panel_skeleton::set_current_bone_ik(osso_em_foco.and_then(|b| {
             sim.world()
                 .get::<ph2d_skeleton_ecs::IkGoal>(ph2d_ecs::Entity::from_bits(b))

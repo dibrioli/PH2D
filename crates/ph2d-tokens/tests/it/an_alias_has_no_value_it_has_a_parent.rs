@@ -36,12 +36,18 @@
 
 use ph2d_tokens::{ColorToken as C, Theme};
 
-/// Os 16, e são exactamente os que o `key()` chama `timeline-*`.
+/// ⭐⭐ **A população são os APELIDOS, e ela sai do PRODUTO** (`alias_parent`), nunca de um prefixo
+/// de nome.
+///
+/// ⛔⛔ **Ela era `key().starts_with("timeline-")`** — e um apelido novo fora daquela família (o
+/// `bone-handle`, 2026-09-16) entrava **sem gate nenhum**, que é o censo definido por prefixo que o
+/// `CLAUDE.md` §5.0 nomeia: *a varredura continua verde a medir o que já media*. O piso abaixo
+/// mantém a metade que ela tinha.
 fn aliases() -> Vec<C> {
     C::ALL
         .iter()
         .copied()
-        .filter(|t| t.key().starts_with("timeline-"))
+        .filter(|t| t.alias_parent().is_some())
         .collect()
 }
 
@@ -77,8 +83,8 @@ fn every_timeline_slot_resolves_to_its_declared_parent() {
     }
     assert_eq!(
         pares,
-        16 * 8,
-        "esperava 16 apelidos x 8 temas e comparei {pares}: ou a familia mudou de tamanho, ou o \
+        17 * 8,
+        "esperava 17 apelidos x 8 temas e comparei {pares}: ou a familia mudou de tamanho, ou o \
          filtro deixou de achar os apelidos"
     );
 }
@@ -94,9 +100,19 @@ fn no_alias_carries_a_hand_written_value() {
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/design/tokens.json"),
     )
     .expect("tokens.json");
+    // ⚠️ **A varredura sai da população de apelidos**, e não do prefixo `timeline-`: um apelido
+    // novo noutra família (o `bone-handle`) escaparia a um prefixo escrito à mão, e o gate ficaria
+    // verde a medir o que já media.
+    let chaves: Vec<String> = aliases()
+        .iter()
+        .map(|a| format!("\"{}\"", a.key()))
+        .collect();
     let strays: Vec<&str> = json
         .lines()
-        .filter(|l| l.trim_start().starts_with("\"timeline-"))
+        .filter(|l| {
+            let t = l.trim_start();
+            chaves.iter().any(|k| t.starts_with(k.as_str()))
+        })
         .collect();
     assert!(
         strays.is_empty(),
@@ -138,6 +154,11 @@ fn the_parent_of_each_alias_is_the_one_the_measurement_found() {
         ("timeline-missing", "danger"),
         ("timeline-key", "text-1"),
         ("timeline-ruler-tick", "text-3"),
+        // ⭐ **O `bone-handle` entra por OUTRA medição** (2026-09-16, report do dono: as alças de
+        // curvatura vestiam a cor do osso): ali o oráculo não é o `tokens.json` antigo, é a
+        // DISTÂNCIA perceptual ao corpo do osso nos 8 temas, e ela continua a poder ser medida —
+        // o gate `the_bend_handle_never_wears_the_colour_of_the_bone` fá-lo a cada corrida.
+        ("bone-handle", "success"),
     ];
     let mut seen = 0;
     for a in aliases() {
@@ -163,27 +184,36 @@ fn the_parent_of_each_alias_is_the_one_the_measurement_found() {
     );
 }
 
-/// ⚠️ **A metade de OBSOLESCÊNCIA: só os `timeline-*` são apelidos.**
+/// ⚠️ **A metade de OBSOLESCÊNCIA: a família de apelidos é NOMEADA, e cresce com a nota junto.**
 ///
-/// O censo de cor de 2026-08-30 mediu que os 16 do Timeline são **exactamente** os 16 apelidos de
-/// todo o sistema — os 34 slots dos nós são valores distintos, e nenhum outro módulo introduziu um.
-/// Se um dia outro token declarar pai, esta contagem tem de mudar **com** a nota que a explica.
+/// O censo de cor de 2026-08-30 mediu que os 16 do Timeline eram **exactamente** os 16 apelidos de
+/// todo o sistema — os 34 slots dos nós são valores distintos. ⭐ **O 17.º nasceu em 2026-09-16**:
+/// o `bone-handle`, de um report do dono (as alças de curvatura vestiam a cor do osso), e o pai
+/// dele foi MEDIDO nos 8 temas — ver a tabela em `ph2d_tokens::color_alias`.
+///
+/// ⇒ a contagem sobe **com** o nome ao lado, e um apelido que nasça sem entrar nesta lista reprova.
 #[test]
-fn the_alias_family_is_exactly_the_timeline_slots() {
+fn the_alias_family_is_exactly_the_named_slots() {
+    /// As famílias que declaram apelidos, e a contagem de cada uma.
+    const FAMILIAS: &[(&str, usize)] = &[("timeline-", 16), ("bone-", 1)];
     let declared: Vec<&str> = C::ALL
         .iter()
         .filter(|t| t.alias_parent().is_some())
         .map(|t| t.key())
         .collect();
+    let total: usize = FAMILIAS.iter().map(|(_, n)| n).sum();
     assert_eq!(
         declared.len(),
-        16,
+        total,
         "a familia de apelidos mudou: {declared:?}"
     );
-    assert!(
-        declared.iter().all(|k| k.starts_with("timeline-")),
-        "um apelido nasceu fora do Timeline: {declared:?}"
-    );
+    for (prefixo, n) in FAMILIAS {
+        let quantos = declared.iter().filter(|k| k.starts_with(prefixo)).count();
+        assert_eq!(
+            quantos, *n,
+            "a familia `{prefixo}*` tem {quantos} apelidos e a nota diz {n}: {declared:?}"
+        );
+    }
     // E um pai nunca é ele próprio um apelido — senão a resolução seria uma cadeia.
     for t in C::ALL {
         if let Some(p) = t.alias_parent() {

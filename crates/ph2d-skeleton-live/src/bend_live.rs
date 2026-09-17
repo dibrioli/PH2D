@@ -55,8 +55,8 @@ pub fn effective_spec(sim: &SimWorld, e: Entity) -> Option<ph2d_skeleton::bend::
             let pai_raiz = inv.apply([0.0, 0.0]);
             [eixo[0] - pai_raiz[0], eixo[1] - pai_raiz[1]]
         });
-    // A tangente da PONTA: da raiz deste osso até à ponta do SEGUINTE. Sem seguinte, o próprio eixo.
-    let t_ponta = filho_osso_unico(sim, e).map_or(eixo, |(f, comp)| {
+    // A tangente da PONTA: da raiz deste osso até à ponta de QUEM MANDA. Sem ninguém, o próprio eixo.
+    let t_ponta = manda_na_ponta(sim, e, osso.curve_tip).map_or(eixo, |(f, comp)| {
         let x = local_de(sim, f);
         x.apply([comp, 0.0])
     });
@@ -96,11 +96,26 @@ fn pai_osso(sim: &SimWorld, e: Entity) -> Option<Entity> {
     sim.world().get::<Bone>(p).map(|_| p)
 }
 
-/// O ÚNICO filho-osso deste osso, com o comprimento dele; `None` se há zero ou mais de um.
+/// ⭐⭐⭐ **QUEM MANDA NA PONTA, e com que comprimento** — a resolução do
+/// [`ph2d_skeleton_ecs::CurveTip`], e a única porta que a responde.
 ///
-/// ⛔ **Mais de um é `None` de propósito:** ali a corrente ramifica, e escolher um filho seria um
-/// sorteio que muda com a ordem de varredura.
-fn filho_osso_unico(sim: &SimWorld, e: Entity) -> Option<(Entity, f64)> {
+/// - [`CurveTip::Chain`]: o ÚNICO filho-osso; com zero ou mais de um, **ninguém** (a lei de sempre,
+///   e a razão é que ali a corrente ramifica — escolher seria um sorteio que muda com a ordem de
+///   varredura);
+/// - [`CurveTip::Straight`]: **ninguém**, mesmo havendo um filho só (o *«modo actual»* que o dono
+///   mandou manter como escolha);
+/// - [`CurveTip::Bone`]: o filho com aquele [`ph2d_ecs::StableId`] — e **só** se ele for mesmo
+///   filho-osso deste osso. *Uma referência que não se resolve fica recta; ela não inventa um
+///   sorteio.*
+fn manda_na_ponta(
+    sim: &SimWorld,
+    e: Entity,
+    tip: ph2d_skeleton_ecs::CurveTip,
+) -> Option<(Entity, f64)> {
+    use ph2d_skeleton_ecs::CurveTip;
+    if tip == CurveTip::Straight {
+        return None;
+    }
     let mut achado: Option<(Entity, f64)> = None;
     for er in sim.world().iter_entities() {
         let filho_de_e = er
@@ -109,14 +124,30 @@ fn filho_osso_unico(sim: &SimWorld, e: Entity) -> Option<(Entity, f64)> {
         if !filho_de_e {
             continue;
         }
-        if let Some(b) = er.get::<Bone>() {
-            if achado.is_some() {
-                return None;
+        let Some(b) = er.get::<Bone>() else {
+            continue;
+        };
+        match tip {
+            // ⭐ O ESCOLHIDO: o primeiro (e único) filho com este id — a comparação é entre os
+            // FILHOS, nunca uma busca global, logo um osso de outro esqueleto não pode mandar aqui.
+            CurveTip::Bone(id) => {
+                if er.get::<ph2d_ecs::StableId>() == Some(&id) {
+                    return Some((er.id(), b.length));
+                }
             }
-            achado = Some((er.id(), b.length));
+            // A CORRENTE: um filho manda; dois ou mais não têm desempate.
+            CurveTip::Chain => {
+                if achado.is_some() {
+                    return None;
+                }
+                achado = Some((er.id(), b.length));
+            }
+            CurveTip::Straight => unreachable!("a saída de cima já devolveu"),
         }
     }
-    achado
+    // ⚠️ Com `Bone(id)` chegar aqui é *o escolhido já não é meu filho* ⇒ recto, e não o primeiro
+    // que aparecer.
+    achado.filter(|_| tip == CurveTip::Chain)
 }
 
 /// ⭐⭐⭐ **AS DUAS ALÇAS DE CURVATURA de um osso, em MUNDO**, mais as duas extremidades dele — a

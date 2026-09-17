@@ -316,6 +316,23 @@ pub fn draw_bone_preview(
 /// ⚠️⚠️ **E o realce é por METADE, não por osso** — só a metade apontada acende. É o que faz o
 /// artista SABER, antes de carregar, se vai **girar** (corpo) ou **deslocar** (junta): as duas
 /// alças estão uma dentro da outra, e sem isto a única forma de descobrir o verbo é executá-lo.
+/// ⭐⭐⭐ **A COR DO CORPO DE UM OSSO — a porta, e o que o gate da alça mede contra.**
+///
+/// `(aceso, apagado)`: o osso apontado ou seleccionado, e o resto.
+///
+/// ⚠️ **Ela existe porque a alça de curvatura NÃO pode vestir esta cor** (report do dono,
+/// 2026-09-16), e uma comparação entre dois tokens escritos num gate mede a TABELA, não o que o
+/// desenho usa. Com as duas cores atrás de portas, trocar qualquer um dos lados reprova
+/// (`bendy::tests::the_bend_handle_never_wears_the_colour_of_the_bone`).
+#[must_use]
+pub fn bone_body_colours(theme: Theme) -> (VelloColor, VelloColor) {
+    let vello = |t: ColorToken| {
+        let c = t.resolve(theme);
+        VelloColor::from_rgba8(c.r, c.g, c.b, c.a)
+    };
+    (vello(ColorToken::Accent), vello(ColorToken::AccentSoft))
+}
+
 pub fn draw_bones(
     bones: &[(u64, Vec<[f64; 2]>)],
     selected: Option<u64>,
@@ -325,11 +342,7 @@ pub fn draw_bones(
     theme: Theme,
     target: &mut VectorScene,
 ) {
-    let vello = |t: ColorToken| {
-        let c = t.resolve(theme);
-        VelloColor::from_rgba8(c.r, c.g, c.b, c.a)
-    };
-    let (aceso, apagado) = (vello(ColorToken::Accent), vello(ColorToken::AccentSoft));
+    let (aceso, apagado) = bone_body_colours(theme);
     for (bits, corpo) in bones {
         let (bits, corpo) = (*bits, corpo.as_slice());
         let tela: Vec<Point> = corpo

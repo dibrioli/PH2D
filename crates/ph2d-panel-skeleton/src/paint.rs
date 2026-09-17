@@ -141,4 +141,8 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
     if let Some(chip_rect) = state::take_pending_bone_action_dd() {
         crate::section_smart::paint_action_popover(ctx, chip_rect, theme);
     }
+    // ⭐ E a de QUEM MANDA NA PONTA, pela mesma porta e pela mesma razão.
+    if let Some(chip_rect) = state::take_pending_bone_tip_dd() {
+        crate::section_tip::paint_tip_popover(ctx, chip_rect, theme);
+    }
 }

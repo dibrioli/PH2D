@@ -718,5 +718,23 @@
 /// salva: ele serve formatos com nomes, e o postcard não tem nenhum.
 ///
 /// ⛔ **Sem degrau de migração** (a mesma decisão do Enio de 26/08 — não há projectos gravados).
-/// ⚠️ **A tripla NÃO o vê** (16.ª vez): os bytes mudaram dentro de um `ComponentBlob`.
+/// ⚠️ **A tripla NÃO o vê** (16.ª vez): os bytes mudaram dentro de um `ComponentBlob`.///
+/// # `132 → 133` — ⭐⭐⭐ o osso passou a dizer **QUEM MANDA NA PONTA** da curva
+///
+/// O `Bone` ganhou `curve_tip` ([`ph2d_skeleton_ecs::CurveTip`]): `Chain` (o nascimento, e a lei que
+/// sempre existiu — o único filho-osso manda, e com zero ou mais de um a ponta fica recta),
+/// `Straight` (**ninguém** manda, mesmo havendo um filho) ou `Bone(StableId)` (**este** filho manda
+/// — o *custom handle* do Blender). Ordem do dono, 2026-09-16, depois de ver a cena da bifurcação:
+/// *«sim, escolher qual dos vários filhos manda na curva. E quero que o modo atual (ninguém manda na
+/// curva) seja uma das opções»*.
+///
+/// ⚠️⚠️ **Obrigatório, e a razão é o postcard** — a mesma dos degraus `112`, `127`, `129`, `130`,
+/// `131` e `132`: ele é **posicional**, e um campo APENDADO a um componente faz um ficheiro velho
+/// ser lido com um campo a mais, comendo os bytes do vizinho.
+///
+/// ⭐ **O filho é um [`ph2d_ecs::StableId`] e não os bits dele** — a mesma cerca do `IkGoal::target`,
+/// pelo mesmo defeito medido: bits de alocação não sobrevivem ao respawn do undo.
+///
+/// ⛔ **Sem degrau de migração** (a mesma decisão do Enio de 26/08).
+/// ⚠️ **A tripla NÃO o vê** (17.ª vez): os bytes mudaram dentro de um `ComponentBlob`.
 pub(crate) const PROJECT_SCHEMA: u32 = 137;

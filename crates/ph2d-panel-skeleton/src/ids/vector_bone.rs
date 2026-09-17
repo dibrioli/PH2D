@@ -35,3 +35,10 @@ pub const VECTOR_BONE_DEFORM_IDS: [NodeId; 2] =
 /// ⚠️ **Registado como `Dropdown`, pintado como botão** — abrir/fechar é do dispatch genérico, e
 /// registá-lo como `Button` faria o clique acender e nunca abrir lista nenhuma.
 pub const VECTOR_BONE_SMART_CLIP: NodeId = hash_node_id("vector.bone.smart.clip");
+
+/// ⭐⭐⭐ **Curve Tip** — o chip que abre *quem manda na ponta da curva* (o *custom handle*, ordem
+/// do dono de 2026-09-16).
+///
+/// ⚠️ **É o READOUT e o gesto**, como o selector de acção ao lado: o rótulo é a escolha ligada, e
+/// um rótulo fixo obrigaria a abrir a lista para saber o que lá está.
+pub const VECTOR_BONE_TIP: NodeId = hash_node_id("vector.bone.tip");

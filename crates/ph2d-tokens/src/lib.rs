@@ -51,6 +51,7 @@ mod alias_walk;
 pub mod chrome;
 pub mod color;
 mod color_alias;
+mod color_space;
 /// **A camada de OVERRIDE de cor** (plano UI/UX W6) — o que o artista autora sobre a tabela
 /// gerada. Vazia, `ColorToken::resolve` é byte-idêntico ao de sempre.
 pub mod contrast;
@@ -90,10 +91,9 @@ pub use chrome::{
     PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, PILL_PADDING_PX, TOOL_CHIP_PX, TOPBAR_GAP_PX,
     TOPBAR_H_PX,
 };
-pub use color::{
-    Color, ColorToken, ColorValue, faint_row_bg, oklch_in_gamut, oklch_to_linear_srgb,
-    oklch_to_srgb, srgb_to_oklch,
-};
+pub use color::{Color, ColorToken, ColorValue, faint_row_bg};
+/// ⭐ A aritmética de cor saiu para um irmão (tecto de LOC), e o endereço público não muda.
+pub use color_space::{oklch_in_gamut, oklch_to_linear_srgb, oklch_to_srgb, srgb_to_oklch};
 pub use layer::Layer;
 pub use motion::{Duration, Easing};
 pub use num::NumToken;

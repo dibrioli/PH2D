@@ -48,6 +48,18 @@ pub const BEND_HANDLE_R_PX: f64 = 4.0;
 /// duplicação de quatro palavras por uma dependência entre duas famílias.
 pub type BendHandles = ([[f64; 2]; 2], [[f64; 2]; 2]);
 
+/// ⭐⭐⭐ **A COR DAS DUAS ALÇAS — a porta, e o que o gate mede.**
+///
+/// ⚠️ Ela é uma PORTA e não uma linha dentro do desenho porque o gate tem de medir **o que o
+/// desenho usa**: comparar dois tokens escritos no teste mediria a tabela de cores, e trocar a cor
+/// aqui deixá-lo-ia verde — a espécie de gate que o §5.0 chama de *«mede o valor, não o
+/// consumidor»*.
+#[must_use]
+pub fn bend_handle_colour(theme: Theme) -> VelloColor {
+    let c = ColorToken::BoneHandle.resolve(theme);
+    VelloColor::from_rgba8(c.r, c.g, c.b, c.a)
+}
+
 /// ⭐⭐⭐ **DESENHA AS DUAS ALÇAS DE CURVATURA** do osso em foco, já em MUNDO.
 ///
 /// `pontos` é `(as duas alças, as duas extremidades)` do osso — o traço vai de cada alça para a
@@ -64,8 +76,12 @@ pub fn draw_bend(
     let Some(([h_inn, h_out], [raiz, ponta])) = pontos else {
         return;
     };
-    let c = ColorToken::Accent.resolve(theme);
-    let cor = VelloColor::from_rgba8(c.r, c.g, c.b, c.a);
+    // ⭐⭐⭐ **A COR DELAS NÃO É A DO OSSO, e isso é um report do dono** (2026-09-16: *«os handles
+    // das Curve Handles têm a mesma cor dos ossos e se estão sobrepostos ficam invisíveis»*).
+    // Elas eram `Accent` — **exactamente** o corpo aceso do osso —, e uma alça pousada sobre o
+    // corpo desaparecia. O `bone-handle` é o token delas, com o pai MEDIDO nos 8 temas
+    // (`ph2d_tokens::color_alias`), e o gate abaixo guarda a distância.
+    let cor = bend_handle_colour(theme);
 
     // OS TRAÇOS, de cada extremidade até à alça dela — o desenho de alça de Bézier.
     let mut hastes = BezPath::new();
@@ -103,5 +119,66 @@ pub fn draw_bend(
             None,
             &bola,
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ph2d_tokens::{Theme, srgb_to_oklch};
+
+    /// A distância perceptual entre duas cores, no plano `(a, b)` do OKLab mais a diferença de
+    /// luminosidade — a mesma grandeza em que a tabela do [`ph2d_tokens::color_alias`] foi medida.
+    fn distancia(x: ph2d_vector::Color, y: ph2d_vector::Color) -> f64 {
+        let p = |c: ph2d_vector::Color| {
+            let [r, g, b, _] = c.to_rgba8().to_u8_array();
+            let (l, croma, h) = srgb_to_oklch(r, g, b);
+            let rad = h.to_radians();
+            (l, croma * rad.cos(), croma * rad.sin())
+        };
+        let (a, b) = (p(x), p(y));
+        ((a.0 - b.0).powi(2) + (a.1 - b.1).powi(2) + (a.2 - b.2).powi(2)).sqrt()
+    }
+
+    /// ⭐⭐⭐ **A ALÇA DE CURVATURA NUNCA VESTE A COR DO OSSO** — o report do dono de 2026-09-16,
+    /// dito como número.
+    ///
+    /// ⛔⛔ **Elas eram `Accent`, que é o corpo ACESO do osso: distância ZERO em todos os temas** —
+    /// e uma alça pousada sobre o corpo (o caso normal, porque ela nasce no terço do eixo)
+    /// desaparecia. *Duas coisas que se sobrepõem por construção não podem partilhar o token.*
+    ///
+    /// A barra é `0,10`, e ela sai da MEDIÇÃO e não de um palpite: o pior caso do `Success` nos 8
+    /// temas é `0,114` (Workshop, onde o acento é ciano e o verde fica mais perto), e o candidato
+    /// seguinte a ele já cai para `0,080`. ⇒ afrouxar esta barra é aceitar o `Warn`, que foi
+    /// medido e recusado.
+    ///
+    /// ⚠️ **Mede contra o corpo ACESO e o APAGADO**: o osso em foco pinta-se aceso, mas as alças
+    /// aparecem com os vizinhos apagados à volta, e o pior dos dois é o que o olho encontra.
+    #[test]
+    fn the_bend_handle_never_wears_the_colour_of_the_bone() {
+        /// Ver o doc: o pior caso medido do pai escolhido é `0,114`.
+        const BARRA: f64 = 0.10;
+        let temas = [
+            Theme::Forge,
+            Theme::Workshop,
+            Theme::Sunstone,
+            Theme::Blueprint,
+            Theme::Dark,
+            Theme::Gray,
+            Theme::Light,
+            Theme::Oled,
+        ];
+        // ⛔ Controlo positivo: uma varredura sobre zero temas passaria sobre nada.
+        assert_eq!(temas.len(), 8, "a varredura tem de cobrir os oito temas");
+        for tema in temas {
+            let (aceso, apagado) = crate::bone_body_colours(tema);
+            for (corpo, qual) in [(aceso, "aceso"), (apagado, "apagado")] {
+                let d = distancia(super::bend_handle_colour(tema), corpo);
+                assert!(
+                    d >= BARRA,
+                    "{tema:?}: a alca de curvatura esta' a {d:.3} do corpo {qual} do osso -- a \
+                     barra medida e' {BARRA}, e a ZERO e' o defeito de 2026-09-16 a voltar"
+                );
+            }
+        }
     }
 }

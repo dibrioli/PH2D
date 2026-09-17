@@ -85,6 +85,19 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::VECTOR_BONE_SMART_CLIP_IDS {
         button(store, id);
     }
+    // ⭐ O selector de QUEM MANDA NA PONTA — a mesma dupla (o chip é `Dropdown`, as linhas são
+    // botões), e foi um gate de costura que apanhou o irmão dele pintado e não registado.
+    store.register(
+        crate::ids::VECTOR_BONE_TIP,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
+    for id in ids::VECTOR_BONE_TIP_IDS {
+        button(store, id);
+    }
     for id in ids::VECTOR_BONE_FIELDS {
         world_number_field(store, id);
     }
@@ -99,7 +112,9 @@ fn meu(id: ph2d_a11y::NodeId) -> bool {
         || ids::VECTOR_BONE_SMART_CLIP_IDS.contains(&id)
         || crate::ids::VECTOR_BONE_ACTION_IDS.contains(&id)
         || crate::ids::VECTOR_BONE_DEFORM_IDS.contains(&id)
+        || ids::VECTOR_BONE_TIP_IDS.contains(&id)
         || id == crate::ids::VECTOR_BONE_SMART_CLIP
+        || id == crate::ids::VECTOR_BONE_TIP
 }
 
 pub(crate) fn apply_event(

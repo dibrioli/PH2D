@@ -364,3 +364,165 @@ fn em_from_chain_nao_ha_alca_para_agarrar() {
         .curve;
     assert_eq!(antes, ph2d_skeleton::bend::Bend::STRAIGHT);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// O *custom handle* — QUEM MANDA NA PONTA quando a corrente ramifica
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// A cena da bifurcação, com os ids duráveis já atribuídos (é deles que a escolha vive).
+fn bifurcacao() -> (SimWorld, ph2d_skeleton_demo::Bifurcacao) {
+    let mut sim = SimWorld::default();
+    let b = ph2d_skeleton_demo::bifurcacao(&mut sim).expect("a cena monta");
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    (sim, b)
+}
+
+/// Os filhos-osso de `e`, na ordem de varredura, com o id durável de cada um.
+fn filhos(sim: &SimWorld, e: Entity) -> Vec<(Entity, ph2d_ecs::StableId)> {
+    sim.world()
+        .iter_entities()
+        .filter(|er| {
+            er.get::<ph2d_ecs::ChildOf>()
+                .is_some_and(|c| c.parent() == e)
+                && er.get::<ph2d_skeleton_ecs::Bone>().is_some()
+        })
+        .map(|er| {
+            (
+                er.id(),
+                er.get::<ph2d_ecs::StableId>().copied().expect("id duravel"),
+            )
+        })
+        .collect()
+}
+
+/// A alça da PONTA do osso, como a lei a entrega.
+fn out_de(sim: &SimWorld, e: Entity) -> [f64; 2] {
+    ph2d_skeleton_live::skin_live::effective_spec(sim, e)
+        .expect("osso")
+        .curve
+        .out
+}
+
+fn escolhe(sim: &mut SimWorld, e: Entity, tip: ph2d_skeleton_ecs::CurveTip) {
+    sim.world_mut()
+        .get_mut::<ph2d_skeleton_ecs::Bone>(e)
+        .expect("osso")
+        .curve_tip = tip;
+}
+
+/// ⭐⭐⭐⭐ **O ARTISTA ESCOLHE QUAL FILHO MANDA, e a ponta segue ESSE** — a ordem do dono de
+/// 2026-09-16 (*«sim, escolher qual dos vários filhos manda na curva»*), dita como número.
+///
+/// ⛔ **Antes desta wave a ponta de um osso ramificado era recta e ponto final**: a corrente não
+/// tinha desempate, e escolher um filho seria um sorteio que muda com a ordem de varredura. A
+/// escolha do artista **é** o desempate que faltava.
+///
+/// ⚠️ **A régua é a SIMETRIA da cena:** os dois filhos do osso ramificado saem para cima e para
+/// baixo com o mesmo ângulo, então escolher um ou o outro tem de dar alças **espelhadas** — uma
+/// asserção que um `!= [0,0]` não faria, porque ela reprova se a escolha for ignorada *e* se ela
+/// pegar sempre o mesmo filho.
+///
+/// (Mutação: no `manda_na_ponta`, responder ao `Bone(id)` com o primeiro filho ⇒ RED.)
+#[test]
+fn the_artist_picks_which_child_drives_the_tip_and_the_curve_follows_that_one() {
+    let (mut sim, b) = bifurcacao();
+    let ramificado = b.com_dois_filhos;
+    let f = filhos(&sim, ramificado);
+    assert_eq!(f.len(), 2, "a fixtura tem de ter o osso com DOIS filhos");
+    // O estado de hoje: ninguém manda ⇒ recta.
+    assert_eq!(
+        out_de(&sim, ramificado),
+        [0.0, 0.0],
+        "sem escolha a ponta tem de continuar recta — e' a lei que sempre existiu"
+    );
+    let mut alcas = Vec::new();
+    for (_, id) in &f {
+        escolhe(&mut sim, ramificado, ph2d_skeleton_ecs::CurveTip::Bone(*id));
+        alcas.push(out_de(&sim, ramificado));
+    }
+    for (a, (_, id)) in alcas.iter().zip(&f) {
+        assert!(
+            a[1].abs() > 0.05,
+            "com o filho {id:?} escolhido a ponta continuou recta: {a:?}"
+        );
+    }
+    // ⭐ ESPELHADAS: os dois filhos saem com o mesmo ângulo, um para cima e outro para baixo.
+    //
+    // ⚠️ **A folga é `1e-6` e não zero, e a razão é a FIXTURA:** os dois filhos nascem de duas
+    // chamadas ao construtor com pontas simétricas, e a pose local de cada um passa por um
+    // `atan2`/`hypot` próprio — a simetria é GEOMÉTRICA, não bit-a-bit (medido: `6e-9`). A barra
+    // fica `10 000×` abaixo do sinal que ela mede (`0,05`), logo continua a reprovar a escolha
+    // ignorada e a escolha que pega sempre o mesmo filho.
+    let (cima, baixo) = (alcas[0], alcas[1]);
+    assert!(
+        (cima[1] + baixo[1]).abs() < 1e-6 && (cima[0] - baixo[0]).abs() < 1e-6,
+        "escolher um filho ou o outro devia dar alcas espelhadas: {cima:?} contra {baixo:?}"
+    );
+}
+
+/// ⭐⭐⭐ **«NINGUÉM MANDA» É UMA ESCOLHA, e não só o que sobra** — a segunda metade da ordem do
+/// dono (*«quero que o modo atual (ninguém manda na curva) seja uma das opções»*).
+///
+/// ⚠️ **A régua corre no osso de UM filho**, que é o único sítio onde a escolha se distingue do que
+/// a corrente faria: ali o `Chain` curva e o `Straight` tem de endireitar.
+///
+/// (Mutação: no `manda_na_ponta`, tirar a saída do `Straight` ⇒ RED.)
+#[test]
+fn nobody_drives_the_tip_is_a_choice_not_only_a_leftover() {
+    let (mut sim, b) = bifurcacao();
+    let um = b.com_um_filho;
+    let curvo = out_de(&sim, um);
+    assert!(
+        curvo[1].abs() > 0.05,
+        "a fixtura tem de ter a ponta CURVA pela corrente: {curvo:?}"
+    );
+    escolhe(&mut sim, um, ph2d_skeleton_ecs::CurveTip::Straight);
+    assert_eq!(
+        out_de(&sim, um),
+        [0.0, 0.0],
+        "com «ninguem manda» a ponta tem de ficar recta mesmo havendo um filho"
+    );
+    // ⛔ E a RAIZ não se mexe: a escolha é da ponta, e o pai continua a mandar no outro lado.
+    let inn = ph2d_skeleton_live::skin_live::effective_spec(&sim, um)
+        .expect("osso")
+        .curve
+        .inn;
+    assert!(
+        inn[1].abs() > 0.05,
+        "a escolha da ponta nao pode endireitar a RAIZ: {inn:?}"
+    );
+}
+
+/// ⛔⛔ **UM ESCOLHIDO QUE JÁ NÃO É FILHO DESTE OSSO DEIXA A PONTA RECTA** — nunca «o primeiro que
+/// aparecer».
+///
+/// ⚠️ **Duas formas de o id deixar de resolver**, e as duas têm de dar o mesmo: o osso escolhido foi
+/// APAGADO, ou ele é um osso de OUTRO esqueleto (aqui, o filho do esqueleto vizinho). *Uma
+/// referência que não se resolve não pode inventar um sorteio* — e a busca é entre os FILHOS
+/// precisamente para o segundo caso não ter resposta.
+///
+/// (Mutação: no `manda_na_ponta`, resolver o `Bone(id)` por busca global ⇒ RED no caso do vizinho.)
+#[test]
+fn a_chosen_bone_that_is_no_longer_a_child_leaves_the_tip_straight() {
+    let (mut sim, b) = bifurcacao();
+    let (um, dois) = (b.com_um_filho, b.com_dois_filhos);
+    // O filho do VIZINHO — existe, é osso, e não é filho deste.
+    let alheio = filhos(&sim, dois).first().expect("o vizinho tem filhos").1;
+    escolhe(&mut sim, um, ph2d_skeleton_ecs::CurveTip::Bone(alheio));
+    assert_eq!(
+        out_de(&sim, um),
+        [0.0, 0.0],
+        "um osso de outro esqueleto nao pode mandar na curva deste"
+    );
+    // E um id que não existe de todo.
+    escolhe(
+        &mut sim,
+        um,
+        ph2d_skeleton_ecs::CurveTip::Bone(ph2d_ecs::StableId(u64::MAX)),
+    );
+    assert_eq!(
+        out_de(&sim, um),
+        [0.0, 0.0],
+        "um escolhido apagado tem de deixar a ponta recta"
+    );
+}

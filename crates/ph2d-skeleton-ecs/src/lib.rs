@@ -89,6 +89,52 @@ pub struct Bone {
     /// um modo que não se desliga.*
     #[serde(default)]
     pub handles: Handles,
+    /// ⭐⭐⭐ **QUEM MANDA NA PONTA DA CURVA** quando as alças vêm da corrente ([`Handles::Auto`]) —
+    /// o *custom handle* do Blender, pedido pelo dono em 2026-09-16.
+    ///
+    /// ⚠️ **Ele só tem sujeito com `Handles::Auto`**: em `Authored` as duas alças são as que o
+    /// artista escreveu, e ninguém as deriva de vizinho nenhum.
+    ///
+    /// ⚠️ **O nascimento é [`CurveTip::Chain`]**, que é a lei que sempre existiu — logo todo rig já
+    /// gravado atravessa esta linha **ao bit**.
+    #[serde(default)]
+    pub curve_tip: CurveTip,
+}
+
+/// ⭐⭐⭐ **DE ONDE SAI A TANGENTE DA PONTA de um osso curvado pela corrente** — a resposta à
+/// pergunta que a [`crate::Bone::handles`] em `Auto` faz ao osso SEGUINTE.
+///
+/// # ⛔ O problema que ele resolve, e que era uma ausência declarada
+///
+/// Um osso com **dois filhos-osso** não tem «o seguinte»: a corrente ramifica, e escolher um deles
+/// seria um sorteio que muda com a ordem de varredura — então aquele lado ficava **recto**, sempre.
+/// O dono viu a cena que o demonstra e mandou (2026-09-16): *«sim, escolher qual dos vários filhos
+/// manda na curva. E quero que o modo atual (ninguém manda na curva) seja uma das opções»*.
+///
+/// # ⚠️ Porque o filho é um [`StableId`] e não os bits dele
+///
+/// A mesma cerca do [`IkGoal::target`] e do [`Tendon::bone`], e pelo mesmo defeito **medido**: bits
+/// de alocação não sobrevivem ao respawn do undo, e guardados DENTRO dos bytes de um componente
+/// envenenam o próprio undo.
+///
+/// ⚠️ **E ele é resolvido por COMPARAÇÃO entre os filhos**, nunca por uma busca global: a lei
+/// pergunta *«qual dos meus filhos-osso tem este id?»*, o que a mantém `O(filhos)` e — mais
+/// importante — impede que um osso de outro esqueleto mande na curva deste.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CurveTip {
+    /// **A corrente decide**, e é a lei de sempre: o ÚNICO filho-osso manda; com zero ou mais de um,
+    /// a ponta fica recta.
+    #[default]
+    Chain,
+    /// ⭐ **NINGUÉM manda** — a ponta fica recta mesmo havendo um filho só.
+    ///
+    /// ⚠️ É o *«modo atual»* que o dono mandou manter como opção: num osso ramificado ele é o que
+    /// acontece hoje, e aqui passa a ser uma ESCOLHA em vez de uma consequência.
+    Straight,
+    /// ⭐⭐ **ESTE filho manda** — o *custom handle*. Um id que já não é filho-osso deste osso
+    /// resolve-se como [`CurveTip::Straight`]: o osso que mandava foi apagado ou mudou de pai, e
+    /// *uma referência que não se resolve não pode inventar um sorteio*.
+    Bone(StableId),
 }
 
 impl Bone {
@@ -117,6 +163,7 @@ impl Default for Bone {
             segments: 1,
             curve: Bend::STRAIGHT,
             handles: Handles::Authored,
+            curve_tip: CurveTip::Chain,
         }
     }
 }

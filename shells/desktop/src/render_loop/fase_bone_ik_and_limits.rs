@@ -8,6 +8,7 @@ pub(super) struct BoneIkAndLimitsIntents {
     pub(super) pending_ik_remove: bool,
     pub(super) pending_ik_bend: Option<ph2d_skeleton::BendSide>,
     pub(super) pending_bone_handles: Option<ph2d_skeleton::bend::Handles>,
+    pub(super) pending_bone_tip: Option<usize>,
     pub(super) pending_limit_add: bool,
     pub(super) pending_limit_remove: bool,
 }
@@ -27,6 +28,7 @@ impl crate::App {
             pending_ik_remove,
             pending_ik_bend,
             pending_bone_handles,
+            pending_bone_tip,
             pending_limit_add,
             pending_limit_remove,
         } = intents;
@@ -57,6 +59,17 @@ impl crate::App {
             && let Some(mut b) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::Bone>(osso)
         {
             b.handles = modo;
+        }
+        // ⭐⭐⭐⭐ **QUEM MANDA NA PONTA DA CURVA** (o *custom handle*, ordem do dono de 2026-09-16).
+        //
+        // ⚠️ **A escolha resolve-se contra a lista de AGORA** (a porta da família, a mesma que o
+        // painel pintou): um índice que já não existe **não escreve nada**, porque uma escolha
+        // inventada mudaria a curva por um clique que o artista não deu.
+        if let Some(i) = pending_bone_tip
+            && let Some(tip) = ph2d_app_skeleton::curve_tip::choice_at(sim, osso, i)
+            && let Some(mut b) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::Bone>(osso)
+        {
+            b.curve_tip = tip;
         }
         // ⭐⭐⭐ **O LIMITE DE ÂNGULO** — os dois verbos e os dois extremos.
         if pending_limit_add && !crate::bone_limit::add_limit(sim, osso) {

@@ -90,12 +90,26 @@ fn no_ponto_neutro_as_duas_sao_a_identidade() {
 
 /// ⚠️ **O valor de FÁBRICA é o do alvo** — e isto é um gate porque é o que
 /// mantém o corpus do oráculo a medir o pincel que ele gravou.
+///
+/// ⛔⛔ **A 1.ª redacção media o `default()` do ENUM e não o do PINCEL, e uma
+/// mutação SOBREVIVENTE mostrou-o** (17/09, M3): trocar
+/// `Brush::default().folga_modo` para a simétrica deixava este gate **verde** —
+/// e é exactamente essa troca que faria as `14` fixturas do oráculo medir outro
+/// pincel. *O `#[default]` do enum é uma conveniência de escrita; o que SHIPA é
+/// o campo do pincel*, e eram duas perguntas a partilhar uma asserção.
 #[test]
 fn o_valor_de_fabrica_e_a_lei_do_alvo() {
     assert_eq!(
+        crate::Brush::default().folga_modo,
+        FolgaModo::DoAlvo,
+        "o PINCEL passou a nascer com outra lei de folga — as 14 fixturas do \
+         oraculo passam a medir outro pincel"
+    );
+    assert_eq!(
         FolgaModo::default(),
         FolgaModo::DoAlvo,
-        "o default mudou — as 14 fixturas do oraculo passam a medir outro pincel"
+        "o default do ENUM mudou — quem construir controlos sem nomear o campo \
+         herda a outra lei"
     );
     assert_eq!(
         FolgaModo::ALL[0],

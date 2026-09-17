@@ -129,3 +129,24 @@ impl PoseControlos {
         }
     }
 }
+
+#[cfg(test)]
+mod arrasto_de_fabrica_tests {
+    /// ⚠️ **O PINCEL nasce com a projecção no osso** — o irmão exacto do gate da
+    /// folga, e ele existe pela mesma razão medida: o `default()` do enum e o
+    /// campo que SHIPA são duas perguntas, e uma mutação sobrevivente mostrou
+    /// que asserir só a primeira deixa a segunda sem régua.
+    ///
+    /// ⭐ Aqui ele é **derivado** da crate da lei (`lei.lei_do_arrasto`), logo
+    /// hoje não pode divergir — e é por isso que o gate afirma o VALOR: no dia
+    /// em que alguém escrever um literal neste bloco, ele acusa.
+    #[test]
+    fn o_pincel_nasce_com_a_projeccao_no_osso() {
+        assert_eq!(
+            super::PoseControlos::default().lei_do_arrasto,
+            ph2d_pose::Arrasto::AoLongoDoOsso,
+            "o pincel passou a nascer com outra lei de arrasto — as 69 fixturas \
+             do oraculo passam a medir outro pincel"
+        );
+    }
+}

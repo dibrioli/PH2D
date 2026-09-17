@@ -148,6 +148,136 @@ em que eu a citei.
 
 ---
 
+## §59 — ⭐⭐⭐ AS DUAS DECISÕES VIRARAM BOTÕES (*«coloque cada modo com opção»*)
+
+O dono decidiu em 17/09, e a decisão **não foi escolher uma das leis**:
+
+> *«Decisões: coloque cada modo com opção. Com um botão para mudar o modo.»*
+
+⇒ as duas perguntas que estavam na fila dele deixam de ser um veredito e passam
+a ser **um selector no painel**, com a lei da referência no valor de fábrica.
+
+### §59.1 — A FOLGA do *Scene Project* (`Gap Law`)
+
+A folga é subtraída de um `d` **com sinal**, e as duas leituras são:
+
+| situação | `Signed` (de fábrica) | `Symmetric` |
+|---|---|---|
+| vão `+0,5`, folga `0,1` | `+0,4` — pára a `0,1` do alvo | `+0,4` — igual |
+| vão `+0,5`, folga `0,6` | **`−0,1`** — o barro **AFASTA-SE** | **`0,0`** — não anda |
+| vão `−0,5` (atrás), folga `0,1` | **`−0,6`** — **ULTRAPASSA** o alvo | **`−0,4`** — pára a `0,1` |
+
+⭐ **Sob o rótulo «distância mínima» a 2.ª linha é defensável e a 3.ª não é** —
+um acerto para trás faz a folga **crescer** a excursão. *Reproduzir o alvo
+reproduz um defeito; divergir quebra a memória muscular de quem vem dele* ⇒ a
+resposta certa era o botão, e não o meu voto.
+
+A lei vive em [`ph2d_sculpt3d::FolgaModo`](../../../crates/ph2d-sculpt3d/src/folga_modo.rs),
+e a `distancia` **delega**: ⛔ escrever `d − folga` ali seria a segunda resposta
+à mesma pergunta. ⭐ **Com a folga em `0` as duas são a identidade ao bit**, logo
+o chip é honesto quando o vão está no neutro: ele diz o que vai acontecer quando
+a folga subir.
+
+### §59.2 — O ARRASTO da POSE (`Drag Reads`)
+
+| modo | `δ` (a alavanca do quociente `L/(L−δ)`) |
+|---|---|
+| `Along Bone` (de fábrica) | `dot(d, n̂)` — a projecção, a lei da espec §5.4/§5.5 |
+| `Full Drag` | `sign(dot(d, n̂)) · ‖d‖` — a mão toda, com o sentido da projecção |
+
+⭐⭐ **A propriedade que torna isto seguro:** com a mão a puxar **ao longo do
+osso** as duas coincidem (`d = α·n̂` ⇒ `sign(α)·|α| = α`) — *o modo novo não abre
+regime novo onde o corpus vive; ele só deixa de deitar fora o que a mão fez de
+lado.* E o braço de fábrica chama **o mesmo código de antes**, logo as `69`
+fixturas ficam intactas **por construção**.
+
+### §59.3 — ⛔⛔ E a minha nota sobre ele estava ERRADA: são DUAS de três, não três
+
+A lista que herdei dizia *«o `Scale`/`Translate`/`Squash` lêem só a componente
+axial»*. Medido no código:
+
+| deformação | o que ela lê |
+|---|---|
+| `Scale` | a **projecção** (pelo quociente de escala) |
+| `Squash` | a **projecção** (o mesmo quociente) |
+| **`Translate`** | ⭐ **o deslocamento INTEIRO** — `seg.origem = origem_inicial + g` |
+| `Rotate` · `Twist` | nem uma nem outra: resolvem uma cadeia contra um alvo |
+
+⇒ o chip só é pintado nas **duas** que consultam a lei
+([`Brush::offers_pose_drag_law`]) — *num dos outros três ele não teria o que
+governar, e um selector inerte é pior que um ausente*. ⚠️ **Recitar a nota teria
+posto o botão em cima de um gesto que ele não governa**, que é um controlo morto
+com cara de controlo vivo.
+
+### §59.4 — Prova de mutação: **9 de 9 sangram**, e uma delas mudou um gate
+
+| # | mutação | sangra em |
+|---|---|---|
+| **M1** | a lei simétrica vira a do alvo (botão decorativo) | `a_tabela_das_duas_leis_bate_celula_a_celula` |
+| **M2** | a simétrica perde o piso e passa a INVERTER | `a_simetrica_nunca_inverte_o_sentido…` |
+| **M3** | o PINCEL nasce com a outra lei de folga | `o_valor_de_fabrica_e_a_lei_do_alvo` |
+| **M4** | a folga deixa de passar pela PORTA (crava a do alvo) | `a_folga_so_e_minima_no_sentido_de_avanco` |
+| **M5** | a lei completa vira a projecção (botão decorativo) | `num_arrasto_transversal_as_duas_leis…` |
+| **M6** | a projecção vira a lei completa (trocam de lado) | `num_arrasto_transversal_as_duas_leis…` |
+| **M7** | o default do ENUM da pose troca | `o_arrasto_de_fabrica_e_a_projeccao_no_osso` |
+| **M8** | o chip é pintado em TODA deformação (selector inerte) | `every_pose_control_is_clickable_where_it_is_drawn` |
+| **M9** | o PINCEL nasce com a outra lei de arrasto | `o_pincel_nasce_com_a_projeccao_no_osso` |
+
+⛔⛔ **A M3 SOBREVIVEU na 1.ª ronda, e o que ela expôs é o gate a medir a coisa
+errada:** ele afirmava `FolgaModo::default()` — o `#[default]` do **enum** — e o
+que SHIPA é `Brush::default().folga_modo`. Trocar o campo do pincel deixava-o
+**verde**, e é exactamente essa troca que faria as `14` fixturas do oráculo medir
+outro pincel. ⇒ *o `#[default]` do enum é uma conveniência de escrita; o campo do
+pincel é o produto*, e eram **duas perguntas a partilhar uma asserção**. Hoje são
+duas, e a irmã na pose (M9) nasceu da mesma leitura.
+
+---
+
+## §60 — ⛔⛔⛔ UM TESTE QUE ABORTAVA E SE LIA COMO «0 FALHARAM» (pré-existente)
+
+`seam::every_command_reaches_the_shell` (`ph2d-panel-sculpt3d`) morria com
+**`SIGABRT` por estouro de pilha** no perfil `dev` e **PASSAVA** no `ci-test`.
+
+⇒ o CI e o `ship.sh` (que correm `--cargo-profile ci-test`) **nunca o viam**, e
+quem corria o caminho **documentado** da corrida dirigida — o
+`scripts/cargo-test-narrow.sh`, que é `dev` — via o binário inteiro morrer com o
+script a imprimir **«✗ … 0 falharam · 32 passaram»**. *Um teste que aborta e se
+lê como zero falhas é pior que um vermelho.*
+
+**PRÉ-EXISTENTE, e medido em vez de suposto:** com as quatro crates postas na
+versão do `main` (`git checkout main -- crates/ph2d-{panel-sculpt3d,sculpt3d,pose,i18n}`)
+o estouro reproduz **igual** ⇒ zero relação com os dois botões desta jornada.
+⚠️ Antes disso eu tinha tirado os meus dois braços do despacho e ele continuou a
+estourar — *a primeira experiência já dizia que não era meu, e a segunda disse de
+quem era.*
+
+**A causa, por sonda descartável:**
+
+| tipo | tamanho |
+|---|---|
+| `Sculpt3dIntent` | **9 608 bytes** (a variante `SetUi` carrega um `Sculpt3dUi`) |
+| `Sculpt3dUi` | 9 608 bytes |
+| `Sculpt3dSnapshot` | 9 688 bytes |
+
+O teste materializava um array literal de **24** intents ⇒ **~230 KB**, e uma
+build sem optimização copia-o vezes suficientes (o literal · o `IntoIterator` ·
+a desestruturação por iteração) para passar os `2 MB` da pilha de uma thread do
+`libtest`.
+
+⇒ a lista passa a guardar **construtores** (`fn() -> Sculpt3dIntent`, 16 bytes
+cada) e **um** intent fica vivo de cada vez. ⛔ **A cura NÃO é encolher o
+`Sculpt3dIntent`**: ele é grande porque carrega o retrato inteiro, que é o
+desenho — *o defeito era o TESTE materializar vinte e quatro de uma vez*.
+
+**Medido depois:** `105 de 105` verdes no perfil `dev`, onde o binário abortava.
+
+⚠️⚠️ **Para o integrador, e vale para além desta crate:** um teste pode ser
+**vermelho só no perfil `dev`** e o portão inteiro deste repo não o ver. Quem
+correr `cargo-test-narrow.sh` e ler *«0 falharam»* com um `✗` ao lado está a ler
+um binário que ABORTOU — ⛔ o `✗` é o sinal, e a contagem não.
+
+---
+
 ## §58 — 📦 PARA O AGENTE INTEGRADOR
 
 ### §58.1 — Os factos da linha

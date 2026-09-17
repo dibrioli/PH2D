@@ -176,6 +176,8 @@ impl crate::App {
             surface,
             renderer,
             present,
+            // ⭐ As partículas dos objectos (TOP-20 #18) — ver o bloco do `extra`, abaixo.
+            particles,
             camera,
             game_rt,
             tonemap,
@@ -222,15 +224,28 @@ impl crate::App {
         } else {
             &[]
         };
-        // O slot `extra` do passe carrega DOIS produtores CPU: os fantasmas do
-        // onion (ADR-0142) + o stream do Motion. Concatenados num só slice; os dois
-        // raramente coexistem, então o `Vec` é vazio no caso comum.
-        let sprite_extra: Vec<ph2d_render::RenderInstance> = if onion_ghosts.is_empty() {
-            // Sem fantasmas: passa o slice do Motion direto (zero alloc no caso comum).
-            Vec::new()
-        } else {
-            onion_ghosts.iter().chain(motion_slice).copied().collect()
-        };
+        // O slot `extra` do passe carrega TRÊS produtores CPU: os fantasmas do
+        // onion (ADR-0142), o stream do Motion e — desde o TOP-20 #18 — as PARTÍCULAS dos
+        // objectos. Concatenados num só slice; os dois primeiros raramente coexistem, então o
+        // `Vec` é vazio no caso comum.
+        //
+        // ⚠️⚠️ **As partículas desenham-se SEMPRE, e é isso que as separa do Motion:** o stream do
+        // grafo só existe com a ferramenta MOTION na mão (`motion_active`), e um jacto preso a um
+        // objecto tem de arder com qualquer ferramenta — senão o componente some quando o artista
+        // pega no pincel.
+        let particulas: &[ph2d_render::RenderInstance] = &particles.instances;
+        let sprite_extra: Vec<ph2d_render::RenderInstance> =
+            if onion_ghosts.is_empty() && particulas.is_empty() {
+                // Sem fantasmas nem partículas: passa o slice do Motion direto (zero alloc no caso comum).
+                Vec::new()
+            } else {
+                onion_ghosts
+                    .iter()
+                    .chain(motion_slice)
+                    .chain(particulas)
+                    .copied()
+                    .collect()
+            };
         let extra: &[ph2d_render::RenderInstance] = if sprite_extra.is_empty() {
             motion_slice
         } else {

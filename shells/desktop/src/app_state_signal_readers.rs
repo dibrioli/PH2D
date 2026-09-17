@@ -33,6 +33,8 @@ pub(crate) struct SignalReaders {
     pub(crate) machine: ph2d_runtime::SignalReader,
     /// ⭐ O cursor dos **SCRIPTS do artista** (TOP-20 #16) — o `on_signal` de cada objecto.
     pub(crate) script: ph2d_runtime::SignalReader,
+    /// ⭐ O cursor dos **EMISSORES DE PARTÍCULAS** (TOP-20 #18) — o que liga, desliga e recomeça.
+    pub(crate) particles: ph2d_runtime::SignalReader,
     /// ⭐ O cursor da **FÁBRICA** (TOP-20 #11) — ela escuta o mesmo sinal que a tabela de acções, e
     /// por isso precisa do seu: com um cursor partilhado, quem lesse primeiro apagava o outro.
     pub(crate) factory: ph2d_runtime::SignalReader,
@@ -41,7 +43,7 @@ pub(crate) struct SignalReaders {
 }
 
 impl SignalReaders {
-    /// Os sete cursores no arranque. ⚠️ O de diagnóstico só nasce com a env var.
+    /// Os oito cursores no arranque. ⚠️ O de diagnóstico só nasce com a env var.
     pub(crate) fn new() -> Self {
         Self {
             toast: ph2d_runtime::SignalReader::new(),
@@ -49,6 +51,7 @@ impl SignalReaders {
             action: ph2d_runtime::SignalReader::new(),
             machine: ph2d_runtime::SignalReader::new(),
             script: ph2d_runtime::SignalReader::new(),
+            particles: ph2d_runtime::SignalReader::new(),
             factory: ph2d_runtime::SignalReader::new(),
             ui: ph2d_runtime::SignalReader::new(),
         }

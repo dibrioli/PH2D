@@ -105,7 +105,28 @@ impl EmitterRun {
     /// `uv` é o recorte do atlas que as partículas desenham (o ladrilho branco).
     #[must_use]
     pub fn born(cfg: &ParticleEmitter, reg: &NodeRegistry, pose: Pose, uv: [f32; 4]) -> Self {
-        let emission = Emission::born(cfg);
+        Self::born_with(cfg, reg, pose, uv, cfg.emitting)
+    }
+
+    /// **Nasce já a emitir** — o que um sinal de *recomeçar* pede (ver [`Emission::born_with`]).
+    #[must_use]
+    pub fn born_started(
+        cfg: &ParticleEmitter,
+        reg: &NodeRegistry,
+        pose: Pose,
+        uv: [f32; 4],
+    ) -> Self {
+        Self::born_with(cfg, reg, pose, uv, true)
+    }
+
+    fn born_with(
+        cfg: &ParticleEmitter,
+        reg: &NodeRegistry,
+        pose: Pose,
+        uv: [f32; 4],
+        emitting: bool,
+    ) -> Self {
+        let emission = Emission::born_with(cfg, emitting);
         let compiled = compile(cfg, &emission);
         let mut pump = MotionCookPump::new();
         pump.set_time_fans(ph2d_node_motion_emitter::time_fans(
@@ -126,7 +147,9 @@ impl EmitterRun {
             finished: false,
             uv,
         };
-        run.cook(reg, pose);
+        // ⚠️ **Nascer não cozinha** — parado, um emissor acabado de pôr na cena não tem nenhuma
+        // partícula (a corrida é o relógio a andar). Um cook aqui punha a primeira partícula na
+        // tela de um emissor que ninguém correu.
         let prewarm = f64::from(run.cfg.prewarm.max(0.0));
         if prewarm > 0.0 {
             run.march(reg, pose, prewarm);

@@ -468,4 +468,18 @@
 /// tem blob de script, logo lê-se inteiro por este binário.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — é a **décima oitava** vez.
-pub(crate) const PROJECT_SCHEMA: u32 = 134;
+///
+/// # 134 -> 135 — o EMISSOR DE PARTÍCULAS de um objecto (TOP-20 #18, `line/components`)
+///
+/// O `ph2d::ecs::ParticleEmitter` passa a ser gravado: sem o degrau, um projecto do v134 lido por
+/// este binário e regravado ficaria igual, mas um v135 lido por um binário velho **perderia o
+/// jacto em silêncio** — que é exactamente o que o número existe para impedir.
+///
+/// ⛔ **O que CORRE não está no ficheiro**: as partículas vivas, o relógio local e os segmentos de
+/// emissão são da corrida (a lei do `Spawned`), e a cerca é o TIPO.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v134 não
+/// tem blob de emissor, logo lê-se inteiro por este binário.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima nona** vez.
+pub(crate) const PROJECT_SCHEMA: u32 = 135;

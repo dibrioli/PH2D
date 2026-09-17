@@ -48,6 +48,10 @@ pub(crate) struct AppGfx {
     /// keeps the GC budget warm; set/get bindings ready for follow-up
     /// gameplay work.
     pub(crate) script: Option<ScriptHost>,
+    /// ⭐⭐⭐ **Os EMISSORES DE PARTÍCULAS a correr** (TOP-20 #18) — um por objecto com o
+    /// componente, FORA do mundo: o que uma corrida de partículas guarda não é documento (a lei do
+    /// `Spawned`), e registá-lo poria cada tique na pilha de `Ctrl+Z`.
+    pub(crate) particles: ph2d_app_components::particles_bridge::ParticlesState,
     /// M12 editor data layer + M11 widget paint pass.
     pub(crate) theme: Theme,
     pub(crate) zen: ZenMode,

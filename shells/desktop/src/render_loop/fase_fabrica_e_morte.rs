@@ -38,6 +38,7 @@ impl crate::App {
             tags,
             physics,
             script,
+            particles,
             ..
         } = FrameGfx::of(gfx);
         let registry: &ph2d_ecs::scene::ComponentRegistry = component_registry;
@@ -168,6 +169,10 @@ impl crate::App {
                 repostos +=
                     ph2d_app_components::script_bridge::rewind(host, sim, &mut self.preview_drive);
             }
+            // ⭐ **E os EMISSORES DE PARTÍCULAS renascem com eles** (TOP-20 #18): uma corrida de
+            // partículas não é um componente (não está no mundo), então a porta da família `Logic`
+            // também não a alcança.
+            repostos += particles.rewind();
             if self.signal_readers.logging() && repostos > 0 {
                 eprintln!("[rebobinar] {repostos} estado(s) vivo(s) reposto(s)");
             }

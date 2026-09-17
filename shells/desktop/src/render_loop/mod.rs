@@ -451,6 +451,8 @@ mod fase_world_panel_bridges;
 mod frame_gfx;
 /// O perfilador de fases do quadro (`PH2D_FLUID_PROFILE` / `PH2D_PAINT_PERF`): os contadores e as notas.
 mod frame_prof;
+/// ⭐⭐⭐ Os dois motores da janela dos cérebros — ver o cabeçalho do módulo.
+mod motores_do_quadro;
 /// **Os nove quads do 9-slice** — irmão do `sim_extract`, que está no tecto de LOC.
 pub(crate) mod sheet_grid_overlay;
 pub(crate) mod sim_extract;

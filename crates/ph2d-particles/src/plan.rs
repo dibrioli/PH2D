@@ -27,11 +27,19 @@ pub struct Emission {
 }
 
 impl Emission {
-    /// A emissão de um emissor que nasce agora (local `0`).
+    /// A emissão de um emissor que nasce agora (local `0`), com o `emitting` do componente.
     #[must_use]
     pub fn born(cfg: &ParticleEmitter) -> Self {
+        Self::born_with(cfg, cfg.emitting)
+    }
+
+    /// ⭐⭐ **A emissão de quem nasce por ORDEM** — o sinal de *recomeçar* (e o de *ligar* numa
+    /// rajada) **liga**, mesmo que o componente nasça desligado: um emissor de explosão autora-se
+    /// `emitting = false` e existe para ser disparado.
+    #[must_use]
+    pub fn born_with(cfg: &ParticleEmitter, emitting: bool) -> Self {
         let mut e = Self::default();
-        if cfg.emitting {
+        if emitting {
             // ⚠️ Uma rajada de explosividade `1` tem ciclo ZERO, e um segmento vazio desaparece —
             // ela nunca rebentaria. O piso é um instante, que o `Burst` do nó nem lê.
             let end = cfg.one_shot.then(|| cycle(cfg).max(f64::MIN_POSITIVE));

@@ -207,6 +207,13 @@ pub(crate) fn build_initial_state(
             m.default_uv_rect = motion_default_uv;
             m
         },
+        // ⭐ Os emissores de partículas (TOP-20 #18) — o MESMO ladrilho branco do Motion: uma
+        // partícula é um quad opaco do átlas, como as instâncias dele.
+        particles: {
+            let mut p = ph2d_app_components::particles_bridge::ParticlesState::new();
+            p.uv = motion_default_uv;
+            p
+        },
         physics: ph2d_physics_ecs::PhysicsBridge::new(),
         text_system,
         hero_screen,

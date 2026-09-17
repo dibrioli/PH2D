@@ -612,6 +612,15 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // MUDO: nada some da tela e nada dá erro. ⚠️ O que ANDA — a voz viva, o que já tocou — fica
     // fora do componente pela lei do `Timers`: um `VoiceId` registado faria cada quadro com
     // entrada virar um passo de undo.
+    // ⭐⭐⭐ **O EMISSOR DE PARTÍCULAS** (TOP-20 #18, 2026-09-16) — CONFIG inteira. Sem o registo, o
+    // artista afina o jacto, grava, reabre, e o objecto volta APAGADO: nada some da tela e nada dá
+    // erro.
+    //
+    // ⛔⛔ **O que CORRE não está aqui e não pode estar**: as partículas vivas, o relógio local e
+    // os segmentos ligado/desligado vivem na ponte, fora do mundo — um `EmitterRun` registado
+    // poria cada tique na pilha de `Ctrl+Z`. A porta fecha-se pelo TIPO (ele não é `Serialize`),
+    // como no `TimerRuntime`.
+    reg.register_default::<crate::ParticleEmitter>("ph2d::ecs::ParticleEmitter");
     reg.register_default::<crate::AudioSource2D>("ph2d::ecs::AudioSource2D");
     // ⚠️ **Um MARCADOR ainda tem de se registar**: a presença É o valor, e sem ele um Ctrl+Z ou um
     // reabrir devolveriam a cena SEM orelhas — que é a única maneira de tudo ficar mudo de uma vez.

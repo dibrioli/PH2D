@@ -32,6 +32,8 @@ pub mod field;
 pub mod image;
 /// ⭐⭐⭐ **LÓGICA DE JOGO sem script** (TOP-20 #2–#5) — o `Timer` é o primeiro.
 pub mod logic;
+/// ⭐⭐⭐ **O EMISSOR DE PARTÍCULAS** (TOP-20 #18) — a fachada sobre a simulação do Motion.
+pub mod particles;
 pub mod physics;
 pub mod script;
 pub mod skeleton;
@@ -49,6 +51,7 @@ const FAMILIES: &[&[ComponentDesc]] = &[
     field::DESCS,
     image::DESCS,
     logic::DESCS,
+    particles::DESCS,
     physics::DESCS,
     script::DESCS,
     skeleton::DESCS,

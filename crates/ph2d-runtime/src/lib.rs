@@ -180,6 +180,17 @@ pub enum SignalOrigin {
         /// Quem emitiu — a entidade que carrega o script.
         source: EntityBits,
     },
+    /// ⭐⭐⭐ **Um EMISSOR DE PARTÍCULAS acabou** (TOP-20 #18): a emissão terminou e a última
+    /// partícula morreu — o `finished` do oráculo (L2).
+    ///
+    /// ⚠️ **Sem contagem, e sem fase:** um emissor acaba UMA vez por corrida de emissão, e
+    /// «desligou» e «acabou» são coisas diferentes — desligar não grita (as vivas ainda estão lá),
+    /// e é a última morte que fecha o assunto. Quem quiser saber do desligar autora um sinal na
+    /// mão que o desliga.
+    Particles {
+        /// Quem acabou — a entidade que carrega o emissor.
+        source: EntityBits,
+    },
 }
 
 /// Um sinal publicado neste quadro.
@@ -280,6 +291,17 @@ impl Signal {
         Self {
             name: Arc::from(name),
             origin: SignalOrigin::StateMachine {
+                source: EntityBits(source),
+            },
+        }
+    }
+
+    /// **Um emissor de partículas acabou** ([`SignalOrigin::Particles`]).
+    #[must_use]
+    pub fn from_particles(name: &str, source: u64) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::Particles {
                 source: EntityBits(source),
             },
         }

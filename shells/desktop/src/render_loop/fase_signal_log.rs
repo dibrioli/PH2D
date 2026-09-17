@@ -64,6 +64,12 @@ impl crate::App {
                     ph2d_runtime::SignalOrigin::Script { source } => {
                         eprintln!("[signal] {} <- o script do objecto {}", sig.name, source.0);
                     }
+                    ph2d_runtime::SignalOrigin::Particles { source } => {
+                        eprintln!(
+                            "[signal] {} <- as particulas do objecto {} acabaram",
+                            sig.name, source.0
+                        );
+                    }
                 }
             }
         }

@@ -8048,6 +8048,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-particles"
+version = "0.0.0"
+dependencies = [
+ "libm",
+ "ph2d-ecs",
+ "ph2d-eval-motion",
+ "ph2d-node-force-drag",
+ "ph2d-node-force-wind",
+ "ph2d-node-motion-drive",
+ "ph2d-node-motion-emitter",
+ "ph2d-node-motion-integrate",
+ "ph2d-node-motion-output",
+ "ph2d-node-motion-tint",
+ "ph2d-node-registry",
+ "ph2d-node-value-attribute",
+ "ph2d-node-value-map-range",
+ "ph2d-node-value-table",
+ "ph2d-nodegraph",
+ "ph2d-render",
+]
+
+[[package]]
 name = "ph2d-physics"
 version = "0.0.0"
 dependencies = [

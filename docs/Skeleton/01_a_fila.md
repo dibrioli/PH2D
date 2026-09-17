@@ -2968,6 +2968,45 @@ refinar em *compute shader* por quadro sem primeiro medir a malha assada.
 
 ---
 
+### F6-u — ⛔⛔⛔ **A CENA DOS OSSOS ABRIA SEM OSSOS na máquina do dono, e a peça nova estava FORA DO ECRÃ** (a foto, 2026-09-16)
+
+**UMA LINHA:** a cena `PH2D_VEC_BONE_SMOKE=1` foi fotografada **na arrumação que o dono tem
+gravada** (`~/.ph2d/layout.txt`, `active=nodes`) antes de o roteiro lhe ser enviado — e o que a foto
+mostrou foi uma cena **sem osso nenhum desenhado**, com o grafo de nós a partir a área de desenho.
+
+⛔⛔ **A causa é de ORDEM, e vale para TODA cena que escolhe uma ferramenta.** O arranque instala o
+layout gravado (`layout_persist::install_saved`) pelo mesmo verbo do clique numa aba
+(`layout_switch::apply`), e esse verbo **pede** a ferramenta pelo **barramento**. O barramento é
+drenado a meio do 1.º quadro — *depois* do prólogo, que é onde a cena escolhe a dela:
+
+| o que está gravado | o que a cena faz | o que o dreno faz a seguir |
+|---|---|---|
+| `nodes` | pega o **vetor** | pega a ferramenta de **nós** ⇒ ossos invisíveis |
+| `vector` | pega o **vetor** | o pill **ALTERNA** ⇒ larga o vetor, e volta ao `move` |
+| fábrica (`drawing_2d`) | pega o vetor | o pedido do `painter` cai no gate do modo IMG ⇒ fica |
+
+⭐⭐ ⇒ **o layout gravado passa a pegar a ferramenta dele ANTES do 1.º quadro**
+([`layout_switch::install_at_startup`](../../crates/ph2d-editor-core/src/screens/hero/layout_switch.rs)),
+e a lei de activação (que cluster pode, o toggle IMG, a alternância) saiu do dreno da shell para uma
+porta partilhada, [`tool_activation::activation_gate`](../../crates/ph2d-editor-core/src/tool_activation.rs)
+— *dois leitores, uma lei; uma cópia da lista de clusters ao lado da outra divergiria em silêncio*.
+Gate com prova vermelha: `the_saved_layout_takes_the_canvas_before_the_first_frame` (o clique na aba
+continua a pedir pelo barramento — é a metade que o hero precisa, porque ele não alcança o registo
+de ferramentas).
+
+⚠️⚠️ **E a peça nova estava fora do ECRÃ.** A `bifurcacao` nasceu em `x −8,4 … −1,5`, `y −5,4 …
+−3,8` — *«onde as outras peças não chegam»* —, que é também onde a **câmera** não chega: com a linha
+do tempo encaixada em baixo, a área de desenho mostra `x −5,5 … 6,1` e `y 4,0 … −2,7`. Hoje ela mora
+na faixa livre entre o tentáculo e a folha roxa (`x −3,4 … 3,5`, `y −2,4 … −0,8`), medida na foto.
+*Uma cena de smoke não se posiciona onde há espaço no MUNDO — posiciona-se onde há espaço na TELA de
+quem a vai ver.*
+
+⭐ **E a lição do instrumento:** a 1.ª foto correu com um `HOME` limpo e mostrava os ossos. *Uma cena
+fotografada só na arrumação de fábrica foi medida num programa que o dono não corre* — a foto de
+verificação corre com a configuração DELE.
+
+---
+
 ### F6-t — ⭐⭐⭐ **O `Smooth` COM A CENA CHEIA: pagava inerte, e custava o dobro do que o orçamento prometia** (2026-09-16)
 
 **UMA LINHA:** o item aberto *«o custo da adaptativa não foi medido sob cena cheia»* foi medido

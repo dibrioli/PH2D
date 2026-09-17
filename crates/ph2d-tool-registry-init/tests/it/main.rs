@@ -16,4 +16,5 @@ mod registry_budget_aggregate;
 mod registry_i18n_keys;
 mod registry_no_tool_symbols_in_release;
 mod staleness;
+mod the_saved_layout_takes_the_canvas_before_the_first_frame;
 mod tool_manifest_design_sync;

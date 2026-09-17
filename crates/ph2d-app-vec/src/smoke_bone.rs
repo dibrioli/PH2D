@@ -12,7 +12,7 @@
 //! | **O BRAÇO** (barra com 3 ossos, já presa) | girar um osso DOBRA o desenho, e a base fica onde está |
 //! | **O TENTÁCULO** (barra com 6 ossos, já presa) | a cadeia inteira: girar a RAIZ leva tudo, girar a PONTA leva só a ponta — a cinemática é a hierarquia |
 //! | **A FOLHA SOLTA** (uma forma e um esqueleto **não ligados**) | o gesto do *Bind*: seleccionar a forma, carregar no botão, e ela passa a obedecer |
-//! | **A BIFURCAÇÃO** (dois esqueletos pequenos, em baixo à esquerda) | o `From Chain` curva o osso até ao filho — e com DOIS filhos a ponta fica recta (a pergunta ao dono de 2026-09-16) |
+//! | **A BIFURCAÇÃO** (dois esqueletos pequenos, no meio da metade de baixo) | o `From Chain` curva o osso até ao filho — e com DOIS filhos a ponta fica recta (a pergunta ao dono de 2026-09-16) |
 //!
 //! ⚠️ **As duas primeiras são ligadas pela cena**, e é de propósito: sem uma peça que já obedece, o
 //! primeiro gesto do artista seria montar um rig do zero para só então descobrir se ele funciona.
@@ -157,7 +157,7 @@ pub fn build(
     // em 2026-09-16). A geometria e o gate moram na `ph2d_skeleton_demo::bifurcacao`.
     if ph2d_skeleton_demo::bifurcacao(sim).is_some() {
         eprintln!(
-            "[vec-bone-smoke] em BAIXO a ESQUERDA, dois esqueletos pequenos: o osso do MEIO de cada \
+            "[vec-bone-smoke] em BAIXO, ao MEIO, dois esqueletos pequenos: o osso do MEIO de cada \
              um curva-se pela corrente (Curve Handles: From Chain). A esquerda («{}») ele tem UM \
              filho e a curva entra nele; a direita («{}») tem DOIS filhos e a ponta fica RECTA -- \
              nao ha' «o seguinte».",

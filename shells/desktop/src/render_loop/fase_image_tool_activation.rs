@@ -52,44 +52,20 @@ impl crate::App {
         // map) substituído por `HashMap<ToolId, ShellCache>` ou hook em
         // `Tool::on_activate` (ADR-0041). Por hoje, mantido inline.
         if let Some(tool_id) = pending_image_tool_activation.take() {
-            // Look up the activating tool's cluster + Stateful gate.
-            // W1.T1.7 generalization: was "image_tools" only; now also
-            // accepts "vector_tools" (Pen tool ship). When a third
-            // cluster appears, add it here OR extract a generic
-            // `find_activatable_stateful_tool` helper.
-            let activating_cluster: Option<&'static str> = ph2d_editor_core::installed_registry()
-                .and_then(|reg| {
-                    ["image_tools", "vector_tools", "motion_tools", "flip_tools"]
-                        .into_iter()
-                        .find(|&cluster_name| {
-                            reg.cluster(cluster_name).iter().any(|m| {
-                                m.id == tool_id
-                                    && matches!(
-                                        m.handler,
-                                        ph2d_tool_registry::ToolHandler::Stateful { .. }
-                                    )
-                            })
-                        })
-                });
-            // Per-cluster activation gate. "image_tools" requires
-            // the IMG mode toggle; "vector_tools" / "motion_tools" have no
-            // toggle so they're always-on (the pill is direct-activate).
-            let gate_on = match activating_cluster {
-                Some("image_tools") => hero.image_edit.mode_on,
-                Some("vector_tools") | Some("motion_tools") | Some("flip_tools") => true,
-                _ => false,
-            };
-            // O pill de um cluster direct-activate ALTERNA: clicar na ferramenta
-            // já ativa sai dela e volta para a default (move). É o que faz uma
-            // forma vetorial voltar a se comportar como qualquer objeto — o
-            // gizmo de sprite a move, o clique a seleciona (ADR-0111). Os
-            // `image_tools` ficam de fora: quem manda neles é o toggle IMG.
+            // A lei (o cluster, o toggle IMG, a alternância) mora na editor-core: o ARRANQUE é o
+            // segundo leitor dela (`layout_switch::install_at_startup`). O pill de um cluster
+            // direct-activate ALTERNA: clicar na ferramenta já activa sai dela e volta para a
+            // default (move) — é o que faz uma forma vetorial voltar a ser um objeto (ADR-0111).
+            let ph2d_editor_core::tool_activation::ActivationGate {
+                gate_on,
+                toggles_off,
+                ..
+            } = ph2d_editor_core::tool_activation::activation_gate(
+                tool_id,
+                hero.image_edit.mode_on,
+            );
             let already_active = tools.active().map(ph2d_editor_core::Tool::id)
                 == Some(ph2d_editor_core::ToolId::new(tool_id));
-            let toggles_off = matches!(
-                activating_cluster,
-                Some("vector_tools" | "motion_tools" | "flip_tools")
-            );
             if gate_on && already_active && toggles_off {
                 tools.activate_default();
                 self.title_dirty = true;

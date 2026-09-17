@@ -90,6 +90,7 @@ pub mod toast;
 pub mod test_support;
 
 pub mod tool;
+pub mod tool_activation;
 pub mod widget;
 pub mod zen;
 pub mod zones;

@@ -22,11 +22,49 @@
 //! reposta** pela troca.
 
 use super::HeroScreen;
+use crate::ToolId;
 use crate::action_bus::EditorAction;
 use crate::screens::task_layout::{CanvasOwner, TaskLayout};
+use crate::tool::ToolRegistry;
+use crate::tool_activation::activation_gate;
 
-/// Arruma a tela para `layout`. Ver o cabeçalho do módulo.
+/// Arruma a tela para `layout` — **o clique numa aba**. Ver o cabeçalho do módulo.
+///
+/// ⭐⭐ **O canvas muda de dono (D3), e não há caso de «não mexe»** — ver `CanvasOwner`. Um layout
+/// que não largasse a ferramenta traria os painéis dela atrás, porque quem os abre é a ponte da
+/// ferramenta e não esta função; foi o report de 2026-08-31. O pedido vai pelo barramento porque o
+/// hero não alcança o registo de ferramentas; ⛔ o `Model3d` não pede nada — quem larga a
+/// ferramenta é a lei do `field3d_mode` no shell, acordada pelo painel que a lista de abertos acabou
+/// de abrir.
 pub fn apply(hero: &mut HeroScreen, layout: TaskLayout) {
+    if let CanvasOwner::Tool(tool_id) = arrange(hero, layout) {
+        hero.bus.push(EditorAction::ActivateTool { tool_id });
+    }
+}
+
+/// ⭐⭐⭐ **O ARRANQUE** — a mesma arrumação, com o dono do canvas pegado **agora**, antes do primeiro
+/// quadro.
+///
+/// ⛔⛔ **Pelo barramento o pedido chegava DEPOIS da cena de smoke** (medido 2026-09-16, com a foto):
+/// o barramento só é drenado a meio do 1.º quadro, e o prólogo desse quadro — onde uma cena escolhe
+/// a ferramenta dela — corre antes. Com o layout `Nodes` gravado, a cena dos ossos pegava o vetor e
+/// o dreno trocava-o pela ferramenta de nós: **nenhum osso desenhado**. E com o layout `Vector`
+/// gravado era pior e mais mudo: o pedido do layout chegava com o vetor JÁ activo, e o pill
+/// **alterna** — a ferramenta era largada. Vale para toda cena que escolhe uma ferramenta.
+///
+/// ⚠️ **A mesma lei do dreno** ([`crate::tool_activation::activation_gate`]), sem a alternância: no
+/// arranque ninguém clicou, e pedir a ferramenta que já está activa não é um gesto de a largar.
+pub fn install_at_startup(hero: &mut HeroScreen, tools: &mut ToolRegistry, layout: TaskLayout) {
+    if let CanvasOwner::Tool(tool_id) = arrange(hero, layout)
+        && activation_gate(tool_id, hero.image_edit.mode_on).gate_on
+    {
+        tools.set_active(&ToolId::new(tool_id));
+    }
+}
+
+/// Tudo o que trocar de layout faz **menos** pegar a ferramenta; devolve quem deve ser o dono do
+/// canvas, para cada chamador o pegar pela porta que tem.
+fn arrange(hero: &mut HeroScreen, layout: TaskLayout) -> CanvasOwner {
     let spec = layout.spec();
     hero.store.set_active_layout(layout);
 
@@ -63,15 +101,7 @@ pub fn apply(hero: &mut HeroScreen, layout: TaskLayout) {
         }
     });
 
-    // ⭐⭐ **O canvas muda de dono (D3), e não há caso de «não mexe»** — ver `CanvasOwner`. Um
-    // layout que não largasse a ferramenta traria os painéis dela atrás, porque quem os abre é a
-    // ponte da ferramenta e não esta função; foi o report de 2026-08-31.
-    match spec.canvas {
-        CanvasOwner::Tool(tool_id) => hero.bus.push(EditorAction::ActivateTool { tool_id }),
-        // ⛔ Nada a pedir: quem larga a ferramenta é a lei do `field3d_mode` no shell, acordada
-        // pelo painel que a lista de abertos acabou de abrir. Ver `CanvasOwner::Model3d`.
-        CanvasOwner::Model3d => {}
-    }
+    spec.canvas
 }
 
 // ⚠️ **Os gates deste módulo NÃO vivem aqui.** Ele mede-se pelo que acontece aos painéis, e nesta

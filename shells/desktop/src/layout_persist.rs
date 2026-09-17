@@ -388,9 +388,13 @@ pub fn current(hero: &ph2d_editor_core::HeroScreen) -> Layout {
 ///
 /// ⚠️ **Pela ordem certa:** primeiro o layout (que arruma a tela de fábrica), depois a arrumação
 /// gravada por cima. Ao contrário, o layout apagaria o que o artista tinha feito.
-pub fn install_saved(hero: &mut ph2d_editor_core::HeroScreen, v: &Saved) {
+pub fn install_saved(
+    hero: &mut ph2d_editor_core::HeroScreen,
+    tools: &mut ph2d_editor_core::ToolRegistry,
+    v: &Saved,
+) {
     let active = v.active.unwrap_or_default();
-    ph2d_editor_core::screens::hero::layout_switch::apply(hero, active);
+    ph2d_editor_core::screens::hero::layout_switch::install_at_startup(hero, tools, active);
     // ⭐ E o espelho arranca com o que está no disco, para o detector do quadro não reescrever o
     // ficheiro no arranque de toda sessão.
     SAVED.with(|c| *c.borrow_mut() = v.clone());

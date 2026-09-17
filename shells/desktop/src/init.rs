@@ -124,7 +124,7 @@ pub(crate) fn build_initial_state(
 
     let script = subsystems::boot_script_host(handler);
 
-    let (theme, zen, jobs, toasts, tools, layout, vello_pass) =
+    let (theme, zen, jobs, toasts, mut tools, layout, vello_pass) =
         subsystems::boot_editor_layer(handler, &surface, size);
 
     let (game_rt, world_rt, band_blit, frost, motion_fx, tonemap, compositor) =
@@ -132,7 +132,7 @@ pub(crate) fn build_initial_state(
     let vector_scene = VectorScene::new();
     let text_system = TextSystem::new();
 
-    let hero_screen = boot_hero_screen(handler, hero_live_enabled, theme);
+    let hero_screen = boot_hero_screen(handler, hero_live_enabled, theme, &mut tools);
 
     let (imageio_importers, imageio_exporters) = subsystems::boot_imageio_registries(handler);
 
@@ -265,6 +265,7 @@ fn boot_hero_screen(
     handler: &LoggingHandler,
     hero_live_enabled: bool,
     theme: ph2d_tokens::Theme,
+    tools: &mut ToolRegistry,
 ) -> Option<HeroScreen> {
     // Hero screen (TopBar / LeftRail / Hierarchy / Inspector /
     // BottomHUD) is always-on in the default mode and disabled
@@ -355,7 +356,7 @@ fn boot_hero_screen(
         // que encaixe e a largura das colunas. ⚠️ Antes do primeiro quadro, pela mesma razão das
         // preferências — instalar depois faria o primeiro quadro desenhar a arrumação de omissão e
         // saltar para a do artista no seguinte.
-        crate::layout_persist::install_saved(&mut hero, &crate::layout_persist::load());
+        crate::layout_persist::install_saved(&mut hero, tools, &crate::layout_persist::load());
         Some(hero)
     } else {
         None

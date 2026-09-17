@@ -228,12 +228,19 @@ pub const BRANCH_TWO_CHILDREN: &str = "Curve: two children";
 /// A pergunta ao dono é se quer ESCOLHER qual dos filhos manda na curva (o *custom handle* do
 /// Blender), e ela move o formato do ficheiro.
 ///
-/// ⚠️ Mora no canto de baixo à esquerda da cena (`x` de `-8,4` a `-1,5`, `y` de `-5,4` a `-3,8`),
-/// onde as outras peças não chegam.
+/// ⛔⛔ **ONDE ELA MORA É MEDIDO NA TELA, e a 1.ª redacção estava FORA DELA** (foto de 2026-09-16):
+/// nasceu em `x −8,4 … −1,5`, `y −5,4 … −3,8`, que é «onde as outras peças não chegam» — e também
+/// onde a CÂMERA não chega. Com a linha do tempo encaixada em baixo (a arrumação que o dono tem
+/// gravada) a área de desenho mostra `x −5,5 … 6,1` e `y 4,0 … −2,7`: os dois esqueletos ficavam
+/// **inteiros fora do ecrã**, e o roteiro mandava olhar para o nada.
+///
+/// ⇒ hoje mora na faixa livre **entre o tentáculo (`y ≥ −0,5`) e a folha roxa (`y ≤ −2,5`)**, à
+/// esquerda dela: `x −3,4 … 3,5`, `y −2,4 … −0,8`. *Uma cena de smoke não se posiciona onde há
+/// espaço no MUNDO — posiciona-se onde há espaço na TELA de quem a vai ver.*
 pub fn bifurcacao(sim: &mut ph2d_ecs::SimWorld) -> Option<Bifurcacao> {
     use ph2d_skeleton_live::bone::create;
     let mut lado = |x0: f64, dois: bool, nome: &str| -> Option<Entity> {
-        const Y: f64 = -4.6;
+        const Y: f64 = -1.6;
         let pai = Entity::from_bits(create(sim, None, [x0, Y - 0.7], [x0 + 1.0, Y])?);
         let meio = Entity::from_bits(create(sim, Some(pai), [x0 + 1.0, Y], [x0 + 2.4, Y])?);
         create(sim, Some(meio), [x0 + 2.4, Y], [x0 + 3.1, Y + 0.8])?;
@@ -249,8 +256,8 @@ pub fn bifurcacao(sim: &mut ph2d_ecs::SimWorld) -> Option<Bifurcacao> {
         Some(meio)
     };
     Some(Bifurcacao {
-        com_um_filho: lado(-8.4, false, BRANCH_ONE_CHILD)?,
-        com_dois_filhos: lado(-4.6, true, BRANCH_TWO_CHILDREN)?,
+        com_um_filho: lado(-3.4, false, BRANCH_ONE_CHILD)?,
+        com_dois_filhos: lado(0.4, true, BRANCH_TWO_CHILDREN)?,
     })
 }
 

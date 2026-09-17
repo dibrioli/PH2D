@@ -6,8 +6,8 @@
 > o `reference_topic_*` da secção, **nunca para aqui**.
 >
 > ⚠️ **O tecto é o que o CARREGADOR leva, e foi MEDIDO em 2026-09-17: `26 007` bytes** — ele cortou
-> este ficheiro na linha `158` de `224` e **não disse nada a quem o lia**. Alvo: **~21 KB / 150
-> linhas**. (O «17 KB» que aqui esteve nunca foi medido, e em 16/09 o ficheiro dizia-se *«sob o
+> este ficheiro na linha `158` de `224` e **não disse nada a quem o lia**. ⇒ o recurso é o BYTE e
+> não a linha: alvo **≤ 22 KB**. (O «17 KB» que aqui esteve nunca foi medido, e em 16/09 o ficheiro dizia-se *«sob o
 > teto»* com 23 KB.)
 >
 > ⛔⛔ **O que o estourou não foi crescimento, foi a FUSÃO de seis linhas:** cada uma reescreveu a
@@ -49,12 +49,12 @@
 - ⭐⭐ [A CARA de um app é a tabela de tokens, não os widgets — redesenhar 44 pintores com a mesma pele deixa «a mesma cara»; comece pelos 5 números](feedback_the_face_of_an_app_is_its_token_table_not_its_widgets.md)
 - ⛔ [Gesto escrito em DUAS metades aceita a variante nova em SÓ UMA — silêncio absoluto, e a fixtura que chama a porta interna fica verde](feedback_a_gesture_written_in_two_halves_accepts_a_new_variant_in_only_one.md)
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO — a variável da varredura é parte da correcção (16,3 % → 0,0000 %)](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
-- 📚 [Comunicação & decisão: mais 50 lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
+- 📚 [Comunicação & decisão: mais (51) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 
 ## Git & colisão multi-agente
 - [Perigos de git/edição (14)](reference_topic_git_hazards.md)
 - ⛔⛔ [`git commit -- <paths>` ignora ficheiros por RASTREAR: o commit «tem sucesso» e a árvore dele não compila](feedback_a_commit_with_paths_never_picks_up_an_untracked_file.md)
-- 📚 [Git & colisão multi-agente: mais 4 lições, uma linha cada, verbatim](reference_topic_git_lessons_loose.md)
+- 📚 [Git & colisão multi-agente: mais (4) lições, uma linha cada, verbatim](reference_topic_git_lessons_loose.md)
 
 ## Ship / CI / integração
 - ✅ [W2 integrada e ENVIADA (13/09): shell 526 k → 187 k; a lei «nextest-impacted não alcança `tests/it`» está REFUTADA](project_w2_six_lines_integrated_2026_09_11.md)
@@ -73,7 +73,7 @@
 - ⛔ [um `tail` é uma JANELA, não um veredito (0 FAILED sobre 212 suites)](feedback_a_tail_is_a_window_not_a_verdict.md)
 - [TRÊS membros novos da família de flakes de carga (o 3.º passa 3/3 a `load 19` ⇒ o discriminador é o FAN-OUT, não o relógio)](reference_flip_fit_cache_ratio_is_a_load_flake.md)
 - [Cadência de processo + CI (19)](reference_topic_process_cadence.md)
-- 📚 [Ship / CI / integração: mais 19 lições](reference_topic_ship_ci_integration_lessons.md)
+- 📚 [Ship / CI / integração: mais (21) lições](reference_topic_ship_ci_integration_lessons.md)
 
 ## Auditoria (famílias — 2 saltos)
 - ⛔ [`touch` não mede uma edição; `--timings` dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
@@ -98,7 +98,7 @@
 - [Teste Cascadeur (ossos 2D fora do repo); a rede neural só pelo rato simulado](project_teste_cascadeur_2d_bones_testbed.md)
 - [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)
 - [Física do impasto/sculpt (10)](reference_topic_impasto_physics.md)
-- ⛔⛔ [O JOELHO de uma curva ≠ a TRAVESSIA de duas — usar o 1.º por não medir o 2.º shipou um tecto `2,4×` permissivo; e «esperar pela calma» ali CHEGOU](reference_topic_measurement_discipline.md)
+- ⭐ [**Como uma RÉGUA mente** — a família (132); entre elas: o JOELHO de uma curva ≠ a TRAVESSIA de duas, e usar o 1.º por não medir o 2.º shipou um tecto `2,4×` permissivo](reference_topic_measurement_discipline.md)
 - ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA ⇒ reporta-o LIMPO (vinco: 2,2e-6 contra 1,9e-1) — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)
 - ⛔ [Cache que faz o trabalho `O(V)` da chave ANTES de a comparar: 456 µs/quadro para não fazer nada, com o gate de «não reconstrói» VERDE](feedback_a_cache_that_does_the_expensive_work_before_checking_is_not_a_cache.md)
 - ⛔ [Régua de vazamento cuja máscara usa o predicado DO PRODUTO lê 0,00 % sobre o defeito](feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak.md)
@@ -110,11 +110,11 @@
 - ⛔⛔ [Empate resolvido por `round` é artefacto do QUADRANTE, não decisão — passa em todo gate até o dono o encontrar](feedback_a_tie_broken_by_rounding_is_a_quadrant_artefact_not_a_law.md)
 - ⛔⛔⛔ [24 provas VERDES sobre um componente que não andava — todas entravam pelo canal INTERNO, que fica ABAIXO da metade partida do gesto](feedback_the_inner_channel_fixture_is_below_the_break.md)
 - [Costura de UI (23)](reference_topic_ui_seam_discipline.md) — ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md)
-- [Ofício de gate — mais 1 (censo que partilha estado acusa 14 vivos; e os 3 que sobram são cegueiras do oráculo)](reference_topic_gate_discipline.md)
+- [**Ofício de gate** — a família (95); censo textual · censo que presume o destino · censo que partilha estado (esse acusa 14 vivos, e os 3 que sobram são cegueiras do oráculo)](reference_topic_gate_discipline.md)
 - ⛔ [Mutação que apaga um TECTO aloca o que o tecto impedia — 27 GB de RSS, morto à mão](feedback_a_mutation_that_deletes_a_cap_allocates_what_the_cap_prevented.md)
 - [escrevo a guarda certa e não a gateio (3×)](feedback_i_write_the_right_guard_and_do_not_gate_it.md)
 - [Protocolo de auditoria (8) — ⛔ num artefacto ATESTADO toda linha nova é população nova; herdar o veredito anterior não é 2.ª lente](reference_topic_audit_protocol.md)
-- 📚 [Auditoria (famílias — 2 saltos): mais 9 lições, uma linha cada, verbatim](reference_topic_audit_lessons.md)
+- 📚 [Auditoria (famílias — 2 saltos): mais (29) lições, uma linha cada, verbatim](reference_topic_audit_lessons.md)
 
 ## Padrões de código (gotchas silenciosos)
 - ⛔⛔ [Cura de CONTRASTE carrega a SUPERFÍCIE contra a qual foi calibrada](feedback_a_contrast_cure_carries_the_surface_it_was_calibrated_against.md)
@@ -128,7 +128,7 @@
 - ⛔⛔ [Lei de ORDEM do 1.º consumidor não viaja para o 2.º](feedback_a_law_written_for_one_medium_does_not_travel_to_the_second.md)
 - ⛔⛔ [Consumidor que escolhe o relógio à mão escreve um 4.º palpite](feedback_a_consumer_that_picks_among_clocks_by_hand_is_the_answer_that_ages.md)
 - ⛔⛔ [Duas guardas que se EXCLUEM desligam um recurso sem o dizer](feedback_two_guards_that_exclude_each_other_disable_a_feature_silently.md)
-- [Registro de painel (5 sites)](reference_topic_panel_registration.md) · [Gotchas de código (26)](reference_topic_code_gotchas.md)
+- [Registro de painel — (5) sítios](reference_topic_panel_registration.md) · [Gotchas de código (26)](reference_topic_code_gotchas.md)
 - ⛔ [Renomear um símbolo por NOME destrói a PROSA que o cita — num repo onde o porquê vive em doc-comments, a memória histórica é a vítima mais comum](feedback_a_rename_by_name_cannot_tell_an_address_from_a_memory.md)
 - ⛔⛔ [Apagar um item deixa o `#[cfg]` dele a gatear o VIZINHO — e com a feature ligada por omissão nenhuma build da CI o vê](feedback_an_orphaned_cfg_attaches_to_the_next_item_and_the_default_build_is_blind.md)
 - ⛔ [O dono de um id de BARRA DE ROLAGEM é o DESPACHO — declarado no painel, o polegar pinta e nunca se agarra (há um vivo: o painel de ossos)](feedback_the_owner_of_a_scrollbar_id_is_the_dispatch.md)
@@ -136,7 +136,7 @@
 - ⛔⛔ [O que o undo NÃO fotografa o undo também não REPÕE — um relógio corrido, uma fábrica esgotada e uma SEMENTE sobreviviam ao Reset](feedback_what_the_undo_does_not_photograph_the_undo_does_not_restore.md)
 - ⛔ [O oráculo ensina a PERGUNTA; a resposta depende da natureza da SUA entrada — um NÍVEL e um EVENTO pedem paragens opostas](feedback_an_oracle_teaches_the_question_the_answer_depends_on_your_input_kind.md)
 - ⛔ [Um EVENTO lido como ESTADO acerta pelo tempo que ninguém o apagar — a etiqueta dependia de o relógio estar a andar](feedback_an_event_read_as_state_is_right_for_as_long_as_nobody_clears_it.md)
-- 📚 [Padrões de código (gotchas silenciosos): mais 6 lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
+- 📚 [Padrões de código (gotchas silenciosos): mais (11) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 
 ## Arquitetura / norte / perf
 - ⛔ [REGRA DO DONO: editar pixels ou tamanho/margem = imagem SEM a dobra (exceto Liquify, cor, filtros); tamanho/margem SOLTA dos ossos](project_pixel_tools_flatten_bone_bound_art.md)
@@ -152,7 +152,7 @@
 - [Não otimize prematuro (100k @ 60Hz)](project_m5_perf_validated.md) · [gates de velocidade](project_perf_audit_2026_05_19.md)
 - [Perf do Painter (3)](reference_topic_painter_perf.md) · [spatial GPU reconcilia vs CPU](project_painter_w4_spatial_gpu_bloom_sh.md)
 - [HISTÓRICO: Painter no teto — premissa dissolvida](project_painter_core_files_at_loc_cap.md) · [8GB = full-gate ~10min](project_solo_coord_backlog_ship_2026_05_29.md)
-- 📚 [Arquitetura / norte / perf: mais 14 lições](reference_topic_architecture_north_perf_lessons.md)
+- 📚 [Arquitetura / norte / perf: mais (16) lições](reference_topic_architecture_north_perf_lessons.md)
 - [fixture (16) — ⛔⛔ uma fixtura de UM ÂNGULO não mede uma lei que depende do ângulo: o gate do filete corria sobre um QUADRADO, e a `90°` o defeito anula-se](reference_topic_fixture_discipline.md)
 - [Provas de mutação (18) — 3 controles no arnês · ⛔ corpus onde a desigualdade nunca aperta não a testa (2 de 8 sobreviveram)](reference_topic_mutation_proofs.md)
 - ⛔⛔ [Atribuição VELHA de um vermelho não cobre o suspeito de HOJE — abla o teu e confirma o número AO BIT](feedback_an_old_attribution_is_worth_more_after_ablating_todays_suspect.md)

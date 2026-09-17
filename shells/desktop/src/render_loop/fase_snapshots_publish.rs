@@ -24,6 +24,13 @@ mod tardios;
 #[path = "fase_snapshots_sequence.rs"]
 mod sequencia;
 
+/// ⭐ **O instantâneo do painel TAGS** (TOP-20 #9) — fase-filha própria, pelo tecto de LOC desta
+/// função: ele é de OUTRO painel, e o custo dele depende de aquele painel estar ABERTO.
+/// ⚠️ O nome TEM de começar por `fase_`.
+#[cfg(feature = "panel-tags")]
+#[path = "fase_snapshots_tags.rs"]
+mod tags_snapshot;
+
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_snapshots_publish(
@@ -192,27 +199,9 @@ impl crate::App {
             // deixou. ⚠️ Ele vem do `PhysicsState` e não da ponte: o Inspector não a alcança.
             &projectile_over,
         );
-        // ⭐⭐⭐ **O painel TAGS** (TOP-20 #9, W4) — o instantâneo dele é publicado à parte, e não
-        // dentro do `publish` acima, por duas razões que são uma só: ele é de OUTRO painel, e o
-        // custo dele depende de o painel estar ABERTO.
-        //
-        // ⚠️ **A coluna «quantos objectos» é `O(mundo)` e só se paga com o painel à vista** — a
-        // tabela do `ph2d_ecs::tags::counts` mede `2,97 ms` no extremo, contra um quadro de
-        // `16,7`. Fechado, o painel recebe uma árvore vazia: ele não pinta nada, e nada nele lê o
-        // instantâneo enquanto está escondido (o `paint` sai na primeira linha).
-        //
-        // ⛔ **E as LINHAS não se registam aqui**: quem as pinta é quem as regista, dentro do
-        // painel — um registo do lado de cá é um registo que esta fase esquece no dia em que
-        // alguém lhe mexer, e o gate de costura apanhou-as mortas sob o dedo exactamente assim.
+        // ⭐⭐⭐ **O painel TAGS** (TOP-20 #9) — fase-filha própria; ver o `mod tags_snapshot`.
         #[cfg(feature = "panel-tags")]
-        if hero.is_panel_visible(<ph2d_panel_tags::TagsPanel as ph2d_editor_core::panel::Panel>::ID)
-        {
-            ph2d_panel_tags::set_current_tags(tags_panel::build_tags_panel_info(
-                sim.world(),
-                tags,
-                tags_problem.as_ref(),
-            ));
-        }
+        tags_snapshot::publica(sim, hero, tags, tags_problem.as_ref());
         // ⭐⭐ **As secções que o `publish` NÃO pode calcular** — na fase-filha, num ficheiro irmão.
         //
         // ⚠️ **O corte foi imposto pelo tecto de função** (esta chegou a `208` contra `200` ao

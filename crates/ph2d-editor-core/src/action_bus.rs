@@ -1,38 +1,19 @@
-//! Editor Action Bus — outbound intent queue from the hero screen.
+//! Editor Action Bus — a fila de intenções que o editor manda à shell.
 //!
-//! Wave 2.5 PR 11.8 foundation. Replaces the per-frame `hero.pending_X`
-//! drain pattern with a single FIFO queue of strongly-typed
-//! [`EditorAction`] variants. The shell drains the bus once per frame
-//! and dispatches each action through a single `apply_editor_action`
-//! match arm instead of 20 hand-written drain blocks scattered across
-//! [`shells/desktop/src/main.rs`](shells/desktop/src/main.rs) and
-//! [`shells/desktop/src/hero_intents.rs`](shells/desktop/src/hero_intents.rs).
+//! Cada `push` é uma variante de [`EditorAction`] com a carga dela; o dreno é **um** `match` sobre
+//! um `Vec`, uma vez por quadro, depois da cascata de `apply_event`.
 //!
-//! ## Why a queue instead of `Option<T>` fields
+//! ## Determinismo
 //!
-//! Each `hero.pending_X: Option<T>` represented an at-most-one intent
-//! per frame. The shell did `if let Some(v) = hero.pending_X.take() { ... }`
-//! at ~20 sites in `render_frame()`. That pattern grew main.rs to
-//! 2421 LOC and hero_intents.rs to 696 LOC — both currently carrying
-//! `// ph2d-loc-cap:` exceptions (Wave 2 PR 11.9).
+//! As acções drenam **pela ordem em que foram postas**. O hero empurra de dentro do
+//! [`HeroScreen::apply_event`], que corre uma vez por evento de ponteiro/tecla; a shell drena
+//! depois da cascata. A ordem por-evento é preservada (HR-5).
 //!
-//! With the bus, each push is a structurally-typed enum variant
-//! carrying its payload. Drain is one `match` over a `Vec` instead of
-//! 20 conditionals over scattered fields. Migration is incremental —
-//! each `pending_X` field that lifts into [`EditorAction`] takes
-//! `~10-20 LOC` out of main.rs and shrinks the HR-18 exception window.
-//!
-//! ## Determinism
-//!
-//! Actions drain in push order. The hero pushes from within
-//! [`HeroScreen::apply_event`] which itself runs once per pointer/key
-//! event; the shell drains after the per-frame `apply_event` cascade.
-//! Per-event ordering is preserved (HR-5).
-//!
-//! ⚠️ **O parágrafo de âmbito desta fundação MORREU em 2026-08-31**: ele prometia *«3 variantes
-//! representativas — `Trim` / `MakeSquare` / `Bgremoval`»* sobre um enum que já passa das 150, e
-//! a migração dos `pending_X` que ele anunciava está feita há muito. *Prosa que descreve o commit
-//! em vez do ficheiro envelhece sem que nada fique vermelho.*
+//! ⚠️⚠️ **DUAS descrições deste ficheiro morreram por terem narrado o COMMIT e não o FICHEIRO** —
+//! a primeira em 2026-08-31 (ela prometia *«3 variantes representativas»* sobre um enum que já
+//! passava das 150), e a segunda em 2026-09-17, que contava a migração dos `pending_X` com os
+//! números de 2026-05 (*«main.rs a 2421 LOC»*) sobre uma shell que entretanto perdeu 340 mil
+//! linhas. *Prosa que descreve o commit envelhece sem que nada fique vermelho.*
 
 /// ⛔⛔⛔ **MEDIDO 2026-09-01: acrescentar UMA variante a este enum custa +78 LINHAS.**
 ///
@@ -42,19 +23,21 @@
 /// ⚠️ **Um comentário acrescentado NÃO o dispara** (676 → 677), então o que o move é a contagem de
 /// variantes, e não o tamanho.
 ///
-/// ⇒ **quem acrescentar a próxima paga o corte**, e o corte por responsabilidade que falta está
-/// nomeado: a família `Hier*` são **33** variantes com o mesmo sujeito (uma `row`) e o mesmo dreno
-/// — ela vira `EditorAction::Hierarchy(HierRequest)` num irmão, como a `VariationRequest` fez.
-/// ⛔ Não subir o tecto: *a cura de um teto estourado é o corte; subir o número é adiar com juros.*
+/// ⇒ **quem acrescentar a próxima paga o corte.**
 ///
-/// One outbound intent from the editor to the shell. Variants are
-/// added incrementally as `pending_X` fields migrate into the bus.
-/// Each variant carries enough payload that the shell can dispatch
-/// without re-reading `HeroScreen` state.
+/// ⚠️⚠️ **E a prescrição que estava aqui já tinha sido CUMPRIDA** (medido 2026-09-17): ela mandava
+/// colapsar *«a família `Hier*`, 33 variantes»* em `EditorAction::Hierarchy(HierRequest)` — e o
+/// enum tem **uma** variante `Hier*`, porque o colapso foi feito. *Uma prescrição cumprida que
+/// ninguém apaga manda o pagador seguinte cortar o que já está cortado.*
 ///
-/// **Invariant:** every variant is `Copy` or holds owned data — never
-/// borrows from `HeroScreen`. The bus must be drainable after the
-/// per-frame `apply_event` cascade returns its `&mut self` borrow.
+/// ⇒ **o corte que FALTA é a família `Inspector*Edit`: 25 variantes** com a MESMA forma
+/// (`{ entity_bits, edit }`) e o mesmo dreno — ela vira `EditorAction::InspectorSection(..)` num
+/// irmão. ⛔ Não subir o tecto: *a cura de um teto estourado é o corte; subir o número é adiar com
+/// juros.*
+///
+/// **Invariante:** toda variante é `Copy` ou carrega dados **próprios** — nunca empresta do
+/// `HeroScreen`. A fila tem de poder drenar **depois** de o `apply_event` do quadro devolver o
+/// `&mut self` dele.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum EditorAction {

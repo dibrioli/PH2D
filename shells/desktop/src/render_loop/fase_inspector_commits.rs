@@ -272,19 +272,40 @@ impl crate::App {
         // dele: **nenhum destes gestos é uma edição do Inspector**. Esta função chama-a porque é a
         // fase do quadro que tem as três coisas que ela pede (a árvore · o mundo · o ecrã).
         tag_tree_commits::aplicar(sim, tags, tags_problem, hero, &tag_tree_edits);
-        if inspector_queue_dirty
-            && let Err(e) = ph2d_ecs::scene::apply_editor_commands(
-                sim.world_mut(),
-                editor_queue,
-                component_registry,
-            )
-        {
-            toasts.push(ph2d_editor_core::Toast::error(tr_with(
-                "shell.fase_inspector_commits.audio_commit_failed",
-                &[("e", &e)],
-            )));
-            self.title_dirty = true;
-        }
+        self.title_dirty |= drena_a_fila(
+            inspector_queue_dirty,
+            sim,
+            editor_queue,
+            component_registry,
+            toasts,
+        );
         Some(joint_pivot_commit)
     }
+}
+
+/// ⭐ **A fila de comandos do editor, drenada** — devolve `true` quando o título fica sujo.
+///
+/// ⚠️ **Função livre e não um bloco na fase**, e o tecto de LOC é que o disse (a fase chegou a
+/// `201` contra `200` ao ganhar a cutscene). ⛔ *Partir por RESPONSABILIDADE, nunca subir o
+/// número* — e a fronteira já estava escrita: as linhas acima **aplicam edições de secção**, e esta
+/// **drena uma fila de comandos** que elas encheram. Duas coisas, dois sítios.
+fn drena_a_fila(
+    sujo: bool,
+    sim: &mut ph2d_ecs::SimWorld,
+    editor_queue: &mut ph2d_ecs::scene::EditorCommandQueue,
+    registry: &ph2d_ecs::scene::ComponentRegistry,
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) -> bool {
+    if !sujo {
+        return false;
+    }
+    let Err(e) = ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), editor_queue, registry)
+    else {
+        return false;
+    };
+    toasts.push(ph2d_editor_core::Toast::error(tr_with(
+        "shell.fase_inspector_commits.audio_commit_failed",
+        &[("e", &e)],
+    )));
+    true
 }

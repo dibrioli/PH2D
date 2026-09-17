@@ -197,7 +197,7 @@ fn o_bridge_pergunta_a_porta_e_nao_reescreve_a_condicao() {
 /// **Mutação que deve sangrar:** o publicador passar um `true` cravado em vez de perguntar.
 #[test]
 fn o_instantaneo_do_inspector_le_a_mesma_porta() {
-    let fonte = include_str!("fase_snapshots_publish.rs");
+    let fonte = include_str!("fase_snapshots_sequence.rs");
     assert!(
         fonte.contains("fase_sequences::a_vista_deixa_correr("),
         "o publicador deixou de ler a porta — o aviso do painel passa a ser um palpite"

@@ -21,6 +21,19 @@ Feche a linha `$1`.
    - `arch_safe_clamp_only` e os arch-gates de shell (só correm na varredura impactada)
    - auditoria com ≥2 lentes
 2. Corrija TODO ✗. Não escreva o handoff sobre árvore vermelha.
+2-bis. ⭐⭐⭐ **O que só a ÁRVORE COMBINADA pega — e é VOCÊ quem o cura** (DIRETRIZ §1.5.9 item 5-bis):
+   ```bash
+   git cherry main HEAD && git rebase main       # o rebase que o §1.5.2 item 3 já manda antes de integrar
+   bash scripts/censos-da-arvore-combinada.sh    # ~2 min com a árvore quente
+   ```
+   ⚠️ **Duas famílias que nenhuma linha vê sozinha, por construção:** o **censo de texto (HR-15)** é
+   escrito por uma linha e o literal que o acorda por outra (nenhuma das árvores tem as duas coisas,
+   e as duas fecham verdes); e o **tecto de LOC SOMA entre linhas sem ninguém a contar**. ⛔ O CI não
+   os corre. Medido em 17/09: **7 das 8** falhas da rodada eram destas duas — todas descobertas pelo
+   integrador, em série, uma linha de cada vez.
+   ⚠️ **A cura é sua porque só você sabe se aquele texto chega ao ecrã** (⇒ chave em `ph2d-i18n`) ou
+   se é formato/terminal/nome de fixtura (⇒ isenção NOMEADA, **com o mecanismo**). ⚠️ Isenção ÓRFÃ
+   **e** literal sem abrigo na mesma corrida = o ficheiro MUDOU DE SÍTIO, e a isenção viaja com ele.
 3. Escreva o handoff de integração (DIRETRIZ §1.5.9) em `docs/<Módulo>/handoffs/`, incluindo:
    - o que mudou em foundational e por que é aditivo
    - contratos/schemas tocados (ou a prova por grep de que NÃO foram)

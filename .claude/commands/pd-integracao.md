@@ -36,6 +36,22 @@ Você é o agente integrador. Munição: o handoff de cada linha.
    `loadavg` ao lado) ANTES de culpar o commit (CLAUDE.md §5.0, família de flakes).
 4. Números que SOMAM entre linhas se CONTAM (PROJECT_SCHEMA, registro de componentes,
    número de ADR): o valor certo pode não estar em nenhum dos dois lados do conflito.
+   ⭐ **O degrau do `PROJECT_SCHEMA` reconta-se por SCRIPT, não por juízo:**
+   `python3 scripts/schema-recount.py` (lê os estágios `:1`/`:2`/`:3` do índice, preserva a escada
+   do main, renumera o degrau da linha para `main+1` e sobe a tripla do ficheiro irmão). ⚠️ Cada
+   passo tem `assert` — a 1.ª redacção supôs que a âncora era igual dos dois lados (verdade na
+   escada, **falso na tripla**, que CONTÉM o número) e parou alto em vez de escrever lixo.
+4b. ⛔ **Tecto de LOC vermelho: dimensione o corte pela MEDIÇÃO, não pela generosidade.** A catraca
+   imprime o excesso. Em 17/09 ela pedia **711** linhas e o corte levou **4 470** — seis vezes mais,
+   e o excesso custou **uma corrida inteira de portão a mais** (arrastou um gate que lia um ficheiro
+   por caminho em runtime e quatro ficheiros de teste que o `git mv` deixou para trás).
+   ⚠️ **`cargo check --all-targets` é CEGO aos testes de uma DEPENDÊNCIA** — quem apanha um ficheiro
+   de teste deixado para trás é `cargo nextest list`, nunca o `check`.
+4c. ⚠️ **Antes de inventar uma cura de ARQUIVO, `grep` o padrão.** A cura do tecto da escada do
+   schema (arquivar uma faixa de degraus) **já existia com três irmãos**, e a 1.ª tentativa de 17/09
+   escreveu por cima de um deles — **490 linhas de história verbatim**. *Uma cura que parece óbvia ao
+   integrador costuma já ter sido paga.* Onde as horas foram, medido:
+   [ANATOMIA](../../docs/archive/integracao-jornadas/ANATOMIA_DE_UMA_RODADA_2026-09-17.md).
 5. Gate da árvore combinada COMPLETO — inclusive os arch-gates de shell, que só correm
    na varredura impactada e já chegaram vermelhos ao tip de uma linha.
 6. §5 do CLAUDE.md: **uma linha por linha integrada**, nunca a narrativa (§1.5.9 item 8).

@@ -348,6 +348,34 @@ fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, 
    workspace inteira vê (`CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets`), uma crate
    com dependência interna opcional que não compila sozinha (`scripts/check-standalone-optional.sh`) e
    um pacote apagado/renomeado que um workflow cita por `-p` (`scripts/check-workflow-packages.sh`).
+
+5-bis. ⭐⭐⭐ **O QUE SÓ A ÁRVORE COMBINADA PEGA — e quem o cura é a SUA linha, não o integrador.**
+   Depois do `git rebase main` que o §1.5.2 item 3 já manda fazer *antes de integrar*:
+   ```bash
+   bash scripts/censos-da-arvore-combinada.sh    # ~2 min com a árvore quente
+   ```
+   ⚠️⚠️ **Estas duas famílias são propriedades da SOMA, e nenhuma linha as vê sozinha por
+   construção:** o **censo de texto (HR-15)** é escrito pela linha `X` e o literal que o acorda pela
+   linha `Y` — *nenhuma das duas árvores contém as duas coisas, as duas fecham verdes de boa-fé, e a
+   falha só passa a existir depois do merge* —; e o **tecto de LOC** é *a única grandeza deste repo
+   que SOMA entre linhas sem ninguém a contar* (`CLAUDE.md` §5.0).
+   ⛔⛔ **E o CI não os corre** (o job de teste do `spike.yml` é um `-p` de ~25 pacotes; estes gates
+   vivem em `tests/it/`) ⇒ sem este passo o **ÚNICO** sítio em todo o processo onde eles são
+   descobertos é o portão do integrador, **uma linha de cada vez, em série**.
+   ⭐ **Medido na rodada de 2026-09-17** ([ANATOMIA](../archive/integracao-jornadas/ANATOMIA_DE_UMA_RODADA_2026-09-17.md)):
+   das **8** falhas, **5** eram censo de texto e **2** tecto de LOC por acumulação — `7/8` invisíveis
+   a qualquer linha sozinha. Este passo converte *N descobertas em SÉRIE do integrador* em *N
+   descobertas em PARALELO das linhas*.
+   ⚠️ **A cura é de quem ESCREVEU o literal, nunca de quem integra** — só o autor sabe se aquele
+   texto chega ao ecrã do artista (⇒ chave em `ph2d-i18n`) ou se é um formato, um diagnóstico de
+   terminal ou o nome de um objecto de fixtura (⇒ isenção NOMEADA, **com o mecanismo**). Em 17/09 foi
+   o integrador que teve de decidir, sobre código alheio, se `"Bool"` numa fixtura é língua.
+   ⚠️ **E as DUAS metades a acusar na MESMA corrida são o que distingue uma MUDANÇA DE ENDEREÇO de
+   texto novo** (a isenção órfã de um lado + o literal sem abrigo do outro): cada uma sozinha mente,
+   e as duas curas seriam erradas. Aconteceu **três** vezes naquela rodada.
+   ⛔ **Isto NÃO substitui o portão da árvore combinada** (§1.5.3): o `--ff-only` continua a ser a
+   única prova de que ninguém aterrou entre o seu rebase e o seu merge. O que muda é que estas falhas
+   deixam de ser **DESCOBERTAS** lá.
 6. **Ordem/dependências** entre commits, se houver, e **o que smoke-testar** (o que NÃO foi smokado).
 7. ⚠️ **RECLAME o `incremental/` da sua worktree** — depois do gate batched e do handoff, antes de
    parar: `rm -rf "$(git rev-parse --show-toplevel)"/target/*/incremental`. São **25 GB por

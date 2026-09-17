@@ -287,6 +287,30 @@ quadro no caminho de **OMISSÃO** (o cartão — o painel lateral está desligad
 ⭐ **A 3.ª é de graça e isso está escrito no doc dela:** aquele método corre **ao abrir a lista**,
 não por quadro.
 
+### §8.2-bis — ⚠️⚠️ O PAINEL LATERAL vai ser RETIRADO (dono, 2026-09-17)
+
+No smoke desta jornada o dono corrigiu o passo que eu escrevi: *«não temos mais o painel da
+direita. estamos retirando ele»*. ⛔ **O meu passo de smoke nomeava uma superfície que o artista
+não tem na tela** — a lei que esta casa já escreve sobre si mesma (*um passo que manda olhar para
+uma linha de painel AFIRMA que ela está lá*), agora paga por mim.
+
+**O estado MEDIDO no código**, que não é o que a frase dele sugere à primeira leitura: o painel
+está **desligado desde 07/09 e não apagado** (`motion_bridge_surfaces::painel_lateral`, que lê
+`PH2D_MOTION_PANEL`), e a crate dele tem `34` ficheiros / `7 558` linhas com `3` dependentes.
+
+**O que isto faz às três superfícies da §8.2:**
+
+| Superfície | Estado | O que acontece à tradução dela |
+|---|---|---|
+| ESTADO do cartão | **a que o artista vê** | fica |
+| LISTA do cartão | **a que o artista vê** | fica |
+| painel lateral | desligado; a retirar | ⚠️ a tradução e o gate dela **viajam com a crate** — quem a apagar leva os dois, e não há nada a desfazer aqui antes disso |
+
+⛔ **E a remoção não é desta linha:** a `line/motion-value` está VIVA e é a dona daquela
+superfície (foi ela que a desligou em 07/09). Apagar `7 558` linhas dali a partir da `line/UIUX`
+seria uma colisão de fusão com a linha que a possui — *o registo de posse é a própria árvore, e
+ela responde na hora* (`git worktree list`).
+
 ### §8.3 — ⭐ A régua do painel é DIFERENCIAL, porque o arnês conta glifos
 
 O `MockPanelHost` conta **glifos**, não texto ⇒ pinta-se a mesma row duas vezes — com as chaves e

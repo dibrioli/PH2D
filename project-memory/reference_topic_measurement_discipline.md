@@ -422,3 +422,30 @@ inclusive uma medida e honesta — **não arma ali**, e a cena paga o tecto inte
 densidade é parte da medição, não um detalhe da fixtura: a `passo = 2,0` (a tocar) a mesma nuvem
 pára em `328` varreduras e custa `9,8 ms`; a `1,8`, gasta as `1024` e custa `39,3`.
 
+
+---
+
+## ⛔⛔ Uma JANELA DE TAMANHO FIXO sobre um struct literal lê o campo do struct SEGUINTE (2026-09-17)
+
+Ao migrar 800 `ParamUiHint.label` para chaves, o gerador delimitava o bloco de cada hint por **900
+caracteres**. Num hint cujo `label` **não** é um literal (`label: MODE_LABEL`), a janela alcançava o
+literal do hint **seguinte** e reescrevia-o com a chave deste:
+
+```rust
+ParamUiHint { param: MODE,       label: MODE_LABEL,       … }   // ⟵ o label nao e' literal
+ParamUiHint { param: AIR_RESIST, label: "Air Resistance", … }   // ⟵ ESTE levou a chave `…param.mode`
+```
+
+⭐ **Ali o splice deu sintaxe inválida e o compilador viu.** Com os offsets alinhados teria sido uma
+**chave errada em silêncio** — a linha do painel a mostrar a palavra do param vizinho. ⇒ o bloco
+delimita-se por **contagem de chavetas**, saltando strings com escapes, e o veredito final é um gate
+que lê o REGISTO (o que o programa oferece) e não o texto do fonte.
+
+## ⚠️⚠️ TRADUZIR DUAS VEZES é um VAZAMENTO, não um no-op (2026-09-17)
+
+`ph2d_i18n::tr` de algo que não é chave faz `leak_key` (`Box::leak`) e devolve a entrada. ⇒ num
+painel repintado por quadro, um segundo `tr` no mesmo caminho é **um vazamento por quadro e por
+linha**. A lei: **uma tradução por caminho, e ela vive onde o TIPO a deixa viver** — um
+`&'static str` troca-se na fronteira; um `&'static [&'static str]` dentro de um struct `Copy` com
+800 sítios de literal **não se reconstrói sem alocar**, logo ali quem traduz é o pintor, e cada
+consumidor precisa do seu gate.

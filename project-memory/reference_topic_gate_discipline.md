@@ -276,3 +276,30 @@ os censos da crate antes de dar o corte por fechado.
 - [[feedback_a_nextest_filter_matches_the_module_not_the_function]] — ⛔⛔ **no nextest o nome de um teste é `<MÓDULO>::<fn>`, e um `-E 'test(x)'` casa QUALQUER das duas metades.** Medido 17/09 ao validar o `censos-da-arvore-combinada.sh`: o filtro nomeava `every_key_of_this_family_exists` e os painéis chamam aos deles `every_key_of_this_panel_exists` — **eles entravam só porque o módulo se chama `every_word_…`**. *A cobertura era por ACIDENTE*, e os **2** censos cujo MÓDULO tinha outro nome corriam **zero** testes: `83` de `90` testes de censo, sete cegos, com o script a imprimir `✓ verdes`. ⚠️ **Um controlo por PACOTE não o apanha** (o `ph2d-editor-core` corria a catraca da shell e lia-se como coberto enquanto o 2.º censo dele estava fora) ⇒ *a granularidade do controlo tem de ser a do objecto que pode desaparecer*: o **MÓDULO**, derivado do mesmo `git grep` que deriva a lista de pacotes. ⛔⛔⛔ **E o controlo deu TRÊS acusações FALSAS antes de acertar, todas por trocar as duas metades do nome:** o `(n/N)` do nextest vem **alinhado à direita** (`( 3/83)`) e um `\([0-9]` acusa os primeiros de mudos; e pôr `the_shell_only_shrinks` (a **função**) numa lista de MÓDULOS acusa a catraca de muda com ela VERDE três linhas acima (o módulo é `architecture_the_shell_only_shrinks`). ⇒ **nada na lista de exigidos se escreve à mão: é o `basename` do ficheiro que DEFINE a coisa**, que é o que o nextest imprime como módulo
 - ⛔⛔⛔ **UMA METADE QUE A CINEMÁTICA JÁ GARANTE NÃO PROVA NADA** (Teste Cascadeur, 19/09): um portão chamado «o cotovelo pára no ponto do CÍRCULO mais perto do rato» media só a DIRECÇÃO, e uma mutação que liberta a raiz do boneco deixava-o VERDE (com o corpo livre o cotovelo alcança o rato, a direcção fica perfeita e o círculo desapareceu). ⛔ E a minha 1.ª cura foi pior: medir o RAIO (cotovelo↔ombro) é uma **tautologia** — o cotovelo É a ponta do osso, logo aquela distância é o comprimento dele SEMPRE, faça o solver o que fizer. ⇒ a afirmação com conteúdo é a **identidade do ponto mais perto**: ele NÃO alcança o alvo e fica a exactamente o quanto o alvo está fora do círculo (fecha a 3,8 µm, a tolerância do solver). ⚠️ *Antes de escrever uma metade nova, pergunte se a estrutura já a garante* — se garante, ela é decoração e o portão continua a medir metade do que o nome dele diz.
 - ⛔⛔ **Uma constante de nome de portão DECLARADA e nunca usada em `esperados` é uma lei por provar, e o controlo de órfãos não a vê** (mesma corrida): `PORTAO_CIRCULO` vivia há muito no arnês sem nenhuma mutação a nomeá-la — o controlo que criei em 19/09 verifica que todo nome ESPERADO existe na suíte, e é cego a um nome que ninguém espera. *Um portão que nenhuma mutação mata não está provado, está a ser acreditado* — e aqui nem o instrumento o dizia.
+
+---
+
+## ⭐⭐⭐ Uma CHAVE carrega o ENDEREÇO, e é isso que torna visível a cópia que o gate não via (2026-09-17)
+
+Cinco gates de «vocabulário» comparam os arrays de opções de dois ou mais nós para afirmar que eles
+usam as mesmas palavras. Todos passavam porque `&[&str] == &[&str]` compara **conteúdo**. Quando a
+migração do HR-15 trocou o texto por **chaves derivadas do sítio de declaração**, os cinco
+reprovaram — e a leitura de cada um foi diferente:
+
+- **Quatro** eram divergências legítimas de declaração (um nó inline, o outro numa `const`; ou duas
+  `const` gémeas em crates irmãs sem dependência). Cura: comparar o **texto resolvido** — e o gate
+  fica **mais forte**, porque deixa de afirmar que dois literais estão escritos igual e passa a
+  afirmar que o artista **lê** a mesma palavra.
+- ⭐ **O quinto era uma DUPLICAÇÃO REAL:** um nó tinha uma cópia inline do vocabulário que os outros
+  três liam de uma porta partilhada, e a mensagem do próprio gate já dizia *«os rótulos são os da
+  PORTA»*. Cura: o nó passa a ler a porta.
+
+⇒ *Uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é*, e foi preciso um
+identificador que carrega o **endereço** para a duplicação aparecer.
+
+## ⛔ Um censo que FILTRA por texto fica MUDO quando o texto vira chave — só um piso o denuncia
+
+`if labels.first() != Some(&"Sink") { continue; }` deixou de casar, nenhum nó entrou na lista de
+vistos, e a varredura passou a medir **nada**. ⭐ Quem a tornou barulhenta foi o
+`assert!(vistos.len() >= 3)` que já lá estava. *A metade positiva de um censo é o que o faz falhar
+alto no dia em que o filtro dele deixa de descrever o mundo.*

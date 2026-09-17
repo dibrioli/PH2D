@@ -29,3 +29,24 @@ grep -A3 '^failures:$' $LOG          # e QUAIS
 devolve `0` **e** sai com `1`, então `pgrep -c x || echo 0` imprime `0\n0` e o teste de inteiros
 rebenta (foi o que matou o laço que devia correr a prova de mutação, sem que ela chegasse a correr).
 Ver também [[feedback_an_automatic_tools_exit_code_says_nothing_about_what_it_produced]].
+
+---
+
+⛔⛔ **E em 2026-09-17 ele fez-me DIAGNOSTICAR MAL a ferramenta, não só perder uma linha.** Duas
+corridas seguidas do `nextest-impacted.sh` devolveram **sete** reprovadas cada, em conjuntos
+**disjuntos** de crates — e eu li isso como uma propriedade do script (*«o conjunto impactado cresce
+com o diff»*) e escrevi-o num doc. ⛔ Era o `| tail -8` que eu próprio pusera: os ficheiros das duas
+corridas têm **10 linhas e nenhuma linha de `Summary`**, e as «sete» eram só as que cabiam na
+janela.
+
+⭐ **Duas leis ficam:**
+1. **O arnês já guarda a saída inteira num ficheiro** — um `tail` no comando destrói-a *antes* de lá
+   chegar. Corra o portão sem pipe e faça o `grep` no ficheiro depois.
+2. **Quando uma família de falhas aparece corrida a corrida, pare de a descobrir e VARRA-A.** Uma
+   varredura estática que cruzava os textos migrados com as linhas que comparam `labels` deu a lista
+   completa de uma vez — e provou que não sobrava nenhum caso, com três dos quatro «candidatos» a
+   serem **doc-comments**.
+
+⚠️ E a corrida **completa** da workspace acusou **quatro** reprovadas que as três corridas
+impactadas nunca tinham alcançado, três delas na shell: *quando o diff atravessa uma crate-folha que
+toda a gente usa, o conjunto impactado deixa de ser mais barato do que a verdade.*

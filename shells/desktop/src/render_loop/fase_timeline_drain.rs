@@ -34,6 +34,23 @@ impl crate::App {
         } else {
             &mut self.playhead
         };
+        // ⛔⛔⛔ **A MÃO ESTÁ NO CURSOR DO TEMPO?** — o sinal HONESTO do gesto, lido antes de o
+        // dreno o consumir (report do dono, 2026-09-17: *«criando keys de todo modo ao arrastar o
+        // tempo da timeline»*, com a foto de quatro tracks inundadas).
+        //
+        // ⚠️⚠️ **A 1.ª cura inferia o gesto pelo RELÓGIO** (*«o instante mudou desde o quadro
+        // anterior»*) e isso tem um buraco que a foto mostra: com o **Snap** ligado o tempo salta de
+        // quadro em quadro e fica PARADO entre saltos, logo os quadros de ecrã do meio liam
+        // *«o relógio não andou»* e voltavam a capturar. *Um gesto inferido de uma consequência
+        // perde-se exactamente onde a consequência satura* — e o gesto, esse, está aqui: cada
+        // movimento do ponteiro sobre a régua produz um `Scrub`, snap ou não.
+        self.autokey.scrub_now = self.timeline_intents.iter().any(|i| {
+            matches!(
+                i,
+                ph2d_timeline::TimelineIntent::Scrub(_)
+                    | ph2d_timeline::TimelineIntent::SeekFrame(_)
+            )
+        });
         let timeline_reset = timeline_bridge::run(
             sim.world_mut(),
             &mut self.timeline,

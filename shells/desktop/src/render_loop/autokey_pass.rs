@@ -32,7 +32,7 @@
 //! holds, Blender-style, until the playhead moves (scrub/play reclaims it for
 //! the animation) or it returns to its curve (a K keyed it, or an undo).
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use ph2d_anim::{AnimValue, RationalTime};
 use ph2d_core::Playhead;
@@ -40,52 +40,12 @@ use ph2d_ecs::World;
 use ph2d_editor_core::HeroScreen;
 use ph2d_timeline::{PoseSample, PropKind, TimelineState, autokey_props};
 
+#[path = "autokey_state.rs"]
+mod autokey_state;
+pub(crate) use autokey_state::AutokeyState;
+
 use super::timeline_bridge::{default_interp, sample_prop_value};
 use ph2d_timeline::record_fit::{REC_SIMPLIFY_REL, REC_SMOOTH_PASSES, RecSpan, simplify_recorded};
-
-/// The shell-owned state of the auto-key / pose machinery (one per `App`).
-#[derive(Default)]
-pub(crate) struct AutokeyState {
-    /// Last frame's pose per selected entity — the reference for unbound
-    /// first-touch auto-create.
-    pub baseline: BTreeMap<u64, PoseSample>,
-    /// A gizmo-drag undo bracket is open.
-    pub drag_active: bool,
-    /// Entities whose bound pose the user displaced while PAUSED and disarmed.
-    /// The apply pass skips them so the pose holds for a manual K. Cleared by
-    /// the bridge when the playhead moves; an entity heals out here when its
-    /// pose returns to its curve.
-    pub displaced: BTreeSet<u64>,
-    /// The playhead time `displaced` was collected at (the bridge clears the
-    /// set when the time changes).
-    pub displaced_t: f64,
-    /// ⛔⛔⛔ **O instante que ESTE passe viu no quadro anterior** — a metade que faltava ao
-    /// guarda do `playing`.
-    ///
-    /// Report do dono (2026-09-17): *«ao arrastar o tempo na timeline cria keyframes em todos os
-    /// quadros»*. Reproduzido: **12 chaves em 30 quadros** de arrasto, com a mão parada e a pose
-    /// constante.
-    ///
-    /// ⚠️⚠️ **A razão do `playing` vale IGUAL para um arrasto, e o comentário dela já o dizia sem
-    /// dar por isso:** *«a pose muda em cada quadro tocado porque é a ANIMAÇÃO que a conduz, não o
-    /// utilizador»*. Arrastar o cursor conduz a pose exactamente da mesma maneira — só que
-    /// `is_playing()` responde `false`, logo o guarda não armava e `capturing = armed`.
-    ///
-    /// ⇒ *o gatilho do auto-key é a MÃO, nunca o relógio* — e um quadro em que a única coisa que
-    /// mudou foi o relógio não é uma edição, toque ou não toque o transporte.
-    ///
-    /// `None` no primeiro quadro: sem um instante anterior não há movimento que se afirme.
-    pub clock_t: Option<f64>,
-    /// The refusal the animator has already been told about. A drag against an
-    /// overriding lane refuses on EVERY frame — sixty identical toasts a second is
-    /// not information, it is noise. The toast fires on the rising edge, again if
-    /// the REASON changes, and re-arms once the refusals stop.
-    pub refusal: Option<ph2d_timeline::KeyRefusal>,
-    /// Per `(entity, prop)` recorded span of the in-flight performing session —
-    /// what to simplify (and over what tolerance) when the record drag ends.
-    /// Empty outside a performing drag.
-    pub(crate) record: BTreeMap<(u64, PropKind), RecSpan>,
-}
 
 /// Sample a sprite's six animatable values into a [`PoseSample`], in
 /// `PropKind::ALL` order. `None` for a property whose backing component is absent
@@ -439,10 +399,12 @@ pub(crate) fn apply_samples(
     // animação conduz a pose, não o utilizador* — e depois pergunta pelo `is_playing()`, que é
     // apenas uma das duas maneiras de o relógio andar. Ver [`AutokeyState::clock_t`].
     let clock_moved = ak.clock_t.is_some_and(|t0| t0 != playhead.time());
+    // ⛔ **E a MÃO NA RÉGUA é o gesto em si** — ver [`AutokeyState::scrub_now`]. Com o Snap ligado
+    // o `clock_moved` é falso no meio de um arrasto, e sem este guarda o passe voltava a capturar.
     let capturing = if playing {
         performing && drag_now
     } else {
-        armed && !clock_moved
+        armed && !clock_moved && !ak.scrub_now
     };
     ak.clock_t = Some(playhead.time());
     let fps = timeline.doc.fps_display;

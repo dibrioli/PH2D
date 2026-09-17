@@ -101,3 +101,89 @@ fn pose_com_alca(x: f32) -> PoseSample {
     p[i] = Some(x);
     p
 }
+
+/// ⛔⛔⛔ **O ARRASTO COM *SNAP*, que é a condição da FOTO do dono** (2.º report de 2026-09-17:
+/// *«criando keys de todo modo ao arrastar o tempo da timeline»*, com quatro tracks inundadas).
+///
+/// ⚠️⚠️ **Esta é a metade que a 1.ª cura não apanhava.** Com o Snap ligado o instante salta de
+/// quadro em quadro e fica **PARADO** entre saltos, logo os quadros de ecrã do meio liam *«o
+/// relógio não andou»* e voltavam a capturar — e uma pose que ainda não assentou cunhava ali.
+///
+/// ⇒ o guarda passou a ser o **GESTO** (`Scrub`/`SeekFrame` no dreno), não a consequência dele.
+///
+/// (Red-first: sem o `scrub_now`, este gate reprova enquanto o irmão sem snap passa — que é
+/// exactamente a diferença entre os dois reports.)
+#[test]
+fn arrastar_o_tempo_com_snap_tambem_nao_cunha_nada() {
+    let (mut st, mut ph) = state_with_tx_track();
+    let antes = n_keys(&st, E, PropKind::TranslationX);
+    let mut ak = AutokeyState::default();
+    // ⚠️ A pose NÃO segue a curva de propósito: é o caso em que o mundo ainda não assentou (um
+    // osso que um motor reposiciona, a malha a recozer). Sem o guarda, cada quadro destes cunha.
+    let atrasada = pose(&[(TX, 5.0)]);
+    for i in 0..40 {
+        let passo = i / 4; // o SNAP: o instante salta so' a cada quatro quadros de ecra
+        ph.seek(0.5 + f64::from(passo) * (1.0 / 60.0));
+        // A mão está na régua em TODOS os quadros do arrasto — é isso que o dreno regista.
+        ak.scrub_now = true;
+        frame(&mut st, &ph, &[(E, atrasada)], false, true, &mut ak);
+    }
+    let depois = n_keys(&st, E, PropKind::TranslationX);
+    assert_eq!(
+        depois,
+        antes,
+        "o arrasto COM SNAP cunhou {} chave(s) — o relogio fica parado entre saltos, e e' por isso          que o guarda tem de ser o GESTO",
+        depois - antes
+    );
+}
+
+/// ⏱️ **SONDA — o arrasto REAL, com o mundo escrito pelo `apply`**.
+///
+/// ⚠️ A sonda anterior calculava a pose a' mao e media o proprio arredondamento dela. Aqui o
+/// `apply_from_doc` escreve o mundo (como no produto) e a pose LE-SE de la': se aparecerem chaves,
+/// elas sao do passe e nao da fixtura.
+#[test]
+fn sonda_arrasto_real() {
+    use ph2d_ecs::{Entity, Transform, World};
+    let (mut st, mut ph) = state_with_tx_track();
+    let mut w = World::new();
+    let ent = w.spawn(Transform::default()).id();
+    // A track do arnes fala da entidade `E`; a do mundo tem de ser a MESMA.
+    let bits = ent.to_bits();
+    let mut doc2 = st.doc.clone();
+    for (t, v) in [(0.0, 0.0_f32), (1.0, 10.0)] {
+        doc2.insert_key(
+            bits,
+            PropKind::TranslationX,
+            RationalTime::from_seconds(t),
+            AnimValue::Float(v),
+            ph2d_anim::Interp::Linear,
+        );
+    }
+    st.doc = doc2;
+    let mut ak = AutokeyState::default();
+    let antes = n_keys(&st, bits, PropKind::TranslationX);
+    for i in 0..40 {
+        let passo = i / 4; // o SNAP: o tempo salta so' a cada 4 quadros de ecra
+        let t = 0.5 + f64::from(passo) * (1.0 / 60.0);
+        ph.seek(t);
+        ph2d_timeline::apply_from_doc(&mut w, &mut st.doc, t);
+        let x = w
+            .get::<Transform>(Entity::from_bits(bits))
+            .unwrap()
+            .translation
+            .x;
+        frame(
+            &mut st,
+            &ph,
+            &[(bits, pose(&[(TX, x)]))],
+            false,
+            true,
+            &mut ak,
+        );
+    }
+    println!(
+        "ARRASTO REAL: {} chave(s) novas em 40 quadros",
+        n_keys(&st, bits, PropKind::TranslationX) - antes
+    );
+}

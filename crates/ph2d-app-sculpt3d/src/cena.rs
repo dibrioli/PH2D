@@ -199,6 +199,19 @@ pub struct Sculpt3dScene {
     /// delta de TODO arrasto (a órbita precisa dele por evento) e esta só anda
     /// quando um dab de fato saiu. Colapsá-las apagaria o carry.
     pub(crate) stroke_anchor: [f32; 2],
+    /// ⭐⭐⭐ **O CAMINHO SOBRE A SUPERFÍCIE CONGELADA** — o acumulador da lei do
+    /// passo no mundo ([`ph2d_sculpt3d::CaminhoNoMundo`]), que cura o vinco
+    /// pontilhado junto à silhueta.
+    ///
+    /// ⚠️ **Ele é IRMÃO da âncora, não substituto:** a âncora conta píxeis de
+    /// ecrã (é ela que decide quais pontos do caminho são CANDIDATOS) e este
+    /// conta arco de superfície (é ele que decide quais candidatos CARIMBAM).
+    /// Colapsá-los devolveria a pergunta que o defeito é: *quantos píxeis andei*
+    /// não é *quanto barro percorri*.
+    ///
+    /// ⚠️ **Estado de TRAÇO**: nasce vazio, esquece no pen-up — senão o resíduo
+    /// de um traço decidiria o primeiro dab do seguinte.
+    pub(crate) caminho_no_mundo: ph2d_sculpt3d::CaminhoNoMundo,
     /// Onde a mão **pegou** — o ponto de mundo do pen-down e o pixel dele. É a
     /// âncora dos DOIS grips que puxam, e é dela que os dois derivam o mundo:
     /// o [`Grip::Hold`] mede o puxão total até aqui, o [`Grip::Hook`] mede o

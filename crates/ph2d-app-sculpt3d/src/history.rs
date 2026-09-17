@@ -532,6 +532,11 @@ impl Sculpt3dScene {
         // [`super::cena::Sculpt3dScene::superficie_do_pen_down`]). Esta linha é
         // memória, e por isso vem ANTES dos dois `return` abaixo.
         self.superficie_do_pen_down = None;
+        // ⚠️ **E o caminho sobre ela, pela mesma razão e no mesmo instante:** o
+        // acumulador do passo no mundo é estado de TRAÇO, e o pen-down também o
+        // esquece — as duas metades, porque um traço pode fechar sem que o
+        // seguinte comece (o artista larga e pega noutra ferramenta).
+        self.caminho_no_mundo.esquece();
         // ⚠️ **O traço que MUDOU A TOPOLOGIA desfaz pela malha inteira**, e a
         // pergunta não é *"o dyntopo estava armado?"* e sim *"a contagem de
         // vértices mudou?"*: armado e sem nada a refinar (a malha já tem a

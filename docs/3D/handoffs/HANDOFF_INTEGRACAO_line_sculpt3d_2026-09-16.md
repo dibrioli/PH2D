@@ -330,6 +330,214 @@ no `Draw` e arrastar do mesmo jeito, para ver o monte largo ao lado do vinco fin
 
 ---
 
+## §54 — ⭐⭐⭐ *«do canto para o início da esfera, no canto fica meio pontilhado»*: o PASSO deixa de ser contado em píxeis
+
+O report do dono (foto) sobre o pincel afiado: começando o traço na **silhueta** da bola, o vinco
+sai **descontínuo** — uma fileira de crateras em vez de um sulco. No meio da peça ele sai perfeito.
+
+### §54.1 — O mecanismo, e o alvo tem-no IGUAL
+
+O passo do traço é contado em **píxeis de ECRÃ**. Um passo de `p` px sobre uma superfície cuja
+normal faz `θ` com a vista percorre `(p/ppu)/cos θ` **de superfície** ⇒ junto à silhueta
+(`cos θ → 0`) dois dabs consecutivos ficam a vários raios um do outro e o sulco parte-se.
+
+Medido no nosso produto, por bandas de `u` (o cosseno do ângulo de incidência), sobre a fixtura de
+fórmula da cúpula — `D/R` é a profundidade do vinco em raios de pincel e `r` a ondulação (excursão
+pico-a-pico dentro de UM período de dab, sobre a profundidade média da janela, adimensional):
+
+| banda | lei de ECRÃ `D/R` · `r` | a CURA `D/R` · `r` |
+|---|---|---|
+| 5–15° | `0,2011` · `0,002` | `0,2041` · `0,003` |
+| 25–35° | `0,1856` · `0,006` | `0,2052` · `0,003` |
+| 45–55° | `0,1494` · `0,023` | `0,2054` · `0,005` |
+| 60–68° | `0,1090` · `0,085` | `0,2069` · `0,018` |
+| 68–74° | `0,0832` · `0,187` | `0,2084` · `0,024` |
+| 74–79° | `0,0607` · `0,314` | `0,2061` · `0,064` |
+| 79–83° | `0,0347` · `0,569` | `0,1448` · `0,686` |
+| 83–88° | `0,0402` · `0,974` | `0,0544` · `0,991` |
+
+⚠️ **As duas últimas bandas são o ARRANQUE do traço, não o defeito** — ali o vinco ainda está a
+nascer, e é por isso que os gates afirmam sobre as **seis** primeiras
+([`BANDAS_DO_REGIME`](../../../crates/ph2d-sculpt3d/tests/it/oraculo_do_pincel_afiado_silhueta.rs),
+uma const partilhada pelos dois gates que a usam).
+
+⛔⛔ **O ALVO TEM O MESMO DEFEITO, e isso foi medido antes de se escrever uma linha de cura** — a
+ondulação dele vai de `0,002` no meio a `0,977` junto à borda e a profundidade fica `5,19×` mais
+rasa. ⇒ *aqui não há lado aprovado a copiar: a paridade e o produto apontam para lados opostos.*
+
+⛔⛔⛔ **E a cura DELE está RECUSADA, com três defeitos medidos** (a lei que mede o passo contra a
+superfície VIVA, que o próprio traço move): ela cura o pontilhado e compra `10×` de profundidade na
+borda, `−30 %`/`−51 %` de dependência da **taxa de amostragem do rato** e `3,3×` de dependência do
+**sentido do gesto**. *O traço deixa de ser um facto do CAMINHO*, que é a lei que esta casa pagou
+seis vezes no Painter — e é o gate **G-19** que proíbe importá-la.
+
+### §54.2 — A cura é NOSSA e tem DUAS metades, que NÃO são a mesma pergunta
+
+1. **O passo mede-se sobre a superfície do PEN-DOWN**
+   ([`ph2d_sculpt3d::CaminhoNoMundo`](../../../crates/ph2d-sculpt3d/src/passo_no_mundo.rs)): o
+   caminho de ecrã é percorrido por candidatos, cada candidato é picado na superfície **congelada**,
+   e o que se acumula é o **arco** entre candidatos. ⛔ Congelada e não viva — é isso que a separa
+   da lei do alvo: a superfície que ela mede não se move enquanto o traço corre, logo não há
+   realimentação, não há dependência da taxa de eventos e não há dependência do sentido.
+   O resíduo **viaja** entre eventos (a mesma lei do carry do `walk`), e a granularidade dos
+   candidatos é **adaptativa** — o passo de ecrã seguinte é previsto do arco que o último mediu, com
+   `previsto` a viver na struct para atravessar os eventos.
+2. **O centro do dab segue o BARRO**
+   ([`levado_pela_deformacao`](../../../crates/ph2d-sculpt3d/src/passo_no_mundo.rs)): o raio pica a
+   superfície congelada, e a face + baricêntricas do acerto são aplicadas às posições **vivas** — o
+   ponto afunda com o vinco (a auto-limitação do pincel fica intacta) mas **não desliza** ao longo da
+   superfície.
+
+⚠️ **As duas armam a MESMA fotografia do pen-down e têm predicados SEPARADOS**
+(`Verb::mede_o_passo_no_mundo` · `Verb::o_dab_segue_o_barro`), e juntá-las numa porta só faria a
+próxima medição ter de as separar outra vez — que é exactamente o que aconteceu ao fechar esta wave.
+
+### §54.3 — ⛔⛔⛔ A atribuição: o PASSO não custa paridade nenhuma; quem paga é o BARRO
+
+Esta é a medição que decidiu a wave, e ela só existe porque a bancada do produto passou a correr as
+**três** leis do cursor na mesma corrida
+([`LeiDoCursor`](../../../crates/ph2d-sculpt3d/tests/it/oraculo_do_pincel_afiado_produto.rs)).
+Corpus dos traços SEPARADOS (vaivém de 8 passagens, cada pen-down a refotografar), desvio
+vértice-a-vértice na faixa do vinco:
+
+| lei do cursor | p1 | p2 | p4 | p8 | pontas p8 |
+|---|---|---|---|---|---|
+| **ecrã** (o alvo) | `4,0e-4` | `2,0e-4` | `4,7e-4` | `1,1e-3` | `4,04e-2` |
+| **só o PASSO** | `4,1e-4` | `2,7e-4` | `5,9e-4` | `1,2e-3` | `2,20e-2` |
+| **passo + BARRO** | `4,0e-4` | `7,3e-4` | `1,9e-3` | **`1,71e-2`** | `1,91e-2` |
+
+⭐⭐ **O passo sozinho fica dentro da barra apertada de sempre (`5e-3`) em todas as células e ainda
+MELHORA a ponta**; e na bancada da silhueta ele entrega quase toda a uniformidade de profundidade
+(`0,2018 → 0,1829` nas bandas `0`–`5`, contra `0,2011 → 0,0607` da lei de ecrã).
+⭐⭐⭐ **Mas o pontilhado — que é o que o dono fotografou — é o BARRO que o cura:** sem a advecção a
+ondulação da banda `74–79°` fica em **`0,251`** (contra `0,314` sem cura nenhuma, ou seja quase
+nada); com ela cai para **`0,064`**. ⇒ *a metade cara é a necessária, e o preço dela está declarado.*
+
+### §54.4 — ⛔ A DIVERGÊNCIA DECLARADA, e a sua própria catraca
+
+[`TECTO_DO_ULTIMO_SEPARADO = 2,0e-2`], só para a **última** passagem do vaivém separado. O mecanismo
+lê-se na tabela acima: a divergência **cresce com o número de passagens**, que é o mesmo que dizer
+que cresce com o quanto a superfície já está **esculpida**. Na 1.ª passagem a peça é um plano de
+frente para a vista e as três leis dão o mesmo número; da 2.ª em diante o cursor anda dentro de um
+vinco, que é superfície CURVA — e é exactamente aí que as duas leis são desenhadas para discordar:
+*o nosso cursor é um facto do BARRO e o do alvo é um facto do RAIO*. Ao nível do PRODUTO a troca é
+`2,4 %`–`3,6 %` de profundidade e `1,4 %`–`4,9 %` de largura na 8.ª passagem (régua do §7.1).
+
+⛔⛔ **O gate EXIGE que a divergência exista.** No dia em que alguém a fizer desaparecer ele reprova
+e obriga a **apagar** o tecto, em vez de o deixar a cobrir uma regressão nova — a forma que uma
+tolerância sem censo de obsolescência toma quando vira licença.
+
+⭐ **E o `TECTO_DAS_PONTAS` DESCEU, `5e-2 → 2,5e-2`:** a divergência **D-1** era do `walk` (que
+recusa um salto de exactamente um passo) e o afiado já **não passa por ali** — a fronteira do
+`CaminhoNoMundo` é a do alvo, e a sombra da ponta cai de `4,04e-2` para `1,91e-2`. *Uma catraca que
+a cura fez descer e ninguém desceu é uma catraca que virou tolerância.*
+⚠️ A catraca é sobre o **PIOR da célula** e não sobre cada passagem, e a diferença foi medida: a cura
+ganha nos extremos e na 2.ª passagem fica um cabelo atrás (`1,069e-2` contra `1,021e-2`).
+
+### §54.5 — ⚠️ SEIS coisas que uma leitura rápida do diff entende ao contrário
+
+1. **A bancada do produto mudou de LEI, e é por isso que ela continua a afirmar paridade.** Se ela
+   corresse o `walk` de ecrã enquanto o app corre o caminho no mundo, mediria um programa que já não
+   existe. Ela pergunta ao **verbo** e só depois deixa a `LeiDoCursor` escolher entre o que ele
+   oferece — *uma bancada que derivasse a lei só do parâmetro afirmaria a lei e não o produto, e a
+   mutação que tira o afiado do predicado deixava o gate da cura VERDE (medido).*
+2. **A fotografia do pen-down é RE-TIRADA em cada pen-down**, e o arnês tinha-a a ser tirada uma vez
+   por corrida ⇒ o 8.º traço media-se contra a superfície do 1.º. Com isso a régua do vinco lia
+   `1,6593` contra `1,5119` (`9,7 %`); com a fotografia certa, `0,0 %`.
+3. **`PH2D_AFIADO_LEI_DE_ECRA` NÃO EXISTE.** Ela existiu durante a medição e **saiu**: `env VAR=`
+   **define** a variável vazia, uma leitura por `is_err()` lia isso como armada, e o controlo correu
+   a mesma lei que devia contradizer — as duas colunas saíram idênticas e quase passaram por prova.
+   ⇒ a lei é **parâmetro**, e o controlo vive **dentro** do gate.
+4. **O `MAX_DABS_POR_PASSO` nunca é atingido no corpus** — ele é um tecto de recurso (dabs por
+   evento), e o gate que o mede é sintético de propósito.
+5. **A `regua` do §16.1 não transfere para um traço TANGENCIAL**, e o instrumento que o mostra está
+   guardado (`diag_o_percurso_ao_longo_da_borda_mal_esculpe`). Ali as estações atravessam o vinco em
+   vez de o seguirem e a ondulação satura em `0,95`–`0,99` **com a cura ligada**.
+6. **O `Verb::Plane` também declara espaçamento** e **não** entra nesta lei — `passo_no_mundo`
+   responde por ele, mas `mede_o_passo_no_mundo` é `false`: *declarar um passo e medi-lo sobre a
+   superfície são duas perguntas.*
+
+### §54.6 — ⚠️ QUATRO premissas minhas que a medição derrubou
+
+1. *«a divergência dos traços separados é a composição por dab»* — **falso**: é a superfície já
+   esculpida, e a atribuição está na tabela do §54.3.
+2. *«o centro congelado cura o pontilhado»* — **construído e REFUTADO**: cura a ondulação e **quebra
+   a auto-limitação** (profundidade `0,24` e a crescer). O centro **advectado** guarda as duas.
+3. *«a granularidade adaptativa é o que faz a cura chegar à silhueta»* — **não medível no corpus**:
+   a mutação que a apagava sobrevivia ao gate da cura, ao da invariância à taxa de eventos e à suíte
+   inteira. ⇒ ou se constrói a medição ou se apaga o mecanismo; construiu-se
+   (`a_granularidade_adaptativa_nao_perde_dabs_numa_superficie_que_dispara`, por UNIDADE, com a lei
+   chamada **um evento de cada vez** — uma corrida só sobre o caminho inteiro não afirma nada sobre
+   o `previsto` ATRAVESSAR os eventos, que é metade do mecanismo).
+4. *«o percurso tangencial mal esculpe»* — **falso, e o próprio instrumento me desmentiu**: ele
+   esculpe `0,100` contra `0,205`, metade e não `3 %`. O que não serve é a **régua**.
+
+### §54.7 — Provas de mutação: **13 de 13 sangram**
+
+**A lei (8):** o predicado do passo · o predicado do barro · o resíduo do carry · o `previsto` a
+atravessar os eventos · o tecto de dabs · a fronteira `< passo` · a fórmula da previsão · o
+`esquece` do pen-up.
+**A rota no app (5):** o braço do carimbo a perguntar ao verbo · a fotografia armada pelas duas
+perguntas · o centro a perguntar ao verbo · o `esquece` no pen-up e no desfazer.
+
+⚠️⚠️ **E o ARNÊS mentiu TRÊS vezes antes de dizer a verdade**, com as três formas que este repo já
+tem escritas: um filtro que casou **zero** testes imprimiu `ok` e leu-se como *sobreviveu* (⇒ o
+arnês CONTA quantos testes correram) · uma mutação que **não compila** lê-se como sangrar (⇒ as do
+`esquece` apagam a chamada em vez de lhe trocar o nome) · e o `bc` não existe nesta máquina, o que
+pôs o contador a devolver vazio — o guarda acusou-se a si próprio, que é para o que ele existe.
+
+### §54.8 — Onde está
+
+- Lei: [`passo_no_mundo.rs`](../../../crates/ph2d-sculpt3d/src/passo_no_mundo.rs) +
+  [`passo_no_mundo_tests.rs`](../../../crates/ph2d-sculpt3d/src/passo_no_mundo_tests.rs).
+- Predicados: `brush_verb_predicados.rs` (`mede_o_passo_no_mundo` · `o_dab_segue_o_barro`).
+- Rota: `space.rs` (a fotografia e o `pick_do_dab`) · `input.rs` (`percorre_no_mundo`) ·
+  `cena.rs`/`birth.rs`/`input_down.rs`/`history.rs` (o acumulador e o pen-up), com o gate da rota em
+  [`caminho_no_mundo_tests.rs`](../../../crates/ph2d-app-sculpt3d/src/caminho_no_mundo_tests.rs).
+- Bancadas: `oraculo_do_pincel_afiado_silhueta.rs` (a cura, `G-19`) ·
+  `oraculo_do_pincel_afiado_produto.rs` (as três leis, a divergência declarada).
+
+### §54.9 — ⏳ ABERTO deste §
+
+- **Dono:** nada de novo — as três decisões da espec §15 continuam as do §53.7.
+- **Nossas, nomeadas:** a divergência do §54.4 (declarada, com catraca) · a `regua` do §16.1 não
+  serve um traço tangencial, e uma régua que o sirva é obra própria · o corpus do oráculo **não
+  contém** um traço que comece na silhueta, logo a cura não tem lado aprovado a que se comparar —
+  ela é medida contra a **lei** e contra o **controlo**, nunca contra o alvo.
+- **Vassouras (as NOVE vivas, corridas sobre os 16 ficheiros desta wave):** seis fecham `exit 0`, e
+  as **três** acusações são **todas PRÉ-EXISTENTES e medidas como tal** — `tip_roundness` (2 linhas
+  do `CLAUDE.md` §5, que são precisamente as que já o declaram aberto), `NoError` (a API pública da
+  dependência Apache-2.0 do Box Trim, já *«isento com nome»*) e `sculpt_gesture` (o NOME de um gate
+  que esta casa escreveu, no §49 deste mesmo handoff). **Zero adições** de qualquer um dos três no
+  diff desta wave e **zero** ocorrências nos ficheiros novos. ⛔ **A triagem é do R** — a janela I não
+  pode ler o ledger para decidir se cada um é isenção registada ou dívida da linha dona.
+
+### §54.10 — As duas decisões do dono da espec §16.13
+
+- **P-6** (*«ficar fiel ao alvo, ou curar?»*) está **respondida pelo próprio report**: ele
+  fotografou o pontilhado e chamou-lhe defeito ⇒ cura-se.
+  ⚠️ **Mas a variante entregue NÃO é a recomendada.** A espec recomenda **(iii)** = passo em mundo
+  **mais a atenuação a seguir o passo efectivo**, *«o único que mantém a profundidade constante»*.
+  O que shipa é **(ii) + o centro levado pelo barro**, com a atenuação **intocada** — e a
+  profundidade sai constante à mesma (`0,204`–`0,208` contra `0,201 → 0,061`), medida. ⇒ *a premissa
+  do «único» da espec está refutada: a uniformidade veio de a densidade de dabs deixar de depender
+  da inclinação, não de mexer na atenuação.* ⭐ E a variante entregue é a mais barata das duas — ela
+  **não toca** no valor que os `80` traços do corpus fixam, logo a paridade por dab fica intacta por
+  construção.
+- **P-7** (*«oferecer o eixo “medido em” ao artista?»*) — **ESCONDIDO**, como a espec recomenda, e
+  agora com a razão mais forte: a lei do alvo que aquele eixo ofereceria é a que o §54.1 mede a
+  depender da **taxa de amostragem do rato** e do **sentido do gesto**. *Um knob cujo resultado
+  depende de quão depressa a mão anda não é um controlo.*
+
+### §54.11 — Portão de fecho
+
+`nextest-impacted`: **15 368 testes, 15 368 passaram** (10 002 saltados), `exit 0` ·
+`clippy --all-targets` nas duas crates: **zero** avisos · `cargo fmt --all` aplicado ·
+tectos de LOC verdes (`workspace_src_files_under_loc_cap` + o censo de folgas obsoletas) ·
+`ph2d-sculpt3d` **564** testes · `ph2d-app-sculpt3d` **206** · mutação **13 de 13**.
+
+---
+
 ## §52 — ⏳ O que fica ABERTO, e de quem é
 
 - **Dono:** o **G-20** (tecto do raio *digitável* `≥ 5 000` px, errata Q2) — a pista vai a `5 000`

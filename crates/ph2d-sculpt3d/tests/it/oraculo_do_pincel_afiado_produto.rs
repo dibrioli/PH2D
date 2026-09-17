@@ -24,24 +24,56 @@ use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry};
 const BARRA_CONTINUO: f32 = 2e-3;
 /// G-3b: os traços separados, na faixa do vinco.
 const BARRA_SEPARADOS: f32 = 5e-3;
-/// ⛔⛔ **O TECTO DECLARADO das PONTAS do traço** — a sombra da divergência D-1
-/// (§15 da espec), medida aqui e **não** herdada dela.
+/// ⛔ **O TECTO DECLARADO das PONTAS do traço** — e ele **DESCEU** em 2026-09-16,
+/// porque a cura da silhueta pagou a divergência D-1 **deste verbo**.
 ///
-/// O alvo deposita um dab num salto de **exactamente** um passo e o `walk` desta
-/// casa recusa-o (`spacing.rs`, com gate próprio há mais tempo que esta wave).
-/// ⚠️ **O doc daquele `walk` diz que as duas fronteiras dão a MESMA lista, e
-/// isso é verdade a MEIO do traço e FALSO na INVERSÃO:** ali o dab adiado nunca
-/// chega, porque a passagem seguinte anda para o outro lado. ⇒ num vaivém
-/// simulado a `1` px por evento perdemos **um** dab em cada ponta de cada
-/// passagem, e o vinco fica mais raso no último raio de cada extremo (medido:
-/// `1,035e-2` no vértice da ponta, `30` vértices de `1 514`).
+/// ⚠️ **A D-1 era do [`ph2d_sculpt3d::walk`]:** o alvo deposita um dab num salto
+/// de EXACTAMENTE um passo e aquele `walk` recusa-o, o que a meio do traço dá a
+/// mesma lista e **na INVERSÃO** perde o dab adiado (medido então: `4,04e-2` no
+/// vértice da ponta). ⭐ O afiado já **não passa por ali** — ele percorre o
+/// [`ph2d_sculpt3d::CaminhoNoMundo`], cuja fronteira (`acumulado < passo` ⇒ zero)
+/// é a do alvo ⇒ a sombra da ponta cai para **`1,91e-2`**.
 ///
-/// ⚠️ **O artista não o atinge:** com eventos de rato irregulares a distância
-/// cair EXACTAMENTE sobre um múltiplo do passo tem medida nula, e o fim de um
-/// traço real perde a fracção de passo que sobra de qualquer maneira — nas duas
-/// casas. É por isso que ele fica DECLARADO com número, e a barra que discrimina
-/// a LEI é a da faixa do vinco.
-const TECTO_DAS_PONTAS: f32 = 5e-2;
+/// ⛔⛔ **Descer este número não é cosmética: mantê-lo em `5e-2` transformava-o
+/// em LICENÇA** — passava a caber ali uma regressão do dobro do que hoje se mede.
+/// *Uma catraca que a cura fez descer e ninguém desceu é uma catraca que virou
+/// tolerância.* Medido, o pior das duas suítes: contínuo `1,17e-2` · separado
+/// `2,18e-2` (a cura) contra `4,06e-2` (a régua de ecrã do alvo).
+const TECTO_DAS_PONTAS: f32 = 2.5e-2;
+/// ⛔⛔⛔ **A DIVERGÊNCIA DECLARADA DA CURA** — o tecto da faixa do vinco na
+/// ÚLTIMA passagem de um vaivém de traços SEPARADOS.
+///
+/// ⚠️ **Ela é o preço, medido e atribuído, do centro do dab que segue o barro**
+/// ([`ph2d_sculpt3d::levado_pela_deformacao`]) — e **não** do passo medido sobre
+/// a superfície, que é a outra metade da cura. A tabela das três leis do cursor
+/// (a sonda `diag_a_tabela_das_tres_leis`), na faixa do vinco:
+///
+/// | lei | p1 | p2 | p4 | p8 | pontas p8 |
+/// |---|---|---|---|---|---|
+/// | ecrã (o alvo) | `4,0e-4` | `2,0e-4` | `4,7e-4` | `1,1e-3` | `4,04e-2` |
+/// | só o PASSO | `4,1e-4` | `2,7e-4` | `5,9e-4` | `1,2e-3` | `2,20e-2` |
+/// | passo + BARRO | `4,0e-4` | `7,3e-4` | `1,9e-3` | **`1,71e-2`** | `1,91e-2` |
+///
+/// ⭐⭐ **O mecanismo lê-se na própria tabela: a divergência CRESCE com o número
+/// de passagens, que é o mesmo que dizer que ela cresce com o quanto a superfície
+/// já está ESCULPIDA.** Na 1.ª passagem a peça é um plano de frente para a vista
+/// e as três leis dão o mesmo número; da 2.ª em diante o cursor anda dentro de um
+/// vinco, que é superfície CURVA — e é exactamente aí que as duas leis são
+/// desenhadas para discordar: *o nosso cursor é um facto do BARRO e o do alvo é
+/// um facto do RAIO*. ⛔ Ali o lado do alvo **é** o defeito que o dono
+/// fotografou: o mesmo pontilhado, reproduzido dentro do próprio vinco dele.
+///
+/// ⚠️ **Ao nível do PRODUTO a troca é pequena e está medida pela régua do §7.1**
+/// (`a_regua_do_vinco_concorda_com_a_do_alvo`): na 8.ª passagem a profundidade
+/// fica `2,4 %`–`3,6 %` mais rasa e o vinco `1,4 %`–`4,9 %` mais largo. As
+/// passagens `1`–`4` ficam dentro da barra apertada de sempre.
+const TECTO_DO_ULTIMO_SEPARADO: f32 = 2.0e-2;
+
+/// Uma linha da tabela: `(passagem, desvio na faixa, desvio nas pontas)`.
+type LinhaDaCelula = (usize, f32, f32);
+/// Uma coluna da tabela: a lei do cursor e o que ela deu em cada passagem.
+type ColunaDaLei = (LeiDoCursor, Vec<LinhaDaCelula>);
+
 /// Meia largura da FAIXA do vinco (em unidades do mundo) — a mesma da espec.
 const FAIXA: f32 = 0.25;
 
@@ -76,6 +108,31 @@ fn desvio(f: &Fixtura, nossa: &[[f32; 3]], alvo: &[[f32; 3]]) -> (f32, f32) {
 /// passagem, e cada pen-down **refotografa** as posições, que é o que faz o
 /// limite do vinco recomeçar (espec §4.2).
 fn arrastar(f: &Fixtura, b: &Brush, passagens: usize) -> Vec<Vec<[f32; 3]>> {
+    arrastar_com(f, b, passagens, LeiDoCursor::PassoEBarro)
+}
+
+/// ⭐⭐⭐ **AS TRÊS LEIS DO CURSOR, como PARÂMETRO e nunca como variável de
+/// ambiente** — é isto que deixa um gate medir a cura **e** o controlo dela na
+/// mesma corrida.
+///
+/// ⚠️ **Uma bissecção por `PH2D_*` não é um controlo:** ela mora fora do teste,
+/// ninguém a corre no portão, e `env VAR= cargo …` **define** a variável vazia —
+/// uma leitura por `is_err()` lê isso como armado e as duas colunas saem iguais,
+/// que foi exactamente o que aconteceu ao medir esta tabela pela primeira vez.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum LeiDoCursor {
+    /// A régua do ALVO: passo contado em píxeis de ecrã, cursor picado na
+    /// superfície VIVA. É o lado de ANTES da cura.
+    Ecra,
+    /// Metade da cura: o passo medido sobre a superfície do pen-down, com o
+    /// cursor ainda picado no vivo.
+    Passo,
+    /// A cura inteira: o passo sobre a superfície **e** o centro do dab levado
+    /// pela deformação. É o que o produto corre.
+    PassoEBarro,
+}
+
+fn arrastar_com(f: &Fixtura, b: &Brush, passagens: usize, lei: LeiDoCursor) -> Vec<Vec<[f32; 3]>> {
     let px = f.num("vista_px_por_unidade");
     let pd: Vec<f32> = f
         .chave("pixel_do_pen_down_no_mundo")
@@ -97,8 +154,13 @@ fn arrastar(f: &Fixtura, b: &Brush, passagens: usize) -> Vec<Vec<[f32; 3]>> {
     let e = olho(f);
     let mut s = SculptStroke::default();
     s.begin(&m);
+    // ⚠️⚠️ **A fotografia é RE-TIRADA em cada pen-down** — o `space.rs` arma-a
+    // no pen-down, não uma vez por sessão. ⛔ Uma bancada que a tirasse uma só
+    // vez mediria o 8.º traço contra a superfície do 1.º, que é outro programa.
+    let mut congelada = m.clone();
+    let mundo = |t: f32| (pd[0] + um[0] * t, pd[1] + um[1] * t);
     let carimbar = |m: &mut Mesh, s: &mut SculptStroke, t: f32| {
-        let (x, y) = (pd[0] + um[0] * t, pd[1] + um[1] * t);
+        let (x, y) = mundo(t);
         if let Some(c) = na_superficie(m, x, y, e) {
             s.dab(m, b, &Dab::at(c, b.radius, e), Symmetry::default());
         }
@@ -107,26 +169,100 @@ fn arrastar(f: &Fixtura, b: &Brush, passagens: usize) -> Vec<Vec<[f32; 3]>> {
     carimbar(&mut m, &mut s, t);
     let mut ancora = [t, 0.0];
     let mut fotos = Vec::with_capacity(passagens);
+    // ⭐⭐⭐ **A bancada corre a LEI DO PRODUTO, e desde 2026-09-16 ela é a do
+    // passo medido sobre a superfície** ([`ph2d_sculpt3d::CaminhoNoMundo`]).
+    // ⚠️ **É por isso que estes gates continuam a afirmar paridade:** num plano
+    // de frente para a vista as duas leis COINCIDEM por construção (`cos θ = 1`),
+    // e todo este corpus é plano ou um cilindro percorrido ao longo do eixo.
+    // *Uma bancada que corresse a lei antiga mediria um programa que já não
+    // existe.*
+    let no_mundo = b.verb.mede_o_passo_no_mundo() && lei != LeiDoCursor::Ecra;
+    let passo_mundo = ph2d_sculpt3d::passo_no_mundo(b.verb, b.radius);
+    let mut caminho = ph2d_sculpt3d::CaminhoNoMundo::novo();
     for k in 0..passagens {
         let dir = if k % 2 == 0 { 1.0 } else { -1.0 };
         for _ in 0..eventos {
+            let de = t;
             t += dir;
-            if let Some(passos) = ph2d_sculpt3d::walk(ancora, [t, 0.0], passo) {
-                for q in passos {
-                    carimbar(&mut m, &mut s, q[0]);
+            match (no_mundo, passo_mundo) {
+                (true, Some(pm)) => {
+                    let mut alvo = CarimboDoProduto {
+                        malha: &mut m,
+                        traco: &mut s,
+                        congelada: &congelada,
+                        pincel: b,
+                        mundo: &mundo,
+                        olho: e,
+                        leva: b.verb.o_dab_segue_o_barro() && lei == LeiDoCursor::PassoEBarro,
+                    };
+                    caminho.percorre(de, t, pm, &mut alvo);
+                    ancora = [t, 0.0];
                 }
-                ancora = passos.anchor();
+                _ => {
+                    if let Some(passos) = ph2d_sculpt3d::walk(ancora, [t, 0.0], passo) {
+                        for q in passos {
+                            carimbar(&mut m, &mut s, q[0]);
+                        }
+                        ancora = passos.anchor();
+                    }
+                }
             }
         }
         fotos.push(m.positions().to_vec());
         if separados && k + 1 < passagens {
             // A caneta levanta e volta a descer na ponta onde esta acabou.
             s.begin(&m);
+            caminho.esquece();
+            congelada = m.clone();
             carimbar(&mut m, &mut s, t);
             ancora = [t, 0.0];
         }
     }
     fotos
+}
+
+/// **A BANCADA a responder às duas perguntas da lei do caminho** — a gémea do
+/// `CarimboDaCena` do app.
+struct CarimboDoProduto<'a> {
+    malha: &'a mut Mesh,
+    traco: &'a mut SculptStroke,
+    congelada: &'a Mesh,
+    pincel: &'a Brush,
+    mundo: &'a dyn Fn(f32) -> (f32, f32),
+    olho: [f32; 3],
+    leva: bool,
+}
+
+impl ph2d_sculpt3d::CarimboDoCaminho for CarimboDoProduto<'_> {
+    fn congelado(&mut self, t: f32) -> Option<[f32; 3]> {
+        let (x, y) = (self.mundo)(t);
+        na_superficie(self.congelada, x, y, self.olho)
+    }
+
+    fn carimba(&mut self, t: f32) -> bool {
+        let (x, y) = (self.mundo)(t);
+        let origem = [
+            x - self.olho[0] * 10.0,
+            y - self.olho[1] * 10.0,
+            -self.olho[2] * 10.0,
+        ];
+        let centro = if self.leva {
+            self.congelada
+                .raycast(&ph2d_mesh::Ray::new(origem, self.olho))
+                .and_then(|h| ph2d_sculpt3d::levado_pela_deformacao(self.congelada, self.malha, &h))
+        } else {
+            na_superficie(self.malha, x, y, self.olho)
+        };
+        if let Some(c) = centro {
+            self.traco.dab(
+                self.malha,
+                self.pincel,
+                &Dab::at(c, self.pincel.radius, self.olho),
+                Symmetry::default(),
+            );
+        }
+        true
+    }
 }
 
 /// O pincel de uma fixtura de produto, com o raio do cabeçalho.
@@ -198,13 +334,24 @@ fn o_traco_continuo_reproduz_o_oraculo() {
     );
 }
 
-/// ⭐⭐⭐ **G-3b — os traços SEPARADOS reproduzem o oráculo**, na malha inteira e
-/// na faixa central.
+/// ⭐⭐⭐ **G-3b — os traços SEPARADOS contra o oráculo, pelas TRÊS leis do
+/// cursor**, na faixa central e fora dela.
 ///
 /// ⚠️ **Eles são o caso DURO**, e por uma razão de produto: cada pen-down
 /// refotografa as posições, logo o limite do vinco recomeça e ele fica cada vez
 /// mais fundo e mais estreito — ao 8.º traço o cursor cai num vinco já estreito,
 /// e **onde** ele cai muda a profundidade.
+///
+/// ⭐⭐ **O CONTROLO vive DENTRO do gate, e é ele que ATRIBUI a divergência.**
+/// Sem a coluna do meio ([`LeiDoCursor::Passo`]) este gate diria *«a cura custa
+/// paridade»* sem dizer QUAL das duas metades a custa — e a resposta muda a
+/// decisão: o passo medido sobre a superfície não custa nada e melhora a ponta;
+/// quem paga é o centro levado pelo barro, que é o que cura o report do dono.
+///
+/// ⛔⛔ **A última asserção é a que impede o tecto declarado de virar licença:**
+/// ela exige que a divergência **EXISTA**. No dia em que alguém a fizer
+/// desaparecer, este gate reprova e obriga a apagar o
+/// [`TECTO_DO_ULTIMO_SEPARADO`] em vez de o deixar a cobrir uma regressão nova.
 #[test]
 fn os_tracos_separados_reproduzem_o_oraculo() {
     const CELULAS: [&str; 5] = [
@@ -214,36 +361,92 @@ fn os_tracos_separados_reproduzem_o_oraculo() {
         "cilindro_afiado_separados",
         "triangulos_afiado_separados",
     ];
-    let (mut pior, mut pior_faixa) = (0.0f32, 0.0f32);
+    let (mut pior_faixa, mut pior_pontas) = (0.0f32, 0.0f32);
+    let mut divergiu = false;
     for nome in CELULAS {
         let f = ler("produto", nome);
         let b = pincel_produto(&f);
         let n = passagens(&f);
-        let fotos = arrastar(&f, &b, n);
-        for (k, foto) in fotos.iter().enumerate() {
-            let passagem = k + 1;
-            let alvo = if passagem == n {
-                Some(f.saida())
-            } else {
-                f.blocos.get(&format!("p{passagem}")).map(Vec::as_slice)
-            };
-            let Some(alvo) = alvo else { continue };
-            let (faixa, pontas) = desvio(&f, foto, alvo);
-            assert!(
-                faixa <= BARRA_SEPARADOS,
-                "{nome}, traço {passagem}: na faixa do vinco {faixa:.3e} passa a barra \
-                 {BARRA_SEPARADOS:.0e}"
-            );
-            assert!(
-                pontas <= TECTO_DAS_PONTAS,
-                "{nome}, traço {passagem}: nas pontas {pontas:.3e} passa o TECTO DECLARADO \
-                 {TECTO_DAS_PONTAS:.0e}"
-            );
-            pior = pior.max(pontas);
-            pior_faixa = pior_faixa.max(faixa);
+        // Uma coluna por lei, para as três serem comparáveis entre si — e não só
+        // cada uma contra uma barra.
+        let colunas: Vec<ColunaDaLei> = [
+            LeiDoCursor::Ecra,
+            LeiDoCursor::Passo,
+            LeiDoCursor::PassoEBarro,
+        ]
+        .into_iter()
+        .map(|lei| {
+            let linhas = arrastar_com(&f, &b, n, lei)
+                .iter()
+                .enumerate()
+                .filter_map(|(k, foto)| {
+                    let passagem = k + 1;
+                    let alvo = if passagem == n {
+                        Some(f.saida())
+                    } else {
+                        f.blocos.get(&format!("p{passagem}")).map(Vec::as_slice)
+                    }?;
+                    let (faixa, pontas) = desvio(&f, foto, alvo);
+                    Some((passagem, faixa, pontas))
+                })
+                .collect();
+            (lei, linhas)
+        })
+        .collect();
+        for (lei, linhas) in &colunas {
+            for &(passagem, faixa, _) in linhas {
+                // ⭐ A barra APERTADA vale para tudo menos a última passagem da
+                // cura — e valer para as outras DUAS leis NA última é o que
+                // prova que o passo sozinho não custa paridade nenhuma.
+                let ultima_da_cura = passagem == n && *lei == LeiDoCursor::PassoEBarro;
+                let barra = if ultima_da_cura {
+                    TECTO_DO_ULTIMO_SEPARADO
+                } else {
+                    BARRA_SEPARADOS
+                };
+                assert!(
+                    faixa <= barra,
+                    "{nome} · {lei:?} · traço {passagem}: na faixa do vinco {faixa:.3e} passa \
+                     a barra {barra:.0e}"
+                );
+                divergiu |= ultima_da_cura && faixa > BARRA_SEPARADOS;
+            }
         }
+        // ⛔⛔ **A sombra da ponta é uma CATRACA, não uma tolerância:** a lei que
+        // shipa fica debaixo do tecto **e** o PIOR dela na célula é melhor que o
+        // pior da régua de ecrã do alvo. *Sem a segunda metade, o dia em que a
+        // cura regredisse para o valor do alvo passaria calado.*
+        //
+        // ⚠️⚠️ **É o PIOR da célula e NÃO cada passagem, e a diferença foi
+        // medida:** a cura ganha nos extremos (`5,25e-3` contra `1,04e-2` na 1.ª,
+        // `1,91e-2` contra `4,04e-2` na 8.ª) e na 2.ª passagem fica um cabelo
+        // ATRÁS (`1,069e-2` contra `1,021e-2`). ⛔ Uma catraca escrita passagem a
+        // passagem reprovaria sobre uma cura que corta a sombra ao meio — *uma
+        // barra afirmada antes de medida mede a redacção dela, não o produto.*
+        let pior_de =
+            |linhas: &[LinhaDaCelula]| linhas.iter().fold(0.0f32, |a, &(_, _, p)| a.max(p));
+        let (p_ecra, p_cura) = (pior_de(&colunas[0].1), pior_de(&colunas[2].1));
+        assert!(
+            p_cura <= TECTO_DAS_PONTAS,
+            "{nome}: nas pontas {p_cura:.3e} passa o TECTO DECLARADO {TECTO_DAS_PONTAS:.0e}"
+        );
+        assert!(
+            p_cura < p_ecra,
+            "{nome}: a cura ({p_cura:.3e}) deixou de ser melhor na ponta que a régua de ecrã do \
+             alvo ({p_ecra:.3e})"
+        );
+        pior_faixa = colunas[2]
+            .1
+            .iter()
+            .fold(pior_faixa, |a, &(_, d, _)| a.max(d));
+        pior_pontas = pior_pontas.max(p_cura);
     }
-    println!("G-3b: faixa {pior_faixa:.3e} · pontas {pior:.3e} (D-1)");
+    assert!(
+        divergiu,
+        "a divergência declarada DESAPARECEU — apague o TECTO_DO_ULTIMO_SEPARADO em vez de o \
+         deixar a cobrir uma regressão futura"
+    );
+    println!("G-3b (a cura): faixa {pior_faixa:.3e} · pontas {pior_pontas:.3e}");
 }
 
 // ── A RÉGUA do produto (espec §7.1) ─────────────────────────────────────────
@@ -586,4 +789,39 @@ fn o_recorte_pela_caixa_nao_se_copia() {
         longe >= 1e-2,
         "não podemos reproduzir o artefacto do recorte: {longe:.3e}"
     );
+}
+
+/// **SONDA da tabela do §54** — as três leis do cursor sobre o corpus separado.
+#[test]
+#[ignore = "sonda: imprime a tabela do §54"]
+fn diag_a_tabela_das_tres_leis() {
+    for nome in [
+        "afiado_valores_de_fabrica_separados",
+        "densidade_48_afiado_separados",
+        "densidade_192_afiado_separados",
+        "cilindro_afiado_separados",
+        "triangulos_afiado_separados",
+    ] {
+        let f = ler("produto", nome);
+        let b = pincel_produto(&f);
+        let n = passagens(&f);
+        for lei in [
+            LeiDoCursor::Ecra,
+            LeiDoCursor::Passo,
+            LeiDoCursor::PassoEBarro,
+        ] {
+            let fotos = arrastar_com(&f, &b, n, lei);
+            for (k, foto) in fotos.iter().enumerate() {
+                let passagem = k + 1;
+                let alvo = if passagem == n {
+                    Some(f.saida())
+                } else {
+                    f.blocos.get(&format!("p{passagem}")).map(Vec::as_slice)
+                };
+                let Some(alvo) = alvo else { continue };
+                let (faixa, pontas) = desvio(&f, foto, alvo);
+                println!("TAB {nome} {lei:?} p{passagem} faixa {faixa:.3e} pontas {pontas:.3e}");
+            }
+        }
+    }
 }

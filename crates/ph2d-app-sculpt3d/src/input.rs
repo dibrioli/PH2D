@@ -380,6 +380,9 @@ pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
             // está lá — não sobre como o gesto vira uma lista de dabs.
             // Esfregar uma máscara é esfregar, e o `walk` é o que impede a
             // taxa de polling de decidir a densidade dela.
+            Grip::Stamp | Grip::Paint if scene.brush.verb.mede_o_passo_no_mundo() => {
+                percorre_no_mundo(scene, x, y);
+            }
             Grip::Stamp | Grip::Paint => {
                 let spacing = ph2d_sculpt3d::passo_do_traco(scene.brush.verb, scene.radius_px());
                 if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
@@ -440,4 +443,86 @@ pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
         },
     }
     true
+}
+
+/// ⭐⭐⭐ **O TRAÇO CUJO PASSO É MEDIDO SOBRE A SUPERFÍCIE** — a cura do vinco
+/// pontilhado junto à silhueta (`SPEC_pincel_afiado.md` §16).
+///
+/// ⚠️ **A LEI vive no motor** ([`ph2d_sculpt3d::CaminhoNoMundo::percorre`]), com
+/// a granularidade adaptativa dos candidatos e os dois tectos; aqui fica só a
+/// FIAÇÃO — o raio contra a fotografia do pen-down e o carimbo no acerto vivo.
+/// *Uma segunda cópia da lei aqui seria a bancada a medir outro programa.*
+///
+/// ⛔⛔ **E esta lei responde SÓ a «quando» — «onde» é a outra metade da cura, e
+/// ela vive noutra porta.** Quem decide o centro do dab é o
+/// [`crate::space`]`::pick_do_dab`, a perguntar ao
+/// [`ph2d_sculpt3d::Verb::o_dab_segue_o_barro`]. ⚠️ *As duas perguntas armam a
+/// MESMA fotografia do pen-down e não são a mesma pergunta* — medido, o passo
+/// sozinho não custa paridade nenhuma ao corpus do alvo e cura a profundidade;
+/// o centro levado pelo barro é que cura a ONDULAÇÃO e paga a divergência
+/// declarada (`oraculo_do_pincel_afiado_produto::TECTO_DO_ULTIMO_SEPARADO`).
+fn percorre_no_mundo(scene: &mut Sculpt3dScene, x: f32, y: f32) {
+    let Some(passo) = ph2d_sculpt3d::passo_no_mundo(scene.brush.verb, scene.brush.radius) else {
+        return;
+    };
+    // O segmento de ecrã deste evento, em píxeis a partir da âncora.
+    let (ax, ay) = (scene.stroke_anchor[0], scene.stroke_anchor[1]);
+    let (dx, dy) = (x - ax, y - ay);
+    let comprimento = dx.hypot(dy);
+    if !comprimento.is_finite() || comprimento <= 0.0 {
+        return;
+    }
+    let (ux, uy) = (dx / comprimento, dy / comprimento);
+    // ⚠️ **O acumulador sai da cena por empréstimo**, porque quem responde às
+    // duas perguntas da lei é a cena inteira: deixá-lo dentro obrigaria o motor
+    // a conhecer a `Sculpt3dScene`.
+    let mut caminho = std::mem::take(&mut scene.caminho_no_mundo);
+    let mut alvo = CarimboDaCena {
+        scene,
+        ancora: (ax, ay),
+        direccao: (ux, uy),
+        parou: false,
+    };
+    caminho.percorre(0.0, comprimento, passo, &mut alvo);
+    let parou = alvo.parou;
+    scene.caminho_no_mundo = caminho;
+    // ⚠️ **A âncora avança para o fim do segmento mesmo quando um dab é
+    // descartado** — a mesma lei do ramo de ecrã, e pela mesma razão medida: com
+    // ela presa no último dab aplicado, um trecho fora da peça acumularia e
+    // despejaria a lacuna inteira ao reentrar.
+    if !parou {
+        scene.stroke_anchor = [x, y];
+    }
+}
+
+/// **A CENA a responder às duas perguntas da lei do caminho** — a fiação, e só
+/// ela.
+struct CarimboDaCena<'a> {
+    scene: &'a mut Sculpt3dScene,
+    ancora: (f32, f32),
+    direccao: (f32, f32),
+    parou: bool,
+}
+
+impl CarimboDaCena<'_> {
+    fn ponto(&self, t: f32) -> (f32, f32) {
+        (
+            self.ancora.0 + self.direccao.0 * t,
+            self.ancora.1 + self.direccao.1 * t,
+        )
+    }
+}
+
+impl ph2d_sculpt3d::CarimboDoCaminho for CarimboDaCena<'_> {
+    fn congelado(&mut self, t: f32) -> Option<[f32; 3]> {
+        let (x, y) = self.ponto(t);
+        self.scene.pick_congelado(x, y).map(|h| h.point)
+    }
+
+    fn carimba(&mut self, t: f32) -> bool {
+        let (x, y) = self.ponto(t);
+        let ok = self.scene.sculpt_at(x, y);
+        self.parou |= !ok;
+        ok
+    }
 }

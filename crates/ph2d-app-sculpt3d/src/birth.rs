@@ -81,6 +81,7 @@ impl Sculpt3dScene {
             alpha_image: None,
             radius_px: DEFAULT_RADIUS_PX,
             stroke_anchor: [0.0, 0.0],
+            caminho_no_mundo: ph2d_sculpt3d::CaminhoNoMundo::novo(),
             grab: None,
             pending_grab: None,
             twist: None,

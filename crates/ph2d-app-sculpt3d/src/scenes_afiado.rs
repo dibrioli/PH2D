@@ -47,7 +47,7 @@ pub(crate) fn announce() {
          [sculpt3d]        ha' um botao `Draw Sharp`. Carregue nele.\n\
          [sculpt3d]        -> Ele ja' nasce a CAVAR: nao ha' nada a ligar.\n\
          [sculpt3d]    (2) Arraste uma linha por cima da bola, de um lado ao outro.\n\
-         [sculpt3d]        -> Fica um VINCO fino. Compare com o passo (6).\n\
+         [sculpt3d]        -> Fica um VINCO fino. Compare com o passo (7).\n\
          [sculpt3d]    (3) Sem largar o botao, va' e volte pela MESMA linha, cinco ou seis\n\
          [sculpt3d]        vezes.\n\
          [sculpt3d]        -> Ele aprofunda cada vez menos e PARA: o vinco nunca passa de um\n\
@@ -57,12 +57,18 @@ pub(crate) fn announce() {
          [sculpt3d]           passagem nova. Cada vez que a caneta desce, o limite recomeca.\n\
          [sculpt3d]    (5) Segure o CTRL e arraste noutro sitio.\n\
          [sculpt3d]        -> Ele levanta uma CRISTA afiada, que e' o mesmo vinco ao contrario.\n\
-         [sculpt3d]    (6) Carregue em `Draw` (o primeiro da fileira) e arraste do mesmo jeito.\n\
+         [sculpt3d]    (6) Comece um traco NA BEIRADA da bola -- onde ela vira de perfil, no\n\
+         [sculpt3d]        contorno -- e puxe para o meio dela.\n\
+         [sculpt3d]        -> O sulco tem de sair INTEIRO desde a beirada, com a mesma fundura\n\
+         [sculpt3d]           que tem no meio. E' o gesto mais dificil que este pincel tem.\n\
+         [sculpt3d]    (7) Carregue em `Draw` (o primeiro da fileira) e arraste do mesmo jeito.\n\
          [sculpt3d]        -> Um monte LARGO e mole: mais do dobro da largura, e levanta em vez\n\
          [sculpt3d]           de cavar. E' essa a diferenca entre os dois.\n\
          [sculpt3d]\n\
          [sculpt3d]    DEU ERRADO SE: a linha sair larga e mole como a do `Draw`; se o vinco\n\
          [sculpt3d]    ALARGAR quanto mais voce esfrega; se ele levantar em vez de cavar sem o\n\
-         [sculpt3d]    Ctrl; ou se, sem largar o botao, ele cavar sem parar ate' furar a bola.\n"
+         [sculpt3d]    Ctrl; se, sem largar o botao, ele cavar sem parar ate' furar a bola; ou\n\
+         [sculpt3d]    se o traco do passo (6) sair PONTILHADO -- uma fileira de covinhas em\n\
+         [sculpt3d]    vez de um sulco -- junto a' beirada.\n"
     );
 }

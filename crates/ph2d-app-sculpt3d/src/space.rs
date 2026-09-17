@@ -387,11 +387,17 @@ impl Sculpt3dScene {
     /// ao traço que a tirou faria o traço seguinte picar contra uma peça que já
     /// não existe.
     pub(crate) fn fotografa_a_superficie_do_pen_down(&mut self) {
-        self.superficie_do_pen_down = self
-            .brush
-            .verb
-            .pica_na_superficie_do_pen_down()
-            .then(|| Box::new(self.objects[self.active].stack.mesh().clone()));
+        // ⚠️⚠️ **DUAS perguntas armam a MESMA fotografia, e elas não são a
+        // mesma:** uma decide de que superfície sai o **CENTRO** do dab (o
+        // projectar), a outra contra que superfície se mede **QUANDO** um dab
+        // sai (o pincel afiado, `passo_no_mundo`). Quem lê o centro continua a
+        // perguntar ao VERBO logo abaixo — se perguntasse à PRESENÇA da
+        // fotografia, armá-la para medir o passo trocaria, em silêncio, a lei
+        // do centro do outro pincel.
+        let arma = self.brush.verb.pica_na_superficie_do_pen_down()
+            || self.brush.verb.mede_o_passo_no_mundo();
+        self.superficie_do_pen_down =
+            arma.then(|| Box::new(self.objects[self.active].stack.mesh().clone()));
     }
 
     /// ⭐⭐⭐ **ONDE ESTE DAB ATERRA** — irmã do [`Self::pick_active`], e a
@@ -413,6 +419,31 @@ impl Sculpt3dScene {
     /// — a fotografia é da mesma peça, na mesma pose —, logo quem o recebe não
     /// tem de saber qual dos dois caminhos correu.
     pub(super) fn pick_do_dab(&self, x: f32, y: f32) -> Option<Hit> {
+        // ⚠️ **Pergunta ao VERBO e não à PRESENÇA da fotografia** (2026-09-16):
+        // desde que o pincel afiado a arma para medir o PASSO, a fotografia
+        // existir deixou de querer dizer que o centro sai dela.
+        if self.brush.verb.o_dab_segue_o_barro() {
+            // ⭐⭐⭐ **O MESMO PONTO DE BARRO** — o raio pica a superfície
+            // congelada e o acerto é LEVADO pela deformação até onde ele está
+            // agora (ver [`ph2d_sculpt3d::levado_pela_deformacao`], onde a
+            // medição vive). ⛔ Sem fotografia — o primeiro dab do traço — isto
+            // é o `pick_active` de sempre, e tem de ser: ali as duas superfícies
+            // são a mesma.
+            let Some(congelada) = self.superficie_do_pen_down.as_deref() else {
+                return self.pick_active(x, y);
+            };
+            let o = self.obj()?;
+            if self.isolated_index().is_some_and(|k| k != self.active) {
+                return None;
+            }
+            let mut hit = congelada.raycast(&o.pose.ray_to_local(&self.ray_at(x, y)))?;
+            hit.point = ph2d_sculpt3d::levado_pela_deformacao(congelada, o.stack.mesh(), &hit)
+                .unwrap_or(hit.point);
+            return Some(hit);
+        }
+        if !self.brush.verb.pica_na_superficie_do_pen_down() {
+            return self.pick_active(x, y);
+        }
         let Some(congelada) = self.superficie_do_pen_down.as_deref() else {
             return self.pick_active(x, y);
         };
@@ -420,6 +451,21 @@ impl Sculpt3dScene {
         // por isso são repetidas e não saltadas: sem peça não há espaço local
         // em que o acerto signifique alguma coisa, e uma peça activa ESCONDIDA
         // não pode ser esculpida por baixo do isolamento.
+        let o = self.obj()?;
+        if self.isolated_index().is_some_and(|k| k != self.active) {
+            return None;
+        }
+        congelada.raycast(&o.pose.ray_to_local(&self.ray_at(x, y)))
+    }
+
+    /// ⭐ **ONDE ESTE PONTO DO CAMINHO CAI NA SUPERFÍCIE CONGELADA** — a porta
+    /// que a lei do passo no mundo consome ([`ph2d_sculpt3d::CaminhoNoMundo`]).
+    ///
+    /// ⚠️ **Devolve `None` sem fotografia**, e quem chama cai no passo de ecrã:
+    /// uma lei de mundo sem a superfície contra que a medir não existe, e
+    /// inventar-lhe um recuo silencioso seria dar-lhe outro comportamento.
+    pub(crate) fn pick_congelado(&self, x: f32, y: f32) -> Option<Hit> {
+        let congelada = self.superficie_do_pen_down.as_deref()?;
         let o = self.obj()?;
         if self.isolated_index().is_some_and(|k| k != self.active) {
             return None;

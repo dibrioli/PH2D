@@ -75,11 +75,20 @@ mod project_mode;
 
 /// O passo e a atenuação do traço arrastado do [`Verb::Plane`] (espec §14.4).
 pub mod atenuacao_do_traco;
+/// ⭐⭐⭐ **O PASSO MEDIDO SOBRE A SUPERFÍCIE** — a cura do vinco pontilhado
+/// junto à silhueta. Ver o módulo.
+#[path = "passo_no_mundo.rs"]
+mod passo_no_mundo;
 /// ⭐⭐ **DUAS LEIS PARA A MESMA TECLA** — o que o `Ctrl` faz ao pincel de plano;
 /// ver [`plano_inversao`].
 mod plano_inversao;
 /// A memória do plano do [`Verb::Plane`] — os dois estabilizadores (espec §6).
 pub mod plano_memoria;
+pub use passo_no_mundo::{
+    CaminhoNoMundo, CarimboDoCaminho, MAX_DABS_POR_PASSO, PASSO_INICIAL_DO_CANDIDATO_PX,
+    PISO_DO_CANDIDATO_PX, levado_pela_deformacao, passo_no_mundo,
+};
+
 pub use atenuacao_do_traco::{
     ESPACAMENTO_DO_AFIADO_PCT, ESPACAMENTO_DO_PLANO_PCT, atenuacao_por_espacamento,
     espacamento_do_verbo, passo_do_traco,

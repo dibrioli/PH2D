@@ -221,6 +221,47 @@ impl Verb {
         matches!(self, Self::Plane)
     }
 
+    /// ⭐⭐⭐ **ESTE VERBO MEDE O PASSO DO TRAÇO SOBRE A SUPERFÍCIE?** — a
+    /// porta da cura do vinco pontilhado junto à silhueta
+    /// ([`crate::passo_no_mundo`]).
+    ///
+    /// ⚠️⚠️ **É OUTRA PERGUNTA que a [`Self::pica_na_superficie_do_pen_down`],
+    /// e as duas usam a mesma fotografia:** aquela decide de que superfície sai
+    /// o **CENTRO** do dab (e o nosso pincel afiado lê o centro da superfície
+    /// VIVA, que é o valor de fábrica do alvo, espec §3); esta decide contra que
+    /// superfície se mede **QUANDO** um dab sai. *Duas perguntas com a mesma
+    /// palavra — misturá-las trocaria a lei do centro em silêncio.*
+    ///
+    /// ⛔ **A superfície é a CONGELADA de propósito:** medir contra a viva é o
+    /// eixo que o alvo tem e que a espec §16.9 mede como recusa — o acerto vivo
+    /// afunda com o vinco, e a realimentação compra `10×` a profundidade junto à
+    /// borda, dependência da taxa de amostragem (`−30 %` a `−51 %`) e do sentido
+    /// do gesto (`3,3×`).
+    #[must_use]
+    pub fn mede_o_passo_no_mundo(self) -> bool {
+        matches!(self, Self::DrawSharp)
+    }
+
+    /// ⭐⭐⭐ **O CENTRO DO DAB SEGUE O BARRO, em vez do raio?** — a segunda
+    /// metade da cura da silhueta ([`crate::levado_pela_deformacao`]).
+    ///
+    /// ⚠️⚠️ **É a TERCEIRA pergunta sobre a mesma fotografia, e as três são
+    /// diferentes:** a [`Self::pica_na_superficie_do_pen_down`] manda o centro
+    /// vir da superfície CONGELADA (e o vinco deixaria de se auto-limitar); a
+    /// [`Self::mede_o_passo_no_mundo`] manda o PASSO ser medido nela; esta manda
+    /// o centro ser o **mesmo ponto de barro** — picado na congelada e levado
+    /// pela deformação até onde ele está agora. *A terceira tem a
+    /// auto-limitação da primeira e a estabilidade da segunda.*
+    ///
+    /// ⚠️ **Fica com o mesmo verbo que a irmã, e em porta separada na mesma:**
+    /// as duas metades são medíveis em separado (a sonda da bancada mede-as), e
+    /// juntá-las numa porta só faria a próxima medição ter de as separar outra
+    /// vez.
+    #[must_use]
+    pub fn o_dab_segue_o_barro(self) -> bool {
+        matches!(self, Self::DrawSharp)
+    }
+
     /// **ESTE PINCEL NASCE A AFUNDAR?** — a direcção de FÁBRICA do verbo, que o
     /// `Ctrl` inverte ([`crate::Brush::reach`]).
     ///

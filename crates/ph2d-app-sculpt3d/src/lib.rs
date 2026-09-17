@@ -181,6 +181,12 @@ mod scenes_router_tests;
 #[path = "host_contract_tests.rs"]
 mod host_contract_tests;
 
+/// ⭐⭐⭐ **A ROTA da cura do vinco pontilhado dentro do app** — os quatro sítios
+/// que ligam a lei do passo no mundo ao gesto. Ver o cabeçalho.
+#[cfg(test)]
+#[path = "caminho_no_mundo_tests.rs"]
+mod caminho_no_mundo_tests;
+
 /// ⭐⭐ **Todo gate que a família NOMEIA existe** — o censo que teria apanhado os oito.
 #[cfg(test)]
 #[path = "named_gates_census_tests.rs"]

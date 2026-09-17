@@ -80,6 +80,7 @@ fn actions() -> InspectorActionInfo {
             "Toggle Visibility".into(),
             "Play Sound".into(),
             "Stop Sound".into(),
+            "Add to Counter".into(),
         ],
         selected_count: 1,
     }

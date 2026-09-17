@@ -17,7 +17,30 @@ fn corpo(
 ) -> f32 {
     let mut cur_y = y;
 
-    // ── A RAIZ ───────────────────────────────────────────────────────────────
+    cur_y = bloco_raiz(scene, text_system, theme, hit_index, store, x, w, cur_y, i);
+    cur_y = bloco_rotulo(scene, text_system, theme, hit_index, store, x, w, cur_y, i);
+    cur_y = bloco_botao(scene, text_system, theme, hit_index, store, x, w, cur_y, i);
+    cur_y = bloco_contador(scene, text_system, theme, hit_index, store, x, w, cur_y, i);
+    cur_y
+}
+
+/// **A RAIZ** — irmão de [`corpo`] por tecto de LOC de FUNÇÃO (200).
+///
+/// ⚠️ O corte é por RESPONSABILIDADE e não por contagem: cada bloco é **um componente**,
+/// e a `corpo` fica a ser o ÍNDICE dos quatro — que é como ela já se lia.
+#[allow(clippy::too_many_arguments)]
+fn bloco_raiz(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    i: &InspectorHudInfo,
+) -> f32 {
+    let mut cur_y = y;
     if i.has_canvas {
         for n in [N::RefWidth, N::RefHeight] {
             cur_y = num_row(scene, text_system, theme, hit_index, store, x, w, cur_y, n);
@@ -53,8 +76,26 @@ fn corpo(
             );
         }
     }
+    cur_y
+}
 
-    // ── O RÓTULO ─────────────────────────────────────────────────────────────
+/// **O RÓTULO** — irmão de [`corpo`] por tecto de LOC de FUNÇÃO (200).
+///
+/// ⚠️ O corte é por RESPONSABILIDADE e não por contagem: cada bloco é **um componente**,
+/// e a `corpo` fica a ser o ÍNDICE dos quatro — que é como ela já se lia.
+#[allow(clippy::too_many_arguments)]
+fn bloco_rotulo(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    i: &InspectorHudInfo,
+) -> f32 {
+    let mut cur_y = y;
     if i.has_label {
         cur_y = seg_row(
             scene,
@@ -133,8 +174,26 @@ fn corpo(
             }
         }
     }
+    cur_y
+}
 
-    // ── O BOTÃO ──────────────────────────────────────────────────────────────
+/// **O BOTÃO** — irmão de [`corpo`] por tecto de LOC de FUNÇÃO (200).
+///
+/// ⚠️ O corte é por RESPONSABILIDADE e não por contagem: cada bloco é **um componente**,
+/// e a `corpo` fica a ser o ÍNDICE dos quatro — que é como ela já se lia.
+#[allow(clippy::too_many_arguments)]
+fn bloco_botao(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    i: &InspectorHudInfo,
+) -> f32 {
+    let mut cur_y = y;
     if i.has_button {
         if let Some(idx) = ph2d_editor_core::hud_edits::HUD_TEXTS
             .iter()
@@ -192,8 +251,26 @@ fn corpo(
             );
         }
     }
+    cur_y
+}
 
-    // ── O CONTADOR ───────────────────────────────────────────────────────────
+/// **O CONTADOR** — irmão de [`corpo`] por tecto de LOC de FUNÇÃO (200).
+///
+/// ⚠️ O corte é por RESPONSABILIDADE e não por contagem: cada bloco é **um componente**,
+/// e a `corpo` fica a ser o ÍNDICE dos quatro — que é como ela já se lia.
+#[allow(clippy::too_many_arguments)]
+fn bloco_contador(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    i: &InspectorHudInfo,
+) -> f32 {
+    let mut cur_y = y;
     if i.has_counter {
         if let Some(idx) = ph2d_editor_core::hud_edits::HUD_TEXTS
             .iter()

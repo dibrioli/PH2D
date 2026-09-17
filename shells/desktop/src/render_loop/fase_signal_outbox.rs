@@ -10,6 +10,20 @@
 use super::*;
 use ph2d_i18n::tr_with;
 
+/// ⭐ **O diagnóstico do dreno, e ele IMPRIME MESMO A ZERO** — é esse o caso que interessa: um
+/// sinal que soa e não resolve efeito nenhum é o modo de falha MUDO desta tabela (um reactor sem
+/// `StableId` não entra na consulta do `resolve`, e o toast aparece na mesma).
+///
+/// ⚠️ Vive fora da fase por TECTO DE FUNÇÃO — e é o sítio certo: ela não decide nada do quadro.
+///
+/// ⚠️ **A guarda entra AQUI e não na fase** — pelo tecto de função dela, e porque «imprimir ou não»
+/// é assunto do diagnóstico, não do quadro.
+fn diga_o_que_resolveu(ligado: bool, nomes: &[&str], efeitos: usize) {
+    if ligado {
+        eprintln!("[signal] {nomes:?} -> {efeitos} efeito(s)");
+    }
+}
+
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_signal_outbox(
@@ -187,12 +201,7 @@ impl crate::App {
                 // ⚠️ **A ÁRVORE DE TAGS entra aqui** (TOP-20 #9): uma linha com alvo por TAG pergunta
                 // quem pertence à subárvore dela; uma por nome nunca a lê.
                 let efeitos = ph2d_ecs::resolve_signal_actions(sim.world_mut(), tags, &nomes);
-                if self.signal_readers.logging() {
-                    // ⭐ **Imprime mesmo quando dá ZERO, e é esse o caso que interessa:** um
-                    // sinal que soa e não resolve efeito nenhum é o modo de falha MUDO desta
-                    // tabela (um reactor sem `StableId` não entra na consulta do `resolve`).
-                    eprintln!("[signal] {nomes:?} -> {} efeito(s)", efeitos.len());
-                }
+                diga_o_que_resolveu(self.signal_readers.logging(), &nomes, efeitos.len());
                 if !efeitos.is_empty() {
                     let r = signal_actions::apply(
                         sim,

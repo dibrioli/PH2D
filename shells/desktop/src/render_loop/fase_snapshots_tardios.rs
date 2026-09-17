@@ -24,7 +24,6 @@ use ph2d_script::ScriptHost;
 /// derivado do mundo pela MESMA porta que o desenho usa (`ph2d_ecs::hud::texto`), e uma consulta
 /// do `bevy` pede `&mut World`. *Uma segunda conta aqui seria a segunda resposta a «o que este
 /// rótulo diz?», e as duas divergiriam no dia em que uma fonte nova entrasse.*
-#[allow(clippy::too_many_arguments)]
 pub(super) fn publica(
     sim: &mut SimWorld,
     tags: &ph2d_tags::TagTree,
@@ -33,8 +32,20 @@ pub(super) fn publica(
     escolhido: Option<u64>,
     quantos: usize,
     a_correr: bool,
-    tem_camera: bool,
 ) {
+    // ⚠️ **A pergunta é «há CÂMERA DE JOGO na cena?»**, e não «a pré-visualização está ligada»: o
+    // canvas cola-se à vista dela em qualquer dos casos, e é a AUSÊNCIA da câmera que deixa o HUD
+    // onde o artista o pôs. ⭐ Ela mora AQUI e não na fase-mãe porque é uma pergunta ao MUNDO —
+    // que é o que esta fase-filha tem em mãos — e porque o tecto daquela função é para o que ela
+    // COMPÕE, não para o que ela calcula.
+    let tem_camera = {
+        let world = sim.world_mut();
+        world
+            .query::<&ph2d_ecs::GameCamera>()
+            .iter(world)
+            .next()
+            .is_some()
+    };
     ph2d_panel_inspector::set_current_inspector_script(escolhido.and_then(|b| {
         ph2d_app_components::script_inspector::build_info(sim, script, b, quantos, a_correr)
     }));

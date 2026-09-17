@@ -156,7 +156,7 @@ pub const INSP_ACTION_ROW: [NodeId; 16] = [
 /// até 2026-09-09 (*«as actions deveriam ficar num dropdown e não em muitos botões»*, report do
 /// dono): passaram a ser as linhas do popover **sem mudar de significado**, que é o que manteve o
 /// despacho — `position(|&o| o == id)` — intacto.
-pub const INSP_ACTION_VERB: [NodeId; 7] = [
+pub const INSP_ACTION_VERB: [NodeId; 8] = [
     hash_node_id("insp_action_verb_start"),
     hash_node_id("insp_action_verb_stop"),
     hash_node_id("insp_action_verb_show"),
@@ -164,6 +164,9 @@ pub const INSP_ACTION_VERB: [NodeId; 7] = [
     hash_node_id("insp_action_verb_toggle"),
     hash_node_id("insp_action_verb_play_sound"),
     hash_node_id("insp_action_verb_stop_sound"),
+    // ⚠️ **APENDADO, e nunca no meio** — a posição é a tag, logo inserir um id acima faria todo
+    // `SignalAction` já gravado mudar de verbo, em silêncio. (TOP-20 #20: o `Add to counter`.)
+    hash_node_id("insp_action_verb_add_to_counter"),
 ];
 
 /// **As opções do filtro por tag da §11 Physics** (TOP-20 #9, W3c).

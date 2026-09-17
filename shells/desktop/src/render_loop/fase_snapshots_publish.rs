@@ -214,15 +214,6 @@ impl crate::App {
         // ganhar o emissor) **e é o certo por RESPONSABILIDADE**: as duas leem coisas que não estão
         // no mundo (a VM dos scripts, o relógio e as partículas vivas da corrida), e por isso é que
         // nenhuma delas cabe na lista de argumentos do `publish`.
-        // ⭐ Há câmera de jogo na cena? — a razão de o canvas se colar (ou não) a alguma coisa.
-        let tem_camera_de_jogo = {
-            let world = sim.world_mut();
-            world
-                .query::<&ph2d_ecs::GameCamera>()
-                .iter(world)
-                .next()
-                .is_some()
-        };
         tardios::publica(
             sim,
             tags,
@@ -231,10 +222,6 @@ impl crate::App {
             hero.gizmo.selection,
             hero.gizmo.selected_len(),
             self.playhead.is_playing(),
-            // ⚠️ **A pergunta é «há CÂMERA DE JOGO na cena?»**, e não «a pré-visualização está
-            // ligada»: o canvas cola-se à vista dela em qualquer dos casos, e é a AUSÊNCIA da
-            // câmera que deixa o HUD onde o artista o pôs.
-            tem_camera_de_jogo,
         );
         Some(tool_preview_bits)
     }

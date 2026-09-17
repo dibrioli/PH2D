@@ -304,3 +304,47 @@ fn o_sinal_chega_ao_contador_pelo_nome_e_so_com_identidade() {
     assert_eq!(efeitos[0].verb, SignalVerb::AddToCounter);
     assert_eq!(efeitos[0].arg, "1");
 }
+
+/// ⭐⭐⭐ **Um clique no RÓTULO de um botão é um clique no botão** — as três metades, porque as três
+/// falham por motivos diferentes.
+///
+/// A auto-conferência da cena mediu o defeito que isto cura: no centro do `+10` o hit-test de
+/// objecto devolve o caminho do RÓTULO, que é a forma mais ao topo a conter o ponto. Sem a subida
+/// da cadeia, o alvo maior da tela é o único inalcançável no meio dele.
+///
+/// ⚠️ A 3.ª metade é a que impede a cura barata: se a resposta fosse *«o ancestral mais próximo com
+/// qualquer coisa»*, uma forma solta do canvas passaria a carregar num botão que não é dela.
+#[test]
+fn o_dedo_no_rotulo_de_um_botao_encontra_o_botao() {
+    let mut w = mundo();
+    let botao = w.spawn(UiButton::default()).id();
+    let rotulo = w.spawn((crate::ChildOf(botao), UiLabel::default())).id();
+    let estranho = w.spawn(UiLabel::default()).id();
+
+    assert_eq!(
+        super::botao_de(&w, rotulo),
+        Some(botao),
+        "o rótulo pertence ao botão — é ele que o dedo pressiona"
+    );
+    assert_eq!(
+        super::botao_de(&w, botao),
+        Some(botao),
+        "o próprio botão continua a responder por si"
+    );
+    assert_eq!(
+        super::botao_de(&w, estranho),
+        None,
+        "uma forma que não vive sob botão nenhum não pressiona nada"
+    );
+}
+
+/// ⛔ **E um CICLO de `ChildOf` não pendura o quadro.** A cerca é a mesma do `container_of` do
+/// envelope, e existe porque um pai pode ser reescrito por um gesto de reparent.
+#[test]
+fn a_subida_da_cadeia_tem_fundo() {
+    let mut w = mundo();
+    let a = w.spawn_empty().id();
+    let b = w.spawn(crate::ChildOf(a)).id();
+    w.entity_mut(a).insert(crate::ChildOf(b));
+    assert_eq!(super::botao_de(&w, b), None, "sem botão na cadeia: `None`");
+}

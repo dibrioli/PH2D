@@ -46,6 +46,22 @@ use ph2d_vec_entities::entities::VecEntityMap;
 /// `blend_live` só reescreve o spine enquanto `!spine_authored`, e a detecção de autoria
 /// compara o `verts` inteiro — onde o `corner_radius` mora. Arrastar a alça **é** o gesto
 /// que assume o spine, então o raio sobrevive. Há gate a pinar isso nos dois sentidos.
+/// **O RÓTULO DE HUD é RECUSADO, e por CONSTRUÇÃO — não por uma linha nova.**
+///
+/// O `hud_label_live` é o 10.º produtor de `LiveGeometry` e reescreve a geometria pela mesma
+/// porta do envelope (`replace_cooked`), todo frame em que o número muda. Um raio autorado
+/// numa quina de glyph não sobreviveria a um tique do relógio — é o modo de falha deste
+/// módulo, na sua forma mais rápida.
+///
+/// ⭐ **Ele já cai no primeiro braço, e isso é uma propriedade do HOST e não uma coincidência:**
+/// aquele passe só olha entidades cujo `VecShape` é `Text` (o `UiLabel` sozinho não produz
+/// geometria nenhuma — foi o que a foto disse, com o rótulo a desaparecer da tela). Logo a
+/// pergunta *«há uma receita pendurada?»* já responde `true` ali. Há gate nas duas metades, e a
+/// segunda lê o SELECTOR do host: sem ela, o dia em que alguém desenhar um rótulo sem
+/// `VecShape` faria a recusa evaporar-se em silêncio.
+///
+/// ⛔ **A saída do blend não serve aqui:** lá a escrita PARA quando o artista assume o spine;
+/// aqui nada a pára — o texto é derivado de um contador, e o contador é do jogo.
 #[must_use]
 pub(crate) fn has_derived_verts(
     sim: &SimWorld,

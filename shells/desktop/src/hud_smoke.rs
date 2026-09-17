@@ -102,14 +102,14 @@ impl crate::App {
         if std::env::var_os("PH2D_HUD_SMOKE").is_none() {
             return;
         }
-        match self.components_smokes.hud {
+        match self.components.smokes.hud {
             0 => {
                 self.hud_smoke_mundo();
-                self.components_smokes.hud = 1;
+                self.components.smokes.hud = 1;
             }
             1 => {
                 self.hud_smoke_veste();
-                self.components_smokes.hud = 2;
+                self.components.smokes.hud = 2;
             }
             _ => self.hud_smoke_traz_o_inspector(),
         }
@@ -117,13 +117,76 @@ impl crate::App {
 
     /// Traz o Inspector à frente no encaixe dele, por alguns quadros.
     fn hud_smoke_traz_o_inspector(&mut self) {
-        if self.components_smokes.hud_raise == 0 {
+        if self.components.smokes.hud_raise == 0 {
             return;
         }
-        self.components_smokes.hud_raise -= 1;
+        self.components.smokes.hud_raise -= 1;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
         }
+        if self.components.smokes.hud_raise == 0 {
+            self.hud_smoke_confere_o_dedo();
+        }
+    }
+
+    /// ⭐⭐⭐ **O botão é alcançável PELO DEDO?** — a pergunta que o TOP-20 #15 pagou caro
+    /// (*«a cena estava certa como DADOS e era impossível como GESTO»*), corrida aqui porque o
+    /// gesto real não é reproduzível no ecrã virtual (o XTest é ignorado e o `ydotool` move o rato
+    /// REAL do dono).
+    ///
+    /// ⚠️ **No ÚLTIMO quadro da subida, e não no da montagem:** a pose do canvas é conduzida pela
+    /// `fase_hud`, logo no quadro em que as peças nascem o botão ainda está na pose autorada — a
+    /// conferência ali mediria outro programa.
+    fn hud_smoke_confere_o_dedo(&mut self) {
+        let mapa = self.vec.entities.clone();
+        let tol = 10.0 * self.vec_px_to_world();
+        let Some(gfx) = self.gfx.as_ref() else {
+            return;
+        };
+        // O caminho do botão: o único cujo dono carrega um `UiButton`.
+        let Some((&id, &bits)) = mapa.iter().find(|&(_, &b)| {
+            gfx.sim
+                .world()
+                .get::<UiButton>(Entity::from_bits(b))
+                .is_some()
+        }) else {
+            eprintln!("[hud-smoke] ⛔ nenhum caminho carrega um UiButton");
+            return;
+        };
+        let t = ph2d_vec_entities::transform::world_transform(&gfx.sim, Entity::from_bits(bits));
+        let centro = [f64::from(t.translation.x), f64::from(t.translation.y)];
+        let achou = self.vec.pen.path_at(&gfx.vec_scene, centro, tol);
+        // ⚠️ **As COLUNAS do porquê, e não só o veredito** — um `NAO` sem elas manda procurar em
+        // três camadas de uma vez (a pose, o afim, a elegibilidade). O afim é reconstruído pela
+        // MESMA porta do quadro (`transform::build`), logo isto não é uma segunda resposta.
+        let xf_todos = ph2d_vec_entities::transform::build(&gfx.sim, &mapa);
+        let xf = ph2d_vec_scene::xform_of(&xf_todos, id);
+        let local = xf.inverse().map_or(centro, |inv| inv.apply(centro));
+        let dist = gfx
+            .vec_scene
+            .paths()
+            .iter()
+            .find(|q| q.id == id)
+            .and_then(|q| ph2d_vec_scene::nearest_point_on_path(q, local, 64))
+            .map_or(f64::INFINITY, |(_, _, d2)| d2.sqrt() * xf.mean_scale());
+        // ⭐⭐ **O veredito passa pela LEI do produto, e não por uma comparação de ids** — o dedo
+        // aterra no RÓTULO e é a subida da cadeia que faz disso o botão. Comparar `achou == id`
+        // media outro programa: reprovava a cena com o clique a funcionar, e aprovaria um dia em
+        // que o rótulo saísse de cima do corpo com a fiação partida.
+        let dono = achou
+            .and_then(|a| mapa.get(&a).copied())
+            .and_then(|b| ph2d_ecs::hud::botao_de(gfx.sim.world(), Entity::from_bits(b)));
+        eprintln!(
+            "[hud-smoke] o dedo alcanca o botao: {} (centro de mundo {centro:?}, achou={achou:?}, \
+             esperado={id:?}, dono={dono:?}, tolerancia={tol:.3}, local={local:?}, escala={:.3}, \
+             dist_mundo={dist:.3})",
+            if dono == Some(Entity::from_bits(bits)) {
+                "SIM"
+            } else {
+                "NAO"
+            },
+            xf.mean_scale()
+        );
     }
 
     /// Quadro 1: o mundo da cena da câmera, mais as formas do HUD.
@@ -133,7 +196,7 @@ impl crate::App {
         if let Some(mut cx) = self.components_ctx() {
             ph2d_app_components::camera_2d_smoke::game_camera_smoke(&mut cx);
         }
-        self.components_smokes.game_camera = true;
+        self.components.smokes.game_camera = true;
         self.game_camera_preview = true;
         // ⚠️⚠️ **O relógio tem de ANDAR, e são QUATRO linhas e não uma** — a foto apanhou-o: com só
         // o `play()` a régua ficava em `0`, o contador em `0` e a contagem em `30.0 s` para sempre,
@@ -250,13 +313,22 @@ impl crate::App {
             (e_pontos, pend.pontos.local),
             (e_resta, pend.resta.local),
             (e_botao, pend.botao.local),
-            (e_rotulo, pend.rotulo.local),
         ] {
             world.entity_mut(e).insert((
                 ChildOf(canvas),
                 Transform::from_translation(ph2d_core::Vec2::new(p[0], p[1])),
             ));
         }
+        // ⛔⛔ **O rótulo é filho do BOTÃO, e isso é a FIAÇÃO e não arrumação** — a
+        // auto-conferência mediu-o: o dedo no centro do `+10` devolve o caminho do TEXTO, porque o
+        // hit-test de objecto entrega a forma mais ao topo que contém o ponto. É a subida da cadeia
+        // (`ph2d_ecs::hud::botao_de`) que faz disso um clique no botão, e ela precisa que a cadeia
+        // EXISTA. ⚠️ Pose local `(0, 0)`: a posição é herdada, e escrever `(0, −5)` outra vez
+        // somaria duas vezes o mesmo deslocamento — o rótulo sairia da tela por baixo.
+        world.entity_mut(e_rotulo).insert((
+            ChildOf(e_botao),
+            Transform::from_translation(ph2d_core::Vec2::ZERO),
+        ));
 
         // ── OS DOIS RÓTULOS ──────────────────────────────────────────────────
         world.entity_mut(e_pontos).insert((
@@ -343,7 +415,7 @@ impl crate::App {
             hero.gizmo.selection = Some(e_pontos.to_bits());
             hero.gizmo.extra_selection.clear();
         }
-        self.components_smokes.hud_raise = 3;
+        self.components.smokes.hud_raise = 3;
         eprintln!(
             "[hud-smoke] o mundo ROLA e o HUD NAO: setas movem o heroi · o relogio soma 1 ponto a \
              cada 2 s · o botao +10 soma dez · a contagem desce sozinha. O rotulo dos pontos abre \

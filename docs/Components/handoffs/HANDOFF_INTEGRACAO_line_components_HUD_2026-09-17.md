@@ -81,6 +81,7 @@ redimensionar a moldura por quadro, que é escrever no DOCUMENTO.
 | `TimerState::default()` arranca | ele nasce **PARADO** — o doc do `timer::born` di-lo por escrito |
 | o placar reage porque tem `SignalActions` | a identidade só é dada a quem tem `Transform` **ou** `ChildOf`, e o `resolve` colhe reactores com `&StableId` ⇒ **um reactor sem pose é invisível, em silêncio** |
 | o nome do campo cabe no `placeholder` | um placeholder desaparece quando o campo tem valor — que é quando o nome faz falta |
+| o botão é alcançável porque o corpo dele é grande | o dedo aterra no **RÓTULO** — o hit-test de objecto entrega *a forma mais ao topo que contém o ponto*, e o `+10` é desenhado por cima. Sem a subida da cadeia, o alvo maior da tela é o único inalcançável **no meio dele** |
 
 ## §6 — Gates e provas
 
@@ -90,7 +91,14 @@ redimensionar a moldura por quadro, que é escrever no DOCUMENTO.
 * `ph2d-app-components`: 6 da ponte + 7 do instantâneo/dreno.
 * `ph2d-editor-core`: 4 do vocabulário.
 * ⚠️ **O clique do botão prova-se na LEI**, não na foto: eventos sintéticos não chegam à Xwayland
-  virtual e o `ydotool` move o rato REAL do dono (proibido).
+  virtual e o `ydotool` move o rato REAL do dono (proibido). ⭐ O que a CENA prova de si mesma é a
+  outra metade — *que a forma sob o dedo resolve para o botão* —, e ela leu `NAO` até a lei existir.
+* ⛔ **O `hud_label_live` é o 10.º produtor de `LiveGeometry`, logo a política das QUINAS teve de o
+  julgar** (`corner_handles.rs`): **recusado**, e já por construção — aquele passe só olha entidades
+  cujo `VecShape` é `Text`, e o primeiro braço de `has_derived_verts` cobre isso. ⚠️ Mas *«já é
+  verdade»* e *«é afirmado»* são coisas diferentes: o gate tem **duas** metades, e a segunda lê o
+  SELECTOR do host, senão o dia em que alguém desenhar um rótulo sem `VecShape` faz a recusa
+  evaporar-se em silêncio — que é exactamente como esta política falhou por quatro objectos.
 
 ## §7 — ABERTO, e de quem é cada um
 
@@ -101,6 +109,29 @@ redimensionar a moldura por quadro, que é escrever no DOCUMENTO.
   o editor pinta num sub-rectângulo. Numa janela de jogo é exacto. **Decisão de produto.**
 * ⏳ O `UiButton` só é alcançável por um caminho **vectorial** (`path_at`): um botão feito de
   *sprite* não é pego. Nomeado, não construído.
+* ✅ **FECHOU, e a auto-conferência achou um DEFEITO a sério — não era o gate que faltava, era a
+  lei.** A cena passou a perguntar-se a si mesma se o dedo alcança o botão (`hud_smoke_confere_o_dedo`,
+  no último quadro da subida, porque a pose do canvas é conduzida), e ela leu **`NAO`**. ⚠️ **O
+  veredito sozinho manda procurar em três camadas** (a pose, o afim, a elegibilidade) ⇒ as colunas,
+  e elas resolveram-no numa corrida: `local=[0.0, 0.0]` (o afim está certo — o centro do mundo cai
+  na origem local do corpo), `dist_mundo=0.556` contra `tolerancia=0.099` (o contorno está longe, e
+  bem), e **`achou=Some(2)` com `esperado=3`**.
+  ⛔⛔⛔ **O `2` é o RÓTULO.** O `path_at` cai no ramo do preenchimento e devolve *a forma mais ao
+  topo que contém o ponto* — e o `+10` é desenhado por cima do corpo. ⇒ **carregar no meio do botão
+  não o pressionava**; só a margem à volta das letras funcionaria. *O alvo maior da tela era o único
+  inalcançável no meio dele.*
+  ⭐⭐ **A cura são DUAS metades, e nenhuma basta:** a LEI ([`ph2d_ecs::hud::botao_de`]) sobe a cadeia
+  de `ChildOf` — um clique em qualquer descendente de um botão é um clique no botão, que é o que
+  toda a interface que existe faz —, e a CENA passa a pendurar o rótulo **no botão** (pose local
+  `(0,0)`: a posição é herdada, e repetir o `(0,−5)` somava o deslocamento duas vezes).
+  ⚠️ **É a MESMA FORMA da política das quinas**, um nível acima: *o componente mora no CONTAINER, e
+  a pergunta SOBE a cadeia em vez de olhar só a própria entidade* (o `container_of` do envelope, o
+  mesmo `MAX_PROFUNDIDADE`, a mesma cerca contra um ciclo de `ChildOf`).
+  ⭐ **E o veredito passa agora pela PORTA DO PRODUTO** e não por uma comparação de ids: `achou=Some(2)`
+  continua a ser o rótulo, e o que se afirma é `dono == a entidade do botão`. *Comparar `achou == id`
+  media outro programa — reprovava a cena com o clique a funcionar, e aprovaria o dia em que o rótulo
+  saísse de cima do corpo com a fiação partida.* Hoje lê **`SIM`**, com três gates (os dois da folha
+  + o `disabled`/nome em branco que já lá estava).
 * ⏳ O gizmo do canvas: arrastar a raiz não faz nada (a pose é conduzida) — hoje o painel **di-lo**;
   desenhar a caixa de referência no canvas é wave própria.
 
@@ -112,3 +143,40 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_HUD
 
 Diagnóstico: `PH2D_HUD_LOG=1` (a vista e quantos canvas conduzidos) · `PH2D_SIGNAL_LOG=1` (os
 sinais, os efeitos resolvidos — **imprime mesmo a zero**, que é o caso mudo — e o contador).
+
+## §9 — Os QUATRO vermelhos que só o PORTÃO viu (e o quinto, que é carga)
+
+⚠️ **Nenhum deles é da crate-folha nem da lei** — os quatro são *costura*, e três vivem em `tests/it/`
+de crates que a linha não corre no laço interno (a família que o `CLAUDE.md` §2 nomeia).
+
+1. ⛔⛔ **O verbo novo existia e o artista não lhe chegava.** `SignalVerb::ALL` foi a `8` e o
+   `INSP_ACTION_VERB` ficou em `7` ⇒ *o `Add to Counter` era inalcançável pelo seletor*. O id entra
+   **APENDADO**, pela mesma razão do enum: a posição **é** a tag, e um id no meio reescreveria o
+   verbo de toda linha de acção já gravada, em silêncio. ⭐ E a fixtura escrita à mão do painel
+   **disse que era ela a velha** — a cerca `assert_fixture_covers_the_model` fez exactamente o que o
+   doc dela promete, e o sintoma sem ela seria *«a entrada 7 não foi pintada»*, que se lê como
+   defeito do painel.
+2. ⭐⭐ **A lei da CAIXA DE OBJECTO acordou, e a resposta é NÃO** (`ramo_botao_do_hud` é o 4.º ramo a
+   receber o `on_canvas`). Escrita no gate, com mecanismo: a condição é indexada pela **ferramenta na
+   mão** e o HUD não é uma — o eixo dele é *«o relógio anda?»*, e suprimir a caixa por aí tirava a
+   selecção e o gizmo de toda cena a correr. E o modo de falha é de outra ordem: para quem autora a
+   caixa mata o gesto **sempre**; aqui ela só ensombra o botão quando calha por cima, e o que
+   acontece então é o editor a fazer o que faz — seleccionar.
+3. **Tecto de LOC de FUNÇÃO** (`sections/hud_corpo.rs::corpo`, `227` contra `200`) — curado por
+   **CORTE**: os quatro blocos viram `bloco_raiz`/`bloco_rotulo`/`bloco_botao`/`bloco_contador` e a
+   `corpo` fica a ser o **ÍNDICE** deles, que é como ela já se lia. ⛔ Nenhuma entrada nova no
+   `FN_OVERAGE_OK`.
+4. **Tecto de LOC de FICHEIRO** (`app_state.rs`, `981` contra `976`) — curado por **CORTE**, e as
+   duas metades são reais: a prosa do campo `components` estava escrita **duas vezes** (o irmão
+   di-la em full) ⇒ uma linha com ponteiro; e uma **doc ÓRFÃ** do `PH2D_NEST_SMOKE` vivia 48 linhas
+   acima do campo dela, sobre um vizinho que já tinha a sua — *duas docs contraditórias num campo e
+   nenhuma noutro*. ⚠️⚠️ **Fica em `976`, exactamente no tecto**: para o INTEGRADOR, este é um
+   ficheiro com **zero folga** numa rodada em que o tecto de LOC é a grandeza que soma entre linhas
+   sem ninguém a contar (`CLAUDE.md` §5.0).
+
+⚠️ **O quinto é CARGA e pede promoção à lista do §5.0:**
+`measure_input_cost::the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
+([`ph2d-tool-painter`](../../../crates/ph2d-tool-painter/)) — reprovou no meio de um fan-out de
+**15 009** testes e passa **3 de 3 sozinho a `load 14–22`**, com **zero linhas** do diff desta linha
+naquela crate (`git diff --stat <merge-base> -- crates/ph2d-tool-painter/` vem vazio). É um gate que
+compara um custo medido contra um número — a forma canónica da família.

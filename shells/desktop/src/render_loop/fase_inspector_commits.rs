@@ -28,6 +28,8 @@ mod statemachine_commits;
 /// ⭐⭐⭐ A fase-filha das edições do SCRIPT (TOP-20 #16) — irmã das de cima.
 #[path = "fase_script_commits.rs"]
 mod script_commits;
+#[path = "fase_inspector_commits_top20.rs"]
+mod top20_commits;
 
 /// ⭐⭐⭐ A fase-filha das edições da secção TAGS — irmã das de cima, e pelo mesmo tecto.
 #[path = "fase_tags_commits.rs"]
@@ -249,11 +251,8 @@ impl crate::App {
         inspector_queue_dirty |= statemachine_commits::aplicar(sim, &statemachine_edits);
         // ⭐ O SCRIPT (TOP-20 #16) — fase-filha (o tecto de LOC desta função pôs-no lá).
         inspector_queue_dirty |= script_commits::aplicar(sim, &script_edits);
-        // ⭐ O EMISSOR DE PARTÍCULAS (TOP-20 #18) — o corpo mora na família; aqui é uma linha.
-        inspector_queue_dirty |=
-            ph2d_app_components::particles_inspector::apply_all(sim, &particles_edits);
-        // ⭐ O HUD (TOP-20 #20) — o corpo mora na família; aqui é uma linha.
-        inspector_queue_dirty |= ph2d_app_components::hud_inspector::apply_all(sim, &hud_edits);
+        // ⭐ O EMISSOR (#18) e o HUD (#20) — fase-filha, pelo tecto desta função.
+        inspector_queue_dirty |= top20_commits::aplicar(sim, &particles_edits, &hud_edits);
         // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — na fase-filha, pela mesma razão das irmãs acima e
         // pelo mesmo tecto de LOC (esta função chegou a `202` contra `200` ao ganhar o cérebro).
         // ⛔ *Partir por RESPONSABILIDADE, nunca subir o número* — e a fronteira já estava escrita

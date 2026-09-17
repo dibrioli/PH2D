@@ -162,3 +162,59 @@ fn a_blend_spine_is_not_derived_because_authoring_it_stops_the_rewrite() {
         "o spine se auto-autora: a escrita dele é condicional, não incondicional"
     );
 }
+
+/// **Um RÓTULO DE HUD é derivado — e o segundo `assert` é o que impede isto de virar coincidência.**
+///
+/// O `hud_label_live` (o 10.º produtor de `LiveGeometry`) recozinha os glyphs pela mesma porta do
+/// envelope (`replace_cooked`) em todo quadro em que o número muda. Um raio autorado numa quina de
+/// glyph morreria no tique seguinte do relógio — o modo de falha deste módulo, na forma mais
+/// rápida que ele tem.
+///
+/// ⭐ **A recusa já sai do PRIMEIRO braço**, porque aquele passe só olha entidades cujo `VecShape`
+/// é `Text`: um `UiLabel` sozinho não produz geometria nenhuma (foi o que a foto disse, com o
+/// rótulo a desaparecer da tela). ⚠️ Mas *«já é verdade»* e *«é afirmado»* são coisas diferentes:
+/// sem a 2.ª metade, o dia em que alguém desenhasse um rótulo sem `VecShape` faria a recusa
+/// evaporar-se em silêncio, que é exactamente como esta política falhou por quatro objectos.
+#[test]
+fn a_hud_label_is_derived_because_the_live_text_recooks_it_every_frame() {
+    let params =
+        crate::vec_text_object::text_params_for_test(&ph2d_app_vec::text_edit::VecTextEdit {
+            origin: [0.0, 0.0],
+            size: 1.0,
+            weight: 600.0,
+            line_height: 1.25,
+            tracking: 0.0,
+            align: ph2d_vec_text::TextAlign::Left,
+            extra_axes: Vec::new(),
+            family: None,
+            fill: None,
+            stroke: None,
+            text: "Pontos: 0".to_owned(),
+            wrap_width: None,
+            id: None,
+            center: [0.0, 0.0],
+        });
+    let (sim, map, id) = square_with(|sim, e| {
+        sim.world_mut().entity_mut(e).insert((
+            VecShape::Text(params),
+            ph2d_ecs::UiLabel {
+                source: ph2d_ecs::LabelSource::Counter("pontos".to_owned()),
+                prefix: "Pontos: ".to_owned(),
+                suffix: String::new(),
+            },
+        ));
+    });
+    assert!(
+        has_derived_verts(&sim, &map, id),
+        "o rótulo de HUD é recozido todo quadro — a quina não sobreviveria a um tique"
+    );
+
+    // A 2.ª metade: a recusa é uma propriedade do HOST, lida do ficheiro que a produz.
+    let host = include_str!("hud_label_live.rs");
+    assert!(
+        host.contains("VecShape::Text"),
+        "o `hud_label_live` deixou de seleccionar por `VecShape::Text` — a recusa acima passou a \
+         ser coincidência, e um rótulo sem receita pendurada ganharia quina editável que morre no \
+         quadro seguinte. Decida outra vez em `corner_handles.rs`."
+    );
+}

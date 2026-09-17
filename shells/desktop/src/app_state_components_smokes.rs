@@ -8,6 +8,34 @@
 //! `components_scenes`: um latch dentro dela seria a família a ter opinião sobre **quando** o
 //! quadro a chama.
 
+/// ⭐⭐⭐ **O estado da família das INSTÂNCIAS do lado da SHELL** — os latches das cenas **e** o que
+/// o HUD precisa de lembrar entre quadros.
+///
+/// ⚠️⚠️ **Porque é UMA struct e não campos soltos na `App`:** a catraca
+/// `the_app_only_sheds_fields` está **no número exacto de hoje**, logo *qualquer* campo novo a
+/// reprova — e a mensagem dela diz a cura por escrito: *«um campo novo tem DONO: ponha-o no estado
+/// da família do assunto dele»*. O HUD (TOP-20 #20) é desta família, e por isso o estado dele entra
+/// AQUI em vez de somar dois campos ao topo.
+#[derive(Default)]
+pub(crate) struct ComponentsShell {
+    /// Os latches das cenas de smoke.
+    pub(crate) smokes: ComponentsSmokeLatches,
+    /// O estado vivo do HUD.
+    pub(crate) hud: HudShell,
+}
+
+/// ⭐ **O que o HUD lembra entre quadros** — nada disto é documento.
+#[derive(Default)]
+pub(crate) struct HudShell {
+    /// **O botão em que o dedo POUSOU** (TOP-20 #20) — a memória de um gesto, e a razão de ela
+    /// existir é a lei do oráculo: um botão dispara ao LARGAR, e só se o largar cair no MESMO
+    /// botão em que se carregou.
+    pub(crate) press: Option<ph2d_ecs::Entity>,
+    /// A última vista já impressa pelo `PH2D_HUD_LOG` — para a linha sair **uma vez por mudança**
+    /// em vez de sessenta vezes por segundo.
+    pub(crate) log: Option<String>,
+}
+
 /// ⭐⭐ **Os latches das cenas de smoke da família das INSTÂNCIAS** — um por roteador.
 ///
 /// ⚠️ **Uma struct e não cinco campos soltos** (2026-09-14): a catraca `the_app_only_sheds_fields`

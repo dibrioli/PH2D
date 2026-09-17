@@ -794,7 +794,7 @@ impl App {
             timeline_onion_smoke_done: false,
             harmony_smoke_done: false,
             signal_smoke_done: false,
-            components_smokes: crate::app_state::ComponentsSmokeLatches::default(),
+            components: crate::app_state::ComponentsShell::default(),
             game_camera_preview: false,
             ui_motion_smoke_done: false,
             timescale_smoke_done: false,
@@ -819,8 +819,6 @@ impl App {
             audio_sel_drag: None,
             #[cfg(feature = "panel-audio-editor")]
             audio_scrub_drag: false,
-            hud_press: None,
-            hud_log: None,
             input: InputState::new(),
             input_actions: ph2d_input::ActionState::new(),
             pan_anchor: None,

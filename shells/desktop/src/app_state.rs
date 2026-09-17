@@ -321,15 +321,14 @@ pub(crate) struct App {
     pub(crate) sculpt3d: ph2d_app_sculpt3d::Sculpt3dShellState,
     /// Latch do `PH2D_STACK_SMOKE` (cena da composicao de clips, uma vez).
     pub(crate) stack_smoke_done: bool,
-    /// Latch do `PH2D_NEST_SMOKE` (cena do nesting, uma vez).
     /// O smoke do onion da timeline (ADR-0142 W1) já rodou. `PH2D_ONION_SMOKE=1`.
     pub(crate) timeline_onion_smoke_done: bool,
     /// Latch do `PH2D_HARMONY_SMOKE` (abre o picker com Triad, uma vez).
     pub(crate) harmony_smoke_done: bool,
     /// O smoke dos sinais da timeline (ADR-0143) já rodou. `PH2D_SIGNAL_SMOKE=1`.
     pub(crate) signal_smoke_done: bool,
-    /// ⭐⭐ Os latches das cenas de smoke da família das INSTÂNCIAS — ver [`ComponentsSmokeLatches`].
-    pub(crate) components_smokes: ComponentsSmokeLatches,
+    /// ⭐⭐ O estado da família das INSTÂNCIAS (latches das cenas + o HUD) — ver [`ComponentsShell`].
+    pub(crate) components: ComponentsShell,
     /// ⭐⭐⭐ **A vista está a ser conduzida pela CÂMERA DA CENA?** (TOP-20 #7)
     ///
     /// ⚠️ **É estado de VISTA, e não documento** — o molde é o *«Show sheet on canvas»* da §4: vive
@@ -364,6 +363,7 @@ pub(crate) struct App {
     // ⭐ Os dois slots da cena de osso mudaram-se para o `ph2d_app_vec::state::VecState`, ao lado
     // do `bone_smoke_step` que sempre lhes pertenceu (HOWTO §1.1: *a família que guardou o estado
     // em casa foi a que conseguiu sair de casa*).
+    /// Latch do `PH2D_NEST_SMOKE` (cena do nesting, uma vez).
     pub(crate) nest_smoke_done: bool,
     /// **O eco do mestre** (ADR-0164 / F4.4) — o que a receita tinha no passe anterior, que é
     /// como o sync sabe QUEM se mexeu. Cache de sessão: perdê-la só custa não atribuir um
@@ -426,15 +426,6 @@ pub(crate) struct App {
     /// selection drag (which lives in the wave body above the ruler).
     #[cfg(feature = "panel-audio-editor")]
     pub(crate) audio_scrub_drag: bool,
-    /// ⭐ **O botão do HUD em que o dedo POUSOU** (TOP-20 #20) — a memória de um gesto, e a razão
-    /// de ela existir é a lei do oráculo: um botão dispara ao LARGAR, e só se o largar cair no
-    /// MESMO botão em que se carregou. Sem esta memória não há como saber onde o gesto começou.
-    ///
-    /// ⚠️ **Runtime-only:** nunca é gravado e nunca entra no undo — um gesto a meio não é documento.
-    pub(crate) hud_press: Option<ph2d_ecs::Entity>,
-    /// O último rectângulo de vista já impresso pelo `PH2D_HUD_LOG` — para a linha sair **uma vez
-    /// por mudança** em vez de sessenta vezes por segundo. Runtime-only, como o irmão acima.
-    pub(crate) hud_log: Option<String>,
     /// Input snapshot pumped by the gilrs adapter each frame.
     pub(crate) input: InputState,
     /// **O que cada acção VALE** neste tique — resolvido do `input` através do mapa AUTORADO.
@@ -978,7 +969,7 @@ pub(crate) struct RubberBandState {
 /// ⭐⭐ Os latches das cenas da família das INSTÂNCIAS — irmão por tecto de LOC.
 #[path = "app_state_components_smokes.rs"]
 mod components_smokes;
-pub(crate) use components_smokes::ComponentsSmokeLatches;
+pub(crate) use components_smokes::ComponentsShell;
 
 /// ⭐⭐ Os cursores do outbox de sinais — irmão pela catraca de campos da `App`.
 #[path = "app_state_signal_readers.rs"]

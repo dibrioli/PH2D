@@ -74,6 +74,7 @@ mod o_corte_esta_fiado;
 mod o_painel_pinta_todo_o_modelo_aceita;
 mod o_quadro_publica_o_que_o_pintor_mediu;
 mod o_rebobinar_repoe_o_estado_vivo;
+mod o_rotulo_do_botao_do_hud_e_filho_dele;
 mod one_door_authors_an_expression;
 mod one_word_for_the_reusable_thing;
 mod painter_selection_shortcuts;

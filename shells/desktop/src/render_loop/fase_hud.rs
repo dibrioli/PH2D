@@ -30,9 +30,9 @@ impl crate::App {
         // `PH2D_HUD_LOG=1` imprime a vista e a pose conduzida, uma vez por mudança.
         if n > 0 && std::env::var_os("PH2D_HUD_LOG").is_some() {
             let agora = format!("{vista:?}");
-            if self.hud_log.as_deref() != Some(agora.as_str()) {
+            if self.components.hud.log.as_deref() != Some(agora.as_str()) {
                 eprintln!("[hud-smoke] vista={agora} canvas conduzidos={n}");
-                self.hud_log = Some(agora);
+                self.components.hud.log = Some(agora);
             }
         }
     }

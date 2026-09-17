@@ -241,3 +241,35 @@ pub fn texto(world: &mut World, tree: &ph2d_tags::TagTree, label: &UiLabel) -> O
 #[cfg(test)]
 #[path = "hud_tests.rs"]
 mod tests;
+
+/// A profundidade máxima da subida — um botão é `corpo → rótulo`, e três degraus dão folga a um
+/// ícone dentro de um grupo. ⛔ Não é um tecto de recurso: é a cerca contra um ciclo de `ChildOf`,
+/// e o mesmo número que o [`envelope_live::container_of`] usa pela mesma razão.
+const MAX_PROFUNDIDADE: usize = 8;
+
+/// ⭐⭐⭐ **O BOTÃO a que esta entidade pertence** — ela própria, ou o primeiro ancestral que
+/// carrega um [`UiButton`].
+///
+/// ⛔⛔ **Sem isto, carregar no MEIO de um botão não o pressiona** — e foi a auto-conferência da
+/// cena que o mediu: o dedo no centro do `+10` devolve o caminho do RÓTULO (`achou=Some(2)`,
+/// `esperado=Some(3)`), porque o hit-test de objecto entrega *a forma mais ao topo que contém o
+/// ponto* e o rótulo é desenhado por cima do corpo. O corpo só seria alcançável na margem à volta
+/// das letras — *o alvo maior da tela seria o único inalcançável no meio*.
+///
+/// ⚠️ **A lei é a de toda a interface que existe** (um clique no rótulo é um clique no botão), e é
+/// a mesma FORMA da política das quinas: o componente mora no CONTAINER, e a pergunta SOBE a cadeia
+/// em vez de olhar só a própria entidade.
+///
+/// ⚠️ **Ela não decide se o botão dispara** — `disabled` e o nome em branco continuam a ser a
+/// pergunta de quem despacha; aqui responde-se só *«de quem é esta forma?»*.
+#[must_use]
+pub fn botao_de(world: &World, e: bevy_ecs::entity::Entity) -> Option<bevy_ecs::entity::Entity> {
+    let mut cur = e;
+    for _ in 0..MAX_PROFUNDIDADE {
+        if world.get::<UiButton>(cur).is_some() {
+            return Some(cur);
+        }
+        cur = world.get::<crate::ChildOf>(cur)?.parent();
+    }
+    None
+}

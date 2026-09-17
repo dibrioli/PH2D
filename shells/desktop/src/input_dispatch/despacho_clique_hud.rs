@@ -30,13 +30,19 @@ impl crate::App {
     ///
     /// ⚠️ **`disabled` e o nome em branco respondem `None` AQUI**, no mesmo sítio: são as duas
     /// maneiras de um botão não ser um botão, e separá-las daria dois lugares para decidir.
+    ///
+    /// ⛔⛔ **A forma que o dedo toca RARAMENTE é o botão — é o RÓTULO dele**, e foi a
+    /// auto-conferência da cena que o mediu: no centro do `+10` o `path_at` devolve o caminho do
+    /// texto (*a forma mais ao topo que contém o ponto*), não o rectângulo por baixo. Sem a subida
+    /// da cadeia o corpo só seria alcançável na margem à volta das letras — *o alvo maior da tela,
+    /// inalcançável no meio dele*. A lei vive em [`ph2d_ecs::hud::botao_de`], com os gates lá.
     fn hud_button_at(&self, screen: (f32, f32)) -> Option<ph2d_ecs::Entity> {
         let gfx = self.gfx.as_ref()?;
         let world = self.vec_world_at(screen)?;
         let tol = 10.0 * self.vec_px_to_world();
         let id = self.vec.pen.path_at(&gfx.vec_scene, world, tol)?;
         let bits = *self.vec.entities.get(&id)?;
-        let e = ph2d_ecs::Entity::from_bits(bits);
+        let e = ph2d_ecs::hud::botao_de(gfx.sim.world(), ph2d_ecs::Entity::from_bits(bits))?;
         let b = gfx.sim.world().get::<ph2d_ecs::UiButton>(e)?;
         (!b.disabled && b.name().is_some()).then_some(e)
     }
@@ -64,14 +70,14 @@ impl crate::App {
         // ⚠️ Um `Baixo` que não pousa em botão nenhum **não é deste ramo** — devolver `true` ali
         // comeria todo clique de canvas durante uma corrida.
         if gesto == Gesto::Baixo && sob.is_none() {
-            self.hud_press = None;
+            self.components.hud.press = None;
             return false;
         }
-        let (memoria, publica) = clique(gesto, self.hud_press, sob);
+        let (memoria, publica) = clique(gesto, self.components.hud.press, sob);
         // ⚠️ O `Cima` só é consumido se havia gesto ARMADO — senão o editor perde o largar de um
         // gesto que era dele.
-        let consome = gesto == Gesto::Baixo || self.hud_press.is_some();
-        self.hud_press = memoria;
+        let consome = gesto == Gesto::Baixo || self.components.hud.press.is_some();
+        self.components.hud.press = memoria;
         if publica
             && let Some(alvo) = sob
             && let Some(gfx) = self.gfx.as_ref()

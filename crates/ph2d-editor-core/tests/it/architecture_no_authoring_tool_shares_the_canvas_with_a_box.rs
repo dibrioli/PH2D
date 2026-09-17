@@ -38,6 +38,20 @@ const RAMOS: &[&str] = &[
     "ramo_flip_premidos(",
     "ramo_select_modais(",
     "ramo_ferramenta_vetorial(",
+    // ⭐⭐ **O 4.º acordou a lei em 2026-09-17 (o HUD, TOP-20 #20), e a resposta é NÃO entrar na
+    // condição — com mecanismo, e não por conveniência.**
+    //
+    // (a) A condição do `fase_snapshots_publish` é indexada pela FERRAMENTA NA MÃO (`ToolId`), e o
+    //     HUD **não é uma ferramenta**: não há id para lá escrever. A pergunta dele é *«o relógio
+    //     está a andar?»*, que é outro eixo — e suprimir a caixa por esse eixo tirava ao artista a
+    //     selecção e o gizmo em TODA cena a correr, que é uma perda muito maior.
+    //
+    // (b) E o modo de falha é de OUTRA ordem: para uma ferramenta que autora, a caixa mata o gesto
+    //     **sempre** (é a superfície inteira dela); aqui ela só ensombra o botão quando a caixa de
+    //     um objecto seleccionado calha por cima dele, e o que acontece então é o comportamento
+    //     normal do editor — o clique selecciona. *Uma ferramenta sem gesto e um botão que nesse
+    //     ponto se comporta como o resto do editor não são o mesmo defeito.*
+    "ramo_botao_do_hud(",
 ];
 
 fn shell_src() -> PathBuf {

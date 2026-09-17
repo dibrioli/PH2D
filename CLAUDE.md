@@ -402,6 +402,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   *Todo gate que compara duas medianas de um RECURSO é candidato, e a lista nunca estará completa.*
   ⛔ **E um CONTADOR atrás de estado POR THREAD (memo, arena) também** — ele conta quantas threads o escalonador pôs a
   trabalhar: o gate da superfórmula leu `morno 0/4/8` sob fan-out e foi curado numa pool de UMA thread (13/09, ESTADO W2 §6).
+- ⛔⛔ **E há uma flake de GPU que NÃO é `#[ignore]` e só existe no LINUX do CI** (medido
+  2026-09-17): `atlas::tests::remove_of_missing_key_returns_none` (`ph2d-render`) saiu **SIGSEGV**,
+  `1` de `1300`, com **macOS e Windows verdes na mesma corrida** — e a re-corrida do MESMO commit
+  passou. ⚠️ **O módulo do atlas não tinha uma linha de diff naquela rodada de seis linhas**, e os
+  dois ficheiros de teste de GPU novos dela são todos `#[ignore]`, logo nem correram. ⇒ o que
+  estoura é o adaptador por SOFTWARE do runner (`lavapipe`), não a lei: ali o `try_headless_gpu()`
+  devolve `Some` — *um adaptador que existe e é instável é pior que nenhum, porque o caminho de
+  skip gracioso nunca arma*. ⚠️ Antes de investigar um SIGSEGV de GPU no CI, **pergunte se os
+  outros dois OS passaram e se o módulo tem diff**: as duas respostas separam ambiente de defeito
+  em dois comandos, e a cura é `gh run rerun --failed`.
 - ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` só deixou de
   **cancelar na primeira falha** em 10/09 (`fail-fast = false` no `.config/nextest.toml`) — numa árvore mais
   velha, `--no-fail-fast`, senão suítes inteiras nunca chegam a correr. E desde o mesmo dia **todo teste tem

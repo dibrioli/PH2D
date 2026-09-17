@@ -90,7 +90,7 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     // monitor. Corrija isso.").
     let title_size = paint_panel_title(
         rect,
-        tr("panel.color_eq.title"),
+        ColorEqualizationPanel::TITLE.tr(),
         ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

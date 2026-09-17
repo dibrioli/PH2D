@@ -44,7 +44,7 @@ pub use state::{
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Zero-size marker implementing the typed Flip Style panel contract.
 pub struct FlipPanel;
@@ -55,7 +55,7 @@ impl Panel for FlipPanel {
     const ID: &'static str = "flip";
     const NODE_ID: NodeId = ph2d_editor_core::ids::FLIP_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Flip";
+    const TITLE: TextKey = TextKey::new("panel.flip.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Flip;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

@@ -1,9 +1,15 @@
 //! ⭐⭐ **UM PAINEL TEM UM NOME, não dois.**
 //!
-//! O menu *Window* nomeia treze painéis com rótulos escritos à mão (*"Design Tokens"*, *"Grid
-//! Settings"*, *"Sculpt 3D"*) e a aba de um encaixe nomeia o mesmo painel com o `Panel::TITLE`.
-//! São duas superfícies a responder à MESMA pergunta — e a que o artista lê menos é a que
-//! envelhece.
+//! O menu *Window* nomeia treze painéis pela tabela de strings (`chrome.menu.*`) e a aba de um
+//! encaixe nomeia o mesmo painel pelo `Panel::TITLE`, que desde 2026-09-17 é **outra** chave da
+//! tabela (`panel.<id>.title`). São duas superfícies a responder à MESMA pergunta — e a que o
+//! artista lê menos é a que envelhece.
+//!
+//! ⚠️⚠️ **Os dois lados são CHAVES e este gate compara o TEXTO de propósito.** Comparar as chaves
+//! leria verde sobre uma tradução que divergisse, que é o único regime em que isto pode partir hoje;
+//! e ⛔ **colapsá-las numa só chave é obra própria com bloqueador nomeado** — a camada de chrome não
+//! depende de painel nenhum (é por isso que o `MODULE_TRUTHS` guarda o `Panel::ID` como literal), e
+//! a ponte seria o registo em runtime, que é o que este ficheiro já faz.
 //!
 //! ⛔ **É por isso que o `TITLE` não tem default.** Um derivado do `Panel::ID` daria *"Tokens"*,
 //! *"Sculpt3d"* e *"Grid Snap"*: três divergências no dia em que nascesse, sem uma linha de erro.
@@ -45,7 +51,10 @@ fn the_tab_and_the_menu_call_a_panel_the_same_thing() {
                 continue; // o painel não está nas features desta build
             };
             checked += 1;
-            if *title != label {
+            // ⚠️ **Os DOIS lados são chaves desde 2026-09-17** — o que se compara é o que o
+            //    artista LÊ, não o identificador: dois painéis podem partilhar uma palavra.
+            let title = title.tr();
+            if title != label {
                 disagree.push(format!(
                     "{panel_id}: o menu diz {label:?} e a aba diz {title:?}"
                 ));

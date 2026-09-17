@@ -53,7 +53,7 @@ pub use state::{
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Marcador de tamanho zero que implementa o contrato tipado do painel.
 ///
@@ -70,7 +70,7 @@ impl Panel for Sculpt3dPanel {
     /// cena 3D nasce — um painel que se abrisse para todo projeto seria chrome a
     /// dispensar em vez de a encontrar, e a cena 3D não existe na maioria deles.
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Sculpt 3D";
+    const TITLE: TextKey = TextKey::new("panel.sculpt3d.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Smear;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

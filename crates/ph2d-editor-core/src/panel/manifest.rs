@@ -27,8 +27,9 @@ pub struct PanelManifest {
     pub id: &'static str,
     pub panel_node_id: NodeId,
     pub default_visible: bool,
-    /// ⭐ O nome que o artista lê numa aba — ver [`Panel::TITLE`].
-    pub title: &'static str,
+    /// ⭐ A CHAVE do nome que o artista lê numa aba — ver [`Panel::TITLE`]. ⚠️ Quem pinta traduz
+    /// (`title.tr()`), e é isso que mantém o nome do painel com **uma** fonte.
+    pub title: crate::panel::TextKey,
     /// ⭐ O glifo que a aba mostra quando o nome já não cabe — ver [`Panel::ICON`].
     pub icon: crate::icons::IconId,
     /// ⭐ Onde este painel PODE estar (D1) — ver [`Panel::ALLOWED_SLOTS`].

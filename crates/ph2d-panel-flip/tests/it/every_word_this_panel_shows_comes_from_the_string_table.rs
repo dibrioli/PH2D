@@ -11,12 +11,7 @@ const PREFIX: &str = "panel.flip.";
 const TABLE: &str = "crates/ph2d-i18n/src/flip.rs";
 
 /// ⭐ As excepções, **com o mecanismo**.
-const NOT_LANGUAGE: &[Excecao] = &[(
-    "lib.rs",
-    "Flip",
-    "o `Panel::TITLE` e' um `const &'static str` que o registo le para a ABA, e o `tr` nao e' \
-     `const fn` -- a mesma excepcao dos paineis Painter, Vector e Inspector.",
-)];
+const NOT_LANGUAGE: &[Excecao] = &[];
 
 #[test]
 fn every_word_this_panel_shows_comes_from_the_string_table() {

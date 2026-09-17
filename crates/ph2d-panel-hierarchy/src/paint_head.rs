@@ -23,7 +23,7 @@ pub(super) fn paint_hierarchy_head(
     // Canonical panel title (single source of truth — `panel_chrome`).
     // Reserve ≈ICON_BTN_SIZE on the right for the header Add-button.
     let title_y = rect.y + PANEL_TITLE_BASELINE;
-    let title = tr("panel.hierarchy.title");
+    let title = HierarchyPanel::TITLE.tr();
     let title_size = paint_panel_title(rect, title, 40.0, scene, text_system, theme); // LITERAL-PX-OK: Add-button reserve
     let (entities, components) = if let Some(live) = current_live_entries() {
         let entity_count = live.len() as u32;

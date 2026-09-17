@@ -41,7 +41,7 @@ pub use state::{TokensIntent, TokensPanelState, drain_intents, last_content_h, l
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Marcador de tamanho zero que implementa o contrato tipado do painel de Tokens.
 ///
@@ -57,7 +57,7 @@ impl Panel for TokensPanel {
     /// Fechado até ser pedido. Re-vestir o app é uma sessão, não o estado normal de trabalho — e
     /// um painel que se abre sozinho é chrome que se dispensa em vez de se procurar.
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Design Tokens";
+    const TITLE: TextKey = TextKey::new("panel.tokens.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Palette;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

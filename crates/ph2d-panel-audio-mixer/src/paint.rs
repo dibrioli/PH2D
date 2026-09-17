@@ -107,7 +107,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
 
     let title_size = paint_panel_title(
         rect,
-        tr("panel.audio_mixer.title"),
+        AudioMixerPanel::TITLE.tr(),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

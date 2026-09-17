@@ -42,7 +42,7 @@ pub use state::{
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Marcador de tamanho zero que implementa o contrato do painel da tira.
 pub struct FlipFramesPanel;
@@ -53,7 +53,7 @@ impl Panel for FlipFramesPanel {
     const ID: &'static str = "flip_frames";
     const NODE_ID: NodeId = ph2d_editor_core::ids::FLIP_STRIP_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Frames";
+    const TITLE: TextKey = TextKey::new("panel.flip_frames.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Sprite;
     /// ⚠️ **Uma TIRA não cabe numa coluna.** Ela é larga e baixa: numa coluna de 304 px
     /// ela mostraria dois quadros. ⇒ a faixa de baixo é o único encaixe que a exprime, e o

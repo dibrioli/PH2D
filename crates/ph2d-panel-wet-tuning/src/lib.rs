@@ -29,7 +29,7 @@ pub use state::set_current_brush;
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Zero-size marker implementing the typed Wet Tuning panel contract.
 ///
@@ -45,7 +45,7 @@ impl Panel for WetTuningPanel {
     /// Closed until the Wet Paint section's Tuning checkbox opens it (the
     /// bridge mirrors the tool's authored flag every frame).
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Wet Paint";
+    const TITLE: TextKey = TextKey::new("panel.wet_tuning.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Liquify;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

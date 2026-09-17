@@ -10,6 +10,11 @@
 /// A tradução de uma chave dos painéis do Motion, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        // ⭐⭐ **O NOME DE CADA PAINEL, fora dos marcadores porque é escrito à mão** (2026-09-17): o
+        // `Panel::TITLE` passou a ser um `TextKey`, e estas duas chaves são o que a ABA do encaixe
+        // lê — a mesma que o cabeçalho do painel pinta.
+        "panel.motion_graph.title" => "Motion Graph",
+        "panel.motion_params.title" => "Motion Params",
         // ph2d-migrar-texto:begin
         "panel.motion_graph.card.on" => "On",
         "panel.motion_graph.card.off" => "Off",

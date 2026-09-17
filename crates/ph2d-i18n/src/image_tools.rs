@@ -14,7 +14,12 @@
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         // ph2d-migrar-texto:begin
-        "panel.color_eq.title" => "Color EQ",
+        // ⛔ Era "Color EQ" e a aba dizia "Color Equalization" — uma fonte só desde que o
+        // `Panel::TITLE` é a chave (2026-09-17); ganhou a palavra da ABA. ⚠️ O nome ABREVIADO que
+        // esta família de facto precisa é o do CHIP da barra do topo, e esse tem chave própria
+        // (`tool.color_equalization.label` = "CEQ"): encurtar o título do painel para caber num
+        // chip era responder à pergunta do vizinho.
+        "panel.color_eq.title" => "Color Equalization",
         "panel.color_eq.adjust.lut_1" => "LUT 1",
         "panel.color_eq.adjust.lut_2" => "LUT 2",
         "panel.color_eq.adjust.posterize" => "Posterize",
@@ -50,7 +55,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.color_eq.adjust.radius" => "Radius",
         "panel.color_eq.adjust.lut_intensity" => "LUT Intensity",
         "panel.color_eq.adjust.lut_mix" => "LUT Mix",
-        "panel.bg_removal.title" => "Bg Removal",
+        // ⛔ Era "Bg Removal" e a aba dizia "Background Removal" — ver a nota do `panel.color_eq.title`
+        // acima. O chip da barra do topo continua com a abreviatura dele (`tool.bgremoval.label`).
+        "panel.bg_removal.title" => "Background Removal",
         "panel.bg_removal.mask.tolerance" => "Tolerance",
         "panel.bg_removal.mask.feather" => "Feather",
         "panel.bg_removal.mask.refine" => "Refine",

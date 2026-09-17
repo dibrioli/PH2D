@@ -37,7 +37,7 @@ pub use state::WidgetLabState;
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Marcador de tamanho zero que implementa o contrato tipado do laboratório.
 pub struct WidgetLabPanel;
@@ -48,7 +48,7 @@ impl Panel for WidgetLabPanel {
     const ID: &'static str = "widget_lab";
     const NODE_ID: NodeId = ph2d_editor_core::ids::LAB_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Widget Lab";
+    const TITLE: TextKey = TextKey::new("panel.widget_lab.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Probe;
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
         ph2d_editor_core::screens::slot::SlotSet::SIDES;

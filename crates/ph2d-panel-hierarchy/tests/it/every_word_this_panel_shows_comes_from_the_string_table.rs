@@ -14,22 +14,13 @@ const PREFIX: &str = "panel.hierarchy.";
 const TABLE: &str = "crates/ph2d-i18n/src/lib.rs";
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.
-const NOT_LANGUAGE: &[(&str, &str, &str)] = &[
-    (
-        "lib.rs",
-        "Hierarchy",
-        "o `Panel::TITLE` e' um `const &'static str` que o registo le para a ABA, e o `tr` nao e' \
-         `const fn`. Fazer as abas falarem pela tabela e' mudar o contrato do painel nos 26 que o \
-         implementam -- obra propria, nomeada no handoff.",
-    ),
-    (
-        "ids/menus.rs",
-        "Scene Root",
-        "e' o NOME de uma entidade da cena de amostra (o `hierarchy_label_for_id` devolve-o para a \
+const NOT_LANGUAGE: &[(&str, &str, &str)] = &[(
+    "ids/menus.rs",
+    "Scene Root",
+    "e' o NOME de uma entidade da cena de amostra (o `hierarchy_label_for_id` devolve-o para a \
          etiqueta da seleccao): conteudo do documento, como o nome de uma camada. Traduzir o nome \
          de um objecto do artista seria errado.",
-    ),
-];
+)];
 
 fn src_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")

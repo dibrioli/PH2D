@@ -48,6 +48,8 @@ E três defeitos concretos, com foto:
 | ⭐⭐ **A auditoria da lista ABERTA do §5** — 4 de 5 itens já estavam fechados | [`medicoes/08_a_auditoria_da_lista_aberta.md`](medicoes/08_a_auditoria_da_lista_aberta.md) |
 | ✅ **O penhasco com TODOS os painéis abertos** — `157,91 → 7,81 ms`: era a cache de texto, não os clips | [`medicoes/09_o_penhasco_com_todos_os_paineis_abertos.md`](medicoes/09_o_penhasco_com_todos_os_paineis_abertos.md) |
 | ⛔⛔ **O clássico NÃO é um ecrã anterior** — `PH2D_UI_NEW=0` devolve 6 pintores de widget, nunca a estrutura | [`medicoes/10_o_classico_nao_e_um_ecra_anterior.md`](medicoes/10_o_classico_nao_e_um_ecra_anterior.md) |
+| ⭐⭐⭐ **A FRONTEIRA DOS MOTORES** — 1 942 palavras que viviam numa tabela de DADOS (nós, pincéis, opções, canais); a chave deriva do id, o texto é autorado | [`medicoes/11_a_fronteira_dos_motores.md`](medicoes/11_a_fronteira_dos_motores.md) |
+| ⛔⛔ **O nome de um painel tinha DUAS fontes** — a aba e o cabeçalho, com **cinco** a discordar no ecrã; e o gate que existe para o impedir media as outras duas superfícies | [`medicoes/12_o_nome_de_um_painel_tinha_duas_fontes.md`](medicoes/12_o_nome_de_um_painel_tinha_duas_fontes.md) |
 | **O que a subida Vello 0.8→0.10 / wgpu 28→29 / parley 0.6→0.11 abriu** | [`pesquisa/01_o_que_a_subida_abriu.md`](pesquisa/01_o_que_a_subida_abriu.md) |
 | **Que referências existem, com a licença de cada uma** | [`pesquisa/02_referencias_e_licenca.md`](pesquisa/02_referencias_e_licenca.md) |
 | **O diagnóstico das 3 fotos + os princípios que o explicam** | [`pesquisa/03_diagnostico_e_principios.md`](pesquisa/03_diagnostico_e_principios.md) |

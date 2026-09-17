@@ -183,7 +183,7 @@ impl Panel for AudioMixerPanel {
     const ID: &'static str = "audio_mixer";
     const NODE_ID: NodeId = AMIX_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Audio Mixer";
+    const TITLE: TextKey = TextKey::new("panel.audio_mixer.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Mixer;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

@@ -11,20 +11,19 @@
 //! ⛔ **O que se isenta, e porquê:**
 //! - `generated/` — o desenho do artista, emitido pelo gerador. A garantia de que ali só há o que o
 //!   gerador emite é o gate irmão `the_generated_panel_is_what_the_emitter_emits` (byte a byte).
-//! - o `Panel::TITLE` do `lib.rs` — uma `const` do trait, que o `tr` não alcança; é a mesma
-//!   excepção de todos os painéis, e a palavra tem chave no menu *Window* (`chrome.menu.authored_ui`).
+//!
+//! ✅ **A excepção do `Panel::TITLE` SAIU em 2026-09-17, e com ela a dívida:** aquela `const` passou
+//! a ser um `TextKey` (`panel.authored.title`) e quem pinta a aba traduz — logo o literal saiu do
+//! binário, não só do alcance deste censo. ⚠️ **Isto não contradiz a decisão do `Cargo.toml`:** o
+//! que fica sem tabela são as ROWS, que são o `Name` do artista; o nome do PAINEL é do programa, e
+//! o menu *Window* já o traduzia (`chrome.menu.authored_ui`) — a aba é que não.
 
 use ph2d_label_census::gate::{self, Excecao};
 use ph2d_label_census::language_literals;
 
 const GERADO: &str = "generated/";
 
-const NOT_LANGUAGE: &[Excecao] = &[(
-    "lib.rs",
-    "Authored UI",
-    "o `Panel::TITLE` — uma `const` do trait, que o `tr` não alcança (a mesma excepção de todos \
-     os painéis); a palavra traduz-se no menu Window pela chave `chrome.menu.authored_ui`",
-)];
+const NOT_LANGUAGE: &[Excecao] = &[];
 
 #[test]
 fn outside_the_generated_design_no_word_is_written_in_the_source() {

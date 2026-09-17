@@ -100,7 +100,7 @@ pub use state::{
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Zero-size marker que implementa o contrato typed Painter Layers panel.
 pub struct PainterLayersPanel;
@@ -121,7 +121,7 @@ impl Panel for PainterLayersPanel {
     ///
     /// ⚠️ O título do CABEÇALHO continua a seguir o modo (`paint_brush_top::header_title`) — são
     /// duas perguntas: *«que painel é este?»* e *«que modo estou a ver?»*.
-    const TITLE: &'static str = "Painter";
+    const TITLE: TextKey = TextKey::new("panel.painter_layers.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Painter;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

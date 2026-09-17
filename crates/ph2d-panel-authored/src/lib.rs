@@ -48,7 +48,7 @@ pub use state::{AuthoredIntent, AuthoredPanelState, drain_intents};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Marcador de tamanho zero que implementa o contrato tipado do painel autorado.
 ///
@@ -78,7 +78,7 @@ impl Panel for AuthoredPanel {
     /// Fechado até ser pedido — o interruptor mora na seção **Frame** do painel Vector, ao lado do
     /// gesto que criou a moldura.
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Authored UI";
+    const TITLE: TextKey = TextKey::new("panel.authored.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Script;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

@@ -37,7 +37,7 @@ pub use state::{GridSnapPanelState, last_content_h, last_visible_h, set_current_
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Zero-size marker implementing the typed Grid Snap panel contract.
 pub struct GridSnapPanel;
@@ -48,7 +48,7 @@ impl Panel for GridSnapPanel {
     const ID: &'static str = "grid_snap";
     const NODE_ID: NodeId = ph2d_editor_core::ids::GS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Grid Settings";
+    const TITLE: TextKey = TextKey::new("panel.grid_snap.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::GridSettings;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

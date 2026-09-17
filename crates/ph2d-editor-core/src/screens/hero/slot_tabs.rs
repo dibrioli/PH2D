@@ -109,8 +109,9 @@ pub struct Occupant {
     pub id: &'static str,
     /// O `Panel::NODE_ID` — o rect do painel.
     pub node: NodeId,
-    /// O `Panel::TITLE` — o que o artista lê na aba.
-    pub title: &'static str,
+    /// O `Panel::TITLE` — a CHAVE do que o artista lê na aba. ⚠️ Quem desenha a aba traduz, e é a
+    /// mesma chave que o painel usa para se nomear a si próprio no cabeçalho.
+    pub title: crate::panel::TextKey,
     /// O `Panel::ICON` — o que a aba diz depois de o nome já não caber.
     pub icon: crate::icons::IconId,
 }
@@ -363,7 +364,7 @@ pub fn tab_rects(bar: Rect, widths: &[f32]) -> Vec<Rect> {
 /// não o espaço*. É a quina de cima e a cor que as separam, e é isso que as faz ler como uma fila.
 fn tab_widths(occ: &[Occupant], text_system: &mut TextSystem) -> Vec<f32> {
     occ.iter()
-        .map(|o| super::slot_tabs_face::natural_w(o.title, text_system))
+        .map(|o| super::slot_tabs_face::natural_w(o.title.tr(), text_system))
         .collect()
 }
 
@@ -578,7 +579,7 @@ pub fn paint_slot_tabs(
         } else {
             ColorToken::Text2
         };
-        super::slot_tabs_face::paint(scene, text_system, r, o.icon, o.title, fg, theme);
+        super::slot_tabs_face::paint(scene, text_system, r, o.icon, o.title.tr(), fg, theme);
         hit_index.register(tab_node_id(o.node), r);
     }
     // ⚠️ **Depois das abas**, para a divisória não ficar por baixo do corpo da escolhida.

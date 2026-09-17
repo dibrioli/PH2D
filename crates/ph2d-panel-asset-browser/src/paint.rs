@@ -167,7 +167,7 @@ fn paint_chrome(ctx: &mut PaintCtx, rect: Rect) {
     let title_y = rect.y + PANEL_TITLE_BASELINE;
     paint_panel_title(
         rect,
-        tr("panel.asset_browser.title"),
+        AssetBrowserPanel::TITLE.tr(),
         Spacing::Xl3.px(),
         ctx.scene,
         ctx.text_system,

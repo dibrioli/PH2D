@@ -73,7 +73,7 @@ pub(crate) fn paint(_state: &mut WetTuningPanelState, ctx: &mut PaintCtx) {
     paint_panel_surface_floating(rect, ctx.scene, theme);
     let title_size = paint_panel_title(
         rect,
-        tr("panel.wet_tuning.title"),
+        WetTuningPanel::TITLE.tr(),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

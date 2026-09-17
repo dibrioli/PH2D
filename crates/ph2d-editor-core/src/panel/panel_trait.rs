@@ -47,7 +47,29 @@ pub trait Panel: Sized + 'static {
     /// artista teria **dois nomes para o mesmo painel**, um em cada superfície. O gate
     /// `the_tab_and_the_menu_call_a_panel_the_same_thing` mede exactamente isso, conduzido pela
     /// tabela [`crate::screens::hero::menu_bar::MODULE_TRUTHS`].
-    const TITLE: &'static str;
+    ///
+    /// # ⭐⭐⭐ É uma CHAVE, e a razão é uma medição
+    ///
+    /// Até 2026-09-17 isto era um `&'static str` com o nome escrito em inglês, e **dezanove** gates
+    /// de painel carregavam a mesma isenção nomeada: *«o `Panel::TITLE` é um `const &'static str`
+    /// que o registo lê para a ABA, e o `tr` não é `const fn`»*. ⛔ A premissa é verdadeira e a
+    /// conclusão era falsa: a cura nunca foi chamar o `tr` num `const` — é declarar a **CHAVE** e
+    /// deixar quem PINTA traduzir, e o [`TextKey::new`] **é** `const fn`. *Antes de dizer que uma
+    /// pergunta é inexprimível, procure o irmão do mecanismo que está a usar* (`CLAUDE.md` §0.0).
+    ///
+    /// ⛔⛔ **E a migração achou o defeito que a isenção escondia: o nome de um painel tinha DUAS
+    /// fontes.** Vinte painéis pintam o próprio cabeçalho com `tr("panel.<id>.title")` e a aba lia
+    /// este literal — e **cinco discordavam no ecrã ao mesmo tempo** (o cabeçalho dizia *"Tokens"*,
+    /// *"Wet Tuning"*, *"3D Model"*, *"Color EQ"*, *"Bg Removal"*, e a aba dizia *"Design Tokens"*,
+    /// *"Wet Paint"*, *"Model 3D"*, *"Color Equalization"*, *"Background Removal"*). O gate
+    /// `the_tab_and_the_menu_call_a_panel_the_same_thing` existe desde 2026-09-08 para impedir
+    /// exactamente isto e **não podia vê-lo**: ele compara a aba com o MENU, e a terceira
+    /// superfície é o painel a nomear-se a si próprio. ⇒ hoje há **uma** chave, lida pelas duas.
+    ///
+    /// ⚠️ **`TextKey` e não `&'static str`:** guardadas como `&str`, uma chave e um texto são o
+    /// mesmo tipo, e quem se esquece de traduzir pinta `panel.tags.title` na aba — com vazamento
+    /// por quadro (`leak_key`). Com o tipo, esse esquecimento é **erro de compilação**.
+    const TITLE: crate::panel::TextKey;
 
     /// ⭐⭐⭐ **O GLIFO que sobrevive quando o nome já não cabe** — a outra metade da aba.
     ///

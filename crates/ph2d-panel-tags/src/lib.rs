@@ -36,7 +36,7 @@ pub use state::{TagsPanelState, current_tags, last_content_h, set_born_tag, set_
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Marcador de tamanho zero que implementa o contrato tipado do painel de tags.
 ///
@@ -52,7 +52,7 @@ impl Panel for TagsPanel {
     /// ⛔ **Nasce FECHADO** — a maioria dos projectos não tem tag nenhuma, e um painel que se abre
     /// sozinho para todos é chrome que se dispensa em vez de se procurar.
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Tags";
+    const TITLE: TextKey = TextKey::new("panel.tags.title");
     /// ⭐ O glifo `tag` já existia em `docs/design/icons/` e **nenhum painel o usava** — é o
     /// assunto exacto, e o `no_two_panels_share_a_glyph` fica verde.
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Tag;

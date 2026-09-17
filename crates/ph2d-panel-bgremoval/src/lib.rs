@@ -33,7 +33,7 @@ pub use state::{
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Zero-size marker implementing the typed Background-Removal panel
 /// contract.
@@ -45,7 +45,7 @@ impl Panel for BgRemovalPanel {
     const ID: &'static str = "bgremoval";
     const NODE_ID: NodeId = ph2d_editor_core::ids::BGR_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Background Removal";
+    const TITLE: TextKey = TextKey::new("panel.bg_removal.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::BgRemoval;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

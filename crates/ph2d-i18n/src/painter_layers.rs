@@ -24,6 +24,11 @@
 /// A tradução de uma chave `panel.painter_layers.*`, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        // ⭐⭐ **O NOME DO PAINEL** (2026-09-17) — o `Panel::TITLE` é um `TextKey`, e esta chave é o
+        //    que a ABA do encaixe lê. ⚠️ O painel chama-se *"Painter"* e a crate `painter_layers`:
+        //    a chave segue o **id do painel**, que é o que a aba e o registo conhecem; o TEXTO é
+        //    que é autorado, e é a palavra que o artista lê no menu *Window*.
+        "panel.painter_layers.title" => "Painter",
         // ⚠️ À MÃO, fora dos marcadores (o `aplicar` só reescreve o que está entre eles): os títulos
         //    GRITADOS dos cards, que a 1.ª redacção da régua lexical não via (2026-09-13).
         "panel.painter_layers.deform.card_mode" => "MODE",

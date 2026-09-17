@@ -32,12 +32,7 @@ const TABLE: &str = "crates/ph2d-i18n/src/vector.rs";
 const TABLES: &[&str] = &[TABLE, "crates/ph2d-i18n/src/vector_engine.rs"];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.
-const NOT_LANGUAGE: &[(&str, &str, &str)] = &[(
-    "lib.rs",
-    "Vector",
-    "o `Panel::TITLE` e' um `const &'static str` que o registo le para a ABA, e o `tr` nao e' \
-     `const fn` -- a mesma excepcao do painel Painter, e a mesma obra propria para a curar.",
-)];
+const NOT_LANGUAGE: &[(&str, &str, &str)] = &[];
 
 fn src_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")

@@ -33,22 +33,13 @@ const TABLE: &str = "crates/ph2d-i18n/src/painter_layers.rs";
 ///
 /// ⚠️ Uma lista de dívida tolerada que não diz *porquê* é uma licença (`CLAUDE.md` §5.0), e o
 /// teste irmão exige que cada entrada ainda abrigue um literal real.
-const NOT_LANGUAGE: &[(&str, &str, &str)] = &[
-    (
-        "lib.rs",
-        "Painter",
-        "o `Panel::TITLE` e' um `const &'static str` que o registo le para a ABA, e o `tr` nao e' \
-         `const fn`. Fazer as abas falarem pela tabela e' mudar o contrato do painel nos 26 que o \
-         implementam -- obra propria, nomeada no handoff, e nao uma excepcao deste painel.",
-    ),
-    (
-        "paint_adjust.rs",
-        "RGB",
-        "o separador MESTRE das curvas, irmao de `R`, `G` e `B` na mesma tabela: e' o NOME de um \
+const NOT_LANGUAGE: &[(&str, &str, &str)] = &[(
+    "paint_adjust.rs",
+    "RGB",
+    "o separador MESTRE das curvas, irmao de `R`, `G` e `B` na mesma tabela: e' o NOME de um \
          modelo de cor, o mesmo simbolo em toda lingua (como `HSV` e `OKLCH` no seletor de cor). \
          Traduzir so' este dos quatro deixaria a fileira meio traduzida.",
-    ),
-];
+)];
 
 fn src_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")

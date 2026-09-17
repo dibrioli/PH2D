@@ -11,7 +11,9 @@
 /// A tradução de uma chave `panel.model3d.*`, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
-        "panel.model3d.title" => "3D Model",
+        // ⛔ Era "3D Model" e a aba dizia "Model 3D" — uma fonte só desde que o `Panel::TITLE` é a
+        // chave (2026-09-17); ganhou a palavra da aba, que é a que o menu *Window* também diz.
+        "panel.model3d.title" => "Model 3D",
         "panel.model3d.empty" => "Select an object to edit its dimensions.",
         // ⚠️ O rótulo diz **Radius**, e é um compromisso que o documento honra: quem escolher a
         // mistura orgânica vê um número que entrega 3/4 do que promete (ver `Blend::Organic`), e

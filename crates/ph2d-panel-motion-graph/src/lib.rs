@@ -103,7 +103,7 @@ use ph2d_editor_core::zones;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Zero-size marker implementing the typed graph-editor panel contract.
 pub struct MotionGraphPanel;
@@ -114,7 +114,7 @@ impl Panel for MotionGraphPanel {
     const ID: &'static str = "motion_graph";
     const NODE_ID: NodeId = ids::MOTION_GRAPH_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Motion Graph";
+    const TITLE: TextKey = TextKey::new("panel.motion_graph.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::MotionNodes;
     /// ⭐⭐ **O ÚNICO painel que declara o CENTRO, e não é uma excepção — é a decisão D5.**
     ///

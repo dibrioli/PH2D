@@ -32,7 +32,7 @@ pub use state::{UpscalePanelState, last_content_h, last_visible_h, set_current_u
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Zero-size marker implementing the typed Upscale panel contract.
 pub struct UpscalePanel;
@@ -42,7 +42,7 @@ impl Panel for UpscalePanel {
     const ID: &'static str = "upscale";
     const NODE_ID: NodeId = ph2d_editor_core::ids::UPS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Upscale";
+    const TITLE: TextKey = TextKey::new("panel.upscale.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Upscale;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

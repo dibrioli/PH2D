@@ -41,7 +41,7 @@ pub use state::AudioEditorState;
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 use ph2d_tool_registry::hash_node_id;
 
 /// Outer panel rect id. Single source in editor-core so the hero z-order paint
@@ -444,7 +444,7 @@ impl Panel for AudioEditorPanel {
     const ID: &'static str = "audio_editor";
     const NODE_ID: NodeId = AEDIT_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Audio Editor";
+    const TITLE: TextKey = TextKey::new("panel.audio_editor.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Audio;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

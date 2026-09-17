@@ -202,7 +202,7 @@ pub use state::{
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Zero-size marker implementing the typed Vector Style panel contract.
 pub struct VectorPanel;
@@ -213,7 +213,7 @@ impl Panel for VectorPanel {
     const ID: &'static str = "vector";
     const NODE_ID: NodeId = ph2d_editor_core::ids::VECTOR_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Vector";
+    const TITLE: TextKey = TextKey::new("panel.vector.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Vector;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

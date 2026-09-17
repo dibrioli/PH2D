@@ -93,7 +93,7 @@ pub(crate) fn paint(state: &mut WidgetLabState, ctx: &mut PaintCtx) {
     paint_text(
         ctx.text_system,
         ctx.scene,
-        WidgetLabPanel::TITLE,
+        WidgetLabPanel::TITLE.tr(),
         rect.x + PANEL_HEAD_PAD,
         rect.y + (HEAD_H - TypeToken::Sm.px()) * 0.5,
         TypeToken::Sm.px(),

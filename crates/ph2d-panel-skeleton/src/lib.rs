@@ -55,7 +55,7 @@ pub use state::{
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Marcador de tamanho zero que implementa o contrato tipado do painel do esqueleto.
 pub struct SkeletonPanel;
@@ -68,7 +68,7 @@ impl Panel for SkeletonPanel {
     /// ⛔ **Nasce FECHADO**, e quem o abre é a shell: ele só tem sujeito numa cena que tem ossos —
     /// *um painel que fala de algo que não existe é ruído*, que é a mesma lei que a secção seguia.
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Bones";
+    const TITLE: TextKey = TextKey::new("panel.skeleton.title");
     /// ⚠️ **Escrito na INTEGRAÇÃO de 2026-09-10, não por esta linha.** O `Panel::ICON` nasceu
     /// obrigatório na `line/UIUX` (fusão 1 da mesma rodada) e este é o único painel novo da rodada
     /// ⇒ o único que não compilava. ⛔ **O glifo é NOVO de propósito** (`docs/design/icons/bone.svg`,

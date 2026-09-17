@@ -57,7 +57,7 @@ pub use state::{
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Marcador de tamanho zero que implementa o contrato tipado do painel.
 pub struct AssetBrowserPanel;
@@ -77,7 +77,7 @@ impl Panel for AssetBrowserPanel {
     // (`chip_name.rs`: `TOPBAR_RIGHT_ASSETS => "Assets"`), e o resto e' o molde do irmao que ja'
     // FLUTUA — o `WidgetLabPanel`. ⭐ *Este painel declara-se flutuante na PRIMEIRA linha do doc
     // dele*, e um painel flutuante que nascesse numa coluna contradiria o proprio cabecalho.
-    const TITLE: &'static str = "Assets";
+    const TITLE: TextKey = TextKey::new("panel.asset_browser.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Asset;
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
         ph2d_editor_core::screens::slot::SlotSet::SIDES;

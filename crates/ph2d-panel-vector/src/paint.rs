@@ -352,7 +352,7 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     // Canonical panel title — reserve room on the right for the X close button.
     let title_size = paint_panel_title(
         rect,
-        ph2d_i18n::tr("panel.vector.title"),
+        VectorPanel::TITLE.tr(),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

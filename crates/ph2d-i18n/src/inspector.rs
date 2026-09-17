@@ -17,6 +17,11 @@
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         // ── À MÃO (fora dos marcadores) ─────────────────────────────────────────────────────────
+        // ⭐⭐ **O NOME DO PAINEL, lido por DUAS superfícies e declarado UMA vez** (2026-09-17): o
+        // `Panel::TITLE` é um `TextKey` desde a migração das abas, logo a aba do encaixe e o
+        // cabeçalho do próprio painel resolvem esta mesma chave. ⛔ Antes eram dois sítios — um
+        // literal no `lib.rs` do painel e um `tr` no pintor — e cinco painéis divergiam.
+        "panel.inspector.title" => "Inspector",
         // Os eixos da junta Custom: símbolos, não palavras — entram para a tabela `AXIS_ROWS` ser de
         // um tipo só (`TextKey`), com a `Rotation` ao lado.
         "panel.inspector.joint.axis_x" => "X",

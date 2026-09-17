@@ -58,7 +58,7 @@ pub(crate) fn paint(state: &mut TokensPanelState, ctx: &mut PaintCtx) {
 
     let title_size = paint_panel_title(
         rect,
-        tr("panel.tokens.title"),
+        TokensPanel::TITLE.tr(),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

@@ -114,6 +114,7 @@
 - [Costura de UI (18)](reference_topic_ui_seam_discipline.md) · ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md) · [seção partilhada regride quem chegou primeiro](feedback_a_shared_section_header_is_a_regression_to_whoever_arrived_first.md)
 - ⛔ [Faixa RESERVADA ≠ faixa PINTADA — o oráculo é a cena](feedback_a_reserved_band_is_not_a_painted_band_and_geometry_gates_go_green_over_a_blank_screen.md)
 - [Provas de mutação (7)](reference_topic_mutation_proofs.md) · [escrevo a guarda e não a gateio](feedback_i_write_the_right_guard_and_do_not_gate_it.md) · [filtro que casa ZERO imprime «SOBREVIVEU»](feedback_a_mutation_proof_needs_a_control_on_its_own_filter.md)
+- ⛔⛔ [Restaurar com `git checkout` numa árvore SUJA apaga a FATIA, não a mutação — 3 ficheiros perdidos; quem o disse foi o controlo do filtro](feedback_a_mutation_restore_by_git_checkout_deletes_the_wave.md)
 - [Oráculo (13) — paridade da LEI ≠ o PRODUTO do dono](reference_topic_oracle_discipline.md)
 - ⛔ [Janela I não faz grep por nome do alvo nos docs antigos do módulo](feedback_the_clean_window_does_not_grep_old_module_docs_for_a_target_name.md)
 - ⛔⛔ [A chave que o ARTISTA fez manda mais que a correção automática](feedback_the_artists_key_outranks_the_automatic_correction.md)

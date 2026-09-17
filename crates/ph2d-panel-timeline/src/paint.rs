@@ -452,7 +452,7 @@ fn paint_chrome(ctx: &mut PaintCtx, theme: Theme, rect: Rect) -> f32 {
     paint_text_title(
         ctx.text_system,
         ctx.scene,
-        ph2d_i18n::tr("panel.timeline.title"),
+        TimelinePanel::TITLE.tr(),
         rect.x + PANEL_HEAD_PAD,
         geom::title_baseline(rect),
         title_size,

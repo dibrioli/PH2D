@@ -83,7 +83,7 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
     // Canonical panel title — reserve room for the X close button.
     let title_size = paint_panel_title(
         rect,
-        tr("panel.upscale.title"),
+        UpscalePanel::TITLE.tr(),
         ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

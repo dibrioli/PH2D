@@ -18,6 +18,7 @@ mod staleness;
 mod switching_layout_rearranges_the_screen;
 mod the_app_frame_is_reachable_by_the_hit_index;
 mod the_area_hands_its_commands_to_the_bar_and_the_app_menu;
+mod the_name_of_a_panel_has_one_source;
 mod the_tab_and_the_menu_call_a_panel_the_same_thing;
 mod the_tool_bar_never_grows_and_the_rest_is_behind_the_dots;
 mod the_window_menu_reaches_every_module;

@@ -53,7 +53,7 @@ pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
 
     let title_size = paint_panel_title(
         rect,
-        tr("panel.physics.title"),
+        PhysicsPanel::TITLE.tr(),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

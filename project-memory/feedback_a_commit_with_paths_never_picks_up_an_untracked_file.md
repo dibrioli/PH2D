@@ -22,3 +22,19 @@ rastreada; ele só entra se alguém o **stage** antes. ⚠️ E a regra §0.4 do
 fora. ⛔ Um commit que não compila é um ponto de `git bisect` partido e um CI por-commit vermelho —
 a cura é `--amend` enquanto ele for `HEAD`. Irmãs: [[reference_topic_git_hazards]] ·
 [[feedback_a_tail_is_a_window_not_a_verdict]]
+
+## ⚠️ A IRMÃ do MESMO `pathspec`: um ficheiro RASTREADO que os caminhos não cobrem
+
+Medido em 2026-09-17 (`line/UIUX`, 7.ª fatia do HR-15). A fatia anterior (`cdf158f95`) acrescentou
+uma `dev-dependency` a um `Cargo.toml` e comitou com `-- crates/…`. O **`Cargo.lock`** vive na RAIZ,
+logo nenhum dos caminhos o cobria: ele ficou `M` na árvore e **fora do commit**.
+
+**Why:** aqui o ficheiro está rastreado e a mudança é real — o filtro é que não a alcança. O modo de
+falha é **mais silencioso** que o do irmão acima: a árvore daquele commit **compila** (o cargo
+regenera o lock), e o que ela não passa é o **CI**, que corre `--locked` em **nove** passos do
+`spike.yml` (`--locked` recusa-se a actualizar o lock e sai vermelho). ⇒ *um commit que compila
+localmente e reprova só no CI é o pior sítio para um `bisect` aterrar.*
+
+**How to apply:** toda mudança de `Cargo.toml` (dep, dev-dep, feature) arrasta o `Cargo.lock`, e ele
+**não está debaixo de `crates/`** — acrescente-o à lista de caminhos. ⭐ A prova barata é a mesma do
+irmão, um caractere diferente: `git status --short | grep '^ M'` DEPOIS do commit.

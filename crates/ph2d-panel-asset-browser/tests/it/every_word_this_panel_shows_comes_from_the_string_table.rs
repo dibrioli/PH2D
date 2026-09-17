@@ -9,11 +9,7 @@ const PREFIX: &str = "panel.asset_browser.";
 const TABLE: &str = "crates/ph2d-i18n/src/asset_browser.rs";
 
 /// ⭐ As excepções, **com o mecanismo**.
-const NOT_LANGUAGE: &[Excecao] = &[(
-    "lib.rs",
-    "Assets",
-    "o `Panel::TITLE` e' um `const &'static str` que o registo le para a ABA, e o `tr` nao e' `const fn` -- a mesma excepcao dos outros paineis migrados.",
-)];
+const NOT_LANGUAGE: &[Excecao] = &[];
 
 #[test]
 fn every_word_this_panel_shows_comes_from_the_string_table() {

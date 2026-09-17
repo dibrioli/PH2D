@@ -42,13 +42,7 @@ const TABLES: &[&str] = &[
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.
-const NOT_LANGUAGE: &[(&str, &str, &str)] = &[(
-    "lib.rs",
-    "Inspector",
-    "o `Panel::TITLE` e' um `const &'static str` que o registo le para a ABA, e o `tr` nao e' \
-     `const fn`. Fazer as abas falarem pela tabela e' mudar o contrato do painel nos 26 que o \
-     implementam -- obra propria, nomeada no handoff, a mesma excepcao do Painter e da Hierarquia.",
-)];
+const NOT_LANGUAGE: &[(&str, &str, &str)] = &[];
 
 fn src_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")

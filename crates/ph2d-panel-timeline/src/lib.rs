@@ -102,7 +102,7 @@ pub use state::{
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Zero-size marker implementing the typed timeline panel contract.
 pub struct TimelinePanel;
@@ -113,7 +113,7 @@ impl Panel for TimelinePanel {
     const ID: &'static str = "timeline";
     const NODE_ID: NodeId = ph2d_editor_core::ids::TIMELINE_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Timeline";
+    const TITLE: TextKey = TextKey::new("panel.timeline.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::History;
     /// ⚠️ **Uma TIRA não cabe numa coluna.** Ela é larga e baixa: numa coluna de 304 px
     /// ela mostraria dois quadros. ⇒ a faixa de baixo é o único encaixe que a exprime, e o

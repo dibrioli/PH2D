@@ -11,12 +11,7 @@ const PREFIX: &str = "panel.color_eq.";
 const TABLE: &str = "crates/ph2d-i18n/src/image_tools.rs";
 
 /// ⭐ As excepções, **com o mecanismo**.
-const NOT_LANGUAGE: &[Excecao] = &[(
-    "lib.rs",
-    "Color Equalization",
-    "o `Panel::TITLE` e' um `const &'static str` que o registo le para a ABA, e o `tr` nao e' \
-     `const fn` -- a mesma excepcao dos paineis Painter, Vector e Inspector.",
-)];
+const NOT_LANGUAGE: &[Excecao] = &[];
 
 #[test]
 fn every_word_this_panel_shows_comes_from_the_string_table() {

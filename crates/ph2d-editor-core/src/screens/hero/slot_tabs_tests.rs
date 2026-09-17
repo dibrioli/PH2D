@@ -13,6 +13,9 @@ fn bar() -> Rect {
 }
 
 fn occupant(id: &'static str, node: u64, title: &'static str) -> Occupant {
+    // ⚠️ A fixtura recebe a CHAVE e não o nome desde 2026-09-17: as larguras que este ficheiro mede
+    //    são as do texto que a aba de facto pinta, logo medir um literal aqui mediria outro app.
+    let title = crate::panel::TextKey::new(title);
     Occupant {
         id,
         node: NodeId(node),
@@ -24,9 +27,9 @@ fn occupant(id: &'static str, node: u64, title: &'static str) -> Occupant {
 /// Os três ocupantes da foto do dono, na ordem do registo.
 fn three() -> [Occupant; 3] {
     [
-        occupant("audio_editor", 11, "Audio Editor"),
-        occupant("audio_mixer", 12, "Audio Mixer"),
-        occupant("inspector", 13, "Inspector"),
+        occupant("audio_editor", 11, "panel.audio_editor.title"),
+        occupant("audio_mixer", 12, "panel.audio_mixer.title"),
+        occupant("inspector", 13, "panel.inspector.title"),
     ]
 }
 
@@ -73,7 +76,7 @@ fn a_tab_is_as_wide_as_its_own_name() {
     let equal_share = bar().w / occ.len() as f32;
     let widest = occ
         .iter()
-        .map(|o| text.prefix_width(o.title, font))
+        .map(|o| text.prefix_width(o.title.tr(), font))
         .fold(0.0_f32, f32::max);
     assert!(
         equal_share - inset < widest,
@@ -83,11 +86,11 @@ fn a_tab_is_as_wide_as_its_own_name() {
 
     let widths = tab_widths(&occ, &mut text);
     for (o, w) in occ.iter().zip(&widths) {
-        let full = text.prefix_width(o.title, font);
+        let full = text.prefix_width(o.title.tr(), font);
         assert!(
             *w - inset >= full - 0.001,
             "«{}» não cabe na própria aba ({w} px, com {inset} de recuo, para {full} px de nome)",
-            o.title
+            o.title.tr()
         );
     }
     assert!(

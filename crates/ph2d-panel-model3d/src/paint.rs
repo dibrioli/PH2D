@@ -91,7 +91,7 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
 
     let title_size = paint_panel_title(
         rect,
-        tr("panel.model3d.title"),
+        Model3dPanel::TITLE.tr(),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

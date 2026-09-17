@@ -9,18 +9,11 @@ const PREFIX: &str = "panel.motion_graph.";
 const TABLE: &str = "crates/ph2d-i18n/src/motion_panels.rs";
 
 /// ⭐ As excepções, **com o mecanismo**.
-const NOT_LANGUAGE: &[Excecao] = &[
-    (
-        "lib.rs",
-        "Motion Graph",
-        "o `Panel::TITLE` e' um `const &'static str` que o registo le para a ABA, e o `tr` nao e' `const fn` -- a mesma excepcao dos outros paineis migrados.",
-    ),
-    (
-        "snapshot_thumb.rs",
-        "PreviewThumb({}x{})",
-        "o `impl Debug` do `PreviewThumb` -- ele formata o valor para uma mensagem de teste que falha, nunca para a tela; traduzi-lo seria traduzir um diagnostico.",
-    ),
-];
+const NOT_LANGUAGE: &[Excecao] = &[(
+    "snapshot_thumb.rs",
+    "PreviewThumb({}x{})",
+    "o `impl Debug` do `PreviewThumb` -- ele formata o valor para uma mensagem de teste que falha, nunca para a tela; traduzi-lo seria traduzir um diagnostico.",
+)];
 
 #[test]
 fn every_word_this_panel_shows_comes_from_the_string_table() {

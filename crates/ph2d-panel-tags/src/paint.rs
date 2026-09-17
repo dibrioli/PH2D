@@ -45,7 +45,7 @@ pub(crate) fn paint(state: &mut TagsPanelState, ctx: &mut PaintCtx) {
 
     let title_size = paint_panel_title(
         rect,
-        ph2d_i18n::tr("panel.tags.title"),
+        TagsPanel::TITLE.tr(),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

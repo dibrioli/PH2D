@@ -7505,6 +7505,7 @@ name = "ph2d-node-value-attribute"
 version = "0.0.0"
 dependencies = [
  "libm",
+ "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
  "ph2d-nodegraph",

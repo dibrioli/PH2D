@@ -16,7 +16,6 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_close_button_rect,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
 pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx) {
@@ -69,7 +68,7 @@ pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx) {
             &[("layer", &snap.layer_name)],
         )
     } else {
-        tr("panel.flip_frames.title").to_owned()
+        FlipFramesPanel::TITLE.tr().to_owned()
     };
     let title_size = paint_panel_title(
         rect,

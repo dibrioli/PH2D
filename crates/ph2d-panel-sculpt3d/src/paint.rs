@@ -61,7 +61,7 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
             .set_panel_rect(ids::SCULPT3D_PANEL, rect);
         paint_panel_empty(
             rect,
-            tr("panel.sculpt3d.title"),
+            Sculpt3dPanel::TITLE.tr(),
             crate::ids::SCULPT3D_CLOSE,
             tr("panel.sculpt3d.empty"),
             ctx.scene,
@@ -89,7 +89,7 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
 
     let title_size = paint_panel_title(
         rect,
-        tr("panel.sculpt3d.title"),
+        Sculpt3dPanel::TITLE.tr(),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

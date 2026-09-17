@@ -124,7 +124,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore, format_number};
 use ph2d_editor_core::paint::rect_to_vello;
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
 };
@@ -152,7 +152,7 @@ impl Panel for MotionParamsPanel {
     const ID: &'static str = "motion_params";
     const NODE_ID: NodeId = ids::MOTION_PARAMS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Motion Params";
+    const TITLE: TextKey = TextKey::new("panel.motion_params.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Settings;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

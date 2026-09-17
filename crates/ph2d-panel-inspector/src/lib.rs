@@ -207,7 +207,7 @@ pub fn probe_tag_options(
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Zero-size marker implementing the typed Inspector panel contract.
 pub struct InspectorPanel;
@@ -218,7 +218,7 @@ impl Panel for InspectorPanel {
     const ID: &'static str = "inspector";
     const NODE_ID: NodeId = ph2d_editor_core::ids::INSP_PANEL;
     const DEFAULT_VISIBLE: bool = true;
-    const TITLE: &'static str = "Inspector";
+    const TITLE: TextKey = TextKey::new("panel.inspector.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Inspector;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas

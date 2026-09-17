@@ -38,7 +38,7 @@ pub use state::{last_content_h, last_visible_h, set_current_histogram, set_curre
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
 /// Zero-size marker implementing the typed Color Equalization panel
 /// contract.
@@ -56,7 +56,7 @@ impl Panel for ColorEqualizationPanel {
     const ID: &'static str = "color_equalization";
     const NODE_ID: NodeId = ph2d_editor_core::ids::CEQ_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Color Equalization";
+    const TITLE: TextKey = TextKey::new("panel.color_eq.title");
     const ICON: ph2d_editor_core::icons::IconId =
         ph2d_editor_core::icons::IconId::ColorEqualization;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a

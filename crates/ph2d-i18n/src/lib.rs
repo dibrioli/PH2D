@@ -334,7 +334,13 @@ pub fn tr(key: &str) -> &'static str {
         // fail (Enio: "todos os objetos grandes e pequenos caem na mesma
         // velocidade"). A label has to promise what the model can deliver.
         // Wet Tuning side panel (doc 22) — labels are the model app's own.
-        "panel.wet_tuning.title" => "Wet Tuning",
+        // ⛔⛔ **Este valor era "Wet Tuning" e a ABA dizia "Wet Paint"** — duas superfícies do MESMO
+        // painel, no ecrã ao mesmo tempo, com nomes diferentes (medido 2026-09-17: cinco painéis
+        // assim). A partir da migração do `Panel::TITLE` para `TextKey` há **uma** fonte: esta
+        // chave é o que a aba lê E o que o cabeçalho do painel pinta. Ganhou a palavra da ABA,
+        // porque é a que o menu *Window* também diz e há gate a atá-las
+        // (`the_tab_and_the_menu_call_a_panel_the_same_thing`).
+        "panel.wet_tuning.title" => "Wet Paint",
         "panel.wet_tuning.group.paint" => "Paint",
         "panel.wet_tuning.group.water" => "Water",
         "panel.wet_tuning.group.physics" => "Physics",
@@ -392,7 +398,17 @@ pub fn tr(key: &str) -> &'static str {
         // ⚠️ Os NOMES dos tokens (`bg-0`, `accent`, …) NÃO passam por aqui: eles são as chaves do
         // `tokens.json`, o endereço que o artista digita no picker de binding e que o arquivo
         // guarda — traduzi-los partiria o endereço.
-        "panel.tokens.title" => "Tokens",
+        // ⛔ Era "Tokens" e a aba dizia "Design Tokens" — ver a nota do `panel.wet_tuning.title`.
+        "panel.tokens.title" => "Design Tokens",
+        // ⭐⭐ **OS QUATRO PAINÉIS QUE NÃO TINHAM CHAVE NENHUMA** (2026-09-17) — eles não pintam o
+        // cabeçalho por esta tabela, logo nunca precisaram de uma; a migração do `Panel::TITLE`
+        // para `TextKey` deu-lhes a primeira. ⚠️ Moram aqui e não numa tabela de família porque
+        // nenhum deles TEM família: os OSSOS pedem emprestado o vocabulário do vetor
+        // (`panel.vector.*`), e os outros três são bancadas.
+        "panel.skeleton.title" => "Bones",
+        "panel.authored.title" => "Authored UI",
+        "panel.widget_gallery.title" => "Widget Gallery",
+        "panel.widget_lab.title" => "Widget Lab",
         // A HIERARQUIA (2026-09-13) — o painel que o artista tem aberto o dia inteiro, e que não
         // tinha uma única chave. As duas frases do contador moram INTEIRAS aqui, com os marcadores
         // (`ph2d_i18n::tr_with`): colar o número no código fixaria a ordem das palavras.
@@ -641,6 +657,17 @@ impl TextKey {
     #[must_use]
     pub fn tr(self) -> &'static str {
         tr(self.0)
+    }
+
+    /// ⭐ **A chave CRUA, para quem faz censo dela** — nunca para pintar.
+    ///
+    /// ⚠️ Ela existe porque um gate precisa de perguntar *«esta chave EXISTE na tabela?»*, e a
+    /// resposta é `tr(k) != k` (a chave desconhecida volta crua, com `leak_key`). ⛔ O tipo continua
+    /// a ser a cerca: quem quer TEXTO chama [`Self::tr`], e o nome deste método diz em voz alta que
+    /// o que sai daqui é um identificador.
+    #[must_use]
+    pub const fn key(self) -> &'static str {
+        self.0
     }
 }
 

@@ -218,14 +218,20 @@ pub fn paint_drag_overlay(
     };
     // ⚠️ **O fantasma leva a CARA da aba, não só o nome** — ele é a aba a viajar, e uma etiqueta
     //    sem glifo largada sobre uma fila de glifos leria como outra coisa.
-    let (title, icon) = crate::panel::with_registry_opt(|reg| {
+    // ⛔ **O recurso era `("", IconId::Inspector)` e ele MENTIA duas vezes**: um nome vazio e o
+    //    glifo de OUTRO painel, para um id que nenhum manifesto reclama. ⚠️ Com o título a virar
+    //    `TextKey` (2026-09-17) o nome vazio deixou de ser exprimível sem custo — um `tr("")` faz
+    //    `leak_key` e vaza uma string **por quadro** de arrasto. ⇒ se o painel arrastado não está
+    //    no registo não há nada que arrastar, e a resposta certa é não desenhar nada.
+    let Some((title, icon)) = crate::panel::with_registry_opt(|reg| {
         reg.panels()
             .iter()
             .find(|p| p.manifest.panel_node_id == panel)
             .map(|p| (p.manifest.title, p.manifest.icon))
     })
-    .flatten()
-    .unwrap_or(("", crate::icons::IconId::Inspector));
+    .flatten() else {
+        return;
+    };
 
     for (_, r) in drop_targets(hero, panel) {
         let under = r.contains(cursor.0, cursor.1);
@@ -273,7 +279,7 @@ pub fn paint_drag_overlay(
         text_system,
         ghost,
         icon,
-        title,
+        title.tr(),
         ColorToken::Text1,
         theme,
     );

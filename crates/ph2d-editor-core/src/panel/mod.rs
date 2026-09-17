@@ -35,6 +35,11 @@ pub use host::{PanelHost, PanelHostInternal};
 pub use manifest::{ErasedApplyEventFn, ErasedPaintFn, PanelManifest, PopulateFn};
 pub use paint_ctx::PaintCtx;
 pub use panel_trait::Panel;
+/// ⭐⭐ **A CHAVE de um texto, re-exportada aqui porque o contrato do painel a usa** — o
+/// [`Panel::TITLE`] é um `TextKey`, e um painel não devia precisar de declarar uma dependência nova
+/// só para escrever o nome dele. ⚠️ Duas bancadas (`widget-gallery`, `widget-lab`) não dependem da
+/// `ph2d-i18n` e é por elas que isto existe: *o vocabulário de um trait vem da crate do trait*.
+pub use ph2d_i18n::TextKey;
 pub use registry::{
     PANEL_REGISTRY, PanelRegistry, install_panel_registry, with_registry, with_registry_opt,
     with_registry_ref,

@@ -1,4 +1,4 @@
-//! **Os commits das secções do TOP-20 que cabem numa porta só** (PARTICLES · HUD) — fase-filha do
+//! **Os commits das secções do TOP-20 que cabem numa porta só** (PARTICLES · HUD · SEQUENCE) — fase-filha do
 //! [`super`], num ficheiro irmão.
 //!
 //! ⚠️ **O corte foi imposto pelo tecto de FUNÇÃO** (a `fase_inspector_commits` chegou a `204`
@@ -8,15 +8,17 @@
 
 use ph2d_ecs::SimWorld;
 
-/// Aplica as duas. `true` = alguma coisa mudou.
+/// Aplica as três. `true` = alguma coisa mudou.
 ///
-/// ⚠️ **`|` e não `||`:** a segunda TEM de correr, e o curto-circuito engoliria uma edição do HUD
-/// sempre que uma de partículas já tivesse mudado alguma coisa.
+/// ⚠️ **`|` e não `||`:** as seguintes TÊM de correr, e o curto-circuito engoliria uma edição do
+/// HUD sempre que uma de partículas já tivesse mudado alguma coisa.
 pub(super) fn aplicar(
     sim: &mut SimWorld,
     particles: &[(u64, ph2d_editor_core::particles_edits::ParticlesFieldEdit)],
     hud: &[(u64, ph2d_editor_core::hud_edits::HudFieldEdit)],
+    sequence: &[(u64, ph2d_editor_core::sequence_edits::SequenceFieldEdit)],
 ) -> bool {
     ph2d_app_components::particles_inspector::apply_all(sim, particles)
         | ph2d_app_components::hud_inspector::apply_all(sim, hud)
+        | ph2d_app_components::sequence_inspector::apply_all(sim, sequence)
 }

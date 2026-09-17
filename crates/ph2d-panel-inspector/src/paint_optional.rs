@@ -249,6 +249,7 @@ pub(crate) fn paint_optional_sections(
     script: Option<&ph2d_editor_core::script_edits::InspectorScriptInfo>,
     particles: Option<&ph2d_editor_core::particles_edits::InspectorParticlesInfo>,
     hud: Option<&ph2d_editor_core::hud_edits::InspectorHudInfo>,
+    sequence: Option<&ph2d_editor_core::sequence_edits::InspectorSequenceInfo>,
     // ⚠️ **Duas selecções e não uma** — as listas de estados e de setas são independentes.
     sm_state_selected: &mut usize,
     sm_trans_selected: &mut usize,
@@ -428,6 +429,7 @@ pub(crate) fn paint_optional_sections(
             script,
             particles,
             hud,
+            sequence,
             tags,
             sm_state_selected: *sm_state_selected,
             sm_trans_selected: *sm_trans_selected,

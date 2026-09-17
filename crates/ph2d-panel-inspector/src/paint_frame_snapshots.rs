@@ -66,6 +66,8 @@ pub(crate) struct LiveSnapshots {
     pub particles_info: Option<ph2d_editor_core::particles_edits::InspectorParticlesInfo>,
     /// ⭐⭐⭐ O HUD (TOP-20 #20).
     pub hud_info: Option<ph2d_editor_core::hud_edits::InspectorHudInfo>,
+    /// ⭐ A CUTSCENE (TOP-20 #19).
+    pub sequence_info: Option<ph2d_editor_core::sequence_edits::InspectorSequenceInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -111,6 +113,7 @@ impl LiveSnapshots {
         let script_info = crate::state_components::current_inspector_script();
         let particles_info = crate::state_components::current_inspector_particles();
         let hud_info = crate::state_components::current_inspector_hud();
+        let sequence_info = crate::state_components::current_inspector_sequence();
         let tags_info = crate::state::current_inspector_tags();
         let any_section = any_live_section([
             transform_info.is_some(),
@@ -135,6 +138,7 @@ impl LiveSnapshots {
             script_info.is_some(),
             particles_info.is_some(),
             hud_info.is_some(),
+            sequence_info.is_some(),
             tags_info.is_some(),
         ]);
         Self {
@@ -157,6 +161,7 @@ impl LiveSnapshots {
             script_info,
             particles_info,
             hud_info,
+            sequence_info,
             tags_info,
             blend_info,
             physics_info,

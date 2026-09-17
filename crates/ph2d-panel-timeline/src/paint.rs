@@ -41,6 +41,12 @@ fn publish_view(state: &mut TimelinePanelState, snapshot: &ph2d_timeline::Timeli
     if state::take_keys_tab_request() {
         state::set_tab(state, crate::tab::Tab::Keys);
     }
+    // ⭐ **E o pedido SIMÉTRICO, a seguir de propósito** — ver [`state::request_arrange_tab`]: uma
+    // cena que escolhe um objecto E pede o Arrange quer dizer a segunda coisa, e a ordem é o que
+    // o exprime sem um campo de prioridade.
+    if state::take_arrange_tab_request() {
+        state::set_tab(state, crate::tab::Tab::Arrange);
+    }
     // **`keys_mode` follows the TAB, not `&& stacked()`** (Enio, 2026-07-27): the Keys tab
     // is the CLIP's scope and Arrange is the SCENE's, INDEPENDENT — each edits its own
     // duration, each plays its own thing. The old `&& stacked()` collapsed them without a
@@ -96,6 +102,7 @@ fn release_everything_a_hidden_panel_must_not_hold(
     // A selection made with the panel CLOSED does not queue a tab yank for
     // whenever it reopens — drop the request instead of banking it.
     let _ = state::take_keys_tab_request();
+    let _ = state::take_arrange_tab_request();
     // ...nor is it inside a container. The trail survives (it comes back where it was),
     // but a hidden panel must not leave the shell driving a container's interior.
     state::publish_scene_root(true);

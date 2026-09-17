@@ -68,6 +68,8 @@ pub(super) struct InspectorIntents {
     pub(super) particles_edits: Vec<(u64, ph2d_editor_core::particles_edits::ParticlesFieldEdit)>,
     /// ⭐⭐⭐ A secção HUD (TOP-20 #20).
     pub(super) hud_edits: Vec<(u64, ph2d_editor_core::hud_edits::HudFieldEdit)>,
+    /// ⭐ As edições da secção SEQUENCE (TOP-20 #19).
+    pub(super) sequence_edits: Vec<(u64, ph2d_editor_core::sequence_edits::SequenceFieldEdit)>,
     pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     pub(super) tag_tree_edits: Vec<ph2d_editor_core::TagTreeEdit>,
     pub(super) inspector_queue_dirty: bool,
@@ -126,6 +128,7 @@ impl crate::App {
             script_edits,
             particles_edits,
             hud_edits,
+            sequence_edits,
             tags_edits,
             tag_tree_edits,
             mut inspector_queue_dirty,
@@ -251,8 +254,9 @@ impl crate::App {
         inspector_queue_dirty |= statemachine_commits::aplicar(sim, &statemachine_edits);
         // ⭐ O SCRIPT (TOP-20 #16) — fase-filha (o tecto de LOC desta função pôs-no lá).
         inspector_queue_dirty |= script_commits::aplicar(sim, &script_edits);
-        // ⭐ O EMISSOR (#18) e o HUD (#20) — fase-filha, pelo tecto desta função.
-        inspector_queue_dirty |= top20_commits::aplicar(sim, &particles_edits, &hud_edits);
+        // ⭐ O EMISSOR (#18), o HUD (#20) e a CUTSCENE (#19) — fase-filha, pelo tecto desta função.
+        inspector_queue_dirty |=
+            top20_commits::aplicar(sim, &particles_edits, &hud_edits, &sequence_edits);
         // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — na fase-filha, pela mesma razão das irmãs acima e
         // pelo mesmo tecto de LOC (esta função chegou a `202` contra `200` ao ganhar o cérebro).
         // ⛔ *Partir por RESPONSABILIDADE, nunca subir o número* — e a fronteira já estava escrita

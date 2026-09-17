@@ -263,6 +263,38 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Showing {n} of {achadas} \u{b7} type to narrow."
         }
         "panel.inspector.tags.create_named" => "+ Create \u{201c}{nome}\u{201d}",
+        // ⭐⭐⭐ A CUTSCENE (TOP-20 #19) — o selector e as sete razões de ela não correr.
+        "panel.inspector.sequence.sequence" => "Sequence",
+        "panel.inspector.sequence.cutscene" => "Cutscene",
+        "panel.inspector.sequence.no_cutscenes" => "No cutscenes yet",
+        "panel.inspector.sequence.none_chosen" => "None",
+        "panel.inspector.sequence.clear" => "Play nothing",
+        "panel.inspector.sequence.make_one_in_the_timeline" => {
+            "No cutscenes in the timeline yet \u{2014} make one with + Container."
+        }
+        "panel.inspector.sequence.gone" => {
+            "That cutscene is gone: \u{201c}{v}\u{201d} \u{2014} nothing plays."
+        }
+        "panel.inspector.sequence.nothing_plays" => {
+            "No cutscene chosen \u{2014} this object plays nothing."
+        }
+        "panel.inspector.sequence.no_timer" => {
+            "This object has no Timer \u{2014} the cutscene has no clock."
+        }
+        "panel.inspector.sequence.clock_stopped" => {
+            "The clock is stopped \u{2014} a cutscene runs while it plays."
+        }
+        "panel.inspector.sequence.not_running" => {
+            "Not running \u{2014} send this object a Start Timer."
+        }
+        "panel.inspector.sequence.timer_too_short" => {
+            "The timer ends at {t} s and the cutscene is {c} s \u{2014} it never reaches the end."
+        }
+        "panel.inspector.sequence.timeline_solo" => {
+            "The timeline is editing keys \u{2014} cutscenes pause until you go back to Arrange."
+        }
+        "panel.inspector.sequence.now" => "Now: {t} s of {c}",
+        "panel.inspector.sequence.primary_only" => "Editing the primary selection only.",
         // ph2d-migrar-texto:end
         _ => return None,
     })

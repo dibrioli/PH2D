@@ -70,6 +70,10 @@ pub(crate) fn apply_event(
     if crate::event_hud::apply_hud_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    // ⭐⭐⭐ A CUTSCENE (TOP-20 #19) — sem estado de painel: um objecto toca UMA sequência.
+    if crate::event_sequence::apply_sequence_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐ O EMISSOR DE PARTÍCULAS (TOP-20 #18) — sem estado de painel: um objecto tem UM emissor.
     if crate::event_particles::apply_particles_event(host, ev) {
         return EventOutcome::Consumed;

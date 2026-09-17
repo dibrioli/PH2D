@@ -72,6 +72,13 @@ thread_local! {
         std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> =
         const { std::cell::Cell::new(None) };
 
+    /// SEQUENCE: quando o selector da CUTSCENE está aberto, a secção guarda aqui o **rect do
+    /// chip**. ⚠️ **Só o rect** — a lista de cutscenes e a escolha rederivam-se do snapshot
+    /// (`current_inspector_sequence`) no passe diferido, que é a fonte delas. *Guardar o que não se
+    /// pode rederivar; rederivar o resto.*
+    pub(crate) static PENDING_SEQ_DD:
+        std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> = const { std::cell::Cell::new(None) };
+
     /// ⭐ **O popover que ESTE painel pintou neste quadro** — `(dono, rect do painel)`.
     ///
     /// ⚠️ Ele existe para uma coisa só: o `dispatch::pointer_down` fecha um dropdown aberto quando
@@ -144,6 +151,14 @@ pub(crate) fn set_pending_audio_dd(chip: Option<(u8, ph2d_editor_core::zones::Re
 
 pub(crate) fn take_pending_audio_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
     PENDING_AUDIO_DD.with(|c| c.take())
+}
+
+pub(crate) fn set_pending_seq_dd(chip: Option<ph2d_editor_core::zones::Rect>) {
+    PENDING_SEQ_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_seq_dd() -> Option<ph2d_editor_core::zones::Rect> {
+    PENDING_SEQ_DD.with(std::cell::Cell::take)
 }
 
 /// Regista que um popover foi pintado neste quadro — ver [`PAINTED_POPOVER`].

@@ -236,6 +236,10 @@ impl crate::App {
             EditorAction::InspectorHudEdit { entity_bits, edit } => {
                 pd.hud_edits.push((entity_bits, edit));
             }
+            // ⭐ **A secção SEQUENCE** (TOP-20 #19), pela mesma razão.
+            EditorAction::InspectorSequenceEdit { entity_bits, edit } => {
+                pd.sequence_edits.push((entity_bits, edit));
+            }
             EditorAction::InspectorTagsEdit { entity_bits, edit } => {
                 pd.tags_edits.push((entity_bits, edit));
             }

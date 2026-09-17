@@ -62,6 +62,7 @@ pub fn populate(store: &mut WidgetStore) {
     super::populate_statemachine::populate_statemachine(store);
     super::populate_particles::populate_particles(store);
     super::populate_hud::populate_hud(store);
+    super::populate_sequence::populate_sequence(store);
     super::populate_script::populate_script(store);
     super::populate_topdown::populate_topdown(store);
     populate_visibility_section(store);

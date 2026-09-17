@@ -124,6 +124,8 @@ pub mod script_bridge;
 pub mod script_inspector;
 /// ⭐⭐⭐ O smoke do SCRIPT DO ARTISTA (TOP-20 #16) — ver o cabeçalho.
 pub mod script_smoke;
+/// ⭐⭐⭐ **O instantâneo da CUTSCENE** (TOP-20 #19) — ver o cabeçalho.
+pub mod sequence_inspector;
 pub mod signal_action_smoke;
 /// ⭐⭐⭐ O smoke do CÉREBRO AUTORÁVEL (TOP-20 #15) — ver o cabeçalho.
 pub mod statemachine_smoke;

@@ -256,6 +256,36 @@ pub(crate) fn paint_deferred_popovers(
         );
     }
 
+    // ⭐⭐⭐ **SEQUENCE** (TOP-20 #19) — a lista das cutscenes do documento, mesmo passe diferido.
+    //
+    // ⚠️ **Só o rect viaja no slot** e a lista rederiva-se do snapshot, que é a fonte dela: uma
+    // cópia guardada ficaria um quadro atrás do documento no quadro em que alguém apaga um
+    // container com o selector aberto.
+    if let Some(chip) = state_popovers::take_pending_seq_dd()
+        && let Some(info) = crate::state_components::current_inspector_sequence()
+    {
+        let mut dd = Dropdown::new(
+            crate::ids::INSP_SEQ_PICK,
+            "",
+            sections::sequence::opcoes(&info.nomes),
+        )
+        .open(true)
+        .placeholder(sections::sequence::placeholder(&info));
+        if let Some(i) = info.escolhido {
+            dd.select(i);
+        }
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
+
     // ⭐⭐⭐ **OS TRÊS POPOVERS DE TAG** (TOP-20 #9) — no irmão, cortados em 2026-09-14 pelo tecto
     // de 200 LOC desta função (ela chegou a `210`).
     //

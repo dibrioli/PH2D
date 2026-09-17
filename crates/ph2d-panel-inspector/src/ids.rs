@@ -26,6 +26,8 @@ mod inspector_hud;
 mod inspector_particles;
 mod inspector_projectile;
 mod inspector_script;
+/// ⭐ Os ids da secção SEQUENCE (TOP-20 #19) — ver o cabeçalho.
+mod inspector_sequence;
 /// ⭐ Os ids da secção STATE MACHINE (TOP-20 #15) — ver o cabeçalho.
 mod inspector_statemachine;
 mod inspector_topdown;
@@ -35,6 +37,7 @@ pub use inspector_hud::*;
 pub use inspector_particles::*;
 pub use inspector_projectile::*;
 pub use inspector_script::*;
+pub use inspector_sequence::*;
 pub use inspector_statemachine::*;
 pub use inspector_topdown::*;
 mod inspector_instance;

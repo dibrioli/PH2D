@@ -19,6 +19,11 @@ use readouts::SnapshotReadouts;
 #[path = "fase_snapshots_tardios.rs"]
 mod tardios;
 
+/// ⭐ **O instantâneo da CUTSCENE** (TOP-20 #19) — fase-filha própria, pelo tecto de ARGUMENTOS da
+/// irmã: ela é a única que lê o documento da ANIMAÇÃO. ⚠️ O nome TEM de começar por `fase_`.
+#[path = "fase_snapshots_sequence.rs"]
+mod sequencia;
+
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_snapshots_publish(
@@ -222,6 +227,14 @@ impl crate::App {
             hero.gizmo.selection,
             hero.gizmo.selected_len(),
             self.playhead.is_playing(),
+        );
+        // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — fase-filha própria; ver o `mod sequencia`.
+        sequencia::publica(
+            sim,
+            &self.timeline,
+            &self.playhead,
+            hero.gizmo.selection,
+            hero.gizmo.selected_len(),
         );
         Some(tool_preview_bits)
     }

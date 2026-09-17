@@ -94,6 +94,8 @@ pub(crate) mod rows;
 mod sampling;
 /// ⭐⭐⭐ A secção SCRIPT (TOP-20 #16) — ver o cabeçalho.
 pub(crate) mod script;
+/// ⭐⭐⭐ A secção SEQUENCE (TOP-20 #19) — a cutscene de um objecto. Ver o cabeçalho.
+pub(crate) mod sequence;
 /// **§5 9-Slice** — a seção que a spec declarou em 2026-05 e que nasceu em 2026-08-21.
 pub(crate) mod slice_grid;
 pub(crate) mod slice_nine;

@@ -22,6 +22,29 @@ pub(crate) struct ComponentsShell {
     pub(crate) smokes: ComponentsSmokeLatches,
     /// O estado vivo do HUD.
     pub(crate) hud: HudShell,
+    /// ⭐ O que a cena da CUTSCENE mede sobre si mesma — ver [`SequenceShell`].
+    pub(crate) sequence: SequenceShell,
+}
+
+/// ⭐⭐⭐ **A AUTO-CONFERÊNCIA da cena da cutscene** (TOP-20 #19) — o que ela mede sobre si mesma
+/// enquanto corre.
+///
+/// ⚠️ **Ela existe porque a FOTO não decide esta pergunta:** uma imagem parada mostra a porta num
+/// instante, e *«ela mexeu-se?»* é uma propriedade de um INTERVALO. Sem isto, a única prova do
+/// lado pintado seria comparar duas fotos à mão — que é exactamente o tipo de verificação que
+/// envelhece sem ninguém reparar.
+#[derive(Default)]
+pub(crate) struct SequenceShell {
+    /// Quantos quadros ainda faltam amostrar. `0` = a conferência já saiu.
+    pub(crate) resta: u32,
+    /// A entidade que TEM o componente, e a que não tem.
+    pub(crate) porta: u64,
+    /// Ver [`Self::porta`].
+    pub(crate) controlo: u64,
+    /// A excursão vertical de cada uma, em unidades de mundo: `(min, max)`.
+    pub(crate) faixa_porta: (f32, f32),
+    /// Ver [`Self::faixa_porta`].
+    pub(crate) faixa_controlo: (f32, f32),
 }
 
 /// ⭐ **O que o HUD lembra entre quadros** — nada disto é documento.
@@ -88,6 +111,11 @@ pub(crate) struct ComponentsSmokeLatches {
     /// que a cena monta fica **por baixo** dos que chegam a seguir. ⚠️ Ele PÁRA — passados estes
     /// quadros a aba é do dono, e uma subida por quadro roubar-lhe-ia o painel que ele escolhesse.
     pub(crate) particles_raise: u8,
+    /// ⭐ A CUTSCENE (TOP-20 #19) — `PH2D_SEQUENCE_SMOKE=1`.
+    pub(crate) sequence: bool,
+    /// Quantos quadros ainda trazem o Inspector à frente na cena da cutscene — ver o irmão
+    /// `particles_raise`, que é a mesma cura da mesma ordem medida.
+    pub(crate) sequence_raise: u8,
     /// O ragdoll instanciado 3× (ADR-0164 F4). `PH2D_INSTANCE_SMOKE=1..7`.
     pub(crate) instance: bool,
 }

@@ -404,6 +404,17 @@ pub enum EditorAction {
         edit: crate::hud_edits::HudFieldEdit,
     },
 
+    /// Inspector → shell, a secção SEQUENCE (TOP-20 #19, W3).
+    ///
+    /// ⚠️ **O que viaja é o NOME da cutscene, nunca o índice dela** — apagar um container renumera
+    /// os de baixo, e a lei do [`ph2d_ecs::SequencePlayer`] é *referência durável é o nome*.
+    InspectorSequenceEdit {
+        /// A quem ela se aplica.
+        entity_bits: u64,
+        /// O que mudou.
+        edit: crate::sequence_edits::SequenceFieldEdit,
+    },
+
     /// Inspector → shell, a secção PARTICLES (TOP-20 #18, W3).
     InspectorParticlesEdit {
         /// A quem ela se aplica.

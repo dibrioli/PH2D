@@ -219,6 +219,11 @@ thread_local! {
         std::cell::RefCell<Option<ph2d_editor_core::hud_edits::InspectorHudInfo>> =
         const { std::cell::RefCell::new(None) };
 
+    /// ⭐⭐⭐ **O snapshot da secção SEQUENCE** (TOP-20 #19).
+    pub(crate) static CURRENT_INSPECTOR_SEQUENCE:
+        std::cell::RefCell<Option<ph2d_editor_core::sequence_edits::InspectorSequenceInfo>> =
+        const { std::cell::RefCell::new(None) };
+
     /// ⭐⭐⭐ **O snapshot da secção PARTICLES** (TOP-20 #18).
     pub(crate) static CURRENT_INSPECTOR_PARTICLES:
         std::cell::RefCell<Option<InspectorParticlesInfo>> =

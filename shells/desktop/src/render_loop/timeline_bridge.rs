@@ -239,7 +239,7 @@ pub(crate) fn run(
     // ficaria parado com o relógio a andar), e **só neste ramo** — as outras duas vistas SOLAM o
     // que o animador edita e congelam o relógio da cena, e escrever por cima delas faria a vista
     // de edição mentir. Ver o cabeçalho da fase.
-    if container.is_none() && !solo {
+    if super::fase_sequences::a_vista_deixa_correr(solo, container) {
         let n = super::fase_sequences::toca_as_cutscenes(world, &mut timeline.doc, drive, skip);
         if n > 0 && std::env::var_os("PH2D_SEQUENCE_LOG").is_some() {
             eprintln!("[sequence] {n} cutscene(s) a correr");

@@ -268,6 +268,8 @@ mod legacy_chrome;
 mod live_memo_probe;
 /// `Merge to Layers` — instala no Painter o documento que a fusão produziu (plano Sprite 18 W10).
 mod merge_layers;
+/// ⭐⭐⭐ A cena da CUTSCENE (TOP-20 #19) — ver o cabeçalho.
+mod sequence_smoke;
 // ⛔ **O alias `modal` FOI APAGADO** (line/shell-folhas): a lei já vivia na
 // [`ph2d_app_host::modal`] desde a W2 e o alias existia só porque cinco linhas estavam a mover
 // ficheiros naquele dia. Elas integraram — o prazo que o próprio doc dele escrevia chegou —, e os

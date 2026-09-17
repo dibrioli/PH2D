@@ -85,6 +85,18 @@ pub(crate) fn current_inspector_hud() -> Option<ph2d_editor_core::hud_edits::Ins
     crate::state::CURRENT_INSPECTOR_HUD.with(|c| c.borrow().clone())
 }
 
+/// ⭐ O snapshot da CUTSCENE (TOP-20 #19) — a shell escreve-o todo o quadro.
+pub fn set_current_inspector_sequence(
+    info: Option<ph2d_editor_core::sequence_edits::InspectorSequenceInfo>,
+) {
+    crate::state::CURRENT_INSPECTOR_SEQUENCE.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_sequence()
+-> Option<ph2d_editor_core::sequence_edits::InspectorSequenceInfo> {
+    crate::state::CURRENT_INSPECTOR_SEQUENCE.with(|c| c.borrow().clone())
+}
+
 /// ⭐ O snapshot do EMISSOR DE PARTÍCULAS (TOP-20 #18) — a shell escreve-o todo o quadro.
 pub fn set_current_inspector_particles(info: Option<InspectorParticlesInfo>) {
     CURRENT_INSPECTOR_PARTICLES.with(|c| *c.borrow_mut() = info);

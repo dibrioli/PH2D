@@ -24,6 +24,9 @@ thread_local! {
     /// object becomes selected ([`request_keys_tab`]), consumed (or, hidden,
     /// dropped) by the next paint.
     static KEYS_TAB_REQUESTED: Cell<bool> = const { Cell::new(false) };
+    /// A pending "switch to the Arrange tab" request — the SYMMETRIC sibling of
+    /// [`KEYS_TAB_REQUESTED`]. See [`request_arrange_tab`].
+    static ARRANGE_TAB_REQUESTED: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Ask the panel to fit its time view to the extent of the keys on the next
@@ -68,4 +71,27 @@ pub fn request_keys_tab() {
 /// Consume a pending Keys-tab request.
 pub(crate) fn take_keys_tab_request() -> bool {
     KEYS_TAB_REQUESTED.with(|c| c.replace(false))
+}
+
+/// ⭐⭐⭐ **Ask the panel for the ARRANGE tab** — the symmetric sibling of
+/// [`request_keys_tab`], and the one a SCENE needs.
+///
+/// ⚠️ **It exists because `Tab::Keys` is the default and Keys is the one view that STOPS the
+/// scene**: Keys solos the active clip, so the shell's cutscene pass (`SequencePlayer`, TOP-20
+/// #19) does not run there. A scene that wants to show a cutscene playing while the transport is
+/// on screen had **no way to ask** — the door was one-directional, and the only workaround was to
+/// hide the panel, which takes the transport away from the artist exactly when he wants to watch
+/// it.
+///
+/// ⚠️ **It wins over a pending [`request_keys_tab`]**, and the order is deliberate: selecting an
+/// object raises the Keys request at the selection edge, and a scene that both selects an object
+/// and asks for Arrange means the second thing. Honoured by the same paint, and DROPPED by a
+/// hidden panel's paint — the same law as the sibling.
+pub fn request_arrange_tab() {
+    ARRANGE_TAB_REQUESTED.with(|c| c.set(true));
+}
+
+/// Consume a pending Arrange-tab request.
+pub(crate) fn take_arrange_tab_request() -> bool {
+    ARRANGE_TAB_REQUESTED.with(|c| c.replace(false))
 }

@@ -11,6 +11,7 @@ mod a_lista_de_tags_cabe_no_popover;
 mod a_long_popover_scrolls;
 mod a_seccao_particles_esta_viva;
 mod a_seccao_script_esta_viva;
+mod a_seccao_sequence_esta_viva;
 mod a_seccao_tags_esta_viva;
 mod action_verb_is_a_dropdown;
 mod as_caixas_que_encurtaram_guardam_a_explicacao;

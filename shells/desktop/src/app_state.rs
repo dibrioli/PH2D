@@ -969,7 +969,7 @@ pub(crate) struct RubberBandState {
 /// ⭐⭐ Os latches das cenas da família das INSTÂNCIAS — irmão por tecto de LOC.
 #[path = "app_state_components_smokes.rs"]
 mod components_smokes;
-pub(crate) use components_smokes::ComponentsShell;
+pub(crate) use components_smokes::{ComponentsShell, SequenceShell};
 
 /// ⭐⭐ Os cursores do outbox de sinais — irmão pela catraca de campos da `App`.
 #[path = "app_state_signal_readers.rs"]

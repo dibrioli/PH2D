@@ -26,6 +26,21 @@ use ph2d_ecs::World;
 use ph2d_preview_drive::PreviewDrive;
 use ph2d_timeline::TimelineDoc;
 
+/// ⭐⭐⭐ **A vista da timeline deixa uma cutscene correr?** — a PORTA, com dois leitores.
+///
+/// ⚠️ **Ela existe porque a resposta tinha de ser a mesma em dois sítios que não se conhecem:** o
+/// [`super::timeline_bridge`], que decide se chama esta fase, e o instantâneo que o Inspector
+/// publica, que tem de **DIZER ao artista** porque é que a cutscene dele está parada. Escrita duas
+/// vezes, o dia em que uma quarta vista existisse deixaria o painel a mentir — e o modo de falha é
+/// mudo: *duas portas paradas com todos os campos certos*.
+///
+/// ⛔ **As duas vistas de EDIÇÃO dizem NÃO**: elas solam o que o animador está a autorar (o clip,
+/// ou o interior de um container) e congelam o relógio da cena; uma cutscene a escrever por cima
+/// faria a vista de edição mentir sobre o que ele acabou de escrever.
+pub(crate) const fn a_vista_deixa_correr(keys_mode: bool, container: Option<usize>) -> bool {
+    container.is_none() && !keys_mode
+}
+
 /// Ver o cabeçalho. Devolve **quantas** cutscenes correram, para o diagnóstico.
 pub(crate) fn toca_as_cutscenes(
     world: &mut World,

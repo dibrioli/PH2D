@@ -42,7 +42,7 @@ pub(super) fn lida(
     // lâmpadas fantasma, **em silêncio**.
     #[allow(clippy::cast_possible_truncation)]
     let passo = passo_luz as usize;
-    let lamps = passo - 1 - 3;
+    let lamps = passo - 1 - 6;
     let cruas = d_luz.as_chunks::<4>().0;
     let mut ambient = Vec::with_capacity(t.len());
     let mut bounce = Vec::with_capacity(t.len());

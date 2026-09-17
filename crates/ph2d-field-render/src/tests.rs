@@ -4,6 +4,7 @@ use super::*;
 use ph2d_field::{NodeId, Primitive, Xform};
 use ph2d_field_eval::hybrid::Registry;
 
+mod banda;
 mod cornell;
 mod ground_gates;
 mod hull_cache_probe;

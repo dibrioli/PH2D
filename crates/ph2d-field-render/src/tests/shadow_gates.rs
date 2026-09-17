@@ -874,6 +874,10 @@ fn probe_as_barras_da_oclusao() {
 /// [`crate::OCCLUSION_BLUR_COS`] numa das duas, este gate diz.
 #[test]
 fn o_borrao_do_ricochete_e_o_do_ceu_canal_a_canal() {
+    // ⚠️ **Em CONSTANTE e não num `assert!` de corpo:** o compilador dobra um `assert!` sobre duas
+    // constantes antes de ele correr, e o clippy di-lo em voz alta. *Aqui a lei é de COMPILAÇÃO.*
+    const _: () = assert!(crate::BOUNCE_BLUR_PASSES > 1);
+
     let doc = cruz();
     // ⚠️ Só o G-buffer interessa: esta lei é sobre a VIZINHANÇA (a máscara e as normais), e não
     // sobre o campo — pôr a câmera e o registo em jogo seria medir outra coisa.
@@ -895,17 +899,42 @@ fn o_borrao_do_ricochete_e_o_do_ceu_canal_a_canal() {
         })
         .collect();
 
-    let juntos = crate::blur_bounce(&g, &canal);
+    // ⛔⛔ **A PREMISSA DESTE GATE MORREU em 2026-09-17, e a morte está aqui no diff.**
+    //
+    // Ele dizia `blur_bounce == blur_occlusion` e isso era verdade enquanto os dois levassem UMA
+    // passagem. O report do dono (*«como se fosse muitas sombras duras»*) mediu que o ricochete
+    // precisa de **duas** ([`crate::BOUNCE_BLUR_PASSES`], com a tabela e o joelho no doc dela) ⇒ a
+    // igualdade passa a ser sobre **UMA passagem**, que é onde a lei de facto é partilhada.
+    //
+    // ⭐ **O que o gate protege continua a ser o mesmo, e é o que interessa:** que não existe uma
+    // SEGUNDA cópia da guarda da normal. As duas leis partilham a
+    // [`crate::occlusion::para_cada_vizinhanca`], e duas cópias divergiriam no dia em que alguém
+    // afinasse o [`crate::OCCLUSION_BLUR_COS`] numa delas.
+    let uma = crate::bounce::blur_bounce_uma_vez(&g, &canal);
     for c in 0..3 {
         let sozinho: Vec<f32> = canal.iter().map(|v| v[c]).collect();
         let esperado = crate::blur_occlusion(&g, &sozinho);
-        let obtido: Vec<f32> = juntos.iter().map(|v| v[c]).collect();
+        let obtido: Vec<f32> = uma.iter().map(|v| v[c]).collect();
         assert_eq!(
             obtido, esperado,
-            "o canal {c} do borrão do ricochete diverge do borrão do céu — as duas leis \
-             separaram-se"
+            "o canal {c} de UMA passagem do borrão do ricochete diverge do borrão do céu — as \
+             duas leis separaram-se"
         );
     }
+
+    // ⚠️ **E a metade que impede a reversão silenciosa:** o que o produto aplica são
+    // [`crate::BOUNCE_BLUR_PASSES`] passagens, e elas TÊM de se notar. Sem esta asserção, pôr o
+    // número de volta a `1` deixaria o gate acima verde e a wave do report desfeita **em silêncio**.
+    let ship = crate::blur_bounce(&g, &canal);
+    let diferentes = (0..g.hit.len())
+        .filter(|&i| g.hit[i] && (0..3).any(|c| ship[i][c] != uma[i][c]))
+        .count();
+    assert!(
+        diferentes > peca / 10,
+        "só {diferentes} de {peca} pixels distinguem UMA passagem das \
+         {} que o produto aplica — o borrão do ricochete voltou a ser o do céu",
+        crate::BOUNCE_BLUR_PASSES
+    );
 }
 
 /// ⭐ **A cena SEM materiais e SEM lâmpadas** — com ela o ricochete degenera para o canal vazio e a

@@ -209,11 +209,21 @@ pub fn paint_com(
         *dst = l.radiance_at_one;
     }
     let materiais = packed(surfaces.all);
+    // ⭐⭐⭐ **AS GÉMEAS FOSCAS, na MESMA ordem** — o que o ricochete lê no ponto que acertou. Ver
+    // [`ph2d_material::Surface::matte`], que traz a medição na peça do dono e a divergência
+    // declarada; a paridade com a referência de CPU é quem prova que as duas listas casam.
+    let foscas: Vec<ph2d_material::Surface> = surfaces
+        .all
+        .iter()
+        .map(ph2d_material::Surface::matte)
+        .collect();
+    let foscas = packed(&foscas);
     let chao_packed = packed(&[ph2d_field_render::catcher_surface()]);
     let tabelas = crate::studio_wgsl::tables();
     let pintor = ph2d_field_gpu::paint::PaintSetup {
         owners: surfaces.owners,
         materials: &materiais,
+        matte: &foscas,
         env_source: crate::studio_wgsl::SOURCE,
         env_consts: &crate::studio_wgsl::constants(),
         env_tables: &tabelas,

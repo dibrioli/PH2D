@@ -455,3 +455,134 @@ outra sessão a correr um fan-out nesta máquina, e passa **3 de 3** a `load 3,0
 `96`–`99 %` ociosa (razões `3,90×`–`8,63×` contra a barra de `2`). ⛔ Ele mede o quadro de
 **MOVIMENTO**, onde o ricochete nem despacha — *o diff não toca no caminho que ele mede*. Membro da
 família do `CLAUDE.md §5.0`.
+
+---
+
+## §13 — ⛔⛔⛔ O SEGUNDO REPORT DO DONO: *«funciona, é rápido, mas é de baixa qualidade (como se fosse muitas sombras duras)»*
+
+**2026-09-17**, com a foto do interior do vaso (cena `=5`): **arcos concêntricos** dentro dele.
+
+### §13.1 — A primeira leitura, e porque ela decide a cura
+
+⚠️ **Ruído é desvio INDEPENDENTE por pixel; aquilo são ARCOS, que é desvio CORRELACIONADO.** A
+distinção não é académica: a cura do ruído está **proibida por medição** desde 2026-09-15, com o
+report ANTERIOR do dono na mão (`ph2d_field_render::occlusion::cone_dir`) — sortear direcções por
+pixel foi **apagado** porque o sorteio semeado no índice do pixel fazia a peça **ferver** ao rodar a
+câmera.
+
+⇒ *a pergunta não é «como suavizo isto», é «porque é que o céu, com AS MESMAS `48` direcções, não tem
+terraços e o ricochete tem».*
+
+### §13.2 — ⭐ A régua: a metade do CÉU é o CONTROLO da metade das SUPERFÍCIES
+
+As duas metades correm o mesmo conjunto de direcções, com o mesmo peso `max(0, n·d)`, na mesma cena,
+no mesmo `k`, e passam pelo mesmo borrão ⇒ **tudo o que difere entre as duas medições é o que se
+pergunta por direcção**. Uma régua que as leia lado a lado não pode ser acusada de medir a cena, a
+câmera, o número de direcções ou o borrão.
+
+A grandeza é a **QUEBRA** — a segunda diferença ao longo de uma linha ([`ph2d_field_render::banda`]):
+ela é cega a toda rampa suave (a irradiância indirecta sobe e desce numa parede curva, e isso é
+sinal) e acende onde a resposta **salta**.
+
+### §13.3 — ⛔ A 1.ª hipótese foi construída inteira e REFUTADA por medição
+
+*«A metade das superfícies pergunta um RAIO (indicador binário) onde o céu pergunta um CONE
+(cobertura contínua com dureza `1/(n·d)`)»* — verdade sobre o código, e **não é a causa**.
+
+A marcha do cone foi escrita (`march_cone_rays`: cobertura `1 − vis` + o representante na
+aproximação mais próxima, recuado ao longo do gradiente para aterrar na superfície) e medida:
+
+| cena | com raio binário | com cobertura de cone |
+|---|---:|---:|
+| Cornell fechada, 48 dir | `0,8584` | `0,8229` |
+| vaso do dono, 48 dir | `0,5933` | `0,5877` |
+
+⇒ **`1 %`–`4 %`.** Numa caixa fechada não existe raio que escape, e mesmo no vaso a esmagadora
+maioria das direcções acerta solidamente ⇒ *a cobertura é praticamente binária na prática, e a lei
+do cone degenera na do raio.* **REVERTIDA.**
+
+### §13.4 — ⭐⭐⭐ A decomposição, que nomeou DUAS causas — uma por cena
+
+A sonda `sonda_de_onde_vem_o_degrau` abre o pior terraço **direcção a direcção**.
+
+**Na caixa de Cornell**, UMA direcção de `48` faz `64,8` de um salto total de `65,6`:
+
+| dir | contribuição A/B/C | `r` à lâmpada | `1/r²` |
+|---:|---|---|---|
+| **13** | `26,3` / **`59,9`** / `28,8` | `0,079` / **`0,060`** / `0,077` | `222` / **`385`** / `236` |
+| 24 | `0,37` / `0,00` / `0,00` | `0,53` / `0,55` / `0,66` | `5,0` / `4,6` / `3,2` |
+
+⇒ **o polo `1/r²` de uma lâmpada PONTUAL**, amostrado por um conjunto fixo como um pico: fireflies —
+e, por o conjunto ser o mesmo em todo pixel, fireflies **COERENTES**, que desenham arcos.
+
+⚠️⚠️ **Mas essa lâmpada NÃO é a do produto.** A `ph2d_app_field3d::lights::opening_distance` põe a
+primeira luz a `2 × half_extent` do alvo, **fora da peça**; medido no vaso, a superfície mais próxima
+dela está a `0,99` ⇒ `1/r²` ≤ `~1` e **não há polo nenhum**. *Curar o polo da caixa de Cornell podia
+não tocar num pixel do que o dono fotografou* — a lei que esta casa já pagou cinco vezes: **a
+fixtura tem de ser a da cena que o dono usou** (`ph2d_app_field3d::render_bounce_vaso_tests`).
+
+### §13.5 — ⭐⭐⭐ A causa NA PEÇA DO DONO: o LÓBULO ESPECULAR do ponto acertado
+
+O controlo na mesma corrida — o mesmo material com o especular desligado — parte a tabela em duas:
+
+| direcções | céu | ricochete | **ricochete sem especular** |
+|---:|---:|---:|---:|
+| `16` | `0,0332` | `3,9124` | **`0,9689`** |
+| `32` | `0,0292` | `2,4566` | **`0,8272`** |
+| `48` | `0,0308` | `0,8719` | **`0,5877`** |
+| `96` | `0,0303` | **`6,2921`** | **`0,4502`** |
+
+⭐⭐⭐ **A coluna do meio é CAÓTICA — `96` direcções leem PIOR que `48`.** A da direita é **monótona**,
+que é o que um estimador consistente faz. ⇒ *o lóbulo especular é uma quase-delta em direcção, e um
+recolhedor de `48` direcções FIXAS não a amostra: carregá-lo faz o estimador deixar de convergir.*
+
+⇒ **o ricochete recolhe a parte DIFUSA do ponto acertado** ([`ph2d_material::Surface::matte`]).
+⚠️ **Divergência DECLARADA:** a luz que sai de um ponto inclui mesmo o especular dele; o que este
+produto não faz é **transportá-lo** por um recolhedor difuso — a mesma fronteira que o cabeçalho do
+`ph2d_field_render::bounce` já declarava do lado de cá (*«a parte DIFUSA … o especular indirecto
+continua a ser o céu»*), agora também do lado de lá.
+
+⚠️ **Ela viaja EMPACOTADA para o dispositivo** e não se deriva no shader: o pacote é **preparado**
+(o `specular_weight` entra no `modulated_eta_s`, no `main_alpha` e no escurecimento da base), logo
+zerar o campo `a` do `emission_specweight` **não** é a superfície que a `matte()` prepara.
+
+### §13.6 — ⭐⭐ A segunda metade: o borrão passa a ser DUAS passagens
+
+A tabela está no doc-comment de [`ph2d_field_render::BOUNCE_BLUR_PASSES`]. O resumo: `2` é onde a
+coluna do **desvio contra a convergida** tem o **mínimo** (`15,44 %`), e acima dela os terraços ainda
+caem mas a exactidão **inverte**.
+
+⛔ **E um núcleo maior numa passagem só não serve**, apesar de custar o mesmo despacho: `5×5` e `7×7`
+baixam o `p99` e **sobem o MÁXIMO** (`1,81 → 2,84` / `3,21`). *A guarda da normal aplicada a CADA
+salto é transitiva — define uma vizinhança GEODÉSICA, que não atravessa um vinco.* À-trous (2.ª
+passagem com vizinhos afastados) é pior ainda (`0,4695` / `0,5398`).
+
+⚠️ No dispositivo isso custa **três** slots a mais por pixel no canal de luz e um despacho novo
+(`borra_ricochete`): escrever no mesmo sítio de onde os vizinhos estão a ler é uma corrida.
+
+### §13.7 — ⭐ O RESULTADO, na peça do dono (`256×256`, `48` direcções, 1 borrão → 2)
+
+| | terraços p99 | máx | desvio da convergida |
+|---|---:|---:|---:|
+| **antes** (especular, 1 passagem) | `0,7028` | `9,32` | `22,97 %` |
+| + lei fosca | `0,4006` | `1,81` | `15,48 %` |
+| **+ 2 passagens (o que shipa)** | **`0,2934`** | **`1,50`** | **`15,44 %`** |
+| *o céu, para comparar* | `0,0308` | `0,15` | — |
+
+⇒ **`2,4×` no `p99` e `6,2×` no MÁXIMO, com a exactidão a MELHORAR de `23 %` para `15 %`.**
+
+### §13.8 — ⏳ O que FICA, com o mecanismo medido
+
+O resíduo (`0,29` contra `0,031` do céu) está **decomposto e nomeado**: na peça do dono **uma
+direcção faz `97 %`** do pior terraço, com contribuições `0,022 / 0,185 / 0,000` — o raio acerta em
+dois pixels e **falha** no terceiro, e entre os dois que acertam o valor salta `8×`.
+
+⇒ é um raio a atravessar a tigela em **incidência rasante**: o ponto que ele acerta desliza muito
+para um passo pequeno do pixel sombreado, e o que ele lá encontra (`N·L`, a sombra da lâmpada, a
+parede) muda depressa. ⛔ **Nem mais direcções nem mais borrão curam isto** — `256` direcções custam
+`5,3×` e ainda leem pior que o céu a `16`.
+
+⭐ **A cura publicada é a RADIÂNCIA PRÉ-FILTRADA:** o raio representa um cone, e o que ele devia
+buscar é uma versão **mip-mapped** do campo de radiância (o que o *cone tracing* contra uma
+representação volumétrica faz). É **wave com espec própria**, e o substrato natural aqui é o que
+torna esta casa boa nisto: *o nosso modelador JÁ É um campo de distância*.

@@ -106,6 +106,7 @@ impl Sharpness {
 
 /// ⭐⭐⭐ **O RICOCHETE** — a luz que a cena devolve (a `W5`). Irmão da [`occlusion`]: elas são as
 /// duas metades do mesmo integral do hemisfério.
+pub mod banda;
 pub mod bounce;
 mod camera;
 mod edges;
@@ -127,7 +128,7 @@ use edges::resample_edges;
 use march::{Scene, march};
 use tiles::{SLABS, TILE, tiled_trace};
 
-pub use bounce::{BounceSlice, blur_bounce, bounce_pass, bounce_slice};
+pub use bounce::{BOUNCE_BLUR_PASSES, BounceSlice, blur_bounce, bounce_pass, bounce_slice};
 pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Rays, Screen};
 pub use ground::{
     GROUND_SKY_FALLOFF, GROUND_SKY_SAMPLES, GROUND_SKY_SPREAD, GROUND_SKY_STRENGTH, Ground,

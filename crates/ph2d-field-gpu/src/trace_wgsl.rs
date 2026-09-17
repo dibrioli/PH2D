@@ -48,10 +48,19 @@ struct Setup {
 /// `ph2d_field_render::Shadows` já escreve: *«é a MESMA pergunta que as lâmpadas respondem —
 /// quanto desta fonte chega a este pixel? Um segundo canal ao lado faria o pintor perguntar duas
 /// vezes a mesma coisa, e é assim que dois canais divergem.»*
-fn passo_da_luz() -> u32 { return 1u + s.n_lamps + 3u; }
+///
+/// ⭐⭐ **E o ricochete ocupa SEIS e não três** — o CRU e o de uma passagem de borrão. Ver
+/// `ph2d_field_render::BOUNCE_BLUR_PASSES`: a lei mede **duas** passagens de `3×3`, e o pintor só
+/// consegue fazer uma delas ao ler (a outra tem de ser um despacho, com destino próprio — escrever
+/// no mesmo sítio de onde os vizinhos estão a ler é uma corrida).
+fn passo_da_luz() -> u32 { return 1u + s.n_lamps + 6u; }
 
-/// Onde começam os três `f32` do ricochete deste pixel.
+/// Onde começam os três `f32` do ricochete CRU deste pixel — o que a `pinta_ricochete` escreve.
 fn base_do_ricochete(i: u32) -> u32 { return i * passo_da_luz() + 1u + s.n_lamps; }
+
+/// Onde começam os três do ricochete já com UMA passagem de borrão — o que a `borra_ricochete`
+/// escreve e a `ricochete_no_pixel` lê (e volta a borrar, o que dá as duas da lei).
+fn base_do_ricochete_liso(i: u32) -> u32 { return base_do_ricochete(i) + 3u; }
 
 // ⚠️ **A MESMA lei de marcha da CPU**, e ela é uma função porque as quatro amostras do
 // anti-serrilhado a repetem: uma segunda cópia seria a segunda resposta à mesma pergunta.
@@ -213,7 +222,7 @@ fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
         // *ausência de sombra* (`1`); uma luz que não foi calculada é **ausência de luz** (`0`).
         // *Inventar luz é a única das duas que acende o que devia estar escuro.*
         for (var l: u32 = 0u; l <= s.n_lamps; l = l + 1u) { luz[base + l] = 1.0; }
-        for (var c: u32 = 0u; c < 3u; c = c + 1u) { luz[base_do_ricochete(i) + c] = 0.0; }
+        for (var c: u32 = 0u; c < 6u; c = c + 1u) { luz[base_do_ricochete(i) + c] = 0.0; }
         // ⭐⭐⭐ **O CHÃO QUE SÓ RECEBE**: o que este pixel mostra é o chão, e os canais passam a dizer
         // quanto de cada fonte chega A ELE. Ver `docs/Render3d/07`.
         let q = chao_em(r);
@@ -261,7 +270,12 @@ fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
     // ⚠️ **O ricochete nasce a ZERO e é o passe do PINTOR que o enche** — ele precisa dos
     // materiais, que vivem no grupo `1` daquele passe. Sem esse passe o canal fica vazio, e um
     // canal vazio é o quadro de sempre **ao bit**.
-    for (var c: u32 = 0u; c < 3u; c = c + 1u) { luz[base_do_ricochete(i) + c] = 0.0; }
+    //
+    // ⛔⛔ **SEIS e não três, e a diferença é o quadro de MOVIMENTO:** o pintor lê sempre os slots
+    // LISOS, e quem os escreve é a `borra_ricochete`, que só é despachada com `ao_rays > 0`. Com
+    // três, um quadro de movimento lia slots **nunca escritos** e ficava a depender de o buffer
+    // nascer a zero — *uma propriedade do driver a segurar uma lei do produto*.
+    for (var c: u32 = 0u; c < 6u; c = c + 1u) { luz[base_do_ricochete(i) + c] = 0.0; }
 
     // ⭐⭐⭐ **A OCLUSÃO POR CONES** — `ao_rays` direcções FIXAS de mundo, pesadas pelo cosseno.
     //

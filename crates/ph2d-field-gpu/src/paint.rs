@@ -79,6 +79,17 @@ pub struct PaintSetup<'a> {
     /// ⚠️ Ela viaja **depois** dos materiais da peça, no índice `materiais`, e o guarda do
     /// [`PaintSetup::materials`] não a alcança de propósito: ela não é o material de folha nenhuma.
     pub catcher: &'a [f32],
+    /// ⭐⭐⭐ **AS GÉMEAS FOSCAS** — os mesmos materiais de [`PaintSetup::materials`], na MESMA
+    /// ordem, sem o lóbulo especular ([`ph2d_material::Surface::matte`]).
+    ///
+    /// ⚠️⚠️ **Elas viajam empacotadas e não se derivam aqui**, e a razão é que o pacote é
+    /// **preparado**: o `specular_weight` entra no `modulated_eta_s`, no `main_alpha` e no
+    /// escurecimento da base, e zerar o campo `a` do `emission_specweight` no shader **não** é a
+    /// mesma superfície que a `matte()` prepara. *Uma segunda derivação da mesma lei, num shader, é
+    /// como as duas divergem no dia em que o OpenPBR ganhar uma camada.*
+    ///
+    /// Vazia = o caminho de antes, ao bit: o ricochete lê o material de sempre.
+    pub matte: &'a [f32],
 }
 
 /// ⭐⭐⭐ **QUANTOS ARMAZÉNS O PASSE QUE PINTA LIGA** — seis do grupo `0` e três do grupo `1`.
@@ -123,6 +134,9 @@ struct Pintor {
     knobs: vec4<f32>,  // stops, pixel_world, _, _
     fundo: vec4<f32>,  // o fundo em LINEAR pré-multiplicado, para a média da borda
     modo: vec4<u32>,   // view, bordas, fundo empacotado, materiais
+    // ⭐ `x` = há gémeas foscas empacotadas (ver `ler_mat_fosca`). `0` é o caminho anterior ao
+    // report do dono de 2026-09-17, ao bit.
+    modo2: vec4<u32>,
     // ⭐ **Uma radiância por lâmpada**, na MESMA ordem das posições do `Setup`.
     lamp: array<vec4<f32>, {MAX_LAMPS}>,
 };
@@ -143,6 +157,16 @@ fn ler_mat(i: u32) -> Mat {
     var j = i;
     if (j >= pintor.modo.w) { j = 0u; }
     return mat_em(j * PACKED);
+}
+
+// ⭐⭐⭐ **A GÉMEA FOSCA do material `i`** — ver `ph2d_material::Surface::matte` e o
+// `PaintSetup::matte`. Com `pintor.modo2.x == 0` não há gémeas empacotadas e ela devolve o material
+// de sempre, que é o caminho anterior ao report do dono, ao bit.
+fn ler_mat_fosca(i: u32) -> Mat {
+    var j = i;
+    if (j >= pintor.modo.w) { j = 0u; }
+    if (pintor.modo2.x == 0u) { return mat_em(j * PACKED); }
+    return mat_em((pintor.modo.w + 1u + j) * PACKED);
 }
 
 // ⭐ **O material do CHÃO** — a difusa branca que vive depois dos da peça. Ver `PaintSetup::catcher`.
@@ -206,7 +230,10 @@ fn devolvida_de(q: vec3<f32>, nq_vista: vec3<f32>, veio_de: vec3<f32>) -> vec3<f
     // ⚠️ **Sem fronteira suavizada, e o doc da `Surfaces::of` diz porquê:** *«um raio de ricochete
     // não tem pixel — ele acerta um ponto —, e inventar-lhe uma largura seria inventar a
     // resposta»*. Só o dono (`.a`) é lido; a largura não muda quem ele é.
-    let m = ler_mat(dono_mix(q, pintor.knobs.y).a);
+    // ⭐⭐⭐ **A GÉMEA FOSCA** — ver `ph2d_material::Surface::matte`, que traz a medição na peça do
+    // dono: o lóbulo especular é uma quase-delta que `48` direcções FIXAS não amostram, e carregá-lo
+    // faz o estimador **deixar de convergir** (`96` direcções leem PIOR que `48`).
+    let m = ler_mat_fosca(dono_mix(q, pintor.knobs.y).a);
     // ⭐ O observador daquele ponto é **quem lhe perguntou**: o raio veio de `-veio_de`.
     let v = mundo_para_vista(-veio_de);
     let nq = vista_para_mundo(nq_vista);
@@ -275,7 +302,15 @@ fn ricochete_em(p: vec3<f32>, n_vista: vec3<f32>) -> vec3<f32> {
 // amostragem — são as **estrias do conjunto discreto de direcções**. O ricochete corre no MESMO
 // conjunto, logo tem a mesma assinatura. *E é por isso que ele tem de ser um CANAL: um valor
 // calculado e consumido na mesma invocação não tem vizinhos para suavizar.*
-fn ricochete_no_pixel(x: u32, y: u32, i: u32, n0: vec3<f32>) -> vec3<f32> {
+// ⭐ **UMA passagem da recolha `3×3` guardada pela normal.** `liso = 0` lê os slots CRUS (o que a
+// `borra_ricochete` faz); `liso = 1` lê os já borrados uma vez (o que o pintor faz ao ler) — e as
+// duas juntas são as `ph2d_field_render::BOUNCE_BLUR_PASSES` passagens da lei.
+//
+// ⚠️ **É UMA função com dois chamadores de propósito:** duas cópias da mesma recolha divergiriam no
+// dia em que alguém afinasse o `BLUR_COS` numa delas, e a segunda passagem deixaria de ser a mesma
+// lei da primeira. *É a mesma razão que a `ph2d_field_render::occlusion::para_cada_vizinhanca` já
+// escreve do lado da CPU.*
+fn borra_de(x: u32, y: u32, i: u32, n0: vec3<f32>, liso: u32) -> vec3<f32> {
     var soma = vec3<f32>(0.0);
     var cont = 0u;
     for (var dy = -1; dy <= 1; dy = dy + 1) {
@@ -287,14 +322,22 @@ fn ricochete_no_pixel(x: u32, y: u32, i: u32, n0: vec3<f32>) -> vec3<f32> {
             let c = centro[j];
             if (c.x < 0.0) { continue; }
             if (dot(n0, c.yzw) < BLUR_COS) { continue; }
-            let b = base_do_ricochete(j);
+            let b = base_do_ricochete(j) + liso * 3u;
             soma = soma + vec3<f32>(luz[b], luz[b + 1u], luz[b + 2u]);
             cont = cont + 1u;
         }
     }
-    let b = base_do_ricochete(i);
+    let b = base_do_ricochete(i) + liso * 3u;
     if (cont > 0u) { return soma / f32(cont); }
     return vec3<f32>(luz[b], luz[b + 1u], luz[b + 2u]);
+}
+
+fn borra_uma_vez(x: u32, y: u32, i: u32, n0: vec3<f32>) -> vec3<f32> {
+    return borra_de(x, y, i, n0, 0u);
+}
+
+fn ricochete_no_pixel(x: u32, y: u32, i: u32, n0: vec3<f32>) -> vec3<f32> {
+    return borra_de(x, y, i, n0, 1u);
 }
 
 // A luz que UM material devolve ao olho, já com o olhar — o `shade_render::radiance` da CPU.
@@ -443,6 +486,35 @@ fn pinta_ricochete(@builtin(global_invocation_id) g: vec3<u32>) {
     luz[b] = devolvida.x;
     luz[b + 1u] = devolvida.y;
     luz[b + 2u] = devolvida.z;
+}
+
+// ⭐⭐⭐ **A PRIMEIRA DAS DUAS PASSAGENS DE BORRÃO** — ver `ph2d_field_render::BOUNCE_BLUR_PASSES`.
+//
+// ⚠️⚠️ **Ela tem de ser um DESPACHO com destino PRÓPRIO.** A `ricochete_no_pixel` já faz uma recolha
+// de `3×3` ao LER, o que dá a segunda passagem de graça; a primeira não pode ser feita no mesmo
+// sítio porque escrever onde os vizinhos ainda estão a ler é uma **corrida**. ⇒ os seis slots do
+// canal: o CRU e o de uma passagem.
+//
+// ⛔ **E ela não pode ser um núcleo MAIOR numa recolha só**, que seria de graça: medido na peça do
+// dono, `5×5` e `7×7` numa passagem baixam o `p99` (`0,401 → 0,33`/`0,32`) e **sobem o MÁXIMO**
+// (`1,81 → 2,84`/`3,21`), enquanto duas passagens de `3×3` baixam os dois (`0,293` / `1,50`).
+// *A guarda da normal aplicada a CADA salto é transitiva — uma vizinhança GEODÉSICA, que não
+// atravessa um vinco; uma recolha larga guardada pelo centro atravessa-o quando as duas pontas por
+// acaso concordam.*
+@compute @workgroup_size(8, 8, 1)
+fn borra_ricochete(@builtin(global_invocation_id) g: vec3<u32>) {
+    if (g.x >= s.w || g.y >= s.h) { return; }
+    let i = g.y * s.w + g.x;
+    let c = centro[i];
+    let d = base_do_ricochete_liso(i);
+    if (c.x < 0.0) {
+        luz[d] = 0.0; luz[d + 1u] = 0.0; luz[d + 2u] = 0.0;
+        return;
+    }
+    let v = borra_uma_vez(g.x, g.y, i, c.yzw);
+    luz[d] = v.x;
+    luz[d + 1u] = v.y;
+    luz[d + 2u] = v.z;
 }
 
 @compute @workgroup_size(8, 8, 1)
@@ -644,6 +716,12 @@ pub(crate) fn pinta(
             .entry_with_layout(device, &fonte, fita, "pinta_ricochete", Some(&layout))
             .clone()
     });
+    // ⭐ A PRIMEIRA das duas passagens de borrão — a segunda é a recolha que o pintor faz ao ler.
+    let p_borra = (pintor.ao_rays > 0).then(|| {
+        cache
+            .entry_with_layout(device, &fonte, fita, "borra_ricochete", Some(&layout))
+            .clone()
+    });
     let p_bordas = (bordas > 0).then(|| {
         cache
             .entry_with_layout(device, &fonte, fita, "pinta_bordas", Some(&layout))
@@ -671,6 +749,10 @@ pub(crate) fn pinta(
     // ⭐ **O material do chão vai no fim**, e o `n_mats` continua a contar só os da peça — é ele o
     // guarda do `ler_mat`, e o chão não é uma folha.
     mats.extend_from_slice(pintor.catcher);
+    // ⭐ **As gémeas foscas vão a seguir ao chão**, e o `n_mats` continua a contar só as da peça —
+    // ele é o guarda do `ler_mat`. A gémea de `k` mora em `(n_mats + 1 + k) * PACKED`.
+    let tem_foscas = u32::from(!pintor.matte.is_empty());
+    mats.extend_from_slice(pintor.matte);
     let materiais = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("materiais"),
         contents: &bytes(&mats),
@@ -700,7 +782,16 @@ pub(crate) fn pinta(
         | (u32::from(bg[1]) << 8)
         | (u32::from(bg[2]) << 16)
         | (u32::from(bg[3]) << 24);
-    for v in [pintor.view, n_bordas, empacotado, n_mats] {
+    for v in [
+        pintor.view,
+        n_bordas,
+        empacotado,
+        n_mats,
+        tem_foscas,
+        0,
+        0,
+        0,
+    ] {
         u.extend_from_slice(&v.to_le_bytes());
     }
     // ⚠️ **O array vai INTEIRO** — a mesma razão do `MarchSetup::lamps`: um `array<vec4, 8>` de
@@ -761,6 +852,19 @@ pub(crate) fn pinta(
     // canal para o suavizar, logo ela precisa dele escrito em TODO o quadro — não só neste pixel.
     // *Escrito na mesma passagem, cada pixel leria oito vizinhos de um quadro que ainda não existe.*
     if let Some(p) = &p_ricochete {
+        let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: None,
+            timestamp_writes: None,
+        });
+        cp.set_pipeline(p);
+        cp.set_bind_group(0, &bg0, &[]);
+        cp.set_bind_group(1, &bg1, &[]);
+        cp.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
+    }
+    // ⚠️ **E o BORRÃO é um TERCEIRO despacho, pela MESMA razão**: ele lê a vizinhança `3×3` do canal
+    // CRU, logo precisa dele escrito em todo o quadro. *Escrever no mesmo sítio de onde os vizinhos
+    // estão a ler é uma corrida, e é por isso que os slots do liso existem.*
+    if let Some(p) = &p_borra {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
             timestamp_writes: None,

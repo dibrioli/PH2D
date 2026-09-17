@@ -200,6 +200,47 @@ impl Surface {
         bsdf::mul3(radiance, self.compose(n, v, &Closure::Reflection(to_light)))
     }
 
+    /// ⭐⭐⭐ **A GÉMEA FOSCA — a mesma superfície sem o lóbulo especular.**
+    ///
+    /// # ⛔⛔⛔ Ela existe por uma MEDIÇÃO, e o report do dono está nela
+    ///
+    /// Um recolhedor de hemisfério (o ricochete de `ph2d_field_render::bounce`) mede a luz que a
+    /// cena devolve somando `N` direcções FIXAS. O lóbulo especular de uma superfície é uma
+    /// **quase-delta** em direcção, e `N = 48` não a amostra: ela cai numa direcção para um pixel e
+    /// não para o vizinho.
+    ///
+    /// ⚠️⚠️ **E o sintoma não é «um pouco de ruído» — é o estimador deixar de CONVERGIR.** Medido na
+    /// peça que o dono fotografou (o vaso da cena `=5`), a quebra de segunda diferença no `p99`:
+    ///
+    /// | direcções | com especular | **só difusa** |
+    /// |---:|---:|---:|
+    /// | `16` | `3,912` | **`0,969`** |
+    /// | `32` | `2,457` | **`0,827`** |
+    /// | `48` | `0,872` | **`0,588`** |
+    /// | `96` | **`6,292`** | **`0,450`** |
+    ///
+    /// ⇒ com o especular a sequência é **caótica** (`96` direcções leem PIOR que `48`); sem ele é
+    /// **monótona**, que é o que um estimador consistente faz. *Um refinamento que acumula direcções
+    /// ao longo de quadros assentes precisa de que mais direcções signifiquem melhor.*
+    ///
+    /// ⚠️ **Divergência DECLARADA, e não um defeito:** a luz que sai de um ponto inclui mesmo o
+    /// especular dele. O que este produto não faz é **transportá-lo** por um recolhedor difuso — é
+    /// a mesma fronteira que o cabeçalho do `ph2d_field_render::bounce` já declara do lado de cá
+    /// (*«a parte DIFUSA … o especular indirecto continua a ser o céu»*), agora também do lado de lá.
+    ///
+    /// ⭐ **Um METAL devolve ~nada por aqui, e isso está certo:** com `specular_weight = 0` a camada
+    /// dele fica sem resposta, e um espelho não tem luz difusa para dar. A `base_metalness` **não**
+    /// se mexe — zerá-la transformaria um metal numa superfície difusa da cor dele, inventando luz
+    /// que não existe.
+    #[must_use]
+    pub fn matte(&self) -> Self {
+        OpenPbr {
+            specular_weight: 0.0,
+            ..self.m
+        }
+        .prepare()
+    }
+
     /// A radiância que o **céu** devolve para o observador.
     #[must_use]
     pub fn indirect(&self, n: Rgb, v: Rgb, env: &dyn Environment) -> Rgb {

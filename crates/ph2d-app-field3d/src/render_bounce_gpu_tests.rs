@@ -330,3 +330,104 @@ fn o_quadro_de_movimento_nao_paga_o_ricochete() {
          o ricochete, e é essa a regressão que o dono já reprovou uma vez"
     );
 }
+
+/// ⭐⭐⭐ **O DISPOSITIVO LÊ A GÉMEA FOSCA — e o gate afirma-o por IGUALDADE.**
+///
+/// A lei ([`ph2d_material::Surface::matte`]) diz que o ricochete recolhe a parte **difusa** do ponto
+/// acertado ⇒ a imagem de um material **brilhante** tem de ser a que a CPU pinta com a mesma lei.
+///
+/// # ⛔⛔ Porque ele existe ao lado da paridade que já passa — e o que eu supus ERRADO
+///
+/// A 1.ª redacção deste cabeçalho afirmava que a `paint_parity_tests::a_imagem_do_dispositivo_e_a_
+/// da_cpu` deixaria passar a mutação, por correr sobre três formas **convexas no aberto** onde o
+/// ricochete quase não age (a mesma armadilha que o gate irmão acima pagou com `+0,513` níveis).
+///
+/// ⚠️ **Medido, ela NÃO deixa:** com o dispositivo a ler o material brilhante em vez da gémea
+/// fosca, aquele gate reprova a `99,588 %` com pior desvio `75`. A fixtura dela tem **um metal e um
+/// verniz**, logo contém o fenómeno. *Uma armadilha que mordeu duas vezes nesta wave não morde em
+/// todo o lado, e afirmá-lo sem correr era um palpite com cara de medição.*
+///
+/// ⇒ o que este gate acrescenta não é cobertura, são **três** coisas que a paridade genérica não
+/// tem: ele **nomeia a lei** (quando ele fica vermelho, a mensagem aponta à gémea fosca, e não a
+/// *«as duas imagens diferem»*); ele carrega o **CONTROLO** (a separação entre os dois materiais,
+/// medida pela porta que o ricochete usa), logo não pode ficar vácuo no dia em que alguém trocar os
+/// materiais da fixtura por foscos; e corre no **canto**, onde o ricochete vale `+4,9` níveis em vez
+/// de `+0,5`.
+#[test]
+#[ignore = "precisa de GPU"]
+fn o_ricochete_do_dispositivo_le_a_gemea_fosca() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let (doc, postas, _) = canto();
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = ph2d_field_render::Orbit::default();
+    let owners = ph2d_field_eval::owners::Owners::new(
+        &postas,
+        &reg,
+        ph2d_field_render::hit_tolerance(
+            cam.half_extent,
+            f32::from(u16::try_from(W.min(H)).expect("a tela cabe")),
+        ),
+    );
+    // ⭐ Um material MUITO brilhante: é nele que a diferença entre a lei e a ausência dela é maior.
+    let brilhante = ph2d_material::OpenPbr {
+        base_color: [0.70, 0.70, 0.70],
+        specular_weight: 1.0,
+        specular_roughness: 0.05,
+        ..ph2d_material::OpenPbr::default()
+    };
+    let materiais = vec![brilhante.prepare(); 2];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: Some(&owners),
+    };
+    // ⚠️ **O CONTROLO, pela mesma porta que o ricochete usa:** o brilhante e a gémea fosca dele têm
+    // de sombrear DIFERENTE no pico do lóbulo, senão este gate não pode dizer qual dos dois o
+    // dispositivo leu.
+    let n = [0.0f32, 1.0, 0.0];
+    let l = [0.0f32, 0.55, 0.84];
+    let v = [0.0f32, 2.0f32.mul_add(l[1], -l[1]), -l[2]];
+    let a = materiais[0].direct(n, v, l, [1.0; 3]);
+    let b = materiais[0].matte().direct(n, v, l, [1.0; 3]);
+    let separacao = (0..3).map(|k| (a[k] - b[k]).abs()).fold(0.0f32, f32::max);
+    println!("  a separação entre o brilhante e a gémea fosca: {separacao:.4}");
+    assert!(
+        separacao > 0.05,
+        "o CONTROLO caiu: os dois materiais sombreiam igual ({separacao:.6})"
+    );
+
+    let luz = [ph2d_field_render::PointLamp {
+        world: [0.6, 0.9, 0.9],
+        radiance_at_one: [3.0; 3],
+    }];
+    let olhar = ph2d_view_transform::Look::default();
+    let (cpu, gpu, _) = crate::gpu_frame::paint_parity_tests::dois_caminhos(&surfaces, &doc, &luz)
+        .expect("o dispositivo tem de tomar esta peça");
+    // ⭐ **A POPULAÇÃO vem primeiro** — duas imagens de fundo vazio leriam `0` de desvio.
+    let pintados = cpu.as_chunks::<4>().0.iter().filter(|p| p[3] > 0).count();
+    assert!(
+        pintados > 3_000,
+        "só {pintados} pixels pintados — a fixtura não enche a tela e o gate não afirma nada"
+    );
+    let (mut dentro, mut pior) = (0usize, 0u8);
+    for (a, b) in cpu.iter().zip(gpu.iter()) {
+        let d = a.abs_diff(*b);
+        pior = pior.max(d);
+        if d <= 1 {
+            dentro += 1;
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let pct = 100.0 * dentro as f64 / cpu.len() as f64;
+    println!("  paridade no canto com material brilhante: {pct:.3} % · pior desvio {pior}");
+    assert!(
+        pct >= 99.99,
+        "o dispositivo e a CPU divergiram em {:.3} % dos bytes (pior {pior}) — com um material \
+         BRILHANTE a suspeita nº1 é o ricochete do dispositivo estar a ler o material em vez da \
+         gémea FOSCA",
+        100.0 - pct
+    );
+    let _ = (olhar, t);
+}

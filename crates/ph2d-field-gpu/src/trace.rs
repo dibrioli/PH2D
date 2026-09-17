@@ -501,7 +501,7 @@ fn marcha_com(
     // ⭐ O passo é `1 + n_lamps + 3`: o céu, uma visibilidade por lâmpada e o RICOCHETE
     // (`docs/Render3d/08`). ⚠️ Ele é a mesma conta do `passo_da_luz()` do WGSL, e as duas têm de
     // andar juntas: um buffer curto faz o shader escrever fora e a `wgpu` recusa o despacho.
-    let passo_luz = u64::from(setup.n_lamps) + 1 + 3;
+    let passo_luz = u64::from(setup.n_lamps) + 1 + 6;
     let b_luz = cria("luz", n * passo_luz * 4);
     // ⛔⛔ **O TECTO da lista de bordas era `6 %` e ESTOUROU** — o gate da paridade apanhou-o: na
     // ROSCA a GPU devolveu exactamente `1 296` bordas, que **é** o tecto, contra `1 745` da CPU, e
@@ -673,7 +673,7 @@ fn marcha_com(
         // fantasma. *O modo de falha foi o bom: um índice fora do `shadow`, alto e no primeiro
         // quadro.*
         #[allow(clippy::cast_possible_truncation)]
-        lamps: (passo_luz - 1 - 3) as usize,
+        lamps: (passo_luz - 1 - 6) as usize,
         ambient,
         bounce,
         ground: setup.ground,

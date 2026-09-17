@@ -148,3 +148,7 @@ mod render_bounce_seam_tests;
 /// O ricochete NO DISPOSITIVO: que ele chega à imagem, e quanto custa (`docs/Render3d/08` §12).
 #[cfg(test)]
 mod render_bounce_gpu_tests;
+
+/// ⭐ A régua dos TERRAÇOS na peça que o dono fotografou, com a luz do produto (`08` §13).
+#[cfg(test)]
+mod render_bounce_vaso_tests;

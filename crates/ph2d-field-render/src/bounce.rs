@@ -260,12 +260,28 @@ pub fn bounce_slice(
     }
 
     // ── 4. a radiância que sai de cada ponto acertado, e a soma pesada ─────────────────────────
+    // ⭐⭐⭐ **AS GÉMEAS FOSCAS, uma por material, preparadas UMA vez** — ver
+    // [`ph2d_material::Surface::matte`], que traz a medição na peça do dono e a divergência
+    // declarada. O lóbulo especular é uma quase-delta em direcção, e um recolhedor de `48`
+    // direcções FIXAS não a amostra: carregá-lo faz o estimador **deixar de convergir**.
+    let foscas: Vec<ph2d_material::Surface> = surfaces.all.iter().map(|s| s.matte()).collect();
+    // ⚠️ A [`Surfaces::of`] resolve o DONO; o que se troca a seguir é só o lóbulo. Casar por
+    // PONTEIRO mantém as duas listas na mesma ordem sem uma segunda lei de resolução ao lado da
+    // primeira — que é como as duas divergiriam no dia em que a `of` ganhasse uma cerca.
+    let fosca_de = |q: [f32; 3]| -> &ph2d_material::Surface {
+        let alvo = surfaces.of(q);
+        surfaces
+            .all
+            .iter()
+            .position(|s| std::ptr::eq(s, alvo))
+            .map_or(alvo, |k| &foscas[k])
+    };
     for (m, &j) in acertos.iter().enumerate() {
         let q = ponto[j];
         let nq = base.view_to_world(normal[j]);
         // ⭐ O observador daquele ponto é **quem lhe perguntou**: o raio veio de `-dirs[j]`.
         let v = [-dirs[j][0], -dirs[j][1], -dirs[j][2]];
-        let mat = surfaces.of(q);
+        let mat = fosca_de(q);
         let mut sai = [0.0f32; 3];
         for (l, lamp) in lampadas.iter().enumerate() {
             let dl = [
@@ -299,19 +315,44 @@ pub fn bounce_slice(
     fatia
 }
 
-/// ⭐⭐⭐ **A SUAVIZAÇÃO do ricochete — a MESMA lei do céu, pela mesma porta.**
+/// ⭐⭐⭐ **QUANTAS PASSAGENS DE BORRÃO O RICOCHETE LEVA — e o número é o JOELHO de uma medição.**
 ///
-/// ⚠️⚠️ **Ela não é uma escolha de gosto: é a razão que o doc do [`crate::blur_occlusion`] já tem
-/// escrita.** O que aquele borrão suaviza hoje não é ruído de amostragem (a oclusão é
-/// determinística e há dois gates a afirmá-lo) — são as **estrias do conjunto discreto de
-/// direcções**, a assinatura de `48` cones em vez de infinitos. O ricochete corre no **mesmo
-/// conjunto** ([`crate::occlusion::cone_dir`]), logo tem a mesma assinatura.
+/// A oclusão leva **uma**; este leva **duas**, e a diferença não é gosto: elas são **grandezas
+/// diferentes**. A oclusão tem conteúdo de alta frequência VERDADEIRO — o escurecimento de contacto
+/// —, e alargar o borrão dela apaga-o. O ricochete é a **irradiância** de um recolhedor de
+/// hemisfério: ele é suave por construção, e o que ali tem alta frequência é o ESTIMADOR, não a
+/// resposta. *Herdar a largura da oclusão foi parentesco, nunca medição.*
 ///
-/// ⭐ A guarda da normal vive numa porta só ([`crate::occlusion::para_cada_vizinhanca`]) e este
-/// canal só soma: *duas cópias da guarda divergiriam no dia em que alguém afinasse o
-/// [`crate::OCCLUSION_BLUR_COS`] numa delas, e a quina ficaria esborratada só num dos canais.*
-#[must_use]
-pub fn blur_bounce(g: &Gbuffer, canal: &[[f32; 3]]) -> Vec<[f32; 3]> {
+/// # ⭐ A tabela (peça do dono — o vaso da cena `=5` —, `256×256`, `48` direcções)
+///
+/// `terraços` é a [`crate::banda::terracos`]; `desvio` é contra a MESMA lei com `512` direcções e
+/// **zero** borrão, em % da média dela.
+///
+/// | passagens | terraços p99 | máx | desvio |
+/// |---:|---:|---:|---:|
+/// | `0` | `1,1578` | `4,29` | `16,47 %` |
+/// | `1` | `0,4006` | `1,81` | `15,48 %` |
+/// | **`2`** | **`0,2934`** | **`1,50`** | **`15,44 %`** |
+/// | `3` | `0,2705` | `1,40` | `15,52 %` |
+/// | `4` | `0,2379` | `1,34` | `15,62 %` |
+///
+/// ⇒ **`2`, que é onde a coluna do DESVIO tem o mínimo.** Acima disso os terraços continuam a cair
+/// e a exactidão **inverte** — *a partir dali o borrão deixa de apagar o estimador e passa a apagar
+/// a resposta*.
+///
+/// ⛔⛔ **E um núcleo MAIOR numa passagem só NÃO serve, embora custasse o mesmo despacho:** medido na
+/// mesma peça, `5×5` e `7×7` baixam o `p99` (`0,401 → 0,328` / `0,321`) e **sobem o MÁXIMO**
+/// (`1,81 → 2,84` / `3,21`). ⭐ *A guarda da normal aplicada a CADA salto é transitiva — ela define
+/// uma vizinhança GEODÉSICA, que não atravessa um vinco; uma recolha larga guardada pela normal do
+/// CENTRO atravessa-o sempre que as duas pontas por acaso concordam.*
+///
+/// ⛔ **E à-trous (a 2.ª passagem com os vizinhos afastados) é PIOR**, apesar de alcançar mais longe
+/// pelo mesmo preço: `salto 2` lê `0,4695 / 3,52` e `salto 3` lê `0,5398 / 4,00` — saltar os
+/// vizinhos imediatos deixa por apagar exactamente a frequência que este borrão existe para apagar.
+pub const BOUNCE_BLUR_PASSES: u32 = 2;
+
+/// Uma passagem — a lei que o [`blur_bounce`] aplica [`BOUNCE_BLUR_PASSES`] vezes.
+pub(crate) fn blur_bounce_uma_vez(g: &Gbuffer, canal: &[[f32; 3]]) -> Vec<[f32; 3]> {
     let mut out = canal.to_vec();
     let mut vizinhos = Vec::with_capacity(9);
     crate::occlusion::para_cada_vizinhanca(g, &mut vizinhos, |i, js| {
@@ -325,5 +366,25 @@ pub fn blur_bounce(g: &Gbuffer, canal: &[[f32; 3]]) -> Vec<[f32; 3]> {
         let inv = 1.0 / js.len() as f32;
         out[i] = soma.map(|c| c * inv);
     });
+    out
+}
+
+/// ⭐⭐⭐ **A SUAVIZAÇÃO do ricochete — [`BOUNCE_BLUR_PASSES`] passagens da MESMA lei do céu.**
+///
+/// ⚠️⚠️ **Ela não é uma escolha de gosto: é a razão que o doc do [`crate::blur_occlusion`] já tem
+/// escrita.** O que aquele borrão suaviza hoje não é ruído de amostragem (a oclusão é determinística
+/// e há dois gates a afirmá-lo) — são as **estrias do conjunto discreto de direcções**, a assinatura
+/// de `48` cones em vez de infinitos. O ricochete corre no **mesmo conjunto**, logo tem a mesma
+/// assinatura — e uma PIOR, que o report do dono de 2026-09-17 nomeou.
+///
+/// ⭐ A guarda da normal vive numa porta só ([`crate::occlusion::para_cada_vizinhanca`]) e este canal
+/// só soma: *duas cópias da guarda divergiriam no dia em que alguém afinasse o
+/// [`crate::OCCLUSION_BLUR_COS`] numa delas, e a quina ficaria esborratada só num dos canais.*
+#[must_use]
+pub fn blur_bounce(g: &Gbuffer, canal: &[[f32; 3]]) -> Vec<[f32; 3]> {
+    let mut out = canal.to_vec();
+    for _ in 0..BOUNCE_BLUR_PASSES {
+        out = blur_bounce_uma_vez(g, &out);
+    }
     out
 }

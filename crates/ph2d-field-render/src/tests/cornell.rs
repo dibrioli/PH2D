@@ -328,7 +328,7 @@ fn ha_exactamente_um_material_por_folha_e_o_surfaces_aceita_a_lista() {
 /// A lâmpada, no tecto e dentro da sala.
 ///
 /// ⚠️ Ela é **pontual** — ver a divergência declarada no cabeçalho do módulo.
-const LAMPADA: crate::PointLamp = crate::PointLamp {
+pub(crate) const LAMPADA: crate::PointLamp = crate::PointLamp {
     world: [0.0, SALA - 0.06, 0.0],
     radiance_at_one: [1.4, 1.4, 1.4],
 };
@@ -590,7 +590,7 @@ fn a_referencia_nao_depende_de_onde_a_camera_esta() {
 }
 
 /// O céu da caixa é **preto**: a sala é iluminada só pela lâmpada do tecto, como a original.
-struct Escuro;
+pub(crate) struct Escuro;
 
 impl ph2d_material::Environment for Escuro {
     fn radiance(&self, _dir: [f32; 3], _alpha: f32) -> [f32; 3] {
@@ -720,7 +720,7 @@ fn a_parede_tinge_o_chao_e_o_sinal_e_conhecido() {
 // ── o gate do PRODUTO: o sangramento nos PIXELS ───────────────────────────────────────────────
 
 /// O fundo do modelador: transparente.
-const FUNDO: [u8; 4] = [0, 0, 0, 0];
+pub(crate) const FUNDO: [u8; 4] = [0, 0, 0, 0];
 
 /// ⭐⭐⭐ **O que o DONO vê: o chão da imagem fica tingido da parede ao lado.**
 ///

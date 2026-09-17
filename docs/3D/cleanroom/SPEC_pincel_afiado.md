@@ -27,8 +27,27 @@ Sweep: controlo do instrumento corrido PRIMEIRO (exit 0, todos os canais), depoi
   novas, com o controlo do instrumento PRIMEIRO.
 2.ª EMENDA (§16, 2026-09-16): o PASSO JUNTO À SILHUETA, aberta por um report do dono com foto.
   Ela NÃO altera nenhuma lei nem nenhum gate das §1–§15; acrescenta a §16, a família de fixturas
-  `silhueta/` (30) e os gates G-13..G-20. ⚠️ Ela ainda NÃO foi auditada por R-pré: o atestado
-  abaixo cobre as §1–§15 e as 80 fixturas da 1.ª emenda.
+  `silhueta/` (30) e os gates G-13..G-20.
+  Auditoria da §16 (R-pré, **3.ª passagem**, 2026-09-16, subagente NOVO e independente do E e das
+  duas passagens anteriores): ⭐ **a PAREDE da §16 está LIMPA** — os 3 blocos cercados são o
+  cabeçalho e duas identidades matemáticas de 1 e 3 linhas; os 104 code spans não-numéricos são
+  todos nossos, de fixtura nossa ou símbolo matemático; `VIEW`/`SCENE` são valores **públicos** de
+  enumeração da API (conferido: o harness escreve a string numa propriedade pública, e a chave
+  `espacamento_medido_em` mapeia para a propriedade do **espaçamento**, não para a do tamanho); os
+  30 cabeçalhos e o conferidor lidos linha a linha; sweep verde com as nove vassouras sobre a
+  espec + as 30 fixturas + os READMEs + o INBOX, verde em `--git-history`, e verde numa passagem
+  extra em memória com 1 820 agulhas normalizadas (sem caixa, sem acentos) contra 34 artefactos.
+  ⭐ O CONTROLO re-derivou-se **ao dígito** por uma régua independente alimentada só pelas fixturas
+  publicadas: a tabela inteira do §16.2 nas três corridas, `10,35×` a profundidade em cena,
+  `−45,6 %`/`−30,4 %`/`−51,1 %` com a taxa de amostragem, `3,25×` com o sentido, o adaptativo a
+  `3,6e-12`, `±3 %` até 50° na composição com a atenuação, e os valores de fábrica dos três eixos.
+  ⛔ **MAS a §16 NÃO está atestada:** fica **1 achado que BLOQUEIA** (a barra do **G-13** não é
+  alcançável pela leitura que o próprio G-13 nomeia: ler o pico como o vértice mais alto dá
+  `0,48`–`0,55` px contra a barra de `0,5`, e só a interpolação sub-célula reproduz o `0,094 px`
+  da coluna «aprovado») e **14 erratas** (E28–E41, entre elas **dois gémeos**: `0,0225` contra
+  `0,0389` para a mesma banda, e `1,8e-7` contra `1,2e-7` na prova de completude). Tudo no ledger,
+  com o sítio e a instrução. **O atestado da §16 sai quando o E emendar o bloqueador.**
+  ⚠️ O atestado abaixo cobre as §1–§15 e as 80 fixturas da 1.ª emenda.
 Auditoria §4.2 (R-pré): ✅ **auditada contra §4.2 por R-pré em 2026-09-16, 2.ª passagem** — por um
   subagente NOVO, independente do E e da 1.ª passagem. ⭐ A PAREDE ESTÁ LIMPA (os 5 blocos cercados
   são o cabeçalho e fórmulas de 1–3 linhas; os 172 code spans não-numéricos são todos nossos, nomes

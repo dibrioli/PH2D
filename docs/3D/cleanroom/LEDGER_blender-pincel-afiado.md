@@ -941,3 +941,209 @@ que é a regra §4.1.13 já em vigor nesta obra.
   é a régua da convenção nova, e foi provado por mutação nas quatro formas de podridão (fórmula
   errada · chave de cabeçalho apagada · índice retirado · o censo a varrer quase nada), com as
   mutações feitas numa **cópia** no scratchpad, nunca na árvore.
+
+---
+
+## R-PRÉ — 3.ª PASSAGEM, sobre a §16 (2026-09-16) — veredito: ⭐ **PAREDE LIMPA** · ⛔ **1 achado que BLOQUEIA** · ⚠️ **14 erratas (E28–E41)** ⇒ **NÃO atesta ainda**
+
+> Subagente R-pré **novo**, independente do E e das duas passagens anteriores. Auditou a §16
+> inteira, os cabeçalhos das **30** fixturas novas e o conferidor que as acompanha. ⛔ Não escreveu
+> nem ditou código de produto. As §1–§15 e as 80 fixturas da 1.ª emenda **não** foram re-auditadas:
+> o atestado delas é o da 2.ª passagem.
+
+### 1. A PAREDE (§4.2) — **LIMPA**, varrida pela forma da §4.3.1 sobre a §16 INTEIRA
+
+Varredura mecânica da secção (314 linhas, 23 270 caracteres), não só dos parágrafos que o report
+anterior citou:
+
+- **3 blocos cercados**, todos curtos: o cabeçalho de proveniência da emenda (prosa nossa) e **duas**
+  identidades matemáticas de 1 e 3 linhas, em notação genérica e com símbolos nossos
+  (`passo_de_mundo`, `passo_de_ECRA`, `ppu`). Matemática não tem dono (SKILL §4.1.2); nenhum deles
+  espelha estrutura de código.
+- **270 code spans**, **104** não-numéricos, classificados um a um: nomes de fixtura **nossos** ·
+  caminhos+linha do **nosso** repo (`spacing.rs`, `input.rs`, `atenuacao_do_traco.rs`, `space.rs`,
+  `walk`, `scene.radius_px()`, `passo_do_traco`) · símbolos matemáticos (`D`, `W50`, `θ`, `cos θ`,
+  `1/cos θ`, `r(s)`) · rótulos de banda · `f32` · `arcsin`. **Zero** identificador interno do alvo,
+  zero nome de ficheiro do alvo, zero comentário, zero wording de manual, zero tabela transcrita,
+  zero LUT, zero pseudo-código espelhado.
+- **`VIEW` · `SCENE`** são os **únicos** tokens do alvo na página, e são **valores públicos de
+  enumeração da API de scripting** — conferido na zona negada: o harness **escreve** a string
+  `'SCENE'` numa propriedade pública do datablock do pincel, e o escritor de fixturas mapeia a
+  chave de cabeçalho `espacamento_medido_em` para a propriedade pública **do espaçamento** (⚠️ e
+  **não** para a do tamanho do pincel, que usa os mesmos dois valores — conferi que o eixo descrito
+  é o certo, senão a §16 inteira estaria atribuída ao controlo errado). ⇒ SKILL §4.1.13, e é a
+  mesma classe já atestada nas 80 fixturas anteriores (`DRAW_SHARP`, `POW4`, `SPHERE`, `SPACE`,
+  `SUBTRACT`, `AREA`).
+- **Cabeçalhos das 30 fixturas:** 74 chaves distintas, **todas** em vocabulário do domínio, em
+  português; **7** valores de enumeração, todos da lista pública acima. Nenhuma frase do alvo.
+- **`confere_a_formula.py`** (prosa + expressão, e entra no repo): escrito em vocabulário nosso,
+  re-deriva a fórmula do cabeçalho; nada do alvo.
+
+### 2. Sweep — o controlo PRIMEIRO, e depois tudo
+
+1. `scripts/cleanroom-sweep-controlo.sh` → **exit 0**, os 10 canais a discriminar (nome · texto ·
+   binário · dentro do `.gz` · dobrado com ênfase · dobrado entre linhas de comentário · o mesmo
+   comprimido · dobrado no `.gz` sem marcador · marcador de outra família · o negativo · o exit 2).
+2. `cleanroom-sweep.sh` com **as NOVE vassouras** da pasta sobre a espec + as 30 fixturas novas + o
+   README das fixturas + o README da pasta + o INBOX: **as nove a `exit 0`**.
+3. `--git-history` com as nove, com pathspec da espec e da pasta de fixturas: **as nove a `exit 0`**.
+4. ⭐ **Passagem extra, em memória, estritamente mais sensível:** as **2 395** entradas das nove
+   vassouras descodificadas por cano, normalizadas (minúsculas, acentos removidos, pontuação de
+   ênfase colapsada) ⇒ **1 820** agulhas distintas contra os **34** artefactos (espec + 30 fixturas
+   descomprimidas + README + conferidor + INBOX): **ZERO acertos**.
+
+### 3. O que RE-DERIVEI — régua própria, escrita só da §16.1 e dos cabeçalhos, alimentada só pelas fixturas publicadas
+
+⭐⭐ **O CONTROLO SUSTENTA-SE, e ao dígito.** A §16.2 inteira sai da minha régua nas **três**
+corridas publicadas, sem uma célula a discordar:
+
+| banda `u` | período | `D/R` | ondulação | ⇒ espec |
+|---|---|---|---|---|
+| `5–15°` | `0,0169` | `0,2019` | `0,002` | igual |
+| `25–35°` | `0,0192` | `0,1860` | `0,006` | igual |
+| `45–55°` | `0,0259` | `0,1497` | `0,023` | igual |
+| `60–68°` | `0,0380` | `0,1092` | `0,085` | igual |
+| `68–74°` | `0,0511` | `0,0831` | `0,182` | igual |
+| `74–79°` | `0,0713` | `0,0608` | `0,314` | igual |
+| `79–83°` | `0,1065` | `0,0346` | `0,570` | igual |
+| `83–88°` | `0,1719` | `0,0389` | `0,977` | igual |
+
+e o pincel de **catálogo** dá a MESMA tabela célula a célula; a **esfera** dá
+`0,2025 · 0,1860 · 0,1498 · 0,1092 · 0,0831 · 0,0605 · 0,0345 · 0,0386` e
+`0,002 · 0,006 · 0,025 · 0,084 · 0,185 · 0,311 · 0,568 · 0,978` (⚠️ o primeiro valor da esfera é
+`0,2025` na minha leitura e `0,2028` na publicada — ver E36). **O vinco pontilha (`0,002 → 0,977`)
+e fica `5,19×` mais raso (`0,2019 → 0,0389`) no ALVO, com o pincel de fábrica.** ⇒ *o nosso produto
+está fiel e a pergunta é de produto, não de lei que falte.*
+
+⭐ **A agregação estava escondida e achei-a:** dentro de cada banda a mediana é tomada **só sobre as
+estações onde a ondulação é definida** (a cláusula da §16.1). Com todas as estações a última banda
+lê `0,0225` em vez de `0,0389` — e é exactamente esse o gémeo da E28.
+
+**As três acusações contra o modo de cena, cada uma re-derivada das fixturas que a §16.11 declara:**
+
+| acusação | re-derivado | fixturas |
+|---|---|---|
+| `10×` a profundidade na borda | `D/R` a `74–79°`: `0,0608` (vista) contra **`0,6295`** (cena) ⇒ `10,35×`, e `3,12×` o meio da peça; na **esfera** `0,0605` contra `0,6147` ⇒ `10,2×` | `produto_cupula_{fabrica,cena}_da_silhueta` + o par da esfera |
+| taxa de amostragem `−30 %`/`−51 %` | `1` px → `4` px por evento, em cena: `0,5728→0,3116` (**−45,59 %**), `0,6295→0,4380` (**−30,43 %**), `0,5549→0,2715` (**−51,08 %**); o controlo em **vista** move-se `≤ 0,04 %` nessas três bandas | `produto_cupula_cena_4px_por_evento` × `produto_cupula_cena_da_silhueta`, e o par de vista |
+| sentido do gesto `3,3×` | ida `0,6295` contra volta **`0,1935`** a `74–79°` ⇒ `3,25×`; **o PAR está publicado** | `produto_cupula_cena_da_silhueta` × `produto_cupula_cena_do_meio_para_a_silhueta` |
+
+⚠️ **O par do sentido em VISTA não existe** — a célula "igual, tirando a ponta" não tem fixtura
+(E38). E o **cursor parado** re-deriva ao dígito em `u = 84°` (`0,00983` em vista, `0,01727` em
+cena) **medindo ao longo da normal de repouso**; medido como `max|componente|` dá `0,00977`/`0,01716`
+e leva a crer num gémeo que não existe.
+
+**Mais o que confirmei, todo das fixturas publicadas:**
+
+- **a lei do passo (§16.4):** em vista, passo de ecrã **`14,40 / 23,98 / 36,05`** px (média) para
+  `esp` `60/100/150`; em cena, corda 3D **`0,071979 / 0,119919 / 0,179744`** contra o alvo
+  `0,072 / 0,120 / 0,180`, com o ângulo uniforme **`4,125° / 6,875° / 10,3125°`** (a malha quantiza
+  em `0,34375°`) e o passo de ecrã a encolher para **`1,96 / 3,84 / 6,82`** px junto à silhueta.
+  ⇒ a diferença que o G-13 usa como candidata errada, **`12,41`–`29,02` px**, re-deriva.
+- **a fronteira do passo (§16.3, G-14):** um dab dá `D_max = 0,01476` **nas TRÊS superfícies** a
+  `4` px em vista (plano · rampa `45°` · rampa `4:1`) e dois dabs dão `0,02448 / 0,02442 / 0,01718`
+  a `5` px; na rampa `4:1` em **cena** a fronteira desce para `4` px (`0,01476 → 0,02206`). ⇒ *o
+  passo é cego à inclinação em vista e não é em cena*, confirmado.
+- **o adaptativo INERTE (§16.5, G-17):** sobre os dois pares que o gate declara, `max|Δ| =`
+  **`3,6e-12`** (vista) e **`0` ao bit** (cena) — muito abaixo do `6,0e-8` publicado (E31). E a
+  condição declarada confere-se **no nosso código vivo**: a nossa casa não tem pressão de caneta —
+  `crates/ph2d-app-sculpt3d/src/` não menciona pressão em lado nenhum e `Dab::at`
+  (`ph2d-sculpt3d/src/dab.rs:105`) prega `pressure: 1.0` com o doc a dizer *«sem tablet, 1.0»*.
+  ⚠️ **A fixtura ESTÁ no ponto neutro do único knob que tornaria o interruptor observável** (o
+  tamanho a seguir a pressão, desligado no harness) — e isso está **declarado** na própria §16.5,
+  que é a forma honesta; o que falta é o **nome do gate** carregar a cerca (E31).
+- **a composição com a atenuação (§16.8):** `D_cena/D_vista` por banda = `1,0052 · 1,0540 · 1,2033
+  · 1,4565 · 2,4993` contra `1/cos u` = `1,0038 · 1,0642 · 1,2208 · 1,4142 · 1,7013` ⇒ desvios
+  `+0,1 / −1,0 / −1,4 / +3,0 / +46,9 %`. **A afirmação `±3 % até 50°` sustenta-se** e a quinta banda
+  é a auto-limitação do §4 a morder. ⭐ **O que ela diz sobre a §5.2/§5.3 já atestadas: confirma-as e
+  fecha a única leitura sob a qual elas podiam ter sido implementadas erradas** — `a` sai da
+  percentagem **declarada** e **não** é recalculado do passo efectivo de cada dab; se fosse, esta
+  tabela seria `≈ 1` inteira. Nenhuma lei das §1–§15 muda.
+- **os valores de fábrica dos três eixos (§16.7):** lidos do pincel de **catálogo** —
+  `silhueta/produto_cupula_catalogo_da_silhueta` dá `VIEW` · adaptativo `False` · segue-pressão
+  `False` · `5 %`, e a coluna do desenho comum sai de `produto/desenho_de_catalogo_continuo`
+  (`DRAW`, `VIEW`, `False`, `False`, **`10 %`**). ⭐ A prova de completude re-deriva a
+  **`1,200e-7`** (não `1,8e-7` — E29).
+- **a régua NÃO é artefacto da malha:** o controlo de resolução do §16.1 não tem fixtura (E36), mas
+  **refi-lo eu** sub-amostrando a `produto_cupula_fabrica_da_silhueta` de 1 em 2 (`6,7 → 3,3`
+  amostras por período no topo): `0,023 → 0,019` · `0,314 → 0,306` · `0,977 → 0,973`, e a cláusula
+  das `≥ 5` amostras faz as bandas finas devolverem `None` em vez de mentirem. ⇒ **a conclusão da
+  §16.1 sustenta-se.**
+- **o conferidor das fixturas é REAL:** provei-o por mutação numa **cópia** fora do repo, nas quatro
+  formas de podridão — fórmula errada (`✗ erra 1,000e-03 contra a tolerância 2e-06`) · chave de
+  cabeçalho apagada (`✗ cabecalho sem …`) · índice retirado do bloco `r` (`✗ 1696 linhas r contra
+  vertices_publicados=1697` **e** `o conjunto publicado não é o declarado`) · censo a varrer quase
+  nada (`✗ PISO DE POPULACAO: 12 ficheiros`) — com o **controlo** verde antes e depois de cada uma.
+  `30 ficheiros conferidos, 0 problemas` na árvore. **36** chaves obrigatórias, **30** ficheiros.
+- **as citações que a §16 faz do NOSSO código estão todas certas no código vivo:**
+  `spacing.rs:46-49` (*«a unidade é a do CHAMADOR … no nosso shell essa régua é a TELA»*) ·
+  `input.rs:331,357,384` (os **três** sítios a passar `scene.radius_px()`) ·
+  `atenuacao_do_traco.rs:51,70` (`ESPACAMENTO_DO_AFIADO_PCT = 5.0` e `raio · pct / 50`) ·
+  `space.rs:253` (`radius_px()`). ⇒ **a §16.10.1 — «somos fiéis, e o pontilhado é fidelidade» — é
+  verdadeira sobre o código de hoje.**
+
+### 4. ⛔ O ACHADO QUE BLOQUEIA — **B4: a barra do G-13 não é alcançável pela leitura que o G-13 nomeia**
+
+O G-13 mede *«posição de cada dab, em píxeis de ecrã, **contra os picos do barro**»*, com barra
+`0,5` px e aprovado `0,094` px. A fixtura publica uma **malha**, não uma lista de dabs ⇒ a posição
+de um dab tem de ser lida do barro. Medido sobre as **três** fixturas que o gate declara, com o
+desvio máximo à grelha `pen_down + k·passo` e o desvio-padrão dos passos:
+
+| leitura do pico | `esp060` | `esp100` | `esp150` |
+|---|---|---|---|
+| **vértice mais alto** (a leitura simples) | **`0,55` px** · dp `0,326` | `0,50` px · dp `0,404` | `0,48` px · dp `0,451` |
+| **interpolação sub-célula** (parábola nos 3 vértices) | `0,10` px · dp `0,040` | `0,09` px · dp `0,080` | `0,09` px · dp **`0,094`** |
+
+⇒ **A leitura simples REPROVA a `esp060` sobre produto correcto** (`0,55` contra a barra `0,5`) e dá
+desvios-padrão `4×`–`5×` o valor da coluna «aprovado». **Só a interpolação sub-célula reproduz a
+página — e reproduz o `0,094 px` exactamente.** A página não diz qual das duas é, e o Implementador
+não tem como decidir: perante `0,55` contra `0,5` ele conclui que a *nossa* lei do passo está errada,
+ou afrouxa a barra — e afrouxar a barra é o que esta casa proíbe (`CLAUDE.md` §0.0).
+
+**Instrução funcional (para o E):** a coluna «mede» do G-13 tem de dizer **como** a posição de um dab
+se lê de uma malha publicada — a interpolação sub-célula do pico do barro, que é de onde o `0,094 px`
+saiu —, **ou** a barra tem de passar para um número que a leitura nomeada alcance (a leitura simples
+pede `≥ 0,6` px sobre estas três fixturas, e aí o `0,094` deixa de ser o aprovado e passa a ser
+`0,55`). ⚠️ **A margem para a candidata errada continua enorme nos dois caminhos** (`12,41`–`29,02` px),
+então nenhuma das duas curas enfraquece o gate.
+
+### 5. ⚠️ As CATORZE erratas (gaveta B — a janela I corrige-as enquanto constrói)
+
+| # | sítio | o que está lá | o que a medição dá |
+|---|---|---|---|
+| **E28** | §16.9, linha «4 px por evento», coluna `VIEW` | `0,1092 · 0,0608 · **0,0225**` | ⛔ **GÉMEO**: a §16.2 publica `0,0389` para a mesma banda (`83–88°`) da mesma corrida. São a mesma grandeza sob **duas agregações**: mediana só sobre as estações com ondulação definida (`0,0389`, a cláusula da §16.1, e é o que a §16.2 usa) contra mediana sobre **todas** (`0,0225`). ⇒ escreva `0,0389`, ou diga a agregação |
+| **E29** | §16.7, última linha | completude a `1,8e-7` | ⛔ **GÉMEO**: mede **`1,200e-7`** sobre o par que a própria linha nomeia — e `1,2e-7` é o que a §0.2, a §13 e o README das fixturas já imprimem |
+| **E30** | §16.12, G-15, «errado mais perto» | a régua sem a cláusula «lê `1,000` **no meio**» | contradiz a §16.1 (*«lê `1,000` nas duas PONTAS»*), que é o que se mede: sem a cláusula as bandas interiores continuam a ler `0,002 / 0,006 / 0,314` e só as das pontas leem `1,000` |
+| **E31** | §16.12, G-17, «aprovado» | `6,0e-8` | sobre os **dois pares que o gate declara**, `3,6e-12` (vista) e `0` ao bit (cena); o `6,0e-8` vem da população larga da §16.5 (`12` traços + `132` pares), **nenhum deles entre as 30**. ⇒ imprima o valor da população declarada. ⚠️ E ponha a cerca no NOME do gate: *inerte no dispositivo que temos* — a fixtura está, por construção, no ponto neutro do único knob que o tornaria observável (a §16.5 já o declara; o gate não) |
+| **E32** | §16.12, G-18 + §16.4 fim | «desvio relativo do fundo do vinco», aprovado `0,09 %` | a **mediana do fundo ao longo da fila** dá `0,084 %`; o **máximo global** dá `0,115 %`. Os dois passam a barra `0,5 %`; só um é a coluna. Nomeie a agregação |
+| **E33** | §16.12, G-14, coluna «mede» | «nº de dabs» | a `4`–`5` px de separação os dois dabs **fundem-se num pico só**: contar picos lê `1` dos dois lados nas oito fixturas. O discriminador que a fixtura dá é **exacto**: um dab = `D_max 0,01476` nas três superfícies; dois dabs = `0,02448 / 0,02442 / 0,01718` (vista, `5` px) e `0,02206` (cena, `4` px); vértices movidos ao longo da fila `446→479 · 298→316 · 98→122 · 98→113`. (A §5.1 e a §16.5 já ensinam esta leitura — *«um dab a mais vale `1,3e-2`»* —, mas o G-14 não lhe aponta) |
+| **E34** | §16.12, G-20, «errado mais perto» | «um dab move `3 229`» | não é recuperável: a fixtura irmã (`pen_down_na_silhueta_um_px_para_dentro`) move **154** dos seus `2 497` vértices publicados, e nenhuma fixtura da família publica contagem de malha inteira. O lado **aprovado** (`0` em `pen_down_na_silhueta_sem_dab`) re-deriva exacto |
+| **E35** | §16.6, 3.º ponto | «a `84°` um único píxel já pede `~10`» | a própria parêntese dá `1,9`: `0,00333 / cos 84° = 0,0319` de arco contra um passo de `0,01667`. O que vale `~10` é `1/cos 84°` — **quantas vezes mais** do que no topo (onde são `0,2` dabs por píxel), não a contagem |
+| **E36** | §16.1 e §16.9 e §16.6 | três populações citadas sem fixtura | (a) o **controlo de resolução** (`6,8`/`3,2` amostras por período): as duas malhas não estão entre as 30 — refi-lo sub-amostrando a publicada e a **conclusão sustenta-se** (`0,023→0,019 · 0,314→0,306 · 0,977→0,973`); (b) o **cursor parado a `60°` e `75°`**: só `u84` está publicado; (c) a **sonda de linearidade** (saltos `10·20·35·50·72` px) e os saltos de `2·3·5·8` px do pen-down: só o de `1` px está publicado. ⚠️ E a esfera lê `0,2025` na banda `5–15°` onde a §16.2 publica `0,2028` (a diferença é da agregação da mediana; as outras 7 batem exactas) |
+| **E37** | §16.11, justificação do subconjunto | «`79 k`–`1,08 M` vértices» | as 30 malhas têm `9 409 · 37 249 · 42 947 · 93 757 · 185 977 · 1 079 102` ⇒ a faixa é **`9,4 k`–`1,08 M`** (ou `185 977`–`1,08 M` se a frase quiser dizer só as malhas da régua da ondulação). A justificação continua de pé |
+| **E38** | §16.11, linha «o PREÇO de `SCENE`» | «as **quatro** linhas do §16.9» | a tabela do §16.9 tem **cinco** linhas. E a do **sentido** não tem controlo em vista publicado: a célula diz «igual, tirando a ponta» e não existe `produto_cupula_fabrica_do_meio_para_a_silhueta` — o par **em cena** está publicado e re-deriva |
+| **E39** | §16.4 e os cabeçalhos das seis `passo_em_*` | «meia-cana varrida de `−17°` a `+85°`» contra «varre 0..89 graus» no `o_que_ela_fixa` | a linha real do cursor vai de `+89,5°` a `−20°` e os **dabs** caem entre `84,22°` e `−17,5° / −18,9° / −15,5°` conforme o espaçamento. Três descrições da mesma corrida, nenhuma igual à outra |
+| **E40** | §16.4, «a corda ajusta melhor que o arco» | `+0,09 %` contra `+0,22 %` a `150 %` | no limite do que a malha publicada suporta: com detecção de pico a corda dá `−0,14 %` e o arco `−0,01 %` na mediana — **sinal contrário**, e a diferença entre as duas é menor que a quantização do pico. A **lei** (passo constante em mundo) re-deriva sem dúvida. Nenhum gate a usa |
+| **E41** | §16.7, coluna «nosso», linha do espaçamento | `5 %` — e a §6 diz `0,15 R = 7,5 %` | as duas estão certas e leem-se como contradição: a primeira é o `Verb::DrawSharp` (`ESPACAMENTO_DO_AFIADO_PCT`), a segunda é o passo de omissão da casa para o `Draw` genérico. Diga de que verbo é a coluna |
+
+### 6. O que NÃO auditei, e é preciso dizê-lo
+
+- As **§1–§15** e as **80** fixturas da 1.ª emenda: cobertas pelo atestado da 2.ª passagem, não
+  re-abertas aqui. Confirmei apenas que a §16 **não contradiz** a §5.1 (o passo já lá era «`5 %` do
+  diâmetro de **ecrã**» com a grelha ancorada no píxel do pen-down), a §5.2/§5.3 (a §16.8 **confirma**
+  que `a` sai da percentagem declarada) nem o §6.
+- A lista de **exclusões com nome** do §12.2 não ganhou entradas da §16 — as 30 fixturas novas estão
+  todas num dos oito grupos do §16.11, e a soma dos grupos é **30**.
+
+### 7. Higiene
+
+- A vassoura **nunca** foi descodificada para ficheiro: o `cleanroom-sweep.sh` descodifica-a em
+  memória, e a minha passagem extra leu os `.txt` e descodificou **dentro do processo Python**.
+- ⛔ **Nada** foi escrito em `/tmp`, em `/dev/shm` nem no scratchpad da sessão-mãe
+  (`/tmp/claude-1000/…`, que é da janela I). As minhas réguas independentes e a cópia mutada das
+  fixturas viveram em `~/Referencias/_rpre_pincel_afiado_2026-09-16/`, fora do repo, e a cópia
+  mutada foi apagada no fim.
+- Os nove relatórios de sweep saíram **verdes**, logo nenhum citou nada; ficaram no terminal.
+- ⚠️ **Toquei na zona negada** (`~/Referencias/blender-pincel-afiado/oracle/`) exactamente duas
+  vezes, e só para responder à pergunta de parede *«`VIEW`/`SCENE` são nomes públicos ou internos?»*:
+  uma contagem e uma linha do **harness do E** (não do fonte do alvo), com o nome da propriedade
+  mascarado antes de ser impresso. Nada disso entra no report para a janela I.

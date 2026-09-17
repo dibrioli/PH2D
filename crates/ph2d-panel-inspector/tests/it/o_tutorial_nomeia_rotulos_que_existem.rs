@@ -68,10 +68,10 @@ fn chaves_e_textos() -> Vec<(String, String)> {
         for linha in t.lines() {
             let linha = linha.trim();
             if let Some(k) = bloco.take() {
-                if let Some(resto) = linha.strip_prefix('"') {
-                    if let Some(f) = resto.rfind('"') {
-                        v.push((k, desescapa(&resto[..f])));
-                    }
+                if let Some(resto) = linha.strip_prefix('"')
+                    && let Some(f) = resto.rfind('"')
+                {
+                    v.push((k, desescapa(&resto[..f])));
                 }
                 continue;
             }

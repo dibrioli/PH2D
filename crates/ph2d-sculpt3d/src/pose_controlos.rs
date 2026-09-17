@@ -36,16 +36,12 @@ pub struct PoseControlos {
     pub segmentos: u32,
     /// `0..2` — afasta o pivô do cursor, em múltiplos do raio.
     pub desvio_da_origem: f32,
-    /// `0..100`.
+    /// `0..`[`PoseControlos::SUAVIZACOES_MAX`].
     pub suavizacoes_do_peso: u32,
     /// Prende a extremidade distante da cadeia.
     pub ancorado: bool,
     /// No modo de escala, escala **sem rodar**.
     pub trava_rotacao: bool,
-    /// ⭐⭐ **Quanto do arrasto a ESCALA lê** — ver [`ph2d_pose::Arrasto`]. Só as
-    /// duas deformações do quociente de escala o consultam; a translação já lia
-    /// o deslocamento inteiro, e as duas de rotação resolvem uma cadeia.
-    pub lei_do_arrasto: ph2d_pose::Arrasto,
     /// O arrasto do ponteiro em **pixels de ecrã**, no eixo horizontal, desde o
     /// pen-down.
     ///
@@ -81,15 +77,104 @@ impl Default for PoseControlos {
             // harness, não uma leitura do que o artista encontra).
             ancorado: lei.ancorado,
             trava_rotacao: lei.trava_rotacao,
-            // ⚠️ **CONTADA da lei**, como as duas de cima: as duas omissoes
-            // divergirem seria o defeito que este bloco existe para impedir.
-            lei_do_arrasto: lei.lei_do_arrasto,
             arrasto_x_pixels: 0.0,
         }
     }
 }
 
 impl PoseControlos {
+    /// ⭐⭐⭐ **O TECTO DAS SUAVIZAÇÕES, e ele é MEDIDO — report do dono de
+    /// 2026-09-17** (*«por que essas reentrâncias com pose? por que não é mais
+    /// regular a borda da deformação? … mesmo com Weight Smoothing no máximo
+    /// não consigo uma transição mais suave»*, com foto).
+    ///
+    /// # ⛔⛔ As reentrâncias são FACES VIRADAS DO AVESSO, e vivem TODAS na banda
+    ///
+    /// A região da pose nasce **binária**: a varredura do §2.2 escreve `1` em
+    /// quem alcança e `0` no resto, e o único alisador é a difusão de Jacobi do
+    /// §4. Quem tem peso `1` roda inteiro com a cadeia e quem tem `0` fica
+    /// parado, logo a banda entre os dois tem de **absorver a rotação toda**.
+    /// Estreita de mais para o arrasto, a superfície **dobra sobre si mesma** —
+    /// e o entalhe escuro que o artista vê é uma normal invertida.
+    ///
+    /// ⭐ **Medido pelo caminho do produto** (`sonda_de_onde_vivem_as_viradas`,
+    /// esfera de `97 922` vértices, arrasto `0,6`): das faces viradas,
+    /// **`203` de `203`, `878` de `878`, `1 336` de `1 336`, `801` de `801` e
+    /// `10` de `10`** têm peso estritamente entre `0` e `1`. **Zero** no miolo,
+    /// **zero** fora da região. *Não é «a borda está feia»: é a banda a dobrar.*
+    ///
+    /// # ⛔⛔ E o knob conta ANÉIS DA MALHA, não raios do pincel
+    ///
+    /// A largura que `N` iterações compram, medida em quatro densidades de
+    /// esfera (`1 490` · `6 050` · `24 386` · `97 922` vértices, raio `0,8`,
+    /// `sonda_da_banda`):
+    ///
+    /// | `N` | banda, em **arestas da malha** |
+    /// |---|---|
+    /// | `4` | `3,84` · `4,06` · `4,29` · `4,17` |
+    /// | `25` | `10,81` · `10,04` · `10,05` · `10,07` |
+    /// | `100` | — · `23,97` · `20,11` · `20,04` |
+    /// | `300` | — · — · `37,46` · `34,81` |
+    ///
+    /// ⇒ **banda ≈ `2,0 · √N` arestas** (`banda/√N` lê `2,00`–`2,16` nas dez
+    /// células em que o núcleo não diluiu). ⚠️ **Duas leituras, e as duas são
+    /// resposta ao dono:** a unidade é a **MALHA**, logo o mesmo ponto do slider
+    /// dá transição larga numa peça grossa e estreita numa fina — na densidade
+    /// de fábrica o tecto antigo comprava `0,285` do raio do pincel e o novo
+    /// compra `0,495`; e a **raiz quadrada** quer dizer que *triplicar o número
+    /// dá `√3 ≈ 1,73×` de suavidade, nunca `3×`*.
+    ///
+    /// ⚠️ Os traços da tabela são as células em que a difusão **come o próprio
+    /// miolo**: sem condição de fronteira, com banda maior que a região o peso
+    /// do núcleo cai (a `1 490` vértices ele vai de `1,0000` a `0,5498` em
+    /// `N = 300`) e o que há deixa de ser uma fronteira — é um pincel mais
+    /// fraco. Na peça de fábrica o núcleo fica em `1,0000` até `300`.
+    ///
+    /// # ⭐⭐⭐ Porque o tecto é `300`, e não «três vezes o que era»
+    ///
+    /// Faces viradas por (arrasto, `N`), pelo caminho do produto, na esfera de
+    /// `97 922` vértices — a densidade da peça de fábrica, que tem `98 306`
+    /// (`sonda_das_viradas`):
+    ///
+    /// | arrasto | `N=0` | `4` (fábrica) | `25` | `100` (tecto antigo) | `200` | **`300`** | `600` |
+    /// |---|---|---|---|---|---|---|---|
+    /// | `0,10` | 193 | 498 | 89 | **0** | 0 | **0** | 0 |
+    /// | `0,20` | 200 | 724 | 842 | **0** | 0 | **0** | 0 |
+    /// | `0,40` | 201 | 832 | 1 222 | 537 | **0** | **0** | 0 |
+    /// | `0,60` | 203 | 878 | 1 336 | 801 | 10 | **0** | 0 |
+    /// | `0,90` | 203 | 896 | 1 385 | 863 | 56 | **0** | 0 |
+    /// | `1,20` | 203 | 931 | 1 386 | 820 | 107 | **0** | 0 |
+    ///
+    /// ⭐ **`300` é a primeira coluna que lê `0` em TODA a linha** — até a um
+    /// arrasto de `1,20`, que é **um raio e meio** de pincel. O tecto antigo
+    /// deixava `801` faces viradas no arrasto que o dono fotografou, que é o
+    /// report à letra.
+    ///
+    /// ⛔ **E acima de `300` não há regime novo:** a `600` as viradas já eram
+    /// zero, e o que se compra é só banda mais larga por amplitude perdida
+    /// (`−10 %` de `100` para `300`, `−22 %` até `900`) e relógio linear.
+    /// *O tecto é de PRODUTO — é onde o defeito que ele existe para curar
+    /// desaparece —, e o recurso está na linha seguinte.*
+    ///
+    /// # ⚠️ O que ele custa, e onde
+    ///
+    /// `0,133 ms` por iteração por `98 k` vértices, **no pen-down e uma vez por
+    /// traço** (nunca por dab): medido em `--release`, `12,83 ms` no tecto
+    /// antigo e **`39,85 ms`** no novo — `2,4` quadros. ⚠️ É `O(V·N)` **por
+    /// segmento**, logo numa peça de `1,5 M` vértices o topo do slider custa da
+    /// ordem do meio segundo. *O mesmo já era verdade no tecto antigo, em ponto
+    /// mais baixo.*
+    ///
+    /// ⏳ **ABERTO e nomeado:** que o knob conte anéis é o defeito de fundo, e a
+    /// cura seria a banda medir-se em **raios de pincel** com a contagem
+    /// derivada da densidade — a mesma forma do `Detail` do `Density`, que
+    /// passou a pedir uma CONTAGEM ancorada na área. ⛔ **Ela não é afordável
+    /// com esta lei**: `N ∝ (banda/aresta)²` e o custo é `O(V·N)` ⇒ `O(V²)` a
+    /// banda constante, e na peça de fábrica uma banda de **um** raio pede
+    /// `~1 200` iterações. *A cura de fundo é outra lei de peso — e essa é
+    /// decisão do dono, porque o corpus do oráculo mede esta.*
+    pub const SUAVIZACOES_MAX: u32 = 300;
+
     /// Junta os próprios aos partilhados e devolve a lei.
     ///
     /// ⚠️ **A força entra LINEARMENTE** neste pincel (espec §1.2) — ⛔ nunca ao
@@ -111,9 +196,21 @@ impl PoseControlos {
             suavizacoes_do_peso: self.suavizacoes_do_peso,
             ancorado: self.ancorado,
             trava_rotacao: self.trava_rotacao,
-            // ⚠️ **A escolha do artista atravessa, e o de fábrica é a lei da
-            // espec** — ver [`ph2d_pose::Arrasto`].
-            lei_do_arrasto: self.lei_do_arrasto,
+            // ⛔⛔⛔ **CRAVADA no arrasto INTEIRO — veredito do dono,
+            // 2026-09-17:** *«Full drag parece ser o único necessário»*. Ele
+            // nasceu na véspera como um par de chips, por ordem dele (*«cada
+            // modo com opção, com um botão para mudar o modo»*); ele testou-o e
+            // a escolha ficou sendo uma só.
+            //
+            // ⚠️⚠️ **É uma DIVERGÊNCIA DECLARADA da espec**, que manda projectar
+            // o arrasto no osso (§5.4/§5.5) — e ela é de PRODUTO: puxar de lado
+            // deixa de ser deitado fora. ⛔ **A LEI não mudou e o oráculo
+            // continua a medir a da espec:** o `Controlos::default()` da crate
+            // da lei nasce em [`ph2d_pose::Arrasto::AoLongoDoOsso`], que é o que
+            // as `69` fixturas alimentam. *Quem cravar a outra ali re-baseia o
+            // corpus inteiro em silêncio* — há gate nas duas pontas, em
+            // [`arrasto_do_produto_tests`].
+            lei_do_arrasto: crate::PoseArrasto::Completo,
             raio: brush.radius,
             forca: brush.strength,
             // ⚠️ **Da ESCOLHA, não do `Ctrl`** — o `brush.invert` não entra aqui
@@ -131,22 +228,53 @@ impl PoseControlos {
 }
 
 #[cfg(test)]
-mod arrasto_de_fabrica_tests {
-    /// ⚠️ **O PINCEL nasce com a projecção no osso** — o irmão exacto do gate da
-    /// folga, e ele existe pela mesma razão medida: o `default()` do enum e o
-    /// campo que SHIPA são duas perguntas, e uma mutação sobrevivente mostrou
-    /// que asserir só a primeira deixa a segunda sem régua.
+mod arrasto_do_produto_tests {
+    use super::PoseControlos;
+
+    /// ⭐⭐⭐ **O PRODUTO lê o arrasto INTEIRO, e o ORÁCULO continua na projecção.**
     ///
-    /// ⭐ Aqui ele é **derivado** da crate da lei (`lei.lei_do_arrasto`), logo
-    /// hoje não pode divergir — e é por isso que o gate afirma o VALOR: no dia
-    /// em que alguém escrever um literal neste bloco, ele acusa.
+    /// ⚠️⚠️ **Este gate substitui o `o_pincel_nasce_com_a_projeccao_no_osso`, e
+    /// a premissa dele morreu à vista no diff.** Ele afirmava que o pincel
+    /// nascia com a lei da espec — verdade de 2026-09-17 de manhã, quando o
+    /// arrasto era uma escolha de painel com a projecção de fábrica, e **falsa**
+    /// desde o veredito do dono da tarde (*«Full drag parece ser o único
+    /// necessário»*). *Um gate cuja premissa muda reescreve-se com a morte
+    /// visível; apagá-lo levaria a régua junto.*
     #[test]
-    fn o_pincel_nasce_com_a_projeccao_no_osso() {
+    fn o_produto_le_o_arrasto_inteiro_e_o_oraculo_fica_na_projeccao() {
+        // (1) — o que SHIPA: a lei que sai da ponte para o motor.
+        let lei = PoseControlos::default().lei(&crate::Brush::default());
         assert_eq!(
-            super::PoseControlos::default().lei_do_arrasto,
+            lei.lei_do_arrasto,
+            ph2d_pose::Arrasto::Completo,
+            "o pincel deixou de ler o arrasto inteiro — e' o veredito do dono \
+             de 17/09 que esta' a ser desfeito, nao uma afinacao"
+        );
+
+        // (2) — e o que o CORPUS mede: a lei nua continua a nascer na projecção.
+        // ⛔ Sem esta metade, cravar `Completo` no `Controlos::default()`
+        // re-baseava as `69` fixturas do oráculo **em silêncio**.
+        assert_eq!(
+            ph2d_pose::Controlos::default().lei_do_arrasto,
             ph2d_pose::Arrasto::AoLongoDoOsso,
-            "o pincel passou a nascer com outra lei de arrasto — as 69 fixturas \
-             do oraculo passam a medir outro pincel"
+            "a LEI passou a nascer no arrasto inteiro — as 69 fixturas do \
+             oraculo passam a medir outro pincel, e a paridade que elas \
+             afirmam deixa de ser sobre a especificacao"
+        );
+
+        // (3) — e a divergência **existe**: as duas leis discordam num arrasto
+        // que não é ao longo do osso. ⚠️ Sem ela, (1) e (2) seriam compatíveis
+        // com um `Completo` que por acaso faz o mesmo — *uma divergência
+        // declarada que não se mede é uma nota, não uma decisão*.
+        let deslocamento = [0.6, 0.8, 0.0];
+        let normal = [1.0, 0.0, 0.0];
+        let projectada = ph2d_pose::Arrasto::AoLongoDoOsso.alavanca(deslocamento, normal);
+        let inteira = ph2d_pose::Arrasto::Completo.alavanca(deslocamento, normal);
+        assert!(
+            (inteira - projectada).abs() > 0.3,
+            "as duas leis de arrasto leem {projectada} e {inteira} no mesmo \
+             gesto transversal — se elas deixaram de discordar, a divergencia \
+             declarada em (1) nao descreve nada"
         );
     }
 }

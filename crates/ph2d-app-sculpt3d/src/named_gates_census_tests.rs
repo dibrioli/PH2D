@@ -63,7 +63,12 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 5] = [
+const MEMORIAS: [(&str, &str, &str); 6] = [
+    (
+        "o_pincel_nasce_com_a_projeccao_no_osso",
+        "crates/ph2d-sculpt3d/src/pose_controlos.rs",
+        "o gate SUBSTITUÍDO em 2026-09-17 pelo          `o_produto_le_o_arrasto_inteiro_e_o_oraculo_fica_na_projeccao`, quando o          dono testou o `Drag Reads` e decidiu (*«Full drag parece ser o único          necessário»*) — a nota guarda a premissa que morreu, que é o que impede          alguém de ler a troca como uma regressão",
+    ),
     (
         "a_inversao_nega_a_translacao_e_nao_vira_o_raio",
         "crates/ph2d-sculpt3d/src/projectar_tests.rs",

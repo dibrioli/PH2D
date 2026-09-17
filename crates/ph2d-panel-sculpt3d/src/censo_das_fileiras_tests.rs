@@ -230,21 +230,6 @@ fn a_qualidade_do_pincel_aparece_com_o_pincel() {
     );
 }
 
-/// ⭐⭐ **GATE — o painel oferece TODA lei de arrasto da pose que o motor tem.**
-///
-/// ⚠️ **Duas é a conta de 17/09** (ordem do dono, *«cada modo com opção»*): a
-/// projecção no osso — a lei da espec, de fábrica — e o arrasto completo.
-#[test]
-fn the_panel_offers_every_pose_drag_law_the_engine_has() {
-    assert_eq!(
-        crate::ids::SCULPT3D_POSE_ARRASTO.len(),
-        ph2d_sculpt3d::PoseArrasto::ALL.len(),
-        "o painel tem {} chips de arrasto e o motor tem {} leis",
-        crate::ids::SCULPT3D_POSE_ARRASTO.len(),
-        ph2d_sculpt3d::PoseArrasto::ALL.len()
-    );
-}
-
 /// **GATE — o painel oferece TODA direcção de esfregão que o motor tem.**
 ///
 /// ⚠️ **Três é a conta da espec §5.3**, e não um número que alguém escolheu:

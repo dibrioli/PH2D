@@ -83,6 +83,20 @@ pub use vizinhanca::Vizinhanca;
 /// oráculo foram gravadas com ela, e o braço dela chama o **mesmo código de
 /// antes** — a paridade fica intacta por CONSTRUÇÃO e não por um argumento
 /// numérico.
+///
+/// # ⛔⛔⛔ O BOTÃO SAIU do painel (2026-09-17) — e a lei FICA
+///
+/// Veredito do dono, no dia seguinte a ele pedir os dois chips: *«Full drag
+/// parece ser o único necessário»*. ⇒ o produto crava
+/// [`Arrasto::Completo`] em [`ph2d_sculpt3d::PoseControlos::lei`], com a
+/// divergência declarada e gateada ali; a escolha deixou de existir na tela.
+///
+/// ⚠️⚠️ **[`Arrasto::AoLongoDoOsso`] NÃO se apaga**, e não é por inércia: ela é
+/// o valor de [`Controlos::default`] e **é o que as `69` fixturas alimentam**.
+/// *Apagá-la levava o corpus do oráculo junto* — a mesma razão pela qual a
+/// folga simétrica do `Scene Project` ficou viva depois de recusada. E o
+/// [`Arrasto::label`] fica com ela: o dia em que alguém quiser a escolha de
+/// volta, ela está escrita.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Arrasto {
     /// **A projecção no osso** — a lei da espec §5.4/§5.5, e o valor de fábrica.
@@ -303,7 +317,13 @@ pub struct Controlos {
     pub segmentos: u32,
     /// `0..2` — afasta o pivô do cursor, em múltiplos do raio.
     pub desvio_da_origem: f32,
-    /// `0..100`.
+    /// Quantas iterações de Jacobi esbatem os pesos (§4). **A lei não tem
+    /// tecto** — quem o põe é o produto, e o dele é medido
+    /// (`ph2d_sculpt3d::PoseControlos::SUAVIZACOES_MAX`).
+    ///
+    /// ⚠️ A largura que ela compra vale **`≈ 1,79 · √N` arestas da malha** —
+    /// medida constante a `2 %` sobre quatro densidades —, logo ela é uma
+    /// grandeza da MALHA e não do raio do pincel.
     pub suavizacoes_do_peso: u32,
     /// Prende a extremidade distante da cadeia (§5.1).
     pub ancorado: bool,

@@ -192,27 +192,16 @@ impl Brush {
         self.offers_pose_controls() && self.pose.deformacao == crate::PoseDeformacao::Escalar
     }
 
-    /// ⭐⭐ **Este gesto de pose LÊ a lei do arrasto?** — a porta única do
-    /// [`crate::PoseArrasto`], irmã exacta da trava acima.
-    ///
-    /// ⛔⛔ **Só as DUAS deformações do quociente de escala**, e isso é MEDIDO e
-    /// não uma suposição: a [`crate::PoseDeformacao::Transladar`] soma o
-    /// deslocamento **inteiro** à origem de cada segmento, e as duas de rotação
-    /// resolvem uma cadeia contra um alvo — *em nenhuma das três existe a
-    /// alavanca `δ` que esta lei governa*.
-    ///
-    /// ⚠️⚠️ **A nota que esta linha levava dizia «Scale/Translate/Squash leem só
-    /// a componente axial», e a medição diz DUAS de três.** A translação já lia
-    /// o arrasto todo — *recitar a nota teria posto o chip em cima de um gesto
-    /// que ele não governa, que é um selector inerte com cara de controlo vivo*.
-    #[must_use]
-    pub fn offers_pose_drag_law(&self) -> bool {
-        self.offers_pose_controls()
-            && matches!(
-                self.pose.deformacao,
-                crate::PoseDeformacao::Escalar | crate::PoseDeformacao::Espremer
-            )
-    }
+    // ⛔⛔⛔ **O `offers_pose_drag_law` SAIU (2026-09-17), com o chip que ele
+    // governava.** Veredito do dono depois de o testar: *«Full drag parece ser
+    // o único necessário»*. ⇒ o pincel lê o arrasto INTEIRO em toda deformação
+    // que tenha a alavanca `δ`, e a escolha deixou de existir — a lei e a
+    // divergência declarada estão em [`crate::PoseControlos::lei`].
+    //
+    // ⚠️ *A medição que o chip trouxe FICA e não se perde:* só as duas
+    // deformações do quociente de escala leem esta lei (a translação já somava o
+    // deslocamento inteiro, e as duas rotações resolvem uma cadeia) — e é por
+    // isso que trocá-la não toca nos outros três gestos.
 
     /// **Este verbo lê o [`Brush::surface_only`]?** — a porta única, pelo mesmo
     /// argumento do irmão acima.

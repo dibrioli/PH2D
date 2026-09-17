@@ -81,13 +81,26 @@ pub(super) const POSE_OFFSET: Row = Row {
     place: Place::Knobs,
 };
 
+/// ⭐⭐⭐ **O TECTO VAI A `300` — report do dono de 2026-09-17** (*«mesmo com
+/// Weight Smoothing no máximo não consigo uma transição mais suave. Poderia
+/// aumentar o máximo do slider em 3x?»*).
+///
+/// ⚠️ **O número NÃO é «três vezes o que era»** — ele é o ponto medido em que as
+/// faces viradas do avesso chegam a **zero para todo arrasto** que este pincel
+/// produz na peça de fábrica. A tabela, o mecanismo (a banda conta **anéis da
+/// malha** e cresce com `√N`) e o preço vivem ao lado da constante, em
+/// [`ph2d_sculpt3d::PoseControlos::SUAVIZACOES_MAX`] — *a faixa mora onde a lei
+/// que a justifica mora, e o painel lê-a.*
 pub(super) const POSE_SMOOTHINGS: Row = Row {
     label: "panel.sculpt3d.pose_smoothings",
     slider: crate::ids::SCULPT3D_POSE_SMOOTHINGS,
     chip: crate::ids::SCULPT3D_POSE_SMOOTHINGS_NUM,
     min: 0.0,
-    max: 100.0, // LITERAL-PX-OK: teto da faixa do alvo, em iterações
-    step: 1.0,  // LITERAL-PX-OK: uma iteração é inteira
+    // ⛔ **LIDO da crate da lei, nunca escrito aqui** — um literal neste sítio
+    // seria a segunda resposta à pergunta *«até onde vai este knob?»*, e a que
+    // o artista vê é sempre a que envelhece.
+    max: ph2d_sculpt3d::PoseControlos::SUAVIZACOES_MAX as f32,
+    step: 1.0, // LITERAL-PX-OK: uma iteração é inteira
     decimals: 0,
     get: |u| u.brush.pose.suavizacoes_do_peso as f32,
     set: |u, v| u.brush.pose.suavizacoes_do_peso = v.round().max(0.0) as u32,

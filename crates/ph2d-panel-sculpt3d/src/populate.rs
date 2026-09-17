@@ -150,7 +150,6 @@ pub fn populate(store: &mut WidgetStore) {
         // onde uma lista escrita à mão deixa de ser um descuido e passa a ser um
         // defeito de desenho.*
         &crate::ids::SCULPT3D_POSE_MODE[..],
-        &crate::ids::SCULPT3D_POSE_ARRASTO[..],
         &crate::ids::SCULPT3D_BOUNDARY_MODE[..],
         &crate::ids::SCULPT3D_BOUNDARY_FALLOFF[..],
         &crate::ids::SCULPT3D_ALPHA[..],

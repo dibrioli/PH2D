@@ -616,6 +616,11 @@ mod tests;
 #[cfg(test)]
 #[path = "stroke_cloth_tests.rs"]
 mod cloth_tests;
+/// Os gates da FRONTEIRA da pose — o report das reentrâncias, e de onde vem o
+/// tecto das suavizações. O corte é o SUJEITO: aqui a BORDA da região.
+#[cfg(test)]
+#[path = "pose_fronteira_tests.rs"]
+mod pose_fronteira_tests;
 /// Os gates do INDICADOR da pose — irmão do [`pose_simetria_tests`], e o corte
 /// é o SUJEITO: lá o que o GESTO faz à malha, aqui o que se VÊ antes dele.
 #[cfg(test)]

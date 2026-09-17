@@ -278,46 +278,218 @@ um binário que ABORTOU — ⛔ o `✗` é o sinal, e a contagem não.
 
 ---
 
+## §61 — ⛔⛔⛔ AS DUAS OPÇÕES DA §59 SAÍRAM, as duas por VEREDITO DO DONO
+
+A §59 fica escrita **inteira e sem emenda** — ela é a memória do que foi
+construído, medido e julgado. O que mudou foi o veredito, e ele veio em duas
+frases, no mesmo dia em que os botões nasceram.
+
+### §61.1 — O `Gap Law` (`ad920991b`)
+
+> *«não gostei dessas opções. melhor a implementação anterior»* — e, perguntado
+> o que tinha testado: *«testei apenaS Gap Law. Não vi onde ficam Drag reads»*.
+
+A árvore voltou ao estado **anterior aos botões**, conferida ficheiro a ficheiro
+(`git diff 95bef6f49 --stat` devolve **um** ficheiro). ⭐ **A lei alternativa
+FICA viva sob `#[cfg(test)]`** (`projectar::folga_simetrica`) com a recusa
+medida escrita ao lado — *apagá-la levava a medição junto, e a tabela da §59.1
+é o que impede a próxima janela de a reconstruir do zero*.
+
+⚠️ **Duas coisas NÃO foram revertidas, e as duas por medição:**
+
+1. **A subida das fileiras do pincel no painel.** Ela nasceu por causa do
+   `Gap Law` e vale por si: o `Ray Direction` e o `Search Both Ways` nasciam em
+   `y = 967` e `1 001` num encaixe de `~880` — *já estavam abaixo da dobra antes
+   de esta wave existir*. ⇒ *uma cura não deixa de ser certa por a queixa que a
+   motivou ter mudado de assunto.*
+2. **O gate da dobra** (`os_controlos_proprios_de_um_pincel_cabem_no_encaixe`),
+   com a catraca dos cinco pincéis que passam a dobra hoje.
+
+### §61.2 — O `Drag Reads`
+
+> *«Full drag parece ser o único necessário..»*
+
+⇒ o chip **sai do painel** e o produto crava [`ph2d_pose::Arrasto::Completo`] em
+`PoseControlos::lei`. Saem com ele: a fileira do pintor, o braço do `event.rs`,
+o array de ids, a linha do `populate`, a chave de i18n, o censo do painel, a
+metade do gate de costura e o `Brush::offers_pose_drag_law`.
+
+⛔⛔ **A LEI NÃO SAI, e a razão é o corpus:** `Controlos::default()` continua a
+nascer em [`Arrasto::AoLongoDoOsso`], que é **o que as `69` fixturas do oráculo
+alimentam** — *cravar a outra ali re-baseia o corpus inteiro em silêncio*. O
+gate novo `o_produto_le_o_arrasto_inteiro_e_o_oraculo_fica_na_projeccao` afirma
+as duas pontas **e** que elas discordam num arrasto transversal (senão a
+divergência declarada não descreve nada).
+
+⚠️ **É uma DIVERGÊNCIA DECLARADA da espec §5.4/§5.5**, que manda projectar o
+arrasto no osso — e é de PRODUTO: puxar de lado deixou de ser deitado fora.
+⚠️ Só as duas deformações do quociente de escala mudam de saída; a translação já
+lia o deslocamento inteiro e as duas rotações resolvem uma cadeia.
+
+⭐ **A premissa morta está à vista no diff:** o
+`o_pincel_nasce_com_a_projeccao_no_osso` foi **substituído** e o nome está em
+`MEMORIAS` do censo dos gates nomeados, com o motivo. *Uma premissa que morre em
+doze horas é a melhor prova de que tinha de estar num gate.*
+
+⏳ **O roteiro da `=41` foi reescrito**: o passo (8) deixa de ensinar que
+`Scale`/`Squash` leem só a componente axial — *uma cena que ensina o contrário
+do que acontece é pior que uma cena ausente*.
+
+---
+
+## §62 — ⭐⭐⭐ O TECTO DO `Weight smoothing` DA POSE: `100 → 300`, e o número é MEDIDO
+
+Report do dono, com duas fotos:
+
+> *«por que essas reentrâncias com pose? Por que não é mais regular a borda da
+> deformação? Porque mesmo com Weight Smoothing no máximo não consigo uma
+> transição mais suave? Poderia aumentar o máximo do slider em 3x?»*
+
+**Zero linhas de lei.** O diff do motor é **um** número (`SUAVIZACOES_MAX`), a
+row do painel a lê-lo, e três doc-comments.
+
+### §62.1 — As reentrâncias são FACES VIRADAS DO AVESSO, e vivem TODAS na banda
+
+A região da pose nasce **binária** (a varredura do §2.2 escreve `1` em quem
+alcança e `0` no resto) e o único alisador é a difusão de Jacobi do §4 ⇒ a banda
+entre os dois tem de **absorver a rotação toda**, e estreita de mais ela dobra
+sobre si mesma.
+
+Medido pelo caminho do produto (`sonda_de_onde_vivem_as_viradas`, esfera de
+`97 922` vértices, arrasto `0,6`): das faces viradas, **`203/203`, `878/878`,
+`1 336/1 336`, `801/801` e `10/10`** têm peso estritamente entre `0` e `1`.
+**Zero** no miolo, **zero** fora da região.
+
+### §62.2 — O knob conta ANÉIS DA MALHA, não raios do pincel
+
+| `N` | banda, em **arestas** (`1 490` · `6 050` · `24 386` · `97 922` vértices) |
+|---|---|
+| `4` | `3,84` · `4,06` · `4,29` · `4,17` |
+| `25` | `10,81` · `10,04` · `10,05` · `10,07` |
+| `100` | — · `23,97` · `20,11` · `20,04` |
+| `300` | — · — · `37,46` · `34,81` |
+
+⇒ **banda ≈ `2,0 · √N` arestas**. Duas leituras, e as duas respondem ao dono: a
+unidade é a **MALHA** (na densidade de fábrica o tecto antigo comprava `0,285`
+do raio do pincel e o novo compra `0,495`), e a **raiz quadrada** quer dizer que
+*triplicar o número dá `√3 ≈ 1,73×` de suavidade, nunca `3×`*.
+
+⚠️ Os traços são as células em que a difusão **come o próprio miolo** (sem
+condição de fronteira): a `1 490` vértices o núcleo cai de `1,0000` para `0,5498`
+em `N = 300`. Na peça de fábrica ele fica em `1,0000` até `300`.
+
+### §62.3 — Porque `300`, e não «três vezes o que era»
+
+Faces viradas por (arrasto, `N`), pelo produto, na esfera de `97 922`:
+
+| arrasto | `N=0` | `4` (fábrica) | `25` | `100` (tecto antigo) | `200` | **`300`** | `600` |
+|---|---|---|---|---|---|---|---|
+| `0,10` | 193 | 498 | 89 | **0** | 0 | **0** | 0 |
+| `0,20` | 200 | 724 | 842 | **0** | 0 | **0** | 0 |
+| `0,40` | 201 | 832 | 1 222 | 537 | **0** | **0** | 0 |
+| `0,60` | 203 | 878 | 1 336 | 801 | 10 | **0** | 0 |
+| `0,90` | 203 | 896 | 1 385 | 863 | 56 | **0** | 0 |
+| `1,20` | 203 | 931 | 1 386 | 820 | 107 | **0** | 0 |
+
+⭐ **`300` é a primeira coluna que lê `0` em TODA a linha**, até um arrasto de
+`1,20` (= um raio e meio). O tecto antigo deixava `801` faces viradas no arrasto
+que o dono fotografou. ⛔ Acima de `300` não há regime novo: a `600` já era zero.
+
+**Custo:** `0,133 ms` por iteração por `98 k` vértices, **no pen-down e uma vez
+por traço** — `12,83 ms` no tecto antigo e **`39,85 ms`** no novo (`--release`).
+
+### §62.4 — Os dois gates e a prova
+
+- `o_tecto_das_suavizacoes_e_onde_a_dobra_morre` — **três** metades: o controlo
+  positivo (no tecto antigo a malha DOBRA — sem ele o gate afirmava o nada), o
+  zero no tecto de hoje, e a metade da **licença** (a dois terços do tecto ainda
+  dobra ⇒ o número que shipa é o menor da escada que chega a zero).
+- `a_banda_conta_aneis_da_malha_e_nao_raios_do_pincel` — afirma o **defeito** de
+  propósito, como o irmão das duas colunas do dyntopo: em arestas as duas
+  densidades concordam (`1,003`) e em raios de pincel discordam por `2,007`.
+  *No dia em que a banda se ancorar no raio, ele reprova e a premissa morre à
+  vista no diff.*
+
+⚠️ **A densidade da fixtura é load-bearing:** no tecto antigo as faces viradas
+leem `0` a `1 490`, `0` a `6 050`, `0` a `24 386` e **`1 390`** a `97 922` — *um
+gate escrito numa esfera de teste barata ficaria verde sobre o defeito do
+report*.
+
+⏳ **ABERTO e nomeado:** que o knob conte anéis é o defeito de fundo. A cura
+(banda em raios de pincel, contagem derivada da densidade) **não é afordável com
+esta lei** — `N ∝ (banda/aresta)²` e o custo é `O(V·N)` ⇒ `O(V²)` a banda
+constante, e uma banda de **um** raio na peça de fábrica pede `~1 200` iterações.
+*A cura de fundo é outra lei de peso, e é decisão do dono porque o corpus do
+oráculo mede esta.*
+
+### §62.5 — Os instrumentos ficam versionados
+
+Três sondas `#[ignore]` em `pose_fronteira_tests.rs` produziram as três tabelas
+acima: `sonda_da_banda`, `sonda_das_viradas`, `sonda_de_onde_vivem_as_viradas`.
+*Uma régua que produziu um número publicado e não é versionada faz o número
+envelhecer sem testemunha.*
+
+---
+
 ## §58 — 📦 PARA O AGENTE INTEGRADOR
 
 ### §58.1 — Os factos da linha
 
+⚠️ **Esta tabela foi reescrita no fecho**: ela nasceu quando a linha tinha só o G-20 (um ficheiro,
+todo em `#[cfg(test)]`) e desde então a linha ganhou duas waves de PRODUTO e dois vereditos do dono.
+
 | grandeza | valor |
 |---|---|
-| base | `main` = `3090cac3f` (rebase por **fast-forward**, zero commits locais antes desta wave) |
-| ficheiros de PRODUTO tocados | **zero** |
-| ficheiros tocados | `crates/ph2d-app-sculpt3d/src/rulers.rs` (`+130`, todo dentro de `#[cfg(test)] mod tests`) |
+| base | `main` = `3090cac3f` (rebase por **fast-forward**) |
+| ficheiros tocados contra o `main` | **22** (`+1 542 / −62`, o handoff incluído) |
+| ficheiros de PRODUTO tocados | **sim** — §59 (revertida pela §61), §61 e §62 |
 | `PROJECT_SCHEMA` · `FIELD_DOC_VERSION` · `VEC_SCENE_SCHEMA` · `FLIP_SCHEMA` | **não se mexem** |
 | os três registos de componentes (`ph2d-ecs` + os dois espelhos) | **não se mexem** |
 | contratos congelados (§6) | **zero** |
 | ADR | **zero** |
 | pacote externo novo | **zero** |
-| portas públicas novas | **zero** (o gate lê `ph2d_panel_sculpt3d::rows::row_for`, que já era `pub`) |
+| chaves de i18n | **líquido zero** (a `panel.sculpt3d.pose_arrasto` nasceu e morreu dentro da linha) |
+| itens públicos NOVOS | `PoseControlos::SUAVIZACOES_MAX` · `ph2d_pose::Arrasto` (+`ALL`/`label`/`alavanca`) e o re-export `PoseArrasto` · `SculptStroke::plano_do_dab_para_teste` |
 
 ### §58.2 — O que NÃO pode colidir
 
-O diff vive **num só ficheiro**, dentro do `mod tests`, e as duas únicas leituras que atravessam
-crate (`rows::row_for` e `ids::SCULPT3D_RADIUS`) são **pré-existentes e públicas**. Não há símbolo
-novo, não há `mod` novo, não há entrada em lista partilhada.
+- **Nenhuma lista partilhada ganha entrada**: o `populate.rs`, o `event.rs`, os `ids/` e a tabela de
+  i18n voltam **byte a byte ao `main`** depois da §61.2 — o `git diff main --stat` não os nomeia.
+- O único símbolo novo que atravessa crate é `PoseControlos::SUAVIZACOES_MAX`, **lido por um sítio**
+  (a row do painel). ⛔ Ele vive na crate da LEI de propósito: um literal na row seria a segunda
+  resposta a *«até onde vai este knob?»*.
+- `ph2d-pose` continua **sem dependências**.
 
 ### §58.3 — ⚠️ O que só a árvore COMBINADA pode reprovar
 
-- **`RADIUS_TRACK_MAX_PX`** vive na `ph2d-panel-sculpt3d` e o gate novo **lê-o**. Se outra linha
+- **`RADIUS_TRACK_MAX_PX`** vive na `ph2d-panel-sculpt3d` e o gate do §57 **lê-o**. Se outra linha
   mexer nesse número, o `o_que_aperta_o_raio_e_a_vista_nunca_o_widget` reprova — **e é para isso que
   ele existe**. A cura é ler o §57.3 antes de mexer, nunca afrouxar a asserção.
-- **Tecto de LOC:** o `rulers.rs` vai de `149` para `279` linhas, muito abaixo do tecto. Sem risco de
-  acumulação.
-- Os censos de texto (HR-15) não são acordados: **zero literais de UI novos** (o diff é teste).
+- **A catraca da DOBRA** (`ACIMA_DA_DOBRA`, §2 do gate de costura) nomeia **cinco** pincéis de outras
+  waves com a altura medida em 17/09. Uma linha que acrescente controlos a um deles **sobe o número**
+  e ela reprova — ⛔ a cura é **cortar/mover a fileira**, nunca subir a entrada.
+- **Tecto de LOC:** nenhum ficheiro tocado se aproxima do tecto (`pose_controlos.rs` `152 → 312`,
+  `rows_pose.rs` `101 → 117`, `rulers.rs` `149 → 279`).
+- Os censos de texto (HR-15) foram corridos na árvore combinada: **90 / 90**.
 
 ### §58.4 — Portão de fecho (MEDIDO)
 
 | etapa | resultado |
 |---|---|
-| `nextest-impacted` | **14 400 / 14 400** verdes (12 526 saltados) |
-| `clippy --all-targets -D warnings` (`ph2d-app-sculpt3d` + `ph2d-panel-sculpt3d`) | **zero** avisos |
+| `nextest-impacted` | **15 607 / 15 607** verdes (11 330 saltados) |
+| `clippy --all-targets -D warnings` (as 5 crates da família) | **zero** avisos |
+| `cargo fmt --all --check` | limpo |
 | censos da **árvore COMBINADA** (HR-15 + tectos de LOC) | **90 / 90** verdes |
-| prova de mutação | **5 de 5** sangram, **3** isolam-se numa asserção (§57.6) |
-| tecto de LOC do ficheiro tocado | `rulers.rs` `149 → 279`, folga larga |
+| prova de mutação — G-20 (§57) | **5 de 5** sangram |
+| prova de mutação — a dobra do painel (§59) | **3 de 3** sangram |
+| prova de mutação — §61.2 + §62 | **7 de 7** sangram, com controlo negativo verde |
+| vassouras da parede | 5 de 9 acusam, **13 ficheiros, TODOS pré-existentes** (§58.4-bis) |
+
+⚠️⚠️ **E o arnês da mutação mentiu DUAS vezes nesta linha, as duas por uma letra ou um cano:**
+o extractor procurava `^ *<nome> ... FAILED` e o cargo escreve `test <nome> ... FAILED` (§57.6); e o
+controlo *«quantos testes correram?»* casava `running N tests` — **o cargo escreve `running 1 test`,
+sem o `s`**, e leu `0` em toda mutação que isolasse um único teste, acusando **quatro** defeitos de
+arnês sobre gates que sangravam. *Um arnês sem controlo sobre o próprio filtro reporta o produto.*
 
 ### §58.4-bis — ⛔ As VASSOURAS acusam, e as acusações são PRÉ-EXISTENTES
 

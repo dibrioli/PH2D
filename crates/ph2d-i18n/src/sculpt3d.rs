@@ -94,10 +94,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // rodar em torno de um pivô fixo.
         "panel.sculpt3d.pose_anchored" => "Pin far end",
         "panel.sculpt3d.pose_rot_lock" => "Scale without rotating",
-        // ⚠️ **«Drag Reads» e não «Drag Mode»:** o chip responde *quanto do
-        // arrasto conta*, e «Mode» ja' e' a palavra da fileira das cinco
-        // deformacoes, quatro linhas acima.
-        "panel.sculpt3d.pose_arrasto" => "Drag Reads",
         "panel.sculpt3d.cloth_area" => "Simulation Area",
         "panel.sculpt3d.cloth_force_falloff" => "Force Falloff",
         "panel.sculpt3d.cloth_pin" => "Pin Simulation Boundary",

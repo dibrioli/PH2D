@@ -355,4 +355,24 @@
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um ficheiro anterior é recusado
 /// em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 145;
+/// # `145 → 146` — a CUTSCENE (TOP-20 #19, `docs/Components/16_plano_sequence_player.md`)
+///
+/// **UM** componente novo no registo: o `SequencePlayer`, que carrega o **nome** do container da
+/// timeline que este objecto toca.
+///
+/// ⛔⛔ **Um componente e um degrau — e o que NÃO entra é a wave inteira.** A medição do plano 16
+/// §1-bis mostrou que o relógio de corrida **já existe** no `Timer` (duração · repetir · o sinal a
+/// cada disparo · um `TimerRuntime` cujo `progress()` é derivado), que um sinal já o arranca
+/// (`StartTimer`) e que o `rewind_runtime` já o faz renascer. Um `SequenceRuntime` seria um
+/// **segundo relógio**, e a cutscene correria num tempo e anunciar-se-ia noutro.
+///
+/// ⚠️ **O nome, nunca o índice:** os containers vivem num `Vec` do `TimelineDoc`, e apagar o de
+/// cima renumera os de baixo — um índice gravado aqui passaria a tocar a cutscene do vizinho **em
+/// silêncio**. É a lei que a casa já escreve para o `Counter`, o `Timer` e a `Tag`.
+///
+/// ⛔ **A timeline NÃO muda de forma:** o container já existe (ADR-0133) e ler um pelo nome não
+/// move um byte do `DOC_VERSION` dela.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um ficheiro anterior é recusado
+/// em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 146;

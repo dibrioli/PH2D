@@ -24,6 +24,29 @@
 shipado *e* o relógio local existe **como vista de edição**; o que falta é **um relógio de
 CORRIDA por objecto** e a porta que um sinal usa para o arrancar.
 
+## §1-bis — ⛔⛔ E a SONDA encolheu a wave DUAS vezes (a §2 abaixo foi escrita antes dela)
+
+*O plano manda correr a sonda antes da primeira linha, e foi ela que pagou o doc inteiro.*
+
+1. ⭐⭐⭐ **O relógio de corrida NÃO se constrói: é o `Timer`.** Ele já tem `duration_us`, `repeat`
+   (o loop), `autostart`, `signal` (**anuncia-se a cada disparo**) e um `TimerRuntime` com o
+   decorrido — e o `progress()` dele é **derivado**, nunca guardado. Um sinal já o arranca e pára
+   (`StartTimer`/`StopTimer`), o `rewind_runtime` já o faz **renascer**, e o `requires` do
+   `ph2d-component-desc` já exprime *«este componente não funciona sem aquele»*.
+   ⇒ ⛔ **o `SequenceRuntime` da §2 e o verbo `PlaySequence` MORREM**: seriam um segundo relógio e
+   uma segunda maneira de dizer *«começa»*.
+2. ⭐⭐⭐ **E aplicar um container no relógio dele também já existe:**
+   [`apply_container(world, doc, ix, t, skip)`](../../crates/ph2d-timeline/src/apply_views.rs), cujo
+   doc diz por escrito *«the interior you watch while editing and the interior an instance plays in
+   the scene are ONE answer»* — e a esparsidade vale (um canal que nenhuma lane do container escreve
+   fica com a pose da cena).
+
+⇒ **O que SOBRA é uma coisa só:** *este objecto diz que container é o dele, e alguém chama aquele
+apply no instante do Timer dele, pelo LEDGER.* Tudo o resto é composição do que já está pago.
+
+⚠️ *Duas premissas do §2 caíram na primeira meia hora de medição — e é por isso que ela vem antes
+do código, e não depois.*
+
 ## §2 — O desenho, com a PORTA única de cada pergunta
 
 | a pergunta | a porta ÚNICA |

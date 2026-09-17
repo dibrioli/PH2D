@@ -604,6 +604,11 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register_default::<crate::UiLabel>("ph2d::ecs::UiLabel");
     reg.register_default::<crate::UiButton>("ph2d::ecs::UiButton");
     reg.register_default::<crate::Counter>("ph2d::ecs::Counter");
+    // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — o NOME do container que este objecto toca, e só isso.
+    // ⛔ **Não há um `SequenceRuntime` aqui e não pode haver:** o relógio de corrida é o `Timer`
+    // (plano 16 §1-bis), cujo estado vivo já mora fora do ficheiro. Um segundo relógio poria a
+    // cutscene a correr num tempo e a anunciar-se noutro.
+    reg.register_default::<crate::SequencePlayer>("ph2d::ecs::SequencePlayer");
     // ⭐⭐⭐ **A FÁBRICA e o CICLO DE VIDA** (TOP-20 #11 e #12, 2026-09-14) — os três são CONFIG
     // inteira e gravam-se. Sem o registo, o artista escolhe a receita, afina a rajada, grava,
     // reabre, e a cena volta ESTÉRIL: nada some da tela e nada dá erro.

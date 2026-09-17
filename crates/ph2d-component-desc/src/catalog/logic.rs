@@ -97,6 +97,13 @@ const ACTION_FIELDS: &[FieldDesc] = &[
 ///
 /// ⚠️ **Só dois, e o painel tem uma terceira linha que NÃO é campo:** a metade honesta —
 /// *«isto só corre em cópias que uma fábrica pôs na cena»* — é derivada, não autorada.
+/// A cutscene deste objecto — o NOME do container da timeline (TOP-20 #19).
+///
+/// ⚠️ **UM campo, e a lista curta é a wave:** duração, repetir e *«está a correr»* são do `Timer`,
+/// que este componente EXIGE. Um `Duration` aqui seria um segundo relógio (plano 16 §1-bis).
+const SEQUENCE_FIELDS: &[FieldDesc] = &[f(1, "Container", K::Text)];
+
+
 const LIFETIME_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.lifetime_fields.1", K::Scalar),
     f(2, "component.field.lifetime_fields.2", K::Text),
@@ -159,6 +166,24 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         LIFETIME_FIELDS,
+    ),
+    // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — este objecto toca um container da timeline.
+    //
+    // ⭐⭐ **Ele REQUER os `Timers`**, e é o mesmo mecanismo da fábrica: o relógio de corrida JÁ
+    // existe (duração · repetir · o sinal a cada disparo · o decorrido vivo), e um sinal já o
+    // arranca com o `StartTimer`. ⛔ É isso que torna honesto este descritor ter **um** campo: um
+    // `Duration` aqui seria um segundo relógio, e a cutscene correria num tempo e anunciar-se-ia
+    // noutro.
+    //
+    // ⚠️ `O::ANY` pela razão do relógio e da fábrica: quem toca uma cutscene é quase sempre um
+    // objecto VAZIO («o realizador da cena»).
+    D::authored_requiring(
+        "ph2d::ecs::SequencePlayer",
+        "Sequence Player",
+        C::Logic,
+        O::ANY,
+        SEQUENCE_FIELDS,
+        &["ph2d::ecs::Timers"],
     ),
     // ⭐⭐⭐ **O consumidor que faltava aos sinais** — e `O::ANY` pela mesma razão do relógio: quem
     // reage a um sinal é tantas vezes um objecto VAZIO («o cérebro da cena») quanto uma sprite.

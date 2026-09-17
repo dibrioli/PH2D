@@ -45,7 +45,10 @@ fn liga(m: &mut MotionState, de: NodeId, para: NodeId) {
 }
 
 /// Um CSV de `n` linhas, escrito uma vez por tamanho.
-fn tabela(n: usize) -> String {
+///
+/// ⚠️ **Uma porta, dois medidores** — o relógio do grupo (§7) arma o `source.table` com ESTE
+/// ficheiro, para as duas medições do ciclo falarem da mesma tabela.
+pub(super) fn tabela(n: usize) -> String {
     let dir = std::env::temp_dir().join("ph2d-fontes-costura");
     std::fs::create_dir_all(&dir).expect("pasta");
     let p = dir.join(format!("linhas_{n}.csv"));

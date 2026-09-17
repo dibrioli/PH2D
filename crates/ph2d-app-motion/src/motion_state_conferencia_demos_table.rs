@@ -63,11 +63,14 @@ pub fn fixture_path() -> std::path::PathBuf {
 /// ficheiros é atómico, então um leitor vê ou o ficheiro antigo inteiro ou o novo inteiro, e
 /// nunca meio. *Duas escritas dos mesmos bytes só são a mesma escrita se ninguém puder olhar
 /// para o meio delas.*
-fn write_fixture() -> std::path::PathBuf {
+/// ⚠️ **Uma porta, DUAS cenas** — a `=109` (o catálogo) e a `=119` (o ciclo 8) apontam o
+/// MESMO ficheiro, de propósito: o gesto que o tutorial ensina (*editar e escolher outra vez*)
+/// tem de valer nas duas.
+pub(crate) fn write_fixture() -> std::path::PathBuf {
     let p = fixture_path();
     let queixa = |e: &dyn std::fmt::Display| {
         eprintln!(
-            "[cena 109] ⚠️ NAO consegui escrever o ficheiro de exemplo em {}: {e}\n             As duas colunas vao desenhar NADA — o defeito e' este, nao o no'.",
+            "[tabela de exemplo] ⚠️ NAO consegui escrever o ficheiro em {}: {e}\n             As duas colunas vao desenhar NADA — o defeito e' este, nao o no'.",
             p.display()
         );
     };

@@ -17,7 +17,9 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
 /// Os níveis que são cena de ciclo. ⚠️ **Uma tabela, dois leitores** — ver o cabeçalho.
-const CICLOS: &[&str] = &["111", "112", "113", "114", "115", "116", "117", "118"];
+const CICLOS: &[&str] = &[
+    "111", "112", "113", "114", "115", "116", "117", "118", "119",
+];
 
 /// Este nível é uma cena de ciclo?
 pub(super) fn e_de_ciclo(n: &str) -> bool {
@@ -109,6 +111,15 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             let sinks = super::aparencia_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::aparencia_demo::captions());
             announce::aparencia();
+            sinks
+        }
+        // ⭐ **DE ONDE VÊM AS COISAS** (ciclo 8, doc 113). ⚠️ A fileira de baixo é a única que
+        // pede a MÃO do dono (o zoom) — sem ele os dois panos dela são iguais, e o anúncio
+        // di-lo no passo.
+        "119" => {
+            let sinks = super::fontes_demo::build(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::fontes_demo::captions());
+            announce::fontes();
             sinks
         }
         // ⚠️ Inalcançável: a [`e_de_ciclo`] gateia esta função com a MESMA tabela.

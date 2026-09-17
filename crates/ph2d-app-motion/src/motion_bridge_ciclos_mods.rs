@@ -84,6 +84,12 @@ mod aparencia_relogio;
 #[path = "motion_bridge_fontes_costura.rs"]
 mod fontes_costura;
 
+/// O RELÓGIO do grupo do ciclo 8 (doc 113 §7) — as sete fontes pela ponte do produto, com as
+/// membranas na ordem do quadro; sonda `#[ignore]`, não um gate.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_fontes_relogio.rs"]
+mod fontes_relogio;
+
 /// As figuras do tutorial do ciclo 1 — geradas COZINHANDO os nós (doc 103 §3).
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_arranjo_figures.rs"]

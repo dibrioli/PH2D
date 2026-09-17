@@ -248,6 +248,48 @@ pub(super) fn fio() {
 ///
 /// ⚠️ **Os dois `Slit Scan` têm NOME** (`set_label`) — o passo 8 manda clicar num deles, e o
 /// grafo tem dois.
+/// ⭐ **DE ONDE VÊM AS COISAS** (ciclo 8, cena `=119`).
+///
+/// ⚠️ **O passo 8 pede a MÃO do dono** (o zoom): sem ele os dois panos de baixo são iguais, e a
+/// metade nova — a vista a entrar no grafo — lê-se como inerte.
+///
+/// ⚠️ **O caminho do ficheiro é IMPRESSO**, não descrito: o passo 6 manda abri-lo e editá-lo, e
+/// um passo que diga *«o ficheiro de exemplo»* sem dizer ONDE não é executável.
+pub(super) fn fontes() {
+    eprintln!(
+        "[cena 119] DE ONDE VEM AS COISAS. Seis panos, em tres fileiras. Em cada par muda
+  a FONTE -- o que se faz com as pecas DEPOIS e' o mesmo nos seis.
+
+  1. Carregue em PLAY. So' a fileira de BAIXO se mexe (as particulas nascem e morrem);
+     as outras duas nao precisam de tempo.
+  2. Fileira de CIMA -- O QUE EU FIZ. A ESQUERDA e' uma PALAVRA: cada LETRA e' uma peca.
+     A DIREITA e' uma FORMA que escolhi.
+  3. Clique no cartao `Text: a palavra` e escreva outra coisa na linha `Text`: as pecas
+     da esquerda passam a ser as letras novas.
+  4. Clique no cartao `Shape: a forma` e mude a linha `Shape`: a peca da direita troca
+     de forma.
+  5. Fileira do MEIO -- O QUE EU TENHO. Os dois panos leem o MESMO ficheiro, e cada
+     LINHA dele e' uma peca. A DIREITA as pecas estao a alturas diferentes: a altura vem
+     da coluna «vendas» do ficheiro.
+     (i) O cartao a mais e' o `Drive: a coluna «vendas»`.
+  6. O ficheiro esta' aqui:
+       {}
+     Abra-o, mude um numero da coluna «vendas», guarde -- e no cartao `Table: o grafico`
+     escolha o ficheiro OUTRA VEZ no botao `Table File`. O grafico muda: escolher e'
+     recarregar.
+  7. Fileira de BAIXO -- O QUE A CENA DA. A ESQUERDA as pecas NASCEM de um sitio e
+     morrem. A DIREITA e' uma grelha de nove.
+  8. DE' ZOOM (roda do rato). Tudo cresce -- menos as NOVE pecas da direita, que medem
+     sempre o mesmo no ECRA. E' a VISTA a entrar no grafo: o tamanho delas e' pedido em
+     pixels, e quem os converte e' a camara.
+
+  DEU ERRADO se: os dois panos do meio ficarem IGUAIS (a coluna nao chegou); se a palavra
+  nao mudar ao escrever; se ao dar zoom as nove pecas crescerem como o resto; ou se algum
+  pano estiver VAZIO -- um pano vazio quer dizer que a fonte dele nao entregou nada.",
+        super::conferencia_mods::conferencia_demos_table::fixture_path().display()
+    );
+}
+
 pub(super) fn aparencia() {
     eprintln!(
         "[cena 118] A COR E O RASTO. Seis panos de 36 pecas, em tres fileiras. Em cada par

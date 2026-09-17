@@ -76,7 +76,7 @@ impl BodyCtx<'_> {
         let cols = 2usize;
         self.button_grid(y, cols, DEVICE_PRESETS.len(), |i| {
             let p = DEVICE_PRESETS[i];
-            (p.id, p.label, false)
+            (p.id, crate::nomes_do_motor::moldura(p.label), false)
         })
     }
 }

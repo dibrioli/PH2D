@@ -28,6 +28,47 @@ fn pintar(chave: Option<&'static str>, fonte: &'static str) -> &'static str {
     chave.map_or(fonte, tr)
 }
 
+// ⭐⭐⭐ **AS CINCO FAMÍLIAS DO CATÁLOGO** (2026-09-17) — o que faltava do motor do vector.
+// ⚠️ Cinco e não uma, com a colisão MEDIDA: `Corner` e `Curve` são um campo de FORMA e um campo de
+// CONECTOR, e uma só tabela daria a uma delas a palavra da outra.
+//
+// ⛔⛔ **A sexta família NÃO entra, e a razão é uma medição que eu devia ter feito primeiro:** as
+// FAMÍLIAS do catálogo (`Basic`/`Round`/`Arrows`/…) já têm ponte desde antes — o
+// [`crate::state::group_i18n_key`], chaveado pela **VARIANTE do enum** e não pela palavra inglesa,
+// que é a forma MAIS forte. Eu contei-as no censo lexical da crate do motor e ia construir a
+// segunda resposta para a mesma pergunta. *Antes de migrar um rótulo do motor, pergunte se o painel
+// já o traduz* (`CLAUDE.md` §5.0).
+
+/// As FORMAS do catálogo, traduzido.
+pub(crate) fn forma(fonte: &'static str) -> &'static str {
+    pintar(chave_da_forma(fonte), fonte)
+}
+
+/// Os PARÂMETROS de uma forma, traduzido.
+pub(crate) fn campo(fonte: &'static str) -> &'static str {
+    pintar(chave_do_campo(fonte), fonte)
+}
+
+/// O conector (campos e rotas), traduzido.
+pub(crate) fn conector(fonte: &'static str) -> &'static str {
+    pintar(chave_do_conector(fonte), fonte)
+}
+
+/// Os presets de MOLDURA, traduzido.
+pub(crate) fn moldura(fonte: &'static str) -> &'static str {
+    pintar(chave_da_moldura(fonte), fonte)
+}
+
+/// As pontas de traço (campos e estados), traduzido.
+pub(crate) fn marcador(fonte: &'static str) -> &'static str {
+    pintar(chave_do_marcador(fonte), fonte)
+}
+
+/// Uma PONTA de traço, traduzida.
+pub(crate) fn ponta(fonte: &'static str) -> &'static str {
+    pintar(chave_da_ponta(fonte), fonte)
+}
+
 /// O nome de um efeito (ou preset da gaiola), traduzido.
 pub(crate) fn efeito(fonte: &'static str) -> &'static str {
     pintar(chave_do_efeito(fonte), fonte)
@@ -217,6 +258,170 @@ pub fn chave_da_mistura(fonte: &str) -> Option<&'static str> {
         "Screen" => "panel.vector.engine.mistura.screen",
         "Soft Light" => "panel.vector.engine.mistura.soft_light",
         "Vivid Light" => "panel.vector.engine.mistura.vivid_light",
+        _ => return None,
+    })
+}
+/// A chave de as FORMAS do catálogo.
+pub fn chave_da_forma(fonte: &str) -> Option<&'static str> {
+    Some(match fonte {
+        "Arc" => "panel.vector.engine.forma.arc",
+        "Arrow" => "panel.vector.engine.forma.arrow",
+        "Banner" => "panel.vector.engine.forma.banner",
+        "Bent" => "panel.vector.engine.forma.bent",
+        "Bolt" => "panel.vector.engine.forma.bolt",
+        "Brace" => "panel.vector.engine.forma.brace",
+        "Burst" => "panel.vector.engine.forma.burst",
+        "Check" => "panel.vector.engine.forma.check",
+        "Chevron" => "panel.vector.engine.forma.chevron",
+        "Cloud" => "panel.vector.engine.forma.cloud",
+        "Cone" => "panel.vector.engine.forma.cone",
+        "Cross" => "panel.vector.engine.forma.cross",
+        "Cube" => "panel.vector.engine.forma.cube",
+        "Data" => "panel.vector.engine.forma.data",
+        "Database" => "panel.vector.engine.forma.database",
+        "Decision" => "panel.vector.engine.forma.decision",
+        "Delay" => "panel.vector.engine.forma.delay",
+        "Display" => "panel.vector.engine.forma.display",
+        "Document" => "panel.vector.engine.forma.document",
+        "Double" => "panel.vector.engine.forma.double",
+        "Drop" => "panel.vector.engine.forma.drop",
+        "Gear" => "panel.vector.engine.forma.gear",
+        "Heart" => "panel.vector.engine.forma.heart",
+        "Junction" => "panel.vector.engine.forma.junction",
+        "Line" => "panel.vector.engine.forma.line",
+        "Manual in" => "panel.vector.engine.forma.manual_in",
+        "Manual op" => "panel.vector.engine.forma.manual_op",
+        "Moon" => "panel.vector.engine.forma.moon",
+        "Note" => "panel.vector.engine.forma.note",
+        "Off-page" => "panel.vector.engine.forma.off_page",
+        "Oval" => "panel.vector.engine.forma.oval",
+        "Oval say" => "panel.vector.engine.forma.oval_say",
+        "Pie" => "panel.vector.engine.forma.pie",
+        "Poly" => "panel.vector.engine.forma.poly",
+        "Prepare" => "panel.vector.engine.forma.prepare",
+        "Pyramid" => "panel.vector.engine.forma.pyramid",
+        "Rect" => "panel.vector.engine.forma.rect",
+        "Round" => "panel.vector.engine.forma.round",
+        "Segment" => "panel.vector.engine.forma.segment",
+        "Shield" => "panel.vector.engine.forma.shield",
+        "Speech" => "panel.vector.engine.forma.speech",
+        "Spiral" => "panel.vector.engine.forma.spiral",
+        "Star" => "panel.vector.engine.forma.star",
+        "Subroutine" => "panel.vector.engine.forma.subroutine",
+        "Tag" => "panel.vector.engine.forma.tag",
+        "Terminal" => "panel.vector.engine.forma.terminal",
+        "Thought" => "panel.vector.engine.forma.thought",
+        _ => return None,
+    })
+}
+/// A chave de os PARÂMETROS de uma forma.
+pub fn chave_do_campo(fonte: &str) -> Option<&'static str> {
+    Some(match fonte {
+        "Bubbles" => "panel.vector.engine.campo.bubbles",
+        "Smooth" => "panel.vector.engine.campo.smooth",
+        "Spikes" => "panel.vector.engine.campo.spikes",
+        "Teeth" => "panel.vector.engine.campo.teeth",
+        "Wedge" => "panel.vector.engine.campo.wedge",
+        "From above" => "panel.vector.engine.campo.from_above",
+        "From below" => "panel.vector.engine.campo.from_below",
+        "Angular" => "panel.vector.engine.campo.angular",
+        "Arm" => "panel.vector.engine.campo.arm",
+        "BL offset" => "panel.vector.engine.campo.bl_offset",
+        "BR offset" => "panel.vector.engine.campo.br_offset",
+        "Bars" => "panel.vector.engine.campo.bars",
+        "Base" => "panel.vector.engine.campo.base",
+        "Bumps" => "panel.vector.engine.campo.bumps",
+        "Cleft" => "panel.vector.engine.campo.cleft",
+        "Corner" => "panel.vector.engine.campo.corner",
+        "Curve" => "panel.vector.engine.campo.curve",
+        "Cut" => "panel.vector.engine.campo.cut",
+        "Depth" => "panel.vector.engine.campo.depth",
+        "Head len" => "panel.vector.engine.campo.head_len",
+        "Head width" => "panel.vector.engine.campo.head_width",
+        "Hole" => "panel.vector.engine.campo.hole",
+        "Inner" => "panel.vector.engine.campo.inner",
+        "Irregular" => "panel.vector.engine.campo.irregular",
+        "Lip" => "panel.vector.engine.campo.lip",
+        "Nose" => "panel.vector.engine.campo.nose",
+        "Notch" => "panel.vector.engine.campo.notch",
+        "Notch round" => "panel.vector.engine.campo.notch_round",
+        "Phase" => "panel.vector.engine.campo.phase",
+        "Pinch" => "panel.vector.engine.campo.pinch",
+        "Point" => "panel.vector.engine.campo.point",
+        "Points" => "panel.vector.engine.campo.points",
+        "Puff" => "panel.vector.engine.campo.puff",
+        "Radial" => "panel.vector.engine.campo.radial",
+        "Radius" => "panel.vector.engine.campo.radius",
+        "Rise" => "panel.vector.engine.campo.rise",
+        "Room" => "panel.vector.engine.campo.room",
+        "Sides" => "panel.vector.engine.campo.sides",
+        "Skew" => "panel.vector.engine.campo.skew",
+        "Slant" => "panel.vector.engine.campo.slant",
+        "Smoothing" => "panel.vector.engine.campo.smoothing",
+        "Start" => "panel.vector.engine.campo.start",
+        "Stem" => "panel.vector.engine.campo.stem",
+        "Sweep" => "panel.vector.engine.campo.sweep",
+        "TR offset" => "panel.vector.engine.campo.tr_offset",
+        "Tail" => "panel.vector.engine.campo.tail",
+        "Tip" => "panel.vector.engine.campo.tip",
+        "Tip round" => "panel.vector.engine.campo.tip_round",
+        "Tip x" => "panel.vector.engine.campo.tip_x",
+        "Tip y" => "panel.vector.engine.campo.tip_y",
+        "Turns" => "panel.vector.engine.campo.turns",
+        "Viewed" => "panel.vector.engine.campo.viewed",
+        "Waist" => "panel.vector.engine.campo.waist",
+        "Wave" => "panel.vector.engine.campo.wave",
+        "Weight" => "panel.vector.engine.campo.weight",
+        _ => return None,
+    })
+}
+/// A chave de o conector (campos e rotas).
+pub fn chave_do_conector(fonte: &str) -> Option<&'static str> {
+    Some(match fonte {
+        "Corner" => "panel.vector.engine.conector.corner",
+        "Curve" => "panel.vector.engine.conector.curve",
+        "Curved" => "panel.vector.engine.conector.curved",
+        "Jetty" => "panel.vector.engine.conector.jetty",
+        "Orthogonal" => "panel.vector.engine.conector.orthogonal",
+        "Route" => "panel.vector.engine.conector.route",
+        "Spread" => "panel.vector.engine.conector.spread",
+        "Straight" => "panel.vector.engine.conector.straight",
+        _ => return None,
+    })
+}
+/// A chave de os presets de MOLDURA.
+pub fn chave_da_moldura(fonte: &str) -> Option<&'static str> {
+    Some(match fonte {
+        "Desktop" => "panel.vector.engine.moldura.desktop",
+        "Phone" => "panel.vector.engine.moldura.phone",
+        "Square" => "panel.vector.engine.moldura.square",
+        "Tablet" => "panel.vector.engine.moldura.tablet",
+        _ => return None,
+    })
+}
+/// A chave de as pontas de traço (campos e estados).
+pub fn chave_do_marcador(fonte: &str) -> Option<&'static str> {
+    Some(match fonte {
+        "Both Ends" => "panel.vector.engine.marcador.both_ends",
+        "Head Round" => "panel.vector.engine.marcador.head_round",
+        "Head Size" => "panel.vector.engine.marcador.head_size",
+        "Off" => "panel.vector.engine.marcador.off",
+        "On" => "panel.vector.engine.marcador.on",
+        _ => return None,
+    })
+}
+
+/// A chave de uma PONTA de traço (`ph2d_vec_scene::Marker::label`).
+pub fn chave_da_ponta(fonte: &str) -> Option<&'static str> {
+    Some(match fonte {
+        "None" => "panel.vector.engine.ponta.none",
+        "Arrow" => "panel.vector.engine.ponta.arrow",
+        "Open" => "panel.vector.engine.ponta.open",
+        "Diamond" => "panel.vector.engine.ponta.diamond",
+        "Diamond (hollow)" => "panel.vector.engine.ponta.diamond_hollow",
+        "Circle" => "panel.vector.engine.ponta.circle",
+        "Circle (hollow)" => "panel.vector.engine.ponta.circle_hollow",
+        "Bar" => "panel.vector.engine.ponta.bar",
         _ => return None,
     })
 }

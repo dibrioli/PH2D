@@ -51,6 +51,7 @@ E três defeitos concretos, com foto:
 | ⭐⭐⭐ **A FRONTEIRA DOS MOTORES** — 1 942 palavras que viviam numa tabela de DADOS (nós, pincéis, opções, canais); a chave deriva do id, o texto é autorado | [`medicoes/11_a_fronteira_dos_motores.md`](medicoes/11_a_fronteira_dos_motores.md) |
 | ⛔⛔ **O nome de um painel tinha DUAS fontes** — a aba e o cabeçalho, com **cinco** a discordar no ecrã; e o gate que existe para o impedir media as outras duas superfícies | [`medicoes/12_o_nome_de_um_painel_tinha_duas_fontes.md`](medicoes/12_o_nome_de_um_painel_tinha_duas_fontes.md) |
 | ⭐⭐ **As OITO crates de UI que nunca tiveram régua** — quatro já a zero, e a metade das ÓRFÃS teria mandado apagar 19 rótulos VIVOS | [`medicoes/13_as_oito_crates_que_nunca_tiveram_regua.md`](medicoes/13_as_oito_crates_que_nunca_tiveram_regua.md) |
+| ⭐⭐ **A última fronteira: o CATÁLOGO do vector** — a nota dizia `7` e a régua conta `163`; a crate é de outra linha VIVA, e o gate achou 5 rótulos que a extracção estática não via | [`medicoes/14_a_ultima_fronteira_o_catalogo_do_vector.md`](medicoes/14_a_ultima_fronteira_o_catalogo_do_vector.md) |
 | **O que a subida Vello 0.8→0.10 / wgpu 28→29 / parley 0.6→0.11 abriu** | [`pesquisa/01_o_que_a_subida_abriu.md`](pesquisa/01_o_que_a_subida_abriu.md) |
 | **Que referências existem, com a licença de cada uma** | [`pesquisa/02_referencias_e_licenca.md`](pesquisa/02_referencias_e_licenca.md) |
 | **O diagnóstico das 3 fotos + os princípios que o explicam** | [`pesquisa/03_diagnostico_e_principios.md`](pesquisa/03_diagnostico_e_principios.md) |

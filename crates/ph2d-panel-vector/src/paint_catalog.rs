@@ -311,7 +311,8 @@ impl BodyCtx<'_> {
                 cell.w,
                 name_h,
             );
-            paint_text_centered(self.text_system, self.scene, d.label, name, name_h, ink);
+            let nome = crate::nomes_do_motor::forma(d.label);
+            paint_text_centered(self.text_system, self.scene, nome, name, name_h, ink);
             self.hit_index.register(id, cell);
         }
         let rows = in_group.len().div_ceil(GRID_COLS) as f32;

@@ -268,9 +268,12 @@ impl BodyCtx<'_> {
                     let text = shapes::choice_label(focus, i, cur).unwrap_or("");
                     // O HIT vai no gêmeo botão; o valor continua morando no slot numérico.
                     let btn = ph2d_tool_vector::ids::vector_shape_choice_id(i);
-                    self.labeled_choice_button(f.label, btn, text, y)
+                    let text = crate::nomes_do_motor::campo(text);
+                    self.labeled_choice_button(crate::nomes_do_motor::campo(f.label), btn, text, y)
                 }
-                _ => self.labeled_number_field(f.label, id, f.step, y),
+                _ => {
+                    self.labeled_number_field(crate::nomes_do_motor::campo(f.label), id, f.step, y)
+                }
             };
         }
         y

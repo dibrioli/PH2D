@@ -138,13 +138,13 @@ impl BodyCtx<'_> {
         // toda caixa numérica do painel — assim o dígito que está sendo digitado não é
         // sobrescrito pelo snapshot do frame.
         y = self.labeled_number_field(
-            params::MARKER_SCALE.label,
+            crate::nomes_do_motor::marcador(params::MARKER_SCALE.label),
             ph2d_tool_vector::ids::VECTOR_MARKER_SCALE,
             params::MARKER_SCALE.step,
             y,
         );
         y = self.labeled_number_field(
-            params::MARKER_ROUND.label,
+            crate::nomes_do_motor::marcador(params::MARKER_ROUND.label),
             ph2d_tool_vector::ids::VECTOR_MARKER_ROUND,
             params::MARKER_ROUND.step,
             y,
@@ -153,9 +153,9 @@ impl BodyCtx<'_> {
         // flag a consultar. Reusa o mesmo desenho do campo de escolha (rótulo na coluna de
         // rótulos + botão que alterna ao clique), então a linha é irmã das de cima.
         self.labeled_choice_button(
-            params::BOTH_ENDS.label,
+            crate::nomes_do_motor::marcador(params::BOTH_ENDS.label),
             ph2d_tool_vector::ids::VECTOR_MARKER_BOTH,
-            params::both_ends_label(snap.both_ends()),
+            crate::nomes_do_motor::marcador(params::both_ends_label(snap.both_ends())),
             y,
         )
     }
@@ -189,7 +189,11 @@ impl BodyCtx<'_> {
         let dd = Dropdown::new(
             id,
             "",
-            vec![DropdownOption::new(id, (), marker_of(snap, slot).label())],
+            vec![DropdownOption::new(
+                id,
+                (),
+                crate::nomes_do_motor::ponta(marker_of(snap, slot).label()),
+            )],
         )
         .selected(())
         .open(open)
@@ -218,7 +222,7 @@ pub(crate) fn paint_marker_popover(ctx: &mut PaintCtx, slot: usize, chip: Rect, 
             DropdownOption::new(
                 ph2d_tool_vector::ids::vector_marker_option_id(slot, i),
                 i,
-                m.label(),
+                crate::nomes_do_motor::ponta(m.label()),
             )
         })
         .collect();

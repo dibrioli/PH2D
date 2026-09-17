@@ -240,9 +240,9 @@ impl BodyCtx<'_> {
             return y;
         }
         y = self.labeled_choice_button(
-            connector::ROUTE.label,
+            crate::nomes_do_motor::conector(connector::ROUTE.label),
             ph2d_tool_vector::ids::VECTOR_CONNECTOR_ROUTE,
-            connector::route_label(f64::from(snap.route)),
+            crate::nomes_do_motor::conector(connector::route_label(f64::from(snap.route))),
             y,
         );
         // **Só os campos que a rota corrente USA.** Um Corner numa linha reta é um controle que
@@ -251,7 +251,8 @@ impl BodyCtx<'_> {
         // toda caixa numérica do painel: assim o dígito que o usuário está digitando não é
         // sobrescrito pelo snapshot do frame.
         for (id, field) in visible_fields(snap.route) {
-            y = self.labeled_number_field(field.label, id, field.step, y);
+            let rotulo = crate::nomes_do_motor::conector(field.label);
+            y = self.labeled_number_field(rotulo, id, field.step, y);
         }
         y
     }

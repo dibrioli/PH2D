@@ -59,7 +59,7 @@ pub use refine::{
     deviation_with, max_split, refine_posed, refine_posed_attrs, refine_posed_uniform,
     refine_posed_with, splits_for,
 };
-pub use refine_adaptive::refine_posed_adaptive;
+pub use refine_adaptive::{refine_posed_adaptive, refine_rest_by_attrs};
 pub use simplify::simplify;
 pub use triangulate::triangulate;
 

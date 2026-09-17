@@ -243,8 +243,49 @@ fn maior(a: (f64, u32, u32), b: (f64, u32, u32)) -> bool {
 }
 
 /// A obra em curso: a malha a crescer, quem possui cada aresta, e o que já se mediu.
+/// ⭐⭐⭐ **O QUE «DESVIO» QUER DIZER** — a única coisa que separa refinar uma POSE de assar um
+/// REPOUSO, e por isso a única coisa que esta folha parametriza.
+///
+/// ⚠️ **A maquinaria é a mesma de propósito** (bissecção da aresta mais longa, a cadeia LEPP, o
+/// livro de arestas, a fila): duas cópias dela divergiriam no dia em que uma ganhasse uma cerca —
+/// *a lei que este repo já escreveu para todo par que se pode separar*.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Criterio {
+    /// **A silhueta desenhada** — quanto o meio da aresta POSADO se afasta da corda entre as pontas
+    /// posadas, em pixels de ecrã. É o critério do quadro vivo (o `Smooth`).
+    Pose,
+    /// ⭐⭐⭐ **A CURVATURA DO CAMPO DE ATRIBUTOS** — `Σ_j |w_j(meio) − (w_j(a) + w_j(b))/2|`, sobre
+    /// os primeiros `valores` atributos, **adimensional** e **sem pose nenhuma**.
+    ///
+    /// # Porque ele basta, e a conta que o prova
+    ///
+    /// Uma pele mistura poses **afins** por peso: `P(p) = Σ_j w_j(p) · T_j(p)`. Ao longo de uma
+    /// aresta cada `T_j` é afim, logo `T_j(meio)` é **exactamente** a média de `T_j(a)` e `T_j(b)`
+    /// — *a única coisa que não é linear na aresta é `w`*. Com `w̄ = (w(a) + w(b))/2`:
+    ///
+    /// ```text
+    /// P(meio) − corda = Σ_j (w_j(meio) − w̄_j) · T_j(meio)
+    /// ```
+    ///
+    /// ⇒ o erro de QUALQUER pose é a curvatura do peso vezes a dispersão das poses dos ossos, e
+    /// esta grandeza é o primeiro factor. **Zero aqui é zero em toda pose**, e é isso que faz uma
+    /// malha assada uma vez servir todas elas — o facto que a W0 da F9 já tinha medido
+    /// empiricamente (`smoke_bone_paint_assada_tests.rs`), agora com o mecanismo escrito.
+    ///
+    /// ⛔ **Ele exige [`AttrLaw::Hermite`] e é INERTE com [`AttrLaw::Linear`]**, por construção e
+    /// não por esquecimento: sob a lei linear o meio de uma aresta É a média, logo o desvio é
+    /// `0,0` em toda aresta e nada parte. A porta pública recusa-o em voz alta.
+    Pesos {
+        /// Quantos atributos são VALORES (os gradientes que a lei de Hermite carrega atrás deles
+        /// não entram: eles descrevem a mesma curvatura uma segunda vez).
+        valores: usize,
+    },
+}
+
 struct Obra {
     stride: usize,
+    /// O que «desvio» quer dizer nesta corrida — ver [`Criterio`].
+    criterio: Criterio,
     /// Como os atributos do meio de uma aresta nascem — ver [`crate::attr_law`].
     law: AttrLaw,
     rest: Vec<[f64; 2]>,
@@ -299,7 +340,19 @@ impl Obra {
         let posed = deform(rest, scratch);
         let (pa, pb) = (self.posed[e.0 as usize], self.posed[e.1 as usize]);
         let reta = [(pa[0] + pb[0]) / 2.0, (pa[1] + pb[1]) / 2.0];
-        let desvio = (posed[0] - reta[0]).hypot(posed[1] - reta[1]);
+        let desvio = match self.criterio {
+            Criterio::Pose => (posed[0] - reta[0]).hypot(posed[1] - reta[1]),
+            Criterio::Pesos { valores } => {
+                let fatia_de = |v: u32| fatia(&self.attrs, self.stride, v as usize);
+                let (wa, wb) = (fatia_de(e.0), fatia_de(e.1));
+                (0..valores)
+                    .map(|j| {
+                        let reta = (wa[j] + wb[j]) / 2.0;
+                        (scratch[j] - reta).abs()
+                    })
+                    .sum()
+            }
+        };
         let m = Meio {
             rest,
             posed,
@@ -500,6 +553,81 @@ pub fn refine_posed_adaptive(
     deform: &mut DeformAttrs<'_>,
     opts: RefineOptions,
 ) -> (Mesh2d, Vec<[f64; 2]>, Vec<f64>, RefineReport) {
+    corre(Criterio::Pose, mesh, attrs, stride, law, deform, opts)
+}
+
+/// ⭐⭐⭐ **A MALHA DE REPOUSO ASSADA ONDE O CAMPO DE PESOS CURVA — sem pose nenhuma** (F9 W1).
+///
+/// Devolve `(malha, atributos, relatório)`: as posições são as de **repouso** (nada foi posado), e
+/// os atributos saem no formato da `law`, com os vértices novos já interpolados por ela.
+///
+/// # Porque ela existe ao lado da irmã, e não como um `bool` dela
+///
+/// As duas partilham toda a maquinaria e diferem no que **medem** ([`Criterio`]) — e com isso
+/// mudam de UNIDADE: a irmã tolera pixels de ECRÃ (uma grandeza do quadro, que depende do zoom),
+/// esta tolera uma fracção de PESO (uma grandeza do bind, que não depende de nada). *Um `bool` numa
+/// struct de opções cujo campo `tolerance_px` mudaria de significado seria a mesma porta a
+/// prometer duas unidades.*
+///
+/// ⚠️ **`tolerance_px` é lido como a tolerância de PESO** (o campo é o mesmo por não valer a pena
+/// um tipo novo; o nome fica desalinhado e está dito aqui, que é onde alguém o lê).
+///
+/// ⛔ **Com [`AttrLaw::Linear`] ela é INERTE por construção** — o meio de uma aresta É a média, o
+/// desvio é `0,0` em toda aresta, e a saída é byte-idêntica à entrada. A porta **entra em pânico**
+/// em vez de devolver isso em silêncio: *uma função que devolve a entrada quando lhe pedem para a
+/// refinar é indistinguível de uma malha que já estava boa*.
+///
+/// # ⚠️ O que ela NÃO faz
+///
+/// Ela não sabe o que é um osso, uma pose ou um pixel — só que `valores` atributos por vértice
+/// descrevem um campo cuja curvatura importa. Quem lhe dá sentido é o chamador.
+///
+/// # Panics
+///
+/// Se `law` não for [`AttrLaw::Hermite`] (ver acima), ou se `valores` não couber em `stride`.
+#[must_use]
+pub fn refine_rest_by_attrs(
+    mesh: &Mesh2d,
+    attrs: &[f64],
+    stride: usize,
+    law: AttrLaw,
+    opts: RefineOptions,
+) -> (Mesh2d, Vec<f64>, RefineReport) {
+    let AttrLaw::Hermite { values } = law else {
+        panic!(
+            "refine_rest_by_attrs pede a lei de Hermite: sob a lei linear o meio de uma aresta E' \
+             a media, o desvio e' zero em toda aresta e nada parte — a saida seria a entrada"
+        )
+    };
+    assert!(
+        values <= stride,
+        "os {values} valores nao cabem no stride {stride}"
+    );
+    let (mesh, _repouso, attrs, report) = corre(
+        Criterio::Pesos { valores: values },
+        mesh,
+        attrs,
+        stride,
+        law,
+        // ⚠️ **A identidade, e não um campo:** este critério não olha para posições nenhumas, e um
+        // campo aqui seria um argumento que o resultado ignora — a forma que este repo já pagou
+        // como *«preço escrito sobre um argumento que o resultado nunca lê»*.
+        &mut |p, _| p,
+        opts,
+    );
+    (mesh, attrs, report)
+}
+
+/// A maquinaria partilhada pelas duas portas — ver [`Criterio`].
+fn corre(
+    criterio: Criterio,
+    mesh: &Mesh2d,
+    attrs: &[f64],
+    stride: usize,
+    law: AttrLaw,
+    deform: &mut DeformAttrs<'_>,
+    opts: RefineOptions,
+) -> (Mesh2d, Vec<[f64; 2]>, Vec<f64>, RefineReport) {
     let posed: Vec<[f64; 2]> = mesh
         .rest
         .iter()
@@ -508,6 +636,7 @@ pub fn refine_posed_adaptive(
         .collect();
     let mut o = Obra {
         stride,
+        criterio,
         law,
         rest: mesh.rest.clone(),
         attrs: attrs.to_vec(),

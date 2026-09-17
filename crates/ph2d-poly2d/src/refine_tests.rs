@@ -602,5 +602,8 @@ fn with_no_attributes_the_new_door_carries_nothing() {
 #[path = "refine_adaptive_tests.rs"]
 mod adaptativo;
 
+#[path = "refine_rest_tests.rs"]
+mod refine_rest_tests;
+
 #[path = "attr_law_tests.rs"]
 mod lei_dos_atributos;

@@ -222,6 +222,37 @@ só onde se pergunta (um ponto, não a malha inteira), ou leitura da GPU.
   - ⚠️⚠️ **E a 1.ª fixtura destes gates tinha a corrente toda RECTA — MEDIDO, ela deixa a mutação
     que apaga a quota passar em TODOS os três gates.** Com um osso que dobra, ela sangra. *Uma
     fixtura no ponto neutro de uma lei não testa essa lei.*
+  - ✅ **A W2b FECHOU: a malha assada é DERIVADA, e o painel continua a escolher** (2026-09-17) —
+    [`ph2d_skeleton_live::skin_bake_cache`]. A W1b assava **dentro do `bind_image`**, substituindo a
+    malha guardada, e isso é de PRODUTO e não de relógio: ⛔ o `Fast` deixava de ser barato (passava
+    a desenhar a malha `5,76×` maior), a escolha `Fast`/`Smooth` **colapsava** (as duas desenham a
+    mesma malha) e a densidade ficava **congelada no ficheiro**. ⇒ a assadura sai do documento e
+    passa a viver num **memo por bind**; o `Smooth` consulta-o, o `Fast` não passa por lá.
+    ⭐⭐ **É o mesmo memo que a placa vai querer** — quando o *vertex shader* posar, o que sobe uma
+    vez por bind é exactamente esta malha (repouso + tabela de pesos). *A casa é a mesma; muda quem
+    a lê.*
+    - ⚠️ **A chave é a ENTIDADE e a prova é o CONTEÚDO:** `Entity::to_bits()` é só o ENDEREÇO da
+      gaveta (o degrau 122 da escada já escreveu porque ele não serve como identidade durável), e
+      quem diz se o conteúdo serve é a **igualdade byte a byte** da fonte. ⛔ Uma função de dispersão
+      criptográfica seria **dez vezes mais cara** que a prova exacta (`~100 KiB` de bind: memcmp
+      `~10 µs` contra SipHash `~100 µs`) — *uma chave derivada só compensa quando comparar o
+      original é caro.*
+    - ⚠️ **O `None` também é guardado** — com a porta fechada ele é a resposta de toda a arte, e sem
+      o guardar o caminho de omissão pagaria uma tentativa por imagem por QUADRO.
+    - ⚠️⚠️ **O aviso de orçamento partiu-se em DOIS, porque a mesma condição passou a ter
+      significados OPOSTOS:** sem assadura ela é um AVISO (*o botão que o painel diz ligado desenha
+      o que o `Fast` desenha*); com assadura ela é a wave a **funcionar** (a densidade veio do bind,
+      e não haver refinamento por quadro é o que a torna independente do tamanho da cena).
+    - ⛔⛔ **Duas mutações SOBREVIVERAM primeiro, as duas a acusar código meu:** o `filter` que
+      protegia a gaveta recém-assada do despejo era **inerte** (com `visto = agora` ela nunca pode
+      ser o mínimo) — *uma linha que a mutação não consegue matar não é lei, é comentário com
+      sintaxe de código* —, e o refresco do relógio no ACERTO não tinha régua nenhuma, logo o memo
+      era **um FIFO com o nome de cache**. ⚠️ E a mutação que morde a primeira só é observável num
+      gate cuja ordem de ENTRADA discorda da ordem dos BITS, que é o caso normal.
+    - ⚠️ **A premissa de um gate MORREU e ele foi reescrito com a morte visível no diff:**
+      `o_bind_da_imagem_chama_o_assador` afirmava o CONTRÁRIO do que hoje é verdade ⇒
+      `o_assador_tem_um_chamador_e_ele_nao_e_o_bind`, com as duas metades.
+    - **7 gates · 7 mutações, todas sangram.**
   - ⏳ **O que falta da W2**, e o que já está medido sobre isso:
     - o **formato de vértice**: o [`ph2d_render::QuadVertex`] é **partilhado com o quad simples**
       (`pos` + `uv`, 16 bytes), logo acrescentar-lhe pesos paga em toda sprite do app ⇒ ou um
@@ -229,8 +260,15 @@ só onde se pergunta (um ponto, não a malha inteira), ou leitura da GPU.
       dono: `3` tendões e **nenhum vértice esparso** (`139` vértices usam 1 osso, `662` usam 2,
       `487` usam 3) — *num rig pequeno não há esparsidade a explorar, e um `K = 4` fixo do formato
       da indústria seria um TECTO a justificar, não um ganho*;
-    - o **buffer por-BIND com invalidação** (hoje o `MeshFrame` é reconstruído do zero a cada
-      quadro) — é ele que troca o upload de `19 MiB/quadro` por `N × 6` números;
+    - o **buffer por-BIND com invalidação DO LADO DA PLACA** (hoje o `MeshFrame` é reconstruído do
+      zero a cada quadro) — é ele que troca o upload de `19 MiB/quadro` por `N × 6` números. ⭐ A
+      metade da CPU já existe (a W2b); o que falta é o `MeshFrame` deixar de ser por-chamada;
+    - ⛔ **e o formato NÃO pode crescer por atributo de vértice:** o `pipeline.rs` declara por
+      escrito que *«o limite de 16 atributos do dispositivo (`@location` 0..15) está cheio»* — a
+      `InstanceInput` ocupa `2..15` e o `QuadVertex` o `0..1`. ⇒ os pesos por vértice entram por
+      **storage buffer** indexado pelo `@builtin(vertex_index)` (que numa chamada não-indexada é o
+      índice ABSOLUTO no buffer, logo um vector paralelo ao dos vértices costurados resolve sem
+      offset nenhum), e não por um atributo novo;
     - as **10 costuras** do censo da W0, cada uma com a espécie de resposta já escrita.
 - **W3 — as costuras** (ponteiro, chrome, onion) contra a malha que a GPU desenha.
 - **W4 — o orçamento**: ele deixa de ser um tecto de peças da CPU; o que sobra de CPU por quadro é

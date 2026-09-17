@@ -253,7 +253,6 @@ mod fase_frame_profile;
 mod fase_frame_profile_report;
 /// Fase do quadro: a câmera de jogo (o herói da cena de smoke e o passe da câmera).
 mod fase_game_camera;
-mod fase_hud;
 /// Fase do quadro: a supressao do gizmo e a moldura do modelador 3D.
 mod fase_gizmo_suppression_and_field3d_frame;
 /// Fase do quadro: a receita aberta e as vistas do gizmo.
@@ -270,6 +269,7 @@ mod fase_hierarchy_dispatch;
 mod fase_hierarchy_group_merge;
 /// Fase do quadro: a trava do Painter na seleccao da Hierarquia.
 mod fase_hierarchy_select_lock;
+mod fase_hud;
 /// Fase do quadro: o dreno de edicao de imagem e os desmontes do Apply.
 mod fase_image_edit_apply;
 /// Fase do quadro: a activacao da ferramenta de imagem.

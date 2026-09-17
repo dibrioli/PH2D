@@ -169,7 +169,11 @@ pub struct CounterRuntime {
 /// contador que ninguém criou tem de continuar a mostrar o que o artista escreveu — e não um `0`
 /// inventado, que se leria como *«o jogo está a funcionar e a pontuação é zero»*.
 #[must_use]
-pub fn valor(world: &mut World, tree: &ph2d_tags::TagTree, label: &UiLabel) -> Option<ph2d_hud::Valor> {
+pub fn valor(
+    world: &mut World,
+    tree: &ph2d_tags::TagTree,
+    label: &UiLabel,
+) -> Option<ph2d_hud::Valor> {
     match &label.source {
         LabelSource::Authored => None,
         // ⚠️ SOMA, e não «o primeiro»: a ordem de iteração entre arquétipos não é prometida.
@@ -226,7 +230,12 @@ pub fn valor(world: &mut World, tree: &ph2d_tags::TagTree, label: &UiLabel) -> O
 #[must_use]
 pub fn texto(world: &mut World, tree: &ph2d_tags::TagTree, label: &UiLabel) -> Option<String> {
     let v = valor(world, tree, label)?;
-    Some(format!("{}{}{}", label.prefix, ph2d_hud::formata(v), label.suffix))
+    Some(format!(
+        "{}{}{}",
+        label.prefix,
+        ph2d_hud::formata(v),
+        label.suffix
+    ))
 }
 
 #[cfg(test)]

@@ -284,7 +284,9 @@ impl crate::App {
             },
             Name::new("Botao de bonus"),
         ));
-        world.entity_mut(e_rotulo).insert(Name::new("Rotulo do botao"));
+        world
+            .entity_mut(e_rotulo)
+            .insert(Name::new("Rotulo do botao"));
 
         // ── O PLACAR e os RELÓGIOS ───────────────────────────────────────────
         // ⚠️ O contador vive numa entidade PRÓPRIA, e a tabela alcança-o pelo NOME: é assim que um

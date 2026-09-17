@@ -143,7 +143,11 @@ fn um_contador_que_nao_existe_devolve_nada_e_nao_zero() {
             source: fonte.clone(),
             ..Default::default()
         };
-        assert_eq!(valor(&mut w, &t, &l), None, "fonte {fonte:?} num mundo vazio");
+        assert_eq!(
+            valor(&mut w, &t, &l),
+            None,
+            "fonte {fonte:?} num mundo vazio"
+        );
     }
     // O CONTROLO: com o contador na cena, a mesma fonte responde.
     w.spawn((
@@ -240,7 +244,11 @@ fn a_caixa_do_canvas_atravessa_o_ficheiro() {
         c,
         "ida e volta"
     );
-    assert_eq!(UiCanvas::default().fit, Fit::Keep, "o de fábrica não distorce");
+    assert_eq!(
+        UiCanvas::default().fit,
+        Fit::Keep,
+        "o de fábrica não distorce"
+    );
 }
 
 /// ⭐ **O caminho inteiro do placar, em unidade:** um sinal chega à tabela, a tabela nomeia o

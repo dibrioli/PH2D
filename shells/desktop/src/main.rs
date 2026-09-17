@@ -228,9 +228,9 @@ mod hero_intents;
 /// ⭐⭐⭐ **AGRUPAR / DESAGRUPAR pela Hierarquia** — o alcance de um verbo que já existia em `Ctrl+G`
 /// e que nenhum menu, botão ou rótulo do app nomeava.
 mod hier_group;
+mod hover_highlight;
 mod hud_label_live;
 mod hud_smoke;
-mod hover_highlight;
 /// `Export Image…` — a porta dos 16 exportadores (plano `docs/Sprite_projeto/18` W9).
 mod image_export;
 mod image_import;

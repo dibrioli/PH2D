@@ -7,7 +7,9 @@
 //! jogo (senão o canvas não se cola a nada) e o que o rótulo mostra AGORA. *Sem eles, um HUD que
 //! está exactamente como o artista pediu lê-se como partido, com todos os números certos.*
 
-use ph2d_ecs::{Counter, CounterRuntime, Entity, LabelSource, SimWorld, UiButton, UiCanvas, UiLabel};
+use ph2d_ecs::{
+    Counter, CounterRuntime, Entity, LabelSource, SimWorld, UiButton, UiCanvas, UiLabel,
+};
 use ph2d_editor_core::hud_edits::{
     HudFieldEdit as E, HudNumber as N, HudText as T, InspectorHudInfo,
 };
@@ -87,7 +89,10 @@ pub fn build_info(
         suffix: label.as_ref().map(|l| l.suffix.clone()).unwrap_or_default(),
         vivo,
         has_button: button.is_some(),
-        signal: button.as_ref().map(|b| b.signal.clone()).unwrap_or_default(),
+        signal: button
+            .as_ref()
+            .map(|b| b.signal.clone())
+            .unwrap_or_default(),
         disabled: button.as_ref().is_some_and(|b| b.disabled),
         has_counter: counter.is_some(),
         counter_name: counter.as_ref().map(|c| c.name.clone()).unwrap_or_default(),

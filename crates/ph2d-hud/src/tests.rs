@@ -147,7 +147,10 @@ fn o_stretch_distorce_onde_o_keep_nao_distorce() {
     };
     let k = place(&Canvas::new(32.0, 18.0, Fit::Keep).expect("k"), v);
     let s = place(&Canvas::new(32.0, 18.0, Fit::Stretch).expect("s"), v);
-    assert!((k.scale[0] - k.scale[1]).abs() <= f32::EPSILON, "o keep não distorce");
+    assert!(
+        (k.scale[0] - k.scale[1]).abs() <= f32::EPSILON,
+        "o keep não distorce"
+    );
     assert!(
         (s.scale[0] - s.scale[1]).abs() > 1.0,
         "o stretch TEM de distorcer aqui, e deu {:?}",
@@ -170,7 +173,10 @@ fn uma_caixa_impossivel_e_recusada() {
             "caixa {w}×{h} tinha de ser recusada"
         );
     }
-    assert!(Canvas::new(32.0, 18.0, Fit::Keep).is_some(), "o CONTROLO positivo");
+    assert!(
+        Canvas::new(32.0, 18.0, Fit::Keep).is_some(),
+        "o CONTROLO positivo"
+    );
 }
 
 /// O texto de um número: a contagem crua, e o tempo com uma casa e **nunca negativo**.
@@ -178,7 +184,11 @@ fn uma_caixa_impossivel_e_recusada() {
 fn o_tempo_que_ja_passou_mostra_zero_e_nunca_um_negativo() {
     use super::{Valor, formata};
     assert_eq!(formata(Valor::Inteiro(0)), "0");
-    assert_eq!(formata(Valor::Inteiro(-3)), "-3", "uma CONTAGEM pode ser negativa (dívida, vidas a menos)");
+    assert_eq!(
+        formata(Valor::Inteiro(-3)),
+        "-3",
+        "uma CONTAGEM pode ser negativa (dívida, vidas a menos)"
+    );
     assert_eq!(formata(Valor::Segundos(3.25)), "3.2", "uma casa decimal");
     assert_eq!(formata(Valor::Segundos(0.0)), "0.0");
     // ⭐ o caso que a lei existe para cobrir: o relógio passou do fim.

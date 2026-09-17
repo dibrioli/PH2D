@@ -49,6 +49,9 @@ mod color_tint;
 /// tecto de LOC.
 mod emissive_row;
 pub(crate) mod factory;
+/// ⭐⭐⭐ A secção PARTICLES (TOP-20 #18) — ver o cabeçalho.
+/// ⭐⭐⭐ **O HUD** (TOP-20 #20).
+pub(crate) mod hud;
 mod identity;
 /// ⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
 pub(crate) mod instance;
@@ -62,9 +65,6 @@ pub(crate) mod joint;
 mod joint_pair_rows;
 mod material_blend;
 pub(crate) mod ordering;
-/// ⭐⭐⭐ A secção PARTICLES (TOP-20 #18) — ver o cabeçalho.
-/// ⭐⭐⭐ **O HUD** (TOP-20 #20).
-pub(crate) mod hud;
 pub(crate) mod particles;
 mod physics;
 mod physics_area_rows;

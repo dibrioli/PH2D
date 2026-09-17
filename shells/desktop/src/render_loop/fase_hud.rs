@@ -22,8 +22,10 @@ impl crate::App {
         // ⚠️ A conversão para a `View` é feita AQUI e uma só vez: a `half` atravessa a fronteira
         // como meia-janela porque é assim que a câmera a produz — converter para largura inteira
         // na ponte seria a segunda resposta a *«que rectângulo é este?»*.
-        let vista = camera_rect.map(|(center, half)| ph2d_app_components::hud_bridge::View { center, half });
-        let n = ph2d_app_components::hud_bridge::drive_canvases(sim, vista, &mut self.preview_drive);
+        let vista = camera_rect
+            .map(|(center, half)| ph2d_app_components::hud_bridge::View { center, half });
+        let n =
+            ph2d_app_components::hud_bridge::drive_canvases(sim, vista, &mut self.preview_drive);
         // ⭐ **O diagnóstico é a única forma de ver um rectângulo** — ele não deixa rasto na tela.
         // `PH2D_HUD_LOG=1` imprime a vista e a pose conduzida, uma vez por mudança.
         if n > 0 && std::env::var_os("PH2D_HUD_LOG").is_some() {

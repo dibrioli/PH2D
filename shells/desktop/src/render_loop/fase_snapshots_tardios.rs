@@ -49,7 +49,8 @@ pub(super) fn publica(
     }));
     // ⭐⭐⭐ **O HUD** (TOP-20 #20) — e ele traz DOIS factos que não são campos: se há câmera de
     // jogo (senão o canvas não se cola a nada) e o que o rótulo mostra AGORA.
-    ph2d_panel_inspector::set_current_inspector_hud(escolhido.and_then(|b| {
-        ph2d_app_components::hud_inspector::build_info(sim, tags, b, tem_camera)
-    }));
+    ph2d_panel_inspector::set_current_inspector_hud(
+        escolhido
+            .and_then(|b| ph2d_app_components::hud_inspector::build_info(sim, tags, b, tem_camera)),
+    );
 }

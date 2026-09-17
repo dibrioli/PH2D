@@ -83,6 +83,9 @@ pub mod component_smoke;
 pub mod factory_bridge;
 /// ⭐⭐⭐ **A FÁBRICA e o CICLO DE VIDA** (TOP-20 #11 e #12) — as duas cenas do dono.
 pub mod factory_smoke;
+/// ⭐ TOP-20 #16 — a ponte dos scripts do artista (o quadro, o ledger e o rebobinar).
+pub mod hud_bridge;
+pub mod hud_inspector;
 pub mod instance_added;
 pub mod instance_added_smoke;
 pub mod instance_apply_deep;
@@ -116,9 +119,6 @@ pub mod prefab_stage;
 /// ⭐⭐⭐ **O PROJÉCTIL** (TOP-20 #14) — as duas cenas do dono.
 pub mod projectile_smoke;
 pub mod scene_ctx;
-/// ⭐ TOP-20 #16 — a ponte dos scripts do artista (o quadro, o ledger e o rebobinar).
-pub mod hud_bridge;
-pub mod hud_inspector;
 pub mod script_bridge;
 /// ⭐ TOP-20 #16 — a secção SCRIPT do Inspector: o instantâneo e o dreno.
 pub mod script_inspector;

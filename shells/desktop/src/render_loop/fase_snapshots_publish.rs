@@ -217,7 +217,11 @@ impl crate::App {
         // ⭐ Há câmera de jogo na cena? — a razão de o canvas se colar (ou não) a alguma coisa.
         let tem_camera_de_jogo = {
             let world = sim.world_mut();
-            world.query::<&ph2d_ecs::GameCamera>().iter(world).next().is_some()
+            world
+                .query::<&ph2d_ecs::GameCamera>()
+                .iter(world)
+                .next()
+                .is_some()
         };
         tardios::publica(
             sim,

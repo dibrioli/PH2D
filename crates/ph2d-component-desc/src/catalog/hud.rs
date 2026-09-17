@@ -61,11 +61,35 @@ const LABEL_FIELDS: &[FieldDesc] = &[
 
 /// Os quatro, por ordem de `canonical_name`.
 pub const DESCS: &[ComponentDesc] = &[
-    D::authored("ph2d::ecs::Counter", "Counter", C::Logic, O::ANY, COUNTER_FIELDS),
-    D::authored("ph2d::ecs::UiButton", "Button", C::Logic, O::ANY, BUTTON_FIELDS),
-    D::authored("ph2d::ecs::UiCanvas", "HUD Canvas", C::Logic, O::ANY, CANVAS_FIELDS),
+    D::authored(
+        "ph2d::ecs::Counter",
+        "Counter",
+        C::Logic,
+        O::ANY,
+        COUNTER_FIELDS,
+    ),
+    D::authored(
+        "ph2d::ecs::UiButton",
+        "Button",
+        C::Logic,
+        O::ANY,
+        BUTTON_FIELDS,
+    ),
+    D::authored(
+        "ph2d::ecs::UiCanvas",
+        "HUD Canvas",
+        C::Logic,
+        O::ANY,
+        CANVAS_FIELDS,
+    ),
     // ⚠️ **O rótulo PEDE o canvas?** Não: um `UiLabel` numa forma solta continua a derivar o texto
     // dela; o que ele perde sem uma raiz é ficar colado à vista. *Exigir o pai tornaria
     // inexprimível um número que vive no MUNDO* — a barra de vida sobre a cabeça de um inimigo.
-    D::authored("ph2d::ecs::UiLabel", "Label", C::Logic, O::ANY, LABEL_FIELDS),
+    D::authored(
+        "ph2d::ecs::UiLabel",
+        "Label",
+        C::Logic,
+        O::ANY,
+        LABEL_FIELDS,
+    ),
 ];

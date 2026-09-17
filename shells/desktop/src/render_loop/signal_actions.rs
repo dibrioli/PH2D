@@ -104,7 +104,11 @@ pub(crate) fn apply(
 fn add_to_counter(sim: &mut SimWorld, fx: &ph2d_ecs::SignalEffect) -> bool {
     let quanto: i64 = {
         let t = fx.arg.trim();
-        if t.is_empty() { 1 } else { t.parse().unwrap_or(1) }
+        if t.is_empty() {
+            1
+        } else {
+            t.parse().unwrap_or(1)
+        }
     };
     if quanto == 0 {
         return false;

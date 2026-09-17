@@ -91,7 +91,10 @@ fn a_inclinacao_autorada_sobrevive_ao_passe() {
     drive_canvases(&mut sim, Some(vista()), &mut drive);
     let t = *sim.world().get::<Transform>(e).expect("pose");
     assert_eq!((t.rotation, t.skew_x), (0.35, 0.1));
-    assert_ne!(t.translation, autorada.translation, "o CONTROLO: a pose MUDOU");
+    assert_ne!(
+        t.translation, autorada.translation,
+        "o CONTROLO: a pose MUDOU"
+    );
 }
 
 /// Uma caixa impossível não conduz nada — e o canvas continua a existir para o painel a acusar.

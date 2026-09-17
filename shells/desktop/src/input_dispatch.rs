@@ -66,9 +66,9 @@ mod keyboard_palette; // as teclas do palette de nos -- MODAL, ver o doc do modu
 // Os ramos e os irmãos do despacho: cada `despacho_*.rs` diz no próprio `//!` o que guarda.
 mod despacho_clique_flip;
 mod despacho_clique_gizmo;
+mod despacho_clique_hud;
 mod despacho_clique_largar;
 mod despacho_clique_pick;
-mod despacho_clique_hud;
 mod despacho_clique_prologo;
 mod despacho_clique_reclamantes;
 mod despacho_clique_roldana;

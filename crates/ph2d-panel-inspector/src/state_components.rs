@@ -77,14 +77,11 @@ pub(crate) fn current_inspector_statemachine() -> Option<InspectorStateMachineIn
 }
 
 /// ⭐ O snapshot do HUD (TOP-20 #20) — a shell escreve-o todo o quadro.
-pub fn set_current_inspector_hud(
-    info: Option<ph2d_editor_core::hud_edits::InspectorHudInfo>,
-) {
+pub fn set_current_inspector_hud(info: Option<ph2d_editor_core::hud_edits::InspectorHudInfo>) {
     crate::state::CURRENT_INSPECTOR_HUD.with(|c| *c.borrow_mut() = info);
 }
 
-pub(crate) fn current_inspector_hud()
--> Option<ph2d_editor_core::hud_edits::InspectorHudInfo> {
+pub(crate) fn current_inspector_hud() -> Option<ph2d_editor_core::hud_edits::InspectorHudInfo> {
     crate::state::CURRENT_INSPECTOR_HUD.with(|c| c.borrow().clone())
 }
 

@@ -4885,6 +4885,7 @@ dependencies = [
  "ph2d-entity-visibility",
  "ph2d-field-ecs",
  "ph2d-host",
+ "ph2d-hud",
  "ph2d-i18n",
  "ph2d-inspector-ordering",
  "ph2d-label-census",
@@ -5527,6 +5528,7 @@ dependencies = [
  "ph2d-component-desc",
  "ph2d-core",
  "ph2d-fx-op",
+ "ph2d-hud",
  "ph2d-i18n",
  "ph2d-morph-machine",
  "ph2d-render",
@@ -6092,6 +6094,13 @@ dependencies = [
  "serde",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "ph2d-hud"
+version = "0.0.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

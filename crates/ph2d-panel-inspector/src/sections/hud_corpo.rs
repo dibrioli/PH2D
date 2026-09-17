@@ -20,9 +20,7 @@ fn corpo(
     // ── A RAIZ ───────────────────────────────────────────────────────────────
     if i.has_canvas {
         for n in [N::RefWidth, N::RefHeight] {
-            cur_y = num_row(
-                scene, text_system, theme, hit_index, store, x, w, cur_y, n,
-            );
+            cur_y = num_row(scene, text_system, theme, hit_index, store, x, w, cur_y, n);
         }
         cur_y = seg_row(
             scene,
@@ -92,7 +90,16 @@ fn corpo(
                 continue;
             };
             cur_y = txt_row(
-                scene, text_system, theme, hit_index, store, x, w, cur_y, idx, dica,
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                cur_y,
+                idx,
+                dica,
             );
         }
         // ⭐⭐ **O que ele mostra AGORA** — ou a razão de não mostrar nada derivado.

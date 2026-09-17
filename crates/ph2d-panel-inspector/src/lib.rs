@@ -24,6 +24,8 @@ mod event_anim;
 mod event_audio;
 mod event_camera;
 mod event_factory;
+/// ⭐ O registo dos widgets da secção PARTICLES — irmão por CAP de ficheiro.
+mod event_hud;
 /// ⭐⭐ **Os cliques do CARTÃO de instância** — irmão por assunto do `event`.
 mod event_instance;
 mod event_joint;
@@ -71,12 +73,9 @@ mod populate_anim;
 mod populate_audio;
 mod populate_camera;
 mod populate_factory;
+mod populate_hud;
 /// ⭐⭐ O registo do CARTÃO de instância — irmão por assunto, ver o cabeçalho de lá.
 mod populate_instance;
-/// ⭐ O registo dos widgets da secção PARTICLES — irmão por CAP de ficheiro.
-mod event_hud;
-mod populate_hud;
-mod sync_hud;
 mod populate_particles;
 mod populate_physics;
 mod populate_player;
@@ -99,6 +98,7 @@ mod state_popovers;
 /// ⚠️ As duas conversões de tinta — irmão do `state` por CAP de LOC. Ver o cabeçalho dele.
 mod state_tint;
 mod sync;
+mod sync_hud;
 /// ⭐ A semente da secção PARTICLES — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_particles;
 mod sync_physics;
@@ -191,8 +191,7 @@ pub use state::{probe_current_instance, probe_current_properties, texture_slot_p
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{
     set_current_inspector_action, set_current_inspector_audio, set_current_inspector_camera,
-    set_current_inspector_factory, set_current_inspector_hud,
-    set_current_inspector_particles,
+    set_current_inspector_factory, set_current_inspector_hud, set_current_inspector_particles,
     set_current_inspector_projectile, set_current_inspector_script,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
 };

@@ -147,6 +147,7 @@ pub use factory::{
     reconcile_factories, tick_factories,
 };
 pub use flip_object_ref::FlipObjectRef;
+pub use hud::{Counter, CounterRuntime, Fit, LabelSource, UiButton, UiCanvas, UiLabel};
 pub use instantiate::{
     DeepCopy, InstanceOf, LinkedArt, ObjectInstance, OrphanOverride, OverrideKey,
     deep_copy_subtree, deep_copy_subtree_many, remap_instance_of,
@@ -202,7 +203,6 @@ pub use stable_id::{
     StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id, stable_id_for_name,
     stable_id_of,
 };
-pub use hud::{Counter, CounterRuntime, Fit, LabelSource, UiButton, UiCanvas, UiLabel};
 pub use tags::Tags;
 pub use timer::{
     TIMER_MAX_US, TIMER_NAME_MAX_BYTES, TIMERS_MAX, Timer, TimerOutcome, TimerRuntime, TimerState,

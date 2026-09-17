@@ -294,8 +294,9 @@ pub(super) fn drive(
     // 1-3) Composite, light, premultiply — everything that turns the layer stack into the bytes the
     //      slot will hold. On any failure the slot is released and the CPU producer takes the frame.
     if let Err(e) = compose_light_premul(session, tool, &ops, &adj_luts, width, height, region) {
-        toasts.push(Toast::error(format!(
-            "Painter: GPU preview falhou ({e}). Caindo no caminho CPU."
+        toasts.push(Toast::error(ph2d_i18n::tr_with(
+            "app.painter.painter_gpu_preview.gpu_preview_failed",
+            &[("e", &e)],
         )));
         release_slot(renderer, painter_preview_gpu);
         return false;
@@ -317,8 +318,9 @@ pub(super) fn drive(
         )
     };
     if let Err(e) = copy {
-        toasts.push(Toast::error(format!(
-            "Painter: GPU preview copy falhou ({e}). Caindo no caminho CPU."
+        toasts.push(Toast::error(ph2d_i18n::tr_with(
+            "app.painter.painter_gpu_preview.gpu_preview_copy_failed",
+            &[("e", &e)],
         )));
         release_slot(renderer, painter_preview_gpu);
         return false;
@@ -363,7 +365,9 @@ fn compose_light_premul(
             height,
             region,
         )
-        .map_err(|e| format!("composite: {e}"))?;
+        .map_err(|e| {
+            ph2d_i18n::tr_with("app.painter.painter_gpu_preview.composite", &[("e", &e)])
+        })?;
 
     // 2) Impasto: light the freshly-composited region. Same place in the chain as the CPU pass, and
     //    for the same reason — lighting is NOT idempotent, so it must see pixels that were composited
@@ -377,10 +381,9 @@ fn compose_light_premul(
     //    is not style: "which texture holds the finished canvas" must have exactly one answer, and a
     //    second derivation of it that got the condition backwards would ship an unlit painting with
     //    every gate still green — the failure has no symptom except the artist seeing flat paint.
-    let comp_out = session
-        .compositor
-        .output_texture()
-        .ok_or("composite produced no texture")?;
+    let comp_out = session.compositor.output_texture().ok_or(ph2d_i18n::tr(
+        "app.painter.painter_gpu_preview.composite_produced_no_texture",
+    ))?;
     // **Which window the fold walks.** Two questions, each answered by whoever owns the fact:
     //
     // * the TOOL knows whether this frame's change was confined to a rect (`preview_gpu_region` is
@@ -461,7 +464,12 @@ fn compose_light_premul(
             session
                 .light
                 .run(&session.gpu, comp_out, &input)
-                .map_err(|e| format!("impasto light: {e:?}"))?
+                .map_err(|e| {
+                    ph2d_i18n::tr_with(
+                        "app.painter.painter_gpu_preview.impasto_light",
+                        &[("e_", &format!("{:?}", e))],
+                    )
+                })?
         }
     };
 
@@ -472,7 +480,9 @@ fn compose_light_premul(
     session
         .premul
         .run(&session.gpu, finished, width, height)
-        .ok_or("premultiply produced no texture")?;
+        .ok_or(ph2d_i18n::tr(
+            "app.painter.painter_gpu_preview.premultiply_produced_no_texture",
+        ))?;
     Ok(())
 }
 

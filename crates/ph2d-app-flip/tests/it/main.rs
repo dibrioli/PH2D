@@ -8,6 +8,7 @@
 //! família** viaja com ela; um que mede *que a SHELL chama a família* fica lá, apontando para
 //! fora; e um que mede a `App`/`ProjectState`/o arnês do ponteiro nunca se mexe.
 
+mod every_word_this_family_shows_comes_from_the_string_table;
 mod the_eraser_uses_the_erasers_own_numbers;
 mod the_flip_pass_asks_before_it_rasterises;
 mod the_shell_turns_on_the_features_this_family_reads;

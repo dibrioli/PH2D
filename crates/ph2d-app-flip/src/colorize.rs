@@ -340,9 +340,9 @@ pub fn apply(
         &mut state.strip,
         crate::autokey::FlipEdit::Modify,
     ) else {
-        toasts.push(ph2d_editor_core::Toast::warning(
-            "Colorize: the layer is locked, or has no drawing on this frame",
-        ));
+        toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
+            "app.flip.colorize.colorize_the_layer_is_locked_or_has_no_drawing_o",
+        )));
         return true;
     };
 
@@ -350,9 +350,9 @@ pub fn apply(
         return false;
     };
     if boundaries(drawing).is_empty() {
-        toasts.push(ph2d_editor_core::Toast::warning(
-            "Colorize: draw the line-art first",
-        ));
+        toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
+            "app.flip.colorize.colorize_draw_the_line_art_first",
+        )));
         return true;
     }
     let obj_scale = w2l.mean_scale() as f32;
@@ -377,9 +377,9 @@ pub fn apply(
     let produced = install_regions(drawing, &lines, &palette, regions);
     if produced == 0 {
         drawing.strokes = base; // nada saiu — devolve o desenho intocado
-        toasts.push(ph2d_editor_core::Toast::warning(
-            "Colorize: no regions — scribble inside the closed shapes",
-        ));
+        toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
+            "app.flip.colorize.colorize_no_regions_scribble_inside_the_closed_s",
+        )));
         return true;
     }
     let mut frames = vec![LiveFrame {

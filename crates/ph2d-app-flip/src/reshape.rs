@@ -254,9 +254,9 @@ pub fn canvas_down(
     ) else {
         // Camada travada, ou sem chave com o AutoKey desligado. Uma ferramenta que consome o
         // clique e não faz NADA parece quebrada — ela tem de DIZER.
-        toasts.push(ph2d_editor_core::Toast::warning(
-            "Sculpt: the layer is locked, or has no drawing on this frame",
-        ));
+        toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
+            "app.flip.reshape.sculpt_the_layer_is_locked_or_has_no_drawing_on",
+        )));
         return (true, true);
     };
     state.reshape = Some(FlipReshape {

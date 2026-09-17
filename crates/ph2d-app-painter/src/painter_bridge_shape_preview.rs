@@ -72,8 +72,9 @@ pub fn drive_shape_source_preview(
             });
         }
         Err(e) => {
-            toasts.push(Toast::error(format!(
-                "Painter: upload da preview da imagem-shape falhou ({e})."
+            toasts.push(Toast::error(ph2d_i18n::tr_with(
+                "app.painter.painter_bridge_shape_preview.shape_preview_upload_failed",
+                &[("e", &e)],
             )));
             release_preview_texture(renderer, shape_source_preview_gpu);
         }

@@ -188,9 +188,9 @@ pub fn drain_revert_to_master(
         // ⚠️ *«Não pertence a instância nenhuma»* e *«pertence, e não havia excepção»* são coisas
         // diferentes, e a segunda não é um erro: o artista clicou no sítio certo.
         None => {
-            toasts.push(Toast::warning(
-                "Not part of an instance — nothing to revert",
-            ));
+            toasts.push(Toast::warning(ph2d_i18n::tr(
+                "app.components.instance_revert.not_part_of_an_instance_nothing_to_revert",
+            )));
             false
         }
         // ⚠️ **Quatro respostas, e a pose é a razão de serem quatro**: dizer *«nada estava
@@ -199,33 +199,35 @@ pub fn drain_revert_to_master(
         // FORMA, e o artista vê-a acontecer na tela. *Um número que muda a silhueta não se conta
         // junto com um que muda uma cor.*
         Some(r) if r.pieces_back > 0 => {
-            toasts.push(Toast::success(format!(
-                "Put back {} piece(s) \u{2014} and reverted {} change(s)",
-                r.pieces_back, r.count
+            toasts.push(Toast::success(ph2d_i18n::tr_with(
+                "app.components.instance_revert.put_back_piece_s_and_reverted_change_s",
+                &[("pieces_back", &(r.pieces_back)), ("r", &(r.count))],
             )));
             true
         }
         Some(r) if r.count == 0 && r.poses_kept == 0 => {
-            toasts.push(Toast::info("Nothing overridden here"));
+            toasts.push(Toast::info(ph2d_i18n::tr(
+                "app.components.instance_revert.nothing_overridden_here",
+            )));
             false
         }
         Some(r) if r.count == 0 => {
-            toasts.push(Toast::info(
-                "Only the position differs — it stays where you put it",
-            ));
+            toasts.push(Toast::info(ph2d_i18n::tr(
+                "app.components.instance_revert.only_the_position_differs_it_stays_where_you_put",
+            )));
             false
         }
         Some(r) if r.poses_kept > 0 => {
-            toasts.push(Toast::success(format!(
-                "Reverted {} change(s) — position kept",
-                r.count
+            toasts.push(Toast::success(ph2d_i18n::tr_with(
+                "app.components.instance_revert.reverted_change_s_position_kept",
+                &[("r", &(r.count))],
             )));
             true
         }
         Some(r) => {
-            toasts.push(Toast::success(format!(
-                "Reverted {} override(s) to the prefab",
-                r.count
+            toasts.push(Toast::success(ph2d_i18n::tr_with(
+                "app.components.instance_revert.reverted_override_s_to_the_prefab",
+                &[("r", &(r.count))],
             )));
             true
         }

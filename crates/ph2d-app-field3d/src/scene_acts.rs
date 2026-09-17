@@ -148,12 +148,12 @@ thread_local! {
 /// estado da VISTA que explica por que todo o resto desapareceu.* Quando as duas competem, a
 /// pergunta que o artista tem é a segunda. ⚠️ E o `LNK` daquela linha não se perde de vista: ele
 /// volta assim que o isolamento cair, e o gesto que o tira está na mesma fileira.
-pub const ISOLATE_BADGE: &str = "ISO";
+pub const ISOLATE_BADGE: ph2d_i18n::TextKey = ph2d_i18n::TextKey::new("app.field3d.scene_acts.iso");
 
 /// O código do selo do vínculo. ⚠️ **Novo, e não um dos que a tabela de tons já tinha**: reusar
 /// `PRF` (que existe lá com outro dono) faria duas famílias partilharem um tom, e mudar o tom de uma
 /// para acomodar a outra é repintar um selo alheio.
-pub const LINK_BADGE: &str = "LNK";
+pub const LINK_BADGE: ph2d_i18n::TextKey = ph2d_i18n::TextKey::new("app.field3d.scene_acts.lnk");
 
 /// Esta forma sabe o que fazer com um contorno? — as duas de perfil, e só elas.
 fn takes_a_profile(world: &bevy_ecs::world::World, e: bevy_ecs::entity::Entity) -> bool {

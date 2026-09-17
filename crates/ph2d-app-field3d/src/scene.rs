@@ -195,7 +195,9 @@ pub fn cook_root(
         node
     } else {
         crate::smoke::forget_isolation();
-        crate::notice::say("Isolation dropped: that object is gone".into());
+        crate::notice::say(
+            ph2d_i18n::tr("app.field3d.scene.isolation_dropped_that_object_is_gone").into(),
+        );
         root
     }
 }
@@ -379,9 +381,10 @@ pub fn sync_scene_and_birth(
     if crate::smoke::take_isolate_key_request() {
         let on = crate::smoke::toggle_isolate_by_key(selection.first().map(|e| e.to_bits()));
         crate::notice::say(if on.is_some() {
-            "Isolated: showing only this object (Shift+I brings the part back)".into()
+            ph2d_i18n::tr("app.field3d.scene.isolated_showing_only_this_object_shift_i_brings")
+                .into()
         } else {
-            "Isolation off: the whole part is back".into()
+            ph2d_i18n::tr("app.field3d.scene.isolation_off_the_whole_part_is_back").into()
         });
     }
     // ⭐⭐⭐ **A FORMA QUE A PALETA ESCOLHEU** (W100) — drenada aqui, e não no `intents`, porque

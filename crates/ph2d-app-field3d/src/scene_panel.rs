@@ -127,13 +127,13 @@ pub fn publish_snapshot(
                     .get::<ph2d_field_ecs::FieldProfileSource>(*e)
                     .is_some()
             })
-            .map(|(e, _)| (e.to_bits(), LINK_BADGE))
+            .map(|(e, _)| (e.to_bits(), LINK_BADGE.tr()))
             .collect();
         for (e, _) in &all {
             if let Some(badge) = super::verb::verb_badge(world, *e) {
                 // ⚠️ **A BASE cede ao `LNK`, e só ela** — ver [`super::verb::BASE_BADGE`]. `BSE`
                 // repete o que a POSIÇÃO já diz; o vínculo não é derivável de nada na tela.
-                if badge == super::verb::BASE_BADGE && m.contains_key(&e.to_bits()) {
+                if badge == super::verb::BASE_BADGE.tr() && m.contains_key(&e.to_bits()) {
                     continue;
                 }
                 m.insert(e.to_bits(), badge);
@@ -147,7 +147,7 @@ pub fn publish_snapshot(
         if let Some(bits) = crate::smoke::isolated()
             && all.iter().any(|(e, _)| e.to_bits() == bits)
         {
-            m.insert(bits, ISOLATE_BADGE);
+            m.insert(bits, ISOLATE_BADGE.tr());
         }
         super::acts::publish_badges(m);
     }

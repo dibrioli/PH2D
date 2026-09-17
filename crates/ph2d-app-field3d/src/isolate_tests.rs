@@ -509,7 +509,7 @@ fn a_dead_isolation_is_not_announced() {
 fn isolados() -> Vec<u64> {
     crate::scene::link_badges()
         .into_iter()
-        .filter(|(_, b)| *b == crate::scene::acts::ISOLATE_BADGE)
+        .filter(|(_, b)| *b == crate::scene::acts::ISOLATE_BADGE.tr())
         .map(|(e, _)| e)
         .collect()
 }
@@ -538,7 +538,7 @@ fn the_hierarchy_says_which_row_is_isolated() {
         let badges = crate::scene::link_badges();
         assert_eq!(
             badges.get(&group.to_bits()).copied(),
-            Some(crate::scene::acts::ISOLATE_BADGE),
+            Some(crate::scene::acts::ISOLATE_BADGE.tr()),
             "a linha isolada tem de o dizer na Hierarquia"
         );
         assert_eq!(

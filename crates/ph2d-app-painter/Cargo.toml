@@ -10,6 +10,9 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# A TABELA DE TEXTOS (HR-15): tudo o que esta crate diz ao artista sai daqui, nunca de um
+# literal no fonte — o gate `every_word_..._comes_from_the_string_table` mede-o.
+ph2d-i18n = { path = "../ph2d-i18n" }
 # A INTERFACE (o `AppFamily`/`SmokeRouter` que esta crate declara).
 # ⛔ Nunca o `ph2d-app-registry-init`: ele depende desta, e importá-lo fecharia o ciclo.
 ph2d-app-host = { path = "../ph2d-app-host" }
@@ -60,6 +63,10 @@ ph2d-panel-painter-layers = { path = "../ph2d-panel-painter-layers", optional = 
 
 [features]
 panel-painter-layers = ["dep:ph2d-panel-painter-layers"]
+
+[dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate (`tests/it/`).
+ph2d-label-census = { path = "../ph2d-label-census" }
 
 [lints]
 workspace = true

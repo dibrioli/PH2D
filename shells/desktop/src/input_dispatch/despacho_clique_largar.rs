@@ -151,7 +151,7 @@ impl crate::App {
                     // óbvio ensina o artista a usar o outro.
                     if ph2d_app_painter::painter_lock::locked_entity(&gfx.tools, hero).is_some() {
                         gfx.toasts
-                            .push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL));
+                            .push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL.tr()));
                         self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);
                     } else {
                         if !rb.add_mode {

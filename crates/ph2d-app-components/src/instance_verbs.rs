@@ -376,39 +376,45 @@ pub fn drain(
     use ph2d_editor_core::Toast;
     let entity = Entity::from_bits(entity_bits);
     match verb {
-        Verb::Make => match make_master(sim, registry, entity, docs) {
-            // ⭐ **A voz diz QUAL dos dois aconteceu** (F5): uma receita que nasce de uma copia
-            // continua ligada a' base, e o artista tem de saber disso antes de a editar - senao ele
-            // muda a variante e ve a mudanca sumir no quadro em que a base for editada.
-            Ok((master, instance)) => {
-                let variant = sim.world().get::<ph2d_ecs::InstanceOf>(master).is_some();
-                // ⭐ A cópia é o objecto que o artista continua a ver — ver o doc de `select_out`.
-                *select_out = Some(instance.to_bits());
-                toasts.push(Toast::success(if variant {
-                    "Made a variant \u{2014} it still follows its base"
+        Verb::Make => {
+            match make_master(sim, registry, entity, docs) {
+                // ⭐ **A voz diz QUAL dos dois aconteceu** (F5): uma receita que nasce de uma copia
+                // continua ligada a' base, e o artista tem de saber disso antes de a editar - senao ele
+                // muda a variante e ve a mudanca sumir no quadro em que a base for editada.
+                Ok((master, instance)) => {
+                    let variant = sim.world().get::<ph2d_ecs::InstanceOf>(master).is_some();
+                    // ⭐ A cópia é o objecto que o artista continua a ver — ver o doc de `select_out`.
+                    *select_out = Some(instance.to_bits());
+                    toasts.push(Toast::success(if variant {
+                    ph2d_i18n::tr("app.components.instance_verbs.made_a_variant_it_still_follows_its_base")
                 } else {
-                    "Made a prefab \u{2014} an instance took its place"
+                    ph2d_i18n::tr("app.components.instance_verbs.made_a_prefab_an_instance_took_its_place")
                 }));
-                true
-            }
-            Err(VerbRefusal::AlreadyAMaster) => {
-                toasts.push(Toast::info("This is already a prefab"));
-                false
-            }
-            // ⚠️ **Braço por braço, e sem `_`**: a recusa nova (`InsideAMaster`) chegou aqui com um
-            // catch-all que dizia *«Inside an instance»* — a frase errada sobre a coisa errada. Um
-            // `match` exaustivo é o que obriga a próxima recusa a escolher a sua voz.
-            Err(VerbRefusal::InsideAMaster) => {
-                toasts.push(Toast::warning("Inside a prefab — prefabs cannot nest yet"));
-                false
-            }
-            Err(VerbRefusal::InsideAnInstance | VerbRefusal::NotAnInstance) => {
-                toasts.push(Toast::warning(
-                    "Inside an instance — detach it first, or edit the prefab",
+                    true
+                }
+                Err(VerbRefusal::AlreadyAMaster) => {
+                    toasts.push(Toast::info(ph2d_i18n::tr(
+                        "app.components.instance_verbs.this_is_already_a_prefab",
+                    )));
+                    false
+                }
+                // ⚠️ **Braço por braço, e sem `_`**: a recusa nova (`InsideAMaster`) chegou aqui com um
+                // catch-all que dizia *«Inside an instance»* — a frase errada sobre a coisa errada. Um
+                // `match` exaustivo é o que obriga a próxima recusa a escolher a sua voz.
+                Err(VerbRefusal::InsideAMaster) => {
+                    toasts.push(Toast::warning(ph2d_i18n::tr(
+                        "app.components.instance_verbs.inside_a_prefab_prefabs_cannot_nest_yet",
+                    )));
+                    false
+                }
+                Err(VerbRefusal::InsideAnInstance | VerbRefusal::NotAnInstance) => {
+                    toasts.push(Toast::warning(
+                    ph2d_i18n::tr("app.components.instance_verbs.inside_an_instance_detach_it_first_or_edit_the_p"),
                 ));
-                false
+                    false
+                }
             }
-        },
+        }
         // ⚠️ *Instantiate* pede a RECEITA, e a linha pode ser a instância que ficou no lugar dela:
         // o aviso NOMEIA a saída, senão o artista fica a clicar na linha errada.
         Verb::Place | Verb::PlaceLinked => {
@@ -482,47 +488,59 @@ pub fn drain(
                     // nó). Uma confirmação igual para os dois deixaria o artista sem saber qual
                     // clicou.
                     toasts.push(Toast::success(if verb == Verb::PlaceLinked {
-                        "Instantiated linked — its art follows the prefab both ways"
+                        ph2d_i18n::tr("app.components.instance_verbs.instantiated_linked_its_art_follows_the_prefab_b")
                     } else {
-                        "Instantiated"
+                        ph2d_i18n::tr("app.components.instance_verbs.instantiated")
                     }));
                     true
                 }
                 Err(crate::instantiate::Refusal::WouldNestInItself) => {
-                    toasts.push(Toast::warning("That would put the prefab inside itself"));
+                    toasts.push(Toast::warning(ph2d_i18n::tr(
+                        "app.components.instance_verbs.that_would_put_the_prefab_inside_itself",
+                    )));
                     false
                 }
                 Err(_) => {
-                    toasts.push(Toast::warning("Not a prefab — pick the prefab row"));
+                    toasts.push(Toast::warning(ph2d_i18n::tr(
+                        "app.components.instance_verbs.not_a_prefab_pick_the_prefab_row",
+                    )));
                     false
                 }
             }
         }
         Verb::Detach => match detach(sim, entity) {
             Ok(n) => {
-                toasts.push(Toast::success(format!(
-                    "Detached {n} piece(s) from the prefab"
+                toasts.push(Toast::success(ph2d_i18n::tr_with(
+                    "app.components.instance_verbs.detached_piece_s_from_the_prefab",
+                    &[("n", &n)],
                 )));
                 true
             }
             Err(_) => {
-                toasts.push(Toast::warning("Not part of an instance"));
+                toasts.push(Toast::warning(ph2d_i18n::tr(
+                    "app.components.instance_verbs.not_part_of_an_instance",
+                )));
                 false
             }
         },
         Verb::Apply => match apply_to_master(sim, registry, echo, entity, docs) {
             Ok(0) => {
-                toasts.push(Toast::info("Nothing overridden here"));
+                toasts.push(Toast::info(ph2d_i18n::tr(
+                    "app.components.instance_verbs.nothing_overridden_here",
+                )));
                 false
             }
             Ok(n) => {
-                toasts.push(Toast::success(format!(
-                    "Applied {n} change(s) to the prefab"
+                toasts.push(Toast::success(ph2d_i18n::tr_with(
+                    "app.components.instance_verbs.applied_change_s_to_the_prefab",
+                    &[("n", &n)],
                 )));
                 true
             }
             Err(_) => {
-                toasts.push(Toast::warning("Not part of an instance"));
+                toasts.push(Toast::warning(ph2d_i18n::tr(
+                    "app.components.instance_verbs.not_part_of_an_instance",
+                )));
                 false
             }
         },
@@ -535,9 +553,7 @@ pub fn drain(
         Verb::Edit => crate::instance_open::open_prefab(sim, entity, toasts, select_out),
         Verb::Unmake => match crate::instance_unmake::unmake_master(sim, entity) {
             Ok(crate::instance_unmake::Unmade::Dissolved { copies }) => {
-                toasts.push(Toast::success(format!(
-                    "Removed from library \u{2014} {copies} copy(ies) are now independent"
-                )));
+                toasts.push(Toast::success(ph2d_i18n::tr_with("app.components.instance_verbs.removed_from_library_copy_ies_are_now_independen", &[("copies", &copies)])));
                 true
             }
             Ok(crate::instance_unmake::Unmade::Returned { root_bits }) => {
@@ -545,12 +561,14 @@ pub fn drain(
                 // na cena e nenhuma pista de qual é.
                 *select_out = Some(root_bits);
                 toasts.push(Toast::success(
-                    "Removed from library \u{2014} it had no copies, so it came back to the canvas",
+                    ph2d_i18n::tr("app.components.instance_verbs.removed_from_library_it_had_no_copies_so_it_came"),
                 ));
                 true
             }
             Err(_) => {
-                toasts.push(Toast::warning("That is not in the library"));
+                toasts.push(Toast::warning(ph2d_i18n::tr(
+                    "app.components.instance_verbs.that_is_not_in_the_library",
+                )));
                 false
             }
         },

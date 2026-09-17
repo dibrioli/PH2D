@@ -147,9 +147,9 @@ pub(crate) fn upload_cpu_preview(
                     });
                 }
                 Some(Err(e)) => {
-                    toasts.push(Toast::error(format!(
-                        "Painter: upload da preview pra GPU falhou ({e}). \
-                         Tentando novamente no próximo frame."
+                    toasts.push(Toast::error(ph2d_i18n::tr_with(
+                        "app.painter.painter_bridge_upload.preview_upload_failed",
+                        &[("e", &e)],
                     )));
                     release_preview_texture(renderer, painter_preview_gpu);
                 }

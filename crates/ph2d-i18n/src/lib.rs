@@ -27,6 +27,14 @@
 //! assert_eq!(tr("tool.unknown.key"), "tool.unknown.key"); // missing-key passthrough
 //! ```
 
+/// O que a família das INSTÂNCIAS diz (avisos dos verbos de prefab, a paleta de componentes).
+mod app_components;
+/// O que a família do MODELADOR de campo diz (peças, paleta de formas, importar/exportar).
+mod app_field3d;
+/// O que a família do FLIP diz (os avisos de pintar, preencher, colorir, esculpir).
+mod app_flip;
+/// O que a família do PAINTER diz (texturas de pincel, a pré-visualização na GPU).
+mod app_painter;
 /// As strings do navegador de assets.
 mod asset_browser;
 /// As strings dos dois painéis de áudio (editor + mixer).
@@ -515,6 +523,10 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| vector_engine::tr(k))
             .or_else(|| shell::tr(k))
             .or_else(|| shell_media::tr(k))
+            .or_else(|| app_components::tr(k))
+            .or_else(|| app_field3d::tr(k))
+            .or_else(|| app_flip::tr(k))
+            .or_else(|| app_painter::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

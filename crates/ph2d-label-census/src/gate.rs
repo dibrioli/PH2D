@@ -94,3 +94,60 @@ pub fn chaves(repo: &Path, prefixo: &str, tabelas: &[&str]) -> Chaves {
             .collect(),
     }
 }
+
+/// Uma isenção de FICHEIRO INTEIRO: `(ficheiro relativo a `src/`, porquê)`.
+pub type Isento = (&'static str, &'static str);
+
+/// ⭐ **Uma cena de smoke ou uma sonda** — a régua é o NOME do ficheiro.
+///
+/// ⛔ Um nome é uma enumeração, e uma enumeração que deixa de casar **emudece** (HOWTO §2.7): quem
+/// a usa paga [`literais_de_cena`] como piso de população no mesmo gate.
+#[must_use]
+pub fn e_de_cena(rel: &str) -> bool {
+    rel.contains("smoke") || rel.contains("probe")
+}
+
+/// Os intrusos de [`intrusos`], menos os FICHEIROS isentos e as cenas de smoke.
+///
+/// ⚠️ **As duas listas medem coisas diferentes**: `excecoes` isenta UM literal (um identificador, um
+/// formato) e `isentos` isenta um ficheiro inteiro (uma cena, uma linha de terminal, o formato de um
+/// ficheiro). A segunda é grosseira de propósito — e é ela que precisa da metade justa.
+#[must_use]
+pub fn intrusos_fora_de(src_root: &Path, excecoes: &[Excecao], isentos: &[Isento]) -> Vec<String> {
+    intrusos(src_root, excecoes)
+        .into_iter()
+        .filter(|l| {
+            let rel = l.split(':').next().unwrap_or_default();
+            !e_de_cena(rel) && !isentos.iter().any(|(f, _)| *f == rel)
+        })
+        .collect()
+}
+
+/// ⭐ **A metade justa das isenções de FICHEIRO** — sem mecanismo escrito, ou já sem literal nenhum.
+#[must_use]
+pub fn isentos_mortos(src_root: &Path, isentos: &[Isento]) -> Vec<String> {
+    let hits = language_literals(src_root);
+    let mut out = Vec::new();
+    for (file, why) in isentos {
+        if why.len() <= 40 {
+            out.push(format!(
+                "`{file}`: não diz o mecanismo — uma lista sem mecanismo é uma licença"
+            ));
+        }
+        if !hits.iter().any(|l| l.rel == *file) {
+            out.push(format!(
+                "`{file}`: já não abriga literal nenhum (ou a régua ficou cega) — apague a linha"
+            ));
+        }
+    }
+    out
+}
+
+/// Quantos literais as CENAS de smoke abrigam — o piso de população da régua por NOME.
+#[must_use]
+pub fn literais_de_cena(src_root: &Path) -> usize {
+    language_literals(src_root)
+        .iter()
+        .filter(|l| e_de_cena(&l.rel))
+        .count()
+}

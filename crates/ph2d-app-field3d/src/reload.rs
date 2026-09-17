@@ -98,7 +98,10 @@ pub fn resolve_missing(doc: &FieldDoc) -> Vec<String> {
             // ir procurar. O caminho inteiro fica no log.
             Err(e) => {
                 eprintln!("[field3d] escultura ausente: {key} — {e}");
-                failed.push(format!("Sculpture {name} is missing: {e}"));
+                failed.push(ph2d_i18n::tr_with(
+                    "app.field3d.reload.sculpture_is_missing",
+                    &[("name", &name), ("e", &e)],
+                ));
             }
         }
     }

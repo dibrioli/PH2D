@@ -60,8 +60,15 @@ pub struct Loaded {
 pub fn field_from_file(path: &std::path::Path) -> Result<Loaded, String> {
     let pieces = match ph2d_mesh::read_pieces(path) {
         Ok(p) if !p.is_empty() => p,
-        Ok(_) => return Err("that file has no mesh in it".into()),
-        Err(e) => return Err(format!("could not read it ({e})")),
+        Ok(_) => {
+            return Err(ph2d_i18n::tr("app.field3d.import.that_file_has_no_mesh_in_it").into());
+        }
+        Err(e) => {
+            return Err(ph2d_i18n::tr_with(
+                "app.field3d.import.could_not_read_it",
+                &[("e", &e)],
+            ));
+        }
     };
 
     // ⚠️ **As peças de um OBJ viram UM corpo.** Uma escultura entra na booleana como uma coisa só —
@@ -69,8 +76,12 @@ pub fn field_from_file(path: &std::path::Path) -> Result<Loaded, String> {
     // arquivo é a escultura.
     let refs: Vec<(&ph2d_mesh::Mesh, Pose)> =
         pieces.iter().map(|p| (&p.mesh, Pose::IDENTITY)).collect();
-    let mesh =
-        ph2d_mesh::merge(&refs).map_err(|e| format!("could not merge its pieces ({e:?})"))?;
+    let mesh = ph2d_mesh::merge(&refs).map_err(|e| {
+        ph2d_i18n::tr_with(
+            "app.field3d.import.could_not_merge_its_pieces",
+            &[("e_", &format!("{:?}", e))],
+        )
+    })?;
     field_from_mesh(mesh)
 }
 
@@ -106,7 +117,7 @@ pub fn field_from_mesh(mut mesh: ph2d_mesh::Mesh) -> Result<Loaded, String> {
     let t0 = std::time::Instant::now();
     let field =
         ph2d_field_mesh::SampledField::from_mesh(&mesh, ph2d_field_mesh::DEFAULT_RESOLUTION)
-            .ok_or_else(|| "that mesh is empty".to_string())?;
+            .ok_or_else(|| ph2d_i18n::tr("app.field3d.import.that_mesh_is_empty").to_string())?;
     Ok(Loaded {
         field,
         extent,
@@ -131,13 +142,25 @@ pub const SCENE_KEY: &str = "scene:sculpt";
 pub fn field3d_scene_sculpt(mesh: ph2d_mesh::Mesh) -> String {
     let loaded = match field_from_mesh(mesh) {
         Ok(l) => l,
-        Err(e) => return format!("Could not use the scene sculpture: {e}"),
+        Err(e) => {
+            return ph2d_i18n::tr_with(
+                "app.field3d.import.could_not_use_the_scene_sculpture",
+                &[("e", &e)],
+            );
+        }
     };
     let (tris, ms, cell) = (loaded.tris, loaded.millis, loaded.field.cell());
     crate::smoke::register_sampled(SCENE_KEY, std::sync::Arc::new(loaded.field));
     crate::smoke::ask_spawn_sculpt(SCENE_KEY.to_string());
     crate::smoke::ask_sculpt_extent(loaded.extent);
-    format!("Scene sculpture in: {tris} tris -> field in {ms:.0} ms (detail {cell:.4})")
+    ph2d_i18n::tr_with(
+        "app.field3d.import.scene_sculpture_in_tris_field_in_ms_detail",
+        &[
+            ("tris", &tris),
+            ("ms_0", &format!("{:.0}", ms)),
+            ("cell_4", &format!("{:.4}", cell)),
+        ],
+    )
 }
 
 /// Abre o diálogo, lê o arquivo, constrói o campo e **anota** a escultura para o próximo quadro.
@@ -161,7 +184,13 @@ pub fn field3d_import(toasts: &mut ph2d_editor_core::ToastQueue) {
     let loaded = match field_from_file(&path) {
         Ok(l) => l,
         Err(e) => {
-            say(toasts, format!("Could not import {name}: {e}"));
+            say(
+                toasts,
+                ph2d_i18n::tr_with(
+                    "app.field3d.import.could_not_import",
+                    &[("name", &name), ("e", &e)],
+                ),
+            );
             return;
         }
     };
@@ -175,7 +204,15 @@ pub fn field3d_import(toasts: &mut ph2d_editor_core::ToastQueue) {
 
     say(
         toasts,
-        format!("Imported {name}: {tris} tris -> field in {ms:.0} ms (detail {cell:.4})"),
+        ph2d_i18n::tr_with(
+            "app.field3d.import.imported_tris_field_in_ms_detail",
+            &[
+                ("name", &name),
+                ("tris", &tris),
+                ("ms_0", &format!("{:.0}", ms)),
+                ("cell_4", &format!("{:.4}", cell)),
+            ],
+        ),
     );
 }
 
@@ -221,8 +258,9 @@ pub fn field3d_relink(entity: u64, toasts: &mut ph2d_editor_core::ToastQueue) {
     let loaded = match field_from_file(&path) {
         Ok(l) => l,
         Err(e) => {
-            toasts.push(ph2d_editor_core::Toast::info(format!(
-                "Could not relink to {name}: {e}"
+            toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr_with(
+                "app.field3d.import.could_not_relink_to",
+                &[("name", &name), ("e", &e)],
             )));
             return;
         }
@@ -234,8 +272,13 @@ pub fn field3d_relink(entity: u64, toasts: &mut ph2d_editor_core::ToastQueue) {
     // ⚠️ **A ESCALA fica como está**, ao contrário da importação: a peça já tem a pose que o artista
     // lhe deu, e um arquivo novo que a re-enquadrasse desfazia esse trabalho. *Religar troca a
     // fonte, não a colocação.*
-    toasts.push(ph2d_editor_core::Toast::info(format!(
-        "Relinked to {name}: {tris} tris -> field in {ms:.0} ms"
+    toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr_with(
+        "app.field3d.import.relinked_to_tris_field_in_ms",
+        &[
+            ("name", &name),
+            ("tris", &tris),
+            ("ms_0", &format!("{:.0}", ms)),
+        ],
     )));
 }
 

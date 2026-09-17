@@ -71,9 +71,12 @@ pub(super) fn apply(
                         Some(super::acts::ACT_ISOLATE) => {
                             let on = crate::smoke::toggle_isolate(Some(one.to_bits()));
                             crate::notice::say(if on {
-                                "Isolated: showing only this object".into()
+                                ph2d_i18n::tr(
+                                    "app.field3d.scene_intents.isolated_showing_only_this_object",
+                                )
+                                .into()
                             } else {
-                                "Isolation off: the whole part is back".into()
+                                ph2d_i18n::tr("app.field3d.scene_intents.isolation_off_the_whole_part_is_back").into()
                             });
                         }
                         // ⭐⭐ **LARGAR o desenho** (W57) — a forma FICA com a última que teve.
@@ -87,7 +90,7 @@ pub(super) fn apply(
                                 .entity_mut(one)
                                 .remove::<ph2d_field_ecs::FieldProfileSource>();
                             crate::notice::say(
-                                "Unlinked: this shape no longer follows the drawing".into(),
+                                ph2d_i18n::tr("app.field3d.scene_intents.unlinked_this_shape_no_longer_follows_the_drawin").into(),
                             );
                         }
                         // ⭐⭐ **LIGAR ao contorno escolhido** (W57).
@@ -105,7 +108,7 @@ pub(super) fn apply(
                                         level: ph2d_field::DEFAULT_PROFILE_RESOLUTION,
                                     });
                                 crate::notice::say(
-                                    "Linked: this shape now follows the selected drawing".into(),
+                                    ph2d_i18n::tr("app.field3d.scene_intents.linked_this_shape_now_follows_the_selected_drawi").into(),
                                 );
                             }
                         }
@@ -203,9 +206,9 @@ pub(super) fn apply(
                                 // escolhido passa a estar um nível abaixo, e nada na tela explica
                                 // porquê. ⚠️ Diz **quantos** entraram, que é o que distingue
                                 // *"criei um grupo com esta forma"* de *"embrulhei as três"*.
-                                crate::notice::say(format!(
-                                    "Group created with {} object(s) inside",
-                                    many.len()
+                                crate::notice::say(ph2d_i18n::tr_with(
+                                    "app.field3d.scene_intents.group_created_with_object_s_inside",
+                                    &[("many", &(many.len()))],
                                 ));
                             }
                         }
@@ -305,9 +308,9 @@ pub(super) fn add_shape(
     // em que abriu. *Uma affordance que envelheceu não pode virar um gesto que falha em silêncio.*
     let (live_sculpt, profile) = crate::smoke::palette_conditions();
     if !crate::shapes::available(shape, live_sculpt, profile) {
-        crate::notice::say(format!(
-            "{}: not available right now",
-            ph2d_i18n::tr(shape.key)
+        crate::notice::say(ph2d_i18n::tr_with(
+            "app.field3d.scene_intents.not_available_right_now",
+            &[("shape", &(ph2d_i18n::tr(shape.key)))],
         ));
         return None;
     }

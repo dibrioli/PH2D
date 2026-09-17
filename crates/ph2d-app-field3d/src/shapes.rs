@@ -66,18 +66,22 @@ impl Family {
         Family::Imported,
     ];
 
-    /// O título do grupo na paleta. ⚠️ Em inglês e literal — a paleta é do `ph2d-editor-core` e
-    /// recebe `String`, não chave (HR-15: quem traduz é quem pinta, e aqui quem pinta é o widget
-    /// genérico, que recebe o rótulo já resolvido; é o que a paleta de componentes faz).
+    /// O título do grupo na paleta — **resolvido da tabela** (`app.field3d.shapes.*`).
+    ///
+    /// ⚠️⚠️ **A redacção anterior desta nota argumentava o contrário** (*«em inglês e literal — quem
+    /// traduz é quem pinta, e aqui quem pinta é o widget genérico»*) e é exactamente a forma que o
+    /// HR-15 recusa: um widget genérico recebe o rótulo **já resolvido**, logo quem o resolve é
+    /// **a fonte do rótulo**, que é este `match`. A `Family` é o id (a ordem dela é a ordem dos
+    /// grupos); o título é só o que se lê.
     pub fn title(self) -> &'static str {
         match self {
-            Family::Blocks => "Blocks",
-            Family::Round => "Round",
-            Family::Rings => "Rings & tubes",
-            Family::Plates => "Plates",
-            Family::Signs => "Signs & symbols",
-            Family::Drawn => "From a drawing",
-            Family::Imported => "Imported",
+            Family::Blocks => ph2d_i18n::tr("app.field3d.shapes.blocks"),
+            Family::Round => ph2d_i18n::tr("app.field3d.shapes.round"),
+            Family::Rings => ph2d_i18n::tr("app.field3d.shapes.rings_and_tubes"),
+            Family::Plates => ph2d_i18n::tr("app.field3d.shapes.plates"),
+            Family::Signs => ph2d_i18n::tr("app.field3d.shapes.signs_and_symbols"),
+            Family::Drawn => ph2d_i18n::tr("app.field3d.shapes.from_a_drawing"),
+            Family::Imported => ph2d_i18n::tr("app.field3d.shapes.imported"),
         }
     }
 

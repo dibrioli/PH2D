@@ -43,7 +43,8 @@ pub fn from_selection(scene: &VecScene, closed: &[VecPathId], which: ProfileShap
     if closed.is_empty() {
         // ⚠️ Não devia acontecer — o botão só é oferecido com contorno escolhido —, mas dizê-lo é
         // mais barato do que um `expect` que derruba o app se a costura se soltar.
-        return "Draw and select a closed shape first".to_string();
+        return ph2d_i18n::tr("app.field3d.profile.draw_and_select_a_closed_shape_first")
+            .to_string();
     }
     // ⭐⭐⭐ **TODA forma escolhida vira peça** (W74) — e não só a primeira.
     //
@@ -99,30 +100,52 @@ pub fn from_selection(scene: &VecScene, closed: &[VecPathId], which: ProfileShap
     if made == 0 {
         // ⚠️ **A recusa do documento ganha à ausência**: ela diz ao artista o que corrigir, e
         // «já não está na cena» é a frase de quem apagou o desenho entre o clique e o quadro.
-        return refused
-            .unwrap_or_else(|| "The selected shape is no longer in the scene".to_string());
+        return refused.unwrap_or_else(|| {
+            ph2d_i18n::tr("app.field3d.profile.the_selected_shape_is_no_longer_in_the_scene")
+                .to_string()
+        });
     }
     let verb = match which {
-        ProfileShape::Extrude => "Extruded",
-        ProfileShape::Revolve => "Revolved",
+        ProfileShape::Extrude => ph2d_i18n::tr("app.field3d.profile.extruded"),
+        ProfileShape::Revolve => ph2d_i18n::tr("app.field3d.profile.revolved"),
     };
     // ⚠️ **O singular é o texto de sempre** — ele é o caso normal, e mudá-lo para «1 shape» tornaria
     // a mensagem de toda a gente mais fria para servir a excepção.
     let axis = match which {
         ProfileShape::Extrude => "",
-        ProfileShape::Revolve => " around Y",
+        ProfileShape::Revolve => ph2d_i18n::tr("app.field3d.profile.around_y"),
     };
     let head = if made == 1 {
-        format!("{verb} the shape{axis} ({edges} edges)")
+        ph2d_i18n::tr_with(
+            "app.field3d.profile.the_shape_edges",
+            &[("verb", &verb), ("axis", &axis), ("edges", &edges)],
+        )
     } else {
-        format!("{verb} {made} shapes{axis} ({edges} edges)")
+        ph2d_i18n::tr_with(
+            "app.field3d.profile.shapes_edges",
+            &[
+                ("verb", &verb),
+                ("made", &made),
+                ("axis", &axis),
+                ("edges", &edges),
+            ],
+        )
     };
     // ⭐ **E o que ficou de fora é DITO** — foi a ausência desta frase que fez o defeito ser mudo.
     match (gone, refused) {
         (0, None) => head,
-        (0, Some(why)) => format!("{head}. One was skipped: {why}"),
-        (n, None) => format!("{head}. {n} were no longer in the scene"),
-        (n, Some(why)) => format!("{head}. {n} were gone, and one was skipped: {why}"),
+        (0, Some(why)) => ph2d_i18n::tr_with(
+            "app.field3d.profile.one_was_skipped",
+            &[("head", &head), ("why", &why)],
+        ),
+        (n, None) => ph2d_i18n::tr_with(
+            "app.field3d.profile.were_no_longer_in_the_scene",
+            &[("head", &head), ("n", &n)],
+        ),
+        (n, Some(why)) => ph2d_i18n::tr_with(
+            "app.field3d.profile.were_gone_and_one_was_skipped",
+            &[("head", &head), ("n", &n), ("why", &why)],
+        ),
     }
 }
 
@@ -134,10 +157,14 @@ pub fn from_selection(scene: &VecScene, closed: &[VecPathId], which: ProfileShap
 pub fn explain(e: &ph2d_field_profile::CookError) -> String {
     use ph2d_field_profile::CookError as C;
     match e {
-        C::OpenContour { .. } => "This shape is open — close it before making it solid".to_string(),
-        C::Empty => "This shape has no points".to_string(),
+        C::OpenContour { .. } => {
+            ph2d_i18n::tr("app.field3d.profile.this_shape_is_open_close_it_before_making_it_sol")
+                .to_string()
+        }
+        C::Empty => ph2d_i18n::tr("app.field3d.profile.this_shape_has_no_points").to_string(),
         C::Rejected(_) => {
-            "This outline cannot become a solid — it may cross itself or be too small".to_string()
+            ph2d_i18n::tr("app.field3d.profile.this_outline_cannot_become_a_solid_it_may_cross")
+                .to_string()
         }
     }
 }

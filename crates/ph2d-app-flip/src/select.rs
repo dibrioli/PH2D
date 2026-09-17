@@ -427,9 +427,9 @@ pub fn canvas_down(
     let Some((oid, lid, did)) = visible_drawing(f.flip, playhead, active_layer) else {
         // Camada travada, ou quadro sem desenho: DIZ, em vez de engolir o clique em silêncio
         // (o mesmo princípio dos erros do balde).
-        toasts.push(ph2d_editor_core::Toast::warning(
-            "Edit: the layer is locked, or has no drawing on this frame",
-        ));
+        toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
+            "app.flip.select.edit_the_layer_is_locked_or_has_no_drawing_on_th",
+        )));
         return (true, true);
     };
     // **Os cortadores do QUADRO** (§4.B) saem do objeto INTEIRO — todas as camadas visíveis,
@@ -473,9 +473,9 @@ pub fn canvas_down(
         let instanced = drawing.is_instanced();
         state.edit_gesture = Some(match plan {
             DownPoints::Move { .. } if instanced => {
-                toasts.push(ph2d_editor_core::Toast::warning(
-                    "Point move needs exclusive art - Unlink the key first",
-                ));
+                toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
+                    "app.flip.select.point_move_needs_exclusive_art_unlink_the_key_fi",
+                )));
                 crate::edit_gesture::EditGesture::Click
             }
             DownPoints::Move { collapse_to } => crate::edit_gesture::EditGesture::MovePoints {

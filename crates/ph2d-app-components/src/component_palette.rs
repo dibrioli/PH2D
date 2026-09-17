@@ -147,11 +147,13 @@ fn make_item(desc: &ComponentDesc, applicable: bool) -> PaletteItem {
     let mut label = desc.display_name.to_string();
     let brings = brings_along(desc);
     if !brings.is_empty() {
-        label.push_str("  \u{2014}  brings ");
+        label.push_str(ph2d_i18n::tr("app.components.component_palette.brings"));
         label.push_str(&brings.join(", "));
     }
     if !applicable {
-        label.push_str("  \u{2014}  not for this object type");
+        label.push_str(ph2d_i18n::tr(
+            "app.components.component_palette.not_for_this_object_type_2",
+        ));
     }
     PaletteItem {
         label,
@@ -201,7 +203,10 @@ pub(crate) fn build(
         }
         if !other.is_empty() {
             subs.push(PaletteSub {
-                title: Some("Not for this object type".to_string()),
+                title: Some(
+                    ph2d_i18n::tr("app.components.component_palette.not_for_this_object_type")
+                        .to_string(),
+                ),
                 items: other,
             });
         }
@@ -212,13 +217,13 @@ pub(crate) fn build(
         });
     }
     PaletteModel {
-        title: "Add Component".to_string(),
+        title: ph2d_i18n::tr("app.components.component_palette.add_component").to_string(),
         groups,
         // ⭐ **A caixa *Show all*** (ADR-0166 / F3) — o que revela o inaplicável, esmaecido e com a
         // razão. ⚠️ Ela é do MODELO e não do widget: o estado vive na shell (`AppGfx`), e um
         // clique nela reabre a paleta com o modelo reconstruído.
         toggle: Some(ph2d_editor_core::widget::command_palette::PaletteToggle {
-            label: "Show all".to_string(),
+            label: ph2d_i18n::tr("app.components.component_palette.show_all").to_string(),
             on: show_all,
         }),
     }

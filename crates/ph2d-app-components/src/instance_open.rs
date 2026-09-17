@@ -44,15 +44,16 @@ pub fn open_prefab(
         .map(|s| s.0)
         .filter(|_| sim.world().get::<MasterRoot>(subject).is_some())
     else {
-        toasts.push(Toast::warning(
-            "That is not a copy of a prefab \u{2014} pick one, or the prefab row",
-        ));
+        toasts.push(Toast::warning(ph2d_i18n::tr(
+            "app.components.instance_open.that_is_not_a_copy_of_a_prefab_pick_one_or_the_p",
+        )));
         return false;
     };
     *select_out = Some(subject.to_bits());
     let name = crate::instance_verbs::master_named(sim, id).unwrap_or_else(|| "prefab".to_string());
-    toasts.push(Toast::success(format!(
-        "Editing \u{201c}{name}\u{201d} \u{2014} move a piece and every copy follows"
+    toasts.push(Toast::success(ph2d_i18n::tr_with(
+        "app.components.instance_open.editing_move_a_piece_and_every_copy_follows",
+        &[("name", &name)],
     )));
     // ⚠️ **`false`, e não `true`:** seleccionar não é editar. Devolver `true` poria um passo de undo
     // sobre um gesto de *ver* — a mesma lei do *Select users* do cartão da biblioteca.

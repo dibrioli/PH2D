@@ -63,7 +63,8 @@ pub fn decide(locked: Option<u64>, target: Option<u64>, additive: bool) -> Decis
 
 /// A mensagem que a recusa mostra. Uma só, e nomeia **a saída** — um aviso que diz apenas *"não
 /// pode"* deixa o artista sem o passo seguinte.
-pub const REFUSAL: &str = "Leave the Painter to select another sprite";
+pub const REFUSAL: ph2d_i18n::TextKey =
+    ph2d_i18n::TextKey::new("app.painter.painter_lock.leave_the_painter_to_select_another_sprite");
 
 /// A sprite que o Painter tem aberta, ou `None` quando ele não está ativo.
 pub fn locked_entity(

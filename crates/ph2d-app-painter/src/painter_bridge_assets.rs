@@ -12,25 +12,31 @@ use ph2d_editor_core::toast::{Toast, ToastQueue};
 /// cancelled the dialog; `Err` = a read/decode failure. Shared by the Grain + Shape importers.
 fn pick_brush_rgba(asset_db: &ph2d_asset::AssetDb) -> Result<Option<(Vec<u8>, u32, u32)>, String> {
     let Some(path) = rfd::FileDialog::new()
-        .add_filter("Image (PNG / WEBP / JPEG)", &["png", "webp", "jpg", "jpeg"])
+        .add_filter(
+            ph2d_i18n::tr("app.painter.painter_bridge_assets.image_png_webp_jpeg"),
+            &["png", "webp", "jpg", "jpeg"],
+        )
         .pick_file()
     else {
         return Ok(None); // cancelled
     };
-    let bytes = std::fs::read(&path).map_err(|e| format!("read: {e}"))?;
-    let id = asset_db
-        .insert_image_bytes(&bytes)
-        .map_err(|e| format!("decode: {e}"))?;
-    let asset = asset_db
-        .get(&id)
-        .ok_or_else(|| "asset missing".to_string())?;
+    let bytes = std::fs::read(&path)
+        .map_err(|e| ph2d_i18n::tr_with("app.painter.painter_bridge_assets.read", &[("e", &e)]))?;
+    let id = asset_db.insert_image_bytes(&bytes).map_err(|e| {
+        ph2d_i18n::tr_with("app.painter.painter_bridge_assets.decode", &[("e", &e)])
+    })?;
+    let asset = asset_db.get(&id).ok_or_else(|| {
+        ph2d_i18n::tr("app.painter.painter_bridge_assets.asset_missing").to_string()
+    })?;
     // ⚠️ `image_rgba8` e não um `match` na variante: o documento do Painter é de 8 bits, por isso
     // converter para baixo é a resposta certa (plano `docs/Sprite_projeto/18`, auditoria da W2).
     // Casar a variante fazia uma sprite de 16 bits recusar-se a abrir no Painter com "not an RGBA
     // image", que é uma mensagem falsa sobre uma imagem que É RGBA.
     match asset.image_rgba8() {
         Some((width, height, px)) => Ok(Some((px.into_owned(), width, height))),
-        None => Err("not an RGBA image".to_string()),
+        None => {
+            Err(ph2d_i18n::tr("app.painter.painter_bridge_assets.not_an_rgba_image").to_string())
+        }
     }
 }
 
@@ -57,12 +63,17 @@ pub(super) fn load_brush_texture_image(
     match pick_brush_rgba(asset_db) {
         Ok(Some((rgba, w, h))) => {
             painter.set_brush_texture_image(to_luminance(&rgba), w, h);
-            toasts.push(Toast::success("Brush texture loaded"));
+            toasts.push(Toast::success(ph2d_i18n::tr(
+                "app.painter.painter_bridge_assets.brush_texture_loaded",
+            )));
         }
         Ok(None) => painter.set_brush_texture_kind(0), // cancelled → no texture
         Err(e) => {
             painter.set_brush_texture_kind(0); // revert on failure
-            toasts.push(Toast::error(format!("Texture load failed: {e}")));
+            toasts.push(Toast::error(ph2d_i18n::tr_with(
+                "app.painter.painter_bridge_assets.texture_load_failed",
+                &[("e", &e)],
+            )));
         }
     }
 }
@@ -82,12 +93,17 @@ pub(super) fn load_brush_shape_image(
             // existia para o sprite do documento, vale para uma imagem importada também. `source_doc`
             // é `None` — estes pixels não vieram de entidade nenhuma, então nada os re-captura.
             painter.set_brush_shape_image_rgba(&rgba, w, h, None);
-            toasts.push(Toast::success("Brush shape loaded"));
+            toasts.push(Toast::success(ph2d_i18n::tr(
+                "app.painter.painter_bridge_assets.brush_shape_loaded",
+            )));
         }
         Ok(None) => painter.set_brush_shape_kind(0), // cancelled → revert Image to None (falloff)
         Err(e) => {
             painter.set_brush_shape_kind(0); // revert on failure
-            toasts.push(Toast::error(format!("Shape load failed: {e}")));
+            toasts.push(Toast::error(ph2d_i18n::tr_with(
+                "app.painter.painter_bridge_assets.shape_load_failed",
+                &[("e", &e)],
+            )));
         }
     }
 }

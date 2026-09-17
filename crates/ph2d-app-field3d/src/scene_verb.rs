@@ -109,7 +109,7 @@ pub fn verbs_for(
 ///
 /// ⛔ E é por isso que o `ISO` continua a ganhar aos dois: ele é a única que explica **uma ausência**
 /// (por que todo o resto desapareceu).
-pub const BASE_BADGE: &str = "BSE";
+pub const BASE_BADGE: ph2d_i18n::TextKey = ph2d_i18n::TextKey::new("app.field3d.scene_verb.bse");
 
 /// ⭐⭐ **O selo do VERBO na linha da Hierarquia** — `None` para quem não participa de receita.
 ///
@@ -128,11 +128,11 @@ pub fn verb_badge(
     e: bevy_ecs::entity::Entity,
 ) -> Option<&'static str> {
     Some(match ph2d_field_ecs::verb_role(world, e)? {
-        ph2d_field_ecs::VerbRole::Base => BASE_BADGE,
+        ph2d_field_ecs::VerbRole::Base => BASE_BADGE.tr(),
         ph2d_field_ecs::VerbRole::Inherited(op) | ph2d_field_ecs::VerbRole::Own(op) => match op {
-            Op::Union(_) => "UNI",
-            Op::Difference(_) => "SUB",
-            Op::Intersection(_) => "INT",
+            Op::Union(_) => ph2d_i18n::tr("app.field3d.scene_verb.uni"),
+            Op::Difference(_) => ph2d_i18n::tr("app.field3d.scene_verb.sub"),
+            Op::Intersection(_) => ph2d_i18n::tr("app.field3d.scene_verb.int"),
         },
     })
 }

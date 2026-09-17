@@ -63,24 +63,41 @@ thread_local! {
 /// escolher as palavras.
 pub fn explain(err: &FieldError) -> String {
     match err {
-        FieldError::BadRoot => "This piece has nothing the model can start from".into(),
+        FieldError::BadRoot => {
+            ph2d_i18n::tr("app.field3d.notice.this_piece_has_nothing_the_model_can_start_from")
+                .into()
+        }
         FieldError::ForwardReference { .. } => {
-            "Two parts of this piece point at each other in a loop".into()
+            ph2d_i18n::tr("app.field3d.notice.two_parts_of_this_piece_point_at_each_other_in_a")
+                .into()
         }
-        FieldError::EmptyCombine { .. } => "An operation here has nothing left to combine".into(),
-        FieldError::NonPositive { what, .. } => {
-            format!("A shape here has a {what} of zero or less")
+        FieldError::EmptyCombine { .. } => {
+            ph2d_i18n::tr("app.field3d.notice.an_operation_here_has_nothing_left_to_combine").into()
         }
-        FieldError::RoundTooLarge { round, limit, .. } => {
-            format!("The rounding here ({round:.3}) is bigger than the shape can take ({limit:.3})")
+        FieldError::NonPositive { what, .. } => ph2d_i18n::tr_with(
+            "app.field3d.notice.a_shape_here_has_a_of_zero_or_less",
+            &[("what", &what)],
+        ),
+        FieldError::RoundTooLarge { round, limit, .. } => ph2d_i18n::tr_with(
+            "app.field3d.notice.the_rounding_here_is_bigger_than_the_shape_can_t",
+            &[
+                ("round_3", &format!("{:.3}", round)),
+                ("limit_3", &format!("{:.3}", limit)),
+            ],
+        ),
+        FieldError::BadScale { .. } => {
+            ph2d_i18n::tr("app.field3d.notice.a_shape_here_has_an_impossible_size").into()
         }
-        FieldError::BadScale { .. } => "A shape here has an impossible size".into(),
         FieldError::ProfileCrossesAxis { .. } => {
-            "The drawn profile crosses the axis it turns around".into()
+            ph2d_i18n::tr("app.field3d.notice.the_drawn_profile_crosses_the_axis_it_turns_arou")
+                .into()
         }
-        FieldError::EmptySampledKey { .. } => "A sculpture here has no file behind it".into(),
+        FieldError::EmptySampledKey { .. } => {
+            ph2d_i18n::tr("app.field3d.notice.a_sculpture_here_has_no_file_behind_it").into()
+        }
         FieldError::ModsOnSampled { .. } => {
-            "A sculpture cannot take shell, offset, mirror or the other modifiers".into()
+            ph2d_i18n::tr("app.field3d.notice.a_sculpture_cannot_take_shell_offset_mirror_or_t")
+                .into()
         }
     }
 }

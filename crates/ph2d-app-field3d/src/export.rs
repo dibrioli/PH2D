@@ -161,7 +161,14 @@ fn piece_origin_note(mesh: &ph2d_mesh::Mesh) -> String {
         f32::midpoint(b.min[1], b.max[1]),
         f32::midpoint(b.min[2], b.max[2]),
     ];
-    format!(" · at ({:.2}, {:.2}, {:.2})", c[0], c[1], c[2])
+    ph2d_i18n::tr_with(
+        "app.field3d.export.at",
+        &[
+            ("c_2", &format!("{:.2}", c[0])),
+            ("c2_2", &format!("{:.2}", c[1])),
+            ("c3_2", &format!("{:.2}", c[2])),
+        ],
+    )
 }
 
 #[cfg(test)]
@@ -298,11 +305,17 @@ pub fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor_core::ToastQu
     // ⚠️ **Uma de cada vez, e a recusa é EM ALTO** — ver [`crate::export_job`]. Recusar em
     // silêncio deixaria o artista a concluir que o botão está partido.
     if crate::export_job::is_running() {
-        say(toasts, "An export is already running".into());
+        say(
+            toasts,
+            ph2d_i18n::tr("app.field3d.export.an_export_is_already_running").into(),
+        );
         return;
     }
     let Some(doc) = crate::smoke::with_smoke(|s| s.doc.clone()).flatten() else {
-        say(toasts, "Nothing to export: the part is empty".into());
+        say(
+            toasts,
+            ph2d_i18n::tr("app.field3d.export.nothing_to_export_the_part_is_empty").into(),
+        );
         return;
     };
 
@@ -334,11 +347,14 @@ pub fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor_core::ToastQu
     else {
         say(
             toasts,
-            format!(
-                "Unknown extension: use {}",
-                MeshFormat::ALL
-                    .map(|f| format!(".{}", f.extension()))
-                    .join(", ")
+            ph2d_i18n::tr_with(
+                "app.field3d.export.unknown_extension_use",
+                &[(
+                    "join",
+                    &(MeshFormat::ALL
+                        .map(|f| format!(".{}", f.extension()))
+                        .join(", ")),
+                )],
             ),
         );
         return;
@@ -349,9 +365,15 @@ pub fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor_core::ToastQu
     // vivo leem-se como *"o botão não fez nada"* — o mesmo defeito que a janela cinza tinha, com
     // outra cara. ⛔ E o aviso **não promete um prazo**: ele depende da peça, e um número inventado
     // seria pior que nenhum.
-    say(toasts, "Exporting... the file is being written".into());
+    say(
+        toasts,
+        ph2d_i18n::tr("app.field3d.export.exporting_the_file_is_being_written").into(),
+    );
     if !crate::export_job::spawn(move || export_to_file(level, &doc, &reg, &path, fmt)) {
-        say(toasts, "Could not start the export".into());
+        say(
+            toasts,
+            ph2d_i18n::tr("app.field3d.export.could_not_start_the_export").into(),
+        );
     }
 }
 
@@ -402,14 +424,20 @@ fn export_to_file(
     let t0 = std::time::Instant::now();
     let (mesh, verdict) = match cook(doc, reg, level) {
         Ok(pair) => pair,
-        Err(e) => return format!("Meshing failed: {e:?}"),
+        Err(e) => {
+            return ph2d_i18n::tr_with(
+                "app.field3d.export.meshing_failed",
+                &[("e_", &format!("{:?}", e))],
+            );
+        }
     };
     // ⚠️ **EM INGLÊS, como todo o resto do que o artista lê** — a primeira redação desta
     // linha saiu em português e passou por todo o portão, porque nenhum deles le um `format!`.
     let quality = match &verdict {
-        ph2d_quadchain::Verdict::Adopted(r) => {
-            format!(" · retopology: {:.1}° skew", r.shape.skew_p50)
-        }
+        ph2d_quadchain::Verdict::Adopted(r) => ph2d_i18n::tr_with(
+            "app.field3d.export.retopology_skew",
+            &[("skew_p50_1", &format!("{:.1}", r.shape.skew_p50))],
+        ),
         // ⚠️ **Silencioso quando não muda nada.** Um aviso a dizer *"a melhoria opcional não se
         // aplicou"* seria ruído sobre uma exportação que correu bem.
         _ => String::new(),
@@ -436,13 +464,23 @@ fn export_to_file(
             // andaime: ver [`piece_size`].
             let [sx, sy, sz] = piece_size(&mesh);
             let sitio = piece_origin_note(&mesh);
-            format!(
-                "Exported {quads} quads = {tris} tris, {sx:.2} x {sy:.2} x {sz:.2}, \
-                 {} KB in {ms:.0} ms -- {name} ({}){sitio}{quality}",
-                size / 1024,
-                ph2d_mesh::lost_by(fmt)
+            ph2d_i18n::tr_with(
+                "app.field3d.export.exported_quads_tris_x_x_kb_in_ms",
+                &[
+                    ("quads", &quads),
+                    ("tris", &tris),
+                    ("sx_2", &format!("{:.2}", sx)),
+                    ("sy_2", &format!("{:.2}", sy)),
+                    ("sz_2", &format!("{:.2}", sz)),
+                    ("size", &(size / 1024)),
+                    ("ms_0", &format!("{:.0}", ms)),
+                    ("name", &name),
+                    ("fmt", &(ph2d_mesh::lost_by(fmt))),
+                    ("sitio", &sitio),
+                    ("quality", &quality),
+                ],
             )
         }
-        Err(e) => format!("Export failed: {e}"),
+        Err(e) => ph2d_i18n::tr_with("app.field3d.export.export_failed", &[("e", &e)]),
     }
 }

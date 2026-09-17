@@ -202,25 +202,37 @@ fn attach_one(
     entity_bits: u64,
     name: &str,
 ) -> Result<(), String> {
-    let entity =
-        ph2d_ecs::Entity::try_from_bits(entity_bits).ok_or_else(|| "No such entity".to_string())?;
+    let entity = ph2d_ecs::Entity::try_from_bits(entity_bits).ok_or_else(|| {
+        ph2d_i18n::tr("app.components.component_attach.no_such_entity").to_string()
+    })?;
     let type_id = ph2d_ecs::scene::stable_type_id(name);
-    let entry = registry
-        .get_by_id(type_id)
-        .ok_or_else(|| format!("Unknown component: {name}"))?;
+    let entry = registry.get_by_id(type_id).ok_or_else(|| {
+        ph2d_i18n::tr_with(
+            "app.components.component_attach.unknown_component",
+            &[("name", &name)],
+        )
+    })?;
     // ⚠️ Inalcançável pela paleta (ela só oferece o que se constrói), e por isso mesmo vale uma
     // mensagem em vez de um `return` mudo: chegar aqui significa que a paleta e o registo
     // discordam, e isso é um defeito de programa.
-    let insert = entry
-        .insert_default
-        .ok_or_else(|| format!("{name} has no default to attach"))?;
+    let insert = entry.insert_default.ok_or_else(|| {
+        ph2d_i18n::tr_with(
+            "app.components.component_attach.has_no_default_to_attach",
+            &[("name", &name)],
+        )
+    })?;
     // ⚠️ **Já lá está ⇒ NO-OP.** É o que faz a cascata terminar e o que impede que anexar
     // *Platform Player* num corpo que já existe rebaixe esse corpo ao ponto neutro — o `insert` do
     // bevy substitui, não funde.
     if matches!((entry.serialize)(sim.world(), entity), Ok(Some(_))) {
         return Ok(());
     }
-    insert(sim.world_mut(), entity).map_err(|e| format!("Attach failed: {e}"))?;
+    insert(sim.world_mut(), entity).map_err(|e| {
+        ph2d_i18n::tr_with(
+            "app.components.component_attach.attach_failed",
+            &[("e", &e)],
+        )
+    })?;
     // ⭐ **E o SEED, se este componente tiver um** (ADR-0166 / F3 · a emenda medida na F0).
     //
     // ⚠️ **Depois do `insert_default`, nunca em vez dele:** o valor gravado continua a ser *o ponto

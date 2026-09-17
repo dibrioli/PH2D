@@ -212,14 +212,14 @@ fn a_linked_shape_wears_the_badge_and_a_loose_one_does_not() {
     // re-perguntar o que cada gate ainda mede* — e o que este sempre mediu está agora escrito.
     assert_ne!(
         link_badges().get(&sel[0].to_bits()).copied(),
-        Some(LINK_BADGE),
+        Some(LINK_BADGE.tr()),
         "uma extrusão SOLTA está a usar o selo do vínculo"
     );
     link(sim.world_mut(), sel[0], 7);
     crate::scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0, &crate::scene::no_drawing());
     assert_eq!(
         link_badges().get(&sel[0].to_bits()).copied(),
-        Some(LINK_BADGE),
+        Some(LINK_BADGE.tr()),
         "a forma que segue o desenho não recebeu selo — quem olha a árvore não vê diferença \
          nenhuma entre uma extrusão viva e uma fotografia dela"
     );
@@ -247,7 +247,7 @@ fn an_isolated_linked_node_shows_the_isolation_not_the_link() {
     // O controle: sem isolamento, o mesmo nó usa o selo do vínculo.
     assert_eq!(
         link_badges().get(&sel[0].to_bits()).copied(),
-        Some(LINK_BADGE),
+        Some(LINK_BADGE.tr()),
         "a fixtura só prova a precedência se o nó de facto usasse o outro selo"
     );
 
@@ -255,7 +255,7 @@ fn an_isolated_linked_node_shows_the_isolation_not_the_link() {
     crate::scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0, &crate::scene::no_drawing());
     assert_eq!(
         link_badges().get(&sel[0].to_bits()).copied(),
-        Some(crate::scene::acts::ISOLATE_BADGE),
+        Some(crate::scene::acts::ISOLATE_BADGE.tr()),
         "com as duas famílias na mesma linha, quem tem de aparecer é o estado da VISTA"
     );
     crate::smoke::forget_isolation();
@@ -462,7 +462,7 @@ fn only_the_base_badge_yields_to_the_link_badge() {
     crate::scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0, &crate::scene::no_drawing());
     assert_eq!(
         link_badges().get(&sel[0].to_bits()).copied(),
-        Some(LINK_BADGE),
+        Some(LINK_BADGE.tr()),
         "a BASE ligada a um desenho tinha de mostrar o vínculo — `BSE` repete o que a posição diz"
     );
 

@@ -53,11 +53,17 @@ fn why_not(shape: &Shape, live_sculpt: bool, profile: bool) -> Option<&'static s
         return None;
     }
     Some(match shape.make {
-        Make::Extrude | Make::Revolve => "pick a closed outline in the vector editor first",
-        Make::SculptScene => "there is no sculpture in the scene yet",
+        Make::Extrude | Make::Revolve => ph2d_i18n::tr(
+            "app.field3d.shape_palette.pick_a_closed_outline_in_the_vector_editor_first",
+        ),
+        Make::SculptScene => {
+            ph2d_i18n::tr("app.field3d.shape_palette.there_is_no_sculpture_in_the_scene_yet")
+        }
         // ⚠️ Inalcançável por construção (as duas são sempre possíveis), e escrito assim de
         // propósito: um `_ =>` engoliria em silêncio uma forma nova que passasse a ter condição.
-        Make::Formula(_) | Make::Sculpt => "not available right now",
+        Make::Formula(_) | Make::Sculpt => {
+            ph2d_i18n::tr("app.field3d.shape_palette.not_available_right_now")
+        }
     })
 }
 
@@ -106,7 +112,9 @@ pub fn build_from(shapes: &[Shape], live_sculpt: bool, profile: bool) -> Palette
         }
         if !blocked.is_empty() {
             subs.push(PaletteSub {
-                title: Some("Needs something selected".to_string()),
+                title: Some(
+                    ph2d_i18n::tr("app.field3d.shape_palette.needs_something_selected").to_string(),
+                ),
                 items: blocked,
             });
         }
@@ -117,7 +125,7 @@ pub fn build_from(shapes: &[Shape], live_sculpt: bool, profile: bool) -> Palette
         });
     }
     PaletteModel {
-        title: "Add Shape".to_string(),
+        title: ph2d_i18n::tr("app.field3d.shape_palette.add_shape").to_string(),
         groups,
         // ⚠️ **Sem caixa *Show all***: a paleta de componentes tem-na porque esconde o inaplicável;
         // esta mostra tudo sempre, com a razão ao lado. Não há segunda metade para revelar.

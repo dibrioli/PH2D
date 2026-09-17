@@ -17,8 +17,7 @@
 //!   uma com o mecanismo.
 //! - **Nomes-identificador de entidade** (`Entity_{:x}`, `piece_{}`): dado, não vocabulário.
 
-use ph2d_label_census::gate::{self, Excecao};
-use ph2d_label_census::language_literals;
+use ph2d_label_census::gate::{self, Excecao, Isento};
 
 const TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/shell.rs",
@@ -26,7 +25,7 @@ const TABLES: &[&str] = &[
 ];
 
 /// Um ficheiro isento inteiro, com o mecanismo.
-const FORA: &[(&str, &str)] = &[
+const FORA: &[Isento] = &[
     (
         "app_state_gfx.rs",
         "razões de `#[allow(..., reason = …)]` — texto que o COMPILADOR lê",
@@ -139,20 +138,10 @@ const NOT_LANGUAGE: &[Excecao] = &[
     ),
 ];
 
-fn e_de_smoke(rel: &str) -> bool {
-    rel.contains("smoke") || rel.contains("probe")
-}
-
 #[test]
 fn every_word_the_shell_shows_comes_from_the_string_table() {
     let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let intrusos: Vec<String> = gate::intrusos(&src, NOT_LANGUAGE)
-        .into_iter()
-        .filter(|l| {
-            let rel = l.split(':').next().unwrap_or_default();
-            !e_de_smoke(rel) && !FORA.iter().any(|(f, _)| *f == rel)
-        })
-        .collect();
+    let intrusos = gate::intrusos_fora_de(&src, NOT_LANGUAGE, FORA);
     assert!(
         intrusos.is_empty(),
         "texto com cara de língua escrito no fonte da shell (HR-15):\n  {}\n\n\
@@ -169,24 +158,16 @@ fn every_word_the_shell_shows_comes_from_the_string_table() {
 #[test]
 fn every_named_exemption_still_shelters_what_it_names() {
     let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let todos = language_literals(&src);
-    let mortas = gate::excecoes_mortas(&src, NOT_LANGUAGE);
+    let mortas: Vec<String> = gate::excecoes_mortas(&src, NOT_LANGUAGE)
+        .into_iter()
+        .chain(gate::isentos_mortos(&src, FORA))
+        .collect();
     assert!(
         mortas.is_empty(),
-        "excepções literais mortas:\n  {}",
+        "isenções mortas:\n  {}",
         mortas.join("\n  ")
     );
-    for (f, porque) in FORA {
-        assert!(
-            porque.len() > 40,
-            "a isenção `{f}` não diz o mecanismo — uma lista sem mecanismo é uma licença"
-        );
-        assert!(
-            todos.iter().any(|l| l.rel == *f),
-            "a isenção `{f}` já não abriga literal nenhum — apague a linha"
-        );
-    }
-    let em_smoke = todos.iter().filter(|l| e_de_smoke(&l.rel)).count();
+    let em_smoke = gate::literais_de_cena(&src);
     assert!(
         em_smoke >= 200,
         "as cenas de smoke abrigam {em_smoke} textos — em 2026-09-16 eram 421. Ou elas saíram da \

@@ -399,9 +399,9 @@ pub fn canvas_down(
         // Sem desenho-alvo — camada TRAVADA, ou sem chave com o AutoKey desligado. Também
         // aqui o balde tem de DIZER: consumir o clique e não fazer nada é exatamente o que
         // faz uma ferramenta parecer quebrada.
-        toasts.push(ph2d_editor_core::Toast::warning(
-            "Fill: the layer is locked, or has no drawing on this frame",
-        ));
+        toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
+            "app.flip.fill.fill_the_layer_is_locked_or_has_no_drawing_on_th",
+        )));
         return FillOutcome {
             consumed: true,
             warned: true,
@@ -443,13 +443,17 @@ pub fn canvas_down(
     if let Err(e) = fill_click(drawing, &style, local, px_to_world, w2l) {
         // Um fill que não aconteceu DIZ por quê — em vez de não fazer nada em silêncio.
         let msg = match e {
-            FillError::Leaked => "Fill leaked — raise Gap Closure to seal the outline",
-            FillError::OnBoundary => "Fill: clicked on a line",
-            FillError::Empty => "Fill: nothing to fill here",
-            FillError::Degenerate => "Fill: no region under the cursor",
+            FillError::Leaked => {
+                ph2d_i18n::tr("app.flip.fill.fill_leaked_raise_gap_closure_to_seal_the_outlin")
+            }
+            FillError::OnBoundary => ph2d_i18n::tr("app.flip.fill.fill_clicked_on_a_line"),
+            FillError::Empty => ph2d_i18n::tr("app.flip.fill.fill_nothing_to_fill_here"),
+            FillError::Degenerate => ph2d_i18n::tr("app.flip.fill.fill_no_region_under_the_cursor"),
             // Aponta para o lado CONTRARIO do Leaked: aqui a bola e grande demais para o
             // lugar, entao a saida e BAIXAR o Trap.
-            FillError::BallTooFat => "Fill: Trap is wider than this area — lower it",
+            FillError::BallTooFat => {
+                ph2d_i18n::tr("app.flip.fill.fill_trap_is_wider_than_this_area_lower_it")
+            }
         };
         toasts.push(ph2d_editor_core::Toast::warning(msg));
         warned = true;

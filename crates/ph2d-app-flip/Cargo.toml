@@ -31,6 +31,9 @@ authors.workspace = true
 # a metade de APLICAÇÃO: as leis puras, os construtores de cena, o estado de interacção.
 
 [dependencies]
+# A TABELA DE TEXTOS (HR-15): tudo o que esta crate diz ao artista sai daqui, nunca de um
+# literal no fonte — o gate `every_word_..._comes_from_the_string_table` mede-o.
+ph2d-i18n = { path = "../ph2d-i18n" }
 # ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — importar de
 # `ph2d-app-registry-init` fecharia o ciclo `registry → família → registry`.
 ph2d-app-host = { path = "../ph2d-app-host" }
@@ -108,6 +111,10 @@ ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 # lê sem `cfg` moram nelas (ver `[dependencies]`).
 panel-flip = []
 panel-flip-frames = []
+
+[dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate (`tests/it/`).
+ph2d-label-census = { path = "../ph2d-label-census" }
 
 [lints]
 workspace = true

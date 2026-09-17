@@ -61,8 +61,10 @@ pub fn reconcile(world: &mut World, scene: &VecScene) -> Vec<String> {
                 // apagado volta com um desfazer, e um vínculo largado não volta com nada. A peça
                 // guarda a última forma que teve, que é o que o artista tem na tela.
                 said.push(
-                    "The drawing this shape came from is gone - the shape keeps its last form"
-                        .to_string(),
+                    ph2d_i18n::tr(
+                        "app.field3d.profile_live.the_drawing_this_shape_came_from_is_gone_the_sha",
+                    )
+                    .to_string(),
                 );
             }
             continue;

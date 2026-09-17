@@ -49,7 +49,7 @@ impl crate::App {
             if ph2d_app_painter::painter_lock::decide(locked, target, additive)
                 == ph2d_app_painter::painter_lock::Decision::Refuse
             {
-                toasts.push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL));
+                toasts.push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL.tr()));
                 hierarchy_select_intent = None;
                 self.title_dirty = true;
             }

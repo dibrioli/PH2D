@@ -211,7 +211,7 @@ impl crate::App {
                     ) == ph2d_app_painter::painter_lock::Decision::Refuse =>
                 {
                     gfx.toasts
-                        .push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL));
+                        .push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL.tr()));
                     self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);
                     None
                 }

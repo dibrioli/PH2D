@@ -58,7 +58,7 @@
 //!
 //! Deterministic → `Effect::Temporal`, replays bit-for-bit.
 
-use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
+use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -72,8 +72,39 @@ const VALUE_COL: &str = "v";
 
 /// CFL stability bound for the 2D leapfrog wave: `C = (c·dt)² ≤ 0.5`.
 const CFL_MAX: f32 = 0.49;
-/// Grid side clamp (field cost is O(rows·cols)).
-const MAX_SIDE: i64 = 60;
+/// O tecto do lado da grelha. ⭐ **MEDIDO em 2026-09-17** (ciclo 9, doc 114 §9), e o recurso é o
+/// **orçamento do QUADRO** — não uma lei de crescimento.
+///
+/// ```text
+///   lado   células   quadro/ms   ns/célula   % de um quadro de 60 fps
+///     16       256       0,001         5,7      0,01 %
+///     32     1 024       0,004         3,6      0,02 %
+///     60     3 600       0,010         2,8      0,06 %   ← o tecto ANTIGO
+///    128    16 384       0,046         2,8      0,28 %
+///    256    65 536       0,240         3,7      1,44 %
+///    512   262 144       1,001         3,8      6,00 %
+/// ```
+///
+/// ⚠️ **A medição correu a `load 16` e é conclusiva pelo lado SEGURO**: sob carga um relógio só
+/// pode ler PIOR, logo um número que cabe ali cabe na máquina calma (`CLAUDE.md` §5.0 — *um green
+/// sob carga é conclusivo*). E o `ns/célula` é **plano** (`2,8`–`3,8`), que é o estêncil a ser
+/// `O(células)` sem nenhum joelho escondido.
+///
+/// ⛔⛔ **O valor antigo era `60`, e a justificação escrita ao lado dele era *«field cost is
+/// O(rows·cols)»*** — uma **lei de crescimento**, que descreve como o custo sobe e **não diz onde
+/// ele deixa de caber**. O §0.0 pede o contrário. A `60` este nó usava **0,06 %** de um quadro: o
+/// tecto estava ~`100×` abaixo de qualquer recurso.
+///
+/// ⭐⭐ **E o número não é escolhido: é o do IRMÃO.** O `motion.soft_body` é a outra simulação de
+/// grelha 2D desta casa e o tecto dele é **`512`** — medido, e ele custa **`2,32 ms`** a `512²`
+/// contra os `1,00` deste. *O nó mais BARATO tinha o tecto mais apertado*, e alinhá-los faz a
+/// família responder a mesma coisa à mesma pergunta.
+///
+/// ⏳ **O próximo tecto é o DISPOSITIVO, e é ele que manda** (§0.0): o passo deste nó é um estêncil
+/// explícito — o caso embaraçosamente paralelo —, e na placa `262 144` células são troco. Enquanto
+/// o kernel não existe, este número é o que o caminho de referência sustenta, e está nomeado como
+/// tal (doc 114 §8).
+const MAX_SIDE: i64 = 512;
 /// Baseline dot size (a flat field), and how much a unit of height swells it.
 const SIZE_BASE: f32 = 0.22;
 const SIZE_GAIN: f32 = 1.4;
@@ -517,6 +548,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    // ⭐ O tecto DIGITÁVEL é o clamp; o slider é a faixa de AUTORIA, estritamente abaixo dele — o
+    // mesmo par que o `motion.soft_body` já shipa, e o que o doc 91 pôs em 25 params.
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     // ⚠️ **A porta `inject` fez deste nó um CONSUMIDOR de `falloff`, e o censo apanhou-o.**
     // O gate `every_cpu_only_falloff_reader_declares_it` é derivado, não uma lista: um nó
     // CPU-only que leia a coluna sem a declarar nasce vermelho ali. Sem esta linha o
@@ -530,132 +564,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
-
-static PARAM_HINTS: &[ParamUiHint] = &[
-    ParamUiHint {
-        param: "rows",
-        label: "node.motion.wave.param.rows",
-        min: 2.0,
-        max: 60.0,
-        step: 1.0,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "cols",
-        label: "node.motion.wave.param.cols",
-        min: 2.0,
-        max: 60.0,
-        step: 1.0,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "spacing",
-        label: "node.motion.wave.param.spacing",
-        min: 0.1,
-        max: 4.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "speed",
-        label: "node.motion.wave.param.speed",
-        min: 0.0,
-        max: CFL_MAX,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "damping",
-        label: "node.motion.wave.param.damping",
-        min: 0.0,
-        max: 0.3,
-        step: 0.005,
-        widget: ParamWidget::Slider,
-    },
-    // ⚠️ **O rótulo diz o que a PAREDE faz, não como ela está implementada.** «Sponge» é o
-    // nome da técnica; o artista quer saber se a onda volta ou se some — e é isso que ele lê.
-    // ⚠️ **A faixa é a que a MÃO percorre**, e o `0` do default deixa a porta inerte — um
-    // artista que ligue o fio e não veja nada tem o knob mesmo ali para o dizer.
-    ParamUiHint {
-        param: "inject_gain",
-        label: "node.motion.wave.param.inject_gain",
-        min: 0.0,
-        max: 2.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "edges",
-        label: "node.motion.wave.param.edges",
-        min: 0.0,
-        max: 1.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &[
-                "node.motion.wave.param.edges.0",
-                "node.motion.wave.param.edges.1",
-            ],
-        },
-    },
-    // ⚠️ **PARA ONDE a altura vai** — um seletor NOMEADO, nunca um slider de passos a decorar
-    // (doc 89 folha 06). O vocabulário é o da casa (`motion.drive`), e por isso o artista que
-    // aprendeu «Size» num nó não o re-aprende aqui.
-    ParamUiHint {
-        param: "height_channel",
-        label: "node.motion.wave.param.height_channel",
-        min: 0.0,
-        max: 2.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &[
-                "node.motion.wave.param.height_channel.0",
-                "node.motion.wave.param.height_channel.1",
-                "node.motion.wave.param.height_channel.2",
-            ],
-        },
-    },
-    ParamUiHint {
-        param: "center_x",
-        label: "node.motion.wave.param.center_x",
-        min: -20.0,
-        max: 20.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "center_y",
-        label: "node.motion.wave.param.center_y",
-        min: -20.0,
-        max: 20.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-];
-
-/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
-/// shown. A `Length` is stored in world METRES and the panel resolves the face
-/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
-/// that could pin one would be overriding a setting it does not own.
-///
-/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
-/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
-/// that is wrong is worse than a unit that is missing, because the artist can read
-/// a bare number but a mislabelled one teaches them something false.
-static PARAM_UNITS: &[ParamUnitDecl] = &[
-    ParamUnitDecl {
-        param: "spacing",
-        unit: ParamUnit::Length,
-    },
-    ParamUnitDecl {
-        param: "center_x",
-        unit: ParamUnit::Length,
-    },
-    ParamUnitDecl {
-        param: "center_y",
-        unit: ParamUnit::Length,
-    },
-];
+#[path = "params_ui.rs"]
+mod params_ui;
+use params_ui::{PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]
@@ -664,3 +575,7 @@ mod tests;
 #[cfg(test)]
 #[path = "producers_tests.rs"]
 mod producers_tests;
+
+#[cfg(test)]
+#[path = "teto_tests.rs"]
+mod teto_tests;

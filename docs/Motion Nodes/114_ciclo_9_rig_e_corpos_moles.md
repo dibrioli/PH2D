@@ -432,3 +432,76 @@ que esta secção foi escrita, e uma leitura ali não vale nada. A sonda corre p
 fechou a tabela do ciclo 8 (`ferramentas/medir_quando_calmo.sh`). ⚠️ **Sem esse número, «pôr o
 `motion.wave` na placa» é uma aposta e não uma decisão** — é ele que diz se vale um kernel ou se o
 estêncil já cabe num quadro na malha que o artista usa.
+
+---
+
+## §9 — ✅ W4-bis: o TECTO DO CAMPO, medido — e as três decisões do grupo
+
+Ordem do dono (*«decida pelo padrão ouro buscando o melhor resultado e performance»*). As três
+decisões abaixo saem todas da mesma tabela, medida pelo caminho do produto em **RELEASE**.
+
+### A medição
+
+| lado | células | quadro/ms | ns/célula | % de um quadro de 60 fps |
+|---|---|---|---|---|
+| 16 | 256 | 0,001 | 5,7 | 0,01 % |
+| 32 | 1 024 | 0,004 | 3,6 | 0,02 % |
+| **60** | **3 600** | **0,010** | 2,8 | **0,06 %** ← o tecto ANTIGO |
+| 128 | 16 384 | 0,046 | 2,8 | 0,28 % |
+| 256 | 65 536 | 0,240 | 3,7 | 1,44 % |
+| **512** | **262 144** | **1,001** | 3,8 | **6,00 %** |
+
+⭐⭐ **A leitura correu a `load 16,17` e é conclusiva pelo lado SEGURO.** Sob carga um relógio só
+pode ler **pior**, logo um número que cabe ali cabe na máquina calma — é a lei do `CLAUDE.md` §5.0
+(*um green sob carga é conclusivo; um red sob carga não prova nada*) usada na direcção em que ela
+funciona. ⭐ E o `ns/célula` é **plano** (`2,8`–`3,8`): o estêncil é `O(células)` sem joelho nenhum.
+
+### Decisão 1 — `motion.wave::MAX_SIDE` sobe de `60` para **`512`**
+
+⛔ A `60` este nó usava **`0,06 %`** de um quadro: o tecto estava **~100× abaixo de qualquer
+recurso**, e a justificação escrita ao lado dele (*«field cost is O(rows·cols)»*) era uma lei de
+crescimento e não um recurso — §0.0 exactamente.
+
+⭐⭐⭐ **E o número não foi escolhido: é o do IRMÃO.** O `motion.soft_body` é a outra simulação de
+grelha 2D desta casa, o tecto dele é **`512`**, e ele custa **`2,32 ms`** a `512²` contra os
+**`1,00`** deste. ⇒ *o nó mais BARATO tinha o tecto mais apertado*. Alinhá-los faz a família
+responder a mesma coisa à mesma pergunta, e o recurso passa a estar nomeado: **o orçamento do
+quadro** (`6 %` para o campo sozinho).
+
+⚠️ **E o tecto DIGITÁVEL passou a existir.** Antes, `clamp` e slider valiam ambos `60`: *a
+capacidade do motor acabava onde o dedo acabava*. Agora são o par que o irmão já shipa e que o
+[doc 91](91_os_tetos_que_ninguem_mediu.md) pôs em 25 params — clamp `512`, slider `64` (a faixa de
+autoria, estritamente abaixo).
+
+⛔⛔ **E uma MUTAÇÃO SOBREVIVEU, e ela mudou o desenho dos gates.** O gate que escrevi dentro da
+crate do nó monta os `Params` **à mão** e chama o `simulate` — ele nunca atravessa o
+`clamp(2, MAX_SIDE)`, que vive no `eval`. Encolhi esse clamp para `60` e o gate ficou **VERDE**:
+*um arnês que monta o estado à mão mede a LEI e não a PORTA*, a forma que esta casa já pagou quatro
+vezes noutros módulos. ⇒ o gate do produto vive agora onde um grafo se coze de verdade
+(`o_campo_chega_ao_tecto_pela_porta_do_produto`), e com a mutação ele diz *«o artista pediu 512×512
+e recebeu 3 600 células»*. **3 de 3 mutações sangram.**
+
+### Decisão 2 — a `motion.verlet_rope` FICA em Gauss-Seidel
+
+Medido: **`278` ns por ponto, e a coluna é PLANA** (`276,9` · `277,8` · `278,1`). Uma corda com os
+`100`–`200` pontos que alguém de facto autora custa **`0,03`–`0,06 ms`** — `0,3 %` de um quadro.
+
+⇒ ⭐⭐ **trocar a lei por Jacobi ou por coloração compraria paralelismo numa contagem que ninguém
+alcança, e pagaria com o RESULTADO**: para o mesmo número de iterações a corda fica **mais mole**,
+porque uma correcção deixa de ver a anterior. O padrão-ouro aqui é *não mexer* — a convergência
+exacta é a feature, e os gates que medem quanto ela cai ficam todos de pé.
+
+⚠️ **É uma decisão e não uma omissão**, e fica registada com o número ao lado. O gatilho que a
+reabriria está nomeado: alguém querer cordas de dezenas de milhares de pontos (tecido, cabelo em
+massa), que é outro produto.
+
+### Decisão 3 — o kernel de GPU do `motion.wave` é o PRÓXIMO tecto, não este
+
+O §0.0 diz que *quem manda no tecto é o dispositivo*. Hoje não há kernel, logo `512` é o que o
+**caminho de referência** sustenta — e está nomeado como tal. ⭐ O que a medição mudou é o **preço da
+espera**: com `512²` a custar `1 ms` na CPU, o artista ganha **`73×` mais células hoje**, sem uma
+linha de WGSL e sem nenhum risco de divergência CPU/GPU.
+
+⇒ **o kernel deixa de ser o que destrava o nó e passa a ser o que o leva de `512` a milhões** — com
+o `ns/célula` plano a dizer exactamente quanto ele compraria. *Uma optimização com o número ao lado
+é uma decisão; sem ele era uma aposta.*

@@ -353,7 +353,14 @@ o mesmo `60` (`max: 60.0`), logo o artista também não pode passar dali.
 tectos que OLHOU*, e um nó que aparece numa lista de dívida **paga** lê-se como um nó **sem** dívida.
 A conferência por NOME DE NÓ é o que esconde um segundo tecto no mesmo ficheiro.
 
-⏳ **O instrumento existe e está comitado** — a escada de preço do ciclo 9
+✅ **MEDIDO E CURADO no mesmo dia (2026-09-17):** o tecto sobe para **`512`** — o mesmo do irmão
+`motion.soft_body`, que custa `2,32 ms` a `512²` contra os `1,00 ms` deste (*o nó mais barato tinha
+o tecto mais apertado*). A `60` ele usava **`0,06 %`** de um quadro. A tabela inteira e as três
+decisões estão no [doc 114 §9](114_ciclo_9_rig_e_corpos_moles.md). ⭐ E ele ganhou o **tecto
+digitável** que esta página deu a 25 params e a este não: antes `clamp` e slider valiam ambos `60`,
+logo *a capacidade do motor acabava onde o dedo acabava*.
+
+⏳ ~~**O instrumento existe e está comitado**~~ — a escada de preço do ciclo 9
 ([`motion_rig_relogio.rs`](../../crates/ph2d-app-motion/src/motion_rig_relogio.rs),
 `measure_the_soft_body_group`), que mede o campo a `16`, `32` e `60` de lado pelo caminho do produto.
 ⚠️ **Ela não consegue medir ALÉM do tecto** (pedir `64` devolve `3 600` células), e é isso que torna

@@ -44,6 +44,23 @@ const AMOSTRAS: usize = 9;
 /// O passo de tempo de um quadro a 60 fps — o relógio que o artista tem.
 const DT: f64 = 1.0 / 60.0;
 
+/// A escada dos campos 2D. ⚠️ **`60` é o tecto ANTIGO do `motion.wave`** e fica como degrau de
+/// propósito — é ele que a medição existe para julgar. Um lado acima do tecto vigente **satura**, e
+/// a coluna `linhas` mostra-o (pedir `128` a um campo preso em `60` devolve `3 600`, não `16 384`).
+const LADOS_CAMPO: &[usize] = &[16, 32, 60, 128, 256, 512];
+
+/// A escada dos nós de CONTAGEM, e ela é curta **por medição, não por preguiça**.
+///
+/// ⛔⛔ A primeira redacção desta sonda dava a MESMA escada a todos, e isso era uma armadilha com
+/// dois modos de falha: o `motion.boids` é **`O(N²)`** no caminho da CPU (a sonda em debug mediu
+/// `1 737` → `7 013` → `25 114` ns/linha ao quadruplicar a contagem), logo `512² = 262 144` pontos
+/// **penduraria a corrida**; e uma corda de um quarto de milhão de pontos não é um objecto que
+/// alguém faça — *uma escada que ninguém sobe mede um programa que ninguém corre*.
+///
+/// ⭐ Um campo 2D cresce com a ÁREA e uma corda é 1D: dar-lhes a mesma escada é a confusão que a
+/// coluna `linhas` desta tabela existe para desfazer.
+const LADOS_CONTAGEM: &[usize] = &[16, 32, 60];
+
 /// Um nó do grupo, com a porta por onde o estado dele volta e a alavanca que o faz crescer.
 struct Mole {
     tipo: &'static str,
@@ -175,7 +192,12 @@ fn measure_the_soft_body_group() {
         // ⚠️ `60` é o TECTO do `motion.wave` (`MAX_SIDE`), não um número escolhido: pedir `64`
         // devolve `3 600` células, não `4 096`. A escada pára ali de propósito — medir além do
         // tecto pela porta do produto é impossível, e é isso que esta linha torna visível.
-        for lado in [16usize, 32, 60] {
+        let escada = if mole.tamanho.1.is_some() {
+            LADOS_CAMPO
+        } else {
+            LADOS_CONTAGEM
+        };
+        for &lado in escada {
             let (ms, linhas) = mede(&m, mole, lado);
             #[expect(clippy::cast_precision_loss, reason = "uma contagem de linhas")]
             let ns = if linhas == 0 {
@@ -232,4 +254,46 @@ fn as_portas_de_estado_da_sonda_sao_as_do_manifesto() {
             );
         }
     }
+}
+
+/// ⭐⭐⭐ **O ARTISTA CONSEGUE PEDIR UM CAMPO DO TAMANHO DO TECTO** — pela porta do produto.
+///
+/// ⚠️⚠️ **Este gate existe por causa de uma mutação que SOBREVIVEU.** O gate irmão, dentro da
+/// `ph2d-node-motion-wave`, monta os `Params` à mão e chama o `simulate`: ele nunca atravessa o
+/// `clamp(2, MAX_SIDE)`, que vive no `eval`. Encolhendo esse clamp para `60` — o tecto antigo — o
+/// gate de lá ficava **verde**, e o campo do artista voltava a parar onde parava.
+///
+/// *Um arnês que monta o estado à mão mede a LEI e não a PORTA.* Aqui coze-se um grafo a sério e
+/// conta-se o que volta, que é a única forma de a frase *«o tecto subiu»* ser verificável.
+#[test]
+fn o_campo_chega_ao_tecto_pela_porta_do_produto() {
+    use ph2d_nodegraph::graph::{Edge, Graph};
+    /// O tecto MEDIDO do `motion.wave` (doc 114 §9). ⚠️ Escrito aqui à mão de propósito: a crate do
+    /// nó não o exporta, e um gate que lesse a constante do próprio sujeito não veria o tecto
+    /// descer — *ele pediria o que o sujeito desse.*
+    const TECTO: f32 = 512.0;
+    let m = crate::motion_state::MotionState::new();
+    let mut g = Graph::default();
+    let w = g.add_node("motion.wave".to_string());
+    g.set_param(w, "rows", TECTO);
+    g.set_param(w, "cols", TECTO);
+    let saida = g.add_node("motion.output".to_string());
+    g.connect(Edge {
+        from: (w, 0),
+        to: (saida, 0),
+        delayed: false,
+    })
+    .expect("fio");
+    let mut cook = Cook::new();
+    let s = cook.cook(&g, &m.registry, saida, 0.0).expect("coze")[0]
+        .as_stream()
+        .clone();
+    #[expect(clippy::cast_possible_truncation, reason = "um lado de grelha")]
+    let esperado = (TECTO as usize) * (TECTO as usize);
+    assert_eq!(
+        s.count(),
+        esperado,
+        "o campo parou antes do tecto — o artista pediu {TECTO}x{TECTO} e recebeu {} celulas",
+        s.count()
+    );
 }

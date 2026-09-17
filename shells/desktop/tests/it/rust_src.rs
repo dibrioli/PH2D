@@ -389,12 +389,15 @@ fn the_path_lens_reads_the_children() {
             "a lente dos filhos não chega a `{marca}` — um filho `#[path]` ficou de fora"
         );
     }
+    // ⚠️ **O marcador do PAI muda quando o pai é cortado, e este já mudou uma vez** (16/09: o
+    //    `publish_hierarchy` saiu para um filho no corte por tecto de LOC). O que fica é a porta
+    //    de entrada do módulo, que por definição não pode viajar sem o módulo.
     assert!(
-        !filhos.contains("fn publish_hierarchy("),
+        !filhos.contains("fn publish_gizmo("),
         "o pai entrou na lente dos FILHOS"
     );
     assert!(
-        with_path_children(&pai).contains("fn publish_hierarchy("),
+        with_path_children(&pai).contains("fn publish_gizmo("),
         "a lente inteira perdeu o pai"
     );
 }

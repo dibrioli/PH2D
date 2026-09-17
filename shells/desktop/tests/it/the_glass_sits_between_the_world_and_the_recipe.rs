@@ -22,10 +22,14 @@
 use std::path::Path;
 
 /// O corpo do ficheiro sem comentários — senão o censo lê o que o código DIZ sobre si.
-fn code_of(rel: &str) -> String {
+/// ⭐ **O ficheiro E os filhos `#[path]` dele.** ⚠️ Nasceu em 2026-09-16: o `present.rs` passou o
+/// tecto de 600 LOC por ACUMULAÇÃO e o CHROME saiu para um irmão — as três asserções abaixo
+/// passaram a ler metade do assunto, e duas delas reprovaram sobre produto CORRECTO.
+fn code_of_com_filhos(rel: &str) -> String {
     let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join(rel);
-    let body = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()));
-    body.lines()
+    let inteiro = crate::rust_src::with_path_children(&p);
+    inteiro
+        .lines()
         .map(|l| match l.find("//") {
             Some(i) => &l[..i],
             None => l,
@@ -76,7 +80,7 @@ fn the_encoding_splits_the_world_from_the_recipe() {
 /// do chrome. ⚠️ *Nenhuma das duas metades está errada; a ordem é que é a lei.*
 #[test]
 fn the_glass_runs_before_the_chrome_scene() {
-    let body = code_of("render_loop/present.rs");
+    let body = code_of_com_filhos("render_loop/present.rs");
     let glass = body
         .find("present_frost::glass(")
         .expect("o presente nao poe o vidro — o borrao nunca acontece");
@@ -93,7 +97,7 @@ fn the_glass_runs_before_the_chrome_scene() {
 /// ⭐⭐ **O compositor lê o acumulador quando há vidro** — senão o borrão é feito e deitado fora.
 #[test]
 fn the_compositor_reads_the_world_while_the_glass_is_up() {
-    let body = code_of("render_loop/present.rs");
+    let body = code_of_com_filhos("render_loop/present.rs");
     assert!(
         body.contains("banded || frosting"),
         "o compositor continua a ler a saida do tonemap com o vidro em cima — o quadro sai como \
@@ -107,7 +111,7 @@ fn the_compositor_reads_the_world_while_the_glass_is_up() {
 /// cima. A nítida cobre a própria silhueta, mas o borrão dela **escapa por fora** — um halo.
 #[test]
 fn the_raster_pieces_are_held_back_by_every_background_pass() {
-    let body = code_of("render_loop/present.rs");
+    let body = code_of_com_filhos("render_loop/present.rs");
     assert!(
         body.contains("present_frost::lift("),
         "o quadro deixou de perguntar quem sobe para cima do vidro"

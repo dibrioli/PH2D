@@ -90,8 +90,13 @@ fn both_consumers_read_the_one_field() {
         frame.contains("self.hovered_object,"),
         "a Hierarquia deixou de receber a resposta do quadro — ela voltaria a derivar a sua"
     );
+    // ⚠️ **O PAI E OS FILHOS `#[path]`** — o `publish_hierarchy` saiu para um irmão no corte por
+    //    tecto de LOC de 2026-09-16, e uma lente que lesse só o pai acusava produto CORRECTO.
     assert!(
-        shell("src/render_loop/snapshots.rs").contains("entry.hovered = true"),
+        crate::rust_src::with_path_children(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/snapshots.rs"),
+        )
+        .contains("entry.hovered = true"),
         "a linha da Hierarquia deixou de acender"
     );
 }

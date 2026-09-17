@@ -107,6 +107,27 @@ const FORA: &[Isento] = &[
 /// Um literal isento, com o mecanismo — nomes que são DADO.
 const NOT_LANGUAGE: &[Excecao] = &[
     (
+        "render_loop/fase_script_commits.rs",
+        "Luau",
+        "o NOME DO FORMATO no filtro do diálogo de ficheiro — a mesma natureza do `PNG` ou do \
+         `Ogg`: ele nomeia a extensão que se escolhe, não uma frase que o artista lê",
+    ),
+    (
+        "render_loop/inspector_statemachine.rs",
+        "State {n}",
+        "o NOME de omissão de um estado novo — ele entra no documento (`MachineState::name`) e o \
+         artista escreve por cima dele no mesmo gesto. É a lei dos nomes por omissão desta casa \
+         (`Prefab`, `Layer {}`, `Body`), e traduzi-lo poria a IDENTIDADE de um estado a mudar com \
+         a língua da sessão",
+    ),
+    (
+        "render_loop/tags_panel.rs",
+        "Tag",
+        "o NOME de omissão de uma tag nova, pela mesma lei do `State {n}` acima — o doc-comment do \
+         `NOME_BASE` já o diz por escrito: *é o texto que o artista escreve por cima, não uma \
+         etiqueta que fica*",
+    ),
+    (
         "hero_bridge.rs",
         "Entity_{:x}",
         "o nome de recurso de uma entidade sem `Name` — um IDENTIFICADOR (`Entity_1f`), não vocabulário",

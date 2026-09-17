@@ -97,6 +97,29 @@ const CHAMADAS_QUE_NAO_PINTAM: &[&str] = &[
 ///
 /// ⚠️ **Um ficheiro de teste é perguntado ao PAI** ([`is_declared_under_cfg_test`]), nunca ao nome.
 pub fn language_literals(src_root: &Path) -> Vec<Literal> {
+    // ⭐⭐ **MEMOIZADO por raiz, e a razão é MEDIDA** (2026-09-16): o gate de obsolescência da shell
+    //    chama três portas desta crate (`excecoes_mortas` · `isentos_mortos` · `literais_de_cena`) e
+    //    cada uma varria a árvore INTEIRA — `233 s` numa shell de 195 k linhas, acima do tecto de
+    //    morte de `180 s` do executor. ⚠️ A cura NÃO é subir o tecto: era a mesma resposta calculada
+    //    três vezes. O fonte não muda enquanto um binário de teste corre, logo a cache é correcta
+    //    por construção; ela vive no processo e morre com ele.
+    static CACHE: std::sync::OnceLock<std::sync::Mutex<Vec<(PathBuf, Vec<Literal>)>>> =
+        std::sync::OnceLock::new();
+    let cache = CACHE.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+    if let Ok(c) = cache.lock() {
+        if let Some((_, v)) = c.iter().find(|(k, _)| k == src_root) {
+            return v.clone();
+        }
+    }
+    let out = language_literals_uncached(src_root);
+    if let Ok(mut c) = cache.lock() {
+        c.push((src_root.to_path_buf(), out.clone()));
+    }
+    out
+}
+
+/// A varredura de facto — [`language_literals`] é a porta, e ela memoiza.
+fn language_literals_uncached(src_root: &Path) -> Vec<Literal> {
     let mut files = Vec::new();
     walk(src_root, &mut files);
     files.sort();

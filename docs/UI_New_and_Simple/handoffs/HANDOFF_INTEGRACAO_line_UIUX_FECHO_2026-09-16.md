@@ -50,6 +50,11 @@ contrato congelado (§6): node.rs e tool.rs INTOCADOS · ADR: a linha não cria 
 ⇒ **não há número para recontar** — a armadilha nº 1 deste repo não se aplica a esta fusão.
 ⚠️ O único item novo no `Cargo.lock` é a **crate nova** (aresta interna, não pacote externo).
 
+⛔ **Esta tabela é REFERÊNCIA, não evidência** (`/pd-integracao` passo 0): ela foi medida contra o
+`main` de **hoje**, e morre no instante em que outra linha integrar. **Re-rode a sonda você mesmo**,
+em cada worktree, antes do primeiro `grep` — e leia o valor do `main` no ficheiro (`git show
+main:<arq>`), nunca na coluna `base:`, que é o merge-base e não anda.
+
 ## 4 — ⚠️⚠️ O que a ÁRVORE COMBINADA pode reprovar (por ordem de probabilidade)
 
 ### 4.1 ⛔⛔ Os 30 gates de censo de texto — **a linha que fundir DEPOIS paga**

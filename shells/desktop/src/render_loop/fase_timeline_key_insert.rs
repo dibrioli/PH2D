@@ -18,6 +18,23 @@ use super::*;
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_timeline_key_insert(&mut self, container: Option<usize>, keys_mode: bool) {
+        // ⛔⛔⛔ **A TECLA `K` É UM GESTO, E UM GESTO ACONTECE UMA VEZ** (report do dono,
+        // 2026-09-17: *«ainda acontece de criar keys em todo lugar»*).
+        //
+        // ⚠️⚠️ **Este `return` é a metade que o corte de 2026-09-17 deixou para trás.** O corpo
+        // inteiro desta fase vivia dentro de `if self.timeline_insert_key { self.timeline_insert_key
+        // = false; … }` na [`super::fase_timeline_containers`]; ao cortá-lo para aqui pelo tecto de
+        // LOC, o `if` ficou lá e a ATRIBUIÇÃO veio — ⇒ a fase passou a autorar uma chave em **cada
+        // track ligada do objecto seleccionado, em cada quadro**. *Um corte por responsabilidade
+        // separa o corpo do guarda dele, e o corpo compila sozinho.*
+        //
+        // ⭐ **A cura é o `take`, e não um `if` a apontar para uma atribuição noutra linha:** ler e
+        // baixar a bandeira passam a ser **uma** operação, logo não existe mais um `= false` órfão
+        // que um corte futuro possa deixar para trás. É a mesma lei que este repo já escreve para
+        // um par inverso: *duas metades que podem ser separadas acabam separadas*.
+        if !std::mem::take(&mut self.timeline_insert_key) {
+            return;
+        }
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -27,7 +44,6 @@ impl crate::App {
             hero_screen,
             ..
         } = FrameGfx::of(gfx);
-        self.timeline_insert_key = false;
         // The K clock is the clock the animator is watching: the container's
         // inside one, the scene's on Arrange. Keys solos and reads the clip
         // directly (no scratch). The value/time helpers below read the same clock.
@@ -191,3 +207,8 @@ impl crate::App {
         }
     }
 }
+
+/// O gate do report de 2026-09-17 — ver o cabeçalho de lá.
+#[cfg(test)]
+#[path = "fase_timeline_key_insert_tests.rs"]
+mod tests;

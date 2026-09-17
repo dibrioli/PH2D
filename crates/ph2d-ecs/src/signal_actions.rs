@@ -98,12 +98,22 @@ pub enum SignalVerb {
     PlaySound,
     /// **Cala o som do alvo** — pára as vozes que ele tem a soar agora.
     StopSound,
+    /// ⭐⭐⭐ **Soma ao contador do alvo** (TOP-20 #20) — o verbo que faz um placar existir.
+    ///
+    /// O `arg` é quanto somar (um inteiro com sinal); vazio ou ilegível vale **`1`**, que é o caso
+    /// comum (*«apanhei uma moeda»*). ⚠️ **Somar `0` é INERTE e é contado como tal** — um valor que
+    /// não move nada não pode ler-se como aplicado.
+    ///
+    /// ⚠️ **APENDADO no fim, e isso é obrigatório:** o `SignalVerb` é `#[repr(u8)]` e viaja no
+    /// documento pelo postcard, que é POSICIONAL — uma variante no meio reescreveria o sentido de
+    /// todas as linhas de acção já gravadas, em silêncio.
+    AddToCounter,
 }
 
 impl SignalVerb {
     /// Todos, em ordem — **a fonte da iteração**. ⛔ Nunca escreva a lista uma segunda vez.
     /// ⚠️ **APPEND-ONLY**: a posição é a tag e ela viaja no ficheiro. Um verbo novo entra no FIM.
-    pub const ALL: [SignalVerb; 7] = [
+    pub const ALL: [SignalVerb; 8] = [
         SignalVerb::StartTimer,
         SignalVerb::StopTimer,
         SignalVerb::Show,
@@ -111,6 +121,7 @@ impl SignalVerb {
         SignalVerb::ToggleVisibility,
         SignalVerb::PlaySound,
         SignalVerb::StopSound,
+        SignalVerb::AddToCounter,
     ];
 
     /// O rótulo que o artista lê, em INGLÊS — um ACESSÓRIO derivado da tabela desde 2026-09-19
@@ -133,6 +144,7 @@ impl SignalVerb {
             SignalVerb::ToggleVisibility => "ecs.signal_verb.toggle_visibility",
             SignalVerb::PlaySound => "ecs.signal_verb.play_sound",
             SignalVerb::StopSound => "ecs.signal_verb.stop_sound",
+            SignalVerb::AddToCounter => "Add to Counter",
         }
     }
 
@@ -142,7 +154,10 @@ impl SignalVerb {
     /// não lê é um controlo morto; um que o esconde onde o verbo o lê é uma feature inalcançável.
     #[must_use]
     pub const fn uses_arg(self) -> bool {
-        matches!(self, SignalVerb::StartTimer | SignalVerb::StopTimer)
+        matches!(
+            self,
+            SignalVerb::StartTimer | SignalVerb::StopTimer | SignalVerb::AddToCounter
+        )
     }
 
     /// A posição em [`Self::ALL`] — a tag que o painel usa nos segmentados.

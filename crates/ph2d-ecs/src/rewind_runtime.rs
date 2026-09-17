@@ -34,8 +34,8 @@
 //! já não tem de se lembrar disto (o mesmo argumento do `release_grab` no `bridge::rewind`).
 
 use crate::{
-    CameraRuntime, Entity, FactoryRuntime, LifetimeRuntime, StateMachine, StateMachineRuntime,
-    TimerRuntime, Timers, World,
+    CameraRuntime, Counter, CounterRuntime, Entity, FactoryRuntime, LifetimeRuntime, StateMachine,
+    StateMachineRuntime, TimerRuntime, Timers, World,
 };
 
 /// **Repõe o estado vivo de toda a gente, como no tique 0.** Devolve **quantos componentes** foram
@@ -54,6 +54,7 @@ use crate::{
 /// | [`FactoryRuntime`] | `Default` | ⭐ **`rng: 0` quer dizer «por semear»** ⇒ a corrida seguinte **repete** a primeira |
 /// | [`StateMachineRuntime`] | [`crate::state_machine::born`] | volta ao estado **inicial**, e `started = false` fá-lo anunciar a entrada outra vez |
 /// | [`CameraRuntime`] | ⭐⭐ **APAGAR o componente** | o `ensure_runtime` da shell recria-o **da pose autorada**; um `Default` poria a câmera na ORIGEM |
+/// | [`CounterRuntime`] | ⭐ o **`start` da config** | a primeira espécie que LÊ a config: um `Default` poria todos a zero e apagaria as três vidas que o artista autorou |
 pub fn rewind_runtime_state(world: &mut World) -> usize {
     let mut n = 0;
 
@@ -91,6 +92,15 @@ pub fn rewind_runtime_state(world: &mut World) -> usize {
     let mut q = world.query::<&mut FactoryRuntime>();
     for mut rt in q.iter_mut(world) {
         *rt = FactoryRuntime::default();
+        n += 1;
+    }
+
+    // ── Os CONTADORES ────────────────────────────────────────────────────────
+    // ⭐ **Nascer aqui é o `start` da CONFIG** — a primeira espécie desta porta que não é uma
+    // constante. Sem isto a 2.ª corrida começaria com os pontos da primeira.
+    let mut q = world.query::<(&Counter, &mut CounterRuntime)>();
+    for (cfg, mut rt) in q.iter_mut(world) {
+        rt.value = cfg.start;
         n += 1;
     }
 

@@ -190,7 +190,7 @@ fn register_ecs_components_populates_registry() {
     //   lados -- 677 commits entraram no main entretanto. *Conte o DELTA, nunca o literal.*
     // ⚠️ **2026-09-13: `85` -> `86`, delta +1** -- o `Tags` (TOP-20 #9). Quem integrar conta o
     //   DELTA, nunca o literal.
-    assert_eq!(reg.len(), 91);
+    assert_eq!(reg.len(), 95);
     assert!(reg.get_by_name("ph2d::ecs::Tags").is_some());
     assert!(reg.get_by_name("ph2d::ecs::Sculpt3dPieceRef").is_some());
     assert!(reg.get_by_name("ph2d::ecs::AudioSource2D").is_some());

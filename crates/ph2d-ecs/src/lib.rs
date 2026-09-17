@@ -110,6 +110,7 @@ pub use state_machine::{
 };
 /// ⭐⭐⭐ **O `Timer`** — o item #2 do TOP-20 e o primeiro produtor de sinal barato do produto
 /// (hoje o único produtor autorável é uma COLISÃO).
+pub mod hud;
 pub mod tags;
 pub mod timer;
 pub mod transform;
@@ -201,6 +202,7 @@ pub use stable_id::{
     StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id, stable_id_for_name,
     stable_id_of,
 };
+pub use hud::{Counter, CounterRuntime, Fit, LabelSource, UiButton, UiCanvas, UiLabel};
 pub use tags::Tags;
 pub use timer::{
     TIMER_MAX_US, TIMER_NAME_MAX_BYTES, TIMERS_MAX, Timer, TimerOutcome, TimerRuntime, TimerState,

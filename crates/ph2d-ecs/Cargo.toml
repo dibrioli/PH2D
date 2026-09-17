@@ -20,6 +20,10 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 # ⚠️ E' uma FOLHA (serde + ph2d-spring + ph2d-anim, com gate a le'-la): a mesma lei corre no
 # editor e no runtime do jogo, que e' a razao de ela existir fora da shell.
 ph2d-morph-machine = { path = "../ph2d-morph-machine" }
+# ⭐ A lei do CANVAS do HUD (TOP-20 #20), medida contra o Godot corrido sem interface. Mesmo
+# argumento da linha acima: e' uma FOLHA (so' serde), o `Fit` dela e' campo do `UiCanvas` e
+# portanto viaja no documento, e a mesma lei corre no editor e no runtime do jogo.
+ph2d-hud = { path = "../ph2d-hud" }
 bevy_ecs = "0.19"
 # ADR-0072 §2.1: o `NamedAnchor` guarda a lista inline (4 âncoras cobrem ~99% dos sprites) e o
 # `AnchorData::Dict` guarda os pares ordenados inline (8). ⚠️ NÃO é dependência nova no projeto —

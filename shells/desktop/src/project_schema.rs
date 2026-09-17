@@ -335,4 +335,24 @@
 /// arcos é avaliado pelo caminho de sempre, **ao bit** (gate `um_perfil_sem_arcos_da_o_campo_de_sempre`).
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v131 é **recusado em voz alta**.
-pub(crate) const PROJECT_SCHEMA: u32 = 144;
+/// # `144 → 145` — o HUD (TOP-20 #20, `docs/Components/15_plano_hud.md`)
+///
+/// Quatro componentes novos no registo — `UiCanvas` (a caixa de referência e o `Fit`), `UiLabel`
+/// (a fonte do número), `UiButton` (o sinal que ele publica) e `Counter` (o nome e o `start`) —,
+/// e uma variante **APENDADA** no fim do `SignalVerb` (`AddToCounter`).
+///
+/// ⚠️ **Os dois lados desta linha têm regimes DIFERENTES, e é por isso que o degrau existe:**
+/// apendar uma variante no fim de um `enum` é compatível (um ficheiro velho nunca a escreveu),
+/// mas um componente NOVO faz o `WorldSnapshot` de um binário novo carregar blobs que um binário
+/// velho não sabe nomear. É a mesma regra dos degraus das tags e da fábrica.
+///
+/// ⛔ **O valor VIVO de um contador NÃO entra aqui, e a ausência é a lei:** o `CounterRuntime` não
+/// deriva `Serialize` e não está registado — se estivesse, **cada ponto marcado** seria um passo
+/// de `Ctrl+Z` e ficaria dentro do ficheiro gravado.
+///
+/// ⛔ **E a pose conduzida do canvas também não:** ela é reescrita a cada quadro pela fase do HUD e
+/// passa pelo ledger do `preview_drive`, como a do solver e a do script.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um ficheiro anterior é recusado
+/// em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 145;

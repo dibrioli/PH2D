@@ -218,10 +218,21 @@ fn a_frame_with_no_signals_resolves_to_nothing() {
 ///
 /// ⚠️ Um painel que mostra um campo que o verbo não lê é um controlo morto; um que o esconde onde o
 /// verbo o lê é uma feature inalcançável. Este gate é o que impede as duas metades de divergirem.
+///
+/// ⚠️⚠️ **A PREMISSA deste gate MORREU em 2026-09-17, e o nome dele era ela:** ele chamava-se
+/// `only_the_timer_verbs_read_the_argument`, e o `AddToCounter` do HUD (TOP-20 #20) lê o `arg`
+/// **sem ser um relógio** — ali ele é *quanto somar*. A lista continua a ser escrita à mão de
+/// propósito: ela é o CONTROLO do `uses_arg`, e derivá-la dele tornaria o gate uma tautologia.
 #[test]
-fn only_the_timer_verbs_read_the_argument() {
+fn so_estes_verbos_leem_o_argumento() {
     for v in SignalVerb::ALL {
-        let esperado = matches!(v, SignalVerb::StartTimer | SignalVerb::StopTimer);
+        let esperado = matches!(
+            v,
+            // o `arg` é o NOME do relógio…
+            SignalVerb::StartTimer | SignalVerb::StopTimer
+            // …e aqui é QUANTO somar (TOP-20 #20).
+            | SignalVerb::AddToCounter
+        );
         assert_eq!(
             v.uses_arg(),
             esperado,

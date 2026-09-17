@@ -172,3 +172,15 @@ fn uma_caixa_impossivel_e_recusada() {
     }
     assert!(Canvas::new(32.0, 18.0, Fit::Keep).is_some(), "o CONTROLO positivo");
 }
+
+/// O texto de um número: a contagem crua, e o tempo com uma casa e **nunca negativo**.
+#[test]
+fn o_tempo_que_ja_passou_mostra_zero_e_nunca_um_negativo() {
+    use super::{Valor, formata};
+    assert_eq!(formata(Valor::Inteiro(0)), "0");
+    assert_eq!(formata(Valor::Inteiro(-3)), "-3", "uma CONTAGEM pode ser negativa (dívida, vidas a menos)");
+    assert_eq!(formata(Valor::Segundos(3.25)), "3.2", "uma casa decimal");
+    assert_eq!(formata(Valor::Segundos(0.0)), "0.0");
+    // ⭐ o caso que a lei existe para cobrir: o relógio passou do fim.
+    assert_eq!(formata(Valor::Segundos(-1.3)), "0.0");
+}

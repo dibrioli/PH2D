@@ -9,9 +9,14 @@ authors.workspace = true
 
 [lib]
 
-# ⛔ **ZERO dependências, e isso é o desenho** — a mesma lei da `ph2d-sweep`, da `ph2d-cloth` e da
-# `ph2d-pose`. Aqui mora uma aritmética fechada (duas divisões e um `min`); não há um transcendental,
-# não há um tipo de mundo, não há ECS. Quem a consome é que sabe o que é um `Transform`.
+# ⛔ **UMA dependência, e ela é obrigatória pelo desenho.** A aritmética aqui é fechada (duas
+# divisões e um `min`): não há transcendental, não há tipo de mundo, não há ECS — quem consome é que
+# sabe o que é um `Transform`. O `serde` entra porque o [`Fit`] **viaja no documento** (é campo do
+# `UiCanvas`), e a alternativa era declarar um enum gémeo no `ph2d-ecs` com uma conversão no meio:
+# *duas respostas à mesma pergunta, que divergem no dia em que uma delas ganhar uma variante.*
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
 
 [lints]
 workspace = true

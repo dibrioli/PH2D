@@ -80,6 +80,9 @@ pub(crate) fn apply(
             SignalVerb::StopSound => {
                 super::audio_2d::stop_target(sim, audio.as_deref_mut(), fx.target)
             }
+            // ⭐⭐⭐ **O PLACAR** (TOP-20 #20) — é este verbo que faz «bateu na moeda → +1 ponto»
+            // fechar com o `SignalOnHit` que a física já publica, sem uma linha do artista.
+            SignalVerb::AddToCounter => add_to_counter(sim, fx),
         };
         if ok {
             report.applied += 1;
@@ -88,6 +91,44 @@ pub(crate) fn apply(
         }
     }
     report
+}
+
+/// **Soma ao contador do alvo.** `arg` vazio ou ilegível = `1`.
+///
+/// ⚠️ **Escreve no [`ph2d_ecs::CounterRuntime`], nunca na config** — o valor vivo de um contador
+/// não é documento (ver o doc do `Counter`), logo isto NÃO passa pelo ledger e NÃO entra no undo.
+/// *É a mesma fronteira que o `TimerRuntime` já tinha; a diferença é que aqui ela é a feature.*
+///
+/// ⚠️ **Somar `0` é INERTE**, e o relatório conta-o como tal: um valor que não move nada não pode
+/// ler-se como aplicado. Um alvo sem `Counter` também é inerte — e o painel di-lo.
+fn add_to_counter(sim: &mut SimWorld, fx: &ph2d_ecs::SignalEffect) -> bool {
+    let quanto: i64 = {
+        let t = fx.arg.trim();
+        if t.is_empty() { 1 } else { t.parse().unwrap_or(1) }
+    };
+    if quanto == 0 {
+        return false;
+    }
+    let world = sim.world_mut();
+    if world.get::<ph2d_ecs::Counter>(fx.target).is_none() {
+        return false;
+    }
+    let inicio = world
+        .get::<ph2d_ecs::Counter>(fx.target)
+        .map_or(0, |c| c.start);
+    let mut ent = match world.get_entity_mut(fx.target) {
+        Ok(e) => e,
+        Err(_) => return false,
+    };
+    if let Some(mut rt) = ent.get_mut::<ph2d_ecs::CounterRuntime>() {
+        rt.value = rt.value.saturating_add(quanto);
+    } else {
+        // ⚠️ O vivo NASCE do `start` da config, e não de zero — a mesma lei do rebobinar.
+        ent.insert(ph2d_ecs::CounterRuntime {
+            value: inicio.saturating_add(quanto),
+        });
+    }
+    true
 }
 
 /// Arranca ou pára os timers do alvo. `arg` vazio = **todos**; senão, os que têm aquele nome.

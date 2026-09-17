@@ -563,7 +563,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // 109/110 (campo novo numa struct já gravada). ⚠️ O `FIELD_DOC_VERSION` NÃO está nesta
         // tripla e continua a subir à mão — o instrumento que avisa é o
         // `the_shape_of_a_saved_profile_is_pinned` da `ph2d-field` (90 → 92 bytes).
-        (144, 13, 22),
+        // ⭐ **PROJECT 144→145** (2026-09-17): o HUD (TOP-20 #20) — quatro componentes novos no
+        // registo (`UiCanvas`/`UiLabel`/`UiButton`/`Counter`) e uma variante APENDADA no fim do
+        // `SignalVerb`. ⚠️ **A tripla NÃO vê este degrau** — a SÉTIMA vez: nem o `FlipDoc` nem a
+        // `VecScene` mudam de forma, e quem muda é a POPULAÇÃO do registo de componentes, que é
+        // medida noutro sítio (`registry_tests`, 91 → 95, e os dois espelhos 92 → 96).
+        (145, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

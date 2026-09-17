@@ -38,7 +38,7 @@
 #![forbid(unsafe_code)]
 
 /// **Como a caixa de referência se acomoda numa vista de outro tamanho.**
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub enum Fit {
     /// Uniforme (`min` dos dois factores) e **centrado** — o que sobra fica como banda. É o
     /// `keep` do alvo, e o valor de fábrica: um HUD que estica o texto lê-se como um defeito.
@@ -143,6 +143,32 @@ pub fn bands(canvas: &Canvas, view: View) -> [f32; 2] {
         (2.0 * view.half[0] - canvas.ref_w * p.scale[0]) / 2.0,
         (2.0 * view.half[1] - canvas.ref_h * p.scale[1]) / 2.0,
     ]
+}
+
+/// **O que um rótulo do HUD mostra**, antes de virar texto.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Valor {
+    /// Uma contagem — pontos, vidas, quantos inimigos restam.
+    Inteiro(i64),
+    /// Um tempo que falta, em segundos.
+    Segundos(f32),
+}
+
+/// **O número, em texto.**
+///
+/// ⚠️ **Um tempo nunca sai NEGATIVO:** um relógio que já tocou mostra `0.0`, não `-1.3`. O valor
+/// negativo existe no motor (é quanto ele passou do fim) e mostrá-lo seria ensinar ao jogador uma
+/// coisa que não é sobre o jogo.
+///
+/// ⚠️ **Uma casa decimal, e o ponto é o separador**: este texto é CONTEÚDO do jogo (fica ao lado do
+/// prefixo que o artista escreveu), não uma etiqueta da interface do editor — a vírgula decimal do
+/// `ph2d-i18n` governa o segundo caso, não este.
+#[must_use]
+pub fn formata(v: Valor) -> String {
+    match v {
+        Valor::Inteiro(n) => n.to_string(),
+        Valor::Segundos(s) => format!("{:.1}", s.max(0.0)),
+    }
 }
 
 #[cfg(test)]

@@ -595,6 +595,15 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // deriva `Serialize`, logo a linha nem compila — o precedente do `TimerRuntime`. Registá-lo
     // faria **cada transição** virar um passo de `Ctrl+Z`.
     reg.register_default::<crate::StateMachine>("ph2d::ecs::StateMachine");
+    // ⭐⭐⭐ **O HUD** (TOP-20 #20, 2026-09-17) — os quatro são CONFIG inteira e gravam-se: a
+    // caixa de referência do canvas, a fonte de cada rótulo, o sinal de cada botão e o contador.
+    // ⛔ **A pose conduzida do canvas NÃO está aqui** e não pode estar: ela é reescrita a cada
+    // quadro pela fase do HUD, e passa pelo ledger do `preview_drive` — registá-la faria *«o HUD
+    // acompanhou a câmera»* virar um passo de `Ctrl+Z` por quadro.
+    reg.register_default::<crate::UiCanvas>("ph2d::ecs::UiCanvas");
+    reg.register_default::<crate::UiLabel>("ph2d::ecs::UiLabel");
+    reg.register_default::<crate::UiButton>("ph2d::ecs::UiButton");
+    reg.register_default::<crate::Counter>("ph2d::ecs::Counter");
     // ⭐⭐⭐ **A FÁBRICA e o CICLO DE VIDA** (TOP-20 #11 e #12, 2026-09-14) — os três são CONFIG
     // inteira e gravam-se. Sem o registo, o artista escolhe a receita, afina a rajada, grava,
     // reabre, e a cena volta ESTÉRIL: nada some da tela e nada dá erro.

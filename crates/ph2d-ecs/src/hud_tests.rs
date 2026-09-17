@@ -1,0 +1,244 @@
+//! Os gates dos componentes do HUD (TOP-20 #20).
+
+use super::{Counter, CounterRuntime, LabelSource, UiButton, UiCanvas, UiLabel, texto, valor};
+use crate::timer::{Timer, TimerRuntime, TimerState, Timers};
+use bevy_ecs::world::World;
+use ph2d_hud::{Fit, Valor};
+use ph2d_tags::TagTree;
+
+fn mundo() -> World {
+    World::new()
+}
+
+/// ⛔⛔ **A CONFIG grava-se; o valor VIVO não.** Sem esta fronteira, cada ponto marcado seria um
+/// passo de `Ctrl+Z` e entraria no ficheiro.
+#[test]
+fn o_contador_grava_a_config_e_nunca_o_valor_vivo() {
+    let mut reg = crate::scene::ComponentRegistry::new();
+    crate::scene::register_ecs_components(&mut reg);
+    assert!(
+        reg.get_by_name("ph2d::ecs::Counter").is_some(),
+        "a CONFIG do contador tem de viajar no ficheiro"
+    );
+    assert!(
+        reg.get_by_name("ph2d::ecs::CounterRuntime").is_none(),
+        "o valor VIVO não pode estar registado — registá-lo põe cada ponto no undo e no save"
+    );
+    // ⭐ E a porta fecha-se pelo TIPO, não por esta lista: o `CounterRuntime` não deriva
+    // `Serialize`, logo a linha de registo dele nem compilaria. Este gate é o aviso alto para
+    // quem, um dia, lhe acrescentar o derive.
+    assert!(
+        reg.get_by_name("ph2d::ecs::UiCanvas").is_some()
+            && reg.get_by_name("ph2d::ecs::UiLabel").is_some()
+            && reg.get_by_name("ph2d::ecs::UiButton").is_some(),
+        "os três do HUD são CONFIG e gravam-se"
+    );
+}
+
+/// Rebobinar é RENASCER — e nascer aqui é o `start` da config, nunca `Default`.
+#[test]
+fn rebobinar_devolve_o_contador_ao_start_e_nao_a_zero() {
+    let mut w = mundo();
+    let tres_vidas = w
+        .spawn((
+            Counter {
+                name: "vidas".into(),
+                start: 3,
+            },
+            CounterRuntime { value: 0 },
+        ))
+        .id();
+    let do_zero = w
+        .spawn((
+            Counter {
+                name: "pontos".into(),
+                start: 0,
+            },
+            CounterRuntime { value: 42 },
+        ))
+        .id();
+    let n = crate::rewind_runtime::rewind_runtime_state(&mut w);
+    assert!(n >= 2, "os dois contadores foram tocados");
+    assert_eq!(
+        w.get::<CounterRuntime>(tres_vidas).expect("vivo").value,
+        3,
+        "⛔ um `Default` poria isto a ZERO e apagaria as três vidas autoradas"
+    );
+    assert_eq!(
+        w.get::<CounterRuntime>(do_zero).expect("vivo").value,
+        0,
+        "o CONTROLO: quem começa em zero volta a zero"
+    );
+}
+
+/// Um nome em branco não é um sinal — a regra emprestada do `SignalOnHit`, palavra por palavra.
+#[test]
+fn um_botao_sem_nome_nao_e_um_sinal() {
+    for cru in ["", "   ", "\t"] {
+        assert!(
+            UiButton {
+                signal: cru.into(),
+                disabled: false
+            }
+            .name()
+            .is_none(),
+            "{cru:?} não é um contrato que alguém possa casar"
+        );
+    }
+    assert_eq!(
+        UiButton {
+            signal: "  recomecar ".into(),
+            disabled: false
+        }
+        .name(),
+        Some("recomecar"),
+        "o CONTROLO positivo, e ele vem aparado"
+    );
+}
+
+/// A fonte de um rótulo é uma SOMA, nunca «o primeiro» — a ordem de iteração não é prometida.
+#[test]
+fn dois_contadores_com_o_mesmo_nome_somam() {
+    let mut w = mundo();
+    for v in [10_i64, 7] {
+        w.spawn((
+            Counter {
+                name: "pontos".into(),
+                start: 0,
+            },
+            CounterRuntime { value: v },
+        ));
+    }
+    // um terceiro, com OUTRO nome, que não pode entrar na conta
+    w.spawn((
+        Counter {
+            name: "vidas".into(),
+            start: 0,
+        },
+        CounterRuntime { value: 100 },
+    ));
+    let l = UiLabel {
+        source: LabelSource::Counter("pontos".into()),
+        ..Default::default()
+    };
+    assert_eq!(
+        valor(&mut w, &TagTree::default(), &l),
+        Some(Valor::Inteiro(17))
+    );
+}
+
+/// ⛔ `None` e «zero» são factos DIFERENTES: um rótulo preso a um contador que ninguém criou tem
+/// de continuar a mostrar o que o artista escreveu.
+#[test]
+fn um_contador_que_nao_existe_devolve_nada_e_nao_zero() {
+    let mut w = mundo();
+    let t = TagTree::default();
+    for fonte in [
+        LabelSource::Counter("pontos".into()),
+        LabelSource::Counter(String::new()),
+        LabelSource::TimerLeft("relogio".into()),
+        LabelSource::TagCount("inimigo".into()),
+    ] {
+        let l = UiLabel {
+            source: fonte.clone(),
+            ..Default::default()
+        };
+        assert_eq!(valor(&mut w, &t, &l), None, "fonte {fonte:?} num mundo vazio");
+    }
+    // O CONTROLO: com o contador na cena, a mesma fonte responde.
+    w.spawn((
+        Counter {
+            name: "pontos".into(),
+            start: 0,
+        },
+        CounterRuntime { value: 5 },
+    ));
+    let l = UiLabel {
+        source: LabelSource::Counter("pontos".into()),
+        ..Default::default()
+    };
+    assert_eq!(valor(&mut w, &t, &l), Some(Valor::Inteiro(5)));
+}
+
+/// O relógio mostra o MENOR tempo que falta — o que vai tocar primeiro.
+#[test]
+fn o_relogio_mostra_o_menor_que_falta() {
+    let mut w = mundo();
+    let timer = |us: u64| Timer {
+        name: "ronda".into(),
+        duration_us: us,
+        repeat: false,
+        autostart: true,
+        signal: String::new(),
+    };
+    w.spawn((
+        Timers(vec![timer(10_000_000), timer(3_000_000)]),
+        TimerRuntime(vec![TimerState::default(), TimerState::default()]),
+    ));
+    let l = UiLabel {
+        source: LabelSource::TimerLeft("ronda".into()),
+        ..Default::default()
+    };
+    assert_eq!(
+        valor(&mut w, &TagTree::default(), &l),
+        Some(Valor::Segundos(3.0)),
+        "⛔ somar dois tempos que correm em paralelo não significa nada"
+    );
+}
+
+/// O NEUTRO: `Authored` não deriva nada, e é isso que deixa o desenho byte-idêntico.
+#[test]
+fn o_authored_nao_deriva_nada() {
+    let mut w = mundo();
+    w.spawn((
+        Counter {
+            name: "pontos".into(),
+            start: 0,
+        },
+        CounterRuntime { value: 9 },
+    ));
+    let l = UiLabel::default();
+    assert_eq!(l.source, LabelSource::Authored, "é o valor de fábrica");
+    assert_eq!(valor(&mut w, &TagTree::default(), &l), None);
+    assert_eq!(texto(&mut w, &TagTree::default(), &l), None);
+}
+
+/// A linha inteira: prefixo + número + sufixo.
+#[test]
+fn o_texto_e_o_prefixo_mais_o_numero_mais_o_sufixo() {
+    let mut w = mundo();
+    w.spawn((
+        Counter {
+            name: "pontos".into(),
+            start: 0,
+        },
+        CounterRuntime { value: 12 },
+    ));
+    let l = UiLabel {
+        source: LabelSource::Counter("pontos".into()),
+        prefix: "Pontos: ".into(),
+        suffix: " !".into(),
+    };
+    assert_eq!(
+        texto(&mut w, &TagTree::default(), &l).as_deref(),
+        Some("Pontos: 12 !")
+    );
+}
+
+/// A caixa de referência viaja no documento, com o `Fit` dentro — um enum gémeo no `ph2d-ecs`
+/// teria sido a segunda resposta à mesma pergunta.
+#[test]
+fn a_caixa_do_canvas_atravessa_o_ficheiro() {
+    let c = UiCanvas {
+        ref_w: 32.0,
+        ref_h: 18.0,
+        fit: Fit::Stretch,
+    };
+    let bytes = postcard::to_allocvec(&c).expect("serializa");
+    assert_eq!(
+        postcard::from_bytes::<UiCanvas>(&bytes).expect("volta"),
+        c,
+        "ida e volta"
+    );
+    assert_eq!(UiCanvas::default().fit, Fit::Keep, "o de fábrica não distorce");
+}

@@ -146,4 +146,134 @@ mod tests {
             "a janela vazia nao tem piso"
         );
     }
+
+    /// O que o ALVO oferece, em píxeis de **RAIO** — a espec `SPEC_pincel_de_plano.md` §14.3
+    /// publica-os em **diâmetro** (`1 000` na pista, `10 000` digitados).
+    const PISTA_DO_ALVO_PX: f32 = 500.0;
+    const DIGITAVEL_DO_ALVO_PX: f32 = 5000.0;
+
+    /// As vistas NOMEADAS, com a diagonal MEDIDA de cada uma — ver o [`G-20`].
+    ///
+    /// [`G-20`]: o_tecto_do_raio_passa_a_pista_do_alvo_e_nao_chega_ao_digitavel
+    const VISTAS: [(u32, u32, f32); 6] = [
+        (1024, 768, 1280.0),
+        (1280, 720, 1468.6),
+        (1920, 1080, 2202.9),
+        (2560, 1080, 2778.5),
+        (2560, 1440, 2937.2),
+        (3840, 2160, 4405.8),
+    ];
+
+    /// ⭐⭐⭐ **G-20 — o tecto do raio PASSA a pista do alvo e NÃO chega ao digitável dele**, com a
+    /// população nomeada (espec `SPEC_pincel_de_plano.md` §14.3 + errata **Q2**).
+    ///
+    /// A espec encomendou o gate numa frase só — *«o tecto do raio não fica abaixo do do alvo»* —
+    /// com os dois números de interface dele. Medido, a frase é **verdadeira numa metade e falsa
+    /// na outra**, e é por isso que este gate não tem o nome que ela lhe deu: *um gate cujo nome
+    /// promete as duas metades mentiria sobre a segunda em toda corrida verde.*
+    ///
+    /// ⛔⛔ **A metade que falha é uma DIVERGÊNCIA DECLARADA, e o gate EXIGE que ela exista.** O
+    /// nosso tecto não é um número: é a **DIAGONAL DA VISTA** ([`RADIUS_MAX_FRAC_OF_DIAGONAL`]), e
+    /// o recurso que ele nomeia é o **ECRÃ** — acima disso o anel do pincel já contém a vista
+    /// inteira a partir de qualquer ponto, e não há mais barro ao alcance. Um tecto de `5 000`
+    /// fixo seria um número sem recurso, que é o que o `CLAUDE.md` §0.0 proíbe. ⚠️ **Sem a segunda
+    /// asserção o tecto vira LICENÇA:** quem subisse a fracção apagaria a divergência em silêncio,
+    /// e a declaração da espec ficaria a descrever um produto que já não existe.
+    ///
+    /// | vista | tecto MEDIDO | contra a pista do alvo (`500`) | contra o digitável (`5 000`) |
+    /// |---|---|---|---|
+    /// | `1024×768` | `1 280,0` | **`2,56×`** | `0,26×` |
+    /// | `1280×720` | `1 468,6` | `2,94×` | `0,29×` |
+    /// | `1920×1080` | `2 202,9` | `4,41×` | `0,44×` |
+    /// | `2560×1080` | `2 778,5` | `5,56×` | `0,56×` |
+    /// | `2560×1440` | `2 937,2` | `5,87×` | `0,59×` |
+    /// | `3840×2160` | `4 405,8` | **`8,81×`** | **`0,88×`** |
+    ///
+    /// ⚠️ **A vista é o CANVAS e não a janela** — ela é o sub-rectângulo em que a escultura
+    /// desenha, logo é sempre MENOR que os pares acima. *O erro é todo para o lado conservador:*
+    /// a divergência real é **maior** que a que esta tabela mede, nunca menor.
+    ///
+    /// ⭐ **O `3840×2160` é o PISO da população e não uma linha a mais:** é ali que a segunda
+    /// metade quase cai (`0,88×`), logo é a única vista que a torna difícil. *Uma lista sem ela
+    /// afirmaria a divergência só onde ela é fácil.*
+    #[test]
+    fn o_tecto_do_raio_passa_a_pista_do_alvo_e_nao_chega_ao_digitavel() {
+        assert!(
+            VISTAS.iter().any(|&(w, h, _)| (w, h) == (3840, 2160)),
+            "a vista 4K saiu da populacao — e' a unica em que a divergencia e' dificil"
+        );
+        for (w, h, diagonal) in VISTAS {
+            let tecto = radius_ceiling_px(w, h);
+            // ⚠️ **A ORDEM destas três é load-bearing.** As duas COMPARAÇÕES vêm primeiro
+            // porque são o que a espec encomendou; a terceira — *«o tecto ainda é a
+            // diagonal»* — é a mais apertada das três e, posta à frente, seria a única a
+            // disparar em toda mutação da lei, deixando as outras duas **impossíveis de
+            // matar**. *Uma asserção que nunca chega a ser a primeira a falhar é comentário
+            // com sintaxe de código*, e a prova de mutação (M1/M2/M3) mede exactamente isso.
+            assert!(
+                tecto >= PISTA_DO_ALVO_PX,
+                "{w}x{h}: o tecto {tecto} caiu abaixo da pista do alvo ({PISTA_DO_ALVO_PX}) — \
+                 e' o report de 2026-09-16 a voltar"
+            );
+            assert!(
+                tecto < DIGITAVEL_DO_ALVO_PX,
+                "{w}x{h}: o tecto {tecto} alcancou o digitavel do alvo \
+                 ({DIGITAVEL_DO_ALVO_PX}) — a divergencia declarada na \
+                 `SPEC_pincel_de_plano.md` (errata Q2) deixou de existir: releia-a antes \
+                 de apagar esta assercao"
+            );
+            assert!(
+                (tecto - diagonal).abs() < 0.1,
+                "{w}x{h}: o tecto {tecto} deixou de ser a diagonal medida ({diagonal}) — \
+                 as duas comparacoes acima continuam a fechar, logo o que mudou foi a \
+                 FORMA da lei e nao a folga dela"
+            );
+        }
+    }
+
+    /// ⭐⭐ **G-20, a segunda metade — o que APERTA o raio é a VISTA, nunca o WIDGET.**
+    ///
+    /// A divergência do irmão acima só é honesta se o tecto for mesmo o recurso medido. Se a pista
+    /// do painel parasse antes da diagonal, quem clampava era **a régua do widget** — e a
+    /// declaração *«o tecto é o ecrã»* passaria a descrever a coisa errada, **com os dois gates
+    /// verdes**. ⛔ Era exactamente esse o estado em 2026-09-16 (pista de `200` px, tecto em `1/8`
+    /// da altura) e o report do dono foi *«o radius máximo permitido é pouco»*.
+    ///
+    /// ⇒ a pista oferece **o número digitável do alvo em cheio** (`5 000` px de raio) e, em toda
+    /// vista nomeada, fica **estritamente acima** do tecto ⇒ o número que o dab usa vem sempre da
+    /// vista.
+    ///
+    /// ⚠️ **E a TROCA é nomeada:** numa vista cuja diagonal passe `5 000` (16:9, ~`4358×2451` —
+    /// acima de 4K) quem passa a apertar é a pista, e isso **não é defeito**: ali o tecto do alvo
+    /// é que é o mais apertado dos dois. *Sem esta metade alguém leria «a vista ganha sempre» como
+    /// lei, e escreveria a próxima cura contra ela.*
+    #[test]
+    fn o_que_aperta_o_raio_e_a_vista_nunca_o_widget() {
+        let raio = ph2d_panel_sculpt3d::rows::row_for(ph2d_panel_sculpt3d::ids::SCULPT3D_RADIUS)
+            .expect("a linha do raio saiu da tabela de rows");
+        assert!(
+            raio.max >= DIGITAVEL_DO_ALVO_PX,
+            "a pista do painel para em {} e ja' nao oferece o digitavel do alvo ({}) — \
+             quem clampa passou a ser o WIDGET, e a declaracao «o tecto e' a vista» \
+             deixou de descrever o produto",
+            raio.max,
+            DIGITAVEL_DO_ALVO_PX
+        );
+        for (w, h, _) in VISTAS {
+            let tecto = radius_ceiling_px(w, h);
+            assert!(
+                tecto < raio.max,
+                "{w}x{h}: o tecto da vista ({tecto}) alcancou a pista ({}) — quem aperta \
+                 deixou de ser a vista",
+                raio.max
+            );
+        }
+        // A troca, NOMEADA: acima de `5 000` de diagonal quem aperta passa a ser a pista.
+        let (w, h) = (5120u32, 2880u32);
+        assert!(
+            radius_ceiling_px(w, h) > raio.max,
+            "{w}x{h}: a vista devia passar a pista aqui (diagonal ~5 874) — a troca mudou \
+             de sitio e a linha que a nomeia no doc envelheceu"
+        );
+    }
 }

@@ -586,3 +586,115 @@ parede) muda depressa. ⛔ **Nem mais direcções nem mais borrão curam isto** 
 buscar é uma versão **mip-mapped** do campo de radiância (o que o *cone tracing* contra uma
 representação volumétrica faz). É **wave com espec própria**, e o substrato natural aqui é o que
 torna esta casa boa nisto: *o nosso modelador JÁ É um campo de distância*.
+
+---
+
+## §14 — ⛔⛔⛔ O TERCEIRO REPORT: *«completamente imprestável. Parece mais um reflexo mal feito»* — e a lei que fica são SONDAS
+
+**2026-09-17**, duas fotos: o vaso vermelho com um **cubo branco** encostado (a seta na face do cubo
+virada ao vaso) e uma esfera verde dentro da boca do vaso. O §13 tinha entregue `2,4×`/`6,2×` nos
+terraços e ele reprovou tudo — com razão, e a foto do cubo é o instrumento melhor.
+
+### §14.1 — ⭐⭐⭐ A fita: cada direcção é uma PROJECÇÃO DURA da peça
+
+Reproduzida a foto na referência (`render_bounce_vaso_tests::vaso_e_cubo`) e aberta a soma
+**direcção a direcção** numa linha da face do cubo (`#` contribui, `.` não):
+
+```text
+   18 ............###########....
+   23 .............#######.......
+   26 ........##############.....
+   29 ...##########..............
+   31 ################...........
+   34 ....###################....
+   39 ############...............
+```
+
+`29` direcções contribuem e trocam de resposta `21` vezes em `54` pixels. Cada uma acende um
+**intervalo contíguo com arestas duras** — a silhueta do vaso projectada ao longo dela — e a soma de
+`29` projecções deslocadas da mesma peça **é** uma imagem esborratada dela com arestas. *«Reflexo mal
+feito» é a descrição exacta.* ⛔ Mais direcções não curam (a `256` a estrutura é a mesma, mais fina,
+a `5,3×` o preço) e mais borrão também não (o joelho estava medido).
+
+⇒ **A causa é ONDE se recolhe:** cada pixel avalia a luz devolvida na sua própria posição, e essa
+função salta quando `x` anda um pixel.
+
+### §14.2 — ⭐⭐⭐ A cura: SONDAS de irradiância (`ph2d_field_render::probes`)
+
+Pontos fixos numa grelha sobre a bola da peça recolhem `256` direcções cada (a esfera inteira, pela
+MESMA lei da radiância devolvida — `bounce::radiancia_devolvida`, agora uma porta com dois
+consumidores) e guardam **nove coeficientes esféricos** por canal. O pixel pergunta às oito sondas
+da célula, pesadas por trilinear × «está à frente», e **interpola**. A discontinuidade em `x` desaparece por construção. É o modelo DDGI, e o nosso
+substrato é o que o torna barato.
+
+### §14.3 — ⭐ As decisões, cada uma com a medição
+
+| pergunta | medido | decisão |
+|---|---|---|
+| visibilidade pixel→sonda: suave, binária ou nenhuma? | suave lê `0,67`/`0,76` de terraços na face contra `0,32` da binária; e a binária contra NENHUMA não é vista por gate algum (paridade `100 %` com e sem; Cornell `−0,0729 → −0,0734`) — e na única faixa onde age, o pé das paredes de Cornell, **piora**: `40,7 %` com, `35,2 %` sem | **nenhuma** — ficam a bandeira «dentro» (mutação sangra a `99,825 %`) e o peso «está à frente»; e saem `8` marchas por pixel na placa |
+| erguer a consulta ao longo da normal (o «normal offset» do DDGI)? | Cornell igual com e sem; face `0,0403 → 0,0404` | **sai** — o peso «está à frente» já compra o mesmo |
+| o borrão de 2 passagens fica? | ele leva a face de `0,32` para `0,13` (o céu: `0,11`) — apaga os vincos da trilinear | **fica** |
+| 9 coeficientes ou a soma das 256 direcções? | diferem `< 1 %` em toda a tabela (face `16,06 → 16,96 %`; Cornell `+0,0374 → +0,0379`) | **9 coeficientes** |
+| grelha | `16³ → 24³ → 32³`: erro na face `20 → 16 → 13 %`, no vaso `20 → 14 → 11 %`, Cornell `+0,032 → +0,037 → +0,042` (verdade `+0,040`) | **`32³`**, não saturado; o recurso que a segura é a referência de CPU (`5 s` por assar) |
+
+### §14.4 — ⭐⭐⭐ A régua que separa as duas leis, e as que não separavam
+
+Os terraços a um pixel liam `0,17` (por pixel) contra `0,13` (sondas) na face — quase nada — enquanto
+o perfil ao longo de uma linha mostrava a diferença inteira. *O olho integra a uma escala, e a régua
+tem de a ter.* ⇒ [`banda::estrutura`]: o resíduo contra a convergida menos a versão alisada dele numa
+janela de `4 px`, em RMS (um desvio de nível lê `~0`; uma imagem esborratada lê alto).
+
+| lei | face | vaso |
+|---|---:|---:|
+| por pixel, `48` dir (a do report) | `0,106` | `0,124` |
+| por pixel, `256` dir (`5,3×` o preço) | `0,045` | `0,077` |
+| sondas `16³` | `0,032` | `0,107` |
+| **sondas `32³`** | **`0,035`** | **`0,088`** |
+
+⇒ na face as sondas a `16³` já batem o por-pixel cinco vezes mais caro; no interior fino do vaso
+elas **empatam** com ele — a cavidade tem poucas sondas de largura, e é o caso duro que fica.
+
+### §14.5 — Paridade, gates, provas
+
+- CPU↔dispositivo: **`100,000 %`**, pior desvio `0`–`1` byte, na paridade do pintor, no canto com
+  material brilhante e na escultura. O dispositivo assa as sondas num grupo de `256` threads por
+  sonda (redução em memória partilhada, sem buffer de radiância) e recolhe-as no `pinta_ricochete`.
+- Gates novos: `as_sondas_tingem_o_chao_como_a_convergida` (Cornell: sinal e metade da magnitude,
+  barra no vale entre `35 %` das sondas e `80 %` da lei anterior) e
+  `as_sondas_nao_desenham_a_peca_na_face_do_cubo` (estrutura `≤ 0,06`, com o CONTROLO de que a lei
+  do report lê acima).
+- Mutações: a bandeira «dentro» apagada no dispositivo sangra na paridade (`99,825 %`, pior `4`);
+  o raio de visibilidade e o erguer da consulta **não sangravam em gate nenhum** — e saíram por
+  isso (§14.3), com a medição da faixa junto às paredes a dizer que o primeiro piorava.
+
+### §14.6 — ⏳ O que fica, nomeado
+
+- **o desvio de nível** (uma sonda a um passo da superfície vê mais do que o ponto vê): `~6 %` na
+  média, e **`~30 %` no chão de Cornell a menos de um passo das paredes** (a faixa que as réguas do
+  sangramento excluem) — suave, não estrutura; a cura publicada é a oclusão LOCAL da irradiância
+  das sondas (o que o DDGI faz com o AO), ⛔ nunca um raio até à sonda, que está medido a piorar;
+- **a cavidade fina** (o vaso): as sondas empatam com o por-pixel a `256`; a alavanca é a grelha,
+  que não saturou, e o recurso é a referência de CPU dos gates;
+- **assar por quadro assente** (`~1 ms` na placa a `32³`): as sondas não dependem da câmera, logo
+  uma cache por cena e luz é a wave seguinte e barata;
+- o quadro de **movimento** continua a não pagar nada (desvio `0`).
+
+### §14.7 — ⭐ Os números da LEI FINAL (as tabelas acima mediram variantes a caminho dela)
+
+A lei que shipa: sondas `32³ × 256` · nove coeficientes por canal · bandeira «dentro» · peso «está
+à frente» · **sem** raio de visibilidade · **sem** erguer a consulta · o borrão de duas passagens.
+
+| régua | valor | de onde vem a barra |
+|---|---:|---|
+| paridade CPU↔dispositivo (pintor · vaso · canto brilhante · escultura) | **`100,000 %`**, pior `0`–`1` byte | o gate de sempre |
+| sangramento de Cornell (verdade `+0,0400` / `−0,0589`) | `+0,0423` / `−0,0745` | metade da magnitude (§14.5) |
+| estrutura na face do cubo (a lei do report: `0,1121`) | **`0,0426`** | barra `0,06`, no vale |
+| erro no pé das paredes de Cornell (a faixa que as réguas excluem) | `35,2 %` (miolo `30,0 %`) | ⏳ o desvio de nível, §14.6 |
+| mutações contra a paridade do VASO | «dentro» `99,145 %`/`22` · cosseno `98,553 %`/`11` · «à frente» `99,960 %`/`5` — as três sangram | — |
+| quadro de movimento | pior desvio `0` | o gate de sempre |
+| preço a `1920×1080`, mínimo de 3, CPU `96–97 %` ociosa | **`10,59 → 11,11 ms`** (`+0,52`) | com as marchas de visibilidade era `11,52` |
+
+⚠️ **As três mutações passaram a `100,000 %` na fixtura da paridade de sempre** (três formas
+convexas): é a lição da §12 outra vez — *a fixtura sem o fenómeno não afirma nada* —, e foi por isso
+que o gate `as_sondas_do_dispositivo_sao_as_da_cpu_no_vaso` nasceu.
+

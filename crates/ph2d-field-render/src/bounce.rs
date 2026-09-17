@@ -1,5 +1,12 @@
 //! ⭐⭐⭐ **O RICOCHETE — a luz que a CENA devolve a cada pixel** (a `W5`, `docs/Render3d/03` §W5).
 //!
+//! ⛔⛔⛔ **Desde 2026-09-17 esta recolha POR PIXEL é a REFERÊNCIA CONVERGIDA dos gates, e NÃO o que o
+//! produto pinta.** Com direcções fixas ela é uma soma de projecções DURAS da peça — o report do
+//! dono (*«um reflexo mal feito»*), com a fita no cabeçalho das [`crate::probes`], que são a lei
+//! do produto nos dois motores. O que fica aqui é a lei da radiância devolvida por raio
+//! ([`radiancia_devolvida`]), que as sondas partilham, e a recolha a `1024` direcções que serve de
+//! verdade.
+//!
 //! # ⭐⭐ Ele é a outra METADE de um integral que este módulo já calcula
 //!
 //! A luz que chega a um ponto pelo hemisfério tem duas parcelas: a que vem do **céu** e a que vem
@@ -215,13 +222,52 @@ pub fn bounce_slice(
         return fatia;
     }
 
+    let sai = radiancia_devolvida(
+        &scene, &base, lift, alcance, &origens, &dirs, surfaces, lampadas,
+    );
+    for (j, s3) in sai.iter().enumerate() {
+        let (i, w) = (quais[j], pesos[j]);
+        fatia.sum[i] = [
+            fatia.sum[i][0] + w * s3[0],
+            fatia.sum[i][1] + w * s3[1],
+            fatia.sum[i][2] + w * s3[2],
+        ];
+    }
+    fatia
+}
+
+/// ⭐⭐⭐ **A RADIÂNCIA FOSCA QUE VOLTA POR CADA RAIO DE UM LOTE** — os passos 2 a 4 do ricochete,
+/// numa porta com DOIS consumidores: a [`bounce_slice`] (raios que partem dos pixels) e as
+/// [`crate::probes`] (raios que partem de sondas no espaço).
+///
+/// Para cada raio: no quê bateu, quanto de cada lâmpada chega lá (com a sombra), e o que o
+/// material **fosco** devolve para quem perguntou. `[0,0,0]` para os que não batem em nada.
+///
+/// ⚠️ **É UMA função porque a lei é UMA:** o que uma sonda recolhe tem de ser exactamente o que um
+/// pixel recolhia — senão as duas leis divergem no dia em que alguém mexer numa delas, e a
+/// paridade entre os dois caminhos deixa de significar alguma coisa.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn radiancia_devolvida(
+    scene: &Scene<'_>,
+    base: &ViewBasis,
+    lift: f32,
+    alcance: f32,
+    origens: &[[f32; 3]],
+    dirs: &[[f32; 3]],
+    surfaces: &Surfaces<'_>,
+    lampadas: &[PointLamp],
+) -> Vec<[f32; 3]> {
+    let mut saida = vec![[0.0f32; 3]; origens.len()];
+    if origens.is_empty() {
+        return saida;
+    }
     // ── 2. no quê bateram ─────────────────────────────────────────────────────────────────────
     let (bateu, normal, ponto) =
-        march::march_rays(&scene, &origens, &dirs, &[0.0, alcance], &mut |_| None);
+        march::march_rays(scene, origens, dirs, &[0.0, alcance], &mut |_| None);
 
     let acertos: Vec<usize> = (0..bateu.len()).filter(|j| bateu[*j]).collect();
     if acertos.is_empty() {
-        return fatia;
+        return saida;
     }
 
     // ── 3. quanto de cada lâmpada chega ao ponto acertado — um lote POR LÂMPADA ────────────────
@@ -251,7 +297,7 @@ pub fn bounce_slice(
             ate.push(dist);
         }
         visivel.push(march::march_shadow_to(
-            &scene,
+            scene,
             &o,
             &d,
             &ate,
@@ -304,18 +350,16 @@ pub fn bounce_slice(
             let c = mat.direct(nq, v, para_luz, chega);
             sai = [sai[0] + c[0], sai[1] + c[1], sai[2] + c[2]];
         }
-        let i = quais[j];
-        let w = pesos[j];
-        fatia.sum[i] = [
-            fatia.sum[i][0] + w * sai[0],
-            fatia.sum[i][1] + w * sai[1],
-            fatia.sum[i][2] + w * sai[2],
-        ];
+        saida[j] = sai;
     }
-    fatia
+    saida
 }
 
 /// ⭐⭐⭐ **QUANTAS PASSAGENS DE BORRÃO O RICOCHETE LEVA — e o número é o JOELHO de uma medição.**
+///
+/// ⚠️ A tabela abaixo foi medida sobre a recolha por pixel; com as [`crate::probes`] as duas
+/// passagens continuam a ser a lei, e por outra razão medida — são elas que apagam os VINCOS da
+/// interpolação trilinear (face `0,32 → 0,13` de terraços, o nível do céu).
 ///
 /// A oclusão leva **uma**; este leva **duas**, e a diferença não é gosto: elas são **grandezas
 /// diferentes**. A oclusão tem conteúdo de alta frequência VERDADEIRO — o escurecimento de contacto

@@ -1059,6 +1059,12 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   arcos por polilinha ao engrossar.
   [chão](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_O_CHAO_2026-09-16.md) ·
   [arco](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_O_ARCO_2026-09-16.md)
+  ⭐⭐⭐ **E a LUZ INDIRECTA são SONDAS desde 17/09** ([`ph2d_field_render::probes`](crates/ph2d-field-render/src/probes.rs),
+  [`08` §14](docs/Render3d/08_a_luz_indirecta.md)): a recolha por pixel com direcções fixas é uma soma de
+  **projecções duras** da peça (o *«reflexo mal feito»* do dono, com a fita direcção a direcção no
+  cabeçalho do módulo) e nenhuma quantidade dela cura isso — ela fica só como referência convergida dos
+  gates. Paridade `100,000 %` nos dois motores; ⚠️ a régua que separa as duas leis é a
+  `banda::estrutura` (média frequência), **não** os terraços a um pixel.
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

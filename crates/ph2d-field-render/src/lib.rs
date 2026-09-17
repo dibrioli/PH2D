@@ -116,6 +116,7 @@ mod march;
 /// ⭐⭐⭐ **A oclusão** — a sombra do céu. Irmã do [`shadow`], com a fronteira escrita lá.
 mod occlusion;
 mod probe_doors;
+pub mod probes;
 /// ⭐⭐⭐ **O refinamento do quadro assente** — o laço que avança as DUAS metades do hemisfério com
 /// o mesmo `k`.
 pub mod refine;

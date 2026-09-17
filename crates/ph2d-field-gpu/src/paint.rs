@@ -145,9 +145,21 @@ struct Pintor {
 @group(1) @binding(2) var<storage, read> tabela: array<f32>;
 @group(1) @binding(3) var<storage, read> materiais: array<f32>;
 @group(1) @binding(4) var<storage, read_write> saida: array<u32>;
+// ⭐⭐⭐ **AS SONDAS** (`ph2d_field_render::probes`): `PROBE_GRID³` sondas × `SH_STRIDE` floats — os
+// nove coeficientes esféricos por canal (27) e a bandeira «está dentro da peça» (o 28.º).
+@group(1) @binding(5) var<storage, read_write> sondas: array<f32>;
 
 const BLUR_COS: f32 = {BLUR_COS};
 const PISO_LUZ: f32 = {PISO_LUZ};
+const PROBE_GRID: u32 = {PROBE_GRID}u;
+const PROBE_DIRS: u32 = {PROBE_DIRS}u;
+const PROBE_MARGIN: f32 = {PROBE_MARGIN};
+const SH_STRIDE: u32 = 28u;
+// `4π / PROBE_DIRS`, formatado do MESMO f32 que a CPU calcula.
+const SH_PESO: f32 = {SH_PESO};
+const SH_A1: f32 = {SH_A1};
+const SH_A2: f32 = {SH_A2};
+const SQRT3: f32 = {SQRT3};
 const PACKED: u32 = {PACKED}u;
 
 // ⚠️ **A rede é `materiais[0]`**, e ela não é decorativa: o dono pode vir de uma peça que já mudou
@@ -263,36 +275,141 @@ fn devolvida_de(q: vec3<f32>, nq_vista: vec3<f32>, veio_de: vec3<f32>) -> vec3<f
     return sai;
 }
 
-// ⭐⭐⭐ **O RICOCHETE: a luz que a CENA devolve a este ponto** (`docs/Render3d/08`).
-//
-// ⚠️⚠️ **O conjunto de direcções é o `s.ao_rays` da OCLUSÃO, e isso não é economia:** a oclusão
-// mede a parte do céu e **atenua**; esta mede a parte das superfícies e **soma**. Dois conjuntos
-// diferentes fariam a soma deixar de ser o integral de coisa nenhuma.
-fn ricochete_em(p: vec3<f32>, n_vista: vec3<f32>) -> vec3<f32> {
-    if (s.ao_rays == 0u || s.n_lamps == 0u) { return vec3<f32>(0.0); }
+// ⭐⭐⭐ **AS SONDAS DE IRRADIÂNCIA** — `ph2d_field_render::probes`, linha a linha (`docs/Render3d/08`
+// §14). ⛔ Aqui viveu a recolha POR PIXEL (`ricochete_em`), que o report do dono de 2026-09-17
+// (*«um reflexo mal feito»*) mostrou ser uma soma de projecções DURAS da peça — a fita está no
+// cabeçalho daquele módulo. A cura é trocar ONDE se recolhe: em pontos fixos, com o pixel a
+// interpolar.
+fn sonda_raio() -> f32 { return max(s.ball_radius, 1e-3) * PROBE_MARGIN; }
+fn sonda_passo() -> f32 { return 2.0 * sonda_raio() / f32(PROBE_GRID - 1u); }
+fn sonda_canto() -> vec3<f32> { return s.ball_center - vec3<f32>(sonda_raio()); }
+fn sonda_pos(x: u32, y: u32, z: u32) -> vec3<f32> {
+    return sonda_canto() + vec3<f32>(f32(x), f32(y), f32(z)) * sonda_passo();
+}
+fn sonda_idx(x: u32, y: u32, z: u32) -> u32 { return (z * PROBE_GRID + y) * PROBE_GRID + x; }
+
+// A base real de harmónicas esféricas até `l = 2` — os mesmos nove literais da CPU.
+fn sh_base(d: vec3<f32>) -> array<f32, 9> {
+    var y: array<f32, 9>;
+    y[0] = 0.282095;
+    y[1] = 0.488603 * d.y;
+    y[2] = 0.488603 * d.z;
+    y[3] = 0.488603 * d.x;
+    y[4] = 1.092548 * d.x * d.y;
+    y[5] = 1.092548 * d.y * d.z;
+    y[6] = 0.315392 * (3.0 * d.z * d.z - 1.0);
+    y[7] = 1.092548 * d.x * d.z;
+    y[8] = 0.546274 * (d.x * d.x - d.y * d.y);
+    return y;
+}
+
+// A irradiância (a média da radiância pesada pelo cosseno) que a sonda `k` entrega à normal `n`.
+fn sh_irradiancia(k: u32, n: vec3<f32>) -> vec3<f32> {
+    let b = k * SH_STRIDE;
+    var y = sh_base(n);
+    var e = vec3<f32>(0.0);
+    for (var m: u32 = 0u; m < 9u; m = m + 1u) {
+        var a = y[m];
+        if (m >= 4u) { a = a * SH_A2; } else if (m >= 1u) { a = a * SH_A1; }
+        e = e + a * vec3<f32>(sondas[b + m * 3u], sondas[b + m * 3u + 1u], sondas[b + m * 3u + 2u]);
+    }
+    return max(e, vec3<f32>(0.0));
+}
+
+// ⭐⭐⭐ **RECOLHER nos pixels**: as oito sondas da célula, pesadas por trilinear × «está à frente»
+// — a `gather_probes` da CPU, na mesma ordem.
+fn recolhe_sondas(p: vec3<f32>, n_vista: vec3<f32>) -> vec3<f32> {
     let n = vista_para_mundo(n_vista);
-    let erguido = p + n * (s.hit_eps * 4.0);
-    // ⭐ **Até onde um raio pode bater:** a bola que envolve a peça. Um raio que parte de dentro
-    // dela sai, no máximo, pelo diâmetro — e para lá disso não há o que acertar.
-    let alcance = 2.0 * s.ball_radius;
+    let passo = sonda_passo();
+    let canto = sonda_canto();
+    let ng = f32(PROBE_GRID - 1u);
+    let u = clamp((p - canto) / passo, vec3<f32>(0.0), vec3<f32>(ng));
+    let c0 = min(vec3<u32>(floor(u)), vec3<u32>(PROBE_GRID - 2u));
+    let f = clamp(u - vec3<f32>(c0), vec3<f32>(0.0), vec3<f32>(1.0));
+    let lift = s.hit_eps * 4.0;
     var soma = vec3<f32>(0.0);
     var peso = 0.0;
-    for (var j: u32 = 0u; j < s.ao_rays; j = j + 1u) {
-        let dd = direccao_do_cone(j, s.ao_rays);
-        let c = dot(n, dd);
-        if (c <= 0.0) { continue; }
-        // ⚠️ **O peso acumula-se mesmo quando o raio ESCAPA** — ele é o denominador de uma média
-        // sobre o hemisfério, e um raio que não acerta em nada continua a ser hemisfério medido.
-        peso = peso + c;
-        var r: Raio;
-        r.o = erguido;
-        r.d = dd;
-        let h = marcha_ate(r, alcance);
-        if (h.x < 0.0) { continue; }
-        soma = soma + c * devolvida_de(erguido + dd * h.x, h.yzw, dd);
+    for (var dz: u32 = 0u; dz < 2u; dz = dz + 1u) {
+        for (var dy: u32 = 0u; dy < 2u; dy = dy + 1u) {
+            for (var dx: u32 = 0u; dx < 2u; dx = dx + 1u) {
+                let x = c0.x + dx;
+                let y = c0.y + dy;
+                let z = c0.z + dz;
+                let k = sonda_idx(x, y, z);
+                if (sondas[k * SH_STRIDE + 27u] > 0.5) { continue; }
+                let tri = select(1.0 - f.x, f.x, dx == 1u)
+                        * select(1.0 - f.y, f.y, dy == 1u)
+                        * select(1.0 - f.z, f.z, dz == 1u);
+                let sp = sonda_pos(x, y, z);
+                let para = sp - p;
+                let dist = length(para);
+                if (dist <= lift) { continue; }
+                let dir = para / dist;
+                let hf = (dot(n, dir) + 1.0) * 0.5;
+                let w = tri * hf * hf;
+                if (w <= 1e-6) { continue; }
+                // ⛔ Aqui viveu um raio de visibilidade pixel→sonda; saiu por medição — ver a
+                // recusa no doc da `gather_probes_por` da CPU (piorava o pé das paredes).
+                soma = soma + w * sh_irradiancia(k, n);
+                peso = peso + w;
+            }
+        }
     }
-    if (peso <= 0.0) { return vec3<f32>(0.0); }
-    return soma / peso;
+    if (peso > 0.0) { return soma / peso; }
+    return vec3<f32>(0.0);
+}
+
+// ⭐⭐⭐ **ASSAR as sondas** — um GRUPO por sonda, uma thread por direcção, e a projecção em nove
+// coeficientes reduzida na memória partilhada. Não há buffer de radiância: cada direcção marcha,
+// pergunta a cor fosca de onde bateu (`devolvida_de`, a mesma do pixel) e some-se no coeficiente.
+//
+// ⚠️ **O controlo é UNIFORME de propósito:** todas as threads avaliam o mesmo `dentro` (o campo na
+// posição da sonda), logo o `return` cedo é o mesmo para as 256 e as barreiras ficam legais.
+var<workgroup> parcial: array<vec3<f32>, 256>;
+@compute @workgroup_size(256, 1, 1)
+fn assa_sondas(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_id) lid: vec3<u32>) {
+    let k = wg.x;
+    let j = lid.x;
+    let x = k % PROBE_GRID;
+    let y = (k / PROBE_GRID) % PROBE_GRID;
+    let z = k / (PROBE_GRID * PROBE_GRID);
+    let pos = sonda_pos(x, y, z);
+    let base = k * SH_STRIDE;
+    // Colada à superfície conta como dentro: a marcha acertaria em todas as direcções no 1.º passo.
+    let dentro = field(pos) < s.hit_eps * 4.0;
+    if (dentro) {
+        if (j == 0u) {
+            for (var m: u32 = 0u; m < 27u; m = m + 1u) { sondas[base + m] = 0.0; }
+            sondas[base + 27u] = 1.0;
+        }
+        return;
+    }
+    let d = direccao_do_cone(j, PROBE_DIRS);
+    var r: Raio;
+    r.o = pos;
+    r.d = d;
+    // Até onde um raio vai: a diagonal da caixa da grelha.
+    let alcance = 2.0 * sonda_raio() * SQRT3;
+    let h = marcha_ate(r, alcance);
+    var l = vec3<f32>(0.0);
+    if (h.x >= 0.0) { l = devolvida_de(pos + d * h.x, h.yzw, d); }
+    var y9 = sh_base(d);
+    for (var m: u32 = 0u; m < 9u; m = m + 1u) {
+        workgroupBarrier();
+        parcial[j] = (SH_PESO * y9[m]) * l;
+        workgroupBarrier();
+        for (var salto: u32 = 128u; salto > 0u; salto = salto >> 1u) {
+            if (j < salto) { parcial[j] = parcial[j] + parcial[j + salto]; }
+            workgroupBarrier();
+        }
+        if (j == 0u) {
+            let v = parcial[0];
+            sondas[base + m * 3u] = v.x;
+            sondas[base + m * 3u + 1u] = v.y;
+            sondas[base + m * 3u + 2u] = v.z;
+        }
+    }
+    if (j == 0u) { sondas[base + 27u] = 0.0; }
 }
 
 // ⭐⭐⭐ **O RICOCHETE SUAVIZADO — a MESMA vizinhança do céu**, canal a canal.
@@ -466,9 +583,9 @@ fn fator_da_borda(i: u32, x: u32, y: u32) -> f32 {
 }
 
 // ⭐⭐⭐ **O INTERIOR: um pixel, um material, uma escrita.**
-// ⭐⭐⭐ **A PASSAGEM QUE CALCULA O RICOCHETE E O GUARDA** (`docs/Render3d/08` §12).
+// ⭐⭐⭐ **A PASSAGEM QUE RECOLHE O RICOCHETE NAS SONDAS E O GUARDA** (`docs/Render3d/08` §12, §14).
 //
-// ⚠️⚠️ **Ela vive no PINTOR e não na marcha, e é uma decisão:** o ricochete precisa do MATERIAL do
+// ⚠️⚠️ **Ela vive no PINTOR e não na marcha, e é uma decisão:** as sondas precisam do MATERIAL do
 // ponto acertado, e a tabela de materiais é o grupo `1` deste passe. ⇒ *quem marcha não sabe de que
 // cor é o que ele acertou.*
 //
@@ -481,7 +598,7 @@ fn pinta_ricochete(@builtin(global_invocation_id) g: vec3<u32>) {
     let c = centro[i];
     if (c.x < 0.0) { return; }
     let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
-    let devolvida = ricochete_em(r.o + r.d * c.x, c.yzw);
+    let devolvida = recolhe_sondas(r.o + r.d * c.x, c.yzw);
     let b = base_do_ricochete(i);
     luz[b] = devolvida.x;
     luz[b + 1u] = devolvida.y;
@@ -601,6 +718,32 @@ pub(crate) fn fonte(
             &formata(ph2d_field_render::POINT_LAMP_MIN_DISTANCE),
         )
         .replace("{PACKED}", &ph2d_material::wgsl::PACKED.to_string())
+        .replace(
+            "{PROBE_GRID}",
+            &ph2d_field_render::probes::PROBE_GRID.to_string(),
+        )
+        .replace(
+            "{PROBE_DIRS}",
+            &ph2d_field_render::probes::PROBE_DIRS.to_string(),
+        )
+        .replace(
+            "{PROBE_MARGIN}",
+            &formata(ph2d_field_render::probes::PROBE_MARGIN),
+        )
+        // ⚠️ O MESMO f32 que a CPU calcula em tempo de execução — `4π/N` em `f32`.
+        .replace(
+            "{SH_PESO}",
+            &formata(4.0 * std::f32::consts::PI / ph2d_field_render::probes::PROBE_DIRS as f32),
+        )
+        .replace(
+            "{SH_A1}",
+            &formata(ph2d_field_render::probes::SH_COSSENO[1]),
+        )
+        .replace(
+            "{SH_A2}",
+            &formata(ph2d_field_render::probes::SH_COSSENO[4]),
+        )
+        .replace("{SQRT3}", &formata(3.0f32.sqrt()))
         .replace("{MAX_LAMPS}", &crate::trace::MAX_LAMPS.to_string())
         .replace("{LUMA_R}", &formata(ph2d_field_render::GROUND_LUMA[0]))
         .replace("{LUMA_G}", &formata(ph2d_field_render::GROUND_LUMA[1]))
@@ -693,6 +836,7 @@ pub(crate) fn pinta(
             armazem(2, true),
             armazem(3, true),
             armazem(4, false),
+            armazem(5, false),
         ],
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -714,6 +858,12 @@ pub(crate) fn pinta(
     let p_ricochete = (pintor.ao_rays > 0).then(|| {
         cache
             .entry_with_layout(device, &fonte, fita, "pinta_ricochete", Some(&layout))
+            .clone()
+    });
+    // ⭐⭐⭐ As SONDAS assam-se antes do ricochete as ler (`ph2d_field_render::probes`).
+    let p_assa = (pintor.ao_rays > 0).then(|| {
+        cache
+            .entry_with_layout(device, &fonte, fita, "assa_sondas", Some(&layout))
             .clone()
     });
     // ⭐ A PRIMEIRA das duas passagens de borrão — a segunda é a recolha que o pintor faz ao ler.
@@ -835,6 +985,15 @@ pub(crate) fn pinta(
             recurso(alvos.grades, 6),
         ],
     });
+    // ⭐ As sondas: `PROBE_GRID³ × 28` floats. ⚠️ Ele existe mesmo sem ricochete (a bandeira `0`
+    // é «fora», e o pintor só o lê quando o despacho das sondas correu).
+    let n_sondas = ph2d_field_render::probes::PROBE_GRID.pow(3);
+    let b_sondas = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("sondas"),
+        size: (n_sondas * 28 * 4) as u64,
+        usage: wgpu::BufferUsages::STORAGE,
+        mapped_at_creation: false,
+    });
     let bg1 = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: None,
         layout: &bgl1,
@@ -844,6 +1003,7 @@ pub(crate) fn pinta(
             recurso(&tabela, 2),
             recurso(&materiais, 3),
             recurso(&b_saida, 4),
+            recurso(&b_sondas, 5),
         ],
     });
 
@@ -851,6 +1011,20 @@ pub(crate) fn pinta(
     // ⚠️⚠️ **O ricochete ANTES da pintura, e a ordem é a lei**: a pintura lê a vizinhança `3×3` do
     // canal para o suavizar, logo ela precisa dele escrito em TODO o quadro — não só neste pixel.
     // *Escrito na mesma passagem, cada pixel leria oito vizinhos de um quadro que ainda não existe.*
+    // ⭐⭐⭐ **As SONDAS primeiro**: um grupo de 256 threads por sonda — `PROBE_GRID³` grupos, que
+    // cabem no limite de `65 535` por dimensão a `32³`. Elas não dependem da câmera; assá-las por
+    // quadro assente custa `~1 ms` e uma cache por cena é a wave seguinte.
+    if let Some(p) = &p_assa {
+        let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: None,
+            timestamp_writes: None,
+        });
+        cp.set_pipeline(p);
+        cp.set_bind_group(0, &bg0, &[]);
+        cp.set_bind_group(1, &bg1, &[]);
+        #[allow(clippy::cast_possible_truncation)]
+        cp.dispatch_workgroups(n_sondas as u32, 1, 1);
+    }
     if let Some(p) = &p_ricochete {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,

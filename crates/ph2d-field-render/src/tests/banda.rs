@@ -234,3 +234,225 @@ fn o_ricochete_recolhe_a_difusa_do_ponto_acertado() {
     assert!(maior > 1e-4, "o ricochete desta cena é nulo ({maior:e})");
     let _ = (Escuro, FUNDO);
 }
+
+/// ⏱️⭐⭐⭐ **O SANGRAMENTO DE COR com as SONDAS — a âncora de exactidão.** Se a interpolação vazar
+/// luz pelas paredes, é aqui que se vê: o chão junto da parede vermelha tem de ficar mais vermelho
+/// que verde, na MESMA medida que a convergida diz.
+#[test]
+#[ignore = "sonda de decisão: sondas na caixa de Cornell"]
+fn sonda_as_sondas_na_caixa() {
+    let lado = 128u32;
+    let (doc, reg, cam, g, prontos, donos) = cena(lado);
+    let surfaces = Surfaces {
+        all: &prontos,
+        owners: Some(&donos),
+    };
+    let tom = |c: &[[f32; 3]], esquerda: bool| -> f32 {
+        let (mut r, mut v, mut n) = (0.0f64, 0.0f64, 0usize);
+        for (i, px) in c.iter().enumerate() {
+            if !g.hit[i] || donos.at(g.point[i]) != Some(0) {
+                continue;
+            }
+            let x = g.point[i][0];
+            if x.abs() < 0.22 || esquerda == (x > 0.0) {
+                continue;
+            }
+            r += f64::from(px[0]);
+            v += f64::from(px[1]);
+            n += 1;
+        }
+        if n == 0 {
+            return 0.0;
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        let t = ((r - v) / (r + v).max(1e-9)) as f32;
+        t
+    };
+    let media = |c: &[[f32; 3]]| -> f32 {
+        let (mut s, mut n) = (0.0f64, 0usize);
+        for (i, px) in c.iter().enumerate() {
+            if g.hit[i] {
+                s += f64::from(px[0] + px[1] + px[2]) / 3.0;
+                n += 1;
+            }
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        let m = (s / n.max(1) as f64) as f32;
+        m
+    };
+    let convergida = crate::bounce::bounce_pass(&doc, &reg, &cam, &g, &surfaces, &[LAMPADA], 1024);
+    println!(
+        "  convergida (1024/pixel): sangramento esq {:+.4} dir {:+.4} · média {:.4}",
+        tom(&convergida, true),
+        tom(&convergida, false),
+        media(&convergida)
+    );
+    let atual = crate::blur_bounce(
+        &g,
+        &crate::bounce::bounce_pass(&doc, &reg, &cam, &g, &surfaces, &[LAMPADA], 48),
+    );
+    println!(
+        "  por pixel 48 + 2 borrões: sangramento esq {:+.4} dir {:+.4} · média {:.4}",
+        tom(&atual, true),
+        tom(&atual, false),
+        media(&atual)
+    );
+    for (n, dirs) in [(16usize, 256u32), (24, 256), (32, 256)] {
+        let grid =
+            crate::probes::bake_probes(&doc, &reg, &cam, &surfaces, &[LAMPADA], n, dirs, 128);
+        let dentro = grid.inside.iter().filter(|b| **b).count();
+        for directa in [true, false] {
+            let s = crate::blur_bounce(
+                &g,
+                &crate::probes::gather_probes_por(&doc, &reg, &cam, &g, &grid, directa),
+            );
+            let como = if directa {
+                "soma directa"
+            } else {
+                "9 coeficientes"
+            };
+            println!(
+                "  sondas {n}³×{dirs} {como} + 2 borrões ({dentro} dentro): sangramento esq {:+.4} dir {:+.4} · média {:.4}",
+                tom(&s, true),
+                tom(&s, false),
+                media(&s)
+            );
+        }
+    }
+    let _ = (Escuro, FUNDO, camara);
+}
+
+/// ⭐⭐⭐ **AS SONDAS TINGEM O CHÃO COMO A CONVERGIDA** — a âncora de exactidão da lei que o produto
+/// pinta desde 2026-09-17. O sinal é conhecido antes de medir (a caixa de Cornell existe para isso),
+/// e a magnitude tem de ficar dentro de uma banda cujos DOIS lados foram medidos.
+///
+/// # ⭐ De onde a barra sai (`sonda_as_sondas_na_caixa`, `128²`)
+///
+/// | lei | esquerda (verdade `+0,0404`) | direita (verdade `−0,0577`) |
+/// |---|---:|---:|
+/// | por pixel, `48` dir (a lei ANTERIOR) | `+0,0729` — erro `80 %` da verdade | `−0,0665` — `15 %` |
+/// | **sondas `32³ × 256`** | **`+0,0424` — `5 %`** | **`−0,0777` — `35 %`** |
+///
+/// ⇒ a barra é **metade da magnitude verdadeira** de cada lado: fica no vale entre o pior das
+/// sondas (`35 %`) e o defeito da lei anterior (`80 %`). ⚠️ O lado direito das sondas está mais
+/// verde do que a verdade — é o desvio de nível de `~6 %` que uma sonda a um passo da superfície
+/// carrega (ela vê mais do que o ponto vê), nomeado em `docs/Render3d/08` §14.
+#[test]
+fn as_sondas_tingem_o_chao_como_a_convergida() {
+    let lado = 96u32;
+    let (doc, reg, cam, g, prontos, donos) = cena(lado);
+    let surfaces = Surfaces {
+        all: &prontos,
+        owners: Some(&donos),
+    };
+    let tom = |c: &[[f32; 3]], esquerda: bool| -> f32 {
+        let (mut r, mut v, mut n) = (0.0f64, 0.0f64, 0usize);
+        for (i, px) in c.iter().enumerate() {
+            if !g.hit[i] || donos.at(g.point[i]) != Some(0) {
+                continue;
+            }
+            let x = g.point[i][0];
+            if x.abs() < 0.22 || esquerda == (x > 0.0) {
+                continue;
+            }
+            r += f64::from(px[0]);
+            v += f64::from(px[1]);
+            n += 1;
+        }
+        assert!(n > 100, "a faixa do chão tem só {n} pixels");
+        #[allow(clippy::cast_possible_truncation)]
+        let t = ((r - v) / (r + v).max(1e-9)) as f32;
+        t
+    };
+    // A convergida a 512 por pixel: a `96²` ela custa segundos, não minutos, e a barra é larga.
+    let verdade = crate::bounce::bounce_pass(&doc, &reg, &cam, &g, &surfaces, &[LAMPADA], 512);
+    let sondas = crate::blur_bounce(
+        &g,
+        &crate::probes::probe_bounce(&doc, &reg, &cam, &g, &surfaces, &[LAMPADA]),
+    );
+    let (ve, vd) = (tom(&verdade, true), tom(&verdade, false));
+    let (se, sd) = (tom(&sondas, true), tom(&sondas, false));
+    println!("  verdade esq {ve:+.4} dir {vd:+.4} · sondas esq {se:+.4} dir {sd:+.4}");
+    assert!(
+        ve > 0.0 && vd < 0.0,
+        "a fixtura perdeu o sinal do sangramento: {ve:+.4} / {vd:+.4}"
+    );
+    assert!(
+        se > 0.0 && sd < 0.0,
+        "as sondas trocaram o SINAL do sangramento (esq {se:+.4}, dir {sd:+.4}) — a parede vermelha \
+         tem de avermelhar o chão ao lado dela, e a verde esverdeá-lo"
+    );
+    assert!(
+        (se - ve).abs() <= 0.5 * ve.abs() && (sd - vd).abs() <= 0.5 * vd.abs(),
+        "a magnitude do sangramento das sondas saiu da banda de metade da verdade: esq {se:+.4} \
+         (verdade {ve:+.4}), dir {sd:+.4} (verdade {vd:+.4})"
+    );
+    let _ = (Escuro, FUNDO, camara);
+}
+
+/// ⏱️⭐⭐⭐ **A FAIXA DO CHÃO COLADA ÀS PAREDES** — a única região onde um raio de visibilidade
+/// pixel→sonda tinha algo a fazer, e onde ele foi medido a PIORAR (ver a recusa no doc da
+/// `probes::gather_probes_por`). As réguas de Cornell excluem esta faixa (`|x| > 0,22`, menos a
+/// borda) — por isso a mutação lhes passava despercebida, e esta sonda mede o que elas não medem.
+#[test]
+#[ignore = "sonda de decisão: a visibilidade das sondas junto às paredes"]
+fn sonda_a_faixa_junto_as_paredes() {
+    let lado = 96u32;
+    let (doc, reg, cam, g, prontos, donos) = cena(lado);
+    let surfaces = Surfaces {
+        all: &prontos,
+        owners: Some(&donos),
+    };
+    let verdade = crate::bounce::bounce_pass(&doc, &reg, &cam, &g, &surfaces, &[LAMPADA], 512);
+    let grid = crate::probes::bake_probes(
+        &doc,
+        &reg,
+        &cam,
+        &surfaces,
+        &[LAMPADA],
+        crate::probes::PROBE_GRID,
+        crate::probes::PROBE_DIRS,
+        lado as usize,
+    );
+    let lum = |c: &[[f32; 3]], i: usize| (c[i][0] + c[i][1] + c[i][2]) / 3.0;
+    let chao: Vec<usize> = (0..g.hit.len())
+        .filter(|&i| g.hit[i] && donos.at(g.point[i]) == Some(0))
+        .collect();
+    let (mut faixa, mut miolo) = (Vec::new(), Vec::new());
+    for &i in &chao {
+        let p = g.point[i];
+        if (0.5 - p[0].abs()) < grid.step || (0.5 + p[2]) < grid.step {
+            faixa.push(i);
+        } else {
+            miolo.push(i);
+        }
+    }
+    println!(
+        "  faixa {} px · miolo {} px · passo da grelha {:.4}",
+        faixa.len(),
+        miolo.len(),
+        grid.step
+    );
+    let erro = |c: &[[f32; 3]], idx: &[usize]| -> f32 {
+        let (mut e, mut s) = (0.0f64, 0.0f64);
+        for &i in idx {
+            e += f64::from((lum(c, i) - lum(&verdade, i)).abs());
+            s += f64::from(lum(&verdade, i));
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        let v = (100.0 * e / s.max(1e-9)) as f32;
+        v
+    };
+    // ⚠️ Medido em 2026-09-17 ANTES de o raio sair: com ele a faixa lia `40,66 %` e sem ele
+    // `35,24 %` (miolo `29,90` contra `29,97`). A lei de hoje é a linha «sem».
+    let lei = crate::blur_bounce(
+        &g,
+        &crate::probes::gather_probes(&doc, &reg, &cam, &g, &grid),
+    );
+    println!(
+        "  a lei (sem raio de visibilidade) · erro na FAIXA {:>6.2} % · no MIOLO {:>6.2} %",
+        erro(&lei, &faixa),
+        erro(&lei, &miolo)
+    );
+    let _ = (Escuro, FUNDO, camara);
+}

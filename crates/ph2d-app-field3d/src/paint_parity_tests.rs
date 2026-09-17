@@ -132,19 +132,15 @@ pub(crate) fn dois_caminhos_com(
     //
     // ⚠️⚠️ **Ele NÃO vem do `march`, e não podia vir:** por aquele caminho o canal chega VAZIO —
     // quem o enche é a passagem do pintor, que precisa dos materiais. ⇒ a referência calcula-o com
-    // a lei da CPU (`bounce_pass`) e suaviza-o com a MESMA porta que o dispositivo usa. *É esta
-    // linha que faz o gate comparar dois motores e não dois caminhos diferentes.*
+    // a lei da CPU e suaviza-o com a MESMA porta que o dispositivo usa. *É esta linha que faz o
+    // gate comparar dois motores e não dois caminhos diferentes.*
+    //
+    // ⭐⭐⭐ **A lei são as SONDAS desde 2026-09-17** (`ph2d_field_render::probes`, `docs/Render3d/08`
+    // §14) — a recolha por pixel (`bounce_pass`) fica como a referência CONVERGIDA dos gates de
+    // exactidão, nunca como o que o produto pinta.
     sh.set_bounce(ph2d_field_render::blur_bounce(
         &g,
-        &ph2d_field_render::bounce_pass(
-            doc,
-            &reg,
-            &cam,
-            &g,
-            surfaces,
-            luz,
-            ph2d_field_render::OCCLUSION_PASSES,
-        ),
+        &ph2d_field_render::probes::probe_bounce(doc, &reg, &cam, &g, surfaces, luz),
     ));
     let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
     let cpu = ph2d_field_render::shade_render(

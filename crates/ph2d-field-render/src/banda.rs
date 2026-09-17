@@ -71,3 +71,73 @@ pub fn terracos(g: &Gbuffer, canal: &dyn Fn(usize) -> f32) -> (f32, f32) {
     let p99 = quebras[(quebras.len() * 99) / 100];
     (p99, *quebras.last().unwrap_or(&0.0))
 }
+
+/// ⭐⭐⭐ **A ESTRUTURA DE MÉDIA FREQUÊNCIA do resíduo** — a régua que apanha o que o dono chamou
+/// «reflexo mal feito», e que as duas de cima NÃO apanhavam.
+///
+/// # ⛔ Porque os terraços a um pixel não bastaram
+///
+/// Uma soma de projecções deslocadas da peça (a recolha por pixel com direcções fixas) desenha
+/// **ondulações de 4–8 px** sobre uma face plana — cada uma pequena, o conjunto uma imagem. A
+/// segunda diferença a **um** pixel lê cada ondulação como quase nada, e o `p99` dela nem separava
+/// a lei doente da sã (`0,17` contra `0,13`). *O olho integra a uma escala, e a régua tem de a ter.*
+///
+/// A grandeza: o resíduo `canal − referência`, ao longo de cada linha, menos a versão dele alisada
+/// numa janela de `2·janela + 1` pixels — o que sobra é a parte que NÃO é desvio suave de nível.
+/// Devolve o RMS disso em fracção da média da referência. Um desvio de nível lê `~0`; uma imagem
+/// esborratada da peça lê alto.
+#[must_use]
+pub fn estrutura(
+    g: &Gbuffer,
+    canal: &dyn Fn(usize) -> f32,
+    referencia: &dyn Fn(usize) -> f32,
+    janela: usize,
+) -> f32 {
+    let (w, h) = (g.width as usize, g.height as usize);
+    let (mut media, mut n_ref) = (0.0f64, 0usize);
+    for i in 0..w * h {
+        if g.hit[i] {
+            media += f64::from(referencia(i));
+            n_ref += 1;
+        }
+    }
+    if n_ref == 0 {
+        return 0.0;
+    }
+    media /= n_ref as f64;
+    let (mut soma2, mut n) = (0.0f64, 0usize);
+    let largura = 2 * janela + 1;
+    for y in 0..h {
+        // Um troço contíguo de pixels acertados de cada vez.
+        let mut x = 0;
+        while x < w {
+            if !g.hit[y * w + x] {
+                x += 1;
+                continue;
+            }
+            let ini = x;
+            while x < w && g.hit[y * w + x] {
+                x += 1;
+            }
+            let fim = x;
+            if fim - ini < largura {
+                continue;
+            }
+            let r: Vec<f64> = (ini..fim)
+                .map(|xx| f64::from(canal(y * w + xx) - referencia(y * w + xx)))
+                .collect();
+            for c in janela..r.len() - janela {
+                let liso = r[c - janela..=c + janela].iter().sum::<f64>() / largura as f64;
+                let medio = r[c] - liso;
+                soma2 += medio * medio;
+                n += 1;
+            }
+        }
+    }
+    if n == 0 {
+        return 0.0;
+    }
+    #[allow(clippy::cast_possible_truncation)]
+    let v = ((soma2 / n as f64).sqrt() / media.max(1e-9)) as f32;
+    v
+}

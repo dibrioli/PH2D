@@ -431,3 +431,69 @@ fn o_ricochete_do_dispositivo_le_a_gemea_fosca() {
     );
     let _ = (olhar, t);
 }
+
+/// ⭐⭐⭐ **AS SONDAS DO DISPOSITIVO SÃO AS DA CPU ONDE HÁ PAREDES** — a paridade no VASO.
+///
+/// # ⛔⛔ Porque a paridade de sempre não chega, medido por mutação
+///
+/// A fixtura da `a_imagem_do_dispositivo_e_a_da_cpu` são três formas CONVEXAS sobre uma placa: não
+/// há nada por onde a luz de uma sonda VAZE. Duas mutações passaram por ela a `100,000 %` —
+/// **desligar a visibilidade** da recolha no dispositivo e **não erguer a consulta** na CPU —
+/// porque ali nenhuma das duas muda um byte. *Uma fixtura sem paredes não afirma nada sobre a lei
+/// que impede a luz de as atravessar.*
+///
+/// ⇒ este corre no vaso da cena `=5`: uma cavidade FECHADA com paredes finas, onde metade das
+/// sondas de uma célula pode estar do outro lado da parede. É aqui que as duas mutações sangram.
+#[test]
+#[ignore = "precisa de GPU"]
+fn as_sondas_do_dispositivo_sao_as_da_cpu_no_vaso() {
+    if crate::gpu_frame::shared().is_none() {
+        println!("sem adaptador — saltado");
+        return;
+    }
+    let doc = crate::smoke::scenes::vaso(ph2d_field::DEFAULT_PROFILE_RESOLUTION);
+    let materiais = vec![
+        ph2d_material::OpenPbr {
+            base_color: [0.80, 0.08, 0.06],
+            ..ph2d_material::OpenPbr::default()
+        }
+        .prepare(),
+    ];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+    let cam = ph2d_field_render::Orbit::default();
+    let (onde, luz) = crate::lights::opening_light(&cam);
+    let luz = [ph2d_field_render::PointLamp {
+        world: onde,
+        radiance_at_one: [luz.intensity; 3],
+    }];
+    let (cpu, gpu, _) = crate::gpu_frame::paint_parity_tests::dois_caminhos(&surfaces, &doc, &luz)
+        .expect("o dispositivo tem de tomar o vaso");
+    // ⚠️ O piso é o do VASO sozinho a `192×108` (ele pinta `~2 400` px), não o das três formas da
+    // fixtura irmã (`3 000`) — a 1.ª redacção herdou o número e reprovou sobre produto certo.
+    let pintados = cpu.as_chunks::<4>().0.iter().filter(|p| p[3] > 0).count();
+    println!("  o vaso pinta {pintados} px");
+    assert!(
+        pintados > 1_200,
+        "só {pintados} pixels pintados — o vaso não enche a tela"
+    );
+    let (mut dentro, mut pior) = (0usize, 0u8);
+    for (a, b) in cpu.iter().zip(gpu.iter()) {
+        let d = a.abs_diff(*b);
+        pior = pior.max(d);
+        if d <= 1 {
+            dentro += 1;
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let pct = 100.0 * dentro as f64 / cpu.len() as f64;
+    println!("  paridade no vaso: {pct:.3} % · pior desvio {pior}");
+    assert!(
+        pct >= 99.99,
+        "o dispositivo e a CPU divergiram em {:.3} % dos bytes no vaso (pior {pior}) — numa \
+         cavidade fechada a suspeita nº1 é a visibilidade ou o erguer da consulta das sondas",
+        100.0 - pct
+    );
+}

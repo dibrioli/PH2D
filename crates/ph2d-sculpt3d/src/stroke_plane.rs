@@ -46,15 +46,41 @@ impl SculptStroke {
     /// ⛔ **A `Quadric` do `l-mode` fica de fora de propósito:** o G-6 pergunta
     /// pelo PLANO, e devolver a superfície local convidaria um segundo
     /// consumidor a depender de um detalhe interno.
+    /// ⭐⭐ **SÓ PARA A BANCADA — o PLANO que o ÚLTIMO dab do
+    /// [`crate::Verb::Plane`] ajustou** (`centro` já com o deslocamento, `normal`).
+    ///
+    /// ⚠️ **Ela existe porque o G-5 e o G-6 da espec medem uma grandeza que o
+    /// produto não publica** — *a distância do cursor ao plano, ao longo da
+    /// normal*, e *a altura do centro contra o plano do oráculo*. Derivá-la da
+    /// malha de saída seria medir o plano **através** da cadeia de peso, e um
+    /// desvio ali não diria qual das duas falhou.
+    ///
+    /// # ⛔⛔⛔ Ela LÊ o que o dab usou, e as DUAS redacções anteriores não
+    ///
+    /// 1. A **primeira** chamava o [`Self::fit_plane`] — **o plano da CASA**, que
+    ///    serve os quatro verbos portados da referência MIT e que o
+    ///    [`crate::Verb::Plane`] **não usa**. As duas leis diferem `17,1 %` do
+    ///    raio no centro e `31,2°` na normal (cabeçalho do
+    ///    [`super::plano_da_pegada`]) ⇒ o G-6 media outro programa, e ficava
+    ///    **VERDE** porque a barra dele é `0,75` raios. *Uma porta de bancada que
+    ///    devolve a lei de outro verbo transforma toda folga de barra num
+    ///    esconderijo.*
+    /// 2. A **segunda** chamava o [`Self::plano_da_pegada`] fora de um dab — e
+    ///    aquele lê a **pegada**, que é montada pelo dab. Fora dele a pegada é a
+    ///    do dab ANTERIOR (ou vazia): o `lei_area20`, cujo raio de área é `2 R`,
+    ///    lia `2,405e-2` fora do plano do oráculo.
+    ///
+    /// ⇒ *o plano deste verbo não é calculável fora do gesto, e a porta honesta é
+    /// a que LÊ o que o gesto guardou.* ⭐ De graça ela fica **sem `&mut`** e sem
+    /// tocar na memória do plano (espec §6), que a 2.ª redacção tinha de repor à
+    /// mão.
+    ///
+    /// ⚠️ **`None`** quando o último dab não foi deste verbo, quando não houve
+    /// dab nenhum, ou quando a superfície não respondeu — e **não** um plano
+    /// emprestado de outra lei, que é o defeito nº 1 acima.
     #[must_use]
-    pub fn plano_do_dab_para_teste(
-        &self,
-        mesh: &Mesh,
-        brush: &Brush,
-        dab: &Dab,
-    ) -> ([f32; 3], [f32; 3]) {
-        let f = self.fit_plane(mesh, brush, dab);
-        (f.point, f.normal)
+    pub fn plano_do_ultimo_dab_para_teste(&self) -> Option<([f32; 3], [f32; 3])> {
+        self.plano.map(|p| (p.centro, p.normal))
     }
 
     pub(super) fn fit_plane(&self, mesh: &Mesh, brush: &Brush, dab: &Dab) -> PlaneFit {

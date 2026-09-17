@@ -97,16 +97,6 @@ impl Verb {
             && self != Self::DrawSharp
     }
 
-    /// Este verbo escreve na MÁSCARA em vez da posição?
-    ///
-    /// Porta única: o aplicador pergunta para saber onde escrever, e a UI
-    /// perguntará para saber que knobs oferecer. Duas listas divergiriam no dia
-    /// em que entrar o segundo verbo de canal (Paint, na W7).
-    #[must_use]
-    pub fn paints_mask(self) -> bool {
-        matches!(self, Self::Mask)
-    }
-
     /// O sinal (o `Ctrl` de todo app de escultura) muda o RESULTADO deste verbo?
     ///
     /// ⚠️ **Era uma blacklist, e ela MENTIA.** Ao excluir só `Smooth`/`Sharpen` e
@@ -346,32 +336,6 @@ impl Verb {
                 // **diferente e MAIOR** com a inversão, que é a assinatura de
                 // uma truncagem sobre um factor negativo.
                 | Self::Boundary
-        )
-    }
-
-    /// Este verbo ajusta um plano à pegada do dab? (Quem responde `true` usa o
-    /// knob `plane_offset`.)
-    #[must_use]
-    pub fn uses_plane(self) -> bool {
-        matches!(self, Self::Flatten | Self::Fill | Self::Scrape | Self::Clay)
-    }
-
-    /// Este verbo lê o anel de vizinhos? (Quem responde `true` custa a
-    /// travessia do CSR por vértice, e é o que decide se o `vert_verts` pode um
-    /// dia virar preguiçoso.)
-    ///
-    /// ⚠️ **O [`Self::SurfaceSmooth`] o percorre DUAS vezes** — uma para a média
-    /// das posições, outra para a média dos `b` —, e ele nasceu FORA desta
-    /// lista: a pergunta que ela responde é *quem precisa da adjacência*, e uma
-    /// resposta falsa aqui é como um `vert_verts` preguiçoso deixaria de
-    /// construí-la exatamente para o verbo que mais a usa. O gate irmão
-    /// `the_families_that_the_ui_asks_about_agree_with_the_verb_list` enumera
-    /// os nomes, e ficou VERDE sobre a omissão até alguém a procurar.
-    #[must_use]
-    pub fn uses_neighbours(self) -> bool {
-        matches!(
-            self,
-            Self::Smooth | Self::Sharpen | Self::SurfaceSmooth | Self::SmearMultires
         )
     }
 

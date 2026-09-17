@@ -21,6 +21,12 @@ mod verb;
 /// em `tests/`, e este vive lá.
 #[path = "brush_verb_predicados.rs"]
 mod verb_predicados;
+
+/// ⭐ **A que FAMÍLIA DE LEITURA um verbo pertence** — ver
+/// [`verb_familias`]. Irmão do [`verb_predicados`], cortado dele quando o tecto
+/// de LOC ficou vermelho ao o pincel de plano entrar na família do plano.
+#[path = "brush_verb_familias.rs"]
+mod verb_familias;
 pub use verb::{
     BLENDER_REACH_FRACTION, CLAY_PLANE_FRACTION, CLAY_THUMB_TILT_MAX_DEG, CLAY_THUMB_TILT_STEP_DEG,
     CREASE_FRACTION, DEFAULT_MULTIPLANE_ANGLE_DEG, FilterKind, LAYER_HEIGHT_HARD_MAX,

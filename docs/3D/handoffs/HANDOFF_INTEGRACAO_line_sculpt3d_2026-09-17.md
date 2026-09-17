@@ -431,6 +431,124 @@ envelhecer sem testemunha.*
 
 ---
 
+## §63 — ⭐⭐⭐ OS DOIS GATES QUE FALTAVAM À ESPEC DO PLANO — e o G-5 apanhou o G-6
+
+Ordem do dono: *«resolva o que está em aberto»*. A lista foi **auditada contra o
+código antes de se pegar num item**, e encolheu antes de crescer: ela dizia
+*«os gates G-5, G-6, G-13»* e o **G-6 já existia** desde a manhã.
+
+### §63.1 — G-5, o gate DISCRIMINANTE
+
+`o_centro_da_area_e_a_media_das_posicoes_puxadas_para_o_cursor`, em duas metades:
+
+* **(a)** sobre as `11` células de `lei/*`, a lei do produto cai no plano que o
+  **alvo** de facto usou — recuperado por ajuste da saída DELE. Pior `6,521e-8`.
+* **(b)** sobre as `8` que discriminam, as **três** candidatas rejeitadas têm de
+  **reprovar** por `≥ 1e-3`.
+
+⭐⭐⭐ **O piso medido é `0,00269`, no `lei_area20` — EXACTAMENTE o número que a
+§2.2 publica, e na célula que ela nomeia.** As três candidatas foram
+reprogramadas aqui a partir do *enunciado* da espec (a lei da casa, a média
+simples sobre `R_c`, a ponderada sobre `R_c`) e o piso saiu igual ao dela: *é
+essa coincidência que prova que são as MESMAS três, e não três leis parecidas.*
+
+⚠️ **O piso de população tem DOIS números** (`11` medidas, `8` discriminantes):
+sem o segundo, degenerar o corpus deixaria o gate verde a julgar três células. E
+a metade **negativa** afirma que as três não-discriminantes continuam a não
+discriminar — *uma tabela que deixa de descrever o corpus é a licença do §5.0*.
+
+⛔ **As três candidatas vivem na BANCADA e não no produto:** são leis que a
+medição recusou, e pô-las atrás de uma porta do motor daria três caminhos vivos
+para uma pergunta que já tem resposta.
+
+### §63.2 — ⛔⛔⛔ E ele apanhou o G-6 a medir OUTRA LEI
+
+O G-5 reprovou à primeira: `6,788e-2` fora do plano do oráculo — **a mesma ordem
+de grandeza das candidatas que a espec REJEITA**. A causa não era a lei:
+
+> a porta de bancada `plano_do_dab_para_teste` chamava o `fit_plane`, que é **o
+> plano da CASA** — o dos quatro verbos portados da referência MIT. O
+> `Verb::Plane` usa o `plano_da_pegada`, e as duas diferem **`17,1 %` do raio no
+> centro** e **`31,2°` na normal** (números do cabeçalho daquele módulo).
+
+⚠️⚠️ **O G-6 ficava VERDE por cima disso**, porque a barra dele é `0,75` raios —
+folga que engole `17 %`. ⇒ *uma barra larga não é só uma afirmação fraca: é o
+sítio onde uma régua errada sobrevive*, e a defesa é ter na mesma porta um gate
+cuja barra não tenha folga nenhuma.
+
+⛔⛔ **E o doc que eu escrevi de manhã dava uma explicação FALSA e plausível:** o
+G-6 lia `0,2645` contra os `0,4947` que a espec publica, e a nota ao lado dizia
+que a diferença era *«a régua ser mais larga»*. Com a porta corrigida ele lê
+**`0,4947` ao dígito**, na célula que a espec nomeia. *O número não foi ajustado;
+ele apareceu* — e é isso que prova que a régua passou a medir a lei certa.
+
+### §63.3 — A porta foi reescrita DUAS vezes, e a segunda também estava errada
+
+A 2.ª redacção chamava o `plano_da_pegada` **fora de um dab** — e aquele lê a
+**pegada**, que é o dab que a monta. Fora dele a pegada é a do dab ANTERIOR (ou
+está vazia): o `lei_area20`, cujo raio de área é `2 R`, lia `2,405e-2`.
+
+⇒ a porta honesta é `plano_do_ultimo_dab_para_teste()`, que **LÊ o que o gesto
+guardou**. ⭐ De graça ela fica sem `&mut` e sem tocar na memória do plano (espec
+§6), que a 2.ª redacção tinha de repor à mão. ⚠️ Ela devolve `Option` e **não** um
+plano emprestado de outra lei — que era o defeito nº 1.
+
+### §63.4 — G-13, o gate contra o KNOB MORTO, com barra de MAGNITUDE
+
+`cada_verbo_le_o_corte_que_o_nosso_painel_lhe_oferece`: para cada verbo que o
+painel mostre o corte ou o deslocamento, varrer o knob tem de mover o barro
+`≥ 1e-4` — **`73×` abaixo** da menor mudança que o alvo produz num knob vivo
+entre fixturas **publicadas** (`7,3e-03`).
+
+⭐ **Ele é o irmão de MAGNITUDE do censo dos knobs**, que pergunta *«muda ao
+bit?»* — pergunta com ponto cego: um knob que mova `1e-9` está vivo ao bit e
+morto para o artista. *É a cegueira que o `Density` pagou com uma foto do dono.*
+
+### §63.5 — ⭐⭐⭐ E o G-13 achou um CONTROLO INALCANÇÁVEL
+
+A população impressa saiu com **`6`** células e sem `Plane × plane_offset`. O
+pincel de plano **lê** aquele knob desde que existe (`lift = raio × plane_offset`,
+espec §2.4, com duas fixturas a exercitá-lo) e o painel **não lhe pintava a
+fileira**: o `uses_plane()` não o continha, e o `show` daquela row é o **único
+consumidor de produto** do predicado.
+
+⛔⛔ **É a coluna «o painel esconde × o knob CHEGA» da tabela do próprio censo — o
+INALCANÇÁVEL, cuja cura é OPOSTA à do morto.** ⚠️ *Um censo que procura knobs
+mortos nunca o encontraria: ele não é pintado, logo não entra na varredura.* O
+que o revelou foi o gate **imprimir** a população em vez de a contar em silêncio.
+
+⇒ o `uses_plane()` passa a conter o `Verb::Plane`, a população vai a **`7`**, e a
+célula nova passa a barra com folga (`1,28e-2`, a mais fraca de todas).
+
+⚠️⚠️ **E o gate que devia ter apanhado isto estava VERDE:** o
+`the_families_that_the_ui_asks_about_agree_with_the_verb_list` compara a lista
+consigo mesma ⇒ ele afirma que ela não **MUDOU**, nunca que ela está **CERTA**. O
+doc do próprio predicado já dizia, por escrito, *«ficou verde sobre a omissão até
+alguém a procurar»*.
+
+⛔ **E o predicado NÃO é de roteamento:** ele responde *«este verbo lê o
+`plane_offset`»*, e não *«que lei de plano ele corre»* — quem o usar para rotear
+entrega o plano errado, que é exactamente o defeito da §63.2.
+
+### §63.6 — O tecto de LOC, curado por CORTE
+
+O `brush_verb_predicados.rs` foi a `725` de `700` ao registar porquê o pincel de
+plano entrou na família. ⇒ `brush_verb_familias.rs` (`662` + `82`), com as **três
+famílias de leitura que a UI pergunta** — máscara, plano e anel, exactamente as
+que o gate acima enumera. ⛔ Nenhuma entrada nova no `FILE_OVERAGE_OK`.
+
+### §63.7 — Prova
+
+**7 de 7** mutações sangram, com controlo negativo verde: a lei invertida (o peso
+multiplica em vez de puxar) · o centro a virar a média simples sobre `R_c` · o
+`R_c` a virar o raio da normal · **o plano ancorado na ORIGEM** (o defeito que o
+G-6 existe para apanhar — e que agora sangra sobre a lei certa) · a barra da
+discriminação acima do piso publicado · a coluna `discrimina?` a mentir numa
+célula · e uma candidata rejeitada a virar a do produto (que torna a metade (b)
+vácua).
+
+---
+
 ## §58 — 📦 PARA O AGENTE INTEGRADOR
 
 ### §58.1 — Os factos da linha
@@ -542,6 +660,21 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && bash scripts/p
   razão da outra metade — *o §5 acumula trabalho já pago, e recitar a nota manda reconstruí-lo*.
 - **R:** o `tip_roundness` (medido: `14` no merge-base, `14` no HEAD, **zero** adições desta linha)
   · o `NoError` público do motor de booleana.
-- **Nossas, nomeadas:** `dureza05` do *Scene Project* (`3` vértices de `301` na borda móvel da
-  pegada) · a composição por dab · o `Visibility` que não propaga a descendentes · as cunhas finas
-  da costura do Box Trim · os gates G-5, G-6, G-13 do pincel de plano.
+- **Nossas, nomeadas** — ⚠️ **AUDITADA contra o código em 17/09, e ela ENCOLHEU DUAS vezes:**
+  - ✅ os gates **G-5, G-6 e G-13** do pincel de plano **FECHARAM** (§63). O G-6 já existia quando
+    esta lista o nomeava; o G-5 e o G-13 nasceram aqui, e o G-5 apanhou o G-6 a medir **outra lei**.
+  - ✅ a **composição por dab** do *Scene Project* estava **REFUTADA** no próprio ficheiro que a
+    nomeia (a causa era o `GripLaw::from_live`, §34) — *recitar a nota mandava reconstruir trabalho
+    já pago*.
+  - ⏳ `dureza05` do *Scene Project*: `3` vértices de `301` na **borda móvel** da pegada, com os
+    outros `298` a `≤ 5,0e-5`. Diagnosticado; é a família da banda de empate do último bit, e a
+    decisão é se vira **divergência declarada** ou se a barra passa a ser por-vértice.
+  - ⏳ as **cunhas finas** da costura do Box Trim (altura `2,4 %` de uma aresta) — curá-las toca na
+    malha da peça, que é **outra decisão**.
+  - ⏳ o **`Visibility` que não propaga a descendentes** — house-wide, e o §5 já o classifica como
+    decisão de produto com **ADR**: nada nesta família o pode fechar sozinho.
+  - ⏳ Do pincel de plano ficam: a extensão do centro que segue a **pressão** (esta casa não a tem, e
+    há gate a afirmá-lo) · a **ordem do deslocamento** contra a memória (o corpus só a exercita com a
+    memória a zero) · a **pegada projectada** (decisão do dono, espec §15) · a **máscara** no arnês
+    de bancada · o gémeo Motion do §49 · os passos de PAINEL da sonda do undo, que são roteiro morto
+    com `active=vector`.

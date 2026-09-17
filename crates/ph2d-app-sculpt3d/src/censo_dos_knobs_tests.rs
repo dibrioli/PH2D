@@ -519,3 +519,110 @@ fn diag_a_pose_por_deformacao() {
         );
     }
 }
+
+/// ⭐⭐⭐ **G-13 — CADA VERBO LÊ O CORTE QUE O NOSSO PAINEL LHE OFERECE**
+/// (`SPEC_pincel_de_plano.md` §12).
+///
+/// ⛔ **É o gate contra o KNOB MORTO, e ele é o irmão de MAGNITUDE do censo
+/// deste ficheiro.** O censo pergunta *«a saída muda ao BIT?»* e essa pergunta
+/// tem um ponto cego: um knob que mude o barro em `1e-9` está vivo **ao bit** e
+/// morto **para o artista**. ⚠️ *É a mesma cegueira que o `Density` pagou com
+/// uma foto do dono* — a régua dizia `depois < antes` e a colheita medida era de
+/// `1 %`, invisível. ⇒ aqui a barra é uma **quantidade**.
+///
+/// # A barra, e de onde ela vem
+///
+/// **`1e-4`**, e ela sai do **lado aprovado**: a menor mudança que o alvo produz
+/// num knob VIVO entre duas fixturas **publicadas** é `7,3e-03`
+/// (`corte/corte_tiras_05` contra `corte/corte_tiras_desligado`) ⇒ a barra fica
+/// **`73×` abaixo** dela. ⛔ A 1.ª redacção da espec citava `1,1e-02`, medido mas
+/// **sem fixtura publicada** — *uma barra derivada de um número que a página não
+/// carrega não é verificável por quem a lê*.
+///
+/// # A população é DERIVADA do painel, nunca escrita aqui
+///
+/// Para cada `(verbo, knob)` a pergunta é *«o painel PINTA isto com este verbo na
+/// mão?»*, respondida pela tabela de fileiras ([`arnes::pintado`]). ⛔ Uma lista
+/// à mão divergiria da tabela na primeira wave que mexesse numa das duas, e a que
+/// o artista vê é a que envelhece.
+///
+/// ⚠️ **Os dois tectos varrem-se com o OUTRO preso em `1`**, e isso é a espec
+/// §3.1: com os dois a zero o pincel fica **inerte sem deixar de existir** (o
+/// *nada* do controlo, que o G-8 mede), e uma varredura `0/0` contra `1/0` leria
+/// a morte do pincel como se fosse a morte do knob.
+#[test]
+fn cada_verbo_le_o_corte_que_o_nosso_painel_lhe_oferece() {
+    /// `73×` abaixo da menor mudança publicada num knob vivo do alvo.
+    const BARRA: f32 = 1e-4;
+    /// ⭐ **PISO DE POPULAÇÃO** — `7` células, **CONTADAS e não escolhidas** (o
+    /// gate imprime-as). Sem ele, esconder os três knobs deixaria o gate **verde
+    /// a medir nada** (`CLAUDE.md` §5.0).
+    ///
+    /// ⭐⭐ **Ela era `6` e a 7.ª foi uma CURA que este gate provocou:** o
+    /// `Plane × plane_offset` não aparecia na lista impressa porque o painel
+    /// **não o pintava**, apesar de o verbo o ler desde que existe (o
+    /// `uses_plane` não o continha). *Um censo de knobs MORTOS é cego ao
+    /// INALCANÇÁVEL — o morto está pintado, o inalcançável não —, e o que o
+    /// revelou foi o gate imprimir a população em vez de a contar em silêncio.*
+    const PISO: usize = 7;
+
+    /// Como se põe um knob num dos dois extremos da varredura.
+    type Varredura = fn(&mut Brush, bool);
+
+    /// `(rótulo da fileira, como se varre o knob)` — os três que a §12 nomeia.
+    const CORTE_E_DESLOCAMENTO: [(&str, Varredura); 3] = [
+        ("panel.sculpt3d.plano_altura", |b, alto| {
+            b.plano_altura = if alto { 1.0 } else { 0.0 };
+            b.plano_profundidade = 1.0;
+        }),
+        ("panel.sculpt3d.plano_profundidade", |b, alto| {
+            b.plano_profundidade = if alto { 1.0 } else { 0.0 };
+            b.plano_altura = 1.0;
+        }),
+        ("panel.sculpt3d.plane_offset", |b, alto| {
+            b.plane_offset = if alto { 0.5 } else { 0.0 };
+        }),
+    ];
+
+    let mut medidos = 0usize;
+    let mut celulas: Vec<String> = Vec::new();
+    let mut pior = (f32::INFINITY, String::new());
+    for verb in Verb::ALL {
+        let ui = painel_com(verb);
+        for (rotulo, aplicar) in CORTE_E_DESLOCAMENTO {
+            if !pintado(&ui, rotulo) {
+                continue;
+            }
+            let (mut a, mut b) = (pincel(verb), pincel(verb));
+            aplicar(&mut a, true);
+            aplicar(&mut b, false);
+            let d = desvio(&corre(&a), &corre(&b));
+            assert!(
+                d >= BARRA,
+                "{verb:?} × `{rotulo}`: varrer o knob move o barro {d:.3e}, e a \
+                 barra e' {BARRA:.0e} — o painel oferece um controlo que este \
+                 verbo nao le^, que e' o knob MORTO do §5.0"
+            );
+            if d < pior.0 {
+                pior = (d, format!("{verb:?} × {rotulo}"));
+            }
+            celulas.push(format!(
+                "{verb:?}/{}",
+                rotulo.rsplit('.').next().unwrap_or(rotulo)
+            ));
+            medidos += 1;
+        }
+    }
+    assert_eq!(
+        medidos, PISO,
+        "o G-13 mediu {medidos} celulas e a populacao pintada e' {PISO} — se ela \
+         encolheu, um knob deixou de ser oferecido; se cresceu, um verbo novo \
+         passou a oferecer o corte e ninguem o mediu"
+    );
+    println!(
+        "G-13: {medidos} celulas [{}], a mais fraca move {:.3e} em {}",
+        celulas.join(" · "),
+        pior.0,
+        pior.1
+    );
+}

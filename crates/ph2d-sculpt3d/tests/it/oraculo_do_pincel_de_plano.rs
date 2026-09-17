@@ -878,12 +878,24 @@ fn o_afastar_e_uma_divergencia_declarada_com_numero() {
 ///   e `0,75` é **`1,5×`** esse máximo — *porque um corpus de UM dab efectivo
 ///   não limita o que um traço longo faz*.
 ///
-/// **MEDIDO aqui:** pior **`0,2645`** raios, na `lei_crista_raio02` (a célula de
-/// menor raio, que é onde a espec também põe o máximo dela). ⚠️ O número é
-/// **menor** que os `0,4947` que a espec publica, e a razão é a régua e não a
-/// lei: ela mede no dab EFECTIVO e este mede **antes de cada dab**, ficando com
-/// o pior — *uma varredura mais larga que encontra um máximo menor é uma
-/// afirmação mais forte, não uma mais fraca.*
+/// **MEDIDO aqui:** pior **`0,4947`** raios, na `lei_crista_raio02` — **o número
+/// que a espec publica, ao dígito**, e na célula que ela nomeia (a de menor raio).
+///
+/// ⛔⛔⛔ **E a 1.ª redacção deste gate lia `0,2645` com uma explicação FALSA
+/// escrita ao lado.** Ela dizia que o número menor vinha da régua ser mais larga
+/// (*«mede antes de cada dab e fica com o pior»*) — plausível, e errado: ele vinha
+/// de a porta de bancada devolver **o plano da CASA**, que o
+/// [`ph2d_sculpt3d::Verb::Plane`] não usa. As duas leis diferem `17,1 %` do raio
+/// no centro, e a barra de `0,75` raios engolia a diferença.
+///
+/// ⚠️⚠️ **Quem o apanhou foi o G-5**, que mede a mesma porta contra o plano do
+/// oráculo com uma barra `750 000×` mais apertada: ali o desvio lê-se como
+/// `6,8e-2` e não há folga onde ele se esconda. ⇒ *uma barra larga não é só uma
+/// afirmação fraca — ela é o sítio onde uma régua errada sobrevive*, e a defesa é
+/// ter na mesma porta um gate cuja barra não tenha folga nenhuma.
+///
+/// ⭐ Reproduzir o `0,4947` da espec **com a porta corrigida** é o que prova que
+/// a régua passou a medir a lei certa: o número não foi ajustado, ele apareceu.
 ///
 /// ⚠️⚠️ **A população que este gate alcança são `13` células e a espec diz `11`.**
 /// A diferença são as **duas deslocadas**, que a espec conta à parte por o termo
@@ -916,15 +928,26 @@ fn o_plano_segue_o_cursor_e_nao_a_origem() {
         let mut s = SculptStroke::default();
         s.begin(&m);
 
-        // ⚠️⚠️ **O plano mede-se ANTES de CADA dab, e o pior fica** — e a 1.ª
-        // redacção media só o `cursores[0]`. Uma célula pode abrir com um dab
-        // que não move nada (é o que a `lei_primeiro_dab` nomeia), e ali o plano
-        // medido **não governa coisa nenhuma**: o meu próprio controlo apanhou
-        // isso na primeira corrida, sobre a `lei_crista`.
+        // ⚠️⚠️ **O plano mede-se em CADA dab, e o pior fica** — e a 1.ª redacção
+        // media só o `cursores[0]`. Uma célula pode abrir com um dab que não move
+        // nada (é o que a `lei_primeiro_dab` nomeia), e ali o plano medido **não
+        // governa coisa nenhuma**: o meu próprio controlo apanhou isso na
+        // primeira corrida, sobre a `lei_crista`.
+        //
+        // ⛔⛔ **E ele lê-se DEPOIS do dab, não antes** — o plano deste verbo sai
+        // da PEGADA, e quem a monta é o dab, logo fora do gesto ele não existe.
+        // A 2.ª redacção media-o antes e lia a pegada do dab ANTERIOR; quem a
+        // apanhou foi o G-5, no `lei_area20`, cujo raio de área é `2 R`.
         let mut mexeu = false;
         for cur in &f.cursores {
             let dab = Dab::at(*cur, b.radius, e);
-            let (ponto, normal) = s.plano_do_dab_para_teste(&m, &b, &dab);
+            let antes = m.positions().to_vec();
+            s.dab(&mut m, &b, &dab, Symmetry::default());
+            mexeu |= m.positions().iter().zip(&antes).any(|(a, r)| a != r);
+
+            let (ponto, normal) = s
+                .plano_do_ultimo_dab_para_teste()
+                .expect("a superficie do corpus responde sempre");
             let d = (0..3).map(|k| (cur[k] - ponto[k]) * normal[k]).sum::<f32>();
             let em_raios = d.abs() / b.radius;
 
@@ -940,10 +963,6 @@ fn o_plano_segue_o_cursor_e_nao_a_origem() {
             if em_raios > pior.0 {
                 pior = (em_raios, nome.to_string());
             }
-
-            let antes = m.positions().to_vec();
-            s.dab(&mut m, &b, &dab, Symmetry::default());
-            mexeu |= m.positions().iter().zip(&antes).any(|(a, r)| a != r);
         }
         medidas += 1;
 
@@ -989,7 +1008,10 @@ fn o_plano_segue_o_cursor_e_nao_a_origem() {
         for cur in &f.cursores {
             let alvo = [cur[0] + LONGE[0], cur[1] + LONGE[1], cur[2] + LONGE[2]];
             let dab = Dab::at(alvo, b.radius, e);
-            let (ponto, normal) = s.plano_do_dab_para_teste(&m, &b, &dab);
+            s.dab(&mut m, &b, &dab, Symmetry::default());
+            let (ponto, normal) = s
+                .plano_do_ultimo_dab_para_teste()
+                .expect("a superficie do corpus responde sempre");
             let d = (0..3)
                 .map(|k| (alvo[k] - ponto[k]) * normal[k])
                 .sum::<f32>();
@@ -1000,7 +1022,6 @@ fn o_plano_segue_o_cursor_e_nao_a_origem() {
                  (barra {barra:.4}) — o plano esta' ancorado em qualquer coisa \
                  que NAO e' o cursor"
             );
-            s.dab(&mut m, &b, &dab, Symmetry::default());
         }
         discriminantes += 1;
     }
@@ -1009,4 +1030,342 @@ fn o_plano_segue_o_cursor_e_nao_a_origem() {
         "a metade discriminante correu {discriminantes} celulas e devia correr 13"
     );
     println!("G-6: e as mesmas 13 DESLOCADAS {LONGE:?} passam a mesma barra");
+}
+
+/// **AS `11` CÉLULAS do G-5, e a coluna `discrimina?` da tabela da espec §2.2.**
+///
+/// ⚠️ **A população CONTA-SE do directório menos duas partições declaradas:** as
+/// `14` de `lei/*` menos a que não move nada (`lei_primeiro_dab`, que é o sujeito
+/// do G-2) e menos as **duas deslocadas**, que a espec conta à parte porque ali o
+/// plano é movido por `offset × R` e a régua deixaria de medir só o centro.
+///
+/// ⛔ **A coluna vem da espec e não de uma corrida:** escrevê-la do que o gate
+/// mede seria a régua a copiar a resposta. O mecanismo de cada uma das três que
+/// **não** discriminam está publicado ali — a superfície antissimétrica e as duas
+/// células em que o conjunto do alvo tem **um** vértice.
+const CELULAS_DO_G5: [(&str, bool); 11] = [
+    ("lei_crista", true),
+    ("lei_rampa", true),
+    ("lei_degrau", true),
+    ("lei_bossas", false),
+    ("lei_crista_raio02", false),
+    ("lei_crista_raio06", true),
+    ("lei_area025", false),
+    ("lei_area10", true),
+    ("lei_area20", true),
+    ("lei_normal025", true),
+    ("lei_normal10", true),
+];
+
+/// O plano que o **ALVO** de facto usou, recuperado por ajuste da saída DELE.
+///
+/// ⭐ **Possível em TODAS as `11` porque o corpus de `lei/*` é curva CONSTANTE e
+/// força cheia** — medido, as `14` declaram-no no cabeçalho: ali cada vértice
+/// tocado caminha a distância inteira e **aterra no plano**, logo o ajuste é o
+/// próprio plano e não uma aproximação. ⛔ Com curva suave isto não valeria, e a
+/// régua teria de re-derivar a lei que está a julgar.
+///
+/// Devolve `(a, b, mx, my, mz)` de `z = mz + a·(x−mx) + b·(y−my)`.
+fn plano_do_alvo(f: &Fixtura) -> (f64, f64, f64, f64, f64) {
+    let tocados: Vec<[f64; 3]> = (0..f.repouso.len())
+        .filter(|&i| f.saida[i] != f.repouso[i])
+        .map(|i| {
+            [
+                f64::from(f.saida[i][0]),
+                f64::from(f.saida[i][1]),
+                f64::from(f.saida[i][2]),
+            ]
+        })
+        .collect();
+    assert!(
+        tocados.len() > 50,
+        "{}: so' {} tocados — o ajuste do plano do alvo mediria ruido",
+        f.nome,
+        tocados.len()
+    );
+    let n = tocados.len() as f64;
+    let (mut sx, mut sy, mut sz) = (0.0, 0.0, 0.0);
+    for p in &tocados {
+        sx += p[0];
+        sy += p[1];
+        sz += p[2];
+    }
+    let (mx, my, mz) = (sx / n, sy / n, sz / n);
+    let (mut sxx, mut sxy, mut syy, mut sxz, mut syz) = (0.0, 0.0, 0.0, 0.0, 0.0);
+    for p in &tocados {
+        let (dx, dy, dz) = (p[0] - mx, p[1] - my, p[2] - mz);
+        sxx += dx * dx;
+        sxy += dx * dy;
+        syy += dy * dy;
+        sxz += dx * dz;
+        syz += dy * dz;
+    }
+    let det = sxx * syy - sxy * sxy;
+    assert!(
+        det.abs() > 1e-12,
+        "{}: a pegada degenerou numa linha",
+        f.nome
+    );
+    (
+        (sxz * syy - syz * sxy) / det,
+        (syz * sxx - sxz * sxy) / det,
+        mx,
+        my,
+        mz,
+    )
+}
+
+/// A altura (com sinal) de um ponto contra o plano recuperado, em unidades de
+/// objecto.
+fn altura(p: [f64; 3], (a, b, mx, my, mz): (f64, f64, f64, f64, f64)) -> f64 {
+    (p[2] - mz - a * (p[0] - mx) - b * (p[1] - my)) / (1.0 + a * a + b * b).sqrt()
+}
+
+/// **AS TRÊS CANDIDATAS REJEITADAS** (espec §2.2), na ordem da tabela: a lei que
+/// esta casa já tinha, a média simples sobre `R_c` e a média ponderada sobre `R_c`.
+///
+/// ⛔⛔ **Elas vivem AQUI e não no produto, de propósito.** São leis que a medição
+/// recusou: pô-las atrás de uma porta do motor daria três caminhos vivos para uma
+/// pergunta que já tem resposta — e o que o gate precisa delas é só que sejam
+/// **calculáveis**, para provar que a escolhida não foi escolhida à sorte.
+fn candidatas_rejeitadas(f: &Fixtura, cursor: [f32; 3]) -> [[f64; 3]; 3] {
+    let b = pincel(f);
+    let e = olho(f);
+    let raio = b.radius;
+    let frac = if b.area_radius_frac > 0.0 {
+        b.area_radius_frac
+    } else {
+        b.normal_radius_frac
+    };
+    let rc = raio * frac;
+    let de_frente = |i: usize| {
+        let n = f.normais[i];
+        n[0] * e[0] + n[1] * e[1] + n[2] * e[2] <= 0.0
+    };
+    let dist = |i: usize| {
+        let p = f.repouso[i];
+        ((p[0] - cursor[0]).powi(2) + (p[1] - cursor[1]).powi(2) + (p[2] - cursor[2]).powi(2))
+            .sqrt()
+    };
+    // ⚠️ **O mesmo peso do produto** (`stroke_normal_do_gesto::peso_da_amostra`):
+    // `smoothstep(1 − d/r)`. Escrever outro aqui faria a candidata «ponderada»
+    // ser uma quarta lei, e não a que a espec tabela.
+    let peso = |d: f32, r: f32| -> f64 {
+        let t = 1.0 - d / r;
+        f64::from((t * t * (3.0 - 2.0 * t)).clamp(0.0, 1.0))
+    };
+
+    let mut casa = ([0.0f64; 3], 0usize);
+    let mut media_rc = ([0.0f64; 3], 0usize);
+    let mut pond_rc = ([0.0f64; 3], 0.0f64);
+    for i in 0..f.repouso.len() {
+        if !de_frente(i) {
+            continue;
+        }
+        let d = dist(i);
+        let p = f.repouso[i];
+        if d <= raio {
+            for (soma, c) in casa.0.iter_mut().zip(p) {
+                *soma += f64::from(c);
+            }
+            casa.1 += 1;
+        }
+        if d <= rc {
+            for (soma, c) in media_rc.0.iter_mut().zip(p) {
+                *soma += f64::from(c);
+            }
+            media_rc.1 += 1;
+            let w = peso(d, rc);
+            for (soma, c) in pond_rc.0.iter_mut().zip(p) {
+                *soma += f64::from(c) * w;
+            }
+            pond_rc.1 += w;
+        }
+    }
+    assert!(
+        casa.1 > 0 && media_rc.1 > 0 && pond_rc.1 > 0.0,
+        "{}: uma candidata ficou sem amostras — a celula nao discrimina nada",
+        f.nome
+    );
+    let dividir = |s: [f64; 3], n: f64| [s[0] / n, s[1] / n, s[2] / n];
+    [
+        dividir(casa.0, casa.1 as f64),
+        dividir(media_rc.0, media_rc.1 as f64),
+        dividir(pond_rc.0, pond_rc.1),
+    ]
+}
+
+/// ⭐⭐⭐ **G-5 — O CENTRO DA ÁREA É A MÉDIA DAS POSIÇÕES PUXADAS PARA O CURSOR**
+/// (espec §2.2 e §12), em DUAS metades.
+///
+/// A lei é a que nenhuma intuição dá: *o peso não multiplica a posição — ele PUXA
+/// a posição para o cursor, e a média é SIMPLES*. Um vértice no miolo da pegada
+/// (peso `1`) contribui com o **cursor**; um na borda (peso `0`) contribui com a
+/// **própria posição**.
+///
+/// # (a) A candidata da §2.2 cai no plano do oráculo
+///
+/// Medida pela **porta do produto** ([`ph2d_sculpt3d::SculptStroke::plano_do_dab_para_teste`])
+/// contra o plano que o alvo de facto usou, recuperado por ajuste da saída DELE.
+/// Barra `1e-6`, que é a de aceitação do G-1.
+///
+/// # (b) ⛔⛔ As TRÊS outras REPROVAM, e é isto que torna a (a) uma afirmação
+///
+/// *Sem esta metade o gate dizia «a nossa lei concorda com o alvo» sem dizer que
+/// outra lei plausível NÃO concordaria* — e é exactamente a forma que esta casa
+/// já pagou seis vezes (uma régua que o produto satisfaz por construção).
+///
+/// As três são: a **lei que esta casa já tinha** (média simples da pegada
+/// inteira, que os outros quatro verbos de plano usam), a **média simples sobre
+/// `R_c`** e a **média ponderada sobre `R_c`**.
+///
+/// Barra **`1e-3`**, e ela é **derivada e não escolhida**: a tabela da §2.2
+/// publica o piso das oito células discriminantes em **`0,00269`**, logo a barra
+/// fica `2,69×` abaixo dele e `1 000×` acima da de aceitação.
+///
+/// # ⚠️ O PISO DE POPULAÇÃO, e porque ele tem DOIS números
+///
+/// **MEDIDO:** (a) pior `6,521e-8` no `lei_area20` — a lei do produto cai no
+/// plano do oráculo ao nível da paridade do G-1; (b) piso **`0,00269`**, no
+/// `lei_area20`, que é **exactamente o número que a §2.2 publica** e na célula
+/// que ela nomeia. ⭐ *As três candidatas rejeitadas foram reprogramadas aqui do
+/// enunciado da espec, e o piso saiu igual ao dela — é essa coincidência que
+/// prova que são as MESMAS três, e não três leis parecidas.*
+///
+/// `11` células medidas e `8` discriminantes. ⛔ Sem o segundo, degenerar o corpus
+/// (ou a coluna da espec) deixaria o gate verde a julgar três células — e as três
+/// que não discriminam **não discriminam por MECANISMO publicado**: a superfície
+/// antissimétrica, onde a altura média de qualquer conjunto simétrico é zero por
+/// construção, e as duas em que o conjunto do alvo tem **um** vértice.
+#[test]
+fn o_centro_da_area_e_a_media_das_posicoes_puxadas_para_o_cursor() {
+    use ph2d_sculpt3d::{Dab, SculptStroke};
+
+    /// A barra de aceitação (a do G-1).
+    const ACEITA: f64 = 1e-6;
+    /// A barra da discriminação — `2,69×` abaixo do piso publicado na §2.2.
+    const DISCRIMINA: f64 = 1e-3;
+
+    let (mut pior_a, mut pior_a_nome) = (0.0f64, String::new());
+    let (mut pior_b, mut pior_b_nome) = (f64::INFINITY, String::new());
+    let (mut medidas, mut discriminantes) = (0usize, 0usize);
+
+    for (nome, esperado_discrimina) in CELULAS_DO_G5 {
+        let f = ler("lei", nome);
+        assert_eq!(
+            f.chave("curva"),
+            "CONSTANT",
+            "{nome}: a curva deixou de ser constante — o `plano_do_alvo` deixaria \
+             de recuperar o plano e passaria a recuperar uma fraccao dele"
+        );
+        assert_eq!(
+            f.num("deslocamento_do_plano"),
+            0.0,
+            "{nome}: ha' deslocamento"
+        );
+        let plano = plano_do_alvo(&f);
+
+        // ⚠️ **O dab EFECTIVO é o segundo**: o primeiro é o pen-down, que não
+        // move nada (espec §1, e é o sujeito do G-2). Medir no primeiro leria um
+        // plano que o produto nunca chega a usar.
+        assert_eq!(f.cursores.len(), 2, "{nome}: a celula deixou de ter 2 dabs");
+        let cursor = f.cursores[1];
+
+        // (a) — a candidata da §2.2, pela PORTA DO PRODUTO, sobre a malha em
+        // repouso (é onde o dab efectivo a encontra).
+        let mut m = grelha(&f).expect("grelha");
+        let b = pincel(&f);
+        let e = olho(&f);
+        let mut s = SculptStroke::default();
+        s.begin(&m);
+        // ⚠️ **O pen-down CORRE antes da medição, e não é decoração:** ele não
+        // move um vértice (G-2) **e semeia a memória do plano** (espec §6). Sem
+        // ele a porta leria um plano sem memória, que é outro plano no dia em que
+        // uma fixtura declarar firmeza — *e as `11` de hoje declaram `0`, o que
+        // torna a omissão invisível exactamente até deixar de o ser*.
+        s.dab(
+            &mut m,
+            &b,
+            &Dab::at(f.cursores[0], b.radius, e),
+            ph2d_sculpt3d::Symmetry::default(),
+        );
+        assert_eq!(
+            m.positions(),
+            &f.repouso[..],
+            "{nome}: o pen-down moveu barro — a medicao seguinte seria sobre outra malha"
+        );
+        s.dab(
+            &mut m,
+            &b,
+            &Dab::at(cursor, b.radius, e),
+            ph2d_sculpt3d::Symmetry::default(),
+        );
+        let (ponto, _) = s
+            .plano_do_ultimo_dab_para_teste()
+            .expect("a superficie do corpus responde sempre");
+        let h = altura(
+            [
+                f64::from(ponto[0]),
+                f64::from(ponto[1]),
+                f64::from(ponto[2]),
+            ],
+            plano,
+        )
+        .abs();
+        assert!(
+            h <= ACEITA,
+            "{nome}: a lei do produto cai {h:.3e} FORA do plano que o alvo usou \
+             (barra {ACEITA:.0e}) — a candidata da §2.2 deixou de reproduzir"
+        );
+        if h > pior_a {
+            pior_a = h;
+            pior_a_nome = nome.to_string();
+        }
+
+        // (b) — as três rejeitadas.
+        let alturas: Vec<f64> = candidatas_rejeitadas(&f, cursor)
+            .into_iter()
+            .map(|c| altura(c, plano).abs())
+            .collect();
+        let menor = alturas.iter().copied().fold(f64::INFINITY, f64::min);
+        if esperado_discrimina {
+            assert!(
+                menor >= DISCRIMINA,
+                "{nome}: a candidata errada mais proxima erra so' {menor:.5} \
+                 (barra {DISCRIMINA:.0e}) — a espec declara esta celula \
+                 DISCRIMINANTE e ela deixou de o ser"
+            );
+            discriminantes += 1;
+            if menor < pior_b {
+                pior_b = menor;
+                pior_b_nome = nome.to_string();
+            }
+        } else {
+            // ⛔ **A metade NEGATIVA, e ela é metade do valor:** a espec declara
+            // TRÊS células não-discriminantes com mecanismo publicado. Se uma
+            // delas passasse a discriminar, a tabela deixou de descrever o
+            // corpus — e uma tabela que não descreve o corpus é a licença que o
+            // `CLAUDE.md` §5.0 nomeia.
+            assert!(
+                menor < DISCRIMINA,
+                "{nome}: a espec declara esta celula NAO-discriminante (mecanismo \
+                 publicado na §2.2) e ela erra {menor:.5} — a tabela deixou de \
+                 descrever o corpus"
+            );
+        }
+        medidas += 1;
+    }
+
+    assert_eq!(
+        medidas, 11,
+        "o G-5 correu {medidas} celulas e a populacao da §2.2 e' 11"
+    );
+    assert_eq!(
+        discriminantes, 8,
+        "o G-5 achou {discriminantes} celulas discriminantes e a §2.2 publica 8"
+    );
+    println!(
+        "G-5: 11 celulas, 8 discriminantes · (a) pior {:.3e} em {} · (b) piso {:.5} em {}",
+        pior_a, pior_a_nome, pior_b, pior_b_nome
+    );
 }

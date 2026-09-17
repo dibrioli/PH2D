@@ -312,7 +312,24 @@ fn the_families_that_the_ui_asks_about_agree_with_the_verb_list() {
         .filter(|v| v.uses_plane())
         .map(Verb::label)
         .collect();
-    assert_eq!(plane, ["Flatten", "Fill", "Scrape", "Clay"]);
+    assert_eq!(
+        plane,
+        // ⭐⭐ **O PINCEL DE PLANO entrou nesta família em 2026-09-17, e a
+        // ausência dele era um CONTROLO INALCANÇÁVEL** — ele lê o `plane_offset`
+        // desde que existe (espec §2.4, com duas fixturas a exercitá-lo) e o
+        // painel não lhe pintava a fileira, porque o `show` dela é o único
+        // consumidor de produto deste predicado.
+        //
+        // ⚠️ **Este gate ficou VERDE sobre a omissão até alguém a procurar** — o
+        // doc do próprio predicado já o dizia por escrito. *Um censo que compara
+        // uma lista consigo mesma afirma que ela não MUDOU, nunca que ela está
+        // CERTA*, e quem a corrigiu foi o G-13 ao imprimir a população que mede.
+        //
+        // ⛔ **E a pergunta desta porta é «lê o `plane_offset`», não «que lei de
+        // plano corre»:** os quatro primeiros ajustam o plano portado e o quinto
+        // ajusta o próprio, que difere `17,1 %` do raio no centro.
+        ["Flatten", "Fill", "Scrape", "Clay", "Plane"]
+    );
     let ring: Vec<_> = Verb::ALL
         .into_iter()
         .filter(|v| v.uses_neighbours())

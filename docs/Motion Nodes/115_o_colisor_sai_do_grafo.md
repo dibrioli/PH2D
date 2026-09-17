@@ -142,7 +142,7 @@ decide se ele é do dispositivo ou da CPU.
 |---|---|---|
 | ~~W0~~ | ✅ **FECHADA** (§3): as duas moradas são indistinguíveis acima de 16 iterações ⇒ o passe corre no FIM | — |
 | ~~W1~~ | ✅ **FECHADA** (§7): não era estreitar a cerca — era escrever a que FALTA, para a rota dos externos | §1.4 |
-| **W2** | a caixa declarada no **dispositivo** (o disco já lá está) — ou a recusa MEDIDA de que não vale | W1 |
+| **W2** | ⏳ **metade** (§8): os dois caminhos de CPU são de classes diferentes, e a rota dos objectos é a da GRELHA ⇒ falta só o NÚMERO, numa máquina calma | W1 |
 | **W3** | a membrana publica a forma do objecto (`Collider` → as três colunas) | §1.1 |
 | **W4** | Sprite · vector · Flip nascem com `Collider`, e o `Collide` do Inspector arma | W3 |
 | **W5** | o passe automático **no fim do cozimento** — a morada que a W0 escolheu | W1 · W3 |
@@ -217,3 +217,35 @@ duas metades** da ligação — a pergunta *e* a saída nomeada —, senão um `
 
 ⚠️ **As três colunas testam-se UMA A UMA**, nunca juntas: com as três no mesmo externo, apagar duas
 da lista da cerca deixava o gate verde. *Uma cerca que lista N nomes precisa de N casos.*
+
+---
+
+## §8 — ⏳ W2, metade feita: os DOIS caminhos de CPU são de CLASSES DIFERENTES
+
+⚠️ **A W2 estava escrita como «levar a caixa ao dispositivo, ou recusar com o número».** A primeira
+medição — e ela **não precisa de relógio**, que é o que a torna possível numa máquina a `load 50` —
+diz que a pergunta é outra.
+
+| caminho | quem o toma | forma do laço | classe |
+|---|---|---|---|
+| **disco do cartão** (`push_apart`, no nó) | o `radius` do cartão | `for i { for j in i+1.. }` — **todos os pares**, lido no ficheiro | `O(n² · it)` |
+| **colisor DECLARADO** (`ph2d_contact::separate`) | a forma que a peça declara | **grelha espacial** de lado `2 × alcance`, com o cabeçalho a dizer *«dá os MESMOS BITS que todos-os-pares, e isso é uma escolha»* | `~O(n · k · it)` |
+
+⭐⭐⭐ **E a tabela que assustou o plano mediu o caminho ERRADO.** O `§1-ter` da sonda da corda —
+`200` pontos a `10,467 ms`, `62,8 %` de um quadro — corre o **disco do cartão**, que é o de todos
+os pares. *A rota que os objectos vão tomar é a da GRELHA*, e ela não está naquela tabela.
+
+⇒ **a W2 deixa de ser «escrever um shader» e passa a ser «medir se a recusa custa alguma coisa»**,
+que é uma wave muito menor — e pode acabar numa recusa medida, que é resposta legítima.
+
+### ⏳ O que falta, e porquê não foi feito agora
+
+O número (o custo da grelha a `N` peças, contra o orçamento de um quadro) é uma **leitura de
+relógio**, e a máquina esteve a `load 50,43` durante esta janela. *Nenhuma leitura de relógio desta
+workstation vale nada acima de `load ~5`* — e uma medição tirada agora seria a régua a mentir, não
+a resposta.
+
+⚠️ **E a população certa ainda tem de ser escolhida com o dono:** um Sprite numa cena são dezenas
+ou centenas de peças, e o `4,19 M` do doc 98 é de **carimbo de partículas**. *Medir a grelha a 4 M
+responderia a uma pergunta que nenhuma cena faz* — a W2 tem de medir a população que a ordem dele
+de facto cria: um punhado de objectos, cada um duplicado quantas vezes?

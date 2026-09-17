@@ -10,6 +10,9 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# A TABELA DE TEXTOS (HR-15): tudo o que esta crate diz ao artista sai daqui, nunca de um
+# literal no fonte — o gate `every_word_this_family_shows…` mede-o.
+ph2d-i18n = { path = "../ph2d-i18n" }
 # ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — importar de
 # `ph2d-app-registry-init` fecharia o ciclo `registry → família → registry`.
 ph2d-app-host = { path = "../ph2d-app-host" }
@@ -68,6 +71,10 @@ serde = { version = "1", features = ["rc"] }
 # ⚠️ Ligada pela shell nas **dev-dependencies**: no `cargo build` do produto ela
 # fica desligada, e no `cargo test` fica ligada.
 test-support = []
+
+[dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate (`tests/it/`).
+ph2d-label-census = { path = "../ph2d-label-census" }
 
 [lints]
 workspace = true

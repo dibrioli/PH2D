@@ -23,9 +23,10 @@ pub use crate::physics_apply::apply_physics_edit;
 /// diferente daquele que o solver escolheu seria o painel mentindo com convicção.
 fn nearest_body_name(world: &World, e: ph2d_ecs::Entity) -> String {
     ph2d_physics_ecs::owner_body(world, e).map_or_else(String::new, |p| {
-        world
-            .get::<ph2d_ecs::Name>(p)
-            .map_or_else(|| "the body above".to_string(), |n| n.as_str().to_string())
+        world.get::<ph2d_ecs::Name>(p).map_or_else(
+            || ph2d_i18n::tr("app.physics.body.the_body_above").to_string(),
+            |n| n.as_str().to_string(),
+        )
     })
 }
 

@@ -366,7 +366,7 @@ impl Sculpt3dScene {
                         e.reaches_voxel_remesh(),
                         "o voxel remesh devolveu uma recusa que nao e' dele: {e:?}"
                     );
-                    eprintln!("[sculpt3d] {}", e.explain());
+                    self.fala(e.explain());
                 }
             },
             Sculpt3dIntent::QuadRemesh => {
@@ -426,7 +426,7 @@ impl Sculpt3dScene {
                     // ⚠️ **UMA frase, e ela mora com o tipo.** Cinco braços
                     // aqui e cinco nas teclas explicavam a MESMA recusa com
                     // textos que nada obrigava a concordar.
-                    Err(e) => eprintln!("[sculpt3d] {}", e.explain()),
+                    Err(e) => self.fala(e.explain()),
                 }
             }
             // ⭐ **A base persistente vive na SESSÃO de escultura** — o

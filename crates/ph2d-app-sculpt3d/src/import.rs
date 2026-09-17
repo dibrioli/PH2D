@@ -105,7 +105,7 @@ pub(crate) fn read_pieces(path: &std::path::Path) -> Result<Vec<ImportedPiece>, 
         .extension()
         .and_then(|e| e.to_str())
         .and_then(MeshFormat::from_extension)
-        .ok_or_else(|| "unknown extension".to_string())?;
+        .ok_or_else(|| ph2d_i18n::tr("app.sculpt3d.import.unknown_extension").to_string())?;
     let name = path
         .file_stem()
         .and_then(|s| s.to_str())
@@ -256,7 +256,13 @@ pub fn import_files(
         let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
         match read_pieces(path) {
             Ok(pieces) => loaded.extend(pieces),
-            Err(e) => toast(toasts, format!("Mesh refused: {name} ({e})")),
+            Err(e) => toast(
+                toasts,
+                ph2d_i18n::tr_with(
+                    "app.sculpt3d.import.mesh_refused",
+                    &[("name", &name), ("e", &e)],
+                ),
+            ),
         }
     }
     if loaded.is_empty() {
@@ -287,7 +293,10 @@ pub fn import_files(
         scene.push_placed(placed, aspect);
         *slot = Some(scene);
     }
-    toast(toasts, format!("Imported {n} mesh piece(s)"));
+    toast(
+        toasts,
+        ph2d_i18n::tr_with("app.sculpt3d.import.imported_mesh_piece_s", &[("n", &n)]),
+    );
 }
 
 /// **Escolher um arquivo de malha e importá-lo** — o gesto que funciona em
@@ -307,7 +316,7 @@ pub fn pick_and_import(
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     let picked = rfd::FileDialog::new()
-        .add_filter("Mesh", MESH_EXTS)
+        .add_filter(ph2d_i18n::tr("app.sculpt3d.import.mesh"), MESH_EXTS)
         .pick_files();
     if let Some(paths) = picked {
         import_files(&paths, slot, gpu, toasts);

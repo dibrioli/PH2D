@@ -47,7 +47,10 @@ pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor_core::Toas
     // eram o mesmo `let ... else` e não são a mesma coisa: sem GPU não há gesto nenhum a
     // reportar, sem escultura há um artista que carregou num botão e merece a razão.
     let Some(scene) = scene else {
-        crate::import::toast(toasts, "Nothing to export: no sculpture open".into());
+        crate::import::toast(
+            toasts,
+            ph2d_i18n::tr("app.sculpt3d.export.nothing_to_export_no_sculpture_open").into(),
+        );
         return;
     };
     let n = scene.objects.len();
@@ -80,11 +83,14 @@ pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor_core::Toas
     else {
         crate::import::toast(
             toasts,
-            format!(
-                "Unknown extension: use {}",
-                MeshFormat::ALL
-                    .map(|f| format!(".{}", f.extension()))
-                    .join(", ")
+            ph2d_i18n::tr_with(
+                "app.sculpt3d.export.unknown_extension_use",
+                &[(
+                    "join",
+                    &(MeshFormat::ALL
+                        .map(|f| format!(".{}", f.extension()))
+                        .join(", ")),
+                )],
             ),
         );
         return;
@@ -98,14 +104,21 @@ pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor_core::Toas
             let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
             crate::import::toast(
                 toasts,
-                format!(
-                    "Exported {n} piece(s), {} KB -- {name} ({})",
-                    size / 1024,
-                    lost_by(fmt)
+                ph2d_i18n::tr_with(
+                    "app.sculpt3d.export.exported_piece_s_kb",
+                    &[
+                        ("n", &n),
+                        ("size", &(size / 1024)),
+                        ("name", &name),
+                        ("fmt", &(lost_by(fmt))),
+                    ],
                 ),
             );
         }
-        Err(e) => crate::import::toast(toasts, format!("Export failed: {e}")),
+        Err(e) => crate::import::toast(
+            toasts,
+            ph2d_i18n::tr_with("app.sculpt3d.export.export_failed", &[("e", &e)]),
+        ),
     }
 }
 

@@ -161,7 +161,11 @@ pub fn joint_readouts(
         // O texto substitui a linha de carga inteira — imprimir *"no route"* e
         // um teto ao lado sugeriria que o teto está sendo comparado com algo.
         if not_acting.contains(&v.entity) {
-            push("no route".to_string(), JOINT_BROKEN_RGBA, &mut line);
+            push(
+                ph2d_i18n::tr("app.physics.joint_readout.no_route").to_string(),
+                JOINT_BROKEN_RGBA,
+                &mut line,
+            );
             continue;
         }
         let rgba = if v.broken {
@@ -198,7 +202,14 @@ pub fn joint_readouts(
         }
         // A marca d'água, só quando ela diz algo que a carga viva não diz.
         if !v.broken && v.peak.force > v.load.force * PEAK_MARGIN {
-            push(format!("max {}", n(v.peak.force)), rgba, &mut line);
+            push(
+                ph2d_i18n::tr_with(
+                    "app.physics.joint_readout.max",
+                    &[("force", &(n(v.peak.force)))],
+                ),
+                rgba,
+                &mut line,
+            );
         }
     }
     out

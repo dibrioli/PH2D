@@ -114,70 +114,67 @@ impl RemeshRefusal {
     #[must_use]
     pub(crate) fn explain(&self) -> String {
         match self {
-            Self::MultiresStack => String::from(
-                "nao' reconstroi com a pilha montada: o remesh troca a TOPOLOGIA, e todo nivel \
-                 acima e' subdivisao dela -- ACHATE a pilha antes",
-            ),
-            Self::EmptyScene => String::from("nao' reconstroi: nao ha' peca na cena"),
+            Self::MultiresStack => {
+                String::from(ph2d_i18n::tr("app.sculpt3d.remesh_refusal.multires_stack"))
+            }
+            Self::EmptyScene => String::from(ph2d_i18n::tr(
+                "app.sculpt3d.remesh_refusal.no_piece_in_the_scene",
+            )),
             // ⚠️ **A mensagem NÃO manda o artista mexer na peça** — ver [`Self::Panicked`].
             // *Um defeito nosso não se conserta subdividindo a escultura dele*, e a frase
             // anterior (a do `TooCoarseToResolve`) dizia exactamente isso.
-            Self::Panicked => String::from(
-                "a retopologia falhou por um defeito NOSSO e a escultura fica como esta': \
-                 tente outro Detail -- e se puder, guarde a peca e avise",
-            ),
-            Self::Engine(e) => format!(
-                "nao' reconstroi, e a escultura fica como esta': {e} -- tente outra resolucao"
-            ),
+            Self::Panicked => String::from(ph2d_i18n::tr("app.sculpt3d.remesh_refusal.our_defect")),
+            Self::Engine(e) => {
+                ph2d_i18n::tr_with("app.sculpt3d.remesh_refusal.rebuild_refused", &[("e", &e)])
+            }
             Self::Quad(e) => {
-                format!("a retopologia nao fechou uma malha, e a escultura fica como esta': {e}")
+                ph2d_i18n::tr_with("app.sculpt3d.remesh_refusal.mesh_not_closed", &[("e", &e)])
             }
             // ⚠️ **A mensagem nomeia o CONSERTO**: o `Detail` não alcança este
             // estado, então quem chega aqui tem uma malha grossa demais para ser
             // retopologizada de todo.
-            Self::TooCoarseToResolve => String::from(
-                "a malha e' grossa demais para uma grade de quads, e a escultura fica como \
-                 esta': subdivida (ou use o Remesh) antes",
-            ),
+            Self::TooCoarseToResolve => String::from(ph2d_i18n::tr(
+                "app.sculpt3d.remesh_refusal.too_coarse_for_quads",
+            )),
             // ⭐⭐ **O género perdido tem CONSERTO PRÓPRIO, e é por isso que ele
             // não cai no braço geral.** ⛔ *"tente outro Detail"* seria mandar o
             // artista para o sítio errado: a decomposição não depende do alvo de
             // densidade nenhum — ela é do campo e do traçado, e mexer no slider
             // devolve exactamente a mesma recusa. Medido em 2026-08-22: o mesmo
             // toro falha em **todos** os pesos, e o toro do lado passa em todos.
-            Self::Layout(ph2d_quantize::LayoutError::GenusLost { complex, surface }) => format!(
-                "esta peca tem um buraco (ou uma alca) que o tracado nao soube contornar, e a \
-                 escultura fica como esta': a decomposicao fechou como {complex} e a peca e' \
-                 {surface}. Mexer no Detail nao muda isto -- use PH2D_RETOPO_LEGACY=1, ou passe \
-                 o Remesh na peca antes"
-            ),
-            Self::Layout(e) => format!(
-                "o tracado nao fechou um layout, e a escultura fica como esta': {e:?} -- \
-                 tente outro Detail, ou PH2D_RETOPO_LEGACY=1"
+            Self::Layout(ph2d_quantize::LayoutError::GenusLost { complex, surface }) => {
+                ph2d_i18n::tr_with(
+                    "app.sculpt3d.remesh_refusal.handle_not_traced",
+                    &[("complex", &complex), ("surface", &surface)],
+                )
+            }
+            Self::Layout(e) => ph2d_i18n::tr_with(
+                "app.sculpt3d.remesh_refusal.tracing_failed",
+                &[("e_", &format!("{:?}", e))],
             ),
             // ⚠️ **As duas causas de dentro têm consertos diferentes**, e por isso
             // o `{e:?}` viaja: *inviável* pede outra malha, *orçamento esgotado*
             // pede outro alvo — a busca cresce com a sujidade do layout, não com o
             // tamanho da peça.
-            Self::Quantize(e) => format!(
-                "a quantizacao nao fechou, e a escultura fica como esta': {e:?} -- tente outro \
-                 Detail, ou PH2D_RETOPO_LEGACY=1"
+            Self::Quantize(e) => ph2d_i18n::tr_with(
+                "app.sculpt3d.remesh_refusal.quantization_failed",
+                &[("e_", &format!("{:?}", e))],
             ),
-            Self::Fill(e) => {
-                format!("a montagem recusou (bug a montante), e a escultura fica como esta': {e:?}")
-            }
-            Self::Extract(e) => format!(
-                "a extraccao do mapa de grade inteira recusou, e a escultura fica como esta': \
-                 {e} -- ponha PH2D_RETOPO_EXTRACT=0 para voltar ao caminho de sempre"
+            Self::Fill(e) => ph2d_i18n::tr_with(
+                "app.sculpt3d.remesh_refusal.assembly_refused",
+                &[("e_", &format!("{:?}", e))],
+            ),
+            Self::Extract(e) => ph2d_i18n::tr_with(
+                "app.sculpt3d.remesh_refusal.extraction_refused",
+                &[("e", &e)],
             ),
             // ⚠️ **A frase nomeia o que o artista VÊ** (pedaço solto a flutuar) e o conserto que
             // de facto o resolve. ⛔ *«tente outro Detail»* sozinho seria adivinhar: medido na
             // peça dele, a re-entrada parte a peça em qualquer ponto do slider, e o que a cura é
             // **não voltar a carregar sobre a saída** — daí o Ctrl+Z vir primeiro.
-            Self::Shattered { pieces, was } => format!(
-                "a retopologia partiu a peca em {pieces} pedacos soltos (ela entrou com {was}), e \
-                 a escultura fica como esta' -- desfaca (Ctrl+Z) ate' voltar a' escultura \
-                 original antes de carregar outra vez, ou baixe o Detail"
+            Self::Shattered { pieces, was } => ph2d_i18n::tr_with(
+                "app.sculpt3d.remesh_refusal.shattered",
+                &[("pieces", &pieces), ("was", &was)],
             ),
         }
     }

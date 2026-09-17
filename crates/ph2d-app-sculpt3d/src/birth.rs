@@ -134,6 +134,7 @@ impl Sculpt3dScene {
             // um gesto do artista — e o preço é a luz de todo objeto já assado no documento.
             rig_was: ph2d_form_donation::baked_form::rig_stamp(&rig),
             donated: None,
+            avisos: Vec::new(),
         }
     }
 }

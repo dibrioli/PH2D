@@ -340,7 +340,7 @@ pub fn key(
                     e.reaches_voxel_remesh(),
                     "o voxel remesh devolveu uma recusa que nao e' dele: {e:?}"
                 );
-                eprintln!("[sculpt3d] {}", e.explain());
+                scene.fala(e.explain());
             }
         }
         return true;

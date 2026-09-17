@@ -418,8 +418,10 @@ fn a_recusa_do_estilhaco_diz_a_contagem_e_manda_desfazer() {
         frase.contains("Ctrl+Z"),
         "⛔ e tem de nomear o conserto que de facto resolve: {frase}"
     );
+    // ⚠️ **A frase mudou de LÍNGUA em 2026-09-16** (ela passou a sair da tabela, e a app é
+    // inglesa) — a propriedade é a mesma: a recusa diz que a escultura NÃO se perdeu.
     assert!(
-        frase.contains("escultura fica como esta'"),
+        frase.contains("the sculpture stays as it is"),
         "⛔ e tem de dizer que a peca dele NAO se perdeu: {frase}"
     );
 }

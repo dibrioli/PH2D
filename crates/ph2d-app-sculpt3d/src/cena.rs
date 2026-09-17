@@ -352,4 +352,36 @@ pub struct Sculpt3dScene {
     pub(crate) rig_was: ph2d_form_donation::baked_form::RigStamp,
     /// O carimbo da última doação entregue — `None` enquanto nada foi doado.
     pub(crate) donated: Option<FormStamp>,
+    /// ⭐⭐⭐ **O QUE A ESCULTURA TEM A DIZER** — as recusas e os vereditos que o artista precisa de
+    /// LER, à espera de quem tem a fila de avisos.
+    ///
+    /// ⛔⛔ **Elas viviam só no `eprintln!`**, e o doc do [`RemeshRefusal::explain`] chamava-lhes
+    /// por escrito *«a FRASE que o artista lê»*: o botão `Quad Retopology` recusava com a cura
+    /// dentro da frase — *ACHATE a pilha antes*, *suba o `Detail`* — e no ecrã não acontecia
+    /// **nada**. Um verbo que recusa em silêncio é indistinguível de um verbo partido (§5.0), e o
+    /// terminal não é uma superfície do produto: o dono corre o smoke a partir dele, o artista não.
+    ///
+    /// ⚠️ **Uma CAIXA DE SAÍDA, não uma chamada** (ADR-0075): a cena não conhece a `ToastQueue` — a
+    /// shell drena-a uma vez por quadro, no mesmo sítio onde já drena os pedidos do painel. É isso
+    /// que deixa as DUAS entradas (a tecla e o botão do painel) falarem pela mesma porta.
+    pub(crate) avisos: Vec<String>,
+}
+
+impl Sculpt3dScene {
+    /// ⭐⭐ **A escultura FALA** — a recusa (ou o veredito) entra na caixa de saída E no terminal.
+    ///
+    /// ⚠️ **Os dois, de propósito:** o terminal é onde uma bissecção lê a sequência inteira; o ecrã
+    /// é onde o artista está. Uma porta só, para que uma delas não possa envelhecer sem a outra.
+    pub(crate) fn fala(&mut self, msg: String) {
+        eprintln!("[sculpt3d] {msg}");
+        self.avisos.push(msg);
+    }
+
+    /// O que a escultura tem a dizer, **desarmando** a caixa — a forma que o quadro consome.
+    ///
+    /// ⚠️ Um `take_*` e não um campo público lido à mão: um aviso que se lê sem se desarmar
+    /// reaparece a cada quadro, e um toast repetido 60 vezes por segundo não é um aviso, é um muro.
+    pub fn take_avisos(&mut self) -> Vec<String> {
+        core::mem::take(&mut self.avisos)
+    }
 }

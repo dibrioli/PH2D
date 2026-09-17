@@ -170,5 +170,16 @@ impl crate::App {
                 }
             }
         }
+        // ⭐⭐⭐ **E O QUE A ESCULTURA TEM A DIZER CHEGA AO ECRÃ** — a caixa de saída da cena
+        // (`Sculpt3dScene::take_avisos`), drenada aqui porque é aqui que a fila de avisos e a cena
+        // estão os dois em mão. ⚠️ **As recusas da retopologia viviam só no `eprintln!`**, com a
+        // cura escrita dentro da frase (*ACHATE a pilha antes*) e o ecrã calado — as DUAS entradas
+        // (a tecla `R`/`K` e o botão do painel) falam agora pela mesma porta.
+        #[cfg(feature = "sculpt3d")]
+        if let Some(scene) = sculpt3d.as_mut() {
+            for aviso in scene.take_avisos() {
+                toasts.push(ph2d_editor_core::Toast::warning(aviso));
+            }
+        }
     }
 }

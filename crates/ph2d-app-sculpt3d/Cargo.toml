@@ -66,5 +66,9 @@ winit = "0.30"
 # entrega `dead_code` no que ninguém lê. A shell liga-a nas **dev-dependencies**.
 test-support = []
 
+[dev-dependencies]
+# A régua lexical do HR-15, para o gate por crate (`tests/it/`).
+ph2d-label-census = { path = "../ph2d-label-census" }
+
 [lints]
 workspace = true

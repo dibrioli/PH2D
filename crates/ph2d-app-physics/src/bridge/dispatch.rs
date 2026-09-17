@@ -207,7 +207,10 @@ pub fn break_reports(bridge: &PhysicsBridge, sim: &SimWorld) -> Vec<String> {
             // linear reaction is reported next to it — printing whichever
             // threshold fired would need the wrapper to say which, and the
             // artist's question is *how hard was it pulled*.
-            format!("{name} broke at {:.0} N", b.force)
+            ph2d_i18n::tr_with(
+                "app.physics.dispatch.broke_at_n",
+                &[("name", &name), ("force_0", &format!("{:.0}", b.force))],
+            )
         })
         .collect()
 }

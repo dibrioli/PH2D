@@ -35,6 +35,10 @@ mod app_field3d;
 mod app_flip;
 /// O que a família do PAINTER diz (texturas de pincel, a pré-visualização na GPU).
 mod app_painter;
+/// O que a família da FÍSICA diz (desenhar uma junta, o leitor de carga, o cartão do corpo).
+mod app_physics;
+/// O que a família da ESCULTURA diz (as recusas da retopologia, importar/exportar malhas).
+mod app_sculpt3d;
 /// As strings do navegador de assets.
 mod asset_browser;
 /// As strings dos dois painéis de áudio (editor + mixer).
@@ -527,6 +531,8 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| app_field3d::tr(k))
             .or_else(|| app_flip::tr(k))
             .or_else(|| app_painter::tr(k))
+            .or_else(|| app_physics::tr(k))
+            .or_else(|| app_sculpt3d::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

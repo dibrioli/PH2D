@@ -90,7 +90,9 @@ pub fn joint_draw_cancel_key(
         return false;
     }
     disarm_joint_draw(st);
-    toasts.push(ph2d_editor_core::Toast::info("Joint drawing cancelled"));
+    toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+        "app.physics.joint_draw.joint_drawing_cancelled",
+    )));
     true
 }
 
@@ -149,9 +151,9 @@ pub fn joint_draw_release(st: &mut PhysicsState, ctx: &mut CanvasCtx<'_>, sx: f3
     if let (Some(a), Some(b)) = (d.body_a, target)
         && a == b
     {
-        ctx.toasts.push(ph2d_editor_core::Toast::info(
-            "A joint binds two DIFFERENT bodies",
-        ));
+        ctx.toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+            "app.physics.joint_draw.a_joint_binds_two_different_bodies",
+        )));
         return; // segue armado: tente outra vez
     }
     // **As três formas do gesto**, e as duas últimas produzem o MESMO objeto:
@@ -182,11 +184,17 @@ pub fn joint_draw_release(st: &mut PhysicsState, ctx: &mut CanvasCtx<'_>, sx: f3
     let Some(joint) = created else {
         ctx.toasts.push(ph2d_editor_core::Toast::info(
             match (d.body_a.is_some(), target.is_some()) {
-                (false, false) => "Start or end the joint ON a body",
-                (true, true) => "Those two bodies cannot be joined",
+                (false, false) => {
+                    ph2d_i18n::tr("app.physics.joint_draw.start_or_end_the_joint_on_a_body")
+                }
+                (true, true) => {
+                    ph2d_i18n::tr("app.physics.joint_draw.those_two_bodies_cannot_be_joined")
+                }
                 // A única forma de o pino de mundo recusar: a POLIA. A corda
                 // puxa as DUAS pontas, e uma delas no cenário é outra máquina.
-                _ => "A pulley needs two bodies — its rope pulls at both ends",
+                _ => ph2d_i18n::tr(
+                    "app.physics.joint_draw.a_pulley_needs_two_bodies_its_rope_pulls_at_both",
+                ),
             },
         ));
         return;

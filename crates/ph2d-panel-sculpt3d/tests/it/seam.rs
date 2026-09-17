@@ -3035,3 +3035,125 @@ fn every_trim_control_is_clickable_where_it_is_drawn() {
         "a pista da suavização do corte aparece com um PINCEL na mão"
     );
 }
+
+/// ⭐⭐⭐ **GATE — os controlos PRÓPRIOS de um pincel cabem no ENCAIXE.**
+///
+/// # Ele reproduz um report do dono, à letra
+///
+/// 2026-09-17: *«não vejo os botões mas deveriam ficar na secção detail»*. Os
+/// dois chips novos estavam **pintados, hit-indexados e vivos sob o dedo** — o
+/// gate de costura provava as três coisas — e caíam em `y = 1049` (`Gap Law`) e
+/// `y = 858` (`Drag Reads`), **abaixo da dobra de um encaixe real**. O `Gap` que
+/// a primeira governa está em `y = 636`: **413 px** entre uma pista e a lei dela.
+///
+/// ⛔⛔ **E NENHUM gate desta crate o podia ver, por construção:** os de costura
+/// pintam numa [`VIEWPORT`] de **`2400`** px de altura, escolhida para caber
+/// tudo. *Uma régua calibrada num tamanho que o artista não tem é cega
+/// exactamente onde a escolha acontece* — a mesma família do gate da `line/UIUX`
+/// que media a largura de omissão enquanto o dono tinha outra.
+///
+/// # A altura, e de onde ela vem
+///
+/// `880` px é o encaixe medido desta casa — o número que o `CLAUDE.md` §5 já
+/// publica ao dizer que *«o nó desenha 1083 px num dock de 880»*. ⛔ Não é um
+/// número escolhido aqui.
+///
+/// # ⚠️ A CATRACA, e porque ela existe
+///
+/// **Cinco pincéis passam a dobra hoje**, e isso é PRÉ-EXISTENTE: medido em
+/// 2026-09-17, antes de esta wave tocar em nenhum deles. Curá-los é mexer na
+/// disposição de cinco ferramentas que o dono já aprovou em smoke, e isso é
+/// wave dele — não um efeito colateral desta.
+///
+/// ⇒ a lista [`ACIMA_DA_DOBRA`] é uma **catraca que só ENCOLHE**, com as duas
+/// metades que o `CLAUDE.md` §5.0 exige: ela **não pode crescer** (um pincel
+/// registado que piore reprova) e **não pode apodrecer** (um que passe a caber
+/// reprova a dizer que a entrada dele tem de sair). *Uma catraca sem censo de
+/// obsolescência não desce: ela vira licença.*
+#[test]
+fn os_controlos_proprios_de_um_pincel_cabem_no_encaixe() {
+    /// O encaixe MEDIDO desta casa — ver o doc.
+    const ALTURA_DO_ENCAIXE_PX: f32 = 880.0;
+    /// A folga do ratchet: a disposição é aritmética de `f32` sobre tokens, e
+    /// um pixel de deriva não é uma regressão.
+    const FOLGA_PX: f32 = 1.0;
+    /// ⛔ **SÓ ENCOLHE** — os cinco que passam a dobra hoje, com o número medido
+    /// em 2026-09-17. Curar um deles é apagar a linha dele daqui.
+    const ACIMA_DA_DOBRA: [(&str, f32); 5] = [
+        ("Cloth", 1107.0),
+        ("Boundary", 1083.0),
+        ("Plane", 1003.0),
+        ("SmearMultires", 964.0),
+        ("BoxTrim", 961.0),
+    ];
+
+    let proprios: [&[ph2d_a11y::NodeId]; 8] = [
+        &ids::SCULPT3D_CLOTH_MODE[..],
+        &ids::SCULPT3D_BOUNDARY_FALLOFF[..],
+        &ids::SCULPT3D_SMEAR_MODE[..],
+        &ids::SCULPT3D_TRIM_FORMA[..],
+        &ids::SCULPT3D_PLANO_INVERSAO[..],
+        &ids::SCULPT3D_FOLGA_MODO[..],
+        &ids::SCULPT3D_POSE_ARRASTO[..],
+        &[ids::SCULPT3D_POSE_ROT_LOCK][..],
+    ];
+    let verbos = [
+        Verb::Cloth,
+        Verb::Boundary,
+        Verb::SmearMultires,
+        Verb::BoxTrim,
+        Verb::Plane,
+        Verb::SceneProject,
+        Verb::Pose,
+    ];
+    let mut vistos = 0usize;
+    for verbo in verbos {
+        let mut ui = Sculpt3dUi::default();
+        ph2d_panel_sculpt3d::state::switch_verb(&mut ui, verbo);
+        // ⚠️ A escala é a deformação em que a pose mostra MAIS controlos —
+        // medir a de fábrica esconderia dois deles.
+        ui.brush.pose.deformacao = ph2d_sculpt3d::PoseDeformacao::Escalar;
+        let (mut host, mut state) = arrange(ui);
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        let mut fundo = 0.0f32;
+        for lista in proprios {
+            for id in lista {
+                if let Some((_, r)) = painted.iter().rev().find(|(p, _)| p == id) {
+                    fundo = fundo.max(r.y + r.h);
+                }
+            }
+        }
+        assert!(
+            fundo > 0.0,
+            "{verbo:?}: nenhum controlo proprio foi pintado — a fixtura deixou \
+             de conter o fenomeno"
+        );
+        vistos += 1;
+        let nome = format!("{verbo:?}");
+        if let Some((_, tecto)) = ACIMA_DA_DOBRA.iter().find(|(n, _)| *n == nome) {
+            assert!(
+                fundo <= tecto + FOLGA_PX,
+                "{nome}: o ultimo controlo proprio desceu para y = {fundo:.0}, e a \
+                 catraca registou {tecto:.0} — ela SO' ENCOLHE"
+            );
+            assert!(
+                fundo > ALTURA_DO_ENCAIXE_PX,
+                "{nome}: ele passou a caber no encaixe (y = {fundo:.0} <= \
+                 {ALTURA_DO_ENCAIXE_PX:.0}) — APAGUE a linha dele da catraca, \
+                 senao ela vira licenca"
+            );
+        } else {
+            assert!(
+                fundo <= ALTURA_DO_ENCAIXE_PX,
+                "{nome}: o ultimo controlo proprio cai em y = {fundo:.0}, abaixo da \
+                 dobra de um encaixe de {ALTURA_DO_ENCAIXE_PX:.0} px — o artista \
+                 nao o ve'. Ou o sobe para junto do knob que ele governa, ou o \
+                 declara na catraca com o numero MEDIDO"
+            );
+        }
+    }
+    assert_eq!(
+        vistos, 7,
+        "o censo correu {vistos} pinceis e a populacao com controlos proprios e' 7"
+    );
+}

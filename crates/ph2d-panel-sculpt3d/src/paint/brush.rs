@@ -88,6 +88,20 @@ pub(super) fn paint_brush_tail(
     // fileira de chips não é uma `Row`. Aqui ela fica imediatamente abaixo do
     // último knob do pincel, que é o mesmo sítio aos olhos de quem lê.
     let y = paint_pose_rows(ctx, snap, x, w, y);
+    // ⭐⭐ **AS QUATRO SUPERFICIES DO PROJECTAR SOBEM PARA AQUI** (ordem do dono,
+    // 2026-09-17: *«nao vejo os botoes mas deveriam ficar na seccao detail»*).
+    //
+    // ⛔⛔ **Elas viviam no FIM da cauda, e a medicao diz o preco:** o `Gap Law`
+    // caia em `y = 1049` e o `Gap` que ele governa esta' em `y = 636` — **413 px**
+    // entre uma pista e a LEI que a governa, num painel cujo encaixe mede `~880`.
+    // ⇒ a lei ficava FORA do ecra sem o artista saber que existe.
+    //
+    // ⚠️ **A lei que isto honra ja' estava escrita no bloco de cima e no proprio
+    // `Place` da tabela de rows** (*«uma pista mora ao lado do controlo que a
+    // le»*, [`crate::rows::Place::AfterDyntopo`]): o topo da cauda e' o sitio
+    // imediatamente abaixo do ultimo knob do pincel, que e' o mesmo sitio aos
+    // olhos de quem le'.
+    let y = paint_project_rows(ctx, snap, x, w, y);
     // ⭐ **A CURVA e a razão de ela poder não chegar** — ver [`paint_a_curva`],
     // que é onde a cerca de produto e a medição que a acompanha vivem.
     let y = paint_a_curva(ctx, snap, x, w, y);
@@ -296,7 +310,6 @@ fn paint_per_verb_switches(
     let y = paint_smear_rows(ctx, snap, x, w, y);
     let y = paint_trim_rows(ctx, snap, x, w, y);
     let y = paint_plano_rows(ctx, snap, x, w, y);
-    let y = paint_project_rows(ctx, snap, x, w, y);
     paint_mask_tools(ctx, snap, x, w, y)
 }
 

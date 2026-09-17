@@ -118,6 +118,44 @@ pub(super) fn paint_pose_rows(
         w,
         y,
     );
+    // ⭐⭐ **QUANTO DO ARRASTO A ESCALA LÊ** — decisão do dono de 17/09 (*«cada
+    // modo com opção»* · *«deveriam ficar na secção detail»*).
+    //
+    // ⚠️⚠️ **Ela é pintada JUNTO da fileira de cima e ANTES dos dois
+    // interruptores**, e isso é medição: no fim do bloco ela caía em `y = 858`
+    // num encaixe que mede `~880`, ou seja **na dobra**. Os dois SELECTORES
+    // respondem à mesma família de pergunta — *o que este gesto faz* e *quanto
+    // do gesto ele lê* —, e os interruptores são cercas; agrupá-los assim põe a
+    // lei ao lado do que ela governa, que é a regra que o `Place` da tabela de
+    // rows já escreve.
+    //
+    // ⛔⛔ **A cerca é a mesma da trava abaixo, e por uma razão MEDIDA:** só as
+    // duas deformações do quociente de escala consultam esta lei. A translação
+    // soma o deslocamento INTEIRO à origem e as duas rotações resolvem uma
+    // cadeia contra um alvo — *num desses três o chip não teria o que governar,
+    // e um selector inerte é pior que um ausente* (a lei que o `Density` pagou
+    // com o `Strength`).
+    let y = if snap.ui.brush.offers_pose_drag_law() {
+        let leis = ph2d_sculpt3d::PoseArrasto::ALL;
+        let selected = leis
+            .iter()
+            .position(|&a| a == snap.ui.brush.pose.lei_do_arrasto)
+            .unwrap_or(0);
+        let labels: Vec<&str> = leis.iter().map(|a| a.label()).collect();
+        labelled_seg(
+            ctx,
+            tr("panel.sculpt3d.pose_arrasto"),
+            crate::ids::SCULPT3D_SEC_BRUSH,
+            &crate::ids::SCULPT3D_POSE_ARRASTO,
+            &labels,
+            selected,
+            x,
+            w,
+            y,
+        )
+    } else {
+        y
+    };
     let y = toggle(
         ctx,
         crate::ids::SCULPT3D_POSE_ANCHORED,
@@ -127,7 +165,7 @@ pub(super) fn paint_pose_rows(
         w,
         y,
     ) + Spacing::Sm.px();
-    let y = if snap.ui.brush.offers_pose_rotation_lock() {
+    if snap.ui.brush.offers_pose_rotation_lock() {
         toggle(
             ctx,
             crate::ids::SCULPT3D_POSE_ROT_LOCK,
@@ -139,36 +177,7 @@ pub(super) fn paint_pose_rows(
         ) + Spacing::Sm.px()
     } else {
         y
-    };
-    // ⭐⭐ **QUANTO DO ARRASTO A ESCALA LÊ** — decisão do dono de 17/09 (*«cada
-    // modo com opção»*).
-    //
-    // ⛔⛔ **A cerca é a mesma da trava acima, e por uma razão MEDIDA:** só as
-    // duas deformações do quociente de escala consultam esta lei. A translação
-    // soma o deslocamento INTEIRO à origem e as duas rotações resolvem uma
-    // cadeia contra um alvo — *num desses três o chip não teria o que governar,
-    // e um selector inerte é pior que um ausente* (a lei que o `Density` pagou
-    // com o `Strength`).
-    if !snap.ui.brush.offers_pose_drag_law() {
-        return y;
     }
-    let leis = ph2d_sculpt3d::PoseArrasto::ALL;
-    let selected = leis
-        .iter()
-        .position(|&a| a == snap.ui.brush.pose.lei_do_arrasto)
-        .unwrap_or(0);
-    let labels: Vec<&str> = leis.iter().map(|a| a.label()).collect();
-    labelled_seg(
-        ctx,
-        tr("panel.sculpt3d.pose_arrasto"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
-        &crate::ids::SCULPT3D_POSE_ARRASTO,
-        &labels,
-        selected,
-        x,
-        w,
-        y,
-    ) + Spacing::Sm.px()
 }
 
 /// **A FILEIRA DO PINCEL DE ESFREGAR DESLOCAMENTO** — *Deformation*, as três

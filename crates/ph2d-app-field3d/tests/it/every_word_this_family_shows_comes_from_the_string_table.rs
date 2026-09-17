@@ -19,8 +19,18 @@ use ph2d_label_census::gate::{self, Excecao, Isento};
 
 const TABLE: &str = "crates/ph2d-i18n/src/app_field3d.rs";
 
-/// Nenhum ficheiro é isento inteiro nesta crate — a lista existe para o dia em que um seja.
-const FORA: &[Isento] = &[];
+/// Um ficheiro isento inteiro, com o mecanismo.
+///
+/// ⚠️ **A lista nasceu vazia, com a nota *«existe para o dia em que um seja»* — o dia foi a
+/// integração de 2026-09-17.** O `studio_wgsl.rs` é código-fonte de um SHADER: os literais dele são
+/// um programa que o **dispositivo** compila, não palavras que o artista lê. Traduzi-los não
+/// mudaria a língua de nada — partia a build de GPU.
+const FORA: &[Isento] = &[(
+    "studio_wgsl.rs",
+    "o fonte WGSL do céu do modo RENDER (`struct Ceu`, `fn env_radiance`, as duas tabelas do \
+     pré-filtro) — é um PROGRAMA que o dispositivo compila, da mesma natureza do SVG que o \
+     `svg_export` escreve: outro leitor, e um que muda de significado se alguém o traduzir",
+)];
 
 /// Um literal isento, com o mecanismo.
 const NOT_LANGUAGE: &[Excecao] = &[(

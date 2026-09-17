@@ -297,6 +297,8 @@ pub fn occlusion_slice_with_reach(
     }
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let (right, up, toward_eye) = cam.basis();
+    // ⭐ A base resolve-se UMA vez por passe — ver o doc dela.
+    let base = crate::shade_render::ViewBasis::of(cam);
     let scene = Scene {
         shape: &shape,
         cam,
@@ -343,11 +345,7 @@ pub fn occlusion_slice_with_reach(
         let nv = g.normal[i];
         // A normal do G-buffer está em VISTA e o campo vive no MUNDO — a mesma conversão do
         // [`shadow_pass`], e pela mesma razão.
-        let n = [
-            nv[0] * right[0] + nv[1] * up[0] + nv[2] * toward_eye[0],
-            nv[0] * right[1] + nv[1] * up[1] + nv[2] * toward_eye[1],
-            nv[0] * right[2] + nv[1] * up[2] + nv[2] * toward_eye[2],
-        ];
+        let n = base.view_to_world(nv);
         let cos_de = |k: u32| {
             let d = cone_dir(k, total);
             (n[0] * d[0] + n[1] * d[1] + n[2] * d[2]).max(0.0)

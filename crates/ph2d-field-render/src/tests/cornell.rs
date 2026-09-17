@@ -480,7 +480,10 @@ fn irradiancia_indirecta(
     for k in 0..amostras as usize {
         let vinda = if hit[k] {
             let q = ponto[k];
-            let nq = normal[k];
+            // ⛔⛔ **A normal vem em espaço de VISTA** (a marcha guarda-a assim, «é nele que o
+            // matcap vive») e a lâmpada vive no MUNDO. Sem esta volta, o produto escalar mistura
+            // dois referenciais — ver o gate `a_referencia_nao_depende_de_onde_a_camera_esta`.
+            let nq = crate::shade_render::ViewBasis::of(cam).view_to_world(normal[k]);
             let dono = donos.at(q).unwrap_or(0);
             let v = [-dirs[k][0], -dirs[k][1], -dirs[k][2]];
             radiancia_directa(&scene, q, nq, v, &prontos[dono.min(prontos.len() - 1)])
@@ -537,6 +540,53 @@ fn sonda_a_escada_da_convergencia() {
             d
         );
     }
+}
+
+/// ⭐⭐⭐ **A referência é uma propriedade da CENA, e não da câmera** — e este gate existe porque a
+/// 1.ª redacção dela não era.
+///
+/// A irradiância que chega a um ponto do chão não sabe de onde alguém está a olhar. Se ela mudar
+/// quando a câmera roda, o que está a ser medido é **a câmera**.
+///
+/// ⛔⛔ **O defeito que ele apanhou:** a [`crate::march::march_rays`] devolve a normal em espaço de
+/// **VISTA** (*«é nele que o matcap vive»*, e o G-buffer diz--no por escrito), e a referência
+/// usava-a como se fosse de MUNDO — a misturar referenciais num produto escalar com a direcção da
+/// lâmpada. ⚠️ **E ela deu o SINAL certo à mesma**, porque a câmera desta caixa olha de frente e ali
+/// vista e mundo quase coincidem: *um defeito de referencial escondido pela fixtura que o não
+/// exercita*.
+#[test]
+fn a_referencia_nao_depende_de_onde_a_camera_esta() {
+    let (doc, postas, materiais) = caixa();
+    let reg = Registry::new();
+    let prontos: Vec<ph2d_material::Surface> = materiais.iter().map(OpenPbr::prepare).collect();
+    let p = [-SALA + 0.06, -SALA + 1.0e-3, 0.0];
+    let n = [0.0, 1.0, 0.0];
+    const AMOSTRAS: u32 = 2048;
+
+    let medida_de = |cam: &Orbit| {
+        let donos = donos(&postas, &reg, cam, 256);
+        irradiancia_indirecta(&doc, &reg, cam, &donos, &prontos, &Escuro, p, n, AMOSTRAS)
+    };
+    let de_frente = medida_de(&camara());
+    // A MESMA cena, vista de outro sítio. ⚠️ O `half_extent` também muda, de propósito: a
+    // `Sharpness` sai dele, e uma referência que dependesse da nitidez do quadro teria o mesmo
+    // defeito por outro caminho.
+    let de_lado = medida_de(&Orbit {
+        rotation: Orbit::from_yaw_pitch(1.1, 0.4).rotation,
+        half_extent: 0.9,
+        ..camara()
+    });
+
+    let soma = |c: [f32; 3]| c[0] + c[1] + c[2];
+    let dif = (soma(de_frente) - soma(de_lado)).abs() / soma(de_frente).max(1.0e-9);
+    println!(
+        "  de frente {de_frente:.5?}\n  de lado   {de_lado:.5?}\n  diferença relativa {dif:.4}"
+    );
+    assert!(
+        dif < 0.02,
+        "a irradiância mudou {dif:.4} só por a câmera se mexer — a referência está a medir a câmera \
+         ({de_frente:.5?} contra {de_lado:.5?})"
+    );
 }
 
 /// O céu da caixa é **preto**: a sala é iluminada só pela lâmpada do tecto, como a original.

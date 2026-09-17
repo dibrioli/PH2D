@@ -219,6 +219,8 @@ pub fn shadow_pass_on(
     }
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let (right, up, toward_eye) = cam.basis();
+    // ⭐ A base resolve-se UMA vez por passe — ver o doc dela.
+    let base = crate::shade_render::ViewBasis::of(cam);
     let scene = Scene {
         shape: &shape,
         cam,
@@ -275,12 +277,7 @@ pub fn shadow_pass_on(
                 // ⚠️ **A normal do G-buffer está em espaço de VISTA e a luz em MUNDO.** A base
                 // converte — e é a MESMA conversão que o `shade_render` faz para o `N·L`, senão a
                 // sombra e a luz discordariam sobre quem vê quem.
-                let n = g.normal[i];
-                let nm = [
-                    n[0] * right[0] + n[1] * up[0] + n[2] * toward_eye[0],
-                    n[0] * right[1] + n[1] * up[1] + n[2] * toward_eye[1],
-                    n[0] * right[2] + n[1] * up[2] + n[2] * toward_eye[2],
-                ];
+                let nm = base.view_to_world(g.normal[i]);
                 // ⭐⭐ **De costas para a luz: sem raio — e a visibilidade fica em `1,0`.**
                 //
                 // ⚠️ **`1,0` e não `0,0`, e a diferença NÃO é visível hoje**: o `N·L ≤ 0` já anula

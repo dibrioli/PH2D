@@ -6723,11 +6723,7 @@ fn measure_how_much_gi_fits_in_a_frame() {
                 let p = g.point[i];
                 let nv = g.normal[i];
                 // A normal do G-buffer está em VISTA; o campo vive no MUNDO.
-                let nm = [
-                    nv[0] * right[0] + nv[1] * up[0] + nv[2] * toward_eye[0],
-                    nv[0] * right[1] + nv[1] * up[1] + nv[2] * toward_eye[1],
-                    nv[0] * right[2] + nv[1] * up[2] + nv[2] * toward_eye[2],
-                ];
+                let nm = crate::shade_render::ViewBasis::of(&cam).view_to_world(nv);
                 // Uma base do hemisfério, sem trigonometria por amostra.
                 let a = if nm[0].abs() < 0.9 {
                     [1.0, 0.0, 0.0]

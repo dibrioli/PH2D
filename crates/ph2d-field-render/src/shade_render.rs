@@ -90,14 +90,14 @@ pub struct Lighting<'a> {
 /// ⚠️ Ela resolve-se **uma vez por quadro** e não por pixel: `cam.basis()` é a mesma para a imagem
 /// inteira. *Uma base reconstruída dentro do laço corre onde o laço corre.*
 #[derive(Clone, Copy, Debug)]
-struct ViewBasis {
+pub(crate) struct ViewBasis {
     right: [f32; 3],
     up: [f32; 3],
     toward_eye: [f32; 3],
 }
 
 impl ViewBasis {
-    fn of(cam: &Orbit) -> Self {
+    pub(crate) fn of(cam: &Orbit) -> Self {
         let (right, up, toward_eye) = cam.basis();
         Self {
             right,
@@ -111,6 +111,33 @@ impl ViewBasis {
     fn world_to_view(self, w: [f32; 3]) -> [f32; 3] {
         let dot = |a: [f32; 3], b: [f32; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
         [dot(w, self.right), dot(w, self.up), dot(w, self.toward_eye)]
+    }
+
+    /// ⭐⭐ **O caminho de volta** — a base é ortonormal, logo a transposta é a inversa.
+    ///
+    /// # ⛔⛔ Porque ele nasce aqui e não onde foi preciso
+    ///
+    /// Esta conta estava escrita **à mão em TRÊS sítios** (a normal do G-buffer vive em VISTA e o
+    /// campo vive no MUNDO): o passe da sombra, o da oclusão e uma sonda dos testes — e a `W5` ia
+    /// escrevê-la uma quarta vez. *Uma lei escrita em dois sítios ainda não é uma lei; só uma PORTA
+    /// é.*
+    ///
+    /// ⚠️ **Os três diziam-no por escrito e nenhum a partilhava:** o comentário do passe da sombra
+    /// promete *«é a MESMA conversão que o `shade_render` faz, senão a sombra e a luz discordariam
+    /// sobre quem vê quem»* — sobre uma cópia. *Uma promessa de igualdade ao lado de uma segunda
+    /// cópia é exactamente a forma que diverge no dia em que alguém corrigir uma delas.*
+    ///
+    /// ⚠️ **E ela não é decorativa:** a marcha guarda toda normal em espaço de VISTA (*«é nele que o
+    /// matcap vive»*), logo quem lança um raio solto e usa a normal do acerto para iluminar
+    /// **tem** de a trazer de volta. A 1.ª referência da caixa de Cornell não a trazia, e a
+    /// irradiância mudava `45 %` só por a câmera rodar — com o SINAL do sangramento na mesma certo,
+    /// porque aquela câmera olha de frente e ali os dois referenciais quase coincidem.
+    pub(crate) fn view_to_world(self, v: [f32; 3]) -> [f32; 3] {
+        [
+            v[0] * self.right[0] + v[1] * self.up[0] + v[2] * self.toward_eye[0],
+            v[0] * self.right[1] + v[1] * self.up[1] + v[2] * self.toward_eye[1],
+            v[0] * self.right[2] + v[1] * self.up[2] + v[2] * self.toward_eye[2],
+        ]
     }
 }
 

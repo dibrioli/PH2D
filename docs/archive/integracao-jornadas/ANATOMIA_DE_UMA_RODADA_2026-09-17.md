@@ -126,6 +126,39 @@ sobre código alheio, se `"Bool"` numa fixtura é língua e se um shader WGSL é
 ficheiros três vezes; já é memoizado). Os das famílias custam 4–6 s cada. Com a árvore quente, o
 conjunto são ~2 minutos.
 
+> ✅ **VALIDADO de ponta a ponta em 2026-09-17, e a validação achou um buraco no próprio script.**
+> Corrida em árvore **FRIA** (o disco tinha sido limpo na véspera): `28` pacotes derivados,
+> **`83` testes, `83` verdes**, fase de testes **`85,1 s`** — o `PH2D_PRAZO=5400` cobre a build fria,
+> que é o caso normal de quem fecha uma linha.
+>
+> ⛔⛔ **E o filtro cobria `83` de `90`: SETE censos nunca corriam.** A cobertura era **por
+> ACIDENTE** — o `test(every_word)` casa o **MÓDULO** (`every_word_this_panel_shows_…::<fn>`), e é
+> só por isso que os censos dos painéis entravam, porque os nomes de função deles
+> (`every_key_of_this_panel_exists` / `..._crate_exists`) **nenhuma entrada do filtro nomeia**.
+> Os dois módulos cujo NOME é outro ficavam de fora, mudos:
+> `the_program_writes_no_word_into_this_panel` (`ph2d-panel-authored`, **2** testes) e
+> `no_label_of_this_crate_is_written_in_the_painter` (`ph2d-editor-core`, **5**).
+>
+> ⚠️⚠️ **E um controlo por PACOTE não o teria apanhado**: o `ph2d-editor-core` corria a catraca da
+> shell, logo lia-se como coberto enquanto o 2.º censo dele estava fora. *A granularidade do
+> controlo tem de ser a do objecto que pode desaparecer* — hoje é o **MÓDULO**, derivado do mesmo
+> `git grep` que deriva a lista de pacotes, e o script **reprova nomeando os mudos**.
+>
+> ⛔⛔⛔ **E o controlo deu TRÊS acusações FALSAS antes de dizer a verdade, todas da MESMA raiz:**
+> no nextest o nome de um teste é **`<MÓDULO>::<fn>`**, e eu troquei as duas metades duas vezes.
+> (a) a 1.ª extracção não tolerava o `(n/N)` **alinhado à direita** (`( 3/83)`) e acusou dois
+> pacotes que tinham corrido; (b) a lista de exigidos trazia `the_shell_only_shrinks`, que é a
+> **função** — o módulo dela é `architecture_the_shell_only_shrinks` — e acusou a catraca da shell
+> de muda com ela VERDE no log, três linhas acima.
+> ⇒ *a régua que desmentia o defeito era o defeito*, e a cura é estrutural: **nada na lista de
+> exigidos é escrito à mão** — tudo é o `basename` do ficheiro que DEFINE a coisa, que é
+> exactamente o que o nextest imprime como módulo. Medido depois da cura: **`8` módulos exigidos,
+> `8` correram**, com controlo positivo (um módulo inventado é acusado) e negativo (nada falta).
+>
+> ⏱️ **Custo final, com a cobertura completa e não com `83` de `90`:** árvore quente,
+> **`1 min 31 s`** de relógio, `90` testes `90` verdes, `controlo do filtro: 8 de 8 censos correram ✓`.
+> O tecto é o censo da SHELL (`75 s`); os das famílias custam `0,5`–`7 s` cada.
+
 ⛔ **E isto NÃO substitui o portão da árvore combinada** — o `--ff-only` continua a ser a única
 prova de que ninguém aterrou no meio. O que muda é que ele deixa de ser o sítio onde estas falhas
 são **descobertas**.

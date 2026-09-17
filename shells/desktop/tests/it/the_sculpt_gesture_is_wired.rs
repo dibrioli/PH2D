@@ -697,17 +697,37 @@ fn every_verb_is_reachable_from_the_keyboard() {
     // alcança `shells/desktop/tests/`. *Afirme a PROPRIEDADE, nunca o endereço*
     // — e onde o endereço é inevitável (ler a fonte alheia), tente os dois e
     // deixe o `expect` gritar só quando NENHUM tiver o catálogo.
-    let brush = ["brush_verb.rs", "brush.rs"]
-        .iter()
-        .filter_map(|f| {
-            std::fs::read_to_string(format!(
-                "{}/../../crates/ph2d-sculpt3d/src/{f}",
-                env!("CARGO_MANIFEST_DIR")
-            ))
-            .ok()
+    // ⚠️⚠️ **E em 2026-09-16 a lista de DOIS endereços também caducou** — o
+    // catálogo mudou-se outra vez, para o filho `brush_verb_catalogo.rs`, quando
+    // o teto de LOC forçou o corte. ⇒ a busca passa a ser pela PROPRIEDADE, na
+    // pasta inteira: *o ficheiro que declara o `Verb::ALL`*, seja ele qual for.
+    //
+    // ⛔ **Com PISO e TECTO, que é o que a torna uma afirmação** (§5.0: um censo
+    // que varre zero fica verde a medir nada): exactamente UM ficheiro da crate
+    // pode declarar o catálogo, e zero ou dois são os dois defeitos.
+    let src = format!(
+        "{}/../../crates/ph2d-sculpt3d/src",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let donos: Vec<String> = std::fs::read_dir(&src)
+        .expect("a pasta da crate de escultura")
+        .filter_map(|e| {
+            let p = e.ok()?.path();
+            (p.extension()? == "rs").then(|| std::fs::read_to_string(p).ok())?
         })
-        .find(|s| s.contains("impl Verb {"))
-        .expect("a fonte do catálogo de verbos");
+        .filter(|s| {
+            s.find("impl Verb {")
+                .is_some_and(|i| s[i..].contains("pub const ALL:"))
+        })
+        .collect();
+    assert_eq!(
+        donos.len(),
+        1,
+        "exactamente UM ficheiro da crate declara o `Verb::ALL` — {} declaram-no, \
+         e o gate deixaria de saber qual é o catálogo",
+        donos.len()
+    );
+    let brush = donos.into_iter().next().expect("o catálogo de verbos");
     // ⚠️ **Ancorado no `impl Verb`, e não no primeiro `pub const ALL:`** — o
     // `Falloff` tem um do mesmo nome e vem ANTES no arquivo. O controle abaixo
     // pegou isso na primeira corrida, lendo `["Smooth", "Sphere", "Sharper", …]`.
@@ -953,6 +973,25 @@ fn every_verb_is_reachable_from_the_keyboard() {
         // que a esvazia é de produto: ou uma gramática nova (um modificador, um
         // segundo toque), ou tirar um dígito a quem hoje o tem.
         "Plane",
+        // ⭐⭐⭐ **O PINCEL AFIADO, e ele está fora da fila pela MESMA razão
+        // aritmética do vizinho de plano: NÃO HÁ LETRA LIVRE.**
+        //
+        // ⚠️ **Ele é o segundo seguido a chegar assim**, e isso é um facto sobre
+        // o teclado e não sobre os dois pincéis: `25` das `26` letras já são
+        // reclamadas por este módulo e os dez dígitos estão tomados pelos dez
+        // primeiros verbos — entre eles o `Draw`, que é exactamente o pincel de
+        // que este é a variante afiada. Dar-lhe o dígito do `Draw` faria o
+        // atalho mais usado do módulo mudar de ferramenta debaixo da mão.
+        //
+        // ⛔ **E ele NÃO é inerte de fábrica** (a razão dos quatro primeiros
+        // desta lista): ele trabalha na configuração de fábrica, numa peça
+        // acabada de nascer, e é o que o dono pediu pelo nome. *O que o mantém
+        // sem tecla é só não haver tecla.*
+        //
+        // ⇒ a fila dos pretendentes passa de **nove** para **DEZ**, e a decisão
+        // que a esvazia continua a ser de produto: uma gramática nova (um
+        // modificador, um segundo toque) ou tirar um dígito a quem hoje o tem.
+        "DrawSharp",
     ];
     let keys = function_body(&sculpt_src(), "key");
     // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**

@@ -288,7 +288,7 @@ fn a_atenuacao_do_traco_e_a_da_lei() {
                 Symmetry::default(),
             );
         }
-        maior_distancia(&m.positions().to_vec(), &f.repouso)
+        maior_distancia(m.positions(), &f.repouso)
     };
     let (por_script, arrastado) = (uma_vez(false), uma_vez(true));
     assert!(

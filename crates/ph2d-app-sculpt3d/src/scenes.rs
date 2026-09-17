@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 47;
+pub const CENAS: u32 = 48;
 
 /// **A env do roteador, lida DENTRO da crate.**
 ///
@@ -459,6 +459,11 @@ pub(crate) mod thumb;
 #[path = "scenes_pose.rs"]
 pub(crate) mod pose;
 
+/// **O PINCEL AFIADO** (`=48`) — ver [`afiado`]. ⚠️ Ela abre numa bola LISA e
+/// DENSA: ao contrário do vizinho de plano, este pincel **faz** o relevo, e o
+/// vinco dele só se lê numa malha fina.
+#[path = "scenes_afiado.rs"]
+pub(crate) mod afiado;
 /// **O PINCEL DE CONTORNO** (`=42`) — ver [`boundary`]. ⚠️ Ela abre numa TIGELA
 /// e não numa peça fechada, e a escolha é MEDIDA: sem borda aberta este pincel
 /// não move um único vértice.

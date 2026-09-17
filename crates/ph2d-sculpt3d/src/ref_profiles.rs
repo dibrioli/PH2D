@@ -152,6 +152,16 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // espec §4 mede (`0,5` ⇒ `0,250000` do deslocamento). Um perfil `s`
         // inventado aqui entregaria força **linear** em silêncio.
         Verb::Plane => return None,
+        // ⛔ **O PINCEL AFIADO não tem perfil `s`, e a ausência é a mesma
+        // espécie da do plano:** o SculptGL não tem esta ferramenta, logo não há
+        // aqui número a LER. ⚠️ **E a consequência é load-bearing, como lá:**
+        // sem perfil `s` o [`crate::RefMode::for_verb`] recua para o `B`, que é
+        // a referência que TEM o pincel — e é de lá que vêm a **curva afiada** e
+        // a **força ao quadrado** que a espec §2.2 e §2.5 medem. A força de
+        // fábrica dele (`0,5`) coincide com o fallback desta casa, e quem a
+        // AFIRMA é o gate dos valores de fábrica, nunca um braço a repetir o
+        // número.
+        Verb::DrawSharp => return None,
         // `Brush.js:11-16` — `_radius 50 · _intensity 0.5 · _clay true ·
         // _accumulate true`. A tool `Brush` do original é a nossa **Draw E
         // Clay** (o `_clay` é um checkbox dela, ligado de fábrica).
@@ -367,8 +377,28 @@ impl Verb {
 /// que é literalmente o que o cabeçalho do `brush_magnitudes` proíbe.
 const fn blender_reach(verb: Verb) -> Option<f32> {
     match verb {
-        Verb::Draw | Verb::ClayStrips => Some(crate::BLENDER_REACH_FRACTION),
+        // ⭐ **O afiado entra AO LADO do Draw porque é a MESMA magnitude:** a
+        // espec §2 escreve o deslocamento dele como `normal da área × raio ×
+        // força² × …`, letra por letra o do desenho comum — o que os separa é a
+        // DISTÂNCIA de onde a curva pesa (§2.1), nunca o alcance.
+        Verb::Draw | Verb::ClayStrips | Verb::DrawSharp => Some(crate::BLENDER_REACH_FRACTION),
         _ => None,
+    }
+}
+
+/// **A CURVA DE QUEDA de fábrica na referência `B`** — a suave para o catálogo,
+/// e a **afiada** no pincel afiado.
+///
+/// ⚠️ **Ela é um `match` e não uma constante desde 2026-09-16**, e o motivo é o
+/// achado da espec §0.2: a curva de fábrica por-ferramenta do alvo era dada como
+/// ilegível (*«mora num ficheiro binário»*), e lê-se **correndo o programa** —
+/// o pincel afiado nasce com `(1 − u)⁴`, a nossa [`Falloff::Sharper`], e é essa
+/// troca que a ablação mede como a **2.ª alavanca da largura** do vinco (§8.1:
+/// trocá-la pela suave alarga-o `+52 %`).
+const fn blender_falloff(verb: Verb) -> Falloff {
+    match verb {
+        Verb::DrawSharp => Falloff::Sharper,
+        _ => Falloff::Smooth,
     }
 }
 
@@ -409,7 +439,7 @@ const fn profile_b(verb: Verb) -> Option<VerbProfile> {
     }
     Some(VerbProfile {
         strength_curve: blender_strength_curve(verb),
-        falloff: Some(Falloff::Smooth),
+        falloff: Some(blender_falloff(verb)),
         reach: blender_reach(verb),
         ..VerbProfile::SILENT
     })

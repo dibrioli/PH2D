@@ -185,6 +185,22 @@ impl SculptStroke {
             // `Brush.js:57-91` — `deform = intensidade · raio · 0,1`, e o peso
             // inteiro (curva × intensidade × máscara × alpha) chega no `w`.
             Verb::Draw => add(live, n_area, reach * w),
+            // ⭐⭐⭐ **O AFIADO é o Draw com OUTRA NORMAL, e mais nada neste
+            // `match`** (espec §2.3, decisão D-3): a direcção do deslocamento é
+            // a **normal da área do alvo** — a mesma lei que os gestos
+            // tangenciais e o pincel de plano já correm —, e não a normal do
+            // estimador de plano da casa.
+            //
+            // ⚠️ **O que separa este pincel do Draw NÃO se vê aqui:** a
+            // distância de onde a curva pesa (o `from_live` pregado), a curva,
+            // a direcção de fábrica, o passo e a atenuação chegam todos DENTRO
+            // do `w` e do `reach`. *Um segundo braço aritmético aqui seria a
+            // segunda resposta a «para onde este dab empurra».*
+            //
+            // ⚠️ **O recuo é o do irmão:** sem amostra nenhuma dentro da fracção
+            // do raio, a normal da área degenera e a única resposta finita é a
+            // do plano do carimbo.
+            Verb::DrawSharp => add(live, n_gesto.unwrap_or(n_area), reach * w),
             // ⚠️ **A LEI É A DO DRAW, ao bit — e isso É a wave.** O que separa
             // uma faixa de um domo não é para onde o barro vai (os dois sobem
             // pela normal da área, pelo mesmo `reach`), é **QUE BARRO** a

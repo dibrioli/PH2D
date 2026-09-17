@@ -61,5 +61,14 @@ dhat = "0.3"
 # forma muda.
 postcard = { version = "1", features = ["alloc"] }
 
+# ⚠️ **`test-support` tem o tamanho do que ATRAVESSA a fronteira, e nada mais**
+# (HOWTO §2.5): UM item — a costura que prega as normais de vértice
+# (`Mesh::pregar_normais_para_teste`), que as bancadas de clean-room da
+# `ph2d-sculpt3d` precisam para reproduzir um caminho de oráculo que NÃO as
+# refresca entre dabs. Dentro desta crate ela já vale sob `cfg(test)`; a feature
+# existe só para ela cruzar para a crate vizinha.
+[features]
+test-support = []
+
 [lints]
 workspace = true

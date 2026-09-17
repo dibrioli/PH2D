@@ -28,6 +28,10 @@ impl crate::Verb {
             Self::Plane => "Plane",
             Self::Cloth => "Cloth",
             Self::Draw => "Draw",
+            // ⭐ **O rótulo diz o EFEITO, e a espec §14.1 registra que o alvo
+            // aprendeu isso do lado caro:** o primeiro nome deste pincel dizia
+            // *como* ele funciona por dentro, e foi trocado antes de sair.
+            Self::DrawSharp => "Draw Sharp",
             Self::Inflate => "Inflate",
             Self::Smooth => "Smooth",
             Self::Sharpen => "Sharpen",

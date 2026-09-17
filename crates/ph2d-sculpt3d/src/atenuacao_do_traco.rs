@@ -1,5 +1,6 @@
-//! ⭐⭐ **O PASSO E A ATENUAÇÃO DO TRAÇO ARRASTADO** do [`Verb::Plane`]
-//! (`SPEC_pincel_de_plano.md` §14.4).
+//! ⭐⭐ **O PASSO E A ATENUAÇÃO DO TRAÇO ARRASTADO** — do [`Verb::Plane`]
+//! (`SPEC_pincel_de_plano.md` §14.4) e do [`Verb::DrawSharp`]
+//! (`SPEC_pincel_afiado.md` §5).
 //!
 //! Num traço arrastado os dabs sobrepõem-se, e cada um é enfraquecido para que a soma não dependa
 //! do espaçamento. O factor é o inverso do máximo, sobre DEZ fases, da soma da curva de queda nas
@@ -19,9 +20,18 @@
 //! ⚠️ **As fases são DEZ pontos** (`0; 0,1; …; 0,9`), não um máximo no contínuo — é essa
 //! discretização que dá a tabela. A curva é a de queda do pincel **sem** a dureza.
 //!
-//! ⚠️ **Só o pincel de plano, e só arrastado.** A porta por script (a bancada, o oráculo por
-//! script) dá os dabs um a um com o factor em `1`, e os outros verbos desta casa não têm esta lei —
-//! dá-la a eles mudaria paridades medidas contra as referências deles.
+//! ⚠️ **Só os DOIS verbos que a declaram, e só arrastados.** A porta por script (a bancada, o
+//! oráculo por script) dá os dabs um a um com o factor em `1`, e os outros verbos desta casa não
+//! têm esta lei — dá-la a eles mudaria paridades medidas contra as referências deles.
+//!
+//! ⚠️⚠️ **E os dois NÃO partilham a fórmula do factor, só a do `a`:** o plano usa `(1 + a)/2` e o
+//! afiado usa **`a` cru** (`0,24591` a `5 %` com a curva afiada). *Duas leis com a mesma forma são
+//! a coisa mais fácil de unificar por engano* — medido, trocá-las erra `4,7e-2` contra `4,9e-4`.
+//!
+//! | curva | espaçamento | `a` | quem o usa |
+//! |---|---|---|---|
+//! | afiada | `5 %` (o pincel afiado) | `0,24591` | o afiado, **cru** |
+//! | suave | `7 %` (o perfil *aparar*) | `0,140` | o plano, como `(1 + a)/2 = 0,570` |
 //!
 //! ⚠️ **O passo** é `raio × espaçamento_% / 50` — `0,14 R` a `7 %` —, contra os `0,15 R` que a
 //! casa dá a todos os outros verbos. Escrito como o alvo o escreve e não como `0,14`: a `50` px de
@@ -32,13 +42,35 @@ use crate::{Brush, Falloff, PlanoInversao, Verb};
 /// O espaçamento do pincel de plano, em % do DIÂMETRO — o perfil *aparar* do alvo (espec §14.2).
 pub const ESPACAMENTO_DO_PLANO_PCT: f32 = 7.0;
 
+/// O espaçamento do pincel AFIADO, em % do DIÂMETRO — o valor de fábrica dele no alvo
+/// (`SPEC_pincel_afiado.md` §5.1 e §6), lido correndo o programa.
+///
+/// ⚠️ **Ele quase não é alavanca, e a espec diz porquê:** a atenuação compensa-o, então
+/// `8 %` e `10 %` entregam `−0,2 %` e `−0,6 %` da profundidade que `5 %` dá (§5.3). Quem
+/// muda o vinco é a curva e a distância do pen-down, não o espaçamento.
+pub const ESPACAMENTO_DO_AFIADO_PCT: f32 = 5.0;
+
+/// **O espaçamento declarado por este verbo**, em % do diâmetro — `None` quando o verbo não
+/// declara nenhum e cai no passo da casa.
+///
+/// ⚠️ **Uma porta só, lida pelo passo E pela atenuação**: as duas perguntas partilham o
+/// número, e escrevê-lo duas vezes faria um traço com o passo de um pincel e a atenuação de
+/// outro — que é precisamente a composição que nenhuma referência declara.
+#[must_use]
+pub fn espacamento_do_verbo(verb: Verb) -> Option<f32> {
+    match verb {
+        Verb::Plane => Some(ESPACAMENTO_DO_PLANO_PCT),
+        Verb::DrawSharp => Some(ESPACAMENTO_DO_AFIADO_PCT),
+        _ => None,
+    }
+}
+
 /// **O passo entre dois dabs de um traço arrastado**, na régua em que `raio` vem (a app dá pixels).
 #[must_use]
 pub fn passo_do_traco(verb: Verb, raio: f32) -> f32 {
-    if verb == Verb::Plane {
-        raio * ESPACAMENTO_DO_PLANO_PCT / 50.0
-    } else {
-        crate::min_spacing(raio)
+    match espacamento_do_verbo(verb) {
+        Some(pct) => raio * pct / 50.0,
+        None => crate::min_spacing(raio),
     }
 }
 
@@ -69,16 +101,31 @@ pub fn atenuacao_por_espacamento(curva: Falloff, espacamento_pct: f32) -> f32 {
 }
 
 impl Brush {
-    /// **O factor por dab do traço** (espec §14.4) — `1` fora do arrasto e fora do pincel de plano.
+    /// **O factor por dab do traço** — `1` fora do arrasto e em todo verbo que não o declare.
     ///
-    /// ⚠️ Calcula-se UMA vez por dab (o plano guarda-o): são `140` avaliações da curva, e o alvo
-    /// por-vértice não as pode pagar a cada vértice.
+    /// ⚠️ Calcula-se UMA vez por dab (o plano guarda-o no plano da pegada; o afiado entra pelo
+    /// [`Brush::reach`], que também corre uma vez por dab): são `140` avaliações da curva, e o
+    /// laço por-vértice não as pode pagar a cada vértice.
     #[must_use]
     pub fn factor_do_traco(&self) -> f32 {
-        if !self.traco_arrastado || self.verb != Verb::Plane {
+        let Some(pct) = espacamento_do_verbo(self.verb) else {
+            return 1.0;
+        };
+        if !self.traco_arrastado {
             return 1.0;
         }
-        let a = atenuacao_por_espacamento(self.falloff, ESPACAMENTO_DO_PLANO_PCT);
+        let a = atenuacao_por_espacamento(self.falloff, pct);
+        // ⭐⭐⭐ **O PINCEL AFIADO usa `a` CRU, e o de plano `(1 + a)/2`** — são
+        // duas leis e não um arredondamento: medido, o traço do afiado com `a`
+        // reproduz o alvo a `4,9e-4` e com a lei do plano erra `4,7e-2`, **`96×`**
+        // pior (espec do afiado §5.3). Dar-lhe a lei do vizinho entregaria um
+        // vinco `2,5×` mais forte por dab.
+        //
+        // ⚠️ *Duas leis com a mesma forma são a coisa mais fácil de unificar por
+        // engano* — e é por isso que o corpus de cada um mede a do outro.
+        if self.verb == Verb::DrawSharp {
+            return a;
+        }
         let afastar_invertido = self.plano_inversao == PlanoInversao::Afastar
             && self.invert
             && self.verb.honours_invert();

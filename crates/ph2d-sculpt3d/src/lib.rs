@@ -80,7 +80,10 @@ pub mod atenuacao_do_traco;
 mod plano_inversao;
 /// A memória do plano do [`Verb::Plane`] — os dois estabilizadores (espec §6).
 pub mod plano_memoria;
-pub use atenuacao_do_traco::{ESPACAMENTO_DO_PLANO_PCT, atenuacao_por_espacamento, passo_do_traco};
+pub use atenuacao_do_traco::{
+    ESPACAMENTO_DO_AFIADO_PCT, ESPACAMENTO_DO_PLANO_PCT, atenuacao_por_espacamento,
+    espacamento_do_verbo, passo_do_traco,
+};
 
 /// ⭐⭐⭐ **A DISTÂNCIA ATÉ À OUTRA PEÇA** — ver [`projectar`].
 mod projectar;

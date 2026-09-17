@@ -352,11 +352,15 @@ impl Brush {
     /// doc-comments"*), e ela não levanta erro: só uma leitura pega.
     #[must_use]
     pub fn reach(&self, radius: f32) -> f32 {
-        let s = if self.invert && self.verb.honours_invert() {
-            -1.0
-        } else {
-            1.0
-        };
+        // ⭐⭐ **O SINAL tem DOIS termos desde 2026-09-16, e o segundo é a
+        // direcção de FÁBRICA do verbo** ([`crate::Verb::afunda_de_fabrica`]):
+        // até aqui a casa só sabia *«o `Ctrl` inverte»*, e um pincel que nasce a
+        // AFUNDAR não tinha onde o dizer. A lei é a da espec §2.4 do pincel
+        // afiado — `σ = direcção de fábrica × (−1 se Ctrl)` —, e o `!=` é o
+        // «ou exclusivo» dela: com o `Ctrl` carregado o pincel que afunda
+        // levanta, e vice-versa.
+        let afunda = self.verb.afunda_de_fabrica() != (self.invert && self.verb.honours_invert());
+        let s = if afunda { -1.0 } else { 1.0 };
         // ⚠️ **A FRAÇÃO É DO MODO, e era uma constante para o catálogo todo.**
         // Aqui morava `if verb == ClayStrips { 1,0 } else { 0,1 }` — o `0,1` é
         // o `deform = intensidade · raio · 0,1` do `Brush.js:62`, do SculptGL, e
@@ -376,7 +380,18 @@ impl Brush {
             .profile(self.mode.for_verb(self.verb))
             .and_then(|p| p.reach)
             .unwrap_or(REACH_FRACTION);
-        radius * f * s
+        // ⭐⭐ **E a ATENUAÇÃO DO TRAÇO ARRASTADO entra aqui**, pela porta única
+        // [`Self::factor_do_traco`]: ela é *quanto cada dab de um traço vale
+        // quando os dabs se sobrepõem*, e o deslocamento de um dab **é** este
+        // alcance. `1` fora do arrasto e nos verbos que não a declaram, logo o
+        // caminho de todos os outros é byte-idêntico.
+        //
+        // ⚠️ **O pincel de plano NÃO passa por aqui** — o alvo dele é uma
+        // projecção e não um deslocamento ao longo de uma normal, então ele lê a
+        // MESMA porta no sítio onde a lei dele pesa
+        // ([`crate::PlanoDaPegada`]). *Uma lei, uma porta, dois consumidores —
+        // e cada um multiplica-a na grandeza que a sua própria lei escala.*
+        radius * f * s * self.factor_do_traco()
     }
 
     /// **O RAIO QUE A CONSULTA DA PEGADA USA** — a quinta porta, e a única que
@@ -405,6 +420,18 @@ impl Brush {
             // um defeito mudo, porque a silhueta continuaria plausível. O fator
             // é perguntado à própria forma, nunca recomputado aqui.
             radius * crate::Footprint::strip_query_factor(self.strip_length)
+        } else if self.verb == crate::Verb::DrawSharp {
+            // ⭐ **O afiado alarga a consulta PELA MESMA PORTA que o plano**, e
+            // por uma razão mais simples: a normal da área dele soma sobre
+            // `R_n = fracção × R`, e a fracção **pode passar de `1`** (a fixtura
+            // `normal_da_area_raio_2_0` da espec usa `2` e só é reprodutível com
+            // a soma sobre `2R`). ⛔ Uma segunda varredura para a normal daria
+            // duas respostas a *«que vértices este dab consulta?»*.
+            //
+            // ⚠️ **No valor de fábrica ele é inerte** (`0,5 × R < R`), e é assim
+            // que tem de ser: o `max` com `1` é o que impede a consulta de
+            // ENCOLHER abaixo da pegada da própria curva de queda.
+            radius * self.normal_radius_frac.max(1.0)
         } else if self.verb == crate::Verb::Plane {
             // ⚠️ **O elipsóide dos dois tectos NÃO cabe no círculo do cursor**, e
             // a razão é outra que a da faixa: ele cabe no círculo do **centro do

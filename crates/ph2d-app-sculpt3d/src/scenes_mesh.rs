@@ -222,6 +222,13 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
         // contrário do que a ferramenta é.
         return crate::scenes::plano::peca();
     }
+    if crate::scenes::afiado::afiado_scene() {
+        // ⚠️ **Lisa e DENSA, e as duas metades são a lição** — ver o cabeçalho
+        // da [`crate::scenes::afiado`]: este pincel FAZ o relevo (sobre bossas o
+        // vinco perder-se-ia no meio delas), e o fundo agudo dele precisa de
+        // umas três arestas na largura para existir.
+        return crate::scenes::afiado::peca();
+    }
     if crate::scenes::erase::erase_scene() || crate::scenes::smear::smear_scene() {
         return peca_de_multirresolucao();
     }

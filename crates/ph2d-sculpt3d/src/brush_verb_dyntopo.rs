@@ -66,6 +66,7 @@ impl Verb {
     /// | **Slide Relax · Surface Smooth** | ⛔ | a medida (`441 → 441` nos dois extremos) |
     /// | Pose · Boundary · Cloth | ⛔ | as duas (onde as duas existem) |
     /// | **Mask** | ⛔ | ⭐ **domínio**, curado um dia ANTES do estudo — e as duas confirmaram |
+    /// | **Draw Sharp** | ⛔ | o oráculo do PRÓPRIO pincel (espec §2.8) — e o nome dele diz o mesmo: um vinco fino não sobrevive a um remalhe |
     /// | Density | ✅ | ⛔ construção: ele **É** o passe de topologia |
     /// | Erase · Smear Displacement | ⛔ | ⛔ construção: multirresolução exclui dyntopo (espec §5.6) |
     /// | **Sharpen · Magnify** | ✅ | ⚠️ **NENHUM oráculo os responde** — valor conservador, com gate a nomeá-los |
@@ -98,6 +99,17 @@ impl Verb {
             // por leitura de alvo nenhum. Medido antes da cura: `830 → 1 331`
             // vértices num dab que não move um vértice.
             Self::Mask => false,
+            // ⛔⛔ **O PINCEL AFIADO não mexe, e a fonte é o ORÁCULO deste
+            // pincel:** com a topologia dinâmica ligada o alvo **não refina nem
+            // colapsa** com ele (espec do afiado §2.8 e §9.4, medido pela obra
+            // do dyntopo).
+            //
+            // ⭐ **E o mecanismo é o que o NOME promete:** um vinco de meio raio
+            // de largura não sobrevive a um remalhe — a documentação pública do
+            // alvo aponta o pincel de VINCO para quem quer detalhe com
+            // topologia dinâmica. *Refinar aqui apagaria a ferramenta com o
+            // próprio gesto dela.*
+            Self::DrawSharp => false,
             // ⭐⭐⭐ **OS TRÊS QUE PASSARAM A MEXER**, e são a segunda metade do
             // report (*«algumas que deveriam criar subdivisões não estão
             // criando»*). Eles **esticam** superfície — o gancho transporta
@@ -394,7 +406,7 @@ mod dyntopo_tests {
     fn cada_desvio_do_comportamento_de_hoje_tem_proveniencia() {
         /// `(verbo, refina?, de onde veio)` — as células que se afastam do que
         /// o produto fazia antes do estudo.
-        const DESVIOS: [(&str, bool, &str); 11] = [
+        const DESVIOS: [(&str, bool, &str); 12] = [
             // ⭐⭐ **AS DUAS REFERENCIAS CONCORDAM** — a livre (MIT, lida) e a
             // medida (corrida sem interface pela janela E).
             // ⛔⛔ **NENHUMA referencia responde por este, e a ausencia e' a
@@ -445,6 +457,14 @@ mod dyntopo_tests {
                 "Smear Displacement",
                 false,
                 "espec §5.6: multirresolucao exclui dyntopo",
+            ),
+            // ⭐ **O ORACULO DESTE PINCEL responde a celula dele**, e a leitura
+            // e' a mesma dos irmaos: com a topologia dinamica ligada o alvo nao
+            // mexe na malha com ele.
+            (
+                "Draw Sharp",
+                false,
+                "oraculo do pincel afiado (espec §2.8 e §9.4): nem refina nem colapsa",
             ),
         ];
         let mut corrigidos = Vec::new();

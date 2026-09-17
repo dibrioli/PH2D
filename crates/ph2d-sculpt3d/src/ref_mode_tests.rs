@@ -247,7 +247,11 @@ fn the_census_of_offered_chips() {
     // contra o oráculo, `0,5` em vez de `0,5²`, ou seja **`2×`** o deslocamento.
     // *À força cheia os dois são indistinguíveis, e foi por isso que vinte e duas
     // fixturas verdes não o viram.*
-    assert_eq!(count(RefMode::B), 28, "B: a lei da força vale para todos");
+    // ⭐⭐ **29 desde o PINCEL AFIADO, e ele entra pela MESMA porta do de plano
+    // e com a lista negra escrita no mesmo dia:** a referência restrita tem-no
+    // e o SculptGL não, logo o `B` é a única que o declara — e é de lá que vêm
+    // a força ao quadrado **e** a curva de queda afiada de fábrica.
+    assert_eq!(count(RefMode::B), 29, "B: a lei da força vale para todos");
     // A literatura chega paper a paper, nas waves W4/W5/W7.
     //
     // ⚠️ **E o Surface Smooth NÃO o move, embora SEJA um paper** (Vollmer,

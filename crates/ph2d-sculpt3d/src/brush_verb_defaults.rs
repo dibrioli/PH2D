@@ -173,6 +173,20 @@ impl Verb {
         if self == Self::Plane {
             law.from_live = true;
         }
+        // ⭐⭐⭐ **O PINCEL AFIADO prega a coluna do lado OPOSTO, e essa é a lei
+        // inteira dele** (espec §2.1): a curva de queda mede a distância a
+        // partir das posições do **pen-down** *sempre*, e isso **não depende**
+        // do interruptor de acumular.
+        //
+        // ⚠️ **Sem esta linha ele herdaria o interruptor do carimbo** — e com o
+        // Accumulate armado a queda passaria a medir da posição JÁ afundada, o
+        // que faz o vinco **alargar enquanto aprofunda**: é exactamente o
+        // comportamento do desenho comum, medido na ablação a `+55 %` de largura
+        // (§8.1). ⇒ o interruptor sai da tela em [`Self::accumulates`], porque
+        // aqui ele deixou de ter o que escolher.
+        if self == Self::DrawSharp {
+            law.from_live = false;
+        }
         law
     }
 

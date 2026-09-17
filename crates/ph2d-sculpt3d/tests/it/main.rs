@@ -60,6 +60,8 @@ mod mede_o_tecido_que_atravessa_os_gestos;
 mod mede_o_tecido_que_estica;
 mod o_produto_corre_a_lei;
 mod oraculo_do_esfregao;
+mod oraculo_do_pincel_afiado;
+mod oraculo_do_pincel_afiado_produto;
 mod oraculo_do_pincel_de_plano;
 mod oraculo_do_pincel_de_plano_fabrica;
 mod oraculo_do_projectar;

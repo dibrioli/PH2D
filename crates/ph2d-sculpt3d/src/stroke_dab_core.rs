@@ -118,7 +118,12 @@ impl SculptStroke {
         // sempre:** esta é a segunda varredura da pegada de um dab, e os outros
         // vinte e quatro verbos não a leem. Pagá-la para todos seria dobrar o
         // custo geométrico de cada carimbo para servir dois.
-        let n_gesto = if matches!(brush.verb, Verb::Thumb | Verb::Nudge) {
+        // ⭐ **E o PINCEL AFIADO é o terceiro a pagá-la**, pela mesma razão que
+        // os dois gestos: a lei dele lê a normal da ÁREA da referência (espec
+        // §2.3), que é esta varredura — ⛔ e não a normal do estimador de plano
+        // que o `Draw` lê. Medido, sem ela a 1.ª passagem sai `+3,1 %` funda e
+        // os traços separados `11,7 %` estreitos.
+        let n_gesto = if matches!(brush.verb, Verb::Thumb | Verb::Nudge | Verb::DrawSharp) {
             self.normal_do_gesto(mesh, brush, dab)
         } else {
             None

@@ -34,6 +34,11 @@ mod splice;
 #[path = "mesh_shrink.rs"]
 mod shrink;
 
+/// **A COSTURA DE TESTE** — ver [`costura_de_teste`]. ⛔ Filho e não irmão: ela
+/// escreve um campo PRIVADO da malha, e a privacidade alcança os descendentes.
+#[cfg(any(test, feature = "test-support"))]
+#[path = "mesh_costura_de_teste.rs"]
+mod costura_de_teste;
 /// OS PLANOS OPCIONAIS (cor, máscara, AO) e a validade do AO — ver o módulo.
 #[path = "mesh_planes.rs"]
 mod planes;
@@ -274,8 +279,6 @@ impl Mesh {
         &self.normals
     }
 
-    /// **A curvatura por vértice**, adimensional e com sinal: `> 0` côncavo,
-    /// `< 0` convexo. Ver [`crate::curvature`] para a lei e a escala.
     #[must_use]
     pub fn curvatures(&self) -> &[f32] {
         &self.curvatures

@@ -613,47 +613,40 @@ pub enum Verb {
     /// ⛔ Ela é deste pincel e **não** dos irmãos, que constroem a silhueta A
     /// PARTIR daquele quadro.
     Plane,
+    /// ⭐⭐⭐ **O PINCEL AFIADO** — o vinco duro, no lugar do domo do
+    /// [`Self::Draw`] (ordem do dono, 2026-09-16). Espec:
+    /// `docs/3D/cleanroom/SPEC_pincel_afiado.md`.
+    ///
+    /// ⭐⭐ **Ele é o [`Self::Draw`] com CINCO valores trocados e NENHUMA lei
+    /// nova** (espec §0.1): a curva afiada, a direcção a afundar
+    /// ([`Self::afunda_de_fabrica`]), a distância medida sempre do pen-down, o
+    /// passo de `5 %` do diâmetro e a atenuação `a` por dab.
+    ///
+    /// ⚠️⚠️ **A diferença de LEI é UMA, e é a DISTÂNCIA** (espec §2.1): a curva
+    /// pesa cada vértice pela posição que ele tinha no **pen-down**, e não pela
+    /// de agora — é isso que impede o vinco de ALARGAR enquanto aprofunda. A
+    /// coluna é **pregada** em [`Self::grip_law`], nunca pendurada no
+    /// interruptor de acumular, que por isso sai da tela.
+    ///
+    /// ⭐ **E é dela que sai a auto-limitação** (§4.1): o cursor desce com o
+    /// vinco e afasta-se das posições do pen-down, logo a profundidade converge
+    /// e nunca passa de um raio. Levantar a caneta **recomeça** o limite.
+    ///
+    /// ⚠️ **A normal da área é a do alvo** (§2.3, decisão D-3) — a mesma lei dos
+    /// gestos tangenciais e do pincel de plano, ⛔ e **não** a do estimador de
+    /// plano que o [`Self::Draw`] lê.
+    DrawSharp,
 }
 
-impl Verb {
-    /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 34] = [
-        Self::Draw,
-        Self::Inflate,
-        Self::Smooth,
-        Self::Sharpen,
-        Self::Flatten,
-        Self::Fill,
-        Self::Scrape,
-        Self::Clay,
-        Self::Pinch,
-        Self::Magnify,
-        Self::Crease,
-        Self::Blob,
-        Self::Mask,
-        Self::Move,
-        Self::SnakeHook,
-        Self::Twist,
-        Self::LocalScale,
-        Self::ClayStrips,
-        Self::ClayThumb,
-        Self::MultiplaneScrape,
-        Self::SlideRelax,
-        Self::SurfaceSmooth,
-        Self::Layer,
-        Self::Cloth,
-        Self::Thumb,
-        Self::Nudge,
-        Self::Pose,
-        Self::Boundary,
-        Self::Density,
-        Self::EraseMultires,
-        Self::SmearMultires,
-        Self::SceneProject,
-        Self::BoxTrim,
-        Self::Plane,
-    ];
-}
+/// **O CATÁLOGO na ordem em que a UI o lista** — ver [`catalogo`].
+///
+/// ⛔ Filho (`#[path]`) e não irmão, como os vizinhos deste módulo: o corte é de
+/// ASSUNTO — aqui mora *que verbos EXISTEM e o que cada um significa*, e lá *em
+/// que ORDEM o artista os encontra*. Foi o teto de LOC que o forçou, e ele é
+/// melhor assim: a lista cresce uma linha por pincel novo, o significado cresce
+/// um parágrafo.
+#[path = "brush_verb_catalogo.rs"]
+mod catalogo;
 /// ⭐ **COMO O GESTO É CONDUZIDO** — o [`Grip`] de cada verbo. Ver [`grip_por_verbo`].
 #[path = "brush_verb_grip.rs"]
 mod grip_por_verbo;

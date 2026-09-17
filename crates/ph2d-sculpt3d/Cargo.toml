@@ -62,5 +62,12 @@ libm = { version = "=0.2.16", default-features = false }
 [dev-dependencies]
 miniz_oxide = "0.8"
 
+# ⚠️ **A costura que PREGA as normais de vértice** (`Mesh::pregar_normais_para_teste`),
+# e só ela: o caminho por script do oráculo do pincel afiado **não** as refresca
+# entre dabs e o nosso refresca sempre — sem a pregar, a cadeia de oito dabs
+# desvia `4,45e-2` por uma razão que não é a lei. ⛔ Ela é `dev` de propósito: o
+# produto nunca prega normal nenhuma.
+ph2d-mesh = { path = "../ph2d-mesh", features = ["test-support"] }
+
 [lints]
 workspace = true

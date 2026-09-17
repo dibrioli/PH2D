@@ -354,6 +354,21 @@ impl RefMode {
                     // dele foi virar a lista; aqui a inversão tem alcance maior e
                     // fica NOMEADA como dívida (`o_censo_das_referencias_que_ninguem_declara`).
                     | Verb::Plane
+                    // ⛔⛔ **E nem o PINCEL AFIADO, a décima primeira — e ele é a
+                    // prova de que a dívida escrita acima é real:** o SculptGL
+                    // não tem esta ferramenta (tem o `Brush.js`, que é o desenho
+                    // comum), e sem esta linha o `S` declarava-o em silêncio, o
+                    // `profile_s` devolvia `None` e o peso caía no **slider
+                    // cru** — força LINEAR onde a espec §2.5 mede o
+                    // **quadrado** (`0,5` desloca `0,25 R`).
+                    //
+                    // ⭐ **E o preço seria maior que o do vizinho de plano:** é
+                    // pelo recuo ao `B` que este pincel recebe também a CURVA
+                    // de fábrica dele (a afiada), que é a 2.ª alavanca da
+                    // largura do vinco. *Uma lista negra esquecida entregaria
+                    // um pincel afiado com a queda suave e a força linear, com
+                    // os dois gates de catálogo verdes.*
+                    | Verb::DrawSharp
             ),
             // A lei de kernel (bilateral · tangencial · front-face contínuo) e
             // a `StrengthCurve::Squared` do E13.

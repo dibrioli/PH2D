@@ -81,6 +81,20 @@ impl Verb {
             // posição do interruptor, e depois de escolhida não sobra
             // interruptor.*
             && self != Self::SceneProject
+            // ⛔⛔ **E O PINCEL AFIADO, pela MESMA razão da projecção e com o
+            // sinal trocado:** a espec §2.1 diz que a distância sai do pen-down
+            // *sempre*, logo o [`crate::Verb::grip_law`] prega o `from_live` a
+            // **`false`** — e como o `Accumulate` desta casa **é** essa coluna,
+            // ele deixou de ter o que escolher.
+            //
+            // ⚠️ **No alvo o interruptor ainda faz alguma coisa, e o que ele
+            // faz é OUTRA pergunta** (espec §3: de onde vêm o cursor e a normal,
+            // com o efeito INVERSO ao do desenho comum). Oferecê-lo aqui com a
+            // nossa lei entregaria um rótulo que mente por construção — a
+            // decisão do dono (P-2 da espec) é **esconder até haver pedido**, e
+            // a fixtura daquela lei está na catraca da §12.1, com o número que
+            // ela vale (`4,7e-4`).
+            && self != Self::DrawSharp
     }
 
     /// Este verbo escreve na MÁSCARA em vez da posição?
@@ -207,6 +221,24 @@ impl Verb {
         matches!(self, Self::Plane)
     }
 
+    /// **ESTE PINCEL NASCE A AFUNDAR?** — a direcção de FÁBRICA do verbo, que o
+    /// `Ctrl` inverte ([`crate::Brush::reach`]).
+    ///
+    /// ⚠️ **A casa só sabia *«o Ctrl inverte»* até 2026-09-16**, e por isso um
+    /// pincel que nasce a cavar era inexprimível: o `Brush::invert` tem **um**
+    /// escritor no produto inteiro (o pen-down escreve o modificador), logo não
+    /// havia onde guardar *«este verbo parte do outro lado»*.
+    ///
+    /// ⛔ **Ela é do VERBO e não um knob**, e a razão é a lista: um segundo
+    /// controlo de direcção seria a segunda resposta a *«para que lado este
+    /// pincel empurra?»*, que o modificador já responde. *O pincel de plano
+    /// pagou a mesma pergunta com um selector — e lá o modificador escolhe entre
+    /// DUAS leis, que é outra coisa.*
+    #[must_use]
+    pub fn afunda_de_fabrica(self) -> bool {
+        matches!(self, Self::DrawSharp)
+    }
+
     #[must_use]
     pub fn le_a_superficie_viva(self, accumulate: bool) -> bool {
         match self {
@@ -221,6 +253,13 @@ impl Verb {
         matches!(
             self,
             Self::Draw
+                // ⭐ **O afiado honra-o e a lei é a de sempre — o que MUDA é de
+                // onde ele parte** ([`Self::afunda_de_fabrica`]): com o `Ctrl`
+                // carregado ele LEVANTA, porque a direcção de fábrica dele é
+                // afundar. A fixtura do modificador é a imagem espelhada do
+                // traço normal, com a régua a ler os mesmos números e o sinal
+                // trocado (espec §2.4).
+                | Self::DrawSharp
                 | Self::Inflate
                 | Self::Clay
                 | Self::Crease

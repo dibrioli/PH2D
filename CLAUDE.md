@@ -1266,7 +1266,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   há forma honesta de ler aqueles bytes) ·
   reordenar irmãos na Hierarquia + Ctrl+Z · renomear um corpo com junta (`PH2D_PHYSICS_SMOKE=6` ou `=67`) · copiar um
   ragdoll e dar Play.
-  **Ler:** [`docs/Components/`](docs/Components/) ·
+  **Ler:** ⭐⭐⭐ **[HANDOFF DA LINHA INTEIRA (16/09)](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_A_LINHA_2026-09-16.md) — o documento do INTEGRADOR: a superfície de colisão MEDIDA (`collision-surface.sh`), os contadores como DELTA com a receita de recontar, os 11 ficheiros partilhados onde um merge textual pode colidir, a prova de fecho e o que só a árvore COMBINADA pode reprovar** · [`docs/Components/`](docs/Components/) ·
   [handoff de 24/08](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_F0_F1parcial_2026-08-24.md) (⚠️ o §9 lista
   **cinco** coisas que uma leitura rápida do diff entende ao contrário, e o §10 as **três** premissas do plano que a
   implementação refutou) · [handoff de 26/08](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_F4_2026-08-26.md)

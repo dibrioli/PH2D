@@ -18,7 +18,7 @@ use ph2d_hud::{Canvas, place};
 
 /// ⭐ **A vista re-exportada**, para quem compõe não precisar de declarar a folha só para
 /// nomear um rectângulo. *Uma segunda dependência por um nome de tipo é ruído no manifesto.*
-pub use ph2d_hud::View;
+pub use ph2d_hud::{Gesto, View, clique};
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 
 /// **Quantos canvas há na cena** — o número que o painel mostra quando quer dizer *«isto não está

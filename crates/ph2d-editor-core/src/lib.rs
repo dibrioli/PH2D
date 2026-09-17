@@ -135,6 +135,8 @@ pub fn installed_registry() -> Option<&'static registry::Registry> {
 /// ⭐ O VOCABULÁRIO da fábrica e do ciclo de vida — abaixo do `action_bus` (catraca do DAG).
 pub mod factory_edits;
 /// ⭐⭐⭐ **A secção PARTICLES do Inspector** (TOP-20 #18) — ver o cabeçalho do módulo.
+/// ⭐⭐⭐ **O vocabulário da secção HUD** (TOP-20 #20).
+pub mod hud_edits;
 pub mod particles_edits;
 /// ⭐⭐⭐ **O vocabulário do MOVER DE VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
 pub mod projectile_edits;

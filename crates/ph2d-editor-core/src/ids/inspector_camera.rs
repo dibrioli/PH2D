@@ -37,6 +37,8 @@ pub const INSP_LIVE_SM_SECTION: NodeId = hash_node_id("insp_live_sm_section");
 pub const INSP_LIVE_SCRIPT_SECTION: NodeId = hash_node_id("insp_live_script_section");
 /// O cabeçalho dobrável da secção PARTICLES (TOP-20 #18).
 pub const INSP_LIVE_PARTICLES_SECTION: NodeId = hash_node_id("insp_live_particles_section");
+/// O cabeçalho dobrável da secção HUD (TOP-20 #20).
+pub const INSP_LIVE_HUD_SECTION: NodeId = hash_node_id("insp_live_hud_section");
 /// A secção LIFECYCLE — o cabeçalho colapsável (TOP-20 #12, W3).
 pub const INSP_LIVE_LIFECYCLE_SECTION: NodeId = hash_node_id("insp_live_lifecycle_section");
 /// ⛔⛔ **Os PONTOS DE COR das três secções novas, e eles nasceram de um DEFEITO MEDIDO.**
@@ -64,5 +66,7 @@ pub const INSP_LIVE_SM_COLOR: NodeId = hash_node_id("insp_live_sm_color");
 pub const INSP_LIVE_SCRIPT_COLOR: NodeId = hash_node_id("insp_live_script_color");
 /// Ver [`INSP_LIVE_FACTORY_COLOR`].
 pub const INSP_LIVE_PARTICLES_COLOR: NodeId = hash_node_id("insp_live_particles_color");
+/// O ponto de cor da secção HUD (TOP-20 #20).
+pub const INSP_LIVE_HUD_COLOR: NodeId = hash_node_id("insp_live_hud_color");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

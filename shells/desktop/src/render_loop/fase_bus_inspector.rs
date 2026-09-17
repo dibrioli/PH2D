@@ -232,6 +232,10 @@ impl crate::App {
             EditorAction::InspectorParticlesEdit { entity_bits, edit } => {
                 pd.particles_edits.push((entity_bits, edit));
             }
+            // ⭐ **A secção HUD** (TOP-20 #20), pela mesma razão.
+            EditorAction::InspectorHudEdit { entity_bits, edit } => {
+                pd.hud_edits.push((entity_bits, edit));
+            }
             EditorAction::InspectorTagsEdit { entity_bits, edit } => {
                 pd.tags_edits.push((entity_bits, edit));
             }

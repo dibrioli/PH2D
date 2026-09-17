@@ -29,6 +29,8 @@ pub mod bridges;
 pub mod camera;
 pub mod core;
 pub mod field;
+/// ⭐⭐⭐ **O HUD** (TOP-20 #20) — a raiz, o rótulo, o botão e o contador.
+pub mod hud;
 pub mod image;
 /// ⭐⭐⭐ **LÓGICA DE JOGO sem script** (TOP-20 #2–#5) — o `Timer` é o primeiro.
 pub mod logic;
@@ -49,6 +51,7 @@ const FAMILIES: &[&[ComponentDesc]] = &[
     camera::DESCS,
     core::DESCS,
     field::DESCS,
+    hud::DESCS,
     image::DESCS,
     logic::DESCS,
     particles::DESCS,

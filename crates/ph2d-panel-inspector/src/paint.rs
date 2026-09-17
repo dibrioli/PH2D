@@ -315,6 +315,7 @@ fn paint_inspector(
         snaps.statemachine_info.as_ref(),
         snaps.script_info.as_ref(),
         snaps.particles_info.as_ref(),
+        snaps.hud_info.as_ref(),
         sm_state_selected,
         sm_trans_selected,
         snaps.tags_info.as_ref(),

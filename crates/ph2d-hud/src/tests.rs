@@ -184,3 +184,34 @@ fn o_tempo_que_ja_passou_mostra_zero_e_nunca_um_negativo() {
     // ⭐ o caso que a lei existe para cobrir: o relógio passou do fim.
     assert_eq!(formata(Valor::Segundos(-1.3)), "0.0");
 }
+
+/// As QUATRO células do bloco L3 do oráculo, uma a uma.
+#[test]
+fn um_botao_dispara_ao_largar_e_so_se_os_dois_toques_forem_dentro() {
+    use super::{Gesto, clique};
+
+    // (a) carregar DENTRO e largar DENTRO ⇒ publica, UMA vez.
+    let (mem, pub_) = clique(Gesto::Baixo, None, Some(7));
+    assert_eq!((mem, pub_), (Some(7), false), "o carregar nunca publica");
+    let (mem, pub_) = clique(Gesto::Cima, mem, Some(7));
+    assert_eq!((mem, pub_), (None, true));
+    // e a memória ficou limpa ⇒ um segundo largar não repete.
+    assert_eq!(clique(Gesto::Cima, mem, Some(7)), (None, false));
+
+    // (b) carregar DENTRO, largar FORA ⇒ não publica.
+    let (mem, _) = clique(Gesto::Baixo, None, Some(7));
+    assert_eq!(clique(Gesto::Cima, mem, None), (None, false));
+
+    // (c) carregar FORA, largar DENTRO ⇒ não publica.
+    let (mem, _) = clique(Gesto::Baixo, None, None::<u8>);
+    assert_eq!(clique(Gesto::Cima, mem, Some(7)), (None, false));
+
+    // (d) carregar num botão e largar noutro ⇒ não publica.
+    let (mem, _) = clique(Gesto::Baixo, None, Some(7));
+    assert_eq!(clique(Gesto::Cima, mem, Some(9)), (None, false));
+
+    // ⚠️ E um `Baixo` fora LIMPA a memória — senão o largar seguinte publicaria um botão em que o
+    // dedo nunca pousou.
+    let (mem, _) = clique(Gesto::Baixo, Some(7), None);
+    assert_eq!(mem, None);
+}

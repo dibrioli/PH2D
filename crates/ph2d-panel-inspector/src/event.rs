@@ -66,6 +66,10 @@ pub(crate) fn apply_event(
     if crate::event_projectile::apply_projectile_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    // ⭐⭐⭐ O HUD (TOP-20 #20) — sem estado de painel: um objecto tem UM de cada.
+    if crate::event_hud::apply_hud_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐ O EMISSOR DE PARTÍCULAS (TOP-20 #18) — sem estado de painel: um objecto tem UM emissor.
     if crate::event_particles::apply_particles_event(host, ev) {
         return EventOutcome::Consumed;

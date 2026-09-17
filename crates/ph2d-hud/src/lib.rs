@@ -174,3 +174,45 @@ pub fn formata(v: Valor) -> String {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+/// **O que o dedo fez** — os dois momentos que decidem um botão.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Gesto {
+    /// O dedo pousou.
+    Baixo,
+    /// O dedo levantou.
+    Cima,
+}
+
+/// **A lei do clique de um botão**, medida no oráculo (Godot 4.7.2, bloco L3 de
+/// `godot_hud_probe.gd`): ele dispara **uma vez, ao LARGAR**, e só se o carregar **e** o largar
+/// caírem no MESMO botão.
+///
+/// `premido` é a memória do gesto (em que botão o dedo pousou) e `sob_o_cursor` o que está debaixo
+/// dele agora — `None` quando não há botão alcançável ali. Devolve a memória NOVA e se há sinal a
+/// publicar.
+///
+/// | o gesto | o alvo |
+/// |---|---|
+/// | baixo DENTRO, cima DENTRO | ⭐ publica |
+/// | baixo DENTRO, cima FORA | não publica |
+/// | baixo FORA, cima DENTRO | não publica |
+///
+/// ⚠️ **Um `Baixo` fora limpa a memória**, e isso é a lei e não uma cerca: sem isso um gesto
+/// abandonado noutro sítio ficaria armado, e o largar seguinte publicaria um botão em que o dedo
+/// nunca pousou.
+///
+/// ⚠️ **O desactivado não chega aqui:** quem resolve `sob_o_cursor` já responde `None` para um botão
+/// desactivado ou sem nome — são as duas maneiras de um botão não ser um botão, e separá-las daria
+/// dois sítios para decidir.
+#[must_use]
+pub fn clique<T: Copy + PartialEq>(
+    gesto: Gesto,
+    premido: Option<T>,
+    sob_o_cursor: Option<T>,
+) -> (Option<T>, bool) {
+    match gesto {
+        Gesto::Baixo => (sob_o_cursor, false),
+        Gesto::Cima => (None, premido.is_some() && premido == sob_o_cursor),
+    }
+}

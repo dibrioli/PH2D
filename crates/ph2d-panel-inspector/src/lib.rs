@@ -74,6 +74,9 @@ mod populate_factory;
 /// ⭐⭐ O registo do CARTÃO de instância — irmão por assunto, ver o cabeçalho de lá.
 mod populate_instance;
 /// ⭐ O registo dos widgets da secção PARTICLES — irmão por CAP de ficheiro.
+mod event_hud;
+mod populate_hud;
+mod sync_hud;
 mod populate_particles;
 mod populate_physics;
 mod populate_player;
@@ -188,7 +191,8 @@ pub use state::{probe_current_instance, probe_current_properties, texture_slot_p
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{
     set_current_inspector_action, set_current_inspector_audio, set_current_inspector_camera,
-    set_current_inspector_factory, set_current_inspector_particles,
+    set_current_inspector_factory, set_current_inspector_hud,
+    set_current_inspector_particles,
     set_current_inspector_projectile, set_current_inspector_script,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
 };

@@ -392,6 +392,18 @@ pub enum EditorAction {
         edit: crate::script_edits::ScriptFieldEdit,
     },
 
+    /// Inspector → shell, a secção HUD (TOP-20 #20).
+    ///
+    /// ⚠️ **Uma variante para os QUATRO componentes do HUD**, e não uma por componente: o painel
+    /// pinta-os numa secção só (um objecto de HUD tem uns e não outros), e quatro variantes
+    /// obrigariam o dreno a repetir a mesma busca de entidade quatro vezes.
+    InspectorHudEdit {
+        /// A quem ela se aplica.
+        entity_bits: u64,
+        /// O que mudou.
+        edit: crate::hud_edits::HudFieldEdit,
+    },
+
     /// Inspector → shell, a secção PARTICLES (TOP-20 #18, W3).
     InspectorParticlesEdit {
         /// A quem ela se aplica.

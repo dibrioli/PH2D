@@ -1,4 +1,5 @@
-//! **Fase do quadro: OS INSTANTÂNEOS QUE O `publish` NÃO PODE CALCULAR** (SCRIPT · PARTICLES) —
+//! **Fase do quadro: OS INSTANTÂNEOS QUE O `publish` NÃO PODE CALCULAR** (SCRIPT · PARTICLES ·
+//! HUD) —
 //! fase-filha do [`super`], num ficheiro irmão.
 //!
 //! ⚠️ **O corte foi imposto pelo tecto de FUNÇÃO** (a `fase_snapshots_publish` chegou a `208` contra
@@ -18,13 +19,21 @@ use ph2d_script::ScriptHost;
 
 /// Publica os dois instantâneos do objecto ACTIVO. `None` = ninguém escolhido ⇒ nenhuma das duas
 /// secções existe, que é a lei do ADR-0166.
+///
+/// ⚠️ **O `sim` é `&mut` por causa do HUD**, e a razão é a lei dele: o que um rótulo MOSTRA é
+/// derivado do mundo pela MESMA porta que o desenho usa (`ph2d_ecs::hud::texto`), e uma consulta
+/// do `bevy` pede `&mut World`. *Uma segunda conta aqui seria a segunda resposta a «o que este
+/// rótulo diz?», e as duas divergiriam no dia em que uma fonte nova entrasse.*
+#[allow(clippy::too_many_arguments)]
 pub(super) fn publica(
-    sim: &SimWorld,
+    sim: &mut SimWorld,
+    tags: &ph2d_tags::TagTree,
     script: Option<&ScriptHost>,
     particles: &ParticlesState,
     escolhido: Option<u64>,
     quantos: usize,
     a_correr: bool,
+    tem_camera: bool,
 ) {
     ph2d_panel_inspector::set_current_inspector_script(escolhido.and_then(|b| {
         ph2d_app_components::script_inspector::build_info(sim, script, b, quantos, a_correr)
@@ -37,5 +46,10 @@ pub(super) fn publica(
             a_correr,
             particles.alive_of(b),
         )
+    }));
+    // ⭐⭐⭐ **O HUD** (TOP-20 #20) — e ele traz DOIS factos que não são campos: se há câmera de
+    // jogo (senão o canvas não se cola a nada) e o que o rótulo mostra AGORA.
+    ph2d_panel_inspector::set_current_inspector_hud(escolhido.and_then(|b| {
+        ph2d_app_components::hud_inspector::build_info(sim, tags, b, tem_camera)
     }));
 }

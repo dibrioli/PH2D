@@ -24,6 +24,8 @@ pub(crate) struct ComponentsSmokeLatches {
     /// porque o `sync` do render loop só dá entidade a um `VecPath` no quadro SEGUINTE — e sem
     /// entidade não há onde pendurar um `UiLabel`.
     pub(crate) hud: u8,
+    /// Quantos quadros ainda trazem o Inspector à frente na cena do HUD.
+    pub(crate) hud_raise: u8,
     /// ⭐⭐⭐ O smoke do `Timer` (TOP-20 #2). `PH2D_TIMER_SMOKE=1`.
     pub(crate) timer: bool,
     /// ⭐ A cena do `SignalActions` (TOP-20 #5).

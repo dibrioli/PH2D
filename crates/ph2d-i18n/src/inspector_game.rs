@@ -39,6 +39,35 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Editing the primary selection only."
         }
         "panel.inspector.factory.lifecycle" => "Lifecycle",
+        // ⭐⭐⭐ O HUD (TOP-20 #20) — a raiz, o rótulo, o botão e o contador.
+        "panel.inspector.hud.hud" => "HUD",
+        "panel.inspector.hud.reference_width" => "Reference Width",
+        "panel.inspector.hud.reference_height" => "Reference Height",
+        "panel.inspector.hud.counter_start" => "Start",
+        "panel.inspector.hud.source_name" => "Source Name",
+        "panel.inspector.hud.prefix" => "Prefix",
+        "panel.inspector.hud.suffix" => "Suffix",
+        "panel.inspector.hud.signal" => "Signal",
+        "panel.inspector.hud.counter_name" => "Counter Name",
+        "panel.inspector.hud.fit" => "Fit",
+        "panel.inspector.hud.fit_keep" => "Keep",
+        "panel.inspector.hud.fit_stretch" => "Stretch",
+        "panel.inspector.hud.source" => "Source",
+        "panel.inspector.hud.source_authored" => "Authored",
+        "panel.inspector.hud.source_counter" => "Counter",
+        "panel.inspector.hud.source_timer" => "Timer",
+        "panel.inspector.hud.source_tag" => "Tag",
+        "panel.inspector.hud.disabled" => "Disabled",
+        "panel.inspector.hud.no_game_camera" => {
+            "No game camera \u{2014} the HUD stays where you put it."
+        }
+        "panel.inspector.hud.showing" => "Showing",
+        "panel.inspector.hud.source_missing" => {
+            "That source is not in the scene \u{2014} the authored text is shown."
+        }
+        "panel.inspector.hud.counter_now" => "Now",
+        "panel.inspector.hud.button_disabled" => "This button refuses the click.",
+        "panel.inspector.hud.no_signal" => "No name \u{2014} this button publishes nothing.",
         "panel.inspector.particles.amount" => "Amount",
         "panel.inspector.particles.lifetime_s" => "Lifetime",
         "panel.inspector.particles.lifetime_randomness" => "Lifetime Randomness",

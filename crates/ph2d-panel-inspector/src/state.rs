@@ -103,6 +103,8 @@ pub struct InspectorState {
     pub last_script_sig: Option<u64>,
     /// PARTICLES — idem, e pela mesma razão: 19 números e 4 textos semeados por quadro apagariam
     /// o que o artista está a digitar antes de o commit da shell voltar.
+    /// A assinatura do último instantâneo do HUD — a aresta que semeia a secção.
+    pub last_hud_sig: Option<u64>,
     pub last_particles_sig: Option<u64>,
 }
 
@@ -210,6 +212,11 @@ thread_local! {
 
     /// ⭐⭐⭐ **O snapshot da secção SCRIPT** (TOP-20 #16).
     pub(crate) static CURRENT_INSPECTOR_SCRIPT: std::cell::RefCell<Option<InspectorScriptInfo>> =
+        const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção HUD** (TOP-20 #20).
+    pub(crate) static CURRENT_INSPECTOR_HUD:
+        std::cell::RefCell<Option<ph2d_editor_core::hud_edits::InspectorHudInfo>> =
         const { std::cell::RefCell::new(None) };
 
     /// ⭐⭐⭐ **O snapshot da secção PARTICLES** (TOP-20 #18).

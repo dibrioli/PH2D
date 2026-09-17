@@ -25,6 +25,8 @@ pub(crate) struct Top20<'a> {
     pub script: Option<&'a ph2d_editor_core::script_edits::InspectorScriptInfo>,
     /// O EMISSOR DE PARTÍCULAS (TOP-20 #18).
     pub particles: Option<&'a ph2d_editor_core::particles_edits::InspectorParticlesInfo>,
+    /// O HUD (TOP-20 #20).
+    pub hud: Option<&'a ph2d_editor_core::hud_edits::InspectorHudInfo>,
     /// As TAGS (TOP-20 #9).
     pub tags: Option<&'a ph2d_editor_core::screens::hero::InspectorTagsInfo>,
     /// ⚠️ **Duas selecções e não uma** — as listas de estados e de setas são independentes.
@@ -94,6 +96,20 @@ pub(crate) fn paint_top20_sections(
         header_h,
         infos.particles,
     );
+    y = paint_hud_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        infos.hud,
+    );
     crate::paint_optional_factory::paint_tags_section(
         scene,
         text_system,
@@ -107,6 +123,64 @@ pub(crate) fn paint_top20_sections(
         y,
         header_h,
         infos.tags,
+    )
+}
+
+/// **A secção HUD** — moldura e tudo (TOP-20 #20). ⚠️ Sem estado de painel: um objecto tem UM de
+/// cada componente do HUD, então não há linha aberta a lembrar.
+#[allow(clippy::too_many_arguments)]
+fn paint_hud_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    info: Option<&ph2d_editor_core::hud_edits::InspectorHudInfo>,
+) -> f32 {
+    // ⚠️ **A secção só existe se o objecto TIVER um dos quatro** — ADR-0166.
+    let Some(info) = info else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_HUD_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::hud::paint_hud_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        info,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_HUD_SECTION,
+        y_before,
+        new_y,
+        &[],
     )
 }
 

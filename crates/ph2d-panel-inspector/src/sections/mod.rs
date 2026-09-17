@@ -63,6 +63,8 @@ mod joint_pair_rows;
 mod material_blend;
 pub(crate) mod ordering;
 /// ⭐⭐⭐ A secção PARTICLES (TOP-20 #18) — ver o cabeçalho.
+/// ⭐⭐⭐ **O HUD** (TOP-20 #20).
+pub(crate) mod hud;
 pub(crate) mod particles;
 mod physics;
 mod physics_area_rows;

@@ -111,7 +111,18 @@ impl crate::App {
                 self.hud_smoke_veste();
                 self.components_smokes.hud = 2;
             }
-            _ => {}
+            _ => self.hud_smoke_traz_o_inspector(),
+        }
+    }
+
+    /// Traz o Inspector à frente no encaixe dele, por alguns quadros.
+    fn hud_smoke_traz_o_inspector(&mut self) {
+        if self.components_smokes.hud_raise == 0 {
+            return;
+        }
+        self.components_smokes.hud_raise -= 1;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
         }
     }
 
@@ -320,9 +331,21 @@ impl crate::App {
         // o `asset_menu_smoke` e o `vec_tree_settle` já fazem.
         ph2d_ecs::assign_missing_stable_ids(gfx.sim.world_mut());
 
+        // ⭐ **A cena abre com o RÓTULO escolhido e o Inspector à frente** (a lição do #18): a
+        // secção HUD é o que o dono vem cá ver, e um passo que manda olhar para um painel que está
+        // por baixo de outro nomeia uma superfície que ele não tem à vista.
+        // ⚠️ A arrumação vive FORA do repositório (`~/.ph2d/layout.txt`), logo isto não é
+        // defensivo: é a única forma de a cena não depender do que ficou aberto ontem.
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.panel_visibility.insert("inspector", true);
+            hero.gizmo.selection = Some(e_pontos.to_bits());
+            hero.gizmo.extra_selection.clear();
+        }
+        self.components_smokes.hud_raise = 3;
         eprintln!(
             "[hud-smoke] o mundo ROLA e o HUD NAO: setas movem o heroi · o relogio soma 1 ponto a \
-             cada 2 s · o botao +10 soma dez · a contagem desce sozinha."
+             cada 2 s · o botao +10 soma dez · a contagem desce sozinha. O rotulo dos pontos abre \
+             ESCOLHIDO, e a seccao HUD do Inspector mostra a fonte dele."
         );
     }
 }

@@ -172,6 +172,12 @@ fn controlos(t: &Traco) -> Controlos {
         suavizacoes_do_peso: t.f("suavizacoes_do_peso") as u32,
         ancorado: t.b("ancorado"),
         trava_rotacao: t.b("trava_rotacao"),
+        // ⛔⛔ **A bancada corre SEMPRE a lei da espec, e nunca o que um cabecalho
+        // diga:** o corpus foi gravado com a projeccao no osso, logo e' ela que a
+        // paridade mede. O modo `Completo` e' uma divergencia DECLARADA do nosso
+        // lado (ordem do dono, 17/09) e nao tem lado aprovado para comparar — pedi-lo
+        // aqui seria medir outro pincel.
+        lei_do_arrasto: ph2d_pose::Arrasto::AoLongoDoOsso,
         raio: t.f("raio"),
         forca: t.f("forca"),
         invertido: t.b("invertido"),

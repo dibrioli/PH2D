@@ -402,10 +402,18 @@ pub struct Brush {
     /// ⛔⛔ **Ela só é «distância mínima» no sentido de AVANÇO, e as duas
     /// surpresas estão medidas** (espec §6.4): uma folga maior que o vão faz a
     /// peça **AFASTAR-SE**, e num acerto para trás ela **cresce** a excursão em
-    /// vez de a travar. *Isto é o alvo reproduzido de propósito*; a alternativa
-    /// simétrica existe escrita em [`crate::projectar::folga_simetrica`] e é
-    /// **decisão do dono**.
+    /// vez de a travar. ⭐⭐ **Desde 17/09 quem escolhe entre essa lei e a
+    /// simétrica é o ARTISTA, por botão** ([`crate::FolgaModo`], no campo
+    /// [`Brush::folga_modo`]) — ordem do dono: *«cada modo com opção»*.
     pub project_min_distance: f32,
+    /// ⭐⭐⭐ **COMO a folga acima entra na distância** — as duas leis, com a
+    /// tabela das três células em que se separam, vivem em [`crate::FolgaModo`].
+    ///
+    /// ⚠️ **O de fábrica é a lei do alvo**, e a razão é o corpus: as `14`
+    /// fixturas vivas do oráculo foram gravadas com ela. ⛔ Trocar o default
+    /// faria a bancada medir outro pincel — o defeito que o espaçamento do
+    /// afiado pagou com seis gates de paridade vermelhos de uma vez.
+    pub folga_modo: crate::FolgaModo,
     /// **PROCURAR TAMBÉM PARA TRÁS** — o *bidirectional* da espec §6.3.2.
     ///
     /// ⚠️ Desligado, um alvo do lado errado deixa o pincel **inerte**, e isso é

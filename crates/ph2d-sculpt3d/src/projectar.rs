@@ -64,9 +64,14 @@ pub(crate) type Distancia = Option<f32>;
 /// ⚠️ **A folga é subtraída de um `d` COM SINAL**, e daí saem os dois
 /// comportamentos que ninguém prevê lendo o rótulo (espec §6.4, os dois
 /// medidos): uma folga maior que o vão **afasta** a peça, e num acerto para trás
-/// ela **cresce** a excursão em vez de a travar. *Isto é o alvo reproduzido de
-/// propósito*, e a alternativa simétrica é decisão de produto — ver
-/// [`folga_simetrica`].
+/// ela **cresce** a excursão em vez de a travar.
+///
+/// ⭐⭐ **Desde 17/09 isso é uma das DUAS leis que o artista escolhe por botão**
+/// (ordem do dono: *«cada modo com opção»*) — a lei, a tabela das três células
+/// em que elas se separam e o porquê de o valor de fábrica ser a do alvo vivem
+/// todos em [`crate::FolgaModo`]. ⛔ **Esta função não a aplica: ela DELEGA** —
+/// escrever `d − folga` aqui seria a segunda resposta à mesma pergunta, e a
+/// primeira coisa a divergir no dia em que o modo ganhasse a terceira lei.
 pub(crate) fn distancia(
     ponto: [f32; 3],
     direccao: [f32; 3],
@@ -74,6 +79,7 @@ pub(crate) fn distancia(
     alvos: &[(Mesh, Pose)],
     nos_dois_sentidos: bool,
     folga: f32,
+    modo: crate::FolgaModo,
 ) -> Distancia {
     if alvos.is_empty() {
         return None;
@@ -105,7 +111,7 @@ pub(crate) fn distancia(
             }
         }
     }
-    melhor.map(|d| d - folga)
+    melhor.map(|d| modo.aplica(d, folga))
 }
 
 /// **O comprimento do alvo, na régua do activo** — ver o cabeçalho.
@@ -115,30 +121,6 @@ pub(crate) fn distancia(
 /// apontar-lhe o dedo quando essa premissa mudar.
 fn comprimento_no_activo(t: f32, alvo: Pose, activo: Pose) -> f32 {
     t * alvo.scale() / activo.scale()
-}
-
-/// ⛔⛔ **A FOLGA SIMÉTRICA — a lei que NÃO shipa, escrita porque a decisão é do
-/// dono e ela tem de estar medida dos dois lados.**
-///
-/// A espec §6.4 mede que a folga do alvo só é «distância mínima» no sentido de
-/// avanço; a alternativa é `d := sign(d) · max(0, |d| − folga)`, que trava nos
-/// **dois** sentidos e nunca inverte o sentido do movimento.
-///
-/// ⚠️ **Adoptá-la é uma DIVERGÊNCIA DELIBERADA a declarar**, e reproduzir o alvo
-/// é reproduzir um defeito — *as duas frases que a põem, e sem terceira saída*.
-/// Enquanto o dono não decide, shipa a do alvo (é ela que o corpus mede) e esta
-/// fica aqui com o gate que a compara, para a troca ser **uma linha** e não uma
-/// wave.
-///
-/// ⚠️ **`#[cfg(test)]` é a declaração honesta do estado dela:** ela está
-/// **medida** e não **shipada**. Um `pub(crate)` sem chamador seria uma lei
-/// órfã a fingir-se de produto — a espécie que o `CLAUDE.md` §5.0 nomeia (*uma
-/// porta sem chamador e uma lei ausente produzem o mesmo app*). No dia em que o
-/// dono decidir, ela ganha o chamador e o `cfg` sai no mesmo commit.
-#[cfg(test)]
-#[must_use]
-pub(crate) fn folga_simetrica(d: f32, folga: f32) -> f32 {
-    d.signum() * (d.abs() - folga).max(0.0)
 }
 
 /// ⭐⭐⭐ **PROJECTAR NA CENA** — o vértice viaja até **encostar noutra
@@ -242,6 +224,7 @@ pub(crate) fn alvo_do_vertice(
         &stroke.pecas_da_cena,
         brush.project_bidirectional,
         brush.project_min_distance,
+        brush.folga_modo,
     )
     .map_or(live, |d| {
         let f = d * w;

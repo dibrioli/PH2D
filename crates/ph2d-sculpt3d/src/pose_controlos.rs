@@ -42,6 +42,10 @@ pub struct PoseControlos {
     pub ancorado: bool,
     /// No modo de escala, escala **sem rodar**.
     pub trava_rotacao: bool,
+    /// ⭐⭐ **Quanto do arrasto a ESCALA lê** — ver [`ph2d_pose::Arrasto`]. Só as
+    /// duas deformações do quociente de escala o consultam; a translação já lia
+    /// o deslocamento inteiro, e as duas de rotação resolvem uma cadeia.
+    pub lei_do_arrasto: ph2d_pose::Arrasto,
     /// O arrasto do ponteiro em **pixels de ecrã**, no eixo horizontal, desde o
     /// pen-down.
     ///
@@ -77,6 +81,9 @@ impl Default for PoseControlos {
             // harness, não uma leitura do que o artista encontra).
             ancorado: lei.ancorado,
             trava_rotacao: lei.trava_rotacao,
+            // ⚠️ **CONTADA da lei**, como as duas de cima: as duas omissoes
+            // divergirem seria o defeito que este bloco existe para impedir.
+            lei_do_arrasto: lei.lei_do_arrasto,
             arrasto_x_pixels: 0.0,
         }
     }
@@ -104,6 +111,9 @@ impl PoseControlos {
             suavizacoes_do_peso: self.suavizacoes_do_peso,
             ancorado: self.ancorado,
             trava_rotacao: self.trava_rotacao,
+            // ⚠️ **A escolha do artista atravessa, e o de fábrica é a lei da
+            // espec** — ver [`ph2d_pose::Arrasto`].
+            lei_do_arrasto: self.lei_do_arrasto,
             raio: brush.radius,
             forca: brush.strength,
             // ⚠️ **Da ESCOLHA, não do `Ctrl`** — o `brush.invert` não entra aqui

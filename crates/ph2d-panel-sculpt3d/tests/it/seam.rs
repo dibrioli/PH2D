@@ -893,8 +893,8 @@ fn every_smear_control_is_clickable_where_it_is_drawn() {
     let _ = by_id;
 }
 
-/// ⭐⭐ **GATE — com o PROJECTAR na mão, as DUAS superfícies dele são pintadas e
-/// respondem ao ponteiro.**
+/// ⭐⭐ **GATE — com o PROJECTAR na mão, as QUATRO superfícies dele são pintadas
+/// e respondem ao ponteiro.**
 ///
 /// ⛔⛔ **Irmão exacto do gate do esfregão, e ele existe porque aquele defeito
 /// aconteceu:** os três chips do esfregão nasceram pintados, hit-indexados e
@@ -929,6 +929,26 @@ fn every_project_control_is_clickable_where_it_is_drawn() {
         "a espec §6.2 conta DUAS direcções — a fixtura deixou de conter o fenómeno"
     );
     want.push(("search both ways".to_owned(), ids::SCULPT3D_PROJECT_BIDIR));
+    // ⭐⭐ **A QUARTA superfície, desde 17/09: COMO a folga entra** (ordem do
+    // dono, *«cada modo com opção»*). ⚠️ Ela entra AQUI e não num gate novo
+    // porque o sujeito é o mesmo — *o pincel de projectar com todas as suas
+    // superfícies* —, e um gate irmão que armasse o mesmo verbo seria a segunda
+    // resposta à mesma pergunta, que é como a cobertura diverge em silêncio.
+    let folgas = ph2d_sculpt3d::FolgaModo::ALL;
+    assert_eq!(
+        folgas.len(),
+        ids::SCULPT3D_FOLGA_MODO.len(),
+        "o motor tem {} leis de folga e o painel {} chips — uma delas nasce \
+         inalcançável",
+        folgas.len(),
+        ids::SCULPT3D_FOLGA_MODO.len()
+    );
+    for (i, m) in folgas.into_iter().enumerate() {
+        want.push((
+            format!("gap law {}", m.label()),
+            ids::SCULPT3D_FOLGA_MODO[i],
+        ));
+    }
     for (name, id) in &want {
         assert!(
             painted.iter().any(|(pid, _)| pid == id),
@@ -1056,6 +1076,65 @@ fn every_pose_control_is_clickable_where_it_is_drawn() {
         "clicar `Scale without rotating` no centro pintado não produziu Click — \
          a caixa que responde à pergunta do dono está morta sob o dedo"
     );
+
+    // ⭐⭐ **A TERCEIRA METADE, desde 17/09: a lei do arrasto** (ordem do dono,
+    // *«cada modo com opção»*). ⚠️ Ela entra **aqui**, nesta fixtura, e não na
+    // de cima, pela mesma razão que a caixa: os chips só são pintados nas duas
+    // deformações do quociente de escala, e a de fábrica é `Rotate`. *Pô-los na
+    // primeira metade daria um gate verde sobre chips nunca desenhados.*
+    let leis = ph2d_sculpt3d::PoseArrasto::ALL;
+    assert_eq!(
+        leis.len(),
+        ids::SCULPT3D_POSE_ARRASTO.len(),
+        "o motor tem {} leis de arrasto e o painel {} chips — uma delas nasce \
+         inalcançável",
+        leis.len(),
+        ids::SCULPT3D_POSE_ARRASTO.len()
+    );
+    for (i, lei) in leis.into_iter().enumerate() {
+        let id = ids::SCULPT3D_POSE_ARRASTO[i];
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| *pid == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| {
+                panic!(
+                    "`Drag Reads / {}` devia estar pintado com a deformação \
+                     `Scale` escolhida",
+                    lei.label()
+                )
+            });
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        let events = host.click_at(cx, cy);
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "clicar `Drag Reads / {}` no centro pintado não produziu Click — \
+             ele está pintado e morto sob o dedo",
+            lei.label()
+        );
+    }
+
+    // ⛔⛔ **E o CONTROLO NEGATIVO: com uma ROTAÇÃO na mão os chips NÃO são
+    // pintados.** Sem esta metade, um pintor que os desenhasse sempre passaria
+    // no laço acima — e o artista teria um selector que não governa nada em três
+    // dos cinco gestos, que é o **controlo morto** do §5.0 do roteador.
+    let mut ui = Sculpt3dUi::default();
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Pose);
+    ui.ui_level = UiLevel::Pro;
+    ui.brush.pose.deformacao = ph2d_sculpt3d::PoseDeformacao::Transladar;
+    let (mut host, mut state) = arrange(ui);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    for id in ids::SCULPT3D_POSE_ARRASTO {
+        assert!(
+            !painted.iter().any(|(pid, _)| *pid == id),
+            "`Drag Reads` foi pintado com a TRANSLAÇÃO na mão, e ela soma o \
+             deslocamento inteiro — o chip ali não governa nada"
+        );
+    }
+    let _ = &mut host;
 }
 
 /// ⛔⛔ **O INTERRUPTOR `Accumulate` NÃO É OFERECIDO A QUEM NÃO O LÊ.**

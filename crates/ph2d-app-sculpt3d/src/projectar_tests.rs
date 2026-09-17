@@ -242,6 +242,7 @@ fn diag_a_regua_da_cena() {
             &s.stroke.pecas_da_cena,
             s.brush.project_bidirectional,
             s.brush.project_min_distance,
+            s.brush.folga_modo,
         );
         match d {
             Some(d) => eprintln!(
@@ -570,6 +571,7 @@ fn diag_o_traco_do_dono() {
             &s.stroke.pecas_da_cena,
             s.brush.project_bidirectional,
             s.brush.project_min_distance,
+            s.brush.folga_modo,
         );
         eprintln!("  distancia crua de {nome}{i}: {d:?}");
     }

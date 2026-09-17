@@ -17,7 +17,7 @@
 //! cada taxa**»*.
 
 use crate::cadeia::Cadeia;
-use crate::vetor::{Rot, V3, add, escalar, normalizar, ponto, sub};
+use crate::vetor::{Rot, V3, add, escalar, normalizar, sub};
 use crate::{Controlos, Curva, Deformacao};
 
 /// O que muda de um evento para o outro.
@@ -61,7 +61,7 @@ pub fn resolver(cadeia: &mut Cadeia, ctrl: &Controlos, ev: &Evento, curva: Curva
             if !ctrl.trava_rotacao {
                 resolver_corrente(cadeia, alvo, ctrl.ancorado);
             }
-            let k = quociente_de_escala(cadeia, alvo);
+            let k = quociente_de_escala(cadeia, alvo, ctrl.lei_do_arrasto);
             for seg in cadeia.segmentos.iter_mut() {
                 seg.escala = [k, k, k];
             }
@@ -73,7 +73,7 @@ pub fn resolver(cadeia: &mut Cadeia, ctrl: &Controlos, ev: &Evento, curva: Curva
                 seg.rot = Rot::IDENTIDADE;
             }
         }
-        Deformacao::Espremer => espremer(cadeia, alvo),
+        Deformacao::Espremer => espremer(cadeia, alvo, ctrl.lei_do_arrasto),
     }
 }
 
@@ -147,14 +147,17 @@ fn torcer(cadeia: &mut Cadeia, ev: &Evento, s: f32, curva: Curva<'_>) {
 /// Não há saturação neste modo, e isso é o alvo: uma fixtura atinge
 /// deslocamento máximo `11,2` numa peça de extensão `2,0`. ⇒ perto do polo **a
 /// paridade não é asserível** e a barra passa a ser relativa (§11.2, §12.3).
-fn quociente_de_escala(cadeia: &Cadeia, alvo: V3) -> f32 {
+fn quociente_de_escala(cadeia: &Cadeia, alvo: V3, arrasto: crate::Arrasto) -> f32 {
     let Some(primeiro) = cadeia.segmentos.first() else {
         return 1.0;
     };
     let Some(normal) = primeiro.direccao_inicial() else {
         return 1.0;
     };
-    let delta = ponto(sub(alvo, primeiro.cabeca_inicial), normal);
+    // ⭐⭐ **A alavanca passa pela PORTA do modo** ([`crate::Arrasto`]): o de
+    // fabrica devolve exactamente esta projeccao, logo o caminho das `69`
+    // fixturas e' o de antes, a instrucao a instrucao.
+    let delta = arrasto.alavanca(sub(alvo, primeiro.cabeca_inicial), normal);
     primeiro.comprimento / (primeiro.comprimento - delta)
 }
 
@@ -164,8 +167,8 @@ fn quociente_de_escala(cadeia: &Cadeia, alvo: V3) -> f32 {
 /// escala; cabeça, origem e rotação ficam nos valores **iniciais** o traço todo.
 /// ⛔ Importar para aqui o passo de resolução do §5.4 torna real a divergência
 /// que o §5.1 mede como invisível — é o item **13** da lista de verificação.
-fn espremer(cadeia: &mut Cadeia, alvo: V3) {
-    let z = quociente_de_escala(cadeia, alvo);
+fn espremer(cadeia: &mut Cadeia, alvo: V3, arrasto: crate::Arrasto) {
+    let z = quociente_de_escala(cadeia, alvo, arrasto);
     let escala = if z.abs() < 1e-5 {
         // ⭐ A guarda que existe, e a razão pública de ela existir: sem ela a
         // malha ia a `NaN` e o **desfazer não a recuperava**. A nossa tem de

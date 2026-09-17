@@ -192,6 +192,28 @@ impl Brush {
         self.offers_pose_controls() && self.pose.deformacao == crate::PoseDeformacao::Escalar
     }
 
+    /// ⭐⭐ **Este gesto de pose LÊ a lei do arrasto?** — a porta única do
+    /// [`crate::PoseArrasto`], irmã exacta da trava acima.
+    ///
+    /// ⛔⛔ **Só as DUAS deformações do quociente de escala**, e isso é MEDIDO e
+    /// não uma suposição: a [`crate::PoseDeformacao::Transladar`] soma o
+    /// deslocamento **inteiro** à origem de cada segmento, e as duas de rotação
+    /// resolvem uma cadeia contra um alvo — *em nenhuma das três existe a
+    /// alavanca `δ` que esta lei governa*.
+    ///
+    /// ⚠️⚠️ **A nota que esta linha levava dizia «Scale/Translate/Squash leem só
+    /// a componente axial», e a medição diz DUAS de três.** A translação já lia
+    /// o arrasto todo — *recitar a nota teria posto o chip em cima de um gesto
+    /// que ele não governa, que é um selector inerte com cara de controlo vivo*.
+    #[must_use]
+    pub fn offers_pose_drag_law(&self) -> bool {
+        self.offers_pose_controls()
+            && matches!(
+                self.pose.deformacao,
+                crate::PoseDeformacao::Escalar | crate::PoseDeformacao::Espremer
+            )
+    }
+
     /// **Este verbo lê o [`Brush::surface_only`]?** — a porta única, pelo mesmo
     /// argumento do irmão acima.
     ///

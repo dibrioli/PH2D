@@ -63,6 +63,9 @@ mod dab_alcance;
 mod falloff;
 /// **A LEI QUE UM ARRASTO DE FILTRO APLICA** — a uniao das duas familias.
 mod filter_law;
+/// ⭐⭐⭐ **COMO A FOLGA DO *PROJECTAR* ENTRA NA DISTÂNCIA** — as duas leis que o
+/// artista escolhe por botão desde 17/09. Ver [`folga_modo`].
+mod folga_modo;
 mod grip;
 /// ⭐⭐ **PARA ONDE O ESFREGÃO EMPURRA** — ver [`smear_mode`].
 mod smear_mode;
@@ -115,6 +118,10 @@ pub use boundary_previa::TrechoDaBorda;
 /// entre eles directamente desde 2026-09-15, por ordem do dono — ⛔ o
 /// [`PoseModo`] acima continua a ser o que a LEI lê, e a ponte entre os dois é a
 /// [`ph2d_pose::Deformacao::modo_e_inversao`], com gate de ida-e-volta.
+/// ⭐⭐ **Quanto do arrasto a escala da pose lê, re-exportado.** O painel escolhe
+/// entre os dois e não precisa de conhecer a crate da lei — a mesma forma com
+/// que ele já lê o `PoseModo` e o `ClothMode`.
+pub use ph2d_pose::Arrasto as PoseArrasto;
 pub use ph2d_pose::Deformacao as PoseDeformacao;
 /// ⭐ **O modo do pincel de pose, re-exportado.** O painel escolhe entre os três
 /// e não precisa de conhecer a crate da lei — a mesma forma com que ele já lê o
@@ -160,6 +167,7 @@ pub use coat::{COAT_HEAD, coat_step};
 pub use curva_inerte::CurvaInerte;
 pub use falloff::Falloff;
 pub use filter_law::FilterLaw;
+pub use folga_modo::FolgaModo;
 pub use grip::{Amount, Grip, GripLaw};
 pub use kelvinlet::KELVINLET_REACH;
 pub use plano_inversao::PlanoInversao;
@@ -180,8 +188,9 @@ pub fn distancia_de_projeccao_para_teste(
     alvos: &[(ph2d_mesh::Mesh, ph2d_mesh::Pose)],
     bidir: bool,
     folga: f32,
+    modo: FolgaModo,
 ) -> Option<f32> {
-    projectar::distancia(ponto, direccao, activo, alvos, bidir, folga)
+    projectar::distancia(ponto, direccao, activo, alvos, bidir, folga, modo)
 }
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::ClothFilterStep;

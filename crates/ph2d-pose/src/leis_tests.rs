@@ -387,3 +387,88 @@ fn a_deformacao_e_o_par_da_lei_sao_a_mesma_coisa() {
          (o modificador não muda o espremer/esticar, e está medido)"
     );
 }
+
+/// ⭐⭐⭐ **GATE — ao longo do osso as duas leis do arrasto COINCIDEM**, que é a
+/// propriedade que mantém as `69` fixturas do oráculo fora do alcance do botão
+/// novo (ordem do dono, 17/09).
+///
+/// ⚠️ **A barra não é um epsilon escolhido:** para `d = α·n̂` a identidade é
+/// exacta em aritmética real (`sign(α)·|α| = α`), e o que sobra em `f32` é o
+/// arredondamento de `‖d‖ = |α|·√(n̂·n̂)` quando `n̂·n̂` não é exactamente `1`.
+/// ⇒ a barra é **relativa** à magnitude, e o gate varre normais que **não** são
+/// eixos — sobre `[0,0,1]` ela seria trivialmente verdadeira e o gate não
+/// afirmaria nada.
+#[test]
+fn ao_longo_do_osso_as_duas_leis_do_arrasto_coincidem() {
+    let normais = [
+        crate::vetor::normalizar([0.3, -0.7, 0.65]).expect("normal"),
+        crate::vetor::normalizar([1.0, 1.0, 1.0]).expect("normal"),
+        crate::vetor::normalizar([-0.2, 0.9, 0.1]).expect("normal"),
+    ];
+    for n in normais {
+        for alfa in [-3.5f32, -1.0, -0.25, 0.0, 0.25, 1.0, 3.5] {
+            let d = crate::vetor::escalar(n, alfa);
+            let a = crate::Arrasto::AoLongoDoOsso.alavanca(d, n);
+            let c = crate::Arrasto::Completo.alavanca(d, n);
+            assert!(
+                (a - c).abs() <= 1e-6 * alfa.abs().max(1.0),
+                "n={n:?} alfa={alfa}: ao longo do osso as duas tinham de \
+                 coincidir, e deram {a} contra {c}"
+            );
+        }
+    }
+}
+
+/// ⛔⛔ **GATE — e num arrasto TRANSVERSAL elas TÊM de diferir.**
+///
+/// *Sem esta metade o botão é decorativo*: um `Completo` que por acidente
+/// devolvesse a projecção passaria no gate irmão e o artista teria dois chips
+/// que fazem a mesma coisa. ⇒ o gate **exige** que a divergência exista, que é
+/// a mesma lei do tecto que vira licença.
+///
+/// ⭐ **E a direcção da diferença é afirmada, não só a magnitude:** a lei nova
+/// nunca lê MENOS que a projecção (‖d‖ ≥ |dot(d,n̂)| por Cauchy–Schwarz), logo o
+/// módulo da alavanca só pode crescer.
+#[test]
+fn num_arrasto_transversal_as_duas_leis_do_arrasto_diferem() {
+    let n = crate::vetor::normalizar([0.0, 0.0, 1.0]).expect("normal");
+    let mut vistos = 0;
+    for lateral in [0.5f32, 1.0, 2.0] {
+        for axial in [-1.0f32, 0.25, 1.0] {
+            let d = [lateral, 0.0, axial];
+            let a = crate::Arrasto::AoLongoDoOsso.alavanca(d, n);
+            let c = crate::Arrasto::Completo.alavanca(d, n);
+            assert!(
+                c.abs() > a.abs() + 1e-6,
+                "lateral={lateral} axial={axial}: a lei completa tinha de ler \
+                 MAIS que a projeccao, e deu {c} contra {a}"
+            );
+            assert!(
+                a == 0.0 || c.signum() == a.signum(),
+                "lateral={lateral} axial={axial}: a lei completa inverteu o \
+                 sentido ({c} contra {a})"
+            );
+            vistos += 1;
+        }
+    }
+    assert_eq!(
+        vistos, 9,
+        "a varredura encolheu e o gate mede menos do que diz"
+    );
+}
+
+/// ⚠️ **GATE — o valor de FÁBRICA é a projecção**, e isto é um gate porque é o
+/// que mantém o corpus do oráculo a medir o pincel que ele gravou.
+#[test]
+fn o_arrasto_de_fabrica_e_a_projeccao_no_osso() {
+    assert_eq!(
+        Controlos::default().lei_do_arrasto,
+        crate::Arrasto::AoLongoDoOsso,
+        "o default mudou — as 69 fixturas do oraculo passam a medir outro pincel"
+    );
+    assert_eq!(
+        crate::Arrasto::ALL[0],
+        crate::Arrasto::AoLongoDoOsso,
+        "a ordem dos chips mudou"
+    );
+}

@@ -48,3 +48,17 @@ pub const SCULPT3D_POSE_ANCHORED: NodeId = hash_node_id("sculpt3d.pose_anchored"
 
 /// ***TRAVA DE ROTAÇÃO*** — no modo de escala, escala **sem rodar**.
 pub const SCULPT3D_POSE_ROT_LOCK: NodeId = hash_node_id("sculpt3d.pose_rot_lock");
+
+/// ⭐⭐ **QUANTO DO ARRASTO A ESCALA LÊ** — `ph2d_sculpt3d::PoseArrasto::ALL`.
+///
+/// ⚠️ **O tamanho CONTA-SE, não se escolhe:** o censo compara este array com o
+/// `ALL` do motor, logo uma lei nova que não passe por aqui nasce inalcançável
+/// e o gate fica vermelho — em vez de o chip sumir em silêncio.
+///
+/// ⛔ **Ele só é pintado nos modos que o LEEM** (escala e espremer/esticar):
+/// nas duas rotações a alavanca não existe, e um selector inerte é pior que um
+/// ausente — a mesma cerca da trava de rotação, três linhas acima.
+pub const SCULPT3D_POSE_ARRASTO: [NodeId; 2] = [
+    hash_node_id("sculpt3d.pose_arrasto.0"),
+    hash_node_id("sculpt3d.pose_arrasto.1"),
+];

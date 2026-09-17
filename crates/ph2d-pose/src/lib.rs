@@ -52,6 +52,88 @@ pub use solver::Evento;
 pub use vetor::{Rot, V3};
 pub use vizinhanca::Vizinhanca;
 
+/// ⭐⭐⭐ **QUANTO DO ARRASTO A ESCALA LÊ** — a decisão do dono de 17/09
+/// (*«cada modo com opção, com um botão para mudar o modo»*).
+///
+/// # Quem lê isto, e quem NÃO lê
+///
+/// Só as duas deformações que passam pelo **quociente de escala** —
+/// [`Deformacao::Escalar`] e [`Deformacao::Espremer`] (§5.4 e §5.5). ⛔ As
+/// outras três **não** projectam nada: a [`Deformacao::Transladar`] soma o
+/// deslocamento **inteiro** à origem de cada segmento, e as duas de rotação
+/// resolvem uma cadeia contra um alvo. ⚠️⚠️ *A nota que esta linha levava dizia
+/// «Scale/Translate/Squash leem só a componente axial», e a medição diz **duas
+/// de três** — a translação já lia o arrasto todo.*
+///
+/// # A propriedade que torna isto seguro
+///
+/// `δ` é a alavanca do quociente `L / (L − δ)`, e as duas leis são:
+///
+/// | modo | `δ` |
+/// |---|---|
+/// | [`Arrasto::AoLongoDoOsso`] | `dot(d, n̂)` — a projecção |
+/// | [`Arrasto::Completo`] | `sign(dot(d, n̂)) · ‖d‖` — a mão toda, com o sentido da projecção |
+///
+/// ⭐ **Com a mão a puxar AO LONGO do osso as duas coincidem**: para `d = α·n̂`
+/// vale `dot = α` e `‖d‖ = |α|`, logo `sign(α)·|α| = α`. ⇒ *o modo novo não
+/// abre um regime novo onde o corpus vive; ele só deixa de deitar fora o que a
+/// mão fez de lado.*
+///
+/// ⛔⛔ **O de fábrica é a projecção, e isso NÃO é gosto:** as `69` fixturas do
+/// oráculo foram gravadas com ela, e o braço dela chama o **mesmo código de
+/// antes** — a paridade fica intacta por CONSTRUÇÃO e não por um argumento
+/// numérico.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Arrasto {
+    /// **A projecção no osso** — a lei da espec §5.4/§5.5, e o valor de fábrica.
+    ///
+    /// Puxar de lado não faz nada: o que não estiver ao longo do osso é
+    /// deitado fora.
+    #[default]
+    AoLongoDoOsso,
+    /// **O deslocamento inteiro**, com o sentido dado pela projecção.
+    ///
+    /// ⚠️ **Divergência DECLARADA.** Nenhuma referência a descreve; ela existe
+    /// porque o dono a pediu como opção, e o gate exige que as duas leis
+    /// **difiram** num arrasto transversal — senão o botão é decorativo.
+    Completo,
+}
+
+impl Arrasto {
+    /// Os dois, na ordem em que o painel os pinta — o de fábrica primeiro.
+    pub const ALL: [Self; 2] = [Self::AoLongoDoOsso, Self::Completo];
+
+    /// O rótulo do chip (a UI da casa é inglesa).
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::AoLongoDoOsso => "Along Bone",
+            Self::Completo => "Full Drag",
+        }
+    }
+
+    /// **A PORTA ÚNICA** — o `δ` que o quociente de escala consome.
+    ///
+    /// ⚠️ `deslocamento` é `alvo − cabeça_inicial` e `normal` é a direcção
+    /// inicial do primeiro segmento, **já normalizada** pelo chamador.
+    #[must_use]
+    pub fn alavanca(self, deslocamento: [f32; 3], normal: [f32; 3]) -> f32 {
+        let axial = crate::vetor::ponto(deslocamento, normal);
+        match self {
+            Self::AoLongoDoOsso => axial,
+            Self::Completo => {
+                let n = crate::vetor::comprimento(deslocamento);
+                // ⚠️ O `signum` de `0,0` é `+1` e o de `−0,0` é `−1`; com `n = 0`
+                // o produto é zero nos dois casos, que é a resposta certa (*a
+                // mão não andou*). ⛔ Um `if axial == 0.0 { 0.0 }` à frente seria
+                // uma cerca que repete o que a aritmética já garante — a espécie
+                // que o `clamp` inerte do emissor de partículas pagou.
+                axial.signum() * n
+            }
+        }
+    }
+}
+
 /// Qual das três deformações o pincel faz (§0).
 ///
 /// ⚠️ O modificador de inversão (Ctrl, ou a ponta invertida da caneta) **troca
@@ -227,6 +309,9 @@ pub struct Controlos {
     pub ancorado: bool,
     /// No modo de escala, não roda antes de escalar (§5.4).
     pub trava_rotacao: bool,
+    /// ⭐⭐ **Quanto do arrasto a ESCALA lê** — ver [`Arrasto`]. Só as duas
+    /// deformações do quociente de escala o consultam.
+    pub lei_do_arrasto: Arrasto,
     pub raio: f32,
     /// ⚠️ Entra **linearmente**, não ao quadrado.
     pub forca: f32,
@@ -252,6 +337,9 @@ impl Default for Controlos {
             // era circular (o cabeçalho da fixtura é ENTRADA do harness).
             ancorado: true,
             trava_rotacao: false,
+            // ⚠️ A projeccao e' a lei da espec, e e' com ela que as `69`
+            // fixturas do oraculo foram gravadas.
+            lei_do_arrasto: Arrasto::AoLongoDoOsso,
             raio: 0.25,
             forca: 1.0,
             invertido: false,

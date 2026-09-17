@@ -72,7 +72,7 @@ pub(super) fn push_text_rows(
                 // Resolve to primitives so the panel needs no registry dependency.
                 channels: channels
                     .iter()
-                    .map(|c| (c.label, c.column, c.mode))
+                    .map(|c| (ph2d_i18n::tr(c.label), c.column, c.mode))
                     .collect(),
                 selected,
                 custom: attr,

@@ -307,27 +307,27 @@ pub const READ_CHANNELS: &[ReadChannel] = &[
     // nada no domínio de valor computa uma tangente inversa (a mesma razão que fez o
     // `MODE_ANGLE` nascer).
     ReadChannel {
-        label: "Position X",
+        label: "node.channel.p.component_0",
         column: "P",
         mode: MODE_COMPONENT_BASE,
     },
     ReadChannel {
-        label: "Position Y",
+        label: "node.channel.p.component_1",
         column: "P",
         mode: MODE_COMPONENT_BASE + 1,
     },
     ReadChannel {
-        label: "Radius",
+        label: "node.channel.p.length",
         column: "P",
         mode: MODE_LENGTH,
     },
     ReadChannel {
-        label: "Angle",
+        label: "node.channel.p.angle",
         column: "P",
         mode: MODE_ANGLE,
     },
     ReadChannel {
-        label: "Speed",
+        label: "node.channel.vel.length",
         column: "vel",
         mode: MODE_LENGTH,
     },
@@ -337,7 +337,7 @@ pub const READ_CHANNELS: &[ReadChannel] = &[
     // `value.attribute(Direction) → motion.drive(Rotation)` é o *align to velocity*, em dois nós.
     // A unidade é GRAUS porque é o que o `rot` do outro lado fala; ver [`MODE_ANGLE`].
     ReadChannel {
-        label: "Direction",
+        label: "node.channel.vel.angle",
         column: "vel",
         mode: MODE_ANGLE,
     },
@@ -358,22 +358,22 @@ pub const READ_CHANNELS: &[ReadChannel] = &[
     // ele pergunta se a coluna tem **algum** chip, e `Speed`/`Direction`/`Size` respondiam
     // que sim. *Uma leitura POLAR satisfaz «alcançável» e não devolve um eixo.*
     ReadChannel {
-        label: "Velocity X",
+        label: "node.channel.vel.component_0",
         column: "vel",
         mode: MODE_COMPONENT_BASE,
     },
     ReadChannel {
-        label: "Velocity Y",
+        label: "node.channel.vel.component_1",
         column: "vel",
         mode: MODE_COMPONENT_BASE + 1,
     },
     ReadChannel {
-        label: "Size X",
+        label: "node.channel.size.component_0",
         column: "size",
         mode: MODE_COMPONENT_BASE,
     },
     ReadChannel {
-        label: "Size Y",
+        label: "node.channel.size.component_1",
         column: "size",
         mode: MODE_COMPONENT_BASE + 1,
     },
@@ -388,32 +388,32 @@ pub const READ_CHANNELS: &[ReadChannel] = &[
     // The lane rung (`MODE_COMPONENT_BASE`, W0-A) is what makes the honest answer sayable —
     // before it, a `Vec4` column had no reachable channel at all.
     ReadChannel {
-        label: "Opacity",
+        label: "node.channel.tint.component_3",
         column: "tint",
         mode: MODE_COMPONENT_BASE + 3,
     },
     ReadChannel {
-        label: "Rotation",
+        label: "node.channel.rot.scalar",
         column: "rot",
         mode: 0,
     },
     ReadChannel {
-        label: "Size",
+        label: "node.channel.size.length",
         column: "size",
         mode: MODE_LENGTH,
     },
     ReadChannel {
-        label: "Age",
+        label: "node.channel.age.scalar",
         column: "age",
         mode: 0,
     },
     ReadChannel {
-        label: "Life",
+        label: "node.channel.life.scalar",
         column: "life",
         mode: 0,
     },
     ReadChannel {
-        label: "Seed",
+        label: "node.channel.seed.scalar",
         column: "seed",
         mode: 0,
     },
@@ -430,7 +430,7 @@ pub const READ_CHANNELS: &[ReadChannel] = &[
     // referência tem (o C4D tem Fields e zero eventos; o Niagara tem eventos e zero campos
     // componíveis). O gate da cadeia vive na `ph2d-node-registry-init`.
     ReadChannel {
-        label: "Falloff",
+        label: "node.channel.falloff.scalar",
         column: "falloff",
         mode: 0,
     },
@@ -444,7 +444,7 @@ pub const READ_CHANNELS: &[ReadChannel] = &[
     // tocou, e com `motion.drive(Falloff) → motion.cull` **dentro da zona** ele MORRE ao
     // tocar (o `sim.collision_pulse` da linha 98 do doc 63, sem um nó novo).
     ReadChannel {
-        label: "Hit",
+        label: "node.channel.hit.scalar",
         column: "hit",
         mode: 0,
     },
@@ -460,12 +460,12 @@ pub const READ_CHANNELS: &[ReadChannel] = &[
     // compõe um `value.map_range`, e um número já dividido por um máximo que o nó escolheu
     // seria uma decisão de apresentação assada no dado.
     ReadChannel {
-        label: "Neighbours",
+        label: "node.channel.neighbours.scalar",
         column: "neighbours",
         mode: 0,
     },
     ReadChannel {
-        label: "Overlap",
+        label: "node.channel.overlap.scalar",
         column: "overlap",
         mode: 0,
     },
@@ -475,17 +475,17 @@ pub const READ_CHANNELS: &[ReadChannel] = &[
     // `value.instance_field(Index)`, que **MINTA** um valor novo em vez de LER o que a peça
     // traz. *As duas respostas divergem no instante em que alguém põe um `motion.sort` no meio.*
     ReadChannel {
-        label: "Index",
+        label: "node.channel.index.scalar",
         column: "Index",
         mode: 0,
     },
     ReadChannel {
-        label: "Count",
+        label: "node.channel.count.scalar",
         column: "Count",
         mode: 0,
     },
     ReadChannel {
-        label: "Id",
+        label: "node.channel.id.scalar",
         column: "id",
         mode: 0,
     },
@@ -493,7 +493,7 @@ pub const READ_CHANNELS: &[ReadChannel] = &[
     // divisor (`life`) é implicado pelo modo, e é a única entrada desta lista em que isso
     // acontece.
     ReadChannel {
-        label: "Life Fraction",
+        label: "node.channel.age.life_fraction",
         column: "age",
         mode: MODE_LIFE_FRACTION,
     },

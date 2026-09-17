@@ -20,6 +20,10 @@ libm = { version = "=0.2.16", default-features = false }
 
 [dev-dependencies]
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }
+# ⚠️ **DEV-dependency, e só isso:** os gates desta crate procuram um canal pela PALAVRA
+# que ele mostra na tela, e desde a migração do HR-15 o `label` é uma chave. O produto
+# não conhece a tabela — quem traduz é quem pinta.
+ph2d-i18n = { path = "../ph2d-i18n" }
 
 [lints]
 workspace = true

@@ -416,10 +416,52 @@ com as linhas que comparam `labels` responde a lista toda de uma vez, e foi ela 
 não sobrava nenhum caso — três dos quatro «candidatos» que ela acusou eram **doc-comments**, e
 o quarto usa o rótulo só na mensagem de erro.
 
+## §9 — A 6.ª fatia: os CANAIS de um `ParamWidget::Channels` (fecha a fronteira dos motores)
+
+`24` canais, declarados num sítio só (`ph2d-node-value-attribute`). A menor das seis fatias e a
+que fecha a lista do §7.8.
+
+### §9.1 — ⛔ A coluna sozinha NÃO é a identidade
+
+| coluna | serve |
+|---|---|
+| `P` | *Position X* · *Position Y* · *Radius* · *Angle* |
+| `vel` | *Speed* · *Direction* · *Velocity X* · *Velocity Y* |
+| `size` | *Size X* · *Size Y* · *Size* |
+| `age` | *Age* · *Life Fraction* |
+
+⇒ a chave é `node.channel.<coluna>.<modo>` — e isso **não é uma escolha**: é exactamente o par
+que o produto usa para os achar (`c.column == *col && c.mode == *modo`, em
+`motion_bridge_choices`).
+
+⚠️ **E o modo entra pelo NOME da constante que o declara, nunca pelo número dela.** As quatro
+(`MODE_LENGTH` · `MODE_ANGLE` · `MODE_LIFE_FRACTION` · `MODE_COMPONENT_BASE + n`) são valores
+escolhidos; um `MODE_COMPONENT_BASE` que mudasse renomearia as `24` chaves de uma vez.
+
+### §9.2 — ⭐⭐ Doze buscas por texto, uma PORTA
+
+Os gates da crate procuram o canal *«Opacity»*, *«Radius»*, *«Life Fraction»* — porque é assim
+que ele se chama na tela. Com a chave, as **doze** buscas passariam a escrever
+`ph2d_i18n::tr(c.label) == …`: *uma lei escrita em doze sítios ainda não é uma lei — só uma PORTA
+é.* ⇒ `fn canal(palavra)`, com a mensagem de falha a listar os nomes que existem.
+
+### §9.3 — ⛔ E o meu guarda de `Cargo.toml` procurava a DEP e não a SECÇÃO
+
+Ao acrescentar a dev-dependency eu testava `if 'ph2d-i18n' in t` — verdade sobre a dep, cego à
+`[dev-dependencies]` que já lá estava ⇒ **duas secções com o mesmo nome**, e o `cargo metadata`
+caiu com `duplicate key` arrastando a workspace inteira. ⭐ O modo de falha foi o bom (alto, e
+imediato); ⚠️ o que o torna barato é ele ser **verificável nas outras 13 crates onde usei o mesmo
+guarda** — `grep -c '^\[dev-dependencies\]'`, e as treze tinham uma só.
+
+Prova de mutação: **3 de 3** (a chave deriva · ela é INJECTIVA sobre o par · a lista do cartão
+resolve). ⛔ O segundo gate existe porque sem ele dois canais da mesma coluna podiam herdar a
+mesma chave e o picker mostrava a palavra duas vezes, **com os outros dois VERDES** — a chave
+deriva, e resolve; só que resolve para o mesmo.
+
 ### §8.6 — ⏳ O que FICA
 
 | Alvo | Sítios | Nota |
 |---|---:|---|
-| `ReadChannel.label` | 25 | os canais nomeados de um `ParamWidget::Channels` — família própria |
+| ~~`ReadChannel.label`~~ | ~~25~~ | ✅ **fechado na 6.ª fatia** — ver §9 |
 | os `62` literais do censo de PORTA | — | `python3 scripts/censo-texto-pintado.py` |
 | `ph2d-tool-vector` | 7 braços de rótulo | fora dos motores de nó |

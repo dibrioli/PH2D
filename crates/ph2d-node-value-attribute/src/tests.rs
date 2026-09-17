@@ -2,6 +2,26 @@
 
 use super::*;
 
+/// ⭐⭐ **A busca de um canal PELA PALAVRA, num sítio só.**
+///
+/// ⚠️ Desde a migração do HR-15 o `ReadChannel::label` é uma **chave**
+/// (`node.channel.<coluna>.<modo>`) e não o texto — o artista lê a palavra que a tabela devolve.
+/// ⛔ Estes testes procuram o canal *«Opacity»*, *«Radius»*, *«Life Fraction»* porque é assim que
+/// ele se chama na tela, e escrever `ph2d_i18n::tr(c.label) == …` em **doze** sítios seria a
+/// mesma lei doze vezes: *uma lei escrita em doze sítios ainda não é uma lei — só uma PORTA é.*
+fn canal(palavra: &str) -> &'static ReadChannel {
+    READ_CHANNELS
+        .iter()
+        .find(|c| ph2d_i18n::tr(c.label) == palavra)
+        .unwrap_or_else(|| {
+            let havia: Vec<&str> = READ_CHANNELS
+                .iter()
+                .map(|c| ph2d_i18n::tr(c.label))
+                .collect();
+            panic!("nenhum canal se chama `{palavra}` — a lista tem {havia:?}")
+        })
+}
+
 fn stream() -> Stream {
     Stream::new(3)
         .with("age", Column::Scalar(vec![0.0, 1.5, 3.0]))
@@ -137,10 +157,7 @@ fn every_offered_channel_reads_a_column_the_library_actually_writes() {
             [1.0, 1.0, 1.0, 0.75],
         ]),
     );
-    let opacity = READ_CHANNELS
-        .iter()
-        .find(|c| c.label == "Opacity")
-        .expect("the picker offers an Opacity channel");
+    let opacity = Some(canal("Opacity")).expect("the picker offers an Opacity channel");
     assert_eq!(
         field(&drove, opacity.column, opacity.mode),
         vec![0.25, 0.50, 0.75],
@@ -155,7 +172,7 @@ fn the_other_channels_still_read_their_own_columns() {
     let s = Stream::new(3)
         .with("age", Column::Scalar(vec![0.1, 0.2, 0.3]))
         .with("tint", Column::Vec4(vec![[1.0, 1.0, 1.0, 0.9]; 3]));
-    let age = READ_CHANNELS.iter().find(|c| c.label == "Age").unwrap();
+    let age = canal("Age");
     assert_eq!(field(&s, age.column, age.mode), vec![0.1, 0.2, 0.3]);
 }
 
@@ -174,10 +191,7 @@ fn the_other_channels_still_read_their_own_columns() {
 fn the_weight_a_field_leaves_is_readable_by_the_picker() {
     // Um stream como uma `field.*` o deixa: o peso por linha na coluna `falloff`.
     let shaped = Stream::new(3).with("falloff", Column::Scalar(vec![0.0, 0.5, 1.0]));
-    let ch = READ_CHANNELS
-        .iter()
-        .find(|c| c.label == "Falloff")
-        .expect("o picker oferece o canal Falloff");
+    let ch = Some(canal("Falloff")).expect("o picker oferece o canal Falloff");
     assert_eq!(
         field(&shaped, ch.column, ch.mode),
         vec![0.0, 0.5, 1.0],
@@ -203,7 +217,7 @@ fn the_neighbourhood_a_proximity_leaves_is_readable_by_the_picker() {
     ] {
         let ch = READ_CHANNELS
             .iter()
-            .find(|c| c.label == label)
+            .find(|c| ph2d_i18n::tr(c.label) == label)
             .unwrap_or_else(|| panic!("o picker oferece o canal {label}"));
         assert_eq!(
             field(&measured, ch.column, ch.mode),
@@ -231,10 +245,7 @@ fn the_direction_channel_reads_a_vec2_as_an_angle_in_degrees() {
             [1.0, 1.0],
         ]),
     );
-    let ch = READ_CHANNELS
-        .iter()
-        .find(|c| c.label == "Direction")
-        .expect("o picker oferece um canal Direction");
+    let ch = Some(canal("Direction")).expect("o picker oferece um canal Direction");
     let got = field(&s, ch.column, ch.mode);
     for (i, (g, want)) in got.iter().zip([0.0, 90.0, 180.0, -90.0, 45.0]).enumerate() {
         assert!(
@@ -336,7 +347,7 @@ fn the_position_a_generator_leaves_is_readable_by_the_picker() {
     ] {
         let ch = READ_CHANNELS
             .iter()
-            .find(|c| c.label == label)
+            .find(|c| ph2d_i18n::tr(c.label) == label)
             .unwrap_or_else(|| panic!("o picker oferece o canal {label}"));
         let got = field(&laid, ch.column, ch.mode);
         for (i, (g, w)) in got.iter().zip(&want).enumerate() {
@@ -369,10 +380,7 @@ fn a_vec2_column_is_unreachable_without_a_picker_entry() {
          entradas de posicao existirem mudou com ele"
     );
     // CONTROLE: a MESMA coluna, pela entrada, responde.
-    let ch = READ_CHANNELS
-        .iter()
-        .find(|c| c.label == "Radius")
-        .expect("o picker oferece o canal Radius");
+    let ch = Some(canal("Radius")).expect("o picker oferece o canal Radius");
     assert_eq!(field(&laid, ch.column, ch.mode), vec![5.0, 2.0]);
 }
 
@@ -439,7 +447,7 @@ fn the_cartesian_lanes_of_vel_and_size_are_reachable_by_name() {
     ] {
         let ch = READ_CHANNELS
             .iter()
-            .find(|c| c.label == label)
+            .find(|c| ph2d_i18n::tr(c.label) == label)
             .unwrap_or_else(|| panic!("o picker oferece o canal {label}"));
         assert_eq!(
             field(&s, ch.column, ch.mode),
@@ -449,17 +457,14 @@ fn the_cartesian_lanes_of_vel_and_size_are_reachable_by_name() {
     }
     // ⛔ CONTROLE: a entrada polar da MESMA coluna responde outra pergunta. Sem isto, um
     // gate que só lesse as lanes passaria mesmo que elas fossem apelidos de `Speed`.
-    let speed = READ_CHANNELS.iter().find(|c| c.label == "Speed").unwrap();
+    let speed = canal("Speed");
     assert_eq!(
         field(&s, speed.column, speed.mode),
         vec![5.0, 1.0, 2.0],
         "CONTROLE: `Speed` e' a magnitude (3,4 -> 5), e nenhuma lane a da'"
     );
     // E o inverso: nenhuma lane coincide com a magnitude em toda a parte.
-    let vx = READ_CHANNELS
-        .iter()
-        .find(|c| c.label == "Velocity X")
-        .unwrap();
+    let vx = canal("Velocity X");
     assert_ne!(
         field(&s, vx.column, vx.mode),
         field(&s, speed.column, speed.mode),
@@ -517,15 +522,12 @@ fn the_three_identities_are_offered_and_read_their_own_columns() {
     ] {
         let ch = READ_CHANNELS
             .iter()
-            .find(|c| c.label == label)
+            .find(|c| ph2d_i18n::tr(c.label) == label)
             .unwrap_or_else(|| panic!("o picker oferece o canal {label}"));
         assert_eq!(field(&s, ch.column, ch.mode), want, "o canal `{label}`");
     }
     // E a fracção de vida também está na lista, com o modo que a implica.
-    let lf = READ_CHANNELS
-        .iter()
-        .find(|c| c.label == "Life Fraction")
-        .expect("o picker oferece a fraccao de vida");
+    let lf = Some(canal("Life Fraction")).expect("o picker oferece a fraccao de vida");
     assert_eq!(
         (lf.column, lf.mode),
         ("age", MODE_LIFE_FRACTION),

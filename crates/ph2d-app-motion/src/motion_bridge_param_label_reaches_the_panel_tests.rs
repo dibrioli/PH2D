@@ -129,3 +129,68 @@ fn no_card_param_of_any_node_paints_a_raw_key() {
         cruas.join("\n  ")
     );
 }
+
+/// ⭐⭐⭐ **E A LISTA DE CANAIS ABRE COM PALAVRAS** — a quarta superfície, e a que sobrevive.
+///
+/// ⚠️ O picker de canal é o único selector do catálogo cujas opções **não** são um
+/// `ParamWidget::Enum`: são `ReadChannel`s, e a lista que o artista abre é montada por
+/// `channel_labels` — que mistura canais CURADOS (que têm nome) com colunas vindas da corrente de
+/// cima (que **são** o próprio nome). ⛔ Um `tr` em falta ali põe `node.channel.p.length` no menu,
+/// e nenhum dos gates do registo o vê: eles afirmam que a chave deriva e que resolve, não que
+/// alguém a resolveu.
+#[test]
+fn no_channel_list_of_any_node_paints_a_raw_key() {
+    use ph2d_node_registry::ParamWidget;
+    let tipos: Vec<String> = {
+        let base = MotionState::new();
+        base.registry
+            .manifests()
+            .map(|m| m.name.to_string())
+            .collect()
+    };
+    assert!(tipos.len() >= 130, "só {} tipos — encolheu?", tipos.len());
+
+    let mut cruas = Vec::new();
+    let mut vistas = 0usize;
+    for nome in &tipos {
+        let mut m = MotionState::new();
+        let id = m.doc.graph.add_node(nome.clone());
+        let Some(hints) = m
+            .registry
+            .manifests()
+            .find(|man| man.name == nome.as_str())
+            .and_then(|man| m.registry.param_ui(man.id))
+        else {
+            continue;
+        };
+        let pickers: Vec<_> = hints
+            .iter()
+            .filter_map(|h| match h.widget {
+                ParamWidget::Channels {
+                    mode_param,
+                    channels,
+                } => Some((h.param, mode_param, channels)),
+                _ => None,
+            })
+            .collect();
+        for (text_param, mode_param, channels) in pickers {
+            let (rotulos, _) = crate::motion_bridge::params::channel_labels_for_tests(
+                &m, id, text_param, mode_param, channels,
+            );
+            for r in &rotulos {
+                vistas += 1;
+                if r.starts_with("node.") {
+                    cruas.push(format!("{nome}::{text_param}: {r:?}"));
+                }
+            }
+        }
+    }
+    // ⛔ Piso de população: sem um picker aberto a varredura mede nada.
+    assert!(vistas >= 24, "só {vistas} rótulos de canal — encolheu?");
+    assert!(
+        cruas.is_empty(),
+        "estes {} rótulos da lista de CANAIS carregam o identificador cru:\n  {}",
+        cruas.len(),
+        cruas.join("\n  ")
+    );
+}

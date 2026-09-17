@@ -255,7 +255,7 @@ pub fn channel_labels(
             channels
                 .iter()
                 .find(|c| c.column == *col && c.mode == *modo)
-                .map_or_else(|| col.clone(), |c| c.label.to_string())
+                .map_or_else(|| col.clone(), |c| ph2d_i18n::tr(c.label).to_string())
         })
         .collect();
     // ⚠️ Fora da lista ⇒ um índice ALÉM do fim, que é como se diz *«nenhuma»* sem inventar uma.

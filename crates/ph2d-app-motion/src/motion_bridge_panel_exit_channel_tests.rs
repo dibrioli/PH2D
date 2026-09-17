@@ -274,7 +274,9 @@ fn the_list_shows_the_panels_names_and_marks_where_the_node_is() {
     );
     assert_eq!(
         rotulos.first().map(String::as_str),
-        Some(curados[0].label),
+        // ⚠️ O `label` de um `ReadChannel` é uma CHAVE desde a migração do HR-15; o que a lista
+        // mostra é a palavra, logo a comparação passa pela tabela.
+        Some(ph2d_i18n::tr(curados[0].label)),
         "o primeiro rotulo e' o NOME do primeiro canal curado"
     );
 

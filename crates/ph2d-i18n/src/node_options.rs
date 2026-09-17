@@ -23,6 +23,14 @@
 //! em 800 sitios de struct-literal — reconstrui-lo na fronteira obrigava a alocar por quadro no
 //! caminho de OMISSAO (o cartao). ⇒ o array carrega as chaves ate' ao pintor, que resolve so' as
 //! opcoes que de facto desenha. O gate e' o `no_enum_option_of_any_node_paints_a_raw_key`.
+//!
+//! ⚠️ **E os CANAIS de um `ParamWidget::Channels` entram aqui pela mesma lei** — um picker de
+//! canal e' um selector, e as entradas dele sao as opcoes que o artista escolhe. ⛔ A chave deles
+//! **nao** pode ser a coluna sozinha: `P` serve quatro canais (`Position X`, `Position Y`,
+//! `Radius`, `Angle`) e a identidade e' o par `(coluna, modo)`, que e' exactamente o que o
+//! produto usa para os achar (`c.column == *col && c.mode == *modo`). ⇒
+//! `node.channel.<coluna>.<modo>`, com o modo pelo NOME da constante que o declara e nunca pelo
+//! numero dela — um `MODE_COMPONENT_BASE` que mudasse de valor renomearia as chaves todas.
 
 /// O texto ingles de cada opcao, por chave derivada.
 #[rustfmt::skip]
@@ -32,6 +40,30 @@ pub(crate) const ENTRADAS: &[(&str, &str)] = &[
     ("node.audio.bands.param.scale.2", "Mel"),
     ("node.audio.bands.param.weighting.0", "None"),
     ("node.audio.bands.param.weighting.1", "A"),
+    ("node.channel.age.life_fraction", "Life Fraction"),
+    ("node.channel.age.scalar", "Age"),
+    ("node.channel.count.scalar", "Count"),
+    ("node.channel.falloff.scalar", "Falloff"),
+    ("node.channel.hit.scalar", "Hit"),
+    ("node.channel.id.scalar", "Id"),
+    ("node.channel.index.scalar", "Index"),
+    ("node.channel.life.scalar", "Life"),
+    ("node.channel.neighbours.scalar", "Neighbours"),
+    ("node.channel.overlap.scalar", "Overlap"),
+    ("node.channel.p.angle", "Angle"),
+    ("node.channel.p.component_0", "Position X"),
+    ("node.channel.p.component_1", "Position Y"),
+    ("node.channel.p.length", "Radius"),
+    ("node.channel.rot.scalar", "Rotation"),
+    ("node.channel.seed.scalar", "Seed"),
+    ("node.channel.size.component_0", "Size X"),
+    ("node.channel.size.component_1", "Size Y"),
+    ("node.channel.size.length", "Size"),
+    ("node.channel.tint.component_3", "Opacity"),
+    ("node.channel.vel.angle", "Direction"),
+    ("node.channel.vel.component_0", "Velocity X"),
+    ("node.channel.vel.component_1", "Velocity Y"),
+    ("node.channel.vel.length", "Speed"),
     ("node.field.box.param.curve.0", "Linear"),
     ("node.field.box.param.curve.1", "Quad"),
     ("node.field.box.param.curve.2", "Smooth"),

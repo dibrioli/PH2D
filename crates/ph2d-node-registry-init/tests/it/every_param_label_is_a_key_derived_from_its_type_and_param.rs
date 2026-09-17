@@ -216,3 +216,88 @@ fn every_enum_option_key_resolves_to_a_word() {
         cruas.join("\n  ")
     );
 }
+
+/// ⭐⭐ **E OS CANAIS de um `ParamWidget::Channels` — a última família de texto do catálogo.**
+///
+/// ⛔ **A chave NÃO pode ser a coluna sozinha:** a coluna `P` serve quatro canais (*Position X*,
+/// *Position Y*, *Radius*, *Angle*) e a `vel` outros quatro. A identidade é o par
+/// `(coluna, modo)` — e isso não é uma escolha minha: é exactamente o que o produto usa para os
+/// achar (`c.column == *col && c.mode == *modo`, em `motion_bridge_choices`).
+///
+/// ⚠️ **E o modo entra pelo NOME da constante que o declara, nunca pelo número** — um
+/// `MODE_COMPONENT_BASE` que mudasse de valor renomearia todas as chaves de uma vez.
+#[test]
+fn every_read_channel_is_a_key_from_its_column_and_mode() {
+    use ph2d_node_registry::ParamWidget;
+    let catalogo = catalogo();
+    let (mut n, mut cruas, mut erradas) = (0usize, Vec::new(), Vec::new());
+    for (tipo, hints) in &catalogo {
+        for h in hints.iter() {
+            let ParamWidget::Channels { channels, .. } = h.widget else {
+                continue;
+            };
+            for c in channels {
+                n += 1;
+                if !c.label.starts_with("node.channel.") {
+                    erradas.push(format!("{tipo}::{}: {:?}", c.column, c.label));
+                } else if !c.label.contains(&format!(".{}.", c.column.to_lowercase())) {
+                    erradas.push(format!(
+                        "{tipo}: a chave {:?} não nomeia a coluna `{}`",
+                        c.label, c.column
+                    ));
+                }
+                if ph2d_i18n::tr(c.label) == c.label {
+                    cruas.push(format!("{tipo}::{}: {:?}", c.column, c.label));
+                }
+            }
+        }
+    }
+    // ⛔ Piso de população: sem um único picker de canal a varredura mede nada.
+    assert!(n >= 24, "só {n} canais declarados — a população encolheu?");
+    assert!(
+        erradas.is_empty(),
+        "estes {} canais não carregam a chave derivada de `(coluna, modo)`:\n  {}",
+        erradas.len(),
+        erradas.join("\n  ")
+    );
+    assert!(
+        cruas.is_empty(),
+        "estas {} chaves de canal não têm palavra em `node_options.rs`:\n  {}",
+        cruas.len(),
+        cruas.join("\n  ")
+    );
+}
+
+/// ⛔⛔ **E as chaves são INJECTIVAS sobre o par** — sem isto, dois canais da mesma coluna com
+/// modos diferentes podiam herdar a mesma chave e o picker mostrava a mesma palavra duas vezes,
+/// com os dois gates acima VERDES (a chave deriva, e resolve — só que resolve para o mesmo).
+#[test]
+fn two_read_channels_never_share_a_key() {
+    use ph2d_node_registry::ParamWidget;
+    use std::collections::BTreeMap;
+    let mut vistas: BTreeMap<&str, Vec<String>> = BTreeMap::new();
+    for (tipo, hints) in &catalogo() {
+        for h in hints.iter() {
+            let ParamWidget::Channels { channels, .. } = h.widget else {
+                continue;
+            };
+            for c in channels {
+                vistas
+                    .entry(c.label)
+                    .or_default()
+                    .push(format!("{tipo}::{}·{}", c.column, c.mode));
+            }
+        }
+    }
+    assert!(vistas.len() >= 24, "só {} chaves — encolheu?", vistas.len());
+    let dobradas: Vec<String> = vistas
+        .iter()
+        .filter(|(_, v)| v.len() > 1)
+        .map(|(k, v)| format!("{k}: {v:?}"))
+        .collect();
+    assert!(
+        dobradas.is_empty(),
+        "estas chaves servem mais do que um canal:\n  {}",
+        dobradas.join("\n  ")
+    );
+}

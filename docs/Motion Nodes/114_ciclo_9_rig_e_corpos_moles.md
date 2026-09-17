@@ -230,7 +230,8 @@ já exprime o item antes de o construir, e aqui ela exprimia — *o que se perde
 | ~~**W1**~~ ⛔ | ~~O escritor genérico de coluna~~ — **REFUTADA em 2026-09-17: ele já existe** (§3.1) | *A composição já o exprimia; medir antes de construir poupou a wave inteira* |
 | **W1′** ✅ | O **peso por osso** do `rig.skin_deformer` — o LEITOR que faltava (P0 da folha) — FECHADA em 2026-09-17 (§6) | Era o que a medição pôs no lugar da W1, e é o item *«que todo rigger encontra no primeiro dia»* |
 | **W2** ✅ | **`Strength`/`Mix` como COLUNA** nos constraints — FECHADA em 2026-09-17 (§7) | Um item, três lugares — e nasce melhor que as três referências |
-| **W4** | A **rota no dispositivo** para os corpos moles, com o preço de cada um nomeado | Lei 1 do doc 103 §2 |
+| **W4** ⏳ | A **razão nomeada** de cada corpo mole estar na CPU (§8) — ✅ feita; o **preço** espera máquina calma, e a sonda está comitada | Lei 1 do doc 103 §2 |
+| **W4-bis** | O **tecto `MAX_SIDE = 60`** do `motion.wave`, com o recurso nomeado e medido | ⛔ **Vem ANTES do kernel** (§8): não se decide uma placa para um campo que não pode crescer |
 | **W5** | A **MEDIÇÃO** do grupo (passo 5): tabela CPU · dispositivo · passes · objectos/ms, com `loadavg` ao lado | §0.0 |
 | **W6** | O **TUTORIAL em PDF** (passo 6) + a cena de smoke | O tutorial É o smoke |
 | **W7** | O **smoke do dono** (passo 7) | **Enio** |
@@ -402,6 +403,27 @@ propósito**.
 
 ⇒ **Não é um kernel que falta: é um veredito sobre se a corda pode mudar de lei.** Fica como
 **decisão do dono**, com as duas alternativas nomeadas e o preço escrito.
+
+### ⛔⛔ E a pergunta do kernel do `motion.wave` está MAL POSTA enquanto o tecto dele for `60`
+
+A escada de preço bateu num muro que não era o esperado: pedir lado `64` ao `motion.wave` devolve
+**`3 600` células e não `4 096`**, porque ele prende o lado em **`MAX_SIDE = 60`**. E a justificação
+escrita ao lado da constante é *«field cost is O(rows·cols)»* — **uma lei de crescimento, não um
+recurso**, que é precisamente o que o §0.0 proíbe.
+
+⇒ ⭐⭐⭐ **A ordem do trabalho inverte-se.** *«Vale a pena um kernel de GPU para o campo?»* é uma
+pergunta sobre o que acontece quando ele fica GRANDE — e hoje ele **não pode ficar grande**, porque
+o tecto o para primeiro. Escrever WGSL para um campo preso a `60×60` é o caso canónico do §0.0: **o
+caminho lento a definir o tecto do rápido**, no nó cuja física é a mais adequada a uma placa de todo
+o grupo.
+
+⇒ **primeiro o tecto (com a medição que diz de que recurso ele é), só depois o kernel.**
+
+⚠️⚠️ E o tecto estava escondido de uma maneira que vale registar: o
+[doc 91](91_os_tetos_que_ninguem_mediu.md) — *a auditoria dos tectos que ninguém mediu* — **nomeia o
+`motion.wave`**, porque auditou o `MAX_DT` dele. A palavra `MAX_SIDE` não aparece lá uma única vez.
+*Uma auditoria de tectos responde pelos tectos que olhou, e um nó que aparece numa lista de dívida
+PAGA lê-se como um nó sem dívida.*
 
 ### ⏳ O preço, e por que ele ainda não está aqui
 

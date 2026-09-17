@@ -14,6 +14,8 @@ mod apply_from_doc;
 mod apply_perf;
 mod arrange_is_independent;
 mod auto_orient;
+#[cfg(feature = "skeleton")]
+mod bone_bend_channels;
 mod clearing_a_formula_hands_the_pose_back;
 mod clip_clock;
 mod clip_stack;

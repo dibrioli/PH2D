@@ -292,6 +292,10 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
             PropKind::JointMotorSpeed => "motor_speed",
             PropKind::JointRestLength => "rest_length",
             PropKind::JointMaxLength => "max_length",
+            PropKind::BoneBendInX => "bend_in_x",
+            PropKind::BoneBendInY => "bend_in_y",
+            PropKind::BoneBendOutX => "bend_out_x",
+            PropKind::BoneBendOutY => "bend_out_y",
         }
     }
 
@@ -320,6 +324,18 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
                     | PropKind::JointMaxLength
             )
         }) && cfg!(not(feature = "physics"))
+        {
+            continue;
+        }
+        // E as quatro alças precisam da feature `skeleton`, pelo motivo idêntico: o `Bone`
+        // mora na crate do esqueleto. Sem ela nem escrevem nem leem — a mesma consistência.
+        if matches!(
+            prop,
+            PropKind::BoneBendInX
+                | PropKind::BoneBendInY
+                | PropKind::BoneBendOutX
+                | PropKind::BoneBendOutY
+        ) && cfg!(not(feature = "skeleton"))
         {
             continue;
         }
@@ -356,6 +372,13 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
         sim.world_mut()
             .entity_mut(Entity::from_bits(e))
             .insert(ph2d_physics_ecs::PhysicsJoint::default());
+        // Idem para as quatro alças: sem um `Bone` na entidade os quatro braços novos nem
+        // escrevem nem leem, e o gate acusaria o produto por um buraco da fixture — a
+        // terceira vez que esta mesma linha é escrita, e sempre pela mesma razão.
+        #[cfg(feature = "skeleton")]
+        sim.world_mut()
+            .entity_mut(Entity::from_bits(e))
+            .insert(ph2d_skeleton_ecs::Bone::default());
 
         let mut st = TimelineState::new();
         let doc = &mut st.doc;

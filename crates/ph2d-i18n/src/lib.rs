@@ -252,6 +252,13 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.timeline.prop.motor_speed" => "Motor Speed",
         "panel.timeline.prop.rest_length" => "Rest Length",
         "panel.timeline.prop.max_length" => "Max Length",
+        // As duas alças de um osso que arqueia (ordem do dono, 2026-09-17). ⚠️ *In* e *Out* são as
+        // palavras do *Bendy Bone* — a alça do lado da RAIZ e a do lado da PONTA —, e não entrada
+        // e saída de nada.
+        "panel.timeline.prop.bone_bend_in_x" => "Bend In X",
+        "panel.timeline.prop.bone_bend_in_y" => "Bend In Y",
+        "panel.timeline.prop.bone_bend_out_x" => "Bend Out X",
+        "panel.timeline.prop.bone_bend_out_y" => "Bend Out Y",
         // Per-track extrapolation badges (plan §6) — the dashed-region mode label,
         // shown on the dope-sheet only when the side is not the default Hold.
         "panel.timeline.extrap.loop" => "Loop",

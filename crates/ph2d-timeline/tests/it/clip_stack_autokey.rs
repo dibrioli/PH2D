@@ -269,7 +269,13 @@ fn every_prop_kind_interpolates_and_a_discrete_one_would_break_this() {
             | PropKind::JointMotorTarget
             | PropKind::JointMotorSpeed
             | PropKind::JointRestLength
-            | PropKind::JointMaxLength => {
+            | PropKind::JointMaxLength
+            // E as quatro alças moram no `Bone`, que esta entidade pelada também não tem.
+            // A aritmética do blend é a MESMA função.
+            | PropKind::BoneBendInX
+            | PropKind::BoneBendInY
+            | PropKind::BoneBendOutX
+            | PropKind::BoneBendOutY => {
                 continue;
             }
         };

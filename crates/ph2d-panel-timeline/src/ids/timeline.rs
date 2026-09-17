@@ -356,6 +356,30 @@ pub const TIMELINE_ADDPROP_JOINT_REST_LENGTH: NodeId =
 pub const TIMELINE_ADDPROP_JOINT_MAX_LENGTH: NodeId =
     hash_node_id("timeline.addprop.joint_max_length");
 
+/// "+Track" -> **Bend In X**: a alça da RAIZ de um osso que arqueia (`Bone::curve.inn[0]`).
+///
+/// ⚠️ Os quatro `ADDPROP_BONE_BEND_*` são as portas de autoria de
+/// `PropKind::BoneBendInX ..= BoneBendOutY`, e a lista é a MESMA para todo objecto
+/// seleccionado — como já era para o Morph e para os quatro de joint. Filtrar por
+/// componente seria uma decisão de produto própria, e a lista teria de saber ler a
+/// cena, que hoje ela não faz.
+///
+/// ⛔ **A linha TEM de entrar aqui, e não é burocracia:** o `PropKind::Morph` shipou com o
+/// resolver, o rótulo e a chave de i18n prontos e **sem esta linha**, e o único gesto que
+/// criava a track era programático — *o canal existia e o artista não lhe chegava*.
+pub const TIMELINE_ADDPROP_BONE_BEND_IN_X: NodeId = hash_node_id("timeline.addprop.bone_bend_in_x");
+
+/// "+Track" -> **Bend In Y**: a alça da RAIZ, no outro eixo (`Bone::curve.inn[1]`).
+pub const TIMELINE_ADDPROP_BONE_BEND_IN_Y: NodeId = hash_node_id("timeline.addprop.bone_bend_in_y");
+
+/// "+Track" -> **Bend Out X**: a alça da PONTA (`Bone::curve.out[0]`).
+pub const TIMELINE_ADDPROP_BONE_BEND_OUT_X: NodeId =
+    hash_node_id("timeline.addprop.bone_bend_out_x");
+
+/// "+Track" -> **Bend Out Y**: a alça da PONTA, no outro eixo (`Bone::curve.out[1]`).
+pub const TIMELINE_ADDPROP_BONE_BEND_OUT_Y: NodeId =
+    hash_node_id("timeline.addprop.bone_bend_out_y");
+
 /// The drag grip at the veil's left edge (the authored-duration end) — resizing
 /// the composition duration by dragging on the ruler.
 pub const TIMELINE_DUR_HANDLE: NodeId = hash_node_id("timeline.dur_handle");

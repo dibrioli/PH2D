@@ -32,6 +32,20 @@ render = ["dep:ph2d-render"]
 # liga. O runtime base da timeline segue sem física, exatamente como segue sem
 # wgpu, e nada de novo foi inventado.
 physics = ["dep:ph2d-physics-ecs"]
+# `skeleton` adds the bone-handle resolvers, which write `Bone::curve` — as duas
+# alças do *Bendy Bone* (ordem do dono, 2026-09-17: *"além de animar os ossos, é
+# necessária a capacidade de animar os handles dos ossos"*).
+#
+# ⚠️ **A terceira ocorrência da MESMA forma**, e é por isso que ela não pede
+# discussão nova: `render` para o `Sprite`, `physics` para o `PhysicsJoint`,
+# `skeleton` para o `Bone`. O runtime base da timeline segue sem esqueleto como
+# segue sem wgpu e sem física.
+#
+# ⛔ **E não há ciclo**: a `ph2d-skeleton-ecs` depende só da `ph2d-ecs` e da
+# `ph2d-skeleton` — foi medido antes de escrever esta linha, porque a armadilha
+# tem precedente neste módulo (a `ph2d-skeleton-live` não pôde ser a
+# `-ecs` exactamente por um ciclo).
+skeleton = ["dep:ph2d-skeleton-ecs"]
 
 [dependencies]
 # bevy_ecs for the #[derive(Component)] on SpriteAnimation (same direct-dep
@@ -69,6 +83,10 @@ ph2d-render = { path = "../ph2d-render", optional = true }
 # whose motor target/speed and lengths are the animatable channels of a machine.
 # Irmã exata da linha acima — ver o comentário da feature `physics`.
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs", optional = true }
+# Bone-handle resolvers only (feature-gated): the `Bone` component whose `curve`
+# holds the two authored handles of a Bendy Bone.
+# Irmã exata das duas linhas acima — ver o comentário da feature `skeleton`.
+ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs", optional = true }
 
 [dev-dependencies]
 # JSON round-trip of the document in serde tests.

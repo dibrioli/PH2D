@@ -189,11 +189,21 @@ fn addprop_rows_reachable(vh: f32) -> (usize, bool) {
     (rows.len(), outside)
 }
 
-/// **Numa janela baixa a lista DESLIZA para dentro, e as treze continuam alcançáveis.**
+/// **Numa janela baixa a lista DESLIZA para dentro, e TODAS continuam alcançáveis.**
 ///
 /// A janela da foto do Enio (2026-08-15) tinha ~500 px: a lista larga-se do botão a meia altura,
-/// `13 x 28 = 364 px` não cabem abaixo dele, e as últimas cinco — Morph e as quatro do joint —
+/// `13 x 28 = 364 px` não cabiam abaixo dele, e as últimas cinco — Morph e as quatro do joint —
 /// acabavam no rodapé do ecrã, **pintadas e hit-registadas fora da janela**.
+///
+/// ⚠️ **Os dois números daquela frase envelheceram os dois, e o gate não, porque ele é DERIVADO**
+/// (`ADDPROP_BUTTONS.len()`, nunca um literal): o `chrome.row-h` desceu para **`22`** e a tabela
+/// subiu para **`17`** entradas com as quatro alças de osso (2026-09-17) ⇒ `17 × 22 = 374 px`, que
+/// numa janela de `500` deixa `126 px` de folga. *Uma asserção escrita sobre o comprimento da
+/// tabela mede a lista de hoje; uma escrita sobre `13` mediria a de 2026-08-15 para sempre.*
+///
+/// ⛔ **E a folga NÃO é infinita:** acima de ~`22` entradas nem o deslize resolve, e o que sobra é
+/// **recusado** (o cabeçalho do [`crate::tracks::paint_add_track_popover`] diz porquê, e nomeia a
+/// resposta completa — a lista ROLAR — como wave própria).
 ///
 /// **Mutação que deve sangrar:** voltar a `Rect::new(anchor.x, anchor.y + anchor.h, ..)`, o
 /// largar-direto-para-baixo.

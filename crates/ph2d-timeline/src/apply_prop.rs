@@ -65,6 +65,21 @@ pub(crate) fn write_prop(
         *field.of_mut(&mut j) = f;
         return;
     }
+    // ⭐⭐⭐ **AS DUAS ALÇAS DE UM OSSO** — a curvatura autorada do *Bendy Bone* (ordem do dono,
+    // 2026-09-17). `Bone` mora na `ph2d-skeleton-ecs`, que o runtime base não quer conhecer, então
+    // a dep é opcional atrás da feature `skeleton` — a mesma forma do `physics` acima.
+    //
+    // ⚠️ **A conversão é `f32` → `f64` e é aqui que ela mora**: a alça é `[f64; 2]` (as contas de
+    // geometria desta casa são em `f64`) e um `AnimValue` é `f32`. Pô-la na tabela de campos
+    // obrigaria os dois lados a repetir o `as`, que é onde um par inverso se desalinha.
+    #[cfg(feature = "skeleton")]
+    if let AnimValue::Float(f) = v
+        && let Some(field) = bend_field(prop)
+        && let Some(mut bone) = world.get_mut::<ph2d_skeleton_ecs::Bone>(entity)
+    {
+        field.set(&mut bone, f);
+        return;
+    }
     // ⭐⭐⭐ **A OPACIDADE DE UM CAMINHO VETORIAL** — o mesmo canal, o outro substrato.
     //
     // ⛔⛔ Até 2026-09-04 este canal era **MUDO** num vetor: o braço abaixo exige um
@@ -179,6 +194,13 @@ pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> O
             .get::<ph2d_physics_ecs::PhysicsJoint>(entity)
             .map(|j| *field.of(j));
     }
+    // As duas alças de um osso — o braço espelho do `write_prop`, na mesma ordem.
+    #[cfg(feature = "skeleton")]
+    if let Some(field) = bend_field(prop) {
+        return world
+            .get::<ph2d_skeleton_ecs::Bone>(entity)
+            .map(|b| field.get(b));
+    }
     // ⭐ A opacidade de um caminho vetorial — o braço espelho do `write_prop`, e ele vem PRIMEIRO
     // pela mesma razão que lá: a entidade é um vetor ou é uma sprite, nunca as duas, e perguntar
     // ao substrato certo primeiro poupa a leitura que sabe que vai falhar.
@@ -241,6 +263,62 @@ impl JointField {
             JointField::MaxLength => &mut j.max_length,
         }
     }
+}
+
+/// **Qual das quatro alças um [`PropKind`] nomeia** — e `None` para todo kind que não é de osso.
+///
+/// ⚠️ Existe pela MESMA razão que a [`JointField`], e o cabeçalho deste ficheiro é a prova: dois
+/// `match` espelhados param de ser inversos sem ninguém notar. Com a tabela, o par
+/// [`write_prop`]/[`read_prop_kind`] ganha as quatro de uma vez.
+///
+/// ⚠️⚠️ **Ela converte, e a [`JointField`] não** — um campo de joint é `f32` e devolve-se por
+/// referência; uma alça é `f64` e não há `&mut f32` que a aponte. ⇒ `get`/`set` em vez de
+/// `of`/`of_mut`, que é a diferença honesta entre as duas e não uma inconsistência de estilo.
+#[cfg(feature = "skeleton")]
+#[derive(Clone, Copy)]
+pub(crate) enum BendField {
+    /// A alça da raiz, eixo X (`Bone::curve.inn[0]`).
+    InX,
+    /// A alça da raiz, eixo Y (`Bone::curve.inn[1]`).
+    InY,
+    /// A alça da ponta, eixo X (`Bone::curve.out[0]`).
+    OutX,
+    /// A alça da ponta, eixo Y (`Bone::curve.out[1]`).
+    OutY,
+}
+
+#[cfg(feature = "skeleton")]
+impl BendField {
+    fn get(self, b: &ph2d_skeleton_ecs::Bone) -> f32 {
+        let v = match self {
+            BendField::InX => b.curve.inn[0],
+            BendField::InY => b.curve.inn[1],
+            BendField::OutX => b.curve.out[0],
+            BendField::OutY => b.curve.out[1],
+        };
+        v as f32
+    }
+
+    fn set(self, b: &mut ph2d_skeleton_ecs::Bone, v: f32) {
+        let v = f64::from(v);
+        match self {
+            BendField::InX => b.curve.inn[0] = v,
+            BendField::InY => b.curve.inn[1] = v,
+            BendField::OutX => b.curve.out[0] = v,
+            BendField::OutY => b.curve.out[1] = v,
+        }
+    }
+}
+
+#[cfg(feature = "skeleton")]
+pub(crate) fn bend_field(prop: PropKind) -> Option<BendField> {
+    Some(match prop {
+        PropKind::BoneBendInX => BendField::InX,
+        PropKind::BoneBendInY => BendField::InY,
+        PropKind::BoneBendOutX => BendField::OutX,
+        PropKind::BoneBendOutY => BendField::OutY,
+        _ => return None,
+    })
 }
 
 #[cfg(feature = "physics")]

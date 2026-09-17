@@ -8735,6 +8735,7 @@ dependencies = [
  "ph2d-expr-parse",
  "ph2d-physics-ecs",
  "ph2d-render",
+ "ph2d-skeleton-ecs",
  "postcard",
  "serde",
  "serde_json",

@@ -27,6 +27,10 @@ pub(crate) fn prop_label(p: PropKind) -> &'static str {
         PropKind::JointMotorSpeed => ph2d_i18n::tr("panel.timeline.prop.motor_speed"),
         PropKind::JointRestLength => ph2d_i18n::tr("panel.timeline.prop.rest_length"),
         PropKind::JointMaxLength => ph2d_i18n::tr("panel.timeline.prop.max_length"),
+        PropKind::BoneBendInX => ph2d_i18n::tr("panel.timeline.prop.bone_bend_in_x"),
+        PropKind::BoneBendInY => ph2d_i18n::tr("panel.timeline.prop.bone_bend_in_y"),
+        PropKind::BoneBendOutX => ph2d_i18n::tr("panel.timeline.prop.bone_bend_out_x"),
+        PropKind::BoneBendOutY => ph2d_i18n::tr("panel.timeline.prop.bone_bend_out_y"),
     }
 }
 

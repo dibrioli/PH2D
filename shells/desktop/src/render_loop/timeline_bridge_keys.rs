@@ -76,6 +76,26 @@ pub(crate) fn sample_prop_value(
         PropKind::JointMaxLength => {
             Float(world.get::<ph2d_physics_ecs::PhysicsJoint>(e)?.max_length)
         }
+        // **As duas alças de um osso são valores de CENA**, como o `t` do Morph e os params de
+        // joint: o artista arrasta a alça no canvas até a curva parecer certa e aperta K. (Sem
+        // `Bone` na entidade não há o que capturar, e o `?` recusa.)
+        //
+        // ⚠️ **O que se captura é a alça AUTORADA**, mesmo com o osso em `Handles::Auto` — ali o
+        // `curve` fica intocado de propósito, logo o número lido é o que volta se o artista
+        // devolver o osso a `Authored`. Ler a alça RESOLVIDA seria capturar o que o vizinho ditou
+        // e gravá-lo como autoria, que é a forma de um modo se tornar impossível de desligar.
+        PropKind::BoneBendInX => {
+            Float(world.get::<ph2d_skeleton_ecs::Bone>(e)?.curve.inn[0] as f32)
+        }
+        PropKind::BoneBendInY => {
+            Float(world.get::<ph2d_skeleton_ecs::Bone>(e)?.curve.inn[1] as f32)
+        }
+        PropKind::BoneBendOutX => {
+            Float(world.get::<ph2d_skeleton_ecs::Bone>(e)?.curve.out[0] as f32)
+        }
+        PropKind::BoneBendOutY => {
+            Float(world.get::<ph2d_skeleton_ecs::Bone>(e)?.curve.out[1] as f32)
+        }
     })
 }
 

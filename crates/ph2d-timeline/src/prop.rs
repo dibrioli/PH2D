@@ -123,6 +123,43 @@ pub enum PropKind {
     /// diferença é do joint, não da track.
     /// Appended — the discriminant is a frozen wire value.
     JointMaxLength = 12,
+    /// ⭐⭐⭐ **A ALÇA DA RAIZ, no eixo X** — `ph2d_skeleton_ecs::Bone::curve.inn[0]`, o
+    /// deslocamento da alça a partir de `(L/3, 0)`. Ordem do dono (2026-09-17): *«além de animar os
+    /// ossos, é necessária a capacidade de animar os handles dos ossos»*.
+    ///
+    /// ⚠️ **Porque são QUATRO escalares e não duas alças 2D:** é a forma que a casa já dá a toda
+    /// coisa que o artista arrasta em duas dimensões — [`PropKind::TranslationX`]/`Y`. O editor de
+    /// gráfico, as tangentes com peso, o *roving* e o ajuste de gravação trabalham todos sobre
+    /// ESCALARES, e [`PropKind::Position`] (o canal 2D) não é a alternativa barata: ele é um MODO
+    /// com uma trajectória autorada por baixo (ADR-0141), maquinaria que uma alça não pede.
+    ///
+    /// ⛔⛔ **E há uma SEGUNDA porta que o torna inerte, esta no ponto de NASCIMENTO do osso:**
+    /// `BoneSpec::is_rigid()` é `segments == 1 || curve.is_straight()`, e um osso nasce com
+    /// **`segments: 1`** ⇒ *animar a alça de um osso acabado de criar não move um pixel*. Não é
+    /// defeito deste canal — é a lei do *Bendy Bone*, e ela existe para que um osso que não dobra
+    /// não pague `N` sub-ossos. ⚠️ Mas o artista vê **exactamente** o que veria com o canal
+    /// partido, que é a família de reports que este repo já pagou cinco vezes.
+    /// ⇒ *o passo (1) de qualquer smoke desta wave é subir o `Segments`*, e a saída completa — o
+    /// app DIZER porque está inerte — fica nomeada e por construir.
+    ///
+    /// ⚠️⚠️ **Com [`Handles::Auto`] este número é escrito e NÃO é lido** — ali as alças saem das
+    /// tangentes dos vizinhos e o campo `curve` fica intocado de propósito (é isso que faz voltar a
+    /// `Authored` devolver o que lá estava). *Não é um canal morto: é o precedente do
+    /// [`PropKind::JointMotorTarget`] à letra* — o modo do motor decide qual dos dois números o
+    /// solver lê, e manter os dois canais honestos é o que deixa o artista animar o número que a
+    /// coisa DELE de facto usa. Quem anima uma alça põe o osso em *Authored*, como quem anima um
+    /// alvo de servo põe o motor em `Position`.
+    ///
+    /// Appended — the discriminant is a frozen wire value.
+    ///
+    /// [`Handles::Auto`]: ../../../crates/ph2d-skeleton/src/bend.rs
+    BoneBendInX = 13,
+    /// A alça da RAIZ, no eixo Y — `Bone::curve.inn[1]`. Irmã da [`PropKind::BoneBendInX`].
+    BoneBendInY = 14,
+    /// A alça da PONTA, no eixo X — `Bone::curve.out[0]`, o deslocamento a partir de `(2L/3, 0)`.
+    BoneBendOutX = 15,
+    /// A alça da PONTA, no eixo Y — `Bone::curve.out[1]`. Irmã da [`PropKind::BoneBendOutX`].
+    BoneBendOutY = 16,
 }
 
 impl PropKind {
@@ -191,6 +228,10 @@ impl PropKind {
             10 => Some(PropKind::JointMotorSpeed),
             11 => Some(PropKind::JointRestLength),
             12 => Some(PropKind::JointMaxLength),
+            13 => Some(PropKind::BoneBendInX),
+            14 => Some(PropKind::BoneBendInY),
+            15 => Some(PropKind::BoneBendOutX),
+            16 => Some(PropKind::BoneBendOutY),
             _ => None,
         }
     }
@@ -214,6 +255,10 @@ impl PropKind {
             PropKind::JointMotorSpeed => "motor_speed",
             PropKind::JointRestLength => "rest_length",
             PropKind::JointMaxLength => "max_length",
+            PropKind::BoneBendInX => "bone_bend_in_x",
+            PropKind::BoneBendInY => "bone_bend_in_y",
+            PropKind::BoneBendOutX => "bone_bend_out_x",
+            PropKind::BoneBendOutY => "bone_bend_out_y",
         }
     }
 
@@ -244,6 +289,12 @@ impl PropKind {
             "motor_speed" | "motorspeed" => Some(PropKind::JointMotorSpeed),
             "rest_length" | "restlength" => Some(PropKind::JointRestLength),
             "max_length" | "maxlength" => Some(PropKind::JointMaxLength),
+            // ⚠️ O `i18n_suffix` é uma das grafias aceites, e o gate
+            // `every_prop_answers_to_the_name_the_panel_shows_it_under` exige-o.
+            "bone_bend_in_x" | "bendinx" | "bend_in_x" => Some(PropKind::BoneBendInX),
+            "bone_bend_in_y" | "bendiny" | "bend_in_y" => Some(PropKind::BoneBendInY),
+            "bone_bend_out_x" | "bendoutx" | "bend_out_x" => Some(PropKind::BoneBendOutX),
+            "bone_bend_out_y" | "bendouty" | "bend_out_y" => Some(PropKind::BoneBendOutY),
             _ => None,
         }
     }
@@ -271,7 +322,13 @@ impl PropKind {
             | PropKind::JointMotorTarget
             | PropKind::JointMotorSpeed
             | PropKind::JointRestLength
-            | PropKind::JointMaxLength => None,
+            | PropKind::JointMaxLength
+            // As quatro alças moram no `Bone` da entidade-OSSO, e o resolver delas é o
+            // `crate::apply_prop`, como o dos params de joint.
+            | PropKind::BoneBendInX
+            | PropKind::BoneBendInY
+            | PropKind::BoneBendOutX
+            | PropKind::BoneBendOutY => None,
         }
     }
 
@@ -317,7 +374,14 @@ impl PropKind {
             | PropKind::JointMotorTarget
             | PropKind::JointMotorSpeed
             | PropKind::JointRestLength
-            | PropKind::JointMaxLength => ph2d_anim::FitChannel::LINEAR,
+            | PropKind::JointMaxLength
+            // ⚠️ **LINEAR e não ANGLE**: uma alça é um DESLOCAMENTO em unidades locais do osso,
+            // não um ângulo — o unwrap de ±2π existe para o sawtooth que só um `atan2` de gizmo
+            // produz, e nenhuma das duas alças passa por um.
+            | PropKind::BoneBendInX
+            | PropKind::BoneBendInY
+            | PropKind::BoneBendOutX
+            | PropKind::BoneBendOutY => ph2d_anim::FitChannel::LINEAR,
         }
     }
 
@@ -359,6 +423,15 @@ impl PropKind {
             | PropKind::JointMotorSpeed
             | PropKind::JointRestLength
             | PropKind::JointMaxLength => Algebra::Sum,
+            // ⭐ **Neutro ZERO, e não é uma escolha de conveniência: é o que `Bend::STRAIGHT` É.**
+            // Uma alça é um deslocamento a partir do terço do eixo, logo o osso recto tem as duas
+            // a `[0, 0]` — e uma lane aditiva quer dizer *«arqueia mais um tanto»*. Por RAZÃO,
+            // duas lanes a arquear dariam o produto de dois deslocamentos, que não é uma curva
+            // que alguém pediu (e a `0` seria uma divisão pelo neutro).
+            PropKind::BoneBendInX
+            | PropKind::BoneBendInY
+            | PropKind::BoneBendOutX
+            | PropKind::BoneBendOutY => Algebra::Sum,
         }
     }
 }

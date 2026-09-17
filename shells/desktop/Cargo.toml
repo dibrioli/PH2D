@@ -133,7 +133,11 @@ ph2d-anim = { path = "../../crates/ph2d-anim" }
 # applies them at the Playhead each frame (render_loop apply pass), and drives
 # the app-general TimelineDoc via apply_from_doc. The
 # `render` feature enables the sprite-opacity resolver (writes Sprite.tint[3]).
-ph2d-timeline = { path = "../../crates/ph2d-timeline", features = ["render", "physics"] }
+ph2d-timeline = { path = "../../crates/ph2d-timeline", features = [
+    "render",
+    "physics",
+    "skeleton",
+] }
 ph2d-timeline-preview = { path = "../../crates/ph2d-timeline-preview" }
 # ⭐ O MOTOR do onion da timeline — saiu da shell em 2026-09-14 (a cura nomeada do tecto
 # `the_shell_only_shrinks`): ele só depende de crates irmãs, e a shell fica com a CHAMADA.

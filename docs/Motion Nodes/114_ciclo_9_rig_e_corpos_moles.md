@@ -843,3 +843,116 @@ penetra.
    construída — e a medição diz que ela **não é necessária para a capacidade**, só para o conforto:
    a composição já entrega o resultado. *Construí-la sem essa medição teria sido reconstruir o que a
    composição exprime*, que é a §5.0 e a mesma lei por que a W1 deste ciclo caiu.
+
+---
+
+## §12 — ✅ O BOTÃO `Collide` DA FORMA PASSA A VALER FORA DA SIMULAÇÃO
+
+> Ordem do dono (2026-09-17): *«O botão Collide da Shape deve funcionar para todo e qualquer
+> duplicador.»*
+
+### §12.1 — O censo DERIVADO: quem é duplicador, e o que ele faz ao colisor
+
+⛔ **A população sai do REGISTO, nunca de uma lista escrita à mão** — *«todo e qualquer»* não se
+adivinha. Sonda
+[`motion_colisor_duplicador_probe.rs`](../../crates/ph2d-app-motion/src/motion_colisor_duplicador_probe.rs):
+cada nó recebe `source.shape(Collide)` e conta-se quem devolve **mais peças do que recebeu**.
+
+**14 fontes saltadas** (não têm porta de entrada — não são duplicadores) · **121 varridos** ·
+**13 multiplicam**:
+
+| o colisor declarado | quantos | quem |
+|---|---:|---|
+| ✅ **chega a TODAS as peças** | **5** | `motion.clone` · `motion.mirror` · `motion.kaleidoscope` · `fx.drop_shadow` · `fx.rgb_split` |
+| — geram nuvem NOVA (nunca receberam a forma) | 8 | `motion.boids` · `motion.distribute_curve` · `motion.distribute_radial` · `motion.lattice` · `motion.soft_body` · `motion.verlet_rope` · `motion.voronoi` · `motion.wave` |
+| ⛔ deitam fora um colisor que receberam | **0** | — |
+
+⭐⭐⭐ **O achado: a declaração JÁ chegava intacta a todas as peças dos cinco duplicadores
+verdadeiros. O que não existia era um LEITOR.** As três crates que consumiam aquelas colunas eram
+todas da família `sim.*` ⇒ o botão só fazia alguma coisa dentro do laço da simulação — *um controlo
+vivo e inalcançável a partir de todo o resto do catálogo*, que dá exactamente o mesmo report que um
+controlo morto.
+
+⚠️⚠️ **E o discriminador que separa as duas últimas linhas é o `geometry_id`.** Sem ele as duas
+leem-se iguais numa tabela de *«o colisor não chegou»* e **as curas são opostas**: uma é um defeito
+de passagem, a outra é a pergunta de produto *«uma peça que este nó INVENTA deve herdar o colisor da
+forma que entrou?»*. ⛔ A minha primeira leitura acusou o `motion.scatter` de deitar o colisor fora,
+e o discriminador **refutou-a**: ele é uma FONTE e nunca recebeu nada.
+
+### §12.2 — A cura: o `motion.collide` honra o colisor DECLARADO
+
+[`declarado.rs`](../../crates/ph2d-node-motion-collide/src/declarado.rs) — o nó passa a perguntar à
+[`ph2d_contact`] (o motor de peça-contra-peça da casa: grelha espacial, caixas orientadas, rotação)
+em vez de separar discos de raio uniforme. Medido pela rota do produto
+(`source.shape(Collide) → motion.clone(distance 0) → motion.collide`):
+
+| o botão | como as cinco cópias ficam |
+|---|---|
+| **desligado** | espalhadas na DIAGONAL — `(−0,64,−0,64) … (0,64,0,64)`. *Um disco não tem orientação.* |
+| **ligado** | numa COLUNA, todas no mesmo `x` — `(0,00,−1,39) … (0,00,1,39)`. *Caixas arrumam-se como caixas.* |
+
+**Três decisões, cada uma com o porquê no código:**
+
+1. **A declaração GANHA do `Radius` do cartão** — *só quem desenha sabe o tamanho do que desenha*.
+2. **Uma peça SEM declaração cai no `Radius`, como disco** — sem isto uma corrente MISTA deixaria
+   metade das peças inertes e caladas, e um nó que separa umas e não outras é pior que um que não
+   separa nenhuma.
+3. ⛔⛔ **O `Strength` e o `falloff` entram por MISTURA no fim, e NUNCA nos pesos.** Multiplicar o
+   `inv_mass` das duas peças de um par pelo `strength` fá-lo **CANCELAR** (`λ = pen/(k_a+k_b)`,
+   `Δp = n·λ·w`) e o knob ficaria **inerte** — é a armadilha que o `push_apart` do mesmo ficheiro já
+   documenta um nível acima, a morder outra vez noutra aritmética.
+
+⭐ **Sem declaração a porta nem abre** (`colisores()` devolve `None`) ⇒ **todo o catálogo que já
+existe sai AO BIT**. As 31 do `motion.collide` e a varredura impactada (**4 441 corridos, 4 441
+verdes**) afirmam-no.
+
+### §12.3 — ⛔⛔ A divergência CPU/GPU que isto teria aberto — e a cerca que já existia
+
+O kernel de WGSL do `motion.collide` separa **discos de raio uniforme** e tem `applicable: None`.
+Com a cura, o MESMO grafo daria **uma pilha de caixas na CPU e um borrão de discos na placa, sem
+erro nenhum**.
+
+⛔ **E a `applicable` não podia resolvê-lo:** ela recebe `fn(&dyn Fn(&str) -> f32) -> bool` — só os
+**params** do nó —, e a declaração é uma propriedade da **CORRENTE** que chega.
+
+⭐⭐ **A cerca já estava construída, e são DUAS, cobrindo as duas rotas:**
+
+| a rota | quem a recusa |
+|---|---|
+| o `source.shape` declara pelo cartão | `graph_has_live_vector_source` (ADR-0154) |
+| alguém escreve a coluna **pelo NOME** (`motion.drive(Custom…)`) | `graph_declares_collider` (doc 109 W2) |
+
+⇒ um documento que carrega colisor declarado **já era planeado para a CPU**, e a divergência é
+impossível por construção. ⚠️ *Isto foi MEDIDO e não lido:* o gate
+`a_cadeia_que_declara_colisor_pela_forma_e_recusada_do_dispositivo` corre a cadeia inteira, **com o
+CONTROLO** (uma grelha sem forma, que não pode ser recusada — senão a cerca seria incondicional e o
+gate passaria por ela).
+
+### §12.4 — Três vezes o ARNÊS se leu como um defeito de produto
+
+⚠️⚠️ **As três foram apanhadas pelo CONTROLO, nunca pela leitura do código** — e é o registo mais
+útil desta wave:
+
+1. **`source.shape` coze ZERO peças sem as membranas** — ele lê um external que a shell publica.
+2. **E as membranas vivem no cozedor do PUMP**: um `Cook::new()` nasce sem nenhuma, e o nó devolve
+   *stream vazio, sem erro* (está escrito no `eval` dele). A sonda lia `0 peças, 0 colunas`, que é
+   exactamente *«o duplicador deitou o colisor fora»*.
+3. **Ligar um fio a uma porta que NÃO EXISTE não falha** — o grafo aceita a aresta, o cozedor
+   ignora-a, e o nó emite a nuvem dele. A 1.ª redacção do censo contava assim **14 fontes** como
+   duplicadores.
+
+⭐ E uma quarta, no gate: **um `set_param` com um nome que o nó não tem também não falha** — ele
+fica guardado e ninguém o lê. O `step_x`/`step_y` que escrevi no `motion.clone` (cujo param é
+`distance`) deixou o CONTROLO com o arranjo de fábrica, e o gate teria medido outra coisa.
+
+### §12.5 — O que fica ABERTO, e é decisão do dono
+
+⏳ **O botão ainda precisa de um cartão `Collide` na cadeia.** Ele agora decide **por que colisor**
+as peças se arrumam — em todo duplicador que carregue a forma —, e não **se** elas colidem. Fazer o
+botão sozinho separar exigiria um passe implícito sem cartão: um solver escondido, com custo
+escondido e sem controlo de iterações. ⇒ **medido e não construído**, à espera do veredito.
+
+⏳ **E os 8 nós que geram nuvem NOVA** (a corda, o campo, o corpo mole, o bando, as distribuições)
+não recebem a forma de ninguém: as peças deles não são cópias de nada. Dar-lhes o colisor da forma
+que entra é uma pergunta de produto, não um defeito — e para a corda a §11 já mostra que o caminho
+que existe hoje entrega auto-colisão completa.

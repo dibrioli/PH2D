@@ -98,3 +98,68 @@ fn only_the_exact_collider_name_sends_the_document_to_the_cpu() {
         .set_text_param(n, "qualquer_chave", "collider");
     assert!(graph_declares_collider(&outro.doc.graph));
 }
+
+/// ⭐⭐⭐ **O COLISOR DECLARADO PELA FORMA NUNCA CHEGA AO DISPOSITIVO** — e é isto que torna
+/// impossível a divergência que a wave do doc 114 §12 teria aberto.
+///
+/// Desde 2026-09-17 o `motion.collide` honra o colisor que a corrente DECLARA (caixas orientadas,
+/// pela [`ph2d_contact`]) — e o kernel de WGSL dele continua a separar DISCOS de raio uniforme,
+/// com `applicable: None`. ⛔⛔ **Sem uma cerca, o MESMO grafo daria uma pilha de caixas na CPU e
+/// um borrão de discos na placa, sem erro nenhum** — a espécie de defeito que este repo caça.
+///
+/// ⚠️⚠️ **A cerca já existia, e o achado foi esse: são DUAS e cobrem as duas rotas.** O
+/// [`super::graph_has_live_vector_source`] apanha o `source.shape` (que é quem declara pelo cartão)
+/// e o [`graph_declares_collider`] apanha quem escreva a coluna **pelo nome**. ⛔ E a `applicable`
+/// do kernel **não podia** resolver isto: ela recebe só os PARAMS do nó, e a declaração é uma
+/// propriedade da CORRENTE que chega.
+///
+/// ⚠️ **O gate mede a cadeia que o artista escreve**, e não `source.shape` sozinho: é a cadeia
+/// inteira que o planeador julga.
+#[test]
+fn a_cadeia_que_declara_colisor_pela_forma_e_recusada_do_dispositivo() {
+    use ph2d_nodegraph::graph::Edge;
+    let mut m = MotionState::new();
+    let g = &mut m.doc.graph;
+    let forma = g.add_node("source.shape");
+    g.set_param(forma, ph2d_node_motion_shape::param::COLLIDE, 1.0);
+    let clone = g.add_node("motion.clone");
+    let sep = g.add_node("motion.collide");
+    let out = g.add_node("motion.output");
+    for (de, para) in [(forma, clone), (clone, sep), (sep, out)] {
+        g.connect(Edge {
+            from: (de, 0),
+            to: (para, 0),
+            delayed: false,
+        })
+        .expect("fio");
+    }
+    assert!(
+        super::graph_has_live_vector_source(&m.doc.graph, &m.registry),
+        "a cadeia do `source.shape` tem de ser recusada do dispositivo — sem isso o \
+         `motion.collide` separa CAIXAS na CPU e DISCOS na placa, para o mesmo grafo"
+    );
+
+    // ⚠️ **O CONTROLO:** a mesma cadeia sem a forma NÃO pode ser recusada por esta razão, senão a
+    // cerca seria incondicional e este gate passaria por ela, não pelo que afirma.
+    let mut m2 = MotionState::new();
+    let g2 = &mut m2.doc.graph;
+    let grade = g2.add_node("motion.grid");
+    let sep2 = g2.add_node("motion.collide");
+    let out2 = g2.add_node("motion.output");
+    for (de, para) in [(grade, sep2), (sep2, out2)] {
+        g2.connect(Edge {
+            from: (de, 0),
+            to: (para, 0),
+            delayed: false,
+        })
+        .expect("fio");
+    }
+    assert!(
+        !super::graph_has_live_vector_source(&m2.doc.graph, &m2.registry),
+        "o CONTROLO (grelha, sem forma) nao pode ser recusado — a cerca seria incondicional"
+    );
+    assert!(
+        !graph_declares_collider(&m2.doc.graph),
+        "e nem pela outra cerca, que le' os nomes das colunas"
+    );
+}

@@ -334,6 +334,10 @@ fn inv_mass(s: &Stream, n: usize) -> Vec<f32> {
     }
 }
 
+/// ⭐ O leitor do colisor DECLARADO — ver o cabeçalho dele.
+#[path = "declarado.rs"]
+mod declarado;
+
 struct MotionCollide;
 
 impl NodeOp for MotionCollide {
@@ -359,14 +363,30 @@ impl NodeOp for MotionCollide {
         // is what keeps every pre-existing packing byte-identical.
         let radii: Vec<f32> = radius_scale(input, n).iter().map(|s| base * s).collect();
         let fall = falloff_col(input, n);
-        let out_p = push_apart(&p, &w, &radii, &fall, iterations, strength);
+        // ⭐⭐⭐ **O COLISOR QUE A FORMA DECLARA GANHA** — ver [`declarado`]. `None` quando a
+        // corrente não declara nenhum, e é isso que mantém byte-idêntica toda cena que já existe.
+        let declarado = declarado::separa(input, &p, &w, &radii, &fall, iterations, strength);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             if name != "P" {
                 out.set(name.clone(), col.clone());
             }
         }
-        out.set("P", Column::Vec2(out_p));
+        match declarado {
+            Some(d) => {
+                out.set("P", Column::Vec2(d.pos));
+                // ⚠️ **O `rot` só se escreve quando alguma peça de facto RODOU.** Escrevê-lo sempre
+                // acrescentaria uma coluna a uma corrente que não a tinha, e um consumidor a
+                // jusante que distingue *«sem rotação»* de *«rotação zero»* mudaria de resposta.
+                if d.rot.iter().any(|r| *r != 0.0) {
+                    out.set("rot", Column::Scalar(d.rot));
+                }
+            }
+            None => out.set(
+                "P",
+                Column::Vec2(push_apart(&p, &w, &radii, &fall, iterations, strength)),
+            ),
+        }
         ctx.emit(out);
     }
 }

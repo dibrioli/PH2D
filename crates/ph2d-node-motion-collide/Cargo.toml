@@ -10,6 +10,10 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# ⭐ O motor de peça-contra-peça da casa — grelha espacial, caixas orientadas e rotação. Ele é uma
+# FOLHA (só depende do `ph2d-nodegraph`), e já era dependência do `sim.collide`: um nó a
+# consumi-lo é precedente, não excepção.
+ph2d-contact = { path = "../ph2d-contact" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 

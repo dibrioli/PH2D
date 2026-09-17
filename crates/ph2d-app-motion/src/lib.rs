@@ -58,6 +58,9 @@ pub mod motion_ciclo_preco;
 /// nomes e vocabulário. Nasceu ao abrir o ciclo 4, quando ia ser copiado do 3.
 #[cfg(test)]
 pub mod motion_ciclo_probe;
+/// ⭐ O COLISOR DECLARADO contra os DUPLICADORES — a ordem do dono de 2026-09-17 (doc 114 §12).
+#[cfg(test)]
+pub mod motion_colisor_duplicador_probe;
 /// O PREÇO do mesmo grupo — irmão do acima pelo tecto de LOC, cortado por
 /// responsabilidade: retratos ali, relógio e dispositivo aqui.
 #[cfg(test)]

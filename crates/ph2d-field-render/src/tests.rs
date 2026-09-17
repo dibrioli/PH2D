@@ -7126,7 +7126,7 @@ fn measure_the_settle_clock() {
         let mut primeira = 0.0;
         let mut marcos = Vec::new();
         let t = Instant::now();
-        crate::refine_occlusion(&doc, &reg, &cam, &g, &mut sh, |sh, k| {
+        crate::refine_hemisphere(&doc, &reg, &cam, &g, &surfaces, &[], &mut sh, |sh, k| {
             // A PINTURA entra: é ela que o artista vê.
             let rgba = crate::shade_render(
                 &g,

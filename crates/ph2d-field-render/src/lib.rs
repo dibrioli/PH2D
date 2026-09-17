@@ -115,6 +115,9 @@ mod march;
 /// ⭐⭐⭐ **A oclusão** — a sombra do céu. Irmã do [`shadow`], com a fronteira escrita lá.
 mod occlusion;
 mod probe_doors;
+/// ⭐⭐⭐ **O refinamento do quadro assente** — o laço que avança as DUAS metades do hemisfério com
+/// o mesmo `k`.
+pub mod refine;
 mod shade;
 mod shade_render;
 mod shadow;
@@ -124,6 +127,7 @@ use edges::resample_edges;
 use march::{Scene, march};
 use tiles::{SLABS, TILE, tiled_trace};
 
+pub use bounce::{BounceSlice, blur_bounce, bounce_pass, bounce_slice};
 pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Rays, Screen};
 pub use ground::{
     GROUND_SKY_FALLOFF, GROUND_SKY_SAMPLES, GROUND_SKY_SPREAD, GROUND_SKY_STRENGTH, Ground,
@@ -135,9 +139,10 @@ pub use march::{
 };
 pub use occlusion::{
     ConeSlice, OCCLUSION_BLUR_COS, OCCLUSION_PASSES, OCCLUSION_REACH, blur_occlusion, cone_dir,
-    occlusion, occlusion_slice, occlusion_slice_with_reach, occlusion_with_reach, refine_occlusion,
+    occlusion, occlusion_slice, occlusion_slice_with_reach, occlusion_with_reach,
 };
 pub use probe_doors::*;
+pub use refine::refine_hemisphere;
 #[doc(hidden)]
 pub use shade::Matcap;
 pub use shade::{shade, shade_with};

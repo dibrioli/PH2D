@@ -263,14 +263,26 @@ pub(crate) fn traca(p: &Pedido) {
             // ⛔ Medido (§29.2): os `32` raios de uma só vez custam `1,35 s` a `1920×1080`.
             // Repartidos, cada passagem custa o que um quadro tolera e o artista vê a
             // peça a ganhar profundidade em vez de esperar por ela.
-            // ⚠️ A LEI vive na porta ([`ph2d_field_render::refine_occlusion`]); aqui
+            // ⚠️ A LEI vive na porta ([`ph2d_field_render::refine_hemisphere`]); aqui
             // fica só o que é da thread: pintar, mandar, e dizer se vale a pena continuar.
+            //
+            // ⭐⭐⭐ **E desde a `W5` cada passagem avança as DUAS metades do hemisfério** — o céu,
+            // que ATENUA, e o ricochete da cena, que SOMA (`docs/Render3d/08`). Elas andam com o
+            // mesmo `k` porque saem do mesmo conjunto de direcções: *uma publicação com `k`
+            // direcções de céu e outras tantas DIFERENTES de ricochete somaria dois hemisférios.*
+            //
+            // ⏱️ Medido (`--release`, CPU a `95 %` ociosa): uma passagem no caso do modelador custa
+            // `4,88 ms` de céu mais `19,06` de ricochete a `1920×1080` — o refinamento inteiro
+            // passa de `~0,23 s` para `~1,15 s`, publicando `48` vezes pelo caminho e **cancelável
+            // em cada uma**. O quadro de MOVIMENTO fica byte-idêntico: ele não passa por aqui.
             let mut sh = sombras.take().unwrap_or_default();
-            ph2d_field_render::refine_occlusion(
+            ph2d_field_render::refine_hemisphere(
                 &p.doc,
                 &p.reg,
                 &p.cam,
                 &g,
+                &surfaces,
+                &p.lights,
                 &mut sh,
                 |sh, passagem| {
                     // ⛔⛔ **O cancelamento é visto ANTES da pintura**, e foi a segunda

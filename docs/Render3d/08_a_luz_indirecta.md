@@ -162,8 +162,116 @@ viewport de render.
 
 ⏳ **O que fica por fazer, por ordem:**
 
-1. o ricochete em **fatias**, irmão do `occlusion_slice` — é o que o põe no produto;
+1. ✅ **o ricochete em fatias — FEITO (§8)**, e é o que o pôs no produto;
 2. o segundo **ricochete** (hoje a luz que sai do ponto acertado é só a directa dele);
 3. a parcela **especular** do indirecto (hoje é só o céu: uma irradiância por pixel não tem
    direcção, e o lóbulo especular pergunta por uma);
 4. o **dispositivo** — esta passagem é CPU, e o quadro assente do modelador é da placa desde a `§36`.
+
+## §8 — ⭐⭐⭐ AS FATIAS: o ricochete entra no produto pelo quadro assente
+
+[`refine.rs`](../../crates/ph2d-field-render/src/refine.rs) — a `refine_occlusion` **mudou de nome
+e de trabalho**: hoje é a `refine_hemisphere`, e cada passagem acrescenta **uma direcção às DUAS
+metades**.
+
+### §8.1 — ⚠️⚠️ Porque é UM laço e não dois
+
+As duas metades saem do mesmo conjunto de direcções e do mesmo peso `max(0, n·d)`. Uma publicação
+em que o céu já consumiu `k` direcções e o ricochete outras tantas **diferentes** somaria dois
+hemisférios distintos — *a partilha do conjunto só é uma lei enquanto as duas o percorrerem no mesmo
+passo*, e dois laços seriam a forma mais fácil de as deixar divergir sem ninguém dar por isso.
+
+⭐ **Sem materiais ou sem lâmpadas o ricochete degenera para o canal vazio e o quadro fica o de
+sempre, AO BIT** — é isso que dispensa um interruptor ao lado da porta, e há gate a afirmá-lo (com o
+céu a ser comparado byte a byte entre as duas corridas).
+
+### §8.2 — ⏱️ A CADÊNCIA, e é ela que autoriza o mesmo `k`
+
+A [`sonda_o_preco_do_ricochete`](../../crates/ph2d-field-render/src/tests/cornell.rs) mediu a
+sequência INTEIRA (§5) e ela não cabe num quadro. O refinamento paga **uma** direcção:
+
+| cena | UMA passagem: céu | ricochete | razão |
+|---|---:|---:|---:|
+| caixa fechada `640×360` | `18,23 ms` | `28,62` | `1,6×` |
+| caixa fechada `1920×1080` | `186,33` | `270,60` | `1,5×` |
+| peça no aberto `640×360` | `0,40` | `1,63` | `4,0×` |
+| **peça no aberto `1920×1080`** | **`4,88`** | **`19,06`** | **`3,9×`** |
+
+⭐⭐ **`1,5`–`4` vezes o que a metade do céu JÁ paga na mesma passagem** — e não as dezenas que a
+tabela do §5 sugeria, porque ali o ricochete inteiro era comparado com um traçado e aqui é comparado
+com o cone da oclusão, que também marcha. ⇒ no caso do modelador o refinamento passa de `~0,23 s`
+para `~1,15 s`, publicando `48` vezes pelo caminho e **cancelável em cada uma**.
+
+⚠️ **A régua é a PASSAGEM e não o total:** o que o artista sente é o intervalo entre duas imagens, e
+a granularidade do cancelamento é uma passagem.
+
+### §8.3 — ⭐ O borrão é UMA lei com dois consumidores
+
+O doc do [`blur_occlusion`] já escrevia que o que ele suaviza hoje **não é ruído de amostragem** (a
+oclusão é determinística e há dois gates a afirmá-lo) mas as **estrias do conjunto discreto de
+direcções**. O ricochete corre no MESMO conjunto ⇒ tem a mesma assinatura ⇒ a mesma cura. A guarda
+da normal saiu para uma porta ([`para_cada_vizinhanca`]) e os dois canais só somam.
+
+⚠️ **E o gate que prova isso não podia ser o do refinamento:** ele compara a saída do laço com
+`blur_bounce(bounce_pass(..))`, e as duas rotas passam pela MESMA função — mutá-la muda os dois lados
+e ele fica **verde**. *Uma igualdade entre duas rotas que partilham uma porta não afirma nada sobre
+essa porta.* ⇒ a régua é o **céu**: cada canal do ricochete tem de sair exactamente como o
+[`blur_occlusion`] o devolveria sozinho.
+
+## §9 — ⛔⛔ O que a construção REFUTOU
+
+### §9.1 — A lei da acumulação vale para fatias de UMA direcção, não para uma partição qualquer
+
+O doc do [`occlusion_slice`] prometia por escrito que *«somar todas as fatias dá EXACTAMENTE o que a
+`occlusion` devolve»*. **Falso fora da partição que o gate dela corria** — medido em `3 + 5` contra
+`8`, nas duas metades:
+
+| | pior relativo | a associatividade permite |
+|---|---:|---:|
+| ricochete | `2,541e-7` | `8,345e-7` |
+| céu | `2,392e-7` | `8,345e-7` |
+
+A razão é só **associatividade**: `(a₀+a₁+a₂) + (a₃+…+a₇)` é uma dobra em **árvore** e a sequência
+inteira é uma dobra à **esquerda**. Fatias de uma direcção reproduzem a dobra à esquerda ⇒ **ao
+bit**; uma partição desigual não. ⇒ a barra dessa metade é **derivada do número de parcelas**
+(`(total − 1) · f32::EPSILON`) e os dois gates passaram a correr **as duas** partições.
+
+*Um gate que prova o caso que o produto usa não autoriza a frase geral escrita ao lado dele.*
+
+### §9.2 — ⛔⛔⛔ Uma asserção que estava verde por GEOMETRIA DA CÂMERA, e não pela lei
+
+O gate *«uma fatia que começa depois do fim da sequência é vazia»* passava na caixa de Cornell — e
+**passava com a cerca do laço apagada**: a mutação SOBREVIVEU.
+
+A sonda diz porquê. Para `k ≥ total` a [`cone_dir`] devolve `[0, 0, z]` com `|z| > 1` (o raio sai
+`0` porque `1 − z²` fica negativo), ou seja **`−z` do mundo**; e um pixel VISÍVEL satisfaz
+`n·olho > 0` **por construção**, logo com a câmera daquela caixa (olho em `+z`) todo pixel de peça
+tem `n_z > 0` e pesa aquela direcção com `≤ 0`. Medido: **`0`** pares `(pixel, direcção fora)` com
+peso positivo, em `2 304` pixels de peça.
+
+⇒ a fixtura passou a ser uma **esfera vista de yaw `135°`**, onde metade dos pixels visíveis tem
+`n_z < 0` — `3 496` pares em `944` px —, e **o controlo vive DENTRO do gate**: se a fixtura deixar de
+conter o fenómeno, ele reprova alto em vez de ficar verde a medir nada.
+
+### §9.3 — E uma barra minha reprovou sobre produto correcto, outra vez
+
+*«a 1.ª passagem já acende mais de `100` pixels»* — escrito de cabeça, e a medição deu **`97`** de
+`1 024` (uma direcção de `48` ilumina `~9,5 %` da caixa). A barra é hoje **metade do medido**, como
+a do §3.1. *Uma barra escrita antes da medição mede a minha expectativa.*
+
+## §10 — ⏳ O que fica por fazer
+
+Na ordem do §7, menos o item 1 — mais o que as fatias deixaram nomeado:
+
+- **o CHÃO invisível não recebe ricochete.** Os pixels que o mostram falham a peça
+  (`g.hit == false`), logo não entram em fatia nenhuma: ele recebe o céu pelo passe da sombra e mais
+  nada. *A cor que a peça devolveria ao chão à volta dela é a wave seguinte, e a marcha dela é outra
+  — o ponto de partida está no plano, não no campo.*
+- **a suavização do ricochete não foi RE-MEDIDA contra a lei nova**, exactamente como o doc do
+  [`blur_occlusion`] já declara sobre si próprio. A premissa (*baixa frequência dentro de uma
+  superfície*) é a mesma; o **quanto** não está medido nos dois canais.
+
+[`blur_occlusion`]: ../../crates/ph2d-field-render/src/occlusion.rs
+[`para_cada_vizinhanca`]: ../../crates/ph2d-field-render/src/occlusion.rs
+[`occlusion_slice`]: ../../crates/ph2d-field-render/src/occlusion.rs
+[`cone_dir`]: ../../crates/ph2d-field-render/src/occlusion.rs

@@ -1,7 +1,7 @@
 //! Os gates do **chão que só recebe** — ver [`crate::ground`] e `docs/Render3d/07`.
 
 use crate::{
-    Ground, Lighting, Orbit, PointLamp, Screen, Shadows, Surfaces, lowest_point, refine_occlusion,
+    Ground, Lighting, Orbit, PointLamp, Screen, Shadows, Surfaces, lowest_point, refine_hemisphere,
     shade_render, shadow_pass, shadow_pass_on, trace,
 };
 use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Xform};
@@ -398,7 +398,11 @@ fn sem_lampadas_o_contacto_escurece_pela_oclusao() {
         Some(CHAO),
         "sem lâmpadas o chão tem de ficar declarado"
     );
-    let passagens = refine_occlusion(&doc, &reg, &cam, &g, &mut sh, |_, _| true);
+    let sem_cena = Surfaces {
+        all: &[],
+        owners: None,
+    };
+    let passagens = refine_hemisphere(&doc, &reg, &cam, &g, &sem_cena, &[], &mut sh, |_, _| true);
     assert_eq!(passagens, crate::OCCLUSION_PASSES);
     let rgba = pinta_com(&g, &cam, &[], &sh);
     let fundo = alfas_de_fundo(&g, &rgba);

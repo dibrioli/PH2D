@@ -267,10 +267,17 @@ fn probe_de_onde_vem_a_sombra_da_esfera() {
 /// ⭐⭐⭐ **SOMAR AS FATIAS É A SEQUÊNCIA INTEIRA** — e é este gate que autoriza o quadro assente a
 /// refinar em passagens em vez de pagar `32` raios de uma vez.
 ///
-/// ⚠️ **Ao BIT**, e não «perto»: as duas rotas somam os mesmos `f32` pela mesma ordem por pixel
-/// (cada fatia acrescenta os seus raios no mesmo lugar do acumulador). Uma barra de tolerância aqui
-/// esconderia exactamente o defeito que ele mede — uma fatia que estratifica em si própria em vez
-/// de no total.
+/// ⚠️ **Ao BIT para fatias de UMA direcção**, que é a forma que o refinamento tem: as duas rotas
+/// somam os mesmos `f32` pela mesma ordem por pixel, logo ficam com a mesma **dobra à esquerda**.
+/// Uma barra de tolerância nessa metade esconderia exactamente o defeito que ele mede — uma fatia
+/// que estratifica em si própria em vez de no total.
+///
+/// ⛔⛔ **E uma partição DESIGUAL já não é igual ao bit — medido em 2026-09-17, aqui e na irmã do
+/// ricochete.** `(a₀+a₁+a₂) + (a₃+…+a₇)` é uma dobra em ÁRVORE e a sequência inteira é uma dobra à
+/// ESQUERDA; a diferença é só associatividade, e a barra dessa metade é **derivada do número de
+/// parcelas** (`(total − 1) · f32::EPSILON`). *A frase que estava aqui — e a do
+/// [`crate::occlusion_slice`] — dizia «somar todas as fatias dá EXACTAMENTE», o que era verdade
+/// sobre a única partição que este gate corria e falso sobre uma partição qualquer.*
 #[test]
 fn somar_as_fatias_da_a_sequencia_inteira() {
     let doc = cruz();
@@ -301,6 +308,36 @@ fn somar_as_fatias_da_a_sequencia_inteira() {
              estratificar em SI PRÓPRIA em vez de no total"
         );
     }
+
+    // ── a outra metade: uma partição DESIGUAL, onde só a associatividade pode divergir ─────────
+    let mut desigual = crate::ConeSlice {
+        sum: vec![0.0f32; g.hit.len()],
+        weight: vec![0.0f32; g.hit.len()],
+    };
+    desigual.add(&crate::occlusion_slice(&doc, &reg, &cam, &g, 0, 3, TOTAL));
+    desigual.add(&crate::occlusion_slice(&doc, &reg, &cam, &g, 3, 5, TOTAL));
+    let tres_e_cinco = desigual.average(&g.hit);
+    let mut pior_rel = 0.0f32;
+    for i in 0..g.hit.len() {
+        if !g.hit[i] {
+            continue;
+        }
+        let m = tres_e_cinco[i].abs().max(inteira[i].abs());
+        if m > 1e-6 {
+            pior_rel = pior_rel.max((tres_e_cinco[i] - inteira[i]).abs() / m);
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let associatividade = (TOTAL - 1) as f32 * f32::EPSILON;
+    println!(
+        "  3+5 contra 8: pior relativo {pior_rel:.3e} (a associatividade permite \
+         {associatividade:.3e})"
+    );
+    assert!(
+        pior_rel <= associatividade,
+        "3 + 5 cones divergem de 8 por {pior_rel:.3e}, mais do que a associatividade da soma em \
+         f32 explica ({associatividade:.3e}) — isso já não é arredondamento, é outra amostra"
+    );
 }
 
 /// ⭐⭐ **Uma peça CONVEXA quase não se oclui, e uma peça de partes cruzadas oclui-se.**
@@ -450,11 +487,12 @@ fn o_refinamento_entrega_as_passagens_e_acaba_na_sequencia_inteira() {
     let mut sh = crate::Shadows::default();
     let mut vistos = Vec::new();
     let mut ultimo = Vec::new();
-    let correu = crate::refine_occlusion(&doc, &reg, &cam, &g, &mut sh, |sh, k| {
-        vistos.push(k);
-        ultimo = (0..g.hit.len()).map(|i| sh.ambient_at(i)).collect();
-        true
-    });
+    let correu =
+        crate::refine_hemisphere(&doc, &reg, &cam, &g, &sem_cena(), &[], &mut sh, |sh, k| {
+            vistos.push(k);
+            ultimo = (0..g.hit.len()).map(|i| sh.ambient_at(i)).collect();
+            true
+        });
 
     assert_eq!(correu, crate::OCCLUSION_PASSES);
     assert_eq!(
@@ -495,10 +533,11 @@ fn o_refinamento_para_quando_lhe_dizem_para_parar() {
 
     let mut sh = crate::Shadows::default();
     let mut n = 0;
-    let correu = crate::refine_occlusion(&doc, &reg, &cam, &g, &mut sh, |_, k| {
-        n += 1;
-        k < 3
-    });
+    let correu =
+        crate::refine_hemisphere(&doc, &reg, &cam, &g, &sem_cena(), &[], &mut sh, |_, k| {
+            n += 1;
+            k < 3
+        });
     assert_eq!(correu, 3, "ele continuou depois de lhe dizerem para parar");
     assert_eq!(n, 3, "e publicou passagens a mais");
 }
@@ -516,7 +555,7 @@ fn o_refinamento_nunca_abre_a_peca_preta() {
 
     let mut sh = crate::Shadows::default();
     let mut medias = Vec::new();
-    crate::refine_occlusion(&doc, &reg, &cam, &g, &mut sh, |sh, _| {
+    crate::refine_hemisphere(&doc, &reg, &cam, &g, &sem_cena(), &[], &mut sh, |sh, _| {
         let m: f64 = peca
             .iter()
             .map(|i| f64::from(sh.ambient_at(*i)))
@@ -818,5 +857,65 @@ fn probe_as_barras_da_oclusao() {
             100.0 * v.iter().filter(|x| **x < 0.9).count() as f64 / v.len() as f64,
             100.0 * v.iter().filter(|x| **x < 0.8).count() as f64 / v.len() as f64,
         );
+    }
+}
+
+/// ⭐⭐⭐ **O borrão do RICOCHETE é a MESMA lei do borrão do CÉU, canal a canal e ao bit.**
+///
+/// ⚠️⚠️ **Este gate existe porque o irmão dele é CEGO à cópia:** o
+/// `o_refinamento_avanca_as_duas_metades_com_o_mesmo_k` compara a saída do refinamento com
+/// `blur_bounce(bounce_pass(..))` — as duas passam pela MESMA função, logo mutá-la muda os dois
+/// lados e ele fica **verde**. *Uma igualdade entre duas rotas que partilham uma porta não afirma
+/// nada sobre essa porta.*
+///
+/// ⇒ a régua é o **céu**: cada canal do ricochete tem de sair exactamente como o
+/// [`crate::blur_occlusion`] o devolveria sozinho. É isso que torna a partilha da
+/// [`crate::occlusion::para_cada_vizinhanca`] uma LEI e não uma economia — se alguém afinar o
+/// [`crate::OCCLUSION_BLUR_COS`] numa das duas, este gate diz.
+#[test]
+fn o_borrao_do_ricochete_e_o_do_ceu_canal_a_canal() {
+    let doc = cruz();
+    // ⚠️ Só o G-buffer interessa: esta lei é sobre a VIZINHANÇA (a máscara e as normais), e não
+    // sobre o campo — pôr a câmera e o registo em jogo seria medir outra coisa.
+    let (_reg, _cam, g, _) = cena(&doc, 96, 54);
+    let peca = (0..g.hit.len()).filter(|i| g.hit[*i]).count();
+    assert!(peca > 500, "a fixtura não desenhou peça: {peca} px");
+
+    // ⚠️ Três canais DIFERENTES de propósito: com os três iguais, um borrão que trocasse os canais
+    // entre si ficaria verde.
+    #[allow(clippy::cast_precision_loss)]
+    let canal: Vec<[f32; 3]> = (0..g.hit.len())
+        .map(|i| {
+            let t = i as f32;
+            [
+                (t * 0.013).sin().abs(),
+                (t * 0.031).cos().abs(),
+                (t % 7.0) / 7.0,
+            ]
+        })
+        .collect();
+
+    let juntos = crate::blur_bounce(&g, &canal);
+    for c in 0..3 {
+        let sozinho: Vec<f32> = canal.iter().map(|v| v[c]).collect();
+        let esperado = crate::blur_occlusion(&g, &sozinho);
+        let obtido: Vec<f32> = juntos.iter().map(|v| v[c]).collect();
+        assert_eq!(
+            obtido, esperado,
+            "o canal {c} do borrão do ricochete diverge do borrão do céu — as duas leis \
+             separaram-se"
+        );
+    }
+}
+
+/// ⭐ **A cena SEM materiais e SEM lâmpadas** — com ela o ricochete degenera para o canal vazio e a
+/// [`crate::refine_hemisphere`] entrega exactamente o que a metade do céu entregava sozinha.
+///
+/// ⚠️ Estes gates medem o CÉU, e é por isso que eles não passam uma cena: *um gate que medisse as
+/// duas metades ao mesmo tempo deixaria de dizer qual delas reprovou.*
+fn sem_cena() -> crate::Surfaces<'static> {
+    crate::Surfaces {
+        all: &[],
+        owners: None,
     }
 }

@@ -140,3 +140,7 @@ pub const FAMILY: AppFamily = AppFamily {
 /// A porta dos gates desta crate que medem que o QUADRO da shell chama a família.
 #[cfg(test)]
 mod shell_frame_tests;
+
+/// A costura do quadro ASSENTE: o refinamento do hemisfério recebe a cena (`docs/Render3d/08`).
+#[cfg(test)]
+mod render_bounce_seam_tests;

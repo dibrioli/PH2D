@@ -9,7 +9,6 @@
 //! [`cone_dir`] para o report do dono que a mudou e o grão que ela apagou (`21×`).
 
 use crate::march::Scene;
-use crate::shadow::Shadows;
 use crate::{Gbuffer, Orbit, Sharpness, Stencil};
 use ph2d_field::FieldDoc;
 use ph2d_field_eval::hybrid::Registry;
@@ -123,10 +122,35 @@ pub const OCCLUSION_BLUR_COS: f32 = 0.9;
 /// envelhecer — esta fica NOMEADA como tal, e não em silêncio.*
 #[must_use]
 pub fn blur_occlusion(g: &Gbuffer, oc: &[f32]) -> Vec<f32> {
-    let (w, h) = (g.width as usize, g.height as usize);
     let mut out = oc.to_vec();
+    let mut vizinhos = Vec::with_capacity(9);
+    para_cada_vizinhanca(g, &mut vizinhos, |i, js| {
+        let soma: f32 = js.iter().map(|j| oc[*j]).sum();
+        #[allow(clippy::cast_precision_loss)]
+        let inv = 1.0 / js.len() as f32;
+        out[i] = soma * inv;
+    });
+    out
+}
+
+/// ⭐⭐⭐ **A VIZINHANÇA GUARDADA — a lei da suavização, com DOIS consumidores.**
+///
+/// Ela chama `f(i, vizinhos)` para cada pixel de peça, com os índices `3×3` que a guarda da normal
+/// deixou passar (o próprio pixel incluído, logo a lista nunca é vazia).
+///
+/// ⚠️⚠️ **Ela existe como porta porque o RICOCHETE precisa exactamente da mesma lei** — o doc do
+/// [`blur_occlusion`] declara que o que ele suaviza hoje são as **estrias do conjunto discreto de
+/// direcções**, e o ricochete corre no MESMO conjunto ([`cone_dir`]). *Duas cópias da guarda
+/// divergiriam no dia em que alguém afinasse o [`OCCLUSION_BLUR_COS`] numa delas, e a quina ficaria
+/// esborratada só num dos canais.*
+pub(crate) fn para_cada_vizinhanca(
+    g: &Gbuffer,
+    vizinhos: &mut Vec<usize>,
+    mut f: impl FnMut(usize, &[usize]),
+) {
+    let (w, h) = (g.width as usize, g.height as usize);
     if w == 0 || h == 0 {
-        return out;
+        return;
     }
     for y in 0..h {
         for x in 0..w {
@@ -135,7 +159,7 @@ pub fn blur_occlusion(g: &Gbuffer, oc: &[f32]) -> Vec<f32> {
                 continue;
             }
             let n0 = g.normal[i];
-            let (mut soma, mut n) = (0.0f32, 0u32);
+            vizinhos.clear();
             for dy in -1i32..=1 {
                 for dx in -1i32..=1 {
                     let (xx, yy) = (x as i32 + dx, y as i32 + dy);
@@ -151,18 +175,14 @@ pub fn blur_occlusion(g: &Gbuffer, oc: &[f32]) -> Vec<f32> {
                     if n0[0] * nj[0] + n0[1] * nj[1] + n0[2] * nj[2] < OCCLUSION_BLUR_COS {
                         continue;
                     }
-                    soma += oc[j];
-                    n += 1;
+                    vizinhos.push(j);
                 }
             }
-            if n > 0 {
-                #[allow(clippy::cast_precision_loss)]
-                let inv = 1.0 / n as f32;
-                out[i] = soma * inv;
+            if !vizinhos.is_empty() {
+                f(i, vizinhos);
             }
         }
     }
-    out
 }
 
 /// ⭐⭐⭐ **O QUE UMA FATIA DE CONES ENTREGA** — a soma pesada E o peso que a produziu.
@@ -257,8 +277,12 @@ pub fn occlusion_with_reach(
 /// sequência de 32»* — ela ancoraria a estratificação na FATIA, e somar fatias daria uma
 /// distribuição diferente de a sequência inteira. Foi o 1.º desenho, e ele não acumulava.
 ///
-/// ⭐ Somar todas as fatias e dividir por `total` dá **exactamente** o que [`occlusion`] devolve, e
-/// há gate a prová-lo — é isso que autoriza o quadro assente a refinar em passagens.
+/// ⭐ Somar as fatias de **uma direcção** e dividir pelo peso dá **exactamente** o que
+/// [`occlusion`] devolve, e há gate a prová-lo — é isso que autoriza o quadro assente a refinar em
+/// passagens. ⚠️ **Uma partição DESIGUAL concorda só a menos da associatividade da soma em `f32`**
+/// (medido: `2,5e-7` relativo em `3 + 5` contra `8`), porque uma soma em duas parcelas é uma dobra
+/// em árvore e a sequência inteira é uma dobra à esquerda. *A frase «todas as fatias dá
+/// exactamente» esteve aqui e era falsa fora da partição que o gate corre.*
 ///
 /// Devolve `0,0` nos pixels que não são peça (eles não entram em soma nenhuma).
 #[must_use]
@@ -447,57 +471,3 @@ pub fn cone_dir(k: u32, total: u32) -> [f32; 3] {
 //
 // ⇒ a lei que ficou é o CONE determinístico ([`cone_dir`]), e estas duas funções não têm consumidor
 // nenhum. *Um amostrador sem estimador que o use é código que ninguém pode acordar.*
-
-/// ⭐⭐⭐ **O REFINAMENTO: `OCCLUSION_PASSES` passagens sobre o MESMO G-buffer.**
-///
-/// Cada passagem acrescenta **um raio por pixel**, publica a média acumulada por `entrega`, e pára
-/// assim que ela devolver `false` — que é como a mão a volta a mexer cancela o trabalho.
-///
-/// ⚠️⚠️ **Ela existe como PORTA, e não como laço dentro da thread do traçado, por causa do gate.**
-/// O laço vivia no `std::thread::spawn` do `smoke_draw`, onde nenhum teste lhe chega: a lei da
-/// acumulação, a ordem das passagens e a paragem por cancelamento ficavam todas **inalcançáveis**.
-/// *A costura não-testada é a causa nº 1 da `DIRETIVA_IMPLEMENTACAO` §1, e um laço dentro de uma
-/// thread é a forma mais fácil de a produzir sem dar por isso.*
-///
-/// Devolve quantas passagens correram — `< OCCLUSION_PASSES` quer dizer que foi cancelado.
-pub fn refine_occlusion(
-    doc: &FieldDoc,
-    reg: &Registry,
-    cam: &Orbit,
-    g: &Gbuffer,
-    shadows: &mut Shadows,
-    mut entrega: impl FnMut(&Shadows, u32) -> bool,
-) -> u32 {
-    let pixels = g.hit.len();
-    let mut acc = ConeSlice {
-        sum: vec![0.0f32; pixels],
-        weight: vec![0.0f32; pixels],
-    };
-    // ⭐⭐ **O CHÃO já tem o céu dele**, e não pelos cones: o passe da sombra calculou-o
-    // ([`crate::ground::ground_sky`]), e aqui ele só atravessa cada publicação. ⚠️ Os cones num chão
-    // plano desenham ANÉIS — as `48` direcções fixas viram `24` sombras fracas sobrepostas (medido,
-    // `docs/Render3d/07`).
-    let chao: Vec<(usize, f32)> = crate::ground::ground_points(cam, g, shadows.ground())
-        .iter()
-        .enumerate()
-        .filter(|(_, q)| q.is_some())
-        .map(|(i, _)| (i, shadows.ambient_at(i)))
-        .collect();
-    for k in 0..OCCLUSION_PASSES {
-        acc.add(&occlusion_slice(doc, reg, cam, g, k, 1, OCCLUSION_PASSES));
-        // ⚠️ **A média é sobre o PESO já acumulado**, e não sobre o total nem sobre a contagem de
-        // passagens — senão a imagem mudaria de nível a cada passo em vez de afinar. Ver
-        // [`ConeSlice`], que é onde essa lei vive.
-        let mut cru = acc.average(&g.hit);
-        for &(i, v) in &chao {
-            cru[i] = v;
-        }
-        // ⭐ **Suavizada no PUBLICAR, e não no acumulador** — a soma tem de continuar crua, senão
-        // cada passagem borraria o que a anterior já borrou e a oclusão espalhar-se-ia.
-        shadows.set_ambient(blur_occlusion(g, &cru));
-        if !entrega(shadows, k + 1) {
-            return k + 1;
-        }
-    }
-    OCCLUSION_PASSES
-}

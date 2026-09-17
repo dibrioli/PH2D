@@ -861,6 +861,368 @@ fn o_ricochete_tinge_o_chao_da_imagem() {
     );
 }
 
+// ── a LEI DA ACUMULAÇÃO: o que autoriza o quadro assente a refinar ─────────────────────────────
+
+/// ⭐⭐⭐ **Somar as fatias uma a uma dá os MESMOS BYTES que pagar a sequência inteira.**
+///
+/// É esta propriedade — e só ela — que autoriza o ricochete a viver no quadro assente: se as
+/// fatias não somassem para a mesma coisa, cada passagem mostraria uma imagem **diferente** em vez
+/// de a mesma imagem mais afinada, e o artista veria a peça a mudar de cor enquanto espera.
+///
+/// ⚠️ **A barra é a IGUALDADE AO BIT para fatias de UMA direcção**, que é a forma que o
+/// refinamento tem: dentro de uma fatia as direcções entram por `k` crescente, o
+/// [`crate::bounce::BounceSlice::add`] soma as fatias por `k` crescente também, e as duas rotas
+/// ficam com a **mesma dobra à esquerda**. *Um epsilon aqui esconderia exactamente o defeito que se
+/// quer apanhar — uma fatia que amostra outro hemisfério.*
+///
+/// ⛔⛔ **E uma partição DESIGUAL já NÃO é igual ao bit, e isso foi medido, não deduzido**
+/// (`3 + 5` contra `8`: pior absoluto `9,5e-7`, pior relativo `2,5e-7`). A razão é só
+/// associatividade: `(a₀+a₁+a₂) + (a₃+…+a₇)` é uma dobra em ÁRVORE e a sequência inteira é uma
+/// dobra à ESQUERDA. ⇒ a barra dessa metade é **derivada do número de parcelas** —
+/// `(total − 1) · f32::EPSILON` é o limite clássico da diferença entre duas associações, e a
+/// medição fica `3,4×` dentro dele.
+///
+/// ⚠️⚠️ **Isto corrige o doc da irmã do céu**, que prometia por escrito que *«somar todas as fatias
+/// dá EXACTAMENTE o que a [`crate::occlusion`] devolve»* — verdade sobre a partição de uma direcção
+/// (a única que o gate dela corria) e **falsa** sobre uma partição qualquer. *Um gate que prova o
+/// caso que o produto usa não autoriza a frase geral escrita ao lado dele.*
+///
+/// ⛔⛔ **E o CONTROLO é a 1.ª asserção**, não a última: `average` de um canal vazio é preto, e
+/// preto é igual a preto. *Sem provar que a conta produz luz, este gate fica verde sobre um
+/// ricochete que nunca correu.*
+#[test]
+fn as_fatias_somam_exactamente_a_sequencia_inteira() {
+    let (doc, postas, materiais) = caixa();
+    let reg = Registry::new();
+    let cam = camara();
+    let (w, h) = (48u32, 48u32);
+    let g = trace(&doc, &reg, &cam, w, h);
+    let donos = donos(&postas, &reg, &cam, w.min(h));
+    let prontos: Vec<ph2d_material::Surface> = materiais.iter().map(OpenPbr::prepare).collect();
+    let surfaces = Surfaces {
+        all: &prontos,
+        owners: Some(&donos),
+    };
+    const TOTAL: u32 = 8;
+
+    let inteira =
+        crate::bounce::bounce_slice(&doc, &reg, &cam, &g, &surfaces, &[LAMPADA], 0, TOTAL, TOTAL);
+
+    // ⛔ O CONTROLO: a conta produziu luz nalgum pixel. Sem isto, tudo o que segue é preto=preto.
+    let acesos = inteira
+        .sum
+        .iter()
+        .filter(|c| c[0] > 0.0 || c[1] > 0.0 || c[2] > 0.0)
+        .count();
+    println!("  a sequência inteira acende {acesos} pixels de {}", w * h);
+    assert!(
+        acesos > 200,
+        "o ricochete tinha de acender centenas de pixels nesta caixa, e acendeu {acesos} — \
+         sem luz nenhuma as igualdades abaixo são preto contra preto"
+    );
+
+    // 1. uma direcção de cada vez, que é o que o refinamento faz.
+    let mut uma_a_uma = crate::bounce::BounceSlice::empty(g.hit.len());
+    for k in 0..TOTAL {
+        uma_a_uma.add(&crate::bounce::bounce_slice(
+            &doc,
+            &reg,
+            &cam,
+            &g,
+            &surfaces,
+            &[LAMPADA],
+            k,
+            1,
+            TOTAL,
+        ));
+    }
+    assert_eq!(
+        uma_a_uma.average(&g.hit),
+        inteira.average(&g.hit),
+        "oito fatias de uma direcção tinham de dar a imagem da sequência inteira, ao bit"
+    );
+    assert_eq!(
+        uma_a_uma.weight, inteira.weight,
+        "e o denominador também — ele é o que faz a média parcial ser honesta"
+    );
+
+    // 2. fatias DESIGUAIS — o refinamento pode pagar mais de uma direcção por passagem.
+    let mut tres_e_cinco = crate::bounce::BounceSlice::empty(g.hit.len());
+    tres_e_cinco.add(&crate::bounce::bounce_slice(
+        &doc,
+        &reg,
+        &cam,
+        &g,
+        &surfaces,
+        &[LAMPADA],
+        0,
+        3,
+        TOTAL,
+    ));
+    tres_e_cinco.add(&crate::bounce::bounce_slice(
+        &doc,
+        &reg,
+        &cam,
+        &g,
+        &surfaces,
+        &[LAMPADA],
+        3,
+        5,
+        TOTAL,
+    ));
+    let a = tres_e_cinco.average(&g.hit);
+    let b = inteira.average(&g.hit);
+    let mut pior_rel = 0.0f32;
+    for (x, y) in a.iter().zip(&b) {
+        for c in 0..3 {
+            let m = x[c].abs().max(y[c].abs());
+            if m > 1e-6 {
+                pior_rel = pior_rel.max((x[c] - y[c]).abs() / m);
+            }
+        }
+    }
+    // ⚠️ A barra é o limite clássico de duas associações de `n` parcelas, e não um número
+    // escolhido: `(n − 1) · eps`. Medido `2,5e-7` contra os `8,3e-7` que ele permite.
+    #[allow(clippy::cast_precision_loss)]
+    let associatividade = (TOTAL - 1) as f32 * f32::EPSILON;
+    println!(
+        "  3+5 contra 8: pior relativo {pior_rel:.3e} (a associatividade permite \
+         {associatividade:.3e})"
+    );
+    assert!(
+        pior_rel <= associatividade,
+        "3 + 5 direcções divergem de 8 por {pior_rel:.3e}, mais do que a associatividade da soma \
+         em f32 explica ({associatividade:.3e}) — isso já não é arredondamento, é outra amostra"
+    );
+
+    // 3. e a porta antiga continua a ser a sequência inteira, ao bit.
+    assert_eq!(
+        crate::bounce::bounce_pass(&doc, &reg, &cam, &g, &surfaces, &[LAMPADA], TOTAL),
+        inteira.average(&g.hit),
+        "o `bounce_pass` é a fatia inteira — se divergir, há duas leis para a mesma pergunta"
+    );
+}
+
+// ── o REFINAMENTO: as duas metades no mesmo passo ──────────────────────────────────────────────
+
+/// ⭐⭐⭐ **O que o quadro assente publica na última passagem é a sequência inteira, ao bit — e o
+/// céu não muda por o ricochete existir ao lado dele.**
+///
+/// Três afirmações, e cada uma apanha um defeito diferente:
+///
+/// 1. **o ricochete acumulado converge para o passe inteiro** (`bounce_pass` a
+///    `OCCLUSION_PASSES`, suavizado pela mesma porta) — se a fatia do laço amostrasse outro
+///    hemisfério, é aqui que se vê;
+/// 2. **ele REFINA** — a 1.ª publicação e a última são diferentes, senão o laço podia estar a
+///    publicar `48` vezes a mesma imagem e as duas primeiras asserções ficariam verdes;
+/// 3. ⛔⛔ **sem materiais e sem lâmpadas o canal do ricochete é VAZIO e o do céu é BYTE-IDÊNTICO**
+///    — é esta metade que sustenta a frase do doc da porta (*«ela não precisa de um interruptor ao
+///    lado»*) e que prova que a `W5` não mexeu no quadro de quem não a usa.
+#[test]
+fn o_refinamento_avanca_as_duas_metades_com_o_mesmo_k() {
+    let (doc, postas, materiais) = caixa();
+    let reg = Registry::new();
+    let cam = camara();
+    let (w, h) = (32u32, 32u32);
+    let g = trace(&doc, &reg, &cam, w, h);
+    let donos = donos(&postas, &reg, &cam, w.min(h));
+    let prontos: Vec<ph2d_material::Surface> = materiais.iter().map(OpenPbr::prepare).collect();
+    let surfaces = Surfaces {
+        all: &prontos,
+        owners: Some(&donos),
+    };
+
+    let corre = |surfaces: &Surfaces<'_>, lampadas: &[crate::PointLamp]| {
+        let mut sh = crate::shadow_pass(&doc, &reg, &cam, &g, &[LAMPADA.world]);
+        let mut primeira = Vec::new();
+        let correu = crate::refine_hemisphere(
+            &doc,
+            &reg,
+            &cam,
+            &g,
+            surfaces,
+            lampadas,
+            &mut sh,
+            |sh, k| {
+                if k == 1 {
+                    primeira = (0..g.hit.len()).map(|i| sh.bounce_at(i)).collect();
+                }
+                true
+            },
+        );
+        assert_eq!(correu, crate::OCCLUSION_PASSES);
+        let ceu: Vec<f32> = (0..g.hit.len()).map(|i| sh.ambient_at(i)).collect();
+        let devolvida: Vec<[f32; 3]> = (0..g.hit.len()).map(|i| sh.bounce_at(i)).collect();
+        (ceu, devolvida, primeira)
+    };
+
+    let (ceu_com, devolvida, primeira) = corre(&surfaces, &[LAMPADA]);
+
+    // 1. a última publicação É a sequência inteira.
+    let inteira = crate::blur_bounce(
+        &g,
+        &crate::bounce_pass(
+            &doc,
+            &reg,
+            &cam,
+            &g,
+            &surfaces,
+            &[LAMPADA],
+            crate::OCCLUSION_PASSES,
+        ),
+    );
+    assert_eq!(
+        devolvida, inteira,
+        "a última passagem do refinamento tinha de ser a sequência inteira, ao bit — se não é, a \
+         fatia do laço amostra outro hemisfério"
+    );
+
+    // ⛔ O CONTROLO: houve luz. Sem isto tudo o que segue é preto contra preto.
+    let acesos = devolvida
+        .iter()
+        .filter(|c| c[0] > 0.0 || c[1] > 0.0 || c[2] > 0.0)
+        .count();
+    println!("  o refinamento acende {acesos} pixels de {}", w * h);
+    assert!(
+        acesos > 100,
+        "o ricochete tinha de acender pixels, e acendeu {acesos}"
+    );
+
+    // 2. ele REFINA — e são DUAS afirmações, porque há duas maneiras de não refinar.
+    //
+    // ⚠️ A 1.ª publicação tem de ter luz: um laço que só declarasse o canal na ÚLTIMA passagem
+    // passaria o `assert_ne` abaixo (preto ≠ imagem final) e o artista esperaria `48` passagens
+    // por uma imagem que devia estar a assentar à vista dele.
+    let acesos_na_primeira = primeira
+        .iter()
+        .filter(|c| c[0] > 0.0 || c[1] > 0.0 || c[2] > 0.0)
+        .count();
+    println!("  a 1.ª passagem já acende {acesos_na_primeira} pixels");
+    // ⚠️ A barra é **metade do valor medido** (`97` de `1 024` pixels — uma direcção de `48`
+    // ilumina ~`9,5 %` da caixa), e não um número escolhido: eu escrevi `100` de cabeça e ela
+    // reprovou sobre produto CORRECTO. *Uma barra escrita antes da medição mede a minha
+    // expectativa.*
+    assert!(
+        acesos_na_primeira >= 48,
+        "a 1.ª passagem publicou quase nada ({acesos_na_primeira} acesos de 97 medidos) — ou o \
+         refinamento só declara o ricochete no fim, e não há nada a assentar"
+    );
+    assert_ne!(
+        primeira, devolvida,
+        "a 1.ª passagem e a última são iguais: o laço está a publicar a mesma imagem 48 vezes"
+    );
+
+    // 3. sem cena, o canal morre e o céu não se mexe.
+    let sem = Surfaces {
+        all: &[],
+        owners: None,
+    };
+    let (ceu_sem, devolvida_sem, _) = corre(&sem, &[]);
+    assert!(
+        devolvida_sem.iter().all(|c| *c == [0.0; 3]),
+        "sem materiais nem lâmpadas o canal do ricochete tinha de ficar VAZIO"
+    );
+    assert_eq!(
+        ceu_com, ceu_sem,
+        "a metade do CÉU mudou por o ricochete correr ao lado dela — as duas partilham as \
+         direcções, nunca o acumulador"
+    );
+}
+
+/// ⭐⭐⭐ **Uma fatia que começa DEPOIS do fim da sequência não consome direcção nenhuma.**
+///
+/// ⛔⛔ **E a fixtura deste gate NÃO é a caixa de Cornell, porque lá a asserção é VÁCUA — medido.**
+/// Para `k ≥ total` a [`crate::occlusion::cone_dir`] devolve `[0, 0, z]` com `|z| > 1` (o `r` sai
+/// `0` porque `1 − z²` é negativo), ou seja **`−z` do mundo**; e um pixel VISÍVEL satisfaz
+/// `n·olho > 0` por construção, logo com a câmera da caixa (olho em `+z`) **todo** pixel de peça
+/// tem `n_z > 0` e pesa aquela direcção com `≤ 0`. Sonda: `0` pares `(pixel, direcção fora)` com
+/// peso positivo em `2 304` pixels de peça. *A asserção passava porque a geometria da câmera a
+/// tornava impossível de violar, e não porque o laço pára.*
+///
+/// ⇒ a fixtura é uma esfera vista de **yaw `135°`**, onde o olho aponta para `(+x, −z)` e metade
+/// dos pixels visíveis TEM `n_z < 0`. ⚠️ **O controlo vive DENTRO do gate** (`pesados > 100`):
+/// *uma fixtura que deixe de conter o fenómeno faz o gate deixar de afirmar seja o que for*, e é
+/// preferível que ele reprove alto a que fique verde a medir nada.
+#[test]
+fn uma_fatia_depois_do_fim_da_sequencia_nao_consome_direccao() {
+    const TOTAL: u32 = 8;
+    let esfera = ph2d_field_eval::leaf(
+        ph2d_field::Primitive::Sphere { radius: 0.35 },
+        ph2d_field::Xform::at(0.0, 0.0, 0.0),
+    );
+    let doc = FieldDoc::new(vec![esfera], NodeId(0)).expect("a esfera");
+    let reg = Registry::new();
+    let cam = Orbit {
+        rotation: Orbit::from_yaw_pitch(std::f32::consts::FRAC_PI_4 * 3.0, 0.0).rotation,
+        target: [0.0, 0.0, 0.0],
+        half_extent: 0.5,
+        ..Orbit::default()
+    };
+    let (w, h) = (48u32, 48u32);
+    let g = trace(&doc, &reg, &cam, w, h);
+    let prontos: Vec<ph2d_material::Surface> =
+        [OpenPbr::default()].iter().map(OpenPbr::prepare).collect();
+    let surfaces = Surfaces {
+        all: &prontos,
+        owners: None,
+    };
+
+    // ⛔ O CONTROLO — as direcções degeneradas SÃO pesadas por esta fixtura.
+    let base = crate::shade_render::ViewBasis::of(&cam);
+    let mut pesados = 0usize;
+    for i in 0..g.hit.len() {
+        if !g.hit[i] {
+            continue;
+        }
+        let n = base.view_to_world(g.normal[i]);
+        for k in TOTAL..TOTAL + 4 {
+            let d = crate::occlusion::cone_dir(k, TOTAL);
+            if n[0] * d[0] + n[1] * d[1] + n[2] * d[2] > 0.0 {
+                pesados += 1;
+            }
+        }
+    }
+    println!(
+        "  pares (pixel, direcção FORA) que esta fixtura pesaria: {pesados} em {} px de peça",
+        g.hit.iter().filter(|x| **x).count()
+    );
+    assert!(
+        pesados > 100,
+        "a fixtura deixou de conter o fenómeno ({pesados} pares) — sem ele este gate não afirma nada"
+    );
+
+    let fora =
+        crate::bounce::bounce_slice(&doc, &reg, &cam, &g, &surfaces, &[LAMPADA], TOTAL, 4, TOTAL);
+    assert!(
+        fora.weight.iter().all(|w| *w == 0.0),
+        "uma fatia que começa depois do fim da sequência consumiu direcções degeneradas"
+    );
+
+    // E pedir MAIS do que a sequência tem dá a sequência, ao bit.
+    let a_mais = crate::bounce::bounce_slice(
+        &doc,
+        &reg,
+        &cam,
+        &g,
+        &surfaces,
+        &[LAMPADA],
+        0,
+        TOTAL + 4,
+        TOTAL,
+    );
+    let exacta =
+        crate::bounce::bounce_slice(&doc, &reg, &cam, &g, &surfaces, &[LAMPADA], 0, TOTAL, TOTAL);
+    assert_eq!(
+        a_mais.weight, exacta.weight,
+        "pedir mais direcções do que a sequência tem acrescentou peso"
+    );
+    assert_eq!(
+        a_mais.average(&g.hit),
+        exacta.average(&g.hit),
+        "pedir mais direcções do que a sequência tem mudou a imagem"
+    );
+}
+
 /// ⏱️⭐⭐⭐ **O PREÇO do ricochete por força bruta** — a medição que decide se a `W5` ship assim ou
 /// precisa do caminho rápido.
 ///
@@ -1044,5 +1406,119 @@ fn sonda_a_escada_das_direccoes() {
             e - alvo_e,
             d - alvo_d
         );
+    }
+}
+
+/// ⏱️⭐⭐⭐ **A CADÊNCIA: quanto custa UMA passagem de cada metade do hemisfério.**
+///
+/// A [`sonda_o_preco_do_ricochete`] mediu a sequência inteira e disse que ela não cabe num quadro.
+/// Esta mede o que o refinamento de facto paga — **uma direcção** —, e ao lado do que a metade do
+/// céu já paga hoje na mesma passagem. *É o número que decide se as duas metades podem andar com o
+/// mesmo `k` ou se o ricochete precisa de cadência própria.*
+///
+/// ⚠️ A régua é a passagem, não o total: o quadro assente publica entre passagens, e o que o
+/// artista sente é o intervalo entre duas imagens.
+#[test]
+#[ignore = "sonda de relógio: corre sozinha, com a máquina ociosa"]
+fn sonda_a_cadencia_do_refinamento() {
+    let ociosa = || {
+        std::process::Command::new("vmstat")
+            .args(["1", "2"])
+            .output()
+            .ok()
+            .and_then(|o| {
+                String::from_utf8(o.stdout)
+                    .ok()?
+                    .lines()
+                    .last()?
+                    .split_whitespace()
+                    .nth(14)
+                    .map(String::from)
+            })
+            .unwrap_or_else(|| "?".into())
+    };
+    println!("  ociosidade da CPU: {} %", ociosa());
+    println!("  passagens do refinamento: {}", crate::OCCLUSION_PASSES);
+
+    let reg = Registry::new();
+    let (caixa_doc, caixa_postas, caixa_mats) = caixa();
+    let esfera = ph2d_field_eval::leaf(
+        ph2d_field::Primitive::Sphere { radius: 0.35 },
+        ph2d_field::Xform::at(0.0, 0.0, 0.0),
+    );
+    let aberto_doc = FieldDoc::new(vec![esfera], NodeId(0)).expect("a esfera");
+
+    for (nome, doc, postas, mats, cam) in [
+        (
+            "caixa FECHADA",
+            &caixa_doc,
+            caixa_postas.clone(),
+            caixa_mats.clone(),
+            camara(),
+        ),
+        (
+            "peça no ABERTO",
+            &aberto_doc,
+            vec![aberto_doc.clone()],
+            vec![OpenPbr::default()],
+            Orbit::default(),
+        ),
+    ] {
+        let prontos: Vec<ph2d_material::Surface> = mats.iter().map(OpenPbr::prepare).collect();
+        for (w, h) in [(640u32, 360u32), (1920u32, 1080u32)] {
+            let g = trace(doc, &reg, &cam, w, h);
+            let donos = donos(&postas, &reg, &cam, w.min(h));
+            let surfaces = Surfaces {
+                all: &prontos,
+                owners: Some(&donos),
+            };
+            let acertos = g.hit.iter().filter(|x| **x).count();
+            let mede = |f: &dyn Fn()| {
+                let mut melhor = f64::INFINITY;
+                for _ in 0..3 {
+                    let t0 = std::time::Instant::now();
+                    f();
+                    melhor = melhor.min(t0.elapsed().as_secs_f64() * 1e3);
+                }
+                melhor
+            };
+            let ceu = mede(&|| {
+                std::hint::black_box(crate::occlusion_slice(
+                    doc,
+                    &reg,
+                    &cam,
+                    &g,
+                    0,
+                    1,
+                    crate::OCCLUSION_PASSES,
+                ));
+            });
+            let ricochete = mede(&|| {
+                std::hint::black_box(crate::bounce::bounce_slice(
+                    doc,
+                    &reg,
+                    &cam,
+                    &g,
+                    &surfaces,
+                    &[LAMPADA],
+                    0,
+                    1,
+                    crate::OCCLUSION_PASSES,
+                ));
+            });
+            #[allow(clippy::cast_lossless)]
+            let passagens = crate::OCCLUSION_PASSES as f64;
+            println!(
+                "  {nome} {w}×{h} · {acertos} px de peça\n      \
+                 UMA passagem: céu {ceu:7.2} ms · ricochete {ricochete:8.2} ms · \
+                 {:5.1}× o céu\n      \
+                 as {} passagens: céu {:8.2} ms · ricochete {:9.2} ms · juntas {:9.2} ms",
+                ricochete / ceu.max(1.0e-9),
+                crate::OCCLUSION_PASSES,
+                ceu * passagens,
+                ricochete * passagens,
+                (ceu + ricochete) * passagens,
+            );
+        }
     }
 }

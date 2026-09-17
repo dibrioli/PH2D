@@ -715,3 +715,131 @@ e ninguém a relê.*
 ciclo construiu-a. ⛔ O defeito não era o número, era a **forma**: um gate escrito sobre o SUCESSOR
 de hoje reprova no dia em que alguém escrever o ciclo seguinte, **sobre produto correcto**. ⇒
 reescrito DERIVADO do tecto (`MAX_DEMO_LEVEL + 1`), com a morte visível no diff.
+
+---
+
+## §11 — ⛔⛔⛔ A COLISÃO NO GRUPO: o report do dono, MEDIDO
+
+> Report (2026-09-17): *«Verlet rope com Shape e Collision ON não reconhece colisões entre as
+> próprias células. Talvez todos do grupo não aceitem colisão.»*
+
+⭐ **Ele tem razão, e a segunda frase é a mais importante das duas.** A sonda é
+[`motion_rig_colisao_probe.rs`](../../crates/ph2d-app-motion/src/motion_rig_colisao_probe.rs)
+(`#[ignore]`, corre-se à mão).
+
+### §11.1 — São TRÊS perguntas, e respondê-las juntas dá a resposta errada a uma
+
+| # | a pergunta | a resposta |
+|---|---|---|
+| 1 | a corda colide **consigo mesma**? | **não**, e é estrutural |
+| 2 | o `Collide` do `source.shape` **chega** a ela? | **não pode**, e é estrutural de outra maneira |
+| 3 | a **composição** já exprime isto? | ⭐ **SIM, por inteiro** — e estava a um cartão de distância |
+
+### §11.2 — (1) A corda não colide consigo mesma, e vê-se no solver
+
+A relaxação do `motion.verlet_rope` tem **exactamente duas** restrições: `i↔i+1` (a distância de
+repouso) e `i↔i+2` (a flexão, só com `bend > 0`). **Nenhuma `i↔j`** para pares afastados — uma volta
+do laço atravessa a outra porque *nada no solver olha para esse par*.
+
+Medido pela porta do produto (25 pontos, âncora chicoteada, 240 tiques, discos de raio `0,07` ⇒ a
+barra é `0,140`):
+
+| arranjo | menor vão entre não-vizinhos | pares sobrepostos |
+|---|---:|---:|
+| **a corda NUA** | **`0,0079`** | **13** |
+| `+ motion.collide` depois | `0,1051` | 9 |
+| `+ motion.collide` no laço de estado | `0,1063` | 7 |
+
+⇒ `0,0079` sobre uma barra de `0,140` é **um ponto praticamente em cima do outro**.
+
+⚠️ **O chicote é parte da régua, não cenografia:** uma corda pendurada em repouso é uma catenária e
+**nunca se toca**. Medi-la em paz responderia *«não há sobreposição»* sobre um arranjo que não a
+pode ter — *uma régua que não vê o fenómeno acontecer não prova que ele não aconteceu.*
+
+### §11.3 — (2) O `Collide` da forma não tem por onde chegar
+
+O `source.shape` **declara** o colisor em COLUNAS (`COLLIDER_COLUMN` · `COLLIDER_BOX_COLUMN` ·
+`COLLIDER_OFFSET_COLUMN`), e o censo de quem as **lê** dá três crates, todas da família da
+simulação: `ph2d-node-sim-collide` · `ph2d-node-sim-step` · `ph2d-contact`.
+
+⛔ **E o `source.shape` é uma FONTE — `inputs: &[]`.** Ela não pode estar a jusante da corda; o
+caminho por que um colisor declarado chega a um solver é `source.shape → sim.spawn(template) →
+sim.zone/sim.step → sim.collide`, que é a pilha do **ciclo 5**.
+
+As portas de entrada de cada nó, contadas do manifesto:
+
+| nó | entradas | as portas |
+|---|---:|---|
+| `motion.verlet_rope` | 3 | `anchor_x` · `anchor_y` · `state` |
+| `motion.wave` | 3 | `drive` · `state` · `inject` |
+| `motion.soft_body` | 4 | `anchor_x` · `anchor_y` · `state` · **`shape`** |
+| `motion.boids` | 4 | `target_x` · `target_y` · `state` · **`obstacle`** |
+| `rig.skeleton` | 0 | — |
+| `rig.skin_deformer` | 3 | `in` · `rest` · `posed` |
+| `sim.collide` | 1 | `in` |
+
+⚠️⚠️ **DUAS portas parecem ser o que não são, e é por isso que esta tabela está aqui:**
+
+- O **`shape`** do `motion.soft_body` é a **forma de REPOUSO** (a wave da folha 03), não um colisor.
+- O **`obstacle`** do `motion.boids` é uma nuvem de **pontos a evitar**, e o que ele aplica é uma
+  **força de direcção** (`avoid_accel`, com `avoid_radius` e `lookahead`) — ⛔ *evitar não é
+  colidir*: dois agentes continuam a poder ocupar o mesmo sítio, e nada ali lê as colunas do
+  colisor.
+
+⇒ **a segunda frase do report está CERTA:** nenhum dos dez lê o colisor que a forma declara.
+
+### §11.4 — ⭐⭐⭐ (3) E a composição entrega-o POR INTEIRO, a um cartão de distância
+
+O `motion.collide` é um separador de não-penetração a sério (PBD, Müller et al. 2007), é
+`Effect::Pure` e aceita **qualquer** nuvem — inclusive a da corda. Pondo-o **dentro do laço de
+estado** (`rope → collide → (atrasada) → rope.state`) e varrendo as iterações dele:
+
+| iterações do `collide` | menor vão | pares sobrepostos | % da barra |
+|---:|---:|---:|---:|
+| 8 (o valor de fábrica) | `0,1063` | 7 | 76 % |
+| 16 | `0,1284` | 3 | 92 % |
+| **32** | `0,1383` | **0** | **99 %** |
+| 64 | `0,1399` | 0 | 100 % |
+| 128 | `0,1399` | 0 | 100 % |
+
+⇒ **a `32` iterações a corda deixa de se atravessar, medido: ZERO pares sobrepostos.**
+
+E o preço (RELEASE, mediana de 9 quadros em regime; um quadro tem `16,67 ms`):
+
+| pontos da corda | a corda só | `+ collide` a 32 | % de um quadro |
+|---:|---:|---:|---:|
+| 25 | `0,006 ms` | `0,017 ms` | `0,1 %` |
+| 50 | `0,013 ms` | `0,060 ms` | `0,4 %` |
+| 100 | `0,027 ms` | `0,211 ms` | `1,3 %` |
+| 200 | `0,053 ms` | `0,785 ms` | `4,7 %` |
+
+⇒ uma corda do tamanho que alguém faz (100–200 pontos) com auto-colisão **completa** custa
+`1,3 %`–`4,7 %` de um quadro. ⚠️ O `motion.collide` é `O(n²·iterações)` na CPU — a `200` pontos e
+`32` iterações são `1,28 M` testes de par por quadro, e é daí que vem o `4,7 %`.
+
+### §11.5 — ⛔ A minha régua acusou a própria CONVERGÊNCIA
+
+A 1.ª redacção desta sonda contava um par como sobreposto com `d < 2·raio` **estrito** — e o
+repouso de um separador de não-penetração é *os discos a TOCAR*, que em `f32` pousa em `0,1399`
+sobre uma barra de `0,1400`. ⇒ ela imprimia **«7 pares sobrepostos»** ao lado de **«100 % da
+barra»**: *duas colunas da mesma medição a contradizerem-se, e a leitura errada — «não funciona» —
+é a que se acredita.*
+
+⇒ `TOLERANCIA = 2 %`, e ela **não é um epsilon de vírgula flutuante**: é *«a penetração é
+visível?»*. Sobre um disco de `0,07` são `0,0028` de mundo, contra os `0,066` que a corda nua
+penetra.
+
+### §11.6 — O que isto deixa em aberto, e de quem é
+
+⭐ **A capacidade EXISTE; o que falta é ERGONOMIA**, e é uma decisão de produto:
+
+1. **O `Collide` da forma lê-se como um controlo que não faz nada** quando o grafo é uma corda —
+   ele está vivo (a família `sim.*` lê-o) e é **inalcançável a partir daqui**. ⚠️ *Um controlo morto
+   e um que não se aplica a este caminho dão o MESMO report* (`CLAUDE.md` §5.0), e a diferença só
+   se vê medindo.
+2. **O `motion.collide` de fábrica vem a `8` iterações**, e este uso precisa de `32`. O default está
+   certo para o uso dele (separar uma nuvem de clones); aqui ele é o número errado e nada o diz.
+3. ⏳ **A auto-colisão NATIVA na corda** (uma restrição `i↔j` dentro do solver dela) não foi
+   construída — e a medição diz que ela **não é necessária para a capacidade**, só para o conforto:
+   a composição já entrega o resultado. *Construí-la sem essa medição teria sido reconstruir o que a
+   composição exprime*, que é a §5.0 e a mesma lei por que a W1 deste ciclo caiu.

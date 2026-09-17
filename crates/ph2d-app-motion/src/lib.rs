@@ -86,6 +86,9 @@ pub mod motion_object_thumb;
 #[cfg(test)]
 pub mod motion_param_reach;
 pub mod motion_path_smoke;
+/// ⭐ A COLISÃO no grupo do ciclo 9 — o report do dono de 2026-09-17, medido (doc 114 §11).
+#[cfg(test)]
+pub mod motion_rig_colisao_probe;
 /// A auditoria do grupo do RIG e dos CORPOS MOLES (ciclo 9, passo 2 — doc 114) —
 /// `#[cfg(test)]`, não entra no bin.
 #[cfg(test)]

@@ -48,6 +48,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Leave the Painter to select another sprite"
         }
         // ph2d-migrar-texto:end
+        "app.painter.skin_suspend.editing_pixels_flattens_this_image" => {
+            "Editing pixels flattens this image \u{2014} the bone deformation returns when you leave the tool."
+        }
+        "app.painter.skin_suspend.this_tool_changes_the_image_size_or_margins" => {
+            "This tool changes the image size or margins: the image is shown without the bone deformation, and Apply unbinds it from the bones."
+        }
+        "app.painter.skin_suspend.images_unbound_from_the_bones" => {
+            "The image size or margins changed: {soltas} image(s) unbound from the bones. Ctrl+Z brings the binding back."
+        }
         _ => return None,
     })
 }

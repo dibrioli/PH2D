@@ -238,9 +238,9 @@ fn upload_tint(
             });
         }
         Err(e) => {
-            toasts.push(Toast::error(format!(
-                "Bg Removal: upload da tinta da máscara falhou ({e}). \
-                 Tentando novamente no próximo frame."
+            toasts.push(Toast::error(ph2d_i18n::tr_with(
+                "shell.bgremoval_preview_gpu.mask_tint_upload_failed",
+                &[("e", &e)],
             )));
             release_preview_texture(renderer, tint_gpu);
         }

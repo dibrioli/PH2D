@@ -25,7 +25,7 @@ pub(super) fn handle_palette_io(
         PaletteIoKind::Import => {
             let Some(path) = rfd::FileDialog::new()
                 .add_filter(
-                    "Colour palette",
+                    ph2d_i18n::tr("shell.forwarding.colour_palette"),
                     &["gpl", "hex", "txt", "css", "ase", "aco"],
                 )
                 .pick_file()
@@ -57,17 +57,20 @@ pub(super) fn handle_palette_io(
                 return;
             }
             let Some(path) = rfd::FileDialog::new()
-                .add_filter("GIMP palette", &["gpl"])
-                .add_filter("Hex list", &["hex"])
-                .add_filter("Adobe Swatch Exchange", &["ase"])
-                .add_filter("Adobe Color", &["aco"])
+                .add_filter(ph2d_i18n::tr("shell.forwarding.gimp_palette"), &["gpl"])
+                .add_filter(ph2d_i18n::tr("shell.forwarding.hex_list"), &["hex"])
+                .add_filter(
+                    ph2d_i18n::tr("shell.forwarding.adobe_swatch_exchange"),
+                    &["ase"],
+                )
+                .add_filter(ph2d_i18n::tr("shell.forwarding.adobe_color"), &["aco"])
                 .set_file_name("palette.gpl")
                 .save_file()
             else {
                 return;
             };
             let data = PaletteData {
-                name: "Palette".to_string(),
+                name: ph2d_i18n::tr("shell.forwarding.palette").to_string(),
                 colors,
             };
             if let Err(e) = std::fs::write(&path, palette::write(fmt_of(&path), &data)) {

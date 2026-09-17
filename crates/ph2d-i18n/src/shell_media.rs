@@ -217,6 +217,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.bgremoval_preview_gpu.preview_upload_failed" => {
             "Bg Removal: the preview upload to the GPU failed ({e}). Retrying next frame."
         }
+        "shell.bgremoval_preview_gpu.mask_tint_upload_failed" => {
+            "Bg Removal: the mask tint upload to the GPU failed ({e}). Retrying next frame."
+        }
         "shell.color_equalization_bridge.color_equalization_gpu_2" => {
             "Color Equalization: GPU texture upload failed during deselect revert ({e})"
         }

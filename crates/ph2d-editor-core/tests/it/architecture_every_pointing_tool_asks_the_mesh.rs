@@ -320,11 +320,20 @@ fn the_protection_tint_rides_the_sprite_pass_with_the_art_mesh() {
     );
     // ⚠️ E o atalho «não copiar nada» tem de contar com ela: se ele só perguntar pelo Motion, um
     // quadro com fantasmas E tinta deita a tinta fora em silêncio.
+    // ⚠️⚠️ **A régua é a PROPRIEDADE, nunca a linha** (2026-09-16): a 1.ª redacção comparava o
+    //    atalho com o texto EXACTO `motion_slice.is_empty() && bgremoval_tint.is_empty();`, e no
+    //    dia em que um TERCEIRO produtor entrou no mesmo slot (as PARTÍCULAS do TOP-20 #18) ela
+    //    reprovou um produto CORRECTO — que é o mesmo defeito que o gate existe para apanhar, do
+    //    outro lado. O que tem de ser verdade é que a decisão do atalho PERGUNTA pela tinta.
+    let decisao = present
+        .split("let so_fantasmas")
+        .nth(1)
+        .and_then(|t| t.split(';').next())
+        .unwrap_or("");
     assert!(
-        present
-            .contains("let so_fantasmas = motion_slice.is_empty() && bgremoval_tint.is_empty();"),
+        decisao.contains("bgremoval_tint.is_empty()"),
         "{PRESENT} decide o atalho do slot `extra` sem contar com a tinta — e o atalho DEITA FORA \
-         quem ele não conta."
+         quem ele não conta. (a decisão que eu li foi: `{decisao}`)"
     );
 }
 

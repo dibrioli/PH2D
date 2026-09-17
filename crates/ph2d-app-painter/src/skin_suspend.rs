@@ -115,12 +115,12 @@ pub const FERRAMENTAS_QUE_MUDAM_A_MOLDURA: &[&str] = &[
 ];
 
 /// O aviso ao achatar, para quem só mexe em pixels.
-pub const AVISO_PIXELS: &str =
-    "Editing pixels flattens this image — the bone deformation returns when you leave the tool.";
+pub const AVISO_PIXELS: ph2d_i18n::TextKey =
+    ph2d_i18n::TextKey::new("app.painter.skin_suspend.editing_pixels_flattens_this_image");
 /// O aviso ao achatar, para quem muda a moldura — ⚠️ ele diz o que o Apply vai fazer, ANTES de o
 /// artista carregar no botão.
-pub const AVISO_MOLDURA: &str = "This tool changes the image size or margins: the image is shown \
-     without the bone deformation, and Apply unbinds it from the bones.";
+pub const AVISO_MOLDURA: ph2d_i18n::TextKey =
+    ph2d_i18n::TextKey::new("app.painter.skin_suspend.this_tool_changes_the_image_size_or_margins");
 
 /// A decisão: que sprites ficam achatadas, e se a ferramenta na mão muda a moldura.
 fn decide(tools: &mut ToolRegistry, seleccao: impl IntoIterator<Item = u64>) -> (Vec<u64>, bool) {
@@ -221,7 +221,11 @@ pub fn achata_e_avisa(
             .iter()
             .any(|b| ph2d_ecs::Entity::try_from_bits(*b).is_some_and(&e_pele))
     {
-        let aviso = if moldura { AVISO_MOLDURA } else { AVISO_PIXELS };
+        let aviso = if moldura {
+            AVISO_MOLDURA.tr()
+        } else {
+            AVISO_PIXELS.tr()
+        };
         toasts.push(ph2d_editor_core::toast::Toast::info(aviso.to_string()));
     }
     achatadas
@@ -289,9 +293,9 @@ pub fn solta_se_mudou_a_moldura(
     }
     let soltas = editadas.into_iter().filter(|b| solta(*b)).count();
     if soltas > 0 {
-        toasts.push(ph2d_editor_core::toast::Toast::info(format!(
-            "The image size or margins changed: {soltas} image(s) unbound from the bones. \
-             Ctrl+Z brings the binding back."
+        toasts.push(ph2d_editor_core::toast::Toast::info(ph2d_i18n::tr_with(
+            "app.painter.skin_suspend.images_unbound_from_the_bones",
+            &[("soltas", &soltas)],
         )));
     }
     soltas

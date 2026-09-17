@@ -543,3 +543,71 @@ mod at_time;
 /// em 2026-09-15, pelo teto de LOC por ficheiro.
 #[path = "skin_suspend_tests.rs"]
 mod suspensao;
+
+/// ⭐⭐⭐ **O `Smooth` PERGUNTA AO MEMO DA ASSADURA; O `Fast` NÃO** — a costura que faz o painel
+/// continuar a escolher depois da F9 W2b.
+///
+/// ⛔⛔ **Sem a segunda metade a wave inteira muda de sentido em silêncio:** se o `Fast` também
+/// passasse pelo memo, ele desenharia a malha assada — `5,76×` maior na arte do dono — e o botão
+/// que existe para ser barato deixava de o ser, **sem uma linha de diferença na tela** (as duas
+/// malhas desenham a mesma arte). *Um botão que deixa de ser barato e continua a parecer igual é o
+/// defeito mais caro que esta família sabe produzir.*
+///
+/// ⚠️ **A régua é a GAVETA e não a malha**, e é por isso que ela funciona com a porta
+/// (`PH2D_SKIN_BAKE`) FECHADA, que é como o processo dos testes corre: com ela fechada a assadura
+/// responde `None`, o memo guarda o `None`, e a **consulta** continua a ser observável. *Uma régua
+/// que medisse as peças entregues não distinguiria «não consultou» de «consultou e não havia».*
+///
+/// (Mutação: o `smooth.is_some()` da troca virar `true` ⇒ RED na metade do `Fast`; virar `false`
+/// ⇒ RED na do `Smooth`.)
+#[test]
+fn the_smooth_asks_the_bake_memo_and_the_fast_does_not() {
+    let mut sim = SimWorld::default();
+    let osso = crate::bone::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
+    let s = sprite(4.0, 2.0, 0.0, 0.0);
+    let e = sim.world_mut().spawn((Transform::IDENTITY, s)).id();
+    assert!(crate::skin_live::bind_image(
+        &mut sim,
+        e,
+        &tinta(40, 20, 2, 4),
+        [40, 20],
+        PPM,
+        GridOptions::default(),
+        Some(Entity::from_bits(osso)),
+    ));
+    let mut present = PresentWorld::new();
+    let p = present
+        .world_mut()
+        .spawn((SimRef(e), instancia_de(&s)))
+        .id();
+    let opcoes = RefineOptions {
+        tolerance_px: 0.5,
+        max_pieces: SKIN_FRAME_PIECES,
+        adaptativo: true,
+    };
+
+    // O `Fast`: nenhuma gaveta é aberta.
+    crate::skin_bake_cache::esquece_tudo();
+    present.world_mut().entity_mut(p).remove::<SpriteMesh>();
+    attach_skin_meshes(&sim, &mut present, PPM, None, PX_POR_METRO, &[]);
+    assert!(
+        present.world().get::<SpriteMesh>(p).is_some(),
+        "o CONTROLO caiu: sem malha posta, as duas metades ficam verdes por vacuo"
+    );
+    assert_eq!(
+        crate::skin_bake_cache::gavetas(),
+        0,
+        "o `Fast` consultou o memo da assadura"
+    );
+
+    // O `Smooth`: exactamente uma — a desta arte.
+    crate::skin_bake_cache::esquece_tudo();
+    present.world_mut().entity_mut(p).remove::<SpriteMesh>();
+    attach_skin_meshes(&sim, &mut present, PPM, Some(opcoes), PX_POR_METRO, &[]);
+    assert!(present.world().get::<SpriteMesh>(p).is_some());
+    assert_eq!(
+        crate::skin_bake_cache::gavetas(),
+        1,
+        "o `Smooth` nao perguntou ao memo da assadura"
+    );
+}

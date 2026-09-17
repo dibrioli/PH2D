@@ -517,22 +517,13 @@ pub fn bind_image(
     // ⭐⭐⭐ **A DENSIDADE SAI DO QUADRO E VEM PARA O BIND** (F9 W1) — a malha é assada UMA vez, aqui,
     // onde o campo de pesos curva, e o quadro passa a só POSAR o que já está lá.
     //
-    // ⚠️ **A porta nasce DESLIGADA** (`PH2D_SKIN_BAKE=1`): enquanto a deformação estiver na CPU,
-    // mais vértices no bind são mais vértices para ela deformar por quadro — exactamente o recurso
-    // que a F9 existe para libertar. Quem paga por eles é a W2 (o *vertex shader*).
-    //
-    // ⚠️ **`unwrap_or` e não um `if`:** a assadura devolve `None` em quatro casos legítimos (porta
-    // desligada · sem pesos · malha vazia · campo já linear), e nos quatro o que se guarda é
-    // exactamente o que se guardava antes — *o caminho de omissão é byte-idêntico.*
+    // ⛔⛔ **A ASSADURA NÃO ENTRA AQUI, e a 1.ª redacção desta wave punha-a** (F9 W1b → W2b): assar
+    // dentro do bind SUBSTITUI a malha guardada, e isso tem três consequências que nenhum número
+    // desculpa — o `Fast` deixa de ser barato, a escolha `Fast`/`Smooth` do painel COLAPSA (as duas
+    // desenham a mesma malha) e a densidade fica congelada no FICHEIRO. ⇒ a malha assada é
+    // **derivada** e vive num memo por bind ([`crate::skin_bake_cache`]), que é também onde a placa
+    // a vai querer. *Estado derivado guardado no documento é o que envenena o undo.*
     let guardada = crate::skinned_mesh::SkinnedMesh { mesh: malha, pesos };
-    // ⚠️ **O `ossos` sai da porta DERIVADA da própria struct** (`SkinnedMesh::ossos`) e não de uma
-    // divisão escrita aqui: aquele doc chama a uma terceira grandeza *«a que pode discordar das
-    // outras duas»*, e uma conta repetida aqui seria exactamente ela.
-    let guardada =
-        match crate::skin_bake::assar_no_bind(&guardada.mesh, &guardada.pesos, guardada.ossos()) {
-            Some((mesh, pesos)) => crate::skinned_mesh::SkinnedMesh { mesh, pesos },
-            None => guardada,
-        };
     let Ok(bytes) = postcard::to_allocvec(&guardada) else {
         return false;
     };

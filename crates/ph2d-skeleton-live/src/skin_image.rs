@@ -516,15 +516,34 @@ pub fn attach_skin_meshes(
             .map(|(p, r)| (r.0, p))
             .collect()
     };
+    // ⭐⭐⭐ **O `Smooth` DESENHA A MALHA ASSADA** (F9 W2b): a densidade sai do QUADRO e vem do BIND,
+    // memoizada por [`crate::skin_bake_cache`]. ⚠️ **A troca acontece AQUI, antes do `guardadas`**,
+    // porque é a malha que vai ser desenhada que tem de repartir o orçamento do quadro — repartido
+    // sobre as contagens da malha crua, o filtro a jusante decidiria com um número que já não
+    // descreve ninguém.
+    //
+    // ⛔ **O `Fast` não passa por aqui**, e isso é a metade que faz o painel continuar a escolher:
+    // ele desenha a malha do bind, tal como sempre desenhou, sem uma linha de diferença.
+    let mut assadas = 0_usize;
     let vivas: Vec<(Entity, Entity, SkinnedMesh)> = presas
         .into_iter()
-        .filter_map(|(e, m)| Some((e, *instancias.get(&e)?, m)))
+        .filter_map(|(e, m)| {
+            let p = *instancias.get(&e)?;
+            let m = match smooth.and_then(|_| crate::skin_bake_cache::assada_da_arte(sim, e, &m)) {
+                Some(assada) => {
+                    assadas += 1;
+                    assada
+                }
+                None => m,
+            };
+            Some((e, p, m))
+        })
         .collect();
     let guardadas: usize = vivas.iter().map(|(_, _, m)| m.mesh.tris.len()).sum();
     if let Some(o) = smooth
         && guardadas > o.max_pieces
     {
-        avisa_malhas_acima_do_orcamento(guardadas, o.max_pieces);
+        avisa_malhas_acima_do_orcamento(guardadas, o.max_pieces, assadas);
     }
     let mut feitas = 0;
     for (e, p, mesh) in vivas {

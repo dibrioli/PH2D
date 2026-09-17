@@ -133,12 +133,27 @@ pub(crate) fn parte_do_orcamento(triangulos: usize, guardadas: usize, orcamento:
     parte.max(triangulos)
 }
 
-/// ⛔ **Uma vez por processo**, e nunca calado (DIRETIVA §2: zero no-op silencioso): as malhas
-/// GUARDADAS das imagens deste quadro já passam do orçamento, e o `Smooth` não tem refinamento a
-/// cortar — cada imagem é desenhada com a malha que guardou.
-pub(crate) fn avisa_malhas_acima_do_orcamento(guardadas: usize, orcamento: usize) {
+/// ⛔ **Uma vez por processo**, e nunca calado (DIRETIVA §2: zero no-op silencioso): as malhas deste
+/// quadro passam do orçamento, e o `Smooth` não tem refinamento a cortar.
+///
+/// ⚠️⚠️ **`assadas` parte a mensagem em duas, e a razão é que a MESMA condição passou a ter dois
+/// significados OPOSTOS** (F9 W2b): sem assadura ela é um AVISO — *o botão que o painel diz ligado
+/// está a desenhar o que o `Fast` desenha*; com assadura ela é a wave a **funcionar** — a densidade
+/// veio do bind, e não haver refinamento por quadro é exactamente o que a torna independente do
+/// tamanho da cena. *Uma linha que diz «o Smooth não refina nenhuma» sobre a segunda ensina o
+/// contrário do que acontece, que é o defeito que esta casa chama «pior que uma cena ausente».*
+pub(crate) fn avisa_malhas_acima_do_orcamento(guardadas: usize, orcamento: usize, assadas: usize) {
     static AVISADO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-    if !AVISADO.swap(true, std::sync::atomic::Ordering::Relaxed) {
+    if AVISADO.swap(true, std::sync::atomic::Ordering::Relaxed) {
+        return;
+    }
+    if assadas > 0 {
+        eprintln!(
+            "[bone] o Smooth desenha a malha ASSADA no bind em {assadas} imagem(ns) — {guardadas} \
+             pecas no total, acima do orcamento de quadro de {orcamento} (PH2D_SKIN_PIECES). Nao \
+             ha refinamento por quadro, e e' por isso que ele nao depende do tamanho da cena."
+        );
+    } else {
         eprintln!(
             "[bone] as imagens presas deste quadro guardam {guardadas} pecas e o orcamento do \
              quadro e' {orcamento} (PH2D_SKIN_PIECES) — o Smooth nao refina nenhuma: cada uma e' \

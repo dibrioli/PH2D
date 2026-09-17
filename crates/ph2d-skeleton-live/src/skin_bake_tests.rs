@@ -141,31 +141,48 @@ fn um_campo_linear_devolve_none_em_vez_de_uma_copia() {
     );
 }
 
-/// ⛔⛔ **O BIND CHAMA O ASSADOR** — e este gate é TEXTUAL de propósito, com a razão dita.
+/// ⛔⛔ **O ASSADOR TEM UM CHAMADOR, E ELE NÃO É O BIND** — e a premissa deste gate MORREU no dia
+/// seguinte ao dia em que ele foi escrito, que é o gate a funcionar.
 ///
-/// # Porque não há gate de comportamento aqui, hoje
+/// # ⚠️ O que ele dizia até 2026-09-17, e porque deixou de ser verdade
 ///
-/// A porta nasce desligada, logo `assar_no_bind` devolve `None` e **guardar o resultado ou ignorá-lo
-/// dá exactamente os mesmos bytes**. *Uma mutação que apague a chamada não é observável enquanto a
-/// porta estiver fechada* — e inventar um gate que finja o contrário seria pior que nenhum.
+/// Ele chamava-se `o_bind_da_imagem_chama_o_assador` e afirmava o contrário do que afirma agora: a
+/// W1b assava DENTRO do [`crate::skin_live::bind_image`], substituindo a malha guardada. A W2b
+/// mediu o preço de PRODUTO disso — o `Fast` deixava de ser barato, a escolha `Fast`/`Smooth` do
+/// painel colapsava, e a densidade ficava congelada no ficheiro — e mudou a malha assada para um
+/// **memo por bind** ([`crate::skin_bake_cache`]), onde ela é **derivada**.
 ///
-/// ⇒ o que se pode afirmar hoje é a FORMA, por [`include_str!`] (que deixa de **compilar** se o
-/// ficheiro mudar de sítio). A metade de comportamento chega com a W2, quando a porta abrir.
+/// ⇒ o assador passa a ter **um** chamador e ele é o memo; o bind deixa de o chamar. *As duas
+/// metades são precisas: sem a segunda, alguém que volte a assar dentro do bind não acorda nada.*
 ///
-/// ⚠️⚠️ **E ele existe porque o modo de falha é um CORTE**, que é a forma exacta que mordeu neste
-/// repo em 2026-09-17: um corpo separado do guarda dele compila, o clippy cala-se e as suítes
-/// ficam verdes.
+/// ⭐ **E a metade de COMPORTAMENTO já existe** (ela não existia quando este gate nasceu):
+/// `skin_image::tests::the_smooth_asks_the_bake_memo_and_the_fast_does_not` mede a consulta pela
+/// porta do produto, com a porta da assadura fechada. Este fica a afirmar a FORMA, por
+/// [`include_str!`], que deixa de **compilar** se um dos dois ficheiros mudar de sítio.
 #[test]
-fn o_bind_da_imagem_chama_o_assador() {
+fn o_assador_tem_um_chamador_e_ele_nao_e_o_bind() {
     const BIND: &str = include_str!("skin_live.rs");
+    const MEMO: &str = include_str!("skin_bake_cache.rs");
     assert!(
-        BIND.contains("skin_bake::assar_no_bind("),
-        "o bind da imagem deixou de chamar o assador — a W1 da F9 ficou sem chamador, e uma porta \
-         sem chamador e' uma lei viva e orfa"
+        MEMO.contains("skin_bake::assar_no_bind("),
+        "o memo da assadura deixou de chamar o assador — a W1 da F9 ficou sem chamador, e uma \
+         porta sem chamador e' uma lei viva e orfa"
+    );
+    // ⚠️ A prosa SAI antes de varrer: o doc que EXPLICA a mudança contém o nome da porta, e sem
+    // isto o gate leria a própria explicação como se fosse uma chamada.
+    let codigo: String = BIND
+        .lines()
+        .map(|l| l.split_once("//").map_or(l, |(antes, _)| antes))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        !codigo.contains("skin_bake::assar"),
+        "o BIND voltou a assar: a malha assada e' estado DERIVADO e guardá-la no documento colapsa \
+         a escolha `Fast`/`Smooth` do painel e congela a densidade no ficheiro"
     );
     // Controlo positivo: é mesmo o ficheiro do bind, e ele guarda a malha.
     assert!(
-        BIND.contains("SkinBind::new(bytes, tendoes)"),
+        codigo.contains("SkinBind::new(bytes, tendoes)"),
         "este gate devia estar a medir o ficheiro que ESCREVE o bind — perdeu o sujeito"
     );
 }

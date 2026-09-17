@@ -1,6 +1,10 @@
 # 16 — RIG (6 nós) — conferência contra o mercado
 
-> ⚠️ **Esta família está DEFERIDA por decisão do Enio (CLAUDE.md §5: rig+skinning "pro FIM de tudo"); a tabela existe para quando ela for retomada — nenhum item abaixo vira wave agora.**
+> ⚠️ ~~**Esta família está DEFERIDA por decisão do Enio … nenhum item abaixo vira wave agora.**~~
+> ⛔ **EXPIRADO em 2026-09-17.** Aquele deferimento é de **2026-08-09**; o [doc 103 §5](../103_dinamica_dos_ciclos.md)
+> é de **05/09** e é ordem do dono a pôr esta família como **ciclo 9**. ⇒ a tabela volta a ser folha
+> de trabalho, e o ciclo vive no [doc 114](../114_ciclo_9_rig_e_corpos_moles.md).
+> *Uma nota de deferimento não sabe que foi revogada — quem a lê a seguir é que tem de datar as duas.*
 
 **Data:** 2026-08-09 · **Agente:** família 16 do [plano 89](../89_plano_conferencia_dos_nos.md) · **Nós:** `rig.skeleton` · `rig.fk` · `rig.ik_2bone` · `rig.fabrik` · `rig.rubber_hose` · `rig.skin_deformer`
 **Referências:** Rive (o runtime MIT que é a referência declarada do módulo vetorial) · Spine (Esoteric Software) · Blender · Battle Axe RubberHose / DUIK · [`referencia_pesquisa_cavalry.md`](../referencia_pesquisa_cavalry.md)
@@ -13,6 +17,17 @@
 O catálogo inteiro sabe **LER** qualquer coluna por nome — `value.attribute` em modo *Custom* (`crates/ph2d-node-value-attribute/src/lib.rs`, o text param `ATTR_KEY`) e `motion.expression` (*"any **scalar column** of the input stream by name"*, doc-header). E sabe **ESCREVER** exatamente **cinco**: `motion.drive` (`labels: &["X", "Y", "Rotation", "Size", "Opacity"]`, `lib.rs:335`), que é o mesmo eixo de `oscillator`/`wiggle`/`noise`/`step`/`stagger`/`spring`.
 
 ⇒ **`parent` e `len` — as duas colunas que FAZEM de uma stream um esqueleto (doc 40 §1) — não têm ESCRITOR nenhum.**
+
+> ⛔⛔ **REFUTADO POR MEDIÇÃO em 2026-09-17** ([doc 114 §3.1](../114_ciclo_9_rig_e_corpos_moles.md)).
+> Esta §0 estava certa no dia em que foi escrita e o `motion.drive` ganhou **depois** o canal
+> **`Custom…`** (`CH_CUSTOM = 9`) mais o text param `column`: ele escreve **qualquer** coluna, com os
+> oito modos dele. Medido pelo caminho do produto, `drive(Custom, "len")` sobre um esqueleto de 4
+> juntas dá comprimentos **`0,333 · 0,667 · 1,000`** contra o controlo `1,000 · 1,000 · 1,000`, com o
+> `rig.fk` a obedecer.
+> ⭐ **E o diagnóstico que fica é mais estreito:** das seis células que esta §0 atribui à caneta
+> ausente, duas estão fechadas e **quatro esperam o LEITOR no solver** — o `rig.skin_deformer` lê
+> `P`·`parent`·`len`·`rot`·`wrot` e **nenhuma coluna de peso**. *O que bloqueia não é escrever a
+> coluna: é o solver não a ler.*
 
 Isso não é uma observação de estilo: é a causa mecânica de **seis** dos "inexprimíveis" desta tabela de uma vez só (comprimento por-osso · ramificação · peso por-osso · limite de junta · rigidez por-junta · stretch/compress). E é por isso que a §SUPERAR abaixo aponta para **um** nó (o escritor genérico de coluna) em vez de para seis features: a família não é magra por natureza, ela é **magra por não ter uma caneta**.
 

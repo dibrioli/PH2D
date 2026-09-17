@@ -290,3 +290,129 @@ fn the_rig_group_route_only_improves() {
          antes de acusar os outros nove"
     );
 }
+
+// ---------------------------------------------------------------------------------------------
+// A CANETA — §5.0: MEDIR se a composição já exprime o item ANTES de o construir.
+// ---------------------------------------------------------------------------------------------
+
+/// Quantas juntas a medição da caneta usa. Quatro chegam para haver TRÊS ossos com comprimentos
+/// diferentes, que é o mínimo que distingue *«varia»* de *«dois valores»*.
+const JUNTAS: f32 = 4.0;
+
+/// **Os comprimentos que o `rig.fk` de facto RESOLVE**, medidos nas POSIÇÕES de saída.
+///
+/// A cadeia é `rig.skeleton → [motion.drive(Custom, "len") ← value.instance_field(Ramp)] → rig.fk`,
+/// e o booleano tira o escritor do meio — *é ele o CONTROLO*.
+///
+/// ⚠️ Mede-se a GEOMETRIA e não a coluna: ler `len` de volta provaria que o `motion.drive` escreveu,
+/// e a pergunta é se o **solver obedece**. São duas afirmações e só a segunda fecha a célula.
+fn comprimentos_dos_ossos(com_a_caneta: bool) -> Vec<f32> {
+    use ph2d_nodegraph::attr::Column;
+    use ph2d_nodegraph::cook::Cook;
+    use ph2d_nodegraph::graph::Edge;
+    let mut m = crate::motion_state::MotionState::new();
+    let esqueleto = m.doc.graph.add_node("rig.skeleton".to_string());
+    m.doc.graph.set_param(esqueleto, "joints", JUNTAS);
+    m.doc.graph.set_param(esqueleto, "length", 1.0);
+    m.doc.graph.set_param(esqueleto, "angle", 0.0);
+    m.doc.graph.set_param(esqueleto, "root_angle", 0.0);
+    let fk = m.doc.graph.add_node("rig.fk".to_string());
+
+    let fio = |g: &mut ph2d_nodegraph::graph::Graph, de, para, porta| {
+        g.connect(Edge {
+            from: (de, 0),
+            to: (para, porta),
+            delayed: false,
+        })
+        .expect("fio");
+    };
+    if com_a_caneta {
+        let campo = m.doc.graph.add_node("value.instance_field".to_string());
+        // `Ramp` dá `0..1` ao longo dos elementos — um número DIFERENTE por osso.
+        m.doc.graph.set_param(campo, "mode", 1.0);
+        // ⚠️ **A porta dele é lida só pela CONTAGEM, e desligada devolve UM valor degenerado**
+        // (di-lo o manifesto). A 1.ª redacção desta sonda deixou-a solta e mediu `[0, 0, 0]`
+        // contra um controlo de `[1, 1, 1]`: *a caneta escreveu, e escreveu ZEROS* — um defeito
+        // do ARNÊS que se lê exactamente como uma capacidade ausente.
+        fio(&mut m.doc.graph, esqueleto, campo, 0);
+        let caneta = m.doc.graph.add_node("motion.drive".to_string());
+        m.doc.graph.set_param(caneta, "channel", 9.0); // `Custom…`
+        m.doc.graph.set_param(caneta, "mode", 1.0); // `Set`
+        m.doc.graph.set_param(caneta, "scale", 1.0);
+        m.doc
+            .graph
+            .set_text_param(caneta, "column", "len".to_string());
+        fio(&mut m.doc.graph, esqueleto, caneta, 0);
+        fio(&mut m.doc.graph, campo, caneta, 1);
+        fio(&mut m.doc.graph, caneta, fk, 0);
+    } else {
+        fio(&mut m.doc.graph, esqueleto, fk, 0);
+    }
+
+    let mut cook = Cook::new();
+    let s = cook.cook(&m.doc.graph, &m.registry, fk, 0.0).expect("coze")[0]
+        .as_stream()
+        .clone();
+    let Some(Column::Vec2(p)) = s.get("P") else {
+        return Vec::new();
+    };
+    p.windows(2)
+        .map(|w| ((w[1][0] - w[0][0]).powi(2) + (w[1][1] - w[0][1]).powi(2)).sqrt())
+        .collect()
+}
+
+/// ⭐⭐⭐ **A CANETA JÁ EXISTE — e é o `motion.drive` no canal `Custom…`.**
+///
+/// A folha [16_rig.md](../../../docs/Motion%20Nodes/89_conferencia/16_rig.md) §0 diz que o catálogo
+/// sabe escrever **exactamente cinco** colunas (`X`/`Y`/`Rotation`/`Size`/`Opacity`) e que por isso
+/// `parent` e `len` — *«as duas colunas que FAZEM de uma corrente um esqueleto»* — **não têm
+/// escritor nenhum**, o que ela nomeia como a causa mecânica de SEIS células inexprimíveis.
+///
+/// ⛔⛔ **Isso era verdade em 2026-08-09 e já não é:** o `motion.drive` ganhou depois o canal
+/// **`Custom…`** (`CH_CUSTOM = 9`) mais o text param `column`, e com eles escreve **qualquer**
+/// coluna com os oito modos dele. Esta medição é o que separa *«a nota envelheceu»* de *«eu
+/// acreditei nela»* — a lei do `CLAUDE.md` §5.0: *antes de construir um item de lista aberta, meça
+/// se a composição já o exprime*.
+///
+/// ⚠️ **O CONTROLO é metade do valor:** sem a cadeia sem-escritor a devolver comprimentos IGUAIS,
+/// «eles variam» não distingue a caneta de um esqueleto que já nascia irregular.
+#[test]
+fn a_caneta_que_a_folha_diz_nao_existir_ja_escreve_o_comprimento_do_osso() {
+    let controlo = comprimentos_dos_ossos(false);
+    let com = comprimentos_dos_ossos(true);
+    assert!(
+        controlo.len() >= 3 && com.len() == controlo.len(),
+        "a cadeia nao produziu ossos: controlo {controlo:?} com {com:?}"
+    );
+    // O CONTROLO: sem escritor, a corrente tem UM comprimento para todos os ossos.
+    let (lo, hi) = (
+        controlo.iter().cloned().fold(f32::MAX, f32::min),
+        controlo.iter().cloned().fold(f32::MIN, f32::max),
+    );
+    assert!(
+        hi - lo < 1e-4,
+        "o CONTROLO ja' tinha ossos diferentes ({controlo:?}) — a medicao nao distingue nada"
+    );
+    // E COM a caneta: eles deixam de ser todos iguais.
+    let (clo, chi) = (
+        com.iter().cloned().fold(f32::MAX, f32::min),
+        com.iter().cloned().fold(f32::MIN, f32::max),
+    );
+    assert!(
+        chi - clo > 0.1,
+        "o `motion.drive(Custom, \"len\")` nao chegou ao solver: {com:?} (controlo {controlo:?})"
+    );
+}
+
+/// A TABELA da caneta — os números que o doc 114 §3.1 cita.
+#[test]
+#[ignore = "sonda de auditoria — corra à mão"]
+fn print_the_pen_measurement() {
+    eprintln!(
+        "\n  comprimentos dos ossos (`rig.skeleton(joints=4, length=1)` -> `rig.fk`)\n\
+         \n  sem a caneta (CONTROLO) : {:?}\
+         \n  com `drive(Custom,len)` : {:?}\n",
+        comprimentos_dos_ossos(false),
+        comprimentos_dos_ossos(true)
+    );
+}

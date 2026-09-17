@@ -128,6 +128,45 @@ esqueleto — não têm ESCRITOR nenhum.** Isso explica **seis** «inexprimívei
 
 > *A família não é magra por natureza: é magra por não ter uma caneta.*
 
+### ⛔⛔ A CANETA EXISTE — e a §0 da folha está REFUTADA por medição (2026-09-17)
+
+A frase acima era verdade **em 2026-08-09** e já não é. O `motion.drive` ganhou desde então o canal
+**`Custom…`** (`CH_CUSTOM = 9`) mais o text param `column`, e com eles escreve **qualquer** coluna
+com os **oito** modos dele (`Add · Set · Multiply · Subtract · Divide · Min · Max · Remap`). A folha
+mede-o como *«cobre X/Y/Rotation/Size/Opacity e nada mais»* — eram cinco, hoje são cinco **mais
+todas**.
+
+⭐ **MEDIDO pelo caminho do produto**
+(`a_caneta_que_a_folha_diz_nao_existir_ja_escreve_o_comprimento_do_osso`), na cadeia
+`rig.skeleton(joints=4, length=1) → motion.drive(Custom, "len") ← value.instance_field(Ramp)`, com o
+`rig.fk` a resolver a pose:
+
+| | comprimentos que o `rig.fk` resolve |
+|---|---|
+| **sem a caneta** (o CONTROLO) | `1,000 · 1,000 · 1,000` |
+| **com** `drive(Custom, "len")` | **`0,333 · 0,667 · 1,000`** |
+
+⚠️ **Mede-se a GEOMETRIA e não a coluna:** ler `len` de volta provaria que o `motion.drive`
+escreveu, e a pergunta é se **o solver obedece**. São duas afirmações e só a segunda fecha a célula.
+⚠️ E o **CONTROLO é metade do valor** — sem a cadeia sem-escritor a devolver comprimentos iguais,
+*«eles variam»* não distinguiria a caneta de um esqueleto que já nascia irregular.
+
+⛔⛔ **MAS a caneta é NECESSÁRIA e não SUFICIENTE, e é aqui que o diagnóstico fica mais preciso que
+o da folha.** Das seis células que ela atribui à caneta ausente:
+
+| célula | o que falta HOJE |
+|---|---|
+| comprimento por osso | ✅ **nada** — medido acima |
+| ramificação | ✅ nada — o text param `branches` fechou-a em 2026-08-12 (a própria folha o diz) |
+| **peso por osso** (P0) | ⛔ o **LEITOR**: o `rig.skin_deformer` lê `P`·`parent`·`len`·`rot`·`wrot` e **nenhuma coluna de peso** |
+| limite de junta | ⛔ o LEITOR, no `rig.fk`/`rig.fabrik` |
+| rigidez por junta | ⛔ o LEITOR, no `rig.fabrik` |
+| stretch / compress | ⛔ o LEITOR, no `rig.ik_2bone` |
+
+⇒ ⭐⭐⭐ **o que bloqueia quatro das seis não é escrever a coluna: é o SOLVER não a ler.** *Uma
+ausência afirmada sem olhar a API é um palpite com cara de medição* — e desta vez a nota errada era
+sobre um nó que a própria casa tinha alargado três semanas depois de ela ser escrita.
+
 **Os três buracos de maior alcance, na ordem em que a folha os mede:**
 
 1. **`Strength` / `Mix`** — Rive tem em **7 de 7** constraints, Spine em **4 de 4**, nós em **0 de
@@ -171,11 +210,15 @@ os dials existem — e quase todos chegam ao cartão — e o que falta é a **ro
   a INTERFACE»*). O que lhes falta escreve-se em **colunas**, e a coluna não tem caneta.
 - Os corpos moles têm **a interface e não a placa**. O que lhes falta é a **rota**.
 
-⚠️ E as duas metades encontram-se na §SUPERAR item 6 da folha: **um escritor genérico de coluna**
-(`motion.set_attribute`, o gémeo escritor do `value.attribute`, com o nome por text param do doc 32)
-destrava de uma vez comprimento por osso, ramificação, peso por osso, limites, rigidez e stretch —
-**e serve o catálogo inteiro, não só o rig**. *Se esta família for retomada, este é o primeiro item
-— e provavelmente ele não é do rig.* ⇒ ele é a **W1** da §5.
+⛔⛔ **E a §SUPERAR item 6 da folha — *«o primeiro item é um escritor genérico de coluna»* — foi
+MEDIDA e está FECHADA: ele já existe** (§3.1). O que a medição pôs no lugar dela é mais estreito e
+mais accionável: **o que falta é o LEITOR no solver**, quatro vezes. ⇒ a W1 deixa de ser *«construir
+a caneta»* e passa a ser *«dar ao `rig.skin_deformer` o peso por osso»*, que é o **P0** da folha e o
+item que ela chama *«o que todo rigger encontra no primeiro dia»*.
+
+⭐ *E isto poupou a wave inteira que eu ia escrever*: o `CLAUDE.md` §5.0 manda medir se a composição
+já exprime o item antes de o construir, e aqui ela exprimia — *o que se perde ao não reconferir não
+é tempo, é construir o que já existe*.
 
 ---
 
@@ -184,9 +227,9 @@ destrava de uma vez comprimento por osso, ramificação, peso por osso, limites,
 | wave | o que é | porquê primeiro |
 |---|---|---|
 | **W0** ✅ | A **catraca da rota do grupo** (§2.1) — FECHADA em 2026-09-17, 2 de 2 mutações a sangrar | *Sem a régua, toda a §2 era uma leitura de registo em vez de uma medição do planeador.* |
-| **W1** | O **escritor genérico de coluna** (`motion.set_attribute`) | Destrava seis células de uma vez (§4) e é a caneta que a família não tem |
+| ~~**W1**~~ ⛔ | ~~O escritor genérico de coluna~~ — **REFUTADA em 2026-09-17: ele já existe** (§3.1) | *A composição já o exprimia; medir antes de construir poupou a wave inteira* |
+| **W1′** | O **peso por osso** do `rig.skin_deformer` — o LEITOR que falta (P0 da folha) | É o que a medição pôs no lugar da W1, e é o item *«que todo rigger encontra no primeiro dia»* |
 | **W2** | **`Strength`/`Mix` como COLUNA** nos constraints | Um item, sete lugares — e nasce melhor que as três referências (§3.1) |
-| **W3** | O **peso por osso** do `rig.skin_deformer` (P0) | *O item que todo rigger encontra no primeiro dia* |
 | **W4** | A **rota no dispositivo** para os corpos moles, com o preço de cada um nomeado | Lei 1 do doc 103 §2 |
 | **W5** | A **MEDIÇÃO** do grupo (passo 5): tabela CPU · dispositivo · passes · objectos/ms, com `loadavg` ao lado | §0.0 |
 | **W6** | O **TUTORIAL em PDF** (passo 6) + a cena de smoke | O tutorial É o smoke |

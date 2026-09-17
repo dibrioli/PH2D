@@ -289,7 +289,7 @@ como gate de partida. A cadeia que o tutorial ensina é a curta, que não tem es
 
 ---
 
-## §7 — ⏳ W4: o relógio do grupo
+## §7 — ✅ W4: o relógio do grupo
 
 Sonda [`measure_the_source_group`](../../crates/ph2d-app-motion/src/motion_bridge_fontes_relogio.rs)
 — `X → scale → output` pela ponte do PRODUTO, com as membranas publicadas **na ordem do quadro** e
@@ -316,12 +316,46 @@ contagem. *Uma coluna `n` seria a média de sete perguntas diferentes.*
 nome): sem isso, uma fonte nova entraria na tabela a medir o próprio neutro — *que é a primeira
 armadilha, disfarçada de linha nova*.
 
-⏳ **Os números ficam por escrever, e o motivo é o de sempre:** nenhuma leitura de relógio desta
-máquina vale nada acima de `load ~5` (`CLAUDE.md` §5.0) e a `line/UIUX` esteve a correr a suíte
-dela a noite inteira (`load 10`–`60`). A sonda está comitada e a espera está armada pela ferramenta
-do repo (`medir_quando_calmo.sh`, 4 amostras seguidas abaixo de `4,5`). ⚠️ **O smoke do dono NÃO
-depende desta tabela** — ela é o registo do grupo, e a §6 já traz medido o número que o tutorial
-cita.
+### ✅ A TABELA (2026-09-17, `load 2,17` — §5.0 satisfeito)
+
+Corrida pelo vigia do repo (`ferramentas/medir_quando_calmo.sh`, 4 amostras seguidas abaixo de
+`4,5`), **duas corridas** do mesmo binário RELEASE, com a placa em exclusão.
+
+| nó | linhas | publicar | cozer | quadro | ns/linha | a rota |
+|---|---|---|---|---|---|---|
+| `motion.emitter` | 512 | 0,00 | 0,07 | **0,07** | 136,5 | ✅ **dispositivo** (plano inteiro) |
+| `source.camera` | 1 | 0,00 | 0,05 | **0,05** | *(51 210)* | ⚠️ híbrido |
+| `source.lsystem` | 1 | 0,00 | 0,05 | **0,05** | *(50 511)* | ⚠️ híbrido |
+| `source.object` | 1 | 0,00 | 0,05 | **0,05** | *(49 810)* | ⚠️ híbrido |
+| `source.shape` | 1 (vec) | 0,00 | 0,00 | **0,00** | *(4 400)* | ⛔ CPU — forma vectorial viva |
+| **`source.table`** | **100 000** | **0,57** | 0,17 | **0,74** | **7,4** | ⚠️ híbrido |
+| `source.text` | 210 (vec) | 0,16 | 0,00 | **0,16** | 774,2 | ⛔ CPU — forma vectorial viva |
+| — **CONTROLO** `motion.grid` | 99 856 | 0,00 | 0,18 | **0,18** | **1,8** | ✅ dispositivo |
+
+⚠️ **As duas corridas CONCORDAM em todo número que carrega peso** (`source.table` `0,57 / 0,17 /
+0,74` e o controlo `0,18` nas duas, ns/linha `7,4` e `1,8` nas duas). O que oscila são os nós de
+**uma** linha (`0,04`–`0,06`), que é ruído sobre uma amostra.
+
+⛔⛔ **A coluna `ns/linha` de um nó de UMA linha está entre parênteses porque ela NÃO é um custo por
+linha** — é o custo FIXO de um cook dividido por `1`. Lida como as outras, ela diria que a
+`source.camera` é `28 000×` pior que a grelha, e o que ela mede é *«cozer uma coisa custa ~50 µs,
+tenha ela uma linha ou um milhão»*. ⇒ **só as três linhas com contagem grande se comparam entre si.**
+
+⭐ **O que a tabela diz, em três leituras:**
+
+1. **O ficheiro de 100 000 linhas custa `0,74 ms`** — `4,4 %` de um quadro de 60 fps. Depois da cura
+   da §6 isto é uma fonte de dados que se pode ter numa cena e não notar.
+2. **Contra o CONTROLO, ele custa `4,1×`** (`7,4` contra `1,8` ns/linha) — e a diferença **inteira**
+   está em `publicar` (`0,57` contra `0,00`), não em `cozer` (`0,17` contra `0,18`, empate). ⇒ *o que
+   separa uma fonte de DADOS de uma fonte gerada no dispositivo é a travessia, não a cozedura* — que
+   é exactamente o que a §6 curou e o que sobra dela.
+3. **Residência: `2` de `8` linhas chegam inteiras ao dispositivo** (o emissor e o controlo). Quatro
+   são **híbridas** (prefixo na CPU, sufixo no device) e **duas são CPU por LEI** — uma forma
+   vectorial viva recusa o grafo inteiro, que é a nota que o `CLAUDE.md` §5 já traz sobre
+   `graph_has_live_vector_source`.
+
+⚠️ **O smoke do dono NÃO dependia desta tabela** — ela é o registo do grupo, e a §6 já trazia medido
+o número que o tutorial cita. Ela fecha a última dívida do ciclo 8.
 
 ---
 

@@ -129,8 +129,11 @@ inventada. Contagens do registry em 2026-09-05.
 > **primeiro** e cinco são do meio ⇒ *todo grafo que segure seja o que for corre inteiro na CPU*.
 > ⭐⭐ As duas metades curam-se pelo mesmo sítio — **`parent` e `len` não têm ESCRITOR**, e um escritor
 > genérico de coluna destrava seis células de uma vez e serve o catálogo inteiro (doc 114 §4).
-> ⏳ Fica ainda **a tabela do relógio do ciclo 8** (doc 113 §7): a sonda está comitada e a espera pela
-> máquina calma corre por vigia (`ferramentas/medir_quando_calmo.sh`).
+> ✅ **E a tabela do relógio do ciclo 8 FECHOU no mesmo dia** (doc 113 §7), a `load 2,17` e com duas
+> corridas a concordar: o ficheiro de **100 000 linhas custa `0,74 ms`** (4,4 % de um quadro), o que
+> é **`4,1×`** o controlo na placa — e a diferença **inteira** está em *publicar* (`0,57` contra
+> `0,00`), não em *cozer* (`0,17` contra `0,18`). ⇒ *o que separa uma fonte de DADOS de uma gerada no
+> dispositivo é a TRAVESSIA, não a cozedura.* O ciclo 8 não tem mais dívida.
 >
 > ⚠️ **Estado em 2026-09-16 (fecho da LINHA).** O ciclo **8** FECHOU — o dono correu a cena `=119`,
 > seguiu o [tutorial 08](tutoriais/08_de_onde_vem_as_coisas.pdf) e aprovou (*«smoke OK»*). O achado

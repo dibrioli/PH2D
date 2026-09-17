@@ -27,11 +27,13 @@
 //! da esquerda é o CONTROLO — a mesma pele com os ossos todos a puxar por igual —, e sem ele
 //! *«mexeu»* não separa o envelope de um grafo diferente.
 //!
-//! ⚠️ **A caneta do envelope são DOIS cartões e isso é a lição, não um preço:** o
-//! `value.instance_field(Ramp)` faz o número por elemento e o `motion.drive(Custom…)` escreve-o
-//! na coluna pelo NOME. A W1 deste ciclo foi **refutada por medição** justamente aqui (§3.1 do
-//! doc) — o escritor genérico de coluna já existia, e construir um segundo seria reconstruir o
-//! que a composição já exprime.
+//! ⚠️ **A caneta do envelope são TRÊS cartões e isso é a lição, não um preço:** um CAMPO
+//! (`field.index_range`) decide *quanto*, o `value.attribute` lê esse número da coluna `falloff` e
+//! o `motion.drive(Custom…)` escreve-o na coluna que se quiser. ⭐ **É o mesmo trio do cartão
+//! `Strength` do pano do IK, e é de propósito:** dois panos, uma lição — *um campo decide o
+//! quanto; o par atributo+caneta leva-o ao sítio*. A W1 deste ciclo foi **refutada por medição**
+//! exactamente aqui (§3.1 do doc): o escritor genérico de coluna já existia, e construir um
+//! segundo seria reconstruir o que a composição já exprime.
 //!
 //! ⛔ **QUATRO dos dez nós do grupo não estão aqui, e cada ausência tem motivo medido:**
 //! - `motion.soft_body` e `motion.boids` — os dois **produzem** como a corda e o campo, e os dois
@@ -112,9 +114,21 @@ const ALVO_RITMO: f32 = 0.35;
 const FORCA_RAIO: f32 = 20.0;
 
 // ── A PELE ─────────────────────────────────────────────────────────────────────────────────
-/// O lado da grelha que faz de pele, e o vão entre os pontos dela.
-const PELE_LADO: f32 = 5.0;
-const PELE_VAO: f32 = 0.4;
+/// A pele é uma **MANGA** e não um quadrado: `3` de largura por `7` de altura.
+///
+/// ⛔⛔ **A 1.ª redacção era `5 × 5` com vão `0,4`, e a FIGURA do tutorial refutou-a:** uma grelha
+/// mais LARGA do que a corrente é comprida fica com metade das peças longe de qualquer osso, cada
+/// uma a seguir o osso mais próximo por si — e o que se desenha são vinte e cinco pontos
+/// dispersos, que se leem como RUÍDO e não como pele. ⚠️ *A suíte estava verde: os gates mediam
+/// que os dois panos diferem, e dois ruídos diferentes também diferem.* Quem o apanhou foi olhar
+/// para a imagem.
+///
+/// ⭐ Uma manga `0,44 × 1,68` embrulha a corrente (`4 × 0,45 = 1,8`), logo cada peça tem um osso
+/// por perto e o conjunto deforma-se como uma coisa só.
+const PELE_COLS: f32 = 3.0;
+const PELE_ROWS: f32 = 7.0;
+const PELE_VAO_X: f32 = 0.22;
+const PELE_VAO_Y: f32 = 0.28;
 const PELE_PECA: f32 = 0.11;
 /// Quanto a pele sobe para ficar POR CIMA da corrente. ⚠️ Uma grelha centrada na origem só cobria
 /// a metade de baixo dos ossos, e metade da pele não teria osso nenhum a puxá-la.
@@ -143,6 +157,12 @@ const COLUNA_QUINHAO: &str = "bone_weight";
 /// `a_cinematica_directa_e_a_inversa_dao_panos_diferentes` (sem a dobra, o pano do FK é uma
 /// corrente recta e a diferença para o IK deixa de ser a que a cena promete).
 const COLUNA_ROT: &str = "rot";
+/// A coluna do catálogo que TODO campo escreve — o `motion.falloff` e a família `field.*`.
+const COLUNA_FALLOFF: &str = "falloff";
+/// Até que fracção da corrente o quinhão vale `1`. ⚠️ **`0,5` sobre CINCO juntas dá `s = i/4` ⇒
+/// `0 · 0,25 · 0,5` dentro e `0,75 · 1` fora**: as duas últimas deixam de puxar. *O número lê-se
+/// na aritmética da banda, não se escolhe por gosto.*
+const BANDA_DO_QUINHAO: f32 = 0.5;
 
 fn no(doc: &mut MotionDoc, tipo: &str, x: f32, y: f32) -> NodeId {
     let n = doc.graph.add_node(tipo);
@@ -224,6 +244,42 @@ fn caneta(doc: &mut MotionDoc, fonte: NodeId, coluna: &str, escala: f32, y: f32)
     Some(d)
 }
 
+/// **A CANETA DA BANDA** — `field.index_range → value.attribute("falloff") → motion.drive(coluna)`.
+///
+/// ⛔⛔ **A 1.ª redacção do envelope era a caneta da RAMPA, e a FIGURA do tutorial refutou-a.** Uma
+/// rampa dá `0` na raiz e `1` na ponta — e a ponta é justamente onde a corrente MAIS se dobra,
+/// logo o quinhão pequeno caía sobre a parte da pele que já não se mexia: as duas figuras de baixo
+/// diferiam `0,39` do lado de uma peça (mediana `0,20`), *duas imagens que o leitor lê como
+/// iguais*. ⚠️ **A suíte estava verde** — os gates exigiam que os dois panos diferissem, e dois
+/// panos que diferem por um quinto de peça diferem.
+///
+/// ⭐⭐ A banda faz o contrário e é o que se vê: as juntas do **fim** ficam com quinhão ZERO, logo a
+/// ponta da manga deixa de seguir a dobra e fica para trás. ⭐ E ela reusa o mesmo conceito do
+/// cartão `Strength` do pano do IK — *um campo decide QUANTO, e o par `value.attribute` +
+/// `motion.drive` leva esse número para a coluna que se quiser*. Dois panos, uma lição.
+fn caneta_da_banda(doc: &mut MotionDoc, fonte: NodeId, coluna: &str, y: f32) -> Option<NodeId> {
+    let banda = no(doc, "field.index_range", -300.0, y - 90.0);
+    doc.graph.set_param(banda, "start", 0.0);
+    doc.graph.set_param(banda, "end", BANDA_DO_QUINHAO);
+    // ⚠️ `soft = 0` é o DEGRAU: com a borda macia de fábrica (`0,10`) as cinco juntas caem todas
+    // dentro da rampa e o quinhao vira outra rampa — a lei que esta função existe para não repetir.
+    doc.graph.set_param(banda, "soft", 0.0);
+    doc.graph.set_label(banda, "Range: que ossos puxam");
+    let a = no(doc, "value.attribute", -160.0, y - 90.0);
+    doc.graph.set_text_param(a, "attr", COLUNA_FALLOFF);
+    let d = no(doc, "motion.drive", -20.0, y);
+    doc.graph.set_param(d, "channel", CANAL_CUSTOM);
+    doc.graph.set_param(d, "mode", MODO_SET);
+    doc.graph.set_param(d, "scale", 1.0);
+    doc.graph.set_text_param(d, "column", coluna);
+    doc.graph.set_label(d, "Drive: o quinhao de cada osso");
+    liga(doc, fonte, (banda, 0))?;
+    liga(doc, banda, (a, 0))?;
+    liga(doc, fonte, (d, 0))?;
+    liga(doc, a, (d, 1))?;
+    Some(d)
+}
+
 /// A corrente de juntas — a fonte das três cadeias de rig desta cena.
 fn esqueleto(doc: &mut MotionDoc, y: f32) -> NodeId {
     let e = no(doc, "rig.skeleton", -400.0, y);
@@ -245,7 +301,7 @@ fn pele(doc: &mut MotionDoc, envelope: bool, y: f32) -> Option<NodeId> {
 
     // O REPOUSO — a corrente como foi autorada, com ou sem o envelope por cima.
     let fonte_repouso = if envelope {
-        caneta(doc, e, COLUNA_QUINHAO, 1.0, y)?
+        caneta_da_banda(doc, e, COLUNA_QUINHAO, y)?
     } else {
         e
     };
@@ -259,10 +315,10 @@ fn pele(doc: &mut MotionDoc, envelope: bool, y: f32) -> Option<NodeId> {
 
     // A PELE — uma grelha pousada POR CIMA da corrente.
     let g = no(doc, "motion.grid", -400.0, y - 360.0);
-    doc.graph.set_param(g, "rows", PELE_LADO);
-    doc.graph.set_param(g, "cols", PELE_LADO);
-    doc.graph.set_param(g, "gap_x", PELE_VAO);
-    doc.graph.set_param(g, "gap_y", PELE_VAO);
+    doc.graph.set_param(g, "rows", PELE_ROWS);
+    doc.graph.set_param(g, "cols", PELE_COLS);
+    doc.graph.set_param(g, "gap_x", PELE_VAO_X);
+    doc.graph.set_param(g, "gap_y", PELE_VAO_Y);
     let sobe = no(doc, "motion.move", -220.0, y - 360.0);
     doc.graph.set_param(sobe, "dy", PELE_SOBE);
     liga(doc, g, (sobe, 0))?;

@@ -28,6 +28,19 @@ const PELE_QUINHAO: usize = 5;
 const TIQUES: usize = 40;
 const DT: f64 = 1.0 / 60.0;
 
+/// **A BARRA DO QUE SE VÊ**, em unidades de mundo — quase três peças da pele (`PELE_PECA = 0,11`).
+///
+/// ⛔⛔ **Ela nasceu de um defeito que a suíte VERDE não via.** Os gates da pele pediam só
+/// `d > 1e-3` — *«os dois panos diferem»* —, e a primeira redacção do envelope passava-os com
+/// `0,39` do lado de UMA peça de diferença: duas figuras que o leitor do tutorial lê como
+/// **iguais**, debaixo de duas legendas que prometem coisas diferentes. ⚠️ *Uma régua que só vê o
+/// SINAL não vê a MAGNITUDE* — a mesma família do `edge_max` cego ao quad fino —, e quem a apanhou
+/// foi olhar para a imagem, não correr a suíte.
+///
+/// ⭐ Com a banda no lugar da rampa o par mede `0,63` de mundo (`5,7` peças), logo a barra tem
+/// folga de `2×` e o que ela proíbe é a REGRESSÃO ao invisível.
+const VISIVEL: f32 = 0.3;
+
 /// O primeiro nó de um dado tipo no grafo.
 ///
 /// ⚠️ **A cena tem UM de cada um dos tipos que estes gates procuram** (`motion.falloff` e
@@ -258,9 +271,9 @@ fn o_quinhao_por_osso_muda_a_pele() {
     let quinhao = pontos(&corre(PELE_QUINHAO, 0, |_| {}));
     let d = maior_desvio(&igual, &quinhao);
     assert!(
-        d > 1e-3,
-        "os dois panos de BAIXO ficaram iguais (desvio {d:e}) — \
-         o quinhao por osso nao chegou a' pele"
+        d > VISIVEL,
+        "os dois panos de BAIXO diferem {d:e}, abaixo dos {VISIVEL} que se VEEM — \
+         o quinhao por osso ou nao chegou a' pele, ou chegou onde ela ja' nao se mexia"
     );
 }
 
@@ -273,15 +286,17 @@ fn o_quinhao_por_osso_muda_a_pele() {
 #[test]
 fn o_quinhao_a_zero_devolve_a_pele_ao_repouso() {
     let zero = pontos(&corre(PELE_QUINHAO, 0, |g| {
-        // A caneta do envelope é o `motion.drive` que escreve `bone_weight`; pôr a escala a zero
-        // dá `bone_weight = 0` em todos os ossos.
+        // ⭐ A alavanca do quinhão é o FIM DA BANDA: a `0` nenhuma junta cai dentro dela, logo
+        // todos os ossos ficam com quinhão zero e nenhum puxa. ⚠️ **Não é a `scale` da caneta** —
+        // ali o valor já vem do campo, e mexer nela mediria outra coisa.
         let canetas = caneta_da_coluna(g, "bone_weight");
         assert_eq!(
             canetas.len(),
             1,
             "a cena tem de ter UMA caneta de `bone_weight` — o pano da direita"
         );
-        g.set_param(canetas[0], "scale", 0.0);
+        let banda = primeiro(g, "field.index_range");
+        g.set_param(banda, "end", 0.0);
     }));
     let igual = pontos(&corre(PELE_IGUAL, 0, |_| {}));
     assert!(
@@ -294,9 +309,9 @@ fn o_quinhao_a_zero_devolve_a_pele_ao_repouso() {
     // é a MESMA dos dois lados — logo a diferença para o pano da esquerda é a deformação inteira.
     let d = maior_desvio(&zero, &igual);
     assert!(
-        d > 1e-3,
-        "com o quinhao a ZERO a pele ficou igual a' do pano que e' deformado (desvio {d:e}) — \
-         o passo 9 do anuncio ensinaria um slider inerte"
+        d > VISIVEL,
+        "com o quinhao a ZERO a pele difere {d:e} da que e' deformada, abaixo dos {VISIVEL} que \
+         se VEEM — o passo 10 do anuncio ensinaria um controlo inerte"
     );
 }
 

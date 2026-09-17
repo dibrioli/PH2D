@@ -341,13 +341,16 @@ pub(super) fn rig() {
   8. Na fileira do MEIO, no pano da ESQUERDA, clique no cartao `Drive` (o que esta'
      ANTES do `FK: os pais decidem`) e mude a linha `Scale`. Cada junta dobra mais (ou
      menos), e a corrente inteira enrola: o angulo e' de cada junta, nao da corrente.
-  9. Fileira de BAIXO -- A PELE. Os dois panos tem a MESMA grelha de 25 pecas por cima
-     da MESMA corrente dobrada. A ESQUERDA todos os ossos puxam por igual. A DIREITA
-     cada osso tem o SEU quinhao: o de baixo quase nao puxa e o de cima puxa tudo, e a
-     pele da direita fica torcida de outra maneira.
- 10. Clique no cartao `Drive` da fileira de BAIXO, no pano da DIREITA, e baixe a linha
-     `Scale` ate' zero. A pele da direita fica PARADA: com o quinhao de todos os ossos
-     a zero, nenhum a puxa.
+  9. Fileira de BAIXO -- A PELE. Os dois panos tem a MESMA manga de 21 pecas vestida na
+     MESMA corrente dobrada. A ESQUERDA todos os ossos puxam por igual e a manga dobra
+     inteira. A DIREITA os DOIS ULTIMOS ossos nao puxam nada: a metade de cima da manga
+     fica DIREITA, como uma manga larga que nao acompanha o cotovelo.
+ 10. Clique no cartao `Range: que ossos puxam` (fileira de BAIXO, pano da DIREITA) e
+     suba a linha `End` ate' 1. Agora TODOS os ossos puxam, e a manga da direita fica
+     igual a' da esquerda. Baixe `End` ate' 0: nenhum osso puxa e a manga fica DIREITA
+     por completo, onde a grelha a pos.
+     (i) Sao tres cartoes: um CAMPO decide o quanto, o `Attribute` le' esse numero e o
+         `Drive` escreve-o na coluna de cada osso. E' o mesmo trio do passo 7.
 
   DEU ERRADO se: a corda nao balancar ao dar PLAY; se o campo ficar uma grelha parada;
   se os dois panos do MEIO ficarem iguais (o alvo nao chegou ao solver); se os dois de

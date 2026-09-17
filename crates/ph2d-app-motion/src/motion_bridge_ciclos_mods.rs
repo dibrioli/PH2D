@@ -95,6 +95,13 @@ mod fontes_relogio;
 #[path = "motion_bridge_fontes_figures.rs"]
 mod fontes_figures;
 
+/// As figuras do tutorial do **ciclo 9** — a mesma lei do ciclo 8, mais a LINHA que liga as
+/// juntas (cinco pontos soltos não se leem como uma corrente) e o campo desenhado com o TAMANHO
+/// que os dados dão, porque é lá que a onda dele vive. Ver o cabeçalho.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_rig_figures.rs"]
+mod rig_figures;
+
 /// As figuras do tutorial do ciclo 1 — geradas COZINHANDO os nós (doc 103 §3).
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_arranjo_figures.rs"]

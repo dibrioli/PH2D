@@ -90,6 +90,9 @@ pub mod motion_path_smoke;
 /// `#[cfg(test)]`, não entra no bin.
 #[cfg(test)]
 pub mod motion_rig_probe;
+/// O PREÇO do mesmo grupo — irmão do acima pelo tecto de LOC (ciclo 9, W4/W5).
+#[cfg(test)]
+pub mod motion_rig_relogio;
 /// O estado de shell da familia — os quatro campos que saíram da `App` na W2/L1 (A2b).
 /// O que uma CENA pede à shell, no vocabulário da família (W2 Fase C).
 pub mod motion_scene_ctx;

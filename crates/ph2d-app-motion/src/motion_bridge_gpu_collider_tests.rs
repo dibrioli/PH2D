@@ -1,7 +1,119 @@
-//! O gate da recusa do colisor declarado pelo nome (doc 109 W2) — ver [`super::graph_declares_collider`].
+//! Os gates das DUAS recusas de colisor, que recusam pela mesma razão de motor por **rotas
+//! diferentes**: o nome escrito num text param (doc 109 W2, [`super::graph_declares_collider`]) e
+//! um EXTERNO que traz a forma do objecto (doc 115 W1, [`super::cook_publishes_collider`]).
 
-use super::{GpuOutcome, RECUSA_COLISOR, cook_gpu, graph_declares_collider};
+use super::{
+    GpuOutcome, RECUSA_COLISOR, RECUSA_COLISOR_EXTERNO, cook_gpu, cook_publishes_collider,
+    graph_declares_collider,
+};
 use crate::motion_state::MotionState;
+use ph2d_nodegraph::attr::{
+    COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, Stream,
+};
+
+/// Um cozedor com UM externo que traz `colunas`.
+fn cozedor_com(colunas: &[&str]) -> ph2d_nodegraph::cook::Cook {
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+    let mut s = Stream::new(1).with("P", Column::Vec2(vec![[0.0, 0.0]]));
+    for c in colunas {
+        s = s.with(*c, Column::Vec2(vec![[0.5, 0.5]]));
+    }
+    cook.set_external("Bola".to_string(), s);
+    cook
+}
+
+/// ⭐⭐⭐ **AS TRÊS COLUNAS, UMA A UMA** — e o CONTROLO, que é o que impede a cerca de ser
+/// incondicional.
+///
+/// ⚠️ **Uma a uma e não juntas**, de propósito: com as três no mesmo externo, apagar duas da lista
+/// da cerca deixaria o gate verde. *Uma cerca que lista N nomes precisa de N casos*, que é a mesma
+/// lei do censo com piso — aqui o piso é a população de colunas.
+#[test]
+fn cada_uma_das_tres_colunas_de_colisor_recusa_o_externo() {
+    for c in [COLLIDER_COLUMN, COLLIDER_BOX_COLUMN, COLLIDER_OFFSET_COLUMN] {
+        assert!(
+            cook_publishes_collider(&cozedor_com(&[c])),
+            "um externo com `{c}` tem de recusar o dispositivo"
+        );
+    }
+    // O CONTROLO: as colunas que a membrana de facto publica hoje não recusam nada.
+    assert!(
+        !cook_publishes_collider(&cozedor_com(&[
+            "size",
+            "rot",
+            "tint",
+            "uv_rect",
+            "texture_id"
+        ])),
+        "um objecto SEM colisor tem de continuar a cozer no dispositivo — senão esta cerca \
+         derruba toda cena com um Sprite e o §0.0 deixa o caminho lento definir o produto"
+    );
+    // E um cozedor sem externo nenhum — o chão.
+    assert!(!cook_publishes_collider(&ph2d_nodegraph::cook::Cook::new()));
+}
+
+/// ⛔⛔⛔ **O FIO, e não a porta — este gate nasceu de uma MUTAÇÃO QUE SOBREVIVEU.**
+///
+/// Os dois gates acima chamam a [`super::cook_publishes_collider`] **directamente**. Cortado o
+/// `return` no `cook_gpu` (a cerca passa a ser perguntada e a resposta deitada fora), os `1 157`
+/// testes desta crate ficaram **VERDES** — *um gate que chama a função em vez de percorrer a rota
+/// afirma que a lei existe, nunca que o produto a usa*. É a quinta vez que esta casa paga a forma.
+///
+/// ⚠️ **A rota REAL precisa de um adapter** (o irmão que a percorre é `#[ignore]`, logo o CI nunca
+/// o corre — *skip gracioso não é verde*). A metade que o CI corre é esta: o despacho lido por
+/// `include_str!`, que **deixa de compilar** se o ficheiro mudar de sítio e reprova alto se alguém
+/// apagar a ligação.
+///
+/// ⭐ E ele exige as DUAS metades da ligação — a pergunta **e** a saída nomeada —, senão um
+/// `if … { }` vazio passaria.
+#[test]
+fn a_cerca_dos_externos_esta_de_facto_ligada_ao_cozimento() {
+    const PONTE: &str = include_str!("motion_bridge_gpu.rs");
+    let despacho = PONTE
+        .split_once("if cook_publishes_collider(&motion.pump.cook) {")
+        .map(|(_, resto)| resto)
+        .expect(
+            "o `cook_gpu` deixou de PERGUNTAR à cerca dos externos — a rota da membrana voltou a \
+             atravessar a fronteira sem cerca (doc 115 W1)",
+        );
+    let ate_ao_fecho = despacho.split_once('}').map(|(x, _)| x).unwrap_or("");
+    assert!(
+        ate_ao_fecho.contains("return fell(motion, RECUSA_COLISOR_EXTERNO)"),
+        "a cerca é perguntada e a resposta não SAI para a CPU — é a mutação que sobreviveu aos \
+         dois gates acima: {ate_ao_fecho:?}"
+    );
+}
+
+/// ⚠️⚠️ **A CERCA NASCE INERTE, e este gate é quem o afirma** — é ele que torna honesta a frase
+/// *«este commit não muda um bit do que o artista vê»*.
+///
+/// A régua é o FICHEIRO da membrana, por `include_str!`: ela publica hoje `P · size · rot · tint ·
+/// uv_rect · texture_id · geometry_id` e **nenhuma coluna de colisor**. ⛔ Uma lista escrita à mão
+/// aqui seria a segunda cópia daquele conjunto, e divergia no dia em que ele crescesse — que é
+/// exactamente o dia que este gate existe para apanhar.
+///
+/// ⭐ **E ele VAI ficar vermelho, de propósito:** no dia em que a W3 do doc 115 puser a membrana a
+/// publicar a forma do objecto. A cura NÃO é apagá-lo — é reescrevê-lo com a morte da premissa
+/// visível no diff, depois de confirmar que a W2 (a caixa no dispositivo, ou a recusa medida dela)
+/// aterrou. *Sem isto, a rota abre-se e ninguém repara.*
+#[test]
+fn hoje_nenhum_externo_da_membrana_traz_colisor() {
+    const MEMBRANA: &str = include_str!("motion_bridge_objects.rs");
+    // O piso: se a varredura deixar de ver o construtor da corrente, ela está a medir o nada.
+    assert!(
+        MEMBRANA.contains(".with(\n            \"texture_id\","),
+        "esta régua deixou de encontrar o construtor do externo — ela mudou de sítio e o gate \
+         passou a varrer um ficheiro que não é o da membrana"
+    );
+    for c in [COLLIDER_COLUMN, COLLIDER_BOX_COLUMN, COLLIDER_OFFSET_COLUMN] {
+        assert!(
+            !MEMBRANA.contains(c),
+            "a membrana passou a publicar `{c}` — a rota de externos ABRIU (doc 115 W3). \
+             Confirme que a W2 aterrou (a caixa no dispositivo, ou a recusa MEDIDA dela) e \
+             reescreva este gate com a morte da premissa no diff, em vez de o apagar"
+        );
+    }
+}
 
 /// ⭐⭐ **A LIGAÇÃO: a ponte do produto recusa de facto o documento** — o gate abaixo prova a
 /// pergunta; este prova que ela é feita no caminho que cozinha.

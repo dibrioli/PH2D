@@ -51,32 +51,32 @@ disco do cartão, nos cinco duplicadores verdadeiros.
 ⇒ o que falta não é o caminho entre a declaração e a separação. É **quem declara** (hoje só a
 forma) e **quem dispara** (hoje um nó).
 
-### §1.4 — ⛔⛔⛔ E o facto que decide o DESENHO: a declaração DERRUBA O GRAFO PARA A CPU
+### §1.4 — ⛔⛔⛔ E o facto que decide o DESENHO — ⚠️ **CORRIGIDO pela W1: eu tinha a cerca ao contrário**
 
-[`motion_bridge_gpu.rs`](../../crates/ph2d-app-motion/src/motion_bridge_gpu.rs) tem a cerca, com a
-razão escrita:
+**O que esta secção dizia, e está errado:** *«a cerca dispara sobre a DECLARAÇÃO, varrendo os text
+params do grafo — logo se todo Sprite nascer com colisor, toda cena com um objecto cai no caminho
+lento.»*
 
-```
-RECUSA_COLISOR = "CPU: uma peca declara colisor pelo nome
-                  -- o dispositivo ainda nao resolve contatos (doc 109)"
-```
+⛔ **Lido o doc da própria cerca, ela diz outra coisa.** O
+[`graph_declares_collider`](../../crates/ph2d-app-motion/src/motion_bridge_gpu.rs) varre os text
+params à procura de um nó que **escreva uma coluna PELO NOME** — o canal *Custom…* do
+`motion.drive`, onde o artista digita o nome. E o `source.shape` com `Collide` *«já é recusado pela
+porta da forma viva, logo acima»*, por outro motivo (ADR-0154).
 
-E ela dispara sobre a **DECLARAÇÃO**, varrendo os text params do grafo — não sobre o uso.
+⚠️⚠️ **E o defeito real é o OPOSTO, e é pior:** um objecto publicado pela membrana **não escreve
+texto nenhum** — ele entra pela tabela de externos do cozedor, que aquela varredura não olha. ⇒ no
+dia em que o Sprite, o vector e o Flip trouxerem o colisor deles, a coluna atravessa a fronteira
+**sem cerca nenhuma**, e o modo de falha é o que o doc da irmã já nomeia por escrito: *a MESMA cena
+com uma pilha na CPU e um borrão na placa, sem erro nenhum.*
 
-⚠️⚠️ **Composto com a ordem, isto é o §0.0 à letra.** Se todo Sprite, todo vector e todo Flip
-nascem com um colisor declarado, **toda cena com um objecto cai no caminho lento** — e a auditoria
-de performance deste módulo ([doc 98](98_auditoria_de_performance_2026-09-01.md)) já mede o que
-isso custa: o dispositivo faz **4,19 M objectos em 3,85 ms** contra **195,9 ms da CPU**, `50,9×`.
+⇒ **A W1 não é estreitar a cerca — é escrever a que falta** para uma rota que a ordem do dono vai
+abrir. ✅ Feita: ver §7.
 
-⇒ *O caminho mais lento passaria a definir o produto, no módulo cuja razão de existir é o mais
-rápido.* Não se ship isto sem resolver a cerca, e **resolver a cerca é a espinha do plano** — como
-a W1 das lanes é a espinha do doc 102.
-
-⭐ **A boa notícia está medida ao lado:** o kernel de dispositivo do `motion.collide` declara
-`applicable: None` — ou seja, **a separação por DISCO já corre na placa**, com grelha de vizinhança
-sobre `P`. O que é CPU-only é a **caixa declarada** (com centro e rotação).
-
----
+⭐ O resto da secção mantém-se e é o que dá o tamanho ao problema: o kernel de dispositivo do
+`motion.collide` declara `applicable: None`, ou seja **a separação por DISCO já corre na placa**, e
+o que é CPU-only é a **caixa declarada**. E a auditoria do módulo ([doc 98](98_auditoria_de_performance_2026-09-01.md))
+mede o preço de cair: **4,19 M objectos em 3,85 ms** no dispositivo contra **195,9 ms** na CPU,
+`50,9×`. *Não se ship a W3 sem a W2 ter uma resposta — nem que seja uma recusa com o número.*
 
 ## §2 — O que a ordem quer, traduzido em quatro mudanças
 
@@ -141,7 +141,7 @@ decide se ele é do dispositivo ou da CPU.
 | wave | o que fecha | depende de |
 |---|---|---|
 | ~~W0~~ | ✅ **FECHADA** (§3): as duas moradas são indistinguíveis acima de 16 iterações ⇒ o passe corre no FIM | — |
-| **W1** | ⛔ **a CERCA**: ela pergunta *«alguém declara?»* e tem de perguntar *«alguém CONSOME?»* | §1.4 |
+| ~~W1~~ | ✅ **FECHADA** (§7): não era estreitar a cerca — era escrever a que FALTA, para a rota dos externos | §1.4 |
 | **W2** | a caixa declarada no **dispositivo** (o disco já lá está) — ou a recusa MEDIDA de que não vale | W1 |
 | **W3** | a membrana publica a forma do objecto (`Collider` → as três colunas) | §1.1 |
 | **W4** | Sprite · vector · Flip nascem com `Collider`, e o `Collide` do Inspector arma | W3 |
@@ -183,3 +183,37 @@ wave a seguir torna mais cenas lentas, e o custo só aparece no fim.
   que traga o número.
 - **Quem dá colisor aos 8 nós que geram nuvem nova** (§5.4) — decisão do dono, e ela fica melhor
   depois da W5, quando ele vir o automático a funcionar nos objectos.
+
+---
+
+## §7 — ✅ W1: a cerca que faltava, e a MUTAÇÃO que a obrigou a ter duas metades
+
+[`cook_publishes_collider`](../../crates/ph2d-app-motion/src/motion_bridge_gpu.rs) — irmã da
+`cook_publishes_live_geometry` e **não** da varredura de texto: a membrana publica os externos
+**antes** de o cozimento correr, logo uma varredura por quadro responde à pergunta real. Custo: um
+punhado de externos, três sondas de coluna cada. Recusa própria (`RECUSA_COLISOR_EXTERNO`), porque
+*um smoke que leia «pelo nome» sobre um objecto da cena procuraria o defeito no sítio errado*.
+
+⭐⭐ **Ela nasce INERTE e isso está gateado.** Medido: a membrana publica hoje `P · size · rot ·
+tint · uv_rect · texture_id · geometry_id` — **sete** colunas, e não as cinco que o doc dela diz —
+e nenhuma de colisor. ⇒ este commit não muda um bit do que o artista vê.
+
+⛔⛔⛔ **E a mutação nº 1 SOBREVIVEU:** cortado o `return` no `cook_gpu` — a cerca passa a ser
+perguntada e a resposta deitada fora — os **1 157** testes da crate ficaram **VERDES**. *Os meus
+dois gates chamavam a função directamente; um gate que chama a porta em vez de percorrer a rota
+afirma que a lei existe, nunca que o produto a usa* — a quinta vez que esta casa paga a forma. ⇒
+gate novo, `a_cerca_dos_externos_esta_de_facto_ligada_ao_cozimento`, que lê o despacho por
+`include_str!` (a rota real precisa de adapter, e um `#[ignore]` o CI nunca corre) e exige **as
+duas metades** da ligação — a pergunta *e* a saída nomeada —, senão um `if … { }` vazio passaria.
+
+**Prova de mutação, 4 de 4 a sangrar:**
+
+| # | mutação | quem sangra |
+|---|---|---|
+| 1 | o `return` cortado (o FIO) | `a_cerca_dos_externos_esta_de_facto_ligada_ao_cozimento` — ⚠️ **não existia**, e foi esta mutação que o encomendou |
+| 2 | a cerca esquece UMA das três colunas | `cada_uma_das_tres_colunas_de_colisor_recusa_o_externo` |
+| 3 | a cerca recusa TODO externo | o **controlo** do mesmo gate — sem ele, a cerca derrubava toda cena com um Sprite |
+| 4 | a membrana publica `ph2d_collider` | `hoje_nenhum_externo_da_membrana_traz_colisor` — ⭐ é a W3 a chegar, e o gate manda confirmar a W2 antes de o reescrever |
+
+⚠️ **As três colunas testam-se UMA A UMA**, nunca juntas: com as três no mesmo externo, apagar duas
+da lista da cerca deixava o gate verde. *Uma cerca que lista N nomes precisa de N casos.*

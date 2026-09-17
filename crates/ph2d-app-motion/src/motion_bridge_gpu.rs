@@ -145,6 +145,42 @@ pub(super) fn graph_has_live_vector_source(graph: &Graph, reg: &NodeRegistry) ->
 pub(super) const RECUSA_COLISOR: &str =
     "CPU: uma peca declara colisor pelo nome -- o dispositivo ainda nao resolve contatos (doc 109)";
 
+/// A frase da recusa da porta de EXTERNOS — irmã da acima, e separada de propósito: as duas
+/// recusam pela mesma razão de motor e por **rotas diferentes**, e um smoke que leia *«pelo
+/// nome»* sobre um objecto da cena procuraria o defeito no sítio errado.
+pub(super) const RECUSA_COLISOR_EXTERNO: &str =
+    "CPU: um objecto da cena traz colisor -- o dispositivo ainda nao resolve contatos (doc 115)";
+
+/// ⭐⭐⭐ **A METADE QUE A DECLARAÇÃO PELO NOME NÃO ALCANÇA: um EXTERNO que traz colisor**
+/// (doc 115 W1).
+///
+/// # O buraco, e porque ele é LATENTE e não teórico
+///
+/// A irmã acima varre `graph.node_text_params()` — ela vê o artista a **escrever** o nome de uma
+/// coluna. ⛔ Um objecto da cena publicado pela membrana não escreve texto nenhum: ele entra pela
+/// tabela de externos do cozedor, que aquela varredura **não olha**. ⇒ no dia em que o Sprite, o
+/// vector e o Flip nascerem com o colisor deles (doc 115 W3/W4), a coluna atravessa a fronteira
+/// **sem cerca nenhuma** — e o modo de falha é o que o doc da irmã já nomeia: *a MESMA cena com
+/// uma pilha na CPU e um borrão na placa, sem erro nenhum*.
+///
+/// ⚠️⚠️ **Ela nasce INERTE, e isso é a ordem certa e não um descuido.** Medido em 2026-09-17: a
+/// membrana publica `(P, size, tint, uv_rect, texture_id)` e mais nada, logo hoje nenhum externo
+/// traz estas colunas e esta porta responde `false` em toda cena do produto. *Escrever a cerca
+/// ANTES de abrir a rota é o que impede que cada wave a seguir torne mais cenas silenciosamente
+/// erradas* — a mesma razão pela qual a W1 das lanes vem primeiro no doc 102.
+///
+/// ⚠️ **O molde é a [`cook_publishes_live_geometry`]**, não a irmã de texto: a membrana publica os
+/// externos ANTES de o cozimento correr (pós-dreno, pré-cook), logo uma varredura por quadro
+/// responde à pergunta REAL. Custo: um punhado de externos, três sondas de coluna cada.
+fn cook_publishes_collider(cook: &ph2d_nodegraph::cook::Cook) -> bool {
+    use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN};
+    cook.externals().values().any(|e| {
+        [COLLIDER_COLUMN, COLLIDER_BOX_COLUMN, COLLIDER_OFFSET_COLUMN]
+            .iter()
+            .any(|c| e.value.get(c).is_some())
+    })
+}
+
 pub(super) fn graph_declares_collider(graph: &Graph) -> bool {
     use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN};
     // As TRÊS colunas da declaração (doc 109 §5): a caixa e o centro também só a CPU resolve.
@@ -343,6 +379,11 @@ pub(super) fn cook_gpu(
     // Doc 109: o contacto entre peças ainda só existe na CPU — ver [`graph_declares_collider`].
     if graph_declares_collider(&motion.doc.graph) {
         return fell(motion, RECUSA_COLISOR);
+    }
+    // Doc 115 W1: a MESMA razão de motor por uma rota que a varredura de texto não vê — um
+    // objecto da cena que traz a forma dele. Ver [`cook_publishes_collider`].
+    if cook_publishes_collider(&motion.pump.cook) {
+        return fell(motion, RECUSA_COLISOR_EXTERNO);
     }
     // A `source.object` that resolves to a live VECTOR publishes a `geometry_id`
     // external (ADR-0154 reused for objects, so a stamped vector stays crisp). The

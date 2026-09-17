@@ -92,6 +92,79 @@ fn cada_alca_escreve_o_campo_dela_e_nao_o_do_vizinho() {
     }
 }
 
+/// ⛔⛔⛔ **UM OSSO EM *From Chain* RECUSA A CHAVE, E DIZ PORQUÊ** — o report do dono
+/// (2026-09-17): *«não gravou as posições dos handles»*.
+///
+/// Ele gravou: a tecla `K` amostra o `Bone::curve`, que num osso em [`Handles::Auto`] fica
+/// **intocado de propósito** e vale `[0, 0]` — enquanto no ecrã a curva é derivada dos vizinhos.
+/// *Uma captura que devolve zeros sobre uma curva bem visível parece ter funcionado*, e é por isso
+/// que a resposta certa é uma RECUSA com motivo, não um número.
+///
+/// ⚠️⚠️ **A metade que torna este gate honesto é a NEGATIVA**, e ela é a fixtura que faltava a
+/// toda esta wave: sem o osso `Authored` ao lado, «recusar sempre» satisfaria a asserção — e foi
+/// exactamente por nascerem todas em `Authored` que as três provas anteriores ficaram verdes sobre
+/// o defeito.
+///
+/// (Mutação: `handles_are_authored` devolver `true` sempre ⇒ RED na metade da recusa.)
+#[test]
+fn a_alca_de_um_osso_que_segue_a_corrente_recusa_a_chave_e_diz_porque() {
+    let mut sim = SimWorld::new();
+    let autorado = sim
+        .world_mut()
+        .spawn((Transform::default(), Name::new("Autorado"), bone_com(true)))
+        .id();
+    let da_corrente = sim
+        .world_mut()
+        .spawn((Transform::default(), Name::new("Corrente"), bone_com(false)))
+        .id();
+
+    for prop in [
+        PropKind::BoneBendInX,
+        PropKind::BoneBendInY,
+        PropKind::BoneBendOutX,
+        PropKind::BoneBendOutY,
+    ] {
+        assert_eq!(
+            ph2d_timeline::bone_bend_refusal(sim.world(), autorado, prop),
+            None,
+            "{prop:?}: um osso AUTORADO tem de deixar keyar — o `curve` dele e' o que se ve^"
+        );
+        assert_eq!(
+            ph2d_timeline::bone_bend_refusal(sim.world(), da_corrente, prop),
+            Some(ph2d_timeline::KeyRefusal::BoneHandlesFromChain),
+            "{prop:?}: um osso em From Chain tem de RECUSAR — capturar ali grava zeros"
+        );
+    }
+
+    // ⚠️ E a mensagem tem de dizer **o que trocar**: uma recusa que só diz «não dá» manda o
+    // artista adivinhar qual dos controlos do painel é o culpado.
+    let msg = ph2d_timeline::KeyRefusal::BoneHandlesFromChain.message();
+    assert!(
+        msg.contains("Manual"),
+        "a recusa tem de NOMEAR a cura (Curve Handles: Manual), e diz: {msg:?}"
+    );
+
+    // ⛔ O CONTROLO de população: um canal que não e' de alça nunca e' recusado por esta porta.
+    assert_eq!(
+        ph2d_timeline::bone_bend_refusal(sim.world(), da_corrente, PropKind::Rotation),
+        None,
+        "esta porta so' responde pelas quatro alças — recusar a rotacao seria roubar outro canal"
+    );
+}
+
+/// Um osso com as alças do artista (`true`) ou vindas da corrente (`false`), e com segmentos
+/// suficientes para a curvatura ser lida — que é o estado em que o dono estava.
+fn bone_com(autorado: bool) -> ph2d_skeleton_ecs::Bone {
+    let mut b = ph2d_skeleton_ecs::Bone {
+        segments: 8,
+        ..Default::default()
+    };
+    if !autorado {
+        b.handles = ph2d_skeleton_ecs::BoneHandles::Auto;
+    }
+    b
+}
+
 /// ⭐⭐ **E o ponto neutro continua a ser o osso RECTO** — um osso que ninguém anima não é arqueado
 /// por esta wave existir.
 ///

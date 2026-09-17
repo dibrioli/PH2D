@@ -41,6 +41,18 @@ pub enum KeyRefusal {
     /// that looks local. It is the authoring half of the overlay's `keys_tab` rule
     /// (`motion_path_overlay::active_path`), and the SAME boolean decides both.
     PathNeedsKeysTab,
+    /// ⭐⭐⭐ **As alças deste osso vêm da CORRENTE**, e o número que uma chave guardaria é o
+    /// AUTORADO — que ninguém está a ver.
+    ///
+    /// ⛔⛔ Report do dono (2026-09-17): *«não gravou as posições dos handles»*. Ele gravou — a
+    /// tecla `K` capturou o `Bone::curve`, que num osso em *From Chain* fica intocado de propósito
+    /// e vale `[0, 0]`, enquanto no ecrã a curva é derivada dos vizinhos. *Uma captura que devolve
+    /// zeros sobre uma curva bem visível é pior que uma recusa: ela parece ter funcionado.*
+    ///
+    /// ⚠️ **A cura NÃO é capturar a alça resolvida** — isso gravaria como autoria o que o vizinho
+    /// ditou, e faria o modo `Auto` impossível de desligar (o `Authored` deixaria de devolver o que
+    /// lá estava). A cura é dizer ao artista **o que trocar**: as alças para *Manual*.
+    BoneHandlesFromChain,
 }
 
 /// Why a container could not be placed inside another (ADR-0133 §4).
@@ -91,6 +103,9 @@ impl KeyRefusal {
             Self::Overridden => "timeline.key.overridden",
             Self::ExpressionDriven => "timeline.key.expression_driven",
             Self::PathNeedsKeysTab => "timeline.key.path_needs_keys_tab",
+            Self::BoneHandlesFromChain => {
+                "Can't key the bend: this bone's handles come from the chain — set Curve Handles to Manual"
+            }
         }
     }
 }

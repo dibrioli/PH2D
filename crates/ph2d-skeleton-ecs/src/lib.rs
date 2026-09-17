@@ -47,6 +47,16 @@ use ph2d_ecs::scene::ComponentRegistry;
 /// divergem no primeiro campo que alguém acrescentar a uma delas.
 use ph2d_skeleton::bend::{Bend, BoneSpec, Handles};
 
+/// ⭐ **Os dois tipos que um campo público do [`Bone`] nomeia, re-exportados daqui.**
+///
+/// ⚠️ **Não é conveniência — era uma lacuna:** quem vê `bone.handles` e `bone.curve` não
+/// conseguia nomear o TIPO deles sem depender da crate da lei, e escrever `Handles::Auto` é
+/// exactamente o que um consumidor do componente precisa de fazer. *Um campo público cujo tipo
+/// não é alcançável pelo mesmo caminho é meio campo.*
+///
+/// ⛔ É um re-export e nunca uma segunda definição: a lei continua a ter um dono só.
+pub use ph2d_skeleton::bend::{Bend as BoneBend, Handles as BoneHandles};
+
 /// **UM OSSO.** A pose dele é o [`ph2d_ecs::Transform`] da entidade; a hierarquia dela é o
 /// esqueleto.
 ///
@@ -149,6 +159,26 @@ impl Bone {
             segments: self.segments,
             curve: self.curve,
         }
+    }
+
+    /// ⭐⭐⭐ **O `curve` deste osso é o que se VÊ, ou um valor que ninguém lê?**
+    ///
+    /// `true` com [`Handles::Authored`] — as duas alças são as que o artista escreveu, e o
+    /// `curve` é exactamente a curvatura desenhada. `false` com [`Handles::Auto`]: ali as alças
+    /// saem das tangentes dos VIZINHOS e o `curve` fica intocado de propósito (é isso que faz
+    /// voltar a `Authored` devolver o que lá estava).
+    ///
+    /// ⛔⛔ **Ela existe por um report do dono (2026-09-17): *«não gravou as posições dos
+    /// handles»*.** A tecla `K` da linha do tempo amostra o `curve`, e num osso em `Auto` isso é
+    /// o valor AUTORADO — que numa cena assim vale `[0, 0]` enquanto o artista olha para uma
+    /// curva bem visível. *Ele gravou; gravou ZEROS*, e nada lho disse.
+    ///
+    /// ⚠️ **UMA porta, dois leitores** (a amostragem do `K` e a recusa que a explica): escrita
+    /// duas vezes, o dia em que uma delas ganhasse um terceiro modo deixaria a outra a capturar
+    /// em silêncio outra vez.
+    #[must_use]
+    pub fn handles_are_authored(&self) -> bool {
+        self.handles == Handles::Authored
     }
 }
 

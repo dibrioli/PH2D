@@ -80,10 +80,15 @@ pub(crate) fn sample_prop_value(
         // joint: o artista arrasta a alça no canvas até a curva parecer certa e aperta K. (Sem
         // `Bone` na entidade não há o que capturar, e o `?` recusa.)
         //
-        // ⚠️ **O que se captura é a alça AUTORADA**, mesmo com o osso em `Handles::Auto` — ali o
-        // `curve` fica intocado de propósito, logo o número lido é o que volta se o artista
-        // devolver o osso a `Authored`. Ler a alça RESOLVIDA seria capturar o que o vizinho ditou
-        // e gravá-lo como autoria, que é a forma de um modo se tornar impossível de desligar.
+        // ⛔⛔ **E num osso em `Handles::Auto` ela RECUSA** (report do dono, 2026-09-17: *«não
+        // gravou as posições dos handles»*): ali o `curve` é escrito e não lido, logo capturá-lo
+        // devolvia `[0, 0]` sobre uma curva bem visível — *uma captura que grava zeros parece ter
+        // funcionado, e é pior que uma recusa*. Quem decide é a porta da `ph2d-timeline`, lida
+        // também por quem DIZ o motivo ao artista.
+        //
+        // ⚠️ **A cura não é capturar a alça resolvida:** isso gravaria como autoria o que o
+        // vizinho ditou, e o modo `Auto` deixaria de se poder desligar.
+        _ if ph2d_timeline::bone_bend_refusal(world, e, prop).is_some() => return None,
         PropKind::BoneBendInX => {
             Float(world.get::<ph2d_skeleton_ecs::Bone>(e)?.curve.inn[0] as f32)
         }

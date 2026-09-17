@@ -310,6 +310,34 @@ impl BendField {
     }
 }
 
+/// ⭐⭐⭐ **PODE-SE GUARDAR UMA CHAVE DESTA ALÇA?** — `None` = sim; `Some(r)` = não, e `r` diz
+/// porquê ao artista.
+///
+/// ⛔⛔ **Report do dono (2026-09-17): *«não gravou as posições dos handles»*.** Ele seguiu os
+/// passos numa cena cujos ossos curvos nascem em [`Handles::Auto`] (*From Chain* —
+/// `ph2d_skeleton_demo::bifurcacao` põe-nos assim de propósito): ali o `Bone::curve` é escrito e
+/// **não lido**, logo a tecla `K` amostrava `[0, 0]` enquanto ele olhava para uma curva. *Gravou —
+/// gravou zeros.*
+///
+/// ⚠️⚠️ **Nenhum gate desta wave podia apanhá-lo, e a razão é a FIXTURA:** as três provas novas
+/// spawnam `Bone::default()`, que é `Authored`. *Uma fixtura que nasce no modo bom não contém o
+/// fenómeno* — a mesma forma que já mordeu o `Sprite` e o `PhysicsJoint` neste ficheiro, agora num
+/// MODO em vez de um componente ausente.
+///
+/// ⭐ **É esta função que o `sample_prop_value` da shell e a recusa do `K` lêem — as duas.** Um
+/// predicado escrito nos dois sítios voltaria a divergir no dia do terceiro modo de alças.
+#[cfg(feature = "skeleton")]
+#[must_use]
+pub fn bone_bend_refusal(
+    world: &World,
+    entity: Entity,
+    prop: PropKind,
+) -> Option<crate::KeyRefusal> {
+    bend_field(prop)?;
+    let bone = world.get::<ph2d_skeleton_ecs::Bone>(entity)?;
+    (!bone.handles_are_authored()).then_some(crate::KeyRefusal::BoneHandlesFromChain)
+}
+
 #[cfg(feature = "skeleton")]
 pub(crate) fn bend_field(prop: PropKind) -> Option<BendField> {
     Some(match prop {

@@ -396,6 +396,7 @@ mod fase_text_panel;
 mod fase_timeline_containers;
 /// Fase do quadro: o dreno da timeline (intents, aplicação, reset, valores das faixas).
 mod fase_timeline_drain;
+mod fase_timeline_key_insert;
 /// Fase do quadro: a vista da timeline (amostragem, intents estacionadas, espelhos do painel).
 mod fase_timeline_view;
 /// Fase do quadro: os espelhos da ferramenta vetorial, do Flip e da fisica.

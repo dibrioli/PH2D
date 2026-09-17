@@ -75,6 +75,11 @@ pub use apply::{
     apply_from_doc, apply_from_doc_except, apply_scene, clip_playhead, key_home, key_time,
     remapped_time,
 };
+/// A porta que decide se uma alça de osso pode ser keyada — ver
+/// [`apply_prop::bone_bend_refusal`]. Pública porque a shell (a amostragem do `K`) e a recusa que
+/// a explica são os DOIS leitores dela.
+#[cfg(feature = "skeleton")]
+pub use apply_prop::bone_bend_refusal;
 pub use apply_views::{apply_active_clip, apply_container};
 pub use autokey::{
     AutokeyPlan, PoseSample, autokey_props, autokey_props_solo, key_value_in_active_clip,

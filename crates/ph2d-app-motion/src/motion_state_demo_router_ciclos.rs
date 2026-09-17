@@ -17,7 +17,7 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
 /// Os níveis que são cena de ciclo. ⚠️ **Uma tabela, dois leitores** — ver o cabeçalho.
-const CICLOS: &[&str] = &["111", "112", "113", "114", "115", "116", "117"];
+const CICLOS: &[&str] = &["111", "112", "113", "114", "115", "116", "117", "118"];
 
 /// Este nível é uma cena de ciclo?
 pub(super) fn e_de_ciclo(n: &str) -> bool {
@@ -100,6 +100,15 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             let sinks = super::valor_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::valor_demo::captions());
             announce::valor();
+            sinks
+        }
+        // ⭐⭐⭐ **A COR E O RASTO** (ciclo 7, doc 112 §4-octies) — três fileiras, uma pergunta por
+        // fileira (de que cor · que marca deixa · quando chega). ⚠️ A de cima é PARADA de
+        // propósito: a cor não precisa de tempo, e pô-la a mexer misturaria duas perguntas.
+        "118" => {
+            let sinks = super::aparencia_demo::build(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::aparencia_demo::captions());
+            announce::aparencia();
             sinks
         }
         // ⚠️ Inalcançável: a [`e_de_ciclo`] gateia esta função com a MESMA tabela.

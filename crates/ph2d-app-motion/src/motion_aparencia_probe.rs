@@ -92,6 +92,11 @@ fn the_fx_group_is_derived_and_not_empty() {
 /// **Onde corre uma cadeia `grid 320² → scale → X → output`** — `true` se o planeador a põe
 /// inteira no dispositivo. A mesma montagem que a sonda abaixo mede, sem o custo de cozinhar.
 fn cadeia_no_dispositivo(no: &str) -> bool {
+    cadeia_no_dispositivo_com(no, None)
+}
+
+/// A mesma cadeia com UM param do nó posto num valor — a pergunta *«este MODO tira o nó da placa?»*.
+fn cadeia_no_dispositivo_com(no: &str, param: Option<(&str, f32)>) -> bool {
     use ph2d_nodegraph::graph::Edge;
     let mut m = crate::motion_state::MotionState::new();
     let g = m.doc.graph.add_node("motion.grid".to_string());
@@ -99,6 +104,9 @@ fn cadeia_no_dispositivo(no: &str) -> bool {
     m.doc.graph.set_param(g, "cols", 320.0);
     let s = m.doc.graph.add_node("motion.scale".to_string());
     let x = m.doc.graph.add_node(no.to_string());
+    if let Some((p, v)) = param {
+        m.doc.graph.set_param(x, p, v);
+    }
     let o = m.doc.graph.add_node("motion.output".to_string());
     for (de, para) in [(g, s), (s, x), (x, o)] {
         m.doc
@@ -152,6 +160,67 @@ fn the_fx_group_route_only_improves() {
         assert!(
             cadeia_no_dispositivo(no),
             "`{no}` leva a cadeia `grid -> scale -> {no} -> output` para a CPU — doc 112 §3"
+        );
+    }
+}
+
+/// ⭐⭐ **A RESIDÊNCIA POR MODO** (ciclo 7, passo 5 — doc 112 §4-septies): que escolha de MENU tira
+/// um nó do grupo da placa?
+///
+/// ⚠️ A catraca acima mede os nós nos DEFAULTS, que é o que o artista recebe ao largar o nó — e é
+/// cega a um modo cuja cláusula `applicable` derruba o kernel. ⇒ cada `Enum` e cada `Toggle` de cada
+/// nó é varrido pelos valores que o hint oferece. ⚠️ **As duas metades:** o que cai tem de estar
+/// NOMEADO (com a razão), e o que está nomeado tem de continuar a cair — senão a lista deixou de o
+/// descrever.
+#[test]
+fn the_fx_modes_that_leave_the_device_are_named() {
+    use ph2d_node_registry::ParamWidget;
+    /// `(nó, param, valor)` que leva a cadeia para a CPU — com a razão.
+    const FORA: &[(&str, &str, f32, &str)] = &[(
+        "motion.trail",
+        "source",
+        1.0,
+        "`Resampled` re-coze a PRÓPRIA entrada em N instantes (ADR-0163) — CPU por desenho",
+    )];
+    let reg = crate::motion_state::MotionState::new().registry;
+    let mut varridos = 0usize;
+    let mut caidos: Vec<(&str, &str, f32)> = Vec::new();
+    for no in grupo() {
+        let tid = ph2d_nodegraph::node::NodeTypeId::of(no);
+        for h in reg.param_ui(tid).unwrap_or(&[]) {
+            if !matches!(h.widget, ParamWidget::Enum { .. } | ParamWidget::Toggle) {
+                continue;
+            }
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "a faixa de um Enum/Toggle e' um indice pequeno"
+            )]
+            let (a, b) = (h.min.round() as u32, h.max.round() as u32);
+            for v in a..=b {
+                #[expect(clippy::cast_precision_loss, reason = "indice pequeno")]
+                let v = v as f32;
+                varridos += 1;
+                if !cadeia_no_dispositivo_com(no, Some((h.param, v))) {
+                    caidos.push((no, h.param, v));
+                }
+            }
+        }
+    }
+    assert!(
+        varridos >= 20,
+        "piso: so' {varridos} escolhas de menu varridas"
+    );
+    for (no, p, v) in &caidos {
+        assert!(
+            FORA.iter().any(|(n, q, w, _)| n == no && q == p && w == v),
+            "`{no}` com `{p} = {v}` leva a cadeia para a CPU e nao esta' NOMEADO — doc 112 §4-septies"
+        );
+    }
+    for (no, p, v, razao) in FORA {
+        assert!(
+            caidos.iter().any(|(n, q, w)| n == no && q == p && w == v),
+            "`{no}` com `{p} = {v}` ja' fica na placa — apague a linha dele («{razao}»)"
         );
     }
 }

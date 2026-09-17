@@ -1,0 +1,317 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · A cor e o rasto</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+    --src: #5f9e79; --tra: #6f86c9; --out: #c96a6a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  h4 { font-size:13px; margin:14px 0 4px; color:var(--t1); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .figs { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+  .figs.two { grid-template-columns:repeat(2,1fr); }
+  .fig { background:var(--card); border:1px solid var(--line); border-radius:10px;
+         padding:8px; text-align:center; break-inside:avoid; }
+  .fig img { width:100%; display:block; border-radius:6px; }
+  .fig figcaption { font-size:11px; color:var(--t2); margin-top:6px; }
+  .fig b { color:var(--t1); display:block; font-size:12.5px; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .key { font-size:11.5px; color:var(--t2); margin-top:8px; display:flex; flex-wrap:wrap; gap:14px; }
+  .key i { font-style:normal; display:inline-flex; align-items:center; gap:6px; }
+  .key s { width:16px; height:3px; border-radius:2px; display:inline-block; text-decoration:none; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .card-demo { background:var(--card); border:1px solid var(--line); border-radius:9px;
+       width:230px; overflow:hidden; font-size:11px; }
+  .card-demo .h { padding:5px 9px; font-weight:600; color:#0e0d10; font-size:11.5px; }
+  .card-demo .rows { padding:6px; display:grid; gap:3px; }
+  .card-demo .r { background:#0b0a0e; border-radius:4px; padding:3px 7px; display:flex;
+       justify-content:space-between; position:relative; overflow:hidden; }
+  .card-demo .r i { position:absolute; inset:0 auto 0 0; background:#3b3350; }
+  .card-demo .r span { position:relative; }
+  .card-demo .r .n { color:var(--t1); }
+  .card-demo .r .l { color:var(--t2); }
+  .card-demo .sec { color:var(--t3); padding:3px 7px; font-size:10.5px; }
+  .two-col { display:grid; grid-template-columns:230px 1fr; gap:16px; align-items:start; }
+  .params { font-size:11px; }
+  .params h4 { margin-top:12px; }
+  .soft { color:var(--t3); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+
+
+<h1>A cor e o rasto
+  <small>PH2D · Motion Nodes · tutorial 7 — os dez cartões que decidem <b>como as peças se
+  parecem</b>: a cor, o brilho, a sombra, e a marca que elas deixam ao andar</small></h1>
+
+<p>Nos seis tutoriais anteriores você pôs peças na tela, fê-las andar, dobrou-as, escolheu
+quem é afetado, entregou-as a uma lei e deu-lhes um número que manda em tudo. Faltava a
+pergunta que o público vê primeiro: <em>com que cara</em> é que elas aparecem.</p>
+
+<p>Este grupo responde a três perguntas, e a cena tem uma fileira para cada uma:</p>
+
+<table>
+  <tr><th>fileira</th><th>a pergunta</th><th>o par</th></tr>
+  <tr><td><b>cima</b></td><td>de que <b>cor</b> é cada peça?</td>
+      <td><code>Tint</code> contra <code>Color Ramp</code></td></tr>
+  <tr><td><b>meio</b></td><td>que <b>marca</b> ela deixa ao andar?</td>
+      <td>sem cauda contra <code>Trail</code></td></tr>
+  <tr><td><b>baixo</b></td><td><b>quando</b> é que cada uma chega?</td>
+      <td><code>Slit Scan</code> pela ordem contra pelo lugar</td></tr>
+</table>
+
+<div class="note"><b>Estes cartões vivem no FIM do caminho.</b> A cor, o brilho e a sombra
+aplicam-se depois de tudo o resto — o cartão costuma ser o último antes do
+<code>Output</code>. Até esta volta de trabalho, seis dos dez tiravam a cena inteira da placa
+gráfica e mandavam-na para o processador. Agora os dez correm na placa.</div>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=118 cargo run -p ph2d-host-desktop --profile smoke</div>
+
+<ol class="steps">
+  <li><b>Carregue em <kbd>Play</kbd>.</b>
+      <div class="out">Seis panos de 36 peças, em três fileiras. A de <b>cima fica parada</b> —
+      de propósito: a cor não precisa de tempo. As duas de baixo mexem-se.</div>
+      <div class="bad">Se as duas fileiras de baixo ficarem paradas, o transporte está
+      parado.</div></li>
+</ol>
+
+<div class="note"><b>Os seis panos são o mesmo pano.</b> Mesmo número de peças, mesmo tamanho,
+mesmo espaçamento; nas duas fileiras de baixo, o mesmo movimento. Em cada par, entre a esquerda e
+a direita, muda <b>uma coisa</b> — e tudo o que você vai ver de diferente vem dela.</div>
+
+<h2>2 · Em cima: a cor</h2>
+
+<p>O pano da <b>esquerda</b> é todo de <b>uma</b> cor. Quem manda nisso é o cartão
+<b>Tint</b>: ele pinta cada peça que passa com a mesma cor. O da <b>direita</b> tem o cartão
+<b>Color Ramp</b> no lugar dele — e cada peça recebe a <b>sua</b> cor, tirada de um gradiente
+que atravessa o pano pela ordem das peças.</p>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/cor_uma.svg" alt="um pano de 36 quadrados, todos laranja">
+    <b>Tint</b>
+    <figcaption>uma cor para o pano inteiro</figcaption></figure>
+  <figure class="fig"><img src="../fig/cor_por_peca.svg" alt="um pano de 36 quadrados, um arco-iris que sobe linha a linha">
+    <b>Color Ramp</b>
+    <figcaption>uma cor por peça — <strong>35</strong> cores diferentes em 36 peças</figcaption></figure>
+</div>
+
+<ol class="steps" start="2" style="counter-reset:s 1">
+  <li><b>Clique no cartão <code>Tint</code></b> e escolha outra cor na linha
+      <code>Color</code>.
+      <div class="out">O pano da esquerda muda <b>inteiro</b>, e o da direita não.</div></li>
+  <li><b>Clique no cartão <code>Color Ramp</code></b> e abra a linha
+      <code>Gradient</code>. Mexa numa das paradas do gradiente.
+      <div class="out">Só as peças <b>daquela parte</b> do pano mudam de cor.</div>
+      <div class="bad">Se os dois panos de cima tiverem a mesma cor, um dos dois cartões não
+      está no caminho.</div></li>
+</ol>
+
+<div class="note"><b>Estas imagens não são desenhos.</b> Cada quadrado é uma peça que o motor
+devolveu ao correr esta cena — com a posição, o tamanho, a cor e a transparência que ele lhe
+deu. Se as duas de um par contarem a mesma história, elas <b>recusam-se a ser
+geradas</b>.</div>
+
+<h2>3 · No meio: o rasto</h2>
+
+<p>Nos dois panos do meio cada peça anda numa pequena <b>roda</b>. O da <b>direita</b> tem um
+cartão a mais — o <b>Trail</b> — e cada peça passa a deixar uma <b>cauda</b>: cópias dela
+própria nos sítios onde esteve, cada vez mais pequenas e mais apagadas.</p>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/rasto_sem.svg" alt="36 quadrados pequenos, sem marca nenhuma">
+    <b>sem Trail</b>
+    <figcaption>a peça está só onde está — <strong>36</strong> quadrados</figcaption></figure>
+  <figure class="fig"><img src="../fig/rasto_com.svg" alt="36 quadrados, cada um com um arco que se apaga atras dele">
+    <b>com Trail</b>
+    <figcaption>cada peça arrasta um arco de cópias — <strong>432</strong> quadrados</figcaption></figure>
+</div>
+
+<ol class="steps" start="4" style="counter-reset:s 3">
+  <li><b>Clique no cartão <code>Trail</code></b> e arraste <code>Length</code> até ao fim.
+      <div class="out">A cauda cresce até <b>fechar o anel</b>: a peça passa a desenhar a roda
+      inteira.</div></li>
+  <li>Arraste <code>Tail Alpha</code> para 1.
+      <div class="out">A cauda deixa de se apagar: as cópias ficam tão visíveis como a
+      peça.</div></li>
+  <li>Arraste <code>Tail Size</code> para 1.
+      <div class="out">As cópias deixam de encolher: a cauda fica tão grossa como a
+      peça.</div>
+      <div class="bad">Se nenhum pano do meio deixar cauda — ou se os dois deixarem — o
+      <code>Trail</code> não está onde devia.</div></li>
+</ol>
+
+<div class="note"><b>A cauda é feita de cópias, e as cópias contam.</b> 36 peças com 12
+gerações são 432 quadrados a desenhar. Com muitas peças a cauda <b>encurta sozinha</b> para
+caber na placa. O limite são dois milhões de cópias por quadro: com a cauda mais longa que o
+<code>Length</code> deixa, isso chega para cerca de sessenta e cinco mil peças.</div>
+
+<h2>4 · Em baixo: o tempo</h2>
+
+<p>Os dois panos de baixo sobem e descem juntos — e o cartão <b>Slit Scan</b> faz cada peça
+chegar <b>atrasada</b>, cada uma com o seu atraso. O que muda entre os dois é <em>de onde vem o
+atraso</em>:</p>
+
+<ul>
+  <li>à <b>esquerda</b> (o cartão <code>Slit Scan: ORDEM</code>), o atraso vem da
+      <b>ordem</b> das peças: a onda sobe o pano linha a linha, a começar pela de baixo;</li>
+  <li>à <b>direita</b> (o cartão <code>Slit Scan: CAMPO</code>), o atraso vem do
+      <b>lugar</b> da peça: a onda corre da esquerda para a direita, com as seis linhas
+      juntas.</li>
+</ul>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/tempo_ordem.svg" alt="pontos com um traco ate ao seu lugar de repouso; as linhas de baixo descem e as de cima sobem">
+    <b>Delay By: Order</b>
+    <figcaption>cada <strong>linha</strong> num sítio diferente da onda</figcaption></figure>
+  <figure class="fig"><img src="../fig/tempo_lugar.svg" alt="pontos com um traco ate ao seu lugar de repouso; as colunas da esquerda descem e as da direita sobem">
+    <b>Delay By: Field</b>
+    <figcaption>cada <strong>coluna</strong> num sítio diferente — as linhas iguais</figcaption></figure>
+</div>
+
+<div class="note"><b>Como ler estas duas.</b> O ponto apagado é o lugar de <b>repouso</b> da
+peça; o ponto claro é onde ela está neste instante; o traço entre os dois é o quanto a onda a
+levou. À esquerda o traço muda de <b>linha</b> para linha; à direita muda de <b>coluna</b> para
+coluna, e as seis linhas de uma coluna são iguais.</div>
+
+<ol class="steps" start="7" style="counter-reset:s 6">
+  <li><b>Clique no cartão <code>Slit Scan: ORDEM</code></b> e mude <code>Delay By</code>
+      para <code>Field</code>.
+      <div class="out">A onda <b>some</b>: o pano inteiro atrasa por igual e sobe e desce todo
+      junto. Sem nenhum campo antes dele, todas as peças pedem o mesmo atraso.</div></li>
+  <li>Volte a <code>Order</code> e arraste a linha <code>Lag</code>.
+      <div class="out">A onda estica ou encolhe: <code>Lag</code> é quanto tempo separa a
+      primeira peça da última.</div></li>
+  <li><b>Clique no cartão <code>Falloff</code></b> (o que está antes do
+      <code>Slit Scan: CAMPO</code>) e ligue <code>Invert</code>.
+      <div class="out">A onda passa a correr da <b>direita para a esquerda</b>.</div>
+      <div class="bad">Se os dois panos de baixo ondularem igual, ou se o passo 7 não fizer a
+      onda sumir, avise.</div></li>
+</ol>
+
+<div class="note"><b>O <code>Falloff</code> é o MAPA do atraso.</b> Onde ele vale zero, a peça
+não atrasa; onde vale um, atrasa o <code>Lag</code> inteiro. Qualquer cartão que desenhe um
+campo serve — é assim que se faz um atraso em forma de círculo, de faixa ou do que o campo
+desenhar, sem mexer na ordem das peças.</div>
+
+<h2>5 · Vá além</h2>
+
+<ol class="steps" start="10" style="counter-reset:s 9">
+  <li><b>No cartão <code>Falloff</code></b>, troque <code>Shape</code> para
+      <code>Circle</code>.
+      <div class="out">O atraso passa a depender da <b>distância ao centro</b>: os cantos
+      mexem-se primeiro e o centro chega por último.</div></li>
+  <li><b>No cartão <code>Trail</code></b>, arraste <code>Tail Hue Shift</code>.
+      <div class="out">A cauda muda de cor ao longo do caminho — a cauda de cometa
+      colorida.</div></li>
+  <li><b>No cartão <code>Tint</code></b>, mude <code>Mode</code> para
+      <code>Gradient</code>.
+      <div class="out">O <code>Tint</code> também sabe fazer um gradiente — de <b>duas</b>
+      cores, a <code>Color</code> e a <code>End</code>. O <code>Color Ramp</code> é o mesmo com
+      quantas cores você quiser.</div></li>
+</ol>
+
+<h2>6 · O resto do grupo</h2>
+
+<p>São dez cartões. A cena mostra quatro; os outros seis respondem às mesmas perguntas de
+outra maneira.</p>
+
+<table>
+  <tr><th>quando você quer…</th><th>procure por</th></tr>
+  <tr><td>uma cor <b>só</b> para tudo</td><td><code>Tint</code></td></tr>
+  <tr><td>uma cor por peça, de um <b>gradiente</b></td><td><code>Color Ramp</code></td></tr>
+  <tr><td>uma cor por peça, de uma <b>lista</b></td><td><code>Color Array</code></td></tr>
+  <tr><td>que a cena inteira <b>brilhe</b></td><td><code>Glow</code> — ele acende a imagem
+      toda, não uma peça</td></tr>
+  <tr><td>uma <b>sombra</b> atrás de cada peça</td><td><code>Drop Shadow</code></td></tr>
+  <tr><td>as <b>franjas de cor</b> de uma lente barata</td><td><code>RGB Split</code></td></tr>
+  <tr><td>um <b>clarão</b> quando um pulso chega</td><td><code>Strobe</code> (o do tutorial
+      6)</td></tr>
+  <tr><td>uma <b>cauda</b> atrás de cada peça</td><td><code>Trail</code></td></tr>
+  <tr><td>que cada peça chegue <b>atrasada</b></td><td><code>Slit Scan</code></td></tr>
+  <tr><td>mostrar <b>outra célula</b> de uma folha de imagens</td><td><code>Sub UV</code> —
+      para animar uma sprite</td></tr>
+</table>
+
+<div class="note"><b>Um modo por linha fala uma palavra só.</b> Três destes cartões
+(<code>Drop Shadow</code>, <code>Strobe</code>, <code>Trail</code>) escolhem como a cópia se
+mistura com o que está por baixo, e a linha chama-se sempre <code>… Blend</code> — a mesma
+palavra do <code>Output</code>. A primeira opção, <code>Sink</code>, quer dizer <em>«a do
+Output»</em>.</div>
+
+<h2>7 · O que isto custa</h2>
+
+<p>Medido com <b>102 400 peças</b> (um pano de 320 por 320), com o computador calmo. «Linhas» é quanto a placa desenha: os cartões que fazem cópias multiplicam-nas.</p>
+
+<table>
+  <tr><th>cartão</th><th>linhas desenhadas</th><th class="n">placa</th><th class="n">processador</th></tr>
+  <tr><td><code>Tint</code></td><td class="n">102 400</td><td class="n">0,20&nbsp;ms</td><td class="n">1,77&nbsp;ms</td></tr>
+  <tr><td><code>Color Ramp</code></td><td class="n">102 400</td><td class="n">0,22&nbsp;ms</td><td class="n">2,84&nbsp;ms</td></tr>
+  <tr><td><code>Color Array</code></td><td class="n">102 400</td><td class="n">0,20&nbsp;ms</td><td class="n">1,90&nbsp;ms</td></tr>
+  <tr><td><code>Sub UV</code></td><td class="n">102 400</td><td class="n">0,21&nbsp;ms</td><td class="n">1,42&nbsp;ms</td></tr>
+  <tr><td><code>Strobe</code></td><td class="n">102 400</td><td class="n">0,22&nbsp;ms</td><td class="n">1,97&nbsp;ms</td></tr>
+  <tr><td><code>Slit Scan</code></td><td class="n">102 400</td><td class="n">0,43&nbsp;ms</td><td class="n">4,32&nbsp;ms</td></tr>
+  <tr><td><code>RGB Split</code> — a peça e duas franjas</td><td class="n">307 200</td><td class="n">1,09&nbsp;ms</td><td class="n">2,47&nbsp;ms</td></tr>
+  <tr><td><code>Trail</code> — a peça e oito cópias</td><td class="n">921 600</td><td class="n">2,35&nbsp;ms</td><td class="n">23,21&nbsp;ms</td></tr>
+  <tr><td><code>Drop Shadow</code> — a sombra macia são dezasseis cópias</td><td class="n">1 740 800</td><td class="n">3,05&nbsp;ms</td><td class="n">21,82&nbsp;ms</td></tr>
+  <tr><td><code>Glow</code> — o cartão só passa as peças; o brilho é desenhado depois, na imagem inteira</td><td class="n">102 400</td><td class="n">0,19&nbsp;ms</td><td class="n">0,34&nbsp;ms</td></tr>
+</table>
+
+<div class="note"><b>Um quadro tem 16,7 milésimos de segundo.</b> Com cem mil peças, cada
+um destes cartões cabe várias vezes num quadro — e o processador, que faz a mesma conta como
+referência, é entre duas e treze vezes mais lento. Com <b>um milhão</b> de peças os dez continuam
+abaixo de 6 milésimos na placa — com a sombra macia e a cauda cortadas pelo limite de
+cópias, que é o que as mantém ali. <b>O <code>Slit Scan</code> era o mais caro dos dez:</b> com um milhão de peças ocupava um quadro inteiro sozinho (16 milésimos). Foi corrigido nesta volta e hoje custa 3,5.</div>
+
+<h2>8 · Se algo não bater</h2>
+
+<ul>
+  <li>Os dois panos de <b>cima</b> da mesma cor → o <code>Tint</code> ou o
+      <code>Color Ramp</code> não está no caminho.</li>
+  <li><b>Nenhum</b> pano do meio com cauda (ou os dois com cauda) → o <code>Trail</code> não
+      está onde devia.</li>
+  <li>Os dois panos de <b>baixo</b> a ondular igual → o <code>Delay By</code> de um deles
+      mudou, ou o <code>Falloff</code> saiu do caminho.</li>
+  <li>O passo 7 não faz a onda sumir → avise: é o comportamento novo deste ciclo.</li>
+</ul>
+
+<footer>PH2D · Motion Nodes · tutorial 7 de uma série · cena
+<code>PH2D_GPU_COOK_DEMO=118</code> · as figuras são saída do motor, não desenhos.</footer>

@@ -14,10 +14,15 @@
 //! per-element constant — a constant would make the spread explode with the
 //! count and the tail would fall off the end of the buffer).
 //!
-//! **Order is the axis.** The ramp follows stream order, which is the geometric
-//! order of a `motion.grid` (row-major). To sweep along another axis — the true
-//! photographic slit — put a `motion.sort` upstream: sorting by X and then
-//! scanning makes the delay increase from left to right.
+//! **Two axes — `Delay By`** (`ramp` param, ciclo 7 W3, doc 112 §4-sexies). `Order`
+//! (the default, bit-identical to what shipped) follows stream order, which is the
+//! geometric order of a `motion.grid` (row-major). `Field` drops the index ramp and
+//! delays each element by `lag · falloff` alone — with
+//! `field.index_range(Attribute = P.x)` upstream that is the true photographic slit,
+//! left to right, and any `field.*` is a delay MAP (AE's Time Displacement).
+//! ⛔ **Not a `motion.sort` upstream** — the advice this header used to give: a sort
+//! REORDERS the stream for good (draw order, index pairing, `id`), which a
+//! slit-scan has no business doing.
 //!
 //! **What is delayed is POSITION.** The appearance columns (tint, size, rot) stay
 //! live: a slit-scan is a geometric shear of time, and echoing whole rows —

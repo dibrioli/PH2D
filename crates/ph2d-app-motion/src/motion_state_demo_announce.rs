@@ -242,6 +242,47 @@ pub(super) fn fio() {
     );
 }
 
+/// ⭐⭐⭐ **A COR E O RASTO** (`=118`) — a cena do **ciclo 7** (doc 112 §4-octies).
+///
+/// ⚠️ **Precisa de Play** para as duas fileiras de baixo; a de cima é parada de propósito.
+///
+/// ⚠️ **Os dois `Slit Scan` têm NOME** (`set_label`) — o passo 8 manda clicar num deles, e o
+/// grafo tem dois.
+pub(super) fn aparencia() {
+    eprintln!(
+        "[cena 118] A COR E O RASTO. Seis panos de 36 pecas, em tres fileiras. Em cada par
+  muda UMA coisa -- o pano, e nas fileiras de baixo o movimento, sao os mesmos.
+
+  1. Carregue em PLAY. A fileira de CIMA fica PARADA de proposito (a cor nao precisa
+     de tempo); as duas de baixo mexem-se.
+  2. Fileira de CIMA -- A COR. O pano da ESQUERDA e' todo de UMA cor (laranja). O da
+     DIREITA tem uma cor POR PECA: um arco-iris que atravessa o pano.
+     (i) A esquerda tem o cartao `Tint`; a direita tem o `Color Ramp` no lugar dele.
+  3. Clique no cartao `Tint` e escolha outra cor na linha `Color`: o pano da esquerda
+     muda INTEIRO, e o da direita nao.
+  4. Clique no cartao `Color Ramp` e abra a linha `Gradient`: mexa numa das paradas e
+     so' as pecas daquela parte do pano mudam de cor.
+  5. Fileira do MEIO -- O RASTO. Nos dois panos cada peca anda numa pequena RODA. O da
+     DIREITA deixa uma CAUDA: cada peca desenha um arco que se apaga.
+     (i) O cartao a mais e' o `Trail`.
+  6. Clique no cartao `Trail` e arraste `Length` ate' ao fim: a cauda fecha o anel.
+     Arraste `Tail Alpha` para 1: a cauda deixa de se apagar.
+  7. Fileira de BAIXO -- O TEMPO. Os dois panos sobem e descem, e cada peca chega
+     ATRASADA. A ESQUERDA atrasa pela ORDEM das pecas: a onda sobe o pano linha a
+     linha, a comecar pela de BAIXO. A DIREITA atrasa pelo LUGAR: a onda corre da
+     esquerda para a direita, com as seis linhas juntas.
+  8. Clique no cartao `Slit Scan: ORDEM` e mude `Delay By` para `Field`: sem nenhum
+     campo antes dele, o pano inteiro atrasa por igual e a onda SOME.
+     (i) O da direita tem um `Falloff` antes -- e' ele que diz quanto cada peca atrasa.
+  9. Clique no cartao `Falloff` e ligue `Invert`: a onda passa a correr da DIREITA
+     para a esquerda.
+
+  DEU ERRADO se: os dois panos de cima tiverem a mesma cor; se nenhum pano do meio
+  deixar cauda (ou os dois deixarem); se os dois de baixo ondularem IGUAL; ou se o
+  passo 8 nao fizer a onda sumir."
+    );
+}
+
 /// ⭐⭐⭐ **UM NÚMERO QUE MANDA EM TUDO** (`=117`) — a cena do **ciclo 6** (doc 110 §12).
 ///
 /// ⚠️ **Precisa de Play**: o `LFO` e o `Beat` leem o playhead, e parada ela é quatro panos

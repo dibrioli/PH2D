@@ -33,6 +33,10 @@
 #[path = "motion_demo_strobe.rs"]
 mod strobe;
 
+/// ⭐⭐⭐ **A COR E O RASTO** — a cena de smoke do **ciclo 7**: três fileiras (a cor, o rasto, o
+/// tempo), e em cada par muda um cartão ou o modo dele (doc 112 §4-octies).
+#[path = "motion_state_aparencia_demo.rs"]
+mod aparencia_demo;
 /// ⭐⭐⭐ **O gate dos ANÚNCIOS** — todo cartão que um passo manda clicar existe na cena; ver o
 /// cabeçalho dele. `#[cfg(test)]`: é uma régua, não código de produto.
 #[cfg(test)]

@@ -55,6 +55,12 @@ mod sim_figures;
 #[path = "motion_bridge_valor_figures.rs"]
 mod valor_figures;
 
+/// As figuras do tutorial do **ciclo 7** (a cor e o rasto) — quadrados com a cor, a alfa e o
+/// tamanho que o motor deu; ver o cabeçalho delas.
+#[cfg(test)]
+#[path = "motion_bridge_aparencia_figures.rs"]
+mod aparencia_figures;
+
 /// As figuras do tutorial do **ciclo 4** (os campos) — quadrados do tamanho que o campo lhes
 /// pesou; ver o cabeçalho delas.
 #[cfg(test)]
@@ -65,6 +71,12 @@ mod campos_figures;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_animadores_probe.rs"]
 mod animadores_probe;
+
+/// O relógio do grupo do ciclo 7 (doc 112 §4-septies) — os DOIS motores lado a lado; sonda
+/// `#[ignore]`, não um gate. Mora aqui porque usa a canalização do `pre` da ponte.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_aparencia_relogio.rs"]
+mod aparencia_relogio;
 
 /// As figuras do tutorial do ciclo 1 — geradas COZINHANDO os nós (doc 103 §3).
 #[cfg(all(test, feature = "panel-motion-graph"))]

@@ -36,8 +36,16 @@ pub(crate) const ANEL: [&str; 4] = ["ss_ring0", "ss_ring1", "ss_ring2", "ss_ring
 const CORPO: &str = "\
 let ss_live = read_in_P(i);\n\
 let ss_has = HAS_state_ss_ring0 && HAS_state_ss_ring1 && HAS_state_ss_ring2 && HAS_state_ss_ring3;\n\
-let ss_old = array<mat4x4<f32>, 4>(read_state_ss_ring0(i), read_state_ss_ring1(i),\n\
-\x20   read_state_ss_ring2(i), read_state_ss_ring3(i));\n\
+// As 16 COLUNAS do anel (4 faixas cada), lidas UMA vez. Um anel ausente e' a pose viva.\n\
+var ss_c = array<vec4<f32>, 16>();\n\
+if (ss_has) {\n\
+\x20   let ss_m = array<mat4x4<f32>, 4>(read_state_ss_ring0(i), read_state_ss_ring1(i),\n\
+\x20       read_state_ss_ring2(i), read_state_ss_ring3(i));\n\
+\x20   for (var ss_j = 0u; ss_j < 16u; ss_j = ss_j + 1u) { ss_c[ss_j] = ss_m[ss_j / 4u][ss_j % 4u]; }\n\
+} else {\n\
+\x20   let ss_v = vec4<f32>(ss_live.x, ss_live.y, ss_live.x, ss_live.y);\n\
+\x20   for (var ss_j = 0u; ss_j < 16u; ss_j = ss_j + 1u) { ss_c[ss_j] = ss_v; }\n\
+}\n\
 // O atraso DESTE elemento — o `delay_of` da CPU. O `lag` do uniform ja' vem por `lag_ticks`.\n\
 var ss_d = 0.0;\n\
 let ss_f_raw = read_in_falloff(i);\n\
@@ -53,34 +61,37 @@ if (params.ramp >= 0.5) {\n\
 let ss_lo = u32(ss_d);\n\
 let ss_hi = min(ss_lo + 1u, 32u);\n\
 let ss_frac = ss_d - f32(ss_lo);\n\
-let ss_a = ss_at(ss_old, ss_has, ss_live, ss_lo);\n\
-let ss_b = ss_at(ss_old, ss_has, ss_live, ss_hi);\n\
+let ss_a = ss_pick(ss_c[ss_col(ss_lo)], ss_live, ss_lo);\n\
+let ss_b = ss_pick(ss_c[ss_col(ss_hi)], ss_live, ss_hi);\n\
 write_P(i, vec2<f32>(ss_a.x + (ss_b.x - ss_a.x) * ss_frac, ss_a.y + (ss_b.y - ss_a.y) * ss_frac));\n\
-// O anel avanca: a pose viva vira `1 tique atras`, e cada posicao desce uma.\n\
-var ss_new = array<mat4x4<f32>, 4>();\n\
-for (var ss_k = 1u; ss_k <= 32u; ss_k = ss_k + 1u) {\n\
-\x20   let ss_v = ss_at(ss_old, ss_has, ss_live, ss_k - 1u);\n\
-\x20   let ss_l = 2u * (ss_k - 1u);\n\
-\x20   let ss_e0 = ss_l % 16u;\n\
-\x20   let ss_e1 = (ss_l + 1u) % 16u;\n\
-\x20   ss_new[ss_l / 16u][ss_e0 / 4u][ss_e0 % 4u] = ss_v.x;\n\
-\x20   ss_new[(ss_l + 1u) / 16u][ss_e1 / 4u][ss_e1 % 4u] = ss_v.y;\n\
+// O anel avanca DUAS faixas: a pose viva vira `1 tique atras`, e cada posicao desce uma.\n\
+var ss_n = array<vec4<f32>, 16>();\n\
+ss_n[0] = vec4<f32>(ss_live.x, ss_live.y, ss_c[0].x, ss_c[0].y);\n\
+for (var ss_j = 1u; ss_j < 16u; ss_j = ss_j + 1u) {\n\
+\x20   ss_n[ss_j] = vec4<f32>(ss_c[ss_j - 1u].z, ss_c[ss_j - 1u].w, ss_c[ss_j].x, ss_c[ss_j].y);\n\
 }\n\
-write_ss_ring0(i, ss_new[0]);\n\
-write_ss_ring1(i, ss_new[1]);\n\
-write_ss_ring2(i, ss_new[2]);\n\
-write_ss_ring3(i, ss_new[3]);\n";
+write_ss_ring0(i, mat4x4<f32>(ss_n[0], ss_n[1], ss_n[2], ss_n[3]));\n\
+write_ss_ring1(i, mat4x4<f32>(ss_n[4], ss_n[5], ss_n[6], ss_n[7]));\n\
+write_ss_ring2(i, mat4x4<f32>(ss_n[8], ss_n[9], ss_n[10], ss_n[11]));\n\
+write_ss_ring3(i, mat4x4<f32>(ss_n[12], ss_n[13], ss_n[14], ss_n[15]));\n";
 
-/// A faixa `l` do anel, e a posição `k` tiques atrás (`0` = a viva; um anel ausente = a viva).
+/// A posição `k` tiques atrás, dada a COLUNA que a guarda (`0` = a viva). A posição `k ≥ 1` mora
+/// nas faixas `2(k−1)` e `2(k−1)+1`, logo na coluna `(k−1)/2` — em `.xy` se `k−1` é par, `.zw` se
+/// é ímpar.
+///
+/// ⛔⛔ **A 1.ª redacção passava o anel INTEIRO por valor** (`array<mat4x4<f32>, 4>`, 64 números)
+/// a uma função chamada 34 vezes por elemento: o slit-scan custava **17,6 ns por linha** no
+/// dispositivo contra `~2` dos nove irmãos, e a um milhão de objectos ocupava um quadro inteiro
+/// sozinho (`16,4 ms`, doc 112 §4-septies). Hoje o anel é lido UMA vez e o avanço é uma
+/// translação de colunas.
 const BIBLIOTECA: &str = "\
-fn ss_lane(m: array<mat4x4<f32>, 4>, l: u32) -> f32 {\n\
-\x20   let e = l % 16u;\n\
-\x20   return m[l / 16u][e / 4u][e % 4u];\n\
+fn ss_col(k: u32) -> u32 {\n\
+\x20   return (max(k, 1u) - 1u) / 2u;\n\
 }\n\
-fn ss_at(m: array<mat4x4<f32>, 4>, has: bool, live: vec2<f32>, k: u32) -> vec2<f32> {\n\
-\x20   if (k == 0u || !has) { return live; }\n\
-\x20   let l = 2u * (k - 1u);\n\
-\x20   return vec2<f32>(ss_lane(m, l), ss_lane(m, l + 1u));\n\
+fn ss_pick(col: vec4<f32>, live: vec2<f32>, k: u32) -> vec2<f32> {\n\
+\x20   if (k == 0u) { return live; }\n\
+\x20   if (((k - 1u) & 1u) == 0u) { return col.xy; }\n\
+\x20   return col.zw;\n\
 }\n";
 
 const fn anel(k: usize) -> ColumnBinding {
@@ -146,8 +157,10 @@ mod tests {
         assert_eq!(MAX_LAG, 32);
         assert!(CORPO.contains("clamp(params.lag * ss_rank * ss_f, 0.0, 32.0)"));
         assert!(CORPO.contains("min(ss_lo + 1u, 32u)"));
-        assert!(CORPO.contains("ss_k <= 32u"));
+        // 16 colunas de 4 faixas = 64 faixas = 32 posições `vec2`.
+        assert!(CORPO.contains("ss_j < 16u"));
         assert_eq!(ANEL.len() * 16, 2 * MAX_LAG, "64 faixas = 32 posições vec2");
+        assert_eq!(ANEL.len() * 4, 16, "quatro matrizes = dezasseis colunas");
     }
 
     /// **O derivado é o `lag_ticks`**, com o lixo de documento.

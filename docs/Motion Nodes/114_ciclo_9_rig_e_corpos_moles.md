@@ -365,3 +365,48 @@ uma restrição ultrapassar o próprio solve.
 
 **Prova de mutação 2 de 2** (a segunda documentada como não-sangrante de propósito, acima), e a
 folha `pose.rs` continua **byte-idêntica** nas três crates, que é a cerca 10.
+
+---
+
+## §8 — W4: por que cada corpo mole está na CPU — **a razão NOMEADA, nó a nó**
+
+A lei 1 do doc 103 §2 manda que *um nó do grupo que caia para a CPU saia do ciclo com a razão
+nomeada e o preço medido*. A §2 diz **que** eles caem; esta diz **porquê**, e as três respostas são
+**diferentes** — o que importa, porque duas delas são trabalho e uma é uma decisão.
+
+### ⛔ Primeiro, o que NÃO é a razão: o estado
+
+A leitura fácil é *«eles guardam estado entre tiques, e o dispositivo não faz isso»*. **É falsa, e
+o próprio repo a desmente:** o canal [`StateSelect`] existe no substrato — *«a porta que traz a
+população semente»* mais *«a porta que traz o estado evoluído do tique anterior»* — e o `sim.zone`
+usa-o hoje. O ciclo 5 mediu **10 de 12** nós de simulação no dispositivo. ⇒ *estado no dispositivo
+é um problema resolvido nesta casa*, e os três corpos moles têm exactamente a forma de portas que
+aquele canal descreve (um `state` ao lado das portas de entrada).
+
+### A razão de cada um
+
+| nó | o que o prende | natureza |
+|---|---|---|
+| **`motion.wave`** | ⭐ **NADA de estrutural.** O `step` é um estêncil **explícito**: cada célula lê `h` e `h_prev` (as matrizes do tique anterior) e escreve uma matriz NOVA — nenhuma célula lê o que esta passagem escreveu. É o caso embaraçosamente paralelo, o trabalho clássico de uma placa | **trabalho por fazer** (o kernel), não um bloqueador |
+| **`motion.soft_body`** | **Reduções de stream inteiro** — o centroide ponderado e o `A_pq` do *shape matching* são somas sobre TODOS os pontos antes de qualquer ponto poder mover-se. ⭐ E o canal existe: o `ReduceSpec` (o canal DEFORMER, ADR-0126) é exactamente *«as reduções de stream inteiro que o kernel deste nó lê»* | **trabalho por fazer**, maior — duas passagens em vez de uma |
+| **`motion.verlet_rope`** | ⛔⛔ **Gauss-Seidel**, e está escrito no código: a relaxação faz `pos[i]` e `pos[i+1]` **no sítio**, e a restrição seguinte lê o que a anterior acabou de escrever (o comentário do nó nomeia-o, e compara-se ao Vellum). *Não existe forma de o correr em paralelo que dê o mesmo resultado* | **BLOQUEADOR real** |
+
+### ⚠️ E o bloqueador da corda é uma DECISÃO, não uma dificuldade
+
+As duas saídas paralelas conhecidas — **Jacobi** (todas as restrições a partir da mesma fotografia)
+e a **coloração** (ímpares, depois pares) — são leis **diferentes**: para o mesmo número de
+iterações a corda fica **mais mole**, porque uma correcção deixa de ver a anterior. ⇒ pôr a corda na
+placa **move todos os gates daquela crate**, incluindo os que medem quanto ela cai — e o `CLAUDE.md`
+§5 já regista que a composição *sub-passos × `damping`* dela foi **medida e não curada de
+propósito**.
+
+⇒ **Não é um kernel que falta: é um veredito sobre se a corda pode mudar de lei.** Fica como
+**decisão do dono**, com as duas alternativas nomeadas e o preço escrito.
+
+### ⏳ O preço, e por que ele ainda não está aqui
+
+O relógio da CPU destes três **não foi medido** — a máquina esteve acima de `load 5` (`§5.0`) desde
+que esta secção foi escrita, e uma leitura ali não vale nada. A sonda corre pelo mesmo vigia que
+fechou a tabela do ciclo 8 (`ferramentas/medir_quando_calmo.sh`). ⚠️ **Sem esse número, «pôr o
+`motion.wave` na placa» é uma aposta e não uma decisão** — é ele que diz se vale um kernel ou se o
+estêncil já cabe num quadro na malha que o artista usa.

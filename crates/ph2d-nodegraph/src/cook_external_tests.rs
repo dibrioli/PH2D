@@ -188,3 +188,38 @@ fn renaming_the_source_recomputes() {
         "the node points somewhere else now"
     );
 }
+
+/// ⭐⭐⭐ **REPUBLICAR O MESMO STREAM NÃO O REHASHA** (ciclo 8, W1 — doc 113 §6).
+///
+/// ⚠️ **A régua é o CONTADOR, e ele existe por o ganho ser invisível:** nos dois caminhos a
+/// revisão é a mesma (é o que torna a cura segura), então um gate que olhasse só o
+/// comportamento passaria com e sem ela — e a optimização evaporava na primeira refactoração.
+///
+/// ⚠️ **As duas metades:** o mesmo stream não hasha; um stream DIFERENTE hasha. Sem a segunda, um
+/// `set_external` que nunca publicasse nada também passaria.
+#[test]
+fn republishing_the_same_stream_skips_the_hash() {
+    use crate::attr::{Column, Stream};
+    let mut cook = Cook::new();
+    let tabela = Stream::new(3).with("v", Column::Scalar(vec![1.0, 2.0, 3.0]));
+    cook.set_external("t", tabela.clone());
+    let (h1, r1) = cook.external_publish_counts();
+    assert_eq!((h1, r1), (1, 0), "a primeira publicacao hasha");
+    let rev1 = cook.externals()["t"].rev;
+    // O que a membrana faz a cada quadro: publicar o MESMO stream (clone = refcount).
+    for _ in 0..10 {
+        cook.set_external("t", tabela.clone());
+    }
+    let (h2, r2) = cook.external_publish_counts();
+    assert_eq!(h2, 1, "dez quadros parados nao voltam a hashar");
+    assert_eq!(r2, 10, "e os dez foram reconhecidos");
+    assert_eq!(cook.externals()["t"].rev, rev1, "a revisao fica a mesma");
+    // A METADE QUE FALSIFICA: outro conteúdo volta a hashar, e a revisão muda.
+    cook.set_external(
+        "t",
+        Stream::new(3).with("v", Column::Scalar(vec![9.0, 2.0, 3.0])),
+    );
+    let (h3, _) = cook.external_publish_counts();
+    assert_eq!(h3, 2, "conteudo novo hasha");
+    assert_ne!(cook.externals()["t"].rev, rev1, "e a revisao muda");
+}

@@ -174,6 +174,10 @@ pub struct Cook {
     /// **O plano de preguiça do quadro** ([`LazyBranches`]) — vazio por omissão, e vazio é o
     /// comportamento de sempre, ao bit. A shell reescreve-o por quadro, como os externals.
     lazy: LazyBranches,
+    /// Quantas publicações de external percorreram o conteúdo (o hash) e quantas foram
+    /// reconhecidas como o MESMO stream — ver [`Cook::set_external`].
+    externals_hashed: u64,
+    externals_reused: u64,
     /// Monotonic revision clock. Bumped only on an actual recompute; a node's
     /// stored revision changes iff it recomputed, so a downstream consumer
     /// detects change by a changed input revision. (Replaces the earlier
@@ -187,10 +191,36 @@ impl Cook {
     /// The revision is the CONTENT (`external::fingerprint`), so a caller cannot get the
     /// bookkeeping wrong: republishing the same curve every frame is free, and editing it
     /// invalidates exactly the nodes that read it.
+    /// ⭐⭐⭐ **E republicar a MESMA coisa não a rehasha** (ciclo 8, W1 — doc 113 §6). A membrana
+    /// publica todas as fontes externas a cada quadro, e a impressão digital percorre o conteúdo:
+    /// medido no produto, uma tabela de **1 000 000** de linhas parada custava **`6,05 ms` por
+    /// quadro** só a ser rehashada. Quando o stream que chega PARTILHA as alocações com o que já
+    /// está publicado ([`crate::attr::Stream::shares_storage_with`]) ele é, por construção, o mesmo
+    /// conteúdo — e a revisão que sairia do hash seria a mesma.
+    ///
+    /// ⚠️ **O contador existe porque o ganho é INVISÍVEL ao comportamento** (a revisão não muda nos
+    /// dois caminhos): sem ele, nenhum gate distingue a cura de a não fazer, e a optimização
+    /// evapora na primeira refactoração.
     pub fn set_external(&mut self, name: impl Into<String>, value: crate::attr::Stream) {
+        let name = name.into();
+        if let Some(ja) = self.externals.get(&name)
+            && ja.value.shares_storage_with(&value)
+        {
+            self.externals_reused += 1;
+            return;
+        }
         let rev = crate::external::fingerprint(&value);
+        self.externals_hashed += 1;
         self.externals
-            .insert(name.into(), crate::external::External { rev, value });
+            .insert(name, crate::external::External { rev, value });
+    }
+
+    /// Quantas publicações de external foram HASHADAS, e quantas foram reconhecidas como o mesmo
+    /// stream — o instrumento da cura acima. *Uma optimização sem instrumento é uma nota que
+    /// envelhece.*
+    #[must_use]
+    pub fn external_publish_counts(&self) -> (u64, u64) {
+        (self.externals_hashed, self.externals_reused)
     }
 
     /// Forget everything published (the shell republishes what still exists each frame, so this is

@@ -14,6 +14,14 @@ impl GpuCook {
         Self::default()
     }
 
+    /// **Quantas costuras foram ENVIADAS para a placa, e quantas foram reconhecidas como a mesma**
+    /// — o instrumento da cura do ciclo 8 (doc 113 §6). O ganho não muda o desenho, então sem este
+    /// par nenhum gate distingue reutilizar de reenviar.
+    #[must_use]
+    pub fn boundary_upload_counts(&self) -> (u64, u64) {
+        (self.boundary_uploads, self.boundary_reuses)
+    }
+
     /// The instance buffer the LAST [`GpuCook::cook`] produced, if any — what the
     /// renderer binds. `None` before the first cook.
     pub fn instances(&self) -> Option<&GpuInstances> {

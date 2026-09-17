@@ -10,6 +10,7 @@ mod boundary_arity;
 mod generated_wgsl_validates;
 mod gpu_boids;
 mod gpu_boids_scale;
+mod gpu_boundary_cache;
 mod gpu_collide;
 mod gpu_cpu_parity;
 mod gpu_cpu_parity_arith;

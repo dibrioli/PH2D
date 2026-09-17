@@ -61,7 +61,10 @@ fn tabela(n: usize) -> String {
 }
 
 struct Linha {
-    ms: f64,
+    /// O que a MEMBRANA custa: publicar as fontes externas do quadro (`publish_all`).
+    publicar: f64,
+    /// O que o COZIMENTO custa: o prefixo na CPU, o envio da costura e os passes.
+    cozer: f64,
     linhas: usize,
     rota: &'static str,
 }
@@ -91,19 +94,27 @@ fn mede(gpu: &GpuContext, fonte: Fonte, n: usize) -> Linha {
     liga(&mut m, s, o);
     m.sinks = vec![o];
     let scopes = TimeScopes::new();
-    let mut ms = Vec::new();
+    let (mut pub_ms, mut cozer_ms) = (Vec::new(), Vec::new());
     for f in 0..AQUECE + AMOSTRAS {
+        // ⚠️ **Os dois relógios separados, e é o achado que eles separam:** a membrana volta a
+        // publicar a fonte a cada quadro (e o `set_external` HASHA o conteúdo para a revisão), e o
+        // cozimento volta a ENVIAR a costura. São duas repetições diferentes de trabalho sobre a
+        // mesma coisa parada, e um número só não diz qual.
         let t0 = std::time::Instant::now();
         crate::motion_externals::publish_all(&mut m, f as f64 * DT);
+        let t1 = std::time::Instant::now();
         let _ = super::super::gpu::cook_gpu(&mut m, gpu, f, DT, &scopes);
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         if f >= AQUECE {
-            ms.push(t0.elapsed().as_secs_f64() * 1000.0);
+            pub_ms.push((t1 - t0).as_secs_f64() * 1000.0);
+            cozer_ms.push(t1.elapsed().as_secs_f64() * 1000.0);
         }
     }
-    ms.sort_by(f64::total_cmp);
+    pub_ms.sort_by(f64::total_cmp);
+    cozer_ms.sort_by(f64::total_cmp);
     Linha {
-        ms: ms[ms.len() / 2],
+        publicar: pub_ms[pub_ms.len() / 2],
+        cozer: cozer_ms[cozer_ms.len() / 2],
         linhas: m.gpu_cook.instances().map_or(0, |b| b.len() as usize),
         rota: m.route_said.unwrap_or("?"),
     }
@@ -121,13 +132,19 @@ fn measure_the_source_seam() {
             .unwrap_or_default()
             .trim()
     );
-    eprintln!("\n  fonte    │         n │ linhas na placa │ quadro ms │ rota");
+    eprintln!(
+        "\n  fonte    │         n │ linhas na placa │ publicar │ cozer+enviar │ quadro │ rota"
+    );
     for n in [10_000usize, 100_000, 1_000_000] {
         for (rotulo, f) in [("grade", Fonte::Grade), ("tabela", Fonte::Tabela)] {
             let l = mede(&gpu, f, n);
             eprintln!(
-                "  {rotulo:<8} │ {n:>9} │ {:>15} │ {:>9.2} │ {}",
-                l.linhas, l.ms, l.rota
+                "  {rotulo:<8} │ {n:>9} │ {:>15} │ {:>8.2} │ {:>12.2} │ {:>6.2} │ {}",
+                l.linhas,
+                l.publicar,
+                l.cozer,
+                l.publicar + l.cozer,
+                l.rota
             );
         }
     }

@@ -79,7 +79,7 @@ use ph2d_render::SinkStyle;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::CookClock;
 use ph2d_node_registry::NodeRegistry;
-use ph2d_nodegraph::attr::Column;
+use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
@@ -887,14 +887,19 @@ fn an_unconnected_value_writes_nothing_on_either_engine() {
     connect(&mut g, grid, drive);
     g.validate(&reg).expect("o grafo e' valido");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "a cadeia fica no dispositivo: {:?}", plan.boundaries);
+    assert!(
+        plan.is_fully_gpu(),
+        "a cadeia fica no dispositivo: {:?}",
+        plan.boundaries
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu");
     match cpu[0].as_stream().get("size") {
         None => {}
         Some(Column::Vec2(v)) => assert!(
-            v.iter().all(|s| (s[0] - 1.0).abs() < 1e-6 && (s[1] - 1.0).abs() < 1e-6),
+            v.iter()
+                .all(|s| (s[0] - 1.0).abs() < 1e-6 && (s[1] - 1.0).abs() < 1e-6),
             "a CPU escreveu tamanho sem valor nenhum: {:?}",
             &v[..v.len().min(4)]
         ),

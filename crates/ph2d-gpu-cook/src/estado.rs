@@ -128,4 +128,24 @@ pub struct GpuCook {
     /// [`tex_runs`]). Empty for a non-object graph. Persistent, like
     /// [`Self::instances`].
     pub(crate) tex_runs: Vec<ph2d_render::GpuTexRun>,
+    /// ⭐⭐⭐ **A COSTURA QUE NÃO MUDOU NÃO SE ENVIA OUTRA VEZ** (ciclo 8, W1 — doc 113 §6).
+    ///
+    /// Por nó de fronteira: o stream da CPU que foi enviado e o `GpuStream` que ele virou. Um
+    /// quadro cuja costura PARTILHA as alocações com esta
+    /// ([`ph2d_nodegraph::attr::Stream::shares_storage_with`]) reutiliza o envio — uma tabela, um
+    /// texto ou uma forma parada era copiada para a placa sessenta vezes por segundo.
+    ///
+    /// ⚠️ **Guardar o stream da CPU ao lado é o que torna a comparação SEGURA**: ele segura os
+    /// `Arc` das colunas, e uma alocação que não pode ser libertada não pode ser reutilizada noutro
+    /// sítio com o mesmo endereço.
+    ///
+    /// ⚠️ **E segurar o `GpuStream` é o que o protege do [`BufferPool::reclaim`]** — pela mesma
+    /// propriedade que já mantém [`Self::prev`] vivo: o pool só recicla o que mais ninguém
+    /// referencia.
+    pub(crate) sent_boundaries: BTreeMap<NodeId, (ph2d_nodegraph::attr::Stream, GpuStream)>,
+    /// Quantas costuras foram ENVIADAS e quantas foram reconhecidas como a mesma — o instrumento
+    /// da cura acima, pela mesma razão do contador do `Cook::set_external`: o ganho não muda o
+    /// comportamento, então sem contador nenhum gate o distingue de não o fazer.
+    pub(crate) boundary_uploads: u64,
+    pub(crate) boundary_reuses: u64,
 }

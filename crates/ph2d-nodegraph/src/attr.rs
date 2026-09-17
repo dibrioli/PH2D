@@ -374,6 +374,33 @@ impl Stream {
     pub fn columns(&self) -> impl Iterator<Item = (&String, &Column)> {
         self.attrs.iter().map(|(n, c)| (n, c.as_ref()))
     }
+
+    /// ⭐⭐⭐ **ISTO É O MESMO STREAM QUE AQUELE?** — as duas contagens iguais e **as mesmas
+    /// ALOCAÇÕES** em todas as colunas, na mesma ordem e com os mesmos nomes.
+    ///
+    /// ⚠️ **É identidade, não igualdade**, e é de propósito: uma coisa que não mudou partilha as
+    /// colunas com a versão de ontem (*clonar partilha, escrever substitui* — a lei que o teste
+    /// desta secção pina), então a pergunta responde-se com um ponteiro por coluna em vez de
+    /// percorrer um milhão de números. Dois streams com o mesmo CONTEÚDO e alocações diferentes
+    /// respondem `false` — o pior que acontece é fazer-se o trabalho que já se fazia.
+    ///
+    /// ⚠️ **A imutabilidade é o que a torna segura:** uma coluna nunca é escrita no sítio (não há
+    /// `get_mut`), então o mesmo ponteiro é sempre o mesmo conteúdo. Quem guardar o stream ao lado
+    /// da resposta (um cache) segura o `Arc` e impede que a alocação seja libertada e reutilizada
+    /// noutro sítio — que é a única forma de este `ptr::eq` mentir.
+    ///
+    /// Os dois consumidores: o [`crate::cook::Cook::set_external`] (não voltar a HASHAR o que não
+    /// mudou) e o envio da costura para o dispositivo (não voltar a ENVIAR) — ciclo 8, doc 113 §6.
+    #[must_use]
+    pub fn shares_storage_with(&self, other: &Self) -> bool {
+        self.count == other.count
+            && self.attrs.len() == other.attrs.len()
+            && self
+                .attrs
+                .iter()
+                .zip(other.attrs.iter())
+                .all(|((na, ca), (nb, cb))| na == nb && std::sync::Arc::ptr_eq(ca, cb))
+    }
 }
 
 #[cfg(test)]
@@ -403,6 +430,35 @@ mod tests {
     /// per-tick snapshots cheap), and a `set` on the clone swaps in a fresh
     /// column without touching the original. A `Stream` whose clone deep-copied
     /// would fail the pointer identity here — the exact regression this pins.
+    /// ⭐⭐ **A régua da identidade** ([`Stream::shares_storage_with`]): o clone partilha, a escrita
+    /// desfaz, e um stream com o MESMO conteúdo noutra alocação responde `false` — o lado
+    /// conservador, que só custa o trabalho que já se fazia.
+    #[test]
+    fn shared_storage_is_identity_and_never_equality() {
+        let a = Stream::new(2)
+            .with("P", Column::Vec2(vec![[1.0, 2.0], [3.0, 4.0]]))
+            .with("size", Column::Scalar(vec![1.0, 1.0]));
+        let b = a.clone();
+        assert!(a.shares_storage_with(&b), "clonar partilha");
+        let mut c = a.clone();
+        c.set("size", Column::Scalar(vec![1.0, 1.0]));
+        assert!(
+            !a.shares_storage_with(&c),
+            "escrever desfaz a partilha, mesmo escrevendo o MESMO conteudo"
+        );
+        let d = Stream::new(2)
+            .with("P", Column::Vec2(vec![[1.0, 2.0], [3.0, 4.0]]))
+            .with("size", Column::Scalar(vec![1.0, 1.0]));
+        assert_eq!(a.get("P"), d.get("P"), "o conteudo e' o mesmo...");
+        assert!(!a.shares_storage_with(&d), "...e a alocacao nao");
+        // E as duas metades da contagem de colunas.
+        let e = a.clone().with("extra", Column::Scalar(vec![0.0, 0.0]));
+        assert!(
+            !a.shares_storage_with(&e),
+            "uma coluna a mais nao e' o mesmo stream"
+        );
+    }
+
     #[test]
     fn cloning_a_stream_shares_columns_and_writing_replaces_them() {
         let a = Stream::new(2).with("P", Column::Vec2(vec![[1.0, 2.0], [3.0, 4.0]]));

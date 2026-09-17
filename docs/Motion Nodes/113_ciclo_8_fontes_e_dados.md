@@ -102,8 +102,83 @@ texto, sem objecto publicado) — o preço mede-se com conteúdo, na §3.1.
 
 ### §3.1 — O preço, medido pela ponte do produto
 
-⏳ Sonda `measure_the_source_seam` (a MESMA cadeia pela `cook_gpu` do app, com o `publish_all` das
-membranas antes, e a `motion.grid` do mesmo tamanho como controlo) — a correr com a máquina calma.
+Sonda `measure_the_source_seam`: a MESMA cadeia (`fonte → scale → output`) pela **`cook_gpu` do
+app**, com o `publish_all` das membranas antes, e a `motion.grid` do mesmo tamanho como **controlo**
+(a cadeia inteira na placa). ⚠️ **Os dois relógios separados** — publicar e cozer+enviar — porque são
+duas repetições diferentes de trabalho sobre a mesma coisa parada, e um número só não diz qual.
+
+⚠️ **A máquina não estava calma** (`load 20,5`; outras linhas a compilar), então **o que se cita é a
+RAZÃO contra o controlo**, não o absoluto — e ela é o achado:
+
+```text
+  ANTES da cura (load 20,5)                    │ publicar │ cozer+enviar │ quadro │ vs. grade
+  grade       10 000 (a cadeia toda na placa)  │    0,00  │        0,07  │  0,07  │   —
+  tabela      10 000                           │    0,06  │        0,09  │  0,15  │  2,1×
+  grade      100 000                           │    0,00  │        0,18  │  0,18  │   —
+  tabela     100 000                           │    0,60  │        0,38  │  0,98  │  5,4×
+  grade    1 000 000                           │    0,00  │        1,36  │  1,36  │   —
+  tabela   1 000 000                           │    6,05  │        3,57  │  9,62  │  7,1×
+```
+
+⇒ **a costura de um milhão de linhas PARADAS custava `7×` a mesma contagem no dispositivo**, e a
+maior metade nem sequer era o envio: eram `6,05 ms` a **republicar** a tabela — o `set_external`
+percorre o conteúdo para derivar a revisão, e a membrana republica tudo a cada quadro.
+
+---
+
+## §6 — ✅ W1: as duas repetições morrem pela MESMA régua
+
+*Uma coisa que não mudou partilha as alocações com a versão de ontem* — clonar um `Stream` é um
+refcount e escrever substitui a coluna inteira (lei do `ph2d-nodegraph`, com gate desde sempre). ⇒
+uma régua só, [`Stream::shares_storage_with`](../../crates/ph2d-nodegraph/src/attr.rs): as mesmas
+contagens e **os mesmos ponteiros** em todas as colunas.
+
+⚠️ **É identidade, nunca igualdade**, e o lado em que ela erra é o barato: dois streams com o mesmo
+conteúdo em alocações diferentes respondem `false` e pagam o trabalho que já pagavam. ⚠️ **E ela é
+segura porque uma coluna nunca é escrita no sítio** (não há `get_mut`) — quem guarda a resposta
+guarda o `Stream` ao lado, segurando os `Arc`, e uma alocação que não pode ser libertada não pode
+reaparecer noutro sítio com o mesmo endereço.
+
+**Os dois consumidores:**
+
+1. **`Cook::set_external`** — republicar o MESMO stream não o rehasha (a revisão que sairia seria a
+   mesma). Isto vale para TODAS as membranas de uma vez (forma · texto · áudio · tabela · L-System),
+   sem uma linha em nenhuma delas.
+2. **`GpuCook::cook`** — a costura que não mudou reutiliza o envio do quadro anterior
+   (`sent_boundaries`). ⚠️ Reutilizar é seguro por uma propriedade que este módulo já declarava no
+   cabeçalho — *cada kernel escreve buffers FRESCOS* —, e o gate prova-a com dois quadros seguidos.
+
+### O que a cura comprou (a MESMA sonda, com a máquina ainda PIOR: `load 30,3`)
+
+```text
+  DEPOIS                                       │ publicar │ cozer+enviar │ quadro │ vs. grade
+  grade    1 000 000                           │    0,00  │        1,41  │  1,41  │   —
+  tabela   1 000 000                           │    0,01  │        1,61  │  1,62  │  1,15×
+  tabela     100 000                           │    0,00  │        0,20  │  0,20  │  0,95×
+  tabela      10 000                           │    0,00  │        0,09  │  0,09  │  0,75×
+```
+
+⇒ **`9,62 → 1,62 ms`** a um milhão de linhas, e a fonte de dados passa a custar **o mesmo que a
+grelha** (`1,15×`) — a costura deixou de ser uma taxa por quadro e passou a ser um preço por
+MUDANÇA.
+
+### Os gates, e por que eles precisam de um CONTADOR
+
+⛔⛔ **O ganho é invisível ao comportamento:** nos dois caminhos a revisão é a mesma e o quadro
+desenha o mesmo — um gate que olhasse só o resultado passaria com e sem a cura, e ela evaporaria na
+primeira refactoração. ⇒ cada lado ganhou um par de contadores
+(`Cook::external_publish_counts` · `GpuCook::boundary_upload_counts`), e os gates leem-nos:
+
+| gate | o que afirma | mutação |
+|---|---|---|
+| `republishing_the_same_stream_skips_the_hash` | dez quadros parados ⇒ **um** hash; conteúdo novo ⇒ hasha e a revisão muda | — |
+| `an_unchanged_boundary_is_uploaded_once_and_draws_the_same_bits` | o 2.º quadro **reutiliza**, o quadro sai **byte a byte igual**, e uma costura diferente volta a ser enviada | desligar a reutilização ⇒ **RED** |
+| `shared_storage_is_identity_and_never_equality` | o clone partilha · escrever desfaz (mesmo escrevendo o mesmo conteúdo) · conteúdo igual noutra alocação responde `false` | — |
+
+⚠️ **A metade dos BITS é a que prova a premissa**, não o contador: se algum estágio escrevesse no
+buffer que recebeu, o segundo quadro leria o buffer já mexido e a imagem derivaria em silêncio.
+
+---
 
 ---
 
@@ -206,7 +281,7 @@ como gate de partida. A cadeia que o tutorial ensina é a curta, que não tem es
 
 ## §5-bis — A fila do ciclo
 
-1. ⏳ **W1 — a costura** — o preço da §3.1 decide a cura.
+1. ✅ **W1 — a costura** (§6) — `9,62 → 1,62 ms` a um milhão de linhas, pela régua «isto é o mesmo armazenamento».
 2. 🟡 **W2 — o cartão e o alcance** — o cartão do `Shape` feito (§4); o censo do alcance é gate do catálogo inteiro e está verde.
 3. ✅ **W3 — o poder que falta** (§5) — a VISTA no grafo, e a lei *«um fio sem valor não escreve»* que ela destapou.
 4. ⏳ **W4 — a MEDIÇÃO.**

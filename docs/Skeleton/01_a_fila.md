@@ -210,7 +210,12 @@ a cena assenta nas duas leis. Quem separa é a **independência da ordem**.
 
 ---
 
-### F4 — ⏳ *«undo tem poucos passos»* — **ABERTO, e o meu diagnóstico foi REFUTADO**
+### F4 — ✅ *«undo tem poucos passos»* — **FECHADO PELO DONO** (2026-09-16: *«tem passos suficientes»*)
+
+⚠️ O diagnóstico abaixo continua REFUTADO e o instrumento continua a existir; o item fecha porque o
+dono, depois de usar, não vê falta de passos.
+
+#### O histórico do item (2026-09-07)
 
 **Sintoma** (verbatim, 2026-09-07): *«undo tem poucos passos»* — o `Ctrl+Z` tem menos etapas do que
 o artista fez.
@@ -285,6 +290,8 @@ losango seria um alvo morto.
 | **F8** | ✅ **BENDY BONES (B-Bones) — FECHADO em 2026-09-15**, da lei ao painel ([handoff](handoffs/HANDOFF_O_OSSO_QUE_DOBRA_2026-09-15.md)) | Um osso ganha `segments` + duas alças e **arqueia**: ele parte-se em `N` sub-ossos ao longo de uma Bézier, o desenho e o dedo seguem a curva, e o painel oferece os dois controlos. ⭐⭐⭐ **A LEI DA PELE NÃO MUDOU UMA LINHA** — o `Skin` já misturava `N` poses RÍGIDAS por peso, que é exactamente o que um B-Bone é; o que mudou foi **quem produz**, e era **um** sítio (`resolve_with`). ⛔⛔ **E esta célula dizia que o B-Bone «ataca na ORIGEM» a queixa das *«arestas retas ao dobrar»* — REFUTADO** pela recusa medida um bloco abaixo (subdividir com a população de amostras constante **piora**: `2,61 % → 4,94 %` a `24` sub-ossos): *o B-Bone é uma feature de AUTORIA — um rabo em S, um membro flexível —, não a cura da dobra.* ⭐⭐ **O ponto neutro é exacto POR CONSTRUÇÃO** (a fábrica colapsa num osso só quando a curva é recta, e mesmo sem colapsar o frame seria a identidade ao bit) ⇒ todo rig já autorado desenha-se e deforma-se **ao bit** como antes. ⚠️ `PROJECT_SCHEMA` **+1** — conte o DELTA. **Tecto MEDIDO: `MAX_SEGMENTS = 32`** (`17,9 %` de um quadro com um osso curvo sobre 20 000 pontos; a `64` um par come o quadro) — a tabela vive no doc da const. ✅ **OS TRÊS ABERTOS FECHARAM EM 2026-09-16.** **(1)** O esticão deixou de VARIAR ao longo do osso — os nós saem agora da **CORDA** e não do parâmetro (`12,63 % → 0,000 %` com as alças a `0,2 L`; `82,01 % → 0,000 %` a `0,6 L`; `1 051,95 % → 0,000 %` com as alças cruzadas no eixo). ⛔⛔ **E a cura publicada — equalizar o ARCO — NÃO chegava**, o que só a varredura da densidade disse: ela deixa um piso que **não desce com a tabela** (`1,22 %` a `0,6 L`, igual de `16` a `32` amostras), porque *arcos iguais dão cordas desiguais* e a grandeza que o artista vê é a corda. ⚠️ **E a objecção registada na recusa era verdadeira e não mordia** (*«um somatório de cordas não devolve `L` ao bit»*): o somatório **nunca corre** no ponto neutro — *uma recusa que nomeia um custo tem de dizer em que CAMINHO ele é pago*. **(2)** As alças **pegam-se no canvas** (duas alças de Bézier, com as hastes até à raiz e à ponta) — ⛔ e a armadilha foi que no ponto NEUTRO a alça está **em cima do eixo**, logo a competição por proximidade de sempre torná-la-ia inalcançável no único estado em que todo osso nasce: ela é a única que ignora o corpo, e paga um raio apertado cujo recurso é o comprimento que sobra para o verbo de girar. **(3)** As **tangentes dos vizinhos** existem (`Curve Handles: Manual | From Chain`), e o ponto neutro é **exacto** porque elas saem da transformação RELATIVA e não de uma volta pelo mundo. ⚠️ `PROJECT_SCHEMA` **+1** — conte o DELTA. Cena **`PH2D_VEC_BONE_SMOKE=1`**. |
 | F7 | **O painel próprio do módulo** | ✅ **FECHADO** (2026-09-09, por escolha do dono) — ver F3-m abaixo. A nota antiga: ⏸️ **a condição CAIU e a medição era falsa por ~3×** — ela dizia *«adiado até F3–F5 lhe darem conteúdo (hoje são 3 botões e 5 campos)»*, e as três estão ✅ nesta mesma tabela enquanto a secção tem **10 verbos** e **9 campos** (`VECTOR_BONE_VERBS`/`_FIELDS`, comprimento verificado pelo compilador), mais uma fileira segmentada e dois selectores. ⇒ decisão do dono, não mais um adiamento medido |
 | **F9** | ⏳ **A PELE DEFORMADA NA GPU — o `Smooth` a alisar em QUALQUER cena** (pedido do dono, 2026-09-16) | ⏳ **NA FILA** — ver F9 abaixo |
+| **F10** | ⏳ **O AutoKey com a corrente de ossos, como o Blender de hoje** (decisão do dono, 2026-09-16) | ⏳ **NA FILA** — medir primeiro, no Blender instalado e corrido por script (§0.9), que ossos recebem chave quando a corrente é movida pela ponta (IK por restrição e *Auto IK*); depois fazer igual |
+| **F11** | ⏳ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (decisão do dono, 2026-09-16) | ⏳ **NA FILA** — hoje desenham-se sem deformar (aviso no terminal). A malha do bind conhece só o quad da sprite: numa folha ela tem de ser a de UMA célula (a mesma para todas, com a UV da célula viva), e no 9-slice o mapa de UV por pedaços tem de entrar na malha (vértices nas linhas dos cortes) |
 
 ---
 
@@ -2003,7 +2010,7 @@ errado:
 - O `sprite_world_to_uv_unclamped` fora da malha responde pela lei do quad de repouso: um traço de
   pincel que sai da silhueta posada é mapeado como se a imagem repousasse.
 - **9-slice e folha desdobrada:** a malha só conhece o quad da sprite; essas desenham-se sem
-  deformar, com aviso único no stderr.
+  deformar, com aviso único no stderr. ⏳ **O dono decidiu (2026-09-16): *«devem deformar»* ⇒ F11.**
 
 **W4 — o orçamento, RE-MEDIDO.** O `SKIN_FRAME_PIECES` era `8 738`, derivado do buffer fixo do Vello
 — um recurso que este caminho já não gasta. Medido o que sobra (sondas
@@ -2187,7 +2194,8 @@ repo já pagou) · o AutoKey a esquecer a mão no osso · o onion a aceitar um i
 ⏳ **ABERTO e nomeado:** no Arrange **com pilha** o `clip_time` responde `None` quando o clip toca
 zero ou duas vezes — nenhum fantasma, que é honesto e **não** foi smokado · e o AutoKey keya só o
 osso **seleccionado**, logo quem a IK moveu na corrente não recebe chave (é o modelo do Blender, e
-não foi medido contra ele).
+não foi medido contra ele) — ⏳ **o dono decidiu (2026-09-16): *«pode ser como no Blender última
+versão»* ⇒ F10.**
 
 **W9 — O GÉMEO DO FLIP DA W6, fechado SEM report** (2026-09-14). A W6 deixou-o nomeado: *«um
 objecto de outra família continua a publicar caixa enquanto a ferramenta Flip desenha»*. Medido
@@ -3249,7 +3257,9 @@ exactidão tem de nomear o caminho em que ela vale*.
 ⏳ **ABERTO e nomeado:** um osso com **dois filhos-osso** não tem «o seguinte» — ali a corrente
 ramifica e aquele lado fica recto, que é a leitura honesta de *«não há tangente única»*. A rota
 publicada (o *custom handle* do Blender, que nomeia OUTRO osso como alça) move schema outra vez e
-não foi pedida.
+não foi pedida. ⏳ **O dono pediu uma CENA para entender (2026-09-16)** — ela existe: a peça **A
+BIFURCAÇÃO** da `PH2D_VEC_BONE_SMOKE=1` (`ph2d_skeleton_demo::bifurcacao`, com gate que prova que a
+ponta só fica recta onde há dois filhos). Aguarda a resposta dele.
 
 ---
 

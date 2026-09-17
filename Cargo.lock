@@ -8339,6 +8339,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-anim",
  "ph2d-ecs",
+ "ph2d-skeleton",
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
  "ph2d-timeline",

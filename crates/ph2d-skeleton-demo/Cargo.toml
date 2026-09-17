@@ -15,6 +15,7 @@ authors.workspace = true
 [dependencies]
 ph2d-anim = { path = "../ph2d-anim" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-skeleton = { path = "../ph2d-skeleton" }
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 ph2d-skeleton-live = { path = "../ph2d-skeleton-live" }
 ph2d-timeline = { path = "../ph2d-timeline" }

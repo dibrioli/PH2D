@@ -195,3 +195,104 @@ pub fn ponta_da_cadeia(sim: &ph2d_ecs::SimWorld, raiz: Entity) -> Entity {
     }
     e
 }
+
+/// Quantos sub-ossos têm os ossos do MEIO da [`bifurcacao`] — o bastante para a curva se ler.
+pub const BRANCH_SEGMENTS: u8 = 8;
+
+/// Os dois ossos que a [`bifurcacao`] põe a curvar pela corrente, com os nomes que a Hierarquia
+/// mostra.
+#[derive(Clone, Copy, Debug)]
+pub struct Bifurcacao {
+    /// O osso do meio com **um** filho: a curva segue-o nas duas pontas.
+    pub com_um_filho: Entity,
+    /// O osso do meio com **dois** filhos: não há «o seguinte», e o lado da ponta fica recto.
+    pub com_dois_filhos: Entity,
+}
+
+/// O nome, na Hierarquia, do osso da [`Bifurcacao::com_um_filho`].
+pub const BRANCH_ONE_CHILD: &str = "Curve: one child";
+/// O nome, na Hierarquia, do osso da [`Bifurcacao::com_dois_filhos`].
+pub const BRANCH_TWO_CHILDREN: &str = "Curve: two children";
+
+/// ⭐⭐⭐ **A BIFURCAÇÃO — a pergunta do `From Chain` posta em cena** (o dono pediu-a em 2026-09-16:
+/// *«não entendi o que vc explicou, monte uma cena para eu entender»*).
+///
+/// Dois esqueletos pequenos, lado a lado, iguais menos numa coisa: o osso do MEIO (curvado pela
+/// corrente, `Curve Handles: From Chain`) tem **um** filho à esquerda e **dois** à direita.
+///
+/// - à esquerda a curva sai do pai e **entra no filho** — as duas pontas do osso seguem a corrente;
+/// - à direita a raiz segue o pai igual, e **a ponta fica recta**: com dois filhos não há «o
+///   seguinte» (`ph2d_skeleton_live::bend_live::effective_spec`), e escolher um deles seria um
+///   sorteio.
+///
+/// A pergunta ao dono é se quer ESCOLHER qual dos filhos manda na curva (o *custom handle* do
+/// Blender), e ela move o formato do ficheiro.
+///
+/// ⚠️ Mora no canto de baixo à esquerda da cena (`x` de `-8,4` a `-1,5`, `y` de `-5,4` a `-3,8`),
+/// onde as outras peças não chegam.
+pub fn bifurcacao(sim: &mut ph2d_ecs::SimWorld) -> Option<Bifurcacao> {
+    use ph2d_skeleton_live::bone::create;
+    let mut lado = |x0: f64, dois: bool, nome: &str| -> Option<Entity> {
+        const Y: f64 = -4.6;
+        let pai = Entity::from_bits(create(sim, None, [x0, Y - 0.7], [x0 + 1.0, Y])?);
+        let meio = Entity::from_bits(create(sim, Some(pai), [x0 + 1.0, Y], [x0 + 2.4, Y])?);
+        create(sim, Some(meio), [x0 + 2.4, Y], [x0 + 3.1, Y + 0.8])?;
+        if dois {
+            create(sim, Some(meio), [x0 + 2.4, Y], [x0 + 3.1, Y - 0.8])?;
+        }
+        let mut osso = sim.world_mut().get_mut::<ph2d_skeleton_ecs::Bone>(meio)?;
+        osso.segments = BRANCH_SEGMENTS;
+        osso.handles = ph2d_skeleton::bend::Handles::Auto;
+        sim.world_mut()
+            .entity_mut(meio)
+            .insert(ph2d_ecs::Name::new(nome.to_string()));
+        Some(meio)
+    };
+    Some(Bifurcacao {
+        com_um_filho: lado(-8.4, false, BRANCH_ONE_CHILD)?,
+        com_dois_filhos: lado(-4.6, true, BRANCH_TWO_CHILDREN)?,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    /// ⭐⭐ **A CENA MOSTRA O QUE PROMETE** — a raiz curva nos dois esqueletos, e a ponta só onde há
+    /// UM filho (`CLAUDE.md` §5.0: *uma cena que ensina o contrário do que acontece é pior que uma
+    /// cena ausente*).
+    ///
+    /// (Mutações: a bifurcação sem o segundo filho ⇒ RED; o osso do meio sem `From Chain` ⇒ RED.)
+    #[test]
+    fn the_branch_scene_shows_a_straight_tip_only_where_the_bone_has_two_children() {
+        let mut sim = ph2d_ecs::SimWorld::default();
+        let b = super::bifurcacao(&mut sim).expect("a cena monta");
+        let curva = |e| {
+            ph2d_skeleton_live::bend_live::effective_spec(&sim, e)
+                .expect("osso")
+                .curve
+        };
+        let (um, dois) = (curva(b.com_um_filho), curva(b.com_dois_filhos));
+        println!("um filho: {um:?}\ndois filhos: {dois:?}");
+        let arqueia = |v: [f64; 2]| v[1].abs() > 0.05;
+        assert!(
+            arqueia(um.inn) && arqueia(dois.inn),
+            "a raiz tem de seguir o pai nos dois"
+        );
+        assert!(arqueia(um.out), "com um filho a ponta tem de entrar nele");
+        assert_eq!(
+            dois.out,
+            [0.0, 0.0],
+            "com dois filhos a ponta tem de ficar recta — e' a pergunta da cena"
+        );
+        for (e, nome) in [
+            (b.com_um_filho, super::BRANCH_ONE_CHILD),
+            (b.com_dois_filhos, super::BRANCH_TWO_CHILDREN),
+        ] {
+            assert_eq!(
+                sim.world()
+                    .get::<ph2d_ecs::Name>(e)
+                    .map(|n| n.as_str().to_string()),
+                Some(nome.to_string())
+            );
+        }
+    }
+}

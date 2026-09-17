@@ -416,3 +416,143 @@ fn print_the_pen_measurement() {
         comprimentos_dos_ossos(true)
     );
 }
+
+// ---------------------------------------------------------------------------------------------
+// A COSTURA — o envelope por osso chega ao BARRO pelo caminho do produto (ciclo 9, W1).
+// ---------------------------------------------------------------------------------------------
+
+/// As posições da pele depois de um esqueleto DOBRADO, com e sem o envelope por osso escrito
+/// pela caneta genérica.
+///
+/// ```text
+/// motion.grid ─────────────────────────────────────────────> skin.in
+/// rig.skeleton ─[drive(Custom,"bone_weight") ← ramp]─> fk ──> skin.rest
+///              └─[drive(Custom,"rot")        ← ramp]─> fk ──> skin.posed
+/// ```
+///
+/// ⚠️ **A pose tem de DOBRAR e não rodar em bloco:** numa rotação rígida todo osso sofre a mesma
+/// mudança de referencial e a pele sai no mesmo sítio **seja qual for o peso** — a `ph2d-boundary`
+/// do skin di-lo por escrito, e a 1.ª redacção dos gates de unidade reprovou por isso. Aqui o `rot`
+/// é conduzido por uma rampa, logo cada junta dobra um bocado diferente.
+fn pele_com_envelope(envelope: Option<f32>) -> Vec<[f32; 2]> {
+    use ph2d_nodegraph::attr::Column;
+    use ph2d_nodegraph::cook::Cook;
+    use ph2d_nodegraph::graph::{Edge, Graph};
+    let mut m = crate::motion_state::MotionState::new();
+    let fio = |g: &mut Graph, de, para, porta| {
+        g.connect(Edge {
+            from: (de, 0),
+            to: (para, porta),
+            delayed: false,
+        })
+        .expect("fio");
+    };
+    /// Um `motion.drive` no canal `Custom…`, a escrever `coluna` com uma rampa por elemento.
+    fn caneta(
+        m: &mut crate::motion_state::MotionState,
+        fonte: ph2d_nodegraph::graph::NodeId,
+        coluna: &str,
+        escala: f32,
+    ) -> ph2d_nodegraph::graph::NodeId {
+        let campo = m.doc.graph.add_node("value.instance_field".to_string());
+        m.doc.graph.set_param(campo, "mode", 1.0); // `Ramp`
+        let d = m.doc.graph.add_node("motion.drive".to_string());
+        m.doc.graph.set_param(d, "channel", 9.0); // `Custom…`
+        m.doc.graph.set_param(d, "mode", 1.0); // `Set`
+        m.doc.graph.set_param(d, "scale", escala);
+        m.doc.graph.set_text_param(d, "column", coluna.to_string());
+        m.doc
+            .graph
+            .connect(Edge {
+                from: (fonte, 0),
+                to: (campo, 0),
+                delayed: false,
+            })
+            .expect("fio");
+        m.doc
+            .graph
+            .connect(Edge {
+                from: (fonte, 0),
+                to: (d, 0),
+                delayed: false,
+            })
+            .expect("fio");
+        m.doc
+            .graph
+            .connect(Edge {
+                from: (campo, 0),
+                to: (d, 1),
+                delayed: false,
+            })
+            .expect("fio");
+        d
+    }
+
+    let esqueleto = m.doc.graph.add_node("rig.skeleton".to_string());
+    m.doc.graph.set_param(esqueleto, "joints", JUNTAS);
+    m.doc.graph.set_param(esqueleto, "length", 1.0);
+    m.doc.graph.set_param(esqueleto, "angle", 0.0);
+
+    // O REPOUSO — com ou sem o envelope escrito por cima.
+    let fonte_repouso = match envelope {
+        Some(e) => caneta(&mut m, esqueleto, "bone_weight", e),
+        None => esqueleto,
+    };
+    let fk_repouso = m.doc.graph.add_node("rig.fk".to_string());
+    fio(&mut m.doc.graph, fonte_repouso, fk_repouso, 0);
+
+    // A POSE — o mesmo esqueleto com o `rot` conduzido por uma rampa (dobra progressiva).
+    let dobra = caneta(&mut m, esqueleto, "rot", 40.0);
+    let fk_pose = m.doc.graph.add_node("rig.fk".to_string());
+    fio(&mut m.doc.graph, dobra, fk_pose, 0);
+
+    let grelha = m.doc.graph.add_node("motion.grid".to_string());
+    m.doc.graph.set_param(grelha, "rows", 3.0);
+    m.doc.graph.set_param(grelha, "cols", 3.0);
+
+    let pele = m.doc.graph.add_node("rig.skin_deformer".to_string());
+    fio(&mut m.doc.graph, grelha, pele, 0);
+    fio(&mut m.doc.graph, fk_repouso, pele, 1);
+    fio(&mut m.doc.graph, fk_pose, pele, 2);
+
+    let mut cook = Cook::new();
+    let s = cook
+        .cook(&m.doc.graph, &m.registry, pele, 0.0)
+        .expect("coze")[0]
+        .as_stream()
+        .clone();
+    match s.get("P") {
+        Some(Column::Vec2(v)) => v.clone(),
+        _ => Vec::new(),
+    }
+}
+
+/// ⭐⭐⭐ **O ENVELOPE POR OSSO CHEGA AO BARRO — a costura inteira, pelo caminho do produto.**
+///
+/// O `CLAUDE.md` §5.0 diz que *nenhum instrumento deste repo pergunta se o VALOR chega a um
+/// consumidor*: os gates de unidade da `rig.skin_deformer` provam a LEI, e este prova a **rota** —
+/// a caneta (`motion.drive` em `Custom…`) escreve `bone_weight`, ele atravessa um `rig.fk` e o
+/// solver da pele obedece-lhe.
+///
+/// ⚠️ **O CONTROLO é a mesma cadeia SEM a caneta**, senão *«mudou»* não separa o envelope de um
+/// grafo diferente.
+#[test]
+fn o_envelope_por_osso_chega_a_pele_pelo_caminho_do_produto() {
+    let sem = pele_com_envelope(None);
+    let com = pele_com_envelope(Some(1.0));
+    assert!(
+        sem.len() >= 9 && com.len() == sem.len(),
+        "a cadeia nao produziu pele: sem {} com {}",
+        sem.len(),
+        com.len()
+    );
+    let maior = sem
+        .iter()
+        .zip(&com)
+        .map(|(a, b)| ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt())
+        .fold(0.0f32, f32::max);
+    assert!(
+        maior > 1e-3,
+        "o `bone_weight` nao chegou ao solver da pele (maior desvio {maior:e})"
+    );
+}

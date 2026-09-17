@@ -40,6 +40,22 @@
 //! stiff one where each point belongs to its nearest bone. `MAX_INFLUENCE` guards against
 //! a point sitting exactly ON a bone (a zero distance is an infinite weight).
 //!
+//! ## ⭐⭐ O ENVELOPE POR OSSO (2026-09-17, ciclo 9 W1)
+//!
+//! A lei inteira passa a ser `w_j ∝ envelope_j / d_j^falloff`, com o `envelope_j` a sair da coluna
+//! opcional [`BONE_WEIGHT`] do `rest`. **Ausente ⇒ `1,0` ⇒ a lei de cima AO BIT.**
+//!
+//! ⛔⛔ **Isto é o P0 da folha de conferência 16** — *«o item que todo rigger encontra no primeiro
+//! dia»* —, e o que o bloqueava **não era o escritor**: a folha §0 atribuía-o à ausência de uma
+//! caneta genérica de coluna, e a medição de 2026-09-17 (doc 114 §3.1) mostrou que ela existe desde
+//! que o `motion.drive` ganhou o canal `Custom…`. *O que faltava era este LEITOR.*
+//!
+//! ⚠️ **Fronteira NOMEADA e não curada:** com **todos** os envelopes a zero a soma crua é zero e o
+//! ponto cai no ramo que já existia — *repartir por igual em vez de dividir por zero*. Ele foi
+//! escrito para a inalcançabilidade GEOMÉTRICA, e um rig que zere tudo lê-se agora como o mesmo
+//! caso. Tratá-los à parte quer dizer *«o ponto não se move»*, que esta função não sabe exprimir
+//! (ela devolve pesos normalizados, não posições) — é decisão de produto, com o preço aqui escrito.
+//!
 //! **Identity when nothing moved**: if `posed` is the same as `rest`, every frame change is
 //! the identity and the points come out **exactly** where they went in — the doc-39 rule
 //! (a node at its default must not move a single element), and here it also means "no
@@ -71,6 +87,21 @@ const DEGREES_PER_TURN: f32 = 360.0;
 /// The largest weight one bone may claim before normalisation — the guard for a point
 /// sitting exactly ON a bone, where the inverse distance would be infinite.
 const MAX_INFLUENCE: f32 = 1.0e4;
+
+/// ⭐⭐ **O ENVELOPE POR OSSO** — a coluna opcional do `rest` que multiplica a influência
+/// geométrica de cada osso (o *envelope weight* por osso do Blender; os *Tendons* do Rive; o
+/// *dropoff* por influência do Maya).
+///
+/// ⚠️ **Ausente = `1,0` para todos = a lei de hoje AO BIT** — é isso que a torna aditiva: nenhum
+/// documento já autorado muda de pixel por esta coluna existir.
+///
+/// ⛔ **O nome NÃO é `weight`**, e a razão está medida: `weight` já é uma coluna deste repo — a
+/// espessura da fonte, escrita pelo `source.text`. *Uma colisão de nome de coluna passa MUDA*
+/// (`CLAUDE.md` §5.0), e aqui ela juntaria a pele de um esqueleto ao peso de um glifo.
+///
+/// ⭐ **Quem a escreve já existe:** `motion.drive` no canal `Custom…` com `column = "bone_weight"`
+/// — a caneta genérica, medida em 2026-09-17 (doc 114 §3.1).
+pub const BONE_WEIGHT: &str = "bone_weight";
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -112,6 +143,12 @@ struct Bone {
     posed_origin: [f32; 2],
     /// The rotation the bone underwent, as `(cos, sin)`, already normalised.
     turn: [f32; 2],
+    /// O envelope autorado deste osso ([`BONE_WEIGHT`]) — `1,0` quando a coluna não existe.
+    ///
+    /// ⚠️ Ele viaja no OSSO e não num índice porque [`bones`] **filtra**: a junta sem pai não
+    /// produz osso nenhum, logo o osso `k` não é a junta `k`. Indexar a coluna do lado de fora
+    /// daria a cada osso o envelope do vizinho, em silêncio.
+    weight: f32,
 }
 
 /// The bones shared by the `rest` and `posed` skeletons (same topology, or nothing).
@@ -126,6 +163,8 @@ fn bones(rest: &Stream, posed: &Stream) -> Vec<Bone> {
         fk::scalars(rest, fk::WROT, 0.0, n),
         fk::scalars(posed, fk::WROT, 0.0, n),
     );
+    // O envelope por osso vive no REPOUSO — ele é autoria do rig, não da pose. Ausente ⇒ `1,0`.
+    let env = fk::scalars(rest, BONE_WEIGHT, 1.0, n);
 
     (0..n)
         .filter_map(|i| {
@@ -140,6 +179,10 @@ fn bones(rest: &Stream, posed: &Stream) -> Vec<Bone> {
                 rest_tip: rp[i],
                 posed_origin: pp[j],
                 turn: [cos * inv, sin * inv],
+                // O osso é o segmento `pai j → junta i`, logo o envelope dele é o da PONTA.
+                // ⚠️ Negativo não é um envelope: ele inverteria o sentido da mistura e a pele
+                // sairia para o lado oposto ao osso. `NaN` cai no mesmo ramo por `max`.
+                weight: if env[i] > 0.0 { env[i] } else { 0.0 },
             })
         })
         .collect()
@@ -167,14 +210,19 @@ fn weights(p: [f32; 2], bones: &[Bone], falloff: f32) -> Vec<f32> {
         .map(|b| {
             let d = dist_to_bone(p, b.rest_origin, b.rest_tip);
             if d <= f32::EPSILON {
-                return MAX_INFLUENCE; // the point is ON the bone
+                // O ponto está EM CIMA do osso — e o envelope ainda manda: com `0` ele não é
+                // deste osso, por muito encostado que esteja.
+                return MAX_INFLUENCE * b.weight;
             }
             let mut w = 1.0;
             // `falloff` as a repeated divide: a `powf` is a transcendental (HR-5).
             for _ in 0..falloff.clamp(1.0, 8.0).round() as usize {
                 w /= d;
             }
-            w.min(MAX_INFLUENCE)
+            // ⭐ O ENVELOPE multiplica a influência geométrica ANTES da normalização — é isso que
+            // faz `2,0` querer dizer *«o dobro deste osso»* e `0,0` *«este osso não me toca»*.
+            // ⚠️ **`x * 1,0` é EXACTO em IEEE-754**, logo sem a coluna a saída é byte-idêntica.
+            w.min(MAX_INFLUENCE) * b.weight
         })
         .collect();
     let total: f32 = raw.iter().sum();
@@ -305,6 +353,90 @@ mod tests {
     fn dist(a: [f32; 2], b: [f32; 2]) -> f32 {
         let (dx, dy) = (a[0] - b[0], a[1] - b[1]);
         (dx * dx + dy * dy).sqrt()
+    }
+
+    /// Uma corrente com o envelope `env` escrito na coluna do repouso.
+    fn com_envelope(n: usize, env: &[f32]) -> Stream {
+        chain(n).with(BONE_WEIGHT, Column::Scalar(env.to_vec()))
+    }
+
+    /// A mesma corrente DOBRADA numa junta do meio — e não rodada em bloco pela raiz.
+    ///
+    /// ⛔⛔ **A fixtura é a metade do gate, e a primeira redacção destes três usava [`turned`]:**
+    /// numa rotação RÍGIDA todo osso sofre a MESMA mudança de referencial, logo a pele sai no
+    /// mesmo sítio **seja qual for o peso** — é o que o
+    /// [`a_rigid_turn_of_the_skeleton_turns_the_skin_rigidly`] afirma por escrito, uma dúzia de
+    /// linhas abaixo. Com ela, o gate do envelope a zero reprovava sobre produto CERTO e o gate da
+    /// raiz passava por **vácuo**. *Uma fixtura em que a lei medida não pode fazer diferença não
+    /// mede a lei.*
+    fn bent(n: usize, joint: usize, deg: f32) -> Stream {
+        let mut rot = vec![0.0; n];
+        rot[joint] = deg;
+        fk::resolve(&chain(n).with(fk::ROT, Column::Scalar(rot)))
+    }
+
+    /// ⭐⭐⭐ **A COLUNA AUSENTE É A LEI DE ONTEM, AO BIT** — a prova de que esta wave é ADITIVA.
+    ///
+    /// ⚠️ Não é «parecido»: é `assert_eq!` sobre os bits de cada coordenada. Um envelope de `1,0`
+    /// multiplica por um em IEEE-754, que é exacto, logo **nenhum documento já autorado muda de
+    /// pixel**. Uma barra de tolerância aqui esconderia exactamente o defeito que interessa.
+    #[test]
+    fn sem_a_coluna_a_pele_sai_igual_a_um_envelope_de_uns() {
+        let pts = vec![[0.5, 0.3], [2.0, -0.4], [3.9, 0.1], [1.0, 1.2]];
+        let posed = bent(5, 2, 50.0);
+        let sem = ps(&skin(&cloud(pts.clone()), &chain(5), &posed, 3.0));
+        let uns = ps(&skin(&cloud(pts), &com_envelope(5, &[1.0; 5]), &posed, 3.0));
+        assert_eq!(sem, uns, "a coluna a `1,0` nao e' a lei de ontem ao bit");
+    }
+
+    /// ⭐⭐ **UM OSSO COM ENVELOPE ZERO DEIXA DE PUXAR** — o P0 da folha 16, medido no barro.
+    ///
+    /// O ponto vive em cima do 1.º osso (`junta 0 → junta 1`). Com o envelope dele a zero ele
+    /// passa a pertencer aos outros, e a pele leva-o para outro sítio.
+    ///
+    /// ⚠️ **O CONTROLO está dentro:** sem a coluna, o mesmo ponto vai parar ao sítio de sempre —
+    /// senão *«moveu-se»* não distingue o envelope de um esqueleto diferente.
+    #[test]
+    fn um_osso_com_envelope_zero_deixa_de_puxar_a_pele() {
+        let p = [0.5, 0.2];
+        let (rest, posed) = (chain(4), bent(4, 2, 60.0));
+        let normal = ps(&skin(&cloud(vec![p]), &rest, &posed, 3.0))[0];
+        // `env[1]` é a PONTA do 1.º osso — ver [`BONE_WEIGHT`] e o `filter_map` de [`bones`].
+        let morto = ps(&skin(
+            &cloud(vec![p]),
+            &com_envelope(4, &[1.0, 0.0, 1.0, 1.0]),
+            &posed,
+            3.0,
+        ))[0];
+        assert!(
+            dist(normal, morto) > 0.1,
+            "o envelope a zero nao mudou nada: {normal:?} -> {morto:?}"
+        );
+    }
+
+    /// ⛔⛔ **O ENVELOPE É DO OSSO, E O OSSO `k` NÃO É A JUNTA `k`.**
+    ///
+    /// [`bones`] **filtra**: a junta sem pai (a raiz) não produz osso nenhum, logo numa corrente o
+    /// osso `0` é a junta `1`. Quem indexe a coluna pelo índice do OSSO dá a cada um o envelope do
+    /// vizinho — **em silêncio**, porque a pele continua a deformar-se com ar de certa.
+    ///
+    /// A fixtura separa as duas leituras: `env[0]` pertence à RAIZ, que não é osso de ninguém, logo
+    /// pô-lo a `0` **não pode** mudar coisa alguma. Pela leitura errada ele mataria o 1.º osso.
+    #[test]
+    fn o_envelope_e_do_osso_e_nao_do_indice_da_junta() {
+        let pts = vec![[0.5, 0.2], [1.5, -0.3], [2.5, 0.4]];
+        let (rest, posed) = (chain(4), bent(4, 2, 60.0));
+        let sem = ps(&skin(&cloud(pts.clone()), &rest, &posed, 3.0));
+        let raiz_a_zero = ps(&skin(
+            &cloud(pts),
+            &com_envelope(4, &[0.0, 1.0, 1.0, 1.0]),
+            &posed,
+            3.0,
+        ));
+        assert_eq!(
+            sem, raiz_a_zero,
+            "o envelope da RAIZ mudou a pele — ele esta' a ser lido pelo indice do osso"
+        );
     }
 
     /// **A rigid rotation of the skeleton rotates the skin RIGIDLY** — the sharpest test

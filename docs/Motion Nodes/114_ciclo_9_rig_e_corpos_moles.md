@@ -228,7 +228,7 @@ já exprime o item antes de o construir, e aqui ela exprimia — *o que se perde
 |---|---|---|
 | **W0** ✅ | A **catraca da rota do grupo** (§2.1) — FECHADA em 2026-09-17, 2 de 2 mutações a sangrar | *Sem a régua, toda a §2 era uma leitura de registo em vez de uma medição do planeador.* |
 | ~~**W1**~~ ⛔ | ~~O escritor genérico de coluna~~ — **REFUTADA em 2026-09-17: ele já existe** (§3.1) | *A composição já o exprimia; medir antes de construir poupou a wave inteira* |
-| **W1′** | O **peso por osso** do `rig.skin_deformer` — o LEITOR que falta (P0 da folha) | É o que a medição pôs no lugar da W1, e é o item *«que todo rigger encontra no primeiro dia»* |
+| **W1′** ✅ | O **peso por osso** do `rig.skin_deformer` — o LEITOR que faltava (P0 da folha) — FECHADA em 2026-09-17 (§6) | Era o que a medição pôs no lugar da W1, e é o item *«que todo rigger encontra no primeiro dia»* |
 | **W2** | **`Strength`/`Mix` como COLUNA** nos constraints | Um item, sete lugares — e nasce melhor que as três referências (§3.1) |
 | **W4** | A **rota no dispositivo** para os corpos moles, com o preço de cada um nomeado | Lei 1 do doc 103 §2 |
 | **W5** | A **MEDIÇÃO** do grupo (passo 5): tabela CPU · dispositivo · passes · objectos/ms, com `loadavg` ao lado | §0.0 |
@@ -266,3 +266,55 @@ provavelmente mordem uma wave deste ciclo:
 
 ⏳ Por correr — é a W5. A tabela vem para aqui com o `loadavg` ao lado de cada leitura (§0.0), pela
 sonda que a W0 deixar escrita.
+
+
+---
+
+## §6 — ✅ W1′: o ENVELOPE POR OSSO (o P0 da folha 16)
+
+A lei do `rig.skin_deformer` passa de `w_j ∝ 1/d_j^falloff` para **`w_j ∝ envelope_j / d_j^falloff`**,
+com o `envelope_j` a sair da coluna opcional **`bone_weight`** do `rest`. É o *envelope weight* por
+osso do Blender, os *Tendons* do Rive e o *dropoff* por influência do Maya — onde nós tínhamos **um
+expoente global**.
+
+⭐ **Ausente ⇒ `1,0` ⇒ a lei de ontem AO BIT**, e o gate afirma-o com `assert_eq!` sobre os bits, não
+com uma barra de tolerância: `x * 1,0` é exacto em IEEE-754, logo **nenhum documento já autorado
+muda de pixel**.
+
+⛔ **O nome NÃO é `weight`, e isso foi medido:** `weight` já é coluna deste repo — a espessura da
+fonte, escrita pelo `source.text`. *Uma colisão de nome de coluna passa MUDA* (§5.0), e ali ela
+juntaria a pele de um esqueleto ao peso de um glifo.
+
+⚠️ **O envelope viaja no OSSO e não num índice**, porque o construtor de ossos **FILTRA**: a junta
+sem pai não produz osso, logo **o osso `k` não é a junta `k`**. Quem indexasse a coluna pelo índice
+do osso daria a cada um o envelope do vizinho — em silêncio, com a pele a deformar-se com ar de
+certa. Há gate cuja fixtura separa as duas leituras (o envelope da RAIZ não pode mudar nada).
+
+⛔⛔ **A FIXTURA era metade do gate, e a primeira redacção estava degenerada:** os três gates usavam
+uma rotação **RÍGIDA** do esqueleto, e numa rotação rígida todo osso sofre a MESMA mudança de
+referencial ⇒ *a pele sai no mesmo sítio seja qual for o peso*. O teste vizinho, escrito há meses,
+**afirma isso por escrito**. Com ela, o gate do envelope a zero reprovava sobre produto **correcto**
+e o gate da raiz passava por **vácuo**. ⇒ a pose passou a DOBRAR numa junta do meio.
+
+⭐⭐ **E a costura foi medida pelo caminho do produto** — o §5.0 diz que *nenhum instrumento deste
+repo pergunta se o VALOR chega a um consumidor*:
+
+```text
+motion.grid ──────────────────────────────────────────> skin.in
+rig.skeleton ─[drive(Custom,"bone_weight") ← rampa]─> fk ──> skin.rest
+             └─[drive(Custom,"rot")        ← rampa]─> fk ──> skin.posed
+```
+
+A caneta escreve, o valor atravessa um `rig.fk` e o solver obedece. **Prova de mutação 3 de 3**: com
+o leitor a ignorar a coluna o gate de costura lê **`0e0` de desvio** — exactamente zero, que é o
+sinal mais forte que uma régua destas pode dar.
+
+⏳ **ABERTO e nomeado:**
+
+- **Todos os envelopes a zero** caem no ramo que já existia (*repartir por igual em vez de dividir
+  por zero*), escrito para a inalcançabilidade GEOMÉTRICA. Dizer *«o ponto não se move»* é o que um
+  rig zerado quer, e a função de pesos não o sabe exprimir — **decisão de produto**, com o preço no
+  cabeçalho do nó.
+- **Descoberta:** a coluna escreve-se digitando `bone_weight` no campo *Column* do `motion.drive`,
+  como toda coluna deste catálogo. Não há fileira de painel — e isso é a cerca 3 da folha (*um dial
+  aqui seria uma 2.ª fonte de verdade*), não um esquecimento.

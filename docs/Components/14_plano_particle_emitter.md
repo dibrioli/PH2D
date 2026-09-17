@@ -211,3 +211,44 @@ leva o onion e o Motion — **independente** da ferramenta MOTION. `z_order` = o
    em N intervalos (um por ciclo, e o custo de `birth` é linear neles). ⇒ **segmentos + pulso por
    segmento** (`0-10 20- pulse 0.5/1`), e religar recomeça o ciclo. Achado ao desenhar o relógio do
    componente, antes de alguém depender da forma velha.
+
+2. ⛔ **«O `clamp` do campo inteiro é a cerca»** — o dreno convertia o `f32` do painel para `u32`
+   com um `clamp(0, u32::MAX)` ao lado do `round`, e **a mutação que o apagou não matou gate
+   nenhum**: em Rust um `as` de vírgula flutuante para inteiro **satura** desde a 1.45 (`-3.0 as
+   u32` é `0`). *Uma cerca que repete o que a linguagem já garante lê-se como a cerca que falta* —
+   o que não é de graça é o `round`, e é isso que o gate mede agora.
+
+3. ⛔ **«A régua do enquadramento é o alcance da partícula»** — a 1.ª versão do gate da cena media
+   `velocidade × vida` em todas as direcções e acusava um jacto ESTREITO de sair pelo lado quando
+   ele vai todo para cima. ⇒ a fracção lateral é o **seno da abertura**, e ⛔ acima dos `90°` ela
+   **desce** (a `180°` dá zero, que leria uma esfera como um fio): a partir dali é `1`.
+
+4. ⛔⛔ **«Caber no ecrã é a legibilidade»** — **falso, e foi uma MUTAÇÃO SOBREVIVENTE que o disse.**
+   Devolver ao anel a rapidez das outras deixava o gate do enquadramento VERDE (ele cabia na banda)
+   e punha os penachos das quatro colunas uns por cima dos outros. *Caber no ecrã e cada coluna
+   ficar na coluna dela são DUAS grandezas, e só uma estava medida* ⇒ `cada_coluna_fica_na_coluna_dela`.
+
+5. ⛔ **«O smoke abre com o Inspector à frente»** — a foto mostrou o painel do **esqueleto** por
+   cima numa corrida e o do **vector** noutra: a arrumação vive **fora do repositório**
+   (`~/.ph2d/layout.txt`) e estava a ser reescrita por outra árvore a correr em paralelo. ⚠️ E a
+   1.ª cura não chegou: o `reconcile_z` acrescenta, no **início de cada quadro**, os painéis que
+   ainda não estão na ordem z — logo um `bump` feito no quadro em que a cena monta fica **por
+   baixo** dos que chegam a seguir. ⇒ a subida repete-se por três quadros e **pára** (passado isso a
+   aba é do dono).
+
+---
+
+## §8 — O que FECHOU, com os números
+
+| wave | o que shipa | a prova |
+|---|---|---|
+| **W0/W0b** | a **agenda** (`emit_mode = Scheduled`) no `motion.emitter` | 13 gates, entre eles a enumeração por força bruta (5 agendas × 3 taxas × 260 instantes) e a identidade ao bit com o contínuo |
+| **W1** | `ph2d-particles` (o compilador + o relógio) | a tabela do oráculo reproduzida com a janela `[0, 1 quadro]` |
+| **W2** | a ponte: corre com o Play, desenha sempre, `World`/`Local`, sinais, renascer | 6 gates — e **dois defeitos de produto** que só eles viram (um emissor PARADO mostrava uma partícula; um `restart_on` num emissor autorado `emitting = false` nunca emitia) |
+| **W3** | a **secção do Inspector** (19 números, 4 sinais, 2 caixas, 2 segmentados, 2 cores) | 6 gates de costura com **cliques reais** + 15 provas de mutação |
+| **W4** | as **duas cenas** (`PH2D_PARTICLES_SMOKE=1\|2`), fotografadas | 7 gates de cena + 10 provas de mutação; **25 provas no total, todas a sangrar** |
+
+⭐⭐ **O que a FOTO apanhou e nenhum gate via** (a lição do #16, outra vez): a fila a `±7,5 m` com
+duas colunas fora do ecrã · as fontes a `−5 m`, cortadas pela borda de baixo · o jacto a `0,52 m` de
+alto, colado à fonte, com a gravidade do mundo · o anel borrado num disco · a `=2` a ficar um chão
+**vazio** passados três segundos · e o painel da direita a ser o do esqueleto.

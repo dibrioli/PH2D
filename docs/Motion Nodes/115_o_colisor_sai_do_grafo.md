@@ -142,7 +142,7 @@ decide se ele é do dispositivo ou da CPU.
 |---|---|---|
 | ~~W0~~ | ✅ **FECHADA** (§3): as duas moradas são indistinguíveis acima de 16 iterações ⇒ o passe corre no FIM | — |
 | ~~W1~~ | ✅ **FECHADA** (§7): não era estreitar a cerca — era escrever a que FALTA, para a rota dos externos | §1.4 |
-| **W2** | ⏳ **metade** (§8): os dois caminhos de CPU são de classes diferentes, e a rota dos objectos é a da GRELHA ⇒ falta só o NÚMERO, numa máquina calma | W1 |
+| ~~W2~~ | ✅ **FECHADA por RECUSA MEDIDA** (§9): a `500` objectos a separação custa `12,4 %` de um quadro a 8 varreduras — o dispositivo não é preciso à população do dono | W1 |
 | **W3** | a membrana publica a forma do objecto (`Collider` → as três colunas) | §1.1 |
 | **W4** | Sprite · vector · Flip nascem com `Collider`, e o `Collide` do Inspector arma | W3 |
 | **W5** | o passe automático **no fim do cozimento** — a morada que a W0 escolheu | W1 · W3 |
@@ -249,3 +249,82 @@ a resposta.
 ou centenas de peças, e o `4,19 M` do doc 98 é de **carimbo de partículas**. *Medir a grelha a 4 M
 responderia a uma pergunta que nenhuma cena faz* — a W2 tem de medir a população que a ordem dele
 de facto cria: um punhado de objectos, cada um duplicado quantas vezes?
+
+---
+
+## §9 — ✅ W2 FECHADA por MEDIÇÃO, e a resposta é uma RECUSA: o dispositivo não é preciso aqui
+
+> **A população saiu do dono:** perguntado quantas cópias de um objecto com colisor uma cena dele
+> costuma ter, respondeu **«centenas»**. É essa que a sonda
+> [`custo_probe`](../../crates/ph2d-contact/src/custo_probe.rs) mede.
+
+### §9.1 — ⛔⛔⛔ Duas RÉGUAS minhas estavam erradas antes de o motor estar
+
+**(a) A fixtura era uma PILHA.** A 1.ª redacção punha `500` caixas `1 × 1` num campo de lado
+`√n × 1,25` ⇒ **64 % de empacotamento**, e o doc que eu escrevi ao lado afirmava *«sem a cena ser
+uma pilha compacta»* — sem o ter medido. Ali a separação lia `709 → 649` e parecia não convergir;
+*o que não convergia era o campo, que não tinha para onde as peças irem.* ⇒ a densidade passou a
+ser **ARGUMENTO**, e as tabelas varrem-na.
+
+**(b) A régua ACUSAVA A PRÓPRIA CONVERGÊNCIA.** Ela contava `contato(..).is_some()`, e o solver
+pousa cada par **exactamente a tocar**, onde a função devolve `Some` com penetração `~0`. ⚠️⚠️ *É
+a SEGUNDA vez nesta linha* — a §12 do doc 114 pagou-a com discos e escreveu a cura ao lado: a barra
+é a **penetração VISÍVEL**, `2 %` da aresta, e *«não é um epsilon de vírgula flutuante»*.
+
+### §9.2 — A densidade decide o que «uma cena» quer dizer
+
+`500` caixas orientadas, 32 varreduras, pares com penetração visível:
+
+| espaço | empacotamento | antes | **depois** | relógio |
+|---|---|---|---|---|
+| 1,25 | 64 % | 686 | **426** | 12,137 ms |
+| 1,50 | 44 % | 440 | **154** | 10,420 ms |
+| 2,00 | 25 % | 235 | **7** | 7,025 ms |
+| 3,00 | 11 % | 97 | **0** | 3,907 ms |
+| 4,00 | 6 % | 42 | **0** | 3,228 ms |
+
+⇒ **de `~11 %` de empacotamento para baixo a lei CONVERGE a zero.** Acima disso não é o motor que
+falha — é não haver solução.
+
+### §9.3 — O custo à população do dono (25 % de empacotamento, 32 varreduras)
+
+| peças | **GRELHA** | todos-os-pares | % de um quadro | razão |
+|---|---|---|---|---|
+| 100 | **0,645 ms** | 2,609 ms | **3,9 %** | 4,0× |
+| 250 | **2,393 ms** | 15,257 ms | **14,4 %** | 6,4× |
+| 500 | **6,802 ms** | 57,359 ms | **40,8 %** | 8,4× |
+| 1000 | 18,058 ms | 218,754 ms | 108,3 % | 12,1× |
+
+⭐ **A vantagem da grelha CRESCE com `n`** (`4,0×` → `12,1×`), que é a assinatura de duas classes
+diferentes — e é a prova, em número, de que a tabela `§1-ter` da corda mediu o caminho errado.
+
+### §9.4 — E a alavanca é a VARREDURA, não o dispositivo
+
+`500` caixas a 25 %:
+
+| varreduras | pares visíveis | relógio | % quadro |
+|---|---|---|---|
+| 2 | 188 | 0,470 ms | 2,8 % |
+| 4 | 141 | 1,028 ms | 6,2 % |
+| 8 | 85 | 2,071 ms | **12,4 %** |
+| 16 | 39 | 3,728 ms | 22,4 % |
+| 32 | 7 | 6,914 ms | 41,5 % |
+
+⚠️ **O `32` veio da CORDA e não serve aqui.** Uma corda é uma CADEIA — a informação viaja um elo
+por varredura, logo um laço fechado precisa de muitas. *Um campo de caixas não tem essa cadeia*, e
+o custo é **linear** nas varreduras.
+
+### §9.5 — ⇒ A RECUSA, com o número
+
+**A `500` objectos a separação custa `12,4 %` de um quadro a 8 varreduras e `40,8 %` a 32.** À
+população que o dono nomeou, **o dispositivo não é preciso** — e a W2 fecha numa recusa medida, que
+é resposta legítima.
+
+⚠️⚠️ **O que esta medição NÃO diz, e é preciso não confundir:** ela mede a **separação sozinha**. A
+cerca da W1 derruba o **cozimento inteiro** para a CPU, e o `50,9×` do doc 98 é sobre isso. A leitura
+honesta é: *a centenas de OBJECTOS as duas coisas são confortáveis; o `4,19 M` daquele doc é
+carimbo de PARTÍCULAS, e nenhuma cena de objectos o produz.*
+
+⛔ **O que fica a vigiar, nomeado:** um **duplicador** que multiplique um objecto com colisor em
+milhares. Aí a população deixa de ser a que o dono nomeou, e esta recusa expira — *uma recusa
+medida responde UMA pergunta*.

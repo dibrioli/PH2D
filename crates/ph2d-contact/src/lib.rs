@@ -586,3 +586,8 @@ fn grelha(foto: &[[f32; 2]], ativo: &[bool], lado: f32) -> BTreeMap<(i64, i64), 
 
 #[cfg(test)]
 mod tests;
+
+/// ⭐ A sonda do CUSTO à população que o dono nomeou (doc 115 W2) — não é gate, é medição.
+#[cfg(test)]
+#[path = "custo_probe.rs"]
+mod custo_probe;

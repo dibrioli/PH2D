@@ -37,11 +37,11 @@
 
 use crate::motion_state::MotionState;
 use ph2d_ecs::{Name, SimWorld, Transform};
-use ph2d_render::Sprite;
 use ph2d_editor_core::screens::layout::CenterSplit;
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
 use ph2d_nodegraph::graph::{Edge, NodeId};
+use ph2d_render::Sprite;
 
 const DT: f64 = 1.0 / 60.0;
 /// Tiques antes de cronometrar. ⚠️ **O emissor é quem manda neste número:** a nuvem dele só está
@@ -317,7 +317,10 @@ fn measure_the_source_group() {
             l.publicar, l.cozer, l.alavanca
         );
         if l.rota != "dispositivo" {
-            eprintln!("  {:<16} │ {:>9} │          │        │        │          │ ⛔ {}", "", "", l.rota);
+            eprintln!(
+                "  {:<16} │ {:>9} │          │        │        │          │ ⛔ {}",
+                "", "", l.rota
+            );
         }
     };
     let grupo = crate::motion_fontes_probe::grupo();
@@ -345,7 +348,9 @@ fn measure_the_source_group() {
     #[expect(clippy::cast_precision_loss, reason = "o lado de uma grade")]
     let lado = (maior as f64).sqrt().round() as f32;
     let c = mede(&gpu, None, lado);
-    eprintln!("  -----------------|-----------|----------|--------|--------|----------|-------------------");
+    eprintln!(
+        "  -----------------|-----------|----------|--------|--------|----------|-------------------"
+    );
     imprime("motion.grid", &c);
     eprintln!(
         "\n  (o CONTROLO é a última linha: a mesma contagem com a cadeia INTEIRA na placa.\n   \

@@ -88,7 +88,9 @@ fn svg_par(sets: &[&Stream], escala: f32, marca: Option<f32>) -> Vec<String> {
             let p = vec2(s, "P");
             #[expect(clippy::cast_precision_loss, reason = "dezenas de peças")]
             let n = p.len().max(1) as f32;
-            let c = p.iter().fold([0.0f32; 2], |a, q| [a[0] + q[0], a[1] + q[1]]);
+            let c = p
+                .iter()
+                .fold([0.0f32; 2], |a, q| [a[0] + q[0], a[1] + q[1]]);
             let c = [c[0] / n, c[1] / n];
             p.iter()
                 .map(|q| [(q[0] - c[0]) * escala, -(q[1] - c[1]) * escala])
@@ -152,7 +154,9 @@ fn svg_ecra(camara: &Stream, tabela: &Stream, zoom: f32) -> String {
     };
     let cp = vec2(camara, "P");
     let ct = vec2(camara, "size");
-    let centro = cp.iter().fold([0.0f32; 2], |a, p| [a[0] + p[0], a[1] + p[1]]);
+    let centro = cp
+        .iter()
+        .fold([0.0f32; 2], |a, p| [a[0] + p[0], a[1] + p[1]]);
     #[expect(clippy::cast_precision_loss, reason = "nove peças")]
     let n = cp.len().max(1) as f32;
     let centro = [centro[0] / n, centro[1] / n];
@@ -198,7 +202,8 @@ fn write_the_source_figures() {
     assert!(n(2) >= 12, "as doze linhas do ficheiro, deu {}", n(2));
     // O par do zoom: as peças da câmara medem os MESMOS pixels nos dois enquadramentos.
     let px = |s: &Stream, altura: f32| {
-        vec2(s, "size").first().map_or(0.0, |z| z[0]) * (f32::from(u16::try_from(JANELA_H).expect("janela")) / altura)
+        vec2(s, "size").first().map_or(0.0, |z| z[0])
+            * (f32::from(u16::try_from(JANELA_H).expect("janela")) / altura)
     };
     let (a, b) = (px(&perto[5], PERTO), px(&longe[5], LONGE));
     assert!(
@@ -207,7 +212,8 @@ fn write_the_source_figures() {
     );
     // ...e a da tabela NÃO: sem esse controlo a figura do par não mostra diferença nenhuma.
     let t = |s: &Stream, altura: f32| {
-        vec2(s, "size").first().map_or(0.0, |z| z[0]) * (f32::from(u16::try_from(JANELA_H).expect("janela")) / altura)
+        vec2(s, "size").first().map_or(0.0, |z| z[0])
+            * (f32::from(u16::try_from(JANELA_H).expect("janela")) / altura)
     };
     assert!(
         (t(&perto[2], PERTO) / t(&longe[2], LONGE) - 4.0).abs() < 0.1,
@@ -223,8 +229,22 @@ fn write_the_source_figures() {
         ("fonte_forma.svg", cima[1].clone()),
         ("tabela_linhas.svg", meio[0].clone()),
         ("tabela_grafico.svg", meio[1].clone()),
-        ("zoom_perto.svg", svg_ecra(&perto[5], &perto[2], f32::from(u16::try_from(JANELA_H).expect("janela")) / PERTO)),
-        ("zoom_longe.svg", svg_ecra(&longe[5], &longe[2], f32::from(u16::try_from(JANELA_H).expect("janela")) / LONGE)),
+        (
+            "zoom_perto.svg",
+            svg_ecra(
+                &perto[5],
+                &perto[2],
+                f32::from(u16::try_from(JANELA_H).expect("janela")) / PERTO,
+            ),
+        ),
+        (
+            "zoom_longe.svg",
+            svg_ecra(
+                &longe[5],
+                &longe[2],
+                f32::from(u16::try_from(JANELA_H).expect("janela")) / LONGE,
+            ),
+        ),
     ] {
         std::fs::write(dir.join(nome), svg).expect("escreve a figura");
         eprintln!("  escrita: {nome}");

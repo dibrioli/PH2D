@@ -38,9 +38,6 @@ mod strobe;
 #[path = "motion_state_aparencia_demo.rs"]
 mod aparencia_demo;
 
-/// A cena do ciclo 8 — de onde vêm as coisas (doc 113 §8).
-#[path = "motion_state_fontes_demo.rs"]
-mod fontes_demo;
 /// ⭐⭐⭐ **O gate dos ANÚNCIOS** — todo cartão que um passo manda clicar existe na cena; ver o
 /// cabeçalho dele. `#[cfg(test)]`: é uma régua, não código de produto.
 #[cfg(test)]
@@ -70,6 +67,9 @@ mod fio_demo;
 /// **NEM TODOS AO MESMO TEMPO** — a cena de smoke do ciclo 4 (os campos); ver o cabeçalho dela.
 #[path = "motion_state_foco_demo.rs"]
 mod foco_demo;
+/// A cena do ciclo 8 — de onde vêm as coisas (doc 113 §8).
+#[path = "motion_state_fontes_demo.rs"]
+mod fontes_demo;
 /// ⚠️ **`pub` e não privada como as irmãs**, e por um consumidor real: as cenas do
 /// COMPASSO (`=25`) e do GRITO (`=26`) são a fixture dos gates da fronteira de sinais, que
 /// moram no `render_loop` (é lá que a tomada é lida). Uma cena existe para ser DIRIGIDA.

@@ -190,7 +190,9 @@ fn both_table_panels_read_the_same_file_and_only_one_reads_a_column() {
 fn the_right_table_panel_is_a_chart_and_the_left_is_a_flat_row() {
     let excursao = |k: usize| {
         let y = ys(&corre(k, 10.0, nada));
-        let (lo, hi) = y.iter().fold((f32::MAX, f32::MIN), |(a, b), v| (a.min(*v), b.max(*v)));
+        let (lo, hi) = y
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(a, b), v| (a.min(*v), b.max(*v)));
         hi - lo
     };
     let plana = excursao(TABELA);
@@ -289,7 +291,12 @@ fn the_announcement_names_cards_the_scene_has() {
         .graph
         .nodes()
         .iter()
-        .filter_map(|n| m.doc.graph.label(n.id).map(std::string::ToString::to_string))
+        .filter_map(|n| {
+            m.doc
+                .graph
+                .label(n.id)
+                .map(std::string::ToString::to_string)
+        })
         .collect();
     let anuncio = include_str!("motion_state_demo_announce.rs");
     let fontes = anuncio

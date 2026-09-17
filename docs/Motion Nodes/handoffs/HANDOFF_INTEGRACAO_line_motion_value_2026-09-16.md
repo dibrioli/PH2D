@@ -13,10 +13,10 @@
 | | |
 |---|---|
 | branch | `line/motion-value` |
-| HEAD | `b9708b09f` (+ os commits deste fecho) |
+| HEAD | `bb0f371d1` |
 | merge-base com `main` | `1d43da737` |
-| commits | **72** |
-| ficheiros tocados | **282** |
+| commits | **74** |
+| ficheiros tocados | **284** |
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` |
 
 ---
@@ -185,10 +185,22 @@ está no §8.
 
 ## §10 — Limpeza e o binário do smoke
 
-- `rm -rf target/*/incremental` na worktree: **feito no fecho** (DIRETRIZ §1.5.9 item 7).
-- **Binário do smoke quente** (item 9), compilado com a MESMA linha que o dono corre:
-  `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && cargo run -p ph2d-host-desktop --profile smoke`
-  ⚠️ **Ele está quente NESTA worktree.** Depois da fusão o dono smoka o `main`, e ali o build é novo.
+- `rm -rf target/*/incremental` na worktree (item 7): **`72G → 31G`, 41 GB devolvidos** — `39G` do
+  `debug` e `4,6G` do `smoke`.
+- **Binário do smoke quente** (item 9), compilado com a MESMA linha de comando que o dono corre
+  (`cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && cargo run -p ph2d-host-desktop --profile smoke`):
+
+```text
+=== 1a corrida ===
+   Compiling ph2d-app-motion v0.0.0 (…/line-motion-value/crates/ph2d-app-motion)
+   Compiling ph2d-host-desktop v0.0.0 (…/line-motion-value/shells/desktop)
+    Finished `smoke` profile [optimized] target(s) in 16.46s
+=== 2a corrida (a PROVA) ===
+    Finished `smoke` profile [optimized] target(s) in 0.20s
+```
+
+⚠️ **Ele está quente NESTA worktree.** Depois da fusão o dono smoka o `main`, e ali o build é novo —
+quem integrar deixa o dele quente pela mesma regra.
 
 ### ⚠️ A UMA LINHA para o `CLAUDE.md §5` (o integrador escreve; a linha não toca no ficheiro)
 

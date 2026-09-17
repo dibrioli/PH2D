@@ -231,8 +231,13 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && bash scripts/p
   com `o_que_ela_fixa` vazio · o salto de `20` px sem fixtura (errata Q8) · as **6** fixturas do
   *Scene Project* que precisam da geometria do alvo.
 - **Dono:** a **folga simétrica** do *Scene Project* (§10.3 — a lei alternativa está escrita e
-  medida; *cada uma está certa num caso e discutível no outro*) · a **componente transversal** do
-  arrasto da pose (espec §5.4/§5.5) · o `Strength`/curva do `Density`.
+  medida, ainda `#[cfg(test)]` e sem chamador de produto; *cada uma está certa num caso e discutível
+  no outro*) · a **componente transversal** do arrasto da pose (espec §5.4/§5.5) · e, em menor grau,
+  desenhar a fileira da CURVA **desactivada** onde hoje ela é pintada sempre com a razão à vista
+  (desenho novo).
+  ⚠️ **Auditado contra o código em 17/09 e ENCOLHEU:** a lista que eu herdei dizia *«o `Strength` e a
+  curva do `Density`»* e o `Strength` foi **escondido em 15/09**, com o `Brush::curva_inerte` a dar a
+  razão da outra metade — *o §5 acumula trabalho já pago, e recitar a nota manda reconstruí-lo*.
 - **R:** o `tip_roundness` (medido: `14` no merge-base, `14` no HEAD, **zero** adições desta linha)
   · o `NoError` público do motor de booleana.
 - **Nossas, nomeadas:** `dureza05` do *Scene Project* (`3` vértices de `301` na borda móvel da

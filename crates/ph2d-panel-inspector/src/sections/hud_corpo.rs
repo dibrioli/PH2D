@@ -116,7 +116,10 @@ fn corpo(
                     ColorToken::Text3,
                 );
             } else {
-                let linha = format!("{}: {}", tr("panel.inspector.hud.showing"), i.vivo);
+                // ⚠️ **A composição vai por `tr_with`, nunca por `format!`**: o separador é
+                // TEXTO de interface e vive na tabela (HR-15) — um `": "` no código é um
+                // literal pintado que o censo apanha, e que nenhuma tradução alcança.
+                let linha = ph2d_i18n::tr_with("panel.inspector.hud.showing", &[("v", &i.vivo)]);
                 cur_y = warn(
                     scene,
                     text_system,
@@ -221,10 +224,9 @@ fn corpo(
             N::CounterStart,
         );
         // ⭐ O valor VIVO — leitura, nunca edição: ele não é documento.
-        let linha = format!(
-            "{}: {}",
-            tr("panel.inspector.hud.counter_now"),
-            i.counter_value
+        let linha = ph2d_i18n::tr_with(
+            "panel.inspector.hud.counter_now",
+            &[("v", &i.counter_value)],
         );
         cur_y = warn(
             scene,

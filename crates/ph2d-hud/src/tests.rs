@@ -3,6 +3,11 @@
 //! ⚠️ **A janela do oráculo é `720×450`**, logo a vista equivalente tem meia-janela `[360, 225]`.
 //! Os números da direita saíram de `godot_hud_probe.gd` (bloco L2) e estão aqui **verbatim**.
 
+// ⚠️ **Os zeros à direita são a precisão IMPRESSA pelo oráculo** (`%.6f`), e os números estão
+// aqui verbatim de propósito: é o que torna a tabela conferível contra a saída da sonda sem
+// ninguém ter de a reformatar de cabeça. O clippy quer `2.25`; nós queremos `2.250_000`.
+#![allow(clippy::excessive_precision, reason = "a tabela é verbatim do oráculo")]
+
 use super::{Canvas, Fit, View, bands, place};
 
 /// A vista que reproduz a janela do oráculo.

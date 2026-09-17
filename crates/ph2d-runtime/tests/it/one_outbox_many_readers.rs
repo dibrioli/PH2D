@@ -59,6 +59,9 @@ impl Host {
                 SignalOrigin::Script { source } => {
                     format!("{} script {}", sig.name, source.0)
                 }
+                SignalOrigin::UiButton { source } => {
+                    format!("{} botao {}", sig.name, source.0)
+                }
             });
         }
     }

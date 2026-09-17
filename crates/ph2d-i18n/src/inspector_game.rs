@@ -61,11 +61,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.hud.no_game_camera" => {
             "No game camera \u{2014} the HUD stays where you put it."
         }
-        "panel.inspector.hud.showing" => "Showing",
+        "panel.inspector.hud.showing" => "Showing: {v}",
         "panel.inspector.hud.source_missing" => {
             "That source is not in the scene \u{2014} the authored text is shown."
         }
-        "panel.inspector.hud.counter_now" => "Now",
+        "panel.inspector.hud.counter_now" => "Now: {v}",
         "panel.inspector.hud.button_disabled" => "This button refuses the click.",
         "panel.inspector.hud.no_signal" => "No name \u{2014} this button publishes nothing.",
         "panel.inspector.particles.amount" => "Amount",

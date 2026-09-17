@@ -446,3 +446,6 @@ fn a_borda_do_corte_nao_tem_almofadas() {
         "nenhuma das posições produziu almofada no corte CRU — a fixtura deixou          de conter o fenómeno, e este gate passou a medir o nada"
     );
 }
+
+#[path = "costura_da_casca_tests.rs"]
+mod costura_da_casca;

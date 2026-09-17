@@ -637,6 +637,157 @@ a faixa que o alvo oferece para este controlo NESTE pincel*, que é um acto do
 
 ---
 
+## §65 — ⭐⭐⭐ AS «CUNHAS FINAS» DO BOX TRIM: a nota era FALSA, e o defeito a sério era outro
+
+> **Ordem do dono** (2026-09-17): *«As cunhas finas na costura do Box Trim»* — o
+> item que os §46.4 e §47.6 deixaram abertos com a frase *«curá-las mexeria na
+> malha da peça»*.
+
+### §65.1 — ⛔⛔⛔ A primeira medição refutou a própria nota
+
+O aberto dizia: *«os `~632` que sobram são cunhas finas onde a curva de
+interseção passa rente a um vértice da peça»*. Medido pela porta do produto,
+**a esfera de ENTRADA já tem `632` triângulos piores que `20`**, e `632` de
+`632` têm `|y| > 0,99`: são o **leque do PÓLO** de uma esfera UV — a mesma
+propriedade que o doc da `sculpt_sphere` descreve por escrito ao explicar porque
+é que o módulo de escultura **não** abre com uma.
+
+| | T | `>20` | p50 | p99 | MAX |
+|---|---|---|---|---|---|
+| PEÇA inteira | `49 612` | **`632`** | `2,75` | `25,65` | `25,72` |
+| só a costura CRUA | `28 908` | `188` | `2,48` | `13,03` | `2 573 808,75` |
+| só a costura LIMPA | `28 096` | **`8`** | `2,48` | `4,34` | `32,57` |
+| SAÍDA inteira | `70 660` | `640` | `2,48` | `13,17` | `32,57` |
+
+⇒ *a régua somava a peça inteira*, e a costura limpa é **melhor que a peça** em
+todas as colunas menos o MAX. ⚠️⚠️ **E a sonda que já existia imprimia a
+resposta:** o `diag_o_pico_na_borda` escreve `vértices ANTIGOS: 3/3` ao lado de
+cada cunha — *quando uma página imprime o que desmente a hipótese, isso É o
+achado, e eu li aquilo como confirmação da minha.*
+
+### §65.2 — ⛔⛔ E a fixtura CENTRADA não continha o fenómeno (a oitava vez)
+
+Com o círculo no meio da peça a borda do corte vive a `|z| = 0,8` e **nunca
+encontra a silhueta**: ali a costura limpa mede `MAX 32,57`. Com o corte a
+**sair pela beira** (`centro_x = 0,8`, que é a posição da foto do §47) ela mede
+**`694,78`**. *A medição do §46 tinha sido feita toda na posição fácil.*
+
+### §65.3 — ⭐⭐⭐ TRÊS réguas foram construídas e REFUTADAS antes de uma decidir
+
+O aspecto **não é o que se vê**. As lascas que sobram são finas e **PLANAS**, e
+uma face plana tem normal perfeita:
+
+1. **desvio radial da normal da FACE** — as lascas leem `0,52°`, **melhor** que a
+   mediana da costura sadia (`0,549°`);
+2. **MÉDIA das normais das vizinhas** — mede a **QUINA** do corte, não a lasca
+   (`p99 = 33°` sobre geometria correcta);
+3. **MÍNIMO sobre as vizinhas** — separa a quina, e **o CONTROLO refutou-a**: a
+   saída CRUA, com aspecto `2 573 809`, lê `1,15°`.
+
+⭐ A que decide é a **normal do VÉRTICE contra a radial**, sobre a esfera onde a
+resposta é exacta — é ela que o sombreamento usa, e a `ph2d_mesh::normals` soma
+normais de face **unitárias** (*gather* sem peso de área) ⇒ **uma lasca vota com
+peso cheio**. ⚠️ E ela precisou de **duas** correcções de população: `r > 0,995`
+deixa entrar a **PAREDE** do corte, que junto da silhueta é quase tangente à
+esfera. A população honesta é o vértice cujas faces estão **TODAS** a
+`|r − 1| < 1e-4`.
+
+### §65.4 — ⭐⭐⭐ Com a régua certa há UM defeito real, e ele fecha
+
+| centro | peça | saída CRUA | limpa SEM a troca | **limpa** |
+|---|---|---|---|---|
+| `0,0` | `0,03°` (0) | `0,19°` (0) | `0,19°` (0) | `0,19°` (0) |
+| `0,3` | `0,03°` (0) | **`28,40°` (2)** | **`18,37°` (1)** | **`0,89°` (0)** |
+| `0,5` | `0,03°` (0) | `35,18°` (5) | `0,18°` (0) | `0,19°` (0) |
+| `0,7` | `0,03°` (0) | `29,88°` (2) | `0,25°` (0) | `0,25°` (0) |
+| `0,8` | `0,03°` (0) | `15,13°` (1) | `0,27°` (0) | `0,27°` (0) |
+| `0,9` | `0,03°` (0) | `56,07°` (6) | `0,54°` (0) | `0,54°` (0) |
+
+(entre parênteses, quantos vértices acima de `5°` — o vale entre `1` e `15` é de
+duas ordens de grandeza, e é de lá que sai a barra.)
+
+⭐ A cura é o 4.º passo da limpeza: **trocar a diagonal** do par onde a costura
+deixou a lasca (`endireita_as_lascas`). De graça, as faces de **área ZERO** que o
+motor deixa na costura — juntas em T que ele sela com uma face sem área — vão de
+**`9` para `1`**: *a troca da diagonal de uma delas É a divisão em T.*
+
+### §65.5 — ⛔⛔ A cerca do TAMANHO foi escrita por um gate VERMELHO do vizinho
+
+A 1.ª redacção pedia só *«nenhuma das duas faces é inteiramente da PEÇA»*, e com
+isso a troca **reescrevia a parede inteira de uma lâmina grossa** — o leque com
+que o motor tapa a fronteira dela. O `a_face_que_o_corte_deixa_tem_a_densidade_da_peca`
+reprovou **no CONTROLO**: a face grossa passou a medir `0,042` onde tinha de
+medir `≥ 0,125`. ⭐⭐ *Uma cura que melhora o CONTROLO de outra cura apagou a
+régua dela* — e o veredito certo é o que aquele gate já escreve: **a face grossa
+de uma lâmina grossa cura-se ADENSANDO a lâmina (§45)**.
+
+⇒ a fronteira é o **tamanho**, e ela separa por uma ordem de grandeza: na costura
+a aresta longa de uma lasca mede `0,8`–`1,7` arestas da peça; na parede de uma
+lâmina mínima mede **`~40`**. `ESCALA_DA_COSTURA = 3` cai num vazio de `23×`.
+
+### §65.6 — ⭐⭐⭐ E uma mutação sobrevivente achou METADE DA ARQUITECTURA sem régua
+
+Apagar a cerca *«nenhuma das duas faces pode ser inteiramente da PEÇA»* **não
+partia um único teste**. O irmão que devia apanhá-la — o
+`longe_do_corte_nenhum_vertice_se_move_um_bit` — mede **POSIÇÕES**, e *uma troca
+de diagonal não move um vértice*: ela reescreve só a **LIGAÇÃO**.
+
+⇒ `a_ligacao_da_peca_sobrevive_ao_corte`: toda face da saída feita só de vértices
+antigos tem de **já existir na peça**. Medido: `41 890`–`42 626` faces dessas por
+posição, **zero** inventadas. *A propriedade que decide a arquitectura desta
+linha tinha metade sem régua desde que a limpeza existe.*
+
+### §65.7 — As cercas, com quantas vezes cada uma DISPARA
+
+Instrumentado sobre as seis posições do corte mais a lâmina mínima:
+
+| cerca | disparos | régua |
+|---|---|---|
+| 1a — a face é toda da PEÇA | `9 494` | `a_ligacao_da_peca_sobrevive_ao_corte` |
+| 1b — o TAMANHO da malha | só na lâmina mínima | `a_face_que_o_corte_deixa_tem_a_densidade_da_peca` |
+| 2 — a aresta nova já existe | **`0`** | fixtura **sintética** |
+| 3 — planura | `47` | ⚠️ **carril nomeado** |
+| 4 — melhora estrita | `1` | ⚠️ **carril nomeado** |
+| 5 — inversão | **`0`** | fixtura **sintética** |
+
+⭐ **As duas de zero disparos ganharam fixtura sintética** (a mesma decisão que a
+linha tomou com a almofada), e a da **inversão** só é construtível com uma face
+de **área zero**: num par plano e coerentemente orientado o quadrilátero é
+sempre convexo, logo a troca nunca inverte — *a inversão só é alcançável pelo
+braço que trata a face degenerada como plana*.
+
+⚠️⚠️ **DUAS mutações SOBREVIVEM de propósito, com a medição ao lado:**
+* **cerca 3** (planura) — apagá-la muda o volume em `6e-9` relativo, *abaixo de
+  toda barra deste repo*;
+* **cerca 4** (melhora estrita) — apagá-la deixa a saída **byte-idêntica**
+  (`−2,199e-6` · `−5,809e-6` · `−4,047e-6`, os mesmos dígitos), e não foi
+  possível construir a fixtura que a torna observável: *o candidato é sempre uma
+  lasca, e trocar a diagonal de uma lasca melhora por construção*.
+
+As duas ficam pelos modos de falha que impedem (aparar a quina do corte; perder a
+terminação do laço), **nomeadas no doc com o número**. ⛔ Quem as apagar tem de
+trazer a fixtura que as torna observáveis.
+
+### §65.8 — O que sobra, e porquê
+
+Todo triângulo pior que `20` que fica é recusado por uma cerca **que existe por
+um motivo**, e a sonda di-lo um a um: os `25,7` e os `30,0` são o **leque do
+pólo da peça** (cerca 1a), e os `171`–`514` estão na **quina do corte**
+(cerca 3). ⏳ Fica **uma** face de área zero, numa das seis posições.
+
+### §65.9 — Números
+
+* Gates novos: **5** (`a_costura_nao_estraga_o_sombreamento_da_casca` ·
+  `a_ligacao_da_peca_sobrevive_ao_corte` · `a_limpeza_e_um_ponto_fixo` ·
+  `o_controlo_num_par_sao_a_troca_acontece` + as duas sintéticas).
+* Sondas versionadas: `diag_o_sombreamento_da_casca` · `diag_o_que_a_cerca_muda`.
+* **Mutação: `8` corridas, `6` sangram, `2` sobrevivem NOMEADAS** (§65.7).
+* Tecto de LOC: `costura.rs` `279 → 579` (tecto `700`).
+* Portão: `nextest-impacted` **15 105/15 105** · censos da árvore COMBINADA
+  **90/90** · clippy `-D warnings` zero · `cargo fmt --all --check` limpo.
+
+---
+
 ## §58 — 📦 PARA O AGENTE INTEGRADOR
 
 ### §58.1 — Os factos da linha
@@ -647,15 +798,15 @@ todo em `#[cfg(test)]`) e desde então a linha ganhou duas waves de PRODUTO e do
 | grandeza | valor |
 |---|---|
 | base | `main` = `3090cac3f` (rebase por **fast-forward**) |
-| ficheiros tocados contra o `main` | **22** (`+1 542 / −62`, o handoff incluído) |
-| ficheiros de PRODUTO tocados | **sim** — §59 (revertida pela §61), §61 e §62 |
+| ficheiros tocados contra o `main` | **32** (o handoff incluído) |
+| ficheiros de PRODUTO tocados | **sim** — §59 (revertida pela §61), §61, §62 e **§65** (`ph2d-mesh-bool`) |
 | `PROJECT_SCHEMA` · `FIELD_DOC_VERSION` · `VEC_SCENE_SCHEMA` · `FLIP_SCHEMA` | **não se mexem** |
 | os três registos de componentes (`ph2d-ecs` + os dois espelhos) | **não se mexem** |
 | contratos congelados (§6) | **zero** |
 | ADR | **zero** |
 | pacote externo novo | **zero** |
 | chaves de i18n | **líquido zero** (a `panel.sculpt3d.pose_arrasto` nasceu e morreu dentro da linha) |
-| itens públicos NOVOS | `PoseControlos::SUAVIZACOES_MAX` · `ph2d_pose::Arrasto` (+`ALL`/`label`/`alavanca`) e o re-export `PoseArrasto` · `SculptStroke::plano_do_dab_para_teste` |
+| itens públicos NOVOS | `PoseControlos::SUAVIZACOES_MAX` · `ph2d_pose::Arrasto` (+`ALL`/`label`/`alavanca`) e o re-export `PoseArrasto` · `SculptStroke::plano_do_dab_para_teste`. ⛔ **A §65 não acrescenta nenhum** — `endireita_as_lascas` é privada à `costura` |
 
 ### §58.2 — O que NÃO pode colidir
 
@@ -682,13 +833,14 @@ todo em `#[cfg(test)]`) e desde então a linha ganhou duas waves de PRODUTO e do
 
 | etapa | resultado |
 |---|---|
-| `nextest-impacted` | **15 607 / 15 607** verdes (11 330 saltados) |
-| `clippy --all-targets -D warnings` (as 5 crates da família) | **zero** avisos |
+| `nextest-impacted` | **15 105 / 15 105** verdes (11 844 saltados) |
+| `clippy --all-targets -D warnings` (as 7 crates da família) | **zero** avisos |
 | `cargo fmt --all --check` | limpo |
 | censos da **árvore COMBINADA** (HR-15 + tectos de LOC) | **90 / 90** verdes |
 | prova de mutação — G-20 (§57) | **5 de 5** sangram |
 | prova de mutação — a dobra do painel (§59) | **3 de 3** sangram |
 | prova de mutação — §61.2 + §62 | **7 de 7** sangram, com controlo negativo verde |
+| prova de mutação — a troca de diagonais (§65) | **6 de 8** sangram; as **2** que sobrevivem estão NOMEADAS com a medição (§65.7) |
 | vassouras da parede | 5 de 9 acusam, **13 ficheiros, TODOS pré-existentes** (§58.4-bis) |
 
 ⚠️⚠️ **E o arnês da mutação mentiu DUAS vezes nesta linha, as duas por uma letra ou um cano:**
@@ -708,10 +860,18 @@ arnês sobre gates que sangravam. *Um arnês sem controlo sobre o próprio filtr
 | `blender-pincel-afiado` | `ph2d-sculpt3d/src/brush_verb_filter.rs` |
 | `blender-pull` | `ph2d-panel-sculpt3d/src/ids/sculpt3d.rs` · `…/rows.rs` · `ph2d-sculpt3d/src/brush_default.rs` · `…/brush_magnitudes.rs` · `…/brush.rs` · `…/stroke_shape.rs` · `…/verb_strip_law_tests.rs` · `…/verb_strip_tests.rs` |
 | `blender-trim-pincel` | `ph2d-sculpt3d/src/verb_scrape_tests.rs` |
-| `blender-trim` | `ph2d-app-sculpt3d/src/host_contract_tests.rs` · `…/patch_valence.rs` · `…/undo_plano_tests.rs` |
+| `blender-trim` | `ph2d-app-sculpt3d/src/host_contract_tests.rs` · `…/patch_valence.rs` · `…/undo_plano_tests.rs` · **`ph2d-mesh-bool/src/lib.rs`** |
 
-⭐ **O diff desta linha é UM ficheiro** — `crates/ph2d-app-sculpt3d/src/rulers.rs` — e **nenhum** dos
-13 acusados é ele. ⇒ **zero adições desta linha**; são todas propriedade do `main`.
+⚠️⚠️ **O 13.º acusado é NOVO ao ALCANCE, não à árvore:** a §65 tocou a
+`ph2d-mesh-bool`, logo ela entrou no conjunto de caminhos do sweep pela primeira
+vez — e o `lib.rs` dela tem **zero adições desta linha** (`git diff main --stat`
+sobre ele devolve vazio). É, muito provavelmente, a **isenção nomeada** do
+`NoError` que o §44.8 já registou. ⭐ *É a mesma lei do §5.0 uma volta acima: o
+sweep é propriedade do par (código, vassoura) — e também do CONJUNTO DE CAMINHOS.
+Alargar o alcance faz aparecer dívida antiga como se fosse nova.*
+
+⭐ **Nenhum dos 13 acusados está no diff desta linha.** ⇒ **zero adições**; a
+reconciliação e a triagem são do **R**.
 
 ⚠️ **E o número não bate com o do fecho anterior** (§56.5 de 16/09 registou **três** acusações): ou o
 conjunto de caminhos era mais estreito, ou as vassouras foram estendidas desde então — *o sweep é
@@ -757,8 +917,11 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && bash scripts/p
   - ⏳ `dureza05` do *Scene Project*: `3` vértices de `301` na **borda móvel** da pegada, com os
     outros `298` a `≤ 5,0e-5`. Diagnosticado; é a família da banda de empate do último bit, e a
     decisão é se vira **divergência declarada** ou se a barra passa a ser por-vértice.
-  - ⏳ as **cunhas finas** da costura do Box Trim (altura `2,4 %` de uma aresta) — curá-las toca na
-    malha da peça, que é **outra decisão**.
+  - ✅ as **cunhas finas** da costura do Box Trim **FECHARAM (§65)**, e a nota que
+    as descrevia era **FALSA**: os `~632` eram o leque do PÓLO da esfera de
+    entrada, não da costura. O defeito a sério — `1`–`6` vértices da casca com o
+    sombreamento torcido até `56°` — está curado nas seis posições do corte.
+    ⏳ Sobra **uma** face de área zero, numa posição.
   - ⏳ o **`Visibility` que não propaga a descendentes** — house-wide, e o §5 já o classifica como
     decisão de produto com **ADR**: nada nesta família o pode fechar sozinho.
   - ⏳ Do pincel de plano ficam: a extensão do centro que segue a **pressão** (esta casa não a tem, e

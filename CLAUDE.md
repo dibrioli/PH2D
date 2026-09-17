@@ -1075,10 +1075,21 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **`HIER_ROW_H_PX` e `SECTION_GAP_PX` deixaram de existir** — a linha da hierarquia usa o `ROW_H_PX` como todas as
   outras, e o vão de secção é a porta `section_gap_px()`. ⛔ A cura de um uso novo é **converter**, nunca repor a
   constante.
-  **Aberto:** ⛔ os **418** literais de UI pintados nas outras **18** crates (a `painter-layers` sozinha tem `166`) — e
-  eles **BLOQUEIAM** o degrau `G` (esvaziar os painéis), porque `19` de `26` painéis não declaram entrada nenhuma para
-  classificar ([`medicoes/07`](docs/UI_New_and_Simple/medicoes/07_o_buraco_do_hr15_o_texto_PINTADO.md); instrumento:
-  `python3 scripts/censo-texto-pintado.py`) · **três decisões do dono**, todas já com o número ao lado: a pose 2D/3D
+  ⭐⭐⭐ **A LINHA DE PROPRIEDADE E O HR-15 FECHARAM** (2026-09-16, 96 commits — guia do integrador:
+  [FECHO](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_FECHO_2026-09-16.md); o mecanismo, por §, no
+  [handoff da jornada](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-14_LINHA_DE_PROPRIEDADE.md),
+  que tem 176 KB e **se consulta, não se lê**): o formulário do app tem **uma porta**
+  (`widget::property_row_columns` — a unidade sai do rótulo, o nome sai de cima do controlo, a caixa de marcar entra, e
+  há **manual verificado por teste**), e *zero string hardcoded* deixou de ser intenção — **26 painéis + a moldura + a
+  shell + as 8 crates de família** falam por `ph2d-i18n` (**4 044** chaves · **3 027** sítios), com **30 gates** de
+  censo a defendê-lo a partir da crate-régua nova [`ph2d-label-census`](crates/ph2d-label-census/). ⚠️ **O que sobra é
+  de outra natureza e é a fronteira seguinte:** os MOTORES (o catálogo do `ph2d-component-desc`, os manifestos dos nós,
+  `painter-effects`/`-brush`, `tool-vector`) escrevem o rótulo **numa tabela de dados**, e ali a chave tem de ser
+  derivada do id — mais os `62` literais que só o censo de PORTA vê (`python3 scripts/censo-texto-pintado.py`, de `418`
+  em 18 crates). ⛔⛔ **Para quem funde:** os 30 gates são CENSOS — um literal de UI novo de outra linha reprova na
+  árvore COMBINADA (cura: migrar o texto, ou isenção NOMEADA com mecanismo), e o CI **não os corre** (o job de teste é
+  um `-p` de 25 pacotes; quem os corre é o `ship.sh`).
+  **Aberto:** **três decisões do dono**, todas já com o número ao lado: a pose 2D/3D
   (`722` sítios de produto, 5 crates), partir o `DrawMode` nos dois eixos (`17` variantes vivas, eram 14) e os 9 toggles
   de módulo → Layout · o **«travou por um minuto»** de 09/09 segue **sem reprodução** (o gatilho — colapsar por arrasto —
   saiu na w49, e o penhasco de `182 ms` foi medido e **não** é ele: três ordens de grandeza) · ⏳ **as superfícies de UI

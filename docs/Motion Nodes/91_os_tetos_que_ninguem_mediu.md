@@ -328,3 +328,33 @@ widgets mordeu — apontando para o sítio certo: ele não é do widget, é do d
 | pôr `force.*::strength` na lista de PRECISÃO | o limite dele é de estabilidade, e estabilidade é de uma **composição** (`strength × dt × radius`), não de um param | §1 |
 | expor `PANEL_MIN_W` no `panel_chrome.rs` | cap de 500 LOC dos widgets — e ele é do design system, não do widget | §6 |
 | subir `MAX_GRADIENT_STOPS` | a medição **confirmou** o 8 | §6 |
+
+
+---
+
+## ⛔⛔ O TECTO QUE ESTA AUDITORIA NÃO VIU — `motion.wave::MAX_SIDE` (achado 2026-09-17)
+
+Esta página **nomeia** o `motion.wave` (a §`MAX_DT`, medida em 2026-08-27, que concluiu que a
+constante era **inerte** ali e a removeu). ⇒ quem varra o doc por nome de nó lê *«o `motion.wave`
+está auditado»*.
+
+⚠️⚠️ **E não está: a palavra `MAX_SIDE` não aparece nesta página uma única vez.** O nó prende o lado
+da grelha em **`MAX_SIDE = 60`** (`crates/ph2d-node-motion-wave/src/lib.rs`), e a justificação
+escrita ao lado da constante é:
+
+> *«Grid side clamp (field cost is O(rows·cols)).»*
+
+⛔ Isso é uma **lei de crescimento, não um recurso.** O §0.0 pede exactamente o contrário — *um
+limite legítimo diz de que recurso ele é (memória, largura de banda, precisão) e traz a medição*. Um
+`O(n²)` descreve como o custo cresce e **não diz onde ele deixa de caber**; e o hint do painel repete
+o mesmo `60` (`max: 60.0`), logo o artista também não pode passar dali.
+
+⭐ **A lição de método, e ela vale para toda esta página:** *uma auditoria de tectos responde pelos
+tectos que OLHOU*, e um nó que aparece numa lista de dívida **paga** lê-se como um nó **sem** dívida.
+A conferência por NOME DE NÓ é o que esconde um segundo tecto no mesmo ficheiro.
+
+⏳ **O instrumento existe e está comitado** — a escada de preço do ciclo 9
+([`motion_rig_relogio.rs`](../../crates/ph2d-app-motion/src/motion_rig_relogio.rs),
+`measure_the_soft_body_group`), que mede o campo a `16`, `32` e `60` de lado pelo caminho do produto.
+⚠️ **Ela não consegue medir ALÉM do tecto** (pedir `64` devolve `3 600` células), e é isso que torna
+o tecto visível: *para saber se `60` é o sítio certo é preciso poder correr a `120`, e hoje não é.*

@@ -20,9 +20,13 @@
 //!
 //! O `motion.wave` prende o lado em **`MAX_SIDE = 60`**, e a justificação escrita ao lado dele é
 //! *«field cost is O(rows·cols)»* — que é uma **lei de crescimento e não um recurso**. O §0.0 pede
-//! o contrário: *um limite legítimo diz de que recurso ele é, e traz a medição*. O
-//! [doc 91](../../../docs/Motion%20Nodes/91_os_tetos_que_ninguem_mediu.md) já deixa este nó na
-//! lista dos que **seguem por medir**. ⇒ esta escada é também o instrumento daquela dívida.
+//! o contrário: *um limite legítimo diz de que recurso ele é, e traz a medição*.
+//!
+//! ⚠️⚠️ **E o doc 91 NÃO o cobre, apesar de nomear este nó** — ele auditou o `MAX_DT` do
+//! `motion.wave` (e removeu-o, por inerte, em 2026-08-27); a palavra `MAX_SIDE` não aparece lá uma
+//! única vez. *Uma auditoria de tectos responde pelos tectos que olhou*, e um nó que aparece numa
+//! lista de dívida paga lê-se como um nó sem dívida. ⇒ esta escada é o instrumento do tecto que
+//! ninguém olhou.
 //!
 //! ⚠️ **Nenhuma leitura daqui vale nada acima de `load ~5`** (`CLAUDE.md` §5.0). A sonda imprime o
 //! `loadavg` na primeira linha, e quem a corre à mão corre-a pelo vigia

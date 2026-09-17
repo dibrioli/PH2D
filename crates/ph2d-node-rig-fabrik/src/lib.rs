@@ -199,7 +199,9 @@ fn reach(input: &Stream, target: &Stream, iterations: f32) -> Stream {
     fabrik(&mut p, &len, goal, iteration_count(iterations));
 
     let joints: Vec<usize> = (1..n).collect();
-    let rot = pose::relocal(input, &p, &joints);
+    // ⭐ O `Strength` da restrição — ver [`pose::mix_by_falloff`]. Ele corre DEPOIS do solver
+    // inteiro (e portanto depois do `break_collinearity`), que é a cerca 7 da folha 16.
+    let rot = pose::mix_by_falloff(input, pose::relocal(input, &p, &joints));
     fk::resolve(&input.clone().with(fk::ROT, Column::Scalar(rot)))
 }
 
@@ -281,6 +283,44 @@ mod tests {
     fn dist(a: [f32; 2], b: [f32; 2]) -> f32 {
         let (dx, dy) = (a[0] - b[0], a[1] - b[1]);
         (dx * dx + dy * dy).sqrt()
+    }
+
+    /// A mesma corrente com a coluna de força (o `falloff`) escrita.
+    fn tentacle_com_forca(n: usize, w: f32) -> Stream {
+        tentacle(n).with(pose::FALLOFF, Column::Scalar(vec![w; n]))
+    }
+
+    /// ⭐⭐⭐ **A ESCADA DA FORÇA** — o `Strength` que o Rive põe em 7 de 7 restrições e o Spine em
+    /// 4 de 4, e que esta família não tinha em nenhuma.
+    ///
+    /// - **`0`** = a restrição não faz nada: a pose que ENTROU sobrevive ao bit;
+    /// - **`1`** = o solve de sempre, **ao bit** (é isto que torna a wave aditiva);
+    /// - **`½`** = *estritamente* entre os dois.
+    #[test]
+    fn a_escada_da_forca_vai_da_pose_que_entrou_ate_ao_solve() {
+        let alvo = point(1.5, 2.0);
+        let parado = ps(&tentacle(5));
+        let cheio = ps(&reach(&tentacle(5), &alvo, 8.0));
+        assert!(
+            dist(parado[4], cheio[4]) > 0.3,
+            "o alvo nao mexe a corrente — a fixtura nao mede forca nenhuma"
+        );
+        assert_eq!(
+            ps(&reach(&tentacle_com_forca(5, 1.0), &alvo, 8.0)),
+            cheio,
+            "forca 1 nao e' o solve de sempre ao bit"
+        );
+        assert_eq!(
+            ps(&reach(&tentacle_com_forca(5, 0.0), &alvo, 8.0)),
+            parado,
+            "forca 0 mexeu na corrente"
+        );
+        let meio = ps(&reach(&tentacle_com_forca(5, 0.5), &alvo, 8.0))[4];
+        let (a, b) = (dist(meio, parado[4]), dist(meio, cheio[4]));
+        assert!(
+            a > 1e-3 && b > 1e-3,
+            "forca ½ colapsou num dos extremos: {meio:?}"
+        );
     }
 
     /// **The tip lands on the goal, from anywhere, with rigid bones and a nailed root.**

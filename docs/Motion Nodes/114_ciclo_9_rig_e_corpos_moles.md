@@ -229,7 +229,7 @@ já exprime o item antes de o construir, e aqui ela exprimia — *o que se perde
 | **W0** ✅ | A **catraca da rota do grupo** (§2.1) — FECHADA em 2026-09-17, 2 de 2 mutações a sangrar | *Sem a régua, toda a §2 era uma leitura de registo em vez de uma medição do planeador.* |
 | ~~**W1**~~ ⛔ | ~~O escritor genérico de coluna~~ — **REFUTADA em 2026-09-17: ele já existe** (§3.1) | *A composição já o exprimia; medir antes de construir poupou a wave inteira* |
 | **W1′** ✅ | O **peso por osso** do `rig.skin_deformer` — o LEITOR que faltava (P0 da folha) — FECHADA em 2026-09-17 (§6) | Era o que a medição pôs no lugar da W1, e é o item *«que todo rigger encontra no primeiro dia»* |
-| **W2** | **`Strength`/`Mix` como COLUNA** nos constraints | Um item, sete lugares — e nasce melhor que as três referências (§3.1) |
+| **W2** ✅ | **`Strength`/`Mix` como COLUNA** nos constraints — FECHADA em 2026-09-17 (§7) | Um item, três lugares — e nasce melhor que as três referências |
 | **W4** | A **rota no dispositivo** para os corpos moles, com o preço de cada um nomeado | Lei 1 do doc 103 §2 |
 | **W5** | A **MEDIÇÃO** do grupo (passo 5): tabela CPU · dispositivo · passes · objectos/ms, com `loadavg` ao lado | §0.0 |
 | **W6** | O **TUTORIAL em PDF** (passo 6) + a cena de smoke | O tutorial É o smoke |
@@ -318,3 +318,50 @@ sinal mais forte que uma régua destas pode dar.
 - **Descoberta:** a coluna escreve-se digitando `bone_weight` no campo *Column* do `motion.drive`,
   como toda coluna deste catálogo. Não há fileira de painel — e isso é a cerca 3 da folha (*um dial
   aqui seria uma 2.ª fonte de verdade*), não um esquecimento.
+
+---
+
+## §7 — ✅ W2: a FORÇA de uma restrição, e ela é a coluna que já existia
+
+O `Strength` que o **Rive** põe em **7 de 7** constraints e o `Mix` que o **Spine** põe em **4 de 4**
+— nós tínhamos **0 de 6**. Agora os três solvers (`rig.ik_2bone` · `rig.fabrik` ·
+`rig.rubber_hose`) misturam a pose resolvida com a que entrou, junta a junta.
+
+⭐⭐⭐ **E o canal NÃO é uma coluna nova: é o `falloff`.** Foi a segunda vez neste ciclo que medir
+antes de construir poupou trabalho — a folha pedia um `strength`, e `falloff` é exactamente *«quanto
+este elemento participa»* no vocabulário desta casa: é o que o `motion.falloff` escreve, o que a
+família `field.*` inteira produz **com gizmo de canvas**, e o que o `motion.scale` já lê com a mesma
+convenção (*ausente vale `1,0`, efeito cheio*).
+
+⇒ ⭐⭐ **o item `SUPERAR:` nº 1 da folha cai de graça.** Nas três referências o `Strength` é **um
+número keyado**; aqui *«um IK cuja influência desvanece com a distância de uma caixa que o artista
+arrasta na tela»* é **um fio**, e não existe em nenhuma delas.
+
+**A escada, gateada nos três nós:**
+
+| força | o que sai |
+|---|---|
+| `0` | a pose que ENTROU, **ao bit** — a restrição não faz nada |
+| `½` | *estritamente* entre as duas (senão «mistura» seria um interruptor) |
+| `1` **ou ausente** | o solve de sempre, **ao bit** |
+
+⚠️ **A mistura é de ÂNGULOS e nunca de posições** — a cerca 4 da folha, que a própria célula do
+`Strength` já invocava: um `P` misturado discorda do `rot` e a cadeia sai **rasgada**. É também por
+isso que o `motion.mixer` não servia como rota.
+
+⛔⛔ **E uma mutação REFUTOU um comentário meu, escrito minutos antes.** Eu justifiquei o atalho de
+força-cheia como *«o que mantém a saída byte-exacta»*; apagando-o, **os três gates da escada
+continuam verdes** — a exactidão vem da FORMA (`a·(1−t) + b·t` em `t = 1` é `a·0 + b·1 = b`,
+exacto), e não daquela linha. *Uma linha que a mutação não consegue matar não é lei, é comentário
+com sintaxe de código* — o atalho fica com o nome que merece (poupa uma alocação e uma passagem no
+caso comum) e o comentário foi corrigido no mesmo commit.
+
+⚠️ **A forma importa e a alternativa é a armadilha:** o `a + (b−a)·t` dos manuais dá, em `t = 1`,
+`a + (b−a)` — que **arredonda** quando `a` e `b` estão longe. *Uma das duas formas mexe em silêncio
+com todo rig do repositório.*
+
+⚠️ O `t` é preso a `0..1`: uma força é uma **mistura**, e um campo que entregue `2,0` não pode fazer
+uma restrição ultrapassar o próprio solve.
+
+**Prova de mutação 2 de 2** (a segunda documentada como não-sangrante de propósito, acima), e a
+folha `pose.rs` continua **byte-idêntica** nas três crates, que é a cerca 10.

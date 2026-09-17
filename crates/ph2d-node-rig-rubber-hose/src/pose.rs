@@ -139,3 +139,62 @@ mod tests {
         assert_eq!(unit([0.0, 0.0], [0.0, 1.0]), [0.0, 1.0]);
     }
 }
+
+/// The column a constraint reads as its **strength** — the catalogue's existing mask channel.
+///
+/// ⭐⭐ It is deliberately **not** a new name: `falloff` is what `motion.falloff` writes and what
+/// the whole `field.*` family produces, **with a canvas gizmo**. So *"an IK whose influence fades
+/// with the distance from a box the artist drags on screen"* is a WIRE here, where Rive and Spine
+/// have a single keyed number per constraint. That is the `SUPERAR:` item of conference sheet 16,
+/// paid for by spending nothing.
+pub(crate) const FALLOFF: &str = "falloff";
+
+/// Blend a solved pose back towards the one that came IN, joint by joint, by [`FALLOFF`] — the
+/// `Strength` of every Rive constraint and the `Mix` of Spine's.
+///
+/// ## Angles, never positions
+///
+/// The blend is on the **local angles**, which is the only place it is legitimate: mixing the
+/// solved `P` with the incoming `P` would produce a chain whose positions disagree with its
+/// angles, which is precisely the torn limb this whole leaf exists to prevent (see the module
+/// docs). Conference sheet 16 reaches the same conclusion from the other side — it is why
+/// `motion.mixer` cannot serve as a strength.
+///
+/// ## Absent is `1.0`, and the FORM is what makes it exact
+///
+/// A missing column means full effect (the convention `motion.scale` documents), so a graph that
+/// never heard of falloff gets today's solve **bit for bit**.
+///
+/// ⚠️ That exactness is a property of the expression, not a hope: `a·(1−t) + b·t` at `t = 1` is
+/// `a·0 + b·1 = b` **exactly**, while the textbook `a + (b−a)·t` is `a + (b−a)`, which rounds
+/// whenever `a` and `b` are far apart. *One of the two forms silently moves every rig in the repo.*
+///
+/// ⚠️ `t` is clamped to `0..1`: a strength is a mix, and a field handing out `2.0` must not make a
+/// constraint overshoot its own solve.
+pub(crate) fn mix_by_falloff(input: &Stream, solved: Vec<f32>) -> Vec<f32> {
+    let n = solved.len();
+    let t = fk::scalars(input, FALLOFF, 1.0, n);
+    // ⚠️ This is a SHORTCUT, not the guarantee. The first draft of this comment said the
+    // short-circuit was what kept full strength byte-exact, and a mutation refuted it: delete
+    // these three lines and all three ladder gates still pass, because `a·(1−t) + b·t` at
+    // `t = 1` is already exact. *A line a mutation cannot kill is a comment with the syntax of
+    // code* — so this one keeps the name it earns: with no column (the common case) it skips an
+    // allocation and a whole pass, and nothing else.
+    if t.iter().all(|&w| w >= 1.0) {
+        return solved;
+    }
+    let was = fk::scalars(input, fk::ROT, 0.0, n);
+    solved
+        .iter()
+        .zip(&was)
+        .zip(&t)
+        .map(|((&b, &a), &w)| {
+            let w = if w.is_finite() {
+                w.clamp(0.0, 1.0)
+            } else {
+                1.0
+            };
+            a * (1.0 - w) + b * w
+        })
+        .collect()
+}

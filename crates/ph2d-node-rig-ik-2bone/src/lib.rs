@@ -147,7 +147,9 @@ fn reach(input: &Stream, target: &Stream, root_ix: f32, flip: bool) -> Stream {
 
     // The solved positions become the POSE; FK draws it (so the bones are rigid by
     // construction and any joints hanging off the hand follow it).
-    let rot = pose::relocal(input, &p, &[root + 1, root + 2]);
+    // ⭐ O `Strength` da restrição: a pose resolvida mistura-se com a que entrou, pela coluna
+    // `falloff` — ver [`pose::mix_by_falloff`]. Ausente ⇒ força cheia ⇒ o solve de sempre, ao bit.
+    let rot = pose::mix_by_falloff(input, pose::relocal(input, &p, &[root + 1, root + 2]));
     fk::resolve(&input.clone().with(fk::ROT, Column::Scalar(rot)))
 }
 
@@ -234,6 +236,54 @@ mod tests {
     fn dist(a: [f32; 2], b: [f32; 2]) -> f32 {
         let (dx, dy) = (a[0] - b[0], a[1] - b[1]);
         (dx * dx + dy * dy).sqrt()
+    }
+
+    /// O mesmo braço com a coluna de força (o `falloff`) escrita.
+    fn arm_com_forca(w: f32) -> Stream {
+        arm().with(pose::FALLOFF, Column::Scalar(vec![w; 3]))
+    }
+
+    /// ⭐⭐⭐ **A ESCADA DA FORÇA** — o `Strength` que o Rive põe em 7 de 7 restrições e o Spine
+    /// em 4 de 4, e que esta família não tinha em nenhuma.
+    ///
+    /// Três degraus, e cada um afirma uma coisa diferente:
+    ///
+    /// - **`0`** = a restrição não faz nada: a pose que ENTROU sobrevive **ao bit**;
+    /// - **`1`** = o solve de sempre, **ao bit** — é isto que torna a wave aditiva;
+    /// - **`½`** = entre os dois, e *estritamente* entre (senão «mistura» seria um interruptor).
+    ///
+    /// ⚠️ A ausência da coluna tem de dar o mesmo que `1`, senão todo rig já autorado muda.
+    #[test]
+    fn a_escada_da_forca_vai_da_pose_que_entrou_ate_ao_solve() {
+        let alvo = point(1.0, 1.5);
+        let parado = ps(&arm());
+        let cheio = ps(&reach(&arm(), &alvo, 0.0, false));
+        assert!(
+            dist(parado[2], cheio[2]) > 0.5,
+            "o alvo nao mexe o braco — a fixtura nao mede forca nenhuma"
+        );
+
+        // `1` e a AUSÊNCIA são o mesmo solve, ao bit.
+        assert_eq!(
+            ps(&reach(&arm_com_forca(1.0), &alvo, 0.0, false)),
+            cheio,
+            "forca 1 nao e' o solve de sempre ao bit"
+        );
+        // `0` deixa a pose exactamente como entrou.
+        assert_eq!(
+            ps(&reach(&arm_com_forca(0.0), &alvo, 0.0, false)),
+            parado,
+            "forca 0 mexeu no braco"
+        );
+        // `½` fica ESTRITAMENTE entre os dois.
+        let meio = ps(&reach(&arm_com_forca(0.5), &alvo, 0.0, false))[2];
+        let (a, b) = (dist(meio, parado[2]), dist(meio, cheio[2]));
+        assert!(
+            a > 1e-3 && b > 1e-3,
+            "forca ½ colapsou num dos extremos: {meio:?} (parado {:?}, cheio {:?})",
+            parado[2],
+            cheio[2]
+        );
     }
 
     /// **The hand lands on the goal**, and the bones keep their lengths getting there.

@@ -86,6 +86,10 @@ pub mod motion_object_thumb;
 #[cfg(test)]
 pub mod motion_param_reach;
 pub mod motion_path_smoke;
+/// A auditoria do grupo do RIG e dos CORPOS MOLES (ciclo 9, passo 2 — doc 114) —
+/// `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+pub mod motion_rig_probe;
 /// O estado de shell da familia — os quatro campos que saíram da `App` na W2/L1 (A2b).
 /// O que uma CENA pede à shell, no vocabulário da família (W2 Fase C).
 pub mod motion_scene_ctx;

@@ -45,15 +45,36 @@ A lei 1 de todo ciclo (doc 103 §2) manda cada nó dizer ONDE corre. Censo por c
 de kernel do registry (`register_gpu_kernel`, `ph2d-node-registry/src/gpu_channels.rs`), em
 2026-09-17:
 
-| nó | kernel no dispositivo? |
-|---|---|
-| `motion.boids` | ✅ **sim** (`gpu::GPU_KERNEL`, `lib.rs:648`) |
-| `rig.skeleton` · `rig.fk` · `rig.ik_2bone` · `rig.fabrik` · `rig.rubber_hose` · `rig.skin_deformer` | ⛔ **não** — nenhuma das seis crates regista kernel |
-| `motion.soft_body` · `motion.verlet_rope` · `motion.wave` | ⛔ **não** |
+**O RETRATO do grupo** (`audit_the_rig_group`, 2026-09-17) — as colunas saem do **registry**, que é
+quem responde ao planeador:
 
-⚠️ **Controlo positivo do instrumento** (senão o censo mede zero e lê-se como «nenhum»):
-`motion.oscillator` regista **1** e as **100** crates que registam kernel aparecem na mesma
-varredura. O censo vê quem tem; estes nove não têm.
+| nó | params | no cartão | **device** | portas | efeito |
+|---|---|---|---|---|---|
+| `motion.boids` | 16 | 14 | ✅ **sim** | 4→1 | Temporal |
+| `motion.soft_body` | 10 | 10 | ⛔ não | 4→1 | Temporal |
+| `motion.verlet_rope` | 11 | 11 | ⛔ não | 3→1 | Temporal |
+| `motion.wave` | 10 | 10 | ⛔ não | 3→1 | Temporal |
+| `rig.skeleton` | 4 | **5** | ⛔ não | 0→1 | Pure |
+| `rig.fk` | **0** | 0 | ⛔ não | 1→1 | Pure |
+| `rig.ik_2bone` | 2 | 2 | ⛔ não | 2→1 | Pure |
+| `rig.fabrik` | 1 | 1 | ⛔ não | 2→1 | Pure |
+| `rig.rubber_hose` | 1 | 1 | ⛔ não | 2→1 | Pure |
+| `rig.skin_deformer` | 1 | 1 | ⛔ não | 3→1 | Pure |
+
+⇒ **1 de 10 no dispositivo.**
+
+⚠️ **DOIS instrumentos independentes dizem o mesmo**, e é por isso que a linha acima se pode
+escrever: o retrato pergunta ao **registry** (coluna `device`), e o censo por crate pergunta a quem
+chama `register_gpu_kernel` — ali o `motion.boids` aparece (`lib.rs:648`), as outras nove não, e o
+**controlo positivo** é que o instrumento vê as **100** crates que registam kernel (o
+`motion.oscillator` entre elas). *Um censo que mede zero e um que mede «nenhum» lêem-se igual; dois
+que concordam por caminhos diferentes, não.*
+
+⚠️ **E a contagem de params NÃO se conta por `grep ParamSpec`:** a primeira leitura desta auditoria
+fez isso e leu **11 · 12 · 11 · 17** onde o registry lê **10 · 11 · 10 · 16** — um a mais em cada, do
+próprio tipo na assinatura. ⭐ E o erro tinha o sinal contrário no `rig.skeleton`, que declara **4**
+params e pinta **5** no cartão: o quinto é o **text param `branches`** (a ramificação, fechada em
+2026-08-12), e um text param não é um `ParamSpec`. *A fonte é o registry.*
 
 ⛔⛔ **E isto é PIOR do que o mesmo número noutro grupo, por causa da POSIÇÃO dos nós na cadeia.**
 O ciclo 7 mediu *«seis dos dez levavam a cadeia inteira para a CPU»* porque um nó de aparência é o
@@ -79,7 +100,7 @@ ciclo acrescenta é a outra metade do grupo e a leitura de conjunto.
 
 ### §3.1 — Os seis `rig.*`: MUITO poder, quase nenhum dial
 
-**9 params em 6 nós** (4 · 0 · 2 · 1 · 1 · 1). O IK do Spine sozinho tem 6 propriedades mais 3
+**9 params em 6 nós** (4 · 0 · 2 · 1 · 1 · 1) — ⭐ **reconferido contra o registry em 2026-09-17: a folha de 2026-08-09 continua exacta.** O IK do Spine sozinho tem 6 propriedades mais 3
 referências de osso; o Rive põe `Strength` em **cada um** dos 7 constraints dele.
 
 ⭐⭐⭐ **E a folha já nomeou a causa mecânica, numa linha (§0 dela):** o catálogo sabe **LER**
@@ -112,9 +133,9 @@ red-first**.
 
 ### §3.2 — Os quatro corpos moles: MUITOS dials, nenhuma placa
 
-Contagem de `ParamSpec` no manifesto, 2026-09-17: `soft_body` **11** · `verlet_rope` **12** ·
-`wave` **11** · `boids` **17**. ⇒ **a doença é a oposta** da dos `rig.*`: aqui os dials existem e o
-que falta é a rota.
+Params pelo **registry** (§2), 2026-09-17: `soft_body` **10** · `verlet_rope` **11** · `wave`
+**10** · `boids` **16**, e os quatro são `Temporal`. ⇒ **a doença é a oposta** da dos `rig.*`: aqui
+os dials existem — e quase todos chegam ao cartão — e o que falta é a **rota**.
 
 | nó | o que está aberto hoje | fonte |
 |---|---|---|

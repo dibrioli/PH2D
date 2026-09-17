@@ -699,12 +699,17 @@ acusações medidas como **pré-existentes** (zero adições nesta linha; a tria
 `the_frame_is_hoisted_out_of_the_vertex_loop` — re-rode-a **sozinha**, com o `/proc/loadavg`
 impresso ao lado, antes de suspeitar do merge.
 
-### §56.6 — ⛔ O que o dono AINDA NÃO smokou
+### §56.6 — ✅ O smoke do dono: APROVADO (2026-09-17)
 
-O **§55** (o espaçamento a `2 %`) foi medido e gateado e **não passou pelo smoke dele** — o report
-que o pediu é de 16/09 e a resposta saiu no mesmo dia. *Integrar não é aprovar* (§5.0): se a
-integração acontecer antes do smoke, ela leva uma mudança de **valor de fábrica** que o dono pediu
-mas ainda não viu.
+⚠️ **A premissa desta secção MORREU e a morte fica visível aqui:** ela dizia *«o §55 não passou pelo
+smoke dele»* e era verdade no dia em que foi escrita. O dono smokou a cena `=48` em **17/09** —
+incluindo o passo **(6)**, o traço que começa **na beirada** da bola, que é o gesto dos dois reports
+— e devolveu **«smoke ok»**.
+
+⇒ **as duas waves desta jornada estão aprovadas pelo dono**: o §54 (o passo medido sobre a
+superfície) e o §55 (o espaçamento a `2 %`). *Integrar continua a não ser aprovar* (§5.0) — o que
+mudou é que a aprovação agora existe, e a integração já não leva uma mudança de valor de fábrica por
+ver.
 
 **Smoke:**
 

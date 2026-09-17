@@ -906,6 +906,129 @@ que deixou a cena a ensinar uma borda que o artista não tem.*
 
 ---
 
+## §67 — ⭐⭐⭐ A TRANSIÇÃO DA POSE DEIXA DE CONTAR ANÉIS DA MALHA E PASSA A SER UMA DISTÂNCIA NO BARRO
+
+> **Ordem do dono** (2026-09-17), depois de perguntar o estado da arte do pincel
+> e de eu propor três caminhos: *«1»* — o da faixa.
+
+### §67.1 — O defeito, e porque nenhum tecto o curava
+
+A região da pose nasce **binária** e o que a esbatia era a difusão de Jacobi do
+§4: `N` passagens de «média dos vizinhos». A largura que isso compra conta-se em
+**arestas da malha** (`≈ 2,0·√N`), logo:
+
+* a mesma posição do slider dava transição **larga numa peça grossa e estreita
+  numa fina** — medido pelo produto, a faixa em raios de pincel lê
+  `0,417 · 0,211 · 0,108 · 0,054` sobre quatro densidades (`1 490` → `97 922`
+  vértices), *partindo ao meio cada vez que a malha dobra*;
+* **triplicar o número dava `√3 ≈ 1,73×`** de suavidade, nunca `3×`;
+* numa peça grossa o topo do curso **diluía o núcleo** (`1,0000 → 0,5498`),
+  porque a difusão não tem condição de fronteira;
+* e o preço era `O(V·N)` **por segmento**.
+
+⇒ o §62 subiu o tecto de `100` para `300` e curou o report; a nota que ficou
+dizia que ancorar a faixa no raio *«não é afordável com esta lei»* — `N ∝
+(banda/aresta)²` sobre `O(V·N)` dá `O(V²)`, e uma faixa de um raio pedia
+`~1 200` passagens. **Está certo, e a saída era trocar a LEI.**
+
+### §67.2 — ⭐⭐⭐ A lei nova: distância nas arestas, uma vez
+
+[`ph2d_pose::pesos::por_distancia`] mede, para cada vértice, a distância à
+fronteira do anel **andando pelas arestas** (Dijkstra, `O(V log V)`) e tira o
+peso dela: `suave(0,5 − d/banda)`. A transição mede **exactamente `banda`**, e o
+preço **não depende da largura pedida**.
+
+| lei | faixa em RAIOS, nas quatro densidades | custo a `97 922` V |
+|---|---|---|
+| difusão `N = 4` (o de fábrica antigo) | `0,417 · 0,211 · 0,108 · 0,054` | `1,0 ms` |
+| difusão `N = 300` (o tecto do §62) | — · — · `0,874` · `0,443` | **`47,6 ms`** |
+| **distância `t = 1,0`** | **`0,507 · 0,501 · 0,501 · 0,502`** | **`3,4`–`4,7 ms`** |
+
+⇒ **constante a `±0,6 %` sobre uma faixa de `8×` de aresta, e `14×` mais barata
+que o tecto que substitui.** Em **arestas** as duas colunas trocam de lado (`4,4
+· 8,8 · 17,6 · 35,3`), que é o que uma distância faz.
+
+⚠️ **Ela esbate os campos CUMULATIVOS, não as diferenças**, e isso é o que
+mantém a §3.3 de pé: o peso de um segmento é a diferença contra o estado depois
+do anterior, e *uma diferença de dois campos binários não é binária* — esbatê-la
+por «distância à fronteira» mediria a fronteira de um anel, não a do conjunto.
+
+⚠️ **A fronteira fica a MEIA aresta** da que a atravessa; sem isso ela desloca-se
+meia aresta para fora e a saída volta a depender da densidade — *o defeito
+inteiro que a função existe para curar*. Há mutação a prová-lo.
+
+### §67.3 — ⛔⛔⛔ E a primeira medição do valor de fábrica mediu OUTRO PROGRAMA
+
+A varredura que escolheu `0,6` correu numa sonda com
+[`ph2d_pose::Controlos::default()`], cuja lei de arrasto é a da espec
+(**projectada no osso**). **O produto crava o arrasto INTEIRO** por veredito do
+dono (§61), logo deforma mais e precisa de faixa mais larga: a `0,6` o gate
+reprovou com **`606` faces viradas do avesso**.
+
+Refeita pelo caminho do produto, a tabela dá o joelho em **`1,0`** — a primeira
+coluna que lê `0` em toda a linha, até um arrasto de `1,20` (*um raio e meio*):
+
+| arrasto | `0,6` | `0,7` | `0,8` | `0,9` | **`1,0`** |
+|---|---|---|---|---|---|
+| `0,40` | 398 | 160 | 0 | 0 | **0** |
+| `0,60` | 606 | 380 | 119 | 0 | **0** |
+| `1,20` | 715 | 552 | 310 | 19 | **0** |
+
+*A régua é o PRODUTO* — quinta vez que esta linha o paga.
+
+### §67.4 — O tecto, e de que recurso ele é
+
+**`2,0`**, e o recurso é o **NÚCLEO**: a faixa é centrada na fronteira do anel,
+logo uma larga de mais come o miolo. Medido, o peso do vértice sob o cursor é
+`1,0000` até `2,0·R` e **`0,9394`** a `3,0·R` — acima daqui o pincel deixa de
+mover inteiro o que está debaixo do dedo. ⭐ O gate tem as **duas** metades (no
+tecto o núcleo sobrevive; meio acima dele não), senão um tecto a menos seria uma
+faixa que o artista não alcança.
+
+### §67.5 — ⛔ A divergência, declarada
+
+A lei do alvo é a difusão, e é ela que os `69` traços do oráculo medem ⇒
+[`ph2d_pose::Controlos::banda_do_peso`] nasce em **`None`** e a bancada pede-a
+**campo a campo**. ⭐ *Um campo novo é erro de compilação ali*, logo ninguém lhe
+pode dar um valor por omissão sem passar pela decisão. O produto ship a
+distância porque ela ganha em todas as colunas medidas; **o oráculo continua
+vivo e a medir a dele** — `57 de 69` a `≤ 1e-5`, sem uma fixtura mexida.
+
+### §67.6 — O que mudou à volta
+
+* O knob passa de `Weight smoothing` (contagem, `0..300`, `Pro`) a
+  **`Transition`** (largura em raios, `0..2`, passo `0,05`, **`Basic`**).
+  ⚠️ A subida de nível é medida: *um knob que separa a ferramenta boa da partida
+  não é acabamento* — a `0,6` o mesmo gesto vira `606` faces e a `1,0` vira `0`.
+* A chave de i18n e os dois ids seguem o nome (`pose_smoothings` →
+  `pose_transition`): *uma chave que diz uma coisa e um rótulo que diz outra é a
+  forma de o texto envelhecer sem ninguém ver*.
+* **DOIS gates tiveram a premissa MORTA**, os dois registados em `MEMORIAS`:
+  o `o_tecto_das_suavizacoes_e_onde_a_dobra_morre` e — ⭐ o mais bonito — o
+  `a_banda_conta_aneis_da_malha_e_nao_raios_do_pincel`, que **afirmava o defeito
+  de propósito** e trazia escrito *«no dia em que a banda passar a ancorar-se no
+  raio do pincel ele reprova, e a premissa morre à vista no diff»*. O dia foi
+  este, e o `a_faixa_mede_o_barro_e_nao_aneis_da_malha` afirma hoje as **duas
+  mesmas colunas com os papéis trocados**.
+* O roteiro da `=41` passa a mandar **descer** a `Transition` para ver os
+  entalhes voltarem — *a metade negativa é o que torna a positiva uma
+  afirmação*.
+
+### §67.7 — Números
+
+* Mutação **6 de 6 sangram** (a lei de volta à difusão · a largura abaixo do
+  joelho · o tecto acima do núcleo · a fronteira fora da meia aresta · o sinal
+  da distância · as duas leis ligadas ao mesmo tempo).
+* Oráculo da pose **intacto**: `57 de 69`, os mesmos de antes.
+* Portão: `nextest-impacted` **15 654 / 15 654** · censos da árvore COMBINADA
+  **90 / 90** · clippy `-D warnings` zero · `fmt` limpo · vassouras `5 de 9` com
+  os **mesmos 13 ficheiros pré-existentes** (⭐ a `blender-pose` fica **limpa**).
+* ⏳ **ABERTO:** numa peça muito grossa a borda ainda dobra (`19` faces a `1 490`
+  vértices, onde a faixa mede `2,8` arestas) — *uma transição não pode ser mais
+  fina do que a malha*, e ali a cura é malha, a mesma frase da borda do corte.
+
+---
+
 ## §58 — 📦 PARA O AGENTE INTEGRADOR
 
 ### §58.1 — Os factos da linha

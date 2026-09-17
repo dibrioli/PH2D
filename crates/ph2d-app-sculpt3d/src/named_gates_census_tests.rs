@@ -63,7 +63,27 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 7] = [
+const MEMORIAS: [(&str, &str, &str); 9] = [
+    (
+        "o_tecto_das_suavizacoes_e_onde_a_dobra_morre",
+        "crates/ph2d-sculpt3d/src/pose_fronteira_tests.rs",
+        "o gate SUBSTITUÍDO em 2026-09-17 pelo \
+         `a_transicao_de_fabrica_e_onde_a_dobra_morre`, quando a lei do peso \
+         deixou de ser uma contagem de iterações de difusão e passou a ser uma \
+         DISTÂNCIA no barro — com ela o tecto deixou de ser onde a dobra morre \
+         (quem a mata é a LARGURA) e passou a ser outro recurso, o NÚCLEO. A \
+         nota guarda a premissa que morreu",
+    ),
+    (
+        "a_banda_conta_aneis_da_malha_e_nao_raios_do_pincel",
+        "crates/ph2d-sculpt3d/src/pose_fronteira_tests.rs",
+        "o gate que afirmava o DEFEITO de propósito e que trazia escrito \
+         *«no dia em que a banda passar a ancorar-se no raio do pincel ele \
+         reprova, e a premissa morre à vista no diff»* — o dia foi 2026-09-17, \
+         e o `a_faixa_mede_o_barro_e_nao_aneis_da_malha` afirma hoje as duas \
+         MESMAS colunas com os papéis trocados. A nota guarda a tabela do \
+         defeito, para ninguém a remedir",
+    ),
     (
         "a_peca_da_cena_cabe_num_gesto_e_mostra_a_malha_do_corte",
         "crates/ph2d-app-sculpt3d/src/scenes_trim.rs",

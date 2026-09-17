@@ -116,12 +116,12 @@ fn o_indicador_nao_reconstroi_quando_nada_muda() {
 /// defeito), a segunda que a chave o sabe (senão pagávamos uma construção por
 /// nada).
 #[test]
-fn a_suavizacao_do_peso_nao_move_o_osso_e_a_chave_sabe_disso() {
+fn a_transicao_nao_move_o_osso_e_a_chave_sabe_disso() {
     let malha = esfera();
     let mut base = pincel();
-    base.pose.suavizacoes_do_peso = 2;
+    base.pose.transicao = 0.2;
     let mut outra = base.clone();
-    outra.pose.suavizacoes_do_peso = 40;
+    outra.pose.transicao = 1.5;
 
     // (a) a SAÍDA não muda — duas construções frescas, não a cache.
     let mut s = SculptStroke::default();

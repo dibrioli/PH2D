@@ -35,8 +35,8 @@ pub const SCULPT3D_POSE_OFFSET: NodeId = hash_node_id("sculpt3d.pose_offset");
 pub const SCULPT3D_POSE_OFFSET_NUM: NodeId = hash_node_id("sculpt3d.pose_offset.num");
 
 /// **Quantas SUAVIZAÇÕES os pesos levam.**
-pub const SCULPT3D_POSE_SMOOTHINGS: NodeId = hash_node_id("sculpt3d.pose_smoothings");
-pub const SCULPT3D_POSE_SMOOTHINGS_NUM: NodeId = hash_node_id("sculpt3d.pose_smoothings.num");
+pub const SCULPT3D_POSE_TRANSITION: NodeId = hash_node_id("sculpt3d.pose_transition");
+pub const SCULPT3D_POSE_TRANSITION_NUM: NodeId = hash_node_id("sculpt3d.pose_transition.num");
 
 /// ***ANCORADO*** — prende a extremidade distante da cadeia.
 ///

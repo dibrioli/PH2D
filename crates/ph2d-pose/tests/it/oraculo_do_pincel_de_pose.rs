@@ -170,6 +170,15 @@ fn controlos(t: &Traco) -> Controlos {
         segmentos: t.f("segmentos") as u32,
         desvio_da_origem: t.f("desvio_da_origem"),
         suavizacoes_do_peso: t.f("suavizacoes_do_peso") as u32,
+        // ⛔⛔ **`None` — a bancada corre a DIFUSÃO, que é a lei com que o corpus
+        // foi gravado.** A [`ph2d_pose::Controlos::banda_do_peso`] é a lei
+        // alternativa (a faixa como distância no barro) e **não tem lado
+        // aprovado**: pedi-la aqui seria medir outro pincel.
+        //
+        // ⭐ E esta linha existir é o `Controlos` ser inicializado **campo a
+        // campo**: um campo novo é **erro de compilação** aqui, logo ninguém lhe
+        // pode dar um valor por omissão sem passar por esta decisão.
+        banda_do_peso: None,
         ancorado: t.b("ancorado"),
         trava_rotacao: t.b("trava_rotacao"),
         // ⛔⛔ **A bancada corre SEMPRE a lei da espec, e nunca o que um cabecalho

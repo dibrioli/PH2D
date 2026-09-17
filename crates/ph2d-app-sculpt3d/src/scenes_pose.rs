@@ -121,12 +121,13 @@ pub(crate) fn announce() {
          [sculpt3d]        -> Se aparecerem ENTALHES escuros nela, e' a malha a dobrar sobre\n\
          [sculpt3d]           si mesma: a faixa que separa o que roda do que fica parado e'\n\
          [sculpt3d]           estreita de mais para esse arrasto.\n\
-         [sculpt3d]        Suba `Weight smoothing` (mesma seccao, tambem so' em `Pro`) ate'\n\
-         [sculpt3d]        ao maximo e repita o MESMO arrasto.\n\
-         [sculpt3d]        -> Os entalhes desaparecem e a borda fica lisa.\n\
-         [sculpt3d]        ⚠️ Este knob mede-se em ANEIS DA MALHA, nao no tamanho do pincel:\n\
-         [sculpt3d]           quanto mais fina a peca, mais e' preciso para a mesma\n\
-         [sculpt3d]           suavidade. Dobrar o numero alarga a faixa so' 1,4 vezes.\n\
+         [sculpt3d]        DESCA `Transition` (na seccao do pincel) para 0,60 e repita o\n\
+         [sculpt3d]        MESMO arrasto: os entalhes VOLTAM. Ponha-a de volta em 1,00 e\n\
+         [sculpt3d]        eles desaparecem.\n\
+         [sculpt3d]        ⚠️ Este knob e' a LARGURA da transicao, em raios de pincel, medida\n\
+         [sculpt3d]           no barro: o mesmo valor da a mesma transicao numa peca fina e\n\
+         [sculpt3d]           numa grossa. (Ate' 17/09 ele contava ANEIS DA MALHA, e era por\n\
+         [sculpt3d]           isso que o maximo nao chegava numa peca fina.)\n\
          [sculpt3d]\n\
          [sculpt3d]    DEU ERRADO SE: nao aparecer osso nenhum no passo (2); se a orelha\n\
          [sculpt3d]    esticar num bico no passo (3) em vez de dobrar rigida; se ela nao mexer\n\
@@ -135,8 +136,8 @@ pub(crate) fn announce() {
          [sculpt3d]    rotacao do passo (6); se algum dos CINCO botoes de\n\
          [sculpt3d]    `Deformation` nao mudar o gesto ao ser carregado; se um arrasto de\n\
          [sculpt3d]    TRAVESSAO no passo (8) nao mover nada; se o `Auto-Smooth` do passo\n\
-         [sculpt3d]    (10) nao mudar a superficie; ou se o `Weight smoothing` no maximo\n\
-         [sculpt3d]    nao tirar os entalhes do passo (11).\n\
+         [sculpt3d]    (10) nao mudar a superficie; ou se descer `Transition` para 0,60 no\n\
+         [sculpt3d]    passo (11) NAO trouxer os entalhes de volta.\n\
          [sculpt3d]\n\
          [sculpt3d]    (Se em vez do osso aparecer so' uma BOLINHA VERMELHA sobre o cursor, e'\n\
          [sculpt3d]     um aviso: ali nao ha' dobradica nenhuma e arrastar nao move nada.\n\

@@ -36,8 +36,13 @@ pub struct PoseControlos {
     pub segmentos: u32,
     /// `0..2` — afasta o pivô do cursor, em múltiplos do raio.
     pub desvio_da_origem: f32,
-    /// `0..`[`PoseControlos::SUAVIZACOES_MAX`].
-    pub suavizacoes_do_peso: u32,
+    /// **A LARGURA DA TRANSIÇÃO, em múltiplos do raio do pincel** —
+    /// `0..`[`PoseControlos::TRANSICAO_MAX`].
+    ///
+    /// ⚠️ Ela substituiu o `Weight Smoothing` (um número de iterações de
+    /// difusão) em 2026-09-17 — ver [`Self::TRANSICAO_MAX`] para a medição que
+    /// a decidiu.
+    pub transicao: f32,
     /// Prende a extremidade distante da cadeia.
     pub ancorado: bool,
     /// No modo de escala, escala **sem rodar**.
@@ -70,7 +75,7 @@ impl Default for PoseControlos {
             deformacao: lei.deformacao(),
             segmentos: lei.segmentos,
             desvio_da_origem: lei.desvio_da_origem,
-            suavizacoes_do_peso: lei.suavizacoes_do_peso,
+            transicao: Self::TRANSICAO_DE_FABRICA,
             // ⭐ Os dois defaults vêm da crate da LEI, onde a recomendação está
             // declarada **como nossa** — ⛔ e não como observação do alvo, cuja
             // proveniência era circular (o cabeçalho da fixtura é entrada do
@@ -130,50 +135,82 @@ impl PoseControlos {
     /// `N = 300`) e o que há deixa de ser uma fronteira — é um pincel mais
     /// fraco. Na peça de fábrica o núcleo fica em `1,0000` até `300`.
     ///
-    /// # ⭐⭐⭐ Porque o tecto é `300`, e não «três vezes o que era»
+    /// # ⭐⭐⭐ E a cura de fundo CHEGOU: a faixa é uma DISTÂNCIA no barro
     ///
-    /// Faces viradas por (arrasto, `N`), pelo caminho do produto, na esfera de
-    /// `97 922` vértices — a densidade da peça de fábrica, que tem `98 306`
-    /// (`sonda_das_viradas`):
+    /// O parágrafo que estava aqui dizia que ancorar a faixa no raio *«não é
+    /// afordável com esta lei»* — `N ∝ (banda/aresta)²` sobre um custo `O(V·N)`
+    /// dá `O(V²)`, e uma faixa de um raio pedia `~1 200` iterações. **Está
+    /// certo, e a saída era trocar a LEI**: a [`ph2d_pose::pesos::por_distancia`]
+    /// calcula a distância de cada vértice à fronteira do anel **andando pelas
+    /// arestas** (Dijkstra, `O(V log V)` **uma vez**) e tira o peso dela. O
+    /// preço deixa de depender da largura pedida.
     ///
-    /// | arrasto | `N=0` | `4` (fábrica) | `25` | `100` (tecto antigo) | `200` | **`300`** | `600` |
-    /// |---|---|---|---|---|---|---|---|
-    /// | `0,10` | 193 | 498 | 89 | **0** | 0 | **0** | 0 |
-    /// | `0,20` | 200 | 724 | 842 | **0** | 0 | **0** | 0 |
-    /// | `0,40` | 201 | 832 | 1 222 | 537 | **0** | **0** | 0 |
-    /// | `0,60` | 203 | 878 | 1 336 | 801 | 10 | **0** | 0 |
-    /// | `0,90` | 203 | 896 | 1 385 | 863 | 56 | **0** | 0 |
-    /// | `1,20` | 203 | 931 | 1 386 | 820 | 107 | **0** | 0 |
+    /// **A faixa medida pelo caminho do PRODUTO, sobre quatro densidades**
+    /// (`1 490` · `6 050` · `24 386` · `97 922` vértices, raio `0,8`,
+    /// `sonda_da_banda` — a largura em que a média por concha cai de `0,9` a
+    /// `0,1`, em **raios de pincel**):
     ///
-    /// ⭐ **`300` é a primeira coluna que lê `0` em TODA a linha** — até a um
-    /// arrasto de `1,20`, que é **um raio e meio** de pincel. O tecto antigo
-    /// deixava `801` faces viradas no arrasto que o dono fotografou, que é o
-    /// report à letra.
+    /// | lei | faixa em RAIOS, por densidade |
+    /// |---|---|
+    /// | difusão `N=4` (o de fábrica antigo) | `0,417` · `0,211` · `0,108` · `0,054` |
+    /// | distância `t = 0,6` | `0,342` · `0,310` · `0,304` · `0,302` |
+    /// | **distância `t = 1,0`** | **`0,507` · `0,501` · `0,501` · `0,502`** |
+    /// | distância `t = 2,0` | `0,994` · `1,018` · `1,007` · `1,015` |
     ///
-    /// ⛔ **E acima de `300` não há regime novo:** a `600` as viradas já eram
-    /// zero, e o que se compra é só banda mais larga por amplitude perdida
-    /// (`−10 %` de `100` para `300`, `−22 %` até `900`) e relógio linear.
-    /// *O tecto é de PRODUTO — é onde o defeito que ele existe para curar
-    /// desaparece —, e o recurso está na linha seguinte.*
+    /// ⇒ **a difusão parte ao meio cada vez que a malha dobra; a distância fica
+    /// constante a `±0,6 %` sobre uma faixa de `8×` de aresta.** Em **arestas**
+    /// as duas colunas trocam de lado: a `t = 1` a faixa lê `4,4` · `8,8` ·
+    /// `17,6` · `35,3` — *dobra com a densidade, que é o que uma distância faz.*
     ///
-    /// # ⚠️ O que ele custa, e onde
+    /// # ⭐ Porque o valor de fábrica é `1,0`
     ///
-    /// `0,133 ms` por iteração por `98 k` vértices, **no pen-down e uma vez por
-    /// traço** (nunca por dab): medido em `--release`, `12,83 ms` no tecto
-    /// antigo e **`39,85 ms`** no novo — `2,4` quadros. ⚠️ É `O(V·N)` **por
-    /// segmento**, logo numa peça de `1,5 M` vértices o topo do slider custa da
-    /// ordem do meio segundo. *O mesmo já era verdade no tecto antigo, em ponto
-    /// mais baixo.*
+    /// É o **joelho medido pelo caminho do produto**, na esfera de `97 922`
+    /// vértices (`sonda_das_viradas`), faces viradas por (arrasto, `t`):
     ///
-    /// ⏳ **ABERTO e nomeado:** que o knob conte anéis é o defeito de fundo, e a
-    /// cura seria a banda medir-se em **raios de pincel** com a contagem
-    /// derivada da densidade — a mesma forma do `Detail` do `Density`, que
-    /// passou a pedir uma CONTAGEM ancorada na área. ⛔ **Ela não é afordável
-    /// com esta lei**: `N ∝ (banda/aresta)²` e o custo é `O(V·N)` ⇒ `O(V²)` a
-    /// banda constante, e na peça de fábrica uma banda de **um** raio pede
-    /// `~1 200` iterações. *A cura de fundo é outra lei de peso — e essa é
-    /// decisão do dono, porque o corpus do oráculo mede esta.*
-    pub const SUAVIZACOES_MAX: u32 = 300;
+    /// | arrasto | `0,6` | `0,7` | `0,8` | `0,9` | **`1,0`** | `1,2` |
+    /// |---|---|---|---|---|---|---|
+    /// | `0,10` | 0 | 0 | 0 | 0 | **0** | 0 |
+    /// | `0,20` | 0 | 0 | 0 | 0 | **0** | 0 |
+    /// | `0,40` | 398 | 160 | 0 | 0 | **0** | 0 |
+    /// | `0,60` | 606 | 380 | 119 | 0 | **0** | 0 |
+    /// | `0,90` | 695 | 507 | 257 | 2 | **0** | 0 |
+    /// | `1,20` | 715 | 552 | 310 | 19 | **0** | 0 |
+    ///
+    /// ⇒ `1,0` é a **primeira coluna que lê `0` em toda a linha**, até a um
+    /// arrasto de `1,20` — **um raio e meio** de pincel.
+    ///
+    /// ⛔⛔ **E a primeira medição disto deu `0,6`, sobre OUTRO PROGRAMA.** Ela
+    /// correu numa sonda com [`ph2d_pose::Controlos::default()`], cuja lei de
+    /// arrasto é a da espec (**projectada no osso**); o produto crava o arrasto
+    /// **INTEIRO** por veredito do dono, logo deforma mais e precisa de faixa
+    /// mais larga. *A régua é o PRODUTO* — a `0,6` o gate reprovou com `606`
+    /// faces viradas, que é o número da tabela.
+    /// # ⚠️ O tecto, e de que recurso ele é
+    ///
+    /// **`2,0`**, e o recurso é o **NÚCLEO**: a faixa é centrada na fronteira do
+    /// anel, logo uma larga de mais come o miolo da região. Medido a `97 922`
+    /// vértices, o peso do vértice sob o cursor é `1,0000` até `2,0·R` e cai
+    /// para **`0,9394`** a `3,0·R` — *acima daqui o pincel deixa de mover
+    /// inteiro o que está debaixo do dedo, que é outro produto.*
+    ///
+    /// # ⚠️ O que custa
+    ///
+    /// **`3,4`–`4,7 ms`** a `97 922` vértices, **no pen-down e uma vez por
+    /// traço**, e **plano na largura pedida**. A difusão no tecto que isto
+    /// substitui custava `47,6 ms` para a mesma peça ⇒ **`14×` mais barato**, e
+    /// a diferença cresce com a largura.
+    ///
+    /// # ⛔ A DIVERGÊNCIA, declarada
+    ///
+    /// A lei do alvo é a difusão, e é ela que os `69` traços do oráculo medem —
+    /// a [`ph2d_pose::Controlos::banda_do_peso`] nasce em `None` por isso, e a
+    /// bancada pede-a **campo a campo**. O produto ship a distância porque ela
+    /// ganha em todas as colunas medidas; *o oráculo continua vivo e a medir a
+    /// dele*, que é o que separa uma divergência de um desvio.
+    pub const TRANSICAO_MAX: f32 = 2.0;
+
+    /// A largura de fábrica da transição — ver [`Self::TRANSICAO_MAX`].
+    pub const TRANSICAO_DE_FABRICA: f32 = 1.0;
 
     /// Junta os próprios aos partilhados e devolve a lei.
     ///
@@ -193,7 +230,10 @@ impl PoseControlos {
             modo,
             segmentos: self.segmentos,
             desvio_da_origem: self.desvio_da_origem,
-            suavizacoes_do_peso: self.suavizacoes_do_peso,
+            // ⛔ A difusão fica **desligada** neste caminho: quem esbate é a
+            // distância, e deixar as duas ligadas aplicaria as duas leis.
+            suavizacoes_do_peso: 0,
+            banda_do_peso: Some(brush.radius * self.transicao),
             ancorado: self.ancorado,
             trava_rotacao: self.trava_rotacao,
             // ⛔⛔⛔ **CRAVADA no arrasto INTEIRO — veredito do dono,

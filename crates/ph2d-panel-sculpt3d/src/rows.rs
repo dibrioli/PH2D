@@ -522,7 +522,7 @@ static BRUSH: &[Row] = &[
     // dois interruptores são caixas; ver `paint::brush` e `event_toggles`.
     pose::POSE_SEGMENTS,
     pose::POSE_OFFSET,
-    pose::POSE_SMOOTHINGS,
+    pose::POSE_TRANSITION,
     // ⭐ **O único NÚMERO do contorno** — os outros dois controlos próprios
     // dele são fileiras de chips; ver `paint::brush` e `event`.
     boundary::BOUNDARY_OFFSET,

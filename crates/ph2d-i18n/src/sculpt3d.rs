@@ -88,7 +88,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // pincel e o que ele afasta é o PIVÔ, não a região. Sem isso ele lê-se
         // como um deslocamento da malha.
         "panel.sculpt3d.pose_offset" => "Pivot offset from cursor",
-        "panel.sculpt3d.pose_smoothings" => "Weight smoothing",
+        "panel.sculpt3d.pose_transition" => "Transition",
         // ⚠️ **O rótulo diz o que a caixa FAZ, não o nome interno da opção:** o
         // que ela prende é a ponta distante da cadeia, e é isso que faz o gesto
         // rodar em torno de um pivô fixo.

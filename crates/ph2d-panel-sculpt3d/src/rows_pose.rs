@@ -85,30 +85,35 @@ pub(super) const POSE_OFFSET: Row = Row {
 /// Weight Smoothing no máximo não consigo uma transição mais suave. Poderia
 /// aumentar o máximo do slider em 3x?»*).
 ///
-/// ⚠️ **O número NÃO é «três vezes o que era»** — ele é o ponto medido em que as
-/// faces viradas do avesso chegam a **zero para todo arrasto** que este pincel
-/// produz na peça de fábrica. A tabela, o mecanismo (a banda conta **anéis da
-/// malha** e cresce com `√N`) e o preço vivem ao lado da constante, em
-/// [`ph2d_sculpt3d::PoseControlos::SUAVIZACOES_MAX`] — *a faixa mora onde a lei
+/// ⛔⛔ **O knob deixou de ser uma CONTAGEM e passou a ser uma LARGURA.** Ele
+/// pedia iterações de difusão, e a largura que elas compram conta-se em
+/// **anéis da malha** (`≈ 2,0·√N` arestas) — a mesma posição do slider dava
+/// transição larga numa peça grossa e estreita numa fina, e era por isso que o
+/// máximo não chegava. Hoje ele é a largura **em raios de pincel**, medida no
+/// barro: a tabela das quatro densidades, o joelho de `1,0` e o tecto de `2,0`
+/// (que é do NÚCLEO) vivem ao lado da constante, em
+/// [`ph2d_sculpt3d::PoseControlos::TRANSICAO_MAX`] — *a faixa mora onde a lei
 /// que a justifica mora, e o painel lê-a.*
-pub(super) const POSE_SMOOTHINGS: Row = Row {
-    label: "panel.sculpt3d.pose_smoothings",
-    slider: crate::ids::SCULPT3D_POSE_SMOOTHINGS,
-    chip: crate::ids::SCULPT3D_POSE_SMOOTHINGS_NUM,
+pub(super) const POSE_TRANSITION: Row = Row {
+    label: "panel.sculpt3d.pose_transition",
+    slider: crate::ids::SCULPT3D_POSE_TRANSITION,
+    chip: crate::ids::SCULPT3D_POSE_TRANSITION_NUM,
     min: 0.0,
     // ⛔ **LIDO da crate da lei, nunca escrito aqui** — um literal neste sítio
     // seria a segunda resposta à pergunta *«até onde vai este knob?»*, e a que
     // o artista vê é sempre a que envelhece.
-    max: ph2d_sculpt3d::PoseControlos::SUAVIZACOES_MAX as f32,
-    step: 1.0, // LITERAL-PX-OK: uma iteração é inteira
-    decimals: 0,
-    get: |u| u.brush.pose.suavizacoes_do_peso as f32,
-    set: |u, v| u.brush.pose.suavizacoes_do_peso = v.round().max(0.0) as u32,
+    max: ph2d_sculpt3d::PoseControlos::TRANSICAO_MAX,
+    step: 0.05, // LITERAL-PX-OK: a largura é contínua, em raios de pincel
+    decimals: 2,
+    get: |u| u.brush.pose.transicao,
+    set: |u, v| u.brush.pose.transicao = v.max(0.0),
     show: is_pose,
-    // ⚠️ **`Pro` e não `Basic`:** ela é a única das três cujo efeito é de
-    // ACABAMENTO (o peso de cada segmento é uma diferença, e a suavização
-    // esbate a fronteira entre anéis) — e é a que custa mais caro, `O(V·N)` por
-    // segmento. As outras duas mudam o que o gesto FAZ.
-    level: UiLevel::Pro,
+    // ⚠️⚠️ **`Basic` desde 2026-09-17, e a mudança é MEDIDA.** Ela era `Pro`
+    // por ser *«acabamento»* e cara (`O(V·N)` por segmento); hoje ela é o que
+    // decide se a borda da deformação **entalha** — a `0,6` o mesmo gesto vira
+    // `606` faces do avesso e a `1,0` vira `0` —, e custa `3,4`–`4,7 ms` no
+    // pen-down, plano na largura pedida. *Um knob que separa a ferramenta boa da
+    // partida não é acabamento.*
+    level: UiLevel::Basic,
     place: Place::Knobs,
 };

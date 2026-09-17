@@ -323,8 +323,35 @@ pub struct Controlos {
     ///
     /// ⚠️ A largura que ela compra vale **`≈ 1,79 · √N` arestas da malha** —
     /// medida constante a `2 %` sobre quatro densidades —, logo ela é uma
-    /// grandeza da MALHA e não do raio do pincel.
+    /// grandeza da MALHA e não do raio do pincel. ⭐ É esse defeito que a
+    /// [`Self::banda_do_peso`] existe para curar.
     pub suavizacoes_do_peso: u32,
+    /// ⭐⭐⭐ **A LARGURA DA TRANSIÇÃO, EM UNIDADES DE OBJECTO** — a lei
+    /// alternativa à [`Self::suavizacoes_do_peso`], e a razão de ela existir
+    /// está medida.
+    ///
+    /// `None` (o valor de fábrica) corre a difusão de Jacobi do §4 e a saída é
+    /// **byte-idêntica** à de sempre — é isso que mantém os `69` traços do
+    /// oráculo a valer como régua.
+    ///
+    /// `Some(b)` substitui a difusão por uma **distância na superfície**: o peso
+    /// de cada vértice sai de quão longe ele está da fronteira do anel do
+    /// segmento, e a transição mede **exactamente `b`** no barro.
+    ///
+    /// # ⛔ Porque é que a difusão não servia
+    ///
+    /// Ela espalha o peso de vizinho em vizinho, logo a largura que compra é
+    /// contada em **arestas da malha**: a mesma posição do botão dá uma
+    /// transição diferente numa peça fina e numa grossa, e numa peça grossa o
+    /// topo do curso **dilui o núcleo** (medido: `1,0000 → 0,5498` a `1 490`
+    /// vértices). ⚠️ E as reentrâncias que o dono reportou em 2026-09-17 viviam
+    /// **todas** dentro dessa faixa — `203/203`, `878/878`, `1 336/1 336`,
+    /// `801/801` e `10/10` das faces viradas do avesso tinham peso estritamente
+    /// entre `0` e `1`.
+    ///
+    /// ⇒ *a largura da transição É o botão de qualidade deste pincel, e estava
+    /// na unidade errada.*
+    pub banda_do_peso: Option<f32>,
     /// Prende a extremidade distante da cadeia (§5.1).
     pub ancorado: bool,
     /// No modo de escala, não roda antes de escalar (§5.4).
@@ -349,6 +376,10 @@ impl Default for Controlos {
             segmentos: 1,
             desvio_da_origem: 0.0,
             suavizacoes_do_peso: 4,
+            // ⛔ **`None` é a lei do ORÁCULO, e é por isso que ela é o valor de
+            // fábrica:** os `69` traços foram gravados com a difusão, e cravar a
+            // outra aqui re-baseava o corpus em silêncio.
+            banda_do_peso: None,
             // ⭐ **RECOMENDAÇÃO NOSSA, declarada como tal** (§1.4): nascer
             // ancorado, porque é a configuração em que o gesto roda em torno de
             // um pivô fixo — que é o que o nome do pincel promete.
@@ -408,13 +439,41 @@ impl Pose {
     ) -> Pose {
         let mut cadeia = cadeia::construir(viz, posicoes, escondido, eleito, cursor, ctrl);
         let n = cadeia.n_vertices;
-        // §4 — cada segmento leva as suavizações **independentemente**.
-        for i in 0..cadeia.segmentos.len() {
-            pesos::suavizar(
-                viz,
-                &mut cadeia.pesos[i * n..(i + 1) * n],
-                ctrl.suavizacoes_do_peso,
-            );
+        let segs = cadeia.segmentos.len();
+        if let Some(banda) = ctrl.banda_do_peso {
+            // ⭐⭐⭐ **A LEI ALTERNATIVA: a transição é uma DISTÂNCIA no barro.**
+            //
+            // ⚠️⚠️ **Ela esbate os campos CUMULATIVOS, não as diferenças, e isso
+            // é o que mantém a §3.3 de pé:** o peso de um segmento é a diferença
+            // contra o estado depois do anterior, e uma diferença de dois campos
+            // binários **não é binária** — esbatê-la por «distância à fronteira»
+            // mediria a fronteira errada (a de um anel, não a do conjunto). Os
+            // cumulativos são os `0/1` que o §3.3 cresceu, e a soma das
+            // diferenças dos esbatidos telescopa para o último, exactamente como
+            // antes.
+            let mut cum = vec![0.0f32; n];
+            let mut anterior = vec![0.0f32; n];
+            let mut suave = vec![0.0f32; n];
+            for i in 0..segs {
+                for (v, c) in cum.iter_mut().enumerate().take(n) {
+                    *c += cadeia.pesos[i * n + v];
+                }
+                suave.copy_from_slice(&cum);
+                pesos::por_distancia(viz, posicoes, &mut suave, banda);
+                for (v, (s, a)) in suave.iter().zip(&anterior).enumerate().take(n) {
+                    cadeia.pesos[i * n + v] = s - a;
+                }
+                anterior.copy_from_slice(&suave);
+            }
+        } else {
+            // §4 — cada segmento leva as suavizações **independentemente**.
+            for i in 0..segs {
+                pesos::suavizar(
+                    viz,
+                    &mut cadeia.pesos[i * n..(i + 1) * n],
+                    ctrl.suavizacoes_do_peso,
+                );
+            }
         }
         Pose {
             cadeia,

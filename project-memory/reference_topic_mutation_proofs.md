@@ -22,3 +22,11 @@ metadata:
 - ⚠️ **UMA lei com DOIS guardas devolve «SOBREVIVEU» sobre produto CORRECTO** — mutar um só deixa o outro a tapar o buraco (3× em dois dias na `line/components`: o `Spawned` no reconcile+query, o dedup+`is_ok` do dreno, o `MasterRoot` na escrita+leitura). ⇒ o arnês precisa de uma variante de **duas agulhas**, e só UM dos guardas costuma ser observável sozinho
 - ⚠️ **Uma agulha que não muda a ORDEM não prova um gate de ordem** — envolver a chamada num bloco é um no-op; o que sangra é fazer o marco aparecer **duas vezes** (um marco sem posição)
 - ⛔ **`--lib` não casa teste nenhum numa SHELL** (ela não tem biblioteca): o arnês lê «CONTROLO inválido» e o filtro certo é `--bins`
+- ⛔⛔ **Uma cerca que repete o que a LINGUAGEM já garante lê-se como a cerca que falta** (2026-09-16,
+  `line/components`): o dreno convertia `f32 → u32` com `round().clamp(0, u32::MAX)` e **a mutação
+  que apagou o `clamp` não matou gate nenhum** — em Rust um `as` de vírgula flutuante para inteiro
+  **satura** desde a 1.45 (`-3.0 as u32` é `0`). ⇒ apagou-se a cerca, escreveu-se a razão no doc, e
+  a mutação passou a atacar o que NÃO é de graça (o `round`).
+- ⛔ **Uma fixtura que parte do valor por OMISSÃO não distingue «recusou» de «escreveu o mesmo»**
+  (mesma wave): o gate do índice fora-da-lista começava no `Point` e uma cura falsa que caísse no
+  `Point` devolvia `false` na mesma. ⇒ a fixtura parte de um valor que **não** é o do fallback.

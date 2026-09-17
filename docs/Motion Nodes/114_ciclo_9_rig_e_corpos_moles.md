@@ -82,12 +82,29 @@ O ciclo 7 mediu *«seis dos dez levavam a cadeia inteira para a CPU»* porque um
 cinco são **transformes** no meio: ⇒ *todo grafo que segure seja o que for corre inteiro na CPU*,
 com a única excepção de um bando de boids que ninguém deforme a seguir.
 
-⚠️ **A régua que fecha esta secção é a do ciclo 7** (`cadeia_no_dispositivo`, em
-[`motion_aparencia_probe.rs`](../../crates/ph2d-app-motion/src/motion_aparencia_probe.rs)), que
-pergunta ao **planeador** em vez de ao registo — ela mede a cadeia montada, que é o que o artista
-tem. ⏳ Ela ainda **não** foi corrida sobre este grupo: as duas formas de cadeia são
-`X → scale → output` (as cinco fontes) e `skeleton → X → output` (os cinco transformes), e é a W0
-da §5 que a escreve, com a catraca das duas metades que o ciclo 7 já paga.
+### §2.1 — E agora quem o diz é o PLANEADOR (W0, fechada)
+
+⭐ As duas leituras acima são do **registo**. A que vale para o artista é a do **planeador** sobre a
+cadeia montada, e ela existe: `the_rig_group_route_only_improves`
+([`motion_rig_probe.rs`](../../crates/ph2d-app-motion/src/motion_rig_probe.rs)), com a lista
+`NA_CPU` a nascer com **nove** nomes e a razão de cada um. **Ela passa** ⇒ o planeador confirma, nó
+a nó, o que o registo dizia.
+
+⚠️⚠️ **A forma da cadeia é diferente para cada metade, e a escolha é o MÉTODO:**
+
+| metade | cadeia medida | porquê |
+|---|---|---|
+| **PRODUZ** | `X → scale → output` | ela é o primeiro nó; um `X` sem kernel derruba tudo |
+| **AGE** | `motion.grid → scale → X → output` | mede-se atrás de uma fonte que **já está no dispositivo** |
+
+⛔ **A metade que AGE não pode ser medida atrás do `rig.skeleton`**, que é a cadeia que o artista de
+facto escreve: ele próprio não tem kernel, logo a cadeia cai para a CPU **por causa da fonte** e o
+nó medido nunca é a causa — *uma régua em que o sujeito não pode falhar sozinho não mede o sujeito*.
+
+⭐ **E a catraca tem CONTROLO POSITIVO dentro:** sem ele, um `cadeia_no_dispositivo` que devolvesse
+sempre `false` deixaria as nove asserções verdes e a décima nunca correria — *a catraca ler-se-ia
+como a funcionar sobre um instrumento morto*. **Prova de mutação 2 de 2**: a régua cravada em
+`false` mata o controlo, e tirar **um** nome da `NA_CPU` faz o laço acusá-lo pelo nome.
 
 ---
 
@@ -166,7 +183,7 @@ destrava de uma vez comprimento por osso, ramificação, peso por osso, limites,
 
 | wave | o que é | porquê primeiro |
 |---|---|---|
-| **W0** | A **catraca da rota do grupo** — `cadeia_no_dispositivo` sobre as duas formas de cadeia da §2, com as duas metades (quem está fora da lista fica no dispositivo; quem está dentro continua na CPU) | *Sem a régua, toda a §2 é uma leitura de registo em vez de uma medição do planeador.* É o que o ciclo 7 já paga |
+| **W0** ✅ | A **catraca da rota do grupo** (§2.1) — FECHADA em 2026-09-17, 2 de 2 mutações a sangrar | *Sem a régua, toda a §2 era uma leitura de registo em vez de uma medição do planeador.* |
 | **W1** | O **escritor genérico de coluna** (`motion.set_attribute`) | Destrava seis células de uma vez (§4) e é a caneta que a família não tem |
 | **W2** | **`Strength`/`Mix` como COLUNA** nos constraints | Um item, sete lugares — e nasce melhor que as três referências (§3.1) |
 | **W3** | O **peso por osso** do `rig.skin_deformer` (P0) | *O item que todo rigger encontra no primeiro dia* |

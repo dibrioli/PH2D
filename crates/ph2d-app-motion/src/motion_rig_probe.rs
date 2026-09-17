@@ -175,3 +175,118 @@ fn the_owners_elsewhere_are_still_sources() {
         );
     }
 }
+
+// ---------------------------------------------------------------------------------------------
+// A ROTA — o que o PLANEADOR faz com uma cadeia montada (ciclo 9, W0 — doc 114 §2).
+// ---------------------------------------------------------------------------------------------
+
+/// **Onde corre a cadeia deste nó** — `true` se o planeador a põe INTEIRA no dispositivo.
+///
+/// ⚠️⚠️ **A forma da cadeia é diferente para cada metade, e a escolha é o MÉTODO:**
+///
+/// - quem **PRODUZ** é o primeiro nó ⇒ `X → scale → output`, e um `X` sem kernel derruba tudo;
+/// - quem **AGE** mede-se atrás de uma fonte que **JÁ ESTÁ no dispositivo** (`motion.grid`) ⇒
+///   `grid → scale → X → output`.
+///
+/// ⛔ **A segunda metade NÃO pode ser medida atrás do `rig.skeleton`**, que seria a cadeia que o
+/// artista escreve: ele próprio não tem kernel, logo a cadeia cai para a CPU **por causa da fonte**
+/// e o nó medido nunca é a causa — *uma régua em que o sujeito não pode falhar sozinho não mede o
+/// sujeito*. A pergunta aqui é a do planeador (*«este nó tem rota?»*), e ela não depende de as
+/// colunas da entrada fazerem sentido para a lei dele.
+fn cadeia_no_dispositivo(no: &str) -> bool {
+    use ph2d_nodegraph::graph::{Edge, NodeId};
+    let produz = metade_que_produz().contains(&no);
+    let mut m = crate::motion_state::MotionState::new();
+    let mut fios: Vec<(NodeId, NodeId)> = Vec::new();
+
+    let x = m.doc.graph.add_node(no.to_string());
+    let s = m.doc.graph.add_node("motion.scale".to_string());
+    let o = m.doc.graph.add_node("motion.output".to_string());
+    if produz {
+        fios.push((x, s));
+        fios.push((s, o));
+    } else {
+        let g = m.doc.graph.add_node("motion.grid".to_string());
+        m.doc.graph.set_param(g, "rows", 320.0);
+        m.doc.graph.set_param(g, "cols", 320.0);
+        fios.push((g, s));
+        fios.push((s, x));
+        fios.push((x, o));
+    }
+    for (de, para) in fios {
+        m.doc
+            .graph
+            .connect(Edge {
+                from: (de, 0),
+                to: (para, 0),
+                delayed: false,
+            })
+            .expect("fio");
+    }
+    let dirigidos = crate::motion_bridge::gpu::valores_dirigidos(&mut m, 0.0);
+    ph2d_gpu_cook::plan_driven(&m.doc.graph, &m.registry, &m.registry, o, &dirigidos).is_fully_gpu()
+}
+
+/// ⭐⭐⭐ **A CATRACA DA ROTA DO GRUPO** (ciclo 9, W0 — doc 114 §2).
+///
+/// ⚠️ **A posição dos nós na cadeia é o que faz este número doer mais do que o do ciclo 7:** lá o
+/// nó acusado era o **último** do grafo; aqui cinco são o **primeiro** e cinco são do meio ⇒ *todo
+/// grafo que segure seja o que for corre inteiro na CPU*.
+///
+/// ⚠️⚠️ **As DUAS metades:** um nó FORA da lista tem de ficar no dispositivo (a regressão que
+/// voltaria em silêncio), e um nó DENTRO dela tem de continuar na CPU — senão a lista deixou de o
+/// descrever, e *uma catraca sem censo de obsolescência vira licença* (`CLAUDE.md` §5.0). Quem puser
+/// um destes no dispositivo **apaga a linha dele no mesmo commit**.
+#[test]
+fn the_rig_group_route_only_improves() {
+    /// Os que levam a cadeia para a CPU, cada um com a razão — doc 114 §2.
+    ///
+    /// ⚠️ Esta lista nasce com **nove** de dez, que é o estado medido em 2026-09-17 e a razão de
+    /// ser deste ciclo. Ela só encolhe.
+    const NA_CPU: &[(&str, &str)] = &[
+        ("motion.soft_body", "sem kernel — a W4 do doc 114 §5"),
+        ("motion.verlet_rope", "sem kernel — a W4 do doc 114 §5"),
+        ("motion.wave", "sem kernel — a W4 do doc 114 §5"),
+        ("rig.skeleton", "a familia `rig.*` inteira nao tem kernel"),
+        ("rig.fk", "a familia `rig.*` inteira nao tem kernel"),
+        ("rig.ik_2bone", "a familia `rig.*` inteira nao tem kernel"),
+        ("rig.fabrik", "a familia `rig.*` inteira nao tem kernel"),
+        (
+            "rig.rubber_hose",
+            "a familia `rig.*` inteira nao tem kernel",
+        ),
+        (
+            "rig.skin_deformer",
+            "a familia `rig.*` inteira nao tem kernel",
+        ),
+    ];
+    let g = grupo();
+    assert!(g.len() >= 10, "piso de populacao: {g:?}");
+    for (no, razao) in NA_CPU {
+        assert!(
+            g.contains(no),
+            "`{no}` esta' na lista da CPU mas ja' nao e' do grupo do ciclo 9 — apague a linha"
+        );
+        assert!(
+            !cadeia_no_dispositivo(no),
+            "`{no}` ja' fica no dispositivo — apague a linha dele da NA_CPU («{razao}»)"
+        );
+    }
+    for no in &g {
+        if NA_CPU.iter().any(|(n, _)| n == no) {
+            continue;
+        }
+        assert!(
+            cadeia_no_dispositivo(no),
+            "`{no}` leva a cadeia para a CPU e nao esta' nomeado na NA_CPU — doc 114 §2"
+        );
+    }
+    // ⭐ O CONTROLO POSITIVO da régua: sem ele, um `cadeia_no_dispositivo` que devolvesse SEMPRE
+    // `false` deixava as nove asserções acima verdes e a décima nunca corria — e a catraca lia-se
+    // como a funcionar sobre um instrumento morto.
+    assert!(
+        cadeia_no_dispositivo("motion.boids"),
+        "o controlo positivo caiu: se o `motion.boids` saiu do dispositivo, a regua tem de o dizer \
+         antes de acusar os outros nove"
+    );
+}

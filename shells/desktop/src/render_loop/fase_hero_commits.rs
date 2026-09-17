@@ -81,6 +81,7 @@ impl crate::App {
                 projectile_edits: take(&mut pd.projectile_edits),
                 statemachine_edits: take(&mut pd.statemachine_edits),
                 script_edits: take(&mut pd.script_edits),
+                particles_edits: take(&mut pd.particles_edits),
                 tags_edits: take(&mut pd.tags_edits),
                 tag_tree_edits: take(&mut pd.tag_tree_edits),
                 inspector_queue_dirty: take(&mut pd.inspector_queue_dirty),

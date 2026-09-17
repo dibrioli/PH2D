@@ -9,7 +9,6 @@
 //! ⚠️ **De ARESTA, nunca por quadro** — reescrever sempre apagaria o que o artista está a digitar
 //! antes de o commit da shell chegar (a lei que as três irmãs do ficheiro-pai já pagaram).
 
-use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
 
 use crate::state::InspectorState;
@@ -84,7 +83,7 @@ pub(crate) fn sync_statemachine_fields(
             (crate::ids::INSP_SM_STATE_ON_ENTER, &r.on_enter),
             (crate::ids::INSP_SM_STATE_ON_EXIT, &r.on_exit),
         ] {
-            escreve_texto(host, focus, id, value);
+            crate::sync_text_field::escreve_texto(host, focus, id, value);
         }
     }
     if semeia_seta && let Some(t) = sm.transitions.get(tr) {
@@ -96,31 +95,6 @@ pub(crate) fn sync_statemachine_fields(
                 host.store_mut().set_number_value(id, f64::from(v));
             }
         }
-        escreve_texto(host, focus, crate::ids::INSP_SM_TRANS_ON, &t.on);
-    }
-}
-
-/// Escreve um campo de texto, **menos o que está em FOCO** — ele é do dedo, e reescrevê-lo
-/// enquanto se digita apagaria a letra.
-fn escreve_texto(
-    host: &mut dyn PanelHostInternal,
-    focus: Option<ph2d_a11y::NodeId>,
-    id: ph2d_a11y::NodeId,
-    value: &str,
-) {
-    if focus == Some(id) {
-        return;
-    }
-    if let Some(InteractiveState::TextInput {
-        text,
-        caret,
-        selection_anchor,
-        ..
-    }) = host.store_mut().get_mut(id)
-    {
-        text.clear();
-        text.push_str(value);
-        *caret = text.len();
-        *selection_anchor = None;
+        crate::sync_text_field::escreve_texto(host, focus, crate::ids::INSP_SM_TRANS_ON, &t.on);
     }
 }

@@ -133,6 +133,8 @@ pub fn installed_registry() -> Option<&'static registry::Registry> {
 /// `screens`. Ver o cabeçalho dele: é o primeiro degrau da cura que a catraca do DAG prescreve.
 /// ⭐ O VOCABULÁRIO da fábrica e do ciclo de vida — abaixo do `action_bus` (catraca do DAG).
 pub mod factory_edits;
+/// ⭐⭐⭐ **A secção PARTICLES do Inspector** (TOP-20 #18) — ver o cabeçalho do módulo.
+pub mod particles_edits;
 /// ⭐⭐⭐ **O vocabulário do MOVER DE VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
 pub mod projectile_edits;
 /// ⭐⭐⭐ **O vocabulário do SCRIPT DO ARTISTA** (TOP-20 #16) — o sexto degrau da mesma migração.

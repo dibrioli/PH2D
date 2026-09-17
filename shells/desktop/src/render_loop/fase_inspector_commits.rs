@@ -62,6 +62,8 @@ pub(super) struct InspectorIntents {
     )>,
     /// ⭐ As edições do SCRIPT (TOP-20 #16).
     pub(super) script_edits: Vec<(u64, ph2d_editor_core::script_edits::ScriptFieldEdit)>,
+    /// ⭐ As edições do EMISSOR DE PARTÍCULAS (TOP-20 #18).
+    pub(super) particles_edits: Vec<(u64, ph2d_editor_core::particles_edits::ParticlesFieldEdit)>,
     pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     pub(super) tag_tree_edits: Vec<ph2d_editor_core::TagTreeEdit>,
     pub(super) inspector_queue_dirty: bool,
@@ -118,6 +120,7 @@ impl crate::App {
             projectile_edits,
             statemachine_edits,
             script_edits,
+            particles_edits,
             tags_edits,
             tag_tree_edits,
             mut inspector_queue_dirty,
@@ -243,6 +246,9 @@ impl crate::App {
         inspector_queue_dirty |= statemachine_commits::aplicar(sim, &statemachine_edits);
         // ⭐ O SCRIPT (TOP-20 #16) — fase-filha (o tecto de LOC desta função pôs-no lá).
         inspector_queue_dirty |= script_commits::aplicar(sim, &script_edits);
+        // ⭐ O EMISSOR DE PARTÍCULAS (TOP-20 #18) — o corpo mora na família; aqui é uma linha.
+        inspector_queue_dirty |=
+            ph2d_app_components::particles_inspector::apply_all(sim, &particles_edits);
         // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — na fase-filha, pela mesma razão das irmãs acima e
         // pelo mesmo tecto de LOC (esta função chegou a `202` contra `200` ao ganhar o cérebro).
         // ⛔ *Partir por RESPONSABILIDADE, nunca subir o número* — e a fronteira já estava escrita

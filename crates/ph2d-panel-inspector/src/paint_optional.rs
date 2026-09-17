@@ -247,6 +247,7 @@ pub(crate) fn paint_optional_sections(
     projectile: Option<&ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
     statemachine: Option<&ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
     script: Option<&ph2d_editor_core::script_edits::InspectorScriptInfo>,
+    particles: Option<&ph2d_editor_core::particles_edits::InspectorParticlesInfo>,
     // ⚠️ **Duas selecções e não uma** — as listas de estados e de setas são independentes.
     sm_state_selected: &mut usize,
     sm_trans_selected: &mut usize,
@@ -405,9 +406,11 @@ pub(crate) fn paint_optional_sections(
         header_h,
         projectile,
     );
-    // ⚠️ **`y = ` outra vez** — uma chamada cujo `y` se deita fora empilha a secção seguinte por
-    // cima dela.
-    y = crate::paint_optional_factory::paint_statemachine_section(
+    // ⭐⭐ **A CAUDA da cadeia mora num irmão** — as quatro secções da fila do TOP-20 (o cérebro, o
+    // script, o emissor e as tags). ⚠️ **O corte foi imposto pelo tecto de FUNÇÃO** (esta chegou a
+    // `214` contra `200` ao ganhar o emissor) **e é o certo por responsabilidade**: elas são as que
+    // chegam por wave, e a próxima entra num sítio só.
+    crate::paint_optional_top20::paint_top20_sections(
         scene,
         text_system,
         theme,
@@ -419,36 +422,13 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        statemachine,
-        *sm_state_selected,
-        *sm_trans_selected,
-    );
-    y = crate::paint_optional_factory::paint_script_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        script,
-    );
-    crate::paint_optional_factory::paint_tags_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        tags,
+        crate::paint_optional_top20::Top20 {
+            statemachine,
+            script,
+            particles,
+            tags,
+            sm_state_selected: *sm_state_selected,
+            sm_trans_selected: *sm_trans_selected,
+        },
     )
 }

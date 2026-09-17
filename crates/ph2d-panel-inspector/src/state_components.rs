@@ -12,6 +12,7 @@
 //! ⛔ **Nunca subir o número do cap: ele só desce.**
 
 use super::state::*;
+use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
 use ph2d_editor_core::screens::hero::{
     InspectorActionInfo, InspectorAudioInfo, InspectorCameraInfo, InspectorFactoryInfo,
@@ -73,6 +74,15 @@ pub fn set_current_inspector_statemachine(info: Option<InspectorStateMachineInfo
 
 pub(crate) fn current_inspector_statemachine() -> Option<InspectorStateMachineInfo> {
     CURRENT_INSPECTOR_STATEMACHINE.with(|c| c.borrow().clone())
+}
+
+/// ⭐ O snapshot do EMISSOR DE PARTÍCULAS (TOP-20 #18) — a shell escreve-o todo o quadro.
+pub fn set_current_inspector_particles(info: Option<InspectorParticlesInfo>) {
+    CURRENT_INSPECTOR_PARTICLES.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_particles() -> Option<InspectorParticlesInfo> {
+    CURRENT_INSPECTOR_PARTICLES.with(|c| c.borrow().clone())
 }
 
 /// ⭐ O snapshot do SCRIPT (TOP-20 #16) — a shell escreve-o todo o quadro.

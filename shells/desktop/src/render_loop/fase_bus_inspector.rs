@@ -228,6 +228,10 @@ impl crate::App {
             EditorAction::InspectorScriptEdit { entity_bits, edit } => {
                 pd.script_edits.push((entity_bits, edit));
             }
+            // ⭐ **A secção PARTICLES** (TOP-20 #18), pela mesma razão.
+            EditorAction::InspectorParticlesEdit { entity_bits, edit } => {
+                pd.particles_edits.push((entity_bits, edit));
+            }
             EditorAction::InspectorTagsEdit { entity_bits, edit } => {
                 pd.tags_edits.push((entity_bits, edit));
             }

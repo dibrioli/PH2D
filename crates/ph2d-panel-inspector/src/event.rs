@@ -66,6 +66,10 @@ pub(crate) fn apply_event(
     if crate::event_projectile::apply_projectile_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    // ⭐ O EMISSOR DE PARTÍCULAS (TOP-20 #18) — sem estado de painel: um objecto tem UM emissor.
+    if crate::event_particles::apply_particles_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐⭐⭐ **O CÉREBRO** (TOP-20 #15) — ele precisa do estado do painel (as duas listas têm uma
     // linha aberta cada), como a tabela de acções e os timers.
     if crate::event_statemachine::apply_statemachine_event(state, host, ev) {

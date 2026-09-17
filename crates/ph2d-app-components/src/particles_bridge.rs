@@ -92,6 +92,17 @@ impl ParticlesState {
         self.runs.len()
     }
 
+    /// **Quantas partículas de UM objecto vivem agora** — o número que o Inspector mostra.
+    ///
+    /// ⚠️ **Por OBJECTO e não o total**: a pergunta que o painel responde é *«este emissor está a
+    /// fazer alguma coisa?»*, e um total tornaria a resposta dependente do vizinho.
+    /// `0` também é a resposta de quem ainda não nasceu — que é exactamente o que a linha de aviso
+    /// da secção quer dizer.
+    #[must_use]
+    pub fn alive_of(&self, bits: u64) -> usize {
+        self.runs.get(&bits).map_or(0, EmitterRun::alive)
+    }
+
     /// **O quadro** — ouve os sinais, anda o relógio, e deixa em [`Self::instances`] o que desenhar.
     ///
     /// `heard` são os nomes que soaram neste quadro; `rank_of` dá a profundidade de desenho de um

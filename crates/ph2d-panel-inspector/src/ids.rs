@@ -21,14 +21,16 @@ mod inspector_audio;
 pub use inspector_audio::*;
 mod inspector_camera;
 mod inspector_factory;
-mod inspector_projectile;
 /// ⭐ Os ids da secção SCRIPT (TOP-20 #16) — ver o cabeçalho.
+mod inspector_particles;
+mod inspector_projectile;
 mod inspector_script;
 /// ⭐ Os ids da secção STATE MACHINE (TOP-20 #15) — ver o cabeçalho.
 mod inspector_statemachine;
 mod inspector_topdown;
 pub use inspector_camera::*;
 pub use inspector_factory::*;
+pub use inspector_particles::*;
 pub use inspector_projectile::*;
 pub use inspector_script::*;
 pub use inspector_statemachine::*;

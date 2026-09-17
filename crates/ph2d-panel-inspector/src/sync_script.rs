@@ -68,7 +68,12 @@ pub(crate) fn sync(
     inspector_state.last_script_sig = Some(sig);
     let focus = host.store().focus_id();
     let drag = host.store().number_input_drag().map(|d| d.id);
-    escreve_texto(host, focus, crate::ids::INSP_SCRIPT_SOURCE, &info.source);
+    crate::sync_text_field::escreve_texto(
+        host,
+        focus,
+        crate::ids::INSP_SCRIPT_SOURCE,
+        &info.source,
+    );
     for (i, p) in info.props.iter().enumerate() {
         match &p.value {
             V::Number(v) => {
@@ -82,7 +87,7 @@ pub(crate) fn sync(
             }
             V::Text(t) => {
                 if let Some(&id) = crate::ids::INSP_SCRIPT_TEXT.get(i) {
-                    escreve_texto(host, focus, id, t);
+                    crate::sync_text_field::escreve_texto(host, focus, id, t);
                 }
             }
             V::Bool(_) => {}
@@ -110,29 +115,5 @@ fn faixa(
         store.clear_number_drag_rate(id);
     } else {
         store.set_number_drag_rate(id, passo);
-    }
-}
-
-/// Escreve um campo de texto, **menos o que está em FOCO** — ele é do dedo.
-fn escreve_texto(
-    host: &mut dyn PanelHostInternal,
-    focus: Option<ph2d_a11y::NodeId>,
-    id: ph2d_a11y::NodeId,
-    value: &str,
-) {
-    if focus == Some(id) {
-        return;
-    }
-    if let Some(InteractiveState::TextInput {
-        text,
-        caret,
-        selection_anchor,
-        ..
-    }) = host.store_mut().get_mut(id)
-    {
-        text.clear();
-        text.push_str(value);
-        *caret = text.len();
-        *selection_anchor = None;
     }
 }

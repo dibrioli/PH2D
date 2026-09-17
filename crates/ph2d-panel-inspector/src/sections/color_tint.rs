@@ -12,7 +12,11 @@ use ph2d_i18n::tr;
 /// so the picker opens from the colored chip — matching grid-snap's
 /// color row and the Widget Gallery "Tint" sample.
 #[allow(clippy::too_many_arguments)]
-fn paint_tint_swatch_cell(
+/// ⚠️ `pub(super)` desde o TOP-20 #18: a secção PARTICLES pinta as duas cores dela por AQUI. Uma
+/// segunda linha de cor escrita noutro sítio seria uma segunda resposta a *«como se pinta uma
+/// amostra»* — e a coluna de animação (que este ajudante reserva) é exactamente o que a segunda
+/// esqueceria.
+pub(super) fn paint_tint_swatch_cell(
     cell: Rect,
     label: &str,
     swatch_id: NodeId,

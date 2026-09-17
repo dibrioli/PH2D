@@ -28,6 +28,8 @@ mod event_factory;
 mod event_instance;
 mod event_joint;
 mod event_ordering;
+/// ⭐ O despacho da secção PARTICLES — irmão do `event` por CAP de função.
+mod event_particles;
 mod event_physics;
 mod event_player;
 mod event_precision;
@@ -58,6 +60,8 @@ mod paint_head;
 /// ⭐ **As TRÊS seções com ESTADO DE PAINEL** — irmã do `paint_frame_shared` pelo teto de 600.
 mod paint_optional;
 mod paint_optional_factory;
+/// ⭐⭐ A CAUDA da cadeia de secções — as quatro da fila do TOP-20; irmã pelo tecto de FUNÇÃO.
+mod paint_optional_top20;
 mod popovers;
 mod populate;
 /// ⭐ O registo dos widgets da secção SIGNAL ACTIONS — irmão por CAP de ficheiro.
@@ -69,6 +73,8 @@ mod populate_camera;
 mod populate_factory;
 /// ⭐⭐ O registo do CARTÃO de instância — irmão por assunto, ver o cabeçalho de lá.
 mod populate_instance;
+/// ⭐ O registo dos widgets da secção PARTICLES — irmão por CAP de ficheiro.
+mod populate_particles;
 mod populate_physics;
 mod populate_player;
 mod populate_projectile;
@@ -90,6 +96,8 @@ mod state_popovers;
 /// ⚠️ As duas conversões de tinta — irmão do `state` por CAP de LOC. Ver o cabeçalho dele.
 mod state_tint;
 mod sync;
+/// ⭐ A semente da secção PARTICLES — irmã do `sync_sections` por CAP de ficheiro.
+mod sync_particles;
 mod sync_physics;
 /// ⭐ A semente da secção SCRIPT — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_script;
@@ -98,6 +106,8 @@ mod sync_sections;
 mod sync_sprite_value;
 /// ⭐ A semente da secção STATE MACHINE — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_statemachine;
+/// ⭐ A SEMENTE de um campo de texto — a porta única das três secções que os têm.
+mod sync_text_field;
 
 /// The §11 Bake button's label — exported so a gate can hold the claim that
 /// the button shows the range it would cover.
@@ -176,7 +186,8 @@ pub use state::{probe_current_instance, probe_current_properties, texture_slot_p
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{
     set_current_inspector_action, set_current_inspector_audio, set_current_inspector_camera,
-    set_current_inspector_factory, set_current_inspector_projectile, set_current_inspector_script,
+    set_current_inspector_factory, set_current_inspector_particles,
+    set_current_inspector_projectile, set_current_inspector_script,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
 };
 

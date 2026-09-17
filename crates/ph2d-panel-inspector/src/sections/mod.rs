@@ -62,6 +62,8 @@ pub(crate) mod joint;
 mod joint_pair_rows;
 mod material_blend;
 pub(crate) mod ordering;
+/// ⭐⭐⭐ A secção PARTICLES (TOP-20 #18) — ver o cabeçalho.
+pub(crate) mod particles;
 mod physics;
 mod physics_area_rows;
 /// A face de CORPO do §11 — as rows de quem tem `RigidBody` + `Collider`.

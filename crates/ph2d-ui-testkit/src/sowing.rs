@@ -197,6 +197,18 @@ impl MockPanelHost {
         }
     }
 
+    /// **A cor que o SELECTOR devolveu**, na tabela lateral `widget_colors` — o que um arrasto no
+    /// selector de cor teria deixado lá antes de a semente do painel a ler.
+    ///
+    /// **Porque é que o testkit precisava disto:** uma amostra de cor não carrega valor nenhum
+    /// (é um `Plain`), e quem leva a escolha ao documento é a SEMENTE do painel, que compara a
+    /// tabela lateral com o instantâneo. Sem esta porta, um seam consegue provar que o clique
+    /// **abre** o selector e **não** consegue provar que a cor escolhida chega ao barramento — e
+    /// apagar esse braço deixava toda a suíte verde com a cor a morrer no painel.
+    pub fn set_widget_color(&mut self, id: NodeId, rgba: [u8; 4]) {
+        self.store.set_widget_color(id, rgba);
+    }
+
     /// Mutable access às definições do projeto — unidade de leitura, `pixels_per_meter`, snaps.
     ///
     /// **Porque é que o testkit precisava disto:** havia `project()` (leitura) e não havia o par.

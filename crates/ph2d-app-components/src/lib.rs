@@ -81,7 +81,6 @@ pub mod component_smoke;
 /// ⭐⭐⭐ **A PONTE da FÁBRICA e da MORTE** (TOP-20 #11 e #12) — os factos que a lei pura devolve
 /// viram objectos no mundo.
 pub mod factory_bridge;
-/// ⭐⭐⭐ As duas cenas do TOP-20 #9 (`PH2D_TAGS_SMOKE=1|2`) — ver o cabeçalho do módulo.
 /// ⭐⭐⭐ **A FÁBRICA e o CICLO DE VIDA** (TOP-20 #11 e #12) — as duas cenas do dono.
 pub mod factory_smoke;
 pub mod instance_added;
@@ -107,13 +106,17 @@ pub mod instance_verbs;
 pub mod instance_verbs_walk;
 pub mod instantiate;
 pub mod master_editing;
-/// ⭐ TOP-20 #16 — a ponte dos scripts do artista (o quadro, o ledger e o rebobinar).
 /// ⭐⭐⭐ **A ponte dos emissores de partículas** (TOP-20 #18) — ver o cabeçalho do módulo.
 pub mod particles_bridge;
+/// ⭐⭐⭐ TOP-20 #18 — a secção PARTICLES do Inspector: o instantâneo e o dreno.
+pub mod particles_inspector;
+/// ⭐⭐⭐ O smoke do EMISSOR DE PARTÍCULAS (TOP-20 #18) — ver o cabeçalho.
+pub mod particles_smoke;
 pub mod prefab_stage;
-/// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
+/// ⭐⭐⭐ **O PROJÉCTIL** (TOP-20 #14) — as duas cenas do dono.
 pub mod projectile_smoke;
 pub mod scene_ctx;
+/// ⭐ TOP-20 #16 — a ponte dos scripts do artista (o quadro, o ledger e o rebobinar).
 pub mod script_bridge;
 /// ⭐ TOP-20 #16 — a secção SCRIPT do Inspector: o instantâneo e o dreno.
 pub mod script_inspector;
@@ -123,8 +126,10 @@ pub mod signal_action_smoke;
 /// ⭐⭐⭐ O smoke do CÉREBRO AUTORÁVEL (TOP-20 #15) — ver o cabeçalho.
 pub mod statemachine_smoke;
 pub mod tags_doc;
+/// ⭐⭐⭐ As duas cenas do TOP-20 #9 (`PH2D_TAGS_SMOKE=1|2`) — ver o cabeçalho do módulo.
 pub mod tags_smoke;
 pub mod timer_smoke;
+/// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
 pub mod topdown_smoke;
 
 /// ⚠️ **`#[cfg(any(test, feature = "test-support"))]` e não `#[cfg(test)]`** (HOWTO §2.5): daqui a
@@ -197,6 +202,9 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         r("PH2D_STATEMACHINE_SMOKE", statemachine_smoke::CENAS),
         // ⭐⭐⭐ O SCRIPT DO ARTISTA (TOP-20 #16): `=1` três bonecos, um ficheiro.
         r("PH2D_SCRIPT_SMOKE", script_smoke::CENAS),
+        // ⭐⭐⭐ O EMISSOR DE PARTÍCULAS (TOP-20 #18): `=1` a galeria das quatro fontes · `=2` o
+        // rasto e a tocha. ⚠️ O `max_level` é **contado** no `match` do `montar`.
+        r("PH2D_PARTICLES_SMOKE", particles_smoke::CENAS),
     ],
 };
 

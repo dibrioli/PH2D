@@ -455,6 +455,8 @@ pub(super) struct DrainOut {
     )>,
     /// ⭐ As edições do SCRIPT (TOP-20 #16).
     pub(super) script_edits: Vec<(u64, ph2d_editor_core::script_edits::ScriptFieldEdit)>,
+    /// ⭐ As edições do EMISSOR DE PARTÍCULAS (TOP-20 #18).
+    pub(super) particles_edits: Vec<(u64, ph2d_editor_core::particles_edits::ParticlesFieldEdit)>,
     // ⭐ A secção TAGS (TOP-20 #9) — ver o dreno dela no `fase_inspector_commits`.
     pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     // ⭐⭐⭐ O painel TAGS (TOP-20 #9, W4) — gestos sobre a ÁRVORE, que não é do mundo. Ver o

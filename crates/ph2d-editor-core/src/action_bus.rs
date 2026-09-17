@@ -392,6 +392,14 @@ pub enum EditorAction {
         edit: crate::script_edits::ScriptFieldEdit,
     },
 
+    /// Inspector → shell, a secção PARTICLES (TOP-20 #18, W3).
+    InspectorParticlesEdit {
+        /// A quem ela se aplica.
+        entity_bits: u64,
+        /// O que mudou.
+        edit: crate::particles_edits::ParticlesFieldEdit,
+    },
+
     /// Inspector → shell, a secção PROJECTILE MOTION (TOP-20 #14, W3).
     ///
     /// ⚠️ **Uma variante para o componente inteiro**, como as irmãs.

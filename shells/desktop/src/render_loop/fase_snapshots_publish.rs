@@ -13,6 +13,12 @@ use super::*;
 mod readouts;
 use readouts::SnapshotReadouts;
 
+/// ⭐ **Os instantâneos que o `publish` não pode calcular** (SCRIPT e PARTICLES) — fase-filha, num
+/// ficheiro irmão, pelo tecto de LOC desta função. ⚠️ O nome TEM de começar por `fase_`: o texto
+/// emendado do quadro colhe só esses.
+#[path = "fase_snapshots_tardios.rs"]
+mod tardios;
+
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_snapshots_publish(
@@ -54,6 +60,7 @@ impl crate::App {
             tags,
             tags_problem,
             script,
+            particles,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -202,17 +209,20 @@ impl crate::App {
                 tags_problem.as_ref(),
             ));
         }
-        // ⭐⭐⭐ **A secção SCRIPT** (TOP-20 #16) — publicada à parte porque só ela precisa da VM, que
-        // o `publish` acima não recebe. O corpo mora na `ph2d_app_components::script_inspector`.
-        ph2d_panel_inspector::set_current_inspector_script(hero.gizmo.selection.and_then(|b| {
-            ph2d_app_components::script_inspector::build_info(
-                sim,
-                script.as_ref(),
-                b,
-                hero.gizmo.selected_len(),
-                self.playhead.is_playing(),
-            )
-        }));
+        // ⭐⭐ **As secções que o `publish` NÃO pode calcular** — na fase-filha, num ficheiro irmão.
+        //
+        // ⚠️ **O corte foi imposto pelo tecto de função** (esta chegou a `208` contra `200` ao
+        // ganhar o emissor) **e é o certo por RESPONSABILIDADE**: as duas leem coisas que não estão
+        // no mundo (a VM dos scripts, o relógio e as partículas vivas da corrida), e por isso é que
+        // nenhuma delas cabe na lista de argumentos do `publish`.
+        tardios::publica(
+            sim,
+            script.as_ref(),
+            particles,
+            hero.gizmo.selection,
+            hero.gizmo.selected_len(),
+            self.playhead.is_playing(),
+        );
         Some(tool_preview_bits)
     }
 }

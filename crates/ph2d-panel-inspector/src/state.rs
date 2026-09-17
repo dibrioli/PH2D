@@ -21,6 +21,7 @@ use ph2d_editor_core::screens::hero::{
 };
 // ⚠️ **O snapshot do mover de vista de cima vive no módulo de VOCABULÁRIO** (abaixo do
 // `action_bus`), e não no `screens::hero` — ver o cabeçalho do `topdown_edits`.
+use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
 use ph2d_editor_core::script_edits::InspectorScriptInfo;
 use ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo;
@@ -100,6 +101,9 @@ pub struct InspectorState {
     pub last_sm_trans_row: Option<usize>,
     /// SCRIPT — a ASSINATURA do último instantâneo semeado (a aresta da semente; ver `sync_script`).
     pub last_script_sig: Option<u64>,
+    /// PARTICLES — idem, e pela mesma razão: 19 números e 4 textos semeados por quadro apagariam
+    /// o que o artista está a digitar antes de o commit da shell voltar.
+    pub last_particles_sig: Option<u64>,
 }
 
 thread_local! {
@@ -206,6 +210,11 @@ thread_local! {
 
     /// ⭐⭐⭐ **O snapshot da secção SCRIPT** (TOP-20 #16).
     pub(crate) static CURRENT_INSPECTOR_SCRIPT: std::cell::RefCell<Option<InspectorScriptInfo>> =
+        const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção PARTICLES** (TOP-20 #18).
+    pub(crate) static CURRENT_INSPECTOR_PARTICLES:
+        std::cell::RefCell<Option<InspectorParticlesInfo>> =
         const { std::cell::RefCell::new(None) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**

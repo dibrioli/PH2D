@@ -602,6 +602,13 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-inspector/src/paint_optional_factory.rs",
         "as duas MOLDURAS das seccoes FACTORY e LIFECYCLE, cortadas do paint_optional pelo teto de ficheiro de painel; nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
     ),
+    // ⭐ **Nasceu em 2026-09-16 do corte que a secção PARTICLES impôs à `paint_optional_sections`**
+    // (214 de 200, um tecto de FUNÇÃO desta vez) — a QUINTA vez que este ficheiro regista a mesma
+    // forma. ⚠️ **A isenção é MEDIDA**: zero ocorrências de `NodeId`, `hit_index.` ou `register(`.
+    (
+        "ph2d-panel-inspector/src/paint_optional_top20.rs",
+        "a CAUDA da cadeia — as quatro seccoes da fila do TOP-20 (cerebro, script, emissor, tags); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
+    ),
     (
         "ph2d-panel-inspector/src/paint_optional.rs",
         "orquestrador das CINCO seccoes OPCIONAIS (§11 Animation, §12 Sockets, TIMERS, SIGNAL ACTIONS, AUDIO); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame. ⚠️ Chamava-se `paint_stateful.rs` ate' 2026-09-09: a AUDIO nao tem lista e por isso nao tem linha aberta, e a propriedade que dava nome ao ficheiro deixou de o descrever",

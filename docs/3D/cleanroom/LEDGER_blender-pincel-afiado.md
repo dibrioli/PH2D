@@ -1147,3 +1147,76 @@ então nenhuma das duas curas enfraquece o gate.
   vezes, e só para responder à pergunta de parede *«`VIEW`/`SCENE` são nomes públicos ou internos?»*:
   uma contagem e uma linha do **harness do E** (não do fonte do alvo), com o nome da propriedade
   mascarado antes de ser impresso. Nada disso entra no report para a janela I.
+
+---
+
+## 3.ª EMENDA DO E — 2026-09-16 (resposta à 3.ª passagem do R-pré: B4 + as 14 erratas E28–E41)
+
+> ⛔ **Esta emenda não corre o oráculo, não muda uma medição e não regenera uma fixtura.** Ela muda
+> o que a **página DIZ**. As 30 fixturas ficam byte-a-byte como foram publicadas — conferido pelo
+> `git status` do commit anterior e pelo conferidor da família (`30 ficheiros, 0 problemas`).
+>
+> ⭐ **Método desta emenda, e ele é a resposta ao próprio B4:** todo número da §16 foi
+> **RE-DERIVADO das fixturas PUBLICADAS**, por um instrumento novo
+> (`oracle/verifica_publicadas.py`) que lê o `.txt.gz`, reconstrói a malha da **fórmula do
+> cabeçalho** e não toca no `out2/`. O que esse instrumento não alcança está agora **marcado na
+> página como medido fora do corpus**.
+
+### B4 — o bloqueador: a barra do G-13 não era alcançável pela leitura que ele nomeia
+
+**Cura escolhida: NOMEAR a leitura** (a outra saída — subir a barra para `≥ 0,6` px — enfraquecia o
+gate sem necessidade, e a margem para a candidata errada aguenta as duas).
+
+Re-derivado por mim, das três fixturas que o gate declara, com o **maior desvio à grelha uniforme**
+ajustada por mínimos quadrados:
+
+| leitura do pico | `esp060` | `esp100` | `esp150` |
+|---|---|---|---|
+| **vértice mais alto** | `0,558` px | `0,646` px | `0,515` px |
+| **parábola nos três vértices (sub-célula)** | `0,081` px | **`0,093`** px | `0,088` px |
+| desvio-padrão dos passos, sub-célula | `0,040` | `0,080` | **`0,094`** |
+
+⇒ o G-13 passa a dizer, na coluna «mede», **como** a posição de um dab se lê de uma malha; a coluna
+«aprovado» passa a ser **`0,093` px** (o desvio à grelha, que é a grandeza que a barra de `0,5` px
+julga), e o `0,094` — que era o desvio-padrão dos passos, **outra grandeza** — sai dali. A leitura
+simples e o seu `0,515`–`0,646` px ficam escritos ao lado do gate, **como razão de a leitura estar
+nomeada**. «Errado» passa a `12,43` · `20,10` · `29,10` px, re-derivado par a par.
+
+⚠️ **O gémeo procurado (a instrução do R):** o `0,094` só aparecia no G-13. Mas a busca achou o
+gémeo da **agregação**, que é a E28, e foi curado à raiz — ver abaixo.
+
+### As 14 erratas, uma a uma (todas re-derivadas das fixturas publicadas)
+
+| # | o que a página passou a dizer | número medido por mim |
+|---|---|---|
+| **E28** | a §16.1 declara a **agregação** (`D`, `W50` e `r` agregam pela mediana sobre as estações com `r` DEFINIDA) e diz que as duas agregações só divergem na banda do pen-down; a §16.9 passa a usar a mesma e imprime `0,0389` | `0,0389` (definida) contra `0,0225` (todas); nas outras **sete** bandas coincidem ao 4.º decimal |
+| **E29** | a prova de completude do §16.7 passa a `1,200e-7`, com os `1 114` vértices movidos em comum | `1,2000e-07`, `0` só num lado e `0` só no outro |
+| **E30** | o contra-exemplo do G-15 passa a dizer **«nas duas PONTAS do traço»** | as bandas interiores continuam a ler `0,002 / 0,006 / 0,314` |
+| **E31** | o G-17 imprime o aprovado da **população que ele declara**, e a cerca *«com o dispositivo que temos»* passa para o **NOME do gate** | `3,6e-12` (vista) e **`0` ao bit** (cena), sobre `300` e `410` vértices movidos comuns |
+| **E32** | o G-18 nomeia a agregação (mediana ao longo da fila) e escreve a outra ao lado | `0,084 %` (mediana) · `0,115 %` (máximo global) |
+| **E33** | o G-14 passa a medir **PROFUNDIDADE** e ganha **duas metades** (a `4` px as três leem um dab; a `5` px leem mais) | um dab `0,014763483` · `0,014763472` · `0,014763474` (espalhamento `1,1e-8`); dois dabs `0,024479` · `0,024421` · `0,017177`; e o «errado» é a MESMA rampa a `4` px em cena: `0,022056` |
+| **E34** | o «errado» do G-20 passa a ser a **fixtura irmã** | `154` vértices com linha `s` de `2 497` publicados (contra `0` no lado aprovado) |
+| **E35** | a §16.6 passa a distinguir a **razão** da **contagem** | `0,20` dabs por píxel no topo · `0,40` a `60°` · **`1,91`** a `84°`; `1/cos 84° = 9,6×` |
+| **E36** | três populações passam a estar marcadas como **medidas fora do corpus** (o controlo de resolução em duas malhas · o cursor parado a `60°`/`75°` · a sonda de linearidade e os saltos de `2·3·5·8` px), e o **controlo de resolução foi REFEITO por sub-amostragem da fixtura publicada** | `0,023 / 0,019 / —` · `0,314 / 0,306 / 0,307` · `0,977 / 0,973 / 0,975` a `6,8` / `3,4` / `2,3` amostras por período ⇒ **a conclusão sustenta-se**. E a esfera lê `0,2025` na banda `5–15°` (a página dizia `0,2028`) |
+| **E37** | a justificação do subconjunto passa a dar a faixa real e a nomear as malhas que a obrigam | `9 409` · `37 249` · `42 947` · `93 757` · `185 977` · `1 079 102` |
+| **E38** | «as quatro linhas do §16.9» passa a **«quatro das CINCO»**, com a do sentido e a do cursor parado marcadas | — |
+| **E39** | a §16.4 passa a ter **uma** descrição do percurso, com as três coordenadas separadas (cursor · dabs · enquadramento) | cursor `+89,5°` → `−20°`; dabs `+84,25°` → `−15,4°`/`−19,0°`/`−19,2°` |
+| **E40** | a sub-afirmação *«a corda ajusta melhor que o arco»* passa a **declarada como não resolvida por este corpus**, com a nota de que nenhum gate a usa | corda `+0,09 %` contra arco `+0,22 %` a `150 %` — `0,13` pontos de diferença, abaixo da quantização do pico |
+| **E41** | a coluna «nosso» do §16.7 passa a dizer **`DrawSharp`**, e a página diz porque a §6 imprime `7,5 %` para o `Draw` genérico | — |
+
+### O que esta emenda NÃO faz
+
+- ⛔ **Não regenera nada.** Se o R-pré da 4.ª passagem quiser as populações que faltam publicadas
+  (o controlo de resolução em duas malhas · o cursor parado a `60°`/`75°` · a sonda de linearidade ·
+  o controlo em VISTA do sentido do gesto), isso é uma corrida NOVA do oráculo e uma emenda própria.
+- ⛔ **Não toca nas §1–§15** nem em nenhum dos gates G-1..G-12.
+- ⚠️ **Não atesta a §16** — o atestado é acto do R.
+
+### Filtragem e sweeps desta emenda
+
+- **Filtragem §4.3** re-executada sobre o texto novo: zero código, zero nome interno, zero
+  comentário, zero wording de manual ou de discussão pública, zero tabela transcrita.
+- **Controlo do instrumento PRIMEIRO** (`exit 0`, todos os canais), depois **as nove vassouras** da
+  pasta sobre a espec, as 30 fixturas, os READMEs, este ledger e o texto do report final do E.
+- **Higiene:** a vassoura foi descodificada só pelo próprio `cleanroom-sweep.sh`, em memória; o
+  instrumento de re-derivação e as suas saídas vivem em `~/Referencias/blender-pincel-afiado/`.

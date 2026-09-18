@@ -100,6 +100,35 @@ bloco "a regua perde o PISO de populacao (verde a medir nada)" ph2d-host-desktop
   '        while let Some(k) = fonte[de..].find("screen_to_world") {' \
   '        while let Some(k) = fonte[de..].find("screen_to_world_NUNCA") {'
 
+echo "════ O OUTRO LADO DO PAR — quem DESENHA ════"
+
+bloco "um realce da seleccao volta a' janela crua" ph2d-host-desktop quem_desenha_no_mundo_tambem \
+  "$SHELL_SRC/render_loop/fase_selection_highlight.rs" 1 \
+  '                self.flip_state.active_layer,
+                &l2w,
+                camera,
+                crate::scene_mapping::janela(hero.view.center_split, surface.size()),' \
+  '                self.flip_state.active_layer,
+                &l2w,
+                camera,
+                surface.size(),'
+
+bloco "a SONDA do undo do osso volta a' janela crua" ph2d-host-desktop quem_desenha_no_mundo_tambem \
+  "$SHELL_SRC/bone_undo_probe.rs" 1 \
+  'gfx.scene_window());' \
+  'gfx.surface.size());'
+
+echo "════ A REGUA do outro lado — as DUAS cegueiras que ela ja' pagou ════"
+
+# ⛔⛔ A prova da CADEIA de tres niveis SOBREVIVEU, e ela disse a verdade: depois de a regua passar
+#    a olhar o RECEPTOR, a caminhada ficou morta. A regua foi SIMPLIFICADA para um nivel — «uma
+#    linha que a mutacao nao consegue matar nao e' lei, e' comentario com sintaxe de codigo».
+
+bloco "a regua deixa de ver o camera como RECEPTOR" ph2d-host-desktop quem_desenha_no_mundo_tambem \
+  "shells/desktop/tests/it/todo_aponte_passa_pela_janela_da_cena.rs" 1 \
+  '            if !antes.contains("camera")' \
+  '            if !antes.contains("CAMERA_QUE_NAO_EXISTE")'
+
 echo
 echo "════ $((TOTAL-FALHAS)) de $TOTAL sangraram ════"
 [ "$FALHAS" = 0 ] || exit 1

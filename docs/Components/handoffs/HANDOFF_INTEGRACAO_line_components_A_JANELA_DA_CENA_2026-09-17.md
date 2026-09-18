@@ -85,15 +85,62 @@ Portão: `15 090` testes verdes · censos da árvore combinada `90/90` · clippy
    **os dois que estavam certos** (não sabia ler `let (sw, sh) = …`). As duas cegueiras têm agora
    prova de mutação própria.
 
+## §5-bis — ⭐⭐⭐ O OUTRO LADO DO PAR, e a acusação ERRADA que ele desfez
+
+> A §6 desta página, escrita de manhã, listava **~12 sítios** de projecção como dívida aberta.
+> Medidos um a um, **a maioria já estava certa** — e a razão é um SEGUNDO jeito de estar certo que
+> a minha régua não conhecia.
+
+⛔⛔ **Uma `surface.size()` ao lado de um `camera` NÃO é prova de defeito.** O consumidor pode
+receber o `center_split` **em separado** e derivar a banda lá dentro — é o que fazem o
+`scene_px_per_world` (`fase_sim_extract`), o `publish_editor_inputs` (`fase_motion_bridge`), o
+`draw_warp_gizmo` e o `collider_gizmo_overlay::draw` (`fase_vector_overlays`). *Quatro acusações,
+quatro inocentes*, e a cura delas teria sido trabalho sobre código correcto.
+
+**A população real eram SEIS:**
+
+* as **cinco** do `fase_selection_highlight` — o realce da selecção do Flip, as âncoras, os
+  objectos vazios, o tween e o vão —, que escrevem no `vector_scene` em coordenadas de MUNDO e
+  passavam `camera, surface.size()` **sem** o split ⇒ com o centro partido o contorno fica ao lado
+  do objecto que ele contorna;
+* ⭐⭐ a **SONDA do undo do osso** (`bone_undo_probe`), e ela é o achado: ela projecta mundo→ecrã e
+  depois **dispara um ponteiro sintético**, que a wave da manhã passou a inverter pela BANDA ⇒ *a
+  minha própria cura partiu a sonda*, pondo as duas metades dela a discordar. Uma régua que mede
+  outro programa é pior que nenhuma.
+
+⇒ gate novo (`quem_desenha_no_mundo_tambem_usa_a_banda`), que aceita **as duas** formas de estar
+certo: passar a banda, ou passar o split ao lado. Censo: `16` chamadas com câmera, todas na banda.
+
+### ⛔⛔ E DUAS coisas que a régua nova me ensinou, as duas por mutação
+
+1. **A cura tornou a régua CEGA.** Depois da conversão, a chamada que envolve a `surface.size()`
+   passou a ser a própria porta (`janela(split, size)`), que não leva câmera nenhuma — a régua
+   deixou de as ver e o **piso de população reprovou** (`4` de `8`). *Uma régua que a cura torna
+   cega aprova a recaída seguinte.*
+2. **O `camera` pode ser o RECEPTOR e não um argumento**, e em várias linhas
+   (`gfx\n.camera\n.world_to_screen(…)`) o nome extraído é só `.world_to_screen` — foi assim que a
+   régua passou ao lado da sonda do osso. A cura é olhar o texto ANTES da chamada.
+3. ⭐ **E uma mutação SOBREVIVEU, com razão:** a caminhada de três níveis na cadeia de chamadas
+   ficou **morta** quando a régua passou a olhar o receptor. Ela foi **apagada**, e a razão está
+   escrita no arnês — *uma linha que a mutação não consegue matar não é lei, é comentário com
+   sintaxe de código.*
+
+**Mutação: 10 de 10.** Portão: `15 093` verdes · censos `90/90` · clippy `-D warnings` a zero.
+
 ## §6 — ⏳ ABERTO, com o número
 
-A wave fecha **por onde passa o DEDO** (toda inversão `screen_to_world`). Fica de fora, **medido e
-nomeado**, o outro lado do par — a **projecção** e as tolerâncias:
+⚠️ **Esta secção foi escrita de manhã e a §5-bis DESFEZ a maior parte dela** — ela acusava quatro
+sítios que já estavam certos. Fica como contraste: *uma lista de dívida escrita a partir de uma
+régua larga é uma lista de suspeitos, não de culpados.*
 
-* `render_loop/fase_selection_highlight.rs` (5) · `fase_sim_extract.rs` · `fase_motion_bridge.rs` ·
-  `fase_vector_overlays.rs` (2) — desenham com `surface.size()` ao lado da câmera;
-* `bone_undo_probe.rs`, `vec_trim.rs` e os `stroke_hit_r` que ainda recebem a janela por outro
-  caminho.
+Os **dois lados do par** estão hoje fechados e gateados (o dedo e o desenho). O que sobra é o que
+nenhuma das duas réguas mede:
+
+* as chamadas a `stroke_hit_r` que recebem a janela por um caminho que nenhuma das duas resolve
+  (elas estão CERTAS hoje — o que falta é o gate a prová-lo);
+* a família equivalente **dentro das crates** (`ph2d-app-flip`, `ph2d-app-physics`,
+  `ph2d-app-motion`): ali o par `(camera, window)` viaja em structs, e o censo desta shell não o
+  atravessa.
 * ⛔ **O `fase_game_camera` fica FORA de propósito**: `camera_2d::aspect_of(surface.size())` é a
   câmera do **JOGO** (o `GameCamera` do TOP-20 #7), outro assunto — a régua larga apanha-o e seria
   a acusação errada.

@@ -423,6 +423,146 @@ fn a_janela_errada_aponta_para_outro_sitio_do_mundo() {
     );
 }
 
+/// A janela CRUA é legítima aqui — `(ficheiro, porquê)`, e o porquê foi LIDO.
+///
+/// ⚠️ **Não é uma lista de dívida: é a partição.** Nem toda `surface.size()` é um defeito — há
+/// consumidores cujo assunto É a janela (configurar a superfície, a câmera do JOGO). A metade justa
+/// abaixo reprova a entrada que já não abriga nada.
+const A_JANELA_E_O_ASSUNTO: &[(&str, &str)] = &[(
+    "render_loop/fase_game_camera.rs",
+    "a camera do JOGO (TOP-20 #7): o `aspect_of` mede o ecra' do jogador, nao a banda do chrome \
+     — e' outro assunto, e a regua larga apanha-o como falso positivo",
+)];
+
+/// O nome e os argumentos da chamada que envolve a posição `pos`.
+fn chamada_envolvente(fonte: &str, pos: usize) -> Option<(String, String)> {
+    let b: Vec<char> = fonte.chars().collect();
+    let (mut d, mut i) = (0_i32, pos);
+    let abre = loop {
+        if i == 0 {
+            return None;
+        }
+        i -= 1;
+        match b[i] {
+            ')' => d += 1,
+            '(' if d == 0 => break i,
+            '(' => d -= 1,
+            _ => {}
+        }
+    };
+    let mut j = abre;
+    while j > 0
+        && (b[j - 1].is_alphanumeric() || b[j - 1] == '_' || b[j - 1] == ':' || b[j - 1] == '.')
+    {
+        j -= 1;
+    }
+    let nome: String = b[j..abre].iter().collect();
+    let (mut d2, mut k) = (1_i32, abre + 1);
+    while k < b.len() && d2 > 0 {
+        match b[k] {
+            '(' => d2 += 1,
+            ')' => d2 -= 1,
+            _ => {}
+        }
+        k += 1;
+    }
+    Some((nome, b[abre..k.min(b.len())].iter().collect()))
+}
+
+/// ⭐⭐⭐ **O OUTRO LADO DO PAR: quem DESENHA também usa a banda.**
+///
+/// O gate de cima cobre onde o dedo APONTA. Este cobre onde a coisa é PINTADA — e o par tem de
+/// concordar, senão o realce da selecção fica ao lado do objecto que ele realça.
+///
+/// ⚠️⚠️ **Uma `surface.size()` ao lado de um `camera` NÃO é prova de defeito, e isto custou-me uma
+/// acusação errada:** o handoff da manhã listou quatro sítios como dívida e **três já estavam
+/// certos** — o consumidor recebe o `center_split` em SEPARADO e deriva a banda lá dentro
+/// (`scene_px_per_world`, `publish_editor_inputs`, `draw_warp_gizmo`). ⇒ a régua aceita **as duas**
+/// formas de estar certo: passar a banda, ou passar o split ao lado.
+///
+/// **Mutação que deve sangrar:** tirar o `janela(…)` de um realce do `fase_selection_highlight`.
+#[test]
+fn quem_desenha_no_mundo_tambem_usa_a_banda() {
+    let raiz = raiz();
+    let mut ficheiros: Vec<PathBuf> = Vec::new();
+    junta(&raiz, &mut ficheiros);
+    let (mut vistas, mut maus) = (0_usize, Vec::new());
+    for p in &ficheiros {
+        let rel = p
+            .strip_prefix(&raiz)
+            .unwrap_or(p)
+            .to_string_lossy()
+            .replace('\\', "/");
+        if A_JANELA_E_O_ASSUNTO.iter().any(|(f, _)| rel == *f) {
+            continue;
+        }
+        let fonte = sem_prosa(&std::fs::read_to_string(p).expect("ler o fonte"));
+        let mut de = 0;
+        while let Some(k) = fonte[de..].find("surface.size()") {
+            let abs = de + k;
+            de = abs + 14;
+            let Some((nome, args)) = chamada_envolvente(&fonte, abs) else {
+                continue;
+            };
+            // ⚠️⚠️ **O `camera` pode ser o RECEPTOR e não um argumento** — e em várias linhas
+            //    (`gfx\n.camera\n.world_to_screen(…)`) o nome extraído é só `.world_to_screen`.
+            //    Sem olhar o texto ANTES da chamada, a régua passava ao lado da sonda do undo do
+            //    osso, que esta mesma wave tinha acabado de partir. *Uma régua que só vê argumentos
+            //    é cega a metade das chamadas de método.* (Há prova de mutação sobre esta linha.)
+            let antes: String = fonte[abs.saturating_sub(90)..abs]
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join("");
+            if !antes.contains("camera")
+                && !args.contains("camera")
+                && !args.contains("height_world")
+            {
+                continue;
+            }
+            vistas += 1;
+            let ok = nome.contains("scene_camera_window")
+                || nome.contains("scene_window_wh")
+                || nome.contains("janela")
+                || args.contains("center_split")
+                || args.contains("scene_window()")
+                || antes.contains("center_split");
+            if !ok {
+                let linha = fonte[..abs].matches('\n').count() + 1;
+                let nome = nome.trim().to_owned();
+                maus.push(format!("{rel}:{linha} — `{nome}(…)`"));
+            }
+        }
+    }
+    assert!(
+        vistas >= 14,
+        "o censo achou {vistas} chamadas com câmera — está a ler o sítio errado"
+    );
+    assert!(
+        maus.is_empty(),
+        "estes sítios dão a JANELA a uma conta que leva a CÂMERA da cena, sem lhe dar o split — com \
+         o centro partido o que se pinta fica ao lado do que se vê:\n  {}\n\nAs DUAS curas valem: \
+         passar `crate::scene_mapping::janela(split, size)`, ou passar o `center_split` ao lado (o \
+         consumidor deriva a banda).",
+        maus.join("\n  ")
+    );
+}
+
+/// ⭐ **A metade justa da partição acima.**
+#[test]
+fn cada_janela_que_e_o_assunto_ainda_abriga_alguma_coisa() {
+    for (f, porque) in A_JANELA_E_O_ASSUNTO {
+        assert!(
+            porque.len() > 40,
+            "a entrada `{f}` não diz o mecanismo — uma lista sem mecanismo é uma licença"
+        );
+        let fonte = std::fs::read_to_string(raiz().join(f)).unwrap_or_default();
+        assert!(
+            fonte.contains("surface.size()"),
+            "a entrada `{f}` já não tem `surface.size()` — apague-a"
+        );
+    }
+}
+
 fn junta(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(rd) = std::fs::read_dir(dir) else {
         return;

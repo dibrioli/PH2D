@@ -77,7 +77,7 @@ impl crate::App {
                 self.flip_state.active_layer,
                 &l2w,
                 camera,
-                surface.size(),
+                crate::scene_mapping::janela(hero.view.center_split, surface.size()),
                 vector_scene,
             );
             // A caixa do marquee (W6.1) — em px de tela, como o realce.
@@ -125,7 +125,7 @@ impl crate::App {
                 ph2d_panel_inspector::open_anchor_row(),
                 hero.project.pixels_per_meter,
                 camera,
-                surface.size(),
+                crate::scene_mapping::janela(hero.view.center_split, surface.size()),
                 vector_scene,
                 // Reborrow por `paint_ctx`, como o rótulo do overlay de física — o
                 // `text_system` já está emprestado desde o começo do frame.
@@ -140,7 +140,7 @@ impl crate::App {
                 hero.project.pixels_per_meter,
                 hero.theme,
                 camera,
-                surface.size(),
+                crate::scene_mapping::janela(hero.view.center_split, surface.size()),
                 vector_scene,
             );
 
@@ -152,7 +152,7 @@ impl crate::App {
                 self.flip_state.strip.tween_correct.as_ref(),
                 &l2w,
                 camera,
-                surface.size(),
+                crate::scene_mapping::janela(hero.view.center_split, surface.size()),
                 vector_scene,
             );
 
@@ -172,7 +172,7 @@ impl crate::App {
                     &self.playhead,
                 ),
                 camera,
-                surface.size(),
+                crate::scene_mapping::janela(hero.view.center_split, surface.size()),
                 vector_scene,
             );
         }

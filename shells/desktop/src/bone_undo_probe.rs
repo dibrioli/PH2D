@@ -336,7 +336,7 @@ impl crate::App {
         )]
         let p = gfx
             .camera
-            .world_to_screen([ancora[0] as f32, ancora[1] as f32], gfx.surface.size());
+            .world_to_screen([ancora[0] as f32, ancora[1] as f32], gfx.scene_window());
         eprintln!(
             "[probe-ik-undo] arrastando a ancora de ({:.0}, {:.0})",
             p.0, p.1

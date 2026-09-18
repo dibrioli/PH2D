@@ -24,16 +24,36 @@ use ph2d_script::ScriptHost;
 /// derivado do mundo pela MESMA porta que o desenho usa (`ph2d_ecs::hud::texto`), e uma consulta
 /// do `bevy` pede `&mut World`. *Uma segunda conta aqui seria a segunda resposta a «o que este
 /// rótulo diz?», e as duas divergiriam no dia em que uma fonte nova entrasse.*
+/// **O que o EDITOR sabe e o mundo não** — o sujeito escolhido, o relógio e o mapa de acções.
+///
+/// ⚠️ **Ela existe porque a lista de argumentos cresceu para OITO** ao ganhar o mapa (o gatilho
+/// precisa de saber se a acção que uma linha nomeia existe), e o corte não é de estilo: os quatro
+/// primeiros argumentos do [`publica`] são o MUNDO e estes quatro são a SESSÃO. *Duas naturezas,
+/// dois grupos.* ⛔ Um `#[allow]` teria calado o diagnóstico sem responder à pergunta dele.
+pub(super) struct Sessao<'a> {
+    /// Quem está escolhido (`None` = ninguém ⇒ nenhuma das duas secções existe, ADR-0166).
+    pub(super) escolhido: Option<u64>,
+    /// Quantos estão escolhidos — a BulkSelect, que o painel NOMEIA e não espalha.
+    pub(super) quantos: usize,
+    /// A corrida está a andar? (É a cerca que faz as teclas do jogo não serem as do editor.)
+    pub(super) a_correr: bool,
+    /// O mapa de acções, para a coluna *«esta acção existe?»* da secção do gatilho.
+    pub(super) mapa: &'a ph2d_input::InputMap,
+}
+
 pub(super) fn publica(
     sim: &mut SimWorld,
     tags: &ph2d_tags::TagTree,
     script: Option<&ScriptHost>,
     particles: &ParticlesState,
-    escolhido: Option<u64>,
-    quantos: usize,
-    a_correr: bool,
-    mapa: &ph2d_input::InputMap,
+    s: &Sessao<'_>,
 ) {
+    let Sessao {
+        escolhido,
+        quantos,
+        a_correr,
+        mapa,
+    } = *s;
     // ⚠️ **A pergunta é «há CÂMERA DE JOGO na cena?»**, e não «a pré-visualização está ligada»: o
     // canvas cola-se à vista dela em qualquer dos casos, e é a AUSÊNCIA da câmera que deixa o HUD
     // onde o artista o pôs. ⭐ Ela mora AQUI e não na fase-mãe porque é uma pergunta ao MUNDO —

@@ -278,14 +278,15 @@ impl TextRendering {
         }
     }
 
-    /// Human-readable display name (menu items).
-    pub fn display_name(self) -> &'static str {
-        match self {
-            Self::Default => "Default",
-            Self::CrispHeavy => "Crisp Heavy",
-            Self::CrispHeavyPlus => "Crisp Heavy +",
-        }
-    }
+    // ⛔⛔ **`display_name` FOI APAGADA em 2026-09-17, e a cura de um ÓRFÃO é APAGAR, nunca
+    // keyar.** Ela devolvia `"Default"` / `"Crisp Heavy"` / `"Crisp Heavy +"` e **ninguém a lia**:
+    // o submenu que mostra essas três palavras pinta-as por `chrome.menu.crisp_heavy` e irmãs
+    // desde que a moldura migrou. Era uma SEGUNDA resposta à mesma pergunta — e duas superfícies
+    // sobre o mesmo valor divergem no dia em que uma delas mudar.
+    //
+    // ⚠️ **ÓRFÃO e MORTO leem-se igual numa tabela de risco** (`CLAUDE.md` §5.0) e as curas são
+    // OPOSTAS: um controlo pintado sem consumidor LIGA-SE; um texto que ninguém pinta APAGA-SE. A
+    // pergunta que os separa é *isto chega a ser PINTADO?*, e a resposta aqui foi medida: não.
 
     /// Parâmetros do preset (boost tiers + snap-X flag). Único lugar
     /// onde cada preset declara seu shape — `effective_weight` e
@@ -415,16 +416,6 @@ mod tests {
         assert_eq!(TextRendering::Default.id(), "default");
         assert_eq!(TextRendering::CrispHeavy.id(), "crisp_heavy");
         assert_eq!(TextRendering::CrispHeavyPlus.id(), "crisp_heavy_plus");
-    }
-
-    #[test]
-    fn text_rendering_display_names() {
-        assert_eq!(TextRendering::Default.display_name(), "Default");
-        assert_eq!(TextRendering::CrispHeavy.display_name(), "Crisp Heavy");
-        assert_eq!(
-            TextRendering::CrispHeavyPlus.display_name(),
-            "Crisp Heavy +"
-        );
     }
 
     #[test]

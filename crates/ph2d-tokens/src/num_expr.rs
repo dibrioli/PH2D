@@ -86,11 +86,35 @@ pub fn math_available() -> bool {
 }
 
 /// Os tokens que `src` lê — `Err` com a frase, ou `Err` genérico se ninguém instalou o host.
+/// ⭐⭐⭐ **O CONTRATO que deixa uma recusa desta crate ser TRADUZIDA sem ela conhecer o i18n.**
+///
+/// ⛔ O `Cargo.toml` desta crate declara-a **design-data puro, zero runtime deps**, logo ela não
+/// pode resolver uma frase. E a recusa atravessa a fronteira como uma `String` que tem **duas
+/// espécies**: as daqui, que são CHAVES, e a do motor de fórmulas (`ph2d-token-math`), que é uma
+/// frase DINÂMICA — ela nomeia o identificador que não foi entendido, e dobrá-la num texto
+/// genérico poria o artista a adivinhar qual.
+///
+/// ⇒ quem recebe distingue-as pelo **prefixo**, e isso é um contrato e não uma heurística: há
+/// gate a afirmar que toda recusa produzida aqui começa por ele
+/// (`toda_recusa_desta_crate_e_uma_chave`).
+///
+/// ⚠️ **Sem o prefixo, a shell teria de adivinhar** — e um `tr` sobre uma frase dinâmica vaza uma
+/// string por ocorrência (*missing-key passthrough* + `leak_key`).
+pub const CHAVE_DE_RECUSA: &str = "design.refusal.";
+
 pub fn deps_of(src: &str) -> Result<Vec<NumToken>, String> {
     let host = HOST.with(|h| *h.borrow());
     match host {
         Some(h) => (h.deps)(src),
-        None => Err("formulas are not available in this build".to_string()),
+        // ⚠️ **Isto sai por TOAST**, não por log, e por isso é uma CHAVE — ver
+        //    [`CHAVE_DE_RECUSA`], que é o contrato que deixa a shell distingui-la da frase
+        //    DINÂMICA que o motor de fórmulas produz.
+        // ⛔ **A chave escreve-se INTEIRA, nunca por `format!` a partir do prefixo** (medido em
+        //    2026-09-17): uma chave montada em runtime é invisível ao censo dos dois lados — ele
+        //    lê as que estão escritas — e o censo LEXICAL lê o modelo `"{CHAVE}…"` como língua.
+        //    *Passar a string por uma peça faz a contagem cair sem tirar o literal do binário.*
+        //    Quem afirma o prefixo é o gate `toda_recusa_desta_crate_e_uma_chave`.
+        None => Err("design.refusal.no_formula_host".to_string()),
     }
 }
 

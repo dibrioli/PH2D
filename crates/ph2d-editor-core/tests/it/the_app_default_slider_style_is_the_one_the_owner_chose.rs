@@ -61,7 +61,10 @@ fn the_default_is_underline_radius_four_row_twentytwo() {
 /// redesenho inteiro existe para apagar.
 #[test]
 fn the_customisation_offers_exactly_the_four_chosen_designs() {
-    let names: Vec<&str> = SliderDesign::ALL.iter().map(|d| d.label()).collect();
+    let names: Vec<&str> = SliderDesign::ALL
+        .iter()
+        .map(|d| ph2d_i18n::tr(d.label_key()))
+        .collect();
     assert_eq!(
         names,
         vec!["Underline", "Bar", "Inset", "Ghost"],
@@ -84,7 +87,7 @@ fn the_customisation_offers_exactly_the_four_chosen_designs() {
 fn every_user_facing_string_is_english() {
     let mut bad = Vec::new();
     for d in SliderDesign::ALL {
-        for s in [d.label(), d.blurb()] {
+        for s in [ph2d_i18n::tr(d.label_key()), ph2d_i18n::tr(d.blurb_key())] {
             if s.chars().any(|c| "ãõçáéíóúâêôàÃÕÇÁÉÍÓÚÂÊÔÀ".contains(c)) {
                 bad.push(s);
             }

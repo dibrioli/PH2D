@@ -16,6 +16,10 @@ ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-vector      = { path = "../ph2d-vector" }
 ph2d-text        = { path = "../ph2d-text" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
+# A bancada mostra os NOMES e as linhas de ajuda dos desenhos de slider, e desde 2026-09-17 eles
+# vivem na tabela de strings: a `ph2d-tokens` e' design-data puro (zero runtime deps) e so'
+# guarda a CHAVE.
+ph2d-i18n        = { path = "../ph2d-i18n" }
 
 [dev-dependencies]
 # A régua do HR-15 — dev-dep só: o produto não conhece o censo dele.

@@ -20,6 +20,7 @@
 use ph2d_i18n::tr_with;
 use ph2d_panel_tokens::TokensIntent;
 use ph2d_tokens::color::Color;
+use ph2d_tokens::num_expr::CHAVE_DE_RECUSA;
 use ph2d_tokens::num_overrides::{
     NumRefusal, NumValue, num_override, num_overrides, set_num_override, set_num_overrides,
 };
@@ -236,9 +237,30 @@ fn refusal_toast(e: &NumRefusal) -> Toast {
             "shell.tokens_bridge.is_not_a_length_a_px",
             &[("v", &v)],
         )),
-        // ⚠️ A frase vem do MOTOR e é repassada inteira: dobrá-la num texto genérico poria o
-        // artista a adivinhar QUAL caractere não foi entendido, que é o oposto de accionável.
-        NumRefusal::BadFormula(why) => Toast::warning(why.clone()),
+        // ⚠️ **A frase vem do MOTOR e é repassada INTEIRA** — e isso é uma decisão, não inércia:
+        // o produtor com detalhe (`ph2d-token-math`) nomeia o identificador que não entendeu
+        // (*«`foo` is not a token reference»*), e dobrá-lo num texto genérico poria o artista a
+        // adivinhar qual. ⇒ **cada produtor resolve a PRÓPRIA frase** pela tabela de strings, e
+        // esta ponte não sabe quantos produtores existem.
+        //
+        // ⛔ A alternativa — mandar a CHAVE por aqui e resolvê-la aqui — foi escrita e desfeita no
+        // mesmo dia (2026-09-17): com um produtor de frase DINÂMICA no meio, um `tr` sobre o que
+        // chega vaza uma string por ocorrência (`leak_key`), e distinguir chave de frase à entrada
+        // seria uma heurística sobre texto do motor.
+        // ⭐⭐ **DUAS espécies numa `String`, separadas por um CONTRATO** (não por heurística):
+        // o que nasce na `ph2d-tokens` é uma CHAVE (ela declara-se *design-data puro, zero runtime
+        // deps*, logo não pode resolver frase nenhuma) e o que nasce no motor de fórmulas é uma
+        // FRASE DINÂMICA que nomeia o identificador não entendido — *«`foo` is not a token
+        // reference»*. Dobrar a segunda num texto genérico poria o artista a adivinhar qual.
+        //
+        // ⛔ **Um `tr` cego sobre o que chega vazaria uma string por ocorrência** (`leak_key`), e é
+        // por isso que a distinção é do lado de quem PRODUZ, com gate
+        // (`toda_recusa_desta_crate_e_uma_chave`).
+        NumRefusal::BadFormula(why) => Toast::warning(if why.starts_with(CHAVE_DE_RECUSA) {
+            ph2d_i18n::tr(why).to_string()
+        } else {
+            why.clone()
+        }),
     }
 }
 

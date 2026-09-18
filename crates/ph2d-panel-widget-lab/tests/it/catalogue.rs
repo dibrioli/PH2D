@@ -15,7 +15,7 @@ fn next_reaches_every_design_and_closes_the_ring() {
     let mut seen = BTreeSet::new();
     let mut d = start;
     for _ in 0..BoxDesign::ALL.len() {
-        seen.insert(d.label());
+        seen.insert(d.label_key());
         d = d.next();
     }
     assert_eq!(
@@ -24,7 +24,7 @@ fn next_reaches_every_design_and_closes_the_ring() {
         "o anel do `next` nao fecha em {} passos — algum desenho e' inalcancavel",
         BoxDesign::ALL.len()
     );
-    let all: BTreeSet<&str> = BoxDesign::ALL.iter().map(|d| d.label()).collect();
+    let all: BTreeSet<&str> = BoxDesign::ALL.iter().map(|d| d.label_key()).collect();
     assert_eq!(seen, all, "o `next` nao passa por todos os desenhos");
 }
 
@@ -33,8 +33,18 @@ fn next_reaches_every_design_and_closes_the_ring() {
 #[test]
 fn prev_undoes_next() {
     for d in BoxDesign::ALL {
-        assert_eq!(d.next().prev(), d, "prev nao desfaz next em {}", d.label());
-        assert_eq!(d.prev().next(), d, "next nao desfaz prev em {}", d.label());
+        assert_eq!(
+            d.next().prev(),
+            d,
+            "prev nao desfaz next em {}",
+            d.label_key()
+        );
+        assert_eq!(
+            d.prev().next(),
+            d,
+            "next nao desfaz prev em {}",
+            d.label_key()
+        );
     }
 }
 
@@ -43,12 +53,12 @@ fn prev_undoes_next() {
 #[test]
 fn every_design_states_what_it_trades() {
     for d in BoxDesign::ALL {
-        let words = d.blurb().split_whitespace().count();
+        let words = ph2d_i18n::tr(d.blurb_key()).split_whitespace().count();
         assert!(
             words >= 8,
             "o desenho {} descreve-se em {words} palavras — isso e' um encolher de ombros, \
              nao um trade-off. Diga o que ele GANHA e o que PERDE.",
-            d.label()
+            d.label_key()
         );
     }
 }
@@ -66,7 +76,7 @@ fn every_design_states_what_it_trades() {
 /// *Apagar um gate sem dizer quem herdou a pergunta é como a propriedade se perde.*
 #[test]
 fn the_negative_control_is_gone_and_its_question_has_an_heir() {
-    let names: Vec<&str> = BoxDesign::ALL.iter().map(|d| d.label()).collect();
+    let names: Vec<&str> = BoxDesign::ALL.iter().map(|d| d.label_key()).collect();
     assert!(
         !names.contains(&"Split"),
         "a `Split` voltou ao catalogo — ela reserva coluna de rotulo FORA da caixa, que e' a \

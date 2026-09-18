@@ -101,6 +101,8 @@ mod sculpt3d;
 /// ⭐⭐ **As palavras do MOTOR da escultura** — a 6.ª fatia da fronteira dos motores.
 mod sculpt_engine;
 mod tags;
+/// ⭐⭐ **As palavras do DESIGN SYSTEM** — temas, desenhos de slider, recusas de fórmula.
+mod tokens;
 /// ⭐ **O vocabulário do mover de VISTA DE CIMA** (TOP-20 #13) — os três selectores que o
 /// `topdown_edits` declara e o Inspector pinta. Tabela irmã pela lei do assunto (ver [`tags`]).
 mod topdown;
@@ -528,6 +530,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| component_catalog::tr(k))
             .or_else(|| paint_engines::tr(k))
             .or_else(|| sculpt_engine::tr(k))
+            .or_else(|| tokens::tr(k))
             .or_else(|| node_catalog::tr(k))
             .or_else(|| node_params::tr(k))
             .or_else(|| node_options::tr(k))

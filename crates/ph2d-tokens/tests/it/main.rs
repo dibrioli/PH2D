@@ -8,6 +8,7 @@
 
 mod a_field_is_never_the_colour_of_what_it_sits_on;
 mod an_alias_has_no_value_it_has_a_parent;
+mod cada_palavra_desta_crate_vem_da_tabela;
 mod design_token_sync;
 mod measure_override_layer;
 mod mockup_tokens_exist;
@@ -15,3 +16,4 @@ mod the_ground_stands_under_every_panel;
 mod the_leaf_stays_dep_free;
 mod the_modern_family_derives_every_token;
 mod the_oled_theme_separates_by_border;
+mod toda_recusa_desta_crate_e_uma_chave;

@@ -100,6 +100,8 @@ pub enum NumRefusal {
     /// ⚠️ Um braço PRÓPRIO em vez de dobrar em `NotALength`: *"isto não parseia"* e *"isto não é um
     /// comprimento"* mandam o artista a lugares diferentes, e uma mensagem só mandaria a metade
     /// deles ao lugar errado.
+    /// ⚠️ **O texto é de UMA de duas espécies, e é o PREFIXO que as separa** — ver
+    /// [`CHAVE_DE_RECUSA`].
     BadFormula(String),
 }
 
@@ -277,7 +279,9 @@ pub fn set_num_override(
                 let src = src.clone();
                 let v = crate::num_expr::eval(&src, &|t| effective_px(&list, theme, t, 0))
                     .ok_or_else(|| {
-                        NumRefusal::BadFormula("that formula could not be evaluated".into())
+                        // ⚠️ CHAVE INTEIRA, nunca uma frase nem um `format!` — ver o irmão no
+                        //    `num_expr.rs` e [`crate::num_expr::CHAVE_DE_RECUSA`].
+                        NumRefusal::BadFormula("design.refusal.bad_formula".to_string())
                     })?;
                 if !is_a_length(v) {
                     return Err(NumRefusal::NotALength(v));

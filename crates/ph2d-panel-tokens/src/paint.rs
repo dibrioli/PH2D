@@ -436,10 +436,13 @@ fn command_at(
 }
 
 /// O nome do modo, como o artista o conhece.
-const fn theme_label(theme: Theme) -> &'static str {
+///
+/// ⚠️ **Deixou de ser `const fn` em 2026-09-17**, e não por acidente: o nome passou a vir da
+/// tabela de strings, e uma resolução de idioma não é constante de compilação.
+fn theme_label(theme: Theme) -> &'static str {
     // ⚠️ Era um `match` de quatro braços — a família moderna (2026-09-04) tornou-o o segundo
     //    sítio a saber o nome de um tema, e o nome vive no próprio `Theme`.
-    theme.display_name()
+    tr(theme.display_name_key())
 }
 
 fn paint_scrollbar_and_publish(

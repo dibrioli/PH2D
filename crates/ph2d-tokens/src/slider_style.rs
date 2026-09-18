@@ -57,33 +57,29 @@ impl SliderDesign {
         SliderDesign::Ghost,
     ];
 
-    /// O nome que aparece no ecrã.
+    /// ⭐ **A CHAVE do nome que aparece no ecrã** — o texto vive em `ph2d-i18n/src/tokens.rs`.
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
-            SliderDesign::Underline => "Underline",
-            SliderDesign::Bar => "Bar",
-            SliderDesign::Inset => "Inset",
-            SliderDesign::Ghost => "Ghost",
+            SliderDesign::Underline => "design.slider.underline",
+            SliderDesign::Bar => "design.slider.bar",
+            SliderDesign::Inset => "design.slider.inset",
+            SliderDesign::Ghost => "design.slider.ghost",
         }
     }
 
-    /// A linha de ajuda que o selector mostra — **o que este desenho troca**, não o que ele é.
+    /// ⭐ **A CHAVE da linha de ajuda** que o selector mostra — *o que este desenho troca*, não o
+    /// que ele é. O texto vive em `ph2d-i18n/src/tokens.rs`.
+    ///
+    /// ⚠️ **A chave é a do irmão mais `.blurb`**, e não uma família própria: as duas metades são
+    /// do MESMO desenho, e separá-las deixaria um par a poder divergir sem ninguém ver.
     #[must_use]
-    pub const fn blurb(self) -> &'static str {
+    pub const fn blurb_key(self) -> &'static str {
         match self {
-            SliderDesign::Underline => {
-                "2 px fill at the bottom \u{b7} cleanest text \u{b7} quietest at a glance"
-            }
-            SliderDesign::Bar => {
-                "the fill is the whole background \u{b7} reads at a glance \u{b7} competes with the number"
-            }
-            SliderDesign::Inset => {
-                "a capsule in a groove \u{b7} clearly a control \u{b7} spends height on framing"
-            }
-            SliderDesign::Ghost => {
-                "flattest of all \u{b7} vanishes in a long list \u{b7} barely reads as draggable"
-            }
+            SliderDesign::Underline => "design.slider.underline.blurb",
+            SliderDesign::Bar => "design.slider.bar.blurb",
+            SliderDesign::Inset => "design.slider.inset.blurb",
+            SliderDesign::Ghost => "design.slider.ghost.blurb",
         }
     }
 
@@ -188,14 +184,11 @@ impl UiLook {
     /// Todos, na ordem em que se lêem.
     pub const ALL: [Self; 2] = [Self::Classic, Self::Redesign];
 
-    /// O nome que aparece no ecrã (inglês — regra do app).
-    #[must_use]
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::Classic => "Classic",
-            Self::Redesign => "Redesign",
-        }
-    }
+    // ⛔⛔ **`UiLook::label` FOI APAGADA em 2026-09-17 — ÓRFÃ, e a cura de um órfão é APAGAR.**
+    // Ela devolvia `"Classic"` / `"Redesign"` e **ninguém a lia**: a palavra que o artista vê sai
+    // de `chrome.color.classic`, na tabela de strings. Irmã do `TextRendering::display_name` do
+    // `typography.rs`, apagado no mesmo dia e pelo mesmo motivo — *duas respostas à mesma
+    // pergunta, e a que o artista vê é a que envelhece.*
 
     /// A leitura do ambiente. ⚠️ **Só `0` volta ao clássico** — qualquer outra coisa é o
     /// redesenho, incluindo a variável ausente, vazia ou com lixo.

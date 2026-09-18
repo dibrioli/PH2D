@@ -181,19 +181,27 @@ impl Theme {
         Self::ALL.iter().copied().find(|t| t.id() == id)
     }
 
-    /// Human-readable display name (used by the topbar theme
-    /// cluster + the theme menu items).
+    /// ⭐⭐ **A CHAVE do nome que se lê no ecrã** (o agrupamento de temas da barra do topo e os
+    /// itens do menu) — `tokens.theme.<id>`; o texto vive em `ph2d-i18n/src/tokens.rs`.
+    ///
+    /// ⚠️ **NÃO é o [`id`](Self::id)**: aquele é o que vai para o ficheiro de preferências e não
+    /// pode mudar; este é o que o artista lê e muda com o idioma.
+    ///
+    /// ⚠️ **Quatro destes são NOMES PRÓPRIOS** (*Forge*, *Workshop*, *Sunstone*, *Blueprint*) e
+    /// quatro são descrições (*Dark*, *Gray*, *Light*, *Black (OLED)*). Entram todos na tabela na
+    /// mesma: *um nome próprio na tabela é uma decisão que um tradutor pode tomar; um nome próprio
+    /// no código é uma decisão que ninguém pode tomar.*
     #[must_use]
-    pub const fn display_name(self) -> &'static str {
+    pub const fn display_name_key(self) -> &'static str {
         match self {
-            Self::Forge => "Forge",
-            Self::Workshop => "Workshop",
-            Self::Sunstone => "Sunstone",
-            Self::Blueprint => "Blueprint",
-            Self::Dark => "Dark",
-            Self::Gray => "Gray",
-            Self::Light => "Light",
-            Self::Oled => "Black (OLED)",
+            Self::Forge => "design.theme.forge",
+            Self::Workshop => "design.theme.workshop",
+            Self::Sunstone => "design.theme.sunstone",
+            Self::Blueprint => "design.theme.blueprint",
+            Self::Dark => "design.theme.dark",
+            Self::Gray => "design.theme.gray",
+            Self::Light => "design.theme.light",
+            Self::Oled => "design.theme.oled",
         }
     }
 }

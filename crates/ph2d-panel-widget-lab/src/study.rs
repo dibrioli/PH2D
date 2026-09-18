@@ -20,6 +20,7 @@ use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::widget::{PropertyBox, PropertyBoxState, paint_property_box, surface_rect};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
     ColorToken, Radius, SliderDesign, SliderStyle, Spacing, StrokeToken, Theme, TypeToken,
@@ -157,7 +158,7 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
             SliderStyle { design: d, ..style },
         );
         b.y += row_h + Spacing::Xxs.px();
-        let blurb = format!("{} \u{b7} {}", d.label(), d.blurb());
+        let blurb = format!("{} \u{b7} {}", tr(d.label_key()), tr(d.blurb_key()));
         b.caption(&blurb);
         b.y += Spacing::Xs.px();
     }
@@ -401,7 +402,7 @@ fn paint_controls(b: &mut Bench<'_>, st: &WidgetLabState) {
         (crate::ids::LAB_VARIANT_PREV, "\u{2039}".into()),
         (
             crate::ids::LAB_VARIANT_NEXT,
-            format!("{} \u{203a}", s.design.label()),
+            format!("{} \u{203a}", tr(s.design.label_key())),
         ),
         (
             crate::ids::LAB_RADIUS_CYCLE,

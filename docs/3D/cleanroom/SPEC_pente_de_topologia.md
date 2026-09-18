@@ -23,7 +23,10 @@ Filtragem §4.3: executada em 2026-09-17 sobre este texto (zero código, zero no
   matemática do método em notação nossa; todo `code span` é nosso, de fixtura nossa, ou
   identificador PÚBLICO de propriedade/enumeração usado como chave de regeneração — §4.1.13).
 Sweep: ver o ledger.
-Auditoria §4.2 (R-pré): POR FAZER — ⛔ sem o atestado a janela não implementa.
+Auditoria §4.2 (R-pré): subagente-R independente, 2026-09-17 — ⛔ **REPROVADA**.
+  13 achados + o limite do §3.1 que esta espec não declara; a lista, com endereço e o que
+  emendar, está no LEDGER §4.2 (⛔ que o Implementador NÃO abre — o E traz a emenda).
+  ⛔ A janela I NÃO implementa até um R-pré novo atestar a versão emendada.
 Mapa de leitura da literatura: a troca de diagonal local (Lawson 1977) e a cadeia de remalhagem
   incremental partir/colapsar/**trocar**/alisar (Botsch–Kobbelt 2004) — as duas já portadas nesta
   casa. ⛔ Não há apêndice do alvo a ler; não é preciso nenhum.

@@ -178,7 +178,7 @@ verificou e uma dívida §4.2 do repo.
 |---|---|---|
 | **E** (este) | subagente-E, 2026-09-17 | triagem · ledger · patente · harness · corpus · espec |
 | **I** | — | (a janela da linha; nunca abre este ficheiro) |
-| **R-pré** | — | **por despachar** — ⛔ sem o atestado dele a janela I não implementa |
+| **R-pré** | subagente-R independente, 2026-09-17 | ⛔ **REPROVADA** — ver §4.2 no fim deste ficheiro (13 achados, 5 triagens de vassoura, e o limite que o §12 da espec não lista) |
 | **R-pós** | — | por despachar |
 
 ## Cobertura da travessia (§3.E) — ⚠️ LEIA ISTO
@@ -198,3 +198,275 @@ expressão do alvo em contexto nenhum, em momento nenhum.**
 ## Incidentes
 
 - *(nenhum até à abertura)*
+
+---
+
+## §4.2 — AUDITORIA R-PRÉ: ⛔ **REPROVADA** (subagente-R independente, 2026-09-17)
+
+> **Quem:** um R que **não escreveu esta espec** e não falou com o E. Método: re-derivar cada número
+> **do ficheiro publicado** com um parser e uma implementação da régua escritos só a partir do
+> `fixtures/rake/README.md`, nunca a partir do código do E; mais varredura por **FORMA** das
+> promessas (§4.3 #2) e das quatro triagens de vassoura.
+>
+> ⛔ **REPROVADA não quer dizer «o desenho está errado».** A tese central resistiu a todos os
+> ataques que lhe fiz (§4.2.3) e a barra está honestamente calibrada (§4.2.4). O que reprova é o
+> **documento**: um gate nasce vermelho como está escrito, dois gates apontam para um ficheiro que a
+> própria espec descreve em dois regimes opostos, sete endereços de fixtura não existem, uma coluna
+> inteira de tabela e a medição citada de um gate não re-derivam, e o corpus **não é regenerável
+> pelo próprio cabeçalho** no eixo que o G-4 mede. A janela I implementaria sobre isso.
+
+### §4.2.1 — O que foi CONFIRMADO (o que eu tentei quebrar e NÃO consegui)
+
+Re-derivado **exactamente**, com implementação independente da régua (escrita só do README):
+
+| o que | resultado |
+|---|---|
+| **a escada inteira do §5.1** | **21 de 21 células** batem à 4.ª casa — ⭐ o teste mais forte do corpus: a régua do README está descrita com detalhe suficiente para um terceiro a reconstruir e obter os mesmos 21 números |
+| §3.2 (`media|dx|`, `|dy|`, `|dz|`, razão `4,37`, maior deslocamento `0,0336`) | batem ao dígito |
+| §3.3 as três faixas de ângulo (`14,0/16,7 · 38,8/29,8 · 9,8/16,1`) | batem, e **só** na região `raio/2` |
+| §3.4 (`186` com pente, `139` sem) | batem |
+| §4.1 a tabela das quatro rotações (8 valores de `Q`) | batem |
+| §4.3 os degenerados (`49`/`56`/`70`/`53`) + a igualdade byte-a-byte | batem |
+| §5.2 as duas tabelas (com refino e sem) | batem |
+| §6.2 `SMOOTH +0,027` · `LAYER +0,203`, conjunto de arestas invariante | batem |
+| §6.3 os CINCO byte-idênticos **e** o controlo «o verbo agiu» | batem |
+| §7 seis das oito linhas · §8 `g_quads` e `g_furo` | batem |
+| §9 a banda (`2525` × 6 · `2444`–`2448` · amplitude `0,011135`) | bate |
+| §2.1 o `sha256 5db23f…` | **bate** — é o corpo depois do cabeçalho (as linhas sem `#`). ⚠️ a espec **não diz o que foi hasheado**; tive de descobrir a receita por varredura de 6 definições |
+| §13 **G-10** (monotonia nas 3 rotações) e **G-11** (saturação `≤` banda) | passam |
+| §13 **G-13** (`ΔS` troca de sinal: `+0,0183 · −0,0111 · +0,0211 · +0,0012`) | bate |
+| **o VALE e a BARRA** | `[+0,02982270 , +0,06323128]`, largura `0,0334`, meio `+0,046527` ⇒ `+0,0465`. As **duas** células extremas são exactamente as que o README nomeia |
+| a parede, por instrumento | **10 de 10** vassouras vivas fecham `exit 0` sobre a espec + as 195 fixturas (reproduzido por mim) |
+| **isenção nº2** (as 5 de 56) | **LEGÍTIMA, verificada pelo lado que importa**: corri a vassoura do rake contra **as 13 especs** e **os 10 corpora** da pasta — `exit 0` em todos. Já não acusa artefacto atestado nenhum |
+| a afirmação do ledger *«`docs/**` fica fora do censo do gate»* | **VERDADEIRA** — conferida no código: `fn ficheiros()` varre `["crates","shells"]`; `docs` só entra no discriminador `nomes_da_nossa_arvore` |
+
+⭐ **E a tese central resistiu a um ataque que o E não montou** — ver §4.2.3.
+
+### §4.2.2 — Os ACHADOS, com endereço
+
+**A-1 ⛔⛔ `G-3` nasce VERMELHO sobre a saída do próprio alvo.** A barra é `Q ≤ +0,0298` e o pior do
+lado desligado — `escada/k_a0450_p0000`, a célula que o README nomeia como o **piso do vale** — mede
+`Q = +0,02982270`. Margem = **`−0,0000227`**. A barra foi escrita **arredondando o extremo para
+baixo** a 4 casas, o que a põe **abaixo do valor de que foi derivada**. ⇒ um gate escrito à letra do
+§13 reprova no dia um, sobre produto correcto. (O G-2 não tem esse defeito: margem `+0,0167`.)
+
+**A-2 ⛔⛔ O §7 descreve `composicao/m_manual_*` como o regime OPOSTO ao que o §2.2 lhe atribui — e é
+a fixtura de DOIS gates.** A linha *«partir + colapsar»* do §7 dá `−0,046 → +0,122` e cita
+`composicao/m_manual_*`; o cabeçalho daquela célula diz `modo_de_detalhe=MANUAL` e ela mede
+**`+0,1511 → +0,3572`**, que é o que o §2.2 correctamente chama de *refino **desarmado***. Os números
+`−0,046 → +0,122` são os de `verbos/t_constant` / `escada/k_a0000`. ⚠️ **`composicao/m_manual_*` é a
+fixtura declarada de `G-5` e de `G-6`** — quem implementar lê a descrição errada do regime.
+
+**A-3 ⛔⛔ O corpus NÃO é regenerável pelo próprio cabeçalho no eixo que o `G-4` mede.** As dez células
+`mecanismo/x_man_x01..x16` e as oito `escada/n_x1..n_x8` existem para **variar o número de passagens**
+— as saídas de facto diferem (`2525/2648/2627/2627` vértices) — e **todas declaram `passagens=1`**,
+com `pontos_do_percurso=10` idêntico. Os cinco cabeçalhos de `x_man_x*` são indistinguíveis campo a
+campo. ⇒ uma corrida futura a partir do cabeçalho reproduz **uma** passagem em todos. É **à letra** o
+defeito que a 1.ª linha do `fixtures/rake/README.md` avisa contra (*«uma grandeza nova que não entre
+no cabeçalho esconde-se debaixo da frase que descreve o corpus, e nenhuma varredura a acusa»*), e
+atinge o §3.1, o §5.2 e o **G-4**.
+
+**A-4 ⛔ SETE endereços de fixtura não existem.** §5.2 cita `rotacao/n_x1|x2|x4|x8` — vivem em
+`escada/`. §7 cita `composicao/{t_constant,t_relative,t_brush,t_manual,q_res*,s_sim}_*` — vivem em
+`verbos/`. São os endereços contra os quais um gate compila.
+
+**A-5 ⛔ A coluna «maior deslocamento» do §3.1 não re-deriva — nenhum dos cinco valores.**
+
+| passagens | espec | medido 3D | medido XY |
+|---|---|---|---|
+| 1 | `0,02509` | `0,03199` | `0,03186` |
+| 2 | `0,02557` | `0,03083` | `0,03039` |
+| 4 | `0,02861` | `0,03731` | `0,03651` |
+| 8 | `0,03519` | `0,04324` | `0,04051` |
+| 16 | `0,03787` | `0,05284` | `0,04090` |
+
+⚠️ A coluna **«vértices que o pente moveu»** da mesma tabela re-deriva **exactamente**
+(`170/185/186/187/187`) — mas só com `eps = 1e-7`, que a espec não declara. *Metade da tabela é
+reprodutível e a outra metade não, e nada no texto separa as duas.*
+
+**A-6 ⛔⛔ A medição citada do `G-6` não re-deriva.** §3.2 e o §13 dão *«a norma da soma dos Δ sobre a
+soma das normas … medido `2,6 %`»*; sobre `composicao/m_manual_*` mede **`3,84 %`** (XY `3,92 %`,
+só-Z `2,99 %`). A barra do gate é `≤ 10 %`, logo ele **passa** — mas a única prova de que a barra tem
+folga é um número que não existe. *Uma barra larga não é só uma afirmação fraca: é o sítio onde uma
+régua errada sobrevive.*
+
+**A-7 ⛔ §9, a «armadilha de instrumento»: o numerador e o denominador vêm de populações DIFERENTES.**
+*«`522` de `~4 200` arestas»*: o `522` é a diferença simétrica sobre **todas** as `7 460` arestas da
+malha; o `~4 200` é a contagem de arestas **na pegada** (medido `4 292`). A fracção sobrestima o
+fenómeno ~`1,8×`. E *«Ordenadas as posições, `10` de `2 525` diferem (`0,4 %`)»* **não re-deriva**:
+`269` exacto · `124` a `1e-8` · `2` a `1e-7` · `0` a `1e-6`. Nunca `10`.
+
+**A-8 ⛔ §8: *«a malha mede `1 917` faces diferentes»* (esfera) não re-deriva** — `1 038` de diferença
+simétrica (`519` de cada lado; `1 018` por índices ordenados). ⭐ O **facto** que a linha carrega — a
+régua planar lê `+0,0453` nos dois lados sobre uma malha que mudou — **confirma-se**.
+
+**A-9 ⛔ §2.2: *«com o efeito MAIOR de todo o corpus»* é contradito pela própria espec.** A célula
+citada dá `ΔQ = +0,2061` (`+0,1511 → +0,3572`); o §5.2, três secções abaixo, regista **`+0,3725`** a
+4 passagens no mesmo regime (`ΔQ = +0,2188`), e `verbos/v_layer` dá `+0,2026`. A **lei** do §11.3 (o
+regime sem refino tem efeito maior que o regime com refino) sobrevive; o **superlativo** não.
+
+**A-10 ⛔ §6.1: *«difere … por `40` a `109`»* — medido `37` a `109`** (`CREASE` = `37`). A frase
+seguinte (*«muito acima da banda de ±4»*) continua verdadeira.
+
+**A-11 ⛔ `README.md` §3: a população declarada dá `35` por lado, não `37`.** Os sete critérios
+escritos (malha `9fb3d9dea0d0` · dyntopo armada · `CONSTANT` · `SUBDIVIDE_COLLAPSE` · resolução `18`
+· percurso inteiro · o controlo `v_saída > 1,5 × v_entrada`) seleccionam `35`/`35`. Largar **qualquer
+um** de {malha, refino, resolução} devolve `37`/`37`. ⭐ **O vale não muda** — as duas extremas
+reproduzem-se — logo a barra fica de pé; o que não re-deriva é o `n`.
+
+**A-12 ⛔ `README.md` §5, a tabela das famílias, está errada em três células:** `escada/` tem **29**
+ficheiros (declara `21`), `rotacao/` **não contém nenhum** `n_x*`, e `verbos/` tem **38** células
+`v_*` (declara `42`) mais **20** de composição; **2 dos «21 verbos»** (`ROTATE`, `MASK`) vivem em
+`composicao/`. ⚠️ E as células **superadas** `verbos/v_rotate_*` e `verbos/v_mask_*` **continuam no
+corpus sem marca nenhuma** (as duas medem *o verbo moveu 0*) ao lado das refeitas `composicao/m_rot_*`
+/ `m_mask_*` — é exactamente a confusão *«verbo inerte × verbo que ignora o pente»* que o próprio
+README §5 diz ter apanhado e curado.
+
+**A-13 ⛔ PAREDE — §10.1 e §10.2 re-dizem prosa pública do alvo SEM o link que o §4.1.12 exige, e o
+cabeçalho da espec afirma que a fonte está registada no §10.** Os itens 3 e 4 dão o número do relato
+público; **os itens 1 e 2 não dão fonte nenhuma**, e o §10.2 traz um fragmento em **negrito** que se
+lê como paráfrase colada. ⚠️ **Isto não é um achado de colagem — é um achado de INAUDITABILIDADE:**
+sem a fonte, nem eu nem o próximo R conseguem decidir se aquilo é um facto re-dito ou uma tradução, e
+**a tradução é a única classe que o sweep não apanha por construção** (`CLAUDE.md` §5.1: três especs
+desta linha fecharam sweep VERDE sobre prosa traduzida do alvo). A cura é uma linha por item: o link.
+
+### §4.2.3 — A AFIRMAÇÃO CENTRAL: verificada, **mais forte** do que a espec a defende, e com um limite que a espec NÃO declara
+
+**Verificada.** Em `mecanismo/x_man_x01..x16`, com `1·2·4·8·16` passagens, o conjunto de arestas é
+**idêntico** entre pente `0` e pente `1` — e é idêntico à **malha de entrada**: a lista de faces das
+dez células é, literalmente, a lista de faces da entrada (`841` V, `1 568` F, `2 408` E).
+
+**A régua é invariante à ordem, e a resposta é mais forte do que «a ordem calhou bater»:** naquele
+regime a contagem de vértices é constante e igual à da entrada, logo o índice `i` denota o **mesmo**
+vértice dos dois lados — e os `671` vértices que não se movem são byte-idênticos no mesmo índice. A
+outra régua (`Q`) é uma estatística de distribuição, invariante à ordem por construção. **O controlo
+existe em cada célula** (o verbo moveu `187`; o pente moveu `170`–`187`).
+
+⭐⭐ **E o ataque que montei contra a afirmação DEVOLVEU-LHE uma prova melhor do que a que ela usa.**
+A objecção óbvia é: *no modo manual o passe de topologia do alvo não corre, logo o teste não
+distingue «o pente não troca diagonais» de «trocar está atrás do passe que foi desligado»*. Varridas
+as `161` células da malha canónica, existem células em que o passe está **ARMADO e autorizado a
+subdividir** e cuja lista de faces sai **igual à da entrada dos DOIS lados**:
+
+| célula | dyntopo | refino | detalhe | F == F(entrada) | `ΔQ` do pente |
+|---|---|---|---|---|---|
+| `verbos/v_layer_*` | armada | `SUBDIVIDE_COLLAPSE` | `CONSTANT` | **sim, nos dois lados** | **`+0,2026`** |
+| `verbos/v_smooth_*` | armada | `SUBDIVIDE_COLLAPSE` | `CONSTANT` | **sim, nos dois lados** | `+0,0271` |
+
+⇒ com o operador de topologia do alvo **armado e com autoridade**, o pente reorganizou a malha ao
+ponto de mover `Q` em `+0,2026` e **não mexeu numa única aresta**. Isso mata a objecção do modo
+manual. ⚠️ **O §6.2 diz isto numa linha de passagem** (*«são o §3.1 outra vez, por outra porta»*) —
+ele é a prova **principal** e devia estar no §3.1, ao lado da tabela.
+
+⛔⛔ **O LIMITE, que o §12 não lista e que decide o desenho.** Em **todas** as `161` células da malha
+canónica o conjunto de arestas é ou (a) idêntico ao da entrada nos dois lados, ou (b) **incomparável**
+(as contagens de vértices diferem). **Não existe uma célula em que o operador de topologia do alvo
+tenha demonstravelmente trabalhado E o conjunto de arestas seja comparável** — e não pode existir, por
+construção. ⇒ o corpus prova *«quando o operador de topologia do alvo não faz nada, o pente não muda
+uma aresta»*; ele **não** prova a frase do §3.1 sem qualificação, e **não** prova o §11.1
+(*«a topologia diferente é obra do passe de refino a decidir sobre geometria já relaxada»*), que é uma
+**inferência sobre o interior do alvo**, não uma medição. Se no alvo o pente também **enviesar as
+decisões de troca do passe de refino**, a nossa implementação só-relaxação diverge exactamente no
+regime que o artista usa — e **nenhum dos 14 gates do §13 o veria**, porque com o refino armado a
+nossa topologia não bate com a dele de qualquer maneira. ⇒ **item novo obrigatório no §12**, e o
+título do `G-4` não pode prometer mais do que a fixtura contém.
+
+### §4.2.4 — A BARRA: **sã**, e verificada pelo lado que costuma faltar
+
+`VALE = [+0,02982270 , +0,06323128]`, largura `0,0334`; `banda` medida `0,011135` ⇒ `vale/banda =
+3,0` ✓. **Os dois lados são saída do próprio alvo**, e o lado «aprovado» é o alvo **com o pente no
+máximo** — a condição do `CLAUDE.md` §0.9 que retirou duas barras do corpus do tecido está cumprida.
+A banda de repetição está medida nos **dois** regimes (com refino `0,0111`; sem refino o alvo é
+determinístico, `Q` repete a `3e-5`). ⚠️ O único defeito é o **arredondamento** do `G-3` (A-1), não a
+calibração.
+
+### §4.2.5 — TRIAGEM DOS ACHADOS DE VASSOURA (é do R; aqui está o veredito de cada um)
+
+**T-1 — isenção nomeada nº1 (o rótulo público nu).** ✅ **LEGÍTIMA.** Uso nominativo, §4.1.13 +
+§8.4 (*«docs internos citam à vontade»*), mesma forma já atestada no cabeçalho da
+`SPEC_pincel_afiado.md`. O controlo é automático e eu corri-o: a espec traz o rótulo em claro na
+linha 8 e as 10 vassouras fecham `exit 0` ⇒ a entrada saiu mesmo. ⛔ E a decisão do E de a substituir
+por **três formas de prosa** é a troca certa: o que a parede guarda é o texto do alvo, não a palavra
+que o artista lê no painel.
+
+**T-2 — isenção nomeada nº2 (5 de 56 entradas retiradas).** ✅ **LEGÍTIMA, e verificada pelo teste
+que a decide:** corri a vassoura do rake, como ela está hoje, contra **as 13 especs** e **os 10
+corpora** desta pasta — `exit 0` em todos. Já não há entrada que acuse artefacto atestado. ⭐ A lei
+que o E escreveu ao lado (*uma vassoura nova tem de correr sobre a árvore inteira antes de ser
+adoptada, senão acusa o passado*) é a leitura certa do §5.0.
+
+**T-3 — `docs/3D/20_divergencias_tools.md:422`.** ⛔ **É DÍVIDA REAL, e o ledger SUBCONTA-A.** Medido:
+a vassoura do **rake** acusa **duas** linhas naquele ficheiro (`422` **e** `454`), não uma; e **7 das
+10** vassouras vivas acusam-no, com **87** ocorrências no total (`-pull` 28 em 15 linhas ·
+`-trim-pincel` 19 em 9 linhas · `-pincel-afiado` 15 · `-unblocked` 10 · `-cloth` 9 · `-boundary` 2 ·
+`-rake` 4). ⇒ aquele ficheiro é a **maior concentração de nomes internos de alvo restrito da árvore**,
+e não uma linha isolada. ⚠️ **Nem tudo ali é dívida:** a coluna do SculptGL é **MIT** e a atribuição
+**fica** (a triagem é por ARTEFACTO, com a licença lida nele); parte dos acertos da `-pull` é o
+falso positivo do T-4. Mas a coluna do alvo restrito carrega nomes internos de função/ficheiro, e o
+ficheiro é, por confissão do próprio E, *«o estudo comparativo da época em que se lia o fonte»*.
+✅ **E a afirmação do ledger de que o gate não o vê é VERDADEIRA** — conferi no código: o censo varre
+`["crates","shells"]`, e `docs` só alimenta o discriminador de nomes próprios. ⇒ **NÃO é isenção; é
+dívida com dono.** Ela **não é desta obra** (zero adições) e **não se cura aqui**: é um acto de
+reescrita à maneira da `SPEC_reescrita_dos_comentarios_com_nomes_do_alvo.md`, sobre um doc de outro
+assunto. ⛔ O que **é** desta obra é corrigir a contagem: o ledger diz «uma citação, linha 422».
+
+**T-4 — `tip_roundness` em 7 ficheiros.** ✅ **ISENÇÃO LEGÍTIMA — e a decisão JÁ ESTÁ TOMADA noutro
+ledger; o que falta é executá-la.** O `LEDGER_blender-pull.md` (§ da reescrita) já triou este token,
+com medição: é **propriedade pública** do alvo alcançável pela linguagem de script dele (⇒ §4.1.13),
+é uma expressão de **duas palavras comuns** que este repo cunhou por conta própria, e hoje é um
+**rótulo de interface** com chave de i18n e dois `NodeId` hasheados da string. O mesmo ledger regista
+que **a vassoura contradiz o atestado que a acompanha**: o R-pré daquela obra declarou admissíveis os
+identificadores públicos e o E que colheu a vassoura descartou **8** entradas por esse exacto motivo
+— *esta devia ter sido a 9.ª*. ⇒ **Veredito: a entrada é o defeito, não o código.** A cura é remover
+`tip_roundness` de `VASSOURA_blender-pull.txt`, e o acto é do **E/R da obra `-pull`** — ⛔ não desta
+linha, e ⛔ não do agente de reescrita. Até lá o `exit 1` daquela vassoura sobre a família é **SABIDO**.
+⇒ **Não é dívida da `line/sculpt3d`. O item pode sair da lista de abertos dela.**
+
+**T-5 — os 13 ficheiros acusados em 5 de 9 varreduras (handoff §58.4-bis).** ⛔ **Ruído de vassoura e
+dívida de outras obras, misturados — e a reconciliação do número está feita:** `8` dos `13` são da
+vassoura `-pull` e são **o mesmo token do T-4** (`ids/sculpt3d.rs`, `rows.rs`, `brush_default.rs`,
+`brush_magnitudes.rs`, `brush.rs`, `stroke_shape.rs`, `verb_strip_law_tests.rs`,
+`verb_strip_tests.rs` — os oito ficheiros de produto que carregam `tip_roundness`) ⇒ **caem com o
+T-4, sem tocar numa linha de código**. O 13.º (`ph2d-mesh-bool/src/lib.rs`) é a **isenção nomeada do
+§44.8** (API pré-existente da dependência Apache-2.0) e o próprio handoff o diz. Ficam **4** por
+triar, de **três** obras que não são esta (`-cloth`/`-trim-pincel` sobre `verb_scrape_tests.rs`,
+`-pincel-afiado` sobre `brush_verb_filter.rs`, `-trim` sobre três ficheiros da `ph2d-app-sculpt3d`).
+⚠️ E a discrepância «três em 16/09, treze em 17/09» explica-se **sem mistério**: o conjunto de
+caminhos alargou quando a §65 tocou a `ph2d-mesh-bool`, e a vassoura do `-pull` foi colhida depois —
+*o sweep é propriedade do trio (código, vassoura, conjunto de caminhos)*. ⇒ **zero adições desta
+linha confirmadas; nenhum dos 13 bloqueia esta obra.**
+
+### §4.2.6 — O que o E tem de emendar para o atestado passar
+
+⛔ **Acto do E, nunca do R nem do I** (esta auditoria não tocou uma linha da espec além do cabeçalho):
+
+1. **A-1** — reescrever a barra do `G-3` acima do extremo que a gerou (ou declarar o extremo como o
+   valor e usar `≤`), com a margem escrita ao lado. Como está, o gate reprova sobre o alvo.
+2. **A-2** — corrigir a linha *«partir + colapsar»* do §7 (fixtura e números) e reconferir que
+   `G-5`/`G-6` descrevem o regime da célula que citam.
+3. **A-3** — **pôr o número de passagens no cabeçalho de cada célula** e regenerar/re-emitir as 18
+   afectadas; sem isso o `G-4` mede um corpus que ninguém consegue reproduzir.
+4. **A-4** — os sete endereços de fixtura.
+5. **A-5 / A-6 / A-7 / A-8** — re-medir e reescrever (ou apagar) cada número; e declarar o `eps` das
+   contagens de «movidos» e a receita do `sha256` do §2.1.
+6. **A-9 / A-10 / A-11 / A-12** — corrigir o superlativo, a faixa `40`–`109`, o `n = 37` e a tabela
+   das famílias do README; e **marcar no cabeçalho** as duas células superadas `v_rotate_*`/`v_mask_*`.
+7. **A-13** — o **link** dos itens 1 e 2 do §10 (§4.1.12), ou re-escrevê-los como facto sem fonte
+   declarada — mas então o cabeçalho não pode dizer que a fonte está registada no §10.
+8. **§4.2.3** — acrescentar ao **§12** o limite nomeado (*o corpus não separa «o pente não troca» de
+   «o pente enviesa as decisões do passe de refino»*), e promover as células `v_layer`/`v_smooth` de
+   nota de rodapé do §6.2 a prova principal do §3.1.
+
+⭐ **Nada nesta lista é de desenho.** Fechados os oito pontos, a espec passa: a tese é sólida, a régua
+é reprodutível por terceiros e a barra é honesta.
+
+### §4.2.7 — Actualização da corrente
+
+| papel | id / data | o que fez |
+|---|---|---|
+| **R-pré** | subagente-R independente, 2026-09-17 | auditoria §4.2 — ⛔ **REPROVADA**, 13 achados (§4.2.2) + 5 triagens (§4.2.5) + o limite não declarado (§4.2.3) |
+
+⚠️ **Higiene desta auditoria:** nada do alvo tocou o disco. As vassouras correram pelo
+`cleanroom-sweep.sh` (descodificação em memória), a saída foi consumida **em cano** e deste ledger
+saem apenas **contagens e números de linha** — nunca os termos que casaram. Os scripts de
+re-derivação viveram no scratchpad da sessão, fora da árvore.

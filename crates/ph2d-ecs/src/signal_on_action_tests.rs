@@ -41,22 +41,34 @@ fn linha(edge: ActionEdge) -> ActionTriggerRow {
 ///
 /// ⚠️ **Sem a metade do `Hold` este gate passaria sobre uma lei que nunca dispara** — *uma régua
 /// que só vê a ausência não prova que a presença é possível*.
+///
+/// ⛔⛔ **E a 1.ª redacção CONTAVA e uma mutação sobreviveu-lhe:** ela afirmava *«o `Release` fala
+/// UMA vez»*, e trocar a lei dele para `just_pressed` também fala uma vez — no quadro **errado**.
+/// *Uma régua que conta QUANTOS nunca vê QUAIS* (a mesma forma que o pincel de contorno pagou,
+/// §54 do `sculpt3d`) ⇒ o que se afirma é o PERFIL do toque, quadro a quadro.
 #[test]
 fn press_fala_uma_vez_por_toque_e_hold_fala_sempre() {
-    let p = linha(ActionEdge::Press);
-    let h = linha(ActionEdge::Hold);
-    let r = linha(ActionEdge::Release);
-    // Um toque de três quadros: desce, segura, sobe.
-    let toque = [DESCEU, SEGURADA, SUBIU];
-    let n = |row: &ActionTriggerRow| toque.iter().filter(|a| fala(row, **a)).count();
-    assert_eq!(n(&p), 1, "o Press tem de falar UMA vez por toque");
+    // Um toque de quatro quadros: solta, desce, segura, sobe.
+    let toque = [SOLTA, DESCEU, SEGURADA, SUBIU];
+    let perfil = |edge| {
+        let row = linha(edge);
+        toque.map(|a| fala(&row, a))
+    };
     assert_eq!(
-        n(&h),
-        2,
+        perfil(ActionEdge::Press),
+        [false, true, false, false],
+        "o Press fala SÓ no quadro em que ela desce"
+    );
+    assert_eq!(
+        perfil(ActionEdge::Hold),
+        [false, true, true, false],
         "o Hold fala nos dois quadros em que ela está em baixo"
     );
-    assert_eq!(n(&r), 1, "o Release fala no quadro em que ela sobe");
-    assert!(!fala(&p, SOLTA) && !fala(&h, SOLTA) && !fala(&r, SOLTA));
+    assert_eq!(
+        perfil(ActionEdge::Release),
+        [false, false, false, true],
+        "o Release fala SÓ no quadro em que ela sobe"
+    );
 }
 
 /// ⚠️⚠️ **A acção que não existe fica CALADA — nas TRÊS arestas.**

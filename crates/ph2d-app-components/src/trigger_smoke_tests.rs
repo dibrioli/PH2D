@@ -103,6 +103,8 @@ fn o_chao_nasce_antes_de_tudo() {
 fn a_bala_tem_higiene_de_ciclo_de_vida() {
     let mut w = monta();
     let b = acha(&mut w, "Bala");
-    let l = w.get::<Lifetime>(b).expect("a receita tem de ter `Lifetime`");
+    let l = w
+        .get::<Lifetime>(b)
+        .expect("a receita tem de ter `Lifetime`");
     assert!(l.duration_us > 0, "uma vida de `0` NÃO mata (a lei do #12)");
 }

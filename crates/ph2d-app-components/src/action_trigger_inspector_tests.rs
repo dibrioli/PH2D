@@ -73,10 +73,25 @@ fn reescrever_o_mesmo_valor_nao_suja_o_mundo() {
         !apply_all(&mut sim, &[(bits, E::Edge(0, 0))]),
         "a mesma aresta não é uma mudança"
     );
-    // O controlo: um valor DIFERENTE muda.
+    // ⚠️ **Os TRÊS campos, e não dois:** a guarda é escrita uma vez por braço, logo um gate que
+    // cubra dois deixa o terceiro sem régua — e foi assim que a mutação do `signal` sobreviveu à
+    // 1.ª redacção deste ficheiro.
+    assert!(
+        !apply_all(&mut sim, &[(bits, E::Signal(0, "shoot".into()))]),
+        "o mesmo sinal não é uma mudança"
+    );
+    // O controlo, também nos três: um valor DIFERENTE muda.
     assert!(
         apply_all(&mut sim, &[(bits, E::Edge(0, 2))]),
         "o controlo: outra aresta TEM de sujar o mundo"
+    );
+    assert!(
+        apply_all(&mut sim, &[(bits, E::Action(0, "jump".into()))]),
+        "o controlo: outro nome de acção TEM de sujar o mundo"
+    );
+    assert!(
+        apply_all(&mut sim, &[(bits, E::Signal(0, "bang".into()))]),
+        "o controlo: outro sinal TEM de sujar o mundo"
     );
 }
 

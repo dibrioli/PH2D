@@ -1761,3 +1761,51 @@ varreduras (threads persistentes com barreiras), e é wave própria.
 ⚠️ **E o corner caro continua a ser o cursor no topo:** `1000` objectos a `1024` varreduras custam
 `115,9 ms`. ⭐ *A `64` varreduras os mesmos mil custam `6,8` — a escada entre os dois é onde o
 «custo no cartão» deixaria o artista escolher com um número à frente em vez do relógio de parede.*
+
+---
+
+## §23 — *«1000 = 40 fps. Retirar o contorno azul não melhorou em nada»*
+
+Report do dono, 2026-09-18. `40` FPS são `25 ms`, e o Motion são **`6,8`** deles (§22). ⇒ sobram
+`~18 ms`, e o gizmo do colisor **não era nenhum deles** — a §22 apontou para o sítio certo (o
+desenho) e para a razão errada (o número de caminhos).
+
+### §23.1 — O encode das formas é GRÁTIS, medido
+
+[`motion_custo_do_quadro_probe::quanto_custa_desenhar_as_formas`] constrói a cena do Vello com as
+formas deste quadro, pela porta do produto (`motion_shape_gen::encode`) e **sem placa** — o encode é
+CPU pura:
+
+| formas | encode | por forma | % de um quadro |
+|---|---|---|---|
+| 529 | 0,043 ms | 0,08 µs | 0,3 % |
+| **1024** | **0,041 ms** | 0,04 µs | **0,2 %** |
+| 2025 | 0,092 ms | 0,05 µs | 0,6 % |
+
+⇒ **mil formas custam `0,04 ms` a preparar.** O batch do `draw_shared_instances` memoiza a
+tesselação por `geometry_id`, logo mil cópias da mesma forma são **uma** tesselação e mil poses.
+
+### §23.2 — ⇒ O que sobra é a PLACA, e a grandeza não é a CONTAGEM
+
+Se preparar mil formas custa `0,04 ms` e o quadro tem `18 ms` por explicar, o que falta é a
+**rasterização**. ⭐⭐ E aí o que manda **não é quantas formas há, é quantos PIXEIS elas cobrem**: os
+discos da foto têm `~200` unidades de diâmetro, logo mil deles pintam `~31 M` de pixels por quadro —
+dezenas de ecrãs de preenchimento.
+
+⚠️ **É isso que explica o report inteiro:** o anel azul é um traço FINO (poucos pixels) e tirá-lo não
+muda nada; o disco branco é uma ÁREA e é ele que custa.
+
+⛔⛔ **E a partição de LOD desta casa é cega a isso, porque a cerca dela é uma CONTAGEM:**
+[`LOD_COUNT = 16_000`](../../crates/ph2d-app-motion/src/motion_bridge_objects_lod.rs) manda a forma
+virar ladrilho de GPU acima de dezasseis mil CÓPIAS — e mil discos gigantes passam por baixo dessa
+cerca a pintar muito mais do que dezasseis mil formas pequenas. *Um tecto que não nomeia o recurso
+que o governa é um palpite à espera de um smoke* (§0.0), e o recurso aqui é **área coberta**, não
+população.
+
+⇒ **é o lever maior que sobra, e é do render/Vector, não deste módulo.** O experimento que o separa
+de tudo o resto é de cinco segundos: **encolher as formas** (ou afastar a câmara) com os mesmos mil
+objectos — se o FPS salta, é preenchimento; se não salta, é outra coisa e esta secção está errada.
+
+⚠️ O instrumento que o confirma do lado do app já existe: **`PH2D_FLUID_PROFILE=1`** imprime, a cada
+120 quadros, `total` · `cpu-encode` · `acquire(medido)` · `hero-paint`. Se o `acquire` dominar, a
+placa é o tecto.

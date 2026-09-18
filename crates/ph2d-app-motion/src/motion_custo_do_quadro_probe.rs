@@ -327,3 +327,96 @@ fn sonda_o_quadro_da_foto() {
             .unwrap_or("?")
     );
 }
+
+/// ⭐⭐⭐ **O DESENHO DE N FORMAS, do lado da CPU** — o report de 2026-09-18: *«1000 = 40 fps.
+/// Retirar o contorno azul não melhorou em nada»*.
+///
+/// O quadro dele mede `25 ms` e o Motion é `6,8`. ⚠️ **Esta sonda mede o que sobra do lado da
+/// CPU**: construir a cena do Vello com as `N` formas. O que ela NÃO mede é a rasterização — e é
+/// exactamente por isso que ela vale: *se o encode for barato, o que sobra é a PLACA*, e aí o que
+/// conta não é o número de formas, é quantos PIXEIS elas cobrem.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn quanto_custa_desenhar_as_formas() {
+    use std::time::Instant;
+    eprintln!("\n  ═══ O ENCODE DAS FORMAS (CPU, sem placa) ═══\n");
+    eprintln!(
+        "  {:<9} │ {:>12} │ {:>13} │ {:>16}",
+        "formas", "encode", "por forma", "% de um quadro"
+    );
+    eprintln!("  ----------|--------------|---------------|------------------");
+    for n in [500usize, 1000, 2000] {
+        let mut m = MotionState::new();
+        let quadrado = indice_do_quadrado(&m.registry);
+        let g = &mut m.doc.graph;
+        let grelha = g.add_node("motion.grid");
+        #[expect(clippy::cast_precision_loss, reason = "uma contagem de cena")]
+        let cols = (n as f32).sqrt().ceil();
+        g.set_param(grelha, "rows", cols);
+        g.set_param(grelha, "cols", cols);
+        g.set_param(grelha, "gap_x", 0.17);
+        g.set_param(grelha, "gap_y", 0.17);
+        let forma = g.add_node("source.shape");
+        if let Some(q) = quadrado {
+            g.set_param(forma, ph2d_node_motion_shape::param::KIND, q);
+        }
+        g.set_param(forma, ph2d_node_motion_shape::param::SIZE, 0.09);
+        let dup = g.add_node("motion.duplicator");
+        let saida = g.add_node("motion.output");
+        for (a, ap, b, bp) in [
+            (forma, 0u16, dup, 0u16),
+            (grelha, 0, dup, 1),
+            (dup, 0, saida, 0),
+        ] {
+            g.connect(ph2d_nodegraph::graph::Edge {
+                from: (a, ap),
+                to: (b, bp),
+                delayed: false,
+            })
+            .expect("aresta");
+        }
+        crate::motion_shape_gen::publish(&mut m, 0.0);
+        m.pump.mark_dirty();
+        assert!(
+            m.pump.pump(
+                &m.doc.graph,
+                &m.registry,
+                &[saida],
+                0,
+                0.0,
+                [0.0, 0.0, 1.0, 1.0],
+                [1.0, 1.0]
+            ),
+            "a cena tem de cozinhar"
+        );
+        let insts = &m.pump.vector_instances;
+        assert!(insts.len() >= n, "controlo: {} formas de {n}", insts.len());
+        let mut melhor = f64::INFINITY;
+        for _ in 0..10 {
+            let mut cena = ph2d_vector::VectorScene::new();
+            let mut sem_arte = |_: u32, _: [f32; 4]| None;
+            let t = Instant::now();
+            crate::motion_shape_gen::encode(
+                insts,
+                &m.shape_store,
+                &mut sem_arte,
+                ph2d_vector::Affine::IDENTITY,
+                &mut cena,
+            );
+            melhor = melhor.min(t.elapsed().as_secs_f64() * 1e3);
+            std::hint::black_box(&cena);
+        }
+        #[expect(clippy::cast_precision_loss, reason = "uma contagem de formas")]
+        let nf = insts.len() as f64;
+        eprintln!(
+            "  {:<9} │ {melhor:>9.3} ms │ {:>10.2} µs │ {:>15.1}%",
+            insts.len(),
+            melhor * 1e3 / nf,
+            melhor / 16.67 * 100.0
+        );
+    }
+    eprintln!(
+        "\n  ⚠️ Isto é SO' o encode. A rasterizacao e' da placa, e o que a governa nao e' o numero\n  \
+         de formas — e' quantos PIXEIS elas cobrem.\n"
+    );
+}

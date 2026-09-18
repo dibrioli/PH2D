@@ -319,6 +319,59 @@ impl crate::App {
     /// ⚠️ **E o TECLADO tem de chegar lá:** o mover lê as acções nomeadas do Input Map
     /// (`move_left`/`move_right`/`move_up`/`move_down`), que o `resolve_player_input` resolve todo
     /// o quadro — as duas primeiras já existiam, as duas últimas nasceram nesta wave.
+    /// ⭐⭐⭐ **O GATILHO** (suplente #24). Prólogo do quadro, uma vez.
+    ///
+    /// ⚠️⚠️ **Ele faz DUAS coisas que a cena não pode fazer, e sem qualquer uma delas o smoke
+    /// ensina o contrário do que diz:**
+    ///
+    /// 1. **Cria a acção `fire` no Input Map e liga-a ao ESPAÇO.** O
+    ///    `InputMap::with_player_defaults` tem sete acções e **nenhuma é disparar** (medido) —
+    ///    e a lei do gatilho cala uma acção que o mapa não conhece, de propósito. Sem este passo o
+    ///    dono carrega na tecla, nada sai, e ele lê *«o gatilho não funciona»* sobre um componente
+    ///    que está certo.
+    /// 2. **Põe o relógio a andar.** As teclas do jogo são as teclas do editor, logo um gatilho só
+    ///    fala com a corrida a correr — e a fábrica dele também.
+    ///
+    /// ⛔ *Uma cena de smoke que ensina o CONTRÁRIO do que acontece é pior que uma cena ausente*
+    /// (`CLAUDE.md` §5.0).
+    pub(crate) fn trigger_smoke(&mut self) {
+        if self.components.smokes.trigger {
+            return;
+        }
+        if std::env::var_os("PH2D_TRIGGER_SMOKE").is_none() {
+            return;
+        }
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let _ = ph2d_app_components::trigger_smoke::montar(cx.sim.world_mut(), 1);
+        self.components.smokes.trigger = true;
+        self.timeline.flags.simulate_physics = true;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            // ⚠️ **A acção nasce AQUI e não na cena** — o mapa vive no `HeroScreen`, que é do
+            // editor, e a cena só vê o mundo. ⭐ O `create` devolve a que já existe se o nome
+            // repetir, logo isto é idempotente por construção.
+            let id = hero
+                .input_map
+                .create(ph2d_app_components::trigger_smoke::ACCAO);
+            if let Some(a) = hero.input_map.get_mut(id) {
+                // O ESPAÇO (`0x20`), que é a tecla que ninguém do editor usa no canvas.
+                a.bindings
+                    .push(ph2d_input::Binding::Key(ph2d_input::Key(0x20)));
+            }
+            hero.panel_visibility.insert("inspector", true);
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+        eprintln!(
+            "[trigger-smoke] cena=1  accao=«{}» (ESPACO)  sinal=«{}»  \
+             o heroi anda com as SETAS e a bala sai para onde ele esta' virado; \
+             a torreta cinzenta e' o CONTROLO (mesma tecla, mira desligada)",
+            ph2d_app_components::trigger_smoke::ACCAO,
+            ph2d_app_components::trigger_smoke::SINAL,
+        );
+    }
+
     pub(crate) fn topdown_smoke(&mut self) {
         if self.components.smokes.topdown {
             return;

@@ -139,6 +139,8 @@ pub mod tags_smoke;
 pub mod timer_smoke;
 /// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
 pub mod topdown_smoke;
+/// ⭐⭐⭐ **O GATILHO** (suplente #24) — a arma que aponta e a que não aponta; ver o cabeçalho.
+pub mod trigger_smoke;
 
 /// ⚠️ **`#[cfg(any(test, feature = "test-support"))]` e não `#[cfg(test)]`** (HOWTO §2.5): daqui a
 /// shell é um **consumidor**, e um `cfg(test)` desta crate é falso quando ela a compila. As duas

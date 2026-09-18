@@ -145,7 +145,7 @@ pub use preview_premul::PreviewPremul;
 pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use screen_pick::{compose_screen_bytes, read_texel, screen_color, world_source};
-pub use sprite::{GpuTexRun, QuadVertex, RenderInstance, Sprite, SpriteSource};
+pub use sprite::{GpuTexRun, QuadVertex, RenderInstance, SourceCells, Sprite, SpriteSource};
 pub use sprite_collect::sort_render_order;
 pub use sprite_mesh::{LiftedInstances, SpriteMesh};
 pub use world_rt::WorldRt;

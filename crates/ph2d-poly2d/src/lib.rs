@@ -42,6 +42,8 @@
 #![forbid(unsafe_code)]
 
 mod attr_law;
+/// ⭐ **A sub-malha dentro de um rectângulo** — o corte que o 9-slice presa a ossos exige.
+mod clip_rect;
 mod contour;
 mod grid;
 mod mesh;
@@ -51,6 +53,7 @@ mod simplify;
 mod triangulate;
 
 pub use attr_law::{AttrLaw, hermite_attrs, recover_gradients};
+pub use clip_rect::submesh_in_rect;
 pub use contour::contour;
 pub use grid::{Cobertura, GridOptions, axis_samples, grid_mesh_com, grid_mesh_of};
 pub use mesh::{Mesh2d, MeshOptions, mesh_of};

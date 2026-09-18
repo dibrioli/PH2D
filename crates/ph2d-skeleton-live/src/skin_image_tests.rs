@@ -522,6 +522,9 @@ mod at_time;
 /// A SUSPENSÃO da pele (pintar achata a arte) — filho por assunto, e aqui dentro para herdar as
 /// fixturas deste arnês (uma cópia delas divergiria no primeiro ajuste). Saiu para ficheiro próprio
 /// em 2026-09-15, pelo teto de LOC por ficheiro.
+#[path = "skin_quad_alheio_tests.rs"]
+mod quad_alheio;
+
 #[path = "skin_suspend_tests.rs"]
 mod suspensao;
 

@@ -496,10 +496,35 @@ pub fn bind_image(
         return false;
     }
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    // ⭐⭐⭐ **A MALHA NASCE SOBRE A CÉLULA QUE O QUAD MOSTRA, NUNCA SOBRE A FONTE INTEIRA** (F11,
+    // 2026-09-17). ⚠️⚠️ **Antes disto uma FOLHA prendia-se errada em SILÊNCIO:** a malha era traçada
+    // sobre a folha toda e o `pixel_to_local` espremia-a no quad de UMA célula — medido, uma folha
+    // `4×1` desenhava `1 277` peças recortadas dos quatro quadros dentro do sítio de um, com a UV de
+    // um só esticada por cima. *O 9-slice pelo menos avisava; este não dizia nada.*
+    //
+    // ⭐ A porta é a [`ph2d_render::SourceCells`], a MESMA que o extract lê para escolher a célula —
+    // e com uma célula só (a sprite de sempre) ela devolve a imagem inteira, byte-a-byte.
+    let Some(cells) = ph2d_render::SourceCells::of(
+        size_px,
+        sim.world().get::<ph2d_ecs::SpriteRegion>(e).map(|r| r.rect),
+        sim.world()
+            .get::<ph2d_ecs::SpriteGrid>(e)
+            .map_or(1, |g| g.hframes),
+        sim.world()
+            .get::<ph2d_ecs::SpriteGrid>(e)
+            .map_or(1, |g| g.vframes),
+    ) else {
+        return false;
+    };
+    let celula = cells.cell_px();
     // ⭐⭐⭐ **AS ARTICULAÇÕES GRADUAM A MALHA** (report do dono, 2026-09-10). Elas saem daqui e não
     // do leaf da geometria: só quem PRENDE sabe onde a dobra vai acontecer.
-    let focos = crate::skin_image::joints_in_image(sim, e, &ossos, size_px, pixels_per_meter);
-    let Some(malha) = crate::skin_image::mesh_from_rgba(rgba, size_px[0], size_px[1], &focos, opts)
+    //
+    // ⚠️ **Em pixels da CÉLULA**, que é o espaço da malha — o `pixel_to_local` do desenho lê o
+    // `mesh.size`, logo as duas pontas medem a mesma régua ou o adensamento cai fora da dobra.
+    let focos = crate::skin_image::joints_in_image(sim, e, &ossos, celula, pixels_per_meter);
+    let alfa = crate::skin_image::cell_alpha(rgba, size_px, &cells);
+    let Some(malha) = crate::skin_image::mesh_from_alpha(&alfa, celula[0], celula[1], &focos, opts)
     else {
         return false;
     };

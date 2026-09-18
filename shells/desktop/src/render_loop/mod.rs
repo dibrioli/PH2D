@@ -297,6 +297,8 @@ mod fase_legacy_chrome;
 mod fase_live_offset_and_width;
 /// Fase do quadro: o Motion: publicar, despachar e os sinais.
 mod fase_motion_bridge;
+/// Fase do quadro: os gizmos do Motion que leem o cozido (o colisor e o warp).
+mod fase_motion_gizmos;
 /// Fase do quadro: o modal de imagem nova (Cmd/Ctrl+N) cria a tela escolhida.
 mod fase_new_image_modal;
 /// Fase do quadro: os verbos de no e de arranjo.

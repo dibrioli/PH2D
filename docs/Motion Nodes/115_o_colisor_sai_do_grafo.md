@@ -1098,3 +1098,113 @@ afim). *Fica NOMEADO aqui em vez de silencioso.*
   declara colisor **ou** quando nada se moveu (§13.4), e o `unwrap_or_else(|| cozido.clone())` do
   laço das tomadas devolve exactamente o que ele guardava antes.
 - **A lei da separação não se mexeu** — o que mudou foi **quem a atravessa**.
+
+---
+
+## §17 — ⛔⛔ O 2.º REPORT: *«melhorou em relação à colisão mas tem um atraso antigo do gizmo em relação à imagem»*
+
+> Foto: seis discos brancos, cada um com o anel azul **deslocado no MESMO sentido** — a arte à
+> direita do contorno, em todos.
+
+⭐ **O sentido igual em todos é o diagnóstico:** um defeito por-peça daria deslocamentos
+diferentes (cada quadrado treme com a sua fase). Um deslocamento **uniforme** é o quadro inteiro
+a discordar de si próprio — ou seja, **tempo**, não geometria. E o dono nomeou-o: *atraso*.
+
+### §17.1 — A medição, no texto do quadro EMENDADO
+
+O `frame_text::render_frame()` devolve o corpo do quadro com cada `self.fase_*(` substituída pelo
+corpo da fase, recursivamente ⇒ **a posição de um literal nesse texto é a ordem em que ele corre**.
+
+| literal | posição | o que é |
+|---|---|---|
+| `collider_gizmo::resolve_at(` | **190 082** | o retrato do colisor |
+| `motion_bridge::dispatch(` | **482 136** | o COOK, que enche `pump.tap_streams()` |
+| `collider_gizmo_overlay::draw(` | **662 982** | o desenho do retrato |
+
+⇒ o retrato saía de tomadas do quadro **N−1**; a arte é encodada no `run_present_phase`, depois do
+cook de **N**. **Um quadro inteiro de atraso**, e ele só se vê com a cena em movimento — que é
+exactamente a `=121`/`=122`, onde tudo treme sem parar. *Por isso é «antigo»: ele existe desde que
+o gizmo existe, e nenhuma cena parada o mostrava.*
+
+### §17.2 — ⚠️⚠️ A LEITURA ESTRUTURAL ERROU DUAS VEZES E A MEDIÇÃO ACERTOU AS DUAS
+
+Antes de medir, eu li os números de linha e concluí: *«a `fase_hero_scene` (linha 67) corre antes
+da `fase_motion_bridge` (linha 369), logo o DESENHO também é cedo ⇒ é preciso mover as duas
+coisas»*.
+
+⛔ **Falso, e a medição disse-o à primeira:** `desenho = 662 982 > cook = 482 136`. O desenho já
+estava no sítio certo.
+
+⭐ **A causa da minha leitura errada:** `fase_hero_frame.rs` contém **TRÊS** fases — `fase_hero_frame`
+(l. 30), `fase_hero_document_verbs` (l. 79) e `fase_hero_tools` (l. 251). A linha 369 vive na
+**`fase_hero_tools`**, que a `fase_hero_frame` chama na linha **66** — *uma linha antes* da
+`fase_hero_scene`. Os marcadores confirmam-no:
+
+```
+gizmo_views=184509  motion_bridge=478437  canvas_overlays=506950  hero_scene=532984  vector_overlays=659349
+```
+
+⇒ **Número de linha no mesmo ficheiro não é ordem de execução quando o ficheiro tem mais de uma
+fase.** É precisamente para isto que o `frame_text` existe, e o cabeçalho dele já o diz —
+*eu é que li o ficheiro em vez de correr o instrumento.*
+
+### §17.3 — A cura: uma fase NOVA, na janela medida
+
+[`fase_motion_gizmos`](../../shells/desktop/src/render_loop/fase_motion_gizmos.rs), chamada
+**logo a seguir** ao `fase_motion_bridge` — dentro da janela `cook (482 136) … desenho (662 982)`,
+onde a `fase_canvas_overlays` (506 950) já vivia.
+
+⚠️ **Move-se o RESOLVE, nunca o desenho.** Mover o desenho reabriria uma lei que este repo já pagou
+e tem escrita no `fase_vector_overlays`: *no Vello quem pinta depois fica por cima*, e os gizmos
+foram para ali de propósito para não ficarem ATRÁS da arte que manipulam (`arte em 623 773, gizmo
+em 484 970`, medido em 13/09).
+
+⭐ **A modalidade vem da PORTA que já existia** (`App::motion_tool_active`), lida **antes** do
+empréstimo do `gfx` — é isso que a torna chamável dali. O prólogo deriva-a de um local porque ali o
+`gfx` já está emprestado, e o comentário dele di-lo. *Duas respostas à mesma pergunta divergem no
+dia em que uma mudar; esta é a mesma.*
+
+### §17.4 — ⭐ São DOIS gizmos, e o terceiro fica onde está — MEDIDO
+
+| gizmo | lê `tap_streams`? | onde resolve |
+|---|---|---|
+| **colisor** da forma | sim | mudou-se |
+| **warp** (Corner Pin · Bezier Warp) | sim | mudou-se |
+| **field** espacial | **não** — lê params do nó | fica no prólogo |
+
+*Mover o que não tem o defeito só alarga o diff.* O warp mudou-se porque tem o **mesmo mecanismo**,
+e deixá-lo seria deixar um defeito medido à espera do próximo report.
+
+### §17.5 — ⚠️ Nenhum gate desta casa podia ver isto
+
+Os que existem medem a **COSTURA**: *o retrato é publicado? é desenhado? o ponteiro chega às três
+pontas?* — e **todos ficam verdes com as três chamadas na ordem errada**. *Uma costura ligada não
+diz nada sobre QUANDO cada ponta corre.*
+
+⇒ `o_gizmo_do_colisor_le_o_cozido_deste_quadro`, que afirma `cook < resolve < desenho` **para as
+duas famílias**, com a contagem de cada agulha presa a `1` (uma recaída que publique nos dois
+sítios reprova).
+
+**Prova de mutação — 3 de 3 sangram:**
+
+| mutação | veredito |
+|---|---|
+| M1 — o retrato volta a ser resolvido ANTES do cook (o defeito do report) | **SANGRA** |
+| M2 — uma RECAÍDA: o warp volta a ser publicado também no prólogo | **SANGRA** |
+| M3 — a fase deixa de ser CHAMADA | **SANGRA** |
+
+### §17.6 — ⛔⛔ E O ARNÊS MENTIU OUTRA VEZ, com uma forma NOVA
+
+A 1.ª corrida deu **`SOBREVIVEU (0 correram)`** no controlo **e** nas três mutações.
+
+⚠️ **A forma é nova e vale para todo arnês desta casa:** `cargo test -p <crate> <filtro>` corre
+**vários alvos** (a lib, e cada `tests/*`), e **cada um** imprime o seu `running N tests` e o seu
+`test result:`. Ler o **PRIMEIRO** `running` dá o alvo da lib, que casa **zero**; e o primeiro
+`test result: ok` é **dele**. ⇒ o veredito lia-se *«sobreviveu»* sobre um gate que de facto sangra,
+e o contador dizia `0` — *as duas metades a mentir no mesmo sentido*.
+
+⇒ a contagem passa a ser a **SOMA de todos os alvos**, e o `FAILED` pergunta-se **antes** do `ok`.
+
+⭐ E a régua do «casou zero» funcionou: quando o `bc` não existia nesta máquina, o arnês devolveu
+**`ARNES-PARTIDO`** em vez de um veredito — *falhar alto é o que separa um instrumento de uma
+opinião.*

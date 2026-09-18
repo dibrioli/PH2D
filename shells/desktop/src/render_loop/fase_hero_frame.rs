@@ -367,6 +367,9 @@ impl crate::App {
             vec_xf_ops,
         )?;
         self.fase_motion_bridge(vec_xf_ops);
+        // ⚠️ **LOGO A SEGUIR AO COOK, e isso e' a lei** — os retratos do colisor e do warp
+        // leem `pump.tap_streams()`, que o `fase_motion_bridge` acabou de encher.
+        self.fase_motion_gizmos(view.window_size);
         let vec_cfg = self.fase_tool_mirrors(vec_cfg)?;
         self.fase_world_panel_bridges();
         let (flip_active, flip_style) = self.fase_flip_strip_and_cursor(window_size)?;

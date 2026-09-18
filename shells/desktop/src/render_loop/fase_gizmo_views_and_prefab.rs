@@ -114,23 +114,12 @@ impl crate::App {
                 )
             })
             .flatten();
-        // **O gizmo dos DEFORMADORES DE QUADRILÁTERO** (Corner Pin + Bezier Warp) —
-        // publicado no mesmo sítio e pela mesma modalidade do field: só com a tool
-        // Motion activa. ⚠️ Publicar de novo SUBSTITUI, então largar a selecção limpa
-        // as alças em vez de as deixar a pairar.
-        ph2d_app_motion::warp_gizmo::publish(ph2d_app_motion::warp_gizmo::resolve(
-            motion,
-            motion_tool_active,
-        ));
-        // **O gizmo do COLISOR da forma** (doc 109 §5) — o mesmo sítio, a mesma modalidade.
-        ph2d_app_motion::collider_gizmo::publish(ph2d_app_motion::collider_gizmo::resolve_at(
-            motion,
-            motion_tool_active,
-            camera,
-            hero.view.center_split,
-            window_size,
-            self.last_pointer,
-        ));
+        // ⛔⛔ **OS RETRATOS DO WARP E DO COLISOR SAIRAM DAQUI** (report do dono, 2026-09-18) —
+        // os dois saem das TOMADAS, e as tomadas so' existem depois do cook, que corre na
+        // `fase_motion_bridge`, bem abaixo. Publicados aqui, eles retratavam o quadro ANTERIOR
+        // enquanto a arte mostrava este. Vivem agora na `fase_motion_gizmos`, logo a seguir ao
+        // cook — com gate de ORDEM (`o_gizmo_do_colisor_le_o_cozido_deste_quadro`).
+        // ⭐ O gizmo do FIELD fica: ele le' params do no', nunca uma tomada.
         Some(motion_tool_active)
     }
 }

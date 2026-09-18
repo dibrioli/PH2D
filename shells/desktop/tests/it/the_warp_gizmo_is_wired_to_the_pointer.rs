@@ -90,7 +90,10 @@ fn the_collider_gizmo_is_wired_like_the_warp() {
         quadro.contains(
             "ph2d_app_motion::collider_gizmo::publish(ph2d_app_motion::collider_gizmo::resolve_at( motion, motion_tool_active,"
         ),
-        "o retrato do colisor tem de ser publicado no prologo, gateado pela tool Motion"
+        "o retrato do colisor tem de ser publicado com a modalidade da tool Motion. \
+         ⚠️ Ele deixou de morar no PROLOGO em 2026-09-18 (retratava o cozido do quadro \
+         anterior) — hoje vive na fase_motion_gizmos, e a ORDEM e o gate irmao \
+         o_gizmo_do_colisor_le_o_cozido_deste_quadro"
     );
     assert!(
         quadro.contains("collider_gizmo::view()")
@@ -232,4 +235,68 @@ fn the_grab_only_applies_over_the_canvas() {
         "o `down` do warp tem de exigir `on_canvas` — sem isso ele engole cliques do \
          painel do grafo e o artista não consegue ligar um fio"
     );
+}
+
+/// ⛔⛔⛔ **UM GIZMO LÊ O COZIDO DESTE QUADRO, NÃO O DO ANTERIOR** — report do dono (2026-09-18,
+/// foto): *«melhorou em relação à colisão mas tem um atraso antigo do gizmo em relação à imagem»*.
+///
+/// O contorno azul do colisor e as alças do warp saem das TOMADAS (`pump.tap_streams()`), que só
+/// existem depois de o Motion cozinhar. Medido no texto do quadro EMENDADO — onde a posição de um
+/// literal é a ordem em que ele corre — antes da cura:
+///
+/// | literal | posição |
+/// |---|---|
+/// | `collider_gizmo::resolve_at(` (o retrato) | **190 082** |
+/// | `motion_bridge::dispatch(` (o cook) | 482 136 |
+/// | `collider_gizmo_overlay::draw(` (o desenho) | 662 982 |
+///
+/// ⇒ o retrato era do cozido de **N−1** e a arte é encodada no fim, com o de **N**. Um quadro
+/// inteiro de atraso, visível só com a cena em movimento — que é a `=121`/`=122`, onde tudo treme.
+///
+/// ⚠️⚠️ **A LEITURA ESTRUTURAL ERROU DUAS VEZES E A MEDIÇÃO ACERTOU AS DUAS.** Pelos números de
+/// linha, `fase_hero_scene` (linha 67) parecia correr antes de `fase_motion_bridge` (linha 369) ⇒
+/// «o desenho também é cedo». É falso: `fase_hero_frame.rs` tem **três** fases, e a linha 369 vive
+/// na `fase_hero_tools`, que a `fase_hero_frame` chama na linha **66** — uma antes da
+/// `fase_hero_scene`. *Números de linha no mesmo ficheiro não são ordem de execução quando o
+/// ficheiro tem mais de uma fase* — e é exactamente para isso que o `frame_text` existe.
+///
+/// ⇒ a cura move o RESOLVE (e não o desenho, que já estava no sítio) para a `fase_motion_gizmos`,
+/// logo a seguir ao cook.
+///
+/// ⚠️ **Nenhum gate desta casa o via:** os que existem medem a COSTURA (o retrato é publicado? é
+/// desenhado? o ponteiro chega?) e ficam todos verdes com as três chamadas na ordem errada. *Uma
+/// costura ligada não diz nada sobre QUANDO cada ponta corre.*
+#[test]
+fn o_gizmo_do_colisor_le_o_cozido_deste_quadro() {
+    let quadro = crate::frame_text::render_frame();
+    let uma = |agulha: &str| {
+        let n = quadro.matches(agulha).count();
+        assert_eq!(
+            n, 1,
+            "`{agulha}` tem de aparecer UMA vez no quadro, e aparece {n}"
+        );
+        quadro.find(agulha).expect("acabou de ser contada")
+    };
+    let cook = uma("ph2d_app_motion::motion_bridge::dispatch(");
+    // As DUAS famílias que leem uma tomada. ⭐ O gizmo do FIELD fica de fora de propósito e está
+    // MEDIDO: nenhum ficheiro `field_gizmo*` menciona `tap_streams` — ele lê params do nó.
+    for (quem, resolve, desenho) in [
+        (
+            "colisor",
+            "ph2d_app_motion::collider_gizmo::resolve_at(",
+            "ph2d_app_motion::collider_gizmo_overlay::draw(",
+        ),
+        (
+            "warp",
+            "ph2d_app_motion::warp_gizmo::resolve(",
+            "ph2d_app_motion::warp_overlay::draw_warp_gizmo(",
+        ),
+    ] {
+        let (r, d) = (uma(resolve), uma(desenho));
+        assert!(
+            cook < r && r < d,
+            "o gizmo do {quem} tem de ser resolvido DEPOIS do cook e desenhado depois disso — \
+             cook={cook} resolve={r} desenho={d}"
+        );
+    }
 }

@@ -54,6 +54,9 @@ impl DeviceGbuffer {
             hit,
             normal: self.normal.clone(),
             point,
+            // ⚠️ Esta ponte serve à paridade e à leitura, e nenhuma delas sombreia com
+            // subsuperfície maciça — quem a quiser assa-a com a `curvatura::do_gbuffer`.
+            curvature: Vec::new(),
             edges,
         };
         let mut sh = ph2d_field_render::Shadows::default();

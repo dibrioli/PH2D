@@ -278,6 +278,12 @@ fn the_panel_shows_the_dimensions_of_what_is_selected() {
             "field.dim.coat_darkening",
             "field.dim.emission",
             "field.dim.emission_color",
+            "field.dim.subsurface_weight",
+            "field.dim.subsurface_color",
+            "field.dim.subsurface_radius",
+            "field.dim.subsurface_scale",
+            "field.dim.subsurface_anisotropy",
+            "field.dim.thin_walled",
         ],
         "uma caixa tem a POSE (posição e rotação), CINCO dimensões e o MATERIAL, nesta ordem"
     );

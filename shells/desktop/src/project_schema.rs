@@ -378,4 +378,31 @@
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA vez (99, 100, 114, 119, 129, 144, 145, 146, 147 e
 /// este).
-pub(crate) const PROJECT_SCHEMA: u32 = 159;
+/// # `159 → 160` — a SUBSUPERFICIE: a luz que ATRAVESSA a peca (`docs/Render3d/10`)
+///
+/// O `ph2d::field::FieldMaterial` passou de `23` para `33` numeros — `subsurface_weight`,
+/// `subsurface_color: [f32; 3]`, `subsurface_radius`, `subsurface_radius_scale: [f32; 3]`,
+/// `subsurface_scatter_anisotropy` e `thin_walled`. Mesmo mecanismo dos degraus `140`..`143`: dez
+/// `f32` APENDADOS a um componente registado, e o postcard e' posicional E sem comprimento — um
+/// blob v144 tem `92` bytes onde este binario pede `132`.
+///
+/// ⛔⛔ **E ele REFUTA a frase que o degrau `142 -> 143` deixou escrita** (*«e' o ULTIMO degrau que
+/// o material pede: sao as 15 entradas do OpenPBR e nao ha mais nenhuma para apender»*). Ela era
+/// verdade sobre a FATIA de 14/09 e falsa sobre o modelo: o `open_pbr_surface` tem **41** entradas,
+/// e a `ph2d-material` declarava por escrito, na mesma semana, que `transmission`, `subsurface`,
+/// `fuzz`, `thin_film` e `geometry_opacity` ficavam «⛔ nesta fatia». *Uma lista fecha-se contra o
+/// que se construiu, nunca contra o que existe.*
+///
+/// ⚠️ **APENDADOS e nao na posicao da NODEDEF**, e a troca e' declarada: a subsuperficie vem ANTES
+/// do verniz na nodedef, logo re-numerar mexeria em `11` posicoes ja' gravadas — a quebra de layout
+/// que o `142 -> 143` pagou uma vez. A lei que fica de pe' e' a outra metade daquela frase: cada
+/// FAMILIA junta, e a nova e' a quinta.
+///
+/// ⚠️ **A tripla NAO ve^ este degrau** — bytes dentro de um `ComponentBlob`, como os quatro
+/// anteriores do mesmo componente.
+///
+/// ⚠️ E o `FIELD_DOC_VERSION` NAO se mexe, pela razao de sempre: o documento do campo e'
+/// GEOMETRIA, e uma cor que atravessa nao muda uma distancia.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v144 e' recusado em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 160;

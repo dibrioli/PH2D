@@ -270,6 +270,8 @@ fn the_colour_of_the_glow_is_locked_while_the_glow_is_off() {
             (ph2d_field::Param::Material(7), true),
             (ph2d_field::Param::Material(13), false),
             (ph2d_field::Param::Material(20), false),
+            (ph2d_field::Param::Material(24), false),
+            (ph2d_field::Param::Material(28), false),
         ],
         "as quatro amostras, e quais delas estão vivas: {:?}",
         rows.iter().map(|r| r.key).collect::<Vec<_>>()
@@ -291,6 +293,8 @@ fn the_colour_of_the_glow_is_locked_while_the_glow_is_off() {
             (ph2d_field::Param::Material(7), true),
             (ph2d_field::Param::Material(13), false),
             (ph2d_field::Param::Material(20), true),
+            (ph2d_field::Param::Material(24), false),
+            (ph2d_field::Param::Material(28), false),
         ],
         "acender o brilho tinha de destravar a cor dele, e nada mais: {:?}",
         rows.iter().map(|r| r.key).collect::<Vec<_>>()
@@ -313,7 +317,10 @@ fn the_colour_of_the_glow_is_locked_while_the_glow_is_off() {
             [231, 231, 231],
             [255, 255, 255],
             [255, 255, 255],
-            [255, 255, 255]
+            [255, 255, 255],
+            // ⚠️ As duas da SUBSUPERFICIE (17/09) — ver o gate irmao do verniz.
+            [231, 231, 231],
+            [255, 188, 137]
         ],
         "as quatro amostras não mostram as quatro cores do material"
     );

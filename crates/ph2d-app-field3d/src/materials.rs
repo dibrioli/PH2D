@@ -61,6 +61,14 @@ pub fn surface_of(m: FieldMaterial) -> ph2d_material::Surface {
         coat_darkening: m.coat_darkening,
         emission_luminance: m.emission,
         emission_color: m.emission_color,
+        subsurface_weight: m.subsurface_weight,
+        subsurface_color: m.subsurface_color,
+        subsurface_radius: m.subsurface_radius,
+        subsurface_radius_scale: m.subsurface_radius_scale,
+        subsurface_scatter_anisotropy: m.subsurface_scatter_anisotropy,
+        // ⚠️ O booleano viaja como número porque a tabela do painel é de `f32` — ver
+        // [`ph2d_field_ecs::FieldMaterial::thin_walled`].
+        geometry_thin_walled: m.thin_walled > 0.5,
     }
     .prepare()
 }

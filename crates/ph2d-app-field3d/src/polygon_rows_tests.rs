@@ -164,8 +164,8 @@ fn one_more_vertex_would_not_fit() {
     // ⛔ *Um número que não se mexe enquanto a grandeza muda é a forma mais silenciosa de um gate
     // deixar de descrever o que mede* — o que o prende é esta tabela, não o literal.
     assert_eq!(
-        extras, 25,
-        "um nó deixou de ter 25 linhas além dos `2N` dos vértices — a conta do teto muda com isto"
+        extras, 31,
+        "um nó deixou de ter 31 linhas além dos `2N` dos vértices — a conta do teto muda com isto"
     );
     let seguinte = 2 * (b as usize + 1) + extras;
     assert!(

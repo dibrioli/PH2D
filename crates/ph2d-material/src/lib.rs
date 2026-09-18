@@ -23,7 +23,8 @@
 //! | `coat_weight` · `coat_color` · `coat_roughness` · `coat_ior` · `coat_darkening` | ✅ | |
 //! | `emission_luminance` · `emission_color` | ✅ | |
 //! | `*_roughness_anisotropy` · `geometry_tangent` | ⛔ | o traçador não tem tangentes |
-//! | `transmission_*` · `subsurface_*` · `fuzz_*` · `thin_film_*` · `geometry_opacity` | ⛔ nesta fatia | cada um é uma closure com gate próprio a escrever; com peso zero a composição gerada dá-lhes contribuição **zero** |
+//! | `subsurface_*` · `geometry_thin_walled` | ✅ | **17/09** (`docs/Render3d/10`): os DOIS caminhos — a parede fina e a maciça |
+//! | `transmission_*` · `fuzz_*` · `thin_film_*` · `geometry_opacity` | ⛔ nesta fatia | cada um é uma closure com gate próprio a escrever; com peso zero a composição gerada dá-lhes contribuição **zero** |
 //!
 //! ⛔ **Os de fora NÃO existem na struct**, e não por arrumação: um campo que a lei não lesse seria um
 //! controlo morto à espera de um painel que o mostrasse.
@@ -308,6 +309,20 @@ impl Surface {
     #[must_use]
     pub fn at_curvature(self, curvature: f32) -> Self {
         Self { curvature, ..self }
+    }
+
+    /// ⭐⭐⭐ **Este material LÊ a curvatura?** — a porta que decide se alguém paga por ela.
+    ///
+    /// Só o caminho MACIÇO da subsuperfície a lê: a parede fina é a lambertiana do lado de lá e não
+    /// sabe nada sobre a forma da peça. ⇒ com a omissão (`subsurface_weight = 0`) a resposta é
+    /// `false` e o traçador não gasta uma amostra de campo.
+    ///
+    /// ⚠️ **Ela é a MESMA pergunta que o `com_a_curvatura` do WGSL faz** (`ss_color_weight.a <= 0`
+    /// ou `ss_brdf_thin.a > 0.5`), e é por isso que existe aqui em vez de em cada chamador: duas
+    /// redacções divergiriam no dia em que a lei ganhasse um terceiro caminho.
+    #[must_use]
+    pub fn reads_curvature(&self) -> bool {
+        self.m.subsurface_weight > 0.0 && !self.m.geometry_thin_walled
     }
 
     /// A radiância que o **céu** devolve para o observador.

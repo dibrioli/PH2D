@@ -219,6 +219,19 @@ pub struct Gbuffer {
     /// ⚠️ **Ele NÃO é uma cor** — a fronteira desta struct continua de pé. É geometria, como a
     /// normal: *onde* a superfície está, e não *que aspecto* ela tem.
     pub point: Vec<[f32; 3]>,
+    /// ⭐⭐⭐ **A CURVATURA de cada pixel** (`|H|`, `1/unidade de mundo`) — **vazio** quando nenhum
+    /// material da cena a lê, que é a omissão.
+    ///
+    /// # ⚠️ Ela é GEOMETRIA, e é por isso que mora aqui
+    ///
+    /// A fronteira desta struct está declarada no [`Gbuffer::point`]: *onde* a superfície está, e
+    /// não *que aspecto* ela tem. A curvatura é do primeiro tipo — ela responde **como a peça se
+    /// dobra neste ponto**, e a única coisa que a lê é a subsuperfície maciça do material.
+    ///
+    /// ⚠️ **Vazio não é zero por preguiça:** quem sombreia lê `get(i).unwrap_or(0)`, e `0` é
+    /// exactamente o que o piso do GLSL (`max(κ, 0,01)`) transforma num raio de `100` — a leitura
+    /// certa para *«ninguém perguntou»*. ⇒ o quadro de omissão não paga uma amostra de campo.
+    pub curvature: Vec<f32>,
     /// Os pixels onde a imagem tem **aresta** — de silhueta ou de quina —, com quatro amostras cada.
     ///
     /// Vazio quando o traçado corre sem anti-serrilhado. Ordenado por `pixel`, sempre: é o que faz
@@ -493,6 +506,8 @@ fn trace_inner_tiles(
         hit,
         normal,
         point,
+        // ⚠️ Vazio: quem a quiser assa-a com a `curvatura::do_gbuffer` — ver o campo.
+        curvature: Vec::new(),
         edges,
     }
 }

@@ -361,14 +361,23 @@ fn every_number_a_material_has_reaches_the_law() {
 
     // ⚠️ **Os dois pesos acesos** — ver a nota acima. E a base é fosca, para o verniz ter onde
     // aparecer.
+    // ⚠️⚠️ **E a SUBSUPERFÍCIE também tem de estar acesa** (17/09): com `subsurface_weight = 0` as
+    // nove entradas dela são inertes POR LEI, e este censo acusaria nove knobs vivos de uma vez —
+    // *um corpus no ponto NEUTRO de um knob não testa esse knob*. ⛔ E o peso fica em `0,5` e não
+    // em `1`: a `1` a difusa da base desaparece do `mix`, e as entradas dela passariam a ser as
+    // inertes. **Este é um dos DOIS pesos que a mesma frase acima já pedia, agora com um terceiro.**
     let base = FieldMaterial {
         roughness: 0.6,
         emission: 0.5,
         coat: 0.7,
+        subsurface_weight: 0.5,
         ..FieldMaterial::default()
     };
     let devolve = |m: FieldMaterial| {
-        let s = crate::materials::surface_of(m);
+        // ⚠️ **A curvatura é uma ENTRADA da lei**, como a direcção da luz: sem ela o caminho maciço
+        // resolve-se no raio de `100` do piso e fica indistinguível de uma difusa — as entradas do
+        // raio e da escala dele passariam a ler-se mortas. Ver `ph2d_field_render::curvatura`.
+        let s = crate::materials::surface_of(m).at_curvature(1.0);
         let n = [0.0_f32, 0.3, 0.953_939_2];
         let v = [0.0_f32, 0.0, 1.0];
         let para_a_luz = [0.4_f32, 0.6, 0.692_820_3];
@@ -378,6 +387,16 @@ fn every_number_a_material_has_reaches_the_law() {
     };
     let referencia = devolve(base);
 
+    // ⭐⭐⭐ **DOIS caminhos, e cada número tem de mover PELO MENOS UM** — a subsuperfície escolhe
+    // entre a parede fina e a maciça, e as duas leem entradas DIFERENTES: o raio e a escala dele
+    // são da maciça (a fina não sabe nada sobre a forma da peça) e a FASE é da fina (o
+    // `mx_subsurface_bsdf` da referência recebe a anisotropia e **nunca a usa** — está no corpo
+    // dele). ⇒ exigir que todas movam o MESMO caminho acusaria quatro entradas vivas.
+    let fina = FieldMaterial {
+        thin_walled: 1.0,
+        ..base
+    };
+    let ref_fina = devolve(fina);
     for k in 0..ph2d_field::MATERIAL_FIELDS {
         let mut outro = base;
         let antes = outro.get(k).expect("a posição existe");
@@ -391,9 +410,16 @@ fn every_number_a_material_has_reaches_the_law() {
         };
         assert!(outro.set(k, novo), "a posição {k} recusou a escrita");
         let agora = devolve(outro);
-        let d = (0..3)
+        let d_macico = (0..3)
             .map(|c| (agora[c] - referencia[c]).abs())
             .fold(0.0_f32, f32::max);
+        let mut outra_fina = fina;
+        assert!(outra_fina.set(k, novo), "a posição {k} recusou a escrita");
+        let agora_fina = devolve(outra_fina);
+        let d_fina = (0..3)
+            .map(|c| (agora_fina[c] - ref_fina[c]).abs())
+            .fold(0.0_f32, f32::max);
+        let d = d_macico.max(d_fina);
         assert!(
             d > 1.0e-3,
             "o número {k} do material ({antes} → {novo}) NÃO move a radiância ({referencia:?} → \

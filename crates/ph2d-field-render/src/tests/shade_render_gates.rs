@@ -31,6 +31,7 @@ fn strip(normals: [[f32; 3]; 3]) -> Gbuffer {
         // ⚠️ A fita é sombreada com lente ORTOGRÁFICA e material único: o ponto de mundo não entra
         // em conta nenhuma destes gates. Ver [`ph2d_field_render::Gbuffer::point`].
         point: vec![[0.0; 3]; 3],
+        curvature: Vec::new(),
         edges: Vec::new(),
     }
 }

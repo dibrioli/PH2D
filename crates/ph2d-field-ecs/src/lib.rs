@@ -209,6 +209,27 @@ pub struct FieldMaterial {
     /// painel mais curto seja mais bonito. *Um controlo cujo efeito é sempre zero é um controlo
     /// morto com aparência de vivo.*
     pub emission_color: [f32; 3],
+    /// ⭐⭐⭐ **Quanto da base é SUBSUPERFÍCIE em vez de difusa** — `1` é subsuperfície pura.
+    ///
+    /// ⚠️ As duas não somam, elas MISTURAM-SE (é um `mix` no grafo). Ver
+    /// [`ph2d_material::subsurface`] para os DOIS caminhos que este peso liga.
+    pub subsurface_weight: f32,
+    /// A cor observada do meio que espalha, em **linear**.
+    pub subsurface_color: [f32; 3],
+    /// O caminho livre médio, em unidades do MUNDO — quão fundo a luz viaja antes de sair.
+    pub subsurface_radius: f32,
+    /// O multiplicador por canal do [`Self::subsurface_radius`] — é ele que faz o vermelho viajar
+    /// mais fundo, e é isso que dá a orelha acesa contra o sol.
+    pub subsurface_radius_scale: [f32; 3],
+    /// A fase: `0` espalha por igual, positivo para a frente, negativo para trás.
+    pub subsurface_scatter_anisotropy: f32,
+    /// ⭐⭐⭐ **A peça é uma PAREDE FINA?** (`> 0,5` = sim) — e a escolha muda o FENÓMENO, não o grau:
+    /// a parede fina acende com a luz ATRÁS (uma folha), a maciça faz a luz contornar a quina (jade).
+    ///
+    /// ⚠️ **É um booleano guardado como número** porque a tabela de [`Self::get`] é de `f32` e o
+    /// painel é DERIVADO dela — uma variante nova de linha custaria a tabela inteira. ⏳ Que ele se
+    /// pinte como uma caixa e não como uma pista fica NOMEADO e por fazer.
+    pub thin_walled: f32,
 }
 
 impl Default for FieldMaterial {
@@ -229,6 +250,12 @@ impl Default for FieldMaterial {
             coat_darkening: 1.0,
             emission: 0.0,
             emission_color: [1.0; 3],
+            subsurface_weight: 0.0,
+            subsurface_color: [0.8; 3],
+            subsurface_radius: 1.0,
+            subsurface_radius_scale: [1.0, 0.5, 0.25],
+            subsurface_scatter_anisotropy: 0.0,
+            thin_walled: 0.0,
         }
     }
 }
@@ -250,6 +277,13 @@ impl FieldMaterial {
     /// era a das waves (a cor, o brilho, o verniz), e o `base_weight` teria aterrado **depois** do
     /// escurecimento do verniz. *Uma ordem de chegada é permanente no dia em que a lista fecha* — e
     /// esta fechou: são as `15` entradas do OpenPBR, e não há mais nenhuma para apender.
+    ///
+    /// ⛔⛔ **E essa última frase MORREU em 17/09**, no dia em que a subsuperfície chegou
+    /// (`docs/Render3d/10`): o OpenPBR tem `41` entradas e a fatia de 14/09 tinha `15`. As `10`
+    /// novas entram **APENDADAS** e não na posição da nodedef — ⚠️ e a troca é declarada: re-numerar
+    /// pela nodedef (a subsuperfície vem ANTES do verniz lá) mexeria em `11` posições já gravadas,
+    /// que é a quebra de layout que o degrau `142 → 143` pagou uma vez. *A lei que fica de pé é a
+    /// outra metade da mesma frase: cada FAMÍLIA junta, e a nova é a quinta.*
     #[must_use]
     pub fn get(&self, field: u8) -> Option<f32> {
         match field {
@@ -268,6 +302,12 @@ impl FieldMaterial {
             18 => Some(self.coat_darkening),
             19 => Some(self.emission),
             20..=22 => Some(self.emission_color[field as usize - 20]),
+            23 => Some(self.subsurface_weight),
+            24..=26 => Some(self.subsurface_color[field as usize - 24]),
+            27 => Some(self.subsurface_radius),
+            28..=30 => Some(self.subsurface_radius_scale[field as usize - 28]),
+            31 => Some(self.subsurface_scatter_anisotropy),
+            32 => Some(self.thin_walled),
             _ => None,
         }
     }
@@ -290,6 +330,12 @@ impl FieldMaterial {
             18 => self.coat_darkening = value,
             19 => self.emission = value,
             20..=22 => self.emission_color[field as usize - 20] = value,
+            23 => self.subsurface_weight = value,
+            24..=26 => self.subsurface_color[field as usize - 24] = value,
+            27 => self.subsurface_radius = value,
+            28..=30 => self.subsurface_radius_scale[field as usize - 28] = value,
+            31 => self.subsurface_scatter_anisotropy = value,
+            32 => self.thin_walled = value,
             _ => return false,
         }
         true

@@ -63,7 +63,12 @@ def resolve_ladder(m_novo):
     t_val = int(theirs.split(CONST)[1].split(";")[0])
     assert t_val == b_val + 1, f"a linha nao subiu exactamente 1 ({b_val} -> {t_val})"
     # re-numerar o titulo do degrau, em qualquer das duas grafias que a escada usa
+    # ⚠️ TRES grafias, e a terceira custou uma parada na rodada de 2026-09-20: a escada usa
+    # crase COM seta ASCII (`# \`144 -> 145\``) tanto quanto crase com seta unicode. O `assert`
+    # abaixo apanhou-a alto — *um script que conhece duas formas de uma agulha nao sabe que ha' uma
+    # terceira; o que o diz e' a assercao que exige que a re-numeracao tenha ACONTECIDO.*
     for a, b in ((f"# {b_val} -> {t_val}", f"# `{m_novo - 1} → {m_novo}`"),
+                 (f"# `{b_val} -> {t_val}`", f"# `{m_novo - 1} → {m_novo}`"),
                  (f"# `{b_val} → {t_val}`", f"# `{m_novo - 1} → {m_novo}`")):
         bloco = bloco.replace(a, b, 1)
     assert f"{b_val} -> {t_val}" not in bloco and f"{b_val} → {t_val}" not in bloco, \

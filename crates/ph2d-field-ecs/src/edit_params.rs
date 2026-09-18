@@ -241,6 +241,16 @@ pub(super) const MATERIAL_KEYS: [&str; ph2d_field::MATERIAL_FIELDS as usize] = [
     "field.dim.emission_r",
     "field.dim.emission_g",
     "field.dim.emission_b",
+    "field.dim.subsurface_weight",
+    "field.dim.subsurface_r",
+    "field.dim.subsurface_g",
+    "field.dim.subsurface_b",
+    "field.dim.subsurface_radius",
+    "field.dim.subsurface_scale_r",
+    "field.dim.subsurface_scale_g",
+    "field.dim.subsurface_scale_b",
+    "field.dim.subsurface_anisotropy",
+    "field.dim.thin_walled",
 ];
 
 /// As chaves i18n das linhas de uma luz — **a mesma ordem do [`crate::FieldLight::get`]**.
@@ -314,6 +324,16 @@ fn light_params(world: &World, entity: Entity, l: crate::FieldLight) -> Vec<(Par
 fn material_span(field: u8) -> Span {
     match field {
         11 | 17 => Span::Range { min: 1.0, max: 2.5 },
+        // ⭐ A FASE do espalhamento vive em `[-1, 1]` — para trás e para a frente. `Hard`, porque
+        // as duas pontas são do modelo e não da vista.
+        31 => Span::Range {
+            min: -1.0,
+            max: 1.0,
+        },
+        // ⚠️ **A PAREDE FINA é um booleano guardado como número** — uma escolha de dois, e é a
+        // `Span::Choice` que faz o arrasto ser inteiro em vez de contínuo. ⏳ Que ela se pinte como
+        // uma CAIXA e não como uma escolha fica nomeado (`docs/Render3d/10`).
+        32 => Span::Choice(&["field.dim.thin_walled_no", "field.dim.thin_walled_yes"]),
         _ => Span::SoftFromZero(1.0),
     }
 }
@@ -519,6 +539,11 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
         // | `4`, `11` | `metalness == 1` | alimentam o lóbulo **dieléctrico**, que o metal mistura para fora |
         // | `13`–`18` | `coat == 0` | o `prepare` mistura os quatro do verniz pelo peso dele |
         // | `20`–`22` | `emission == 0` | a cor **multiplica** a luminância |
+        // | `24`–`32` | `subsurface_weight == 0` | o `mix` do grafo deita fora o ramo inteiro |
+        //
+        // ⚠️ **E as nove da subsuperfície incluem a PAREDE FINA** (`32`): com o peso a zero, o
+        // caminho que ela escolhe não é avaliado, logo o interruptor não move um pixel. *Um
+        // controlo que só faz sentido depois de outro estar ligado é a mesma lei do verniz.*
         //
         // ⚠️ **A porta de ESCRITA não se estreita** — o `set_param` continua a aceitar as 23
         // posições. Travar é da apresentação; um pedido guardado de um quadro atrás tem de poder
@@ -527,6 +552,7 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
             4 | 11 => m.metalness >= 1.0,
             13..=18 => m.coat <= 0.0,
             20..=22 => m.emission <= 0.0,
+            24..=32 => m.subsurface_weight <= 0.0,
             _ => false,
         };
         out.extend((0..ph2d_field::MATERIAL_FIELDS).filter_map(|k| {

@@ -73,6 +73,14 @@ pub struct PaintSetup<'a> {
     /// A largura em MUNDO da fronteira entre dois materiais — ver o `BOUNDARY_PIXELS` do
     /// [`ph2d_field_render::shade_render`], que é quem a deriva.
     pub pixel_world: f32,
+    /// ⭐⭐⭐ **O PASSO da segunda diferença que dá a CURVATURA** — o
+    /// [`ph2d_field_render::curvatura::eps_para`], e nunca o da normal: uma primeira diferença
+    /// divide por `ε` e uma segunda por `ε²`, logo o cancelamento em `f32` entra `1/ε` vezes mais
+    /// cedo (com o passo da normal uma face plana lia curvatura `1,49`).
+    ///
+    /// ⚠️ Ele **vem da CPU** e não se deriva aqui pela razão de sempre: duas respostas à mesma
+    /// pergunta divergem, e a paridade desta linha é `100,000 %`.
+    pub curv_eps: f32,
     /// ⭐⭐⭐ **A difusa BRANCA com que o CHÃO mede a luz** (`docs/Render3d/07`) — a
     /// [`ph2d_field_render::catcher_surface`], empacotada como as outras.
     ///
@@ -151,7 +159,7 @@ fn dono_mix(p: vec3<f32>, width: f32) -> Dono { return Dono(0u, 0u, 0.0); }
 const PINTOR: &str = r"
 // ── o grupo 1: o que só o pintor lê ───────────────────────────────────────────────────────────
 struct Pintor {
-    knobs: vec4<f32>,  // stops, pixel_world, _, _
+    knobs: vec4<f32>,  // stops, pixel_world, curv_eps, _
     fundo: vec4<f32>,  // o fundo em LINEAR pré-multiplicado, para a média da borda
     modo: vec4<u32>,   // view, bordas, fundo empacotado, materiais
     // ⭐ `x` = há gémeas foscas empacotadas (ver `ler_mat_fosca`). `0` é o caminho anterior ao
@@ -224,6 +232,32 @@ fn mat_em(o: u32) -> Mat {
     m.attenuation_coatior  = vec4<f32>(materiais[o + 20u], materiais[o + 21u], materiais[o + 22u], materiais[o + 23u]);
     m.prepared             = vec4<f32>(materiais[o + 24u], materiais[o + 25u], materiais[o + 26u], materiais[o + 27u]);
     m.emissive             = vec4<f32>(materiais[o + 28u], materiais[o + 29u], materiais[o + 30u], materiais[o + 31u]);
+    m.ss_color_weight      = vec4<f32>(materiais[o + 32u], materiais[o + 33u], materiais[o + 34u], materiais[o + 35u]);
+    m.ss_mfp_aniso         = vec4<f32>(materiais[o + 36u], materiais[o + 37u], materiais[o + 38u], materiais[o + 39u]);
+    m.ss_brdf_thin         = vec4<f32>(materiais[o + 40u], materiais[o + 41u], materiais[o + 42u], materiais[o + 43u]);
+    m.ss_btdf_curv         = vec4<f32>(materiais[o + 44u], materiais[o + 45u], materiais[o + 46u], materiais[o + 47u]);
+    return m;
+}
+
+// ⭐⭐⭐ **A CURVATURA DESTE PONTO, escrita no material** — o gémeo exacto do
+// `ph2d_material::Surface::at_curvature`. Ver `ph2d_field_render::curvatura` para a lei e para
+// porque ela NAO pode vir de `fwidth`: aquilo e' por quad de 2x2 e a CPU e' por pixel, e as duas
+// respostas partiriam a paridade que esta linha tem em 100,000 %.
+//
+// ⚠️ **Ela so' e' calculada quando alguem a le** — com a subsuperficie macica desligada (a
+// omissao) o `if` sai antes de tocar no campo, e o quadro e' o de sempre ao bit.
+fn com_a_curvatura(m_in: Mat, p: vec3<f32>) -> Mat {
+    var m = m_in;
+    if (m.ss_color_weight.a <= 0.0 || m.ss_brdf_thin.a > 0.5) { return m; }
+    let e = pintor.knobs.z;
+    if (e <= 0.0) { return m; }
+    let o0 = vec3<f32>( 1.0, -1.0, -1.0);
+    let o1 = vec3<f32>(-1.0, -1.0,  1.0);
+    let o2 = vec3<f32>(-1.0,  1.0, -1.0);
+    let o3 = vec3<f32>( 1.0,  1.0,  1.0);
+    let soma = field(p + o0 * e) + field(p + o1 * e) + field(p + o2 * e) + field(p + o3 * e);
+    let laplaciano = (soma - 4.0 * field(p)) / (2.0 * e * e);
+    m.ss_btdf_curv.a = abs(laplaciano * 0.5);
     return m;
 }
 
@@ -529,9 +563,13 @@ fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu
 // a meio caminho não são um meio-metal. E só paga o dobro onde há fronteira.
 fn radiancia(p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, i: u32, ceu_vis: f32, ric: vec3<f32>) -> vec3<f32> {
     let d = dono_mix(p, pintor.knobs.y);
-    let ca = luz_do_material(ler_mat(d.a), n, v, p, i, ceu_vis, ric);
+    // ⭐⭐⭐ **A curvatura entra no MATERIAL**, e é o gémeo do `Surface::at_curvature` da CPU.
+    // ⚠️ O gatherer do ricochete (`ler_mat_fosca`) NÃO a recebe, e a CPU também não: ali a
+    // subsuperfície maciça lê curvatura `0`, que o piso transforma no raio de `100`. *A paridade
+    // daquele caminho é por construção, e não por um número.*
+    let ca = luz_do_material(com_a_curvatura(ler_mat(d.a), p), n, v, p, i, ceu_vis, ric);
     if (d.t <= 0.0) { return ca; }
-    let cb = luz_do_material(ler_mat(d.b), n, v, p, i, ceu_vis, ric);
+    let cb = luz_do_material(com_a_curvatura(ler_mat(d.b), p), n, v, p, i, ceu_vis, ric);
     return ca + (cb - ca) * d.t;
 }
 
@@ -1044,7 +1082,7 @@ pub(crate) fn pinta(
     for f in [
         pintor.stops,
         pintor.pixel_world,
-        0.0,
+        pintor.curv_eps,
         0.0,
         // ⚠️ **O fundo da BORDA é LINEAR e PRÉ-MULTIPLICADO** — a média das quatro amostras corre
         // em linear de ecrã, e o alfa entra nela como as outras três componentes.

@@ -571,6 +571,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.emission_r" => "Emission Color R",
         "field.dim.emission_g" => "Emission Color G",
         "field.dim.emission_b" => "Emission Color B",
+        "field.dim.subsurface_weight" => "Subsurface",
+        "field.dim.subsurface_color" => "Subsurface Color",
+        "field.dim.subsurface_scale" => "Subsurface Radius Scale",
+        "field.dim.thin_walled_no" => "Solid",
+        "field.dim.thin_walled_yes" => "Thin Walled",
+        "field.dim.subsurface_r" => "Subsurface Color R",
+        "field.dim.subsurface_g" => "Subsurface Color G",
+        "field.dim.subsurface_b" => "Subsurface Color B",
+        "field.dim.subsurface_radius" => "Subsurface Radius",
+        "field.dim.subsurface_scale_r" => "Subsurface Radius Scale R",
+        "field.dim.subsurface_scale_g" => "Subsurface Radius Scale G",
+        "field.dim.subsurface_scale_b" => "Subsurface Radius Scale B",
+        "field.dim.subsurface_anisotropy" => "Subsurface Anisotropy",
+        "field.dim.thin_walled" => "Thin Walled",
         // ⭐⭐⭐ **O VERNIZ** (`docs/Render3d/05` §21). ⚠️ **"Coat" e não "Clear Coat"**: é o nome do
         // OpenPBR e o que o Blender escreve — e a segunda palavra passou a ser errada no dia em que
         // o verniz ganhou cor (um verniz âmbar não é *clear*).

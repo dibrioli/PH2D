@@ -298,11 +298,16 @@ fn the_coat_numbers_are_locked_while_the_coat_is_off() {
         "field.dim.coat_darkening",
     ];
     let apagado = vivas(&mut sim);
-    // ⭐ **As `15` linhas estão lá, e as do verniz estão TRAVADAS.**
+    // ⭐ **As `21` linhas estão lá, e as do verniz estão TRAVADAS.**
+    //
+    // ⚠️ **Eram `15` até 17/09** — a subsuperfície acrescentou seis linhas (`docs/Render3d/10`), e
+    // elas trazem a MESMA lei do verniz: com o peso a zero as nove entradas dela ficam travadas.
+    // *Este número é a contagem de LINHAS e não de campos: a cor e a escala do raio são cada uma
+    // uma amostra sobre três.*
     assert_eq!(
         apagado.len(),
-        15,
-        "a secção do material tem de ter as 15 linhas em qualquer estado: {apagado:?}"
+        21,
+        "a secção do material tem de ter as 21 linhas em qualquer estado: {apagado:?}"
     );
     for k in do_verniz {
         assert_eq!(
@@ -312,10 +317,24 @@ fn the_coat_numbers_are_locked_while_the_coat_is_off() {
         );
     }
     // ⛔ **E as outras continuam vivas** — trava o que morreu, e mais nada.
+    //
+    // ⚠️ **As seis da SUBSUPERFÍCIE juntam-se à excepção do brilho em 17/09**, e pela MESMA razão:
+    // este material tem os três pesos a zero, logo o verniz, o brilho e a subsuperfície estão
+    // travados por leis **diferentes** que este gate não separa. *Ele mede que a lei do verniz não
+    // transborda; quem mede a da subsuperfície é o gate dela.*
+    let da_subsuperficie = [
+        "field.dim.subsurface_color",
+        "field.dim.subsurface_radius",
+        "field.dim.subsurface_scale",
+        "field.dim.subsurface_anisotropy",
+        "field.dim.thin_walled",
+    ];
     assert!(
         apagado
             .iter()
-            .filter(|(c, _)| !do_verniz.contains(c) && *c != "field.dim.emission_color")
+            .filter(|(c, _)| !do_verniz.contains(c)
+                && !da_subsuperficie.contains(c)
+                && *c != "field.dim.emission_color")
             .all(|(_, v)| *v),
         "travar o verniz travou linha alheia: {apagado:?}"
     );
@@ -371,6 +390,11 @@ fn the_coat_colour_is_a_swatch_and_the_ior_is_not_a_fraction() {
             (ph2d_field::Param::Material(7), [255, 255, 255]),
             (ph2d_field::Param::Material(13), [255, 255, 255]),
             (ph2d_field::Param::Material(20), [255, 255, 255]),
+            // ⚠️ As duas da SUBSUPERFICIE (17/09): a cor de omissao e' `0,8` linear e a escala do
+            // raio e' `(1 · 0,5 · 0,25)` — ela e' uma COR porque diz quanto mais fundo cada canal
+            // viaja, e e' isso que poe o vermelho a' frente.
+            (ph2d_field::Param::Material(24), [231, 231, 231]),
+            (ph2d_field::Param::Material(28), [255, 188, 137]),
         ],
         "a cor do verniz tem de ser uma AMOSTRA, e a de omissão é branca"
     );

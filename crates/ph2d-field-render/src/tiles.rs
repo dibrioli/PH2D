@@ -321,6 +321,8 @@ pub(crate) fn tiled_trace(
         hit,
         normal,
         point,
+        // ⚠️ Vazio: quem a quiser assa-a com a `curvatura::do_gbuffer` — ver o campo.
+        curvature: Vec::new(),
         edges,
     }
 }

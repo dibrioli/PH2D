@@ -279,6 +279,12 @@ pub fn paint_com(
         // ⚠️ **A largura da fronteira de cor sai do [`ph2d_field_render::boundary_world`]**, que é
         // quem a deriva — o factor dela foi VARRIDO e mora lá, não aqui.
         pixel_world: ph2d_field_render::boundary_world(cam.half_extent, w.min(h)),
+        // ⭐⭐⭐ **O passo da CURVATURA** — a fracção do tamanho da PEÇA, e nunca o da vista: um
+        // passo que seguisse o zoom daria duas curvaturas para o mesmo ponto
+        // (`ph2d_field_render::curvatura::eps_para`). ⚠️ Sem bola (documento vazio) fica `0`, e o
+        // shader sai antes de tocar no campo.
+        curv_eps: ph2d_field_eval::bounds::bounding_ball(doc, reg)
+            .map_or(0.0, |b| ph2d_field_render::curvatura::eps_para(b.radius)),
         // ⭐ **A difusa branca do chão** — a régua da escurecida, empacotada como os outros.
         catcher: &chao_packed,
         ground_bounce: &campo_do_chao,

@@ -50,16 +50,30 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 /// | `16` | `52` | `57` |
 /// | **`27`** | `74` | **`79`** |
 ///
-/// ⭐ **O preço MEDIDO de cada subida:** cada linha regista `6` widgets, logo cinco linhas custam
-/// **`30` widgets e 5 `String`** no store, uma vez, no arranque — o mesmo nas três.
+/// ⭐⭐⭐ **E na SUBSUPERFÍCIE subiu `79 → 85`** (17/09, `docs/Render3d/10`) — seis linhas: o peso, a
+/// cor, o raio, a escala do raio (uma amostra sobre três canais), a fase e a parede fina. O pior
+/// estado passa a ter também a subsuperfície acesa:
 ///
-/// ⛔⛔ **E o material FECHOU: são as `15` entradas do OpenPBR, e não há mais nenhuma para
-/// apender.** *Este teto deixa de crescer por material.*
+/// | vértices | tudo apagado | tudo aceso |
+/// |---|---|---|
+/// | `3` | `32` | `37` |
+/// | **`27`** | `80` | **`85`** |
+///
+/// ⭐ **O preço MEDIDO de cada subida:** cada linha regista `6` widgets, logo cinco linhas custam
+/// **`30` widgets e 5 `String`** no store, uma vez, no arranque — o mesmo nas quatro.
+///
+/// ⛔⛔ **E a frase que aqui estava — *«o material FECHOU: são as `15` entradas do OpenPBR, e não há
+/// mais nenhuma para apender; este teto deixa de crescer por material»* — MORREU em 17/09.** Ela
+/// era verdade sobre a FATIA de 14/09 e falsa sobre o modelo: o `open_pbr_surface` tem **41**
+/// entradas, e a própria `ph2d-material` declarava por escrito, na mesma semana, que
+/// `transmission`, `subsurface`, `fuzz`, `thin_film` e `geometry_opacity` ficavam *«⛔ nesta
+/// fatia»*. ⚠️ **A que fica de pé é a do parágrafo seguinte**, e é ela que decidiu esta subida
+/// também: *uma lista fecha-se contra o que se construiu, nunca contra o que existe.*
 ///
 /// ⛔⛔ **A alternativa era baixar o `MAX_POLYGON_VERTICES` de `27` para `24`**: tirar três vértices
 /// ao artista porque uma peça passou a poder ser envernizada. *Um teto de registo cujo recurso é
 /// memória a mandar num teto de FORMA é o caminho lento a definir o rápido* (`CLAUDE.md` §0.0).
-pub const MAX_ROWS: usize = 79;
+pub const MAX_ROWS: usize = 85;
 
 /// Quantos botões uma linha de **escolha** pode oferecer.
 ///

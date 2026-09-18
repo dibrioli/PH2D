@@ -118,11 +118,16 @@ pub fn param_rows(
     // ⚠️ **Os seguidores derivam da âncora** (`+1` e `+2`) em vez de serem listados: uma segunda
     // lista teria de ser reescrita a cada cor nova, e o dia em que as duas discordassem a linha
     // pintaria uma cor e escreveria noutra.
-    const CORES: [(u8, &str); 4] = [
+    const CORES: [(u8, &str); 6] = [
         (1, "field.dim.base_color"),
         (7, "field.dim.specular_color"),
         (13, "field.dim.coat_color"),
         (20, "field.dim.emission_color"),
+        (24, "field.dim.subsurface_color"),
+        // ⚠️ **A escala do raio É uma cor**, e não três números soltos: ela diz *quanto mais fundo
+        // cada canal viaja*, e é por isso que o vermelho sai à frente numa orelha contra o sol.
+        // Pintá-la como amostra é o que torna essa leitura imediata.
+        (28, "field.dim.subsurface_scale"),
     ];
     // ⭐⭐⭐ **E a cor de uma LUZ entra pela MESMA máquina** (ordem do dono, 14/09): âncora no canal
     // `R`, seguidores `+1` e `+2`. *A caixa de cor de uma lâmpada não é um segundo widget — é a

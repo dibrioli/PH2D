@@ -39,8 +39,12 @@ use crate::{Rgb, Surface};
 /// *Uma lei que precisa de `f64` e não varia por pixel não é um bloqueador: é uma constante.*
 pub const ENV_SLOT: &str = "{ENV}";
 
-/// Quantos `f32` o [`pack`] escreve — oito `vec4`.
-pub const PACKED: usize = 32;
+/// Quantos `f32` o [`pack`] escreve — **doze** `vec4`.
+///
+/// ⚠️ Eram oito até a subsuperfície chegar (`docs/Render3d/10`). ⛔ O último slot — a **curvatura**
+/// — é o único que o [`pack`] deixa a **zero de propósito**: ele é do PIXEL e não do material, e
+/// quem o escreve é o passe, antes de compor. É o gémeo exacto do [`crate::Surface::at_curvature`].
+pub const PACKED: usize = 48;
 
 /// ⭐⭐⭐ **O material pronto, no formato que o WGSL lê.**
 ///
@@ -75,6 +79,14 @@ pub fn pack(s: &Surface, lobe: EnvLobe) -> [f32; PACKED] {
     o[28] = m.emission_luminance;
     o[29] = lobe.main;
     o[30] = lobe.coat;
+    put(&mut o, 32, s.subsurface_colour);
+    o[35] = m.subsurface_weight;
+    put(&mut o, 36, s.subsurface_mfp);
+    o[39] = m.subsurface_scatter_anisotropy;
+    put(&mut o, 40, s.thin_brdf_factor);
+    o[43] = if m.geometry_thin_walled { 1.0 } else { 0.0 };
+    put(&mut o, 44, s.thin_btdf_factor);
+    // ⛔ `o[47]` fica a ZERO: é a curvatura, e ela é do PIXEL — ver [`PACKED`].
     o
 }
 
@@ -124,6 +136,13 @@ struct Mat {
     attenuation_coatior: vec4<f32>,    // rgb = coat_attenuation, a = coat_ior
     prepared: vec4<f32>,               // modulated_eta_s, main_alpha, coat_alpha, coat_f0
     emissive: vec4<f32>,               // emission_luminance, shrink_main, shrink_coat, _
+    // ⭐⭐⭐ A SUBSUPERFICIE (docs/Render3d/10) — ver `ph2d_material::subsurface`.
+    ss_color_weight: vec4<f32>,        // rgb = subsurface_colour (>= 0), a = subsurface_weight
+    ss_mfp_aniso: vec4<f32>,           // rgb = subsurface_mfp, a = scatter_anisotropy
+    ss_brdf_thin: vec4<f32>,           // rgb = thin_brdf_factor, a = thin_walled (0 ou 1)
+    // ⚠️ O `a` daqui NAO vem do `pack`: e' a CURVATURA do PIXEL, escrita pelo passe antes de
+    // compor — o gemeo exacto do `Surface::at_curvature` da CPU.
+    ss_btdf_curv: vec4<f32>,           // rgb = thin_btdf_factor, a = curvatura
 };
 
 const MX_EPS: f32 = 1.0e-8;
@@ -299,14 +318,27 @@ fn mx_multi_scatter_colour(color: vec3<f32>, avg_albedo: f32) -> vec3<f32> {
     return color * color * avg_albedo / (vec3<f32>(1.0) - color * k);
 }
 
-fn mx_oren_nayar_reflection(
-    weight: f32, color: vec3<f32>, roughness: f32, n_in: vec3<f32>, v: vec3<f32>, l: vec3<f32>
-) -> Bsdf {
-    if (weight < MX_EPS) { return bsdf_dark(); }
-    let n = mx_forward_facing(n_in, v);
-    let ndv = clamp(dot(n, v), MX_EPS, 1.0);
-    let ndl = clamp(dot(n, l), MX_EPS, 1.0);
-    let ldv = clamp(dot(l, v), MX_EPS, 1.0);
+// ⚠️ O Oren-Nayar CLASSICO, sem compensacao — o valor de omissao da nodedef e' `false`, e a
+// reflexao da parede fina da subsuperficie e' a UNICA closure do OpenPBR que o deixa por escrever.
+// ⛔ E o `stinv` dele e' `0` quando `s <= 0`, onde a compensada guarda o `s` negativo.
+fn mx_oren_nayar_plain(ndv: f32, ndl: f32, ldv: f32, roughness: f32) -> f32 {
+    let s = ldv - ndl * ndv;
+    var stinv = 0.0;
+    if (s > 0.0) { stinv = s / max(ndl, ndv); }
+    let sigma2 = roughness * roughness;
+    let a = 1.0 - 0.5 * (sigma2 / (sigma2 + 0.33));
+    let b = 0.45 * sigma2 / (sigma2 + 0.09);
+    return a + b * stinv;
+}
+
+fn mx_oren_nayar_plain_dir_albedo(ndv: f32, roughness: f32) -> f32 {
+    let r2 = roughness * roughness;
+    let rx = 1.0 + (-0.4297) * roughness + (-0.7632) * ndv * roughness + 1.4385 * r2;
+    let ry = 1.0 + (-0.6076) * roughness + (-0.4993) * ndv * roughness + 2.0315 * r2;
+    return clamp(rx / ry, 0.0, 1.0);
+}
+
+fn mx_oren_nayar_compensated(ndv: f32, ndl: f32, ldv: f32, roughness: f32, color: vec3<f32>) -> vec3<f32> {
     let s = ldv - ndl * ndv;
     var stinv = s;
     if (s > 0.0) { stinv = s / max(ndl, ndv); }
@@ -317,7 +349,23 @@ fn mx_oren_nayar_reflection(
         * (max(1.0 - mx_fujii_dir_albedo(ndv, roughness), MX_EPS)
          * max(1.0 - mx_fujii_dir_albedo(ndl, roughness), MX_EPS)
          / max(1.0 - avg, MX_EPS));
-    return Bsdf((single + multi) * (weight * ndl * MX_PI_INV), vec3<f32>(0.0));
+    return single + multi;
+}
+
+fn mx_oren_nayar_reflection(
+    weight: f32, color: vec3<f32>, roughness: f32, n_in: vec3<f32>, v: vec3<f32>, l: vec3<f32>,
+    energy_compensation: bool
+) -> Bsdf {
+    if (weight < MX_EPS) { return bsdf_dark(); }
+    let n = mx_forward_facing(n_in, v);
+    let ndv = clamp(dot(n, v), MX_EPS, 1.0);
+    let ndl = clamp(dot(n, l), MX_EPS, 1.0);
+    let ldv = clamp(dot(l, v), MX_EPS, 1.0);
+    var diffuse = color * mx_oren_nayar_plain(ndv, ndl, ldv, roughness);
+    if (energy_compensation) {
+        diffuse = mx_oren_nayar_compensated(ndv, ndl, ldv, roughness, color);
+    }
+    return Bsdf(diffuse * (weight * ndl * MX_PI_INV), vec3<f32>(0.0));
 }
 
 // ── as closures INDIRECTAS (`mx_environment_radiance`, método PREFILTER) ──────────────────────
@@ -364,15 +412,76 @@ fn mx_schlick_indirect(
 }
 
 fn mx_oren_nayar_indirect(
-    weight: f32, color: vec3<f32>, roughness: f32, n_in: vec3<f32>, v: vec3<f32>
+    weight: f32, color: vec3<f32>, roughness: f32, n_in: vec3<f32>, v: vec3<f32>,
+    energy_compensation: bool
 ) -> Bsdf {
     if (weight < MX_EPS) { return bsdf_dark(); }
     let n = mx_forward_facing(n_in, v);
     let ndv = clamp(dot(n, v), MX_EPS, 1.0);
-    let dir_albedo = mx_fujii_dir_albedo(ndv, roughness);
-    let avg = mx_fujii_avg_albedo(roughness);
-    let albedo = mix(mx_multi_scatter_colour(color, avg), color, vec3<f32>(dir_albedo));
+    var albedo = color * mx_oren_nayar_plain_dir_albedo(ndv, roughness);
+    if (energy_compensation) {
+        let dir_albedo = mx_fujii_dir_albedo(ndv, roughness);
+        let avg = mx_fujii_avg_albedo(roughness);
+        albedo = mix(mx_multi_scatter_colour(color, avg), color, vec3<f32>(dir_albedo));
+    }
     return Bsdf(env_irradiance(n) * albedo * weight, vec3<f32>(0.0));
+}
+
+// ── a SUBSUPERFICIE (`ph2d_material::subsurface`) ─────────────────────────────────────────────
+//
+// ⚠️ A `translucent` NEGA a normal e nao a vira para o observador: a luz que ela devolve e' a que
+// entra pelas COSTAS, e e' essa linha que faz uma folha acender com o sol atras.
+fn mx_translucent(weight: f32, color: vec3<f32>, n_in: vec3<f32>, l: vec3<f32>, direto: bool) -> Bsdf {
+    if (weight < MX_EPS) { return bsdf_dark(); }
+    let n = -n_in;
+    if (direto) {
+        let ndl = clamp(dot(n, l), 0.0, 1.0);
+        return Bsdf(color * (weight * ndl * MX_PI_INV), vec3<f32>(0.0));
+    }
+    return Bsdf(env_irradiance(n) * color * weight, vec3<f32>(0.0));
+}
+
+fn mx_burley_profile(dist: f32, shape: vec3<f32>) -> vec3<f32> {
+    let num1 = exp(-shape * dist);
+    let num2 = exp(-shape * dist / 3.0);
+    return (num1 + num2) / max(dist, MX_EPS);
+}
+
+// ⚠️ O `acos` e' CORTADO — o do GLSL de referencia nao e', e `dot` de dois unitarios le
+// `1,0000001` em f32: um pixel NaN e um pixel legitimamente preto leem-se iguais.
+fn mx_integrate_burley(n: vec3<f32>, l: vec3<f32>, radius: f32, mfp: vec3<f32>) -> vec3<f32> {
+    let theta = acos(clamp(dot(n, l), -1.0, 1.0));
+    let shape = vec3<f32>(1.0) / max(mfp, vec3<f32>(0.1));
+    var sum_d = vec3<f32>(0.0);
+    var sum_r = vec3<f32>(0.0);
+    let width = (2.0 * MX_PI) / 32.0;
+    for (var i: i32 = 0; i < 32; i = i + 1) {
+        let x = -MX_PI + (f32(i) + 0.5) * width;
+        let dist = radius * abs(2.0 * sin(x * 0.5));
+        let r = mx_burley_profile(dist, shape);
+        sum_d = sum_d + r * max(cos(theta + x), 0.0);
+        sum_r = sum_r + r;
+    }
+    return sum_d / sum_r;
+}
+
+fn mx_subsurface_thick(
+    weight: f32, color: vec3<f32>, mfp: vec3<f32>, curvature: f32,
+    n_in: vec3<f32>, v: vec3<f32>, l: vec3<f32>, direto: bool
+) -> Bsdf {
+    if (weight < MX_EPS) { return bsdf_dark(); }
+    let n = mx_forward_facing(n_in, v);
+    if (direto) {
+        let radius = 1.0 / max(curvature, 0.01);
+        let sss = color * mx_integrate_burley(n, l, radius, mfp) * MX_PI_INV;
+        return Bsdf(sss * weight, vec3<f32>(0.0));
+    }
+    return Bsdf(env_irradiance(n) * color * weight, vec3<f32>(0.0));
+}
+
+fn bsdf_mix(fg: Bsdf, bg: Bsdf, t: f32) -> Bsdf {
+    return Bsdf(mix(bg.response, fg.response, vec3<f32>(t)),
+                mix(bg.throughput, fg.throughput, vec3<f32>(t)));
 }
 
 // ── a COMPOSIÇÃO do grafo gerado, closure a closure ──────────────────────────────────────────
@@ -412,15 +521,36 @@ fn mx_compose(m: Mat, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, direto: bool) ->
 
     // A transmissão com peso zero: resposta zero, throughput um.
     let transmission = bsdf_mul_float(bsdf_none(), 0.0);
-    let no_subsurface = bsdf_dark();
     let base_colour = max(base_color, vec3<f32>(0.0));
     var diffuse_c: Bsdf;
     if (direto) {
-        diffuse_c = mx_oren_nayar_reflection(base_weight, base_colour, base_diffuse_roughness, n, v, l);
+        diffuse_c = mx_oren_nayar_reflection(base_weight, base_colour, base_diffuse_roughness, n, v, l, true);
     } else {
-        diffuse_c = mx_oren_nayar_indirect(base_weight, base_colour, base_diffuse_roughness, n, v);
+        diffuse_c = mx_oren_nayar_indirect(base_weight, base_colour, base_diffuse_roughness, n, v, true);
     }
-    let opaque = bsdf_add(bsdf_mul_float(no_subsurface, 0.0), diffuse_c);
+    // ⭐⭐⭐ A SUBSUPERFICIE — ver `Surface::subsurface`. O ramo do selector da' o mesmo que o `mix`
+    // do grafo porque o selector vale exactamente 0 ou 1 e nenhum lado pode ser NaN (o `acos` e'
+    // cortado), e ele poupa o laco de 32 termos do Burley em toda peca de parede fina.
+    let ss_weight = m.ss_color_weight.a;
+    var subsurface = bsdf_dark();
+    if (ss_weight > 0.0) {
+        let ss_colour = m.ss_color_weight.rgb;
+        if (m.ss_brdf_thin.a > 0.5) {
+            var refl: Bsdf;
+            if (direto) {
+                refl = mx_oren_nayar_reflection(1.0, ss_colour, base_diffuse_roughness, n, v, l, false);
+            } else {
+                refl = mx_oren_nayar_indirect(1.0, ss_colour, base_diffuse_roughness, n, v, false);
+            }
+            let reflection = bsdf_mul_color(refl, m.ss_brdf_thin.rgb);
+            let transm = bsdf_mul_color(mx_translucent(1.0, ss_colour, n, l, direto), m.ss_btdf_curv.rgb);
+            subsurface = bsdf_mix(reflection, transm, 0.5);
+        } else {
+            subsurface = mx_subsurface_thick(1.0, ss_colour, m.ss_mfp_aniso.rgb,
+                                             m.ss_btdf_curv.a, n, v, l, direto);
+        }
+    }
+    let opaque = bsdf_mix(subsurface, diffuse_c, ss_weight);
     let substrate = bsdf_add(transmission, bsdf_mul_float(opaque, 1.0));
     let dielectric_base = bsdf_layer(dielectric_reflection, substrate);
 

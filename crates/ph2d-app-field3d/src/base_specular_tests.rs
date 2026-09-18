@@ -316,6 +316,15 @@ fn the_two_dielectric_only_numbers_are_exactly_inert_on_a_metal() {
             "field.dim.coat_ior",
             "field.dim.coat_darkening",
             "field.dim.emission_color",
+            // ⚠️ **As seis da SUBSUPERFICIE tambem estao travadas aqui**, e NAO por serem
+            // so'-dielectricas: e' o peso dela estar a zero neste material, a mesma lei do verniz.
+            // *Duas razoes diferentes para a mesma linha apagada — e este gate mede a lista, nao a
+            // razao.*
+            "field.dim.subsurface_color",
+            "field.dim.subsurface_radius",
+            "field.dim.subsurface_scale",
+            "field.dim.subsurface_anisotropy",
+            "field.dim.thin_walled",
         ],
         "o metal travou mais (ou menos) do que as duas linhas só-dieléctricas"
     );

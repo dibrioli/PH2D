@@ -163,7 +163,7 @@ pub enum Param {
 /// mesma lei sob o peso (`9`). *A porta de ESCRITA continua a aceitar as dezasseis posições*: quem
 /// esconde é a apresentação, e um pedido guardado de um quadro atrás tem de continuar a poder
 /// aterrar.
-pub const MATERIAL_FIELDS: u8 = 23;
+pub const MATERIAL_FIELDS: u8 = 33;
 
 /// ⭐⭐⭐ **Quantos números uma LUZ tem** — a força (`0`) e os três canais da cor (`1`..`3`).
 ///

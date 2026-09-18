@@ -279,8 +279,13 @@ fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom
         p,
         n,
         v,
+        k,
         basis,
     } = geom;
+    // ⭐⭐⭐ **O MATERIAL NESTE PONTO** — a curvatura é a única entrada geométrica que a lei do
+    // OpenPBR pede, e ela chega do CAMPO (`crate::curvatura`). ⚠️ Com a subsuperfície maciça
+    // desligada (a omissão) ninguém a lê, e esta linha é uma cópia de 15 floats que não muda um bit.
+    let surface = &surface.at_curvature(k);
     let add = |a: [f32; 3], b: [f32; 3]| [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
     // ⭐⭐⭐ **A OCLUSÃO É A SOMBRA DO CÉU** — ela multiplica o que o AMBIENTE entrega, e mais nada.
     //
@@ -407,6 +412,8 @@ pub fn shade_render(
                         p: g.point[i],
                         n: g.normal[i],
                         v,
+                        // ⚠️ Vazio ⇒ `0` ⇒ o piso do GLSL dá o raio de `100`, que é «plano».
+                        k: g.curvature.get(i).copied().unwrap_or(0.0),
                         basis,
                     },
                     pixel_world,
@@ -460,6 +467,8 @@ pub fn shade_render(
                         p: g.point[i],
                         n: e.normal[k],
                         v,
+                        // ⚠️ Vazio ⇒ `0` ⇒ o piso do GLSL dá o raio de `100`, que é «plano».
+                        k: g.curvature.get(i).copied().unwrap_or(0.0),
                         basis,
                     },
                     pixel_world,
@@ -553,6 +562,9 @@ struct PixelGeom {
     n: [f32; 3],
     /// A direcção para o observador, em espaço de VISTA.
     v: [f32; 3],
+    /// ⭐⭐⭐ **A CURVATURA deste ponto** (`|H|`) — `0` quando ninguém a pediu, e `0` é a leitura
+    /// certa de *«não sei»* (ver [`crate::Gbuffer::curvature`]).
+    k: f32,
     basis: ViewBasis,
 }
 

@@ -139,7 +139,7 @@ pub(crate) fn traca(p: &Pedido) {
     };
     // Abandonado a meio: não se manda nada, e quem esperava já mudou de pedido.
     // ⚠️ O G-buffer **move-se**: ele tem milhões de pixels e não é `Clone` de propósito.
-    let (g, sombras_do_gpu) = match do_gpu {
+    let (mut g, sombras_do_gpu) = match do_gpu {
         Some((g, sh)) => (g, Some(sh)),
         None => {
             let Some(g) = ph2d_field_render::trace_cancellable(
@@ -249,6 +249,26 @@ pub(crate) fn traca(p: &Pedido) {
                     ph2d_field_render::ground_bounce::GROUND_BOUNCE_DIRS,
                     (p.tw.min(p.th)) as usize,
                 ));
+            }
+            // ⭐⭐⭐ **A CURVATURA, quando alguém a lê** (`docs/Render3d/10`) — a grandeza que a
+            // subsuperfície MACIÇA pergunta. ⚠️ Com a omissão (`subsurface_weight = 0`) ou com a
+            // peça declarada parede fina, a [`Surface::reads_curvature`] responde `false` e o
+            // quadro **não paga uma amostra de campo** — o gémeo exacto do `if` que o WGSL faz.
+            //
+            // ⚠️ **O passo é o da SEGUNDA diferença e sai da PEÇA**, nunca da vista: ver
+            // [`ph2d_field_render::curvatura::eps_para`], onde a medição está.
+            if surfaces
+                .all
+                .iter()
+                .any(ph2d_material::Surface::reads_curvature)
+                && let Some(bola) = ph2d_field_eval::bounds::bounding_ball(&p.doc, &p.reg)
+            {
+                let mut eval = ph2d_field_eval::hybrid::Hybrid::new(&p.doc, &p.reg);
+                g.curvature = ph2d_field_render::curvatura::do_gbuffer(
+                    &mut eval,
+                    &g,
+                    ph2d_field_render::curvatura::eps_para(bola.radius),
+                );
             }
             let pinta = |sh: Option<&ph2d_field_render::Shadows>| {
                 ph2d_field_render::shade_render(

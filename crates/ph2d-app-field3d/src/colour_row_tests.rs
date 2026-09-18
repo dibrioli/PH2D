@@ -83,6 +83,17 @@ fn a_colour_is_one_row_and_it_carries_the_swatch() {
             (ph2d_field::Param::Material(7), "field.dim.specular_color"),
             (ph2d_field::Param::Material(13), "field.dim.coat_color"),
             (ph2d_field::Param::Material(20), "field.dim.emission_color"),
+            // ⚠️ **As duas da SUBSUPERFICIE entraram em 17/09** (`docs/Render3d/10`): a cor do
+            // meio que espalha, e a escala do raio POR CANAL — que e' uma cor porque diz quanto
+            // mais fundo cada canal viaja, e e' o que poe o vermelho a' frente numa orelha.
+            (
+                ph2d_field::Param::Material(24),
+                "field.dim.subsurface_color"
+            ),
+            (
+                ph2d_field::Param::Material(28),
+                "field.dim.subsurface_scale"
+            ),
         ],
         "as amostras do material mudaram: {:?}",
         rows.iter().map(|r| (r.param, r.key)).collect::<Vec<_>>()

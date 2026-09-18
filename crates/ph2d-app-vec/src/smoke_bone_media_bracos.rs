@@ -1,4 +1,5 @@
-//! ⭐⭐⭐ **`=2` — OS TRÊS BRAÇOS: o TESTE NULO**, filho do [`super`] para herdar as fixturas dele.
+//! ⭐⭐⭐ **AS CENAS DO BRAÇO** — `=2`, o TESTE NULO, e `=3`, o braço que ANIMA. Filho do
+//! [`super`] para herdar as fixturas dele.
 //!
 //! Ordem do dono (2026-09-18): *«crie os 3 tipos do mesmo tamanho e mesma largura para eu ver como
 //! se dobram, se se dobram igual uma a outra»*.
@@ -85,8 +86,9 @@ pub(super) fn bracos(
         "Braco simples",
         BRACO_PX[0],
         BRACO_PX[1],
-        braco(0),
+        braco_de(BRACO_PX, 0),
         larg,
+        DOBRA,
         |_, _| {},
     ) {
         primeiro.get_or_insert(bits);
@@ -111,6 +113,7 @@ pub(super) fn bracos(
         BRACO_PX[1],
         folha_de_bracos(),
         larg,
+        DOBRA,
         move |sim, e| {
             sim.world_mut().entity_mut(e).insert(ph2d_ecs::SpriteGrid {
                 hframes: QUADROS,
@@ -143,8 +146,9 @@ pub(super) fn bracos(
         "Braco 9-slice",
         BRACO_PX[0],
         BRACO_PX[1],
-        braco(0),
+        braco_de(BRACO_PX, 0),
         larg,
+        DOBRA,
         |sim, e| {
             sim.world_mut().entity_mut(e).insert(ph2d_ecs::SliceNine {
                 draw_mode: ph2d_ecs::SliceDrawMode::Sliced,
@@ -169,8 +173,8 @@ pub(super) fn bracos(
 ///
 /// ⚠️ **As listras são TRANSVERSAIS** (colunas): dobrar o cotovelo abre-as em leque, que é o que o
 /// olho vê. Uma barra chapada dobrada lê-se quase igual à mesma barra rodada.
-fn braco(tom: usize) -> Vec<u8> {
-    let (w, h) = (BRACO_PX[0] as usize, BRACO_PX[1] as usize);
+fn braco_de(px: [u32; 2], tom: usize) -> Vec<u8> {
+    let (w, h) = (px[0] as usize, px[1] as usize);
     let mut rgba = vec![0u8; w * h * 4];
     // ⭐ O número de listras é FIXO e não derivado da largura: assim a mesma arte em qualquer
     // resolução abre o mesmo leque, e a cena não muda de leitura ao afinar a arte.
@@ -210,7 +214,7 @@ fn folha_de_bracos() -> Vec<u8> {
     let total = w * QUADROS as usize;
     let mut rgba = vec![0u8; total * h * 4];
     for c in 0..QUADROS as usize {
-        let um = braco(c);
+        let um = braco_de(BRACO_PX, c);
         for y in 0..h {
             let dst = (y * total + c * w) * 4;
             let src = y * w * 4;
@@ -237,6 +241,92 @@ fn anuncia_bracos(gastas: u32, larg: f64, alt: f64) {
          outra maneira, ou tiver a silhueta noutro sitio, e' ELA que esta' errada.\n\
          [bone-media-smoke] (com PH2D_BONE_LOG=1 a de baixo imprime NOVE linhas de 'pele:', uma por \
          pedaco — e' isso que prova que ela esta' mesmo a ser fatiada)"
+    );
+}
+
+/// ⭐⭐⭐ **O TAMANHO DO BRAÇO DA `=3` SAI DA CÂMERA DE OMISSÃO** — ele é derivado, não escolhido.
+///
+/// ⛔⛔ Aquela cena **não pede o *Frame All*** (o porquê medido vive no
+/// [`super::Prologo::enquadrar`]: com um painel aberto ele corta sempre), logo ela abre na câmera de
+/// omissão — `Camera2d::default().height_world`, que é **`10 m`** de mundo sobre a ALTURA da janela.
+///
+/// O braço fica em **metade** dessa altura de comprimento e mantém o `4:1` que o dono pediu. ⚠️ A
+/// folga é grande de propósito e o recurso tem nome: os painéis são desenhados por cima do mundo e
+/// tapam `~37 %` da largura e `~33 %` da altura (medido na foto de 2026-09-18) — um braço colado ao
+/// limite ficaria com as pontas debaixo de um dock, e é **exactamente esse** o defeito que esta cena
+/// existe para não ter.
+///
+/// ⚠️ **Em PIXELS de arte e não em metros**, porque a [`super::uma`] mede o quad em `pixels / ppm`:
+/// pedir o tamanho em metros aqui obrigaria a escrevê-lo DUAS vezes.
+fn braco_da_camera_de_omissao(ppm: f64) -> [u32; 2] {
+    let altura_de_mundo = f64::from(ph2d_render::Camera2d::default().height_world);
+    let comprimento_m = altura_de_mundo * 0.5;
+    let w = (comprimento_m * ppm).round().max(4.0) as u32;
+    [w, (w / 4).max(1)]
+}
+
+/// **`=3` — O BRAÇO ANIMA** (2026-09-18): um braço só, **em repouso**, com a timeline aberta e o
+/// AutoKey armado. ⭐⭐⭐ **Aqui quem dobra é o DONO** — as outras duas cenas dobram sozinhas.
+///
+/// ⛔⛔ **Ela existe porque a máquina estava pronta e ninguém a tinha visto.** O AutoKey grava a
+/// corrente INTEIRA que a mão moveu (e o alvo de uma restrição de IK) desde 2026-09-14, com seis
+/// gates na shell — e **nenhuma cena do app armava o AutoKey**. *Uma feature construída, gateada e
+/// sem smoke é uma feature que o artista não tem.*
+///
+/// ⚠️ **Um braço e não três**, e a razão é a pergunta: aqui ela é *«a pose é gravada?»*, e três
+/// sujeitos só acrescentariam a dúvida de qual deles gravou.
+///
+/// ⚠️ **A dobra entra a ZERO** — o braço nasce esticado. Uma cena que já chegasse dobrada teria a
+/// pose inicial dentro do repouso e a primeira chave do dono não mudaria nada na tela.
+///
+/// ⚠️ **A ferramenta NÃO é armada aqui:** desde 2026-09-09 o app abre o painel de Bones e arma a
+/// ferramenta sozinho quando um osso é escolhido. *Armá-la na cena seria a segunda resposta à mesma
+/// pergunta, e a que envelhece.*
+pub(super) fn anima(
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    cell_idx: u32,
+    pixels_per_meter: f32,
+    atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+) -> Option<(u64, u32)> {
+    let ppm = f64::from(pixels_per_meter.max(f32::MIN_POSITIVE));
+    let px = braco_da_camera_de_omissao(ppm);
+    let larg = f64::from(px[0]) / ppm;
+    let bits = uma(
+        sim,
+        renderer,
+        asset_db,
+        cell_idx,
+        pixels_per_meter,
+        atlas_asset_map,
+        [0.0, 0.0],
+        "Braco",
+        px[0],
+        px[1],
+        braco_de(px, 0),
+        larg,
+        // ⭐ ZERO: o braço nasce esticado, e quem o dobra é o dono.
+        0.0,
+        |_, _| {},
+    )?;
+    anuncia_anima();
+    Some((bits, 1))
+}
+
+/// O roteiro da cena que anima.
+fn anuncia_anima() {
+    println!(
+        "[bone-media-smoke] O BRACO ANIMA: um braco esticado, a timeline aberta e o AutoKey ligado.\n\
+         [bone-media-smoke] 1) Na Hierarquia clique em 'Bone 3' (o osso do meio) — o painel Bones \
+         abre-se e a ferramenta de osso arma-se sozinha\n\
+         [bone-media-smoke] 2) No canvas ARRASTE esse osso: o braco dobra E aparece uma chave na \
+         timeline, no tempo 0\n\
+         [bone-media-smoke] 3) Arraste o cursor da timeline para ~1 s e dobre o braco para o OUTRO \
+         lado — nasce a segunda chave\n\
+         [bone-media-smoke] 4) Carregue em Play: o braco tem de ANIMAR entre as duas poses\n\
+         [bone-media-smoke] Se nao aparecer chave nenhuma no passo (2), o AutoKey nao ficou armado \
+         — PARE e diga"
     );
 }
 

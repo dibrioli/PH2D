@@ -52,10 +52,45 @@ diz onde ler o mecanismo:
 | **F8** | ✅ **BENDY BONES (B-Bones) — FECHADO em 2026-09-15**, da lei ao painel ([handoff](handoffs/HANDOFF_O_OSSO_QUE_DOBRA_2026-09-15.md)) | Um osso ganha `segments` + duas alças e **arqueia**: ele parte-se em `N` sub-ossos ao longo de uma Bézier, o desenho e o dedo seguem a curva, e o painel oferece os dois controlos. ⭐⭐⭐ **A LEI DA PELE NÃO MUDOU UMA LINHA** — o `Skin` já misturava `N` poses RÍGIDAS por peso, que é exactamente o que um B-Bone é; o que mudou foi **quem produz**, e era **um** sítio (`resolve_with`). ⛔⛔ **E esta célula dizia que o B-Bone «ataca na ORIGEM» a queixa das *«arestas retas ao dobrar»* — REFUTADO** pela recusa medida um bloco abaixo (subdividir com a população de amostras constante **piora**: `2,61 % → 4,94 %` a `24` sub-ossos): *o B-Bone é uma feature de AUTORIA — um rabo em S, um membro flexível —, não a cura da dobra.* ⭐⭐ **O ponto neutro é exacto POR CONSTRUÇÃO** (a fábrica colapsa num osso só quando a curva é recta, e mesmo sem colapsar o frame seria a identidade ao bit) ⇒ todo rig já autorado desenha-se e deforma-se **ao bit** como antes. ⚠️ `PROJECT_SCHEMA` **+1** — conte o DELTA. **Tecto MEDIDO: `MAX_SEGMENTS = 32`** (`17,9 %` de um quadro com um osso curvo sobre 20 000 pontos; a `64` um par come o quadro) — a tabela vive no doc da const. ✅ **OS TRÊS ABERTOS FECHARAM EM 2026-09-16.** **(1)** O esticão deixou de VARIAR ao longo do osso — os nós saem agora da **CORDA** e não do parâmetro (`12,63 % → 0,000 %` com as alças a `0,2 L`; `82,01 % → 0,000 %` a `0,6 L`; `1 051,95 % → 0,000 %` com as alças cruzadas no eixo). ⛔⛔ **E a cura publicada — equalizar o ARCO — NÃO chegava**, o que só a varredura da densidade disse: ela deixa um piso que **não desce com a tabela** (`1,22 %` a `0,6 L`, igual de `16` a `32` amostras), porque *arcos iguais dão cordas desiguais* e a grandeza que o artista vê é a corda. ⚠️ **E a objecção registada na recusa era verdadeira e não mordia** (*«um somatório de cordas não devolve `L` ao bit»*): o somatório **nunca corre** no ponto neutro — *uma recusa que nomeia um custo tem de dizer em que CAMINHO ele é pago*. **(2)** As alças **pegam-se no canvas** (duas alças de Bézier, com as hastes até à raiz e à ponta) — ⛔ e a armadilha foi que no ponto NEUTRO a alça está **em cima do eixo**, logo a competição por proximidade de sempre torná-la-ia inalcançável no único estado em que todo osso nasce: ela é a única que ignora o corpo, e paga um raio apertado cujo recurso é o comprimento que sobra para o verbo de girar. **(3)** As **tangentes dos vizinhos** existem (`Curve Handles: Manual | From Chain`), e o ponto neutro é **exacto** porque elas saem da transformação RELATIVA e não de uma volta pelo mundo. ⚠️ `PROJECT_SCHEMA` **+1** — conte o DELTA. Cena **`PH2D_VEC_BONE_SMOKE=1`**. |
 | F7 | **O painel próprio do módulo** | ✅ **FECHADO** (2026-09-09, por escolha do dono) — ver F3-m abaixo. A nota antiga: ⏸️ **a condição CAIU e a medição era falsa por ~3×** — ela dizia *«adiado até F3–F5 lhe darem conteúdo (hoje são 3 botões e 5 campos)»*, e as três estão ✅ nesta mesma tabela enquanto a secção tem **10 verbos** e **9 campos** (`VECTOR_BONE_VERBS`/`_FIELDS`, comprimento verificado pelo compilador), mais uma fileira segmentada e dois selectores. ⇒ decisão do dono, não mais um adiamento medido |
 | **F9** | ⏸️ **A PELE DEFORMADA NA GPU** (pedido do dono, 2026-09-16) | ⏸️ **PARADA em 2026-09-17, com o gatilho escrito** — a premissa dela (*«o `Smooth` a alisar em qualquer cena»*) foi **refutada por medição** e o botão foi apagado por ordem do dono; o que sobrava é um ganho de RELÓGIO (`~11 %` de um quadro a 8 imagens) e **zero pixels**. Ver F9 abaixo |
-| **F10** | ⏳ **O AutoKey com a corrente de ossos, como o Blender de hoje** (decisão do dono, 2026-09-16) | ⏳ **NA FILA** — medir primeiro, no Blender instalado e corrido por script (§0.9), que ossos recebem chave quando a corrente é movida pela ponta (IK por restrição e *Auto IK*); depois fazer igual |
+| **F10** | ✅ **O AutoKey com a corrente de ossos** (decisão do dono, 2026-09-16) | ✅ **JÁ ESTAVA FEITO — a nota envelheceu, e auditá-la contra o CÓDIGO custou dez minutos** (2026-09-18). O passe grava **a corrente INTEIRA que a mão moveu** (não só o osso seleccionado) desde 2026-09-14, e também **o ALVO de uma restrição de IK** — porque com uma restrição viva a rotação dos ossos é DERIVADA e o que o artista autora é a âncora. ⚠️ Quem filtra é o **DIFF**: um osso cuja pose é a da curva não cunha nada. Seis gates em [`autokey_bone_tests.rs`](../../shells/desktop/src/render_loop/autokey_bone_tests.rs), entre eles `autokey_records_every_bone_the_hand_moved_not_only_the_selected_one`, `dragging_the_ik_anchor_records_the_anchor` e o controlo `a_bone_the_hand_holds_but_did_not_move_keys_nothing`. ⛔ **O que FALTAVA não era a lei, era o SMOKE:** nenhuma cena do app armava o AutoKey, logo o dono nunca lhe chegou ⇒ cena **`PH2D_VEC_BONE_MEDIA_SMOKE=3`** |
 | **F11** | ✅ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (ordem do dono, 2026-09-17) | ✅ **FECHADO** — ver F11 abaixo |
 
 ---
+
+---
+
+### F12 — ⏳ **ABERTO e NOMEADO: o *Frame All* enquadra a JANELA, e os painéis tapam-lhe as bordas** (2026-09-18)
+
+⛔⛔ **Não é da pele nem do esqueleto — é do verbo da CÂMERA, e vale para toda a casa.** O
+[`drain_view_focus`](../../shells/desktop/src/hero_intents/view.rs) do `ViewFocusKind::All` calcula
+
+```rust
+let aspect = window_size.width / window_size.height;      // a JANELA, não o canvas
+let need_h = span_y.max(span_x / aspect);
+camera.height_world = need_h * 1.1;
+```
+
+e o mundo é desenhado na janela inteira com os painéis **por cima**. ⇒ ele enche `110 %` da janela
+com o conteúdo e **tudo o que um dock tapa fica fora**.
+
+**Medido** (foto de 2026-09-18, janela `1930 × 1040`): as colunas laterais tapam `~37 %` da largura
+e a timeline aberta `~33 %` da altura. Com a timeline aberta a cena `=3` pedia `Frame All` e ficava
+a mostrar `±80 px` de mundo sobre um braço de `±120` — **cortado nas duas pontas**.
+
+⚠️⚠️ **E NENHUM tamanho de cena o resolve:** o ajuste é derivado do próprio conteúdo, logo encolher
+a cena encolhe o enquadramento junto. *Uma cena larga «não caber» não é propriedade da cena — é
+propriedade do verbo.* (A nota da `=1` dizia *«cenas largas nunca cabem»* e tratava-o como lei da
+cena; ele é do verbo.)
+
+⭐ **A cura tem endereço:** ajustar ao rectângulo **LIVRE** (a janela menos os docks — os rects já
+existem em [`panel_ops::panel_rects`](../../crates/ph2d-editor-core/src/interaction/state/panel_ops.rs))
+em vez do da janela. ⛔ **Não foi feita aqui de propósito:** ela muda o enquadramento inicial de
+**todas** as cenas de **todos** os módulos, e isso é decisão do dono e da linha da UI, não de uma
+linha a meio de uma wave. *Contornar por dentro da minha cena e não dizer nada seria esconder um
+defeito que todo artista atinge ao carregar em «Frame All» com a timeline aberta.*
+
+⚠️ **O que a `=3` faz enquanto isso:** não pede `Frame All` (`Prologo::enquadrar = false`) e
+dimensiona-se para a **câmera de omissão** (`height_world = 10 m`), com o número derivado dela.
 
 ---
 

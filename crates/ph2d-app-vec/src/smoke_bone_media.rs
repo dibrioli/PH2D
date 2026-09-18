@@ -84,13 +84,73 @@ const BORDA_PX: f32 = 20.0;
 /// enquadramento ensina o contrário do que diz.*
 const ESTICA: f32 = 2.0;
 
-/// ⭐⭐⭐ **DOIS NÍVEIS, e o `=2` é uma pergunta DIFERENTE** (ordem do dono, 2026-09-18).
+/// ⭐⭐⭐ **TRÊS NÍVEIS, e cada um faz uma pergunta DIFERENTE.**
 ///
 /// - **`=1` — as três FORMAS:** *que arte é desenhada?* Artes diferentes de propósito, para se ver
 ///   que a folha mostra UM quadro e que a moldura mantém os cantos.
 /// - **`=2` — os três BRAÇOS:** *elas dobram IGUAL?* Mesmo tamanho, mesma largura, mesma arte —
 ///   um **TESTE NULO**: as três TÊM de sair idênticas, e qualquer diferença é o defeito.
-pub const NIVEIS: u32 = 2;
+/// - **`=3` — o braço ANIMA:** *a pose que a mão faz é GRAVADA?* Um braço só, em repouso, com a
+///   timeline aberta e o AutoKey armado — quem dobra aqui é o **dono**.
+///
+/// ⛔⛔ **O `=3` existe porque a máquina dele estava pronta e NINGUÉM a tinha visto.** O AutoKey
+/// grava a corrente inteira (e o alvo de uma restrição de IK) desde 2026-09-14, com seis gates na
+/// shell — e **nenhuma cena do app armava o AutoKey**, logo o dono nunca lhe chegou. *Uma feature
+/// construída, gateada e sem smoke é uma feature que o artista não tem* (`CLAUDE.md` §0.8: o smoke
+/// é onde ele as APRENDE).
+pub const NIVEIS: u32 = 3;
+
+/// **O que a SHELL tem de armar para a cena `n`** — o prólogo, que não é da crate.
+///
+/// ⚠️ **Ele é uma LEI PURA aqui e um efeito lá, de propósito.** Abrir um painel, ligar um
+/// interruptor da timeline e parar o relógio são três coisas da `App`, e a cena não a tem; mas a
+/// DECISÃO — *quais destas três, para que nível* — é da cena, e escrita aqui ela é gateável sem
+/// janela nenhuma. O molde é o da física: *o que sai são os CORPOS; o que decide a ordem do quadro
+/// fica na shell.*
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Prologo {
+    /// A timeline tem de estar **visível**: o `autokey_pass` exige `panel_open` — *gravar é um modo
+    /// de autoria, e não faz sentido com a interface dele escondida.*
+    pub timeline_aberta: bool,
+    /// O interruptor **AutoKey** da timeline.
+    pub auto_key: bool,
+    /// ⚠️ **O relógio NASCE A ANDAR** (`Playhead::new` põe `playing: true`) — medido, não suposto.
+    /// Uma cena de autoria que não o pare grava a pose num instante que já passou.
+    pub relogio_parado: bool,
+    /// ⛔⛔⛔ **Pedir o *Frame All* — e a cena que ANIMA não pede, por MEDIÇÃO.**
+    ///
+    /// O `ViewFocusKind::All` ajusta ao rectângulo da **JANELA** e os painéis são desenhados POR
+    /// CIMA dela; ele enche `110 %` da janela com o conteúdo, logo **o que os painéis tapam fica
+    /// fora**. Com as colunas laterais (`~37 %` da largura) isso já morde, e com a timeline aberta
+    /// (`~33 %` da altura) **nenhum tamanho de cena sobrevive**: o ajuste é derivado do próprio
+    /// conteúdo, então encolher a cena encolhe o enquadramento junto.
+    ///
+    /// ⭐ *Medido na foto de 2026-09-18:* a `=3` com o `All` mostrava `±80 px` de mundo sobre um
+    /// braço que mede `±120` — cortado nas duas pontas. ⇒ ela fica na **câmera de omissão**
+    /// (`Camera2d::default().height_world = 10 m`), onde a área livre é folgada, e dimensiona-se
+    /// para lá dentro.
+    ///
+    /// ⚠️ **Isto NÃO é a cura do defeito** — ele é do verbo *Frame All* e vale para toda a casa
+    /// (abrir a timeline e carregar em *Frame All* corta a cena de qualquer módulo). A cura pede o
+    /// rectângulo LIVRE em vez do da janela, muda o enquadramento de todas as cenas do app, e por
+    /// isso é decisão do dono e não de uma linha a meio de uma wave.
+    pub enquadrar: bool,
+}
+
+/// A lei do [`Prologo`], por nível.
+///
+/// ⚠️ **As cenas `=1` e `=2` não armam NADA**, e isso é metade do valor deste gate: um prólogo que
+/// arma sempre poria a timeline por cima de duas cenas que o dono já aprovou sem ela.
+#[must_use]
+pub fn prologo_do_nivel(n: u32) -> Prologo {
+    let anima = n == 3;
+    Prologo {
+        timeline_aberta: anima,
+        auto_key: anima,
+        relogio_parado: anima,
+        enquadrar: !anima,
+    }
+}
 
 /// O nível pedido, coagido a `1..=NIVEIS`.
 ///
@@ -214,15 +274,28 @@ pub fn build(
     pixels_per_meter: f32,
     atlas_asset_map: &mut BTreeMap<u32, AssetId>,
 ) -> Option<(u64, u32)> {
-    if nivel() == 2 {
-        return bracos(
-            sim,
-            renderer,
-            asset_db,
-            cell_idx,
-            pixels_per_meter,
-            atlas_asset_map,
-        );
+    match nivel() {
+        2 => {
+            return bracos(
+                sim,
+                renderer,
+                asset_db,
+                cell_idx,
+                pixels_per_meter,
+                atlas_asset_map,
+            );
+        }
+        3 => {
+            return anima(
+                sim,
+                renderer,
+                asset_db,
+                cell_idx,
+                pixels_per_meter,
+                atlas_asset_map,
+            );
+        }
+        _ => {}
     }
     formas(
         sim,
@@ -276,6 +349,7 @@ fn formas(
         LADO_PX,
         listrada(LADO_PX, LADO_PX),
         f64::from(LADO_M),
+        DOBRA,
         |sim, e| tamanho(sim, e, [LADO_M, LADO_M]),
     ) {
         primeiro.get_or_insert(bits);
@@ -296,6 +370,7 @@ fn formas(
         LADO_PX,
         folha(),
         f64::from(LADO_M),
+        DOBRA,
         |sim, e| {
             sim.world_mut().entity_mut(e).insert(ph2d_ecs::SpriteGrid {
                 hframes: QUADROS,
@@ -325,6 +400,7 @@ fn formas(
         LADO_PX,
         moldura(),
         f64::from(LADO_M) * f64::from(ESTICA),
+        DOBRA,
         |sim, e| {
             sim.world_mut().entity_mut(e).insert(ph2d_ecs::SliceNine {
                 draw_mode: ph2d_ecs::SliceDrawMode::Sliced,
@@ -374,6 +450,10 @@ fn uma(
     h_px: u32,
     pixels: Vec<u8>,
     largura_do_osso_m: f64,
+    // ⭐ **A dobra é do CHAMADOR e não uma leitura global da `DOBRA`.** A cena `=3` precisa dela a
+    // ZERO — ali quem dobra é o DONO, com a mão —, e ler a const aqui dentro faria *«a cena que não
+    // dobra»* ser inexprimível sem um segundo caminho.
+    graus: f32,
     prepara: impl FnOnce(&mut SimWorld, Entity),
 ) -> Option<u64> {
     let (_, bits) = ph2d_image_import::spawn_rgba(
@@ -420,7 +500,7 @@ fn uma(
         eprintln!("[bone-media-smoke] '{nome}' NAO prendeu ao esqueleto -- PARE");
         return Some(bits);
     }
-    crate::smoke_bone_paint::dobra(sim, &ossos, DOBRA);
+    crate::smoke_bone_paint::dobra(sim, &ossos, graus);
     Some(bits)
 }
 
@@ -444,7 +524,7 @@ fn anuncia(gastas: u32) {
 
 #[path = "smoke_bone_media_bracos.rs"]
 mod bracos_cena;
-use bracos_cena::bracos;
+use bracos_cena::{anima, bracos};
 
 #[cfg(test)]
 mod tests {
@@ -503,6 +583,110 @@ mod tests {
             faltam, 0,
             "{faltam} pixels do disco nao estao em quadro nenhum — a uniao deixa de ser o disco e o \
              tracador ganha gargalos"
+        );
+    }
+
+    /// ⭐⭐⭐ **O PRÓLOGO ARMA SÓ A CENA QUE ANIMA** — a lei que a shell obedece.
+    ///
+    /// ⛔ **As metades NEGATIVAS são metade do gate:** um prólogo que armasse sempre poria a
+    /// timeline por cima das duas cenas que o dono já aprovou sem ela, e a `=2` (o teste nulo)
+    /// perderia metade do ecrã para uma tira que não responde à pergunta dela.
+    #[test]
+    fn o_prologo_arma_so_a_cena_que_anima() {
+        for n in [1_u32, 2] {
+            let p = super::prologo_do_nivel(n);
+            assert_eq!(
+                p,
+                super::Prologo {
+                    timeline_aberta: false,
+                    auto_key: false,
+                    relogio_parado: false,
+                    // ⭐ As duas cenas que o dono já aprovou CONTINUAM a enquadrar-se sozinhas —
+                    // elas não abrem painel nenhum, e ali o `Frame All` faz o que promete.
+                    enquadrar: true,
+                },
+                "a cena =\u{7b}n\u{7d} passou a armar um prologo que ela nao pediu: {p:?}"
+            );
+        }
+        let p = super::prologo_do_nivel(3);
+        assert!(
+            !p.enquadrar,
+            "a cena que anima NAO pode pedir o Frame All: com a timeline aberta ele corta sempre \
+             (o mecanismo medido vive no doc do campo)"
+        );
+        assert!(
+            p.timeline_aberta && p.auto_key && p.relogio_parado,
+            "a cena que anima precisa das TRES (a timeline aberta, o AutoKey e o relogio parado) — \
+             sem qualquer uma delas o arrasto do dono nao grava chave nenhuma: {p:?}"
+        );
+    }
+
+    /// ⭐⭐⭐ **E A SHELL ARMA-O MESMO** — sem esta metade, a lei de cima afirma sobre código que
+    /// ninguém corre.
+    ///
+    /// ⚠️ **Por texto e não por comportamento, com a razão declarada:** a fase vive no `render_frame`
+    /// e pede uma janela. ⭐ E o `include_str!` deixa de **compilar** se o ficheiro mudar de sítio —
+    /// é isso que separa esta agulha de um `grep` que passa a medir zero em silêncio.
+    #[test]
+    fn a_shell_arma_o_prologo_desta_cena() {
+        const FASE: &str =
+            include_str!("../../../shells/desktop/src/render_loop/fase_atlas_scene_smokes_late.rs");
+        for (agulha, porque) in [
+            (
+                "smoke_bone_media::prologo_do_nivel(",
+                "a shell deixou de perguntar a' cena o que armar — a decisao voltou a viver nela",
+            ),
+            (
+                "TimelineIntent::SetAutoKey(true)",
+                "o AutoKey deixou de ser armado: o arrasto do dono nao grava chave nenhuma",
+            ),
+            (
+                "kind: ph2d_editor_core::ViewFocusKind::All",
+                "o enquadramento saiu do prologo — ou ele voltou a ser pedido incondicionalmente, e a cena que abre a timeline fica cortada",
+            ),
+            (
+                "playhead.pause()",
+                "o relogio deixou de ser parado, e ele NASCE a andar: a pose e' gravada num instante que ja' passou",
+            ),
+        ] {
+            assert!(
+                FASE.contains(agulha),
+                "{porque} (agulha ausente: {agulha:?})"
+            );
+        }
+    }
+
+    /// ⚠️⚠️ **O nível tem DUAS leis e elas não são a mesma** — e a 1.ª redacção deste gate
+    /// confundiu-as, acusando o produto de um defeito que era uma suposição minha:
+    ///
+    /// - **ilegível ou ausente ⇒ `1`**, o caminho de OMISSÃO (a cena que o dono já aprovou);
+    /// - **legível e fora de faixa ⇒ COAGIDO à faixa** (`clamp`), que é o que o doc do
+    ///   [`super::nivel_de`] diz por escrito: um `=9` preserva *«ele pediu uma alta»* e mostra o
+    ///   topo, em vez de o mandar, calado, para o princípio.
+    ///
+    /// ⭐ A última asserção é a que impede a [`super::NIVEIS`] de mentir: o topo declarado tem de
+    /// ser ALCANÇÁVEL, senão acrescentar uma cena e esquecer a constante deixa-a inatingível.
+    #[test]
+    fn o_nivel_e_coagido_a_faixa_das_cenas() {
+        for (v, esperado, porque) in [
+            (Some("3"), 3, "o topo de hoje tem de passar"),
+            (Some("2"), 2, "um nivel do meio"),
+            (
+                Some("9"),
+                super::NIVEIS,
+                "legivel e alto demais: COAGIDO ao topo, nao mandado para o principio",
+            ),
+            (Some("0"), 1, "legivel e baixo demais: coagido ao piso"),
+            (Some(""), 1, "a env vazia e' como um `env VAR=` a arma"),
+            (Some("dois"), 1, "um valor ilegivel cai na cena de omissao"),
+            (None, 1, "sem env"),
+        ] {
+            assert_eq!(super::nivel_de(v), esperado, "{porque} (pedido: {v:?})");
+        }
+        assert_eq!(
+            super::nivel_de(Some(&super::NIVEIS.to_string())),
+            super::NIVEIS,
+            "o topo declarado tem de ser alcancavel — senao a `NIVEIS` mente sobre quantas cenas ha'"
         );
     }
 }

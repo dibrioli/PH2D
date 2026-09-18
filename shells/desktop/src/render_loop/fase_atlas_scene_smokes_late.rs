@@ -106,7 +106,7 @@ impl crate::App {
         }
 
         // ⭐ **AS TRÊS MÍDIAS** (F11) — o corpo vive à parte pelo tecto de LOC por FUNÇÃO.
-        bone_media_smoke(
+        if bone_media_smoke(
             &mut self.vec.bone_media_smoke_done,
             sim,
             renderer,
@@ -115,7 +115,9 @@ impl crate::App {
             next_import_cell,
             atlas_asset_map,
             toasts,
-        );
+        ) {
+            bone_media_prologo(hero_screen, &mut self.timeline_intents, &mut self.playhead);
+        }
 
         // **A FOLHA COMO OBJETO** (`PH2D_SHEET_SMOKE=1`, plano `docs/Sprite_projeto/17` §7): cinco
         // peças de tamanhos diferentes entram, e sai UM objeto — um retângulo na hierarquia, com
@@ -205,11 +207,55 @@ impl crate::App {
 /// ⚠️ **Função LIVRE e não um método**, e a razão é o empréstimo: os argumentos saem todos do
 /// `FrameGfx::of(gfx)`, que já tem a `App` emprestada mutavelmente — um `&mut self` aqui não compila.
 /// O latch entra como `&mut bool` pela mesma razão.
+/// ⭐⭐⭐ **O PRÓLOGO DA CENA DE MÍDIA, e a DECISÃO dele não mora aqui.** Quais destas quatro coisas
+/// cada nível precisa é lei da CENA ([`ph2d_app_vec::smoke_bone_media::prologo_do_nivel`], gateada
+/// sem janela nenhuma); o que mora na shell é o **EFEITO**, porque abrir um painel, escrever um
+/// intent da timeline e parar o relógio são três coisas da `App`.
+///
+/// *O molde é o da física: o que sai são os CORPOS; o que decide a ordem do quadro fica.*
+///
+/// ⚠️ **Função livre e não método**, pela razão de sempre neste ficheiro: o `gfx` já está emprestado
+/// ao `hero_screen`, e um `&mut self` não compila. Os campos que ela recebe são disjuntos dele.
+fn bone_media_prologo(
+    hero_screen: &mut Option<ph2d_editor_core::HeroScreen>,
+    timeline_intents: &mut Vec<ph2d_timeline::TimelineIntent>,
+    playhead: &mut ph2d_core::Playhead,
+) {
+    let pro =
+        ph2d_app_vec::smoke_bone_media::prologo_do_nivel(ph2d_app_vec::smoke_bone_media::nivel());
+    if let Some(hero) = hero_screen.as_mut() {
+        if pro.timeline_aberta {
+            <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
+                hero,
+                <ph2d_panel_timeline::TimelinePanel as ph2d_editor_core::panel::Panel>::ID,
+                true,
+            );
+        }
+        if pro.enquadrar {
+            hero.bus
+                .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                    kind: ph2d_editor_core::ViewFocusKind::All,
+                });
+        }
+    }
+    if pro.auto_key {
+        timeline_intents.push(ph2d_timeline::TimelineIntent::SetAutoKey(true));
+    }
+    // ⚠️ **O relógio NASCE A ANDAR** (`Playhead::new` põe `playing: true`, medido): uma cena de
+    // autoria que não o pare grava a pose num instante que já passou.
+    if pro.relogio_parado {
+        playhead.pause();
+    }
+}
+
 #[expect(
     clippy::too_many_arguments,
     reason = "sao as portas do quadro que a cena precisa, e agrupa-las numa struct so' esconderia \
               que elas vem todas do mesmo emprestimo"
 )]
+/// Devolve **`true` no quadro em que a cena foi MONTADA** — é esse o sinal por que o chamador
+/// arma o prólogo dela (a timeline, o AutoKey, o relógio), e é `&mut self` que ele precisa e esta
+/// função não tem: o `gfx` já está emprestado.
 fn bone_media_smoke(
     feito: &mut bool,
     sim: &mut SimWorld,
@@ -219,32 +265,33 @@ fn bone_media_smoke(
     next_import_cell: &mut u32,
     atlas_asset_map: &mut std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
     toasts: &mut ph2d_editor_core::ToastQueue,
-) {
+) -> bool {
     let Some(hero) = hero_screen.as_mut() else {
-        return;
+        return false;
     };
     if !ph2d_app_vec::smoke_bone_media::armed() || std::mem::replace(feito, true) {
-        return;
+        return false;
     }
     let ppm = hero.project.pixels_per_meter;
     let cell = *next_import_cell;
     let Some((bits, gastas)) =
         ph2d_app_vec::smoke_bone_media::build(sim, renderer, asset_db, cell, ppm, atlas_asset_map)
     else {
-        return;
+        return false;
     };
     *next_import_cell = next_import_cell.saturating_add(gastas);
     hero.gizmo.replace_selection(Some(bits));
-    hero.bus
-        .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
-            kind: ph2d_editor_core::ViewFocusKind::All,
-        });
+    // ⚠️ **O enquadramento NÃO se pede aqui** — ele é decisão do prólogo
+    // (`smoke_bone_media::Prologo::enquadrar`), porque a cena que abre a timeline não o pode pedir:
+    // o `Frame All` ajusta à JANELA e os painéis tapam-lhe as bordas. A razão medida vive no doc
+    // daquele campo.
     toasts.push(Toast::success(
-        if ph2d_app_vec::smoke_bone_media::nivel() == 2 {
-            "Bone-media smoke: TESTE NULO — os tres bracos tem de dobrar IGUAL"
-        } else {
-            "Bone-media smoke: as tres dobram — a do meio mostra UM quadro, a de baixo mantem os cantos"
+        match ph2d_app_vec::smoke_bone_media::nivel() {
+            2 => "Bone-media smoke: TESTE NULO — os tres bracos tem de dobrar IGUAL",
+            3 => "Bone-media smoke: escolha 'Bone 3' na Hierarquia e ARRASTE — a pose e' gravada",
+            _ => "Bone-media smoke: as tres dobram — a do meio mostra UM quadro, a de baixo mantem os cantos",
         }
         .to_string(),
     ));
+    true
 }

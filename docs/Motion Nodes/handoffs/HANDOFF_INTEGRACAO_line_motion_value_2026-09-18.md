@@ -42,6 +42,7 @@ W0..W6 + os abertos + **dois reports do dono já fechados e com smoke APROVADO**
 | §19 | ⭐⭐⭐ **o tecto era honesto e o MOTOR não era** (report do dono) — o passe fica **4,4×** mais barato a 500 peças e **8,7×** no quadro dele; toca em `ph2d-nodegraph` (`par_build_if`, append-only) |
 | §20 | ⭐⭐⭐ **o laço pára quando nada mais se VÊ** (2.º report) — `500` objectos a `1024` varreduras: `157,9 → 6,8 ms` (**46×** no caminho dele). ⚠️ **Não é bit-idêntico de propósito**, e o preço são DUAS barras de gate de produto re-precificadas, em duas crates |
 | §21 | ⭐⭐⭐ **o acabamento era pago por TIQUE e o desenho é UM** (3.º report, com foto) — a shell cozinha um quadro por tique em dívida e **só o último é desenhado**; a cena da foto vai de `245 → 31 ms` (**3 → 32 FPS**). Toca na PONTE (`motion_bridge`) e na bomba (`set_separa_o_desenho` + o readout `separacoes()`) |
+| §22 | **os MIL já estão no lado do Motion** (4.º report) — `1000` objectos a `64` varreduras custam `6,8 ms` e `2000` custam `12,2`. ⛔ Uma hipótese minha CAIU: o paralelo não é o alocador, é o `fork/join` por varredura (`5×` o CPU da série para o mesmo trabalho). Porta nova no seam auditado (`par_build_com_bloco`) |
 
 ---
 
@@ -157,8 +158,15 @@ formatador que parte a linha faz o padrão casar zero, e um `grep` largo casa **
 > GPU, com e sem colisão) — *mas o caminho rápido e a colisão são hoje **mutuamente exclusivos***.
 > Fechar isto é um kernel, com espec própria.
 >
-> ⏳ E o **DESENHO** de N formas vectoriais **não foi medido**: toda a tabela da §20 é do
-> cozimento, e o renderer é outro subsistema.
+> ⏳ E o **DESENHO** de N formas vectoriais **continua por medir do lado do renderer** — mas a §22
+> já o CERCA por diferença: o dono mede `10 ms` de quadro a 500 objectos e o Motion é `4,4` deles.
+> ⚠️ **Cada objecto carrega DOIS caminhos** (a forma e o anel do gizmo do colisor), e a partição de
+> LOD que os vira ladrilho de GPU só arma acima de `LOD_COUNT = 16 000`. *É o lever maior que
+> sobra, e é do render/Vector.*
+>
+> ⏳ **NOVO (§22.2):** o `fork/join` **por varredura** segura o paralelo em `1,5×` onde devia render
+> dezenas — medido pelo CPU contra a parede (`5×` o CPU da série, `4`–`5` núcleos). A cura é uma
+> região paralela que atravesse as varreduras, e é wave própria desta crate.
 
 | item | de quem |
 |---|---|
@@ -192,6 +200,11 @@ filtro**. ⚠️ A 8.ª está documentada **no código** como não-sangrante de 
 nele, com a mesma garantia de bits e o mesmo gate). ⇒ *a superfície de colisão do §2 muda por uma linha
 naquele ficheiro*, e o tecto de LOC do `ph2d-eval-motion/src/lib.rs` foi curado por **CORTE** (o laço das
 tomadas desceu para `taps.rs`, que já é o dono do assunto): `710 → 665`.
+
+**Portão da §22:** varredura impactada **17 328** testes, **17 328 a passar**. ⚠️ **Para quem funde:**
+ela acrescenta `par_build_com_bloco` ao `ph2d-nodegraph` (append-only, o `par_build_if` passa a
+delegar nele) e **não muda produto** fora disso — o resto da wave é MEDIÇÃO, e o valor dela é o mapa
+do §22.3 com o tamanho de cada lever que sobra.
 
 **Portão da §21:** formatação limpa · lint `-D warnings` a **zero** · varredura impactada **17 328**
 testes com **17 328 a passar** · mutação **4 de 4**. ⚠️ **Para quem funde:** a §21 acrescenta uma

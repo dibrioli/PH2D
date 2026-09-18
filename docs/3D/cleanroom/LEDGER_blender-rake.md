@@ -125,8 +125,15 @@ descrevem o que esta obra vai implementar.
 
 ## §7 — Sweep e isenções (2026-09-17)
 
-**Instrumento provado com CONTROLO POSITIVO antes de qualquer veredito:** um canário plantado
-(`topology_rake_factor`) sai `exit = 1`; uma frase de prosa do alvo sai `exit = 1`.
+**Instrumento provado com CONTROLO POSITIVO antes de qualquer veredito:** um canário plantado sai
+`exit = 1` (duas espécies: um identificador público do assunto, e uma frase de prosa do alvo); o
+corpus limpo sai `exit = 0`.
+⚠️⚠️ **E o `--git-history` apanhou ESTA MESMA LINHA na sua 1.ª redacção**, que escrevia o canário
+**em claro** — a violação da **regra nº 2 do topo deste ficheiro**, pela mão de quem a escreveu.
+⇒ curada pela lei do §6.1 (*o registo DESCREVE, nunca REPRODUZ*). ⛔ O commit `45dd47832` retém a
+redacção antiga no patch, e isso **não se cura reescrevendo o histórico** (INC-U1 desta linha, 13/09):
+fica **registado**, e o `--git-history` desta pasta acusa esse patch **por desenho**, não por defeito
+novo.
 
 **Corridas, todas VERDES:**
 
@@ -157,12 +164,13 @@ PERMANENTE sobre texto que um revisor já julgou.* É a lei de 13/09 — *o swee
 (artefacto, vassoura)* — aplicada no sentido inverso: **uma vassoura nova tem de correr sobre a
 árvore inteira antes de ser adoptada, senão ela acusa o passado.** As outras `51` ficam.
 
-### 📌 ACHADO PRÉ-EXISTENTE, que NÃO é desta obra — triagem é do R
+### 📌 ACHADO PRÉ-EXISTENTE — ⚠️ E A CONTAGEM ABAIXO ESTÁ SUBCONTADA; ver a correcção no §4.3
 
 `git grep` mede **uma** citação de nome interno do alvo sobre este assunto na árvore:
 `docs/3D/20_divergencias_tools.md`, linha `422`, introduzida pelo commit `99e129b60` (o estudo
 comparativo da época em que se lia o fonte). **Zero adições desta obra** (o `git status` desta
-worktree tem só os quatro ficheiros novos). ⚠️ É a mesma forma do achado `tip_roundness` de 14/09:
+worktree tem só os quatro ficheiros novos). ⚠️ É a mesma forma do achado de 14/09 (o token de duas
+palavras da obra `-pull`, ⛔ não reproduzido aqui — §6.1):
 `docs/**` fica fora do censo do gate por construção, logo ele nunca a viu.
 ⛔ **Não curada aqui de propósito** — é doc de outro assunto e a decisão é de triagem.
 
@@ -470,3 +478,79 @@ linha confirmadas; nenhum dos 13 bloqueia esta obra.**
 `cleanroom-sweep.sh` (descodificação em memória), a saída foi consumida **em cano** e deste ledger
 saem apenas **contagens e números de linha** — nunca os termos que casaram. Os scripts de
 re-derivação viveram no scratchpad da sessão, fora da árvore.
+
+
+---
+
+## §4.3 — RESPOSTA DO E À 1.ª PASSAGEM DE R-PRÉ (2026-09-17)
+
+⛔ **Acto do E.** O R não emendou nada além do cabeçalho da espec, como manda a SKILL. ⚠️ **Toda a
+tabela de números da espec foi re-derivada das fixturas PUBLICADAS** por um conferidor escrito só a
+partir do `README` delas — `44` asserções, todas verdes.
+
+| ponto do §4.2.6 | o que se fez |
+|---|---|
+| **1 (A-1)** | ⭐ **a barra passou a ser UMA SÓ, a do MEIO do vale** (`+0,0465`), com `≥` de um lado e `≤` do outro e margem **`±0,0167`** escrita ao lado. A lei que faltava está na espec §13 e no README §3: *uma barra tirada de um EXTREMO tem margem zero por construção, e é o arredondamento que lhe decide o sinal* |
+| **2 (A-2)** | a linha *«partir + colapsar»* do §7 passa a citar `verbos/t_constant_*` + `escada/k_a0000_*` (`−0,0456 → +0,1291`, re-derivados), com a razão escrita: `composicao/m_manual_*` é a fixtura de **G-5/G-6** e estava descrita no regime oposto |
+| **3 (A-3)** | ⭐⭐ **corpus RE-EMITIDO**: o cabeçalho passa a declarar `PASSAGENS=`, `rotacao_do_traco_graus=`, `comprimento_do_percurso=`, `percurso_invertido=`, `forma_do_percurso=`, `pontos_usados_truncagem=`, `malha_familia=`, `malha_params=` e, onde há, `SEQUENCIA_DE_TRACOS=`. As 18 células de passagens ficam distinguíveis campo a campo |
+| **4 (A-4)** | os sete endereços corrigidos (`escada/n_x*`, `verbos/{t_*,q_res*,s_sim}`), conferidos contra a árvore |
+| **5 (A-5/6/7/8)** | a coluna do §3.1 passa a ser a **norma** de `Δ` (`0,03199`…`0,05284`) com `eps = 1e-7` declarado; `G-6` passa a `3,84 %`; o §9 nomeia as duas populações (`522` de **`7 460`** = `7,0 %`) e dá a escada de tolerâncias (`266 · 118 · 2 · 0`); a esfera passa a `1 260` de **diferença simétrica de arestas**; a receita do `sha256` do §2.1 está escrita |
+| **6 (A-9/10/11/12)** | superlativo trocado, com os dois contra-exemplos; faixa `37`–`109` com os verbos nomeados; **`n = 34`/`34`** com os **nove** critérios escritos como CHAVES DE CABEÇALHO; a tabela das famílias **contada** da pasta; e as duas células superadas trazem `SUPERADA_POR=`/`SUPERADA_PORQUE=` |
+| **7 (A-13)** | os quatro itens do §10 trazem **fonte**; os dois que não tinham ganharam o endereço público, com ⛔ a lembrar que o Implementador não o abre |
+| **8 (§4.2.3)** | ⭐⭐⭐ **o limite não foi só declarado: foi MEDIDO** (abaixo), e as células `v_layer`/`v_smooth` subiram de nota de rodapé do §6.2 a **prova principal do §3.1** |
+
+### ⭐⭐⭐ O limite do §4.2.3, MEDIDO — e a inferência do §11.1 está REFUTADA
+
+O R nomeou o buraco certo. Mediu-se **obrigando o próprio alvo a fazer as duas metades em série**
+(família nova `lei_unica/`, 26 células, cada configuração `2`–`3` vezes):
+
+| composição | `ΔQ` | % do alvo |
+|---|---|---|
+| **JUNTO** (o alvo, como o artista o usa) | **`+0,1670`** | `100 %` |
+| em série `1×` | `−0,2081` | `−125 %` |
+| em série `3×` | `−0,0496` | `−30 %` |
+| em série `4×` | `−0,0128` | `−8 %` |
+| em série `9×` (o mais fino que a porta sem interface alcança) | `+0,0084` | **`5 %`** |
+
+⇒ **NÃO é uma lei só.** A composição em série converge para **zero**, não para o alvo, e a diferença
+é **14×** a banda de repetição (`0,0115`). As duas causas possíveis ficam **nomeadas e não
+separadas**, com **o instrumento que as separaria escrito na espec §14.4** — e a impossibilidade de
+as separar por esta porta é ela própria **medida**: o gesto público é um traço inteiro, logo `9×` é o
+chão da granularidade.
+
+### Correcções às triagens, pedidas pelo R
+
+- **T-3** — ⛔ este ledger **subcontava**: não é *«uma citação, linha 422»*. Medido pelo R: **87**
+  ocorrências em `docs/3D/20_divergencias_tools.md`, em **7 das 10** vassouras vivas (`-pull` 28 ·
+  `-trim-pincel` 19 · `-pincel-afiado` 15 · `-unblocked` 10 · `-cloth` 9 · `-boundary` 2 · `-rake` 4,
+  estas em **duas** linhas: `422` e `454`). É a maior concentração de nomes internos de alvo restrito
+  da árvore. **Não é desta obra** (zero adições) e **não se cura aqui**.
+- **T-4** — o token de duas palavras da obra `-pull` (⛔ **não o escrevo: a vassoura dela acusa-o, e
+  escrevê-lo aqui era reproduzir em vez de descrever — §6.1**; ele está nomeado no
+  `LEDGER_blender-pull.md`) **sai da lista de abertos desta linha**: já está triado lá, com medição, e
+  o veredito é que **a entrada da vassoura é que é o defeito**, não o código. O acto é do E/R daquela
+  obra. ⚠️ **Auto-achado:** a 1.ª redacção desta mesma linha escrevia-o em claro e fez a vassoura
+  `-pull` acusar **este ledger** — a segunda vez, na mesma sessão, que a regra nº 2 do topo mordeu
+  quem a escreveu. *Uma triagem que NOMEIA o token acusado transforma o registo dela num achado.*
+
+### Corrente
+
+| papel | id / data | o que fez |
+|---|---|---|
+| **E** (emenda) | subagente-E, 2026-09-17 | curou os 8 pontos · re-emitiu o corpus (`207` células + `14` entradas = 221 ficheiros) · **mediu** o §14 · re-derivou 44 números das fixturas publicadas |
+| **R-pré, 2.ª passagem** | — | **por despachar** |
+
+⚠️ **Higiene da emenda:** as corridas novas do oráculo viveram em `~/Referencias/blender-rake/`. O
+sweep das dez vassouras fecha **`exit 0` sobre o conjunto que o Implementador vê** — a espec
+emendada, as 221 fixturas e o INBOX.
+
+⛔⛔ **E sobre ESTE ficheiro a vassoura `-pull` fecha `exit 1`, o que é SABIDO e está declarado:** ela
+acusa **três** linhas da §4.2.5 escritas pelo **próprio R** (a triagem T-4, que nomeia o token ao
+declarar que **a entrada da vassoura é que é o defeito**) e **uma** que era minha e foi curada.
+⛔ **As três do R NÃO se emendam:** reescrever o texto de uma auditoria para a fazer passar o
+instrumento que ela própria julga seria falsificar o registo. ⇒ fica **condição declarada**, com a
+cura no dono certo (o E/R da obra `-pull`, que retira a entrada da vassoura dele).
+⭐⭐ **E o par de auto-achados desta sessão é a lei, não o incidente:** a regra nº 2 do topo deste
+ficheiro mordeu **duas vezes quem a escreveu** — uma ao registar o canário do controlo positivo, outra
+ao registar uma triagem. *Um registo que NOMEIA o termo acusado converte-se, ele próprio, num achado;
+o §6.1 existe exactamente para isso e aplica-se ao ledger antes de se aplicar a qualquer outra coisa.*

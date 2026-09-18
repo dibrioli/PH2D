@@ -72,21 +72,31 @@ números deste corpus valem para as fixturas **planas**.
 constante» e devolveu um vale **invertido**, porque lá dentro estavam células de outra malha de
 entrada, células sem passe de refino e a esfera. A população é:
 
-> a malha de entrada `9fb3d9dea0d0` · topologia dinâmica **armada** · detalhe `CONSTANT` ·
-> refino `SUBDIVIDE_COLLAPSE` · resolução `18` · **uma** passagem · percurso inteiro ·
-> e o **controlo**: o verbo subdividiu (`v_saída > 1,5 × v_entrada`).
+> `malha_de_entrada = entrada_9fb3d9dea0d0.txt.gz` · `topologia_dinamica = armada` ·
+> `modo_de_detalhe = CONSTANT` · `passe_de_refino = SUBDIVIDE_COLLAPSE` ·
+> `resolucao_do_detalhe = 18` · `PASSAGENS = 1` · **sem** `SEQUENCIA_DE_TRACOS` ·
+> `pontos_usados_truncagem = 10` (percurso inteiro) ·
+> e o **controlo**: o verbo subdividiu (`v_saida > 1,5 × v_entrada`).
+
+⚠️ **Todos os nove critérios são CHAVES DO CABEÇALHO**, de propósito: a 1.ª redacção descrevia-os em
+prosa e um terceiro a aplicá-los obteve outro `n` que o declarado.
 
 | | n | o pior da população | célula |
 |---|---|---|---|
-| **pente desligado** | 37 | `Q = +0,0298` (o MAIOR) | `escada/k_a0450_p0000` |
-| **pente no máximo** | 37 | `Q = +0,0632` (o MENOR) | `verbos/v_blob_p100` |
+| **pente desligado** | **34** | `Q = +0,02982270` (o MAIOR) | `escada/k_a0450_p0000` |
+| **pente no máximo** | **34** | `Q = +0,06323128` (o MENOR) | `verbos/v_blob_p100` |
 
 **VALE = `[+0,0298 , +0,0632]`**, largura `0,0334`.
 ⭐ **Os dois lados são saída do PRÓPRIO alvo** — o lado «aprovado» é o alvo com o pente ligado —,
 que é a condição que duas barras do corpus do tecido desta casa foram retiradas por não cumprir.
 
-**BARRA = `Q ≥ +0,0465`** (o meio do vale) para *«o pente está no máximo»*, e `Q ≤ +0,0298` para
-*«o pente está desligado»*.
+**BARRA = `+0,046527`, arredondada a `+0,0465` — o MEIO do vale, e ela é UMA SÓ:** `Q ≥ +0,0465`
+para *«o pente está no máximo»* e `Q ≤ +0,0465` para *«o pente está desligado»*, com margem
+**`±0,0167`** para as duas células extremas.
+⛔⛔ **A 1.ª redacção dava `Q ≤ +0,0298` para o lado desligado — o próprio extremo, arredondado a
+quatro casas PARA BAIXO** — e a célula que o gerou mede `+0,02982270`: margem `−0,0000227`, ou seja
+**o gate nascia vermelho sobre a saída do próprio alvo**. *Uma barra tirada de um extremo tem margem
+zero por construção e o arredondamento decide o sinal dela.*
 
 ⚠️ **A barra separa DESLIGADO de MÁXIMO, não desligado de qualquer posição.** A meio curso os
 valores atravessam o vale (ver a escada no `SPEC`), e é isso que a torna honesta.
@@ -117,16 +127,40 @@ idêntico entre corridas e `Q` repete à 4.ª casa. É esse o regime em que as l
 
 ## §5 — As famílias
 
-| pasta | células | o que ela responde |
+⚠️ **Os números desta tabela são CONTADOS da pasta** (`find <pasta> -name '*.gz' | wc -l`) — a 1.ª
+redacção escreveu-os de memória e **três** células estavam erradas.
+
+| pasta | ficheiros | o que ela responde |
 |---|---|---|
-| `entrada/` | 14 | as malhas de entrada, todas nossas |
-| `porta/` | 6 | a **pré-condição**: com a topologia dinâmica desarmada a saída é **byte-idêntica** com o pente a `0` e a `1` |
-| `escada/` | 21 | a **escada do botão** — 7 posições × 3 rotações do traço |
-| `rotacao/` | 10 | o **discriminador da direcção**: 4 rotações do traço, mais passagens repetidas |
-| `verbos/` | 42 | o **censo**: 21 verbos do catálogo × pente `0`/`1`, cada um com o controlo *«o verbo agiu?»* |
-| `composicao/` | 26 | como compõe com o refino, a resolução, o modo de detalhe, a simetria; e os degenerados de direcção e de malha |
-| `mecanismo/` | 30 | o regime **determinístico** (sem passe de refino): é aqui que se prova o que o pente faz |
-| `banda/` | 18 | a repetibilidade, nos dois regimes |
+| `entrada/` | **14** | as malhas de entrada, todas nossas |
+| `porta/` | **6** | a **pré-condição**: com a topologia dinâmica desarmada a saída é **byte-idêntica** com o pente a `0` e a `1` |
+| `escada/` | **29** | a **escada do botão** (7 posições × 3 rotações, `k_*`) **mais** as 8 de passagens repetidas (`n_x1..n_x8`) |
+| `rotacao/` | **10** | o **discriminador da direcção**: 4 rotações do traço × 2 lados, mais 2 pares de passagens |
+| `verbos/` | **62** | **38** do censo (`v_*`: 19 verbos × 2 lados) **mais 20** de composição (`t_*` o modo de detalhe · `q_res*` a resolução · `s_sim` a simetria) |
+| `composicao/` | **26** | os dois verbos **refeitos** (`m_rot`, `m_mask`), o refino (`m_subdiv`/`m_collapse`/`m_manual`), os degenerados de direcção e os de malha |
+| `mecanismo/` | **30** | o regime **determinístico** (sem passe de refino): é aqui que se prova o que o pente faz |
+| `banda/` | **18** | a repetibilidade, nos dois regimes |
+| `lei_unica/` | **26** | ⭐ **a medição que decide se é UMA lei ou duas** (`SPEC` §14): o alvo a fazer as duas metades juntas contra fazê-las em série, com o entrelaçamento a `1×`, `3×`, `4×` e `9×` |
+
+## §6 — Duas coisas que o cabeçalho declara e que a 1.ª redacção não declarava
+
+⭐ **O `sha256` do §2.1 da `SPEC`** é sobre o **corpo** do ficheiro: as linhas que **não** começam
+por `#`, juntas por `\n`. (Sem esta receita um revisor teve de a descobrir por varredura de seis
+definições.)
+
+⭐ **A contagem de «vértices que o pente moveu»** usa `eps = 1e-7` sobre a maior componente de `Δ`;
+e «maior deslocamento» é a maior **norma** de `Δ`. *Metade de uma tabela reproduzível e a outra
+metade não, sem nada no texto a separá-las, é pior que uma tabela ausente.*
+
+⛔ **As células `verbos/v_rotate_*` e `verbos/v_mask_*` estão SUPERADAS e trazem-no no cabeçalho**
+(`SUPERADA_POR=` + `SUPERADA_PORQUE=`): a primeira mediu um verbo **inerte** (um percurso recto dá
+ângulo zero a um verbo de torção ancorado) e a segunda não trazia o controlo de **canal**. As
+refeitas são `composicao/m_rot_*` e `composicao/m_mask_*`. *Elas ficam no corpus porque a medição
+que as invalidou é ela própria um facto — mas ficam MARCADAS.*
+
+---
+
+## §7 — O censo
 
 ⚠️ **Cada célula do censo de verbos tem o CONTROLO dentro**: o número de vértices que o próprio
 verbo moveu contra o repouso. Sem ele, um verbo **inerte** lê-se exactamente como um verbo que

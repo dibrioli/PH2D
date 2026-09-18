@@ -133,3 +133,60 @@ fn uma_accao_sem_tecla_existe_e_fica_calada_na_mesma() {
         "controlo: sem isto o gate passaria com o teclado inerte"
     );
 }
+
+/// Um mundo com um gatilho na acção `accao`.
+fn mundo(edge: ph2d_ecs::ActionEdge, accao: &str) -> ph2d_ecs::SimWorld {
+    let mut sim = ph2d_ecs::SimWorld::new();
+    sim.world_mut()
+        .spawn(ph2d_ecs::SignalOnAction(vec![ph2d_ecs::ActionTriggerRow {
+            action: accao.to_owned(),
+            edge,
+            signal: "tiro".to_owned(),
+        }]));
+    sim
+}
+
+/// Os sinais que uma corrida de [`super::frame`] devolve.
+fn falou(sim: &mut ph2d_ecs::SimWorld, playing: bool, st: &ActionState) -> Vec<String> {
+    let accoes = super::amostras_das_accoes(&mapa(), st);
+    super::frame(sim, playing, &accoes)
+        .into_iter()
+        .map(|d| d.signal)
+        .collect()
+}
+
+/// ⭐⭐⭐ **A CERCA DO RELÓGIO — parado, o teclado é do editor.**
+///
+/// ⚠️ **É a metade que decide se o app é usável:** as teclas do jogo são as teclas do editor, e sem
+/// esta cerca cada vez que o artista escrevesse a tecla num campo sairia um sinal.
+#[test]
+fn com_o_relogio_parado_o_gatilho_nao_fala_e_a_andar_fala() {
+    let st = estado(&[false, true]);
+
+    let mut sim = mundo(ph2d_ecs::ActionEdge::Press, ACCAO);
+    assert!(
+        falou(&mut sim, false, &st).is_empty(),
+        "com a corrida PARADA nenhum sinal pode sair"
+    );
+
+    let mut sim = mundo(ph2d_ecs::ActionEdge::Press, ACCAO);
+    assert_eq!(
+        falou(&mut sim, true, &st),
+        vec!["tiro".to_owned()],
+        "com a corrida A ANDAR o toque tem de chegar"
+    );
+}
+
+/// ⭐⭐ **E a lei da acção inexistente atravessa a ponte INTEIRA** — o nome errado fica calado nas
+/// três arestas, e a que interessa é o `Release` (as outras duas ficariam caladas por acidente).
+#[test]
+fn um_nome_que_o_mapa_nao_conhece_fica_calado_ate_no_release() {
+    let st = estado(&[false, true]);
+    for edge in ph2d_ecs::ActionEdge::ALL {
+        let mut sim = mundo(edge, "fier");
+        assert!(
+            falou(&mut sim, true, &st).is_empty(),
+            "{edge:?}: um nome desconhecido tem de ficar calado"
+        );
+    }
+}

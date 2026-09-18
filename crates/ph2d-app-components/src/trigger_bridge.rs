@@ -75,6 +75,30 @@ pub fn no_mapa(
         })
 }
 
+/// ⭐⭐⭐ **Um quadro do gatilho** — quem falou, e o quê. A shell publica o que isto devolver.
+///
+/// ⚠️⚠️ **A CERCA DO RELÓGIO vive AQUI, e é a lei do componente e não a forma do quadro:** as
+/// teclas do jogo são as teclas do editor, e sem ela um gatilho ligado a uma tecla comum publicaria
+/// o sinal dele a cada vez que o artista a escrevesse num campo. *Play → a arma dispara · Stop → o
+/// teclado volta a ser do editor.* ⭐ É o molde exacto da irmã [`crate::counter_watch_bridge::frame`],
+/// que também recebe o `playing` e devolve os disparos.
+///
+/// ⚠️ **O que FICA na shell é a CHAMADA** — *onde* no quadro este motor corre é composição, e o
+/// texto emendado do quadro mede-a lá.
+#[must_use]
+pub fn frame(
+    sim: &mut ph2d_ecs::SimWorld,
+    playing: bool,
+    amostras: &BTreeMap<String, ph2d_ecs::ActionSample>,
+) -> Vec<ph2d_ecs::ActionFired> {
+    if !playing {
+        return Vec::new();
+    }
+    ph2d_ecs::dispara_gatilhos(sim.world_mut(), &|nome| {
+        amostras.get(nome).copied().unwrap_or_default()
+    })
+}
+
 #[cfg(test)]
 #[path = "trigger_bridge_tests.rs"]
 mod tests;

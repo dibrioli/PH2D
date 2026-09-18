@@ -103,10 +103,18 @@ crate da família, nunca subir o número*. ⇒ duas peças saíram, e **as duas 
 | o que saiu | para onde | porquê |
 |---|---|---|
 | `amostras_das_accoes` (a varredura do mapa) + os gates dela | [`ph2d_app_components::trigger_bridge`] | **é PURA** — `(mapa, estado) → uma amostra por acção`, sem `gfx`, sem barramento, sem relógio |
+| a CERCA DO RELÓGIO + `no_mapa` + os gates dos dois | idem | ⭐ é o molde EXACTO da irmã [`counter_watch_bridge::frame`], que também recebe o `playing` e devolve os disparos — *a cerca é a lei do COMPONENTE; onde ele corre no quadro é que é composição* |
 | o ROTEIRO da cena (`eprintln!` de 18 linhas) | `trigger_smoke::montar` | ele fala do que a CENA montou e da tecla que ela declara; é onde as irmãs já o têm |
 
-⭐ **O que fica na shell é só COMPOSIÇÃO:** a cerca do relógio e a publicação no outbox — *o que sai
-são os CORPOS; o que decide a ordem do quadro fica* (a lei que a W2 escreveu). Shell a **196 973**.
+⭐ **O que fica na shell são SEIS linhas:** a chamada e a publicação — *o que sai são os CORPOS; o
+que decide a ordem do quadro fica* (a lei que a W2 escreveu). O `motores_do_quadro_tests.rs` foi
+**apagado**, porque depois da mudança ele ficou sem um único `#[test]`: tudo o que ele media passou
+a viver ao lado da lei.
+
+⚠️⚠️ **E a catraca mordeu DUAS vezes nesta jornada** (`+77` na wave da tecla, `+60` na do segundo
+silêncio). ⭐ Nas duas, a peça que saiu era a mesma família e as duas respostas coincidiram — *quando
+a cura da catraca é também a cura por responsabilidade, o corte está certo; quando não é, é
+aritmética*.
 
 ⚠️ **Dependência nova, e é uma FOLHA:** `ph2d-app-components` passa a ver a `ph2d-input` (que só
 depende de `serde`). ⛔ O `ph2d-ecs` continua a **não** a ver — *um `use ph2d_input` no modelo de

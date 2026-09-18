@@ -165,13 +165,15 @@ bloco "cena: o chao nasce tarde" ph2d-app-components o_chao_nasce_antes_de_tudo 
 echo
 echo "════ W5 — a FIAÇÃO (a shell) ════"
 
-# (17) ⭐⭐ A CERCA DO RELÓGIO — sem ela, cada espaço escrito num campo publica um sinal.
-bloco "relogio: a cerca sai" ph2d-host-desktop com_o_relogio_parado "$SHELL" 1 \
-  "    if !relogio.playing {
-        return;
+# (17) ⭐⭐ A CERCA DO RELÓGIO — sem ela, cada tecla escrita num campo publica um sinal.
+#      ⚠️ **Mudou de crate em 2026-09-18**, com a lei: ela é do COMPONENTE (o molde da irmã das
+#      vigias), e o que ficou na shell é a chamada.
+bloco "relogio: a cerca sai" ph2d-app-components com_o_relogio_parado "$PONTE_T" 1 \
+  "    if !playing {
+        return Vec::new();
     }" "    if false {
-        return;
-    }" "--bins"
+        return Vec::new();
+    }"
 
 # (18) `just_pressed` e `pressed` só se lêem iguais no INSTANTE em que se carrega — a paragem
 #      «segurar» do percurso é a que os separa.

@@ -161,23 +161,16 @@ fn vigias(sim: &mut SimWorld, signals: &mut SignalOutbox, relogio: &Relogio) {
 /// ⚠️ **Ele não OUVE, só FALA** — como as vigias. E é o ÚNICO motor desta janela cuja entrada não é
 /// o mundo nem o barramento: é o **teclado**, já resolvido em acções nomeadas.
 ///
-/// ⚠️⚠️ **A cerca do relógio é a MESMA da fábrica, e sem ela o editor fica inutilizável:** as
-/// teclas do jogo são as teclas do editor, e um gatilho ligado ao espaço publicaria o sinal dele a
-/// cada espaço que o artista carrega a editar. *Play → a arma dispara · Stop → o teclado volta a
-/// ser do editor.*
+/// ⚠️ **A LEI vive na crate da família** ([`ph2d_app_components::trigger_bridge::frame`]) — a cerca
+/// do relógio incluída, que é o molde da irmã das vigias. Aqui fica a COMPOSIÇÃO: *onde* no quadro
+/// este motor corre, e a publicação.
 fn gatilhos(
     sim: &mut SimWorld,
     signals: &mut SignalOutbox,
     relogio: &Relogio,
     amostras: &BTreeMap<String, ph2d_ecs::ActionSample>,
 ) {
-    if !relogio.playing {
-        return;
-    }
-    let disparos = ph2d_ecs::dispara_gatilhos(sim.world_mut(), &|nome| {
-        amostras.get(nome).copied().unwrap_or_default()
-    });
-    for d in disparos {
+    for d in ph2d_app_components::trigger_bridge::frame(sim, relogio.playing, amostras) {
         signals.publish(ph2d_runtime::Signal::from_action(
             &d.signal,
             d.source.to_bits(),
@@ -185,7 +178,3 @@ fn gatilhos(
         ));
     }
 }
-
-#[cfg(test)]
-#[path = "motores_do_quadro_tests.rs"]
-mod tests;

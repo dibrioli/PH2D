@@ -53,7 +53,7 @@ diz onde ler o mecanismo:
 | F7 | **O painel próprio do módulo** | ✅ **FECHADO** (2026-09-09, por escolha do dono) — ver F3-m abaixo. A nota antiga: ⏸️ **a condição CAIU e a medição era falsa por ~3×** — ela dizia *«adiado até F3–F5 lhe darem conteúdo (hoje são 3 botões e 5 campos)»*, e as três estão ✅ nesta mesma tabela enquanto a secção tem **10 verbos** e **9 campos** (`VECTOR_BONE_VERBS`/`_FIELDS`, comprimento verificado pelo compilador), mais uma fileira segmentada e dois selectores. ⇒ decisão do dono, não mais um adiamento medido |
 | **F9** | ⏸️ **A PELE DEFORMADA NA GPU** (pedido do dono, 2026-09-16) | ⏸️ **PARADA em 2026-09-17, com o gatilho escrito** — a premissa dela (*«o `Smooth` a alisar em qualquer cena»*) foi **refutada por medição** e o botão foi apagado por ordem do dono; o que sobrava é um ganho de RELÓGIO (`~11 %` de um quadro a 8 imagens) e **zero pixels**. Ver F9 abaixo |
 | **F10** | ⏳ **O AutoKey com a corrente de ossos, como o Blender de hoje** (decisão do dono, 2026-09-16) | ⏳ **NA FILA** — medir primeiro, no Blender instalado e corrido por script (§0.9), que ossos recebem chave quando a corrente é movida pela ponta (IK por restrição e *Auto IK*); depois fazer igual |
-| **F11** | ⏳ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (decisão do dono, 2026-09-16) | ⏳ **NA FILA** — hoje desenham-se sem deformar (aviso no terminal). A malha do bind conhece só o quad da sprite: numa folha ela tem de ser a de UMA célula (a mesma para todas, com a UV da célula viva), e no 9-slice o mapa de UV por pedaços tem de entrar na malha (vértices nas linhas dos cortes) |
+| **F11** | ✅ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (ordem do dono, 2026-09-17) | ✅ **FECHADO** — ver F11 abaixo |
 
 ---
 
@@ -106,6 +106,55 @@ sobra é da arte do canvas, que **não foi medida**. Gate
   texturados** que a F6 nomeou *«com razão medida»* — e ele não pediu pipeline nova: é a malha
   dentro do passe de sprites.
 - ✅ **Medido por leitura, e é pior do que a pergunta:** ver a F6-h.
+
+### F11 — ✅ **AS 9 FATIAS E AS FOLHAS DE QUADROS DEFORMAM** (ordem do dono, 2026-09-17)
+
+> *«vamos lá: imagens em 9 fatias e folhas de quadros»*
+
+**A medição veio antes da primeira linha** (sonda `sonda_as_tres_formas`, `--ignored`, fica no repo),
+com a mesma arte presa a uma corrente dobrada:
+
+| forma | instâncias | com malha | o que se via |
+|---|---:|---:|---|
+| sprite simples | 1 | 1 | certo |
+| folha `4×1` | 1 | **1** | **ERRADO, e calado** |
+| 9-slice | 9 | **0** | sem deformar (avisava no terminal) |
+
+⛔⛔ **A folha era o caso PIOR, e não era o que o aviso descrevia.** Ela passa o guarda (a instância
+É o quad da sprite) e o defeito estava no BIND: a malha era traçada sobre a folha INTEIRA e o
+`pixel_to_local` espremia-a no quad de UMA célula — `1 277` peças recortadas dos quatro quadros
+dentro do sítio de um, com a UV de um só esticada por cima. *O 9-slice pelo menos avisava.*
+
+**As duas curas**
+
+- **A folha:** a malha nasce sobre a CÉLULA, e a tinta é a **UNIÃO de todos os quadros** — uma malha
+  traçada só sobre o quadro vivo RECORTA todos os outros (prende-se no `0`, dá-se play, e os braços
+  do `3` somem). ⭐ Com uma célula só é a identidade byte-a-byte. A porta é a
+  [`ph2d_render::SourceCells`], a lei que a shell já tinha **duas** vezes e que desceu ao motor com
+  o terceiro leitor.
+- **O 9-slice:** a malha é cortada nas linhas das fatias **em pixels da imagem**
+  ([`ph2d_poly2d::submesh_in_rect`]) e cada pedaço é esticado no quad DELE. ⛔ Recortar o QUAD está
+  refutado por construção: o pedaço do meio mostra a faixa central ESTICADA. A costura é o extract a
+  **publicar** a fracção (`SlicePatchSource`) — re-derivar a cadeia região → célula → fatia numa
+  segunda casa divergiria no dia em que uma das duas ganhasse uma cerca.
+
+⚠️ **Divergência declarada:** um quad que LADRILHA não repete a silhueta (o `uv_xform` faz a tinta
+repetir e a malha é o pedaço único esticado). Numa arte opaca — toda moldura — é invisível.
+
+⚠️ **E o `pixel_to_local` passou a ser o CASO PARTICULAR da régua geral** (`rect_to_quad`), com os 18
+gates que já existiam verdes: é isso que prova que a generalização é exacta.
+
+⏳ **Aberto:** a **pré-visualização de uma folha aberta** (o quad desdobrado sob uma ferramenta de
+pixels) continua sem deformar, com o aviso — e é desenho: aquele quad não é um pedaço da arte desta
+sprite. *Ela já nasce suspensa quando uma ferramenta a está a editar (regra F6-s), então o caso que
+sobra é estreito.*
+
+**Smoke:** `PH2D_VEC_BONE_MEDIA_SMOKE=1` — três imagens presas ao mesmo gesto, com o CONTROLO ao
+lado. ⚠️ **Sete fotos antes de ir ao dono**, e cinco defeitos que nenhum gate via: ver a mensagem do
+commit `02462ca8f` (o enquadramento que nunca cabia · a arte ao contrário · a união com gargalos ·
+**configurar depois de prender** · e o toast da cena irmã a nomear a fileira apagada no dia anterior).
+
+---
 
 ### F9 — ⏸️ **PARADA POR DECISÃO (2026-09-17): a pele deformada na GPU** (pedido do dono, 2026-09-16)
 

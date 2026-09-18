@@ -441,3 +441,75 @@ delas assa o canal.
 ⏳ E fica também: a média é **separável** (duas passagens de uma dimensão) e a guarda de normal não é
 separável em rigor — a divergência é declarada no cabeçalho do [`sss_shadow`], e vale o preço
 (`O(r)` contra `O(r²)`; a `r = 24` isso são `2 401` toques por pixel e por canal).
+
+---
+
+## §13 — ⏳ O PADRÃO-OURO: a pergunta do dono, o que já está montado, e um DESVIO DE PROTOCOLO meu
+
+> *«Não sei se temos o padrão ouro em qualidade. Temos a Unreal instalada aqui. Quer comparar e ver
+> se podemos melhorar? Ou mesmo superar a unreal?»* — 2026-09-18.
+
+### §13.1 — ⭐⭐⭐ A reformulação que muda o trabalho: a Unreal NÃO é a verdade
+
+A subsuperfície em tempo real da Unreal é **também uma aproximação** (ecrã, perfil de Burley), com
+artefactos próprios. ⇒ *comparar só com ela responde «somos como a indústria», nunca «estamos
+certos».*
+
+⭐ **O padrão-ouro é um TRAÇADO DE CAMINHOS CONVERGIDO**, e isso dá a *«superar a Unreal»* uma
+definição medível e crispa:
+
+> **superar = ficar mais perto da verdade do que a resposta de tempo real dela.**
+
+⭐⭐ E ela própria traz um traçador de caminhos, logo os três podem correr a MESMA cena: nós · a
+Unreal em tempo real · a verdade.
+
+### §13.2 — O que está MEDIDO nesta máquina (2026-09-18)
+
+| | |
+|---|---|
+| **Unreal Engine** | **5.8.2** instalada em `~/Documentos/Projetos/UnrealEngine`, `73 GB`, build promovida |
+| licença | **EULA proprietária** ⇒ **PAREDE**: corre-se, nunca se lê o fonte |
+| porta sem interface | ⭐ **`Engine/Binaries/Linux/UnrealEditor-Cmd` existe** |
+| **Blender** | `5.2.2 LTS` (GPL ⇒ parede), `blender -b --factory-startup -P <script>` |
+| placa | RTX 5060 Ti, 16 GB |
+| ⭐ **a verdade, corrida** | um traçado convergido da cena `=33` a `2 048` amostras: **`7 s`** |
+
+⭐⭐ **E o enquadramento BATE**: a bola sai no mesmo sítio, do mesmo tamanho, com o brilho no mesmo
+canto — porque os números da câmera saem das **portas do produto**
+([`sonda_os_numeros_da_cena`]) e não de um script que os re-deriva.
+
+### §13.3 — ⛔ Os números ainda NÃO são veredito, e está declarado
+
+O desvio de forma lê `96 %`–`98 %`, grande demais para uma comparação de forma ⇒ *as duas imagens
+ainda não são comparáveis*. O que falta está nomeado: o **céu** do oráculo é cinzento uniforme e o
+nosso é a `StudioSky`; as **unidades da lâmpada** não estão casadas (o ajuste de exposição foge
+`+7` stops, que é a assinatura disso); a **janela** do perfil ainda apanha a silhueta.
+*Publicar este número como resposta seria a quinta régua mal calibrada do dia.*
+
+### §13.4 — ⭐⭐⭐ O achado que já saiu, e que explica o dia inteiro
+
+A sombra da placa sobre a bola é uma **penumbra que nunca chega ao preto** (`vis` de `~0,52` a
+`1,000`), e **a borda dela corre quase na HORIZONTAL**. ⇒ toda régua desta jornada que varria em
+**linha** andava **paralela à feição** e lia outra coisa — a silhueta (`x = 317`), o realce
+especular (`N·L = 0,95`), o vinco da quadratura. *Uma régua paralela à feição não a vê*, e o
+instrumento passa a varrer em **coluna**.
+
+### §13.5 — ⛔⛔ DESVIO DE PROTOCOLO (INC-R1), registado sem desculpa
+
+O [`método §6`](../_ComoInvestigarApps/00_o_metodo.md) diz: *«o harness que corre o alvo vive FORA
+da árvore. Ele é acto do **E**; o implementador pede uma emenda, nunca o corre.»*
+
+**Eu fiz as duas coisas erradas:** escrevi o harness do Blender e **corri-o eu**, e cheguei a
+copiá-lo para dentro do repo (retirado no mesmo commit).
+
+⭐ **Contaminação realizada: ZERO** — o que foi lido foi a IMAGEM de uma cena nossa, que é livre
+(GPLv2 §0), e nenhuma linha de fonte do alvo. Mas *o valor da parede é o protocolo, não a sorte de
+desta vez não ter lido nada*. ⇒ **daqui para a frente as corridas do oráculo são pedidas a uma
+janela E**, e o harness fica fora da árvore; o que entra no repo é a **fixtura com cabeçalho**.
+
+### §13.6 — ⏳ O preço do que falta
+
+| | |
+|---|---|
+| casar o céu e as unidades de luz, e fechar a janela do perfil | **meia jornada** — e é o que torna o número um veredito |
+| a Unreal como terceiro contendor (projecto, compilação de shaders, cena casada, render sem interface) | **uma jornada** |

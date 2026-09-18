@@ -937,3 +937,295 @@ fn a_borda_da_sombra_num_jade_e_mole_e_a_do_opaco_continua_dura() {
          amaciada, e a metade (1) não distingue as duas"
     );
 }
+
+/// ⏱️⭐⭐⭐ **OS NÚMEROS DA NOSSA CENA, para um oráculo externo os reproduzir.**
+///
+/// ⚠️ Eles saem das PORTAS (`Orbit::basis`, `eye_distance`, `lights::opening_light`), nunca
+/// re-derivados num script — *um oráculo alimentado com números re-derivados mede outro programa*,
+/// que é o erro que esta linha já pagou quatro vezes em dois dias.
+#[test]
+#[ignore = "sonda: imprime o enquadramento para o oráculo externo"]
+fn sonda_os_numeros_da_cena() {
+    let mut cam = Orbit::default();
+    cam.half_extent *= 0.42;
+    cam.target = [0.55, 0.0, 0.0];
+    let (right, up, fwd) = cam.basis();
+    let dist = cam.eye_distance();
+    let olho = dist.map(|d| [0, 1, 2].map(|i| cam.target[i] + fwd[i] * d));
+    let (onde, luz) = crate::lights::opening_light(&cam);
+    let doc = crate::smoke::scenes::edge::cena_33().expect("a cena");
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    println!("CAM_TARGET={:?}", cam.target);
+    println!("CAM_HALF_EXTENT={}", cam.half_extent);
+    println!("CAM_RIGHT={right:?}");
+    println!("CAM_UP={up:?}");
+    println!("CAM_FWD={fwd:?}");
+    println!("CAM_EYE={olho:?}");
+    println!("CAM_EYE_DIST={dist:?}");
+    println!("LAMP_POS={onde:?}");
+    println!("LAMP_INTENSITY={}", luz.intensity);
+    println!("LAMP_COLOR={:?}", luz.color);
+    println!("LAMP_RADIANCE={:?}", crate::lights::radiance_at_one(luz));
+    println!("GROUND_Y={:?}", ph2d_field_render::lowest_point(&doc, &reg));
+    println!("W={W} H={H}");
+}
+
+/// Lê um PFM (`PF`, `f32` little-endian, linhas de BAIXO para cima quando a escala é negativa).
+fn le_pfm(caminho: &str) -> Option<(usize, usize, Vec<[f32; 3]>)> {
+    let bytes = std::fs::read(caminho).ok()?;
+    let mut campos = Vec::new();
+    let mut i = 0usize;
+    while campos.len() < 3 {
+        while i < bytes.len() && bytes[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        let ini = i;
+        while i < bytes.len() && !bytes[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        campos.push(String::from_utf8_lossy(&bytes[ini..i]).to_string());
+    }
+    i += 1; // o único byte de espaço a seguir à escala
+    let (w, h): (usize, usize) = (campos[1].parse().ok()?, campos[2].parse().ok()?);
+    let escala: f32 = campos[3 - 1].parse().unwrap_or(1.0);
+    let baixo_para_cima = escala < 0.0;
+    let mut px = vec![[0.0f32; 3]; w * h];
+    for y in 0..h {
+        let linha = if baixo_para_cima { h - 1 - y } else { y };
+        for x in 0..w {
+            let b = i + ((h - 1 - linha) * w + x) * 12;
+            if b + 12 > bytes.len() {
+                return None;
+            }
+            px[y * w + x] = [0, 1, 2].map(|k| {
+                f32::from_le_bytes([
+                    bytes[b + k * 4],
+                    bytes[b + k * 4 + 1],
+                    bytes[b + k * 4 + 2],
+                    bytes[b + k * 4 + 3],
+                ])
+            });
+        }
+    }
+    Some((w, h, px))
+}
+
+/// ⏱️⭐⭐⭐ **NÓS CONTRA A VERDADE** — o traçado de caminhos CONVERGIDO da nossa cena.
+///
+/// ⛔⛔⛔ **OS NÚMEROS DESTA SONDA AINDA NÃO SÃO UM VEREDITO, e isso está declarado.** O desvio de
+/// forma lê `96 %`–`98 %`, que é grande demais para uma comparação de FORMA ⇒ *as duas imagens ainda
+/// não são comparáveis*. O que falta está nomeado e é medível:
+/// - o **céu** do oráculo é um cinzento uniforme e o nosso é a `StudioSky` (um gradiente);
+/// - as **unidades da lâmpada** não estão casadas (o ajuste de exposição foge `+7` stops, o que é a
+///   assinatura disso);
+/// - a **janela** do perfil ainda apanha a silhueta e o fundo.
+///
+/// *Publicar este número como resposta seria a quinta régua mal calibrada deste dia.*
+///
+/// ⭐⭐ **O que ela JÁ prova, e que não é pouco:** o enquadramento bate — a bola sai no mesmo sítio,
+/// do mesmo tamanho, com o brilho no mesmo canto —, porque os números da câmera saem das PORTAS do
+/// produto ([`sonda_os_numeros_da_cena`]) e não de um script que os re-deriva. E o oráculo converge
+/// em **7 segundos** a `2 048` amostras nesta máquina, logo ele é barato o suficiente para ser gate.
+///
+/// ⭐⭐⭐ **E ela já devolveu um ACHADO que explica o dia inteiro:** a sombra da placa sobre a bola é
+/// uma penumbra que **nunca chega ao preto** (`vis` de `~0,52` a `1,000`) e **a borda dela corre
+/// quase na HORIZONTAL** ⇒ toda régua que varria em LINHA andava paralela à feição e lia outra
+/// coisa. *Uma régua paralela à feição não a vê.*
+///
+/// ⚠️ **O oráculo entra pelo NOSSO olhar** (`Look::apply`), senão comparava-se um linear com um já
+/// tonemapado — *duas imagens em espaços diferentes não têm forma comparável*. E a exposição é
+/// **AJUSTADA** dentro da janela: o que se compara é a FORMA da transição, não o brilho.
+///
+/// ⚠️ O arnês do oráculo vive **fora da árvore** (o Blender é copyleft; a regra do método manda o
+/// que toca um alvo com parede ficar fora do repo), e corre-se com `$PH2D_VERDADE` a apontar para a
+/// pasta com os `.pfm`.
+#[test]
+#[ignore = "sonda: precisa do oráculo em $PH2D_VERDADE"]
+fn sonda_nos_contra_a_verdade() {
+    let Ok(dir) = std::env::var("PH2D_VERDADE") else {
+        println!("sem $PH2D_VERDADE — saltado");
+        return;
+    };
+    let base = ph2d_material::OpenPbr {
+        subsurface_color: [0.75, 0.35, 0.35],
+        base_color: [0.75, 0.35, 0.35],
+        ..ph2d_material::OpenPbr::default()
+    };
+    for (nome, ficheiro, m) in [
+        ("opaco ", "verdade_opaco.pfm", base),
+        (
+            "jade  ",
+            "verdade.pfm",
+            ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                geometry_thin_walled: false,
+                ..base
+            },
+        ),
+    ] {
+        let Some((w, h, linear)) = le_pfm(&format!("{dir}/{ficheiro}")) else {
+            println!("  {nome}: não li {ficheiro}");
+            continue;
+        };
+        assert_eq!(
+            (w, h),
+            (W as usize, H as usize),
+            "o oráculo tem outro tamanho"
+        );
+        // ⭐ A cena do dono, com o MESMO enquadramento que a sonda da foto usa.
+        let mut cam = Orbit::default();
+        cam.half_extent *= 0.42;
+        cam.target = [0.55, 0.0, 0.0];
+        let doc = crate::smoke::scenes::edge::cena_33().expect("a cena");
+        let reg = ph2d_field_eval::hybrid::Registry::new();
+        let (onde, luz) = crate::lights::opening_light(&cam);
+        let chao = ph2d_field_render::lowest_point(&doc, &reg)
+            .map(|height| ph2d_field_render::Ground { height });
+        let (g, sh, nossos) = quadro(&Quadro {
+            doc: &doc,
+            m,
+            cam: &cam,
+            onde,
+            luz,
+            com_sombra: true,
+            chao,
+        });
+        // O perfil de cada um ao longo de uma LINHA que atravessa a borda da sombra, só na bola.
+        // ⛔⛔⛔ **A VARREDURA É POR COLUNA, e a horizontal era o erro do dia inteiro.**
+        // Medida a visibilidade na bola linha a linha, ela vai de `~0,52` a `1,000` entre as linhas
+        // `150` e `170` ⇒ **a borda da sombra corre quase na HORIZONTAL**, e uma linha horizontal
+        // nunca a atravessa. *Uma régua que varre paralela à feição não a vê.*
+        const COLUNA: usize = 160;
+        let na_bola = |i: usize| g.hit[i] && g.point[i][0] > 0.1;
+        let nosso: Vec<(usize, f32)> = (0..h)
+            .filter(|&y| na_bola(y * w + COLUNA))
+            .map(|y| {
+                let b = (y * w + COLUNA) * 4;
+                (
+                    y,
+                    0.2126 * f32::from(nossos[b])
+                        + 0.7152 * f32::from(nossos[b + 1])
+                        + 0.0722 * f32::from(nossos[b + 2]),
+                )
+            })
+            .collect();
+        // ⭐⭐⭐ **A JANELA é a vizinhança da BORDA DA SOMBRA**, achada pelo maior gradiente do
+        // NOSSO perfil — comparar a bola inteira mede o terminador, o brilho e a silhueta todos
+        // juntos, e a largura sai `284 px`, que é a bola.
+        // ⛔⛔ A 1.ª redacção procurava o maior GRADIENTE e achava a SILHUETA (`x = 317`, a beira
+        // da imagem) — *uma régua que procura a feição mais forte acha a mais forte, não a que
+        // interessa*. A borda da sombra define-se pelo canal que a produz: a visibilidade.
+        let centro = {
+            // ⚠️ O limiar é o MEIO DA FAIXA medida nesta coluna, e não `0,5`: a sombra da placa é
+            // uma penumbra que **nunca chega ao preto** (medido: `vis` vai de `~0,52` a `1,000`),
+            // logo um limiar fixo a meio da escala não é atravessado.
+            let (lo, hi) = nosso.iter().fold((f32::MAX, f32::MIN), |(a, b), p| {
+                let v = sh.at(0, p.0 * w + COLUNA);
+                (a.min(v), b.max(v))
+            });
+            let meio = 0.5 * (lo + hi);
+            let mut achado = None;
+            if hi - lo > 0.05 {
+                for par in nosso.windows(2) {
+                    let (a, b) = (par[0].0, par[1].0);
+                    let (va, vb) = (sh.at(0, a * w + COLUNA), sh.at(0, b * w + COLUNA));
+                    if (va - meio).signum() != (vb - meio).signum() {
+                        achado = Some(b);
+                        break;
+                    }
+                }
+            }
+            match achado {
+                Some(x) => x,
+                None => {
+                    println!("  {nome}: a coluna {COLUNA} não atravessa a borda da sombra na bola");
+                    continue;
+                }
+            }
+        };
+        const MEIA_JANELA: usize = 45;
+        let janela: Vec<usize> = nosso
+            .iter()
+            .map(|p| p.0)
+            .filter(|x| x.abs_diff(centro) <= MEIA_JANELA)
+            .collect();
+        assert!(janela.len() > 40, "a janela tem {} px", janela.len());
+        // ⚠️ **A exposição ajusta-se DENTRO da janela**, e não sobre a bola toda.
+        let mut melhor = (f32::MAX, 0.0f32);
+        for passo in -80..80 {
+            #[allow(clippy::cast_precision_loss)]
+            let stops = passo as f32 * 0.125;
+            let olhar = ph2d_view_transform::Look {
+                exposure_stops: stops,
+                ..ph2d_view_transform::Look::default()
+            };
+            let erro: f32 = janela
+                .iter()
+                .map(|&x| {
+                    let d = olhar.apply(linear[x * w + COLUNA]);
+                    let ld = 255.0
+                        * (0.2126 * d[0].clamp(0.0, 1.0)
+                            + 0.7152 * d[1].clamp(0.0, 1.0)
+                            + 0.0722 * d[2].clamp(0.0, 1.0));
+                    let nossa = nosso.iter().find(|p| p.0 == x).map_or(0.0, |p| p.1);
+                    (ld - nossa).abs()
+                })
+                .sum();
+            if erro < melhor.0 {
+                melhor = (erro, stops);
+            }
+        }
+        let olhar = ph2d_view_transform::Look {
+            exposure_stops: melhor.1,
+            ..ph2d_view_transform::Look::default()
+        };
+        // Os dois perfis na janela, cada um NORMALIZADO aos seus próprios extremos: o que se
+        // compara é a FORMA da transição.
+        let normaliza = |v: &[f32]| -> Vec<f32> {
+            let (lo, hi) = v
+                .iter()
+                .fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
+            let d = (hi - lo).max(1e-6);
+            v.iter().map(|x| (x - lo) / d).collect()
+        };
+        let cru_nosso: Vec<f32> = janela
+            .iter()
+            .map(|&x| nosso.iter().find(|p| p.0 == x).map_or(0.0, |p| p.1))
+            .collect();
+        let cru_verdade: Vec<f32> = janela
+            .iter()
+            .map(|&x| {
+                let d = olhar.apply(linear[x * w + COLUNA]);
+                255.0
+                    * (0.2126 * d[0].clamp(0.0, 1.0)
+                        + 0.7152 * d[1].clamp(0.0, 1.0)
+                        + 0.0722 * d[2].clamp(0.0, 1.0))
+            })
+            .collect();
+        let (a, b) = (normaliza(&cru_nosso), normaliza(&cru_verdade));
+        let largura = |v: &[f32]| -> f32 {
+            let onde = |alvo: f32| {
+                v.iter()
+                    .enumerate()
+                    .min_by(|p, q| (p.1 - alvo).abs().total_cmp(&(q.1 - alvo).abs()))
+                    .map_or(0, |p| p.0)
+            };
+            #[allow(clippy::cast_precision_loss)]
+            let d = (onde(0.9) as f32 - onde(0.1) as f32).abs();
+            d
+        };
+        let desvio: f32 = a
+            .iter()
+            .zip(&b)
+            .map(|(x, y)| (x - y).abs())
+            .fold(0.0, f32::max);
+        println!(
+            "  {nome} · borda em x={centro} · exposição {:+.2} · largura 10–90%: NÓS {:.0} px · \
+             VERDADE {:.0} px · pior desvio da FORMA {:.1} %",
+            melhor.1,
+            largura(&a),
+            largura(&b),
+            100.0 * desvio
+        );
+    }
+}

@@ -1624,3 +1624,145 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && bash scripts/p
     memória a zero) · a **pegada projectada** (decisão do dono, espec §15) · a **máscara** no arnês
     de bancada · o gémeo Motion do §49 · os passos de PAINEL da sonda do undo, que são roteiro morto
     com `active=vector`.
+
+## §72 — A BANCADA MALHA-A-MALHA DO PENTE, e o que ela respondeu
+
+**Ordem do dono:** de três caminhos que lhe pus, ele escolheu **«1»** —
+*«construir a comparação malha-a-malha contra os ficheiros dele; é a única
+coisa que responde «a nossa lei é a dele?»»*.
+
+### §72.1 O que existe agora
+
+- [`oraculo_gz.rs`](../../../crates/ph2d-sculpt3d/tests/it/oraculo_gz.rs) —
+  descompressor de `gzip`/DEFLATE escrito à mão (blocos guardados, Huffman
+  fixo e dinâmico). O corpus é guardado comprimido e **nenhuma dependência
+  nova** entra numa crate de teste por causa disso.
+- [`oraculo_do_pente.rs`](../../../crates/ph2d-sculpt3d/tests/it/oraculo_do_pente.rs)
+  — o leitor das `221` fixturas, a reconstrução do pincel, o condutor do traço
+  e quatro sondas.
+- [`oraculo_do_pente_placar.rs`](../../../crates/ph2d-sculpt3d/tests/it/oraculo_do_pente_placar.rs)
+  — o veredito, com catraca nos dois sentidos.
+
+**As `64` células comparáveis** saem **derivadas** do corpus
+(`celulas_sem_remalha`): são as que preservam a contagem de vértices
+(`MANUAL` ou só-colapso), únicas onde uma comparação vértice a vértice
+significa alguma coisa.
+
+### §72.2 A resposta, com o CONTROLO que a torna de confiar
+
+| passagens | pente DESLIGADO | pente no máximo |
+|---|---|---|
+| `x_man_x01` | **`1,624e-4`** | `2,814e-2` |
+| `x_man_x02` | `1,164e-3` | `3,143e-2` |
+| `x_man_x04` | `6,240e-3` | `3,765e-2` |
+| `x_man_x08` | `2,135e-2` | `5,374e-2` |
+| `x_man_x16` | `6,966e-2` | `9,905e-2` |
+
+⭐ **Com o pente desligado a nossa lei bate a dele a `1,6e-4` a UMA passagem**,
+e o resíduo cresce `429×` ao longo da escada com a lei parada ⇒ é
+**acumulação de `f32`**. A malha, o pincel de reconstrução, o percurso do
+cursor e o arnês ficam **ilibados por resultado** — e é isso que permite
+atribuir tudo o resto à coluna do pente.
+
+⛔⛔⛔ **Com o pente ligado o desvio começa em `2,8e-2` na MESMA passagem —
+`173×` pior — e quase não cresce.** Medido contra o efeito do próprio knob no
+alvo (`diag_o_pente_contra_o_efeito_dele`), a razão `erro / efeito` fica entre
+**`0,88` e `2,96`**: *o nosso erro tem o tamanho do efeito inteiro do
+controlo.*
+
+⭐ **E a MAGNITUDE está certa:** a `x01` o pente move `3,199e-2` nele e
+`3,177e-2` em nós — `0,7 %` de diferença. Em traços de várias passagens e no
+arco o nosso é `1,4×`–`2,1×` forte demais (`y_arco`: `9,848e-2` contra
+`4,728e-2`). ⇒ **a força acerta, a FORMA não.**
+
+### §72.3 Placar
+
+`VERDE 2` · `ABERTO 48` · `VACUO 14` — e as três somam exactamente o corpus,
+com piso de população em `60`.
+
+⛔⛔ **As `14` do `VACUO` NÃO são paridade:** nenhum dos dois lados move um
+vértice (a máscara, as `esf_*`, o `v_rotate`), logo elas leem `0,000e0` com
+**qualquer** lei. *Um zero de «igual» e um de «nada aconteceu» são o mesmo
+byte* — a 1.ª leitura do placar contava `16` exactas e **`14` eram vácuo**.
+A coluna que os separa é a contagem de movidos dos DOIS lados, e ela nasceu
+porque eu quase relatei `16 de 64` ao dono.
+
+### §72.4 O que a régua não podia ver, e passou a ver
+
+- ⭐ **A LIGAÇÃO.** O compilador acusou `Celula::faces` como **nunca lido** —
+  eu parseava as faces do oráculo e deitava-as fora. *Uma grade é propriedade
+  da CONECTIVIDADE*, logo um placar de posições ficaria cego exactamente onde
+  a lei do pente vive. Medido: **`0` de `64` células mudam a ligação** ⇒ nas
+  comparáveis o pente do alvo é **lei de POSIÇÃO pura** e o placar é completo.
+  A premissa está **presa dentro do gate**: uma célula nova que vire uma
+  aresta reprova, em vez de ficar verde a medir metade.
+
+### §72.5 ⭐ Uma lei que o oráculo CONFIRMOU depois
+
+`porta/c_nodyn` lê **`dele = 0,000e0`**: sem topologia dinâmica o pente do
+alvo é **inerte**, que é exactamente o que o `space::pente_do_traco` já fazia
+— escrito nesta jornada por raciocínio de domínio, antes da bancada existir.
+*Uma cura que o oráculo depois confirma é a melhor prova de que o raciocínio
+era do DOMÍNIO e não do programa.*
+
+⚠️ **E o arnês NÃO passa por essa porta** (ele escreve `Brush::pente` directo),
+logo o `c_nodyn` acusa `4,507e-2` do nosso lado. Dívida **nomeada**: o arnês
+tem de consultar `pente_do_traco`, e aí aquela célula fecha por construção.
+
+### §72.6 Dívida do ARNÊS, nomeada
+
+`composicao/m_rot`, `verbos/v_grab` e `verbos/v_thumb` são verbos
+**ANCORADOS** e este arnês conduz-os como **carimbo**: movemos `0` vértices
+onde o oráculo move `49`/`56`/`56`. ⭐ **Para a pergunta do pente elas são
+vácuo de qualquer maneira** — `dele = 0,000e0` nas três, o que confirma o
+censo da §6.3 pelo lado do oráculo. A dívida é da linha de base `p000`.
+
+### §72.7 Provas
+
+- **Mutação `5 de 5`**, com **controlo sobre o próprio filtro** (o arnês
+  reprova se o filtro casar menos de três testes — a armadilha do §54, onde um
+  filtro vazio imprime `ok` e se lê como *sobreviveu*). Ele apanhou uma agulha
+  minha que casava `0` vezes, que é o arnês a funcionar.
+- ⛔ **Três ramos do placar o corpus NÃO exercita** (uma célula que fecha, uma
+  que melhora muito, uma que nenhuma tabela classifica) ⇒ a decisão saiu para
+  uma **lei pura** (`julga_aberto`) com controlo em
+  `os_quatro_regimes_do_aberto`. *Sem ele, apagar o ramo do «FECHOU» não parte
+  um único teste.*
+- ⚠️ A cerca `EPS_ARRED` é de **TRANSCRIÇÃO** (a tabela tem quatro algarismos),
+  não da barra: sem ela a tabela reprova contra si mesma, e um agravamento real
+  — que é de ordens de grandeza — continua a acusar.
+
+### §72.8 O que fica ABERTO, e de quem é
+
+- ⏳ **A forma do pente** é a wave seguinte, e agora tem endereço: a `x01` a
+  magnitude bate a `0,7 %` e o padrão diverge; em várias passagens somos
+  `1,4×`–`2,1×` fortes demais. *Uma partição limpa diz ONDE procurar.*
+- ⏳ O arnês dos **três ancorados** e a passagem pelo `pente_do_traco`.
+- ⏳ `mecanismo/y_parado` (cursor parado) desvia `1,197e-1` **com o pente
+  desligado** — defeito da lei base, não do pente, e sem causa medida.
+- ⏳ As `157` células que **remalham** não são comparáveis vértice a vértice;
+  ali a pergunta é de CONECTIVIDADE e pede outra régua.
+
+### §72.9 O tecto de LOC, e a premissa que o corte derrubou
+
+⛔ `scenes_pente_tests.rs` chegou a **`830`** contra o tecto de `700` —
+apanhado **só** pela varredura impactada (ele vive em `src/` de uma crate que
+o portão da bancada não corre). Curado por **CORTE por responsabilidade**,
+nunca por uma entrada no `FILE_OVERAGE_OK`: os dois gates ficam
+(`348` linhas) e as réguas exploratórias mais os desenhadores de PPM saem para
+[`scenes_pente_sondas_tests.rs`](../../../crates/ph2d-app-sculpt3d/src/scenes_pente_sondas_tests.rs)
+(`509`).
+
+⚠️ **O nome do irmão acaba em `_tests.rs` de propósito** — a classificação da
+família é DERIVADA, e um ficheiro compilado só sob `cfg(test)` com outro nome
+passa a ser lido como PRODUTO (a armadilha do §41, nesta mesma linha).
+
+⛔⛔ **E uma premissa MINHA caiu no corte, desmentida pelo compilador.** Eu
+escrevi no cabeçalho do ficheiro novo que mover o condutor `traco_com` para lá
+tornava o gate de fiação **mais forte** — *a agulha montada num ficheiro e
+varrida noutro não se pode satisfazer a si própria*. É **FALSO**: o
+`traco_com` **É** a agulha, porque o `traco` que os dois gates usam delega
+nele; ele é o condutor do traço e não um instrumento. Voltou para o irmão, e o
+cabeçalho traz a refutação escrita. *O que impede aquela agulha de se
+satisfazer a si própria continua a ser ela ser montada por `format!`, e não o
+sítio onde mora.*

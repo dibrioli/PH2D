@@ -88,6 +88,7 @@ pub(super) fn bracos(
         BRACO_PX[1],
         braco_de(BRACO_PX, 0),
         larg,
+        None,
         DOBRA,
         |_, _| {},
     ) {
@@ -113,6 +114,7 @@ pub(super) fn bracos(
         BRACO_PX[1],
         folha_de_bracos(),
         larg,
+        None,
         DOBRA,
         move |sim, e| {
             sim.world_mut().entity_mut(e).insert(ph2d_ecs::SpriteGrid {
@@ -148,6 +150,7 @@ pub(super) fn bracos(
         BRACO_PX[1],
         braco_de(BRACO_PX, 0),
         larg,
+        None,
         DOBRA,
         |sim, e| {
             sim.world_mut().entity_mut(e).insert(ph2d_ecs::SliceNine {
@@ -307,6 +310,7 @@ pub(super) fn anima(
         braco_de(px, 0),
         larg,
         // ⭐ ZERO: o braço nasce esticado, e quem o dobra é o dono.
+        None,
         0.0,
         |_, _| {},
     )?;
@@ -330,9 +334,294 @@ fn anuncia_anima() {
     );
 }
 
+/// ⭐⭐⭐ **A DOBRA DESTA CENA É MENOR QUE A DAS OUTRAS, e o número saiu de uma FOTO.**
+///
+/// ⛔⛔ **A minha 1.ª redacção afirmava que «a subida é comum às três» e isso está REFUTADO** — e a
+/// medição que a desmente já estava na mão: a sonda do rig partilhado lê excursões de `1,123 m` e
+/// `1,195 m` para duas peças na **mesma** corrente, porque os pesos dependem da distância ao osso.
+/// *Peças paralelas afastadas do eixo CONVERGEM do lado interior de uma curva* — é geometria, não
+/// defeito —, e a `25°` da [`DOBRA`] elas encostavam-se umas às outras na foto.
+///
+/// ⚠️ **E o mesmo ângulo estragava o enquadramento:** o *Frame All* mede o **quad** de cada sprite,
+/// e a pele dobrada sai muito para fora dele ⇒ a `25°` metade da figura ficava fora do ecrã.
+///
+/// ⚠️ **Baixar o ângulo é legítimo aqui e não na [`bracos`]:** ali a pergunta é *«as três dobram
+/// IGUAL?»*, e uma dobra fraca esconde exactamente a diferença que se procura; aqui ela é *«as três
+/// seguem o MESMO esqueleto?»*, que se lê com uma curva suave.
+const DOBRA_DO_PERSONAGEM: f32 = 12.0;
+
+/// ⭐⭐ **E a ordem é ERRO DE COMPILAÇÃO, não um `assert!` de teste.**
+///
+/// ⛔ Um `assert!` sobre duas CONSTANTES é dobrado pelo compilador antes de correr, e o clippy
+/// di-lo em voz alta (`this assertion has a constant value`) — foi ele que apanhou a 1.ª redacção
+/// deste gate. *Uma afirmação que o compilador já resolveu não é um teste; num `const` ela é uma
+/// PROPRIEDADE.*
+const _: () = assert!(DOBRA_DO_PERSONAGEM < DOBRA);
+
+/// ⭐⭐⭐ **O ÂNGULO DE UM MEMBRO É DERIVADO DA GEOMETRIA, nunca escolhido** (§0.0).
+///
+/// Um membro roda em torno da **própria origem** (a ponta esquerda dele), logo a ponta direita sobe
+/// ou desce `larg · sin θ`. Os dois membros rodam em sentidos opostos ⇒ as pontas aproximam-se de
+/// `2 · larg · sin θ`, e elas cruzam-se quando isso passa o `vao`.
+///
+/// ⛔⛔⛔ **E a 1.ª redacção desta lei comparou com a grandeza ERRADA — a TERCEIRA vez neste bloco:**
+/// ela media contra o `vao`, que é de CENTRO a centro, e o que cruza é a **FOLGA** entre bordas
+/// (`vao − alt`). Com `vao = 1,3 · alt` a folga vale `0,3 · alt ≈ 0,26 m` sobre uma ponta que se
+/// desloca `0,45 m`, e a foto mostrou-as sobrepostas **com o gate verde**.
+///
+/// ⇒ o argumento é a **folga**, e o ângulo sai de `asin(0,8 · folga / larg)`. *Uma régua que mede a
+/// distância entre centros aprova duas peças que já se tocam pelas bordas.*
+fn angulo_do_membro(larg: f64, folga: f64) -> f32 {
+    let limite = (0.8 * folga / larg).clamp(-1.0, 1.0).asin().to_degrees();
+    (limite as f32).max(2.0)
+}
+
+/// O vão entre duas peças de um personagem, em metros.
+///
+/// ⚠️ **Ele NÃO é o [`passo_da_coluna`]:** ali cada braço tem a corrente dele e o vão paga a
+/// **SUBIDA** da ponta; aqui as peças penduram do mesmo rig e o que o vão paga é a **CONVERGÊNCIA**
+/// entre curvaturas vizinhas — uma grandeza mais pequena, à dobra desta cena.
+fn vao_do_personagem(alt: f64) -> f64 {
+    alt * 1.9
+}
+
+/// **`=4` — UM PERSONAGEM: três desenhos SEPARADOS, UM esqueleto só.**
+///
+/// ⭐⭐⭐ **É a capacidade que separa «um braço» de um BONECO**, e nenhuma cena deste módulo a
+/// exercia: as `=1`, `=2` e `=3` dão a cada imagem a corrente DELA. Um boneco é um tronco, dois
+/// braços, duas pernas e uma cabeça — peças separadas presas ao **mesmo** rig.
+///
+/// ⚠️ **A prova está na HIERARQUIA, e é por isso que a cena é legível:** aqui vivem **três** ossos e
+/// três imagens; na `=2` vivem **nove** ossos. *Uma cena cuja afirmação se lê numa lista é mais
+/// forte do que uma que pede ao artista para confiar no que se move.*
+///
+/// ⚠️ **Quem dobra é ESTA função, uma vez só** — a [`uma`] recebe `rig: Some(..)` e `graus = 0`,
+/// porque dobrar por peça somaria o ângulo três vezes (a corrente é a mesma).
+///
+/// ⚠️ **A ordem é PRENDER e depois DOBRAR:** o bind fotografa a pose de repouso, e com a corrente já
+/// dobrada as três peças nasciam presas à pose torta e a cena ficava imóvel.
+pub(super) fn personagem(
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    cell_idx: u32,
+    pixels_per_meter: f32,
+    atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+) -> Option<(u64, u32)> {
+    let ppm = f64::from(pixels_per_meter.max(f32::MIN_POSITIVE));
+    // ⭐⭐ **O tamanho sai da CÂMERA DE OMISSÃO, como na [`anima`]** — esta cena também não pede o
+    // *Frame All* (o porquê medido vive no [`super::Prologo::enquadrar`]), logo ela abre na câmera
+    // de sempre e a peça tem de caber nela. ⚠️ **Mais curta que a da `=3`**, porque aqui são TRÊS
+    // empilhadas: a altura útil é o que sobra depois dos docks, e uma peça só não a mede.
+    let px = braco_da_camera_de_omissao(ppm);
+    let px = [(px[0] * 7) / 10, (px[1] * 7) / 10];
+    let (larg, alt) = (f64::from(px[0]) / ppm, f64::from(px[1]) / ppm);
+
+    let vao = vao_do_personagem(alt);
+
+    // ⭐⭐⭐ **O ESQUELETO É UMA ÁRVORE, e não uma corrente — porque um BONECO é uma árvore.**
+    //
+    // ⛔⛔ **A 1.ª redacção pendurou as três peças numa cadeia em LINHA e o log desmentiu-a:** duas
+    // delas liam *«os pesos do padrão-ouro NÃO resolveram — esta imagem cai na lei derivada»*, e na
+    // foto apareciam com uma orla escura. *Um osso que não passa por DENTRO da peça não a sabe
+    // pesar* — e num rig a sério cada parte tem o osso dela.
+    //
+    // ⇒ um **tronco** dentro da peça do meio e um **membro** dentro de cada uma das outras, os três
+    // na mesma árvore. ⭐ É isso que dá as duas metades do gesto: mexer no tronco move a figura
+    // INTEIRA (os filhos herdam), mexer num membro move **só** a peça dele.
+    let tronco = Entity::from_bits(ph2d_skeleton_live::bone::create(
+        sim,
+        None,
+        [-larg / 2.0, 0.0],
+        [larg / 2.0, 0.0],
+    )?);
+    let mut ossos = vec![tronco];
+    for y in [vao, -vao] {
+        ossos.push(Entity::from_bits(ph2d_skeleton_live::bone::create(
+            sim,
+            Some(tronco),
+            [-larg / 2.0, y],
+            [larg / 2.0, y],
+        )?));
+    }
+    let nomes = ["Peca de cima", "Peca do meio", "Peca de baixo"];
+    let mut primeiro = None;
+    let mut gastas = 0_u32;
+    for (k, nome) in nomes.iter().enumerate() {
+        let y = vao * (1.0 - k as f64);
+        if let Some(bits) = uma(
+            sim,
+            renderer,
+            asset_db,
+            cell_idx + k as u32,
+            pixels_per_meter,
+            atlas_asset_map,
+            [0.0, y],
+            nome,
+            px[0],
+            px[1],
+            braco_de(px, k),
+            larg,
+            Some(&ossos),
+            0.0,
+            |_, _| {},
+        ) {
+            primeiro.get_or_insert(bits);
+            gastas += 1;
+        }
+    }
+
+    // ⭐⭐ **A POSE mostra as DUAS metades de um rig:** o tronco roda (a figura inteira acompanha,
+    // porque os membros são filhos dele) e cada membro roda **o seu** no sentido oposto. ⛔ Uma pose
+    // que só rodasse o tronco desenhava três peças rígidas, e a cena não distinguiria um rig
+    // partilhado de um grupo.
+    let membro = angulo_do_membro(larg, vao - alt);
+    for (k, osso) in ossos.iter().enumerate() {
+        let graus = match k {
+            0 => DOBRA_DO_PERSONAGEM,
+            1 => -membro,
+            _ => membro,
+        };
+        if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(*osso) {
+            t.rotation += graus.to_radians();
+        }
+    }
+    anuncia_personagem(gastas, ossos.len());
+    Some((primeiro?, gastas))
+}
+
+/// O roteiro da cena do personagem.
+///
+/// ⚠️ **Ele nomeia o que se vê NA TELA** (`Bone 1`, `Peca de cima`) e as duas metades do gesto —
+/// *o tronco move a figura inteira, um membro move só a peça dele*. A 1.ª redacção falava de uma
+/// «corrente» e de «dobrar juntas», que era a cena ANTERIOR: um roteiro que descreve a versão
+/// antiga ensina o contrário do que acontece, e é o dono que o lê primeiro (§5.0).
+fn anuncia_personagem(gastas: u32, ossos: usize) {
+    if gastas < 3 {
+        eprintln!("[bone-media-smoke] PARE: montei so' {gastas} de 3 pecas");
+    }
+    println!(
+        "[bone-media-smoke] UM PERSONAGEM: {gastas} desenhos SEPARADOS presos ao MESMO esqueleto \
+         ({ossos} ossos).\n\
+         [bone-media-smoke] 1) Na Hierarquia conte: ha' {ossos} ossos para {gastas} desenhos — na \
+         cena =2 ha' NOVE, um esqueleto por desenho. Aqui e' UM so'\n\
+         [bone-media-smoke] 2) Clique em 'Bone 1' (o tronco, dentro da peca do meio) e ARRASTE: as \
+         TRES pecas acompanham, porque as outras duas penduram dele\n\
+         [bone-media-smoke] 3) Clique em 'Bone 2' e ARRASTE: mexe SO' a peca de cima — as outras \
+         duas ficam paradas\n\
+         [bone-media-smoke] 4) As frestas entre as pecas TEM de continuar la': sao tres desenhos, \
+         nao um so'\n\
+         [bone-media-smoke] ⇒ e' isto que faz um boneco: tronco, bracos, pernas e cabeca, cada um \
+         um desenho, todos no mesmo esqueleto\n\
+         [bone-media-smoke] Se arrastar 'Bone 1' e SO' UMA peca se mexer, PARE e diga qual"
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// O corpo de `fn personagem`, lido do próprio ficheiro.
+    ///
+    /// ⚠️ **`include_str!` e não um `grep` de shell:** se a função mudar de nome ou de ficheiro isto
+    /// deixa de **compilar**, em vez de passar a varrer zero linhas e ficar verde (§5.0).
+    fn corpo_do_personagem() -> String {
+        let fonte = include_str!("smoke_bone_media_bracos.rs");
+        let i = fonte
+            .find("pub(super) fn personagem(")
+            .expect("a funcao personagem mudou de nome ou de ficheiro");
+        let resto = &fonte[i..];
+        let j = resto
+            .find("\n/// O roteiro da cena do personagem.")
+            .expect("o fim do corpo de personagem mudou de forma");
+        resto[..j].to_string()
+    }
+
+    /// ⭐⭐⭐ **A CENA DO PERSONAGEM MONTA UMA ÁRVORE, E AS TRÊS PEÇAS PRENDEM-SE AO MESMO OSSO.**
+    ///
+    /// ⛔⛔ **A premissa que aqui esteve — «monta UMA corrente e dobra UMA vez» — MORREU por
+    /// medição:** com uma cadeia em linha, duas das três peças liam no log *«os pesos do
+    /// padrão-ouro NÃO resolveram — esta imagem cai na lei derivada»*, porque **o osso não passava
+    /// por dentro delas**. O gate fica com a morte visível no diff (§5.0).
+    ///
+    /// ⚠️ **As três metades são três defeitos diferentes:** uma raiz a mais e deixa de ser UM
+    /// esqueleto; um `Some(&ossos)` a menos e a peça monta o rig dela; e a pose tem de tocar em
+    /// **todos** os ossos, senão a peça esquecida sai rígida e lê-se como «não seguiu».
+    #[test]
+    fn a_cena_do_personagem_monta_uma_arvore_e_prende_tudo_a_ela() {
+        let corpo = corpo_do_personagem();
+        assert_eq!(
+            // ⚠️ A agulha lê-se do ficheiro JÁ FORMATADO, nunca de memória: a 1.ª redacção
+            // procurava `create(sim, None,` e casou ZERO, porque o `cargo fmt` parte a chamada.
+            corpo.matches("        None,\n").count(),
+            1,
+            "a cena do personagem tem mais (ou menos) de UMA raiz — deixa de ser um esqueleto so'"
+        );
+        assert_eq!(
+            corpo.matches("Some(tronco)").count(),
+            1,
+            "os membros nao penduram todos do mesmo tronco: a arvore parte-se em duas"
+        );
+        assert_eq!(
+            corpo.matches("Some(&ossos)").count(),
+            1,
+            "nem toda peca entra pelo rig partilhado — a que faltar monta a corrente DELA"
+        );
+        assert!(
+            corpo.contains("for (k, osso) in ossos.iter().enumerate()"),
+            "a pose deixou de tocar em TODOS os ossos: a peca esquecida sai rigida e le-se como \
+             «nao seguiu o esqueleto», que e' o report que esta cena existe para nao ter"
+        );
+        // ⚠️ E a ORDEM: prender primeiro, pousar a pose depois. Com a árvore já torta o bind
+        // fotografa a pose dobrada como repouso, e a cena abre imóvel.
+        let prende = corpo.find("Some(&ossos)").expect("bind");
+        let pose = corpo.find("t.rotation +=").expect("pose");
+        assert!(
+            prende < pose,
+            "a cena poe a pose ANTES de prender: o repouso fotografado ja' esta' torto"
+        );
+    }
+
+    /// ⚠️ **O vão do personagem deixa uma FRESTA que se vê, e a dobra dele é MENOR que a das
+    /// outras cenas** — as duas metades de uma decisão só, tirada de uma foto.
+    ///
+    /// ⛔⛔ **A premissa que aqui esteve — «a subida é comum às três» — foi REFUTADA pela foto**, e a
+    /// medição que a desmentia já existia: duas peças na mesma corrente excursionam `1,123 m` e
+    /// `1,195 m`. *Peças afastadas do eixo convergem do lado interior da curva*, e a `25°` elas
+    /// encostavam-se; o gate fica com a morte da premissa visível no diff.
+    #[test]
+    fn o_vao_do_personagem_e_menor_que_o_passo_da_coluna() {
+        let (larg, alt) = (2.4_f64, 0.6_f64);
+        let vao = vao_do_personagem(alt);
+        assert!(
+            vao > alt,
+            "o vao ({vao:.3} m) nao chega para uma fresta sobre uma peca de {alt:.3} m — \
+             as tres colam-se e leem-se como um desenho so'"
+        );
+        assert!(
+            vao < passo_da_coluna(larg, alt),
+            "o vao do personagem ({vao:.3} m) nao e' menor que o passo da coluna da =2 \
+             ({:.3} m) — ele paga a CONVERGENCIA entre curvaturas, nao a subida de tres pontas",
+            passo_da_coluna(larg, alt)
+        );
+        // ⭐ E as pontas de duas peças vizinhas NÃO se tocam — a lei que a foto encomendou.
+        //
+        // ⛔ A grandeza é a FOLGA entre BORDAS (`vao − alt`) e não o vão entre centros: com o vão a
+        // régua aprovava peças já sobrepostas (medido, 2026-09-18).
+        let folga = vao - alt;
+        let membro = f64::from(angulo_do_membro(larg, folga));
+        let desloca = larg * membro.to_radians().sin();
+        assert!(
+            desloca < folga,
+            "a ponta de um membro desloca-se {desloca:.3} m sobre uma folga de {folga:.3} m — \
+             as pecas vizinhas sobrepoem-se, e a foto le' um borrao em vez de tres desenhos"
+        );
+        assert!(
+            membro > 1.0,
+            "o angulo do membro caiu para {membro:.2}°: a peca fica parada e a cena deixa de \
+             mostrar que um membro se move SOZINHO"
+        );
+    }
 
     /// ⭐⭐⭐ **A COLUNA COBRE A SUBIDA DA DOBRA** — o gate que a foto de 2026-09-18 encomendou.
     ///

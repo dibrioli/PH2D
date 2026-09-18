@@ -98,7 +98,7 @@ const ESTICA: f32 = 2.0;
 /// shell — e **nenhuma cena do app armava o AutoKey**, logo o dono nunca lhe chegou. *Uma feature
 /// construída, gateada e sem smoke é uma feature que o artista não tem* (`CLAUDE.md` §0.8: o smoke
 /// é onde ele as APRENDE).
-pub const NIVEIS: u32 = 3;
+pub const NIVEIS: u32 = 4;
 
 /// **O que a SHELL tem de armar para a cena `n`** — o prólogo, que não é da crate.
 ///
@@ -148,7 +148,12 @@ pub fn prologo_do_nivel(n: u32) -> Prologo {
         timeline_aberta: anima,
         auto_key: anima,
         relogio_parado: anima,
-        enquadrar: !anima,
+        // ⛔⛔ **O `Frame All` NÃO é o default, é uma escolha por cena — e a `=4` saiu dela por
+        // MEDIÇÃO.** Ele enquadra o **quad** de cada sprite, e uma pele dobrada sai muito para fora
+        // do quad: na foto de 2026-09-18 a terceira peça do personagem ficava cortada pela borda.
+        // *Duas cenas desta família já não o pedem, por duas razões diferentes* — a `=3` porque a
+        // timeline aberta corta sempre, a `=4` porque a deformação não cabe no que ele mede.
+        enquadrar: n <= 2,
     }
 }
 
@@ -176,94 +181,6 @@ pub fn armed() -> bool {
     std::env::var_os("PH2D_VEC_BONE_MEDIA_SMOKE").is_some()
 }
 
-/// Tinta LISTRADA — o controlo. As listras transversais tornam a dobra legível (uma barra chapada
-/// dobrada lê-se quase igual à mesma barra rodada).
-fn listrada(w: u32, h: u32) -> Vec<u8> {
-    let (wu, hu) = (w as usize, h as usize);
-    let mut rgba = vec![0u8; wu * hu * 4];
-    for y in 0..hu {
-        for x in 0..wu {
-            let i = (y * wu + x) * 4;
-            let escura = (x / 12) % 2 == 0;
-            rgba[i] = if escura { 40 } else { 235 };
-            rgba[i + 1] = if escura { 90 } else { 235 };
-            rgba[i + 2] = if escura { 180 } else { 235 };
-            rgba[i + 3] = 255;
-        }
-    }
-    rgba
-}
-
-/// A FOLHA: `QUADROS` células de `LADO_PX`, cada uma um DISCO com a mordida num lado diferente.
-///
-/// ⭐⭐⭐ **A união das quatro é o DISCO INTEIRO, e essa é a razão da forma.** A malha do bind é
-/// traçada sobre a UNIÃO dos quadros (é o que impede um quadro de ser recortado ao dar play), então
-/// a união é geometria de verdade — e quatro formas SOBREPOSTAS de famílias diferentes (disco,
-/// triângulo, cruz, barra) davam uma união com **gargalos finos**, onde o traçador deixa fendas.
-///
-/// ⛔⛔ **A foto apanhou-o e eu quase o li como defeito do produto:** a arte desenhava-se RASGADA ao
-/// meio, e ao afinar a resolução o rasgo ficou **mais** visível — *é assim que se distingue um
-/// artefacto do traçador de um defeito da lei: afinar a malha piora um e cura o outro.*
-///
-/// ⚠️ Cada quadro tira um QUADRANTE diferente, logo nenhum ponto é tirado em mais de um ⇒ a união
-/// é exactamente o disco.
-fn folha() -> Vec<u8> {
-    let lado = LADO_PX as usize;
-    let w = lado * QUADROS as usize;
-    let mut rgba = vec![0u8; w * lado * 4];
-    for c in 0..QUADROS as usize {
-        let (r, g, b) = match c {
-            0 => (230u8, 80, 80),
-            1 => (80, 200, 120),
-            2 => (90, 140, 240),
-            _ => (240, 200, 70),
-        };
-        for y in 0..lado {
-            for x in 0..lado {
-                let (dx, dy) = (x as f32 / lado as f32 - 0.5, y as f32 / lado as f32 - 0.5);
-                if dx.hypot(dy) >= 0.45 {
-                    continue;
-                }
-                // O quadrante que ESTE quadro tira — `atan2` em `0..4`, a começar à direita.
-                let q = ((dy.atan2(dx) / std::f32::consts::FRAC_PI_2).rem_euclid(4.0)) as usize;
-                if q == c {
-                    continue;
-                }
-                let i = ((y * w) + c * lado + x) * 4;
-                rgba[i] = r;
-                rgba[i + 1] = g;
-                rgba[i + 2] = b;
-                rgba[i + 3] = 255;
-            }
-        }
-    }
-    rgba
-}
-
-/// A MOLDURA do 9-slice: um anel opaco com o miolo TRANSPARENTE, e os cantos marcados.
-fn moldura() -> Vec<u8> {
-    let lado = LADO_PX as usize;
-    let b = BORDA_PX as usize;
-    let mut rgba = vec![0u8; lado * lado * 4];
-    for y in 0..lado {
-        for x in 0..lado {
-            let no_anel = x < b || y < b || x >= lado - b || y >= lado - b;
-            if !no_anel {
-                continue;
-            }
-            // ⭐ O canto é de outra cor: é ele que tem de ficar do MESMO tamanho quando a moldura
-            // estica, e sem contraste ninguém vê se ele esticou.
-            let canto = (x < b || x >= lado - b) && (y < b || y >= lado - b);
-            let i = (y * lado + x) * 4;
-            rgba[i] = if canto { 250 } else { 120 };
-            rgba[i + 1] = if canto { 170 } else { 130 };
-            rgba[i + 2] = if canto { 60 } else { 200 };
-            rgba[i + 3] = 255;
-        }
-    }
-    rgba
-}
-
 /// Monta a cena do nível pedido. Devolve `(bits da 1.ª imagem, quantas células do atlas foram
 /// gastas)`.
 pub fn build(
@@ -287,6 +204,16 @@ pub fn build(
         }
         3 => {
             return anima(
+                sim,
+                renderer,
+                asset_db,
+                cell_idx,
+                pixels_per_meter,
+                atlas_asset_map,
+            );
+        }
+        4 => {
+            return personagem(
                 sim,
                 renderer,
                 asset_db,
@@ -349,6 +276,7 @@ fn formas(
         LADO_PX,
         listrada(LADO_PX, LADO_PX),
         f64::from(LADO_M),
+        None,
         DOBRA,
         |sim, e| tamanho(sim, e, [LADO_M, LADO_M]),
     ) {
@@ -370,6 +298,7 @@ fn formas(
         LADO_PX,
         folha(),
         f64::from(LADO_M),
+        None,
         DOBRA,
         |sim, e| {
             sim.world_mut().entity_mut(e).insert(ph2d_ecs::SpriteGrid {
@@ -400,6 +329,7 @@ fn formas(
         LADO_PX,
         moldura(),
         f64::from(LADO_M) * f64::from(ESTICA),
+        None,
         DOBRA,
         |sim, e| {
             sim.world_mut().entity_mut(e).insert(ph2d_ecs::SliceNine {
@@ -450,6 +380,11 @@ fn uma(
     h_px: u32,
     pixels: Vec<u8>,
     largura_do_osso_m: f64,
+    // ⭐⭐⭐ **O RIG PARTILHADO.** `None` = esta imagem monta a corrente DELA (as cenas `=1`..`=3`);
+    // `Some` = ela prende-se a uma que já existe, que é o que faz um PERSONAGEM — várias peças, um
+    // esqueleto só. ⚠️ Com `Some`, quem dobra é o CHAMADOR: dobrar aqui somaria o ângulo uma vez
+    // por peça, e três peças dariam o triplo da dobra.
+    rig: Option<&[Entity]>,
     // ⭐ **A dobra é do CHAMADOR e não uma leitura global da `DOBRA`.** A cena `=3` precisa dela a
     // ZERO — ali quem dobra é o DONO, com a mão —, e ler a const aqui dentro faria *«a cena que não
     // dobra»* ser inexprimível sem um segundo caminho.
@@ -478,7 +413,14 @@ fn uma(
     // quad `4 ×` mais largo, as articulações caíam no sítio errado, e o disco saía **RASGADO ao
     // meio** — *e eu quase o li como defeito da wave, porque a arte e a lei estavam as duas certas.*
     prepara(sim, e);
-    let ossos = crate::smoke_bone_paint::corrente_em(sim, largura_do_osso_m, centro)?;
+    let proprios;
+    let ossos: &[Entity] = match rig {
+        Some(r) => r,
+        None => {
+            proprios = crate::smoke_bone_paint::corrente_em(sim, largura_do_osso_m, centro)?;
+            &proprios
+        }
+    };
     let arte = atlas_asset_map
         .get(&cell_idx)
         .and_then(|id| asset_db.get(id));
@@ -500,7 +442,7 @@ fn uma(
         eprintln!("[bone-media-smoke] '{nome}' NAO prendeu ao esqueleto -- PARE");
         return Some(bits);
     }
-    crate::smoke_bone_paint::dobra(sim, &ossos, graus);
+    crate::smoke_bone_paint::dobra(sim, ossos, graus);
     Some(bits)
 }
 
@@ -522,9 +464,13 @@ fn anuncia(gastas: u32) {
     );
 }
 
+#[path = "smoke_bone_media_arte.rs"]
+mod arte;
+use arte::{folha, listrada, moldura};
+
 #[path = "smoke_bone_media_bracos.rs"]
 mod bracos_cena;
-use bracos_cena::{anima, bracos};
+use bracos_cena::{anima, bracos, personagem};
 
 #[cfg(test)]
 mod tests {
@@ -608,6 +554,14 @@ mod tests {
                 "a cena =\u{7b}n\u{7d} passou a armar um prologo que ela nao pediu: {p:?}"
             );
         }
+        // ⚠️ E a do PERSONAGEM também não se enquadra, por OUTRA razão — a deformação sai do quad
+        // que o `Frame All` mede. *Duas ausências com mecanismos diferentes, e só uma delas anima.*
+        let q = super::prologo_do_nivel(4);
+        assert!(
+            !q.enquadrar && !q.timeline_aberta && !q.auto_key && !q.relogio_parado,
+            "a cena do personagem so' pode dispensar o Frame All — todo o resto do prologo e' da \
+             cena que anima, e arma-lo aqui abre um painel que ninguem pediu: {q:?}"
+        );
         let p = super::prologo_do_nivel(3);
         assert!(
             !p.enquadrar,

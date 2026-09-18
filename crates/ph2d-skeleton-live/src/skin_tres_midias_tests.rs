@@ -210,3 +210,6 @@ fn as_tres_midias_dobram_igual() {
 
 #[path = "sonda_da_dobra_tests.rs"]
 mod sonda_da_dobra;
+
+#[path = "sonda_do_rig_partilhado_tests.rs"]
+mod sonda_do_rig_partilhado;

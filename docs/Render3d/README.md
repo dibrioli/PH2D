@@ -5,14 +5,17 @@
 > como podemos alcançá-lo. Queremos um sistema intuitivo para artistas, de fácil uso mas grande
 > poder.»*
 
-⚠️ **Isto é um ESTUDO. Nada aqui está no produto** — o que ele entrega é a decisão de partida com a
-medição ao lado, para a implementação não começar por um palpite.
+⚠️ **Isto NASCEU um estudo, e as cinco primeiras waves dele estão NO PRODUTO** (17/09) — o modo
+*Render* do modelador. ⛔ A linha que aqui esteve — *«nada aqui está no produto»* — era verdade em
+2026-09-09 e falsa desde 13/09; *um índice que se declara hipotético sobre cinco waves shipadas
+manda reconstruir trabalho já pago*. O estado, wave a wave, está no [`03`](03_o_plano.md).
 
 | Leia isto | quando a sua pergunta for |
 |---|---|
 | [`00_a_triagem_e_a_porta_aberta.md`](00_a_triagem_e_a_porta_aberta.md) | *«temos de inventar o modelo de material?»* — ⭐ **NÃO**, e a razão é medida |
 | [`01_o_alvo_decomposto.md`](01_o_alvo_decomposto.md) | *«o que faz o PvZ:BfN ser bonito?»* — os oito ingredientes, separados |
 | [`02_o_estado_da_arte.md`](02_o_estado_da_arte.md) | *«o que a Unreal tem, e onde podemos ganhar?»* |
+| ⭐⭐⭐ [`10_a_luz_que_atravessa_a_peca.md`](10_a_luz_que_atravessa_a_peca.md) | *«a folha com o sol atrás, o jade»* — o ingrediente **`6`** do `01`, escolhido pelo dono em 17/09. São **DOIS caminhos** (parede fina · maciça) e não um grau; ⭐ a lei maciça é a que esta casa **já tinha escrita** para o esculpir, com outro perfil; a **curvatura** sai do CAMPO e não de `fwidth` (⛔ e o passo dela **não** é o da normal — o gate reprovou a minha premissa em voz alta); e o caminho maciço tem gate PRÓPRIO porque a curvatura implícita do oráculo espalha-se de `0,02` a `54` numa esfera de curvatura `1` |
 | ⭐ [`03_o_plano.md`](03_o_plano.md) | *«por onde se começa, o que FALTA, e o que se mede em cada passo?»* — ⚠️ **auditado contra o código em 17/09**: `W1`..`W5` **FECHADAS** (a marca de cada uma diz onde ler e o que ficou de fora **com motivo**), faltam a `W6`, a `W7`, a `W8` e a **`W9`** — a avaliação de performance que o dono pôs ao FIM da fila, já com as dívidas de preço nomeadas e medidas |
 | ⭐ [`04_a_remedicao_contra_a_arvore.md`](04_a_remedicao_contra_a_arvore.md) | *«o que o estudo dizia que JÁ existia ainda é verdade?»* — ⛔ **três premissas caíram em 13/09** (o tonemap está em bypass · a `W1` sozinha não tem consumidor · **há** gerador de WGSL), e ⭐ **a ponte para WGSL está MEDIDA** |
 | ⭐⭐⭐ [`08_a_luz_indirecta.md`](08_a_luz_indirecta.md) | *«a luz que ricocheia»* — a **`W5`**: a caixa de Cornell como régua (o sangramento de cor, cujo **sinal se conhece antes de medir**), a referência convergida, e as DUAS tabelas que escolheram a rota — o preço e o erro por número de direcções (⛔ ele **não encolhe monotonamente** — é propriedade do estimador determinístico) — e ⭐ **o §8: ele SHIPA em fatias**, uma direcção por passagem do quadro assente, nas DUAS metades com o mesmo `k` (`1,5`–`4×` o que o céu já paga). O §9 tem as três coisas que a construção refutou, entre elas uma asserção que estava verde pela **geometria da câmera** e não pela lei. ⭐⭐⭐ **E o §12 é onde o artista o VÊ: o ricochete no DISPOSITIVO** — o passe que pinta recebe as leis da marcha, o ambiente passa a ser um DESPACHO entre o céu e a luz devolvida, e a paridade contra a referência fecha a `100,000 %`. ⛔ O §11 é o report do dono que refutou a fila: *as fatias põem-no na REFERÊNCIA, não no produto*. ⭐⭐⭐ **E o §14 é a lei que fica: SONDAS de irradiância** (`ph2d_field_render::probes`) — o terceiro report (*«um reflexo mal feito»*) mostrou, com a soma aberta direcção a direcção, que a recolha por pixel com direcções fixas é uma soma de projecções DURAS da peça, e nenhuma quantidade dela cura isso |

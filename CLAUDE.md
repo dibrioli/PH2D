@@ -1065,6 +1065,35 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   cabeçalho do módulo) e nenhuma quantidade dela cura isso — ela fica só como referência convergida dos
   gates. Paridade `100,000 %` nos dois motores; ⚠️ a régua que separa as duas leis é a
   `banda::estrutura` (média frequência), **não** os terraços a um pixel.
+  ⭐⭐⭐ **E A LUZ ATRAVESSA A PEÇA desde 17/09** (ordem do dono, [`10`](docs/Render3d/10_a_luz_que_atravessa_a_peca.md);
+  cena **`=33`**): a subsuperfície do OpenPBR, e são **DOIS caminhos e não um grau** — a **parede
+  fina** (a folha, que acende com a luz ATRÁS: `mx_translucent` nega a normal e mais nada) e a
+  **maciça** (o jade, o perfil de Burley integrado sobre a curvatura). ⭐⭐ **A lei maciça é a que esta
+  casa JÁ tinha escrita** — o `sss.rs` do esculpir integra **o mesmo integral**, com a mesma corda e a
+  mesma normalização; muda o perfil publicado e o facto de a nossa estar pré-integrada. ⭐ E ela
+  depende **só** do ângulo e do quociente `mfp/raio` (medido `0,00e+00` sobre `16×`), que é o eixo
+  adimensional que aquela tabela já declara. ⭐⭐⭐ **A CURVATURA sai do CAMPO e não de `fwidth`**, e o
+  motivo é estrutural: o `fwidth` é por quad de `2×2` e a CPU é por pixel ⇒ a paridade de `100,000 %`
+  cairia. Ela sai da **mesma soma** do estêncil da normal (`∇²f` dos mesmos deslocamentos), e falta-lhe
+  **uma** amostra — a do centro. ⛔⛔ **E o passo dela NÃO é o da normal:** a 1.ª redacção dizia que
+  sim e o gate reprovou em voz alta (uma face plana lia curvatura `1,49`) — uma segunda diferença
+  divide por `ε²`, logo o óptimo é `~ulp^{1/4}`, medido em **`0,0064 × o tamanho da peça`** com o vale
+  no mesmo sítio em três raios. ⛔ **O caminho maciço tem gate PRÓPRIO, e o porquê está medido:** a
+  curvatura implícita de cada amostra do oráculo espalha-se de `0,02` a `54` numa esfera de curvatura
+  `1` — e **não é a tesselação** (uma esfera `256×128` nossa dá a mesma) ⇒ um MÁXIMO ali mede o
+  estimador DELE. O gate afirma a mediana (`5e-4`), os quartis e que o mínimo em `κ = 1` é **AGUDO**
+  (`100×` pior a `κ = 0,5` ou `2`). ⚠️ **O oráculo ganhou uma LUZ DE TRÁS** — sem ela a fixture não
+  contém o fenómeno que a parede fina existe para produzir. Paridade **`100,000 %`** nos dois
+  caminhos. ⚠️ **`PROJECT_SCHEMA` 144 → 145** e o `MAX_ROWS` do painel **79 → 85** — conte o DELTA;
+  a alternativa era baixar o `MAX_POLYGON_VERTICES`, e *um tecto de REGISTO a mandar num tecto de
+  FORMA é o caminho lento a definir o rápido*. ⛔⛔ **E DUAS premissas escritas em três sítios
+  morreram** (*«o material FECHOU: são as 15 entradas do OpenPBR»* · *«este tecto deixa de crescer por
+  material»*): elas fecharam contra a **fatia** construída e não contra o modelo, que tem `41`
+  entradas. ⏳ **ABERTO:** a **espessura** como entrada (nenhum dos dois caminhos da referência a lê, e
+  num campo de distância ela MEDE-SE — é o candidato a superar, e fica fora por não ter oráculo) · o
+  `Thin Walled` pintar-se como caixa e não como escolha · a cena não pôr a luz atrás sozinha · **e o
+  relógio desta wave não foi medido** (a máquina esteve a `load 13`–`27` a jornada inteira), o que a
+  manda para a `W9`.
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

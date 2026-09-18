@@ -58,11 +58,14 @@ padrão (ver `00` §3).
   **Apache-2.0** do GLSL de referência, com base · especular GGX · metal · **verniz** · **emissão**,
   o *furnace test* de pé, e **material por OBJECTO** com as 15 fileiras no painel
   ([`05` §11, §20, §21, §22](05_o_modo_render_do_modelador.md)).
+- ✅ **E a SUBSUPERFÍCIE entrou em 17/09** ([`10`](10_a_luz_que_atravessa_a_peca.md)) — o
+  ingrediente **`6`** do [`01`](01_o_alvo_decomposto.md), escolhido pelo dono. ⭐ E a frase que aqui
+  estava — *«a tabela pré-integrada dele já existe no `ph2d-mesh-render`: a wave que o traz é uma
+  ENTRADA do OpenPBR, não um sistema ao lado»* — estava **certa nas duas metades**, e a medição
+  mostrou-a mais forte do que ela dizia: aquela tabela integra **o mesmo integral**, com a mesma
+  corda e a mesma normalização.
 - ⛔ **O que NÃO entrou, e cada um é uma closure com gate próprio a escrever:** `transmission_*` ·
-  **`subsurface_*`** · `fuzz_*` · `thin_film_*` · `geometry_opacity` · a anisotropia (o traçador não
-  tem tangentes). ⚠️ **O `subsurface` é o ingrediente `6` do [`01`](01_o_alvo_decomposto.md) — a
-  assinatura do alvo do dono** —, e a tabela pré-integrada dele já existe no `ph2d-mesh-render`: *a
-  wave que o traz é uma ENTRADA do OpenPBR, não um sistema ao lado.*
+  `fuzz_*` · `thin_film_*` · `geometry_opacity` · a anisotropia (o traçador não tem tangentes).
 
 ## W3 — O céu como FONTE de luz (IBL) ✅ **FECHADA (14/09 + 15/09)**
 

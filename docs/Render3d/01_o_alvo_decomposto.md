@@ -30,7 +30,7 @@ Ordenados por **salto visual por unidade de trabalho**, que é a ordem em que se
 | 3 | **Resposta de material que lê como MATÉRIA** (GGX + energia conservada + metalness) | ⭐⭐ um plástico deixa de ser «brilhante» e passa a ser plástico | ⛔ **não** — o `mesh.wgsl` faz matcap ou um rig analítico simples |
 | 4 | **Céu/ambiente como FONTE de luz** (IBL) | ⭐⭐ é o que põe cor no lado escuro sem o lavar | ⛔ não |
 | 5 | **Sombras com contacto correcto** (macias ao longe, duras no contacto) | ⭐⭐ é o que **pousa** o objecto no chão | ⛔ não (há SSAO, que é outra coisa e não substitui) |
-| 6 | **Sub-superfície** — a folha translúcida com o sol atrás | ⭐⭐ é literalmente a assinatura do PvZ (plantas) | ⭐ **SIM**, parcial: o `sss.rs` + tabela pré-integrada já existem |
+| 6 | **Sub-superfície** — a folha translúcida com o sol atrás | ⭐⭐ é literalmente a assinatura do PvZ (plantas) | ✅ **SIM, no modelador desde 17/09** ([`10`](10_a_luz_que_atravessa_a_peca.md)) — os DOIS caminhos, com a curvatura tirada do CAMPO. ⭐ E o `sss.rs` do esculpir integra **o mesmo integral**: a nota *«parcial»* estava certa e a medição mostrou-a mais forte |
 | 7 | **Pós** (bloom sobre HDR real, DOF, AA) | ⭐ acabamento; sem o `1`, o bloom mente | ⚠️ meio (bloom existe) |
 | 8 | **A camada de ESTILO** — mentir com botões: rim light, tinta por curvatura, grade por zona | ⭐⭐ é o que faz *aquele* jogo e não «um jogo PBR» | ⛔ não |
 

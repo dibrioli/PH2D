@@ -31,11 +31,12 @@ fn mapa() -> InputMap {
     m
 }
 
-/// O estado das acções depois de `premido` tiques com o espaço em baixo, a partir do repouso.
+/// O estado das acções depois de resolver um tique por entrada de `premido`, do repouso.
 ///
-/// ⚠️ **Dois tiques e não um:** o `just_pressed` é a diferença entre o tique de agora e o anterior,
-/// logo uma resolução só mede uma borda contra o VAZIO e não distingue *«acabou de carregar»* de
-/// *«já estava em baixo»* — que é a propriedade inteira do `Press`.
+/// ⚠️ **O percurso é uma SEQUÊNCIA e nunca um instante:** o `just_pressed` é a diferença entre o
+/// tique de agora e o anterior, logo uma resolução só mede uma borda contra o VAZIO e não
+/// distingue *«acabou de carregar»* de *«já estava em baixo»* — que é a propriedade inteira do
+/// `Press`.
 fn estado(premido: &[bool]) -> ActionState {
     let m = mapa();
     let mut dev = InputState::new();
@@ -77,25 +78,47 @@ fn publicados(sim: &mut SimWorld, playing: bool, st: &ActionState) -> Vec<String
     out.read(&mut leitor).map(|s| s.name.to_string()).collect()
 }
 
-/// ⭐⭐⭐ **A amostra chega do MAPA, com as três leituras certas.**
+/// ⭐⭐⭐ **A amostra chega do MAPA, com as três leituras certas, ao longo de um TOQUE INTEIRO.**
 ///
-/// ⚠️ **As duas metades:** sem a positiva a varredura podia devolver o neutro e o gatilho ficaria
-/// mudo para sempre; sem a negativa ela podia devolver uma entrada para TODA acção que alguém
-/// nomeasse, e um `Release` sobre um nome desconhecido dispararia em **todo quadro** (`!pressed` é
-/// trivialmente verdade).
+/// ⚠️⚠️ **O percurso tem quatro paragens de propósito, e cada uma separa DUAS leituras que num
+/// instante só se lêem iguais:** premir (`pressed` = `just_pressed`), **segurar** (é aqui que
+/// essas duas se separam), largar (`just_released` = `!pressed`) e **ficar solto** (é aqui que
+/// *estas* se separam). *Uma régua medida num instante só aprova trocar uma leitura pela outra.*
+///
+/// ⚠️ **E a metade NEGATIVA é metade do valor:** sem ela a varredura podia devolver uma entrada
+/// para TODA acção que alguém nomeasse, e um `Release` sobre um nome desconhecido dispararia em
+/// **todo quadro** (`!pressed` é trivialmente verdade).
 #[test]
 fn as_amostras_saem_do_mapa_e_so_do_mapa() {
-    let st = estado(&[false, true]);
-    let a = amostras_das_accoes(&mapa(), &st);
+    // (o que se faz, as teclas até aqui, o esperado: pressed · just_pressed · just_released)
+    let percurso = [
+        ("premir", &[false, true][..], (true, true, false)),
+        ("segurar", &[false, true, true][..], (true, false, false)),
+        (
+            "largar",
+            &[false, true, true, false][..],
+            (false, false, true),
+        ),
+        (
+            "ficar solto",
+            &[false, true, true, false, false][..],
+            (false, false, false),
+        ),
+    ];
+    for (nome, teclas, esperado) in percurso {
+        let a = amostras_das_accoes(&mapa(), &estado(teclas));
+        let s = a
+            .get(ACCAO)
+            .copied()
+            .expect("a accao do mapa tem de estar la'");
+        assert_eq!(
+            (s.pressed, s.just_pressed, s.just_released),
+            esperado,
+            "{nome}: as tres leituras"
+        );
+    }
 
-    let s = a
-        .get(ACCAO)
-        .copied()
-        .expect("a accao do mapa tem de estar la'");
-    assert!(s.pressed, "o espaco esta' em baixo");
-    assert!(s.just_pressed, "e' a borda deste tique");
-    assert!(!s.just_released, "ninguem largou nada");
-
+    let a = amostras_das_accoes(&mapa(), &estado(&[false, true]));
     assert!(
         !a.contains_key("fier"),
         "uma accao que o mapa nao conhece NAO pode ter entrada — senao o `Release` dela fala sempre"

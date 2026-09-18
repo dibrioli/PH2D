@@ -1012,3 +1012,45 @@ sintaxe de código, e um herdado de um paper não tem dispensa* — saiu, e levo
 ⚠️ O que o fez visível foi uma régua sobre a **faixa que as réguas do módulo excluíam**: a mutação
 passava despercebida porque a região onde o termo age estava fora de toda régua. Detalhe no doc da
 `ph2d_field_render::probes::gather_probes_por`.
+
+## ⛔⛔⛔ Uma estrutura ancorada no OBJECTO não serve a um PLANO — o pico do fenómeno fica FORA dela
+
+Medido 2026-09-17 (`W6` do render, a cor que a peça devolve ao chão). A pergunta parecia barata:
+*«o chão não pode consultar a grelha de sondas que já está assada?»* — ela cobre a bola da peça com
+margem `1,05` e existe. Medida contra a verdade convergida, ela **satura**: a consulta agarra-se à
+borda, logo a coluna dela é uma **CONSTANTE** de `1,5` raios em diante, e num plano que vai até ao
+horizonte isso pinta o mundo inteiro. ⭐⭐⭐ **E o achado que fechou a porta é o segundo:** o **PICO**
+do sangramento está a `1,75` raios — **fora** dos `1,05` que ela cobre.
+
+⇒ *uma extrapolação ancorada na borda não pode reproduzir um máximo que acontece depois dela* — logo
+nem alargar a margem (rouba resolução ao objecto) nem multiplicar por `1/r²` (decai a partir do sítio
+errado) servem. A cura é a estrutura seguir a **DIMENSÃO da pergunta**: o chão é um plano, logo o
+campo dele é 2D (`32²` contra `32³`), e isso torna a lei própria mais barata que a partilhada.
+
+⚠️ **Antes de reutilizar uma estrutura para um consumidor NOVO, meça onde o fenómeno dele vive** — a
+cobertura da estrutura foi escolhida pelo consumidor antigo.
+
+## ⛔⛔ Um FUNDO TRANSPARENTE torna toda cura MULTIPLICATIVA invisível, e quem o decide é um literal
+
+Mesma wave. A forma óbvia de o chão receber cor era tingir a razão que ele já tem (fazer o factor um
+`vec3` e deixar o canal da peça subir). ⛔ **Isso sairia num pixel que não muda um bit**: o fundo do
+modelador é `[0, 0, 0, 0]`, e uma razão multiplica `bg.rgb`, que ali é ZERO.
+
+⇒ a luz acrescentada entra **somada em pré-multiplicado com alfa ZERO**, que é o que um compositor lê
+como *luz*; contra o preto o pico vale **`33/255`**, bem visível. ⚠️ **E o alfa NÃO sobe**: uma
+sombra sobe-o porque é uma camada a TAPAR o que está atrás, e luz acrescentada é `rgb += B, a += 0`.
+
+⚠️⚠️ *A pergunta «isto vai ver-se?» responde-se lendo o LITERAL do fundo, e não imaginando a cena* —
+e responde-se **antes** de construir, porque ela escolhe a forma da lei.
+
+## ⛔ O que NÃO cai com a amostragem não é ruído da amostragem
+
+Mesma wave, a régua que eu escrevi para caçar manchas: a 2.ª diferença ao longo de uma linha do
+campo, normalizada pelo valor local. Ela leu `0,78 · 1,96 · 1,38 · 1,66 · 1,44` sobre a escada
+`16 → 32 → 64 → 128 → 256` direcções — **sem tendência nenhuma**. ⇒ ela media a queda a pique do
+campo debaixo da peça, que é a **curva CERTA**.
+
+⭐ A régua honesta é o desvio contra o mesmo campo assado DENSO, **em unidades absolutas normalizadas
+pelo PICO** (uma célula onde a verdade é quase zero dá erro relativo enorme e contribui zero para a
+imagem) — e ela cai como deve: `8,7 % → 3,5 % → 0,96 %`. ⚠️ *O discriminador entre ruído e sinal é
+variar a AMOSTRAGEM e ver se a régua se mexe*, nunca a forma da régua.

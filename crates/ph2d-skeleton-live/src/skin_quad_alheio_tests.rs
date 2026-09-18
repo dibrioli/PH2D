@@ -330,6 +330,21 @@ fn pedacos(
     bordas: [f32; 4],
     alvo: [f32; 2],
 ) -> Vec<(RenderInstance, ph2d_render::nine_slice::SlicePatchSource)> {
+    pedacos_de(s, base, bordas, alvo, [40.0, 20.0])
+}
+
+/// A mesma coisa com a FONTE escolhida.
+///
+/// ⚠️⚠️ **A fonte estava CRAVADA em `[40, 20]`** (o tamanho da 1.ª fixtura), e o gate do teste nulo
+/// reprovou com `0,98 m` de desvio num braço de `2,4 m` — *as bordas do 9-slice medem-se na FONTE,
+/// logo uma fonte errada dá nove pedaços errados e a régua acusa o produto por um defeito dela.*
+fn pedacos_de(
+    s: &Sprite,
+    base: RenderInstance,
+    bordas: [f32; 4],
+    alvo: [f32; 2],
+    fonte_px: [f32; 2],
+) -> Vec<(RenderInstance, ph2d_render::nine_slice::SlicePatchSource)> {
     let slice = ph2d_ecs::SliceNine {
         draw_mode: ph2d_ecs::SliceDrawMode::Sliced,
         borders: bordas,
@@ -337,7 +352,7 @@ fn pedacos(
     };
     let celula = base.atlas_uv;
     let (du, dv) = (celula[2] - celula[0], celula[3] - celula[1]);
-    ph2d_render::nine_slice::nine_slice_patches(celula, [40.0, 20.0], &slice, alvo, PPM, [1.0, 1.0])
+    ph2d_render::nine_slice::nine_slice_patches(celula, fonte_px, &slice, alvo, PPM, [1.0, 1.0])
         .iter()
         .filter_map(|p| {
             let p = p.as_ref()?;
@@ -582,3 +597,6 @@ fn a_fileira_sem_tinta_nao_desenha() {
         "so' {cima} pedacos de cima desenharam: a regua mede pouco"
     );
 }
+
+#[path = "skin_tres_midias_tests.rs"]
+mod tres_midias;

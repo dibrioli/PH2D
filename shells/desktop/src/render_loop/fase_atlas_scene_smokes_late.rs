@@ -240,7 +240,11 @@ fn bone_media_smoke(
             kind: ph2d_editor_core::ViewFocusKind::All,
         });
     toasts.push(Toast::success(
-        "Bone-media smoke: as tres dobram — a do meio mostra UM quadro, a de baixo mantem os cantos"
-            .to_string(),
+        if ph2d_app_vec::smoke_bone_media::nivel() == 2 {
+            "Bone-media smoke: TESTE NULO — os tres bracos tem de dobrar IGUAL"
+        } else {
+            "Bone-media smoke: as tres dobram — a do meio mostra UM quadro, a de baixo mantem os cantos"
+        }
+        .to_string(),
     ));
 }

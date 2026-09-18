@@ -65,6 +65,32 @@ const BORDA_PX: f32 = 20.0;
 /// enquadramento ensina o contrário do que diz.*
 const ESTICA: f32 = 2.0;
 
+/// ⭐⭐⭐ **DOIS NÍVEIS, e o `=2` é uma pergunta DIFERENTE** (ordem do dono, 2026-09-18).
+///
+/// - **`=1` — as três FORMAS:** *que arte é desenhada?* Artes diferentes de propósito, para se ver
+///   que a folha mostra UM quadro e que a moldura mantém os cantos.
+/// - **`=2` — os três BRAÇOS:** *elas dobram IGUAL?* Mesmo tamanho, mesma largura, mesma arte —
+///   um **TESTE NULO**: as três TÊM de sair idênticas, e qualquer diferença é o defeito.
+pub const NIVEIS: u32 = 2;
+
+/// O nível pedido, coagido a `1..=NIVEIS`.
+///
+/// ⚠️ Um valor ilegível (ou a env vazia, que é como um `env VAR=` a arma) cai em `1`: *o caminho de
+/// omissão é a cena que o dono já aprovou, nunca uma que ele não pediu.*
+#[must_use]
+pub fn nivel() -> u32 {
+    nivel_de(std::env::var("PH2D_VEC_BONE_MEDIA_SMOKE").ok().as_deref())
+}
+
+/// A LEI do [`nivel`], sem a env — ela não se escreve num gate (`set_var` é `unsafe` na edição 2024
+/// e corre numa árvore com threads).
+#[must_use]
+pub(crate) fn nivel_de(v: Option<&str>) -> u32 {
+    v.and_then(|v| v.trim().parse::<u32>().ok())
+        .unwrap_or(1)
+        .clamp(1, NIVEIS)
+}
+
 /// Este smoke está armado?
 #[must_use]
 pub fn armed() -> bool {
@@ -159,8 +185,38 @@ fn moldura() -> Vec<u8> {
     rgba
 }
 
-/// Monta a cena. Devolve `(bits da 1.ª imagem, quantas células do atlas foram gastas)`.
+/// Monta a cena do nível pedido. Devolve `(bits da 1.ª imagem, quantas células do atlas foram
+/// gastas)`.
 pub fn build(
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    cell_idx: u32,
+    pixels_per_meter: f32,
+    atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+) -> Option<(u64, u32)> {
+    if nivel() == 2 {
+        return bracos(
+            sim,
+            renderer,
+            asset_db,
+            cell_idx,
+            pixels_per_meter,
+            atlas_asset_map,
+        );
+    }
+    formas(
+        sim,
+        renderer,
+        asset_db,
+        cell_idx,
+        pixels_per_meter,
+        atlas_asset_map,
+    )
+}
+
+/// **`=1` — AS TRÊS FORMAS**: artes diferentes, para se ver QUE arte cada uma desenha.
+fn formas(
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
@@ -366,6 +422,10 @@ fn anuncia(gastas: u32) {
         DOBRA
     );
 }
+
+#[path = "smoke_bone_media_bracos.rs"]
+mod bracos_cena;
+use bracos_cena::bracos;
 
 #[cfg(test)]
 mod tests {

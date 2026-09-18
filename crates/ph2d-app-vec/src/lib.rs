@@ -218,7 +218,10 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "vec",
     routers: &[
         r("PH2D_VEC_APPEARANCE_SMOKE"),
-        r("PH2D_VEC_BONE_MEDIA_SMOKE"),
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VEC_BONE_MEDIA_SMOKE",
+            max_level: smoke_bone_media::NIVEIS,
+        },
         r("PH2D_VEC_BONE_SMOKE"),
         ph2d_app_host::SmokeRouter {
             env: "PH2D_VEC_BONE_PAINT_SMOKE",

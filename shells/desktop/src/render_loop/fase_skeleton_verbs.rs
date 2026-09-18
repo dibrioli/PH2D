@@ -12,6 +12,30 @@ pub(super) struct SkeletonVerbsIntents {
     pub(super) selecao_bits: Vec<u64>,
 }
 
+/// ⭐⭐⭐ **A ÚNICA PORTA POR ONDE UMA RECUSA DO OSSO CHEGA AO ARTISTA.**
+///
+/// ⛔⛔ **Antes desta wave as três saíam só no terminal** — *uma recusa que só o terminal vê é um
+/// botão mudo*, e o dono aprovou dois smokes em que eu tive de lhe dizer *«olhe na janela preta»*.
+/// A superfície não é nova: a [`ph2d_editor_core::ToastQueue`] já servia a irmã desta família (o
+/// *solta-se-sozinho* de uma ferramenta que muda a moldura).
+///
+/// ⚠️ **O terminal FICA ao lado, e não é duplicação:** um smoke headless não tem tela, e é ali que
+/// a sonda lê. *A tela é para o artista; o terminal é para quem mede.*
+///
+/// ⚠️ **Uma porta e não três `push` espalhados:** com três, a quarta recusa nasce sem aviso e
+/// ninguém vê — que é exactamente como estas três viveram até aqui.
+fn avisa(
+    toasts: &mut ph2d_editor_core::ToastQueue,
+    r: ph2d_skeleton_live::recusa_do_osso::RecusaDoOsso,
+) {
+    let texto = match r.quantos() {
+        Some(q) => ph2d_i18n::tr_with(r.chave(), &[("quantos", &q)]),
+        None => ph2d_i18n::tr(r.chave()).to_string(),
+    };
+    eprintln!("[ph2d-vec] osso: {texto}");
+    toasts.push(ph2d_editor_core::Toast::warning(texto));
+}
+
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_skeleton_verbs(&mut self, intents: SkeletonVerbsIntents) -> Option<usize> {
@@ -22,6 +46,7 @@ impl crate::App {
             asset_db,
             vec_scene,
             hero_screen,
+            toasts,
             ..
         } = FrameGfx::of(gfx);
         let SkeletonVerbsIntents {
@@ -49,8 +74,8 @@ impl crate::App {
             // ⚠️ **A lei é PURA e vive na crate** (`recusa_do_bind`): ela devolve a razão em vez de
             // a imprimir, senão a metade que interessa — *a razão certa para o facto certo* — fica
             // fora de qualquer teste, e a decisão precisaria de um mundo desenhado para ser medida.
-            if let Some(r) = ph2d_skeleton_live::recusa_do_bind::recusa_do_bind(sim, semente) {
-                eprintln!("[ph2d-vec] {}", r.frase());
+            if let Some(r) = ph2d_skeleton_live::recusa_do_osso::recusa_do_bind(sim, semente) {
+                avisa(toasts, r);
                 break 'bind;
             }
             let n = crate::skeleton_live::bind(sim, vec_scene, &self.vec.entities, &ids, semente);
@@ -108,8 +133,9 @@ impl crate::App {
             }
             let n = n + n_img;
             if n == 0 {
-                eprintln!(
-                    "[ph2d-vec] osso: selecione ao menos UMA forma, e desenhe um esqueleto                          antes (ferramenta Bone)"
+                avisa(
+                    toasts,
+                    ph2d_skeleton_live::recusa_do_osso::RecusaDoOsso::NadaAPrender,
                 );
             } else {
                 eprintln!(
@@ -142,9 +168,9 @@ impl crate::App {
                 }
             }
             if n + n_img == 0 {
-                eprintln!(
-                    "[ph2d-vec] osso: nada a soltar -- escolha a forma ou a imagem que esta' \
-                     presa ao esqueleto"
+                avisa(
+                    toasts,
+                    ph2d_skeleton_live::recusa_do_osso::RecusaDoOsso::NadaASoltar,
                 );
             } else {
                 eprintln!(

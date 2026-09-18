@@ -59,6 +59,33 @@ diz onde ler o mecanismo:
 
 ---
 
+### F15 — ✅ **AS TRÊS RECUSAS DOS VERBOS DO OSSO SOBEM À TELA** (2026-09-18)
+
+**A dívida que a F13 abriu e a F14 herdou, fechada.** As três recusas do botão de osso saíam só no
+terminal — *uma recusa que só o terminal vê é um botão mudo* —, e o dono aprovou **dois** smokes em
+que foi preciso dizer-lhe *«olhe na janela preta»*.
+
+⭐ **Nenhuma superfície nova:** a [`ph2d_editor_core::ToastQueue`] já servia a irmã desta mesma
+família (o *solta-se-sozinho* de uma ferramenta que muda a moldura, com chave de i18n própria). O
+`FrameGfx` já a carregava — *a composição já o exprimia, e ninguém tinha medido* (§5.0).
+
+⚠️ **As três juntas, e não só a nova:** curar uma deixaria duas maneiras de responder à mesma
+pergunta. ⇒ um enum só (`RecusaDoOsso`, três variantes) e **uma** porta na shell (`avisa`) — com
+três `push` espalhados, a quarta recusa nasce muda, que é como estas viveram até aqui.
+
+⭐⭐ **Toda recusa tem chave de i18n, e o `match` da `chave()` é EXAUSTIVO** ⇒ uma variante nova **não
+compila** até alguém lhe dar uma. *É a diferença entre uma lista que alguém tem de se lembrar de
+estender e uma que não fica verde sem a extensão.*
+
+⚠️ **O terminal FICA ao lado do aviso, e não é duplicação:** um smoke headless não tem tela, e é ali
+que a sonda lê. *A tela é para o artista; o terminal é para quem mede* — o mesmo par que o
+`PH2D_BONE_LOG` já é.
+
+⛔ **E a agulha de um gate contou `1` de `3` sobre produto CERTO**, pela segunda vez nesta jornada: o
+`cargo fmt` parte as chamadas longas em várias linhas. *Um literal lê-se do ficheiro já formatado.*
+
+Mutação **5 de 5** a sangrar; portão `15 084` verdes.
+
 ### F14 — ✅ **DESCONECTAR A MALHA DO OSSO numa IMAGEM** (report do dono, 2026-09-18)
 
 *«Acho que ainda não temos a opção de desconectar a malha do osso. Deveríamos ter.»* — **ele tinha

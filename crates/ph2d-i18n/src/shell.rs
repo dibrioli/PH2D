@@ -132,6 +132,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.input_handlers.no_tools_to_show_here" => "No tools to show here (P)",
         "shell.input_handlers.zen_mode_off_zones" => "Zen mode OFF (zones restored)",
         "shell.input_handlers.zen_mode_on_zones" => "Zen mode ON (zones collapsed)",
+        // ⭐⭐⭐ **AS TRÊS RECUSAS DOS VERBOS DO OSSO** (2026-09-18) — elas vão para a TELA (a fila
+        // de avisos), e ali não há texto cru. A população é `RecusaDoOsso::TODAS`, e o `match` da
+        // `chave()` é exaustivo ⇒ uma recusa nova **não compila** até ter uma destas.
+        "skeleton.recusa.varios_esqueletos" => {
+            "There are {quantos} skeletons in the scene and no bone selected. Pick a bone of \
+             the skeleton you want too (Ctrl+click in the Hierarchy) - otherwise the shape \
+             would be bound to all {quantos} at once."
+        }
+        "skeleton.recusa.nada_a_prender" => {
+            "Nothing to bind: select a shape or an image first, and draw a skeleton (Bone tool)."
+        }
+        "skeleton.recusa.nada_a_soltar" => {
+            "Nothing to release: select the shape or the image that is bound to the skeleton."
+        }
         "shell.label_live.label" => "{base} Label",
         "shell.label_live.path" => "Path {host}",
         "shell.fase_bone_smart_and_knobs.this_bone_is_driven_by" => {

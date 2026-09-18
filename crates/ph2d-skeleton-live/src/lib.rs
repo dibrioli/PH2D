@@ -36,7 +36,7 @@ pub mod esqueletos;
 #[path = "esqueletos_tests_support.rs"]
 mod esqueletos_tests_support;
 pub mod goal;
-pub mod recusa_do_bind;
+pub mod recusa_do_osso;
 /// ⭐ O ORÇAMENTO de peças do quadro — irmão do `skin_image` pelo tecto de LOC, cortado por assunto.
 pub mod skin_bake;
 pub mod skin_bake_cache;

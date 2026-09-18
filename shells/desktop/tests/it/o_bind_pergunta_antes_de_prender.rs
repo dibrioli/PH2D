@@ -16,7 +16,7 @@ const FASE: &str = include_str!("../../src/render_loop/fase_skeleton_verbs.rs");
 #[test]
 fn a_fase_consulta_a_porta_antes_de_qualquer_bind() {
     let porta = FASE
-        .find("recusa_do_bind::recusa_do_bind(")
+        .find("recusa_do_osso::recusa_do_bind(")
         .expect("a fase do bind deixou de consultar a porta da recusa");
     for rota in ["skeleton_live::bind(", "skeleton_live::bind_image("] {
         let i = FASE
@@ -38,7 +38,7 @@ fn a_fase_consulta_a_porta_antes_de_qualquer_bind() {
 #[test]
 fn a_recusa_do_bind_nao_cancela_os_outros_verbos() {
     let porta = FASE
-        .find("recusa_do_bind::recusa_do_bind(")
+        .find("recusa_do_osso::recusa_do_bind(")
         .expect("a porta saiu da fase");
     let resto = &FASE[porta..];
     let fim = resto
@@ -53,5 +53,37 @@ fn a_recusa_do_bind_nao_cancela_os_outros_verbos() {
         resto[..fim].contains("break 'bind"),
         "a recusa deixou de sair do bloco do bind: sem isso ela imprime a queixa e PRENDE na \
          mesma, que e' a unica coisa pior do que nao avisar"
+    );
+}
+
+/// ⭐⭐⭐ **E AS TRÊS RECUSAS DO OSSO CHEGAM À TELA, por UMA porta** (2026-09-18).
+///
+/// ⛔⛔ *Uma recusa que só o terminal vê é um botão mudo* — as três viveram assim, e o dono aprovou
+/// dois smokes em que foi preciso dizer-lhe *«olhe na janela preta»*. A superfície **não é nova**: a
+/// `ToastQueue` já servia a irmã desta família (o *solta-se-sozinho* de uma ferramenta de moldura).
+///
+/// ⚠️ **As metades são três defeitos:** não avisar · avisar por três `push` espalhados (a quarta
+/// recusa nasce muda) · e avisar com texto CRU, que na tela viola o HR-15.
+#[test]
+fn as_recusas_do_osso_chegam_a_tela_por_uma_porta() {
+    assert_eq!(
+        FASE.matches("Toast::warning(").count(),
+        1,
+        "a recusa chega a' tela por mais (ou menos) de UMA porta: com varias, a proxima recusa \
+         nasce muda e ninguem ve'"
+    );
+    assert_eq!(
+        // ⚠️ A agulha conta `avisa(` e **não** `avisa(toasts,`: o `cargo fmt` parte as chamadas
+        // longas em várias linhas, e a 1.ª redacção contou `1` de `3` sobre produto CERTO. *Um
+        // literal lê-se do ficheiro já formatado* — a segunda vez que esta jornada o paga.
+        FASE.matches("                avisa(").count(),
+        3,
+        "as TRES recusas do osso nao passam todas pela porta do aviso — a que faltar so' existe \
+         no terminal, que e' onde elas estavam antes desta wave"
+    );
+    assert!(
+        FASE.contains("ph2d_i18n::tr_with(r.chave()") && FASE.contains("ph2d_i18n::tr(r.chave())"),
+        "o texto do aviso deixou de vir do i18n: na TELA nao ha' texto cru (HR-15), e a chave e' \
+         derivada da propria recusa"
     );
 }

@@ -27,7 +27,7 @@ fn com_dois_esqueletos_e_sem_osso_a_porta_recusa() {
     cadeias(&mut sim, 2);
     assert_eq!(
         recusa_do_bind(&sim, None),
-        Some(RecusaDoBind::VariosEsqueletos { quantos: 2 }),
+        Some(RecusaDoOsso::VariosEsqueletos { quantos: 2 }),
         "com DOIS esqueletos e nenhum osso escolhido o bind seguiu em frente — a forma ficaria \
          presa aos seis ossos das duas cadeias, que e' o defeito medido na sonda do rig partilhado"
     );
@@ -46,19 +46,36 @@ fn com_o_osso_escolhido_a_porta_cala_se() {
     );
 }
 
-/// ⛔ **A frase diz o problema E o gesto que o cura.**
+/// ⭐⭐⭐ **TODA recusa tem chave de i18n, e ELAS SÃO DISTINTAS.**
 ///
-/// ⚠️ Uma recusa que só diz o problema manda o artista adivinhar, que é o mesmo que não dizer nada —
-/// e ela carrega o NÚMERO, senão não se distingue de uma queixa genérica.
+/// ⛔ Duas variantes com a mesma chave dizem a mesma frase para dois factos diferentes — e o artista
+/// lê *«nada a soltar»* quando o que falta é escolher um osso.
 #[test]
-fn a_frase_da_recusa_nomeia_a_cura_e_o_numero() {
-    let f = RecusaDoBind::VariosEsqueletos { quantos: 3 }.frase();
-    assert!(
-        f.contains('3'),
-        "a frase nao diz QUANTOS esqueletos ha': {f}"
+fn toda_recusa_tem_chave_propria() {
+    let mut vistas = std::collections::BTreeSet::new();
+    for r in RecusaDoOsso::TODAS {
+        let k = r.chave();
+        assert!(
+            k.starts_with("skeleton.recusa."),
+            "a chave de {r:?} nao vive no espaco desta familia: {k}"
+        );
+        assert!(vistas.insert(k), "duas recusas partilham a chave {k}");
+    }
+    assert_eq!(
+        vistas.len(),
+        RecusaDoOsso::TODAS.len(),
+        "o censo perdeu uma recusa pelo caminho"
     );
-    assert!(
-        f.contains("osso") && f.contains("Hierarquia"),
-        "a frase nao diz o gesto que cura (escolher tambem um osso na Hierarquia): {f}"
+}
+
+/// ⚠️ **Só a recusa que NOMEIA um número o carrega** — as outras devolvem `None`, senão a frase
+/// delas teria um `{quantos}` por preencher na tela.
+#[test]
+fn so_a_recusa_dos_esqueletos_carrega_um_numero() {
+    assert_eq!(
+        RecusaDoOsso::VariosEsqueletos { quantos: 4 }.quantos(),
+        Some(4)
     );
+    assert_eq!(RecusaDoOsso::NadaAPrender.quantos(), None);
+    assert_eq!(RecusaDoOsso::NadaASoltar.quantos(), None);
 }

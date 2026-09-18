@@ -10,6 +10,21 @@
 onde o repo está vazio.
 **Status:** claims. A §5 do plano 89 é a verificação, e ela é do Enio.
 
+> ⚠️⚠️ **O `motion.collide` SAIU DA LISTA DO ARTISTA em 2026-09-17, e esta folha continua a
+> descrevê-lo como um nó que se escolhe.** Ordem do dono: *«tirar o collide e deixar tudo pela
+> Shape»* — o nó deixou de aparecer na paleta e no catálogo, e a separação passou a ser um
+> **interruptor do sink** (`Collide`), com a forma a declarar o próprio colisor.
+>
+> ⭐ **Tudo o que as células dizem sobre a LEI dele continua verdade** — a lei é a mesma, e o
+> **kernel de dispositivo FICOU** por decisão do dono (medido: `4,19 M` objectos são `88×` mais
+> rápidos ali do que no passe de CPU). O que envelheceu é a **PORTA**: onde se lê *«o artista liga
+> um `motion.collide`»*, hoje lê-se *«o artista liga o `Collide` do sink»*.
+>
+> ⛔ **A folha NÃO foi reescrita célula a célula de propósito** — ela é o registo do que foi
+> conferido naquela data, e reescrevê-la apagaria a proveniência de 43 linhas para corrigir uma
+> palavra. *Uma folha de conferência é um instantâneo com data; o roteador é que tem de dizer o
+> que mudou depois.* Mecanismo e medições: [doc 115 §14](../115_o_colisor_sai_do_grafo.md).
+
 ---
 
 ## §0 — O que os seis nós têm hoje (lido do código)

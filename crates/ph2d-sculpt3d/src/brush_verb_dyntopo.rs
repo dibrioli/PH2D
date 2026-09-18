@@ -281,6 +281,45 @@ impl Verb {
         self.mexe_na_topologia()
     }
 
+    /// ⭐⭐⭐ **Este verbo HONRA o pente de topologia?**
+    ///
+    /// Espec §6, medida pelo oráculo com um traço igual, o mesmo enquadramento,
+    /// o controlo a `0` e a `1`, **e o controlo de que o próprio verbo agiu**
+    /// dentro de cada célula.
+    ///
+    /// ⛔ **CINCO ignoram-no, com a saída BYTE-IDÊNTICA**, e a família tem forma:
+    /// são os que lêem as posições de **repouso** ou que trabalham
+    /// **ancorados**, mais o que **não escreve posição nenhuma**.
+    ///
+    /// | verbo | o próprio verbo agiu? | porquê ignora |
+    /// |---|---|---|
+    /// | [`Verb::DrawSharp`] | moveu `187` vértices | lê as posições do pen-down |
+    /// | [`Verb::Thumb`] | moveu `56` | pegada congelada |
+    /// | [`Verb::Move`] | moveu `56` | ancorado |
+    /// | [`Verb::Twist`] | moveu `49` (varredura **angular**) | ancorado |
+    /// | [`Verb::Mask`] | escreveu o canal (soma `0` → `34,777`) | não escreve posição |
+    ///
+    /// ⚠️⚠️ **DUAS destas células tiveram de ser REFEITAS no oráculo, e é a
+    /// lição mais transferível do censo:** na 1.ª redacção a torção corria sobre
+    /// um percurso RECTO — e um verbo de torção ancorado varre ângulo **zero**
+    /// numa recta, logo moveu `0` vértices. *A célula lia-se exactamente como
+    /// «ignora o pente» sendo que era **inerte**.* A máscara move `0` por lei, e
+    /// só o controlo de CANAL a separa de uma célula morta.
+    ///
+    /// ⛔ **A lista é EXPLÍCITA e não derivada**, de propósito: ela é um facto
+    /// MEDIDO sobre o alvo, e derivá-la de [`Self::anchors`] faria a resposta
+    /// mudar no dia em que alguém mexesse naquela outra pergunta, sem ninguém
+    /// recontar. O gate `os_cinco_que_ignoram_o_pente_tem_a_forma_que_a_espec_da`
+    /// afirma que a **forma** ainda descreve a lista — e reprova no dia em que
+    /// ela deixar de descrever, que é quando alguém tem de voltar ao oráculo.
+    #[must_use]
+    pub fn honra_o_pente(self) -> bool {
+        !matches!(
+            self,
+            Self::DrawSharp | Self::Thumb | Self::Move | Self::Twist | Self::Mask
+        )
+    }
+
     /// **Este verbo COLAPSA arestas curtas em Dynamic Topology?**
     ///
     /// A segunda metade do [`Self::refina_no_dyntopo`], e ela existe separada

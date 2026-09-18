@@ -138,6 +138,10 @@ impl Default for Brush {
             // O MEIO da faixa, o mesmo ponto em que o ajuste da cena nasce: os
             // dois medem a mesma grandeza e o artista não tem porque encontrar
             // dois valores diferentes na primeira vez que olha.
+            // ⚠️ DESLIGADO, que é o valor de fábrica MEDIDO do alvo (espec §5)
+            // — e a razão de produto é a mesma: ele só tem sentido com a
+            // topologia dinâmica armada, que também nasce desarmada.
+            pente: 0.0,
             density_detail: 0.5, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
             // ⚠️ **O arrasto é o de fábrica porque é o gesto que dá NOME ao
             // pincel** — *smear* é levar o relevo com a mão. Os outros dois são

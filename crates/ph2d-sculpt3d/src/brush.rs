@@ -299,6 +299,25 @@ pub struct Brush {
     /// escada do [`ph2d_mesh::tris_for_detail`], ancorada na ÁREA da peça —
     /// logo independente do zoom e do tamanho do modelo. *Dois sliders, uma
     /// régua.*
+    /// ⭐⭐⭐ **O PENTE DE TOPOLOGIA** — quanto a malha debaixo do traço se
+    /// reorganiza numa GRADE alinhada com ele, em `[0, 1]`.
+    ///
+    /// Clean-room sob `docs/3D/cleanroom/SPEC_pente_de_topologia.md` (atestada à
+    /// 3.ª passagem do R-pré); a lei vive na [`ph2d_rake`].
+    ///
+    /// ⚠️ **Nasce em `0,0` — DESLIGADO**, que é o valor de fábrica medido do
+    /// alvo (espec §5).
+    ///
+    /// ⚠️⚠️ **ARMADILHA DE NOME, e a espec §5 nomeia-a:** o alvo tem DOIS
+    /// controlos cujo rótulo começa por «rake», de assuntos diferentes — o outro
+    /// governa o ângulo da TEXTURA do carimbo a seguir o traço, que é o `rake`
+    /// que o Painter desta casa já tem. ⛔ Não são o mesmo controlo e não têm o
+    /// mesmo tecto. *Quem procurar por nome apanha o errado.*
+    ///
+    /// ⛔ **A pré-condição é a topologia dinâmica ARMADA, nunca «o passe vai
+    /// correr»** (espec §2.2): sem refino nenhum ele continua a agir, e com
+    /// efeito MAIOR. Quem o honra está em [`crate::Verb::honra_o_pente`].
+    pub pente: f32,
     pub density_detail: f32,
     /// **PARA ONDE O ESFREGÃO EMPURRA O DESLOCAMENTO** — ⛔ só o
     /// [`crate::Verb::SmearMultires`] o lê

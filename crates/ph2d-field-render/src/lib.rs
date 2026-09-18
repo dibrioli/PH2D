@@ -109,6 +109,9 @@ impl Sharpness {
 pub mod banda;
 pub mod bounce;
 mod camera;
+/// ⭐⭐⭐ **A curvatura da superfície** — a grandeza que a subsuperfície MACIÇA lê, e que esta casa
+/// tira do CAMPO em vez de derivadas de ecrã (`docs/Render3d/10`).
+pub mod curvatura;
 mod edges;
 /// ⭐⭐⭐ **O chão que só recebe** — a metade da `W4` que esperava o dono (`docs/Render3d/07`).
 mod ground;

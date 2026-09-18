@@ -1487,3 +1487,134 @@ paguei-a outra vez.
   vez que ele se paga.
 - ⏳ O `Vec<u32>` dos vizinhos ainda é alocado por peça e por varredura (dentro dos `18 %`); um
   scratch por thread fecha-o, e não foi feito porque a medição não o justificou sozinho.
+
+---
+
+## §20 — *«centenas a milhares de objetos em runtime»* — parar quando nada mais se VÊ
+
+Report do dono, 2026-09-18, sobre a §19: *«bem melhor mas muito longe do ideal. Aqui queremos lidar
+com centenas a milhares de objetos em runtime. Algumas poucas centenas já trava usando Boids+Shape
+com colisão»*.
+
+### §20.1 — ⛔ Eu tinha medido o PASSE e não o QUADRO
+
+A §19 mediu a separação. O dono fala de uma CENA — e a primeira coisa a fazer era medir o quadro
+dela, o que nunca tinha sido feito. A sonda é [`motion_custo_do_quadro_probe`], e ⚠️ **as três
+primeiras redacções dela mediram o VAZIO**, cada uma por uma razão que vale para a próxima:
+
+| a sonda dizia | porquê | como apareceu |
+|---|---|---|
+| `0,002 ms` para 500 boids | `cook` num tique parado bate no **MEMO** (o `Fingerprint` carrega o tique, e o tique só anda dentro da marcha) | o número era bom demais |
+| `0 instâncias` | a `source.shape` lê um **EXTERNAL que a shell publica**; sem ele emite zero linhas | o **controlo de população**, que eu só escrevi à terceira |
+| `0 instâncias` outra vez | o controlo contava `instances`, e uma forma desce para **`vector_instances`** (a lei do `geometry_id`) | *contar a lista errada lê-se exactamente como uma cena vazia* |
+
+⇒ **toda sonda deste ficheiro imprime a POPULAÇÃO ao lado do relógio.**
+
+### §20.2 — O que a medição respondeu, e não foi o que eu esperava
+
+**(a) A cena do dono NÃO vai à placa, e não é a colisão que a derruba.** A
+[`sonda_a_cena_do_dono_corre_na_placa`] pergunta ao planeador:
+
+```
+Boids + Shape             -> CAMINHO LENTO · 0 etapa(s) de GPU · fronteira: motion.duplicator
+Boids + Shape + COLISAO   -> CAMINHO LENTO · 0 etapa(s) de GPU · fronteira: motion.duplicator
+```
+
+⇒ a fronteira é o **`motion.duplicator`**, e ligar ou desligar a colisão não muda uma linha do
+plano. *A cena `=7` corre `1 048 576` boids a 60 fps no dispositivo porque ali não há forma nenhuma
+a duplicar.*
+
+**(b) E o cozimento na CPU é BARATO — não é ele o tecto.** O quadro inteiro (cozinhar + a forma + o
+duplicador + a separação de fábrica + o lowering):
+
+| objectos | só boids | + forma/dup | + colisão (8 varreduras) | % de um quadro |
+|---|---|---|---|---|
+| 500 | 0,011 ms | 0,019 ms | **0,593 ms** | 4 % |
+| 1000 | 0,021 | 0,030 | **1,509** | 9 % |
+| 2000 | 0,041 | 0,053 | **3,717** | 22 % |
+
+⇒ *mil objectos com forma e colisão cabem em 9 % de um quadro.* O que trava é o **cursor no topo**:
+com `1024` varreduras a mesma cena de 500 pagava `36 ms` só na separação.
+
+### §20.3 — ⭐⭐⭐ A cura: PARAR QUANDO NADA MAIS SE VÊ
+
+A §19 já parava no **ponto fixo ao bit** — e ele quase nunca arma: com a rotação solta duas caixas
+acertam-se por um ULP **para sempre** (medido, varrendo a densidade de `1,0` a `3,0`: nenhuma
+assenta em 1024 varreduras). *A cena paga o tecto inteiro por movimento que ninguém vê.*
+
+⇒ [`REPOUSO_VISIVEL`]: o laço pára quando o ponto que mais andou numa varredura andou menos do que
+esta fracção do ALCANCE de uma peça. ⚠️ **A conta inclui a ROTAÇÃO**, majorada (`g·π/180·alcance`)
+— sem esse termo uma peça que só roda lê-se como parada.
+
+**O número é MEDIDO, e a régua não é o resíduo de uma varredura — é o DESVIO da saída** contra
+varrer o tecto inteiro, mais a contagem de pares ainda sobrepostos, que é o que o artista vê:
+
+| limiar | varreduras (campo de 500) | desvio | pares sobrepostos |
+|---|---|---|---|
+| `1e-3` | 50 | `2,1e-2` | **178** (era 177) ⇠ já muda a resposta |
+| `1e-4` | 100 | `2,1e-3` | 177 |
+| **`1e-5`** | **149** | **`2,4e-4`** | **177** |
+| `1e-6` | 207 | `2,7e-5` | 177 |
+
+⇒ `1e-5` é o **joelho**: a última coluna deixa de depender do número, e a conta cai `6,9×`.
+
+### §20.4 — ⛔⛔ Porque isto NÃO é o «aceita e mente» que o §18 recusou
+
+A §18 recusou um **corte de orçamento**: um tecto que aceita `4096` e faz menos trabalho, entregando
+um resultado **pior**. Este pára porque **a resposta deixou de mudar** — medido, a contagem de pares
+sobrepostos é *idêntica* à de varrer até ao fim, e cada peça difere por menos de `2,4e-4` da própria
+aresta.
+
+> *Um é cortar o trabalho; o outro é reconhecer que ele acabou.*
+
+⚠️ **E o preço tem endereço: DOIS gates de PRODUTO, em duas crates, tiveram a barra re-precificada**
+— e é isso que impede esta cura de ser uma afirmação sobre si mesma:
+
+| gate | era | é | o resíduo |
+|---|---|---|---|
+| `a_box_resting_flat_on_another_does_not_turn` (`ph2d-contact`) | `1e-6` | `8 × REPOUSO × alcance` | `1,4e-5` |
+| `two_boxes_rest_face_to_face_and_stop` (`ph2d-node-sim-step`) | `1e-5` | `2e-4` absoluto | `1,1e-4`, que é **`0,011 %`** da largura da caixa |
+
+⭐ **Os dois ganharam o CONTROLO DO VIÉS no caminho que nunca pára cedo** (`separate_all_pairs`):
+sem essa metade, um viés sistemático esconder-se-ia atrás da barra nova.
+
+### §20.5 — O que ficou
+
+| objectos | `1024` varreduras, antes de 18/09 | depois da §19 | **depois da §20** |
+|---|---|---|---|
+| 48 | 6,88 ms | 3,79 ms | **0,36 ms** |
+| 100 | 18,0 | 9,88 | **3,69** |
+| 250 | 52,5 | 20,7 | **3,53** |
+| 500 | 157,9 | 36,2 | **6,79** |
+| 1000 | 503,1 | 68,4 | **22,4** |
+
+⚠️ Com o gizmo do colisor ligado o quadro pagava isto **duas vezes** até à §19 ⇒ para a cena do dono
+o caminho inteiro é `316 ms → 6,8 ms` a 500 objectos: **46×**. E a `1024` varreduras a coluna dos
+`4096` é a mesma — *o tecto deixou de se pagar a si mesmo*.
+
+### §20.6 — As duas lições de RÉGUA que esta wave pagou
+
+⛔⛔ **Uma barra DERIVADA da constante que ela mede não pode medi-la.** A 1.ª redacção do gate do
+repouso derivava o tecto do desvio de `REPOUSO_VISIVEL` — e a mutação que sobe o limiar `1000×`
+**SOBREVIVEU**, porque subiu o desvio *e a barra* na mesma proporção. As barras passam a ser
+absolutas e medidas, com a corrida ao lado (`5,6e-5` da peça, `3,4e-3` graus, `63` de `1024`
+varreduras).
+
+⛔⛔ **E a metade da lei que nenhuma cena normal alcança foi achada por uma MUTAÇÃO SOBREVIVENTE:**
+tirar o termo da rotação de `aplica` passava todos os gates, porque quem roda também **translada** —
+e é a translação que mantém o laço vivo. ⇒ a fixtura são duas caixas **travadas em translação e
+livres para rodar** (`inv_mass = 0`, `inv_inertia > 0`), que é o que um cartão exprime; ali `andou`
+lê `0` na 1.ª varredura e as peças ficam por rodar. *A régua só vê a rotação onde a translação é
+impossível.*
+
+### §20.7 — O que fica ABERTO
+
+- ⛔⛔⛔ **A rota da PLACA não corre o passe, e isso está medido: `ph2d-gpu-cook` não tem uma única
+  referência a `ph2d-contact`.** Hoje isso é invisível porque toda cena com forma cai no caminho da
+  CPU (a fronteira é o `motion.duplicator`) — *mas é o tecto real do «milhares de objectos»*: o
+  caminho rápido e a colisão são **mutuamente exclusivos**. Fechar isto é um kernel, com espec
+  própria.
+- ⏳ **O DESENHO de N formas vectoriais não foi medido** — ele vive noutro subsistema (o renderer), e
+  toda a tabela acima é do cozimento. Se sobrar engasgo depois desta wave, é ali que se procura.
+- ⏳ A `1000` objectos com o cursor no topo ainda são `22,4 ms` (`1,3` quadros). Daqui para baixo é
+  algoritmo: `82 %` de uma varredura já é a LEI do contacto, não escrituração.

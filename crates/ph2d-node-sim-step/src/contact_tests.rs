@@ -120,6 +120,15 @@ fn two_boxes_rest_face_to_face_and_stop() {
         assert!(vi[0].abs() < 1e-3, "a caixa {i} parou em x: {vi:?}");
     }
     // ⭐ E com varreduras a chegar, a distância é EXACTA — a prova de que não há viés.
+    //
+    // ⚠️⚠️ **A BARRA MUDOU DE DONO em 2026-09-18 (doc 115 §20), e a mudança é o PREÇO do
+    // `REPOUSO_VISIVEL`:** o `separate` pára quando mais nenhuma peça se mexe de forma visível, e
+    // deixa uma cauda da ordem do limiar. Medido nesta fixtura: `1,1e-4` sobre uma caixa de `1,0`
+    // de largura — **`0,011 %` dela**, ou `0,02 px` num desenho de 200 px.
+    //
+    // ⛔ **A barra é ABSOLUTA e medida, nunca derivada da constante:** uma barra que escalasse com
+    // o `REPOUSO_VISIVEL` ficaria verde se alguém o subisse `1000×` — foi uma mutação sobrevivente
+    // que ensinou isso, no gate irmão da `ph2d-contact`.
     let convergida = {
         let mut p = vec![[-0.3_f32, 0.0], [0.3, 0.0]];
         let c = vec![
@@ -142,8 +151,35 @@ fn two_boxes_rest_face_to_face_and_stop() {
         p[1][0] - p[0][0]
     };
     assert!(
-        (convergida - 1.0).abs() < 1e-5,
-        "a 64 varreduras o residuo desaparece: {convergida}"
+        (convergida - 1.0).abs() < 2e-4,
+        "a 64 varreduras o residuo tem de caber no repouso visivel: {convergida}"
+    );
+    // ⭐ **E o CONTROLO do viés, no caminho que NUNCA pára cedo** — sem esta metade um viés
+    // sistemático esconder-se-ia atrás da barra nova.
+    let sem_atalho = {
+        let mut p = vec![[-0.3_f32, 0.0], [0.3, 0.0]];
+        let c = vec![
+            Some(ph2d_contact::Colisor::caixa([0.5, 2.0], [1.0, 0.0])),
+            Some(ph2d_contact::Colisor::caixa([0.5, 2.0], [1.0, 0.0])),
+        ];
+        let w = [1.0_f32, 1.0];
+        let inv: Vec<f32> = c
+            .iter()
+            .zip(w)
+            .map(|(c, w)| c.map_or(0.0, |c| c.inv_inercia(w)))
+            .collect();
+        let mut g = vec![0.0; 2];
+        ph2d_contact::separate_all_pairs(
+            &mut p,
+            &mut ph2d_contact::Saida { giro: &mut g },
+            &ph2d_contact::Pecas::novas(&c, &w, &inv),
+            256,
+        );
+        p[1][0] - p[0][0]
+    };
+    assert!(
+        (sem_atalho - 1.0).abs() < 1e-5,
+        "sem atalho nenhum a distancia e' EXACTA: {sem_atalho}"
     );
 }
 

@@ -475,15 +475,39 @@ fn confere(n: usize, saida: &Saida<'_>, pecas: &Pecas<'_>) {
 ///
 /// Se alguma coluna da [`Saida`] ou das [`Pecas`] não tiver o comprimento de `p` — colunas de uma
 /// mesma corrente com comprimentos diferentes não são uma pergunta com resposta.
-pub fn separate(p: &mut [[f32; 2]], saida: &mut Saida<'_>, pecas: &Pecas<'_>, varreduras: usize) {
+pub fn separate(
+    p: &mut [[f32; 2]],
+    saida: &mut Saida<'_>,
+    pecas: &Pecas<'_>,
+    varreduras: usize,
+) -> usize {
     separate_com(
         p,
         saida,
         pecas,
         varreduras,
         p.len() >= PECAS_PARA_PARALELIZAR,
-    );
+        REPOUSO_VISIVEL,
+    )
 }
+
+/// ⭐⭐⭐ **O REPOUSO VISÍVEL** — abaixo desta fracção do ALCANCE de uma peça, mais uma varredura não
+/// muda o que se vê, e o [`separate`] pára.
+///
+/// ⚠️ **O número é MEDIDO** ([`custo_probe::parar_quando_nada_mais_se_ve`]), e a régua não é o
+/// resíduo de uma varredura — é o **DESVIO da saída** contra varrer o tecto inteiro, mais a
+/// contagem de pares ainda sobrepostos, que é o que o artista vê:
+///
+/// | limiar | varreduras (campo de 500) | desvio | pares sobrepostos |
+/// |---|---|---|---|
+/// | `1e-3` | 50 | `2,1e-2` | **178** (era 177) ⇠ já muda a resposta |
+/// | `1e-4` | 100 | `2,1e-3` | 177 |
+/// | **`1e-5`** | **149** | **`2,4e-4`** | **177** (era 177) |
+/// | `1e-6` | 207 | `2,7e-5` | 177 |
+///
+/// ⇒ `1e-5` é o joelho: a última coluna **não muda** e a conta cai `6,9×`. ⛔ A `1e-3` a resposta
+/// já é outra — *o número não é «um epsilon razoável», é onde a saída deixa de depender dele*.
+pub const REPOUSO_VISIVEL: f32 = 1e-5;
 
 /// ⭐⭐ **A partir de quantas peças uma varredura paga o fork/join** — MEDIDO na sonda
 /// [`custo_probe::onde_o_paralelo_passa_a_pagar`], não herdado.
@@ -500,7 +524,8 @@ fn separate_com(
     pecas: &Pecas<'_>,
     varreduras: usize,
     paralelo: bool,
-) {
+    repouso: f32,
+) -> usize {
     let n = p.len();
     confere(n, saida, pecas);
     let ativo: Vec<bool> = (0..n)
@@ -511,9 +536,14 @@ fn separate_com(
         .filter_map(|i| pecas.colisores[i].map(|c| c.alcance()))
         .fold(0.0_f32, f32::max);
     if alcance_max <= 0.0 {
-        return;
+        return 0;
     }
     let lado = 2.0 * alcance_max;
+    // O repouso, na escala da PEÇA — ver [`REPOUSO_VISIVEL`]. ⭐ **É ARGUMENTO e não const lida
+    // aqui** para que um gate possa pedir `0.0` e medir a lei do ponto fixo ao bit **sozinha**:
+    // são duas paragens com naturezas diferentes, e uma régua que só visse a soma delas não podia
+    // afirmar nada sobre nenhuma.
+    let parado = repouso * alcance_max;
     // ⭐⭐ **Os buffers vivem FORA do laço** (report do dono, 18/09). Eles eram refeitos por
     // varredura, e a `1024` isso são `1024` cópias da nuvem, `1024` grelhas e `n × 1024` listas de
     // vizinhos. Os VALORES são os mesmos — o que muda é quem os aloja.
@@ -523,7 +553,7 @@ fn separate_com(
         .map(|i| pecas.colisores[i].map(|c| c.girado(girado[i])))
         .collect();
     let mut grade = grelha::Grelha::default();
-    for _ in 0..varreduras {
+    for v in 0..varreduras {
         foto.copy_from_slice(p);
         // As formas COMO ESTÃO: o que as varreduras anteriores rodaram já conta.
         // ⭐ Só quem RODOU desde a varredura anterior é recalculado — `girado()` é uma função pura
@@ -551,6 +581,7 @@ fn separate_com(
                 &ativo,
             )
         });
+        let andou = aplica(p, saida, novas, alcance_max);
         // ⭐⭐⭐ **O PONTO FIXO** — e ele não é uma heurística, é uma INDUÇÃO: uma varredura que não
         // mexe um bit deixa a seguinte com a MESMA entrada (a mesma foto, os mesmos ângulos, a
         // mesma grelha), logo com a mesma saída. ⇒ parar aqui é **bit-idêntico** a varrer até ao
@@ -558,10 +589,25 @@ fn separate_com(
         //
         // ⚠️ A pergunta é *«mudou algum BIT?»* e não *«houve contacto?»*: uma nuvem assente
         // continua a ter contactos, e `corrigida` devolve `Some` com a posição inalterada.
-        if !aplica(p, saida, novas) {
-            break;
+        if andou == 0.0 {
+            return v + 1;
+        }
+        // ⭐⭐⭐ **E O REPOUSO VISÍVEL** (report do dono, 18/09: *«centenas a milhares de objectos
+        // em runtime»*). O ponto fixo ao bit quase nunca arma: com a rotação solta duas caixas
+        // acertam-se por um ULP **para sempre**, e a cena paga o tecto inteiro por movimento que
+        // ninguém vê.
+        //
+        // ⛔⛔ **Isto NÃO é o «aceita e mente» que o §18 recusou, e a distinção é a única coisa que
+        // separa as duas:** aquele era um tecto que aceita `4096` e entrega MENOS TRABALHO, com um
+        // resultado pior. Este pára quando **a RESPOSTA deixou de mudar** — medido, a contagem de
+        // pares sobrepostos é *idêntica* à de varrer até ao fim, e a posição de cada peça difere
+        // por menos de [`REPOUSO_VISIVEL`] da própria peça. *Um é cortar o trabalho; o outro é
+        // reconhecer que ele acabou.*
+        if andou < parado {
+            return v + 1;
         }
     }
+    varreduras
 }
 
 /// **A referência**: a mesma lei por todos-os-pares, na ordem do laço `i < j`. `O(n²)`.
@@ -594,26 +640,38 @@ pub fn separate_all_pairs(
                 }
             })
             .collect();
-        // ⚠️ A referência varre SEMPRE até ao fim: ela é o padrão contra o qual o atalho do
-        // ponto fixo se mede, e um atalho que também vivesse aqui não poderia ser medido.
-        let _ = aplica(p, saida, novas);
+        // ⚠️ A referência varre SEMPRE até ao fim: ela é o padrão contra o qual os dois atalhos se
+        // medem, e um atalho que também vivesse aqui não poderia ser medido.
+        let _ = aplica(p, saida, novas, 0.0);
     }
 }
 
-/// Escreve o que uma varredura produziu, e diz se ela **mexeu algum bit** — que é o que decide a
-/// saída antecipada do [`separate`]. ⚠️ Conservador de propósito: a comparação é do valor ESCRITO
-/// contra o que lá estava, logo um `NaN` nunca é lido como *«não mexeu»*.
-fn aplica(p: &mut [[f32; 2]], saida: &mut Saida<'_>, novas: Vec<Nova>) -> bool {
-    let mut mexeu = false;
+/// Escreve o que uma varredura produziu, e devolve **quanto o ponto que mais andou andou** — a
+/// grandeza que decide as duas saídas antecipadas do [`separate`].
+///
+/// ⚠️ **Inclui a ROTAÇÃO**, majorada: um giro de `g` graus leva um ponto a `alcance` do centro a
+/// andar `g·π/180·alcance`. Sem esse termo uma peça que só roda leria *«não se mexeu»*.
+///
+/// ⚠️ Conservador de propósito: devolve `f32::INFINITY` se algum valor escrito não for finito, para
+/// que um `NaN` nunca seja lido como *«nada mudou»*.
+fn aplica(p: &mut [[f32; 2]], saida: &mut Saida<'_>, novas: Vec<Nova>, alcance: f32) -> f32 {
+    const POR_GRAU: f32 = core::f32::consts::PI / 180.0;
+    let mut maior = 0.0_f32;
     for (k, nova) in novas.into_iter().enumerate() {
         if let Some((q, g)) = nova {
             let (antes_p, antes_g) = (p[k], saida.giro[k]);
             p[k] = q;
             saida.giro[k] += g;
-            mexeu |= p[k] != antes_p || saida.giro[k] != antes_g;
+            let andou = (p[k][0] - antes_p[0]).hypot(p[k][1] - antes_p[1])
+                + (saida.giro[k] - antes_g).abs() * POR_GRAU * alcance;
+            maior = if andou.is_finite() {
+                maior.max(andou)
+            } else {
+                f32::INFINITY
+            };
         }
     }
-    mexeu
+    maior
 }
 
 /// ⚠️ `pub(crate)` porque o [`impulso`] faz a MESMA pergunta — duplicá-la seria a 2.ª resposta a

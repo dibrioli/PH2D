@@ -606,9 +606,31 @@ fn a_box_resting_flat_on_another_does_not_turn() {
         &Pecas::novas(&c, &[0.0, 1.0], &inv),
         32,
     );
+    // ⚠️⚠️ **A BARRA MUDOU DE DONO, e a mudança é o preço do `REPOUSO_VISIVEL`** (report do dono de
+    // 18/09). Ela era `1e-6` — escrita quando o laço varria SEMPRE o tecto inteiro — e hoje o
+    // produto pára quando ninguém mais se mexe de forma visível, deixando um resíduo da ordem do
+    // limiar. ⇒ a barra é **DERIVADA da constante**, nunca um número novo: o resíduo tem de caber
+    // em poucos limiares, e um viés real (que não encolhe) estoura-a por ordens de grandeza.
+    let residuo = (convergida[1][1] - 0.9).abs();
+    let teto = 8.0 * REPOUSO_VISIVEL * c[1].expect("a caixa de cima tem colisor").alcance();
     assert!(
-        (convergida[1][1] - 0.9).abs() < 1e-6,
-        "a 32 varreduras o residuo desaparece: {convergida:?}"
+        residuo < teto,
+        "o residuo ({residuo:.3e}) tem de caber no repouso visivel ({teto:.3e}): {convergida:?}"
+    );
+    // ⭐ **E o CONTROLO do viés, no caminho que NUNCA pára cedo:** é a referência que prova que a
+    // lei assenta exactamente — sem esta metade, um viés sistemático esconder-se-ia atrás da barra
+    // nova.
+    let mut sem_atalho = vec![[0.0, 0.0], [0.0, 0.85]];
+    let mut g_ref = vec![0.0; 2];
+    separate_all_pairs(
+        &mut sem_atalho,
+        &mut Saida { giro: &mut g_ref },
+        &Pecas::novas(&c, &[0.0, 1.0], &inv),
+        256,
+    );
+    assert!(
+        (sem_atalho[1][1] - 0.9).abs() < 1e-6,
+        "sem atalho nenhum a caixa assenta EXACTAMENTE: {sem_atalho:?}"
     );
     assert!(g[1].abs() < 1e-3, "e o binario continua zero: {g:?}");
 }
@@ -1136,13 +1158,19 @@ fn o_atalho_do_ponto_fixo_nao_muda_um_bit() {
     const VARREDURAS: usize = 1024;
     let (mut atalho, mut sempre) = (p0.clone(), p0.clone());
     let (mut g_atalho, mut g_sempre) = (vec![0.0; p0.len()], vec![0.0; p0.len()]);
-    separate(
+    // ⚠️ **Com o repouso visível DESLIGADO (`0.0`)**: este gate afirma a lei do ponto fixo AO BIT,
+    // e ela é uma indução. A outra paragem — parar quando nada mais se VÊ — não é bit-idêntica de
+    // propósito e tem gate próprio (`parar_no_repouso_visivel_nao_muda_o_que_se_ve`). *Uma régua
+    // que só visse a soma das duas não podia afirmar nada sobre nenhuma.*
+    separate_com(
         &mut atalho,
         &mut Saida {
             giro: &mut g_atalho,
         },
         &pecas,
         VARREDURAS,
+        false,
+        0.0,
     );
     separate_all_pairs(
         &mut sempre,
@@ -1260,6 +1288,7 @@ fn o_paralelo_da_os_mesmos_bits_que_o_serie() {
         &pecas,
         16,
         false,
+        REPOUSO_VISIVEL,
     );
     separate_com(
         &mut paralelo,
@@ -1267,6 +1296,7 @@ fn o_paralelo_da_os_mesmos_bits_que_o_serie() {
         &pecas,
         16,
         true,
+        REPOUSO_VISIVEL,
     );
     // O CONTROLO: a nuvem mexeu-se de facto (senão isto compara dois nada).
     assert!(
@@ -1288,4 +1318,136 @@ fn o_paralelo_da_os_mesmos_bits_que_o_serie() {
             "a peca {i} divergiu entre o serie e o paralelo"
         );
     }
+}
+
+/// ⭐⭐⭐ **PARAR NO REPOUSO VISÍVEL NÃO MUDA O QUE SE VÊ** — a segunda paragem do [`separate`], e a
+/// que **não** é bit-idêntica de propósito (report do dono de 2026-09-18: *«centenas a milhares de
+/// objectos em runtime»*).
+///
+/// ⛔⛔ **A régua NÃO é a posição, é o que o artista vê:** quantos pares continuam **visivelmente**
+/// sobrepostos. Uma barra de posição sozinha ou seria tão apertada que proibiria a paragem, ou tão
+/// frouxa que deixaria passar uma cena por separar.
+///
+/// ⚠️ **E o CONTROLO é o que separa isto de «aceita e mente»:** a paragem tem de ter ARMADO (menos
+/// varreduras do que o tecto) — senão o gate estaria a comparar duas corridas completas e a
+/// aprovar-se a si mesmo.
+#[test]
+fn parar_no_repouso_visivel_nao_muda_o_que_se_ve() {
+    const TECTO: usize = 1024;
+    const VISIVEL: f32 = 0.02;
+    // ⚠️ **A fixtura é uma CENA e não uma PILHA, e foi o CONTROLO que a escolheu:** à densidade
+    // original a `nuvem` é um monte compacto que **nunca** chega ao repouso visível (gasta as 1024
+    // e o controlo reprova). Espalhada ao dobro ela assenta — que é a cena de que o report fala.
+    let (p0, c, w) = nuvem(300);
+    let p0: Vec<[f32; 2]> = p0.iter().map(|q| [q[0] * 2.0, q[1] * 2.0]).collect();
+    let inv = inercias(&c, &w);
+    let pecas = Pecas {
+        colisores: &c,
+        pesos: &w,
+        inv_inercia: &inv,
+        deslize: None,
+    };
+    let conta = |p: &[[f32; 2]]| {
+        let mut k = 0;
+        for i in 0..p.len() {
+            for j in (i + 1)..p.len() {
+                if let (Some(a), Some(b)) = (c[i].as_ref(), c[j].as_ref())
+                    && contato(a, p[i], b, p[j], false).is_some_and(|t| t.penetracao > VISIVEL)
+                {
+                    k += 1;
+                }
+            }
+        }
+        k
+    };
+    let (mut cedo, mut g_cedo) = (p0.clone(), vec![0.0; p0.len()]);
+    let usadas = separate(&mut cedo, &mut Saida { giro: &mut g_cedo }, &pecas, TECTO);
+    let (mut cheio, mut g_cheio) = (p0.clone(), vec![0.0; p0.len()]);
+    separate_com(
+        &mut cheio,
+        &mut Saida { giro: &mut g_cheio },
+        &pecas,
+        TECTO,
+        false,
+        0.0,
+    );
+    assert!(
+        usadas < TECTO,
+        "CONTROLO: a paragem tem de ter armado, senao este gate compara duas corridas iguais \
+         (usou {usadas} de {TECTO})"
+    );
+    assert_eq!(
+        conta(&cedo),
+        conta(&cheio),
+        "parar cedo mudou o que se VE': {} pares sobrepostos contra {} (usou {usadas} varreduras)",
+        conta(&cedo),
+        conta(&cheio)
+    );
+    let alcance = c
+        .iter()
+        .flatten()
+        .map(|x| x.alcance())
+        .fold(0.0f32, f32::max);
+    let desvio = (0..p0.len())
+        .map(|i| (cedo[i][0] - cheio[i][0]).hypot(cedo[i][1] - cheio[i][1]))
+        .fold(0.0f32, f32::max)
+        / alcance;
+    let desvio_giro = (0..p0.len())
+        .map(|i| (g_cedo[i] - g_cheio[i]).abs())
+        .fold(0.0f32, f32::max);
+    // ⚠️⚠️ **AS BARRAS SÃO ABSOLUTAS E MEDIDAS — e a 1.ª redacção derivava-as do
+    // `REPOUSO_VISIVEL`.** Isso é uma régua que não pode testar o que mede: uma mutação que sobe o
+    // limiar `1000×` sobe o desvio **e a barra** na mesma proporção, e o gate fica verde sobre uma
+    // paragem que já muda o desenho (medido: ela SOBREVIVEU). ⇒ os números vêm da corrida, com
+    // margem: nesta fixtura o produto lê `5,6e-5` da peça e `3,4e-3` graus, em `63` de `1024`
+    // varreduras.
+    assert!(
+        desvio < 1e-3,
+        "a cauda que a paragem deixou ({desvio:.3e} da peca) passou a ser visivel · {usadas} varreduras"
+    );
+    assert!(
+        desvio_giro < 0.05,
+        "a paragem deixou a peca a {desvio_giro:.3e} graus de onde ela assentaria"
+    );
+}
+
+/// ⭐⭐⭐ **UMA PEÇA QUE SÓ RODA NÃO É LIDA COMO PARADA** — a metade da paragem que nenhuma outra
+/// fixtura alcança.
+///
+/// ⚠️⚠️ **Ela existe por uma MUTAÇÃO SOBREVIVENTE:** tirar o termo da rotação de `aplica` passava
+/// todos os gates, porque nas cenas normais quem roda também **transladas** — e é a translação que
+/// mantém o laço vivo. *A régua só vê a rotação onde a translação é impossível.*
+///
+/// ⇒ a fixtura são duas caixas **travadas em translação** (`inv_mass = 0`) e **livres para rodar**
+/// (`inv_inertia > 0`), que é o que um cartão exprime. Sem o termo, `andou` lê `0` na primeira
+/// varredura, o atalho do ponto fixo arma, e as peças ficam **por rodar**.
+#[test]
+fn uma_peca_que_so_roda_nao_e_lida_como_parada() {
+    let c = vec![
+        Some(Colisor::caixa([0.8, 0.2], SEM_GIRO)),
+        Some(Colisor::caixa([0.8, 0.2], SEM_GIRO)),
+    ];
+    // Sobrepostas e DESCENTRADAS: o contacto tem braço, logo pede binário.
+    let p0 = vec![[0.0, 0.0], [0.9, 0.25]];
+    let pesos = vec![0.0, 0.0]; // travadas em translação
+    let inv_i = vec![1.0, 1.0]; // livres para rodar
+    let pecas = Pecas::novas(&c, &pesos, &inv_i);
+    let (mut p, mut g) = (p0.clone(), vec![0.0; 2]);
+    let usadas = separate(&mut p, &mut Saida { giro: &mut g }, &pecas, 512);
+    assert_eq!(
+        p, p0,
+        "a fixtura tem de ser SO' rotação: nada pode transladar"
+    );
+    // O CONTROLO: elas de facto rodaram — senão o gate não contém o fenómeno.
+    let rodou = g[0].abs().max(g[1].abs());
+    assert!(
+        rodou > 1.0,
+        "controlo: as caixas tinham de rodar de forma visivel, e rodaram {rodou:.3e} graus"
+    );
+    // E a lei: a paragem não pode ter armado na primeira varredura, que é o que acontece quando
+    // `aplica` não conta a rotação.
+    assert!(
+        usadas > 4,
+        "a paragem leu uma peca que SO' roda como parada: {usadas} varredura(s), {g:?} graus"
+    );
 }

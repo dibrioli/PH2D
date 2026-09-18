@@ -75,6 +75,9 @@ pub mod motion_colisor_duplicador_probe;
 #[cfg(test)]
 #[path = "motion_cozimento_cpu_probe.rs"]
 pub mod motion_cozimento_cpu_probe;
+/// O CUSTO DO QUADRO da cena do dono (Boids + Shape + colisão) — doc 115 §20.
+#[cfg(test)]
+pub mod motion_custo_do_quadro_probe;
 /// O PREÇO do mesmo grupo — irmão do acima pelo tecto de LOC, cortado por
 /// responsabilidade: retratos ali, relógio e dispositivo aqui.
 #[cfg(test)]

@@ -4887,6 +4887,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-hud",
  "ph2d-i18n",
+ "ph2d-input",
  "ph2d-inspector-ordering",
  "ph2d-label-census",
  "ph2d-node-registry",

@@ -553,10 +553,19 @@ impl crate::App {
         self.fase_new_image_modal();
         self.fase_script_gc();
         self.fase_surface_resize();
+        // ⚠️ **O relógio da SIMULAÇÃO** (`PH2D_FLUID_PROFILE`) — ver `frame_prof`. Ela corre
+        // `report.ticks` tiques, logo um quadro atrasado paga-a várias vezes.
+        let sim_t0 = std::time::Instant::now();
         let Some((report, tool_preview_bits)) = self.fase_frame_simulation(wall_dt, player_input)
         else {
             return;
         };
+        {
+            let us = sim_t0.elapsed().as_micros() as u64;
+            FRAME_PROF_SIM_SUM_US.with(|c| c.set(c.get() + us));
+            FRAME_PROF_SIM_MAX_US.with(|c| c.set(c.get().max(us)));
+            FRAME_PROF_SIM_N.with(|c| c.set(c.get() + 1));
+        }
         let Some(fase_frame_open::FrameCanvas {
             r,
             g,

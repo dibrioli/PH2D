@@ -366,7 +366,15 @@ impl crate::App {
             vec_px_to_world,
             vec_xf_ops,
         )?;
+        // ⚠️ **O relógio da fase do MOTION** (`PH2D_FLUID_PROFILE`) — ver `frame_prof`.
+        let motion_t0 = std::time::Instant::now();
         self.fase_motion_bridge(vec_xf_ops);
+        {
+            let us = motion_t0.elapsed().as_micros() as u64;
+            FRAME_PROF_MOTION_SUM_US.with(|c| c.set(c.get() + us));
+            FRAME_PROF_MOTION_MAX_US.with(|c| c.set(c.get().max(us)));
+            FRAME_PROF_MOTION_N.with(|c| c.set(c.get() + 1));
+        }
         // ⚠️ **LOGO A SEGUIR AO COOK, e isso e' a lei** — os retratos do colisor e do warp
         // leem `pump.tap_streams()`, que o `fase_motion_bridge` acabou de encher.
         self.fase_motion_gizmos(view.window_size);

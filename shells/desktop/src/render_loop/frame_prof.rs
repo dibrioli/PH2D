@@ -45,6 +45,21 @@ thread_local! {
     pub(super) static FRAME_PROF_TICK_SUM_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     pub(super) static FRAME_PROF_TICK_MAX_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     pub(super) static FRAME_PROF_TICK_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    /// ⭐⭐⭐ **A FASE DO MOTION e a da SIMULAÇÃO** — as duas que escalam com a POPULAÇÃO da cena
+    /// (report do dono, 2026-09-18: *«1000 = 40 fps»*, com `cpu-encode = 22,85 ms` e a placa em
+    /// `1,58`).
+    ///
+    /// ⚠️ **Sem elas a linha `[frame]` diz que o tecto é a CPU e não diz DE QUÊ** — e as duas curas
+    /// possíveis (o cozimento do grafo, ou os tiques da simulação sobre mil entidades) moram em
+    /// módulos diferentes. *Um total sem partição manda procurar no sítio errado.*
+    ///
+    /// Acumulam sobre a janela, como o `tick` e o `stamp`.
+    pub(super) static FRAME_PROF_MOTION_SUM_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    pub(super) static FRAME_PROF_MOTION_MAX_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    pub(super) static FRAME_PROF_MOTION_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    pub(super) static FRAME_PROF_SIM_SUM_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    pub(super) static FRAME_PROF_SIM_MAX_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    pub(super) static FRAME_PROF_SIM_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     /// Idem para o carimbo de dabs (`stamps`), que é o outro inquilino intermitente do frame.
     pub(super) static FRAME_PROF_STAMP_SUM_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     pub(super) static FRAME_PROF_STAMP_MAX_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };

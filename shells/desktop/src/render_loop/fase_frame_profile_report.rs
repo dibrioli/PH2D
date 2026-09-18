@@ -8,6 +8,33 @@
 
 use super::*;
 
+/// **A JANELA de um balde do perfilador: `(média sobre os quadros que trabalharam, pico, n)`** — e
+/// a leitura ZERA-O, logo há exactamente um leitor (a lei do `wash_diag`).
+///
+/// ⚠️ **A JANELA, não a amostra.** A linha `[frame]` sai a cada 120 quadros e lia o valor do quadro
+/// SORTEADO — e um traço inteiro cabe entre duas impressões, então `tool-tick` e `stamps` liam
+/// **`0,00` por construção** enquanto o artista pintava.
+///
+/// ⚠️ Ela vive **fora** do corpo do relatório porque não captura nada — e foi o tecto de LOC da
+/// função que o tornou visível (a partição nova do `cpu-encode` levou-a a `213` de `200`).
+fn janela(
+    sum: &'static std::thread::LocalKey<std::cell::Cell<u64>>,
+    mx: &'static std::thread::LocalKey<std::cell::Cell<u64>>,
+    n: &'static std::thread::LocalKey<std::cell::Cell<u32>>,
+) -> (f64, f64, u32) {
+    let (s, m, k) = (
+        sum.with(std::cell::Cell::take),
+        mx.with(std::cell::Cell::take),
+        n.with(std::cell::Cell::take),
+    );
+    let avg = if k > 0 {
+        s as f64 / f64::from(k) / 1000.0
+    } else {
+        0.0
+    };
+    (avg, m as f64 / 1000.0, k)
+}
+
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_frame_profile_report(&mut self) {
@@ -32,28 +59,30 @@ impl crate::App {
         // ⚠️ A JANELA, não a amostra: `média sobre os frames que trabalharam / pico / n`.
         // Ler um frame sorteado fazia um traço inteiro caber entre duas impressões e as
         // duas fases intermitentes lerem 0,00 enquanto o artista pintava.
-        let take = |sum: &'static std::thread::LocalKey<std::cell::Cell<u64>>,
-                    mx: &'static std::thread::LocalKey<std::cell::Cell<u64>>,
-                    n: &'static std::thread::LocalKey<std::cell::Cell<u32>>|
-         -> (f64, f64, u32) {
-            let (s, m, k) = (
-                sum.with(std::cell::Cell::take),
-                mx.with(std::cell::Cell::take),
-                n.with(std::cell::Cell::take),
-            );
-            let avg = if k > 0 {
-                s as f64 / f64::from(k) / 1000.0
-            } else {
-                0.0
-            };
-            (avg, m as f64 / 1000.0, k)
-        };
-        let (tick_avg, tick_max, tick_n) = take(
+        // ⭐⭐⭐ **A PARTIÇÃO DO `cpu-encode`** (report do dono, 2026-09-18): ele lia `22,85 ms` com a
+        // placa em `1,58` e o `acquire` em `0,03` — *o tecto é a CPU e a linha não dizia de quê*.
+        // Estas duas fases são as que escalam com a POPULAÇÃO da cena, e as curas delas moram em
+        // módulos diferentes.
+        let (motion_avg, motion_max, motion_n) = janela(
+            &FRAME_PROF_MOTION_SUM_US,
+            &FRAME_PROF_MOTION_MAX_US,
+            &FRAME_PROF_MOTION_N,
+        );
+        // ⚠️⚠️ **`tiques_*` e não `sim_*`: o bloco da ÁGUA já usa `sim_avg`/`sim_max`/`sim_n`**, e a
+        // 1.ª redacção destes três ficou SOMBREADA por ele — a linha nova imprimiria os números da
+        // água com a etiqueta da simulação. *Um instrumento que mente é pior que instrumento
+        // nenhum*, e quem o apanhou foi o aviso de variável não usada.
+        let (tiques_avg, tiques_max, tiques_n) = janela(
+            &FRAME_PROF_SIM_SUM_US,
+            &FRAME_PROF_SIM_MAX_US,
+            &FRAME_PROF_SIM_N,
+        );
+        let (tick_avg, tick_max, tick_n) = janela(
             &FRAME_PROF_TICK_SUM_US,
             &FRAME_PROF_TICK_MAX_US,
             &FRAME_PROF_TICK_N,
         );
-        let (stamp_avg, stamp_max, stamp_n) = take(
+        let (stamp_avg, stamp_max, stamp_n) = janela(
             &FRAME_PROF_STAMP_SUM_US,
             &FRAME_PROF_STAMP_MAX_US,
             &FRAME_PROF_STAMP_N,
@@ -162,6 +191,8 @@ impl crate::App {
                      | acquire(medido)={acq_ms:.2}ms | fora-do-encode={outside_ms:.2}ms \
                      | painter-dispatch(cpu)={dispatch_ms:.2}ms \
                      ({prev_mpx:.2} M px publicados em {prev_n} quadros) | hero-paint={hero_ms:.2}ms\n\
+                     [frame]   MOTION (cozer + separar): media {motion_avg:.2}ms pico {motion_max:.2}ms em {motion_n}/120 \
+                     | SIMULACAO (os tiques): media {tiques_avg:.2}ms pico {tiques_max:.2}ms em {tiques_n}/120\n\
                      [frame]   tool-tick: media {tick_avg:.2}ms pico {tick_max:.2}ms em {tick_n}/120 frames \
                      | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120 \
                      ({stamp_ev} entregas, {stamp_per:.2}ms cada)\n\

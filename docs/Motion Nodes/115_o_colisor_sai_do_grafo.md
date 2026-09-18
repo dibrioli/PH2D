@@ -143,7 +143,7 @@ decide se ele é do dispositivo ou da CPU.
 | ~~W0~~ | ✅ **FECHADA** (§3): as duas moradas são indistinguíveis acima de 16 iterações ⇒ o passe corre no FIM | — |
 | ~~W1~~ | ✅ **FECHADA** (§7): não era estreitar a cerca — era escrever a que FALTA, para a rota dos externos | §1.4 |
 | ~~W2~~ | ✅ **FECHADA por RECUSA MEDIDA** (§9): a `500` objectos a separação custa `12,4 %` de um quadro a 8 varreduras — o dispositivo não é preciso à população do dono | W1 |
-| **W3** | ⏳ **medida** (§10): a forma **deriva-se** do `size`+`rot` que já viajam ⇒ zero dependência nova, zero conversão, zero cápsula. Falta a decisão do §10.4 | §1.1 |
+| **W3** | ✅ **decidida** (§10 + §11): a forma **deriva-se** do `size`+`rot`, os objectos declaram-na SEMPRE, e o interruptor arma o PASSE. Falta escrever. | §1.1 |
 | **W4** | Sprite · vector · Flip nascem com `Collider`, e o `Collide` do Inspector arma | W3 |
 | **W5** | o passe automático **no fim do cozimento** — a morada que a W0 escolheu | W1 · W3 |
 | **W6** | `motion.collide` sai do catálogo; as 4 cenas passam pelo caminho novo | W5 |
@@ -387,3 +387,57 @@ Escolher entre *«interruptor por objecto, no Inspector»* (`PROJECT_SCHEMA` +1 
 é de outra linha) e *«a forma é sempre declarada, o passe é que se arma»* é **decisão de produto**,
 e as duas leituras cabem na frase do dono. A medição está toda feita e escrita acima; a wave
 seguinte começa por ela.
+
+---
+
+## §11 — ✅ O NÚMERO do §10.4, MEDIDO numa máquina calma: a decisão está fechada
+
+> **Corrido a `load 0,50`–`5,58`**, com 83 % de CPU ociosa e zero outras árvores a trabalhar — a
+> primeira janela calma desta jornada. A sonda é
+> [`motion_cozimento_cpu_probe`](../../crates/ph2d-app-motion/src/motion_cozimento_cpu_probe.rs).
+
+### §11.1 — O que um cozimento de centenas de objectos custa na CPU
+
+Uma grelha de `n` pontos com um duplicador a estampar em cada um — o **documento inteiro**, que é o
+que a cerca da W1 derruba:
+
+| pedidos | peças | cena PARADA | algo MUDOU | % de um quadro |
+|---|---|---|---|---|
+| 100 | 100 | 0,000 ms | **0,001 ms** | 0,01 % |
+| 250 | 256 | 0,000 ms | **0,002 ms** | 0,01 % |
+| **500** | 529 | 0,000 ms | **0,003 ms** | **0,02 %** |
+| 1000 | 1024 | 0,000 ms | 0,005 ms | 0,03 % |
+| 5000 | 5041 | 0,000 ms | 0,019 ms | 0,11 % |
+
+⇒ **a `500` objectos o cozimento inteiro na CPU custa `0,02 %` de um quadro** — cinco mil vezes de
+folga. *A cerca a disparar é inofensiva à população que o dono nomeou.*
+
+⭐ **E a extrapolação do §10.3 fica confirmada e era PESSIMISTA por `8×`** (previa `0,023 ms` a 500,
+medido `0,003`). *Ela estava declarada como extrapolação e a medição deu-lhe razão na direcção
+segura* — que é como uma estimativa honesta deve errar.
+
+### §11.2 — ⛔⛔⛔ E TRÊS mentiras do arnês antes de o número aparecer
+
+| # | o que a sonda lia | a causa |
+|---|---|---|
+| 1 | `0,000 ms` em **tudo**, teste a acabar em `0,00 s` | o `set_param(grade, "count", …)` — o `motion.grid` tem **`rows`/`cols`**, e *um `set_param` com um nome que o nó não tem NÃO falha*; e o fio ia à porta `0` do duplicador, que é a **forma** e não os pontos ⇒ o documento estava vazio |
+| 2 | `0,001 ms` **PLANO** de `100` a `5 041` peças | **o memo**. O documento é `Effect::Pure`: com nada a mudar o cozedor devolve o guardado, e o relógio media a consulta ao cache |
+| 3 | — | a leitura do resultado (`cook` devolve `&[CookValue]`, não um `Stream`) não compilava — a única das três que falhou ALTO |
+
+⚠️⚠️ **A cura da nº 1 é o PISO DE POPULAÇÃO**, e ele estava em falta desde a 1.ª linha: a sonda
+passa a afirmar quantas peças o documento emitiu, e *um custo que não cresce com a população não é
+um custo*. A nº 2 ensinou a segunda metade: **as duas colunas são cenas diferentes** — parada (o
+que o app paga quando ninguém toca em nada) e a mexer (o que um arrasto custa), e a decisão precisa
+da segunda.
+
+### §11.3 — ⇒ A DECISÃO do §10.4, fechada
+
+**Os objectos trazem SEMPRE a forma; o interruptor arma o PASSE.**
+
+- é a frase do dono à letra — *«criados com seus próprios colliders»*;
+- não mexe no `PROJECT_SCHEMA` nem na superfície de outra linha;
+- e o preço de a cerca disparar está medido em **`0,02 %` de um quadro** à população dele.
+
+⚠️ **O que a medição NÃO cobre, nomeado:** este documento é uma grelha mais um duplicador, o mais
+simples que produz a população certa. Uma cena real tem mais nós — mas com `5 000×` de folga, a
+ordem de grandeza decide.

@@ -71,6 +71,10 @@ pub use motion_param_rows::*;
 /// ⭐ O COLISOR DECLARADO contra os DUPLICADORES — a ordem do dono de 2026-09-17 (doc 114 §12).
 #[cfg(test)]
 pub mod motion_colisor_duplicador_probe;
+/// ⭐ O que um COZIMENTO de centenas de objectos custa na CPU (doc 115 §10.4) — medição, não gate.
+#[cfg(test)]
+#[path = "motion_cozimento_cpu_probe.rs"]
+pub mod motion_cozimento_cpu_probe;
 /// O PREÇO do mesmo grupo — irmão do acima pelo tecto de LOC, cortado por
 /// responsabilidade: retratos ali, relógio e dispositivo aqui.
 #[cfg(test)]

@@ -3,8 +3,7 @@
 //! um EXTERNO que traz a forma do objecto (doc 115 W1, [`super::cook_publishes_collider`]).
 
 use super::{
-    GpuOutcome, RECUSA_COLISOR, RECUSA_COLISOR_EXTERNO, cook_gpu, cook_publishes_collider,
-    graph_declares_collider,
+    GpuOutcome, RECUSA_COLISOR, cook_gpu, cook_publishes_collider, graph_declares_collider,
 };
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::attr::{

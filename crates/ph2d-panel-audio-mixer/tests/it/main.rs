@@ -7,5 +7,6 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod every_word_this_panel_shows_comes_from_the_string_table;
+mod nenhum_nome_de_barra_corta_na_coluna;
 mod seam;
 mod the_mixer_asks_the_store_how_its_widgets_look;

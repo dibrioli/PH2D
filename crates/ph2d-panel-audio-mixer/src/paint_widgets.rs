@@ -24,7 +24,69 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{Color as VelloColor, VectorScene};
 
-const FX_LABEL_W: f32 = 32.0; // LITERAL-PX-OK: master-fx label column width (chrome)
+/// ⭐⭐⭐ **OS RÓTULOS DAS BARRAS DO MASTER — a POPULAÇÃO de que a coluna deriva.**
+///
+/// ⚠️ Ela é a fonte de [`coluna_dos_nomes`] e do gate `nenhum_nome_de_barra_corta_na_coluna`:
+/// declarar a lista aqui é o que faz uma barra NOVA entrar na medição sem ninguém se lembrar
+/// dela — *uma coluna medida sobre uma lista escrita noutro sítio mede o passado*.
+pub const FX_ROW_KEYS: &[&str] = &[
+    "panel.audio_mixer.master.low",
+    "panel.audio_mixer.master.mid",
+    "panel.audio_mixer.master.high",
+    "panel.audio_mixer.master.size",
+    "panel.audio_mixer.master.depth",
+    "panel.audio_mixer.master.time",
+    "panel.audio_mixer.master.fbk",
+    "panel.audio_mixer.master.return",
+    "panel.audio_mixer.bus.music",
+    "panel.audio_mixer.bus.sfx",
+    "panel.audio_mixer.bus.ui",
+    "panel.audio_mixer.bus.voice",
+];
+
+/// O PISO da coluna dos nomes — o que ela mediu durante toda a vida deste painel.
+///
+/// ⛔ Ele fica para a coluna nunca ENCOLHER onde os nomes são curtos: sem piso, uma secção só de
+/// `Low`/`Mid`/`High` puxaria as barras para a esquerda e o bloco deixaria de estar alinhado.
+const FX_LABEL_MIN_W: f32 = 32.0; // LITERAL-PX-OK: a coluna que este painel sempre teve
+
+/// ⭐⭐⭐ **A COLUNA DOS NOMES, MEDIDA — e não um literal.**
+///
+/// ⛔⛔ **Medido em 2026-09-18, e o defeito já shipava EM INGLÊS:** com a coluna cravada em
+/// `32,0 px`, o `Depth` mede `32,3` e o `Return` `35,9` — *dois nomes cortados na língua em que o
+/// app shipa*. No idioma de teste cortam **cinco de oito** (`Return` chega a `55,1`). A foto do
+/// dono de 18/09 mostrava a fileira inteira em `[…]`.
+///
+/// ⚠️ **O TECTO é metade da linha, e ele NÃO morde hoje** (medido): o nome mais largo do idioma de
+/// teste pede `55,1 px` e metade da linha mais estreita que o dock permite são `~98`. Ele existe
+/// porque *acima de metade o artista lê mais do que arrasta*, e fica com a medição ao lado para
+/// quem um dia o vir morder saber que é a lei e não um acidente.
+pub fn coluna_dos_nomes(text_system: &mut TextSystem, content_w: f32) -> f32 {
+    coluna_dos_nomes_em(ph2d_i18n::idioma(), text_system, content_w)
+}
+
+/// ⭐⭐ **A LEI, com o idioma DADO** — e a [`coluna_dos_nomes`] é o acessório que lhe passa o do
+/// ambiente, à maneira do par [`ph2d_i18n::tr`]/[`ph2d_i18n::tr_em`].
+///
+/// ⛔⛔ **Ela existe porque o gate dela nasceu VÁCUO sem ela** (2026-09-18): o `tr` lê o idioma de
+/// um `OnceLock` sobre o ambiente do PROCESSO, que numa suíte está sempre em inglês — logo uma
+/// régua que medisse o texto deformado contra uma coluna calculada em inglês acusava o produto
+/// CERTO. *A coluna de uma língua mede os nomes DESSA língua*, e é isso que o app faz em
+/// execução; sem esta porta, o gate não consegue dizê-lo.
+#[must_use]
+pub fn coluna_dos_nomes_em(
+    idioma: ph2d_i18n::Idioma,
+    text_system: &mut TextSystem,
+    content_w: f32,
+) -> f32 {
+    let fonte = TypeToken::Xs.px();
+    let mais_largo = FX_ROW_KEYS
+        .iter()
+        .map(|k| text_system.prefix_width(ph2d_i18n::tr_em(idioma, k), fonte))
+        .fold(0.0_f32, f32::max);
+    let tecto = (content_w * 0.5).max(FX_LABEL_MIN_W);
+    mais_largo.clamp(FX_LABEL_MIN_W, tecto) // CLAMP-OK: o tecto é forçado acima do piso na linha de cima
+}
 
 /// Paint a small left label + a full-width horizontal Slider on one row (the
 /// master-fx parameter rows: EQ, reverb Size/Return, sends, ducking Depth).
@@ -32,6 +94,7 @@ const FX_LABEL_W: f32 = 32.0; // LITERAL-PX-OK: master-fx label column width (ch
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_labeled_slider(
     y: f32,
+    col_w: f32,
     label: &str,
     id: NodeId,
     value: f32,
@@ -43,7 +106,7 @@ pub(crate) fn paint_labeled_slider(
     store: &WidgetStore,
     hit_index: &mut HitIndex,
 ) -> f32 {
-    let label_rect = Rect::new(content_x, y, FX_LABEL_W, Spacing::Md.px());
+    let label_rect = Rect::new(content_x, y, col_w, Spacing::Md.px());
     paint_text_centered(
         text_system,
         scene,
@@ -52,8 +115,8 @@ pub(crate) fn paint_labeled_slider(
         TypeToken::Xs.px(),
         resolve(ColorToken::Text2, theme),
     );
-    let slider_x = content_x + FX_LABEL_W + Spacing::Sm.px();
-    let slider_w = (content_w - FX_LABEL_W - Spacing::Sm.px()).max(1.0);
+    let slider_x = content_x + col_w + Spacing::Sm.px();
+    let slider_w = (content_w - col_w - Spacing::Sm.px()).max(1.0);
     // ⚠️ A altura da PISTA tem nome desde a wave 19: escrita em linha, ela reaparecia na cauda
     //    (`y + Spacing::Md.px() + …`) e lia-se como um segundo vão — o censo da cauda acusou-a.
     let track_h = Spacing::Md.px();

@@ -16,7 +16,9 @@ mod event;
 mod fader;
 mod paint;
 mod paint_master;
-mod paint_widgets;
+/// ⭐ **Público para o gate da COLUNA a poder LER** (e não copiar) a população dos rótulos e a lei
+/// que os mede — a mesma razão pela qual o Inspector expõe as letras do 9-slice.
+pub mod paint_widgets;
 mod populate;
 pub mod state;
 

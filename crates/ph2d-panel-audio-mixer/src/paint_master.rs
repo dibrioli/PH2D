@@ -37,6 +37,11 @@ struct Ctx<'a> {
     /// Content left edge + width (the panel's padded inner column).
     x: f32,
     w: f32,
+    /// ⭐ **A coluna dos nomes das barras, MEDIDA uma vez** — ver
+    /// [`crate::paint_widgets::coluna_dos_nomes`]. Ela vive aqui e não em cada secção porque o
+    /// bloco de efeitos do master lê-se como UMA pilha: *as labels alinhadas todas à direita*
+    /// (ordem do dono) pára de ser verdade no dia em que cada secção medir a sua.
+    col: f32,
 }
 
 /// The master-section footer below the strips, top-down: Play Test · loudness ·
@@ -53,6 +58,9 @@ pub(crate) fn paint_master_section(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) -> f32 {
+    // ⚠️ A coluna mede-se ANTES do `Ctx` nascer: ela precisa do sistema de texto, e o `Ctx`
+    //    toma-o emprestado por inteiro.
+    let col = crate::paint_widgets::coluna_dos_nomes(text_system, content_w);
     let mut ctx = Ctx {
         scene,
         text_system,
@@ -61,6 +69,7 @@ pub(crate) fn paint_master_section(
         theme,
         x: content_x,
         w: content_w,
+        col,
     };
     let mut y = y0;
     y = paint_play_test(&mut ctx, y);
@@ -98,6 +107,7 @@ fn toggle_row(ctx: &mut Ctx, y: f32, label: &str, active: bool, id: NodeId) -> f
 fn slider_row(ctx: &mut Ctx, y: f32, label: &str, id: NodeId, value: f32) -> f32 {
     paint_labeled_slider(
         y,
+        ctx.col,
         label,
         id,
         value,

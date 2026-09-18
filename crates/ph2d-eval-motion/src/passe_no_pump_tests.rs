@@ -295,3 +295,39 @@ fn uma_tomada_que_nao_e_sink_nunca_e_separada() {
          `collide` armado — senao a geometria da propria forma sai separada"
     );
 }
+
+/// ⭐⭐⭐ **UM QUADRO SEPARA UMA VEZ** — o report do dono de 2026-09-18 (*«com 1024 FPS cai para 7,
+/// usando Boids»*).
+///
+/// O gizmo do colisor pede o **próprio sink** como tomada (`collider_gizmo::taps_for`), e a rota da
+/// tomada cozinhava-o outra vez. ⚠️ **O 2.º cozimento é barato** — bate no memo —, mas o passe do
+/// fim **não é memoizado**: a `1024` varreduras ele era metade do quadro, pago duas vezes.
+///
+/// ⚠️⚠️ **Nenhuma régua de VALOR podia ver isto:** as duas passagens produzem a mesma corrente, ao
+/// bit. Por isso a régua é a CONTA, e é por isso que a porta carrega um contador de teste.
+#[test]
+fn um_quadro_separa_uma_vez_mesmo_com_o_sink_tapado() {
+    let mut g = Graph::new();
+    let sink = g.add_node(SRC_MAN.name);
+    g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
+    g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, 32.0);
+    let mut pump = MotionCookPump::new();
+    // ⚠️ A tomada que o gizmo do colisor de facto pede é o **próprio sink** — ver
+    // `collider_gizmo::taps_for`. É essa a fixtura, e não uma tomada num nó do meio.
+    pump.set_taps(&[sink]);
+    super::sink_style::PASSAGENS.with(|c| c.set(0));
+    assert!(pump.pump(&g, &Ops, &[sink], 0, 0.0, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0]));
+    assert_eq!(
+        super::sink_style::PASSAGENS.with(core::cell::Cell::get),
+        1,
+        "o quadro separou mais de uma vez: a rota do DESENHO e a da TOMADA estao a pagar a mesma \
+         conta duas vezes (doc 115 §19)"
+    );
+    // ⭐ **CONTROLO: a tomada continua a ver o SEPARADO.** Sem esta metade, apagar a publicação e
+    // nunca cozinhar a tomada passaria — o gate mediria a economia e nunca o produto.
+    let (desenho, tomada) = desenhado_e_tomada(Some(32.0));
+    assert_eq!(
+        tomada, desenho,
+        "a tomada deixou de ver o que o sink desenha"
+    );
+}

@@ -43,7 +43,27 @@ where
     T: Send,
     F: Fn(usize) -> T + Sync + Send,
 {
-    if n >= PAR_THRESHOLD {
+    par_build_if(n >= PAR_THRESHOLD, n, f)
+}
+
+/// Como o [`par_build`], mas **quem decide é o chamador**.
+///
+/// ⚠️ **Porque ela existe** (report do dono, 2026-09-18): o [`PAR_THRESHOLD`] é o ponto de
+/// equilíbrio de um nó que corre **UMA** passagem por quadro com um corpo por-elemento pequeno.
+/// Um consumidor cujo corpo por-elemento é caro — a separação de contactos varre o vizinhado e faz
+/// SAT por par —, e que repete a passagem `varreduras` vezes, tem outro ponto de equilíbrio: a
+/// `500` peças ele fica **em série num núcleo** enquanto os outros 31 esperam.
+///
+/// ⇒ o limiar de cada consumidor é MEDIDO por ele; o que esta porta oferece é a mesma costura
+/// auditada de rayon, sem uma segunda no repo. ⭐ A garantia mantém-se: o `collect` indexado
+/// preserva a ordem e um `map` puro não tem redução de vírgula flutuante a reordenar, logo os dois
+/// lados são **bit-idênticos** (gate: `par_build_is_bit_identical_to_serial_both_sides_of_the_threshold`).
+pub fn par_build_if<T, F>(paralelo: bool, n: usize, f: F) -> Vec<T>
+where
+    T: Send,
+    F: Fn(usize) -> T + Sync + Send,
+{
+    if paralelo {
         (0..n).into_par_iter().map(f).collect()
     } else {
         (0..n).map(f).collect()

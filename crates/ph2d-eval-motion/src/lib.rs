@@ -318,6 +318,16 @@ impl MotionCookPump {
             } => {
                 self.instances.clear();
                 self.vector_instances.clear();
+                // ⭐⭐⭐ **LIMPA AQUI, e não à porta do laço das tomadas** (report do dono, 18/09:
+                // *«com 1024 FPS cai para 7»*). O gizmo do colisor pede o PRÓPRIO sink como tomada
+                // (`collider_gizmo::taps_for`), logo o sink estava a ser separado **DUAS VEZES por
+                // quadro**: uma para desenhar e outra para a tomada. ⚠️ O 2.º cozimento é barato
+                // (bate no memo, como o comentário do laço das tomadas explica) — o passe do fim
+                // **não é memoizado**, e a `1024` varreduras ele era metade do quadro.
+                //
+                // ⇒ quem desenha PUBLICA o que separou, e o laço das tomadas salta-o pela cerca de
+                // duplicado que ele já tinha. A corrente é a mesma; o que desaparece é a 2.ª conta.
+                self.tap_streams.clear();
                 for &sink in sinks {
                     // A sink that fails to cook (an unknown type mid-edit, or a
                     // sequential node caught inside a remapped time scope)
@@ -340,6 +350,10 @@ impl MotionCookPump {
                                 // que é o que mantém toda cena de hoje byte-idêntica.
                                 let separado = o_que_o_sink_desenha(graph, sink, cozido);
                                 let stream = separado.as_ref().unwrap_or(cozido);
+                                // A tomada deste sink, se alguém a pediu — ver o `clear` acima.
+                                if self.taps.contains(&sink) {
+                                    self.tap_streams.push((sink, stream.clone()));
+                                }
                                 // The SAME cooked stream feeds both sides of the
                                 // `geometry_id` convention (ADR-0154): textured-quad
                                 // rows lower to `instances`, vector-shape rows to
@@ -385,6 +399,10 @@ impl MotionCookPump {
                 // frame, outside here. So a shared sequential prefix is simulated
                 // once, not once per boundary (gated: the eval COUNT, not a timer).
                 self.boundary_streams.clear();
+                // ⚠️ E as TOMADAS, que nesta rota não têm quem as publique — sem isto as tomadas
+                // do quadro ANTERIOR sobreviveriam a um quadro híbrido. (A rota dos sinks limpa-as
+                // ela própria, porque é ela quem publica o que desenhou.)
+                self.tap_streams.clear();
                 for &node in nodes {
                     // `plan.boundaries` pushes per PORT, so one CPU node feeding two
                     // staged nodes is named twice. Hand it over once: the GPU keys
@@ -412,51 +430,7 @@ impl MotionCookPump {
                 }
             }
         }
-        // **As TOMADAS, depois do alvo e no MESMO playhead — para os DOIS alvos.**
-        //
-        // ⚠️ Elas ficavam dentro do braço `Sinks`, e o preço foi medido no produto: a rota
-        // HÍBRIDA marcha por `Boundaries`, então um documento com `pulse.signal` cozinhava,
-        // desenhava e **não gritava nada** — com a suíte verde, porque todo gate dirigia a
-        // porta de sinks. A tomada é do pump; ela cavalga a marcha que houver.
-        //
-        // Cozinhar aqui bate no MEMO de tudo o que a tomada compartilha com o alvo (o mesmo
-        // argumento que o braço `Boundaries` acima explica): o `Fingerprint` carrega o tique,
-        // e o tique só anda no `advance_tick_scoped`, que a marcha chama uma vez.
-        // ⛔⛔⛔ **E uma tomada NUM SINK tem de ver o que o sink DESENHA, não o que ele cozinhou**
-        // (doc 115 §16, report do dono com foto): o passe do fim reescreve o `P`, e uma tomada que
-        // guarde a corrente CRUA entrega ao gizmo do colisor as posições de ANTES da separação.
-        // *As formas saíam certas e o contorno azul ficava onde elas estavam* — duas respostas à
-        // mesma pergunta, e o artista vê as duas ao mesmo tempo.
-        //
-        // ⚠️ **Só para quem é SINK neste quadro**, e o discriminador não pode ser o param: a
-        // `source.shape` declara um `collide` com o MESMO nome do interruptor do sink (o botão
-        // dela), logo perguntar o param à cega separaria a corrente da própria forma.
-        let sinks_do_quadro: &[NodeId] = match *target {
-            CookTarget::Sinks { sinks, .. } => sinks,
-            CookTarget::Boundaries(_) => &[],
-        };
-        self.tap_streams.clear();
-        for i in 0..self.taps.len() {
-            let node = self.taps[i];
-            if self.tap_streams.iter().any(|(n, _)| *n == node) {
-                continue;
-            }
-            // Uma tomada que falha ao cozinhar simplesmente NÃO APARECE — o chamador lê uma
-            // lista mais curta, nunca um stream errado (a política do `boundary_streams`).
-            if let Ok(outputs) = self
-                .cook
-                .cook_scoped_fanned(graph, ops, node, playhead, scopes, &self.fans)
-                && let Some(v) = outputs.first()
-            {
-                let cozido = v.as_stream();
-                let desenhado = sinks_do_quadro
-                    .contains(&node)
-                    .then(|| o_que_o_sink_desenha(graph, node, cozido))
-                    .flatten();
-                self.tap_streams
-                    .push((node, desenhado.unwrap_or_else(|| cozido.clone())));
-            }
-        }
+        self.cozinha_as_tomadas(graph, ops, target, playhead, scopes);
     }
 
     /// Scrub to `target_tick`: render the exact simulation state of that frame

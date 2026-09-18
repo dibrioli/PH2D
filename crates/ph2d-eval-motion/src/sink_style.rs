@@ -201,7 +201,30 @@ pub fn o_que_o_sink_desenha(
     sink: NodeId,
     cozido: &ph2d_nodegraph::attr::Stream,
 ) -> Option<ph2d_nodegraph::attr::Stream> {
+    #[cfg(test)]
+    PASSAGENS.with(|c| c.set(c.get() + 1));
     ph2d_contact::passe::separa_o_que_se_desenha(cozido, sink_collide_sweeps(graph, sink))
+}
+
+#[cfg(test)]
+thread_local! {
+    /// ⭐⭐⭐ **Quantas vezes esta porta correu** — o instrumento do report de 2026-09-18 (*«com 1024
+    /// FPS cai para 7»*).
+    ///
+    /// ⚠️⚠️ **Ele existe porque a duplicação era INVISÍVEL a toda régua de valor.** O gizmo do colisor
+    /// pede o próprio sink como tomada, e a tomada cozinhava-o outra vez; o 2.º cozimento bate no memo,
+    /// mas o passe do fim **não é memoizado** e corria duas vezes. As duas passagens entregam a MESMA
+    /// corrente — *logo nenhum gate de igualdade, de bits ou de pixel podia vê-las*, e o que sobra para
+    /// observar é a CONTA.
+    ///
+    /// ⛔ `#[cfg(test)]`: o produto não paga um contador por quadro para se medir a si próprio.
+    ///
+    /// ⚠️⚠️ **E ele é POR THREAD, não global — a 1.ª redacção era um átomo e o gate REPROVOU na suíte
+    /// enquanto passava sozinho.** Os testes correm em paralelo e há mais de um a cozinhar um sink com
+    /// o passe armado: o contador partilhado somava as passagens de TODOS eles. *Um censo que partilha
+    /// estado com os vizinhos mede os vizinhos* — e a cura é a régua ser do sítio onde a pergunta é
+    /// feita, que aqui é a thread do teste.
+    pub(crate) static PASSAGENS: core::cell::Cell<usize> = const { core::cell::Cell::new(0) };
 }
 
 #[cfg(test)]

@@ -84,14 +84,14 @@
 //! empurrados — é a declaração ausente vista por dentro. Um peso `w = 0` (o `inv_mass` do
 //! `motion.pin_constraint`) é um **obstáculo**: não se move, não roda, e os outros contornam-no.
 
-use std::collections::BTreeMap;
-
 use ph2d_nodegraph::attr::{
     COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, INV_INERTIA_COLUMN,
-    SIZE_IDENTITY, Stream, par_build,
+    SIZE_IDENTITY, Stream, par_build_if,
 };
 
 pub mod atrito;
+/// A acumulação por peça — ver o cabeçalho dele.
+mod grelha;
 /// O impulso do par — a velocidade que responde ao contacto. Ver o cabeçalho dele.
 mod impulso;
 mod par;
@@ -99,7 +99,6 @@ mod par;
 /// nó e sem fio. Ver o cabeçalho dele.
 pub mod passe;
 mod trig;
-/// A acumulação por peça — ver o cabeçalho dele.
 mod varredura;
 
 pub use atrito::{Deslize, Material, Pecas, Saida, materiais};
@@ -477,6 +476,31 @@ fn confere(n: usize, saida: &Saida<'_>, pecas: &Pecas<'_>) {
 /// Se alguma coluna da [`Saida`] ou das [`Pecas`] não tiver o comprimento de `p` — colunas de uma
 /// mesma corrente com comprimentos diferentes não são uma pergunta com resposta.
 pub fn separate(p: &mut [[f32; 2]], saida: &mut Saida<'_>, pecas: &Pecas<'_>, varreduras: usize) {
+    separate_com(
+        p,
+        saida,
+        pecas,
+        varreduras,
+        p.len() >= PECAS_PARA_PARALELIZAR,
+    );
+}
+
+/// ⭐⭐ **A partir de quantas peças uma varredura paga o fork/join** — MEDIDO na sonda
+/// [`custo_probe::onde_o_paralelo_passa_a_pagar`], não herdado.
+///
+/// ⚠️ O [`ph2d_nodegraph::attr::PAR_THRESHOLD`] (`8192`) é o equilíbrio de um nó que corre UMA
+/// passagem por quadro com um corpo por-elemento pequeno. Aqui o corpo é o vizinhado mais o SAT de
+/// cada par, e a passagem repete-se `varreduras` vezes — *o mesmo `n` tem outro ponto de
+/// equilíbrio*, e usar o de lá deixava `500` peças num núcleo com 31 parados.
+pub const PECAS_PARA_PARALELIZAR: usize = 128;
+
+fn separate_com(
+    p: &mut [[f32; 2]],
+    saida: &mut Saida<'_>,
+    pecas: &Pecas<'_>,
+    varreduras: usize,
+    paralelo: bool,
+) {
     let n = p.len();
     confere(n, saida, pecas);
     let ativo: Vec<bool> = (0..n)
@@ -490,31 +514,53 @@ pub fn separate(p: &mut [[f32; 2]], saida: &mut Saida<'_>, pecas: &Pecas<'_>, va
         return;
     }
     let lado = 2.0 * alcance_max;
+    // ⭐⭐ **Os buffers vivem FORA do laço** (report do dono, 18/09). Eles eram refeitos por
+    // varredura, e a `1024` isso são `1024` cópias da nuvem, `1024` grelhas e `n × 1024` listas de
+    // vizinhos. Os VALORES são os mesmos — o que muda é quem os aloja.
+    let mut foto = p.to_vec();
+    let mut girado = saida.giro.to_vec();
+    let mut agora: Vec<Option<Colisor>> = (0..n)
+        .map(|i| pecas.colisores[i].map(|c| c.girado(girado[i])))
+        .collect();
+    let mut grade = grelha::Grelha::default();
     for _ in 0..varreduras {
-        let foto = p.to_vec();
+        foto.copy_from_slice(p);
         // As formas COMO ESTÃO: o que as varreduras anteriores rodaram já conta.
-        let girado = saida.giro.to_vec();
-        let agora: Vec<Option<Colisor>> = (0..n)
-            .map(|i| pecas.colisores[i].map(|c| c.girado(girado[i])))
-            .collect();
-        let grelha = grelha(&foto, &ativo, lado);
-        let novas: Vec<Nova> = par_build(n, |k| {
+        // ⭐ Só quem RODOU desde a varredura anterior é recalculado — `girado()` é uma função pura
+        // do ângulo, logo quem não rodou tem de dar o mesmo colisor, **ao bit**. Numa cena assente
+        // isto apaga duas chamadas de trigonometria por peça e por varredura.
+        for i in 0..n {
+            if girado[i] != saida.giro[i] {
+                girado[i] = saida.giro[i];
+                agora[i] = pecas.colisores[i].map(|c| c.girado(girado[i]));
+            }
+        }
+        grade.constroi(&foto, &ativo, lado);
+        let novas: Vec<Nova> = par_build_if(paralelo, n, |k| {
             if !ativo[k] {
                 return None;
             }
-            let (cx, cy) = celula(foto[k], lado);
-            let mut parceiros: Vec<usize> = Vec::new();
-            for dy in -1..=1 {
-                for dx in -1..=1 {
-                    if let Some(v) = grelha.get(&(cx + dx, cy + dy)) {
-                        parceiros.extend_from_slice(v);
-                    }
-                }
-            }
-            parceiros.sort_unstable();
-            varredura::corrigida(k, parceiros.into_iter(), &foto, &agora, pecas, &ativo)
+            let mut vizinhos: Vec<u32> = Vec::new();
+            grade.vizinhos_de(k, &mut vizinhos);
+            varredura::corrigida(
+                k,
+                vizinhos.into_iter().map(|j| j as usize),
+                &foto,
+                &agora,
+                pecas,
+                &ativo,
+            )
         });
-        aplica(p, saida, novas);
+        // ⭐⭐⭐ **O PONTO FIXO** — e ele não é uma heurística, é uma INDUÇÃO: uma varredura que não
+        // mexe um bit deixa a seguinte com a MESMA entrada (a mesma foto, os mesmos ângulos, a
+        // mesma grelha), logo com a mesma saída. ⇒ parar aqui é **bit-idêntico** a varrer até ao
+        // fim, e é o que faz um tecto alto não se pagar numa cena que já assentou.
+        //
+        // ⚠️ A pergunta é *«mudou algum BIT?»* e não *«houve contacto?»*: uma nuvem assente
+        // continua a ter contactos, e `corrigida` devolve `Some` com a posição inalterada.
+        if !aplica(p, saida, novas) {
+            break;
+        }
     }
 }
 
@@ -548,18 +594,26 @@ pub fn separate_all_pairs(
                 }
             })
             .collect();
-        aplica(p, saida, novas);
+        // ⚠️ A referência varre SEMPRE até ao fim: ela é o padrão contra o qual o atalho do
+        // ponto fixo se mede, e um atalho que também vivesse aqui não poderia ser medido.
+        let _ = aplica(p, saida, novas);
     }
 }
 
-/// Escreve o que uma varredura produziu.
-fn aplica(p: &mut [[f32; 2]], saida: &mut Saida<'_>, novas: Vec<Nova>) {
+/// Escreve o que uma varredura produziu, e diz se ela **mexeu algum bit** — que é o que decide a
+/// saída antecipada do [`separate`]. ⚠️ Conservador de propósito: a comparação é do valor ESCRITO
+/// contra o que lá estava, logo um `NaN` nunca é lido como *«não mexeu»*.
+fn aplica(p: &mut [[f32; 2]], saida: &mut Saida<'_>, novas: Vec<Nova>) -> bool {
+    let mut mexeu = false;
     for (k, nova) in novas.into_iter().enumerate() {
         if let Some((q, g)) = nova {
+            let (antes_p, antes_g) = (p[k], saida.giro[k]);
             p[k] = q;
             saida.giro[k] += g;
+            mexeu |= p[k] != antes_p || saida.giro[k] != antes_g;
         }
     }
+    mexeu
 }
 
 /// ⚠️ `pub(crate)` porque o [`impulso`] faz a MESMA pergunta — duplicá-la seria a 2.ª resposta a
@@ -574,17 +628,6 @@ pub(crate) fn ativo(p: [f32; 2], c: Option<&Colisor>) -> bool {
 )]
 fn celula(p: [f32; 2], lado: f32) -> (i64, i64) {
     ((p[0] / lado).floor() as i64, (p[1] / lado).floor() as i64)
-}
-
-/// As peças activas por célula, cada lista em ordem crescente de índice.
-fn grelha(foto: &[[f32; 2]], ativo: &[bool], lado: f32) -> BTreeMap<(i64, i64), Vec<usize>> {
-    let mut g: BTreeMap<(i64, i64), Vec<usize>> = BTreeMap::new();
-    for (i, q) in foto.iter().enumerate() {
-        if ativo[i] {
-            g.entry(celula(*q, lado)).or_default().push(i);
-        }
-    }
-    g
 }
 
 #[cfg(test)]

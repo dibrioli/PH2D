@@ -1332,3 +1332,158 @@ tecto ANTIGO — e um gate que passa com o número antigo não mediu a mudança*
 pergunta ao cartão qual é o `max` do `Collide Sweeps` e exige que o roteiro diga esse número. *Um
 roteiro que ensina uma escada que o slider não tem é a mesma família do passo impossível que o
 `Auto-Smooth` do sculpt quase shipou.*
+
+---
+
+## §19 — *«com 1024 FPS cai para 7, usando Boids»* — o tecto era honesto e o MOTOR não era
+
+Report do dono, 2026-09-18, sobre a wave do §18. Ele subiu o `Collide Sweeps` ao topo do slider numa
+cena de `motion.boids` e o app foi a **7 FPS** (`~143 ms` por quadro).
+
+### §19.1 — A premissa do §18 que a medição derrubou
+
+A tabela do §18 mediu a **cadeia de 16** e escreveu o custo como **`0,2 µs` por peça-varredura** —
+uma lei **LINEAR em `n`**. Reproduzido na sonda [`custo_probe::a_escada_das_varreduras_contra_a_populacao`],
+com caixas orientadas na densidade de uma cena e as `1024` varreduras do slider:
+
+| peças | 8 | 64 | **1024** | 4096 | FPS a 1024 |
+|---|---|---|---|---|---|
+| 16 | 0,017 ms | 0,110 ms | **1,54 ms** | 6,05 ms | 650 |
+| 48 | 0,059 | 0,445 | **6,88** | 27,5 | 145 |
+| 100 | 0,160 | 1,195 | **18,0** | 69,2 | 56 |
+| 250 | 0,749 | 3,896 | **52,5** | 207 | 19 |
+| 500 | 1,916 | 11,997 | **157,9** | 616 | **6,3** |
+| 1000 | 4,816 | 35,744 | **503,1** | 1969 | 2,0 |
+
+⇒ **`n = 500` a `1024` varreduras dá `6,3` FPS**, que é o report à letra. E o custo **por peça** ainda
+triplica de `16` para `500` peças (`0,094 → 0,308 µs`): *a lei nunca foi linear, e a fixtura da
+cadeia era pequena demais para o mostrar.*
+
+⛔⛔ **A lição é a do §0.0 um nível acima do que eu a apliquei:** eu medi o tecto contra o recurso
+que o §18 discutia — o **comprimento da cadeia** — e escrevi um número por peça-varredura como se
+fosse uma propriedade do motor. *Um custo medido numa fixtura de 16 elementos não afirma nada sobre
+a população que o artista tem*, e o `motion.boids` nasce com `count = 48` justamente para o artista
+o subir.
+
+### §19.2 — Onde o tempo morava, medido antes de qualquer cura
+
+A sonda [`custo_probe::onde_o_tempo_mora_dentro_de_uma_varredura`] cronometra as fases pela porta do
+produto, a `500` peças:
+
+| fase | µs por varredura |
+|---|---|
+| construir a grelha | 18,3 |
+| (+) colher e ordenar os vizinhos | 59,7 |
+| (+) a LEI (`corrigida`, SAT por par) | 81,7 |
+| **total** | **159,7** |
+
+⇒ **`49 %` do relógio era ACHAR os pares** — com uma média de **`5,2` vizinhos por peça**. *A
+escrituração custava tanto como a lei que ela serve.*
+
+### §19.3 — As cinco curas, cada uma com o número
+
+**(a) A grelha passa a ser DENSA e em CSR, com os buffers reaproveitados** ([`grelha.rs`]). Era um
+`BTreeMap<(i64,i64), Vec<usize>>` refeito por varredura, com **nove** buscas na árvore e um `Vec`
+novo por peça — a `1024` varreduras isso são `1024` mapas e `n × 1024` alocações. ⭐ **E o lado pode
+CRESCER sem mudar um bit:** a grelha promete um **SUPERCONJUNTO** dos contactos em ordem crescente
+(quem não toca é descartado pelo `manifesto`), logo qualquer lado `≥ 2 · alcance_max` serve — é isso
+que deixa a cerca de memória [`CELULAS_MAX`] dobrar o lado quando uma peça é largada a um milhão de
+unidades. *O preço de uma cena esticada é relógio, nunca resposta errada.*
+
+**(b) O `girado` só é recalculado para quem RODOU** — `Colisor::girado` é função pura do ângulo,
+logo quem não rodou dá o mesmo colisor ao bit. Numa cena assente isto apaga duas chamadas de
+trigonometria por peça e por varredura.
+
+**(c) O PONTO FIXO — e ele é uma INDUÇÃO, não uma heurística.** Uma varredura que não mexe um bit
+deixa a seguinte com a mesma entrada (a mesma foto, os mesmos ângulos, a mesma grelha), logo com a
+mesma saída; por indução, todas as restantes. ⇒ parar ali é **bit-idêntico** a varrer até ao fim.
+⚠️ **A pergunta é *«mudou algum BIT?»* e não *«houve contacto?»***: uma nuvem assente continua a ter
+contactos e `corrigida` devolve `Some` com a posição inalterada.
+
+⛔⛔ **E o que ele NÃO compra está medido:** com a rotação **solta** — que é o que o produto faz —
+duas caixas continuam a acertar-se por um ULP e a nuvem **nunca** assenta em 1024 varreduras
+(varrida a densidade de `1,0` a `3,0`). O atalho arma numa cena de rotação travada (`56`
+varreduras), não numa de caixas a rodar. *Foi o CONTROLO do gate que escolheu a fixtura, depois de
+reprovar a minha.*
+
+**(d) O paralelo, com o limiar MEDIDO** ([`PECAS_PARA_PARALELIZAR = 128`]). O
+[`ph2d_nodegraph::attr::PAR_THRESHOLD`] (`8192`) é o equilíbrio de um nó que corre **uma** passagem
+por quadro com um corpo por-elemento pequeno; aqui o corpo é o vizinhado mais o SAT de cada par e a
+passagem repete-se `varreduras` vezes ⇒ **`500` peças ficavam num núcleo com 31 parados**. A razão
+série/paralelo, medida a 64 varreduras:
+
+| peças | 16 | 32 | 64 | **128** | 256 | 500 | 1000 | 4000 |
+|---|---|---|---|---|---|---|---|---|
+| razão | 0,21× | 0,33× | 0,54× | **1,34×** | 1,48× | 1,68× | 2,21× | 5,04× |
+
+⚠️ A costura de rayon continua a ser **uma só**: o [`par_build`] passou a delegar num
+[`par_build_if`] que deixa o chamador decidir — a política escrita naquela crate (*«a única costura
+auditada»*) fica intacta, e a garantia de bits também (o `collect` indexado repõe a ordem).
+
+**(e) ⭐⭐⭐ O quadro pagava a conta DUAS VEZES.** O `collider_gizmo::taps_for` pede o **próprio
+sink** como tomada, e a rota da tomada cozinhava-o outra vez. ⚠️ O 2.º cozimento é barato (bate no
+memo — o comentário daquele laço já o dizia), **mas o passe do fim não é memoizado**: a `1024`
+varreduras ele era metade do quadro, pago duas vezes, e só com o gizmo do colisor LIGADO — que é
+exactamente a configuração em que o dono estava.
+
+⇒ quem desenha **PUBLICA** o que separou (`tap_streams`), e o laço das tomadas salta-o pela cerca de
+duplicado que ele já tinha. ⚠️ **E a minha 1.ª redacção da cura deixou o braço `Boundaries` sem
+`clear`** — as tomadas do quadro anterior sobreviveriam a um quadro híbrido.
+
+### §19.4 — O que ficou
+
+| peças | 1024 varreduras, antes | depois | razão |
+|---|---|---|---|
+| 48 | 6,88 ms | **3,79 ms** | 1,8× |
+| 100 | 18,0 | **9,88** | 1,8× |
+| 250 | 52,5 | **20,7** | 2,5× |
+| 500 | 157,9 | **36,2** | **4,4×** |
+| 1000 | 503,1 | **68,4** | **7,4×** |
+
+⚠️ **Com o gizmo do colisor ligado, o quadro do dono paga isto UMA vez em vez de duas** ⇒ para ele o
+efeito é o dobro da coluna da razão (`n = 500`: `316 → 36 ms`, **8,7×**).
+
+⚠️⚠️ **E a tabela do §19.1 foi RE-MEDIDA com a inércia do PRODUTO.** A 1.ª redacção da sonda travava
+a rotação (`inv = 0`), onde a nuvem assenta e o atalho do ponto fixo dispara — *uma fixtura que
+trava um grau de liberdade mede outro programa*, e com ela o ganho a `500` peças lia-se `13×` em vez
+de `4,4×`.
+
+### §19.5 — Os gates, e a prova
+
+| gate | o que afirma |
+|---|---|
+| `the_grid_gives_the_same_bits_as_all_pairs` | (já existia) a grelha nova dá os bits de todos-os-pares |
+| `o_atalho_do_ponto_fixo_nao_muda_um_bit` | a `1024` varreduras o atalho concorda com quem varre sempre — **com o controlo de que a nuvem ASSENTA** |
+| `uma_peca_largada_longe_nao_muda_um_bit` | a grelha ENGROSSADA pela cerca de memória dá os mesmos bits |
+| `o_paralelo_da_os_mesmos_bits_que_o_serie` | o limiar é número de RELÓGIO, nunca de resposta |
+| `um_quadro_separa_uma_vez_mesmo_com_o_sink_tapado` | a conta deixou de ser paga duas vezes |
+
+⚠️⚠️ **O último precisou de um INSTRUMENTO, e a razão é que a duplicação era invisível a toda régua
+de valor:** as duas passagens entregam a mesma corrente, ao bit — *nenhum gate de igualdade, de bits
+ou de pixel podia vê-las*. O que sobra para observar é a **CONTA**, e por isso a porta
+`o_que_o_sink_desenha` carrega um contador `#[cfg(test)]`. ⛔ **E ele é POR THREAD:** a 1.ª redacção
+era um átomo global e o gate **reprovou na suíte enquanto passava sozinho** — os testes correm em
+paralelo e havia mais de um a cozinhar um sink armado. *Um censo que partilha estado com os vizinhos
+mede os vizinhos.*
+
+**Prova de mutação: 8 mutações, 7 sangram.** ⚠️ A oitava está documentada **no código** como
+não-sangrante de propósito, e ela corrigiu um comentário MEU: eu escrevi que a ordem crescente
+dentro de uma célula era *«metade da promessa de ordem»* — inverter o laço da contagem **sobrevive**
+a todo gate, porque quem cumpre a promessa inteira é o `sort` do `vizinhos_de`. *Uma linha que a
+mutação não consegue matar não é lei; é comentário com sintaxe de código.*
+
+⚠️⚠️ **E o ARNÊS mentiu duas vezes antes de dizer a verdade:** `error: test failed, to rerun…`
+começa por `error:`, logo perguntar *«compila?»* antes de *«FAILED?»* lia **seis** mutações que
+sangram como *«não compila»* — a ordem das perguntas é a lei que esta casa já tinha escrito, e eu
+paguei-a outra vez.
+
+### §19.6 — O que fica ABERTO
+
+- ⏳ **A `1024` varreduras num milhar de peças ainda custa `68 ms`** (4 quadros). O que sobra é a
+  LEI (`82 %` de uma varredura, contra os `49 %` de escrituração de antes) — daqui para baixo é
+  algoritmo, não escrituração, e a saída nomeada continua a ser um método **não-local** (§18.6).
+- ⏳ **O custo do passe não está VISÍVEL no cartão.** Um artista que ponha `4096` numa cena grande
+  continua a descobri-lo pelo relógio. O item já estava aberto no handoff; este report é a segunda
+  vez que ele se paga.
+- ⏳ O `Vec<u32>` dos vizinhos ainda é alocado por peça e por varredura (dentro dos `18 %`); um
+  scratch por thread fecha-o, e não foi feito porque a medição não o justificou sozinho.

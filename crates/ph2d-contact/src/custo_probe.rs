@@ -259,3 +259,237 @@ fn custo_da_separacao_na_populacao_do_dono() {
     }
     eprintln!("\n  load durante a corrida: {}\n", carga());
 }
+
+/// ⭐⭐⭐ **A ESCADA QUE O DONO CORREU — o report de 18/09: *«com 1024 FPS cai para 7, usando
+/// Boids»***.
+///
+/// ⛔⛔ **A tabela do §18 mediu `n = 16` e escreveu o custo como «`0,2 µs` por peça-varredura»** —
+/// uma lei **LINEAR em `n`**. Esta sonda existe para dizer se ela é verdade fora daquela fixtura:
+/// o `motion.boids` nasce com `count = 48` e o artista sobe-o.
+///
+/// A coluna que decide é a **razão** entre duas linhas da mesma coluna de varreduras: se ela seguir
+/// o `n`, a lei era linear e o tecto está honesto; se subir mais depressa, o número do §18 descreve
+/// uma fixtura e não o produto.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn a_escada_das_varreduras_contra_a_populacao() {
+    eprintln!("\n  ═══ O QUE 1024 VARREDURAS CUSTAM, POR POPULAÇÃO (report de 18/09) ═══\n");
+    eprintln!(
+        "  Caixas orientadas na densidade de uma cena, mínimo de {CORRIDAS} corridas.\n  \
+         Um quadro tem {QUADRO_MS} ms. As duas últimas colunas são o que o dono vê.\n"
+    );
+    eprintln!(
+        "  {:<7} │ {:>10} │ {:>10} │ {:>11} │ {:>11} │ {:>9} │ {:>7}",
+        "peças", "8", "64", "1024", "4096", "% quadro", "FPS"
+    );
+    eprintln!(
+        "  --------|------------|------------|-------------|-------------|-----------|--------"
+    );
+    for n in [16usize, 48, 100, 250, 500, 1000] {
+        let (p0, c, w) = campo(n, ESPACO_DE_CENA);
+        // ⚠️⚠️ **A INÉRCIA É A DO PRODUTO, e a 1.ª redacção desta sonda travava-a (`inv = 0`).**
+        // Uma caixa travada não roda, logo a nuvem chega a um PONTO FIXO e o atalho do `separate`
+        // dispara; com a rotação solta — que é o que `passe::separa_o_que_se_desenha` faz, via
+        // `inv_inercias` — as peças continuam a acertar-se por um ULP e o atalho nunca arma.
+        // *Uma fixtura que trava um grau de liberdade mede outro programa.*
+        let inv: Vec<f32> = (0..n)
+            .map(|i| c[i].map_or(0.0, |x| x.inv_inercia(w[i])))
+            .collect();
+        let pecas = Pecas::novas(&c, &w, &inv);
+        let mut col = [0.0f64; 4];
+        for (i, v) in [8usize, 64, 1024, 4096].into_iter().enumerate() {
+            let mut melhor = f64::INFINITY;
+            for _ in 0..CORRIDAS {
+                let mut p = p0.clone();
+                let mut g = vec![0.0; n];
+                let agora = Instant::now();
+                separate(&mut p, &mut Saida { giro: &mut g }, &pecas, v);
+                melhor = melhor.min(agora.elapsed().as_secs_f64() * 1e3);
+            }
+            col[i] = melhor;
+        }
+        eprintln!(
+            "  {n:<7} │ {:>7.3} ms │ {:>7.3} ms │ {:>8.3} ms │ {:>8.3} ms │ {:>8.0}% │ {:>7.1}",
+            col[0],
+            col[1],
+            col[2],
+            col[3],
+            col[2] / QUADRO_MS * 100.0,
+            1000.0 / col[2].max(1e-9)
+        );
+    }
+    eprintln!("\n  load durante a corrida: {}\n", carga());
+}
+
+/// ⭐⭐⭐ **ONDE O TEMPO MORA DENTRO DE UMA VARREDURA** — a atribuição antes de qualquer cura.
+///
+/// ⚠️ Ela chama as MESMAS funções do produto (`grelha`, `celula`, `corrigida`), nunca uma segunda
+/// cópia da lei: o que ela faz é cronometrar as fases **separadamente**, somando ao lado.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn onde_o_tempo_mora_dentro_de_uma_varredura() {
+    const N: usize = 500;
+    const REPS: usize = 200;
+    eprintln!("\n  ═══ ATRIBUIÇÃO DE UMA VARREDURA ({N} peças) ═══\n");
+    let (p0, c, w) = campo(N, ESPACO_DE_CENA);
+    let inv = vec![0.0; N];
+    let pecas = Pecas::novas(&c, &w, &inv);
+    let ativo: Vec<bool> = (0..N).map(|i| ativo(p0[i], c[i].as_ref())).collect();
+    let alcance = (0..N)
+        .filter_map(|i| c[i].map(|x| x.alcance()))
+        .fold(0.0f32, f32::max);
+    let lado = 2.0 * alcance;
+
+    let cron = |f: &mut dyn FnMut()| {
+        let mut melhor = f64::INFINITY;
+        for _ in 0..CORRIDAS {
+            let agora = Instant::now();
+            for _ in 0..REPS {
+                f();
+            }
+            melhor = melhor.min(agora.elapsed().as_secs_f64() * 1e6 / REPS as f64);
+        }
+        melhor
+    };
+
+    // (a) só construir a grelha
+    let t_grelha = cron(&mut || {
+        let mut g = crate::grelha::Grelha::default();
+        g.constroi(&p0, &ativo, lado);
+        std::hint::black_box(&g);
+    });
+    // (b) construir + colher os vizinhos das 9 células, sem tocar na lei
+    let t_colher = cron(&mut || {
+        let mut g = crate::grelha::Grelha::default();
+        g.constroi(&p0, &ativo, lado);
+        let mut viz: Vec<u32> = Vec::new();
+        let mut total = 0usize;
+        for k in 0..N {
+            g.vizinhos_de(k, &mut viz);
+            total += viz.len();
+        }
+        std::hint::black_box(total);
+    });
+    // (c) a varredura inteira, pela porta do produto
+    let t_tudo = cron(&mut || {
+        let mut p = p0.clone();
+        let mut g = vec![0.0; N];
+        separate(&mut p, &mut Saida { giro: &mut g }, &pecas, 1);
+        std::hint::black_box(&p);
+    });
+
+    // Quantos parceiros cada peça de facto vê — o que a LEI custa é proporcional a isto.
+    let mut g = crate::grelha::Grelha::default();
+    g.constroi(&p0, &ativo, lado);
+    let mut viz: Vec<u32> = Vec::new();
+    let mut soma = 0usize;
+    for k in 0..N {
+        g.vizinhos_de(k, &mut viz);
+        soma += viz.len();
+    }
+    eprintln!(
+        "  parceiros por peça (média) .... {:.1}",
+        soma as f64 / N as f64
+    );
+    eprintln!("  (a) construir a grelha ........ {t_grelha:>8.1} µs");
+    eprintln!("  (b) (a) + colher e ordenar .... {t_colher:>8.1} µs");
+    eprintln!("  (c) a varredura inteira ....... {t_tudo:>8.1} µs");
+    eprintln!(
+        "\n  ⇒ achar os pares: {:.0}%   ·   a LEI: {:.0}%",
+        t_colher / t_tudo * 100.0,
+        (t_tudo - t_colher) / t_tudo * 100.0
+    );
+    eprintln!("\n  load durante a corrida: {}\n", carga());
+}
+
+/// ⭐⭐⭐ **QUANTAS VARREDURAS ANTES DE NADA MAIS SE MEXER** — a pergunta que decide se o tecto
+/// alto custa alguma coisa.
+///
+/// ⚠️ Chamar `separate(.., 1)` em sequência é **bit-idêntico** a uma chamada de `k`: `ativo` e
+/// `alcance_max` derivam de colisores e de posições finitas (que não mudam de natureza), e o `giro`
+/// acumula na [`Saida`], que é exactamente o que o laço interno faz.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn quantas_varreduras_antes_de_nada_mais_se_mexer() {
+    eprintln!("\n  ═══ ONDE O CAMPO PÁRA DE SE MEXER ═══\n");
+    eprintln!(
+        "  `parado` = a 1.ª varredura que não mexe UM BIT em nenhuma peça. A partir dela, toda\n  \
+         varredura seguinte lê a mesma entrada e devolve a mesma coisa — por indução.\n"
+    );
+    eprintln!(
+        "  {:<22} │ {:>10} │ {:>12} │ {:>14}",
+        "fixtura", "peças", "parado em", "de 1024, úteis"
+    );
+    eprintln!("  -----------------------|------------|--------------|----------------");
+    for (nome, n, espaco) in [
+        ("campo de cena", 500usize, ESPACO_DE_CENA),
+        ("campo denso", 500, 1.25),
+        ("campo de cena", 48, ESPACO_DE_CENA),
+        ("campo de cena", 1000, ESPACO_DE_CENA),
+    ] {
+        let (p0, c, w) = campo(n, espaco);
+        let inv = vec![0.0; n];
+        let pecas = Pecas::novas(&c, &w, &inv);
+        let mut p = p0.clone();
+        let mut giro = vec![0.0; n];
+        let mut parou = None;
+        for v in 1..=1024usize {
+            let (antes_p, antes_g) = (p.clone(), giro.clone());
+            separate(&mut p, &mut Saida { giro: &mut giro }, &pecas, 1);
+            if p == antes_p && giro == antes_g {
+                parou = Some(v);
+                break;
+            }
+        }
+        match parou {
+            Some(v) => eprintln!(
+                "  {nome:<22} │ {n:>10} │ {v:>12} │ {:>13.1}%",
+                v as f64 / 1024.0 * 100.0
+            ),
+            None => eprintln!("  {nome:<22} │ {n:>10} │  nunca parou │         100.0%"),
+        }
+    }
+    eprintln!("\n  load durante a corrida: {}\n", carga());
+}
+
+/// ⭐⭐⭐ **A PARTIR DE QUANTAS PEÇAS O PARALELO PAGA** — de onde sai a [`PECAS_PARA_PARALELIZAR`].
+///
+/// ⚠️ A régua é a RAZÃO entre as duas colunas, e não um relógio absoluto: sob carga as duas sobem
+/// juntas. O ponto de equilíbrio é onde a razão cruza `1`.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn onde_o_paralelo_passa_a_pagar() {
+    const V: usize = 64;
+    eprintln!("\n  ═══ ONDE O PARALELO PASSA A PAGAR ({V} varreduras) ═══\n");
+    eprintln!(
+        "  {:<8} │ {:>12} │ {:>12} │ {:>9}",
+        "peças", "1 núcleo", "N núcleos", "razão"
+    );
+    eprintln!("  ---------|--------------|--------------|----------");
+    for n in [16usize, 32, 64, 128, 256, 500, 1000, 4000] {
+        let (p0, c, w) = campo(n, ESPACO_DE_CENA);
+        let inv: Vec<f32> = (0..n)
+            .map(|i| c[i].map_or(0.0, |x| x.inv_inercia(w[i])))
+            .collect();
+        let pecas = Pecas::novas(&c, &w, &inv);
+        let mut col = [0.0f64; 2];
+        for (i, paralelo) in [false, true].into_iter().enumerate() {
+            let mut melhor = f64::INFINITY;
+            for _ in 0..CORRIDAS {
+                let mut p = p0.clone();
+                let mut g = vec![0.0; n];
+                let agora = Instant::now();
+                separate_com(&mut p, &mut Saida { giro: &mut g }, &pecas, V, paralelo);
+                melhor = melhor.min(agora.elapsed().as_secs_f64() * 1e3);
+            }
+            col[i] = melhor;
+        }
+        eprintln!(
+            "  {n:<8} │ {:>9.3} ms │ {:>9.3} ms │ {:>8.2}×",
+            col[0],
+            col[1],
+            col[0] / col[1]
+        );
+    }
+    eprintln!("\n  load durante a corrida: {}\n", carga());
+}

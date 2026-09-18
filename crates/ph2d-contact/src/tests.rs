@@ -1097,3 +1097,195 @@ fn the_piece_against_piece_contact_ignores_rolling_bit_for_bit() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O ATALHO DO PONTO FIXO NÃO MUDA UM BIT** — a cura do report de 2026-09-18.
+///
+/// O `separate` pára quando uma varredura não mexe um bit, porque a seguinte leria a MESMA entrada
+/// (a mesma foto, os mesmos ângulos, a mesma grelha) e devolveria o mesmo. ⚠️ Isto é uma indução,
+/// não uma heurística — e este gate é o que a torna observável: o [`separate_all_pairs`] **varre
+/// sempre até ao fim**, logo a igualdade ao bit a `1024` varreduras prova que as varreduras que o
+/// atalho saltou não faziam nada.
+///
+/// ⛔ **A METADE QUE FAZ O GATE VALER É O CONTROLO:** a nuvem tem de CHEGAR ao ponto fixo dentro
+/// das `1024` — senão o atalho nunca dispara e a igualdade não afirma nada sobre ele.
+///
+/// ⚠️⚠️ **E foi o controlo que escolheu a fixtura, não eu.** A 1.ª redacção usava a [`nuvem`] com a
+/// inércia DERIVADA e reprovou: varrida a escala de `1,0` a `3,0`, ela **nunca** assenta em 1024
+/// varreduras — com a rotação solta duas caixas continuam a acertar-se por um ULP para sempre.
+/// ⇒ a fixtura é a mesma nuvem com a **rotação travada** (`inv_inercia = 0`, que é o que a coluna
+/// `inv_inertia` de um cartão escreve), onde ela assenta.
+///
+/// ⚠️ *Isto diz também o que o atalho NÃO compra:* numa cena de caixas a rodar ele quase nunca
+/// arma, e o que segura o relógio ali é a grelha e o paralelo. O número está na sonda
+/// [`custo_probe::a_escada_das_varreduras_contra_a_populacao`].
+#[test]
+fn o_atalho_do_ponto_fixo_nao_muda_um_bit() {
+    let (p0, c, w) = nuvem(200);
+    // ⚠️ **A fixtura é MEDIDA, nas duas grandezas** (calibração no cabeçalho): rotação travada, e a
+    // nuvem ESPALHADA ao dobro. Apertada ela é uma PILHA e não assenta — `56` varreduras aqui,
+    // `nunca` à densidade original —, e ao triplo mexem-se só `21` peças, o que é pouca cena para
+    // uma igualdade dizer alguma coisa. A `2,0`: assenta em `56` com `64` peças a mexer-se.
+    let p0: Vec<[f32; 2]> = p0.iter().map(|q| [q[0] * 2.0, q[1] * 2.0]).collect();
+    let inv = vec![0.0; p0.len()];
+    let pecas = Pecas {
+        colisores: &c,
+        pesos: &w,
+        inv_inercia: &inv,
+        deslize: None,
+    };
+    const VARREDURAS: usize = 1024;
+    let (mut atalho, mut sempre) = (p0.clone(), p0.clone());
+    let (mut g_atalho, mut g_sempre) = (vec![0.0; p0.len()], vec![0.0; p0.len()]);
+    separate(
+        &mut atalho,
+        &mut Saida {
+            giro: &mut g_atalho,
+        },
+        &pecas,
+        VARREDURAS,
+    );
+    separate_all_pairs(
+        &mut sempre,
+        &mut Saida {
+            giro: &mut g_sempre,
+        },
+        &pecas,
+        VARREDURAS,
+    );
+    // O CONTROLO: quantas varreduras esta nuvem de facto precisou. Se ela nunca assentasse, o
+    // `break` do produto não teria corrido e o gate mediria o caminho de sempre.
+    let mut passo = p0.clone();
+    let mut g_passo = vec![0.0; p0.len()];
+    let mut parou = None;
+    for v in 1..=VARREDURAS {
+        let (antes_p, antes_g) = (passo.clone(), g_passo.clone());
+        separate(&mut passo, &mut Saida { giro: &mut g_passo }, &pecas, 1);
+        if passo == antes_p && g_passo == antes_g {
+            parou = Some(v);
+            break;
+        }
+    }
+    let parou = parou.expect("controlo: esta nuvem tem de assentar dentro das 1024 varreduras");
+    assert!(
+        parou < VARREDURAS,
+        "controlo: a nuvem assentou em {parou}, que nao deixa varredura nenhuma para o atalho saltar"
+    );
+    for i in 0..p0.len() {
+        assert_eq!(
+            (
+                atalho[i][0].to_bits(),
+                atalho[i][1].to_bits(),
+                g_atalho[i].to_bits()
+            ),
+            (
+                sempre[i][0].to_bits(),
+                sempre[i][1].to_bits(),
+                g_sempre[i].to_bits()
+            ),
+            "a peca {i} divergiu: o atalho do ponto fixo (parou em {parou}) saltou trabalho a serio"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **UMA PEÇA LARGADA LONGE NÃO MUDA UM BIT** — a cerca [`grelha::CELULAS_MAX`].
+///
+/// A grelha densa cobre a caixa das peças activas; uma peça a um milhão de unidades pediria mais
+/// células do que a memória do tecto permite, e então o **lado DOBRA** até caber. A malha fica
+/// grosseira, cada célula recebe mais candidatos — e quem não toca é descartado pelo `manifesto`.
+///
+/// ⇒ o resultado tem de ser o mesmo **ao bit**, e é isso que este gate mede: *o preço de uma cena
+/// esticada é relógio, nunca resposta errada*.
+#[test]
+fn uma_peca_largada_longe_nao_muda_um_bit() {
+    let (p0, c, w) = nuvem(200);
+    let inv = inercias(&c, &w);
+    let mut longe = p0.clone();
+    // ⚠️ Longe o bastante para a grelha FINA pedir mais de 2^16 células — é essa a cerca a exercitar.
+    longe[7] = [4.0e6, -2.5e6];
+    let pecas = Pecas {
+        colisores: &c,
+        pesos: &w,
+        inv_inercia: &inv,
+        deslize: None,
+    };
+    let (mut grelha, mut todos) = (longe.clone(), longe.clone());
+    let (mut g_grelha, mut g_todos) = (vec![0.0; p0.len()], vec![0.0; p0.len()]);
+    separate(
+        &mut grelha,
+        &mut Saida {
+            giro: &mut g_grelha,
+        },
+        &pecas,
+        8,
+    );
+    separate_all_pairs(&mut todos, &mut Saida { giro: &mut g_todos }, &pecas, 8);
+    // O CONTROLO: a nuvem que ficou continua a resolver-se (senão isto compararia dois nada).
+    assert!(
+        (0..p0.len()).filter(|&i| longe[i] != todos[i]).count() > 50,
+        "controlo: a nuvem tinha de continuar a separar-se com a peca distante la'"
+    );
+    for i in 0..p0.len() {
+        assert_eq!(
+            (grelha[i][0].to_bits(), grelha[i][1].to_bits()),
+            (todos[i][0].to_bits(), todos[i][1].to_bits()),
+            "a peca {i} divergiu com a grelha ENGROSSADA pela cerca de memoria"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O PARALELO DÁ OS MESMOS BITS QUE O SÉRIE** — a lei que torna a
+/// [`PECAS_PARA_PARALELIZAR`] um número de RELÓGIO e nunca de resposta.
+///
+/// Cada peça é calculada a partir da FOTO da varredura anterior (Jacobi), logo os elementos são
+/// independentes e o `collect` indexado repõe a ordem. ⇒ mudar o limiar — ou a máquina ter outro
+/// número de núcleos — não pode mover um bit.
+///
+/// ⚠️ **A fixtura é a do produto**: rotação solta, caixas com o centro fora de `P` e pinos, que é
+/// onde a ordem das somas por peça mais poderia divergir.
+#[test]
+fn o_paralelo_da_os_mesmos_bits_que_o_serie() {
+    let (p0, c, w) = nuvem(400);
+    let inv = inercias(&c, &w);
+    let pecas = Pecas {
+        colisores: &c,
+        pesos: &w,
+        inv_inercia: &inv,
+        deslize: None,
+    };
+    let (mut serie, mut paralelo) = (p0.clone(), p0.clone());
+    let (mut g_serie, mut g_par) = (vec![0.0; p0.len()], vec![0.0; p0.len()]);
+    separate_com(
+        &mut serie,
+        &mut Saida { giro: &mut g_serie },
+        &pecas,
+        16,
+        false,
+    );
+    separate_com(
+        &mut paralelo,
+        &mut Saida { giro: &mut g_par },
+        &pecas,
+        16,
+        true,
+    );
+    // O CONTROLO: a nuvem mexeu-se de facto (senão isto compara dois nada).
+    assert!(
+        (0..p0.len()).filter(|&i| p0[i] != serie[i]).count() > 200,
+        "controlo: a nuvem tinha de se separar"
+    );
+    for i in 0..p0.len() {
+        assert_eq!(
+            (
+                serie[i][0].to_bits(),
+                serie[i][1].to_bits(),
+                g_serie[i].to_bits()
+            ),
+            (
+                paralelo[i][0].to_bits(),
+                paralelo[i][1].to_bits(),
+                g_par[i].to_bits()
+            ),
+            "a peca {i} divergiu entre o serie e o paralelo"
+        );
+    }
+}

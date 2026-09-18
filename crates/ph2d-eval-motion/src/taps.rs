@@ -6,7 +6,8 @@
 //! que dá sentido às outras quatro — deixá-lo no `lib.rs` teria partido a família ao meio
 //! e escondido que a lista é preenchida por tique, não por chamada.
 
-use crate::{MotionCookPump, NodeId, Stream};
+use crate::sink_style::o_que_o_sink_desenha;
+use crate::{CookTarget, MotionCookPump, NodeId, Stream};
 use ph2d_nodegraph::cook::{OpResolver, TimeScopes};
 use ph2d_nodegraph::graph::Graph;
 
@@ -116,5 +117,66 @@ impl MotionCookPump {
     #[must_use]
     pub fn tap_streams(&self) -> &[(NodeId, Stream)] {
         &self.tap_streams
+    }
+
+    /// **Cozinha as TOMADAS deste quadro** — a seguir ao alvo e no MESMO playhead, para os dois
+    /// alvos.
+    ///
+    /// ⚠️ **Mudou de ficheiro por TECTO DE LOC, e a morada é por ASSUNTO:** este módulo já é o dono
+    /// das tomadas (o `set_taps`, o `record_tap_fires`, o `cook_taps_only`), e o laço que as enche
+    /// vivia no meio do `cook_target_into`. ⛔ O corte foi a cura do tecto — nunca uma entrada nova
+    /// no `FILE_OVERAGE_OK`.
+    pub(crate) fn cozinha_as_tomadas(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        target: &CookTarget,
+        playhead: f64,
+        scopes: &TimeScopes,
+    ) {
+        // ⚠️ Elas ficavam dentro do braço `Sinks`, e o preço foi medido no produto: a rota
+        // HÍBRIDA marcha por `Boundaries`, então um documento com `pulse.signal` cozinhava,
+        // desenhava e **não gritava nada** — com a suíte verde, porque todo gate dirigia a
+        // porta de sinks. A tomada é do pump; ela cavalga a marcha que houver.
+        //
+        // Cozinhar aqui bate no MEMO de tudo o que a tomada compartilha com o alvo (o mesmo
+        // argumento que o braço `Boundaries` acima explica): o `Fingerprint` carrega o tique,
+        // e o tique só anda no `advance_tick_scoped`, que a marcha chama uma vez.
+        // ⛔⛔⛔ **E uma tomada NUM SINK tem de ver o que o sink DESENHA, não o que ele cozinhou**
+        // (doc 115 §16, report do dono com foto): o passe do fim reescreve o `P`, e uma tomada que
+        // guarde a corrente CRUA entrega ao gizmo do colisor as posições de ANTES da separação.
+        // *As formas saíam certas e o contorno azul ficava onde elas estavam* — duas respostas à
+        // mesma pergunta, e o artista vê as duas ao mesmo tempo.
+        //
+        // ⚠️ **Só para quem é SINK neste quadro**, e o discriminador não pode ser o param: a
+        // `source.shape` declara um `collide` com o MESMO nome do interruptor do sink (o botão
+        // dela), logo perguntar o param à cega separaria a corrente da própria forma.
+        let sinks_do_quadro: &[NodeId] = match *target {
+            CookTarget::Sinks { sinks, .. } => sinks,
+            CookTarget::Boundaries(_) => &[],
+        };
+        // ⚠️ **Sem `clear` aqui:** quem limpa é o braço `Sinks` acima (que publica o que desenhou)
+        // e o braço `Boundaries`, que não tem rota de desenho. Limpar aqui apagaria a publicação.
+        for i in 0..self.taps.len() {
+            let node = self.taps[i];
+            if self.tap_streams.iter().any(|(n, _)| *n == node) {
+                continue;
+            }
+            // Uma tomada que falha ao cozinhar simplesmente NÃO APARECE — o chamador lê uma
+            // lista mais curta, nunca um stream errado (a política do `boundary_streams`).
+            if let Ok(outputs) = self
+                .cook
+                .cook_scoped_fanned(graph, ops, node, playhead, scopes, &self.fans)
+                && let Some(v) = outputs.first()
+            {
+                let cozido = v.as_stream();
+                let desenhado = sinks_do_quadro
+                    .contains(&node)
+                    .then(|| o_que_o_sink_desenha(graph, node, cozido))
+                    .flatten();
+                self.tap_streams
+                    .push((node, desenhado.unwrap_or_else(|| cozido.clone())));
+            }
+        }
     }
 }

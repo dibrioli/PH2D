@@ -214,3 +214,7 @@ pub(super) fn amostras_das_accoes(
         })
         .collect()
 }
+
+#[cfg(test)]
+#[path = "motores_do_quadro_tests.rs"]
+mod tests;

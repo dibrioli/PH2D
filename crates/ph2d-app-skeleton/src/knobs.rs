@@ -32,6 +32,24 @@ pub enum BoneKnob {
     CurveOutY,
 }
 
+impl BoneKnob {
+    /// **Todos os números do osso** — a população do censo de knobs.
+    ///
+    /// ⚠️ **Escrita à mão e guardada por um `match` EXAUSTIVO** (o gate
+    /// `a_lista_todos_cobre_o_enum`): um `enum` não se enumera sozinho, e uma variante nova que não
+    /// venha aqui deixaria o censo a medir uma população mais pequena **em silêncio** — que é
+    /// exactamente como um controlo morto passa despercebido.
+    pub const TODOS: [Self; 7] = [
+        Self::Length,
+        Self::Strength,
+        Self::Segments,
+        Self::CurveInX,
+        Self::CurveInY,
+        Self::CurveOutX,
+        Self::CurveOutY,
+    ];
+}
+
 /// ⭐⭐ **Que número do osso este id é.**
 ///
 /// ⚠️ **Devolve `Option` e é isso que a mantém honesta:** um id que não seja do osso cai fora e
@@ -89,3 +107,50 @@ pub fn apply(bone: &mut Bone, knob: BoneKnob, v: f64) {
 #[cfg(test)]
 #[path = "knobs_tests.rs"]
 mod knobs_tests;
+
+#[cfg(test)]
+#[path = "censo_dos_knobs_do_osso_tests.rs"]
+mod censo_dos_knobs_do_osso_tests;
+
+#[cfg(test)]
+mod todos_tests {
+    use super::BoneKnob;
+
+    /// ⭐ **A lista `TODOS` cobre o enum** — o `match` é exaustivo, logo uma variante nova **não
+    /// compila** até vir à lista.
+    #[test]
+    fn a_lista_todos_cobre_o_enum() {
+        for k in BoneKnob::TODOS {
+            // ⚠️ O `match` sem `_ =>` é o gate: uma variante nova **não compila** aqui.
+            match k {
+                BoneKnob::Length
+                | BoneKnob::Strength
+                | BoneKnob::Segments
+                | BoneKnob::CurveInX
+                | BoneKnob::CurveInY
+                | BoneKnob::CurveOutX
+                | BoneKnob::CurveOutY => {}
+            }
+        }
+        // ⛔⛔ **DISTINTOS, e não só a contagem — foi uma MUTAÇÃO que o exigiu.** Trocar um item
+        // por uma cópia de outro (`Strength` → `Length`) mantém o comprimento em `7`, **compila**,
+        // e tira uma variante da população **sem ninguém ver**: o censo passa a medir um knob duas
+        // vezes e outro nenhuma. *Uma lista guardada só pelo tamanho não é uma população.*
+        let distintos: std::collections::BTreeSet<String> = BoneKnob::TODOS
+            .into_iter()
+            .map(|k| format!("{k:?}"))
+            .collect();
+        assert_eq!(
+            distintos.len(),
+            BoneKnob::TODOS.len(),
+            "a lista TODOS tem uma variante REPETIDA: outra ficou de fora, e o censo mede-a zero \
+             vezes sem reprovar"
+        );
+        assert_eq!(
+            BoneKnob::TODOS.len(),
+            7,
+            "a populacao do censo mudou sem o numero mudar — um knob novo entrou e o censo \
+             continua a medir sete"
+        );
+    }
+}

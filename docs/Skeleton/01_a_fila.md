@@ -59,6 +59,44 @@ diz onde ler o mecanismo:
 
 ---
 
+### F16 — ✅ **O CENSO DOS NÚMEROS DO OSSO: o valor chega a um CONSUMIDOR?** (2026-09-18)
+
+**O instrumento que faltava, e o veredito é bom: ZERO knobs mortos.** Os sete números do osso chegam
+a um consumidor — **seis** à pose que a lei deriva ([`bend::frames`]) e o **alcance** aos pesos da
+pele, com prova própria.
+
+⛔⛔ **É a pergunta que o `§5.0` nomeia sobre o repo inteiro** (*«nenhum instrumento pergunta se o
+VALOR chega a um consumidor»*) e a família dos dois reports do dono desta semana. Os censos que já
+existiam neste painel provam que o clique e o valor **chegam ao barramento**; nenhum provava que
+alguma coisa acontece a seguir.
+
+⛔⛔⛔ **E uma varredura por NOME não serve — medido, e teria produzido 12 falsos positivos:** a shell
+despacha estes ids **por tabela** (`VECTOR_BONE_BEND_IDS.iter().position(…)`, `BoneKnob::of_id`),
+logo um `grep` pelo nome de cada id acusa **12 controlos VIVOS**. *Um id que a régua não vê e um id
+morto leem-se igual* — a mesma forma que o `hit_indexed_ids_are_registered` já pagou noutro painel.
+
+⚠️⚠️ **E a régua mentiu DUAS vezes antes de dizer a verdade, as duas por FIXTURA:**
+1. Num osso **RECTO** o afim de flexão é a identidade qualquer que seja o comprimento ⇒ o `Length`
+   lia-se **morto** sobre produto certo. *Uma régua medida no ponto neutro de OUTRO knob acusa
+   este* — o arranjo do censo passa a ter curvatura, e há mutação a prová-lo load-bearing.
+2. Com **um** osso a normalização dá-lhe sempre a fatia inteira (`1` contra `1`), e com um segundo
+   **fora** do alcance responde o caminho de recurso *«o mais próximo leva tudo»* — o vizinho tem de
+   estar **dentro** do alcance para que a razão seja o que se mede.
+
+⭐⭐ **E uma MUTAÇÃO expôs uma cegueira do censo:** trocar um item de `TODOS` por uma cópia de outro
+**compila**, mantém o comprimento em `7`, e tira uma variante da população sem ninguém ver. ⇒ o gate
+passa a exigir **distintos**, não só a contagem. *Uma lista guardada só pelo tamanho não é uma
+população.*
+
+⛔ **O `Strength` é excepção NOMEADA e não uma folga:** o consumidor dele são os pesos, não a pose, e
+ele tem gate próprio — *uma célula sem proveniência e uma com proveniência têm o mesmo aspecto numa
+tabela*.
+
+Mutação **5 de 5** a sangrar; portão `15 088` verdes.
+
+⏳ **ABERTO:** o censo cobre os **números**; os **verbos** (Bind · Expand · Release · Add/Remove IK ·
+Add/Remove Limit · Smart) têm censo de *chegam ao barramento* e **não** de *chegam a um efeito*.
+
 ### F15 — ✅ **AS TRÊS RECUSAS DOS VERBOS DO OSSO SOBEM À TELA** (2026-09-18)
 
 **A dívida que a F13 abriu e a F14 herdou, fechada.** As três recusas do botão de osso saíam só no

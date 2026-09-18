@@ -107,7 +107,7 @@ sobra é da arte do canvas, que **não foi medida**. Gate
   dentro do passe de sprites.
 - ✅ **Medido por leitura, e é pior do que a pergunta:** ver a F6-h.
 
-### F9 — ⏳ **A PELE DEFORMADA NA GPU: o `Smooth` a alisar em QUALQUER cena** (pedido do dono, 2026-09-16)
+### F9 — ⏸️ **PARADA POR DECISÃO (2026-09-17): a pele deformada na GPU** (pedido do dono, 2026-09-16)
 
 > ⛔⛔⛔ **LEIA ISTO ANTES DE TUDO O QUE VEM ABAIXO (2026-09-17): A PREMISSA DESTA FILA ESTÁ
 > REFUTADA POR MEDIÇÃO.** Report do dono, depois de a porta abrir: ***«Como eu já havia dito muitas
@@ -144,10 +144,30 @@ sobra é da arte do canvas, que **não foi medida**. Gate
 > está certo **e** o `Smooth` separa-se num regime real (`150°` com zoom `8`), que é o que impede
 > alguém de ler isto como *«apague o botão»* — essa é decisão do dono.
 >
-> ⏳ **A DECISÃO DO DONO que fica em aberto:** o que é o botão `Deform` agora — apagado, ou ligado ao
-> ZOOM (que é o único eixo em que ele ainda tem efeito visível)? E se a F9 continua, ela deixa de
-> ser *«o `Smooth` alisa em qualquer cena»* e passa a ser *«a deformação sai da CPU»*, que é um
-> ganho de RELÓGIO (`11 %` de um quadro a 8 imagens) e não de imagem.
+> ✅ **O DONO DECIDIU no mesmo dia: *«1- Pode apagar a seção deform. 2- Escolha o melhor a fazer»*.**
+>
+> **(1)** A fileira foi **APAGADA**, e com ela o `SkinDeform` inteiro — enum, campo, as duas rotas de
+> clique, os dois ids, os dois espelhos da shell, as três chaves de texto e os dois gates de costura.
+> ⚠️ *Retirar o gesto retira a CAPACIDADE:* deixar a lei viva e inalcançável é o defeito que este
+> repo já pagou, e por isso ela não ficou a dormir. A fileira do painel dá lugar a um bloco que diz
+> **porque** ela saiu, com a medição ao lado.
+>
+> **(2)** A lei que fica é **sempre a malha ASSADA no bind** (`ph2d_skeleton_live::skin_bake_cache`),
+> e a escolha é medida nas duas colunas: ela erra o campo **menos** que a malha crua **e** custa
+> menos (`2,7 ×` mais peças por `5,6 ×` menos relógio — refinar `~0,32 µs`/peça contra desenhar uma
+> peça já fina, `~0,017 µs`). ⇒ morreram com ela o repartir do orçamento e o aviso de malha acima
+> dele: os dois existiam para governar um refinamento **por quadro** que já não acontece.
+>
+> ⏸️ **E a F9 PÁRA aqui, com o gatilho escrito.** O que sobrava dela era a metade 2 (a deformação no
+> *vertex shader*), e ela **não compra um pixel**: o ganho medido é de RELÓGIO, `~11 %` de um quadro
+> a 8 imagens presas. *Não se gasta uma wave a comprar 11 % de um quadro que hoje sobra.*
+>
+> ⏳ **O gatilho para a reabrir** (qualquer um dos três, e todos são MEDIÇÕES, não palpites):
+> uma cena do dono onde a pele passe do orçamento de peças e o log (`PH2D_BONE_LOG=1`) o mostre ·
+> um report de engasgo cuja sonda aponte para o `attach_skin_meshes` · ou a arte presa passar de
+> `~8` imagens por cena. O desenho está escrito abaixo e continua válido — ⚠️ com **uma** correcção
+> já medida: os `@location` 0..15 do *vertex* estão CHEIOS, logo os pesos têm de chegar por
+> *storage buffer* indexado pelo `@builtin(vertex_index)`, nunca por um atributo novo.
 
 
 > Perguntado *«para ele alisar em qualquer cena a deformação teria de passar para a placa de vídeo —

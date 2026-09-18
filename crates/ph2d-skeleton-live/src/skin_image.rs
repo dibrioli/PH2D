@@ -276,8 +276,8 @@ fn avisa_quad_que_nao_e_o_da_sprite() {
 /// ⭐⭐⭐ **O CAMPO DE DEFORMAÇÃO desta imagem** — a régua da imagem mais a pele.
 ///
 /// ⚠️ **Ele está definido em TODO ponto da imagem, e não só nos vértices da malha**, porque os
-/// pesos são **derivados** e não guardados. É essa a lei inteira do `Smooth`: *a malha não é a
-/// deformação, ela é uma amostragem dela* — quem quiser mais pontos pede-os e eles existem.
+/// pesos são **derivados** e não guardados. É essa a lei inteira: *a malha não é a deformação, ela
+/// é uma amostragem dela* — quem quiser mais pontos pede-os e eles existem.
 ///
 /// ⛔ Uma segunda porta que compusesse a régua e a pele à mão divergiria desta na primeira
 /// ramificação, e a imagem passaria a responder a uma lei diferente da forma vectorial.
@@ -333,7 +333,7 @@ pub fn deform_field_with(
 /// critério de sempre, numa porta só.
 /// ⭐⭐⭐ **E `pesos` é a tabela do PADRÃO-OURO guardada no bind** — vazia ⇒ a lei derivada.
 ///
-/// ⚠️⚠️ **Ela viaja pelo REFINAMENTO, e é isso que a torna utilizável no `Smooth`:** um vértice que
+/// ⚠️⚠️ **Ela viaja pelo REFINAMENTO, e é isso que a torna utilizável:** um vértice que
 /// a subdivisão inventa não tem peso guardado — ele nasce da aresta que o gerou, pela lei de
 /// [`crate::skin_refine`]. ⛔⛔ **A 1.ª redacção desta nota dizia que a única resposta certa era o
 /// baricêntrico**, e foi essa leitura em linha recta que pôs um vinco em cada aresta do bind (smoke
@@ -460,10 +460,17 @@ fn f32_de(q: [f64; 2]) -> [f32; 2] {
 /// ⛔ **O regresso é por construção:** isto corre a cada quadro, então deixar de suspender devolve
 /// a deformação sozinho. *Não há estado a repor, logo não há como ficar preso achatado.*
 ///
-/// ⭐⭐ **`Smooth`** (`smooth = Some`): a tolerância é em pixels de ECRÃ, e a escala `local → ecrã` é
-/// a base de mundo que a instância leva para a GPU (`basis`) vezes `px_per_world`, a da câmera — a
-/// que a GPU aplica, e não uma segunda conta a partir do `Transform`. O orçamento é do QUADRO,
-/// repartido pelas imagens que DESENHAM: uma escondida não gasta a parte de ninguém.
+/// ⛔⛔ **A ESCOLHA `Fast`/`Smooth` MORREU em 2026-09-17, por ordem do dono** — o que sai é sempre a
+/// malha ASSADA no bind ([`crate::skin_bake_cache`]). ⚠️ **A premissa do botão tinha morrido antes
+/// dele:** ele nasceu em 10/09 para *«arestas rectas ao dobrar»*, e a grelha graduada pelas
+/// articulações (10/09) mais a lei de pesos de Hermite (16/09) curaram o facetado **na própria
+/// malha de bind**. Medido em pixels de ECRÃ na dobra e no zoom que a cena ship, as duas leis punham
+/// cada texel a `0,0435 px` uma da outra na mediana e `0,335 px` no pior ponto — *o dono reportou
+/// quatro vezes que não via diferença, e não havia*.
+///
+/// ⚠️ **Toda régua desta linha media a grandeza ERRADA para aquela pergunta** (o desvio ao CAMPO, em
+/// pixels da ARTE, que é uma propriedade da APROXIMAÇÃO). A régua de ecrã, e a metade que exige que
+/// a separação EXISTA em dobra forte: `ph2d_app_vec::smoke_bone_paint_pixels_tests`.
 pub fn attach_skin_meshes(
     sim: &SimWorld,
     present: &mut PresentWorld,
@@ -491,14 +498,17 @@ pub fn attach_skin_meshes(
             .map(|(p, r)| (r.0, p))
             .collect()
     };
-    // ⭐⭐⭐ **O `Smooth` DESENHA A MALHA ASSADA** (F9 W2b): a densidade sai do QUADRO e vem do BIND,
-    // memoizada por [`crate::skin_bake_cache`]. ⚠️ **A troca acontece AQUI, antes do `guardadas`**,
-    // porque é a malha que vai ser desenhada que tem de repartir o orçamento do quadro — repartido
-    // sobre as contagens da malha crua, o filtro a jusante decidiria com um número que já não
-    // descreve ninguém.
+    // ⭐⭐⭐ **DESENHA-SE A MALHA ASSADA, SEMPRE** (F9 W2b): a densidade é decisão do BIND — não do
+    // quadro —, memoizada por [`crate::skin_bake_cache`], e a partir de 2026-09-17 ela é a ÚNICA
+    // lei (ver o doc desta função).
     //
-    // ⛔ **O `Fast` não passa por aqui**, e isso é a metade que faz o painel continuar a escolher:
-    // ele desenha a malha do bind, tal como sempre desenhou, sem uma linha de diferença.
+    // ⚠️ **A assadura é a que erra MENOS e custa MENOS**, e as duas metades foram medidas: ela
+    // persegue a curvatura do peso no BIND, onde a pose é a de repouso e há tempo, e entrega
+    // `2,7 ×` mais peças por `5,6 ×` menos relógio — refinar custa `~0,32 µs` por peça e desenhar
+    // uma peça já fina `~0,017 µs`. *O caro era decidir por quadro, nunca a peça.*
+    //
+    // ⛔ **`unwrap_or(m)` não é um fallback silencioso:** a assadura devolve `None` quando o campo
+    // de pesos é LINEAR, e ali partir uma aresta não muda um bit — a malha do bind já é a resposta.
     let vivas: Vec<(Entity, Entity, SkinnedMesh)> = presas
         .into_iter()
         .filter_map(|(e, m)| {

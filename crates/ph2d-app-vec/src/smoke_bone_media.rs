@@ -45,14 +45,33 @@ const QUADROS: u32 = 4;
 /// ignorasse a grelha acertaria por acaso na coluna de origem.
 const QUADRO_VIVO: u32 = 1;
 
-/// ⭐⭐⭐ **A dobra desta cena, em graus por junta — MAIS SUAVE que a da cena do Painter (`25°`).**
+/// **A dobra desta cena, em graus por junta.**
 ///
-/// ⛔⛔ **A FOTO impôs o número.** A `25°` por junta a ponta da corrente roda `50°` e a malha
-/// **DOBRA SOBRE SI MESMA**: os triângulos invertidos somem do desenho e a arte lê-se RASGADA em
-/// duas. ⚠️ *Topologicamente ela não pode rasgar* — a tinta é uma imagem contínua de um conjunto
-/// conexo —, e é exactamente por isso que o rasgo na foto é o sinal da dobra, não da lei desta wave.
-/// Aqui a pergunta é **QUE arte é desenhada**, e uma cena que se lê rasgada não a responde.
-const DOBRA: f32 = 13.0;
+/// ⛔⛔⛔ **ESTA NOTA JÁ ESTEVE ERRADA, e a redacção anterior fica registada porque o erro é do tipo
+/// mais caro que existe: um número de PRODUTO baixado para esconder um defeito cuja causa era
+/// outra.** Ela dizia — a `13`, em 2026-09-17 — que *«a `25°` a malha DOBRA SOBRE SI MESMA: os
+/// triângulos invertidos somem do desenho e a arte lê-se RASGADA em duas»*.
+///
+/// **MEDIDO em 2026-09-18** ([`ph2d_skeleton_live`], sonda `sonda_da_dobra`, sobre a arte do braço
+/// desta cena e pela porta do produto): a dobra **não vira um único triângulo** até `75°` por junta
+/// (`150°` na ponta); a primeira inversão aparece a `90°`, com `19` de `3 593`, e ali a corrente
+/// está dobrada por completo sobre si.
+///
+/// | graus/junta | `0` | `13` | `25` | `50` | `75` | `90` |
+/// |---|---:|---:|---:|---:|---:|---:|
+/// | triângulos do avesso | `0` | `0` | `0` | `0` | `0` | **`19`** |
+/// | pior factor de área | `1,44` | `1,22` | `0,99` | `0,49` | `0,03` | `−0,18` |
+///
+/// ⭐⭐⭐ **O rasgo da foto era REAL e tinha OUTRA causa — duas, na verdade, e as duas curadas na
+/// mesma jornada:** a arte da folha tinha **gargalos finos** na união dos quadros (ver [`folha`]) e
+/// a cena **configurava a sprite DEPOIS de prender** (ver [`uma`]), o que traçava a malha contra um
+/// quad `4 ×` mais largo. *Baixar o ângulo fez o sintoma encolher, e por isso pareceu uma cura.*
+///
+/// ⚠️ **A lição é a do `CLAUDE.md` §0.0 duas vezes:** um limite legítimo diz **de que recurso é** —
+/// este não dizia de nenhum —, e *quem cura o defeito que tornava um número inalcançável tem de
+/// reconferir a nota*. O número volta a `25`, que é onde a dobra se LÊ: no 9-slice a `13°` a moldura
+/// quase não arqueia.
+const DOBRA: f32 = 25.0;
 
 /// A borda do 9-slice, em pixels da fonte.
 const BORDA_PX: f32 = 20.0;

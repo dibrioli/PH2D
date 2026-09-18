@@ -592,13 +592,22 @@ impl PreviewDrive {
 
     /// Nada sob condução? Então a captura não paga nada — nem uma varredura.
     ///
-    /// ⚠️⚠️ **Ela já viveu atrás de `cfg(any(test, feature = "test-support"))`, e a razão escrita
-    /// então — *«um método que só os gates usam é o que o aviso do clippy nomeia»* — valia para um
-    /// `pub(crate)` e NÃO vale para um `pub` de biblioteca**, que é superfície pública e nunca conta
-    /// como morto. ⛔ E a partir do momento em que a irmã [`Self::len`] passou a ser pública sem
-    /// condição, a cerca inverteu-se: o `len_without_is_empty` reprova uma build de PRODUTO por ela
-    /// **não** existir lá. *Uma isenção escrita contra um aviso passa a produzir outro no dia em que
-    /// o vizinho muda de visibilidade* — e só o `-D warnings` do portão de fecho o vê.
+    /// ⛔⛔ **O `cfg(any(test, feature = "test-support"))` que ela tinha SAIU, e a razão é um
+    /// vermelho que o portão do `ship` NÃO PODE VER:** com ele, a build **de omissão** não tem
+    /// `is_empty` e a irmã [`Self::len`] — que é de produto — acorda o `clippy::len_without_is_empty`.
+    /// O `ship.sh` corre o clippy **com features**, onde `is_empty` existe ⇒ *a configuração que
+    /// reprova é exactamente a que o portão nunca compila*, e só o `-D warnings` do portão de fecho
+    /// a alcança.
+    ///
+    /// ⚠️ **E a nota antiga justificava o `cfg` com *«sem chamador daria um aviso do clippy»*:**
+    /// isso vale para um `pub(crate)` e **não** vale para um `pub` de biblioteca, que é superfície
+    /// pública e nunca conta como morto. *Uma isenção escrita contra um aviso passa a produzir
+    /// OUTRO no dia em que o vizinho muda de visibilidade.*
+    ///
+    /// ⭐ **DUAS linhas acharam isto no mesmo dia, uma sem saber da outra** (`line/Vector` e
+    /// `line/components`, 2026-09-18) e escreveram-no com palavras diferentes — a integração de
+    /// 20/09 fundiu as duas redacções numa. *Um defeito que duas linhas independentes tropeçam no
+    /// mesmo dia não é azar: é uma cerca que o portão de cada uma não alcança.*
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.memo.is_empty()

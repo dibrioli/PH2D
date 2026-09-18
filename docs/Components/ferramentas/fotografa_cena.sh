@@ -36,6 +36,22 @@ SAIDA="${4:?saida.png}"
 ESPERA="${5:-9}"
 RAIZ="$(cd "$(dirname "$0")/../../.." && pwd)"
 BIN="$RAIZ/target/smoke/ph2d-host-desktop"
+
+# ⛔⛔⛔ ELE CONSTRÓI, e a razão é um defeito MEDIDO (2026-09-18, `line/Vector`).
+#
+# Até aqui este roteiro só EXIGIA um binário (`[ -x "$BIN" ] || exit 2`) — logo ele fotografava, em
+# silêncio, a build de ontem. O modo de falha é o pior que há: uma linha editou a cena, fotografou
+# "antes" e "depois" de um corte, viu **as duas fotos IGUAIS** e escreveu na mensagem do commit que
+# a cura estava verificada. *Duas fotos do MESMO binário são sempre iguais, e lêem-se exactamente
+# como «a mudança não estragou nada».*
+#
+# ⚠️ O custo é o do `cargo` a não fazer nada: `2,5 s` incrementais com a árvore quente (medido) —
+# contra uma foto que afirma sobre código que não corre. E ele fica **por dentro**, e não num passo
+# que quem chama tem de se lembrar de escrever: *uma ferramenta que depende de um passo lembrado
+# tem o defeito de volta no dia em que alguém a chamar à pressa.*
+echo "[foto] a construir o binario do smoke (senao esta foto e' da build de ontem)…" >&2
+( cd "$RAIZ" && cargo build -q -p ph2d-host-desktop --profile smoke ) \
+  || { echo "[foto] a build falhou — nao fotografo uma arvore que nao compila" >&2; exit 2; }
 [ -x "$BIN" ] || { echo "falta o binario: cargo build -p ph2d-host-desktop --profile smoke" >&2; exit 2; }
 
 # ⛔⛔⛔ **ELE NÃO CONSTRÓI, LOGO SEM ISTO FOTOGRAFA O PROGRAMA ANTERIOR** (medido 2026-09-19).

@@ -26,6 +26,23 @@ const BRACO_PX: [u32; 2] = [240, 60];
 /// deixariam a fileira do meio com `12` — e uma fileira fina é onde um erro de mapa se esconde.
 const BRACO_BORDAS: [f32; 4] = [24.0, 12.0, 24.0, 12.0];
 
+/// ⭐⭐⭐ **O PASSO DA COLUNA SAI DA DOBRA, e não de uma fracção escolhida.**
+///
+/// ⛔⛔ Ele era `alt × 1,5`, calibrado a olho quando a cena dobrava `13°`. A `25°` a ponta de uma
+/// corrente de três ossos sobe `0,95 m` sobre uma banda de `0,90 m` ⇒ **os braços encostam-se**, e a
+/// foto mostrou-os a tocar-se. *Um número de disposição calibrado a UM ângulo deixa de descrever a
+/// cena no dia em que o ângulo muda* — e quem o mudou (§0.0) tem de reconferir.
+///
+/// A subida da ponta é fechada: cada osso mede `larg/3` e o `k`-ésimo chega inclinado `k × DOBRA`,
+/// logo a ponta sobe `(larg/3) · Σ sin(k·θ)`. A banda de um braço é `alt + subida`, e a folga é um
+/// quarto da altura — **ar que se vê**, não uma margem de segurança.
+fn passo_da_coluna(larg: f64, alt: f64) -> f64 {
+    let osso = larg / 3.0;
+    let t = f64::from(DOBRA).to_radians();
+    let subida: f64 = (1..3).map(|k| (f64::from(k) * t).sin()).sum::<f64>() * osso;
+    alt + subida + alt * 0.25
+}
+
 /// **`=2` — OS TRÊS BRAÇOS, empilhados** (ordem do dono, 2026-09-18: *«crie os 3 tipos do mesmo
 /// tamanho e mesma largura para eu ver como se dobram, se se dobram igual uma a outra»*).
 ///
@@ -46,8 +63,7 @@ pub(super) fn bracos(
 ) -> Option<(u64, u32)> {
     let ppm = f64::from(pixels_per_meter.max(f32::MIN_POSITIVE));
     let (larg, alt) = (f64::from(BRACO_PX[0]) / ppm, f64::from(BRACO_PX[1]) / ppm);
-    let vao = alt * 0.5;
-    let passo = alt + vao;
+    let passo = passo_da_coluna(larg, alt);
     let ys = [passo, 0.0, -passo];
     let celula = [
         BRACO_PX[0] as f32 / pixels_per_meter.max(f32::MIN_POSITIVE),
@@ -222,4 +238,57 @@ fn anuncia_bracos(gastas: u32, larg: f64, alt: f64) {
          [bone-media-smoke] (com PH2D_BONE_LOG=1 a de baixo imprime NOVE linhas de 'pele:', uma por \
          pedaco — e' isso que prova que ela esta' mesmo a ser fatiada)"
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ⭐⭐⭐ **A COLUNA COBRE A SUBIDA DA DOBRA** — o gate que a foto de 2026-09-18 encomendou.
+    ///
+    /// ⛔ Com o passo calibrado a `13°` e a cena a dobrar `25°`, a ponta de um braço sobe para dentro
+    /// da banda do vizinho e os três encostam-se. *Uma cena em que as peças se tocam não responde
+    /// «elas dobram igual?» — ela pergunta «qual é qual?».*
+    ///
+    /// ⚠️ **As duas metades são precisas.** A primeira diz que a banda cabe; sem a segunda, um passo
+    /// enorme passaria (e o bloco sairia do enquadramento, que é o defeito que a `=1` já pagou).
+    #[test]
+    fn a_coluna_cobre_a_subida_da_dobra() {
+        let (larg, alt) = (2.4_f64, 0.6_f64);
+        let osso = larg / 3.0;
+        let t = f64::from(DOBRA).to_radians();
+        let subida: f64 = (1..3).map(|k| (f64::from(k) * t).sin()).sum::<f64>() * osso;
+        let passo = passo_da_coluna(larg, alt);
+        assert!(
+            passo >= alt + subida,
+            "o passo da coluna ({passo:.3} m) nao cobre a banda de um braco dobrado \
+             ({:.3} m: {alt:.3} de altura mais {subida:.3} de subida) — os tres encostam-se",
+            alt + subida
+        );
+        assert!(
+            passo <= alt + subida + alt,
+            "o passo ({passo:.3} m) sobra mais de uma altura de arte sobre a banda \
+             ({:.3} m) — o bloco cresce e o enquadramento deixa de o mostrar",
+            alt + subida
+        );
+    }
+
+    /// ⚠️ **O CONTROLO da lei acima: a subida TEM de crescer com a dobra.** Sem isto, um
+    /// `passo_da_coluna` que ignorasse o ângulo (o defeito que esta wave curou) passaria o gate
+    /// irmão — ele mede uma desigualdade, e uma constante grande satisfá-la por acaso.
+    #[test]
+    fn a_subida_cresce_com_a_dobra() {
+        let sobe = |graus: f64| -> f64 {
+            let t = graus.to_radians();
+            (1..3).map(|k| (f64::from(k) * t).sin()).sum::<f64>() * 0.8
+        };
+        assert!(
+            sobe(0.0) == 0.0 && sobe(13.0) < sobe(25.0) && sobe(25.0) < sobe(40.0),
+            "a subida da ponta nao e' monotona na dobra: {:.3} / {:.3} / {:.3} / {:.3}",
+            sobe(0.0),
+            sobe(13.0),
+            sobe(25.0),
+            sobe(40.0)
+        );
+    }
 }

@@ -11,6 +11,15 @@
 
 use super::*;
 
+/// A dobra por junta que este teste nulo usa, em graus.
+///
+/// ⚠️ **Ela NÃO espelha a constante da cena, de propósito** — a `ph2d-app-vec` depende desta crate e
+/// não o contrário, logo um espelho aqui seria um número escrito à mão a envelhecer no dia em que o
+/// smoke mudasse (e ele mudou: `13 → 25` em 2026-09-18). O que este teste precisa é de **um ângulo
+/// que dobre de verdade**, e a lei que governa quanto ele pode dobrar tem gate próprio na
+/// [`super::sonda_da_dobra`].
+const DOBRA_DA_CENA: f32 = 25.0;
+
 /// O braço do teste nulo: `240 × 60 px`, opaco — a mesma silhueta para as três mídias.
 fn braco_px() -> ([u32; 2], Vec<u8>) {
     let (w, h) = (240u32, 60u32);
@@ -65,7 +74,7 @@ fn onde_poe(m: &SpriteMesh, frac: [f32; 4], uv: [f32; 2]) -> Option<[f32; 2]> {
 /// de cada uma.
 ///
 /// `qual`: `0` simples · `1` folha `4×1` no quadro `1` · `2` 9-slice no tamanho INTRÍNSECO.
-fn braco_desenhado(qual: u8) -> Vec<(SpriteMesh, [f32; 4])> {
+fn braco_desenhado(qual: u8, graus: f32) -> Vec<(SpriteMesh, [f32; 4])> {
     let ([w, h], arte) = if qual == 1 {
         folha_de_bracos()
     } else {
@@ -110,7 +119,7 @@ fn braco_desenhado(qual: u8) -> Vec<(SpriteMesh, [f32; 4])> {
     ));
     for osso in ossos.iter().skip(1) {
         if let Some(mut t) = sim.world_mut().get_mut::<Transform>(*osso) {
-            t.rotation += 13.0_f32.to_radians();
+            t.rotation += graus.to_radians();
         }
     }
     let mut present = PresentWorld::new();
@@ -161,7 +170,8 @@ fn braco_desenhado(qual: u8) -> Vec<(SpriteMesh, [f32; 4])> {
 /// da SPRITE — sem a conversão pela fracção, os nove pedaços viveriam em nove espaços diferentes.
 #[test]
 fn as_tres_midias_dobram_igual() {
-    let casos: Vec<Vec<(SpriteMesh, [f32; 4])>> = (0..3).map(braco_desenhado).collect();
+    let casos: Vec<Vec<(SpriteMesh, [f32; 4])>> =
+        (0..3).map(|q| braco_desenhado(q, DOBRA_DA_CENA)).collect();
     for (k, c) in casos.iter().enumerate() {
         assert!(!c.is_empty(), "a midia {k} nao desenhou nada");
     }
@@ -197,3 +207,6 @@ fn as_tres_midias_dobram_igual() {
         pior / um_pixel
     );
 }
+
+#[path = "sonda_da_dobra_tests.rs"]
+mod sonda_da_dobra;

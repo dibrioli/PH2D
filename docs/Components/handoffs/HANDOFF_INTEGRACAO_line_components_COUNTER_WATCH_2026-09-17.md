@@ -14,6 +14,7 @@
 | registo do `ph2d-ecs` | **+1** | `ph2d::ecs::CounterWatch` |
 | espelhos (`ph2d-render` · `ph2d-script`) | **+1** cada | eles contam `ecs + render` / `ecs + script` |
 | `LIVE_SECTIONS` | **+1** (30 → 31) | a secção *Counter Watch* |
+| chaves de i18n | **+19 −3** | as três da comparação saíram (§6-bis) — o chip mostra `≤ ≥ =` |
 | `any_live_section` | **+1** (24 → 25) | ⚠️ é um `[bool; N]` — ver §3 |
 | `SignalOrigin` | **+1** variante, **append-only** | `CounterWatch { source, row }` |
 | `EditorAction` | **+1** variante, **append-only** | `InspectorCounterWatchEdit` |
@@ -32,8 +33,8 @@
 | a **cena** | `crates/ph2d-app-components/src/counter_watch_smoke.rs` + o prólogo na shell |
 
 **Gates:** 8 (lei) + 1 (rebobinar) + 4 (ponte) + 5 (costura com clique **REAL**) + 2 (tecto/ordem,
-na shell) + 6 (cena) + **2 (a corrente inteira, sem janela)**.
-**Mutação: 25 de 25** — [`mutacao_counter_watch.sh`](../ferramentas/mutacao_counter_watch.sh).
+na shell) + 6 (cena) + **2 (a corrente inteira, sem janela)** + **5 (o sinal e a semente, §6-bis)**.
+**Mutação: 31 de 31** — [`mutacao_counter_watch.sh`](../ferramentas/mutacao_counter_watch.sh).
 
 ## §3 — A superfície de colisão
 
@@ -45,6 +46,8 @@ Ficheiros **partilhados** que esta wave toca:
 * `crates/ph2d-editor-core/src/ids/live_sections.rs` — a 31.ª entrada, **no fim**;
 * `crates/ph2d-editor-core/src/ids/inspector_camera.rs` — dois `const`, no fim de cada bloco;
 * `crates/ph2d-editor-core/src/lib.rs` · `crates/ph2d-ecs/src/lib.rs` — `mod` novos;
+* `crates/ph2d-panel-inspector/src/{sync_counter_watch,sync_sections}.rs` — a semente do editor
+  (§6-bis) e a linha que a chama, **apendada** no fim da lista das irmãs;
 * `crates/ph2d-ecs/src/{hud,rewind_runtime,scene/registry}.rs` — o `valor` passa pela porta, a
   vigia entra no rebobinar, o registo ganha uma linha;
 * `crates/ph2d-i18n/src/inspector_game.rs` — 19 chaves, antes do `ph2d-migrar-texto:end`;
@@ -111,6 +114,54 @@ vezes — nenhuma das causas na lei:
   gate da corrente, que **têm** de lá viver: o `signal_actions` e o `timer_tick` são privados ao
   `render_loop`, e alargá-los a `pub(crate)` seria a quinta agulha deste repo a nomear a
   VISIBILIDADE em vez da lei).
+
+## §6-bis — ⭐⭐⭐ O SINAL no lugar do nome, e o defeito que a FOTO achou a seguir
+
+> Ordem do dono, no mesmo dia: *«em vez de nomes por que não sinais `<= == >= > <`?»*
+
+**Duas metades, com respostas diferentes.**
+
+**(a) Os sinais: ele apanhou uma CONTRADIÇÃO que já shipava.** A linha FECHADA da lista resumia
+`≤ 2 → luz3` e o chip ABERTO dizia *«drops to or below»* — *duas palavras para o mesmo facto, no
+mesmo painel, a uma dobra de distância*. Eram **duas fontes**: o resumo tinha o glifo escrito à mão
+e o chip puxava três chaves de i18n. ⇒ porta única
+[`ph2d_panel_inspector::simbolo_da_comparacao`], com os dois leitores, e as três chaves
+**APAGADAS** (um símbolo matemático não é língua, e o censo de dois lados do HR-15 recusa uma chave
+órfã de qualquer maneira). ⚠️ **O `≤`/`≥` não é tofu, e isso está MEDIDO na `cmap` da
+`InterVariable.ttf`** (`U+2264` · `U+2265` · `U+2260` presentes) — *nenhum gate deste repo pergunta
+se a fonte tem o glifo que o painel manda desenhar*.
+
+**(b) Os cinco sinais são TRÊS, e a §5.0 responde antes da 1.ª linha.** Num contador **inteiro**
+(`Compare::holds` recebe `i64` dos dois lados), `> n` é **exactamente** `≥ n+1` e `< n` é `≤ n-1`:
+o mesmo conjunto de valores, sem aproximação ⇒ um quarto e um quinto sinal seriam **uma segunda
+maneira de escrever a MESMA regra**. ⛔ **O único que acrescentaria capacidade é o `≠`** (ele é a
+união de dois, logo não é composição de nenhum) — **decisão do dono, e ele não o pediu**.
+
+### ⛔⛔⛔ E a FOTO da secção achou o defeito que os 27 gates da wave não podiam ver
+
+Com as três regras na lista e a primeira escolhida (`vidas ≤ 2 → luz3`), o editor por baixo
+mostrava `Counter name` **vazio**, `Value 0` e `Signal name` **vazio** — os valores de PARTIDA do
+`populate`. ⚠️⚠️ **A cegueira é a PARTIÇÃO do que lê o quê:** o chip, a caixa *Only once*, os
+avisos e o resumo leem todos o **SNAPSHOT** e estavam certos; só os **três campos editáveis** vivem
+no `WidgetStore`, e o store só é escrito por uma **semente** — que não existia. *Uma secção
+meio-semeada lê-se como semeada em todo gate que pergunte pelo snapshot.*
+
+⭐ **O `last_watch_row` do `InspectorState` estava declarado desde a wave e NUNCA lido**: a aresta
+existia e a semente é que faltava — a mesma família que a auditoria de 2026-09-10 mediu na câmera e
+no áudio. ⇒ [`crate::sync_counter_watch`], no molde exacto do irmão `Timer`: de **aresta**, com a
+cerca do **foco** pela porta partilhada `sync_text_field::escreve_texto`, e ⛔ **a caixa `Only once`
+fica de FORA** (ela pinta e decide a partir do snapshot — semeá-la seria a segunda resposta à mesma
+pergunta, que é o defeito oposto a este).
+
+**Gates novos:** 2 (o sinal: o chip é a porta · um glifo, três distintos) + 1 na shell (o sinal de
+cada `Compare`, onde o enum e o painel se veem) + 2 (a semente: a regra escolhida · o foco
+sobrevive, com o CONTROLO do campo vizinho). **Mutação: 31 de 31.**
+
+⚠️⚠️ **E o portão apanhou DUAS âncoras MORTAS no próprio arnês de mutação**, as duas
+pré-existentes: um `cargo fmt` correu depois da última corrida verde, colapsou três regras numa
+linha e re-indentou um bloco ⇒ os textos procurados casavam **zero** vezes. *Sem o controlo de
+filtro que o `#14` pagou, as duas teriam saído do relatório como «sobreviveu» sobre produto
+correcto.*
 
 ## §7 — Como smokar
 

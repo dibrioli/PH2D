@@ -187,13 +187,16 @@ bloco "os dois escutam o MESMO nome de morte" ph2d-app-components o_controlo_tem
   '            apaga(&format!("{CONTROLO_LUZ}3"), "luz3_controlo"),' \
   '            apaga(&format!("{CONTROLO_LUZ}3"), "luz3"),'
 
+# ⚠️ **A INDENTAÇÃO é parte da âncora, e o `fmt` moveu-a** — esta redacção tinha 8/12 espaços sobre
+#    um ficheiro com 12/16, e casava **zero** vezes. Irmã da do `regra(1, …)` logo abaixo: as duas
+#    sobreviveram ao fecho de 17/09 porque um `cargo fmt` correu DEPOIS da última corrida verde.
 bloco "o heroi perde a Visibility (o Hide fica INERTE)" ph2d-host-desktop o_heroi_some_ao_chegar_a_zero \
   "$FAMILIA/counter_watch_smoke.rs" 1 \
-  '        Visibility::visible(),
-        Counter {
-            name: HEROI.into(),' \
-  '        Counter {
-            name: HEROI.into(),'
+  '            Visibility::visible(),
+            Counter {
+                name: HEROI.into(),' \
+  '            Counter {
+                name: HEROI.into(),'
 
 bloco "a vigia sai do laco do quadro" ph2d-host-desktop o_heroi_some_ao_chegar_a_zero \
   "$SHELL/render_loop/counter_watch_chain_tests.rs" 1 \
@@ -210,10 +213,49 @@ bloco "uma LUZ do heroi fica sem quem a apague" ph2d-app-components as_tres_luze
   '            apaga(&format!("{HEROI_LUZ}2"), "luz2"),' \
   '            '
 
+# ⚠️ **A âncora é a linha INTEIRA, porque o `fmt` colapsou as três regras numa só** — a redacção
+#    anterior procurava `'            regra(1, "luz2"),'` e casava **zero** vezes, o que sai do
+#    harness como «ANCORA» e se leria como sobrevivência em qualquer arnês sem esse controlo.
 bloco "duas regras no MESMO limiar (as luzes apagam juntas)" ph2d-app-components as_tres_regras_estao_em_limiares \
   "$FAMILIA/counter_watch_smoke.rs" 1 \
-  '            regra(1, "luz2"),' \
-  '            regra(2, "luz2"),'
+  'regra(2, "luz3"), regra(1, "luz2")' \
+  'regra(2, "luz3"), regra(2, "luz2")'
+
+echo "════ O SINAL do chip (ordem do dono, 17/09) ════"
+
+bloco "o chip volta a dizer PALAVRAS (2.a fonte do rotulo)" ph2d-panel-inspector o_chip_da_vigia_mostra_o_sinal_da_porta \
+  "$PAINEL/sections/counter_watch.rs" 1 \
+  '            let rotulo = simbolo_da_comparacao(u8::try_from(i).unwrap_or(0));' \
+  '            let rotulo = "drops to or below";'
+
+bloco "dois sinais ficam IGUAIS (indistinguiveis sob o dedo)" ph2d-panel-inspector cada_sinal_e_um_glifo_so \
+  "$PAINEL/sections/counter_watch.rs" 1 \
+  '        2 => "=",' \
+  '        2 => "\u{2264}",'
+
+bloco "o sinal troca de comparacao (o botao mente)" ph2d-host-desktop o_sinal_do_chip_e_o_da_comparacao \
+  "$PAINEL/sections/counter_watch.rs" 1 \
+  '        1 => "\u{2265}", // ≥' \
+  '        1 => "\u{2264}", // ≥'
+
+echo "════ A SEMENTE do editor (achada pela FOTO, 17/09) ════"
+
+bloco "a seccao perde a semente (editor com os valores de fabrica)" ph2d-panel-inspector o_editor_mostra_a_regra_escolhida \
+  "$PAINEL/sync_sections.rs" 1 \
+  '    crate::sync_counter_watch::sync(host, inspector_state, entity_changed);' \
+  '    let _ = &mut *inspector_state;'
+
+bloco "a semente deixa de ser de ARESTA (fica presa na regra 0)" ph2d-panel-inspector o_editor_mostra_a_regra_escolhida \
+  "$PAINEL/sync_counter_watch.rs" 1 \
+  '    if !(entity_changed || mudou) {' \
+  '    if !entity_changed {'
+
+bloco "a semente reescreve o campo em FOCO (apaga a letra)" ph2d-panel-inspector a_semente_nao_apaga_o_campo \
+  "$PAINEL/sync_text_field.rs" 1 \
+  '    if focus == Some(id) {
+        return;
+    }' \
+  '    let _ = focus;'
 
 echo
 echo "════ $((TOTAL-FALHAS)) de $TOTAL sangraram ════"

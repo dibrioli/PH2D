@@ -7,6 +7,13 @@
 //! **chip** e não um campo de texto porque o conjunto dela é **conhecido e tem três elementos** —
 //! escrever `<=` à mão seria dar ao artista uma maneira de a errar.
 //!
+//! ⭐⭐ **E o chip mostra o SINAL (`≤` · `≥` · `=`), nunca uma frase** — ordem do dono, 2026-09-17.
+//! O símbolo sai de [`simbolo_da_comparacao`], a porta única que a linha fechada já lia.
+//! ⛔ **E são TRÊS e não cinco:** num contador INTEIRO, `> 2` é `≥ 3` e `< 2` é `≤ 1` — o mesmo
+//! conjunto de valores, letra por letra (`i64` nos dois lados de [`ph2d_ecs::Compare::holds`]).
+//! *Um quarto e um quinto sinal seriam uma segunda maneira de escrever a MESMA regra*, que é o que
+//! a §5.0 manda medir antes de construir.
+//!
 //! # ⭐⭐⭐ E o que esta secção DIZ que os campos sozinhos não diriam
 //!
 //! | aviso | o que se passa |
@@ -29,30 +36,39 @@ use ph2d_i18n::{tr, tr_with};
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
 const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 
-/// Os três rótulos da comparação, **pela ordem do enum do motor**.
+/// **O SÍMBOLO de cada comparação — a PORTA, lida pelo chip E pelo resumo da linha fechada.**
 ///
-/// ⚠️ O índice É o `u8` que a edição carrega — reordenar isto reescreve o sentido de toda regra já
-/// gravada. Há gate na shell a prender a ordem à do `ph2d_ecs::Compare`.
-pub(crate) fn opcoes_de_comparacao() -> Vec<DropdownOption<usize>> {
-    crate::ids::INSP_WATCH_CMP_OPT
-        .iter()
-        .enumerate()
-        .zip([
-            tr("panel.inspector.counter_watch.at_most"),
-            tr("panel.inspector.counter_watch.at_least"),
-            tr("panel.inspector.counter_watch.exactly"),
-        ])
-        .map(|((i, &id), rotulo)| DropdownOption::new(id, i, rotulo.to_owned()))
-        .collect()
-}
-
-/// O símbolo da comparação, para o resumo da linha.
-fn simbolo(compare: u8) -> &'static str {
+/// ⭐⭐ **Ordem do dono (2026-09-17), *«em vez de nomes por que não sinais?»*, e ela apanhou uma
+/// contradição que já shipava:** a linha FECHADA da lista já dizia `≤ 0 → morri` e o chip ABERTO
+/// dizia *«drops to or below»* — *duas palavras para o mesmo facto, no mesmo painel, a uma dobra de
+/// distância*. ⛔ **Uma lei escrita em dois sítios ainda não é uma lei; só uma PORTA é.**
+///
+/// ⚠️ **Um símbolo matemático NÃO é língua** — `≤` lê-se igual em qualquer idioma —, logo ele não
+/// passa pela tabela de strings, e as três chaves que passavam foram **APAGADAS** (o censo de dois
+/// lados do HR-15 recusa uma chave órfã, que é o que as mataria de qualquer maneira).
+///
+/// ⚠️ **O índice É o `u8` que a edição carrega** — reordenar isto reescreve o sentido de toda regra
+/// já gravada. Há gate na shell a prender a ordem à do `ph2d_ecs::Compare`.
+#[must_use]
+pub const fn simbolo_da_comparacao(compare: u8) -> &'static str {
     match compare {
         1 => "\u{2265}", // ≥
         2 => "=",
         _ => "\u{2264}", // ≤
     }
+}
+
+/// As opções do chip, **pela ordem do enum do motor**, com o símbolo da porta acima.
+#[must_use]
+pub fn opcoes_de_comparacao() -> Vec<DropdownOption<usize>> {
+    crate::ids::INSP_WATCH_CMP_OPT
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| {
+            let rotulo = simbolo_da_comparacao(u8::try_from(i).unwrap_or(0));
+            DropdownOption::new(id, i, rotulo.to_owned())
+        })
+        .collect()
 }
 
 /// **O que esta regra FAZ, numa frase.**
@@ -66,7 +82,11 @@ fn resumo(row: &InspectorWatchRow) -> String {
     } else {
         format!("\u{2192} {}", row.signal)
     };
-    format!("{} {} {alvo}", simbolo(row.compare), row.value)
+    format!(
+        "{} {} {alvo}",
+        simbolo_da_comparacao(row.compare),
+        row.value
+    )
 }
 
 /// A lista das regras. Devolve o `y` seguinte.

@@ -308,9 +308,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.counter_watch.x_remove_rule" => "x Remove Rule",
         "panel.inspector.counter_watch.counter_name" => "Counter name",
         "panel.inspector.counter_watch.compare" => "When",
-        "panel.inspector.counter_watch.at_most" => "drops to or below",
-        "panel.inspector.counter_watch.at_least" => "reaches or passes",
-        "panel.inspector.counter_watch.exactly" => "is exactly",
+        // ⛔ `at_most`/`at_least`/`exactly` foram APAGADAS em 2026-09-17 (ordem do dono: o chip
+        //    mostra `≤ ≥ =`). Um símbolo matemático não é língua, logo não tem chave — e o censo
+        //    de dois lados deste painel reprovaria uma chave sem leitor de qualquer maneira.
         "panel.inspector.counter_watch.value" => "Value",
         "panel.inspector.counter_watch.signal_name_empty_mute" => "Signal name (empty = mute)",
         "panel.inspector.counter_watch.only_once" => "Only once",

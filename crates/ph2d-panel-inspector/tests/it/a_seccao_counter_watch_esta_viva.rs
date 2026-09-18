@@ -237,3 +237,83 @@ fn a_caixa_do_so_uma_vez_afirma_o_contrario_do_snapshot() {
     );
     set_current_inspector_counter_watch(None);
 }
+
+/// Duas regras DIFERENTES em todos os campos — é isso que torna a semente observável.
+///
+/// ⚠️ Se as duas partilhassem um valor, uma semente que ficasse presa na regra `0` leria certo
+/// naquele campo, e o gate aprovaria metade do defeito.
+fn duas_regras_distintas() -> InspectorCounterWatchInfo {
+    let mut a = linha("vidas", 0, true);
+    a.value = 2;
+    a.signal = "luz3".into();
+    let mut b = linha("moedas", 1, true);
+    b.value = 10;
+    b.signal = "porta".into();
+    InspectorCounterWatchInfo {
+        entity_bits: BITS,
+        rows: vec![a, b],
+        clock_playing: true,
+        selected_count: 1,
+    }
+}
+
+/// ⭐⭐⭐ **O editor mostra a regra ESCOLHIDA — os três campos que vivem no store.**
+///
+/// ⛔⛔ **Ele shipou sem isto**, e nenhum dos 27 gates da wave o via: o chip, a caixa e os avisos
+/// leem o SNAPSHOT e estavam certos; só o nome, o limiar e o sinal vivem no `WidgetStore`, que só
+/// uma SEMENTE escreve. Quem o apanhou foi uma foto da cena — a lista dizia `vidas ≤ 2 → luz3` e
+/// o editor por baixo mostrava vazio, `0` e vazio.
+///
+/// **Mutação que deve sangrar:** apagar a chamada a `sync_counter_watch::sync` no `sync_sections`.
+#[test]
+fn o_editor_mostra_a_regra_escolhida_e_nao_os_valores_de_fabrica() {
+    let (mut h, mut st) = host(Some(duas_regras_distintas()));
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert_eq!(h.store().text(ids::INSP_WATCH_COUNTER), Some("vidas"));
+    assert_eq!(h.store().number_value(ids::INSP_WATCH_VALUE), Some(2.0));
+    assert_eq!(h.store().text(ids::INSP_WATCH_SIGNAL), Some("luz3"));
+
+    // ⭐ **A ARESTA:** trocar de regra tem de trocar os três — sem isto a semente podia correr uma
+    //    vez no arranque e ficar presa na primeira para sempre.
+    st.watch_selected = 1;
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert_eq!(h.store().text(ids::INSP_WATCH_COUNTER), Some("moedas"));
+    assert_eq!(h.store().number_value(ids::INSP_WATCH_VALUE), Some(10.0));
+    assert_eq!(h.store().text(ids::INSP_WATCH_SIGNAL), Some("porta"));
+    set_current_inspector_counter_watch(None);
+}
+
+/// ⭐⭐ **E a semente NÃO apaga a letra que se está a digitar.**
+///
+/// ⚠️ **A metade que a torna segura**, e a razão de a semente ser de ARESTA: o campo em FOCO é do
+/// dedo, e o commit dele chega à cena um quadro DEPOIS. Uma semente por quadro reescreveria o
+/// campo com o valor antigo entre a tecla e o commit — *o artista digita e a letra desaparece*.
+///
+/// **Mutação que deve sangrar:** tirar a cerca do foco de `sync_text_field::escreve_texto`.
+#[test]
+fn a_semente_nao_apaga_o_campo_que_esta_em_foco() {
+    // ⚠️ O `store_mut` vive no trait do HOST, não no mock — sem ele em alcance, um gate que quer
+    //    fingir um dedo no campo não compila.
+    use ph2d_editor_core::panel::PanelHostInternal as _;
+    let (mut h, mut st) = host(Some(duas_regras_distintas()));
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    // O dedo está no campo do contador e já lá pôs meia palavra.
+    h.store_mut().set_focus(Some(ids::INSP_WATCH_COUNTER));
+    if let Some(ph2d_editor_core::interaction::InteractiveState::TextInput { text, .. }) =
+        h.store_mut().get_mut(ids::INSP_WATCH_COUNTER)
+    {
+        text.clear();
+        text.push_str("moed");
+    }
+    st.watch_selected = 1;
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert_eq!(
+        h.store().text(ids::INSP_WATCH_COUNTER),
+        Some("moed"),
+        "a semente reescreveu o campo em FOCO — o artista digita e a letra desaparece"
+    );
+    // ⛔ **O CONTROLO:** o campo que NÃO está em foco tem de ter sido semeado na mesma passagem,
+    //    senão este gate fica verde sobre uma semente que não correu de todo.
+    assert_eq!(h.store().text(ids::INSP_WATCH_SIGNAL), Some("porta"));
+    set_current_inspector_counter_watch(None);
+}

@@ -96,3 +96,35 @@ fn o_chip_da_comparacao_cobre_o_enum_e_respeita_a_ordem_dele() {
         assert_eq!(u8_de_compare(compare_de_u8(i)), i, "a volta perdeu o {i}");
     }
 }
+
+/// ⭐⭐⭐ **E o SINAL que o chip mostra é o da comparação que ele escolhe.**
+///
+/// ⚠️ **Este é o gate que o irmão acima NÃO podia ser.** Ele afirma que a POSIÇÃO `1` do chip
+/// significa `AtLeast`; esta afirma que a posição `1` **desenha `≥`**. Trocar os dois glifos deixa
+/// a ordem intacta, a ida-e-volta intacta, os cinco gates de costura intactos — e entrega ao
+/// artista uma regra que faz o CONTRÁRIO do que o botão diz.
+///
+/// ⛔ **Ele mora na shell porque é o único sítio onde o enum do motor e o painel se veem** — a
+/// `ph2d-panel-inspector` fala `u8` de propósito, e a `ph2d-ecs` não conhece painel nenhum.
+///
+/// **Mutação que deve sangrar:** trocar dois braços de `simbolo_da_comparacao`.
+#[test]
+fn o_sinal_do_chip_e_o_da_comparacao_que_ele_escolhe() {
+    use ph2d_app_components::counter_watch_inspector::u8_de_compare;
+    use ph2d_ecs::Compare;
+    use ph2d_panel_inspector::simbolo_da_comparacao;
+
+    // ⛔ Nomeados um a um, e não por um laço sobre um `ALL`: o que se afirma é o VALOR de cada
+    //    célula, e um laço derivado da mesma fonte concorda consigo mesmo.
+    for (compare, sinal) in [
+        (Compare::AtMost, "\u{2264}"),  // ≤
+        (Compare::AtLeast, "\u{2265}"), // ≥
+        (Compare::Exactly, "="),
+    ] {
+        assert_eq!(
+            simbolo_da_comparacao(u8_de_compare(compare)),
+            sinal,
+            "o chip desenha o sinal errado para {compare:?} — a regra diz o contrário do botão"
+        );
+    }
+}

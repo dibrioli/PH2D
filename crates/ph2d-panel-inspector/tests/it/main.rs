@@ -26,6 +26,7 @@ mod inspector_regression_sections;
 mod inspector_regression_slice;
 mod no_row_paints_its_name_above_its_control;
 mod o_chip_de_uma_tag_cabe_na_pilula;
+mod o_chip_da_vigia_mostra_um_sinal;
 mod o_tutorial_nomeia_rotulos_que_existem;
 mod seam;
 mod seam_anim;

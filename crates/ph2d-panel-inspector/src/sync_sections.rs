@@ -76,6 +76,10 @@ pub(crate) fn sync_new_sections(
     // ⭐ O EMISSOR DE PARTÍCULAS (TOP-20 #18) — no irmão, pelo mesmo tecto.
     crate::sync_particles::sync(host, inspector_state, entity_changed);
     crate::sync_hud::sync(host, inspector_state, entity_changed);
+    // ⭐⭐⭐ **A VIGIA DO CONTADOR** — no irmão, pelo mesmo tecto. ⛔ Esta linha FALTAVA: a secção
+    // shipou com o editor a mostrar os valores de fábrica do `populate` sobre uma regra escolhida,
+    // e quem a apanhou foi uma FOTO (o cabeçalho do irmão tem o mecanismo).
+    crate::sync_counter_watch::sync(host, inspector_state, entity_changed);
     // ⭐⭐⭐ **As DUAS que faltavam** (auditoria de 2026-09-10). ⛔ Sem elas o painel mostrava os
     // valores de PARTIDA do `populate` — nunca os do objecto —, e trocar de objecto deixava os
     // números do anterior no ecrã. ⚠️ Elas não têm LINHA aberta (um objecto tem um som e uma

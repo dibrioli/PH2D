@@ -104,6 +104,9 @@ mod state_popovers;
 /// ⚠️ As duas conversões de tinta — irmão do `state` por CAP de LOC. Ver o cabeçalho dele.
 mod state_tint;
 mod sync;
+/// ⭐ A semente da secção COUNTER WATCH — irmã do `sync_sections` por CAP de ficheiro.
+/// ⛔ Ela **não existia** até 17/09, e o editor mostrava os valores de fábrica do `populate`.
+mod sync_counter_watch;
 mod sync_hud;
 /// ⭐ A semente da secção PARTICLES — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_particles;
@@ -122,6 +125,9 @@ mod sync_text_field;
 /// the button shows the range it would cover.
 pub use sections::FILTER_LABELS;
 pub use sections::bake_label;
+/// ⭐ **O SINAL de cada comparação da VIGIA** — exportado para um gate poder afirmar que o CHIP e a
+/// linha FECHADA da lista dizem a mesma coisa, que é exactamente o que elas não diziam até 17/09.
+pub use sections::counter_watch::{opcoes_de_comparacao, simbolo_da_comparacao};
 pub use sections::paste_label;
 pub use sections::rig_button_label;
 /// **Quantas rows numéricas a §14 Platform Player pinta.**

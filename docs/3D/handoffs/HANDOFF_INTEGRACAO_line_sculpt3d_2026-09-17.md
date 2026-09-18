@@ -1882,3 +1882,74 @@ linhas em aberto.
 
 ⚠️ **Não afinar.** Subir o peso ou as varreduras é a cura que foi medida e
 recusada (registada no cabeçalho de [`ph2d_rake::pentear`]).
+
+## §74 — ⭐⭐⭐⭐ AS DUAS RÉGUAS DISCORDAM SOBRE A NOSSA LEI, e isso é o achado
+
+⚠️⚠️ **Correcção ao §73.4**, escrito uma hora antes: ele conclui que *«a
+pergunta que fecha isto não está neste corpus»*. **Falso.** O corpus não a
+responde por **estatísticas agregadas** — e o **cosseno por vértice** é um
+discriminador que o próprio §73 tinha acabado de provar que funciona (ele
+DESCEU com as varreduras). Corrido sobre configurações-alvo alternativas, ele
+respondeu.
+
+### §74.1 As quatro configurações-alvo, medidas em `x_man_x01`
+
+| alvo de cada aresta | `cos` | amplitude |
+|---|---|---|
+| **`duro`** — o que shipamos: encaixe no mais próximo de 4 eixos, ao raio médio | `0,583` | `0,654` |
+| `comprimento` — roda para o eixo mantendo o comprimento da aresta | `0,154` | `0,759` |
+| `suave` — quatro dobras suaves (meio caminho para o eixo) | `0,750` | `0,524` |
+| **`raio`** — *só regulariza o comprimento, NÃO roda nada* | **`0,886`** | `0,479` |
+
+⭐⭐⭐ **O CONTROLO ganhou.** Eu escrevi o `raio` como controlo, com o
+comentário *«isto é um Laplaciano de anel e não deve alinhar nada»* — e é ele
+que reproduz o campo do alvo.
+
+⇒ **a maior parte do que o pente do alvo faz é REGULARIZAR o anel**, não rodar
+arestas para o eixo do traço.
+
+### §74.2 E o alinhamento não está forte de mais — está ERRADO
+
+A mistura (`α` = quanto do caminho para o eixo) desce **monotonamente**:
+
+| `α` | `0,00` | `0,10` | `0,20` | `0,35` | `0,50` |
+|---|---|---|---|---|---|
+| `cos` | `0,886` | `0,882` | `0,865` | `0,797` | `0,750` |
+
+⇒ *se o nosso termo estivesse certo e só forte de mais, um `α` pequeno
+MELHORARIA.* Nenhuma dose melhora ⇒ **o quadro de 4 eixos que construímos não é
+o quadro contra o qual o alvo relaxa.**
+
+### §74.3 ⛔⛔⛔ E as duas réguas dão vereditos OPOSTOS
+
+| | régua da GRADE (`Q`, 4 dobras) | régua do CAMPO (cos por vértice) |
+|---|---|---|
+| a nossa lei (`duro`) | **`+0,1471`** — passa a barra `+0,0465` | `0,583` |
+| regularização pura | **`−0,0076`** — REPROVA | **`0,886`** |
+
+⭐⭐⭐⭐ **Nós acertamos a estatística da grade por um MECANISMO diferente do
+dele:** a nossa lei roda arestas para os eixos, o que é **maximizar a régua
+directamente**. *A lei foi escrita PARA a régua.* O alvo chega ao mesmo `Q` com
+um campo de deslocamento que se parece com regularização — logo nele a grade é
+**consequência** de outra coisa, e não o objectivo.
+
+⚠️ É a família que este repo já pagou noutro sítio (*«a régua partilhava a lei
+do produto, e um espelho não acusa»*, o recém-nascido do L-System) — aqui um
+grau pior: *a lei foi construída a olhar para a régua que a julga.*
+
+### §74.4 O que isto muda para a próxima janela
+
+⛔ **Não afinar `α`, não subir varreduras, não subir o peso** — as três estão
+medidas e recusadas (§73.1 e a tabela acima), e todas compram `Q` piorando o
+campo.
+
+⏳ **A pergunta seguinte é de MECANISMO:** *que lei tem a regularização do anel
+como efeito dominante e a grade de duas famílias como CONSEQUÊNCIA?* As
+fixturas discriminantes para a separar continuam a ser acto do **E** — mas
+agora com uma pergunta muito mais estreita do que a do §73.4, e com um
+instrumento nosso que já sabe julgar candidatas (`diag_o_campo_do_pente_vertice_a_vertice`).
+
+⚠️ **O produto não mudou nesta jornada, e isso é deliberado:** a lei que ship
+passa os gates de grade, e trocá-la pela regularização pura reprova-os
+(`−0,0076`). *Trocar uma lei que passa a régua por outra que a reprova, com
+base em segunda régua nova, é decisão que precisa das duas a concordar.*

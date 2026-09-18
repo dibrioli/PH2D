@@ -87,7 +87,18 @@ pub(super) fn indice_de(reg: &NodeRegistry, no: &str, param: &str, valor: &str) 
     // ⚠️⚠️ **A comparação é do TEXTO, e sem isto a falha é MUDA:** o array carrega chaves
     // desde a migração do HR-15, `position` não acharia nada, o `?` devolveria `None` e a cena
     // simplesmente não escreveria o param — sem erro, sem aviso, com a demo a abrir errada.
-    let i = labels.iter().position(|l| ph2d_i18n::tr(l) == valor)?;
+    //
+    // ⛔⛔ **E o `tr` SOZINHO era um defeito vivo, que só um segundo idioma revelava** (medido
+    // em 2026-09-17 com `PH2D_LANG=teste`): ele resolve no idioma DA CORRIDA, e quem chama
+    // escreve `"Box"`/`"Bowl"`/`"Loop"` — inglês, que é a lei da casa para texto de cena. Com
+    // outro idioma a comparação nunca casa, o `?` devolve `None` e **estas cinco cenas de smoke
+    // abrem com a forma errada, sem erro nenhum**.
+    //
+    // ⇒ `tr_em(Ingles, …)`: a resolução deixa de depender da corrida. *Um índice resolvido pela
+    // PALAVRA TRADUZIDA é um índice que muda de resposta quando o artista muda de língua.*
+    let i = labels
+        .iter()
+        .position(|l| ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, l) == valor)?;
     #[expect(
         clippy::cast_precision_loss,
         reason = "um indice de enum, sempre pequeno"

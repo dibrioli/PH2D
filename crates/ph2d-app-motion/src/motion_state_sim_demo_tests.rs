@@ -113,3 +113,111 @@ fn the_target_velocity_mode_caps_the_fall_and_force_does_not() {
          este gate estaria a comparar duas quedas que ja' eram a mesma"
     );
 }
+
+/// ⭐⭐⭐ **O ÍNDICE DE UM ENUM NÃO PODE DEPENDER DO IDIOMA DA CORRIDA.**
+///
+/// ⛔⛔ Até 2026-09-17 o [`indice_de`] resolvia o rótulo com `ph2d_i18n::tr`, que responde **no
+/// idioma da corrida** — e quem chama escreve `"Box"`, `"Bowl"`, `"Loop"`, que é inglês, a lei
+/// da casa para texto de cena. Com um segundo idioma ligado a comparação **nunca casa**, o `?`
+/// devolve `None` e **cinco cenas de smoke abrem com a forma errada, sem erro nenhum**.
+///
+/// ⚠️ **Nenhum instrumento deste repo o via**, e a razão é estrutural: o defeito é um `None`
+/// num caminho que devolve `Option`, e quem o recebe usa `?`. *Uma resolução que falha para o
+/// lado do silêncio é invisível a toda suíte que corre num idioma só* — quem o achou foi o
+/// **idioma de teste**.
+///
+/// # ⛔⛔ A 1.ª redacção deste gate era VÁCUA, e uma mutação mostrou-o
+///
+/// Ela chamava o [`indice_de`] duas vezes e comparava — mas o `tr` lê o idioma por
+/// [`ph2d_i18n::idioma`], que é um `OnceLock` sobre a **variável de ambiente do processo**. Num
+/// processo de teste ela não está posta, logo `tr` e `tr_em(Ingles, …)` são a MESMA função e a
+/// mutação que desfaz a cura **passa**. *Um gate que varia uma coisa que o código lê de um
+/// global do processo não varia nada* — e a régua certa não é chamar duas vezes, é medir as
+/// **três** metades abaixo, cada uma de um defeito diferente.
+#[test]
+fn o_indice_de_um_enum_e_o_mesmo_em_qualquer_idioma() {
+    let reg = registry();
+    // As consultas que as cinco cenas fazem — a população é a do PRODUTO.
+    let consultas = [
+        ("sim.collide", "shape", "Box"),
+        ("sim.collide", "shape", "Plane"),
+        ("sim.collide", "shape", "Bowl"),
+        ("source.shape", "kind", "Circle"),
+        ("source.shape", "kind", "Square"),
+        ("sim.zone", "mode", "Loop"),
+    ];
+    for (no, param, valor) in consultas {
+        // ⭐ METADE 1 — a consulta RESOLVE. Sem ela o resto mede o nada.
+        let achado = indice_de(&reg, no, param, valor);
+        assert!(
+            achado.is_some(),
+            "`{no}.{param}` não tem a opção `{valor}` — a cena escreveria o param errado"
+        );
+
+        // ⭐⭐ METADE 2 — **o defeito EXISTE**: noutro idioma a palavra que a cena escreve já
+        //    não é a que a tabela devolve. É isto que torna a metade 3 necessária em vez de
+        //    decorativa, e é a única maneira de o afirmar sem escrever no ambiente de um
+        //    processo que corre a suíte em paralelo.
+        let tid = ph2d_nodegraph::node::NodeTypeId::of(no);
+        let hint = reg
+            .param_ui(tid)
+            .and_then(|h| h.iter().find(|h| h.param == param).copied())
+            .expect("o param existe");
+        let ph2d_node_registry::ParamWidget::Enum { labels } = hint.widget else {
+            panic!("`{no}.{param}` devia ser um selector");
+        };
+        let chave = labels
+            .iter()
+            .find(|l| ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, l) == valor)
+            .expect("a metade 1 já o achou");
+        assert_ne!(
+            ph2d_i18n::tr_em(ph2d_i18n::Idioma::Teste, chave),
+            valor,
+            "`{chave}` lê igual nos dois idiomas — esta consulta não discrimina, e a metade 3              ficaria a defender uma lei que nada pode violar"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **METADE 3 — a resolução NÃO CONSULTA o idioma da corrida**, e isto é textual de
+/// propósito.
+///
+/// ⚠️ A propriedade é *«a resposta não depende de `PH2D_LANG`»*, e ela **não é observável de um
+/// teste**: o idioma é um `OnceLock` sobre uma variável de ambiente, posta uma vez por processo.
+/// ⇒ o que se afirma é a FORMA — a função resolve com [`ph2d_i18n::tr_em`] e um idioma
+/// **escrito**, nunca com o `tr` que lê o ambiente.
+///
+/// ⭐ `include_str!` e não `read_to_string`: se o irmão mudar de nome ou de sítio isto deixa de
+/// **COMPILAR**, em vez de passar a varrer um ficheiro vazio.
+#[test]
+fn a_resolucao_do_indice_nao_le_o_idioma_do_ambiente() {
+    const FONTE: &str = include_str!("motion_state_sim_demo.rs");
+    let corpo = FONTE
+        .split_once("pub(super) fn indice_de(")
+        .expect("a função existe")
+        .1;
+    let corpo = &corpo[..corpo
+        .find(
+            "
+}
+",
+        )
+        .expect("a função fecha")];
+    let codigo: String = corpo
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join(
+            "
+",
+        );
+    assert!(
+        codigo.contains("tr_em(ph2d_i18n::Idioma::Ingles"),
+        "o `indice_de` deixou de resolver num idioma ESCRITO"
+    );
+    // ⛔ Controlo de vacuidade da extracção: um corte errado devolveria um corpo sem o `match`
+    //    do widget, e o teste acima passaria a medir uma string vazia.
+    assert!(
+        codigo.contains("ParamWidget::Enum"),
+        "a extracção do corpo da função partiu-se — ela já não contém o que devia"
+    );
+}

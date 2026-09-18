@@ -446,3 +446,9 @@ mod tests;
 #[cfg(test)]
 #[path = "paint_parity_tests.rs"]
 pub(crate) mod paint_parity_tests;
+
+/// ⭐⭐ **E os gates das duas waves que chegaram DEPOIS do pintor** — o chão que recebe a cor e a luz
+/// que atravessa a peça. ⛔ Irmão por **responsabilidade** e por tecto de LOC, nunca por isenção.
+#[cfg(test)]
+#[path = "paint_parity_luz_tests.rs"]
+pub(crate) mod paint_parity_luz_tests;

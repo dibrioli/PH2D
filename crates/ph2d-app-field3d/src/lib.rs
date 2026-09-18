@@ -149,6 +149,10 @@ mod render_bounce_seam_tests;
 #[cfg(test)]
 mod render_bounce_gpu_tests;
 
+/// ⭐ **A segunda metade daquele report** — as sondas na face do cubo, com a fixtura própria delas.
+/// ⛔ Irmão por assunto e por tecto de LOC, nunca isenção.
+#[cfg(test)]
+mod render_bounce_cubo_tests;
 /// ⭐ A régua dos TERRAÇOS na peça que o dono fotografou, com a luz do produto (`08` §13).
 #[cfg(test)]
 mod render_bounce_vaso_tests;

@@ -96,6 +96,11 @@ pub fn supports(doc: &FieldDoc, reg: &ph2d_field_eval::hybrid::Registry) -> bool
 pub mod material_parity;
 pub mod owners_parity;
 pub mod paint;
+/// ⭐ **O corpo do shader do pintor** — irmão por responsabilidade do [`paint`]: ali monta-se, aqui
+/// compila-se. ⛔ Corte por tecto de LOC, nunca isenção (`CLAUDE.md` §5.0).
+mod paint_wgsl;
+/// ⭐ **A segunda metade do shader do pintor** — o hemisfério que ele integra.
+mod paint_wgsl_sondas;
 pub mod parity;
 pub mod probe;
 pub mod sculpt;

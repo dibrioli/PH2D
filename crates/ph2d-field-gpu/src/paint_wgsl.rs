@@ -1,0 +1,201 @@
+//! ⭐⭐⭐ **O CORPO DO PINTOR, em WGSL** — o grupo `1`, as leis de leitura e as duas entradas.
+//!
+//! # Por que um ficheiro irmão
+//!
+//! O [`super::paint`] é a **montagem**: a `PaintSetup`, os buffers, o pipeline e o despacho. Este é
+//! o **texto do shader**, que é outro assunto e outra língua — e o ficheiro passou o tecto de LOC
+//! da workspace ao crescer com a subsuperfície (`docs/Render3d/10`).
+//!
+//! ⛔ **Split, nunca allowlist** (`CLAUDE.md` §5.0): a cura de um tecto vermelho é corte por
+//! responsabilidade, e a fronteira aqui desenha-se sozinha — *o que se compila e o que se monta*.
+//!
+//! ⚠️ **As marcas `{...}` continuam a ser substituídas por quem MONTA**, no irmão: elas são lidas
+//! dos ficheiros que declaram cada constante, nunca escritas aqui. *Uma constante transcrita é uma
+//! divergência à espera de um dia em que alguém mexa na outra.*
+
+/// O corpo do pintor — o grupo `1`, as leis de leitura e as duas entradas.
+///
+/// ⚠️ `{BLUR_COS}` e `{PISO_LUZ}` são **lidos do ficheiro** que os declara, nunca escritos aqui: uma
+/// constante transcrita é uma divergência à espera de um dia em que alguém mexa na outra.
+pub(crate) const PINTOR: &str = r"
+// ── o grupo 1: o que só o pintor lê ───────────────────────────────────────────────────────────
+struct Pintor {
+    knobs: vec4<f32>,  // stops, pixel_world, curv_eps, _
+    fundo: vec4<f32>,  // o fundo em LINEAR pré-multiplicado, para a média da borda
+    modo: vec4<u32>,   // view, bordas, fundo empacotado, materiais
+    // ⭐ `x` = há gémeas foscas empacotadas (ver `ler_mat_fosca`). `0` é o caminho anterior ao
+    // report do dono de 2026-09-17, ao bit.
+    modo2: vec4<u32>,
+    // ⭐⭐⭐ **O CAMPO DO CHÃO** (`ph2d_field_render::ground_bounce`): `xy` = o canto `(x, z)`,
+    // `z` = o passo, `w` = a altura do plano. A contagem de células por aresta vive em `modo2.y`,
+    // e `0` ali quer dizer «campo vazio» — o caminho de sempre, ao bit.
+    chao_campo: vec4<f32>,
+    // ⭐ **Uma radiância por lâmpada**, na MESMA ordem das posições do `Setup`.
+    lamp: array<vec4<f32>, {MAX_LAMPS}>,
+};
+@group(1) @binding(0) var<uniform> ceu: Ceu;
+@group(1) @binding(1) var<uniform> pintor: Pintor;
+@group(1) @binding(2) var<storage, read> tabela: array<f32>;
+@group(1) @binding(3) var<storage, read> materiais: array<f32>;
+@group(1) @binding(4) var<storage, read_write> saida: array<u32>;
+// ⭐⭐⭐ **AS SONDAS** (`ph2d_field_render::probes`): `PROBE_GRID³` sondas × `SH_STRIDE` floats — os
+// nove coeficientes esféricos por canal (27) e a bandeira «está dentro da peça» (o 28.º).
+@group(1) @binding(5) var<storage, read_write> sondas: array<f32>;
+// ⭐⭐⭐ **A COR QUE A PEÇA DEVOLVE AO CHÃO** (`ph2d_field_render::ground_bounce`): `n²` irradiâncias
+// em ordem `z * n + x`, três floats cada. ⚠️ **Ela é assada na CPU e ENVIADA**, ao contrário das
+// sondas — ver a medição no `PaintSetup::ground_bounce`.
+@group(1) @binding(6) var<storage, read> chao_luz: array<f32>;
+
+const BLUR_COS: f32 = {BLUR_COS};
+const PISO_LUZ: f32 = {PISO_LUZ};
+const PROBE_GRID: u32 = {PROBE_GRID}u;
+const PROBE_DIRS: u32 = {PROBE_DIRS}u;
+const PROBE_MARGIN: f32 = {PROBE_MARGIN};
+const SH_STRIDE: u32 = 28u;
+// `4π / PROBE_DIRS`, formatado do MESMO f32 que a CPU calcula.
+const SH_PESO: f32 = {SH_PESO};
+const SH_A1: f32 = {SH_A1};
+const SH_A2: f32 = {SH_A2};
+const SQRT3: f32 = {SQRT3};
+const PACKED: u32 = {PACKED}u;
+
+// ⚠️ **A rede é `materiais[0]`**, e ela não é decorativa: o dono pode vir de uma peça que já mudou
+// entre a marcha e a pintura. Ler fora do buffer devolveria lixo; pintar com o primeiro material é
+// o que o artista lê como «ainda não actualizou», que é o que de facto aconteceu.
+fn ler_mat(i: u32) -> Mat {
+    var j = i;
+    if (j >= pintor.modo.w) { j = 0u; }
+    return mat_em(j * PACKED);
+}
+
+// ⭐⭐⭐ **A GÉMEA FOSCA do material `i`** — ver `ph2d_material::Surface::matte` e o
+// `PaintSetup::matte`. Com `pintor.modo2.x == 0` não há gémeas empacotadas e ela devolve o material
+// de sempre, que é o caminho anterior ao report do dono, ao bit.
+fn ler_mat_fosca(i: u32) -> Mat {
+    var j = i;
+    if (j >= pintor.modo.w) { j = 0u; }
+    if (pintor.modo2.x == 0u) { return mat_em(j * PACKED); }
+    return mat_em((pintor.modo.w + 1u + j) * PACKED);
+}
+
+// ⭐ **O material do CHÃO** — a difusa branca que vive depois dos da peça. Ver `PaintSetup::catcher`.
+fn mat_do_chao() -> Mat {
+    return mat_em(pintor.modo.w * PACKED);
+}
+
+fn mat_em(o: u32) -> Mat {
+    var m: Mat;
+    m.base_color_weight    = vec4<f32>(materiais[o +  0u], materiais[o +  1u], materiais[o +  2u], materiais[o +  3u]);
+    m.specular_color_metal = vec4<f32>(materiais[o +  4u], materiais[o +  5u], materiais[o +  6u], materiais[o +  7u]);
+    m.coat_color_diffrough = vec4<f32>(materiais[o +  8u], materiais[o +  9u], materiais[o + 10u], materiais[o + 11u]);
+    m.emission_specweight  = vec4<f32>(materiais[o + 12u], materiais[o + 13u], materiais[o + 14u], materiais[o + 15u]);
+    m.darkening_coatweight = vec4<f32>(materiais[o + 16u], materiais[o + 17u], materiais[o + 18u], materiais[o + 19u]);
+    m.attenuation_coatior  = vec4<f32>(materiais[o + 20u], materiais[o + 21u], materiais[o + 22u], materiais[o + 23u]);
+    m.prepared             = vec4<f32>(materiais[o + 24u], materiais[o + 25u], materiais[o + 26u], materiais[o + 27u]);
+    m.emissive             = vec4<f32>(materiais[o + 28u], materiais[o + 29u], materiais[o + 30u], materiais[o + 31u]);
+    m.ss_color_weight      = vec4<f32>(materiais[o + 32u], materiais[o + 33u], materiais[o + 34u], materiais[o + 35u]);
+    m.ss_mfp_aniso         = vec4<f32>(materiais[o + 36u], materiais[o + 37u], materiais[o + 38u], materiais[o + 39u]);
+    m.ss_brdf_thin         = vec4<f32>(materiais[o + 40u], materiais[o + 41u], materiais[o + 42u], materiais[o + 43u]);
+    m.ss_btdf_curv         = vec4<f32>(materiais[o + 44u], materiais[o + 45u], materiais[o + 46u], materiais[o + 47u]);
+    return m;
+}
+
+// ⭐⭐⭐ **A CURVATURA DESTE PONTO, escrita no material** — o gémeo exacto do
+// `ph2d_material::Surface::at_curvature`. Ver `ph2d_field_render::curvatura` para a lei e para
+// porque ela NAO pode vir de `fwidth`: aquilo e' por quad de 2x2 e a CPU e' por pixel, e as duas
+// respostas partiriam a paridade que esta linha tem em 100,000 %.
+//
+// ⚠️ **Ela so' e' calculada quando alguem a le** — com a subsuperficie macica desligada (a
+// omissao) o `if` sai antes de tocar no campo, e o quadro e' o de sempre ao bit.
+fn com_a_curvatura(m_in: Mat, p: vec3<f32>) -> Mat {
+    var m = m_in;
+    if (m.ss_color_weight.a <= 0.0 || m.ss_brdf_thin.a > 0.5) { return m; }
+    let e = pintor.knobs.z;
+    if (e <= 0.0) { return m; }
+    let o0 = vec3<f32>( 1.0, -1.0, -1.0);
+    let o1 = vec3<f32>(-1.0, -1.0,  1.0);
+    let o2 = vec3<f32>(-1.0,  1.0, -1.0);
+    let o3 = vec3<f32>( 1.0,  1.0,  1.0);
+    let soma = field(p + o0 * e) + field(p + o1 * e) + field(p + o2 * e) + field(p + o3 * e);
+    let laplaciano = (soma - 4.0 * field(p)) / (2.0 * e * e);
+    m.ss_btdf_curv.a = abs(laplaciano * 0.5);
+    return m;
+}
+
+// A base é ortonormal, logo a transposta é a inversa — a mesma `ViewBasis::world_to_view` da CPU.
+fn mundo_para_vista(w: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(dot(w, s.right), dot(w, s.up), dot(w, s.fwd));
+}
+
+// ⭐ **A OCLUSÃO SUAVIZADA** — o `ph2d_field_render::blur_occlusion`, célula a célula.
+//
+// ⚠️ Os vizinhos leem a oclusão CRUA (a CPU suaviza para uma cópia), e um pixel que não acerta
+// devolve o valor dele sem tocar em nada — ali `n0` é o vector zero e a cerca da normal fecha
+// sozinha, que é exactamente o `continue` da CPU.
+fn ceu_em(x: u32, y: u32, i: u32, n0: vec3<f32>) -> f32 {
+    var soma = 0.0;
+    var cont = 0u;
+    for (var dy = -1; dy <= 1; dy = dy + 1) {
+        for (var dx = -1; dx <= 1; dx = dx + 1) {
+            let xx = i32(x) + dx;
+            let yy = i32(y) + dy;
+            if (xx < 0 || yy < 0 || xx >= i32(s.w) || yy >= i32(s.h)) { continue; }
+            let j = u32(yy) * s.w + u32(xx);
+            let c = centro[j];
+            if (c.x < 0.0) { continue; }
+            if (dot(n0, c.yzw) < BLUR_COS) { continue; }
+            soma = soma + luz[j * passo_da_luz()];
+            cont = cont + 1u;
+        }
+    }
+    if (cont > 0u) { return soma / f32(cont); }
+    return luz[i * passo_da_luz()];
+}
+
+// A base é ortonormal, logo a transposta é a inversa — a volta do `mundo_para_vista`.
+fn vista_para_mundo(v: vec3<f32>) -> vec3<f32> {
+    return s.right * v.x + s.up * v.y + s.fwd * v.z;
+}
+
+// ⭐⭐⭐ **A RADIÂNCIA QUE SAI DO PONTO ACERTADO, por luz DIRECTA** — e é isto que faz o ricochete
+// ser **UM**: a luz que sai dali não traz o que lhe chegou por sua vez.
+//
+// O `ph2d_field_render::bounce_slice`, passo 4, linha a linha.
+fn devolvida_de(q: vec3<f32>, nq_vista: vec3<f32>, veio_de: vec3<f32>) -> vec3<f32> {
+    // ⚠️ **Sem fronteira suavizada, e o doc da `Surfaces::of` diz porquê:** *«um raio de ricochete
+    // não tem pixel — ele acerta um ponto —, e inventar-lhe uma largura seria inventar a
+    // resposta»*. Só o dono (`.a`) é lido; a largura não muda quem ele é.
+    // ⭐⭐⭐ **A GÉMEA FOSCA** — ver `ph2d_material::Surface::matte`, que traz a medição na peça do
+    // dono: o lóbulo especular é uma quase-delta que `48` direcções FIXAS não amostram, e carregá-lo
+    // faz o estimador **deixar de convergir** (`96` direcções leem PIOR que `48`).
+    let m = ler_mat_fosca(dono_mix(q, pintor.knobs.y).a);
+    // ⭐ O observador daquele ponto é **quem lhe perguntou**: o raio veio de `-veio_de`.
+    let v = mundo_para_vista(-veio_de);
+    let nq = vista_para_mundo(nq_vista);
+    let erguido = q + nq * (s.hit_eps * 4.0);
+    let piso = PISO_LUZ * PISO_LUZ;
+    var sai = vec3<f32>(0.0);
+    for (var l: u32 = 0u; l < s.n_lamps; l = l + 1u) {
+        let d = s.lamps[l].xyz - q;
+        let cru = dot(d, d);
+        // ⚠️ **O braço degenerado é o do sombreador**: abaixo do piso a direcção é a NORMAL, que é
+        // o limite finito. A mesma lei da `shade_render::chega_da_lampada`.
+        var to_light = nq_vista;
+        var vis = 1.0;
+        if (cru > piso) {
+            let dist = sqrt(cru);
+            let dir = d / dist;
+            to_light = mundo_para_vista(dir);
+            // ⭐ **Só quem VÊ a luz paga raio** — e isto não muda a resposta: com `N·L <= 0` o
+            // `mx_direct` devolve zero seja qual for a visibilidade. É a mesma cerca do passe da
+            // sombra, e o gate de paridade contra a referência de CPU é quem o prova.
+            if (dot(nq, dir) > 0.0) {
+                vis = visivel(erguido, dir, cerca_da_bola(erguido, dir, dist), 8.0);
+            }
+        }
+        sai = sai + mx_direct(m, nq_vista, v, to_light, pintor.lamp[l].rgb * vis / max(cru, piso));
+    }
+    return sai;
+}
+
+";

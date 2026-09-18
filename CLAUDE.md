@@ -1094,6 +1094,26 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `Thin Walled` pintar-se como caixa e não como escolha · a cena não pôr a luz atrás sozinha · **e o
   relógio desta wave não foi medido** (a máquina esteve a `load 13`–`27` a jornada inteira), o que a
   manda para a `W9`.
+  ⛔⛔⛔ **E o report de 18/09 (*«em `Thin Walled: Solid` … não há transição suave … mas uma linha
+  dura»*) NÃO era a lei da subsuperfície: era a sombra de um VIZINHO a ser TRUNCADA no terminador**
+  ([`10` §11](docs/Render3d/10_a_luz_que_atravessa_a_peca.md)). O passe de sombra escrevia
+  `vis = 1,0` para todo ponto de costas para a luz, e ⭐ **o comentário desse filtro previa o dia por
+  escrito** (*«até ao dia em que alguém ler este canal para outra coisa — a OpenPBR tem termos que
+  recebem luz com `N·L < 0`»*): a subsuperfície maciça é o primeiro consumidor desta casa que o faz,
+  e a sombra da lâmina acabava num degrau de `0,445` **num pixel**, em `N·L = 0`. ⚠️ **Não é acne**
+  (uma esfera sozinha lê `0` de `12 924`). ⛔⛔ **A cura óbvia — marchar o raio como os outros — foi
+  construída, MEDIDA e refutada:** ela cura a bola e **apaga a folha com o sol atrás** (`83,7 →
+  73,8`, `vis` mín `0,000`), que é a razão de ser da outra metade da wave. ⇒ a lei que fica é *o raio
+  de costas só conta o que estiver depois de ele SAIR do próprio corpo*, e ⭐⭐⭐ **o `t` do estimador
+  de penumbra RECOMEÇA na saída** — `dureza·d/t` é um tamanho angular visto da origem, e com a corda
+  interna lá dentro o lado escuro lia `0,105` onde o iluminado, a um pixel, lia `0,555`. Medido: 2.ª
+  diferença p99 na banda do terminador **`9,21 → 3,71`** (controlo liso `1,00`), salto no pixel
+  `+4,4 → +1,8`, folha **intacta**, esfera convexa com **zero** acne, as **6** paridades
+  CPU↔dispositivo verdes (o gémeo em WGSL é o `visivel_saindo`), **4 de 4 mutações a sangrar**, preço
+  `+7 %` a `+9 %` do passe de sombra. ⚠️ O doc do `march_shadow_to` media que aquele filtro poupava
+  **`6 %` do relógio** — *uma optimização de 6 % paga com uma linha dura na tela*. ⏳ Fica o **V**
+  residual logo a seguir ao terminador, e a cura de fundo NOMEADA: *a visibilidade de um termo
+  TRANSMISSIVO é a do sítio por onde a luz ENTRA*, construtível com a curvatura que a wave já calcula.
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

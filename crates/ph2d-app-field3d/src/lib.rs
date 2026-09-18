@@ -156,3 +156,6 @@ mod render_bounce_cubo_tests;
 /// ⭐ A régua dos TERRAÇOS na peça que o dono fotografou, com a luz do produto (`08` §13).
 #[cfg(test)]
 mod render_bounce_vaso_tests;
+/// ⭐ A régua do TERMINADOR — o report de 18/09 sobre a linha dura no `Thin Walled: Solid`.
+#[cfg(test)]
+mod subsuperficie_terminador_tests;

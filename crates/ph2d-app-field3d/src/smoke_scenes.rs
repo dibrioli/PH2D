@@ -468,7 +468,7 @@ mod scene_tests;
 
 /// ⭐ As cenas dos dois recuos de uma aresta — ver [`edge`].
 #[path = "smoke_scenes_edge.rs"]
-mod edge;
+pub(crate) mod edge;
 
 /// ⭐⭐ As cenas das formas por FÓRMULA e de VÉRTICES autorados — ver [`formula`].
 #[path = "smoke_scenes_formula.rs"]

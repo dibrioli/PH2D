@@ -60,7 +60,7 @@
 //! - o quadro ASSENTE paga `56 ms` sobre os `28,6` que já custava, **noutra thread** — a janela
 //!   continua a 60 Hz, que é a cerca que aquele módulo inteiro protege.
 
-use crate::march::{Scene, march_shadow_to};
+use crate::march::{Scene, march_shadow_saindo};
 use crate::{Gbuffer, Ground, Orbit, Sharpness, Stencil};
 use ph2d_field::FieldDoc;
 use ph2d_field_eval::hybrid::Registry;
@@ -296,6 +296,7 @@ pub fn shadow_pass_on(
         .map(|luz| {
             let mut vis = vec![1.0f32; pixels];
             let mut quais = Vec::new();
+            let mut sair = Vec::new();
             let mut origens = Vec::new();
             let mut dirs = Vec::new();
             let mut cercas = Vec::new();
@@ -318,6 +319,8 @@ pub fn shadow_pass_on(
                         continue;
                     }
                     quais.push(i);
+                    // ⚠️ O chão é um plano e o raio dele parte POR CIMA: nunca está dentro de nada.
+                    sair.push(false);
                     origens.push([q[0], q[1] + lift, q[2]]);
                     dirs.push(dir);
                     cercas.push(ate);
@@ -334,19 +337,25 @@ pub fn shadow_pass_on(
                 // converte — e é a MESMA conversão que o `shade_render` faz para o `N·L`, senão a
                 // sombra e a luz discordariam sobre quem vê quem.
                 let nm = base.view_to_world(g.normal[i]);
-                // ⭐⭐ **De costas para a luz: sem raio — e a visibilidade fica em `1,0`.**
+                // ⭐⭐⭐ **De costas para a luz: o raio PARTE, e só conta o que estiver depois de
+                // ele SAIR do próprio corpo.**
                 //
-                // ⚠️ **`1,0` e não `0,0`, e a diferença NÃO é visível hoje**: o `N·L ≤ 0` já anula
-                // a contribuição da lâmpada, logo as duas respostas pintam o mesmo pixel. Mas o
-                // canal diz *«quanto da lâmpada CHEGA»*, e a resposta verdadeira é *«ela não está
-                // tapada por nada»* — escrever `0` seria uma mentira que por acaso não se nota, até
-                // ao dia em que alguém ler este canal para outra coisa (a OpenPBR tem termos que
-                // recebem luz com `N·L < 0`). O gate da esfera reprova a mentira: uma mutação que
-                // apague este filtro põe METADE da esfera a vir sombreada.
-                if nm[0] * dir[0] + nm[1] * dir[1] + nm[2] * dir[2] <= 0.0 {
-                    continue;
-                }
+                // ⛔⛔ **Aqui esteve um `continue` que escrevia `1,0`, e o comentário dele previa
+                // por escrito o dia em que isso mordesse** — *«até ao dia em que alguém ler este
+                // canal para outra coisa (a OpenPBR tem termos que recebem luz com `N·L < 0`)»*. O
+                // dia foi 2026-09-18: a subsuperfície MACIÇA é o primeiro consumidor desta casa que
+                // lê luz do lado escuro, e com `1,0` ali a sombra que um vizinho projecta era
+                // **TRUNCADA** no terminador — a linha dura que o dono fotografou (medido: `+4,4`
+                // bytes num pixel, p99 da quebra `9,21` contra `1,00` sem sombra).
+                //
+                // ⛔ **E a cura NÃO é marchar o raio como os outros:** ele atravessaria o próprio
+                // corpo e a metade de parede FINA — a folha com o sol atrás, que é a razão de ser
+                // da wave — apagava-se (`83,7 → 73,8` de luminância média, `vis` mínima `0,000`,
+                // medido). *A pergunta certa não é «a minha peça está no caminho?», é «há mais
+                // alguma coisa no caminho?»* ⇒ [`crate::march::march_shadow_saindo`].
+                let de_costas = nm[0] * dir[0] + nm[1] * dir[1] + nm[2] * dir[2] <= 0.0;
                 quais.push(i);
+                sair.push(de_costas);
                 // ⭐⭐⭐ **O RAIO PARTE AO LONGO DA NORMAL, e não ao longo de si próprio.**
                 //
                 // ⛔⛔ **Acne de sombra, apanhada pelo gate da ESFERA:** um corpo convexo não se pode
@@ -364,16 +373,25 @@ pub fn shadow_pass_on(
                 //
                 // ⭐ Erguer o ponto `ε` pela NORMAL resolve-o **em qualquer ângulo e com um `ε`
                 // só**: no ponto erguido o campo vale `≈ ε` seja qual for a direcção do raio.
-                let erguido = [
-                    p[0] + nm[0] * lift,
-                    p[1] + nm[1] * lift,
-                    p[2] + nm[2] * lift,
-                ];
+                //
+                // ⚠️⚠️ **E quem está de costas parte do PONTO, sem erguer.** O ergue existe para o
+                // raio se afastar da superfície; de costas ele tem de ENTRAR, e um raio erguido que
+                // roça o terminador pode nunca tocar no corpo — nunca sairia, nunca acusaria, e a
+                // sombra do vizinho voltava a ser truncada exactamente no pixel que se está a curar.
+                let erguido = if de_costas {
+                    p
+                } else {
+                    [
+                        p[0] + nm[0] * lift,
+                        p[1] + nm[1] * lift,
+                        p[2] + nm[2] * lift,
+                    ]
+                };
                 origens.push(erguido);
                 dirs.push(dir);
                 cercas.push(cerca(bola.as_ref(), p, dir, dist));
             }
-            let v = march_shadow_to(&scene, &origens, &dirs, &cercas, HARDNESS);
+            let v = march_shadow_saindo(&scene, &origens, &dirs, &cercas, HARDNESS, &sair);
             for (j, &i) in quais.iter().enumerate() {
                 vis[i] = v[j];
             }

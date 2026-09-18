@@ -257,3 +257,100 @@ linha, `36` uma vez no arranque.
   que é onde o dono a pôs.
 - **`transmission_*` · `fuzz_*` · `thin_film_*` · `geometry_opacity`** continuam fora, agora com a
   lição do §9 ao lado: a lista fecha contra o construído.
+
+---
+
+## §11 — ⛔⛔⛔ O report de 2026-09-18: a LINHA DURA no terminador, e o filtro que a previu por escrito
+
+> *«Bom resultado! Avalie apenas uma coisa: em `Thin Walled: Solid` não há transição suave entre a
+> área iluminada e a área sombreada da esfera, mas uma linha dura. Veja se é correto.»* — duas fotos
+> da cena `=33`, a seta em cima do vinco.
+
+**Não é correto**, e o mecanismo não está na lei da subsuperfície.
+
+### §11.1 — A fixtura mentiu duas vezes antes de conter o fenómeno
+
+A 1.ª sonda montou uma bola **sozinha na origem** e binou a luminância por `N·L`: o perfil
+atravessou `N·L = 0` **liso** e o pior salto ficou em `0,78` — o **brilho especular**, que lê o mesmo
+no material opaco. *Uma régua que procura o máximo global mede o realce, não o terminador.*
+
+A 2.ª escreveu `radiance_at_one: [intensity; 3]` em vez de passar pela porta do produto
+([`lights::radiance_at_one`], que é `cor × intensidade × π`): a lâmpada saiu **`π×` fraca e sem
+cor**, o céu dominou, e o terminador leu-se como uma rampa de `99` a `108`. *Uma sonda que reescreve
+a conversão do produto mede outro programa* — a quinta vez que esta casa o paga.
+
+### §11.2 — A causa, com o canal isolado
+
+Na `=33` a **LÂMINA projecta sombra sobre a ESFERA**. Ao longo de uma linha que atravessa o
+terminador, a visibilidade da lâmpada lia:
+
+| `N·L` | `0,054` | `0,038` | `0,020` | `0,002` | `−0,018` |
+|---|---|---|---|---|---|
+| `vis` | `0,984` | `0,849` | `0,712` | **`0,555`** | **`1,000`** |
+
+⇒ **um degrau de `0,445` num pixel**, exactamente em `N·L = 0`, porque o passe de sombra escrevia
+`vis = 1,0` para todo ponto de costas para a luz. ⭐⭐⭐ **E o comentário desse filtro previa o dia:**
+
+> *«`1,0` e não `0,0`, e a diferença NÃO é visível hoje: o `N·L ≤ 0` já anula a contribuição da
+> lâmpada … até ao dia em que alguém ler este canal para outra coisa (**a OpenPBR tem termos que
+> recebem luz com `N·L < 0`**)»*
+
+A subsuperfície **maciça** é o primeiro consumidor desta casa que lê luz do lado escuro. ⇒ a sombra
+do vizinho acabava a meio, num degrau de **um pixel**, que é a linha que ele fotografou.
+
+⚠️ **Não é acne:** uma esfera **sozinha** lê `0` de `12 924` pixels com `vis < 0,99` — o ergue pela
+normal já a cura. *Uma sombra falsa e uma sombra truncada leem-se iguais numa foto.*
+
+### §11.3 — Duas curas construídas, MEDIDAS e refutadas
+
+| | banda do terminador, 2.ª dif p99 | salto no pixel | folha com a luz ATRÁS |
+|---|---|---|---|
+| **o defeito** | **`9,21`** | **`+4,4`** | `83,7` (intacta) |
+| marchar o raio de costas como os outros | `2,14` | `−1,4` | ⛔ **`73,8`**, `vis` mín `0,000` |
+| ⛔ o mesmo, sem recontar o `t` na saída | `7,42` | `−4,1` | ⛔ `74,0` |
+| **hoje** | **`3,71`** | `+1,8` | ✅ **`83,7`** |
+| a mesma cena sem lâmpada (o controlo liso) | `1,00` | `−0,9` | — |
+
+⛔ **A cura óbvia mata a outra metade da wave:** o raio de um ponto de costas atravessa o **próprio
+corpo**, lê-o como obstáculo, e a folha com o sol atrás — a razão de ser do caminho de parede fina —
+**apaga-se**. *A pergunta certa não é «a minha peça está no caminho?» (está sempre, por construção),
+é «há mais ALGUMA COISA no caminho?».*
+
+### §11.4 — A lei que fica
+
+O raio de um ponto **de costas** parte do ponto (⚠️ **sem erguer** — erguido, um raio que roça o
+terminador pode nunca tocar no corpo, nunca sair e nunca acusar), anda **sem acusar** enquanto não
+tiver estado dentro e voltado a sair, e **a partir da saída o estimador de penumbra volta a contar
+do zero**.
+
+⭐⭐⭐ **O `t` reconta-se porque `dureza·d/t` é o tamanho ANGULAR do obstáculo visto da origem do
+raio** — com o `t` a incluir a corda andada lá dentro, um raio que sai e depois roça a própria peça
+lê `d/t` minúsculo e **inventa** uma penumbra: o lado escuro lia `0,105` onde o lado iluminado, a um
+pixel, lia `0,555`. Com a recontagem a rampa fica `0,555 · 0,400 · 0,582 · 0,781 · 1,000` — contínua.
+
+⚠️ **`precisa_sair` vazio é a marcha de sempre, ao bit**, e é isso que deixa o ricochete, o cone da
+oclusão e os testes intactos. O gémeo do dispositivo é o `visivel_saindo` do `trace_wgsl`, linha a
+linha — e **as 6 provas de paridade CPU↔dispositivo continuam verdes**.
+
+### §11.5 — Os portões e o preço
+
+Três metades, e cada uma é um defeito medido:
+[`a_sombra_de_um_vizinho_nao_e_truncada_no_terminador`] (barra `6,0`, do **vale** entre `3,71` e
+`9,21`, **com o controlo liso dentro** — sem ele uma mutação que apagasse a sombra toda lia `1,00` e
+passava) · [`a_folha_com_a_luz_atras_nao_se_apaga`] · [`um_corpo_convexo_nao_se_tapa_a_si_proprio`],
+que é o piso que as outras duas não vêem (*uma «cura» que escurecesse a metade escura do mundo
+passaria nas duas primeiras*). **4 de 4 mutações sangram.**
+
+⏱️ **Preço:** o passe de sombra sobe **`+7 %` a `+9 %`** (debug, `load 1,1`: `1,91 → 2,08 ms` a
+320 px, `72,4 → 79,2 ms` a 1920). ⚠️ O doc do `march_shadow_to` já media que filtrar os raios de
+costas cortava **`55 %` da população e `6 %` do relógio** — *o filtro era uma optimização de `6 %`
+paga com uma linha dura na tela*.
+
+### §11.6 — ⏳ O que fica aberto
+
+O p99 da banda é `3,71` contra `1,00` do controlo liso: sobra um **V** logo a seguir ao terminador
+(`0,555 → 0,400 → 0,582`), porque um raio que sai muito perto da saída tem `t − base` curto e lê uma
+penumbra mais dura. ⛔ A cura de fundo é a que a física manda e que nenhuma das duas referências
+escreve: **a visibilidade que um termo TRANSMISSIVO lê é a do sítio por onde a luz ENTRA**, não a do
+ponto sombreado — e o `thick` já supõe uma esfera local de raio `1/κ`, logo o ponto de entrada é
+construtível com a curvatura que esta wave já calcula, **sem premissa nova**. Fica nomeado.

@@ -98,6 +98,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "sculpt3d.filter_kind.smooth" => "Smooth",
         "sculpt3d.filter_kind.sphere" => "Sphere",
         "sculpt3d.filter_kind.surface_smooth" => "Surface Smooth",
+        // ⭐⭐ **OS DEZ MATERIAIS**, da `ph2d-mesh-render` — a 3.ª fotografia do dono.
+        // ⚠️ **A ATRIBUIÇÃO não viaja no nome:** o crédito de cada imagem (SculptGL · Blender
+        // CC0) vive num campo `credit` próprio, que é um enum. O nome é o que o artista LÊ para
+        // escolher um aspecto — *«Clay Brown» descreve o que ele vê* —, logo é interface.
+        "sculpt3d.matcap.basic_bright" => "Basic Bright",
+        "sculpt3d.matcap.basic_dark" => "Basic Dark",
+        "sculpt3d.matcap.basic_gray" => "Basic Gray",
+        "sculpt3d.matcap.basic_side" => "Basic Side",
+        "sculpt3d.matcap.clay_brown" => "Clay Brown",
+        "sculpt3d.matcap.clay_green" => "Clay Green",
+        "sculpt3d.matcap.clay_warm" => "Clay Warm",
+        "sculpt3d.matcap.red_wax" => "Red Wax",
+        "sculpt3d.matcap.skin_haz" => "Skin Haz",
+        "sculpt3d.matcap.skin_haz_2" => "Skin Haz 2",
         "sculpt3d.plano_inversao.afastar" => "Push Away",
         "sculpt3d.plano_inversao.trocar_tectos" => "Swap Limits",
         "sculpt3d.pose_deformacao.escalar_transladar" => "Scale / Translate",

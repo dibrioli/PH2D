@@ -81,7 +81,10 @@ fn snapshot(ui: Sculpt3dUi, has_bake_target: bool) -> Sculpt3dSnapshot {
         // curta: a varredura de costura tem de encontrar TODO chip que o produto
         // pinta, e um retrato com dois materiais deixaria quatro ids fora do
         // sweep — vivos na tela e nunca clicados aqui.
-        matcaps: &["Clay", "Pearl", "Skin", "Jade", "Metal", "Wax"],
+        // ⚠️ CHAVES, como o produto entrega — e de propósito chaves que a tabela NÃO conhece:
+        // este arnês mede a FIAÇÃO (quantos chips, qual despacha) e não o vocabulário, e uma
+        // chave desconhecida volta crua, que é o texto que estes gates comparam.
+        matcap_keys: &["Clay", "Pearl", "Skin", "Jade", "Metal", "Wax"],
         verts: 6050,
         // ⚠️ **Um seed DIFERENTE do default de fábrica**, senão o gate do
         // semeamento ficaria verde sem provar nada: a asserção é *"a escala foi

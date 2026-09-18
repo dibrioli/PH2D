@@ -40,19 +40,34 @@ fn there_is_one_chip_for_the_rig_plus_one_per_material() {
     );
 }
 
-/// **Nenhum nome de material é vazio nem repetido.**
+/// **Nenhum nome de material é vazio nem repetido — medido na PALAVRA, não na chave.**
 ///
 /// ⚠️ Vazio pinta um chip sem legenda (clicável, e ninguém sabe o quê);
 /// repetido pinta dois chips iguais que fazem coisas diferentes — as duas
 /// formas de a fileira mentir sem que a contagem acuse.
+///
+/// ⚠️⚠️ **E desde 2026-09-17 a `ph2d_mesh_render::MATCAPS` entrega CHAVES**, logo
+/// a versão anterior deste gate teria passado a medir identificadores: duas
+/// chaves distintas que a tabela resolvesse para a MESMA palavra pintariam dois
+/// chips iguais com ele **verde**. *Um gate que segue uma indirecção nova sem
+/// mudar de grandeza deixa de medir o que o nome dele promete.*
+///
+/// ⭐ A metade da CHAVE fica, e é outra coisa: ela apanha a entrada que falta na
+/// tabela, que o `tr` devolveria crua (`sculpt3d.matcap.red_wax` no chip).
 #[test]
 fn every_material_has_its_own_name() {
-    let names = ph2d_mesh_render::MATCAPS;
-    for (i, n) in names.iter().enumerate() {
-        assert!(!n.trim().is_empty(), "o material {i} não tem nome");
+    let keys = ph2d_mesh_render::MATCAPS;
+    let words: Vec<&str> = keys.iter().map(|k| ph2d_i18n::tr(k)).collect();
+    for (i, (k, w)) in keys.iter().zip(&words).enumerate() {
+        assert!(!w.trim().is_empty(), "o material {i} não tem nome");
+        assert_ne!(
+            w, k,
+            "a chave `{k}` do material {i} não está declarada em \
+             `ph2d-i18n/src/sculpt_engine.rs` — o chip pintaria o identificador cru"
+        );
         assert!(
-            !names[..i].contains(n),
-            "o material {i} repete o nome `{n}`"
+            !words[..i].contains(w),
+            "o material {i} repete a palavra `{w}` (chave `{k}`)"
         );
     }
 }

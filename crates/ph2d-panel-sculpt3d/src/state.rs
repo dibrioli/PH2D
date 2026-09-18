@@ -389,7 +389,7 @@ pub struct Sculpt3dSnapshot {
     /// `level`: fatos que o painel MOSTRA e não possui.
     ///
     /// Vazio ⇒ só a opção do rig é pintada.
-    pub matcaps: &'static [&'static str],
+    pub matcap_keys: &'static [&'static str],
     /// **O tamanho de feature que ESTE modelo comporta** — o seed do
     /// `Alpha Scale`, de `ph2d_sculpt3d::recommended_scale`.
     ///

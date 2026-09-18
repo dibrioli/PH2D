@@ -160,11 +160,13 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
     // pelo mínimo faz das duas listas uma só, e o gate do shell é quem exige
     // que elas tenham o mesmo tamanho de verdade.
     let n = snap
-        .matcaps
+        .matcap_keys
         .len()
         .min(crate::ids::SCULPT3D_MATCAP.len() - 1);
+    // ⚠️ Os nomes dos materiais chegam como CHAVES (a `ph2d-mesh-render` desenha pixels e não
+    // conhece a tabela de strings) — quem os resolve é aqui, ao lado do «Rig», que já era chave.
     let mut labels: Vec<&str> = vec![tr("panel.sculpt3d.matcap.rig")];
-    labels.extend(&snap.matcaps[..n]);
+    labels.extend(snap.matcap_keys[..n].iter().map(|k| tr(k)));
     let options = &crate::ids::SCULPT3D_MATCAP[..=n];
     let selected = snap.ui.matcap.map_or(0, |i| usize::from(i) + 1);
     let mut y = labelled_seg(

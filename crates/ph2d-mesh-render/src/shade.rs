@@ -113,15 +113,18 @@ pub const DEFAULT_SSAO_STRENGTH: f32 = 1.0;
 /// dono daquele módulo, não um apêndice desta.
 pub const DEFAULT_ENV: f32 = 0.0;
 
-/// **OS NOMES DOS MATCAPS** — hoje uma re-exportação de
-/// [`crate::matcap::MATCAP_NAMES`], que por sua vez é derivado da tabela.
+/// **AS CHAVES DOS NOMES DOS MATCAPS** — hoje uma re-exportação de
+/// [`crate::matcap::MATCAP_NAME_KEYS`], que por sua vez é derivada da tabela.
+///
+/// ⚠️ **Elas são CHAVES desde 2026-09-17** e quem as resolve é o painel: esta
+/// crate desenha pixels e não conhece a tabela de strings.
 ///
 /// ⚠️ **Até 2026-08-10 esta era a lista, e o doc dela defendia a separação** —
 /// *"os NÚMEROS ficam no WGSL e os NOMES aqui; o shader é o único consumidor"*.
 /// A frase era verdade enquanto um matcap era um punhado de cores e expoentes;
 /// hoje ele é uma IMAGEM, e o nome e os pixels moram no mesmo registro. O alias
 /// fica porque o painel e o gate do shell já o importam por este caminho.
-pub use crate::matcap::MATCAP_NAMES as MATCAPS;
+pub use crate::matcap::MATCAP_NAME_KEYS as MATCAPS;
 
 /// **O MATCAP COM QUE O APP ABRE.**
 ///

@@ -86,7 +86,7 @@ pub enum Encoding {
 /// [`crate::MeshRenderer`], sob demanda, e só o escolhido.
 pub struct Matcap {
     /// O que o chip do painel escreve.
-    pub name: &'static str,
+    pub name_key: &'static str,
     /// De onde ele veio e sob que licença — ver `assets/matcaps/LICENSES.md`.
     pub credit: Credit,
     /// O lado da imagem, em texels.
@@ -132,70 +132,70 @@ pub const MATCAPS: [Matcap; 10] = [
     // que `Shade::default()` arma, então a ordem da lista e a escolha do default
     // são o MESMO fato em vez de dois números que precisam concordar.
     Matcap {
-        name: "Skin Haz 2",
+        name_key: "sculpt3d.matcap.skin_haz_2",
         credit: Credit::HazardousArts,
         side: 749,
         encoding: Encoding::PngSrgb8,
         bytes: include_bytes!("../assets/matcaps/skinHazardousarts2.png"),
     },
     Matcap {
-        name: "Skin Haz",
+        name_key: "sculpt3d.matcap.skin_haz",
         credit: Credit::HazardousArts,
         side: 749,
         encoding: Encoding::PngSrgb8,
         bytes: include_bytes!("../assets/matcaps/skinHazardousarts.png"),
     },
     Matcap {
-        name: "Basic Bright",
+        name_key: "sculpt3d.matcap.basic_bright",
         credit: Credit::Blender,
         side: 512,
         encoding: Encoding::ExrHalfLinear,
         bytes: include_bytes!("../assets/matcaps/basic_bright.exr"),
     },
     Matcap {
-        name: "Basic Dark",
+        name_key: "sculpt3d.matcap.basic_dark",
         credit: Credit::Blender,
         side: 512,
         encoding: Encoding::ExrHalfLinear,
         bytes: include_bytes!("../assets/matcaps/basic_dark.exr"),
     },
     Matcap {
-        name: "Basic Gray",
+        name_key: "sculpt3d.matcap.basic_gray",
         credit: Credit::Blender,
         side: 512,
         encoding: Encoding::ExrHalfLinear,
         bytes: include_bytes!("../assets/matcaps/basic_grey.exr"),
     },
     Matcap {
-        name: "Basic Side",
+        name_key: "sculpt3d.matcap.basic_side",
         credit: Credit::Blender,
         side: 512,
         encoding: Encoding::ExrHalfLinear,
         bytes: include_bytes!("../assets/matcaps/basic_side.exr"),
     },
     Matcap {
-        name: "Clay Brown",
+        name_key: "sculpt3d.matcap.clay_brown",
         credit: Credit::Blender,
         side: 512,
         encoding: Encoding::ExrHalfLinear,
         bytes: include_bytes!("../assets/matcaps/clay_brown.exr"),
     },
     Matcap {
-        name: "Clay Green",
+        name_key: "sculpt3d.matcap.clay_green",
         credit: Credit::Blender,
         side: 512,
         encoding: Encoding::ExrHalfLinear,
         bytes: include_bytes!("../assets/matcaps/clay_green.exr"),
     },
     Matcap {
-        name: "Clay Warm",
+        name_key: "sculpt3d.matcap.clay_warm",
         credit: Credit::Blender,
         side: 512,
         encoding: Encoding::ExrHalfLinear,
         bytes: include_bytes!("../assets/matcaps/clay_warm.exr"),
     },
     Matcap {
-        name: "Red Wax",
+        name_key: "sculpt3d.matcap.red_wax",
         credit: Credit::Blender,
         side: 512,
         encoding: Encoding::ExrHalfLinear,
@@ -203,17 +203,24 @@ pub const MATCAPS: [Matcap; 10] = [
     },
 ];
 
-/// **OS NOMES, na ordem da tabela** — o que o painel pinta nos chips.
+/// **AS CHAVES DOS NOMES, na ordem da tabela** — o que o painel resolve e pinta
+/// nos chips.
 ///
 /// ⚠️ **DERIVADO de [`MATCAPS`], nunca escrito à mão.** É isto que torna
 /// inexprimível um nome sem imagem (e uma imagem sem nome): a linha nova entra
 /// numa lista só, e o `include_bytes!` recusa em tempo de compilação se o
 /// arquivo não existir.
-pub const MATCAP_NAMES: [&str; MATCAPS.len()] = {
+///
+/// ⚠️⚠️ **São CHAVES desde 2026-09-17, e a atribuição NÃO viaja nelas:** o
+/// crédito de cada imagem vive no campo [`Matcap::credit`], que é um enum e não
+/// texto. *O nome é o que o artista LÊ para escolher um aspecto («Clay Brown»
+/// descreve o que ele vê), e por isso é interface* — foi o idioma de teste que o
+/// apanhou, na 3.ª fotografia do dono.
+pub const MATCAP_NAME_KEYS: [&str; MATCAPS.len()] = {
     let mut out = [""; MATCAPS.len()];
     let mut i = 0;
     while i < MATCAPS.len() {
-        out[i] = MATCAPS[i].name;
+        out[i] = MATCAPS[i].name_key;
         i += 1;
     }
     out
@@ -245,9 +252,9 @@ pub fn decode(id: usize) -> Vec<u8> {
         Encoding::ExrHalfLinear => {
             let img = ph2d_imageio_exr::ExrImporter
                 .import(m.bytes, &ImportOpts::default())
-                .unwrap_or_else(|e| panic!("o matcap `{}` é um EXR válido: {e}", m.name));
+                .unwrap_or_else(|e| panic!("o matcap `{}` é um EXR válido: {e}", m.name_key));
             let ph2d_imageio::DecodedImage::FlatHdr(buf) = img else {
-                panic!("o matcap `{}` é uma imagem HDR plana", m.name)
+                panic!("o matcap `{}` é uma imagem HDR plana", m.name_key)
             };
             assert_side(m, buf.width, buf.height);
             for p in &buf.pixels {
@@ -265,9 +272,9 @@ pub fn decode(id: usize) -> Vec<u8> {
         Encoding::PngSrgb8 => {
             let img = ph2d_imageio_png::PngImporter
                 .import(m.bytes, &ImportOpts::default())
-                .unwrap_or_else(|e| panic!("o matcap `{}` é um PNG válido: {e}", m.name));
+                .unwrap_or_else(|e| panic!("o matcap `{}` é um PNG válido: {e}", m.name_key));
             let ph2d_imageio::DecodedImage::Flat(buf) = img else {
-                panic!("o matcap `{}` é uma imagem PLANA", m.name)
+                panic!("o matcap `{}` é uma imagem PLANA", m.name_key)
             };
             assert_side(m, buf.width, buf.height);
             for p in &buf.pixels {
@@ -296,7 +303,7 @@ fn assert_side(m: &Matcap, w: u32, h: u32) {
         (w, h),
         (m.side, m.side),
         "o matcap `{}` mede {w}×{h} e a tabela diz {}²",
-        m.name,
+        m.name_key,
         m.side,
     );
 }

@@ -86,7 +86,7 @@ impl Sculpt3dScene {
             alpha_image_name: self.alpha_image.as_ref().map(|(_, n)| n.clone()),
             pieces: self.objects.len(),
             isolated: self.isolated.is_some(),
-            matcaps: ph2d_mesh_render::MATCAPS.as_slice(),
+            matcap_keys: ph2d_mesh_render::MATCAPS.as_slice(),
             verts: self.mesh().vert_count(),
             alpha_seed: ph2d_sculpt3d::recommended_scale(self.mesh()),
             model_span: {

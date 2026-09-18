@@ -1,6 +1,6 @@
 //! Os gates da tabela de matcaps — ver [`super`].
 
-use super::{Credit, Encoding, MATCAP_NAMES, MATCAPS, decode};
+use super::{Credit, Encoding, MATCAP_NAME_KEYS, MATCAPS, decode};
 
 /// **Todo matcap decodifica, e sai no tamanho que a textura tem.**
 ///
@@ -18,7 +18,7 @@ fn every_matcap_decodes_to_the_texture_size() {
             px.len(),
             want,
             "o matcap `{}` decodificou {} bytes",
-            m.name,
+            m.name_key,
             px.len()
         );
     }
@@ -39,7 +39,7 @@ fn the_nine_are_nine_different_images() {
             assert_ne!(
                 all[i], all[j],
                 "`{}` e `{}` decodificam para os MESMOS pixels",
-                MATCAPS[i].name, MATCAPS[j].name
+                MATCAPS[i].name_key, MATCAPS[j].name_key
             );
         }
     }
@@ -59,21 +59,21 @@ fn an_index_past_the_end_is_clamped_not_a_panic() {
 
 /// **Os nomes são DERIVADOS da tabela, na ordem dela.**
 ///
-/// ⚠️ Um gate que comparasse `MATCAP_NAMES` com uma lista escrita à mão aqui
+/// ⚠️ Um gate que comparasse `MATCAP_NAME_KEYS` com uma lista escrita à mão aqui
 /// seria a terceira cópia do que a wave existe para colapsar. O que ele afirma é
 /// a RELAÇÃO: cada nome é o nome da linha de mesmo índice, e nenhum é vazio ou
 /// repetido — as duas formas de uma fileira de chips mentir sem que a contagem
 /// acuse.
 #[test]
 fn the_names_are_the_table_read_in_order() {
-    assert_eq!(MATCAP_NAMES.len(), MATCAPS.len());
+    assert_eq!(MATCAP_NAME_KEYS.len(), MATCAPS.len());
     for (i, m) in MATCAPS.iter().enumerate() {
-        assert_eq!(MATCAP_NAMES[i], m.name);
-        assert!(!m.name.trim().is_empty(), "o matcap {i} não tem nome");
+        assert_eq!(MATCAP_NAME_KEYS[i], m.name_key);
+        assert!(!m.name_key.trim().is_empty(), "o matcap {i} não tem nome");
         assert!(
-            !MATCAP_NAMES[..i].contains(&m.name),
+            !MATCAP_NAME_KEYS[..i].contains(&m.name_key),
             "o matcap {i} repete o nome `{}`",
-            m.name
+            m.name_key
         );
     }
 }
@@ -88,7 +88,7 @@ fn the_names_are_the_table_read_in_order() {
 fn the_default_is_the_sculptgl_matcap_and_it_leads_the_table() {
     assert_eq!(crate::DEFAULT_MATCAP, Some(0));
     assert_eq!(MATCAPS[0].credit, Credit::HazardousArts);
-    assert_eq!(MATCAPS[0].name, "Skin Haz 2");
+    assert_eq!(MATCAPS[0].name_key, "sculpt3d.matcap.skin_haz_2");
     assert_eq!(
         crate::Shade::default().matcap,
         crate::DEFAULT_MATCAP,
@@ -126,7 +126,11 @@ fn every_matcap_declares_where_it_came_from() {
             Credit::Blender => Encoding::ExrHalfLinear,
             Credit::HazardousArts => Encoding::PngSrgb8,
         };
-        assert_eq!(m.encoding, want, "o matcap `{}` mudou de precisão", m.name);
+        assert_eq!(
+            m.encoding, want,
+            "o matcap `{}` mudou de precisão",
+            m.name_key
+        );
     }
 }
 
@@ -154,7 +158,10 @@ fn every_matcap_declares_where_it_came_from() {
 fn the_cooked_image_has_its_lit_side_up() {
     let id = MATCAPS
         .iter()
-        .position(|m| m.name == "Basic Side")
+        // ⚠️ Pela CHAVE, que é o que a tabela guarda desde 2026-09-17. Escrito como o nome
+        //    inglês, o `position` devolve `None` e o `expect` estoura — o modo de falha ALTO,
+        //    que é o bom: um oráculo escolhido por um valor esperado que deixou de existir.
+        .position(|m| m.name_key == "sculpt3d.matcap.basic_side")
         .expect("o `Basic Side` é o oráculo desta lei");
     let px = decode(id);
     let side = MATCAPS[id].side as usize;

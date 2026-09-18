@@ -321,3 +321,21 @@ a legenda não pode ser uma chave (o `tr` em falta) **e** a identidade tem de co
 (a «cura» errada — traduzir a montante — faria a dobra mudar de endereço com o idioma). Só a
 primeira metade deixaria a segunda cura passar como correcção. Irmã:
 [[feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting]].
+
+## ⛔⛔ Uma LETRA SOZINHA é invisível à régua lexical por CONSTRUÇÃO — a cerca tem de ser o TIPO
+
+Medido 2026-09-18 (`line/UIUX`). O `ph2d_label_census::is_language` exige **duas letras SEGUIDAS**,
+senão acusaria todo identificador (este repo tem centenas de params `"x"`, `"n"`, `"b"`). ⇒ dois
+painéis tinham o censo de texto **VERDE** com a letra pintada no ecrã: a grelha do 9-slice
+(`S` `R` `M` `-` `F` `?`), as células da Região (`X` `Y` `W` `H`) e os chips do `Fixed` (`W` `H`).
+
+⭐⭐ *Quando a régua não consegue ver a diferença entre um rótulo e um identificador, quem a vê é o
+TIPO*: o pintor passa a receber `ph2d_i18n::TextKey` e escrever `"W"` ali **deixa de compilar**.
+⚠️ O tipo dá **uma metade só** — a outra (*a chave existe na tabela*) continua a ser um gate, com a
+população DERIVADA das `const` do produto, nunca de uma segunda lista escrita à mão.
+
+⭐ E o mesmo dia deu a lei irmã: **uma legenda e o que ela explica viajam juntas.** As cinco letras
+do 9-slice são INICIAIS, e a legenda que as explica (*«S stretch, R repeat, M mirror»*) já vivia na
+tabela — traduzida ela e não as letras, passava a explicar letras que a grelha nunca mostra.
+Irmãs: [[feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting]] ·
+[[reference_topic_measurement_discipline]].

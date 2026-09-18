@@ -1140,6 +1140,29 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   visibilidade dentro da pintura; dá-la mole pede a passagem que a escreve, duas de borrão separável
   e a leitura — o desenho que o ricochete lá já tem) ⇒ **hoje vê-se no caminho de REFERÊNCIA**
   (`PH2D_FIELD_GPU=0`), e as paridades continuam verdes porque nenhuma delas assa o canal.
+  ⭐⭐⭐ **E A COMPARAÇÃO COM O PADRÃO-OURO EXISTE, com número** (18/09, pergunta do dono *«temos o
+  padrão ouro? Temos a Unreal instalada»* — [`10` §13–§14](docs/Render3d/10_a_luz_que_atravessa_a_peca.md)):
+  ⭐ **a Unreal NÃO é a verdade** (a subsuperfície de tempo real dela é também uma aproximação), logo
+  o oráculo é um **traçado de caminhos CONVERGIDO** — que corre em **7 s** sobre a nossa cena, com o
+  enquadramento tirado das **portas do produto**. ⭐⭐ **O CONTROLO valida a montagem e é ele que dá
+  direito ao resto:** na bola OPACA a largura da transição bate **`43 px` contra `43 px`** e a cor
+  **`R/B 1,33` contra `1,32`**. **O veredito:** a **largura** do jade está perto (`70` contra `80 px`,
+  `12,5 %` mais apertada — a wave da §12 pôs a borda no regime certo), e ⛔⛔⛔ **a COR é uma lei
+  SURDA**: varrendo três profundidades, a verdade balança **`3,19 → 1,00`** e nós balançamos
+  `1,42 → 1,61`; e com o **raio IGUAL nos três canais** nós lemos **`1,41` nas TRÊS** — *a nossa
+  matiz não depende da profundidade*, e o mecanismo é a ESTRUTURA da lei (`sss = subsurface_color ×
+  integrate_burley`, que com os canais a partilharem o `mfp` devolve o mesmo nos três). ⚠️⚠️ **E isto
+  NÃO é defeito do nosso porte — é da aproximação que a indústria publica**, que reproduzimos com
+  paridade medida ⇒ *fechar este buraco é SUPERAR a referência, não alcançá-la*. ⛔ **Uma leitura
+  minha foi CORRIGIDA pela varredura:** com um ponto só e máscaras diferentes eu escrevi *«a cor
+  move-se no sentido oposto»*; com três pontos e a mesma máscara o que há é uma lei que **não se
+  move**. ⚠️ **Piso de ruído do oráculo, medido: `~1e-4`** — o Cycles em CPU não é bit-reprodutível
+  entre invocações, e ⛔ o `sha256` de um EXR não compara píxeis (ele embute `Date`/`RenderTime`).
+  ⚠️ **INC-R1 registado:** o método manda a corrida do alvo com parede ser acto de uma janela **E**, e
+  eu corri-a — contaminação realizada **zero** (li só a IMAGEM de uma cena nossa), mas o valor da
+  parede é o protocolo; desde então as corridas vão para o **E**, e foi o relatório dele que apanhou
+  **dois defeitos meus** no leitor de PFM (big-endian lido como little; a linha da escala nunca lida)
+  que eram a origem do «desvio de `96 %`».
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

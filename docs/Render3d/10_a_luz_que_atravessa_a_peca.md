@@ -569,13 +569,53 @@ reproduzimos o `mx_subsurface_bsdf` fielmente (a §11.4 mede a paridade contra e
 buraco é SUPERAR a aproximação de referência, não alcançá-la* — que é exactamente a pergunta que o
 dono fez.
 
-### §14.4 — ⏳ O que falta para o veredito ficar fechado
+### §14.4 — ⛔⛔ A VARREDURA CORRIGE A §14.3: não são «sentidos opostos» — é uma lei SURDA
 
-⏳ **Um segundo ponto**, pedido ao E: os mesmos renders com o raio muito **menor** que a peça
-(`0,1` e `0,3`) e com o raio **igual nos três canais**. Isso separa *«a cor muda com a
-profundidade»* de *«a cor muda porque os três canais têm raios diferentes»*, e diz se o desvio é
-geral ou do regime «mfp maior que a peça». ⛔ *Um desvio medido num ponto só é um ponto, não uma
-lei.*
+⚠️ **A §14.3 leu UM ponto com máscaras diferentes dos dois lados e escreveu *«a cor move-se no
+sentido oposto»*. Com três profundidades e a MESMA máscara, esse veredito está CORRIGIDO** — e o que
+o substitui é pior para nós, não melhor.
+
+`R/B` da região iluminada, os dois lados no **nosso** olhar, com a população da máscara casada:
+
+| `Subsurface Radius` | família | **NÓS** | **VERDADE** |
+|---:|---|---:|---:|
+| `0,10` | por canal (`1 : 0,5 : 0,25`) | `1,42` | **`3,19`** |
+| `0,30` | por canal | `1,73` | `1,55` |
+| `1,00` | por canal | `1,61` | **`1,00`** |
+| `0,10` | **IGUAIS** nos três | `1,41` | `1,64` |
+| `0,30` | **IGUAIS** | `1,41` | `1,02` |
+| `1,00` | **IGUAIS** | `1,41` | `1,00` |
+
+⭐⭐⭐ **A verdade balança `3,2×` com a profundidade; nós balançamos `1,2×`** — e não é sequer
+monótono. O botão que o artista tem quase não muda a cor no nosso, e muda-a enormemente na verdade.
+
+⭐⭐⭐ **E o controlo dos RAIOS IGUAIS é o que fecha o diagnóstico: com ele nós lemos `1,41` nas TRÊS
+profundidades — exactamente o mesmo número.** A nossa lei **não tem cor em função da profundidade**.
+E o mecanismo não é uma medição feliz, é a ESTRUTURA da lei: o `thick` faz
+`sss = subsurface_color × integrate_burley(…)`, e com os três canais a partilharem o `mfp` o
+`integrate_burley` devolve **o mesmo valor nos três** ⇒ a cor que sai **é** o `subsurface_color`,
+seja qual for a profundidade. *A nossa matiz é um multiplicador; a da verdade é transporte.*
+
+⚠️ A verdade dessaturar com a profundidade (`1,64 → 1,00`) mesmo com raios iguais tem mecanismo: um
+caminho livre médio da ordem da peça faz a luz **atravessar e não voltar**, logo o que chega ao olho
+é dominado por caminhos curtos, menos filtrados pela cor.
+
+### §14.5 — ⚠️ O piso de ruído do oráculo, medido pelo E
+
+O Cycles em CPU **não é bit-reprodutível entre invocações** (a mesma cena, o mesmo `seed`, duas
+corridas: `max|d| = 1,03e-04`). ⛔ **Nenhum gate contra estas fixturas pode afirmar abaixo de
+`~1e-4` absoluto** (`≈0,2 %` da média) — abaixo disso mede-se o jitter do Cycles.
+⭐ O efeito que medimos (`3,19` contra `1,42`) está **ordens de grandeza** acima desse piso.
+⛔ E o `sha256` de um EXR **não serve** para comparar píxeis: o ficheiro embute `Date` e `RenderTime`.
+
+### §14.6 — ⏳ O que falta para o veredito ficar fechado
+
+✅ **O segundo ponto CHEGOU e está na §14.4** — ele transformou um ponto numa lei, e corrigiu a
+leitura do primeiro.
+
+⏳ **Fica a Unreal** como terceiro contendor: ela usa a mesma família de aproximação que nós, logo a
+previsão é que **balance tão pouco quanto nós**. Se isso se confirmar, *«superar a Unreal»* passa a
+ser: **ser o renderizador de tempo real cuja cor segue a profundidade.**
 
 ⚠️ E fica nomeado que o desvio de FORMA lê `25 %` **no próprio controlo opaco** — ele é o **piso do
 método** (a janela apanha o realce ceifado e o ajuste de exposição é um compromisso), e não uma

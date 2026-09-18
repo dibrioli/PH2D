@@ -1287,3 +1287,139 @@ fn sonda_nos_contra_a_verdade() {
         );
     }
 }
+
+/// ⏱️⭐⭐⭐ **A VARREDURA DA COR: nós contra a verdade, em três profundidades.**
+///
+/// O primeiro veredito mediu UM ponto (`Subsurface Radius = 1,0`) e leu os dois a mover a cor em
+/// sentidos opostos. ⛔ *Um desvio medido num ponto é um ponto, não uma lei* ⇒ esta sonda varre
+/// três profundidades, e em duas famílias:
+///
+/// - **`r`**: o raio por canal do produto (`1 : 0,5 : 0,25` escalado) — o que o artista tem;
+/// - **`g`**: o mesmo raio nos **três** canais — o controlo que separa *«a cor muda com a
+///   PROFUNDIDADE»* de *«a cor muda porque cada canal viaja o seu»*.
+///
+/// ⚠️ **Os dois lados são lidos no MESMO espaço** (o nosso olhar, com a exposição ajustada por
+/// célula): `R/B` em linear e em ecrã não é o mesmo número, e comparar um com o outro seria a
+/// quinta régua mal calibrada desta jornada.
+///
+/// ⚠️ **Piso de ruído do oráculo, medido pelo agente E: `~1e-4` absoluto** (`≈0,2 %` da média) — o
+/// Cycles em CPU **não é bit-reprodutível entre invocações**. Nada abaixo disso é lei.
+#[test]
+#[ignore = "sonda: precisa do lote 2 do oráculo em $PH2D_VERDADE2"]
+fn sonda_a_varredura_da_cor() {
+    let Ok(dir) = std::env::var("PH2D_VERDADE2") else {
+        println!("sem $PH2D_VERDADE2 — saltado");
+        return;
+    };
+    let mut cam = Orbit::default();
+    cam.half_extent *= 0.42;
+    cam.target = [0.55, 0.0, 0.0];
+    let doc = crate::smoke::scenes::edge::cena_33().expect("a cena");
+    let (onde, luz) = crate::lights::opening_light(&cam);
+    let (w, h) = (W as usize, H as usize);
+
+    // `R/B` da região iluminada, em BYTES do nosso olhar — a mesma máscara dos dois lados.
+    let razao = |px: &[u8]| -> (f32, usize) {
+        let (mut r, mut b, mut n) = (0.0f64, 0.0f64, 0usize);
+        for i in 0..w * h {
+            let q = i * 4;
+            let soma = u32::from(px[q]) + u32::from(px[q + 1]) + u32::from(px[q + 2]);
+            if soma > 30 {
+                r += f64::from(px[q]);
+                b += f64::from(px[q + 2]);
+                n += 1;
+            }
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        ((r / b.max(1e-9)) as f32, n)
+    };
+    println!("  raio · família ·   NOSSO R/B ·  VERDADE R/B · o que isso quer dizer");
+    for (tag, raio, escala) in [
+        ("r010", 0.1f32, [1.0f32, 0.5, 0.25]),
+        ("r030", 0.3, [1.0, 0.5, 0.25]),
+        ("r100", 1.0, [1.0, 0.5, 0.25]),
+        ("g010", 0.1, [1.0, 1.0, 1.0]),
+        ("g030", 0.3, [1.0, 1.0, 1.0]),
+        ("g100", 1.0, [1.0, 1.0, 1.0]),
+    ] {
+        let m = ph2d_material::OpenPbr {
+            subsurface_weight: 1.0,
+            geometry_thin_walled: false,
+            subsurface_color: [0.75, 0.35, 0.35],
+            base_color: [0.75, 0.35, 0.35],
+            specular_weight: 0.0,
+            subsurface_radius: raio,
+            subsurface_radius_scale: escala,
+            ..ph2d_material::OpenPbr::default()
+        };
+        let (_, _, nossos) = quadro(&Quadro {
+            doc: &doc,
+            m,
+            cam: &cam,
+            onde,
+            luz,
+            com_sombra: true,
+            chao: None,
+            sem_ceu: true,
+        });
+        let (nosso_rb, nosso_n) = razao(&nossos);
+        let Some((_, _, linear)) = le_pfm(&format!("{dir}/ref_jade_{tag}_e5.pfm")) else {
+            println!("  {tag}: sem oráculo");
+            continue;
+        };
+        // A exposição ajusta-se para o oráculo ter a mesma POPULAÇÃO iluminada que o nosso — senão
+        // a máscara mede regiões diferentes e o `R/B` de cada uma é de outra coisa.
+        let mut melhor = (usize::MAX, 0.0f32, 0usize);
+        for passo in -96..96 {
+            #[allow(clippy::cast_precision_loss)]
+            let stops = passo as f32 * 0.125;
+            let olhar = ph2d_view_transform::Look {
+                exposure_stops: stops,
+                ..ph2d_view_transform::Look::default()
+            };
+            let mut bytes = vec![0u8; w * h * 4];
+            for (i, cru) in linear.iter().take(w * h).enumerate() {
+                for (k, canal) in olhar.apply(*cru).into_iter().enumerate() {
+                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                    {
+                        bytes[i * 4 + k] = (canal.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                    }
+                }
+            }
+            let (_, n) = razao(&bytes);
+            if n.abs_diff(nosso_n) < melhor.0 {
+                melhor = (n.abs_diff(nosso_n), stops, n);
+            }
+        }
+        let olhar = ph2d_view_transform::Look {
+            exposure_stops: melhor.1,
+            ..ph2d_view_transform::Look::default()
+        };
+        let mut bytes = vec![0u8; w * h * 4];
+        for (i, cru) in linear.iter().take(w * h).enumerate() {
+            for (k, canal) in olhar.apply(*cru).into_iter().enumerate() {
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                {
+                    bytes[i * 4 + k] = (canal.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                }
+            }
+        }
+        let (verdade_rb, verdade_n) = razao(&bytes);
+        println!(
+            "  {:.2} · {} · {nosso_rb:>10.2} · {verdade_rb:>11.2} · {} ({nosso_n} vs {verdade_n} px)",
+            raio,
+            if escala[1] < 1.0 {
+                "por canal"
+            } else {
+                "IGUAIS  "
+            },
+            if (nosso_rb - verdade_rb).abs() < 0.15 {
+                "concordam"
+            } else if (nosso_rb - 1.0).signum() == (verdade_rb - 1.0).signum() {
+                "mesmo sentido, magnitude diferente"
+            } else {
+                "SENTIDOS OPOSTOS"
+            }
+        );
+    }
+}

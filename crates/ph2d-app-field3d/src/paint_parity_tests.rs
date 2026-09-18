@@ -126,7 +126,28 @@ pub(crate) fn dois_caminhos_com(
     let olhar = ph2d_view_transform::Look::default();
     let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
 
-    let (g, mut sh) = crate::gpu_frame::march(t, doc, &reg, &cam, &mundos, chao, W, H, true)?;
+    let (mut g, mut sh) = crate::gpu_frame::march(t, doc, &reg, &cam, &mundos, chao, W, H, true)?;
+    // ⭐⭐⭐ **A CURVATURA entra na referência pela MESMA porta e com o MESMO passo** que o
+    // dispositivo usa (`docs/Render3d/10`) — o `com_a_curvatura` do WGSL faz a mesma soma de cinco
+    // amostras sobre o mesmo tetraedro.
+    //
+    // ⚠️⚠️ **Sem esta linha o gate compararia dois PROGRAMAS**: a placa calcularia a curvatura e a
+    // CPU sombrearia com `0`, que o piso transforma no raio de `100`. *É o mesmo defeito que o
+    // campo do chão pagou em 17/09, e naquele dia a edição que o curava foi um `str.replace` que
+    // não casou — silencioso.*
+    if surfaces
+        .all
+        .iter()
+        .any(ph2d_material::Surface::reads_curvature)
+        && let Some(bola) = ph2d_field_eval::bounds::bounding_ball(doc, &reg)
+    {
+        let mut eval = ph2d_field_eval::hybrid::Hybrid::new(doc, &reg);
+        g.curvature = ph2d_field_render::curvatura::do_gbuffer(
+            &mut eval,
+            &g,
+            ph2d_field_render::curvatura::eps_para(bola.radius),
+        );
+    }
     // ⭐⭐⭐ **O RICOCHETE entra na REFERÊNCIA de CPU** (`docs/Render3d/08` §12), porque o pintor do
     // dispositivo o calcula.
     //
@@ -830,4 +851,115 @@ fn mede_o_que_a_cor_no_chao_custa() {
         "  com a cor no chão · {com:>8.2} ms   (+{:.2} ms)",
         com - sem
     );
+}
+
+/// ⭐⭐⭐ **A LUZ QUE ATRAVESSA A PEÇA É A MESMA NOS DOIS MOTORES** — os DOIS caminhos
+/// (`docs/Render3d/10`).
+///
+/// # ⚠️ As duas metades, e a segunda é a que faz o gate valer
+///
+/// **(a)** Cada caminho MOVE a imagem — sem isso os dois motores concordariam sobre uma lei
+/// inerte, que é o defeito que a fixtura sem o fenómeno tem por escrito neste ficheiro.
+/// **(b)** E eles concordam.
+///
+/// ⚠️ **A parede fina precisa da luz ATRÁS** e a maciça não: a primeira é a lambertiana do lado de
+/// lá (`max(−N·L, 0)`) e sem uma luz por detrás ela lê zero em quase todo pixel visível. ⇒ a
+/// fixtura tem as duas lâmpadas, e a de trás é a que acende a folha.
+///
+/// ⛔ **E a curvatura entra na referência pela mesma porta** — ver o topo do
+/// [`dois_caminhos_com`]: sem ela este gate compararia dois programas.
+#[test]
+#[ignore = "precisa de GPU"]
+fn a_luz_que_atravessa_a_peca_e_a_mesma_nos_dois_motores() {
+    if crate::gpu_frame::shared().is_none() {
+        println!("sem adaptador — saltado");
+        return;
+    }
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            ph2d_field::Primitive::Sphere { radius: 0.45 },
+            ph2d_field::Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("a bola");
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = ph2d_field_render::Orbit::default();
+    // ⭐ **Duas lâmpadas: uma de frente e uma ATRÁS** — a de trás é a que a parede fina lê.
+    let base = lampada(&cam);
+    let atras = ph2d_field_render::PointLamp {
+        world: [-base.world[0], base.world[1], -base.world[2]],
+        ..base
+    };
+    let luz = [base, atras];
+
+    let opaco = ph2d_material::OpenPbr {
+        base_color: [0.2, 0.5, 0.1],
+        specular_weight: 0.0,
+        ..ph2d_material::OpenPbr::default()
+    };
+    let fina = ph2d_material::OpenPbr {
+        subsurface_weight: 1.0,
+        geometry_thin_walled: true,
+        subsurface_color: [0.35, 0.75, 0.2],
+        ..opaco
+    };
+    let macica = ph2d_material::OpenPbr {
+        subsurface_weight: 1.0,
+        geometry_thin_walled: false,
+        subsurface_color: [0.3, 0.8, 0.5],
+        subsurface_radius: 0.5,
+        ..opaco
+    };
+
+    let pinta = |m: ph2d_material::OpenPbr| {
+        let mats = [m.prepare()];
+        let s = ph2d_field_render::Surfaces {
+            all: &mats,
+            owners: None,
+        };
+        dois_caminhos_com(&s, &doc, &luz, None).expect("o dispositivo toma a peça")
+    };
+    let (cpu_opaco, _, _) = pinta(opaco);
+    for (nome, m) in [("parede fina", fina), ("maciça", macica)] {
+        let (cpu, gpu, bordas) = pinta(m);
+        assert!(bordas > 50, "{nome}: só {bordas} bordas");
+        // (a) o caminho MOVE a imagem.
+        let movidos = cpu
+            .iter()
+            .zip(&cpu_opaco)
+            .filter(|(a, b)| a.abs_diff(**b) > 1)
+            .count();
+        assert!(
+            movidos > 2_000,
+            "{nome}: a lei só moveu {movidos} bytes contra o material opaco — a fixtura não a \
+             mostra, e o gate não afirma nada"
+        );
+        // (b) e os dois motores concordam.
+        let mut hist = [0usize; 256];
+        let mut pior = (0u8, 0usize, 0usize);
+        for (i, (a, b)) in cpu.iter().zip(gpu.iter()).enumerate() {
+            let d = a.abs_diff(*b);
+            hist[d as usize] += 1;
+            if d > pior.0 {
+                pior = (d, i / 4 % W as usize, i / 4 / W as usize);
+            }
+        }
+        #[allow(clippy::cast_precision_loss)]
+        let total = hist.iter().sum::<usize>() as f64;
+        #[allow(clippy::cast_precision_loss)]
+        let fraccao = hist[..2].iter().sum::<usize>() as f64 / total;
+        println!(
+            "{nome} · {movidos} bytes movidos · ≤1 nível em {:.3} % · pior {} em ({}, {})",
+            fraccao * 100.0,
+            pior.0,
+            pior.1,
+            pior.2
+        );
+        assert!(
+            fraccao >= 0.995,
+            "{nome}: só {:.3} % dos canais estão a ≤1 nível — a lei divergiu entre os motores",
+            fraccao * 100.0
+        );
+    }
 }

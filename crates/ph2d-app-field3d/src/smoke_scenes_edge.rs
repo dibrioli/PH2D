@@ -112,3 +112,72 @@ pub fn cena_32() -> Result<FieldDoc, ph2d_field::FieldError> {
     nodes.push(combine(Op::Union(Blend::Sharp), grupos));
     FieldDoc::new(nodes, raiz)
 }
+
+/// ⭐⭐⭐ **A LUZ QUE ATRAVESSA A PEÇA** (17/09, `docs/Render3d/10`) — a PAREDE FINA e a MACIÇA, lado
+/// a lado, sobre a mesma forma.
+///
+/// # ⚠️ A cena é DUAS peças e não uma, e a razão é que são DOIS fenómenos
+///
+/// A subsuperfície do OpenPBR não é um grau de um efeito — é uma escolha entre dois:
+///
+/// | a peça | o que se vê |
+/// |---|---|
+/// | **parede fina** (uma folha, uma pétala, um abajur) | com a luz ATRÁS ela acende inteira |
+/// | **maciça** (jade, cera, mármore fino) | a luz CONTORNA a quina e o terminador amacia |
+///
+/// ⛔ Uma cena com uma peça só ensinaria metade e deixaria a outra a parecer um knob sem efeito.
+///
+/// # ⚠️ A ESPESSURA da fina é load-bearing, e ela não entra na lei
+///
+/// A lei da parede fina não lê espessura nenhuma — ela é a lambertiana do lado de lá. Mas o que o
+/// artista VÊ depende da peça parecer fina: a mesma lei numa bola maciça lê-se como *«a bola ficou
+/// clara»*, e numa lâmina lê-se como *«a luz passa através»*. ⇒ a fina é uma **lâmina** de `0,03`
+/// contra `0,90` de largura, que é a proporção de uma folha.
+///
+/// ⚠️ **E a maciça é uma esfera**, pela razão oposta: a lei dela mede a CURVATURA, e uma lâmina é
+/// plana — ali o piso do GLSL entregaria o raio de `100` e a lei ficaria indistinguível de uma
+/// difusa. *Cada metade tem a forma que a lei dela precisa.*
+pub fn cena_33() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 33 — A LUZ QUE ATRAVESSA A PECA. A' esquerda uma LAMINA (a folha), a' \
+         direita uma ESFERA (o jade). As duas abrem OPACAS de proposito."
+    );
+    println!(
+        "[field-smoke]            (1) MODEL · Shading · Render — (2) escolha a LAMINA e suba \
+         `Subsurface` ao maximo, e ligue `Thin Walled` — (3) arraste a LUZ para TRAS da peca: ela \
+         acende inteira."
+    );
+    println!(
+        "[field-smoke]            (4) escolha a ESFERA, suba `Subsurface`, deixe `Thin Walled` em \
+         `Solid` e baixe `Subsurface Radius` — a luz contorna a quina em vez de parar nela."
+    );
+    let lamina = leaf(
+        Primitive::Box {
+            half: [0.45, 0.42, 0.015],
+            round: 0.012,
+            chamfer: 0.0,
+        },
+        Xform {
+            translation: [-0.55, 0.0, 0.0],
+            ..Xform::IDENTITY
+        },
+    );
+    let bola = leaf(
+        Primitive::Sphere { radius: 0.42 },
+        Xform {
+            translation: [0.55, 0.0, 0.0],
+            ..Xform::IDENTITY
+        },
+    );
+    FieldDoc::new(
+        vec![
+            lamina,
+            bola,
+            combine(
+                Op::Union(ph2d_field::Blend::Sharp),
+                vec![NodeId(0), NodeId(1)],
+            ),
+        ],
+        NodeId(2),
+    )
+}

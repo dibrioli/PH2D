@@ -809,3 +809,70 @@ fn diag_os_campos_decompostos() {
         println!("{fam}/{base:<12} {cao:>8.3} {cat:>8.3} {aao:>9.3} {aat:>9.3}");
     }
 }
+
+/// ⭐⭐⭐ **A ESCADA DA ACUMULAÇÃO, com o pente INERTE.**
+///
+/// O §73.3 mediu que a força por si não é o defeito — o que diverge é a
+/// acumulação ao longo de um traço de carimbos. Estas três células isolam-na
+/// sem percurso, sem direcção e sem pente:
+///
+/// - `y_umdab` — **um** carimbo · `y_doisdab` — **dois** · `y_parado` —
+///   **catorze no mesmo sítio** (o pente é inerte nas três: §4.3).
+///
+/// Compara `saída − entrada` (o que o VERBO fez) vértice a vértice.
+#[test]
+#[ignore = "sonda: a escada da acumulacao"]
+fn diag_a_escada_da_acumulacao() {
+    println!(
+        "{:<20} {:>7} {:>6} {:>7} {:>8} {:>9} {:>9}",
+        "celula", "dabs", "cos", "nos/ele", "movN/movE", "desvio", "|maior|"
+    );
+    for base in ["y_umdab", "y_doisdab", "y_parado", "y_ida"] {
+        let c = ler("mecanismo", &format!("{base}_p000"));
+        let dentro = entrada(&c);
+        let nosso = correr(&c);
+        let d = |a: &[[f32; 3]]| -> Vec<[f64; 3]> {
+            dentro
+                .positions()
+                .iter()
+                .zip(a)
+                .map(|(p, q)| {
+                    [
+                        f64::from(q[0] - p[0]),
+                        f64::from(q[1] - p[1]),
+                        f64::from(q[2] - p[2]),
+                    ]
+                })
+                .collect()
+        };
+        let (dele, nos) = (d(&c.saida), d(&nosso));
+        let norma = |v: &[f64; 3]| v[0].hypot(v[1]).hypot(v[2]);
+        let (mut num, mut den, mut rn, mut re) = (0.0, 0.0, 0.0, 0.0);
+        let (mut mn, mut me, mut maior) = (0usize, 0usize, 0.0f64);
+        for (a, b) in dele.iter().zip(&nos) {
+            let (na, nb) = (norma(a), norma(b));
+            if na > 1e-9 {
+                me += 1;
+            }
+            if nb > 1e-9 {
+                mn += 1;
+            }
+            if na > 1e-9 && nb > 1e-9 {
+                num += (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (na * nb) * na;
+                den += na;
+            }
+            re += na;
+            rn += nb;
+            maior = maior.max(na);
+        }
+        println!(
+            "{base:<20} {:>7} {:>6.3} {:>7.3} {:>8} {:>9.3e} {:>9.5}",
+            c.percurso.len(),
+            if den > 0.0 { num / den } else { f64::NAN },
+            if re > 0.0 { rn / re } else { f64::NAN },
+            format!("{mn}/{me}"),
+            maior_distancia(&nosso, &c.saida),
+            maior
+        );
+    }
+}

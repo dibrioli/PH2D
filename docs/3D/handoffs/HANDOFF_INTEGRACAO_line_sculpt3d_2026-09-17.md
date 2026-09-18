@@ -1953,3 +1953,72 @@ instrumento nosso que já sabe julgar candidatas (`diag_o_campo_do_pente_vertice
 passa os gates de grade, e trocá-la pela regularização pura reprova-os
 (`−0,0076`). *Trocar uma lei que passa a régua por outra que a reprova, com
 base em segunda régua nova, é decisão que precisa das duas a concordar.*
+
+## §75 — ⛔⛔⛔⛔ DUAS FONTES AUTORITATIVAS DIZEM O CONTRÁRIO, e eu NÃO escolhi um lado
+
+Ao perseguir a forma do pente, a escada da acumulação — **com o pente
+INERTE** — devolveu um defeito do **pincel BASE**, maior que o do pente.
+
+### §75.1 A escada, e ela é limpa como nenhuma outra deste corpus
+
+| célula | carimbos | `cos` por vértice | nós/ele | vértices |
+|---|---|---|---|---|
+| `y_umdab` | **1** | `1,000` | **`1,000`** | `56/56` |
+| `y_doisdab` | 2 | `1,000` | `1,024` | `70/70` |
+| `y_ida` | 10 | `1,000` | `1,088` | `187/187` |
+| `y_parado` | **14 no mesmo sítio** | `1,000` | **`1,226`** | `49/49` |
+
+⇒ **a direcção é EXACTA em todas** e os vértices são os mesmos: o único erro é
+**quanto**, e o excesso cresce com o número de carimbos sobre o mesmo vértice.
+A **um** carimbo somos exactos ao bit.
+
+### §75.2 A causa tem endereço, e uma linha muda-a
+
+O `GripLaw::from_live` do `Grip::Stamp` é `= accumulate`. Forçado a `true`
+(medição, andaime removido):
+
+- `y_parado`: razão **`1,226 → 0,994`**, desvio **`1,197e-1 → 5,937e-3`**;
+- e no placar inteiro, **catorze** células do pincel base colapsam para ruído
+  de `f32`: as nove de `2,984e-2 → 1,416e-7`, `c_nodyn` `2,234e-2 → 1,490e-7`,
+  `y_doisdab` `9,157e-3 → 1,565e-7`, `y_arco` **`9,078e-2 → 2,533e-7`**,
+  `x_man_x01` `1,624e-4 → 2,235e-8`;
+- **zero** regressões no corpus quando o âmbito é o `Grip::Stamp`.
+
+⚠️ A mudança mínima toca **só** o ramo desligado: com `accumulate = true` o
+`from_live` já era `true`.
+
+### §75.3 ⛔⛔ E é aqui que as duas fontes colidem
+
+Aplicada, ela reprova **quatro gates de lei DECLARADA**, um deles chamado por
+extenso `the_disarmed_brush_saturates_at_one_radius_and_the_armed_one_passes_it`
+— *a nossa casa declara que com o interruptor DESLIGADO o pincel satura a um
+raio, e que é o ligado que passa disso.*
+
+| fonte | o que diz sobre `acumular = False` |
+|---|---|
+| os gates desta casa | o pincel **satura** a um raio (mede do pen-down) |
+| o corpus do oráculo (**207** células, **todas** `acumular=False`) | o alvo **não satura assim** — ler a queda da posição VIVA põe-nos a `0,994` dele, contra `1,226` |
+
+⛔⛔ **Não escolhi um lado, e a razão é que o corpus não pode arbitrar:** ele
+tem **uma só** metade da tabela-verdade (nenhuma célula com o interruptor
+ligado), logo ele não separa *«o `from_live` é `true` sempre para o `Stamp`»*
+de *«a polaridade está invertida»*. E a primeira tornaria o `Accumulate` um
+**knob inerte** nos verbos de carimbo, que é a espécie que o §5.0 obriga a
+curar com a medição escrita ao lado.
+
+⚠️ **E há uma leitura alternativa que o corpus também não exclui:** que o
+`acumular` do cabeçalho do alvo **não seja** o nosso `Accumulate`. *Duas
+colunas com o mesmo nome em programas diferentes não são a mesma coluna
+enquanto ninguém o medir.*
+
+### §75.4 O que fecha isto
+
+Uma coisa só: **células do oráculo com `acumular = True`**. Elas dão a outra
+metade da tabela-verdade e arbitram entre as três leituras de uma vez. É acto
+do **E**, e é a mesma corrida que a espec §12 já queria para outras quatro
+linhas.
+
+⚠️ **A árvore fica INTACTA**: os quatro andaimes desta investigação
+(`PH2D_RAKE_SWEEPS`, `PH2D_RAKE_ALVO`, `PH2D_FROM_LIVE` e o do `Grip::Stamp`)
+foram removidos, e a suíte da crate fecha **463 verdes**. *Um defeito medido
+com esta força merece a cura certa, não a primeira.*

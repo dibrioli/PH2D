@@ -572,7 +572,7 @@ fn desenha(m: &ph2d_mesh::Mesh, percurso: &[[f32; 3]], raio: f32, caminho: &str)
 
     let mut buf = vec![255u8; N * N * 3];
     let pos = m.positions();
-    let mut linha = |a: (i32, i32), b: (i32, i32), buf: &mut Vec<u8>| {
+    let linha = |a: (i32, i32), b: (i32, i32), buf: &mut Vec<u8>| {
         let (dx, dy) = ((b.0 - a.0).abs(), -(b.1 - a.1).abs());
         let (sx, sy) = (
             if a.0 < b.0 { 1 } else { -1 },
@@ -718,7 +718,7 @@ fn desenha_recorte(m: &ph2d_mesh::Mesh, percurso: &[[f32; 3]], raio: f32, caminh
     };
     let mut buf = vec![255u8; N * N * 3];
     let pos = m.positions();
-    let mut linha = |a: (i32, i32), b: (i32, i32), buf: &mut Vec<u8>| {
+    let linha = |a: (i32, i32), b: (i32, i32), buf: &mut Vec<u8>| {
         let (dx, dy) = ((b.0 - a.0).abs(), -(b.1 - a.1).abs());
         let (sx, sy) = (
             if a.0 < b.0 { 1 } else { -1 },

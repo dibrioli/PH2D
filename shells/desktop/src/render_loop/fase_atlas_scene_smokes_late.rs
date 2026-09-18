@@ -92,8 +92,11 @@ impl crate::App {
                     .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
                         kind: ph2d_editor_core::ViewFocusKind::Selected,
                     });
+                // ⚠️⚠️ **Este texto nomeava a fileira `Deform`, que foi APAGADA em 2026-09-17** —
+                // *um passo de smoke que nomeia um controlo AFIRMA que ele está na tela*, e o dono
+                // aprova o smoke com o passo impossível dentro.
                 toasts.push(Toast::success(if quantos > 1 {
-                    "Bone-paint smoke: Window > Bones, e na linha Deform compare Fast com Smooth"
+                    "Bone-paint smoke: a cena LOTADA — todos os canvas dobram com a mesma malha fina"
                         .to_string()
                 } else {
                     "Bone-paint smoke: pegue o Painter e desenhe uma forma sobre o canvas dobrado"
@@ -101,6 +104,18 @@ impl crate::App {
                 }));
             }
         }
+
+        // ⭐ **AS TRÊS MÍDIAS** (F11) — o corpo vive à parte pelo tecto de LOC por FUNÇÃO.
+        bone_media_smoke(
+            &mut self.vec.bone_media_smoke_done,
+            sim,
+            renderer,
+            asset_db,
+            hero_screen,
+            next_import_cell,
+            atlas_asset_map,
+            toasts,
+        );
 
         // **A FOLHA COMO OBJETO** (`PH2D_SHEET_SMOKE=1`, plano `docs/Sprite_projeto/17` §7): cinco
         // peças de tamanhos diferentes entram, e sai UM objeto — um retângulo na hierarquia, com
@@ -177,4 +192,55 @@ impl crate::App {
             self.title_dirty = true;
         }
     }
+}
+
+/// ⭐⭐⭐ **AS TRÊS MÍDIAS PRESAS AO MESMO GESTO** (`PH2D_VEC_BONE_MEDIA_SMOKE=1`, F11) — a cena que
+/// torna JULGÁVEL o que a wave curou: a folha de quadros dobrava **errado e em silêncio**, e o
+/// 9-slice não dobrava de todo.
+///
+/// ⚠️ **O enquadramento é `All` e não `Selected`**, ao contrário do irmão da pintura: aqui as três
+/// TÊM de ser vistas ao mesmo tempo — *sem o controlo ao lado, «dobrou» e «dobrou certo» leem-se
+/// igual*.
+///
+/// ⚠️ **Função LIVRE e não um método**, e a razão é o empréstimo: os argumentos saem todos do
+/// `FrameGfx::of(gfx)`, que já tem a `App` emprestada mutavelmente — um `&mut self` aqui não compila.
+/// O latch entra como `&mut bool` pela mesma razão.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "sao as portas do quadro que a cena precisa, e agrupa-las numa struct so' esconderia \
+              que elas vem todas do mesmo emprestimo"
+)]
+fn bone_media_smoke(
+    feito: &mut bool,
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &ph2d_asset::AssetDb,
+    hero_screen: &mut Option<ph2d_editor_core::HeroScreen>,
+    next_import_cell: &mut u32,
+    atlas_asset_map: &mut std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) {
+    let Some(hero) = hero_screen.as_mut() else {
+        return;
+    };
+    if !ph2d_app_vec::smoke_bone_media::armed() || std::mem::replace(feito, true) {
+        return;
+    }
+    let ppm = hero.project.pixels_per_meter;
+    let cell = *next_import_cell;
+    let Some((bits, gastas)) =
+        ph2d_app_vec::smoke_bone_media::build(sim, renderer, asset_db, cell, ppm, atlas_asset_map)
+    else {
+        return;
+    };
+    *next_import_cell = next_import_cell.saturating_add(gastas);
+    hero.gizmo.replace_selection(Some(bits));
+    hero.bus
+        .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+            kind: ph2d_editor_core::ViewFocusKind::All,
+        });
+    toasts.push(Toast::success(
+        "Bone-media smoke: as tres dobram — a do meio mostra UM quadro, a de baixo mantem os cantos"
+            .to_string(),
+    ));
 }

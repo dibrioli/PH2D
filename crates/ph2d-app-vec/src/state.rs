@@ -101,6 +101,12 @@ pub struct VecState {
     /// *«um campo novo tem DONO: ponha-o no estado da família do assunto dele»*.
     pub bone_paint_smoke_done: bool,
 
+    /// ⭐ Latch one-shot da [`crate::smoke_bone_media`] — as TRÊS mídias presas ao mesmo gesto (F11).
+    ///
+    /// ⚠️ **Latch PRÓPRIO e não o do irmão:** as duas cenas podem ser armadas na mesma corrida, e um
+    /// latch partilhado faria a segunda montar-se pela metade sem nada a dizê-lo.
+    pub bone_media_smoke_done: bool,
+
     /// ⭐ **A IMAGEM da cena de osso** — os bits da sprite e a raiz do esqueleto dela.
     ///
     /// ⚠️ **Slot próprio, e não uma 4.ª entrada no `_pend`:** aquele guarda `VecPathId`, e uma

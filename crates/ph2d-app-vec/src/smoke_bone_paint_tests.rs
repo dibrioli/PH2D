@@ -56,7 +56,11 @@ fn cena_dobrada(
     let mut sim = SimWorld::default();
     // ⭐⭐ **A PORTA DO PRODUTO**, e é ela que escreve o alcance: um `None` aqui mede a cena tal
     // como o dono a vê. Ver o doc da [`super::corrente`] — a mutação que a criou.
-    let ossos = super::corrente_em(&mut sim, PPM, [0.0, 0.0]).expect("a corrente monta");
+    // ⚠️ **A largura em METROS DO MUNDO** desde 2026-09-17 (F11): a cena das mídias desacoplou o
+    // tamanho de uma imagem dos pixels dela, e pedir pixels à porta obrigaria cada chamador a
+    // refazer a conversão.
+    let largura_m = f64::from(super::LARGURA_PX) / f64::from(PPM);
+    let ossos = super::corrente_em(&mut sim, largura_m, [0.0, 0.0]).expect("a corrente monta");
     if let Some(f) = forca {
         for &ent in &ossos {
             if let Some(mut bone) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::Bone>(ent) {
@@ -594,8 +598,10 @@ fn a_cena_deforma_a_arte_o_bastante_para_demonstrar_e_nao_mais() {
 fn the_scene_binds_before_it_bends() {
     let fonte = include_str!("smoke_bone_paint.rs");
     let bind = fonte.find("bind_image(\n").expect("a cena prende a imagem");
+    // ⚠️ A agulha nomeia a CHAMADA e não a assinatura: a `dobra` ganhou o ângulo como argumento em
+    // 2026-09-17 (a cena das mídias dobra menos), e uma agulha colada ao `);` partiu-se nesse dia.
     let dobra = fonte
-        .find("dobra(sim, &ossos);")
+        .find("dobra(sim, &ossos,")
         .expect("a cena dobra os ossos");
     assert!(
         bind < dobra,

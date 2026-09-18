@@ -161,7 +161,7 @@ const LARGURA_PX: u32 = 512;
 /// ⚠️ **Três, e não dois:** com dois há UM vinco, e o que o olho julga (e o que as guias têm de
 /// seguir) é uma **curva**. ⚠️ Ele entra na conta da [`ALTURA_PX`] porque é ele que fixa o
 /// comprimento — e portanto o ALCANCE — de cada osso.
-const OSSOS: u32 = 3;
+pub(crate) const OSSOS: u32 = 3;
 
 /// A altura do canvas, em pixels — uma TIRA, porque é numa tira que uma curva se lê.
 ///
@@ -214,7 +214,7 @@ const ALTURA_PX: u32 = LARGURA_PX * 5 / 8;
 /// junta dá `0,00 %` órfã, `0,00 %` do avesso, `det_min 0,7475` e `0,92 px` de faceta.
 /// ⛔⛔ **São TRÊS réguas e não uma**, e cada redacção desta cena caiu na que eu não tinha corrido:
 /// a inversão (que eu citei), a **órfã** (que reprovou a 1.ª) e a **faceta** (que reprovou a 2.ª).
-const DOBRA_GRAUS: f32 = 25.0;
+pub(crate) const DOBRA_GRAUS: f32 = 25.0;
 
 /// **Os eixos dos ossos, em metros de mundo** — a corrente deitada ao longo da largura do canvas.
 ///
@@ -232,10 +232,14 @@ const DOBRA_GRAUS: f32 = 25.0;
 ///
 /// `None` quando um osso não nasce — e aí quem chama PARA, porque uma cena com meia corrente monta
 /// e não demonstra nada.
-fn corrente_em(sim: &mut SimWorld, pixels_per_meter: f32, centro: [f64; 2]) -> Option<Vec<Entity>> {
+pub(crate) fn corrente_em(
+    sim: &mut SimWorld,
+    largura_m: f64,
+    centro: [f64; 2],
+) -> Option<Vec<Entity>> {
     let mut pai: Option<Entity> = None;
     let mut ossos = Vec::new();
-    for (k, (a, b)) in eixos_em(pixels_per_meter, centro).into_iter().enumerate() {
+    for (k, (a, b)) in eixos_em(largura_m, centro).into_iter().enumerate() {
         let Some(osso) = ph2d_skeleton_live::bone::create(sim, pai, a, b) else {
             eprintln!("[bone-paint-smoke] o osso {k} nao nasceu -- PARE");
             return None;
@@ -252,11 +256,17 @@ fn corrente_em(sim: &mut SimWorld, pixels_per_meter: f32, centro: [f64; 2]) -> O
 
 /// A corrente, com o CENTRO escolhido — a cena lotada põe uma por canvas.
 ///
-/// ⚠️ **Uma lei, dois consumidores.** Escrever a disposição outra vez na cena lotada faria as duas
-/// divergirem no primeiro ajuste, e os gates continuariam a medir a de cima.
-fn eixos_em(pixels_per_meter: f32, centro: [f64; 2]) -> Vec<([f64; 2], [f64; 2])> {
-    let largura = f64::from(LARGURA_PX) / f64::from(pixels_per_meter.max(f32::MIN_POSITIVE));
-    let (x0, passo) = (centro[0] - largura / 2.0, largura / f64::from(OSSOS));
+/// ⚠️ **Uma lei, TRÊS consumidores** (a cena de um canvas, a lotada, e a das mídias da F11).
+/// Escrever a disposição outra vez faria as cópias divergirem no primeiro ajuste, e os gates
+/// continuariam a medir a de cima. ⭐ A largura entrou com o terceiro: cada arte tem a sua, e uma
+/// corrente que não cobre a imagem prende meia arte.
+///
+/// ⚠️ **Em METROS DO MUNDO e não em pixels:** desde a cena das mídias o tamanho de uma imagem no
+/// mundo deixou de ser derivado dos pixels dela (é o que deixa a arte ficar mais fina sem a cena
+/// sair do ecrã), e pedir pixels aqui obrigaria cada chamador a refazer a conversão — *duas
+/// conversões divergem no dia em que uma ganhar uma cerca*.
+pub(crate) fn eixos_em(largura_m: f64, centro: [f64; 2]) -> Vec<([f64; 2], [f64; 2])> {
+    let (x0, passo) = (centro[0] - largura_m / 2.0, largura_m / f64::from(OSSOS));
     (0..OSSOS)
         .map(|k| {
             (
@@ -268,10 +278,10 @@ fn eixos_em(pixels_per_meter: f32, centro: [f64; 2]) -> Vec<([f64; 2], [f64; 2])
 }
 
 /// **Dobra a corrente** — todas as juntas menos a raiz. Ver a nota de ordem na [`build`].
-fn dobra(sim: &mut SimWorld, ossos: &[Entity]) {
+pub(crate) fn dobra(sim: &mut SimWorld, ossos: &[Entity], graus: f32) {
     for osso in ossos.iter().skip(1) {
         if let Some(mut t) = sim.world_mut().get_mut::<Transform>(*osso) {
-            t.rotation += DOBRA_GRAUS.to_radians();
+            t.rotation += graus.to_radians();
         }
     }
 }
@@ -395,7 +405,8 @@ fn um_canvas(
     let e = Entity::try_from_bits(bits)?;
 
     // ── Os três ossos, deitados ao longo do canvas ──────────────────────────────────────────────
-    let Some(ossos) = corrente_em(sim, pixels_per_meter, centro) else {
+    let largura_m = f64::from(LARGURA_PX) / f64::from(pixels_per_meter.max(f32::MIN_POSITIVE));
+    let Some(ossos) = corrente_em(sim, largura_m, centro) else {
         return Some(bits);
     };
 
@@ -436,7 +447,7 @@ fn um_canvas(
     //
     // ⚠️⚠️ **Depois de prender, nunca antes.** O repouso de uma pele é o instante do bind: dobrada
     // antes, esta pose SERIA o repouso e o canvas sairia recto — a cena montaria e não provaria nada.
-    dobra(sim, &ossos);
+    dobra(sim, &ossos, DOBRA_GRAUS);
     Some(bits)
 }
 

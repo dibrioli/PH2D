@@ -41,6 +41,7 @@ W0..W6 + os abertos + **dois reports do dono já fechados e com smoke APROVADO**
 | §18.7 | a cena **`=123` — A CADEIA**, o único sítio onde a escada de varreduras se VÊ (as irmãs são pares independentes) |
 | §19 | ⭐⭐⭐ **o tecto era honesto e o MOTOR não era** (report do dono) — o passe fica **4,4×** mais barato a 500 peças e **8,7×** no quadro dele; toca em `ph2d-nodegraph` (`par_build_if`, append-only) |
 | §20 | ⭐⭐⭐ **o laço pára quando nada mais se VÊ** (2.º report) — `500` objectos a `1024` varreduras: `157,9 → 6,8 ms` (**46×** no caminho dele). ⚠️ **Não é bit-idêntico de propósito**, e o preço são DUAS barras de gate de produto re-precificadas, em duas crates |
+| §21 | ⭐⭐⭐ **o acabamento era pago por TIQUE e o desenho é UM** (3.º report, com foto) — a shell cozinha um quadro por tique em dívida e **só o último é desenhado**; a cena da foto vai de `245 → 31 ms` (**3 → 32 FPS**). Toca na PONTE (`motion_bridge`) e na bomba (`set_separa_o_desenho` + o readout `separacoes()`) |
 
 ---
 
@@ -191,6 +192,14 @@ filtro**. ⚠️ A 8.ª está documentada **no código** como não-sangrante de 
 nele, com a mesma garantia de bits e o mesmo gate). ⇒ *a superfície de colisão do §2 muda por uma linha
 naquele ficheiro*, e o tecto de LOC do `ph2d-eval-motion/src/lib.rs` foi curado por **CORTE** (o laço das
 tomadas desceu para `taps.rs`, que já é o dono do assunto): `710 → 665`.
+
+**Portão da §21:** formatação limpa · lint `-D warnings` a **zero** · varredura impactada **17 328**
+testes com **17 328 a passar** · mutação **4 de 4**. ⚠️ **Para quem funde:** a §21 acrescenta uma
+bandeira de estado à bomba (`separa_o_desenho`, que **nasce `true`** — todo chamador que cozinha um
+tique só continua igual) e uma linha no laço de `ticks_owed` do `motion_bridge`. ⛔ **E a fiação tem
+gate de TEXTO** (`o_quadro_marca_so_o_ultimo_tique_como_desenhado`), porque o `dispatch` pede um
+`HeroScreen`, um `ToolRegistry` e um `GpuContext` e não é alcançável de um teste — *um motor com a
+lei certa e a shell a não a ligar lê-se como um motor sem a lei*.
 
 **Portão da §20:** formatação limpa · lint `-D warnings` a **zero** nas quatro crates · varredura
 impactada **17 326** testes com **17 326 a passar** (zero vermelhos) · mutação **4 de 5**, com a 5.ª

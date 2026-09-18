@@ -59,6 +59,42 @@ diz onde ler o mecanismo:
 
 ---
 
+### F14 — ✅ **DESCONECTAR A MALHA DO OSSO numa IMAGEM** (report do dono, 2026-09-18)
+
+*«Acho que ainda não temos a opção de desconectar a malha do osso. Deveríamos ter.»* — **ele tinha
+razão, e o defeito eram DUAS metades, ambas mudas.**
+
+⛔⛔ **(a) O painel não sabia.** O facto publicado era um `bool` que só olhava
+`self.vec.pen.selected_paths()`, que para uma imagem dá **zero** ⇒ com uma imagem presa escolhida
+ele lia `false` e os botões *Expand* e *Release* **nem eram pintados**. *O artista não via um botão
+morto — via a ausência de um botão*, que é exactamente o que ele escreveu.
+⚠️⚠️ **E o cabeçalho da própria fase já prometia a lei por escrito** (*«se a selecção tem forma
+PRESA ou imagem com pele»*): *um doc que declara a lei que o código não implementa lê-se como
+auditado.*
+
+⛔⛔ **(b) O verbo não alcançava.** O `release` percorre `paths`; a lei da imagem
+([`skin_image::release_image`]) **existia** e o **único** chamador de produto dela era **automático**
+(uma ferramenta que muda a moldura solta o osso sozinha). *Uma lei sem gesto é uma lei que o artista
+não tem* — a irmã do `dock_columns::close`, que este doc já nomeia.
+
+⇒ o facto publicado passa a ser um **TIPO** (`Skinned { vector, imagem }`, pela lei que o `state.rs`
+já escreve para o `BoneSpec`: os campos viajam juntos), o *Release* solta as duas mídias, e o
+**`Expand` fica de fora por LEI da mídia** — ele troca o desenho autorado pela geometria deformada
+de agora, e uma imagem **não tem geometria autorada** (a malha é derivada da tinta, por quadro).
+Assar a deformação nos pixels é **outra** operação, que não existe. ⇒ escondido, não pintado-e-morto.
+
+⚠️ **Duas cercas, não uma:** o painel esconde o *Expand* e o verbo cerca-se a `Keep::Source` — para o
+caso de o comando chegar por outra porta.
+
+⚠️ **E uma medição minha falhou por um `head -5`:** li *«`set_current_skinned` só tem chamadores de
+teste»* porque a janela cortou a linha da shell. *Um `head` é uma janela, não um veredito* — a lição
+já estava na memória do repo, e paguei-a na mesma.
+
+Mutação **5 de 5** a sangrar; portão `15 082` verdes.
+
+⏳ **ABERTO e nomeado:** assar a deformação de uma imagem nos pixels (o *Expand* da 2.ª mídia) não
+existe — é wave própria, e só faz sentido com quem a peça.
+
 ### F13 — ✅ **VÁRIAS IMAGENS NUM ESQUELETO SÓ (o PERSONAGEM), e o *Bind* deixou de prender ao amálgama** (2026-09-18)
 
 **A capacidade existe, está MEDIDA e é alcançável pelo gesto.** Duas sprites presas ao mesmo osso

@@ -10,7 +10,9 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let FrameGfx { sim, .. } = FrameGfx::of(gfx);
+        let FrameGfx {
+            sim, hero_screen, ..
+        } = FrameGfx::of(gfx);
         // ⭐⭐⭐ **O ESQUELETO** (estudo 42 item 5): as duas perguntas que só a shell
         // responde — *"a selecção tem forma PRESA?"* (decide se as saídas são oferecidas) e
         // *"o que está aceso é um osso, e com que números?"* (decide os dois campos).
@@ -19,14 +21,29 @@ impl crate::App {
         // (`bone_gesture::selected_bone`): QUATRO consumidores, uma resposta — o dedo,
         // o dreno dos verbos, este painel e o desenho do overlay (o quarto entrou na wave
         // do gizmo de limite, e esta conta ficou em três até 2026-09-08).
-        let presa = self.vec.pen.selected_paths().iter().any(|id| {
+        let vector = self.vec.pen.selected_paths().iter().any(|id| {
             self.vec.entities.get(id).is_some_and(|&b| {
                 sim.world()
                     .get::<ph2d_skeleton_ecs::SkinBind>(ph2d_ecs::Entity::from_bits(b))
                     .is_some()
             })
         });
-        ph2d_panel_skeleton::set_current_skinned(presa);
+        // ⭐⭐⭐ **E A IMAGEM PRESA, que este cabeçalho já prometia e o código não lia** (report do
+        // dono, 2026-09-18: *«ainda não temos a opção de desconectar a malha do osso»*). Sem esta
+        // metade, com uma imagem presa escolhida o painel lia `false` e os botões de saída **nem
+        // eram pintados** — *o artista não via um botão morto, via a ausência de um botão*.
+        //
+        // ⚠️ **O sujeito de uma imagem é a SELECÇÃO DO GIZMO**, nunca a lista de caminhos do pen —
+        // são duas famílias com dois selectores, e é exactamente a nota que o verbo do *Bind* já
+        // carrega por escrito desde a wave da 2.ª mídia.
+        let imagem = hero_screen.as_ref().is_some_and(|h| {
+            h.gizmo.iter_selected().any(|b| {
+                ph2d_ecs::Entity::try_from_bits(b).is_some_and(|e| {
+                    ph2d_skeleton_live::skin_image::is_skinned_image(sim.world(), e)
+                })
+            })
+        });
+        ph2d_panel_skeleton::set_current_skinned(ph2d_panel_skeleton::Skinned { vector, imagem });
         // E se a CENA tem esqueleto — é isso que faz a seção aparecer (ou não) fora do modo
         // Osso. ⛔ Sem esta metade ela seria um cabeçalho permanente num app que nunca viu
         // um osso, que é exactamente o report que a tabela de escopo curou em 31/08.

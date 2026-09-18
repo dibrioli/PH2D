@@ -46,12 +46,15 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 /// A cena tem esqueleto, a selecção está presa e há um osso em foco — o estado em que **todos** os
 /// controlos da seção são oferecidos.
 fn publica_tudo() {
-    state::set_current_skinned(true);
+    state::set_current_skinned(state::Skinned {
+        vector: true,
+        imagem: false,
+    });
     state::set_current_bone(Some(ph2d_skeleton::bend::BoneSpec::straight(20.0, 1.0)));
 }
 
 fn limpa() {
-    state::set_current_skinned(false);
+    state::set_current_skinned(state::Skinned::default());
     state::set_current_bone(None);
     state::set_current_bone_handles(None);
     state::set_current_bone_tip(None);
@@ -421,17 +424,68 @@ fn the_two_exits_appear_only_when_something_is_bound() {
         host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
             .is_some()
     };
-    state::set_current_skinned(false);
+    state::set_current_skinned(state::Skinned::default());
     state::set_current_bone(None);
     assert!(sem(ids::VECTOR_BONE_BIND), "o Bind tem de estar la' sempre");
     assert!(
         !sem(ids::VECTOR_BONE_EXPAND) && !sem(ids::VECTOR_BONE_RELEASE),
         "as saidas foram pintadas sem nada preso"
     );
-    state::set_current_skinned(true);
+    state::set_current_skinned(state::Skinned {
+        vector: true,
+        imagem: false,
+    });
     assert!(
         sem(ids::VECTOR_BONE_EXPAND) && sem(ids::VECTOR_BONE_RELEASE),
         "as saidas sumiram com uma forma presa"
+    );
+    limpa();
+}
+
+/// ⭐⭐⭐ **COM UMA IMAGEM PRESA, O *RELEASE* APARECE E O *EXPAND* NÃO** — o report do dono
+/// (2026-09-18: *«ainda não temos a opção de desconectar a malha do osso»*).
+///
+/// ⛔⛔ **O defeito era MUDO e vinha de mais atrás:** o facto publicado era um `bool` que só conhecia
+/// formas vectoriais, logo com uma imagem presa ele lia `false` e as **duas** saídas nem eram
+/// pintadas. *O artista não via um botão morto — via a ausência de um botão*, que é o report que
+/// ele escreveu.
+///
+/// ⚠️ **E o *Expand* fica de fora por LEI da mídia, não por fiação:** ele troca o desenho autorado
+/// pela geometria deformada de agora, e uma imagem **não tem geometria autorada** (a malha é
+/// derivada da tinta, por quadro). Assar a deformação nos pixels é outra operação, e ela não existe
+/// — pintá-lo aqui seria um controlo morto sob o dedo.
+#[test]
+fn a_skinned_image_offers_release_but_not_expand() {
+    let sem = |id| {
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+            .is_some()
+    };
+    state::set_current_skinned(state::Skinned {
+        vector: false,
+        imagem: true,
+    });
+    state::set_current_bone(None);
+    assert!(
+        sem(ids::VECTOR_BONE_RELEASE),
+        "com uma IMAGEM presa o Release nao foi pintado — e' o report do dono a' letra: a opcao \
+         de desconectar a malha do osso nao existe para uma imagem"
+    );
+    assert!(
+        !sem(ids::VECTOR_BONE_EXPAND),
+        "o Expand foi pintado com uma imagem presa: ele troca o desenho autorado pela geometria \
+         deformada, e uma imagem nao tem geometria autorada — seria um controlo morto sob o dedo"
+    );
+    // ⚠️ E o CONTROLO: com as duas mídias presas o *Expand* volta, senão este gate leria como
+    // «o Expand nunca aparece».
+    state::set_current_skinned(state::Skinned {
+        vector: true,
+        imagem: true,
+    });
+    assert!(
+        sem(ids::VECTOR_BONE_EXPAND),
+        "com uma FORMA presa ao lado da imagem o Expand tem de voltar — ele e' da forma"
     );
     limpa();
 }
@@ -449,7 +503,7 @@ fn the_two_exits_appear_only_when_something_is_bound() {
 /// espécie de controlo morto que o `CLAUDE.md` §5.0 nomeia.
 #[test]
 fn the_two_bone_numbers_need_a_bone_in_focus() {
-    state::set_current_skinned(false);
+    state::set_current_skinned(state::Skinned::default());
     state::set_current_bone(None);
     let pintado = |id| {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();

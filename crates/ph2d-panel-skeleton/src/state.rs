@@ -13,7 +13,7 @@ use std::cell::{Cell, RefCell};
 thread_local! {
     /// A seleção contém pelo menos uma forma PRESA a um esqueleto? Decide se as duas saídas
     /// (Keep Pose / Release) são oferecidas — *um botão que só sabe recusar é pior que um ausente*.
-    static CURRENT_SKINNED: Cell<bool> = const { Cell::new(false) };
+    static CURRENT_SKINNED: Cell<Skinned> = const { Cell::new(Skinned { vector: false, imagem: false }) };
     /// O OSSO em foco existe? Sem ele, `Length`/`Strength` não têm sujeito.
     static CURRENT_HAS_BONE: Cell<bool> = const { Cell::new(false) };
     static CURRENT_BONE_LENGTH: Cell<f64> = const { Cell::new(0.0) };
@@ -41,12 +41,39 @@ pub(crate) fn current_bone_handles() -> Option<usize> {
     CURRENT_BONE_HANDLES.with(Cell::get)
 }
 
-/// A seleção tem forma presa a esqueleto (publicado pela shell, todo quadro).
-pub fn set_current_skinned(v: bool) {
+/// ⭐⭐⭐ **O QUE A SELECÇÃO TEM PRESO, pelas DUAS mídias.**
+///
+/// ⛔⛔⛔ **Era um `bool` que só conhecia formas vectoriais, e o defeito era MUDO** (report do dono,
+/// 2026-09-18: *«ainda não temos a opção de desconectar a malha do osso»*): com uma IMAGEM presa
+/// escolhida ele lia `false`, e os botões *Expand* e *Release* **nem chegavam a ser pintados**.
+/// ⚠️ **O cabeçalho da fase que o publica já dizia *«forma presa ou imagem com pele»*** — *um doc
+/// que declara a lei que o código não implementa lê-se como auditado*.
+///
+/// ⚠️ **É um TIPO e não dois publicadores**, pela lei que este ficheiro já escreve para o
+/// `BoneSpec`: os dois campos viajam juntos, e um publicador por campo deixaria um quadro em que
+/// uma metade é desta selecção e a outra da anterior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Skinned {
+    /// Há uma FORMA vectorial presa na selecção.
+    pub vector: bool,
+    /// Há uma IMAGEM presa na selecção.
+    pub imagem: bool,
+}
+
+impl Skinned {
+    /// Há alguma coisa presa — é o que decide se a fileira de saídas se pinta.
+    #[must_use]
+    pub fn alguma(self) -> bool {
+        self.vector || self.imagem
+    }
+}
+
+/// O que a seleção tem preso a esqueleto (publicado pela shell, todo quadro).
+pub fn set_current_skinned(v: Skinned) {
     CURRENT_SKINNED.with(|c| c.set(v));
 }
 
-pub(crate) fn skinned() -> bool {
+pub(crate) fn skinned() -> Skinned {
     CURRENT_SKINNED.with(Cell::get)
 }
 

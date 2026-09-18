@@ -108,14 +108,19 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
     for (id, label) in verbos {
         y = r.action_button(id, label, y);
     }
-    if state::skinned() {
-        let saidas: [(ph2d_a11y::NodeId, &str); 2] = [
-            (ids::VECTOR_BONE_EXPAND, tr("panel.vector.bone.expand")),
-            (ids::VECTOR_BONE_RELEASE, tr("panel.vector.bone.release")),
-        ];
-        for (id, label) in saidas {
-            y = r.action_button(id, label, y);
+    // ⭐⭐⭐ **AS SAÍDAS APARECEM PARA AS DUAS MÍDIAS — o *Expand* só para UMA.**
+    //
+    // ⛔⛔ **O `Expand` não alcança uma imagem, e a razão é da MÍDIA e não da fiação:** ele troca o
+    // desenho autorado pela geometria deformada de agora, e uma imagem **não tem geometria
+    // autorada** — a malha é derivada da própria tinta, por quadro. Assar a deformação nos pixels é
+    // **outra** operação, e ela não existe. ⇒ ele é **escondido**, que é o que a casa faz quando
+    // pode (a alternativa — pintá-lo e recusar — deixa um controlo morto sob o dedo).
+    let presa = state::skinned();
+    if presa.alguma() {
+        if presa.vector {
+            y = r.action_button(ids::VECTOR_BONE_EXPAND, tr("panel.vector.bone.expand"), y);
         }
+        y = r.action_button(ids::VECTOR_BONE_RELEASE, tr("panel.vector.bone.release"), y);
     }
     // ⛔⛔⛔ **A FILEIRA `Deform` SAIU** (ordem do dono, 2026-09-17: *«Pode apagar a secção
     // deform»*), e o que a matou foi uma MEDIÇÃO.

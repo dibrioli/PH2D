@@ -121,7 +121,36 @@ impl crate::App {
         }
         if let Some(keep) = pending_bone_release {
             let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
-            crate::skeleton_live::release(sim, vec_scene, &self.vec.entities, &ids, keep);
+            let n = crate::skeleton_live::release(sim, vec_scene, &self.vec.entities, &ids, keep);
+            // ⭐⭐⭐ **E AS IMAGENS SOLTAM-SE TAMBÉM** (report do dono, 2026-09-18: *«ainda não temos
+            // a opção de desconectar a malha do osso»*). O *Bind* alcançava as duas mídias desde a
+            // wave da 2.ª mídia e o *Release* alcançava **uma** — a lei da imagem
+            // (`skin_image::release_image`) existia e o **único** chamador de produto dela era
+            // automático (uma ferramenta que muda a moldura solta o osso sozinho). *Uma lei sem
+            // gesto é uma lei que o artista não tem.*
+            //
+            // ⛔ **Só no `Keep::Source`:** o `Keep::Deformed` é o *Expand*, que troca o desenho
+            // autorado pela geometria de agora — e uma imagem **não tem geometria autorada**. O
+            // painel já não pinta o *Expand* para uma imagem; esta cerca é a segunda metade, para o
+            // caso de o comando chegar por outra porta.
+            let mut n_img = 0;
+            if keep == ph2d_skeleton_live::skin_live::Keep::Source {
+                for bits in &selecao_bits {
+                    if crate::skeleton_skin_image::release_image(sim, *bits) {
+                        n_img += 1;
+                    }
+                }
+            }
+            if n + n_img == 0 {
+                eprintln!(
+                    "[ph2d-vec] osso: nada a soltar -- escolha a forma ou a imagem que esta' \
+                     presa ao esqueleto"
+                );
+            } else {
+                eprintln!(
+                    "[ph2d-vec] osso: {n} forma(s) e {n_img} imagem(ns) solta(s) do esqueleto"
+                );
+            }
         }
         if let Some((knob, v)) = pending_bone_knob
             && let Some(bits) = osso_selecionado

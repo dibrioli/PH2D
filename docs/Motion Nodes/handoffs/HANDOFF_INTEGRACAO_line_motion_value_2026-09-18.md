@@ -37,6 +37,7 @@ W0..W6 + os abertos + **dois reports do dono já fechados e com smoke APROVADO**
 | §15 | o passe honra o `falloff` + a cena **`=122`** |
 | §16 | a TOMADA passa a ver o que o sink DESENHA (report do dono) |
 | §17 | o retrato do gizmo sai do cozido **DESTE** quadro (report do dono) |
+| §18 | **o tecto das varreduras passa a ser MEDIDO** — a cadeia deixa de ser inalcançável, e TRÊS acelerações candidatas ficam como **recusas medidas** (ordem do dono) |
 
 ---
 
@@ -81,10 +82,12 @@ O rebase sobre o `main` de hoje (4 commits à frente do merge-base) correu **sem
    **kernel de dispositivo FICOU**, por decisão do dono e com o número ao lado: `4,19 M` objectos
    correm **`88×`** mais rápido ali do que no passe de CPU. *Um diff que vê `register_out_of_catalogue`
    e lê «removeram o nó» inverte a decisão.*
-2. **O passe é um ACABAMENTO, nunca uma lei de contacto.** Medido: ele resolve arranjos com
-   sobreposições **LOCAIS e INDEPENDENTES**; numa **CADEIA** ele não converge — 15 pares vão a 10 em
-   8 varreduras, 6 em 32 e ainda **3 em 64**, que é o tecto do knob. ⇒ a cena `=121`/`=122` é feita
-   de **pares independentes por NECESSIDADE**, não por conveniência de demo.
+2. **Uma CADEIA converge — o que ela pede é `~n²` varreduras** (§18, e isto CORRIGE a leitura da
+   §15.3, que dizia *«3 a 64, que é o topo do knob»*: o `64` era um número **herdado** do clamp de
+   outro nó, e ele segurava uma cadeia de **QUATRO**). Hoje o tecto é MEDIDO — `1024` no slider
+   (fecha `n = 16`, `18,5 %` de um quadro) e `4096` digitável (fecha `n = 32`). ⇒ as cenas
+   `=121`/`=122` continuam feitas de pares independentes porque foi assim que nasceram, **não**
+   porque a cadeia seja inalcançável.
 3. **`separa_o_que_se_desenha` devolve `None` em quase toda cena**, e é isso que mantém tudo o que
    já existia **byte-idêntico** — sem clone e sem um `if` a lembrar: ele devolve `None` quando
    ninguém declara colisor, quando o interruptor está desarmado, ou quando nada se moveu.
@@ -134,9 +137,10 @@ formatador que parte a linha faz o padrão casar zero, e um `grep` largo casa **
 
 | item | de quem |
 |---|---|
-| **A realimentação no solver** — para o passe segurar uma simulação em **CADEIA** (hoje ele é acabamento de pares independentes, §4.2). É desenho novo, não afinação: `64` varreduras não bastam e o tecto do knob já lá está | **decisão do dono** |
+| ⛔ ~~A realimentação no solver~~ — **FECHADO em 18/09 por ordem do dono** (*«quero todas as possibilidades possíveis, não quero limitações no sistema»*) e o resultado inverteu a pergunta: a recusa era sobre um **número HERDADO** (`64`, o clamp de outro nó), a cadeia **converge sempre**, e as TRÊS acelerações candidatas foram construídas e **medidas e refutadas** — sobre-relaxação `~1,95×`, vermelho-preto `~3,3×`, realimentação **ZERO**. Doc 115 §18 | ✅ fechado |
+| ⏳ **Acima de `n ≈ 32` a conta é do artista** (`4096` varreduras = `1,6` quadros) — removê-la por inteiro exige método **NÃO-local** (multigrid · resolução directa do grafo de contacto · propagação de choque), que é espec própria. E **o custo não é VISÍVEL** no cartão | próxima wave |
 | Os tectos de `motion.boids` e `motion.wave` seguem por medir (herdado, não desta linha) | próxima wave |
-| **Pedido de promoção à lista de flakes do §5.0:** `the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` (`ph2d-tool-painter`) — gate de RAZÃO, nomeado durante esta jornada. ⚠️ **Nesta janela ele passou em todas as corridas** (17 085 verdes, três vezes), logo a confirmação com `loadavg` ao lado **fica por fazer**: *uma flake sem a carga medida ao lado não entra na lista* | integrador, **se** voltar a acusar |
+| ⭐ **Pedido de promoção à lista de flakes do §5.0, agora COM a assinatura completa:** `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number` (`ph2d-tool-painter`) — único ✗ de `17 086` a `load 18,86`, **zero linhas** do diff desta linha naquela crate, e **3 de 3 verde sozinho a `load 21,8`–`25,9`**, que é carga MAIS ALTA do que aquela em que reprovou ⇒ *o discriminador é o FAN-OUT, não o relógio* | integrador escreve |
 
 ---
 
@@ -148,12 +152,12 @@ Sobre a árvore **já rebasada** no `main` de hoje:
 |---|---|
 | formatação | limpa |
 | lint com `-D warnings` (crates tocadas + shell) | **zero** |
-| varredura impactada | **17 085** testes, **17 085 passaram**, 0 falharam |
+| varredura impactada | **17 086** testes, **17 086 passaram**, 0 falharam |
 | censos da árvore combinada (HR-15 + tecto de LOC) | **87 de 87**, com controlo do filtro |
 | placar da conferência (DERIVADO) | `exit 0` · **P0 = P1 = P2 = 0** |
 | rebase sobre o `main` | **sem um conflito** |
 
-**Provas de mutação da jornada:** W6 `4 de 4` · §15 `5 de 5` · §16 `2 de 2` · §17 `3 de 3` — todas
+**Provas de mutação da jornada:** W6 `4 de 4` · §15 `5 de 5` · §16 `2 de 2` · §17 `3 de 3` · §18 `4 de 4` — todas
 com **controlo negativo** (a árvore intacta sobrevive) e **controlo sobre o próprio filtro**.
 
 **Smokes que o dono APROVOU:** `PH2D_GPU_COOK_DEMO=121` (a separação) e o gizmo colado à forma

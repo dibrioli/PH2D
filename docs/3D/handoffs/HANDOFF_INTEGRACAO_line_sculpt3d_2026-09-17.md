@@ -1415,6 +1415,73 @@ mutação sangra.
 
 **Mutação: 10 de 10** (as duas novas incluídas).
 
+## §71 — ⛔⛔⛔ «NÃO SEI O QUE É PARA ESPERAR»: eu validei o pente contra um NÚMERO, nunca contra a FORMA
+
+> 2.º report do dono sobre a `=49`, com foto. ⚠️ **As três réguas desta cena
+> passam** (o `Q`, a contagem de movidos, as lascas) e o desenho não mostra nada.
+> Este § é o que a medição diz, e a decisão que ela devolve ao dono.
+
+### §71.1 — O instrumento que faltava: DESENHAR o arame
+
+Toda régua deste pincel é um NÚMERO, e nenhuma responde *«o que é que isto
+parece»*. ⇒ `diag_desenha_o_arame` / `diag_desenha_sobre_uma_grade` escrevem o
+arame em `.ppm` (ortográfico, só a calota da frente), e a resposta apareceu na
+primeira imagem: **os dois lados do controlo são indistinguíveis**.
+
+### §71.2 — ⛔⛔⛔ E a saída do PRÓPRIO ORÁCULO também é
+
+As fixturas de `docs/3D/cleanroom/fixtures/rake/**` trazem **vértices E FACES**.
+Desenhando `escada/k_a0000_p0000` contra `k_a0000_p1000` — o A/B do alvo, uma
+passagem — as duas imagens são **indistinguíveis**. ⭐ *A expectativa era minha,
+não do produto:* numa passagem, este controlo produz um viés **estatístico** na
+direcção das arestas, que um instrumento lê (`Q` de `−0,05` para `+0,15`) e o
+olho não.
+
+⚠️ **Em `n_x8_p100` (oito passagens) o alvo mostra uma escada fraca na faixa; o
+nosso motor, no mesmo regime, NÃO mostra.** *E eu não sei dizer se é a lei ou o
+arranjo* — ver a §71.4.
+
+### §71.3 — O censo do que se vê e do que não se vê
+
+| condição | vê-se? | `Q` |
+|---|---|---|
+| malha em grade, passe a **não** afinar | ⭐ **SIM**, a faixa vira a olho nu | `−0,231 → +0,071` |
+| malha em grade, passe a afinar | não | `−0,135 → −0,004` |
+| malha isotrópica (a que o passe faz), 1 passagem | não | `−0,081 → +0,078` |
+| malha isotrópica, 8 passagens | não | `−0,034 → +0,117` |
+| **a saída do ORÁCULO, 1 passagem** | **não** | — |
+
+⇒ **o mecanismo:** o pente **move vértices** e nunca troca uma aresta (espec
+§3.1). Uma «grade alinhada com o traço» é propriedade da **CONECTIVIDADE**, e a
+conectividade que o passe de topologia produz é isotrópica (valência ~6). *Mover
+posições não faz uma grade* — é a lei que a `line/quadextract` pagou duas vezes
+(*«mover vértices 76× não cura: o que falta não são POSIÇÕES, são CÉLULAS»*).
+
+### §71.4 — ⛔⛔⛔ A causa-raiz é minha, e é de MÉTODO
+
+**Nenhum gate deste pincel lê as fixturas do oráculo.** O corpus tem as malhas
+dele — com faces — e a validação inteira foi contra uma **BARRA DERIVADA** (o `Q`
+tem de passar `+0,0465`). ⇒ *nunca se comparou a nossa malha com a dele*, e por
+isso a diferença da §71.2 pode existir há tanto tempo quanto o pincel.
+
+⚠️ **É a família que o §0.9 do `CLAUDE.md` nomeia ao contrário:** ali a lei é
+*«cada corrida do oráculo vira um gate»* — e aqui as `221` corridas viraram **um
+número**. O pincel de tecido fez `86` traços ⇒ `86` gates; este fez `221`
+ficheiros ⇒ `1` barra.
+
+### §71.5 — O que fica, e a decisão que é do dono
+
+- **A implementar (o que a medição pede):** uma bancada **malha a malha** contra
+  as fixturas (elas têm `V` e `F`), que é a única que responde *«a nossa lei é a
+  dele?»*. ⛔ Até lá, **a paridade deste pincel não está estabelecida**.
+- **Decisão do dono**, com os números na mão: shipar um controlo cujo efeito é
+  medível e quase invisível · retirá-lo até a bancada responder · ou financiar a
+  feature que o NOME promete (dirigir o **partir/fundir** pela direcção do traço
+  — conectividade, não posições), para a qual esta casa já tem a família de
+  campos de direcção da `line/quadextract`.
+- ⚠️ **O roteiro da `=49` foi reescrito**: ele já não promete que as linhas viram,
+  diz o que está medido dos dois lados e pede uma LEITURA em vez de um veredito.
+
 ## §58 — 📦 PARA O AGENTE INTEGRADOR
 
 ### §58.1 — Os factos da linha

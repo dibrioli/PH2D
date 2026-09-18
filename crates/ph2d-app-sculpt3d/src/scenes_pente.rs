@@ -176,53 +176,38 @@ pub(crate) fn arma(cena: &mut crate::Sculpt3dScene) {
 pub(crate) const DETALHE_DA_CENA: f32 = 1.0;
 
 /// O roteiro da `=49`.
+///
+/// ⛔⛔⛔ **ELE DEIXOU DE PROMETER O QUE O DESENHO NÃO MOSTRA** (report do dono,
+/// 18/09: *«não sei o que é para esperar. não vejo diferença»*, com foto). A 1.ª
+/// redacção dizia *«as linhas viram-se e passam a correr ao longo do risco»* — e
+/// o arame desenhado (`diag_desenha_o_arame`) mostra os dois lados do controlo
+/// **indistinguíveis**. ⚠️ *A saída do PRÓPRIO oráculo, desenhada das fixturas
+/// dele, também é indistinguível numa passagem.* Ver o §71 do handoff.
 pub(crate) fn announce() {
     if !pente_scene() {
         return;
     }
     eprintln!(
-        "[sculpt3d] =49 EDGE FLOW -- as linhas da malha viram-se para seguir o traco\n\
-         [sculpt3d]    A bola abre com o ARAME a' vista (as linhas finas da malha) porque e'\n\
-         [sculpt3d]    a MALHA que este ajuste muda, nao a forma. Repare que os triangulos\n\
-         [sculpt3d]    dela estao virados para todo o lado, sem direccao -- e' assim que uma\n\
-         [sculpt3d]    peca esculpida fica. O que este pincel faz e' PENTEA'-LOS para onde a\n\
-         [sculpt3d]    sua mao for: e' o que se quer ao longo de um braco, de uma prega, de\n\
-         [sculpt3d]    um musculo.\n\
+        "[sculpt3d] =49 EDGE FLOW -- EM AVALIACAO: o efeito e' medivel e quase invisivel\n\
+         [sculpt3d]    ⚠️ LEIA ISTO ANTES: este controlo esta' em avaliacao, e o que se pede\n\
+         [sculpt3d]    aqui NAO e' um veredito de qualidade -- e' uma leitura.\n\
+         [sculpt3d]\n\
+         [sculpt3d]    O que ele faz esta' MEDIDO: num traco ele desloca ~2700 vertices e a\n\
+         [sculpt3d]    direccao media das arestas da faixa muda bastante. O que ele NAO faz\n\
+         [sculpt3d]    tambem esta' medido: desenhando o arame antes e depois, os dois lados\n\
+         [sculpt3d]    sao praticamente iguais -- e a saida do programa de referencia, tirada\n\
+         [sculpt3d]    dos ficheiros dele, tambem e'.\n\
          [sculpt3d]\n\
          [sculpt3d]    (1) Abra o painel com a CRASE (`). Na seccao `Topology` o\n\
-         [sculpt3d]        `Dynamic Topology` ja' vem LIGADO e o `Detail` dele ja' vem no\n\
-         [sculpt3d]        TOPO -- e' isso que faz a malha ficar fina debaixo do pincel, que\n\
-         [sculpt3d]        e' o que ele tem para pentear. Logo abaixo esta' o `Edge Flow`,\n\
-         [sculpt3d]        em zero.\n\
-         [sculpt3d]    (2) Sem lhe tocar, arraste um risco comprido por cima da bola.\n\
-         [sculpt3d]        -> A malha fica mais FINA debaixo do pincel e os triangulos dela\n\
-         [sculpt3d]           continuam desencontrados, sem direccao nenhuma. E' o estado de\n\
-         [sculpt3d]           sempre, e e' com ele que voce compara o que vem a seguir.\n\
-         [sculpt3d]    (3) Puxe o `Edge Flow` ate' ao MAXIMO e risque OUTRA vez, ao lado e\n\
-         [sculpt3d]        paralelo ao primeiro.\n\
-         [sculpt3d]        -> Agora as linhas da malha alinham-se e correm AO LONGO do risco,\n\
-         [sculpt3d]           como um pente passado no cabelo. Ponha os dois riscos lado a\n\
-         [sculpt3d]           lado: e' essa a diferenca.\n\
-         [sculpt3d]    (4) Risque numa direccao qualquer OUTRA, noutro sitio da bola.\n\
-         [sculpt3d]        -> Elas alinham-se outra vez, e seguem a NOVA direccao. Ele nao tem\n\
-         [sculpt3d]           direccao propria: ele segue a mao. Experimente varios rumos --\n\
-         [sculpt3d]           todos funcionam, nao ha' um bom e um mau.\n\
-         [sculpt3d]    (5) Ponha o `Edge Flow` a meio (perto de 0,50) e risque noutro sitio.\n\
-         [sculpt3d]        -> Vira menos e ARRUMA mais: os triangulos ficam mais parecidos uns\n\
-         [sculpt3d]           com os outros. Meio curso e' onde ele limpa a malha.\n\
-         [sculpt3d]    (6) DESLIGUE o `Dynamic Topology` e risque outra vez.\n\
-         [sculpt3d]        -> O `Edge Flow` fica na tela e aparece por baixo dele uma linha a\n\
-         [sculpt3d]           dizer que ele esta' a dormir; a malha NAO se reorganiza. Volte\n\
-         [sculpt3d]           a ligar o interruptor e ele volta ao trabalho.\n\
+         [sculpt3d]        `Dynamic Topology` ja' vem LIGADO e o `Detail` no TOPO. Logo\n\
+         [sculpt3d]        abaixo esta' o `Edge Flow`, em zero.\n\
+         [sculpt3d]    (2) Risque uma vez com ele em zero; depois no MAXIMO, ao lado.\n\
+         [sculpt3d]    (3) Diga-me o que ve': se nao ve' diferenca nenhuma, a leitura bate com\n\
+         [sculpt3d]        a medicao e a decisao e' sua (ver a mensagem que acompanha isto).\n\
          [sculpt3d]\n\
-         [sculpt3d]    DEU ERRADO SE: as linhas nao virarem no passo (3); se so' meia duzia\n\
-         [sculpt3d]    de triangulos se mexerem (tem de ser a faixa toda do risco); se elas\n\
-         [sculpt3d]    seguirem\n\
-         [sculpt3d]    sempre a mesma direccao seja qual for o risco; se a bola ficar com\n\
-         [sculpt3d]    ESTRIAS de sombra (uma fileira de riscos escuros, que sao triangulos\n\
-         [sculpt3d]    finos de mais para terem luz); ou se, com o `Dynamic Topology`\n\
-         [sculpt3d]    DESLIGADO, o risco ainda reorganizar a malha.\n\
-"
+         [sculpt3d]    ONDE ELE SE VE' (medido): numa malha que ja' e' uma GRADE e com o passe\n\
+         [sculpt3d]    de topologia a NAO a afinar. Ali a faixa do risco muda de direccao a\n\
+         [sculpt3d]    olho nu. Debaixo do passe fino -- que e' o estado normal -- nao.\n"
     );
 }
 

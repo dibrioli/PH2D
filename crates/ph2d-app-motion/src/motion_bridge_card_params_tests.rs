@@ -311,7 +311,7 @@ fn a_folded_section_hides_its_rows_and_counts_them() {
         assert!(
             s.hidden > 0,
             "a seccao `{}` esconde rows e DIZ quantas (uma dobrada nao pode parecer vazia)",
-            s.title
+            s.label
         );
     }
     // E o total bate: o que se vê mais o que está dobrado é tudo o que a visibilidade deixa.

@@ -8,10 +8,24 @@
 use super::*;
 
 /// ⭐ **UMA SECÇÃO da faixa de params do cartão** — o «painel dentro do nó» do Blender 4.x.
+///
+/// ⚠️⚠️ **O nome do grupo é IDENTIDADE e LEGENDA ao mesmo tempo, e por isso são DOIS campos.**
+/// A [`Self::key`] é a chave que o registry declara (`node.group.*`): é ela que endereça a
+/// memória de dobra (`ToggleParamSection` → `card_sections`), logo traduzi-la faria a secção
+/// que o artista deixou fechada abrir sozinha ao trocar de idioma. A [`Self::label`] é a
+/// palavra, resolvida **uma vez** pela ponte — porque este snapshot é, por lei do cartão, feito
+/// de primitivos RESOLVIDOS e o pintor do grafo não é tradutor (um `tr` no pintor sobre algo
+/// que já não é chave vaza `Box::leak` por quadro e por linha).
+///
+/// ⇒ *dois campos, duas perguntas*: quem quer saber **qual secção é** lê a `key`; quem quer
+/// saber **o que o artista lê** lê a `label`. Um campo só obrigaria uma delas a estar errada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CardSection {
-    /// O nome do grupo, tal como o registry o declara.
-    pub title: &'static str,
+    /// ⭐ **A CHAVE do grupo**, tal como o registry a declara (`node.group.shape`) — a
+    /// IDENTIDADE da secção, nunca texto para pintar. Ver o doc da struct.
+    pub key: &'static str,
+    /// ⭐ **A PALAVRA** que o cabeçalho mostra, já resolvida pela tabela de `ph2d-i18n`.
+    pub label: &'static str,
     /// O índice, **em [`GraphNodeView::params`]**, da primeira row desta secção — o cabeçalho é
     /// desenhado imediatamente antes dela. Numa secção FECHADA aponta para onde as rows
     /// estariam (a próxima row visível, ou o fim da lista).

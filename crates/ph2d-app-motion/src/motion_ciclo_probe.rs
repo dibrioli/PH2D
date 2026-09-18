@@ -208,7 +208,7 @@ pub fn cartao(grupo: &[&str]) {
                     .map(|s| {
                         format!(
                             "{}@{}{}",
-                            s.title,
+                            s.label,
                             s.at,
                             if s.open { "" } else { " (fechada)" }
                         )

@@ -251,7 +251,7 @@ fn what_the_sim_scene_cards_show() {
             let secs: Vec<String> = v
                 .sections
                 .iter()
-                .map(|s| format!("{}@{}", s.title, s.at))
+                .map(|s| format!("{}@{}", s.label, s.at))
                 .collect();
             eprintln!("  {:<18} > secções: {}", "", secs.join(" · "));
         }
@@ -336,7 +336,7 @@ fn every_row_the_sim_tutorial_names_is_on_the_card() {
             .iter()
             .find(|v| v.display_name == titulo)
             .expect("o cartao existe (verificado acima)");
-        let secs: Vec<&str> = v.sections.iter().map(|s| ph2d_i18n::tr(s.title)).collect();
+        let secs: Vec<&str> = v.sections.iter().map(|s| s.label).collect();
         assert!(
             secs.contains(&seccao),
             "o tutorial manda abrir a seccao `{seccao}` no cartao `{titulo}`, e ele tem {secs:?}"
@@ -390,11 +390,7 @@ fn every_row_the_sim_tutorial_names_is_on_the_card() {
             TUTORIAL.contains(titulo),
             "o gate defende o cartao `{titulo}` e o tutorial nunca o nomeia"
         );
-        let secs: Vec<&str> = forma
-            .sections
-            .iter()
-            .map(|s| ph2d_i18n::tr(s.title))
-            .collect();
+        let secs: Vec<&str> = forma.sections.iter().map(|s| s.label).collect();
         assert!(
             secs.contains(&"Collision"),
             "o capitulo 6 manda abrir a seccao `Collision` em `{titulo}`, e ele tem {secs:?}"

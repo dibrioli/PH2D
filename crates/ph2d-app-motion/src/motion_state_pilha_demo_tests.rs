@@ -427,10 +427,7 @@ fn rows_do_cartao(m: &MotionState, titulo: &str) -> (Vec<&'static str>, Vec<&'st
     );
     (
         v.params.iter().map(|c| c.hint.label).collect(),
-        v.sections
-            .iter()
-            .map(|s| ph2d_i18n::tr(s.title))
-            .collect::<Vec<_>>(),
+        v.sections.iter().map(|s| s.label).collect::<Vec<_>>(),
     )
 }
 

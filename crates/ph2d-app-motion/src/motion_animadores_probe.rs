@@ -187,7 +187,7 @@ fn census_of_hidden_params() -> (usize, usize, Vec<String>, Vec<String>) {
                     //    `param_group`, que é identidade. O gate irmão do tutorial resolve,
                     //    porque lá a pergunta é *o que o artista LÊ*. *Duas perguntas sobre a
                     //    mesma secção, e só uma delas é sobre texto.*
-                    .map(|s| s.title)
+                    .map(|s| s.key)
                     .collect()
             })
             .unwrap_or_default();

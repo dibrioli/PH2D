@@ -254,7 +254,15 @@ pub fn stamp_card_params(
                     if grupo_anterior != Some(g) {
                         grupo_anterior = Some(g);
                         sections.push(ph2d_panel_motion_graph::CardSection {
-                            title: g,
+                            // ⚠️⚠️ **A chave FICA crua e a palavra vai ao lado dela.** O `g` é o
+                            // que endereça a dobra (o `aberta(g)` logo abaixo e o
+                            // `ToggleParamSection` do gesto lêem-no), então traduzi-lo mudaria a
+                            // identidade da secção com o idioma. O `tr` acontece **aqui e em
+                            // mais sítio nenhum** deste caminho, pela mesma lei do `hint.label`
+                            // acima: o pintor do grafo não é tradutor. Gate:
+                            // `no_card_section_of_any_node_paints_a_raw_key`.
+                            key: g,
+                            label: ph2d_i18n::tr(g),
                             // Aponta para onde a primeira row DESTA secção fica na lista
                             // filtrada — numa secção fechada, para onde ela ficaria.
                             at: u16::try_from(params.len()).unwrap_or(u16::MAX),

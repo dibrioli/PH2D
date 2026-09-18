@@ -321,7 +321,7 @@ fn every_row_the_announcement_names_is_on_the_card() {
                 panic!("o anuncio manda clicar no cartao `{titulo}` e a cena tem: {havia:?}")
             });
         let rows: Vec<&str> = v.params.iter().map(|c| c.hint.label).collect();
-        let secs: Vec<&str> = v.sections.iter().map(|s| ph2d_i18n::tr(s.title)).collect();
+        let secs: Vec<&str> = v.sections.iter().map(|s| s.label).collect();
         for linha in ["Friction", "Bounciness"] {
             assert!(
                 rows.contains(&linha),

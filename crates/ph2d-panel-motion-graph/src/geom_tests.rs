@@ -450,13 +450,15 @@ fn the_band_interleaves_section_headers_with_the_rows() {
     let mut n = with_params(node_with_inputs(1, 0.0, 1), 5);
     n.sections = vec![
         crate::snapshot::CardSection {
-            title: "Shape",
+            key: "node.group.shape",
+            label: "Shape",
             at: 0,
             open: true,
             hidden: 0,
         },
         crate::snapshot::CardSection {
-            title: "Advanced",
+            key: "node.group.advanced",
+            label: "Advanced",
             at: 3,
             open: true,
             hidden: 0,

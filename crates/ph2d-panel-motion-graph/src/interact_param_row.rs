@@ -40,7 +40,9 @@ pub(super) fn apply_param_row(
             if g.phase == GesturePhase::Begin {
                 push_intent(GraphIntent::ToggleParamSection {
                     node,
-                    section: view_node.sections[k].title,
+                    // ⚠️ A CHAVE, nunca a palavra: é ela que endereça a memória de dobra, e
+                    // uma legenda traduzida faria a secção fechada abrir ao trocar de idioma.
+                    section: view_node.sections[k].key,
                 });
             }
             state.interaction = Interaction::Idle;

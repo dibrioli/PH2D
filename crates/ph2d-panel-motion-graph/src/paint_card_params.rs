@@ -224,7 +224,8 @@ fn draw_section_header(
     paint_text_title_elided(
         ctx.text_system,
         ctx.scene,
-        sec.title,
+        // ⚠️ A PALAVRA, nunca a `key` — ver o doc de `CardSection`.
+        sec.label,
         x,
         row.y + TEXT_PAD_Y * z,
         size,

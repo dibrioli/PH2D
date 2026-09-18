@@ -39,6 +39,7 @@ W0..W6 + os abertos + **dois reports do dono já fechados e com smoke APROVADO**
 | §17 | o retrato do gizmo sai do cozido **DESTE** quadro (report do dono) |
 | §18 | **o tecto das varreduras passa a ser MEDIDO** — a cadeia deixa de ser inalcançável, e TRÊS acelerações candidatas ficam como **recusas medidas** (ordem do dono) |
 | §18.7 | a cena **`=123` — A CADEIA**, o único sítio onde a escada de varreduras se VÊ (as irmãs são pares independentes) |
+| §19 | ⭐⭐⭐ **o tecto era honesto e o MOTOR não era** (report do dono) — o passe fica **4,4×** mais barato a 500 peças e **8,7×** no quadro dele; toca em `ph2d-nodegraph` (`par_build_if`, append-only) |
 
 ---
 
@@ -136,6 +137,17 @@ formatador que parte a linha faz o padrão casar zero, e um `grep` largo casa **
 
 ## §6 — ⏳ O que fica ABERTO (e de quem é)
 
+> ⚠️ **A §19 mudou DOIS destes itens e acrescentou um** (report do dono de 18/09, doc 115 §19):
+> - o *«acima de `n ≈ 32` o custo é do artista»* foi **re-medido e está desactualizado na direcção
+>   boa**: `1024` varreduras custam hoje `3,79 ms` a 48 peças e `36,2 ms` a 500 (eram `6,88` e
+>   `157,9`). ⛔ **O que NÃO mudou é a classe:** a `1000` peças ainda são `68 ms`, e daqui para
+>   baixo é algoritmo (`82 %` de uma varredura já é a LEI), não escrituração.
+> - *«a leitura de quanto o passe custa não está no cartão»* **pagou-se pela segunda vez** — foi o
+>   relógio que informou o dono, não o app. Continua por construir.
+> - ⏳ **NOVO:** o `Vec<u32>` dos vizinhos ainda é alocado por peça e por varredura (dentro dos
+>   `18 %` de escrituração que sobram); um scratch por thread fecha-o. Não foi feito porque a
+>   medição não o justificou sozinho.
+
 | item | de quem |
 |---|---|
 | ⛔ ~~A realimentação no solver~~ — **FECHADO em 18/09 por ordem do dono** (*«quero todas as possibilidades possíveis, não quero limitações no sistema»*) e o resultado inverteu a pergunta: a recusa era sobre um **número HERDADO** (`64`, o clamp de outro nó), a cadeia **converge sempre**, e as TRÊS acelerações candidatas foram construídas e **medidas e refutadas** — sobre-relaxação `~1,95×`, vermelho-preto `~3,3×`, realimentação **ZERO**. Doc 115 §18 | ✅ fechado |
@@ -158,8 +170,21 @@ Sobre a árvore **já rebasada** no `main` de hoje:
 | placar da conferência (DERIVADO) | `exit 0` · **P0 = P1 = P2 = 0** |
 | rebase sobre o `main` | **sem um conflito** |
 
-**Provas de mutação da jornada:** W6 `4 de 4` · §15 `5 de 5` · §16 `2 de 2` · §17 `3 de 3` · §18 `4 de 4` — todas
-com **controlo negativo** (a árvore intacta sobrevive) e **controlo sobre o próprio filtro**.
+**Provas de mutação da jornada:** W6 `4 de 4` · §15 `5 de 5` · §16 `2 de 2` · §17 `3 de 3` · §18 `4 de 4` ·
+**§19 `7 de 8`** — todas com **controlo negativo** (a árvore intacta sobrevive) e **controlo sobre o próprio
+filtro**. ⚠️ A 8.ª está documentada **no código** como não-sangrante de propósito: ela corrigiu um comentário meu
+(a ordem crescente dentro de uma célula da grelha **não** é load-bearing — quem cumpre a promessa é o `sort`).
+
+⚠️⚠️ **A §19 chegou DEPOIS do fecho, por report do dono, e mexe numa crate FOUNDATIONAL** —
+[`ph2d-nodegraph/src/attr.rs`] ganha `par_build_if`, **append-only** (o `par_build` de sempre passa a delegar
+nele, com a mesma garantia de bits e o mesmo gate). ⇒ *a superfície de colisão do §2 muda por uma linha
+naquele ficheiro*, e o tecto de LOC do `ph2d-eval-motion/src/lib.rs` foi curado por **CORTE** (o laço das
+tomadas desceu para `taps.rs`, que já é o dono do assunto): `710 → 665`.
+
+**Portão da §19, sobre a árvore já rebasada:** formatação limpa · lint `-D warnings` a **zero** nas três
+crates · varredura impactada **17 324** testes com **17 323** a passar — o único vermelho é
+`the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`, o membro da família de flakes de fan-out que o
+§6 abaixo pede para promover (**3 de 3 verde sozinho a `load 13,56`**).
 
 **Smokes que o dono APROVOU:** `PH2D_GPU_COOK_DEMO=121` (a separação) e o gizmo colado à forma
 depois do §17. ⏳ **Por smokar:** a `=123` (a cadeia e a escada de varreduras) — ela nasceu com o

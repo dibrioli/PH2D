@@ -38,6 +38,7 @@ W0..W6 + os abertos + **dois reports do dono já fechados e com smoke APROVADO**
 | §16 | a TOMADA passa a ver o que o sink DESENHA (report do dono) |
 | §17 | o retrato do gizmo sai do cozido **DESTE** quadro (report do dono) |
 | §18 | **o tecto das varreduras passa a ser MEDIDO** — a cadeia deixa de ser inalcançável, e TRÊS acelerações candidatas ficam como **recusas medidas** (ordem do dono) |
+| §18.7 | a cena **`=123` — A CADEIA**, o único sítio onde a escada de varreduras se VÊ (as irmãs são pares independentes) |
 
 ---
 
@@ -152,7 +153,7 @@ Sobre a árvore **já rebasada** no `main` de hoje:
 |---|---|
 | formatação | limpa |
 | lint com `-D warnings` (crates tocadas + shell) | **zero** |
-| varredura impactada | **17 086** testes, **17 086 passaram**, 0 falharam |
+| varredura impactada | **17 090** testes, **17 090 passaram**, 0 falharam |
 | censos da árvore combinada (HR-15 + tecto de LOC) | **87 de 87**, com controlo do filtro |
 | placar da conferência (DERIVADO) | `exit 0` · **P0 = P1 = P2 = 0** |
 | rebase sobre o `main` | **sem um conflito** |
@@ -161,4 +162,5 @@ Sobre a árvore **já rebasada** no `main` de hoje:
 com **controlo negativo** (a árvore intacta sobrevive) e **controlo sobre o próprio filtro**.
 
 **Smokes que o dono APROVOU:** `PH2D_GPU_COOK_DEMO=121` (a separação) e o gizmo colado à forma
-depois do §17.
+depois do §17. ⏳ **Por smokar:** a `=123` (a cadeia e a escada de varreduras) — ela nasceu com o
+§18 e o dono ainda não a viu.

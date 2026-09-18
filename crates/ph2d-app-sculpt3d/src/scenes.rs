@@ -45,7 +45,23 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 48;
+pub const CENAS: u32 = 49;
+
+/// ⭐⭐ **O PRÓLOGO — o que uma cena ARMA depois de a cena nascer.**
+///
+/// ⚠️ **Ele existe porque armar não é construir:** a `=49` precisa da topologia
+/// dinâmica ligada, e ligá-la **TRIANGULA** a malha — logo é um acto sobre uma
+/// cena que já existe, pela porta que o teclado e o painel usam
+/// (`Sculpt3dScene::toggle_dyntopo`). *Um construtor que recebesse o estado
+/// armado seria a segunda resposta a «ligar o passe», e a que não tritura os
+/// quads.*
+///
+/// ⚠️ **Chamado UMA vez, do [`crate::input::smoke`]**, a seguir aos objectos
+/// extra da `=7` e antes de a cena entrar no slot — cada cena decide sozinha se
+/// tem prólogo, pelo próprio predicado.
+pub(crate) fn prologo(cena: &mut crate::Sculpt3dScene) {
+    pente::arma(cena);
+}
 
 /// **A env do roteador, lida DENTRO da crate.**
 ///
@@ -464,6 +480,14 @@ pub(crate) mod pose;
 /// vinco dele só se lê numa malha fina.
 #[path = "scenes_afiado.rs"]
 pub(crate) mod afiado;
+
+/// **O PENTE DE TOPOLOGIA** (`=49`) — ver [`pente`]. ⚠️ Ela é a única cena desta
+/// família que abre com a topologia dinâmica **ARMADA** e com o **arame** à
+/// vista, e as duas escolhas são a lição dela: a pré-condição do controlo é o
+/// interruptor, e o que ele muda é a MALHA e não a forma.
+#[path = "scenes_pente.rs"]
+pub(crate) mod pente;
+
 /// **O PINCEL DE CONTORNO** (`=42`) — ver [`boundary`]. ⚠️ Ela abre numa TIGELA
 /// e não numa peça fechada, e a escolha é MEDIDA: sem borda aberta este pincel
 /// não move um único vértice.

@@ -191,6 +191,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.dyntopo" => "Dynamic Topology",
         "panel.sculpt3d.dyn_detail" => "Detail",
         "panel.sculpt3d.density_detail" => "Detail",
+        // ⭐ **O PENTE DE TOPOLOGIA.** ⚠️ O rótulo é NOSSO e descreve o efeito:
+        // o pincel alinha o fluxo das arestas com o traço. ⛔ O do alvo começa
+        // pela mesma palavra que o do ângulo da TEXTURA do carimbo — dois
+        // assuntos, um nome —, e o dono já disse que ele descreve mal a coisa.
+        "panel.sculpt3d.pente" => "Edge Flow",
+        // ⚠️ Ela diz o FACTO e a CURA na mesma frase: sem a segunda metade o
+        // artista lê «não funciona» em vez de «falta ligar aquilo ali em cima».
+        "panel.sculpt3d.pente_dormente" => {
+            "Asleep: turn on Dynamic Topology above for Edge Flow to work"
+        }
         "panel.sculpt3d.level" => "Level",
         "panel.sculpt3d.subdivide" => "Subdivide",
         "panel.sculpt3d.reverse" => "Reverse",

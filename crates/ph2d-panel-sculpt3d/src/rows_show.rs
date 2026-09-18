@@ -41,6 +41,28 @@ pub(crate) fn suaviza_o_traco(u: &Sculpt3dUi) -> bool {
     u.brush.verb == ph2d_sculpt3d::Verb::BoxTrim && u.brush.trim_forma.le_o_caminho()
 }
 
+/// ⭐⭐⭐ **ESTE PINCEL HONRA O PENTE DE TOPOLOGIA?** — a porta da pista dele.
+///
+/// ⚠️ **A resposta vem do MOTOR** ([`ph2d_sculpt3d::Verb::honra_o_pente`]), que é
+/// um facto **MEDIDO no oráculo** verbo a verbo: cinco ignoram-no com a saída
+/// **byte-idêntica**, e para esses cinco a pista seria um controlo que o artista
+/// arrasta sem o barro sentir — o morto que esta casa varre a cada wave. ⛔ Uma
+/// segunda cópia da lista aqui divergiria no dia em que o censo a re-medisse.
+///
+/// ⚠️⚠️ **A OUTRA metade da cerca — a topologia dinâmica ARMADA — NÃO é
+/// exprimível aqui, e a ausência está medida:** o `dyntopo` é um FACTO do
+/// [`crate::state::Sculpt3dSnapshot`] e não um campo do [`Sculpt3dUi`] (ligá-lo
+/// TRIANGULA a malha, logo ele não viaja no struct de valores que todo arrasto
+/// reenvia), e o `show` de uma [`crate::rows::Row`] só vê o `Sculpt3dUi`. ⇒ a
+/// pré-condição é dita por **ADJACÊNCIA** (a pista é pintada logo abaixo da
+/// caixa que a arma) **e em voz alta** — quando ela está desarmada o pintor
+/// escreve a razão por baixo, como o `curva_inerte` já faz na secção do pincel.
+/// *Esconder seria melhor; alargar o `show` a 58 fileiras para o conseguir não é
+/// o preço desta wave, e dizer a razão não é silêncio.*
+pub(crate) fn penteia(u: &Sculpt3dUi) -> bool {
+    u.brush.verb.honra_o_pente()
+}
+
 /// ⭐⭐⭐ **É O PINCEL DE PLANO?** — a porta dos quatro controlos próprios dele
 /// (os dois tectos, a extensão do centro e o que o `Ctrl` faz).
 ///

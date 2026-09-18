@@ -231,6 +231,41 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     {
         y = paint_one_row(ctx, snap, row, x, w, y);
     }
+    // ⭐⭐⭐ **A RAZÃO À VISTA, quando o interruptor está DESARMADO** — a metade
+    // da cerca do pente que o `show` de uma [`rows::Row`] não consegue exprimir.
+    //
+    // ⚠️ **Porque não é escondido:** o `dyntopo` é um FACTO do snapshot e não um
+    // campo do `Sculpt3dUi`, que é tudo o que o `show` recebe — a alternativa
+    // era alargar a assinatura de **58** fileiras para uma pergunta que só uma
+    // faz. ⇒ a pista fica, e o painel **diz porquê ela não faz nada**, que é a
+    // saída que o `Brush::curva_inerte` já usa na secção do pincel.
+    //
+    // ⚠️ **Um `readout` e não um rótulo desactivado:** é um FACTO e não um
+    // controlo, logo não é hit-indexado — uma affordance que ele não pode honrar
+    // seria pior que texto puro. E a pista **continua registada**, senão
+    // desarmar o interruptor mataria o knob sob o dedo em vez de o explicar.
+    //
+    // ⛔ **E ela é NEGATIVA metade do tempo, de propósito:** com o interruptor
+    // armado o painel cala-se — *um painel que se queixa sempre é ruído que o
+    // artista aprende a ignorar, exactamente quando a queixa passar a ser
+    // verdade*.
+    // ⛔⛔ **E ela pergunta pela PORTA, nunca pelo id da fileira.** A 1.ª
+    // redacção escrevia `r.slider == crate::ids::SCULPT3D_PENTE`, e o censo dos
+    // ids SOLTOS reprovou-a **com razão**: o cabeçalho dele proíbe por escrito
+    // um pintor NOMEAR um id de row, porque um id de row chega por
+    // `row.slider`/`row.chip` da travessia de `SECTIONS` e nomeá-lo à mão aqui é
+    // indistinguível, para o censo, de o PINTAR à mão — *que é a forma do
+    // controlo hit-indexado e morto sob o dedo que ele existe para tornar
+    // impossível*. ⇒ a pergunta é a MESMA função que o `show` da fileira faz
+    // ([`crate::rows::penteia`]): uma lei, dois chamadores.
+    //
+    // ⚠️ **A metade do NÍVEL fica de fora, e há gate a segurar a premissa:** a
+    // fileira é `UiLevel::Basic`, logo `visible` e `show` coincidem sempre — e
+    // `o_pente_e_alcancavel_…` reprova no dia em que ela subir para `Pro`, que é
+    // o dia em que esta linha teria de perguntar `visible`.
+    if !snap.dyntopo && rows::penteia(&snap.ui) {
+        y = readout(ctx, tr("panel.sculpt3d.pente_dormente"), x, w, y);
+    }
     // O nível vivo é um FATO, e ele fica entre os dois botões que o movem — sem
     // ele, descer e subir são dois botões que não dizem onde você está (a malha
     // de baixo se PARECE com a de cima alisada).

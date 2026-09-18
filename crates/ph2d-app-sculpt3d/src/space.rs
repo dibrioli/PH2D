@@ -30,6 +30,33 @@ pub(crate) fn aparece(
     isolada.is_none_or(|k| k == id) && !escondidas.contains(&id)
 }
 
+/// ⛔⛔ **O PENTE QUE O TRAÇO RECEBE — a pré-condição da espec §2.1, e a ÚNICA
+/// de estado que ele tem.**
+///
+/// Com a topologia dinâmica **desarmada** os dois lados do controlo dão a MESMA
+/// malha, byte a byte — logo o que chega ao traço é `0`. ⚠️ E ela é a única: o
+/// pente **NÃO** depende de o passe de refino correr (§2.2), e sem refino nenhum
+/// ele continua a agir, com efeito **MAIOR**.
+///
+/// ⚠️ **Zerado AQUI e não lido lá dentro**, porque o [`ph2d_sculpt3d::SculptStroke`]
+/// não sabe o que é o interruptor da cena — ensinar-lho seria a segunda resposta
+/// a *«a topologia dinâmica está ligada?»*, a família de defeito que este módulo
+/// já pagou com os três chips do detalhe.
+///
+/// ⛔⛔ **Função LIVRE pela mesma razão que a [`aparece`] acima:** a cena pede um
+/// `wgpu::Device` para nascer, e um gate sobre uma decisão que não tem pixel
+/// nenhum nasceria `#[ignore]` — o CI nunca o correria.
+///
+/// ⚠️⚠️ **E a nota que aqui esteve era FALSA:** ela dizia que *«a fileira dele só
+/// é oferecida com o interruptor armado»*. Não é — o `dyntopo` é um FACTO do
+/// retrato do painel e não um campo do estado autorado, logo o `show` de uma
+/// fileira não lhe chega; a pista fica **sempre** e o painel **diz que ela
+/// dorme** (`panel.sculpt3d.pente_dormente`). *Um doc que declara a lei que o
+/// código não implementa lê-se como auditado.*
+pub(crate) fn pente_do_traco(dyntopo_armado: bool, pente: f32) -> f32 {
+    if dyntopo_armado { pente } else { 0.0 }
+}
+
 impl Sculpt3dScene {
     /// Acrescenta um objeto à cena. Devolve o índice dele.
     ///
@@ -292,26 +319,7 @@ impl Sculpt3dScene {
             // ⭐ Todo dab da app vem de um traço ARRASTADO a passos fixos — o pincel de plano
             // enfraquece cada um para a soma não depender do passo (espec §14.4).
             traco_arrastado: true,
-            // ⛔⛔ **A PRÉ-CONDIÇÃO DO PENTE É A TOPOLOGIA DINÂMICA ARMADA** —
-            // espec §2.1, medida: com ela desarmada os dois lados do controlo
-            // dão a MESMA malha, byte a byte. E ela é a **única** pré-condição
-            // de estado: o pente NÃO depende de o passe de refino correr (§2.2),
-            // e sem refino nenhum ele continua a agir, com efeito MAIOR.
-            //
-            // ⚠️ **Zerado AQUI e não lido lá dentro**, porque o
-            // [`ph2d_sculpt3d::SculptStroke`] não sabe o que é o interruptor da
-            // cena — e ensinar-lho seria a segunda resposta a *«a topologia
-            // dinâmica está ligada?»*, que é a família de defeito que este
-            // módulo já pagou com os três chips do detalhe.
-            //
-            // ⚠️ **O knob não fica MUDO por causa disto:** a fileira dele só é
-            // oferecida com o interruptor armado, e ele está imediatamente acima
-            // dela na mesma secção.
-            pente: if self.dyntopo.armed {
-                self.brush.pente
-            } else {
-                0.0
-            },
+            pente: pente_do_traco(self.dyntopo.armed, self.brush.pente),
             ..self.brush.clone()
         }
     }

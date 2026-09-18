@@ -77,6 +77,45 @@ pub static TOPOLOGY: &[Row] = &[
         level: UiLevel::Basic,
         place: Place::AfterDyntopo,
     },
+    // ⭐⭐⭐ **O PENTE DE TOPOLOGIA** — quanto a malha debaixo do traço se
+    // reorganiza numa GRADE alinhada com ele. Clean-room sob
+    // `docs/3D/cleanroom/SPEC_pente_de_topologia.md`; a lei vive na `ph2d-rake`.
+    //
+    // ⚠️ **Ele é um campo do PINCEL e mora AQUI** — a única pré-condição de
+    // estado dele é a topologia dinâmica ARMADA (espec §2.1: desarmada, os dois
+    // lados do controlo dão a MESMA malha byte a byte), e essa caixa está uma
+    // linha acima. É a mesma lei que pôs o alvo de densidade neste sítio:
+    // *uma pista mora ao lado do controlo que a governa*.
+    //
+    // ⚠️ **Ele NÃO depende do passe de refino correr** (espec §2.2): sem refino
+    // nenhum o pente continua a agir, e com efeito MAIOR — a cerca é o
+    // interruptor, nunca «o passe vai partir alguma aresta».
+    //
+    // # ⚠️ A faixa é `0..1` e o TECTO é MEDIDO — ver [`ph2d_sculpt3d::Brush::pente`]
+    //
+    // ⛔ **Coincidir com a do alvo é resultado, não cópia.** O botão dele
+    // SATURA acima de `0,75` (a `0°` até desce) e o nosso não satura em ponto
+    // nenhum: o que acaba é a MALHA. A `1,0` o pior triângulo da faixa mede
+    // `4,56°` e a `3,0` mede `0,62°` — um triângulo de seis décimos de grau não
+    // tem normal utilizável, logo não tem sombra. *Todo o nosso curso faz
+    // alguma coisa.*
+    //
+    // ⭐ E a metade de baixo **melhora** a malha (`8,21°` a `0,25` contra
+    // `7,86°` desligado): o pente desfaz as lascas que o próprio refino deixa.
+    Row {
+        label: "panel.sculpt3d.pente",
+        slider: crate::ids::SCULPT3D_PENTE,
+        chip: crate::ids::SCULPT3D_PENTE_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
+        decimals: 2,
+        get: |u| u.brush.pente,
+        set: |u, v| u.brush.pente = v,
+        show: crate::rows::penteia,
+        level: UiLevel::Basic,
+        place: Place::AfterDyntopo,
+    },
     Row {
         label: "panel.sculpt3d.remesh_res",
         slider: crate::ids::SCULPT3D_REMESH_RES,

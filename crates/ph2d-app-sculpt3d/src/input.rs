@@ -45,6 +45,11 @@ pub fn smoke(
         // só a primeira peça, e as outras nasceram fora do quadro.
         scene.frame_all(aspect);
     }
+    // ⭐ **O PRÓLOGO DA CENA** — o que ela ARMA depois de nascer (hoje: a `=49`
+    // liga a topologia dinâmica e o arame). ⚠️ Ele corre AQUI e não no `new`
+    // porque armar o passe **tritura os quads da malha**: é um acto sobre uma
+    // cena que já existe, pela mesma porta que o teclado e o painel usam.
+    crate::scenes::prologo(&mut scene);
     *slot = Some(scene);
 }
 

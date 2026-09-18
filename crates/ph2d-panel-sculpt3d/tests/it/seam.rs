@@ -3084,3 +3084,141 @@ fn os_controlos_proprios_de_um_pincel_cabem_no_encaixe() {
         "o censo correu {vistos} pinceis e a populacao com controlos proprios e' 7"
     );
 }
+
+/// ⭐⭐⭐ **GATE — o PENTE é ALCANÇÁVEL, SOME para quem o ignora, e DIZ porque
+/// dorme.**
+///
+/// # Porque são TRÊS metades, e nenhuma basta sozinha
+///
+/// ⛔⛔ **Esta crate pagou SETE vezes o mesmo report** (*«os outros 2 botões
+/// ainda não funcionam»*): *um controlo nunca pintado e um morto sob o dedo dão
+/// o MESMO relato*, e só o gesto REAL os separa. A primeira metade pinta o
+/// painel de verdade e depois **arrasta** a pista pelo despachante.
+///
+/// ⚠️ **A segunda é DERIVADA do motor, nunca de uma lista escrita à mão:** a
+/// população de quem ignora o pente é um facto **medido no oráculo** (cinco
+/// verbos, saída byte-idêntica nos dois lados do controlo), e uma cópia dela
+/// aqui divergiria no dia em que alguém a re-medisse. O censo compara, verbo a
+/// verbo, o que o painel MOSTRA com o que o motor RESPONDE — ⛔ e o piso de
+/// população é o que impede que ele fique verde sobre um `Verb::ALL` que
+/// encolheu.
+///
+/// ⚠️⚠️ **A terceira é a metade da cerca que o `show` não consegue exprimir.** A
+/// topologia dinâmica ARMADA é a única pré-condição de estado do pente (espec
+/// §2.1: desarmada, os dois lados do controlo dão a MESMA malha byte a byte), e
+/// o `dyntopo` é um FACTO do [`Sculpt3dSnapshot`] — o `show` de uma
+/// [`rows::Row`] só vê o [`Sculpt3dUi`]. ⇒ a pista fica e o painel **diz
+/// porquê**, e a régua é a contagem de GLIFOS: *a banda reservada não é a
+/// pintura*, e um gate que medisse o `y +=` ficaria verde com o texto apagado.
+///
+/// ⛔ **E a metade NEGATIVA da terceira é metade do valor:** com o interruptor
+/// armado o painel cala-se, e com um verbo que ignora o pente ele cala-se
+/// **também com o interruptor desarmado** — senão o app explicaria a inércia de
+/// um controlo que nem sequer está na tela.
+#[test]
+fn o_pente_e_alcancavel_some_para_quem_o_ignora_e_diz_porque_dorme() {
+    let retrato = |verb: Verb, dyntopo: bool| -> Sculpt3dSnapshot {
+        let mut ui = Sculpt3dUi::default();
+        // ⚠️ Pela PORTA do produto (`switch_verb`), nunca escrevendo
+        // `ui.brush.verb` à mão: a troca de ferramenta é que traz o pincel do
+        // slot, e um arranjo montado à mão mede outro programa.
+        ph2d_panel_sculpt3d::state::switch_verb(&mut ui, verb);
+        Sculpt3dSnapshot {
+            dyntopo,
+            ..snapshot(ui, true)
+        }
+    };
+
+    // ── (a) PINTADO, e a pista escreve o campo DELA ──────────────────────────
+    let (mut host, mut state) = arrange_with(retrato(Verb::Crease, true));
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    for (nome, id) in [
+        ("a pista do pente", ids::SCULPT3D_PENTE),
+        ("o chip do pente", ids::SCULPT3D_PENTE_NUM),
+    ] {
+        assert!(
+            painted.iter().any(|(pid, _)| *pid == id),
+            "{nome} nao foi pintado com a topologia dinamica armada"
+        );
+    }
+    host.set_slider_value(ids::SCULPT3D_PENTE, 0.5);
+    assert_eq!(
+        host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::ValueChanged(ids::SCULPT3D_PENTE),
+        ),
+        EventOutcome::Consumed,
+        "a pista do pente ignorou um arrasto REAL — falta o braco dela no event.rs"
+    );
+    let Sculpt3dIntent::SetUi(got) = only_intent("a pista do pente") else {
+        panic!("a pista do pente enfileirou o tipo errado de intent");
+    };
+    assert!(
+        (got.brush.pente - 0.5).abs() < 1e-4,
+        "a pista levou o pente a {} e meio curso significa 0,5",
+        got.brush.pente
+    );
+
+    // ── (b) O CENSO: o painel mostra exactamente quem o motor diz que honra ──
+    let linha = rows::rows()
+        .find(|r| r.slider == ids::SCULPT3D_PENTE)
+        .expect("o pente esta' na tabela");
+    // ⛔ **A PREMISSA que faz a razao do `paint/body.rs` poder perguntar pela
+    // PORTA (`rows::penteia`) em vez de por `Row::visible`:** com a fileira em
+    // `Basic` as duas coincidem sempre, porque todo nivel a mostra. No dia em
+    // que ela subir para `Pro` isto reprova, e a linha do pintor tem de passar a
+    // perguntar `visible` — a premissa morre a' vista no diff.
+    assert_eq!(
+        linha.level,
+        UiLevel::Basic,
+        "o pente subiu de nivel: a razao pintada no `paint/body.rs` pergunta \
+         `rows::penteia` e passaria a prometer uma fileira que o nivel esconde"
+    );
+    let mut ignoram = Vec::new();
+    for verb in Verb::ALL {
+        let mut ui = Sculpt3dUi::default();
+        ph2d_panel_sculpt3d::state::switch_verb(&mut ui, verb);
+        let honra = verb.honra_o_pente();
+        assert_eq!(
+            linha.visible(&ui),
+            honra,
+            "{verb:?}: o painel {} a pista do pente e o motor diz que ele {} honra",
+            if honra { "esconde" } else { "pinta" },
+            if honra { "" } else { "nao" }
+        );
+        if !honra {
+            ignoram.push(verb);
+        }
+    }
+    // ⛔ O piso de populacao: sem ele, um `Verb::ALL` vazio deixaria o laco
+    // acima trivialmente verde — a forma de censo que este repo ja' pagou.
+    assert_eq!(
+        ignoram.len(),
+        5,
+        "o oraculo mediu CINCO verbos que ignoram o pente e o censo achou {} ({:?}) \
+         — ou a medicao mudou (e a espec §6.3 tem de mudar com ela) ou o motor \
+         desalinhou-se dela",
+        ignoram.len(),
+        ignoram
+    );
+
+    // ── (c) A RAZÃO chega a PIXEL, e cala-se onde deve ──────────────────────
+    let glifos = |verb: Verb, dyntopo: bool| -> u32 {
+        let (mut host, mut state) = arrange_with(retrato(verb, dyntopo));
+        host.paint_and_count_geometry::<Sculpt3dPanel>(&mut state, VIEWPORT)
+            .0
+    };
+    let (dormente, acordado) = (glifos(Verb::Crease, false), glifos(Verb::Crease, true));
+    assert!(
+        dormente > acordado + 20,
+        "com a topologia dinamica desarmada o painel tem de DIZER que o pente \
+         dorme: {dormente} glifos contra {acordado} — isso e' um numero a mudar \
+         de largura, nao uma frase"
+    );
+    let (mudo_off, mudo_on) = (glifos(Verb::Mask, false), glifos(Verb::Mask, true));
+    assert!(
+        mudo_off.abs_diff(mudo_on) < 5,
+        "com um verbo que IGNORA o pente o painel explicou a inercia de um \
+         controlo que nem esta' na tela: {mudo_off} glifos contra {mudo_on}"
+    );
+}

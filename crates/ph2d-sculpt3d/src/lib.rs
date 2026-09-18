@@ -64,6 +64,11 @@ mod falloff;
 /// **A LEI QUE UM ARRASTO DE FILTRO APLICA** — a uniao das duas familias.
 mod filter_law;
 mod grip;
+/// ⭐⭐⭐ **AS DUAS COLUNAS DO PENTE** — a régua do alinhamento e a do pior
+/// triângulo. ⚠️ **`pub` de propósito:** ela tem dois consumidores em espaços
+/// diferentes — a bancada da lei (sobre uma chapa) e o gate da cena de smoke
+/// (sobre uma bola, noutra crate). Ver [`medida_do_pente`].
+pub mod medida_do_pente;
 /// ⭐⭐ **PARA ONDE O ESFREGÃO EMPURRA** — ver [`smear_mode`].
 mod smear_mode;
 

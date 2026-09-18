@@ -79,22 +79,13 @@ pub struct Brush {
     /// régua, um rotor.
     pub alpha_az_deg: u16,
     /// **A ELEVAÇÃO do eixo**, em graus (`0..=`[`crate::MAX_AXIS_ELEV_DEG`]).
-    ///
-    /// ⚠️ **Sem o piso que a LÂMPADA tem.** Lá o `MIN_ELEV_DEG` existe porque
-    /// uma luz rasante degenera a resposta plana; um EIXO não degenera em lugar
-    /// nenhum — o frame é ortonormal por identidade em qualquer elevação —, e um
-    /// piso aqui seria um limite copiado de um vizinho em vez de medido.
+    /// ⚠️ **Sem o piso que a LÂMPADA tem** — o porquê vive com as portas do
+    /// padrão ([`alpha_doors`]).
     pub alpha_elev_deg: u16,
-    /// **ONDE o padrão POUSA**, no plano do frame e em unidades de OBJETO.
+    /// **ONDE o padrão POUSA**, no plano do frame e em unidades de OBJETO — a
+    /// terceira metade de colocar um carimbo (tamanho · giro · posição).
     ///
-    /// ⚠️ **É a terceira metade de COLOCAR um carimbo** — tamanho
-    /// (`alpha_scale`), giro (`alpha_az_deg`, que no zênite ROLA o padrão no
-    /// plano) e posição. As duas primeiras já existiam; esta faltava, e sem ela
-    /// o artista podia dizer *quão grande* e *para que lado*, nunca *onde*.
-    ///
-    /// ⚠️ **Ele só alcança o motor com uma IMAGEM armada** — ver
-    /// [`Brush::alpha_frame`], que é onde a neutralidade é garantida por
-    /// CONSTRUÇÃO em vez de por convenção.
+    /// ⚠️ **Ele só alcança o motor com uma IMAGEM armada** ([`Brush::alpha_frame`]).
     pub alpha_offset: [f32; 2],
     /// **A VISTA, quando ela é conhecida** — o que faz de uma imagem um
     /// ESTÊNCIL preso ao viewport. Ver [`AlphaStencil`].
@@ -110,13 +101,8 @@ pub struct Brush {
     pub alpha_stencil: Option<AlphaStencil>,
     /// **O tamanho de um ladrilho do ESTÊNCIL, em fração da ALTURA DA TELA.**
     ///
-    /// ⚠️ **Um campo PRÓPRIO, e não uma reinterpretação do `alpha_scale`.** Os
-    /// dois respondem a perguntas diferentes — *que tamanho tem esta feature no
-    /// MODELO* contra *que tamanho tem este carimbo na TELA* — e um número só
-    /// com duas unidades trocaria de significado em silêncio no instante em que
-    /// o artista trocasse de padrão, que é a doença que este módulo varre a cada
-    /// wave. Duas perguntas, dois números, duas rows: cada uma aparece no modo
-    /// em que está viva.
+    /// ⚠️ **Um campo PRÓPRIO, e não uma reinterpretação do `alpha_scale`** — o
+    /// mecanismo está com as portas do padrão ([`alpha_doors`]).
     pub alpha_stencil_scale: f32,
     /// Raio de influência, em unidades de MUNDO.
     pub radius: f32,
@@ -321,33 +307,14 @@ pub struct Brush {
     /// # ⚠️ O TECTO é `1,0`, e o recurso é o PIOR TRIÂNGULO DA FAIXA
     ///
     /// ⛔ **Não é o tecto do alvo copiado, e não é «onde ele satura»:** o botão
-    /// DELE satura acima de `0,75` (espec §5.1 — a `0°` ele até desce) e o nosso
-    /// **não satura em lado nenhum**. Medido pelo produto, na chapa sacudida com
-    /// o passe de refino a correr:
+    /// DELE satura acima de `0,75` e o nosso **não satura em lado nenhum** — o
+    /// alinhamento continua a subir e o que acaba é a MALHA. ⚠️ *A faixa
+    /// coincidir com a dele (`0`..`1`) é resultado, não cópia.*
     ///
-    /// | pente | alinhamento `Q` | pior ângulo da faixa |
-    /// |---|---|---|
-    /// | `0,000` | `−0,019` | `7,86°` |
-    /// | `0,125` | `+0,016` | `8,06°` |
-    /// | `0,250` | `+0,045` | **`8,21°`** |
-    /// | `0,500` | `+0,085` | `6,57°` |
-    /// | `0,750` | `+0,109` | `5,04°` |
-    /// | **`1,000`** | **`+0,127`** | **`4,56°`** |
-    /// | `2,000` | `+0,165` | `3,76°` |
-    /// | `3,000` | `+0,179` | `0,62°` |
-    ///
-    /// ⇒ o alinhamento **continua a subir** acima de `1,0`, e o que acaba é a
-    /// MALHA: a `3,0` a faixa fica com triângulos de seis décimos de grau, que
-    /// não têm normal utilizável. *`1,0` é o último degrau em que o pior
-    /// triângulo ainda mede mais de metade do que ele media por pentear.*
-    ///
-    /// ⭐⭐ **E a metade de baixo do curso MELHORA a malha** (`8,21°` a `0,25`
-    /// contra `7,86°` desligado): o pente desfaz as lascas que o próprio refino
-    /// deixa. Gate: `o_pente_nao_compra_alinhamento_com_lascas`.
-    ///
-    /// ⚠️ **A faixa coincidir com a do alvo (`0`..`1`) é resultado, não cópia** —
-    /// as duas leis chegam lá por recursos diferentes, e a dele é inerte no topo
-    /// enquanto a nossa não é. *Todo o nosso curso faz alguma coisa.*
+    /// ⭐⭐⭐ **AS TABELAS MEDIDAS vivem com a régua que as produziu** — a escada
+    /// dos dois lados, o degrau que fixa este tecto e a **fronteira dos 45°**
+    /// estão no cabeçalho da [`crate::medida_do_pente`]. Gate do tecto:
+    /// `o_pente_nao_compra_alinhamento_com_lascas`.
     pub pente: f32,
     pub density_detail: f32,
     /// **PARA ONDE O ESFREGÃO EMPURRA O DESLOCAMENTO** — ⛔ só o

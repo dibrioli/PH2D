@@ -214,6 +214,13 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
         // contrário do que a ferramenta é.
         return crate::scenes::plano::peca();
     }
+    if crate::scenes::pente::pente_scene() {
+        // ⚠️ **Na densidade do CORPUS DO ORÁCULO** — ver o cabeçalho da
+        // [`crate::scenes::pente`]: o que esta cena mostra é o ARAME, e ele tem
+        // um vale legível (`≈ 8` arestas por raio de pincel). Mais fino vira um
+        // borrão cinzento; mais grosso não tem arestas para formar uma grade.
+        return crate::scenes::pente::peca();
+    }
     if crate::scenes::afiado::afiado_scene() {
         // ⚠️ **Lisa e DENSA, e as duas metades são a lição** — ver o cabeçalho
         // da [`crate::scenes::afiado`]: este pincel FAZ o relevo (sobre bossas o

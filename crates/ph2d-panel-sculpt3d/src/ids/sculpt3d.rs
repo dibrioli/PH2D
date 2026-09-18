@@ -296,6 +296,25 @@ pub const SCULPT3D_DYN_DETAIL: NodeId = hash_node_id("sculpt3d.dyn_detail");
 /// Ver [`SCULPT3D_DYN_DETAIL`].
 pub const SCULPT3D_DYN_DETAIL_NUM: NodeId = hash_node_id("sculpt3d.dyn_detail_num");
 
+/// **O PENTE DE TOPOLOGIA** — a pista e o chip, colados ao interruptor que o
+/// arma.
+///
+/// ⚠️ **Ele é um campo do PINCEL** ([`ph2d_sculpt3d::Brush::pente`]) e mora
+/// nesta secção na mesma, por [`crate::rows::Place::AfterDyntopo`]: a única
+/// pré-condição de estado dele é a topologia dinâmica ARMADA, e essa caixa está
+/// logo acima. *Uma pista mora ao lado do controlo que a governa* — e o `Detail`
+/// do pincel de densidade está no bloco do pincel pela razão OPOSTA: aquele
+/// verbo corre **sem** o interruptor.
+///
+/// ⚠️⚠️ **ARMADILHA DE NOME:** o alvo tem DOIS controlos cujo rótulo começa pela
+/// mesma palavra, e o outro governa o ângulo da TEXTURA do carimbo — que é o
+/// `rake` que o Painter desta casa já tem. Os ids aqui dizem `pente` para que
+/// um `grep` por aquele nome não apanhe os dois.
+pub const SCULPT3D_PENTE: NodeId = hash_node_id("sculpt3d.pente");
+
+/// Ver [`SCULPT3D_PENTE`].
+pub const SCULPT3D_PENTE_NUM: NodeId = hash_node_id("sculpt3d.pente_num");
+
 /// **O ALVO DE DENSIDADE DO PINCEL** — a pista e o chip, nas propriedades dele.
 ///
 /// ⭐⭐⭐ **ORDEM DO DONO (2026-09-14): *«deixe o slider Detail para o dynamic

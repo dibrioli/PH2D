@@ -1180,6 +1180,174 @@ defeito do arnês em vez de correr. A contagem passou a ser de **subcadeia**.
   gate de UNIDADE e o corpus está no neutro delas. *Uma malha com cantos agudos e tortos (a saída de
   uma retopologia apertada) é onde elas passam a decidir, e não há fixtura dessa.*
 
+## §69 — ⭐⭐⭐ O PENTE DE TOPOLOGIA CHEGA À MÃO DO ARTISTA: a fileira, a cena e o roteiro
+
+> **Wave:** a fiação do pincel novo até à interface. A LEI (`ph2d-rake`) e a fiação ao traço
+> fecharam na wave anterior; aqui ele passa a ser **alcançável**, e a construção da cena devolveu
+> três achados que não são sobre a interface.
+
+### §69.1 — A fileira, e a metade da cerca que o `show` NÃO consegue exprimir
+
+A pista vive na secção **Topology**, `Place::AfterDyntopo`, colada ao interruptor — porque **a única
+pré-condição de estado do pente é a topologia dinâmica armada** (espec §2.1: desarmada, os dois
+lados do controlo dão a MESMA malha, byte a byte).
+
+⚠️⚠️ **E só METADE da cerca cabe num `show`.** O `Row::show` recebe um `Sculpt3dUi` — o estado
+autorado —, e o `dyntopo` é um **FACTO do `Sculpt3dSnapshot`** (ligá-lo TRIANGULA a malha, logo ele
+não viaja no struct de valores que todo arrasto de slider reenvia). ⇒ a fileira esconde-se para os
+**cinco** verbos que ignoram o pente (`Verb::honra_o_pente`, um facto MEDIDO no oráculo) e, com o
+interruptor desarmado, **fica na tela e o painel DIZ que ela dorme** — a saída que o
+`Brush::curva_inerte` já usa na secção do pincel. ⛔ Alargar a assinatura do `show` custaria **58
+fileiras** por uma pergunta que uma faz.
+
+⛔⛔ **E o censo dos ids SOLTOS reprovou a 1.ª redacção, com razão.** Ela escrevia
+`r.slider == crate::ids::SCULPT3D_PENTE` no `paint/body.rs`, e o cabeçalho daquele censo proíbe por
+escrito um pintor **nomear** um id de fileira: um id de fileira chega por `row.slider` da travessia
+de `SECTIONS`, e nomeá-lo à mão ali é indistinguível, para o censo, de o **pintar** à mão — que é a
+forma do controlo hit-indexado e morto sob o dedo que ele existe para tornar impossível. ⇒ a
+pergunta passa a ser a MESMA função que o `show` faz (`rows::penteia`): uma lei, dois chamadores, e
+um gate segura a premissa que as faz coincidir (a fileira é `Basic`, logo `visible` e `show` são o
+mesmo).
+
+⚠️ **O rótulo é NOSSO** (`Edge Flow`) e descreve o efeito. ⛔ O do alvo começa pela mesma palavra que
+o do ângulo da **textura do carimbo** — dois assuntos, um nome —, e o dono já disse que ele descreve
+mal a coisa. ⏳ **A decisão do nome fica com ele.**
+
+**Gates** (`ph2d-panel-sculpt3d/tests/it/seam.rs`): `o_pente_e_alcancavel_some_para_quem_o_ignora_e_diz_porque_dorme`,
+em três metades — pintado + arrastado pelo despachante REAL · o censo derivado contra
+`Verb::honra_o_pente` com piso de população (**5**) · a razão a chegar a **GLIFO** com o interruptor
+desarmado, e o painel **calado** com ele armado e com um verbo que o ignora. **6 mutações, 6
+sangram.**
+
+### §69.2 — G-1: a pré-condição vira uma PORTA PURA, e o doc que a descrevia era FALSO
+
+O zeramento vivia inline no `armed_brush_on`, com um comentário a dizer *«o knob não fica mudo por
+causa disto: a fileira dele só é oferecida com o interruptor armado»*. ⛔ **Não é** — e *um doc que
+declara a lei que o código não implementa lê-se como auditado*.
+
+⇒ `ph2d_app_sculpt3d::space::pente_do_traco(dyntopo_armado, pente)`, **função livre** pela mesma
+razão que a `aparece` ao lado: a cena pede um `wgpu::Device` para nascer, e um gate sobre uma decisão
+que não tem pixel nenhum nasceria `#[ignore]` — *o CI nunca o correria*.
+
+**Gate:** `com_o_interruptor_desarmado_os_dois_lados_do_pente_sao_o_mesmo_traco`, com as **duas**
+metades (colapsa desarmado · passa INTACTO armado — sem a segunda, um pente permanentemente morto
+satisfaz a primeira) e a varredura do curso. **3 mutações, 3 sangram.**
+
+### §69.3 — ⛔ O gate que a wave anterior PROMETEU e não escreveu
+
+O censo `every_gate_the_sculpt_family_names_exists` apanhou
+`os_cinco_que_ignoram_o_pente_tem_a_forma_que_a_espec_da`, citado no doc do `Verb::honra_o_pente` e
+**inexistente** — a forma exacta que 13/09 curou nesta família (oito gates citados que nunca
+existiram). Escrito agora, e ele afirma o que o doc promete:
+
+1. a **forma** da espec §6.3 descreve os cinco (`anchors` · `paints_mask` · `o_dab_segue_o_barro`);
+2. ⛔ **a forma é necessária e NÃO suficiente** — **seis** verbos ancorados honram o pente, e é isso
+   que impede a lista de ser derivada de `anchors()`;
+3. o piso de população: **cinco**.
+
+### §69.4 — ⭐⭐ As duas colunas viram uma PORTA, e ela deixou de ser PLANA
+
+A bancada da lei corre sobre uma **chapa** e o gate da cena sobre uma **bola**: duas cópias da régua
+divergiriam na primeira wave. ⇒ [`ph2d_sculpt3d::medida_do_pente`], `pub`, com `q_da_faixa`,
+`pior_angulo` e `lascas`.
+
+⭐ **A generalização para 3D não precisou de base tangente:** `cos 4α` depende só de `|α|`, logo
+`cos 4α = 8c⁴ − 8c² + 1` com `c = ê · d̂` **em 3D**. Sobre uma chapa as duas formas concordam a
+**`2,4e-8`** — *a forma velha é um caso particular desta, não uma aproximação dela*.
+
+⚠️ **A tabela do `Brush::pente` foi RE-MEDIDA** com a porta: o pior ângulo saiu **IDÊNTICO** em todos
+os degraus (a conta dele já era 3D; só a faixa mudou, e ela não trocou de triângulos) e o `Q` moveu-se
+na **quarta casa**.
+
+⛔⛔ **E uma mutação SOBREVIVEU a tudo**: zerar o termo `z` do produto escalar passava pelo gate da
+redução (fixtura plana **por construção**), pelo da divergência (a mutação AFASTA as duas réguas em
+vez de as juntar) e pelo da cena (barras grosseiras de propósito). ⇒ o gate que faltava é de **FORMA
+FECHADA**: um triângulo `A(0,0,0)·B(0,0,1)·C(1,0,0)` com o traço ao longo de `+z` dá `Q = 1/3`
+**exacto**, e com o `z` fora lê `+1`. *Nenhum dos outros pergunta se o número está CERTO — só se duas
+réguas concordam, ou discordam.*
+
+### §69.5 — ⛔⛔⛔ A CENA `=49`, e a peça que ela quase abriu
+
+O gate da cena (a pergunta que a `=45` custou um report: *esta cena tem região utilizável?*)
+reprovou a 1.ª peça e depois a segunda. Medido, `Q` na faixa **antes de o pente tocar em nada**,
+barra do corpus `+0,0465`:
+
+| peça | equador | meridiano |
+|---|---|---|
+| a esfera UV desta casa | `+0,5498` | `+0,5116` |
+| **a de FÁBRICA do módulo** | **`+0,3241`** | **`+0,3241`** |
+| remalhada isotropicamente | `−0,0350` | `−0,0165` |
+
+⇒ *uma esfera UV JÁ É uma grade* — sete a doze vezes a barra —, e **a peça de fábrica do módulo é uma
+delas**: abrir na peça de sempre era o defeito, e metade dos riscos do artista cairia ao longo do
+grão sem mostrar nada.
+
+⛔⛔ **E a 1.ª cura foi uma RECUSA MINHA que a medição derrubou horas depois.** Eu declarei a peça
+remalhada recusada com *«Δ = +0,028, não se vê»* — número tirado de **uma** direcção de traço e de
+**outra** densidade. Varrido o leque de rumos, a remalhada ganha em **todas** as colunas:
+
+| rumo | `Q` desligado → no tecto | lascas (`<5°`) |
+|---|---|---|
+| ao longo de `x` | `−0,0034 → +0,0961` | `0` de `2 196` |
+| `30°` | `−0,0537 → +0,0202` | `0` de `2 192` |
+| `45°` | `−0,0612 → +0,0857` | `0` de `2 260` |
+| atravessado | `−0,0055 → +0,1090` | `0` de `2 237` |
+
+⚠️ **Quem matou a recusa foi uma MUTAÇÃO SOBREVIVENTE:** trocar a peça pela recusada deixava o gate
+da cena VERDE. *Uma recusa medida responde UMA pergunta, e esta respondeu à errada.*
+
+⚠️ **E o gate mede o Δ e o SINAL, nunca o `Q` absoluto:** um traço só não leva o `Q` acima da barra em
+todos os rumos (a `30°` chega a `+0,0202`), e uma barra absoluta ali reprovaria sobre produto
+correcto. O que separa *«alinhou»* de *«mexeu»* é o `Q` **trocar de sinal** — na esfera UV o Δ é
+MAIOR (`+0,18`) e o `Q` acaba em `−0,008`, ou seja sem grade nenhuma.
+
+⭐ **A cena tem PRÓLOGO** (`scenes::prologo`, chamado do `input::smoke`): ela abre com a topologia
+dinâmica **ARMADA** e o **arame** à vista. ⛔ Armar não é construir — `toggle_dyntopo` **tritura os
+quads**, logo é um acto sobre uma cena que já existe. ⚠️ E o arnês do gate caiu nessa mesma armadilha:
+sem `triangulate()` ele lia `288` arestas na faixa e **zero** triângulos, ou seja `180°`, *que se lê
+exactamente como «a malha está perfeita»*.
+
+**Gates:** `a_cena_do_pente_tem_o_que_mostrar` (quatro rumos × quatro metades) e
+`a_cena_do_pente_esta_fiada` (as quatro pontas do fio por `include_str!` — *um gate que chama a porta
+em vez de percorrer a rota afirma que a peça certa existe, nunca que a cena a usa*). **8 mutações, 8
+sangram.**
+
+### §69.6 — ⛔⛔ A FRONTEIRA DOS 45°, declarada e não curada
+
+Sobre uma peça de malha **regular** riscada a **exactamente 45°** da grade, o pente no tecto deixa
+**`1` a `3` triângulos** abaixo de `5°` em `~3 350` — e **ZERO** a `30°` e a `60°`. O mecanismo é a
+própria lei: o alvo tem **quatro dobras**, logo as duas direcções de uma grade valem *exactamente* o
+mesmo, e a meio caminho entre elas um punhado de vértices fica na linha de água.
+
+⛔ **O tecto NÃO desceu por causa disto, e a conta está no `Brush::pente`:** aplicar ali a regra do
+tecto daria `0,375`, o que custaria **60 % do curso em todos os outros rumos** por `0,09 %` dos
+triângulos de um só — *o caminho mais lento a definir o tecto do mais rápido*. A fronteira fica
+**declarada**, com gate a contá-la.
+
+⚠️ **A tabela da bancada não a continha:** a chapa do corpus tem a grade **já ao longo** do traço.
+*Uma fixtura que não contém o pior caso sub-mede um tecto.*
+
+### §69.7 — ⭐⭐ O UNDO do traço penteado
+
+A família que este módulo pagou **duas** vezes (o tecido 05/09, a pose 14/09). ⚠️ Aqui com uma volta
+a mais: **a pegada do pente não é a do verbo** — ele corre sobre os *vizinhos* de quem o carimbo
+tocou, logo move vértices que o `dab_core` nunca viu.
+
+**Gate** `um_traco_penteado_desfaz_se_inteiro`, quatro metades, e ⚠️ **o controlo teve de ser a
+DIFERENÇA e não a contagem**: o pente move `664` dos originais e o traço sem ele move os MESMOS
+`664` — *contar quantos mexeram não distingue os dois*. **1 mutação (apagar o `capture`), sangra.**
+
+### §69.8 — ⏳ O que fica ABERTO desta wave
+
+- **Decisão do dono:** o NOME do controlo (`Edge Flow` é nosso e descreve o efeito; o do alvo é
+  ambíguo com o do Painter) e se a pista deve parar antes do tecto.
+- ⏳ **Gates da espec por escrever:** G-4 (nenhuma aresta troca de diagonal) · G-7 (a direcção é a do
+  traço, provada rodando-o) · G-8/G-9 (menos de dois carimbos é inerte) · G-10 (monotonia) ·
+  G-12 (os cinco que o ignoram, byte-idênticos, **com o verbo a ter agido**) · G-13 (a régua de duas
+  dobras não serve) · G-14 (quads + bordo aberto). ⛔ **G-11 é NÃO APLICÁVEL** e é divergência
+  declarada: a nossa lei **não satura**.
+- ⏳ A fronteira dos 45° (§69.6) e a **legibilidade do arame** numa peça muito densa.
+
 ## §58 — 📦 PARA O AGENTE INTEGRADOR
 
 ### §58.1 — Os factos da linha

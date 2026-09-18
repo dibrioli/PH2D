@@ -10,6 +10,33 @@
 //! aceito:** as quatro funções abaixo respondem à MESMA pergunta em três
 //! camadas (o peso · a escala resolvida · o frame · e a condição que as une), e
 //! separá-las umas das outras é que teria sido um corte por tamanho.
+//!
+//! # ⚠️ TRÊS decisões dos campos do padrão, que moram aqui
+//!
+//! *(Elas desceram do doc dos campos do [`super::Brush`] quando o tecto de LOC
+//! dele ficou vermelho por ACUMULAÇÃO. ⛔ A cura de um tecto é o CORTE, e um
+//! campo de dados não tem para onde ir — o que se move é o mecanismo, para o
+//! módulo que o implementa.)*
+//!
+//! ⚠️ **A elevação do eixo não tem PISO, e a lâmpada tem.** Lá o `MIN_ELEV_DEG`
+//! existe porque uma luz rasante degenera a resposta plana; um EIXO não degenera
+//! em lugar nenhum — o frame é ortonormal por identidade em qualquer elevação —,
+//! e um piso aqui seria um limite copiado de um vizinho em vez de medido.
+//!
+//! ⚠️ **O `alpha_offset` é a TERCEIRA metade de colocar um carimbo** — tamanho
+//! (`alpha_scale`), giro (`alpha_az_deg`, que no zénite ROLA o padrão no plano) e
+//! posição. As duas primeiras já existiam; sem esta o artista podia dizer *quão
+//! grande* e *para que lado*, nunca *onde*. E ele só alcança o motor com uma
+//! IMAGEM armada, que é onde o [`super::Brush::alpha_frame`] garante a
+//! neutralidade **por construção** em vez de por convenção.
+//!
+//! ⚠️⚠️ **O `alpha_stencil_scale` é um campo PRÓPRIO e não uma reinterpretação do
+//! `alpha_scale`.** Os dois respondem a perguntas diferentes — *que tamanho tem
+//! esta feição no MODELO* contra *que tamanho tem este carimbo na TELA* — e um
+//! número só com duas unidades trocaria de significado **em silêncio** no
+//! instante em que o artista trocasse de padrão, que é a doença que este módulo
+//! varre a cada wave. *Duas perguntas, dois números, duas fileiras: cada uma
+//! aparece no modo em que está viva.*
 
 use crate::{Alpha, AlphaFrame, AlphaStencil, Brush};
 

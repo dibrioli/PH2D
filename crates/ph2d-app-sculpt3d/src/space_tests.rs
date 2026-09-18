@@ -239,3 +239,49 @@ fn the_view_of_a_piece_is_a_function_of_the_camera_and_the_pose_alone() {
         "o estêncil de uma peça deixou de ser função da câmera e da pose"
     );
 }
+
+/// ⭐⭐⭐ **G-1 — COM A TOPOLOGIA DINÂMICA DESARMADA, OS DOIS LADOS DO CONTROLO
+/// DO PENTE SÃO O MESMO TRAÇO** (espec §2.1).
+///
+/// # A régua, e porque ela é este número e não a malha
+///
+/// A espec mede a pré-condição pela malha (*«os dois lados dão o MESMO ficheiro,
+/// `sha256` do corpo: `5db23f3ef9375358`»*), e do nosso lado a malha é **função
+/// do [`Brush`]** — o [`ph2d_sculpt3d::SculptStroke`] não tem outra entrada que
+/// o interruptor toque. ⇒ provar que o `pente` que chega ao traço colapsa é
+/// provar a pré-condição inteira, **sem um `wgpu::Device`**, que é o que faz
+/// este gate CORRER no CI em vez de nascer `#[ignore]`.
+///
+/// # ⛔ As DUAS metades, e nenhuma basta sozinha
+///
+/// Sem a segunda (*armado, o valor passa INTACTO*), `fn pente_do_traco(_, _) { 0.0 }`
+/// — um pente permanentemente morto — satisfaz a primeira. ⚠️ E o que prova que
+/// esse valor intacto **move barro** é outro gate, noutra crate, sobre o produto:
+/// `ph2d_sculpt3d::rake_medida_tests::a_nossa_malha_penteia_se_acima_da_barra_do_oraculo`.
+///
+/// ⚠️ **A fixtura varre o CURSO e não só as pontas:** com só `0` e `1` uma lei
+/// que saturasse a meio passaria — e o nosso controlo não satura em ponto nenhum
+/// (é essa a divergência declarada contra o botão do alvo, que satura acima de
+/// `0,75`).
+#[test]
+fn com_o_interruptor_desarmado_os_dois_lados_do_pente_sao_o_mesmo_traco() {
+    let curso = [0.0_f32, 0.125, 0.25, 0.5, 0.75, 1.0];
+    for &p in &curso {
+        assert_eq!(
+            pente_do_traco(false, p),
+            0.0,
+            "com a topologia dinamica DESARMADA o pente {p} chegou ao traco — \
+             a espec §2.1 mede os dois lados do controlo a dar a MESMA malha"
+        );
+        assert_eq!(
+            pente_do_traco(true, p),
+            p,
+            "com ela ARMADA o pente {p} nao chegou INTACTO ao traco"
+        );
+    }
+    // ⛔ O piso: uma fixtura de um ponto so' nao distingue «colapsa» de «passa».
+    assert!(
+        curso.len() >= 5 && curso.iter().any(|&p| p > 0.0),
+        "a fixtura deixou de varrer o curso"
+    );
+}

@@ -83,46 +83,15 @@ fn chapa(n: usize, lado: f32) -> Mesh {
     Mesh::from_parts(pos, faces).expect("a chapa e' uma malha valida")
 }
 
-/// `Q = média(cos 4α)` sobre as arestas da pegada — a régua do corpus.
-fn q_da_faixa(malha: &Mesh, centros: &[[f32; 3]], raio: f32) -> (f64, usize) {
-    let pos = malha.positions();
-    let mut vistas = std::collections::BTreeSet::new();
-    let mut soma = 0.0f64;
-    let mut n = 0usize;
-    for f in malha.faces() {
-        let vs = f.verts();
-        for k in 0..vs.len() {
-            let (a, b) = (vs[k], vs[(k + 1) % vs.len()]);
-            if !vistas.insert((a.min(b), a.max(b))) {
-                continue;
-            }
-            let (pa, pb) = (pos[a as usize], pos[b as usize]);
-            let meio = [(pa[0] + pb[0]) * 0.5, (pa[1] + pb[1]) * 0.5];
-            // O troço de percurso mais perto, e a direcção LOCAL dele.
-            let mut melhor = f32::INFINITY;
-            let mut direccao = [1.0f32, 0.0];
-            for par in centros.windows(2) {
-                let d = (meio[0] - par[1][0]).hypot(meio[1] - par[1][1]);
-                if d < melhor {
-                    melhor = d;
-                    direccao = [par[1][0] - par[0][0], par[1][1] - par[0][1]];
-                }
-            }
-            if melhor > raio * 0.5 {
-                continue;
-            }
-            let aresta = [pb[0] - pa[0], pb[1] - pa[1]];
-            let c = f64::from(aresta[0] * direccao[0] + aresta[1] * direccao[1]);
-            let s = f64::from(aresta[0] * direccao[1] - aresta[1] * direccao[0]);
-            if c == 0.0 && s == 0.0 {
-                continue;
-            }
-            soma += (4.0 * s.atan2(c)).cos();
-            n += 1;
-        }
-    }
-    (soma / n.max(1) as f64, n)
-}
+/// ⭐⭐ **AS DUAS COLUNAS vêm da PORTA** ([`crate::medida_do_pente`]) e não de
+/// cópias aqui: a bancada corre sobre uma CHAPA e o gate da cena de smoke sobre
+/// uma BOLA, e duas cópias divergiriam na primeira wave que mexesse numa delas.
+///
+/// ⚠️ **A porta é 3D e a versão que aqui viveu era PLANA** — ela media `x` e `y`
+/// e deitava o `z` fora. Sobre esta chapa as duas dão o MESMO número, e é isso
+/// que os valores registados na tabela do [`crate::Brush::pente`] provam: *a
+/// forma velha é um caso particular da nova, não uma aproximação dela.*
+use crate::medida_do_pente::{pior_angulo as ph2d_sculpt3d_ang, q_da_faixa as ph2d_sculpt3d_q};
 
 fn pincel(pente: f32) -> Brush {
     Brush {
@@ -181,8 +150,8 @@ fn diag_o_g2_sobre_a_nossa_saida() {
         let etiqueta = if refina { "com refino" } else { "sem refino" };
         let (m0, c0) = traco(0.0, refina);
         let (m1, c1) = traco(1.0, refina);
-        let (q0, n0) = q_da_faixa(&m0, &c0, 0.30);
-        let (q1, n1) = q_da_faixa(&m1, &c1, 0.30);
+        let (q0, n0) = ph2d_sculpt3d_q(&m0, &c0, 0.30);
+        let (q1, n1) = ph2d_sculpt3d_q(&m1, &c1, 0.30);
         println!(
             "{etiqueta}:  Q desligado {q0:+.4} (n={n0})  ·  Q no maximo {q1:+.4} (n={n1})  \
              ·  ΔQ {:+.4}  ·  barra +0,0465  ⇒  {}",
@@ -234,8 +203,8 @@ fn a_nossa_malha_penteia_se_acima_da_barra_do_oraculo() {
 
     let (m0, c0) = traco(0.0, true);
     let (m1, c1) = traco(1.0, true);
-    let (q0, n0) = q_da_faixa(&m0, &c0, 0.30);
-    let (q1, n1) = q_da_faixa(&m1, &c1, 0.30);
+    let (q0, n0) = ph2d_sculpt3d_q(&m0, &c0, 0.30);
+    let (q1, n1) = ph2d_sculpt3d_q(&m1, &c1, 0.30);
 
     // (1) — **o controlo, e sem ele as outras duas metades não afirmam nada:**
     // o lado DESLIGADO tem de estar abaixo da barra. Uma fixtura cuja malha já
@@ -266,49 +235,6 @@ fn a_nossa_malha_penteia_se_acima_da_barra_do_oraculo() {
 
 /// O PIOR ÂNGULO de triângulo da faixa, em graus — a segunda coluna, e sem ela a
 /// escada do `Q` aprovaria uma malha destruída que por acaso ficou alinhada.
-fn pior_angulo(malha: &Mesh, centros: &[[f32; 3]], raio: f32) -> f64 {
-    let pos = malha.positions();
-    let mut pior = 180.0f64;
-    for f in malha.faces() {
-        let vs = f.verts();
-        if vs.len() != 3 {
-            continue;
-        }
-        let p: Vec<[f32; 3]> = vs.iter().map(|&v| pos[v as usize]).collect();
-        let centro = [
-            (p[0][0] + p[1][0] + p[2][0]) / 3.0,
-            (p[0][1] + p[1][1] + p[2][1]) / 3.0,
-        ];
-        if !centros
-            .iter()
-            .any(|c| (centro[0] - c[0]).hypot(centro[1] - c[1]) <= raio * 0.5)
-        {
-            continue;
-        }
-        for k in 0..3 {
-            let (a, b, c) = (p[k], p[(k + 1) % 3], p[(k + 2) % 3]);
-            let u = [
-                f64::from(b[0] - a[0]),
-                f64::from(b[1] - a[1]),
-                f64::from(b[2] - a[2]),
-            ];
-            let w = [
-                f64::from(c[0] - a[0]),
-                f64::from(c[1] - a[1]),
-                f64::from(c[2] - a[2]),
-            ];
-            let lu = (u[0] * u[0] + u[1] * u[1] + u[2] * u[2]).sqrt();
-            let lw = (w[0] * w[0] + w[1] * w[1] + w[2] * w[2]).sqrt();
-            if lu <= 0.0 || lw <= 0.0 {
-                continue;
-            }
-            let cos = ((u[0] * w[0] + u[1] * w[1] + u[2] * w[2]) / (lu * lw)).clamp(-1.0, 1.0);
-            pior = pior.min(cos.acos().to_degrees());
-        }
-    }
-    pior
-}
-
 /// A ESCADA do nosso botão — é dela que sai a faixa, nunca do alvo.
 ///
 /// ⚠️ **DUAS colunas de propósito:** o `Q` sozinho aprovaria uma malha destruída
@@ -320,8 +246,8 @@ fn diag_a_escada_do_pente() {
         0.0f32, 0.0625, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0,
     ] {
         let (m, c) = traco(p, true);
-        let (q, n) = q_da_faixa(&m, &c, 0.30);
-        let ang = pior_angulo(&m, &c, 0.30);
+        let (q, n) = ph2d_sculpt3d_q(&m, &c, 0.30);
+        let (ang, _) = ph2d_sculpt3d_ang(&m, &c, 0.30);
         println!("pente {p:.4}   Q {q:+.4}   pior angulo {ang:6.2}°   (n={n})");
     }
 }
@@ -358,7 +284,7 @@ fn o_pente_nao_compra_alinhamento_com_lascas() {
     const CHAO_DO_ANGULO: f64 = 2.0;
 
     let (m0, c0) = traco(0.0, true);
-    let base = pior_angulo(&m0, &c0, 0.30);
+    let (base, n_base) = ph2d_sculpt3d_ang(&m0, &c0, 0.30);
 
     // (1) — **o controlo:** a malha por pentear já tem lascas (o refino
     // deixa-as), senão não há o que piorar e as outras metades não afirmam nada.
@@ -368,9 +294,22 @@ fn o_pente_nao_compra_alinhamento_com_lascas() {
          o arranjo mudou, e as barras abaixo foram calibradas contra este numero"
     );
 
+    // ⛔ **E o PISO DA POPULAÇÃO, que é o par que a porta devolve por uma
+    // razão:** uma faixa VAZIA lê `180°` — *«a malha está perfeita»* —, e as
+    // três metades abaixo ficariam verdes a medir o nada.
+    assert!(
+        n_base > 100,
+        "a faixa do traco tem {n_base} triangulo(s): a fixtura deixou de conter \
+         o fenomeno, e um `180°` de faixa vazia le'-se como malha perfeita"
+    );
+
     // (2) — no tecto do botão a faixa continua a ter triângulos com normal.
     let (m1, c1) = traco(1.0, true);
-    let no_tecto = pior_angulo(&m1, &c1, 0.30);
+    let (no_tecto, n_tecto) = ph2d_sculpt3d_ang(&m1, &c1, 0.30);
+    assert!(
+        n_tecto > 100,
+        "a faixa com o pente no tecto tem {n_tecto} triangulo(s)"
+    );
     assert!(
         no_tecto >= CHAO_DO_ANGULO,
         "com o pente no tecto o pior triangulo da faixa mede {no_tecto:.2}° \
@@ -381,11 +320,132 @@ fn o_pente_nao_compra_alinhamento_com_lascas() {
     // (3) — e na metade de baixo ele **não piora** a malha. ⚠️ Sem esta metade,
     // uma lei que degradasse tudo por igual passaria a (2) com o tecto baixo.
     let (mm, cm) = traco(0.25, true);
-    let a_um_quarto = pior_angulo(&mm, &cm, 0.30);
+    let (a_um_quarto, _) = ph2d_sculpt3d_ang(&mm, &cm, 0.30);
     assert!(
         a_um_quarto >= base * 0.95,
         "a um quarto do curso o pior triangulo mede {a_um_quarto:.2}° contra \
          {base:.2}° por pentear (medido 8,21 contra 7,86) — o pente deixou de \
          desfazer as lascas que o refino deixa e passou a criar as dele"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — um traço PENTEADO desfaz-se INTEIRO.**
+///
+/// # ⛔⛔ A família que este módulo pagou DUAS vezes
+///
+/// O tecido em 05/09 e a pose em 14/09: um verbo que **desvia** do laço
+/// por-vértice do `dab_core` move barro sem passar pelo `capture`, o
+/// `close_stroke` vê a janela vazia e **devolve cedo** — *uma janela vazia e um
+/// gesto que não fez nada são o mesmo byte para quem grava*, e o `Ctrl+Z` não
+/// tem o que desfazer.
+///
+/// ⚠️⚠️ **E aqui o risco tem uma volta a mais: a pegada do pente NÃO é a do
+/// verbo.** Ele corre sobre os vizinhos de quem o carimbo tocou, logo move
+/// vértices que o `dab_core` nunca viu — e são exactamente esses que ficariam
+/// fora da janela se o `capture` dele não existisse.
+///
+/// # As quatro metades
+///
+/// 1. **O controlo:** o pente moveu vértices que o verbo desligado não move.
+///    Sem ele, o gate ficaria verde sobre um pente inerte.
+/// 2. A janela não está vazia.
+/// 3. O `pre` de cada vértice é o do **pen-down**, não o do evento em que ele
+///    entrou — senão o desfazer devolve o meio do arrasto.
+/// 4. **Nenhum vértice movido fica de fora**, que é a metade que o pente pede.
+#[test]
+fn um_traco_penteado_desfaz_se_inteiro() {
+    let antes = chapa(61, 3.0).positions().to_vec();
+
+    // (1) — o CONTROLO, e ele é a DIFERENÇA e não a contagem: medido, o pente
+    // move `664` dos originais e o traço sem ele move os MESMOS `664` — ele
+    // trabalha dentro da pegada do carimbo, logo *contar quantos mexeram não
+    // distingue os dois*. O que distingue é o barro estar noutro sítio.
+    let (m0, _) = traco(0.0, true);
+    let diferentes = m0
+        .positions()
+        .iter()
+        .zip(traco(1.0, true).0.positions())
+        .filter(|(a, b)| a != b)
+        .count();
+
+    let mut malha = chapa(61, 3.0);
+    let brush = pincel(1.0);
+    let mut s = SculptStroke::default();
+    s.begin(&malha);
+    let mut births = Vec::new();
+    let mut region = ph2d_mesh::RegionScratch::default();
+    for k in 0..24 {
+        let centro = [-1.2 + 0.1 * k as f32, 0.0, 0.0];
+        let _ = ph2d_mesh::refine_in_sphere(
+            &mut malha,
+            centro,
+            brush.radius,
+            0.035,
+            &mut births,
+            &mut region,
+        );
+        s.grow_with(&malha, &births);
+        s.dab(
+            &mut malha,
+            &brush,
+            &Dab::at(centro, brush.radius, [0.0, 0.0, -1.0]),
+            Symmetry::default(),
+        );
+    }
+
+    // ⚠️ A comparação é sobre o PREFIXO: o refino acrescentou vértices, e um
+    // vértice que NASCEU no traço não tem posição de antes para comparar.
+    let mexidos = antes
+        .iter()
+        .zip(malha.positions())
+        .filter(|(a, b)| a != b)
+        .count();
+    assert!(
+        diferentes > 100,
+        "o traco com o pente e o traco sem ele deixaram a malha em {diferentes} \
+         posicoes diferentes — o pente esta' INERTE neste arranjo e as tres \
+         metades abaixo mediriam o undo do carimbo, nao o dele"
+    );
+    assert!(
+        mexidos > 100,
+        "so' {mexidos} vertices ORIGINAIS mexeram — o arnes nao moveu nada de \
+         jeito e o gate mediria vacuo"
+    );
+    assert!(
+        !s.touched().is_empty(),
+        "a janela do undo saiu VAZIA depois de mover {mexidos} vertices — o \
+         `close_stroke` devolve cedo e o Ctrl+Z nao tem o que desfazer"
+    );
+    assert_eq!(
+        s.touched().len(),
+        s.base_positions().len(),
+        "a janela e o `pre` tem de andar em par"
+    );
+    let janela: std::collections::BTreeMap<u32, [f32; 3]> = s
+        .touched()
+        .iter()
+        .copied()
+        .zip(s.base_positions().iter().copied())
+        .collect();
+    for (v, pre) in &janela {
+        if let Some(a) = antes.get(*v as usize) {
+            assert_eq!(
+                pre, a,
+                "o vertice {v} entrou na janela com uma pose INTERMEDIA — o \
+                 Ctrl+Z devolveria o meio do traco"
+            );
+        }
+    }
+    let esquecidos = antes
+        .iter()
+        .zip(malha.positions())
+        .enumerate()
+        .filter(|(i, (a, b))| a != b && !janela.contains_key(&(*i as u32)))
+        .count();
+    assert_eq!(
+        esquecidos, 0,
+        "{esquecidos} vertices mexeram e ficaram FORA da janela — o pente corre \
+         sobre os VIZINHOS da pegada do verbo, logo e' ele quem tem de os \
+         fotografar, e o Ctrl+Z devolveria a peca pela metade"
     );
 }

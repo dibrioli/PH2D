@@ -55,3 +55,47 @@ metadata:
 - ⛔⛔ **A RECUSA DELE (17/09): construída, medida inteira e REJEITADA pelo dono — não reconstruir.** Ele leva ao alvo o EFETOR e a bacia e **recusa um alvo da COLUNA** (cabeça: anda 11,3 de 15 e **21,2 de 40**; peito 4,5 de 15). O mecanismo, junta a junta: ele dobra o **pescoço −123°** com a cabeça a contra-rodar +124° e as pernas paradas; nós **agachamos** (coxa 43°, canela −52°, bacia 22,8 cm). A lei estava pronta — o alvo arrastado pesa `0,10` quando a junta do controlador é do grupo `coluna` e não é a raiz — e dava a cabeça a andar 10,4/19,4 contra os 10,9/21,0 dele, com **TODOS** os números a melhorar (pose 12,48→11,71 · CoM 5,54→4,35 · cabeça 8,51→8,12 · corpo 6,24→5,52). ⛔ **Decisão do dono: «ficar obediente»** — copiá-la deixaria o boneco menos obediente exatamente nos pontos com que se posa o tronco, e o report de 13/09 («não consigo posicionar como eu desejo») é o que o app existe para não repetir; *paridade com a rede dele não é o produto do dono*. ⚠️ **E ela tinha um preço escondido que só a suíte mostrou:** `0,10` é o preço de um ponto POSADO ⇒ um ponto tocado passa a empatar com o que se arrasta (peito 6,1 cm com cinco posados contra 5,6 com os cinco PRESOS, 9,9 livre); manter a ordem cura esse e parte o vizinho (o posado é arrastado 6,7 cm) — *a ordem entre «o que se arrasta» e «o que se posou» é uma corda curta*. ⛔ Recusadas pelo caminho: o alvo que **satura com a distância** (Huber, δ = 5/10/20 cm) é **INERTE** porque o arrasto é aos poucos — *a recusa dele não é sobre distância*; **amolecer a coluna** piora a cabeça de 8,5 para 18,8; **endurecer as pernas** tira a bacia (12,0→5,1 cm) e não trava a cabeça. ⏳ ABERTO: a **tabela de rigidez do rig é escrita à mão** (perna 0,03–0,05 contra coluna 0,5–0,6) e nunca foi medida — é ela que nos faz agachar onde ele dobra o pescoço (pernas ×10: pose 12,48 → 11,8, cabeça +0,9).
 - ⭐⭐ **O APOIO VÊ-SE (17/09):** a tela desenha a BASE no chão (pés presos que tocam o chão + mãos presas) e o FIO DE PRUMO do centro de massa — verde sobre o apoio, vermelho fora, com os centímetros. ⭐ **Uma porta, dois consumidores** (`M.apoioDaPose`): é a mesma conta do equilíbrio do motor, e o portão ata-as no único instante em que têm de dar o mesmo número — o começo do arrasto (7,320 = 7,320 cm). ⚠️ A cerca não é «o pé está no chão», é «o pé está PRESO» (no motor um pé pousado e solto não sustenta nada) ⇒ depois de «Soltar todos» a barra some, que é o que o equilíbrio faz. ⛔⛔ **E o CONTROLE DO FILTRO da prova de mutação apanhou uma LEI QUE EU ESCREVI DUAS VEZES** (o casamento da ponta da mão) com a mensagem «este texto casa 2 vezes — a mutação NÃO correu»: sem esse controlo, ela teria sido lida como «a mutação sobreviveu» e a duplicação ficava. Hoje a lei vive em `contatoDaPonta`, com dois consumidores. 153 portões · 35 mutações · `gesto_apoio.js` mede os PIXELS da barra (42 verdes em pé · 49 vermelhos fora do apoio · a base passa de 45 para 161 px com as mãos presas · 0 com tudo solto).
 - ⛔⛔⛔ **A CAMINHADA (17/09): construída TRÊS vezes, medida, e RETIRADA por ordem do dono — «Não ficou bom! Retire a caminhada dos exemplos». NÃO RECONSTRUIR sem ler `auditoria/ACHADOS.md` B24** (árvore no commit `48004f8`, foto em `fotos/caminhada_RETIRADA.png`). As três: (1) poses minhas calibradas contra uma captura real ⇒ *«não está bom como no app original»*; (2) **a própria captura, retargetada** ⇒ *«parece um robô horrível»*; (3) **as poses do manual de animação** (contato · baixo · passagem · alto) ⇒ *«Não ficou bom!»*. ⚠️⚠️ **A leitura que importa: as três estavam CERTAS em todos os números que eu sabia medir** — a 3.ª batia a captura real na régua da bacia (5,7 cm contra 4,5 de um humano), pé apoiado a 0,00 cm, zero pé dentro do chão, zero quadros de voo, braços em contrafase com correlação −0,94 (a mesma de uma pessoa real). *O que falta não é nenhuma grandeza que eu tenha instrumento para ler*, e a próxima tentativa tem de resolver ANTES de escrever poses: **como se mede «bom» aqui?** ⛔⛔⛔ **Lição transferível: um movimento CAPTURADO de um corpo com pernas 33% mais longas não fica bom no nosso boneco por ser REAL — fica CORRETO e morto. E o aviso está no PREÇO:** a versão capturada precisou de TRÊS leis de compensação para os contactos fecharem (pé de trás a PIVOTAR por IK · altura da bacia pelo pé de apoio · pé assente) — *quando uma fonte precisa de três leis para caber no corpo que a recebe, ela não é a fonte certa* —, e duas delas mediram-se **INERTES** assim que as poses passaram a ser feitas à mão. ⛔⛔ **O rig manda mais que o estilo: o nosso pé tem DOIS pontos e NENHUM calcanhar**, e `plantarPes` só prende quem esteja no chão nas DUAS chaves de um trecho ⇒ um pé que ROLA (calcanhar→ponta, o que um andar humano faz) desliza inteiro, 34 cm medidos. ⚠️ **A régua do escorrega usa 1 cm e não os 3 do motor** (aqueles são a faixa de DETECÇÃO e um pé SAI do chão atravessando-a: 0,00 → 2,80 cm de altura enquanto avança 8,5). ⚠️ **A régua do CONTATO não pode ser o chão** (captura ⇒ pés a flutuar 8–25 cm ⇒ zero contatos): mede-se o pé **relativo à bacia**, com janela de velocidade **centrada**. ⭐⭐ **E três portões nasceram do «robô» e valem para qualquer animação futura, porque NENHUM portão de contacto os vê** (um andar que arrasta os pés, com o corpo a deslizar e os braços colados, passa em todos eles): pé levanta · corpo sobe e desce · **correlação** braço×coxa do mesmo lado — com as barras tiradas do **lado REPROVADO**. ✅ **Ficaram na árvore:** `medir_caminhada.js` (a régua do andar, ainda a medir a captura real) e `foto_tira.js` (a tira de QUALQUER exemplo fotografada do app a correr — generalizado quando a caminhada saiu, porque o nome `foto_caminhada` passava a mentir). **157 verificações · 33 mutações.**
+
+---
+
+## 17/09 — A FLUIDEZ e o BLOCO (report do dono: «o esqueleto é meio travado e não transita livremente entre poses»)
+
+⭐⭐⭐ **A lei da curva mudou: «a tangente é LIVRE, e quem a trava é o LIMITE DA JUNTA».** A
+interpolação era MONÓTONA (Fritsch–Butland) e por isso o corpo **parava em cada pose**: a tangente
+dela é sempre ≤ a menor das duas encostas e ZERO em toda inversão. Hoje é a derivada do polinómio
+pelas **cinco chaves** à volta (com três, é a Catmull-Rom — o mesmo estimador uma ordem acima, nada
+afinado), encolhida em forma fechada até a cúbica caber na faixa da junta.
+
+⭐⭐ **A barra sai do lado APROVADO e é maçã com maçã** (`medir_fluidez.js`): reconstrói-se uma
+CAPTURA REAL a partir de uma pose a cada S quadros e mede-se, NOS MESMOS QUADROS, a velocidade ao
+passar pela pose ÷ o pico local — na nossa reconstrução e na captura. **43 % → 55 %**, a captura
+**63 %**, o tecto da família (derivada verdadeira) 68 %. No gesto do dono, **20 % → 37 %**.
+
+⚠️ **Três cercas que a lei exige, cada uma com o número:** um canal SEM limite fica com a curva
+conservadora (a raiz passava 8,5 cm e 15,3° além das chaves, com o pé 44 mm no chão) · **a PAUSA é
+PAUSA** (duas chaves iguais; sem isso o braço respirava 3,75° numa pose congelada) · e o **chão entre
+as chaves** (`naoAfundarEntreChaves`, 31,4 → 0,00 mm).
+
+⛔⛔ **Três defeitos PRÉ-EXISTENTES que a curva nova destapou — e o que os escondia era um ACIDENTE:**
+`fixarApoios` não era idempotente (a física chama-o 2×; a decolagem saía 13,6 mm fora) · o IMPULSO
+enfiava o pé 1,8 cm no chão · e o contacto que o próprio impulso cria era invisível ao pino. **A
+curva monótona mergulhava a ponta do pé a 0,4 cm do chão entre duas chaves que a põem a 5,6** — a
+descida espúria caía na faixa de 3 cm e fazia o pino armar. *Um defeito tapado por outro.*
+
+⛔ **O CHÃO É CHÃO PARA TODO PONTO DE CONTACTO, não só para o pé:** o dono arrastou a mão 33,8 cm
+para DENTRO do chão e a física puxava-a de volta ao tocar ⇒ **34,1 cm** entre a pose feita e a
+tocada. Curado: fidelidade da sessão **34,11 → 3,35 cm**.
+
+⭐⭐⭐ **O BLOCO — perguntado ao Cascadeur, correndo-o:** ele **NÃO tem osso nem objeto pai de todos**.
+289 objetos, nenhum move os 43 pontos; o ponto da bacia move 27 e só 19 sem deformar. O bloco dele é
+a **SELEÇÃO** (os mesmos +10 cm nos 43 ⇒ os 43 andam 10 cm; o `selector` tem `select`/`selected`/
+`pivot`). Aqui a seleção inteira é a RAIZ da pose, e a alça vive **no chão**, debaixo da bacia, 46 px
+abaixo da linha (acima dela moram a barra do apoio e a etiqueta do peso). ⚠️ Ela vem **ANTES dos
+ossos** no hit-test — com os ossos à frente o arrasto pegava no pé e o corpo andava 0,0 cm de 30,
+calado — e `pontoDoCorpo()` devolve coordenadas **da janela**.
+
+**Instrumentos novos:** `medir_fluidez.js` · `gesto_sequencia.js` (animar seis poses com rato de
+verdade: alcance · fidelidade · fluidez · o chão · o bloco) · `cascadeur_tarefa_esqueleto.py` +
+`medir_esqueleto_deles.js` (`bash rodar_no_cascadeur.sh esqueleto`).
+**Estado:** 164 verificações, 43 provas de mutação, 8 testes de rato de verdade — todos verdes.
+Detalhe inteiro com as tabelas: `auditoria/ACHADOS.md` B25 e B26.

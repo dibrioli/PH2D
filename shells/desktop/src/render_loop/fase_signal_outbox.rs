@@ -26,6 +26,24 @@ fn diga_o_que_resolveu(ligado: bool, nomes: &[&str], efeitos: usize) {
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
+    /// ⭐⭐⭐ **As acções resolvidas deste quadro, pelo NOME** — a entrada do motor do gatilho.
+    ///
+    /// ⚠️ **Ela é uma porta e não um bloco inline, e a razão é o EMPRÉSTIMO:** o mapa vive no
+    /// `hero_screen` (dentro do `gfx`) e o estado resolvido vive na `App`, logo lê-los depois do
+    /// destructure do `gfx` seria emprestá-lo duas vezes. ⛔ E o corte foi imposto pelo tecto de
+    /// FUNÇÃO da fase (`205/200` ao ganhar o gatilho) — *a cura de um tecto é o CORTE*.
+    ///
+    /// ⚠️ **O estado é o que a `fase_pointer_subjects` resolveu no PRINCÍPIO deste quadro** — é
+    /// isso que faz a aresta (`just_pressed`) ser a deste quadro e não a do anterior. Há gate
+    /// sobre a ordem das duas.
+    fn accoes_do_quadro(&self) -> std::collections::BTreeMap<String, ph2d_ecs::ActionSample> {
+        self.gfx.as_ref().map_or_else(Default::default, |g| {
+            g.hero_screen.as_ref().map_or_else(Default::default, |h| {
+                motores_do_quadro::amostras_das_accoes(&h.input_map, &self.input_actions)
+            })
+        })
+    }
+
     pub(super) fn fase_signal_outbox(
         &mut self,
         anim_signals: Vec<sprite_anim_tick::AnimSignal>,
@@ -34,18 +52,7 @@ impl crate::App {
         camera_rect: Option<([f32; 2], [f32; 2])>,
         ticks: u32,
     ) {
-        // ⭐⭐⭐ **As acções resolvidas, lidas ANTES do `gfx`** — e a ordem aqui é um empréstimo,
-        // não estilo: o mapa vive no `hero_screen` (dentro do `gfx`) e o estado resolvido vive na
-        // `App`, logo lê-los depois do destructure seria emprestar o `gfx` duas vezes.
-        //
-        // ⚠️ **Elas são do ESTADO que a `fase_pointer_subjects` resolveu no PRINCÍPIO deste
-        // quadro** — é isso que faz a aresta (`just_pressed`) ser a deste quadro e não a do
-        // anterior. Há gate sobre a ordem das duas.
-        let accoes = self.gfx.as_ref().map_or_else(Default::default, |g| {
-            g.hero_screen.as_ref().map_or_else(Default::default, |h| {
-                motores_do_quadro::amostras_das_accoes(&h.input_map, &self.input_actions)
-            })
-        });
+        let accoes = self.accoes_do_quadro();
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;

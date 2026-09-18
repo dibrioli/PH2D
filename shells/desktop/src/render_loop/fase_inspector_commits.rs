@@ -25,6 +25,10 @@ mod projectile_commits;
 #[path = "fase_statemachine_commits.rs"]
 mod statemachine_commits;
 
+/// ⭐⭐⭐ A fase-filha das edições da secção ÁUDIO — irmã das de cima, e pelo mesmo tecto. Ver o
+/// cabeçalho de lá para a fronteira dela (o dispositivo e o diálogo).
+#[path = "fase_inspector_commits_audio.rs"]
+mod audio_commits;
 /// ⭐⭐⭐ A fase-filha das edições do SCRIPT (TOP-20 #16) — irmã das de cima.
 #[path = "fase_script_commits.rs"]
 mod script_commits;
@@ -191,61 +195,16 @@ impl crate::App {
         ) {
             self.title_dirty = true;
         }
-        // ⭐⭐⭐ **A secção AUDIO** (TOP-20 #4, W3) — e ela corre AQUI, e não no
-        // `inspector_commits`, porque as edições dela são de DUAS naturezas: a maioria escreve
-        // um campo do documento, e três (`Preview`, `Stop`, `Browse`) tocam no DISPOSITIVO ou
-        // abrem um diálogo. ⚠️ O `inspector_commits` não tem — nem devia ter — a placa de som
-        // nem a janela. *Duas naturezas, dois sítios; a fronteira é o que cada edição TOCA.*
-        for (bits, edit) in &audio_edits {
-            match edit {
-                ph2d_editor_core::AudioFieldEdit::Preview => {
-                    let e = ph2d_ecs::Entity::from_bits(*bits);
-                    audio_2d::play_target(sim, self.audio.as_mut(), e);
-                }
-                ph2d_editor_core::AudioFieldEdit::StopPreview => {
-                    let e = ph2d_ecs::Entity::from_bits(*bits);
-                    audio_2d::stop_target(sim, self.audio.as_mut(), e);
-                }
-                ph2d_editor_core::AudioFieldEdit::Browse => {
-                    // ⚠️ **A lista de extensões é a MESMA do resto do app** (`decode_any`), e
-                    // não uma escrita à mão: uma segunda lista ao lado de um predicado é o
-                    // defeito que o diálogo de importação já pagou — o `.ase` esteve invisível
-                    // lá durante meses.
-                    if let Some(p) = rfd::FileDialog::new()
-                        .add_filter("audio", ph2d_audio_decode::decode_any::AUDIO_IMPORT_EXTS)
-                        .pick_file()
-                    {
-                        let edit = ph2d_editor_core::AudioFieldEdit::Sound(
-                            p.to_string_lossy().into_owned(),
-                        );
-                        if inspector_audio::apply_audio_edit(
-                            sim,
-                            *bits,
-                            &edit,
-                            editor_queue,
-                            component_registry,
-                        )
-                        .is_none()
-                        {
-                            inspector_queue_dirty = true;
-                        }
-                    }
-                }
-                _ => {
-                    if let Some(t) = inspector_audio::apply_audio_edit(
-                        sim,
-                        *bits,
-                        edit,
-                        editor_queue,
-                        component_registry,
-                    ) {
-                        toasts.push(t);
-                    } else {
-                        inspector_queue_dirty = true;
-                    }
-                }
-            }
-        }
+        // ⭐⭐⭐ **A secção AUDIO** (TOP-20 #4) — na fase-filha, pelo tecto desta função e por
+        // uma fronteira que o comentário dela já escrevia: as edições são de DUAS naturezas.
+        inspector_queue_dirty |= audio_commits::aplicar(
+            sim,
+            &mut self.audio,
+            editor_queue,
+            component_registry,
+            toasts,
+            &audio_edits,
+        );
         // ⭐⭐⭐ **A secção CAMERA** (TOP-20 #7, W3) — aqui pela MESMA razão da irmã de cima:
         // as edições são de DUAS naturezas. O `Preview` liga a VISTA (que só a `App` tem) e as
         // restantes escrevem um campo do documento. *Duas naturezas, um sítio que tem as duas.*

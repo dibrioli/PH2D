@@ -83,9 +83,17 @@ fn where_row(
     row_y + ph2d_tokens::row_pitch_px()
 }
 
-/// O corpo da FÁBRICA.
-#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
-fn factory_body(
+/// ⭐⭐ **ONDE a cópia nasce** — as três formas de uma pergunta só. Devolve o `y` seguinte.
+///
+/// ⚠️ **Saiu do [`factory_body`] por TECTO DE FUNÇÃO** (`215/200` ao ganhar a linha da MIRA) **e é
+/// o certo por responsabilidade:** o selector, a área, a tag e o sorteio respondem todos à mesma
+/// pergunta, e as linhas que sobram no corpo respondem a outras (*o quê* · *ao ouvir o quê* ·
+/// *quantos* · *para onde*).
+///
+/// ⚠️ **Só o que o MODO lê é pintado** — a lei do `SignalVerb::uses_arg`: um campo que o modo não
+/// lê é um controlo morto; escondê-lo onde ele lê é uma feature inalcançável.
+#[allow(clippy::too_many_arguments)]
+fn onde_rows(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -95,53 +103,10 @@ fn factory_body(
     w: f32,
     y: f32,
     f: &InspectorFactory,
-    clock_playing: bool,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    // ⚠️ **Os avisos vêm ANTES dos números** — quem não vê nada nascer não quer afinar uma rajada.
     let mut cur_y = y;
-    // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): esta secção nasceu
-    //    contra a porta antiga (`anchors::field_row`, o nome POR CIMA do campo) e passa à
-    //    única que existe. ⚠️ Os nomes são os da secção INTEIRA, inclusive os das linhas que
-    //    este quadro não pinta — *uma coluna que salta quando uma linha aparece é uma coluna
-    //    por linha com outro nome.*
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        2,
-        &[
-            tr("panel.inspector.factory.area_m"),
-            tr("panel.inspector.factory.burst"),
-            tr("panel.inspector.factory.max_alive_0_no_limit"),
-            tr("panel.inspector.factory.max_total_0_no_limit"),
-            tr("panel.inspector.factory.seed"),
-        ],
-    );
-    cur_y = factory_avisos(scene, text_system, theme, x, w, cur_y, f, clock_playing);
-    cur_y = super::anim_rows::text_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        crate::ids::INSP_FACTORY_RECIPE,
-        TextInput::new(crate::ids::INSP_FACTORY_RECIPE, "")
-            .placeholder(ph2d_i18n::tr("panel.factory.recipe")),
-    );
-    cur_y = super::anim_rows::text_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        crate::ids::INSP_FACTORY_ON_SIGNAL,
-        TextInput::new(crate::ids::INSP_FACTORY_ON_SIGNAL, "")
-            .placeholder(ph2d_i18n::tr("panel.factory.on_signal")),
-    );
+
     cur_y = where_row(
         scene,
         text_system,
@@ -209,6 +174,81 @@ fn factory_body(
         );
         cur_y += CHECK_H + ph2d_tokens::control_gap_px();
     }
+
+    cur_y
+}
+
+/// O corpo da FÁBRICA.
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+fn factory_body(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    f: &InspectorFactory,
+    clock_playing: bool,
+) -> f32 {
+    // ⚠️ **Os avisos vêm ANTES dos números** — quem não vê nada nascer não quer afinar uma rajada.
+    let mut cur_y = y;
+    // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): esta secção nasceu
+    //    contra a porta antiga (`anchors::field_row`, o nome POR CIMA do campo) e passa à
+    //    única que existe. ⚠️ Os nomes são os da secção INTEIRA, inclusive os das linhas que
+    //    este quadro não pinta — *uma coluna que salta quando uma linha aparece é uma coluna
+    //    por linha com outro nome.*
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        2,
+        &[
+            tr("panel.inspector.factory.area_m"),
+            tr("panel.inspector.factory.burst"),
+            tr("panel.inspector.factory.max_alive_0_no_limit"),
+            tr("panel.inspector.factory.max_total_0_no_limit"),
+            tr("panel.inspector.factory.seed"),
+        ],
+    );
+    cur_y = factory_avisos(scene, text_system, theme, x, w, cur_y, f, clock_playing);
+    cur_y = super::anim_rows::text_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        crate::ids::INSP_FACTORY_RECIPE,
+        TextInput::new(crate::ids::INSP_FACTORY_RECIPE, "")
+            .placeholder(ph2d_i18n::tr("panel.factory.recipe")),
+    );
+    cur_y = super::anim_rows::text_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        crate::ids::INSP_FACTORY_ON_SIGNAL,
+        TextInput::new(crate::ids::INSP_FACTORY_ON_SIGNAL, "")
+            .placeholder(ph2d_i18n::tr("panel.factory.on_signal")),
+    );
+    cur_y = onde_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        f,
+        seccao,
+    );
 
     // ⭐ **A MIRA** (o gatilho, 2026-09-18) — a cópia sai apontada para onde a fábrica aponta.
     //

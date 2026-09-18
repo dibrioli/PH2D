@@ -40,6 +40,7 @@ W0..W6 + os abertos + **dois reports do dono já fechados e com smoke APROVADO**
 | §18 | **o tecto das varreduras passa a ser MEDIDO** — a cadeia deixa de ser inalcançável, e TRÊS acelerações candidatas ficam como **recusas medidas** (ordem do dono) |
 | §18.7 | a cena **`=123` — A CADEIA**, o único sítio onde a escada de varreduras se VÊ (as irmãs são pares independentes) |
 | §19 | ⭐⭐⭐ **o tecto era honesto e o MOTOR não era** (report do dono) — o passe fica **4,4×** mais barato a 500 peças e **8,7×** no quadro dele; toca em `ph2d-nodegraph` (`par_build_if`, append-only) |
+| §20 | ⭐⭐⭐ **o laço pára quando nada mais se VÊ** (2.º report) — `500` objectos a `1024` varreduras: `157,9 → 6,8 ms` (**46×** no caminho dele). ⚠️ **Não é bit-idêntico de propósito**, e o preço são DUAS barras de gate de produto re-precificadas, em duas crates |
 
 ---
 
@@ -147,6 +148,16 @@ formatador que parte a linha faz o padrão casar zero, e um `grep` largo casa **
 > - ⏳ **NOVO:** o `Vec<u32>` dos vizinhos ainda é alocado por peça e por varredura (dentro dos
 >   `18 %` de escrituração que sobram); um scratch por thread fecha-o. Não foi feito porque a
 >   medição não o justificou sozinho.
+>
+> ⚠️⚠️ **E a §20 acrescentou o item que é o TECTO REAL do alvo do dono** (*«centenas a milhares de
+> objectos em runtime»*): ⛔⛔ **a rota da PLACA não corre o passe — `ph2d-gpu-cook` não tem uma
+> única referência a `ph2d-contact`.** Hoje isso é invisível porque toda cena com forma cai no
+> caminho da CPU (medido: a fronteira do planeador é o `motion.duplicator`, com **zero** etapas de
+> GPU, com e sem colisão) — *mas o caminho rápido e a colisão são hoje **mutuamente exclusivos***.
+> Fechar isto é um kernel, com espec própria.
+>
+> ⏳ E o **DESENHO** de N formas vectoriais **não foi medido**: toda a tabela da §20 é do
+> cozimento, e o renderer é outro subsistema.
 
 | item | de quem |
 |---|---|
@@ -180,6 +191,17 @@ filtro**. ⚠️ A 8.ª está documentada **no código** como não-sangrante de 
 nele, com a mesma garantia de bits e o mesmo gate). ⇒ *a superfície de colisão do §2 muda por uma linha
 naquele ficheiro*, e o tecto de LOC do `ph2d-eval-motion/src/lib.rs` foi curado por **CORTE** (o laço das
 tomadas desceu para `taps.rs`, que já é o dono do assunto): `710 → 665`.
+
+**Portão da §20:** formatação limpa · lint `-D warnings` a **zero** nas quatro crates · varredura
+impactada **17 326** testes com **17 326 a passar** (zero vermelhos) · mutação **4 de 5**, com a 5.ª
+a ser o **controlo negativo** (tirar um atalho não pode mudar resposta nenhuma).
+
+⚠️⚠️ **Para quem funde: a §20 muda a BARRA de dois gates de PRODUTO, e uma delas noutra crate**
+(`ph2d-node-sim-step`). Elas eram `1e-6`/`1e-5` — escritas quando o laço varria sempre o tecto
+inteiro — e hoje o produto pára no repouso visível, deixando uma cauda da ordem do limiar
+(`1,4e-5` e `1,1e-4`, esta última `0,011 %` da largura da caixa). ⭐ Os dois ganharam o **controlo
+do viés** no caminho que nunca pára cedo (`separate_all_pairs`), que é o que impede a barra nova de
+esconder um defeito real.
 
 **Portão da §19, sobre a árvore já rebasada:** formatação limpa · lint `-D warnings` a **zero** nas três
 crates · varredura impactada **17 324** testes com **17 323** a passar — o único vermelho é

@@ -69,14 +69,41 @@ fn as_portas_de_ecra_para_mundo_passam_pela_banda_da_cena() {
 
 /// ⛔ **E a própria `scene_window` tem de perguntar ao SPLIT** — se ela devolvesse a janela, as duas
 /// portas acima continuariam verdes sobre o defeito, que é a forma mais barata de uma cura morrer.
+///
+/// ⚠️⚠️ **A PREMISSA DESTE GATE MORREU EM 2026-09-17, e ele foi quem a matou em voz alta.** Ele lia
+/// o fonte do `connector_gesture.rs`, onde a conta vivia — e nesse dia a conta MUDOU DE CASA: eram
+/// **três** cópias dela na shell (`App::scene_window`, `field_gizmo_host::scene_window_of` e a
+/// terceira escrita à mão em cada sítio), e a lei que elas implementam estava violada em ~90
+/// chamadas. Hoje há **uma** porta ([`crate::scene_mapping`]) e as outras duas **delegam**.
+///
+/// ⇒ o gate passa a medir a PORTA, e ganha a metade que faltava: *as duas antigas continuam a
+/// delegar*. Sem essa segunda metade, alguém podia reescrever a conta numa delas e este gate
+/// ficaria verde sobre a quarta cópia — que é exactamente como as três primeiras nasceram.
 #[test]
 fn a_banda_da_cena_e_derivada_do_split_do_centro() {
-    let src = sem_comentarios(include_str!("../../src/connector_gesture.rs"));
+    let porta = sem_comentarios(include_str!("../../src/scene_mapping.rs"));
     for agulha in ["center_split", "scene_camera_window"] {
         assert!(
-            src.contains(agulha),
-            "a `scene_window` não lê `{agulha}` — ela deixou de derivar a banda do split, e as \
-             portas que a chamam voltaram a mapear contra a janela sem uma linha vermelha"
+            porta.contains(agulha),
+            "a porta `scene_mapping` não lê `{agulha}` — ela deixou de derivar a banda do split, e \
+             as ~90 chamadas que a usam voltaram a mapear contra a janela sem uma linha vermelha"
+        );
+    }
+    // ⭐ **A metade nova: as duas portas antigas DELEGAM, não recalculam.**
+    for (ficheiro, src) in [
+        (
+            "connector_gesture.rs",
+            sem_comentarios(include_str!("../../src/connector_gesture.rs")),
+        ),
+        (
+            "field_gizmo_host.rs",
+            sem_comentarios(include_str!("../../src/field_gizmo_host.rs")),
+        ),
+    ] {
+        assert!(
+            src.contains("scene_window()"),
+            "a porta antiga de `{ficheiro}` deixou de delegar na `AppGfx::scene_window` — uma \
+             quarta cópia da mesma conta é como as três primeiras nasceram"
         );
     }
 }

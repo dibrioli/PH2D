@@ -17,7 +17,7 @@ impl crate::App {
         let cfg = self.vec_snap_cfg(self.vec_px_to_world());
         let targets = std::mem::take(&mut self.vec.snap_targets);
         if let Some(gfx) = self.gfx.as_mut() {
-            let win = gfx.surface.size();
+            let win = gfx.scene_window();
             let w = gfx.camera.screen_to_world(self.last_pointer, win);
             // world-units por pixel (delta de 1px) → limiar/traço em px.
             let w0 = gfx.camera.screen_to_world((0.0, 0.0), win);
@@ -427,7 +427,7 @@ impl crate::App {
         if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Text {
             let w = self.gfx.as_ref().map(|gfx| {
                 gfx.camera
-                    .screen_to_world(self.last_pointer, gfx.surface.size())
+                    .screen_to_world(self.last_pointer, gfx.scene_window())
             });
             if let Some(w) = w {
                 self.vec_text_click([f64::from(w[0]), f64::from(w[1])]);

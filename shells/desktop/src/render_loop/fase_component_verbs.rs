@@ -9,15 +9,15 @@ pub(super) struct ComponentVerbsIntents {
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
-    pub(super) fn fase_component_verbs(
-        &mut self,
-        intents: ComponentVerbsIntents,
-        window_size: ph2d_host::WindowSize,
-    ) {
+    pub(super) fn fase_component_verbs(&mut self, intents: ComponentVerbsIntents) {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        // ⭐ **A janela da CENA, não a do quadro** — sob um split do centro a cena desenha num
+        // sub-rectângulo e a projecção MUDA (ver [`crate::scene_mapping`]). Fora do split é a
+        // janela inteira, bit a bit.
+        let janela_da_cena = gfx.scene_window();
         let FrameGfx {
             sim,
             camera,
@@ -57,7 +57,7 @@ impl crate::App {
             );
             let step = crate::input_dispatch::screen_offset_world(
                 camera,
-                window_size,
+                janela_da_cena,
                 crate::input_dispatch::PASTE_OFFSET_PX,
             );
             let mut select_out = None;

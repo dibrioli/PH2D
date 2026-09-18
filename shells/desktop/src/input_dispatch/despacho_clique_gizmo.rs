@@ -38,7 +38,8 @@ impl crate::App {
             if ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity) {
                 return true;
             }
-            let window_size = gfx.surface.size();
+            let window_size =
+                crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size());
             let start_world = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
             // ⚠️ A semeadura do grupo saiu de DENTRO deste bloco (W-JG): ela
             // precisa de `&mut gfx.sim` (o `jointed_group` monta queries) e o
@@ -257,7 +258,8 @@ impl crate::App {
                 && let Some(entity_bits) = hero.gizmo.selection
             {
                 let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-                let window_size = gfx.surface.size();
+                let window_size =
+                    crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size());
                 let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                 let on_pivot_dot = hit_id == Some(ph2d_editor_core::gizmo::ids::GIZMO_PIVOT);
                 // ADR-0111: uma forma vetorial ou um objeto Flip também é
@@ -357,7 +359,7 @@ impl crate::App {
                     &gfx.physics,
                     &gfx.sim,
                     &gfx.camera,
-                    gfx.surface.size(),
+                    crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size()),
                     joint,
                     (evt.x, evt.y),
                     kind,
@@ -389,7 +391,7 @@ impl crate::App {
                 && select_wheel_at(
                     &gfx.physics,
                     &gfx.camera,
-                    gfx.surface.size(),
+                    crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size()),
                     hero,
                     (evt.x, evt.y),
                 );
@@ -432,7 +434,10 @@ impl crate::App {
                 // aqui e no clique simples, e o realce de proveniência ia ser a terceira.
                 let ppm_for_pick = hero.project.pixels_per_meter;
                 let mut pw = crate::hover_highlight::PickWorld {
-                    window_size: gfx.surface.size(),
+                    window_size: crate::scene_mapping::janela(
+                        hero.view.center_split,
+                        gfx.surface.size(),
+                    ),
                     sim: &gfx.sim,
                     vec_scene: &gfx.vec_scene,
                     flip: &gfx.flip,
@@ -500,7 +505,7 @@ impl crate::App {
             // Handles de quina FORA do traço (arco/linha diagonal) seguem
             // escalando — a checagem é só do traço.
             let over_open_vec_stroke = {
-                let window_size = gfx.surface.size();
+                let window_size = gfx.scene_window();
                 let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                 let vec_view = ph2d_vec_entities::entities::view_state_for_pick(
                     &gfx.sim,
@@ -532,7 +537,7 @@ impl crate::App {
             // o gizmo de sprite colapsaria e os handles roubariam o clique.
             // Sobre a arte ⇒ o arrasto é Translate dela (cai no canvas-pick).
             let over_flip_art = {
-                let window_size = gfx.surface.size();
+                let window_size = gfx.scene_window();
                 let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                 !ph2d_app_flip::gizmo_view::pick_all_at_world(
                     &gfx.sim,

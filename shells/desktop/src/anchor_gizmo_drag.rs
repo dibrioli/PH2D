@@ -50,7 +50,7 @@ impl crate::App {
             return false;
         };
         let ppm = hero.project.pixels_per_meter;
-        let window = gfx.surface.size();
+        let window = gfx.scene_window();
         // O raio de agarre é de TELA; converte-se ao mundo pelo mesmo caminho que o ímã do joint.
         let tol = anchor_gizmo::GRAB_PX * gfx.camera.height_world / window.height as f32;
         let [wx, wy] = gfx.camera.screen_to_world((sx, sy), window);
@@ -84,7 +84,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let window = gfx.surface.size();
+        let window = gfx.scene_window();
         let [wx, wy] = gfx.camera.screen_to_world(pointer, window);
         let entity = ph2d_ecs::Entity::from_bits(drag.entity);
         let sim = gfx.sim.world();

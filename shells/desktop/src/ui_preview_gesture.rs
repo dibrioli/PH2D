@@ -30,7 +30,7 @@ impl crate::App {
         let Some(world) = self.vec_world_at((sx, sy)) else {
             return Vec::new();
         };
-        let window_size = gfx.surface.size();
+        let window_size = gfx.scene_window();
         let view = ph2d_vec_entities::entities::view_state_for_pick(
             &gfx.sim,
             &self.vec.entities,

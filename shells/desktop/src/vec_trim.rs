@@ -192,7 +192,7 @@ impl crate::App {
         let gfx = self.gfx.as_ref()?;
         Some(ph2d_app_vec::vec_gizmo_view::stroke_hit_r(
             &gfx.camera,
-            gfx.surface.size(),
+            gfx.scene_window(),
         ))
     }
 

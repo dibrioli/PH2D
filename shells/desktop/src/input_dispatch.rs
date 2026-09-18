@@ -170,7 +170,7 @@ impl App {
         {
             let dx = self.last_pointer.0 - anchor.0;
             let dy = self.last_pointer.1 - anchor.1;
-            let size = gfx.surface.size();
+            let size = gfx.scene_window();
             // ⚠️ **O mundo-por-pixel é o da CENA, não o da JANELA** (report do Enio,
             // 2026-08-25: *«no modo motion a imagem de referência sofre um drift no pan
             // com o mouse»*). Sob o split da tool Motion a cena renderiza num
@@ -228,7 +228,7 @@ impl App {
         // `AppHost` foi preciso* — o que parecia «precisar da `App`» eram três tipos de crate de
         // módulo que a shell por acaso segurava.
         if let Some(gfx) = self.gfx.as_mut() {
-            let window = gfx.surface.size();
+            let window = gfx.scene_window();
             let world = gfx.camera.screen_to_world(self.last_pointer, window);
             let opts = self.physics.interaction.ik_options();
             ph2d_app_physics::body_grab::advance_body_grab(&mut gfx.physics, world);

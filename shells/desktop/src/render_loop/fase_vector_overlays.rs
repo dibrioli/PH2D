@@ -7,7 +7,6 @@ impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_vector_overlays(
         &mut self,
-        window_size: ph2d_host::WindowSize,
         motion_tool_active: bool,
         vector_active: bool,
         vec_xf: ph2d_vec_scene::VecXforms,
@@ -19,6 +18,10 @@ impl crate::App {
     )> {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
+        // ⭐ **A janela da CENA, não a do quadro** — sob um split do centro a cena desenha num
+        // sub-rectângulo e a projecção MUDA (ver [`crate::scene_mapping`]). Fora do split é a
+        // janela inteira, bit a bit.
+        let janela_da_cena = gfx.scene_window();
         let FrameGfx {
             surface,
             renderer,
@@ -118,9 +121,9 @@ impl crate::App {
         // invisível — a saída sem compromisso, como o clique no vazio.
         if let Some(pick) = self.vec.path_pick {
             if vector_active && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select {
-                let w = camera.screen_to_world(self.last_pointer, window_size);
-                let a = camera.screen_to_world((0.0, 0.0), window_size);
-                let b = camera.screen_to_world((1.0, 0.0), window_size);
+                let w = camera.screen_to_world(self.last_pointer, janela_da_cena);
+                let a = camera.screen_to_world((0.0, 0.0), janela_da_cena);
+                let b = camera.screen_to_world((1.0, 0.0), janela_da_cena);
                 // LITERAL-PX-OK: raio de acerto em px, o MESMO do picking de canvas (`path_at`).
                 let hit_r =
                     10.0 * f64::from(((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt());

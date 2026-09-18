@@ -145,7 +145,7 @@ impl crate::App {
             // largar sobre a barra de cima caía no ramo do canvas e **re-texturava a sprite
             // escondida por trás dela**, em silêncio.
             let on_canvas = panel.is_none() && hero.hit_index.hit(x, y).is_none();
-            let world = gfx.camera.screen_to_world((x, y), gfx.surface.size());
+            let world = gfx.camera.screen_to_world((x, y), gfx.scene_window());
             (panel, on_canvas, world)
         };
         Some(if let Some(entity_bits) = inspector_slot {

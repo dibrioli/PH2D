@@ -62,7 +62,7 @@ impl crate::App {
                             (fill.a != 0).then(|| ph2d_vec_scene::Paint::solid(fill));
                         let xforms =
                             ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
-                        let win = gfx.surface.size();
+                        let win = gfx.scene_window();
                         let tol =
                             ph2d_app_vec::vec_gizmo_view::stroke_hit_r(&gfx.camera, win) * 1.5;
                         gfx.vec_scene
@@ -137,7 +137,7 @@ impl crate::App {
             let moved = (start.0 - cur.0).abs() > 1.0 || (start.1 - cur.1).abs() > 1.0;
             if let Some(gfx) = self.gfx.as_mut() {
                 if moved {
-                    let win = gfx.surface.size();
+                    let win = gfx.scene_window();
                     let to_world = |p: (f32, f32)| {
                         let w = gfx.camera.screen_to_world(p, win);
                         [w[0] as f64, w[1] as f64]

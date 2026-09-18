@@ -153,7 +153,7 @@ impl App {
         // ⭐⭐⭐ **A UV de origem vem da PORTA** ([`ph2d_sprite_screen::uv_sob_o_ponteiro`], 2026-09-15) — até aqui
         // era uma caixa alinhada aos eixos tirada da pose LOCAL, cega à rotação, ao pai e à MALHA.
         // Numa arte presa ao esqueleto e dobrada, a máscara de protecção era pintada no texel errado.
-        let window_size = gfx.surface.size();
+        let window_size = gfx.scene_window();
         let uv = ph2d_sprite_screen::uv_sob_o_ponteiro(
             &gfx.sim,
             gfx.present.world_mut(),
@@ -251,7 +251,7 @@ impl App {
             &gfx.sim,
             gfx.present.world_mut(),
             &gfx.camera,
-            gfx.surface.size(),
+            crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size()),
             bits,
             px,
             py,

@@ -107,7 +107,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let w = gfx.camera.screen_to_world((x, y), win);
         self.flip_state.draw.begin(Vec2::new(w[0], w[1]), 1.0);
         true
@@ -122,7 +122,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let w = gfx.camera.screen_to_world((x, y), win);
         let px_per_world = win.height.max(1) as f32 / gfx.camera.height_world.max(f32::EPSILON);
         self.flip_state

@@ -277,7 +277,8 @@ impl crate::App {
         {
             // Canvas pick (M14.7 A) — see commit history
             // for the four conditions enumerated.
-            let window_size = gfx.surface.size();
+            let window_size =
+                crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size());
             let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
             // ⭐ **A porta ÚNICA do pick de objecto** (ver o irmão acima).
             let ppm_for_pick = hero.project.pixels_per_meter;

@@ -19,7 +19,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        let window = gfx.surface.size();
+        let window = gfx.scene_window();
         let world = gfx.camera.screen_to_world((sx, sy), window);
         let playing = self.playhead.is_playing();
         let simulating = self.timeline.flags.simulate_physics;
@@ -69,7 +69,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let window_size = gfx.surface.size();
+        let window_size = gfx.scene_window();
         let world_pos = gfx.camera.screen_to_world((sx, sy), window_size);
         // O sprite mais ao topo sob o cursor que é um CORPO físico e não é a
         // própria entidade-joint.
@@ -161,7 +161,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let window_size = gfx.surface.size();
+        let window_size = gfx.scene_window();
         let world_pos = gfx.camera.screen_to_world((sx, sy), window_size);
         // O sprite mais ao topo sob o cursor que é um CORPO físico e não é a
         // própria roldana — montar uma roldana nela mesma não descreve nada.
@@ -200,7 +200,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let window_size = gfx.surface.size();
+        let window_size = gfx.scene_window();
         let world_pos = gfx.camera.screen_to_world((sx, sy), window_size);
         let tol = ph2d_app_physics::joint_anchor_drag::SNAP_PX * gfx.camera.height_world
             / window_size.height as f32;
@@ -241,7 +241,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let w = gfx.camera.screen_to_world((x, y), win);
         ph2d_app_vec::envelope_gesture::drag(
             &mut gfx.sim,
@@ -263,7 +263,7 @@ impl crate::App {
             self.vec.snap_targets = targets;
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let w = gfx.camera.screen_to_world((x, y), win);
         // `hero_screen` e `vec_scene` são campos IRMÃOS de `AppGfx`: a grade pode ser
         // consultada enquanto o Pen muta a cena.
@@ -297,7 +297,7 @@ impl crate::App {
         let gfx = self.gfx.as_ref()?;
         let sel = self.vec.pen.selected()?;
         let path = gfx.vec_scene.paths().iter().find(|p| p.id == sel)?;
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let w = gfx.camera.screen_to_world(pos, win);
         let (wx, wy) = (w[0] as f64, w[1] as f64);
         let w0 = gfx.camera.screen_to_world((0.0, 0.0), win);
@@ -329,7 +329,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let w = gfx.camera.screen_to_world((x, y), win);
         // O ponto do gradiente é guardado no espaço local do path (ADR-0111).
         let w = match self.vec.entities.get(&sel).and_then(|&b| {
@@ -388,7 +388,7 @@ impl crate::App {
         let Some(w) = self
             .gfx
             .as_ref()
-            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.surface.size()))
+            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.scene_window()))
         else {
             return false;
         };
@@ -419,7 +419,7 @@ impl crate::App {
         let Some(w) = self
             .gfx
             .as_ref()
-            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.surface.size()))
+            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.scene_window()))
         else {
             return false;
         };
@@ -458,7 +458,7 @@ impl crate::App {
         let Some(w) = self
             .gfx
             .as_ref()
-            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.surface.size()))
+            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.scene_window()))
         else {
             return false;
         };

@@ -23,11 +23,9 @@ use ph2d_host::WindowSize;
 /// que torna a troca de `gfx.surface.size()` por esta chamada uma identidade em toda
 /// ferramenta que não divide o centro — e a cura em Motion, que é a única que divide.
 pub(crate) fn scene_window_of(gfx: &crate::AppGfx) -> WindowSize {
-    let split = gfx
-        .hero_screen
-        .as_ref()
-        .map_or(CenterSplit::None, |h| h.view.center_split);
-    scene_camera_window(split, gfx.surface.size())
+    // ⚠️ **DELEGA** desde 2026-09-17 — ver o cabeçalho do [`crate::scene_mapping`]: eram TRÊS
+    // cópias da mesma conta, e a lei que elas implementam foi violada em ~90 sítios.
+    gfx.scene_window()
 }
 
 impl crate::App {

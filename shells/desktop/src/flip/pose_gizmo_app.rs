@@ -18,7 +18,7 @@ impl crate::App {
         let Some(hero) = gfx.hero_screen.as_ref() else {
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let f = FlipFrame {
             flip: &mut gfx.flip,
             playhead: &playhead,
@@ -50,7 +50,7 @@ impl crate::App {
             // Havia arrasto mas não há janela: consome na mesma (era o `return true` de antes).
             return true;
         };
-        let size = gfx.surface.size();
+        let size = gfx.scene_window();
         let cam = ph2d_editor_core::GizmoCamera {
             center: gfx.camera.center,
             height_world: gfx.camera.height_world,

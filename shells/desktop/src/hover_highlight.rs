@@ -159,7 +159,7 @@ impl crate::App {
         }
         let gfx = self.gfx.as_mut()?;
         let mut w = PickWorld {
-            window_size: gfx.surface.size(),
+            window_size: gfx.scene_window(),
             sim: &gfx.sim,
             vec_scene: &gfx.vec_scene,
             flip: &gfx.flip,

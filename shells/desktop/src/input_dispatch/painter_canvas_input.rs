@@ -250,7 +250,7 @@ impl App {
         };
         // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
         let sprite_grid = gfx.sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
-        let window_size = gfx.surface.size();
+        let window_size = gfx.scene_window();
         let camera = gfx.camera;
         let Some((iw, ih, raio_px)) = gfx
             .tools
@@ -383,7 +383,7 @@ impl App {
         };
         // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
         let sprite_grid = gfx.sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
-        let window_size = gfx.surface.size();
+        let window_size = gfx.scene_window();
         // ⭐⭐⭐ **A ARTE DOBRADA MANDA NO PONTEIRO** — o afim abaixo é o do QUAD DE REPOUSO e não
         // sabe o que é uma malha. A lei (e o porquê) vive na [`ph2d_render::mesh_uv`]; `Quad` deixa
         // o caminho de sempre INTOCADO, que é o que mantém a grelha da folha e o *Repeat Image*.

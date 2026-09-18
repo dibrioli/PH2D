@@ -30,7 +30,7 @@ impl crate::App {
         if !self.vector_tool_active() {
             return false;
         }
-        let size = gfx.surface.size();
+        let size = gfx.scene_window();
         let p = gfx.camera.screen_to_world(self.last_pointer, size);
         let Some(frame) = self
             .layout_live
@@ -61,7 +61,7 @@ impl crate::App {
             return [0.0; 2];
         };
         // Quantas unidades de mundo mede um pixel de tela AGORA — a régua sai da própria câmera.
-        let size = gfx.surface.size();
+        let size = gfx.scene_window();
         let a = gfx.camera.screen_to_world((0.0, 0.0), size);
         let b = gfx.camera.screen_to_world((0.0, 1.0), size);
         let per_px = f64::from((b[1] - a[1]).abs()).max(f64::EPSILON);

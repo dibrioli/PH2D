@@ -8,7 +8,7 @@ impl crate::App {
     /// Um clique no ponto de MUNDO `w`, pelo caminho do winit: cursor → botão → botão.
     pub(crate) fn smoke_click(&mut self, w: [f64; 2]) {
         let Some(gfx) = self.gfx.as_ref() else { return };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let s = gfx.camera.world_to_screen([w[0] as f32, w[1] as f32], win);
         self.on_cursor_moved(winit::dpi::PhysicalPosition::new(
             f64::from(s.0),

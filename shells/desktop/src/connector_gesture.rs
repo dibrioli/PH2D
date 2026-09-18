@@ -50,18 +50,11 @@ impl App {
     ///
     /// ⚠️ **A lei já estava escrita**: o doc do `field_gizmo::scene_window_wh` diz *«todo mapeamento
     /// mundo↔tela do chrome da cena TEM de usar isto»*, e esta porta não o usava.
+    /// ⚠️ **DELEGA** para [`crate::AppGfx::scene_window`] desde 2026-09-17 — ela era uma de TRÊS
+    /// cópias da mesma conta, e a porta que sobra pede o MÍNIMO (ver o cabeçalho do
+    /// [`crate::scene_mapping`]).
     pub(crate) fn scene_window(&self) -> Option<ph2d_host::WindowSize> {
-        let gfx = self.gfx.as_ref()?;
-        let split = gfx
-            .hero_screen
-            .as_ref()
-            .map_or(ph2d_editor_core::screens::layout::CenterSplit::None, |h| {
-                h.view.center_split
-            });
-        Some(ph2d_app_motion::field_gizmo::scene_camera_window(
-            split,
-            gfx.surface.size(),
-        ))
+        Some(self.gfx.as_ref()?.scene_window())
     }
 
     /// O ponto de MUNDO sob um ponto de tela. `None` antes do primeiro frame (sem `gfx`).
@@ -92,7 +85,7 @@ impl App {
     /// o filtro.)
     pub(crate) fn shape_under_cursor(&self, world: [f64; 2]) -> Option<VecPathId> {
         let gfx = self.gfx.as_ref()?;
-        let window_size = gfx.surface.size();
+        let window_size = gfx.scene_window();
         let view = ph2d_vec_entities::entities::view_state_for_pick(
             &gfx.sim,
             &self.vec.entities,
@@ -197,7 +190,7 @@ impl App {
         let Some(w) = self
             .gfx
             .as_ref()
-            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.surface.size()))
+            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.scene_window()))
         else {
             return false;
         };

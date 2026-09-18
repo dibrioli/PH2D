@@ -54,14 +54,14 @@ impl crate::App {
         self.fase_image_tools_mode_and_pills();
         let image_apply = self.fase_image_tool_bridges(window_size)?;
         let painter_apply_committed = self.fase_painter_dispatch(window_size, viewport)?;
-        let (vector_active, vec_px_to_world) = self.fase_vector_scale(window_size)?;
+        let (vector_active, vec_px_to_world) = self.fase_vector_scale()?;
         let view = HeroView {
             window_size,
             viewport,
             vector_active,
             vec_px_to_world,
         };
-        self.fase_hero_document_verbs(&mut pd, report, window_size)?;
+        self.fase_hero_document_verbs(&mut pd, report)?;
         self.fase_hero_tools(&mut pd, view)?;
         let reparent_intent =
             self.fase_hero_scene(&mut pd, view, motion_tool_active, tool_preview_bits)?;
@@ -80,7 +80,6 @@ impl crate::App {
         &mut self,
         pd: &mut fase_bus_drain::DrainOut,
         report: ph2d_core::FixedStepReport,
-        window_size: ph2d_host::WindowSize,
     ) -> Option<()> {
         self.fase_blend_and_morph(fase_blend_and_morph::BlendAndMorphIntents {
             pending_create_blend: take(&mut pd.pending_create_blend),
@@ -237,12 +236,9 @@ impl crate::App {
             },
             report,
         );
-        self.fase_component_verbs(
-            fase_component_verbs::ComponentVerbsIntents {
-                pending_component: take(&mut pd.pending_component),
-            },
-            window_size,
-        );
+        self.fase_component_verbs(fase_component_verbs::ComponentVerbsIntents {
+            pending_component: take(&mut pd.pending_component),
+        });
         Some(())
     }
 

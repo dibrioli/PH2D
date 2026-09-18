@@ -44,7 +44,7 @@ impl App {
         };
         // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
         let sprite_grid = gfx.sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
-        let window_size = gfx.surface.size();
+        let window_size = gfx.scene_window();
         let Some(tool) = gfx.tools.active_mut() else {
             return false;
         };

@@ -81,7 +81,7 @@ impl crate::App {
             }
         }
         let hit = self.gfx.as_ref().and_then(|gfx| {
-            let win = gfx.surface.size();
+            let win = gfx.scene_window();
             let w = gfx.camera.screen_to_world(self.last_pointer, win);
             let w0 = gfx.camera.screen_to_world((0.0, 0.0), win);
             let w1 = gfx.camera.screen_to_world((1.0, 0.0), win);

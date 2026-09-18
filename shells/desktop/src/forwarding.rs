@@ -71,7 +71,7 @@ pub fn forward_to_hero(
                 &gfx.sim,
                 gfx.present.world_mut(),
                 &gfx.camera,
-                gfx.surface.size(),
+                crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size()),
                 selection,
                 on_panel,
                 px as f32,

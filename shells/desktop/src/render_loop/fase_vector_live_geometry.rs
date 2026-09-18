@@ -21,6 +21,10 @@ impl crate::App {
     )> {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
+        // ⭐ **A janela da CENA, não a do quadro** — sob um split do centro a cena desenha num
+        // sub-rectângulo e a projecção MUDA (ver [`crate::scene_mapping`]). Fora do split é a
+        // janela inteira, bit a bit.
+        let janela_da_cena = gfx.scene_window();
         let FrameGfx {
             sim,
             camera,
@@ -51,7 +55,7 @@ impl crate::App {
                 // linha seguir a câmera, e panhar o canvas arrastaria o eixo junto.
                 let origin = *self.vec.symmetry_origin.get_or_insert_with(|| {
                     let (w, h) = (window_size.width as f32, window_size.height as f32);
-                    let c = camera.screen_to_world((w * 0.5, h * 0.5), window_size);
+                    let c = camera.screen_to_world((w * 0.5, h * 0.5), janela_da_cena);
                     [f64::from(c[0]), f64::from(c[1])]
                 });
                 self.symmetry_live.adopt(

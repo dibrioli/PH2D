@@ -16,7 +16,7 @@ impl crate::App {
         // corre na mesma — limpar o hover ao sair do Segment não depende de haver janela.
         let mut gfx = self.gfx.as_mut();
         let f = gfx.as_mut().map(|g| {
-            let win = g.surface.size();
+            let win = g.scene_window();
             FlipFrame {
                 flip: &mut g.flip,
                 playhead: &playhead,

@@ -46,7 +46,7 @@ impl App {
             return;
         };
         let pixels_per_meter = hero.project.pixels_per_meter;
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         // macOS-only: winit 0.30 does NOT emit `CursorMoved` during
         // external file drag operations (see
         // winit-0.30.13/src/platform_impl/macos/window_delegate.rs —

@@ -20,7 +20,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let mut f = FlipFrame {
             flip: &mut gfx.flip,
             playhead: &playhead,
@@ -54,7 +54,7 @@ impl crate::App {
             // Havia gesto mas não há janela: consome na mesma (o `return true` de antes).
             return true;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let mut f = FlipFrame {
             flip: &mut gfx.flip,
             playhead: &playhead,

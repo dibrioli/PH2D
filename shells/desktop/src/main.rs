@@ -397,6 +397,9 @@ mod project_texture_pattern;
 mod project_tokens;
 mod radial_input;
 mod render_loop;
+/// ⭐⭐⭐ **A janela em que a CENA vive** — a porta única de todo mapeamento mundo↔tela do chrome.
+/// ⛔ A lei está escrita desde 07/25 e foi paga TRÊS vezes curando um consumidor de cada vez.
+mod scene_mapping;
 mod scroll_smoke;
 /// ⭐ **O gémeo NEUTRO do acima** — as três respostas que o resto do app espera quando a família
 /// não foi compilada. Ver o cabeçalho dele: gatear os chamadores era a cura errada.

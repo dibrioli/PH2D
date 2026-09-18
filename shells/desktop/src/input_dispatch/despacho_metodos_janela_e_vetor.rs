@@ -317,7 +317,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let base = gfx.camera.screen_to_world((0.0, 0.0), win);
         let moved = gfx
             .camera
@@ -347,7 +347,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return (0.0, 0.0);
         };
-        screen_offset_world(&gfx.camera, gfx.surface.size(), px)
+        screen_offset_world(&gfx.camera, gfx.scene_window(), px)
     }
 
     /// **Um campo de entrada de TEXTO tem o foco do teclado?**
@@ -518,7 +518,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let target = gfx.camera.screen_to_world((x, y), win);
         let moved = ph2d_vec_entities::transform::move_origin_to(
             &mut gfx.sim,

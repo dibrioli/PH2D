@@ -21,7 +21,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let f = FlipFrame {
             flip: &mut gfx.flip,
             playhead: &playhead,
@@ -38,7 +38,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let f = FlipFrame {
             flip: &mut gfx.flip,
             playhead: &playhead,

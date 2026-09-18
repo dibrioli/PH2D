@@ -159,7 +159,7 @@ impl crate::app_state::App {
         let Some(w) = self
             .gfx
             .as_ref()
-            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.surface.size()))
+            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.scene_window()))
         else {
             return false;
         };

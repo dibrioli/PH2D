@@ -52,7 +52,7 @@ impl App {
         };
         // ⭐⭐⭐ **A UV de origem vem da PORTA** ([`ph2d_sprite_screen::uv_sob_o_ponteiro`], 2026-09-15) — até aqui
         // era uma caixa alinhada aos eixos tirada da pose LOCAL, cega à rotação, ao pai e à MALHA.
-        let window_size = gfx.surface.size();
+        let window_size = gfx.scene_window();
         let uv = ph2d_sprite_screen::uv_sob_o_ponteiro(
             &gfx.sim,
             gfx.present.world_mut(),

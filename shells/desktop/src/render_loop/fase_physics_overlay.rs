@@ -14,6 +14,10 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        // ⭐ **A janela da CENA, não a do quadro** — sob um split do centro a cena desenha num
+        // sub-rectângulo e a projecção MUDA (ver [`crate::scene_mapping`]). Fora do split é a
+        // janela inteira, bit a bit.
+        let janela_da_cena = gfx.scene_window();
         let FrameGfx {
             sim,
             camera,
@@ -74,7 +78,7 @@ impl crate::App {
         // Onde o cursor está, em mundo — a âncora da mira das ferramentas de
         // ponto (W-Hand). Derivada aqui e não guardada: o `last_pointer` é a
         // única fonte, e uma cópia dela desenharia a mira onde o mouse ESTAVA.
-        let pointer_world = camera.screen_to_world(self.last_pointer, window_size);
+        let pointer_world = camera.screen_to_world(self.last_pointer, janela_da_cena);
         // The begin-flashes (`×`) — the visible half of the contact-events channel,
         // a separate list from the standing `+` crosses because a flash marks a
         // BEGINNING and outlives the tick it was born in (W-TickContacts).

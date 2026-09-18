@@ -41,7 +41,8 @@ impl crate::App {
                 if !moved_ids.is_empty() {
                     let fill = self.vec.pen.style().fill;
                     let fill_on_close = (fill.a != 0).then(|| ph2d_vec_scene::Paint::solid(fill));
-                    let win = gfx.surface.size();
+                    let win =
+                        crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size());
                     let tol = ph2d_app_vec::vec_gizmo_view::stroke_hit_r(&gfx.camera, win) * 1.5;
                     // O alinhamento (bordas/centros/vértices + grade, com guias)
                     // já foi aplicado ao vivo pelo motor de snap durante o
@@ -111,7 +112,8 @@ impl crate::App {
                 let dy = rb.current_screen.1 - rb.anchor_screen.1;
                 let moved = (dx * dx + dy * dy) > 16.0; // > 4 px
                 if moved {
-                    let window_size = gfx.surface.size();
+                    let window_size =
+                        crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size());
                     let world_a = gfx.camera.screen_to_world(rb.anchor_screen, window_size);
                     let world_b = gfx.camera.screen_to_world(rb.current_screen, window_size);
                     let rmin = [world_a[0].min(world_b[0]), world_a[1].min(world_b[1])];

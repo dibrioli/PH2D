@@ -68,7 +68,7 @@ impl App {
         };
         let mut ctx = CanvasCtx {
             camera: &gfx.camera,
-            window: gfx.surface.size(),
+            window: gfx.scene_window(),
             sim: &mut gfx.sim,
             bridge: &gfx.physics,
             present: &mut gfx.present,
@@ -85,7 +85,7 @@ impl App {
         };
         let ctx = CanvasCtx {
             camera: &gfx.camera,
-            window: gfx.surface.size(),
+            window: gfx.scene_window(),
             sim: &mut gfx.sim,
             bridge: &gfx.physics,
             present: &mut gfx.present,
@@ -102,7 +102,7 @@ impl App {
         };
         let mut ctx = CanvasCtx {
             camera: &gfx.camera,
-            window: gfx.surface.size(),
+            window: gfx.scene_window(),
             sim: &mut gfx.sim,
             bridge: &gfx.physics,
             present: &mut gfx.present,
@@ -126,7 +126,7 @@ impl App {
         };
         let mut ctx = CanvasCtx {
             camera: &gfx.camera,
-            window: gfx.surface.size(),
+            window: gfx.scene_window(),
             sim: &mut gfx.sim,
             bridge: &gfx.physics,
             present: &mut gfx.present,

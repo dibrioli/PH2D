@@ -179,7 +179,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let w = gfx.camera.screen_to_world((x, y), win);
         crate::vec_text_ride::handle::drag(
             &mut gfx.sim,
@@ -242,7 +242,7 @@ impl crate::App {
             &self.timeline.doc,
             selected,
             &gfx.camera,
-            gfx.surface.size(),
+            gfx.scene_window(),
             x,
             y,
         ) else {
@@ -279,7 +279,7 @@ impl crate::App {
             &self.timeline.doc,
             selected,
             &gfx.camera,
-            gfx.surface.size(),
+            gfx.scene_window(),
             x,
             y,
         ) else {
@@ -338,7 +338,7 @@ impl crate::App {
             &self.timeline.doc,
             selected,
             &gfx.camera,
-            gfx.surface.size(),
+            gfx.scene_window(),
             x,
             y,
         ) else {
@@ -365,7 +365,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
         };
-        let w = gfx.camera.screen_to_world((x, y), gfx.surface.size());
+        let w = gfx.camera.screen_to_world((x, y), gfx.scene_window());
         match grab {
             MotionPathGrab::Anchor { target, i } => {
                 let Some(mut a) = self.timeline.doc.path_anchor(target, i) else {
@@ -392,7 +392,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        let win = gfx.surface.size();
+        let win = gfx.scene_window();
         let w = gfx.camera.screen_to_world((x, y), win);
         crate::pattern_live::handle::drag(
             &mut gfx.sim,

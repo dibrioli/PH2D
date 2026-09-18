@@ -7,9 +7,6 @@ use ph2d_poly2d::GridOptions;
 /// O `pixels_per_meter` de omissão do projecto.
 const PPM: f32 = 100.0;
 
-/// A escala da câmera das fixturas, em pixels de ecrã por metro de mundo.
-const PX_POR_METRO: f64 = 50.0;
-
 /// Uma sprite de `size` metros locais, com a âncora dada.
 fn sprite(w: f32, h: f32, ax: f32, ay: f32) -> Sprite {
     Sprite {
@@ -295,7 +292,7 @@ fn at_rest_each_pixel_of_a_bound_image_is_read_where_the_quad_reads_it() {
         let mut present = PresentWorld::new();
         let p = present.world_mut().spawn((SimRef(e), inst)).id();
         assert_eq!(
-            attach_skin_meshes(&sim, &mut present, PPM, None, PX_POR_METRO, &[]),
+            attach_skin_meshes(&sim, &mut present, PPM, &[]),
             1,
             "{nome}: a instancia da imagem presa nao recebeu malha"
         );
@@ -384,7 +381,7 @@ fn only_the_base_instance_of_the_sprites_own_quad_gets_the_mesh() {
     let patch_c = present.world_mut().spawn((SimRef(c), patch)).id();
 
     assert_eq!(
-        attach_skin_meshes(&sim, &mut present, PPM, None, PX_POR_METRO, &[]),
+        attach_skin_meshes(&sim, &mut present, PPM, &[]),
         1,
         "so' a imagem com o quad dela emitido podia receber malha"
     );
@@ -402,20 +399,48 @@ fn only_the_base_instance_of_the_sprites_own_quad_gets_the_mesh() {
     );
 }
 
-/// ⭐⭐⭐ **O ORÇAMENTO DO `Smooth` É DO QUADRO, e reparte-se pelas imagens presas.**
+/// ⏱️ **A SONDA DO CUSTO por quadro** — filha por ASSUNTO (e pelo tecto de LOC).
 ///
-/// ⚠️ Um tecto por IMAGEM não é um tecto do quadro: N imagens presas multiplicam-no.
+/// ⚠️ **A declaração dela foi APAGADA por acidente na wave de 2026-09-17** e o
+/// `architecture_no_orphan_source_file` apanhou-a: um `.rs` que nenhum `mod` alcança **não é
+/// compilado**, e `check`, `clippy` e as suítes ficam todos VERDES sobre um ficheiro inteiro que
+/// deixou de existir para o build.
+#[path = "skin_image_cost_tests.rs"]
+mod custo;
+
+/// ⛔⛔⛔ **O GATE QUE VIVIA AQUI PERDEU O SUJEITO EM 2026-09-17** — ele chamava-se
+/// `the_smooth_pieces_of_all_skinned_images_share_one_frame_budget` e afirmava que o orçamento de
+/// REFINAMENTO do quadro se repartia pelas imagens presas.
 ///
-/// ⚠️ **A fixtura escolhe o orçamento para as duas leis darem respostas diferentes:** com
-/// `B = 9 t` (`t` triângulos por imagem), um tecto por imagem deixa cada uma refinar a `k = 3` e o
-/// quadro emite `18 t > B`; repartido, cada uma recebe `4,5 t` e fica em `k = 2` (`8 t ≤ B`). ⚠️ E
-/// as duas têm de refinar — um orçamento que coubesse por dar tudo a uma e nada à outra passaria na
-/// primeira metade.
+/// Não há refinamento por quadro: a fileira `Deform` foi apagada por ordem do dono (o `Fast` e o
+/// `Smooth` desenhavam a mesma coisa a menos de `0,04 px`), e a densidade passou a ser uma decisão
+/// do BIND ([`crate::skin_bake_cache`]). *Um orçamento de um trabalho que já não acontece não tem o
+/// que repartir.*
 ///
-/// ⚠️ **Dois ossos, e o de baixo dobrado**: com um osso só a pele é um movimento rígido, o campo é
-/// linear, o `Smooth` pede `k = 1` e o gate compararia `Fast` com `Fast`.
+/// ⚠️ **O que ficou no lugar** é a afirmação que continua a ter sujeito: a malha que o quadro
+/// desenha é a do memo, e ela **não depende de quantas imagens a cena tem**.
 #[test]
-fn the_smooth_pieces_of_all_skinned_images_share_one_frame_budget() {
+fn a_malha_desenhada_nao_depende_de_quantas_imagens_a_cena_tem() {
+    let uma = pecas_desenhadas(1);
+    let duas = pecas_desenhadas(2);
+    assert_eq!(
+        duas.len(),
+        2,
+        "as duas imagens presas tinham de receber malha"
+    );
+    assert_eq!(
+        duas[0], duas[1],
+        "fixtura: as duas malhas tinham de ter o mesmo tamanho"
+    );
+    assert_eq!(
+        uma[0], duas[0],
+        "a malha de uma imagem encolheu por haver outra na cena — a densidade voltou a ser uma \
+         decisao do QUADRO"
+    );
+}
+
+/// As peças que cada uma de `n` imagens presas (a mesma arte) desenha num quadro.
+fn pecas_desenhadas(n: usize) -> Vec<usize> {
     let mut sim = SimWorld::default();
     let raiz = crate::bone::create(&mut sim, None, [-2.0, 0.0], [0.0, 0.0]).expect("raiz");
     let raiz = Entity::from_bits(raiz);
@@ -423,11 +448,8 @@ fn the_smooth_pieces_of_all_skinned_images_share_one_frame_budget() {
     let s = sprite(4.0, 2.0, 0.0, 0.0);
     let mut present = PresentWorld::new();
     let mut instancias = Vec::new();
-    for _ in 0..2 {
-        let e = sim
-            .world_mut()
-            .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))
-            .id();
+    for _ in 0..n {
+        let e = sim.world_mut().spawn((Transform::IDENTITY, s)).id();
         assert!(crate::skin_live::bind_image(
             &mut sim,
             e,
@@ -448,60 +470,19 @@ fn the_smooth_pieces_of_all_skinned_images_share_one_frame_budget() {
         .get_mut::<Transform>(Entity::from_bits(ponta))
         .expect("Transform da ponta")
         .rotation = 1.0;
-
-    let mut desenha = |modo: Option<RefineOptions>| -> Vec<usize> {
-        for &p in &instancias {
-            present.world_mut().entity_mut(p).remove::<SpriteMesh>();
-        }
-        assert_eq!(
-            attach_skin_meshes(&sim, &mut present, PPM, modo, PX_POR_METRO, &[]),
-            2,
-            "as duas imagens presas tinham de receber malha"
-        );
-        instancias
-            .iter()
-            .map(|&p| {
-                present
-                    .world()
-                    .get::<SpriteMesh>(p)
-                    .expect("malha")
-                    .tris
-                    .len()
-            })
-            .collect()
-    };
-
-    let fast = desenha(None);
-    assert_eq!(
-        fast[0], fast[1],
-        "fixtura: as duas malhas tinham de ter o mesmo tamanho"
-    );
-    let t = fast[0];
-    assert!(
-        t > 1,
-        "fixtura: a malha guardada tem de ter mais de um triangulo"
-    );
-
-    let orcamento = 9 * t;
-    let suave = desenha(Some(RefineOptions {
-        tolerance_px: 1e-3,
-        max_pieces: orcamento,
-        ..RefineOptions::default()
-    }));
-    let total: usize = suave.iter().sum();
-    assert!(
-        total <= orcamento,
-        "o quadro emitiu {total} pecas contra um orcamento de {orcamento} ({suave:?}) — o tecto \
-         esta' a ser aplicado POR IMAGEM, e N imagens presas multiplicam-no"
-    );
-    assert!(
-        suave.iter().all(|&n| n > t),
-        "o orcamento coube por nao refinar uma das imagens ({suave:?} contra {t} no Fast)"
-    );
+    attach_skin_meshes(&sim, &mut present, PPM, &[]);
+    instancias
+        .iter()
+        .map(|&p| {
+            present
+                .world()
+                .get::<SpriteMesh>(p)
+                .expect("malha")
+                .tris
+                .len()
+        })
+        .collect()
 }
-/// ⏱️ **A SONDA DO CUSTO por quadro** — filha por ASSUNTO (e pelo tecto de LOC).
-#[path = "skin_image_cost_tests.rs"]
-mod custo;
 
 /// **A malha, já POSADA** — os vértices de repouso levados pela pele para onde eles estão agora.
 ///
@@ -544,24 +525,21 @@ mod at_time;
 #[path = "skin_suspend_tests.rs"]
 mod suspensao;
 
-/// ⭐⭐⭐ **O `Smooth` PERGUNTA AO MEMO DA ASSADURA; O `Fast` NÃO** — a costura que faz o painel
-/// continuar a escolher depois da F9 W2b.
+/// ⭐⭐⭐ **O QUADRO PERGUNTA SEMPRE AO MEMO DA ASSADURA** — e a premissa deste gate mudou em
+/// 2026-09-17, no dia seguinte ao dia em que ele nasceu.
 ///
-/// ⛔⛔ **Sem a segunda metade a wave inteira muda de sentido em silêncio:** se o `Fast` também
-/// passasse pelo memo, ele desenharia a malha assada — `5,76×` maior na arte do dono — e o botão
-/// que existe para ser barato deixava de o ser, **sem uma linha de diferença na tela** (as duas
-/// malhas desenham a mesma arte). *Um botão que deixa de ser barato e continua a parecer igual é o
-/// defeito mais caro que esta família sabe produzir.*
+/// Ele chamava-se `the_smooth_asks_the_bake_memo_and_the_fast_does_not` e media a metade que o
+/// `Deform` decidia. A fileira foi apagada por ordem do dono (as duas leis desenhavam a mesma coisa
+/// a menos de `0,04 px`), logo **não há duas metades**: há uma lei, e ela consulta o memo.
 ///
-/// ⚠️ **A régua é a GAVETA e não a malha**, e é por isso que ela funciona com a porta
-/// (`PH2D_SKIN_BAKE`) FECHADA, que é como o processo dos testes corre: com ela fechada a assadura
-/// responde `None`, o memo guarda o `None`, e a **consulta** continua a ser observável. *Uma régua
-/// que medisse as peças entregues não distinguiria «não consultou» de «consultou e não havia».*
+/// ⚠️ **A régua continua a ser a GAVETA e não a malha**, e por isso funciona com a porta da
+/// assadura FECHADA: ali a resposta é `None`, o memo guarda-a, e a **consulta** continua a ser
+/// observável. *Uma régua que medisse peças entregues não distinguiria «não consultou» de
+/// «consultou e não havia».*
 ///
-/// (Mutação: o `smooth.is_some()` da troca virar `true` ⇒ RED na metade do `Fast`; virar `false`
-/// ⇒ RED na do `Smooth`.)
+/// (Mutação: a troca pelo memo apagada ⇒ RED em `gavetas() == 1`.)
 #[test]
-fn the_smooth_asks_the_bake_memo_and_the_fast_does_not() {
+fn o_quadro_pergunta_sempre_ao_memo_da_assadura() {
     let mut sim = SimWorld::default();
     let osso = crate::bone::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
     let s = sprite(4.0, 2.0, 0.0, 0.0);
@@ -580,34 +558,21 @@ fn the_smooth_asks_the_bake_memo_and_the_fast_does_not() {
         .world_mut()
         .spawn((SimRef(e), instancia_de(&s)))
         .id();
-    let opcoes = RefineOptions {
-        tolerance_px: 0.5,
-        max_pieces: SKIN_FRAME_PIECES,
-        adaptativo: true,
-    };
 
-    // O `Fast`: nenhuma gaveta é aberta.
     crate::skin_bake_cache::esquece_tudo();
-    present.world_mut().entity_mut(p).remove::<SpriteMesh>();
-    attach_skin_meshes(&sim, &mut present, PPM, None, PX_POR_METRO, &[]);
+    attach_skin_meshes(&sim, &mut present, PPM, &[]);
     assert!(
         present.world().get::<SpriteMesh>(p).is_some(),
-        "o CONTROLO caiu: sem malha posta, as duas metades ficam verdes por vacuo"
+        "o CONTROLO caiu: sem malha posta, o gate fica verde por vacuo"
     );
-    assert_eq!(
-        crate::skin_bake_cache::gavetas(),
-        0,
-        "o `Fast` consultou o memo da assadura"
-    );
-
-    // O `Smooth`: exactamente uma — a desta arte.
-    crate::skin_bake_cache::esquece_tudo();
-    present.world_mut().entity_mut(p).remove::<SpriteMesh>();
-    attach_skin_meshes(&sim, &mut present, PPM, Some(opcoes), PX_POR_METRO, &[]);
-    assert!(present.world().get::<SpriteMesh>(p).is_some());
     assert_eq!(
         crate::skin_bake_cache::gavetas(),
         1,
-        "o `Smooth` nao perguntou ao memo da assadura"
+        "o quadro nao perguntou ao memo da assadura"
     );
+
+    // ⛔ E a 2.ª passagem não abre gaveta nova — é o memo a ser um memo, pela porta do PRODUTO.
+    present.world_mut().entity_mut(p).remove::<SpriteMesh>();
+    attach_skin_meshes(&sim, &mut present, PPM, &[]);
+    assert_eq!(crate::skin_bake_cache::gavetas(), 1);
 }

@@ -19,8 +19,6 @@ impl crate::App {
         ppm: f32,
         default_filter: ph2d_ecs::FilterMode,
     ) {
-        // A escolha do artista, lida antes do empréstimo do `gfx`.
-        let pele_suave = ph2d_app_vec::pele_suave(self.vec.draw_config.skin_deform);
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -37,7 +35,6 @@ impl crate::App {
             sort_scratch,
             sort_inputs,
             frame_order,
-            surface,
             hero_screen,
             ..
         } = FrameGfx::of(gfx);
@@ -65,13 +62,10 @@ impl crate::App {
         // passe de sprites troca o quad de cada uma pela malha posada.
         //
         // ⚠️ **O `ppm` é o MESMO do extract:** a régua da imagem e o quad resolvem a mesma âncora.
-        // ⚠️ E a escala da câmera é a da CENA (`scene_camera_window`, a porta que o split do Motion
-        // pede a todo mapeamento mundo↔ecrã), que é onde a tolerância do `Smooth` é medida.
-        let px_por_metro = ph2d_app_motion::field_gizmo::scene_px_per_world(
-            camera,
-            hero_screen.as_ref().map(|h| h.view.center_split),
-            surface.size(),
-        );
+        //
+        // ⛔ **A escala da CÂMERA saiu daqui em 2026-09-17**, com a fileira `Deform`: ela existia
+        // para converter a tolerância do refinamento por quadro para pixels de ecrã, e não há
+        // refinamento por quadro — a densidade é uma decisão do BIND.
         // ⭐⭐⭐ **EDITAR PIXELS ACHATA A ARTE** (regra do dono, F6-s): a sprite que a ferramenta
         // edita não recebe malha — a tabela e a exceção do Liquify vivem na porta.
         let achatadas = ph2d_app_painter::skin_suspend::achata_e_avisa(
@@ -83,13 +77,6 @@ impl crate::App {
             |e| ph2d_skeleton_live::skin_image::is_skinned_image(sim.world(), e),
             toasts,
         );
-        crate::skeleton_skin_image::attach_skin_meshes(
-            sim,
-            present,
-            ppm,
-            pele_suave,
-            px_por_metro,
-            &achatadas,
-        );
+        crate::skeleton_skin_image::attach_skin_meshes(sim, present, ppm, &achatadas);
     }
 }

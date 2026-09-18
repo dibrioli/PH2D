@@ -27,14 +27,6 @@ impl crate::App {
             })
         });
         ph2d_panel_skeleton::set_current_skinned(presa);
-        // ⭐ E a pergunta da fileira *Deform*, que é OUTRA: ela é sobre a CENA, porque a
-        // escolha é global. ⛔ Varrer `selected_paths` aqui não a responderia — uma imagem
-        // presa é uma sprite, e nunca aparece naquela lista.
-        ph2d_panel_skeleton::set_current_skinned_image(
-            sim.world()
-                .iter_entities()
-                .any(|er| crate::skeleton_skin_image::is_skinned_image(sim.world(), er.id())),
-        );
         // E se a CENA tem esqueleto — é isso que faz a seção aparecer (ou não) fora do modo
         // Osso. ⛔ Sem esta metade ela seria um cabeçalho permanente num app que nunca viu
         // um osso, que é exactamente o report que a tabela de escopo curou em 31/08.
@@ -54,10 +46,5 @@ impl crate::App {
         ph2d_panel_skeleton::set_current_bone_tool(ferramenta_osso.then(|| {
             usize::from(self.vec.draw_config.bone_action == ph2d_tool_vector::BoneAction::Transform)
         }));
-        // ⭐ E COMO a pele é desenhada (report das arestas retas, 2026-09-10) — também como
-        // ÍNDICE, e ⛔ sem `Option`: esta pergunta tem sempre resposta.
-        ph2d_panel_skeleton::set_current_skin_deform(usize::from(
-            self.vec.draw_config.skin_deform == ph2d_tool_vector::SkinDeform::Smooth,
-        ));
     }
 }

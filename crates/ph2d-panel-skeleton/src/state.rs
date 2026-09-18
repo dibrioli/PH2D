@@ -197,46 +197,6 @@ pub(crate) fn bone_tool() -> Option<usize> {
     BONE_TOOL.with(Cell::get)
 }
 
-thread_local! {
-    /// ⭐⭐⭐ **A CENA TEM UMA IMAGEM PRESA?** — o sujeito da fileira *Deform*.
-    ///
-    /// ⛔⛔ **Ela NÃO é a [`skinned`], e a distinção foi achada antes do smoke:** aquela pergunta é
-    /// *«a SELECÇÃO é uma forma presa?»*, e a resposta dela varre **caminhos vectoriais** — uma
-    /// imagem presa é uma *sprite*, logo nunca lá aparece. Ligar a fileira àquela pergunta
-    /// deixá-la-ia **viva e inalcançável**: pintada em código, nunca na tela.
-    ///
-    /// ⚠️ **E a pergunta certa é sobre a CENA, não sobre a selecção**, porque a escolha é GLOBAL:
-    /// ela vive na ferramenta e vale para toda imagem presa. Uma fileira que só aparecesse com a
-    /// imagem escolhida prometeria uma propriedade por-objecto que não existe.
-    static HAS_SKINNED_IMAGE: Cell<bool> = const { Cell::new(false) };
-
-    /// ⭐ **COMO a pele é desenhada** — o ÍNDICE em `ph2d_tool_vector::SkinDeform::ALL`.
-    ///
-    /// ⚠️ **Um ÍNDICE e não o enum**, pela MESMA razão do verbo do arrasto: é o que mantém este
-    /// painel sem depender da crate da ferramenta de vector, e quem alinha as duas listas é a
-    /// POSIÇÃO. ⛔ Sem `Option`: ao contrário do verbo, esta pergunta tem **sempre** resposta —
-    /// alguma coisa está a desenhar a pele, e nenhum segmento aceso mentiria.
-    static SKIN_DEFORM: Cell<usize> = const { Cell::new(0) };
-}
-
-/// **A cena tem alguma imagem presa ao esqueleto?** (shell → painel).
-pub fn set_current_skinned_image(v: bool) {
-    HAS_SKINNED_IMAGE.with(|c| c.set(v));
-}
-
-pub(crate) fn skinned_image() -> bool {
-    HAS_SKINNED_IMAGE.with(Cell::get)
-}
-
-/// **Como a pele é desenhada** (shell → painel), o report das arestas retas de 2026-09-10.
-pub fn set_current_skin_deform(v: usize) {
-    SKIN_DEFORM.with(|c| c.set(v));
-}
-
-pub(crate) fn skin_deform() -> usize {
-    SKIN_DEFORM.with(Cell::get)
-}
-
 /// A âncora do osso em foco e os três números dela (`mix`, `softness`, `chain`). `None` ⇒ ele não
 /// tem uma, e o painel oferece a porta de entrada.
 pub fn set_current_bone_ik(v: Option<(f64, f64, f64, ph2d_skeleton::BendSide)>) {

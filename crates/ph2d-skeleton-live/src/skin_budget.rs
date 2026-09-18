@@ -3,6 +3,16 @@
 //! presa desenha-se como malha*, aqui **o orçamento e a lei que o reparte**.
 //!
 //! ⚠️ **O endereço não mudou:** o [`crate::skin_image`] re-exporta as duas coisas públicas daqui.
+//!
+//! ⛔⛔⛔ **A `parte_do_orcamento` e a `avisa_malhas_acima_do_orcamento` MORRERAM em 2026-09-17**,
+//! com a fileira `Deform` (ordem do dono). As duas existiam para repartir e para avisar sobre um
+//! **refinamento POR QUADRO** que já não acontece: a densidade é uma decisão do BIND
+//! ([`crate::skin_bake_cache`]) e o quadro só posa o que lhe chega.
+//!
+//! ⚠️ **O que fica deste módulo é BANCADA**, não produto: o [`SKIN_FRAME_PIECES`] e as
+//! [`refine_options`] continuam a ser a régua contra a qual os gates medem a lei de referência
+//! ([`crate::skin_refine`]), que é o caminho de ANTES. *Um caminho de referência que só a bancada
+//! corre é legítimo; o que não pode existir é um que o produto chame sem ninguém saber.*
 
 use ph2d_poly2d::RefineOptions;
 
@@ -119,45 +129,5 @@ pub fn refine_options() -> RefineOptions {
         max_pieces: escolhido.unwrap_or(SKIN_FRAME_PIECES),
         adaptativo,
         ..RefineOptions::default()
-    }
-}
-
-/// ⭐ **A parte do orçamento do quadro que cabe a uma imagem** — proporcional à malha que ela guarda,
-/// e nunca abaixo dela (a malha guardada é o desenho mínimo; não há como desenhá-la com menos).
-///
-/// ⚠️ **Proporcional dá a todas o MESMO factor de crescimento**, logo a mesma qualidade relativa:
-/// cada imagem pode chegar a `orçamento × (peças dela / peças de todas)`, e essa razão é a mesma
-/// para todas. *Repartir por igual daria à imagem pequena um luxo que a grande não tem.*
-pub(crate) fn parte_do_orcamento(triangulos: usize, guardadas: usize, orcamento: usize) -> usize {
-    let parte = orcamento.saturating_mul(triangulos) / guardadas.max(1);
-    parte.max(triangulos)
-}
-
-/// ⛔ **Uma vez por processo**, e nunca calado (DIRETIVA §2: zero no-op silencioso): as malhas deste
-/// quadro passam do orçamento, e o `Smooth` não tem refinamento a cortar.
-///
-/// ⚠️⚠️ **`assadas` parte a mensagem em duas, e a razão é que a MESMA condição passou a ter dois
-/// significados OPOSTOS** (F9 W2b): sem assadura ela é um AVISO — *o botão que o painel diz ligado
-/// está a desenhar o que o `Fast` desenha*; com assadura ela é a wave a **funcionar** — a densidade
-/// veio do bind, e não haver refinamento por quadro é exactamente o que a torna independente do
-/// tamanho da cena. *Uma linha que diz «o Smooth não refina nenhuma» sobre a segunda ensina o
-/// contrário do que acontece, que é o defeito que esta casa chama «pior que uma cena ausente».*
-pub(crate) fn avisa_malhas_acima_do_orcamento(guardadas: usize, orcamento: usize, assadas: usize) {
-    static AVISADO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-    if AVISADO.swap(true, std::sync::atomic::Ordering::Relaxed) {
-        return;
-    }
-    if assadas > 0 {
-        eprintln!(
-            "[bone] o Smooth desenha a malha ASSADA no bind em {assadas} imagem(ns) — {guardadas} \
-             pecas no total, acima do orcamento de quadro de {orcamento} (PH2D_SKIN_PIECES). Nao \
-             ha refinamento por quadro, e e' por isso que ele nao depende do tamanho da cena."
-        );
-    } else {
-        eprintln!(
-            "[bone] as imagens presas deste quadro guardam {guardadas} pecas e o orcamento do \
-             quadro e' {orcamento} (PH2D_SKIN_PIECES) — o Smooth nao refina nenhuma: cada uma e' \
-             desenhada com a malha guardada"
-        );
     }
 }

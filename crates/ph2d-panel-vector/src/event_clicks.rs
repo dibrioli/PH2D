@@ -113,10 +113,6 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
             // que é a metade do bug #29 que só o gesto REAL apanha.
             || x == ph2d_tool_vector::ids::VECTOR_BONE_ACT_CREATE
             || x == ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM
-            // ⭐ A alternativa do DESENHO da pele (report de 2026-09-10). Pela MESMA rota, e pela
-            // mesma razão: quem é dono da resposta é a TOOL, e o laço de quadro lê o espelho dela.
-            || x == ph2d_tool_vector::ids::VECTOR_BONE_DEFORM_FAST
-            || x == ph2d_tool_vector::ids::VECTOR_BONE_DEFORM_SMOOTH
             || x == crate::ids::VECTOR_PATH_WELD
             // A FONTE da largura do lápis (W1d) — três chips exclusivos, do mesmo assunto:
             // com que ferramenta, e como, o traço nasce.

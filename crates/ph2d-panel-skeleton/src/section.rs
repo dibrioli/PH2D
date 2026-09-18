@@ -117,33 +117,22 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
             y = r.action_button(id, label, y);
         }
     }
-    // ⭐⭐⭐ **A ALTERNATIVA DO DESENHO** (report do dono, 2026-09-10: *«ao dobrar a articulação temos
-    // arestas retas na imagem … coloque como alternativa»*).
+    // ⛔⛔⛔ **A FILEIRA `Deform` SAIU** (ordem do dono, 2026-09-17: *«Pode apagar a secção
+    // deform»*), e o que a matou foi uma MEDIÇÃO.
     //
-    // ⛔⛔ **O portão dela NÃO é o dos dois botões acima, e a diferença foi achada antes do smoke:**
-    // o [`state::skinned`] pergunta *«a SELECÇÃO é uma forma presa?»* e varre caminhos vectoriais —
-    // uma imagem presa é uma **sprite**, logo nunca lá aparece, e a fileira nascia **viva e
-    // inalcançável**. A pergunta certa é sobre a CENA (*«há alguma imagem presa?»*), porque a
-    // escolha é **global**: ela vive na ferramenta e vale para todas.
+    // Ela nasceu do report de 2026-09-10 (*«ao dobrar a articulação temos arestas retas na
+    // imagem»*), quando a malha do bind era uma grelha uniforme e os pesos eram euclidianos. As
+    // duas waves seguintes — a grelha **graduada pelas articulações** e os pesos do
+    // **padrão-ouro** com a lei de Hermite — curaram a faceta na própria malha do bind, e ninguém
+    // reconferiu a nota. Medido em 2026-09-17, em pixels de ECRÃ (a unidade do olho, e não o desvio
+    // ao campo em pixels da ARTE, que é o que todas as réguas desta linha mediam): as duas leis
+    // punham a tinta a **`0,04 px` na mediana e `0,34 px` no pior ponto**, e o dono reportou
+    // (repetidamente) que eram *«sempre idênticas»*. Ele tinha razão.
     //
-    // ⛔ Ela **não** troca o modo da ferramenta: a pergunta é de qualidade de desenho, não do que o
-    // arrasto faz.
-    if state::skinned_image() {
-        let escolhido = state::skin_deform();
-        let modos: [(NodeId, &str, bool); 2] = [
-            (
-                ph2d_tool_vector::ids::VECTOR_BONE_DEFORM_FAST,
-                tr("panel.vector.bone.deform.fast"),
-                escolhido == 0,
-            ),
-            (
-                ph2d_tool_vector::ids::VECTOR_BONE_DEFORM_SMOOTH,
-                tr("panel.vector.bone.deform.smooth"),
-                escolhido == 1,
-            ),
-        ];
-        y = r.segmented(tr("panel.vector.bone.deform"), &modos, y);
-    }
+    // ⇒ o knob inteiro morreu — o enum, o campo do `VectorDrawConfig`, os dois ids, o espelho da
+    // shell e esta fileira. ⛔ **Apagado e não escondido:** um controlo vivo e inalcançável é a
+    // classe que o `CLAUDE.md` §5.0 nomeia, e o precedente é o `Ctrl` do *Scene Project* (15/09),
+    // onde retirar o gesto retirou a capacidade.
     // Os dois números do OSSO em foco. Sem osso não há sujeito — e um campo sem sujeito é a
     // classe de controlo morto que o `CLAUDE.md` §5.0 nomeia.
     if let Some(campos) = campos_do_osso() {

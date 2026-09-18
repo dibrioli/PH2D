@@ -102,18 +102,6 @@ impl VectorTool {
                 self.mode = DrawMode::Bone;
                 self.bone_action = crate::params::BoneAction::Transform;
             }
-            // ⭐⭐⭐ **A ALTERNATIVA DO DESENHO DA PELE** (report do dono, 2026-09-10).
-            //
-            // ⛔ Ela **não** arma o modo Osso, ao contrário dos dois de cima: a fileira só é
-            // pintada quando há uma coisa PRESA, logo já se está no assunto — e trocar de modo aqui
-            // arrancaria o artista do que ele estava a fazer para responder a uma pergunta de
-            // qualidade de desenho.
-            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_DEFORM_FAST => {
-                self.set_skin_deform(crate::params::SkinDeform::Fast);
-            }
-            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_DEFORM_SMOOTH => {
-                self.set_skin_deform(crate::params::SkinDeform::Smooth);
-            }
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_PENCIL => {
                 self.mode = DrawMode::Pencil;
             }

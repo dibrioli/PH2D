@@ -39,69 +39,6 @@ impl BoneAction {
     pub const ALL: [BoneAction; 2] = [BoneAction::Create, BoneAction::Transform];
 }
 
-/// ⭐⭐⭐ **COMO a pele de uma IMAGEM é DESENHADA** — a alternativa que o dono pediu
-/// (2026-09-10: *«ao dobrar a articulação temos arestas retas na imagem. Estude um algoritmo com
-/// opção de um tipo de smooth na imagem e coloque como alternativa»*).
-///
-/// ⚠️ **As duas desenham o MESMO campo** — a diferença é só quantos pedaços o aproximam. O campo
-/// `Σ wᵢ·Mᵢ·p` está definido em todo ponto; cada triângulo é pintado com **um afim**, que é a
-/// aproximação de 1.ª ordem dele, e a aresta reta é o erro dessa aproximação. Medido na cápsula do
-/// smoke com a cadeia dobrada `150°`: **`9,84 px` de desvio contra `0,41 px`**.
-///
-/// ⛔ Isto **não** é um segundo motor de deformação: um segundo motor divergiria do primeiro na
-/// primeira ramificação, e a forma vectorial ficaria a responder a uma lei diferente da imagem.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum SkinDeform {
-    /// Um afim por triângulo da malha guardada. É o que sempre se fez, e é **byte-idêntico**.
-    Fast,
-    /// A malha é **refinada no quadro** até o desvio caber numa tolerância de pixels de ecrã.
-    /// ⚠️ Paga triângulos: medido `216 → 3 456` a meio pixel numa dobra de `150°`, com o tecto no
-    /// orçamento do QUADRO (`ph2d_skeleton_live::SKIN_FRAME_PIECES` = `1 543` peças = `1/10` de um
-    /// quadro de 60 fps).
-    ///
-    /// ⭐⭐⭐ **É O DE FÁBRICA desde 2026-09-14, e a decisão tem DUAS razões medidas.**
-    ///
-    /// A primeira é a que o criou: *«arestas retas ao dobrar»* (report do dono, 2026-09-10) —
-    /// `9,84 px → 0,41 px` numa dobra de `150°`.
-    ///
-    /// ⛔⛔ **A segunda só apareceu quatro dias depois, e é ela que fecha a questão:** o report
-    /// *«sem melhorias»* sobre o pincel em arte dobrada foi medido e o defeito não estava na cura —
-    /// estava em ela nunca chegar a ligar-se. Redondeza da marca do pincel (`1` = disco), na dobra
-    /// forte, antes e depois da wave da curvatura:
-    ///
-    /// | peças da pele | pincel pequeno | pincel grande |
-    /// |---|---|---|
-    /// | `200` (o que o `Fast` guarda) | `1,127 → 1,127` ⛔ **nada** | `1,133 → 1,053` |
-    /// | `1 568` (o orçamento do `Smooth`) | `1,057 → 1,017` | `1,109 → **1,005**` |
-    ///
-    /// ⇒ **a cura do pincel vive aqui dentro.** Com `Fast` e um pincel pequeno ela é *inteiramente*
-    /// inerte, e não por acaso: sem peças que resolvam a dobra sob o dab, o que o ajuste leria como
-    /// curvatura seriam as ARESTAS das facetas, e a cerca `FACETAS_MIN` desliga-a de propósito.
-    /// *Um número medido numa densidade que o artista nunca alcança é um número sobre outro
-    /// programa* — e eu entreguei-lhe o do `Smooth` com o app no `Fast`.
-    ///
-    /// ⛔⛔ **A SEGUNDA RAZÃO ENVELHECEU em 2026-09-15** (a malha do bind virou um ORÇAMENTO: a cena
-    /// do smoke guarda `2 430` peças, mais do que as `1 568` da tabela acima). Remedido na cena
-    /// real em 2026-09-16 (`sonda_o_pincel_precisa_do_smooth`, `ph2d-app-vec`): **com `Fast` a cura
-    /// do pincel está ligada** — pior redondeza `1,054`/`1,062`/`1,018`/`1,036` para pincéis de
-    /// `4`/`8`/`16`/`64` px, contra `1,42` sem correcção; o `Smooth` a zoom `8×` só leva os dois
-    /// menores a `1,039`/`1,038`. ⇒ **a razão que fica é a PRIMEIRA:** numa dobra FORTE o `Fast`
-    /// erra `1,35 px` (`90°`) a `1,85 px` (`150°`) a zoom `1` e o `Smooth` `0,50`, com o maior canto
-    /// da silhueta de `17°` para `10°` a `150°` (`sonda_a_faceta_do_fast_na_dobra_forte`). Na dobra
-    /// de `25°` da cena do smoke os dois são **o mesmo desenho** a zoom `1` — e foi lá que o dono os
-    /// comparou (2026-09-16: *«ambos iguais»*).
-    #[default]
-    Smooth,
-}
-
-/// ⚠️ **Os NÚMEROS do refinamento não vivem aqui, e a ausência é a decisão:** este enum é a ESCOLHA
-/// do artista, e quem sabe o que ela custa é quem DESENHA. Pô-los aqui arrastaria a crate da malha
-/// para dentro da ferramenta por causa de um enum de dois estados.
-impl SkinDeform {
-    /// As duas, na ordem em que o grupo as mostra. ⛔ Fonte única da iteração.
-    pub const ALL: [SkinDeform; 2] = [SkinDeform::Fast, SkinDeform::Smooth];
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum DrawMode {
     /// Seta preta: seleciona e TRANSFORMA a forma pelo gizmo. Não toca a geometria.

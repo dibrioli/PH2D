@@ -172,24 +172,22 @@ fn the_ghost_mesh_bends_the_art_and_keeps_the_rest_uv() {
         deform_field_with(&sim, e, malha.mesh.size, PPM, &index, &vivo).expect("pele");
     let (_, pele_t) =
         deform_field_with(&sim, e, malha.mesh.size, PPM, &index, &em_t).expect("pele");
-    let (a, _) = posed_sprite_mesh(
+    let a = posed_sprite_mesh(
         malha.mesh.clone(),
         p2l,
         &pele_repouso,
         &malha.pesos,
         inst.anchor,
         inst.size,
-        None,
     )
     .expect("malha de repouso");
-    let (b, _) = posed_sprite_mesh(
+    let b = posed_sprite_mesh(
         malha.mesh,
         p2l,
         &pele_t,
         &malha.pesos,
         inst.anchor,
         inst.size,
-        None,
     )
     .expect("malha em t");
 

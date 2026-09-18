@@ -163,21 +163,6 @@ pub mod smoke_bone;
 /// ⭐⭐⭐ Um canvas do Painter PRESO a ossos e dobrado — a cena que faltava à cura das guias chatas.
 pub mod smoke_bone_paint;
 
-/// ⭐ **A escolha do artista para a pele de imagem, traduzida** — o `SkinDeform` do painel vectorial
-/// vira a opção de refinamento que o produtor da malha entende.
-///
-/// ⛔ **Saiu da `shells/desktop` em 2026-09-15**, pela catraca `the_shell_only_shrinks`: o knob é
-/// desta família (`ph2d_tool_vector::SkinDeform`) e o destino é uma folha partilhada — a shell não
-/// tinha nada a dizer no meio.
-#[must_use]
-pub fn pele_suave(modo: ph2d_tool_vector::SkinDeform) -> Option<ph2d_poly2d::RefineOptions> {
-    match modo {
-        ph2d_tool_vector::SkinDeform::Fast => None,
-        ph2d_tool_vector::SkinDeform::Smooth => {
-            Some(ph2d_skeleton_live::skin_image::refine_options())
-        }
-    }
-}
 pub mod smoke_fade;
 pub mod smoke_stack;
 pub mod smoke_svg;

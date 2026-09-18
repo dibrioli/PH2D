@@ -42,7 +42,7 @@
 use std::collections::BTreeMap;
 
 use ph2d_ecs::{Entity, PresentWorld, SimRef, SimWorld, With, Without};
-use ph2d_poly2d::{Mesh2d, RefineOptions};
+use ph2d_poly2d::Mesh2d;
 
 use crate::skinned_mesh::SkinnedMesh;
 use ph2d_render::nine_slice::SlicePatchMirror;
@@ -257,7 +257,6 @@ pub fn weights_for_mesh(
 /// ⚠️ O `pub use` é deliberado, pela mesma razão do [`crate::bend_live`]: os consumidores escrevem
 /// `skin_image::SKIN_FRAME_PIECES` e `skin_image::refine_options`.
 pub use crate::skin_budget::{SKIN_FRAME_PIECES, refine_options};
-use crate::skin_budget::{avisa_malhas_acima_do_orcamento, parte_do_orcamento};
 
 /// ⛔ **Uma vez por processo, e nunca calado:** a instância desta sprite não é o quad DELA — um
 /// 9-slice desenha-se em patches, uma folha sob pré-visualização desdobra o quad —, e a malha só
@@ -348,8 +347,7 @@ pub fn posed_sprite_mesh(
     pesos: &[f64],
     anchor: [f32; 2],
     size: [f32; 2],
-    refine: Option<RefineOptions>,
-) -> Option<(SpriteMesh, ph2d_poly2d::RefineReport)> {
+) -> Option<SpriteMesh> {
     let mut escrever = pele.scratch();
     // ⭐ **UMA porta por lei, escolhida UMA vez** — e não um `if` por vértice: a tabela ou existe
     // para esta malha ou não existe, e isso é um facto do bind, não de um ponto.
@@ -366,50 +364,29 @@ pub fn posed_sprite_mesh(
             pele.point_with(p, w, &mut escrever)
         }
     };
-    let (mesh, posed, relatorio) = match refine {
-        None => {
-            let posed: Vec<[f64; 2]> = mesh
-                .rest
-                .iter()
-                .enumerate()
-                .map(|(v, &q)| {
-                    let w = pesos.get(v * ossos..(v + 1) * ossos).unwrap_or(&[]);
-                    campo(q, w)
-                })
-                .collect();
-            let pecas = mesh.tris.len();
-            (
-                mesh,
-                posed,
-                ph2d_poly2d::RefineReport {
-                    pecas,
-                    // ⚠️ O `Fast` não MEDE desvio nenhum — ele não refina, logo não pergunta. `None`
-                    // di-lo; um `0.0` aqui seria um número a afirmar que a malha está perfeita.
-                    desvio: None,
-                    travado_pelo_orcamento: false,
-                    lei: ph2d_poly2d::RefineLaw::Uniform { k: 1 },
-                },
-            )
-        }
-        Some(o) => {
-            let r = crate::skin_refine::refine_skinned(&mesh, pesos, ossos, &mut campo, o);
-            (r.mesh, r.posed, r.report)
-        }
-    };
+    // ⭐⭐⭐ **UMA LEI, e é a de sempre: um afim por triângulo da malha que chegou.** O refinamento
+    // POR QUADRO morreu em 2026-09-17 com a fileira `Deform` (ordem do dono) — a densidade é uma
+    // decisão do BIND, e quem a toma é o [`crate::skin_bake_cache`].
+    let posed: Vec<[f64; 2]> = mesh
+        .rest
+        .iter()
+        .enumerate()
+        .map(|(v, &q)| {
+            let w = pesos.get(v * ossos..(v + 1) * ossos).unwrap_or(&[]);
+            campo(q, w)
+        })
+        .collect();
     // ⭐ A UV de cada vértice é a do QUAD no ponto de REPOUSO dele — ver [`pixel_to_local`].
     let uv = mesh
         .rest
         .iter()
         .map(|&q| SpriteMesh::uv_at(f32_de(p2l.apply(q)), anchor, size))
         .collect::<Option<Vec<[f32; 2]>>>()?;
-    Some((
-        SpriteMesh {
-            local: posed.into_iter().map(f32_de).collect(),
-            uv,
-            tris: mesh.tris,
-        },
-        relatorio,
-    ))
+    Some(SpriteMesh {
+        local: posed.into_iter().map(f32_de).collect(),
+        uv,
+        tris: mesh.tris,
+    })
 }
 
 /// ⭐ **ESTA ENTIDADE É UMA IMAGEM PRESA AO ESQUELETO?** — uma `Sprite` com `SkinBind`.
@@ -491,8 +468,6 @@ pub fn attach_skin_meshes(
     sim: &SimWorld,
     present: &mut PresentWorld,
     pixels_per_meter: f32,
-    smooth: Option<RefineOptions>,
-    px_per_world: f64,
     suspensas: &[u64],
 ) -> usize {
     let presas: Vec<(Entity, SkinnedMesh)> = sim
@@ -524,27 +499,17 @@ pub fn attach_skin_meshes(
     //
     // ⛔ **O `Fast` não passa por aqui**, e isso é a metade que faz o painel continuar a escolher:
     // ele desenha a malha do bind, tal como sempre desenhou, sem uma linha de diferença.
-    let mut assadas = 0_usize;
     let vivas: Vec<(Entity, Entity, SkinnedMesh)> = presas
         .into_iter()
         .filter_map(|(e, m)| {
             let p = *instancias.get(&e)?;
-            let m = match smooth.and_then(|_| crate::skin_bake_cache::assada_da_arte(sim, e, &m)) {
-                Some(assada) => {
-                    assadas += 1;
-                    assada
-                }
-                None => m,
-            };
-            Some((e, p, m))
+            Some((
+                e,
+                p,
+                crate::skin_bake_cache::assada_da_arte(sim, e, &m).unwrap_or(m),
+            ))
         })
         .collect();
-    let guardadas: usize = vivas.iter().map(|(_, _, m)| m.mesh.tris.len()).sum();
-    if let Some(o) = smooth
-        && guardadas > o.max_pieces
-    {
-        avisa_malhas_acima_do_orcamento(guardadas, o.max_pieces, assadas);
-    }
     let mut feitas = 0;
     for (e, p, mesh) in vivas {
         let (Some(sprite), Some(inst)) = (
@@ -561,63 +526,19 @@ pub fn attach_skin_meshes(
             continue;
         };
         let antes = mesh.mesh.tris.len();
-        // ⚠️⚠️ **A tolerância é em pixels de ECRÃ:** meia unidade local é meio pixel a zoom `1` e
-        // **quatro** a zoom `8`. *A suavidade que o olho vê é um facto de espaço de ecrã* — uma
-        // tolerância em unidades locais afinaria a malha para o zoom em que o artista não está.
-        // ⚠️ A conversão (e a fatia do orçamento) moram AQUI, que é quem tem o quadro na mão; a
-        // porta que posa recebe-as já resolvidas.
-        let refine = smooth.map(|o| {
-            let b = inst.basis;
-            let det = f64::from(b[0]) * f64::from(b[3]) - f64::from(b[2]) * f64::from(b[1]);
-            let escala = (px_per_world * det.abs().sqrt()).max(f64::MIN_POSITIVE);
-            RefineOptions {
-                tolerance_px: o.tolerance_px / escala,
-                max_pieces: parte_do_orcamento(antes, guardadas, o.max_pieces),
-                // ⚠️ A LEI vem de quem chamou (o `refine_options`) — só a tolerância e o orçamento
-                // é que são factos DESTE quadro.
-                adaptativo: o.adaptativo,
-            }
-        });
-        // ⭐⭐ **SEM ESPAÇO NO ORÇAMENTO, O `Fast`** (F6-t, 2026-09-16). Com as malhas guardadas acima
-        // do orçamento do quadro, a parte desta imagem é o que ela já guarda: NADA pode partir, e a
-        // saída da lei é a do `Fast` ao bit — mas a lei avaliava a malha inteira para o descobrir.
-        // Medido: `8` imagens do smoke custavam `5,9 ms` por quadro contra `0,21 ms`.
-        let refine = refine.filter(|o| o.max_pieces > antes);
         let SkinnedMesh { mesh, pesos } = mesh;
-        let Some((malha, rel)) =
-            posed_sprite_mesh(mesh, p2l, &pele, &pesos, inst.anchor, inst.size, refine)
+        let Some(malha) = posed_sprite_mesh(mesh, p2l, &pele, &pesos, inst.anchor, inst.size)
         else {
             continue;
         };
-        // ⚠️ **O diagnóstico da família** (`PH2D_BONE_LOG=1`): sem ele um report de *«partiu»* não
+        // ⚠️ **O diagnóstico da família** (`PH2D_BONE_LOG=1`): sem ele um report de *«facetou»* não
         // distingue *quantas peças* de *que dobra* — e foi a CONTAGEM que se revelou a grandeza que
-        // importa.
-        if let (Some(o), true) = (refine, std::env::var_os("PH2D_BONE_LOG").is_some()) {
+        // importa. ⛔ Ele diz agora UMA coisa, porque há UMA lei: quantas peças esta imagem desenha.
+        if std::env::var_os("PH2D_BONE_LOG").is_some() {
             eprintln!(
-                "[bone] pele suave: {antes} -> {} pecas ({:?}, desvio {}, de um orcamento de \
-                 quadro {})",
-                malha.tris.len(),
-                rel.lei,
-                rel.desvio
-                    .map_or_else(|| "nao medido".to_owned(), |d| format!("{d:.3} px locais")),
-                o.max_pieces
+                "[bone] pele: {antes} -> {} pecas desenhadas",
+                malha.tris.len()
             );
-            // ⭐⭐⭐ **A LINHA QUE FALTAVA: «não refinou» tem DUAS causas e elas são opostas.**
-            //
-            // ⛔⛔ Ou a dobra não pediu refinamento nenhum (tudo bem), ou o ORÇAMENTO o proibiu —
-            // e nesse caso o `Smooth` é o `Fast` **ao bit**, com o painel a dizer que está ligado.
-            // Medido 2026-09-15 na cena do osso, com a lei UNIFORME: `780` peças com orçamento
-            // `1 543` ⇒ `780 × 2² = 3 120 > 1 543` ⇒ `max_split = 1`, e a tolerância nunca decidia
-            // nada. *Um diagnóstico que imprime o mesmo número para «não precisou» e para «não
-            // pôde» cala exactamente a pergunta que o report do dono fazia.*
-            if rel.travado_pelo_orcamento {
-                eprintln!(
-                    "[bone]   ⚠ o REFINAMENTO PAROU NO ORCAMENTO: {antes} -> {} pecas de um tecto \
-                     de {} -- a tolerancia pedida nao foi alcancada",
-                    malha.tris.len(),
-                    o.max_pieces
-                );
-            }
         }
         present.world_mut().entity_mut(p).insert(malha);
         feitas += 1;

@@ -162,11 +162,11 @@ struct PeleDoQuadro<'a> {
 /// `None` quando a entidade não é uma imagem presa (o caminho de toda sprite normal: o fantasma é o
 /// quad, como sempre) ou quando a pele não resolve ali.
 ///
-/// ⛔⛔ **O fantasma usa SEMPRE a malha guardada, nunca o refinamento do `Smooth`** (`refine: None`).
-/// Duas razões, e as duas medidas: uma **silhueta** chapada não tem detalhe que um quarto de pixel
-/// de tolerância salve — o que o olho lê ali é a FORMA —, e o orçamento de peças por quadro
-/// (`SKIN_FRAME_PIECES`) foi derivado do tempo do quadro para a arte VIVA; `n` fantasmas a refinar
-/// comiam-no `n` vezes. *O fantasma é uma leitura, não a obra.*
+/// ⚠️ **O fantasma desenha a MESMA malha que a arte viva**, e desde 2026-09-17 isso é uma frase só:
+/// há **uma** lei de densidade (a do BIND), logo não há escolha a fazer aqui. ⛔ A redacção
+/// anterior explicava porque é que o fantasma não refinava no quadro — aquela pergunta morreu com a
+/// fileira `Deform`, e *um fantasma que desenhasse outra malha que a arte seria um passado com
+/// outra silhueta que o presente.*
 fn ghost_mesh(
     sim: &SimWorld,
     doc: &TimelineDoc,
@@ -201,9 +201,7 @@ fn ghost_mesh(
         &rest.pesos,
         template.anchor,
         template.size,
-        None,
     )
-    .map(|(m, _k)| m)
 }
 
 /// ⭐⭐ **UM ALVO DO ONION: o que se DESENHA, e quem tem as KEYS que dizem em que instantes.**

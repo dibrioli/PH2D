@@ -7,347 +7,6 @@
 
 use super::*;
 
-/// Uma malha SINTÉTICA de `cols × rows` células (dois triângulos cada) sobre a imagem `size_px` — o
-/// que a sonda de custo precisa para escolher o número de peças.
-fn malha_grelha(size_px: [u32; 2], cols: u32, rows: u32) -> Mesh2d {
-    let (w, h) = (f64::from(size_px[0]), f64::from(size_px[1]));
-    let mut m = Mesh2d {
-        rest: Vec::new(),
-        tris: Vec::new(),
-        size: size_px,
-    };
-    for j in 0..=rows {
-        for i in 0..=cols {
-            m.rest.push([
-                w * f64::from(i) / f64::from(cols),
-                h * f64::from(j) / f64::from(rows),
-            ]);
-        }
-    }
-    let id = |i: u32, j: u32| j * (cols + 1) + i;
-    for j in 0..rows {
-        for i in 0..cols {
-            m.tris.push([id(i, j), id(i + 1, j), id(i + 1, j + 1)]);
-            m.tris.push([id(i, j), id(i + 1, j + 1), id(i, j + 1)]);
-        }
-    }
-    m
-}
-
-/// ⏱️ **SONDA (`--ignored`) — O QUE A PELE DE IMAGEM CUSTA À CPU NUM QUADRO** (plano 03, W4).
-///
-/// O `SKIN_FRAME_PIECES` foi derivado do buffer do Vello, que este caminho já não gasta. O recurso
-/// que sobra do lado da CPU é o TEMPO do quadro, e é isto que ele mede, por número de peças:
-/// descodificar a malha guardada (postcard, **por quadro**), deformar cada vértice, refinar
-/// (`Smooth`) e montar o `SpriteMesh`.
-///
-/// ⚠️ **Acima de `load ~5` uma leitura de relógio desta workstation não vale nada** (`CLAUDE.md`
-/// §5.0) — a carga é impressa ao lado. Corre com:
-/// `cargo test -p ph2d-skeleton-live --lib -- --ignored --nocapture measure_the_cpu_cost`
-#[test]
-#[ignore = "sonda: imprime a tabela do custo, sem barra"]
-fn measure_the_cpu_cost_of_a_skinned_frame() {
-    use std::time::Instant;
-    // ⛔⛔ **A zoom `1` esta arte mede `200 × 100` px de ecrã, e só a malha de `72` peças chegava a
-    // partir** (medido 2026-09-16): as outras quatro linhas mediam *decidir não partir* com o nome de
-    // «refinamento». A zoom `8` o refinamento trabalha em toda linha que cabe no orçamento, e a
-    // coluna diz `NAO PARTIU` onde não trabalhou — *uma sonda cujo sujeito deixou de fazer a coisa
-    // medida mede outra coisa com o mesmo nome.*
-    const ZOOM: f64 = 8.0;
-
-    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
-    println!(
-        "carga: {}",
-        carga
-            .split_whitespace()
-            .take(3)
-            .collect::<Vec<_>>()
-            .join(" ")
-    );
-    println!("ms: MINIMO/mediana de 40 corridas (a media sob contencao mede o vizinho)");
-    println!(
-        "{:>8} | {:>13} | {:>13} | {:>30} | {:>30}",
-        "pecas", "descodificar", "Fast", "Smooth UNIFORME", "Smooth ADAPTATIVO"
-    );
-
-    for (cols, rows) in [(6_u32, 6_u32), (12, 12), (24, 24), (48, 48), (72, 72)] {
-        let mut sim = SimWorld::default();
-        let raiz = crate::bone::create(&mut sim, None, [-2.0, 0.0], [0.0, 0.0]).expect("raiz");
-        let raiz = Entity::from_bits(raiz);
-        let ponta =
-            crate::bone::create(&mut sim, Some(raiz), [0.0, 0.0], [2.0, 0.0]).expect("ponta");
-        let e = sim
-            .world_mut()
-            .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))
-            .id();
-        assert!(crate::skin_live::bind_image(
-            &mut sim,
-            e,
-            &tinta(40, 20, 2, 4),
-            [40, 20],
-            PPM,
-            GridOptions::default(),
-            Some(raiz),
-        ));
-        // A malha guardada é substituída pela sintética: é ela que fixa o número de peças.
-        //
-        // ⚠️⚠️ **Ela leva uma TABELA DE PESOS, e a razão é que o produto mudou por baixo desta
-        // sonda:** desde que a pele de imagem passou ao padrão-ouro o `source` guarda uma
-        // [`SkinnedMesh`], e escrever aqui uma `Mesh2d` crua produzia bytes que o
-        // `skinned_mesh_of` **recusa** — a sonda é `#[ignore]`, logo isso ficava verde a medir
-        // ZERO peles. *Uma sonda que o CI nunca corre é o sítio onde um formato novo se esconde.*
-        //
-        // ⛔⛔⛔ **OS PESOS TÊM DE VARIAR NO ESPAÇO, e a 1.ª redacção desta sonda não o fazia.**
-        // Ela escrevia a tabela **UNIFORME** (`1/n` em todo o vértice) com a justificação de que
-        // era o pior caso do `blend` — e é, para o `Fast`. ⚠️ Mas com pesos iguais em todo o lado
-        // a mistura das poses é a **MESMA** em todo o ponto, logo o campo é um AFIM — e um
-        // triângulo desenhado com um afim reproduz um afim **exactamente**. ⇒ o desvio é zero,
-        // **nenhuma** das duas leis refina, e a coluna do `Smooth` media o custo de *decidir não
-        // fazer nada*. Medido: `saiu == pecas` nas cinco linhas.
-        //
-        // ⭐ A tabela agora é uma rampa em `x` (o osso da raiz manda à esquerda, a ponta à
-        // direita), que é a forma de uma pele de verdade — e é ela que põe curvatura no campo.
-        let malha = malha_grelha([40, 20], cols, rows);
-        let pecas = malha.tris.len();
-        let ossos_n = sim
-            .world()
-            .get::<ph2d_skeleton_ecs::SkinBind>(e)
-            .expect("pele")
-            .tendons
-            .len();
-        let largura = f64::from(malha.size[0]).max(f64::MIN_POSITIVE);
-        let mut pesos = vec![0.0; malha.rest.len() * ossos_n];
-        for (v, p) in malha.rest.iter().enumerate() {
-            let t = (p[0] / largura).clamp(0.0, 1.0);
-            for b in 0..ossos_n {
-                // ⚠️ Partição da unidade por construção: a rampa entre os dois primeiros ossos, e
-                // zero nos outros. *Uma tabela que não soma `1` mede outra lei.*
-                pesos[v * ossos_n + b] = match b {
-                    0 => 1.0 - t,
-                    1 => t,
-                    _ => 0.0,
-                };
-            }
-        }
-        let guardada = crate::skinned_mesh::SkinnedMesh { pesos, mesh: malha };
-        let bytes = postcard::to_allocvec(&guardada).expect("serializa");
-        {
-            let mut skin = sim
-                .world_mut()
-                .get_mut::<ph2d_skeleton_ecs::SkinBind>(e)
-                .expect("pele");
-            skin.source = bytes;
-        }
-        sim.world_mut()
-            .get_mut::<Transform>(Entity::from_bits(ponta))
-            .expect("Transform da ponta")
-            .rotation = 1.0;
-        let s = sprite(4.0, 2.0, 0.0, 0.0);
-        let mut present = PresentWorld::new();
-        let p = present
-            .world_mut()
-            .spawn((SimRef(e), instancia_de(&s)))
-            .id();
-
-        const RONDAS: usize = 40;
-        let mut descodif = Vec::with_capacity(RONDAS);
-        for _ in 0..RONDAS {
-            let t = Instant::now();
-            let m = mesh_of(&sim, e).expect("malha");
-            descodif.push(t.elapsed().as_secs_f64() * 1e3);
-            assert_eq!(m.tris.len(), pecas);
-        }
-        // ⚠️ O `present` entra por ARGUMENTO (e não capturado): a sonda lê a malha que ficou
-        // **entre** duas medições, e um empréstimo mutável preso no fecho proíbe isso.
-        let medir = |present: &mut PresentWorld, modo: Option<RefineOptions>| -> Vec<f64> {
-            let mut ms = Vec::with_capacity(RONDAS);
-            for _ in 0..RONDAS {
-                present.world_mut().entity_mut(p).remove::<SpriteMesh>();
-                let t = Instant::now();
-                attach_skin_meshes(&sim, present, PPM, modo, PX_POR_METRO * ZOOM, &[]);
-                ms.push(t.elapsed().as_secs_f64() * 1e3);
-            }
-            ms
-        };
-        let descodif = melhor(descodif);
-        let fast = melhor(medir(&mut present, None));
-        let opcoes = |adaptativo: bool| RefineOptions {
-            tolerance_px: 0.5,
-            max_pieces: SKIN_FRAME_PIECES,
-            adaptativo,
-        };
-        // ⚠️ **As DUAS leis, e o número que interessa é o µs POR PEÇA ENTREGUE** — é dele que o
-        // `CUSTO_POR_PECA_NS` sai, e a lei que o produto corre é a adaptativa.
-        let uniforme = melhor(medir(&mut present, Some(opcoes(false))));
-        let saiu_u = present
-            .world()
-            .get::<SpriteMesh>(p)
-            .map_or(0, |m| m.tris.len());
-        let adaptativo = melhor(medir(&mut present, Some(opcoes(true))));
-        let saiu_a = present
-            .world()
-            .get::<SpriteMesh>(p)
-            .map_or(0, |m| m.tris.len());
-        #[expect(clippy::cast_precision_loss, reason = "contagens de peças")]
-        let por_peca =
-            |ms: f64, n: usize| -> f64 { if n == 0 { 0.0 } else { ms * 1e3 / n as f64 } };
-        let aviso = if saiu_a == pecas && pecas < SKIN_FRAME_PIECES {
-            "  NAO PARTIU"
-        } else {
-            ""
-        };
-        println!(
-            "{pecas:>8} | {:>6.3}/{:<6.3} | {:>6.3}/{:<6.3} | {:>6.3} ({saiu_u:>6}, {:>5.3} us/p) \
-             | {:>6.3} ({saiu_a:>6}, {:>5.3} us/p){aviso}",
-            descodif.0,
-            descodif.1,
-            fast.0,
-            fast.1,
-            uniforme.0,
-            por_peca(uniforme.0, saiu_u),
-            adaptativo.0,
-            por_peca(adaptativo.0, saiu_a),
-        );
-    }
-}
-
-/// `(mínimo, mediana)` de amostras de relógio, em ms.
-///
-/// ⚠️⚠️ **O MÍNIMO é a leitura que sobrevive a esta workstation.** O `CLAUDE.md` §5.0 diz que acima
-/// de `load ~5` nenhum relógio daqui vale nada — e a carga de FUNDO desta máquina (o editor, o
-/// rust-analyzer, o sccache, as outras sessões) fica em `~7` sem ninguém compilar. O mínimo de `N`
-/// corridas é o custo quando o escalonador deu o núcleo; a mediana ao lado diz quanto a máquina
-/// estava a roubar. *Uma média sob contenção mede o vizinho.*
-fn melhor(mut ms: Vec<f64>) -> (f64, f64) {
-    ms.sort_by(|a, b| a.partial_cmp(b).expect("sem NaN no relogio"));
-    (ms[0], ms[ms.len() / 2])
-}
-
-/// Três imagens pequenas presas a uma corrente de DOIS ossos, a ponta dobrada `1 rad` — o campo
-/// curva, logo o `Smooth` tem o que partir quando o orçamento deixa.
-fn tres_dobradas() -> (SimWorld, PresentWorld, Vec<Entity>) {
-    let mut sim = SimWorld::default();
-    let raiz = crate::bone::create(&mut sim, None, [-2.0, 0.0], [0.0, 0.0]).expect("raiz");
-    let raiz = Entity::from_bits(raiz);
-    let ponta = crate::bone::create(&mut sim, Some(raiz), [0.0, 0.0], [2.0, 0.0]).expect("ponta");
-    let s = sprite(4.0, 2.0, 0.0, 0.0);
-    let mut present = PresentWorld::new();
-    let mut instancias = Vec::new();
-    for _ in 0..3 {
-        let e = sim.world_mut().spawn((Transform::IDENTITY, s)).id();
-        assert!(crate::skin_live::bind_image(
-            &mut sim,
-            e,
-            &tinta(40, 20, 2, 4),
-            [40, 20],
-            PPM,
-            GridOptions::default(),
-            Some(raiz),
-        ));
-        instancias.push(
-            present
-                .world_mut()
-                .spawn((SimRef(e), instancia_de(&s)))
-                .id(),
-        );
-    }
-    sim.world_mut()
-        .get_mut::<Transform>(Entity::from_bits(ponta))
-        .expect("Transform da ponta")
-        .rotation = 1.0;
-    (sim, present, instancias)
-}
-
-/// As malhas que o quadro pôs, e quantas vezes o refinamento correu para as pôr.
-fn quadro(
-    sim: &SimWorld,
-    present: &mut PresentWorld,
-    instancias: &[Entity],
-    smooth: Option<RefineOptions>,
-) -> (Vec<SpriteMesh>, usize) {
-    for p in instancias {
-        present.world_mut().entity_mut(*p).remove::<SpriteMesh>();
-    }
-    crate::skin_refine::REFINAMENTOS.with(|c| c.set(0));
-    attach_skin_meshes(sim, present, PPM, smooth, PX_POR_METRO * 8.0, &[]);
-    let corridas = crate::skin_refine::REFINAMENTOS.with(std::cell::Cell::get);
-    let malhas = instancias
-        .iter()
-        .map(|p| {
-            present
-                .world_mut()
-                .entity_mut(*p)
-                .take::<SpriteMesh>()
-                .expect("malha posta")
-        })
-        .collect();
-    (malhas, corridas)
-}
-
-/// ⭐⭐⭐ **SEM ESPAÇO NO ORÇAMENTO, O `Smooth` NÃO PAGA O REFINAMENTO** (F6-t, 2026-09-16).
-///
-/// ⛔⛔ **Medido antes da cura** (`measure_the_smooth_under_a_full_scene`): com as malhas guardadas
-/// acima do orçamento do quadro, cada imagem recebe um orçamento IGUAL ao que guarda — nada pode
-/// partir —, e o quadro pagava a avaliação inteira: `8` imagens do smoke custavam `5,9 ms`
-/// (`35 %` de um quadro) para entregar o que o `Fast` entrega em `0,21 ms`.
-///
-/// # ⚠️ Uma METADE deste gate MORREU em 2026-09-17, e a morte é a wave
-///
-/// Ele afirmava também *«a saída é a do `Fast` AO BIT»*, e o nome dele acabava em
-/// `_and_draws_the_fast_mesh`. Com a assadura no caminho do `Smooth` (F9 W2b) isso é **falso e é o
-/// ponto**: sem espaço no orçamento ele desenha a malha **ASSADA**, que é mais fina que a do
-/// `Fast`. ⇒ o que sobra aqui é a lei que continua verdadeira — *o refinamento por quadro não
-/// corre* — e o **contraste** com o `Fast` passou a ser um gate PRÓPRIO
-/// ([`super::tests::o_smooth_entrega_mais_pecas_que_o_fast_por_mais_imagens_que_a_cena_tenha`]),
-/// onde ele é a afirmação principal em vez de uma nota de rodapé.
-///
-/// ⚠️ **As três metades que ficam:** sem espaço a lei NÃO corre · a saída é **ESTÁVEL** (duas
-/// corridas dão o mesmo, senão «não refinou» estaria a esconder um refinamento que varia) · e com
-/// espaço ela corre e parte (o controlo — sem ele, um curto-circuito que desligasse o `Smooth`
-/// sempre passaria as duas primeiras).
-///
-/// (Mutação: o curto-circuito apagado ⇒ RED na contagem.)
-#[test]
-fn without_room_in_the_budget_the_smooth_pays_nothing() {
-    let (sim, mut present, instancias) = tres_dobradas();
-    let (fast, corridas_fast) = quadro(&sim, &mut present, &instancias, None);
-    assert_eq!(corridas_fast, 0);
-    let guardadas: usize = fast.iter().map(|m| m.tris.len()).sum();
-    let opcoes = |max_pieces| RefineOptions {
-        tolerance_px: 0.5,
-        max_pieces,
-        adaptativo: true,
-    };
-
-    let (sem_espaco, corridas) =
-        quadro(&sim, &mut present, &instancias, Some(opcoes(guardadas - 1)));
-    assert_eq!(
-        corridas, 0,
-        "com as malhas guardadas acima do orcamento nada pode partir, e o Smooth pagou a lei na mesma"
-    );
-    let (outra_vez, _) = quadro(&sim, &mut present, &instancias, Some(opcoes(guardadas - 1)));
-    assert_eq!(
-        sem_espaco, outra_vez,
-        "sem espaco a saida tem de ser ESTAVEL — duas corridas diferentes escondem um refinamento \
-         que a contagem de corridas nao viu"
-    );
-
-    // ⛔ O CONTROLO: com espaço, a lei corre nas três e parte.
-    let entregues_sem: usize = sem_espaco.iter().map(|m| m.tris.len()).sum();
-    let (com_espaco, corridas) = quadro(
-        &sim,
-        &mut present,
-        &instancias,
-        Some(opcoes(entregues_sem * 16)),
-    );
-    assert_eq!(corridas, 3, "com espaco a lei corre em cada imagem");
-    let entregues: usize = com_espaco.iter().map(|m| m.tris.len()).sum();
-    assert!(
-        entregues > entregues_sem,
-        "a fixtura nao dobra o bastante para o Smooth partir ({entregues} de {entregues_sem})"
-    );
-}
-
 /// A cena CHEIA: `n` imagens do tamanho da cena do smoke (`512 × 320` px opacos, a malha de bind do
 /// PRODUTO), presas à mesma corrente de três ossos dobrada `graus` por junta. Devolve o mundo, as
 /// instâncias desenhadas e as peças que cada imagem guarda.
@@ -391,86 +50,8 @@ fn cena_cheia(n: usize, graus: f32) -> (SimWorld, PresentWorld, usize) {
     (sim, present, guardadas)
 }
 
-/// ⏱️ **SONDA (`--ignored`) — O `Smooth` COM A CENA CHEIA** (fila do esqueleto, F6-t).
-///
-/// ⚠️ **A pergunta que ninguém tinha feito:** o orçamento do `Smooth` é do QUADRO inteiro
-/// (`SKIN_FRAME_PIECES`) e é repartido pelas imagens na proporção das peças que cada uma GUARDA —
-/// logo, quando a soma das malhas guardadas passa o orçamento, **nenhuma** imagem refina. Esta sonda
-/// mede quantas imagens do tamanho do smoke cabem antes disso, e o que o quadro custa dos dois lados.
-///
-/// `cargo test -p ph2d-skeleton-live --lib -- --ignored --nocapture measure_the_smooth_under_a_full_scene`
-#[test]
-#[ignore = "sonda: imprime a tabela, sem barra"]
-fn measure_the_smooth_under_a_full_scene() {
-    use std::time::Instant;
-    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
-    println!(
-        "carga: {} | orcamento do quadro: {SKIN_FRAME_PIECES} pecas | ms: MINIMO/mediana de 30",
-        carga
-            .split_whitespace()
-            .take(3)
-            .collect::<Vec<_>>()
-            .join(" ")
-    );
-    println!(
-        "{:>3} | {:>4} | {:>5} | {:>9} | {:>13} | {:>13} | {:>9} | {:>7}",
-        "img", "graus", "zoom", "guardadas", "Fast ms", "Smooth ms", "entregues", "us/peca"
-    );
-    for graus in [25.0_f32, 60.0] {
-        for n in [1_usize, 2, 4, 8] {
-            let (sim, mut present, por_imagem) = cena_cheia(n, graus);
-            for zoom in [1.0_f64, 4.0, 8.0] {
-                let px = PX_POR_METRO * zoom;
-                const RONDAS: usize = 30;
-                let medir = |present: &mut PresentWorld, modo: Option<RefineOptions>| {
-                    let mut ms = Vec::with_capacity(RONDAS);
-                    let mut entregues = 0;
-                    for _ in 0..RONDAS {
-                        let ids: Vec<Entity> = present
-                            .world_mut()
-                            .query_filtered::<Entity, With<SpriteMesh>>()
-                            .iter(present.world())
-                            .collect();
-                        for p in ids {
-                            present.world_mut().entity_mut(p).remove::<SpriteMesh>();
-                        }
-                        let t = Instant::now();
-                        attach_skin_meshes(&sim, present, PPM, modo, px, &[]);
-                        ms.push(t.elapsed().as_secs_f64() * 1e3);
-                        entregues = present
-                            .world_mut()
-                            .query::<&SpriteMesh>()
-                            .iter(present.world())
-                            .map(|m| m.tris.len())
-                            .sum::<usize>();
-                    }
-                    (melhor(ms), entregues)
-                };
-                let (fast, _) = medir(&mut present, None);
-                let opcoes = RefineOptions {
-                    tolerance_px: 0.5,
-                    max_pieces: SKIN_FRAME_PIECES,
-                    adaptativo: true,
-                };
-                let (suave, entregues) = medir(&mut present, Some(opcoes));
-                #[expect(clippy::cast_precision_loss, reason = "contagens de pecas")]
-                let us = suave.0 * 1e3 / entregues.max(1) as f64;
-                println!(
-                    "{n:>3} | {graus:>4} | {zoom:>5} | {:>9} | {:>6.3}/{:<6.3} | {:>6.3}/{:<6.3} | \
-                     {entregues:>9} | {us:>7.3}",
-                    n * por_imagem,
-                    fast.0,
-                    fast.1,
-                    suave.0,
-                    suave.1,
-                );
-            }
-        }
-    }
-}
-
 /// As peças que o quadro de facto entregou, com a lei `modo`.
-fn entregues(sim: &SimWorld, present: &mut PresentWorld, modo: Option<RefineOptions>) -> usize {
+fn entregues(sim: &SimWorld, present: &mut PresentWorld) -> usize {
     let ids: Vec<Entity> = present
         .world_mut()
         .query_filtered::<Entity, With<SpriteMesh>>()
@@ -479,7 +60,7 @@ fn entregues(sim: &SimWorld, present: &mut PresentWorld, modo: Option<RefineOpti
     for p in ids {
         present.world_mut().entity_mut(p).remove::<SpriteMesh>();
     }
-    attach_skin_meshes(sim, present, PPM, modo, PX_POR_METRO * 8.0, &[]);
+    attach_skin_meshes(sim, present, PPM, &[]);
     present
         .world_mut()
         .query::<&SpriteMesh>()
@@ -488,36 +69,22 @@ fn entregues(sim: &SimWorld, present: &mut PresentWorld, modo: Option<RefineOpti
         .sum()
 }
 
-/// ⭐⭐⭐⭐ **A F9 NUMA ASSERÇÃO: O `Smooth` ALISA EM QUALQUER CENA.**
+/// ⭐⭐⭐ **A MALHA ASSADA É UM CHÃO QUE O TAMANHO DA CENA NÃO ERODE.**
 ///
-/// O report que abriu a F9 (dono, 2026-09-16) é *«uma cena com muita arte presa fica com o `Smooth`
-/// igual ao `Fast`»*, e a causa era o orçamento de REFINAMENTO do quadro ser repartido pelas
-/// imagens: passada a soma, **nenhuma** refina. A W1+W2b tira a densidade do quadro e põe-na no
-/// BIND, e o que este gate afirma é a consequência:
+/// ⚠️⚠️ **A premissa deste gate mudou em 2026-09-17, e o nome dele com ela.** Ele chamava-se
+/// `o_smooth_alisa_em_qualquer_cena` e existia para responder ao report que abriu a F9 (*«uma cena
+/// com muita arte presa fica com o `Smooth` igual ao `Fast`»*). No mesmo dia mediu-se que o `Fast` e
+/// o `Smooth` desenhavam a mesma coisa a menos de `0,04 px`, o dono mandou apagar a fileira, e a
+/// escolha deixou de existir. ⇒ o que resta a afirmar não é uma comparação entre duas leis: é que a
+/// **única** lei que ficou entrega a malha do BIND e que essa entrega **não depende de quantas
+/// imagens a cena tem**.
 ///
-/// > a malha ASSADA é um CHÃO que o tamanho da cena não consegue erodir.
-///
-/// # ⚠️ As três metades, e porque nenhuma basta sozinha
-///
-/// 1. **A cena CONTÉM o fenómeno** — com `4` e `8` imagens a soma das malhas de bind já passa o
-///    `SKIN_FRAME_PIECES`, que é exactamente o regime do report. *Sem esta metade o gate poderia
-///    estar a medir uma cena pequena, onde não há nada para curar.*
-/// 2. **O `Smooth` entrega ESTRITAMENTE mais que o `Fast`**, em todas elas — é a frase do report,
-///    negada.
-/// 3. **E entrega pelo menos o CHÃO** (`peças assadas × imagens`): sem isto a metade 2 passaria com
-///    o `Smooth` a refinar uma migalha por imagem, que é o defeito a degradar em vez de sumir.
-///
-/// ⚠️ **O chão sai da LEI do produto** ([`crate::skin_bake::assar`]) sobre a malha desta cena, e
-/// não de um número escrito aqui: *um chão escrito à mão envelhece no dia em que a tolerância
-/// mudar, e ela é DERIVADA da diagonal da arte.*
+/// ⚠️ **O chão sai da LEI do produto** ([`crate::skin_bake::assar`]) sobre a malha desta cena, e não
+/// de um número escrito aqui: *um chão escrito à mão envelhece no dia em que a tolerância mudar, e
+/// ela é DERIVADA da diagonal da arte.*
 #[test]
-fn o_smooth_alisa_em_qualquer_cena() {
-    let opcoes = RefineOptions {
-        tolerance_px: 0.5,
-        max_pieces: SKIN_FRAME_PIECES,
-        adaptativo: true,
-    };
-    let mut viu_cena_cheia = false;
+fn a_malha_assada_e_o_chao_em_qualquer_cena() {
+    let mut chaos = Vec::new();
     for n in [1_usize, 4, 8] {
         let (sim, mut present, por_imagem) = cena_cheia(n, 60.0);
         let arte = sim
@@ -529,33 +96,19 @@ fn o_smooth_alisa_em_qualquer_cena() {
         let sm = skinned_mesh_of(&sim, arte).expect("malha guardada");
         let chao = crate::skin_bake::assar(&sm.mesh, &sm.pesos, sm.ossos())
             .map_or(por_imagem, |(m, _)| m.tris.len());
-
-        let fast = entregues(&sim, &mut present, None);
-        assert_eq!(
-            fast,
-            por_imagem * n,
-            "o Fast tem de desenhar a malha do bind, e desenhou outra coisa"
-        );
-        let smooth = entregues(&sim, &mut present, Some(opcoes));
-
-        if por_imagem * n > SKIN_FRAME_PIECES {
-            viu_cena_cheia = true;
-        }
+        let desenhadas = entregues(&sim, &mut present);
         assert!(
-            smooth > fast,
-            "com {n} imagens o Smooth entregou {smooth} contra {fast} do Fast — e' o report do \
-             dono: «o Smooth fica igual ao Fast»"
-        );
-        assert!(
-            smooth >= chao * n,
-            "com {n} imagens o Smooth entregou {smooth}, abaixo do chao de {} ({chao} por imagem) \
-             — a densidade voltou a depender do tamanho da cena",
+            desenhadas >= chao * n,
+            "com {n} imagens o quadro entregou {desenhadas}, abaixo do chao de {} ({chao} por \
+             imagem) — a densidade voltou a depender do tamanho da cena",
             chao * n
         );
+        chaos.push(desenhadas / n);
     }
+    // ⛔ E o CONTROLO: a entrega POR IMAGEM é a mesma nas três — sem ele a metade de cima passaria
+    // com uma lei que entrega mais por imagem quando a cena é pequena.
     assert!(
-        viu_cena_cheia,
-        "nenhuma das cenas passou o orcamento do quadro ({SKIN_FRAME_PIECES} pecas) — esta fixtura \
-         nao contem o fenomeno que o gate existe para medir"
+        chaos.windows(2).all(|w| w[0] == w[1]),
+        "a malha por imagem mudou com o tamanho da cena: {chaos:?}"
     );
 }

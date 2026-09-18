@@ -50,7 +50,7 @@ pub mod state;
 pub use state::{
     SmartBoneView, TipView, set_current_bone, set_current_bone_actions, set_current_bone_handles,
     set_current_bone_ik, set_current_bone_limit, set_current_bone_smart, set_current_bone_tip,
-    set_current_bone_tool, set_current_skin_deform, set_current_skinned, set_current_skinned_image,
+    set_current_bone_tool, set_current_skinned,
 };
 
 use ph2d_a11y::NodeId;

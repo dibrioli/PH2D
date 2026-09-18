@@ -65,12 +65,6 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::VECTOR_BONE_HANDLES_IDS {
         button(store, id);
     }
-    // ⭐ A alternativa do DESENHO da pele (report de 2026-09-10) — pela mesma tabela, e foi um gate
-    // de costura que a apanhou pintada e **não registada**: morta sob o dedo, sem nada na tela que
-    // o diga.
-    for id in crate::ids::VECTOR_BONE_DEFORM_IDS {
-        button(store, id);
-    }
     // ⚠️ **`Dropdown` no store, botão na tela**: é o `InteractiveState::Dropdown` que faz o dispatch
     // genérico alternar o `open` (e fechar o dos outros). Registá-lo como `Button` faria o clique
     // acender e **nunca abrir lista nenhuma**.
@@ -111,7 +105,6 @@ fn meu(id: ph2d_a11y::NodeId) -> bool {
         || ids::VECTOR_BONE_HANDLES_IDS.contains(&id)
         || ids::VECTOR_BONE_SMART_CLIP_IDS.contains(&id)
         || crate::ids::VECTOR_BONE_ACTION_IDS.contains(&id)
-        || crate::ids::VECTOR_BONE_DEFORM_IDS.contains(&id)
         || ids::VECTOR_BONE_TIP_IDS.contains(&id)
         || id == crate::ids::VECTOR_BONE_SMART_CLIP
         || id == crate::ids::VECTOR_BONE_TIP

@@ -52,8 +52,6 @@ fn a_sprite_suspensa_nao_recebe_malha_e_a_vizinha_recebe() {
             sim,
             &mut present,
             PPM,
-            None,
-            PX_POR_METRO,
             &suspensas.iter().map(|e| e.to_bits()).collect::<Vec<_>>(),
         );
         (
@@ -117,7 +115,7 @@ fn com_malha(sim: &SimWorld, es: &[Entity], suspensas: &[u64]) -> Vec<bool> {
                 .id()
         })
         .collect();
-    attach_skin_meshes(sim, &mut present, PPM, None, PX_POR_METRO, suspensas);
+    attach_skin_meshes(sim, &mut present, PPM, suspensas);
     ps.iter()
         .map(|p| present.world().get::<SpriteMesh>(*p).is_some())
         .collect()

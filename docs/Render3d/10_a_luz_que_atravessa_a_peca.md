@@ -513,3 +513,70 @@ janela E**, e o harness fica fora da árvore; o que entra no repo é a **fixtura
 |---|---|
 | casar o céu e as unidades de luz, e fechar a janela do perfil | **meia jornada** — e é o que torna o número um veredito |
 | a Unreal como terceiro contendor (projecto, compilação de shaders, cena casada, render sem interface) | **uma jornada** |
+
+---
+
+## §14 — ⭐⭐⭐ NÓS CONTRA A VERDADE: o primeiro veredito com número
+
+O dono perguntou se temos o padrão-ouro. A §13 montou o oráculo; esta secção é a medição.
+
+### §14.1 — ⛔⛔ Antes do número, DOIS defeitos MEUS que o agente E apanhou
+
+O relatório dele mediu as duas convenções do PFM, e as duas partiam o meu leitor **em silêncio**:
+
+1. o ficheiro é **BIG-endian** (escala `> 0`) e eu lia `from_le_bytes`;
+2. o meu laço de cabeçalho parava aos **três** campos ⇒ **a linha da escala nunca era lida** e o
+   offset dos dados ficava errado.
+
+⇒ **o «desvio de forma de `96 %`» que esta sonda imprimiu era isso.** ⭐ *O leitor passou a
+RECUSAR em voz alta* (magia, contagem de campos, tamanho que tem de fechar, valores finitos): um
+leitor que devolve lixo plausível é pior que um que falha.
+
+⚠️ E o E entregou o oráculo com **controlo interno**: cada média e cada máximo é **exactamente ×2 a
+cada duplicação da energia**, nos dois modos ⇒ a saída é genuinamente linear, sem tonemap e sem ceifa.
+
+### §14.2 — ⭐⭐ O CONTROLO valida a montagem, e é ele que dá direito ao resto
+
+| opaco (sem subsuperfície) | NÓS | VERDADE |
+|---|---|---|
+| largura da transição, 10–90 % | **`43 px`** | **`43 px`** |
+| cor da região iluminada, `R/B` | **`1,33`** | **`1,32`** |
+
+⇒ *a cena, a câmera, a lâmpada, a sombra e a cor batem.* **Sem este controlo, nenhum número do
+jade valeria nada** — seria mais uma régua mal calibrada.
+
+### §14.3 — O veredito
+
+| jade (`Subsurface Radius = 1,0 × (1 · 0,5 · 0,25)`) | NÓS | VERDADE |
+|---|---|---|
+| largura da transição, 10–90 % | `70 px` | `80 px` |
+| **cor da região iluminada, `R/B`** | **`1,61`** | **`0,87`** |
+
+⭐ **A LARGURA está perto** — `12,5 %` mais apertada que a verdade. A wave da §12 pôs a borda no
+regime certo.
+
+⛔⛔⛔ **A COR MOVE-SE NO SENTIDO OPOSTO, e é este o buraco para o padrão-ouro.** Partindo de
+`R/B = 1,33` (a cor base), **nós vamos para `1,61`** (mais vermelho) e **a verdade vai para `0,87`**
+(azulado). O mecanismo é lisível nas duas leis:
+
+- a nossa (`mx_subsurface_bsdf`, o porte do MaterialX) lê `shape = 1/mfp` ⇒ **o canal de mfp maior
+  tem o perfil mais LARGO** ⇒ o vermelho envolve mais ⇒ a peça avermelha;
+- o traçado de caminhos transporta **fotões**: um mfp de `1,0` numa esfera de raio `0,42` quer dizer
+  que **o vermelho ATRAVESSA e não volta** ⇒ o que regressa ao olho é azul.
+
+⚠️⚠️ **Isto não é um defeito do nosso porte — é da APROXIMAÇÃO que a indústria publica.** Nós
+reproduzimos o `mx_subsurface_bsdf` fielmente (a §11.4 mede a paridade contra ele). ⇒ *fechar este
+buraco é SUPERAR a aproximação de referência, não alcançá-la* — que é exactamente a pergunta que o
+dono fez.
+
+### §14.4 — ⏳ O que falta para o veredito ficar fechado
+
+⏳ **Um segundo ponto**, pedido ao E: os mesmos renders com o raio muito **menor** que a peça
+(`0,1` e `0,3`) e com o raio **igual nos três canais**. Isso separa *«a cor muda com a
+profundidade»* de *«a cor muda porque os três canais têm raios diferentes»*, e diz se o desvio é
+geral ou do regime «mfp maior que a peça». ⛔ *Um desvio medido num ponto só é um ponto, não uma
+lei.*
+
+⚠️ E fica nomeado que o desvio de FORMA lê `25 %` **no próprio controlo opaco** — ele é o **piso do
+método** (a janela apanha o realce ceifado e o ajuste de exposição é um compromisso), e não uma
+propriedade do jade, cujo `30 %` está a cinco pontos desse piso.

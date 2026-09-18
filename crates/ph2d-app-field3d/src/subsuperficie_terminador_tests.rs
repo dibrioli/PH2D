@@ -996,12 +996,27 @@ fn sonda_os_numeros_da_cena() {
     println!("W={W} H={H}");
 }
 
-/// Lê um PFM (`PF`, `f32` little-endian, linhas de BAIXO para cima quando a escala é negativa).
+/// ⭐⭐ **Lê um PFM** — e as DUAS convenções dele partem um consumidor em SILÊNCIO.
+///
+/// ⛔⛔ **A 1.ª redacção desta função tinha os dois defeitos ao mesmo tempo, e a saída dela era
+/// lixo que passava por número:** ela lia `f32::from_le_bytes` sobre dados **BIG-endian**, e o
+/// laço que parseia o cabeçalho parava aos **três** campos (`PF`, largura, altura) ⇒ a linha da
+/// **escala nunca era lida**, o offset dos dados ficava errado, e o «desvio de forma de `96 %`»
+/// que esta sonda imprimiu durante uma jornada inteira era isso.
+///
+/// As convenções, medidas pelo agente E sobre os ficheiros que ele produziu:
+/// - **escala `> 0` ⇒ BIG-endian** (`< 0` ⇒ little);
+/// - **as linhas vêm de BAIXO para CIMA** — a primeira linha do ficheiro é a de baixo da imagem.
+///
+/// ⚠️ **Ela RECUSA em voz alta** em vez de devolver lixo: magia errada, cabeçalho curto, tamanho
+/// que não fecha, ou valores não-finitos ⇒ `None`. *Um leitor que devolve lixo plausível é pior que
+/// um que falha.*
 fn le_pfm(caminho: &str) -> Option<(usize, usize, Vec<[f32; 3]>)> {
     let bytes = std::fs::read(caminho).ok()?;
-    let mut campos = Vec::new();
+    // Os QUATRO campos do cabeçalho, e não três.
+    let mut campos: Vec<String> = Vec::new();
     let mut i = 0usize;
-    while campos.len() < 3 {
+    while campos.len() < 4 {
         while i < bytes.len() && bytes[i].is_ascii_whitespace() {
             i += 1;
         }
@@ -1009,31 +1024,45 @@ fn le_pfm(caminho: &str) -> Option<(usize, usize, Vec<[f32; 3]>)> {
         while i < bytes.len() && !bytes[i].is_ascii_whitespace() {
             i += 1;
         }
+        if ini == i {
+            return None;
+        }
         campos.push(String::from_utf8_lossy(&bytes[ini..i]).to_string());
     }
-    i += 1; // o único byte de espaço a seguir à escala
+    i += 1; // o único byte branco a seguir à escala
+    if campos[0] != "PF" {
+        return None;
+    }
     let (w, h): (usize, usize) = (campos[1].parse().ok()?, campos[2].parse().ok()?);
-    let escala: f32 = campos[3 - 1].parse().unwrap_or(1.0);
-    let baixo_para_cima = escala < 0.0;
+    let escala: f32 = campos[3].parse().ok()?;
+    let big = escala > 0.0;
+    if i + w * h * 12 != bytes.len() {
+        return None;
+    }
     let mut px = vec![[0.0f32; 3]; w * h];
     for y in 0..h {
-        let linha = if baixo_para_cima { h - 1 - y } else { y };
+        // ⚠️ A linha `0` do FICHEIRO é a de BAIXO da imagem.
+        let linha_no_ficheiro = h - 1 - y;
         for x in 0..w {
-            let b = i + ((h - 1 - linha) * w + x) * 12;
-            if b + 12 > bytes.len() {
-                return None;
-            }
+            let b = i + (linha_no_ficheiro * w + x) * 12;
             px[y * w + x] = [0, 1, 2].map(|k| {
-                f32::from_le_bytes([
+                let q = [
                     bytes[b + k * 4],
                     bytes[b + k * 4 + 1],
                     bytes[b + k * 4 + 2],
                     bytes[b + k * 4 + 3],
-                ])
+                ];
+                if big {
+                    f32::from_be_bytes(q)
+                } else {
+                    f32::from_le_bytes(q)
+                }
             });
         }
     }
-    Some((w, h, px))
+    px.iter()
+        .all(|c| c.iter().all(|v| v.is_finite() && *v >= 0.0))
+        .then_some((w, h, px))
 }
 
 /// ⏱️⭐⭐⭐ **NÓS CONTRA A VERDADE**, nas condições em que a comparação tem UMA incógnita.
@@ -1188,6 +1217,28 @@ fn sonda_nos_contra_a_verdade() {
                 if melhor.as_ref().is_none_or(|b| erro < b.0) {
                     melhor = Some((erro, format!("e{e} {stops:+.2}st"), stops, vals));
                 }
+            }
+        }
+        // ⭐ A imagem do oráculo pelo NOSSO olhar, para se poder OLHAR lado a lado — a foto é o
+        // árbitro, e foi ela que apanhou as duas curas refutadas desta jornada.
+        if let (Some(d), Some((_, _, stops, _))) = (&dump, melhor.as_ref()) {
+            for e in [5, 10, 20, 40] {
+                let Some((_, _, linear)) = le_pfm(&format!("{dir}/ref_{nome}_e{e}.pfm")) else {
+                    continue;
+                };
+                let olhar = ph2d_view_transform::Look {
+                    exposure_stops: *stops,
+                    ..ph2d_view_transform::Look::default()
+                };
+                let mut ppm = format!("P6\n{w} {h}\n255\n").into_bytes();
+                for i in 0..w * h {
+                    let c = olhar.apply(linear[i]);
+                    for k in 0..3 {
+                        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                        ppm.push((c[k].clamp(0.0, 1.0) * 255.0 + 0.5) as u8);
+                    }
+                }
+                let _ = std::fs::write(format!("{d}/verdade_{nome}_e{e}.ppm"), ppm);
             }
         }
         let Some((_, como, _, verdade)) = melhor else {

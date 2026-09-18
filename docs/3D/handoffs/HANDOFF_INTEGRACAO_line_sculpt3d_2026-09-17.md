@@ -1348,6 +1348,73 @@ DIFERENÇA e não a contagem**: o pente move `664` dos originais e o traço sem 
   declarada: a nossa lei **não satura**.
 - ⏳ A fronteira dos 45° (§69.6) e a **legibilidade do arame** numa peça muito densa.
 
+## §70 — ⛔⛔⛔ «NÃO PERCEBI DIFERENÇA»: o gate corria num regime que o artista não tem
+
+> **Report do dono sobre a `=49`.** A lei estava certa, o fio estava inteiro, e o
+> gate da cena estava **VERDE**. O defeito era da RÉGUA, e em duas camadas.
+
+### §70.1 — O que o app dá, contra o que o gate escolheu
+
+Medido (`diag_o_regime_do_app_contra_o_do_gate`, versionada):
+
+| | o gate | **o APP de fábrica** |
+|---|---|---|
+| raio do pincel | `0,35` | **`0,1634`** (`50 px` pela câmara que enquadra a peça) |
+| aresta alvo do refino | `0,035` | **`0,0805`** |
+| **arestas por raio** | **`10,0`** | **`2,0`** |
+
+⚠️ **E o `Detail` de fábrica luta com a peça:** a `0,50` o alvo do passe
+(`0,0805`) é mais GROSSO que a aresta dela (`0,0527`), logo *o passe ENGROSSA em
+vez de refinar* e o pincel acaba com **duas** arestas de raio.
+
+### §70.2 — ⛔ A primeira hipótese foi REFUTADA, e a segunda é a lição
+
+*«A lei é fraca nesse regime»* — **falso**: ali o `Q` até sobe MAIS. O que muda é
+a **MAGNITUDE** (`diag_o_pente_contra_as_arestas_por_raio`):
+
+| regime | arestas/raio | `ΔQ` | **vértices que MEXEM** |
+|---|---|---|---|
+| o app de fábrica | `2,0` | **`+0,1926`** | **`121`** |
+| `Detail 0,75` | `4,1` | `+0,1839` | `603` |
+| **`Detail 1,00`** | `9,3` | `+0,1588` | **`2 715`** |
+| o gate de então | `10,0` | `+0,1560` | `2 815` |
+
+⭐⭐⭐ *O `Q` é uma **MÉDIA** e sobe com um punhado de arestas alinhadas; o que o
+olho lê é a **CONTAGEM**.* Num traço inteiro mexiam `121` vértices — invisível. É
+a mesma forma que o `Density` custou (*«a colheita é 1 %»*, com o gate verde a
+afirmar só o SINAL), e o gate de uma cena herdou-a porque **escolheu o próprio
+regime**.
+
+### §70.3 — As curas
+
+1. **A cena arma o `Detail`** (`DETALHE_DA_CENA = 1,0`, com a tabela ao lado). ⚠️
+   O recurso do topo já estava medido noutro sítio (`MAX_TRIS = 100 000`, o
+   relógio do dab) — *não é uma cena a pedir mais do que o produto dá*.
+2. **O gate DERIVA o regime em vez de o escolher:** o raio sai da câmara que
+   enquadra a peça (`raio_do_app`) e o alvo sai do `Detail` que a cena arma, pela
+   mesma escada ancorada em ÁREA que o passe usa (`alvo_do_refino`).
+3. **O gate ganhou a metade da MAGNITUDE** (`MOVIDOS_MINIMOS = 1 000`, medido
+   `2 775`–`2 803`).
+4. ⚠️ **E duas barras foram corrigidas com os dois lados medidos:** o grão da
+   peça (`0,15`; ela lê no máximo `+0,0516` e uma esfera UV lê `+0,55`) e o
+   *«já não cruza»* (`−0,01`; a `30°` um traço só aterra em `−0,0001` — *ali ele
+   neutraliza o cruzamento e não constrói grade*, e escrever `> 0` reprovaria
+   sobre produto correcto).
+
+### §70.4 — ⛔⛔⛔ E o gate que fecha o buraco quase se satisfez a SI MESMO
+
+A mutação que volta a cravar `0,35`/`0,035` no arnês deixava **todas** as outras
+metades verdes. ⇒ o gate da fiação ganhou uma ponta que lê o **próprio ficheiro**
+e exige a chamada derivada — e a 1.ª redacção dela **SOBREVIVEU à mutação**,
+porque a agulha, escrita como literal, vivia **dentro do ficheiro que ela varre**
+e o `contains` encontrava-a a si própria.
+
+⭐ *Um censo textual cuja agulha mora na fonte que ele lê é satisfeito por si
+mesmo.* A agulha passa a ser **montada** (`format!` com os nomes partidos), e a
+mutação sangra.
+
+**Mutação: 10 de 10** (as duas novas incluídas).
+
 ## §58 — 📦 PARA O AGENTE INTEGRADOR
 
 ### §58.1 — Os factos da linha

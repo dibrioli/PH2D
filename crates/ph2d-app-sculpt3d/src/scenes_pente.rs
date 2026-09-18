@@ -42,26 +42,23 @@
 //! *isotrópico quer dizer exactamente «sem direcção preferida»*. É a fase zero
 //! que o botão de retopologia já corre, e custa `~270 ms` **uma vez**, ao abrir.
 //!
-//! # ⭐⭐ E sobre ela o pente CONSTRÓI a grade, em qualquer rumo
+//! # ⭐⭐ E sobre ela o pente trabalha em QUALQUER rumo
 //!
-//! Medido (`diag_a_escada_por_rumo`), `Q` desligado → no tecto, e quantos
-//! triângulos da faixa ficam abaixo de `5°`:
+//! Medido no **regime que o app dá** (raio de fábrica pela câmara, `Detail` que
+//! esta cena arma), `Q` desligado → no tecto, e quantos vértices o pente desloca
+//! num traço:
 //!
-//! | rumo do traço | `Q` desligado → no tecto | lascas |
-//! |---|---|---|
-//! | ao longo de `x` | `−0,0034 → +0,0961` | `0` de `2 196` |
-//! | `30°` | `−0,0537 → +0,0202` | `0` de `2 192` |
-//! | `45°` | `−0,0612 → +0,0857` | `0` de `2 260` |
-//! | `60°` | `−0,0279 → +0,0592` | `0` de `2 230` |
+//! | rumo do traço | `Q` desligado → no tecto | vértices movidos | lascas |
+//! |---|---|---|---|
+//! | ao longo de `x` | `−0,0008 → +0,0985` | `2 786` | `0` |
+//! | `30°` | `−0,0665 → −0,0001` | `2 775` | `0` |
+//! | `45°` | `−0,0807 → +0,0775` | `2 791` | `1` |
+//! | atravessado | `+0,0516 → +0,1285` | `2 803` | `0` |
 //!
-//! ⇒ **o `Q` TROCA DE SINAL nos quatro** — de uma malha a cruzar o traço para
-//! uma a correr com ele — e não fica **uma única lasca** em rumo nenhum. *O
-//! roteiro não tem de mandar o artista adivinhar a direcção.*
-//!
-//! ⚠️ **E o que ele NÃO faz está aqui também:** um traço só não leva o `Q` acima
-//! da barra em todos os rumos (a `30°` ele chega a `+0,0202`), logo o gate mede
-//! o **Δ** e o **sinal**, que é o que o artista vê. *Uma barra absoluta ali
-//! reprovaria sobre produto correcto.*
+//! ⇒ **a malha deixa de CRUZAR o traço nos quatro** e o Δ passa a barra do
+//! corpus em todos. ⚠️ **E o que ele NÃO faz está aqui também:** a `30°` um traço
+//! só aterra em `−0,0001` — *ali ele neutraliza o cruzamento e não constrói
+//! grade* —, logo o gate mede o **Δ** e *«já não cruza»*, nunca um `Q` absoluto.
 //!
 //! ⛔⛔ **E esta escolha REFUTOU uma recusa minha, medida horas antes.** A 1.ª
 //! redacção desta cena abria na esfera UV e declarava a remalhada recusada com
@@ -76,6 +73,39 @@
 //! raio `0,35` — `≈ 8` arestas por raio): mais fina e o arame vira um borrão
 //! cinzento onde não se lê direcção nenhuma; mais grossa e não há arestas que
 //! cheguem para uma grade se formar.
+//!
+//! # ⛔⛔⛔ E o `Detail` é ARMADO no prólogo, por um report: *«não percebi diferença»*
+//!
+//! A 1.ª redacção desta cena abria com o `Detail` de fábrica (`0,50`) e o gate
+//! dela ficava **VERDE** — porque ele corria com um raio e um alvo de refino que
+//! **eu escolhi**, e não com os que o app dá. Medidos
+//! (`diag_o_regime_do_app_contra_o_do_gate`):
+//!
+//! | | o gate | **o APP de fábrica** |
+//! |---|---|---|
+//! | raio do pincel | `0,35` | **`0,1634`** (`50 px` pela câmara) |
+//! | aresta alvo do refino | `0,035` | **`0,0805`** |
+//! | **arestas por raio** | **`10,0`** | **`2,0`** |
+//!
+//! ⚠️ A `Detail 0,50` o alvo do passe (`0,0805`) é mais GROSSO que a aresta da
+//! peça (`0,0527`) — *o passe engrossa em vez de refinar*, e o pincel acaba com
+//! **duas** arestas de raio.
+//!
+//! ⛔⛔ **E a primeira hipótese — «a lei é fraca nesse regime» — foi REFUTADA:**
+//! ali o `Q` até sobe MAIS (`+0,1926` contra `+0,1560`). O que muda é a
+//! MAGNITUDE:
+//!
+//! | regime | arestas/raio | `ΔQ` | **vértices que MEXEM** |
+//! |---|---|---|---|
+//! | o app de fábrica | `2,0` | `+0,1926` | **`121`** |
+//! | `Detail 0,75` | `4,1` | `+0,1839` | `603` |
+//! | **`Detail 1,00`** | `9,3` | `+0,1588` | **`2 715`** |
+//!
+//! ⇒ *o `Q` é uma MÉDIA e sobe com um punhado de arestas alinhadas; o que o olho
+//! lê é a CONTAGEM.* Num traço inteiro mexiam **121** vértices — a mesma forma de
+//! defeito que o `Density` custou (*«a colheita é 1 %, invisível»*, com o gate
+//! verde a afirmar só o SINAL). ⇒ o prólogo arma o [`DETALHE_DA_CENA`], e o gate
+//! passou a correr no regime do app **com uma metade de magnitude**.
 
 /// `=49` — a cena do **PENTE DE TOPOLOGIA**.
 ///
@@ -128,7 +158,22 @@ pub(crate) fn arma(cena: &mut crate::Sculpt3dScene) {
     let (ligado, _) = cena.toggle_dyntopo();
     debug_assert!(ligado, "a =49 tem de abrir com a topologia dinamica ARMADA");
     cena.wireframe = true;
+    cena.dyntopo.detail = DETALHE_DA_CENA;
 }
+
+/// **O `Detail` COM QUE ESTA CENA ABRE** — ver o cabeçalho.
+///
+/// ⛔ **Ele NÃO é o de fábrica, e o número é MEDIDO:** a `0,50` o alvo do passe
+/// (`0,0805`) é mais grosso que a aresta da peça (`0,0527`), logo o passe
+/// **engrossa** — o pincel fica com `2,0` arestas de raio e um traço inteiro
+/// mexe **`121`** vértices, que é invisível. A `1,00` são `9,3` arestas de raio
+/// e **`2 715`** vértices.
+///
+/// ⚠️ **O recurso do topo está medido noutro sítio** (`MAX_TRIS = 100 000`, o
+/// relógio do dab: `~2,8 ms` de um orçamento de `8`), logo isto não é uma cena a
+/// pedir mais do que o produto dá — é uma cena a abrir onde a ferramenta tem o
+/// que fazer.
+pub(crate) const DETALHE_DA_CENA: f32 = 1.0;
 
 /// O roteiro da `=49`.
 pub(crate) fn announce() {
@@ -145,8 +190,10 @@ pub(crate) fn announce() {
          [sculpt3d]    um musculo.\n\
          [sculpt3d]\n\
          [sculpt3d]    (1) Abra o painel com a CRASE (`). Na seccao `Topology` o\n\
-         [sculpt3d]        `Dynamic Topology` ja' vem LIGADO, e logo abaixo dele esta' o\n\
-         [sculpt3d]        `Edge Flow`, em zero.\n\
+         [sculpt3d]        `Dynamic Topology` ja' vem LIGADO e o `Detail` dele ja' vem no\n\
+         [sculpt3d]        TOPO -- e' isso que faz a malha ficar fina debaixo do pincel, que\n\
+         [sculpt3d]        e' o que ele tem para pentear. Logo abaixo esta' o `Edge Flow`,\n\
+         [sculpt3d]        em zero.\n\
          [sculpt3d]    (2) Sem lhe tocar, arraste um risco comprido por cima da bola.\n\
          [sculpt3d]        -> A malha fica mais FINA debaixo do pincel e os triangulos dela\n\
          [sculpt3d]           continuam desencontrados, sem direccao nenhuma. E' o estado de\n\
@@ -168,7 +215,9 @@ pub(crate) fn announce() {
          [sculpt3d]           dizer que ele esta' a dormir; a malha NAO se reorganiza. Volte\n\
          [sculpt3d]           a ligar o interruptor e ele volta ao trabalho.\n\
          [sculpt3d]\n\
-         [sculpt3d]    DEU ERRADO SE: as linhas nao virarem no passo (3); se elas seguirem\n\
+         [sculpt3d]    DEU ERRADO SE: as linhas nao virarem no passo (3); se so' meia duzia\n\
+         [sculpt3d]    de triangulos se mexerem (tem de ser a faixa toda do risco); se elas\n\
+         [sculpt3d]    seguirem\n\
          [sculpt3d]    sempre a mesma direccao seja qual for o risco; se a bola ficar com\n\
          [sculpt3d]    ESTRIAS de sombra (uma fileira de riscos escuros, que sao triangulos\n\
          [sculpt3d]    finos de mais para terem luz); ou se, com o `Dynamic Topology`\n\

@@ -1825,3 +1825,60 @@ em vértice. Passar pela porta continua certo por disciplina, e o comentário
 passou a dizer que **não é propriedade provada por este corpus**. *A mesma
 classe que o §26 já registou: uma mutação que não muta lê-se como
 sobrevivência.* **`M9` e `M10` sangram.**
+
+## §73 — (a) A FORMA DO PENTE: o diagnóstico fecha, e a cura óbvia é RECUSA MEDIDA
+
+**Ordem do dono:** *«(a) corrigir a forma do pente»*.
+
+### §73.1 Três hipóteses construídas e REFUTADAS, por esta ordem
+
+1. ⛔ **«É a composição entre passagens»** — a escada `x_man_x01..x16` mostra o
+   nosso `viaja%` (`‖ΣΔ‖/Σ‖Δ‖`) a acompanhar o dele: `5,32 · 3,91 · 4,01 ·
+   8,74 · 16,20` contra `4,91 · 5,42 · 6,24 · 8,61 · 17,74`, e a `x16` as cinco
+   colunas da assinatura da §3.2 batem quase todas. *As passagens não são o
+   defeito.*
+2. ⛔ **«É o passo do traço»** — `m_manual` lê `80,48 %` de viagem onde
+   `x_man_x01` lê `5,32 %`, e as duas células têm **o mesmo percurso**
+   (`10` pontos, vão `0,15556`, `2,22` passos, `1` passagem). A única diferença
+   no cabeçalho é a **FORÇA** (`0,5` contra `0,2`).
+3. ⛔⛔⛔ **«A nossa relaxação está por convergir»** — construída e refutada com
+   o andaime `PH2D_RAKE_SWEEPS` (removido): a `1 · 2 · 3 · 5 · 8` varreduras
+   por carimbo a amplitude sobe **`0,654 → 1,116`** (cruza o alvo a ~`5`) e o
+   cosseno **DESCE** `0,583 → 0,535`.
+
+### §73.2 O que o diagnóstico É
+
+⭐ **A pegada está certa:** os mesmos `170`/`177` vértices movem-se dos dois
+lados, **zero** só-nossos, em todas as células medidas.
+
+⭐ **As estatísticas agregadas batem** no regime de força baixa e uma passagem
+(`|dx|`, `|dy|`, `|dz|`, `tan/nor`, `max/aresta`, `viaja%`).
+
+⛔ **O campo por VÉRTICE está `~54°` fora** (cosseno ponderado `0,583`, e cai a
+`0,284` no arco), com as **duas** componentes do quadro do traço igualmente
+correlacionadas (`0,599` / `0,600`) ⇒ **não é erro de sinal nem de eixo.**
+
+⇒ ***mesmos vértices, magnitude quase certa, arrumação diferente*** — e o
+teste das varreduras prova que é **outro óptimo**, não o mesmo a meio caminho.
+
+### §73.3 ⚠️ E uma correcção ao §72: o «controlo» estava amarrado a UMA força
+
+O §72 afirma *«com o pente desligado a nossa lei bate a dele a `1,6e-4`»*. Isso
+é verdade **a força `0,2`**. A força `0,5`, com o pente **DESLIGADO**, a mesma
+malha e o mesmo percurso desviam **`2,984e-2`** — `184×` mais. ⭐ E o controlo
+que impede a leitura fácil (*«é a força»*) são os verbos **ANCORADOS a força
+`0,5`**, que lêem `1,192e-7`: *a força por si não é o defeito; o que diverge é
+a acumulação ao longo de um traço de carimbos.* **O corpus só tem duas forças
+(`0,2` e `0,5`), logo esta é uma partição de duas células, não uma curva.**
+
+### §73.4 O que falta, e de quem é
+
+⛔ **A pergunta que fecha isto não está neste corpus** — as estatísticas
+agregadas já concordam, e o que discrimina é *para que configuração cada
+vértice é relaxado*. Isso pede **fixturas DISCRIMINANTES** (um carimbo sobre
+arranjos feitos à mão em que leis concorrentes prevêem saídas diferentes), que
+é acto do **E**: a mesma atribuição que a espec §12 já faz para as suas quatro
+linhas em aberto.
+
+⚠️ **Não afinar.** Subir o peso ou as varreduras é a cura que foi medida e
+recusada (registada no cabeçalho de [`ph2d_rake::pentear`]).

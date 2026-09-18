@@ -504,3 +504,308 @@ fn diag_a_ligacao_muda() {
     }
     eprintln!("\n{mudam} de {total} células mudam a LIGAÇÃO");
 }
+
+/// ⭐⭐⭐ **A ASSINATURA DA FORMA, dos dois lados** — as cinco grandezas que a
+/// espec §3.2 mede sobre o alvo, corridas também sobre nós.
+///
+/// O desvio máximo diz QUANTO erramos; estas dizem **EM QUÊ**. A decisiva é a
+/// última: `‖Σ Δ‖ / Σ‖Δ‖` mede se o material VIAJA. No alvo ela dá `3,84 %`
+/// (a soma cancela a `96,2 %`) ⇒ *ele não arrasta, ele RELAXA* — cada vértice
+/// desliza sobre a superfície até as arestas à volta ficarem alinhadas.
+///
+/// ⚠️ **O Δ é do PENTE e não do traço**: `p100 − p000` de cada lado, senão o
+/// empurrão do verbo (que é ao longo da normal) domina tudo e a soma deixa de
+/// cancelar por construção.
+#[test]
+#[ignore = "sonda: a assinatura da forma"]
+fn diag_a_assinatura_da_forma() {
+    println!(
+        "{:<26} {:>9} {:>9} {:>9} {:>7} {:>8} {:>8}",
+        "celula/lado", "|dx|", "|dy|", "|dz|", "tan/nor", "viaja%", "max/ar"
+    );
+    for (fam, base) in [
+        ("mecanismo", "x_man_x01"),
+        ("mecanismo", "x_man_x02"),
+        ("mecanismo", "x_man_x04"),
+        ("mecanismo", "x_man_x08"),
+        ("mecanismo", "x_man_x16"),
+        ("composicao", "m_manual"),
+        ("mecanismo", "y_arco"),
+    ] {
+        let off = ler(fam, &format!("{base}_p000"));
+        let on = ler(fam, &format!("{base}_p100"));
+        let aresta = aresta_media(&entrada(&off));
+        for (rotulo, a, b) in [
+            ("ALVO", off.saida.clone(), on.saida.clone()),
+            ("nosso", correr(&off), correr(&on)),
+        ] {
+            let d: Vec<[f32; 3]> = a
+                .iter()
+                .zip(&b)
+                .map(|(p, q)| [q[0] - p[0], q[1] - p[1], q[2] - p[2]])
+                .filter(|v| v[0].abs() + v[1].abs() + v[2].abs() > 1e-9)
+                .collect();
+            if d.is_empty() {
+                println!("{fam}/{base:<12} {rotulo:<6} (inerte)");
+                continue;
+            }
+            let n = d.len() as f64;
+            let (mut sx, mut sy, mut sz) = (0.0f64, 0.0f64, 0.0f64);
+            let (mut vx, mut vy, mut vz) = (0.0f64, 0.0f64, 0.0f64);
+            let (mut soma_norma, mut maior) = (0.0f64, 0.0f64);
+            for v in &d {
+                sx += f64::from(v[0].abs());
+                sy += f64::from(v[1].abs());
+                sz += f64::from(v[2].abs());
+                vx += f64::from(v[0]);
+                vy += f64::from(v[1]);
+                vz += f64::from(v[2]);
+                let nv = f64::from(v[0])
+                    .hypot(f64::from(v[1]))
+                    .hypot(f64::from(v[2]));
+                soma_norma += nv;
+                maior = maior.max(nv);
+            }
+            let tan = (sx / n).hypot(sy / n);
+            let viaja = vx.hypot(vy).hypot(vz) / soma_norma * 100.0;
+            let rumo = if vx.hypot(vy).hypot(vz) > 1e-9 {
+                let l = vx.hypot(vy).hypot(vz);
+                format!("({:+.2},{:+.2},{:+.2})", vx / l, vy / l, vz / l)
+            } else {
+                "-".to_string()
+            };
+            println!(
+                "{fam}/{base:<12} {rotulo:<6} {:9.6} {:9.6} {:9.6} {:7.2} {:7.2}% {:8.3} {rumo}",
+                sx / n,
+                sy / n,
+                sz / n,
+                tan / (sz / n).max(1e-12),
+                viaja,
+                maior / f64::from(aresta)
+            );
+        }
+    }
+}
+
+/// O comprimento médio de aresta de uma malha — a unidade em que a espec
+/// exprime o maior deslocamento do pente (`0,34` no alvo).
+fn aresta_media(m: &Mesh) -> f32 {
+    let p = m.positions();
+    let (mut soma, mut n) = (0.0f64, 0usize);
+    for f in m.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (p[v[k] as usize], p[v[(k + 1) % v.len()] as usize]);
+            soma += f64::from((a[0] - b[0]).hypot(a[1] - b[1]).hypot(a[2] - b[2]));
+            n += 1;
+        }
+    }
+    (soma / n as f64) as f32
+}
+
+/// ⭐⭐⭐ **O PERCURSO contra o PASSO do traço.**
+///
+/// A escada `x_man_x01..x16` mostra que as passagens **não** são o defeito: as
+/// cinco colunas da assinatura acompanham o alvo. O que destoa é `m_manual` e
+/// `y_arco`, que não são mais passagens — são outro PERCURSO. Se os pontos do
+/// cabeçalho estiverem muito mais juntos do que o passo do pincel, o arnês
+/// carimba (e penteia) muito mais vezes do que o alvo, e o pente **acumula**.
+#[test]
+#[ignore = "sonda: o percurso contra o passo"]
+fn diag_o_percurso_contra_o_passo() {
+    println!(
+        "{:<26} {:>6} {:>10} {:>10} {:>8} {:>7}",
+        "celula", "pontos", "passo", "vao_medio", "vao/passo", "passag"
+    );
+    for (fam, nome) in celulas_sem_remalha() {
+        if !nome.ends_with("_p100") {
+            continue;
+        }
+        let c = ler(&fam, &nome);
+        let b = pincel(&c);
+        let passo = ph2d_sculpt3d::passo_do_traco(&b, b.radius);
+        let mut soma = 0.0f64;
+        for w in c.percurso.windows(2) {
+            soma += f64::from((w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]));
+        }
+        let n = (c.percurso.len().max(2) - 1) as f64;
+        let vao = soma / n;
+        println!(
+            "{fam}/{:<16} {:>6} {:>10.5} {:>10.5} {:>8.2} {:>7.0}",
+            nome.trim_end_matches("_p100"),
+            c.percurso.len(),
+            passo,
+            vao,
+            vao / f64::from(passo),
+            c.num("PASSAGENS").max(1.0)
+        );
+    }
+}
+
+/// ⛔⛔⛔ **A FORÇA contra o desvio do lado DESLIGADO.**
+///
+/// O «controlo» que ilibava a lei base (`1,624e-4` no `x_man_x01_p000`) foi
+/// medido a força `0,2`. As células que desviam `2,98e-2` com o pente
+/// DESLIGADO diferem daquela em **um** campo do cabeçalho — a força, `0,5` —,
+/// com a mesma malha, o mesmo percurso e as mesmas passagens.
+///
+/// ⇒ *se o desvio do lado desligado seguir a força, o defeito não é do pente:
+/// é da lei base, e o pente só o amplifica.*
+#[test]
+#[ignore = "sonda: a forca contra o desvio"]
+fn diag_a_forca_contra_o_desvio() {
+    let mut linhas: Vec<(f32, String)> = Vec::new();
+    for (fam, nome) in celulas_sem_remalha() {
+        if !nome.ends_with("_p000") {
+            continue;
+        }
+        let c = ler(&fam, &nome);
+        let d = maior_distancia(&correr(&c), &c.saida);
+        let f = c.num("forca");
+        linhas.push((
+            f,
+            format!(
+                "forca {f:.2}  {fam}/{:<16} verbo {:<12} desvio {d:.3e}",
+                nome.trim_end_matches("_p000"),
+                c.chave("verbo")
+            ),
+        ));
+    }
+    linhas.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    for (_, l) in &linhas {
+        println!("{l}");
+    }
+}
+
+/// ⭐⭐⭐ **O campo do pente, VÉRTICE A VÉRTICE.**
+///
+/// As cinco grandezas da assinatura são AGREGADAS: no `x_man_x01` (força
+/// `0,2`, uma passagem) elas **batem** e o desvio é na mesma `2,8e-2`. ⇒ *ou a
+/// lei é a mesma e a ARRUMAÇÃO difere, ou é outra lei com as mesmas
+/// estatísticas* — e o que separa as duas é o cosseno por vértice.
+///
+/// Imprime, sobre os vértices que qualquer um dos lados move:
+/// - `cos` ponderado pela norma (⚠️ ponderado, senão os vértices que mal se
+///   mexem, que são ruído, pesam tanto como os que carregam o efeito);
+/// - a razão das normas (nós / ele);
+/// - quantos vértices cada lado move, e quantos são COMUNS.
+#[test]
+#[ignore = "sonda: o campo vertice a vertice"]
+fn diag_o_campo_do_pente_vertice_a_vertice() {
+    println!(
+        "{:<24} {:>7} {:>8} {:>7} {:>7} {:>7} {:>7}",
+        "celula", "cos", "|nos|/|ele|", "movN", "movE", "comuns", "so'nos"
+    );
+    for (fam, base) in [
+        ("mecanismo", "x_man_x01"),
+        ("mecanismo", "x_man_x04"),
+        ("composicao", "m_manual"),
+        ("mecanismo", "y_arco"),
+    ] {
+        let off = ler(fam, &format!("{base}_p000"));
+        let on = ler(fam, &format!("{base}_p100"));
+        let delta = |a: &[[f32; 3]], b: &[[f32; 3]]| -> Vec<[f64; 3]> {
+            a.iter()
+                .zip(b)
+                .map(|(p, q)| {
+                    [
+                        f64::from(q[0] - p[0]),
+                        f64::from(q[1] - p[1]),
+                        f64::from(q[2] - p[2]),
+                    ]
+                })
+                .collect()
+        };
+        let dele = delta(&off.saida, &on.saida);
+        let nosso = delta(&correr(&off), &correr(&on));
+        let norma = |v: &[f64; 3]| v[0].hypot(v[1]).hypot(v[2]);
+        let vivo = 1e-9;
+
+        let (mut num, mut den) = (0.0f64, 0.0f64);
+        let (mut rn, mut re) = (0.0f64, 0.0f64);
+        let (mut mn, mut me, mut comuns) = (0usize, 0usize, 0usize);
+        for (a, b) in dele.iter().zip(&nosso) {
+            let (na, nb) = (norma(a), norma(b));
+            if na > vivo {
+                me += 1;
+            }
+            if nb > vivo {
+                mn += 1;
+            }
+            if na > vivo && nb > vivo {
+                comuns += 1;
+                let c = (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (na * nb);
+                num += c * na;
+                den += na;
+            }
+            re += na;
+            rn += nb;
+        }
+        println!(
+            "{fam}/{base:<12} {:>7.3} {:>11.3} {mn:>7} {me:>7} {comuns:>7} {:>7}",
+            if den > 0.0 { num / den } else { f64::NAN },
+            if re > 0.0 { rn / re } else { f64::NAN },
+            mn.saturating_sub(comuns)
+        );
+    }
+}
+
+/// ⭐⭐⭐ **Os dois campos DECOMPOSTOS no quadro do traço.**
+///
+/// O cosseno ponderado diz que erramos a direcção; isto diz **em que eixo**.
+/// Para cada vértice projecta-se o Δ do pente em `ao_longo` (a direcção do
+/// traço) e em `atraves`, e mede-se a correlação de cada componente
+/// separadamente. *Uma componente bem correlacionada e outra anti-correlacionada
+/// é um erro de sinal; as duas fracas é outra lei.*
+#[test]
+#[ignore = "sonda: os campos decompostos"]
+fn diag_os_campos_decompostos() {
+    println!(
+        "{:<24} {:>8} {:>8} {:>9} {:>9}",
+        "celula", "corr_ao", "corr_at", "amp_ao", "amp_at"
+    );
+    for (fam, base) in [
+        ("mecanismo", "x_man_x01"),
+        ("composicao", "m_manual"),
+        ("mecanismo", "y_arco"),
+    ] {
+        let off = ler(fam, &format!("{base}_p000"));
+        let on = ler(fam, &format!("{base}_p100"));
+        // O quadro: a direcção do traço é a do último par de pontos.
+        let p = &off.percurso;
+        let (dx, dy) = (
+            p[p.len() - 1][0] - p[p.len() - 2][0],
+            p[p.len() - 1][1] - p[p.len() - 2][1],
+        );
+        let l = dx.hypot(dy).max(1e-12);
+        let (ax, ay) = (f64::from(dx / l), f64::from(dy / l));
+        let d = |a: &[[f32; 3]], b: &[[f32; 3]]| -> Vec<(f64, f64)> {
+            a.iter()
+                .zip(b)
+                .map(|(u, v)| {
+                    let (ex, ey) = (f64::from(v[0] - u[0]), f64::from(v[1] - u[1]));
+                    (ex * ax + ey * ay, -ex * ay + ey * ax)
+                })
+                .collect()
+        };
+        let dele = d(&off.saida, &on.saida);
+        let nosso = d(&correr(&off), &correr(&on));
+        let corr = |f: &dyn Fn(&(f64, f64)) -> f64| {
+            let (mut sxy, mut sxx, mut syy, mut sa, mut sb) = (0.0, 0.0, 0.0, 0.0, 0.0);
+            for (x, y) in dele.iter().map(f).zip(nosso.iter().map(f)) {
+                sxy += x * y;
+                sxx += x * x;
+                syy += y * y;
+                sa += x.abs();
+                sb += y.abs();
+            }
+            (
+                sxy / (sxx.sqrt() * syy.sqrt()).max(1e-30),
+                sb / sa.max(1e-30),
+            )
+        };
+        let (cao, aao) = corr(&|t: &(f64, f64)| t.0);
+        let (cat, aat) = corr(&|t: &(f64, f64)| t.1);
+        println!("{fam}/{base:<12} {cao:>8.3} {cat:>8.3} {aao:>9.3} {aat:>9.3}");
+    }
+}

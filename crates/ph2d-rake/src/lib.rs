@@ -58,6 +58,26 @@ pub const TECTO_DA_VIAGEM: f32 = 0.34;
 
 /// Pentear uma vizinhança: **uma** passagem de relaxação.
 ///
+/// # ⛔⛔⛔ RECUSA MEDIDA — **mais varreduras NÃO é a cura** (2026-09-18)
+///
+/// A bancada malha-a-malha mostra que sobre a mesma célula esta lei move
+/// **exactamente os mesmos vértices** que o alvo (`170` de `170`, zero só-nossos)
+/// com as cinco grandezas agregadas da espec §3.2 a bater — e o campo por
+/// vértice está `~54°` fora (cosseno ponderado `0,583`, as duas componentes do
+/// quadro do traço igualmente correlacionadas a `0,60`, sem erro de sinal).
+///
+/// A hipótese natural — *«a nossa relaxação está por convergir»* — foi
+/// **construída e REFUTADA**: correndo `1 · 2 · 3 · 5 · 8` varreduras por
+/// carimbo, a amplitude sobe `0,654 → 1,116` (cruza o alvo a ~`5`) e o cosseno
+/// **DESCE** `0,583 → 0,535`.
+///
+/// ⇒ *não é uma relaxação parada a meio do mesmo caminho: é um ÓPTIMO
+/// DIFERENTE.* Mais iterações compram o tamanho certo na direcção errada, e
+/// subir o peso faria o mesmo. **Não reconstrua nenhuma das duas.**
+///
+/// ⚠️ O que fecha a pergunta não está neste corpus (as estatísticas agregadas
+/// já concordam) — é um acto do **E**, na linha do que a espec §12 já atribui.
+///
 /// - `posicoes` — lidas **e** escritas.
 /// - `normais` — uma por vértice, já normalizadas; elas definem o plano tangente
 ///   em que o quadro do traço é escrito.

@@ -19,6 +19,7 @@
 mod event;
 mod paint;
 mod paint_actions;
+mod paint_chip;
 mod populate;
 pub mod state;
 

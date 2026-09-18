@@ -12,6 +12,89 @@
 
 use ph2d_text::{FontWeight, TextSystem};
 
+/// ⭐⭐⭐ **O CENSO DAS ELISÕES — quem foi CORTADO ao pintar, e por quanto.**
+///
+/// ⛔⛔ **Ele nasce de um defeito que a foto do dono mostrava e ninguém tinha medido** (2026-09-18):
+/// a coluna dos nomes do Audio Mixer era o literal `32,0 px` e o `Depth` (`32,3`) e o `Return`
+/// (`35,9`) saíam cortados **na língua em que o app ship**. O painel tinha censo de texto verde,
+/// gate de costura, gate de ids — e nenhum instrumento perguntava ***o que foi pintado coube?***
+///
+/// ⚠️ **Nenhum gate estático o pode responder**, e é essa a razão de este viver no PINTOR: a
+/// largura de uma coluna sai de um `rect` que só existe durante um quadro, com a arrumação, o
+/// zoom e a dobra daquele instante. *Uma régua que lê o fonte mede a INTENÇÃO; esta mede o que
+/// saiu.*
+///
+/// # ⚠️ Ele nasce DESARMADO, e isso não é conforto
+///
+/// Um corte é normal no produto (o nome de uma faixa da timeline, o caminho de um ficheiro), logo
+/// registá-lo sempre seria uma `String` por corte **por quadro** — a forma exacta do vazamento que
+/// o `leak_key` do `ph2d-i18n` já custou a esta casa. ⇒ o caminho do produto paga **uma leitura
+/// atómica** no ramo que já cortava, e mais nada.
+pub mod elisao {
+    use std::cell::RefCell;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    /// ⭐ **Um texto que não coube** — o que se queria, o que saiu, e a largura que havia.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Cortado {
+        /// O texto inteiro, tal como o pintor o recebeu.
+        pub texto: String,
+        /// O que de facto foi desenhado (com as reticências).
+        pub pintado: String,
+        /// A largura disponível, em px.
+        pub largura: f32,
+    }
+
+    static ARMADO: AtomicBool = AtomicBool::new(false);
+
+    thread_local! {
+        static CORTADOS: RefCell<Vec<Cortado>> = const { RefCell::new(Vec::new()) };
+    }
+
+    /// Arma o censo e ESVAZIA o que houvesse — um gate que não esvaziasse mediria o vizinho.
+    pub fn arma() {
+        ARMADO.store(true, Ordering::Relaxed);
+        CORTADOS.with_borrow_mut(Vec::clear);
+    }
+
+    /// Desarma. ⚠️ Um gate que se esqueça disto deixa o custo ligado para os que vêm a seguir no
+    /// mesmo binário — por isso o par mora numa função só, a [`medindo`].
+    pub fn desarma() {
+        ARMADO.store(false, Ordering::Relaxed);
+    }
+
+    /// O que foi cortado desde o [`arma`].
+    #[must_use]
+    pub fn cortados() -> Vec<Cortado> {
+        CORTADOS.with_borrow(Clone::clone)
+    }
+
+    /// ⭐⭐ **A PORTA de um gate: arma, corre, desarma, devolve** — e o desarmar acontece mesmo
+    /// que o corpo entre em pânico não é verdade aqui, de propósito: um `panic` num gate aborta o
+    /// teste, e um censo ligado num binário que já morreu não custa nada. *O que ela compra é que
+    /// ninguém escreva `arma` sem o `desarma`.*
+    pub fn medindo<R>(f: impl FnOnce() -> R) -> (R, Vec<Cortado>) {
+        arma();
+        let r = f();
+        let out = cortados();
+        desarma();
+        (r, out)
+    }
+
+    pub(super) fn regista(texto: &str, pintado: &str, largura: f32) {
+        if !ARMADO.load(Ordering::Relaxed) {
+            return;
+        }
+        CORTADOS.with_borrow_mut(|v| {
+            v.push(Cortado {
+                texto: texto.to_string(),
+                pintado: pintado.to_string(),
+                largura,
+            });
+        });
+    }
+}
+
 /// The ellipsis appended to text that does not fit. Inside Inter's coverage
 /// (U+2026 is not one of the arrow / technical blocks the tofu gate rejects).
 const ELLIPSIS: &str = "\u{2026}";
@@ -66,6 +149,9 @@ pub(crate) fn elide(
     weight: FontWeight,
 ) -> Option<String> {
     if text_system.prefix_width_weighted(ELLIPSIS, font_size, weight) > max_width {
+        // ⛔ O corte para NADA — nem a reticência cabe. É o pior dos dois, e entra no censo pela
+        //    mesma porta: quem o leu na foto do dono leu uma fileira de `[…]`.
+        elisao::regista(text, "", max_width);
         return None;
     }
     let bounds: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
@@ -80,7 +166,9 @@ pub(crate) fn elide(
             hi = mid;
         }
     }
-    Some(corte(text, bounds[lo]))
+    let saida = corte(text, bounds[lo]);
+    elisao::regista(text, &saida, max_width);
+    Some(saida)
 }
 
 /// ⭐⭐ **O prefixo com as reticências, SEM o espaço que ficou pendurado.**

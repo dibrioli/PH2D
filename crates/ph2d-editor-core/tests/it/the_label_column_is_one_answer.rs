@@ -65,9 +65,10 @@ const AINDA_A_MAO: &[&str] = &[
     // e o cromo do transporte, que não são linhas de propriedade.
     "crates/ph2d-panel-timeline/src/geom.rs",
     "crates/ph2d-panel-timeline/src/transport.rs",
-    // ⏳ **O do mixer é a etiqueta de um slot de FX do master** — uma fileira de cromo, não um
-    // formulário; convertê-la é decidir primeiro se aquela fileira é uma linha de propriedade.
-    "crates/ph2d-panel-audio-mixer/src/paint_widgets.rs",
+    // ✅ **O do mixer SAIU em 2026-09-18** — ele escolhia a coluna com um literal de `32,0 px` que
+    // já cortava `Depth` e `Return` **em inglês**, e hoje ela DERIVA dos nomes que a fileira pinta
+    // (`coluna_dos_nomes`). ⭐ Esta linha foi apagada porque o CENSO DE OBSOLESCÊNCIA deste gate a
+    // acusou de STALE na primeira corrida a seguir à cura — *é assim que uma catraca desce.*
     // ⏳ **O lab é uma bancada de estudo de widgets**, não um painel de produto: ali o número É o
     // sujeito da experiência.
     "crates/ph2d-panel-widget-lab/src/study.rs",

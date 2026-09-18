@@ -19,16 +19,16 @@
 use crate::EqualizeSizesPanel;
 use crate::state::{self, EqualizeSizesPanelState, set_last_content_h, set_last_visible_h};
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, paint_text_centered, rect_to_vello, resolve};
+use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
+use ph2d_editor_core::paint::{paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, EQUALIZE_SIZES_SCROLLBAR_ID, TextInputState, paint_button,
-    paint_number_chip, paint_scrollbar, paint_slider_with_chip_layout_adaptive,
-    scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
+    Button, ButtonKind, ButtonState, EQUALIZE_SIZES_SCROLLBAR_ID, paint_button, paint_scrollbar,
+    paint_slider_with_chip_layout_adaptive, scrollbar_is_needed, scrollbar_thumb_rect,
+    scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -294,7 +294,7 @@ fn paint_mode_rows(
             // Manually paint a simple labeled chip pair (W=…, H=…). The
             // editor's shared `paint_slider_with_chip_layout` expects a
             // slider, so we inline a small chip row painter here.
-            let used_w = paint_labeled_chip(
+            let used_w = crate::paint_chip::paint_labeled_chip(
                 Rect::new(inner_x, y, half, row_h),
                 ph2d_i18n::TextKey::new("panel.equalize_sizes.fixed.w"),
                 ph2d_tool_equalize_sizes::ids::EQS_FIXED_W,
@@ -305,7 +305,7 @@ fn paint_mode_rows(
                 text_system,
                 theme,
             );
-            let used_h = paint_labeled_chip(
+            let used_h = crate::paint_chip::paint_labeled_chip(
                 Rect::new(inner_x + half + chip_gap, y, half, row_h),
                 ph2d_i18n::TextKey::new("panel.equalize_sizes.fixed.h"),
                 ph2d_tool_equalize_sizes::ids::EQS_FIXED_H,
@@ -518,87 +518,4 @@ fn paint_toggle_button(
     let b = Button::new(id, label).kind(kind).visual(btn_state);
     paint_button(&b, rect, scene, text_system, theme);
     hit_index.register(id, rect);
-}
-
-/// Paint a label + NumberInput chip pair on one row (no slider). The
-/// chip uses the stored number_value (already mirrored by the host on
-/// **Um rótulo por cima do seu campo numérico**, e a altura que ele de facto usou.
-///
-/// ⚠️ **Isto reusava o painter de SLIDER com um track de largura zero**, e o comentário de então
-/// admitia o truque: *"o slider colapsa atrás da coluna do rótulo"*. Ele colapsava **enquanto a
-/// row coubesse numa linha**. Num painel estreito — que é o caso destas duas metades — o painter
-/// adaptativo EMPILHA, e aí o truque desmonta-se de duas maneiras ao mesmo tempo (Enio,
-/// 2026-08-19: *"o painel de equalize sizes: fixed está todo embolado"*):
-///
-/// 1. o track deixa de estar escondido atrás do rótulo e desenha-se **à largura toda** — o
-///    retângulo preto à esquerda do `256`;
-/// 2. a row passa a ocupar **duas** linhas, e quem a chamava avançava `y` por **uma** — a linha
-///    seguinte (`Upscale if smaller`) caía por cima dos campos.
-///
-/// A cura não é medir melhor a altura: é **não pedir um slider quando não há slider**. O
-/// `paint_number_chip` existe exatamente para isto — o doc dele diz *"callable directly when a
-/// chip needs to live somewhere a slider row layout doesn't fit"*.
-///
-/// *Um componente reusado com um dos seus eixos posto a zero não é reuso; é um caso especial à
-/// espera do primeiro layout que não o respeite.*
-#[allow(clippy::too_many_arguments)]
-/// ⚠️⚠️ **O rótulo entra TIPADO (`TextKey`) e não como `&str`, e isso é a cerca.**
-///
-/// Até 2026-09-18 ele era um `&str` e os dois chamadores passavam `"W"` e `"H"` **crus** — com o
-/// censo desta crate VERDE, porque o `is_language` exige duas letras SEGUIDAS (senão acusaria todo
-/// identificador) e uma letra sozinha não tem forma que a distinga de uma. ⇒ *quando a régua não
-/// consegue ver a diferença, quem a vê é o TIPO*: com este parâmetro, escrever `"W"` aqui deixa de
-/// compilar. É a lei que a memória desta casa já regista — *chave e texto do mesmo tipo é um
-/// defeito à espera*.
-fn paint_labeled_chip(
-    rect: Rect,
-    label: ph2d_i18n::TextKey,
-    chip_id: NodeId,
-    value: f64,
-    store: &WidgetStore,
-    hit_index: &mut HitIndex,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-) -> f32 {
-    let font = TypeToken::Xs.px();
-    let label_h = font + Spacing::Xs.px();
-    paint_text(
-        text_system,
-        scene,
-        label.tr(),
-        rect.x,
-        rect.y,
-        font,
-        rect.w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let chip_rect = Rect::new(rect.x, rect.y + label_h, rect.w, rect.h);
-    // O estado vem do store para que a escrita, o cursor e a seleção sejam vivos — a mesma
-    // leitura que o `paint_slider_with_chip_layout` faz do seu chip.
-    let (state, buffer, caret, anchor) = match store.get(chip_id) {
-        Some(InteractiveState::NumberInput {
-            state,
-            buffer,
-            caret,
-            selection_anchor,
-            ..
-        }) => (*state, Some(buffer.as_str()), *caret, *selection_anchor),
-        _ => (TextInputState::Normal, None, 0, None),
-    };
-    let display = value.round().to_string();
-    paint_number_chip(
-        chip_rect,
-        state,
-        value,
-        Some(&display),
-        buffer,
-        caret,
-        anchor,
-        scene,
-        text_system,
-        theme,
-    );
-    hit_index.register(chip_id, chip_rect);
-    label_h + rect.h
 }

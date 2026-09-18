@@ -1231,11 +1231,10 @@ fn sonda_nos_contra_a_verdade() {
                     ..ph2d_view_transform::Look::default()
                 };
                 let mut ppm = format!("P6\n{w} {h}\n255\n").into_bytes();
-                for i in 0..w * h {
-                    let c = olhar.apply(linear[i]);
-                    for k in 0..3 {
+                for cru in linear.iter().take(w * h) {
+                    for canal in olhar.apply(*cru) {
                         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                        ppm.push((c[k].clamp(0.0, 1.0) * 255.0 + 0.5) as u8);
+                        ppm.push((canal.clamp(0.0, 1.0) * 255.0 + 0.5) as u8);
                     }
                 }
                 let _ = std::fs::write(format!("{d}/verdade_{nome}_e{e}.ppm"), ppm);

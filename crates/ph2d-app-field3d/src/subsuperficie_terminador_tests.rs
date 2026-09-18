@@ -558,16 +558,17 @@ fn sonda_fotografa_o_terminador() {
         base_color: [0.75, 0.35, 0.35],
         ..ph2d_material::OpenPbr::default()
     };
+    let solid = |r: f32| ph2d_material::OpenPbr {
+        subsurface_weight: 1.0,
+        geometry_thin_walled: false,
+        subsurface_radius: r,
+        ..base
+    };
     for (nome, m) in [
         ("opaco", base),
-        (
-            "solid",
-            ph2d_material::OpenPbr {
-                subsurface_weight: 1.0,
-                geometry_thin_walled: false,
-                ..base
-            },
-        ),
+        ("solid", solid(1.0)),
+        ("r010", solid(0.1)),
+        ("r030", solid(0.3)),
         (
             "fina",
             ph2d_material::OpenPbr {
@@ -654,6 +655,16 @@ fn quadro(
         if com_sombra { &uma[..] } else { &[][..] },
         chao,
     );
+    // ⭐⭐⭐ **A BORDA MOLE, pela MESMA porta que o app usa** — ⚠️ a 1.ª redacção desta sonda
+    // derivava a distância de espalhamento aqui, o que a fazia a segunda resposta à mesma pergunta.
+    let mut sh = sh;
+    if let Some(espalha) = crate::materials::maior_espalhamento(&surfaces) {
+        let raio = ph2d_field_render::sss_shadow::raio_em_pixeis(cam, h, espalha);
+        let canais = (0..1)
+            .map(|l| ph2d_field_render::sss_shadow::blur_por_canal(&g, sh.lamp_channel(l), raio))
+            .collect();
+        sh.set_soft(canais);
+    }
     let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
     let px = ph2d_field_render::shade_render(
         &g,
@@ -814,5 +825,115 @@ fn um_corpo_convexo_nao_se_tapa_a_si_proprio() {
         tapados, 0,
         "{tapados} de {total} pixels de uma esfera SOZINHA vêm sombreados — um convexo não se \
          pode tapar a si próprio, logo isto é o corpo a ser lido como obstáculo de si mesmo"
+    );
+}
+
+/// ⭐⭐⭐ **A BORDA DA SOMBRA NUM JADE É MOLE, E A DO OPACO AO LADO CONTINUA DURA.**
+///
+/// # O report de 2026-09-18 e o experimento que o diagnosticou
+///
+/// O dono apontou uma linha dura na esfera com `Thin Walled: Solid`. O que a decidiu foi tirar a
+/// LÂMINA da cena: **sem ela a bola sai lisa** ⇒ a linha é a borda da SOMBRA que a placa lança, e
+/// ela é dura porque a luz é um **ponto**. ⛔ Certo como geometria, errado como produto: num jade a
+/// luz entra fora da sombra e espalha-se por baixo da superfície **para dentro** dela.
+///
+/// # As três metades, e porque nenhuma chega sozinha
+///
+/// 1. **o jade amacia** — a quebra na banda do terminador cai;
+/// 2. **o OPACO não se mexe, ao bit** — sem isto, borrar a visibilidade de toda a gente passaria
+///    aqui e apagaria a sombra do app inteiro;
+/// 3. **o jade continua a TER sombra** — sem isto, uma «cura» que pusesse `vis = 1` em todo o lado
+///    lia a banda lisíssima e passava.
+#[test]
+fn a_borda_da_sombra_num_jade_e_mole_e_a_do_opaco_continua_dura() {
+    let doc = crate::smoke::scenes::edge::cena_33().expect("a cena do dono");
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = Orbit::default();
+    let (onde, luz) = crate::lights::opening_light(&cam);
+    let chao = ph2d_field_render::lowest_point(&doc, &reg)
+        .map(|height| ph2d_field_render::Ground { height });
+    let base = ph2d_material::OpenPbr {
+        subsurface_color: [0.75, 0.35, 0.35],
+        base_color: [0.75, 0.35, 0.35],
+        ..ph2d_material::OpenPbr::default()
+    };
+    let jade = ph2d_material::OpenPbr {
+        subsurface_weight: 1.0,
+        geometry_thin_walled: false,
+        ..base
+    };
+    let medida = |m: ph2d_material::OpenPbr| {
+        let (g, _, px) = quadro(&Quadro {
+            doc: &doc,
+            m,
+            cam: &cam,
+            onde,
+            luz,
+            com_sombra: true,
+            chao,
+        });
+        let (wu, hu) = (W as usize, H as usize);
+        let (right, up, fwd) = cam.basis();
+        let da_bola = |i: usize| g.hit[i] && g.point[i][0] > 0.1;
+        let lum = |i: usize| {
+            let b = i * 4;
+            0.2126 * f32::from(px[b])
+                + 0.7152 * f32::from(px[b + 1])
+                + 0.0722 * f32::from(px[b + 2])
+        };
+        let ndl = |i: usize| {
+            let p = g.point[i];
+            let d = [onde[0] - p[0], onde[1] - p[1], onde[2] - p[2]];
+            let r = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            let n = [0, 1, 2].map(|k| {
+                g.normal[i][0] * right[k] + g.normal[i][1] * up[k] + g.normal[i][2] * fwd[k]
+            });
+            (n[0] * d[0] + n[1] * d[1] + n[2] * d[2]) / r.max(1e-9)
+        };
+        // A quebra na banda onde a sombra da placa corta a bola, e o CONTRASTE que lá vive.
+        let mut saltos: Vec<f32> = Vec::new();
+        let (mut claro, mut escuro) = (0.0f32, f32::MAX);
+        for y in 0..hu {
+            for x in 1..wu - 1 {
+                let (a, b, c) = (y * wu + x - 1, y * wu + x, y * wu + x + 1);
+                if !da_bola(a) || !da_bola(b) || !da_bola(c) || ndl(b).abs() > 0.15 {
+                    continue;
+                }
+                saltos.push((lum(a) - 2.0 * lum(b) + lum(c)).abs());
+                claro = claro.max(lum(b));
+                escuro = escuro.min(lum(b));
+            }
+        }
+        assert!(saltos.len() > 2_000, "só {} px na banda", saltos.len());
+        saltos.sort_by(f32::total_cmp);
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let k = ((saltos.len() as f32 - 1.0) * 0.99).round() as usize;
+        (saltos[k], claro - escuro, px)
+    };
+
+    let (dura_op, _, bytes_op) = medida(base);
+    let (mole_jade, contraste, _) = medida(jade);
+
+    // (1) o jade amacia — medido `9,21` antes e `1,36` depois; a barra sai do vale.
+    assert!(
+        mole_jade <= 4.0,
+        "a quebra na banda do jade lê p99 {mole_jade:.2} contra a barra 4,0 — a borda da sombra \
+         voltou a ser dura (o opaco, que não tem espalhamento, lê {dura_op:.2})"
+    );
+    // (2) ⚠️ o OPACO não pode ter mudado UM BYTE — ele não tem espalhamento, logo não assa canal.
+    let sem_sss = ph2d_material::OpenPbr {
+        subsurface_weight: 0.0,
+        ..base
+    };
+    let (_, _, controlo) = medida(sem_sss);
+    assert_eq!(
+        bytes_op, controlo,
+        "o material sem subsuperfície mudou de bytes — a borda mole está a alcançar quem não a pediu"
+    );
+    // (3) e o jade CONTINUA a ter sombra: sem isto, `vis = 1` em todo o lado passaria em (1).
+    assert!(
+        contraste >= 8.0,
+        "o contraste através da banda do jade é {contraste:.1} — a sombra foi apagada em vez de \
+         amaciada, e a metade (1) não distingue as duas"
     );
 }

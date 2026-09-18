@@ -1120,6 +1120,26 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   mediana contra o oráculo `5,0e-4 → 2,9e-3`) e **inevitável**: o integral verdadeiro é um só e é o
   ponto médio a `N = 32` que está longe dele. Ela é **load-bearing** — revertê-la reprova no
   `o_macico_nao_e_mais_duro_que_o_lado_que_o_dono_aprovou`, cuja barra sai do lado APROVADO.
+  ⭐⭐⭐ **E A SOMBRA PASSOU A TER A BORDA MOLE NUM MATERIAL TRANSLÚCIDO** (ordem do dono, 18/09:
+  *«sim. faça»* — [`10` §12](docs/Render3d/10_a_luz_que_atravessa_a_peca.md)): *a visibilidade que
+  uma closure TRANSLÚCIDA lê é a MÉDIA da vizinhança, sobre a distância de espalhamento do material*
+  ([`ph2d-field-render/sss_shadow.rs`](crates/ph2d-field-render/src/sss_shadow.rs)). A difusão já
+  estava na lei do `N·L` e **não estava na lei da SOMBRA**. ⭐ O raio é o `subsurface_radius` **por
+  canal**, em unidades do MUNDO convertidas a píxeis pela câmera — *é por ser por canal que a borda
+  fica avermelhada*, e um raio escrito em píxeis seria uma borda que encolhe ao aproximar.
+  ⭐⭐ **E não foi preciso partir o `compose`:** a composição do OpenPBR é **linear na resposta das
+  closures**, logo compor com e sem o peso de subsuperfície e ficar com a diferença dá **exactamente**
+  a parcela dela através da pilha ⇒ `Surface::direct_sss` com DUAS radiâncias, e com as duas iguais
+  ele é o `direct` **ao bit**. **Medido:** a quebra na banda do terminador `9,21 → 1,36`, o material
+  sem subsuperfície **byte a byte o de sempre**, e a foto da `=33` com a linha **desaparecida** e a
+  sombra ainda lá. ⛔⛔ **DUAS mutações sobreviveram primeiro, e cada uma nomeou uma régua em falta:**
+  a cena de jade tem `subsurface_weight = 1`, logo *trocar quem lê o quê no resto da pilha não movia
+  um byte lá*; e a bola é lisa, logo *uma cena sem quina nenhuma não testa a guarda da quina* — e a
+  régua da quina **sobreviveu outra vez** por medir as PONTAS da tira, que ficam fora do alcance
+  dela. **4 de 4 sangram** hoje. ⏳ **DECLARADO: o DISPOSITIVO ainda não tem o gémeo** (ele calcula a
+  visibilidade dentro da pintura; dá-la mole pede a passagem que a escreve, duas de borrão separável
+  e a leitura — o desenho que o ricochete lá já tem) ⇒ **hoje vê-se no caminho de REFERÊNCIA**
+  (`PH2D_FIELD_GPU=0`), e as paridades continuam verdes porque nenhuma delas assa o canal.
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

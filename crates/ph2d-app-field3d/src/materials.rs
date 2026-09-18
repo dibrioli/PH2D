@@ -280,3 +280,28 @@ mod coat_tests;
 #[cfg(test)]
 #[path = "base_specular_tests.rs"]
 mod base_specular_tests;
+
+/// ⭐⭐⭐ **A maior distância de espalhamento da cena, por canal** — o raio da borda mole.
+///
+/// ⚠️ **`None` quando nenhum material é translúcido**, e é isso que faz o quadro sem subsuperfície
+/// não pagar nada e sair byte a byte o de sempre. Ver [`ph2d_field_render::sss_shadow`].
+///
+/// ⚠️ É o MÁXIMO sobre os materiais e não um por peça: a média é uma passagem sobre a imagem
+/// inteira, e uma por material custaria `n` passagens para uma diferença que só se vê onde as duas
+/// peças se tocam. *A divergência é declarada e o preço dela é conhecido.*
+#[must_use]
+pub fn maior_espalhamento(surfaces: &ph2d_field_render::Surfaces<'_>) -> Option<[f32; 3]> {
+    let mut maior = [0.0f32; 3];
+    let mut algum = false;
+    for s in surfaces.all {
+        if !s.reads_curvature() {
+            continue;
+        }
+        algum = true;
+        let e = s.scatter_distance();
+        for k in 0..3 {
+            maior[k] = maior[k].max(e[k]);
+        }
+    }
+    algum.then_some(maior)
+}

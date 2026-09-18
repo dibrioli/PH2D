@@ -91,6 +91,10 @@ pub struct Shadows {
     /// uma luz que não foi calculada é **ausência de luz**. *Inventar luz é a única das duas que
     /// acende o que devia estar escuro.*
     bounce: Vec<[f32; 3]>,
+    /// ⭐⭐⭐ **A visibilidade com a BORDA MOLE, por lâmpada e por canal** — o que uma closure
+    /// TRANSLÚCIDA lê em vez da dura. Vazio = não foi assada, e o [`Shadows::soft_at`] devolve a
+    /// dura ⇒ o quadro é o de sempre, ao bit. Ver [`crate::sss_shadow`].
+    soft: Vec<Vec<[f32; 3]>>,
     pixels: usize,
     /// ⭐⭐⭐ **O CHÃO para o qual os pixels de FUNDO foram calculados** — ver [`crate::ground`].
     ///
@@ -171,6 +175,30 @@ impl Shadows {
             self.pixels = bounce.len();
         }
         self.bounce = bounce;
+    }
+
+    /// ⭐⭐⭐ **A visibilidade com a BORDA MOLE que a lâmpada `lamp` entrega ao pixel `i`.**
+    ///
+    /// ⚠️ **Sem a passagem assada ela devolve a DURA, nos três canais** — é isso que mantém todo
+    /// quadro sem subsuperfície byte a byte o de sempre. Ver [`crate::sss_shadow`].
+    #[must_use]
+    pub fn soft_at(&self, lamp: usize, i: usize) -> [f32; 3] {
+        self.soft
+            .get(lamp)
+            .and_then(|v| v.get(i))
+            .copied()
+            .unwrap_or_else(|| [self.at(lamp, i); 3])
+    }
+
+    /// ⭐ Declara os canais moles — para quem os assou (o [`crate::sss_shadow::blur_por_canal`]).
+    pub fn set_soft(&mut self, soft: Vec<Vec<[f32; 3]>>) {
+        self.soft = soft;
+    }
+
+    /// O canal DURO de uma lâmpada, para quem o vai borrar.
+    #[must_use]
+    pub fn lamp_channel(&self, lamp: usize) -> &[f32] {
+        self.per_lamp.get(lamp).map_or(&[], Vec::as_slice)
     }
 
     /// ⭐ **O canal de UMA lâmpada**, para quem o calculou noutro sítio (o traçador de GPU).
@@ -268,6 +296,7 @@ pub fn shadow_pass_on(
             // [`crate::bounce::bounce_pass`] e declara-o com o [`Shadows::set_bounce`] — é o mesmo
             // desenho do `ambient`, que também vem de outro passe.
             bounce: Vec::new(),
+            soft: Vec::new(),
             pixels,
             ground,
             ground_bounce: crate::ground_bounce::GroundBounce::vazio(),
@@ -385,6 +414,7 @@ pub fn shadow_pass_on(
         per_lamp,
         ambient,
         bounce: Vec::new(),
+        soft: Vec::new(),
         pixels,
         ground,
         ground_bounce: crate::ground_bounce::GroundBounce::vazio(),

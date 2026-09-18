@@ -348,7 +348,17 @@ fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom
         // ambiente, e continua a brilhar se for ela própria uma luz.*
         let visivel = light.shadows.map_or(1.0, |s| s.at(l, geom.i));
         let chega = chega_da_lampada(lamp, cru, visivel);
-        rgb = add(rgb, surface.direct(n, v, to_light, chega));
+        // ⭐⭐⭐ **E a subsuperfície lê a visibilidade MOLE, que é a da vizinhança.**
+        //
+        // A luz que uma peça translúcida devolve não entrou por ESTE ponto: entrou à volta dele e
+        // espalhou-se por baixo da superfície ⇒ a borda de uma sombra num jade é mole, e a do
+        // especular ao lado continua dura. Ver [`crate::sss_shadow`] e o report de 2026-09-18.
+        //
+        // ⚠️ **Sem a passagem assada o `soft_at` devolve a DURA nos três canais** ⇒ o `direct_sss`
+        // sai pelo braço curto e o quadro é o de sempre, ao bit.
+        let mole = light.shadows.map_or([visivel; 3], |s| s.soft_at(l, geom.i));
+        let chega_mole = [0, 1, 2].map(|k| chega_da_lampada(lamp, cru, mole[k])[k]);
+        rgb = add(rgb, surface.direct_sss(n, v, to_light, chega, chega_mole));
     }
     look.apply(add(rgb, surface.emission(n, v)))
 }

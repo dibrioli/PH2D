@@ -618,3 +618,64 @@ fn o_macico_nao_e_mais_duro_que_o_lado_que_o_dono_aprovou() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A SEPARAÇÃO DAS DUAS RADIÂNCIAS É EXACTA** — zerar a da subsuperfície tira a parcela
+/// dela e **mais nada**.
+///
+/// # ⚠️ Ele existe porque uma MUTAÇÃO SOBREVIVEU
+///
+/// A cena de jade que valida a borda mole tem `subsurface_weight = 1`, e ali o difuso já saiu da
+/// mistura — logo trocar qual radiância o RESTO da pilha lê (o especular, a camada) não movia um
+/// byte lá. *Uma fixtura onde só um lóbulo importa não distingue quem lê o quê*, e a régua tem de
+/// pôr os dois a valer.
+///
+/// A lei: `direct_sss(r, 0)` **é** o `direct(r)` da mesma superfície com `subsurface_weight = 0`.
+/// Isso só é verdade se a composição for linear na resposta da closure e se a parcela subtraída for
+/// exactamente a dela.
+#[test]
+fn zerar_a_radiancia_da_subsuperficie_tira_so_a_parcela_dela() {
+    let m = crate::OpenPbr {
+        // ⚠️ Os DOIS lóbulos a valer: meio peso de subsuperfície e um especular bem acordado.
+        subsurface_weight: 0.5,
+        geometry_thin_walled: false,
+        subsurface_color: [0.75, 0.35, 0.35],
+        base_color: [0.75, 0.35, 0.35],
+        specular_weight: 1.0,
+        specular_roughness: 0.25,
+        ..crate::OpenPbr::default()
+    };
+    let s = m.prepare().at_curvature(2.381);
+    let sem = crate::OpenPbr {
+        subsurface_weight: 0.0,
+        ..m
+    }
+    .prepare()
+    .at_curvature(2.381);
+    let (n, v, l) = ([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.4, 0.0, 0.917]);
+    let r = [1.0, 0.9, 0.8];
+    let com_zero = s.direct_sss(n, v, l, r, [0.0; 3]);
+    let esperado = sem.direct(n, v, l, r);
+    for k in 0..3 {
+        assert!(
+            (com_zero[k] - esperado[k]).abs() <= 1.0e-6,
+            "canal {k}: com a radiância da subsuperfície a zero lê {:e} contra {:e} da mesma \
+             superfície sem subsuperfície — a separação não é exacta",
+            com_zero[k],
+            esperado[k]
+        );
+    }
+    // ⭐ E o CONTROLO: a parcela EXISTE, senão a igualdade acima é trivial.
+    let cheio = s.direct_sss(n, v, l, r, r);
+    let parcela: f32 = (0..3).map(|k| (cheio[k] - esperado[k]).abs()).sum();
+    assert!(
+        parcela > 1.0e-3,
+        "a parcela da subsuperfície soma {parcela:e} — ela não existe nesta fixtura, logo a \
+         igualdade de cima não afirma nada"
+    );
+    // ⭐⭐ E as duas radiâncias iguais são o `direct`, ao BIT — o braço curto.
+    assert_eq!(
+        cheio.map(f32::to_bits),
+        s.direct(n, v, l, r).map(f32::to_bits),
+        "com as duas radiâncias iguais o `direct_sss` tem de ser o `direct` ao bit"
+    );
+}

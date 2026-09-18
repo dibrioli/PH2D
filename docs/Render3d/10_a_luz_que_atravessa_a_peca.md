@@ -367,3 +367,77 @@ MaterialX põe `occlusion = 1` e foge do assunto).
 com o raio `mfp/κ` que o `integrate_burley` já usa, lido **só** pela closure de subsuperfície —
 ⚠️ e isso muda a fronteira do `ph2d-material` (hoje há **uma** radiância por lâmpada para todas as
 closures), mais o gémeo em WGSL. **É wave própria, e fica nomeada.**
+
+---
+
+## §12 — ⭐⭐⭐ A SOMBRA COM A BORDA MOLE (ordem do dono, 2026-09-18: *«sim. faça»*)
+
+A §11 fechou com o diagnóstico: a linha é a borda da sombra que a placa lança, dura porque a luz é
+um ponto, e **certa como geometria e errada como produto**. Esta secção é a cura.
+
+### §12.1 — A lei
+
+> **A visibilidade que uma closure TRANSLÚCIDA lê é a MÉDIA da vizinhança, sobre a distância de
+> espalhamento do material.**
+
+Num jade a luz que entra **fora** da sombra espalha-se por baixo da superfície **para dentro** dela.
+A nossa subsuperfície já tinha a difusão na lei do `N·L` (o `integrate_burley` envolve a luz à volta
+do terminador) e **não a tinha na lei da SOMBRA** — a visibilidade entrava dura, por pixel.
+
+⭐ **O comprimento da média é o `subsurface_radius` por canal** ([`Surface::scatter_distance`]), em
+unidades do MUNDO, convertido a píxeis pela câmera ([`sss_shadow::raio_em_pixeis`]). *É por ser por
+canal que a borda fica avermelhada — o vermelho viaja mais e entra mais fundo na sombra, que é a
+assinatura de toda pele e de toda cera.*
+
+⚠️ **O raio é do MUNDO e não do ecrã**: um raio escrito em píxeis seria uma borda que encolhe quando
+o artista se aproxima.
+
+### §12.2 — Onde ela entra, e porque NÃO precisou de partir o `compose`
+
+⭐⭐⭐ A composição do OpenPBR é **linear na resposta das closures** — o `mix`, o `add` e o `layer`
+(que multiplica pelo *throughput*, e esse não depende da radiância). ⇒ compor a superfície **com** e
+**sem** o peso de subsuperfície e ficar com a diferença dá **exactamente** a parcela dela através de
+toda a pilha. A porta é o [`Surface::direct_sss`], que recebe **duas** radiâncias.
+
+⚠️ **Com as duas iguais ele é o [`Surface::direct`] AO BIT**, pelo braço curto — e é esse o caminho
+de todo material sem subsuperfície, que não paga nada.
+
+### §12.3 — A medição, e a FOTO
+
+| | a borda | a quebra na banda `\|N·L\| <= 0,15` |
+|---|---|---|
+| antes | **uma linha** | p99 `9,21` |
+| hoje | **mole, e a sombra continua lá** | p99 `1,36` |
+| o mesmo material sem subsuperfície | dura (correcto) | **byte a byte o de sempre** |
+
+⭐ E a foto da cena `=33` com o enquadramento do dono mostra a linha **desaparecida**, com a região
+sombreada ainda visivelmente mais escura — *a sombra não foi apagada, foi amaciada*.
+
+### §12.4 — Os portões, e as duas mutações que SOBREVIVERAM primeiro
+
+Três metades, porque nenhuma chega sozinha
+([`a_borda_da_sombra_num_jade_e_mole_e_a_do_opaco_continua_dura`]): **o jade amacia** · **o opaco não
+muda UM BYTE** (sem isto, borrar a visibilidade de toda a gente passava e apagava a sombra do app
+inteiro) · **o jade continua a TER sombra** (sem isto, `vis = 1` em todo o lado passava na primeira).
+
+⛔⛔ **E duas mutações sobreviveram à primeira redacção, cada uma a nomear uma régua em falta:**
+- *a separação deixa de ser exacta* — a cena de jade tem `subsurface_weight = 1`, logo o difuso já
+  saiu da mistura e **trocar quem lê o quê no resto da pilha não movia um byte lá**. ⇒
+  [`zerar_a_radiancia_da_subsuperficie_tira_so_a_parcela_dela`], com os dois lóbulos a valer.
+- *a guarda de normal cai* — a bola é lisa, e **uma cena sem quina nenhuma não testa a guarda da
+  quina**. ⇒ [`a_media_da_borda_mole_nao_atravessa_uma_quina`], sobre uma tira sintética.
+  ⚠️ E ela sobreviveu **outra vez**: a 1.ª asserção media as PONTAS da tira, que a `r = 8` ficam fora
+  do alcance da quina e leem o mesmo com a guarda apagada. *Uma régua colada ao fenómeno, não ao
+  extremo.* **4 de 4 sangram** hoje.
+
+### §12.5 — ⏳ O que FALTA, e é declarado
+
+⛔⛔ **O DISPOSITIVO ainda não tem o gémeo.** Ele calcula a visibilidade **dentro** da pintura, por
+pixel, logo dar-lhe a borda mole pede uma passagem que a escreva num buffer, duas de borrão separável
+e a leitura — o mesmo desenho que o ricochete lá já tem. ⇒ **hoje a cura vê-se no caminho de
+REFERÊNCIA** (`PH2D_FIELD_GPU=0`), e as paridades CPU↔dispositivo continuam verdes porque nenhuma
+delas assa o canal.
+
+⏳ E fica também: a média é **separável** (duas passagens de uma dimensão) e a guarda de normal não é
+separável em rigor — a divergência é declarada no cabeçalho do [`sss_shadow`], e vale o preço
+(`O(r)` contra `O(r²)`; a `r = 24` isso são `2 401` toques por pixel e por canal).

@@ -270,6 +270,29 @@ pub(crate) fn traca(p: &Pedido) {
                     ph2d_field_render::curvatura::eps_para(bola.radius),
                 );
             }
+            // ⭐⭐⭐ **A SOMBRA COM A BORDA MOLE, que só um material TRANSLÚCIDO lê**
+            // (`docs/Render3d/10` §12, o report de 2026-09-18).
+            //
+            // A luz que uma peça de jade devolve não entrou por ESTE ponto: entrou à volta dele e
+            // espalhou-se por baixo da superfície ⇒ a borda de uma sombra nela é MOLE, e a do
+            // especular ao lado continua dura. O comprimento da média é a distância de
+            // espalhamento do material — o `subsurface_radius` por canal, em unidades do MUNDO —,
+            // e é por ser **por canal** que a borda fica avermelhada.
+            //
+            // ⚠️ **Sem material translúcido não se assa nada** e o [`Shadows::soft_at`] devolve a
+            // visibilidade DURA ⇒ o quadro é byte a byte o de sempre. É a mesma cerca da curvatura,
+            // logo acima.
+            if let Some(sh) = sombras.as_mut()
+                && let Some(espalha) = crate::materials::maior_espalhamento(&surfaces)
+            {
+                let raio = ph2d_field_render::sss_shadow::raio_em_pixeis(&p.cam, p.th, espalha);
+                let canais: Vec<Vec<[f32; 3]>> = (0..p.lights.len())
+                    .map(|l| {
+                        ph2d_field_render::sss_shadow::blur_por_canal(&g, sh.lamp_channel(l), raio)
+                    })
+                    .collect();
+                sh.set_soft(canais);
+            }
             let pinta = |sh: Option<&ph2d_field_render::Shadows>| {
                 ph2d_field_render::shade_render(
                     &g,

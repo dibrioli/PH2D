@@ -256,6 +256,47 @@ impl Surface {
         bsdf::mul3(radiance, self.compose(n, v, &Closure::Reflection(to_light)))
     }
 
+    /// ⭐⭐⭐ **A MESMA lei com DUAS radiâncias: a subsuperfície lê a sua.**
+    ///
+    /// # Porque ela existe: o report de 2026-09-18
+    ///
+    /// A luz que uma peça translúcida devolve **não entrou por este ponto** — ela entrou à volta
+    /// dele e espalhou-se por baixo da superfície. ⇒ a visibilidade que esta closure lê é a da
+    /// VIZINHANÇA, não a deste pixel, e é isso que faz a borda de uma sombra num jade ser MOLE
+    /// enquanto a do especular ao lado continua dura ([`ph2d_field_render::sss_shadow`]).
+    ///
+    /// # ⭐⭐ A separação é EXACTA, e não é uma aproximação
+    ///
+    /// Tudo o que está a jusante da mistura da subsuperfície é **linear na resposta dela** — o
+    /// `mix`, o `add` e o `layer` (que multiplica pelo *throughput*, e esse não depende da
+    /// radiância). ⇒ compor a superfície **com** e **sem** o peso de subsuperfície e ficar com a
+    /// diferença dá **exactamente** a parcela dela através de toda a pilha. *Não é preciso partir o
+    /// `compose` em dois, e é por isso que a porta cabe aqui.*
+    ///
+    /// # ⚠️ Com as duas radiâncias iguais é o [`Surface::direct`], AO BIT
+    ///
+    /// O braço curto sai antes de compor a segunda vez — e ele é o caminho de todo material sem
+    /// subsuperfície, que assim não paga nada.
+    #[must_use]
+    pub fn direct_sss(&self, n: Rgb, v: Rgb, to_light: Rgb, radiance: Rgb, sss: Rgb) -> Rgb {
+        let cheio = self.compose(n, v, &Closure::Reflection(to_light));
+        if sss == radiance || self.m.subsurface_weight <= 0.0 {
+            return bsdf::mul3(radiance, cheio);
+        }
+        let sem = Self {
+            m: OpenPbr {
+                subsurface_weight: 0.0,
+                ..self.m
+            },
+            ..*self
+        }
+        .compose(n, v, &Closure::Reflection(to_light));
+        let so_a_sss = [0, 1, 2].map(|k| cheio[k] - sem[k]);
+        let a = bsdf::mul3(radiance, sem);
+        let b = bsdf::mul3(sss, so_a_sss);
+        [0, 1, 2].map(|k| a[k] + b[k])
+    }
+
     /// ⭐⭐⭐ **A GÉMEA FOSCA — a mesma superfície sem o lóbulo especular.**
     ///
     /// # ⛔⛔⛔ Ela existe por uma MEDIÇÃO, e o report do dono está nela
@@ -323,6 +364,23 @@ impl Surface {
     #[must_use]
     pub fn reads_curvature(&self) -> bool {
         self.m.subsurface_weight > 0.0 && !self.m.geometry_thin_walled
+    }
+
+    /// ⭐⭐⭐ **A DISTÂNCIA DE ESPALHAMENTO desta superfície, por canal, em unidades do MUNDO.**
+    ///
+    /// É o `subsurface_radius` já multiplicado pela escala por canal — o mesmo número que o
+    /// [`crate::subsurface::thick`] usa como `mfp`. ⭐ Quem a lê é a passagem que dá à sombra a
+    /// borda mole ([`ph2d_field_render::sss_shadow`]): *a luz espalha-se sob a superfície sobre
+    /// esta distância, logo é sobre ela que a visibilidade se faz a média.*
+    ///
+    /// ⚠️ **Zero num material que não é maciço** — a parede fina não tem forma, logo não tem
+    /// espalhamento sobre a superfície dela.
+    #[must_use]
+    pub fn scatter_distance(&self) -> Rgb {
+        if !self.reads_curvature() {
+            return [0.0; 3];
+        }
+        self.subsurface_mfp
     }
 
     /// A radiância que o **céu** devolve para o observador.

@@ -128,6 +128,8 @@ pub mod refine;
 mod shade;
 mod shade_render;
 mod shadow;
+/// ⭐⭐⭐ A sombra com a borda MOLE, que um material translúcido lê — ver [`sss_shadow`].
+pub mod sss_shadow;
 mod tape_cache;
 mod tiles;
 use edges::resample_edges;

@@ -303,3 +303,21 @@ identificador que carrega o **endereço** para a duplicação aparecer.
 vistos, e a varredura passou a medir **nada**. ⭐ Quem a tornou barulhenta foi o
 `assert!(vistos.len() >= 3)` que já lá estava. *A metade positiva de um censo é o que o faz falhar
 alto no dia em que o filtro dele deixa de descrever o mundo.*
+
+## ⛔⛔ Um gate que varre UMA lista é cego à lista IRMÃ do mesmo snapshot
+
+Medido 2026-09-18 (`line/UIUX`, report do dono com foto). O
+`no_card_param_of_any_node_paints_a_raw_key` afirma *«nenhum rótulo do cartão é um identificador»* e
+varre `v.params`. O título de uma secção vive em **`v.sections`**, a lista irmã — e o cartão pintava
+`node.group.shape` com aquele gate, o do painel e o dos canais **todos verdes**: os três varrem
+**uma lista cada**, e ninguém percorria a quarta.
+
+⇒ *Uma família de texto nova não herda régua nenhuma só por o CONSUMIDOR dela já ter uma.* Quem
+acrescenta uma lista a um snapshot escreve o teste dela, e o cabeçalho do ficheiro passa a **contar**
+as superfícies cobertas (aqui: `QUATRO`), para a quinta ficar visível por ausência.
+
+⭐ **E o gate de um valor que é identidade E legenda tem DUAS metades, que reprovam erros OPOSTOS:**
+a legenda não pode ser uma chave (o `tr` em falta) **e** a identidade tem de continuar a ser uma
+(a «cura» errada — traduzir a montante — faria a dobra mudar de endereço com o idioma). Só a
+primeira metade deixaria a segunda cura passar como correcção. Irmã:
+[[feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting]].

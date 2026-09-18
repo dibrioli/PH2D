@@ -472,3 +472,134 @@ fn o_arrasto_de_fabrica_e_a_projeccao_no_osso() {
         "a ordem dos chips mudou"
     );
 }
+
+/// ⭐⭐⭐ **OS CANTOS DE FACE, e porque a adjacência sozinha NÃO os dá.**
+///
+/// Report do dono, 2026-09-17: *«está quase bom! mas surgem estrias»*. A causa
+/// era a frente de distância caminhar por ARESTAS, e a 1.ª cura procurou os
+/// triângulos na própria lista de vizinhos — que numa malha de **QUADS**
+/// devolve **zero** (medido pelo produto: `0` de `22 652` actualizações).
+///
+/// ⚠️ **A metade (a) é o registo desse defeito:** num quad a diagonal **não é
+/// aresta**, logo dois vizinhos de um vértice não são vizinhos entre si e não
+/// há triângulo nenhum a achar. A metade (b) é a estrutura que o cura.
+#[test]
+fn os_cantos_de_face_sobrevivem_ao_quad() {
+    let sem_esconder = [false; 4];
+
+    // (a) — o QUAD. A adjacência de `0` tem `1` e `3` e **não** tem `2`.
+    let quad: [u32; 4] = [0, 1, 2, 3];
+    let vq = crate::Vizinhanca::construir(4, [quad.as_slice()], &sem_esconder);
+    assert_eq!(
+        vq.de(0),
+        &[1, 3],
+        "a diagonal de um quad passou a contar como aresta — a lei do peso \
+         atravessa a FACE de propósito, e confundir as duas apaga a distincao"
+    );
+    assert_eq!(
+        vq.cantos(0),
+        &[(1, 3)],
+        "o canto de um quad e' a DIAGONAL dele; sem ele a marcha da \
+         [`crate::pesos::por_distancia`] nao tem face nenhuma para atravessar \
+         numa malha de quads, que e' a peca de fabrica do modulo"
+    );
+
+    // (b) — o TRIÂNGULO. O canto é a aresta OPOSTA, e aí ela também é aresta.
+    let tri: [u32; 3] = [0, 1, 2];
+    let vt = crate::Vizinhanca::construir(3, [tri.as_slice()], &sem_esconder[..3]);
+    assert_eq!(vt.de(0), &[1, 2]);
+    assert_eq!(vt.cantos(0), &[(1, 2)]);
+
+    // (c) — **o par é NORMALIZADO**: duas faces que dão o mesmo canto em ordens
+    // opostas são o mesmo canto, e sem isso a marcha atravessava-o duas vezes.
+    let a: [u32; 3] = [0, 1, 2];
+    let b: [u32; 3] = [0, 2, 1];
+    let vn = crate::Vizinhanca::construir(3, [a.as_slice(), b.as_slice()], &sem_esconder[..3]);
+    assert_eq!(
+        vn.cantos(0),
+        &[(1, 2)],
+        "o mesmo canto entrou duas vezes por vir em duas ordens"
+    );
+
+    // (d) — uma face com vértice ESCONDIDO não dá canto nenhum, pela mesma
+    // razão por que não dá aresta (§9).
+    let escondido = [false, false, true, false];
+    let ve = crate::Vizinhanca::construir(4, [quad.as_slice()], &escondido);
+    assert!(ve.cantos(0).is_empty() && ve.de(0).is_empty());
+}
+
+/// ⭐⭐⭐ **AS TRÊS CERCAS DA TRAVESSIA — e o arranjo que as torna observáveis.**
+///
+/// ⚠️⚠️ **Três mutações sobreviveram antes de este arranjo existir**, e as três
+/// pela mesma razão: *uma cerca só é observável onde ela é a PRIMEIRA a
+/// recusar*, e as três tapam-se umas às outras conforme a forma do canto.
+///
+/// | recusa sozinha | canto | o que a mascarava |
+/// |---|---|---|
+/// | causalidade `t > u` | **obtuso** (`154°`) | num canto agudo ou recto a cerca `a·cosθ < h` recusa primeiro |
+/// | `a·cosθ < h` | **agudo** (`30°`) | num canto recto ela é `0 < h`, que é a causalidade |
+/// | `h·cosθ < a` | **agudo e torto** (`5°`, braços `0,3` e `0,2`) | com braços parecidos ela nunca morde |
+///
+/// ⛔⛔ **E na malha do produto NENHUMA delas morde:** os cantos de quad da
+/// esfera do módulo são quase **rectos** (`cos θ ≈ 0`), onde `a·cosθ < h` vale
+/// `0 < h` e `h·cosθ < a` vale `0 < a`. *Um corpus no neutro de uma cerca não
+/// testa essa cerca* — por isso este gate é de UNIDADE e não da escultura.
+#[test]
+fn a_frente_so_atravessa_a_face_quando_entra_por_dentro_dela() {
+    let c = [0.0f32, 0.0, 0.0];
+    let a = [1.0f32, 0.0, 0.0];
+    let b = [0.0f32, 1.0, 0.0];
+
+    // (1) — **o controlo:** a frente chega a direito (os dois cantos ao mesmo
+    // tempo) e a resposta é a distância de `c` à corda, `1/√2`, que se calcula
+    // à mão. Sem esta metade, um gate feito só de `None` ficaria verde sobre
+    // uma travessia que recusa tudo.
+    let recta = crate::pesos::atravessa(c, a, b, 0.0, 0.0).expect("a frente entra pela face");
+    assert!(
+        (recta - std::f32::consts::FRAC_1_SQRT_2).abs() < 1e-6,
+        "a travessia leu {recta} onde a geometria da' 1/raiz(2) = {}",
+        std::f32::consts::FRAC_1_SQRT_2
+    );
+
+    // (2) — **a CAUSALIDADE, num canto de `154°`.** A raiz sai em `0,751` com
+    // `u = 1,194`: um tempo que chega ANTES do canto de que depende. A resposta
+    // certa é a aresta (`1,0`), e as outras duas cercas passam aqui.
+    assert_eq!(
+        crate::pesos::atravessa(c, a, [-1.033_613, 0.504_127, 0.0], 0.0, 1.194_245),
+        None,
+        "a travessia aceitou um tempo (0,751) menor que a diferenca entre os \
+         dois cantos (1,194) — a frente passou a chegar antes de quem a produz, \
+         e por menos que a aresta de 1,0"
+    );
+
+    // (3) — **a cerca `a·cosθ < h`**, num canto de `30°`: o pé da perpendicular
+    // cai fora da corda pelo lado do canto de tempo MENOR. `t = 0,7025` contra
+    // a aresta de `1,0`.
+    let b30 = [0.866_025_4f32, 0.5, 0.0];
+    assert_eq!(
+        crate::pesos::atravessa(c, a, b30, 0.0, 0.45),
+        None,
+        "a travessia aceitou uma frente que entra por fora da face — ela \
+         devolve 0,7025 contra a aresta de 1,0"
+    );
+    assert!(
+        crate::pesos::atravessa(c, a, b30, 0.0, 0.0).is_some(),
+        "a cerca passou a recusar tudo neste canto, e a lei voltou a ser a \
+         aresta"
+    );
+
+    // (4) — **a cerca `h·cosθ < a`**, o outro lado: um canto de `5°` com braços
+    // muito diferentes (`0,3` e `0,2`). `t = 0,0585` contra a aresta de `0,2`.
+    assert_eq!(
+        crate::pesos::atravessa(
+            c,
+            [0.3f32, 0.0, 0.0],
+            [0.199_238_94f32, 0.017_431_15, 0.0],
+            0.0,
+            0.002_556_4
+        ),
+        None,
+        "a travessia aceitou uma frente que entra por fora da face pelo lado \
+         do canto curto — ela devolve 0,0585 contra a aresta de 0,2"
+    );
+}

@@ -195,10 +195,18 @@ impl PoseControlos {
     ///
     /// # ⚠️ O que custa
     ///
-    /// **`3,4`–`4,7 ms`** a `97 922` vértices, **no pen-down e uma vez por
-    /// traço**, e **plano na largura pedida**. A difusão no tecto que isto
-    /// substitui custava `47,6 ms` para a mesma peça ⇒ **`14×` mais barato**, e
-    /// a diferença cresce com a largura.
+    /// **`2,9`–`3,6 ms`** a `97 922` vértices, **no pen-down e uma vez por
+    /// traço** (medido a `load 19`, contra um pen-down sem banda de `12,5`; a
+    /// `24 386` vértices custa `1,1`). A difusão no tecto que isto substitui
+    /// custava `47,6 ms` para a mesma peça ⇒ **`16×` mais barato**.
+    ///
+    /// ⛔⛔ **E ele NÃO é plano na largura pedida — esta linha dizia que era, e
+    /// deixou de ser em 2026-09-17.** A marcha PÁRA na meia-banda (o resto está
+    /// cortado em `0`/`1` por construção), logo o preço segue a ÁREA da faixa:
+    /// no tecto (`2,0`) custa **`8,7 ms`**, `3×` o da largura de fábrica.
+    /// *A lei por arestas era plana porque varria a malha inteira em qualquer
+    /// largura* — a de hoje é mais barata onde o artista vive e mais cara no
+    /// extremo, e continua `5,4×` abaixo da difusão que as duas substituíram.
     ///
     /// # ⛔ A DIVERGÊNCIA, declarada
     ///

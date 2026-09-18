@@ -107,12 +107,30 @@ fn a_transicao_de_fabrica_e_onde_a_dobra_morre() {
     // Mais estreita que a de fábrica, o mesmo gesto dobra a malha: sem esta
     // metade, um gate que só olhasse o `0` ficaria verde num arranjo onde nada
     // dobra.
-    let estreita = faces_viradas(&malha, fabrica * 2.0 / 3.0, arrasto);
+    //
+    // ⚠️⚠️ **A LARGURA DO CONTROLO FOI RE-CALIBRADA em 2026-09-17, e isso é a
+    // cura das estrias a mexer no joelho — não uma barra afrouxada.** Ele
+    // corria a `2/3` da de fábrica, onde a lei por ARESTAS virava `>100` faces;
+    // com a frente a atravessar FACES a mesma largura vira **`33`**. Varrido o
+    // joelho pelo produto (esfera do report, faces viradas):
+    //
+    // | transição | arrasto `0,60` | `0,90` | `1,20` |
+    // |---|---|---|---|
+    // | `0,300` | `1 506` | `1 557` | `1 579` |
+    // | **`0,500`** | **`866`** | **`968`** | **`970`** |
+    // | `0,667` | `33` | `43` | `43` |
+    // | `0,800` | `0` | `3` | `5` |
+    // | **`1,000`** | **`0`** | **`0`** | **`0`** |
+    //
+    // ⇒ a de fábrica continua a ser *a primeira coluna que lê `0` em toda a
+    // linha*, e o controlo passa para **metade** dela, que é onde a dobra
+    // ainda vive com folga. Sonda: [`super::pose_estrias_tests::diag_o_joelho_da_dobra`].
+    let estreita = faces_viradas(&malha, fabrica * 0.5, arrasto);
     assert!(
         estreita > 100,
-        "a dois tercos da largura de fabrica so' {estreita} faces viraram do \
-         avesso — o arranjo deixou de conter o fenomeno do report, e a metade \
-         (2) deste gate passa a afirmar o nada"
+        "a METADE da largura de fabrica so' {estreita} faces viraram do avesso \
+         (medido 866) — o arranjo deixou de conter o fenomeno do report, e a \
+         metade (2) deste gate passa a afirmar o nada"
     );
 
     // (2) — na largura de fábrica a dobra desaparece, que é o que o dono pediu.

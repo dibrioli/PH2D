@@ -22,6 +22,20 @@ pub struct Vizinhanca {
     pub par: Vec<Option<u32>>,
     /// A ilha (componente ligado) de cada vértice, pela topologia real.
     pub ilha: Vec<u32>,
+    /// ⭐⭐ **Os CANTOS de face**, em CSR: para cada vértice, os pares
+    /// `(antes, depois)` que cada face incidente lhe dá.
+    ///
+    /// ⚠️⚠️ **Sem isto a estrutura de FACE evapora-se, e a lista de vizinhos
+    /// não a recupera:** numa malha de QUADS — a esfera do módulo é uma — dois
+    /// vizinhos de um vértice **nunca** são vizinhos entre si, logo procurar
+    /// triângulos na adjacência devolve **zero** (medido: `0` de `22 652`
+    /// actualizações). *A adjacência é construída DAS faces e deitava fora
+    /// exactamente a parte que diz de que face cada par veio.*
+    ///
+    /// O consumidor é a [`crate::pesos::por_distancia`], que precisa de
+    /// atravessar uma face para a frente sair redonda.
+    cantos_inicio: Vec<u32>,
+    cantos: Vec<(u32, u32)>,
 }
 
 impl Vizinhanca {
@@ -43,6 +57,7 @@ impl Vizinhanca {
     {
         let oculto = |v: u32| escondido.get(v as usize).copied().unwrap_or(false);
         let mut listas: Vec<Vec<u32>> = vec![Vec::new(); n_vertices];
+        let mut cantos_listas: Vec<Vec<(u32, u32)>> = vec![Vec::new(); n_vertices];
         for anel in faces {
             if anel.len() < 3 || anel.iter().any(|&v| oculto(v)) {
                 continue;
@@ -56,6 +71,17 @@ impl Vizinhanca {
                 let depois = anel[(k + 1) % n];
                 listas[v as usize].push(antes);
                 listas[v as usize].push(depois);
+                // ⚠️ O par é NORMALIZADO (`min`, `max`): a face dá-o em duas
+                // ordens conforme o sentido do anel, e sem isso o `dedup`
+                // guardava o mesmo canto duas vezes.
+                if antes != depois
+                    && antes != v
+                    && depois != v
+                    && (antes as usize) < n_vertices
+                    && (depois as usize) < n_vertices
+                {
+                    cantos_listas[v as usize].push((antes.min(depois), antes.max(depois)));
+                }
             }
         }
         // ⚠️ Ordenar é DETERMINISMO, não arrumação: a ordem de visita decide
@@ -70,12 +96,23 @@ impl Vizinhanca {
             vizinhos.extend_from_slice(lista);
             inicio.push(vizinhos.len() as u32);
         }
+        let mut cantos_inicio = Vec::with_capacity(n_vertices + 1);
+        let mut cantos = Vec::new();
+        cantos_inicio.push(0);
+        for lista in cantos_listas.iter_mut() {
+            lista.sort_unstable();
+            lista.dedup();
+            cantos.extend_from_slice(lista);
+            cantos_inicio.push(cantos.len() as u32);
+        }
         let ilha = ilhas(n_vertices, &inicio, &vizinhos);
         Vizinhanca {
             inicio,
             vizinhos,
             par: vec![None; n_vertices],
             ilha,
+            cantos_inicio,
+            cantos,
         }
     }
 
@@ -88,6 +125,18 @@ impl Vizinhanca {
         let a = self.inicio[v as usize] as usize;
         let b = self.inicio[v as usize + 1] as usize;
         &self.vizinhos[a..b]
+    }
+
+    /// Os **cantos de face** de um vértice: cada par são os dois vizinhos que
+    /// uma face incidente lhe põe de lado a lado.
+    ///
+    /// ⚠️ Num triângulo o par é a aresta **oposta**; num quad é a **diagonal**
+    /// do canto — e nos dois casos o segmento está DENTRO da face, logo um
+    /// caminho que o atravesse é um caminho a sério sobre a superfície.
+    pub fn cantos(&self, v: u32) -> &[(u32, u32)] {
+        let a = self.cantos_inicio[v as usize] as usize;
+        let b = self.cantos_inicio[v as usize + 1] as usize;
+        &self.cantos[a..b]
     }
 
     /// §2.4 — com «só conectado» **desligado**, o grafo recebe ligações

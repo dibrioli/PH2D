@@ -351,6 +351,15 @@ pub struct Controlos {
     ///
     /// ⇒ *a largura da transição É o botão de qualidade deste pincel, e estava
     /// na unidade errada.*
+    ///
+    /// # ⚠️ E a distância atravessa FACES, não arestas
+    ///
+    /// A 1.ª redacção somava comprimentos de aresta, e o dono reportou
+    /// **estrias** no mesmo dia: um caminho por arestas só toma as direcções
+    /// que a malha tem, logo as curvas de nível ficam a ser os losangos dela.
+    /// Hoje é uma marcha que atravessa a face (`1,00`–`1,03` da distância
+    /// exacta contra `1,32`), e ⛔ **o preço deixou de ser plano na largura
+    /// pedida** — ver [`crate::pesos::por_distancia`].
     pub banda_do_peso: Option<f32>,
     /// Prende a extremidade distante da cadeia (§5.1).
     pub ancorado: bool,

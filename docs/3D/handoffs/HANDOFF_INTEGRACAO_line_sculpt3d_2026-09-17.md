@@ -1029,6 +1029,157 @@ vivo e a medir a dele** — `57 de 69` a `≤ 1e-5`, sem uma fixtura mexida.
 
 ---
 
+## §68 — ⭐⭐⭐ «SURGEM ESTRIAS»: a frente da distância caminhava por ARESTAS, e uma malha só tem as direcções que tem
+
+**Report do dono, 2026-09-17** (foto): *«está quase bom! mas surgem estrias»* — arcos paralelos na
+casca à volta da região da pose, logo a seguir à wave do §67.
+
+### §68.1 — A régua, e porque as duas que já existiam eram cegas
+
+⛔⛔ **As duas réguas da faixa mediam a DOBRA, que é binária.** O
+`a_transicao_de_fabrica_e_onde_a_dobra_morre` conta faces do avesso e já lia **`0`** no dia em que
+ele fotografou; o `a_faixa_mede_o_barro_e_nao_aneis_da_malha` mede a LARGURA. *Nenhuma das duas vê
+suavidade* — e uma estria não é uma face invertida, é uma quebra da **derivada**.
+
+⇒ a régua é o **ângulo entre as normais de faces vizinhas**, sobre as arestas interiores cujas DUAS
+faces tocam a faixa. Medida na esfera do report (`97 922` vértices, arrasto `0,6`):
+
+| | casca por deformar | faixa, `transição 1,0` | núcleo |
+|---|---|---|---|
+| p50 | `0,703°` | **`1,460°`** | `0,724°` |
+| p90 | `0,902°` | **`13,457°`** | — |
+| p99 | `0,937°` | **`42,01°`** | `0,938°` |
+
+⭐ **O núcleo é o controlo que fecha o diagnóstico:** ali a rotação é RÍGIDA e lê o facetado da
+própria esfera. *O defeito está todo na faixa.*
+
+### §68.2 — A causa, com o oráculo exacto
+
+Numa esfera unitária a geodésica de um vértice à fronteira de uma calota **calcula-se à mão**
+(`θ_v − θ_r`) ⇒ a lei tem oráculo de graça. Medindo `d_lei / d_exacto` na faixa:
+
+| | p50 | p90 | p99 | max |
+|---|---|---|---|---|
+| **por ARESTAS (o que shipou)** | `1,069` | **`1,316`** | `1,368` | `1,371` |
+
+⚠️⚠️ **Um caminho por arestas só toma as direcções que a malha tem.** Numa malha ESTRUTURADA — a
+esfera do módulo é uma — isso põe `d` quase constante em cada *anel do grafo*: as curvas de nível
+deixam de ser círculos e passam a ser os **losangos** da malha, o peso fica em **patamares**, e cada
+degrau entre patamares é uma dobra da superfície. *As estrias da foto são as fronteiras desses
+patamares.*
+
+### §68.3 — A cura: a frente atravessa FACES
+
+Marcha rápida à Kimmel–Sethian ([`ph2d_pose::pesos::atravessa`]): um vértice actualiza-se a partir
+de uma **face** com os dois outros cantos já resolvidos, e o valor sai de uma quadrática que
+interpola a frente **dentro** do triângulo em vez de a fazer dobrar num vértice. A aresta fica como
+**tecto** (a marcha toma sempre o mínimo), que é o que mantém a monotonia de que ela depende.
+
+⛔⛔⛔ **E a 1.ª tentativa não fez NADA — `0` de `22 652` actualizações — porque a malha é de QUADS.**
+Ela procurava os triângulos na própria lista de vizinhos, e num quad **a diagonal não é aresta**:
+dois vizinhos de um vértice nunca são vizinhos entre si. ⇒ a estrutura de face passou a viver onde
+ela é construída: [`Vizinhanca::cantos`], o par `(antes, depois)` que cada face incidente dá a cada
+vértice. *A adjacência é construída DAS faces e deitava fora exactamente a parte que diz de que face
+cada par veio.* Num triângulo o canto é a aresta **oposta**; num quad é a **diagonal** — e nos dois
+o segmento está dentro da face, logo atravessá-lo é um caminho a sério sobre a superfície.
+
+### §68.4 — E a segunda metade: a fronteira fica DENTRO da aresta
+
+Com a frente curada, a rugosidade do campo (`w(v) − média dos vizinhos`, em degraus de uma aresta)
+ficou toda nas **4 primeiras arestas** — que é a SEMENTE, cravada a meia aresta. ⇒ duas passagens de
+média sobre a pertença (`PASSAGENS_DA_INTERFACE`, com peso próprio, senão um campo binário oscila em
+xadrez) dão um indicador contínuo cujo nível `0,5` é uma curva lisa, e é o cruzamento **dele** que
+semeia.
+
+⚠️ **O LADO continua a vir do campo binário**, nunca do indicador: quem pertence à região é o que o
+crescimento do §3.3 disse, e alisá-lo apagaria uma região de um vértice só numa peça grossa.
+
+### §68.5 — O placar
+
+| | Dijkstra (o que shipou) | marcha por FACE | + interface sub-aresta |
+|---|---|---|---|
+| `d_lei/d_exacto` p50 | `1,069` | `0,997` | **`1,002`** |
+| `d_lei/d_exacto` p90 | `1,316` | `1,007` | **`1,012`** |
+| sombreamento da faixa p50 | `1,460°` | `1,184°` | **`1,162°`** |
+| sombreamento da faixa p90 | `13,457°` | `4,077°` | **`3,551°`** |
+| sombreamento da faixa p99 | `42,01°` | `16,73°` | **`11,81°`** |
+| sombreamento da faixa max | `53,25°` | `58,01°` | **`35,21°`** |
+| rugosidade `0`–`4` arestas p90 | — | `0,266` | **`0,141`** |
+| rugosidade `20`+ arestas p90 | — | `0,035` | `0,035` |
+
+⭐ **A última linha é o controlo da penúltima:** longe da fronteira as duas leis leem o mesmo, que é
+o chão da discretização — *é isso que prova que a barra da interface mede a SEMENTE e não a malha.*
+
+### §68.6 — O custo, e a nota que ficou FALSA
+
+A marcha **PÁRA na meia-banda** (o resto está cortado em `0`/`1` por construção) ⇒ ela deixou de
+varrer a malha inteira. ⭐ **E o corte é BYTE-NEUTRO, medido:** a impressão digital do campo lê
+`ee632d84f7ae65c9` com ele e sem ele.
+
+| a `97 922` vértices, `load 19` | pen-down |
+|---|---|
+| sem banda (o controlo) | `12,5 ms` |
+| `transição 1,0` (fábrica) | `15,4` ⇒ **a banda custa `2,9`** |
+| `transição 2,0` (tecto) | `21,2` ⇒ **`8,7`** |
+
+⛔ **A nota do `TRANSICAO_MAX` dizia «plano na largura pedida» e deixou de ser verdade** — *a lei
+antiga era plana porque varria a malha inteira em qualquer largura*. Hoje é mais barata onde o
+artista vive (`2,9` contra os `3,4`–`4,7` registados) e mais cara no extremo, e continua `5,4×`
+abaixo da difusão que as duas substituíram (`47,6 ms`).
+
+### §68.7 — ⚠️ O gate vizinho ficou vermelho, e foi o CONTROLO dele
+
+O `a_transicao_de_fabrica_e_onde_a_dobra_morre` exige que a `2/3` da largura de fábrica o gesto ainda
+dobre (`>100` faces). Com a cura, a `2/3` viram **`33`**. ⇒ *a cura enfraqueceu a régua da outra
+cura*, a mesma forma que a costura do Box Trim pagou no §65. Varrido o joelho pelo produto:
+
+| transição | arrasto `0,60` | `0,90` | `1,20` |
+|---|---|---|---|
+| `0,300` | `1 506` | `1 557` | `1 579` |
+| **`0,500`** | **`866`** | **`968`** | **`970`** |
+| `0,667` | `33` | `43` | `43` |
+| `0,800` | `0` | `3` | `5` |
+| **`1,000`** | **`0`** | **`0`** | **`0`** |
+
+⇒ **a largura de fábrica NÃO muda** (continua a ser *a primeira coluna que lê `0` em toda a linha*) e
+o **controlo** passa para **metade** dela, onde a dobra vive com folga. ⛔ *Não é uma barra
+afrouxada: é o controlo a mudar-se para onde o fenómeno ainda está.*
+
+### §68.8 — ⚠️⚠️ Três mutações sobreviveram, e as três pelo ARRANJO
+
+As cercas da travessia — causalidade `t > u`, `a·cosθ < h`, `h·cosθ < a` — **tapam-se umas às
+outras** conforme a forma do canto, e na malha do produto **nenhuma delas morde** (os cantos de quad
+são quase rectos, `cos θ ≈ 0`, onde as duas últimas valem `0 < h` e `0 < a`).
+
+| recusa sozinha | canto | o que a mascarava |
+|---|---|---|
+| causalidade | **obtuso** (`154°`) | num canto agudo ou recto a cerca `a·cosθ < h` recusa primeiro |
+| `a·cosθ < h` | **agudo** (`30°`) | num canto recto ela É a causalidade |
+| `h·cosθ < a` | **agudo e torto** (`5°`, braços `0,3` e `0,2`) | com braços parecidos nunca morde |
+
+⚠️ **E a minha 1.ª tentativa de as medir também não as media:** ela punha a frente tão obliqua que
+quem recusava era a causalidade, uma cerca antes. *Três cercas, três casos* — e os três saíram de uma
+busca numérica que MAXIMIZA a margem de cada um, não de um palpite.
+
+⛔ **E o arnês da mutação mentiu antes disso:** `grep -cF` conta LINHAS e trata cada linha de uma
+agulha multi-linha como um padrão à parte — ele leu `8` onde havia `1`, e o caso foi reportado como
+defeito do arnês em vez de correr. A contagem passou a ser de **subcadeia**.
+
+**Prova de mutação: `11` de `11` sangram.**
+
+### §68.9 — O que fica ABERTO
+
+- ⏳ O sombreamento da faixa ainda lê **p99 `11,8°`** e **max `35,2°`** à largura de fábrica. A
+  rugosidade do campo a mais de 4 arestas está no chão da discretização (`p90 0,035`), logo *o que
+  sobra é curvatura a sério* — a mesma rotação concentrada em metade da largura lê `p90 1,5°` a
+  `transição 2,0`. **Não está medido de onde vem o `max`**, e a hipótese com endereço é o encontro de
+  frentes (o corte da distância) dentro da faixa.
+- ⏳ Numa peça **muito grossa** a borda continua a dobrar (o aberto do §67): *uma transição não pode
+  ser mais fina do que a malha.*
+- ⚠️ A cerca `h·cosθ < a` e a causalidade **não são exercitadas pela malha do produto** — elas têm
+  gate de UNIDADE e o corpus está no neutro delas. *Uma malha com cantos agudos e tortos (a saída de
+  uma retopologia apertada) é onde elas passam a decidir, e não há fixtura dessa.*
+
 ## §58 — 📦 PARA O AGENTE INTEGRADOR
 
 ### §58.1 — Os factos da linha
@@ -1039,15 +1190,15 @@ todo em `#[cfg(test)]`) e desde então a linha ganhou duas waves de PRODUTO e do
 | grandeza | valor |
 |---|---|
 | base | `main` = `3090cac3f` (rebase por **fast-forward**) |
-| ficheiros tocados contra o `main` | **32** (o handoff incluído) |
-| ficheiros de PRODUTO tocados | **sim** — §59 (revertida pela §61), §61, §62 e **§65** (`ph2d-mesh-bool`) |
+| ficheiros tocados contra o `main` | **46** (o handoff incluído; `45` tocados + `1` novo) |
+| ficheiros de PRODUTO tocados | **sim** — §59 (revertida pela §61), §61, §62, **§65** (`ph2d-mesh-bool`), **§66** (`ph2d-app-sculpt3d`) e **§68** (`ph2d-pose`) |
 | `PROJECT_SCHEMA` · `FIELD_DOC_VERSION` · `VEC_SCENE_SCHEMA` · `FLIP_SCHEMA` | **não se mexem** |
 | os três registos de componentes (`ph2d-ecs` + os dois espelhos) | **não se mexem** |
 | contratos congelados (§6) | **zero** |
 | ADR | **zero** |
 | pacote externo novo | **zero** |
 | chaves de i18n | **líquido zero** (a `panel.sculpt3d.pose_arrasto` nasceu e morreu dentro da linha) |
-| itens públicos NOVOS | `PoseControlos::SUAVIZACOES_MAX` · `ph2d_pose::Arrasto` (+`ALL`/`label`/`alavanca`) e o re-export `PoseArrasto` · `SculptStroke::plano_do_dab_para_teste`. ⛔ **A §65 não acrescenta nenhum** — `endireita_as_lascas` é privada à `costura` |
+| itens públicos NOVOS | `PoseControlos::SUAVIZACOES_MAX` · `ph2d_pose::Arrasto` (+`ALL`/`label`/`alavanca`) e o re-export `PoseArrasto` · `SculptStroke::plano_do_dab_para_teste` · **`ph2d_pose::Vizinhanca::cantos`** (§68) · `scenes::mesh::peca_de_fabrica` (§66). ⛔ A §65 não acrescenta nenhum, e a `pesos::atravessa` da §68 é `pub(crate)`. ⚠️ **A `Vizinhanca` ganhou DOIS campos privados** (`cantos_inicio`, `cantos`) — ela é `Clone + Debug` e nenhum consumidor a constrói campo a campo, logo é aditivo |
 
 ### §58.2 — O que NÃO pode colidir
 
@@ -1074,12 +1225,13 @@ todo em `#[cfg(test)]`) e desde então a linha ganhou duas waves de PRODUTO e do
 
 | etapa | resultado |
 |---|---|
-| `nextest-impacted` | **15 105 / 15 105** verdes (11 844 saltados) |
+| `nextest-impacted` | **15 659 / 15 659** verdes (11 306 saltados) |
 | `clippy --all-targets -D warnings` (as 7 crates da família) | **zero** avisos |
 | `cargo fmt --all --check` | limpo |
 | censos da **árvore COMBINADA** (HR-15 + tectos de LOC) | **90 / 90** verdes |
 | prova de mutação — G-20 (§57) | **5 de 5** sangram |
 | prova de mutação — a dobra do painel (§59) | **3 de 3** sangram |
+| prova de mutação — as estrias (§68) | **11 de 11** sangram |
 | prova de mutação — §61.2 + §62 | **7 de 7** sangram, com controlo negativo verde |
 | prova de mutação — a troca de diagonais (§65) | **6 de 8** sangram; as **2** que sobrevivem estão NOMEADAS com a medição (§65.7) |
 | vassouras da parede | 5 de 9 acusam, **13 ficheiros, TODOS pré-existentes** (§58.4-bis) |

@@ -616,6 +616,11 @@ mod tests;
 #[cfg(test)]
 #[path = "stroke_cloth_tests.rs"]
 mod cloth_tests;
+/// As SONDAS das estrias — o report de 2026-09-17. O corte e' o SUJEITO: a
+/// vizinha mede a DOBRA (binaria), esta mede a SUAVIDADE (o sombreamento).
+#[cfg(test)]
+#[path = "pose_estrias_tests.rs"]
+mod pose_estrias_tests;
 /// Os gates da FRONTEIRA da pose — o report das reentrâncias, e de onde vem o
 /// tecto das suavizações. O corte é o SUJEITO: aqui a BORDA da região.
 #[cfg(test)]

@@ -161,12 +161,19 @@ pub struct Sonda {
     /// `false` = a fita sai na ordem **CRUA** da travessia — ver
     /// [`ph2d_field_eval::tape_schedule`].
     pub escalonar: bool,
+    /// `false` = o campo do chão não é assado, e o pintor soma zero — a porta pela qual o PREÇO
+    /// dele se mede no MESMO processo, intercalado (ver a nota do módulo: entre duas corridas desta
+    /// máquina o mesmo passe já deu `11,36` e `5,50 ms`).
+    pub chao_recebe_cor: bool,
 }
 
 impl Default for Sonda {
-    /// O caminho do produto: escalonada.
+    /// O caminho do produto: escalonada, e o chão recebe a cor da peça.
     fn default() -> Self {
-        Self { escalonar: true }
+        Self {
+            escalonar: true,
+            chao_recebe_cor: true,
+        }
     }
 }
 
@@ -219,6 +226,26 @@ pub fn paint_com(
         .collect();
     let foscas = packed(&foscas);
     let chao_packed = packed(&[ph2d_field_render::catcher_surface()]);
+    // ⭐⭐⭐ **A COR QUE A PEÇA DEVOLVE AO CHÃO** (`docs/Render3d/09`) — assada aqui e ENVIADA, com a
+    // medição que o decidiu no [`ph2d_field_gpu::paint::PaintSetup::ground_bounce`].
+    //
+    // ⚠️ **Ela viaja na MESMA bandeira que a sombra e o ricochete** (`antialias`, a lei «grosso a
+    // mexer, nítido ao assentar» da W73): sem chão ou no quadro de MOVIMENTO o campo é VAZIO, a
+    // consulta devolve `[0,0,0]` e o pintor soma zero — o quadro fica **byte-idêntico** ao de hoje.
+    let campo_do_chao = match (ground, antialias && sonda.chao_recebe_cor) {
+        (Some(chao), true) => ph2d_field_render::ground_bounce::bake_ground_bounce(
+            doc,
+            reg,
+            cam,
+            chao,
+            surfaces,
+            points,
+            ph2d_field_render::ground_bounce::GROUND_BOUNCE_GRID,
+            ph2d_field_render::ground_bounce::GROUND_BOUNCE_DIRS,
+            w.min(h) as usize,
+        ),
+        _ => ph2d_field_render::ground_bounce::GroundBounce::vazio(),
+    };
     let tabelas = crate::studio_wgsl::tables();
     let pintor = ph2d_field_gpu::paint::PaintSetup {
         owners: surfaces.owners,
@@ -254,6 +281,7 @@ pub fn paint_com(
         pixel_world: ph2d_field_render::boundary_world(cam.half_extent, w.min(h)),
         // ⭐ **A difusa branca do chão** — a régua da escurecida, empacotada como os outros.
         catcher: &chao_packed,
+        ground_bounce: &campo_do_chao,
     };
     Some(
         tracer

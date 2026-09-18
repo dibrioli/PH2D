@@ -226,6 +226,30 @@ pub(crate) fn traca(p: &Pedido) {
                     ph2d_field_render::shadow_pass_on(&p.doc, &p.reg, &p.cam, &g, &mundos, p.ground)
                 }),
             };
+            // ⭐⭐⭐ **A COR QUE A PEÇA DEVOLVE AO CHÃO** (`docs/Render3d/09`).
+            //
+            // O chão desenhava o que a peça TIRA (a sombra, o contacto) e não o que ela PÕE: um
+            // vaso vermelho pousava numa sombra cinzenta. O campo é 2D — *o chão é um plano, logo
+            // a resposta dele é função de `(x, z)` e não da câmera* — e por isso ele é barato:
+            // `32² × 128 = 131 072` raios, **`1,6 %`** dos que a grelha de sondas da peça já paga.
+            //
+            // ⚠️ **Ele viaja na MESMA bandeira que a sombra** (`p.antialias`, a lei «grosso a mexer,
+            // nítido ao assentar» da W73, agora com o quarto passageiro): o quadro de MOVIMENTO
+            // fica **byte-idêntico** ao de hoje, porque sem campo a consulta devolve `[0,0,0]` e o
+            // pintor soma zero.
+            if let (Some(sh), Some(chao)) = (sombras.as_mut(), p.ground) {
+                sh.set_ground_bounce(ph2d_field_render::ground_bounce::bake_ground_bounce(
+                    &p.doc,
+                    &p.reg,
+                    &p.cam,
+                    chao,
+                    &surfaces,
+                    &p.lights,
+                    ph2d_field_render::ground_bounce::GROUND_BOUNCE_GRID,
+                    ph2d_field_render::ground_bounce::GROUND_BOUNCE_DIRS,
+                    (p.tw.min(p.th)) as usize,
+                ));
+            }
             let pinta = |sh: Option<&ph2d_field_render::Shadows>| {
                 ph2d_field_render::shade_render(
                     &g,

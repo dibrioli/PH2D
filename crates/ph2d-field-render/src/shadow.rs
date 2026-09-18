@@ -102,6 +102,16 @@ pub struct Shadows {
     /// copia os bytes do fundo. O pintor lê o chão DAQUI, e não de um argumento ao lado: a altura a
     /// que os canais foram calculados e a altura a que se pinta são a MESMA por construção.
     ground: Option<Ground>,
+    /// ⭐⭐⭐ **A COR QUE A PEÇA DEVOLVE AO CHÃO** — ver [`crate::ground_bounce`].
+    ///
+    /// ⚠️⚠️ **Ele é um CAMPO e não um canal por pixel**, ao contrário de todos os vizinhos desta
+    /// struct, e a razão é medida: o chão é um PLANO, logo a resposta dele é função de `(x, z)` e
+    /// **não** da câmera. *Um canal por pixel voltaria a ser assado a cada movimento da vista para
+    /// devolver exactamente os mesmos números.*
+    ///
+    /// ⚠️ **Vazio é o caminho de sempre, ao bit** — a consulta devolve `[0,0,0]` e o pintor soma
+    /// zero.
+    ground_bounce: crate::ground_bounce::GroundBounce,
 }
 
 impl Shadows {
@@ -109,6 +119,17 @@ impl Shadows {
     #[must_use]
     pub fn ground(&self) -> Option<Ground> {
         self.ground
+    }
+
+    /// O campo da luz que a peça devolve ao chão — ver o campo [`Shadows::ground_bounce`].
+    #[must_use]
+    pub fn ground_bounce(&self) -> &crate::ground_bounce::GroundBounce {
+        &self.ground_bounce
+    }
+
+    /// ⭐ Declara o campo do chão — para quem o assou (o [`crate::ground_bounce::bake_ground_bounce`]).
+    pub fn set_ground_bounce(&mut self, campo: crate::ground_bounce::GroundBounce) {
+        self.ground_bounce = campo;
     }
 
     /// Declara o chão destes canais — para quem os calculou noutro sítio (o traçador de GPU).
@@ -249,6 +270,7 @@ pub fn shadow_pass_on(
             bounce: Vec::new(),
             pixels,
             ground,
+            ground_bounce: crate::ground_bounce::GroundBounce::vazio(),
         };
     }
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
@@ -365,6 +387,7 @@ pub fn shadow_pass_on(
         bounce: Vec::new(),
         pixels,
         ground,
+        ground_bounce: crate::ground_bounce::GroundBounce::vazio(),
     }
 }
 

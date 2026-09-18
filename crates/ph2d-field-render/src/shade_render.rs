@@ -16,6 +16,9 @@
 //! já nesse referencial, e quem as converte é quem sabe de onde elas vêm.
 
 use super::*;
+use crate::ground_shade::{
+    edge_ground_bounce, edge_ground_factor, ground_factors, mais_luz, shadowed_background,
+};
 use ph2d_material::{Environment, Surface};
 use ph2d_view_transform::Look;
 
@@ -108,7 +111,7 @@ pub struct Lighting<'a> {
 /// ⚠️ A [`Environment::radiance`] responde **zero** de propósito: ela é a pergunta do lóbulo
 /// ESPECULAR (*«que luz vem daquela direcção?»*), e uma média do hemisfério não a responde.
 /// Devolver a média ali poria um realce de espelho com a cor do ricochete e sem sítio nenhum.
-struct SoIrradiancia([f32; 3]);
+pub(crate) struct SoIrradiancia(pub [f32; 3]);
 
 impl Environment for SoIrradiancia {
     fn radiance(&self, _dir: [f32; 3], _alpha: f32) -> [f32; 3] {
@@ -143,7 +146,7 @@ impl ViewBasis {
 
     /// ⚠️ **O sinal é o do [`view_direction`]**, e não uma segunda convenção: lá a direcção do raio
     /// é negada para apontar ao olho, aqui a direcção já aponta para a luz.
-    fn world_to_view(self, w: [f32; 3]) -> [f32; 3] {
+    pub(crate) fn world_to_view(self, w: [f32; 3]) -> [f32; 3] {
         let dot = |a: [f32; 3], b: [f32; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
         [dot(w, self.right), dot(w, self.up), dot(w, self.toward_eye)]
     }
@@ -388,7 +391,7 @@ pub fn shade_render(
         bg_a,
     ];
     // ⭐⭐⭐ **O CHÃO: quanto cada pixel de fundo escurece** — `1,0` onde não há chão ou nada o tapa.
-    let fatores = ground_factors(g, cam, &screen, basis, light);
+    let (fatores, postas) = ground_factors(g, cam, &screen, basis, light);
 
     out.par_chunks_mut(w * 4).enumerate().for_each(|(y, row)| {
         for (x, px) in row.as_chunks_mut::<4>().0.iter_mut().enumerate() {
@@ -412,11 +415,19 @@ pub fn shade_render(
                 );
                 write(px, [c[0], c[1], c[2], 1.0]);
             } else {
+                // ⭐⭐⭐ **A LUZ QUE A PEÇA PÕE NO CHÃO** — somada em pré-multiplicado e com alfa
+                // ZERO, que é o que um compositor lê como luz acrescentada. ⛔ Ela NÃO pode
+                // multiplicar o fundo: o do modelador é transparente, e a wave inteira sairia num
+                // pixel que não muda um bit (ver o cabeçalho do [`crate::ground_shade`]).
+                let posta = postas.get(i).copied().unwrap_or([0.0; 3]);
                 match fatores.get(i) {
                     // ⭐ O chão tapado: o fundo com a sombra por cima — ver [`shadowed_background`].
-                    Some(&f) if f < 1.0 => write(px, shadowed_background(bg, f)),
+                    Some(&f) if f < 1.0 => write(px, mais_luz(shadowed_background(bg, f), posta)),
                     // ⚠️ Copiado, e não passado pela conversão — a mesma cerca do `shade`. É também
                     // o chão onde nada tapa: a razão é EXACTAMENTE `1`, e os bytes são os de sempre.
+                    // ⭐ **Com luz devolvida ele deixa de poder ser copiado** — ela é o que há para
+                    // mostrar num pixel cujo fundo é preto transparente.
+                    _ if posta != [0.0; 3] => write(px, mais_luz(bg, posta)),
                     _ => px.copy_from_slice(&background),
                 }
             }
@@ -431,7 +442,10 @@ pub fn shade_render(
         // ⭐⭐ **O fundo de uma sub-amostra que falha é o fundo COM o chão** — ver
         // [`edge_ground_factor`]. Sem isto a silhueta de baixo pintava um fio do fundo limpo entre a
         // peça e a sombra de contacto, que é exactamente onde a sombra é mais escura.
-        let fundo = shadowed_background(bg, edge_ground_factor(g, &fatores, i));
+        let fundo = mais_luz(
+            shadowed_background(bg, edge_ground_factor(g, &fatores, i)),
+            edge_ground_bounce(g, &postas, i),
+        );
         // ⚠️ **E o MATERIAL do centro serve às quatro amostras**, pela mesma razão da vista: a borda
         // não guarda os pontos das sub-amostras. ⛔ Numa silhueta entre DUAS peças de cores
         // diferentes isto pinta a borda com a cor da que o centro apanhou — declarado, e é a mesma
@@ -556,143 +570,4 @@ fn mixed_radiance(
     }
     let cb = radiance(b, light, look, geom);
     [0, 1, 2].map(|i| ca[i] + (cb[i] - ca[i]) * t)
-}
-
-/// ⭐⭐⭐ **QUANTO CADA PIXEL DE FUNDO ESCURECE** — a razão da luz que o chão BRANCO recebe com a
-/// peça e sem ela, por pixel. Vazio quando não há chão (ver [`crate::Shadows::ground`]).
-///
-/// ⚠️ **Os pixels de peça e os que não vêem o chão leem `1,0`**, e é isso que mantém o caminho sem
-/// chão byte a byte o de sempre.
-fn ground_factors(
-    g: &Gbuffer,
-    cam: &Orbit,
-    screen: &Screen,
-    basis: ViewBasis,
-    light: &Lighting<'_>,
-) -> Vec<f32> {
-    let Some(chao) = light.shadows.and_then(crate::Shadows::ground) else {
-        return Vec::new();
-    };
-    let w = g.width as usize;
-    let rays = cam.rays();
-    let branco = crate::catcher_surface();
-    (0..g.hit.len())
-        .into_par_iter()
-        .map(|i| {
-            if g.hit[i] {
-                return 1.0;
-            }
-            let (x, y) = (i % w, i / w);
-            crate::ground::ground_at(&rays, *screen, chao, x, y).map_or(1.0, |q| {
-                let v = view_direction(cam, screen, x, y);
-                catcher(&branco, light, basis, i, q, v)
-            })
-        })
-        .collect()
-}
-
-/// ⭐⭐⭐ **A LEI DO CHÃO QUE SÓ RECEBE** — `luz que chega com a peça / luz que chegaria sem ela`,
-/// em luminância, sobre a difusa branca de [`crate::catcher_surface`].
-///
-/// ⚠️ **As DUAS somas correm as mesmas contas na mesma ordem**, e a de cima multiplica por cada
-/// visibilidade: onde nada tapa (`1,0`), as duas são o MESMO número bit a bit e a razão é
-/// exactamente `1` — o fundo sai com os bytes de sempre, e não com um arredondamento dele.
-///
-/// ⚠️ **Uma luz ancorada no ECRÃ entra nas duas e em nenhuma é tapada** — ela não tem sombra (ver
-/// [`Lighting::shadows`]), logo ela só dilui a sombra das outras. Hoje o modo Render não as acende.
-fn catcher(
-    branco: &ph2d_material::Surface,
-    light: &Lighting<'_>,
-    basis: ViewBasis,
-    i: usize,
-    q: [f32; 3],
-    v: [f32; 3],
-) -> f32 {
-    let add = |a: [f32; 3], b: [f32; 3]| [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-    let n = basis.world_to_view(crate::GROUND_UP);
-    let ceu = branco.indirect(n, v, light.sky);
-    let visto = light.shadows.map_or(1.0, |s| s.ambient_at(i));
-    let mut livre = ceu;
-    let mut chega = ceu.map(|c| c * visto);
-    for lamp in light.lamps {
-        let d = branco.direct(n, v, lamp.to_light, lamp.radiance);
-        livre = add(livre, d);
-        chega = add(chega, d);
-    }
-    let piso = PISO_DA_LAMPADA;
-    for (l, lamp) in light.points.iter().enumerate() {
-        let d = [
-            lamp.world[0] - q[0],
-            lamp.world[1] - q[1],
-            lamp.world[2] - q[2],
-        ];
-        let cru = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
-        // ⚠️ O mesmo piso das DUAS grandezas do sombreamento da peça — ver [`radiance`].
-        let to_light = if cru <= piso {
-            n
-        } else {
-            let inv = cru.sqrt().recip();
-            basis.world_to_view([d[0] * inv, d[1] * inv, d[2] * inv])
-        };
-        // ⚠️ **`visivel = 1`**, e a visibilidade entra na linha de baixo: aqui a razão do chão
-        // precisa das DUAS luzes — a que chegaria LIVRE e a que de facto chega.
-        let rad = chega_da_lampada(lamp, cru, 1.0);
-        let vis = light.shadows.map_or(1.0, |s| s.at(l, i));
-        livre = add(livre, branco.direct(n, v, to_light, rad));
-        chega = add(chega, branco.direct(n, v, to_light, rad.map(|c| c * vis)));
-    }
-    let luma = |c: [f32; 3]| {
-        crate::ground::LUMA[0] * c[0]
-            + crate::ground::LUMA[1] * c[1]
-            + crate::ground::LUMA[2] * c[2]
-    };
-    let (a, b) = (luma(chega), luma(livre));
-    // ⚠️ O `is_finite` primeiro, pela mesma razão do `Ground::hit`: sem luz nenhuma — ou com um
-    // `NaN` — a razão não existe, e o fundo fica como está.
-    if !b.is_finite() || b <= 0.0 {
-        return 1.0;
-    }
-    (a / b).clamp(0.0, 1.0)
-}
-
-/// ⭐ **O fundo com a sombra do chão por cima**, em linear pré-multiplicado.
-///
-/// A sombra é uma camada PRETA de opacidade `1 − f` composta sobre o fundo: a cor escurece por `f`
-/// e a cobertura sobe para `(1 − f) + a·f`. ⚠️ **As duas metades servem os dois fundos do produto**:
-/// num fundo opaco a cobertura fica `1`; num fundo TRANSPARENTE (o do modelador, que é composto sobre
-/// o canvas) a sombra sai como tinta preta com alfa, que é o que um *shadow catcher* entrega.
-fn shadowed_background(bg: [f32; 4], f: f32) -> [f32; 4] {
-    [bg[0] * f, bg[1] * f, bg[2] * f, (1.0 - f) + bg[3] * f]
-}
-
-/// ⭐⭐ **O factor do chão de uma BORDA** — o do próprio pixel quando ele falha a peça; senão, a média
-/// dos vizinhos de cruz que a falham (esquerda, direita, cima, baixo — nesta ordem, que é a do
-/// dispositivo).
-///
-/// ⚠️ **APROXIMAÇÃO DECLARADA**, da família das outras da borda: o chão que as sub-amostras de um
-/// pixel de silhueta vêem é o dos vizinhos que o vêem inteiro. Sem vizinho de fundo, `1,0`.
-fn edge_ground_factor(g: &Gbuffer, fatores: &[f32], i: usize) -> f32 {
-    if fatores.is_empty() {
-        return 1.0;
-    }
-    if !g.hit[i] {
-        return fatores[i];
-    }
-    let (w, h) = (g.width as usize, g.height as usize);
-    let (x, y) = (i % w, i / w);
-    let mut soma = 0.0f32;
-    let mut n = 0u32;
-    let vizinhos = [
-        (x > 0).then(|| i - 1),
-        (x + 1 < w).then(|| i + 1),
-        (y > 0).then(|| i - w),
-        (y + 1 < h).then(|| i + w),
-    ];
-    for j in vizinhos.into_iter().flatten() {
-        if !g.hit[j] {
-            soma += fatores[j];
-            n += 1;
-        }
-    }
-    if n == 0 { 1.0 } else { soma / n as f32 }
 }

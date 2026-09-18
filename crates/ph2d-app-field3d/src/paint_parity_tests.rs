@@ -142,6 +142,22 @@ pub(crate) fn dois_caminhos_com(
         &g,
         &ph2d_field_render::probes::probe_bounce(doc, &reg, &cam, &g, surfaces, luz),
     ));
+    // ⭐⭐⭐ **E O CAMPO DO CHÃO entra na referência pela MESMA porta** (`docs/Render3d/09`): o pintor
+    // do dispositivo assa-o com esta função e estes argumentos, logo o que este gate compara é a
+    // CONSULTA e a soma, nunca duas assaduras diferentes.
+    if let Some(c) = chao {
+        sh.set_ground_bounce(ph2d_field_render::ground_bounce::bake_ground_bounce(
+            doc,
+            &reg,
+            &cam,
+            c,
+            surfaces,
+            luz,
+            ph2d_field_render::ground_bounce::GROUND_BOUNCE_GRID,
+            ph2d_field_render::ground_bounce::GROUND_BOUNCE_DIRS,
+            W.min(H) as usize,
+        ));
+    }
     let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
     let cpu = ph2d_field_render::shade_render(
         &g,
@@ -623,5 +639,195 @@ fn o_chao_do_dispositivo_e_o_da_cpu() {
         pior.0,
         pior.1,
         pior.2
+    );
+}
+
+/// ⭐⭐⭐ **A COR QUE A PEÇA DEVOLVE AO CHÃO É A MESMA NOS DOIS MOTORES** (`docs/Render3d/09`).
+///
+/// A peça é **vermelha forte e sem especular** de propósito: com o material de omissão (cinzento) o
+/// sangramento é cinzento, e um gate de paridade sobre ele não distinguiria a lei nova de um
+/// arredondamento. *A fixtura tem de conter o fenómeno que o gate afirma.*
+///
+/// ⚠️ **A população vem primeiro, e ela é a DIFERENÇA** contra o mesmo quadro de CPU sem campo:
+/// sem isso, dois quadros iguais leriam `100 %` de paridade sobre uma wave que não pintou nada.
+#[test]
+#[ignore = "precisa de GPU"]
+fn a_cor_que_a_peca_devolve_ao_chao_e_a_mesma_nos_dois_motores() {
+    if crate::gpu_frame::shared().is_none() {
+        println!("sem adaptador — saltado");
+        return;
+    }
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            ph2d_field::Primitive::Sphere { radius: 0.3 },
+            ph2d_field::Xform::at(0.0, 0.3, 0.0),
+        )],
+        NodeId(0),
+    )
+    .expect("a bola pousada");
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let materiais = [ph2d_material::OpenPbr {
+        base_color: [0.75, 0.06, 0.06],
+        specular_weight: 0.0,
+        ..ph2d_material::OpenPbr::default()
+    }
+    .prepare()];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+    let cam = ph2d_field_render::Orbit::default();
+    let luz = [lampada(&cam)];
+    let chao = ph2d_field_render::lowest_point(&doc, &reg)
+        .map(|height| ph2d_field_render::Ground { height });
+    assert!(chao.is_some(), "a peça tem chão");
+
+    // ── a população: quantos bytes o CAMPO move, no caminho de CPU ────────────────────────────
+    let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
+    let g = ph2d_field_render::trace(&doc, &reg, &cam, W, H);
+    let mut sh = ph2d_field_render::shadow_pass_on(&doc, &reg, &cam, &g, &mundos, chao);
+    let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
+    let pinta = |sh: &ph2d_field_render::Shadows| {
+        ph2d_field_render::shade_render(
+            &g,
+            &cam,
+            &surfaces,
+            &ph2d_field_render::Lighting {
+                lamps: &sem_ecra,
+                points: &luz,
+                sky: &crate::render_light::StudioSky,
+                shadows: Some(sh),
+            },
+            ph2d_view_transform::Look::default(),
+            FUNDO,
+        )
+    };
+    let sem_campo = pinta(&sh);
+    sh.set_ground_bounce(ph2d_field_render::ground_bounce::bake_ground_bounce(
+        &doc,
+        &reg,
+        &cam,
+        chao.expect("o chão"),
+        &surfaces,
+        &luz,
+        ph2d_field_render::ground_bounce::GROUND_BOUNCE_GRID,
+        ph2d_field_render::ground_bounce::GROUND_BOUNCE_DIRS,
+        W.min(H) as usize,
+    ));
+    let com_campo = pinta(&sh);
+    let movidos = com_campo
+        .iter()
+        .zip(&sem_campo)
+        .filter(|(a, b)| a != b)
+        .count();
+    assert!(
+        movidos > 2_000,
+        "o campo só moveu {movidos} bytes — a fixtura não o mostra, e o gate não afirma nada"
+    );
+
+    // ── e os dois motores concordam ───────────────────────────────────────────────────────────
+    let (cpu, gpu, bordas) =
+        dois_caminhos_com(&surfaces, &doc, &luz, chao).expect("o dispositivo toma a peça");
+    assert!(
+        bordas > 50,
+        "só {bordas} bordas — a metade da borda ficou por exercitar"
+    );
+    let mut hist = [0usize; 256];
+    let mut pior = (0u8, 0usize, 0usize);
+    for (i, (a, b)) in cpu.iter().zip(gpu.iter()).enumerate() {
+        let d = a.abs_diff(*b);
+        hist[d as usize] += 1;
+        if d > pior.0 {
+            pior = (d, i / 4 % W as usize, i / 4 / W as usize);
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let total = hist.iter().sum::<usize>() as f64;
+    #[allow(clippy::cast_precision_loss)]
+    let fraccao = hist[..2].iter().sum::<usize>() as f64 / total;
+    println!(
+        "campo do chão · {movidos} bytes movidos · ≤1 nivel em {:.3} % · pior {} em ({}, {})",
+        fraccao * 100.0,
+        pior.0,
+        pior.1,
+        pior.2
+    );
+    assert!(
+        fraccao >= 0.995,
+        "só {:.3} % dos canais estão a ≤1 nível — a lei do campo divergiu entre os motores",
+        fraccao * 100.0
+    );
+}
+
+/// ⏱️⭐⭐ **O QUE A COR NO CHÃO CUSTA** — os dois lados no MESMO processo, intercalados.
+///
+/// ⚠️ *Nenhuma leitura de relógio desta workstation vale nada acima de `load ~5`*, e entre duas
+/// corridas o mesmo passe já deu `11,36` e `5,50 ms` — por isso a [`crate::gpu_frame::Sonda`]
+/// existe: os dois lados do A/B correm alternados, na mesma máquina, no mesmo segundo.
+#[test]
+#[ignore = "precisa de GPU; sonda de relógio"]
+fn mede_o_que_a_cor_no_chao_custa() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    const LW: u32 = 1920;
+    const LH: u32 = 1080;
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            ph2d_field::Primitive::Sphere { radius: 0.3 },
+            ph2d_field::Xform::at(0.0, 0.3, 0.0),
+        )],
+        NodeId(0),
+    )
+    .expect("a bola pousada");
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let materiais = [ph2d_material::OpenPbr {
+        base_color: [0.75, 0.06, 0.06],
+        specular_weight: 0.0,
+        ..ph2d_material::OpenPbr::default()
+    }
+    .prepare()];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+    let cam = ph2d_field_render::Orbit::default();
+    let luz = [lampada(&cam)];
+    let chao = ph2d_field_render::lowest_point(&doc, &reg)
+        .map(|height| ph2d_field_render::Ground { height });
+    let olhar = ph2d_view_transform::Look::default();
+
+    let corre = |recebe: bool| -> f64 {
+        let sonda = crate::gpu_frame::Sonda {
+            chao_recebe_cor: recebe,
+            ..crate::gpu_frame::Sonda::default()
+        };
+        let t0 = std::time::Instant::now();
+        let saida = crate::gpu_frame::paint_com(
+            t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, chao, LW, LH, true, sonda,
+        );
+        assert!(saida.is_some(), "o dispositivo toma a peça");
+        t0.elapsed().as_secs_f64() * 1000.0
+    };
+    // Aquecer: a 1.ª corrida compila o pipeline.
+    let _ = corre(true);
+    let _ = corre(false);
+    let (mut com, mut sem) = (f64::MAX, f64::MAX);
+    for _ in 0..5 {
+        sem = sem.min(corre(false));
+        com = com.min(corre(true));
+    }
+    println!(
+        "  /proc/loadavg: {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+    println!("  {LW}×{LH}, mínimo de 5, intercalado:");
+    println!("  sem a cor no chão · {sem:>8.2} ms");
+    println!(
+        "  com a cor no chão · {com:>8.2} ms   (+{:.2} ms)",
+        com - sem
     );
 }

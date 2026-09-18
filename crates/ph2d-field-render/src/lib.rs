@@ -112,6 +112,8 @@ mod camera;
 mod edges;
 /// ⭐⭐⭐ **O chão que só recebe** — a metade da `W4` que esperava o dono (`docs/Render3d/07`).
 mod ground;
+pub mod ground_bounce;
+mod ground_shade;
 mod march;
 /// ⭐⭐⭐ **A oclusão** — a sombra do céu. Irmã do [`shadow`], com a fronteira escrita lá.
 mod occlusion;
@@ -133,7 +135,7 @@ pub use bounce::{BOUNCE_BLUR_PASSES, BounceSlice, blur_bounce, bounce_pass, boun
 pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Rays, Screen};
 pub use ground::{
     GROUND_SKY_FALLOFF, GROUND_SKY_SAMPLES, GROUND_SKY_SPREAD, GROUND_SKY_STRENGTH, Ground,
-    LOWEST_SIDE, LUMA as GROUND_LUMA, UP as GROUND_UP, catcher_surface, lowest_point,
+    LOWEST_SIDE, LUMA as GROUND_LUMA, UP as GROUND_UP, catcher_surface, ground_at, lowest_point,
 };
 pub use march::{
     EXHAUSTED, FORKED, HIST, MARCH_RAYS, NORMAL_SAMPLES, SLAB_SAMPLES, SLABS_COUNTED, STEP_HIST,

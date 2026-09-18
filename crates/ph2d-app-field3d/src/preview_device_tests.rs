@@ -371,7 +371,7 @@ fn na_faixa_do_produto_a_placa_ganha_com_margem() {
             ph2d_field::NodeId(0),
         )
         .expect("a peça extrudada");
-        let sonda = crate::gpu_frame::Sonda { escalonar: true };
+        let sonda = crate::gpu_frame::Sonda::default();
         // Aquecimento fora da conta: a primeira compila o pipeline.
         let _ = crate::gpu_frame::paint_com(
             t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, None, LW, LH, false, sonda,

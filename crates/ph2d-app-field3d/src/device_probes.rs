@@ -76,7 +76,10 @@ fn mede_o_preco_de_uma_aresta_de_perfil() {
         // coluna crua é a que diz se o escalonador comprou relógio, e compará-la com um número
         // escrito noutro dia mediria a carga daquele dia.
         let mede = |escalonar: bool| {
-            let sonda = crate::gpu_frame::Sonda { escalonar };
+            let sonda = crate::gpu_frame::Sonda {
+                escalonar,
+                ..crate::gpu_frame::Sonda::default()
+            };
             // Aquecimento fora da conta: a primeira compila o pipeline. ⚠️ **Sem o tecto** — esta
             // é a sonda que o calibra, e ela tem de atravessar o degrau para o poder ver.
             let _ = crate::gpu_frame::paint_com(
@@ -199,7 +202,7 @@ fn mede_as_cenas_reais_nos_dois_motores() {
             continue;
         };
         // ⚠️ **SEM o tecto** — esta é a sonda que o calibra.
-        let sonda = crate::gpu_frame::Sonda { escalonar: true };
+        let sonda = crate::gpu_frame::Sonda::default();
         let mede = |f: &dyn Fn()| {
             let mut v: Vec<f32> = Vec::new();
             for _ in 0..3 {
@@ -281,7 +284,7 @@ fn audita_o_vaso() {
             all: &materiais,
             owners: None,
         };
-        let sonda = crate::gpu_frame::Sonda { escalonar: true };
+        let sonda = crate::gpu_frame::Sonda::default();
         let Some(dev) = ph2d_field_eval::device::DeviceField::new(&doc, &reg) else {
             continue;
         };
@@ -464,7 +467,7 @@ fn audita_o_arredondamento_do_vaso() {
             all: &materiais,
             owners: None,
         };
-        let sonda = crate::gpu_frame::Sonda { escalonar: true };
+        let sonda = crate::gpu_frame::Sonda::default();
         let (ops, guardados) = ph2d_field_eval::device::DeviceField::new(&doc, &reg)
             .and_then(|d| d.tape_shape())
             .map_or((0, 0), |s| (s.ops, s.guardados));

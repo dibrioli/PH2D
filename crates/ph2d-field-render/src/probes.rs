@@ -229,7 +229,7 @@ impl ProbeGrid {
     }
 }
 
-fn scene_solta<'a>(
+pub(crate) fn scene_solta<'a>(
     shape: &'a ph2d_field_eval::hybrid::Hybrid,
     doc: &FieldDoc,
     reg: &Registry,
@@ -411,99 +411,106 @@ pub fn gather_probes_por(
     let lift = crate::Sharpness::for_frame(cam.half_extent, g.width.min(g.height) as usize).hit
         * march::BIAS;
 
-    // ── 1. as oito candidatas de cada pixel ───────────────────────────────────────────────────
-    struct Cand {
-        pixel: usize,
-        probe: usize,
-        peso: f32,
+    for (i, o) in out.iter_mut().enumerate() {
+        if !g.hit[i] {
+            continue;
+        }
+        let nrm = base.view_to_world(g.normal[i]);
+        *o = consulta_sondas(grid, g.point[i], nrm, lift, directa);
     }
-    let mut cands: Vec<Cand> = Vec::new();
+    out
+}
+
+/// ⭐⭐⭐ **A CONSULTA, num ponto qualquer** — as oito sondas da célula, pesadas por trilinear ×
+/// «está à frente da superfície», normalizadas pelo peso que de facto entrou.
+///
+/// ⚠️⚠️ **Ela é UMA função porque a lei é UMA, e desde 2026-09-17 ela tem DOIS consumidores** — o
+/// pixel que acerta na peça ([`gather_probes_por`]) e o **pixel de CHÃO** ([`crate::ground`], que
+/// consulta com a normal `[0,1,0]`). Duas cópias divergiriam no dia em que alguém mexesse numa
+/// delas, e a metade que o artista vê primeiro é a que envelhece.
+///
+/// ⚠️ **A consulta AGARRA-SE À BORDA da grelha** (o `clamp` do `u`), e isso é inofensivo numa
+/// superfície fechada — todo ponto da peça está dentro da caixa — e **mentiria num plano infinito**:
+/// ver a cerca medida em [`crate::ground::bounce_reach`], que é quem decide onde o chão deixa de
+/// perguntar.
+pub(crate) fn consulta_sondas(
+    grid: &ProbeGrid,
+    p: [f32; 3],
+    nrm: [f32; 3],
+    lift: f32,
+    directa: bool,
+) -> [f32; 3] {
+    if grid.n < 2 || grid.radiance.is_empty() {
+        return [0.0; 3];
+    }
     #[allow(
         clippy::cast_precision_loss,
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss
     )]
-    for i in 0..pixels {
-        if !g.hit[i] {
-            continue;
-        }
-        let nrm = base.view_to_world(g.normal[i]);
-        let p = g.point[i];
-        // A célula é a do próprio ponto (ver a recusa medida do «erguer» no topo do módulo).
-        let u = [
-            ((p[0] - grid.origin[0]) / grid.step).clamp(0.0, (grid.n - 1) as f32),
-            ((p[1] - grid.origin[1]) / grid.step).clamp(0.0, (grid.n - 1) as f32),
-            ((p[2] - grid.origin[2]) / grid.step).clamp(0.0, (grid.n - 1) as f32),
-        ];
-        let c0 = [
-            (u[0].floor() as usize).min(grid.n - 2),
-            (u[1].floor() as usize).min(grid.n - 2),
-            (u[2].floor() as usize).min(grid.n - 2),
-        ];
-        let f = [
-            (u[0] - c0[0] as f32).clamp(0.0, 1.0),
-            (u[1] - c0[1] as f32).clamp(0.0, 1.0),
-            (u[2] - c0[2] as f32).clamp(0.0, 1.0),
-        ];
-        for dz in 0..2 {
-            for dy in 0..2 {
-                for dx in 0..2 {
-                    let (x, y, z) = (c0[0] + dx, c0[1] + dy, c0[2] + dz);
-                    let k = grid.idx(x, y, z);
-                    if grid.inside[k] {
-                        continue;
-                    }
-                    let tri = (if dx == 1 { f[0] } else { 1.0 - f[0] })
-                        * (if dy == 1 { f[1] } else { 1.0 - f[1] })
-                        * (if dz == 1 { f[2] } else { 1.0 - f[2] });
-                    let sp = grid.pos(x, y, z);
-                    let para = [sp[0] - p[0], sp[1] - p[1], sp[2] - p[2]];
-                    let dist = (para[0] * para[0] + para[1] * para[1] + para[2] * para[2]).sqrt();
-                    if dist <= lift {
-                        continue;
-                    }
-                    let dir = [para[0] / dist, para[1] / dist, para[2] / dist];
-                    // ⭐ «Está à frente»: uma sonda atrás da superfície vê o outro lado dela.
-                    let cos = nrm[0] * dir[0] + nrm[1] * dir[1] + nrm[2] * dir[2];
-                    let frente = ((cos + 1.0) * 0.5).powi(2);
-                    let peso = tri * frente;
-                    if peso <= 1e-6 {
-                        continue;
-                    }
-                    cands.push(Cand {
-                        pixel: i,
-                        probe: k,
-                        peso,
-                    });
+    // A célula é a do próprio ponto (ver a recusa medida do «erguer» no topo do módulo).
+    let u = [
+        ((p[0] - grid.origin[0]) / grid.step).clamp(0.0, (grid.n - 1) as f32),
+        ((p[1] - grid.origin[1]) / grid.step).clamp(0.0, (grid.n - 1) as f32),
+        ((p[2] - grid.origin[2]) / grid.step).clamp(0.0, (grid.n - 1) as f32),
+    ];
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let c0 = [
+        (u[0].floor() as usize).min(grid.n - 2),
+        (u[1].floor() as usize).min(grid.n - 2),
+        (u[2].floor() as usize).min(grid.n - 2),
+    ];
+    #[allow(clippy::cast_precision_loss)]
+    let f = [
+        (u[0] - c0[0] as f32).clamp(0.0, 1.0),
+        (u[1] - c0[1] as f32).clamp(0.0, 1.0),
+        (u[2] - c0[2] as f32).clamp(0.0, 1.0),
+    ];
+    let (mut soma, mut total) = ([0.0f32; 3], 0.0f32);
+    for dz in 0..2 {
+        for dy in 0..2 {
+            for dx in 0..2 {
+                let (x, y, z) = (c0[0] + dx, c0[1] + dy, c0[2] + dz);
+                let k = grid.idx(x, y, z);
+                if grid.inside[k] {
+                    continue;
                 }
+                let tri = (if dx == 1 { f[0] } else { 1.0 - f[0] })
+                    * (if dy == 1 { f[1] } else { 1.0 - f[1] })
+                    * (if dz == 1 { f[2] } else { 1.0 - f[2] });
+                let sp = grid.pos(x, y, z);
+                let para = [sp[0] - p[0], sp[1] - p[1], sp[2] - p[2]];
+                let dist = (para[0] * para[0] + para[1] * para[1] + para[2] * para[2]).sqrt();
+                if dist <= lift {
+                    continue;
+                }
+                let dir = [para[0] / dist, para[1] / dist, para[2] / dist];
+                // ⭐ «Está à frente»: uma sonda atrás da superfície vê o outro lado dela.
+                let cos = nrm[0] * dir[0] + nrm[1] * dir[1] + nrm[2] * dir[2];
+                let frente = ((cos + 1.0) * 0.5).powi(2);
+                let peso = tri * frente;
+                if peso <= 1e-6 {
+                    continue;
+                }
+                let e = if directa {
+                    grid.irradiancia_directa(k, nrm)
+                } else {
+                    grid.irradiancia(k, nrm)
+                };
+                soma = [
+                    soma[0] + peso * e[0],
+                    soma[1] + peso * e[1],
+                    soma[2] + peso * e[2],
+                ];
+                total += peso;
             }
         }
     }
-    // ── 2. a soma pesada ──────────────────────────────────────────────────────────────────────
-    let mut soma = vec![[0.0f32; 3]; pixels];
-    let mut peso = vec![0.0f32; pixels];
-    for c in &cands {
-        let w = c.peso;
-        let nrm = base.view_to_world(g.normal[c.pixel]);
-        let e = if directa {
-            grid.irradiancia_directa(c.probe, nrm)
-        } else {
-            grid.irradiancia(c.probe, nrm)
-        };
-        let s = &mut soma[c.pixel];
-        *s = [s[0] + w * e[0], s[1] + w * e[1], s[2] + w * e[2]];
-        peso[c.pixel] += w;
+    if total > 0.0 {
+        [soma[0] / total, soma[1] / total, soma[2] / total]
+    } else {
+        [0.0; 3]
     }
-    for i in 0..pixels {
-        if peso[i] > 0.0 {
-            out[i] = [
-                soma[i][0] / peso[i],
-                soma[i][1] / peso[i],
-                soma[i][2] / peso[i],
-            ];
-        }
-    }
-    out
 }
 
 /// ⭐⭐⭐ **A LEI DO PRODUTO numa chamada** — as sondas de [`PROBE_GRID`]³ × [`PROBE_DIRS`], assadas

@@ -79,6 +79,26 @@ pub struct PaintSetup<'a> {
     /// ⚠️ Ela viaja **depois** dos materiais da peça, no índice `materiais`, e o guarda do
     /// [`PaintSetup::materials`] não a alcança de propósito: ela não é o material de folha nenhuma.
     pub catcher: &'a [f32],
+    /// ⭐⭐⭐ **A COR QUE A PEÇA DEVOLVE AO CHÃO** — o campo 2D do
+    /// [`ph2d_field_render::ground_bounce`]. Vazio = o caminho de sempre, **ao bit**.
+    ///
+    /// # ⛔⛔ Porque ele é assado na CPU e ENVIADO, ao contrário das sondas
+    ///
+    /// As sondas da peça têm kernel próprio (`assa_sondas`) porque custam `8,4 M` raios. Este campo
+    /// custa `131 072` — **`1,6 %`** — e o número que decidiu foi o RELÓGIO da assadura de CPU:
+    ///
+    /// | | num lote só | em lotes paralelos |
+    /// |---|---:|---:|
+    /// | `48² × 128` (a grelha de então) | `106,5 ms` | **`11,8 ms`** (a `load 82`) |
+    /// | **`32² × 128`** (a que shipa) | — | **`5,33 ms`** (a `load 21`) |
+    ///
+    /// ⇒ com o lote repartido ele cabe onde o quadro assente já espera, e **compra UMA lei em vez
+    /// de duas**: não há kernel de assadura em WGSL para divergir do da CPU, logo não há paridade
+    /// de ASSADURA para falhar — só a da CONSULTA, que é uma bilinear.
+    ///
+    /// ⏳ **O kernel próprio fica NOMEADO com o preço:** na placa ele valeria `~0,04 ms`, e a cache
+    /// por cena-e-luz vale mais (o campo **não depende da câmera**, logo orbitar reutiliza-o).
+    pub ground_bounce: &'a ph2d_field_render::ground_bounce::GroundBounce,
     /// ⭐⭐⭐ **AS GÉMEAS FOSCAS** — os mesmos materiais de [`PaintSetup::materials`], na MESMA
     /// ordem, sem o lóbulo especular ([`ph2d_material::Surface::matte`]).
     ///
@@ -137,6 +157,10 @@ struct Pintor {
     // ⭐ `x` = há gémeas foscas empacotadas (ver `ler_mat_fosca`). `0` é o caminho anterior ao
     // report do dono de 2026-09-17, ao bit.
     modo2: vec4<u32>,
+    // ⭐⭐⭐ **O CAMPO DO CHÃO** (`ph2d_field_render::ground_bounce`): `xy` = o canto `(x, z)`,
+    // `z` = o passo, `w` = a altura do plano. A contagem de células por aresta vive em `modo2.y`,
+    // e `0` ali quer dizer «campo vazio» — o caminho de sempre, ao bit.
+    chao_campo: vec4<f32>,
     // ⭐ **Uma radiância por lâmpada**, na MESMA ordem das posições do `Setup`.
     lamp: array<vec4<f32>, {MAX_LAMPS}>,
 };
@@ -148,6 +172,10 @@ struct Pintor {
 // ⭐⭐⭐ **AS SONDAS** (`ph2d_field_render::probes`): `PROBE_GRID³` sondas × `SH_STRIDE` floats — os
 // nove coeficientes esféricos por canal (27) e a bandeira «está dentro da peça» (o 28.º).
 @group(1) @binding(5) var<storage, read_write> sondas: array<f32>;
+// ⭐⭐⭐ **A COR QUE A PEÇA DEVOLVE AO CHÃO** (`ph2d_field_render::ground_bounce`): `n²` irradiâncias
+// em ordem `z * n + x`, três floats cada. ⚠️ **Ela é assada na CPU e ENVIADA**, ao contrário das
+// sondas — ver a medição no `PaintSetup::ground_bounce`.
+@group(1) @binding(6) var<storage, read> chao_luz: array<f32>;
 
 const BLUR_COS: f32 = {BLUR_COS};
 const PISO_LUZ: f32 = {PISO_LUZ};
@@ -559,6 +587,87 @@ fn fundo_sombreado(f: f32) -> vec4<f32> {
     return vec4<f32>(pintor.fundo.rgb * f, (1.0 - f) + pintor.fundo.a * f);
 }
 
+// ⭐⭐⭐ **A LUZ QUE A PEÇA DEVOLVE AO PONTO `q` DO CHÃO** — bilinear sobre as quatro células, vezes
+// o esmorecimento da orla. É o `GroundBounce::sample` da CPU, linha a linha.
+//
+// ⚠️ **Fora do campo devolve ZERO**, e a orla já lá pôs zero antes da borda: a saída antecipada é
+// guarda de índice, e a LEI é a orla (ver o doc da irmã de CPU).
+fn ricochete_do_chao(q: vec3<f32>) -> vec3<f32> {
+    let n = pintor.modo2.y;
+    if (n < 2u) { return vec3<f32>(0.0); }
+    let passo = pintor.chao_campo.z;
+    if (!(passo > 0.0)) { return vec3<f32>(0.0); }
+    let lado = f32(n - 1u);
+    let u = vec2<f32>(
+        (q.x - pintor.chao_campo.x) / passo,
+        (q.z - pintor.chao_campo.y) / passo,
+    );
+    if (u.x < 0.0 || u.y < 0.0 || u.x > lado || u.y > lado) { return vec3<f32>(0.0); }
+    let c0 = vec2<u32>(
+        min(u32(floor(u.x)), n - 2u),
+        min(u32(floor(u.y)), n - 2u),
+    );
+    let f = vec2<f32>(
+        clamp(u.x - f32(c0.x), 0.0, 1.0),
+        clamp(u.y - f32(c0.y), 0.0, 1.0),
+    );
+    var soma = vec3<f32>(0.0);
+    for (var dz = 0u; dz < 2u; dz = dz + 1u) {
+        for (var dx = 0u; dx < 2u; dx = dx + 1u) {
+            var w = 1.0 - f.x;
+            if (dx == 1u) { w = f.x; }
+            var wz = 1.0 - f.y;
+            if (dz == 1u) { wz = f.y; }
+            let k = ((c0.y + dz) * n + c0.x + dx) * 3u;
+            soma = soma + (w * wz) * vec3<f32>(chao_luz[k], chao_luz[k + 1u], chao_luz[k + 2u]);
+        }
+    }
+    // A orla: medida no QUADRADO do campo (Chebyshev), como na CPU.
+    let meia = passo * lado * 0.5;
+    if (!(meia > 0.0)) { return vec3<f32>(0.0); }
+    let centro = vec2<f32>(pintor.chao_campo.x + meia, pintor.chao_campo.y + meia);
+    let d = max(abs(q.x - centro.x), abs(q.z - centro.y)) / meia;
+    return soma * clamp((1.0 - d) / {FADE}, 0.0, 1.0);
+}
+
+// ⭐ **A luz devolvida ao chão DESTE pixel** — `[0,0,0]` quando ele não vê chão nenhum.
+fn chao_no_pixel(x: u32, y: u32) -> vec3<f32> {
+    if (s.chao == 0u) { return vec3<f32>(0.0); }
+    let r = ray_at_plane(raio(f32(x) + 0.5, f32(y) + 0.5));
+    let q = chao_em(r);
+    if (q.w == 0.0) { return vec3<f32>(0.0); }
+    let e = ricochete_do_chao(q.xyz);
+    if (e.x <= 0.0 && e.y <= 0.0 && e.z <= 0.0) { return vec3<f32>(0.0); }
+    // ⭐⭐ **A MESMA lei indirecta com o ambiente trocado** que a peça usa para o ricochete dela —
+    // o espelho exacto do `SoIrradiancia` da CPU. ⚠️ Escrever aqui uma segunda expressão para «a
+    // resposta do material a uma irradiância» seria a segunda cópia de uma lei que já tem porta.
+    ricochete = e;
+    ambiente_e_ricochete = true;
+    let saiu = mx_indirect(
+        mat_do_chao(),
+        mundo_para_vista(vec3<f32>(0.0, 1.0, 0.0)),
+        direccao_de_vista(r.d),
+    );
+    ambiente_e_ricochete = false;
+    return saiu;
+}
+
+// ⭐⭐ **A luz devolvida de uma BORDA** — a média dos vizinhos de cruz que falham a peça, na MESMA
+// ordem do `edge_ground_bounce` da CPU. ⚠️ **Sem vizinho de fundo devolve ZERO** (e o irmão do
+// factor devolve `1,0`): ausência de LUZ, nunca luz inventada.
+fn chao_da_borda(i: u32, x: u32, y: u32) -> vec3<f32> {
+    if (s.chao == 0u) { return vec3<f32>(0.0); }
+    if (centro[i].x < 0.0) { return chao_no_pixel(x, y); }
+    var soma = vec3<f32>(0.0);
+    var n = 0u;
+    if (x > 0u && centro[i - 1u].x < 0.0) { soma = soma + chao_no_pixel(x - 1u, y); n = n + 1u; }
+    if (x + 1u < s.w && centro[i + 1u].x < 0.0) { soma = soma + chao_no_pixel(x + 1u, y); n = n + 1u; }
+    if (y > 0u && centro[i - s.w].x < 0.0) { soma = soma + chao_no_pixel(x, y - 1u); n = n + 1u; }
+    if (y + 1u < s.h && centro[i + s.w].x < 0.0) { soma = soma + chao_no_pixel(x, y + 1u); n = n + 1u; }
+    if (n == 0u) { return vec3<f32>(0.0); }
+    return soma / f32(n);
+}
+
 // O factor do chão DESTE pixel — `1,0` quando ele não vê chão nenhum.
 fn fator_no_pixel(j: u32, x: u32, y: u32) -> f32 {
     let r = ray_at_plane(raio(f32(x) + 0.5, f32(y) + 0.5));
@@ -643,7 +752,19 @@ fn pinta(@builtin(global_invocation_id) g: vec3<u32>) {
         // ⭐ **O CHÃO**: onde ele é tapado o fundo escurece; onde nada o tapa a razão é exactamente
         // `1`. ⚠️ **O fundo é COPIADO** nesse caso, e não passa pela conversão — a cerca da CPU.
         let f = fator_no_pixel(i, g.x, g.y);
-        if (f < 1.0) { saida[i] = empacota(fundo_sombreado(f)); } else { saida[i] = pintor.modo.z; }
+        // ⭐⭐⭐ **A LUZ QUE A PEÇA PÕE NO CHÃO** — somada em pré-multiplicado e com alfa ZERO, que
+        // é o que um compositor lê como luz acrescentada. ⛔ Ela NÃO pode multiplicar o fundo: o do
+        // modelador é transparente, e a wave inteira sairia num pixel que não muda um bit.
+        let posta = chao_no_pixel(g.x, g.y);
+        let tem_posta = posta.x != 0.0 || posta.y != 0.0 || posta.z != 0.0;
+        if (f < 1.0) {
+            let base = fundo_sombreado(f);
+            saida[i] = empacota(vec4<f32>(base.rgb + posta, base.a));
+        } else if (tem_posta) {
+            saida[i] = empacota(vec4<f32>(pintor.fundo.rgb + posta, pintor.fundo.a));
+        } else {
+            saida[i] = pintor.modo.z;
+        }
         return;
     }
     let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
@@ -685,6 +806,8 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     let f_chao = fator_da_borda(i, x, y);
     var fundo = pintor.fundo;
     if (f_chao < 1.0) { fundo = fundo_sombreado(f_chao); }
+    // ⭐ **E a borda recebe a luz devolvida pela MESMA média dos vizinhos** — ver `chao_da_borda`.
+    fundo = vec4<f32>(fundo.rgb + chao_da_borda(i, x, y), fundo.a);
     var acc = vec4<f32>(0.0);
     for (var j = 0u; j < 4u; j = j + 1u) {
         let q = borda[slot * 5u + 1u + j];
@@ -718,6 +841,11 @@ pub(crate) fn fonte(
             &formata(ph2d_field_render::POINT_LAMP_MIN_DISTANCE),
         )
         .replace("{PACKED}", &ph2d_material::wgsl::PACKED.to_string())
+        // ⚠️ **Lido do ficheiro que o declara**, nunca transcrito — a mesma lei do `{BLUR_COS}`.
+        .replace(
+            "{FADE}",
+            &formata(ph2d_field_render::ground_bounce::GROUND_BOUNCE_FADE),
+        )
         .replace(
             "{PROBE_GRID}",
             &ph2d_field_render::probes::PROBE_GRID.to_string(),
@@ -837,6 +965,7 @@ pub(crate) fn pinta(
             armazem(3, true),
             armazem(4, false),
             armazem(5, false),
+            armazem(6, true),
         ],
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -932,17 +1061,29 @@ pub(crate) fn pinta(
         | (u32::from(bg[1]) << 8)
         | (u32::from(bg[2]) << 16)
         | (u32::from(bg[3]) << 24);
+    // ⚠️ **`modo2.y` é a contagem de células do campo do chão**, e `0` ali quer dizer «campo
+    // vazio»: é o que mantém o quadro sem esta wave byte a byte o de sempre.
+    #[allow(clippy::cast_possible_truncation)]
+    let n_chao = pintor.ground_bounce.n as u32;
     for v in [
         pintor.view,
         n_bordas,
         empacotado,
         n_mats,
         tem_foscas,
-        0,
+        n_chao,
         0,
         0,
     ] {
         u.extend_from_slice(&v.to_le_bytes());
+    }
+    for f in [
+        pintor.ground_bounce.origin[0],
+        pintor.ground_bounce.origin[1],
+        pintor.ground_bounce.step,
+        pintor.ground_bounce.height,
+    ] {
+        u.extend_from_slice(&f.to_le_bytes());
     }
     // ⚠️ **O array vai INTEIRO** — a mesma razão do `MarchSetup::lamps`: um `array<vec4, 8>` de
     // uniforme tem tamanho fixo.
@@ -994,6 +1135,22 @@ pub(crate) fn pinta(
         usage: wgpu::BufferUsages::STORAGE,
         mapped_at_creation: false,
     });
+    // ⭐ **O campo do chão**: `n² × 3` floats. ⚠️ Ele existe sempre (um armazém vazio não é ligável),
+    // e o pintor só o lê com `modo2.y >= 2`.
+    let mut chao: Vec<u8> = Vec::with_capacity(pintor.ground_bounce.value.len() * 12);
+    for v in &pintor.ground_bounce.value {
+        for f in v {
+            chao.extend_from_slice(&f.to_le_bytes());
+        }
+    }
+    if chao.is_empty() {
+        chao.extend_from_slice(&[0u8; 16]);
+    }
+    let b_chao = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("chao_luz"),
+        contents: &chao,
+        usage: wgpu::BufferUsages::STORAGE,
+    });
     let bg1 = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: None,
         layout: &bgl1,
@@ -1004,6 +1161,7 @@ pub(crate) fn pinta(
             recurso(&materiais, 3),
             recurso(&b_saida, 4),
             recurso(&b_sondas, 5),
+            recurso(&b_chao, 6),
         ],
     });
 

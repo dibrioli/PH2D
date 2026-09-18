@@ -82,4 +82,50 @@ estado que o arnês não vê (CI, uma fila remota)."
   fi
 fi
 
+# ── R3 · o fonte de um alvo AMURALHADO não se lê ──────────────────────────────
+# ⛔⛔ O `docs/_ComoInvestigarApps/00_o_metodo.md` §0 afirmava que ninguém *podia*
+# ler o fonte de um alvo restrito, «porque o `.claude/settings.local.json` nega os
+# caminhos». MEDIDO em 2026-09-18, ao abrir a parede da Unreal: **não existia
+# lista `deny` nenhuma — em ficheiro nenhum** (nem no repo, nem em `~/.claude/`).
+# A parede era uma promessa a declarar-se propriedade da máquina, que é a família
+# que este repo mais paga: *um doc que declara a lei que o código não implementa
+# lê-se como auditado.* Esta regra torna-a real para o `Bash`; o `deny` do
+# `.claude/settings.json` cobre a ferramenta `Read`. As duas juntas são a frase.
+#
+# A unidade é o ARTEFACTO INSTALADO e nunca o nome do projecto (CLAUDE.md §0.9):
+#   · Unreal 5.8.2 — build promovida sob EULA proprietária, e ela traz
+#     `Engine/Source` e `Engine/Shaders` dentro do que se instala;
+#   · Blender — GPL, com 810 ficheiros `.py` em `scripts/`.
+# ⚠️ O `datafiles/` do Blender fica de FORA **de propósito**: o
+# `docs/Render3d/ferramentas/oraculo_de_cor.py` deste repo lê o `config.ocio`
+# (OpenColorIO, BSD-3) — isso é DADO e não implementação, e é a mesma distinção
+# que faz a SAÍDA de um alvo ser livre.
+#
+# ⚠️ Ela recusa a MENÇÃO e não só a leitura, e isso é deliberado. Separar «este
+# caminho é um operando» de «este caminho está dentro de um padrão de busca» não
+# se faz com um grep honesto — e o gate irmão `grep que MENCIONA` da prova existe
+# exactamente porque a distinção é real. Aqui escolhe-se errar a FECHAR: um
+# guarda de parede que erra a favor do alvo não é um guarda. O custo é escrever o
+# caminho por outra ferramenta, e a recusa diz qual.
+if printf '%s' "$cmd" | grep -qE 'UnrealEngine/Engine/(Source|Shaders)|/usr/share/blender/[^/]*/scripts'; then
+  recusa "⛔ Fonte de um alvo AMURALHADO.
+
+A Unreal (EULA proprietária) e o Blender (GPL) são oráculos que se CORREM, nunca
+fontes que se leem — CLAUDE.md §0.9. Ler contamina: ~460 notas deste repo já
+citaram nome interno de alvo restrito, e a dívida levou uma jornada a zerar.
+
+⚠️ Se você é a janela do PRODUTO, isto não é um obstáculo a contornar: a resposta
+que procura tem de vir de CORRER o alvo sobre entradas nossas." \
+"Faça assim:
+
+  · precisa do COMPORTAMENTO dele? peça uma corrida a uma janela E — ela monta o
+    arnês FORA da árvore, corre sem interface e devolve NÚMEROS;
+  · precisa da saída dele? a saída é livre (GPLv2 §0) e entra como fixtura com
+    cabeçalho;
+  · precisa só de NOMEAR o caminho (um doc, um briefing)? use a ferramenta Write
+    ou Edit, que não passa por este guarda.
+
+⛔ Se acha que precisa mesmo de LER, pare e reporte — é decisão do Enio, não sua."
+fi
+
 exit 0

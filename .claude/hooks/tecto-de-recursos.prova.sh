@@ -24,6 +24,9 @@ t "smoke cru"             'cargo run -p ph2d-host-desktop --profile smoke'  fals
 t "gate de GPU cru"       'cargo test -p ph2d-field-gpu -- --ignored'       false deny
 t "vigia sem prazo"       'until grep -q ok /tmp/x; do sleep 45; done'      true  deny
 t "while true de fundo"   'while true; do sleep 30; done'                   true  deny
+t "fonte da Unreal"       'cat /home/enio/Documentos/Projetos/UnrealEngine/Engine/Source/Runtime/X.cpp' false deny
+t "shader da Unreal"      'grep -rn Burley /home/enio/Documentos/Projetos/UnrealEngine/Engine/Shaders/' false deny
+t "python do Blender"     'sed -n 1,40p /usr/share/blender/5.2/scripts/startup/x.py' false deny
 echo "— tem de passar —"
 t "LAÇO INTERNO: check"   'cargo check -p ph2d-field-eval --all-targets'    false passa
 t "cargo fmt"             'cargo fmt --all -- --check'                      false passa
@@ -36,6 +39,11 @@ t "git"                   'git status --short'                              fals
 t "vigia COM prazo"       "timeout 900 bash -c 'until test -f /tmp/x; do sleep 30; done'" true passa
 t "laço em 1.º plano"     'until test -f /tmp/x; do sleep 5; done'          false passa
 t "grep que MENCIONA"     'grep -rn "cargo test" docs/'                     false passa
+# ⭐ A metade que torna a R3 honesta: CORRER o alvo é o método, e tem de passar.
+t "CORRER a Unreal"       '/home/enio/Documentos/Projetos/UnrealEngine/Engine/Binaries/Linux/UnrealEditor-Cmd P.uproject -run=pythonscript' false passa
+t "CORRER o Blender"      'blender -b --factory-startup -P /var/tmp/arnes/render_ref.py' false passa
+t "config do Blender"     'cat /usr/share/blender/5.2/datafiles/colormanagement/config.ocio' false passa
+t "o nosso oráculo"       'python3 docs/Render3d/ferramentas/oraculo_de_cor.py' false passa
 echo "— falha ABERTO (um guarda que se engana a fechar pára seis linhas) —"
 for e in 'lixo nao-json' '{}' '{"tool_input":{}}'; do
   printf '%s' "$e" | bash .claude/hooks/tecto-de-recursos.sh >/dev/null 2>&1

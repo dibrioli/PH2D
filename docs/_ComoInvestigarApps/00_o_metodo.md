@@ -25,9 +25,17 @@ Enio, 2026-09-07, depois do smoke do pincel de tecido:
 ⚠️⚠️ **Ele viu certo, e o mecanismo é mais preciso do que a frase — e a precisão
 é toda a diferença.** O alvo **foi** corrido repetidamente; ele foi corrido **por
 script, sem interface, fora da árvore, sobre malhas nossas**, e o que voltou
-foram **números**. Ninguém leu uma linha do fonte dele; ninguém *podia*
-(`.claude/settings.local.json` nega os caminhos). *Correr um app e ler um app são
-dois métodos diferentes, e só um deles termina num gate.*
+foram **números**. Ninguém leu uma linha do fonte dele. *Correr um app e ler um app
+são dois métodos diferentes, e só um deles termina num gate.*
+
+⛔⛔ **CORRIGIDO em 2026-09-18, ao abrir a parede da Unreal:** esta frase dizia
+*«ninguém podia — o `.claude/settings.local.json` nega os caminhos»*, e a medição é
+que **não existia lista `deny` nenhuma, em ficheiro nenhum** (nem `.claude/` do
+repo, nem `~/.claude/settings.json`, nem `~/.claude/settings.local.json`). A
+disciplina era real; a **propriedade da máquina** que a frase alegava não era. *Um
+doc que declara a lei que o código não implementa lê-se como auditado* — e foi esta
+frase que deixou a parede dois meses sem instrumento, porque quem a lia dava o
+mecanismo por pago. A cura, com prova de mutação, está na **§6**.
 
 ---
 
@@ -151,7 +159,7 @@ população, e há gate a dizê-lo (`onde_o_maximo_nao_decide_decide_o_p95`).
 |---|---|
 | **Alvo** | Blender 5.2.1 LTS, GPL ⇒ **parede obrigatória** |
 | **Quem correu o alvo** | o subagente **E**, fora da árvore, por script sem interface |
-| **Quem escreveu o produto** | esta janela, que **nunca** viu o fonte (deny em `.claude/settings.local.json`) |
+| **Quem escreveu o produto** | esta janela, que **nunca** viu o fonte — ⚠️ por **DISCIPLINA**: o `deny` que esta linha alegava **não existia** (§0), e o mecanismo só nasceu em 18/09 (§6) |
 | **Entradas** | grelha `64×64` e esfera UV `96×64` — **nossas** |
 | **Corpus** | `86` traços · `149` ficheiros · com rastreio **por passo** em `10` deles |
 | **Placar** | **`79` dentro da barra**, `7` abertos (`VERDE_N`/`ABERTO_N` no [bancada](../../crates/ph2d-cloth/tests/it/oraculo_do_pincel.rs) — ⛔ conte-os lá, nunca aqui) |
@@ -171,9 +179,38 @@ Alvo **permissivo** (MIT/BSD/Apache) ⇒ **sem parede**: porte, com atribuição
 Alvo **copyleft** (GPL/LGPL) ou proprietário ⇒ **parede**, e ela tem três regras
 que não se negoceiam ([SKILL §3](../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md)):
 
-1. **Quem escreve o produto nunca abre o fonte do alvo** — e o `deny` do
-   `.claude/settings.local.json` torna isso uma propriedade da máquina, não uma
-   promessa.
+1. **Quem escreve o produto nunca abre o fonte do alvo** — e desde **2026-09-18**
+   isso é **mecanismo e não lembrança**, em duas metades que se cobrem uma à outra:
+   - `permissions.deny` no **[`.claude/settings.json`](../../.claude/settings.json)
+     versionado** — cobre a ferramenta `Read`;
+   - a regra **R3** do [`tecto-de-recursos.sh`](../../.claude/hooks/tecto-de-recursos.sh)
+     — cobre o `Bash`, que é por onde um `cat` passa **ao lado** do `deny`. Prova de
+     mutação **3 de 3** na
+     [prova](../../.claude/hooks/tecto-de-recursos.prova.sh), com a metade positiva
+     (CORRER o alvo, ler o `datafiles/` do Blender) verde na mesma corrida.
+
+   ⚠️ **A unidade das duas é o ARTEFACTO INSTALADO** (CLAUDE.md §0.9): a Unreal traz
+   `Engine/Source` e `Engine/Shaders` **dentro do que se instala** e o Blender traz
+   `810` ficheiros `.py` em `scripts/` ⇒ um `deny` escrito só sobre
+   `~/Referencias/**` — que é o que a
+   [SKILL §3.I](../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md) prescreve
+   — **não tem endereço nenhum para um alvo instalado no lugar**. ⛔ E o `datafiles/`
+   do Blender fica **FORA de propósito**: o `oraculo_de_cor.py` deste repo lê o
+   `config.ocio` dele, que é **dado** e não implementação — a mesma distinção que faz
+   a SAÍDA de um alvo ser livre.
+
+   ⛔⛔ **E UM GUARDA ESCRITO NUMA WORKTREE NÃO GUARDA ESSA WORKTREE** (medido no
+   mesmo dia, ao armar a R3): o hook regista-se por
+   `${CLAUDE_PROJECT_DIR}/.claude/hooks/…` e essa raiz resolve para o **PRIMÁRIO**,
+   nunca para a worktree da linha — os dois ficheiros têm **inodes diferentes**, e o
+   do primário lia `0` ocorrências da regra nova enquanto o da worktree lia `1`.
+   ⚠️⚠️ **A assinatura é cruel: o R1 continua a recusar em voz alta** (o guarda ESTÁ
+   activo — é a cópia do primário), logo *a linha vê um guarda a funcionar e conclui
+   que o dela está armado*. ⇒ **uma regra nova de parede só passa a guardar no dia da
+   INTEGRAÇÃO**, e até lá a única cerca é a disciplina de quem a escreveu.
+   ⚠️ Mesma família da nota do `collision-surface.sh` (CLAUDE.md §1 — *«um script novo
+   só existe nas árvores que nasceram depois dele»*), **no sentido inverso e pior**:
+   lá a ferramenta falta e falha alto; aqui ela existe, corre, e mede **outra árvore**.
 2. Os papéis **E** (especificador) e **R** (revisor) leem o alvo e entregam
    relatórios com **zero** identificadores dele.
 3. Todo artefacto que cruza a parede passa por

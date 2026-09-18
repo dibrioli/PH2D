@@ -292,7 +292,7 @@ em sequência, **morreu**):
   (via inbox §6) — o R-pós confere no fechamento que nenhum elo pertence ao conjunto
   {contextos que leram o fonte, janelas queimadas}.
 - **Passo 0 mecânico (a parede vira permissão do harness, não lembrança do agente):**
-  criar na raiz da worktree `.claude/settings.local.json` com deny de leitura:
+  o deny de leitura vai para o **[`.claude/settings.json` VERSIONADO](../../.claude/settings.json)**:
   ```json
   { "permissions": { "deny": [
       "Read(~/Referencias/**)",
@@ -300,6 +300,26 @@ em sequência, **morreu**):
       "Read(docs/**/cleanroom/VASSOURA_*)"
   ] } }
   ```
+  ⛔⛔ **TRÊS correcções MEDIDAS em 2026-09-18** (ao abrir a parede da Unreal), e as
+  três valem para toda linha futura:
+  1. **Este ficheiro nunca existiu** — `deny` a zero em `.claude/`, em
+     `~/.claude/settings.json` e em `~/.claude/settings.local.json`. O `00_o_metodo`
+     §0 declarava-o *«propriedade da máquina»* e a parede esteve dois meses a ser só
+     disciplina.
+  2. ⛔ **`na raiz da worktree` está ERRADO e é inerte:** a raiz que a sessão carrega
+     resolve para o **PRIMÁRIO** (medido pelo hook irmão: inodes diferentes, a regra
+     nova a `1` na worktree e a `0` no primário, com o guarda a correr a cópia do
+     primário). Um `settings.local.json` escrito na worktree **não arma nada** — e o
+     versionado só arma **no dia da integração**. Até lá, disciplina.
+  3. ⛔ **O `deny` sozinho não é a parede, porque ele só cobre a ferramenta `Read`** —
+     um `cat`/`rg` por `Bash` passa ao lado (a própria §3.E conta com isso: *«você lê
+     o fonte por shell»*). A outra metade é a regra **R3** do
+     [`tecto-de-recursos.sh`](../../.claude/hooks/tecto-de-recursos.sh).
+  ⚠️ **E a lista acima só endereça o alvo VENDORIZADO** (`~/Referencias/<alvo>/`). Um
+  alvo **instalado no lugar** — Unreal em `…/UnrealEngine/Engine/{Source,Shaders}`,
+  Blender em `/usr/share/blender/*/scripts` — **não tem endereço aqui**, e é a R3 que
+  o cobre. *A unidade da cerca é a do §0.9: o ARTEFACTO INSTALADO, nunca a pasta onde
+  se esperava encontrá-lo.*
 - **Lê:** a espec (cujo **cabeçalho** carrega os atestados que I confere — §4) · os
   papers públicos, guiado pelo **mapa de leitura** do cabeçalho · o NOSSO código · os
   **dumps e goldens** do oráculo (dados) · **toda a PROSA pública do alvo** — site de

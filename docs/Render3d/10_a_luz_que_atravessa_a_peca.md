@@ -620,3 +620,98 @@ ser: **ser o renderizador de tempo real cuja cor segue a profundidade.**
 ⚠️ E fica nomeado que o desvio de FORMA lê `25 %` **no próprio controlo opaco** — ele é o **piso do
 método** (a janela apanha o realce ceifado e o ajuste de exposição é um compromisso), e não uma
 propriedade do jade, cujo `30 %` está a cinco pontos desse piso.
+
+---
+
+## §15 — ⭐⭐⭐ A UNREAL COMO TERCEIRO CONTENDOR: a triagem, a parede, e o que ela cura
+
+Ordem do dono, 2026-09-18: *«avance para a Unreal»*.
+
+### §15.1 — A triagem (passo 1, sempre)
+
+| | |
+|---|---|
+| artefacto | **Unreal Engine 5.8.2**, `Build.version` com `IsPromotedBuild: 1` · `IsLicenseeVersion: 0` |
+| onde | `~/Documentos/Projetos/UnrealEngine/` — build binária oficial para Linux, **fora** da árvore do repo |
+| licença | **EULA proprietária** ⇒ **PAREDE**: corre-se, nunca se lê |
+| o que vem dentro | ⚠️ `Engine/Source/**` e `Engine/Shaders/**` — *o fonte está instalado, não é preciso ir buscá-lo* |
+| porta sem interface | `Engine/Binaries/Linux/UnrealEditor-Cmd` ✅ |
+| placa | RTX 5060 Ti, `VK_KHR_ray_tracing_pipeline` presente ⇒ **o path tracer dela corre** |
+
+⭐⭐⭐ **E é isso que a torna o contendor mais valioso de todos: ela traz DOIS motores.**
+O de **tempo real** é o nosso PAR (a mesma família de aproximação em espaço de ecrã), e o **path
+tracer** é uma **segunda verdade independente** — que serve para confirmar ou desmentir o oráculo
+Cycles da §14. *Um alvo que responde dos dois lados da mesma mesa vale mais que dois alvos.*
+
+### §15.2 — ⛔⛔ O ACHADO QUE PAROU A JORNADA: a parede era uma promessa a dizer-se propriedade
+
+O [`00_o_metodo`](../_ComoInvestigarApps/00_o_metodo.md) §0 afirmava, por escrito, que ninguém
+*podia* ler o fonte de um alvo restrito — *«o `.claude/settings.local.json` nega os caminhos»*.
+
+**Medido antes de abrir a janela do oráculo: não existia lista `deny` NENHUMA**, em ficheiro nenhum
+(`.claude/settings.local.json` do repo · `~/.claude/settings.json` · `~/.claude/settings.local.json`).
+⇒ *a família que este repo mais paga — um doc que declara a lei que o código não implementa lê-se
+como auditado.* **Seis** afirmações em dois docs dependiam dela.
+
+⭐ **A cura tem DUAS metades porque o defeito tem duas portas**, e uma sozinha é teatro:
+
+| metade | cobre | onde |
+|---|---|---|
+| `permissions.deny` | a ferramenta `Read` | [`.claude/settings.json`](../../.claude/settings.json), **versionado** |
+| regra **R3** | o `Bash` — por onde um `cat` passa **ao lado** do `deny` | [`tecto-de-recursos.sh`](../../.claude/hooks/tecto-de-recursos.sh) |
+
+**Prova de mutação `3 de 3`**, com a metade positiva verde na mesma corrida (CORRER a Unreal ·
+CORRER o Blender · ler o `config.ocio` do Blender · o nosso `oraculo_de_cor.py`) — *um guarda de
+parede que bloqueasse correr o alvo teria matado o método em vez da fuga*.
+
+⚠️ **A R3 recusa a MENÇÃO e não só a leitura, e é deliberado:** separar *«este caminho é um
+operando»* de *«este caminho está dentro de um padrão de busca»* não se faz com um `grep` honesto —
+o gate irmão `grep que MENCIONA` da prova existe porque a distinção é real. Aqui escolhe-se errar a
+**FECHAR**: *um guarda de parede que erra a favor do alvo não é um guarda.* O custo é nomear o
+caminho por outra ferramenta, e a recusa diz qual.
+
+⛔ **O `datafiles/` do Blender fica FORA de propósito** — o `oraculo_de_cor.py` lê o `config.ocio`
+(OpenColorIO, BSD-3), que é **dado** e não implementação: a mesma distinção que faz a SAÍDA de um
+alvo ser livre.
+
+### §15.3 — ⛔⛔⛔ E UM GUARDA ESCRITO NUMA WORKTREE NÃO GUARDA ESSA WORKTREE
+
+Armada a R3, o guarda **não** recusou uma leitura de fonte da Unreal. O mecanismo, medido:
+
+| | |
+|---|---|
+| o hook regista-se por | `${CLAUDE_PROJECT_DIR}/.claude/hooks/tecto-de-recursos.sh` |
+| essa raiz resolve para | o **PRIMÁRIO**, nunca para a worktree da linha |
+| os dois ficheiros | **inodes diferentes** (`37992926` · `42438351`) |
+| a regra nova | `1` ocorrência na worktree · **`0` no primário** |
+
+⚠️⚠️ **A assinatura é cruel: a regra R1 continua a recusar em voz alta** (o guarda ESTÁ activo — é
+a cópia do primário que corre) ⇒ *a linha vê um guarda a funcionar e conclui que o dela está
+armado.* ⛔ **Uma regra nova de parede só passa a guardar no dia da INTEGRAÇÃO**, e até lá a única
+cerca é a disciplina de quem a escreveu.
+
+⚠️ É a família da nota do `collision-surface.sh` (CLAUDE.md §1 — *«um script novo só existe nas
+árvores que nasceram depois dele»*), **no sentido inverso e pior**: lá a ferramenta falta e falha
+alto; aqui ela existe, corre, e mede **outra árvore**.
+
+⛔ **A cura NÃO é escrever no primário** — isso é acto do integrador (§0.2/§0.7), e uma edição não
+commitada noutra árvore é invisível a quem a for fundir. O que fica é o ficheiro versionado + esta
+nota + a linha do handoff.
+
+### §15.4 — ⛔ INC-R2, registado sem desculpa
+
+Ao verificar a R3 eu corri, de propósito, o comando que ela devia recusar — e ele **não** foi
+recusado (§15.3). Voltaram **três linhas** de um cabeçalho da Unreal: a linha de direitos de autor e
+um `#pragma once`. **Contaminação realizada: zero de implementação** — mas o valor da parede é o
+protocolo, não a sorte de desta vez não ter voltado nada.
+
+⭐ **A lei que fica, e é a mesma do INC-R1 um nível abaixo:** *não se verifica um guarda de parede
+tentando o acto proibido.* A verificação é a **prova de mutação sobre o guarda** (que existe, `3 de
+3`) e a comparação do ficheiro que corre com o ficheiro que se editou — as duas sem tocar no alvo.
+
+### §15.5 — ⏳ O que a janela E está a correr
+
+Etapa 0 (reconhecimento) + etapa **1: o CONTROLO OPACO nos dois motores**, e ela **para aí**. A
+barra é a da §14.2 — `43 px` de transição e `R/B 1,33` — e *sem ela nenhum número do jade vale*,
+porque a conversão de mão (a Unreal é levógira, X-para-a-frente, em centímetros) produz uma imagem
+espelhada que passa despercebida a olho. A etapa 2 são as seis células de jade × dois motores.

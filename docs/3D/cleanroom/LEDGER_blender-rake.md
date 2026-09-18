@@ -538,7 +538,7 @@ chão da granularidade.
 | papel | id / data | o que fez |
 |---|---|---|
 | **E** (emenda) | subagente-E, 2026-09-17 | curou os 8 pontos · re-emitiu o corpus (`207` células + `14` entradas = 221 ficheiros) · **mediu** o §14 · re-derivou 44 números das fixturas publicadas |
-| **R-pré, 2.ª passagem** | — | **por despachar** |
+| **R-pré, 2.ª passagem** | subagente-R independente, 2026-09-17 | ⛔ **REPROVADA** — ver §4.4 no fim deste ficheiro (8 achados, 2 materiais; os 8 pontos da 1.ª passagem curados e conferidos) |
 
 ⚠️ **Higiene da emenda:** as corridas novas do oráculo viveram em `~/Referencias/blender-rake/`. O
 sweep das dez vassouras fecha **`exit 0` sobre o conjunto que o Implementador vê** — a espec
@@ -554,3 +554,228 @@ cura no dono certo (o E/R da obra `-pull`, que retira a entrada da vassoura dele
 ficheiro mordeu **duas vezes quem a escreveu** — uma ao registar o canário do controlo positivo, outra
 ao registar uma triagem. *Um registo que NOMEIA o termo acusado converte-se, ele próprio, num achado;
 o §6.1 existe exactamente para isso e aplica-se ao ledger antes de se aplicar a qualquer outra coisa.*
+
+---
+
+## §4.4 — AUDITORIA R-PRÉ, **2.ª PASSAGEM**: ⛔ **REPROVADA** (subagente-R independente, 2026-09-17)
+
+> ⛔⛔ **Esta passagem NÃO herdou o «limpo» da 1.ª.** A emenda mexeu na espec inteira e re-emitiu as
+> 195 células, logo **toda linha é população nova**. Re-medi de raiz, com o meu próprio conferidor,
+> e varri por **FORMA** (não por endereço nomeado). É a lei que esta linha pagou cinco vezes numa
+> espec só: *numa espec já auditada, toda linha nova é população nova a auditar.*
+>
+> ⭐ **Os OITO pontos do §4.2.6 estão curados, e verifiquei cada um.** O que reprova é **curto**: duas
+> frases de conclusão da §14 nova, e quatro números residuais. A fatia de substância — a tese, a
+> régua, a barra, os gates e a medição nova da §14 — resiste inteira.
+
+### §4.4.1 — O RISCO MAIOR da emenda NÃO se materializou (e era este)
+
+A cura do **A-3** obrigou a mexer nos 195 ficheiros. A pergunta que decide tudo o resto é *«a
+re-emissão mudou SAÍDAS, e a espec ficou a citar as antigas?»*. **Medido, ficheiro a ficheiro, contra
+o commit `2a44662aa`:**
+
+| | |
+|---|---|
+| células com **corpo byte-idêntico** ao de antes | **195 de 195** |
+| células com corpo diferente | **0** |
+| células novas | **26** (a família `lei_unica/`) |
+
+⇒ a re-emissão **enriqueceu cabeçalhos e não tocou numa malha**. Nenhum número citado ficou órfão,
+e as minhas medições da 1.ª passagem continuam a valer para as 195. ⚠️ **Nota de vocabulário:** o
+ledger diz *«corpus RE-EMITIDO»*, que se lê como *«re-corrido no alvo»*; o que houve foi cabeçalhos
+reescritos sobre malhas preservadas — que é a opção **mais segura** (zero risco de deriva do binário)
+e merece ser dita assim.
+
+### §4.4.2 — Os oito pontos, conferidos um a um
+
+| ponto | veredito | o que eu medi |
+|---|---|---|
+| **A-1** barra | ✅ **curado, e melhor do que eu pedi** | barra **ÚNICA** `+0,046527 → +0,0465`, do meio do vale. Corri os dois gates sobre a população inteira: **zero reprovações** dos dois lados, em **todas** as três leituras de população (32, 34 e 35 células). Margens reais: `+0,0167` (pior ligada `+0,06323128`) e `−0,0167` (pior desligada `+0,02982270`) |
+| **A-2** §7 | ✅ curado | a linha *«partir + colapsar»* cita agora `verbos/t_constant_*` + `escada/k_a0000_*` e mede `−0,0456 → +0,1291` — re-derivado por mim ao dígito; `m_subdiv` `−0,0327 → +0,1033` ✓ |
+| **A-3** cabeçalhos | ✅ **curado** | `PASSAGENS=` traz o valor REAL nas dezoito (`1·2·4·8·16` e `1·2·4·8`), e as cinco `x_man` ficam distinguíveis **campo a campo**. Mais oito chaves de regeneração (rotação · comprimento · inversão · forma · truncagem · família · params · sequência) |
+| **A-4** endereços | ✅ curado | conferi os sete contra a árvore: todos existem |
+| **A-5** coluna §3.1 | ✅ curado | a coluna é agora a **norma** de `Δ` e bate **exactamente** com a minha medição (`0,03199 · 0,03083 · 0,03731 · 0,04324 · 0,05284`), com `eps = 1e-7` declarado |
+| **A-6** `G-6` | ✅ curado | `3,84 %` ✓ (e o `96,2 %` que o acompanha ✓) |
+| **A-7** §9 | ⚠️ **meio curado** | as duas populações estão nomeadas e certas (`522` de **`7 460`** = `7,0 %`; pegada `1 852`) ✓ — **mas ver B-3** |
+| **A-8** esfera | ✅ **curado, e exacto** | `1 260` é a diferença simétrica de **arestas** (`2 032` F e `3 048` E dos dois lados) — re-derivei o número ao inteiro |
+| **A-9/10/12** | ✅ curados | superlativo trocado com os dois contra-exemplos ✓ · faixa **`37`–`109`** com `CREASE`/`NUDGE` nomeados ✓ · tabela de famílias contada da pasta ✓ · as duas células superadas trazem `SUPERADA_POR=` ✓ |
+| **A-11** população | ⚠️ **ver B-4** |
+| **A-13** parede | ✅ **curado** | os **quatro** itens do §10 trazem fonte, com a advertência de que o I não abre os endereços. A classe que o instrumento não apanha passa a ser auditável |
+| **§4.2.3** | ✅ **curado, e excedido** | `v_layer`/`v_smooth` subiram a **prova principal do §3.1** ✓, e o limite deixou de ser um item por declarar: foi **medido** (§14) |
+
+### §4.4.3 — A §14 (a medição que decide): o NÚMERO resiste, a CONCLUSÃO não
+
+**Re-derivei a tabela inteira com o meu próprio conferidor — os cinco `ΔQ` batem ao dígito:**
+
+| composição | traços p0/p1 | `Q(p0)` | `Q(p1)` | `ΔQ` medido | espec | passa o `G-2`? |
+|---|---|---|---|---|---|---|
+| **JUNTO** | 1 / 1 | `−0,0456` | `+0,1214` | **`+0,1670`** | `+0,1670` | ✅ **sim** |
+| série `1×` | 2 / 2 | `−0,0110` | `−0,2190` | `−0,2081` | `−0,2081` | ✗ |
+| série `3×` | 6 / 6 | `−0,0137` | `−0,0633` | `−0,0496` | `−0,0496` | ✗ |
+| série `4×` | 8 / 8 | `−0,0106` | `−0,0234` | `−0,0128` | `−0,0128` | ✗ |
+| série `9×` | 18 / 18 | `−0,0057` | **`+0,0028`** | `+0,0084` | `+0,0084` | ✗ |
+
+✅ **O CONTROLO é honesto, e testei-o pelo lado que o poderia derrubar:** em cada configuração a
+`SEQUENCIA_DE_TRACOS` do lado `p0` é **estruturalmente idêntica** à do `p1` com o pente a zero em
+**todos** os traços, e as contagens de traços batem (`1/1 · 2/2 · 6/6 · 8/8 · 18/18`). ⇒ o trabalho
+extra do verbo está subtraído. Amplitude máxima de repetição das seis: **`0,0115`** ✓.
+⭐ **E o veredito nem precisa do `ΔQ`:** em valor **ABSOLUTO** o JUNTO chega a `+0,1214` (passa a
+barra do `G-2`) e a série chega, no melhor caso, a `+0,0028` (falha). *Isso torna a conclusão imune à
+objecção de que os `ΔQ` partem de linhas de base diferentes* (`−0,0456` contra `−0,006`..`−0,014`) —
+e é a forma que devia estar escrita, porque é a que o `G-2` mede.
+
+✅ **O 2.º canal É independente do `Q`** (era a dúvida): a `9×` o `Q` diz *ligeiramente melhor*
+(`+0,0084`) e os irregulares dizem *ligeiramente pior* (`0,741 → 0,754`). Dois canais que discordam
+no sinal no mesmo ponto não são o mesmo facto lido duas vezes. **Ver B-8.**
+
+✅ **O CHÃO do `9×` é REAL** — e o argumento forte está no corpus e **não** é o que a espec dá.
+Medido do cabeçalho (`percurso 1,400` · `raio 0,350` · `espaçamento 10 %` ⇒ passo `0,0700`):
+
+| granularidade | troço | carimbos por troço |
+|---|---|---|
+| `4×` | `0,3500` | `5,00` |
+| **`9×`** | `0,1556` | **`2,22`** |
+| `18×` | `0,0778` | **`1,11`** ⇒ **abaixo de dois** |
+
+E a **§4.3 desta mesma espec** mede que com **menos de dois carimbos o pente é INERTE e a saída é
+byte-idêntica**. ⇒ ir mais fino que `9×` zeraria o `ΔQ` **pela lei da inércia**, não por a composição
+falhar. *Com esse argumento o chão é uma propriedade MEDIDA do alvo; com o argumento que está escrito
+(«o gesto público é um traço inteiro») ele é uma limitação do arnês.* **Ver B-7.**
+
+### §4.4.4 — Os ACHADOS desta passagem
+
+**B-1 ⛔⛔ *«a composição em série converge para ZERO»* é contradito pelos próprios dados — e pela
+§14.5.2, três parágrafos abaixo.** A sequência de `Q(p1)` é `−0,2190 → −0,0633 → −0,0234 → +0,0028`:
+**monótona crescente**, e no ponto mais fino ela **já passou** o zero. Uma sequência que cruza zero e
+continua a subir não *converge* para zero — o zero é onde ela **passou**. E a §14.5.2 diz do mesmo
+`+0,0084` que ele *«sugere estar a convergir»* (para o alvo, que é o que justifica recomendar a
+hipótese **(b)**). **As duas frases não podem ser ambas verdadeiras**, e a contradição está sobre a
+frase que decide o desenho: se converge para zero, **(b)** é inútil e só resta **(a)**; se está a
+convergir, **(b)** é a aposta certa — que é o que a §14.5 manda fazer.
+⭐ **E o argumento FORTE está no corpus do E e ele não o extraiu:** ajustando `ΔQ` em `1/n` sobre os
+quatro pontos, o limite em granularidade infinita dá **`+0,0393`** — ainda **abaixo** da barra do
+`G-2` (`+0,0465`). *Isso* é o que sustentaria «falta uma segunda lei», e é falível (quatro pontos),
+logo tem de ir escrito como indicação com a sua própria fraqueza ao lado — nunca como veredito.
+
+**B-2 ⛔⛔ O título da §14 e o §11.1 concluem *«NÃO é uma lei só»*, e a medição não sustenta essa
+conclusão — a §14.4 di-lo por escrito, no mesmo documento.** A §14.4 nomeia duas causas e declara
+que o instrumento **não as separa**; e a causa **(b)** — *«a relaxação tem de correr DENTRO do laço
+por-carimbo»* — é explicitamente *«uma questão de ONDE ela corre, não de que lei é»*. Sob (b) é
+**uma** lei, no sítio certo. O que a medição sustenta é: *«compor as duas metades EM SÉRIE, na
+granularidade que o instrumento alcança, não reproduz o alvo — e falha o `G-2` em todas as
+granularidades medidas»*. Isso é uma afirmação sobre **COMPOSIÇÃO**, não sobre o **número de leis**.
+⛔⛔ **É a mesma forma de defeito que esta emenda acabou de curar:** o §11.1 tinha uma inferência
+sobre o interior do alvo, ela foi refutada, e no lugar dela entrou **outra inferência** do mesmo
+tipo — agora no §11, que se chama *«As leis que a MEDIÇÃO deu»*. ⚠️ *Uma inferência refutada
+substituída por outra inferência não é progresso.*
+⚠️ **E o dano é concreto:** um Implementador que leia o §11.1 primeiro (*«não é uma lei só … reproduz
+ZERO»*) conclui que a relaxação é inútil e vai procurar a segunda lei **antes** de tentar a (b) — o
+inverso da ordem que a própria §14.5 prescreve.
+
+**B-3 ⛔ §9: o `266 · 118` não re-deriva** (a 1.ª redacção dizia `10`; a correcção landou noutro
+número). Toda definição natural dá **`269` · `124`**: elemento-a-elemento após ordenar `269` ·
+`|A − B|` `269` · `|A ^ B| / 2` `269` · multiconjunto `269`; e `124` acima de `1e-8`. As duas outras
+colunas (`2` acima de `1e-7`, `0` acima de `1e-6`) batem. Conferi também os outros pares de corridas
+(`1-3` dá `380`, `2-3` dá `370`): **nenhum** par dá `266`.
+
+**B-4 ⛔ `README` §3: aplicando os NOVE critérios À LETRA dá `32`/`32`, não `34`/`34` — e isso
+falsifica a frase que ANUNCIA a cura.** O README escreve: *«todos os nove critérios são chaves do
+cabeçalho, de propósito: a 1.ª redacção descrevia-os em prosa e um terceiro a aplicá-los obteve outro
+`n` que o declarado»* — e um terceiro a aplicar as nove chaves obtém, outra vez, outro `n`. Largar
+**qualquer um** de `malha_de_entrada`, `passe_de_refino` ou `resolucao_do_detalhe` devolve `34`.
+⭐ **A barra é ROBUSTA e isso está medido:** as duas células extremas e os dois vereditos são
+**idênticos** com `32`, `34` e `35`, com **zero** reprovações em qualquer delas. ⇒ é escrituração, não
+segurança — mas é a **terceira** redacção seguida deste mesmo número, agora depois da cura desenhada
+para o tornar reprodutível.
+
+**B-5 ⛔ §3.2: *«o comprimento médio de aresta (`0,0995`)»* não re-deriva** — sobre a entrada mede
+`0,0990`, sobre a saída `p000` `0,1002`, e restrito à pegada `0,1060`. É o **denominador** do
+`0,34` da linha acima dele.
+
+**B-6 ⚠️ §7: dois dos quatro `ΔQ` de `q_res` arredondam no sentido errado** — medido `+0,109557`
+(escrito `+0,1095`) e `+0,167718` (escrito `+0,1678`). Os outros dois batem. *Sinal de que o
+conferidor trunca onde o texto arredonda; vale a pena fixar a regra, porque 44 asserções passaram.*
+
+**B-7 ⚠️ A §14 sub-argumenta o chão do `9×`** — ver a tabela de carimbos por troço no §4.4.3. O
+argumento medido (o limiar de **dois** carimbos da §4.3) é mais forte do que o dado e já está no
+documento; falta ligá-los.
+
+**B-8 ⚠️ A §14.3 cita só o par do 2.º canal que CONCORDA com o `Q`.** Ela dá JUNTO (`0,791 → 0,755`)
+e série `1×` (`0,788 → 0,890`) — os dois pontos onde os dois canais apontam para o mesmo lado. Medido
+nas cinco: a `3×` `0,765 → 0,807`, a `4×` `0,758 → 0,836`, e a **`9×` `0,741 → 0,754`**, que é onde o
+`Q` diz *melhor* e os irregulares dizem *pior*. ⇒ o canal é mesmo independente (isso confirma-se), mas
+a amostra publicada esconde o ponto em que os dois discordam — e é justamente o ponto que decide.
+
+### §4.4.5 — A MINHA §4.2.5 e a vassoura `-pull`: o E TEM RAZÃO, e eis como se regista
+
+⛔ **Medido:** a vassoura `-pull` acusa **exactamente três** linhas deste ficheiro — `421`, `429` e
+`437`, todas na **§4.2.5** (as triagens T-4 e T-5), escritas por mim. A linha do E foi curada.
+⭐ **E o conjunto que o Implementador vê fecha `exit 0` nas DEZ** (espec emendada + as 221 fixturas +
+o INBOX), reproduzido por mim. A parede não está enfraquecida.
+
+**Veredito: o argumento do E procede, e assino-o.** Reescrever o texto de uma auditoria para a fazer
+passar o instrumento que ela própria julga **falsificaria o registo** — e por três razões, não uma:
+o ledger é, pela regra nº 1 do seu próprio topo, o ficheiro que **carrega rastros de propósito** e
+que o I **nunca abre**; a triagem T-4 tem de poder **dizer sobre o que decidiu**, senão deixa de ser
+uma decisão auditável; e o token acusado é, pelo próprio `LEDGER_blender-pull.md`, um **falso
+positivo reconhecido** — *emendar o registo para contornar um falso positivo é curar o instrumento no
+sítio errado*.
+
+⚠️ **Mas a parte difícil da pergunta é a outra, e ela tem resposta em três peças:**
+
+1. ⛔ **O vermelho NÃO é permanente — ele tem dono e tem data.** A cura já está decidida (§4.2.5 T-4,
+   e o `LEDGER_blender-pull.md` chegou lá primeiro): **retirar a entrada da `VASSOURA_blender-pull.txt`**.
+   No dia em que o E/R daquela obra a executar, este ficheiro fica verde com **zero edições ao texto
+   da auditoria**. A condição é *«vermelho até uma obra vizinha executar uma decisão que já tomou»*.
+2. ⛔⛔ **O que falta é registo LOCALIZÁVEL POR MÁQUINA, não mais prosa.** A lei está escrita no
+   próprio `LEDGER_blender-pull.md`: *«um sweep vermelho por isenção registada e um vermelho por
+   dívida leem-se iguais numa corrida»*. Prosa no fim de um ficheiro de 560 linhas não separa os dois
+   para quem corre o portão. ⇒ **acrescento abaixo uma declaração de forma fixa**, para que o fecho
+   compare **esperado × observado** em vez de vermelho × verde.
+3. ⚠️ **E o âmbito que tem de ficar verde é o do Implementador**, que é o que eu medi e está verde.
+   *Um vermelho num ficheiro que o I nunca abre não é a mesma coisa que um vermelho no que ele lê* —
+   e é exactamente isso que a declaração tem de dizer, senão o próximo integrador ou ignora o
+   vermelho (e deixa de ler vermelhos) ou «cura»-o editando a auditoria.
+
+```
+SWEEP-ESPERADO: VASSOURA_blender-pull → LEDGER_blender-rake.md → exit=1, 3 achados
+  linhas 421 · 429 · 437, todas na §4.2.5 (triagens T-4 e T-5 do R-pré, 1.ª passagem)
+  porquê: a triagem NOMEIA o token para declarar que a ENTRADA DA VASSOURA é o defeito
+  dono da cura: o E/R da obra `-pull` (retirar a entrada de VASSOURA_blender-pull.txt)
+  âmbito do Implementador (espec + fixtures/rake + INBOX): exit=0 nas DEZ — medido 2026-09-17
+  ⇒ um fecho compara ESPERADO × OBSERVADO. Divergir deste bloco é que é achado.
+```
+
+✅ **E os dois auto-achados estão REGISTADOS e não apagados** (§4.3, fim) — confirmei no ficheiro. A
+lei que eles deixam é boa e vale para todo ledger desta casa: *um registo que NOMEIA o termo acusado
+converte-se, ele próprio, num achado.*
+
+### §4.4.6 — O que falta para o atestado passar (curto, e nada é de desenho)
+
+⛔ **Acto do E.** Esta passagem não tocou uma linha da espec além do cabeçalho.
+
+1. **B-1 + B-2 — as duas frases de conclusão da §14.** Trocar *«converge para ZERO»* e *«NÃO é uma
+   lei só»* pelo que está medido: **«compor as duas metades EM SÉRIE falha o `G-2` em TODAS as
+   granularidades que o instrumento alcança (melhor caso `Q = +0,0028` contra a barra `+0,0465`), e a
+   tendência é monótona crescente com a granularidade»**. A pergunta *uma lei ou duas* fica **EM
+   ABERTO** e com dono (a §14.4 já tem o instrumento). ⭐ O ajuste em `1/n` (`+0,0393`, abaixo da
+   barra) entra como **indicação com a sua fraqueza declarada**, e é o que dá força ao caso da
+   segunda lei. ⚠️ Corrigir também o §11.1 e a 1.ª célula do §12, que repetem a conclusão.
+2. **B-3 · B-4 · B-5 · B-6** — os quatro números: `269`/`124`; o `n` da população (ou as chaves, ou o
+   número); o comprimento médio de aresta; e a regra de arredondamento dos dois `ΔQ`.
+3. **B-7 · B-8** — ligar o chão do `9×` ao limiar de dois carimbos da §4.3, e publicar as **cinco**
+   linhas do 2.º canal em vez de duas.
+
+⭐ **Tudo o resto está atestado por esta passagem.** A tese, a régua de quatro dobras, a barra única,
+os catorze gates, o corpus regenerável e a medição nova da §14 são sólidos e re-derivam de terceiros.
+*O que falta é redacção sobre números que já existem.*
+
+### §4.4.7 — Corrente
+
+| papel | id / data | o que fez |
+|---|---|---|
+| **R-pré, 2.ª passagem** | subagente-R independente, 2026-09-17 | ⛔ **REPROVADA** — 8 achados (`B-1`..`B-8`), dos quais **2 materiais**; os oito pontos do §4.2.6 conferidos e **curados**; o corpus provado byte-idêntico nas 195; a §14 re-derivada com conferidor próprio; e o argumento do E sobre a §4.2.5 **aceite**, com a forma de registo acrescentada |
+
+⚠️ **Higiene:** nada do alvo tocou o disco. As vassouras correram pelo `cleanroom-sweep.sh`
+(descodificação em memória), a saída foi consumida **em cano**, e deste registo saem apenas
+contagens, números de linha e grandezas — nunca os termos que casaram.

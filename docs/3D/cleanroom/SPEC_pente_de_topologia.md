@@ -30,7 +30,14 @@ EMENDA DO E, 2026-09-17 (1.ª): os oito pontos do LEDGER §4.2.6 estão curados,
   §4.2.3 deixou de ser um item por declarar — ele foi **MEDIDO** (§14), e a medição **REFUTOU** a
   inferência que esta espec fazia no §11.1. O corpus foi **re-emitido** com o cabeçalho a
   regenerar todos os eixos (A-3) e ganhou a família `lei_unica/` (26 células novas).
-  ⛔ A janela I NÃO implementa até uma 2.ª passagem de R-pré atestar esta versão.
+Auditoria §4.2 (R-pré), 2.ª passagem: subagente-R independente, 2026-09-17 — ⛔ **REPROVADA**.
+  ⭐ Os OITO pontos da 1.ª passagem estão CURADOS e conferidos um a um; o corpus foi provado
+  byte-idêntico nas 195 células (só cabeçalhos mudaram); a barra única, os 14 gates e a §14
+  re-derivam de um conferidor independente. ⛔ Reprovam DUAS frases de conclusão da §14 —
+  «converge para ZERO» e «não é uma lei só» — que a própria §14.4 contradiz, mais quatro
+  números residuais. Os 8 achados (`B-1`..`B-8`) e o que emendar: LEDGER §4.4
+  (⛔ que o Implementador NÃO abre — o E traz a emenda).
+  ⛔ A janela I NÃO implementa até uma 3.ª passagem de R-pré atestar a versão emendada.
 Mapa de leitura da literatura: a troca de diagonal local (Lawson 1977) e a cadeia de remalhagem
   incremental partir/colapsar/**trocar**/alisar (Botsch–Kobbelt 2004) — as duas já portadas nesta
   casa. ⛔ Não há apêndice do alvo a ler; não é preciso nenhum.

@@ -118,3 +118,30 @@ a ser chão: a bacia pode SUBIR num giro, e o que não muda é o **x** dela.
 Medido com rato de verdade: 30° pedidos, **30,00°**, deformação **0,0000°**, bacia **0,000 cm**.
 O `gesto_sequencia.js` passa a dar VEREDITO sobre os FATOS (chão · bloco rígido · giro); a fluidez e
 a fidelidade ficam como medidas impressas. Detalhe: `auditoria/ACHADOS.md` B27.
+
+## 18/09 — A ATERRISSAGEM DE PERNAS ABERTAS: a âncora do apoio era uma ESCADA
+
+Report do dono: «se abro as pernas no penúltimo Key, a transição entre o penúltimo e o último fica
+bizarra, com saltos de posição e trancos». Cena nova `aterrar_aberto` (pedida por ele): um salto que
+aterra numa passada de 55 cm e acaba de pé com os pés juntos. ⚠️ Os ângulos das duas chaves abertas
+foram **PROCURADOS** (varrer canela/pé dos dois lados até os dois pés assentarem à mesma altura,
+0,1 e 0,5 mm), não escolhidos: mexer num à mão tira um pé do chão.
+
+⛔⛔ **A âncora do pino (`fixarApoios`) era reposta em cada chave — um DEGRAU.** Com a canela direita
+apoiada do quadro 40 ao 63 de uma vez, ela era `xs[40]=110` até ao 47, saltava para `xs[48]=139` num
+quadro e caía para `xs[63]=112` no último: dois teleportes de 29 e 27 cm. ⭐ **A lei certa já estava
+escrita no `plantarPes`** («andando em linha reta de onde uma chave o põe até onde a outra o põe») —
+no pino faltava, e as duas metades do mesmo apoio discordavam. Hoje é uma RAMPA entre marcos (o
+início da faixa e cada chave dentro dela). Tranco do pé no último trecho: **44,1 → 4,8 cm** (o
+controlo de pés juntos: 1,2 → 2,3).
+
+⛔⛔ **E um segundo, mais fundo: `porChaves` não propagava a marca `minha`** ⇒ NENHUM exemplo tinha
+colocação de pé. No `aterrar_aberto` o pé ficava pregado em 93 cm do quadro 40 ao 63 enquanto as
+chaves o levavam a 135 — 50 cm de erro, e a tela a dizer «o peso está 10 cm FORA do apoio» numa pose
+final equilibrada na chave. ⚠️ **E a minha primeira régua não o via: ela punha `minha: true` à mão e
+media OUTRO PROGRAMA que o app.** Hoje a marca atravessa da chave, e só se marca a chave em que o pé
+está de facto no chão. ⚠️ `pulo`/`mortal`/`soco` não marcam nenhuma e por isso não mudam.
+
+⚠️⚠️ **O PISO DE POPULAÇÃO foi metade do portão da colocação**: sem a marca há ZERO chaves marcadas,
+o laço varre nada e a distância lê 0,00 cm — verde sobre 50 cm de erro. Quem o apanhou foi a prova de
+mutação. Instrumento: `medir_aterrissagem.js` (o controlo de pés juntos corre na mesma passagem).

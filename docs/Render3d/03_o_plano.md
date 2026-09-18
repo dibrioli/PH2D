@@ -3,9 +3,16 @@
 ⚠️ **A ordem é por SALTO VISUAL POR UNIDADE DE TRABALHO**, e não por dificuldade nem por vontade.
 Cada wave acaba num **smoke** (a lei da casa) e traz a régua que a julga.
 
-⛔ **Nada aqui está construído.** Este é o plano que o estudo produziu.
+⚠️ **ESTADO, 2026-09-17 — auditado contra o código, não contra a memória:** `W1`..`W5` estão
+**FECHADAS** e vivem no modo *Render* do modelador (a marca de cada uma diz onde se lê o mecanismo).
+Faltam a **`W6`**, a **`W7`** e a **`W8`**, mais a **`W9`** que o dono acrescentou ao FIM da fila
+(ordem de 2026-09-17).
 
-## W1 — A gestão de cor (o fundamento barato)
+⛔ **A linha que aqui esteve — *«nada aqui está construído»* — era verdade em 2026-09-09 e falsa
+desde 13/09.** *Um plano que se declara por começar sobre cinco waves shipadas manda reconstruir
+trabalho já pago*, que é o defeito de que o `CLAUDE.md` §5 avisa sobre si mesmo.
+
+## W1 — A gestão de cor (o fundamento barato) ✅ **FECHADA no modelador (13/09 + 14/09)**
 
 Espaço de trabalho **linear** declarado, **exposição** autorada (em *stops*), e um tonemapper a
 sério (**AgX** ou **ACES**), com a saída em sRGB.
@@ -22,8 +29,15 @@ sério (**AgX** ou **ACES**), com a saída em sRGB.
 - **Régua:** uma rampa de luminância de `0` a `16` tem de sair monótona e sem clipping colorido; e o
   branco de `1,0` tem de cair no mesmo pixel antes e depois de mudar a exposição em `+1` e `−1`.
 - **Smoke:** a mesma peça com exposição `−2`, `0`, `+2` lado a lado.
+- ✅ **O que shipou:** a [`ph2d-view-transform`](../../crates/ph2d-view-transform/src/lib.rs) — a
+  exposição em *stops* e a vista (`Standard` · `Neutral`, esta medida contra o OCIO do Blender nos
+  nós do LUT a `8,9e-6`), com o olhar a ser da **cena** e o sombreamento de cada viewport a ser do
+  viewport ([`05` §1..§8](05_o_modo_render_do_modelador.md)); o modelador abre em **`Neutral`** por
+  decisão do dono, com a tabela do branco chapado ao lado ([`05` §15](05_o_modo_render_do_modelador.md)).
+- ⛔ **O que NÃO entrou, com motivo:** o **AgX** — não por preço, por **LICENÇA** (não há neste disco
+  um AgX cuja licença permissiva se leia no artefacto: [`04` §3](04_a_remedicao_contra_a_arvore.md)).
 
-## W2 — A superfície OpenPBR
+## W2 — A superfície OpenPBR ✅ **FECHADA no subconjunto declarado (13/09 + 14/09)**
 
 Uma crate `ph2d-material` com os **41 números** do `open_pbr_surface`, e o shader **gerado** do
 padrão (ver `00` §3).
@@ -40,14 +54,31 @@ padrão (ver `00` §3).
 - **Régua:** o *furnace test* — sob um ambiente branco uniforme, uma esfera de `base_color = 1` e
   qualquer rugosidade tem de devolver branco. *É o teste que apanha energia perdida, e não perdoa.*
 - **Oráculo:** o `MaterialXView` renderiza o mesmo material; comparam-se as imagens **por passo**.
+- ✅ **O que shipou:** a [`ph2d-material`](../../crates/ph2d-material/src/lib.rs) — o port
+  **Apache-2.0** do GLSL de referência, com base · especular GGX · metal · **verniz** · **emissão**,
+  o *furnace test* de pé, e **material por OBJECTO** com as 15 fileiras no painel
+  ([`05` §11, §20, §21, §22](05_o_modo_render_do_modelador.md)).
+- ⛔ **O que NÃO entrou, e cada um é uma closure com gate próprio a escrever:** `transmission_*` ·
+  **`subsurface_*`** · `fuzz_*` · `thin_film_*` · `geometry_opacity` · a anisotropia (o traçador não
+  tem tangentes). ⚠️ **O `subsurface` é o ingrediente `6` do [`01`](01_o_alvo_decomposto.md) — a
+  assinatura do alvo do dono** —, e a tabela pré-integrada dele já existe no `ph2d-mesh-render`: *a
+  wave que o traz é uma ENTRADA do OpenPBR, não um sistema ao lado.*
 
-## W3 — O céu como FONTE de luz (IBL)
+## W3 — O céu como FONTE de luz (IBL) ✅ **FECHADA (14/09 + 15/09)**
 
 Ambiente pré-filtrado: irradiância difusa + especular por rugosidade + a BRDF integrada.
 
 - **Porquê agora:** é o que põe cor no lado escuro sem o lavar, e é o que faz o metal existir.
 - **Substitui** o `env_ambient` constante do `ph2d-light`, que é a razão de a peça de hoje flutuar.
 - **Régua:** a mesma esfera contra o mesmo ambiente, comparada com o `MaterialXView`.
+- ✅ **O que shipou:** o **estúdio** ([`studio.rs`](../../crates/ph2d-app-field3d/src/studio.rs),
+  [`05` §24](05_o_modo_render_do_modelador.md)) — o céu deixa de ser uma rampa e ganha uma **fonte
+  com forma** (uma gaussiana esférica no eixo da própria rampa, com a energia a SAIR do ambiente e
+  não a somar-se a ele), pré-filtrada por tabela; mais a leitura do céu na **direcção média do
+  lóbulo** ([§16](05_o_modo_render_do_modelador.md)) e as **lâmpadas como objectos da cena**, com
+  gizmo próprio e tecto tirado da PLACA ([§25, §26, §40](05_o_modo_render_do_modelador.md)).
+- ⛔ **O que NÃO entrou:** um **HDRI** de ficheiro (o céu é analítico, e é isso que dá a forma
+  fechada do pré-filtro da rampa).
 
 ## W4 — Sombras que POUSAM o objecto ✅ **FECHADA (14/09 + 16/09)**
 
@@ -61,7 +92,7 @@ Cascatas para o sol + **endurecimento no contacto**.
   tinha sujeito até lá, porque não havia chão. ⛔ **Fica NOMEADO o que não entrou:** luz de área, cone,
   e o chão a DEVOLVER luz (isso é a `W5`).
 
-## W5 — ⭐⭐⭐ A luz indirecta, traçada contra o NOSSO campo
+## W5 — ⭐⭐⭐ A luz indirecta, traçada contra o NOSSO campo ✅ **FECHADA (15/09 + 16/09 + 17/09)**
 
 A wave que decide se a engine é bonita, e a que só nós podemos fazer assim (ver `02` §5.1).
 
@@ -72,6 +103,15 @@ A wave que decide se a engine é bonita, e a que só nós podemos fazer assim (v
   contra um orçamento de `16,7`, e a marcha é `80 %` disso. *A wave começa por medir quanto de GI
   cabe, e o resultado pode ser «cozida e não em tempo real» — que é uma resposta legítima.*
 - **Régua:** a caixa de Cornell. Ela tem resposta conhecida e não deixa mentir.
+- ✅ **O que shipou, em três actos:** a lei são **SONDAS de irradiância** (`32³ × 256` direcções, SH
+  de 9 coeficientes — [`08` §14](08_a_luz_indirecta.md)), depois do terceiro report do dono ter
+  mostrado que a recolha por pixel com direcções fixas é uma soma de **projecções duras** da peça; o
+  **dispositivo** ([`08` §12](08_a_luz_indirecta.md), paridade `100,000 %`); e o **chão a receber a
+  COR da peça** ([`09`](09_a_cor_que_a_peca_devolve_ao_chao.md)), que é um campo 2D próprio — ⛔ *as
+  sondas da peça não servem a um plano, e a medição está no §2 daquele doc.*
+- ⛔ **O preço que a wave temia foi pago pela BANDEIRA que já existia** (`antialias`, «grosso a
+  mexer, nítido ao assentar»): o quadro de MOVIMENTO fica byte-idêntico e quem paga é o assente.
+  ⚠️ *É exactamente isso que a `W9` vai reabrir.*
 
 ## W6 — A AUTORIA: o grafo MaterialX no módulo de nós
 
@@ -94,7 +134,44 @@ por **curvatura**, **grade de cor por zona**, saturação da luz indirecta, cont
 pedir.
 
 - ⚠️ **É a última de propósito.** Estilo sobre um pipeline sem `W1` e `W5` é o protótipo que o
-  `01` §4 nomeia.
+  `01` §4 nomeia. ⭐ **E essa razão EXPIROU em 16/09:** a `W1` e a `W5` estão fechadas, logo a
+  cerca que punha esta wave no fim já não a prende — *quem move o número que tornava algo
+  inalcançável tem de reconferir a nota* (`CLAUDE.md` §0.0).
+
+## W9 — ⏱️ A AVALIAÇÃO DE PERFORMANCE (ordem do dono, 2026-09-17: *«coloque na fila ao final»*)
+
+Uma wave de MEDIÇÃO e de corte de preço, **ao fim da fila e não antes** — o dono pô-la lá no mesmo
+report em que aprovou o smoke do chão colorido, e a ordem é o que decide a posição.
+
+- **⛔ O primeiro acto é RE-MEDIR, e não optimizar.** Os números de relógio espalhados pelos docs
+  `05`..`09` foram lidos em builds diferentes, com a marcha ora na CPU ora no dispositivo, e com a
+  máquina em cargas diferentes — ⚠️ o `26,7 ms` do quadro de movimento que o `CLAUDE.md` §5 cita é
+  **anterior** ao quadro inteiro ir para a placa ([`05` §36](05_o_modo_render_do_modelador.md)).
+  *Uma tabela de preço montada a partir de leituras de builds diferentes mede a história, não o
+  produto.*
+- **A régua, e ela já tem forma:** `1920×1080`, **mínimo de N**, A/B **intercalado no MESMO
+  processo**, com o `/proc/loadavg` impresso ao lado de cada leitura (⛔ nenhuma leitura acima de
+  `load ~5` vale — `CLAUDE.md` §5.0). As duas populações são **separadas e não se somam**: o quadro
+  de **MOVIMENTO** (orçamento `16,7 ms`, e onde a bandeira `antialias` desliga quase tudo) e o
+  quadro **ASSENTE** (onde mora o preço destas cinco waves).
+- **O que já está NOMEADO com preço, e é a matéria-prima da wave:**
+
+  | dívida | preço medido | onde | forma da cura |
+  |---|---:|---|---|
+  | assadura do campo do chão, por quadro assente | `+4,98 ms` (CPU) | [`09` §6](09_a_cor_que_a_peca_devolve_ao_chao.md) | cache por cena-e-luz (o campo **não** depende da câmera) · ou kernel no dispositivo (`~0,04 ms`) |
+  | assadura das sondas, por quadro assente | `+0,52 ms` | [`08` §14.7](08_a_luz_indirecta.md) | a **mesma** cache — as sondas também não dependem da câmera (`~1 ms` na placa a `32³`) |
+  | o campo do chão é de **UMA** peça | não medido | [`09` §9](09_a_cor_que_a_peca_devolve_ao_chao.md) | um campo por peça, somados |
+
+  ⭐ **As duas primeiras linhas são a MESMA cura** — *o que não depende da câmera reassa-se uma vez
+  por cena e luz, não uma vez por quadro* —, e é isso que faz orbitar uma peça deixar de pagar.
+- ⚠️ **O tecto de cada número tem de NOMEAR O RECURSO** (`CLAUDE.md` §0.0): `GROUND_BOUNCE_SPAN`
+  (`6` raios) e `GROUND_BOUNCE_FADE` (`0,25`) são os dois desta família ainda **sem tabela por
+  baixo**, e quem lhes tocar mede-os como os outros dois foram medidos ([`09` §5](09_a_cor_que_a_peca_devolve_ao_chao.md)).
+- ⛔ **E o tecto do módulo é o do HARDWARE, nunca o do caminho lento:** a assadura de CPU só existe
+  porque comprava **uma lei em vez de duas** ([`09` §6](09_a_cor_que_a_peca_devolve_ao_chao.md)), e
+  essa é uma decisão de ARQUITECTURA que a medição pode reabrir — mas só com a paridade de assadura
+  gateada no dia em que houver duas.
+- **Smoke:** a mesma cena, o mesmo gesto, com o número do quadro à vista antes e depois.
 
 ---
 
@@ -103,7 +180,11 @@ pedir.
 **`W1` e `W2` são o fundamento e são baratas.** `W3` e `W4` fazem o objecto existir no espaço. `W5`
 é a wave grande e é a nossa vantagem estrutural. `W6` é o que responde ao *«intuitivo para
 artistas»*. `W7` e `W8` são o acabamento — e o `W8` é o que faz a engine parecer-se com o alvo do
-dono em vez de parecer-se com toda a gente.
+dono em vez de parecer-se com toda a gente. A **`W9`** fecha a fila, por ordem dele.
+
+⚠️ **E as cinco primeiras estão FECHADAS** (topo deste ficheiro): dos oito ingredientes do
+[`01`](01_o_alvo_decomposto.md), o que falta são **três** — o `6` (a translucidez, que é uma entrada
+do OpenPBR e não um sistema ao lado), o `7` (o pós) e o `8` (o estilo) — mais a autoria da `W6`.
 
 ## ⛔ O que este plano NÃO faz, e porquê
 

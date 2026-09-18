@@ -139,6 +139,8 @@ pub mod tags_smoke;
 pub mod timer_smoke;
 /// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
 pub mod topdown_smoke;
+/// ⭐⭐⭐ **O GATILHO** (suplente #24) — a ponte PURA do teclado; ver o cabeçalho.
+pub mod trigger_bridge;
 /// ⭐⭐⭐ **O GATILHO** (suplente #24) — a arma que aponta e a que não aponta; ver o cabeçalho.
 pub mod trigger_smoke;
 

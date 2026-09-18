@@ -39,7 +39,10 @@ impl crate::App {
     fn accoes_do_quadro(&self) -> std::collections::BTreeMap<String, ph2d_ecs::ActionSample> {
         self.gfx.as_ref().map_or_else(Default::default, |g| {
             g.hero_screen.as_ref().map_or_else(Default::default, |h| {
-                motores_do_quadro::amostras_das_accoes(&h.input_map, &self.input_actions)
+                ph2d_app_components::trigger_bridge::amostras_das_accoes(
+                    &h.input_map,
+                    &self.input_actions,
+                )
             })
         })
     }

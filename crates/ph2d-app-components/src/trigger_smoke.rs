@@ -247,6 +247,26 @@ pub struct Montada {
 pub fn montar(world: &mut World, _nivel: u32) -> Montada {
     let escolhido = cena_um(world);
     resolver_receitas(world);
+    // ⚠️ **O roteiro é da CENA e imprime-se AQUI**, como o das irmãs (`particles_smoke`): ele fala
+    // do que a cena montou e da tecla que ela declara, e nada disso é da shell. ⛔ Ele viveu no
+    // prólogo até a catraca `the_shell_only_shrinks` o mandar para casa — e as duas respostas
+    // coincidem, que é o sinal de que o corte é por responsabilidade.
+    println!(
+        "[trigger-smoke] cena=1  accao=«{ACCAO}» (tecla {TECLA_NOME})  sinal=«{SINAL}»\n\
+         (1) carregue no {TECLA_NOME}: sai uma bala AMARELA do retangulo AZUL, para onde ele \
+         aponta\n\
+         (2) ande com as SETAS — o azul RODA para onde anda; carregue no {TECLA_NOME} outra vez e \
+         a bala sai para o lado NOVO\n\
+         (3) o retangulo CINZENTO da direita ouve a MESMA tecla e atira SEMPRE para cima: e' o \
+         CONTROLO, e a unica diferenca entre os dois e' uma caixa de marcar\n\
+         (4) role o painel da direita ate' ao fim (o «Heroi» ja' esta' escolhido): a seccao TRIGGER \
+         e' quem ouve a tecla, e a caixa «Aim from spawner» da seccao FACTORY e' a unica diferenca \
+         para o cinzento\n\
+         (5) carregue em STOP na regua de baixo: o {TECLA_NOME} deixa de disparar e volta a ser do \
+         editor. PLAY devolve-o\n\
+         (6) deu errado se: nada sai ao carregar no {TECLA_NOME} · as DUAS balas saem para o mesmo \
+         lado · ou alguma coisa sai com a regua PARADA"
+    );
     Montada {
         nivel: 1,
         escolhido: escolhido.to_bits(),

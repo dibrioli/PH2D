@@ -26,6 +26,9 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 # `[workspace.dependencies]`, e herdar dele não compila.
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+# ⭐ O GATILHO (suplente #24): a ponte que resolve o teclado em acções NOMEADAS vive aqui,
+# porque é pura — a shell fica só com a cerca do relógio e a publicação. `ph2d-input` é folha.
+ph2d-input = { path = "../ph2d-input" }
 
 # ⭐ **O CUSTO REAL do módulo, e ele só se lê aqui** (HOWTO §1.3): dentro da
 # shell todas estas eram dependência do binário, e um ficheiro escrevia

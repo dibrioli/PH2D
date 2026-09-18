@@ -186,35 +186,6 @@ fn gatilhos(
     }
 }
 
-/// **As amostras de TODA acção do mapa, pelo nome** — a entrada do [`gatilhos`].
-///
-/// ⚠️⚠️ **Varre o MAPA e não os gatilhos, e é isso que dá a lei da acção inexistente de graça:** um
-/// nome que o mapa não conhece simplesmente não está aqui, e o `unwrap_or_default` do motor
-/// devolve silêncio. A alternativa — perguntar nome a nome ao mundo — poria a mesma decisão em
-/// dois sítios, e o defeito mudo que ela abre é um `Release` a disparar em TODO quadro sobre uma
-/// acção que ninguém ligou (porque `!pressed` é trivialmente verdade).
-///
-/// ⚠️ **`BTreeMap` e não `HashMap`** — a espinha do determinismo desta casa (lint estrutural).
-pub(super) fn amostras_das_accoes(
-    map: &ph2d_input::InputMap,
-    estado: &ph2d_input::ActionState,
-) -> BTreeMap<String, ph2d_ecs::ActionSample> {
-    let input = ph2d_input::Input::new(map, estado);
-    map.actions()
-        .iter()
-        .map(|a| {
-            (
-                a.name.clone(),
-                ph2d_ecs::ActionSample {
-                    pressed: input.pressed(&a.name),
-                    just_pressed: input.just_pressed(&a.name),
-                    just_released: input.just_released(&a.name),
-                },
-            )
-        })
-        .collect()
-}
-
 #[cfg(test)]
 #[path = "motores_do_quadro_tests.rs"]
 mod tests;

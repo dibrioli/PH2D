@@ -95,6 +95,24 @@ costura e o doc-link do `ph2d-panel-tags`).
   linhas cada: `+47 LOC` **para os mesmos onze destinos**, e o ficheiro foi a `617/600`. *Um corte
   numa ponta que engorda a outra não é um corte.*
 
+### 4.1-bis — ⭐⭐ A catraca `the_shell_only_shrinks` mandou a PONTE para a família
+
+O portão apanhou a shell a `197 067` contra o tecto de `196 990` (**+77**), e a lei é *MOVER para a
+crate da família, nunca subir o número*. ⇒ duas peças saíram, e **as duas por responsabilidade**:
+
+| o que saiu | para onde | porquê |
+|---|---|---|
+| `amostras_das_accoes` (a varredura do mapa) + os gates dela | [`ph2d_app_components::trigger_bridge`] | **é PURA** — `(mapa, estado) → uma amostra por acção`, sem `gfx`, sem barramento, sem relógio |
+| o ROTEIRO da cena (`eprintln!` de 18 linhas) | `trigger_smoke::montar` | ele fala do que a CENA montou e da tecla que ela declara; é onde as irmãs já o têm |
+
+⭐ **O que fica na shell é só COMPOSIÇÃO:** a cerca do relógio e a publicação no outbox — *o que sai
+são os CORPOS; o que decide a ordem do quadro fica* (a lei que a W2 escreveu). Shell a **196 973**.
+
+⚠️ **Dependência nova, e é uma FOLHA:** `ph2d-app-components` passa a ver a `ph2d-input` (que só
+depende de `serde`). ⛔ O `ph2d-ecs` continua a **não** a ver — *um `use ph2d_input` no modelo de
+dados ligaria o projecto ao vocabulário de um dispositivo*, e é por isso que a `Amostra` da lei é um
+tipo próprio.
+
 ### 4.2 — A secção LIFECYCLE saiu do ficheiro da FACTORY
 
 `sections/factory.rs` foi a `622/600` ao ganhar a linha da MIRA. ⇒ `sections/lifecycle.rs`

@@ -1,8 +1,10 @@
 //! ⭐⭐⭐ **A FIAÇÃO do gatilho** (suplente #24) — os dois factos que a lei pura não pode afirmar.
 //!
 //! ⚠️⚠️ **Porque este ficheiro existe:** os seis gates da lei vivem na `ph2d-ecs` e entram por
-//! [`ph2d_ecs::dispara_gatilhos`], que fica **ABAIXO** das duas decisões da shell — *de onde vêm as
-//! amostras* e *quando é que o motor corre*. A casa já pagou essa forma pelo menos duas vezes (a
+//! [`ph2d_ecs::dispara_gatilhos`], que fica **ABAIXO** da decisão que só a shell toma — *quando é
+//! que o motor corre*. ⭐ A outra metade (*de onde vêm as amostras*) mudou-se para a crate da
+//! família com a função que a responde (`ph2d_app_components::trigger_bridge`), porque ela é PURA:
+//! aqui fica só a COMPOSIÇÃO. A casa já pagou essa forma pelo menos duas vezes (a
 //! entrega do teclado ao mover de vista de cima, §10 do handoff do #13; o replay que dirigia um
 //! controlador e não os outros dois, §9 do #14), e as duas vezes com a suíte VERDE por cima.
 //!
@@ -13,7 +15,9 @@ use ph2d_ecs::{ActionEdge, ActionTriggerRow, SignalOnAction, SimWorld};
 use ph2d_input::{ActionState, Binding, InputMap, InputState, Key};
 use ph2d_runtime::{SignalOutbox, SignalReader};
 
-use super::{Relogio, amostras_das_accoes, gatilhos};
+use ph2d_app_components::trigger_bridge::amostras_das_accoes;
+
+use super::{Relogio, gatilhos};
 
 /// O ESPAÇO, que é a tecla que o prólogo do smoke liga.
 const ESPACO: Key = Key(0x20);
@@ -76,58 +80,6 @@ fn publicados(sim: &mut SimWorld, playing: bool, st: &ActionState) -> Vec<String
         &accoes,
     );
     out.read(&mut leitor).map(|s| s.name.to_string()).collect()
-}
-
-/// ⭐⭐⭐ **A amostra chega do MAPA, com as três leituras certas, ao longo de um TOQUE INTEIRO.**
-///
-/// ⚠️⚠️ **O percurso tem quatro paragens de propósito, e cada uma separa DUAS leituras que num
-/// instante só se lêem iguais:** premir (`pressed` = `just_pressed`), **segurar** (é aqui que
-/// essas duas se separam), largar (`just_released` = `!pressed`) e **ficar solto** (é aqui que
-/// *estas* se separam). *Uma régua medida num instante só aprova trocar uma leitura pela outra.*
-///
-/// ⚠️ **E a metade NEGATIVA é metade do valor:** sem ela a varredura podia devolver uma entrada
-/// para TODA acção que alguém nomeasse, e um `Release` sobre um nome desconhecido dispararia em
-/// **todo quadro** (`!pressed` é trivialmente verdade).
-#[test]
-fn as_amostras_saem_do_mapa_e_so_do_mapa() {
-    // (o que se faz, as teclas até aqui, o esperado: pressed · just_pressed · just_released)
-    let percurso = [
-        ("premir", &[false, true][..], (true, true, false)),
-        ("segurar", &[false, true, true][..], (true, false, false)),
-        (
-            "largar",
-            &[false, true, true, false][..],
-            (false, false, true),
-        ),
-        (
-            "ficar solto",
-            &[false, true, true, false, false][..],
-            (false, false, false),
-        ),
-    ];
-    for (nome, teclas, esperado) in percurso {
-        let a = amostras_das_accoes(&mapa(), &estado(teclas));
-        let s = a
-            .get(ACCAO)
-            .copied()
-            .expect("a accao do mapa tem de estar la'");
-        assert_eq!(
-            (s.pressed, s.just_pressed, s.just_released),
-            esperado,
-            "{nome}: as tres leituras"
-        );
-    }
-
-    let a = amostras_das_accoes(&mapa(), &estado(&[false, true]));
-    assert!(
-        !a.contains_key("fier"),
-        "uma accao que o mapa nao conhece NAO pode ter entrada — senao o `Release` dela fala sempre"
-    );
-    assert_eq!(
-        a.len(),
-        1,
-        "o mapa tem uma accao, a varredura tem de ter uma"
-    );
 }
 
 /// ⭐⭐⭐ **A CERCA DO RELÓGIO — parado, o teclado é do editor.**

@@ -68,6 +68,7 @@ PONTE=crates/ph2d-app-components/src/factory_bridge.rs
 SHELL=shells/desktop/src/render_loop/motores_do_quadro.rs
 INSP=crates/ph2d-app-components/src/action_trigger_inspector.rs
 CENA=crates/ph2d-app-components/src/trigger_smoke.rs
+PONTE_T=crates/ph2d-app-components/src/trigger_bridge.rs
 
 echo "════ W1 — a LEI (ph2d-ecs) ════"
 
@@ -168,13 +169,15 @@ bloco "relogio: a cerca sai" ph2d-host-desktop com_o_relogio_parado "$SHELL" 1 \
 
 # (18) `just_pressed` e `pressed` só se lêem iguais no INSTANTE em que se carrega — a paragem
 #      «segurar» do percurso é a que os separa.
-bloco "amostra: just_pressed -> pressed" ph2d-host-desktop as_amostras_saem_do_mapa "$SHELL" 1 \
-  "just_pressed: input.just_pressed(&a.name)," "just_pressed: input.pressed(&a.name)," "--bins"
+#      ⚠️ **Mudou de crate em 2026-09-18:** a varredura é PURA e saiu da shell para a família
+#      (`trigger_bridge`), pela catraca `the_shell_only_shrinks` — e as duas respostas coincidem.
+bloco "amostra: just_pressed -> pressed" ph2d-app-components as_amostras_saem_do_mapa "$PONTE_T" 1 \
+  "just_pressed: input.just_pressed(&a.name)," "just_pressed: input.pressed(&a.name),"
 
 # (19) ⭐ `just_released` e `!pressed` só se lêem iguais no tique em que se larga — a paragem
 #      «ficar solto» é a que os separa, e é o defeito mudo que o doc do produto já nomeia.
-bloco "amostra: just_released -> !pressed" ph2d-host-desktop as_amostras_saem_do_mapa "$SHELL" 1 \
-  "just_released: input.just_released(&a.name)," "just_released: !input.pressed(&a.name)," "--bins"
+bloco "amostra: just_released -> !pressed" ph2d-app-components as_amostras_saem_do_mapa "$PONTE_T" 1 \
+  "just_released: input.just_released(&a.name)," "just_released: !input.pressed(&a.name),"
 
 echo
 echo "════ W7 — a TECLA (report do dono) ════"

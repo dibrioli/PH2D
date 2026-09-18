@@ -378,24 +378,6 @@ impl crate::App {
         }
         self.playhead.rewind();
         self.playhead.play();
-        eprintln!(
-            "[trigger-smoke] cena=1  accao=«{0}» (tecla {2})  sinal=«{1}»\n\
-             (1) carregue no {2}: sai uma bala AMARELA do retangulo AZUL, para onde ele aponta\n\
-             (2) ande com as SETAS — o azul RODA para onde anda; carregue no {2} outra vez e a \
-             bala sai para o lado NOVO\n\
-             (3) o retangulo CINZENTO da direita ouve a MESMA tecla e atira SEMPRE para cima: e' o \
-             CONTROLO, e a unica diferenca entre os dois e' uma caixa de marcar\n\
-             (4) role o painel da direita ate' ao fim (o «Heroi» ja' esta' escolhido): a seccao \
-             TRIGGER e' quem ouve a tecla, e a caixa «Aim from spawner» da seccao FACTORY e' a \
-             unica diferenca para o cinzento\n\
-             (5) carregue em STOP na regua de baixo: o {2} deixa de disparar e volta a ser do \
-             editor. PLAY devolve-o\n\
-             (6) deu errado se: nada sai ao carregar no {2} · as DUAS balas saem para o mesmo \
-             lado · ou alguma coisa sai com a regua PARADA",
-            ph2d_app_components::trigger_smoke::ACCAO,
-            ph2d_app_components::trigger_smoke::SINAL,
-            ph2d_app_components::trigger_smoke::TECLA_NOME,
-        );
     }
 
     pub(crate) fn topdown_smoke(&mut self) {

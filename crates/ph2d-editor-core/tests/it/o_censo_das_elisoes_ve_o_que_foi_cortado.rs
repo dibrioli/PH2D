@@ -103,3 +103,45 @@ fn quem_dimensiona_e_quem_confere_falam_a_mesma_lei() {
         "a caixa tem de ser MAIOR que o texto — é isso que o respiro é"
     );
 }
+
+/// ⭐⭐⭐ **O RESPIRO NUNCA COME MAIS DE METADE DA CAIXA — e a fronteira é DERIVADA.**
+///
+/// ⛔⛔ Ele era uma subtracção CONSTANTE, logo numa caixa pequena tomava-a quase toda: o botão de
+/// silenciar de um strip do mixer mede `25,0 px`, o respiro levava `16,0` e sobravam `9,0` para
+/// uma letra `M` que precisa de `10,1` ⇒ **o botão saía VAZIO**. Medido pelo censo de elisões:
+/// `4` botões a pintar nada num só painel.
+///
+/// ⚠️ **A fronteira não é escolhida:** as duas leis cruzam-se onde `w − respiro = w/2`, isto é em
+/// `2 × respiro` = **32 px**. ⇒ acima disso **nada muda** (toda caixa normal deste app continua
+/// byte a byte como estava) e abaixo o respiro passa a ser proporcional. *É uma melhoria estrita:
+/// o que cabia continua a caber.*
+#[test]
+fn o_respiro_nunca_come_mais_de_metade_da_caixa() {
+    use ph2d_editor_core::paint::label_budget;
+    let respiro = ph2d_tokens::Spacing::Md.px() * 2.0;
+    let fronteira = respiro * 2.0;
+
+    // 1. ACIMA da fronteira: a lei de sempre, ao bit.
+    for w in [fronteira + 0.5, 50.0, 100.0, 304.0] {
+        assert!(
+            (label_budget(w) - (w - respiro)).abs() < 1e-3,
+            "a caixa de {w} px mudou de orçamento acima da fronteira — isto tinha de ser inerte"
+        );
+    }
+    // 2. ABAIXO: o respiro deixa de engolir a palavra.
+    for w in [10.0, 20.0, 25.0, fronteira - 0.5] {
+        assert!(
+            label_budget(w) >= w * 0.5,
+            "a caixa de {w} px ficou com {} px de orçamento — o respiro comeu mais de metade",
+            label_budget(w)
+        );
+    }
+    // 3. ⛔ O CASO MEDIDO: a letra `M` do botão de silenciar cabe na caixa que ele tem.
+    let mut ts = ph2d_text::TextSystem::new();
+    let m = ts.prefix_width("M", ph2d_tokens::TypeToken::Xs.px());
+    assert!(
+        label_budget(25.0) >= m,
+        "a letra `M` mede {m:.1} px e o botão de 25,0 px dá {:.1} — ele volta a pintar NADA",
+        label_budget(25.0)
+    );
+}

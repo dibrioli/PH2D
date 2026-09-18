@@ -363,7 +363,19 @@ pub fn paint_tool_palette_icons(
 /// a confere tem de perguntar o mesmo — senão ele mede a mesma grandeza errada que a cura.
 #[must_use]
 pub fn label_budget(w: f32) -> f32 {
-    (w - ph2d_tokens::Spacing::Md.px() * 2.0).max(1.0)
+    // ⛔⛔ **E O RESPIRO NUNCA COME MAIS DE METADE DA CAIXA** (2026-09-18). Ele era uma subtracção
+    //    CONSTANTE, logo numa caixa pequena tomava-a quase toda: o botão de silenciar de um strip
+    //    do mixer mede `25,0 px`, o respiro levava `16,0` e sobravam `9,0` para uma letra `M` que
+    //    precisa de `10,1` ⇒ **nem a reticência cabia e o botão saía VAZIO**. *Um controlo sem
+    //    legenda e um controlo morto dão o mesmo report* — e era isso que a foto do dono mostrava
+    //    como `…` entre dois botões com letra.
+    //
+    // ⭐ **A fronteira é DERIVADA, não escolhida:** as duas leis cruzam-se exactamente em `32 px`
+    //    (`w − 16 = w/2`), logo **acima de 32 nada muda** — toda caixa normal deste app continua
+    //    byte a byte como estava — e abaixo o respiro passa a ser proporcional em vez de engolir a
+    //    palavra. ⇒ é uma melhoria ESTRITA: o que cabia continua a caber.
+    let respiro = ph2d_tokens::Spacing::Md.px() * 2.0;
+    (w - respiro).max(w * 0.5).max(1.0)
 }
 
 /// ⭐⭐⭐ **O CAMINHO INVERSO: que largura de caixa é precisa para um texto de `text_w` CABER.**
@@ -375,7 +387,10 @@ pub fn label_budget(w: f32) -> f32 {
 /// ⭐ As duas são uma lei só, e há gate a provar a ida-e-volta.
 #[must_use]
 pub fn rect_for_label(text_w: f32) -> f32 {
-    text_w + ph2d_tokens::Spacing::Md.px() * 2.0
+    // ⚠️ A inversa das DUAS leis do [`label_budget`]: a caixa mais pequena que serve é a menor das
+    //    duas soluções — `t + respiro` (o regime normal) ou `2t` (o regime pequeno).
+    let respiro = ph2d_tokens::Spacing::Md.px() * 2.0;
+    (text_w + respiro).min(text_w * 2.0).max(1.0)
 }
 
 pub fn paint_text_centered(

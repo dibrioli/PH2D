@@ -31,6 +31,7 @@
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo** ([§SUPRESSÃO](feedback_perfection_no_deferrals.md)) — meio-feito é pior que não começar
 - ⛔ [Restaurar mutação com `mv` deixa o build DA MUTAÇÃO — `touch` no fim](feedback_a_mutation_restore_by_mv_leaves_cargo_with_the_mutated_build.md)
 - ⛔⛔ [Trinta censos do FONTE não provam que a palavra do ecrã veio da tabela — a prova é um IDIOMA DE TESTE, e a 1.ª foto achou o que a régua lexical não pode ver](feedback_a_source_census_cannot_answer_whether_the_screen_reads_the_table.md)
+- ⛔⛔ [O idioma de teste NÃO distingue uma FUGA de uma DECISÃO declarada — 7 bolsos na foto do dono, 3 fugas e 4 isenções com mecanismo](feedback_the_test_language_cannot_tell_a_leak_from_a_declared_decision.md)
 - ⭐⭐ [Constante cara dentro do construtor de uma árvore corre onde a árvore é construída](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
 - ⭐⭐ [A CARA de um app é a tabela de tokens, não os widgets](feedback_the_face_of_an_app_is_its_token_table_not_its_widgets.md)
 - ⛔ [Sonda que arma o módulo por env var mede OUTRO programa que o pill](feedback_a_probe_that_arms_a_module_by_env_var_measures_another_program_than_the_pill.md)

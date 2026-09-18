@@ -779,3 +779,55 @@ os catorze gates, o corpus regenerável e a medição nova da §14 são sólidos
 ⚠️ **Higiene:** nada do alvo tocou o disco. As vassouras correram pelo `cleanroom-sweep.sh`
 (descodificação em memória), a saída foi consumida **em cano**, e deste registo saem apenas
 contagens, números de linha e grandezas — nunca os termos que casaram.
+
+
+---
+
+## §4.5 — RESPOSTA DO E À 2.ª PASSAGEM DE R-PRÉ (2026-09-17)
+
+⛔ **Acto do E.** ⚠️ **Nada da §4.2.5 nem do bloco `SWEEP-ESPERADO:` foi tocado** — o R deu razão ao
+argumento e assinou-o, e o bloco dele é o instrumento que separa um vermelho por isenção de um
+vermelho por dívida. Esta secção **casa** com ele e não o substitui.
+
+### Os oito achados
+
+| # | o que se fez |
+|---|---|
+| **B-1** | ⛔⛔ *«converge para ZERO»* **SAIU**. A sequência é `−0,2190 → −0,0633 → −0,0234 → +0,0028`: **monótona crescente**, e no ponto mais fino já **passou** o zero. O que fica escrito é o que a tabela mostra, e a §14.5.2 passou a dizer *«favorece, não demonstra»* em vez de *«sugere estar a convergir»* |
+| **B-2** | ⛔⛔ *«NÃO é uma lei só»* **SAIU** do título da §14, do §11.1 e da 1.ª célula do §12. A medição é sobre **COMPOSIÇÃO**; o número de leis **fica EM ABERTO**, com o instrumento na §14.4. ⚠️ *Era a mesma forma de defeito que a emenda anterior curou — uma inferência vestida de medição — e o R tem razão em que substituir uma inferência por outra não é progresso* |
+| **B-3** | ⭐⭐ o `266 · 118` deu lugar à **explicação**: as três redacções (`10`, `266`, `269`) são **três PRECISÕES de arredondamento aplicadas ANTES de ordenar**, e o arredondamento **reordena**. A definição publicada é a das triplas **cruas** (`269`), e a métrica do `1e-8` vai dita (`118` na maior componente · **`124`** na norma euclidiana, que é a leitura do R). *A secção é sobre a ordem ser o que difere, e as suas próprias contagens divergiam pela ordem* |
+| **B-4** | `n = 32`/`32`, das nove chaves **à letra**, com a receita ao lado e a robustez medida (`32`, `34` e `35` dão as mesmas extremas e **zero** reprovações). ⚠️ É a **terceira** redacção do número e o README di-lo |
+| **B-5** | o denominador passa a nomear a **população**: `0,0990` é a aresta média da **malha de entrada** (saída `0,1002`, pegada `0,1060`; o `0,0995` anterior não é nenhuma das três) |
+| **B-6** | `+0,1096` e `+0,1677` (arredondados, não truncados), e a **regra** fica escrita no §7 |
+| **B-7** | ⭐ o chão do `9×` passa a ser uma propriedade **MEDIDA DO ALVO**: `2,22` carimbos por troço a `9×` contra `1,11` a `18×`, **abaixo do limiar de dois** que a §4.3 mede como o ponto em que o pente é inerte. *Ir mais fino zeraria o `ΔQ` pela lei da inércia, não por a composição falhar* |
+| **B-8** | as **cinco** linhas do 2.º canal, **incluindo a que discorda** (`9×`: `0,741 → 0,761`, onde o `Q` diz melhor e os irregulares dizem pior). *Citar só o par que concorda é escolher a testemunha* |
+
+### O que entrou de novo, e é o que dá força ao caso
+
+- ⭐⭐ **O argumento em valor ABSOLUTO**, promovido a coluna que decide: o junto chega a `+0,1214` e
+  **passa** o `G-2`; a série, no melhor caso, a `+0,0028` e **falha**. Imune à objecção de que os
+  `ΔQ` partem de linhas de base diferentes.
+- ⭐ **A extrapolação `1/n`** (`a = +0,0393`, abaixo da barra) como **indicação com a fraqueza ao
+  lado** — quatro pontos, forma escolhida e não derivada, declive dominado pelo ponto extremo, e um
+  segundo ajuste que dá outro número (`+0,0304`).
+
+### Verificação e higiene
+
+- **40 asserções** re-derivadas das fixturas publicadas (a tabela absoluta, a extrapolação, as dez
+  contagens do 2.º canal, os carimbos por troço, a aresta média, os quatro `ΔQ` e as cinco leituras
+  da ordem) — todas verdes. ⛔ **Nenhuma fixtura foi mexida nesta passagem.**
+- **Varredura por FORMA de raiz**, títulos incluídos e com o vocabulário alargado às palavras de
+  CONCLUSÃO (`sustenta`, `converge`, `indica`, `conclui`, `confirma`). ⭐ Ela apanhou **um resíduo
+  real**: o número do **A-8** tinha sido curado na espec e **sobrevivia no README das fixturas**
+  (`1 917` onde a medição é `1 260` de diferença simétrica de arestas). *Uma cura aplicada a um
+  documento e não ao seu par é exactamente o que uma varredura por endereço nomeado não apanha.*
+- **Sweep:** `exit 0` nas dez vassouras sobre o âmbito do Implementador (espec + 221 fixturas +
+  INBOX). Sobre **este** ficheiro a `-pull` continua a sair `exit 1` nas três linhas da §4.2.5 — que
+  é **exactamente o que o bloco `SWEEP-ESPERADO:` acima declara**, e não um achado novo.
+
+### Corrente
+
+| papel | id / data | o que fez |
+|---|---|---|
+| **E** (2.ª emenda) | subagente-E, 2026-09-17 | as duas conclusões da §14 reescritas para o que a medição sustenta · B-3..B-8 · 40 asserções re-derivadas · varredura por forma de raiz |
+| **R-pré, 3.ª passagem** | — | **por despachar** |

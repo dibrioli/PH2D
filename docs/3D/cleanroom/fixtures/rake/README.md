@@ -61,7 +61,8 @@ separação é `2`–`3×` maior (0° ligado: `+0,0353` no raio inteiro contra `
 **o efeito concentra-se na faixa central do traço**, e o raio inteiro dilui-o com a orla.
 
 ⛔ **A régua é PLANAR.** Numa esfera ela lê o mesmo valor com o pente ligado e desligado
-(`+0,0453` nos dois) enquanto a malha mede `1 917` faces diferentes: ali as arestas junto da
+(`+0,0453` nos dois) enquanto a malha mudou mesmo — `2 032` faces e `3 048` arestas dos dois lados,
+com **`1 260`** de diferença simétrica no conjunto de arestas: ali as arestas junto da
 silhueta projectam curtas e o ângulo projectado não é o ângulo na superfície. ⇒ **dívida NOMEADA:
 uma régua para malha curva projecta a aresta e a direcção do traço no plano tangente local.** Os
 números deste corpus valem para as fixturas **planas**.
@@ -83,8 +84,16 @@ prosa e um terceiro a aplicá-los obteve outro `n` que o declarado.
 
 | | n | o pior da população | célula |
 |---|---|---|---|
-| **pente desligado** | **34** | `Q = +0,02982270` (o MAIOR) | `escada/k_a0450_p0000` |
-| **pente no máximo** | **34** | `Q = +0,06323128` (o MENOR) | `verbos/v_blob_p100` |
+| **pente desligado** | **32** | `Q = +0,02982270` (o MAIOR) | `escada/k_a0450_p0000` |
+| **pente no máximo** | **32** | `Q = +0,06323128` (o MENOR) | `verbos/v_blob_p100` |
+
+⛔⛔ **Este `n` é a TERCEIRA redacção do mesmo número, e as duas anteriores (`37`, `34`) estavam
+erradas** — a segunda **depois** da cura desenhada para o tornar reprodutível. O `32` sai de aplicar
+as nove chaves **à letra**, como uma comparação de strings do cabeçalho; largar qualquer uma de
+`malha_de_entrada`, `passe_de_refino` ou `resolucao_do_detalhe` devolve `34`.
+⭐ **E a barra é ROBUSTA a isso, medido:** com `32`, `34` e `35` as duas células extremas são as
+MESMAS e as reprovações são **zero dos dois lados**. ⇒ o `n` é escrituração, não segurança — mas é
+escrituração que já falhou três vezes, e é por isso que ele vai agora com a receita ao lado.
 
 **VALE = `[+0,0298 , +0,0632]`**, largura `0,0334`.
 ⭐ **Os dois lados são saída do PRÓPRIO alvo** — o lado «aprovado» é o alvo com o pente ligado —,

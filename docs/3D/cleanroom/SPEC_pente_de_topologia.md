@@ -38,6 +38,15 @@ Auditoria §4.2 (R-pré), 2.ª passagem: subagente-R independente, 2026-09-17 �
   números residuais. Os 8 achados (`B-1`..`B-8`) e o que emendar: LEDGER §4.4
   (⛔ que o Implementador NÃO abre — o E traz a emenda).
   ⛔ A janela I NÃO implementa até uma 3.ª passagem de R-pré atestar a versão emendada.
+EMENDA DO E, 2026-09-17 (2.ª): ⛔⛔ as DUAS conclusões da §14 foram **reescritas para dizer só o que
+  a medição sustenta**: *«converge para ZERO»* é contradita pelos próprios dados (a sequência é
+  monótona crescente e já passou o zero) e *«não é uma lei só»* é uma afirmação sobre o NÚMERO DE
+  LEIS onde o que foi medido é **COMPOSIÇÃO**. ⇒ a pergunta fica **EM ABERTO** (§14.3), e entram: o
+  argumento em valor **ABSOLUTO** (junto `+0,1214` passa o `G-2`, a série no melhor caso `+0,0028`
+  falha), a **extrapolação** `1/n` com a fraqueza declarada (§14.3.1), o **chão do `9×`** ligado ao
+  limiar de dois carimbos da §4.3 (§14.4) e as **CINCO** linhas do 2.º canal, incluindo a que
+  discorda (§14.3.2). Mais os quatro números `B-3`..`B-6`. ⛔ **Nenhuma fixtura foi mexida.**
+  ⛔ A janela I NÃO implementa até uma 3.ª passagem de R-pré atestar ESTA versão.
 Mapa de leitura da literatura: a troca de diagonal local (Lawson 1977) e a cadeia de remalhagem
   incremental partir/colapsar/**trocar**/alisar (Botsch–Kobbelt 2004) — as duas já portadas nesta
   casa. ⛔ Não há apêndice do alvo a ler; não é preciso nenhum.
@@ -144,7 +153,7 @@ Medido sobre os 170 vértices que se movem (célula `composicao/m_manual`, o tra
 | média de \|Δz\| (fora da superfície) | `0,002426` |
 | razão tangencial / normal | **`4,37`** |
 | norma da soma dos Δ sobre a soma das normas | **`3,84 %`** |
-| maior norma de Δ | `0,033643`, ou `0,34` do comprimento médio de aresta (`0,0995`) |
+| maior norma de Δ | `0,033643` — ⚠️ **`0,34` do comprimento médio de aresta da MALHA DE ENTRADA (`0,0990`)**, que é a população nomeada de propósito: sobre a saída ela mede `0,1002` (razão `0,34`) e restrita à pegada `0,1060` (razão `0,32`). *A 1.ª redacção dava `0,0995`, que não é nenhuma das três.* |
 
 ⇒ **o material não viaja** (a soma vectorial cancela a `96,2 %`): cada vértice desliza **sobre** a
 superfície até que as arestas à volta dele fiquem alinhadas com o quadro do traço. O deslocamento
@@ -336,9 +345,14 @@ do alvo (§10.2).
 | **relativo** | age (`+0,0955` → `+0,1972`) | `verbos/t_relative_*` |
 | **pelo pincel** | age (`+0,0092` → `+0,0880`) | `verbos/t_brush_*` |
 | **manual** | age, **sem trocar aresta** (`+0,1511` → `+0,3571`) | `verbos/t_manual_*` |
-| **resolução do detalhe** `8 / 12 / 18 / 30` | age em todas; `ΔQ = +0,1253 / +0,1095 / +0,1678 / +0,1323` | `verbos/q_res08|12|18|30_*` |
+| **resolução do detalhe** `8 / 12 / 18 / 30` | age em todas; `ΔQ = +0,1253 / +0,1096 / +0,1677 / +0,1323` | `verbos/q_res08|12|18|30_*` |
 | **simetria em x**, traço a `30°` | age (`+0,0110` → `+0,1183`), e o lado espelhado também | `verbos/s_sim_*` |
 | **máscara** | ⛔ **não medido** — ver §12 | — |
+
+⚠️ **Todo número desta espec é ARREDONDADO, nunca truncado** (`+0,109557 → +0,1096`, não `+0,1095`;
+`+0,167718 → +0,1677`, não `+0,1678`): os dois desta linha saíram, na 1.ª redacção, de um conferidor
+que truncava onde o texto arredondava. A regra fica escrita para que as `44` asserções do conferidor
+e o texto não voltem a divergir na 4.ª casa.
 
 ⚠️ **A linha «partir + colapsar» da 1.ª redacção citava `composicao/m_manual_*`, que é a fixtura do
 regime OPOSTO** (o cabeçalho dela diz `modo_de_detalhe=MANUAL` e ela mede `+0,1511` → `+0,3572`), e
@@ -379,8 +393,22 @@ arestas da pegada (`1 852` nas duas) e o `Q` são idênticos a sete casas.
 ⚠️ **As duas contagens têm de nomear a população, e a 1.ª redacção misturou-as:** ela dividia o
 `522` (que é sobre a malha INTEIRA) pelas `~4 200` arestas **da pegada**, o que sobrestima o
 fenómeno `1,8×`. A causa é que o passe de refino **emite a mesma geometria com os vértices por outra
-ORDEM**: ordenadas as posições, a diferença é `266` exacta · `118` acima de `1e-8` · **`2` acima de
-`1e-7`** · `0` acima de `1e-6` (a 1.ª redacção dizia `10`, que não re-deriva a tolerância nenhuma).
+ORDEM**.
+⭐⭐ **E a contagem de «quantas posições ordenadas diferem» teve TRÊS redacções — `10`, `266` e
+`269` — e as três estão CERTAS: elas são três PRECISÕES de arredondamento aplicadas ANTES de
+ordenar.** O arredondamento muda a **ordem**, logo muda que vértice é comparado com qual:
+
+| como se ordena, antes de comparar | posições que diferem (exacto) |
+|---|---|
+| as triplas **cruas** | **`269`** |
+| arredondando a `9` casas | `266` |
+| arredondando a `6` casas | `10` |
+
+⇒ **a definição publicada é a primeira** (triplas cruas, sem arredondar): `269` exactas, e depois
+`118` acima de `1e-8` na **maior componente** — ou `124` na **norma euclidiana** —, `2` acima de
+`1e-7` e `0` acima de `1e-6`. ⚠️ *A métrica tem de ser dita: as duas leituras do `1e-8` são reais.*
+⭐⭐⭐ **E isto é a própria lição desta secção a repetir-se um nível acima:** a secção diz que uma
+comparação por índice mede a ORDEM, e as três contagens divergem porque **o arredondamento reordena**.
 *Uma comparação por índice mede a ordem de emissão, não a malha.* ⇒ **toda régua desta obra é invariante à ordem**, e é essa a razão
 técnica de a régua ser uma estatística da distribuição de ângulos.
 
@@ -420,10 +448,13 @@ aqui para o **revisor** poder auditar.
 1. ⭐⭐⭐ **Onde o operador de topologia do alvo não emite nem colapsa nada, o pente não muda uma
    aresta — ele move vértices** (§3.1: `verbos/v_layer` com o passe **armado e autorizado**, `ΔQ =
    +0,2026` e faces iguais às da entrada; mais cinco células de `1` a `16` passagens).
-   ⛔⛔ **A 1.ª redacção continuava a frase com *«…logo a topologia diferente é obra do passe a
-   decidir sobre geometria já relaxada»*, e isso é uma INFERÊNCIA sobre o interior do alvo que
-   agora está MEDIDA e REFUTADA — ver o §14.** *Compor a relaxação com o passe em série não
-   reproduz o alvo; reproduz ZERO.*
+   ⛔⛔ **A 1.ª redacção continuava com *«…logo a topologia diferente é obra do passe a decidir
+   sobre geometria já relaxada»* — INFERÊNCIA sobre o interior do alvo, hoje REFUTADA pelo §14.**
+   ⚠️⚠️ **E a 2.ª pôs no lugar dela outra inferência** (*«não é uma lei só»*), que é o mesmo defeito:
+   o que o §14 mede é **COMPOSIÇÃO**, não o **número de leis**. O que fica, medido: *compor a
+   relaxação com o passe **em série** falha o `G-2` em todas as granularidades alcançadas
+   (`Q ≤ +0,0028` contra a barra `+0,0465`), enquanto o alvo a fazê-las junto passa (`+0,1214`).*
+   ⇒ **a pergunta «uma lei ou duas» está EM ABERTO** (§14.3, §14.4).
 2. ⭐⭐ **O que ele optimiza é uma GRADE de duas famílias**, não uma direcção só — e a régua natural
    (duas dobras) é **cega** a isso por cancelamento (§3.3).
 3. ⭐⭐ **Ele não depende do passe de refino**, só de a topologia dinâmica estar armada — e é
@@ -445,7 +476,7 @@ aqui para o **revisor** poder auditar.
 
 | item | porquê | de quem |
 |---|---|---|
-| ⛔⛔ **O QUE SEPARA «o pente não troca» de «o pente ENVIESA as trocas do passe»** | **já não é uma suposição: foi MEDIDO (§14) e a resposta é que NÃO é uma lei só.** O que fica por separar são as DUAS causas possíveis do resultado — (a) o pente enviesa as decisões do passe, ou (b) a relaxação tem de correr **dentro** do laço por-carimbo, sobre a malha acabada de refinar. ⚠️ **Nenhum dos 14 gates do §13 vê a diferença**, e uma implementação só-de-relaxação entrega `≈ 0` no regime que o artista usa | **E**, e o instrumento está escrito no §14.4 |
+| ⛔⛔ **UMA LEI OU DUAS — a pergunta está EM ABERTO, e agora com um resultado por baixo** | O §14 **mediu a COMPOSIÇÃO**, não o número de leis: em série falha o `G-2` em todas as granularidades alcançadas, junto passa. As duas causas — (a) o pente **enviesa as decisões do passe**, ou (b) a relaxação tem de correr **dentro** do laço por-carimbo — **não são separadas por este instrumento**. A indicação a favor de (a) é a extrapolação da §14.3.1 (`+0,0393`, abaixo da barra), **com a fraqueza declarada**. ⚠️ Nenhum dos 14 gates do §13 vê a diferença | **E**, com o instrumento escrito na §14.4 |
 | **A régua para malha CURVA** | a desta espec projecta no ecrã; numa esfera ela lê `+0,0453` nos dois lados sobre uma malha cuja diferença simétrica de arestas é `1 260`. A cura é projectar a aresta e a direcção do traço no **plano tangente local** | **E** (emenda), antes de qualquer gate sobre peça curva |
 | **O CUSTO** (o §10.1) | nenhuma célula deste corpus mediu relógio. É a coluna em que o alvo declara publicamente que é fraco | **E**, com uma varredura de contagem de vértices |
 | **A interacção com a MÁSCARA** | não foi corrida | **E** |
@@ -490,7 +521,7 @@ reescreve a régua cega e não tem como saber.
 
 ---
 
-## §14 ⛔⛔⛔ UMA LEI OU DUAS? — **MEDIDO: não é uma lei só**
+## §14 — COMPOR EM SÉRIE **FALHA**; a pergunta «uma lei ou duas» fica **EM ABERTO**
 
 > Esta secção nasceu de um achado do R-pré: o corpus da 1.ª versão provava *«onde o operador de
 > topologia do alvo não trabalha, o pente não muda uma aresta»* e a espec **inferia** daí que a
@@ -511,31 +542,74 @@ partindo o percurso em `3` e em `9` troços e alternando dentro de cada um.
 
 ### §14.2 — A ESCADA, medida
 
-| como as duas metades são compostas | `ΔQ` do pente | % do que o alvo entrega |
-|---|---|---|
-| **JUNTO** — o alvo faz as duas coisas, que é o que o artista usa | **`+0,1670`** | `100 %` |
-| em série, `1×` (relaxa o traço todo, depois refina o traço todo) | `−0,2081` | `−125 %` |
-| em série, `3×` | `−0,0496` | `−30 %` |
-| em série, `4×` | `−0,0128` | `−8 %` |
-| em série, `9×` (o mais fino que a porta sem interface alcança) | **`+0,0084`** | **`5 %`** |
+⭐⭐ **A coluna que decide é o `Q` ABSOLUTO, não o `ΔQ`** — porque é o `Q` absoluto que o `G-2` mede,
+e porque as linhas de base dos dois caminhos não são a mesma (`−0,0456` no junto contra `−0,006`…
+`−0,014` nos de série), o que tornaria qualquer conclusão tirada só do `ΔQ` atacável.
+
+| como as duas metades são compostas | traços `p0`/`p1` | `Q(p0)` | `Q(p1)` | `ΔQ` | passa o `G-2` (`Q ≥ +0,0465`)? |
+|---|---|---|---|---|---|
+| **JUNTO** — o alvo faz as duas coisas, que é o que o artista usa | `1`/`1` | `−0,0456` | **`+0,1214`** | `+0,1670` | ✅ **SIM** |
+| em série, `1×` (relaxa o traço todo, depois refina o traço todo) | `2`/`2` | `−0,0110` | `−0,2190` | `−0,2081` | ✗ |
+| em série, `3×` | `6`/`6` | `−0,0137` | `−0,0633` | `−0,0496` | ✗ |
+| em série, `4×` | `8`/`8` | `−0,0106` | `−0,0234` | `−0,0128` | ✗ |
+| em série, `9×` (o mais fino que este instrumento alcança) | `18`/`18` | `−0,0057` | **`+0,0028`** | `+0,0084` | ✗ |
 
 **Fixturas:** `lei_unica/w_junto_p0|p1_r1..r3` · `w_serie_p0|p1_r1..r3` · `w_inter_p0|p1_r1..r3` ·
 `wf_n3|n9_p0|p1_r1..r2`. Cada célula declara a receita no cabeçalho (`SEQUENCIA_DE_TRACOS=`), e
 cada configuração corre `2`–`3` vezes: a maior amplitude de repetição das seis é **`0,0115`**.
 
-### §14.3 — O VEREDITO: **duas leis, não uma**
+### §14.3 — O que a medição SUSTENTA, e o que ela NÃO sustenta
 
-A composição em série **não converge para o alvo** — ela converge para **zero**. A `9×`, a mais
-fina que o instrumento alcança, ela entrega `+0,0084` contra os `+0,1670` do alvo: **`5 %`**, e a
-diferença (`+0,1586`) é **14× a banda de repetição**. Grosseira, ela é ainda **pior que não fazer
-nada** (`−0,2081`): relaxar uma malha grosseira e só depois a subdividir **destrói** o alinhamento,
-porque os vértices que o passe insere não sabem nada do traço.
+**O que ela sustenta:**
 
-⇒ ⛔ **uma implementação que faça só a relaxação medida no §3.2 e deixe o nosso passe de refino
-decidir a seguir entrega `≈ 0` exactamente no regime em que o artista trabalha.**
+> **Compor as duas metades EM SÉRIE — relaxar com o passe desarmado, depois refinar com o pente a
+> zero — FALHA o `G-2` em TODAS as granularidades que este instrumento alcança.** O melhor caso, a
+> `9×`, lê `Q = +0,0028` contra a barra de `+0,0465`; o alvo a fazer as duas coisas **junto** lê
+> `+0,1214` e **passa**. A tendência com a granularidade é **monótona crescente**
+> (`−0,2190 → −0,0633 → −0,0234 → +0,0028`) e, no ponto mais fino, ela já **passou** o zero.
 
-⚠️ E o sinal está no outro canal também: a fracção de vértices irregulares na pegada **desce** com
-o pente no caminho junto (`0,791` → `0,755`) e **sobe** na composição em série (`0,788` → `0,890`).
+⛔⛔ **O que ela NÃO sustenta, e a 1.ª redacção desta secção afirmava duas vezes:**
+
+1. *«a composição em série converge para ZERO»* — **falso pelos próprios dados desta tabela**: a
+   sequência é monótona crescente e cruzou o zero. O zero é por onde ela **passou**, não o valor
+   para onde tende.
+2. *«NÃO é uma lei só»* — **é uma afirmação sobre o NÚMERO DE LEIS, e o que foi medido é sobre
+   COMPOSIÇÃO.** A §14.4 declara, no mesmo documento, que este instrumento **não separa** as duas
+   causas; e sob a causa **(b)** — a relaxação a correr dentro do laço por-carimbo — é **UMA** lei,
+   no sítio certo. ⚠️⚠️ *Era a mesma forma de defeito que a emenda anterior curou no §11.1: uma
+   inferência vestida de medição. Uma inferência refutada substituída por outra não é progresso.*
+
+⇒ **A pergunta «uma lei ou duas» fica EM ABERTO**, com o instrumento que a decide na §14.4 e o dono
+escrito no §12.
+
+#### §14.3.1 ⚠️ A INDICAÇÃO a favor de faltar uma segunda lei — com a fraqueza dela ao lado
+
+Ajustando `ΔQ = a + b/n` aos quatro pontos em série, o limite a granularidade infinita dá
+**`a = +0,0393`** — ainda **abaixo** da barra do `G-2` (`+0,0465`). *Este* é o argumento a sério a
+favor de faltar uma segunda lei, e ele estava no corpus.
+
+⛔ **E a fraqueza vai escrita, porque sem ela isto vira o veredito que a §14.3 acabou de recusar:**
+são **quatro** pontos; a forma do ajuste (`1/n`) é **escolhida e não derivada**; o declive
+(`b = −0,2475`) é dominado pelo ponto mais extremo (`n = 1`); e ajustar `Q(p1)` em vez de `ΔQ` dá
+`+0,0304`, também abaixo mas **outro** número. ⇒ **indicação, nunca veredito.**
+
+#### §14.3.2 — O 2.º canal, as CINCO linhas — **incluindo a que discorda**
+
+A fracção de vértices irregulares (valência `≠ 6`) na mesma região `raio/2`:
+
+| composição | irregulares `p0` → `p1` | o canal diz | o `Q` diz |
+|---|---|---|---|
+| **JUNTO** | `0,791` → `0,755` | **melhor** | melhor |
+| série `1×` | `0,788` → `0,890` | pior | pior |
+| série `3×` | `0,765` → `0,810` | pior | pior |
+| série `4×` | `0,758` → `0,834` | pior | pior |
+| **série `9×`** | `0,741` → **`0,761`** | **pior** | ⚠️ **melhor** (`ΔQ = +0,0084`) |
+
+⚠️⚠️ **A 1.ª redacção publicava só as duas linhas em que os dois canais CONCORDAM** — e a linha que
+falta é justamente a do ponto mais fino, que é o que decide. *Citar só o par que concorda é escolher
+a testemunha.* ⭐ O que o par discordante prova é que **o 2.º canal é mesmo independente do `Q`**
+(dois canais que discordam no sinal no mesmo ponto não são o mesmo facto lido duas vezes), e que
+**no ponto mais fino nem os dois canais concordam que a série esteja a melhorar**.
 
 ### §14.4 — O que este instrumento NÃO separa, e o que o separaria
 
@@ -545,10 +619,20 @@ As duas causas possíveis ficam **nomeadas e não separadas**:
 - **(b)** a relaxação tem de correr **dentro do laço por-carimbo**, sobre a malha **acabada de
   refinar** — uma questão de ONDE ela corre, não de que lei é.
 
-⛔ **A porta sem interface não as separa**, e isto é uma impossibilidade **medida**, não uma
-suposição: o gesto público que o oráculo aceita é **um traço inteiro**, logo o mais fino que se pode
-alternar é um troço de percurso (o `9×` acima, `2`–`3` carimbos por troço). Abaixo disso não há
-gesto a emitir.
+⛔⛔ **E o CHÃO do `9×` é uma propriedade MEDIDA DO ALVO, não uma limitação do arnês** — que é o
+argumento forte, e a 1.ª redacção dava o fraco (*«o gesto público é um traço inteiro»*). Do cabeçalho
+das fixturas: percurso `1,400` · raio `0,350` · espaçamento `10 %` ⇒ passo `0,0700`, logo
+
+| granularidade | troço | carimbos por troço |
+|---|---|---|
+| `4×` | `0,3500` | `5,00` |
+| **`9×`** | `0,1556` | **`2,22`** |
+| `18×` | `0,0778` | **`1,11`** ⇒ **abaixo de dois** |
+
+e a **§4.3 desta mesma espec** mede que com **menos de dois carimbos o pente é INERTE e a saída é
+byte-idêntica**. ⇒ **ir mais fino que `9×` zeraria o `ΔQ` pela lei da INÉRCIA, não por a composição
+falhar.** A escada acaba onde acaba porque o alvo deixa de ter direcção, não porque o instrumento
+deixa de ter gesto — e é por isso que a extrapolação da §14.3.1 é uma indicação e não uma medição.
 
 ⭐ **O instrumento que as separaria** (acto do **E**, com o alvo ainda por cima da mesa): correr o
 alvo com o passe armado e comparar a **distribuição de valências** da região contra a de uma malha
@@ -557,12 +641,16 @@ de `6` do que a nossa pelo mesmo número de operações, a causa é **(a)**; se 
 
 ### §14.5 — O que isto manda ao Implementador
 
-1. ⛔ **Não implemente a relaxação como um passe separado antes ou depois do refino.** Está medido
-   que compor assim entrega `5 %` no melhor caso e o sinal trocado no pior.
-2. ⭐ **Implemente-a DENTRO do laço por-carimbo**, sobre a malha que o refino acabou de produzir —
-   é a hipótese **(b)**, é a mais barata, e é a que o `+0,0084` a `9×` sugere estar a convergir.
+1. ⛔ **Não implemente a relaxação como um passe separado antes ou depois do refino.** Medido: assim
+   ela **falha o `G-2` em todas as granularidades alcançadas** (`Q ≤ +0,0028` contra `+0,0465`), e
+   grosseira sai com o sinal trocado (`−0,2190`).
+2. ⭐ **Implemente-a DENTRO do laço por-carimbo**, sobre a malha que o refino acabou de produzir — é
+   a hipótese **(b)**, é a mais barata, e é a que a tendência **monótona crescente** da §14.2
+   favorece. ⚠️ **Favorece, não demonstra:** a extrapolação da §14.3.1 (`+0,0393`) fica **abaixo** da
+   barra, o que é a indicação de que (b) sozinha pode não chegar.
 3. ⚠️ **E meça o resultado contra o `G-2`.** Se a nossa malha ficar abaixo da barra com a relaxação
    já no sítio certo, então a causa é a **(a)** e há uma segunda lei a construir — e nesse dia o
-   §14.4 diz qual é o instrumento.
+   §14.4 diz qual é o instrumento. ⛔ **Faça (b) PRIMEIRO**: é mais barato, e a pergunta só é
+   decidível depois de ele estar no sítio.
 4. ⛔ **Nenhum dos 14 gates do §13 vê esta diferença**, porque com o refino armado a nossa topologia
    não bate com a do alvo de qualquer maneira. O `G-2` sobre a NOSSA saída é o único que a apanha.

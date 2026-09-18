@@ -102,6 +102,9 @@ mod passe_demo;
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
 mod passe_sim_demo;
+
+#[path = "motion_state_passe_cadeia_demo.rs"]
+mod passe_cadeia_demo;
 /// **PEÇAS QUE NÃO SE ATRAVESSAM** — o `motion.collide` DENTRO de uma simulação a correr;
 /// ver o cabeçalho dela (e porque as duas cenas que o nó já tinha não mostram isto).
 #[path = "motion_state_pilha_demo.rs"]

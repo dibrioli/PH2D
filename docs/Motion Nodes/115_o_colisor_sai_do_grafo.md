@@ -1305,3 +1305,30 @@ as varreduras no `64` por dentro (o «aceita e mente»).
 **As sondas FICAM**, `#[ignore]`, em [`passe_tests.rs`](../../crates/ph2d-contact/src/passe_tests.rs)
 — elas são os instrumentos desta secção, e *uma tabela sem o instrumento que a produziu é uma nota
 que envelhece*.
+
+### §18.7 — ⭐⭐⭐ A cena `=123` — **A CADEIA**, porque sem ela o dono não vê a mudança
+
+⛔⛔ **A `=121` e a `=122` não podiam mostrar isto**, e a razão está escrita nelas: as duas são
+feitas de **pares INDEPENDENTES**, e um par é um problema local que o passe resolve em poucas
+varreduras. ⇒ *nelas a escada é invisível* — a `8`, a `64` ou a `1024` vê-se a mesma coisa.
+
+⇒ [`motion_state_passe_cadeia_demo.rs`](../../crates/ph2d-app-motion/src/motion_state_passe_cadeia_demo.rs):
+**uma fila de `16` quadrados encavalitados**, a `PASSO = 0,25 × LADO` — a fixtura da medição do
+§18.1, onde `64` deixa `23` pares atravessados e `1024` fecha.
+
+O roteiro é a ESCADA, e cada degrau ensina uma coisa: ligar (abre um pouco) · `64` (abre mais e
+**não chega** — *era aqui que o sistema parava até 18/09*) · `1024` (fecha) · e **escrever `4096`**,
+que é onde ele aprende que o slider para onde a mão trabalha e o número que se escreve é o que corre.
+
+⚠️ **Ela NÃO treme, ao contrário da irmã** — a `=122` treme porque o assunto dela é *o passe corre
+em todo quadro*; o assunto desta é a **escada**, e um knob de cada vez é a lei do doc 103.
+
+⭐ **O gate é a cena inteira** (`a_escada_das_varreduras_e_o_que_esta_cena_mostra`), com **quatro**
+metades e nenhuma a sobrar: a fixtura CONTER o fenómeno · o degrau de fábrica ainda atravessar (o
+passo 3 promete que não fecha) · **o `64` ainda atravessar** (⚠️ *sem esta, a cena passaria com o
+tecto ANTIGO — e um gate que passa com o número antigo não mediu a mudança*) · e o `1024` fechar.
+
+⚠️ **E os números do roteiro são LIDOS do registo**, nunca de uma segunda cópia da const: o gate
+pergunta ao cartão qual é o `max` do `Collide Sweeps` e exige que o roteiro diga esse número. *Um
+roteiro que ensina uma escada que o slider não tem é a mesma família do passo impossível que o
+`Auto-Smooth` do sculpt quase shipou.*

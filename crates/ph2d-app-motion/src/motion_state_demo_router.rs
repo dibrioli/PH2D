@@ -31,7 +31,7 @@ use super::*;
 /// número em dois sítios, que é como ele envelhece. *Um valor sob `cfg(test)` é invisível do
 /// outro lado da fronteira (HOWTO §2.5) — e aqui a cura não é abrir uma feature, é reconhecer
 /// que a constante deixou de ser só do teste.*
-pub const MAX_DEMO_LEVEL: u32 = 122;
+pub const MAX_DEMO_LEVEL: u32 = 123;
 
 /// **As cenas de smoke dos CICLOS** — irmãs pelo tecto de LOC, cortadas por responsabilidade;
 /// ver o cabeçalho delas.
@@ -490,6 +490,11 @@ pub fn build_level(
         Some("122") => {
             let sinks = passe_sim_demo::build(doc, registry).unwrap_or_default();
             passe_sim_demo::announce();
+            sinks
+        }
+        Some("123") => {
+            let sinks = passe_cadeia_demo::build(doc, registry).unwrap_or_default();
+            passe_cadeia_demo::announce();
             sinks
         }
         // ⭐ **AS CENAS DE CICLO** — irmãs num ficheiro só; ver [`ciclos`]. Elas não são «mais

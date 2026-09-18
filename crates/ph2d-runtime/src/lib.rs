@@ -218,6 +218,27 @@ pub enum SignalOrigin {
         /// **Qual** das regras dela falou, pela posição na lista.
         row: u16,
     },
+    /// ⭐⭐⭐ **A MÃO DE QUEM JOGA** — um gatilho ouviu uma acção do Input Map
+    /// (`ph2d_ecs::SignalOnAction`).
+    ///
+    /// ⚠️ **APENDADO no fim**, como as duas acima e pela mesma razão: este enum viaja nos
+    /// diagnósticos e nos gates por POSIÇÃO de variante.
+    ///
+    /// ⚠️⚠️ **Ele NÃO leva o nome da acção, e isso foi imposto:** o `SignalOrigin` é `Copy`, e um
+    /// `Arc<str>` aqui tira o `Copy` a **todas** as origens. ⭐ O par `(source, row)` é
+    /// estritamente mais forte do que o nome seria — dele tira-se a acção, a aresta **e** o sinal
+    /// (é a linha inteira do gatilho), enquanto do nome da acção não se tira qual das linhas falou
+    /// quando duas ouvem a mesma tecla.
+    ///
+    /// ⚠️ **E o produtor é o ÚNICO desta lista cuja entrada não é o mundo nem o barramento:** é o
+    /// teclado, resolvido pelo mapa. É por isso que o quadro o corre na janela dos motores, depois
+    /// de a `fase_pointer_subjects` ter resolvido as acções — ver o gate da ordem.
+    Action {
+        /// Quem tem o gatilho — a entidade que carrega o componente.
+        source: EntityBits,
+        /// **Qual** das linhas dela falou, pela posição na lista.
+        row: u16,
+    },
 }
 
 /// Um sinal publicado neste quadro.
@@ -340,6 +361,18 @@ impl Signal {
         Self {
             name: Arc::from(name),
             origin: SignalOrigin::CounterWatch {
+                source: EntityBits(source),
+                row,
+            },
+        }
+    }
+
+    /// **Um gatilho ouviu uma acção do artista** ([`SignalOrigin::Action`]).
+    #[must_use]
+    pub fn from_action(name: &str, source: u64, row: u16) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::Action {
                 source: EntityBits(source),
                 row,
             },

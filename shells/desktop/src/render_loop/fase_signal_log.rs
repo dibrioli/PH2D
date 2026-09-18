@@ -79,6 +79,12 @@ impl crate::App {
                             sig.name, source.0
                         );
                     }
+                    ph2d_runtime::SignalOrigin::Action { source, row } => {
+                        eprintln!(
+                            "[signal] {} <- a MAO do artista: gatilho #{row} do objecto {}",
+                            sig.name, source.0
+                        );
+                    }
                 }
             }
         }

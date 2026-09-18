@@ -10,6 +10,8 @@
 //! ⚠️ **Saíram por TECTO DE LOC** (`fase_signal_outbox` foi a `229` contra `200` ao ganhar o
 //! terceiro motor) — cura por CORTE, nunca uma entrada nova de dívida.
 
+use std::collections::BTreeMap;
+
 use ph2d_app_components::particles_bridge::ParticlesState;
 use ph2d_ecs::SimWorld;
 use ph2d_ecs::sort_key::SortScratch;
@@ -56,6 +58,7 @@ pub(super) fn correm(
     signals: &mut SignalOutbox,
     leitores: &mut crate::app_state::app_state_signal_readers::SignalReaders,
     relogio: &Relogio,
+    accoes: &BTreeMap<String, ph2d_ecs::ActionSample>,
 ) {
     scripts(sim, script, drive, signals, &mut leitores.script, relogio);
     particulas(
@@ -67,6 +70,7 @@ pub(super) fn correm(
         relogio,
     );
     vigias(sim, signals, relogio);
+    gatilhos(sim, signals, relogio, accoes);
 }
 
 /// ⭐⭐⭐ **OS SCRIPTS DO ARTISTA** (TOP-20 #16) — o que um script emite chega à tabela de acções
@@ -149,4 +153,64 @@ fn vigias(sim: &mut SimWorld, signals: &mut SignalOutbox, relogio: &Relogio) {
     for (bits, row, nome) in f.disparos {
         signals.publish(ph2d_runtime::Signal::from_counter_watch(&nome, bits, row));
     }
+}
+
+/// ⭐⭐⭐ **O GATILHO — a mão de quem joga** (suplente #24). A tecla que o artista ligou no Input Map
+/// chega à tabela de acções NESTE quadro.
+///
+/// ⚠️ **Ele não OUVE, só FALA** — como as vigias. E é o ÚNICO motor desta janela cuja entrada não é
+/// o mundo nem o barramento: é o **teclado**, já resolvido em acções nomeadas.
+///
+/// ⚠️⚠️ **A cerca do relógio é a MESMA da fábrica, e sem ela o editor fica inutilizável:** as
+/// teclas do jogo são as teclas do editor, e um gatilho ligado ao espaço publicaria o sinal dele a
+/// cada espaço que o artista carrega a editar. *Play → a arma dispara · Stop → o teclado volta a
+/// ser do editor.*
+fn gatilhos(
+    sim: &mut SimWorld,
+    signals: &mut SignalOutbox,
+    relogio: &Relogio,
+    amostras: &BTreeMap<String, ph2d_ecs::ActionSample>,
+) {
+    if !relogio.playing {
+        return;
+    }
+    let disparos = ph2d_ecs::dispara_gatilhos(sim.world_mut(), &|nome| {
+        amostras.get(nome).copied().unwrap_or_default()
+    });
+    for d in disparos {
+        signals.publish(ph2d_runtime::Signal::from_action(
+            &d.signal,
+            d.source.to_bits(),
+            d.row,
+        ));
+    }
+}
+
+/// **As amostras de TODA acção do mapa, pelo nome** — a entrada do [`gatilhos`].
+///
+/// ⚠️⚠️ **Varre o MAPA e não os gatilhos, e é isso que dá a lei da acção inexistente de graça:** um
+/// nome que o mapa não conhece simplesmente não está aqui, e o `unwrap_or_default` do motor
+/// devolve silêncio. A alternativa — perguntar nome a nome ao mundo — poria a mesma decisão em
+/// dois sítios, e o defeito mudo que ela abre é um `Release` a disparar em TODO quadro sobre uma
+/// acção que ninguém ligou (porque `!pressed` é trivialmente verdade).
+///
+/// ⚠️ **`BTreeMap` e não `HashMap`** — a espinha do determinismo desta casa (lint estrutural).
+pub(super) fn amostras_das_accoes(
+    map: &ph2d_input::InputMap,
+    estado: &ph2d_input::ActionState,
+) -> BTreeMap<String, ph2d_ecs::ActionSample> {
+    let input = ph2d_input::Input::new(map, estado);
+    map.actions()
+        .iter()
+        .map(|a| {
+            (
+                a.name.clone(),
+                ph2d_ecs::ActionSample {
+                    pressed: input.pressed(&a.name),
+                    just_pressed: input.just_pressed(&a.name),
+                    just_released: input.just_released(&a.name),
+                },
+            )
+        })
+        .collect()
 }

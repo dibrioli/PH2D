@@ -34,6 +34,18 @@ impl crate::App {
         camera_rect: Option<([f32; 2], [f32; 2])>,
         ticks: u32,
     ) {
+        // ⭐⭐⭐ **As acções resolvidas, lidas ANTES do `gfx`** — e a ordem aqui é um empréstimo,
+        // não estilo: o mapa vive no `hero_screen` (dentro do `gfx`) e o estado resolvido vive na
+        // `App`, logo lê-los depois do destructure seria emprestar o `gfx` duas vezes.
+        //
+        // ⚠️ **Elas são do ESTADO que a `fase_pointer_subjects` resolveu no PRINCÍPIO deste
+        // quadro** — é isso que faz a aresta (`just_pressed`) ser a deste quadro e não a do
+        // anterior. Há gate sobre a ordem das duas.
+        let accoes = self.gfx.as_ref().map_or_else(Default::default, |g| {
+            g.hero_screen.as_ref().map_or_else(Default::default, |h| {
+                motores_do_quadro::amostras_das_accoes(&h.input_map, &self.input_actions)
+            })
+        });
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -173,6 +185,7 @@ impl crate::App {
             &mut self.signals,
             &mut self.signal_readers,
             &relogio,
+            &accoes,
         );
         // ⭐⭐⭐ **O CONSUMIDOR QUE FAZ ALGUMA COISA** (TOP-20 #5) — a tabela nome → acção.
         //

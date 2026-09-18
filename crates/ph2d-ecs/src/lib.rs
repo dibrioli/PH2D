@@ -87,6 +87,7 @@ pub mod sequence;
 pub mod sibling_order;
 /// ⭐⭐⭐ **A tabela nome → acção** (TOP-20 #5) — o consumidor que faltava aos sinais.
 pub mod signal_actions;
+pub mod signal_on_action;
 pub mod sim;
 pub mod slice_nine;
 pub mod sort_key;
@@ -187,6 +188,10 @@ pub use sibling_order::{
 pub use signal_actions::{
     SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalEffect, SignalTarget, SignalVerb,
     resolve as resolve_signal_actions,
+};
+pub use signal_on_action::{
+    ACTION_TRIGGERS_MAX, ActionEdge, ActionFired, ActionTriggerRow, Amostra as ActionSample,
+    SignalOnAction, dispara as dispara_gatilhos,
 };
 pub use sim::{SimComponent, SimWorld};
 pub use slice_nine::{SliceDrawMode, SliceNine, SliceRegion, SliceTileMode, TileRegionMode};

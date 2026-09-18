@@ -610,6 +610,13 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // ficheiro gravado e faria dela um passo de `Ctrl+Z`. É o precedente do `CounterRuntime` logo
     // acima, e ele nem compilaria aqui (não deriva `Serialize`).
     reg.register_default::<crate::CounterWatch>("ph2d::ecs::CounterWatch");
+    // ⭐⭐⭐ **O GATILHO** (suplente #24) — a mão de quem joga vira um sinal. Ele é CONFIG
+    // inteira: sem o registo, o artista liga `fire` ao `shoot`, grava, reabre, e a arma deixa de
+    // existir sem nada dar erro.
+    // ⛔ **E não há `SignalOnActionRuntime` para ficar de fora:** a aresta é trabalho do INPUT
+    // (a `ActionState` já guarda um tique atrás), e um estado vivo aqui seria a SEGUNDA resposta
+    // a «ela já estava premida?» — ver o cabeçalho de `signal_on_action.rs`.
+    reg.register_default::<crate::SignalOnAction>("ph2d::ecs::SignalOnAction");
     // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — o NOME do container que este objecto toca, e só isso.
     // ⛔ **Não há um `SequenceRuntime` aqui e não pode haver:** o relógio de corrida é o `Timer`
     // (plano 16 §1-bis), cujo estado vivo já mora fora do ficheiro. Um segundo relógio poria a

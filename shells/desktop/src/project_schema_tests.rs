@@ -576,7 +576,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // (`CounterWatch`). ⚠️ **A tripla NÃO vê este degrau** — a NONA vez, e pela mesma razão:
         // nem o `FlipDoc` nem a `VecScene` mudam de forma, e quem muda é a POPULAÇÃO do registo
         // (`registry_tests`, 96 → 97, e os dois espelhos 97 → 98).
-        (147, 13, 22),
+        // ⭐ **PROJECT 147→148** (2026-09-18): O GATILHO (suplente #24) — UM componente novo no
+        // registo (`SignalOnAction`). ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA vez, e pela
+        // mesma razão: nem o `FlipDoc` nem a `VecScene` mudam de forma, e quem muda é a POPULAÇÃO
+        // do registo (`registry_tests`, 97 → 98, e os dois espelhos 98 → 99).
+        (148, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

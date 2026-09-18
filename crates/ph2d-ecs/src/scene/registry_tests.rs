@@ -190,8 +190,12 @@ fn register_ecs_components_populates_registry() {
     //   lados -- 677 commits entraram no main entretanto. *Conte o DELTA, nunca o literal.*
     // ⚠️ **2026-09-13: `85` -> `86`, delta +1** -- o `Tags` (TOP-20 #9). Quem integrar conta o
     //   DELTA, nunca o literal.
-    assert_eq!(reg.len(), 97);
+    // ⚠️ **2026-09-18: `97` -> `98`, delta +1** -- o `SignalOnAction` (suplente #24): a mao de
+    //   quem joga passou a ser o 14.o produtor de sinal. Quem integrar conta o DELTA, nunca o
+    //   literal.
+    assert_eq!(reg.len(), 98);
     assert!(reg.get_by_name("ph2d::ecs::Tags").is_some());
+    assert!(reg.get_by_name("ph2d::ecs::SignalOnAction").is_some());
     assert!(reg.get_by_name("ph2d::ecs::Sculpt3dPieceRef").is_some());
     assert!(reg.get_by_name("ph2d::ecs::AudioSource2D").is_some());
     assert!(reg.get_by_name("ph2d::ecs::AudioListener2D").is_some());

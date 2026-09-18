@@ -399,4 +399,29 @@
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um ficheiro anterior é recusado
 /// em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 147;
+/// # `147 → 148` — O GATILHO (`docs/Components/18_plano_gatilho.md`)
+///
+/// **UM** componente novo no registo: o `SignalOnAction`, uma LISTA de linhas
+/// *«quando a acção A é premida/largada/segurada, diz S»*.
+///
+/// ⭐⭐⭐ **O buraco era um CENSO, não uma tabela:** o `SignalOrigin` tinha **treze** produtores — a
+/// timeline, o contacto, o controlo, o movimento, a animação, o relógio, o nascimento, a morte, o
+/// cérebro, o script, as partículas, o botão do HUD e a vigia — e **nenhum era a mão de quem
+/// joga**. *A tabela de acções do #5 sabia reagir a tudo menos a uma tecla.*
+///
+/// ⚠️ **O substrato já estava todo pago:** a `ph2d_input::Input` resolve acções NOMEADAS com as
+/// três leituras que uma lei de gatilho precisa, torna-as religáveis pelo Input Map e grava **a
+/// acção resolvida** na fita determinística (a LEI Nº 1 do Input Map). O que faltava era um
+/// componente que as ouvisse.
+///
+/// ⛔⛔ **E NÃO há estado vivo, ao contrário das cinco irmãs registadas desta linha:** a aresta é
+/// trabalho do INPUT — a `ActionState` guarda um tique atrás de propósito —, logo um
+/// `SignalOnActionRuntime` seria a SEGUNDA resposta a *«ela já estava premida?»*, e as duas
+/// divergiriam no primeiro quadro em que a fita reproduzisse um passado diferente do presente.
+/// ⇒ ele também **não** entra no `rewind_runtime`, e há gate a afirmar as duas ausências.
+///
+/// ⚠️ **O `ActionEdge` é APPEND-ONLY** — ele viaja pelo postcard, que é posicional.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um ficheiro anterior é recusado
+/// em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 148;

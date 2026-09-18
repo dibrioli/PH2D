@@ -428,7 +428,17 @@ pub fn dispatch(
     // reads the document graph unchanged. `output_nodes`/`time_scopes` above stay on
     // `doc.graph` — a bypass removes no node, so the sinks and scopes are the same.
     let cook = group_bypass::cook_graph(motion);
-    for tick in ticks_owed(motion.pump.last_cooked_tick(), target) {
+    // ⭐⭐⭐ **SÓ O ÚLTIMO TIQUE É DESENHADO** (report do dono, 18/09: *«189 objetos, Sweeps 1024 =
+    // 3 FPS»*). Um quadro lento recupera vários tiques de simulação de uma vez, e cada um enche o
+    // `instances`/`vector_instances` que o seguinte **sobrescreve** — só o último chega ao ecrã.
+    //
+    // ⇒ o passe de separação é um **ACABAMENTO SOBRE O QUE SE DESENHA** (doc 115 §3 W0: ele não
+    // realimenta a simulação), logo pagá-lo nos tiques intermédios é trabalho para o lixo. ⚠️ E o
+    // preço disso REALIMENTA: um quadro lento recupera mais tiques, que o tornam mais lento ainda.
+    let tiques = ticks_owed(motion.pump.last_cooked_tick(), target);
+    let ultimo = *tiques.end();
+    for tick in tiques {
+        motion.pump.set_separa_o_desenho(tick == ultimo);
         motion.pump.advance_or_scrub_scoped(
             cook.as_ref().unwrap_or(&motion.doc.graph),
             &motion.registry,

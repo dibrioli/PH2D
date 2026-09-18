@@ -331,3 +331,69 @@ fn um_quadro_separa_uma_vez_mesmo_com_o_sink_tapado() {
         "a tomada deixou de ver o que o sink desenha"
     );
 }
+
+/// ⭐⭐⭐ **UM QUADRO QUE RECUPERA `N` TIQUES SEPARA UMA VEZ** — o report do dono de 2026-09-18
+/// (*«Boids 190 objetos com collide on, Sweeps 1024 = 3 FPS»*).
+///
+/// A shell cozinha **um quadro por tique em dívida** (`ticks_owed`), e só o ÚLTIMO chega ao ecrã —
+/// os anteriores enchem o `instances` que o seguinte sobrescreve. ⚠️ O passe é um acabamento sobre
+/// o que se DESENHA e não realimenta a simulação, logo pagá-lo nos tiques intermédios é trabalho
+/// para o lixo — **e o preço realimenta**: um quadro lento recupera mais tiques, que o tornam mais
+/// lento ainda.
+///
+/// ⚠️⚠️ **Nenhuma régua de VALOR pode ver isto** (o desenho final é o mesmo, ao bit), e é por isso
+/// que a bomba carrega o readout `separacoes()`.
+#[test]
+fn um_quadro_que_recupera_tiques_separa_uma_vez() {
+    let mut g = Graph::new();
+    let sink = g.add_node(SRC_MAN.name);
+    g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
+    g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, 32.0);
+    let mut pump = MotionCookPump::new();
+    let (uv, tam) = ([0.0, 0.0, 1.0, 1.0], [1.0, 1.0]);
+    let antes = pump.separacoes();
+    // Um quadro que recupera QUATRO tiques: três intermédios e o que se desenha.
+    for tick in 0..4u64 {
+        pump.set_separa_o_desenho(tick == 3);
+        assert!(pump.pump(
+            &g,
+            &Ops,
+            &[sink],
+            tick,
+            f64::from(tick as u32) / 60.0,
+            uv,
+            tam
+        ));
+    }
+    assert_eq!(
+        pump.separacoes() - antes,
+        1,
+        "um quadro de quatro tiques separou mais de uma vez — o acabamento esta' a ser pago para o lixo"
+    );
+    // ⭐ **E o CONTROLO: o que se desenha continua SEPARADO.** Sem esta metade, nunca separar
+    // passaria — o gate mediria a economia e nunca o produto.
+    let vao = (pump.instances[1].world_pos[0] - pump.instances[0].world_pos[0]).abs();
+    assert!(
+        (vao - 1.0).abs() < 1e-3,
+        "o quadro desenhado tem de estar separado: {vao}"
+    );
+    // ⚠️ E o CONTROLO NEGATIVO da cerca: com a bandeira ligada em todos, são quatro.
+    let mut pump2 = MotionCookPump::new();
+    for tick in 0..4u64 {
+        pump2.set_separa_o_desenho(true);
+        assert!(pump2.pump(
+            &g,
+            &Ops,
+            &[sink],
+            tick,
+            f64::from(tick as u32) / 60.0,
+            uv,
+            tam
+        ));
+    }
+    assert_eq!(
+        pump2.separacoes(),
+        4,
+        "controlo: com a bandeira sempre ligada o readout tem de contar os quatro"
+    );
+}

@@ -180,3 +180,20 @@ impl MotionCookPump {
         }
     }
 }
+
+impl MotionCookPump {
+    /// **Este cozimento vai ser desenhado?** — ver [`MotionCookPump::separa_o_desenho`] (o campo).
+    ///
+    /// A shell põe-no a `false` nos tiques que ela recupera e a `true` no último, que é o que o
+    /// artista vê. ⚠️ O valor de omissão é `true`.
+    pub fn set_separa_o_desenho(&mut self, sim: bool) {
+        self.separa_o_desenho = sim;
+    }
+
+    /// Quantas separações correram desde que a bomba existe — o readout que torna a economia
+    /// acima observável (as duas rotas entregam o MESMO desenho).
+    #[must_use]
+    pub fn separacoes(&self) -> u64 {
+        self.separacoes
+    }
+}

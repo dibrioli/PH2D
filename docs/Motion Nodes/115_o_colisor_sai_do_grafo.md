@@ -1618,3 +1618,80 @@ impossível.*
   toda a tabela acima é do cozimento. Se sobrar engasgo depois desta wave, é ali que se procura.
 - ⏳ A `1000` objectos com o cursor no topo ainda são `22,4 ms` (`1,3` quadros). Daqui para baixo é
   algoritmo: `82 %` de uma varredura já é a LEI do contacto, não escrituração.
+
+---
+
+## §21 — *«189 objetos, Sweeps 1024 = 3 FPS»* — o acabamento era pago por TIQUE e o desenho é UM
+
+Report do dono com **foto**, 2026-09-18: uma cena de `motion.boids` com `Count = 189`, `Collide On`
+e `Collide Sweeps = 1024` — **3 FPS**, com os discos encostados a preencher o ecrã.
+
+⛔⛔ **A minha tabela da §20 dizia `3,5 ms` a 250 peças. Ele mede `333 ms` a 189 — cem vezes mais.**
+A foto tinha as duas causas à vista, e nenhuma era a lei do contacto.
+
+### §21.1 — A primeira: a cena dele é uma PILHA, e a minha fixtura era um campo
+
+Nos círculos da foto **não há folga** — eles tocam-se, e o `motion.boids` continua a puxá-los para
+dentro enquanto a separação os empurra para fora. *Uma pilha sob compressão permanente nunca
+assenta*, logo o repouso visível da §20 **não arma** e a cena paga o tecto inteiro.
+
+Medido com a densidade da foto (discos de raio `100`, [`custo_probe::a_cena_da_foto_do_dono`]):
+
+| discos | passo (× raio) | vizinhos por peça | varreduras usadas | relógio |
+|---|---|---|---|---|
+| 189 | `2,0` (a tocar) | 9,2 | **328** | 9,8 ms |
+| 189 | `1,8` | 11,1 | **1024** | 39,3 ms |
+| 189 | `1,6` | 13,6 | 1024 | 25,8 ms |
+| 500 | `1,8` | 11,5 | 1024 | 60,0 ms |
+
+⇒ um tique custa-lhe `~30 ms`. Ainda faltavam **dez vezes**.
+
+### §21.2 — ⭐⭐⭐ A segunda, e é a wave: o acabamento era pago por TIQUE
+
+A shell cozinha **um quadro por tique em dívida** ([`ticks_owed`]): um quadro que estoura o
+orçamento deixa o relógio para trás, e o seguinte recupera os tiques em falta de uma vez. ⚠️ **Cada
+um deles enche o `instances`/`vector_instances` que o seguinte SOBRESCREVE — só o ÚLTIMO chega ao
+ecrã.**
+
+⇒ o passe de separação, que é um **ACABAMENTO SOBRE O QUE SE DESENHA** e não uma lei de simulação
+(ele não realimenta nada — §3 W0), corria `N` vezes para desenhar **uma**.
+
+⛔⛔ **E o preço REALIMENTA:** um quadro lento recupera mais tiques, que o tornam mais lento ainda.
+Medido, com a cena da foto ([`motion_custo_do_quadro_probe::sonda_o_quadro_da_foto`]):
+
+| quadro | relógio | FPS |
+|---|---|---|
+| 1 tique, 1 separação | 30,5 ms | 32,7 |
+| **8 tiques, 8 separações** | **245,3 ms** | **4,1** ⇠ *o report dele* |
+| **8 tiques, 1 separação** | **31,1 ms** | **32,2** |
+
+⇒ a cura é uma linha de fiação: a bomba ganha [`MotionCookPump::set_separa_o_desenho`] e a ponte
+marca **só o último tique** do laço de recuperação. `245 → 31 ms`, **7,9×** — e o ciclo parte-se,
+porque o quadro deixa de ficar mais lento por estar atrasado.
+
+### §21.3 — ⚠️ O instrumento, porque a economia é INVISÍVEL
+
+As duas rotas entregam o **mesmo desenho, ao bit** — o tique intermédio ia ser sobrescrito. *Nenhum
+gate de igualdade, de bits ou de pixel pode ver esta cura*, exactamente como a duplicação da §19.
+⇒ a bomba carrega o readout [`MotionCookPump::separacoes`], e o gate mede a **CONTA**: um quadro de
+quatro tiques tem de separar **uma** vez, com o **controlo** de que o que se desenha continua
+separado e o **controlo negativo** de que, com a bandeira sempre ligada, o readout conta quatro.
+
+⚠️⚠️ **E a FIAÇÃO tem gate próprio, de TEXTO** (`o_quadro_marca_so_o_ultimo_tique_como_desenhado`):
+o laço vive no `motion_bridge::dispatch`, que pede um `HeroScreen`, um `ToolRegistry` e um
+`GpuContext` — *ele não é alcançável de um teste*. ⛔ **Um motor com a lei certa e a shell a não a
+ligar lê-se exactamente como um motor sem a lei**, e esta casa já o pagou três vezes (o
+`drive_topdown` do rebobinar, o `populate` dos chips, o `hand_input_to_players`). O gate tem piso de
+população (o laço tem de existir) e a metade negativa (marcar todos é o defeito).
+
+**Prova de mutação: 4 de 4 sangram.**
+
+### §21.4 — O que fica
+
+Para a cena da foto, somando as três waves de hoje: **`245 ms → 31 ms`**, de `3` para `32` FPS.
+
+⏳ **E o que sobra tem nome:** um tique daquela pilha custa `~30 ms` a `1024` varreduras, porque uma
+pilha comprimida **não assenta** e o tecto é de facto gasto. ⚠️ *Ali o `1024` é trabalho real, não
+desperdício* — o que o artista compra com ele é pouco (a pilha já está separada às primeiras
+dezenas), e é por isso que o **custo no cartão** (aberto desde a §19) é hoje o item mais valioso da
+lista: sem ele, o único sítio onde o preço de um knob aparece é o relógio de parede.

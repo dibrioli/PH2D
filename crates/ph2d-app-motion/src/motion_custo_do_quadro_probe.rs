@@ -213,3 +213,115 @@ fn sonda_o_quadro_da_cena_do_dono() {
             .unwrap_or("?")
     );
 }
+
+/// ⭐⭐⭐ **O QUADRO DA FOTO — 189 discos encostados, `Collide Sweeps = 1024`, gizmo LIGADO.**
+///
+/// ⛔ A sonda irmã mede o passe; esta mede o QUADRO pela porta do produto, que é onde uma repetição
+/// escondida apareceria. ⚠️ A tomada é armada **como o gizmo do colisor a arma** (o próprio sink).
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn sonda_o_quadro_da_foto() {
+    use std::time::Instant;
+    eprintln!("\n  ═══ O QUADRO DA FOTO (189 discos encostados) ═══\n");
+    eprintln!(
+        "  {:<9} │ {:<9} │ {:<8} │ {:<12} │ {:>11} │ {:>9} │ {:>7}",
+        "objectos", "varreduras", "gizmo", "quadro", "relógio", "% quadro", "FPS"
+    );
+    eprintln!(
+        "  ----------|-----------|----------|--------------|-------------|-----------|--------"
+    );
+    // ⭐ A última coluna é o que o report do dono de facto mede: um quadro ATRASADO recupera
+    // vários tiques de simulação, e só o último é desenhado.
+    for (n, varreduras, com_gizmo, tiques, so_o_ultimo) in [
+        (189usize, 8.0f32, false, 1usize, true),
+        (189, 1024.0, false, 1, true),
+        (189, 1024.0, true, 1, true),
+        (189, 1024.0, true, 8, false),
+        (189, 1024.0, true, 8, true),
+        (500, 1024.0, true, 8, true),
+    ] {
+        let mut m = MotionState::new();
+        let quadrado = indice_do_quadrado(&m.registry);
+        let g = &mut m.doc.graph;
+        // Os PONTOS: uma grelha apertada, como a da foto (discos a tocar-se).
+        let grelha = g.add_node("motion.grid");
+        #[expect(clippy::cast_precision_loss, reason = "uma contagem de cena")]
+        let cols = (n as f32).sqrt().ceil();
+        g.set_param(grelha, "rows", cols);
+        g.set_param(grelha, "cols", cols);
+        g.set_param(grelha, "gap_x", 0.17);
+        g.set_param(grelha, "gap_y", 0.17);
+        let forma = g.add_node("source.shape");
+        if let Some(q) = quadrado {
+            g.set_param(forma, ph2d_node_motion_shape::param::KIND, q);
+        }
+        g.set_param(forma, ph2d_node_motion_shape::param::SIZE, 0.09);
+        g.set_param(forma, ph2d_node_motion_shape::param::COLLIDE, 1.0);
+        let dup = g.add_node("motion.duplicator");
+        let saida = g.add_node("motion.output");
+        g.set_param(saida, ph2d_eval_motion::SINK_COLLIDE_PARAM, 1.0);
+        g.set_param(
+            saida,
+            ph2d_eval_motion::SINK_COLLIDE_ITERATIONS_PARAM,
+            varreduras,
+        );
+        for (a, ap, b, bp) in [
+            (forma, 0u16, dup, 0u16),
+            (grelha, 0, dup, 1),
+            (dup, 0, saida, 0),
+        ] {
+            g.connect(ph2d_nodegraph::graph::Edge {
+                from: (a, ap),
+                to: (b, bp),
+                delayed: false,
+            })
+            .expect("aresta");
+        }
+        // ⚠️ **A tomada do gizmo do colisor é o PRÓPRIO sink** (`collider_gizmo::taps_for`).
+        if com_gizmo {
+            m.pump.set_taps(&[forma, saida]);
+        }
+        let (uv, tam) = ([0.0, 0.0, 1.0, 1.0], [1.0, 1.0]);
+        // Um QUADRO = `tiques` cozimentos, e só o último é desenhado (a lei do `ticks_owed`).
+        let quadro = |m: &mut MotionState, t: &mut u64| {
+            for k in 0..tiques {
+                let ph = f64::from(u32::try_from(*t).unwrap_or(0)) / 60.0;
+                crate::motion_shape_gen::publish(m, ph);
+                m.pump.mark_dirty();
+                m.pump.set_separa_o_desenho(!so_o_ultimo || k + 1 == tiques);
+                assert!(
+                    m.pump
+                        .pump(&m.doc.graph, &m.registry, &[saida], *t, ph, uv, tam),
+                    "o quadro tem de cozinhar"
+                );
+                *t += 1;
+            }
+        };
+        let mut tique = 0u64;
+        for _ in 0..2 {
+            quadro(&mut m, &mut tique);
+        }
+        let mut melhor = f64::INFINITY;
+        for _ in 0..4 {
+            let t = Instant::now();
+            quadro(&mut m, &mut tique);
+            melhor = melhor.min(t.elapsed().as_secs_f64() * 1e3);
+        }
+        eprintln!(
+            "  {n:<9} │ {varreduras:<9.0} │ {:<8} │ {tiques:>2} tiq{} │ {melhor:>8.1} ms │ {:>8.0}% │ {:>7.1}   [{} vector]",
+            if com_gizmo { "ligado" } else { "—" },
+            if so_o_ultimo { ", 1 sep" } else { ", N sep" },
+            melhor / 16.67 * 100.0,
+            1000.0 / melhor.max(1e-9),
+            m.pump.vector_instances.len()
+        );
+    }
+    eprintln!(
+        "\n  load: {}\n",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .split_whitespace()
+            .next()
+            .unwrap_or("?")
+    );
+}

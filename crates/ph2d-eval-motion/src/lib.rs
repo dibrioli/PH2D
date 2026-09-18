@@ -132,6 +132,26 @@ pub struct MotionCookPump {
     /// inteiro por dentro, e registrar cada passo dele faria um wrap de loop gritar a volta
     /// toda de uma vez.
     tap_fires: Vec<(u64, NodeId, Stream)>,
+    /// ⭐⭐⭐ **Este cozimento vai ser DESENHADO?** (report do dono, 2026-09-18: *«189 objetos,
+    /// Sweeps 1024 = 3 FPS»*).
+    ///
+    /// ⚠️⚠️ **A shell cozinha UM QUADRO POR TIQUE EM DÍVIDA** (`ticks_owed`): um quadro lento
+    /// recupera vários tiques de simulação de uma vez, e **só o ÚLTIMO é desenhado** — os
+    /// anteriores enchem o `instances`/`vector_instances` e são logo sobrescritos.
+    ///
+    /// ⇒ o passe de separação, que é um **ACABAMENTO SOBRE O QUE SE DESENHA** e não uma lei de
+    /// simulação (não realimenta nada — doc 115 §3 W0), estava a correr `N` vezes para desenhar
+    /// **uma**. Com `1024` varreduras num quadro que recupera 11 tiques, isso é onze vezes o preço
+    /// da separação para um desenho só.
+    ///
+    /// ⚠️ Nasce `true`: quem não sabe se está a recuperar (todo chamador que cozinha um tique só)
+    /// continua a separar, exactamente como antes.
+    separa_o_desenho: bool,
+    /// Quantas vezes a separação de facto correu — o readout que torna a lei acima OBSERVÁVEL.
+    ///
+    /// ⚠️ **Sem ele a economia é invisível:** as duas rotas entregam o mesmo desenho (o tique
+    /// intermédio ia ser sobrescrito), logo nenhum gate de valor, de bits ou de pixel a vê.
+    separacoes: u64,
 }
 
 mod cook_target;
@@ -162,6 +182,8 @@ impl MotionCookPump {
             tap_streams: Vec::new(),
             taps: Vec::new(),
             tap_fires: Vec::new(),
+            separa_o_desenho: true,
+            separacoes: 0,
         }
     }
 
@@ -348,7 +370,14 @@ impl MotionCookPump {
                                 // posições diferentes. ⛔ E ele devolve `None` — sem clonar nada —
                                 // quando a corrente não declara colisor ou quando ninguém se mexeu,
                                 // que é o que mantém toda cena de hoje byte-idêntica.
-                                let separado = o_que_o_sink_desenha(graph, sink, cozido);
+                                // ⭐ Só o cozimento que vai ser DESENHADO paga o acabamento — ver
+                                // [`Self::separa_o_desenho`].
+                                let separado = if self.separa_o_desenho {
+                                    self.separacoes += 1;
+                                    o_que_o_sink_desenha(graph, sink, cozido)
+                                } else {
+                                    None
+                                };
                                 let stream = separado.as_ref().unwrap_or(cozido);
                                 // A tomada deste sink, se alguém a pediu — ver o `clear` acima.
                                 if self.taps.contains(&sink) {

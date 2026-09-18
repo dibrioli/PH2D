@@ -88,3 +88,37 @@ pub(super) static LAST_ACTIVE: std::sync::atomic::AtomicBool =
 pub fn forget_tool_transition() {
     LAST_ACTIVE.store(false, std::sync::atomic::Ordering::Relaxed);
 }
+
+#[cfg(test)]
+mod tests {
+    /// ⭐⭐⭐ **A SHELL MARCA SÓ O ÚLTIMO TIQUE COMO DESENHADO** — a fiação da lei do doc 115 §21
+    /// (report do dono: *«Boids 190 objetos com collide on, Sweeps 1024 = 3 FPS»*).
+    ///
+    /// ⚠️⚠️ **É um gate de TEXTO, e a razão é medida:** o laço vive no [`super::super::motion_bridge::dispatch`],
+    /// que pede um `HeroScreen`, um `ToolRegistry` e um `GpuContext` — ele não é alcançável de um
+    /// teste. ⇒ o que se pode afirmar aqui é que **a costura existe**, e a lei em si tem o gate
+    /// behavioural dela na bomba (`um_quadro_que_recupera_tiques_separa_uma_vez`).
+    ///
+    /// ⛔ *Um motor com a lei certa e a shell a não a ligar lê-se exactamente como um motor sem a
+    /// lei* — esta casa já o pagou três vezes (o `drive_topdown` do rebobinar, o `populate` dos
+    /// chips, o `hand_input_to_players`).
+    #[test]
+    fn o_quadro_marca_so_o_ultimo_tique_como_desenhado() {
+        const PONTE: &str = include_str!("motion_bridge.rs");
+        // O PISO DE POPULAÇÃO: sem o laço, o resto deste gate não afirma nada.
+        assert!(
+            PONTE.contains("for tick in tiques {"),
+            "o laco de recuperacao de tiques mudou de forma — este gate deixou de medir o produto"
+        );
+        assert!(
+            PONTE.contains("set_separa_o_desenho(tick == ultimo)"),
+            "a shell deixou de marcar SO' o ultimo tique como desenhado: o acabamento volta a ser \
+             pago em cada tique recuperado, e o desenho e' o mesmo"
+        );
+        // ⚠️ A metade NEGATIVA: marcar todos é exactamente o defeito que a wave curou.
+        assert!(
+            !PONTE.contains("set_separa_o_desenho(true)"),
+            "a shell marca TODO tique como desenhado — o defeito do report de 18/09"
+        );
+    }
+}

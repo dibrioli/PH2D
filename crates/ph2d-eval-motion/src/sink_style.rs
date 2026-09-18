@@ -6,6 +6,11 @@
 //! that is neither — *in what STYLE does this sink draw?* — and is the door both
 //! render routes ask.
 //!
+//! ⭐ E desde o doc 115 §16 ele responde a segunda metade da MESMA pergunta — *o que o sink
+//! DESENHA* (`o_que_o_sink_desenha`), que é a corrente já com o passe do fim aplicado. As duas
+//! moram juntas porque as duas se lêem dos params `collide` do sink, e porque o `lib.rs` estava
+//! no tecto de LOC: o corte é pela responsabilidade que já estava escrita neste cabeçalho.
+//!
 //! The reference is unanimous and it decided the shape: Niagara puts blend on the
 //! Sprite Renderer's material, Cavalry on the layer/shader, AE and Stardust on the
 //! layer. Blend belongs to the RENDERER, not to a particle — so it is a param of
@@ -164,6 +169,30 @@ pub fn sink_collide_sweeps(graph: &Graph, sink: NodeId) -> usize {
         .filter(|v| v.is_finite())
         .unwrap_or(SINK_COLLIDE_ITERATIONS_DEFAULT);
     autorado.round().clamp(1.0, SINK_COLLIDE_ITERATIONS_MAX) as usize
+}
+
+/// ⭐⭐⭐ **O QUE UM SINK DESENHA** — a corrente cozida com o passe do fim aplicado (doc 115 §16).
+///
+/// `None` quando nada há a separar (a corrente não declara colisor, o interruptor está desarmado,
+/// ou ninguém se mexeu) — e é isso que mantém toda cena de hoje **byte-idêntica**, sem clonar.
+///
+/// # ⛔⛔ Porque isto é uma PORTA e não duas linhas repetidas
+///
+/// A W5 pôs o passe **dentro** do braço que faz o lowering, e a TOMADA (`tap_streams`, de que o
+/// gizmo do colisor vive) cozinha por conta própria — logo ela continuou a guardar a corrente
+/// **CRUA**. O dono viu-o na primeira foto: *«a colisão está correta … mas o gizmo do collider se
+/// separa de sua shape e interpenetra»*. As formas estavam nas posições de DEPOIS e o contorno azul
+/// nas de ANTES.
+///
+/// ⚠️ *Duas respostas à mesma pergunta — «onde estão as peças?» — e o artista vê as duas ao mesmo
+/// tempo.* Com uma porta, um terceiro consumidor herda a resposta certa por construção.
+#[must_use]
+pub fn o_que_o_sink_desenha(
+    graph: &Graph,
+    sink: NodeId,
+    cozido: &ph2d_nodegraph::attr::Stream,
+) -> Option<ph2d_nodegraph::attr::Stream> {
+    ph2d_contact::passe::separa_o_que_se_desenha(cozido, sink_collide_sweeps(graph, sink))
 }
 
 #[cfg(test)]

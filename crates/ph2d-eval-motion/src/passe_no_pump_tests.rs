@@ -172,3 +172,116 @@ fn as_varreduras_sao_coagidas_na_porta() {
         );
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// doc 115 §16 — A TOMADA VÊ O QUE SE DESENHA (report do dono, foto de 2026-09-18)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Corre um quadro com uma TOMADA no sink e devolve `(o que se desenha, o que a tomada viu)`.
+fn desenhado_e_tomada(armado: Option<f32>) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
+    let mut g = Graph::new();
+    let sink = g.add_node(SRC_MAN.name);
+    if let Some(varreduras) = armado {
+        g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
+        g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, varreduras);
+    }
+    let mut pump = MotionCookPump::new();
+    pump.set_taps(&[sink]);
+    assert!(pump.pump(&g, &Ops, &[sink], 0, 0.0, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0]));
+    let desenho = pump.instances.iter().map(|i| i.world_pos).collect();
+    let tomada = pump
+        .tap_streams()
+        .iter()
+        .find(|(n, _)| *n == sink)
+        .map(|(_, s)| match s.get("P") {
+            Some(Column::Vec2(v)) => v.clone(),
+            _ => panic!("a tomada tem de trazer P"),
+        })
+        .expect("a tomada do sink existe");
+    (desenho, tomada)
+}
+
+/// ⭐⭐⭐ **A TOMADA NUM SINK VÊ O QUE O SINK DESENHA — o report do dono, com foto.**
+///
+/// Ele escreveu: *«A colisão está correta e não se observa interpenetração entre as formas. Mas o
+/// gizmo do collider não está correto e se separa de sua shape e interpenetra.»*
+///
+/// ⛔⛔ **E era exactamente isso:** o passe reescreve o `P` no fim do cozimento, e a tomada — de que
+/// o gizmo do colisor vive — cozinhava por conta própria e guardava a corrente **CRUA**. As formas
+/// saíam nas posições de DEPOIS e o contorno azul nas de ANTES, sobrepostas umas às outras.
+///
+/// ⚠️ **A régua é a IGUALDADE entre as duas**, e não *«a tomada está separada»*: o que o artista vê
+/// é a DISCORDÂNCIA, e um gate que medisse só uma delas passaria no dia em que as duas ficassem
+/// erradas juntas.
+#[test]
+fn a_tomada_num_sink_ve_o_que_o_sink_desenha() {
+    let (desenho, tomada) = desenhado_e_tomada(Some(32.0));
+    assert_eq!(
+        tomada, desenho,
+        "o gizmo le' a TOMADA e o renderer le' o DESENHO — se elas discordarem, o contorno do \
+         colisor aparece separado da forma (o report do dono de 18/09)"
+    );
+    // ⭐ CONTROLO: a fixtura tem de conter o fenómeno. Sem isto, duas listas iguais e AMBAS por
+    // separar passariam — que é precisamente o estado de antes desta cura.
+    let vao = (desenho[1][0] - desenho[0][0]).abs();
+    assert!(
+        (vao - 1.0).abs() < 1e-3,
+        "controlo: o quadro medido tem de estar SEPARADO, senao a igualdade nao diz nada: {desenho:?}"
+    );
+}
+
+/// ⚠️ **E DESARMADO as duas continuam a concordar, no estado NÃO separado** — a metade que impede
+/// a cura de virar *«a tomada separa sempre»*.
+#[test]
+fn desarmado_a_tomada_e_o_desenho_concordam_no_estado_cru() {
+    let (desenho, tomada) = desenhado_e_tomada(None);
+    assert_eq!(tomada, desenho);
+    assert_eq!(
+        desenho,
+        vec![[0.0, 0.0], [0.5, 0.0]],
+        "desarmado, as duas leem a corrente do cozimento AO BIT"
+    );
+}
+
+/// ⛔⛔⛔ **UMA TOMADA QUE NÃO É SINK NUNCA É SEPARADA — e a armadilha tem nome.**
+///
+/// O interruptor do sink chama-se `"collide"`… e a **`source.shape` tem um param com o MESMO
+/// nome** (`ph2d_node_motion_shape::param::COLLIDE`, o botão que faz a forma declarar a caixa
+/// dela). O gizmo do colisor toma os DOIS nós — a forma e o sink —, logo uma cura que perguntasse
+/// o param à cega separaria também a corrente da **geometria da própria forma**.
+///
+/// ⇒ o discriminador é *«este nó é um dos SINKS deste quadro?»*, e não o param.
+///
+/// ⚠️⚠️ **Este gate nasceu de uma MUTAÇÃO SOBREVIVENTE:** apagar a cerca dos sinks (separar toda
+/// tomada) passava a suíte inteira, porque a única tomada da fixtura ao lado **é** o sink. *Uma
+/// cerca que a fixtura não exercita é uma cerca por afirmar.*
+#[test]
+fn uma_tomada_que_nao_e_sink_nunca_e_separada() {
+    let mut g = Graph::new();
+    // O nó TAPADO: armado como se fosse a `source.shape` com o `Collide` dela ligado.
+    let forma = g.add_node(SRC_MAN.name);
+    g.set_param(forma, SINK_COLLIDE_PARAM, 1.0);
+    g.set_param(forma, SINK_COLLIDE_ITERATIONS_PARAM, 32.0);
+    // E o SINK, que é outro nó.
+    let sink = g.add_node(SRC_MAN.name);
+
+    let mut pump = MotionCookPump::new();
+    pump.set_taps(&[forma]);
+    assert!(pump.pump(&g, &Ops, &[sink], 0, 0.0, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0]));
+
+    let p = pump
+        .tap_streams()
+        .iter()
+        .find(|(n, _)| *n == forma)
+        .map(|(_, s)| match s.get("P") {
+            Some(Column::Vec2(v)) => v.clone(),
+            _ => panic!("a tomada tem de trazer P"),
+        })
+        .expect("a tomada da forma existe");
+    assert_eq!(
+        p,
+        vec![[0.0, 0.0], [0.5, 0.0]],
+        "a tomada de um no' que NAO e' sink tem de trazer a corrente crua, mesmo com um param \
+         `collide` armado — senao a geometria da propria forma sai separada"
+    );
+}

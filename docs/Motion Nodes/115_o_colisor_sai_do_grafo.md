@@ -1016,3 +1016,85 @@ side-metadata no registo, e quem lhe ganha um consumidor declara-o no mesmo comm
 ⛔ **O preço, nomeado:** a tabela é ESTÁTICA e o consumo é CONDICIONAL (só com o interruptor
 ligado) ⇒ o aviso cala-se também para um sink **desarmado**. É o mesmo desenho que o
 `motion.collide` já ship, e a alternativa — acusar toda cena com campo antes do sink — é pior.
+
+---
+
+## §16 — ⛔⛔ O REPORT DO DONO: *«o gizmo do collider não está correto e se separa de sua shape e interpenetra»*
+
+> *«A colisão está correta e não se observa interpenetração entre as formas. Mas veja que o gzimo
+> do collider não está correto e se separa de sua shape e interpenetra»* — com foto.
+
+**As duas metades do report são a mesma frase lida duas vezes:** o barro está no sítio certo e a
+**moldura** que o desenha está no sítio de ANTES. E é literalmente isso — a moldura mostra o quadro
+que o passe ainda não separou.
+
+### §16.1 — A causa: o quadro tinha DUAS saídas e só uma passava pelo acabamento
+
+O `separa_o_que_se_desenha` (§13) é o fim do cook de um sink, e ele estava ligado a **um** consumidor:
+
+| quem lê a corrente do sink | o que recebia | quem desenha com isso |
+|---|---|---|
+| o *lowering* (`cook_target_into`, braço `Sinks`) | a corrente **SEPARADA** | as formas na tela |
+| o laço das **TOMADAS** (`tap_streams`) | a corrente **CRUA** | o **gizmo do colisor**, o retrato do cartão, o warp |
+
+⇒ o artista via as formas separadas e as molduras nas posições de antes da separação, o que na tela
+lê-se exactamente como *«o gizmo separa-se da shape e interpenetra»*.
+
+⚠️ **Nenhum gate desta linha podia ver isto:** os `15` gates do §13 medem a CORRENTE que o sink
+entrega, e a tomada é um **segundo** caminho a partir do mesmo `Value` — *dois consumidores da mesma
+coisa, e o acabamento estava escrito na rota de UM deles.*
+
+### §16.2 — A cura é uma PORTA, e ela tem dois chamadores
+
+```rust
+pub fn o_que_o_sink_desenha(graph, sink, cozido) -> Option<Stream>
+```
+
+Ela vive no [`sink_style`](../../crates/ph2d-eval-motion/src/sink_style.rs), ao lado do
+`sink_collide_sweeps` — as duas lêem-se dos MESMOS params do sink, e o `lib.rs` estava a `715`
+contra o tecto de `700` (⇒ **corte por responsabilidade**, `691`, nunca uma entrada de isenção).
+O *lowering* chama-a; o laço das tomadas chama-a. *Uma lei escrita em dois sítios ainda não é uma
+lei — só uma PORTA é* (a lei da casa, paga aqui pela n-ésima vez).
+
+### §16.3 — ⛔⛔ A armadilha que decide a IMPLEMENTAÇÃO: o param `"collide"` tem DOIS donos
+
+O interruptor do sink chama-se `"collide"`… e a **`source.shape` tem um param com o MESMO nome**
+(`ph2d_node_motion_shape::param::COLLIDE`, o botão que faz a forma declarar a caixa dela — §12).
+
+E o gizmo do colisor **toma os dois nós**: a forma (para saber a geometria) e o sink (para saber o
+resultado). ⇒ *uma cura que perguntasse o param à cega separaria também a corrente da própria
+GEOMETRIA da forma*, que é um defeito **pior** que o do report — a moldura passaria a desenhar uma
+forma que não existe em sítio nenhum.
+
+⇒ o discriminador é **«este nó é um dos SINKS deste quadro?»** (`CookTarget::Sinks { sinks, .. }`),
+nunca o param.
+
+### §16.4 — ⚠️ A cerca dos sinks nasceu de uma MUTAÇÃO SOBREVIVENTE
+
+A prova de mutação tinha duas entradas e a segunda passou:
+
+| mutação | 1.ª corrida | depois do gate |
+|---|---|---|
+| **M1** — a tomada volta a guardar a corrente CRUA (o defeito do report) | **SANGRA** | SANGRA |
+| **M2** — a tomada separa **TODO** nó (apaga a cerca dos sinks) | ⛔ **SOBREVIVEU** | **SANGRA** |
+
+⛔ **O motivo é estrutural e vale para toda fixtura de tomada:** a única tomada da fixtura do M1 **É**
+o sink, logo apagar a cerca não muda nada ali. *Uma cerca que a fixtura não exercita é uma cerca por
+afirmar.*
+
+⇒ `uma_tomada_que_nao_e_sink_nunca_e_separada`: um nó armado com `collide = 1` e
+`collide_iterations = 32`, **tapado sem ser sink**, tem de devolver a corrente crua ao bit.
+
+### §16.5 — ⚠️ ALCANCE: quem mais lê uma tomada de sink
+
+Medido: o `warp_gizmo_doc` também toma o sink (`fit_downstream(&q, &sv)` ajusta um afim entre o nó
+e o sink). Ele passa a ver a corrente separada — e **o doc dele já declara por escrito** que cai
+graciosamente na identidade quando a cadeia não é afim, que é o caso do passe (a separação não é um
+afim). *Fica NOMEADO aqui em vez de silencioso.*
+
+### §16.6 — O que este §16 NÃO muda
+
+- **Nenhuma cena existente muda um bit.** O `separa_o_que_se_desenha` devolve `None` quando ninguém
+  declara colisor **ou** quando nada se moveu (§13.4), e o `unwrap_or_else(|| cozido.clone())` do
+  laço das tomadas devolve exactamente o que ele guardava antes.
+- **A lei da separação não se mexeu** — o que mudou foi **quem a atravessa**.

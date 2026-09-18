@@ -55,8 +55,8 @@ mod sink_style;
 pub use sink_style::{
     SINK_BLEND_PARAM, SINK_COLLIDE_ITERATIONS_DEFAULT, SINK_COLLIDE_ITERATIONS_MAX,
     SINK_COLLIDE_ITERATIONS_PARAM, SINK_COLLIDE_PARAM, SINK_FILTER_PARAM, SINK_PIVOT_LIMIT,
-    SINK_PIVOT_X_PARAM, SINK_PIVOT_Y_PARAM, SINK_SORT_PARAM, sink_blend_tag, sink_collide_sweeps,
-    sink_style,
+    SINK_PIVOT_X_PARAM, SINK_PIVOT_Y_PARAM, SINK_SORT_PARAM, o_que_o_sink_desenha, sink_blend_tag,
+    sink_collide_sweeps, sink_style,
 };
 
 mod lower;
@@ -338,10 +338,7 @@ impl MotionCookPump {
                                 // posições diferentes. ⛔ E ele devolve `None` — sem clonar nada —
                                 // quando a corrente não declara colisor ou quando ninguém se mexeu,
                                 // que é o que mantém toda cena de hoje byte-idêntica.
-                                let separado = ph2d_contact::passe::separa_o_que_se_desenha(
-                                    cozido,
-                                    sink_collide_sweeps(graph, sink),
-                                );
+                                let separado = o_que_o_sink_desenha(graph, sink, cozido);
                                 let stream = separado.as_ref().unwrap_or(cozido);
                                 // The SAME cooked stream feeds both sides of the
                                 // `geometry_id` convention (ADR-0154): textured-quad
@@ -425,6 +422,19 @@ impl MotionCookPump {
         // Cozinhar aqui bate no MEMO de tudo o que a tomada compartilha com o alvo (o mesmo
         // argumento que o braço `Boundaries` acima explica): o `Fingerprint` carrega o tique,
         // e o tique só anda no `advance_tick_scoped`, que a marcha chama uma vez.
+        // ⛔⛔⛔ **E uma tomada NUM SINK tem de ver o que o sink DESENHA, não o que ele cozinhou**
+        // (doc 115 §16, report do dono com foto): o passe do fim reescreve o `P`, e uma tomada que
+        // guarde a corrente CRUA entrega ao gizmo do colisor as posições de ANTES da separação.
+        // *As formas saíam certas e o contorno azul ficava onde elas estavam* — duas respostas à
+        // mesma pergunta, e o artista vê as duas ao mesmo tempo.
+        //
+        // ⚠️ **Só para quem é SINK neste quadro**, e o discriminador não pode ser o param: a
+        // `source.shape` declara um `collide` com o MESMO nome do interruptor do sink (o botão
+        // dela), logo perguntar o param à cega separaria a corrente da própria forma.
+        let sinks_do_quadro: &[NodeId] = match *target {
+            CookTarget::Sinks { sinks, .. } => sinks,
+            CookTarget::Boundaries(_) => &[],
+        };
         self.tap_streams.clear();
         for i in 0..self.taps.len() {
             let node = self.taps[i];
@@ -438,7 +448,13 @@ impl MotionCookPump {
                 .cook_scoped_fanned(graph, ops, node, playhead, scopes, &self.fans)
                 && let Some(v) = outputs.first()
             {
-                self.tap_streams.push((node, v.as_stream().clone()));
+                let cozido = v.as_stream();
+                let desenhado = sinks_do_quadro
+                    .contains(&node)
+                    .then(|| o_que_o_sink_desenha(graph, node, cozido))
+                    .flatten();
+                self.tap_streams
+                    .push((node, desenhado.unwrap_or_else(|| cozido.clone())));
             }
         }
     }

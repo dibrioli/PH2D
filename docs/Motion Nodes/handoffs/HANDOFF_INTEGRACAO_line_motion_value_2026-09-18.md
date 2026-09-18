@@ -158,11 +158,17 @@ formatador que parte a linha faz o padrão casar zero, e um `grep` largo casa **
 > GPU, com e sem colisão) — *mas o caminho rápido e a colisão são hoje **mutuamente exclusivos***.
 > Fechar isto é um kernel, com espec própria.
 >
-> ⏳ E o **DESENHO** de N formas vectoriais **continua por medir do lado do renderer** — mas a §22
-> já o CERCA por diferença: o dono mede `10 ms` de quadro a 500 objectos e o Motion é `4,4` deles.
-> ⚠️ **Cada objecto carrega DOIS caminhos** (a forma e o anel do gizmo do colisor), e a partição de
-> LOD que os vira ladrilho de GPU só arma acima de `LOD_COUNT = 16 000`. *É o lever maior que
-> sobra, e é do render/Vector.*
+> ⭐⭐⭐ **E a §23 MEDIU o desenho, e derrubou a razão que a §22 dava:** preparar mil formas custa
+> **`0,04 ms`** (o batch memoiza a tesselação por `geometry_id` ⇒ mil cópias são UMA tesselação e
+> mil poses). ⇒ o que sobra dos `18 ms` é a **RASTERIZAÇÃO**, e ali a grandeza **não é a contagem de
+> formas, é a ÁREA que elas cobrem**: os discos do report têm `~200` unidades de diâmetro e mil
+> deles pintam `~31 M` de pixels por quadro. ⚠️ É isso que explica *«retirar o contorno azul não
+> melhorou em nada»* — o anel é um traço FINO, o disco é uma ÁREA.
+> ⛔⛔ **E a partição de LOD é CEGA a isso: a cerca dela é uma CONTAGEM**
+> (`LOD_COUNT = 16 000` cópias), logo mil discos gigantes passam por baixo dela a pintar muito mais
+> do que dezasseis mil formas pequenas. *Um tecto que não nomeia o recurso que o governa é um
+> palpite à espera de um smoke.* **É o lever maior que sobra, é do render/Vector, e agora tem
+> endereço e grandeza.**
 >
 > ⏳ **NOVO (§22.2):** o `fork/join` **por varredura** segura o paralelo em `1,5×` onde devia render
 > dezenas — medido pelo CPU contra a parede (`5×` o CPU da série, `4`–`5` núcleos). A cura é uma

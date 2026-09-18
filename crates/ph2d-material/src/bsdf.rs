@@ -354,6 +354,7 @@ pub(crate) fn oren_nayar_reflection(
     n: V3,
     v: V3,
     l: V3,
+    energy_compensation: bool,
 ) -> Bsdf {
     let dark = Bsdf {
         response: [0.0; 3],
@@ -366,6 +367,19 @@ pub(crate) fn oren_nayar_reflection(
     let ndv = dot(n, v).clamp(EPS, 1.0);
     let ndl = dot(n, l).clamp(EPS, 1.0);
     let ldv = dot(l, v).clamp(EPS, 1.0);
+    let diffuse = if energy_compensation {
+        oren_nayar_compensated(ndv, ndl, ldv, roughness, color)
+    } else {
+        scale3(color, oren_nayar_plain(ndv, ndl, ldv, roughness))
+    };
+    Bsdf {
+        response: scale3(diffuse, weight * ndl * PI_INV),
+        ..dark
+    }
+}
+
+/// `mx_oren_nayar_compensated_diffuse` — a metade com compensação de energia (Fujii).
+fn oren_nayar_compensated(ndv: f32, ndl: f32, ldv: f32, roughness: f32, color: V3) -> V3 {
     let s = ldv - ndl * ndv;
     let stinv = if s > 0.0 { s / ndl.max(ndv) } else { s };
     let a = 1.0 / (1.0 + FUJII_CONSTANT_1 * roughness);
@@ -377,8 +391,34 @@ pub(crate) fn oren_nayar_reflection(
             * (1.0 - fujii_dir_albedo(ndl, roughness)).max(EPS)
             / (1.0 - avg).max(EPS),
     );
-    Bsdf {
-        response: scale3(add3(single, multi), weight * ndl * PI_INV),
-        ..dark
-    }
+    add3(single, multi)
+}
+
+/// `mx_oren_nayar_diffuse` — o Oren-Nayar CLÁSSICO, **sem** compensação de energia.
+///
+/// ⚠️ **Ele existe por um valor de omissão:** o `energy_compensation` da nodedef
+/// `ND_oren_nayar_diffuse_bsdf` vale **`false`** (`pbrlib/pbrlib_defs.mtlx`), e a única closure do
+/// `open_pbr_surface` que o deixa por escrever é a **reflexão da parede fina da subsuperfície** —
+/// a base escreve `true`. *Passar-lhe a compensada mudaria o número que o oráculo mede.*
+///
+/// ⛔ E o `stinv` dele é **`0` quando `s ≤ 0`**, onde a compensada guarda o `s` negativo: são duas
+/// leis publicadas diferentes e não uma simplificação.
+fn oren_nayar_plain(ndv: f32, ndl: f32, ldv: f32, roughness: f32) -> f32 {
+    let s = ldv - ndl * ndv;
+    let stinv = if s > 0.0 { s / ndl.max(ndv) } else { 0.0 };
+    let sigma2 = roughness * roughness;
+    let a = 1.0 - 0.5 * (sigma2 / (sigma2 + 0.33));
+    let b = 0.45 * sigma2 / (sigma2 + 0.09);
+    a + b * stinv
+}
+
+/// `mx_oren_nayar_diffuse_dir_albedo` — o ajuste racional publicado.
+///
+/// ⚠️ É o ramo **analítico**: o outro (`DIRECTIONAL_ALBEDO_METHOD == 2`) é uma soma de Monte Carlo
+/// de 64 amostras por avaliação, e o de omissão do gerador é este.
+pub(crate) fn oren_nayar_plain_dir_albedo(ndv: f32, roughness: f32) -> f32 {
+    let r2 = roughness * roughness;
+    let rx = 1.0 + (-0.4297) * roughness + (-0.7632) * ndv * roughness + 1.4385 * r2;
+    let ry = 1.0 + (-0.6076) * roughness + (-0.4993) * ndv * roughness + 2.0315 * r2;
+    (rx / ry).clamp(0.0, 1.0)
 }

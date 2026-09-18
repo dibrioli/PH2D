@@ -54,6 +54,22 @@ MATERIALS = [
     {"base_weight": 0.5, "emission_luminance": 2.0, "emission_color": (0.2, 0.6, 1.0),
      "coat_weight": 0.3},
     {"base_metalness": 1.0, "base_color": (0.95, 0.95, 0.95), "specular_roughness": 0.02},
+    # ⭐ A SUBSUPERFÍCIE (docs/Render3d/10) — os DOIS caminhos, que são fenómenos diferentes.
+    # Parede fina: a folha. O que a acende é a luz de TRÁS (a `L 3`).
+    {"subsurface_weight": 1.0, "geometry_thin_walled": True,
+     "subsurface_color": (0.35, 0.75, 0.2), "base_color": (0.2, 0.5, 0.1),
+     "specular_roughness": 0.5},
+    # Parede fina com a fase deslocada para a FRENTE: mais transmissão, menos reflexão.
+    {"subsurface_weight": 0.8, "geometry_thin_walled": True,
+     "subsurface_color": (0.9, 0.7, 0.6), "subsurface_scatter_anisotropy": 0.6,
+     "base_diffuse_roughness": 0.4},
+    # Maciça: o jade. O caminho livre médio curto contra o raio da esfera.
+    {"subsurface_weight": 1.0, "subsurface_color": (0.3, 0.8, 0.5),
+     "subsurface_radius": 0.5, "specular_roughness": 0.15},
+    # Maciça com o vermelho a viajar MUITO mais fundo — é o que dá a orelha acesa contra o sol.
+    {"subsurface_weight": 0.7, "subsurface_color": (0.95, 0.85, 0.75),
+     "subsurface_radius": 2.0, "subsurface_radius_scale": (1.0, 0.4, 0.15),
+     "subsurface_scatter_anisotropy": -0.4},
 ]
 
 
@@ -66,6 +82,11 @@ LIGHTS = [
     ((0.0, 0.0, -1.0), (1.0, 1.0, 1.0), 1.0),
     (unit((-0.5, -0.6, -0.62)), (1.0, 0.9, 0.8), 2.5),
     (unit((1.0, 0.05, -0.2)), (1.0, 1.0, 1.0), 1.5),
+    # ⭐⭐⭐ A luz de TRÁS — ela VIAJA para +z, logo vem de detrás da esfera, contra a câmera.
+    # ⚠️ Sem ela a fixture não contém o fenómeno que a parede fina existe para produzir: nas três
+    # luzes acima a transmissão lê `max(−N·L, 0) = 0` em quase todo pixel visível, e um corpus sem o
+    # fenómeno não afirma nada sobre a lei que o produz.
+    ((0.0, 0.0, 1.0), (1.0, 0.95, 0.85), 2.0),
 ]
 
 sp = mx.FileSearchPath("/usr/share/materialx")
@@ -74,9 +95,22 @@ mx.loadLibraries(mx.getDefaultDataLibraryFolders(), sp, lib)
 
 
 def value(v):
+    # ⚠️ O `bool` PRIMEIRO: em Python ele é subtipo de `int`, e `float(True)` poria um `1.0` num
+    # input que a nodedef declara `boolean` (`geometry_thin_walled`).
+    if isinstance(v, bool):
+        return v
     if isinstance(v, tuple):
         return mx.Color3(*v)
     return float(v)
+
+
+def literal(v):
+    """Como o valor se escreve na linha `M` — o `true`/`false` é o da linha `D` da nodedef."""
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, tuple):
+        return ",".join(f"{c:g}" for c in v)
+    return f"{v:g}"
 
 
 def material(kind, params, _alive=[]):  # noqa: B006 — a lista É o ponto, ver abaixo
@@ -185,10 +219,7 @@ nodedef = lib.getNodeDef("ND_open_pbr_surface_surfaceshader")
 print("D " + " ".join(f"{i.getName()}={i.getValueString().replace(' ', '')}"
                       for i in nodedef.getInputs() if i.getValueString()))
 for i, m in enumerate(MATERIALS):
-    fields = " ".join(
-        f"{k}=" + (",".join(f"{c:g}" for c in v) if isinstance(v, tuple) else f"{v:g}")
-        for k, v in m.items()
-    )
+    fields = " ".join(f"{k}={literal(v)}" for k, v in m.items())
     print(f"M {i} {fields}".rstrip())
 for i, (d, c, k) in enumerate(LIGHTS):
     print(f"L {i} " + " ".join(f"{t:.9e}" for t in d) + "  " + " ".join(f"{t:g}" for t in c) + f"  {k:g}")

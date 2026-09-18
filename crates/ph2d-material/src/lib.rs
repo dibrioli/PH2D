@@ -47,6 +47,7 @@
 
 mod bsdf;
 mod indirect;
+mod subsurface;
 
 use bsdf::{Bsdf, V3};
 
@@ -72,6 +73,21 @@ pub struct OpenPbr {
     pub coat_darkening: f32,
     pub emission_luminance: f32,
     pub emission_color: Rgb,
+    /// ⭐ **Quanto da base é subsuperfície em vez de difusa** — as duas não somam, elas MISTURAM-SE
+    /// (`mix` no grafo), logo `1` é subsuperfície pura. Ver [`crate::subsurface`].
+    pub subsurface_weight: f32,
+    /// A cor observada do meio que espalha.
+    pub subsurface_color: Rgb,
+    /// O comprimento do caminho livre médio, em unidades do MUNDO.
+    pub subsurface_radius: f32,
+    /// O multiplicador por canal do [`OpenPbr::subsurface_radius`] — é ele que faz o vermelho
+    /// viajar mais fundo, que é o que dá a orelha acesa contra o sol.
+    pub subsurface_radius_scale: Rgb,
+    /// A fase: `0` espalha por igual, positivo para a frente, negativo para trás.
+    pub subsurface_scatter_anisotropy: f32,
+    /// ⭐⭐⭐ **A peça é uma PAREDE FINA?** — é este booleano que escolhe entre os dois caminhos da
+    /// [`crate::subsurface`], e a escolha muda o fenómeno e não o grau.
+    pub geometry_thin_walled: bool,
 }
 
 impl Default for OpenPbr {
@@ -92,6 +108,12 @@ impl Default for OpenPbr {
             coat_darkening: 1.0,
             emission_luminance: 0.0,
             emission_color: [1.0; 3],
+            subsurface_weight: 0.0,
+            subsurface_color: [0.8; 3],
+            subsurface_radius: 1.0,
+            subsurface_radius_scale: [1.0, 0.5, 0.25],
+            subsurface_scatter_anisotropy: 0.0,
+            geometry_thin_walled: false,
         }
     }
 }
@@ -122,6 +144,28 @@ pub struct Surface {
     coat_f0: f32,
     modulated_base_darkening: Rgb,
     coat_attenuation: Rgb,
+    /// `subsurface_radius_scaled` do grafo — a escala por canal vezes o raio.
+    subsurface_mfp: Rgb,
+    /// `subsurface_color_nonnegative`.
+    subsurface_colour: Rgb,
+    /// `subsurface_thin_walled_brdf_factor` — ⚠️ sobre a cor **CRUA**, como o grafo a liga.
+    thin_brdf_factor: Rgb,
+    /// `subsurface_thin_walled_btdf_factor`.
+    thin_btdf_factor: Rgb,
+    /// ⭐⭐⭐ **A curvatura do ponto que se está a sombrear**, `1/raio`, em unidades do MUNDO.
+    ///
+    /// # ⚠️ Porque ela vive aqui, que é a struct do que é «por MATERIAL»
+    ///
+    /// Ela **não** é uma constante do material — é do PONTO. Vive aqui porque é exactamente onde o
+    /// shader de referência a calcula: **antes** do laço das luzes, uma vez por pixel
+    /// (`mx_subsurface_scattering_approx` deriva-a de `fwidth` no fragmento). ⇒ [`Surface`] é *o
+    /// material NESTE ponto*, e quem sombreia um pixel chama [`Surface::at_curvature`] uma vez.
+    ///
+    /// ⚠️ **Zero é o valor de quem não a tem**, e ele é seguro por construção: o piso
+    /// `max(curvature, 0.01)` do GLSL transforma-o num raio de `100` unidades de mundo — uma
+    /// superfície praticamente plana, que é a leitura certa para *«não sei»*. ⛔ E com
+    /// `subsurface_weight = 0` (a omissão) ninguém lê este campo.
+    curvature: f32,
 }
 
 impl OpenPbr {
@@ -164,6 +208,17 @@ impl OpenPbr {
                 m.coat_weight * m.coat_darkening,
             ),
             coat_attenuation: bsdf::mix3([1.0; 3], m.coat_color, m.coat_weight),
+            subsurface_mfp: bsdf::scale3(m.subsurface_radius_scale, m.subsurface_radius),
+            subsurface_colour: m.subsurface_color.map(|x| x.max(0.0)),
+            thin_brdf_factor: bsdf::scale3(
+                m.subsurface_color,
+                1.0 - m.subsurface_scatter_anisotropy,
+            ),
+            thin_btdf_factor: bsdf::scale3(
+                m.subsurface_color,
+                1.0 + m.subsurface_scatter_anisotropy,
+            ),
+            curvature: 0.0,
         }
     }
 }
@@ -241,6 +296,20 @@ impl Surface {
         .prepare()
     }
 
+    /// ⭐⭐⭐ **O mesmo material, NESTE ponto da peça** — a curvatura que a subsuperfície maciça lê.
+    ///
+    /// `curvature` é `1/raio` em unidades do MUNDO (para uma esfera de raio `R`, é `1/R`). Ver o doc
+    /// do campo [`Surface::curvature`] para porque ela mora numa struct que se diz «por material», e
+    /// o do [`crate::subsurface::thick`] para porque ela **não** pode vir de derivadas de ecrã nesta
+    /// casa.
+    ///
+    /// ⚠️ Com `subsurface_weight = 0` ou com a peça declarada parede fina, ninguém a lê — e chamar
+    /// isto é então byte-idêntico a não chamar.
+    #[must_use]
+    pub fn at_curvature(self, curvature: f32) -> Self {
+        Self { curvature, ..self }
+    }
+
     /// A radiância que o **céu** devolve para o observador.
     #[must_use]
     pub fn indirect(&self, n: Rgb, v: Rgb, env: &dyn Environment) -> Rgb {
@@ -274,6 +343,64 @@ impl Surface {
         let fresnel = bsdf::mix3([1.0 - self.coat_f0; 3], [0.0; 3], x);
         let coated = bsdf::mul3(bsdf::mul3(uncoated, m.coat_color), fresnel);
         bsdf::mix3(uncoated, coated, m.coat_weight)
+    }
+
+    /// ⭐⭐⭐ **A subsuperfície escolhida** — o `selected_subsurface` do grafo.
+    ///
+    /// # ⭐ A guarda do zero, e porque ela OBSERVA a álgebra em vez de a mudar
+    ///
+    /// Com `subsurface_weight == 0` o `mix` a jusante devolve a difusa **ao bit**
+    /// (`bg + (fg − bg)·0 = bg`), logo tudo o que esta função produzisse era multiplicado por zero.
+    /// ⇒ sair cedo é byte-idêntico, e poupa o laço de `32` termos do Burley em **todo** material que
+    /// não pediu subsuperfície — que é o de omissão. ⚠️ É a mesma guarda que a [`Surface::emission`]
+    /// já declara, pela mesma razão medida: aquela custava `4,6 %` do relógio a produzir `[0,0,0]`.
+    ///
+    /// # ⚠️ E o SELECTOR é um ramo, não um `mix` — o que isso compra, e o que o torna legítimo
+    ///
+    /// O grafo escreve `mix(fg = parede fina, bg = maciça, mix = float(thin_walled))` e **avalia as
+    /// duas**. Com o selector a valer exactamente `0` ou `1`, o `mix` devolve um dos lados ao bit,
+    /// logo o ramo dá o mesmo número — e poupa o Burley em toda peça de parede fina.
+    ///
+    /// ⛔ **Isto só é verdade porque nenhum dos lados pode ser `NaN` ou `Inf`:** `x + (NaN − x)·0`
+    /// é `NaN`, não `x`. É o `acos` cortado da [`crate::subsurface`] que o garante, e há gate a
+    /// medir o ramo contra o `mix` sobre uma grelha.
+    fn subsurface(&self, n: V3, v: V3, c: &Closure<'_>) -> Bsdf {
+        let m = &self.m;
+        if m.subsurface_weight == 0.0 {
+            return Bsdf {
+                response: [0.0; 3],
+                throughput: [0.0; 3],
+            };
+        }
+        if m.geometry_thin_walled {
+            let reflection = bsdf::mul_color(
+                diffuse(
+                    1.0,
+                    self.subsurface_colour,
+                    m.base_diffuse_roughness,
+                    n,
+                    v,
+                    c,
+                    false,
+                ),
+                self.thin_brdf_factor,
+            );
+            let transmission = bsdf::mul_color(
+                subsurface::translucent(1.0, self.subsurface_colour, n, c),
+                self.thin_btdf_factor,
+            );
+            subsurface::mix_bsdf(reflection, transmission, 0.5)
+        } else {
+            subsurface::thick(
+                1.0,
+                self.subsurface_colour,
+                self.subsurface_mfp,
+                self.curvature,
+                n,
+                v,
+                c,
+            )
+        }
     }
 
     /// **A composição do grafo gerado**, closure a closure, na ordem em que o shader a escreve.
@@ -312,11 +439,6 @@ impl Surface {
         );
         // A transmissão com peso zero: resposta zero, throughput um.
         let transmission = bsdf::mul_float(Bsdf::NONE, 0.0);
-        // A subsuperfície com peso zero: resposta zero, e a soma com a difusa fecha o throughput.
-        let no_subsurface = Bsdf {
-            response: [0.0; 3],
-            throughput: [0.0; 3],
-        };
         let base_colour = m.base_color.map(|x| x.max(0.0));
         let diffuse = diffuse(
             m.base_weight,
@@ -325,8 +447,9 @@ impl Surface {
             n,
             v,
             c,
+            true,
         );
-        let opaque = bsdf::add(bsdf::mul_float(no_subsurface, 0.0), diffuse);
+        let opaque = subsurface::mix_bsdf(self.subsurface(n, v, c), diffuse, m.subsurface_weight);
         let substrate = bsdf::add(transmission, bsdf::mul_float(opaque, 1.0));
         let dielectric_base = bsdf::layer(dielectric_reflection, substrate);
 
@@ -381,10 +504,25 @@ fn schlick(
     }
 }
 
-fn diffuse(weight: f32, color: V3, roughness: f32, n: V3, v: V3, c: &Closure<'_>) -> Bsdf {
+/// O Oren-Nayar, com a compensação de energia a ser um ARGUMENTO — ver
+/// [`bsdf::oren_nayar_plain`]: o grafo liga-a na base e deixa-a por escrever na parede fina da
+/// subsuperfície, onde a nodedef lhe dá `false`.
+fn diffuse(
+    weight: f32,
+    color: V3,
+    roughness: f32,
+    n: V3,
+    v: V3,
+    c: &Closure<'_>,
+    energy_compensation: bool,
+) -> Bsdf {
     match c {
-        Closure::Reflection(l) => bsdf::oren_nayar_reflection(weight, color, roughness, n, v, *l),
-        Closure::Indirect(env) => indirect::oren_nayar(weight, color, roughness, n, v, *env),
+        Closure::Reflection(l) => {
+            bsdf::oren_nayar_reflection(weight, color, roughness, n, v, *l, energy_compensation)
+        }
+        Closure::Indirect(env) => {
+            indirect::oren_nayar(weight, color, roughness, n, v, *env, energy_compensation)
+        }
     }
 }
 

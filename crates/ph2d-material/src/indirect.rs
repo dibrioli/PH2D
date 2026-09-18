@@ -102,6 +102,7 @@ pub(crate) fn oren_nayar(
     n: V3,
     v: V3,
     env: &dyn Environment,
+    energy_compensation: bool,
 ) -> Bsdf {
     let dark = Bsdf {
         response: [0.0; 3],
@@ -112,9 +113,15 @@ pub(crate) fn oren_nayar(
     }
     let n = forward_facing(n, v);
     let ndv = dot(n, v).clamp(EPS, 1.0);
-    let dir_albedo = bsdf::fujii_dir_albedo(ndv, roughness);
-    let avg = bsdf::fujii_avg_albedo(roughness);
-    let albedo = mix3(bsdf::multi_scatter_colour(color, avg), color, dir_albedo);
+    let albedo = if energy_compensation {
+        let dir_albedo = bsdf::fujii_dir_albedo(ndv, roughness);
+        let avg = bsdf::fujii_avg_albedo(roughness);
+        mix3(bsdf::multi_scatter_colour(color, avg), color, dir_albedo)
+    } else {
+        // ⚠️ Ver [`bsdf::oren_nayar_plain_dir_albedo`]: a omissão da nodedef é SEM compensação, e a
+        // parede fina da subsuperfície é a única closure do OpenPBR que a deixa por escrever.
+        scale3(color, bsdf::oren_nayar_plain_dir_albedo(ndv, roughness))
+    };
     Bsdf {
         response: scale3(mul3(env.irradiance(n), albedo), weight),
         ..dark

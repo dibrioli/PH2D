@@ -7463,6 +7463,7 @@ dependencies = [
  "ph2d-expr",
  "ph2d-expr-parse",
  "ph2d-i18n",
+ "ph2d-label-census",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

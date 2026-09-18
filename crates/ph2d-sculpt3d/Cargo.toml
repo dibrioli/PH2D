@@ -19,6 +19,7 @@ ph2d-cloth = { path = "../ph2d-cloth" }
 # corpus do oráculo. Ela não sabe o que é uma `Mesh` nem um pincel; o adaptador
 # vive no `stroke_pose`.
 ph2d-boundary = { path = "../ph2d-boundary" }
+ph2d-rake = { path = "../ph2d-rake" }
 ph2d-pose = { path = "../ph2d-pose" }
 # rayon: EXCEÇÃO sancionada pelo ADR-0159, restrita ao map de vértices do
 # `SculptStroke::dab`. ⚠️ A cerca do ADR-0109 vale: **todo sítio novo exige ADR

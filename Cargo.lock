@@ -8551,6 +8551,7 @@ dependencies = [
  "ph2d-mesh",
  "ph2d-painter-brush",
  "ph2d-pose",
+ "ph2d-rake",
  "rayon",
 ]
 

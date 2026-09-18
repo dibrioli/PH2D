@@ -469,10 +469,11 @@ mod ciclo;
 #[path = "stroke_cloth_num.rs"]
 pub mod stroke_cloth_num;
 
-/// ⭐ **A ponte do pincel de CONTORNO** — ver [`stroke_boundary`]. Terceiro
-/// irmão do [`stroke_cloth`] e do [`stroke_pose`] no papel (os três desviam
-/// antes do `dab_core`) e com razão própria: a simetria dele são **passagens
-/// que refazem as fases A–E**, e não uma região espelhada.
+/// A MEDIÇÃO do `G-2` sobre a nossa saída — a sonda que responde à pergunta que
+/// a espec do pente deixa em aberto.
+#[cfg(test)]
+#[path = "rake_medida_tests.rs"]
+mod rake_medida_tests;
 #[path = "stroke_boundary.rs"]
 mod stroke_boundary;
 #[path = "stroke_cloth.rs"]
@@ -492,6 +493,14 @@ mod stroke_cloth_ref;
 /// porque a lei dela **já resolve os oito octantes numa passagem só**.
 #[path = "stroke_pose.rs"]
 mod stroke_pose;
+/// ⭐ **A ponte do pincel de CONTORNO** — ver [`stroke_boundary`]. Terceiro
+/// irmão do [`stroke_cloth`] e do [`stroke_pose`] no papel (os três desviam
+/// antes do `dab_core`) e com razão própria: a simetria dele são **passagens
+/// que refazem as fases A–E**, e não uma região espelhada.
+/// O PENTE DE TOPOLOGIA conduzido pelo traço — a fiação da `ph2d-rake`. O corte
+/// é o SUJEITO: a crate-folha tem a LEI, aqui fica quem a chama e o que se grava.
+#[path = "stroke_rake.rs"]
+mod stroke_rake;
 pub use stroke_cloth_filter::ClothFilterStep;
 pub use stroke_cloth_ref::cloth_repica;
 

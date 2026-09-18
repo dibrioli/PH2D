@@ -118,6 +118,36 @@ impl SculptStroke {
         // um dab que não move nada de herdar a janela do anterior.
         self.call_moved.clear();
         self.call_refreshed.clear();
+
+        // ⭐⭐⭐ **O PENTE DE TOPOLOGIA — o PRIMEIRO ACTO do carimbo**, e o sítio
+        // é MEDIDO: a espec §14.5 manda-o correr **dentro** do laço por-carimbo,
+        // sobre a malha que o refino acabou de produzir. Compor as duas metades
+        // em série falha a barra em todas as granularidades que o instrumento do
+        // oráculo alcança, e grosseira sai com o **sinal trocado**.
+        //
+        // ⚠️ **Ele vem ANTES das duas saídas antecipadas de propósito.** A
+        // densidade não tem lei por-vértice e sai três linhas abaixo; o tecido, a
+        // pose e o contorno resolvem a própria região e saem a seguir — e os
+        // quatro **honram** o pente (espec §6, onde só cinco verbos o ignoram).
+        // *Pô-lo depois de qualquer uma delas era escrevê-lo para metade do
+        // catálogo em silêncio.*
+        //
+        // ⚠️ **E ele espelha como o gesto:** o centro e a direcção vão a cada
+        // cópia, porque a espec §7 mede que o lado espelhado também é penteado.
+        if brush.pente > 0.0 && brush.verb.honra_o_pente() {
+            for s in signs.iter().take(n) {
+                let pentados =
+                    self.pentear_a_pegada(mesh, brush, mirror(dab.center, s), mirror(dab.path, s));
+                // ⚠️ **Só uma cópia que TRABALHOU contribui** — a mesma cerca do
+                // laço do verbo, e pela mesma razão: a `region` fica com a lista
+                // da cópia anterior quando esta não chega a refrescar.
+                if pentados > 0 {
+                    self.call_moved.extend_from_slice(&self.moved);
+                    self.call_refreshed
+                        .extend_from_slice(self.region.refreshed());
+                }
+            }
+        }
         // ⛔⛔ **A DENSIDADE SAI ANTES DE TUDO, e não é uma optimização.**
         //
         // Ela não tem lei por-vértice nenhuma ([`Verb::sem_lei_por_vertice`]):

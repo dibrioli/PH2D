@@ -54,7 +54,10 @@ pub(crate) fn aparece(
 /// dorme** (`panel.sculpt3d.pente_dormente`). *Um doc que declara a lei que o
 /// código não implementa lê-se como auditado.*
 pub(crate) fn pente_do_traco(dyntopo_armado: bool, pente: f32) -> f32 {
-    if dyntopo_armado { pente } else { 0.0 }
+    // ⚠️ A lei mudou-se para a crate do PINCEL, onde a bancada de paridade lhe
+    // chega — aqui fica só a delegação, para os chamadores e o gate desta
+    // crate não mudarem de endereço.
+    ph2d_sculpt3d::pente_do_traco(dyntopo_armado, pente)
 }
 
 impl Sculpt3dScene {

@@ -31,6 +31,23 @@
 //! a última* — cai por construção: no primeiro carimbo o `path` é nulo e a lei
 //! devolve `0`.
 
+/// **Quanto pente este traço leva de facto.**
+///
+/// ⛔⛔ Com a topologia dinâmica DESARMADA o pente é **inerte**, e isso não é
+/// uma cerca defensiva: é lei, e o oráculo confirmou-a depois de ela ser
+/// escrita por raciocínio de domínio — a célula `porta/c_nodyn` do corpus
+/// mede o alvo com o interruptor desligado e o pente dele **não move um
+/// vértice** (`max |p100 − p000| = 0,000e0`).
+///
+/// ⚠️ **Ela vive AQUI e não na crate da app**, e a razão é medida: enquanto
+/// viveu lá, a bancada de paridade não lhe chegava e media um caminho que o
+/// produto **não consegue percorrer** — lia `4,507e-2` de desvio naquela
+/// célula sobre um produto que estaria exacto. *Uma sonda que mede um
+/// sucedâneo mede outro programa.* Hoje a app **delega** aqui.
+pub fn pente_do_traco(dyntopo_armado: bool, pente: f32) -> f32 {
+    if dyntopo_armado { pente } else { 0.0 }
+}
+
 use ph2d_mesh::Mesh;
 
 use crate::{Brush, SculptStroke};

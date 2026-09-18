@@ -175,7 +175,14 @@ pub fn pincel(c: &Celula) -> Brush {
         strength: c.num("forca"),
         hardness: c.num("dureza"),
         falloff,
-        pente: c.num("pente"),
+        // ⭐⭐ Pela PORTA DO PRODUTO, nunca o campo cru: com a topologia
+        // dinâmica desarmada o pente é inerte, e o arnês que escrevesse o
+        // campo à mão mediria um caminho que o produto não consegue percorrer
+        // (`porta/c_nodyn` lia `4,507e-2` contra um produto exacto).
+        pente: ph2d_sculpt3d::pente_do_traco(
+            c.chave("topologia_dinamica") == "armada",
+            c.num("pente"),
+        ),
         accumulate: c.sim("acumular"),
         // ⚠️⚠️ **O MODO de referência é o do CORPUS.** Sem esta linha o `Draw`
         // corre com a lei do `s-mode` e o controlo desvia `8,33×` — os dois

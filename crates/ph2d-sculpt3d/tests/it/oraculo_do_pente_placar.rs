@@ -120,7 +120,7 @@ const ABERTO: &[(&str, f32)] = &[
     ("mecanismo/y_volta_p000", 2.954e-2),
     ("mecanismo/y_volta_p100", 6.252e-2),
     ("porta/c_nodyn_p000", 2.234e-2),
-    ("porta/c_nodyn_p100", 4.507e-2),
+    ("porta/c_nodyn_p100", 2.234e-2),
     ("verbos/r_collapse_p000", 2.984e-2),
     ("verbos/r_collapse_p100", 6.197e-2),
     ("verbos/t_manual_p000", 2.984e-2),
@@ -362,5 +362,42 @@ fn com_o_pente_desligado_a_lei_bate_a_dele_a_uma_passagem() {
         d_on > d * 50.0,
         "a assinatura do achado é o CONTRASTE entre as duas colunas: \
          {d_on:.3e} com o pente contra {d:.3e} sem ele"
+    );
+}
+
+/// ⭐⭐ **A consequência OBSERVÁVEL da lei do interruptor, e ela é mais forte
+/// que um número:** com a topologia dinâmica desarmada o pente é inerte, logo
+/// as duas células do par `c_nodyn` — uma com o pente a `0`, outra a `1` — têm
+/// de dar o **MESMO** bloco de posições.
+///
+/// ⛔ O oráculo diz o mesmo pelo lado dele (`max |p100 − p000| = 0,000e0`), e
+/// é essa concordância que torna isto um porte e não uma cerca inventada.
+///
+/// ⚠️ **Enquanto a lei viveu na crate da app, este gate era inexprimível
+/// aqui** e a bancada media um caminho que o produto não percorre.
+#[test]
+fn com_o_interruptor_desarmado_o_par_da_o_mesmo_bloco() {
+    let off = ler("porta", "c_nodyn_p000");
+    let on = ler("porta", "c_nodyn_p100");
+    assert_eq!(off.chave("topologia_dinamica"), "desarmada");
+    assert_eq!(
+        on.num("pente"),
+        1.0,
+        "a outra metade do par pede pente CHEIO"
+    );
+
+    let (a, b) = (correr(&off), correr(&on));
+    assert!(
+        movidos(&off, &a) > 100,
+        "o controlo tem de MOVER barro, senão o par é igual por ser vazio"
+    );
+    assert_eq!(
+        a, b,
+        "o pente não pode mover nada com o interruptor desarmado"
+    );
+    assert_eq!(
+        maior_distancia(&off.saida, &on.saida),
+        0.0,
+        "e o ORÁCULO diz o mesmo — se isto reprovar, o porte é que está errado"
     );
 }

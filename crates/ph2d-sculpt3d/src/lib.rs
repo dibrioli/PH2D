@@ -45,6 +45,8 @@ pub mod auto_smooth;
 /// **A SILHUETA DE UM DAB** — ver [`footprint`].
 mod footprint;
 pub use footprint::{Blade, Footprint, Strip, Tectos, rounded_box};
+/// A lei de quanto pente um traço leva. Ver [`stroke_rake::pente_do_traco`].
+pub use stroke::stroke_rake::pente_do_traco;
 
 /// Os controlos próprios do pincel de CONTORNO — ver [`boundary_controlos`].
 pub mod boundary_controlos;

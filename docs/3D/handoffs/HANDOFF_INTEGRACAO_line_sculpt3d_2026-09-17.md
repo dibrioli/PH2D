@@ -1705,9 +1705,9 @@ alvo é **inerte**, que é exactamente o que o `space::pente_do_traco` já fazia
 *Uma cura que o oráculo depois confirma é a melhor prova de que o raciocínio
 era do DOMÍNIO e não do programa.*
 
-⚠️ **E o arnês NÃO passa por essa porta** (ele escreve `Brush::pente` directo),
-logo o `c_nodyn` acusa `4,507e-2` do nosso lado. Dívida **nomeada**: o arnês
-tem de consultar `pente_do_traco`, e aí aquela célula fecha por construção.
+✅ **E a dívida que essa confirmação expôs foi PAGA no mesmo dia** (§72.10):
+o arnês escrevia `Brush::pente` directo e media um caminho que o produto não
+consegue percorrer.
 
 ### §72.6 Dívida do ARNÊS, nomeada
 
@@ -1766,3 +1766,36 @@ nele; ele é o condutor do traço e não um instrumento. Voltou para o irmão, e
 cabeçalho traz a refutação escrita. *O que impede aquela agulha de se
 satisfazer a si própria continua a ser ela ser montada por `format!`, e não o
 sítio onde mora.*
+
+### §72.10 A lei do interruptor mudou de CASA, e a bancada passou a medir o produto
+
+⛔⛔ **A bancada media um caminho que o produto NÃO consegue percorrer.** O
+`pente_do_traco` vivia na crate da **app** e o arnês escrevia `Brush::pente`
+directo ⇒ na célula `porta/c_nodyn` (a única do corpus com a topologia
+dinâmica desarmada, `2` de `207`) ele lia **`4,507e-2`** sobre um produto que
+está **exacto**. *Uma sonda que mede um sucedâneo mede outro programa* — a
+armadilha que o §28 desta linha já tinha pago com o tecto de custo.
+
+⇒ a lei mudou-se para [`stroke_rake::pente_do_traco`], na crate do **pincel**,
+que é onde a bancada lhe chega; a app **delega**, e os chamadores e o gate dela
+não mudaram de endereço. Medido: `c_nodyn_p100` **`4,507e-2 → 2,234e-2`**,
+exactamente o valor do `p000` — que é o que a lei diz.
+
+⭐⭐ **E o gate novo prende a consequência OBSERVÁVEL, que é mais forte que o
+número:** as duas metades do par (`pente = 0` e `pente = 1`) têm de dar o
+**MESMO bloco de posições**, com o controlo de que elas MOVEM barro (senão são
+iguais por serem vazias) **e** com a asserção de que o oráculo diz o mesmo
+(`max |p100 − p000| = 0,000e0`). *É essa concordância que torna isto um porte
+e não uma cerca inventada* — e enquanto a lei viveu na app, este gate era
+**inexprimível** do lado da bancada.
+
+⚠️ **A catraca disparou na metade «melhorou muito»**, que é para o que ela
+existe: a tabela foi actualizada com o número novo.
+
+⚠️⚠️ **E o arnês de mutação mentiu pela QUARTA forma conhecida:** o `cargo`
+escreve **`running 1 test`, no singular**, e o meu controlo de filtro exigia
+`tests` ⇒ ele leu `0` e acusou-se a si mesmo (*«ARNÊS QUEBRADO»*). Falhou do
+lado **seguro** — ao contrário das três formas já registadas (o filtro que
+casa zero e imprime `ok`, a mutação que não compila, o `| tail` que destrói o
+código de saída), esta não se lê como «sobreviveu». **Mutação `8 de 8`** com a
+correcção.

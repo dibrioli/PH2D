@@ -112,3 +112,14 @@ o compilador · e uma agulha que seja **texto NOSSO** (a expressão da asserçã
 uma ferramenta. ⚠️ E some-se a isto o controlo que esta casa já tinha: **contar quantos testes de
 facto correram**, porque um filtro que casa zero imprime `ok`. Ver
 [[feedback_a_mutation_proof_needs_a_control_on_its_own_filter]].
+
+## ⛔ `running 1 test` é SINGULAR — o controlo do filtro tem de contar os dois (2026-09-18)
+O arnês de mutação da `line/sculpt3d` ganhou um **controlo sobre o próprio filtro** (reprova se ele
+casar menos de N testes), depois de um filtro vazio imprimir `ok` e se ler como *sobreviveu*. Mas o
+extractor era `grep -oE 'running [0-9]+ tests'` e **o cargo escreve `running 1 test`, no singular**
+⇒ com uma corrida de um teste só ele lê `0` e acusa *«ARNÊS QUEBRADO»* sobre uma mutação que
+**sangrava**. **Why:** é a 4.ª forma conhecida de um arnês de mutação mentir, ao lado do filtro que
+casa zero, da mutação que não compila e do `| tail` que destrói o exit code. **How to apply:** o
+padrão é `running ([0-9]+) tests?`; e ⭐ esta falha é do lado **SEGURO** — ela acusa-se a si mesma em
+vez de se ler como sobrevivência, que é como todo controlo de arnês devia falhar. Ver
+[[reference_topic_measurement_discipline]].

@@ -500,7 +500,7 @@ mod stroke_pose;
 /// O PENTE DE TOPOLOGIA conduzido pelo traço — a fiação da `ph2d-rake`. O corte
 /// é o SUJEITO: a crate-folha tem a LEI, aqui fica quem a chama e o que se grava.
 #[path = "stroke_rake.rs"]
-mod stroke_rake;
+pub(crate) mod stroke_rake;
 pub use stroke_cloth_filter::ClothFilterStep;
 pub use stroke_cloth_ref::cloth_repica;
 

@@ -138,7 +138,7 @@ pub fn paint_bottom_hud(
             StatusSegment::new(tr("chrome.hud.bodies")),
             StatusSegment::new(tr("chrome.hud.mb")),
             StatusSegment::new("100%"),
-            StatusSegment::new("default-scene").tone(SegmentTone::Muted),
+            StatusSegment::new(tr("chrome.hud.scene_name")).tone(SegmentTone::Muted),
         ],
     );
     let pref_w = bar.preferred_width().min(layout.viewport.w - 40.0); // LITERAL-PX-OK: HUD viewport margin (chrome-specific)

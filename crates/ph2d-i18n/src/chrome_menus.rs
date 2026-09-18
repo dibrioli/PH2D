@@ -195,6 +195,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.palette.search" => "Search",
         "chrome.palette.n_items" => "{n} items",
         // ph2d-migrar-texto:end
+        // ⭐ **O menu EDIT** — veio do `match` do pai em 2026-09-17 (tecto de LOC), e o
+        // assunto é o desta tabela: a barra de menus.
+        // Image-edit undo affordance.
+        "edit.undo.label" => "Undo",
+        "edit.undo.image_edit.toast_hint" => "Undo: Cmd+Z",
+        "edit.undo.image_edit.toast_done" => "Undone",
+        "edit.undo.image_edit.toast_nothing_to_undo" => "Nothing to undo",
         _ => return None,
     })
 }

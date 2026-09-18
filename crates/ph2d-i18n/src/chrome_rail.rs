@@ -76,6 +76,50 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.rail.sub.redo" => "REDO",
         "chrome.tool_bar.more" => "More",
         // ph2d-migrar-texto:end
+        // ⭐ **Os CHIPS das ferramentas de imagem** — vieram do `match` do pai em
+        // 2026-09-17, quando ele passou o tecto de LOC. ⚠️ O cabeçalho deste ficheiro já os
+        // nomeava por escrito (*«e' o mesmo contrato dos rótulos abreviados das ferramentas
+        // de imagem»*): eles são a fila horizontal desta barra, logo o assunto sempre foi daqui.
+        // Image Tools — action row pills. Labels abreviados (Enio
+        // 2026-05-25): cabem na coluna do chip (44 px) sem clip; o
+        // tooltip mantém o nome completo + descrição.
+        "tool.trim_transparency.label" => "TRIM",
+        "tool.trim_transparency.tooltip" => "Trim Transparency",
+        "tool.make_square.label" => "SQUAR",
+        "tool.make_square.tooltip" => "Make Square",
+        "tool.bgremoval.label" => "BGRMV",
+        "tool.bgremoval.tooltip" => "Background Removal · 3",
+        "tool.real_size.label" => "SIZE",
+        "tool.real_size.tooltip" => "Real Size · reset scale to 1:1",
+        "tool.padding.label" => "PAD",
+        "tool.padding.tooltip" => "Padding · expand or crop canvas edges",
+        "tool.color_equalization.label" => "CEQ",
+        "tool.color_equalization.tooltip" => {
+            "Color Equalization · CLAHE + brightness/contrast/saturation + auto-WB"
+        }
+        "tool.equalize_sizes.label" => "EQSZ",
+        "tool.equalize_sizes.tooltip" => {
+            "Equalize Sizes · normalize selection to Max / Fixed / Grid target"
+        }
+        "tool.rasterize.label" => "RASTR",
+        "tool.rasterize.tooltip" => {
+            "Rasterize · bake scale + rotation into pixels (reset Transform)"
+        }
+        "tool.upscale.label" => "UPSC",
+        "tool.upscale.tooltip" => "Upscale · resize image up 1x..16x (Lanczos3 / Nearest / xBR)",
+        "tool.painter.label" => "PNTR",
+        "tool.painter.tooltip" => {
+            "Painter · sucessor do Procreate (brush engine GPU, history vetorial, MCP)"
+        }
+        // Toast strings — Trim / Make Square outcomes. Wiring goes
+        // through `tr()` so the shell drainer doesn't hardcode the
+        // English copies (HR-15). Format strings ("Trimmed → {w} × {h} px")
+        // stay at call-site for now; the Fluent migration moves them
+        // here as `format(key, args)`.
+        "tool.trim_transparency.toast.nothing" => "Nothing to trim",
+        "tool.trim_transparency.toast.unavailable" => "Trim unavailable for this sprite",
+        "tool.make_square.toast.already_square" => "Sprite is already square",
+        "tool.make_square.toast.unavailable" => "Make Square unavailable for this sprite",
         _ => return None,
     })
 }

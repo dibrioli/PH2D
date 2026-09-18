@@ -52,6 +52,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.hud.edit" => "EDIT",
         "chrome.hud.bodies" => "\u{2013} bodies",
         "chrome.hud.mb" => "\u{2013} MB",
+        // ⭐⭐ **A ÚNICA palavra inglesa que sobrevivia no ecrã de arranque**, achada pela PRIMEIRA
+        // foto no idioma de teste (2026-09-17) — e ⛔ **a régua lexical não a podia ver**: a
+        // `is_language` recusa um token nu que não seja Capitalizado nem GRITADO, para não acusar
+        // identificadores, e `default-scene` lê `false` nela. *Os trinta censos do HR-15 são cegos
+        // a um rótulo em minúsculas, por construção.*
+        // ⏳ Ela é um MARCADOR DE LUGAR e não um leitor: o HUD não sabe o nome da cena (o vizinho
+        //    `100%` é o mesmo caso, e não tem letras). Ligá-la ao ficheiro do projecto é obra de
+        //    produto — o que esta linha faz é pô-la a falar pela tabela como tudo o resto.
+        "chrome.hud.scene_name" => "default-scene",
         "chrome.fill.threshold" => "Threshold",
         "chrome.fill.cancel" => "Cancel",
         "chrome.fill.done" => "Done",

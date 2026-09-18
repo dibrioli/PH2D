@@ -9,5 +9,11 @@ authors.workspace = true
 
 [lib]
 
+# A REGUA REGISTADA do HR-15, so' para os gates: e' ela quem sabe extrair as chaves
+# declaradas de uma tabela. Escrever um segundo extractor aqui seria a segunda resposta a'
+# mesma pergunta, e a que diverge. Ela tem ZERO dependencias.
+[dev-dependencies]
+ph2d-label-census = { path = "../ph2d-label-census" }
+
 [lints]
 workspace = true

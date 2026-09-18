@@ -61,6 +61,8 @@ mod flip;
 mod grid_snap;
 /// As strings dos cinco painéis das ferramentas de imagem.
 mod image_tools;
+/// ⭐ **A JANELA do Input Map** — irmã por ASSUNTO, cortada do pai pelo tecto de LOC em 2026-09-17.
+mod input_map;
 /// As strings dos painéis do Motion (grafo, params) e dos editores ricos partilhados.
 mod motion_panels;
 /// As strings da SHELL (avisos, diálogos, nomes por omissão).
@@ -72,13 +74,6 @@ mod vector;
 mod vector_engine;
 
 mod chrome;
-/// Look up a string by Fluent-style key. Missing keys round-trip the
-/// key itself so missing entries are visible in the UI (debugging
-/// aid) rather than silently rendering as empty.
-///
-/// Returns `&'static str` — current implementation is a compile-time
-/// table. The Fluent migration will widen this to `String` (formatted
-/// with arguments) at that point.
 /// As palavras do catálogo de componentes — o 1.º MOTOR a falar pela tabela.
 mod component_catalog;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
@@ -108,81 +103,50 @@ mod tags;
 /// `topdown_edits` declara e o Inspector pinta. Tabela irmã pela lei do assunto (ver [`tags`]).
 mod topdown;
 
+/// ⭐⭐ **A substituição de MARCADORES** — `tr_with`, a lei que lê um modelo.
+pub mod formato;
+/// ⭐⭐⭐ **QUAL IDIOMA ESTÁ A FALAR** — o estado que esta crate não teve durante nove fatias.
+pub mod idioma;
+/// ⭐⭐⭐ **A lei do IDIOMA DE TESTE** — o que deforma cada palavra que sai desta tabela.
+pub mod pseudo;
+
+pub use formato::{tr_with, tr_with_em};
+pub use idioma::{Idioma, idioma};
+
+/// A palavra que uma chave diz, **no idioma desta corrida**.
+///
+/// Uma chave desconhecida volta CRUA (*missing-key passthrough*), para a entrada que falta se ver
+/// no ecrã em vez de pintar vazio — e é sobre isso que meio repo pergunta *«esta chave existe?»*
+/// com `tr(k) != k` (ver [`TextKey::key`]).
+///
+/// ⭐⭐⭐ **O idioma sai de [`idioma()`]** (`PH2D_LANG=teste`), e essa é a única maneira que este
+/// repo tem de perguntar se uma palavra do ecrã veio mesmo daqui: os **30** censos do HR-15 lêem o
+/// FONTE de uma crate, e um rótulo esquecido no pintor pinta-se igual ao que veio da tabela.
+/// ⚠️ **O caminho de omissão é byte a byte o de sempre** — o [`Idioma::Ingles`] devolve a tabela
+/// crua, sem uma comparação a mais no laço de desenho além do `match`.
+#[must_use]
 pub fn tr(key: &str) -> &'static str {
+    tr_em(idioma(), key)
+}
+
+/// O mesmo, com o idioma DADO — a porta pela qual um gate mede o idioma de teste sem mexer no
+/// ambiente do processo.
+///
+/// ⚠️ **Um teste que escrevesse `PH2D_LANG` mudaria o processo INTEIRO**, e a suíte deste repo corre
+/// em paralelo: seria mais um membro da família de flakes de fan-out, e dos caros — um gate a medir
+/// inglês enquanto o vizinho pediu o idioma de teste.
+#[must_use]
+pub fn tr_em(idioma: Idioma, key: &str) -> &'static str {
+    let ingles = tr_ingles(key);
+    match idioma {
+        Idioma::Ingles => ingles,
+        Idioma::Teste => pseudo::traduz(key, ingles),
+    }
+}
+
+/// A tabela, tal como está escrita.
+fn tr_ingles(key: &str) -> &'static str {
     match key {
-        // Image Tools — action row pills. Labels abreviados (Enio
-        // 2026-05-25): cabem na coluna do chip (44 px) sem clip; o
-        // tooltip mantém o nome completo + descrição.
-        // ⭐ **A JANELA DO INPUT MAP** (plano 30 §0.2) — a janela flutuante que abre sobre o canvas.
-        // ⚠️ UI em INGLÊS (feedback do Enio), e via i18n mesmo sendo uma língua só: uma string
-        // literal no pintor é a que ninguém encontra no dia em que a segunda língua entrar.
-        "input_map.title" => "Input Map",
-        "input_map.add" => "Add",
-        "input_map.new_name.placeholder" => "New action name",
-        // ⛔ As duas frases-guia abaixo NOMEAVAM controlos que nao existem — auditoria 2026-08-24.
-        // «above» quando o campo esta em baixo, e «Bind» quando o botao virou um `+` na W6. Um
-        // indicador ERRADO e pior que a ausencia dele: o artista procura, nao encontra, e conclui
-        // que a feature esta partida.
-        // ⚠️ A chave `input_map.listen` (o rótulo «Bind…») MORREU com o botão dela na W6, e sai
-        // daqui: uma string órfã é onde alguém escreve, um dia, uma frase sobre um controlo que já
-        // não existe — que é exactamente o defeito que esta linha acabou de pagar.
-        // ⛔ E a de 24/08 (2ª volta) foi a MESMA doença, na 3ª frase: «at the bottom» deixou de ser
-        // verdade quando o campo subiu para o topo, que é onde a referência (Godot) o tem.
-        // ⚠️ A `listening` é uma FRASE COMPLETA porque é lida em DOIS sítios — a face vazia da
-        // acção e a faixa do título, onde o nome dela vai à frente. Um fragmento («· press a
-        // key…») só lê bem num deles.
-        "input_map.listening" => "Press a key or a gamepad button. Esc cancels.",
-        "input_map.listening.title" => "Listening for",
-        "input_map.empty" => "No actions yet. Type a name at the top and press Add.",
-        "input_map.binding.key" => "Key",
-        "input_map.binding.pad" => "Pad",
-        "input_map.binding.axis" => "Axis",
-        // ⭐ Os DOIS números que substituem a `deadzone` de duplo propósito do Godot.
-        "input_map.no_binding" => "No key yet. Press + on this row, then press a key.",
-        "input_map.dead_zone" => "Dead",
-        "input_map.press_point" => "Press",
-        "tool.trim_transparency.label" => "TRIM",
-        "tool.trim_transparency.tooltip" => "Trim Transparency",
-        "tool.make_square.label" => "SQUAR",
-        "tool.make_square.tooltip" => "Make Square",
-        "tool.bgremoval.label" => "BGRMV",
-        "tool.bgremoval.tooltip" => "Background Removal · 3",
-        "tool.real_size.label" => "SIZE",
-        "tool.real_size.tooltip" => "Real Size · reset scale to 1:1",
-        "tool.padding.label" => "PAD",
-        "tool.padding.tooltip" => "Padding · expand or crop canvas edges",
-        "tool.color_equalization.label" => "CEQ",
-        "tool.color_equalization.tooltip" => {
-            "Color Equalization · CLAHE + brightness/contrast/saturation + auto-WB"
-        }
-        "tool.equalize_sizes.label" => "EQSZ",
-        "tool.equalize_sizes.tooltip" => {
-            "Equalize Sizes · normalize selection to Max / Fixed / Grid target"
-        }
-        "tool.rasterize.label" => "RASTR",
-        "tool.rasterize.tooltip" => {
-            "Rasterize · bake scale + rotation into pixels (reset Transform)"
-        }
-        "tool.upscale.label" => "UPSC",
-        "tool.upscale.tooltip" => "Upscale · resize image up 1x..16x (Lanczos3 / Nearest / xBR)",
-        "tool.painter.label" => "PNTR",
-        "tool.painter.tooltip" => {
-            "Painter · sucessor do Procreate (brush engine GPU, history vetorial, MCP)"
-        }
-        // Image-edit undo affordance.
-        "edit.undo.label" => "Undo",
-        "edit.undo.image_edit.toast_hint" => "Undo: Cmd+Z",
-        "edit.undo.image_edit.toast_done" => "Undone",
-        "edit.undo.image_edit.toast_nothing_to_undo" => "Nothing to undo",
-        // Toast strings — Trim / Make Square outcomes. Wiring goes
-        // through `tr()` so the shell drainer doesn't hardcode the
-        // English copies (HR-15). Format strings ("Trimmed → {w} × {h} px")
-        // stay at call-site for now; the Fluent migration moves them
-        // here as `format(key, args)`.
-        "tool.trim_transparency.toast.nothing" => "Nothing to trim",
-        "tool.trim_transparency.toast.unavailable" => "Trim unavailable for this sprite",
-        "tool.make_square.toast.already_square" => "Sprite is already square",
-        "tool.make_square.toast.unavailable" => "Make Square unavailable for this sprite",
         // Timeline panel (W2.E9) — dope-sheet + graph editor + transport chrome.
         // English by canon (feedback_app_ui_english_only); routed through tr() so
         // the strings live in one table for the eventual Fluent migration.
@@ -565,6 +529,7 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| node_params::tr(k))
             .or_else(|| node_options::tr(k))
             .or_else(|| chrome::tr(k))
+            .or_else(|| input_map::tr(k))
             .or_else(|| painter_layers::tr(k))
             .or_else(|| inspector::tr(k))
             .or_else(|| inspector_game::tr(k))
@@ -592,48 +557,6 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| app_vec::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
-}
-
-/// **Uma frase com PEÇAS vindas do código** — `tr_with("panel.hierarchy.count", &[("n", "12")])`
-/// sobre `"{n} entities"` dá `"12 entities"`.
-///
-/// ⭐ **A frase inteira mora na tabela, com os marcadores nomeados**, e o código só entrega os
-/// valores. É a forma que o Fluent tem (`{ $n } entities`) e a única que sobrevive a uma segunda
-/// língua: colar `format!("{n} {}", tr("…entities"))` fixa a ORDEM das palavras no código, e há
-/// línguas em que o número vem depois do nome.
-///
-/// ⚠️ Um marcador sem valor fica ESCRITO (`{n}`), de propósito — como a chave desconhecida do [`tr`],
-/// o erro tem de se ver na tela.
-///
-/// ⛔ **Uma passagem só sobre o MODELO** (2026-09-16): substituir marcador a marcador deixava um
-/// VALOR com cara de marcador ser reescrito pelo seguinte — um prefab chamado `{follows}`. Os valores
-/// são texto do artista e saem verbatim (gate `a_value_never_becomes_a_marker`).
-pub fn tr_with(key: &str, args: &[(&str, &dyn std::fmt::Display)]) -> String {
-    let template = tr(key);
-    let mut out = String::with_capacity(template.len());
-    let mut rest = template;
-    while let Some(open) = rest.find('{') {
-        out.push_str(&rest[..open]);
-        let after = &rest[open + 1..];
-        let named = after.find('}').and_then(|close| {
-            let name = &after[..close];
-            args.iter()
-                .find(|(n, _)| *n == name)
-                .map(|(_, v)| (close, *v))
-        });
-        match named {
-            Some((close, value)) => {
-                out.push_str(&value.to_string());
-                rest = &after[close + 1..];
-            }
-            None => {
-                out.push('{');
-                rest = after;
-            }
-        }
-    }
-    out.push_str(rest);
-    out
 }
 
 /// ⭐⭐ **Uma CHAVE guardada numa tabela `const`** — o rótulo de um segmentado, a linha de um card.

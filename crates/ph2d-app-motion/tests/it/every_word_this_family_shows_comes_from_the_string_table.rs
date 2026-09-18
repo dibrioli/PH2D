@@ -27,6 +27,17 @@ const FORA: &[Isento] = &[
          atrás de `PH2D_MOTION_ROUTE_LOG` — diagnóstico de quem mede onde o grafo corre",
     ),
     (
+        // ⚠️⚠️ **Esta entrada é a IRMÃ da de cima e nasceu de uma MUDANÇA DE ENDEREÇO**, não de
+        // texto novo: as duas frases (`RECUSA_COLISOR` · `RECUSA_COLISOR_EXTERNO`) viviam no
+        // ficheiro acima e saíram para o irmão quando o tecto de LOC obrigou ao corte (doc 115
+        // W4). *Uma isenção de censo é propriedade do CÓDIGO e viaja com ele* — e a prova de que
+        // é mudança de endereço e não texto novo é o `isentos_mortos` deste mesmo gate NÃO ter
+        // acusado a entrada de cima, porque as outras razões da rota ficaram lá.
+        "motion_bridge_gpu_colisor.rs",
+        "as duas RAZÕES de recusa do colisor, irmãs das de cima e pela mesma porta `say_route` — \
+         impressas atrás de `PH2D_MOTION_ROUTE_LOG`, nunca no ecrã",
+    ),
+    (
         "motion_glow_layer.rs",
         "o `[glow-diag]` atrás de `PH2D_GLOW_DIAG` — a lista de que é feito o bright-pass, para \
          quem caça um halo que não aparece",

@@ -565,6 +565,9 @@ impl NodeOp for SimStep {
 
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(SimStep))?;
+    // doc 115 W4: o contacto deste integrador lê o colisor DECLARADO
+    // ([`contact`]), e o kernel abaixo separa discos — a cerca do shell lê esta bandeira.
+    reg.register_declared_collider_reader(MANIFEST.id);
     // ADR-0155: the particle integrator CONSUMES `accel` and reads `inv_mass` — the
     // sibling of `motion.integrate` for a `sim.spawn` chain.
     reg.register_couplings(

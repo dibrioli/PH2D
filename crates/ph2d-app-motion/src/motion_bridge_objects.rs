@@ -89,6 +89,11 @@ mod appearance_tests;
 pub(super) mod streams;
 pub(super) use streams::{appearance_tile, appearance_vector, pose_stream};
 
+/// ⭐⭐⭐ **A FORMA que o objecto declara** (doc 115 W4) — a porta única dos três construtores
+/// acima. Ver o cabeçalho dele: a caixa é o quadrado UNITÁRIO, e não `size / 2`.
+#[path = "motion_bridge_objects_collider.rs"]
+pub(super) mod colisor;
+
 /// Publish every **named sprite** into the cook (doc 86 §2).
 ///
 /// ⚠️ **Appends — does NOT clear.** `motion_bridge_shapes::publish` clears the
@@ -425,7 +430,7 @@ fn leaf_from_flip(acc: &Transform, tile: FlipTile) -> LeafInstance {
 /// Build the N-instance appearance stream from the group's leaves — the same
 /// columns the single-object tile publishes, one row per leaf.
 fn group_stream(leaves: &[LeafInstance]) -> Stream {
-    Stream::new(leaves.len())
+    let s = Stream::new(leaves.len())
         .with("P", Column::Vec2(leaves.iter().map(|l| l.p).collect()))
         .with(
             "size",
@@ -453,7 +458,10 @@ fn group_stream(leaves: &[LeafInstance]) -> Stream {
         .with(
             "geometry_id",
             Column::Scalar(leaves.iter().map(|l| l.gid as f32).collect()),
-        )
+        );
+    // doc 115 W4: cada folha traz a forma dela. Pela PORTA, e não por um `.with` repetido —
+    // ver [`colisor::com_colisor`].
+    colisor::com_colisor(s)
 }
 
 /// **Publish the engine objects into the cook** (doc 86 §2) — the sibling of

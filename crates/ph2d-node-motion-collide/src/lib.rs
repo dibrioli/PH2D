@@ -395,6 +395,9 @@ impl NodeOp for MotionCollide {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionCollide))?;
+    // doc 115 W4: este nó honra o colisor que a corrente DECLARA ([`declarado::separa`]),
+    // e o kernel de WGSL dele separa DISCOS — a cerca do shell lê esta bandeira.
+    reg.register_declared_collider_reader(MANIFEST.id);
     // ADR-0155: the push-apart weights by `inv_mass` — another solver a pin can feed.
     reg.register_couplings(
         MANIFEST.id,

@@ -144,8 +144,8 @@ decide se ele é do dispositivo ou da CPU.
 | ~~W1~~ | ✅ **FECHADA** (§7): não era estreitar a cerca — era escrever a que FALTA, para a rota dos externos | §1.4 |
 | ~~W2~~ | ✅ **FECHADA por RECUSA MEDIDA** (§9): a `500` objectos a separação custa `12,4 %` de um quadro a 8 varreduras — o dispositivo não é preciso à população do dono | W1 |
 | **W3** | ✅ **decidida** (§10 + §11): a forma **deriva-se** do `size`+`rot`, os objectos declaram-na SEMPRE, e o interruptor arma o PASSE. Falta escrever. | §1.1 |
-| **W4** | Sprite · vector · Flip nascem com `Collider`, e o `Collide` do Inspector arma | W3 |
-| **W5** | o passe automático **no fim do cozimento** — a morada que a W0 escolheu | W1 · W3 |
+| ~~W4~~ | ✅ **FECHADA** (§12), e **reescrita antes da 1.ª linha**: não nasce componente nenhum — a membrana DECLARA a forma derivada (o quadrado unitário, ⛔ **não** `size/2`), e a cerca da W1 ganha a metade do CONSUMIDOR | W3 |
+| **W5** | o passe automático **no fim do cozimento** — a morada que a W0 escolheu — e o interruptor que o ARMA | W1 · W3 · W4 |
 | **W6** | `motion.collide` sai do catálogo; as 4 cenas passam pelo caminho novo | W5 |
 
 ⚠️ **A W1 vem antes de tudo o que é visível** pela mesma razão que a W1 do doc 102: sem ela, cada
@@ -441,3 +441,183 @@ da segunda.
 ⚠️ **O que a medição NÃO cobre, nomeado:** este documento é uma grelha mais um duplicador, o mais
 simples que produz a população certa. Uma cena real tem mais nós — mas com `5 000×` de folga, a
 ordem de grandeza decide.
+
+---
+
+## §12 — ✅ W4 FECHADA: a membrana declara a forma, e a cerca ganhou a metade que faltava
+
+> A W4 do §4 dizia *«Sprite · vector · Flip nascem com `Collider`»*. A decisão do §11.3 e a medição
+> do §10.1 reescreveram-na antes da primeira linha: **não nasce componente nenhum** — a forma
+> **deriva-se** do que já viaja, e a wave é (a) a membrana declarar e (b) a cerca da W1 ganhar a
+> pergunta do CONSUMIDOR.
+
+### §12.1 — ⛔⛔⛔ A §10.1 escreveu a lei ERRADA no sítio que decide o número
+
+Ela concluiu `ph2d_collider_box = size / 2`. **Está errado**, e o mecanismo é a porta que LÊ a
+declaração ([`ph2d_contact::declarado`](../../crates/ph2d-contact/src/lib.rs)), cujo cabeçalho o
+escreve por extenso: *«de geometria para mundo: as meias escalam por `|size|`»*.
+
+```text
+   meia_mundo = meia_declarada · |size|
+```
+
+E a corrente da aparência **já traz** o `size`. ⇒ declarar `size / 2` daria `size² / 2`:
+
+| `size` do objecto | declarado `size/2` ⇒ mundo | declarado `[0,5; 0,5]` ⇒ mundo | quadro desenhado |
+|---|---|---|---|
+| `[1, 1]` | `[0,50; 0,50]` ✅ | `[0,50; 0,50]` ✅ | `[0,50; 0,50]` |
+| `[4, 1]` | **`[8,00; 0,50]`** ⛔ | `[2,00; 0,50]` ✅ | `[2,00; 0,50]` |
+| `[0,5; 0,5]` | **`[0,12; 0,12]`** ⛔ | `[0,25; 0,25]` ✅ | `[0,25; 0,25]` |
+
+⇒ **a declaração certa é o QUADRADO UNITÁRIO, `[0,5; 0,5]`, constante** — a aparência de um objecto
+ocupa `size` e está centrada no `P`, e o `size` da linha faz o resto.
+
+⚠️⚠️ **E o erro é do tipo que a fixtura mais natural do mundo NÃO vê:** em `size = [1, 1]` as duas
+leis dão o mesmo número. *Um corpus no ponto neutro de uma conversão não testa essa conversão* — é
+por isso que toda fixtura do gate novo tem `size ≠ 1`, e está escrito no cabeçalho dela.
+
+⭐ **Consequência de bónus:** um `motion.scale` a jusante encolhe a peça **e** o colisor dela, por
+construção — não há segunda aritmética a manter em passo.
+
+⭐ E é **mais barato** do que o §10.3 previa: não são *«três colunas derivadas»*, é **UMA coluna
+constante**.
+
+### §12.2 — As quatro AUSÊNCIAS, cada uma uma lei
+
+| não se declara | porquê |
+|---|---|
+| `ph2d_collider_offset` | o quadro é centrado no `P` (o pivô de omissão do sink dá `[0,0]`) — a lei estrutural que o `collider.rs` da forma já escreve: *a arte centrada declara pela AUSÊNCIA* |
+| `ph2d_collider` (o raio) | um objecto é um QUADRO; a porta da leitura já declara que a caixa ganha, e um raio seria a segunda resposta à mesma pergunta |
+| `friction`/`bounce`/`rolling` | a forma declara-os porque **tem cartão**; um objecto não tem, e um default aqui seria autorar em nome do artista |
+| `inv_inertia` | idem — a ausência quer dizer *«deriva da forma»* |
+
+⚠️ **O que a declaração NÃO sabe, nomeado:** é a caixa do **QUADRO** e não da tinta (uma sprite com
+margem transparente declara a margem) · uma folha vectorial/Flip de grupo é assada na orientação de
+MUNDO e viaja com `rot = 0`, logo a caixa dela é alinhada aos eixos · o `pivot` do sink desloca o
+quadro DESENHADO e não o `P` separado (pré-existente, partilhado com a forma).
+
+### §12.3 — ⭐⭐⭐ A cerca da W1 ganhou a metade do CONSUMIDOR, e ela NÃO é um refinamento
+
+Com todo objecto a declarar, a metade de cima sozinha responde `true` em **qualquer** cena com um
+Sprite — e a membrana publica todo sprite com nome, inclusive os que o grafo nunca nomeia.
+
+⚠️ **O CONTROLO desta lei já estava escrito, por mim, no gate da W1:** *«um objecto SEM colisor tem
+de continuar a cozer no dispositivo — senão esta cerca derruba toda cena com um Sprite e o §0.0
+deixa o caminho lento definir o produto»*. A W4 tornou a **premissa** dele falsa e a **frase**
+continua verdadeira: mudou **qual** metade a garante.
+
+⛔ E o preço não seria o `0,02 %` do §11: é o `50,9×` do doc 98 numa cena que carimbe um objecto aos
+milhares — exactamente o caso que a §9.5 deixou **nomeado a vigiar**.
+
+⇒ a cerca passa a ser as duas metades, o molde da irmã que já existia três recusas abaixo
+(`graph_has_object_source && cook_publishes_live_geometry`), cujo doc já dizia *«uma bandeira de
+tipo de nó recusaria TODO grafo de objecto»*:
+
+```rust
+if cook_publishes_collider(&motion.pump.cook)
+    && graph_reads_declared_collider(&motion.doc.graph, &motion.registry)
+```
+
+⭐ **E a metade nova é side-metadata do REGISTO, nunca uma lista na shell**
+(`NodeRegistry::reads_declared_collider`), registada por cada nó que chama a porta única
+`ph2d_contact::colisores`. *Uma lista escrita na shell envelheceria no dia do quarto leitor, em
+silêncio e do lado errado* — o lado que deixa a divergência passar.
+
+**A tabela de verdade, que é o gate:**
+
+| nó no grafo | externo traz colisor | cozimento |
+|---|---|---|
+| `motion.collide` | sim | **CPU** |
+| `motion.collide` | não | dispositivo |
+| `motion.clone` | sim | dispositivo |
+| `motion.clone` | não | dispositivo |
+
+### §12.4 — O CENSO que impede a bandeira de ficar por pôr
+
+Varrido da árvore: as crates que chamam `ph2d_contact::colisores` são **quatro** —
+`ph2d-node-motion-collide` (`motion.collide`), `ph2d-node-sim-collide` (`sim.collide`),
+`ph2d-node-sim-step` (`sim.step`) e a `ph2d-app-motion` (o gizmo do cartão e as cenas de pilha, que
+**não vivem num grafo** e por isso não podem divergir). O gate `todo_leitor_do_colisor_declarado_se_regista`
+exige as **duas metades** — a tabela conter toda crate que chama a porta (com piso de população de
+`5 000` ficheiros, senão uma varredura partida devolve zero e lê-se como aprovado) **e** cada nó
+dela ter a bandeira —, mais o controlo de que a bandeira não é universal.
+
+### §12.5 — O que MUDA no produto hoje: medido, **nada**
+
+Varridas as cenas do módulo: **zero** ficheiros de cena juntam um `source.object` a um leitor de
+colisor declarado (`motion.collide` · `sim.collide` · `sim.step`), sobre `6` ficheiros que publicam
+objectos. ⇒ *a capacidade é nova, nenhuma cena existente muda de comportamento, e a cerca não
+dispara em cena nenhuma do produto.*
+
+⭐ O que passa a ser possível é a ordem do dono de 10/09 — *«o botão Collide da Shape deve funcionar
+para todo e qualquer duplicador»* — estendida aos **objectos**: um Sprite carimbado por um
+duplicador separa-se pela caixa REAL dele em vez do disco do cartão.
+
+### §12.6 — ⛔ O gate que nasceu para ficar vermelho ficou, no dia previsto
+
+O `hoje_nenhum_externo_da_membrana_traz_colisor` da W1 afirmava que a membrana não publica coluna de
+colisor nenhuma e trazia escrito, na própria mensagem, que a cura **não** era apagá-lo. Ele reprovou
+pelo motivo previsto, e está **reescrito** como `a_declaracao_da_membrana_mora_numa_porta_so`: a
+pergunta útil mudou de *«ninguém declara»* para *«a declaração vive numa PORTA só»*, que é a metade
+que passou a ser frágil (espalhada por `.with` em cada construtor, o quarto médio herda-a errada em
+silêncio).
+
+⚠️⚠️ **E a régua nova reprovou DUAS vezes sobre produto correcto, as duas por confundir prosa com
+código:** `COLLIDER_COLUMN` é literalmente `"collider"`, logo procurar o VALOR acusa qualquer
+comentário em inglês que use a palavra; e procurar o IDENTIFICADOR acusa um **link de doc**
+(`` [`COLLIDER_COLUMN`] ``). ⇒ a régua pergunta exactamente o que o gate AFIRMA — *a coluna é
+ESCRITA aqui?* —, varrendo as duas portas de escrita (`with(` · `set(`) × as duas formas de nomear
+(constante · literal), com o controlo positivo de que ela acusa o ficheiro que de facto escreve.
+
+### §12.7 — Provas de mutação: **8 de 8 sangram**
+
+| mutação | quem sangra |
+|---|---|
+| a meia declarada vira a convenção da FORMA (`[1, 1]`) | a caixa de mundo · a folha rodada |
+| a porta declara `size / 2` — **a lei que a §10.1 escreveu** | a caixa de mundo · a folha rodada |
+| o GRUPO deixa de declarar | a folha rodada · a coluna `Vec2` |
+| o VECTOR VIVO deixa de declarar | os três construtores |
+| a cerca perde a metade do CONSUMIDOR | a ligação ao cozimento (`include_str!`) |
+| a bandeira do registo fica UNIVERSAL | as duas metades · o censo |
+| o `sim.step` esquece-se de registar | o censo |
+| o censo deixa de descer as pastas | o piso de população do censo |
+
+⚠️ O arnês tem **controlo sobre o próprio filtro** (`running N tests`, reprova em `N = 0`) — este
+repo já leu *«SOBREVIVEU»* três vezes sobre corridas que casaram zero testes, e nesta wave a 1.ª
+corrida à mão fê-lo outra vez (`objects::colisor` não é `motion_bridge_objects_collider`).
+
+### §12.8 — ⛔ Dois vermelhos do portão, os dois da mesma família e nenhum de lógica
+
+1. **Tecto de LOC** (`motion_bridge_gpu.rs`, `708` contra `700`) — curado por **CORTE por
+   responsabilidade**, nunca por entrada no `FILE_OVERAGE_OK`: as três cercas do colisor são um
+   ASSUNTO e saíram para `motion_bridge_gpu_colisor.rs` (`708 → 615`, irmão de `122`). ⚠️ **O
+   DESPACHO fica no pai**, de propósito — o gate da ligação lê aquele ficheiro por `include_str!`
+   precisamente porque *um gate que chama a função em vez de percorrer a rota afirma que a lei
+   existe, nunca que o produto a usa*.
+2. **O censo de texto do HR-15** acusou as duas `RECUSA_*` como texto NOVO. ⚠️⚠️ Elas são
+   **pré-existentes e mudaram de endereço** — *uma isenção de censo é propriedade do CÓDIGO e viaja
+   com ele*, a lei que o `CLAUDE.md` §5.0 regista de três ocorrências na integração de 17/09. ⭐ E a
+   prova de que é mudança de endereço e não texto novo é o `isentos_mortos` do **mesmo gate** NÃO
+   ter acusado a entrada do pai: as outras razões da rota ficaram lá.
+
+⚠️ E o corte partiu os gates de colisor da espécie que **falha alto** (`super::` passou a significar
+o irmão): curado com `super::super::` para o que ficou no pai, com a distinção escrita na linha do
+`use`.
+
+### §12.9 — ⚠️ Promoção pedida à lista de flakes do `CLAUDE.md` §5.0
+
+`the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` (`ph2d-tool-painter`) — gate de
+RAZÃO de dois relógios, reprovou no fan-out de `17 045` a `load 24,43` e passa **3 de 3 a
+`load 42–52`**, que é o **dobro** da carga em que reprovou, com **zero** linhas do diff desta wave
+naquela crate. ⚠️ **O irmão de FICHEIRO dele (`the_mask_stroke_cost_does_not_follow_the_canvas`) já
+está na lista e o outro não** — que é, à letra, a forma como aquela lista envelhece.
+
+### §12.10 — ⇒ O que a W5 herda
+
+- a forma **chega** a toda peça de todo duplicador, derivada e sem autoria;
+- a cerca já pergunta *«a declaração chega a um CONSUMIDOR?»*, que é meia da pergunta que a W5
+  precisa — a outra metade é *«a separação está ARMADA?»*, e é ela que a W5 escreve;
+- e quando a W6 tirar o `motion.collide`, a **população da bandeira encolhe** e o censo diz onde.
+
+⚠️ **O interruptor que ARMA o passe não existe ainda** — a W4 entrega a declaração, e declarar é
+grátis. Nenhuma cena separa sozinha hoje.

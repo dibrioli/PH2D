@@ -185,6 +185,23 @@ pub struct NodeRegistry {
     /// partition, so an object graph with such a suffix recuses to the CPU
     /// render. Opt-in and default-empty, like `live_vector_sources`.
     object_sources: std::collections::BTreeSet<NodeTypeId>,
+    /// doc 115 W4 — node types that READ the collider a stream DECLARES
+    /// (`ph2d_contact::colisores`: `ph2d_collider` · `ph2d_collider_box` ·
+    /// `ph2d_collider_offset`).
+    ///
+    /// ⚠️ **It is the CONSUMER half of a fence, and that is why it is here and
+    /// not derived.** The declaration crosses the membrane as data (an object of
+    /// the scene carries its own box); whether it MATTERS to the device depends
+    /// on whether anything in the graph reads it. A node-type flag answers that
+    /// without a hand-written list in the shell going stale — the flag travels
+    /// with the node, like `live_vector_sources`.
+    ///
+    /// ⛔ **Why the fence exists at all:** these readers honour an oriented BOX
+    /// on the CPU and their WGSL kernels separate DISCS, so a graph that reads a
+    /// declared collider must not cook on the device — it would be the same
+    /// scene as a pile on the CPU and a blur on the card, with no error.
+    /// Opt-in and default-empty.
+    declared_collider_readers: std::collections::BTreeSet<NodeTypeId>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -441,6 +458,25 @@ impl NodeRegistry {
     #[must_use]
     pub fn is_object_source(&self, id: NodeTypeId) -> bool {
         self.object_sources.contains(&id)
+    }
+
+    /// Register a node type as a **reader of the DECLARED collider** (doc 115 W4):
+    /// it calls `ph2d_contact::colisores` on the stream that reaches it, so the
+    /// shape an object declares changes what it does. Additive; idempotent.
+    ///
+    /// ⚠️ **Whoever writes the next such node registers it here**, and the census
+    /// in `ph2d-app-motion` (`todo_leitor_do_colisor_declarado_se_regista`) fails
+    /// until they do: the flag is what a fence reads, and a reader that forgets it
+    /// cooks on the device with a disc kernel while the CPU honours a box.
+    pub fn register_declared_collider_reader(&mut self, id: NodeTypeId) {
+        self.declared_collider_readers.insert(id);
+    }
+
+    /// Does `id` read the collider the stream DECLARES? Absent ⇒ no, the
+    /// byte-identical default.
+    #[must_use]
+    pub fn reads_declared_collider(&self, id: NodeTypeId) -> bool {
+        self.declared_collider_readers.contains(&id)
     }
 
     /// Register the params whose typed entry reaches past their slider

@@ -2,9 +2,10 @@
 //! diferentes**: o nome escrito num text param (doc 109 W2, [`super::graph_declares_collider`]) e
 //! um EXTERNO que traz a forma do objecto (doc 115 W1, [`super::cook_publishes_collider`]).
 
-use super::{
-    GpuOutcome, RECUSA_COLISOR, cook_gpu, cook_publishes_collider, graph_declares_collider,
-};
+// ⚠️ **Dois níveis, e a separação é a do ficheiro:** as CERCAS vivem no irmão (`super`) e o
+// DESPACHO no pai (`super::super`) — ver o cabeçalho do `motion_bridge_gpu_colisor.rs`.
+use super::super::{GpuOutcome, cook_gpu, graph_has_live_vector_source};
+use super::{RECUSA_COLISOR, cook_publishes_collider, graph_declares_collider};
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::attr::{
     COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, Stream,
@@ -35,7 +36,14 @@ fn cada_uma_das_tres_colunas_de_colisor_recusa_o_externo() {
             "um externo com `{c}` tem de recusar o dispositivo"
         );
     }
-    // O CONTROLO: as colunas que a membrana de facto publica hoje não recusam nada.
+    // O CONTROLO: as colunas de APARÊNCIA não recusam nada.
+    //
+    // ⚠️ **A frase que estava aqui continua verdadeira e mudou de dono** (doc 115 W4): ela dizia
+    // *«um objecto SEM colisor tem de continuar a cozer no dispositivo — senão esta cerca derruba
+    // toda cena com um Sprite e o §0.0 deixa o caminho lento definir o produto»*. Desde a W4 **todo**
+    // objecto traz colisor, logo quem garante aquilo já não é esta metade: é a do CONSUMIDOR
+    // (`a_cerca_dos_externos_precisa_das_duas_metades`). Aqui fica o que a metade de baixo
+    // continua a afirmar sozinha — que ela lê as colunas do colisor e não as da aparência.
     assert!(
         !cook_publishes_collider(&cozedor_com(&[
             "size",
@@ -44,8 +52,8 @@ fn cada_uma_das_tres_colunas_de_colisor_recusa_o_externo() {
             "uv_rect",
             "texture_id"
         ])),
-        "um objecto SEM colisor tem de continuar a cozer no dispositivo — senão esta cerca \
-         derruba toda cena com um Sprite e o §0.0 deixa o caminho lento definir o produto"
+        "a metade do EXTERNO passou a acusar colunas de aparência — ela deixou de distinguir \
+         seja o que for"
     );
     // E um cozedor sem externo nenhum — o chão.
     assert!(!cook_publishes_collider(&ph2d_nodegraph::cook::Cook::new()));
@@ -69,13 +77,20 @@ fn cada_uma_das_tres_colunas_de_colisor_recusa_o_externo() {
 fn a_cerca_dos_externos_esta_de_facto_ligada_ao_cozimento() {
     const PONTE: &str = include_str!("motion_bridge_gpu.rs");
     let despacho = PONTE
-        .split_once("if cook_publishes_collider(&motion.pump.cook) {")
+        .split_once("if cook_publishes_collider(&motion.pump.cook)")
         .map(|(_, resto)| resto)
         .expect(
             "o `cook_gpu` deixou de PERGUNTAR à cerca dos externos — a rota da membrana voltou a \
              atravessar a fronteira sem cerca (doc 115 W1)",
         );
     let ate_ao_fecho = despacho.split_once('}').map(|(x, _)| x).unwrap_or("");
+    // ⭐ **A metade do CONSUMIDOR tem de estar no MESMO `if`** (doc 115 W4): sem ela a cerca
+    // recusa toda cena com um Sprite, porque desde a W4 todo objecto declara a forma dele.
+    assert!(
+        ate_ao_fecho.contains("&& graph_reads_declared_collider(&motion.doc.graph"),
+        "a cerca voltou a perguntar SÓ pelo externo — e desde a W4 isso recusa toda cena com um \
+         objecto, que é o §0.0 ao contrário: {ate_ao_fecho:?}"
+    );
     assert!(
         ate_ao_fecho.contains("return fell(motion, RECUSA_COLISOR_EXTERNO)"),
         "a cerca é perguntada e a resposta não SAI para a CPU — é a mutação que sobreviveu aos \
@@ -83,35 +98,217 @@ fn a_cerca_dos_externos_esta_de_facto_ligada_ao_cozimento() {
     );
 }
 
-/// ⚠️⚠️ **A CERCA NASCE INERTE, e este gate é quem o afirma** — é ele que torna honesta a frase
-/// *«este commit não muda um bit do que o artista vê»*.
+/// ⭐⭐⭐ **AS DUAS METADES DA CERCA, e cada uma sozinha tem a cura errada** (doc 115 W4).
 ///
-/// A régua é o FICHEIRO da membrana, por `include_str!`: ela publica hoje `P · size · rot · tint ·
-/// uv_rect · texture_id · geometry_id` e **nenhuma coluna de colisor**. ⛔ Uma lista escrita à mão
-/// aqui seria a segunda cópia daquele conjunto, e divergia no dia em que ele crescesse — que é
-/// exactamente o dia que este gate existe para apanhar.
+/// - só o EXTERNO: recusa toda cena com um objecto — o `50,9×` do doc 98 aplicado a cenas que não
+///   pediram separação nenhuma, que é o §0.0 ao contrário;
+/// - só o CONSUMIDOR: um `motion.collide` sobre uma nuvem sem colisor declarado separa discos nos
+///   dois lados e **concorda**; recusá-lo seria lento por nada.
 ///
-/// ⭐ **E ele VAI ficar vermelho, de propósito:** no dia em que a W3 do doc 115 puser a membrana a
-/// publicar a forma do objecto. A cura NÃO é apagá-lo — é reescrevê-lo com a morte da premissa
-/// visível no diff, depois de confirmar que a W2 (a caixa no dispositivo, ou a recusa medida dela)
-/// aterrou. *Sem isto, a rota abre-se e ninguém repara.*
+/// ⚠️ A tabela é a de verdade inteira (`4` células) porque uma cerca de duas metades tem quatro
+/// respostas e três delas são *«cozinha no dispositivo»*.
 #[test]
-fn hoje_nenhum_externo_da_membrana_traz_colisor() {
-    const MEMBRANA: &str = include_str!("motion_bridge_objects.rs");
+fn a_cerca_dos_externos_precisa_das_duas_metades() {
+    let com_leitor = |tipo: &str| {
+        let mut m = MotionState::new();
+        m.doc.graph.add_node(tipo);
+        m
+    };
+    let casos = [
+        // (nó no grafo, externo com colisor, recusa?)
+        ("motion.collide", true, true),
+        ("motion.collide", false, false),
+        ("motion.clone", true, false),
+        ("motion.clone", false, false),
+    ];
+    assert_eq!(
+        casos.len(),
+        4,
+        "a tabela de verdade de duas metades tem 4 celulas"
+    );
+    for (tipo, traz, esperado) in casos {
+        let m = com_leitor(tipo);
+        let cook = if traz {
+            cozedor_com(&[COLLIDER_BOX_COLUMN])
+        } else {
+            cozedor_com(&["size", "tint"])
+        };
+        let recusa = cook_publishes_collider(&cook)
+            && super::graph_reads_declared_collider(&m.doc.graph, &m.registry);
+        assert_eq!(
+            recusa, esperado,
+            "no' `{tipo}` com externo-traz-colisor={traz}: a cerca respondeu {recusa}"
+        );
+    }
+}
+
+/// ⭐⭐ **O CENSO dos leitores da declaração** — a bandeira do registo não pode ficar por pôr.
+///
+/// A porta única que lê o colisor declarado é o `ph2d_contact::colisores`; quem lhe chama num
+/// GRAFO tem de se registar, senão a cerca acima não o vê e o documento dele cozinha no
+/// dispositivo — com o kernel de discos — enquanto a CPU honra caixas. ⛔ Uma lista escrita na
+/// shell envelheceria em silêncio e do lado errado.
+///
+/// ⚠️ **As duas metades:** a tabela tem de conter TODA crate que chama a porta (varrido da
+/// árvore, com piso de população) **e** cada nó dela tem de ter a bandeira. A 1.ª sozinha deixa a
+/// bandeira por pôr; a 2.ª sozinha fica verde no dia do quarto leitor.
+#[test]
+fn todo_leitor_do_colisor_declarado_se_regista() {
+    // A tabela: crate → o nó que ela regista, ou `None` com a razão de não ser um nó.
+    const TABELA: &[(&str, Option<&str>)] = &[
+        ("ph2d-node-motion-collide", Some("motion.collide")),
+        ("ph2d-node-sim-collide", Some("sim.collide")),
+        ("ph2d-node-sim-step", Some("sim.step")),
+        // A shell: o gizmo do cartão desenha o colisor e as cenas de pilha medem-no. Nenhum
+        // deles vive num grafo, logo nenhum pode divergir entre CPU e dispositivo.
+        ("ph2d-app-motion", None),
+    ];
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("crates/");
+    let mut vistas = std::collections::BTreeSet::new();
+    let mut ficheiros = 0usize;
+    let mut pilha = vec![raiz.to_path_buf()];
+    while let Some(dir) = pilha.pop() {
+        let Ok(entradas) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for e in entradas.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                pilha.push(p);
+            } else if p.extension().is_some_and(|x| x == "rs") {
+                ficheiros += 1;
+                if std::fs::read_to_string(&p).is_ok_and(|t| t.contains("ph2d_contact::colisores("))
+                    && let Ok(rel) = p.strip_prefix(raiz)
+                    && let Some(c) = rel.components().next()
+                {
+                    vistas.insert(c.as_os_str().to_string_lossy().into_owned());
+                }
+            }
+        }
+    }
+    // ⚠️ **O PISO**, nas duas grandezas: uma varredura partida devolve zero e `is_empty()` sobre
+    // uma lista vazia é trivialmente verdadeiro — é a falha MUDA que o HOWTO §2.7 nomeia.
+    assert!(
+        ficheiros > 5_000,
+        "a varredura viu {ficheiros} ficheiros .rs — ela deixou de olhar para `crates/`"
+    );
+    let esperadas: std::collections::BTreeSet<String> =
+        TABELA.iter().map(|(c, _)| (*c).to_string()).collect();
+    assert_eq!(
+        vistas, esperadas,
+        "mudou quem chama `ph2d_contact::colisores`. Uma crate NOVA na lista de vistas é um \
+         leitor do colisor declarado: se ele for um nó, registe-o com \
+         `register_declared_collider_reader` e ponha-o nesta tabela; se não for, ponha-o com \
+         `None` e a razão"
+    );
+    let reg = MotionState::new().registry;
+    for (crate_, no) in TABELA {
+        if let Some(no) = no {
+            assert!(
+                reg.reads_declared_collider(ph2d_nodegraph::node::NodeTypeId::of(no)),
+                "`{no}` (da `{crate_}`) lê o colisor declarado e NÃO tem a bandeira do registo — \
+                 a cerca do `cook_gpu` não o vê, e o documento dele coze no dispositivo com o \
+                 kernel de discos enquanto a CPU honra caixas"
+            );
+        }
+    }
+    // O CONTROLO: a bandeira não é universal — senão ela não distinguiria nada.
+    assert!(
+        !reg.reads_declared_collider(ph2d_nodegraph::node::NodeTypeId::of("motion.clone")),
+        "a bandeira ficou universal e a cerca voltou a recusar toda cena com um objecto"
+    );
+}
+
+/// ⭐⭐⭐ **A PREMISSA DESTE GATE MORREU EM 2026-09-17, e ele está aqui reescrito e não apagado.**
+///
+/// ## O que ele dizia, e é o que o diff tem de mostrar
+///
+/// Ele chamava-se `hoje_nenhum_externo_da_membrana_traz_colisor` e varria o ficheiro da membrana
+/// por `include_str!` a exigir que **nenhuma** das três colunas lá aparecesse — *«a cerca nasce
+/// INERTE, e este gate é quem o afirma»*. A W4 pôs a membrana a declarar a forma de todo objecto
+/// (`motion_bridge_objects_collider.rs`) e ele ficou vermelho **no dia previsto e pelo motivo
+/// previsto**; a própria mensagem dele mandava confirmar que a W2 tinha aterrado (aterrou, por
+/// recusa MEDIDA — doc 115 §9.5) e reescrevê-lo em vez de o apagar.
+///
+/// ## O que ele afirma agora, e é a metade que passou a ser frágil
+///
+/// A rota abriu, logo *«ninguém declara»* deixou de ser verdade e a pergunta útil mudou de sítio:
+/// **a declaração tem de ser CENTRALIZADA numa porta.** Enquanto ela viver num só sítio, a lei
+/// (`size / 2` em mundo, quadrado unitário em geometria) é gateável de uma vez; espalhada por
+/// `.with(COLLIDER_BOX_COLUMN, …)` em cada construtor, o quarto médio herda-a errada em silêncio.
+///
+/// ⚠️ **A régua é textual de propósito e é um CENSO:** a ESCRITA da coluna só pode aparecer no
+/// ficheiro da porta. Um `.with` novo noutro ficheiro da membrana reprova aqui.
+///
+/// ⛔⛔ **E a 1.ª redacção dela varria a PROSA:** `COLLIDER_COLUMN` é literalmente `"collider"`, e
+/// procurar o VALOR da constante acusa qualquer comentário que use a palavra — o gate reprovou
+/// sobre o ficheiro pai, que só a diz em inglês. ⇒ a varredura é pelas duas formas com que se
+/// **escreve** uma coluna (o identificador da constante, ou um literal com a aspa a abrir), que é
+/// o que separa código de prosa. *A mesma família do censo textual que não separa os dois e mente
+/// nos dois sentidos.*
+#[test]
+fn a_declaracao_da_membrana_mora_numa_porta_so() {
+    // Os ficheiros da membrana que constroem correntes de aparência.
+    const PORTA: &str = include_str!("motion_bridge_objects_collider.rs");
+    const PAI: &str = include_str!("motion_bridge_objects.rs");
+    const STREAMS: &str = include_str!("motion_bridge_objects_streams.rs");
+    const SHIFT: &str = include_str!("motion_bridge_objects_shift.rs");
+    const LOD: &str = include_str!("motion_bridge_objects_lod.rs");
     // O piso: se a varredura deixar de ver o construtor da corrente, ela está a medir o nada.
     assert!(
-        MEMBRANA.contains(".with(\n            \"texture_id\","),
+        PAI.contains(".with(\n            \"texture_id\","),
         "esta régua deixou de encontrar o construtor do externo — ela mudou de sítio e o gate \
          passou a varrer um ficheiro que não é o da membrana"
     );
-    for c in [COLLIDER_COLUMN, COLLIDER_BOX_COLUMN, COLLIDER_OFFSET_COLUMN] {
-        assert!(
-            !MEMBRANA.contains(c),
-            "a membrana passou a publicar `{c}` — a rota de externos ABRIU (doc 115 W3). \
-             Confirme que a W2 aterrou (a caixa no dispositivo, ou a recusa MEDIDA dela) e \
-             reescreva este gate com a morte da premissa no diff, em vez de o apagar"
-        );
+    assert!(
+        PORTA.contains(COLLIDER_BOX_COLUMN),
+        "a PORTA deixou de declarar a caixa — a W4 do doc 115 foi desfeita, e todo objecto da \
+         cena voltou a não ter forma nenhuma"
+    );
+    // ⚠️ **A régua pergunta exactamente o que o gate AFIRMA: a coluna é ESCRITA aqui?** — as duas
+    // portas de escrita de um `Stream` (`with` / `set`) × as duas formas de a nomear (a constante
+    // ou um literal). ⛔ Procurar só o nome acusa um link de doc — foi a 2.ª reprovação desta
+    // régua, depois de a 1.ª acusar a palavra em prosa inglesa.
+    let escreve = |texto: &str, valor: &str, ident: &str| {
+        ["with(", "set("].iter().any(|porta| {
+            texto.contains(&format!("{porta}{ident}"))
+                || texto.contains(&format!("{porta}\"{valor}\""))
+        })
+    };
+    let colunas = [
+        (COLLIDER_COLUMN, "COLLIDER_COLUMN"),
+        (COLLIDER_BOX_COLUMN, "COLLIDER_BOX_COLUMN"),
+        (COLLIDER_OFFSET_COLUMN, "COLLIDER_OFFSET_COLUMN"),
+    ];
+    // O CONTROLO da própria régua: ela TEM de acusar a porta, senão não acusa nada.
+    assert!(
+        escreve(PORTA, COLLIDER_BOX_COLUMN, "COLLIDER_BOX_COLUMN"),
+        "a régua não reconhece a escrita nem no ficheiro que de facto a faz"
+    );
+    for (nome, texto) in [
+        ("pai", PAI),
+        ("streams", STREAMS),
+        ("shift", SHIFT),
+        ("lod", LOD),
+    ] {
+        for (valor, ident) in colunas {
+            assert!(
+                !escreve(texto, valor, ident),
+                "o ficheiro `{nome}` da membrana escreve `{valor}` — a declaração saiu da porta \
+                 (`motion_bridge_objects_collider.rs`) e a lei passou a estar escrita em dois \
+                 sítios, que é onde o quarto médio a herda errada"
+            );
+        }
     }
+    // ⛔ E o RAIO continua a não ser declarado por ninguém: um objecto é um quadro, e a porta da
+    // leitura já declara que a caixa ganha. (A metade que o `a_membrana_declara_a_forma_e_…`
+    // mede no valor; esta mede-a no TEXTO, que é o que apanha um `.with` novo antes de correr.)
+    assert!(
+        !escreve(PORTA, COLLIDER_COLUMN, "COLLIDER_COLUMN"),
+        "a porta passou a declarar um RAIO — um objecto é um quadro"
+    );
 }
 
 /// ⭐⭐ **A LIGAÇÃO: a ponte do produto recusa de facto o documento** — o gate abaixo prova a
@@ -245,7 +442,7 @@ fn a_cadeia_que_declara_colisor_pela_forma_e_recusada_do_dispositivo() {
         .expect("fio");
     }
     assert!(
-        super::graph_has_live_vector_source(&m.doc.graph, &m.registry),
+        graph_has_live_vector_source(&m.doc.graph, &m.registry),
         "a cadeia do `source.shape` tem de ser recusada do dispositivo — sem isso o \
          `motion.collide` separa CAIXAS na CPU e DISCOS na placa, para o mesmo grafo"
     );
@@ -266,7 +463,7 @@ fn a_cadeia_que_declara_colisor_pela_forma_e_recusada_do_dispositivo() {
         .expect("fio");
     }
     assert!(
-        !super::graph_has_live_vector_source(&m2.doc.graph, &m2.registry),
+        !graph_has_live_vector_source(&m2.doc.graph, &m2.registry),
         "o CONTROLO (grelha, sem forma) nao pode ser recusado — a cerca seria incondicional"
     );
     assert!(

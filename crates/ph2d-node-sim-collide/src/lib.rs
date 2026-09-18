@@ -641,6 +641,9 @@ impl NodeOp for SimCollide {
 
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(SimCollide))?;
+    // doc 115 W4: lê o colisor DECLARADO pela corrente (`ph2d_contact::colisores`), e o
+    // kernel abaixo separa discos — a cerca do shell lê esta bandeira.
+    reg.register_declared_collider_reader(MANIFEST.id);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,

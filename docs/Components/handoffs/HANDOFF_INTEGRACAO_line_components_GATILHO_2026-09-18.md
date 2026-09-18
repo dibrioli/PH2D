@@ -139,8 +139,8 @@ erro de compilação. Ele reprovou e foi estendido. **Quem trouxer uma 15.ª ori
 | clippy `-D warnings` (crates tocadas) | ✅ |
 | `scripts/nextest-impacted.sh` | **15 116 testes** — os vermelhos curados abaixo; os 2 que sobram são flakes de carga |
 | `scripts/censos-da-arvore-combinada.sh` (depois do `git rebase main`) | ✅ **90/90**, com o controlo do filtro a dizer `8 de 8 censos correram` |
-| provas de mutação | **19/19 sangram** — `docs/Components/ferramentas/mutacao_gatilho_2026-09-18.sh` |
-| gates novos | 6 (lei) + 1 (mira, com controlo) + 4 (ponte do painel) + 4 (costura, clique REAL) + 5 (cena) + 3 (fiação da shell) |
+| provas de mutação | **21/21 sangram** — `docs/Components/ferramentas/mutacao_gatilho_2026-09-18.sh` (as duas últimas são do report do dono, §8-bis) |
+| gates novos | 6 (lei) + 1 (mira, com controlo) + 4 (ponte do painel) + 4 (costura, clique REAL) + 6 (cena) + 3 (fiação da shell) + **2 (a TECLA, com controlo positivo)** |
 
 ### 6.1 — O que a varredura apanhou, e que nenhum `check` da linha vê
 
@@ -208,11 +208,35 @@ direta de que o discriminador é o fan-out e não o commit.
 
 ---
 
+## §8-bis — ⛔⛔ O REPORT DO DONO, e o que ele mudou (2026-09-18)
+
+> *«espaço é o atalho do play da timeline e há conflito. Mas o smoke está OK. Funciona.»*
+
+**A feature está aprovada; o que estava errado era a TECLA que o smoke liga** — e a minha afirmação
+ao lado dela (*«a tecla que ninguém do editor usa no canvas»*), que era falsa e nunca foi medida.
+`KEY_SPACE if !cmd => GraphKey::TogglePlay`: um toque parava a corrida **e** disparava.
+
+⇒ a acção passa a ligar o **`Q`**, com a medição, a proveniência e o gate no
+[§4-bis do plano](../18_plano_gatilho.md). **21/21 mutações sangram** (eram 19; as duas novas são
+o ESPAÇO de volta e o `P` do menu radial).
+
+⚠️⚠️ **E há um efeito colateral que o INTEGRADOR deve conhecer:** correr qualquer smoke reescreve o
+`~/.ph2d/layout.txt`, que vive **fora do repositório**. As minhas corridas deixaram lá
+`active=nodes` — e com o layout *Nodes* a ferramenta MOTION é a dona do canvas, que é **o que parte
+a banda do centro** (a correcção que este mesmo handoff regista no §4 do HUD). O ficheiro foi
+**reposto** em `active=drawing_2d`, que era o valor que a 1.ª foto mostrava.
+
+⛔ **Isto não é desta wave e atinge TODA cena de smoke:** o doc do
+[`hero::layout_switch::install_at_startup`] já o mede por escrito (*«com o layout `Nodes` gravado, a
+cena dos ossos pegava o vetor e o dreno trocava-o … vale para TODA cena que escolhe uma
+ferramenta»*). Nenhuma cena do TOP-20 fixa o próprio espaço de trabalho — **item aberto, de quem for
+dono do assunto**, não desta linha.
+
 ## §9 — O SMOKE (o que o dono vai correr)
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_TRIGGER_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke
 ```
 
-A cena abre com o relógio **a andar**, a acção `fire` ligada ao **ESPAÇO** e o Inspector à frente.
+A cena abre com o relógio **a andar**, a acção `fire` ligada ao **`Q`** (§8-bis) e o Inspector à frente.
 ⚠️ Se a linha `[trigger-smoke]` não aparecer no terminal, **a cena não montou — PARE**.

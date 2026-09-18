@@ -177,5 +177,16 @@ bloco "amostra: just_released -> !pressed" ph2d-host-desktop as_amostras_saem_do
   "just_released: input.just_released(&a.name)," "just_released: !input.pressed(&a.name)," "--bins"
 
 echo
+echo "════ W7 — a TECLA (report do dono) ════"
+
+# (20) ⭐⭐ O ESPAÇO de volta: ele É o Play/Pause do transporte, e o gate tem de o dizer.
+bloco "tecla: volta ao ESPACO" ph2d-host-desktop a_tecla_do_gatilho_nao_e_reclamada "$CENA" 1 \
+  "pub const TECLA: u32 = 0x51;" "pub const TECLA: u32 = 0x20;" "--test it"
+
+# (21) ⭐ E o `P`, que é o menu radial do canvas E o Probe do grafo — a outra metade da régua.
+bloco "tecla: o P do menu radial" ph2d-host-desktop a_tecla_do_gatilho_nao_e_reclamada "$CENA" 1 \
+  "pub const TECLA: u32 = 0x51;" "pub const TECLA: u32 = 0x50;" "--test it"
+
+echo
 echo "════ $((TOTAL-FALHAS))/$TOTAL sangraram ════"
 [ "$FALHAS" = 0 ] || exit 1

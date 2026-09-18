@@ -21,6 +21,7 @@ mod a_skinned_image_is_drawn_once;
 mod a_smoke_scene_ships_the_default_tuning;
 mod a_smoke_step_names_the_button_the_app_paints;
 mod a_smoke_that_opens_the_recipe_says_so;
+mod a_tecla_do_gatilho_nao_e_reclamada_pelo_editor;
 mod a_tool_panel_never_hides_the_inspector;
 mod a_typable_ceiling_never_passes_what_the_law_honours;
 mod a_verb_that_costs_precision_says_so;

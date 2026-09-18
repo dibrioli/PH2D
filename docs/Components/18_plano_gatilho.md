@@ -142,6 +142,36 @@ presença* — o gate `a_copia_sai_apontada_para_onde_a_fabrica_aponta` tem as d
 ⚠️ **`SignalOrigin` é `Copy`** ⇒ o nome **não** entra lá dentro; a origem carrega a `row`, como a do
 `CounterWatch` — *um `Arc<str>` ali tirava o `Copy` a **todas** as origens*.
 
+## §4-bis — ⛔⛔ A TECLA do smoke, e a afirmação que o dono refutou (2026-09-18)
+
+A cena nasceu a ligar a acção `fire` ao **ESPAÇO**, com o comentário a dizer que ele era *«a tecla
+que ninguém do editor usa no canvas»*. O report do dono: ***«espaço é o atalho do play da timeline e
+há conflito»***.
+
+⇒ **verdade, e medida**: `crates/ph2d-editor-core/src/interaction/dispatch/key.rs` tem
+`KEY_SPACE if !cmd => GraphKey::TogglePlay`. Um toque fazia **duas** coisas — parava a corrida **e**
+disparava. *Uma afirmação sobre um atalho é uma MEDIÇÃO que eu não fiz.*
+
+### A medição, e as DUAS vezes que ela mentiu antes de dizer a verdade
+
+| tentativa | o que ela disse | porque estava errada |
+|---|---|---|
+| o estudo de **2026-08-12** | *«só NOVE letras livres: `H I J M N P U V Y`»* | **envelheceu**: o `P` foi tomado pelo menu radial (E4) e o `U` pelo detalhe da escultura, no mês seguinte |
+| a minha 1.ª re-medição | *«NENHUMA letra está livre»* | contou a tabela do **NORMALIZADOR** (`KeyCode::KeyQ => 0x51`, que traduz winit→keycode) como se fossem atalhos |
+| a 3.ª, sem o `keymap.rs` | **`H` · `J` · `Q`** não têm braço simples | ✅ e o `H` é o *Bypass* do grafo do Motion |
+
+⭐⭐ **O `Q` ganha das outras duas porque não é só livre: é a tecla que o MAPA DE FÁBRICA deste app
+já escolheu para uma acção de JOGADOR** (`PLAYER_DASH`), e a regra está escrita ao lado dela desde o
+`#13`: *«o `W` desta shell abre o painel de mundo, e um default que briga com um atalho que já existe
+é uma armadilha que só o artista descobre»*. **Esta cena tinha exactamente essa armadilha.**
+
+⚠️ Partilhar tecla com o `dash` é deliberado e tem precedente no mesmo mapa (o `jump` e o `move_up`
+partilham a seta de cima): *as duas leis nunca correm na mesma cena*.
+
+⛔ **E a medição virou INSTRUMENTO**, que é o que faltou ao censo de 12/08 para não apodrecer:
+`a_tecla_do_gatilho_nao_e_reclamada_pelo_editor` (shell), com o **ESPAÇO como controlo positivo** e
+o **`P` como controlo de que a varredura vê alguma coisa**. Duas mutações, as duas sangram.
+
 ## §5 — O que fica ABERTO
 
 - ⏳ **Nenhum gesto de canvas cria um gatilho** — ele entra por *Add Component → Trigger*, como as
@@ -155,3 +185,7 @@ presença* — o gate `a_copia_sai_apontada_para_onde_a_fabrica_aponta` tem as d
   antes do consumidor.
 - ⛔ **Sem repetição automática** (o *auto-repeat* de um teclado). A composição já a dá: um `Hold`
   mais o `Timer` do `#2` entregam a cadência, com o número na mão do artista.
+- ⛔⛔ **E o buraco de FUNDO, que o report do dono expôs e que esta wave NÃO fecha:** o teclado do
+  jogo e o teclado do editor são o mesmo, e o Input Map **não tem âmbitos com prioridade** — o item
+  que o `#1` da fila do Vector deixou aberto em 24/08, **bloqueado no `shells/game`/R1, adiado pelo
+  dono**. Hoje a cura é escolher a tecla com a medição do §4-bis; a cura de fundo é o âmbito.

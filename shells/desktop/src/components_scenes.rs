@@ -355,9 +355,13 @@ impl crate::App {
                 .input_map
                 .create(ph2d_app_components::trigger_smoke::ACCAO);
             if let Some(a) = hero.input_map.get_mut(id) {
-                // O ESPAÇO (`0x20`), que é a tecla que ninguém do editor usa no canvas.
-                a.bindings
-                    .push(ph2d_input::Binding::Key(ph2d_input::Key(0x20)));
+                // ⛔⛔ **A tecla é MEDIDA e vive na cena** — ver [`trigger_smoke::TECLA`]. A 1.ª
+                // redacção usava o ESPAÇO, e o dono devolveu-a: *«espaço é o atalho do play da
+                // timeline e há conflito»*. Ele é o **Play/Pause do transporte**, logo um toque
+                // parava a corrida E disparava.
+                a.bindings.push(ph2d_input::Binding::Key(ph2d_input::Key(
+                    ph2d_app_components::trigger_smoke::TECLA,
+                )));
             }
             hero.panel_visibility.insert("inspector", true);
             // ⚠️⚠️ **A RÉGUA DO TRANSPORTE abre junto, e a FOTO é que o disse:** esta cena inteira
@@ -375,21 +379,22 @@ impl crate::App {
         self.playhead.rewind();
         self.playhead.play();
         eprintln!(
-            "[trigger-smoke] cena=1  accao=«{}» (ESPACO)  sinal=«{}»\n\
-             (1) carregue no ESPACO: sai uma bala AMARELA do retangulo AZUL, para onde ele aponta\n\
-             (2) ande com as SETAS — o azul RODA para onde anda; carregue no ESPACO outra vez e a \
+            "[trigger-smoke] cena=1  accao=«{0}» (tecla {2})  sinal=«{1}»\n\
+             (1) carregue no {2}: sai uma bala AMARELA do retangulo AZUL, para onde ele aponta\n\
+             (2) ande com as SETAS — o azul RODA para onde anda; carregue no {2} outra vez e a \
              bala sai para o lado NOVO\n\
              (3) o retangulo CINZENTO da direita ouve a MESMA tecla e atira SEMPRE para cima: e' o \
              CONTROLO, e a unica diferenca entre os dois e' uma caixa de marcar\n\
              (4) role o painel da direita ate' ao fim (o «Heroi» ja' esta' escolhido): a seccao \
              TRIGGER e' quem ouve a tecla, e a caixa «Aim from spawner» da seccao FACTORY e' a \
              unica diferenca para o cinzento\n\
-             (5) carregue em STOP na regua de baixo: o ESPACO deixa de disparar e volta a ser do \
+             (5) carregue em STOP na regua de baixo: o {2} deixa de disparar e volta a ser do \
              editor. PLAY devolve-o\n\
-             (6) deu errado se: nada sai ao carregar no ESPACO · as DUAS balas saem para o mesmo \
+             (6) deu errado se: nada sai ao carregar no {2} · as DUAS balas saem para o mesmo \
              lado · ou alguma coisa sai com a regua PARADA",
             ph2d_app_components::trigger_smoke::ACCAO,
             ph2d_app_components::trigger_smoke::SINAL,
+            ph2d_app_components::trigger_smoke::TECLA_NOME,
         );
     }
 

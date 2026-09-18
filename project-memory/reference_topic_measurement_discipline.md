@@ -640,3 +640,23 @@ decide correr, e o instantâneo que **DIZ ao artista** porque é que a cutscene 
 duas vezes, o painel prometeria uma coisa e o motor faria outra); e o pedido de aba, que só existia
 num sentido (`request_keys_tab`), ganhou o **irmão simétrico**. ⛔ Sem ele a única saída era
 **esconder** o painel, que tira a régua do tempo ao artista exactamente quando ele a quer ver.
+
+---
+
+## ⛔⛔ Uma régua que CONTA aprova a lei mudada de quadro (2026-09-18, o gatilho)
+
+O gate do gatilho afirmava *«o `Release` fala UMA vez por toque»*, sobre um toque de três quadros
+(`desce · segura · sobe`). Trocar a lei dele para `just_pressed` **também fala uma vez** — no quadro
+**errado** —, logo a mutação **sobreviveu** com o gate verde.
+
+⇒ *uma régua que conta QUANTOS nunca vê QUAIS.* A cura é afirmar o **PERFIL**, quadro a quadro:
+`Press [F,T,F,F]` · `Hold [F,T,T,F]` · `Release [F,F,F,T]` sobre `[solta, desce, segura, sobe]`.
+
+⚠️ **E a irmã do lado da shell é a mesma forma, com outra roupa:** medir as três leituras de uma
+acção **num instante só** aprova trocar uma pela outra, porque num instante elas coincidem —
+`pressed == just_pressed` no quadro em que se carrega, e `just_released == !pressed` no quadro em
+que se larga. ⇒ o percurso tem **quatro paragens**, e cada uma existe para **separar um par**:
+*segurar* separa as duas primeiras, *ficar solto* separa as duas segundas.
+
+⭐ É a mesma família do `edge_max` global cego ao quad fino, do `χ` cego à almofada e da `ENTREGA`
+cega à ponta que engrossou: **a régua mede uma agregação, e o defeito vive na posição.**

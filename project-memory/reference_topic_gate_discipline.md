@@ -439,3 +439,25 @@ era, porque passa a saber que a porta delega mesmo.
 ⚠ **E o vermelho já vinha do commit anterior**, invisível a ele: o gate vive na crate de
 fundação e a wave correu a crate do painel. *Um fecho que só corre as crates que a linha EDITOU
 é cego aos gates que vivem noutra* — quinta ocorrência registada neste repo.
+
+---
+
+## ⛔⛔ Um corte numa ponta que ENGORDA a outra não é um corte (2026-09-18)
+
+O `action_bus.rs` estourou o tecto de LOC (`709/700`) e a cura foi mover **onze** variantes de forma
+idêntica do `EditorAction` para um sub-enum num ficheiro irmão (`709 → 628`) — o mesmo corte que o
+irmão `action_bus_hier.rs` já tinha pago, uma família adiante.
+
+⛔ **Mas a 1.ª redacção reescreveu os onze braços do DRENO um a um**, e o `rustfmt` reflow-os para
+seis linhas cada: **`+47 LOC`** no `fase_bus_inspector.rs` **para os mesmos onze destinos**, que o
+levou de `570` a `617/600`. ⇒ o corte tinha de continuar até ao fim: os onze braços viraram **UM**
+com um `match` interior de uma linha por caso (`570 → 561`, abaixo do que o `main` tinha).
+
+⚠️ **A lição é de MEDIÇÃO e não de estilo:** ao cortar por um tecto, meça **as duas pontas** — a que
+encolhe e a que recebe. Uma família que sai de um enum chega a um dreno, e a forma que ela toma lá é
+uma escolha com preço em linhas.
+
+⭐ **E a fronteira de uma família é MEDIDA, nunca o calendário:** o enum tinha **27** variantes com a
+mesma forma; as **11** que saíram são as que carregam vocabulário de `crate::<x>_edits` (o módulo que
+a catraca do DAG obriga a existir), e as **16** que ficaram carregam `screens::hero::*FieldEdit` —
+edições do modelo de SPRITE e de AUTORIA. *O que as separa é o assunto.*

@@ -374,6 +374,11 @@ impl crate::App {
             FRAME_PROF_MOTION_SUM_US.with(|c| c.set(c.get() + us));
             FRAME_PROF_MOTION_MAX_US.with(|c| c.set(c.get().max(us)));
             FRAME_PROF_MOTION_N.with(|c| c.set(c.get() + 1));
+            // ⭐ E o PREÇO em número: quantas varreduras a separação de facto correu.
+            if let Some(g) = self.gfx.as_ref() {
+                let v = g.motion.pump.ultimas_varreduras() as u64;
+                FRAME_PROF_VARREDURAS.with(|c| c.set(v));
+            }
         }
         // ⚠️ **LOGO A SEGUIR AO COOK, e isso e' a lei** — os retratos do colisor e do warp
         // leem `pump.tap_streams()`, que o `fase_motion_bridge` acabou de encher.

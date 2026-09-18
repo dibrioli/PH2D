@@ -57,6 +57,9 @@ thread_local! {
     pub(super) static FRAME_PROF_MOTION_SUM_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     pub(super) static FRAME_PROF_MOTION_MAX_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     pub(super) static FRAME_PROF_MOTION_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    /// **Quantas varreduras a separação de facto correu no último quadro** — o PREÇO do knob, em
+    /// número, ao lado do relógio que ele custa.
+    pub(super) static FRAME_PROF_VARREDURAS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     pub(super) static FRAME_PROF_SIM_SUM_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     pub(super) static FRAME_PROF_SIM_MAX_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     pub(super) static FRAME_PROF_SIM_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };

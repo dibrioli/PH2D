@@ -172,7 +172,7 @@ impl MotionCookPump {
                 let cozido = v.as_stream();
                 let desenhado = sinks_do_quadro
                     .contains(&node)
-                    .then(|| o_que_o_sink_desenha(graph, node, cozido))
+                    .then(|| o_que_o_sink_desenha(graph, node, cozido).0)
                     .flatten();
                 self.tap_streams
                     .push((node, desenhado.unwrap_or_else(|| cozido.clone())));
@@ -195,5 +195,20 @@ impl MotionCookPump {
     #[must_use]
     pub fn separacoes(&self) -> u64 {
         self.separacoes
+    }
+
+    /// **Quantas varreduras a última separação de facto correu** — o preço do knob, em número.
+    ///
+    /// ⚠️⚠️ **Ele NÃO é o que o cartão pede**, e é essa a diferença que o artista precisa de ver: o
+    /// laço pára quando ninguém mais se mexe de forma visível (`ph2d_contact::REPOUSO_VISIVEL`),
+    /// logo um cursor em `1024` numa cena assente lê aqui `~100` — e numa pilha comprimida lê
+    /// `1024`, porque ali o tecto é gasto de verdade.
+    ///
+    /// ⚠️ Ele nasceu do report de 2026-09-18: foram precisas **quatro** rondas de smoke para saber
+    /// em que ponto o cursor do dono estava, porque o preço de um knob só aparecia no RELÓGIO DE
+    /// PAREDE.
+    #[must_use]
+    pub fn ultimas_varreduras(&self) -> usize {
+        self.ultimas_varreduras
     }
 }

@@ -268,12 +268,13 @@ fn as_duas_folhas_concordam_no_numero_de_fabrica_das_varreduras() {
     // ⭐⭐ **E o SLIDER nunca oferece mais do que a porta honra** (doc 115 §18): desde que o tecto
     // subiu por medição, a caixa e o slider deixaram de ser o mesmo número — o slider fica onde a
     // mão trabalha e o resto digita-se. ⛔ Invertida, esta relação devolve o «aceita e mente».
-    assert!(
+    // ⚠️ **`const _` e não `assert!`**: os dois lados são constantes, logo o compilador DOBRA a
+    // comparação e o clippy diz em voz alta que a asserção não corre. Assim ela passa a ser **erro
+    // de compilação**, que é mais forte do que um teste.
+    const _: () = assert!(
         ph2d_node_motion_output::COLLIDE_ITERATIONS_SLIDER_MAX
             <= ph2d_node_motion_output::COLLIDE_ITERATIONS_MAX,
-        "o slider arrasta ate' {} e a porta so' honra {} — ele ofereceria o que ninguem corre",
-        ph2d_node_motion_output::COLLIDE_ITERATIONS_SLIDER_MAX,
-        ph2d_node_motion_output::COLLIDE_ITERATIONS_MAX
+        "o slider nao pode passar o tecto digitavel"
     );
     // ⚠️ **E os dois números são ÂNCORAS MEDIDAS, não conforto** — sem isto uma reversão silenciosa
     // ao `64` herdado passaria com os dois gates acima verdes. `1024` FECHA uma cadeia de 16 peças

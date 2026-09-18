@@ -119,6 +119,26 @@ fn pesos(s: &Stream, n: usize) -> Vec<f32> {
 /// que distinga *«sem rotação»* de *«rotação zero»*.
 #[must_use]
 pub fn separa_o_que_se_desenha(entrada: &Stream, varreduras: usize) -> Option<Stream> {
+    separa_com_relatorio(entrada, varreduras).0
+}
+
+/// Como o [`separa_o_que_se_desenha`], mas diz **quantas varreduras de facto correram**.
+///
+/// ⚠️⚠️ **Ele existe porque o preço de um knob só aparecia no RELÓGIO DE PAREDE** (report do dono,
+/// 2026-09-18: quatro rondas de smoke até o perfilador dizer que a fase do Motion eram `68 ms`, e
+/// nenhuma delas podia dizer se o cursor estava em `64` ou em `1024`). ⭐ E ele não é um contador
+/// novo: o [`crate::separate`] **já devolvia** o número — era a porta que o deitava fora.
+///
+/// `0` quer dizer *não houve separação nenhuma* (nada declarou colisor, o interruptor está
+/// desarmado, ou ninguém se mexeu).
+#[must_use]
+pub fn separa_com_relatorio(entrada: &Stream, varreduras: usize) -> (Option<Stream>, usize) {
+    let mut correram = 0usize;
+    let saida = separa_contando(entrada, varreduras, &mut correram);
+    (saida, correram)
+}
+
+fn separa_contando(entrada: &Stream, varreduras: usize, correram: &mut usize) -> Option<Stream> {
     if varreduras == 0 {
         return None;
     }
@@ -137,7 +157,7 @@ pub fn separa_o_que_se_desenha(entrada: &Stream, varreduras: usize) -> Option<St
     let inv_i = crate::inv_inercias(entrada, &colisores, &w);
     let mut pos = p.clone();
     let mut giro = vec![0.0f32; n];
-    crate::separate(
+    *correram = crate::separate(
         &mut pos,
         &mut Saida { giro: &mut giro },
         &Pecas::novas(&colisores, &w, &inv_i),

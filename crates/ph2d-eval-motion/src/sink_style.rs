@@ -185,6 +185,9 @@ pub fn sink_collide_sweeps(graph: &Graph, sink: NodeId) -> usize {
 /// `None` quando nada há a separar (a corrente não declara colisor, o interruptor está desarmado,
 /// ou ninguém se mexeu) — e é isso que mantém toda cena de hoje **byte-idêntica**, sem clonar.
 ///
+/// ⭐ O segundo membro é **quantas varreduras de facto correram**, que é o que dá ao artista o preço
+/// do knob sem ele ter de o ler no relógio de parede (report do dono, 2026-09-18).
+///
 /// # ⛔⛔ Porque isto é uma PORTA e não duas linhas repetidas
 ///
 /// A W5 pôs o passe **dentro** do braço que faz o lowering, e a TOMADA (`tap_streams`, de que o
@@ -200,10 +203,10 @@ pub fn o_que_o_sink_desenha(
     graph: &Graph,
     sink: NodeId,
     cozido: &ph2d_nodegraph::attr::Stream,
-) -> Option<ph2d_nodegraph::attr::Stream> {
+) -> (Option<ph2d_nodegraph::attr::Stream>, usize) {
     #[cfg(test)]
     PASSAGENS.with(|c| c.set(c.get() + 1));
-    ph2d_contact::passe::separa_o_que_se_desenha(cozido, sink_collide_sweeps(graph, sink))
+    ph2d_contact::passe::separa_com_relatorio(cozido, sink_collide_sweeps(graph, sink))
 }
 
 #[cfg(test)]

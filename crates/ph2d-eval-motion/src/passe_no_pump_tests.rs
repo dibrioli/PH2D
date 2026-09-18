@@ -397,3 +397,47 @@ fn um_quadro_que_recupera_tiques_separa_uma_vez() {
         "controlo: com a bandeira sempre ligada o readout tem de contar os quatro"
     );
 }
+
+/// ⭐⭐⭐ **O NÚMERO QUE CORRE NÃO É O NÚMERO QUE O CARTÃO PEDE** — o readout do preço (report do
+/// dono, 2026-09-18).
+///
+/// Foram precisas **quatro** rondas de smoke para saber em que ponto o cursor dele estava: o
+/// perfilador dizia que a fase do Motion custava `68 ms` e nada no app dizia se isso eram `64`
+/// varreduras numa cena difícil ou `1024` numa fácil. ⇒ a bomba publica o número que de facto
+/// correu.
+///
+/// ⚠️ **As duas metades são a lei:** ele tem de ser MENOR que o tecto numa cena que assenta (senão
+/// não há readout nenhum a fazer, e o `REPOUSO_VISIVEL` não estaria a armar) e **maior que zero**
+/// (senão ele mede «não separei nada»).
+#[test]
+fn a_bomba_publica_quantas_varreduras_correram() {
+    let mut g = Graph::new();
+    let sink = g.add_node(SRC_MAN.name);
+    g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
+    g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, 1024.0);
+    let mut pump = MotionCookPump::new();
+    let (uv, tam) = ([0.0, 0.0, 1.0, 1.0], [1.0, 1.0]);
+    assert!(pump.pump(&g, &Ops, &[sink], 0, 0.0, uv, tam));
+    let correram = pump.ultimas_varreduras();
+    assert!(
+        correram > 0,
+        "o readout leu ZERO num quadro que SEPAROU: ele mede outra coisa"
+    );
+    assert!(
+        correram < 1024,
+        "esta cena assenta, logo o tecto de 1024 nao pode ter sido gasto: {correram}"
+    );
+    // ⭐ **O CONTROLO: com o tecto em `1` o readout lê `1`** — sem esta metade, um readout cravado
+    // num número plausível passaria a de cima.
+    let mut g1 = Graph::new();
+    let s1 = g1.add_node(SRC_MAN.name);
+    g1.set_param(s1, SINK_COLLIDE_PARAM, 1.0);
+    g1.set_param(s1, SINK_COLLIDE_ITERATIONS_PARAM, 1.0);
+    let mut p1 = MotionCookPump::new();
+    assert!(p1.pump(&g1, &Ops, &[s1], 0, 0.0, uv, tam));
+    assert_eq!(
+        p1.ultimas_varreduras(),
+        1,
+        "com o tecto em 1 o readout tem de ler 1"
+    );
+}

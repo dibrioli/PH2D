@@ -4,7 +4,7 @@
 //!
 //! O doc do [`ph2d_app_motion::field_gizmo::scene_window_wh`] escreve-a desde 2026-07-25:
 //! *«todo mapeamento mundo↔tela do chrome da cena TEM de usar isto»*. Sob um split do centro
-//! (a timeline aberta, o Motion) a cena **não é a janela**: ela desenha num sub-rectângulo
+//! (a ferramenta MOTION activa — ⛔ **não** a timeline) a cena **não é a janela**: ela desenha num sub-rectângulo
 //! `[0, 0, w, h·t]`, e a projecção MUDA — não é um recorte.
 //!
 //! | quando | quem foi posto na porta | quem ficou de fora |

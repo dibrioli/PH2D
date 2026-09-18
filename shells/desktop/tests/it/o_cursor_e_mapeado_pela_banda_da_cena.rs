@@ -12,7 +12,7 @@
 //! | onde o dedo o ENCONTRAVA (varredura pelo `path_at` do produto) | `x 800..1128 · y 728..848` |
 //! | depois da cura | `x 872..1056 · y 392..472` |
 //!
-//! ⇒ o alvo era clicável `~340 px` abaixo de onde aparece — **dentro do painel da timeline**, onde
+//! ⇒ o alvo era clicável `~340 px` abaixo de onde aparece — **fora do alcance do gesto**, onde
 //! o `on_canvas` é `false` e o ramo nem chega a correr. A aritmética fecha antes do código: `10`
 //! unidades de mundo em `556 px` são `55,6 px/unidade`, e o centro do botão (`y = −2,778`) cai em
 //! `432` — exactamente onde a foto o mostra.
@@ -62,7 +62,7 @@ fn as_portas_de_ecra_para_mundo_passam_pela_banda_da_cena() {
             "a porta `{porta}` ({o_que}) não passa pela `App::scene_window`.\n\
              Com o centro partido, a cena desenha numa BANDA e a projecção MUDA: mapear contra a \
              janela põe o que se VÊ e o que se PEGA em espaços diferentes — medido em 17/09, o \
-             botão do HUD era clicável 340 px abaixo de onde aparece, dentro do painel da timeline."
+             botão do HUD era clicável 340 px abaixo de onde aparece, fora do alcance do gesto."
         );
     }
 }

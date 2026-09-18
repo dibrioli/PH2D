@@ -1,6 +1,6 @@
 # HANDOFF — `line/components` · A JANELA DA CENA · 2026-09-17
 
-> **O que o dono ganha:** com a timeline (ou o Motion) aberta, o clique deixa de apontar para outro
+> **O que o dono ganha:** com a ferramenta Motion activa, o clique deixa de apontar para outro
 > sítio do mundo. Medido: com o centro partido a `55 %` e a superfície da foto de 17/09, o **mesmo
 > pixel** resolvia para um ponto **`3,50 m` ao lado no Y e `5,96 m` no X** — numa vista de `10 m`
 > de altura, `35 %` e `60 %` do que se vê.
@@ -154,5 +154,15 @@ imprime a lista.
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && cargo run -p ph2d-host-desktop --profile smoke
 ```
 
-Abra a **timeline** (o centro parte-se) e clique num objecto do canvas: ele tem de ser escolhido
-onde o dedo está. Antes desta wave, com o centro partido, o clique caía metros ao lado.
+Tome a ferramenta **MOTION** (é ela, e só ela, que parte o centro — o grafo divide o espaço com a
+cena) e clique num objecto do canvas: ele tem de ser escolhido onde o dedo está. Antes desta wave,
+com o centro partido, o clique caía metros ao lado.
+
+⛔⛔ **CORRECÇÃO de 2026-09-18, por report do dono** (*«o desenho não encolhe ao abrir a
+timeline»*): as §2, §4 e §7 desta página diziam *«a timeline aberta»* e **isso está errado**. O
+único escritor de um `CenterSplit` diferente de `None` é o `if motion_active` do
+`motion_bridge_surfaces.rs`; a timeline é um painel encaixado e não mexe no canvas.
+⚠️ **De onde veio o erro:** a medição de 17/09 registou que o botão do HUD ficava alcançável em
+`y 728..848`, que é **onde a faixa da timeline é desenhada** — e eu li *«o clique cai dentro da
+timeline»* como *«a timeline causa isto»*. *O sítio ONDE o erro aterra não é o que o PROVOCA*, e um
+doc que troca os dois manda o próximo reproduzir onde não pode acontecer.

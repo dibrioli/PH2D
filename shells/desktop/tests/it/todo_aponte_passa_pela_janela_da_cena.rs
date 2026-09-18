@@ -3,9 +3,17 @@
 //! # A lei, e as TRÊS vezes que ela foi paga antes deste gate existir
 //!
 //! O doc do [`ph2d_app_motion::field_gizmo::scene_window_wh`] escreve-a desde 2026-07-25: *«todo
-//! mapeamento mundo↔tela do chrome da cena TEM de usar isto»*. Sob um split do centro (a timeline
-//! aberta, o Motion) a cena desenha num sub-rectângulo `[0, 0, w, h·t]` e **a projecção muda** —
-//! não é um recorte.
+//! mapeamento mundo↔tela do chrome da cena TEM de usar isto»*. Sob um split do centro a cena
+//! desenha num sub-rectângulo `[0, 0, w, h·t]` e **a projecção muda** — não é um recorte.
+//!
+//! ⛔⛔ **QUEM parte o centro é a ferramenta MOTION, e mais ninguém.** O único escritor de um
+//! `CenterSplit` diferente de `None` é o `if motion_active` do
+//! `ph2d_app_motion::motion_bridge_surfaces` — a timeline é um painel ENCAIXADO e não toca no
+//! canvas. ⚠️ **Esta linha é uma correcção de 2026-09-18, por report do dono** (*«o desenho não
+//! encolhe ao abrir a timeline»*): as três páginas desta wave diziam *«a timeline aberta»*, porque
+//! a medição de 17/09 leu **onde o clique ia parar** (a faixa da timeline) como se fosse **o que
+//! causava** o encolhimento. *Um doc que nomeia o gatilho errado manda o próximo reproduzir o
+//! defeito onde ele não pode acontecer — e ele conclui que o defeito não existe.*
 //!
 //! | data | quem foi posto na porta | quem ficou de fora |
 //! |---|---|---|
@@ -248,7 +256,7 @@ fn todo_aponte_passa_pela_janela_da_cena() {
     assert!(
         maus.is_empty(),
         "estes sítios invertem a câmera da cena com a JANELA e não com a BANDA — sob um split do \
-         centro (a timeline aberta) o dedo aponta para outro sítio do mundo:\n  {}\n\nA cura é \
+         centro (a ferramenta Motion activa) o dedo aponta para outro sítio do mundo:\n  {}\n\nA cura é \
          `gfx.scene_window()`, ou `crate::scene_mapping::janela(hero.view.center_split, \
          gfx.surface.size())` quando o `hero` já está emprestado.",
         maus.join("\n  ")
@@ -330,7 +338,7 @@ fn toda_gizmo_camera_nasce_da_banda() {
     assert!(
         maus.is_empty(),
         "estas `GizmoCamera` nascem da JANELA e não da BANDA — o arrasto delas aponta para outro \
-         sítio do mundo com a timeline aberta:\n  {}",
+         sítio do mundo com a ferramenta Motion activa:\n  {}",
         maus.join("\n  ")
     );
 }
@@ -338,7 +346,7 @@ fn toda_gizmo_camera_nasce_da_banda() {
 /// ⭐⭐⭐ **A propriedade que torna a troca de ~90 sítios SEGURA: fora do split é a janela inteira.**
 ///
 /// ⛔ Sem ela esta wave mudaria a imagem de toda a gente; com ela, o caminho de omissão do app
-/// (centro NÃO dividido) é **byte-idêntico** ao de antes, e só a timeline/o Motion abertos veem a
+/// (centro NÃO dividido) é **byte-idêntico** ao de antes, e só a ferramenta Motion activa veem a
 /// diferença — que é precisamente onde o dedo estava a apontar para o sítio errado.
 ///
 /// ⚠️ **O gate da identidade já existe e vive noutra crate** (`field_gizmo_tests`,
@@ -372,7 +380,7 @@ fn a_porta_delega_e_por_isso_herda_a_identidade_fora_do_split() {
 /// ⭐⭐⭐ **QUANTO é que o dedo errava — o número, e a exigência de que ele EXISTA.**
 ///
 /// Sem isto, os censos acima são afirmações sobre TEXTO. Esta metade mede a coisa: com o centro
-/// partido a `55 %` (a timeline aberta, a arrumação do dono) e a superfície da foto de 17/09
+/// partido a `55 %` (a ferramenta Motion activa) e a superfície da foto de 17/09
 /// (`1930×1012`), o MESMO pixel de ecrã resolve para dois pontos do mundo diferentes.
 ///
 /// ⛔ **E ela exige que a divergência seja GRANDE**, não que seja pequena: um tecto que aceitasse

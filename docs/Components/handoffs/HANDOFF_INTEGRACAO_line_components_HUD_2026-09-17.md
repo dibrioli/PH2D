@@ -218,7 +218,13 @@ TEM de usar isto»*, e há um gate vizinho chamado
 ### ⚠️ Isto é PRÉ-EXISTENTE e MAIOR que o HUD — o censo
 
 O `vec_world_at` é a porta de **seis** gestos vectoriais (selecção, balde, trim, esqueleto,
-conector, pré-visualização de UI): **todos** apontavam ao sítio errado com a timeline aberta. E o
+conector, pré-visualização de UI): **todos** apontavam ao sítio errado com a ferramenta **MOTION**
+activa. ⚠️⚠️ **CORRECÇÃO de 2026-09-18, por report do dono** (*«o desenho não encolhe ao abrir a
+timeline»*): esta página dizia *«com a timeline aberta»*, e o único escritor de um `CenterSplit`
+diferente de `None` é o `if motion_active` do `ph2d_app_motion::motion_bridge_surfaces` — a timeline
+é um painel ENCAIXADO e não toca no canvas. *O erro veio de ler **onde o clique aterrava** (a faixa
+da timeline, `y 728..848`, duas secções acima) como **o que o causava**; o sítio onde um defeito
+aterra não é o que o provoca.* E o
 censo da shell mede **72** chamadas de `screen_to_world` em **33** ficheiros, contra **19** sítios
 que já passam pela banda ⇒ *a dívida não é do HUD, é do mapeamento do chrome*. Os nomes saem de
 `grep -rn "screen_to_world(" shells/desktop/src/`; ⛔ **esta linha curou as DUAS portas do vector** e

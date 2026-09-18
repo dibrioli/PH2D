@@ -28,6 +28,15 @@ roda não rolou), e o **`ydotool`** escreve no `uinput` ⇒ move o **rato real**
   (`MockPanelHost` + `dispatch_pointer_event`), não na foto.
 - Um processo do dono a correr (outra worktree) não se toca, nem para «limpar».
 
+⛔⛔ **E há uma TERCEIRA armadilha, medida em 2026-09-18 (`line/Vector`): o roteiro NÃO CONSTRUÍA.**
+Ele exigia um binário (`[ -x "$BIN" ] || exit 2`) e fotografava, em silêncio, a **build anterior**.
+O modo de falha é o pior que há: fotografei uma cena *«antes»* e *«depois»* de um corte de ficheiro,
+vi **as duas fotos IGUAIS** e escrevi na mensagem do commit que a mudança estava verificada — e as
+duas eram do **mesmo binário**. *Duas fotos do mesmo binário são sempre iguais, e lêem-se
+exactamente como «a mudança não estragou nada».* ⇒ o roteiro passou a correr
+`cargo build -q -p ph2d-host-desktop --profile smoke` **por dentro** (incremental: `2,5 s` com a
+árvore quente), e não num passo que quem chama tem de se lembrar de escrever.
+
 Irmã de [[feedback_a_smoke_for_the_owner_explains_what_each_thing_on_screen_is]] (a foto é
 obrigatória) e de [[reference_topic_oracle_discipline]] (o XTest também não serve para um oráculo num
 Xwayland aninhado).

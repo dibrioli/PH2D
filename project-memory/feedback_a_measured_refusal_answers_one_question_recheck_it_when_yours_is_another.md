@@ -34,6 +34,21 @@ SUAVIDADE** (a razão entre o maior e o menor passo); a pergunta do report segui
 endireitava. *Suave e linear são duas perguntas, e um arrasto pode ser perfeitamente suave e estar
 21 % fora da recta.*
 
+**3.º caso (2026-09-18, a dobra da pele do esqueleto) — a mesma pergunta, a LEI POR BAIXO trocada.**
+A tabela de recusas do módulo dizia *«zero pontos invertidos até `150°`»* (medido 14/09) e o meu
+próprio doc de uma cena dizia que a `25°` por junta *«a malha dobra sobre si mesma e a arte lê-se
+RASGADA»* — **3× de discordância sobre a mesma grandeza**. ⭐ *Quando duas páginas do mesmo módulo
+imprimem duas medidas da mesma grandeza e elas discordam, isso É o achado.* A resolução foi a
+**DATA**: a recusa media a lei de peso **derivada por distância**, e o bind passou ao padrão-ouro
+(Bounded Biharmonic) no **dia seguinte** ao de ela ser escrita. Re-medida sob a lei de hoje, a
+recusa **continua de pé** (`0` invertidos até `75°`/junta; a 1.ª inversão a `90°`) — e o meu doc é
+que estava errado, e tinha feito baixar um número de PRODUTO para esconder um defeito cuja causa
+real era outra.
+
+⚠️ **O que este caso acrescenta:** uma recusa pode estar certa *e* o número dela pertencer a um
+substrato que já não existe. Escreva na recusa **qual lei ela mediu**, não só o que mediu — senão
+ninguém sabe o dia em que ela caducou.
+
 **Como aplicar:** ao encontrar «medido e rejeitado», leia **o que foi medido** e **contra o quê**.
 Se a sua pergunta é outra (escrita vs velocidade, memória vs tempo), ou se o mecanismo nomeado tem
 uma cura que não existia, a recusa não se aplica — e reconferi-la é obrigação de quem move o número

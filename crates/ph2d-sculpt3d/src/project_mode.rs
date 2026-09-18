@@ -32,9 +32,17 @@ impl ProjectMode {
     /// O nome que a UI mostra.
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.project_mode.<variante>`, e é ela que a interface passa ao
+    /// [`ph2d_i18n::tr`]. O texto vive na tabela (`ph2d-i18n/src/sculpt_engine.rs`), com a
+    /// [`label`](Self::label) acima a lê-lo em inglês: *uma lei só, com um acessório derivado.*
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::View => "View",
-            Self::Plane => "Surface",
+            Self::View => "sculpt3d.project_mode.view",
+            Self::Plane => "sculpt3d.project_mode.plane",
         }
     }
 

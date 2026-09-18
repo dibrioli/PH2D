@@ -279,19 +279,27 @@ impl Falloff {
     /// O nome que a UI mostra.
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.falloff.<variante>`, e é ela que a interface passa ao
+    /// [`ph2d_i18n::tr`]. O texto vive na tabela (`ph2d-i18n/src/sculpt_engine.rs`), com a
+    /// [`label`](Self::label) acima a lê-lo em inglês: *uma lei só, com um acessório derivado.*
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Smooth => "Smooth",
-            Self::Sphere => "Sphere",
-            Self::Sharper => "Sharper",
-            Self::Constant => "Constant",
-            Self::Root => "Root",
-            Self::Plateau => "Plateau",
-            Self::Linear => "Linear",
-            Self::Sharp => "Sharp",
-            Self::InvSquare => "Inv Square",
-            Self::Smoother => "Smoother",
-            Self::Dome => "Dome",
-            Self::Dome4 => "Dome 4",
+            Self::Smooth => "sculpt3d.falloff.smooth",
+            Self::Sphere => "sculpt3d.falloff.sphere",
+            Self::Sharper => "sculpt3d.falloff.sharper",
+            Self::Constant => "sculpt3d.falloff.constant",
+            Self::Root => "sculpt3d.falloff.root",
+            Self::Plateau => "sculpt3d.falloff.plateau",
+            Self::Linear => "sculpt3d.falloff.linear",
+            Self::Sharp => "sculpt3d.falloff.sharp",
+            Self::InvSquare => "sculpt3d.falloff.inv_square",
+            Self::Smoother => "sculpt3d.falloff.smoother",
+            Self::Dome => "sculpt3d.falloff.dome",
+            Self::Dome4 => "sculpt3d.falloff.dome_4",
         }
     }
 }

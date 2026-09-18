@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_resposta_do_filtro_ao_arrasto;
+mod cada_rotulo_deste_motor_vem_da_tabela;
 mod cotangent_operator;
 mod measure_alpha;
 mod measure_alpha_over_a_whole_mesh;

@@ -66,6 +66,19 @@ impl FilterLaw {
         }
     }
 
+    /// ⭐ **A CHAVE do rótulo**, delegada à família — o irmão de [`label`](Self::label).
+    ///
+    /// ⚠️ Ela delega **pela mesma porta** que o `label` acima: a chave de uma lei de malha é a do
+    /// `FilterKind` e a de uma de tecido é a do `ClothFilterKind`. *Escrever aqui uma terceira
+    /// tabela poria o chip a dizer uma coisa e o censo a medir outra.*
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
+        match self {
+            Self::Mesh(k) => k.label_key(),
+            Self::Cloth(k) => k.label_key(),
+        }
+    }
+
     /// **Esta lei é de TECIDO?** — a pergunta que o driver do gesto faz, e ela
     /// tem dois leitores (o `begin` e o `at`), o que a torna uma porta.
     #[must_use]

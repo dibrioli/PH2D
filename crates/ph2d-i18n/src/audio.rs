@@ -115,6 +115,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.audio_mixer.title" => "Audio Mixer",
         "panel.audio_mixer.strip.master" => "Master",
         "panel.audio_mixer.strip.mute" => "Mute",
+        // ⭐⭐ **O PAR DO `dB` FALTAVA AO LADO DO PAR DO `LUFS` — e o que os separou foi a RÉGUA.**
+        // O `master.inf_lufs`/`master.lufs_value` migrou em 2026-09-16 e este, no MESMO pintor,
+        // ficou: `is_language` aceita `-inf LUFS` (GRITADO) e recusa `-inf` e `{:.0} dB` (`dB` não
+        // é Capitalizado nem GRITADO). *Um censo lexical não vê a UNIDADE que o artista lê* — quem
+        // o viu foi o idioma de teste, na 2.ª fotografia do dono.
+        "panel.audio_mixer.strip.inf_db" => "-inf",
+        "panel.audio_mixer.strip.db_value" => "{db} dB",
+        // ⚠️ `M` e `S` são a convenção da mesa de mistura e continuam a ser TEXTO que o artista lê
+        // — uma letra solta é invisível à régua (ela exige duas letras adjacentes), e é por isso que
+        // o irmão de largura inteira (`strip.mute`) migrou e estes dois não.
+        "panel.audio_mixer.strip.mute_short" => "M",
+        "panel.audio_mixer.strip.solo_short" => "S",
         "panel.audio_mixer.master.stop" => "Stop",
         "panel.audio_mixer.master.play_test" => "Play Test",
         "panel.audio_mixer.master.inf_lufs" => "-inf LUFS",

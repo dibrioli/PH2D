@@ -70,7 +70,7 @@ fn a_pose_le_a_curva_so_na_torcao_e_com_mais_de_um_segmento() {
                 pose(d, segmentos).curva_inerte(),
                 Some(CurvaInerte::APoseSoNaTorcaoComSegmentos),
                 "o {} com {segmentos} segmento(s) não lê a curva",
-                d.label()
+                d.label_key()
             );
         }
     }

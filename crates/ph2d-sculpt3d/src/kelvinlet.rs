@@ -85,11 +85,19 @@ impl Scales {
     /// identificadores continuam sendo os do paper, porque é lá que a álgebra é
     /// verificável.
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.scales.<variante>`, e é ela que a interface passa ao
+    /// [`ph2d_i18n::tr`]. O texto vive na tabela (`ph2d-i18n/src/sculpt_engine.rs`), com a
+    /// [`label`](Self::label) acima a lê-lo em inglês: *uma lei só, com um acessório derivado.*
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
         match self {
-            Self::Mono => "Wide",
-            Self::Bi => "Medium",
-            Self::Tri => "Tight",
+            Self::Mono => "sculpt3d.scales.mono",
+            Self::Bi => "sculpt3d.scales.bi",
+            Self::Tri => "sculpt3d.scales.tri",
         }
     }
 

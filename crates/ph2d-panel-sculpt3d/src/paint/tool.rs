@@ -52,7 +52,7 @@ pub(super) fn paint_tool(
         .iter()
         .position(|&v| v == snap.ui.brush.verb)
         .unwrap_or(0);
-    let labels: Vec<&str> = Verb::ALL.iter().map(|v| v.label()).collect();
+    let labels: Vec<&str> = Verb::ALL.iter().map(|v| tr(v.label_key())).collect();
     y = seg(
         ctx,
         crate::ids::SCULPT3D_SEC_TOOL,
@@ -113,7 +113,7 @@ fn paint_filter_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     let (kind_ids, labels): (Vec<_>, Vec<&str>) = FilterKind::ALL
         .iter()
         .enumerate()
-        .map(|(i, k)| (crate::ids::SCULPT3D_FILTER_KIND[i], k.label()))
+        .map(|(i, k)| (crate::ids::SCULPT3D_FILTER_KIND[i], tr(k.label_key())))
         .unzip();
     // ⚠️ **`None` quando a lei escolhida é de TECIDO** — e é assim que as duas
     // fileiras dizem a verdade ao mesmo tempo: só uma tem chip aceso. ⛔ Cair no
@@ -148,7 +148,7 @@ fn paint_filter_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     let (cloth_ids, cloth_labels): (Vec<_>, Vec<&str>) = ClothFilterKind::ALL
         .iter()
         .enumerate()
-        .map(|(i, k)| (crate::ids::SCULPT3D_CLOTH_FILTER_KIND[i], k.label()))
+        .map(|(i, k)| (crate::ids::SCULPT3D_CLOTH_FILTER_KIND[i], tr(k.label_key())))
         .unzip();
     let cloth_sel = snap
         .ui
@@ -181,7 +181,12 @@ fn paint_filter_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     let (orient_ids, orient_labels): (Vec<_>, Vec<&str>) = oferecidos
         .iter()
         .enumerate()
-        .map(|(i, o)| (crate::ids::SCULPT3D_CLOTH_FILTER_ORIENT[i], o.label()))
+        .map(|(i, o)| {
+            (
+                crate::ids::SCULPT3D_CLOTH_FILTER_ORIENT[i],
+                tr(o.label_key()),
+            )
+        })
         .unzip();
     let orient_sel = oferecidos
         .iter()
@@ -224,7 +229,7 @@ fn paint_reference_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f
         .iter()
         .map(|m| crate::ids::SCULPT3D_REF_MODE[*m as usize])
         .collect();
-    let labels: Vec<&str> = offered.iter().map(|m| m.label()).collect();
+    let labels: Vec<&str> = offered.iter().map(|m| tr(m.label_key())).collect();
     let selected = offered
         .iter()
         .position(|&m| m == snap.ui.brush.mode)
@@ -328,7 +333,7 @@ fn paint_elastic_scales_row(
     if snap.ui.brush.mode.field(verb).is_none() {
         return y;
     }
-    let labels: Vec<&str> = Scales::ALL.iter().map(|s| s.label()).collect();
+    let labels: Vec<&str> = Scales::ALL.iter().map(|s| tr(s.label_key())).collect();
     let selected = Scales::ALL
         .iter()
         .position(|&s| s == snap.ui.brush.elastic_scales)

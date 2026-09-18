@@ -75,7 +75,10 @@ pub(super) fn paint_mask_tools(
     // esquerdo — então um deles fica aceso enquanto vale, e clicar o aceso
     // desarma. Um rádio que nunca acende esconderia o único estado em que o
     // esquerdo deixa de esculpir.
-    let labels: Vec<&str> = TransformKind::ALL.iter().map(|k| k.label()).collect();
+    let labels: Vec<&str> = TransformKind::ALL
+        .iter()
+        .map(|k| tr(k.label_key()))
+        .collect();
     let armed = snap
         .transform
         .and_then(|k| TransformKind::ALL.iter().position(|&a| a == k))

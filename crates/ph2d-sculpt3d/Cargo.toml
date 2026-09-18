@@ -25,6 +25,10 @@ ph2d-pose = { path = "../ph2d-pose" }
 # novo** — não é licença geral para a crate.
 rayon = "1"
 
+# ⭐⭐ O MOTOR guarda a CHAVE do rótulo (`Verb::label_key()`); o inglês vive na tabela, e a
+# `label()` que 216 sítios chamam passou a ser um acessório derivado dela — uma lei só. A crate é
+# uma folha sem dependências, e isto não põe nada de UI no caminho do barro.
+ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-mesh = { path = "../ph2d-mesh" }
 
 # ⚠️ O ROTOR, e só ele. A conversão azimute→vetor do EIXO do alpha direcional

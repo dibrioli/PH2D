@@ -55,12 +55,20 @@ impl ClothFilterKind {
     /// O rótulo do chip (a UI da casa é inglesa).
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.cloth_filter_kind.<variante>`, e é ela que a interface passa ao
+    /// [`ph2d_i18n::tr`]. O texto vive na tabela (`ph2d-i18n/src/sculpt_engine.rs`), com a
+    /// [`label`](Self::label) acima a lê-lo em inglês: *uma lei só, com um acessório derivado.*
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Gravity => "Gravity",
-            Self::Inflate => "Inflate",
-            Self::Expand => "Expand",
-            Self::Pinch => "Pinch",
-            Self::Scale => "Scale",
+            Self::Gravity => "sculpt3d.cloth_filter_kind.gravity",
+            Self::Inflate => "sculpt3d.cloth_filter_kind.inflate",
+            Self::Expand => "sculpt3d.cloth_filter_kind.expand",
+            Self::Pinch => "sculpt3d.cloth_filter_kind.pinch",
+            Self::Scale => "sculpt3d.cloth_filter_kind.scale",
         }
     }
 
@@ -202,10 +210,18 @@ impl ClothFilterOrientation {
     /// O rótulo do chip.
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.cloth_filter_orientation.<variante>`, e é ela que a interface passa ao
+    /// [`ph2d_i18n::tr`]. O texto vive na tabela (`ph2d-i18n/src/sculpt_engine.rs`), com a
+    /// [`label`](Self::label) acima a lê-lo em inglês: *uma lei só, com um acessório derivado.*
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Local => "Local",
-            Self::World => "World",
-            Self::View => "View",
+            Self::Local => "sculpt3d.cloth_filter_orientation.local",
+            Self::World => "sculpt3d.cloth_filter_orientation.world",
+            Self::View => "sculpt3d.cloth_filter_orientation.view",
         }
     }
 }

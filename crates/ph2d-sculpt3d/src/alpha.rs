@@ -194,17 +194,25 @@ impl Alpha {
     /// O nome que a UI mostra.
     #[must_use]
     pub fn label(&self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.alpha.<variante>`, e é ela que a interface passa ao
+    /// [`ph2d_i18n::tr`]. O texto vive na tabela (`ph2d-i18n/src/sculpt_engine.rs`), com a
+    /// [`label`](Self::label) acima a lê-lo em inglês: *uma lei só, com um acessório derivado.*
+    #[must_use]
+    pub fn label_key(&self) -> &'static str {
         match self {
-            Self::Noise => "Noise",
-            Self::Pores => "Pores",
-            Self::Scales => "Scales",
-            Self::Cracks => "Cracks",
-            Self::Grain => "Grain",
-            Self::Ridges => "Ridges",
-            Self::Strata => "Strata",
-            Self::Scratches => "Scratches",
-            Self::Weave => "Weave",
-            Self::Image(_) => "Image",
+            Self::Noise => "sculpt3d.alpha.noise",
+            Self::Pores => "sculpt3d.alpha.pores",
+            Self::Scales => "sculpt3d.alpha.scales",
+            Self::Cracks => "sculpt3d.alpha.cracks",
+            Self::Grain => "sculpt3d.alpha.grain",
+            Self::Ridges => "sculpt3d.alpha.ridges",
+            Self::Strata => "sculpt3d.alpha.strata",
+            Self::Scratches => "sculpt3d.alpha.scratches",
+            Self::Weave => "sculpt3d.alpha.weave",
+            Self::Image(_) => "sculpt3d.alpha.image",
         }
     }
 

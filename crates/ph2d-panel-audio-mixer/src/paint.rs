@@ -435,9 +435,14 @@ fn paint_strip(
 
     // dB readout — the current fader gain in dB (or "-inf" at the bottom).
     let readout = if strip.gain_pos <= 0.0 {
-        "-inf".to_string()
+        tr("panel.audio_mixer.strip.inf_db").to_string()
     } else {
-        format!("{:.0} dB", fader_db(strip.gain_pos))
+        // ⚠️ O número é arredondado AQUI e entra como peça: a tabela guarda `{db} dB`, e é ela que
+        // decide de que lado da frase a unidade vive.
+        ph2d_i18n::tr_with(
+            "panel.audio_mixer.strip.db_value",
+            &[("db", &format!("{:.0}", fader_db(strip.gain_pos)))],
+        )
     };
     let readout_rect = Rect::new(col_x, y, col_w, TypeToken::Xs.px());
     paint_text_centered(
@@ -476,7 +481,7 @@ fn paint_strip(
             let ms = ph2d_editor_core::widget::segment_rects(Rect::new(col_x, y, col_w, MUTE_H), 2);
             paint_toggle(
                 ms[0].0,
-                "M",
+                tr("panel.audio_mixer.strip.mute_short"),
                 strip.muted,
                 ColorToken::Danger,
                 strip.mute_id,
@@ -489,7 +494,7 @@ fn paint_strip(
             );
             paint_toggle(
                 ms[1].0,
-                "S",
+                tr("panel.audio_mixer.strip.solo_short"),
                 strip.soloed,
                 ColorToken::Warn,
                 solo_id,

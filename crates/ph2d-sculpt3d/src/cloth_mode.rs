@@ -53,15 +53,23 @@ impl ClothMode {
     /// O rótulo que aparece no chip (a UI da casa é inglesa — HR/memória).
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.cloth_mode.<variante>`, e é ela que a interface passa ao
+    /// [`ph2d_i18n::tr`]. O texto vive na tabela (`ph2d-i18n/src/sculpt_engine.rs`), com a
+    /// [`label`](Self::label) acima a lê-lo em inglês: *uma lei só, com um acessório derivado.*
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Drag => "Drag",
-            Self::Push => "Push",
-            Self::PinchPoint => "Pinch Point",
-            Self::PinchPerpendicular => "Pinch Perp",
-            Self::Inflate => "Inflate",
-            Self::Grab => "Grab",
-            Self::SnakeHook => "Snake Hook",
-            Self::Expand => "Expand",
+            Self::Drag => "sculpt3d.cloth_mode.drag",
+            Self::Push => "sculpt3d.cloth_mode.push",
+            Self::PinchPoint => "sculpt3d.cloth_mode.pinch_point",
+            Self::PinchPerpendicular => "sculpt3d.cloth_mode.pinch_perpendicular",
+            Self::Inflate => "sculpt3d.cloth_mode.inflate",
+            Self::Grab => "sculpt3d.cloth_mode.grab",
+            Self::SnakeHook => "sculpt3d.cloth_mode.snake_hook",
+            Self::Expand => "sculpt3d.cloth_mode.expand",
         }
     }
 
@@ -130,10 +138,18 @@ impl ClothArea {
     /// O rótulo do chip.
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.cloth_area.<variante>`, e é ela que a interface passa ao
+    /// [`ph2d_i18n::tr`]. O texto vive na tabela (`ph2d-i18n/src/sculpt_engine.rs`), com a
+    /// [`label`](Self::label) acima a lê-lo em inglês: *uma lei só, com um acessório derivado.*
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Local => "Local",
-            Self::Global => "Global",
-            Self::Dynamic => "Dynamic",
+            Self::Local => "sculpt3d.cloth_area.local",
+            Self::Global => "sculpt3d.cloth_area.global",
+            Self::Dynamic => "sculpt3d.cloth_area.dynamic",
         }
     }
 

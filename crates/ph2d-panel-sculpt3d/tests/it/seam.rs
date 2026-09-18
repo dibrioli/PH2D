@@ -959,7 +959,7 @@ fn every_pose_control_is_clickable_where_it_is_drawn() {
         .enumerate()
         .map(|(i, d)| {
             (
-                format!("deformation {}", d.label()),
+                format!("deformation {}", d.label_key()),
                 ids::SCULPT3D_POSE_MODE[i],
             )
         })

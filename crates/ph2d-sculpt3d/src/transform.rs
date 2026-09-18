@@ -74,10 +74,18 @@ impl TransformKind {
     /// tabela paralela no painel — é a mesma regra dos chips de verbo.
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.transform_kind.<variante>`, e é ela que a interface passa ao
+    /// [`ph2d_i18n::tr`]. O texto vive na tabela (`ph2d-i18n/src/sculpt_engine.rs`), com a
+    /// [`label`](Self::label) acima a lê-lo em inglês: *uma lei só, com um acessório derivado.*
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Move => "Move",
-            Self::Rotate => "Rotate",
-            Self::Scale => "Scale",
+            Self::Move => "sculpt3d.transform_kind.move",
+            Self::Rotate => "sculpt3d.transform_kind.rotate",
+            Self::Scale => "sculpt3d.transform_kind.scale",
         }
     }
 

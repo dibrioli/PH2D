@@ -97,7 +97,7 @@ pub(super) fn paint_brush_tail(
     // aritmética que o seletor de matcap usa (o `event` a desfaz com
     // `checked_sub`; as duas metades vivem uma ao lado da outra de propósito).
     let mut labels: Vec<&str> = vec![tr("panel.sculpt3d.alpha.none")];
-    labels.extend(Alpha::ALL.iter().map(|a| a.label()));
+    labels.extend(Alpha::ALL.iter().map(|a| tr(a.label_key())));
     // ⚠️ **O SLOT DE IMAGEM tem o nome do SPRITE**, e ele é o ÚLTIMO chip.
     //
     // ⚠️ **Isto REVOGA a decisão que estava escrita aqui.** A versão anterior
@@ -387,7 +387,7 @@ fn paint_a_curva(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y:
         .iter()
         .position(|&f| f == snap.ui.brush.falloff)
         .unwrap_or(0);
-    let labels: Vec<&str> = Falloff::ALL.iter().map(|f| f.label()).collect();
+    let labels: Vec<&str> = Falloff::ALL.iter().map(|f| tr(f.label_key())).collect();
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.falloff"),

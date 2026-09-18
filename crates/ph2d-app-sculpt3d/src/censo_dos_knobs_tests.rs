@@ -515,7 +515,7 @@ fn diag_a_pose_por_deformacao() {
         let dureza = mede(|x| x.hardness = 0.0, |x| x.hardness = 0.95);
         eprintln!(
             "{:<17} seg {segs}: curva {curva:.3e} · forca {forca:.3e} · dureza {dureza:.3e}",
-            d.label()
+            d.label_key()
         );
     }
 }

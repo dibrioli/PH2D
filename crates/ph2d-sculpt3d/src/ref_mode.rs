@@ -79,10 +79,18 @@ impl RefMode {
     /// i18n trocar para os nomes por extenso.
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.ref_mode.<variante>`, e é ela que a interface passa ao
+    /// [`ph2d_i18n::tr`]. O texto vive na tabela (`ph2d-i18n/src/sculpt_engine.rs`), com a
+    /// [`label`](Self::label) acima a lê-lo em inglês: *uma lei só, com um acessório derivado.*
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::S => "S",
-            Self::B => "B",
-            Self::L => "L",
+            Self::S => "sculpt3d.ref_mode.s",
+            Self::B => "sculpt3d.ref_mode.b",
+            Self::L => "sculpt3d.ref_mode.l",
         }
     }
 }

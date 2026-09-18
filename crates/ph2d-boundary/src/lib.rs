@@ -105,14 +105,20 @@ impl Modo {
         Self::Suavizar,
     ];
 
-    pub fn label(self) -> &'static str {
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.boundary_modo.<variante>`; o texto vive na
+    /// tabela de strings (`ph2d-i18n/src/sculpt_engine.rs`) e quem o resolve é a interface.
+    ///
+    /// ⛔ **Esta crate NÃO ganha o acessório em inglês que o `ph2d-sculpt3d` tem**, e a razão
+    /// está escrita no `Cargo.toml` dela: *«a lib continua sem dependência nenhuma»*. Um
+    /// `tr_em(Ingles, …)` aqui traria a tabela de strings para dentro de uma crate de LEI.
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Dobrar => "Bend",
-            Self::Expandir => "Expand",
-            Self::Inflar => "Inflate",
-            Self::Agarrar => "Grab",
-            Self::Torcer => "Twist",
-            Self::Suavizar => "Smooth",
+            Self::Dobrar => "sculpt3d.boundary_modo.dobrar",
+            Self::Expandir => "sculpt3d.boundary_modo.expandir",
+            Self::Inflar => "sculpt3d.boundary_modo.inflar",
+            Self::Agarrar => "sculpt3d.boundary_modo.agarrar",
+            Self::Torcer => "sculpt3d.boundary_modo.torcer",
+            Self::Suavizar => "sculpt3d.boundary_modo.suavizar",
         }
     }
 
@@ -145,12 +151,18 @@ pub enum QuedaNoContorno {
 impl QuedaNoContorno {
     pub const ALL: [Self; 4] = [Self::Constante, Self::Raio, Self::Laco, Self::LacoInvertido];
 
-    pub fn label(self) -> &'static str {
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.boundary_queda.<variante>`; o texto vive na
+    /// tabela de strings (`ph2d-i18n/src/sculpt_engine.rs`) e quem o resolve é a interface.
+    ///
+    /// ⛔ **Esta crate NÃO ganha o acessório em inglês que o `ph2d-sculpt3d` tem**, e a razão
+    /// está escrita no `Cargo.toml` dela: *«a lib continua sem dependência nenhuma»*. Um
+    /// `tr_em(Ingles, …)` aqui traria a tabela de strings para dentro de uma crate de LEI.
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Constante => "Constant",
-            Self::Raio => "Radius",
-            Self::Laco => "Loop",
-            Self::LacoInvertido => "Loop and Invert",
+            Self::Constante => "sculpt3d.boundary_queda.constante",
+            Self::Raio => "sculpt3d.boundary_queda.raio",
+            Self::Laco => "sculpt3d.boundary_queda.laco",
+            Self::LacoInvertido => "sculpt3d.boundary_queda.laco_invertido",
         }
     }
 }

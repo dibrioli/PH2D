@@ -81,14 +81,20 @@ impl Modo {
     /// deformação** em vez de trocar o sinal da força. Escrever só o primeiro
     /// esconderia metade do pincel.
     #[must_use]
-    pub fn label(self) -> &'static str {
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.pose_deformacao.<variante>`; o texto vive na
+    /// tabela de strings (`ph2d-i18n/src/sculpt_engine.rs`) e quem o resolve é a interface.
+    ///
+    /// ⛔ **Esta crate NÃO ganha o acessório em inglês que o `ph2d-sculpt3d` tem**, e a razão
+    /// está escrita no `Cargo.toml` dela: *«a lib continua sem dependência nenhuma»*. Um
+    /// `tr_em(Ingles, …)` aqui traria a tabela de strings para dentro de uma crate de LEI.
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::GirarTorcer => "Rotate / Twist",
-            Self::EscalarTransladar => "Scale / Translate",
+            Self::GirarTorcer => "sculpt3d.pose_deformacao.girar_torcer",
+            Self::EscalarTransladar => "sculpt3d.pose_deformacao.escalar_transladar",
             // ⚠️ Aqui o modificador **não muda nada**, e está medido: a fixtura
             // invertida é idêntica ao bit à normal. A barra fica porque o alvo
             // nomeia as duas metades assim.
-            Self::EspremerEsticar => "Squash / Stretch",
+            Self::EspremerEsticar => "sculpt3d.pose_deformacao.espremer_esticar",
         }
     }
 
@@ -146,13 +152,19 @@ impl Deformacao {
     /// inversão **não muda nada** neste modo, e está medido (a fixtura invertida
     /// é idêntica **ao bit** à normal).
     #[must_use]
-    pub fn label(self) -> &'static str {
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.pose_modo.<variante>`; o texto vive na
+    /// tabela de strings (`ph2d-i18n/src/sculpt_engine.rs`) e quem o resolve é a interface.
+    ///
+    /// ⛔ **Esta crate NÃO ganha o acessório em inglês que o `ph2d-sculpt3d` tem**, e a razão
+    /// está escrita no `Cargo.toml` dela: *«a lib continua sem dependência nenhuma»*. Um
+    /// `tr_em(Ingles, …)` aqui traria a tabela de strings para dentro de uma crate de LEI.
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Rodar => "Rotate",
-            Self::Torcer => "Twist",
-            Self::Escalar => "Scale",
-            Self::Transladar => "Translate",
-            Self::Espremer => "Squash / Stretch",
+            Self::Rodar => "sculpt3d.pose_modo.rodar",
+            Self::Torcer => "sculpt3d.pose_modo.torcer",
+            Self::Escalar => "sculpt3d.pose_modo.escalar",
+            Self::Transladar => "sculpt3d.pose_modo.transladar",
+            Self::Espremer => "sculpt3d.pose_modo.espremer",
         }
     }
 

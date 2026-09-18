@@ -50,7 +50,7 @@ pub(super) fn paint_boundary_rows(
         .iter()
         .position(|&m| m == snap.ui.brush.boundary.modo)
         .unwrap_or(0);
-    let labels: Vec<&str> = modos.iter().map(|m| m.label()).collect();
+    let labels: Vec<&str> = modos.iter().map(|m| tr(m.label_key())).collect();
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.boundary_mode"),
@@ -67,7 +67,7 @@ pub(super) fn paint_boundary_rows(
         .iter()
         .position(|&q| q == snap.ui.brush.boundary.queda_no_contorno)
         .unwrap_or(0);
-    let labels: Vec<&str> = quedas.iter().map(|q| q.label()).collect();
+    let labels: Vec<&str> = quedas.iter().map(|q| tr(q.label_key())).collect();
     labelled_seg(
         ctx,
         tr("panel.sculpt3d.boundary_falloff"),
@@ -106,7 +106,7 @@ pub(super) fn paint_pose_rows(
         .iter()
         .position(|&m| m == snap.ui.brush.pose.deformacao)
         .unwrap_or(0);
-    let labels: Vec<&str> = modos.iter().map(|m| m.label()).collect();
+    let labels: Vec<&str> = modos.iter().map(|m| tr(m.label_key())).collect();
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.pose_mode"),
@@ -167,7 +167,7 @@ pub(super) fn paint_smear_rows(
         .iter()
         .position(|&m| m == snap.ui.brush.smear_mode)
         .unwrap_or(0);
-    let labels: Vec<&str> = SmearMode::ALL.iter().map(|m| m.label()).collect();
+    let labels: Vec<&str> = SmearMode::ALL.iter().map(|m| tr(m.label_key())).collect();
     labelled_seg(
         ctx,
         tr("panel.sculpt3d.smear_mode"),
@@ -204,7 +204,7 @@ pub(super) fn paint_trim_rows(
         .iter()
         .position(|&f| f == snap.ui.brush.trim_forma)
         .unwrap_or(0);
-    let labels: Vec<&str> = TrimForma::ALL.iter().map(|f| f.label()).collect();
+    let labels: Vec<&str> = TrimForma::ALL.iter().map(|f| tr(f.label_key())).collect();
     labelled_seg(
         ctx,
         tr("panel.sculpt3d.trim_forma"),
@@ -239,7 +239,7 @@ pub(super) fn paint_plano_rows(
         .unwrap_or(0);
     let labels: Vec<&str> = ph2d_sculpt3d::PlanoInversao::ALL
         .iter()
-        .map(|m| m.label())
+        .map(|m| tr(m.label_key()))
         .collect();
     labelled_seg(
         ctx,
@@ -279,7 +279,7 @@ pub(super) fn paint_project_rows(
         .iter()
         .position(|&m| m == snap.ui.brush.project_mode)
         .unwrap_or(0);
-    let labels: Vec<&str> = ProjectMode::ALL.iter().map(|m| m.label()).collect();
+    let labels: Vec<&str> = ProjectMode::ALL.iter().map(|m| tr(m.label_key())).collect();
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.project_mode"),
@@ -330,7 +330,7 @@ pub(super) fn paint_cloth_rows(
         .iter()
         .position(|&m| m == snap.ui.brush.cloth_mode)
         .unwrap_or(0);
-    let labels: Vec<&str> = ClothMode::ALL.iter().map(|m| m.label()).collect();
+    let labels: Vec<&str> = ClothMode::ALL.iter().map(|m| tr(m.label_key())).collect();
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.cloth_mode"),
@@ -346,7 +346,7 @@ pub(super) fn paint_cloth_rows(
         .iter()
         .position(|&a| a == snap.ui.brush.cloth_area)
         .unwrap_or(0);
-    let labels: Vec<&str> = ClothArea::ALL.iter().map(|a| a.label()).collect();
+    let labels: Vec<&str> = ClothArea::ALL.iter().map(|a| tr(a.label_key())).collect();
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.cloth_area"),
@@ -362,7 +362,10 @@ pub(super) fn paint_cloth_rows(
         .iter()
         .position(|&f| f == snap.ui.brush.cloth_force_falloff)
         .unwrap_or(0);
-    let labels: Vec<&str> = ClothForceFalloff::ALL.iter().map(|f| f.label()).collect();
+    let labels: Vec<&str> = ClothForceFalloff::ALL
+        .iter()
+        .map(|f| tr(f.label_key()))
+        .collect();
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.cloth_force_falloff"),

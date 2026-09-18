@@ -243,16 +243,24 @@ impl FilterKind {
     /// regra do [`Verb::label`] e do [`crate::TransformKind::label`].
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.filter_kind.<variante>`, e é ela que a interface passa ao
+    /// [`ph2d_i18n::tr`]. O texto vive na tabela (`ph2d-i18n/src/sculpt_engine.rs`), com a
+    /// [`label`](Self::label) acima a lê-lo em inglês: *uma lei só, com um acessório derivado.*
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Smooth => "Smooth",
-            Self::Scale => "Scale",
-            Self::Inflate => "Inflate",
-            Self::Sphere => "Sphere",
-            Self::Random => "Random",
-            Self::Relax => "Relax",
-            Self::SurfaceSmooth => "Surface Smooth",
-            Self::EnhanceDetails => "Enhance Details",
-            Self::Sharpen => "Sharpen",
+            Self::Smooth => "sculpt3d.filter_kind.smooth",
+            Self::Scale => "sculpt3d.filter_kind.scale",
+            Self::Inflate => "sculpt3d.filter_kind.inflate",
+            Self::Sphere => "sculpt3d.filter_kind.sphere",
+            Self::Random => "sculpt3d.filter_kind.random",
+            Self::Relax => "sculpt3d.filter_kind.relax",
+            Self::SurfaceSmooth => "sculpt3d.filter_kind.surface_smooth",
+            Self::EnhanceDetails => "sculpt3d.filter_kind.enhance_details",
+            Self::Sharpen => "sculpt3d.filter_kind.sharpen",
         }
     }
 

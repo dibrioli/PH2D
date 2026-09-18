@@ -8492,6 +8492,7 @@ dependencies = [
  "miniz_oxide 0.8.9",
  "ph2d-boundary",
  "ph2d-cloth",
+ "ph2d-i18n",
  "ph2d-mesh",
  "ph2d-painter-brush",
  "ph2d-pose",

@@ -28,9 +28,17 @@ impl ClothForceFalloff {
     /// O rótulo do chip (a UI da casa é inglesa).
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.cloth_force_falloff.<variante>`, e é ela que a interface passa ao
+    /// [`ph2d_i18n::tr`]. O texto vive na tabela (`ph2d-i18n/src/sculpt_engine.rs`), com a
+    /// [`label`](Self::label) acima a lê-lo em inglês: *uma lei só, com um acessório derivado.*
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Radial => "Radial",
-            Self::Plane => "Plane",
+            Self::Radial => "sculpt3d.cloth_force_falloff.radial",
+            Self::Plane => "sculpt3d.cloth_force_falloff.plane",
         }
     }
 

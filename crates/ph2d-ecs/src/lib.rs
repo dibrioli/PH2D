@@ -351,7 +351,7 @@ pub use visibility_layer::{EnableMode, OnScreenEnabler, VisibilityLayer};
 pub use bevy_ecs::component::Component;
 pub use bevy_ecs::entity::Entity;
 pub use bevy_ecs::hierarchy::{ChildOf, Children};
-pub use bevy_ecs::query::{With, Without};
+pub use bevy_ecs::query::{Has, With, Without};
 pub use bevy_ecs::resource::Resource;
 pub use bevy_ecs::schedule::Schedule;
 pub use bevy_ecs::system::{Commands, Query, Res, ResMut};

@@ -41,7 +41,7 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_ecs::{Entity, PresentWorld, SimRef, SimWorld, With, Without};
+use ph2d_ecs::{Entity, PresentWorld, SimRef, SimWorld, With};
 use ph2d_poly2d::Mesh2d;
 
 use crate::skinned_mesh::SkinnedMesh;
@@ -75,7 +75,36 @@ use ph2d_skeleton::Xform;
 /// dariam uma âncora a cada um. `None` quando a imagem tem lado zero — ali não há régua.
 #[must_use]
 pub fn pixel_to_local(sprite: &Sprite, size_px: [u32; 2], pixels_per_meter: f32) -> Option<Xform> {
-    let (w, h) = (f64::from(size_px[0]), f64::from(size_px[1]));
+    rect_to_quad(
+        sprite,
+        [0.0, 0.0, f64::from(size_px[0]), f64::from(size_px[1])],
+        sprite.resolve_anchor(pixels_per_meter),
+        sprite.size,
+    )
+}
+
+/// ⭐⭐⭐ **A RÉGUA GERAL: um RECTÂNGULO da malha esticado no QUAD de uma instância.**
+///
+/// `rect` é `[x0, y0, x1, y1]` em pixels da malha; `anchor`/`size` são os da INSTÂNCIA — que num
+/// 9-slice é o quad do pedaço, e numa sprite comum é o quad dela.
+///
+/// ⭐ **A [`pixel_to_local`] é o caso particular** em que o rectângulo é a malha inteira e o quad é o
+/// da sprite, e ela DELEGA aqui — *duas aritméticas para o mesmo mapa divergiriam no primeiro
+/// ajuste, e o sintoma seria a tinta do pedaço do meio meio pixel ao lado da dos cantos*.
+///
+/// ⚠️⚠️ **O `y` vira e o espelho entra na POSIÇÃO** — as duas leis são as do doc da [`pixel_to_local`],
+/// e valem igual para um pedaço: o shader espelha a UV do quad do PEDAÇO, e a posição tem de o
+/// acompanhar.
+///
+/// `None` com um lado nulo — ali não há régua.
+#[must_use]
+pub fn rect_to_quad(
+    sprite: &Sprite,
+    rect: [f64; 4],
+    anchor: [f32; 2],
+    size: [f32; 2],
+) -> Option<Xform> {
+    let (w, h) = (rect[2] - rect[0], rect[3] - rect[1]);
     if !(w > 0.0 && h > 0.0) {
         return None;
     }
@@ -86,95 +115,26 @@ pub fn pixel_to_local(sprite: &Sprite, size_px: [u32; 2], pixels_per_meter: f32)
             f64::from(s)
         }
     };
-    let (sx, sy) = (
-        lado(sprite.size[0], sprite.flip_x),
-        lado(sprite.size[1], sprite.flip_y),
-    );
-    let a = sprite.resolve_anchor(pixels_per_meter);
-    let (ax, ay) = (f64::from(a[0]), f64::from(a[1]));
+    let (sx, sy) = (lado(size[0], sprite.flip_x), lado(size[1], sprite.flip_y));
+    let (ax, ay) = (f64::from(anchor[0]), f64::from(anchor[1]));
+    let (mx, my) = (sx / w, -sy / h);
     Some(Xform([
-        sx / w,
+        mx,
         0.0,
         0.0,
-        -sy / h,
-        ax - sx / 2.0,
-        ay + sy / 2.0,
+        my,
+        ax - sx / 2.0 - mx * rect[0],
+        ay + sy / 2.0 - my * rect[1],
     ]))
 }
 
-/// ⭐⭐ **A MALHA DESTA IMAGEM, a partir dos pixels dela** — a porta do gesto de prender.
+/// ⭐ **DE QUE PIXELS A MALHA NASCE** — o irmão por responsabilidade (e pelo tecto de LOC).
 ///
-/// ⚠️ **Só o canal ALFA entra.** A cobertura é o que decide a silhueta, e passar as três cores
-/// junto seria dar ao traçador três respostas para a mesma pergunta.
-///
-/// ⭐⭐⭐ **`focos` são as ARTICULAÇÕES, em pixels da imagem** (report do dono, 2026-09-10:
-/// *«deveria ser um quadmesh inteligente com maior densidade nas áreas das articulações»*). Elas
-/// entram porque só quem prende sabe onde a dobra vai acontecer — o leaf da geometria não sabe o
-/// que é um osso, e não devia saber.
-#[must_use]
-pub fn mesh_from_rgba(
-    rgba: &[u8],
-    width: u32,
-    height: u32,
-    focos: &[[f64; 2]],
-    opts: ph2d_poly2d::GridOptions,
-) -> Option<Mesh2d> {
-    let alfa: Vec<u8> = rgba.iter().skip(3).step_by(4).copied().collect();
-    mesh_from_alpha(&alfa, width, height, focos, opts)
-}
-
-/// A mesma lei da irmã acima, com o plano de **alfa** já extraído — a porta de quem compôs a alfa
-/// em vez de a ler de uma imagem (a união dos quadros de uma folha, [`cell_alpha`]).
-///
-/// ⛔ *Duas chamadas ao traçador seriam duas respostas para «que malha esta tinta dá»*: a irmã
-/// delega aqui, e a única diferença entre as duas é o formato dos pixels à entrada.
-#[must_use]
-pub fn mesh_from_alpha(
-    alfa: &[u8],
-    width: u32,
-    height: u32,
-    focos: &[[f64; 2]],
-    opts: ph2d_poly2d::GridOptions,
-) -> Option<Mesh2d> {
-    ph2d_poly2d::grid_mesh_of(alfa, width, height, focos, opts)
-}
-
-/// ⭐⭐⭐ **A TINTA DE UMA CÉLULA É A UNIÃO DE TODOS OS QUADROS** — o plano de alfa que o traçador da
-/// malha recebe quando a sprite é uma FOLHA.
-///
-/// ⚠️⚠️ **É a união e não o quadro VIVO, e a razão é a animação:** uma malha traçada só sobre o
-/// quadro que está na tela **recorta** todos os outros — o artista prende no quadro `0`, dá play, e
-/// os braços do quadro `3` desaparecem. A união cobre o que qualquer quadro possa desenhar, e onde
-/// um quadro não tem tinta a alfa é `0`: *fora da tinta a malha é invisível, então cobrir a mais não
-/// custa pixel nenhum — cobrir a menos custa a arte*.
-///
-/// ⭐ **Com uma célula só ela é a identidade BYTE-A-BYTE** (origem `[0,0]`, célula = a imagem), o
-/// que é o que mantém toda sprite normal exactamente como estava.
-///
-/// ⚠️ **A amostragem é por pixel INTEIRO e satura na borda:** a célula pode ter lado fraccionário
-/// (uma região de `41` px em `2` colunas), e ali o último pixel repete em vez de ler o vizinho —
-/// que é a arte da célula do lado.
-#[must_use]
-pub fn cell_alpha(rgba: &[u8], src: [u32; 2], cells: &ph2d_render::SourceCells) -> Vec<u8> {
-    let [cw, ch] = cells.cell_px();
-    let (sw, sh) = (src[0] as usize, src[1] as usize);
-    let mut out = vec![0u8; cw as usize * ch as usize];
-    for k in 0..cells.count() {
-        let o = cells.cell_origin(k);
-        for y in 0..ch as usize {
-            let sy = ((o[1] as usize).saturating_add(y)).min(sh.saturating_sub(1));
-            for x in 0..cw as usize {
-                let sx = ((o[0] as usize).saturating_add(x)).min(sw.saturating_sub(1));
-                let Some(&a) = rgba.get((sy * sw + sx) * 4 + 3) else {
-                    continue;
-                };
-                let d = &mut out[y * cw as usize + x];
-                *d = (*d).max(a);
-            }
-        }
-    }
-    out
-}
+/// ⚠️ O `pub use` é deliberado: os consumidores escrevem `skin_image::mesh_from_rgba`, e mudar o
+/// endereço de uma porta por causa de um tecto de linhas seria o tecto a mandar na API.
+#[path = "skin_image_tinta.rs"]
+mod tinta;
+pub use tinta::{cell_alpha, mesh_from_alpha, mesh_from_rgba};
 
 /// ⭐⭐⭐ **AS ARTICULAÇÕES DESTE ESQUELETO, em PIXELS DA IMAGEM** — o que gradua a malha.
 ///
@@ -541,14 +501,23 @@ pub fn attach_skin_meshes(
     if presas.is_empty() {
         return 0;
     }
-    let instancias: BTreeMap<Entity, Entity> = {
-        let mut q = present
-            .world_mut()
-            .query_filtered::<(Entity, &SimRef), (With<RenderInstance>, Without<SlicePatchMirror>)>(
-            );
+    // ⭐⭐⭐ **QUEM RECEBE MALHA: a instância BASE e todo PEDAÇO que diga que fracção mostra** (F11).
+    //
+    // ⛔ Os fantasmas da folha aberta e a pré-visualização animada levam `SlicePatchMirror` e **não**
+    // levam `SlicePatchSource` — eles ficam de fora, e é desenho e não esquecimento: o quad deles é
+    // a folha DESDOBRADA, que não é um pedaço da arte desta sprite.
+    let alvos: Vec<(Entity, Entity, Option<[f32; 4]>)> = {
+        let mut q = present.world_mut().query_filtered::<(
+            Entity,
+            &SimRef,
+            Option<&ph2d_render::nine_slice::SlicePatchSource>,
+            ph2d_ecs::Has<SlicePatchMirror>,
+        ), With<RenderInstance>>();
         q.iter(present.world())
-            .filter(|(_, r)| presas.iter().any(|(e, _)| *e == r.0))
-            .map(|(p, r)| (r.0, p))
+            .filter(|(_, r, fonte, espelho)| {
+                presas.iter().any(|(e, _)| *e == r.0) && (fonte.is_some() || !espelho)
+            })
+            .map(|(p, r, fonte, _)| (r.0, p, fonte.map(|f| f.frac)))
             .collect()
     };
     // ⭐⭐⭐ **DESENHA-SE A MALHA ASSADA, SEMPRE** (F9 W2b): a densidade é decisão do BIND — não do
@@ -562,34 +531,78 @@ pub fn attach_skin_meshes(
     //
     // ⛔ **`unwrap_or(m)` não é um fallback silencioso:** a assadura devolve `None` quando o campo
     // de pesos é LINEAR, e ali partir uma aresta não muda um bit — a malha do bind já é a resposta.
-    let vivas: Vec<(Entity, Entity, SkinnedMesh)> = presas
+    // ⚠️ **A assadura é por SPRITE e não por instância**: um 9-slice tem nove alvos e UMA arte, e
+    // assar nove vezes pagaria nove vezes o que o memo existe para cobrar uma.
+    let assadas: BTreeMap<Entity, SkinnedMesh> = presas
         .into_iter()
-        .filter_map(|(e, m)| {
-            let p = *instancias.get(&e)?;
-            Some((
-                e,
-                p,
-                crate::skin_bake_cache::assada_da_arte(sim, e, &m).unwrap_or(m),
-            ))
+        .map(|(e, m)| {
+            let a = crate::skin_bake_cache::assada_da_arte(sim, e, &m).unwrap_or(m);
+            (e, a)
         })
         .collect();
     let mut feitas = 0;
-    for (e, p, mesh) in vivas {
-        let (Some(sprite), Some(inst)) = (
+    for (e, p, frac) in alvos {
+        let (Some(sprite), Some(inst), Some(assada)) = (
             sim.world().get::<Sprite>(e),
             present.world().get::<RenderInstance>(p).copied(),
+            assadas.get(&e),
         ) else {
             continue;
         };
-        if inst.size != sprite.size || inst.anchor != sprite.resolve_anchor(pixels_per_meter) {
+        // ⛔ **O aviso fica para quem NÃO diz que pedaço é** — a folha desdobrada de uma
+        // pré-visualização. Um pedaço de 9-slice traz a fracção, e por isso já não cai aqui.
+        if frac.is_none()
+            && (inst.size != sprite.size || inst.anchor != sprite.resolve_anchor(pixels_per_meter))
+        {
             avisa_quad_que_nao_e_o_da_sprite();
             continue;
         }
-        let Some((p2l, pele)) = deform_field(sim, e, mesh.mesh.size, pixels_per_meter) else {
+        let antes = assada.mesh.tris.len();
+        // ⭐⭐⭐ **O PEDAÇO: a malha cortada na fracção que este quad mostra**, e o mapa é o do quad
+        // DELE. ⚠️ Cortar no espaço da IMAGEM (e não recortar o quad) é a lei toda do 9-slice: o
+        // pedaço do meio mostra a faixa central ESTICADA, logo a tinta que o mapa de repouso poria
+        // ali não é a que se vê.
+        let (mesh, pesos, rect) = match frac {
+            Some(f) if f != [0.0, 0.0, 1.0, 1.0] => {
+                let (w, h) = (
+                    f64::from(assada.mesh.size[0]),
+                    f64::from(assada.mesh.size[1]),
+                );
+                let r = [
+                    f64::from(f[0]) * w,
+                    f64::from(f[1]) * h,
+                    f64::from(f[2]) * w,
+                    f64::from(f[3]) * h,
+                ];
+                let ossos = if assada.mesh.rest.is_empty() {
+                    0
+                } else {
+                    assada.pesos.len() / assada.mesh.rest.len()
+                };
+                let Some((m, w)) =
+                    ph2d_poly2d::submesh_in_rect(&assada.mesh, &assada.pesos, ossos, r)
+                else {
+                    continue;
+                };
+                (m, w, r)
+            }
+            _ => (
+                assada.mesh.clone(),
+                assada.pesos.clone(),
+                [
+                    0.0,
+                    0.0,
+                    f64::from(assada.mesh.size[0]),
+                    f64::from(assada.mesh.size[1]),
+                ],
+            ),
+        };
+        let Some(p2l) = rect_to_quad(sprite, rect, inst.anchor, inst.size) else {
             continue;
         };
-        let antes = mesh.mesh.tris.len();
-        let SkinnedMesh { mesh, pesos } = mesh;
+        let Some(pele) = crate::skin_live::skin_of(sim, e) else {
+            continue;
+        };
         let Some(malha) = posed_sprite_mesh(mesh, p2l, &pele, &pesos, inst.anchor, inst.size)
         else {
             continue;

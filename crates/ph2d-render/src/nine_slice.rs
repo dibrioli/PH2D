@@ -47,6 +47,37 @@ pub struct SlicePatchMirror;
 
 impl PresentComponent for SlicePatchMirror {}
 
+/// ⭐⭐⭐ **QUE FRACÇÃO DA ARTE DA SPRITE ESTE QUAD DESENHA** — o único facto que a deformação por
+/// ossos precisa de saber sobre o 9-slice.
+///
+/// # ⛔ Por que é um componente e não uma conta
+///
+/// Uma imagem presa ao esqueleto desenha-se por uma malha, e num 9-slice cada quad mostra um pedaço
+/// DIFERENTE da arte **esticado numa caixa de tamanho próprio**. Quem deforma precisa de cortar a
+/// malha nesse pedaço — e a única alternativa a receber o facto era re-derivar a cadeia do extract
+/// (região → célula da folha → fatia) numa segunda casa. *Uma segunda cópia dessa cadeia divergiria
+/// da primeira no dia em que uma delas ganhasse uma cerca.*
+///
+/// ⇒ o extract, que É o dono da lei das nove fatias, publica a fracção; a deformação converte-a em
+/// pixels da malha dela própria e **não sabe o que é um 9-slice**.
+///
+/// ⚠️ **A fracção é da CÉLULA que a sprite mostra** (já com região e grelha aplicadas), que é
+/// exactamente o rectângulo sobre o qual a malha do bind foi traçada ([`ph2d_render::SourceCells`]).
+///
+/// ⚠️ **Um quad que LADRILHA não repete a silhueta** — divergência declarada: o `uv_xform` faz a
+/// tinta repetir dentro do quad, e a malha é o pedaço único esticado. Numa arte opaca (o caso de
+/// toda moldura) é invisível; numa borda transparente e repetida vê-se.
+///
+/// Componente de PRESENTE: reconstruído a cada quadro, nunca serializado, **fora do
+/// `ComponentRegistry`** (não mexe nos dois contadores).
+#[derive(Component, Copy, Clone, Debug, PartialEq)]
+pub struct SlicePatchSource {
+    /// `[u0, v0, u1, v1]` em fracção da célula, `0..1`.
+    pub frac: [f32; 4],
+}
+
+impl PresentComponent for SlicePatchSource {}
+
 /// Um dos até nove quads em que um sprite com 9-slice se desenha.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SlicePatch {

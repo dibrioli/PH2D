@@ -192,16 +192,17 @@ pub fn submesh_in_rect(
         }
         fora.push(idx);
     }
-    (!fora.is_empty()).then(|| {
-        (
-            Mesh2d {
-                rest,
-                tris: fora,
-                size: mesh.size,
-            },
-            saida_attrs,
-        )
-    })
+    if fora.is_empty() {
+        return None;
+    }
+    Some((
+        Mesh2d {
+            rest,
+            tris: fora,
+            size: mesh.size,
+        },
+        saida_attrs,
+    ))
 }
 
 #[cfg(test)]

@@ -319,18 +319,24 @@ fn spawn(
             // O fan-out em si é uma função PURA (e testada); aqui só resta
             // colocá-las. Sem alocar: array fixo + contagem (HR-3).
             let (insts, n) = crate::render_loop::sim_extract_slice::instances(&base, &patches);
+            // ⭐⭐⭐ **A FRACÇÃO da célula que cada quad mostra**, publicada para quem deforma por
+            // ossos: sem ela, a malha de uma imagem presa a um 9-slice teria de re-derivar a cadeia
+            // região → célula → fatia numa segunda casa (F11, 2026-09-17).
+            let (fontes, _) = crate::render_loop::sim_extract_slice::sources(atlas_uv, &patches);
             builder.insert(insts[0]);
+            builder.insert(fontes[0]);
             // ⚠️ **O `present` volta do `builder`.** `builder` tem o `present` emprestado
             // mutavelmente, e os oito `present.spawn` abaixo pedem-no de volta: o
             // `into_world_mut` devolve-o sem procurar a entidade outra vez. (Até à
             // `line/render-bodies` largava-se o `builder` com um `drop` — pelo EMPRÉSTIMO,
             // não pelo valor, e o lint `drop_non_drop` avisava que o tipo não tem `Drop`.)
             let present = builder.into_world_mut();
-            for ri in insts.iter().take(n).skip(1) {
+            for (ri, fonte) in insts.iter().zip(&fontes).take(n).skip(1) {
                 present.spawn((
                     SimRef(sim_entity),
                     gt,
                     *ri,
+                    *fonte,
                     ph2d_render::nine_slice::SlicePatchMirror,
                 ));
             }

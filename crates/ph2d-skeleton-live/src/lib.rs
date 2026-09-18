@@ -31,7 +31,12 @@
 /// ⭐ A CURVATURA de um osso, viva — irmão do `skin_live` pelo tecto de LOC, cortado por assunto.
 pub mod bend_live;
 pub mod bone;
+pub mod esqueletos;
+#[cfg(test)]
+#[path = "esqueletos_tests_support.rs"]
+mod esqueletos_tests_support;
 pub mod goal;
+pub mod recusa_do_bind;
 /// ⭐ O ORÇAMENTO de peças do quadro — irmão do `skin_image` pelo tecto de LOC, cortado por assunto.
 pub mod skin_bake;
 pub mod skin_bake_cache;

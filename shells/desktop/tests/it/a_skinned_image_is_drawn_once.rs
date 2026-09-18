@@ -93,8 +93,13 @@ fn the_bind_verb_reaches_both_media() {
     // ⚠️ O dreno do *Bind* lê-se no QUADRO pela ordem em que corre (`frame_text::render_frame`): desde a OBRA 2 da
     // `line/render-loop` (2026-09-13) ele mora na `fase_skeleton_verbs`, e a selecção do gizmo continua no `mod.rs`.
     let src = code_only(&crate::frame_text::render_frame());
+    // ⚠️⚠️ **A ÂNCORA mudou de `if pending_bone_bind {` para o BLOCO ROTULADO, e o gate reprovou
+    // sobre produto CERTO** (2026-09-18): a recusa do bind precisa de sair do bloco sem levar com
+    // ela o soltar e os knobs, e isso pede um `'bind: { … break 'bind }`. *Um gate ancorado no
+    // idioma reprova no dia em que o idioma muda* — a afirmação dele continua intacta, e só a
+    // âncora foi curada.
     let i = src
-        .find("if pending_bone_bind {")
+        .find("'bind: {")
         .expect("o dreno do *Bind* deixou de existir");
     let corpo = &src[i..i + 2600];
     assert!(

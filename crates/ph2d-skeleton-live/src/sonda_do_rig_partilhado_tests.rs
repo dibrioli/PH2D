@@ -201,3 +201,64 @@ fn duas_imagens_no_mesmo_rig_dobram_as_duas() {
     );
     println!("cima {ea:.6} m | baixo {eb:.6} m");
 }
+
+/// ⛔⛔⛔ **SEM OSSO ESCOLHIDO, UMA IMAGEM PRENDE-SE A TODOS OS ESQUELETOS DA CENA — em silêncio.**
+///
+/// O botão *Bind* da shell passa `semente = osso_selecionado`, e com nada de osso aceso ele é
+/// `None`. O [`super::super::skin_live::skeleton_of`] responde a `None` com **todos os ossos da
+/// cena**, o que é a resposta certa e conveniente quando há **um** esqueleto — e é um amálgama
+/// quando há dois.
+///
+/// ⚠️ **Esta sonda mede o PRODUTO, não uma teoria:** ela monta duas cadeias que não se conhecem e
+/// conta os ossos que a pele guardou. *Um bind a `6` ossos e um bind a `3` desenham diferente e o
+/// log diz «1 imagem presa» nos dois casos.*
+///
+/// ⭐⭐ **E desde a cura ela MUDOU DE PAPEL: é o CONTROLO POSITIVO da porta.** O botão *Bind* já não
+/// chega aqui com dois esqueletos e sem osso — a [`crate::recusa_do_bind`] recusa antes —, mas a
+/// função continua a fazer isto, que é o que torna a porta necessária. ⛔ *Apagar esta sonda por «o
+/// produto já não a alcança» deixaria a porta sem o facto que a justifica*, e a próxima pessoa a
+/// achar a recusa inconveniente não teria como saber o que ela evita.
+#[test]
+fn sem_osso_escolhido_a_imagem_prende_se_a_todos_os_esqueletos() {
+    let ([w, h], arte) = braco_px();
+    let celula = [f32::from(w as u16) / PPM, f32::from(h as u16) / PPM];
+    let mut sim = SimWorld::default();
+
+    // DOIS esqueletos que não se conhecem — o do personagem e um qualquer outro objecto da cena.
+    for base in [0.0_f64, 10.0] {
+        let mut pai = None;
+        for k in 0..3 {
+            let x = base + f64::from(k);
+            let osso = crate::bone::create(&mut sim, pai, [x, 0.0], [x + 1.0, 0.0]).expect("osso");
+            pai = Some(Entity::from_bits(osso));
+        }
+    }
+
+    let s = sprite(celula[0], celula[1], 0.0, 0.0);
+    let e = sim.world_mut().spawn((Transform::IDENTITY, s)).id();
+    assert!(
+        crate::skin_live::bind_image(
+            &mut sim,
+            e,
+            &arte,
+            [w, h],
+            PPM,
+            ph2d_poly2d::GridOptions::default(),
+            // ⭐ A SEMENTE AUSENTE: é isto que o botão passa quando nenhum osso está aceso.
+            None,
+        ),
+        "o bind recusou a imagem"
+    );
+    let ossos = sim
+        .world()
+        .get::<ph2d_skeleton_ecs::SkinBind>(e)
+        .and_then(|b| postcard::from_bytes::<crate::skinned_mesh::SkinnedMesh>(&b.source).ok())
+        .map_or(0, |m| m.ossos());
+    println!("sem osso escolhido, a pele prendeu-se a {ossos} osso(s) de dois esqueletos de 3");
+    assert_eq!(
+        ossos, 6,
+        "a funcao deixou de apanhar os SEIS ossos das duas cadeias. Isso e' uma mudanca de LEI, \
+         nao uma melhoria de passagem: a porta `recusa_do_bind` existe por causa deste facto, e \
+         sem ele ela passa a recusar um gesto que ja' fazia a coisa certa"
+    );
+}

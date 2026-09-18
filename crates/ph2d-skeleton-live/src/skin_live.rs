@@ -104,7 +104,7 @@ pub fn bone_polylines(sim: &SimWorld) -> Vec<(u64, Vec<[f64; 2]>)> {
 /// pede `&mut World` para nascer, e os dois consumidores disto — o overlay e o gesto — só têm o
 /// mundo emprestado. *Uma função que pede `&mut` só para ler obriga o chamador a arranjar um `&mut`
 /// que ele não precisa, e é assim que um `clone` do mundo aparece num caminho de quadro.*
-fn ossos_da_cena(sim: &SimWorld) -> Vec<(Entity, ph2d_skeleton::bend::BoneSpec)> {
+pub(crate) fn ossos_da_cena(sim: &SimWorld) -> Vec<(Entity, ph2d_skeleton::bend::BoneSpec)> {
     sim.world()
         .iter_entities()
         // ⚠️ **A porta que resolve o `Auto`** ([`effective_spec`]), nunca o `Bone::spec()` cru: o
@@ -132,16 +132,9 @@ pub fn skeleton_of(sim: &SimWorld, seed: Option<Entity>) -> Vec<Entity> {
         t.sort_by_key(|e| e.to_bits());
         return t;
     };
-    // Sobe enquanto o PAI também for osso — parar no primeiro pai não-osso é o que permite pendurar
-    // um esqueleto inteiro dentro de um grupo sem ele deixar de ser um esqueleto.
-    let mut raiz = seed;
-    while let Some(p) = sim.world().get::<ChildOf>(raiz).map(ChildOf::parent) {
-        if sim.world().get::<Bone>(p).is_some() {
-            raiz = p;
-        } else {
-            break;
-        }
-    }
+    // ⭐ A subida é a PORTA — ela tem um segundo leitor (o `recusa_do_bind`), e duas cópias
+    // divergiriam no dia do primeiro ajuste.
+    let raiz = crate::esqueletos::raiz_do_osso(sim, seed);
     let mut out = Vec::new();
     let mut pilha = vec![raiz];
     while let Some(e) = pilha.pop() {

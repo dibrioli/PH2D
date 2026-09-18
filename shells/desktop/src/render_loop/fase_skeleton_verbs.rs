@@ -33,9 +33,26 @@ impl crate::App {
         } = intents;
         // ⭐⭐⭐ **O ESQUELETO** (estudo 42 item 5): os três verbos da seção, aplicados aqui como
         // os do envelope — o dreno acima só CAPTURA, e quem mexe no mundo é este bloco.
-        if pending_bone_bind {
+        // ⚠️ **Bloco ROTULADO e não um `return`:** a recusa é do BIND, e um retorno cedo levaria
+        // com ela o soltar e os knobs, que são verbos independentes do mesmo quadro.
+        'bind: {
+            if !pending_bone_bind {
+                break 'bind;
+            }
             let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
             let semente = osso_selecionado.map(ph2d_ecs::Entity::from_bits);
+            // ⛔⛔⛔ **O BIND PERGUNTA ANTES DE PRENDER** (2026-09-18, defeito MEDIDO): sem osso
+            // escolhido a semente é `None`, e o `skeleton_of` responde a `None` com **todos os
+            // ossos da cena** — com dois esqueletos a forma ficava presa aos SEIS, em silêncio, e
+            // esta linha do log dizia *«1 imagem presa»* como se estivesse tudo bem.
+            //
+            // ⚠️ **A lei é PURA e vive na crate** (`recusa_do_bind`): ela devolve a razão em vez de
+            // a imprimir, senão a metade que interessa — *a razão certa para o facto certo* — fica
+            // fora de qualquer teste, e a decisão precisaria de um mundo desenhado para ser medida.
+            if let Some(r) = ph2d_skeleton_live::recusa_do_bind::recusa_do_bind(sim, semente) {
+                eprintln!("[ph2d-vec] {}", r.frase());
+                break 'bind;
+            }
             let n = crate::skeleton_live::bind(sim, vec_scene, &self.vec.entities, &ids, semente);
             // ⭐⭐⭐ **E AS IMAGENS ESCOLHIDAS** — a 2.ª mídia (ordem do dono, 2026-09-09).
             //

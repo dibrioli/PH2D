@@ -59,6 +59,50 @@ diz onde ler o mecanismo:
 
 ---
 
+### F13 — ✅ **VÁRIAS IMAGENS NUM ESQUELETO SÓ (o PERSONAGEM), e o *Bind* deixou de prender ao amálgama** (2026-09-18)
+
+**A capacidade existe, está MEDIDA e é alcançável pelo gesto.** Duas sprites presas ao mesmo osso
+semente deformam as duas, com excursões **diferentes** (`1,123 m` / `1,195 m`) ⇒ cada uma tem pele
+própria, não é cópia. Cena **`=4`** (`PH2D_VEC_BONE_MEDIA_SMOKE=4`): três desenhos separados, um
+esqueleto em **árvore** (tronco + dois membros) — ✅ smoke do dono aprovado.
+
+⛔⛔ **A 1.ª sonda não media partilha nenhuma, e foi uma MUTAÇÃO que o mostrou:** num mundo com um
+esqueleto só, `skeleton_of(sim, None)` devolve *«todos os ossos»*, que são os mesmos ⇒ prender ao
+seed e prender a `None` dão o mesmo. ⇒ corrente **ISCA** + a grandeza que separa, que é a
+**CONTAGEM de ossos do bind** (`3` contra `6`). ⚠️ A distância da isca **não** é load-bearing (a
+mutação que a aproxima sobrevive, e está escrito no ficheiro).
+
+⛔⛔⛔ **E isso expôs um defeito de PRODUTO, medido:** o botão *Bind* passa `semente =
+osso_selecionado`, que é `None` quando nenhum osso está aceso. Com **dois** esqueletos na cena a
+forma ficava presa aos **seis** ossos das duas cadeias, em silêncio, com o log a dizer *«1 imagem
+presa»*. ⇒ porta pura [`ph2d_skeleton_live::recusa_do_bind`] — ela **recusa em voz alta** e diz o
+gesto que cura (*escolher também um osso na Hierarquia*). ⚠️ **A cerca é o que a torna aceitável:**
+com **um** esqueleto o caminho é byte-idêntico ao de sempre; *exigir sempre o osso partiria o fluxo
+que o artista já aprendeu, para curar um caso que só existe quando há ambiguidade*.
+
+⭐ A subida à raiz virou porta ([`esqueletos::raiz_do_osso`]) com **dois** leitores — e mudá-la de
+sítio **tirou** linhas do `skin_live.rs`, que estava a `697` de um tecto de `700`.
+
+⏳ **DÍVIDA NOMEADA:** esta recusa sai no **terminal**, como as duas que o mesmo botão já tinha.
+*Uma recusa que só o terminal vê é um botão mudo* — e curar só a nova deixaria duas superfícies para
+a mesma pergunta. **As três sobem à tela juntas**, numa wave com superfície própria.
+
+⚠️ **Três leituras que o diff inverte:**
+1. *«zero chamadores de produto de `bind_image`»* — **falso**, era a **fachada** da shell que o grep
+   não resolve (`pub(crate) use ph2d_skeleton_live::skin_live::*`). A régua das fachadas erra nos
+   **dois** sentidos, e aqui fez ler *«não existe»* sobre algo que existe.
+2. *«a subida é comum às três peças»* — **refutado**: os pesos dependem da distância ao osso, e a
+   própria sonda já media excursões diferentes.
+3. A régua da disposição comparou com o **vão** (centro a centro) quando o que cruza é a **folga**
+   (borda a borda) — a foto mostrou três peças sobrepostas **com o gate verde**.
+
+⛔ **E um gate reprovou sobre produto CERTO:** o `the_bind_verb_reaches_both_media` ancorava em
+`if pending_bone_bind {`, e a recusa exigiu um bloco rotulado (`'bind: { … break 'bind }`) para não
+levar com ela o **soltar** e os **knobs** do mesmo quadro. *Um gate ancorado no idioma reprova no
+dia em que o idioma muda* — a afirmação ficou, só a âncora foi curada.
+
+Mutação **11 de 11** a sangrar (6 na cena + 5 na recusa); portão `15 079` verdes.
+
 ### F12 — ⏳ **ABERTO e NOMEADO: o *Frame All* enquadra a JANELA, e os painéis tapam-lhe as bordas** (2026-09-18)
 
 ⛔⛔ **Não é da pele nem do esqueleto — é do verbo da CÂMERA, e vale para toda a casa.** O

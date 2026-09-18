@@ -221,9 +221,57 @@ fn the_node_and_the_substrate_agree_on_every_style_param_name() {
             ph2d_node_motion_output::SORT_PARAM,
             ph2d_eval_motion::SINK_SORT_PARAM,
         ),
+        // doc 115 W5: os dois do PASSE de separação. ⚠️ Eles não são estilo — não entram no
+        // `SinkStyle` —, mas a armadilha do renome é EXACTAMENTE a mesma, e é por isso que estão
+        // nesta lista e não numa segunda.
+        (
+            ph2d_node_motion_output::COLLIDE_PARAM,
+            ph2d_eval_motion::SINK_COLLIDE_PARAM,
+        ),
+        (
+            ph2d_node_motion_output::COLLIDE_ITERATIONS_PARAM,
+            ph2d_eval_motion::SINK_COLLIDE_ITERATIONS_PARAM,
+        ),
     ] {
         assert_eq!(node, substrate, "o no e o substrato divergiram num param");
     }
+}
+
+/// ⭐⭐⭐ **O NÚMERO DE FÁBRICA DAS VARREDURAS É O MESMO DOS DOIS LADOS, e o do nó é o que o
+/// `motion.collide` já ship** (doc 115 W5).
+///
+/// ⚠️⚠️ **Esta é a metade que uma leitura rápida não vê:** o substrato **não consulta o
+/// `ParamSpec::default`** — ele lê o *override* do documento e cai para uma constante PRÓPRIA. Duas
+/// constantes para o mesmo default é a forma canónica de divergirem; o que as ata é este gate.
+///
+/// ⭐ E o `8` não é escolhido: é o `iterations` de fábrica do nó que este passe substitui, para uma
+/// cena migrada não mudar de qualidade em silêncio (§9.4 tem a tabela de pares por varredura).
+#[test]
+fn as_duas_folhas_concordam_no_numero_de_fabrica_das_varreduras() {
+    let do_no = ph2d_node_motion_output::MANIFEST
+        .params
+        .iter()
+        .find(|p| p.name == ph2d_node_motion_output::COLLIDE_ITERATIONS_PARAM)
+        .expect("o manifesto declara as varreduras")
+        .default;
+    assert_eq!(
+        do_no,
+        ph2d_eval_motion::SINK_COLLIDE_ITERATIONS_DEFAULT,
+        "o default do manifesto e o do substrato divergiram — um documento novo correria um numero \
+         que o cartao nao mostra"
+    );
+    assert_eq!(
+        ph2d_node_motion_output::COLLIDE_ITERATIONS_MAX,
+        ph2d_eval_motion::SINK_COLLIDE_ITERATIONS_MAX,
+        "o tecto das duas folhas divergiu — o slider ofereceria o que a porta corta"
+    );
+    // ⚠️ E o CONTROLO de que o número herdado é de facto o do nó que o passe substitui: sem isto,
+    // alguém pode mudar um dos dois e os dois gates de cima continuam verdes sobre um produto que
+    // mudou de qualidade.
+    assert_eq!(
+        do_no, 8.0,
+        "o default e' o `iterations` de fabrica do `motion.collide` (doc 115 §12/W5)"
+    );
 }
 
 /// **OS QUATRO PARAMS QUE O NÓ PINTA EXISTEM NO MANIFESTO DELE.**
@@ -245,6 +293,8 @@ fn the_manifest_declares_every_param_the_hints_paint() {
         ph2d_node_motion_output::PIVOT_Y_PARAM,
         ph2d_node_motion_output::FILTER_PARAM,
         ph2d_node_motion_output::SORT_PARAM,
+        ph2d_node_motion_output::COLLIDE_PARAM,
+        ph2d_node_motion_output::COLLIDE_ITERATIONS_PARAM,
     ] {
         assert!(declared(name), "o manifesto nao declara `{name}`");
     }

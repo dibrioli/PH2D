@@ -142,6 +142,71 @@ fn a_cerca_dos_externos_precisa_das_duas_metades() {
     }
 }
 
+/// ⭐⭐⭐ **A TERCEIRA CERCA: o passe ARMADO cozinha na CPU** (doc 115 W5).
+///
+/// Ela é a pergunta que a §10.3 daquele doc prescreveu por escrito antes de haver um passe — *«a
+/// pergunta certa deixa de ser «alguém declara?» e passa a ser «a separação está ARMADA?»»* — e a
+/// razão é de motor: o passe corre no fim do cozimento **da CPU**, e na rota do dispositivo não
+/// existe corrente de CPU nenhuma para separar.
+///
+/// ⚠️ **As três metades:** armado recusa · desarmado **não** recusa (senão a cerca seria
+/// incondicional e toda cena do produto caía) · e o número de varreduras **sozinho** não arma nada,
+/// que é o que impede uma leitura que ignore o interruptor de passar aqui.
+#[test]
+fn o_passe_armado_recusa_o_dispositivo() {
+    let monta = |collide: f32, varreduras: f32| {
+        let mut m = MotionState::new();
+        let sink = m.doc.graph.add_node("motion.output");
+        m.doc.graph.set_param(sink, "collide", collide);
+        m.doc
+            .graph
+            .set_param(sink, "collide_iterations", varreduras);
+        m.sinks = vec![sink];
+        m
+    };
+    let armado = monta(1.0, 8.0);
+    assert!(
+        super::sink_arma_a_separacao(&armado.doc.graph, &armado.sinks),
+        "com o interruptor ligado a cerca tem de disparar"
+    );
+    let desarmado = monta(0.0, 8.0);
+    assert!(
+        !super::sink_arma_a_separacao(&desarmado.doc.graph, &desarmado.sinks),
+        "desarmado NAO pode recusar — senao toda cena do produto cozinha na CPU"
+    );
+    let so_o_numero = monta(0.0, 64.0);
+    assert!(
+        !super::sink_arma_a_separacao(&so_o_numero.doc.graph, &so_o_numero.sinks),
+        "o numero de varreduras sozinho nao arma nada"
+    );
+    // E o chão: um documento sem sink nenhum.
+    let vazio = MotionState::new();
+    assert!(!super::sink_arma_a_separacao(
+        &vazio.doc.graph,
+        &vazio.sinks
+    ));
+}
+
+/// ⛔⛔⛔ **O FIO da terceira cerca** — irmão do `a_cerca_dos_externos_esta_de_facto_ligada_ao_cozimento`
+/// e pela mesma razão: os gates acima chamam a porta, e **cortar o `return` no `cook_gpu` deixa-os
+/// todos verdes**. A metade que o CI corre é o despacho lido por `include_str!`.
+#[test]
+fn a_cerca_do_passe_esta_de_facto_ligada_ao_cozimento() {
+    const PONTE: &str = include_str!("motion_bridge_gpu.rs");
+    let despacho = PONTE
+        .split_once("if sink_arma_a_separacao(&motion.doc.graph, &motion.sinks)")
+        .map(|(_, resto)| resto)
+        .expect(
+            "o `cook_gpu` deixou de PERGUNTAR se o passe esta' armado — a mesma cena sairia \
+             separada na CPU e sobreposta na placa (doc 115 W5)",
+        );
+    let ate_ao_fecho = despacho.split_once('}').map(|(x, _)| x).unwrap_or("");
+    assert!(
+        ate_ao_fecho.contains("return fell(motion, RECUSA_PASSE)"),
+        "a cerca e' perguntada e a resposta nao SAI para a CPU: {ate_ao_fecho:?}"
+    );
+}
+
 /// ⭐⭐ **O CENSO dos leitores da declaração** — a bandeira do registo não pode ficar por pôr.
 ///
 /// A porta única que lê o colisor declarado é o `ph2d_contact::colisores`; quem lhe chama num

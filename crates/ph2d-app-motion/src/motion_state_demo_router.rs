@@ -31,7 +31,7 @@ use super::*;
 /// número em dois sítios, que é como ele envelhece. *Um valor sob `cfg(test)` é invisível do
 /// outro lado da fronteira (HOWTO §2.5) — e aqui a cura não é abrir uma feature, é reconhecer
 /// que a constante deixou de ser só do teste.*
-pub const MAX_DEMO_LEVEL: u32 = 120;
+pub const MAX_DEMO_LEVEL: u32 = 121;
 
 /// **As cenas de smoke dos CICLOS** — irmãs pelo tecto de LOC, cortadas por responsabilidade;
 /// ver o cabeçalho delas.
@@ -475,6 +475,14 @@ pub fn build_level(
         Some("108") => conferencia::lsystem_family(doc, registry),
         Some("109") => conferencia::table_family(doc, registry),
         Some("110") => conferencia::dup_family(doc, registry),
+        // ⭐⭐⭐ **O PASSE AUTOMÁTICO** (doc 115 W5): formas amontoadas, ZERO nós de colisão, e o
+        // interruptor no cartão do Output. Ela ANUNCIA, como as cenas de ciclo — é um smoke que o
+        // dono segue passo a passo.
+        Some("121") => {
+            let sinks = passe_demo::build(doc, registry).unwrap_or_default();
+            passe_demo::announce();
+            sinks
+        }
         // ⭐ **AS CENAS DE CICLO** — irmãs num ficheiro só; ver [`ciclos`]. Elas não são «mais
         // uma família»: uma cena de família é UMA chamada, e uma de ciclo constrói, pousa a
         // LEGENDA no canvas e ANUNCIA os passos, porque é um smoke que o dono segue (doc 103 §1,

@@ -131,6 +131,47 @@ pub const SORT_LABELS: [&str; 2] = [
     "node.opts.node_motion_output.sort_labels.1",
 ];
 
+/// ⭐⭐⭐ **O INTERRUPTOR QUE ARMA A SEPARAÇÃO** — doc 115 W5, ordem do dono (2026-09-17):
+/// *«o app separa sozinho»*.
+///
+/// Ligado, o que este sink desenha é passado pelo [`ph2d_contact::passe`] **depois** do cozimento:
+/// as peças que declaram uma forma — a `source.shape` com `Collide`, e desde a W4 **todo objecto da
+/// cena** — deixam de se sobrepor.
+///
+/// # Porque ele mora AQUI, e não num nó novo nem em cada objecto
+///
+/// A frase do dono é *«o interruptor arma o PASSE»* (§11.3), no singular, e um passe é uma
+/// propriedade do que se DESENHA — que é exactamente o que este nó é. ⛔ Um nó `collide` no meio da
+/// cadeia é o que a ordem dele manda tirar; ⛔ um interruptor por objecto é `PROJECT_SCHEMA` mais
+/// uma secção do Inspector, que é superfície de outra linha (§10.4).
+///
+/// ⚠️ **E ele é irmão dos quatro acima, não um estranho:** os cinco são lidos **no fim**, por quem
+/// baixa a corrente, e nunca pelo `eval` — este nó é `GpuKernel::PASSTHROUGH`, logo uma coluna
+/// escrita aqui nunca chegaria a lado nenhum. A diferença é que os quatro primeiros são ESTILO (o
+/// que a peça parece) e este muda POSIÇÕES, e é por isso que ele **não** entra no `SinkStyle`: uma
+/// grandeza que a rota do dispositivo ignorasse em silêncio daria a mesma cena separada na CPU e
+/// sobreposta na placa. Ele tem porta própria (`ph2d_eval_motion::sink_collide`) e a cerca do
+/// shell recusa o dispositivo enquanto ele estiver ligado.
+pub const COLLIDE_PARAM: &str = "collide";
+
+/// Quantas varreduras o passe faz por quadro.
+///
+/// ⭐⭐ **O default é `8` porque é o número que o `motion.collide` JÁ SHIP** — a wave que o
+/// substitui não pode entregar outra qualidade em silêncio, e herdar o número é o que faz uma cena
+/// migrada parecer a mesma. Medido (doc 115 §9.4, `500` caixas a `25 %` de empacotamento, `235`
+/// pares sobrepostos antes): `2` varreduras deixam `188`, `8` deixam `85`, `32` deixam `7`.
+///
+/// ⚠️⚠️ **E não há acumulação entre quadros:** o cozimento re-deriva as posições do grafo a cada
+/// quadro, logo o passe **recomeça sempre** e o que sobra de sobreposição é permanente, não
+/// transitório. *Um solver iterativo dentro de um laço que reinicia não converge com o tempo.*
+///
+/// O recurso do tecto é o RELÓGIO DO QUADRO (doc 115 §9.3, máquina calma): a `500` peças, `8`
+/// varreduras custam `12,4 %` de um quadro e `32` custam `40,8 %`.
+pub const COLLIDE_ITERATIONS_PARAM: &str = "collide_iterations";
+
+/// O tecto de varreduras — o MESMO do `motion.collide`, pela mesma razão do default.
+pub const COLLIDE_ITERATIONS_MAX: f32 = 64.0;
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.output"),
@@ -173,6 +214,17 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             // `0` = `Texture` = o `sub_order: 0` de sempre.
             name: SORT_PARAM,
             default: 0.0,
+        },
+        ParamSpec {
+            // doc 115 W5. `0` = desligado = o que este app sempre fez: nenhum passe corre e a
+            // corrente que se desenha é a que o cozimento devolveu, ao bit.
+            name: COLLIDE_PARAM,
+            default: 0.0,
+        },
+        ParamSpec {
+            // O número que o `motion.collide` já ship — ver [`COLLIDE_ITERATIONS_PARAM`].
+            name: COLLIDE_ITERATIONS_PARAM,
+            default: 8.0,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
@@ -231,7 +283,31 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &SORT_LABELS,
         },
     },
+    ParamUiHint {
+        param: COLLIDE_PARAM,
+        label: "Collide",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
+    ParamUiHint {
+        param: COLLIDE_ITERATIONS_PARAM,
+        label: "Collide Sweeps",
+        min: 1.0,
+        max: COLLIDE_ITERATIONS_MAX,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
 ];
+
+/// ⚠️ **As varreduras só se pintam com o passe LIGADO.** Um número que não faz nada é a espécie de
+/// knob morto que o `CLAUDE.md` §5.0 caça — e aqui a cura é a que o `ParamGateAbove` já dá.
+static PARAM_GATES: &[ph2d_node_registry::ParamGateAbove] = &[ph2d_node_registry::ParamGateAbove {
+    param: COLLIDE_ITERATIONS_PARAM,
+    when: COLLIDE_PARAM,
+    above: 0.5,
+}];
 
 struct MotionOutput;
 
@@ -269,6 +345,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates_above(MANIFEST.id, PARAM_GATES);
     // GPU/M5 Fase 1 (ADR-0126): the render sink is a pure copy, so on the GPU
     // it is the PASSTHROUGH kernel — the sequencer emits no pass and the
     // upstream stream flows straight into the lowering.

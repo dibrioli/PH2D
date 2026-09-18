@@ -14,6 +14,10 @@ authors.workspace = true
 # (no GPU); the upload+draw is the shell's job.
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+# doc 115 W5: o PASSE automatico de separacao corre no fim do cozimento, sobre a corrente que
+# vai ser desenhada. A lei vive na crate do contacto (as portas dela JA sao a lei); aqui so se
+# chama a porta. Sem ciclo: a `ph2d-contact` depende da `ph2d-nodegraph` e de mais nada.
+ph2d-contact = { path = "../ph2d-contact" }
 ph2d-render = { path = "../ph2d-render" }
 # GPU/M5 Fase 0: the Stream→RenderInstance marshalling is a per-frame O(N) hotspot
 # (a gather + sin_cos per instance); `par_extend` spreads it across cores above

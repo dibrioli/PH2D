@@ -11,7 +11,10 @@
 > o nó, **o app separa sozinho** — o botão `Collide` da forma e dos objectos liga, e não há nada
 > para ligar no grafo.
 
-Este doc é o PLANO. Nenhuma linha de produto foi escrita ainda.
+Este doc nasceu como o PLANO e hoje é o REGISTO: **W0..W5 fechadas** (§3 · §7 · §9 · §12 · §13),
+e falta a **W6** — o `motion.collide` sair do catálogo. ⚠️ A frase *«nenhuma linha de produto foi
+escrita ainda»* esteve aqui até 2026-09-17 e ficou falsa na W1; *o cabeçalho de um plano é o último
+sítio de que alguém se lembra quando o plano começa a acontecer*.
 
 ---
 
@@ -145,7 +148,7 @@ decide se ele é do dispositivo ou da CPU.
 | ~~W2~~ | ✅ **FECHADA por RECUSA MEDIDA** (§9): a `500` objectos a separação custa `12,4 %` de um quadro a 8 varreduras — o dispositivo não é preciso à população do dono | W1 |
 | **W3** | ✅ **decidida** (§10 + §11): a forma **deriva-se** do `size`+`rot`, os objectos declaram-na SEMPRE, e o interruptor arma o PASSE. Falta escrever. | §1.1 |
 | ~~W4~~ | ✅ **FECHADA** (§12), e **reescrita antes da 1.ª linha**: não nasce componente nenhum — a membrana DECLARA a forma derivada (o quadrado unitário, ⛔ **não** `size/2`), e a cerca da W1 ganha a metade do CONSUMIDOR | W3 |
-| **W5** | o passe automático **no fim do cozimento** — a morada que a W0 escolheu — e o interruptor que o ARMA | W1 · W3 · W4 |
+| ~~W5~~ | ✅ **FECHADA** (§13): o passe corre no fim do cozimento, armado por **UM** interruptor no cartão do Output; a 3.ª cerca recusa o dispositivo; cena `=121` | W1 · W3 · W4 |
 | **W6** | `motion.collide` sai do catálogo; as 4 cenas passam pelo caminho novo | W5 |
 
 ⚠️ **A W1 vem antes de tudo o que é visível** pela mesma razão que a W1 do doc 102: sem ela, cada
@@ -621,3 +624,126 @@ está na lista e o outro não** — que é, à letra, a forma como aquela lista 
 
 ⚠️ **O interruptor que ARMA o passe não existe ainda** — a W4 entrega a declaração, e declarar é
 grátis. Nenhuma cena separa sozinha hoje.
+
+---
+
+## §13 — ✅ W5 FECHADA: o app separa sozinho, e o interruptor é UM
+
+> Ordem do dono: *«o app separa sozinho»* — escolhida por ele entre as três leituras de tirar o
+> `motion.collide`. A W0 escolheu a MORADA (o fim do cozimento) e a §11.3 a forma (*«os objectos
+> trazem sempre a forma; o interruptor arma o PASSE»*, no singular). Esta wave escreve as duas.
+
+### §13.1 — O passe, e porque ele é FINO
+
+[`ph2d_contact::passe::separa_o_que_se_desenha`](../../crates/ph2d-contact/src/passe.rs) recebe a
+corrente cozida de um sink, afasta o que se sobrepõe, e devolve-a. **Não duplica uma linha de
+aritmética**: as portas partilhadas desta crate já *são* a lei (`colisores` · `inv_inercias` ·
+`separate`), e o `motion.collide` chama exactamente as mesmas três acrescentando por cima os knobs
+do CARTÃO dele.
+
+⇒ *a diferença entre o nó e o passe não é a lei, são os knobs* — e é isso que o deixa nascer sem
+uma segunda cópia e sobreviver ao dia em que a W6 apagar aquele nó.
+
+**As três ausências, cada uma uma decisão:** sem recuo para DISCO (o nó dá o `Radius` do cartão a
+quem não declara; aqui não há cartão, e *inventar um raio seria afirmar que uma peça colide quando
+ninguém o disse*) · sem `Strength` e sem `falloff` (autorados) · sem realimentação (a W0).
+
+⭐ E duas cercas de eficiência que são também a promessa de não mexer em nada: **sem declaração
+devolve `None` sem clonar**, e **se ninguém se mexeu devolve `None`** — uma cena já separada não
+paga uma corrente nova por quadro.
+
+### §13.2 — O interruptor: um param do SINK, e as três razões
+
+`motion.output` ganha `collide` (toggle) e `collide_iterations`, apendidos.
+
+| porquê ali | |
+|---|---|
+| a frase do dono é *«o interruptor arma o PASSE»*, no **singular** | um passe é propriedade do que se DESENHA, que é o que este nó é |
+| ⛔ um nó `collide` na cadeia | é o que a ordem manda TIRAR |
+| ⛔ um interruptor por objecto | `PROJECT_SCHEMA` +1 e uma secção do Inspector — superfície de outra linha (§10.4) |
+| ⭐ e ele é **irmão dos quatro que já lá estavam** | `blend`/`pivot`/`filter`/`sort` são todos lidos **no fim**, por quem baixa a corrente, e nunca pelo `eval` |
+
+⚠️ **Mas ele NÃO entra no `SinkStyle`, e a razão é de motor:** aqueles quatro são ESTILO (o que a
+peça parece) e este muda **POSIÇÕES**. O `SinkStyle` viaja para as duas rotas de lowering, e a do
+dispositivo ignoraria em silêncio uma grandeza que não sabe honrar ⇒ a mesma cena separada na CPU e
+sobreposta na placa. Porta própria (`sink_collide_sweeps`), e a cerca do §13.4.
+
+### §13.3 — ⛔⛔ O DEFAULT não vem do manifesto, e isso quase shipou um botão mudo
+
+O leitor de params do sink (`sink_style::param`) lê o **override** do documento e devolve `0.0`
+quando não há — ele **nunca consulta o `ParamSpec::default`**. Os quatro params antigos têm todos
+default `0`, logo ninguém tinha reparado; o `collide_iterations` é **o primeiro desta casa com
+default ≠ 0**, e lido pela porta de sempre ele valeria `0` num documento acabado de criar.
+
+⇒ *o artista ligava o interruptor e não acontecia nada.* A ausência de override lê-se agora como o
+default declarado, com gate (`armar_sem_tocar_no_numero_corre_as_varreduras_de_fabrica`) e com a
+mutação que o mata a sangrar.
+
+⭐ **E o default é `8` porque é o número que o `motion.collide` JÁ SHIP** — a wave que o substitui
+não pode entregar outra qualidade em silêncio. Tecto `64`, o mesmo do nó. As duas folhas não se
+alcançam, logo um gate na shell pina que os dois números concordam **e** que o `8` é o do nó.
+
+⚠️⚠️ **E não há acumulação entre quadros:** o cozimento re-deriva as posições do grafo a cada
+quadro, logo o passe **recomeça sempre** — *um solver iterativo dentro de um laço que reinicia não
+converge com o tempo*, e o que sobra de sobreposição é permanente.
+
+### §13.4 — A TERCEIRA cerca, que a §10.3 prescreveu por escrito
+
+*«A pergunta certa da cerca deixa de ser «alguém declara?» e passa a ser «a separação está
+ARMADA?»»* — escrito antes de haver um passe, e é exactamente onde ele aterra. O passe corre no fim
+do cozimento **da CPU**; na rota do dispositivo não existe corrente de CPU para separar.
+
+⇒ armado ⇒ CPU, com as três metades no gate (armado recusa · desarmado **não** recusa · o número
+sozinho não arma nada) e o irmão por `include_str!` que prova o FIO.
+
+⚠️ A recusa é barata por MEDIÇÃO: à população do dono a separação custa `12,4 %` de um quadro a `8`
+varreduras (§9.3, máquina calma) e o cozimento inteiro na CPU `0,02 %` (§11).
+
+### §13.5 — A cena `=121`, e porque ela não podia ser a `=48`
+
+Doze PARES de quadrados que se atravessam, **zero nós de colisão**, e o interruptor no cartão do
+Output. A cena **nasce desarmada** — sem ela o artista veria o resultado e nunca a causa.
+
+⛔⛔ **A `=48` (o demo do `motion.collide`) NÃO serve, e o facto é o preço da W6:** as peças dela são
+uma `motion.grid` de pontos que **não declaram forma nenhuma** — elas vivem do recuo de raio do
+cartão daquele nó, que o passe deliberadamente não tem. Ligar o interruptor ali não separaria nada.
+⇒ *a `=48` não migra por troca directa*, e a W6 tem de lhe dar peças que declarem.
+
+### §13.6 — ⛔⛔ Três defeitos MEUS na cena, todos de MEDIÇÃO
+
+| o que eu escrevi | o que a medição disse |
+|---|---|
+| cozer a cena num `Cook` virgem | **zero peças** — a geometria de uma `source.shape` é um EXTERNO que a shell publica, e *«num cozedor virgem ele emite zero»* estava escrito no cabeçalho da cena irmã |
+| `TAMANHO` é o LADO | é a **MEIA**: a geometria vive em raio 1, logo o lado é o dobro. *A mesma família do erro que a §12.1 registou na W4* |
+| uma FILEIRA de peças sobrepostas | uma fileira é uma **CADEIA**, e Jacobi propaga um elo por varredura ⇒ `~n²`. Medido: `8` peças e `20 %` deixavam `0,0055` de penetração residual a `32` varreduras; `6` peças e `15 %` deixavam `12` pares de `20` |
+
+⇒ a cena são **pares independentes**, cada um resolúvel sozinho, e o gate mede-a com as varreduras
+de **FÁBRICA** — *uma cena que só assenta com o knob no máximo é uma cena que o dono reprova*.
+
+### §13.7 — Provas de mutação: **10 de 10 sangram**
+
+| mutação | quem sangra |
+|---|---|
+| o passe nunca separa nada | a lei, quatro gates |
+| uma cena já separada devolve corrente nova | a cerca do *nada se mexeu* |
+| o `rot` SUBSTITUI em vez de acumular | a acumulação |
+| o `rot` escreve-se sempre | a coluna que não pode nascer |
+| quem não declara leva um disco inventado | a não-participação |
+| o pump deixa de chamar o passe | a rota, no pump |
+| a porta ignora o INTERRUPTOR | o desarmado e o *número sozinho* |
+| sem override as varreduras caem para ZERO | **o botão mudo do §13.3** |
+| as varreduras deixam de ser coagidas | a coerção nos dois extremos |
+| a cerca é perguntada e a resposta deitada fora | o FIO, por `include_str!` |
+
+⛔⛔ **E uma SOBREVIVEU primeiro, por uma fixtura minha no ponto de SIMETRIA:** a peça que não
+declara estava **exactamente a meio** das outras duas, onde os empurrões se cancelam ao bit — ela
+fica onde está **participe ou não**. *É a família de «um corpus no ponto neutro de um knob não testa
+esse knob», uma camada abaixo: aqui o ponto neutro é da GEOMETRIA.*
+
+### §13.8 — ⇒ O que a W6 herda, com o preço
+
+- o passe existe, está armado por um interruptor alcançável, e a cerca já o conhece;
+- ⛔ **a `=48` não migra por troca directa** (§13.5) — as peças dela não declaram;
+- ⏳ e fica ABERTO e nomeado: **um objecto não tem como NÃO colidir** com o passe armado (a forma é
+  sempre declarada desde a W4, e o opt-out por objecto é a decisão de produto do §10.4 que continua
+  por tomar). A Shape tem o `Collide` dela; um Sprite não tem.

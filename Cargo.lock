@@ -5600,6 +5600,7 @@ name = "ph2d-eval-motion"
 version = "0.0.0"
 dependencies = [
  "dhat",
+ "ph2d-contact",
  "ph2d-node-force-wind",
  "ph2d-node-motion-clone",
  "ph2d-node-motion-grid",

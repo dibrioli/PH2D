@@ -93,6 +93,11 @@ mod gpu_demos;
 mod gpu_field_demos;
 #[path = "motion_state_material_demo.rs"]
 mod material_demo;
+/// ⭐⭐⭐ **O PASSE AUTOMÁTICO** (doc 115 W5, cena `=121`) — formas que se atravessam, **zero nós de
+/// colisão**, e um interruptor no cartão do Output que as assenta. Ver o cabeçalho dela, que diz
+/// porque ela não podia ser a `=48`.
+#[path = "motion_state_passe_demo.rs"]
+mod passe_demo;
 /// **PEÇAS QUE NÃO SE ATRAVESSAM** — o `motion.collide` DENTRO de uma simulação a correr;
 /// ver o cabeçalho dela (e porque as duas cenas que o nó já tinha não mostram isto).
 #[path = "motion_state_pilha_demo.rs"]

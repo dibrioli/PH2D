@@ -131,8 +131,8 @@ pub(super) fn graph_has_live_vector_source(graph: &Graph, reg: &NodeRegistry) ->
 #[path = "motion_bridge_gpu_colisor.rs"]
 mod colisor;
 use colisor::{
-    RECUSA_COLISOR, RECUSA_COLISOR_EXTERNO, cook_publishes_collider, graph_declares_collider,
-    graph_reads_declared_collider,
+    RECUSA_COLISOR, RECUSA_COLISOR_EXTERNO, RECUSA_PASSE, cook_publishes_collider,
+    graph_declares_collider, graph_reads_declared_collider, sink_arma_a_separacao,
 };
 
 /// Os relógios que o device marcha: um tique vira `sub` sub-passadas.
@@ -327,6 +327,11 @@ pub(super) fn cook_gpu(
         && graph_reads_declared_collider(&motion.doc.graph, &motion.registry)
     {
         return fell(motion, RECUSA_COLISOR_EXTERNO);
+    }
+    // Doc 115 W5: o passe automático corre no fim do cozimento da CPU, e na rota do dispositivo não
+    // existe corrente de CPU para separar. Ver [`sink_arma_a_separacao`].
+    if sink_arma_a_separacao(&motion.doc.graph, &motion.sinks) {
+        return fell(motion, RECUSA_PASSE);
     }
     // A `source.object` that resolves to a live VECTOR publishes a `geometry_id`
     // external (ADR-0154 reused for objects, so a stamped vector stays crisp). The

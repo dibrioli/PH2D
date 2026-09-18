@@ -95,6 +95,9 @@ pub mod atrito;
 /// O impulso do par — a velocidade que responde ao contacto. Ver o cabeçalho dele.
 mod impulso;
 mod par;
+/// ⭐⭐⭐ **O PASSE AUTOMÁTICO** (doc 115 W5) — o acabamento que separa o que vai ser desenhado, sem
+/// nó e sem fio. Ver o cabeçalho dele.
+pub mod passe;
 mod trig;
 /// A acumulação por peça — ver o cabeçalho dele.
 mod varredura;

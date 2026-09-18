@@ -53,8 +53,10 @@ pub use checkpoint::{CPU_RING_BYTES, CheckpointRing, RECENT_DENSE};
 
 mod sink_style;
 pub use sink_style::{
-    SINK_BLEND_PARAM, SINK_FILTER_PARAM, SINK_PIVOT_LIMIT, SINK_PIVOT_X_PARAM, SINK_PIVOT_Y_PARAM,
-    SINK_SORT_PARAM, sink_blend_tag, sink_style,
+    SINK_BLEND_PARAM, SINK_COLLIDE_ITERATIONS_DEFAULT, SINK_COLLIDE_ITERATIONS_MAX,
+    SINK_COLLIDE_ITERATIONS_PARAM, SINK_COLLIDE_PARAM, SINK_FILTER_PARAM, SINK_PIVOT_LIMIT,
+    SINK_PIVOT_X_PARAM, SINK_PIVOT_Y_PARAM, SINK_SORT_PARAM, sink_blend_tag, sink_collide_sweeps,
+    sink_style,
 };
 
 mod lower;
@@ -327,7 +329,20 @@ impl MotionCookPump {
                     {
                         Ok(outputs) => {
                             if let Some(v) = outputs.first() {
-                                let stream = v.as_stream();
+                                let cozido = v.as_stream();
+                                // ⭐⭐⭐ **O PASSE AUTOMÁTICO** (doc 115 W5): o acabamento que
+                                // separa o que vai ser desenhado, armado pelo interruptor do
+                                // próprio sink. ⚠️ **AQUI e não dentro de cada lowering**: as duas
+                                // mídias lêem a MESMA corrente (a lei do `geometry_id`), e separar
+                                // em dois sítios poria um vector e uma sprite do mesmo grupo em
+                                // posições diferentes. ⛔ E ele devolve `None` — sem clonar nada —
+                                // quando a corrente não declara colisor ou quando ninguém se mexeu,
+                                // que é o que mantém toda cena de hoje byte-idêntica.
+                                let separado = ph2d_contact::passe::separa_o_que_se_desenha(
+                                    cozido,
+                                    sink_collide_sweeps(graph, sink),
+                                );
+                                let stream = separado.as_ref().unwrap_or(cozido);
                                 // The SAME cooked stream feeds both sides of the
                                 // `geometry_id` convention (ADR-0154): textured-quad
                                 // rows lower to `instances`, vector-shape rows to
@@ -637,6 +652,11 @@ impl MotionCookPump {
 #[cfg(test)]
 #[path = "eval_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ O passe automático **percorrido pelo pump** (doc 115 W5) — ver o cabeçalho dele.
+#[cfg(test)]
+#[path = "passe_no_pump_tests.rs"]
+mod passe_no_pump_tests;
 
 #[cfg(test)]
 #[path = "scrub_tests.rs"]

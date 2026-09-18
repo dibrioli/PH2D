@@ -44,6 +44,35 @@ pub(super) const RECUSA_COLISOR: &str =
 pub(super) const RECUSA_COLISOR_EXTERNO: &str =
     "CPU: um objecto da cena traz colisor -- o dispositivo ainda nao resolve contatos (doc 115)";
 
+/// A frase da recusa do PASSE automático (doc 115 W5) — a terceira rota, e a única em que a
+/// divergência não é entre dois kernels mas entre *haver um passe* e *não haver nenhum*.
+pub(super) const RECUSA_PASSE: &str =
+    "CPU: o sink tem a separacao ARMADA -- o passe automatico corre na CPU (doc 115 W5)";
+
+/// ⭐⭐⭐ **A SEPARAÇÃO ESTÁ ARMADA?** (doc 115 W5) — a pergunta que a §10.3 daquele doc prescreveu
+/// por escrito, meses antes de haver um passe: *«a pergunta certa da cerca deixa de ser «alguém
+/// declara?» e passa a ser «a separação está ARMADA?»»*.
+///
+/// # Porque ela é uma cerca e não só uma leitura
+///
+/// O passe corre **no fim do cozimento da CPU**, sobre a corrente que o pump baixa. Na rota do
+/// dispositivo não existe corrente de CPU nenhuma para separar — o cozimento é residente e o
+/// lowering acontece lá. ⇒ com o interruptor ligado, o MESMO documento sairia separado num lado e
+/// sobreposto no outro, que é a divergência que as duas cercas irmãs já existem para impedir.
+///
+/// ⚠️ **E a recusa é barata por MEDIÇÃO, não por esperança:** a W2 deste doc fechou numa recusa
+/// medida — à população que o dono nomeou (*«centenas»*) a separação custa `12,4 %` de um quadro a
+/// `8` varreduras, e o cozimento inteiro na CPU custa `0,02 %` (§11). *O dispositivo não é preciso
+/// aqui*, e quem armar isto numa cena de milhares tem o número do §9.5 para o avisar.
+pub(super) fn sink_arma_a_separacao(
+    graph: &Graph,
+    sinks: &[ph2d_nodegraph::graph::NodeId],
+) -> bool {
+    sinks
+        .iter()
+        .any(|&s| ph2d_eval_motion::sink_collide_sweeps(graph, s) > 0)
+}
+
 /// ⭐⭐⭐ **A METADE QUE A DECLARAÇÃO PELO NOME NÃO ALCANÇA: um EXTERNO que traz colisor**
 /// (doc 115 W1).
 ///

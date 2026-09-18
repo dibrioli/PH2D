@@ -55,6 +55,17 @@ pub const SINK_SORT_PARAM: &str = "sort";
 /// que o nó publica como `PIVOT_LIMIT`, e o gate da shell pina que são iguais.
 pub const SINK_PIVOT_LIMIT: f32 = 1.0;
 
+/// ⭐⭐⭐ **O interruptor do PASSE de separação** (doc 115 W5) — o mesmo nome que o nó declara como
+/// `COLLIDE_PARAM`, com o mesmo gate da shell a pinar que concordam.
+pub const SINK_COLLIDE_PARAM: &str = "collide";
+/// Ver [`SINK_COLLIDE_PARAM`].
+pub const SINK_COLLIDE_ITERATIONS_PARAM: &str = "collide_iterations";
+/// O default das varreduras — **o número que o `motion.collide` já ship**, herdado de propósito
+/// para uma cena migrada não mudar de qualidade em silêncio.
+pub const SINK_COLLIDE_ITERATIONS_DEFAULT: f32 = 8.0;
+/// O tecto das varreduras, o mesmo do `motion.collide`.
+pub const SINK_COLLIDE_ITERATIONS_MAX: f32 = 64.0;
+
 /// O valor de um param do sink, ou `0.0` se ele não foi autorado.
 ///
 /// ⚠️ **`NaN`/`inf` caem para `0.0` e não para o clamp**: um documento corrompido
@@ -119,6 +130,40 @@ pub fn sink_style(graph: &Graph, sink: NodeId) -> SinkStyle {
 #[must_use]
 pub fn sink_blend_tag(graph: &Graph, sink: NodeId) -> u8 {
     sink_style(graph, sink).blend
+}
+
+/// ⭐⭐⭐ **QUANTAS VARREDURAS este sink pede ao passe de separação** (doc 115 W5) — `0` quer dizer
+/// *«o passe não corre»*, e é o que todo documento que já existe devolve.
+///
+/// # ⛔⛔ Porque ela NÃO vive no [`SinkStyle`], e o motivo é de MOTOR
+///
+/// Os cinco params deste sink são lidos no fim, por quem baixa a corrente — mas os quatro do
+/// `SinkStyle` são **ESTILO** (o que a peça parece) e este muda **POSIÇÕES**. O `SinkStyle` viaja
+/// para as duas rotas de lowering, e a do dispositivo ignoraria uma grandeza que não sabe honrar:
+/// isso daria a MESMA cena separada na CPU e sobreposta na placa, sem erro nenhum — a espécie de
+/// divergência que a cerca do doc 115 W1 existe para impedir. ⇒ porta própria, e a cerca do shell
+/// recusa o dispositivo enquanto ela devolver `> 0`.
+///
+/// # ⚠️⚠️ O DEFAULT não vem do manifesto, e isso quase shipou um botão mudo
+///
+/// O [`param`] acima lê o **override** do documento e devolve `0.0` quando não há — ele nunca
+/// consulta o `ParamSpec::default`. Os quatro params antigos deste sink têm todos default `0`, logo
+/// ninguém tinha reparado; o `collide_iterations` é **o primeiro com default ≠ 0** desta casa, e
+/// lido pela porta de sempre ele valeria `0` num documento acabado de criar. *O artista ligava o
+/// interruptor e nada acontecia.* ⇒ a ausência de override lê-se aqui como
+/// [`SINK_COLLIDE_ITERATIONS_DEFAULT`], que é o número que o nó declara.
+#[must_use]
+pub fn sink_collide_sweeps(graph: &Graph, sink: NodeId) -> usize {
+    if param(graph, sink, SINK_COLLIDE_PARAM) < 0.5 {
+        return 0;
+    }
+    let autorado = graph
+        .node_param_overrides(sink)
+        .and_then(|p| p.get(SINK_COLLIDE_ITERATIONS_PARAM))
+        .copied()
+        .filter(|v| v.is_finite())
+        .unwrap_or(SINK_COLLIDE_ITERATIONS_DEFAULT);
+    autorado.round().clamp(1.0, SINK_COLLIDE_ITERATIONS_MAX) as usize
 }
 
 #[cfg(test)]

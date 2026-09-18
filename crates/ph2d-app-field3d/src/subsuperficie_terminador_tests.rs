@@ -1304,6 +1304,82 @@ fn sonda_nos_contra_a_verdade() {
 ///
 /// ⚠️ **Piso de ruído do oráculo, medido pelo agente E: `~1e-4` absoluto** (`≈0,2 %` da média) — o
 /// Cycles em CPU **não é bit-reprodutível entre invocações**. Nada abaixo disso é lei.
+/// ⭐⭐⭐ **A RÉGUA DA COR — `R/B` da região iluminada, em BYTES do NOSSO olhar.**
+///
+/// ⛔⛔ **Ela NÃO se mede em linear, e a diferença é grande o suficiente para inverter um
+/// veredito.** Uma esfera lambertiana de `base_color = (0,75 · 0,35 · 0,35)` sob luz branca devolve
+/// `R/B = 0,75/0,35 = 2,143` em LINEAR — foi exactamente o que a janela da Unreal mediu, a quatro
+/// dígitos, no controlo opaco dela. O nosso controlo lê **`1,33`** porque a transformação de vista
+/// comprime a razão antes de ela chegar ao ecrã. *Comparar um com o outro seria medir a curva de
+/// exibição e chamar-lhe material.*
+///
+/// ⚠️ A máscara é `soma dos três bytes > 30` — a região **iluminada**, e a mesma dos dois lados.
+fn razao_rb(px: &[u8]) -> (f32, usize) {
+    let (mut r, mut b, mut n) = (0.0f64, 0.0f64, 0usize);
+    for i in 0..(W as usize) * (H as usize) {
+        let q = i * 4;
+        let soma = u32::from(px[q]) + u32::from(px[q + 1]) + u32::from(px[q + 2]);
+        if soma > 30 {
+            r += f64::from(px[q]);
+            b += f64::from(px[q + 2]);
+            n += 1;
+        }
+    }
+    #[allow(clippy::cast_possible_truncation)]
+    ((r / b.max(1e-9)) as f32, n)
+}
+
+/// Um quadro linear pelo NOSSO olhar, com a exposição dada.
+fn em_bytes(linear: &[[f32; 3]], stops: f32) -> Vec<u8> {
+    let (w, h) = (W as usize, H as usize);
+    let olhar = ph2d_view_transform::Look {
+        exposure_stops: stops,
+        ..ph2d_view_transform::Look::default()
+    };
+    let mut bytes = vec![0u8; w * h * 4];
+    for (i, cru) in linear.iter().take(w * h).enumerate() {
+        for (k, canal) in olhar.apply(*cru).into_iter().enumerate() {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            {
+                bytes[i * 4 + k] = (canal.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            }
+        }
+    }
+    bytes
+}
+
+/// ⭐⭐ **Põe um quadro de oráculo no nosso olhar com a MESMA POPULAÇÃO iluminada que o nosso.**
+///
+/// ⛔ Sem isto a máscara mede **regiões diferentes** dos dois lados, e o `R/B` de cada uma é de
+/// outra coisa — foi esse o defeito que fez a §14.3 escrever *«a cor move-se no sentido oposto»*
+/// sobre um ponto só, e que a §14.4 corrigiu. A exposição é a **única** incógnita livre da
+/// comparação (o céu está apagado, e as duas leis de queda são `1/r²`), logo ajustá-la é honesto e
+/// ajustar qualquer outra coisa não seria.
+///
+/// ⚠️ Devolve também os `stops` escolhidos: *um ajuste que não se imprime é um grau de liberdade
+/// escondido*.
+fn casa_a_populacao(linear: &[[f32; 3]], alvo_n: usize) -> (Vec<u8>, f32) {
+    let mut melhor = (usize::MAX, 0.0f32);
+    for passo in -96..96 {
+        #[allow(clippy::cast_precision_loss)]
+        let stops = passo as f32 * 0.125;
+        let (_, n) = razao_rb(&em_bytes(linear, stops));
+        if n.abs_diff(alvo_n) < melhor.0 {
+            melhor = (n.abs_diff(alvo_n), stops);
+        }
+    }
+    (em_bytes(linear, melhor.1), melhor.1)
+}
+
+/// ⭐ A UNREAL como TERCEIRO contendor — ela mede-se com a régua **deste** módulo, de propósito.
+///
+/// ⚠️ É um módulo-filho por `#[path]` e não uma crate nem um irmão de `lib.rs`: assim ele vê o
+/// `le_pfm`, o `quadro`, a `razao_rb` e a `casa_a_populacao` **sem que nada aqui abra
+/// visibilidade** — e, sobretudo, *sem uma segunda cópia da régua*. Três colunas medidas por três
+/// funções diferentes não são uma comparação.
+#[path = "unreal_contendor_tests.rs"]
+mod unreal_contendor;
+
 #[test]
 #[ignore = "sonda: precisa do lote 2 do oráculo em $PH2D_VERDADE2"]
 fn sonda_a_varredura_da_cor() {
@@ -1316,23 +1392,6 @@ fn sonda_a_varredura_da_cor() {
     cam.target = [0.55, 0.0, 0.0];
     let doc = crate::smoke::scenes::edge::cena_33().expect("a cena");
     let (onde, luz) = crate::lights::opening_light(&cam);
-    let (w, h) = (W as usize, H as usize);
-
-    // `R/B` da região iluminada, em BYTES do nosso olhar — a mesma máscara dos dois lados.
-    let razao = |px: &[u8]| -> (f32, usize) {
-        let (mut r, mut b, mut n) = (0.0f64, 0.0f64, 0usize);
-        for i in 0..w * h {
-            let q = i * 4;
-            let soma = u32::from(px[q]) + u32::from(px[q + 1]) + u32::from(px[q + 2]);
-            if soma > 30 {
-                r += f64::from(px[q]);
-                b += f64::from(px[q + 2]);
-                n += 1;
-            }
-        }
-        #[allow(clippy::cast_possible_truncation)]
-        ((r / b.max(1e-9)) as f32, n)
-    };
     println!("  raio · família ·   NOSSO R/B ·  VERDADE R/B · o que isso quer dizer");
     for (tag, raio, escala) in [
         ("r010", 0.1f32, [1.0f32, 0.5, 0.25]),
@@ -1362,49 +1421,13 @@ fn sonda_a_varredura_da_cor() {
             chao: None,
             sem_ceu: true,
         });
-        let (nosso_rb, nosso_n) = razao(&nossos);
+        let (nosso_rb, nosso_n) = razao_rb(&nossos);
         let Some((_, _, linear)) = le_pfm(&format!("{dir}/ref_jade_{tag}_e5.pfm")) else {
             println!("  {tag}: sem oráculo");
             continue;
         };
-        // A exposição ajusta-se para o oráculo ter a mesma POPULAÇÃO iluminada que o nosso — senão
-        // a máscara mede regiões diferentes e o `R/B` de cada uma é de outra coisa.
-        let mut melhor = (usize::MAX, 0.0f32, 0usize);
-        for passo in -96..96 {
-            #[allow(clippy::cast_precision_loss)]
-            let stops = passo as f32 * 0.125;
-            let olhar = ph2d_view_transform::Look {
-                exposure_stops: stops,
-                ..ph2d_view_transform::Look::default()
-            };
-            let mut bytes = vec![0u8; w * h * 4];
-            for (i, cru) in linear.iter().take(w * h).enumerate() {
-                for (k, canal) in olhar.apply(*cru).into_iter().enumerate() {
-                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                    {
-                        bytes[i * 4 + k] = (canal.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-                    }
-                }
-            }
-            let (_, n) = razao(&bytes);
-            if n.abs_diff(nosso_n) < melhor.0 {
-                melhor = (n.abs_diff(nosso_n), stops, n);
-            }
-        }
-        let olhar = ph2d_view_transform::Look {
-            exposure_stops: melhor.1,
-            ..ph2d_view_transform::Look::default()
-        };
-        let mut bytes = vec![0u8; w * h * 4];
-        for (i, cru) in linear.iter().take(w * h).enumerate() {
-            for (k, canal) in olhar.apply(*cru).into_iter().enumerate() {
-                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                {
-                    bytes[i * 4 + k] = (canal.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-                }
-            }
-        }
-        let (verdade_rb, verdade_n) = razao(&bytes);
+        let (bytes, _stops) = casa_a_populacao(&linear, nosso_n);
+        let (verdade_rb, verdade_n) = razao_rb(&bytes);
         println!(
             "  {:.2} · {} · {nosso_rb:>10.2} · {verdade_rb:>11.2} · {} ({nosso_n} vs {verdade_n} px)",
             raio,

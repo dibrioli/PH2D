@@ -45,7 +45,9 @@ use ph2d_label_census::{keys, language_literals};
 /// ficheiro (`"{} items"`, `"Search"`) é língua de verdade — está na dívida.
 const NOT_LANGUAGE: &[(&str, &str)] = &[(
     "widget/showcase",
-    "A GALERIA DE WIDGETS e' uma BANCADA, nao uma superficie de produto -- o subtitulo dela di-lo: \
+    "CONFIRMADO PELO DONO em 2026-09-17, com a FOTO na mao (ele viu, listou, ouviu o argumento e \
+     respondeu «nenhum -- deixe como esta»). A GALERIA DE WIDGETS e' uma BANCADA, nao uma \
+     superficie de produto -- o subtitulo dela di-lo: \
      «reference for peripheral agents». Os rotulos sao os NOMES DOS NOSSOS WIDGETS (`Rect2Editor`, \
      `BitmaskGrid32`, `VariantEditor (recursive, depth <=4)`) e o conteudo de amostra que os \
      demonstra. Traduzir o nome de um tipo nosso nao e' i18n, e' ruido -- e a bancada tem o mesmo \

@@ -123,9 +123,15 @@ produto pinta na thread principal (8 MB), logo **não há defeito de produto**. 
 
 **Prova de mutação: 8 de 8**, com controlo negativo verde e controlo sobre o próprio filtro.
 
-## §9 — ⏳ O que fica, e é decisão do DONO
+## §9 — ✅ DECIDIDO PELO DONO (2026-09-17): *«nenhum — deixe como está»*
 
-As quatro linhas da coluna «decisão escrita» do §1. Cada uma tem o mecanismo no código:
+As quatro linhas da coluna «decisão escrita» do §1 foram-lhe devolvidas **com o argumento e o preço
+de cada uma**, e ele respondeu **«nenhum»**. ⇒ as quatro isenções passam a ter o veredito do dono
+escrito ao lado do mecanismo, no ficheiro de cada uma — *uma isenção com o argumento de quem a
+escreveu e uma isenção que o dono julgou não são a mesma coisa, e a segunda não se reabre sem ele*.
+
+⭐⭐ **E foi a triagem que produziu a decisão, não a migração.** Migrar os quatro teria custado ~175
+chaves e desfeito quatro escolhas medidas; perguntar custou uma mensagem.
 
 | item | onde a decisão está escrita | o argumento |
 |---|---|---|
@@ -134,7 +140,7 @@ As quatro linhas da coluna «decisão escrita» do §1. Cada uma tem o mecanismo
 | Widget Gallery | `ph2d-editor-core/tests/it/no_label_…` | BANCADA: os rótulos são os NOMES DOS NOSSOS WIDGETS (`Rect2Editor`, `BitmaskGrid32`) |
 | Widget Lab | `ph2d-panel-widget-lab/tests/it/every_word_…` | BANCADA: cabeçalhos de estudo e legendas que são a CONTA de uma medição |
 
-⭐ **A Hierarquia tem uma saída que as outras três não têm:** traduzir no **NASCIMENTO** (o
+⏳ **A única saída que fica na mesa, NÃO tomada:** a Hierarquia podia traduzir no **NASCIMENTO** (o
 *Translate New Data* do Blender, que ali é uma caixa e nasce desligada). Custa ~65 chaves e faz um
-projecto guardar os nomes do idioma em que foi criado — que é o que uma segunda língua real também
-faz.
+projecto guardar os nomes do idioma em que foi criado. Foi oferecida e recusada — ⛔ **não a
+reconstrua sem ordem nova.**

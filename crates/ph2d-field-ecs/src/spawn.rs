@@ -11,6 +11,9 @@ use crate::{FieldMods, FieldNode, FieldObject, FieldPose, FieldVerb};
 
 /// **O nome que a Hierarquia mostra**, derivado do que o nó é.
 ///
+/// ⭐⭐ **CONFIRMADO PELO DONO em 2026-09-17, com a FOTO na mão.** Ele correu o idioma de teste, viu isto em inglês, listou-o, ouviu o argumento e respondeu *«nenhum — deixe como está»*. A saída que ficou na mesa e não foi tomada é traduzir no
+/// **NASCIMENTO** (o *Translate New Data* do Blender, que ali é uma caixa e nasce desligada).
+///
 /// ⚠️ É **conteúdo**, não chrome: entra num `Name`, que é dado do documento e o artista renomeia.
 /// Por isso não passa pelo i18n — traduzir o nome de um objeto renomeável mudaria o nome dele ao
 /// trocar de idioma. (O painel é o contrário: lá o rótulo é chrome e vai por chave, HR-15.)

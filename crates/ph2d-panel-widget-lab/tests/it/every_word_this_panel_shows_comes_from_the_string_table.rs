@@ -23,7 +23,8 @@ const NOT_LANGUAGE: &[Excecao] = &[];
 /// ⛔ A BANCADA, isenta como FICHEIRO — ver o cabeçalho.
 const ISENTOS: &[Isento] = &[(
     "study.rs",
-    "a bancada do redesenho: cabeçalhos de estudo numerados e legendas que são a CONTA de uma \
+    "CONFIRMADO PELO DONO em 2026-09-17, com a FOTO na mão (ele viu, listou, ouviu o argumento e \
+     respondeu «nenhum — deixe como está»). A bancada do redesenho: cabeçalhos de estudo numerados e legendas que são a CONTA de uma \
      medição (`label 70 + gap 6 + track + gap 6 + box 72 = 154 px`). Traduzir a legenda de uma \
      medição não é i18n, é ruído — o mesmo estatuto da galeria de widgets da `ph2d-editor-core`, \
      cujo doc-comment nomeia esta crate ao lado",

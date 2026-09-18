@@ -22,6 +22,11 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 # `ph2d-editor-core` ao lado já depende desta crate.
 ph2d-vector = { path = "../ph2d-vector" }
 
+# ⭐⭐ **CONFIRMADO PELO DONO em 2026-09-17, com a FOTO na mao:** ele viu este painel inteiro em
+# ingles no idioma de teste, listou-o, ouviu o argumento (o texto e' o que o ARTISTA autorou ao
+# desenhar o painel, e traduzi-lo reescreveria o que alguem digitou) e respondeu *«nenhum -- deixe
+# como esta»*.
+#
 # ⚠️ **Sem `ph2d-i18n`, e a ausência é a decisão.** Toda string que este painel mostra — o título
 # e o rótulo de cada row — é o `Name` que o ARTISTA digitou; ela viaja no documento como o nome de
 # uma camada. Passá-la por `tr()` procuraria uma chave que não existe e devolveria a própria

@@ -137,6 +137,38 @@ pub fn pentear(
         };
         let atraves = produto_vectorial(normal, ao_longo);
 
+        // ⛔⛔⛔ **O RAIO DO ANEL É UM SÓ, e a 1.ª redacção usava o de cada
+        // aresta.** Rodar cada aresta para o eixo mantendo o comprimento DELA
+        // alinha e **não guarda o espaçamento**: duas vizinhas podem cair sobre
+        // o mesmo raio e o triângulo entre elas vira uma lasca. Medido na chapa,
+        // o pior ângulo da faixa ia de `7,86°` com o pente desligado para
+        // **`0,31°`** no máximo — *um triângulo de três décimos de grau não tem
+        // normal utilizável*, e a régua do alinhamento **aprovava**, porque ela
+        // só vê direcções.
+        //
+        // ⇒ o alvo de cada aresta é o eixo vezes o raio **MÉDIO** do anel: a
+        // configuração para que o vértice é puxado é uma cruz regular, logo a
+        // lei alinha **e** regulariza. *É a mesma correcção que o `Q` sozinho
+        // nunca pediria.*
+        let mut raio_do_anel = 0.0f32;
+        let mut no_anel = 0u32;
+        for &u in &vizinhos[a..b] {
+            let u = u as usize;
+            if u >= n {
+                continue;
+            }
+            let plana = sem_componente(subtrair(posicoes[u], posicoes[v]), normal);
+            let comprimento = norma(plana);
+            if comprimento > 0.0 {
+                raio_do_anel += comprimento;
+                no_anel += 1;
+            }
+        }
+        if no_anel == 0 {
+            continue;
+        }
+        let raio_do_anel = raio_do_anel / no_anel as f32;
+
         let mut soma = [0.0f32; 3];
         let mut comprimentos = 0.0f32;
         let mut contados = 0u32;
@@ -168,7 +200,7 @@ pub fn pentear(
             };
             // Onde este vizinho quer que `v` esteja: a aresta mantém o
             // comprimento e roda para o eixo. ⇒ `v` anda por `plana − L·eixo`.
-            soma = somar(soma, subtrair(plana, escalar(eixo, comprimento)));
+            soma = somar(soma, subtrair(plana, escalar(eixo, raio_do_anel)));
         }
         if contados == 0 {
             continue;

@@ -317,6 +317,37 @@ pub struct Brush {
     /// ⛔ **A pré-condição é a topologia dinâmica ARMADA, nunca «o passe vai
     /// correr»** (espec §2.2): sem refino nenhum ele continua a agir, e com
     /// efeito MAIOR. Quem o honra está em [`crate::Verb::honra_o_pente`].
+    ///
+    /// # ⚠️ O TECTO é `1,0`, e o recurso é o PIOR TRIÂNGULO DA FAIXA
+    ///
+    /// ⛔ **Não é o tecto do alvo copiado, e não é «onde ele satura»:** o botão
+    /// DELE satura acima de `0,75` (espec §5.1 — a `0°` ele até desce) e o nosso
+    /// **não satura em lado nenhum**. Medido pelo produto, na chapa sacudida com
+    /// o passe de refino a correr:
+    ///
+    /// | pente | alinhamento `Q` | pior ângulo da faixa |
+    /// |---|---|---|
+    /// | `0,000` | `−0,019` | `7,86°` |
+    /// | `0,125` | `+0,016` | `8,06°` |
+    /// | `0,250` | `+0,045` | **`8,21°`** |
+    /// | `0,500` | `+0,085` | `6,57°` |
+    /// | `0,750` | `+0,109` | `5,04°` |
+    /// | **`1,000`** | **`+0,127`** | **`4,56°`** |
+    /// | `2,000` | `+0,165` | `3,76°` |
+    /// | `3,000` | `+0,179` | `0,62°` |
+    ///
+    /// ⇒ o alinhamento **continua a subir** acima de `1,0`, e o que acaba é a
+    /// MALHA: a `3,0` a faixa fica com triângulos de seis décimos de grau, que
+    /// não têm normal utilizável. *`1,0` é o último degrau em que o pior
+    /// triângulo ainda mede mais de metade do que ele media por pentear.*
+    ///
+    /// ⭐⭐ **E a metade de baixo do curso MELHORA a malha** (`8,21°` a `0,25`
+    /// contra `7,86°` desligado): o pente desfaz as lascas que o próprio refino
+    /// deixa. Gate: `o_pente_nao_compra_alinhamento_com_lascas`.
+    ///
+    /// ⚠️ **A faixa coincidir com a do alvo (`0`..`1`) é resultado, não cópia** —
+    /// as duas leis chegam lá por recursos diferentes, e a dele é inerte no topo
+    /// enquanto a nossa não é. *Todo o nosso curso faz alguma coisa.*
     pub pente: f32,
     pub density_detail: f32,
     /// **PARA ONDE O ESFREGÃO EMPURRA O DESLOCAMENTO** — ⛔ só o

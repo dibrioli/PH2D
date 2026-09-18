@@ -263,3 +263,129 @@ fn a_nossa_malha_penteia_se_acima_da_barra_do_oraculo() {
          as decisoes do passe de topologia, e a relaxacao sozinha nao chega"
     );
 }
+
+/// O PIOR ÂNGULO de triângulo da faixa, em graus — a segunda coluna, e sem ela a
+/// escada do `Q` aprovaria uma malha destruída que por acaso ficou alinhada.
+fn pior_angulo(malha: &Mesh, centros: &[[f32; 3]], raio: f32) -> f64 {
+    let pos = malha.positions();
+    let mut pior = 180.0f64;
+    for f in malha.faces() {
+        let vs = f.verts();
+        if vs.len() != 3 {
+            continue;
+        }
+        let p: Vec<[f32; 3]> = vs.iter().map(|&v| pos[v as usize]).collect();
+        let centro = [
+            (p[0][0] + p[1][0] + p[2][0]) / 3.0,
+            (p[0][1] + p[1][1] + p[2][1]) / 3.0,
+        ];
+        if !centros
+            .iter()
+            .any(|c| (centro[0] - c[0]).hypot(centro[1] - c[1]) <= raio * 0.5)
+        {
+            continue;
+        }
+        for k in 0..3 {
+            let (a, b, c) = (p[k], p[(k + 1) % 3], p[(k + 2) % 3]);
+            let u = [
+                f64::from(b[0] - a[0]),
+                f64::from(b[1] - a[1]),
+                f64::from(b[2] - a[2]),
+            ];
+            let w = [
+                f64::from(c[0] - a[0]),
+                f64::from(c[1] - a[1]),
+                f64::from(c[2] - a[2]),
+            ];
+            let lu = (u[0] * u[0] + u[1] * u[1] + u[2] * u[2]).sqrt();
+            let lw = (w[0] * w[0] + w[1] * w[1] + w[2] * w[2]).sqrt();
+            if lu <= 0.0 || lw <= 0.0 {
+                continue;
+            }
+            let cos = ((u[0] * w[0] + u[1] * w[1] + u[2] * w[2]) / (lu * lw)).clamp(-1.0, 1.0);
+            pior = pior.min(cos.acos().to_degrees());
+        }
+    }
+    pior
+}
+
+/// A ESCADA do nosso botão — é dela que sai a faixa, nunca do alvo.
+///
+/// ⚠️ **DUAS colunas de propósito:** o `Q` sozinho aprovaria uma malha destruída
+/// que por acaso ficou alinhada. A segunda é o pior ângulo de triângulo da faixa.
+#[test]
+#[ignore = "sonda"]
+fn diag_a_escada_do_pente() {
+    for p in [
+        0.0f32, 0.0625, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0,
+    ] {
+        let (m, c) = traco(p, true);
+        let (q, n) = q_da_faixa(&m, &c, 0.30);
+        let ang = pior_angulo(&m, &c, 0.30);
+        println!("pente {p:.4}   Q {q:+.4}   pior angulo {ang:6.2}°   (n={n})");
+    }
+}
+
+/// ⭐⭐⭐ **O PENTE NÃO COMPRA ALINHAMENTO COM LASCAS — a segunda coluna, e ela
+/// apanhou um defeito que a primeira aprovava.**
+///
+/// A 1.ª redacção da lei rodava cada aresta mantendo o comprimento **dela**.
+/// Medido nesta chapa, a régua do alinhamento subia bonito **e** o pior ângulo
+/// de triângulo da faixa desabava:
+///
+/// | pente | `Q` | pior ângulo, lei 1.ª | pior ângulo, lei de hoje |
+/// |---|---|---|---|
+/// | `0,000` | `−0,019` | `7,86°` | `7,86°` |
+/// | `0,250` | `+0,045` | `3,33°` | **`8,21°`** |
+/// | `0,500` | `+0,085` | `0,65°` | `6,57°` |
+/// | `1,000` | `+0,127` | **`0,31°`** | **`4,56°`** |
+/// | `3,000` | `+0,179` | `0,10°` | `0,62°` |
+///
+/// ⛔ *Um triângulo de três décimos de grau não tem normal utilizável*, e a
+/// régua do `Q` **aprovava**, porque ela só vê direcções. A cura foi o alvo de
+/// cada aresta passar a ser o eixo vezes o raio **MÉDIO do anel**: a
+/// configuração para que o vértice é puxado é uma cruz regular, logo a lei
+/// alinha **e** regulariza.
+///
+/// ⭐⭐ **E na metade de baixo do curso ela MELHORA a malha** (`8,21°` a `0,25`
+/// contra `7,86°` desligada) — o pente desfaz as lascas que o próprio refino
+/// deixa.
+#[test]
+fn o_pente_nao_compra_alinhamento_com_lascas() {
+    /// O pior ângulo que a faixa pode ter com o pente no tecto. ⛔ Não é um
+    /// número escolhido: ele separa o `4,56°` que a lei de hoje entrega do
+    /// `0,31°` que a lei refutada entregava, com margem dos dois lados.
+    const CHAO_DO_ANGULO: f64 = 2.0;
+
+    let (m0, c0) = traco(0.0, true);
+    let base = pior_angulo(&m0, &c0, 0.30);
+
+    // (1) — **o controlo:** a malha por pentear já tem lascas (o refino
+    // deixa-as), senão não há o que piorar e as outras metades não afirmam nada.
+    assert!(
+        (4.0..12.0).contains(&base),
+        "a malha por pentear le' um pior angulo de {base:.2}° (medido 7,86°) — \
+         o arranjo mudou, e as barras abaixo foram calibradas contra este numero"
+    );
+
+    // (2) — no tecto do botão a faixa continua a ter triângulos com normal.
+    let (m1, c1) = traco(1.0, true);
+    let no_tecto = pior_angulo(&m1, &c1, 0.30);
+    assert!(
+        no_tecto >= CHAO_DO_ANGULO,
+        "com o pente no tecto o pior triangulo da faixa mede {no_tecto:.2}° \
+         (medido 4,56°; a lei refutada media 0,31°) — o pente voltou a comprar \
+         alinhamento com lascas, e a regua do Q nao ve' isso"
+    );
+
+    // (3) — e na metade de baixo ele **não piora** a malha. ⚠️ Sem esta metade,
+    // uma lei que degradasse tudo por igual passaria a (2) com o tecto baixo.
+    let (mm, cm) = traco(0.25, true);
+    let a_um_quarto = pior_angulo(&mm, &cm, 0.30);
+    assert!(
+        a_um_quarto >= base * 0.95,
+        "a um quarto do curso o pior triangulo mede {a_um_quarto:.2}° contra \
+         {base:.2}° por pentear (medido 8,21 contra 7,86) — o pente deixou de \
+         desfazer as lascas que o refino deixa e passou a criar as dele"
+    );
+}

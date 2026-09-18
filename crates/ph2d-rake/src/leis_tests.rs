@@ -59,12 +59,27 @@ fn uma_grade_ja_alinhada_nao_se_mexe() {
 
 /// ⭐⭐ **UM ANEL TORTO ALINHA-SE, e a conta fecha à mão.**
 ///
-/// Dois vizinhos: um a `45°` do traço e outro já alinhado. A lei manda o vértice
-/// para `(−0,20711 , 0,5)`, e com isso o `Q` do anel sobe de `0,000` para
-/// `+0,232` — os ângulos passam de `(45°, 0°)` para `(22,5°, 15,6°)`.
+/// Dois vizinhos: um a `45°` do traço (comprimento `√2`) e outro já alinhado
+/// (comprimento `2`). O raio médio do anel é `1,70711`, logo os alvos são
+/// `±1,70711·x̂` e as contribuições são `(−0,70711 , 1)` e `(−0,29289 , 0)`;
+/// a média dá `(−0,5 , 0,5)`, que mede `0,70711` — **acima do carril**
+/// (`0,34 × 1,70711 = 0,58042`) ⇒ o passo é encolhido por `0,82083` e o vértice
+/// pára em **`(−0,41041 , 0,41041)`**. Com isso o `Q` do anel sobe de `0,000`
+/// para **`+0,259`**: os ângulos passam de `(45°, 0°)` para `(22,69°, 14,47°)`.
+///
+/// ⚠️ **Esta fixtura exercita a lei E o carril**, e os dois números estão na
+/// conta acima — o carril tem gate próprio, e aqui ele aparece porque um anel
+/// com duas arestas e uma delas a `45°` pede mesmo um passo grande.
 ///
 /// ⚠️ **A aresta que já estava alinhada PIORA**, e isso é a lei a funcionar: ela
 /// optimiza a **grade** do anel inteiro, não uma aresta de cada vez.
+///
+/// ⛔⛔ **E esta conta MUDOU em 2026-09-18, com a lei.** A 1.ª redacção rodava
+/// cada aresta mantendo o comprimento DELA e parava em `(−0,20711 , 0,5)` com
+/// `Q = +0,232`; ela alinhava sem guardar o espaçamento, e media na chapa um
+/// pior ângulo de triângulo de **`0,31°`** contra `7,86°` do lado desligado.
+/// *O gate disparou com o número novo à vista, que é o que ele existe para
+/// fazer.*
 #[test]
 fn um_anel_torto_alinha_se_e_a_conta_fecha() {
     let mut pos: Vec<V3> = vec![[0.0, 0.0, 0.0], [1.0, 1.0, 0.0], [-2.0, 0.0, 0.0]];
@@ -72,14 +87,14 @@ fn um_anel_torto_alinha_se_e_a_conta_fecha() {
     let movidos = pentear(&mut pos, &[0], &[CIMA], &[1.0], &[0, 2], &[1, 2], TRACO);
     assert_eq!(movidos, 1);
     assert!(
-        (pos[0][0] - -0.207_106_8).abs() < 1e-5 && (pos[0][1] - 0.5).abs() < 1e-5,
-        "o vertice foi para {:?}, e a conta a' mao da' (-0,20711 , 0,5)",
+        (pos[0][0] - -0.410_416).abs() < 1e-5 && (pos[0][1] - 0.410_416).abs() < 1e-5,
+        "o vertice foi para {:?}, e a conta a' mao da' (-0,41041 , 0,41041)",
         pos[0]
     );
     let depois_q = q_do_anel(&pos, 0, &[1, 2], CIMA, TRACO);
     assert!(
-        antes_q.abs() < 1e-6 && (depois_q - 0.2317).abs() < 1e-3,
-        "o Q do anel foi de {antes_q:.4} para {depois_q:.4}; a conta a' mao da' 0,000 -> +0,232"
+        antes_q.abs() < 1e-6 && (depois_q - 0.2590).abs() < 1e-3,
+        "o Q do anel foi de {antes_q:.4} para {depois_q:.4}; a conta a' mao da' 0,000 -> +0,259"
     );
 }
 

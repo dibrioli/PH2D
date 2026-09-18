@@ -233,12 +233,14 @@ fn sonda_o_quadro_da_foto() {
     // ⭐ A última coluna é o que o report do dono de facto mede: um quadro ATRASADO recupera
     // vários tiques de simulação, e só o último é desenhado.
     for (n, varreduras, com_gizmo, tiques, so_o_ultimo) in [
-        (189usize, 8.0f32, false, 1usize, true),
-        (189, 1024.0, false, 1, true),
-        (189, 1024.0, true, 1, true),
-        (189, 1024.0, true, 8, false),
+        (189usize, 1024.0f32, true, 8usize, false),
         (189, 1024.0, true, 8, true),
-        (500, 1024.0, true, 8, true),
+        // ⭐ O ponto do dono (*«roda bem com Sweeps 64, 500 objetos = 100 FPS»*) e o que ele pede a
+        // seguir: os MIL.
+        (500, 64.0, true, 1, true),
+        (1000, 64.0, true, 1, true),
+        (2000, 64.0, true, 1, true),
+        (1000, 1024.0, true, 1, true),
     ] {
         let mut m = MotionState::new();
         let quadrado = indice_do_quadrado(&m.registry);

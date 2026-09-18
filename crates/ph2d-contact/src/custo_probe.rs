@@ -321,136 +321,6 @@ fn a_escada_das_varreduras_contra_a_populacao() {
     eprintln!("\n  load durante a corrida: {}\n", carga());
 }
 
-/// ⭐⭐⭐ **ONDE O TEMPO MORA DENTRO DE UMA VARREDURA** — a atribuição antes de qualquer cura.
-///
-/// ⚠️ Ela chama as MESMAS funções do produto (`grelha`, `celula`, `corrigida`), nunca uma segunda
-/// cópia da lei: o que ela faz é cronometrar as fases **separadamente**, somando ao lado.
-#[test]
-#[ignore = "sonda de medição, não gate"]
-fn onde_o_tempo_mora_dentro_de_uma_varredura() {
-    const N: usize = 500;
-    const REPS: usize = 200;
-    eprintln!("\n  ═══ ATRIBUIÇÃO DE UMA VARREDURA ({N} peças) ═══\n");
-    let (p0, c, w) = campo(N, ESPACO_DE_CENA);
-    let inv = vec![0.0; N];
-    let pecas = Pecas::novas(&c, &w, &inv);
-    let ativo: Vec<bool> = (0..N).map(|i| ativo(p0[i], c[i].as_ref())).collect();
-    let alcance = (0..N)
-        .filter_map(|i| c[i].map(|x| x.alcance()))
-        .fold(0.0f32, f32::max);
-    let lado = 2.0 * alcance;
-
-    let cron = |f: &mut dyn FnMut()| {
-        let mut melhor = f64::INFINITY;
-        for _ in 0..CORRIDAS {
-            let agora = Instant::now();
-            for _ in 0..REPS {
-                f();
-            }
-            melhor = melhor.min(agora.elapsed().as_secs_f64() * 1e6 / REPS as f64);
-        }
-        melhor
-    };
-
-    // (a) só construir a grelha
-    let t_grelha = cron(&mut || {
-        let mut g = crate::grelha::Grelha::default();
-        g.constroi(&p0, &ativo, lado);
-        std::hint::black_box(&g);
-    });
-    // (b) construir + colher os vizinhos das 9 células, sem tocar na lei
-    let t_colher = cron(&mut || {
-        let mut g = crate::grelha::Grelha::default();
-        g.constroi(&p0, &ativo, lado);
-        let mut viz: Vec<u32> = Vec::new();
-        let mut total = 0usize;
-        for k in 0..N {
-            g.vizinhos_de(k, &mut viz);
-            total += viz.len();
-        }
-        std::hint::black_box(total);
-    });
-    // (c) a varredura inteira, pela porta do produto
-    let t_tudo = cron(&mut || {
-        let mut p = p0.clone();
-        let mut g = vec![0.0; N];
-        separate(&mut p, &mut Saida { giro: &mut g }, &pecas, 1);
-        std::hint::black_box(&p);
-    });
-
-    // Quantos parceiros cada peça de facto vê — o que a LEI custa é proporcional a isto.
-    let mut g = crate::grelha::Grelha::default();
-    g.constroi(&p0, &ativo, lado);
-    let mut viz: Vec<u32> = Vec::new();
-    let mut soma = 0usize;
-    for k in 0..N {
-        g.vizinhos_de(k, &mut viz);
-        soma += viz.len();
-    }
-    eprintln!(
-        "  parceiros por peça (média) .... {:.1}",
-        soma as f64 / N as f64
-    );
-    eprintln!("  (a) construir a grelha ........ {t_grelha:>8.1} µs");
-    eprintln!("  (b) (a) + colher e ordenar .... {t_colher:>8.1} µs");
-    eprintln!("  (c) a varredura inteira ....... {t_tudo:>8.1} µs");
-    eprintln!(
-        "\n  ⇒ achar os pares: {:.0}%   ·   a LEI: {:.0}%",
-        t_colher / t_tudo * 100.0,
-        (t_tudo - t_colher) / t_tudo * 100.0
-    );
-    eprintln!("\n  load durante a corrida: {}\n", carga());
-}
-
-/// ⭐⭐⭐ **A PARTIR DE QUANTAS PEÇAS O PARALELO PAGA** — de onde sai a [`PECAS_PARA_PARALELIZAR`].
-///
-/// ⚠️ A régua é a RAZÃO entre as duas colunas, e não um relógio absoluto: sob carga as duas sobem
-/// juntas. O ponto de equilíbrio é onde a razão cruza `1`.
-#[test]
-#[ignore = "sonda de medição, não gate"]
-fn onde_o_paralelo_passa_a_pagar() {
-    const V: usize = 64;
-    eprintln!("\n  ═══ ONDE O PARALELO PASSA A PAGAR ({V} varreduras) ═══\n");
-    eprintln!(
-        "  {:<8} │ {:>12} │ {:>12} │ {:>9}",
-        "peças", "1 núcleo", "N núcleos", "razão"
-    );
-    eprintln!("  ---------|--------------|--------------|----------");
-    for n in [16usize, 32, 64, 128, 256, 500, 1000, 4000] {
-        let (p0, c, w) = campo(n, ESPACO_DE_CENA);
-        let inv: Vec<f32> = (0..n)
-            .map(|i| c[i].map_or(0.0, |x| x.inv_inercia(w[i])))
-            .collect();
-        let pecas = Pecas::novas(&c, &w, &inv);
-        let mut col = [0.0f64; 2];
-        for (i, paralelo) in [false, true].into_iter().enumerate() {
-            let mut melhor = f64::INFINITY;
-            for _ in 0..CORRIDAS {
-                let mut p = p0.clone();
-                let mut g = vec![0.0; n];
-                let agora = Instant::now();
-                separate_com(
-                    &mut p,
-                    &mut Saida { giro: &mut g },
-                    &pecas,
-                    V,
-                    paralelo,
-                    REPOUSO_VISIVEL,
-                );
-                melhor = melhor.min(agora.elapsed().as_secs_f64() * 1e3);
-            }
-            col[i] = melhor;
-        }
-        eprintln!(
-            "  {n:<8} │ {:>9.3} ms │ {:>9.3} ms │ {:>8.2}×",
-            col[0],
-            col[1],
-            col[0] / col[1]
-        );
-    }
-    eprintln!("\n  load durante a corrida: {}\n", carga());
-}
-
 /// ⭐⭐⭐ **A CENA DA FOTO — 189 DISCOS ENCOSTADOS** (report do dono, 2026-09-18: *«Boids 190
 /// objetos com collide on, Sweeps 1024 = 3 FPS»*).
 ///
@@ -543,3 +413,8 @@ fn a_cena_da_foto_do_dono() {
 /// separação CUSTA, ali mora onde ela PÁRA.
 #[path = "custo_probe_repouso.rs"]
 mod repouso;
+
+/// As sondas da ATRIBUIÇÃO — irmãs desta pelo tecto de LOC (HR-18) e por ASSUNTO: aqui mora QUANTO
+/// custa, ali mora ONDE dentro de uma varredura o tempo mora e quanto o paralelo de facto rende.
+#[path = "custo_probe_atribuicao.rs"]
+mod atribuicao;

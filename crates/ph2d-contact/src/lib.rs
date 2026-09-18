@@ -86,7 +86,7 @@
 
 use ph2d_nodegraph::attr::{
     COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, INV_INERTIA_COLUMN,
-    SIZE_IDENTITY, Stream, par_build_if,
+    SIZE_IDENTITY, Stream, par_build_com_bloco,
 };
 
 pub mod atrito;
@@ -566,15 +566,18 @@ fn separate_com(
             }
         }
         grade.constroi(&foto, &ativo, lado);
-        let novas: Vec<Nova> = par_build_if(paralelo, n, |k| {
+        // ⭐ **O bloco de vizinhos é REAPROVEITADO por trabalhador** — ele era um `Vec` novo por
+        // peça e por varredura (um milhão num quadro de `1024` varreduras com `1000` peças).
+        // ⛔ **Isto NÃO curou o paralelo, e a medição está no doc da porta:** o que o segura é o
+        // `fork/join` por varredura, não o alocador.
+        let novas: Vec<Nova> = par_build_com_bloco(paralelo, n, Vec::<u32>::new, |vizinhos, k| {
             if !ativo[k] {
                 return None;
             }
-            let mut vizinhos: Vec<u32> = Vec::new();
-            grade.vizinhos_de(k, &mut vizinhos);
+            grade.vizinhos_de(k, vizinhos);
             varredura::corrigida(
                 k,
-                vizinhos.into_iter().map(|j| j as usize),
+                vizinhos.iter().map(|&j| j as usize),
                 &foto,
                 &agora,
                 pecas,

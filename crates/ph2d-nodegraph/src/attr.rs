@@ -63,10 +63,42 @@ where
     T: Send,
     F: Fn(usize) -> T + Sync + Send,
 {
+    par_build_com_bloco(paralelo, n, || (), |(), i| f(i))
+}
+
+/// Como o [`par_build_if`], mas cada trabalhador recebe um **BLOCO DE RASCUNHO** que ele
+/// reaproveita entre elementos.
+///
+/// ⚠️ **Porque ela existe** (report do dono, 2026-09-18): o corpo por-elemento da separação de
+/// contactos alocava um `Vec` de vizinhos **por peça e por varredura** — `n × varreduras`
+/// alocações, que num quadro com `1024` varreduras e `1000` peças é um milhão.
+///
+/// ⛔⛔ **E a HIPÓTESE que motivou esta porta foi REFUTADA pela própria medição, que fica escrita
+/// aqui:** eu esperava que fosse a contenção no alocador a explicar o paralelo render `1,3×`–`2,5×`
+/// em 32 núcleos. Com o bloco reaproveitado o rendimento **não se moveu**. O discriminador — que a
+/// carga da máquina não estraga — é o **tempo de CPU contra o de parede**: a corrida paralela ocupa
+/// `4`–`5` núcleos e gasta **`5×` o CPU da série para o mesmo trabalho**. ⇒ o que se paga não é
+/// alocador, é o **`fork/join` por varredura**: com centenas de bifurcações curtas os
+/// trabalhadores passam a vida a GIRAR à espera. *A cura é outra — uma região paralela que
+/// atravesse as varreduras — e não é esta porta.*
+///
+/// ⭐ Ela fica na mesma, porque menos um milhão de alocações por quadro é certo por si.
+///
+/// ⭐ A garantia de bits é a mesma do irmão: cada elemento é calculado **sozinho** e o `collect`
+/// indexado repõe a ordem; o bloco é rascunho, nunca estado que atravesse elementos com
+/// significado.
+pub fn par_build_com_bloco<T, B, I, F>(paralelo: bool, n: usize, init: I, f: F) -> Vec<T>
+where
+    T: Send,
+    B: Send,
+    I: Fn() -> B + Sync + Send,
+    F: Fn(&mut B, usize) -> T + Sync + Send,
+{
     if paralelo {
-        (0..n).into_par_iter().map(f).collect()
+        (0..n).into_par_iter().map_init(&init, &f).collect()
     } else {
-        (0..n).map(f).collect()
+        let mut bloco = init();
+        (0..n).map(|i| f(&mut bloco, i)).collect()
     }
 }
 

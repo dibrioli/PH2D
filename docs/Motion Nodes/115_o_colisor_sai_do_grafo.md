@@ -1695,3 +1695,69 @@ pilha comprimida **não assenta** e o tecto é de facto gasto. ⚠️ *Ali o `10
 desperdício* — o que o artista compra com ele é pouco (a pilha já está separada às primeiras
 dezenas), e é por isso que o **custo no cartão** (aberto desde a §19) é hoje o item mais valioso da
 lista: sem ele, o único sítio onde o preço de um knob aparece é o relógio de parede.
+
+---
+
+## §22 — *«roda bem com Sweeps 64 (500 objetos = 100 FPS). Mas não vamos tentar chegar nos 1000?»*
+
+Report do dono, 2026-09-18, a seguir à §21. A resposta é uma medição e um mapa.
+
+### §22.1 — No lado do MOTION, os mil já lá estão
+
+Medido pela porta do quadro ([`motion_custo_do_quadro_probe::sonda_o_quadro_da_foto`], `load 9,7`),
+com o gizmo do colisor ligado:
+
+| objectos, `Sweeps 64` | cozimento + colisão + lowering | % de um quadro |
+|---|---|---|
+| 500 | 4,4 ms | 26 % |
+| **1000** | **6,8 ms** | **41 %** |
+| **2000** | **12,2 ms** | **73 %** |
+
+⇒ **o tecto mudou de sítio.** Ele mede `100` FPS a 500 objectos — um quadro de `~10 ms`, de que o
+Motion é `4,4`. *Os outros `5,6` ms não são meus*, e a foto diz de que são: cada objecto carrega
+**DOIS caminhos vectoriais** — o disco branco e o **anel azul do gizmo do colisor**.
+
+⚠️ E a partição de LOD que transforma formas em ladrilhos de GPU só arma acima de
+[`LOD_COUNT = 16_000`](../../crates/ph2d-app-motion/src/motion_bridge_objects_lod.rs): abaixo disso
+**cada forma é um traço próprio do Vello**.
+
+### §22.2 — ⛔⛔ A hipótese que a medição derrubou: não é o alocador
+
+O caminho paralelo rende `1,3×`–`2,5×` em **32 núcleos**, e a razão **não sobe com o tamanho**
+(`4 000` peças dão `1,58×`). A minha hipótese era contenção no alocador — o corpo por-elemento
+alocava um `Vec` de vizinhos por peça e por varredura (um milhão num quadro de `1024` varreduras com
+`1000` peças).
+
+⭐ Construí a porta que o cura ([`par_build_com_bloco`], um bloco de rascunho por trabalhador) **e o
+rendimento não se moveu**.
+
+⭐⭐⭐ **O discriminador que a CARGA da máquina não estraga é o tempo de CPU contra o de parede** —
+uma razão de `1,5×` lê-se igual quer o trabalho não esteja a ser espalhado, quer a máquina esteja
+ocupada:
+
+| discos | rota | parede | CPU | núcleos de facto |
+|---|---|---|---|---|
+| 1000 | série | 58,8 ms | 50,0 ms | `0,9×` |
+| 1000 | paralelo | 51,0 ms | **270,0 ms** | `5,3×` |
+| 4000 | série | 230,7 ms | 230,0 ms | `1,0×` |
+| 4000 | paralelo | 155,6 ms | **600,0 ms** | `3,9×` |
+
+⇒ o paralelo **gasta `5×` o CPU da série para o mesmo trabalho** e ocupa `4`–`5` núcleos. *O que se
+paga é o `fork/join` por varredura*: com centenas de bifurcações curtas os trabalhadores passam a
+vida a GIRAR à espera. ⛔ **A cura não é esta porta** — é uma região paralela que ATRAVESSE as
+varreduras (threads persistentes com barreiras), e é wave própria.
+
+⭐ O bloco fica na mesma, porque menos um milhão de alocações por quadro é certo por si.
+
+### §22.3 — O mapa do que sobra, com o tamanho de cada um
+
+| lever | tamanho medido | de quem é |
+|---|---|---|
+| **o desenho de N formas** (2 caminhos por objecto, LOD só acima de 16 000) | `~5,6 ms` dos `10` dele a 500 objectos | render / Vector |
+| **o `fork/join` por varredura** | o paralelo rende `1,5×` onde devia render dezenas | esta crate, wave própria |
+| **a geometria do par, calculada DUAS vezes** | `41 %` de uma varredura ⇒ `~21 %` de poupança | esta crate |
+| **a colisão não existe na rota da PLACA** | o caminho rápido e a colisão são mutuamente exclusivos | kernel, espec própria |
+
+⚠️ **E o corner caro continua a ser o cursor no topo:** `1000` objectos a `1024` varreduras custam
+`115,9 ms`. ⭐ *A `64` varreduras os mesmos mil custam `6,8` — a escada entre os dois é onde o
+«custo no cartão» deixaria o artista escolher com um número à frente em vez do relógio de parede.*

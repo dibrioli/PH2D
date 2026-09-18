@@ -136,6 +136,16 @@ const ALVO_PERMISSIVO: &[(&str, &str)] = &[
     ("mx_multiply_bsdf_float.glsl", "MaterialX, Apache-2.0"),
     ("mx_multiply_bsdf_color3.glsl", "MaterialX, Apache-2.0"),
     ("mx_environment_prefilter.glsl", "MaterialX, Apache-2.0"),
+    // ⭐ **Os TRÊS da SUBSUPERFÍCIE** (17/09, `docs/Render3d/10`) — a mesma triagem, o mesmo
+    // artefacto instalado e o mesmo directório dos onze acima. ⚠️ A nodedef e as duas definições
+    // do `stdlib`/`pbrlib` entram pela mesma porta: o `energy_compensation` desta wave é um valor
+    // de OMISSÃO lido de um `.mtlx`, e um facto lido de um ficheiro nomeia-o.
+    ("mx_translucent_bsdf.glsl", "MaterialX, Apache-2.0"),
+    ("mx_subsurface_bsdf.glsl", "MaterialX, Apache-2.0"),
+    ("mx_mix_bsdf.glsl", "MaterialX, Apache-2.0"),
+    ("open_pbr_surface.mtlx", "MaterialX, Apache-2.0"),
+    ("pbrlib_defs.mtlx", "MaterialX, Apache-2.0"),
+    ("mx_math.glsl", "MaterialX, Apache-2.0"),
     // Graphics Gems — o ajuste de curva canónico, de uso livre.
     ("FitCurves.c", "Graphics Gems"),
     // lib2geom — dual `LGPL-2.1-only OR MPL-1.1`, triado 2026-09-09. ⚠️ O

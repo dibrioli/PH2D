@@ -83,6 +83,14 @@ const EPS_ARRED: f32 = 1e-3;
 const VERDE: &[(&str, f32)] = &[
     ("mecanismo/y_umdab_p000", 0.000e0),
     ("mecanismo/y_umdab_p100", 0.000e0),
+    // ⭐⭐⭐ As quatro que FECHARAM ao conduzir o gesto ancorado pela regra
+    // provada: de `6,874e-1` e `3,437e-1` para ruído de `f32`, com `56/56`
+    // vértices movidos contra os `0/56` de antes. *A lei estava certa; o
+    // arnês entregava um CARIMBO a um verbo que segura.*
+    ("verbos/v_grab_p000", 1.192e-7),
+    ("verbos/v_grab_p100", 1.192e-7),
+    ("verbos/v_thumb_p000", 1.192e-7),
+    ("verbos/v_thumb_p100", 1.192e-7),
 ];
 
 /// Desvio medido, em unidades de objecto. ⛔ Só ENCOLHE.
@@ -127,14 +135,10 @@ const ABERTO: &[(&str, f32)] = &[
     ("verbos/t_manual_p100", 6.203e-2),
     ("verbos/v_draw_sharp_p000", 5.712e-3),
     ("verbos/v_draw_sharp_p100", 5.712e-3),
-    ("verbos/v_grab_p000", 6.874e-1),
-    ("verbos/v_grab_p100", 6.874e-1),
     ("verbos/v_layer_p000", 2.218e-2),
     ("verbos/v_layer_p100", 2.986e-2),
     ("verbos/v_smooth_p000", 1.938e-2),
     ("verbos/v_smooth_p100", 2.388e-2),
-    ("verbos/v_thumb_p000", 3.437e-1),
-    ("verbos/v_thumb_p100", 3.437e-1),
 ];
 
 /// ⛔ Nenhum dos dois lados move um vértice ⇒ `0,000e0` com qualquer lei.

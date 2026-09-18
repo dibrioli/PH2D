@@ -1799,3 +1799,29 @@ lado **seguro** — ao contrário das três formas já registadas (o filtro que
 casa zero e imprime `ok`, a mutação que não compila, o `| tail` que destrói o
 código de saída), esta não se lê como «sobreviveu». **Mutação `8 de 8`** com a
 correcção.
+
+### §72.11 A dívida do arnês ancorado: PAGA para dois dos três
+
+⭐⭐⭐ **`v_grab` e `v_thumb` foram de `6,874e-1` e `3,437e-1` para `1,192e-7`**
+— ruído de `f32` — e passam a mover **`56/56`** vértices contra os `0/56` de
+antes. Eles são `Grip::Hold`, e o arnês entregava-lhes um **CARIMBO**: a regra
+certa é a que a bancada dos gestos tangenciais já provou — **centro na âncora
+do pen-down, puxão TOTAL desde o primeiro ponto**. *A lei estava certa; o
+condutor é que estava errado*, e na tabela isso lia-se como o pior desvio do
+corpus.
+
+⇒ `VERDE 2 → 6`, `ABERTO 48 → 44`, e a catraca disparou na metade **«ABERTO
+FECHOU»**, que é para o que ela existe.
+
+⏳ **Fica `composicao/m_rot`** (`0` contra `49`): ele é `Grip::Turn` e
+**nenhuma bancada deste repo tem um condutor PROVADO para a torção** —
+inventar um aqui seria medir a bancada. ⭐ Para a pergunta do pente ele é vácuo
+de qualquer maneira (`dele = 0,000e0`).
+
+⛔ **E uma mutação minha era um NO-OP, não uma sobrevivente:**
+`ancora_do_gesto(_, p, false)` **devolve `p` na primeira linha**, logo
+substituí-la pelo ponto não muta nada enquanto nenhuma fixtura armar a âncora
+em vértice. Passar pela porta continua certo por disciplina, e o comentário
+passou a dizer que **não é propriedade provada por este corpus**. *A mesma
+classe que o §26 já registou: uma mutação que não muta lê-se como
+sobrevivência.* **`M9` e `M10` sangram.**

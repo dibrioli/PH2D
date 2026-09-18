@@ -213,6 +213,9 @@ pub fn correr(c: &Celula) -> Vec<[f32; 3]> {
 
 /// `reamostra`: se os carimbos são re-amostrados pelo passo do traço, ou se os
 /// pontos do cabeçalho **são** os carimbos.
+/// A direcção da vista que este corpus usa — a mesma em todas as células.
+const OLHO: [f32; 3] = [0.0, 0.0, -1.0];
+
 pub fn correr_com(c: &Celula, reamostra: bool) -> Vec<[f32; 3]> {
     let mut m = entrada(c);
     let b = pincel(c);
@@ -225,6 +228,9 @@ pub fn correr_com(c: &Celula, reamostra: bool) -> Vec<[f32; 3]> {
     for _ in 0..passagens {
         let mut s = SculptStroke::default();
         s.begin(&m);
+        // A âncora é fotografada UMA vez, no pen-down, e só para quem segura.
+        let ancora = (b.verb.grip() == ph2d_sculpt3d::Grip::Hold)
+            .then(|| ph2d_sculpt3d::ancora::ancora_do_gesto(&m, c.percurso[0], false));
         let mut anterior: Option<[f32; 2]> = None;
         for p in &c.percurso {
             let alvo = [p[0], p[1]];
@@ -238,12 +244,36 @@ pub fn correr_com(c: &Celula, reamostra: bool) -> Vec<[f32; 3]> {
                 _ => carimbos.push(alvo),
             }
             for q in carimbos {
-                s.dab(
-                    &mut m,
-                    &b,
-                    &Dab::at([q[0], q[1], p[2]], b.radius, [0.0, 0.0, -1.0]),
-                    Symmetry::default(),
-                );
+                let dab = match b.verb.grip() {
+                    // ⭐⭐ **O GESTO ANCORADO é conduzido pela regra que a
+                    // bancada dos gestos tangenciais já PROVOU:** o centro é a
+                    // âncora do pen-down e o puxão é o deslocamento **TOTAL**
+                    // desde o primeiro ponto, nunca o incremento.
+                    //
+                    // ⚠️ A âncora passa pela porta do produto por DISCIPLINA, e
+                    // isso **não está provado por mutação neste corpus**:
+                    // `ancora_do_gesto(_, p, false)` devolve `p` na primeira
+                    // linha, logo trocá-la pelo ponto é um NO-OP enquanto
+                    // nenhuma fixtura armar a âncora em vértice. *Uma mutação
+                    // que não muta lê-se como sobrevivência e não é.*
+                    //
+                    // ⛔⛔ Sem isto o arnês entrega um CARIMBO a um verbo que
+                    // segura, e ele move **zero** vértices onde o oráculo move
+                    // `56` — o que se lê na tabela como um desvio catastrófico
+                    // da LEI (`6,874e-1`) quando é do ARNÊS.
+                    ph2d_sculpt3d::Grip::Hold => Dab::pulling(
+                        ancora.expect("um gesto que segura tem âncora"),
+                        b.radius,
+                        OLHO,
+                        [
+                            q[0] - c.percurso[0][0],
+                            q[1] - c.percurso[0][1],
+                            p[2] - c.percurso[0][2],
+                        ],
+                    ),
+                    _ => Dab::at([q[0], q[1], p[2]], b.radius, OLHO),
+                };
+                s.dab(&mut m, &b, &dab, Symmetry::default());
                 m.pregar_normais_para_teste(&normais0);
                 anterior = Some(q);
             }

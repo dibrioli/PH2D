@@ -99,3 +99,22 @@ verdade: alcance · fidelidade · fluidez · o chão · o bloco) · `cascadeur_t
 `medir_esqueleto_deles.js` (`bash rodar_no_cascadeur.sh esqueleto`).
 **Estado:** 164 verificações, 43 provas de mutação, 8 testes de rato de verdade — todos verdes.
 Detalhe inteiro com as tabelas: `auditoria/ACHADOS.md` B25 e B26.
+
+## 18/09 — O PIVÔ do bloco: ele roda o corpo à volta do QUADRIL
+
+⭐⭐⭐ **Perguntado ao Cascadeur CORRENDO-O** (`bash rodar_no_cascadeur.sh pivo`): o `selector()` dele
+devolve um `Pivot` com quatro campos, e o que decide é o **`center_of_top_objects`**. Lido o
+`position` por escolha: as duas mãos → o meio das duas; os dois pés → o meio dos dois; **os 43 pontos
+(o corpo inteiro) → `0.0009, 95.6335, −5.1921`, que é A BACIA ao quarto decimal** — e não o meio dos
+43 (`0.0013, 88.4123, −1.8463`) nem o centro de massa (`0.0012, 98.1457, −4.0223`).
+
+⇒ aqui é a operação mais simples que existe: **a raiz da nossa pose É a bacia**, logo rodar o bloco é
+somar ao ÂNGULO da raiz e mais nada. O gesto são dois botões com seta curva nas pontas da base de
+mover (no chão, onde não disputam com círculo nem osso), e o ângulo do rato mede-se **no pivô**, não
+no botão — é daí que vem o controlo fino. ⚠️ O pivô é DESENHADO durante o gesto (cruz na bacia + fio
++ graus): um giro à volta de um ponto que não se vê lê-se como o boneco a fugir. ⚠️ E o chão continua
+a ser chão: a bacia pode SUBIR num giro, e o que não muda é o **x** dela.
+
+Medido com rato de verdade: 30° pedidos, **30,00°**, deformação **0,0000°**, bacia **0,000 cm**.
+O `gesto_sequencia.js` passa a dar VEREDITO sobre os FATOS (chão · bloco rígido · giro); a fluidez e
+a fidelidade ficam como medidas impressas. Detalhe: `auditoria/ACHADOS.md` B27.

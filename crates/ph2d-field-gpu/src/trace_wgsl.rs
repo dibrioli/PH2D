@@ -136,35 +136,12 @@ fn marcha_ate(r: Raio, t_max: f32) -> vec4<f32> {
 // ⭐ **A MARCHA DE VISIBILIDADE** — a da sombra e a da oclusão são a mesma, e diferem só na cerca
 // e na dureza. `INFINITY` para a oclusão (a pergunta é binária); `8` para a sombra (penumbra).
 fn visivel(origem: vec3<f32>, dir: vec3<f32>, t_max: f32, dureza: f32) -> f32 {
-    return visivel_saindo(origem, dir, t_max, dureza, false);
-}
-
-// ⭐⭐⭐ O gémeo do `ph2d_field_render::march::march_shadow_saindo`, linha a linha: um raio marcado
-// anda sem acusar enquanto não tiver estado DENTRO e voltado a sair, e a partir da saída o
-// estimador de penumbra volta a contar do zero. Com `sair = false` é o laço de sempre, ao bit.
-fn visivel_saindo(origem: vec3<f32>, dir: vec3<f32>, t_max: f32, dureza: f32, sair: bool) -> f32 {
     var vis = 1.0;
     var t = s.hit_eps * 4.0;
-    var saiu = !sair;
-    var dentro = false;
-    var base = 0.0;
     for (var n: u32 = 0u; n < s.budget; n = n + 1u) {
         let d = field(origem + dir * t);
-        if (!saiu) {
-            if (d < s.hit_eps) {
-                dentro = true;
-            } else if (dentro) {
-                saiu = true;
-                base = t;
-            }
-            if (!saiu) {
-                t = t + max(abs(d), s.hit_eps) * s.step;
-                if (t >= t_max) { break; }
-                continue;
-            }
-        }
         if (d < s.hit_eps) { return 0.0; }
-        vis = min(vis, dureza * d / max(t - base, 1.1920929e-7));
+        vis = min(vis, dureza * d / t);
         t = t + d * s.step;
         if (t >= t_max) { break; }
     }

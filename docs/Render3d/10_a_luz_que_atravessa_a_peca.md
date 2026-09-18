@@ -260,97 +260,110 @@ linha, `36` uma vez no arranque.
 
 ---
 
-## §11 — ⛔⛔⛔ O report de 2026-09-18: a LINHA DURA no terminador, e o filtro que a previu por escrito
+## §11 — ⛔⛔⛔ O report de 2026-09-18: a LINHA DURA, e as DUAS curas que a foto refutou
 
 > *«Bom resultado! Avalie apenas uma coisa: em `Thin Walled: Solid` não há transição suave entre a
-> área iluminada e a área sombreada da esfera, mas uma linha dura. Veja se é correto.»* — duas fotos
-> da cena `=33`, a seta em cima do vinco.
+> área iluminada e a área sombreada da esfera, mas uma linha dura. Veja se é correto.»*
+> … e depois: *«não vi mudanças. O resultado em Thin Walled é melhor (mais suave a transição).»*
 
-**Não é correto**, e o mecanismo não está na lei da subsuperfície.
+**Não é correto.** E ⚠️⚠️ **nada nesta secção foi achado por uma régua: foi achado por uma FOTO.**
 
-### §11.1 — A fixtura mentiu duas vezes antes de conter o fenómeno
+### §11.1 — A resposta, em uma linha
 
-A 1.ª sonda montou uma bola **sozinha na origem** e binou a luminância por `N·L`: o perfil
-atravessou `N·L = 0` **liso** e o pior salto ficou em `0,78` — o **brilho especular**, que lê o mesmo
-no material opaco. *Uma régua que procura o máximo global mede o realce, não o terminador.*
+⭐⭐⭐ **A linha que ele aponta é a borda da SOMBRA QUE A PLACA LANÇA SOBRE A BOLA.** Não é o
+terminador, não é a lei da subsuperfície e não é a quadratura.
 
-A 2.ª escreveu `radiance_at_one: [intensity; 3]` em vez de passar pela porta do produto
-([`lights::radiance_at_one`], que é `cor × intensidade × π`): a lâmpada saiu **`π×` fraca e sem
-cor**, o céu dominou, e o terminador leu-se como uma rampa de `99` a `108`. *Uma sonda que reescreve
-a conversão do produto mede outro programa* — a quinta vez que esta casa o paga.
+O experimento que o decide é de uma linha (`PH2D_TERM_SO_A_BOLA=1` na
+[`sonda_fotografa_o_terminador`]): a MESMA câmera, a MESMA luz, o MESMO material, **sem a placa**.
+| | o que se vê |
+|---|---|
+| a cena `=33` | a linha está lá |
+| a bola sozinha | **a bola é perfeitamente lisa** |
 
-### §11.2 — A causa, com o canal isolado
+⇒ ela é dura porque a luz é um **PONTO**, e um ponto lança sombra com borda em degrau. E ela só
+incomoda no `Solid` porque ali a resposta tem contraste através da borda; na parede fina metade da
+energia vem do lóbulo de trás e a mesma borda lê-se lavada.
 
-Na `=33` a **LÂMINA projecta sombra sobre a ESFERA**. Ao longo de uma linha que atravessa o
-terminador, a visibilidade da lâmpada lia:
+⛔ **É correcto como geometria e ERRADO como produto:** num jade a luz que entra fora da sombra
+espalha-se por baixo da superfície PARA DENTRO dela, e a borda amolece. A nossa subsuperfície
+multiplica uma visibilidade **dura, por pixel** — *a difusão está na lei do `N·L` e não está na lei
+da sombra.*
 
-| `N·L` | `0,054` | `0,038` | `0,020` | `0,002` | `−0,018` |
-|---|---|---|---|---|---|
-| `vis` | `0,984` | `0,849` | `0,712` | **`0,555`** | **`1,000`** |
+### §11.2 — ⛔ A fixtura mentiu QUATRO vezes antes de conter o fenómeno
 
-⇒ **um degrau de `0,445` num pixel**, exactamente em `N·L = 0`, porque o passe de sombra escrevia
-`vis = 1,0` para todo ponto de costas para a luz. ⭐⭐⭐ **E o comentário desse filtro previa o dia:**
+1. Uma bola **sozinha na origem**: o perfil atravessou `N·L = 0` liso e o pior salto ficou no
+   **brilho especular**, que lê o mesmo no opaco. *Uma régua que procura o máximo global mede o
+   realce.*
+2. `radiance_at_one: [intensity; 3]` em vez da porta do produto (`cor × intensidade × π`): a
+   lâmpada saiu **`π×` fraca e sem cor** e o céu dominou. *Uma sonda que reescreve a conversão do
+   produto mede outro programa.*
+3. O enquadramento de omissão em vez do **zoom** que ele usou.
+4. ⭐⭐⭐ E a que custou a jornada inteira: **nunca perguntei se a linha era a sombra da placa.**
+   As duas curas foram desenhadas sem essa resposta.
 
-> *«`1,0` e não `0,0`, e a diferença NÃO é visível hoje: o `N·L ≤ 0` já anula a contribuição da
-> lâmpada … até ao dia em que alguém ler este canal para outra coisa (**a OpenPBR tem termos que
-> recebem luz com `N·L < 0`**)»*
+### §11.3 — ⛔⛔ CURA A, construída inteira e REVERTIDA pela foto
 
-A subsuperfície **maciça** é o primeiro consumidor desta casa que lê luz do lado escuro. ⇒ a sombra
-do vizinho acabava a meio, num degrau de **um pixel**, que é a linha que ele fotografou.
+O passe de sombra escreve `vis = 1,0` para todo ponto de costas para a luz, o que **trunca** no
+terminador a sombra de um vizinho — defeito real, e o comentário desse filtro **previa-o por
+escrito** (*«até ao dia em que alguém ler este canal para outra coisa — a OpenPBR tem termos que
+recebem luz com `N·L < 0`»*). Construiu-se a cura: o raio parte na mesma e só conta o que estiver
+**depois de sair do próprio corpo**, com o `t` do estimador de penumbra recontado a partir da saída.
 
-⚠️ **Não é acne:** uma esfera **sozinha** lê `0` de `12 924` pixels com `vis < 0,99` — o ergue pela
-normal já a cura. *Uma sombra falsa e uma sombra truncada leem-se iguais numa foto.*
+Ela tinha tudo: gémeo em WGSL, **6 de 6** paridades CPU↔dispositivo verdes, **4 de 4** mutações a
+sangrar, a folha intacta (`83,7`), a esfera convexa com zero acne, a banda do terminador de
+`p99 9,21` para `3,71`.
 
-### §11.3 — Duas curas construídas, MEDIDAS e refutadas
+⛔ **E a foto reprovou-a:** a borda alargou **e ganhou um FIO escuro SERRILHADO** por cima. O
+serrilhado é a assinatura — **um `if` por pixel** (`N·L <= 0`) escolhia entre duas maneiras de
+calcular a mesma grandeza, e *a fronteira entre elas desenha-se*.
 
-| | banda do terminador, 2.ª dif p99 | salto no pixel | folha com a luz ATRÁS |
-|---|---|---|---|
-| **o defeito** | **`9,21`** | **`+4,4`** | `83,7` (intacta) |
-| marchar o raio de costas como os outros | `2,14` | `−1,4` | ⛔ **`73,8`**, `vis` mín `0,000` |
-| ⛔ o mesmo, sem recontar o `t` na saída | `7,42` | `−4,1` | ⛔ `74,0` |
-| **hoje** | **`3,71`** | `+1,8` | ✅ **`83,7`** |
-| a mesma cena sem lâmpada (o controlo liso) | `1,00` | `−0,9` | — |
+⛔ **E apagar o ramo é PIOR:** um caminho só, todo raio a partir do ponto, devolve **acne** (riscos
+claros ao longo do terminador; a banda vai a `p99 13,06`), porque o ergue pela normal deixa de lá
+estar.
 
-⛔ **A cura óbvia mata a outra metade da wave:** o raio de um ponto de costas atravessa o **próprio
-corpo**, lê-o como obstáculo, e a folha com o sol atrás — a razão de ser do caminho de parede fina —
-**apaga-se**. *A pergunta certa não é «a minha peça está no caminho?» (está sempre, por construção),
-é «há mais ALGUMA COISA no caminho?».*
+⇒ *a truncagem é INVISÍVEL nesta cena e o fio é VISÍVEL* ⇒ **shipa a truncagem**, e os dois gates
+que a cura teria partido ficam, porque são onde a segunda tentativa vai bater:
+[`a_folha_com_a_luz_atras_nao_se_apaga`] · [`um_corpo_convexo_nao_se_tapa_a_si_proprio`].
 
-### §11.4 — A lei que fica
+### §11.4 — ⭐⭐ CURA B, que FICA: a quadratura deixa de pôr vincos na lei
 
-O raio de um ponto **de costas** parte do ponto (⚠️ **sem erguer** — erguido, um raio que roça o
-terminador pode nunca tocar no corpo, nunca sair e nunca acusar), anda **sem acusar** enquanto não
-tiver estado dentro e voltado a sair, e **a partir da saída o estimador de penumbra volta a contar
-do zero**.
+Medida a lei **sozinha** (sem cena, `4 001` amostras de `N·L`), o maciço tinha o pior salto da 2.ª
+derivada em **`N·L = −0,0980` = `sin(π/32)`** — o `x` da 1.ª amostra da quadratura — e **não se
+movia** com o `Subsurface Radius` (`0,1` · `1,0` · `4,0` dão todos o mesmo ponto). *Uma feição cuja
+posição não depende de nenhum parâmetro físico é da discretização.*
 
-⭐⭐⭐ **O `t` reconta-se porque `dureza·d/t` é o tamanho ANGULAR do obstáculo visto da origem do
-raio** — com o `t` a incluir a corda andada lá dentro, um raio que sai e depois roça a própria peça
-lê `d/t` minúsculo e **inventa** uma penumbra: o lado escuro lia `0,105` onde o lado iluminado, a um
-pixel, lia `0,555`. Com a recontagem a rampa fica `0,555 · 0,400 · 0,582 · 0,781 · 1,000` — contínua.
+A causa: o `max(cos(θ+x), 0)` amostrado no **MEIO** da célula põe uma quina em cada nó, e o perfil
+de Burley é **singular em `x = 0`** ⇒ as duas células vizinhas do zero levam quase todo o peso.
+⇒ o cosseno passa a ser integrado **exactamente dentro da célula** (`(sin b − sin a)/largura`, com
+os extremos cortados ao domínio onde ele é positivo), que é **C¹ em θ** — nos cortes a derivada é
+`cos(±π/2) = 0`.
 
-⚠️ **`precisa_sair` vazio é a marcha de sempre, ao bit**, e é isso que deixa o ricochete, o cone da
-oclusão e os testes intactos. O gémeo do dispositivo é o `visivel_saindo` do `trace_wgsl`, linha a
-linha — e **as 6 provas de paridade CPU↔dispositivo continuam verdes**.
+| pior 2.ª derivada em `\|N·L\| <= 0,97` | |
+|---|---|
+| opaco (o terminador de Lambert, quina legítima) | `276` |
+| parede fina — **o lado que o dono APROVOU** | `137` |
+| maciço, ponto médio (o oráculo) | `67`–`95`, em `N·L = −0,098` |
+| **maciço, hoje** | **`0,4`–`0,5`** |
 
-### §11.5 — Os portões e o preço
+⛔⛔ **Divergência DECLARADA:** a mediana contra o oráculo vai de `5,0e-4` para `2,9e-3`. ⚠️ **Toda
+cura possível diverge daqui, e é aritmético:** o integral verdadeiro é um só, e é o ponto médio a
+`N = 32` que está a `~3e-3` dele — somar mais amostras converge para o mesmo sítio. *O que diverge
+do oráculo é ele próprio do seu limite.* As barras subiram com a tabela ao lado, e ⭐ a divergência é
+**load-bearing**: quem a reverter para recuperar a mediana reprova no
+[`o_macico_nao_e_mais_duro_que_o_lado_que_o_dono_aprovou`], cuja barra é calibrada **no lado que ele
+aprovou**. **3 de 3** mutações sangram.
 
-Três metades, e cada uma é um defeito medido:
-[`a_sombra_de_um_vizinho_nao_e_truncada_no_terminador`] (barra `6,0`, do **vale** entre `3,71` e
-`9,21`, **com o controlo liso dentro** — sem ele uma mutação que apagasse a sombra toda lia `1,00` e
-passava) · [`a_folha_com_a_luz_atras_nao_se_apaga`] · [`um_corpo_convexo_nao_se_tapa_a_si_proprio`],
-que é o piso que as outras duas não vêem (*uma «cura» que escurecesse a metade escura do mundo
-passaria nas duas primeiras*). **4 de 4 mutações sangram.**
+⚠️ **E ela NÃO apaga a linha da foto** — ela apaga um vinco *da lei*, que é outro defeito.
 
-⏱️ **Preço:** o passe de sombra sobe **`+7 %` a `+9 %`** (debug, `load 1,1`: `1,91 → 2,08 ms` a
-320 px, `72,4 → 79,2 ms` a 1920). ⚠️ O doc do `march_shadow_to` já media que filtrar os raios de
-costas cortava **`55 %` da população e `6 %` do relógio** — *o filtro era uma optimização de `6 %`
-paga com uma linha dura na tela*.
+### §11.5 — ⏳ A cura que falta, agora com endereço
 
-### §11.6 — ⏳ O que fica aberto
+**A visibilidade que um termo TRANSMISSIVO lê tem de ser BORRADA pela distância de espalhamento.**
+É isso que faz a sombra num jade ter a borda mole, e nenhuma das duas referências o escreve (o
+MaterialX põe `occlusion = 1` e foge do assunto).
 
-O p99 da banda é `3,71` contra `1,00` do controlo liso: sobra um **V** logo a seguir ao terminador
-(`0,555 → 0,400 → 0,582`), porque um raio que sai muito perto da saída tem `t − base` curto e lê uma
-penumbra mais dura. ⛔ A cura de fundo é a que a física manda e que nenhuma das duas referências
-escreve: **a visibilidade que um termo TRANSMISSIVO lê é a do sítio por onde a luz ENTRA**, não a do
-ponto sombreado — e o `thick` já supõe uma esfera local de raio `1/κ`, logo o ponto de entrada é
-construtível com a curvatura que esta wave já calcula, **sem premissa nova**. Fica nomeado.
+⭐ A maquinaria já existe nesta crate: o borrão com guarda de normal que o céu e o ricochete usam
+(`OCCLUSION_BLUR_COS`, com os gates `a_suavizacao_apaga_o_ruido_dentro_de_uma_superficie` e
+`a_suavizacao_nao_atravessa_uma_quina`). O que falta é um **segundo canal de visibilidade**, borrado
+com o raio `mfp/κ` que o `integrate_burley` já usa, lido **só** pela closure de subsuperfície —
+⚠️ e isso muda a fronteira do `ph2d-material` (hoje há **uma** radiância por lâmpada para todas as
+closures), mais o gémeo em WGSL. **É wave própria, e fica nomeada.**

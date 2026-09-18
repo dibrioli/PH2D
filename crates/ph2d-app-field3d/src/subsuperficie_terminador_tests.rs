@@ -302,6 +302,300 @@ fn sonda_o_terminador_da_esfera() {
     }
 }
 
+/// ⏱️⭐⭐⭐ **A RÉGUA QUE SEPARA O LADO APROVADO DO REPROVADO** — o 2.º report de 18/09.
+///
+/// ⚠️⚠️ O dono mandou DUAS fotos e disse *«o resultado em Thin Walled é melhor (mais suave a
+/// transição)»* ⇒ **ele aprovou uma das duas metades da wave**, e é nela que a barra se calibra.
+/// A régua de ecrã que eu usei antes mede o realce especular e a sombra do vizinho; esta mede a
+/// coisa que ele aponta: a **curvatura do perfil `lum(N·L)`**, que é o que o olho lê como vinco.
+#[test]
+#[ignore = "sonda de diagnóstico: o vinco que o dono aponta"]
+fn sonda_o_vinco_contra_o_lado_aprovado() {
+    let doc = crate::smoke::scenes::edge::cena_33().expect("a cena do dono");
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = Orbit::default();
+    let (onde, luz) = crate::lights::opening_light(&cam);
+    let chao = ph2d_field_render::lowest_point(&doc, &reg)
+        .map(|height| ph2d_field_render::Ground { height });
+    let (right, up, fwd) = cam.basis();
+    let base = ph2d_material::OpenPbr {
+        subsurface_color: [0.75, 0.35, 0.35],
+        base_color: [0.75, 0.35, 0.35],
+        ..ph2d_material::OpenPbr::default()
+    };
+    println!("  material            ·  pior curvatura do perfil · onde (N·L) · 2.º pior · onde");
+    for (nome, m) in [
+        ("opaco             ", base),
+        (
+            "maciço  (Solid)   ",
+            ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                geometry_thin_walled: false,
+                ..base
+            },
+        ),
+        (
+            "parede fina (APROV)",
+            ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                geometry_thin_walled: true,
+                ..base
+            },
+        ),
+    ] {
+        let (g, _, px) = quadro(&Quadro {
+            doc: &doc,
+            m,
+            cam: &cam,
+            onde,
+            luz,
+            com_sombra: true,
+            chao,
+        });
+        const FAIXAS: usize = 200;
+        let (mut soma, mut conta) = ([0.0f64; FAIXAS], [0usize; FAIXAS]);
+        for i in 0..g.hit.len() {
+            if !g.hit[i] || g.point[i][0] <= 0.1 {
+                continue;
+            }
+            let p = g.point[i];
+            let d = [onde[0] - p[0], onde[1] - p[1], onde[2] - p[2]];
+            let r = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            let n = [0, 1, 2].map(|k| {
+                g.normal[i][0] * right[k] + g.normal[i][1] * up[k] + g.normal[i][2] * fwd[k]
+            });
+            let c = ((n[0] * d[0] + n[1] * d[1] + n[2] * d[2]) / r.max(1e-9)).clamp(-1.0, 1.0);
+            #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+            let k = (((c + 1.0) * 0.5 * FAIXAS as f32) as usize).min(FAIXAS - 1);
+            let b = i * 4;
+            soma[k] += f64::from(
+                0.2126 * f32::from(px[b])
+                    + 0.7152 * f32::from(px[b + 1])
+                    + 0.0722 * f32::from(px[b + 2]),
+            );
+            conta[k] += 1;
+        }
+        let mut perfil: Vec<(f32, f32)> = Vec::new();
+        for k in 0..FAIXAS {
+            if conta[k] >= 20 {
+                #[allow(clippy::cast_precision_loss)]
+                let c = (k as f32 + 0.5) / FAIXAS as f32 * 2.0 - 1.0;
+                #[allow(clippy::cast_precision_loss)]
+                perfil.push((c, (soma[k] / conta[k] as f64) as f32));
+            }
+        }
+        let mut vincos: Vec<(f32, f32)> = perfil
+            .windows(3)
+            .map(|w| ((w[2].1 - 2.0 * w[1].1 + w[0].1).abs(), w[1].0))
+            .collect();
+        vincos.sort_by(|a, b| b.0.total_cmp(&a.0));
+        println!(
+            "  {nome}  ·  {:>22.3} · {:>10.3} · {:>7.3} · {:>6.3}",
+            vincos[0].0, vincos[0].1, vincos[1].0, vincos[1].1
+        );
+        // A vizinhança do terminador, em unidades de `N·L`.
+        let mut linha = String::new();
+        for (c, l) in &perfil {
+            if c.abs() <= 0.22 {
+                linha.push_str(&format!(" {c:+.3}:{l:.1}"));
+            }
+        }
+        println!("      perfil:{linha}");
+    }
+    println!(
+        "  ⚠️ sin(π/32) = {:.4} — o x da 1.ª amostra da quadratura do `integrate_burley`",
+        (core::f32::consts::PI / 32.0).sin()
+    );
+}
+
+/// ⏱️⭐⭐⭐ **A LEI SOZINHA, sem cena e sem ruído** — varre `N·L` finamente e mede a curvatura da
+/// resposta. É a única régua que separa *«a lei é lisa e a cena é que é ruidosa»* de *«a lei tem
+/// vincos»*, e ela põe o lado APROVADO (parede fina) ao lado do reprovado (maciço).
+#[test]
+#[ignore = "sonda de diagnóstico: a lei sozinha"]
+fn sonda_a_lei_sozinha() {
+    const N: usize = 4001;
+    let curva = |m: ph2d_material::OpenPbr, k: f32| -> Vec<f32> {
+        let s = m.prepare().at_curvature(k);
+        (0..N)
+            .map(|i| {
+                #[allow(clippy::cast_precision_loss)]
+                let c = -1.0 + 2.0 * (i as f32) / (N as f32 - 1.0);
+                let sin = (1.0 - c * c).max(0.0).sqrt();
+                // `n` em z, a luz no plano `xz` com `N·L = c`; o olho de frente.
+                let r = s.direct(
+                    [0.0, 0.0, 1.0],
+                    [0.0, 0.0, 1.0],
+                    [sin, 0.0, c],
+                    [1.0, 1.0, 1.0],
+                );
+                0.2126 * r[0] + 0.7152 * r[1] + 0.0722 * r[2]
+            })
+            .collect()
+    };
+    let base = ph2d_material::OpenPbr {
+        subsurface_color: [0.75, 0.35, 0.35],
+        base_color: [0.75, 0.35, 0.35],
+        specular_weight: 0.0,
+        ..ph2d_material::OpenPbr::default()
+    };
+    // A escala da bola da `=33`: raio `0,42` ⇒ curvatura `1/0,42`.
+    let k = 1.0f32 / 0.42;
+    println!(
+        "  (curvatura {k:.3}; sin(π/32) = {:.4})",
+        (core::f32::consts::PI / 32.0).sin()
+    );
+    println!(
+        "  material                      ·   pior 2.ª dif · onde (N·L) ·  largura do envolvimento"
+    );
+    for (nome, m) in [
+        ("opaco                       ", base),
+        (
+            "maciço  raio 1,0 (omissão)  ",
+            ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                geometry_thin_walled: false,
+                ..base
+            },
+        ),
+        (
+            "maciço  raio 0,1            ",
+            ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                geometry_thin_walled: false,
+                subsurface_radius: 0.1,
+                ..base
+            },
+        ),
+        (
+            "maciço  raio 4,0            ",
+            ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                geometry_thin_walled: false,
+                subsurface_radius: 4.0,
+                ..base
+            },
+        ),
+        (
+            "parede fina (APROVADA)      ",
+            ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                geometry_thin_walled: true,
+                ..base
+            },
+        ),
+    ] {
+        let y = curva(m, k);
+        let passo = 2.0 / (N as f32 - 1.0);
+        let mut pior = (0.0f32, 0.0f32);
+        for i in 1..N - 1 {
+            #[allow(clippy::cast_precision_loss)]
+            let c = -1.0 + 2.0 * (i as f32) / (N as f32 - 1.0);
+            // ⚠️ As pontas do varrimento são o PÓLO de trás e o de frente — ali a curva acaba, e um
+            // extremo de domínio não é um vinco que alguém veja numa esfera.
+            if c.abs() > 0.97 {
+                continue;
+            }
+            let d2 = (y[i + 1] - 2.0 * y[i] + y[i - 1]).abs() / (passo * passo);
+            if d2 > pior.0 {
+                pior = (d2, c);
+            }
+        }
+        // A LARGURA do envolvimento: onde a resposta passa de 5 % para 95 % do máximo.
+        let topo = y.iter().copied().fold(0.0f32, f32::max).max(1e-9);
+        let onde = |f: f32| {
+            #[allow(clippy::cast_precision_loss)]
+            y.iter()
+                .position(|&v| v >= f * topo)
+                .map_or(f32::NAN, |i| -1.0 + 2.0 * (i as f32) / (N as f32 - 1.0))
+        };
+        println!(
+            "  {nome}  · {:>12.1} · {:>10.4} ·  N·L de {:+.3} a {:+.3}  ({:.3})",
+            pior.0,
+            pior.1,
+            onde(0.05),
+            onde(0.95),
+            onde(0.95) - onde(0.05)
+        );
+    }
+}
+
+/// ⏱️⭐⭐⭐ **A FOTO** — a lição que esta casa já pagou duas vezes: *uma suíte verde não prova que o
+/// que o dono VÊ mudou*. Grava `.ppm` em `$PH2D_TERM_DUMP` (ou no `/tmp`) para se poder OLHAR.
+#[test]
+#[ignore = "sonda de diagnóstico: grava a imagem para se poder olhar"]
+fn sonda_fotografa_o_terminador() {
+    let dir = std::env::var("PH2D_TERM_DUMP").unwrap_or_else(|_| "/tmp".to_owned());
+    // ⭐⭐⭐ **A pergunta que decide o que a linha É:** com `PH2D_TERM_SO_A_BOLA=1` a LÂMINA sai da
+    // cena e fica a bola sozinha, no mesmo enquadramento e com a mesma luz. Se a linha desaparecer,
+    // ela é a SOMBRA da placa; se ficar, é o TERMINADOR. *Nenhuma régua desta jornada respondeu a
+    // isto, e as duas curas foram desenhadas sem a resposta.*
+    let doc = if std::env::var("PH2D_TERM_SO_A_BOLA").is_ok() {
+        ph2d_field::FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                ph2d_field::Primitive::Sphere { radius: 0.42 },
+                ph2d_field::Xform {
+                    translation: [0.55, 0.0, 0.0],
+                    ..ph2d_field::Xform::IDENTITY
+                },
+            )],
+            ph2d_field::NodeId(0),
+        )
+        .expect("a bola sozinha")
+    } else {
+        crate::smoke::scenes::edge::cena_33().expect("a cena do dono")
+    };
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    // ⚠️ O dono ZOOMOU na bola: o enquadramento tem de ser o dele, senão a foto mostra outra coisa.
+    let mut cam = Orbit::default();
+    cam.half_extent *= 0.42;
+    cam.target = [0.55, 0.0, 0.0];
+    let (onde, luz) = crate::lights::opening_light(&cam);
+    let chao = ph2d_field_render::lowest_point(&doc, &reg)
+        .map(|height| ph2d_field_render::Ground { height });
+    let base = ph2d_material::OpenPbr {
+        subsurface_color: [0.75, 0.35, 0.35],
+        base_color: [0.75, 0.35, 0.35],
+        ..ph2d_material::OpenPbr::default()
+    };
+    for (nome, m) in [
+        ("opaco", base),
+        (
+            "solid",
+            ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                geometry_thin_walled: false,
+                ..base
+            },
+        ),
+        (
+            "fina",
+            ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                geometry_thin_walled: true,
+                ..base
+            },
+        ),
+    ] {
+        let (g, _, px) = quadro(&Quadro {
+            doc: &doc,
+            m,
+            cam: &cam,
+            onde,
+            luz,
+            com_sombra: true,
+            chao,
+        });
+        let mut ppm = format!("P6\n{} {}\n255\n", g.width, g.height).into_bytes();
+        for i in 0..(g.width * g.height) as usize {
+            ppm.extend_from_slice(&px[i * 4..i * 4 + 3]);
+        }
+        let caminho = format!("{dir}/terminador_{nome}.ppm");
+        std::fs::write(&caminho, ppm).expect("gravar");
+        println!("  gravado {caminho}");
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 //  O GATE — três metades, e cada uma é um defeito MEDIDO
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -380,100 +674,37 @@ fn quadro(
     (g, sh, px)
 }
 
-/// ⭐⭐⭐ **A SOMBRA DE UM VIZINHO NÃO É TRUNCADA NO TERMINADOR** — o report de 2026-09-18.
+/// ⛔⛔⛔ **RECUSA MEDIDA — «marchar o raio de costas» foi construída, fotografada e REVERTIDA.**
 ///
-/// # O defeito, o mecanismo e as barras
+/// O passe de sombra escreve `vis = 1,0` para todo ponto de costas para a luz, o que **trunca** no
+/// terminador a sombra que um vizinho projecta. Isso é um defeito real, e o comentário desse filtro
+/// previa-o por escrito. A cura — lançar o raio na mesma e só contar o que estiver depois de ele
+/// SAIR do próprio corpo, com o `t` do estimador de penumbra recontado a partir da saída — foi
+/// construída inteira, com o gémeo em WGSL, as 6 paridades verdes e 4 mutações a sangrar.
 ///
-/// Na cena `=33` a LÂMINA projecta sombra sobre a ESFERA. O passe de sombra escrevia `vis = 1,0`
-/// para todo ponto com `N·L ≤ 0` (*«de costas para a luz: sem raio»*), o que é inofensivo enquanto
-/// todo consumidor multiplicar por `max(N·L, 0)` — e **falso** desde que a subsuperfície MACIÇA
-/// existe, que é o primeiro desta casa a ler luz do lado escuro. ⇒ a sombra acabava a meio, num
-/// degrau de **UM pixel**.
+/// ⛔ **E a FOTO reprovou-a.** Na cena `=33`, com o enquadramento do dono:
 ///
-/// | medido na banda `\|N·L\| <= 0,15` | 2.ª diferença p99 |
+/// | | o que se vê |
 /// |---|---|
-/// | **o defeito** (o `continue` que escrevia `1,0`) | **9,21** |
-/// | marchar o raio como os outros (refutado — ver a folha) | 2,14 |
-/// | **hoje** (sair do próprio corpo + recontar o `t`) | **3,71** |
-/// | a MESMA cena sem lâmpada nenhuma (o controlo liso) | **1,00** |
+/// | antes | a borda da sombra é **limpa**, embora dura |
+/// | com a cura | a borda alarga **e ganha um FIO escuro SERRILHADO** por cima |
 ///
-/// A barra de `6,0` sai do **vale entre `3,71` e `9,21`**, e ⚠️ **o controlo é metade do gate**:
-/// sem ele, uma mutação que apagasse a sombra toda lia `1,00` e passava.
-#[test]
-fn a_sombra_de_um_vizinho_nao_e_truncada_no_terminador() {
-    const BARRA: f32 = 6.0;
-    const BARRA_DO_CONTROLO: f32 = 1.5;
-    let doc = crate::smoke::scenes::edge::cena_33().expect("a cena do dono");
-    let reg = ph2d_field_eval::hybrid::Registry::new();
-    let cam = Orbit::default();
-    let (w, h) = (W, H);
-    let (onde, luz) = crate::lights::opening_light(&cam);
-    let chao = ph2d_field_render::lowest_point(&doc, &reg)
-        .map(|height| ph2d_field_render::Ground { height });
-    let (right, up, fwd) = cam.basis();
-
-    let p99 = |com_sombra: bool| {
-        let (g, _, px) = quadro(&Quadro {
-            doc: &doc,
-            m: macico(),
-            cam: &cam,
-            onde,
-            luz,
-            com_sombra,
-            chao,
-        });
-        let (wu, hu) = (w as usize, h as usize);
-        let da_bola = |i: usize| g.hit[i] && g.point[i][0] > 0.1;
-        let lum = |i: usize| {
-            let b = i * 4;
-            0.2126 * f32::from(px[b])
-                + 0.7152 * f32::from(px[b + 1])
-                + 0.0722 * f32::from(px[b + 2])
-        };
-        let ndl = |i: usize| {
-            let p = g.point[i];
-            let d = [onde[0] - p[0], onde[1] - p[1], onde[2] - p[2]];
-            let r = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
-            let n = [0, 1, 2].map(|k| {
-                g.normal[i][0] * right[k] + g.normal[i][1] * up[k] + g.normal[i][2] * fwd[k]
-            });
-            (n[0] * d[0] + n[1] * d[1] + n[2] * d[2]) / r.max(1e-9)
-        };
-        let mut saltos: Vec<f32> = Vec::new();
-        for y in 0..hu {
-            for x in 1..wu - 1 {
-                let (a, b, c) = (y * wu + x - 1, y * wu + x, y * wu + x + 1);
-                if !da_bola(a) || !da_bola(b) || !da_bola(c) || ndl(b).abs() > 0.15 {
-                    continue;
-                }
-                saltos.push((lum(a) - 2.0 * lum(b) + lum(c)).abs());
-            }
-        }
-        assert!(
-            saltos.len() > 2_000,
-            "só {} pixels na banda do terminador — a fixtura não contém o fenómeno",
-            saltos.len()
-        );
-        saltos.sort_by(f32::total_cmp);
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let k = ((saltos.len() as f32 - 1.0) * 0.99).round() as usize;
-        saltos[k]
-    };
-
-    let controlo = p99(false);
-    assert!(
-        controlo <= BARRA_DO_CONTROLO,
-        "o CONTROLO (a mesma cena sem lâmpada) lê {controlo:.2} — a régua não tem uma referência \
-         lisa, e sem ela a barra não afirma nada"
-    );
-    let com = p99(true);
-    assert!(
-        com <= BARRA,
-        "a quebra na banda do terminador lê p99 {com:.2} contra a barra {BARRA:.1} (o controlo \
-         liso lê {controlo:.2}) — a sombra do vizinho voltou a ser truncada no terminador"
-    );
-}
-
+/// ⚠️ O serrilhado é a assinatura da causa: **um `if` por pixel** (`N·L <= 0`) escolhia entre duas
+/// maneiras de calcular a mesma grandeza, e *a fronteira entre elas desenha-se*. Perto do
+/// terminador o raio de costas rasa a própria peça durante `~√(2R·ε)` antes de sair, logo o `t`
+/// dele reconta tarde e a penumbra sai mais dura que a do vizinho de frente.
+///
+/// ⛔ **E apagar o ramo (um só caminho, todo raio a partir do ponto) é PIOR:** sem o ergue pela
+/// normal volta a **acne** — a foto mostra riscos claros ao longo do terminador, e a banda passa de
+/// `p99 3,71` para `13,06`.
+///
+/// ⇒ *a truncagem é um defeito INVISÍVEL nesta cena e o fio é VISÍVEL*, logo shipa-se a truncagem.
+/// A cura de fundo é outra e está nomeada no [`10` §11.6]: **a visibilidade que um termo
+/// TRANSMISSIVO lê tem de ser borrada pela distância de espalhamento** — é isso que faz a sombra
+/// num jade ter a borda mole, e nenhuma das duas referências o escreve.
+///
+/// Os dois gates abaixo ficam: eles são as propriedades que aquela cura teria partido, e é por eles
+/// que uma segunda tentativa sabe onde bate.
 /// ⭐⭐⭐ **A FOLHA COM A LUZ ATRÁS NÃO SE APAGA** — a metade que a cura óbvia partia.
 ///
 /// Marchar o raio de costas como os outros **cura a esfera e mata a folha**: ele atravessa a

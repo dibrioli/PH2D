@@ -590,42 +590,6 @@ pub(crate) fn march_shadow_to(
     march_shadow_counted(scene, origins, dirs, t_max, hardness, BIAS).0
 }
 
-/// ⭐⭐⭐ **A MESMA marcha, com raios que têm de SAIR do próprio corpo antes de contar.**
-///
-/// # Porque ela existe: o report de 2026-09-18
-///
-/// Um ponto **de costas** para a lâmpada tem um corpo inteiro entre ele e ela — *o dele*. A
-/// pergunta que o sombreamento faz não é *«a minha peça está no caminho?»* (está sempre, por
-/// construção), é *«há mais ALGUMA COISA no caminho?»*. Quem responde à primeira apaga uma folha
-/// iluminada por trás; quem não pergunta nada dá a essa metade `1,0` e **trunca** no terminador a
-/// sombra que um vizinho projecta — a linha dura que o dono fotografou.
-///
-/// ⇒ o raio marcado em `precisa_sair` **anda sem acusar** enquanto não tiver estado dentro e voltado
-/// a sair; a partir daí é a marcha de sempre. ⚠️ Um raio que nunca entra (ele parte da superfície e
-/// afasta-se) nunca acusa — e está certo: não há corpo nenhum entre ele e a luz.
-///
-/// ⚠️ **`precisa_sair` VAZIO é a marcha de sempre, ao bit** — é isso que deixa os outros três
-/// chamadores intactos.
-pub(crate) fn march_shadow_saindo(
-    scene: &Scene<'_>,
-    origins: &[[f32; 3]],
-    dirs: &[[f32; 3]],
-    t_max: &[f32],
-    hardness: f32,
-    precisa_sair: &[bool],
-) -> Vec<f32> {
-    march_visibility(
-        scene,
-        origins,
-        dirs,
-        t_max,
-        |_| hardness,
-        BIAS,
-        precisa_sair,
-    )
-    .0
-}
-
 /// Quantas tolerâncias de acerto o raio anda **antes de começar a perguntar**.
 pub(crate) const BIAS: f32 = 4.0;
 
@@ -639,7 +603,7 @@ pub(crate) fn march_shadow_counted(
     hardness: f32,
     bias: f32,
 ) -> (Vec<f32>, u64) {
-    march_visibility(scene, origins, dirs, t_max, |_| hardness, bias, &[])
+    march_visibility(scene, origins, dirs, t_max, |_| hardness, bias)
 }
 
 /// ⭐⭐⭐ **A MESMA marcha com a dureza POR RAIO** — o que o cone da oclusão precisa.
@@ -663,7 +627,7 @@ pub(crate) fn march_cone_to(
     hardness: &[f32],
 ) -> Vec<f32> {
     debug_assert_eq!(origins.len(), hardness.len());
-    march_visibility(scene, origins, dirs, t_max, |i| hardness[i], BIAS, &[]).0
+    march_visibility(scene, origins, dirs, t_max, |i| hardness[i], BIAS).0
 }
 
 fn march_visibility<H: Fn(usize) -> f32>(
@@ -673,7 +637,6 @@ fn march_visibility<H: Fn(usize) -> f32>(
     t_max: &[f32],
     hardness: H,
     bias: f32,
-    precisa_sair: &[bool],
 ) -> (Vec<f32>, u64) {
     debug_assert_eq!(origins.len(), t_max.len());
     let mut amostras = 0u64;
@@ -685,21 +648,6 @@ fn march_visibility<H: Fn(usize) -> f32>(
     }
     let t0 = scene.sharp.hit * bias;
     let mut t = vec![t0; n];
-    // ⭐ `saiu[i]` é *«este raio já pode acusar»*. Com a lista vazia toda a gente já pode, que é a
-    // marcha de sempre; quem tem de sair começa em `false` e só passa depois de ter estado DENTRO.
-    let mut saiu: Vec<bool> = if precisa_sair.is_empty() {
-        vec![true; n]
-    } else {
-        debug_assert_eq!(precisa_sair.len(), n);
-        precisa_sair.iter().map(|&b| !b).collect()
-    };
-    let mut esteve_dentro = vec![false; n];
-    // ⭐⭐⭐ **De onde o estimador de penumbra conta.** O `hardness·d/t` é o tamanho ANGULAR do
-    // obstáculo visto da origem do raio; para quem teve de sair do próprio corpo, a origem útil é
-    // a SAÍDA — com o `t` a incluir a corda andada lá dentro, um raio que sai e depois roça a
-    // própria peça lê `d/t` minúsculo e inventa uma penumbra que não existe (medido: o lado escuro
-    // de uma esfera lia `0,105` onde o lado iluminado, a um pixel, lia `0,555`).
-    let mut base = vec![0.0f32; n];
     let mut cur: Vec<u32> = (0..n as u32).collect();
     // ⚠️ **O caminho NÃO especializado**, e de propósito: a árvore por ladrilho é do frustum da
     // câmera, e estes raios não vivem nele. O `fork` é o que o `march_slabs` já faz quando não há
@@ -730,30 +678,11 @@ fn march_visibility<H: Fn(usize) -> f32>(
         for (j, &i) in cur.iter().enumerate() {
             let iu = i as usize;
             let d = out[j];
-            if !saiu[iu] {
-                if d < scene.sharp.hit {
-                    esteve_dentro[iu] = true;
-                } else if esteve_dentro[iu] {
-                    saiu[iu] = true;
-                    base[iu] = t[iu];
-                }
-                if !saiu[iu] {
-                    // ⚠️ **O passo é `|d|` com PISO**: dentro do corpo o campo é negativo (andar
-                    // `d·step` recuaria) e na tangente ele é `~0` (o raio estagnava e o orçamento
-                    // acabava antes de ele sair).
-                    t[iu] += d.abs().max(scene.sharp.hit) * scene.step;
-                    if t[iu] >= t_max[iu] {
-                        continue;
-                    }
-                    next.push(i);
-                    continue;
-                }
-            }
             if d < scene.sharp.hit {
                 vis[iu] = 0.0;
                 continue;
             }
-            vis[iu] = vis[iu].min(hardness(iu) * d / (t[iu] - base[iu]).max(f32::EPSILON));
+            vis[iu] = vis[iu].min(hardness(iu) * d / t[iu]);
             t[iu] += d * scene.step;
             if t[iu] >= t_max[iu] {
                 continue;

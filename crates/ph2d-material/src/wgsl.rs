@@ -147,6 +147,7 @@ struct Mat {
 
 const MX_EPS: f32 = 1.0e-8;
 const MX_PI: f32 = 3.14159265358979323846;
+const MX_HALF_PI: f32 = 1.5707964;
 const MX_PI_INV: f32 = 0.31830988618379067154;
 
 // O par que toda closure devolve — `ph2d_material::bsdf::Bsdf`.
@@ -455,11 +456,16 @@ fn mx_integrate_burley(n: vec3<f32>, l: vec3<f32>, radius: f32, mfp: vec3<f32>) 
     var sum_d = vec3<f32>(0.0);
     var sum_r = vec3<f32>(0.0);
     let width = (2.0 * MX_PI) / 32.0;
+    let meia = width * 0.5;
     for (var i: i32 = 0; i < 32; i = i + 1) {
         let x = -MX_PI + (f32(i) + 0.5) * width;
         let dist = radius * abs(2.0 * sin(x * 0.5));
         let r = mx_burley_profile(dist, shape);
-        sum_d = sum_d + r * max(cos(theta + x), 0.0);
+        // ⭐ O cosseno é integrado EXACTAMENTE dentro da célula — gémeo do `integrate_burley` da
+        // CPU, que traz a medição e a divergência declarada contra o ponto médio do oráculo.
+        let a = clamp(theta + x - meia, -MX_HALF_PI, MX_HALF_PI);
+        let b = clamp(theta + x + meia, -MX_HALF_PI, MX_HALF_PI);
+        sum_d = sum_d + r * ((sin(b) - sin(a)) / width);
         sum_r = sum_r + r;
     }
     return sum_d / sum_r;

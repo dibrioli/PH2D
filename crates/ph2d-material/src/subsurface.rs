@@ -58,6 +58,7 @@
 use crate::bsdf::{self, Bsdf, EPS, V3, dot, forward_facing, mul3, scale3};
 
 const PI: f32 = core::f32::consts::PI;
+const FRAC_PI_2: f32 = core::f32::consts::FRAC_PI_2;
 const PI_INV: f32 = 1.0 / PI;
 
 /// Quantos termos o [`integrate_burley`] soma — `SAMPLE_COUNT` do GLSL de referência.
@@ -171,13 +172,29 @@ fn integrate_burley(n: V3, l: V3, radius: f32, mfp: V3) -> V3 {
     let theta = dot(n, l).clamp(-1.0, 1.0).acos();
     let shape = mfp.map(|m| 1.0 / m.max(MFP_FLOOR));
     let width = (2.0 * PI) / SAMPLE_COUNT as f32;
+    let meia = width * 0.5;
     let mut sum_d = [0.0f32; 3];
     let mut sum_r = [0.0f32; 3];
     for i in 0..SAMPLE_COUNT {
         let x = -PI + (i as f32 + 0.5) * width;
         let dist = radius * (2.0 * (x * 0.5).sin()).abs();
         let r = diffusion_profile(dist, shape);
-        let w = (theta + x).cos().max(0.0);
+        // ⭐⭐⭐ **O cosseno é integrado EXACTAMENTE dentro da célula, e não amostrado no meio dela.**
+        //
+        // ⛔⛔ O `max(cos(θ+x), 0)` do ponto médio põe um VINCO na resposta em cada nó da
+        // quadratura, e o perfil de Burley é singular em `x = 0` ⇒ as duas células vizinhas do zero
+        // levam quase todo o peso e o vinco delas é o que se VÊ. Medido na lei sozinha: o pior
+        // salto da 2.ª derivada cai em **`N·L = −0,0980`**, que é `sin(π/32)` — e **não se move**
+        // com o `Subsurface Radius` (`0,1` · `1,0` · `4,0` dão todos o mesmo ponto). *Uma feição
+        // cuja posição não depende de nenhum parâmetro físico é da discretização.*
+        //
+        // ⭐ A média do cosseno na célula é `(sin b − sin a)/largura` com os extremos cortados ao
+        // domínio onde ele é positivo. Ela é **C¹ em θ** — nos cortes a derivada é `cos(±π/2) = 0`,
+        // logo a emenda não deixa quina — e converge para o MESMO integral, com o mesmo número de
+        // amostras do perfil (a grelha do oráculo não se mexe).
+        let a = (theta + x - meia).clamp(-FRAC_PI_2, FRAC_PI_2);
+        let b = (theta + x + meia).clamp(-FRAC_PI_2, FRAC_PI_2);
+        let w = (b.sin() - a.sin()) / width;
         for k in 0..3 {
             sum_d[k] += r[k] * w;
             sum_r[k] += r[k];

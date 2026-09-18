@@ -1095,25 +1095,31 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   relógio desta wave não foi medido** (a máquina esteve a `load 13`–`27` a jornada inteira), o que a
   manda para a `W9`.
   ⛔⛔⛔ **E o report de 18/09 (*«em `Thin Walled: Solid` … não há transição suave … mas uma linha
-  dura»*) NÃO era a lei da subsuperfície: era a sombra de um VIZINHO a ser TRUNCADA no terminador**
-  ([`10` §11](docs/Render3d/10_a_luz_que_atravessa_a_peca.md)). O passe de sombra escrevia
-  `vis = 1,0` para todo ponto de costas para a luz, e ⭐ **o comentário desse filtro previa o dia por
-  escrito** (*«até ao dia em que alguém ler este canal para outra coisa — a OpenPBR tem termos que
-  recebem luz com `N·L < 0`»*): a subsuperfície maciça é o primeiro consumidor desta casa que o faz,
-  e a sombra da lâmina acabava num degrau de `0,445` **num pixel**, em `N·L = 0`. ⚠️ **Não é acne**
-  (uma esfera sozinha lê `0` de `12 924`). ⛔⛔ **A cura óbvia — marchar o raio como os outros — foi
-  construída, MEDIDA e refutada:** ela cura a bola e **apaga a folha com o sol atrás** (`83,7 →
-  73,8`, `vis` mín `0,000`), que é a razão de ser da outra metade da wave. ⇒ a lei que fica é *o raio
-  de costas só conta o que estiver depois de ele SAIR do próprio corpo*, e ⭐⭐⭐ **o `t` do estimador
-  de penumbra RECOMEÇA na saída** — `dureza·d/t` é um tamanho angular visto da origem, e com a corda
-  interna lá dentro o lado escuro lia `0,105` onde o iluminado, a um pixel, lia `0,555`. Medido: 2.ª
-  diferença p99 na banda do terminador **`9,21 → 3,71`** (controlo liso `1,00`), salto no pixel
-  `+4,4 → +1,8`, folha **intacta**, esfera convexa com **zero** acne, as **6** paridades
-  CPU↔dispositivo verdes (o gémeo em WGSL é o `visivel_saindo`), **4 de 4 mutações a sangrar**, preço
-  `+7 %` a `+9 %` do passe de sombra. ⚠️ O doc do `march_shadow_to` media que aquele filtro poupava
-  **`6 %` do relógio** — *uma optimização de 6 % paga com uma linha dura na tela*. ⏳ Fica o **V**
-  residual logo a seguir ao terminador, e a cura de fundo NOMEADA: *a visibilidade de um termo
-  TRANSMISSIVO é a do sítio por onde a luz ENTRA*, construtível com a curvatura que a wave já calcula.
+  dura»*) tem resposta, e ela foi achada por uma FOTO e não por uma régua** ([`10`
+  §11](docs/Render3d/10_a_luz_que_atravessa_a_peca.md)): ⭐⭐⭐ **a linha é a borda da SOMBRA QUE A
+  PLACA LANÇA SOBRE A BOLA** — o experimento que o decide é de uma linha (`PH2D_TERM_SO_A_BOLA=1`:
+  mesma câmera, mesma luz, **sem a placa** ⇒ a bola sai **perfeitamente lisa**). Ela é dura porque a
+  luz é um **PONTO**, e só incomoda no `Solid` porque ali há contraste através da borda. ⛔ Correcto
+  como geometria e **errado como produto**: num jade a luz espalha-se por baixo da superfície para
+  dentro da sombra — *a difusão está na lei do `N·L` e não está na lei da SOMBRA*. ⏳ A cura tem
+  endereço e é wave própria: **um segundo canal de visibilidade, borrado pelo raio `mfp/κ`, lido só
+  pela closure de subsuperfície** (a maquinaria do borrão com guarda de normal já existe; muda a
+  fronteira do `ph2d-material`, que hoje tem UMA radiância por lâmpada para todas as closures).
+  ⛔⛔ **DUAS curas foram construídas inteiras e a foto refutou-as** (a cura da sombra foi
+  revertida no commit seguinte — ⚠️ um commit não pode citar o próprio sha, e o endereço estável é o
+  [`10` §11.3](docs/Render3d/10_a_luz_que_atravessa_a_peca.md)): (a) *marchar o raio de costas e só contar depois de sair do próprio corpo* — tinha
+  gémeo em WGSL, **6/6** paridades, **4/4** mutações e a banda de `p99 9,21 → 3,71`, e **pintou um
+  FIO escuro SERRILHADO** na borda, porque *um `if` por pixel desenha a fronteira entre os dois
+  ramos*; (b) *apagar o ramo* devolve **acne** (`p99 13,06`). Os dois gates que a cura A teria
+  partido FICAM, porque são onde a 2.ª tentativa bate. ⭐⭐ **O que FICA do dia é outra coisa, medida
+  na lei SOZINHA:** o `max(cos(θ+x),0)` amostrado no MEIO da célula punha um vinco em
+  **`N·L = −0,0980` = `sin(π/32)`** que **não se movia com o `Subsurface Radius`** — *uma feição
+  cuja posição não depende de nenhum parâmetro físico é da discretização* —, e integrar o cosseno
+  **exactamente dentro da célula** leva o pior vinco visível de `67`–`95` para **`0,4`–`0,5`**
+  (o opaco lê `276`, a parede fina **aprovada pelo dono** `137`). ⛔ **Divergência DECLARADA** (a
+  mediana contra o oráculo `5,0e-4 → 2,9e-3`) e **inevitável**: o integral verdadeiro é um só e é o
+  ponto médio a `N = 32` que está longe dele. Ela é **load-bearing** — revertê-la reprova no
+  `o_macico_nao_e_mais_duro_que_o_lado_que_o_dono_aprovou`, cuja barra sai do lado APROVADO.
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

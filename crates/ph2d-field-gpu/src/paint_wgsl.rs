@@ -186,20 +186,12 @@ fn devolvida_de(q: vec3<f32>, nq_vista: vec3<f32>, veio_de: vec3<f32>) -> vec3<f
             let dist = sqrt(cru);
             let dir = d / dist;
             to_light = mundo_para_vista(dir);
-            // ⛔⛔ **Aqui esteve `if (dot(nq, dir) > 0.0)`, com a justificação *«com `N·L <= 0` o
-            // `mx_direct` devolve zero seja qual for a visibilidade»* — verdade até 2026-09-18, e
-            // falsa desde que a subsuperfície MACIÇA existe: ela lê luz do lado escuro, e com a
-            // cerca ali a sombra de um vizinho era TRUNCADA no terminador. Gémeo do
-            // `ph2d_field_render::shadow`, que traz a medição.
-            let de_costas = dot(nq, dir) <= 0.0;
-            let origem_do_raio = select(erguido, q, de_costas);
-            vis = visivel_saindo(
-                origem_do_raio,
-                dir,
-                cerca_da_bola(erguido, dir, dist),
-                8.0,
-                de_costas,
-            );
+            // ⭐ **Só quem VÊ a luz paga raio** — e isto não muda a resposta: com `N·L <= 0` o
+            // `mx_direct` devolve zero seja qual for a visibilidade. É a mesma cerca do passe da
+            // sombra, e o gate de paridade contra a referência de CPU é quem o prova.
+            if (dot(nq, dir) > 0.0) {
+                vis = visivel(erguido, dir, cerca_da_bola(erguido, dir, dist), 8.0);
+            }
         }
         sai = sai + mx_direct(m, nq_vista, v, to_light, pintor.lamp[l].rgb * vis / max(cru, piso));
     }

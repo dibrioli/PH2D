@@ -329,16 +329,42 @@ fn o_caminho_macico_bate_o_oraculo_na_mediana() {
             "maciço {mi}: p50 {p50:.4} · p75 {p75:.4} · max {:.4}",
             certo[n - 1]
         );
+        // ⛔⛔⛔ **DIVERGÊNCIA DECLARADA (2026-09-18): as barras subiram `6×` de propósito.**
+        //
+        // O report do dono (*«em `Thin Walled: Solid` … uma linha dura»*) foi seguido até à lei, e
+        // a causa é a QUADRATURA do oráculo: o `max(cos(θ+x), 0)` amostrado no MEIO de cada célula
+        // põe um vinco em cada nó, e o perfil de Burley é singular em `x = 0` ⇒ as duas células
+        // vizinhas do zero levam quase todo o peso e o vinco delas VÊ-SE. Medido na lei sozinha, o
+        // pior salto da 2.ª derivada caía em **`N·L = −0,0980` = `sin(π/32)`**, e **não se movia**
+        // com o `Subsurface Radius` — *uma feição cuja posição não depende de nenhum parâmetro
+        // físico é da discretização*.
+        //
+        // ⚠️ **Toda cura possível diverge daqui, e o motivo é aritmético:** o integral verdadeiro é
+        // um só, e é o ponto médio a `N = 32` que está a `~3e-3` dele. Integrar o cosseno
+        // exactamente na célula (o que shipa) e somar mais amostras convergem para o MESMO sítio —
+        // logo *o que diverge do oráculo é ele próprio do seu limite*.
+        //
+        // | | p50 | p75 | vinco visível da lei |
+        // |---|---|---|---|
+        // | ponto médio (o oráculo) | `5,0e-4` | `~2e-2` | **`67`–`95`** |
+        // | célula exacta (hoje) | `2,9e-3` | `7,0e-2` | **`0,4`–`0,5`** |
+        //
+        // As barras são o medido com a folga de `2×` desta suíte. ⭐ E a divergência é **load-bearing**:
+        // quem a reverter para recuperar a mediana reprova no
+        // [`o_macico_nao_e_mais_duro_que_o_lado_que_o_dono_aprovou`].
         assert!(
-            p50 <= 1.0e-3,
-            "material {mi}: mediana {p50:e} acima de 1e-3"
+            p50 <= 6.0e-3,
+            "material {mi}: mediana {p50:e} acima de 6e-3"
         );
-        assert!(p75 <= 2.0e-2, "material {mi}: p75 {p75:e} acima de 2e-2");
+        assert!(p75 <= 1.4e-1, "material {mi}: p75 {p75:e} acima de 1,4e-1");
         // A metade que afirma a LEI: o vale existe e é fundo.
         for kappa in [0.5_f32, 2.0] {
             let torto = erros(mi, kappa)[n / 2];
+            // ⚠️ A barra desceu de `20×` para `8×` com as de cima, e pela MESMA razão: o `p50`
+            // subiu `6×` e o `torto` não (ele é dominado por usar a curvatura errada). Medido
+            // hoje: `25,0×` · `20,3×` · `19,6×` · **`17,9×`** — a barra é metade do pior.
             assert!(
-                torto > 20.0 * p50,
+                torto > 8.0 * p50,
                 "material {mi}: com κ={kappa} a mediana é {torto:e} contra {p50:e} na verdade — \
                  o mínimo não é agudo, logo isto não mede a lei"
             );
@@ -491,5 +517,104 @@ fn sonda_a_distribuicao_do_caminho_macico() {
                 e[n - 1]
             );
         }
+    }
+}
+
+/// ⭐⭐⭐ **O MACIÇO NÃO É MAIS DURO QUE O LADO QUE O DONO APROVOU** — o report de 2026-09-18.
+///
+/// # A régua, e porque ela é calibrada no dono e não no oráculo
+///
+/// Ele mandou duas fotos da mesma esfera e escreveu: *«em `Thin Walled: Solid` não há transição
+/// suave entre a área iluminada e a área sombreada, mas uma linha dura»* e *«o resultado em Thin
+/// Walled é melhor (mais suave a transição)»*. ⇒ **ele aprovou uma das duas metades da wave**, e é
+/// essa que serve de barra: *o caminho maciço não pode ser mais duro que o de parede fina.*
+///
+/// A grandeza é a **curvatura da resposta** em função de `N·L` — o que o olho lê como vinco —,
+/// medida na lei SOZINHA (sem cena, sem ruído de amostragem) e **fora das pontas do varrimento**,
+/// que são os pólos e não são um vinco que alguém veja.
+///
+/// | | pior 2.ª derivada em `\|N·L\| <= 0,97` |
+/// |---|---|
+/// | opaco (o terminador de Lambert, que é uma quina legítima) | **`276`** |
+/// | parede fina — **o lado APROVADO** | **`137`** |
+/// | maciço com a quadratura do oráculo (o que ele reprovou) | **`67`** a **`95`**, em `N·L = −0,098` |
+/// | maciço, hoje | **`0,4`** a **`0,5`** |
+///
+/// A barra de `10` sai do **vale entre `0,5` e `67`**, e ⚠️ **os dois controlos são metade do gate**:
+/// sem eles, uma lei que devolvesse uma constante lia `0` e passava.
+#[test]
+fn o_macico_nao_e_mais_duro_que_o_lado_que_o_dono_aprovou() {
+    const N: usize = 4001;
+    const BARRA: f32 = 10.0;
+    const PISO_DO_CONTROLO: f32 = 50.0;
+    // A escala da esfera da cena `=33`: raio `0,42`.
+    const CURVATURA: f32 = 1.0 / 0.42;
+
+    let pior_vinco = |m: crate::OpenPbr| -> (f32, f32) {
+        let s = m.prepare().at_curvature(CURVATURA);
+        #[allow(clippy::cast_precision_loss)]
+        let y: Vec<f32> = (0..N)
+            .map(|i| {
+                let c = -1.0 + 2.0 * (i as f32) / (N as f32 - 1.0);
+                let sin = (1.0 - c * c).max(0.0).sqrt();
+                let r = s.direct(
+                    [0.0, 0.0, 1.0],
+                    [0.0, 0.0, 1.0],
+                    [sin, 0.0, c],
+                    [1.0, 1.0, 1.0],
+                );
+                0.2126 * r[0] + 0.7152 * r[1] + 0.0722 * r[2]
+            })
+            .collect();
+        #[allow(clippy::cast_precision_loss)]
+        let passo = 2.0 / (N as f32 - 1.0);
+        let mut pior = (0.0f32, 0.0f32);
+        for i in 1..N - 1 {
+            #[allow(clippy::cast_precision_loss)]
+            let c = -1.0 + 2.0 * (i as f32) / (N as f32 - 1.0);
+            if c.abs() > 0.97 {
+                continue;
+            }
+            let d2 = (y[i + 1] - 2.0 * y[i] + y[i - 1]).abs() / (passo * passo);
+            if d2 > pior.0 {
+                pior = (d2, c);
+            }
+        }
+        pior
+    };
+
+    let base = crate::OpenPbr {
+        subsurface_color: [0.75, 0.35, 0.35],
+        base_color: [0.75, 0.35, 0.35],
+        specular_weight: 0.0,
+        ..crate::OpenPbr::default()
+    };
+    // ── os dois CONTROLOS: a régua tem de ver um vinco quando ele existe ──────────────────────
+    let opaco = pior_vinco(base).0;
+    let fina = pior_vinco(crate::OpenPbr {
+        subsurface_weight: 1.0,
+        geometry_thin_walled: true,
+        ..base
+    })
+    .0;
+    assert!(
+        opaco >= PISO_DO_CONTROLO && fina >= PISO_DO_CONTROLO,
+        "os controlos leem {opaco:.1} (opaco) e {fina:.1} (parede fina) — a régua não está a ver \
+         o vinco que eles têm, logo a barra do maciço não afirma nada"
+    );
+    // ── e o maciço fica abaixo da barra em toda a faixa do knob ───────────────────────────────
+    for raio in [0.1f32, 1.0, 4.0] {
+        let (v, onde) = pior_vinco(crate::OpenPbr {
+            subsurface_weight: 1.0,
+            geometry_thin_walled: false,
+            subsurface_radius: raio,
+            ..base
+        });
+        assert!(
+            v <= BARRA,
+            "com `Subsurface Radius = {raio}` o maciço lê um vinco de {v:.1} em N·L = {onde:.4} \
+             (barra {BARRA:.0}; a parede fina, que o dono APROVOU, lê {fina:.1}) — se isto está em \
+             N·L ≈ -0,098 = sin(π/32), a quadratura voltou a ser amostrada no meio da célula"
+        );
     }
 }

@@ -35,7 +35,7 @@ pub struct InspectorTriggerRow {
     pub edge: u8,
     /// O sinal. Vazio = calada.
     pub signal: String,
-    /// ⭐⭐ **Existe uma acção com este nome no Input Map?**
+    /// ⭐⭐⭐ **O que o MAPA sabe desta acção** — ver [`NoMapa`].
     ///
     /// ⚠️ **É o snapshot que responde, e não o painel** — a resposta está no `InputMap`, que vive
     /// no `HeroScreen`. Sem esta coluna, uma linha com `fier` em vez de `fire` é indistinguível de
@@ -44,7 +44,47 @@ pub struct InspectorTriggerRow {
     /// ⛔ **E o defeito que ela impede é pior do lado do `Release`:** uma acção inexistente lê-se
     /// como *«não premida»*, e sem a cerca do motor um `Release` sobre ela dispararia em TODO
     /// quadro. A lei cala-o; esta coluna **explica** o silêncio.
-    pub accao_existe: bool,
+    pub no_mapa: NoMapa,
+}
+
+/// ⭐⭐⭐ **O que o Input Map sabe de uma acção — TRÊS estados, e não dois** (2026-09-18).
+///
+/// # ⛔⛔ Porque um booleano não chegava
+///
+/// A 1.ª redacção perguntava *«existe uma acção com este nome?»* e respondia `bool`. Medido: uma
+/// acção **declarada e sem tecla nenhuma** resolve para [`ph2d_input::Sample::default`] — o
+/// `ActionState::tick` percorre o MAPA e não os dispositivos, e o doc dele escreve a lei por
+/// extenso (*«declarada e por atribuir não é inexistente»*) ⇒ **as três leituras dão `false`**, e o
+/// gatilho fica exactamente tão calado como com um nome errado.
+///
+/// ⇒ *duas causas diferentes, o mesmo silêncio, e o painel dizia que estava tudo bem numa delas.*
+/// É a família que o `CLAUDE.md` nomeia: **um gesto que não faz nada e não diz porquê é
+/// indistinguível de um partido**, e o artista conclui que a ferramenta não funciona.
+///
+/// ⚠️ **E as CURAS são diferentes**, que é o que obriga a distinguir: uma pede *criar a acção*, a
+/// outra pede *ligar-lhe uma tecla*. Um aviso só mandaria metade dos artistas ao sítio errado.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NoMapa {
+    /// O mapa **não conhece** este nome. Cura: criar a acção.
+    Desconhecida,
+    /// Ele conhece-a e ela **não tem ligação nenhuma**. Cura: ligar-lhe uma tecla.
+    ///
+    /// ⚠️ **Não é um erro** — é uma configuração a meio, como o nome de sinal vazio. O aviso
+    /// di-lo com outras palavras e outra cor.
+    SemTecla,
+    /// Tem pelo menos uma ligação. ⭐ O único estado em que a tecla pode chegar à lei.
+    Ligada,
+}
+
+impl NoMapa {
+    /// **Esta acção pode chegar à lei?** `false` nos DOIS estados mudos.
+    ///
+    /// ⚠️ Ela existe para os consumidores não terem de saber que são três: quem só quer *«isto vai
+    /// funcionar?»* pergunta aqui, e quem quer explicar ao artista lê a variante.
+    #[must_use]
+    pub const fn fala(self) -> bool {
+        matches!(self, Self::Ligada)
+    }
 }
 
 /// O que a secção precisa de saber para se pintar.
@@ -67,7 +107,22 @@ impl InspectorActionTriggerInfo {
     /// Quantas linhas ouvem uma acção que o Input Map não conhece.
     #[must_use]
     pub fn orfas(&self) -> usize {
-        self.rows.iter().filter(|r| !r.accao_existe).count()
+        self.rows
+            .iter()
+            .filter(|r| r.no_mapa == NoMapa::Desconhecida)
+            .count()
+    }
+
+    /// ⭐ **Quantas linhas nomeiam uma acção que EXISTE e não tem tecla** — o segundo silêncio.
+    ///
+    /// ⚠️ **Ela NÃO entra na contagem do título**, e é uma decisão: o título diz *«partidas»*, e
+    /// uma acção por ligar é uma configuração a meio — a mesma fronteira que o sinal vazio já tem.
+    #[must_use]
+    pub fn sem_tecla(&self) -> usize {
+        self.rows
+            .iter()
+            .filter(|r| r.no_mapa == NoMapa::SemTecla)
+            .count()
     }
 
     /// Quantas linhas estão **caladas** — sem nome de sinal.

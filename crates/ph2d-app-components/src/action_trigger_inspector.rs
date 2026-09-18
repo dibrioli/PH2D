@@ -11,7 +11,7 @@
 
 use ph2d_ecs::{ACTION_TRIGGERS_MAX, ActionEdge, ActionTriggerRow, SignalOnAction, SimWorld};
 use ph2d_editor_core::action_trigger_edits::{
-    ActionTriggerFieldEdit as E, InspectorActionTriggerInfo, InspectorTriggerRow,
+    ActionTriggerFieldEdit as E, InspectorActionTriggerInfo, InspectorTriggerRow, NoMapa,
 };
 
 /// O `u8` que atravessa a fronteira ⇄ o enum do motor.
@@ -39,14 +39,15 @@ pub const fn u8_de_edge(e: ActionEdge) -> u8 {
 
 /// ⭐ **Constrói o instantâneo** da entidade escolhida, ou `None` se ela não tem o componente.
 ///
-/// O `conhece` é a ponte para o Input Map: ela recebe o nome da acção e diz se o mapa a tem.
+/// O `no_mapa` é a ponte para o Input Map: ela recebe o nome da acção e diz o que o mapa sabe
+/// dela — ver [`NoMapa`], que tem **três** estados porque dois deles produzem o MESMO silêncio.
 #[must_use]
 pub fn build_info(
     sim: &SimWorld,
     bits: u64,
     clock_playing: bool,
     selected_count: usize,
-    conhece: &dyn Fn(&str) -> bool,
+    no_mapa: &dyn Fn(&str) -> NoMapa,
 ) -> Option<InspectorActionTriggerInfo> {
     let e = ph2d_ecs::Entity::from_bits(bits);
     let cfg = sim.world().get::<SignalOnAction>(e)?;
@@ -60,7 +61,12 @@ pub fn build_info(
             // ⚠️ **Um nome VAZIO não é «desconhecido»** — o painel tem uma frase própria para ele
             // (*«ainda não ouve nada»*), e contá-lo como órfão poria o título a dizer «1 broken»
             // num gatilho acabado de acrescentar, que é o estado normal de quem está a escrever.
-            accao_existe: r.action.trim().is_empty() || conhece(r.action.trim()),
+            // ⇒ ele lê-se como **`Ligada`**, que é o estado que não acusa nada.
+            no_mapa: if r.action.trim().is_empty() {
+                NoMapa::Ligada
+            } else {
+                no_mapa(r.action.trim())
+            },
         })
         .collect();
     Some(InspectorActionTriggerInfo {

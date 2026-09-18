@@ -80,6 +80,19 @@ pub const TECLA: u32 = 0x51;
 /// O nome que o `Q` tem na tela, para o roteiro e para o painel.
 pub const TECLA_NOME: &str = "Q";
 
+/// ⭐⭐⭐ **Uma acção que EXISTE e NÃO tem tecla** — o sujeito do segundo aviso.
+///
+/// ⛔⛔ **Ela tem de ser CRIADA pela cena, e isso foi medido:** as **sete** acções do
+/// `InputMap::with_player_defaults` têm todas ligação (`←/A · →/D · ↑/Z · ↓/S · Q · R`), logo
+/// nenhuma delas serve de exemplo. *Um passo de roteiro que manda escrever `grab` ensinaria o
+/// contrário do que acontece* — a espécie que o `CLAUDE.md` §5.0 chama de pior que uma cena
+/// ausente.
+///
+/// ⚠️ **E o estado dela não é um erro:** é o que qualquer artista alcança ao criar uma acção e
+/// esquecer-se de lhe ligar uma tecla. O gatilho fica calado, e até 2026-09-18 o painel dizia que
+/// estava tudo bem.
+pub const ACCAO_SEM_TECLA: &str = "reload";
+
 const CHAO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];
 const HEROI_RGBA: [f32; 4] = [0.35, 0.62, 0.95, 1.0];
 const TORRETA_RGBA: [f32; 4] = [0.55, 0.57, 0.60, 1.0];
@@ -264,8 +277,11 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
          para o cinzento\n\
          (5) carregue em STOP na regua de baixo: o {TECLA_NOME} deixa de disparar e volta a ser do \
          editor. PLAY devolve-o\n\
-         (6) deu errado se: nada sai ao carregar no {TECLA_NOME} · as DUAS balas saem para o mesmo \
-         lado · ou alguma coisa sai com a regua PARADA"
+         (6) na seccao TRIGGER troque o nome da accao de `{ACCAO}` para `{ACCAO_SEM_TECLA}`: ela \
+         EXISTE e nao tem tecla, e o painel diz isso com OUTRA frase — porque a cura e' outra \
+         (ligar uma tecla, nao criar a accao). Escreva `fier` e compare: o aviso muda\n\
+         (7) deu errado se: nada sai ao carregar no {TECLA_NOME} · as DUAS balas saem para o mesmo \
+         lado · alguma coisa sai com a regua PARADA · ou o passo (6) nao muda o aviso"
     );
     Montada {
         nivel: 1,

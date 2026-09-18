@@ -359,6 +359,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.trigger.there_is_no_action_called" => {
             "There is no action called \u{201c}{name}\u{201d} \u{2014} add it in Settings \u{203a} Input Map."
         }
+        // ⭐⭐⭐ **O SEGUNDO silêncio, e a cura dele é OUTRA.** Uma acção declarada e sem ligação
+        // nenhuma resolve para `Sample::default()`, logo o gatilho fica tão calado como com um
+        // nome errado — e sem esta linha o painel dizia que estava tudo bem. *Duas causas, o mesmo
+        // silêncio; um aviso só mandaria metade dos artistas ao sítio errado.*
+        "panel.inspector.trigger.the_action_has_no_key" => {
+            "\u{201c}{name}\u{201d} has no key yet \u{2014} bind one in Settings \u{203a} Input Map."
+        }
         "panel.inspector.trigger.this_trigger_says_nothing" => {
             "This trigger says nothing \u{2014} give it a signal name."
         }

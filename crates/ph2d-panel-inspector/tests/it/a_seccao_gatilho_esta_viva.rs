@@ -14,7 +14,7 @@
 
 use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::action_trigger_edits::{
-    ActionTriggerFieldEdit as E, InspectorActionTriggerInfo, InspectorTriggerRow,
+    ActionTriggerFieldEdit as E, InspectorActionTriggerInfo, InspectorTriggerRow, NoMapa,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
@@ -47,12 +47,12 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
     }
 }
 
-fn linha(action: &str, existe: bool) -> InspectorTriggerRow {
+fn linha(action: &str, no_mapa: NoMapa) -> InspectorTriggerRow {
     InspectorTriggerRow {
         action: action.into(),
         edge: 0,
         signal: "shoot".into(),
-        accao_existe: existe,
+        no_mapa,
     }
 }
 
@@ -63,7 +63,10 @@ fn linha(action: &str, existe: bool) -> InspectorTriggerRow {
 fn info() -> InspectorActionTriggerInfo {
     InspectorActionTriggerInfo {
         entity_bits: BITS,
-        rows: vec![linha("fier", false), linha("fire", true)],
+        rows: vec![
+            linha("fier", NoMapa::Desconhecida),
+            linha("fire", NoMapa::Ligada),
+        ],
         clock_playing: true,
         selected_count: 1,
     }
@@ -227,4 +230,54 @@ fn os_dois_botoes_estao_vivos_e_o_mais_abre_o_que_nasceu() {
         "depois de apagar, o indice aberto tem de recuar — senao o editor some"
     );
     set_current_inspector_action_trigger(None);
+}
+
+/// ⭐⭐⭐ **O SEGUNDO silêncio chega a PIXEL — e ele é MAIS texto que o estado são.**
+///
+/// ⚠️⚠️ **Sem esta metade o aviso é uma etiqueta numa tabela:** a frase pode existir no
+/// `ph2d-i18n`, o braço pode existir no `match`, e o `paint_text` não correr — a família que este
+/// repo já pagou (*«a queixa chega à row»* contra *«a queixa chega a PIXEL»*, e sem o terceiro gate
+/// um braço errado deixava os outros dois verdes).
+///
+/// ⚠️ **A régua são os GLIFOS e não os caminhos** — o Vello encaminha texto por `draw_glyphs`, e
+/// nenhum glifo entra na contagem de segmentos. E ela compara **duas cenas**, porque um número
+/// absoluto não diz nada: a que tem a acção por ligar tem de pintar MAIS que a que está ligada.
+#[test]
+fn o_aviso_da_accao_sem_tecla_chega_a_pixel() {
+    fn glifos(no_mapa: NoMapa) -> u32 {
+        let h = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut h = h;
+        set_current_inspector_action_trigger(Some(InspectorActionTriggerInfo {
+            entity_bits: BITS,
+            rows: vec![InspectorTriggerRow {
+                action: "grab".into(),
+                edge: 0,
+                signal: "shoot".into(),
+                no_mapa,
+            }],
+            clock_playing: true,
+            selected_count: 1,
+        }));
+        let mut st = InspectorState::default();
+        let (g, _) = h.paint_and_count_geometry::<InspectorPanel>(&mut st, VIEWPORT);
+        set_current_inspector_action_trigger(None);
+        g
+    }
+
+    let ligada = glifos(NoMapa::Ligada);
+    let sem_tecla = glifos(NoMapa::SemTecla);
+    let desconhecida = glifos(NoMapa::Desconhecida);
+
+    assert!(
+        ligada > 0,
+        "controlo: a secção tem de pintar alguma coisa, senão esta régua mede o nada"
+    );
+    assert!(
+        sem_tecla > ligada,
+        "a accao POR LIGAR tem de pintar o aviso dela: {sem_tecla} glifos contra {ligada}"
+    );
+    assert!(
+        desconhecida > ligada,
+        "e a DESCONHECIDA continua a pintar o dela: {desconhecida} contra {ligada}"
+    );
 }

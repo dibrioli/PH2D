@@ -90,3 +90,46 @@ fn as_amostras_saem_do_mapa_e_so_do_mapa() {
         "o mapa tem uma accao, a varredura tem de ter uma"
     );
 }
+
+/// ⭐⭐⭐ **O MAPA responde TRÊS coisas, e as duas mudas não são a mesma.**
+///
+/// ⚠️⚠️ **O `SemTecla` é o estado que faltava, e o gate prova as DUAS metades dele:** a acção
+/// existe (logo não é órfã, e a cura não é criá-la) **e** ela não fala (as três leituras dão
+/// `false`, tão calada como um nome errado). *Sem a segunda metade isto seria só uma etiqueta.*
+#[test]
+fn uma_accao_sem_tecla_existe_e_fica_calada_na_mesma() {
+    use ph2d_editor_core::action_trigger_edits::NoMapa;
+
+    let mut m = InputMap::new();
+    let ligada = m.create("fire");
+    if let Some(a) = m.get_mut(ligada) {
+        a.bindings.push(Binding::Key(TECLA));
+    }
+    m.create("grab"); // declarada e por atribuir
+
+    assert_eq!(super::no_mapa(&m, "fire"), NoMapa::Ligada);
+    assert_eq!(super::no_mapa(&m, "grab"), NoMapa::SemTecla);
+    assert_eq!(super::no_mapa(&m, "fier"), NoMapa::Desconhecida);
+
+    // ⭐ A metade que torna o estado do meio uma LEI e não uma etiqueta: com a tecla em baixo, a
+    // `grab` continua a ler `false` nas três — e é por isso que ela precisa de aviso próprio.
+    let mut dev = InputState::new();
+    let mut st = ActionState::new();
+    for _ in 0..2 {
+        dev.begin_frame();
+        dev.keyboard.handle_key_down(TECLA);
+        st.tick(&m, &dev);
+    }
+    let a = super::amostras_das_accoes(&m, &st);
+    let g = a.get("grab").copied().expect("ela ESTÁ no mapa");
+    assert_eq!(
+        (g.pressed, g.just_pressed, g.just_released),
+        (false, false, false),
+        "uma accao sem ligacao nao fala — o mesmo silencio de um nome errado"
+    );
+    // O CONTROLO: a que tem tecla fala no mesmo instante.
+    assert!(
+        a.get("fire").copied().expect("no mapa").pressed,
+        "controlo: sem isto o gate passaria com o teclado inerte"
+    );
+}

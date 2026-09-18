@@ -69,6 +69,8 @@ SHELL=shells/desktop/src/render_loop/motores_do_quadro.rs
 INSP=crates/ph2d-app-components/src/action_trigger_inspector.rs
 CENA=crates/ph2d-app-components/src/trigger_smoke.rs
 PONTE_T=crates/ph2d-app-components/src/trigger_bridge.rs
+SECCAO_T=crates/ph2d-panel-inspector/src/sections/action_trigger.rs
+PROLOGO=shells/desktop/src/components_scenes.rs
 
 echo "════ W1 — a LEI (ph2d-ecs) ════"
 
@@ -128,9 +130,13 @@ bloco "aresta: ida-e-volta" ph2d-app-components a_traducao_da_aresta_fecha "$INS
   "2 => ActionEdge::Hold," "2 => ActionEdge::Release,"
 
 # (11) Um nome VAZIO não é um órfão (é uma linha por preencher); um desconhecido é.
+#      ⚠️ **A âncora mudou de FORMA em 2026-09-18** (o booleano virou três estados) e o arnês
+#      ABORTOU em vez de mutar nada — que é exactamente para o que a contagem existe.
 bloco "orfao: o vazio conta" ph2d-app-components um_nome_vazio_nao_conta "$INSP" 1 \
-  "accao_existe: r.action.trim().is_empty() || conhece(r.action.trim())," \
-  "accao_existe: conhece(r.action.trim()),"
+  "            no_mapa: if r.action.trim().is_empty() {
+                NoMapa::Ligada" \
+  "            no_mapa: if r.action.trim().is_empty() {
+                NoMapa::Desconhecida"
 
 # (12) Reescrever o MESMO valor não suja o mundo — senão todo quadro de painel vira passo de undo.
 bloco "escrita: sem guarda de igualdade" ph2d-app-components reescrever_o_mesmo_valor "$INSP" 1 \
@@ -189,6 +195,26 @@ bloco "tecla: volta ao ESPACO" ph2d-host-desktop a_tecla_do_gatilho_nao_e_reclam
 # (21) ⭐ E o `P`, que é o menu radial do canvas E o Probe do grafo — a outra metade da régua.
 bloco "tecla: o P do menu radial" ph2d-host-desktop a_tecla_do_gatilho_nao_e_reclamada "$CENA" 1 \
   "pub const TECLA: u32 = 0x51;" "pub const TECLA: u32 = 0x50;" "--test it"
+
+echo
+echo "════ W8 — o SEGUNDO silêncio (a acção sem tecla) ════"
+
+# (22) ⭐⭐ Sem a distinção, uma acção POR LIGAR lê-se como ligada — e o painel diz que está tudo bem.
+bloco "sem tecla: lida como ligada" ph2d-app-components uma_accao_sem_tecla_existe "$PONTE_T" 1 \
+  "if a.bindings.is_empty() {" "if false {"
+
+# (23) ⭐ E a DESCONHECIDA não pode ser engolida pelo estado do meio (a cura de cada uma é outra).
+bloco "desconhecida: lida como sem tecla" ph2d-app-components uma_accao_sem_tecla_existe "$PONTE_T" 1 \
+  ".map_or(NoMapa::Desconhecida, |a| {" ".map_or(NoMapa::SemTecla, |a| {"
+
+# (24) ⭐⭐⭐ E o aviso tem de chegar a PIXEL — um braço que não pinte deixa os outros dois verdes.
+bloco "aviso: o braco nao pinta" ph2d-panel-inspector o_aviso_da_accao_sem_tecla "$SECCAO_T" 1 \
+  "    } else if row.no_mapa == NoMapa::SemTecla {" "    } else if false {"
+
+# (25) ⭐ E a cena tem de CRIAR a acção sem tecla — nenhuma de fábrica serve de exemplo.
+bloco "cena: sem a accao por ligar" ph2d-host-desktop o_prologo_deixa_uma_accao "$PROLOGO" 1 \
+  "                .create(ph2d_app_components::trigger_smoke::ACCAO_SEM_TECLA);" \
+  "                .create(\"outra\");" "--test it"
 
 echo
 echo "════ $((TOTAL-FALHAS))/$TOTAL sangraram ════"

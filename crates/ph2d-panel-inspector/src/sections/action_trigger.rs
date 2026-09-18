@@ -25,7 +25,9 @@
 //! como *«o gatilho não funciona»*.
 
 use super::*;
-use ph2d_editor_core::action_trigger_edits::{InspectorActionTriggerInfo, InspectorTriggerRow};
+use ph2d_editor_core::action_trigger_edits::{
+    InspectorActionTriggerInfo, InspectorTriggerRow, NoMapa,
+};
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, SectionFold, paint_dropdown_chip};
 use ph2d_i18n::{tr, tr_with};
 
@@ -122,7 +124,10 @@ fn lista(
         );
         // ⚠️⚠️ **Uma linha ÓRFÃ escreve-se em WARN na própria lista**, e não só no editor: com seis
         // gatilhos e um errado, o artista não abre os seis à procura do que não funciona.
-        let cor = if row.accao_existe {
+        // ⚠️ **Só a DESCONHECIDA pinta WARN na lista.** Uma acção por ligar é uma configuração a
+        // meio (como o sinal vazio), e pintá-la de vermelho aqui poria a lista a gritar sobre um
+        // gatilho que o artista está a acabar de escrever.
+        let cor = if row.no_mapa != NoMapa::Desconhecida {
             if i == escolhida {
                 resolve(ColorToken::Text1, theme)
             } else {
@@ -334,10 +339,22 @@ fn avisos(
             Some(tr("panel.inspector.trigger.no_action_named_yet").to_owned()),
             ColorToken::Warn,
         )
-    } else if !row.accao_existe {
+    } else if row.no_mapa == NoMapa::Desconhecida {
         (
             Some(tr_with(
                 "panel.inspector.trigger.there_is_no_action_called",
+                &[("name", &row.action.trim())],
+            )),
+            ColorToken::Warn,
+        )
+    } else if row.no_mapa == NoMapa::SemTecla {
+        // ⭐⭐⭐ **O SEGUNDO silêncio, e ele não é um erro:** a acção existe e não tem tecla
+        // nenhuma, logo as três leituras dela dão `false` e o gatilho fica exactamente tão calado
+        // como com um nome errado. ⚠️ **A cura é OUTRA** (ligar uma tecla, não criar a acção), e é
+        // por isso que a frase e a cor são outras.
+        (
+            Some(tr_with(
+                "panel.inspector.trigger.the_action_has_no_key",
                 &[("name", &row.action.trim())],
             )),
             ColorToken::Warn,

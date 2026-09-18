@@ -40,3 +40,24 @@ metadata:
   custo não é a palavra: *um doc que nomeia o gatilho errado manda o próximo reproduzir onde o
   defeito não pode acontecer, e ele conclui que o defeito não existe.* ⇒ antes de escrever o gatilho
   num doc, **meça quem ESCREVE a grandeza** (`grep` no escritor), nunca onde o sintoma aparece.
+
+---
+
+## ⛔⛔ O `~/.ph2d/` é PARTILHADO por todas as worktrees (2026-09-18)
+
+Uma foto de smoke apanhou o `~/.ph2d/layout.txt` com o espaço de trabalho errado, e eu atribuí-o —
+**sem medir** — às minhas próprias corridas. Falso, e a medição tem três passos:
+
+1. a cena irmã aprovada não o muda, e a minha também não;
+2. a suíte da shell corrida com `HOME` num directório temporário **não escreve em lado nenhum**, e o
+   ficheiro do dono mudou **na mesma** durante essa corrida;
+3. `pgrep -af ph2d-host-desktop` + `ls -l /proc/<pid>/cwd` → um app a correr de **outra worktree**.
+
+⇒ *O ficheiro de preferências vive fora do repositório e é UM só para todas as árvores* — quem corre
+o app por último ganha, e uma linha vê o ambiente mudar sem nada no seu diff.
+
+⚠️ **E eu «repus» o valor duas vezes antes de medir**, o que era disputá-lo com um processo VIVO de
+outra linha. ⛔ A régua é **não lhe tocar**; quem precisa de arrumação determinística pô-la na
+própria cena (`panel_visibility`, a selecção, o espaço de trabalho).
+
+⭐ *Um ambiente partilhado desmente-se com `/proc`, não com raciocínio sobre o próprio diff.*

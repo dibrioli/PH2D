@@ -21,6 +21,11 @@ fn a_traducao_da_aresta_fecha_nos_dois_sentidos() {
 /// ⚠️⚠️ **Um nome VAZIO não é «desconhecido»**, e a diferença tem consequência visível: contá-lo
 /// como órfão poria o título a dizer «1 broken» num gatilho acabado de acrescentar, que é o estado
 /// normal de quem está a escrever. O painel tem uma frase própria para o vazio.
+///
+/// ⭐⭐⭐ **E o estado do meio é o que este gate passou a afirmar (2026-09-18):** uma acção que
+/// EXISTE e não tem tecla nenhuma fica tão calada como um nome errado — e ela **não conta como
+/// órfã**, porque a cura é outra (ligar uma tecla, não criar a acção). *Duas causas, o mesmo
+/// silêncio, dois avisos.*
 #[test]
 fn um_nome_vazio_nao_conta_como_orfao_e_um_desconhecido_conta() {
     let mut sim = SimWorld::new();
@@ -39,16 +44,35 @@ fn um_nome_vazio_nao_conta_como_orfao_e_um_desconhecido_conta() {
                 action: "fier".into(),
                 ..Default::default()
             },
+            ActionTriggerRow {
+                action: "grab".into(),
+                ..Default::default()
+            },
         ]))
         .id();
-    let info = build_info(&sim, e.to_bits(), true, 1, &|n| n == "fire").expect("tem o componente");
-    let existe: Vec<bool> = info.rows.iter().map(|r| r.accao_existe).collect();
+    let info = build_info(&sim, e.to_bits(), true, 1, &|n| match n {
+        "fire" => NoMapa::Ligada,
+        "grab" => NoMapa::SemTecla,
+        _ => NoMapa::Desconhecida,
+    })
+    .expect("tem o componente");
+    let estados: Vec<NoMapa> = info.rows.iter().map(|r| r.no_mapa).collect();
     assert_eq!(
-        existe,
-        [true, true, false],
-        "o vazio e o conhecido não são órfãos; o desconhecido é"
+        estados,
+        [
+            NoMapa::Ligada,
+            NoMapa::Ligada,
+            NoMapa::Desconhecida,
+            NoMapa::SemTecla
+        ],
+        "o vazio lê-se como Ligada (não acusa nada); o resto é o que o mapa disse"
     );
     assert_eq!(info.orfas(), 1, "só a linha com o nome errado é órfã");
+    assert_eq!(info.sem_tecla(), 1, "e só a `grab` está por ligar");
+    // ⛔ **O CONTROLO da porta `fala()`:** ela tem de ser `false` nos DOIS estados mudos — senão
+    // um consumidor que só queira *«isto vai funcionar?»* aprova metade do silêncio.
+    let fala: Vec<bool> = estados.iter().map(|e| e.fala()).collect();
+    assert_eq!(fala, [true, true, false, false]);
 }
 
 /// ⭐ **Escrever o MESMO valor não é uma mudança** — devolver `true` aqui faria cada quadro com o

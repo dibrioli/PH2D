@@ -172,6 +172,52 @@ partilham a seta de cima): *as duas leis nunca correm na mesma cena*.
 `a_tecla_do_gatilho_nao_e_reclamada_pelo_editor` (shell), com o **ESPAÇO como controlo positivo** e
 o **`P` como controlo de que a varredura vê alguma coisa**. Duas mutações, as duas sangram.
 
+## §4-ter — ⭐⭐⭐ O SEGUNDO silêncio: a acção que EXISTE e não tem tecla (2026-09-18)
+
+O smoke aprovado deixou o loop meio fechado: o painel avisa quando o nome da acção **não existe** e
+diz que está tudo bem quando ela existe **sem tecla nenhuma** — e nesse estado o gatilho fica
+**exactamente tão calado**.
+
+### A medição
+
+O `ActionState::tick` percorre o **MAPA** e não os dispositivos, e o doc dele escreve a lei por
+extenso: *«uma acção sem ligação nenhuma tem de aparecer com `Sample::default()` — declarada e por
+atribuir não é inexistente»*. ⇒ **as três leituras dão `false`**, igual a um nome errado.
+
+⇒ *duas causas, o mesmo silêncio, e o painel só nomeava uma.* É a família que o `CLAUDE.md` nomeia:
+**um gesto que não faz nada e não diz porquê é indistinguível de um partido**.
+
+### O desenho: um booleano onde a pergunta tem TRÊS lados
+
+```rust
+pub enum NoMapa { Desconhecida, SemTecla, Ligada }
+impl NoMapa { pub const fn fala(self) -> bool { matches!(self, Self::Ligada) } }
+```
+
+⚠️ **As CURAS é que obrigam a distinguir:** uma pede *criar a acção*, a outra *ligar-lhe uma tecla*.
+Um aviso só mandaria metade dos artistas ao sítio errado. ⭐ E a `fala()` existe para quem só quer
+*«isto vai funcionar?»* não ter de saber que são três — com gate a exigir `false` nos **dois** mudos.
+
+⛔ **O `SemTecla` NÃO conta como órfã no título**, e é decisão: o título diz *«partidas»*, e uma
+acção por ligar é uma configuração a meio — a mesma fronteira que o nome de sinal vazio já tem.
+
+### O que o gate teve de provar, e a mutação que o obrigou
+
+| gate | o que afirma |
+|---|---|
+| `uma_accao_sem_tecla_existe_e_fica_calada_na_mesma` | as **duas** metades: ela existe **e** não fala (com a tecla em baixo, e com o controlo da que fala) |
+| `o_aviso_da_accao_sem_tecla_chega_a_pixel` | a frase chega a **GLIFO** — e por comparação de duas cenas, porque um número absoluto não diz nada |
+| `o_prologo_deixa_uma_accao_ligada_e_outra_por_ligar` | a cena cria as duas, em estados opostos |
+
+⛔⛔ **E o último SOBREVIVEU à 1.ª redacção:** ele **reconstruía** o prólogo à mão, logo afirmava que
+a lei era possível e nunca que o prólogo a seguia. ⇒ a 2.ª metade lê o ficheiro do prólogo por
+`include_str!`. *Um gate que chama a função em vez de percorrer a rota afirma que a peça existe,
+nunca que quem a usa a usa* — a forma que esta casa já pagou quatro vezes.
+
+⚠️ **E a cena teve de CRIAR a acção sem tecla**, porque as **sete** de fábrica têm todas ligação
+(medido, e dentro do gate): um passo de roteiro que mandasse escrever `grab` ensinaria o contrário
+do que acontece.
+
 ## §5 — O que fica ABERTO
 
 - ⏳ **Nenhum gesto de canvas cria um gatilho** — ele entra por *Add Component → Trigger*, como as

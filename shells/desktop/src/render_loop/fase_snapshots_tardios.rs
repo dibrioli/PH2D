@@ -97,7 +97,7 @@ pub(super) fn publica(
     // dela é DUPLO, porque a lei do motor também cala uma acção que o mapa não conhece.
     ph2d_panel_inspector::set_current_inspector_action_trigger(escolhido.and_then(|b| {
         ph2d_app_components::action_trigger_inspector::build_info(sim, b, a_correr, quantos, &|n| {
-            mapa.id(n).is_some()
+            ph2d_app_components::trigger_bridge::no_mapa(mapa, n)
         })
     }));
 }

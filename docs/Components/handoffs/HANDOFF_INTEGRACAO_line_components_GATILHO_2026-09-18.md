@@ -238,11 +238,23 @@ ao lado dela (*«a tecla que ninguém do editor usa no canvas»*), que era falsa
 [§4-bis do plano](../18_plano_gatilho.md). **21/21 mutações sangram** (eram 19; as duas novas são
 o ESPAÇO de volta e o `P` do menu radial).
 
-⚠️⚠️ **E há um efeito colateral que o INTEGRADOR deve conhecer:** correr qualquer smoke reescreve o
-`~/.ph2d/layout.txt`, que vive **fora do repositório**. As minhas corridas deixaram lá
-`active=nodes` — e com o layout *Nodes* a ferramenta MOTION é a dona do canvas, que é **o que parte
-a banda do centro** (a correcção que este mesmo handoff regista no §4 do HUD). O ficheiro foi
-**reposto** em `active=drawing_2d`, que era o valor que a 1.ª foto mostrava.
+⚠️⚠️ **E um efeito colateral que eu ATRIBUÍ MAL, e a medição corrigiu-me.** A foto de uma corrida
+apanhou o `~/.ph2d/layout.txt` (que vive **fora do repositório**) com `active=nodes`, e eu escrevi —
+sem medir — que *«as minhas corridas»* o tinham deixado assim. **Falso.** Medido em três passos:
+
+1. a cena irmã **aprovada** (`PH2D_PROJECTILE_SMOKE=1`) não o muda · a minha também não;
+2. a suíte da shell corrida com `HOME` num directório temporário **não escreve em lado nenhum** — e
+   o ficheiro do dono mudou **na mesma**, durante essa corrida, para `active=vector`;
+3. `pgrep` + `/proc/<pid>/cwd`: um `ph2d-host-desktop` a correr desde as `20:35` **a partir da
+   worktree `line-Vector`**.
+
+⇒ **o `~/.ph2d/` é partilhado por TODAS as worktrees**, e quem corre o app por último ganha. Não é
+desta wave, não é da suíte, e **não é de nenhuma linha em particular** — é uma propriedade do
+ambiente que atinge toda a gente que trabalhe em paralelo.
+
+⚠️ *Eu tinha «reposto» o ficheiro duas vezes antes de medir; isso era disputar um valor com um
+processo VIVO de outra linha.* ⛔ A régua certa é: **não lhe tocar**, e quem precisa de uma
+arrumação determinística pô-la na própria cena.
 
 ⛔ **Isto não é desta wave e atinge TODA cena de smoke:** o doc do
 [`hero::layout_switch::install_at_startup`] já o mede por escrito (*«com o layout `Nodes` gravado, a

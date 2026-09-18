@@ -363,6 +363,15 @@ impl crate::App {
                     ph2d_app_components::trigger_smoke::TECLA,
                 )));
             }
+            // ⭐⭐⭐ **E uma acção SEM TECLA, de propósito** — o sujeito do passo (6) do roteiro.
+            //
+            // ⛔⛔ **Ela tem de ser criada aqui, e isso foi MEDIDO:** as sete acções do
+            // `with_player_defaults` têm todas ligação, logo nenhuma serve de exemplo. Ela é o
+            // estado que qualquer artista alcança ao criar uma acção e esquecer a tecla — o
+            // gatilho fica calado, e o painel dizia que estava tudo bem.
+            let _ = hero
+                .input_map
+                .create(ph2d_app_components::trigger_smoke::ACCAO_SEM_TECLA);
             hero.panel_visibility.insert("inspector", true);
             // ⚠️⚠️ **A RÉGUA DO TRANSPORTE abre junto, e a FOTO é que o disse:** esta cena inteira
             // é sobre uma cerca do RELÓGIO (*Play → a arma dispara · Stop → o teclado volta a ser

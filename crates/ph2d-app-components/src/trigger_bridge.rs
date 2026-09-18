@@ -44,6 +44,37 @@ pub fn amostras_das_accoes(
         .collect()
 }
 
+/// ⭐⭐⭐ **O que o MAPA sabe de uma acção, pelo NOME** — a coluna que o painel não pode calcular.
+///
+/// ⚠️⚠️ **TRÊS estados, e o do meio é o que faltava:** uma acção **declarada e sem ligação
+/// nenhuma** resolve para [`ph2d_input::Sample::default`] — o `ActionState::tick` percorre o MAPA e
+/// não os dispositivos, e o doc dele escreve a lei por extenso (*«declarada e por atribuir não é
+/// inexistente»*) ⇒ as três leituras dão `false`, e o gatilho fica **tão calado como com um nome
+/// errado**. *Duas causas, o mesmo silêncio, e o painel dizia que estava tudo bem numa delas.*
+///
+/// ⛔ **E as CURAS são diferentes** (criar a acção · ligar-lhe uma tecla), que é o que obriga a
+/// distinguir: um aviso só mandaria metade dos artistas ao sítio errado.
+///
+/// ⚠️ **Ela vive AQUI e não na shell** pela razão da irmã acima: é pura, e o que fica lá é a
+/// composição. Um `match` inline na shell não teria gate — *um gate que chama a função em vez de
+/// percorrer a rota afirma que a peça existe, nunca que quem a usa a usa*.
+#[must_use]
+pub fn no_mapa(
+    map: &ph2d_input::InputMap,
+    nome: &str,
+) -> ph2d_editor_core::action_trigger_edits::NoMapa {
+    use ph2d_editor_core::action_trigger_edits::NoMapa;
+    map.id(nome)
+        .and_then(|id| map.get(id))
+        .map_or(NoMapa::Desconhecida, |a| {
+            if a.bindings.is_empty() {
+                NoMapa::SemTecla
+            } else {
+                NoMapa::Ligada
+            }
+        })
+}
+
 #[cfg(test)]
 #[path = "trigger_bridge_tests.rs"]
 mod tests;

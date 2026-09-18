@@ -1,0 +1,31 @@
+[package]
+name = "ph2d-rake"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# A lei do PENTE DE TOPOLOGIA — clean-room sob
+# `docs/3D/cleanroom/SPEC_pente_de_topologia.md` (atestada à 3.ª passagem do
+# R-pré, 2026-09-17).
+#
+# Enquanto o traço corre com a topologia dinâmica armada, a malha debaixo dele
+# reorganiza-se: as arestas deixam de apontar em todas as direcções e passam a
+# formar uma GRADE — uma família ao longo do traço, outra através dele.
+#
+# ⭐⭐ **E o nome engana: medido, o alvo NÃO troca uma única diagonal** (espec
+# §3.1). Ele MOVE VÉRTICES, tangencialmente, e o que o artista lê como topologia
+# é o refino a decidir sobre um terreno já relaxado.
+#
+# ZERO dependências, de propósito — a mesma disciplina da `ph2d-cloth`, da
+# `ph2d-pose` e da `ph2d-boundary`: ela não sabe o que é uma `Mesh`, um pincel,
+# uma câmera ou um evento de ponteiro.
+
+[lib]
+
+[dependencies]
+
+[lints]
+workspace = true

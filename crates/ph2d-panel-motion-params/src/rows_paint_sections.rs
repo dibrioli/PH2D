@@ -151,8 +151,12 @@ pub(crate) fn header_at(
     clippy::too_many_arguments,
     reason = "espelha a porta de paint das rows deste painel"
 )]
+/// ⚠️⚠️ **O `chave` é IDENTIDADE e LEGENDA ao mesmo tempo, e só uma das duas se traduz.** O
+/// [`section_id`] hasheia-a para o hit-rect e para a memória de dobra; o texto desenhado é a
+/// palavra. ⇒ resolve-se **aqui**, no último instante — traduzir a montante mudaria o `id` com o
+/// idioma, e a secção que o artista deixou dobrada abriria sozinha ao trocar de língua.
 pub(crate) fn paint_header(
-    title: &str,
+    chave: &str,
     inner_x: f32,
     inner_w: f32,
     y: f32,
@@ -162,9 +166,9 @@ pub(crate) fn paint_header(
     text_system: &mut TextSystem,
     theme: Theme,
 ) -> f32 {
-    let id = section_id(title);
+    let id = section_id(chave);
     let h = TypeToken::Md.px() + Spacing::Md.px();
-    let header = SectionHeader::new(id, title)
+    let header = SectionHeader::new(id, ph2d_i18n::tr(chave))
         .collapsible(!store.is_collapsed(id))
         .open_t(store.section_open_live(id));
     let rect = Rect::new(inner_x, y, inner_w, h);

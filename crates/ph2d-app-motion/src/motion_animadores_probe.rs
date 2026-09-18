@@ -183,6 +183,10 @@ fn census_of_hidden_params() -> (usize, usize, Vec<String>, Vec<String>) {
                 v.sections
                     .iter()
                     .filter(|s| !s.open)
+                    // ⚠️ **A CHAVE, não a palavra** — esta lista é comparada com o
+                    //    `param_group`, que é identidade. O gate irmão do tutorial resolve,
+                    //    porque lá a pergunta é *o que o artista LÊ*. *Duas perguntas sobre a
+                    //    mesma secção, e só uma delas é sobre texto.*
                     .map(|s| s.title)
                     .collect()
             })
@@ -211,7 +215,10 @@ fn census_of_hidden_params() -> (usize, usize, Vec<String>, Vec<String>) {
                 .param_group(tid, h.param)
                 .filter(|g| dobradas.contains(g))
             {
-                Some(format!("na seccao `{g}`, que nasce FECHADA (um clique)"))
+                Some(format!(
+                    "na seccao `{}`, que nasce FECHADA (um clique)",
+                    ph2d_i18n::tr(g)
+                ))
             } else if canais.contains(&h.param) {
                 Some("canal de uma COR (consumido pela amostra)".to_string())
             } else if let Some(g) = gates.iter().find(|g| g.param == h.param) {

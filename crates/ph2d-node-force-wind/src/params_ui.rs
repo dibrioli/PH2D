@@ -188,14 +188,14 @@ pub(crate) static PARAM_GROUPS: &[ph2d_node_registry::ParamGroup] = {
     use ph2d_node_registry::ParamGroup as G;
     &[
         // A FORMA da variação.
-        G::new("gust", "Gust"),
-        G::new("type", "Gust"),
-        G::new("octaves", "Gust"),
-        G::new("lacunarity", "Gust"),
-        G::new("roughness", "Gust"),
-        G::new("seed", "Gust"),
+        G::new("gust", "node.group.gust"),
+        G::new("type", "node.group.gust"),
+        G::new("octaves", "node.group.gust"),
+        G::new("lacunarity", "node.group.gust"),
+        G::new("roughness", "node.group.gust"),
+        G::new("seed", "node.group.gust"),
         // O RITMO dela.
-        G::new("gust_freq", "Timing"),
-        G::new("loop_period", "Timing"),
+        G::new("gust_freq", "node.group.timing"),
+        G::new("loop_period", "node.group.timing"),
     ]
 };

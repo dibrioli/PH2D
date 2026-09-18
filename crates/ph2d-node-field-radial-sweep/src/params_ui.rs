@@ -47,14 +47,14 @@ pub(super) static PARAM_HARD_MAX: &[ParamHardMax] = &[
 /// por isso ele agrupa com `soft`/`invert` em vez de ficar solto como o do `field.remap`.
 pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
     // Onde o radar está plantado, e para onde ele aponta.
-    ParamGroup::new("center_x", "Placement"),
-    ParamGroup::new("center_y", "Placement"),
-    ParamGroup::new("inner_radius", "Placement"),
-    ParamGroup::new("rotation", "Placement"),
+    ParamGroup::new("center_x", "node.group.placement"),
+    ParamGroup::new("center_y", "node.group.placement"),
+    ParamGroup::new("inner_radius", "node.group.placement"),
+    ParamGroup::new("rotation", "node.group.placement"),
     // Como a borda do feixe desvanece.
-    ParamGroup::new("soft", "Falloff"),
-    ParamGroup::new("curve", "Falloff"),
-    ParamGroup::new("invert", "Falloff"),
+    ParamGroup::new("soft", "node.group.falloff"),
+    ParamGroup::new("curve", "node.group.falloff"),
+    ParamGroup::new("invert", "node.group.falloff"),
 ];
 
 /// Param UI hints (M1.P1): the sweep's radius (gizmo-driven), the angular sector

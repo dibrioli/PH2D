@@ -301,3 +301,47 @@ fn two_read_channels_never_share_a_key() {
         dobradas.join("\n  ")
     );
 }
+
+/// ⭐⭐⭐ **TODO NOME DE SECÇÃO RESOLVE NUMA PALAVRA** — a irmã do
+/// [`every_enum_option_key_resolves_to_a_word`], para os `ParamGroup`.
+///
+/// ⛔⛔ Eles eram **inglês cru em 229 sítios de 21 crates** até 2026-09-18, e o doc do campo que
+/// os carrega dizia *«o título da seção, em inglês (HR-15: a face do artista sai por i18n no
+/// painel)»* — com o painel a pintá-lo **cru**. *Uma nota que descreve ONDE a tradução
+/// aconteceria lê-se como se ela acontecesse*, e nenhuma régua perguntava.
+///
+/// ⚠️ Quem o apanhou foi o **dono**, com duas setas vermelhas sobre `Shape` e `Leaves` numa foto
+/// do cartão com o idioma de teste ligado.
+#[test]
+fn every_param_group_key_resolves_to_a_word() {
+    let mut reg = NodeRegistry::default();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("o registo tem de montar");
+    let tipos: Vec<_> = reg.manifests().map(|m| m.id).collect();
+    let mut cruas = Vec::new();
+    let mut n = 0usize;
+    let mut familias = std::collections::BTreeSet::new();
+    for tipo in tipos {
+        for g in reg.param_groups(tipo) {
+            n += 1;
+            familias.insert(g.group_key);
+            if ph2d_i18n::tr(g.group_key) == g.group_key {
+                cruas.push(format!("{}::{}", g.param, g.group_key));
+            }
+        }
+    }
+    // ⛔ Piso de população nas DUAS grandezas: os sítios e as palavras distintas. Um `node_type_ids`
+    //    que encolhesse deixaria este gate verde a medir um punhado.
+    assert!(n >= 200, "só {n} secções — a população encolheu?");
+    assert!(
+        familias.len() >= 30,
+        "só {} nomes distintos — a extracção partiu-se?",
+        familias.len()
+    );
+    assert!(
+        cruas.is_empty(),
+        "estes {} nomes de secção não têm palavra em `node_groups.rs` e o painel pinta o \
+         identificador cru:\n  {}",
+        cruas.len(),
+        cruas.join("\n  ")
+    );
+}

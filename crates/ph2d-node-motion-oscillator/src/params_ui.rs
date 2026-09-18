@@ -241,11 +241,11 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
 /// hierarquia ao contrário.
 pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     // Que relógio a onda anda.
-    ParamGroup::new("time_mode", "Timing"),
-    ParamGroup::new("frequency", "Timing"),
-    ParamGroup::new("bpm", "Timing"),
-    ParamGroup::new("phase", "Timing"),
-    ParamGroup::new("phase_stagger", "Timing"),
+    ParamGroup::new("time_mode", "node.group.timing"),
+    ParamGroup::new("frequency", "node.group.timing"),
+    ParamGroup::new("bpm", "node.group.timing"),
+    ParamGroup::new("phase", "node.group.timing"),
+    ParamGroup::new("phase_stagger", "node.group.timing"),
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A). This node's magnitude

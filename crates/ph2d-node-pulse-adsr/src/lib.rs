@@ -435,15 +435,15 @@ use ph2d_node_registry::{
 /// envelope no tempo* · *que curva têm as rampas* · *o que um disparo faz com um
 /// envelope que já corre*.
 static PARAM_GROUPS: &[ParamGroup] = &[
-    ParamGroup::new("delay", "Envelope"),
-    ParamGroup::new("attack", "Envelope"),
-    ParamGroup::new("decay", "Envelope"),
-    ParamGroup::new("sustain", "Envelope"),
-    ParamGroup::new("hold", "Envelope"),
-    ParamGroup::new("release", "Envelope"),
-    ParamGroup::new("attack_shape", "Shape"),
-    ParamGroup::new("release_shape", "Shape"),
-    ParamGroup::new("retrigger", "Trigger"),
+    ParamGroup::new("delay", "node.group.envelope"),
+    ParamGroup::new("attack", "node.group.envelope"),
+    ParamGroup::new("decay", "node.group.envelope"),
+    ParamGroup::new("sustain", "node.group.envelope"),
+    ParamGroup::new("hold", "node.group.envelope"),
+    ParamGroup::new("release", "node.group.envelope"),
+    ParamGroup::new("attack_shape", "node.group.shape"),
+    ParamGroup::new("release_shape", "node.group.shape"),
+    ParamGroup::new("retrigger", "node.group.trigger"),
 ];
 
 static PARAM_UNITS: &[ParamUnitDecl] = &[

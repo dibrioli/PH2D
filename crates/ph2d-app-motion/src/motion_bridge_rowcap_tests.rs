@@ -244,7 +244,10 @@ fn every_param_group_entry_names_a_param_the_node_declares() {
         }
         for g in groups {
             if !declared.contains(g.param) {
-                bad.push(format!("{ty}: a seção {:?} nomeia {:?}", g.group, g.param));
+                bad.push(format!(
+                    "{ty}: a seção {:?} nomeia {:?}",
+                    g.group_key, g.param
+                ));
             }
         }
     }

@@ -88,6 +88,8 @@ mod inspector_player;
 mod model3d;
 /// Os nomes dos nós — a 3.ª fatia da fronteira dos motores.
 mod node_catalog;
+/// ⭐⭐ **Os nomes das SECÇÕES** do painel de params de um nó — 38 palavras sobre 229 sítios.
+mod node_groups;
 /// As OPCOES de cada selector de nó — a 5.ª fatia da fronteira dos motores.
 mod node_options;
 /// Os rótulos de PARAMETRO dos nós — a 4.ª fatia, e a maior.
@@ -532,6 +534,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| sculpt_engine::tr(k))
             .or_else(|| tokens::tr(k))
             .or_else(|| node_catalog::tr(k))
+            .or_else(|| node_groups::tr(k))
             .or_else(|| node_params::tr(k))
             .or_else(|| node_options::tr(k))
             .or_else(|| chrome::tr(k))

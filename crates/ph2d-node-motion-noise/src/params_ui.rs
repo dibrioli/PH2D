@@ -79,16 +79,16 @@ pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     // ⚠️ **A `base` e a `metric` moram aqui** e não soltas no topo: elas são a forma do
     // campo tanto quanto a escala e as oitavas. Soltas, elas cresciam a altura do corpo do
     // painel — ver a nota do `Space` abaixo.
-    ParamGroup::new("base", "Field"),
-    ParamGroup::new("metric", "Field"),
-    ParamGroup::new("scale", "Field"),
-    ParamGroup::new("octaves", "Field"),
-    ParamGroup::new("roughness", "Field"),
-    ParamGroup::new("seed", "Field"),
-    ParamGroup::new("own_field", "Field"),
+    ParamGroup::new("base", "node.group.field"),
+    ParamGroup::new("metric", "node.group.field"),
+    ParamGroup::new("scale", "node.group.field"),
+    ParamGroup::new("octaves", "node.group.field"),
+    ParamGroup::new("roughness", "node.group.field"),
+    ParamGroup::new("seed", "node.group.field"),
+    ParamGroup::new("own_field", "node.group.field"),
     // Em que relógio ele anda.
-    ParamGroup::new("speed", "Timing"),
-    ParamGroup::new("loop_len", "Timing"),
+    ParamGroup::new("speed", "node.group.timing"),
+    ParamGroup::new("loop_len", "node.group.timing"),
     // O ESPAÇO em que ele é amostrado — a seção nova (folha 06 linha 20).
     //
     // ⭐⭐ **NASCE FECHADA desde 2026-08-25, e a razão é uma REGRA e não conforto.** Ao
@@ -102,9 +102,9 @@ pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     // controlo mais avançado do nó (a `Field` e o `Timing` são o que se toca sempre), e ela
     // é a secção mais nova. Fechada, o corpo desce ~2 fileiras e o inspector volta a abrir
     // sem precisar da roda.
-    ParamGroup::new("rotation", "Space").folded(),
-    ParamGroup::new("uniform", "Space").folded(),
-    ParamGroup::new("scale_y", "Space").folded(),
+    ParamGroup::new("rotation", "node.group.space").folded(),
+    ParamGroup::new("uniform", "node.group.space").folded(),
+    ParamGroup::new("scale_y", "node.group.space").folded(),
 ];
 
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[

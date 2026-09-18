@@ -424,14 +424,14 @@ const fn slot(param: &'static str, label: &'static str) -> ParamUiHint {
 /// ⚠️ Uma seção nasce ABERTA — agrupar não é esconder. O que ela compra é o gesto de dobrar
 /// depois que o padrão está posto, e a fronteira visível entre *quantos* e *quais*.
 static PARAM_GROUPS: &[ParamGroup] = &[
-    ParamGroup::new("v0", "Values"),
-    ParamGroup::new("v1", "Values"),
-    ParamGroup::new("v2", "Values"),
-    ParamGroup::new("v3", "Values"),
-    ParamGroup::new("v4", "Values"),
-    ParamGroup::new("v5", "Values"),
-    ParamGroup::new("v6", "Values"),
-    ParamGroup::new("v7", "Values"),
+    ParamGroup::new("v0", "node.group.values"),
+    ParamGroup::new("v1", "node.group.values"),
+    ParamGroup::new("v2", "node.group.values"),
+    ParamGroup::new("v3", "node.group.values"),
+    ParamGroup::new("v4", "node.group.values"),
+    ParamGroup::new("v5", "node.group.values"),
+    ParamGroup::new("v6", "node.group.values"),
+    ParamGroup::new("v7", "node.group.values"),
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[

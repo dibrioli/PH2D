@@ -27,15 +27,15 @@ use super::CURVE_KEY;
 /// para não a sepultar.
 pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     // A FAIXA de saída: entre que números o resultado vive.
-    ParamGroup::new("min", "Range"),
-    ParamGroup::new("max", "Range"),
-    ParamGroup::new("multiplier", "Range"),
-    ParamGroup::new("clamp", "Range"),
-    ParamGroup::new("invert", "Range"),
+    ParamGroup::new("min", "node.group.range"),
+    ParamGroup::new("max", "node.group.range"),
+    ParamGroup::new("multiplier", "node.group.range"),
+    ParamGroup::new("clamp", "node.group.range"),
+    ParamGroup::new("invert", "node.group.range"),
     // E quanto do resultado chega ao mundo.
-    ParamGroup::new("strength", "Output"),
-    ParamGroup::new("probability", "Output"),
-    ParamGroup::new("seed", "Output"),
+    ParamGroup::new("strength", "node.group.output"),
+    ParamGroup::new("probability", "node.group.output"),
+    ParamGroup::new("seed", "node.group.output"),
 ];
 
 /// **UM NÚMERO POR CONTORNO, E SÓ O DO CONTORNO ESCOLHIDO APARECE.**

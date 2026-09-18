@@ -551,16 +551,16 @@ pub static PARAM_GROUPS: &[ph2d_node_registry::ParamGroup] = {
     use ph2d_node_registry::ParamGroup as G;
     &[
         // O QUE a textura é.
-        G::new("type", "Field"),
-        G::new("scale", "Field"),
-        G::new("offset_x", "Field"),
-        G::new("offset_y", "Field"),
-        G::new("octaves", "Field"),
-        G::new("lacunarity", "Field"),
-        G::new("roughness", "Field"),
-        G::new("seed", "Field"),
+        G::new("type", "node.group.field"),
+        G::new("scale", "node.group.field"),
+        G::new("offset_x", "node.group.field"),
+        G::new("offset_y", "node.group.field"),
+        G::new("octaves", "node.group.field"),
+        G::new("lacunarity", "node.group.field"),
+        G::new("roughness", "node.group.field"),
+        G::new("seed", "node.group.field"),
         // COMO ela anda.
-        G::new("speed", "Timing"),
-        G::new("loop_period", "Timing"),
+        G::new("speed", "node.group.timing"),
+        G::new("loop_period", "node.group.timing"),
     ]
 };

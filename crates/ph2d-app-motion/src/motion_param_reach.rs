@@ -243,7 +243,7 @@ pub fn rotulos_colididos() -> Vec<(&'static str, String, String, usize)> {
             .registry
             .param_groups(man.id)
             .iter()
-            .map(|g| (g.param, g.group))
+            .map(|g| (g.param, g.group_key))
             .collect();
         // (secção, rótulo) → quantos params
         let mut contagem: BTreeMap<(&str, &str), usize> = BTreeMap::new();

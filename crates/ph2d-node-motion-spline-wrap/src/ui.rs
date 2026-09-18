@@ -77,14 +77,14 @@ pub(super) static PARAM_GATES_TEXT: &[ParamGateText] = &[
 /// ⚠️ **E o `folded` é o NASCIMENTO, nunca a memória:** o store lembra o que o artista escolheu, e
 /// o painel semeia isto uma vez. Quem abrir a secção não a vê fechar-se no quadro seguinte.
 pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
-    ParamGroup::new("p0x", "Curve").folded(),
-    ParamGroup::new("p0y", "Curve").folded(),
-    ParamGroup::new("p1x", "Curve").folded(),
-    ParamGroup::new("p1y", "Curve").folded(),
-    ParamGroup::new("p2x", "Curve").folded(),
-    ParamGroup::new("p2y", "Curve").folded(),
-    ParamGroup::new("p3x", "Curve").folded(),
-    ParamGroup::new("p3y", "Curve").folded(),
+    ParamGroup::new("p0x", "node.group.curve").folded(),
+    ParamGroup::new("p0y", "node.group.curve").folded(),
+    ParamGroup::new("p1x", "node.group.curve").folded(),
+    ParamGroup::new("p1y", "node.group.curve").folded(),
+    ParamGroup::new("p2x", "node.group.curve").folded(),
+    ParamGroup::new("p2y", "node.group.curve").folded(),
+    ParamGroup::new("p3x", "node.group.curve").folded(),
+    ParamGroup::new("p3y", "node.group.curve").folded(),
 ];
 
 /// **O caminho só é EXIGIDO quando não há curva autorada** — ver

@@ -308,21 +308,21 @@ pub(crate) static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
 /// tal como a restituição que modulam.
 pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
     // ONDE está o obstáculo.
-    ParamGroup::new("shape", "Shape"),
-    ParamGroup::new("center_x", "Shape"),
-    ParamGroup::new("center_y", "Shape"),
-    ParamGroup::new("radius", "Shape"),
-    ParamGroup::new("height", "Shape"),
-    ParamGroup::new("angle", "Shape"),
-    ParamGroup::new("box_width", "Shape"),
-    ParamGroup::new("box_height", "Shape"),
+    ParamGroup::new("shape", "node.group.shape"),
+    ParamGroup::new("center_x", "node.group.shape"),
+    ParamGroup::new("center_y", "node.group.shape"),
+    ParamGroup::new("radius", "node.group.shape"),
+    ParamGroup::new("height", "node.group.shape"),
+    ParamGroup::new("angle", "node.group.shape"),
+    ParamGroup::new("box_width", "node.group.shape"),
+    ParamGroup::new("box_height", "node.group.shape"),
     // QUEM bate nele — o raio da partícula, e de onde ele sai.
-    ParamGroup::new("radius_from", "Particle Size"),
-    ParamGroup::new("particle_radius", "Particle Size"),
-    ParamGroup::new("size_scale", "Particle Size"),
+    ParamGroup::new("radius_from", "node.group.particle_size"),
+    ParamGroup::new("particle_radius", "node.group.particle_size"),
+    ParamGroup::new("size_scale", "node.group.particle_size"),
     // O QUE acontece na batida.
-    ParamGroup::new("restitution", "Response"),
-    ParamGroup::new("friction", "Response"),
-    ParamGroup::new("restitution_randomness", "Response"),
-    ParamGroup::new("seed", "Response"),
+    ParamGroup::new("restitution", "node.group.response"),
+    ParamGroup::new("friction", "node.group.response"),
+    ParamGroup::new("restitution_randomness", "node.group.response"),
+    ParamGroup::new("seed", "node.group.response"),
 ];

@@ -168,14 +168,14 @@ pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
 /// ⚠️ **Nada fica solto**, e isso é uma escolha: um param solto aparece ANTES de
 /// toda seção, e aqui os dez pertencem, cada um, a exactamente uma das três.
 pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
-    ParamGroup::new("rows", "Mesh"),
-    ParamGroup::new("cols", "Mesh"),
-    ParamGroup::new("spacing", "Mesh"),
-    ParamGroup::new("gravity", "Physics"),
-    ParamGroup::new("stiffness", "Physics"),
-    ParamGroup::new("stretch", "Physics"),
-    ParamGroup::new("damping", "Physics"),
-    ParamGroup::new("pressure", "Physics"),
-    ParamGroup::new("clusters", "Physics"),
-    ParamGroup::new("pin", "Pin"),
+    ParamGroup::new("rows", "node.group.mesh"),
+    ParamGroup::new("cols", "node.group.mesh"),
+    ParamGroup::new("spacing", "node.group.mesh"),
+    ParamGroup::new("gravity", "node.group.physics"),
+    ParamGroup::new("stiffness", "node.group.physics"),
+    ParamGroup::new("stretch", "node.group.physics"),
+    ParamGroup::new("damping", "node.group.physics"),
+    ParamGroup::new("pressure", "node.group.physics"),
+    ParamGroup::new("clusters", "node.group.physics"),
+    ParamGroup::new("pin", "node.group.pin"),
 ];

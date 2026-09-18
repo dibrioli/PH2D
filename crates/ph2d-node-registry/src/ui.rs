@@ -346,8 +346,18 @@ pub struct ParamChannelRange {
 pub struct ParamGroup {
     /// The `ParamSpec::name` (ou o nome do text param) que esta linha agrupa.
     pub param: &'static str,
-    /// O título da seção, em inglês (HR-15: a face do artista sai por i18n no painel).
-    pub group: &'static str,
+    /// ⭐⭐ **A CHAVE do título da seção** — `node.group.<nome>`; a palavra vive em
+    /// `ph2d-i18n/src/node_groups.rs`.
+    ///
+    /// ⛔⛔ **Este doc dizia *«o título da seção, em inglês (HR-15: a face do artista sai por
+    /// i18n no painel)»* — e o painel pintava-o CRU**, em 229 sítios de 21 crates. *Uma nota que
+    /// descreve ONDE a tradução aconteceria lê-se como se ela acontecesse.* Curado em 2026-09-18,
+    /// por report do dono com duas setas vermelhas sobre `Shape` e `Leaves`.
+    ///
+    /// ⚠️⚠️ **Ela é IDENTIDADE além de legenda:** o `section_id` hasheia-a para o hit-rect e para
+    /// a memória de dobra. ⇒ quem resolve é o PINTOR, no último instante — traduzir antes mudaria
+    /// o id com o idioma, e a secção que o artista deixou dobrada abriria sozinha.
+    pub group_key: &'static str,
     /// **Esta seção NASCE FECHADA.**
     ///
     /// ⚠️ **É o NÓ que diz como a seção começa; é o STORE que lembra o que o artista
@@ -360,22 +370,22 @@ pub struct ParamGroup {
 }
 
 impl ParamGroup {
-    /// `ParamGroup::new("min", "Range")`.
+    /// `ParamGroup::new("min", "node.group.range")`.
     ///
     /// A tabela de um nó grande são dezenas de entradas, e a forma literal escreve cada uma em
     /// quatro linhas — uma tabela que o autor do nó não consegue LER de relance é uma tabela
     /// que ele não confere. Um construtor no tipo, e não um helper por-crate, porque seis
     /// cópias de `const fn g(..)` são seis respostas à mesma pergunta.
     #[must_use]
-    pub const fn new(param: &'static str, group: &'static str) -> Self {
+    pub const fn new(param: &'static str, group_key: &'static str) -> Self {
         Self {
             param,
-            group,
+            group_key,
             folded: false,
         }
     }
 
-    /// **Esta seção nasce FECHADA** — `ParamGroup::new("speed_random", "Randomness").folded()`.
+    /// **Esta seção nasce FECHADA** — `ParamGroup::new("speed_random", "node.group.randomness").folded()`.
     ///
     /// Um construtor a mais e não um campo no `new`, porque as dezenas de entradas que já
     /// existem não têm de reescrever nada: a emenda é apendada, e o default é o que sempre

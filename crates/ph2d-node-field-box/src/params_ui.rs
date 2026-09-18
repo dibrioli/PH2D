@@ -71,14 +71,14 @@ pub(super) static PARAM_HARD_MAX: &[ParamHardMax] = &[
 /// carta de 4 ou 6 rows dois cabeçalhos organizam menos do que ocupam.
 pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
     // Onde a caixa está plantada, e para onde ela aponta.
-    ParamGroup::new("center_x", "Placement"),
-    ParamGroup::new("center_y", "Placement"),
-    ParamGroup::new("rotation", "Placement"),
+    ParamGroup::new("center_x", "node.group.placement"),
+    ParamGroup::new("center_y", "node.group.placement"),
+    ParamGroup::new("rotation", "node.group.placement"),
     // Como a borda desvanece, e com que força ela pesa.
-    ParamGroup::new("soft", "Falloff"),
-    ParamGroup::new("curve", "Falloff"),
-    ParamGroup::new("invert", "Falloff"),
-    ParamGroup::new("strength", "Falloff"),
+    ParamGroup::new("soft", "node.group.falloff"),
+    ParamGroup::new("curve", "node.group.falloff"),
+    ParamGroup::new("invert", "node.group.falloff"),
+    ParamGroup::new("strength", "node.group.falloff"),
 ];
 
 pub(super) static PARAM_HINTS: &[ParamUiHint] = &[

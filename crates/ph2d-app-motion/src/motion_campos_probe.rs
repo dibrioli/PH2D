@@ -99,7 +99,10 @@ fn the_two_spatial_boxes_group_a_shared_param_the_same_way() {
     for nome in GRUPO {
         let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
         let grupos = reg.param_groups(tid);
-        if !grupos.iter().any(|g| g.group == "Placement") {
+        // ⚠️ Pela CHAVE, que é o que o campo guarda desde 2026-09-18. Escrito como o nome
+        //    inglês isto casaria ZERO e a sonda ficaria muda — a mesma armadilha do «valor
+        //    esperado que é um NOME» que os matcaps pagaram, aqui num caminho que NÃO estoura.
+        if !grupos.iter().any(|g| g.group_key == "node.group.placement") {
             continue;
         }
         let man = {
@@ -112,7 +115,7 @@ fn the_two_spatial_boxes_group_a_shared_param_the_same_way() {
             let onde = grupos
                 .iter()
                 .find(|g| g.param == spec.name)
-                .map_or("(solto)", |g| g.group);
+                .map_or("(solto)", |g| g.group_key);
             casa.insert(spec.name, onde);
         }
         casas.push((nome, casa));

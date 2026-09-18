@@ -187,17 +187,17 @@ pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
     // ⚠️ O TETO é da rampa da alfa, e a rampa vive em `Decay`: fora de secção ele era pintado
     // no TOPO (com o Length e o Spacing), longe do `Tail Alpha` com que forma o par — e o
     // comentário do hint já dizia que a ordem era a leitura (ciclo 7, W2).
-    ParamGroup::new(super::ALPHA_MAX, "Decay"),
-    ParamGroup::new("fade", "Decay"),
-    ParamGroup::new("shrink", "Decay"),
-    ParamGroup::new("spin", "Decay"),
-    ParamGroup::new("hue_shift", "Colour"),
-    ParamGroup::new("saturation", "Colour"),
+    ParamGroup::new(super::ALPHA_MAX, "node.group.decay"),
+    ParamGroup::new("fade", "node.group.decay"),
+    ParamGroup::new("shrink", "node.group.decay"),
+    ParamGroup::new("spin", "node.group.decay"),
+    ParamGroup::new("hue_shift", "node.group.colour"),
+    ParamGroup::new("saturation", "node.group.colour"),
     // O operador é sobre a COR na tela, tanto quanto o matiz e a saturação.
-    ParamGroup::new(ECHO_BLEND, "Colour"),
+    ParamGroup::new(ECHO_BLEND, "node.group.colour"),
     // **De onde o eco vem**, e o que só a re-cozedura permite.
-    ParamGroup::new(SOURCE, "Source"),
-    ParamGroup::new(FORWARD, "Source"),
+    ParamGroup::new(SOURCE, "node.group.source"),
+    ParamGroup::new(FORWARD, "node.group.source"),
 ];
 
 /// ⚠️ **O `Forward Steps` só existe no `Resampled`** (ciclo 7, W2): um ring não contém o futuro,

@@ -288,14 +288,14 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 /// de propósito: as oito coordenadas são o polígono de controle de uma cúbica nos dois nós, e
 /// dois títulos para o mesmo objeto ensinariam que são coisas diferentes.
 static PARAM_GROUPS: &[ParamGroup] = &[
-    ParamGroup::new("p0x", "Curve"),
-    ParamGroup::new("p0y", "Curve"),
-    ParamGroup::new("p1x", "Curve"),
-    ParamGroup::new("p1y", "Curve"),
-    ParamGroup::new("p2x", "Curve"),
-    ParamGroup::new("p2y", "Curve"),
-    ParamGroup::new("p3x", "Curve"),
-    ParamGroup::new("p3y", "Curve"),
+    ParamGroup::new("p0x", "node.group.curve"),
+    ParamGroup::new("p0y", "node.group.curve"),
+    ParamGroup::new("p1x", "node.group.curve"),
+    ParamGroup::new("p1y", "node.group.curve"),
+    ParamGroup::new("p2x", "node.group.curve"),
+    ParamGroup::new("p2y", "node.group.curve"),
+    ParamGroup::new("p3x", "node.group.curve"),
+    ParamGroup::new("p3y", "node.group.curve"),
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[

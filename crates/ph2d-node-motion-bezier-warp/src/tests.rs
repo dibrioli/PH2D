@@ -284,7 +284,7 @@ fn the_panel_offers_every_param_and_groups_them_all() {
         );
     }
     // Cinco secções: os cantos e as quatro arestas.
-    let mut sections: Vec<&str> = PARAM_GROUPS.iter().map(|g| g.group).collect();
+    let mut sections: Vec<&str> = PARAM_GROUPS.iter().map(|g| g.group_key).collect();
     sections.sort_unstable();
     sections.dedup();
     assert_eq!(sections.len(), 5, "cantos + 4 arestas: {sections:?}");

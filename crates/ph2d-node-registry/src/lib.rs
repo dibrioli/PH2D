@@ -483,7 +483,7 @@ impl NodeRegistry {
             .get(&id)?
             .iter()
             .find(|g| g.param == param)
-            .map(|g| g.group)
+            .map(|g| g.group_key)
     }
 
     /// **Os títulos de seção deste tipo que NASCEM FECHADOS** — ver [`ParamGroup::folded`].
@@ -496,7 +496,7 @@ impl NodeRegistry {
             .param_groups(id)
             .iter()
             .filter(|g| g.folded)
-            .map(|g| g.group)
+            .map(|g| g.group_key)
             .collect();
         v.dedup();
         v
@@ -519,8 +519,8 @@ impl NodeRegistry {
     pub fn param_group_order(&self, id: NodeTypeId) -> Vec<&'static str> {
         let mut seen: Vec<&'static str> = Vec::new();
         for g in self.param_groups.get(&id).copied().unwrap_or(&[]) {
-            if !seen.contains(&g.group) {
-                seen.push(g.group);
+            if !seen.contains(&g.group_key) {
+                seen.push(g.group_key);
             }
         }
         seen

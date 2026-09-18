@@ -461,16 +461,16 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 /// *com que aparência ele acende?* — a `probability` fica com a primeira porque
 /// ela decide QUANDO há flash, não como ele se parece.
 static PARAM_GROUPS: &[ParamGroup] = &[
-    ParamGroup::new("attack", "Envelope"),
-    ParamGroup::new("hold", "Envelope"),
-    ParamGroup::new("decay", "Envelope"),
-    ParamGroup::new(CURVE_KEY, "Envelope"),
-    ParamGroup::new("probability", "Envelope"),
-    ParamGroup::new("size_boost", "Look"),
-    ParamGroup::new("flash_r", "Look"),
+    ParamGroup::new("attack", "node.group.envelope"),
+    ParamGroup::new("hold", "node.group.envelope"),
+    ParamGroup::new("decay", "node.group.envelope"),
+    ParamGroup::new(CURVE_KEY, "node.group.envelope"),
+    ParamGroup::new("probability", "node.group.envelope"),
+    ParamGroup::new("size_boost", "node.group.look"),
+    ParamGroup::new("flash_r", "node.group.look"),
     // ⚠️ O modo é de como o flash se PARECE: fora de secção ele era pintado no TOPO do cartão,
     // antes do `Envelope` (ciclo 7, W2).
-    ParamGroup::new(FLASH_BLEND, "Look"),
+    ParamGroup::new(FLASH_BLEND, "node.group.look"),
 ];
 
 /// **O OPERADOR DO FLASH** — irmão do `motion.trail::ECHO_BLEND`, e a célula da folha 07

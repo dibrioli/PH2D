@@ -165,23 +165,23 @@ pub(super) static PARAM_HARD_MAX: &[ParamHardMax] = &[
 /// ⚠️ Fica SOLTO só o `count` — o número que o artista muda o tempo todo.
 pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
     // Quem é vizinho, e o que fazer com ele.
-    ParamGroup::new("radius", "Flocking"),
-    ParamGroup::new("separation", "Flocking"),
-    ParamGroup::new("separation_radius", "Flocking"),
-    ParamGroup::new("alignment", "Flocking"),
-    ParamGroup::new("cohesion", "Flocking"),
+    ParamGroup::new("radius", "node.group.flocking"),
+    ParamGroup::new("separation", "node.group.flocking"),
+    ParamGroup::new("separation_radius", "node.group.flocking"),
+    ParamGroup::new("alignment", "node.group.flocking"),
+    ParamGroup::new("cohesion", "node.group.flocking"),
     // ⚠️ O cone vive em **Flocking** pela mesma razão do `radius`: ele é a outra
     // metade da pergunta *quem é vizinho?* — distância E ângulo, o modelo de
     // Reynolds inteiro. Pô-lo em Steering separaria as duas metades de uma coisa.
-    ParamGroup::new("fov", "Flocking"),
+    ParamGroup::new("fov", "node.group.flocking"),
     // Para onde o bando é levado, e quão rápido pode ir.
-    ParamGroup::new("seek", "Steering"),
-    ParamGroup::new("max_speed", "Steering"),
-    ParamGroup::new("max_force", "Steering"),
-    ParamGroup::new("speed_floor", "Steering"),
+    ParamGroup::new("seek", "node.group.steering"),
+    ParamGroup::new("max_speed", "node.group.steering"),
+    ParamGroup::new("max_force", "node.group.steering"),
+    ParamGroup::new("speed_floor", "node.group.steering"),
     // Como a nuvem inicial nasce.
-    ParamGroup::new("seed", "Spawn"),
-    ParamGroup::new("spread", "Spawn"),
+    ParamGroup::new("seed", "node.group.spawn"),
+    ParamGroup::new("spread", "node.group.spawn"),
 ];
 
 pub(super) static PARAM_HINTS: &[ParamUiHint] = &[

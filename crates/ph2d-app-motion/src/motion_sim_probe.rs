@@ -212,7 +212,7 @@ fn every_section_of_this_group_names_a_param_that_exists() {
         let man = op.manifest();
         for g in m.registry.param_groups(tid) {
             if !man.params.iter().any(|p| p.name == g.param) {
-                orfaos.push(format!("{nome}::{} (seccao `{}`)", g.param, g.group));
+                orfaos.push(format!("{nome}::{} (seccao `{}`)", g.param, g.group_key));
             }
         }
     }
@@ -336,7 +336,7 @@ fn every_row_the_sim_tutorial_names_is_on_the_card() {
             .iter()
             .find(|v| v.display_name == titulo)
             .expect("o cartao existe (verificado acima)");
-        let secs: Vec<&str> = v.sections.iter().map(|s| s.title).collect();
+        let secs: Vec<&str> = v.sections.iter().map(|s| ph2d_i18n::tr(s.title)).collect();
         assert!(
             secs.contains(&seccao),
             "o tutorial manda abrir a seccao `{seccao}` no cartao `{titulo}`, e ele tem {secs:?}"
@@ -390,7 +390,11 @@ fn every_row_the_sim_tutorial_names_is_on_the_card() {
             TUTORIAL.contains(titulo),
             "o gate defende o cartao `{titulo}` e o tutorial nunca o nomeia"
         );
-        let secs: Vec<&str> = forma.sections.iter().map(|s| s.title).collect();
+        let secs: Vec<&str> = forma
+            .sections
+            .iter()
+            .map(|s| ph2d_i18n::tr(s.title))
+            .collect();
         assert!(
             secs.contains(&"Collision"),
             "o capitulo 6 manda abrir a seccao `Collision` em `{titulo}`, e ele tem {secs:?}"

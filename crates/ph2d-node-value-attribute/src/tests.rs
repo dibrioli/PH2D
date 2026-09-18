@@ -157,7 +157,7 @@ fn every_offered_channel_reads_a_column_the_library_actually_writes() {
             [1.0, 1.0, 1.0, 0.75],
         ]),
     );
-    let opacity = Some(canal("Opacity")).expect("the picker offers an Opacity channel");
+    let opacity = canal("Opacity");
     assert_eq!(
         field(&drove, opacity.column, opacity.mode),
         vec![0.25, 0.50, 0.75],
@@ -191,7 +191,7 @@ fn the_other_channels_still_read_their_own_columns() {
 fn the_weight_a_field_leaves_is_readable_by_the_picker() {
     // Um stream como uma `field.*` o deixa: o peso por linha na coluna `falloff`.
     let shaped = Stream::new(3).with("falloff", Column::Scalar(vec![0.0, 0.5, 1.0]));
-    let ch = Some(canal("Falloff")).expect("o picker oferece o canal Falloff");
+    let ch = canal("Falloff");
     assert_eq!(
         field(&shaped, ch.column, ch.mode),
         vec![0.0, 0.5, 1.0],
@@ -245,7 +245,7 @@ fn the_direction_channel_reads_a_vec2_as_an_angle_in_degrees() {
             [1.0, 1.0],
         ]),
     );
-    let ch = Some(canal("Direction")).expect("o picker oferece um canal Direction");
+    let ch = canal("Direction");
     let got = field(&s, ch.column, ch.mode);
     for (i, (g, want)) in got.iter().zip([0.0, 90.0, 180.0, -90.0, 45.0]).enumerate() {
         assert!(
@@ -380,7 +380,7 @@ fn a_vec2_column_is_unreachable_without_a_picker_entry() {
          entradas de posicao existirem mudou com ele"
     );
     // CONTROLE: a MESMA coluna, pela entrada, responde.
-    let ch = Some(canal("Radius")).expect("o picker oferece o canal Radius");
+    let ch = canal("Radius");
     assert_eq!(field(&laid, ch.column, ch.mode), vec![5.0, 2.0]);
 }
 
@@ -527,7 +527,7 @@ fn the_three_identities_are_offered_and_read_their_own_columns() {
         assert_eq!(field(&s, ch.column, ch.mode), want, "o canal `{label}`");
     }
     // E a fracção de vida também está na lista, com o modo que a implica.
-    let lf = Some(canal("Life Fraction")).expect("o picker oferece a fraccao de vida");
+    let lf = canal("Life Fraction");
     assert_eq!(
         (lf.column, lf.mode),
         ("age", MODE_LIFE_FRACTION),

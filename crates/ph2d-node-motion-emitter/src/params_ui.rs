@@ -429,33 +429,33 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
 /// *"param que não pertence a nenhuma seção"*, e não *"param essencial"*.
 pub static PARAM_GROUPS: &[ParamGroup] = &[
     // Como a partícula é lançada.
-    ParamGroup::new("speed", "Velocity"),
-    ParamGroup::new("speed_random", "Velocity"),
-    ParamGroup::new("angle", "Velocity"),
-    ParamGroup::new("spread", "Velocity"),
+    ParamGroup::new("speed", "node.group.velocity"),
+    ParamGroup::new("speed_random", "node.group.velocity"),
+    ParamGroup::new("angle", "node.group.velocity"),
+    ParamGroup::new("spread", "node.group.velocity"),
     // ⚠️ Os dois vivem em **Velocity** e não numa secção própria: a pergunta é
     // *com que velocidade a partícula parte*, e o emissor é uma das duas fontes
     // dela. Uma secção «Emitter» separaria os dois lados da mesma soma.
-    ParamGroup::new(crate::MOTION, "Velocity"),
-    ParamGroup::new(crate::INHERIT, "Velocity"),
+    ParamGroup::new(crate::MOTION, "node.group.velocity"),
+    ParamGroup::new(crate::INHERIT, "node.group.velocity"),
     // De onde.
-    ParamGroup::new("x", "Origin"),
-    ParamGroup::new("y", "Origin"),
-    ParamGroup::new("shape_mode", "Origin"),
-    ParamGroup::new("shape_w", "Origin"),
-    ParamGroup::new("shape_h", "Origin"),
+    ParamGroup::new("x", "node.group.origin"),
+    ParamGroup::new("y", "node.group.origin"),
+    ParamGroup::new("shape_mode", "node.group.origin"),
+    ParamGroup::new("shape_w", "node.group.origin"),
+    ParamGroup::new("shape_h", "node.group.origin"),
     // It answers *which way does a particle LEAVE?*, so it lives with the launch and not with
     // the birth place it happens to be derived from.
-    ParamGroup::new("dir_mode", "Velocity"),
+    ParamGroup::new("dir_mode", "node.group.velocity"),
     // Quando e quantas. O `emit_mode` fica SOLTO, ao lado do `rate`: ele e o `rate` respondem a
     // mesma pergunta (*como as particulas chegam?*), e os tres abaixo sao o detalhe de UMA das
     // duas respostas.
     // ⚠️ **O `probability` fica SOLTO, com o `rate` e o `emit_mode`, e NÃO na secção Burst** —
     // ele vale nos dois modos, e os três da secção estão `ParamGate`-ados ao modo Burst. Um
     // controle vivo dentro de uma secção que desaparece leria como se ele desaparecesse também.
-    ParamGroup::new("burst_count", "Burst"),
-    ParamGroup::new("burst_time", "Burst"),
-    ParamGroup::new("burst_period", "Burst"),
+    ParamGroup::new("burst_count", "node.group.burst"),
+    ParamGroup::new("burst_time", "node.group.burst"),
+    ParamGroup::new("burst_period", "node.group.burst"),
     // **Quanto cada partícula difere das irmãs** — e a secção NASCE FECHADA.
     //
     // ⚠️ **Ela não é arrumação: é o que tira este nó da lista de nós que estouram o dock.**
@@ -467,9 +467,9 @@ pub static PARAM_GROUPS: &[ParamGroup] = &[
     // os abre uma vez fica com eles abertos (o store lembra a escolha; o nó só diz como ela
     // COMEÇA). ⛔ O `probability` fica de fora de propósito — ele decide se uma partícula
     // NASCE, não o quanto ela difere de quem nasceu, e a nota acima já o mantinha solto.
-    ParamGroup::new("speed_random", "Randomness").folded(),
-    ParamGroup::new("size_random", "Randomness").folded(),
-    ParamGroup::new(crate::LIFE_RANDOM, "Randomness").folded(),
+    ParamGroup::new("speed_random", "node.group.randomness").folded(),
+    ParamGroup::new("size_random", "node.group.randomness").folded(),
+    ParamGroup::new(crate::LIFE_RANDOM, "node.group.randomness").folded(),
 ];
 
 /// **`Direction` is only offered once a shape gives a particle a radius.**

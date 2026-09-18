@@ -611,14 +611,14 @@ mod tests;
 /// arrumação pelo alcance.
 pub static PARAM_GROUPS: &[ParamGroup] = &[
     // ONDE esta força opera.
-    ParamGroup::new("target_mode", "Placement"),
-    ParamGroup::new("target_x", "Placement"),
-    ParamGroup::new("target_y", "Placement"),
-    ParamGroup::new("lead", "Placement"),
+    ParamGroup::new("target_mode", "node.group.placement"),
+    ParamGroup::new("target_x", "node.group.placement"),
+    ParamGroup::new("target_y", "node.group.placement"),
+    ParamGroup::new("lead", "node.group.placement"),
     // COMO ela se desvanece com a distância.
-    ParamGroup::new("radius", "Falloff"),
-    ParamGroup::new("curve", "Falloff"),
-    ParamGroup::new(profile::INNER, "Falloff"),
-    ParamGroup::new(profile::PEAK, "Falloff"),
-    ParamGroup::new(profile::REVERSE, "Falloff"),
+    ParamGroup::new("radius", "node.group.falloff"),
+    ParamGroup::new("curve", "node.group.falloff"),
+    ParamGroup::new(profile::INNER, "node.group.falloff"),
+    ParamGroup::new(profile::PEAK, "node.group.falloff"),
+    ParamGroup::new(profile::REVERSE, "node.group.falloff"),
 ];

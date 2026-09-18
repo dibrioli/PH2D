@@ -111,33 +111,20 @@ const NOT_LANGUAGE: &[Excecao] = &[
 const IDENTIDADE: &str = "a IDENTIDADE de um molde — ver o mecanismo na entrada `Tree`: o \
                           selector carrega chaves e um gate compara as duas listas";
 
-/// ⛔⛔ **DÍVIDA NOMEADA, e ela NÃO é desta crate** — os nomes das SECÇÕES do painel de params.
-///
-/// `ParamGroup::new(param, "Shape")` põe o nome da secção no manifesto do nó, em inglês cru.
-/// Medido em 2026-09-17: **228 sítios em 20 crates**, ~40 nomes distintos (*Placement*,
-/// *Falloff*, *Physics*, *Leaves*…). ⇒ é uma FRONTEIRA inteira — a dos manifestos de nó, que o
-/// `CLAUDE.md` §5 já nomeia — e curá-la só aqui deixaria este nó a falar e os outros dezanove
-/// calados, que é pior do que a dívida: *uma lista de excepções com um membro curado lê-se como
-/// se a classe estivesse tratada.*
-///
-/// ⚠️ **Esta entrada é uma CATRACA:** ela só encolhe, e no dia em que a fronteira fechar o
-/// `cada_excecao_nomeada_ainda_abriga_um_literal` manda apagá-la.
-const DIVIDA_DOS_GRUPOS: &[Excecao] = &[
-    ("ui.rs", "Shape", GRUPO),
-    ("ui.rs", "Leaves", GRUPO),
-    ("ui.rs", "Grammar", GRUPO),
-    ("ui.rs", "Growth", GRUPO),
-    ("ui.rs", "Lean & Look", GRUPO),
-];
-
-const GRUPO: &str = "nome de SECÇÃO do painel de params (`ParamGroup::new`) — dívida da fronteira \
-                     dos MANIFESTOS DE NÓ, medida em 228 sítios / 20 crates; ver o doc da \
-                     `DIVIDA_DOS_GRUPOS`";
+// ✅ **A DÍVIDA DOS GRUPOS FECHOU em 2026-09-18, e saiu daqui.** Ela vivia neste ficheiro como
+// cinco excepções (`Shape`, `Leaves`, `Grammar`, `Growth`, `Lean & Look`) com a medição ao lado —
+// 228 sítios em 20 crates —, e a nota dizia que curá-la só aqui deixaria este nó a falar e os
+// outros dezanove calados.
+//
+// ⚠️ **Quem a cobrou foi o DONO, no dia seguinte**, com duas setas vermelhas sobre `Shape` e
+// `Leaves` numa foto do cartão: *«nomes de seção não mudaram»*. ⇒ 247 sítios, 39 nomes, tabela
+// `ph2d-i18n/src/node_groups.rs`, gate `every_param_group_key_resolves_to_a_word`.
+//
+// ⭐ *Uma dívida medida e nomeada é uma que o dono consegue cobrar; uma dívida calada é uma que
+// ele descobre na foto.*
 
 fn todas() -> Vec<Excecao> {
-    let mut v = NOT_LANGUAGE.to_vec();
-    v.extend_from_slice(DIVIDA_DOS_GRUPOS);
-    v
+    NOT_LANGUAGE.to_vec()
 }
 
 #[test]

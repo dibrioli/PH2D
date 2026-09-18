@@ -831,3 +831,163 @@ vermelho por dívida. Esta secção **casa** com ele e não o substitui.
 |---|---|---|
 | **E** (2.ª emenda) | subagente-E, 2026-09-17 | as duas conclusões da §14 reescritas para o que a medição sustenta · B-3..B-8 · 40 asserções re-derivadas · varredura por forma de raiz |
 | **R-pré, 3.ª passagem** | — | **por despachar** |
+
+---
+
+## §4.6 — AUDITORIA R-PRÉ, **3.ª PASSAGEM**: ✅ **APROVADA** (subagente-R independente, 2026-09-17)
+
+> ⛔⛔ **Não herdei o limpo das minhas duas passagens.** Varri a emenda de raiz, por **FORMA** e com
+> títulos incluídos, e re-medi tudo o que ela reescreveu com o meu próprio conferidor.
+>
+> ✅ **ATESTADO: a espec `SPEC_pente_de_topologia.md`, as `221` fixturas de `fixtures/rake/` e o
+> `README.md` delas estão APTOS a ser entregues à janela I.** A parede está intacta, a régua é
+> reprodutível por terceiros, a barra é honesta e todo número citado re-deriva do ficheiro
+> publicado. **A janela de implementação está ABERTA.**
+
+### §4.6.1 — O que a janela I está autorizada a ler e a construir
+
+| | |
+|---|---|
+| **LER** | `SPEC_pente_de_topologia.md` · `fixtures/rake/**` (221 ficheiros) · `INBOX_blender-rake.md` (só para escrever, `cat >>`) |
+| ⛔ **NÃO LER** | este LEDGER · `VASSOURA_blender-rake.txt` · a denylist de URLs do cabeçalho — **incluindo os dois endereços públicos do §10**, que existem para o revisor e não para o implementador |
+| **CONSTRUIR** | a relaxação tangencial do §3.2 · os **14** gates do §13 com as barras como estão · ⭐ e a ordem da §14.5: **(b) PRIMEIRO** — a relaxação **dentro do laço por-carimbo** —, medindo contra o `G-2` |
+| ⛔ **NÃO CONSTRUIR** | uma segunda lei antes de (b) estar no sítio e medida. *A pergunta «uma lei ou duas» está EM ABERTO por decisão medida, não por omissão* |
+
+⭐ **Sweep verificado por mim:** as **dez** vassouras vivas fecham `exit 0` sobre exactamente esse
+conjunto (espec + 221 fixturas + INBOX).
+
+### §4.6.2 — Os TRÊS pontos em que a medição era minha: ⛔ **PERDI DOIS**
+
+**B-8 — ⛔ EU ESTAVA ERRADO; o número dele está certo.** Eu publiquei `0,741 → 0,754` e ele
+`0,741 → 0,761`. Medido corrida a corrida: `wf_n9_p1` lê **`0,7543` (r1)** e **`0,7668` (r2)**, média
+**`0,7606` → `0,761`**. ⇒ **eu reportei UMA corrida onde a célula tem duas**, e ele fez a média, que
+é a leitura certa num regime que ele próprio mediu como não-repetível. *Uma régua que lê uma
+realização de uma família de repetições não é a régua da família.* ⭐ **A substância do achado
+sobrevive e ele publicou-a**: a `9×` o `Q` sobe (`+0,0084`) e os irregulares **pioram** (`0,741 →
+0,761`) — os dois canais discordam no sinal no ponto que decide, e essa linha está agora na tabela.
+
+**B-3 — ⛔ EU ESTAVA ERRADO, e o achado CAI. A explicação dele é correcta e não é óbvia.** Eu escrevi
+*«toda definição dá `269 · 124` e nenhum par de corridas dá `266`»*. **Medido, arredondando ANTES de
+ordenar:**
+
+| precisão do arredondamento | posições ordenadas que diferem |
+|---|---|
+| cru (o ficheiro grava até **12** casas) | **`269`** |
+| a `9` casas | **`266`** |
+| a `8` casas | `195` |
+| a `7` casas | `43` |
+| a `6` casas | **`10`** |
+
+⇒ as **três** redacções (`10`, `266`, `269`) são três precisões da **mesma** grandeza, e o
+arredondamento **reordena**. ⚠️ **A minha leitura tinha uma premissa escondida — a ordem** —, que é
+exactamente o assunto da secção que eu estava a auditar. *Uma auditoria que não aplica ao seu próprio
+método a lei que a secção ensina é a forma mais cara de errar aqui.*
+⭐⭐ **E ele fechou o único número que eu não conseguia achar:** o `118` que eu procurei em nove
+precisões e em quinze pares de corridas **re-deriva** — é o critério da **maior componente**
+(`118`), contra a **norma euclidiana** (`124`, a minha leitura). Medi as duas: `118` e `124`, com
+`2` acima de `1e-7` e `0` acima de `1e-6` nas duas. A espec publica agora **as duas, com a métrica
+nomeada em cada uma** — que é mais do que eu pedi.
+
+**B-7 — ✅ CONFIRMADO, e há uma forma MAIS FORTE do argumento, disponível no corpus.** Medi a §4.3
+pelo caminho do produto: `y_umdab` (**1** ponto de percurso) ⇒ o verbo moveu `56` e **o pente moveu
+`0`**; `y_doisdab` (**2** pontos) ⇒ o verbo moveu `70` e **o pente moveu `53`**. O limiar de **dois**
+está medido. E a aritmética do chão re-deriva do cabeçalho (`percurso 1,400` · `raio 0,350` ·
+`espaçamento 10 %` ⇒ passo `0,0700`): `9×` dá **`2,22`** carimbos por troço, `18×` dá **`1,11`**.
+⭐⭐ **E a ligação é mais forte do que uma analogia — é uma IDENTIDADE GEOMÉTRICA:** um troço do `9×`
+mede `1,4/9 = 0,155556`, e o vão dos dois pontos de `y_doisdab` mede **`0,155556`** (concordam a
+`4,4e-7`, que é a precisão com que o ficheiro grava o percurso). ⇒ *a célula que a §4.3 usa para
+medir o limiar **É**, geometricamente, um troço do `9×`.* Sugestão ao E, não condição.
+
+### §4.6.3 — A conclusão da §14 ficou HONESTA: as quatro passagens dizem o mesmo
+
+Confiri as quatro e varri o documento inteiro por frase residual. **Nenhuma delas afirma que são
+duas leis**, e todas apontam ao mesmo sítio:
+
+| passagem | o que diz hoje |
+|---|---|
+| **título §14** | *«COMPOR EM SÉRIE **FALHA**; a pergunta ‹uma lei ou duas› fica **EM ABERTO**»* |
+| **§14.3** | separa *o que a medição sustenta* de *o que ela NÃO sustenta*, e nomeia as **duas** afirmações caídas, incluindo a da própria emenda anterior |
+| **§11.1** | *«o que o §14 mede é COMPOSIÇÃO, não o número de leis … ⇒ a pergunta fica EM ABERTO»* |
+| **§12** (1.ª célula) | *«a pergunta está EM ABERTO, e agora com um resultado por baixo»*, com a indicação e a fraqueza |
+| **§14.5.2** | *«Favorece, não demonstra»* |
+
+⭐ **A frase que fica, e que eu re-derivei inteira:**
+
+> *«Compor as duas metades EM SÉRIE — relaxar com o passe desarmado, depois refinar com o pente a
+> zero — FALHA o `G-2` em TODAS as granularidades que este instrumento alcança. O melhor caso, a
+> `9×`, lê `Q = +0,0028` contra a barra de `+0,0465`; o alvo a fazer as duas coisas junto lê
+> `+0,1214` e passa. A tendência com a granularidade é monótona crescente e, no ponto mais fino, ela
+> já passou o zero.»*
+
+✅ **Ela é sustentada pelo corpus, número a número** — medi os três valores e a monotonia. E **não**
+troca uma inferência por outra mais bem vestida: ela não afirma nada sobre o interior do alvo nem
+sobre o número de leis; afirma um facto sobre **composição**, que é o que o instrumento mede.
+⭐ **E o resíduo que eu tinha apontado na ORDEM de leitura está curado sem eu o pedir:** a §14.5.3 diz
+agora *«Faça (b) PRIMEIRO»*, o que impede o Implementador de sair à caça de uma segunda lei antes de
+a hipótese barata estar no sítio.
+
+**O valor ABSOLUTO promovido a coluna que decide — ✅ e a razão é correcta.** Medi as linhas de base:
+`−0,0456` (junto, um traço) contra `−0,0110` · `−0,0137` · `−0,0106` · `−0,0057` (série, 2 a 18
+traços) — as bases **não** são a mesma, porque o lado desligado assenta com as passagens (é o §5.2
+desta espec). ⇒ comparar `ΔQ` entre configurações compara deltas sobre pontos de operação
+diferentes; comparar o **absoluto contra o `G-2`** não tem esse problema, e é o que o gate mede.
+
+**A extrapolação `1/n` — ✅ e é honestidade na medida CERTA, não a mais.** Re-derivei os dois ajustes:
+`ΔQ` em `1/n` dá **`a = +0,0393`, `b = −0,2475`** e `Q(p1)` em `1/n` dá **`+0,0304`** — os dois ao
+dígito do que a espec publica. ⚠️ **E os dois estão do MESMO lado da barra** (`+0,0465`): a escolha do
+ajuste muda o número e **não** muda o sentido da indicação. ⇒ a indicação indica; declarar a fraqueza
+sem esconder que ela não inverte o sinal é exactamente o registo certo. *Uma quarta fraqueza
+declarada que não derruba a conclusão é mais forte do que três escondidas.*
+
+### §4.6.4 — Os outros achados, e a caça aos IRMÃOS do resíduo
+
+| achado | veredito | o que eu medi |
+|---|---|---|
+| **B-1 · B-2** | ✅ curados | ver §4.6.3 |
+| **B-4** | ✅ curado | `n = 32`/`32` aplicando as nove chaves à letra — **bate com a minha medição**; e a robustez está publicada (com `32`, `34` e `35` as extremas são as mesmas e as reprovações são zero) |
+| **B-5** | ✅ curado | `0,0990` é a aresta média da **entrada** ✓; saída `0,1002` ✓; pegada `0,1060` ✓ — as três que eu medi, com a população nomeada |
+| **B-6** | ✅ curado | `+0,109557 → +0,1096` e `+0,167718 → +0,1677` ✓, com a regra *arredondar, nunca truncar* escrita |
+| **A-8, o irmão que ELE achou** | ✅ curado | o `1 917` do README deu lugar a `1 260` ✓ — re-derivei como diferença simétrica de arestas |
+
+⭐ **Procurei os IRMÃOS, como pedido, e a árvore está coerente.** Cruzei os números partilhados entre
+a espec, o `README` das fixturas e o INBOX:
+
+- **a tabela das famílias do README bate com a pasta nas NOVE células** (`14 · 6 · 29 · 10 · 62 · 26
+  · 30 · 18 · 26`), contadas por mim — e a nota diz que são contadas, com o comando;
+- a tabela `S × Q` das quatro rotações do README bate com a minha medição nas oito células;
+- `1 917` não sobrevive em documento nenhum; `0,0995` aparece **uma** vez e é a menção de que foi
+  retirado; `10`/`266`/`269`/`118`/`124` aparecem todos, com a métrica de cada um;
+- o INBOX continua vazio de factos (só o formato), logo não há terceira cópia a divergir.
+
+### §4.6.5 — As verificações de integridade
+
+| o que | resultado |
+|---|---|
+| **fixturas mexidas nesta emenda** | **ZERO** células (`git diff` sobre `fixtures/` devolve só o `README.md`) |
+| **corpos ainda byte-idênticos ao commit ORIGINAL** `45dd47832` | **195 de 195** ⇒ as minhas medições das três passagens medem todas o mesmo corpus |
+| **linhas removidas do ledger** | **ZERO** — a §4.2.5 e o bloco `SWEEP-ESPERADO:` estão **intactos**, e a §4.5 do E **casa** com eles em vez de os substituir |
+| **esperado × observado** | `-pull` sobre este ficheiro: `exit = 1`, linhas **`421 · 429 · 437`** — **exactamente** o que o bloco declara |
+| **âmbito do Implementador** | `exit = 0` nas **dez** vassouras |
+| **varredura por FORMA das linhas NOVAS** | cada promessa (*medido · prova · favorece · robusta*) traz o número ao lado; re-derivei as **cinco** que carregam peso |
+
+### §4.6.6 — O que fica ABERTO (e é do E ou do dono, não bloqueia a implementação)
+
+Nada disto impede a janela I de trabalhar; está no §12 da espec com dono escrito:
+
+1. **A pergunta «uma lei ou duas»** — instrumento na §14.4, e só decidível **depois** de (b) estar
+   implementada e medida contra o `G-2`. *É a primeira coisa que o I devolve.*
+2. A régua para **malha curva** · o **custo** · a **máscara** · a **corda contra a direcção local**
+   num arco · a **não-monotonia** entre 1 e 2 passagens — todos **E**.
+3. Os cinco excluídos e a faixa do botão parar em `0,5` — **o dono**.
+4. ⏳ **E a dívida que não é desta obra continua com dono:** `docs/3D/20_divergencias_tools.md`
+   (§4.2.5 T-3) e a entrada da `VASSOURA_blender-pull.txt` (T-4). Nenhuma bloqueia esta espec.
+
+### §4.6.7 — Corrente
+
+| papel | id / data | o que fez |
+|---|---|---|
+| **R-pré, 3.ª passagem** | subagente-R independente, 2026-09-17 | ✅ **APROVADA** — três passagens, `21` achados no total, todos curados ou adjudicados. ⛔ **Dois dos meus caíram nesta passagem** (`B-8` por eu ler uma corrida de duas; `B-3` por a minha leitura ter a premissa escondida que a secção auditada ensina). A janela de implementação **abre** |
+
+⚠️ **Higiene:** nada do alvo tocou o disco em nenhuma das três passagens. As vassouras correram pelo
+`cleanroom-sweep.sh` (descodificação em memória), a saída foi consumida **em cano**, e destes três
+registos saem apenas contagens, números de linha e grandezas — nunca os termos que casaram.

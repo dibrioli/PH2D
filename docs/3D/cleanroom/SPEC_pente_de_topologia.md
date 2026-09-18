@@ -37,7 +37,15 @@ Auditoria §4.2 (R-pré), 2.ª passagem: subagente-R independente, 2026-09-17 �
   «converge para ZERO» e «não é uma lei só» — que a própria §14.4 contradiz, mais quatro
   números residuais. Os 8 achados (`B-1`..`B-8`) e o que emendar: LEDGER §4.4
   (⛔ que o Implementador NÃO abre — o E traz a emenda).
-  ⛔ A janela I NÃO implementa até uma 3.ª passagem de R-pré atestar a versão emendada.
+Auditoria §4.2 (R-pré), 3.ª passagem: subagente-R independente, 2026-09-17 — ✅ **APROVADA**.
+  ⭐ **A janela de implementação está ABERTA.** Todo número desta espec re-deriva do ficheiro
+  publicado (re-medido por conferidor independente); a parede fecha `exit 0` nas dez vassouras
+  sobre o conjunto que o Implementador vê; a barra é honesta e os 14 gates discriminam.
+  ⛔ DOIS achados da 2.ª passagem CAÍRAM nesta — o R estava errado e está registado no
+  LEDGER §4.6.2. ⛔ A pergunta «uma lei ou duas» fica EM ABERTO por decisão MEDIDA (§14):
+  faça a hipótese (b) PRIMEIRO (§14.5) e meça contra o `G-2` antes de construir segunda lei.
+  ⛔ O Implementador lê esta espec + `fixtures/rake/**` + escreve no INBOX; NÃO abre o ledger,
+  a vassoura, nem os endereços públicos do §10 (eles existem para o revisor).
 EMENDA DO E, 2026-09-17 (2.ª): ⛔⛔ as DUAS conclusões da §14 foram **reescritas para dizer só o que
   a medição sustenta**: *«converge para ZERO»* é contradita pelos próprios dados (a sequência é
   monótona crescente e já passou o zero) e *«não é uma lei só»* é uma afirmação sobre o NÚMERO DE

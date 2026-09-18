@@ -660,3 +660,31 @@ que se larga. ⇒ o percurso tem **quatro paragens**, e cada uma existe para **s
 
 ⭐ É a mesma família do `edge_max` global cego ao quad fino, do `χ` cego à almofada e da `ENTREGA`
 cega à ponta que engrossou: **a régua mede uma agregação, e o defeito vive na posição.**
+
+---
+
+## ⛔⛔ Uma afirmação sobre um ATALHO é uma medição que alguém não fez (2026-09-18)
+
+Report do dono: *«espaço é o atalho do play da timeline e há conflito»*. A cena ligava a acção de
+disparo ao ESPAÇO, com o comentário a dizer que ele era *«a tecla que ninguém do editor usa no
+canvas»* — e o `dispatch::key` tem `KEY_SPACE if !cmd => GraphKey::TogglePlay`. Um toque fazia
+**duas** coisas.
+
+⚠️⚠️ **E a medição mentiu DUAS vezes antes de dizer a verdade:**
+
+1. **O censo velho ENVELHECEU para falso.** Um estudo de 2026-08-12 listou nove letras livres
+   (`H I J M N P U V Y`); no mês seguinte o `P` foi tomado pelo menu radial e o `U` pelo detalhe da
+   escultura. *Uma régua sem instrumento é uma nota que envelhece* — e ela envelhece em silêncio,
+   porque nada a contradiz.
+2. **A re-medição contou o TRADUTOR.** Varrer `KeyCode::Key<X> =>` apanha a tabela do normalizador
+   (`KeyCode::KeyQ => 0x51`, que traduz winit → keycode e não trata tecla nenhuma) junto com os
+   consumidores, e devolveu *«nenhuma letra está livre»*. ⇒ o ficheiro do normalizador sai da
+   varredura **por nome**, e há controlo.
+
+⭐⭐ **E a escolha final não foi a primeira letra livre:** o `Q` ganha porque é a que o **mapa de
+fábrica** do app já usa para uma acção de jogador, com a regra escrita ao lado dela — *«um default
+que briga com um atalho que já existe é uma armadilha que só o artista descobre»*. *A resposta já
+estava escrita noutro sítio do repo, por quem tinha feito a mesma pergunta antes.*
+
+⛔ A cura durável é o gate com **controlo positivo** (o próprio ESPAÇO, que TEM de ser reclamado) e
+um **controlo de alcance** (uma letra sabidamente tomada), senão a varredura mede o nada.

@@ -66,6 +66,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod action_trigger_inspector;
 pub mod asset_card_art;
 pub mod asset_card_portrait;
 pub mod asset_card_verbs;

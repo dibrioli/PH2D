@@ -34,6 +34,8 @@ pub(crate) use ph2d_text::TextSystem;
 pub(crate) use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 pub(crate) use ph2d_vector::{Color as VelloColor, VectorScene};
 
+/// ⭐ A secção COUNTER WATCH — a vigia do contador.
+pub(crate) mod action_trigger;
 /// ⭐⭐⭐ **A secção SIGNAL ACTIONS** (TOP-20 #5, W3) — a tabela nome → acção.
 pub(crate) mod actions;
 /// **§12 Sockets / Named Anchors** (ADR-0072) — a seção nascida em 2026-08-21.
@@ -45,7 +47,6 @@ pub(crate) mod anim_rows;
 pub(crate) mod audio;
 pub(crate) mod camera;
 mod color_tint;
-/// ⭐ A secção COUNTER WATCH — a vigia do contador.
 pub(crate) mod counter_watch;
 /// A linha `Emissive` (plano `docs/Sprite_projeto/18` W8) — irmã do `render_source`, que está no
 /// tecto de LOC.

@@ -109,6 +109,12 @@ thread_local! {
         std::cell::RefCell<
             Option<ph2d_editor_core::counter_watch_edits::InspectorCounterWatchInfo>,
         > = const { std::cell::RefCell::new(None) };
+
+    /// ⭐ O snapshot do GATILHO (suplente #24) — a shell escreve-o todo o quadro.
+    static CURRENT_INSPECTOR_ACTION_TRIGGER:
+        std::cell::RefCell<
+            Option<ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo>,
+        > = const { std::cell::RefCell::new(None) };
 }
 
 /// ⭐ O snapshot da VIGIA DO CONTADOR — a shell escreve-o todo o quadro.
@@ -121,6 +127,18 @@ pub fn set_current_inspector_counter_watch(
 pub(crate) fn current_inspector_counter_watch()
 -> Option<ph2d_editor_core::counter_watch_edits::InspectorCounterWatchInfo> {
     CURRENT_INSPECTOR_COUNTER_WATCH.with(|c| c.borrow().clone())
+}
+
+/// ⭐ O snapshot do GATILHO — a shell escreve-o todo o quadro.
+pub fn set_current_inspector_action_trigger(
+    info: Option<ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo>,
+) {
+    CURRENT_INSPECTOR_ACTION_TRIGGER.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_action_trigger()
+-> Option<ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo> {
+    CURRENT_INSPECTOR_ACTION_TRIGGER.with(|c| c.borrow().clone())
 }
 
 /// ⭐ O snapshot do EMISSOR DE PARTÍCULAS (TOP-20 #18) — a shell escreve-o todo o quadro.

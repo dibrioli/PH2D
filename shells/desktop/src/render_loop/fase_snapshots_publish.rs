@@ -216,6 +216,7 @@ impl crate::App {
             hero.gizmo.selection,
             hero.gizmo.selected_len(),
             self.playhead.is_playing(),
+            &hero.input_map,
         );
         // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — fase-filha própria; ver o `mod sequencia`.
         sequencia::publica(

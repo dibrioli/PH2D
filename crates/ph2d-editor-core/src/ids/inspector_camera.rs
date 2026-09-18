@@ -43,6 +43,8 @@ pub const INSP_LIVE_HUD_SECTION: NodeId = hash_node_id("insp_live_hud_section");
 pub const INSP_LIVE_SEQ_SECTION: NodeId = hash_node_id("insp_live_seq_section");
 /// O cabeçalho dobrável da secção COUNTER WATCH — a vigia do contador.
 pub const INSP_LIVE_WATCH_SECTION: NodeId = hash_node_id("insp_live_watch_section");
+/// O cabeçalho dobrável da secção GATILHO — a mão de quem joga (suplente #24).
+pub const INSP_LIVE_TRIGGER_SECTION: NodeId = hash_node_id("insp_live_trigger_section");
 /// A secção LIFECYCLE — o cabeçalho colapsável (TOP-20 #12, W3).
 pub const INSP_LIVE_LIFECYCLE_SECTION: NodeId = hash_node_id("insp_live_lifecycle_section");
 /// ⛔⛔ **Os PONTOS DE COR das três secções novas, e eles nasceram de um DEFEITO MEDIDO.**
@@ -76,5 +78,7 @@ pub const INSP_LIVE_HUD_COLOR: NodeId = hash_node_id("insp_live_hud_color");
 pub const INSP_LIVE_SEQ_COLOR: NodeId = hash_node_id("insp_live_seq_color");
 /// O ponto de cor da secção COUNTER WATCH.
 pub const INSP_LIVE_WATCH_COLOR: NodeId = hash_node_id("insp_live_watch_color");
+/// O ponto de cor da secção GATILHO.
+pub const INSP_LIVE_TRIGGER_COLOR: NodeId = hash_node_id("insp_live_trigger_color");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

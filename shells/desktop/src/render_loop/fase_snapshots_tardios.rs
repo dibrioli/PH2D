@@ -32,6 +32,7 @@ pub(super) fn publica(
     escolhido: Option<u64>,
     quantos: usize,
     a_correr: bool,
+    mapa: &ph2d_input::InputMap,
 ) {
     // ⚠️ **A pergunta é «há CÂMERA DE JOGO na cena?»**, e não «a pré-visualização está ligada»: o
     // canvas cola-se à vista dela em qualquer dos casos, e é a AUSÊNCIA da câmera que deixa o HUD
@@ -69,5 +70,14 @@ pub(super) fn publica(
     // o vê. ⚠️ Sem ela, uma regra com um `d` a mais no nome lê-se exactamente como uma que funciona.
     ph2d_panel_inspector::set_current_inspector_counter_watch(escolhido.and_then(|b| {
         ph2d_app_components::counter_watch_inspector::build_info(sim, b, a_correr, quantos)
+    }));
+    // ⭐⭐⭐ **O GATILHO** (suplente #24) — e ele cabe aqui pela MESMA razão das irmãs: a coluna
+    // *«existe uma acção com este nome?»* está no **Input Map**, que não é o mundo. ⚠️ Sem ela,
+    // uma linha com `fier` em vez de `fire` lê-se exactamente como uma que funciona — e o silêncio
+    // dela é DUPLO, porque a lei do motor também cala uma acção que o mapa não conhece.
+    ph2d_panel_inspector::set_current_inspector_action_trigger(escolhido.and_then(|b| {
+        ph2d_app_components::action_trigger_inspector::build_info(sim, b, a_correr, quantos, &|n| {
+            mapa.id(n).is_some()
+        })
     }));
 }

@@ -404,6 +404,15 @@ pub enum EditorAction {
         /// O que mudou.
         edit: crate::counter_watch_edits::CounterWatchFieldEdit,
     },
+    /// Uma edição da secção **GATILHO** do Inspector (o suplente #24).
+    ///
+    /// ⚠️ **APENDADA**, como as 26 irmãs, e com a mesma forma `{ entity_bits, edit }`.
+    InspectorActionTriggerEdit {
+        /// A quem ela se aplica.
+        entity_bits: u64,
+        /// O que mudou.
+        edit: crate::action_trigger_edits::ActionTriggerFieldEdit,
+    },
 
     /// Inspector → shell, a secção PARTICLES (TOP-20 #18, W3).
     InspectorParticlesEdit {

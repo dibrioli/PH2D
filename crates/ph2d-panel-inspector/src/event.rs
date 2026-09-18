@@ -74,6 +74,11 @@ pub(crate) fn apply_event(
     if crate::event_sequence::apply_sequence_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    // ⭐⭐⭐ O GATILHO (suplente #24) — ele precisa do estado do painel (a lista tem uma linha
+    // aberta), como a vigia, os timers e a tabela de acções.
+    if crate::event_action_trigger::apply_action_trigger_event(state, host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐⭐⭐ A VIGIA DO CONTADOR — ela precisa do estado do painel (a lista tem uma regra aberta),
     // como os timers e a tabela de acções.
     if crate::event_counter_watch::apply_counter_watch_event(state, host, ev) {

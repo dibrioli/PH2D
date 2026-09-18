@@ -462,6 +462,11 @@ pub(in crate::render_loop) struct DrainOut {
         u64,
         ph2d_editor_core::counter_watch_edits::CounterWatchFieldEdit,
     )>,
+    /// ⭐⭐⭐ As edições da secção GATILHO (suplente #24).
+    pub(in crate::render_loop) action_trigger_edits: Vec<(
+        u64,
+        ph2d_editor_core::action_trigger_edits::ActionTriggerFieldEdit,
+    )>,
     // ⭐ A secção TAGS (TOP-20 #9) — ver o dreno dela no `fase_inspector_commits`.
     pub(in crate::render_loop) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     // ⭐⭐⭐ O painel TAGS (TOP-20 #9, W4) — gestos sobre a ÁRVORE, que não é do mundo. Ver o

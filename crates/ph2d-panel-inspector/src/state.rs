@@ -90,6 +90,10 @@ pub struct InspectorState {
     pub watch_selected: usize,
     /// Irmão do [`Self::last_timer_row`], e pela MESMA razão medida.
     pub last_watch_row: Option<usize>,
+    /// GATILHO — qual linha da lista está aberta. **Estado do painel**, como as irmãs.
+    pub trigger_selected: usize,
+    /// Irmão do [`Self::last_timer_row`], e pela MESMA razão medida.
+    pub last_trigger_row: Option<usize>,
     /// Irmão do [`Self::last_timer_row`], e pela MESMA razão medida.
     pub last_action_row: Option<usize>,
     /// STATE MACHINE — qual ESTADO da lista está aberto. **Estado do painel**, como as irmãs.

@@ -30,7 +30,7 @@ use super::*;
 /// ⚠️ `finish_section` lê `store.section_outline_color(<id da seção>)` para TODA seção viva, por
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 31] = [
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 32] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_COLOR),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_COLOR),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_COLOR),
@@ -87,6 +87,8 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 31] = [
     // ⭐ A 30.ª — SEQUENCE (TOP-20 #19), no mesmo commit que a secção, pela lei do censo acima.
     (INSP_LIVE_SEQ_SECTION, INSP_LIVE_SEQ_COLOR),
     (INSP_LIVE_WATCH_SECTION, INSP_LIVE_WATCH_COLOR),
+    // ⭐ A 32.ª — GATILHO (suplente #24), no mesmo commit que a secção, pela lei do censo acima.
+    (INSP_LIVE_TRIGGER_SECTION, INSP_LIVE_TRIGGER_COLOR),
 ];
 
 /// Só os cabeçalhos — **projeção** de [`LIVE_SECTIONS`], nunca uma segunda lista.

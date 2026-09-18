@@ -75,6 +75,11 @@ pub(super) struct InspectorIntents {
         u64,
         ph2d_editor_core::counter_watch_edits::CounterWatchFieldEdit,
     )>,
+    /// As edições da secção GATILHO (suplente #24).
+    pub(super) action_trigger_edits: Vec<(
+        u64,
+        ph2d_editor_core::action_trigger_edits::ActionTriggerFieldEdit,
+    )>,
     pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     pub(super) tag_tree_edits: Vec<ph2d_editor_core::TagTreeEdit>,
     pub(super) inspector_queue_dirty: bool,
@@ -135,6 +140,7 @@ impl crate::App {
             hud_edits,
             sequence_edits,
             counter_watch_edits,
+            action_trigger_edits,
             tags_edits,
             tag_tree_edits,
             mut inspector_queue_dirty,
@@ -261,6 +267,7 @@ impl crate::App {
             &hud_edits,
             &sequence_edits,
             &counter_watch_edits,
+            &action_trigger_edits,
             &topdown_edits,
             &projectile_edits,
             &statemachine_edits,

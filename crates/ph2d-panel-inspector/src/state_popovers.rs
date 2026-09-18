@@ -89,6 +89,12 @@ thread_local! {
         std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> =
         const { std::cell::Cell::new(None) };
 
+    /// GATILHO: `(aresta escolhida, rect do chip)`. ⚠️ Mesma forma da vigia, e pela mesma razão: a
+    /// aresta é a da LINHA ABERTA, cujo índice vive no `InspectorState` que o passe diferido não vê.
+    pub(crate) static PENDING_TRIGGER_DD:
+        std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> =
+        const { std::cell::Cell::new(None) };
+
     /// ⭐ **O popover que ESTE painel pintou neste quadro** — `(dono, rect do painel)`.
     ///
     /// ⚠️ Ele existe para uma coisa só: o `dispatch::pointer_down` fecha um dropdown aberto quando
@@ -177,6 +183,14 @@ pub(crate) fn set_pending_watch_dd(chip: Option<(u8, ph2d_editor_core::zones::Re
 
 pub(crate) fn take_pending_watch_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
     PENDING_WATCH_DD.with(std::cell::Cell::take)
+}
+
+pub(crate) fn set_pending_trigger_dd(chip: Option<(u8, ph2d_editor_core::zones::Rect)>) {
+    PENDING_TRIGGER_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_trigger_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
+    PENDING_TRIGGER_DD.with(std::cell::Cell::take)
 }
 
 /// Regista que um popover foi pintado neste quadro — ver [`PAINTED_POPOVER`].

@@ -82,4 +82,24 @@ pub(super) fn paint_deferred_top20_popovers(
             hit_index,
         );
     }
+    // ⭐ **E o do GATILHO** — mesma máquina, e o `take` é o que garante que ele se pinta uma vez.
+    if let Some((edge, chip)) = state_popovers::take_pending_trigger_dd() {
+        let mut dd = Dropdown::new(
+            crate::ids::INSP_TRIGGER_EDGE_PICK,
+            "",
+            sections::action_trigger::opcoes_da_aresta(),
+        )
+        .open(true);
+        dd.select(usize::from(edge));
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
 }

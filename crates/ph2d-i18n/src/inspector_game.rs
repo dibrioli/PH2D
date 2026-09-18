@@ -332,6 +332,43 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.counter_watch.multiple_selected_edits_apply" => {
             "Editing the primary selection only."
         }
+        // ⭐⭐⭐ O GATILHO — a mão de quem joga (suplente #24).
+        "panel.inspector.trigger.trigger" => "Trigger",
+        "panel.inspector.trigger.title_count" => "Trigger ({n})",
+        // ⚠️ **O título CONTA os gatilhos partidos**, pela mesma razão da vigia: com a secção
+        // dobrada ele é a única coisa visível, e é esse o estado em que um órfão passa despercebido.
+        "panel.inspector.trigger.title_count_broken" => "Trigger ({n}, {broken} broken)",
+        "panel.inspector.trigger.no_triggers_yet" => "No triggers yet",
+        "panel.inspector.trigger.plus_add_trigger" => "+ Add Trigger",
+        "panel.inspector.trigger.x_remove_trigger" => "x Remove Trigger",
+        "panel.inspector.trigger.action_name" => "Action name",
+        "panel.inspector.trigger.when" => "When",
+        // ⚠️ **Estas TRÊS têm chave e as três da vigia não**, e a diferença não é estilo: `≤` é um
+        // símbolo matemático e lê-se igual em qualquer idioma; `Press` é uma palavra.
+        "panel.inspector.trigger.on_press" => "Press",
+        "panel.inspector.trigger.on_release" => "Release",
+        "panel.inspector.trigger.while_held" => "Hold",
+        "panel.inspector.trigger.signal_name_empty_mute" => "Signal name (empty = mute)",
+        "panel.inspector.trigger.mute" => "mute",
+        "panel.inspector.trigger.no_action_named_yet" => {
+            "This trigger listens to no action yet \u{2014} name one above."
+        }
+        // ⚠️⚠️ **A frase mais valiosa das quatro:** a lei CALA uma acção que o mapa não conhece
+        // (senão um `Release` sobre ela dispararia em todo quadro), e sem esta linha o artista lê
+        // esse silêncio como «o gatilho não funciona».
+        "panel.inspector.trigger.there_is_no_action_called" => {
+            "There is no action called \u{201c}{name}\u{201d} \u{2014} add it in Settings \u{203a} Input Map."
+        }
+        "panel.inspector.trigger.this_trigger_says_nothing" => {
+            "This trigger says nothing \u{2014} give it a signal name."
+        }
+        // ⚠️ **Não é uma cerca de segurança:** as teclas do jogo são as teclas do editor.
+        "panel.inspector.trigger.the_clock_is_stopped" => {
+            "The clock is stopped \u{2014} triggers listen while it plays."
+        }
+        "panel.inspector.trigger.multiple_selected_edits_apply" => {
+            "Editing the primary selection only."
+        }
         // ph2d-migrar-texto:end
         _ => return None,
     })

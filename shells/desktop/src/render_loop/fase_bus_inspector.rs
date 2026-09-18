@@ -243,6 +243,9 @@ impl crate::App {
             EditorAction::InspectorCounterWatchEdit { entity_bits, edit } => {
                 pd.counter_watch_edits.push((entity_bits, edit));
             }
+            EditorAction::InspectorActionTriggerEdit { entity_bits, edit } => {
+                pd.action_trigger_edits.push((entity_bits, edit));
+            }
             EditorAction::InspectorTagsEdit { entity_bits, edit } => {
                 pd.tags_edits.push((entity_bits, edit));
             }

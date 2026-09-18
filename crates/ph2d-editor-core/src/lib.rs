@@ -131,6 +131,7 @@ pub fn installed_registry() -> Option<&'static registry::Registry> {
 }
 
 /// ⭐⭐⭐ **O vocabulário da CUTSCENE** (TOP-20 #19) — o que o painel mostra de um `SequencePlayer`.
+pub mod action_trigger_edits;
 pub mod counter_watch_edits;
 /// ⭐⭐⭐ **O vocabulário das TAGS** — os dois gestos, num módulo abaixo do `action_bus` e do
 /// `screens`. Ver o cabeçalho dele: é o primeiro degrau da cura que a catraca do DAG prescreve.

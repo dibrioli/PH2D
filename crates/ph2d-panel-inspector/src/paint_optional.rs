@@ -251,7 +251,9 @@ pub(crate) fn paint_optional_sections(
     hud: Option<&ph2d_editor_core::hud_edits::InspectorHudInfo>,
     sequence: Option<&ph2d_editor_core::sequence_edits::InspectorSequenceInfo>,
     watch: Option<&ph2d_editor_core::counter_watch_edits::InspectorCounterWatchInfo>,
+    trigger: Option<&ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo>,
     watch_selected: &mut usize,
+    trigger_selected: &mut usize,
     // ⚠️ **Duas selecções e não uma** — as listas de estados e de setas são independentes.
     sm_state_selected: &mut usize,
     sm_trans_selected: &mut usize,
@@ -434,6 +436,8 @@ pub(crate) fn paint_optional_sections(
             sequence,
             watch,
             watch_selected: *watch_selected,
+            trigger,
+            trigger_selected: *trigger_selected,
             tags,
             sm_state_selected: *sm_state_selected,
             sm_trans_selected: *sm_trans_selected,

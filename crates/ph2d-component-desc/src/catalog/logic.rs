@@ -136,6 +136,17 @@ const FACTORY_FIELDS: &[FieldDesc] = &[
 ///
 /// ⚠️ **`Counter` é o NOME do contador e não o deste objecto** — a vigia pode viver num objecto
 /// «Regras» sem contador nenhum, e é isso que a torna autorável num sítio só.
+/// ⭐⭐⭐ **Uma LINHA do gatilho** — como a vigia, o componente é uma LISTA e isto descreve a LINHA.
+///
+/// ⚠️ **`Action` é o nome da acção do INPUT MAP e não o de uma tecla** — é ele que sobrevive a um
+/// remapeamento, e é ele que a fita determinística grava.
+const TRIGGER_FIELDS: &[FieldDesc] = &[
+    f(1, "Action", K::Text),
+    f(2, "When", K::Enum),
+    // ⚠️ **Vazio = calada** — a lei da vigia e da §11.
+    f(3, "Signal", K::Text),
+];
+
 const WATCH_FIELDS: &[FieldDesc] = &[
     f(1, "Counter", K::Text),
     f(2, "Compare", K::Enum),
@@ -224,6 +235,25 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         ACTION_FIELDS,
+    ),
+    // ⭐⭐⭐ **O GATILHO** (suplente #24) — a mão de quem joga, o 14.º produtor de sinal e o
+    // primeiro cuja entrada não é o mundo nem o barramento.
+    //
+    // ⚠️ **`O::ANY` pela mesma razão do relógio e da tabela:** o sítio natural para as teclas de um
+    // jogo é um objecto VAZIO chamado «Controlos», que não tem sprite nenhuma.
+    //
+    // ⛔ **Ele NÃO requer o `SignalActions`, e a ausência é a decisão** — o mesmo argumento que a
+    // vigia escreve para o `Counter`: quem ouve o sinal pode ser a FÁBRICA, o cérebro ou uma tabela
+    // noutro objecto, e exigi-lo poria uma tabela vazia em toda cena bem montada.
+    //
+    // ⚠️ **Entre o `SignalActions` e o `StateMachine`** — a lista é procurada por busca binária, e
+    // fora de ordem o descritor devolve `None` para um tipo que existe.
+    D::authored(
+        "ph2d::ecs::SignalOnAction",
+        "Trigger",
+        C::Logic,
+        O::ANY,
+        TRIGGER_FIELDS,
     ),
     // ⭐⭐⭐ **O CÉREBRO AUTORÁVEL** (TOP-20 #15) — `O::ANY` pela mesma razão do relógio e da
     // tabela: quem pensa é tantas vezes um objecto VAZIO quanto uma sprite.

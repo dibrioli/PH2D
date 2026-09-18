@@ -32,6 +32,10 @@ pub(super) fn aplicar(
         u64,
         ph2d_editor_core::counter_watch_edits::CounterWatchFieldEdit,
     )],
+    gatilho: &[(
+        u64,
+        ph2d_editor_core::action_trigger_edits::ActionTriggerFieldEdit,
+    )],
     topdown: &[(u64, ph2d_editor_core::topdown_edits::TopDownFieldEdit)],
     projectile: &[(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)],
     statemachine: &[(
@@ -48,4 +52,5 @@ pub(super) fn aplicar(
         | ph2d_app_components::hud_inspector::apply_all(sim, hud)
         | ph2d_app_components::sequence_inspector::apply_all(sim, sequence)
         | ph2d_app_components::counter_watch_inspector::apply_all(sim, watch)
+        | ph2d_app_components::action_trigger_inspector::apply_all(sim, gatilho)
 }

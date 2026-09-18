@@ -64,6 +64,7 @@ pub fn populate(store: &mut WidgetStore) {
     super::populate_hud::populate_hud(store);
     super::populate_sequence::populate_sequence(store);
     super::populate_counter_watch::populate_counter_watch(store);
+    super::populate_action_trigger::populate_action_trigger(store);
     super::populate_script::populate_script(store);
     super::populate_topdown::populate_topdown(store);
     populate_visibility_section(store);

@@ -18,12 +18,13 @@
 mod event;
 /// ⭐ O despacho da secção SIGNAL ACTIONS — irmão do `event` por CAP de função.
 mod event_action;
+/// ⭐ O clique da secção SEQUENCE (TOP-20 #19) — ver o cabeçalho.
+mod event_action_trigger;
 /// Os dois sliders-com-chip da sprite (Opacidade + Emissive) — irmão do `event`, que estava no tecto.
 mod event_anchor;
 mod event_anim;
 mod event_audio;
 mod event_camera;
-/// ⭐ O clique da secção SEQUENCE (TOP-20 #19) — ver o cabeçalho.
 mod event_counter_watch;
 mod event_factory;
 /// ⭐ O registo dos widgets da secção PARTICLES — irmão por CAP de ficheiro.
@@ -71,11 +72,12 @@ mod popovers;
 mod populate;
 /// ⭐ O registo dos widgets da secção SIGNAL ACTIONS — irmão por CAP de ficheiro.
 mod populate_action;
+/// ⭐ O registo dos widgets da secção SEQUENCE (TOP-20 #19) — ver o cabeçalho.
+mod populate_action_trigger;
 mod populate_anchor;
 mod populate_anim;
 mod populate_audio;
 mod populate_camera;
-/// ⭐ O registo dos widgets da secção SEQUENCE (TOP-20 #19) — ver o cabeçalho.
 mod populate_counter_watch;
 mod populate_factory;
 mod populate_hud;
@@ -106,6 +108,7 @@ mod state_tint;
 mod sync;
 /// ⭐ A semente da secção COUNTER WATCH — irmã do `sync_sections` por CAP de ficheiro.
 /// ⛔ Ela **não existia** até 17/09, e o editor mostrava os valores de fábrica do `populate`.
+mod sync_action_trigger;
 mod sync_counter_watch;
 mod sync_hud;
 /// ⭐ A semente da secção PARTICLES — irmã do `sync_sections` por CAP de ficheiro.
@@ -202,10 +205,10 @@ pub use state::{
 pub use state::{probe_current_instance, probe_current_properties, texture_slot_pick};
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{
-    set_current_inspector_action, set_current_inspector_audio, set_current_inspector_camera,
-    set_current_inspector_counter_watch, set_current_inspector_factory, set_current_inspector_hud,
-    set_current_inspector_particles, set_current_inspector_projectile,
-    set_current_inspector_script, set_current_inspector_sequence,
+    set_current_inspector_action, set_current_inspector_action_trigger,
+    set_current_inspector_audio, set_current_inspector_camera, set_current_inspector_counter_watch,
+    set_current_inspector_factory, set_current_inspector_hud, set_current_inspector_particles,
+    set_current_inspector_projectile, set_current_inspector_script, set_current_inspector_sequence,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
 };
 

@@ -33,6 +33,10 @@ pub(crate) struct Top20<'a> {
     pub watch: Option<&'a ph2d_editor_core::counter_watch_edits::InspectorCounterWatchInfo>,
     /// Qual regra da vigia está aberta — estado do painel, como a dos timers.
     pub watch_selected: usize,
+    /// O GATILHO (suplente #24).
+    pub trigger: Option<&'a ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo>,
+    /// Qual linha do gatilho está aberta — estado do painel, como a da vigia.
+    pub trigger_selected: usize,
     /// As TAGS (TOP-20 #9).
     pub tags: Option<&'a ph2d_editor_core::screens::hero::InspectorTagsInfo>,
     /// ⚠️ **Duas selecções e não uma** — as listas de estados e de setas são independentes.
@@ -144,6 +148,21 @@ pub(crate) fn paint_top20_sections(
         header_h,
         infos.watch,
         infos.watch_selected,
+    );
+    y = paint_action_trigger_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        infos.trigger,
+        infos.trigger_selected,
     );
     crate::paint_optional_factory::paint_tags_section(
         scene,
@@ -274,6 +293,66 @@ fn paint_counter_watch_section(
         inner_x,
         inner_w,
         ids::INSP_LIVE_WATCH_SECTION,
+        y_before,
+        new_y,
+        &[],
+    )
+}
+
+/// O GATILHO — moldura e tudo. Irmão da [`paint_counter_watch_section`], e vizinho dela na ordem
+/// de propósito: as duas fazem um SINAL nascer, uma de um número e a outra de uma tecla.
+#[allow(clippy::too_many_arguments)]
+fn paint_action_trigger_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    info: Option<&ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo>,
+    selected: usize,
+) -> f32 {
+    // ⚠️ **A secção só existe se o objecto TIVER o componente** — ADR-0166.
+    let Some(info) = info else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_TRIGGER_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::action_trigger::paint_action_trigger_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        info,
+        selected,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_TRIGGER_SECTION,
         y_before,
         new_y,
         &[],

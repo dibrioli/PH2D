@@ -18,7 +18,7 @@
 //! índice `0` — ou que lesse a tabela de ids errada — ficaria **inobservável**: é a mesma lição que
 //! a fixtura da fase pagou por uma mutação sobrevivente.
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::sequence_edits::{InspectorSequenceInfo, SequenceFieldEdit as E};
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
@@ -103,7 +103,10 @@ fn edicoes(acoes: &[EditorAction]) -> Vec<E> {
     acoes
         .iter()
         .filter_map(|a| match a {
-            EditorAction::InspectorSequenceEdit { entity_bits, edit } => {
+            EditorAction::InspectorComponentEdit {
+                entity_bits,
+                edit: ComponentEdit::Sequence(edit),
+            } => {
                 assert_eq!(*entity_bits, BITS);
                 Some(edit.clone())
             }

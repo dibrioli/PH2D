@@ -1,7 +1,7 @@
 //! **O clique e a digitação da secção HUD** (TOP-20 #20) — cada widget vira uma edição no
 //! barramento, e mais nada.
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::hud_edits::{HUD_NUMBERS, HUD_TEXTS, HudFieldEdit as E};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
@@ -70,8 +70,10 @@ pub(crate) fn apply_hud_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: E) {
-    host.bus_mut()
-        .push(EditorAction::InspectorHudEdit { entity_bits, edit });
+    host.bus_mut().push(EditorAction::InspectorComponentEdit {
+        entity_bits,
+        edit: ComponentEdit::Hud(edit),
+    });
 }
 
 /// Repõe o visual de um botão momentâneo — senão ele fica `Pressed` depois do clique.

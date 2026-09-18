@@ -3,7 +3,7 @@
 //! ⚠️ **A linha `i` edita o campo `i`** — a ordem sai do modelo (`PARTICLES_NUMBERS` /
 //! `PARTICLES_TEXTS`), nunca de uma segunda lista escrita aqui.
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::particles_edits::{
@@ -94,8 +94,10 @@ pub(crate) fn apply_particles_event(host: &mut dyn PanelHostInternal, ev: Widget
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: E) {
-    host.bus_mut()
-        .push(EditorAction::InspectorParticlesEdit { entity_bits, edit });
+    host.bus_mut().push(EditorAction::InspectorComponentEdit {
+        entity_bits,
+        edit: ComponentEdit::Particles(edit),
+    });
 }
 
 /// Repõe o visual de um botão momentâneo — senão ele fica `Pressed` depois do clique.

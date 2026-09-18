@@ -19,7 +19,7 @@
 //! no caso em que a shell recusasse a edição (o objecto cheio).
 
 use ph2d_editor_core::TagsFieldEdit;
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::widget::{ButtonState, TagState};
@@ -82,8 +82,10 @@ pub(crate) fn apply_tags_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: TagsFieldEdit) {
-    host.bus_mut()
-        .push(EditorAction::InspectorTagsEdit { entity_bits, edit });
+    host.bus_mut().push(EditorAction::InspectorComponentEdit {
+        entity_bits,
+        edit: ComponentEdit::Tags(edit),
+    });
 }
 
 /// O que está escrito no campo de busca/criação.

@@ -8,7 +8,7 @@
 //! A secção responde *«que tags este objecto tem»* e escreve no componente dele; este responde
 //! *«que tags o projecto tem»* e escreve na **árvore**, que não está no mundo. São dois documentos,
 //! e é por isso que os dois gestos viajam por acções diferentes
-//! ([`InspectorTagsEdit`](ph2d_editor_core::action_bus::EditorAction::InspectorTagsEdit) contra
+//! ([`ComponentEdit::Tags`](ph2d_editor_core::action_bus::ComponentEdit::Tags) contra
 //! [`TagTreeEdit`](ph2d_editor_core::action_bus::EditorAction::TagTreeEdit)).
 //!
 //! # ⚠️ Categoria MUNDO, como o de física

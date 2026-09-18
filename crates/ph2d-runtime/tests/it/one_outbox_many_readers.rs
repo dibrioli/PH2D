@@ -65,6 +65,9 @@ impl Host {
                 SignalOrigin::CounterWatch { source, row } => {
                     format!("{} vigia {}#{row}", sig.name, source.0)
                 }
+                SignalOrigin::Action { source, row } => {
+                    format!("{} gatilho {}#{row}", sig.name, source.0)
+                }
             });
         }
     }

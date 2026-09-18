@@ -8,7 +8,7 @@
 //! ⚠️ **Mexer num campo PÕE o valor** (a divergência D1 do oráculo): mesmo um número igual ao
 //! default fica próprio, e só o `Reset` o larga.
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::script_edits::{InspectorScriptValue as V, ScriptFieldEdit as E};
@@ -87,8 +87,10 @@ pub(crate) fn apply_script_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: E) {
-    host.bus_mut()
-        .push(EditorAction::InspectorScriptEdit { entity_bits, edit });
+    host.bus_mut().push(EditorAction::InspectorComponentEdit {
+        entity_bits,
+        edit: ComponentEdit::Script(edit),
+    });
 }
 
 /// Repõe o visual de um botão momentâneo — senão ele fica `Pressed` depois do clique.

@@ -66,6 +66,7 @@ pub(crate) mod instance_orphans;
 pub(crate) mod instance_removed;
 pub(crate) mod joint;
 mod joint_pair_rows;
+pub(crate) mod lifecycle;
 mod material_blend;
 pub(crate) mod ordering;
 pub(crate) mod particles;

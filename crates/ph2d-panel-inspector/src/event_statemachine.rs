@@ -9,7 +9,7 @@
 //! ⚠️ **O CLIQUE afirma o contrário do que está no ECRÃ, e o ecrã vem do SNAPSHOT** — nunca do
 //! store, que guarda o visual. É a lei que a §11 pagou com um report.
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::statemachine_edits::StateMachineFieldEdit as E;
@@ -117,8 +117,10 @@ pub(crate) fn apply_statemachine_event(
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: E) {
-    host.bus_mut()
-        .push(EditorAction::InspectorStateMachineEdit { entity_bits, edit });
+    host.bus_mut().push(EditorAction::InspectorComponentEdit {
+        entity_bits,
+        edit: ComponentEdit::StateMachine(edit),
+    });
 }
 
 /// Repõe o visual de um botão momentâneo — senão ele fica `Pressed` depois do clique.

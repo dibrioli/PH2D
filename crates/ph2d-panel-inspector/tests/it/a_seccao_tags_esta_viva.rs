@@ -15,7 +15,7 @@
 //! atravessa a mesma cadeia que o dedo do artista.
 
 use ph2d_editor_core::TagsFieldEdit;
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::screens::hero::{InspectorTagRow, InspectorTagsInfo};
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
@@ -177,9 +177,9 @@ fn o_x_de_um_chip_tira_a_tag_deste_objecto() {
     assert!(
         acoes.iter().any(|a| matches!(
             a,
-            EditorAction::InspectorTagsEdit {
+            EditorAction::InspectorComponentEdit {
                 entity_bits: ENTITY,
-                edit: TagsFieldEdit::Remove(3),
+                edit: ComponentEdit::Tags(TagsFieldEdit::Remove(3)),
             }
         )),
         "o x do segundo chip tinha de mandar `Remove(3)`; o que chegou foi {acoes:?}"
@@ -312,9 +312,9 @@ fn escolher_uma_tag_da_lista_aberta_chega_ao_barramento() {
     assert!(
         acoes.iter().any(|a| matches!(
             a,
-            EditorAction::InspectorTagsEdit {
+            EditorAction::InspectorComponentEdit {
                 entity_bits: ENTITY,
-                edit: TagsFieldEdit::Add(1),
+                edit: ComponentEdit::Tags(TagsFieldEdit::Add(1)),
             }
         )),
         "escolher a 1.a opcao tinha de mandar `Add(1)` (a `Boss`); o que chegou foi {acoes:?}"
@@ -458,9 +458,13 @@ fn escolher_a_tag_alvo_aponta_a_accao_e_nao_marca_o_objecto() {
         "escolher a 1.a opcao tinha de apontar a ACCAO a' `Boss`; o que chegou foi {acoes:?}"
     );
     assert!(
-        !acoes
-            .iter()
-            .any(|a| matches!(a, EditorAction::InspectorTagsEdit { .. })),
+        !acoes.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorComponentEdit {
+                edit: ComponentEdit::Tags(_),
+                ..
+            }
+        )),
         "o clique na tag ALVO marcou o objecto — os dois selectores partilham ids"
     );
     set_current_inspector_action(None);

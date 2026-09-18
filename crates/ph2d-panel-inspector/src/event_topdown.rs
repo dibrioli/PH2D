@@ -8,7 +8,7 @@
 //! Nunca do store, que guarda o visual. É a lei que a §11 pagou com um report: ler o store fazia o
 //! primeiro clique depois de trocar de objecto mandar o valor do objecto **anterior**.
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::topdown_edits::{
@@ -88,6 +88,8 @@ pub(crate) fn apply_topdown_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: TopDownFieldEdit) {
-    host.bus_mut()
-        .push(EditorAction::InspectorTopDownEdit { entity_bits, edit });
+    host.bus_mut().push(EditorAction::InspectorComponentEdit {
+        entity_bits,
+        edit: ComponentEdit::TopDown(edit),
+    });
 }

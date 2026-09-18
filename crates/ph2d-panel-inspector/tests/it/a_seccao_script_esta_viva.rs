@@ -5,7 +5,7 @@
 //! só se prova aqui. *Um `WidgetEvent::Click` sintético passa sobre um botão ausente do `populate`*
 //! (a família dos chips do impasto).
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::script_edits::{
     InspectorScriptInfo, InspectorScriptOrphan, InspectorScriptProp, InspectorScriptStatus,
     InspectorScriptValue as V, ScriptFieldEdit as E,
@@ -109,7 +109,10 @@ fn edicoes(acoes: &[EditorAction]) -> Vec<E> {
     acoes
         .iter()
         .filter_map(|a| match a {
-            EditorAction::InspectorScriptEdit { entity_bits, edit } => {
+            EditorAction::InspectorComponentEdit {
+                entity_bits,
+                edit: ComponentEdit::Script(edit),
+            } => {
                 assert_eq!(*entity_bits, 0xB0B);
                 Some(edit.clone())
             }

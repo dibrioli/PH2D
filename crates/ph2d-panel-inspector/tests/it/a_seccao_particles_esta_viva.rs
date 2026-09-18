@@ -5,7 +5,7 @@
 //! clique só se prova aqui. *Um `WidgetEvent::Click` sintético passa sobre um controlo ausente do
 //! `populate`* — e esta secção tinha exactamente esse buraco nas duas amostras de cor.
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::particles_edits::{
     InspectorParticlesInfo, PARTICLES_NUMBERS, PARTICLES_TEXTS, ParticlesFieldEdit as E,
 };
@@ -109,7 +109,10 @@ fn edicoes(acoes: &[EditorAction]) -> Vec<E> {
     acoes
         .iter()
         .filter_map(|a| match a {
-            EditorAction::InspectorParticlesEdit { entity_bits, edit } => {
+            EditorAction::InspectorComponentEdit {
+                entity_bits,
+                edit: ComponentEdit::Particles(edit),
+            } => {
                 assert_eq!(*entity_bits, BITS);
                 Some(edit.clone())
             }

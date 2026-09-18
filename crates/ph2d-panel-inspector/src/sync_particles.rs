@@ -76,11 +76,13 @@ pub(crate) fn sync(
                 && escolhida != gravada
             {
                 host.bus_mut().push(
-                    ph2d_editor_core::action_bus::EditorAction::InspectorParticlesEdit {
+                    ph2d_editor_core::action_bus::EditorAction::InspectorComponentEdit {
                         entity_bits: info.entity_bits,
-                        edit: ph2d_editor_core::particles_edits::ParticlesFieldEdit::Color(
-                            fim,
-                            crate::state_tint::tint_u8_to_f32(escolhida),
+                        edit: ph2d_editor_core::action_bus::ComponentEdit::Particles(
+                            ph2d_editor_core::particles_edits::ParticlesFieldEdit::Color(
+                                fim,
+                                crate::state_tint::tint_u8_to_f32(escolhida),
+                            ),
                         ),
                     },
                 );

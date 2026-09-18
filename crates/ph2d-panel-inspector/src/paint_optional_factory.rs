@@ -102,7 +102,7 @@ pub(crate) fn paint_lifecycle_section(
         ids::INSP_LIVE_LIFECYCLE_SECTION,
         header_h,
     );
-    let new_y = crate::sections::factory::paint_lifecycle_section(
+    let new_y = crate::sections::lifecycle::paint_lifecycle_section(
         scene,
         text_system,
         theme,

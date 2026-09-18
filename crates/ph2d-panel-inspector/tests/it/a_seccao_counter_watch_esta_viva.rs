@@ -12,7 +12,7 @@
 //! só de cada, um despacho que devolvesse sempre `0` — ou que lesse a tabela de ids errada —
 //! ficaria **inobservável**.
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::counter_watch_edits::{
     CounterWatchFieldEdit as E, InspectorCounterWatchInfo, InspectorWatchRow,
 };
@@ -107,7 +107,10 @@ fn edicoes(acoes: &[EditorAction]) -> Vec<E> {
     acoes
         .iter()
         .filter_map(|a| match a {
-            EditorAction::InspectorCounterWatchEdit { entity_bits, edit } => {
+            EditorAction::InspectorComponentEdit {
+                entity_bits,
+                edit: ComponentEdit::CounterWatch(edit),
+            } => {
                 assert_eq!(*entity_bits, BITS);
                 Some(edit.clone())
             }

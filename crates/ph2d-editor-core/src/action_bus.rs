@@ -297,19 +297,26 @@ pub enum EditorAction {
         edit: crate::screens::hero::ActionFieldEdit,
     },
 
-    /// **A secção TAGS** (TOP-20 #9, W3) — marcar, desmarcar, ou criar uma tag e marcar.
+    /// ⭐⭐⭐ **Uma edição de uma secção de COMPONENTE DE JOGO** — as onze de
+    /// [`ComponentEdit`], numa variante só.
     ///
-    /// ⚠️ **A `Create` carrega TEXTO e as outras um id**, e é isso que faz a caixa de escolha ter uma
-    /// porta só: escrever um nome que não existe e carregar em *Create “…”* cria a tag na árvore do
-    /// projecto **e** marca o objecto, num gesto — a árvore é documento, e o passo de undo é um só.
-    InspectorTagsEdit {
+    /// ⚠️ **Elas saíram daqui em 2026-09-18 porque tinham a MESMA FORMA** (`{ entity_bits, edit }`,
+    /// letra por letra) e foram elas que puseram este ficheiro a `709/700`. O corte é o que o irmão
+    /// [`hier`] já pagou, e o cabeçalho de [`component`] diz onde passa a fronteira da família —
+    /// **o vocabulário**, nunca a data.
+    ///
+    /// ⚠️ **Nenhuma delas se espalha sobre a BulkSelect:** o índice que a carga leva só significa
+    /// alguma coisa na lista da entidade PRIMÁRIA, que é a que o painel mostra.
+    InspectorComponentEdit {
+        /// A quem ela se aplica.
         entity_bits: u64,
-        edit: crate::tags_edits::TagsFieldEdit,
+        /// Qual secção, e o que mudou.
+        edit: ComponentEdit,
     },
 
     /// ⭐⭐⭐ **O painel TAGS** (TOP-20 #9, W4) — um gesto sobre a ÁRVORE do projecto.
     ///
-    /// ⛔ **Sem `entity_bits`, e é isso que o separa da [`Self::InspectorTagsEdit`]**: o sujeito é a
+    /// ⛔ **Sem `entity_bits`, e é isso que o separa da [`ComponentEdit::Tags`]**: o sujeito é a
     /// taxonomia, não um objecto. O que acontece à pertença é consequência — apagar leva-a junto,
     /// no mesmo passo de undo.
     TagTreeEdit {
@@ -334,100 +341,6 @@ pub enum EditorAction {
     InspectorCameraEdit {
         entity_bits: u64,
         edit: crate::screens::hero::CameraFieldEdit,
-    },
-
-    /// Inspector → shell, as secções FACTORY e LIFECYCLE (TOP-20 #11 e #12, W3).
-    ///
-    /// ⚠️ **Uma variante para os TRÊS componentes** (`Factory` · `Lifetime` · `DestroyOutside`), como
-    /// a da câmera: o painel fala com a shell num canal só, e é a shell que sabe qual componente
-    /// cada edição toca. ⛔ Três variantes aqui seriam três drenos a fazer a mesma coisa.
-    InspectorFactoryEdit {
-        entity_bits: u64,
-        edit: crate::factory_edits::FactoryFieldEdit,
-    },
-
-    /// Inspector → shell, a secção TOP-DOWN PLAYER (TOP-20 #13, W3).
-    ///
-    /// ⚠️ **Uma variante para o componente inteiro**, como as irmãs: o painel fala com a shell num
-    /// canal só, e é a shell que sabe traduzir cada campo.
-    InspectorTopDownEdit {
-        entity_bits: u64,
-        edit: crate::topdown_edits::TopDownFieldEdit,
-    },
-
-    /// Inspector → shell, a secção STATE MACHINE (TOP-20 #15, W3).
-    ///
-    /// ⚠️ **Uma variante para o componente inteiro**, como as irmãs.
-    InspectorStateMachineEdit {
-        entity_bits: u64,
-        edit: crate::statemachine_edits::StateMachineFieldEdit,
-    },
-
-    /// Inspector → shell, a secção SCRIPT (TOP-20 #16, W3).
-    ///
-    /// ⚠️ **Uma variante para o componente inteiro**, como as irmãs — e o `Browse` viaja por aqui
-    /// também, porque é a shell que tem a janela para abrir o diálogo.
-    InspectorScriptEdit {
-        entity_bits: u64,
-        edit: crate::script_edits::ScriptFieldEdit,
-    },
-
-    /// Inspector → shell, a secção HUD (TOP-20 #20).
-    ///
-    /// ⚠️ **Uma variante para os QUATRO componentes do HUD**, e não uma por componente: o painel
-    /// pinta-os numa secção só (um objecto de HUD tem uns e não outros), e quatro variantes
-    /// obrigariam o dreno a repetir a mesma busca de entidade quatro vezes.
-    InspectorHudEdit {
-        /// A quem ela se aplica.
-        entity_bits: u64,
-        /// O que mudou.
-        edit: crate::hud_edits::HudFieldEdit,
-    },
-
-    /// Inspector → shell, a secção SEQUENCE (TOP-20 #19, W3).
-    ///
-    /// ⚠️ **O que viaja é o NOME da cutscene, nunca o índice dela** — apagar um container renumera
-    /// os de baixo, e a lei do [`ph2d_ecs::SequencePlayer`] é *referência durável é o nome*.
-    InspectorSequenceEdit {
-        /// A quem ela se aplica.
-        entity_bits: u64,
-        /// O que mudou.
-        edit: crate::sequence_edits::SequenceFieldEdit,
-    },
-    /// Uma edição da secção **COUNTER WATCH** do Inspector.
-    ///
-    /// ⚠️ **APENDADA, como as 25 irmãs** — e é uma das que a nota de corte deste ficheiro nomeia:
-    /// todas têm a mesma forma `{ entity_bits, edit }` e o mesmo dreno.
-    InspectorCounterWatchEdit {
-        /// A quem ela se aplica.
-        entity_bits: u64,
-        /// O que mudou.
-        edit: crate::counter_watch_edits::CounterWatchFieldEdit,
-    },
-    /// Uma edição da secção **GATILHO** do Inspector (o suplente #24).
-    ///
-    /// ⚠️ **APENDADA**, como as 26 irmãs, e com a mesma forma `{ entity_bits, edit }`.
-    InspectorActionTriggerEdit {
-        /// A quem ela se aplica.
-        entity_bits: u64,
-        /// O que mudou.
-        edit: crate::action_trigger_edits::ActionTriggerFieldEdit,
-    },
-
-    /// Inspector → shell, a secção PARTICLES (TOP-20 #18, W3).
-    InspectorParticlesEdit {
-        /// A quem ela se aplica.
-        entity_bits: u64,
-        /// O que mudou.
-        edit: crate::particles_edits::ParticlesFieldEdit,
-    },
-
-    /// Inspector → shell, a secção PROJECTILE MOTION (TOP-20 #14, W3).
-    ///
-    /// ⚠️ **Uma variante para o componente inteiro**, como as irmãs.
-    InspectorProjectileEdit {
-        entity_bits: u64,
-        edit: crate::projectile_edits::ProjectileFieldEdit,
     },
 
     /// Inspector → shell channel for a §10 Material & Blend field (Blend
@@ -703,6 +616,12 @@ pub use kinds::{AssetCardAction, CatalogVerb, SelectModifier, TransportCmd};
 #[path = "action_bus_hier.rs"]
 mod hier;
 pub use hier::HierRequest;
+
+/// ⚠️ A família das **secções de componente de jogo** vive no filho [`component`]
+/// (`action_bus_component.rs`) e é re-exportada aqui. Ver o cabeçalho de lá para a fronteira dela.
+#[path = "action_bus_component.rs"]
+mod component;
+pub use component::ComponentEdit;
 
 #[cfg(test)]
 #[path = "action_bus_tests.rs"]

@@ -3,7 +3,7 @@
 //! sub-dreno é re-derivado (o dreno só corre com ele). Ver o cabeçalho de lá.
 
 use super::*;
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_i18n::{tr, tr_with};
 
 impl crate::App {
@@ -208,47 +208,24 @@ impl crate::App {
             // estão escolhidos. ⛔ Ligá-lo sem o desenhar daria ao artista um efeito invisível.
             // ⭐ **As secções FACTORY e LIFECYCLE** (TOP-20 #11 e #12). ⚠️ **NÃO espalha sobre a
             // BulkSelect**, pela razão das irmãs: o painel mostra a PRIMÁRIA e di-lo por escrito.
-            EditorAction::InspectorFactoryEdit { entity_bits, edit } => {
-                pd.factory_edits.push((entity_bits, edit));
-            }
-            // ⭐ **A secção TOP-DOWN PLAYER** (TOP-20 #13). ⚠️ **NÃO espalha sobre a BulkSelect**,
-            // pela razão das irmãs: o painel mostra a PRIMÁRIA e di-lo por escrito.
-            EditorAction::InspectorTopDownEdit { entity_bits, edit } => {
-                pd.topdown_edits.push((entity_bits, edit));
-            }
-            // ⭐ **A secção PROJECTILE MOTION** (TOP-20 #14), pela mesma razão da irmã acima.
-            EditorAction::InspectorProjectileEdit { entity_bits, edit } => {
-                pd.projectile_edits.push((entity_bits, edit));
-            }
-            // ⭐ **A secção STATE MACHINE** (TOP-20 #15), pela mesma razão das irmãs acima.
-            EditorAction::InspectorStateMachineEdit { entity_bits, edit } => {
-                pd.statemachine_edits.push((entity_bits, edit));
-            }
-            // ⭐ **A secção SCRIPT** (TOP-20 #16), pela mesma razão.
-            EditorAction::InspectorScriptEdit { entity_bits, edit } => {
-                pd.script_edits.push((entity_bits, edit));
-            }
-            // ⭐ **A secção PARTICLES** (TOP-20 #18), pela mesma razão.
-            EditorAction::InspectorParticlesEdit { entity_bits, edit } => {
-                pd.particles_edits.push((entity_bits, edit));
-            }
-            // ⭐ **A secção HUD** (TOP-20 #20), pela mesma razão.
-            EditorAction::InspectorHudEdit { entity_bits, edit } => {
-                pd.hud_edits.push((entity_bits, edit));
-            }
-            // ⭐ **A secção SEQUENCE** (TOP-20 #19), pela mesma razão.
-            EditorAction::InspectorSequenceEdit { entity_bits, edit } => {
-                pd.sequence_edits.push((entity_bits, edit));
-            }
-            EditorAction::InspectorCounterWatchEdit { entity_bits, edit } => {
-                pd.counter_watch_edits.push((entity_bits, edit));
-            }
-            EditorAction::InspectorActionTriggerEdit { entity_bits, edit } => {
-                pd.action_trigger_edits.push((entity_bits, edit));
-            }
-            EditorAction::InspectorTagsEdit { entity_bits, edit } => {
-                pd.tags_edits.push((entity_bits, edit));
-            }
+            // ⭐⭐⭐ **As ONZE secções de COMPONENTE DE JOGO, num braço só** — a família saiu
+            // do `EditorAction` em 2026-09-18 (ver `action_bus_component.rs`), e o dreno
+            // seguiu-a: onze braços de seis linhas custavam `+47` LOC neste ficheiro para os
+            // mesmos onze destinos. ⚠️ **NENHUMA se espalha sobre a BulkSelect**, pela razão
+            // que as onze declaram: o painel mostra a PRIMÁRIA e di-lo por escrito.
+            EditorAction::InspectorComponentEdit { entity_bits, edit } => match edit {
+                ComponentEdit::Factory(e) => pd.factory_edits.push((entity_bits, e)),
+                ComponentEdit::TopDown(e) => pd.topdown_edits.push((entity_bits, e)),
+                ComponentEdit::Projectile(e) => pd.projectile_edits.push((entity_bits, e)),
+                ComponentEdit::StateMachine(e) => pd.statemachine_edits.push((entity_bits, e)),
+                ComponentEdit::Script(e) => pd.script_edits.push((entity_bits, e)),
+                ComponentEdit::Particles(e) => pd.particles_edits.push((entity_bits, e)),
+                ComponentEdit::Hud(e) => pd.hud_edits.push((entity_bits, e)),
+                ComponentEdit::Sequence(e) => pd.sequence_edits.push((entity_bits, e)),
+                ComponentEdit::CounterWatch(e) => pd.counter_watch_edits.push((entity_bits, e)),
+                ComponentEdit::ActionTrigger(e) => pd.action_trigger_edits.push((entity_bits, e)),
+                ComponentEdit::Tags(e) => pd.tags_edits.push((entity_bits, e)),
+            },
             // ⭐⭐⭐ **O painel TAGS** (TOP-20 #9, W4). ⛔ **Sem `entity_bits`, e é isso que o
             // separa da irmã de cima:** o sujeito é a TAXONOMIA, não um objecto — e por isso a
             // pergunta da BulkSelect nem sequer se põe.

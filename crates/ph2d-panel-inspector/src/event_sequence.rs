@@ -8,7 +8,7 @@
 //! que o quadro seguinte relê da cena — escrever aqui abriria a segunda porta para o mesmo estado,
 //! e ela mentiria exactamente no caso em que a shell recusasse a edição.
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::sequence_edits::SequenceFieldEdit as E;
@@ -45,8 +45,10 @@ pub(crate) fn apply_sequence_event(host: &mut dyn PanelHostInternal, ev: WidgetE
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: E) {
-    host.bus_mut()
-        .push(EditorAction::InspectorSequenceEdit { entity_bits, edit });
+    host.bus_mut().push(EditorAction::InspectorComponentEdit {
+        entity_bits,
+        edit: ComponentEdit::Sequence(edit),
+    });
 }
 
 /// Fecha o popover depois de uma escolha.

@@ -13,7 +13,7 @@
 //! manda o par inteiro, com a altura lida do snapshot. ⛔ Mandar meio par obrigaria a shell a ler o
 //! outro eixo do mundo, e é assim que dois escritores do mesmo campo nascem.
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{FactoryFieldEdit, InspectorSpawnWhere};
@@ -93,6 +93,8 @@ pub(crate) fn apply_factory_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: FactoryFieldEdit) {
-    host.bus_mut()
-        .push(EditorAction::InspectorFactoryEdit { entity_bits, edit });
+    host.bus_mut().push(EditorAction::InspectorComponentEdit {
+        entity_bits,
+        edit: ComponentEdit::Factory(edit),
+    });
 }

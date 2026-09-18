@@ -7,7 +7,7 @@
 //! ⚠️ **O valor que uma edição afirma vem do SNAPSHOT, nunca do store** — ler o store faz o
 //! primeiro clique depois de trocar de objecto mandar o valor do objecto anterior.
 
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::counter_watch_edits::CounterWatchFieldEdit as E;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
@@ -105,8 +105,10 @@ pub(crate) fn apply_counter_watch_event(
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: E) {
-    host.bus_mut()
-        .push(EditorAction::InspectorCounterWatchEdit { entity_bits, edit });
+    host.bus_mut().push(EditorAction::InspectorComponentEdit {
+        entity_bits,
+        edit: ComponentEdit::CounterWatch(edit),
+    });
 }
 
 /// Fecha o popover depois de uma escolha.

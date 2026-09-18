@@ -13,6 +13,13 @@
 /// A tradução de uma chave dos painéis das ferramentas de imagem, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        // ── LETRAS SOLTAS, que a régua lexical não conta por CONSTRUÇÃO ────────────────────────
+        // ⚠️⚠️ Os dois chips do modo `Fixed` (largura e altura) pintavam `"W"` e `"H"` crus com o
+        //    censo desta crate VERDE: o `is_language` exige DUAS letras SEGUIDAS, senão acusaria
+        //    todo identificador, e uma letra sozinha não tem forma que o distinga de um. ⇒ o
+        //    tipo é que passa a ser a cerca (`TextKey` no pintor), e a régua é o gate desta crate.
+        "panel.equalize_sizes.fixed.w" => "W",
+        "panel.equalize_sizes.fixed.h" => "H",
         // ph2d-migrar-texto:begin
         // ⛔ Era "Color EQ" e a aba dizia "Color Equalization" — uma fonte só desde que o
         // `Panel::TITLE` é a chave (2026-09-17); ganhou a palavra da ABA. ⚠️ O nome ABREVIADO que

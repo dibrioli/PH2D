@@ -544,3 +544,55 @@ fn o_pintor_pinta_os_nomes_da_tabela() {
          oito nomes inteiros somam {inteiros} — o pintor não está a pintar os nomes da tabela"
     );
 }
+
+/// ⭐⭐⭐ **OS VINTE E QUATRO NOMES DO MENU `+ Adjustment` SÃO DISTINTOS — e esta propriedade
+/// mudou-se para cá porque estava a ser afirmada sobre CÓDIGO MORTO.**
+///
+/// ⛔⛔ Medido em 2026-09-18: a crate de efeitos tinha um `AdjustmentKind::display_name()` cujo doc
+/// dizia *«Human-readable name for the "+ Adjustment" menu + the layer-row label»* — e o único
+/// chamador dele no repo inteiro era **o teste da própria crate**. O menu lê
+/// [`adjust_nomes::chave_da_especie`] desde a migração do HR-15, logo aquela função era um ÓRFÃO
+/// e a cura de um órfão é APAGAR (a lei que o `CLAUDE.md` §5.0 escreve: *um controlo pintado sem
+/// consumidor liga-se; um texto que ninguém pinta apaga-se*).
+///
+/// ⚠️ **Apagá-lo sozinho perdia a propriedade**, porque o gate da espécie aqui ao lado só afirma
+/// que cada nome ESTÁ DECLARADO — nunca que dois não colidem. ⇒ ela vem para onde o menu vive, e
+/// fica **mais forte**: mede as 24 palavras que o artista de facto abre, resolvidas pela tabela,
+/// em vez das 24 que estavam escritas numa função que ninguém chamava.
+#[test]
+fn os_vinte_e_quatro_nomes_do_menu_sao_distintos() {
+    use ph2d_tool_painter::AdjustmentKind;
+
+    // ⛔ Piso de população: com a lista vazia a varredura não vê colisão nenhuma.
+    assert_eq!(
+        AdjustmentKind::ALL.len(),
+        24,
+        "o menu `+ Adjustment` tem 24 espécies"
+    );
+    let mut vistos: std::collections::BTreeMap<&'static str, AdjustmentKind> =
+        std::collections::BTreeMap::new();
+    let mut colisoes = Vec::new();
+    let mut sem_nome = Vec::new();
+    for &especie in &AdjustmentKind::ALL {
+        let chave = adjust_nomes::chave_da_especie(especie);
+        let nome = ph2d_i18n::tr(chave);
+        if nome == chave || nome.is_empty() {
+            sem_nome.push(format!("{especie:?} ({chave})"));
+            continue;
+        }
+        if let Some(outra) = vistos.insert(nome, especie) {
+            colisoes.push(format!("{nome:?}: {outra:?} e {especie:?}"));
+        }
+    }
+    assert!(
+        sem_nome.is_empty(),
+        "estas espécies abrem o menu com o IDENTIFICADOR no lugar do nome:\n  {}",
+        sem_nome.join("\n  ")
+    );
+    assert!(
+        colisoes.is_empty(),
+        "duas espécies mostram a MESMA palavra no menu — o artista não consegue escolher entre \
+         elas:\n  {}",
+        colisoes.join("\n  ")
+    );
+}

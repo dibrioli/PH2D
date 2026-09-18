@@ -59,3 +59,39 @@ fn every_key_of_this_panel_exists_on_both_sides() {
         c.orfas
     );
 }
+
+/// ⭐⭐⭐ **AS LETRAS SOLTAS — o que a régua lexical não pode ver, e por isso precisa de gate.**
+///
+/// ⛔⛔ **Medido em 2026-09-18:** o gate acima estava VERDE e os dois chips do modo `Fixed`
+/// pintavam `"W"` e `"H"` escritos no fonte. A cegueira é **por construção**: o
+/// [`ph2d_label_census::is_language`] exige duas letras SEGUIDAS, senão acusaria todo
+/// identificador. *Uma letra sozinha não tem forma que a distinga de um — quem a distingue é o
+/// TIPO*, e o `paint_labeled_chip` passou a receber [`ph2d_i18n::TextKey`].
+///
+/// Este gate dá a metade que o tipo não pode dar: **a chave existe na tabela**. A população é
+/// LIDA do pintor, nunca escrita outra vez aqui.
+#[test]
+fn cada_letra_solta_deste_painel_vem_da_tabela() {
+    const PINTOR: &str = include_str!("../../src/paint.rs");
+    let chaves: Vec<&str> = PINTOR
+        .split("TextKey::new(\"")
+        .skip(1)
+        .filter_map(|p| p.split('"').next())
+        .collect();
+    // ⛔ Piso de população: o modo `Fixed` tem DOIS chips (largura e altura).
+    assert_eq!(
+        chaves.len(),
+        2,
+        "o pintor declara {} chave(s) de letra e os chips do `Fixed` são dois: {chaves:?}",
+        chaves.len()
+    );
+    let cruas: Vec<&str> = chaves
+        .iter()
+        .copied()
+        .filter(|k| ph2d_i18n::tr(k) == *k)
+        .collect();
+    assert!(
+        cruas.is_empty(),
+        "estas chaves de LETRA não existem na tabela — o chip pinta o identificador: {cruas:?}"
+    );
+}

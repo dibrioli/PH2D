@@ -92,18 +92,6 @@ fn gpu_code_and_params_contract() {
 }
 
 #[test]
-fn all_kinds_have_nonempty_distinct_display_names() {
-    // Every kind in the menu shows a non-empty, unique English label.
-    assert_eq!(AdjustmentKind::ALL.len(), 24);
-    let mut seen = std::collections::BTreeSet::new();
-    for &kind in &AdjustmentKind::ALL {
-        let name = kind.display_name();
-        assert!(!name.is_empty(), "empty display_name for {kind:?}");
-        assert!(seen.insert(name), "duplicate display_name {name:?}");
-    }
-}
-
-#[test]
 fn neutral_params_round_trip_via_postcard() {
     // Postcard serialize/deserialize is the persist path (HR-14); a neutral
     // layer must round-trip identically (no ID-shift in the discriminated

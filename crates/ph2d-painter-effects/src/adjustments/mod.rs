@@ -493,38 +493,6 @@ impl AdjustmentKind {
         Self::ShadowsHighlights,
         Self::BlackAndWhite,
     ];
-
-    /// Human-readable name for the "+ Adjustment" menu + the layer-row label
-    /// (English — UI is always English, [[feedback-app-ui-english-only]]).
-    #[must_use]
-    pub const fn display_name(self) -> &'static str {
-        match self {
-            Self::HueSaturationBrightness => "Hue/Saturation",
-            Self::ColorBalance => "Color Balance",
-            Self::Curves => "Curves",
-            Self::GradientMap => "Gradient Map",
-            Self::BrightnessContrast => "Brightness/Contrast",
-            Self::GaussianBlur => "Gaussian Blur",
-            Self::MotionBlur => "Motion Blur",
-            Self::Bloom => "Bloom",
-            Self::Noise => "Noise",
-            Self::Sharpen => "Sharpen",
-            Self::Halftone => "Halftone",
-            Self::ChromaticAberration => "Chromatic Aberration",
-            Self::Vibrance => "Vibrance",
-            Self::ColorLookupLut => "Color Lookup",
-            Self::PhotoFilter => "Photo Filter",
-            Self::Posterize => "Posterize",
-            Self::Threshold => "Threshold",
-            Self::Invert => "Invert",
-            Self::Levels => "Levels",
-            Self::SelectiveColor => "Selective Color",
-            Self::ChannelMixer => "Channel Mixer",
-            Self::Exposure => "Exposure",
-            Self::ShadowsHighlights => "Shadows/Highlights",
-            Self::BlackAndWhite => "Black & White",
-        }
-    }
 }
 
 /// Destructive-only adjustments — cap ≤ 8 (v1 = 5). Separate enum so the type

@@ -90,6 +90,32 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.timers.repeats" => "repeats",
         "panel.inspector.timers.once" => "once",
         "panel.inspector.timers.title_count" => "Timers  ({n})",
+        // ── LETRAS SOLTAS, que a régua lexical não conta por CONSTRUÇÃO ────────────────────────
+        // ⚠️⚠️ **O `is_language` exige DUAS letras SEGUIDAS** (senão acusaria todo identificador),
+        //    logo uma letra sozinha é invisível para ele — e estas estavam pintadas no ecrã com o
+        //    censo desta crate VERDE. Quem as achou foi o censo de PORTA (o que segue quem chega a
+        //    um pintor), mais a leitura do painel do 9-slice.
+        //
+        // ⭐⭐ **As cinco do 9-slice são INICIAIS de palavras, e a legenda delas já vivia AQUI:**
+        //    `panel.inspector.slice.corners_f_fixed_on_off` explica *«S stretch, R repeat, M
+        //    mirror»*. Traduzida a legenda e não as letras, ela passava a explicar letras que a
+        //    grelha não mostra — *uma legenda e o que ela explica têm de viajar juntas*.
+        // ⚠️ Em ASCII de propósito no inglês (a grelha é pequena e um glifo largo não cabe), e o
+        //    `-` entra pela mesma porta: ele é a marca do estado APAGADO, e uma língua pode
+        //    escolher outra.
+        "panel.inspector.slice.letter_stretch" => "S",
+        "panel.inspector.slice.letter_repeat" => "R",
+        "panel.inspector.slice.letter_mirror" => "M",
+        "panel.inspector.slice.letter_blank" => "-",
+        "panel.inspector.slice.letter_fixed" => "F",
+        // ⚠️ A célula que não afirma modo nenhum (selecção MISTA) — uma marca, e as línguas não
+        //    escolhem todas a mesma.
+        "panel.inspector.slice.letter_mixed" => "?",
+        // As quatro células da REGIÃO de uma sprite (`Region` do Render Source).
+        "panel.inspector.region.x" => "X",
+        "panel.inspector.region.y" => "Y",
+        "panel.inspector.region.w" => "W",
+        "panel.inspector.region.h" => "H",
         // ph2d-migrar-texto:begin
         "panel.inspector.panel.no_properties_yet_for_the" => {
             "No properties yet for the selected entity."

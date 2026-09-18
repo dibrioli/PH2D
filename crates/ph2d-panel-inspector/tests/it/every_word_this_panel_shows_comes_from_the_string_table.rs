@@ -174,3 +174,65 @@ fn every_inspector_key_lives_in_exactly_one_table() {
         player_t[0]
     );
 }
+
+/// ⭐⭐⭐ **AS LETRAS SOLTAS — o que a régua lexical não pode ver, e por isso precisa de gate.**
+///
+/// ⛔⛔ **Este gate nasce de uma medição (2026-09-18):** o censo desta crate estava VERDE e o
+/// painel pintava `S` · `R` · `M` · `F` · `-` na grelha do 9-slice e `X` · `Y` · `W` · `H` nas
+/// células da região. A cegueira é **por construção**: o [`ph2d_label_census::is_language`] exige
+/// duas letras SEGUIDAS, senão acusaria todo identificador (`"x"`, `"n"`, `"b"` são nomes de
+/// param neste repo às centenas). *Uma letra sozinha não tem forma que a distinga de um
+/// identificador — quem a distingue é o TIPO.*
+///
+/// ⇒ o pintor recebe [`ph2d_i18n::TextKey`] e não `&str`, logo escrever `"W"` lá **não compila**;
+/// e o que este gate acrescenta é a outra metade, que o tipo não pode dar: **a chave existe na
+/// tabela**. ⚠️ A população é DERIVADA — as do 9-slice das próprias `const` que o painel pinta, as
+/// da região do FONTE que as escreve —, nunca de uma segunda lista escrita à mão.
+#[test]
+fn cada_letra_solta_deste_painel_vem_da_tabela() {
+    use ph2d_i18n::TextKey;
+
+    // 1. As do 9-SLICE, lidas das const do produto.
+    let do_produto: Vec<TextKey> = ph2d_panel_inspector::REGION_LETTERS
+        .into_iter()
+        .chain(ph2d_panel_inspector::CORNER_LETTERS)
+        .chain([ph2d_panel_inspector::MIXED_LETTER])
+        .collect();
+
+    // 2. As da REGIÃO, lidas do ficheiro que as pinta — elas nascem inline, ao lado do rect de
+    //    cada célula, e juntá-las numa const só para o gate poria a ORDEM da grelha num sítio
+    //    onde ninguém a lê.
+    const PINTOR: &str = include_str!("../../src/sections/render_source.rs");
+    let mut do_fonte: Vec<String> = Vec::new();
+    for pedaco in PINTOR.split("TextKey::new(\"").skip(1) {
+        if let Some(k) = pedaco.split('"').next() {
+            do_fonte.push(k.to_string());
+        }
+    }
+    assert_eq!(
+        do_fonte.len(),
+        4,
+        "a região tem QUATRO células (X · Y · W · H) e o pintor declara {}: {do_fonte:?}",
+        do_fonte.len()
+    );
+
+    // ⛔ Piso de população: sem ele um `REGION_LETTERS` vazio deixaria a varredura a medir nada.
+    assert_eq!(
+        do_produto.len(),
+        7,
+        "as letras do 9-slice são 4 de região + 2 de canto + a de mista"
+    );
+
+    let cruas: Vec<String> = do_produto
+        .iter()
+        .map(|k| k.key().to_string())
+        .chain(do_fonte)
+        .filter(|k| ph2d_i18n::tr(k) == *k)
+        .collect();
+    assert!(
+        cruas.is_empty(),
+        "estas chaves de LETRA não existem na tabela — o painel vai pintar o identificador no \
+         lugar da letra:\n  {}",
+        cruas.join("\n  ")
+    );
+}

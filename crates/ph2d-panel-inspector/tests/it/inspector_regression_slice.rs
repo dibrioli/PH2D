@@ -284,7 +284,14 @@ fn a_corner_cell_only_has_the_two_states_a_corner_actually_has() {
 /// quatro células que não esticam.
 #[test]
 fn a_corner_shows_that_it_is_fixed_not_stretched() {
-    assert_eq!(ph2d_panel_inspector::CORNER_LETTERS, ["F", "-"]);
+    // ⭐ **A letra que o artista LÊ, não a que está escrita no fonte** (2026-09-18): desde que
+    //    estas passaram a ser chaves, comparar o literal mediria a tabela do código em vez do
+    //    ecrã — e o gate ficou MAIS FORTE, porque agora reprova também uma chave que a tabela
+    //    não conhece (ela voltaria crua, `panel.inspector.slice.letter_fixed`).
+    assert_eq!(
+        ph2d_panel_inspector::CORNER_LETTERS.map(ph2d_i18n::TextKey::tr),
+        ["F", "-"]
+    );
     for i in 0..8 {
         let corner = ph2d_panel_inspector::is_corner_cell(i);
         let (col, row) = ph2d_panel_inspector::REGION_CELLS[i];

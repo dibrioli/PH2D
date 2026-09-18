@@ -36,8 +36,25 @@ pub const REGION_CELLS: [(usize, usize); 8] = [
     (2, 2),
 ];
 
-/// A inicial de cada `TileRegionMode`, tags `0..=3`. ASCII de propósito (sem tofu).
-pub const REGION_LETTERS: [&str; 4] = ["S", "R", "M", "-"];
+/// A inicial de cada `TileRegionMode`, tags `0..=3` — **CHAVES, nunca letras**.
+///
+/// ⚠️⚠️ Até 2026-09-18 estas eram as letras escritas à mão, e o censo desta crate ficava VERDE
+/// sobre elas: o `is_language` exige DUAS letras SEGUIDAS (senão acusaria todo identificador),
+/// logo uma letra sozinha é invisível para ele **por construção**.
+/// ⭐⭐ E elas são INICIAIS de palavras — a legenda da grelha
+/// (`panel.inspector.slice.corners_f_fixed_on_off`) explica *«S stretch, R repeat, M mirror»* e
+/// já vivia na tabela: *traduzida a legenda e não as letras, ela passava a explicar letras que a
+/// grelha nunca mostra.* ⇒ as duas viajam juntas.
+/// ⚠️ Em inglês ficam ASCII de propósito (a célula é pequena e um glifo largo não cabe).
+pub const REGION_LETTERS: [TextKey; 4] = [
+    TextKey::new("panel.inspector.slice.letter_stretch"),
+    TextKey::new("panel.inspector.slice.letter_repeat"),
+    TextKey::new("panel.inspector.slice.letter_mirror"),
+    TextKey::new("panel.inspector.slice.letter_blank"),
+];
+
+/// A marca de uma célula cuja selecção é MISTA — ela não afirma modo nenhum.
+pub const MIXED_LETTER: TextKey = TextKey::new("panel.inspector.slice.letter_mixed");
 
 /// As letras de um CANTO — `[desenhado, apagado]`.
 ///
@@ -45,7 +62,10 @@ pub const REGION_LETTERS: [&str; 4] = ["S", "R", "M", "-"];
 /// tamanho intrínseco: é essa a razão de existir do 9-slice. Reaproveitar o `S` ali fazia a
 /// legenda («S stretch») afirmar sobre o canto o contrário do que ele faz — e escondia que as
 /// suas únicas duas posições são desenhar e não desenhar (auditoria 2026-08-22).
-pub const CORNER_LETTERS: [&str; 2] = ["F", "-"];
+pub const CORNER_LETTERS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.slice.letter_fixed"),
+    TextKey::new("panel.inspector.slice.letter_blank"),
+];
 
 /// A célula `i` da grelha é um dos quatro cantos? Deriva de [`REGION_CELLS`], nunca de uma
 /// segunda cópia da tabela.
@@ -113,14 +133,14 @@ pub(super) fn region_grid(
         // Divergente na seleção: a célula não afirma modo nenhum.
         let tag = usize::from(info.tile_modes[i]);
         let letter = if info.mixed.tile_modes {
-            "?"
+            MIXED_LETTER
         } else if is_corner_cell(i) {
             // Um canto só tem duas posições, e é `F` — fixo — não `S`.
             CORNER_LETTERS[usize::from(tag == 3)]
         } else {
             REGION_LETTERS[tag.min(REGION_LETTERS.len() - 1)]
         };
-        let btn = Button::new(id, letter)
+        let btn = Button::new(id, letter.tr())
             .kind(ButtonKind::Default)
             .visual(store.button_visual(id));
         paint_button(&btn, rect, scene, text_system, theme);
@@ -132,14 +152,14 @@ pub(super) fn region_grid(
     let mid = Rect::new(x + CELL + gap, grid_y + CELL + gap, CELL, CELL);
     hit_index.register(ids::INSP_SLICE_CENTRE, mid);
     let mid_letter = if !info.fill_center {
-        "-"
+        TextKey::new("panel.inspector.slice.letter_blank")
     } else if info.mixed.tile_modes {
-        "?"
+        MIXED_LETTER
     } else {
         REGION_LETTERS[usize::from(info.centre_tile_mode).min(REGION_LETTERS.len() - 1)]
     };
     paint_button(
-        &Button::new(ids::INSP_SLICE_CENTRE, mid_letter)
+        &Button::new(ids::INSP_SLICE_CENTRE, mid_letter.tr())
             .kind(ButtonKind::Default)
             .visual(store.button_visual(ids::INSP_SLICE_CENTRE)),
         mid,

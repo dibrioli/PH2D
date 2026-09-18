@@ -296,7 +296,7 @@ fn paint_mode_rows(
             // slider, so we inline a small chip row painter here.
             let used_w = paint_labeled_chip(
                 Rect::new(inner_x, y, half, row_h),
-                "W",
+                ph2d_i18n::TextKey::new("panel.equalize_sizes.fixed.w"),
                 ph2d_tool_equalize_sizes::ids::EQS_FIXED_W,
                 snapshot.fixed_w as f64,
                 store,
@@ -307,7 +307,7 @@ fn paint_mode_rows(
             );
             let used_h = paint_labeled_chip(
                 Rect::new(inner_x + half + chip_gap, y, half, row_h),
-                "H",
+                ph2d_i18n::TextKey::new("panel.equalize_sizes.fixed.h"),
                 ph2d_tool_equalize_sizes::ids::EQS_FIXED_H,
                 snapshot.fixed_h as f64,
                 store,
@@ -539,9 +539,17 @@ fn paint_toggle_button(
 /// *Um componente reusado com um dos seus eixos posto a zero não é reuso; é um caso especial à
 /// espera do primeiro layout que não o respeite.*
 #[allow(clippy::too_many_arguments)]
+/// ⚠️⚠️ **O rótulo entra TIPADO (`TextKey`) e não como `&str`, e isso é a cerca.**
+///
+/// Até 2026-09-18 ele era um `&str` e os dois chamadores passavam `"W"` e `"H"` **crus** — com o
+/// censo desta crate VERDE, porque o `is_language` exige duas letras SEGUIDAS (senão acusaria todo
+/// identificador) e uma letra sozinha não tem forma que a distinga de uma. ⇒ *quando a régua não
+/// consegue ver a diferença, quem a vê é o TIPO*: com este parâmetro, escrever `"W"` aqui deixa de
+/// compilar. É a lei que a memória desta casa já regista — *chave e texto do mesmo tipo é um
+/// defeito à espera*.
 fn paint_labeled_chip(
     rect: Rect,
-    label: &str,
+    label: ph2d_i18n::TextKey,
     chip_id: NodeId,
     value: f64,
     store: &WidgetStore,
@@ -555,7 +563,7 @@ fn paint_labeled_chip(
     paint_text(
         text_system,
         scene,
-        label,
+        label.tr(),
         rect.x,
         rect.y,
         font,

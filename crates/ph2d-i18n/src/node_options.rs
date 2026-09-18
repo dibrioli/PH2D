@@ -116,6 +116,32 @@ pub(crate) const ENTRADAS: &[(&str, &str)] = &[
     ("node.force.wind.param.type.2", "Ridged"),
     ("node.fx.rgb_split.param.mode.0", "Split"),
     ("node.fx.rgb_split.param.mode.1", "Aberration"),
+    // ⛔⛔ **A LEGENDA DO ALFABETO e as CINCO QUEIXAS do L-SYSTEM — estavam em PORTUGUÊS**
+    // num app cuja lei é que *toda string que o artista LÊ é inglês*. As duas são pintadas: a
+    // legenda é o balão sobre o *Axiom* e as *Rules*; as queixas são a linha vermelha de uma
+    // regra malformada. ⚠️ Duas notas naquela crate autorizavam-nas por escrito — uma dizia
+    // que a legenda *«não tem superfície hoje»* (falso desde 31/08) e a outra citava o §0.8,
+    // que fala do REGISTO das respostas ao dono e nunca da LÍNGUA de uma string de produto.
+    //
+    // ⚠️ **A ORDEM DESTA LISTA É LOAD-BEARING** — o `tr` faz `binary_search`. A 1.ª redacção
+    // deste bloco entrou entre os `node.motion.*` e **calou tudo o que vinha depois**, com o
+    // compilador em silêncio; quem o apanhou foi um gate de OUTRA crate, sobre dois selectores
+    // do `motion.wiggle`. Hoje há régua: `as_entradas_estao_ORDENADAS`.
+    ("node.lsystem.alphabet.branch", "open / close a branch"),
+    ("node.lsystem.alphabet.cut", "cut the rest of the branch"),
+    ("node.lsystem.alphabet.move_draw", "move and draw"),
+    ("node.lsystem.alphabet.move_only", "move without drawing"),
+    ("node.lsystem.alphabet.mute", "any other letter shapes the plant without drawing"),
+    ("node.lsystem.alphabet.place", "place an object (leaf, flower…)"),
+    ("node.lsystem.alphabet.shorten", "shorten the step"),
+    ("node.lsystem.alphabet.thin", "thin the stroke"),
+    ("node.lsystem.alphabet.turn", "turn left / right"),
+    ("node.lsystem.alphabet.turn_around", "turn around"),
+    ("node.lsystem.rule_problem.bad_condition", "the condition after `:` does not make sense (e.g. use `n < 6`)"),
+    ("node.lsystem.rule_problem.bad_predecessor", "the symbol before `->` is not a single letter"),
+    ("node.lsystem.rule_problem.bad_weight", "the weight in parentheses must be a number greater than zero"),
+    ("node.lsystem.rule_problem.no_arrow", "the `->` between the symbol and what it becomes is missing"),
+    ("node.lsystem.rule_problem.unclosed_weight", "opened `(` for the weight and never closed the `)`"),
     ("node.motion.cull.param.invert.0", "Keep"),
     ("node.motion.cull.param.invert.1", "Complement"),
     ("node.motion.cull.param.mode.0", "Fraction"),
@@ -630,4 +656,44 @@ pub(crate) fn tr(chave: &str) -> Option<&'static str> {
         .binary_search_by_key(&chave, |(k, _)| k)
         .ok()
         .map(|i| ENTRADAS[i].1)
+}
+
+#[cfg(test)]
+mod testes_da_ordem {
+    /// ⛔⛔ **A TABELA TEM DE ESTAR ORDENADA** — o [`super::tr`] procura por `binary_search`, e
+    /// uma entrada fora de ordem faz a busca devolver `None` para uma chave que **ESTÁ** na
+    /// tabela: o selector pinta o identificador cru e `leak_key` vaza por quadro.
+    ///
+    /// ⛔⛔⛔ **Esta régua já existia para as OUTRAS DUAS tabelas por tuplo**
+    /// (`node_params::testes_do_corte::as_duas_metades_estao_ordenadas`, cujo doc descreve este
+    /// defeito por extenso) e **esta ficou de fora** — e foi exactamente esta que se partiu, em
+    /// 2026-09-17, com quinze entradas escritas no meio dos `node.motion.*`.
+    ///
+    /// ⚠️ *Uma lei conhecida, escrita e gateada em dois de três sítios é indistinguível de uma
+    /// lei cumprida* — e quem a acusou foi um gate de OUTRA crate, sobre **dois** selectores do
+    /// `motion.wiggle`: uma amostra do estrago, nunca o estrago.
+    #[test]
+    fn as_entradas_estao_ordenadas() {
+        let t = super::ENTRADAS;
+        // ⛔ Piso de população: uma tabela vazia está trivialmente ordenada.
+        assert!(
+            t.len() >= 100,
+            "só {} entradas — a tabela encolheu?",
+            t.len()
+        );
+        for w in t.windows(2) {
+            assert!(
+                w[0].0 < w[1].0,
+                "FORA DE ORDEM: {:?} vem antes de {:?} — tudo o que vier depois desta linha \
+                 deixa de resolver, sem erro de compilação",
+                w[0].0,
+                w[1].0
+            );
+        }
+        // ⭐ O CONTROLO POSITIVO da ordenação: a busca de facto acha cada uma. Sem ele, uma
+        //   régua que lesse a lista errada concordaria consigo própria.
+        for (k, v) in t {
+            assert_eq!(super::tr(k), Some(*v), "`{k}` não é encontrável");
+        }
+    }
 }

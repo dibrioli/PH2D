@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_dropped_rule_says_why;
+mod cada_palavra_deste_no_vem_da_tabela;
 mod growth_is_two_laws;
 mod measure_lsystem_ceiling;
 mod newborn_law;

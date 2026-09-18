@@ -59,7 +59,7 @@ fn each_of_the_five_ways_to_lose_a_rule_names_itself() {
             "a queixa NOMEIA a regra que o artista escreveu"
         );
         assert!(
-            !q[0].problem.say().is_empty(),
+            !ph2d_i18n::tr(q[0].problem.say_key()).is_empty(),
             "`{src}` tem de ter uma frase para o artista"
         );
     }

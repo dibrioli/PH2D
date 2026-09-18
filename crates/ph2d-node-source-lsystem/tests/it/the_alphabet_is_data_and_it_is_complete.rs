@@ -39,7 +39,7 @@ fn every_letter_in_the_table_is_interpreted() {
                 "`{sym}` está na tabela do alfabeto (*{}*) e o interpretador NÃO faz nada com \
                  ele — ou o braço do `match` caiu, ou a linha da tabela descreve uma feature \
                  que não existe",
-                l.does
+                l.does_key
             );
         }
     }
@@ -96,7 +96,10 @@ fn nothing_outside_the_table_is_interpreted() {
 /// exactamente o que uma auditoria acusa.*
 #[test]
 fn the_one_line_legend_does_not_fit_the_panel_column() {
-    let l = ls::alphabet::legend_one_line();
+    // ⚠️ O resolvedor é o REAL: a legenda é montada pela crate e o texto vem da tabela, que é
+    //    exactamente o par que o produto usa. Com um resolvedor de mentira este gate mediria o
+    //    comprimento de uma frase que ninguém pinta.
+    let l = ls::alphabet::legend_one_line(ph2d_i18n::tr);
     assert!(
         l.chars().count() > 60,
         "a legenda encolheu para {} caracteres — se ela couber em ~35, a decisão da superfície \

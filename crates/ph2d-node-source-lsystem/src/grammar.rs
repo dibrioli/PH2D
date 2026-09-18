@@ -277,18 +277,26 @@ pub enum RuleProblem {
 }
 
 impl RuleProblem {
-    /// **O que o artista lê** — e diz a CURA, nunca só o sintoma.
+    /// **A CHAVE do que o artista lê** — e a frase diz a CURA, nunca só o sintoma.
     ///
-    /// ⚠️ Em português e em linguagem de artista: o leitor desta frase é o dono do produto a
-    /// escrever uma gramática, não a próxima LLM (CLAUDE.md §0.8).
+    /// ⛔⛔ **Estas cinco frases estavam em PORTUGUÊS, e o doc que as defendia citava o
+    /// `CLAUDE.md` §0.8 ao contrário.** Ele dizia: *«em português e em linguagem de artista: o
+    /// leitor desta frase é o dono do produto»* — e o §0.8 fala do **REGISTO** das respostas ao
+    /// dono (curtas, sem jargão), nunca da LÍNGUA de uma string de produto. A lei da língua está
+    /// escrita noutro sítio e é a oposta: *toda string que o artista LÊ é inglês*.
+    ///
+    /// ⚠️ *Uma regra citada pelo número em vez de pelo conteúdo autoriza o contrário do que ela
+    /// diz* — e aqui sobreviveu num caminho que nenhuma régua varria (esta crate não tinha
+    /// censo). Curado em 2026-09-17; **a linguagem de ARTISTA fica**, que é a metade certa da
+    /// nota: a frase continua a dizer a cura e não o sintoma.
     #[must_use]
-    pub const fn say(self) -> &'static str {
+    pub const fn say_key(self) -> &'static str {
         match self {
-            Self::NoArrow => "falta o `->` entre o símbolo e o que ele vira",
-            Self::BadPredecessor => "o símbolo antes do `->` não é uma letra sozinha",
-            Self::BadCondition => "a condição depois do `:` não faz sentido (ex.: use `n < 6`)",
-            Self::BadWeight => "o peso entre parênteses tem de ser um número maior que zero",
-            Self::UnclosedWeight => "abriu `(` para o peso e não fechou o `)`",
+            Self::NoArrow => "node.lsystem.rule_problem.no_arrow",
+            Self::BadPredecessor => "node.lsystem.rule_problem.bad_predecessor",
+            Self::BadCondition => "node.lsystem.rule_problem.bad_condition",
+            Self::BadWeight => "node.lsystem.rule_problem.bad_weight",
+            Self::UnclosedWeight => "node.lsystem.rule_problem.unclosed_weight",
         }
     }
 }

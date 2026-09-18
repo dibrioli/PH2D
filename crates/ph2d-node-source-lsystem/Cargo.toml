@@ -23,6 +23,8 @@ ph2d-expr-parse = { path = "../ph2d-expr-parse" }
 # palavra que o selector mostra, e desde a 5.ª fatia do HR-15 o array carrega CHAVES. O
 # produto desta crate não conhece a tabela — quem traduz é quem pinta.
 [dev-dependencies]
+# A régua do HR-15 — dev-dep só: o produto não conhece o censo dele.
+ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 
 [lints]

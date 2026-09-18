@@ -56,7 +56,7 @@ fn a_rule_the_parser_throws_away_is_named_in_the_panel() {
         "a queixa tem de citar a regra que o artista escreveu: {msg}"
     );
     assert!(
-        msg.contains(ls::RuleProblem::BadWeight.say()),
+        msg.contains(ph2d_i18n::tr(ls::RuleProblem::BadWeight.say_key())),
         "e dizer a cura: {msg}"
     );
 }
@@ -219,7 +219,7 @@ fn the_alphabet_legend_reaches_both_grammar_boxes_and_nothing_else() {
                         );
                     }
                     assert!(
-                        h.contains(ls::alphabet::MUTE),
+                        h.contains(ph2d_i18n::tr(ls::alphabet::MUTE_KEY)),
                         "a legenda não diz que as outras letras estruturam sem desenhar — sem \
                          isso o artista não sabe que pode inventar as dele"
                     );

@@ -130,13 +130,95 @@ pub fn keys_declared(repo: &Path, tables: &[&str], prefix: &str) -> BTreeSet<Str
                 break;
             };
             let key = &code[start..start + end];
-            if code[start + end + 1..].trim_start().starts_with("=>") {
+            // ⭐⭐ **DUAS formas de declarar, e a régua via UMA** (medido em 2026-09-17): a
+            // maioria das tabelas é um `match key { "…" => "…" }`, mas três delas
+            // (`node_options.rs`, `node_params.rs`, `node_params_motion.rs`) são **listas de
+            // TUPLOS** `("…", "…"),`. Sobre elas o censo lia **zero declaradas** e dizia
+            // *«dois conjuntos vazios concordam sempre»* — *uma régua que só conhece uma das
+            // formas de escrever a mesma coisa mede o nada sobre a outra.*
+            //
+            // ⚠️ Aceitar a vírgula só é seguro porque isto lê **apenas ficheiros de TABELA**
+            // (o `keys_used` exclui-os): num ficheiro de produto `tr_with("k", …)` também tem
+            // vírgula a seguir, e ali isso seria um USO lido como declaração.
+            let depois = code[start + end + 1..].trim_start();
+            // ⛔⛔ **A vírgula SOZINHA não chega, e a 1.ª redacção desta cura partiu dois gates
+            // em dez segundos:** num `match` o VALOR também acaba em vírgula
+            // (`"k" => "  ...When Crouching",`), logo com o prefixo VAZIO — que é o que o gate do
+            // idioma de teste usa — metade da tabela passava a ler-se como chave.
+            // ⇒ um tuplo reconhece-se pelo PARÊNTESE que o abre, e essa é a cerca.
+            let antes = code[..start - 1].trim_end();
+            let tuplo = antes.ends_with('(') && depois.starts_with(',');
+            if depois.starts_with("=>") || tuplo {
                 out.insert(key.to_string());
             }
             i = start + end;
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests_duas_formas_de_declarar {
+    use std::io::Write;
+
+    /// ⭐⭐⭐ **AS DUAS FORMAS, e o falso positivo que a 1.ª cura criou.**
+    ///
+    /// Três tabelas deste repo (`node_options.rs`, `node_params.rs`, `node_params_motion.rs`)
+    /// são listas de TUPLOS e não `match`, e sobre elas o censo lia **zero declaradas** — *uma
+    /// régua que só conhece uma das formas de escrever a mesma coisa mede o nada sobre a outra.*
+    ///
+    /// ⛔⛔ **E aceitar «vírgula a seguir» partiu dois gates em dez segundos:** num `match` o
+    /// VALOR também acaba em vírgula, logo com o prefixo VAZIO metade da tabela passava a
+    /// ler-se como chave. A cerca é o **parêntese** que abre o tuplo, e este teste é o que a
+    /// impede de ser «simplificada» de volta.
+    #[test]
+    fn um_match_declara_a_chave_e_nunca_o_valor() {
+        let dir = std::env::temp_dir().join(format!("ph2d-keys-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("o temporário cria");
+        let f = dir.join("tabela.rs");
+        let mut h = std::fs::File::create(&f).expect("o ficheiro abre");
+        h.write_all(
+            b"pub fn tr(key: &str) -> Option<&'static str> {\n              Some(match key {\n              \"a.chave\" => \"  ...When Crouching\",\n              _ => return None,\n              })\n}\n",
+        )
+        .expect("escreve");
+        drop(h);
+
+        let achadas = super::keys_declared(&dir, &["tabela.rs"], "");
+        assert!(
+            achadas.contains("a.chave"),
+            "a chave de um `match` deixou de ser vista: {achadas:?}"
+        );
+        assert!(
+            !achadas.contains("  ...When Crouching"),
+            "o VALOR de um `match` está a ser lido como chave — é o falso positivo de 17/09, e \
+             com o prefixo vazio ele leva metade da tabela: {achadas:?}"
+        );
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// ⭐ E a outra metade: uma lista de TUPLOS declara o PRIMEIRO elemento, nunca o segundo.
+    #[test]
+    fn um_tuplo_declara_o_primeiro_e_nunca_o_segundo() {
+        let dir = std::env::temp_dir().join(format!("ph2d-keys-t-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("o temporário cria");
+        let f = dir.join("tabela.rs");
+        std::fs::write(
+            &f,
+            "pub const T: &[(&str, &str)] = &[\n    (\"a.chave\", \"Cylinder\"),\n];\n",
+        )
+        .expect("escreve");
+
+        let achadas = super::keys_declared(&dir, &["tabela.rs"], "");
+        assert!(
+            achadas.contains("a.chave"),
+            "a chave de um TUPLO não é vista — o censo mediria zero declaradas: {achadas:?}"
+        );
+        assert!(
+            !achadas.contains("Cylinder"),
+            "o VALOR de um tuplo está a ser lido como chave: {achadas:?}"
+        );
+        std::fs::remove_dir_all(&dir).ok();
+    }
 }
 
 #[cfg(test)]

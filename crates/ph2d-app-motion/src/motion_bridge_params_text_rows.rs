@@ -227,12 +227,16 @@ fn text_param_problem(
             "app.motion.motion_bridge_params_text_rows.rule_problem",
             &[
                 ("rule", &(primeira.rule)),
-                ("say", &(primeira.problem.say())),
+                ("say", &ph2d_i18n::tr(primeira.problem.say_key())),
                 ("queixas", &(queixas.len() - 1)),
             ],
         )
     } else {
-        format!("«{}»: {}", primeira.rule, primeira.problem.say())
+        format!(
+            "«{}»: {}",
+            primeira.rule,
+            ph2d_i18n::tr(primeira.problem.say_key())
+        )
     })
 }
 
@@ -270,9 +274,13 @@ fn text_param_help(
     {
         return None;
     }
+    // ⚠️ **É AQUI que a legenda se traduz**, e não na crate do nó: o `Cargo.toml` dela declara
+    //    por escrito que *«o produto desta crate não conhece a tabela — quem traduz é quem
+    //    pinta»*. A montagem (a ordem, o separador) fica lá, que é onde o gate do comprimento a
+    //    mede.
     Some(format!(
         "{} · {}",
-        ph2d_node_source_lsystem::alphabet::legend_one_line(),
-        ph2d_node_source_lsystem::alphabet::MUTE
+        ph2d_node_source_lsystem::alphabet::legend_one_line(ph2d_i18n::tr),
+        ph2d_i18n::tr(ph2d_node_source_lsystem::alphabet::MUTE_KEY)
     ))
 }

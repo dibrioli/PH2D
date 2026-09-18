@@ -14,9 +14,15 @@
 //! ⇒ o que aqui está é a MESMA tabela como dado, com o gate que a mantém honesta
 //! ([`crate::probe::probe_symbol_acts`]).
 //!
-//! ⛔ **Isto NÃO é a legenda no painel** — essa não tem superfície hoje, e o preço de cada uma
-//! está medido no handoff. O que isto é: a fonte de onde ela sairá, e o gate que impede a lista
-//! de divergir do interpretador enquanto ela não existe.
+//! ⛔⛔ **ESTA NOTA DIZIA *«isto NÃO é a legenda no painel — essa não tem superfície hoje»*, e
+//! era falsa desde 2026-08-31**, quando o balão sobre o *Axiom* e as *Rules* shipou. Ela É a
+//! legenda: o `motion_bridge_params_text_rows` chama a [`legend_one_line`] e pinta-a.
+//!
+//! ⇒ e enquanto a nota dizia que ninguém a lia, o texto ficou **em PORTUGUÊS** — num app cuja
+//! lei é que *toda string que o artista LÊ é inglês*. Curado em 2026-09-17: a tabela guarda
+//! CHAVES e quem traduz é quem pinta, como o `Cargo.toml` desta crate já declarava por escrito.
+//! *Uma nota que descreve a ausência de uma superfície envelhece no dia em que alguém a
+//! constrói — e leva com ela a régua que ninguém correu.*
 
 /// **Um grupo do alfabeto** — os símbolos e o que eles fazem, em linguagem de artista.
 ///
@@ -25,8 +31,15 @@
 pub struct Letter {
     /// Os símbolos deste grupo, separados por espaço — como se escrevem.
     pub symbols: &'static str,
-    /// O que eles fazem, para quem está a escrever a gramática.
-    pub does: &'static str,
+    /// ⭐ **A CHAVE do que eles fazem**, para quem está a escrever a gramática.
+    ///
+    /// ⛔⛔ **Era uma frase, e a frase estava em PORTUGUÊS** — num app cuja lei é que *toda
+    /// string que o artista LÊ é inglês*. Ela é pintada: o balão sobre o *Axiom* e as *Rules*
+    /// chama a [`legend_one_line`]. ⚠️ **E o doc deste módulo dizia o contrário** (*«isto NÃO é
+    /// a legenda no painel — essa não tem superfície hoje»*), verdade quando foi escrito e
+    /// falsa desde 31/08, quando o balão shipou. *Uma nota que descreve a ausência de uma
+    /// superfície envelhece no dia em que alguém a constrói.*
+    pub does_key: &'static str,
 }
 
 /// ⭐ **O alfabeto inteiro.** A ordem é a de utilidade para quem escreve, não a ASCII: o que
@@ -34,39 +47,39 @@ pub struct Letter {
 pub const ALPHABET: &[Letter] = &[
     Letter {
         symbols: "F G",
-        does: "anda e desenha",
+        does_key: "node.lsystem.alphabet.move_draw",
     },
     Letter {
         symbols: "f g",
-        does: "anda sem desenhar",
+        does_key: "node.lsystem.alphabet.move_only",
     },
     Letter {
         symbols: "+ -",
-        does: "vira à esquerda / direita",
+        does_key: "node.lsystem.alphabet.turn",
     },
     Letter {
         symbols: "|",
-        does: "meia-volta",
+        does_key: "node.lsystem.alphabet.turn_around",
     },
     Letter {
         symbols: "[ ]",
-        does: "abre / fecha um ramo",
+        does_key: "node.lsystem.alphabet.branch",
     },
     Letter {
         symbols: "!",
-        does: "afina a espessura",
+        does_key: "node.lsystem.alphabet.thin",
     },
     Letter {
         symbols: "\"",
-        does: "encurta o passo",
+        does_key: "node.lsystem.alphabet.shorten",
     },
     Letter {
         symbols: "%",
-        does: "corta o resto do ramo",
+        does_key: "node.lsystem.alphabet.cut",
     },
     Letter {
         symbols: "J K M",
-        does: "pousa um objecto (folha, flor…)",
+        does_key: "node.lsystem.alphabet.place",
     },
 ];
 
@@ -75,7 +88,7 @@ pub const ALPHABET: &[Letter] = &[
 /// É a metade prática do *homomorfismo* do ABOP (§1.7.2): o `X` de `F[+X]F[-X]+X` estrutura a
 /// planta sem lhe acrescentar um traço. ⚠️ **Faz parte da legenda**: sem esta frase o artista não
 /// sabe que pode inventar as letras dele.
-pub const MUTE: &str = "qualquer outra letra estrutura a planta sem desenhar";
+pub const MUTE_KEY: &str = "node.lsystem.alphabet.mute";
 
 /// A legenda numa linha — para quem a pintar.
 ///
@@ -83,10 +96,10 @@ pub const MUTE: &str = "qualquer outra letra estrutura a planta sem desenhar";
 /// inspector menos `70` de rótulo). *Uma linha só NÃO serve*, e é por isso que a superfície fica
 /// por decidir em vez de ser escolhida às cegas — ver o handoff.
 #[must_use]
-pub fn legend_one_line() -> String {
+pub fn legend_one_line(tr: impl Fn(&str) -> &'static str) -> String {
     ALPHABET
         .iter()
-        .map(|l| format!("{} {}", l.symbols, l.does))
+        .map(|l| format!("{} {}", l.symbols, tr(l.does_key)))
         .collect::<Vec<_>>()
         .join(" · ")
 }

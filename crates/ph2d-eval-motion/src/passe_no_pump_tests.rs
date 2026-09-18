@@ -159,7 +159,17 @@ fn as_varreduras_sao_coagidas_na_porta() {
     let sink = g.add_node(SRC_MAN.name);
     g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
     for (pedido, esperado) in [
-        (1000.0, SINK_COLLIDE_ITERATIONS_MAX as usize),
+        // ⚠️⚠️ **A PREMISSA DESTA CÉLULA MORREU, e a morte fica visível no diff** (doc 115 §18):
+        // ela era `(1000.0, MAX)` — com o tecto herdado em `64`, mil estava ACIMA dele. O tecto
+        // subiu por MEDIÇÃO para `4096`, logo `1000` passou a ser um pedido LEGÍTIMO, e a célula
+        // deixou de medir a coacção para medir a passagem. *Um gate cuja premissa expira e que
+        // ninguém reescreve passa a afirmar o contrário do que o nome dele diz.*
+        (1000.0, 1000),
+        (
+            SINK_COLLIDE_ITERATIONS_MAX + 1.0,
+            SINK_COLLIDE_ITERATIONS_MAX as usize,
+        ),
+        (1e9, SINK_COLLIDE_ITERATIONS_MAX as usize),
         (0.0, 1),
         (-5.0, 1),
         (16.0, 16),

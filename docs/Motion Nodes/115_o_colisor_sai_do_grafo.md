@@ -1208,3 +1208,100 @@ e o contador dizia `0` — *as duas metades a mentir no mesmo sentido*.
 ⭐ E a régua do «casou zero» funcionou: quando o `bc` não existia nesta máquina, o arnês devolveu
 **`ARNES-PARTIDO`** em vez de um veredito — *falhar alto é o que separa um instrumento de uma
 opinião.*
+
+---
+
+## §18 — ⭐⭐⭐ *«quero todas as possibilidades possíveis, não quero limitações no sistema»*
+
+> **Ordem do dono, 2026-09-18**, depois de eu lhe dizer que o passe não segura uma CADEIA e que
+> curá-lo era decisão dele.
+
+### §18.1 — ⛔⛔ A recusa da §15.3 era sobre um NÚMERO, e o número era HERDADO
+
+A §15.3 escreveu: *«`3` a 64, que é o topo do knob»* — e o §0.0 diz, à letra, que *«fora de escopo
+porque é inalcançável» é uma afirmação sobre um número que outra pessoa pode mudar*.
+
+Medido, o `64` deste consumidor vinha **por herança**: o doc dele dizia *«o MESMO do
+`motion.collide`»*, e o `64` do nó era um **clamp dentro do `eval`** cuja medição (folha 03, 12/08)
+só confirmou que **o clamp era honrado** — nunca que `64` chegava.
+
+⭐⭐⭐ **E a cadeia CONVERGE — sempre.** Peças de lado `1` a um quarto de passo, pares atravessados
+acima de `2 %` do lado:
+
+| n | antes | a 64 | a 256 | a 1024 | a 4096 |
+|---|---|---|---|---|---|
+| 4 | 6 | **0** | 0 | 0 | 0 |
+| 8 | 18 | 7 | **0** | 0 | 0 |
+| 16 | 42 | 23 | 15 | **0** | 0 |
+| 32 | 90 | 72 | 49 | 29 | **0** |
+
+⇒ **`4×` por cada vez que `n` duplica**, e o `64` segurava uma cadeia de **QUATRO**.
+
+### §18.2 — O RELÓGIO, que é o recurso (máquina a `load 4,93`)
+
+| n | varreduras que FECHAM | relógio | de um quadro |
+|---|---|---|---|
+| 8 | 256 | `0,33 ms` | `2,0 %` |
+| 16 | 1024 | `3,08 ms` | `18,5 %` |
+| 32 | 4096 | `26,3 ms` | `157 %` |
+| 64 | 16 384 | `221 ms` | `1 325 %` |
+
+⇒ **`0,2 µs` por peça-varredura**, constante de `n = 8` a `n = 64` — a grelha faz o trabalho
+linear, e o que explode é a **contagem** de varreduras, não o custo de cada uma.
+
+### §18.3 — ⛔⛔⛔ TRÊS acelerações construídas, MEDIDAS e REFUTADAS
+
+| hipótese | o que a medição disse |
+|---|---|
+| **Sobre-relaxação** (SOR, `p + ω(p′−p)`) | compra um **FACTOR**, nunca o expoente: a `ω = 1,95` o `n = 8` vai de `193` para `98` varreduras, o `16` de `863` para `442`, o `32` de `3 664` para `1 878` — **`~1,95×` e o mesmo `4×` por dobrar** |
+| **Vermelho-preto** (Gauss-Seidel determinístico, sem média) | `~3,3×` e **o mesmo expoente**: `n = 8·16·32·64·128` dá `29 · 118 · 472 · 1 891 · 7 569` contra `77 · 353 · 1 506 · 6 219 · 25 280` do Jacobi mediado |
+| **Realimentação** (a saída separada vira o estado do quadro seguinte) | **ZERO**, com a fixtura honesta: `QUENTE` e `FRIO` dão o mesmo `n−1` em todas as escadas medidas |
+
+⭐⭐⭐ **A LEI que as três dão, numa frase:** *o `~n²` não é do nosso solver nem da ordem em que ele
+varre — é de **relaxação LOCAL numa cadeia**.* Qualquer método que só olhe para os vizinhos paga
+`O(n²)` aqui; movê-lo exige um método **NÃO-local** (multigrid, resolução directa do grafo de
+contacto, propagação de choque), que é obra com espec própria e que **não** se faz mudando um
+número.
+
+⚠️⚠️ **E a 1.ª fixtura da realimentação mentiu, com a forma que este repo já tem escrita:** ela
+apertava a cadeia `3 %` **por quadro, para sempre** — força **ILIMITADA** contra empurrão limitado,
+e ali `QUENTE` lia `70` contra `145` do `FRIO`, o que se lê como *«a realimentação é a cura»*. Uma
+corda real puxa para um **REPOUSO e PARA**; com essa fixtura as duas moradas dão o **mesmo número**.
+*Uma fixtura que nenhum solver pode ganhar não mede solver nenhum* — e ela quase comprou uma wave.
+
+### §18.4 — A cura: o tecto passa a ser MEDIDO para ESTE consumidor
+
+- `COLLIDE_ITERATIONS_MAX` **`64` → `4096`** — o tecto **DIGITÁVEL** (fecha `n = 32`).
+- `COLLIDE_ITERATIONS_SLIDER_MAX` = **`1024`** — até onde a mão arrasta (fecha `n = 16`, a
+  `18,5 %` de um quadro). O idioma é o do doc 91: *o slider fica onde a mão trabalha, e o resto
+  digita-se.*
+- `SINK_COLLIDE_ITERATIONS_MAX` acompanha, com o gate da shell a pinar que são o **mesmo** número.
+
+⛔⛔ **E NÃO há corte silencioso por orçamento, de propósito.** Ele foi desenhado e recusado: um
+tecto que aceita `4096` e entrega `500` é exactamente o ***«aceita e mente»*** que este repo já
+registou três vezes — o `lattice` a `400`, o `kaleidoscope` a `256`, e o `iterations` **deste mesmo
+colisor**. *O número que o artista escreve é o número que corre, e a tabela do §18.2 diz o que ele
+custa.*
+
+### §18.5 — ⏳ O que fica, nomeado com o mecanismo
+
+- **Acima de `n ≈ 32` a conta é do artista**: `4096` varreduras custam `1,6` quadros, e uma cadeia
+  de `64` pediria `16 384` (`13` quadros). ⇒ *remover a limitação POR INTEIRO é o método não-local
+  do §18.3*, e ele é espec própria.
+- **O custo não é VISÍVEL.** O artista escolhe as varreduras sem ver `n`, e `n × varreduras` é o
+  preço. Um número no cartão (*«este passe custa X % de um quadro»*) é a saída óbvia e **não** foi
+  construída — fica nomeada em vez de silenciosa.
+
+### §18.6 — Prova
+
+**Gate de produto:** `uma_cadeia_de_dezasseis_fecha_no_tecto_novo_e_nao_no_herdado`, com as DUAS
+metades — ⚠️ *sem a de baixo (o `64` ainda não fechar) ele passaria com o número antigo, e um gate
+que passa com o número antigo não mediu a mudança.*
+
+**Mutação — 4 de 4 sangram:** o tecto digitável de volta ao `64` · só o substrato de volta (as duas
+folhas a divergir em silêncio) · o slider a oferecer mais do que a porta honra · e o passe a cortar
+as varreduras no `64` por dentro (o «aceita e mente»).
+
+**As sondas FICAM**, `#[ignore]`, em [`passe_tests.rs`](../../crates/ph2d-contact/src/passe_tests.rs)
+— elas são os instrumentos desta secção, e *uma tabela sem o instrumento que a produziu é uma nota
+que envelhece*.

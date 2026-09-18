@@ -169,8 +169,46 @@ pub const COLLIDE_PARAM: &str = "collide";
 /// varreduras custam `12,4 %` de um quadro e `32` custam `40,8 %`.
 pub const COLLIDE_ITERATIONS_PARAM: &str = "collide_iterations";
 
-/// O tecto de varreduras — o MESMO do `motion.collide`, pela mesma razão do default.
-pub const COLLIDE_ITERATIONS_MAX: f32 = 64.0;
+/// ⭐⭐⭐ **O TECTO DIGITÁVEL — MEDIDO PARA ESTE CONSUMIDOR** (doc 115 §18, ordem do dono
+/// 2026-09-18: *«quero todas as possibilidades possíveis, não quero limitações no sistema»*).
+///
+/// ⛔⛔ **O `64` que aqui estava era HERDADO** (*«o MESMO do `motion.collide`»*) e o `64` do nó era
+/// um **clamp** dentro do `eval` dele — a medição que o fixou só confirmou que o clamp era honrado,
+/// **nunca** que `64` chegava. E o que ele segurava, medido, é uma cadeia de **QUATRO** peças.
+///
+/// ⭐ **Uma cadeia CONVERGE sempre** — o que ela pede é `~n²` varreduras, `4×` por cada vez que
+/// duplica. Medido (peças de lado `1` a um quarto de passo, pares atravessados > `2 %` do lado):
+///
+/// | n | a `64` | a `256` | a `1024` | a `4096` | relógio quando FECHA |
+/// |---|---|---|---|---|---|
+/// | 4 | **0** | 0 | 0 | 0 | — |
+/// | 8 | 7 | **0** | 0 | 0 | `0,33 ms` (`2,0 %` de um quadro) |
+/// | 16 | 23 | 15 | **0** | 0 | `3,08 ms` (`18,5 %`) |
+/// | 32 | 72 | 49 | 29 | **0** | `26,3 ms` (`157 %`) |
+///
+/// ⇒ **o recurso é o RELÓGIO**, e o custo é `0,2 µs` por peça-varredura (constante de `n = 8` a
+/// `n = 64`, com a grelha a fazer o trabalho linear). O número que se digita é o número que corre:
+/// ⛔ **não há corte silencioso**, porque um tecto que aceita e entrega outra coisa é exactamente o
+/// *«aceita e mente»* que este repo já registou no `lattice` a `400` e no `kaleidoscope` a `256` —
+/// e no `iterations` deste mesmo colisor.
+pub const COLLIDE_ITERATIONS_MAX: f32 = 4096.0;
+
+/// **Até onde o SLIDER arrasta** — o tecto digitável fica acima (doc 91: *o teto digitável é
+/// derivado do `step`, e o slider fica onde a mão trabalha*).
+///
+/// ⭐ `1024` não é escolhido: é o que FECHA uma cadeia de `16` peças, e ele custa `18,5 %` de um
+/// quadro. Acima disto a conta é do artista, e a tabela do [`COLLIDE_ITERATIONS_MAX`] di-la —
+/// `4096` fecha `32` peças e paga `1,6` quadros.
+pub const COLLIDE_ITERATIONS_SLIDER_MAX: f32 = 1024.0;
+
+/// **O tecto DIGITÁVEL das varreduras** — acima do que o slider arrasta, com a tabela medida no
+/// [`COLLIDE_ITERATIONS_MAX`]. ⚠️ É esta lista que a porta do substrato corta, e há gate da shell a
+/// pinar que os dois números são o MESMO: *o slider pode oferecer menos, a caixa nunca pode oferecer
+/// mais do que a porta honra.*
+static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registry::ParamHardMax {
+    param: COLLIDE_ITERATIONS_PARAM,
+    max: COLLIDE_ITERATIONS_MAX,
+}];
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -295,7 +333,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: COLLIDE_ITERATIONS_PARAM,
         label: "Collide Sweeps",
         min: 1.0,
-        max: COLLIDE_ITERATIONS_MAX,
+        max: COLLIDE_ITERATIONS_SLIDER_MAX,
         step: 1.0,
         widget: ParamWidget::IntSlider,
     },
@@ -346,6 +384,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_gates_above(MANIFEST.id, PARAM_GATES);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     // ⭐⭐ **O SINK CONSOME `falloff` desde a W6 do doc 115** (§15.1): com o `Collide` deste cartão
     // armado, o passe do fim do cozimento (`ph2d_contact::passe`) lê aquela coluna e mistura a
     // correcção termo a termo — é a mesma lei do `motion.collide`, e é o que dá a um objecto a

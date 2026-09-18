@@ -263,7 +263,28 @@ fn as_duas_folhas_concordam_no_numero_de_fabrica_das_varreduras() {
     assert_eq!(
         ph2d_node_motion_output::COLLIDE_ITERATIONS_MAX,
         ph2d_eval_motion::SINK_COLLIDE_ITERATIONS_MAX,
-        "o tecto das duas folhas divergiu — o slider ofereceria o que a porta corta"
+        "o tecto das duas folhas divergiu — a caixa ofereceria o que a porta corta"
+    );
+    // ⭐⭐ **E o SLIDER nunca oferece mais do que a porta honra** (doc 115 §18): desde que o tecto
+    // subiu por medição, a caixa e o slider deixaram de ser o mesmo número — o slider fica onde a
+    // mão trabalha e o resto digita-se. ⛔ Invertida, esta relação devolve o «aceita e mente».
+    assert!(
+        ph2d_node_motion_output::COLLIDE_ITERATIONS_SLIDER_MAX
+            <= ph2d_node_motion_output::COLLIDE_ITERATIONS_MAX,
+        "o slider arrasta ate' {} e a porta so' honra {} — ele ofereceria o que ninguem corre",
+        ph2d_node_motion_output::COLLIDE_ITERATIONS_SLIDER_MAX,
+        ph2d_node_motion_output::COLLIDE_ITERATIONS_MAX
+    );
+    // ⚠️ **E os dois números são ÂNCORAS MEDIDAS, não conforto** — sem isto uma reversão silenciosa
+    // ao `64` herdado passaria com os dois gates acima verdes. `1024` FECHA uma cadeia de 16 peças
+    // (`18,5 %` de um quadro) e `4096` fecha 32 (`157 %`); `64`, que aqui esteve, fecha **quatro**.
+    assert_eq!(
+        (
+            ph2d_node_motion_output::COLLIDE_ITERATIONS_SLIDER_MAX,
+            ph2d_node_motion_output::COLLIDE_ITERATIONS_MAX
+        ),
+        (1024.0, 4096.0),
+        "os tectos das varreduras sairam da medicao do doc 115 §18 — mudar um pede a tabela nova"
     );
     // ⚠️ E o CONTROLO de que o número herdado é de facto o do nó que o passe substitui: sem isto,
     // alguém pode mudar um dos dois e os dois gates de cima continuam verdes sobre um produto que

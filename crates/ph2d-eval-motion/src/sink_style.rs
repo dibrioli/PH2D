@@ -68,8 +68,17 @@ pub const SINK_COLLIDE_ITERATIONS_PARAM: &str = "collide_iterations";
 /// O default das varreduras — **o número que o `motion.collide` já ship**, herdado de propósito
 /// para uma cena migrada não mudar de qualidade em silêncio.
 pub const SINK_COLLIDE_ITERATIONS_DEFAULT: f32 = 8.0;
-/// O tecto das varreduras, o mesmo do `motion.collide`.
-pub const SINK_COLLIDE_ITERATIONS_MAX: f32 = 64.0;
+/// **O tecto das varreduras — o MESMO que a folha do nó declara**, e há gate da shell a pina-lo.
+///
+/// ⛔⛔ **Ele era `64` por HERANÇA e subiu para `4096` por MEDIÇÃO** (doc 115 §18, ordem do dono):
+/// uma cadeia converge sempre, e o que ela pede é `~n²` varreduras — `64` segura **quatro** peças,
+/// `1024` segura `16` (a `18,5 %` de um quadro) e `4096` segura `32` (a `157 %`). A tabela inteira,
+/// com o relógio, vive no [`ph2d_node_motion_output::COLLIDE_ITERATIONS_MAX`].
+///
+/// ⚠️ **O número que o artista escreve é o que corre** — ⛔ este `clamp` corta o que está ACIMA do
+/// tecto declarado, e o tecto declarado é o que a caixa do cartão oferece: *um tecto que aceita e
+/// entrega outra coisa é o «aceita e mente» que este repo já pagou três vezes.*
+pub const SINK_COLLIDE_ITERATIONS_MAX: f32 = 4096.0;
 
 /// O valor de um param do sink, ou `0.0` se ele não foi autorado.
 ///

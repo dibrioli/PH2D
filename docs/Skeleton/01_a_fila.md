@@ -109,6 +109,47 @@ sobra é da arte do canvas, que **não foi medida**. Gate
 
 ### F9 — ⏳ **A PELE DEFORMADA NA GPU: o `Smooth` a alisar em QUALQUER cena** (pedido do dono, 2026-09-16)
 
+> ⛔⛔⛔ **LEIA ISTO ANTES DE TUDO O QUE VEM ABAIXO (2026-09-17): A PREMISSA DESTA FILA ESTÁ
+> REFUTADA POR MEDIÇÃO.** Report do dono, depois de a porta abrir: ***«Como eu já havia dito muitas
+> vezes: Fast e Smooth estão sempre idênticos. Nada mudou»***.
+>
+> Ele tem razão, e o número é este: medida a distância **em pixels de ECRÃ** entre o sítio onde o
+> `Fast` põe cada texto da arte e o sítio onde o `Smooth` o põe, na dobra que a cena ship (`25°`) e
+> no zoom `1`, ela é **`0,04 px` na mediana e `0,34 px` no pior ponto**. E o controlo diz o resto:
+> o `Fast` está a **`0,33 px`** do campo VERDADEIRO (uma malha `64×` mais fina). *Nenhum olho
+> distingue um terço de pixel* — as duas desenham o mesmo.
+>
+> | dobra/junta | `Fast × Smooth` pior | mediana | `Fast × campo` pior |
+> |---:|---:|---:|---:|
+> | `25°` (a da cena) | `0,335` | `0,044` | `0,334` |
+> | `60°` | `0,775` | `0,100` | `0,771` |
+> | `90°` | `1,095` | `0,144` | `1,090` |
+> | `150°` | `1,496` | `0,205` | `1,489` |
+>
+> ⛔⛔ **A premissa do botão MORREU e ninguém reconferiu.** Ele nasceu do report de 2026-09-10
+> (*«arestas retas ao dobrar»*), quando a malha do bind era uma **grelha uniforme** e os pesos eram
+> **euclidianos**. As duas waves seguintes — a **grelha graduada pelas articulações** (10/09) e os
+> pesos do **padrão-ouro com a lei de Hermite** (16/09) — curaram a faceta **na própria malha do
+> bind**. ⇒ o `Fast` passou a estar certo e o `Smooth` ficou sem nada para corrigir. *§0.0: quem
+> move o número que tornava algo inalcançável tem de reconferir a nota — aqui o número moveu-se por
+> baixo de uma feature inteira, e a F9 foi construída em cima dela.*
+>
+> ⚠️ **O que a F9 construiu continua CERTO e continua a não ser visível:** a malha assada erra
+> `2,3×` menos que a do bind, e as duas erram menos de meio pixel. *Uma cura de uma grandeza que já
+> estava abaixo do limiar do olho não muda nada no ecrã.*
+>
+> ⚠️⚠️ **E TODAS as réguas desta linha mediam a grandeza errada** — o desvio ao campo em pixels da
+> ARTE, que é uma propriedade da aproximação. O dono vê **pixels de ECRÃ**. O gate que fixa isto é
+> `o_fast_ja_desenha_o_campo_a_menos_de_meio_pixel` (`ph2d-app-vec`), com as duas metades: o `Fast`
+> está certo **e** o `Smooth` separa-se num regime real (`150°` com zoom `8`), que é o que impede
+> alguém de ler isto como *«apague o botão»* — essa é decisão do dono.
+>
+> ⏳ **A DECISÃO DO DONO que fica em aberto:** o que é o botão `Deform` agora — apagado, ou ligado ao
+> ZOOM (que é o único eixo em que ele ainda tem efeito visível)? E se a F9 continua, ela deixa de
+> ser *«o `Smooth` alisa em qualquer cena»* e passa a ser *«a deformação sai da CPU»*, que é um
+> ganho de RELÓGIO (`11 %` de um quadro a 8 imagens) e não de imagem.
+
+
 > Perguntado *«para ele alisar em qualquer cena a deformação teria de passar para a placa de vídeo —
 > quer que isso entre na fila?»*, o dono respondeu: ***«Quero que isso entre na fila!»***
 

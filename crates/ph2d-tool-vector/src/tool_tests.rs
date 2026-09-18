@@ -678,3 +678,49 @@ fn the_bucket_ink_is_not_the_selections_style() {
         "mas a tinta ficou escolhida"
     );
 }
+
+/// ⛔⛔⛔ **O CLIQUE DO PAINEL CHEGA AO `draw_config`, QUE É O QUE O QUADRO LÊ** — report do dono
+/// de 2026-09-17 (*«Fast e Smooth estão sempre idênticos»*).
+///
+/// # ⚠️ Porque este gate não existia, e o que ele fecha
+///
+/// Havia um gate na COSTURA do painel (`both_segments_of_the_deform_row_reach_the_tool`) que prova
+/// que o clique vira um `EditorAction::ToolPanelEvent` — *e mais nada*. E havia um gate no QUADRO
+/// (`the_smooth_asks_the_bake_memo_and_the_fast_does_not`) que prova que a malha muda quando lhe
+/// entregam a opção. **Entre os dois faltava o elo** — o evento entrar na ferramenta e sair no
+/// `draw_config`, que é o único campo que a fase do quadro de facto lê.
+///
+/// ⚠️ **A régua é o `draw_config()` e não o campo privado**, e a diferença já mordeu neste ficheiro
+/// (ver o comentário da linha ~302): *o valor viaja pelo espelho, e é o espelho que o gesto lê.*
+#[test]
+fn o_clique_do_painel_chega_ao_espelho_que_o_quadro_le() {
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = VectorTool::default();
+    // ⚠️ **O de fábrica é o `Smooth`** (desde 2026-09-14) — um gate que o presumisse `Fast` mediria
+    // outra coisa, e foi assim que esta redacção nasceu VERMELHA.
+    assert_eq!(
+        t.draw_config().skin_deform,
+        crate::params::SkinDeform::Smooth,
+        "o valor de fabrica mudou — este gate media' outra coisa"
+    );
+    t.handle_panel_event(PanelEvent::Click(crate::ids::VECTOR_BONE_DEFORM_FAST));
+    assert_eq!(
+        t.draw_config().skin_deform,
+        crate::params::SkinDeform::Fast,
+        "o clique em «Fast» nao chegou ao espelho que a fase do quadro le^"
+    );
+    t.handle_panel_event(PanelEvent::Click(crate::ids::VECTOR_BONE_DEFORM_SMOOTH));
+    assert_eq!(
+        t.draw_config().skin_deform,
+        crate::params::SkinDeform::Smooth,
+        "o clique em «Smooth» nao voltou atras"
+    );
+    // ⛔ E o CONTROLO: um clique de OUTRO controlo não mexe neste campo — senão o gate passaria
+    // sobre uma ferramenta que escrevesse `Smooth` a cada evento.
+    t.handle_panel_event(PanelEvent::Click(crate::ids::VECTOR_BONE_DEFORM_SMOOTH));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::VECTOR_MODE_PENCIL));
+    assert_eq!(
+        t.draw_config().skin_deform,
+        crate::params::SkinDeform::Smooth
+    );
+}

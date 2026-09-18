@@ -185,3 +185,57 @@ fn a_forma_pode_declarar_um_disco_em_vez_de_uma_caixa() {
         "dois discos de raio 0,8 separam ate' ~1,6 e separaram {vao}"
     );
 }
+
+/// ⭐⭐⭐ **O PASSE AUTOMÁTICO E ESTE NÓ CONCORDAM NO `falloff`** (doc 115 §15.1) — e é este gate
+/// que torna a W6 uma correcção e não uma lei nova.
+///
+/// A W5 tinha recusado o `falloff` ao passe por um **erro de categoria**: ela pôs o `Strength` (um
+/// param de CARTÃO, que um passe não tem) e o `falloff` (uma COLUNA da corrente, que ~50 nós
+/// escrevem) na mesma frase, e concluiu que nenhum dos dois podia lá estar. ⇒ o passe honra-o
+/// agora, e a barra é **este nó**, não um número escolhido.
+///
+/// ⚠️ **Mede-se em TRÊS pontos do knob**, e cada um apanha um defeito diferente: `0` (o interruptor
+/// — o §10.4), `0,5` (a MISTURA — um passe que tratasse o falloff como booleano passaria nos outros
+/// dois) e `1` (o neutro — que tem de ser byte-idêntico ao que o passe já fazia).
+///
+/// ⚠️ E o `strength` do nó vale **`1`** aqui de propósito: é o valor que o passe tem por não ter
+/// cartão, logo é a única célula em que os dois PODEM concordar.
+#[test]
+fn o_passe_automatico_concorda_com_este_no_em_todo_o_curso_do_falloff() {
+    const MEIA: [f32; 2] = [0.5, 0.5];
+    for k in [0.0f32, 0.5, 1.0] {
+        // A corrente que o passe lê traz a atenuação como COLUNA; o nó recebe-a como argumento.
+        let base = duas_com_caixa(0.5, MEIA).with("size", Column::Vec2(vec![[1.0, 1.0]; 2]));
+        let do_no = separa(&base, &[0.0, 0.0], &[k, k], 1.0)
+            .unwrap_or_else(|| panic!("o no' separa (k = {k})"));
+
+        let com_coluna = base.clone().with("falloff", Column::Scalar(vec![k, k]));
+        let do_passe = ph2d_contact::passe::separa_o_que_se_desenha(&com_coluna, 8);
+
+        if k == 0.0 {
+            // ⭐ Atenuação total: o passe não escreve corrente nenhuma (nada se mexeu), e o nó
+            // devolve as posições de partida. As duas leituras dizem a MESMA coisa.
+            assert!(
+                do_passe.is_none(),
+                "com `falloff = 0` nada se mexe, logo o passe nao escreve corrente nova"
+            );
+            for (i, q) in do_no.pos.iter().enumerate() {
+                assert!(
+                    (q[0] - pos(&base)[i][0]).abs() < 1e-6,
+                    "e o no' tambem deixa a peca {i} onde estava"
+                );
+            }
+            continue;
+        }
+        let do_passe = do_passe.unwrap_or_else(|| panic!("o passe separa (k = {k})"));
+        let p = pos(&do_passe);
+        for (i, (passe, no)) in p.iter().zip(&do_no.pos).enumerate() {
+            assert!(
+                (passe[0] - no[0]).abs() < 1e-6,
+                "k = {k}, peca {i}: o passe deu {} e o no' deu {} — as duas leis divergiram",
+                passe[0],
+                no[0]
+            );
+        }
+    }
+}

@@ -213,11 +213,23 @@ fn every_producer_and_consumer_declares_its_coupling() {
 /// field needs *some* force/deformer — there is no canonical one to insert).
 /// FALSIFIED by a `diagnose` that only reads the `Coupling` side-channel (field.box
 /// has none → no diagnostic) — i.e. by dropping the derived GPU-binding half.
+/// ⛔⛔ **A PREMISSA DESTE GATE MORREU na W6 do doc 115 (§15.7), e o nome dele é que a denunciava.**
+///
+/// Ele chamava-se *«a field wired to NOTHING»* e a fixtura ligava o campo a um **`motion.output`** —
+/// o que era a mesma coisa enquanto um sink não consumisse `falloff`. Desde a W6 consome: com o
+/// `Collide` do cartão dele armado, o passe do fim do cozimento lê aquela coluna. ⇒ a fixtura passa
+/// a ser o que o nome sempre disse — um campo **sem jusante nenhum** —, e a metade nova gateia a
+/// lei que nasceu: *um campo que alcança um sink está SÃO*.
+///
+/// ⚠️ **O preço está nomeado no `register` do `motion.output`:** a tabela de acoplamentos é
+/// ESTÁTICA e o consumo é CONDICIONAL (só com o interruptor ligado), logo o aviso cala-se também
+/// para um sink **desarmado**. É o mesmo desenho que o `motion.collide` já ship.
 #[test]
 fn a_field_wired_to_nothing_is_an_inert_falloff_offer() {
     let reg = registry();
     let mut g = Graph::new();
-    let ids = chain(&mut g, &["motion.grid", "field.box", "motion.output"]);
+    // ⚠️ SEM sink: é isto que «wired to nothing» quer dizer.
+    let ids = chain(&mut g, &["motion.grid", "field.box"]);
 
     let ds = diagnose(&g, &reg);
     assert_eq!(ds.len(), 1, "exactly the field is inert");
@@ -227,6 +239,25 @@ fn a_field_wired_to_nothing_is_an_inert_falloff_offer() {
         ds[0].fix,
         Fix::Offer,
         "a field needs *a* force/deformer — no canonical inserter, so offer"
+    );
+}
+
+/// ⭐⭐ **A metade NOVA: um campo que alcança o SINK está são** (doc 115 §15.1/§15.7).
+///
+/// O `motion.output` declara `Coupling::Consumes("falloff")` desde a W6, porque o passe automático
+/// lê aquela coluna quando o `Collide` do cartão está armado — é a forma de um objecto dizer *«eu
+/// não colido»* sem um param novo, sem degrau de schema e sem uma linha de Inspector.
+///
+/// ⛔ FALSIFICADO por apagar aquele acoplamento: o diagnosticador volta a acusar o campo, e **toda**
+/// cena que ponha um campo antes do sink passa a shipar um «buraco de arranque» que não existe.
+#[test]
+fn a_field_that_reaches_the_sink_is_healthy() {
+    let reg = registry();
+    let mut g = Graph::new();
+    chain(&mut g, &["motion.grid", "field.box", "motion.output"]);
+    assert!(
+        diagnose(&g, &reg).is_empty(),
+        "o sink consome `falloff` desde a W6 — o campo que lhe chega nao e' inerte"
     );
 }
 

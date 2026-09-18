@@ -243,3 +243,94 @@ fn um_raio_declarado_tambem_separa() {
         "dois discos de raio 0,5 assentam a 1: {p:?}"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// doc 115 W6 §15.1 — A ATENUAÇÃO (o `falloff`), que a W5 recusou por erro de categoria
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A mesma cena, com uma atenuação por peça.
+fn cena_atenuada(p: &[[f32; 2]], fall: &[f32]) -> Stream {
+    assert_eq!(p.len(), fall.len(), "CONTROLO do arnes: uma per peca");
+    cena(p).with("falloff", Column::Scalar(fall.to_vec()))
+}
+
+/// ⭐⭐⭐ **`falloff = 0` deixa a peça ONDE ESTAVA — é a resposta ao §10.4.**
+///
+/// Uma `source.shape` tem o `Collide` do cartão dela; um Sprite não tem cartão nenhum. O que ele
+/// tem é a CORRENTE, e um campo a montante põe-lhe esta coluna — *o objecto passa a ter como não
+/// ser mexido, sem um param novo, sem degrau de schema e sem uma linha de Inspector*.
+///
+/// ⚠️ **As duas metades:** a peça atenuada fica parada **e** a vizinha continua a mexer-se. Sem a
+/// segunda, um passe que simplesmente desistisse da cena inteira passaria aqui.
+#[test]
+fn atenuacao_zero_deixa_a_peca_onde_estava_e_a_vizinha_mexe_se() {
+    let p0 = [[0.0, 0.0], [0.5, 0.0]];
+    let out = separa_o_que_se_desenha(&cena_atenuada(&p0, &[0.0, 1.0]), 32)
+        .expect("a cena ainda tem o que separar");
+    let p = posicoes(&out);
+    assert_eq!(
+        p[0], p0[0],
+        "a peca com `falloff = 0` nao pode ser movida um bit"
+    );
+    assert!(
+        (p[1][0] - p0[1][0]).abs() > 1e-4,
+        "e a vizinha TEM de se mexer — senao este gate passaria sobre um passe inerte"
+    );
+}
+
+/// ⭐⭐ **E a lei é a MISTURA, não um interruptor:** `0,5` anda exactamente metade do caminho.
+///
+/// ⛔ Sem este gate, `k` escrito como `if fall > 0 { 1 } else { 0 }` passaria o gate acima e
+/// divergiria do `motion.collide` em todo valor intermédio — *em silêncio, e só numa cena que
+/// alguém tivesse migrado*.
+#[test]
+fn atenuacao_meia_anda_metade_do_caminho() {
+    let p0 = [[0.0, 0.0], [0.5, 0.0]];
+    let cheio = posicoes(&separa_o_que_se_desenha(&cena(&p0), 32).expect("cheio"));
+    let meio =
+        posicoes(&separa_o_que_se_desenha(&cena_atenuada(&p0, &[0.5, 0.5]), 32).expect("atenuado"));
+    for i in 0..2 {
+        let esperado = p0[i][0] + (cheio[i][0] - p0[i][0]) * 0.5;
+        assert!(
+            (meio[i][0] - esperado).abs() < 1e-6,
+            "peca {i}: `falloff = 0,5` anda metade — esperado {esperado}, veio {}",
+            meio[i][0]
+        );
+    }
+    // ⚠️ CONTROLO: o caminho cheio tem de ser mesmo diferente do meio, senão a conta acima é
+    // trivialmente verdadeira sobre um deslocamento nulo.
+    assert!(
+        (cheio[0][0] - meio[0][0]).abs() > 1e-4,
+        "a fixtura tem de distinguir meio de cheio"
+    );
+}
+
+/// ⚠️ **Coluna AUSENTE lê-se `1`, e o caminho é BYTE-IDÊNTICO** — é a linha que impede esta wave
+/// de mudar uma única cena que já existia.
+///
+/// ⛔ E um `falloff` **malformado** (do tipo errado, ou `NaN`) cai no mesmo braço: *uma peça que
+/// deixasse de se mexer por um `NaN` seria um defeito mudo*.
+///
+/// ⚠️⚠️ **O caso do COMPRIMENTO errado não é testável, e isso é um facto sobre a casa e não uma
+/// folga:** o `Stream::with` tem um `assert` (*«column length must equal stream element count»*) e
+/// entra em pânico ao construir a fixtura. O braço continua no `match` de propósito — ele cobre
+/// o TIPO errado, que é construtível e está medido aqui.
+#[test]
+fn sem_atenuacao_ou_com_ela_malformada_o_passe_e_byte_identico() {
+    let p0 = [[0.0, 0.0], [0.5, 0.0]];
+    let nua = posicoes(&separa_o_que_se_desenha(&cena(&p0), 32).expect("a nua separa"));
+
+    let tipo_errado = cena(&p0).with("falloff", Column::Vec2(vec![[0.0, 0.0]; 2]));
+    assert_eq!(
+        posicoes(&separa_o_que_se_desenha(&tipo_errado, 32).expect("a de tipo errado separa")),
+        nua,
+        "um `falloff` que nao e' escalar nao descreve atenuacao nenhuma — lê-se ausente"
+    );
+
+    let nan = cena_atenuada(&p0, &[f32::NAN, f32::NAN]);
+    assert_eq!(
+        posicoes(&separa_o_que_se_desenha(&nan, 32).expect("a de NaN separa")),
+        nua,
+        "um `NaN` cai no braco de omissao (`1`), nunca em «nao mexer»"
+    );
+}

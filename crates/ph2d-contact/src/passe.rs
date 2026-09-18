@@ -28,9 +28,29 @@
 //!   `Radius` do cartão — *sem isso uma corrente MISTA deixaria metade das peças inertes e caladas*.
 //!   Aqui não há cartão de onde tirar um raio, e **inventar um seria pior**: uma peça que não
 //!   declara forma nenhuma é uma peça que ninguém disse que colide.
-//! - **Sem `Strength` e sem `falloff`.** Os dois são mistura no fim (a decisão 3 do nó), e os dois
-//!   são autorados. Um passe sem cartão corre a lei inteira ou não corre.
+//! - **Sem `Strength`.** Ele é um param de CARTÃO, e um passe não tem cartão de onde o tirar.
 //! - **Sem realimentação.** Ver a W0 acima.
+//!
+//! ⛔⛔⛔ **E havia uma TERCEIRA ausência aqui que era um ERRO DE CATEGORIA, corrigido na W6**
+//! (doc 115 §15.1). Ela dizia: *«Sem `Strength` e sem `falloff`. Os dois são mistura no fim, e os
+//! dois são AUTORADOS. Um passe sem cartão corre a lei inteira ou não corre.»*
+//!
+//! Os dois são mistura no fim — isso estava certo. **O resto não:** o `Strength` é um param do
+//! CARTÃO do nó e o `falloff` é uma **COLUNA DA CORRENTE**, que ~50 nós do catálogo escrevem
+//! (`motion.falloff`, a família `field.*`, …). *Um passe sem cartão não tem `Strength`; mas tem a
+//! CORRENTE, logo tem o `falloff`.* Pô-los na mesma frase leu «autorado» como se fosse uma só
+//! coisa, e custou à W5 a única capacidade que o caminho novo não tinha.
+//!
+//! ⇒ o passe honra o `falloff` **com a lei do nó, termo a termo** (`k = falloff`, e o `Strength`
+//! do nó vale `1` aqui por não existir): `p + (p′ − p)·k`, `rot + giro·k`. ⭐ **Ausente lê-se `1`**,
+//! logo toda cena sem aquela coluna fica **byte-idêntica**.
+//!
+//! ⭐⭐ **E é isto que dá a um OBJECTO a forma de NÃO colidir** (o §10.4 do doc 115, aberto desde a
+//! W5): a `source.shape` tem o `Collide` do cartão dela, e um Sprite não tem cartão nenhum — mas
+//! tem a corrente, e qualquer campo a montante do sink põe-lhe `falloff = 0`. ⚠️ **O que isso é, ao
+//! certo:** a peça **não é movida** e as vizinhas ficam com metade da correcção que pediam, logo
+//! passam *através* dela — é o «MUTAR» do par 3 da cena `=48`, e ⛔ **não** é o mesmo que
+//! `inv_mass = 0` (o «PINAR»: obstáculo que não se move e empurra as outras por inteiro).
 
 use crate::{Pecas, Saida};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -48,6 +68,33 @@ const P_COLUMN: &str = "P";
 
 /// A coluna do ângulo, em graus — a mesma que o [`crate::colisores`] lê para orientar uma caixa.
 const ROT_COLUMN: &str = "rot";
+
+/// **A espinha dos MOPs:** quanto este passe age sobre cada elemento (`1` = por inteiro, `0` = nada).
+///
+/// ⚠️ Mesmo nome e mesma semântica que o `motion.collide` lê — *a coluna é do CATÁLOGO, não de um
+/// nó*, e é precisamente por isso que um passe sem cartão a pode honrar.
+const FALLOFF_COLUMN: &str = "falloff";
+
+/// **A atenuação por elemento, ou `1` para quem não a declara.**
+///
+/// ⚠️ **Clampada a `[0, 1]`, como no nó** — e a razão é a mesma que ele escreve: *um documento
+/// editado à mão não pode INVERTER um empurrão*. Um `NaN` cai no braço de omissão (`1`), porque
+/// `clamp` com `NaN` é veneno silencioso e a peça deixaria de se mexer sem ninguém saber porquê.
+fn atenuacao(s: &Stream, n: usize) -> Vec<f32> {
+    match s.get(FALLOFF_COLUMN) {
+        Some(Column::Scalar(v)) if v.len() == n => v
+            .iter()
+            .map(|f| {
+                if f.is_finite() {
+                    f.clamp(0.0, 1.0)
+                } else {
+                    1.0
+                }
+            })
+            .collect(),
+        _ => vec![1.0; n],
+    }
+}
 
 /// Os pesos de uma corrente, ou `1` para quem não os declara.
 fn pesos(s: &Stream, n: usize) -> Vec<f32> {
@@ -96,6 +143,24 @@ pub fn separa_o_que_se_desenha(entrada: &Stream, varreduras: usize) -> Option<St
         &Pecas::novas(&colisores, &w, &inv_i),
         varreduras,
     );
+    // ⭐⭐ **A MISTURA, no fim — a lei do nó termo a termo** (doc 115 §15.1). `k = 1` (a coluna
+    // ausente) devolve o que o motor deu, **ao bit**: o `if` é o que garante que nem a aritmética
+    // de vírgula flutuante corre para quem não declara atenuação nenhuma.
+    //
+    // ⛔ **E ela entra AQUI, antes da cerca do «nada se mexeu»** — senão uma cena inteiramente
+    // atenuada (todo `falloff = 0`) devolveria uma corrente CLONADA que é igual à de entrada,
+    // gastando uma cópia por quadro para não mudar um bit.
+    let fall = atenuacao(entrada, n);
+    for i in 0..n {
+        let k = fall[i];
+        if k < 1.0 {
+            pos[i] = [
+                p[i][0] + (pos[i][0] - p[i][0]) * k,
+                p[i][1] + (pos[i][1] - p[i][1]) * k,
+            ];
+            giro[i] *= k;
+        }
+    }
     // ⭐ **Nada se mexeu ⇒ nada se escreve.** Uma cena cujas peças já estão separadas devolve a
     // corrente de entrada intacta, e o quadro é byte-idêntico ao de antes desta wave existir.
     if pos == *p && giro.iter().all(|g| *g == 0.0) {

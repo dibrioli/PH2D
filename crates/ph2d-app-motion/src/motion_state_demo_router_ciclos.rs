@@ -64,10 +64,18 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             announce::sim();
             sinks
         }
-        // ⭐ **PEÇAS QUE NÃO SE ATRAVESSAM** — o `motion.collide` dentro de uma simulação a
+        // ⭐ **PEÇAS QUE NÃO SE ATRAVESSAM** — o colisor DA FORMA dentro de uma simulação a
         // correr. ⚠️ Ela não é de um ciclo: entra aqui porque é o que esta tabela sabe fazer
         // (construir, pousar a LEGENDA e ANUNCIAR os passos), e uma cena que o dono segue
         // precisa das três.
+        //
+        // ⛔⛔ **Esta linha dizia «o `motion.collide` dentro de uma simulação» e era FALSA** —
+        // corrigida em 2026-09-17 por um censo DERIVADO (doc 115 §14.1), que monta cada nível
+        // pela porta do produto e pergunta ao grafo: a `=114` tem **zero** nós de colisão, e há
+        // um gate dela a afirmá-lo desde que nasceu (`the_scene_has_no_collide_node…`). O
+        // próprio anúncio dela diz *«não há cartão `Collide` nenhum na linha da simulação»*.
+        // ⚠️ *Um comentário de roteador e um gate a dizerem o contrário um do outro é exactamente
+        // como uma nota envelhece: ninguém corre o comentário.*
         "114" => {
             let sinks = super::pilha_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::pilha_demo::captions());

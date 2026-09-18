@@ -346,6 +346,25 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_gates_above(MANIFEST.id, PARAM_GATES);
+    // ⭐⭐ **O SINK CONSOME `falloff` desde a W6 do doc 115** (§15.1): com o `Collide` deste cartão
+    // armado, o passe do fim do cozimento (`ph2d_contact::passe`) lê aquela coluna e mistura a
+    // correcção termo a termo — é a mesma lei do `motion.collide`, e é o que dá a um objecto a
+    // forma de NÃO colidir.
+    //
+    // ⚠️ **Sem esta linha o diagnosticador acusa um `InertProducer("falloff")`** em toda cena que
+    // ponha um campo antes do sink: ele pergunta ao REGISTO quem consome a coluna a jusante, e o
+    // sink passou a consumi-la sem o dizer. *Um canal novo é side-metadata no registo, e quem lhe
+    // ganha um consumidor tem de o declarar no mesmo commit.*
+    //
+    // ⛔ **O preço, nomeado:** a tabela de acoplamentos é ESTÁTICA e o consumo é CONDICIONAL (só
+    // com o interruptor ligado). Declará-lo cala o aviso também para um sink **desarmado** — o que
+    // se perde é a acusação a um campo que hoje ninguém lê. É o mesmo desenho que o
+    // `motion.collide` já ship (ele declara `Consumes("falloff")` sem saber se vai separar algo), e
+    // a alternativa — acusar toda cena com campo antes do sink — é pior.
+    reg.register_couplings(
+        MANIFEST.id,
+        &[ph2d_node_registry::Coupling::Consumes("falloff")],
+    );
     // GPU/M5 Fase 1 (ADR-0126): the render sink is a pure copy, so on the GPU
     // it is the PASSTHROUGH kernel — the sequencer emits no pass and the
     // upstream stream flows straight into the lowering.

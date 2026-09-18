@@ -887,3 +887,132 @@ esta wave existe para não usar. Ela passava, e teria sido **morta** pelo tecto 
 (`KernelResolver::gpu_kernel` / `::grid`), não um cozimento de referência. **`1 553 s → 0,00 s`**, e
 a afirmação ficou mais perto do que ela diz. *Uma régua cara que mede um sucedâneo mede outro
 programa — e neste caso o sucedâneo era o próprio caminho lento.*
+
+---
+
+## §15 — Os ABERTOS fechados, e a cena em movimento
+
+> **Ordem do dono, 2026-09-17:** *«Resolva o que está em aberto. Crie uma cena de simulação para
+> smoke.»*
+
+### §15.1 — ⛔⛔⛔ A recusa do `falloff` era um ERRO DE CATEGORIA, e ela custou o §10.4
+
+O cabeçalho do passe declarava **três** ausências, e a terceira dizia:
+
+> *«Sem `Strength` e sem `falloff`. Os dois são mistura no fim (a decisão 3 do nó), e os dois são
+> AUTORADOS. Um passe sem cartão corre a lei inteira ou não corre.»*
+
+⭐ *«Os dois são mistura no fim»* estava certo. **O resto não:** o `Strength` é um param do
+**CARTÃO** do nó, e o `falloff` é uma **COLUNA DA CORRENTE** que ~50 nós do catálogo escrevem
+(`motion.falloff`, a família `field.*`, …). *Um passe sem cartão não tem `Strength`; mas tem a
+CORRENTE, logo tem o `falloff`.* Pô-los na mesma frase leu «autorado» como se fosse uma só coisa.
+
+⇒ o passe honra-o agora **com a lei do nó, termo a termo** (`k = falloff`, com o `Strength` a valer
+`1` por não existir): `p + (p′ − p)·k` e `rot + giro·k`. ⭐ **Ausente lê-se `1`**, e o `if k < 1`
+garante que nem a aritmética corre para quem não declara — *toda cena sem aquela coluna fica
+byte-idêntica*.
+
+⭐⭐ **A barra é o NÓ, não um número escolhido.** O gate
+`o_passe_automatico_concorda_com_este_no_em_todo_o_curso_do_falloff` mede os dois em **três** pontos
+do knob, e cada um apanha um defeito diferente: `0` (o interruptor), **`0,5` (a MISTURA — um passe
+que tratasse o `falloff` como booleano passaria nos outros dois)** e `1` (o neutro).
+
+⭐⭐⭐ **E é isto que fecha o §10.4**, aberto desde a W5 (*«um objecto não tem como NÃO colidir»*): a
+`source.shape` tem o `Collide` do cartão dela e um Sprite não tem cartão — mas tem a corrente, e
+qualquer campo lhe põe `falloff = 0`. **Zero degraus de `PROJECT_SCHEMA`, zero linhas de Inspector**
+— que era o preço que a nota do §10.4 previa.
+
+⚠️ **O que `falloff = 0` é, ao certo:** a peça **não é movida**, e as vizinhas ficam com metade da
+correcção que pediam e passam *através* dela. É o **MUTAR** do par 3 da `=48`, e ⛔ **não** é o
+`inv_mass = 0`, que é **PINAR** (obstáculo que não se move e empurra as outras por inteiro).
+
+### §15.2 — A cena `=122`: o passe em MOVIMENTO
+
+Duas fileiras de **oito PARES** de quadrados que tremem sem parar (`motion.wiggle`), zero nós de
+colisão. Em cima o interruptor separa-os **em todo quadro**; em baixo um campo pôs `falloff = 0` e
+eles continuam metidos um no outro com o interruptor igualmente ligado.
+
+⚠️ **Ela não repete a `=121`:** aquela prova que o passe separa **uma vez**, num arranjo parado;
+esta prova que ele **fica** a separar, sobre peças que nunca param — e o gate mede-a em **cinco**
+instantes, porque *«separou»* e *«fica separada»* são afirmações diferentes.
+
+⭐ **O campo mora LONGE, e o número é medido:** o `motion.falloff` dá `1` dentro do raio e **`0`
+exacto** fora dele. ⛔ A 1.ª redacção pôs o campo em cima da fileira com `invert = 1` e leu
+`0,68 · 0,51 · 0,16 …` — *o `invert` dá uma RAMPA, não um interruptor*, e a fileira ficava
+**parcialmente** separada, que é o pior dos dois mundos.
+
+### §15.3 — ⛔⛔⛔ TRÊS famílias de simulação construídas, MEDIDAS e REFUTADAS
+
+O pedido foi *«uma cena de simulação»*. Três foram construídas antes desta, e **as três ensinariam
+o contrário do que acontece**:
+
+| família | o que a medição disse |
+|---|---|
+| `sim.zone` + `sim.step` | o passe é **REDUNDANTE** — o `sim.step` é um dos **três** leitores do colisor declarado (o censo `todo_leitor_do_colisor_declarado_se_regista`) e já separa DENTRO do tique |
+| `motion.integrate` + atractor | o passe **NÃO AGUENTA** — o atractor esmaga `25` peças até `0,007` de largura e ficam **`41`–`80`** pares atravessados *a 32 varreduras* |
+| `motion.verlet_rope` | uma corda é uma **CADEIA** — `15` pares ficam em `10` a 8 varreduras, `6` a 32 e ainda **`3` a 64**, que é o topo do knob |
+
+⭐⭐⭐ **A LEI que as três dão, numa frase:** *o passe automático é um **ACABAMENTO** para ARRANJOS
+com sobreposições **locais e independentes** — não é uma lei de contacto.* Sem realimentação ele não
+segura um solver que empurre as peças umas para dentro das outras todos os quadros, e o `~n²` de
+Jacobi (§13.6) põe uma **cadeia** fora do alcance de qualquer número que o artista consiga escrever.
+
+⚠️⚠️ **E isto corrige uma leitura minha da W0.** A §3 concluiu que *«um acabamento por quadro chega
+para a apagar»* sobre uma corda de Verlet — e os números dela já diziam **`7` pares contra `9`** a 8
+iterações, isto é, *pares que FICAM*. Eu li «indistinguível das duas moradas» como «limpa», e são
+coisas diferentes. ⇒ **é por isso que a `=121` é feita de PARES independentes**, e essa escolha, que
+parecia uma conveniência de legibilidade, é uma **necessidade**.
+
+⛔ **Consequência a nomear:** dar ao passe a capacidade de segurar uma simulação exige
+**realimentação** (a saída do passe voltar ao estado do solver), que a W0 pesou e **não** escolheu.
+Reabri-la é decisão de produto, não desta wave.
+
+### §15.4 — ⚠️ E uma nota do roteador contradizia um gate havia meses
+
+O braço da `=114` dizia *«o `motion.collide` dentro de uma simulação a correr»*. A cena tem **zero**
+nós de colisão — há um gate dela a afirmá-lo desde que nasceu, e o anúncio dela diz *«não há cartão
+`Collide` nenhum na linha da simulação»*. ⇒ corrigida. *Um comentário de roteador e um gate a
+dizerem o contrário um do outro é como uma nota envelhece: ninguém corre o comentário.*
+
+### §15.5 — Provas de mutação: **6 de 6 sangram**
+
+| mutação | quem sangra |
+|---|---|
+| o passe ignora a atenuação (volta ao estado da W5) | os gates do passe **e** os da cena |
+| a atenuação vira INTERRUPTOR em vez de mistura | a metade do `0,5` — *a que distingue a lei do nó de um booleano* |
+| um `NaN` passa a CONGELAR a peça em vez de ler `1` | o braço de omissão |
+| a cena perde o TREMOR | a metade *«ela precisa de Play»* |
+| o campo passa a cobrir a fileira protegida | o `0` **exacto**, e com ele o §10.4 |
+| o sink deixa de DECLARAR que consome a atenuação | o censo de buracos de arranque do roteador |
+
+⭐ Com **controlo negativo** (a árvore intacta sobrevive nos **três** filtros) e **controlo sobre o
+próprio filtro** — `running N test(s)` com `N ≥ 1` em cada célula.
+
+### §15.6 — ⛔⛔ E o ARNÊS mentiu CINCO vezes antes de dizer a verdade
+
+Nenhuma delas era defeito do produto, e as cinco estão curadas no arnês:
+
+| o que ele disse | o que era |
+|---|---|
+| `NAO-COMPILA` nas quatro primeiras | o cargo imprime **`error: test failed`** quando um teste SANGRA, e o classificador procurava `error:` **antes** do veredito ⇒ *uma mutação que sangra lia-se como uma que nem entrou* |
+| `SOBREVIVEU` na do campo | a mutação punha-o em `0,6`, e *a `0,6` ele continua FORA do alcance de toda peça* (a fileira mora em `y = −0,85`, raio `1,0`) ⇒ **a mutação não mudava a resposta**. O valor real é `0,0`, que é o que o passo (5) do roteiro manda escrever |
+| `SOBREVIVEU` na do `NaN` | o `cargo fmt` **partiu a linha** e o `perl` de uma linha casou zero — e a guarda (`grep 'else { 0.0 }'`) casou **outra** linha do mesmo ficheiro (o `pesos` tem o mesmo texto) ⇒ um falso *«entrou»* |
+| `ARNES-PARTIDO (filtro casou 0)` na do sink | com **UM** só teste o cargo escreve **`running 1 test`**, no SINGULAR, e a régua exigia o plural |
+| `SANGRA` no CONTROLO, sobre a árvore limpa | um restauro manual com `mv` devolve o **mtime antigo** e o cargo reusa o build **DA MUTAÇÃO** — a lei que a memória deste repo já regista, paga outra vez por eu restaurar fora do ajudante que faz `touch` |
+
+⭐⭐ **A cura estrutural é a guarda deixar de ser um `grep`:** *a mutação entrou se o FICHEIRO
+MUDOU* (`cmp`), o que não pode mentir quando um formatador reescreve a linha nem quando o padrão
+casa noutro sítio.
+
+### §15.7 — ⚠️ E um censo que já existia apanhou o que eu não tinha visto
+
+O portão devolveu `=122: InertProducer("falloff")`. O diagnosticador pergunta **ao REGISTO** quem
+consome uma coluna a jusante, e o `motion.output` passou a consumi-la nesta wave **sem o declarar**
+⇒ toda cena que ponha um campo antes do sink seria acusada.
+
+⇒ `reg.register_couplings(MANIFEST.id, &[Coupling::Consumes("falloff")])`. *Um canal novo é
+side-metadata no registo, e quem lhe ganha um consumidor declara-o no mesmo commit.*
+
+⛔ **O preço, nomeado:** a tabela é ESTÁTICA e o consumo é CONDICIONAL (só com o interruptor
+ligado) ⇒ o aviso cala-se também para um sink **desarmado**. É o mesmo desenho que o
+`motion.collide` já ship, e a alternativa — acusar toda cena com campo antes do sink — é pior.

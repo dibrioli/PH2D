@@ -31,7 +31,7 @@ use super::*;
 /// número em dois sítios, que é como ele envelhece. *Um valor sob `cfg(test)` é invisível do
 /// outro lado da fronteira (HOWTO §2.5) — e aqui a cura não é abrir uma feature, é reconhecer
 /// que a constante deixou de ser só do teste.*
-pub const MAX_DEMO_LEVEL: u32 = 121;
+pub const MAX_DEMO_LEVEL: u32 = 122;
 
 /// **As cenas de smoke dos CICLOS** — irmãs pelo tecto de LOC, cortadas por responsabilidade;
 /// ver o cabeçalho delas.
@@ -481,6 +481,15 @@ pub fn build_level(
         Some("121") => {
             let sinks = passe_demo::build(doc, registry).unwrap_or_default();
             passe_demo::announce();
+            sinks
+        }
+        // ⭐⭐⭐ **O PASSE NUMA SIMULAÇÃO** (doc 115 §15.2): a irmã da `=121` com o relógio a
+        // andar. ⚠️ Ela é de `motion.integrate` + forças e **não** de `sim.zone`, e a razão está
+        // medida: o `sim.step` é um dos três leitores do colisor declarado, logo numa simulação
+        // dele o passe não teria nada para fazer — e a cena mostraria isso como sucesso.
+        Some("122") => {
+            let sinks = passe_sim_demo::build(doc, registry).unwrap_or_default();
+            passe_sim_demo::announce();
             sinks
         }
         // ⭐ **AS CENAS DE CICLO** — irmãs num ficheiro só; ver [`ciclos`]. Elas não são «mais

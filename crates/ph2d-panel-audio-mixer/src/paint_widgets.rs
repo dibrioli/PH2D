@@ -84,8 +84,12 @@ pub fn coluna_dos_nomes_em(
         .iter()
         .map(|k| text_system.prefix_width(ph2d_i18n::tr_em(idioma, k), fonte))
         .fold(0.0_f32, f32::max);
+    // ⚠️⚠️ **A coluna é o rect, e o pintor gasta o rect MENOS o respiro das duas bordas.** Medir
+    //    só o texto deixava `Return` (`35,9 px`) numa coluna de `35,9` cujo orçamento é `19,9` —
+    //    a cura media a grandeza errada, e o gate media a mesma. ⇒ a porta do respiro entra aqui.
+    let preciso = ph2d_editor_core::paint::rect_for_label(mais_largo);
     let tecto = (content_w * 0.5).max(FX_LABEL_MIN_W);
-    mais_largo.clamp(FX_LABEL_MIN_W, tecto) // CLAMP-OK: o tecto é forçado acima do piso na linha de cima
+    preciso.clamp(FX_LABEL_MIN_W, tecto) // CLAMP-OK: o tecto é forçado acima do piso na linha de cima
 }
 
 /// Paint a small left label + a full-width horizontal Slider on one row (the

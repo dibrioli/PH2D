@@ -355,8 +355,27 @@ pub fn paint_tool_palette_icons(
 /// no Godot 4.6 «Modern» (`theme_modern.cpp:289`) — e é o `Spacing::Md`, que a escada desta casa
 /// já nomeia *«default inline padding»*. ⛔ Não é o `Button::padding()` (12 px): aquele é o recuo
 /// de um botão que dimensiona a si próprio, e aqui a largura vem de fora.
-fn label_budget(w: f32) -> f32 {
+///
+/// ⚠️⚠️ **PÚBLICO desde 2026-09-18, e a razão é um defeito meu:** o Audio Mixer passou a MEDIR a
+/// coluna dos nomes dele e continuou a cortar, porque a coluna media o **rect** e o pintor gasta o
+/// rect **menos este respiro** — `Return` pede `35,9` px, a coluna dava `35,9` e o orçamento era
+/// `19,9`. *Quem dimensiona uma coluna tem de perguntar quanto dela vai ser GASTA*, e o gate que
+/// a confere tem de perguntar o mesmo — senão ele mede a mesma grandeza errada que a cura.
+#[must_use]
+pub fn label_budget(w: f32) -> f32 {
     (w - ph2d_tokens::Spacing::Md.px() * 2.0).max(1.0)
+}
+
+/// ⭐⭐⭐ **O CAMINHO INVERSO: que largura de caixa é precisa para um texto de `text_w` CABER.**
+///
+/// ⚠️ Ela é a irmã de [`label_budget`] e existe pela razão que a tornou pública: *quem dimensiona
+/// uma coluna precisa da pergunta ao contrário*, e derivá-la à mão no painel seria a segunda cópia
+/// do respiro — que divergiria no dia em que o `Spacing::Md` mudasse.
+///
+/// ⭐ As duas são uma lei só, e há gate a provar a ida-e-volta.
+#[must_use]
+pub fn rect_for_label(text_w: f32) -> f32 {
+    text_w + ph2d_tokens::Spacing::Md.px() * 2.0
 }
 
 pub fn paint_text_centered(

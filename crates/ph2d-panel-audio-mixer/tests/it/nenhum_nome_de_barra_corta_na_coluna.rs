@@ -57,12 +57,19 @@ fn nenhum_nome_de_barra_corta_na_coluna() {
             // ⚠️⚠️ **A coluna é a DESSA língua** — comparar o texto deformado com uma coluna
             //    calculada em inglês acusa o produto CERTO, e foi a 1.ª redacção deste gate.
             let col = coluna_dos_nomes_em(idioma, &mut ts, w);
+            // ⚠️⚠️ **O que se compara é o ORÇAMENTO, não a coluna** — e esta linha existe por eu
+            //    ter escrito a outra. O pintor centrado gasta o rect MENOS o respiro das duas
+            //    bordas (`label_budget`), logo um gate que compare com `col` mede a mesma grandeza
+            //    errada que a cura media, e passa sobre nomes que continuam cortados no ecrã. *Um
+            //    gate e a cura que ele confere nunca podem partilhar a suposição.*
+            let orcamento = ph2d_editor_core::paint::label_budget(col);
             for k in FX_ROW_KEYS {
                 let texto = ph2d_i18n::tr_em(idioma, k);
                 let largura = ts.prefix_width(texto, fonte);
-                if largura > col {
+                if largura > orcamento {
                     cortados.push(format!(
-                        "painel {painel} · {idioma:?} · {texto:?} mede {largura:.1} numa coluna de {col:.1}"
+                        "painel {painel} · {idioma:?} · {texto:?} mede {largura:.1} num orçamento de \
+                         {orcamento:.1} (coluna {col:.1})"
                     ));
                 }
             }

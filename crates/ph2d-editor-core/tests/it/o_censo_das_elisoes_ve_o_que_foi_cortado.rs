@@ -73,3 +73,33 @@ fn um_corte_para_nada_tambem_e_registado() {
         cortados[0].pintado
     );
 }
+
+/// ⭐⭐⭐ **O RESPIRO TEM IDA E VOLTA, e as duas são uma lei só.**
+///
+/// ⛔⛔ **Ela é pública desde 2026-09-18 por causa de um defeito MEU:** o Audio Mixer passou a
+/// MEDIR a coluna dos nomes e continuou a cortar, porque a coluna media o **rect** e o pintor
+/// centrado gasta o rect **menos o respiro das duas bordas** — `Return` pede `35,9 px`, a coluna
+/// dava `35,9` e o orçamento era `19,9`. ⚠️ *E o gate que a conferia media a MESMA grandeza
+/// errada, logo passava sobre nomes que continuavam cortados no ecrã.*
+///
+/// ⇒ quem dimensiona pergunta pela [`rect_for_label`] e quem confere pela [`label_budget`]; esta
+/// prova é a que impede as duas de divergirem.
+#[test]
+fn quem_dimensiona_e_quem_confere_falam_a_mesma_lei() {
+    use ph2d_editor_core::paint::{label_budget, rect_for_label};
+    for texto_w in [1.0_f32, 6.1, 19.9, 35.9, 55.1, 240.0] {
+        let rect = rect_for_label(texto_w);
+        assert!(
+            label_budget(rect) >= texto_w,
+            "um texto de {texto_w} px pediu uma caixa de {rect} e o orçamento dela é {} — a ida e \
+             a volta do respiro divergiram",
+            label_budget(rect)
+        );
+    }
+    // ⛔ CONTROLO: o respiro EXISTE. Sem esta metade, um `rect_for_label` que devolvesse o próprio
+    //    texto passaria a ida-e-volta acima e o defeito voltava inteiro.
+    assert!(
+        rect_for_label(20.0) > 20.0,
+        "a caixa tem de ser MAIOR que o texto — é isso que o respiro é"
+    );
+}

@@ -74,6 +74,12 @@ pub(super) fn build_catalog(
         // opt-in — uma lista escrita aqui seria a segunda resposta à mesma pergunta, e a
         // que envelhece é sempre a que o artista vê.
         .filter(|m| !registry.is_fixture(m.id))
+        // ⚠️ **E os RETIRADOS também não** (doc 115 W6) — outra bandeira, de propósito.
+        // Uma fixtura NUNCA foi para o artista; um retirado ERA, e o dono fechou-lhe a
+        // porta enquanto o motor fica vivo para outro consumidor. Fundir as duas numa
+        // só apagaria essa diferença, e é ela que diz à próxima pessoa se o que falta
+        // é um fio (morto) ou uma decisão (retirado).
+        .filter(|m| !registry.is_out_of_catalogue(m.id))
         .map(|m| {
             let ui = registry.ui_manifest(m.id);
             NodeChoice {
@@ -266,10 +272,29 @@ mod tests {
             );
         }
         // E o REGISTO tem-nos: o catálogo é que os esconde, não o registo que os perdeu.
+        //
+        // ⚠️⚠️ **A PREMISSA DESTA CONTA MORREU na W6 do doc 115, e o número não se
+        // corrige — a conta é que passa a ter DUAS parcelas.** Ela dizia *«exactamente
+        // as duas fixturas ficam de fora»* e lia `manifests − catálogo == 2`, o que era
+        // verdade enquanto **ser fixtura** fosse a única razão para não ser oferecido.
+        // Hoje há uma segunda, e oposta: um nó RETIRADO (`is_out_of_catalogue`), que o
+        // artista já teve e o dono fechou. *Somar as duas num literal apagaria a
+        // diferença que as duas bandeiras existem para guardar* — e a próxima pessoa
+        // leria «faltam 3 fixturas».
+        let fixturas = reg.manifests().filter(|m| reg.is_fixture(m.id)).count();
+        let retirados = reg
+            .manifests()
+            .filter(|m| reg.is_out_of_catalogue(m.id))
+            .count();
+        assert_eq!(fixturas, 2, "exactamente as duas fixturas se declaram");
+        assert_eq!(retirados, 1, "exactamente um tipo foi RETIRADO (o colisor)");
+        // ⭐ E o total é DERIVADO das duas parcelas, nunca escrito à mão: quem
+        // acrescentar uma terceira razão de esconder tem de a somar aqui, e um nó que
+        // se esconda sem bandeira nenhuma faz esta linha reprovar por diferença.
         assert_eq!(
             reg.manifests().count() - cat.len(),
-            2,
-            "exactamente as duas fixturas ficam de fora"
+            fixturas + retirados,
+            "o catalogo esconde EXACTAMENTE quem se declarou escondido — nem mais um"
         );
     }
 }

@@ -398,6 +398,28 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // doc 115 W4: este nó honra o colisor que a corrente DECLARA ([`declarado::separa`]),
     // e o kernel de WGSL dele separa DISCOS — a cerca do shell lê esta bandeira.
     reg.register_declared_collider_reader(MANIFEST.id);
+    // ⛔⛔ doc 115 W6 — O ARTISTA JÁ NÃO CHEGA AQUI, e o motor fica.
+    //
+    // Ordem do dono (2026-09-17): *«tirar o collide e deixar tudo pela Shape e pelos
+    // outros objectos … (sem usar o grafo)»*. Quem separa o que se desenha é o passe
+    // do fim do cozimento (`ph2d_contact::passe`), armado pelo `Collide` do cartão do
+    // `motion.output` — a forma DECLARA a caixa dela desde a W4, e nenhum nó é preciso.
+    //
+    // ⚠️ **A LINHA QUE IMPEDE A LEITURA ERRADA: isto NÃO é um nó morto.** Ele cozinha,
+    // responde a todo documento que já o nomeia, e o kernel de dispositivo dele é a
+    // ÚNICA amostra de um cliente ITERADO da grelha espacial (ADR-0140 Fase 5).
+    //
+    // ⛔ **E apagá-lo seria §0.0 à letra.** Medido em 2026-09-17, release, `load 2,28`,
+    // sobre a população das duas cenas de banco (`=8` e `=9`, 129 600 discos):
+    //
+    //     caminho                            relógio      de um quadro de 16,67 ms
+    //     kernel do dispositivo (8 varreduras)   4,71 ms          28 %
+    //     o passe automático na CPU            416,29 ms       2 497 %   (88×)
+    //
+    // *«Nunca deixe o fallback definir o produto»* — quem manda no tecto é o
+    // dispositivo, e o caminho de referência só precisa de computar a mesma resposta.
+    // ⇒ o dono decidiu (mesma data) que as duas cenas **ficam a funcionar**.
+    reg.register_out_of_catalogue(MANIFEST.id);
     // ADR-0155: the push-apart weights by `inv_mass` — another solver a pin can feed.
     reg.register_couplings(
         MANIFEST.id,

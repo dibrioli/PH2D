@@ -11,10 +11,16 @@
 > o nó, **o app separa sozinho** — o botão `Collide` da forma e dos objectos liga, e não há nada
 > para ligar no grafo.
 
-Este doc nasceu como o PLANO e hoje é o REGISTO: **W0..W5 fechadas** (§3 · §7 · §9 · §12 · §13),
-e falta a **W6** — o `motion.collide` sair do catálogo. ⚠️ A frase *«nenhuma linha de produto foi
-escrita ainda»* esteve aqui até 2026-09-17 e ficou falsa na W1; *o cabeçalho de um plano é o último
-sítio de que alguém se lembra quando o plano começa a acontecer*.
+Este doc nasceu como o PLANO e hoje é o REGISTO: **W0..W6 fechadas**
+(§3 · §7 · §9 · §12 · §13 · §14). ⚠️ A frase *«nenhuma linha de produto foi escrita ainda»* esteve
+aqui até 2026-09-17 e ficou falsa na W1; *o cabeçalho de um plano é o último sítio de que alguém se
+lembra quando o plano começa a acontecer*.
+
+⛔⛔ **E a linha da W6 na tabela abaixo dizia *«as 4 cenas passam pelo caminho novo»* — as duas
+metades estavam erradas, e o censo derivado (§14.1) é que o disse: são TRÊS cenas, e NENHUMA
+migra.** O que a W6 entregou foi outra coisa: o nó sai da **lista onde o artista o escolhe** e o
+**motor fica**, porque o kernel de dispositivo dele é `88×` mais rápido que o passe da CPU à
+população daquelas cenas (§14.2) — ordem do dono, com a medição na mão.
 
 ---
 
@@ -149,7 +155,7 @@ decide se ele é do dispositivo ou da CPU.
 | **W3** | ✅ **decidida** (§10 + §11): a forma **deriva-se** do `size`+`rot`, os objectos declaram-na SEMPRE, e o interruptor arma o PASSE. Falta escrever. | §1.1 |
 | ~~W4~~ | ✅ **FECHADA** (§12), e **reescrita antes da 1.ª linha**: não nasce componente nenhum — a membrana DECLARA a forma derivada (o quadrado unitário, ⛔ **não** `size/2`), e a cerca da W1 ganha a metade do CONSUMIDOR | W3 |
 | ~~W5~~ | ✅ **FECHADA** (§13): o passe corre no fim do cozimento, armado por **UM** interruptor no cartão do Output; a 3.ª cerca recusa o dispositivo; cena `=121` | W1 · W3 · W4 |
-| **W6** | `motion.collide` sai do catálogo; as 4 cenas passam pelo caminho novo | W5 |
+| ~~W6~~ | ✅ **FECHADA** (§14), e **reescrita pela medição**: o nó sai da **lista do artista** e o **motor fica** (`88×`, §14.2). ⛔ São **três** cenas e **nenhuma** migra — as peças de todas saem de `motion.grid` e não declaram (§14.1), e a `=48` demonstra o `falloff`, que o passe **decidiu não ter** (§14.5) | W5 |
 
 ⚠️ **A W1 vem antes de tudo o que é visível** pela mesma razão que a W1 do doc 102: sem ela, cada
 wave a seguir torna mais cenas lentas, e o custo só aparece no fim.
@@ -747,3 +753,137 @@ esse knob», uma camada abaixo: aqui o ponto neutro é da GEOMETRIA.*
 - ⏳ e fica ABERTO e nomeado: **um objecto não tem como NÃO colidir** com o passe armado (a forma é
   sempre declarada desde a W4, e o opt-out por objecto é a decisão de produto do §10.4 que continua
   por tomar). A Shape tem o `Collide` dela; um Sprite não tem.
+
+---
+
+## §14 — W6: o nó sai da LISTA, e o motor fica
+
+> **Ordem do dono, 2026-09-17**, depois de lhe ser posta a medição da §14.2:
+> *«Ficam a funcionar»* — o nó sai de onde o artista o escolhe, e as duas cenas de banco
+> do dispositivo continuam a correr.
+
+### §14.1 — O censo é DERIVADO, e ele desmentiu a tabela das waves
+
+A linha do plano dizia *«as 4 cenas passam pelo caminho novo»*. ⛔ **São TRÊS, e nenhuma
+delas migra.** O número não veio de um `grep` — veio de percorrer `0..=MAX_DEMO_LEVEL`,
+montar cada cena pela porta do produto (`demo_router::build_level`) e perguntar ao GRAFO:
+
+| cena | nós de colisão | grelhas | formas | peças | declara? | troca directa |
+|---|---|---|---|---|---|---|
+| `=8` | 1 | 1 | **0** | 129 600 | `0` | ⛔ não |
+| `=9` | 1 | 1 | **0** | 129 600 | `0` | ⛔ não |
+| `=48` | 6 | 6 | **0** | 9 × 6 | `0` | ⛔ não |
+
+⭐ **A coluna que decide é `formas = 0`:** as três alimentam-se de `motion.grid`, que emite
+PONTOS. A membrana da W4 declara a caixa para os **objectos**, e o `source.shape` declara-a
+pelo `Collide` do cartão — ⇒ *nenhuma peça destas três cenas declara nada*, e o passe
+automático devolve `None` nas três. A §13.5 tinha dito isto da `=48`; o censo mostra que a
+frase valia para **todas**.
+
+### §14.2 — ⛔⛔ E a troca era §0.0 à letra: o passe na CPU custa **88×** o kernel
+
+Medido em release, `load 2,28`, sobre a população das duas cenas de banco:
+
+| caminho | relógio | de um quadro de 16,67 ms |
+|---|---|---|
+| o kernel do dispositivo, 8 varreduras (a tabela do próprio nó) | **4,71 ms** | 28 % |
+| o passe automático na CPU, 8 varreduras, com a caixa declarada | **416,29 ms** | **2 497 %** |
+
+⇒ migrar a `=8`/`=9` para o caminho novo trocaria um quadro a 28 % por **25 quadros por
+quadro**. *«Nunca deixe o fallback definir o produto … quem manda no teto é o dispositivo»*
+— e aqui o caminho lento não ia só definir o tecto: ia **substituir** o rápido, no par de
+cenas cuja razão de existir é medir o rápido.
+
+⚠️ **E o que se apagava não era «um nó»:** o `motion.collide` regista `GpuKernel` + `GridSpec`
++ `REDUCES`, e é a **única** amostra de um cliente **ITERADO** da grelha espacial (ADR-0140
+Fase 5 — o `motion.boids` é um passo de simulação, este varre e reconstrói a grelha por
+varredura).
+
+### §14.3 — ⇒ A W6 que se construiu: `is_out_of_catalogue`
+
+Side-metadata no registo (append-only, o padrão que o `CLAUDE.md` prescreve), com **uma**
+porta a filtrar e **dois** consumidores a herdá-la:
+
+- `register_out_of_catalogue(id)` / `is_out_of_catalogue(id)` / `out_of_catalogue_ids()`;
+- o `build_catalog` filtra-a **ao lado do `is_fixture`** — ⚠️ **duas bandeiras de propósito**:
+  *uma fixtura NUNCA foi para o artista; um retirado ERA, e o dono fechou-lhe a porta*.
+  Fundi-las apagaria a diferença que diz à próxima pessoa se o que falta é um fio (morto) ou
+  uma decisão (retirado);
+- ⭐ **medido, o `build_catalog` tem exactamente DOIS chamadores** — o menu do grafo
+  (`set_current_node_catalog`) e a paleta (`build_palette_model`, que o chama) ⇒ *um filtro,
+  as duas superfícies*. É o defeito do `import_router` (23/08) a não se repetir, e há gate.
+
+⭐⭐ **A medição viaja COM a chamada.** O `register_out_of_catalogue` do nó leva a tabela da
+§14.2 no comentário: *uma entrada aqui é uma ISENÇÃO NOMEADA, nunca silêncio* — que é o que a
+separa do «controlo morto» do §5.0.
+
+### §14.4 — ⚠️ Um gate teve a PREMISSA MORTA, e o número não se corrigiu
+
+O `the_palette_never_offers_a_fixture` lia `manifests − catálogo == 2` e dizia-se
+*«exactamente as duas fixturas ficam de fora»*. Isso era verdade **enquanto ser fixtura fosse
+a única razão de não ser oferecido**. ⛔ Somar `3` no literal teria apagado a distinção que as
+duas bandeiras existem para guardar, e a próxima pessoa leria *«faltam 3 fixturas»*.
+
+⇒ a conta passa a ter **duas parcelas contadas do registo** (`fixturas == 2` ·
+`retirados == 1`) e o total é **derivado** delas — logo uma terceira razão de esconder tem de
+vir aqui, e um nó que se esconda **sem bandeira nenhuma** reprova por diferença.
+
+### §14.5 — ⛔ A `=48` também NÃO migra, e a razão é ARQUITECTURAL, não um esquecimento
+
+A `=48` é a cena da conferência do **grupo H** (doc 89, folha 03) e ensina TRÊS pares:
+
+| par | o canal | o passe automático tem? |
+|---|---|---|
+| TAMANHO | o `size` chega ao empacotamento | ✅ sim (`declarado` multiplica pela coluna) |
+| FALLOFF | um `field.box` **mascara** o nó | ⛔ **não** |
+| MUTAR ≠ PINAR | `falloff = 0` (transparente) · `inv_mass = 0` (obstáculo) | ⛔ metade / ✅ metade |
+
+⭐ **E a ausência já estava DECLARADA na W5**, no cabeçalho do próprio passe: *«Sem `Strength`
+e sem `falloff`. Os dois são mistura no fim, e os dois são autorados. Um passe sem cartão
+corre a lei inteira ou não corre.»* ⇒ *a `=48` não é um caso por resolver — ela demonstra
+exactamente os knobs que o passe decidiu não ter*, e migrá-la custaria **apagar dois dos três
+pares** que a folha da conferência diz que ela ensina.
+
+⇒ ela fica, pela **mesma** decisão do dono e pelo mesmo motivo das outras duas.
+
+### §14.6 — ⏳ O que fica ABERTO depois da W6
+
+- ⚠️ **A folha 03 da conferência descreve um nó que o artista já não escolhe.** A célula não
+  está errada sobre o nó; está desactualizada sobre a **porta**. É edição de doc de outro
+  índice, e fica nomeada aqui em vez de corrigida em silêncio.
+- ⏳ **Um objecto não tem como NÃO colidir** com o passe armado (§10.4) — a decisão de produto
+  que a W5 já deixou aberta, e que a W6 não move.
+- ⏳ **O `falloff` no passe automático** é a única capacidade que o caminho novo não tem e o nó
+  tinha. Ela só vale a pena quando houver quem a peça: o passe não tem cartão de onde a tirar,
+  e dar-lhe um seria reconstruir o nó com outro nome.
+
+### §14.7 — Provas de mutação: **4 de 4 sangram**
+
+| mutação | quem sangra |
+|---|---|
+| o nó deixa de se declarar retirado (`register_out_of_catalogue` fora) | o censo, e o par de parcelas do §14.4 |
+| o catálogo deixa de filtrar os retirados | o censo **e** a paleta |
+| o registo mente (`is_out_of_catalogue` devolve sempre `false`) | os dois, pelo meio da cadeia |
+| o kernel de dispositivo do colisor é apagado | a metade que o dono decidiu preservar |
+
+⭐ Com **controlo negativo** (a árvore intacta SOBREVIVE) e **controlo sobre o próprio filtro** —
+`running N tests` com `N ≥ 1` em cada célula, porque *um filtro que casa zero testes imprime `ok` e
+lê-se como «sobreviveu»*.
+
+⛔⛔ **E o arnês mentiu nas QUATRO antes de dizer a verdade, por ORDEM de perguntas.** A 1.ª
+redacção classificava `NAO-COMPILA` ao ver `error(\[|:)` **antes** de ler o veredito — e o cargo
+imprime **`error: test failed`** quando um teste SANGRA. ⇒ as quatro mutações reais liam-se como
+mutações que nem tinham entrado, *com `7 testes correram` impresso ao lado a contradizê-lo*.
+A cura é a ordem: **o veredito primeiro** (`test result: ok` / `FAILED`), e «não compila» só pelo
+que **só** o compilador diz (`error[E…]` / `could not compile`).
+
+### §14.8 — ⚠️ E um gate MEU custou `1 553 s` a medir a grandeza errada
+
+A 1.ª redacção do `as_duas_cenas_de_banco…` **cozinhava** as duas cenas para provar que o nó ainda
+funciona: `129 600` peças, duas vezes, **pela CPU e em debug** — que é exactamente o caminho que
+esta wave existe para não usar. Ela passava, e teria sido **morta** pelo tecto de `180 s` da suíte.
+
+⇒ reescrita: *o que o dono mandou preservar foi o **kernel**, e quem responde por ele é o REGISTO*
+(`KernelResolver::gpu_kernel` / `::grid`), não um cozimento de referência. **`1 553 s → 0,00 s`**, e
+a afirmação ficou mais perto do que ela diz. *Uma régua cara que mede um sucedâneo mede outro
+programa — e neste caso o sucedâneo era o próprio caminho lento.*

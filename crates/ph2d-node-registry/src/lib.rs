@@ -202,6 +202,25 @@ pub struct NodeRegistry {
     /// scene as a pile on the CPU and a blur on the card, with no error.
     /// Opt-in and default-empty.
     declared_collider_readers: std::collections::BTreeSet<NodeTypeId>,
+    /// Node types that are **registered and fully working, and that the Add-Node
+    /// catalogue does NOT offer** (doc 115 W6).
+    ///
+    /// ⚠️ **This is not the "dead control" of `CLAUDE.md` §5.0, and the difference
+    /// is the MEASUREMENT written beside each entry.** A dead knob is one nobody
+    /// noticed had stopped reaching a consumer; one of these is a node whose
+    /// artist-facing door the owner closed on purpose while its engine stays
+    /// alive for a consumer that is not the palette — today, the device
+    /// benchmarks. An entry here is an EXEMPTION WITH A NAME, never silence.
+    ///
+    /// ⛔ **Why it is a flag and not a deletion:** unregistering the type would
+    /// delete the node's device kernel with it, and `motion.collide`'s kernel
+    /// separates 129 600 discs in `4,71 ms` where the CPU pass measures `416 ms`
+    /// (doc 115 §14.2) — §0.0's "never let the fallback define the product",
+    /// exactly. The artist loses the node; the machine keeps the 88×.
+    ///
+    /// Opt-in and default-empty, so every catalogue is unchanged until someone
+    /// writes an entry here.
+    out_of_catalogue: std::collections::BTreeSet<NodeTypeId>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -477,6 +496,37 @@ impl NodeRegistry {
     #[must_use]
     pub fn reads_declared_collider(&self, id: NodeTypeId) -> bool {
         self.declared_collider_readers.contains(&id)
+    }
+
+    /// Take `id` **out of the Add-Node catalogue** while leaving it registered
+    /// (doc 115 W6, owner's order 2026-09-17: *«ficam a funcionar»*).
+    ///
+    /// The node keeps cooking, keeps its device kernel and keeps answering every
+    /// graph that already names it — a saved document, a smoke scene. What it
+    /// loses is the door: `build_catalog` skips it, so no gesture in the app can
+    /// add a new one.
+    ///
+    /// ⚠️ **Whoever calls this owes the MEASUREMENT beside the call**, because the
+    /// entry is what separates a deliberate exemption from a node someone forgot
+    /// to wire (`CLAUDE.md` §5.0, the orphan/dead pair). Additive; idempotent.
+    pub fn register_out_of_catalogue(&mut self, id: NodeTypeId) {
+        self.out_of_catalogue.insert(id);
+    }
+
+    /// Does the Add-Node catalogue offer `id`? Absent ⇒ **yes**, the
+    /// byte-identical default for every node that never asked to be hidden.
+    #[must_use]
+    pub fn is_out_of_catalogue(&self, id: NodeTypeId) -> bool {
+        self.out_of_catalogue.contains(&id)
+    }
+
+    /// Every type currently out of the catalogue, in id order.
+    ///
+    /// ⭐ It exists so a census can assert the **population** rather than a
+    /// hand-written list: a second node hidden without a measurement beside it
+    /// fails the gate instead of joining a list nobody re-reads.
+    pub fn out_of_catalogue_ids(&self) -> impl Iterator<Item = NodeTypeId> + '_ {
+        self.out_of_catalogue.iter().copied()
     }
 
     /// Register the params whose typed entry reaches past their slider

@@ -78,7 +78,7 @@
 ## Auditoria (famílias — 2 saltos)
 - ⛔ [`touch` não mede uma edição; `--timings` dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
 - ⛔ [Carga de fundo ~7: meça o MÍNIMO de N corridas — e o `loadavg` MENTE a decair (`7,5` com a CPU ocupada): espere pela OCIOSIDADE](feedback_the_background_load_of_this_workstation_never_falls_below_five.md)
-- [Reprodução/diagnóstico (22)](reference_topic_repro_discipline.md) · [Réguas do quad remesh (19)](reference_topic_quad_remesh_rulers.md)
+- [Reprodução/diagnóstico (23) — ⛔ o SÍTIO onde um defeito ATERRA não é o que o PROVOCA](reference_topic_repro_discipline.md) · [Réguas do quad remesh (19)](reference_topic_quad_remesh_rulers.md)
 - ⛔ [Id errado numa lista só é visível depois de ler quem a consome](feedback_a_wrong_id_in_a_list_is_not_a_visible_defect_until_its_reader_is_read.md)
 - ⛔ [Gates de família que leem a shell pelo caminho escapam a quem move o código](feedback_a_gate_that_reads_the_shell_from_another_crate_escapes_the_line_that_moves_the_code.md)
 - ⛔⛔ [Fixtura ALINHADA AOS EIXOS não mede uma BASE](feedback_an_axis_aligned_fixture_cannot_measure_a_basis.md)

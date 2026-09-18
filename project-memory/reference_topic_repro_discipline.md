@@ -32,3 +32,11 @@ metadata:
 - [[feedback_a_defect_count_without_provenance_names_the_wrong_phase]] — N defeitos sem PROVENIENCIA culpa a fase errada; a decomposicao e' o plano de trabalho
 - [[feedback_two_meanings_behind_one_primitive_only_the_parameter_name_guards]] — `VecPathId` e bits de entidade sao ambos `u64`: o compilador nao separa, e um gate escrito da ASSINATURA fica verde sobre o panico
 - [[feedback_reproduce_with_the_real_constructors_and_look_at_the_image]] — foto com desenho: reproduza com os construtores reais, grave o PNG, LEIA-o antes de nomear a causa
+- **O SÍTIO onde um defeito ATERRA não é o que o PROVOCA** (report do dono, 18/09 — *«o desenho não
+  encolhe ao abrir a timeline»*). A medição dizia que um botão do HUD ficava clicável em `y 728..848`,
+  que é **onde a faixa da timeline é desenhada**; eu escrevi *«com a timeline aberta»* em quatro
+  páginas, dois gates e os passos de smoke. O único escritor de um `CenterSplit ≠ None` é o
+  `if motion_active` do `ph2d_app_motion::motion_bridge_surfaces` — a **ferramenta Motion**. ⚠️ O
+  custo não é a palavra: *um doc que nomeia o gatilho errado manda o próximo reproduzir onde o
+  defeito não pode acontecer, e ele conclui que o defeito não existe.* ⇒ antes de escrever o gatilho
+  num doc, **meça quem ESCREVE a grandeza** (`grep` no escritor), nunca onde o sintoma aparece.

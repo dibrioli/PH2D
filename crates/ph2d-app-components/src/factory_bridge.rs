@@ -91,6 +91,15 @@ pub fn apply_births(
             if let Some(mut t) = sim.world_mut().get_mut::<Transform>(copia) {
                 t.translation.x = pedido.at[0];
                 t.translation.y = pedido.at[1];
+                // ⭐⭐ **E a MIRA, quando a fábrica a pediu** (o gatilho, 2026-09-18).
+                //
+                // ⚠️ **`Option` e não um `f32` com um neutro:** `0` é um ângulo legítimo (apontar
+                // para a direita), logo um sentinela aqui tornaria essa mira inexprimível. O
+                // caminho de omissão é `None` ⇒ a cópia fica com a rotação do MOLDE, byte a byte
+                // como antes desta wave.
+                if let Some(aim) = pedido.aim {
+                    t.rotation = aim;
+                }
             }
             sim.world_mut().entity_mut(copia).insert(Spawned {
                 by,

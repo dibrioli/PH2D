@@ -35,12 +35,20 @@ pub(crate) fn apply_factory_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
         return true;
     }
 
-    if let WidgetEvent::Toggled(id) = ev
-        && id == crate::ids::INSP_FACTORY_PICK_RANDOM
-    {
+    if let WidgetEvent::Toggled(id) = ev {
         // ⚠️ **O estado vem do SNAPSHOT**, e a edição é o INVERTIDO dele.
-        push(host, bits, FactoryFieldEdit::PickRandom(!fab.pick_random));
-        return true;
+        if id == crate::ids::INSP_FACTORY_PICK_RANDOM {
+            push(host, bits, FactoryFieldEdit::PickRandom(!fab.pick_random));
+            return true;
+        }
+        if id == crate::ids::INSP_FACTORY_AIM {
+            push(
+                host,
+                bits,
+                FactoryFieldEdit::AimFromSpawner(!fab.aim_from_spawner),
+            );
+            return true;
+        }
     }
 
     if let WidgetEvent::TextChanged(id) = ev {

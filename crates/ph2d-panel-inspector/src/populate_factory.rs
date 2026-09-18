@@ -56,13 +56,15 @@ pub(crate) fn populate_factory(store: &mut WidgetStore) {
             },
         );
     }
-    store.register(
-        ids::INSP_FACTORY_PICK_RANDOM,
-        InteractiveState::Checkbox {
-            state: CheckboxState::Normal,
-            value: CheckboxValue::Unchecked,
-        },
-    );
+    for id in [ids::INSP_FACTORY_PICK_RANDOM, ids::INSP_FACTORY_AIM] {
+        store.register(
+            id,
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: CheckboxValue::Unchecked,
+            },
+        );
+    }
     // ⚠️ **Os três botões do segmentado são BOTÕES** — sem registo eles pintam e morrem sob o dedo.
     for id in ids::INSP_FACTORY_WHERE {
         store.register(

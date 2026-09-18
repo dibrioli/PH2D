@@ -115,6 +115,7 @@ pub(crate) fn build_factory_info(
             on_spawned: f.on_spawned.clone(),
             on_exhausted: f.on_exhausted.clone(),
             seed: f.seed,
+            aim_from_spawner: f.aim_from_spawner,
             alive: vivos.get(&meu_id).copied().unwrap_or(0),
         }
     });
@@ -203,6 +204,7 @@ pub(crate) fn apply_factory_edit(
         FactoryFieldEdit::OnSpawned(s) => escreve(world, e, |f| f.on_spawned = s.clone()),
         FactoryFieldEdit::OnExhausted(s) => escreve(world, e, |f| f.on_exhausted = s.clone()),
         FactoryFieldEdit::Seed(n) => escreve(world, e, |f| f.seed = *n),
+        FactoryFieldEdit::AimFromSpawner(on) => escreve(world, e, |f| f.aim_from_spawner = *on),
         FactoryFieldEdit::LifetimeSeconds(s) => {
             let Some(mut v) = world.get_mut::<Lifetime>(e) else {
                 return false;

@@ -114,6 +114,11 @@ pub struct InspectorFactory {
     pub on_spawned: String,
     pub on_exhausted: String,
     pub seed: u64,
+    /// ⭐ **A cópia herda a rotação de MUNDO da fábrica** (o gatilho, 2026-09-18).
+    ///
+    /// ⚠️ Desligado é o caminho de omissão e é byte-idêntico ao de antes: a cópia fica com a
+    /// rotação do MOLDE. Ligá-lo torna a do molde inalcançável — *quem quer mira di-lo.*
+    pub aim_from_spawner: bool,
     /// ⭐ **Quantas cópias desta fábrica estão vivas AGORA** — derivado do mundo, nunca guardado.
     ///
     /// ⚠️ Ele é a única coisa desta secção que muda sem o artista tocar em nada, e é o que
@@ -166,6 +171,8 @@ pub enum FactoryFieldEdit {
     Area([f32; 2]),
     Tag(String),
     PickRandom(bool),
+    /// A mira: a cópia sai apontada para onde a fábrica aponta.
+    AimFromSpawner(bool),
     Burst(u32),
     AliveMax(u32),
     TotalMax(u32),

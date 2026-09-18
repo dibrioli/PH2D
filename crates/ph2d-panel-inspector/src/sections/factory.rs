@@ -210,6 +210,30 @@ fn factory_body(
         cur_y += CHECK_H + ph2d_tokens::control_gap_px();
     }
 
+    // ⭐ **A MIRA** (o gatilho, 2026-09-18) — a cópia sai apontada para onde a fábrica aponta.
+    //
+    // ⚠️ **Ela mora AQUI e não na secção do projéctil**, e a razão é de quem decide: quem sabe a
+    // direcção é a FÁBRICA (a arma), não a bala — a bala já lê o ângulo do próprio corpo.
+    let rect = Rect::new(x, cur_y, w, CHECK_H);
+    hit_index.register(crate::ids::INSP_FACTORY_AIM, rect);
+    paint_checkbox(
+        &Checkbox::new(
+            crate::ids::INSP_FACTORY_AIM,
+            tr("panel.inspector.factory.aim_from_spawner"),
+        )
+        .visual(store.checkbox_visual(crate::ids::INSP_FACTORY_AIM))
+        .value(if f.aim_from_spawner {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        }),
+        rect,
+        scene,
+        text_system,
+        theme,
+    );
+    cur_y += CHECK_H + ph2d_tokens::control_gap_px();
+
     for (label, id, step) in [
         (
             tr("panel.inspector.factory.burst"),

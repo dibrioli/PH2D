@@ -131,6 +131,21 @@ pub struct Factory {
     /// fábricas com a mesma semente autorada têm de dar sequências **diferentes**, senão duas
     /// chuvas lado a lado caem exactamente no mesmo sítio.
     pub seed: u64,
+    /// ⭐⭐⭐ **A cópia sai APONTADA para onde a fábrica aponta** (o gatilho, 2026-09-18).
+    ///
+    /// ⚠️ **A ausência disto era um defeito MUDO e foi MEDIDA:** o [`onde`] devolvia só posições, e
+    /// o [`Birth`] só levava `at` ⇒ a cópia nascia com a rotação **do MOLDE**. Para tudo o que cai
+    /// (uma chuva, um destroço) isso não se vê; para um PROJÉCTIL é a diferença entre uma arma e
+    /// uma decoração — o `ProjectileMotion` converte `initial_speed` **mais o ângulo do corpo** numa
+    /// velocidade, uma vez só, no lançamento.
+    ///
+    /// ⚠️ **Desligado por omissão, e não por cautela:** ligado, ele torna a rotação do molde
+    /// **inalcançável**, e uma chuva cujas gotas nascem todas viradas para onde o emissor calhou
+    /// estar é pior do que uma que ignora o emissor. *Quem quer mira di-lo.*
+    ///
+    /// ⛔ **O ângulo é o de MUNDO** ([`crate::world_transform`]), não o local: uma arma pendurada
+    /// num herói que roda tem de disparar para onde o HERÓI aponta, e a pose local dela é `0`.
+    pub aim_from_spawner: bool,
 }
 
 impl Default for Factory {
@@ -147,6 +162,9 @@ impl Default for Factory {
             on_spawned: String::new(),
             on_exhausted: String::new(),
             seed: 1,
+            // ⚠️ **Desligado**: a mira é uma escolha, e ligá-la por omissão tornaria a
+            // rotação do molde inalcançável em toda fábrica que já existe.
+            aim_from_spawner: false,
         }
     }
 }
@@ -202,6 +220,9 @@ pub struct Birth {
     pub master: u64,
     /// A pose de MUNDO onde a cópia aterra.
     pub at: [f32; 2],
+    /// **Para onde ela aponta**, em radianos de MUNDO. `None` = a cópia fica com a rotação do
+    /// MOLDE, que é o caminho de omissão e é byte-idêntico ao de antes desta wave.
+    pub aim: Option<f32>,
 }
 
 /// **O que um tique de fábricas produziu.**
@@ -282,6 +303,13 @@ pub fn tick_factories(world: &mut World, tree: &TagTree, fired: &[&str]) -> Fact
         estado.semear(f.seed, id);
         let quantas = quantas_nascem(&f, &estado, vivos.get(&id).copied().unwrap_or(0));
         if quantas > 0 && f.master != 0 {
+            // ⚠️ **A mira sai da MESMA travessia da árvore que a posição** — uma segunda leitura
+            // do `world_transform` poderia responder de um quadro diferente se alguém movesse o
+            // dreno do reparent para o meio.
+            let mira = f
+                .aim_from_spawner
+                .then(|| crate::world_transform(world, e).map(|t| t.rotation))
+                .flatten();
             let poses = onde(world, tree, e, &f, &mut estado, quantas);
             let nasceram = u32::try_from(poses.len()).unwrap_or(u32::MAX);
             for at in poses {
@@ -289,6 +317,7 @@ pub fn tick_factories(world: &mut World, tree: &TagTree, fired: &[&str]) -> Fact
                     factory: e,
                     master: f.master,
                     at,
+                    aim: mira,
                 });
             }
             if nasceram > 0 {
@@ -332,8 +361,8 @@ fn onde(
     estado: &mut FactoryRuntime,
     quantas: u32,
 ) -> Vec<[f32; 2]> {
-    let base = crate::world_transform(world, fabrica)
-        .map_or([0.0, 0.0], |t| [t.translation.x, t.translation.y]);
+    let pose = crate::world_transform(world, fabrica);
+    let base = pose.map_or([0.0, 0.0], |t| [t.translation.x, t.translation.y]);
     match f.at {
         SpawnAt::Here => vec![base; quantas as usize],
         SpawnAt::Area { w, h } => (0..quantas)

@@ -50,6 +50,11 @@ pub const INSP_FACTORY_ON_SPAWNED: NodeId = hash_node_id("insp_factory_on_spawne
 pub const INSP_FACTORY_ON_EXHAUSTED: NodeId = hash_node_id("insp_factory_on_exhausted");
 /// A semente do sorteio — ⚠️ explícita, porque determinismo é lei da casa.
 pub const INSP_FACTORY_SEED: NodeId = hash_node_id("insp_factory_seed");
+/// ⭐ **A cópia sai apontada para onde a fábrica aponta** (o gatilho, 2026-09-18).
+///
+/// ⚠️ **APENDADO no fim, e a posição não é estilo:** os ids desta secção são lidos pelo censo
+/// de registo, e o `INSP_FACTORY_WHERE` ao lado declara por escrito que a POSIÇÃO é a tag.
+pub const INSP_FACTORY_AIM: NodeId = hash_node_id("insp_factory_aim");
 
 /// A vida da cópia, em segundos. `0` **não mata**.
 pub const INSP_LIFE_SECONDS: NodeId = hash_node_id("insp_life_seconds");

@@ -25,6 +25,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The clock is stopped \u{2014} copies are born while it plays."
         }
         "panel.inspector.factory.pick_at_random" => "Pick at random",
+        "panel.inspector.factory.aim_from_spawner" => "Aim from spawner",
         "panel.inspector.factory.alive_now" => "{n} alive now",
         "panel.inspector.factory.lifetime_s_0_forever" => "Lifetime (s, 0 = forever)",
         "panel.inspector.factory.off_screen_margin_m" => "Off-screen margin",

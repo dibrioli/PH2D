@@ -186,3 +186,69 @@ fn the_sweep_takes_the_born_and_leaves_the_authored() {
     assert!(sim.world().get_entity(nascido).is_err());
     assert!(sim.world().get_entity(autorado).is_ok(), "varreu documento");
 }
+
+/// ⭐⭐⭐ **A CÓPIA SAI APONTADA para onde a fábrica aponta — e o CONTROLO é a mesma cena com a
+/// mira desligada.** (O gatilho, 2026-09-18.)
+///
+/// ⚠️⚠️ **Sem a metade do controlo este gate passaria sobre uma lei que escreve a rotação SEMPRE**,
+/// e isso partiria toda fábrica que já existe: uma chuva cujas gotas nascem viradas para onde o
+/// emissor calhou estar é pior do que uma que ignora o emissor. *A ausência tem de ser medida ao
+/// lado da presença.*
+///
+/// ⚠️ **A fixtura roda a fábrica `90°` e o molde `0`** — com os dois iguais o gate passaria sem a
+/// lei, que é a forma do defeito que o §5.0 nomeia (*uma fixtura no ponto neutro de um knob não
+/// testa esse knob*).
+#[test]
+fn a_copia_sai_apontada_para_onde_a_fabrica_aponta() {
+    /// A cena, com a fábrica rodada — e o que nasceu.
+    fn corre(mira: bool) -> Vec<f32> {
+        let r = reg();
+        let mut sim = SimWorld::new();
+        let mestre = spawn_master(&mut sim);
+        ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+        let id = sim.world().get::<StableId>(mestre).expect("id").0;
+        let mut t = Transform::from_translation(ph2d_core::Vec2::new(5.0, 2.0));
+        t.rotation = std::f32::consts::FRAC_PI_2;
+        sim.world_mut().spawn((
+            t,
+            Name::new("Arma"),
+            Factory {
+                master: id,
+                on_signal: "tiro".into(),
+                burst: 1,
+                aim_from_spawner: mira,
+                ..Default::default()
+            },
+        ));
+        ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+        let tree = TagTree::new();
+        let tick = tick_factories(sim.world_mut(), &tree, &["tiro"]);
+        let (mut sc, mut mp) = docs();
+        apply_births(
+            &mut sim,
+            &r,
+            &mut crate::instance_docs::OwnedDocs {
+                vec_scene: &mut sc,
+                vec_entities: &mut mp,
+            },
+            &tick.births,
+            1,
+        );
+        let mut q = sim.world_mut().query::<(&Transform, &Spawned)>();
+        q.iter(sim.world()).map(|(t, _)| t.rotation).collect()
+    }
+    let com = corre(true);
+    let sem = corre(false);
+    assert_eq!(com.len(), 1, "a cópia com mira não nasceu");
+    assert_eq!(sem.len(), 1, "a cópia sem mira não nasceu");
+    assert!(
+        (com[0] - std::f32::consts::FRAC_PI_2).abs() < 1e-6,
+        "com a mira ligada a cópia tinha de sair a 90°, e saiu a {} rad",
+        com[0]
+    );
+    assert!(
+        sem[0].abs() < 1e-6,
+        "⛔ o CONTROLO: com a mira desligada a cópia tem de ficar com a rotação do MOLDE ({} rad)",
+        sem[0]
+    );
+}

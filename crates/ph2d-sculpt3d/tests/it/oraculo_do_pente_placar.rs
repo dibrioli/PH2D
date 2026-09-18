@@ -405,3 +405,120 @@ fn com_o_interruptor_desarmado_o_par_da_o_mesmo_bloco() {
         "e o ORÁCULO diz o mesmo — se isto reprovar, o porte é que está errado"
     );
 }
+
+/// ⛔⛔⛔ **AFIRMA UM DEFEITO DE PROPÓSITO — a contradição do §75 do handoff.**
+///
+/// Com o pente **INERTE** (`acumular = False` em todo o corpus), o nosso
+/// pincel base carimba na direcção EXACTA sobre os vértices EXACTOS, e cava
+/// **fundo de mais**, com o excesso a crescer com o número de carimbos sobre o
+/// mesmo vértice:
+///
+/// | célula | carimbos | `cos` | nós/ele |
+/// |---|---|---|---|
+/// | `y_umdab` | `1` | `1,000` | **`1,000`** |
+/// | `y_doisdab` | `2` | `1,000` | `1,024` |
+/// | `y_parado` | `14` | `1,000` | **`1,226`** |
+///
+/// ⭐ A causa tem endereço: o `GripLaw::from_live` do [`crate::Grip::Stamp`] é
+/// `= accumulate`. Forçado a `true`, `y_parado` passa a `0,994` e **catorze**
+/// células do placar caem para ruído de `f32`, com zero regressões.
+///
+/// ⛔⛔ **E não foi mudado, porque DUAS fontes desta casa discordam:** o gate
+/// `the_disarmed_brush_saturates_at_one_radius_and_the_armed_one_passes_it`
+/// declara que com o interruptor DESLIGADO o pincel satura, e o corpus — que
+/// tem **uma só** metade da tabela-verdade — mede que o alvo não satura assim.
+/// O que arbitra são células do oráculo com `acumular = True`, que não
+/// existem.
+///
+/// # ⚠️ Porque este gate afirma o defeito
+///
+/// *Um defeito medido que só vive em prosa é re-derivado do zero pela próxima
+/// janela.* Preso aqui, ele tem duas metades:
+///
+/// 1. **o que está CERTO** (direcção exacta, vértices exactos, e o carimbo
+///    único exacto ao bit) — se isto reprovar, a cura partiu o que funcionava;
+/// 2. **o que está ERRADO** (o excesso a 14 carimbos) — se **isto** reprovar,
+///    alguém resolveu a contradição, e a premissa deste gate morre à vista no
+///    diff, que é como ela deve morrer.
+#[test]
+fn o_pincel_base_sobre_acumula_e_isso_e_a_contradicao_do_p75() {
+    let mut linhas = Vec::new();
+    for (base, carimbos) in [("y_umdab", 1usize), ("y_doisdab", 2), ("y_parado", 14)] {
+        let c = ler("mecanismo", &format!("{base}_p000"));
+        assert_eq!(
+            c.percurso.len(),
+            carimbos,
+            "{base}: a fixtura mudou de número de carimbos — a tabela do §75 \
+             deixou de a descrever"
+        );
+        let dentro = entrada(&c);
+        let nosso = correr(&c);
+        let (mut num, mut den, mut rn, mut re) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
+        let mut movidos = 0usize;
+        for ((p, a), b) in dentro.positions().iter().zip(&c.saida).zip(&nosso) {
+            let d = |q: &[f32; 3]| {
+                [
+                    f64::from(q[0] - p[0]),
+                    f64::from(q[1] - p[1]),
+                    f64::from(q[2] - p[2]),
+                ]
+            };
+            let (u, v) = (d(a), d(b));
+            let n = |w: &[f64; 3]| w[0].hypot(w[1]).hypot(w[2]);
+            let (nu, nv) = (n(&u), n(&v));
+            if nu > 1e-9 {
+                movidos += 1;
+                if nv > 1e-9 {
+                    num += (u[0] * v[0] + u[1] * v[1] + u[2] * v[2]) / (nu * nv) * nu;
+                    den += nu;
+                }
+            }
+            re += nu;
+            rn += nv;
+        }
+        assert!(
+            movidos > 40,
+            "{base}: o oráculo tem de MOVER barro, senão este gate mede o nada \
+             ({movidos} vértices)"
+        );
+        let (cos, razao) = (num / den, rn / re);
+        linhas.push((base, carimbos, cos, razao));
+
+        // (1) O QUE ESTÁ CERTO — a direcção. Se isto cair, a cura partiu o
+        //     que já funcionava.
+        assert!(
+            cos > 0.999,
+            "{base}: a direcção do pincel base era EXACTA (cos 1,000) e agora \
+             lê {cos:.4} — quem mexeu partiu o que estava certo (§75.1)"
+        );
+    }
+
+    let razao = |n: &str| linhas.iter().find(|l| l.0 == n).unwrap().3;
+
+    // (1-bis) Um carimbo é exacto ao bit — é o controlo que prova que o erro é
+    //         da ACUMULAÇÃO e não da lei do carimbo.
+    let um = razao("y_umdab");
+    assert!(
+        (um - 1.0).abs() < 1e-4,
+        "y_umdab: UM carimbo tem de ser exacto ({um:.4}) — sem este controlo o \
+         excesso dos outros podia ser da lei do carimbo, não da acumulação"
+    );
+
+    // (2) O DEFEITO, afirmado de propósito. Se isto reprovar, alguém resolveu
+    //     a contradição do §75 — leia-o e mate esta premissa no diff.
+    let catorze = razao("y_parado");
+    assert!(
+        catorze > 1.15,
+        "y_parado: o excesso de acumulação era {:.3} e agora lê {catorze:.3}. \
+         Se alguém o CUROU, a contradição do §75 foi resolvida: leia o handoff \
+         §75, confirme com que metade da tabela-verdade ela foi arbitrada, e \
+         APAGUE esta metade do gate com a premissa morta à vista no diff",
+        1.226
+    );
+    assert!(
+        catorze > razao("y_doisdab"),
+        "o excesso tem de CRESCER com os carimbos ({catorze:.3} a 14 contra \
+         {:.3} a 2) — é essa monotonia que o identifica como acumulação",
+        razao("y_doisdab")
+    );
+}

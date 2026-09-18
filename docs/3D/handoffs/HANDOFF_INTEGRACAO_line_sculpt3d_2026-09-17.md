@@ -2018,6 +2018,28 @@ metade da tabela-verdade e arbitram entre as três leituras de uma vez. É acto
 do **E**, e é a mesma corrida que a espec §12 já queria para outras quatro
 linhas.
 
+### §75.5 ⭐⭐ E a contradição está PRESA num gate que afirma o defeito
+
+*Um defeito medido que só vive em prosa é re-derivado do zero pela próxima
+janela* — os andaimes que o produziram foram removidos, e sem instrumento o
+§75 seria uma história. ⇒
+[`o_pincel_base_sobre_acumula_e_isso_e_a_contradicao_do_p75`](../../../crates/ph2d-sculpt3d/tests/it/oraculo_do_pente_placar.rs),
+com **duas metades que reprovam por motivos opostos**:
+
+1. **o que está CERTO** — direcção exacta (`cos > 0,999`), vértices exactos, e
+   o carimbo único exacto ao bit (o controlo que prova que o erro é da
+   ACUMULAÇÃO e não da lei do carimbo);
+2. **o DEFEITO** — o excesso a 14 carimbos (`> 1,15`) e a **monotonia** contra
+   os 2 carimbos, que é o que o identifica como acumulação.
+
+⭐⭐ **A mutação que o prova é a própria CURA proposta:** pôr o `from_live` do
+`Stamp` sempre vivo faz a metade (2) reprovar com a mensagem que manda ler
+este §75, confirmar com que metade da tabela-verdade a contradição foi
+arbitrada e **apagar a premissa com ela morta à vista no diff**. *Um gate cuja
+mutação discriminante é a cura que ele está à espera é a forma mais honesta de
+guardar uma decisão por tomar.* Mutação **2 de 2**, cada uma a acordar a sua
+metade (`M12` a do defeito, `M13` a do controlo do carimbo único).
+
 ⚠️ **A árvore fica INTACTA**: os quatro andaimes desta investigação
 (`PH2D_RAKE_SWEEPS`, `PH2D_RAKE_ALVO`, `PH2D_FROM_LIVE` e o do `Grip::Stamp`)
 foram removidos, e a suíte da crate fecha **463 verdes**. *Um defeito medido

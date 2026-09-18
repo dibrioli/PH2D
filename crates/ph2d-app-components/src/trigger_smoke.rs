@@ -119,8 +119,8 @@ fn arma(world: &mut World, e: Entity, mestre: Entity, mira: bool) {
     world.entity_mut(e).insert(Pendente(mestre));
 }
 
-/// A cena `=1` — a arma que aponta, e a que não aponta.
-fn cena_um(world: &mut World) {
+/// A cena `=1` — a arma que aponta, e a que não aponta. Devolve **quem nasce ESCOLHIDO**.
+fn cena_um(world: &mut World) -> Entity {
     // ⚠️⚠️ **O CHÃO PRIMEIRO**, e isto não é estilo: desde a cura de 15/09 a ordem das raízes é a
     // ordem de CRIAÇÃO, logo quem nasce primeiro desenha por baixo. *Antes era o contrário, e
     // ninguém sabia.*
@@ -174,6 +174,11 @@ fn cena_um(world: &mut World) {
         ))
         .id();
     arma(world, torreta, bala_ctrl, false);
+    // ⭐⭐ **O HERÓI nasce escolhido, e é a FOTO que o exige:** o roteiro manda ver a secção
+    // *Trigger* «no painel da direita», e com ninguém escolhido o Inspector diz *«Select an entity
+    // in the Hierarchy»*. *Um passo que nomeia uma secção AFIRMA que ela está na tela* — a lei que
+    // o `#15` pagou com o report *«não apareceu no painel a seção state machine»*.
+    heroi
 }
 
 /// Troca cada [`Pendente`] pelo `StableId` do mestre. ⚠️ Corre DEPOIS de a identidade existir.
@@ -190,14 +195,25 @@ fn resolver_receitas(world: &mut World) {
     }
 }
 
+/// O que o prólogo precisa de saber da cena montada.
+pub struct Montada {
+    /// Qual cena foi montada.
+    pub nivel: u32,
+    /// O HERÓI, que nasce escolhido — ver [`cena_um`].
+    pub escolhido: u64,
+}
+
 /// **Monta a cena que `nivel` pede, e devolve QUAL montou.**
 ///
 /// ⚠️ Separada do prólogo pela razão das irmãs: é a metade que um gate consegue correr — o resto
 /// pede o relógio e o Input Map, que não são o mundo.
-pub fn montar(world: &mut World, _nivel: u32) -> u32 {
-    cena_um(world);
+pub fn montar(world: &mut World, _nivel: u32) -> Montada {
+    let escolhido = cena_um(world);
     resolver_receitas(world);
-    1
+    Montada {
+        nivel: 1,
+        escolhido: escolhido.to_bits(),
+    }
 }
 
 #[cfg(test)]

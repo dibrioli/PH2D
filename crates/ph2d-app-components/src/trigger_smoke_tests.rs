@@ -4,7 +4,7 @@ use super::*;
 
 fn monta() -> World {
     let mut w = World::new();
-    assert_eq!(montar(&mut w, 1), 1);
+    assert_eq!(montar(&mut w, 1).nivel, 1);
     w
 }
 
@@ -107,4 +107,28 @@ fn a_bala_tem_higiene_de_ciclo_de_vida() {
         .get::<Lifetime>(b)
         .expect("a receita tem de ter `Lifetime`");
     assert!(l.duration_us > 0, "uma vida de `0` NÃO mata (a lei do #12)");
+}
+
+/// ⭐⭐⭐ **Quem nasce ESCOLHIDO é o HERÓI, e ele tem o componente que o roteiro manda ver.**
+///
+/// ⚠️ **A foto é que exigiu este gate:** a cena abria com o Inspector à frente e **ninguém
+/// escolhido**, logo o painel dizia *«Select an entity in the Hierarchy»* e o passo que manda ver a
+/// secção *Trigger* nomeava uma superfície que o dono não tinha. *Um passo que nomeia uma secção
+/// AFIRMA que ela está na tela* — a lei que o `#15` pagou com um report do dono.
+///
+/// ⛔ E ele afirma as DUAS metades: sem a segunda, apontar a selecção ao CHÃO passaria.
+#[test]
+fn quem_nasce_escolhido_e_o_heroi_e_ele_tem_gatilho() {
+    let mut w = World::new();
+    let m = super::montar(&mut w, 1);
+    let e = Entity::from_bits(m.escolhido);
+    assert_eq!(
+        w.get::<Name>(e).map(|n| n.0.clone()).as_deref(),
+        Some("Heroi"),
+        "o escolhido tem de ser o heroi"
+    );
+    assert!(
+        w.get::<SignalOnAction>(e).is_some_and(|g| !g.0.is_empty()),
+        "o escolhido tem de ter a seccao que o roteiro manda ver"
+    );
 }

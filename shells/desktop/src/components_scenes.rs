@@ -344,7 +344,7 @@ impl crate::App {
         let Some(cx) = self.components_ctx() else {
             return;
         };
-        let _ = ph2d_app_components::trigger_smoke::montar(cx.sim.world_mut(), 1);
+        let montada = ph2d_app_components::trigger_smoke::montar(cx.sim.world_mut(), 1);
         self.components.smokes.trigger = true;
         self.timeline.flags.simulate_physics = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
@@ -360,13 +360,34 @@ impl crate::App {
                     .push(ph2d_input::Binding::Key(ph2d_input::Key(0x20)));
             }
             hero.panel_visibility.insert("inspector", true);
+            // ⚠️⚠️ **A RÉGUA DO TRANSPORTE abre junto, e a FOTO é que o disse:** esta cena inteira
+            // é sobre uma cerca do RELÓGIO (*Play → a arma dispara · Stop → o teclado volta a ser
+            // do editor*), e sem a timeline o dono não vê que a corrida anda nem tem onde a parar.
+            // *Uma instrução que fala do transporte sobre um ecrã sem ele devolve «que régua?»* —
+            // a lição da cena 67 da física, que as irmãs `=1` do topdown e do projéctil já pagam.
+            hero.panel_visibility.insert("timeline", true);
+            // ⛔ **O HERÓI nasce ESCOLHIDO** — o roteiro manda ver a secção *Trigger* no painel da
+            // direita, e com ninguém escolhido o Inspector diz *«Select an entity in the
+            // Hierarchy»*. ⚠️ O `clear()` anda colado ao `selection` (a lei da cena de física).
+            hero.gizmo.selection = Some(montada.escolhido);
+            hero.gizmo.extra_selection.clear();
         }
         self.playhead.rewind();
         self.playhead.play();
         eprintln!(
-            "[trigger-smoke] cena=1  accao=«{}» (ESPACO)  sinal=«{}»  \
-             o heroi anda com as SETAS e a bala sai para onde ele esta' virado; \
-             a torreta cinzenta e' o CONTROLO (mesma tecla, mira desligada)",
+            "[trigger-smoke] cena=1  accao=«{}» (ESPACO)  sinal=«{}»\n\
+             (1) carregue no ESPACO: sai uma bala AMARELA do retangulo AZUL, para onde ele aponta\n\
+             (2) ande com as SETAS — o azul RODA para onde anda; carregue no ESPACO outra vez e a \
+             bala sai para o lado NOVO\n\
+             (3) o retangulo CINZENTO da direita ouve a MESMA tecla e atira SEMPRE para cima: e' o \
+             CONTROLO, e a unica diferenca entre os dois e' uma caixa de marcar\n\
+             (4) role o painel da direita ate' ao fim (o «Heroi» ja' esta' escolhido): a seccao \
+             TRIGGER e' quem ouve a tecla, e a caixa «Aim from spawner» da seccao FACTORY e' a \
+             unica diferenca para o cinzento\n\
+             (5) carregue em STOP na regua de baixo: o ESPACO deixa de disparar e volta a ser do \
+             editor. PLAY devolve-o\n\
+             (6) deu errado se: nada sai ao carregar no ESPACO · as DUAS balas saem para o mesmo \
+             lado · ou alguma coisa sai com a regua PARADA",
             ph2d_app_components::trigger_smoke::ACCAO,
             ph2d_app_components::trigger_smoke::SINAL,
         );

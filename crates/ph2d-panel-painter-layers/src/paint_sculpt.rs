@@ -224,7 +224,7 @@ fn smooth_row(
     brush: BrushSettings,
 ) -> f32 {
     let px = brush.sculpt_smooth_px;
-    let display = format!("{px} px");
+    let display = ph2d_i18n::tr_with("panel.painter_layers.sculpt.px_value", &[("px", &px)]);
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -301,7 +301,10 @@ fn radius_row(
     brush: BrushSettings,
 ) -> f32 {
     let px = brush.sculpt_radius_px;
-    let display = format!("{} px", px as u32);
+    let display = ph2d_i18n::tr_with(
+        "panel.painter_layers.sculpt.px_value",
+        &[("px", &(px as u32))],
+    );
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();

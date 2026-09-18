@@ -24,6 +24,10 @@
 /// A tradução de uma chave `panel.painter_layers.*`, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        // ── O que a régua lexical NÃO conta, achado pelo `censo --cegos` (2026-09-18) ──────────
+        // A unidade de um leitor de chip: o marcador sai e sobra `px`, que a régua lê como
+        // identificador. Irmã do `panel.audio_mixer.strip.db_value`.
+        "panel.painter_layers.sculpt.px_value" => "{px} px",
         // ⭐⭐ **O NOME DO PAINEL** (2026-09-17) — o `Panel::TITLE` é um `TextKey`, e esta chave é o
         //    que a ABA do encaixe lê. ⚠️ O painel chama-se *"Painter"* e a crate `painter_layers`:
         //    a chave segue o **id do painel**, que é o que a aba e o registo conhecem; o TEXTO é

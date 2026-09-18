@@ -57,8 +57,44 @@ fn main() {
         println!("{:40} {total:5}", "TOTAL");
         return;
     }
+    // ⭐⭐⭐ **`--cegos <raiz>`: o COMPLEMENTO da régua**, para a triagem que ela não pode fazer.
+    //
+    // ⚠️ **Não é uma lista de defeitos — é a população onde um rótulo PODE esconder-se.** Quase
+    // tudo aqui é identificador legítimo, e é para não o acusar que as duas cercas existem. Mas
+    // as duas já esconderam texto no ecrã com o censo VERDE (as letras do 9-slice em 18/09, o
+    // `repeats`/`once` do Inspector em 13/09), e enquanto isso era prosa num doc-comment ninguém
+    // conseguia LER a lista.
+    if args.first().is_some_and(|a| a == "--cegos") {
+        let Some(root) = args.get(1) else {
+            eprintln!("uso: censo --cegos <raiz src/>");
+            std::process::exit(2);
+        };
+        let mut files = Vec::new();
+        colhe(Path::new(root), &mut files);
+        files.sort();
+        for f in files {
+            let Ok(raw) = std::fs::read_to_string(&f) else {
+                continue;
+            };
+            let rel = f
+                .strip_prefix(Path::new(root))
+                .unwrap_or(&f)
+                .to_string_lossy()
+                .replace('\\', "/");
+            for (l, motivo) in ph2d_label_census::blind_literals_in(&rel, &raw) {
+                println!(
+                    "{}\t{}\t{motivo:?}\t{}\t{}",
+                    l.rel,
+                    l.line,
+                    l.via,
+                    escape(&l.text)
+                );
+            }
+        }
+        return;
+    }
     let Some(root) = args.first() else {
-        eprintln!("uso: censo <raiz src/> | --resumo");
+        eprintln!("uso: censo <raiz src/> | --resumo | --cegos <raiz src/>");
         std::process::exit(2);
     };
     for l in language_literals(Path::new(root)) {
@@ -71,5 +107,26 @@ fn main() {
             l.via,
             escape(&l.text)
         );
+    }
+}
+
+/// Os `.rs` debaixo de uma raiz — o `--cegos` varre por ficheiro, e a porta memoizada da crate só
+/// devolve os de LÍNGUA.
+///
+/// ⚠️ Ela **não** salta o que está sob `#[cfg(test)]` ao nível do FICHEIRO (a porta da crate faz
+/// isso); o `blind_literals_in` continua a apagar os itens `#[cfg(test)]` de dentro de cada um,
+/// como a régua de língua. *Uma lista de triagem que mostre um ficheiro de teste a mais custa uma
+/// linha lida; uma que esconda um pintor custa um report do dono.*
+fn colhe(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in rd.flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            colhe(&p, out);
+        } else if p.extension().is_some_and(|x| x == "rs") {
+            out.push(p);
+        }
     }
 }

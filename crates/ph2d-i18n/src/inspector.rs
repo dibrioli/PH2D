@@ -103,6 +103,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ Em ASCII de propósito no inglês (a grelha é pequena e um glifo largo não cabe), e o
         //    `-` entra pela mesma porta: ele é a marca do estado APAGADO, e uma língua pode
         //    escolher outra.
+        // ── O que a régua lexical NÃO conta, achado pelo `censo --cegos` (2026-09-18) ──────────
+        // O TÍTULO da secção do 9-slice: recusado por começar com DÍGITO (não é Capitalizado
+        // nem GRITADO), logo a régua lia-o como identificador.
+        "panel.inspector.slice.section_title" => "9-Slice",
+        // A direcção «ping-pong» da animação: uma sigla de duas letras ENTRE quatro irmãs que
+        // já vinham da tabela.
+        "panel.inspector.animation.pp" => "PP",
+        // Os dois formatos de precisão, pintados como chips — a mesma lei do
+        // `panel.inspector.ordering.ui`: uma tabela, um tipo.
+        "panel.inspector.render_source.rgba8" => "RGBA8",
+        "panel.inspector.render_source.rgba16" => "RGBA16",
         "panel.inspector.slice.letter_stretch" => "S",
         "panel.inspector.slice.letter_repeat" => "R",
         "panel.inspector.slice.letter_mirror" => "M",

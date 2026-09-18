@@ -80,7 +80,10 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
             chip_id: ph2d_tool_color_equalization::ids::CEQ_EXPOSURE_NUM,
             snap_track: exposure_to_slider(snapshot.exposure),
             snap_chip: snapshot.exposure as f64,
-            chip_display: format!("{:+.2} EV", snapshot.exposure),
+            chip_display: ph2d_i18n::tr_with(
+                "panel.color_eq.adjust.ev_value",
+                &[("ev", &format!("{:+.2}", snapshot.exposure))],
+            ),
             show: always,
         },
         SliderRow {

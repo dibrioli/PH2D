@@ -124,7 +124,7 @@ fn override_rows(
             tr("panel.inspector.animation.inherit"),
             tr("panel.inspector.animation.fwd"),
             tr("panel.inspector.animation.rev"),
-            "PP",
+            tr("panel.inspector.animation.pp"),
             tr("panel.inspector.animation.pp_rev"),
         ],
         usize::from(info.direction_override_tag),

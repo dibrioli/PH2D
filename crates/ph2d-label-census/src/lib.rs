@@ -49,4 +49,7 @@ pub mod keys;
 mod lexical;
 mod source;
 
-pub use lexical::{Literal, is_language, language_literals, language_literals_in};
+pub use lexical::{
+    Cegueira, Literal, blind_literals_in, cegueira, is_language, language_literals,
+    language_literals_in,
+};

@@ -19,7 +19,7 @@ use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
 use ph2d_editor_core::widget::{SectionFold, SectionHeader, paint_section_header};
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::tr;
+use ph2d_i18n::{TextKey, tr};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -113,10 +113,16 @@ fn slider_row(ctx: &mut Ctx, y: f32, label: &str, id: NodeId, value: f32) -> f32
 
 /// Paint a collapsible section header (chevron + uppercase label). Returns
 /// `(open, next_y)`; the dispatch flips `is_collapsed` on click.
-fn section_header(ctx: &mut Ctx, y: f32, id: NodeId, label: &str) -> (Option<SectionFold>, f32) {
+/// ⚠️⚠️ **O rótulo entra TIPADO (`TextKey`), e isso é a cerca.**
+///
+/// Até 2026-09-18 era um `&str` e o cabeçalho da secção `EQ` estava escrito **cru** ao lado de dois
+/// irmãos que já vinham da tabela — *um estranho numa lista de chaves*. O censo desta crate ficava
+/// VERDE porque a régua só conta uma palavra GRITADA a partir de TRÊS letras (senão `UV` e `RGBA16`
+/// seriam língua). ⇒ com este parâmetro, escrever `"EQ"` aqui deixa de compilar.
+fn section_header(ctx: &mut Ctx, y: f32, id: NodeId, label: TextKey) -> (Option<SectionFold>, f32) {
     let open = !ctx.store.is_collapsed(id);
     let rect = Rect::new(ctx.x, y, ctx.w, MUTE_H);
-    let header = SectionHeader::new(id, label)
+    let header = SectionHeader::new(id, label.tr())
         .collapsible(open)
         .open_t(ctx.store.section_open_live(id));
     paint_section_header(&header, rect, ctx.scene, ctx.text_system, ctx.theme);
@@ -202,7 +208,12 @@ fn paint_limiter(ctx: &mut Ctx, y: f32) -> f32 {
 }
 
 fn paint_eq(ctx: &mut Ctx, y: f32) -> f32 {
-    let (fold, mut y) = section_header(ctx, y, AMIX_SEC_EQ, "EQ");
+    let (fold, mut y) = section_header(
+        ctx,
+        y,
+        AMIX_SEC_EQ,
+        TextKey::new("panel.audio_mixer.master.eq"),
+    );
     if let Some(fold) = fold {
         let eq = snapshot::eq();
         y = slider_row(
@@ -236,7 +247,7 @@ fn paint_reverb(ctx: &mut Ctx, y: f32) -> f32 {
         ctx,
         y,
         AMIX_SEC_REVERB,
-        tr("panel.audio_mixer.master.reverb"),
+        TextKey::new("panel.audio_mixer.master.reverb"),
     );
     if let Some(fold) = fold {
         y = toggle_row(
@@ -267,8 +278,12 @@ fn paint_reverb(ctx: &mut Ctx, y: f32) -> f32 {
 }
 
 fn paint_delay(ctx: &mut Ctx, y: f32) -> f32 {
-    let (fold, mut y) =
-        section_header(ctx, y, AMIX_SEC_DELAY, tr("panel.audio_mixer.master.delay"));
+    let (fold, mut y) = section_header(
+        ctx,
+        y,
+        AMIX_SEC_DELAY,
+        TextKey::new("panel.audio_mixer.master.delay"),
+    );
     if let Some(fold) = fold {
         y = toggle_row(
             ctx,
@@ -305,7 +320,12 @@ fn paint_delay(ctx: &mut Ctx, y: f32) -> f32 {
 }
 
 fn paint_comp(ctx: &mut Ctx, y: f32) -> f32 {
-    let (fold, mut y) = section_header(ctx, y, AMIX_SEC_COMP, tr("panel.audio_mixer.master.comp"));
+    let (fold, mut y) = section_header(
+        ctx,
+        y,
+        AMIX_SEC_COMP,
+        TextKey::new("panel.audio_mixer.master.comp"),
+    );
     if let Some(fold) = fold {
         y = sub_bus_rows(ctx, y, &SUB_COMP, snapshot::sub_comp());
         y = end_fold(ctx, fold, y);
@@ -318,7 +338,7 @@ fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
         ctx,
         y,
         AMIX_SEC_DUCK,
-        tr("panel.audio_mixer.master.ducking"),
+        TextKey::new("panel.audio_mixer.master.ducking"),
     );
     if let Some(fold) = fold {
         y = toggle_row(

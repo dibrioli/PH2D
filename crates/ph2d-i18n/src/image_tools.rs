@@ -18,6 +18,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         //    censo desta crate VERDE: o `is_language` exige DUAS letras SEGUIDAS, senão acusaria
         //    todo identificador, e uma letra sozinha não tem forma que o distinga de um. ⇒ o
         //    tipo é que passa a ser a cerca (`TextKey` no pintor), e a régua é o gate desta crate.
+        // ── O que a régua lexical NÃO conta, achado pelo `censo --cegos` (2026-09-18) ──────────
+        // As UNIDADES de um leitor: a régua deita fora o marcador e sobra `px`/`EV`, que não
+        // tem duas letras minúsculas Capitalizadas nem três GRITADAS. Mesma forma do
+        // `panel.audio_mixer.strip.db_value`, e é a TABELA que decide de que lado a unidade vive.
+        "panel.equalize_sizes.size.px_value" => "{px} px",
+        "panel.color_eq.adjust.ev_value" => "{ev} EV",
         "panel.equalize_sizes.fixed.w" => "W",
         "panel.equalize_sizes.fixed.h" => "H",
         // ph2d-migrar-texto:begin

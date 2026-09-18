@@ -356,7 +356,10 @@ fn paint_mode_rows(
                 .unwrap_or(snapshot.grid_offset as f64);
             // Canonical chip width — 72 px (was 32, user 2026-05-24).
             let chip_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
-            let display = format!("{} px", chip_value.round() as i64);
+            let display = ph2d_i18n::tr_with(
+                "panel.equalize_sizes.size.px_value",
+                &[("px", &(chip_value.round() as i64))],
+            );
             let used = paint_slider_with_chip_layout_adaptive(
                 Rect::new(inner_x, y, inner_w, row_h),
                 tr("panel.equalize_sizes.size.offset"),

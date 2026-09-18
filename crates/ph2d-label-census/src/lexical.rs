@@ -150,6 +150,48 @@ fn language_literals_uncached(src_root: &Path) -> Vec<Literal> {
 
 /// A régua sobre UM texto de fonte — a porta que os testes de controlo usam.
 pub fn language_literals_in(rel: &str, src: &str) -> Vec<Literal> {
+    varre(rel, src, &|c| c.is_none())
+        .into_iter()
+        .map(|(l, _)| l)
+        .collect()
+}
+
+/// ⭐⭐⭐ **O COMPLEMENTO da régua: os literais que ela RECUSA por uma cegueira que já escondeu um
+/// rótulo no ecrã** — [`Cegueira::SemDuasLetras`] e [`Cegueira::TokenNu`].
+///
+/// ⚠️ **Isto é uma lista de TRIAGEM, nunca um gate.** A esmagadora maioria destes literais é
+/// legítima (nomes de param, siglas, ids), e foi para não os acusar que as duas cercas existem —
+/// *alargar a régua para os apanhar acusaria centenas de identificadores, que é o defeito oposto e
+/// pior*. O que esta porta compra é que a população onde um rótulo pode esconder-se deixe de ser
+/// prosa num doc-comment e passe a ser uma lista que alguém consegue LER.
+///
+/// ⛔ As outras três cegueiras ficam de fora de propósito: uma chave, um caminho e um nome de
+/// ficheiro têm forma própria, e nenhum deles alguma vez escondeu um rótulo aqui.
+pub fn blind_literals_in(rel: &str, src: &str) -> Vec<(Literal, Cegueira)> {
+    varre(rel, src, &|c| {
+        matches!(c, Some(Cegueira::SemDuasLetras | Cegueira::TokenNu))
+    })
+    .into_iter()
+    .filter_map(|(l, c)| c.map(|c| (l, c)))
+    // ⛔ **O literal VAZIO não é um ponto cego — é a AUSÊNCIA de texto.** `Dropdown::new(id, "",
+    //    …)` é o dropdown sem rótulo, e ele era **um terço** da lista do Inspector: *uma lista de
+    //    triagem com um terço de ruído é uma lista que ninguém lê*, e a lei desta casa é que a
+    //    metade negativa de um censo vale tanto como a positiva.
+    .filter(|(l, _)| l.text.chars().any(|c| !c.is_whitespace() && c != '\\'))
+    .collect()
+}
+
+/// A varredura, UMA vez — as duas portas acima só escolhem que metade querem.
+///
+/// ⚠️ **Uma segunda cópia do encadeamento seria a segunda resposta à mesma pergunta**, e ela
+/// divergiria no dia em que alguém acrescentasse um filtro a uma só. O `aceita` corre ANTES do
+/// contexto de propósito: o caminho quente (o censo de língua, que os 30 gates correm sobre árvores
+/// inteiras) não paga o `enclosing` dos literais que vai deitar fora.
+fn varre(
+    rel: &str,
+    src: &str,
+    aceita: &dyn Fn(Option<Cegueira>) -> bool,
+) -> Vec<(Literal, Option<Cegueira>)> {
     let mut code = source::strip_comments(src);
     source::blank_cfg_test_items(&mut code);
     let mask = source::string_mask(&code);
@@ -159,7 +201,8 @@ pub fn language_literals_in(rel: &str, src: &str) -> Vec<Literal> {
             continue;
         }
         let text: String = code[lit.content.clone()].iter().collect();
-        if !is_language(&text) {
+        let motivo = cegueira(&text);
+        if !aceita(motivo) {
             continue;
         }
         let via = match source::enclosing(&code, &mask, lit.start) {
@@ -174,13 +217,16 @@ pub fn language_literals_in(rel: &str, src: &str) -> Vec<Literal> {
             continue;
         }
         let line = code[..lit.start].iter().filter(|&&c| c == '\n').count() + 1;
-        out.push(Literal {
-            rel: rel.to_string(),
-            line,
-            text,
-            chars: lit.start..lit.end,
-            via,
-        });
+        out.push((
+            Literal {
+                rel: rel.to_string(),
+                line,
+                text,
+                chars: lit.start..lit.end,
+                via,
+            },
+            motivo,
+        ));
     }
     out
 }
@@ -208,7 +254,27 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
 ///   `SCREAMING`, `kebab-id`, `wgsl`) — ⚠️ excepto quando o texto tinha um marcador e sobra uma
 ///   palavra de 3+ letras: `"{n} entities"` é uma frase;
 /// - um caminho de ficheiro não é língua.
+///
+/// ⭐⭐ **Ele é DERIVADO de [`cegueira`], e não o contrário** (2026-09-18): cada exclusão acima é um
+/// PONTO CEGO declarado desta régua, e enquanto a razão de cada recusa vivia só dentro de um `bool`
+/// ela não era consultável — *uma regra sem instrumento é uma nota que envelhece*, e a prova é que
+/// a cegueira das LETRAS SOZINHAS esteve escrita neste doc-comment enquanto três painéis pintavam
+/// letras cruas com o censo verde.
+#[must_use]
 pub fn is_language(text: &str) -> bool {
+    cegueira(text).is_none()
+}
+
+/// ⭐⭐⭐ **POR QUE MOTIVO esta régua recusou o texto** — `None` quando ela o aceita como língua.
+///
+/// ⚠️ Ela é a LEI e o [`is_language`] é o acessório: uma segunda cópia do critério divergiria no
+/// dia seguinte, e quem paga é o censo que o consome.
+///
+/// ⛔ **Nenhuma destas recusas é um defeito** — cada uma existe para não acusar identificadores, que
+/// neste repo são a maioria dos literais curtos. O que elas são é a **população onde um rótulo pode
+/// esconder-se**, e por isso se conseguem listar: ver o `--cegos` do exemplo `censo`.
+#[must_use]
+pub fn cegueira(text: &str) -> Option<Cegueira> {
     // ⛔⛔ **Os escapes do FONTE saem antes de tudo.** O texto de um literal chega tal como está
     //    escrito (`\u{00b7}`, `\n`, `\"`), e a 1.ª redacção desta função mandava para fora todo texto
     //    com `\` por «parecer um caminho» — logo TODO rótulo com um escape sumia em silêncio. Quem o
@@ -261,13 +327,13 @@ pub fn is_language(text: &str) -> bool {
             .windows(3)
             .any(|w| w[0].is_ascii_alphabetic() && w[1] == b'&' && w[2].is_ascii_alphabetic());
     if !has_word {
-        return false;
+        return Some(Cegueira::SemDuasLetras);
     }
     let key_like = u.contains('.')
         && u.chars()
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '.');
     if key_like {
-        return false;
+        return Some(Cegueira::ParecemChave);
     }
     let token = u
         .chars()
@@ -285,18 +351,41 @@ pub fn is_language(text: &str) -> bool {
     //    (formato) continuam de fora.
     let shouted = letters >= 3 && u.chars().all(|c| c.is_ascii_uppercase());
     if token && !capitalized && !shouted && !(had_placeholder && letters >= 3) {
-        return false;
+        return Some(Cegueira::TokenNu);
     }
     // ⛔⛔ **Uma BARRA numa FRASE não é um caminho** (medido 2026-09-13, na migração do Inspector):
     //    `"Speed (m/s)"` e `"Corners F fixed (on/off)…"` saíam como caminho, e treze rótulos da §14
     //    ficaram fora do censo — quem os achou foi o COMPILADOR, com a tabela deles meio `TextKey`. Um
     //    caminho não tem espaço; uma unidade sozinha (`m/s`) continua de fora pela mesma pergunta.
     if (u.contains('/') || u.contains('\\')) && !u.contains(char::is_whitespace) {
-        return false;
+        return Some(Cegueira::ParecemCaminho);
     }
-    ![
+    [
         ".rs", ".png", ".svg", ".json", ".toml", ".wgsl", ".txt", ".obj", ".ph2d",
     ]
     .iter()
     .any(|ext| u.contains(ext))
+    .then_some(Cegueira::NomeDeFicheiro)
+}
+
+/// ⭐ **As razões pelas quais a régua lexical recusa um texto** — os PONTOS CEGOS dela, nomeados.
+///
+/// ⚠️ Duas delas já esconderam rótulos no ecrã com o censo VERDE, e estão nomeadas com a medição:
+/// a [`Self::SemDuasLetras`] escondia `S`/`R`/`M`/`X`/`Y`/`W`/`H` em três painéis (2026-09-18) e a
+/// [`Self::TokenNu`] escondia `repeats`/`once` no Inspector (2026-09-13). *A cura de uma cegueira
+/// não é alargar a régua — seria acusar centenas de identificadores —, é a CERCA mudar de sítio
+/// (um `TextKey` no pintor) e esta lista ficar consultável.*
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Cegueira {
+    /// Sem duas letras seguidas não há palavra: `X` · `%` · `1:2` · `m/s`.
+    SemDuasLetras,
+    /// Tem cara de chave da tabela: `chrome.fill.title`.
+    ParecemChave,
+    /// Um token sem espaços que não é Capitalizado nem GRITADO — um identificador: `snake_case`
+    /// · `kebab-id` · `wgsl` · `repeats`.
+    TokenNu,
+    /// Um caminho de ficheiro (barra, sem espaço).
+    ParecemCaminho,
+    /// Traz uma extensão de ficheiro conhecida.
+    NomeDeFicheiro,
 }

@@ -59,7 +59,10 @@ impl BodyCtx<'_> {
             ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY_NUM,
             fid_track,
             fid_px,
-            &format!("{fid_px:.1} px"),
+            &ph2d_i18n::tr_with(
+                "panel.vector.pencil.px_value",
+                &[("px", &format!("{fid_px:.1}"))],
+            ),
             y,
         );
         let stab_track = self

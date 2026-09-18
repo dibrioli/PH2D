@@ -141,6 +141,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.audio_mixer.master.delay" => "Delay",
         "panel.audio_mixer.master.time" => "Time",
         "panel.audio_mixer.master.fbk" => "Fbk",
+        // ── O que a régua lexical NÃO conta, achado pelo `censo --cegos` (2026-09-18) ──────────
+        // ⚠️ Duas letras GRITADAS: o `shouted` da régua pede TRÊS (senão `UV` e `RGBA16` seriam
+        //    língua), logo este cabeçalho de secção era invisível a ela. Os dois irmãos dele
+        //    (`delay` · `comp`) já vinham da tabela — *um estranho numa lista de chaves*.
+        "panel.audio_mixer.master.eq" => "EQ",
         "panel.audio_mixer.master.comp" => "Comp",
         "panel.audio_mixer.master.ducking" => "Ducking",
         "panel.audio_mixer.master.key" => "Key: {bus}",

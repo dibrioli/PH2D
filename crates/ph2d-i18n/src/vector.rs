@@ -11,6 +11,9 @@
 /// A tradução de uma chave do painel de Vector, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        // ── O que a régua lexical NÃO conta, achado pelo `censo --cegos` (2026-09-18) ──────────
+        // A unidade do leitor de fidelidade do lápis — irmã do `panel.audio_mixer.strip.db_value`.
+        "panel.vector.pencil.px_value" => "{px} px",
         "panel.vector.title" => "Vector",
         "panel.vector.section.tool" => "Tool",
         "panel.vector.section.shape" => "Shape",

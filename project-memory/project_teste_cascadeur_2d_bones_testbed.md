@@ -396,3 +396,31 @@ caso do corpus em que ela morde é a captura `amostra_16_07`, e ela **não é al
 as amostras carregam DEPOIS do ficheiro que monta `Exemplos.LISTA`. ⇒ ela é gateada na fixtura
 construída da `teste.js`, e o gesto gateia o que o dono vê (`6 exemplos do menu · 4 melhoram · 0
 pioram`).
+
+### 2026-09-19 (2.ª volta) — «os braços têm mola além das mãos»
+
+Report do dono depois do 1.º smoke. Ele tem razão, e **o número já estava na minha tabela**: eu li a
+coluna «a animação autorada vale ZERO» (que só a MÃO tem) e não li a do que a física dele
+ACRESCENTA — `491°` no ombro e `729°` no cotovelo, contra `57°` e `180°` da nossa.
+
+⭐ O diagnóstico é a coluna `fim`: no ombro e no cotovelo o que ele acrescenta **acaba em zero**, que
+é a assinatura de mola; e o período **encurta** do ombro para a mão (8 · 6 · 4 quadros), que é o que
+uma cadeia de molas faz.
+
+⇒ `Motor.tirarAMolaDosBracos(rig, poses, antes, quanto, { modo })`, com **dois modos** — na mão
+«tirar a mola» e «pôr o osso como a animação o pôs» são a mesma coisa, no braço **não são**, e a
+diferença é o braço a ficar para trás do ombro. ⭐⭐ **A janela do filtro é o PERÍODO MEDIDO e não um
+número afinado**: a média de um período inteiro de uma oscilação é zero. É o período do modo mais
+LENTO da cadeia (o do ombro), senão a mão mal é suavizada.
+
+⛔ **Duas mutações sobreviventes, e as duas são lições de fixtura** (a 1.ª repetiu uma que eu tinha
+registado duas horas antes): *um corpus no ponto neutro de um osso não testa esse osso* (a mutação
+que alarga a lei à COLUNA ficava verde porque a fixtura não mexia na coluna), e *para gatear uma
+propriedade de FASE é preciso uma fixtura que tenha fase* (a mutação que torna a média CAUSAL ainda
+mata a oscilação — o que ela estraga é a HORA, e sobre uma rampa isso é invisível; a fixtura ganhou
+uma CORCOVA).
+
+⚠️ E uma régua minha estava certa na fixtura e errada nos dados reais: «o braço continua a
+acompanhar» medido no ÚLTIMO quadro lê `1,6°` na animação dele, porque ali o delta acaba em zero. Nos
+dados reais a régua é a **EXCURSÃO**. *As duas réguas são diferentes porque as duas fixturas são
+diferentes.*

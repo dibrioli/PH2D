@@ -550,3 +550,112 @@ fn o_pincel_base_sobre_acumula_e_isso_e_a_contradicao_do_p75() {
         razao("y_doisdab")
     );
 }
+
+/// ⭐⭐⭐⭐ **A ARBITRAGEM, presa: o nosso ramo LIGADO é o ramo DESLIGADO dele.**
+///
+/// A família `acumula/` (18 células, colhida 2026-09-18) trouxe a metade da
+/// tabela-verdade que faltava, e ela diz que a nossa polaridade está
+/// **invertida**. A prova não é estatística — é uma **identidade a oito casas
+/// em sete contagens de carimbo**:
+///
+/// | `N` | ALVO desligado | ALVO ligado | NOSSO ligado |
+/// |---|---|---|---|
+/// | 1 | `0,08736818` | `0,08736818` | `0,08736818` |
+/// | 2 | `0,16113299` | `0,16113299` | `0,16113299` |
+/// | 4 | `0,24074651` | **`0,21000004`** | `0,24074651` |
+/// | 8 | `0,29316160` | **`0,21000004`** | `0,29316160` |
+/// | 14 | `0,31712657` | **`0,21000004`** | `0,31712657` |
+/// | 27 | `0,33279914` | **`0,21000004`** | `0,33279914` |
+/// | 40 | `0,33833069` | **`0,21000004`** | `0,33833069` |
+///
+/// # ⚠️ O que este gate protege, e quando ele DEVE reprovar
+///
+/// Ele tem **três** metades, e a terceira é sobre o CORPUS e não sobre nós:
+///
+/// 1. **a identidade** — o nosso ramo ligado reproduz o desligado dele. ⛔ No
+///    dia em que a polaridade for trocada, ela passa a valer para o nosso ramo
+///    DESLIGADO e este gate reprova: *é assim que ele deve morrer*, com a
+///    mensagem a dizer o que fazer;
+/// 2. **o travão dele** — o lado ligado do alvo é um ponto fixo de `N = 4` a
+///    `N = 40`. Se isto cair, o corpus foi corrompido ou recolhido de outro
+///    binário;
+/// 3. **o nosso travão é OUTRO** (`5 ×` o primeiro carimbo, contra `2,40 ×`
+///    dele) — a dívida que sobra, afirmada de propósito para não se perder.
+///
+/// ⚠️ **As contagens saem do CORPUS**, nunca de uma lista escrita à mão.
+#[test]
+fn o_nosso_ramo_ligado_e_o_ramo_desligado_do_alvo() {
+    let mut ns: Vec<usize> = celulas_sem_remalha()
+        .into_iter()
+        .filter(|(f, n)| f == "acumula" && n.starts_with("escada_n") && n.ends_with("_on"))
+        .filter_map(|(_, n)| n["escada_n".len()..n.len() - 3].parse().ok())
+        .collect();
+    ns.sort_unstable();
+    assert!(
+        ns.len() >= 7,
+        "a escada encolheu para {} contagens — alguém apagou corpus",
+        ns.len()
+    );
+
+    let maior = |c: &crate::oraculo_do_pente::Celula, p: &[[f32; 3]]| -> f64 {
+        entrada(c)
+            .positions()
+            .iter()
+            .zip(p)
+            .map(|(a, b)| {
+                f64::from(b[0] - a[0])
+                    .hypot(f64::from(b[1] - a[1]))
+                    .hypot(f64::from(b[2] - a[2]))
+            })
+            .fold(0.0, f64::max)
+    };
+
+    let mut travao: Vec<f64> = Vec::new();
+    let mut nosso_desligado: Vec<(usize, f64)> = Vec::new();
+    for n in ns {
+        let off = ler("acumula", &format!("escada_n{n}_off"));
+        let on = ler("acumula", &format!("escada_n{n}_on"));
+        let dele_off = maior(&off, &off.saida);
+        let dele_on = maior(&on, &on.saida);
+        let nosso_on = maior(&on, &correr(&on));
+        nosso_desligado.push((n, maior(&off, &correr(&off))));
+
+        // (1) A IDENTIDADE — a oito casas, que é a precisão em que ela foi
+        //     medida. ⛔ Se reprovar, leia a mensagem: ela diz o que mudou.
+        assert!(
+            (nosso_on - dele_off).abs() < 5e-8,
+            "N={n}: o NOSSO ramo ligado ({nosso_on:.8}) deixou de reproduzir o \
+             ramo DESLIGADO do alvo ({dele_off:.8}). Se a polaridade do \
+             `Grip::Stamp` foi TROCADA — que é a cura medida no handoff §76 — \
+             esta identidade passou para o nosso ramo DESLIGADO: reescreva este \
+             gate com a premissa morta à vista no diff"
+        );
+        if n >= 4 {
+            travao.push(dele_on);
+        }
+    }
+
+    // (2) O travão DELE é um ponto fixo — propriedade do CORPUS.
+    let (lo, hi) = (
+        travao.iter().cloned().fold(f64::MAX, f64::min),
+        travao.iter().cloned().fold(0.0, f64::max),
+    );
+    assert!(
+        travao.len() >= 5 && hi - lo < 1e-7,
+        "o lado LIGADO do alvo deixou de ser um ponto fixo de N>=4 \
+         ({lo:.8}..{hi:.8} em {} contagens) — o corpus foi corrompido ou veio \
+         de outro binário",
+        travao.len()
+    );
+
+    // (3) E o NOSSO travão é outro — a dívida que sobra, afirmada de propósito.
+    let primeiro = nosso_desligado[0].1;
+    let ultimo = nosso_desligado.last().unwrap().1;
+    assert!(
+        (ultimo / primeiro - 5.0).abs() < 0.01,
+        "o nosso ramo desligado travava em 5,0000x o primeiro carimbo e agora \
+         trava em {:.4}x ({primeiro:.8} -> {ultimo:.8}). O do alvo trava em \
+         2,40x: se alguém escreveu a lei do tecto, apague esta metade",
+        ultimo / primeiro
+    );
+}

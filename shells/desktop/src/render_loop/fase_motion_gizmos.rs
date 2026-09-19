@@ -69,5 +69,12 @@ impl crate::App {
             window_size,
             self.last_pointer,
         ));
+        // ⭐⭐⭐ **O gizmo de uma corrente de POSIÇÕES** — a mesma janela e a mesma modalidade. Ele
+        // lê as tomadas deste cozimento e pergunta, por sink, a MESMA coisa que o lowering
+        // pergunta (`tem_aparencia`): o que não veio de uma forma não vira pixel, vira gizmo.
+        ph2d_app_motion::ponto_gizmo::publish(ph2d_app_motion::ponto_gizmo::resolve(
+            motion,
+            motion_tool_active,
+        ));
     }
 }

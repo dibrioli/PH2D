@@ -291,6 +291,15 @@ fn o_gizmo_do_colisor_le_o_cozido_deste_quadro() {
             "ph2d_app_motion::warp_gizmo::resolve(",
             "ph2d_app_motion::warp_overlay::draw_warp_gizmo(",
         ),
+        // ⭐⭐⭐ **A TERCEIRA: o gizmo de uma corrente de POSIÇÕES** (ordem do dono, 2026-09-17/19:
+        // *«sem o duplicator só aparece um gizmo de osso ou segmento de corda»*). Ele lê a tomada
+        // do sink, logo herda a MESMA lei — e entra aqui, e não num gate novo, porque a lei é a
+        // mesma: *um retrato tirado antes do cook mostra o quadro anterior*.
+        (
+            "pontos",
+            "ph2d_app_motion::ponto_gizmo::resolve(",
+            "ph2d_app_motion::ponto_gizmo_overlay::draw(",
+        ),
     ] {
         let (r, d) = (uma(resolve), uma(desenho));
         assert!(

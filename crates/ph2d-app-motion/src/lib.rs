@@ -178,6 +178,11 @@ pub mod motion_path_overlay;
 pub mod motion_shape_gen;
 pub mod motion_table_gen;
 pub mod motion_text_gen;
+/// ⭐⭐⭐ O gizmo de uma corrente de POSIÇÕES (a ordem do dono de 2026-09-17/19) — o osso, o
+/// segmento de corda e a cruz que aparecem no lugar dos pixels que a lei calou.
+pub mod ponto_gizmo;
+/// O DESENHO desse gizmo.
+pub mod ponto_gizmo_overlay;
 /// O gizmo de canvas dos deformadores de quadrilátero (Corner Pin + Bezier Warp).
 pub mod warp_gizmo;
 /// As FIXTURAS do gizmo de warp — montadas e **não marchadas**; ver o cabeçalho delas.

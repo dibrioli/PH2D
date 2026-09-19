@@ -346,6 +346,10 @@ pub fn dispatch(
     for n in super::warp_gizmo::taps_for(motion)
         .into_iter()
         .chain(super::collider_gizmo::taps_for(motion))
+        // ⭐ E o gizmo de uma corrente de POSIÇÕES (ordem do dono, 2026-09-17/19): ele pede TODOS
+        // os sinks, porque *«esta corrente tem aparência?»* é pergunta do cozido — ver o
+        // `ponto_gizmo::taps_for`, que também explica por que isto não custa um 2.º cozimento.
+        .chain(super::ponto_gizmo::taps_for(motion))
     {
         if !taps.contains(&n) {
             taps.push(n);

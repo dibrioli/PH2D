@@ -63,7 +63,7 @@ mod lower;
 pub use lower::{
     MediaColumns, RowMedium, VECTOR_PASS_COLUMN, VectorInstance, evaluate_motion,
     evaluate_motion_into, lower_to_instances, lower_to_instances_into, lower_to_instances_onto,
-    lower_to_vector_instances_onto, row_medium,
+    lower_to_vector_instances_onto, row_medium, tem_aparencia,
 };
 
 /// Per-frame Motion cook driver (plan §1.8). Owns the persistent [`Cook`] (its

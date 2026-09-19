@@ -49,11 +49,29 @@ pub const ALINHADA: f64 = 15.0;
 
 /// Quanto duas arestas seguidas podem divergir e ainda ser a mesma linha.
 ///
-/// ⛔ **`30°` e não `15°`:** duas arestas de `+14°` e `−14°` continuam-se a olho
-/// (a linha curva de leve) e divergem `28°` uma da outra. Um limiar igual ao da
-/// população cortaria a cadeia exactamente onde a grade é mais torta mas ainda
-/// legível.
-pub const CONTINUA: f64 = 30.0;
+/// ⛔⛔⛔ **A primeira redacção pôs `30°` aqui, e ele era INERTE POR CONSTRUÇÃO
+/// — uma mutação sobreviveu e a varredura provou-o.** Duas arestas que estão
+/// **cada uma** a menos de [`ALINHADA`] da MESMA direcção local diferem no
+/// máximo `2 × ALINHADA = 30°` ⇒ *o teste nunca podia recusar nada*. A
+/// varredura lê exactamente o mesmo em `180°` e em `30°`:
+///
+/// | `CONTINUA` | sem pente (`p50`/`p90`) | com retícula (`p50`/`p90`) |
+/// |---|---|---|
+/// | `180°` | `2` / `9` | `10` / **`53`** |
+/// | `30°` | `2` / `9` | `10` / **`53`** |
+/// | **`20°`** | `2` / `8` | `10` / **`40`** |
+/// | `15°` | `2` / `8` | `10` / `40` |
+/// | `10°` | `1` / `7` | `6` / `37` |
+/// | `5°` | `1` / `6` | `3` / `21` |
+///
+/// ⭐ **`20°` é o primeiro valor que MORDE**, e mantém a separação entre os dois
+/// lados (`on/off` do `p50` fica em `5,0×`, como em `180°`). Abaixo dele começa
+/// a cortar o sinal: a `10°` a mediana da retícula cai de `10` para `6`.
+///
+/// *Uma linha que a mutação não consegue matar não é lei, é comentário com
+/// sintaxe de código* — e a fixtura que a mata é o zigue-zague do
+/// `uma_fileira_em_ziguezague_nao_e_uma_linha`.
+pub const CONTINUA: f64 = 20.0;
 
 /// **O COMPRIMENTO DAS FILEIRAS da faixa**, em arestas.
 ///

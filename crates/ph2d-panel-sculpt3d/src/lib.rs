@@ -51,6 +51,18 @@ pub use state::{
     alpha_chip_index, drain_intents, last_content_h, last_visible_h, set_current_sculpt3d,
 };
 
+/// **Este interruptor é oferecido AGORA?** — a mesma porta que o despacho e o
+/// pintor lêem.
+///
+/// ⚠️ **`pub` porque um GATE DE CENA pergunta:** um passo de roteiro que manda
+/// clicar numa caixa afirma que ela está lá, e a única resposta honesta é a que
+/// o painel usa. *Uma segunda cópia da condição no gate deixaria de descrever o
+/// produto no dia em que ela mudasse.*
+#[must_use]
+pub fn interruptor_oferecido(ui: &Sculpt3dUi, id: NodeId) -> bool {
+    event::toggles::oferecido(ui, id)
+}
+
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};

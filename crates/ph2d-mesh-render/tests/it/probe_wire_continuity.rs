@@ -66,7 +66,10 @@ fn render_at(
 ) -> Vec<u8> {
     let mut renderer = MeshRenderer::new(device, FORMAT);
     renderer.upload_at(device, queue, 0, mesh, &[]);
-    renderer.upload_wire_at(device, 0, mesh);
+    // ⚠️ **`false` — a vista de sempre.** Esta sonda mede a continuidade do
+    // arame INTEIRO; a vista da grade esconde arestas de propósito, e medi-la
+    // aqui seria medir outro programa.
+    renderer.upload_wire_at(device, 0, mesh, false);
     // ⛔⛔ **A CÂMERA VEM DE FORA desde 2026-09-04** — ver [`render_at`]. Enquanto ela nascia
     // aqui dentro, uma sonda que rodasse a vista media a MÁSCARA de uma câmera contra a TINTA de
     // outra: eu li `33`–`51 %` de fuga onde a verdade é `0 %`. *Uma régua com dois referenciais

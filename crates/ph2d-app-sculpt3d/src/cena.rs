@@ -148,6 +148,17 @@ pub struct Sculpt3dScene {
     pub(crate) matcap: Option<u8>,
     /// A malha desenhada por cima da forma. Vista, como o [`Self::matcap`].
     pub(crate) wireframe: bool,
+    /// ⭐⭐⭐⭐ **A VISTA DA GRADE** — o arame esconde a diagonal de cada
+    /// triângulo ([`ph2d_mesh_render::wire_indices_com`]).
+    ///
+    /// ⛔⛔ **Ela existe porque o dono não conseguia VER o que a medição via.**
+    /// As fileiras que o pente de topologia produz medem `10`–`23` arestas de
+    /// mediana contra `2`–`4` do controlo — e afogam-se, porque numa malha
+    /// triangulada elas são **uma família de arestas entre três** e o arame
+    /// desenha as três com o mesmo traço. *Eu próprio as li como «retalhos».*
+    ///
+    /// ⚠️ Vista, como o [`Self::wireframe`]: não é salva.
+    pub(crate) wire_grade: bool,
 
     pub(crate) brush: Brush,
     /// **A REFERÊNCIA de cada verbo** (`RefMode`), na ordem do `Verb::ALL`.

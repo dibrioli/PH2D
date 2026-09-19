@@ -64,6 +64,7 @@ impl Sculpt3dScene {
             // o campo ao `Shade`. O anúncio sobreviveu ao fato.
             matcap: ph2d_mesh_render::DEFAULT_MATCAP,
             wireframe: false,
+            wire_grade: false,
             brush: Brush::default(),
             // ⚠️ **DERIVADO do que cada verbo DECLARA**, e não um `S` chapado: o
             // `[RefMode::default(); N]` que morava aqui fazia **7 dos 23**

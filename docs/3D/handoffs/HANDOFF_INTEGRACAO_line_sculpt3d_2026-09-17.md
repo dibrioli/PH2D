@@ -3114,3 +3114,121 @@ sobra é uma pergunta muito mais estreita:
 - o §83 fica no ficheiro **com esta refutação ao lado**, e não apagado: *a
   leitura errada faz parte do registo, e quem a repetir tem de ver que ela já foi
   feita e como caiu.*
+
+---
+
+## §85 — ⭐⭐⭐⭐ A VISTA DA GRADE: as fileiras passam a VER-SE (obra A de «as duas»)
+
+> **Ordem do dono, sobre as três saídas do §84.4:** *«As duas»* — fazer as
+> fileiras verem-se **primeiro**, e pagar o cálculo por níveis a seguir.
+
+### §85.1 — O problema não era o cálculo, era o TRAÇO
+
+Numa malha triangulada, as fileiras que o pente produz são **uma família de
+arestas entre três**, e o arame desenha as três com o mesmo traço. ⇒ a grade
+está lá e afoga-se — foi o que enganou o dono **e** a mim (§84.3).
+
+⭐ **A lei é INTRÍNSECA e cabe numa frase:** uma grade quadrada triangulada tem
+lados `ρ`, `ρ` e `ρ√2`, logo **a diagonal é a aresta mais longa do triângulo**.
+Escondê-la devolve os quadrados —
+[`ph2d_mesh_render::wire_indices_com`](../../../crates/ph2d-mesh-render/src/wire.rs).
+
+⚠️ **Ela não pergunta nada ao pincel** — nem direcção de traço, nem campo, nem
+estado de gesto. *Onde há grade ela mostra a grade; onde não há, mostra ruído,
+que é a resposta certa.*
+
+### §85.2 — As duas cercas, e o que cada uma impede
+
+- **só se esconde a mais longa dos DOIS triângulos dela** — com um lado só a
+  decidir, uma aresta partilhada por um triângulo esguio e um gordo desaparecia
+  e **abria um buraco** na malha;
+- **uma aresta com UM triângulo nunca se esconde** — ali ela é a **silhueta** de
+  uma peça aberta.
+
+⚠️ E **uma malha de quads não muda nada por construção**: a diagonal de um
+quadrilátero não é uma aresta, logo não está na lista de onde se tira.
+
+### §85.3 — A fiação, e a armadilha que ela tinha
+
+O `upload_wire_at` é idempotente por *«a lista já existe»*. ⛔⛔ **Sem mais nada,
+o interruptor seria MUDO e de forma calada:** trocar a vista deixaria o device a
+desenhar a lista da vista anterior até a topologia mudar por acaso. ⇒ o slot
+guarda **em que vista** a lista dele foi construída, e a comparação entra na
+idempotência. *Um estado guardado ao lado do buffer que ele descreve é o que
+torna a porta impossível de chamar errado.*
+
+O interruptor entra na **tabela** `TOGGLES` (que é quem regista e quem despacha,
+desde o §31) com a lei `|u| u.wireframe` — ⚠️ *um controlo de uma vista que não
+está desenhada é um controlo morto*, e a fileira pintada lê a **mesma** condição.
+
+### §85.4 — O gate que o roteiro obriga
+
+O passo `(5)` da `=49` manda o dono ligar a **`Show Grid`**, e *um passo que
+nomeia um controlo AFIRMA que ele está na tela*. O
+`o_roteiro_da_cena_nomeia_a_caixa_da_grade` tem as **duas metades**, porque cada
+uma sozinha mente:
+
+- **o RÓTULO** que o roteiro imprime é o que o painel pinta (por `include_str!`
+  sobre a cena e `tr` sobre a chave) — sem ela, uma caixa pintada e **morta sob o
+  dedo** passava;
+- **a TABELA** oferece-a com o arame ligado e **não** a oferece sem ele — sem a
+  metade negativa, um interruptor vivo com outro nome no ecrã passava.
+
+⭐ E a porta `interruptor_oferecido` é a **mesma** que o despacho e o pintor lêem:
+uma segunda cópia da condição no gate deixaria de descrever o produto no dia em
+que ela mudasse.
+
+### §85.5 — O que se vê
+
+Desenhada a mesma malha nas duas vistas (`diag_desenha_as_fileiras`, que escreve
+`soagrade_*.ppm`): sem pente, uma **sopa** de quadriláteros irregulares sem
+direcção; com a retícula, uma **grade limpa** a correr no rumo do traço, com uma
+mão-cheia de células irregulares isoladas — que são as singularidades, e são o
+que uma grade sobre uma superfície curva **tem de ter**.
+
+### §85.6 — ⛔⛔⛔ E uma MUTAÇÃO SOBREVIVENTE expôs uma constante INERTE POR CONSTRUÇÃO
+
+A régua da fileira nasceu com o limiar de continuação em `30°`, justificado por
+escrito (*«duas arestas de `+14°` e `−14°` continuam-se a olho»*). ⛔ **A mutação
+que o apagava sobreviveu**, e a varredura diz porquê: duas arestas que estão
+**cada uma** a menos de `ALINHADA = 15°` da **mesma** direcção local diferem no
+máximo `2 × 15 = 30°` ⇒ *o teste nunca podia recusar nada*.
+
+| `CONTINUA` | sem pente (`p50`/`p90`) | com retícula (`p50`/`p90`) |
+|---|---|---|
+| `180°` | `2` / `9` | `10` / **`53`** |
+| `30°` | `2` / `9` | `10` / **`53`** |
+| **`20°`** | `2` / `8` | `10` / **`40`** |
+| `10°` | `1` / `7` | `6` / `37` |
+| `5°` | `1` / `6` | `3` / `21` |
+
+⭐ `180°` e `30°` leem **exactamente o mesmo**. `20°` é o primeiro valor que
+morde e mantém a separação (`on/off` do `p50` em `5,0×`); abaixo dele a régua
+começa a cortar o **sinal**.
+
+⚠️⚠️ **E nenhuma das duas fixturas continha o fenómeno:** na grade as arestas
+continuam-se a `0°`, e na sacudida elas nem chegam a ligar-se. ⇒ a terceira é o
+**ZIGUE-ZAGUE** (`±14°`, arestas alinhadas **e** ligadas que viram `28°` a cada
+passo), com o controlo da grade dentro dela. *Uma linha que a mutação não
+consegue matar não é lei, é comentário com sintaxe de código.*
+
+### §85.7 — O portão
+
+- `nextest-impacted`: **16 435 / 16 439**, e as **quatro** vermelhas estão
+  resolvidas: um **tecto de LOC** (`pipeline.rs`, `705` contra `700`) curado por
+  **CORTE** — *o que um objecto ocupa no device* saiu para
+  `pipeline_slot.rs` (`705 → 586`), **nunca** por uma entrada no
+  `FILE_OVERAGE_OK` —, e **três membros já NOMEADOS** da família de flakes de
+  fan-out do §5.0 (`the_cost_of_sampling_a_path_is_flat_in_its_anchors` e as duas
+  da máscara do Painter), **3 de 3 verdes sozinhas** a `load 10`–`14` depois de
+  reprovarem num fan-out a `load 27,9`, com **zero** linhas do diff nas crates
+  delas.
+- `clippy --all-targets -D warnings` nas cinco crates: zero.
+- **Mutação: 8 de 8**, com um **CONTROLO** nomeado (a idempotência da lista só é
+  observável com device) e controlo sobre o próprio filtro.
+
+### §85.8 — ⏳ ABERTO
+
+- a obra **B** (*«pagar o cálculo por níveis»*) continua por fazer, e a pergunta
+  dela ficou mais estreita: *mais fileiras COMPLETAS*, não as primeiras;
+- a vista é de **VISTA** e não é gravada — como o `wireframe` e o `matcap`.

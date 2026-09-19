@@ -564,6 +564,47 @@ fn traco_com(pente: f32, e: [f32; 2], raio: f32, alvo: f32) -> (ph2d_mesh::Mesh,
     (malha, centros)
 }
 
+/// ⭐⭐⭐⭐ **GATE — O ROTEIRO NOMEIA UMA CAIXA QUE EXISTE, E QUE O DEDO ALCANÇA.**
+///
+/// O passo `(5)` manda o dono ligar a **`Show Grid`**, e *um passo que nomeia um
+/// controlo AFIRMA que ele está na tela* — o dono aprova o smoke com o passo
+/// impossível dentro, que é o defeito que o §31 desta linha já pagou.
+///
+/// ⛔⛔ **As DUAS metades, porque cada uma sozinha mente:**
+///
+/// - só a do RÓTULO deixaria passar uma caixa pintada e **morta sob o dedo** (a
+///   sétima ocorrência desta crate);
+/// - só a da TABELA deixaria passar um interruptor vivo com outro nome no ecrã.
+#[test]
+fn o_roteiro_da_cena_nomeia_a_caixa_da_grade() {
+    // (1) O rótulo que o roteiro imprime é o que o painel pinta.
+    let rotulo = ph2d_i18n::tr("panel.sculpt3d.wire_grade");
+    let roteiro = include_str!("scenes_pente.rs");
+    assert!(
+        roteiro.contains(&format!("`{rotulo}`")),
+        "o roteiro da =49 não nomeia a caixa `{rotulo}` — ou ela mudou de nome e \
+         o roteiro ficou para trás"
+    );
+
+    // (2) E ela é um interruptor VIVO, oferecido quando o arame está ligado.
+    let mut ui = ph2d_panel_sculpt3d::Sculpt3dUi {
+        wireframe: true,
+        ..Default::default()
+    };
+    assert!(
+        ph2d_panel_sculpt3d::interruptor_oferecido(&ui, ph2d_panel_sculpt3d::ids::SCULPT3D_WIRE_GRADE),
+        "a caixa da grade não é oferecida com o arame ligado — o roteiro manda \
+         clicar numa linha que o painel não desenha"
+    );
+    // ⛔ E a metade NEGATIVA: sem arame desenhado não há vista para escolher.
+    ui.wireframe = false;
+    assert!(
+        !ph2d_panel_sculpt3d::interruptor_oferecido(&ui, ph2d_panel_sculpt3d::ids::SCULPT3D_WIRE_GRADE),
+        "a caixa da grade é oferecida SEM arame — um controlo de uma vista que \
+         não está desenhada é um controlo morto"
+    );
+}
+
 /// As sondas desta cena — instrumentos, não lei. Ver [`sondas`].
 #[path = "scenes_pente_sondas_tests.rs"]
 mod sondas;

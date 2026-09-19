@@ -134,6 +134,13 @@ pub const SCULPT3D_SURFACE_ONLY: NodeId = hash_node_id("sculpt3d.surface_only");
 /// A malha de arestas desenhada por cima da forma.
 pub const SCULPT3D_WIREFRAME: NodeId = hash_node_id("sculpt3d.wireframe");
 
+/// ⭐⭐⭐⭐ **A VISTA DA GRADE do arame** — esconder a diagonal de cada triângulo.
+///
+/// ⛔ Ela nasceu de o dono não conseguir VER o que a medição via: as fileiras do
+/// pente de topologia estão lá (`10`–`23` arestas de mediana contra `2`–`4` do
+/// controlo) e afogam-se no meio das outras duas famílias de arestas.
+pub const SCULPT3D_WIRE_GRADE: NodeId = hash_node_id("sculpt3d.wire_grade");
+
 /// Azimute da lâmpada selecionada, em graus.
 pub const SCULPT3D_LIGHT_AZ: NodeId = hash_node_id("sculpt3d.light_az");
 

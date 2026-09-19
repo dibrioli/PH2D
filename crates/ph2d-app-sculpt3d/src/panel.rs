@@ -62,6 +62,7 @@ impl Sculpt3dScene {
                 matcap: self.matcap,
                 alpha_preview: self.alpha_preview,
                 wireframe: self.wireframe,
+                wire_grade: self.wire_grade,
                 cavity: self.cavity,
                 env: self.env,
                 ao: self.ao,
@@ -209,6 +210,7 @@ impl Sculpt3dScene {
         self.matcap = ui.matcap;
         self.alpha_preview = ui.alpha_preview;
         self.wireframe = ui.wireframe;
+        self.wire_grade = ui.wire_grade;
         self.cavity = ui.cavity;
         self.env = ui.env;
         self.ao = ui.ao;

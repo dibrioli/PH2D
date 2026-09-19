@@ -170,6 +170,12 @@ pub struct Sculpt3dUi {
     pub alpha_preview: bool,
     /// A malha de arestas por cima da forma.
     pub wireframe: bool,
+    /// **A vista da GRADE** — o arame esconde a diagonal de cada triângulo.
+    ///
+    /// ⚠️ Ela só tem sujeito com o [`Self::wireframe`] ligado, e a lei da tabela
+    /// de interruptores diz isso: *um controlo de uma vista que não está
+    /// desenhada é um controlo morto.*
+    pub wire_grade: bool,
     /// **O ALVO DE DENSIDADE do passe de topologia dinâmica** — uma FRACÇÃO em
     /// `0..=1` contra o raio do pincel, nunca um comprimento.
     ///
@@ -276,6 +282,7 @@ impl Default for Sculpt3dUi {
             matcap: Some(0),
             alpha_preview: true,
             wireframe: false,
+            wire_grade: false,
             // O MEIO da faixa, que é o valor com que a cena nasce — a fonte é
             // o `Dyntopo::default` do lado da cena, e este espelho existe só
             // para uma fixtura de costura ver o mesmo mundo que o artista vê.

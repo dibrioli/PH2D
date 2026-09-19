@@ -389,6 +389,13 @@ fn diag_desenha_as_fileiras() {
         let (m, c) = super::super::traco_com(pente, RUMOS[2].1, raio, alvo);
         let caminho = format!("{dir}/fileiras_{nome}.ppm");
         crate::scenes::pente::tests::desenhos::desenha_fileiras(&m, &c, raio, &caminho);
+        // ⭐ E a vista que o ARTISTA passa a poder ligar.
+        crate::scenes::pente::tests::desenhos::desenha_so_a_grade(
+            &m,
+            &c,
+            raio,
+            &format!("{dir}/soagrade_{nome}.ppm"),
+        );
         let (f50, f90, fmax, fn_) =
             ph2d_sculpt3d::medida_da_fileira::fileira_da_faixa(&m, &c, raio);
         println!("{nome}: fileira p50 {f50} p90 {f90} max {fmax} ({fn_} cadeias) -> {caminho}");

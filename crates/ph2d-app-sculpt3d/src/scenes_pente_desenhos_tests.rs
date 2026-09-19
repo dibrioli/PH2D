@@ -50,7 +50,7 @@ fn diag_desenha_o_arame() {
 /// Um arame ortográfico, olhando de `+z`, centrado no percurso — em `.ppm`,
 /// que se converte com `magick`.
 pub(crate) fn desenha(m: &ph2d_mesh::Mesh, percurso: &[[f32; 3]], raio: f32, caminho: &str) {
-    desenha_com(m, percurso, raio, caminho, false);
+    desenha_com(m, percurso, raio, caminho, Tinta::Tudo);
 }
 
 /// ⭐⭐⭐⭐ **O mesmo arame, com as FILEIRAS realçadas.**
@@ -80,7 +80,33 @@ pub(crate) fn desenha_fileiras(
     raio: f32,
     caminho: &str,
 ) {
-    desenha_com(m, percurso, raio, caminho, true);
+    desenha_com(m, percurso, raio, caminho, Tinta::Fileiras);
+}
+
+/// ⭐⭐⭐⭐ **O arame como o ARTISTA passa a poder vê-lo** — a vista que esconde
+/// a diagonal de cada triângulo ([`ph2d_mesh_render::wire_indices_com`]).
+///
+/// ⚠️ Ela desenha a MESMA lista que o device desenha, e não uma segunda
+/// interpretação dela: *uma sonda que reimplementasse a regra mediria outro
+/// programa*, que é a armadilha que esta cena já pagou no gate do passe.
+pub(crate) fn desenha_so_a_grade(
+    m: &ph2d_mesh::Mesh,
+    percurso: &[[f32; 3]],
+    raio: f32,
+    caminho: &str,
+) {
+    desenha_com(m, percurso, raio, caminho, Tinta::SoAGrade);
+}
+
+/// O que cada desenhador pinta.
+#[derive(Clone, Copy, PartialEq)]
+enum Tinta {
+    /// Todas as arestas, com o mesmo traço — o arame de sempre.
+    Tudo,
+    /// As alinhadas a preto, as outras a cinzento claro.
+    Fileiras,
+    /// Só o que a vista da grade deixa — a diagonal de cada triângulo sai.
+    SoAGrade,
 }
 
 fn desenha_com(
@@ -88,8 +114,9 @@ fn desenha_com(
     percurso: &[[f32; 3]],
     raio: f32,
     caminho: &str,
-    realca: bool,
+    tinta: Tinta,
 ) {
+    let realca = tinta == Tinta::Fileiras;
     const N: usize = 900;
     // A janela é o percurso mais dois raios de cada lado — o enquadramento que
     // o artista teria se olhasse para o traço dele.
@@ -112,6 +139,20 @@ fn desenha_com(
     let mut buf = vec![255u8; N * N * 3];
     let pos = m.positions();
     // As arestas que a régua da fileira encadeia, para o realce.
+    // A lista que o DEVICE desenharia nesta vista — a mesma porta, nunca uma
+    // segunda leitura da regra.
+    let da_grade: std::collections::BTreeSet<(u32, u32)> = if tinta == Tinta::SoAGrade {
+        let mut pares = Vec::new();
+        ph2d_mesh_render::wire_indices_com(m, true, &mut pares);
+        pares
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|p| (p[0].min(p[1]), p[0].max(p[1])))
+            .collect()
+    } else {
+        std::collections::BTreeSet::new()
+    };
     let fileiras: std::collections::BTreeSet<(u32, u32)> = if realca {
         ph2d_sculpt3d::medida_da_fileira::arestas_das_fileiras(m, percurso, raio)
             .into_iter()
@@ -159,7 +200,11 @@ fn desenha_com(
                 if a[2] < 0.3 || b[2] < 0.3 {
                     continue;
                 }
-                let na_fileira = fileiras.contains(&(ia.min(ib), ia.max(ib)));
+                let par = (ia.min(ib), ia.max(ib));
+                if tinta == Tinta::SoAGrade && !da_grade.contains(&par) {
+                    continue;
+                }
+                let na_fileira = fileiras.contains(&par);
                 if realca && na_fileira != (passagem == 1) {
                     continue;
                 }

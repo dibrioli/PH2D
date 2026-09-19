@@ -257,15 +257,22 @@ pub(crate) fn announce() {
          [sculpt3d]        longo do risco; no primeiro elas apontam para todos os lados.\n\
          [sculpt3d]        Nao e' uma grelha certinha -- e' o grao a virar-se para o lado\n\
          [sculpt3d]        em que a sua mao andou.\n\
-         [sculpt3d]    (5) Agora desligue o arame (`Wireframe`) e olhe para o RELEVO\n\
+         [sculpt3d]    (5) LIGUE a caixa `Show Grid`, logo abaixo do `Wireframe`.\n\
+         [sculpt3d]        Ela esconde uma das tres familias de linhas de cada\n\
+         [sculpt3d]        triangulo, e as outras duas passam a ler-se como uma\n\
+         [sculpt3d]        GRADE. E' aqui que a diferenca fica obvia: no segundo\n\
+         [sculpt3d]        risco ha' linhas que correm de ponta a ponta dele; no\n\
+         [sculpt3d]        primeiro sao pedacos soltos.\n\
+         [sculpt3d]    (6) Agora desligue o arame (`Wireframe`) e olhe para o RELEVO\n\
          [sculpt3d]        dos dois riscos. Eles tem de ficar IGUAIS de lisos. O\n\
          [sculpt3d]        alinhamento do passo (4) nao custa ondulacao nenhuma.\n\
          [sculpt3d]\n\
          [sculpt3d]    COMO SABER QUE DEU ERRADO: se os dois riscos ficarem iguais no\n\
          [sculpt3d]    passo (4), se a malha ficar com triangulos finos como lascas de\n\
-         [sculpt3d]    vidro, ou se o segundo risco ficar VISIVELMENTE mais ondulado que\n\
-         [sculpt3d]    o primeiro no passo (5) -- as tres coisas estao medidas e nenhuma\n\
-         [sculpt3d]    devia acontecer.\n\
+         [sculpt3d]    vidro, se as linhas do passo (5) nao correrem de ponta a ponta\n\
+         [sculpt3d]    do segundo risco, ou se ele ficar VISIVELMENTE mais ondulado que\n\
+         [sculpt3d]    o primeiro no passo (6) -- as quatro coisas estao medidas e\n\
+         [sculpt3d]    nenhuma devia acontecer.\n\
          [sculpt3d]\n\
          [sculpt3d]    (medido nesta peca: das linhas da malha debaixo do risco, 33 de\n\
          [sculpt3d]    cada 100 correm com ele antes -- que e' o que uma malha SEM\n\
@@ -273,7 +280,9 @@ pub(crate) fn announce() {
          [sculpt3d]    versao que voce reprovou. E a dobra entre faces vizinhas fica em\n\
          [sculpt3d]    2,7 a 2,9 graus contra 2,6 da malha por pentear -- ou seja, o\n\
          [sculpt3d]    relevo fica como se ninguem tivesse penteado, e antes ela ia a\n\
-         [sculpt3d]    4,4.)\n"
+         [sculpt3d]    4,4. E as linhas do passo (5): as do segundo risco medem 10 a 23\n\
+         [sculpt3d]    pedacos de comprimento, contra 2 a 4 do primeiro, e a mais\n\
+         [sculpt3d]    comprida atravessa o risco inteiro.)\n"
     );
 }
 

@@ -189,6 +189,21 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
         w,
         y,
     );
+    // ⚠️ **Só com o arame ligado** — é a mesma condição que a tabela de
+    // interruptores declara, e as duas leem o MESMO campo: uma fileira pintada
+    // que a tabela não oferece é um controlo morto sob o dedo, que é o report
+    // que esta crate já pagou sete vezes.
+    if snap.ui.wireframe {
+        y = toggle(
+            ctx,
+            crate::ids::SCULPT3D_WIRE_GRADE,
+            tr("panel.sculpt3d.wire_grade"),
+            snap.ui.wire_grade,
+            x,
+            w,
+            y,
+        );
+    }
     y
 }
 

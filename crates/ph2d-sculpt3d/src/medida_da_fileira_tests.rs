@@ -130,3 +130,49 @@ fn uma_faixa_vazia_nao_finge_uma_leitura() {
     let fora = vec![[10.0, 10.0, 0.0], [10.1, 10.0, 0.0]];
     assert_eq!(fileira_da_faixa(&m, &fora, 0.3), (0.0, 0.0, 0, 0));
 }
+
+/// A mesma grade com cada fileira em **ZIGUE-ZAGUE** de `±14°` — arestas
+/// alinhadas (a `14° < 15°` do traço) e **ligadas**, que a olho não são uma
+/// linha.
+fn ziguezague(n: usize) -> Mesh {
+    let mut m = grade(n);
+    let h = 1.0 / (n - 1) as f32;
+    // `tan 14° ≈ 0,2493`: meio degrau para cada lado dá segmentos a `±14°`.
+    let meio = 0.5 * h * 0.2493;
+    for (i, p) in m.positions_mut().iter_mut().enumerate() {
+        p[1] += if i % 2 == 0 { meio } else { -meio };
+    }
+    m
+}
+
+/// ⭐⭐⭐⭐ **GATE — UM ZIGUE-ZAGUE NÃO É UMA LINHA.**
+///
+/// ⛔⛔ **Ele nasceu de uma MUTAÇÃO SOBREVIVENTE**, e ela expôs que o limiar da
+/// continuação estava **inerte por construção**: duas arestas cada uma a menos
+/// de [`ALINHADA`] da mesma direcção diferem no máximo `2 × ALINHADA`, logo um
+/// limiar em `30°` nunca recusava nada. *E nenhuma das fixturas que eu tinha
+/// continha o fenómeno* — na grade as arestas continuam-se a `0°`, e na sacudida
+/// elas nem chegam a ligar-se.
+///
+/// Aqui elas ligam-se **e** viram `28°` a cada passo: a régua tem de as CORTAR.
+///
+/// [`ALINHADA`]: super::ALINHADA
+#[test]
+fn uma_fileira_em_ziguezague_nao_e_uma_linha() {
+    let m = ziguezague(25);
+    let (p50, _, maior, n) = fileira_da_faixa(&m, &percurso(), 0.3);
+    assert!(n >= 4, "cadeias: {n} — a faixa está a medir o nada");
+    // ⭐ **O CONTROLO vem primeiro:** a mesma malha SEM o zigue-zague lê a grade
+    // inteira, logo o que se mede aqui é o zigue-zague e não a fixtura.
+    let (g50, _, gmax, _) = fileira_da_faixa(&grade(25), &percurso(), 0.3);
+    assert!(g50 >= 20.0 && gmax >= 23, "o controlo mudou: {g50} / {gmax}");
+    assert!(
+        p50 <= 2.0,
+        "um zigue-zague de ±14° leu fileiras de {p50} arestas — a régua encadeia \
+         o que o olho não segue"
+    );
+    assert!(
+        maior <= 4,
+        "a maior cadeia do zigue-zague mede {maior} arestas"
+    );
+}

@@ -236,6 +236,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // de "None" faria o artista ler o modo default como "sem sombreamento".
         "panel.sculpt3d.matcap.rig" => "Rig",
         "panel.sculpt3d.wireframe" => "Wireframe",
+        "panel.sculpt3d.wire_grade" => "Show Grid",
         "panel.sculpt3d.accumulate" => "Accumulate",
         "panel.sculpt3d.front_faces" => "Front Faces Only",
         "panel.sculpt3d.light_az" => "Light Angle",

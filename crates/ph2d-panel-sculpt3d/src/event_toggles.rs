@@ -33,7 +33,7 @@ pub(crate) type Toggle = (NodeId, fn(&Sculpt3dUi) -> bool, fn(&mut Sculpt3dUi));
 /// `Brush::offers_front_faces`, `ClothArea::offers_pin`), nunca a uma lista de
 /// nomes aqui — o pintor faz a mesma pergunta para decidir se desenha a caixa, e
 /// duas cópias divergiriam num interruptor que aparece e não muda um vértice.
-pub(crate) const TOGGLES: [Toggle; 17] = [
+pub(crate) const TOGGLES: [Toggle; 18] = [
     (
         crate::ids::SCULPT3D_ACCUMULATE,
         |u| u.brush.verb.accumulates(),
@@ -146,11 +146,18 @@ pub(crate) const TOGGLES: [Toggle; 17] = [
         |_| true,
         |u| u.wireframe = !u.wireframe,
     ),
+    // ⚠️ **Esta PERGUNTA**, ao contrário do arame: sem arame desenhado não há
+    // vista para escolher, e oferecê-la seria um controlo morto sob o dedo.
+    (
+        crate::ids::SCULPT3D_WIRE_GRADE,
+        |u| u.wireframe,
+        |u| u.wire_grade = !u.wire_grade,
+    ),
 ];
 
 /// **Este id é um interruptor que a lei OFERECE agora?** — a porta única das duas
 /// perguntas, e o guard do braço de `match` que os despacha.
-pub(super) fn oferecido(ui: &Sculpt3dUi, id: NodeId) -> bool {
+pub(crate) fn oferecido(ui: &Sculpt3dUi, id: NodeId) -> bool {
     TOGGLES.iter().any(|(tid, lei, _)| *tid == id && lei(ui))
 }
 

@@ -216,6 +216,7 @@ impl MeshRenderer {
             index_capacity: idx,
             wire: None,
             wire_count: 0,
+            wire_grade: false,
             // *"a pergunta ainda não foi feita"* — ver `ObjectRaw::wire_cull`.
             closed: false,
         };
@@ -408,14 +409,23 @@ impl MeshRenderer {
         true
     }
 
-    pub fn upload_wire_at(&mut self, device: &wgpu::Device, index: usize, mesh: &Mesh) -> bool {
+    /// ⭐ **`so_a_grade`** escolhe a VISTA — ver [`crate::wire_indices_com`]. Ela
+    /// entra na comparação de idempotência: trocar de vista reconstrói a lista,
+    /// e é isso que impede o interruptor de ser mudo.
+    pub fn upload_wire_at(
+        &mut self,
+        device: &wgpu::Device,
+        index: usize,
+        mesh: &Mesh,
+        so_a_grade: bool,
+    ) -> bool {
         let Some(slot) = self.slots.get(index) else {
             return false;
         };
-        if slot.gpu.wire.is_some() {
+        if slot.gpu.wire.is_some() && slot.gpu.wire_grade == so_a_grade {
             return true;
         }
-        crate::wire_indices(mesh, &mut self.scratch_indices_flat);
+        crate::wire_indices_com(mesh, so_a_grade, &mut self.scratch_indices_flat);
         let count = u32::try_from(self.scratch_indices_flat.len()).unwrap_or(u32::MAX);
         // ⚠️ **A pergunta é feita AQUI porque aqui ela é quase de graça** — este
         // corpo já é `O(arestas)` e já roda uma vez por mudança de topologia (a
@@ -429,6 +439,7 @@ impl MeshRenderer {
         let g = &mut self.slots.get_mut(index).expect("conferido acima").gpu;
         g.wire = Some(buffer);
         g.wire_count = count;
+        g.wire_grade = so_a_grade;
         g.closed = closed;
         true
     }

@@ -1,0 +1,36 @@
+[package]
+name = "ph2d-tween"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# ⚠️ **UMA, e ela é o MOTOR — não é conveniência.**
+#
+# A lei desta crate é *«qual é o valor AGORA»*, e a forma da curva é a metade que já está
+# paga: `11` famílias × `3` modos = **33** presets no `ph2d_anim::Easing`, com
+# `is_deterministic` a separar os polinomiais dos transcendentais. Reescrever qualquer uma
+# delas seria o **segundo motor** que o levantamento proíbe por escrito na linha deste item
+# (*«presets de 1 clique: açúcar sobre o motor, nunca 2º motor»*).
+#
+# ⭐ A aresta `ph2d-ecs → ph2d-tween → ph2d-anim` **não é desenho novo**: é letra por letra a
+# da `ph2d-morph-machine` (`serde` + `ph2d-spring` + `ph2d-anim`), que o `ph2d-ecs` já
+# declara para guardar o `VecMorphMachine`. Folha → folha não sobe camada nenhuma.
+ph2d-anim = { path = "../ph2d-anim" }
+# O `Tween` é CONFIG: ele viaja no `.ph2dproj` dentro do componente que o guarda.
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# ⭐⭐ **SÓ para a MEDIÇÃO, e é por isso que ela é honesta.** O §6.1 do plano manda decidir em
+# que espaço a cor interpola, e a alternativa (OKLab, que o `AnimValue::Color` já usa com arco
+# curto de matiz) tem de ser CORRIDA ao lado da nossa para a decisão ter um número. ⛔ Nas
+# `[dependencies]` ela entraria no binário do produto por causa de uma sonda.
+ph2d-color = { path = "../ph2d-color" }
+
+[lints]
+workspace = true

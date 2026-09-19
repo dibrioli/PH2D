@@ -2423,3 +2423,141 @@ lado do COZIMENTO**. Com `N = 8` e um cozimento de `12 ms`, os `104,50` fecham q
 ⛔ **O readout não separa as duas metades nem diz quantos tiques cozeu** — e é por isso que três
 rondas de report não chegaram a uma conclusão. *A próxima wave é esse instrumento, e ele vem antes
 de qualquer cura.*
+
+---
+
+## §32 — ⛔⛔ O REPORT DO DONO: *«esses nós ainda não obedecem a regra»* — a §14 REABRE
+
+> **Report, 2026-09-19:** *«Não deveriam renderizar nada na tela, mas deveriam apenas
+> disponibilizarem a posição e direção (dentre outros parâmetros importantes) e deveriam ser
+> dependentes de Duplicator e Shape (e demais objetos) para aparecer na tela. OU seja, sem o
+> duplicator só aparece um gizmo de osso ou segmento de corda (ou outro tipo de segmento) que não
+> renderiza em runtime.»*
+
+⚠️ **A §14 registou isto como ADIADO pelo próprio dono em 17/09** (*«MAs vamos adiar isso»*) e ele
+reabriu-a como **defeito**. O que aquela secção chamava *«ordem 2 e 3»* é esta wave.
+
+### §32.1 — ⭐⭐⭐ A §5.0 correu primeiro, e o número mudou a forma da cura
+
+Duas sondas **derivadas** ([`motion_state_demo_router_census`](../../crates/ph2d-app-motion/src/motion_state_demo_router_census.rs)):
+`quem_desenha_sem_forma` pergunta ao **GRAFO** (cada sink alcança, a montante, uma origem de
+aparência?) e `colunas_que_chegam_ao_sink` é o **CONTROLO**, que coze e pergunta ao **STREAM**.
+
+| sobre as 123 cenas do roteador | |
+|---|---|
+| recebem aparência de uma origem (`source.object` / `source.shape`) | **12** (9,8 %) |
+| desenham **só posições** | **111** (90,2 %) |
+
+Quem as alimenta: `motion.grid` **97** · `value.lfo` 24 · `motion.distribute_radial` 7 ·
+`motion.emitter` 5 · `motion.scatter` 2 · `rig.skeleton` 1 · `source.lsystem` 1 · …
+
+⇒ **a regra aplicada como interruptor apaga 90 % do que está na tela.** É por isso que a cura é a
+que o dono escreveu e não «apagar»: o que não veio de um Duplicator deixa de virar pixel e passa a
+ser **GIZMO de editor**.
+
+⛔⛔ **Duas armadilhas que as sondas já pagaram:**
+
+1. A 1.ª redacção leu **`0` de 123** porque a lista de origens estava escrita à MÃO com o nome da
+   CRATE (`motion.shape`) e o NÓ chama-se **`source.shape`**. *Uma lista escrita à mão ao lado de um
+   censo derivado é a metade que envelhece.*
+2. As cenas de `source.shape` **cozem a ZERO** no arnês headless — a geometria é publicada pelo
+   `motion_shape_gen`, que corre no QUADRO. A `=110`, a `=114`, a `=115` e a `=119` leem `0 linhas`
+   na sonda e desenham dezenas de peças no app. *A sonda cozida é o controlo das COLUNAS, nunca um
+   censo de população.*
+
+### §32.2 — ✅ W1: a LEI, numa porta só, e ela ship DESLIGADA
+
+[`ph2d_eval_motion::tem_aparencia(&Stream)`](../../crates/ph2d-eval-motion/src/lower.rs). Uma
+corrente traz aparência quando traz uma das duas coisas que uma ORIGEM escreve:
+
+| o quê | quem a escreve | como se lê |
+|---|---|---|
+| um **ladrilho** | `source.object` (sprite · vector assado · Flip) | a coluna `uv_rect` **existe** |
+| **geometria viva** | `source.shape` · `source.text` · `source.lsystem` | `geometry_id > 0` |
+
+⚠️ **O ladrilho pergunta-se pela EXISTÊNCIA da coluna e a geometria pelo VALOR**, e a assimetria é a
+convenção da casa: `geometry_id = 0` quer dizer *«não é forma»* (o `> 0.5` que o `RowMedium` já usa),
+enquanto um `uv_rect` só existe se alguém o escreveu. ⛔ **Não pergunta pelo `texture_id`:** ele é
+`0` para o atlas partilhado, logo toda corrente sem aparência leria *«tem textura 0»*.
+
+**Onde a lei vive:** `SinkStyle::so_com_forma` — o único canal que já atravessa os DOIS lowerings.
+⚠️ **Não é um param do cartão** e nenhum controlo a escreve; a alternativa (uma bandeira lida do
+ambiente dentro do lowering) é o que a auditoria do **§31** recusou — *«um gate que lê o ambiente
+mede a máquina»* —, e assim um gate constrói o estilo à mão e mede a LEI.
+
+⚠️⚠️ **POR CORRENTE E NÃO POR LINHA, com o preço medido:** por linha, o caminho do DISPOSITIVO teria
+de **compactar** a saída (o `read_uv_rect` do WGSL escreve sempre as quatro palavras) e a paridade
+CPU↔device passaria a depender de duas compactações concordarem. Por corrente o device apenas não
+despacha. Uma corrente **MISTA** (junção de formas com pontos) carrega a coluna do ladrilho ⇒
+continua a desenhar-se como hoje, com o `RowMedium` a decidir o passe.
+
+⭐⭐⭐ **Ela ship DESLIGADA, e isso é ERRO DE COMPILAÇÃO, não um teste:**
+`const _: () = assert!(!SinkStyle::PLAIN.so_com_forma)`. Um `assert!` de teste sobre uma const é
+**dobrado pelo compilador** antes de correr, e o clippy di-lo em voz alta — o que sobra para um teste
+é a metade que só existe em runtime, a **porta do produto** (`PH2D_MOTION_SO_COM_FORMA=1`, lida UMA
+vez, num sítio só).
+
+### §32.3 — ✅ W2: o GIZMO que aparece no lugar
+
+[`ponto_gizmo`](../../crates/ph2d-app-motion/src/ponto_gizmo.rs) (geometria) +
+[`ponto_gizmo_overlay`](../../crates/ph2d-app-motion/src/ponto_gizmo_overlay.rs) (tinta) — o mesmo
+corte do gizmo do colisor, e o mesmo vocabulário do `warp_overlay`.
+
+⭐ **A FEIÇÃO sai das COLUNAS, nunca de uma lista de nomes de nó:** `parent` ⇒ **osso** ·
+`rope_prev` ⇒ **corda** · nada disso ⇒ **ponto**. Um `rig.fabrik` novo, um nó de terceiros, uma corda
+com outro nome caem na feição certa **sem ninguém os inscrever**. ⚠️ O `parent` **ganha** do
+`rope_prev`: pender de alguém é mais forte do que ser consecutivo, e uma cadeia com RAMOS desenhada
+como corda ligaria pontos que não se tocam.
+
+**A fiação entra nas DUAS fases que o §17 criou** — `fase_motion_gizmos` (depois do cook, porque ele
+lê as TOMADAS) e `fase_vector_overlays` (depois da arte) —, e o gate de ORDEM daquela wave ganhou a
+**terceira família** em vez de um gate novo: *a lei é a mesma*.
+
+⭐ **Tomadas:** ele pede **TODOS** os sinks, e não dá para escolher — *«esta corrente tem
+aparência?»* é pergunta do COZIDO. E é barato com o mecanismo: desde o **§21** quem DESENHA publica o
+que separou, logo a tomada não re-coze nada, e `Stream` guarda `Arc<Column>` ⇒ o clone é refcount.
+
+**O TECTO É MEDIDO** (§0.0), contra `1,67 ms` = 1/10 de um quadro:
+
+| elementos | Ponto | Corda | Osso | pior, em % do orçamento |
+|---|---|---|---|---|
+| 1 024 | 0,057 ms | 0,098 | 0,099 | 5,9 % |
+| **4 096** | 0,228 ms | 0,403 | 0,390 | **24,2 %** |
+| 16 384 | 1,375 ms | 1,604 | 1,562 | 96,1 % |
+| 65 536 | 3,571 ms | 6,811 | 6,345 | 407,8 % |
+
+(`--release`, mediana de 9, `load 3,09`.) A `=116` entrega **102 400** posições num sink só.
+
+### §32.4 — ⛔⛔ Quatro mutações sobreviventes, e todas eram fixturas minhas
+
+| # | o que sobreviveu | porquê, e a cura |
+|---|---|---|
+| **M2** | apagar a saída cedo do lowering **VECTORIAL** | sem `geometry_id` e sem `vector_pass` toda linha já é `Sprite` e aquele passe devolvia `None` para todas. *A fixtura não produzia o fenómeno.* Quem o produz é a **terceira média** — a corrente que o `vector_pass` marca **sem** ladrilho |
+| **M8** | cravar `so_com_forma: true` dentro do `sink_style` | o gate chamava a porta **directamente**. *Um gate que chama a função em vez de percorrer a rota afirma que a peça existe, nunca que o produto a usa* ⇒ ele monta um `Graph` e pergunta ao `sink_style` |
+| **G2** | apagar a comparação `p < 0.0` do osso | com a raiz em `0`, `-1.0 as usize` **satura em `0`** e a cerca seguinte (`pi != i`) rejeita na mesma. *As duas cercas só são distinguíveis onde a saturação NÃO aterra no próprio elemento* ⇒ raiz em `2` e um `parent = -3` |
+| **G5** | apagar o `continue` de quem tem aparência | o gate perguntava a `tem_aparencia` directamente ⇒ hoje monta `source.object → motion.output`, publica a aparência pela porta da membrana, coze e **confirma que a corrente traz o ladrilho** antes de exigir `resolve == None` |
+
+⚠️⚠️ **E o ARNÊS mentiu duas vezes, as duas com formas que esta casa já tem escritas:** o script de
+mutação definia `main()` e **nunca a chamava** (saiu `exit 0`, sem uma linha, e lê-se exactamente
+como *«todas sobreviveram»*); e *«não compila»* e *«o filtro casou ZERO testes»* liam-se **iguais**,
+sendo **opostos** — o 1.º é o sangramento mais forte que há.
+
+**Prova de mutação: 15 de 15 sangram** (8 na W1, 7 na W2).
+
+### §32.5 — ⏳ O que FICA, e a ordem
+
+1. **As cenas migram** — cada sink de posições ganha `source.shape → motion.duplicator`. ⭐ Isto é
+   **seguro com a lei ligada OU desligada**: uma cena migrada desenha formas reais nos dois casos,
+   logo a migração pode ser incremental e a porta fecha-se no fim. O funil existe e é pequeno: na
+   `=120` as seis fileiras passam **todas** pelo `pousa`, e o `point_scale = 1` preserva o tamanho
+   que o `motion.scale` já dava.
+   ⚠️ O arnês headless das cenas migradas precisa de `motion_shape_gen::publish(&mut m, 0.0)` — é o
+   que a armadilha 2 da §32.1 nomeia, e é **uma linha**.
+2. **O tutorial do ciclo 9 muda de premissa** — sob a regra nova ele ensina *o osso aparece; ligue um
+   Duplicator e uma Shape para o ver*. ⛔ Migrar a cena **sem** reescrever o tutorial é a espécie que
+   o `CLAUDE.md` §5.0 chama de **pior que uma cena ausente**.
+3. **A porta fecha-se**, e a lei passa a ser o caminho de omissão.
+
+⏳ **E fica NOMEADO o que esta wave não mediu:** o custo do gizmo **na cena do dono** (a tabela acima
+é sintética, um grupo só), e o que acontece quando um sink tem `102 400` posições e o tecto corta —
+*o artista vê `4 096` cruzes e a legenda não lhe diz que há mais*.

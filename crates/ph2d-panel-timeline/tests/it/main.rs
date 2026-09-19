@@ -15,6 +15,7 @@ mod every_word_this_panel_shows_comes_from_the_string_table;
 mod extrapolation_seam;
 mod marker_menu_seam;
 mod nesting_seam;
+mod o_lado_da_dobra_chega_a_lista;
 mod one_door_names_the_channel;
 mod seam;
 mod strip_ease_grip_seam;

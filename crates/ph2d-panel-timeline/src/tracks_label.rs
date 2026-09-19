@@ -30,6 +30,7 @@ pub(crate) fn prop_label(p: PropKind) -> &'static str {
         PropKind::BoneBendInX => ph2d_i18n::tr("panel.timeline.prop.bone_bend_in_x"),
         PropKind::BoneBendInY => ph2d_i18n::tr("panel.timeline.prop.bone_bend_in_y"),
         PropKind::BoneBendOutX => ph2d_i18n::tr("panel.timeline.prop.bone_bend_out_x"),
+        PropKind::IkBendSide => ph2d_i18n::tr("panel.timeline.prop.ik_bend_side"),
         PropKind::BoneBendOutY => ph2d_i18n::tr("panel.timeline.prop.bone_bend_out_y"),
     }
 }

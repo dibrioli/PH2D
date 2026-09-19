@@ -380,6 +380,13 @@ pub const TIMELINE_ADDPROP_BONE_BEND_OUT_X: NodeId =
 pub const TIMELINE_ADDPROP_BONE_BEND_OUT_Y: NodeId =
     hash_node_id("timeline.addprop.bone_bend_out_y");
 
+/// "+Track" -> **IK Bend Side**: de que lado o joelho dobra (`IkGoal::bend`), animável.
+///
+/// ⛔⛔ **Ela está aqui pela lei que a irmã acima escreve**, e que o `Morph` pagou uma vez: um canal
+/// com resolver, rótulo e chave de i18n prontos e **sem esta linha** é um canal que só um teste
+/// alcança. *O artista não lhe chega.*
+pub const TIMELINE_ADDPROP_IK_BEND_SIDE: NodeId = hash_node_id("timeline.addprop.ik_bend_side");
+
 /// The drag grip at the veil's left edge (the authored-duration end) — resizing
 /// the composition duration by dragging on the ruler.
 pub const TIMELINE_DUR_HANDLE: NodeId = hash_node_id("timeline.dur_handle");

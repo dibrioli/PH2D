@@ -264,6 +264,12 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
         match p {
             PropKind::Morph | PropKind::Opacity => 0.625,
             PropKind::Position => 3.0,
+            // ⭐⭐ **`-1` porque este canal QUANTIZA, e isso é a lei e não um defeito:** ele carrega
+            // um BIT (o lado da dobra), logo a leitura devolve `±1` seja qual for o valor escrito.
+            // O `1.75` genérico fecharia a ida-e-volta em `1.0` e acusaria o produto por uma sonda
+            // que ignora o que o canal É. ⛔ E `-1` e não `+1`: o `+1` é o valor de nascimento
+            // (`Keep` lê-se anti-horário), logo a ida-e-volta passaria mesmo com a escrita MORTA.
+            PropKind::IkBendSide => -1.0,
             _ => 1.75,
         }
     }
@@ -296,6 +302,7 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
             PropKind::BoneBendInY => "bend_in_y",
             PropKind::BoneBendOutX => "bend_out_x",
             PropKind::BoneBendOutY => "bend_out_y",
+            PropKind::IkBendSide => "bend_side",
         }
     }
 
@@ -335,6 +342,7 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
                 | PropKind::BoneBendInY
                 | PropKind::BoneBendOutX
                 | PropKind::BoneBendOutY
+                | PropKind::IkBendSide
         ) && cfg!(not(feature = "skeleton"))
         {
             continue;
@@ -379,6 +387,13 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
         sim.world_mut()
             .entity_mut(Entity::from_bits(e))
             .insert(ph2d_skeleton_ecs::Bone::default());
+        // Idem para o lado da dobra: sem um `IkGoal` na entidade o braço novo nem escreve nem lê —
+        // a QUARTA vez que esta mesma linha é escrita, e sempre pela mesma razão. *Uma sonda que
+        // não contém o fenómeno acusa o produto por um buraco da fixtura.*
+        #[cfg(feature = "skeleton")]
+        sim.world_mut()
+            .entity_mut(Entity::from_bits(e))
+            .insert(ph2d_skeleton_ecs::IkGoal::default());
 
         let mut st = TimelineState::new();
         let doc = &mut st.doc;
@@ -426,5 +441,47 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
     assert!(
         checked >= 7,
         "a varredura cobriu so {checked} kinds — o iterador quebrou"
+    );
+    // ⛔⛔ **E o piso acima SEGURAVA O NÚMERO enquanto a população encolhia** (medido 2026-09-18 por
+    // uma mutação): apagar a linha do `from_target` de um canal tira-o da varredura, o `checked`
+    // desce de 16 para 15, e `>= 7` continua verde. *Uma catraca sem censo de obsolescência não
+    // desce: ela vira licença.*
+    //
+    // ⇒ a população é DERIVADA — todo id que o `from_target` resolve e que a varredura não salta
+    // por uma razão nomeada tem de ter sido medido.
+    //
+    // ⚠️⚠️ **O que ele NÃO apanha, e está medido:** apagar a linha do `from_target` faz `checked` e
+    // `resolviveis` descerem JUNTOS, e isto fica verde — *a régua partilha a lei do produto, e um
+    // espelho não acusa*. Quem apanha essa é o gate do id, em `ik_bend_side_anima.rs`, que afirma o
+    // `17` pelos dois lados. Aqui o que se guarda é a varredura **partida** (um `continue` novo, um
+    // iterador que quebra), e isso ela guarda.
+    let resolviveis = (0..32_u64)
+        .filter_map(|id| PropKind::from_target(AnimTarget::new(id)))
+        .filter(|p| *p != PropKind::TimeRemap)
+        .filter(|p| *p != PropKind::Opacity || cfg!(feature = "render"))
+        .filter(|p| {
+            !matches!(
+                p,
+                PropKind::JointMotorTarget
+                    | PropKind::JointMotorSpeed
+                    | PropKind::JointRestLength
+                    | PropKind::JointMaxLength
+            ) || cfg!(feature = "physics")
+        })
+        .filter(|p| {
+            !matches!(
+                p,
+                PropKind::BoneBendInX
+                    | PropKind::BoneBendInY
+                    | PropKind::BoneBendOutX
+                    | PropKind::BoneBendOutY
+                    | PropKind::IkBendSide
+            ) || cfg!(feature = "skeleton")
+        })
+        .count();
+    assert_eq!(
+        checked, resolviveis,
+        "a varredura mediu {checked} kinds de {resolviveis} resolviveis — um canal caiu fora dela \
+         em silencio, que e' exactamente como o `IkBendSide` passou a primeira vez"
     );
 }

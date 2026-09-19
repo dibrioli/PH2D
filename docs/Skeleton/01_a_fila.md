@@ -59,6 +59,52 @@ diz onde ler o mecanismo:
 
 ---
 
+### F18 — ✅ **O LADO DA DOBRA ANIMA** (pedido do dono, 2026-09-18)
+
+Ele escolheu *«o lado da dobra é escolhido e é consistente, mas **não é animável**»*. ⇒
+`PropKind::IkBendSide` (id de fio **17**, append-only): uma track como qualquer outra, na lista do
+*+ Track*, com rótulo, chave de i18n e alias de expressão (`Nome.bend_side`).
+
+⛔⛔⛔ **E NÃO é o *Pole Target* — a recusa MEDIDA fica de pé, e está no doc do
+[`ph2d_skeleton::BendSide`]:** em 3D o triângulo raiz–cotovelo–ponta roda em torno do eixo
+raiz→ponta (um grau de liberdade **contínuo**, que um objecto no espaço fixa) e no plano isso **não
+existe**: sobra **um bit**. Um alvo arrastável que codifica um bit dá a ilusão de um controlo
+contínuo e **salta** ao cruzar a recta — Godot (`flip_bend_direction`) e Spine (`bendDirection`),
+independentes, escolheram o interruptor. ⭐ *O que faltava não era o alvo: era a ANIMABILIDADE do
+bit*, que o Spine tem e nós não tínhamos.
+
+⚠️ **A convenção do valor é a do Spine** (`>= 0` ⇒ anti-horário) e o empate tem **vencedor
+declarado**: sem isso o instante do salto dependeria do último bit de um `f32`. ⛔ O `Keep` e o
+`Mixed` **não são alcançáveis** pelo canal, e a ausência é a decisão: os dois significam *«deriva o
+lado da pose que chega»*, e um canal que os animasse estaria a keyar a AUSÊNCIA de uma escolha.
+
+⛔ **Fora do auto-key**, e a razão está escrita: o valor muda por um clique num chip, e o auto-key
+desta casa grava o que a MÃO move no canvas. *Pô-lo lá faria toda troca de chip virar uma chave.*
+
+⛔⛔⛔ **E o achado da wave foi um `_ => None`:** os **quatro** `match` exaustivos da crate
+obrigaram-me a responder pelo canal novo; o `from_target` — que traduz o id **opaco que o documento
+grava** — tem wildcard, e a variante caiu nele **em silêncio**. Sem aquela linha uma track gravada
+**não se resolve ao carregar**, e o gate genérico de ida-e-volta **saltava o canal por vacuidade**.
+*Um `match` com wildcard é onde uma variante nova desaparece, e o preço ali é a PERSISTÊNCIA e não a
+compilação.* Quem o mostrou foi uma **mutação** (a sonda podia escrever qualquer número e passava).
+
+⚠️ **Duas cegueiras de régua, as duas registadas no ficheiro:**
+1. o piso `checked >= 7` do gate genérico **segurava o número enquanto a população encolhia** ⇒ hoje
+   é derivado (`checked == resolviveis`);
+2. ⛔ e o derivado **também não apanha** a remoção da linha do `from_target`, porque `checked` e
+   `resolviveis` descem juntos — *a régua partilha a lei do produto, e um espelho não acusa*. Quem a
+   apanha é o gate do id, que afirma o `17` pelos **dois** lados.
+
+⚠️ **Os gates vivem atrás da feature `skeleton`:** um `cargo test -p ph2d-timeline` sozinho imprime
+`0 passed` — *um teste que não corre lê-se como verde*. O portão do workspace corre-os (a shell liga
+a feature; conferido por `nextest list --workspace`).
+
+⭐ De graça: a `ph2d-skeleton-ecs` passou a re-exportar o `BendSide` — o **segundo** caso que a nota
+dela previa por escrito (*«um campo público cujo tipo não é alcançável pelo mesmo caminho é meio
+campo»*).
+
+Mutação **5 de 5** a sangrar; portão `15 094` verdes.
+
 ### F17 — ✅ **O ENVELOPE SÓ É PINTADO ONDE AINDA MANDA** (ordem do dono, 2026-09-18)
 
 Ele perguntou *«Por que o envelope já não influencia na deformação?»* e a resposta expôs um

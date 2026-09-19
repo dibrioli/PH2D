@@ -160,6 +160,28 @@ pub enum PropKind {
     BoneBendOutX = 15,
     /// A alça da PONTA, no eixo Y — `Bone::curve.out[1]`. Irmã da [`PropKind::BoneBendOutX`].
     BoneBendOutY = 16,
+    /// ⭐⭐⭐ **DE QUE LADO O JOELHO DOBRA, ANIMÁVEL** — o `bendDirection` do Spine
+    /// (`ph2d_skeleton_ecs::IkGoal::bend`), pedido do dono em 2026-09-18.
+    ///
+    /// ⛔⛔⛔ **E é um NÚMERO, não um alvo arrastável — há recusa MEDIDA e ela fica de pé.** Em 3D o
+    /// triângulo raiz–cotovelo–ponta roda em torno do eixo raiz→ponta, e é esse grau de liberdade
+    /// **contínuo** que o *Pole Target* do Blender fixa. No plano ele **não existe**: sobra **um
+    /// bit**. Um alvo arrastável que codifica um bit dá a ilusão de um controlo contínuo e depois
+    /// **salta** quando o artista cruza a recta — e é por isso que as duas referências 2D (Godot
+    /// `flip_bend_direction`, Spine `bendDirection`), independentes, escolheram a mesma forma.
+    /// *O que faltava não era o alvo: era a ANIMABILIDADE do bit*, que o Spine tem e nós não
+    /// tínhamos (o mecanismo inteiro vive no doc do [`ph2d_skeleton::BendSide`]).
+    ///
+    /// ⚠️ **A convenção do valor é a do Spine:** `v >= 0` ⇒ anti-horário, `v < 0` ⇒ horário. ⛔ O
+    /// `Keep` e o `Mixed` **não são alcançáveis por este canal**, e a ausência é a decisão: os dois
+    /// significam *«deriva o lado da pose que chega»*, e um canal que os animasse estaria a keyar a
+    /// AUSÊNCIA de uma escolha.
+    ///
+    /// ⚠️ Fora do [`PropKind::ALL`] (não é pose de sprite) **e** fora do [`PropKind::AUTOKEYED`]:
+    /// este valor muda por um clique num chip do painel, e o auto-key desta casa grava o que a MÃO
+    /// move no canvas. *Pô-lo lá faria toda troca de chip virar uma chave, inclusive a que o
+    /// artista fez para ver como fica.* Appended — the discriminant is a frozen wire value.
+    IkBendSide = 17,
 }
 
 impl PropKind {
@@ -245,6 +267,16 @@ impl PropKind {
             14 => Some(PropKind::BoneBendInY),
             15 => Some(PropKind::BoneBendOutX),
             16 => Some(PropKind::BoneBendOutY),
+            // ⛔⛔⛔ **ESTA LINHA FALTOU e o defeito era MUDO** (2026-09-18): os quatro `match`
+            // exaustivos desta crate obrigaram-me a responder pelo canal novo, e **este tem
+            // `_ => None`** — a variante caiu nele sem um aviso. O `AnimTarget` é o id OPACO que o
+            // documento grava, logo sem a linha uma track gravada **não se resolve de volta**, e o
+            // gate de ida-e-volta saltava o canal por vacuidade (foi uma MUTAÇÃO que o mostrou: a
+            // sonda podia escrever qualquer número e ele passava).
+            //
+            // ⚠️ *Um `match` com wildcard é onde uma variante nova desaparece* — e o preço aqui é a
+            // persistência, não a compilação.
+            17 => Some(PropKind::IkBendSide),
             _ => None,
         }
     }
@@ -272,6 +304,7 @@ impl PropKind {
             PropKind::BoneBendInY => "bone_bend_in_y",
             PropKind::BoneBendOutX => "bone_bend_out_x",
             PropKind::BoneBendOutY => "bone_bend_out_y",
+            PropKind::IkBendSide => "ik_bend_side",
         }
     }
 
@@ -308,6 +341,9 @@ impl PropKind {
             "bone_bend_in_y" | "bendiny" | "bend_in_y" => Some(PropKind::BoneBendInY),
             "bone_bend_out_x" | "bendoutx" | "bend_out_x" => Some(PropKind::BoneBendOutX),
             "bone_bend_out_y" | "bendouty" | "bend_out_y" => Some(PropKind::BoneBendOutY),
+            // ⭐ O lado da dobra, por expressão. ⚠️ O alias entra aqui **e** no `expr_alias` do
+            // gate exaustivo da suíte: sem o par, o canal fica sem nome que o artista escreva.
+            "ik_bend_side" | "bendside" | "bend_side" => Some(PropKind::IkBendSide),
             _ => None,
         }
     }
@@ -341,7 +377,9 @@ impl PropKind {
             | PropKind::BoneBendInX
             | PropKind::BoneBendInY
             | PropKind::BoneBendOutX
-            | PropKind::BoneBendOutY => None,
+            | PropKind::BoneBendOutY
+            // ⭐ E o LADO DA DOBRA mora no `IkGoal` da entidade-OSSO da ponta — mesmo resolver.
+            | PropKind::IkBendSide => None,
         }
     }
 
@@ -394,7 +432,11 @@ impl PropKind {
             | PropKind::BoneBendInX
             | PropKind::BoneBendInY
             | PropKind::BoneBendOutX
-            | PropKind::BoneBendOutY => ph2d_anim::FitChannel::LINEAR,
+            | PropKind::BoneBendOutY
+            // ⚠️ **LINEAR, e o que ele carrega é um SINAL** (a convenção do Spine: `>= 0` é
+            // anti-horário). Um `bounded(-1, 1)` seria mais bonito e MENTIRIA: o canal não é uma
+            // fracção, e apertar a amplitude não muda o que o consumidor lê.
+            | PropKind::IkBendSide => ph2d_anim::FitChannel::LINEAR,
         }
     }
 
@@ -445,6 +487,12 @@ impl PropKind {
             | PropKind::BoneBendInY
             | PropKind::BoneBendOutX
             | PropKind::BoneBendOutY => Algebra::Sum,
+            // ⚠️ **SOMA, e o neutro é o MESMO ZERO — mas aqui ele não é um deslocamento, é a
+            // FRONTEIRA entre os dois lados.** Duas lanes a pedir lados opostos somam e cancelam-se
+            // em `0`, e o consumidor lê `>= 0` ⇒ anti-horário: *o empate tem um vencedor declarado*,
+            // que é o que um bit precisa. ⛔ Por RAZÃO, `+1` e `−1` dariam `−1` e um empate ficaria
+            // a depender da ordem das lanes.
+            PropKind::IkBendSide => Algebra::Sum,
         }
     }
 }

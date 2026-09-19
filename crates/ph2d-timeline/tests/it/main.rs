@@ -34,6 +34,8 @@ mod fade_fingerprint;
 mod fade_fingerprint_channels;
 mod follow_an_unbound_object;
 mod gap_fade_out;
+#[cfg(feature = "skeleton")]
+mod ik_bend_side_anima;
 mod intents;
 mod lead_in;
 mod lone_fade;

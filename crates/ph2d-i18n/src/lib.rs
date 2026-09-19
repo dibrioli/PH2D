@@ -259,6 +259,7 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.timeline.prop.bone_bend_in_y" => "Bend In Y",
         "panel.timeline.prop.bone_bend_out_x" => "Bend Out X",
         "panel.timeline.prop.bone_bend_out_y" => "Bend Out Y",
+        "panel.timeline.prop.ik_bend_side" => "IK Bend Side",
         // Per-track extrapolation badges (plan §6) — the dashed-region mode label,
         // shown on the dope-sheet only when the side is not the default Hold.
         "panel.timeline.extrap.loop" => "Loop",

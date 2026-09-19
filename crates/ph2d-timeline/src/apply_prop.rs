@@ -80,6 +80,28 @@ pub(crate) fn write_prop(
         field.set(&mut bone, f);
         return;
     }
+    // ⭐⭐⭐ **O LADO DA DOBRA DA RESTRIÇÃO DE IK** (pedido do dono, 2026-09-18) — o
+    // `bendDirection` do Spine, e a razão de ele ser um NÚMERO e não um alvo arrastável vive no
+    // doc de [`PropKind::IkBendSide`].
+    //
+    // ⚠️ **A convenção é a do Spine** (`>= 0` ⇒ anti-horário) e o zero cai para o mesmo lado: o
+    // empate tem um vencedor DECLARADO, que é o que um bit precisa.
+    //
+    // ⛔ **Sem `IkGoal` não se escreve nada**, e a ausência é a resposta certa: uma track sobre um
+    // osso que perdeu a restrição não pode inventar uma — *é a mesma cerca que o braço do vector
+    // acima tem, e pela mesma razão*.
+    #[cfg(feature = "skeleton")]
+    if let AnimValue::Float(f) = v
+        && prop == PropKind::IkBendSide
+        && let Some(mut g) = world.get_mut::<ph2d_skeleton_ecs::IkGoal>(entity)
+    {
+        g.bend = if f >= 0.0 {
+            ph2d_skeleton_ecs::BendSide::Ccw
+        } else {
+            ph2d_skeleton_ecs::BendSide::Cw
+        };
+        return;
+    }
     // ⭐⭐⭐ **A OPACIDADE DE UM CAMINHO VETORIAL** — o mesmo canal, o outro substrato.
     //
     // ⛔⛔ Até 2026-09-04 este canal era **MUDO** num vetor: o braço abaixo exige um
@@ -200,6 +222,23 @@ pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> O
         return world
             .get::<ph2d_skeleton_ecs::Bone>(entity)
             .map(|b| field.get(b));
+    }
+    // O lado da dobra — o braço espelho do `write_prop`, na mesma ordem.
+    //
+    // ⚠️⚠️ **`Keep` e `Mixed` lêem-se `+1`, e isso é uma ESCOLHA declarada:** os dois significam
+    // *«deriva o lado da pose que chega»*, logo não há número que os represente. A track nasce no
+    // anti-horário e, no instante em que ela existe, o lado passa a ser autorado — que é
+    // exactamente o que o artista pediu ao criá-la. ⛔ Inventar um terceiro valor para eles poria
+    // no documento um estado que a convenção do consumidor (`>= 0`) não sabe ler.
+    #[cfg(feature = "skeleton")]
+    if prop == PropKind::IkBendSide {
+        return world.get::<ph2d_skeleton_ecs::IkGoal>(entity).map(|g| {
+            if g.bend == ph2d_skeleton_ecs::BendSide::Cw {
+                -1.0
+            } else {
+                1.0
+            }
+        });
     }
     // ⭐ A opacidade de um caminho vetorial — o braço espelho do `write_prop`, e ele vem PRIMEIRO
     // pela mesma razão que lá: a entidade é um vetor ou é uma sprite, nunca as duas, e perguntar

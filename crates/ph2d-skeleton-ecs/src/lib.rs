@@ -57,6 +57,16 @@ use ph2d_skeleton::bend::{Bend, BoneSpec, Handles};
 /// ⛔ É um re-export e nunca uma segunda definição: a lei continua a ter um dono só.
 pub use ph2d_skeleton::bend::{Bend as BoneBend, Handles as BoneHandles};
 
+/// ⭐ **E o lado da dobra — o SEGUNDO caso que a nota acima previu.**
+///
+/// ⚠️ O [`IkGoal::bend`] é público e o tipo dele só era nomeável pela crate da lei, que um
+/// consumidor do componente não tem por que conhecer. *Um campo público cujo tipo não é alcançável
+/// pelo mesmo caminho é meio campo* — e quem o cobrou foi a `ph2d-timeline`, ao ganhar o canal que
+/// anima este bit.
+///
+/// ⛔ Re-export e nunca uma segunda definição: a lei continua a ter um dono só.
+pub use ph2d_skeleton::BendSide;
+
 /// **UM OSSO.** A pose dele é o [`ph2d_ecs::Transform`] da entidade; a hierarquia dela é o
 /// esqueleto.
 ///

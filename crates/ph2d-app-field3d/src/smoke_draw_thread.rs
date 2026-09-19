@@ -37,6 +37,8 @@ pub(crate) struct Pedido {
     /// ⚠️ **Copiado já SANEADO** ([`ph2d_style::Style::sanitized`]), como tudo o que atravessa esta
     /// fronteira: a cerca é de QUADRO e correria por pixel se viajasse crua.
     pub style: ph2d_style::Style,
+    /// ⭐ **O BRILHO da cena** (a `W7`) — copiado como o estilo, antes de a thread nascer.
+    pub bloom: ph2d_field_render::Bloom,
     pub matcap: Arc<super::MatcapTexels>,
     pub materials: Option<Arc<crate::materials::Table>>,
     /// ⚠️ **As luzes ACESAS**, e não a lista do módulo: esta tem também as apagadas, porque o gizmo
@@ -77,6 +79,7 @@ pub(crate) fn traca(p: &Pedido) {
         style: p.style,
         piece_radius: ph2d_field_eval::bounds::bounding_ball(&p.doc, &p.reg)
             .map_or(1.0, |b| b.radius),
+        bloom: p.bloom,
     };
     let pelo_dispositivo = matches!(p.shading, crate::shading::Shading::Render)
         && !mundos.is_empty()

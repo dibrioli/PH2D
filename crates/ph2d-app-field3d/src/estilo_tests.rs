@@ -489,6 +489,7 @@ fn pinta_na_cpu(
         look: crate::shading::OPENING_LOOK,
         style: style.sanitized(),
         piece_radius: ph2d_field_eval::bounds::bounding_ball(doc, reg).map_or(1.0, |b| b.radius),
+        bloom: ph2d_field_render::Bloom::default(),
     };
     sombreia(doc, reg, cam, luz, surfaces, &pres)
 }

@@ -145,6 +145,7 @@ pub(crate) fn dois_caminhos_vestidos(
         look: ph2d_view_transform::Look::default(),
         style: style.sanitized(),
         piece_radius: ph2d_field_eval::bounds::bounding_ball(doc, &reg).map_or(1.0, |b| b.radius),
+        bloom: ph2d_field_render::Bloom::default(),
     };
     let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
 

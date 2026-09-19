@@ -95,6 +95,9 @@ pub struct View {
     /// quer voltar e encontrá-la. ⛔ Cache seria uma coisa DERIVADA do mundo, e esta não é derivada
     /// de nada — ninguém a pode reconstruir.
     pub style: ph2d_style::Style,
+    /// ⭐⭐⭐ **O BRILHO é VISTA pela MESMA lei do estilo** (`docs/Render3d/12`, a `W7`) — ele não é
+    /// derivado de nada e ninguém o pode reconstruir.
+    pub bloom: ph2d_field_render::Bloom,
 }
 
 impl Default for View {
@@ -112,6 +115,8 @@ impl Default for View {
             // cima da física, e é isso que faz o quadro de quem nunca tocou nos botões ser o de
             // antes, byte a byte.
             style: ph2d_style::Style::default(),
+            // ⭐ **Desligado**, que é a identidade ao bit — o acabamento não corre até alguém o pedir.
+            bloom: ph2d_field_render::Bloom::default(),
             split: crate::layout::Split::One,
             cam: Orbit::default(),
             manual: false,
@@ -142,6 +147,8 @@ impl View {
             look,
             // ⭐⭐⭐ **O estilo é VISTA pela mesma lei do olhar** — ver o campo em [`View::style`].
             style,
+            // ⭐⭐⭐ **E o brilho também** — ver [`View::bloom`].
+            bloom,
             // ⚠️ Daqui para baixo, **cache do quadro ou gesto em curso** — nada disto atravessa.
             doc: _,
             seed: _,
@@ -208,6 +215,7 @@ impl View {
             shading: s.vp().shading,
             look: *look,
             style: *style,
+            bloom: *bloom,
             gizmo_mode: *gizmo_mode,
             gizmo_frame: *gizmo_frame,
             isolated: *isolated,

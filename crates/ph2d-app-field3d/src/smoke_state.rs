@@ -369,6 +369,12 @@ pub struct Smoke {
     /// os grave (`docs/Render3d/04` §4). *A dívida é uma e é partilhada; separá-las agora poria
     /// metade da apresentação no ficheiro e metade fora.*
     pub style: ph2d_style::Style,
+    /// ⭐⭐⭐ **O BRILHO da cena** (`docs/Render3d/12`, a `W7`) — o passe do acabamento.
+    ///
+    /// ⚠️ **VISTA, ao lado do olhar e do estilo**: ele não entra no documento nem no undo, e passa a
+    /// documento no mesmo dia que eles. ⛔ E nasce DESLIGADO, logo a imagem de omissão é a de sempre
+    /// **ao bit** (com gate).
+    pub bloom: ph2d_field_render::Bloom,
     /// ⭐ **O nó ISOLADO** — mostrar só ele, ou `None` para a peça inteira (W38).
     ///
     /// ⚠️ **Estado de VISTA, e a lei é a do módulo irmão, lida e não re-decidida**

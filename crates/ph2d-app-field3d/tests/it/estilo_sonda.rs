@@ -586,6 +586,7 @@ fn pinta(
             look,
             style: style.sanitized(),
             piece_radius: raio,
+            bloom: ph2d_field_render::Bloom::default(),
         },
         BG,
     )
@@ -945,6 +946,7 @@ fn sonda_a3_os_cinco_tectos() {
                 look: produto,
                 style: sat(s).sanitized(),
                 piece_radius: raio,
+                bloom: ph2d_field_render::Bloom::default(),
             },
             BG,
         )
@@ -1007,6 +1009,7 @@ fn a_suavidade_amacia_a_borda_e_nao_mata_a_tinta() {
             look: Look::default(),
             style: tinta(softness).sanitized(),
             piece_radius: raio,
+            bloom: ph2d_field_render::Bloom::default(),
         };
         g.curvature_style = curvatura_da_cena(&doc, &reg, g, pres.curvature_eps());
         let img = pinta(g, &cam, &points, pres.style, raio, Look::default());

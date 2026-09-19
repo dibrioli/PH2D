@@ -123,6 +123,7 @@ fn boot() -> Option<Smoke> {
         // ⭐ O material que ESTA cena pede — ver [`scenes::materiais_da_cena`].
         seed_materials: scenes::materiais_da_cena(n),
         isolated: v.isolated,
+        bloom: v.bloom,
         flight: None,
         flight_gen: 0,
         flight_fresh: false,

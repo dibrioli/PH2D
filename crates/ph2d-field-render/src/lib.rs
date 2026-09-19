@@ -160,6 +160,9 @@ pub use occlusion::{
     ConeSlice, OCCLUSION_BLUR_COS, OCCLUSION_PASSES, OCCLUSION_REACH, blur_occlusion, cone_dir,
     occlusion, occlusion_slice, occlusion_slice_with_reach, occlusion_with_reach,
 };
+/// ⭐ Os botões do BRILHO, re-exportados — quem monta uma [`Presentation`] não tem de declarar
+/// a dependência, que é a mesma cortesia que o `Presentation` já faz pelo `Look`.
+pub use ph2d_bloom::Bloom;
 pub use probe_doors::*;
 pub use refine::refine_hemisphere;
 #[doc(hidden)]

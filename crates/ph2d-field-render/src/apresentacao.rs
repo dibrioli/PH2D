@@ -54,6 +54,12 @@ pub struct Presentation {
     /// ⚠️ **`1,0` é o valor de quem não tem peça** (uma fixtura, um gate de material) e é inofensivo:
     /// com as tintas de fábrica ninguém lê a curvatura.
     pub piece_radius: f32,
+    /// ⭐⭐⭐ **O BRILHO** (`docs/Render3d/12`, a `W7`) — o passe que lê o quadro em HDR.
+    ///
+    /// ⚠️ **Ele entra na APRESENTAÇÃO e não num argumento à parte**, pela mesma razão que o estilo:
+    /// uma função-irmã «com brilho» seria a segunda porta pela qual o defeito do `docs/Render3d/10`
+    /// §24 volta. Com [`ph2d_bloom::Bloom::contributes`] falso o quadro é o de sempre **ao bit**.
+    pub bloom: ph2d_bloom::Bloom,
 }
 
 impl Presentation {
@@ -64,6 +70,7 @@ impl Presentation {
             look,
             style: ph2d_style::Style::default(),
             piece_radius: 1.0,
+            bloom: ph2d_bloom::Bloom::default(),
         }
     }
 
@@ -107,6 +114,15 @@ impl Presentation {
 
     /// **O estilo desta apresentação lê a curvatura?** — a porta do censo, para o chamador não
     /// pagar a assadura que ninguém consome.
+    /// **Este quadro paga o passe do brilho?** — a porta que decide se o HDR é sequer construído.
+    ///
+    /// ⚠️ É ela que faz o caminho de omissão custar **zero**: sem consumidor, o buffer de cena não
+    /// nasce (a mesma lei da [`crate::curvatura::assar_canais`], um módulo ao lado).
+    #[must_use]
+    pub fn blooms(&self) -> bool {
+        self.bloom.contributes()
+    }
+
     #[must_use]
     pub fn reads_curvature(&self) -> bool {
         self.style.reads_curvature()

@@ -61,6 +61,18 @@ const VIDA_US: u64 = 1_200_000;
 /// De quanto em quanto tempo nasce uma cópia na `=2`.
 const NASCER_US: u64 = 1_600_000;
 
+/// ⭐⭐⭐ **E a cerca entre as duas é ERRO DE COMPILAÇÃO, não um teste.**
+///
+/// ⚠️ Um `assert!` de teste sobre duas constantes é **dobrado pelo compilador** antes de
+/// correr — o clippy di-lo em voz alta (`assertions_on_constants`), e a forma que ele aponta é
+/// esta. ⭐ Ao nível do MÓDULO ela é avaliada pelo `cargo check`, que é onde qualquer um a
+/// encontra; ⛔ **dentro de uma função um `const { assert!(…) }` é CEGO ao `check`** (só é
+/// avaliado quando a função é construída) — armadilha que a `line/sculpt3d` mediu em 14/09.
+///
+/// *Sem isto há sempre duas cópias na tela de cada lado, e o que o dono lê é uma pilha em vez
+/// de um objecto.*
+const _: () = assert!(VIDA_US < NASCER_US);
+
 const CHAO_RGBA: [f32; 4] = [0.14, 0.16, 0.20, 1.0];
 const PECA_RGBA: [f32; 4] = [0.45, 0.68, 0.92, 1.0];
 const COPIA_RGBA: [f32; 4] = [0.95, 0.76, 0.30, 1.0];

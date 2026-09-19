@@ -162,16 +162,6 @@ fn a_copia_e_o_controlo_diferem_so_no_tween() {
     assert_eq!(tamanho(&w, com), tamanho(&w, sem));
 }
 
-/// ⚠️ **Uma cópia vive MENOS do que o período da fábrica** — senão há sempre duas na tela e o que se
-/// lê é uma pilha em vez de um objecto.
-#[test]
-fn nunca_ha_duas_copias_do_mesmo_lado() {
-    assert!(
-        VIDA_US < NASCER_US,
-        "uma copia vive {VIDA_US} us e nasce outra a cada {NASCER_US} us"
-    );
-}
-
 /// ⭐⭐ **As duas fábricas apontam a receitas DIFERENTES e correm ao MESMO ritmo.**
 ///
 /// ⛔ Se apontassem à mesma, os dois lados seriam iguais e o controlo desaparecia em silêncio — e

@@ -42,6 +42,8 @@ W0..W6 + os abertos + **dois reports do dono já fechados e com smoke APROVADO**
 | §19 | ⭐⭐⭐ **o tecto era honesto e o MOTOR não era** (report do dono) — o passe fica **4,4×** mais barato a 500 peças e **8,7×** no quadro dele; toca em `ph2d-nodegraph` (`par_build_if`, append-only) |
 | §20 | ⭐⭐⭐ **o laço pára quando nada mais se VÊ** (2.º report) — `500` objectos a `1024` varreduras: `157,9 → 6,8 ms` (**46×** no caminho dele). ⚠️ **Não é bit-idêntico de propósito**, e o preço são DUAS barras de gate de produto re-precificadas, em duas crates |
 | §21 | ⭐⭐⭐ **o acabamento era pago por TIQUE e o desenho é UM** (3.º report, com foto) — a shell cozinha um quadro por tique em dívida e **só o último é desenhado**; a cena da foto vai de `245 → 31 ms` (**3 → 32 FPS**). Toca na PONTE (`motion_bridge`) e na bomba (`set_separa_o_desenho` + o readout `separacoes()`) |
+| §23-25 | **o desenho fica ILIBADO por medição** (`0,85 ms` de GPU, `0,04` de encode a mil formas), o perfilador ganha a partição `MOTION`/`SIMULAÇÃO` e o passe publica o **readout do preço** (`peças × varreduras × vizinhos, separações/quadro`) |
+| §26 | ⭐⭐⭐ **a REGIÃO PARALELA** (ordem do dono) — o `collect` por varredura sai, o grão passa a ser DERIVADO dos núcleos, e a densidade do dono vai de `82,6` para `16,4 ms` (**`5×`**, de `4,4` para `7,9` núcleos). Toca no seam auditado do `ph2d-nodegraph` (`par_preenche_em_blocos`, append-only) |
 | §22 | **os MIL já estão no lado do Motion** (4.º report) — `1000` objectos a `64` varreduras custam `6,8 ms` e `2000` custam `12,2`. ⛔ Uma hipótese minha CAIU: o paralelo não é o alocador, é o `fork/join` por varredura (`5×` o CPU da série para o mesmo trabalho). Porta nova no seam auditado (`par_build_com_bloco`) |
 
 ---
@@ -206,6 +208,15 @@ filtro**. ⚠️ A 8.ª está documentada **no código** como não-sangrante de 
 nele, com a mesma garantia de bits e o mesmo gate). ⇒ *a superfície de colisão do §2 muda por uma linha
 naquele ficheiro*, e o tecto de LOC do `ph2d-eval-motion/src/lib.rs` foi curado por **CORTE** (o laço das
 tomadas desceu para `taps.rs`, que já é o dono do assunto): `710 → 665`.
+
+**Portão da §23–§26:** varredura impactada **17 330** testes, **17 330 a passar** · mutação **4 de 4**
+na §26 (⚠️ duas foram reescritas: eram NO-OPs porque a peça `0` da fixtura `nuvem` **não tem
+colisor**) · **seis** tectos de LOC ao longo das quatro waves, **todos** curados por CORTE.
+
+⚠️⚠️ **Para quem funde, o que a §26 toca:** `par_preenche_em_blocos` é **append-only** no
+`ph2d-nodegraph` (o seam auditado de rayon continua a ser UM), e a `ph2d-contact` ganha dois módulos
+novos por corte — `cercas.rs` (os números MEDIDOS do laço e a derivação do grão) e `referencia.rs`
+(todos-os-pares, que **nenhum caminho de produto chama**).
 
 **Portão da §22:** varredura impactada **17 328** testes, **17 328 a passar**. ⚠️ **Para quem funde:**
 ela acrescenta `par_build_com_bloco` ao `ph2d-nodegraph` (append-only, o `par_build_if` passa a

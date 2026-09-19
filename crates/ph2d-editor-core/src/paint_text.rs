@@ -23,6 +23,7 @@ use ph2d_vector::{Affine, Color, Fill, Glyph, VectorScene};
 /// `font_size` is in device-independent pixels; `max_width` is the
 /// wrap budget (pass `f32::INFINITY` for single-line).
 #[allow(clippy::too_many_arguments)]
+#[track_caller] // o `elisao::Medido::onde` nomeia o PINTOR, nunca esta crate
 pub fn paint_text(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,
@@ -85,6 +86,7 @@ pub fn label_column_width<'a>(
 /// linha seguinte. Quem empilha texto de comprimento variável tem de perguntar
 /// ao pintor quanto ele gastou, não estimar.
 #[allow(clippy::too_many_arguments)]
+#[track_caller] // o `elisao::Medido::onde` nomeia o PINTOR, nunca esta crate
 pub fn paint_text_block(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,
@@ -119,6 +121,7 @@ pub fn paint_text_block(
 /// extra pen mass closes the perceptual gap with vertical-stem
 /// letters in the same word.
 #[allow(clippy::too_many_arguments)]
+#[track_caller] // o `elisao::Medido::onde` nomeia o PINTOR, nunca esta crate
 pub fn paint_text_title(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,
@@ -147,6 +150,7 @@ pub fn paint_text_title(
 /// **um `if` de um braço só** (§5.0), em que um terceiro peso seria medido num e pintado
 /// noutro, em silêncio. *Uma lista de pesos é uma lista que alguém esquece; um parâmetro não.*
 #[allow(clippy::too_many_arguments)]
+#[track_caller] // o `elisao::Medido::onde` nomeia o PINTOR, nunca esta crate
 pub(crate) fn paint_text_weighted(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,
@@ -194,6 +198,7 @@ pub enum Lines {
 }
 
 #[allow(clippy::too_many_arguments)]
+#[track_caller] // o `elisao::Medido::onde` nomeia o PINTOR, nunca esta crate
 pub(crate) fn paint_text_lines(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,
@@ -305,6 +310,7 @@ pub(crate) fn paint_text_lines(
 /// Used by the LeftRail to paint per-button sub-labels in the column
 /// to the left of the chips.
 #[allow(clippy::too_many_arguments)]
+#[track_caller] // o `elisao::Medido::onde` nomeia o PINTOR, nunca esta crate
 pub fn paint_text_rotated_ccw(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,
@@ -389,6 +395,7 @@ pub fn paint_text_rotated_ccw(
 ///
 /// `max_width` too small for even the ellipsis paints nothing.
 #[allow(clippy::too_many_arguments)]
+#[track_caller] // o `elisao::Medido::onde` nomeia o PINTOR, nunca esta crate
 pub fn paint_text_elided(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,
@@ -420,6 +427,7 @@ pub fn paint_text_elided(
 /// pintar em `SemiBold` (o prefixo escolhido transborda ~3 %, exactamente na fronteira em que o
 /// corte existe para não transbordar).
 #[allow(clippy::too_many_arguments)]
+#[track_caller] // o `elisao::Medido::onde` nomeia o PINTOR, nunca esta crate
 pub fn paint_text_title_elided(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,

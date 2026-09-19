@@ -62,6 +62,19 @@ pub mod elisao {
         pub fonte: f32,
         /// A espessura em que a pergunta foi feita — ⚠️ a mesma em que o pintor vai pintar.
         pub peso: super::FontWeight,
+        /// ⭐⭐⭐ **ONDE a pergunta foi feita** — o ficheiro e a linha do PINTOR.
+        ///
+        /// ⛔⛔⛔ **Ele existe porque uma regua que diz QUE texto nao coube e nao diz ONDE
+        /// obriga a arqueologia.** Medido em 2026-09-19: um chip com o rotulo `"2"` num orcamento
+        /// de `0,0 px` custou **nove** buscas no Inspector (28 ficheiros de seccao) e nao foi
+        /// encontrado — a fonte e o peso nao o separam de mais nada. ⚠️ E a lei ja
+        /// estava escrita nesta casa: *as tres reguas da ponta mediam apice a apice e DEITAVAM
+        /// FORA O INDICE antes de devolver*, e curar isso custou uma linha por apice.
+        ///
+        /// ⚠️⚠️ **O caminho do produto nao paga nada por isto:** o `#[track_caller]` e
+        /// resolvido na COMPILACAO e o `Location` e um ponteiro estatico; o registo so acontece com
+        /// o censo ARMADO, como o resto.
+        pub onde: &'static core::panic::Location<'static>,
     }
 
     impl Medido {
@@ -132,6 +145,7 @@ pub mod elisao {
     /// ⚠️ **Um texto VAZIO não é um rótulo** e fica de fora: registá-lo poria um `nada()` no censo
     /// para cada espaçador que passe por um pintor de texto, e o gate que procura controlos mudos
     /// afogava-se neles.
+    #[track_caller]
     pub(super) fn regista(
         texto: &str,
         pintado: &str,
@@ -142,6 +156,9 @@ pub mod elisao {
         if !ARMADO.get() || texto.is_empty() {
             return;
         }
+        // ⛔ **Lido AQUI e não dentro do fecho:** um fecho é outra função, e o `#[track_caller]`
+        //    não atravessa a fronteira dele — a 1.ª redacção lia a linha deste próprio ficheiro.
+        let onde = core::panic::Location::caller();
         MEDIDOS.with_borrow_mut(|v| {
             v.push(Medido {
                 texto: texto.to_string(),
@@ -149,6 +166,7 @@ pub mod elisao {
                 largura,
                 fonte,
                 peso,
+                onde,
             });
         });
     }
@@ -168,7 +186,10 @@ const ELLIPSIS: &str = "\u{2026}";
 ///
 /// ⚠️ **Só o SIM é registado aqui**: o NÃO volta pelo [`elide`], que é quem sabe o que saiu.
 /// *Duas leis, dois registos, cada um num sítio só.*
+/// ⚠️ **`#[track_caller]`**: o [`elisao::Medido::onde`] tem de nomear o PINTOR, não este ficheiro
+/// — ver o doc daquele campo.
 #[must_use]
+#[track_caller]
 pub(crate) fn coube(
     text_system: &mut TextSystem,
     text: &str,
@@ -238,7 +259,10 @@ pub fn title_elided_width(text_system: &mut TextSystem, text: &str, font_size: f
 ///
 /// ⚠️ **`pub(crate)` só para os pintores de [`crate::paint`]** (`paint_text.rs`), que fazem a guarda
 /// do «cabe» ANTES de a chamar — a mesma pré-condição do único chamador que ela sempre teve.
+/// ⚠️ **`#[track_caller]`**: o [`elisao::Medido::onde`] tem de nomear o PINTOR, não este ficheiro
+/// — ver o doc daquele campo.
 #[must_use]
+#[track_caller]
 pub(crate) fn elide(
     text_system: &mut TextSystem,
     text: &str,
@@ -291,7 +315,10 @@ fn corte(text: &str, ate: usize) -> String {
 ///
 /// ⛔ Quando nem as reticências cabem devolve o texto **cru**: um rótulo cortado a zero é um botão
 /// mudo, e é melhor transbordar visivelmente do que desaparecer.
+/// ⚠️ **`#[track_caller]`**: o [`elisao::Medido::onde`] tem de nomear o PINTOR, não este ficheiro
+/// — ver o doc daquele campo.
 #[must_use]
+#[track_caller]
 pub fn fit(text_system: &mut TextSystem, text: &str, font_size: f32, max_width: f32) -> String {
     fit_weighted(text_system, text, font_size, max_width, FontWeight::MEDIUM)
 }
@@ -305,7 +332,10 @@ pub fn fit(text_system: &mut TextSystem, text: &str, font_size: f32, max_width: 
 /// ⚠️ **O peso viaja porque medir numa espessura e pintar noutra é um defeito que este ficheiro já
 /// pagou** (ver o doc do [`fit`]): um rótulo cortado em `Medium` e pintado em `SemiBold`
 /// transborda ~3 %, exactamente na fronteira em que o corte existe.
+/// ⚠️ **`#[track_caller]`**: o [`elisao::Medido::onde`] tem de nomear o PINTOR, não este ficheiro
+/// — ver o doc daquele campo.
 #[must_use]
+#[track_caller]
 pub fn fit_weighted(
     text_system: &mut TextSystem,
     text: &str,

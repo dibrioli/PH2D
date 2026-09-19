@@ -191,6 +191,7 @@ pub fn stepper_down_rect(host: Rect) -> Rect {
     )
 }
 
+#[track_caller] // o `elisao::Medido::onde` nomeia o PINTOR, nunca esta crate
 pub fn paint_number_input(
     input: &NumberInput,
     rect: Rect,
@@ -208,6 +209,7 @@ pub fn paint_number_input(
 /// `selection_anchor` paints a selection background when non-None
 /// and the input is focused.
 #[allow(clippy::too_many_arguments)]
+#[track_caller] // o `elisao::Medido::onde` nomeia o PINTOR, nunca esta crate
 pub fn paint_number_input_with_buffer(
     input: &NumberInput,
     buffer: Option<&str>,

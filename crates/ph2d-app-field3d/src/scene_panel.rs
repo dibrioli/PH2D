@@ -27,7 +27,21 @@ pub fn publish_snapshot(
     ms: f32,
 ) {
     let all = ph2d_field_ecs::walk(world, root);
-    let rows = param_rows(world, selection, view_span);
+    let mut rows = param_rows(world, selection, view_span);
+    // ⭐⭐⭐ **E AS FILEIRAS DO ESTILO DA CENA** (`docs/Render3d/03`, a `W8`) — no FIM, porque elas
+    // não são do objecto escolhido: são da cena, e um artista que clicou numa forma lê primeiro os
+    // números dela.
+    //
+    // ⚠️ **Só no modo Render**, e a ausência é a lei — ver o [`crate::estilo::rows`]: no matcap o
+    // estilo não corre, e *uma affordance que não pode ser honrada é pior do que nenhuma*.
+    rows.extend(crate::estilo::rows(
+        with_smoke(|s| s.style).unwrap_or_default(),
+        matches!(
+            with_smoke(|s| s.vp().shading),
+            Some(crate::shading::Shading::Render)
+        ),
+    ));
+    let rows = rows;
     // ⚠️ A lista de verbos é **derivada de `Mode::ALL`**, que é a fonte da contagem. O painel não
     // conhece o enum — acrescentar um verbo lá faz o seletor seguir sem uma linha de mudança.
     let (active, frame, mut subtracts) =

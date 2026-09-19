@@ -257,3 +257,87 @@ pub fn cena_34() -> Result<FieldDoc, ph2d_field::FieldError> {
 /// ⛔ **São as do oráculo** (`docs/Render3d/10` §17.3) e não números escolhidos: é contra estas
 /// quatro que a lei foi calibrada, logo é sobre estas quatro que a cena pode prometer o que mostra.
 pub const PROFUNDIDADES_DA_COR: [f32; 4] = [0.03, 0.10, 0.30, 1.00];
+
+/// ⭐⭐⭐ **A CAMADA DE ESTILO** (`docs/Render3d/03`, a `W8`) — a peça onde os quatro botões têm o que
+/// morder.
+///
+/// # ⚠️ Porque a peça é ESTA e não uma bola
+///
+/// A tinta por curvatura precisa das DUAS coisas — uma **aresta** e uma **cova com ÁREA** —, e um
+/// vinco vivo é um conjunto de **medida nula**: a grelha de píxeis nunca lá cai (medido: `negativos
+/// = 0` sobre `3 456` píxeis numa peça sem filete). ⇒ a peça leva crateras cavadas e quinas
+/// arredondadas, e o filete é o que dá largura à cova.
+///
+/// ⛔ E ela abre em **Matcap**, como todo o módulo: o passo `(1)` é ligar o *Render*, que é onde o
+/// artista aprende que a camada de estilo **é do Render** — no matcap ela nem sequer aparece.
+pub fn cena_35() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 35 — O ESTILO: os botoes para MENTIR DE PROPOSITO por cima da fisica."
+    );
+    println!(
+        "[field-smoke]            (1) MODEL · no painel do topo, Shading · Render — a seccao STYLE \
+         aparece no FIM do painel da direita. No Matcap ela nao existe, e isso e' de proposito."
+    );
+    println!(
+        "[field-smoke]            (2) suba Rim Strength ate' ~1,5: a peca ganha um FIO de luz na \
+         beirada e DESCOLA do fundo. Rim Width aperta ou alarga esse fio."
+    );
+    println!(
+        "[field-smoke]            (3) Cavity Tint para um AZUL escuro: so' o fundo das crateras \
+         muda. Edge Tint para um LARANJA: so' as quinas mudam. Curvature Sharpness decide quanta \
+         curvatura ja' conta como tinta cheia."
+    );
+    println!(
+        "[field-smoke]            (4) Shadow Tint azul + Highlight Tint quente: a imagem inteira \
+         ganha a grade de cor de um filme. Zone Pivot escolhe onde e' a fronteira."
+    );
+    println!(
+        "[field-smoke]            (5) como saber que falhou: se mexer num destes e a peca NAO mudar \
+         nada, o botao nao chegou. E se a seccao STYLE nao aparecer no Render, PARE."
+    );
+    // ⚠️⚠️ **A ORDEM dos nós é a da TRAVESSIA, e o gate cobra-a:** um combine vem logo a seguir aos
+    // filhos dele, senão a peça muda de forma ao virar objectos — e *o que se vê na tela é o
+    // DEPOIS*. (A 1.ª redacção desta cena declarava a caixa antes do corte e reprovou.)
+    //
+    // A bola grande — a superfície de fundo, toda ela ARESTA suave.
+    let mut nodes = vec![leaf(Primitive::Sphere { radius: 0.62 }, Xform::IDENTITY)];
+    // ⭐ **Três crateras**, de raios diferentes: elas dão as COVAS, e raios diferentes dão
+    // curvaturas diferentes — é isso que faz o `Curvature Sharpness` ter o que separar.
+    for (raio, pos) in [
+        (0.30_f32, [0.00_f32, 0.10, 0.52]),
+        (0.20, [-0.38, -0.28, 0.40]),
+        (0.13, [0.40, -0.30, 0.42]),
+    ] {
+        nodes.push(leaf(
+            Primitive::Sphere { radius: raio },
+            Xform {
+                translation: pos,
+                ..Xform::IDENTITY
+            },
+        ));
+    }
+    // ⚠️ **O filete é o que dá LARGURA à cova** — com aresta viva ela é medida nula e o botão da
+    // tinta parece morto.
+    nodes.push(combine(
+        Op::Difference(ph2d_field::Blend::Exact { radius: 0.05 }),
+        vec![NodeId(0), NodeId(1), NodeId(2), NodeId(3)],
+    ));
+    // ⭐ E uma CAIXA arredondada atravessada, que traz quinas de verdade — uma esfera sozinha não
+    // tem aresta nenhuma para o `Edge Tint` morder.
+    nodes.push(leaf(
+        Primitive::Box {
+            half: [0.78, 0.13, 0.13],
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        Xform {
+            translation: [0.0, -0.46, 0.0],
+            ..Xform::IDENTITY
+        },
+    ));
+    nodes.push(combine(
+        Op::Union(ph2d_field::Blend::Exact { radius: 0.06 }),
+        vec![NodeId(4), NodeId(5)],
+    ));
+    FieldDoc::new(nodes, NodeId(6))
+}

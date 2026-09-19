@@ -132,7 +132,7 @@ pub fn leaf(p: Primitive, x: Xform) -> Node {
 /// ⚠️ Ele **conta-se lendo o `match` abaixo**, nunca de memória: o gate
 /// `the_router_answers_for_every_level_it_claims` mede-o pelas DUAS pontas — a cena `CENAS` tem de
 /// ser dela própria, e a `CENAS + 1` tem de cair no `_`.
-pub const CENAS: u32 = 34;
+pub const CENAS: u32 = 35;
 
 /// **As cenas PODADAS em 2026-09-11** — nenhum doc as citava pelo número e nenhum código as usava
 /// (ordem do Enio, briefing W2 §3.2). `952` linhas.
@@ -449,6 +449,7 @@ pub fn scene(n: u32) -> FieldDoc {
         33 => edge::cena_33(),
         // ⭐⭐⭐ A COR QUE A PROFUNDIDADE DEIXA — ver [`edge::cena_34`].
         34 => edge::cena_34(),
+        35 => edge::cena_35(),
         _ => {
             // ⛔⛔ **O ROTEADOR DIZ QUANDO O NÚMERO NÃO EXISTE** (W2).
             //

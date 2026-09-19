@@ -468,3 +468,14 @@ pub mod wgsl;
 
 #[cfg(test)]
 mod tests;
+
+/// ⭐ **Um gate por BOTÃO** — ver o cabeçalho do irmão.
+///
+/// ⚠️ **Declarado da RAIZ e não de dentro do [`tests`]**, e a razão foi medida: o censo de órfãos da
+/// casa resolve um `#[path]` de dentro de um ficheiro-módulo pela pasta do **módulo**, e o `rustc`
+/// resolveu-o pela pasta do **ficheiro** — o irmão compilava e corria, e o censo lia-o como
+/// **órfão**. *Duas resoluções para o mesmo caminho é como um ficheiro fica fora do build sem nada
+/// acusar;* da raiz não há ambiguidade nenhuma.
+#[cfg(test)]
+#[path = "tests_botoes.rs"]
+mod tests_botoes;

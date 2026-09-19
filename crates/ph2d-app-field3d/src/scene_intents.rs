@@ -306,6 +306,34 @@ pub(super) fn apply(
                     with_smoke(|s| s.lasso_subtracts = slot == 1);
                 }
             }
+            // ⭐⭐⭐ **O ESTILO É DA CENA, e o sujeito sai da FAMÍLIA** (`docs/Render3d/03`, a `W8`).
+            //
+            // ⚠️⚠️ **O `entity` da linha NÃO é lido, e isso é a lei e não um esquecimento:** o estilo
+            // não é de entidade nenhuma. O precedente é o material de um GRUPO, cuja linha já viaja
+            // com o id do primeiro alvo enquanto quem decide o alcance é este dreno — *um índice sem
+            // família é um sujeito por adivinhar, e a adivinha é silenciosa.*
+            //
+            // ⚠️ **Estes dois braços vêm ANTES dos do material**, e a ordem é load-bearing: os de
+            // baixo casam por `Param::Material(_)` e o genérico casa por TUDO. Um braço de estilo
+            // depois do genérico seria um controlo pintado, registado e **morto sob o dedo**.
+            ph2d_panel_model3d::ModelIntent::SetParam {
+                param: ph2d_field::Param::Style(slot),
+                value,
+                ..
+            } => {
+                crate::smoke::with_smoke(|s| {
+                    s.set_style(crate::estilo::with_number(s.style, slot, value));
+                });
+            }
+            ph2d_panel_model3d::ModelIntent::SetColor {
+                anchor: ph2d_field::Param::Style(slot),
+                srgb,
+                ..
+            } => {
+                crate::smoke::with_smoke(|s| {
+                    s.set_style(crate::estilo::with_colour(s.style, slot, srgb));
+                });
+            }
             // ⭐⭐⭐ **UMA COR** (Enio, 2026-09-14) — a travessia sRGB → linear, e três escritas.
             //
             // ⚠️ **As três correm no MESMO quadro, e é isso que as torna UM passo de undo**: o

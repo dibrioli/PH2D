@@ -149,6 +149,23 @@ pub enum Param {
     /// ⚠️ **Só uma FOLHA o tem.** É a folha que o traçado sabe nomear (`ph2d_field_eval::owners`),
     /// e um material num grupo seria um valor que nenhum pixel consegue ir buscar.
     Material(u8),
+    /// ⭐⭐⭐ **UM NÚMERO DA CAMADA DE ESTILO DA CENA** (`docs/Render3d/03`, a `W8`) — e o índice é a
+    /// **posição na arrumação** do [`ph2d_style::wgsl::pack`], nunca uma segunda numeração.
+    ///
+    /// # ⚠️ Porque ele é uma família NOVA e não um `Material`
+    ///
+    /// O sujeito é outro: um material é **daquela folha** e o estilo é da **CENA** — e é o dreno que
+    /// decide o sujeito pela FAMÍLIA, como o [`Param::Light`] já obriga. *Um índice sem família é um
+    /// sujeito por adivinhar, e a adivinha é silenciosa.*
+    ///
+    /// ⚠️⚠️ **E o `entity` de uma linha destas NÃO É LIDO** — o estilo não é de entidade nenhuma. O
+    /// precedente é o material de um GRUPO, cuja linha já viaja com o id do primeiro alvo enquanto
+    /// quem decide o alcance é o dreno. ⛔ Uma entidade *sentinela* aqui seria um id válido a apontar
+    /// para o objecto errado, que é a forma de defeito que nunca parece um defeito.
+    ///
+    /// ⭐ **O índice ser o da ARRUMAÇÃO é o que faz a escrita ser uma linha:** desempacota, escreve
+    /// a posição, empacota. Uma numeração própria seria a segunda resposta à tabela do `pack`.
+    Style(u8),
 }
 
 /// Quantos números um material tem — ver [`Param::Material`].
@@ -192,6 +209,9 @@ impl Param {
         match self {
             Self::Material(k) => Some([0, 1, 2].map(|i| Self::Material(k + i))),
             Self::Light(k) => Some([0, 1, 2].map(|i| Self::Light(k + i))),
+            // ⚠️ **Vale a mesma lei — três números consecutivos da mesma família** —, e no estilo
+            // ela é literalmente a arrumação: cada cor ocupa o `xyz` de um `vec4`.
+            Self::Style(k) => Some([0, 1, 2].map(|i| Self::Style(k + i))),
             _ => None,
         }
     }

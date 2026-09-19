@@ -12,7 +12,8 @@
 //! no `FILE_OVERAGE_OK`* (`CLAUDE.md` §5.0) — e é melhor por isso: quem acrescenta um botão sabe
 //! exactamente onde escrever o gate dele.
 
-use super::{Curvature, Point, Rim, Style, Zones, bits};
+use crate::tests::bits;
+use crate::{Curvature, Point, Rim, Style, Zones};
 
 /// ⭐⭐⭐ **CADA BOTÃO CHEGA AO BARRO** — o censo que o `CLAUDE.md` §5.0 diz que nenhum instrumento
 /// deste repo faz.

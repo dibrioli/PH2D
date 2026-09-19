@@ -51,6 +51,9 @@
 use ph2d_app_host::{AppFamily, SmokeRouter};
 
 // ── Os 19 módulos da família ────────────────────────────────────────────────────────────────
+/// ⭐⭐⭐ **A CAMADA DE ESTILO no painel** (`docs/Render3d/03`, a `W8`) — as dez fileiras, derivadas
+/// da arrumação do `ph2d_style::wgsl::pack`.
+pub mod estilo;
 pub mod export;
 pub mod export_job;
 /// ADR-0161 W51 — a VIAGEM entre vistas: a câmera vai suavemente, com a lei de motion da casa.
@@ -86,7 +89,7 @@ pub mod shading;
 pub mod shape_palette;
 /// ADR-0161 W100 — o CATÁLOGO de formas: rótulo, família e construtor, uma linha por forma.
 pub mod shapes;
-/// ADR-0161 — o smoke do módulo (`PH2D_FIELD_SMOKE=1..34`): o **campo traçado** na tela, que é o
+/// ADR-0161 — o smoke do módulo (`PH2D_FIELD_SMOKE=1..35`): o **campo traçado** na tela, que é o
 /// caminho pelo qual o artista vê a peça (a malha é só para exportar).
 pub mod smoke;
 /// `docs/Render3d/03` W3 — o ESTÚDIO: o céu ganha uma FONTE COM FORMA, pré-filtrada em forma

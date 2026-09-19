@@ -76,6 +76,16 @@ pub fn set_param(
         // ⚠️ **A posição é conferida pela PORTA do componente** ([`FieldMaterial::set`]), e não por
         // um `k < 5` escrito aqui: dois limites divergiriam no dia em que um sexto número entrasse,
         // e o sintoma seria uma linha pintada que a escrita recusa em silêncio.
+        // ⛔⛔ **O ESTILO NÃO É DE ENTIDADE NENHUMA, e por isso esta porta RECUSA-O** (`W8`,
+        // `docs/Render3d/03`).
+        //
+        // ⚠️ Ele é da **CENA** e vive na VISTA (`field3d_view::View::style`), não no mundo — quem o
+        // escreve é o dreno do painel, pela família do [`Param`]. *Um braço que o escrevesse aqui
+        // teria de inventar em QUE entidade, e a resposta certa é «em nenhuma».*
+        //
+        // ⚠️ E a recusa é **em voz alta**: sem este braço o `match` não compila no dia em que a
+        // família nascer, que é exactamente como ele nasceu.
+        Param::Style(_) => Err(FieldError::BadRoot),
         Param::Material(k) => {
             let mut m = world
                 .get::<crate::FieldMaterial>(entity)

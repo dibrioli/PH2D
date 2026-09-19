@@ -62,7 +62,7 @@ const PONTOS: [Point; 9] = [
     },
 ];
 
-pub(super) fn bits(v: [f32; 3]) -> [u32; 3] {
+pub(crate) fn bits(v: [f32; 3]) -> [u32; 3] {
     v.map(f32::to_bits)
 }
 
@@ -407,7 +407,3 @@ fn a_forma_que_reconstroi_por_diferenca_e_a_que_perde_bits() {
         "reconstruir por diferença tem de perder bits nalgum sítio — senão a lei não tem sujeito"
     );
 }
-
-/// ⭐ **Um gate por BOTÃO** — ver o cabeçalho do irmão.
-#[path = "tests_botoes.rs"]
-mod botoes;

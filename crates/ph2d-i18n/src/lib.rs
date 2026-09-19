@@ -110,10 +110,13 @@ mod node_params;
 mod node_params_motion;
 /// As palavras dos motores do pincel e dos efeitos — a 2.ª fatia da fronteira.
 mod paint_engines;
+mod model3d_inert;
 /// ⭐ **As RAZÕES de uma fileira apagada** (18/09) — irmão de ASSUNTO do [`model3d`], e não de
 /// painel: o corte foi imposto pelo tecto de LOC dele e separa *nomes de coisas* de *frases para o
 /// artista*.
-mod model3d_inert;
+/// ⭐⭐⭐ **A APRESENTAÇÃO da cena 3D** — o olhar, a exposição e a camada de ESTILO
+/// (`docs/Render3d/03` e `05`). Irmão do [`model3d`] por RESPONSABILIDADE e por tecto de LOC.
+mod model3d_render;
 mod painter_layers;
 /// ⭐⭐ **A COR, a CURVA, o COMANDO e as RECUSAS da timeline** — quatro motores numa fatia.
 mod quatro_motores;
